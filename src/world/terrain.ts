@@ -1,3 +1,5 @@
+import { routeDesertRoads, gradeDesertRoads, blendDesertRoadBanks } from './maps/desertRoads.ts';
+import { smoothRoadGradesByDistance, blendRoadNetworkGrades } from './maps/roadGradeSmoothing.ts';
 import { fadeDistantCoastShadows } from './coastShadow.ts';
 import { bindAutumnHorizonGround, refreshHorizonGroundTone } from './horizonAutumnGround.ts';
 import { continueHorizonFold } from './horizonSeam.ts';
@@ -38,9 +40,9 @@ import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSu
 import { completeRoadEndpoints, gradeRoadPortals, alignHardstandRoadPortals,
   usesInheritedRoadGrades, remapInheritedRoadElevations, alignAddedRoadJunctionGrades,
   originalRoadPlacementConfig } from './maps/roadEndpoints.ts';
-import { alignFjordNorthernRoadGrades, alignCopperNorthernRoadGrades,
+import { alignFjordNorthernRoadGrades, alignCopperNorthernRoadGrades, alignPoldersNorthernRoadGrades,
   stampRoadBorderCorridors, usesBoundedRoadShoulders } from './maps/roadBorderCorridor.ts';
-import { buildRoadStationOrigins, type RoadStationOrigin } from './maps/roadStations.ts';
+import { buildRoadStationOrigins, usesPhysicalRoadStations, buildPhysicalRoadStationOrigins, type RoadStationOrigin } from './maps/roadStations.ts';
 import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
@@ -683,8 +685,10 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
     if (t.roads.paths) roads.push(...buildPathRoads(t.roads.paths));
   }
   if (roads.length === 0) roads = buildCountryRoads();
+  routeDesertRoads(cfg?.id, roads);
   const completed = completeRoads ? completeRoadEndpoints(cfg?.id, roads) : roads;
-  const roadStations = buildRoadStationOrigins(roads, completed, originalCounts);
+  const roadStations = buildPhysicalRoadStationOrigins(cfg?.id, roads, completed,
+    buildRoadStationOrigins(roads, completed, originalCounts));
   return {
     village,
     // maps r1 (ADDITIVE): per-marsh carve depth `dip` (m). Default 2.6 = the
@@ -1161,6 +1165,9 @@ function* heightFieldBuildSteps(
     return h;
   }
 
+  // Desert's surveyed ramps need a finite earthwork bank, not a narrow berm.
+  const roadBankWidth = cfg?.id === 'desert' ? 104 : 14;
+
   function applyHeightConstraints(
     x: number,
     z: number,
@@ -1204,14 +1211,19 @@ function* heightFieldBuildSteps(
       }
     }
     if (!roadsOn) return h;
-    if (rd < 14) {
+    if (rd < roadBankWidth) {
+      let roadBlendWeight = 1 - smoothstep(3.8, 14, rd);
+      if (roadBankWidth > 14) {
+        const approach = smoothstep(48 * 48, 128 * 128, (x - _VILLAGE.cx) ** 2 + (z - _VILLAGE.cz) ** 2);
+        roadBlendWeight += (1 - smoothstep(3.8, roadBankWidth, rd) - roadBlendWeight) * approach;
+      }
       if (!elevationSampled) roadElevation = sampleHeightGridCell(gRoadElev, GN, gridIndex, gridFx, gridFz);
       if (bridgeDecks.length) {
         // round 61: under a bridge deck the road plane yields to the river bed; over each approach it grades to the deck
         const bridge = bridgeTermsAt(x, z);
         roadElevation += (bridge.deckY - roadElevation) * bridge.approach;
-        h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd)) * (1 - bridge.span);
-      } else h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd));
+        h += (roadElevation - h) * roadBlendWeight * (1 - bridge.span);
+      } else h += (roadElevation - h) * roadBlendWeight;
     }
     return applyRoadShoulderDetail(x, z, h, rd, settlementWeight, marshWeight, lakeWetness, padWetness);
   }
@@ -1457,6 +1469,7 @@ function* heightFieldBuildSteps(
   }
 
   function smoothRoadElevations(nodeElev: number[][]): void {
+    if (usesPhysicalRoadStations(cfg?.id)) { smoothRoadGradesByDistance(inheritedRoads ?? roads, nodeElev); return; }
     for (const elev of nodeElev) {
       for (let pass = 0; pass < 4; pass++) {
         const prev = elev.slice();
@@ -1479,6 +1492,7 @@ function* heightFieldBuildSteps(
     return _junctionScratch;
   }
   function blendRoadJunctions(nodeElev: number[][], gradeRoads: RoadLine[] = roads): void {
+    if (usesPhysicalRoadStations(cfg?.id)) { blendRoadNetworkGrades(gradeRoads, nodeElev); return; }
     // Blend every road pair to a common elevation at their crossing.
     for (let ra = 0; ra < gradeRoads.length; ra++) for (let rb = ra + 1; rb < gradeRoads.length; rb++) {
       const [jA, jB, best] = findRoadJunction(ra, rb, gradeRoads);
@@ -1500,6 +1514,7 @@ function* heightFieldBuildSteps(
     }
     smoothRoadElevations(nodeElev);
     blendRoadJunctions(nodeElev, authoringRoads);
+    gradeDesertRoads(cfg?.id, authoringRoads, nodeElev);
     if (inheritedRoads) {
       borderCorridorStart = buildRoadBorderCorridors();
       boundedRoadCorridor = borderCorridorStart !== null && usesBoundedRoadShoulders(cfg?.id);
@@ -1513,12 +1528,14 @@ function* heightFieldBuildSteps(
     if (!placementOnly) {
       alignFjordNorthernRoadGrades(cfg?.id, roads, nodeElev);
       alignCopperNorthernRoadGrades(cfg?.id, roads, nodeElev);
+      alignPoldersNorthernRoadGrades(cfg?.id, roads, nodeElev);
     }
     for (let i = 0; i < GN * GN; i++) {
       const e = nodeElev[gSegRoad![i]];
       const s = gSegIdx![i];
       gRoadElev[i] = e[s] + (e[s + 1] - e[s]) * gSegT![i];
     }
+    blendDesertRoadBanks(cfg?.id, roads, nodeElev, gRoadDist, gRoadElev, GN, MAP_SIZE, _VILLAGE.cx, _VILLAGE.cz);
   }
   // --- road node elevations: pre-road height sampled + smoothed + junction blend ---
   buildRoadElevationGrid();

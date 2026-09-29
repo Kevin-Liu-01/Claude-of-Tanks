@@ -3,13 +3,13 @@ import { createHeightField, createLayout } from './terrain.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { originalRoadPlacementConfig } from './maps/roadEndpoints.ts';
 import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
-import { historicalRoadHeightFieldWithReliefLaws, historicalRoadLayout } from './roadHistoryTestOracle.mjs';
+import { historicalRoadHeightFieldWithReliefLaws, currentRoadLayoutBeforeCompletion } from './roadHistoryTestOracle.mjs';
 
 let samples = 0;
 for (const id of MAP_IDS) {
   const cfg = getMapConfig(id), originalCfg = originalExitConfig(cfg);
   assert.deepEqual(originalRoadPlacementConfig(cfg), originalCfg, `${id}: literal original path configuration`);
-  assert.deepEqual(createLayout(originalCfg, false).roads, historicalRoadLayout(originalCfg).roads,
+  assert.deepEqual(createLayout(originalCfg, false).roads, currentRoadLayoutBeforeCompletion(originalCfg).roads,
     `${id}: original sampled grid and authored paths, including clipped Coastal terminals`);
   for (const seed of [1337, ...(['coastal','frontier','alpine','reservoir'].includes(id) ? [2025] : [])]) {
     // the sampler reproduces the CURRENT pre-completion field, whose rim carries the round-47 water gate and coast fade

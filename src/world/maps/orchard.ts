@@ -1,13 +1,14 @@
 // Japanese-inspired cultivated valley: contour-planted broadleaf rows,
 // cedar edges, a bathhouse/market settlement and three stepped farm tracks.
 import verdant from './verdant.ts';
+import { roundRoadBends } from './roadBends.ts';
 export default {
   id: 'orchard', name: 'Orchard Valley',
   blurb: 'Terraced orchard rows, cedar groves and a quiet bathhouse village along a winding valley road',
   terrain: {
     hillScale: 1.0, microScale: 0.72, rimH: 32,
     village: { x0: -106, x1: 108, z0: -92, z1: 112, cx: -6, cz: 12, feather: 42, flatten: 0.86, relief: 0.12 },
-    roads: { paths: [
+    roads: { paths: roundRoadBends([
       // The bathhouse street bends into the packing court; the second
       // frontage below turns back around it instead of stringing homes out.
       [[-88, -466], [-48, -290], [-32, -128], [-44, -66], [-20, -12], [34, 30], [50, 114], [6, 308], [68, 466]],
@@ -15,7 +16,7 @@ export default {
       [[324, -458], [262, -300], [308, -132], [224, 18], [286, 164], [252, 320], [288, 466]],
       [[-218, -172], [-112, -88], [-76, -18], [-20, -12], [24, -48], [98, -56], [202, -100], [308, -132]],
       [[-324, 196], [-222, 172], [-100, 204], [50, 146], [178, 196], [330, 224]],
-    ] },
+    ]) },
     marshes: [{ x: 136, z: -128, r: 28, dip: 0.7 }, { x: -120, z: 230, r: 29, dip: 0.8 }],
     landforms: [
       { kind: 'ridge', x: -262, z: -36, length: 310, width: 64, height: 8.2, yawDeg: 6 },

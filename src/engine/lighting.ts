@@ -1389,6 +1389,23 @@ export function createLighting(
     // Keep the richer getShadowTelemetry() path at HUD cadence only.
     get scheduledMask() { return lastScheduledMask; },
 
+    /** A restored renderer has no depth contents, even when the CPU target
+     * objects survived. Cold targets must fail every dormancy/partial-prime
+     * readiness check until the complete cascade set has rendered again. */
+    invalidateShadowMaps(): void {
+      staticPresentationDormant = false;
+      preservePrimedFrame = false;
+      for (const light of csm.lights) {
+        light.shadow.dispose();
+        light.shadow.map = null;
+        light.shadow.mapPass = null;
+      }
+      shadowFitCache.invalidate();
+      forceAllCascades();
+      setAllCascadeUpdates(true);
+      lastScheduledMask = allCascadeMask;
+    },
+
     /**
      * Suspend only the long-range shadow-map renders while an enclosed scene
      * is visible. Re-enabling schedules every far cascade behind the caller's

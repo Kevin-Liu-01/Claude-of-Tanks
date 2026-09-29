@@ -17,6 +17,7 @@ import { t } from '../ui/i18n.ts';
 import { getDeviceTier, resolveDeviceTier, noteGpuRenderer, noteGraphicsContextLoss } from './quality.ts';
 import { outputResolution, type OutputResolution } from './resolutionPolicy.ts';
 import { routeShadowOnlyLayer } from './renderLayers.ts';
+import { installContextResourceLifetime } from './contextResourceLifetime.ts';
 
 import { createContextRecovery, type ContextRecoveryOwner, type RecoveryNotice } from './contextRecovery.ts';
 
@@ -61,6 +62,8 @@ export function createRenderer(container: HTMLElement): GameRenderer {
     powerPreference: 'high-performance',
     stencil: false,
   }) as GameRenderer;
+  // Install before scene resources are allocated, and before recovery listeners.
+  const contextResources = installContextResourceLifetime(renderer.getContext() as WebGL2RenderingContext, renderer.domElement);
   // WebGLRenderer is not an Object3D and therefore has no built-in userData.
   // Reserve a small integration bag for lifecycle hooks installed by main.ts.
   renderer.userData = renderer.userData || {};
@@ -94,7 +97,7 @@ export function createRenderer(container: HTMLElement): GameRenderer {
     recovery.dispose();
     renderer.domElement.removeEventListener('webglcontextlost', recovery.lost);
     renderer.domElement.removeEventListener('webglcontextrestored', recovery.restored);
-    dispose();
+    try { dispose(); } finally { contextResources.dispose(); }
   };
 
   const width = container.clientWidth || window.innerWidth;

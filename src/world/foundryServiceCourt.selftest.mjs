@@ -154,7 +154,8 @@ const hook=registerHooks({load(url,context,next){
   if(url!==propsUrl)return result;
   let text=replaceOnce(String(result.source),'export function mulberry32(a: number): Rng',
     'function producerMulberry32(a: number): Rng');
-  const plannedBlock='    if (fit.spread > P.maxSpread) return false;\n    jitterBuildingUvs(tmp);\n    const obstacleStart = obstacles.length, colliderStart = colliders.length;';
+  // Capture the final accepted pose, after optional frontage correction.
+  const plannedBlock='    const obstacleStart = obstacles.length, colliderStart = colliders.length;\n    const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);';
   text=replaceOnce(text,plannedBlock,plannedBlock.replace('    const obstacleStart =',
     '    globalThis.__courtPlanned(bi,structureId,px,pz,rot,fit,info,tmp);\n    const obstacleStart ='));
   text=replaceOnce(text,'    const receipt = composeFoundryServiceCourt(',

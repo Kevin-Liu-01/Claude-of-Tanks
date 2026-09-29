@@ -1,3 +1,4 @@
+import { beforeRoadSettlementRedesign } from '../../tools/road-settlement-history-fixture.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -102,7 +103,7 @@ function checkProduction(seed, size) {
       assert.equal(after[key], before[key], `no texture policy change: ${key}`);
     }
     if (seed === 1337 && size === 512) {
-      const historical = historicalMaskTexture(noise(), createLayout({ ...control, id: undefined }));
+      const historical = historicalMaskTexture(noise(), createLayout({ ...beforeRoadSettlementRedesign(control), id: undefined }));
       try { assert.equal(hash(historical.image.data), originalLongleaf, 'independently preserved pre-change full RGBA'); }
       finally { historical.dispose(); }
     }

@@ -58,6 +58,20 @@ const failures = [];
 for (const preset of presets) {
   const result = evaluate(`(async () => {
     const D = window.__DEBUG;
+    const stageGl = D.renderer.getContext();
+    const glStages = [];
+    const checkpointGl = stage => {
+      const errors = [];
+      for (let i = 0; i < 8; i++) {
+        const error = stageGl.getError();
+        if (!error) break;
+        errors.push(error);
+      }
+      if (errors.length) glStages.push({ stage, errors });
+    };
+    // Record inherited errors separately. Clearing the flag for attribution
+    // never turns a polluted run into a pass.
+    checkpointGl('preflight');
     if (${JSON.stringify(deviceTier)} === 'mobile') {
       D.quality.setMobilePresetName(${JSON.stringify(preset)});
     } else {
@@ -66,6 +80,7 @@ for (const preset of presets) {
     await window.__SHOTS.set('battlefield');
     D.post.pinDynScale(1);
     await new Promise((resolve) => setTimeout(resolve, 700));
+    checkpointGl('preset-and-stage');
     // Marketing-shot staging deliberately freezes completed shadow maps. This
     // audit exercises moving gameplay, so release that presentation-only latch
     // before checking live cascade cadence.
@@ -90,6 +105,7 @@ for (const preset of presets) {
       .map((cascade) => cascade.autoUpdate);
     D.post.forcePerfTrim(0);
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    checkpointGl('adaptive-trim');
 
     const camera = D.camera;
     const csm = D.lighting.csm;
@@ -139,6 +155,7 @@ for (const preset of presets) {
       });
     }
 
+    checkpointGl('cascade-pose-sweep');
     // Render the same wide camera sweep twice into a tiny direct-render
     // viewport: first with an explicit force refresh (ground truth), then with
     // the production cascade schedule. This catches filter-phase changes that
@@ -189,6 +206,26 @@ for (const preset of presets) {
     };
     window.__SHADOW_DEBUG = {};
     const directReference = motionOffsets.map((offset) => directCapture(offset, true));
+    // Negative control: the same view with native shadow intensity removed
+    // must visibly change. Two blank frames or two unshadowed frames cannot
+    // establish cascade stability.
+    const shadowIntensities = csm.lights.map(light => light.shadow.intensity);
+    let shadowControlVisibleSamples = 0;
+    let shadowControlMaxRgbDelta = 0;
+    try {
+      csm.lights.forEach(light => { light.shadow.intensity = 0; });
+      const unshadowed = directCapture(0, true);
+      const shadowed = directReference[0];
+      for (let i = 0; i < directBytes; i += 4) {
+        const delta = Math.abs(unshadowed[i] - shadowed[i])
+          + Math.abs(unshadowed[i + 1] - shadowed[i + 1])
+          + Math.abs(unshadowed[i + 2] - shadowed[i + 2]);
+        if (delta > 12) shadowControlVisibleSamples++;
+        shadowControlMaxRgbDelta = Math.max(shadowControlMaxRgbDelta, delta);
+      }
+    } finally {
+      csm.lights.forEach((light, i) => { light.shadow.intensity = shadowIntensities[i]; });
+    }
     directCapture(0, true); // reset every cascade to the sweep origin
     let motionChangedSamples = 0;
     let motionVisiblyChangedSamples = 0;
@@ -240,9 +277,10 @@ for (const preset of presets) {
       savedScissor.x, savedScissor.y, savedScissor.z, savedScissor.w);
     D.renderer.setScissorTest(savedScissorTest);
     D.renderer.autoClear = savedAutoClear;
+    checkpointGl('raw-motion-and-shadow-control');
 
-    // Raw CSM stability is only half of the final image. High uses half-res
-    // GTAO with temporal reprojection, and stale dark history used to trail
+    // Raw CSM stability is only half of the final image. If the player enables
+    // GTAO it adds temporal reprojection, and stale dark history used to trail
     // camera motion around overlapping trees/structures even while the shadow
     // maps themselves were byte-stable. Compare the ordinary temporally
     // composed output against current-frame AO with every CSM cascade forced
@@ -253,7 +291,17 @@ for (const preset of presets) {
     // on that repeated frame. High is the default desktop path and therefore
     // owns this full-resolution release gate; the scalar policy has a focused
     // unit test and the remaining presets retain the raw/frozen CSM contracts.
+    // Keep the player's actual pass state: with AO disabled this measures
+    // repeated production composition, not AO quality. Legacy ao* result names
+    // remain compatible; explicit metadata describes what was really active.
     const auditTemporalAo = ${JSON.stringify(preset === 'high')};
+    const composedPasses = {
+      checked: auditTemporalAo,
+      aoEnabled: Boolean(D.post.gtao.enabled),
+      taaEnabled: Boolean(D.post.taa.enabled),
+      contactEnabled: D.post.aerial.uniforms.uContact.value > 0.5,
+      comparison: D.post.gtao.enabled ? 'current-frame-vs-temporal-ao' : 'repeated-actual-composite-ao-off',
+    };
     let aoTemporalComparedSamples = 0;
     let aoTemporalVisibleSamples = 0;
     let aoTemporalDarkerSamples = 0;
@@ -370,6 +418,7 @@ for (const preset of presets) {
       }
       window.__AO_EMA_OFF = savedAoEmaOff;
     }
+    checkpointGl('actual-composed-comparison');
 
     D.rig.setExternalPose(basePos, baseLook, camera.fov);
     camera.updateMatrixWorld(true);
@@ -393,6 +442,7 @@ for (const preset of presets) {
       frozenClouds.frozen = true;
       for (let frame = 0; frame < 8; frame++) D.post.render(0);
     }
+    checkpointGl('cloud-settle-and-freeze');
     // A frozen contract view must present byte-identical frames. This catches
     // shadow shimmer, Z-fighting, unstable shader noise, and stray animated
     // state without trying to infer any one artifact from a screenshot.
@@ -404,13 +454,34 @@ for (const preset of presets) {
     let previousFrame = null;
     let temporalChangedSamples = 0;
     let temporalMaxRgbDelta = 0;
+    let temporalComparedSamples = 0;
+    let frozenVisibleSamples = 0;
+    let frozenMinLuma = 765;
+    let frozenMaxLuma = 0;
+    const fixedProjection = { taaEnabledBefore: Boolean(D.post.taa.enabled), taaDisabledForCheck: true };
+    D.post.taa.enabled = false;
+    try {
     for (let frame = 0; frame < 6; frame++) {
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      // These six fixed-state draws share one task: rAF/background producers
+      // may otherwise change scene state between a supposedly frozen pair.
       const pixels = frame % 2 ? frameB : frameA;
+      // Default framebuffer contents may be discarded after presentation.
+      // Read in the same synchronous task as a real render, never compare
+      // cleared buffers after awaiting an event-driven shot frame.
+      D.post.render(0);
+      checkpointGl('frozen-render-' + frame);
       gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      checkpointGl('frozen-read-' + frame);
+      if (frame === 0) for (let i = 0; i < pixels.length; i += 16) {
+        const luma = pixels[i] + pixels[i + 1] + pixels[i + 2];
+        if (luma > 6) frozenVisibleSamples++;
+        frozenMinLuma = Math.min(frozenMinLuma, luma);
+        frozenMaxLuma = Math.max(frozenMaxLuma, luma);
+      }
       if (previousFrame) {
         let changed = 0;
         for (let i = 0; i < pixels.length; i += 16) {
+          temporalComparedSamples++;
           const delta = Math.abs(pixels[i] - previousFrame[i])
             + Math.abs(pixels[i + 1] - previousFrame[i + 1])
             + Math.abs(pixels[i + 2] - previousFrame[i + 2]);
@@ -420,6 +491,10 @@ for (const preset of presets) {
         if (changed > temporalChangedSamples) temporalChangedSamples = changed;
       }
       previousFrame = pixels;
+    }
+    } finally {
+      D.post.taa.enabled = fixedProjection.taaEnabledBefore;
+      if (fixedProjection.taaEnabledBefore) D.post.taa.resetHistory();
     }
     if (frozenClouds && savedCloudPreset) {
       frozenClouds.frozen = savedCloudFrozen;
@@ -498,7 +573,8 @@ for (const preset of presets) {
     });
 
     const telemetry = D.telemetry();
-    const glError = D.renderer.getContext().getError();
+    checkpointGl('final');
+    const glError = glStages[0]?.errors[0] || 0;
     return {
       preset: ${JSON.stringify(preset)},
       resolvedPreset: telemetry.quality.preset,
@@ -507,6 +583,15 @@ for (const preset of presets) {
       transitions,
       temporalChangedSamples,
       temporalMaxRgbDelta,
+      temporalComparedSamples,
+      frozenVisibleSamples,
+      frozenMinLuma,
+      frozenMaxLuma,
+      shadowControlVisibleSamples,
+      shadowControlMaxRgbDelta,
+      composedPasses,
+      fixedProjection,
+      glStages,
       motionChangedSamples,
       motionVisiblyChangedSamples,
       motionMaxVisiblyChangedSamplesPerFrame,
@@ -557,6 +642,18 @@ for (const preset of presets) {
   if (result.temporalChangedSamples !== 0) {
     reasons.push(`${result.temporalChangedSamples} unstable frozen-frame samples`);
   }
+  if (!(result.temporalComparedSamples > 0)
+    || result.frozenVisibleSamples < result.temporalComparedSamples / 5 * 0.01
+    || result.frozenMaxLuma - result.frozenMinLuma < 8) {
+    reasons.push('frozen-frame comparison did not contain a nonblank, varied scene');
+  }
+  if (result.shadowControlVisibleSamples < 20) {
+    reasons.push('native shadow negative control did not change at least 20 scene pixels');
+  }
+  if (result.composedPasses.aoEnabled) reasons.push('AO unexpectedly enabled in the actual-production audit');
+  if (preset === 'high' && (!result.composedPasses.checked || result.aoTemporalComparedSamples <= 0)) {
+    reasons.push('default-preset composed-frame comparison did not run');
+  }
   // One isolated low-resolution raster-edge sample can differ by a few 8-bit
   // values across repeated GPU renders (observed once, then zero on rerun).
   // A shadow refresh flash changes a contiguous region: the original bug was
@@ -604,7 +701,7 @@ for (const preset of presets) {
     / Math.max(1, result.aoTemporalComparedSamples);
   if (result.aoTemporalComparedSamples > 0 && aoStrongDarkRatio > 0.002) {
     reasons.push(
-      `${result.aoTemporalStrongDarkSamples} strongly over-darkened temporal AO samples `
+      `${result.aoTemporalStrongDarkSamples} strongly over-darkened composed-frame samples `
       + `(${(aoStrongDarkRatio * 100).toFixed(3)}%, max frame `
       + `${result.aoTemporalMaxStrongDarkSamplesPerFrame})`,
     );
@@ -613,7 +710,7 @@ for (const preset of presets) {
     / Math.max(1, result.aoTemporalComparedSamples);
   if (result.aoTemporalComparedSamples > 0 && aoStrongBrightRatio > 0.002) {
     reasons.push(
-      `${result.aoTemporalStrongBrightSamples} strongly over-bright temporal AO samples `
+      `${result.aoTemporalStrongBrightSamples} strongly over-bright composed-frame samples `
       + `(${(aoStrongBrightRatio * 100).toFixed(3)}%, max frame `
       + `${result.aoTemporalMaxStrongBrightSamplesPerFrame})`,
     );
@@ -626,7 +723,7 @@ for (const preset of presets) {
   // with two orders of magnitude of margin.
   if (result.aoRepeatComparedSamples > 0 && aoRepeatStrongRatio > 0.001) {
     reasons.push(
-      `${result.aoRepeatStrongSamples} strongly changed temporal AO samples on `
+      `${result.aoRepeatStrongSamples} strongly changed composed-frame samples on `
       + `an identical repeated pose (${(aoRepeatStrongRatio * 100).toFixed(3)}%, `
       + `max frame ${result.aoRepeatMaxStrongSamplesPerFrame}, `
       + `max RGB delta ${result.aoRepeatMaxRgbDelta})`,
@@ -638,7 +735,7 @@ for (const preset of presets) {
   if (result.trimmedCascadeAutoUpdate.some(Boolean)) {
     reasons.push('adaptive trim escaped the coherent manual-cascade scheduler');
   }
-  if (result.glError !== 0) reasons.push(`WebGL error ${result.glError}`);
+  if (result.glError !== 0) reasons.push(`WebGL errors: ${result.glStages.map(row => row.stage + '=' + row.errors.join(',')).join('; ')}`);
   if (result.shaderErrors !== 0) reasons.push(`${result.shaderErrors} shader errors`);
   if (result.zeroHysteresisLevels !== 0) reasons.push(`${result.zeroHysteresisLevels} zero-hysteresis LOD levels`);
   if (result.invalidInstancedBounds !== 0) reasons.push(`${result.invalidInstancedBounds} invalid instanced bounds`);
@@ -664,9 +761,9 @@ for (const preset of presets) {
     + `step=${result.maxStepError.toExponential(1)} `
     + `crossings=${result.transitions} lods=${result.lods} `
     + (result.aoTemporalComparedSamples > 0
-      ? `aoDark=${result.aoTemporalStrongDarkSamples} `
-        + `aoBright=${result.aoTemporalStrongBrightSamples} `
-        + `aoRepeat=${result.aoRepeatStrongSamples} `
+      ? `ao=${result.composedPasses.aoEnabled ? 'on' : 'off'} composedDark=${result.aoTemporalStrongDarkSamples} `
+        + `composedBright=${result.aoTemporalStrongBrightSamples} `
+        + `composedRepeat=${result.aoRepeatStrongSamples} `
       : '')
     + `calls=${result.renderer.calls} tris=${Math.round(result.renderer.triangles / 1000)}k`,
   );
@@ -1341,7 +1438,7 @@ console.log(
 
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify({
-  version: 10,
+  version: 11,
   capturedAt: new Date().toISOString(),
   deviceTier,
   failures,

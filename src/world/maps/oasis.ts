@@ -1,13 +1,14 @@
 // A crescent oasis west of the town creates a short wet cut, an exposed
 // caravan road and a long dune-back flank. Reuses only the desert materials.
 import desert from './desert.ts';
+import { roundRoadBends } from './roadBends.ts';
 export default {
   id: 'oasis', name: 'Sunscar Oasis',
   blurb: 'A palm-ringed spring and caravan compounds lie between broad wind-carved dune arms',
   terrain: {
     hillScale: 0.70, microScale: 0.60, rimH: 28, dunes: { amp: 5.4 }, clearMarshVeg: true, softLakes: true,
     village: { x0: -12, x1: 230, z0: -124, z1: 134, cx: 110, cz: 0, feather: 44, flatten: 0.88, relief: 0.12 },
-    roads: { paths: [
+    roads: { paths: roundRoadBends([
       // A dog-legged caravan street slows the short town route; the souk
       // approach enters across it while the open dune bypass stays fast.
       [[30, -464], [90, -284], [122, -122], [72, -70], [72, 18], [142, 46], [156, 242], [208, 464]],
@@ -15,7 +16,7 @@ export default {
       [[370, -454], [326, -280], [302, -88], [302, 108], [324, 296], [356, 460]],
       [[-282, -76], [30, -100], [72, -70], [156, -74], [218, -30], [302, -88]],
       [[-314, 182], [-198, 222], [-72, 206], [66, 226], [194, 200], [334, 228]],
-    ] },
+    ]) },
     // One asymmetric spring basin wraps a dry town-facing tongue. The broad
     // western coves and unequal tapering arms replace three circular joins;
     // the existing analytic contour also owns terrain, minimap and wetness.

@@ -47,14 +47,29 @@ export function alignCopperNorthernRoadGrades(mapId: string | undefined,
   alignNorthernRoadPlane(roads, elevations);
 }
 
-function alignNorthernRoadPlane(roads: readonly (readonly RoadPoint[])[], elevations: number[][]): void {
-  const a = roads[1], b = roads[2], ea = elevations[1], eb = elevations[2];
+/** Polders' two northeast causeways share a narrow bank near the boundary.
+ * Their independently smoothed levels formerly differed by 8m across the
+ * nearest-road partition. Grade one shared plane after the 398..430 tie-in,
+ * preserving both road centrelines and their existing boundary directions. */
+export function alignPoldersNorthernRoadGrades(mapId: string | undefined,
+  roads: readonly (readonly RoadPoint[])[], elevations: number[][]): void {
+  if (mapId !== 'polders') return;
+  const a = roads[2], b = roads[3];
+  if (a?.[a.length - 1]?.[1] !== 512 || b?.[b.length - 1]?.[1] !== 512
+    || !hasRoadAnchor(a, 320, 458) || !hasRoadAnchor(b, 376, 456)) {
+    throw new Error('Polders northern grade ownership changed');
+  }
+  alignNorthernRoadPlane(roads, elevations, 2, 3);
+}
+
+function alignNorthernRoadPlane(roads: readonly (readonly RoadPoint[])[], elevations: number[][], first = 1, last = 2): void {
+  const a = roads[first], b = roads[last], ea = elevations[first], eb = elevations[last];
   const ai = a.length - 1, bi = b.length - 1;
   const gradeA = (ea[ai] - ea[ai - 1]) / (a[ai][1] - a[ai - 1][1]);
   const gradeB = (eb[bi] - eb[bi - 1]) / (b[bi][1] - b[bi - 1][1]);
   const grade = Math.max(-.12, Math.min(.12, (gradeA + gradeB) * .5));
   const level = (ea[ai] + eb[bi]) * .5;
-  for (let route = 1; route <= 2; route++) {
+  for (let route = first; route <= last; route++) {
     const nodes = roads[route], row = elevations[route];
     for (let index = 0; index < nodes.length; index++) {
       const z = nodes[index][1];

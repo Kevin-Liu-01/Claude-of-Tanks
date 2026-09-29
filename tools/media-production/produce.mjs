@@ -10,7 +10,7 @@ import { waterScene, frameScene } from './recipes.mjs';
 import { productionPreset } from '../../src/game/studioProduction.ts';
 import { digest, sourceDigest, verifyFile, contactSheet, writeReviewPage, promoCard, saveReviewCapture } from './pipeline.mjs';
 
-const help = 'npm run media:capture -- --task=all|maps|shore|landscape|video --maps=id,id --times=day,sunset,night --formats=landscape,portrait,square --out=shots/production-current --resume=true\nOptional: --scene=scene.json OR --preset=steel-pursuit|desert-crossfire|coast-recon --fps=24|30|60 --frames=240 --width=1920 --start-ms=0';
+const help = 'npm run media:capture -- --task=all|maps|shore|landscape|settlements|video --maps=id,id --times=day,sunset,night --formats=landscape,portrait,square --out=shots/production-current --resume=true\nOptional: --scene=scene.json OR --preset=steel-pursuit|desert-crossfire|coast-recon --fps=24|30|60 --frames=240 --width=1920 --start-ms=0';
 if (process.argv.includes('--help')) { console.log(help); process.exit(0); }
 const args = Object.fromEntries(process.argv.slice(2).map(arg => {
   const match = /^--([a-z-]+)=(.+)$/.exec(arg);
@@ -30,7 +30,7 @@ const fps = Number(args.fps ?? 30), width = Number(args.width ?? 1920), frames =
 const startMs = Number(args['start-ms'] ?? 0);
 if (!Number.isFinite(startMs) || startMs < 0 || startMs + (frames - 1) * 1000 / fps > (preset?.durationMs ?? 20000)) throw Error('Capture range exceeds the production timeline');
 const validList = (list, allowed) => list.length && new Set(list).size === list.length && list.every(id => allowed.includes(id));
-if (!['all','maps','shore','landscape','video'].includes(task) || !validList(maps, MAP_IDS) || !validList(times,['day','sunset','night'])
+if (!['all','maps','shore','landscape','settlements','video'].includes(task) || !validList(maps, MAP_IDS) || !validList(times,['day','sunset','night'])
     || !validList(formats,['landscape','portrait','square'])) throw Error('Invalid or duplicate capture selection');
 if (![24,30,60].includes(fps) || !Number.isInteger(width) || width < 640 || width > 3840 || width % 32
     || !Number.isInteger(frames) || frames < 1 || frames > 20 * fps) throw Error('Invalid dimensions, frame rate or frame count');
@@ -161,7 +161,7 @@ try {
         window.__DEBUG.post.resetPerfTrims(); window.__DEBUG.post.setAdaptiveSuspended(true);
       });
       row.renderer=await page.evaluate(()=>{const r=window.__DEBUG.renderer,gl=r.getContext(),e=gl.getExtension('WEBGL_debug_renderer_info');return {gpu:e?gl.getParameter(e.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),maxTextureSize:r.capabilities.maxTextureSize};});
-      if (task==='maps'||task==='all'||task==='landscape') for (const time of times) {
+      if (task==='maps'||task==='all'||task==='landscape'||task==='settlements') for (const time of times) {
         const scene=await page.evaluate(async time=>{const {mapScene}=await import('/tools/media-production/recipes.mjs');return mapScene(window.__DEBUG.world,time);},time);
         await page.evaluate(scene=>window.__STUDIO.load(scene),scene); await prepareView(page); await settle(page);
         const name=map==='verdant'?'battlefield':`battlefield_${map}`,suffix=time==='day'?'':`-${time}`;
@@ -169,6 +169,23 @@ try {
         Object.assign(file,{scene,timeOfDay:time,label:`${map} · ${time}`}); row.stills.push(file);
         writeFileSync(join(out,'maps',`${name}${suffix}.json`),JSON.stringify(scene,null,2)+'\n');
         console.log(`[media] ${map} ${time}: native 3840×2160`); save();
+      }
+      if (task==='settlements') {
+        const views=await page.evaluate(async()=>{
+          const {settlementSurvey}=await import('/tools/media-production/recipes.mjs');
+          return settlementSurvey(window.__DEBUG.world);
+        });
+        for(const view of views) {
+          await prepareView(page,view.camera);await settle(page);
+          const file=savePng(join(out,'settlements',`${map}-${view.id}.png`),await capture(page,1920,1080));
+          Object.assign(file,{label:`${map} · ${view.id}`,camera:view.camera});row.stills.push(file);
+        }
+        row.layout=await page.evaluate(()=>{
+          const w=window.__DEBUG.world;
+          return {roads:w.heightField._layout.roads,village:w.heightField._layout.village,
+            buildings:w.getMinimapFeatures().buildings};
+        });
+        save();
       }
       if (task==='landscape'||task==='all') {
         row.landscape = await page.evaluate(async()=>{

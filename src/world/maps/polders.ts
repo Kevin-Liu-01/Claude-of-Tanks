@@ -1,12 +1,13 @@
 // A working reclaimed wetland: offset drainage cells leave a dry diagonal
 // causeway, a western farm loop and an eastern pumping-station approach.
+import { roundRoadBends } from './roadBends.ts';
 export default {
   id: 'polders', name: 'Tidegate Polders',
   blurb: 'Pump-controlled retention basins, windbreak farms and raised causeways across reclaimed coastal fields',
   terrain: {
     hillScale: 0.72, microScale: 0.64, rimH: 18, clearMarshVeg: true, softLakes: true,
     village: { x0: -178, x1: 68, z0: -96, z1: 122, cx: -64, cz: 12, feather: 42, flatten: 0.88, relief: 0.12 },
-    roads: { paths: [
+    roads: { paths: roundRoadBends([
       // The mill lane folds around a compact farm court before joining the
       // raised diagonal causeway; field bypasses stay outside the settlement.
       [[-280, -100], [-144, -62], [-80, -62], [-80, 56], [-26, 56], [24, -62], [180, -120], [266, -102]],
@@ -14,7 +15,7 @@ export default {
       [[-126, -462], [-124, -288], [-100, -140], [-26, -12], [96, 112], [218, 280], [320, 458]],
       [[370, -452], [298, -274], [266, -102], [288, 72], [338, 260], [376, 456]],
       [[-304, 104], [-220, 170], [-82, 170], [72, 202], [216, 212], [338, 260]],
-    ] },
+    ]) },
     // Five distinct drainage landforms, not repeated ornamental ponds. Long
     // eroded drains, a broad retention bay and an offset hooked basin share
     // sixteen authored stations / the existing 64-sample canonical contour.

@@ -1,35 +1,39 @@
 // Limestone shore with a hooked bay on the west. The harbor road hugs the
 // coast while inland hairpins climb behind the fishing village.
 import coastal from './coastal.ts';
+import { roundRoadBends } from './roadBends.ts';
 export default {
   id: 'saltwind', name: 'Saltwind Narrows',
   blurb: 'A limestone fishing coast bends around a sheltered bay below dry scrub terraces',
   terrain: {
     hillScale: 0.86, microScale: 0.70, rimH: 28, clearMarshVeg: true, softLakes: true,
     coastRimFadeM: 110, // round 47 follow-up: the bay-mouth headlands climb to the rim over 110 m instead of standing as slabs one row past the line
-    village: { x0: -252, x1: -18, z0: -116, z1: 138, cx: -136, cz: 10, feather: 44, flatten: 0.86, relief: 0.14 },
+    // Include the dry inland street as working frontage; the former east
+    // bound excluded it and stranded the last three planned village buildings.
+    village: { x0: -252, x1: 40, z0: -116, z1: 138, cx: -136, cz: 10, feather: 44, flatten: 0.86, relief: 0.14 },
     villageWear: 'activity-patches',
     workedGround: [
       // Existing stall ring at the harbor-road junction (-190, -36).
       { feather: 7, strength: 0.94, boundary: [[-212, -58], [-186, -66], [-169, -52], [-163, -29], [-183, -17], [-211, -29]] },
-      // Fishery and southern cross-street frontages; not the whole village pad.
-      { feather: 7, strength: 0.84, boundary: [[-214, -107], [-191, -125], [-154, -128], [-124, -115], [-101, -108], [-91, -86], [-104, -65], [-140, -69], [-158, -79], [-191, -64], [-214, -82]] },
-      // Crofts along the market stair-road, with a notch between court groups.
-      { feather: 7, strength: 0.8, boundary: [[-173, -30], [-137, -35], [-115, -26], [-98, -45], [-62, -43], [-62, -14], [-83, -2], [-69, 34], [-99, 45], [-106, 70], [-122, 57], [-122, 25], [-146, 27], [-169, 18]] },
+      // Doorstep courts follow the new inland market street. The old loop's
+      // large worn pad would leave an unexplained bare rectangle behind it.
+      { feather: 6, strength: 0.84, boundary: [[-181, -65], [-140, -68], [-105, -62], [-101, -26], [-134, -19], [-171, -21]] },
+      { feather: 6, strength: 0.8, boundary: [[-99, -59], [-65, -57], [-26, -47], [-26, -12], [-60, -13], [-94, -20]] },
       // Dry approach from actual landing 1 (-283.54, -21.89) past its beached
       // boat (-264.88, -21.71) toward the harbor frontage.
       // The existing stamp preserves all wet pixels, including the quay edge.
       { feather: 6, strength: 0.88, boundary: [[-286, -38], [-261, -44], [-221, -49], [-206, -31], [-232, -22], [-260, -17], [-280, -20]] },
     ],
-    roads: { paths: [
+    roads: { paths: roundRoadBends([
       // Quayside frontages bend with the bay; the inland market stair-road
       // meets them on the dry limestone shoulder, clear of the harbor mouth.
       [[-300, -460], [-252, -282], [-210, -100], [-190, -36], [-180, 44], [-190, 108], [-224, 206], [-294, 462]],
       [[-84, -464], [-20, -292], [44, -126], [-2, 32], [74, 200], [66, 332], [138, 464]],
       [[340, -460], [272, -304], [308, -144], [228, 14], [292, 180], [266, 330], [320, 462]],
-      [[-210, -100], [-124, -100], [-108, -36], [-190, -36], [-108, 44], [-20, -92], [228, 14]],
+      // A single market street leaves the harbor junction; no folded-back loop.
+      [[-190, -36], [-138, -44], [-82, -40], [-20, -30], [80, -8], [156, 6], [228, 14]],
       [[-224, 206], [-6, 242], [126, 218], [266, 330]],
-    ] },
+    ]) },
     // Round 40 (2026-09-22, AAA map program): the hooked bay is one authored shoreline. The former three overlapping
     // circles rasterised into three straight-edged basins with sand strips between them and dried in the last
     // metres before the red line; this contour keeps the bay's east shore and the harbour landings where they were,

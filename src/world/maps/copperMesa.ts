@@ -2,13 +2,14 @@
 // transverse service shelf. No new geometry family or runtime update loop.
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import desert from './desert.ts';
+import { roundRoadBends } from './roadBends.ts';
 export default {
   id: 'copper_mesa', name: 'Copper Mesa Mine',
   blurb: 'Ore terraces and haul-road switchbacks encircle an abandoned open-pit mine',
   terrain: {
     hillScale: 0.9, microScale: 0.8, rimH: 38, quarryBenches: true,
     village: { x0: 64, x1: 256, z0: -190, z1: 128, cx: 160, cz: -24, feather: 40, flatten: 0.78, relief: 0.18 },
-    roads: { paths: [
+    roads: { paths: roundRoadBends([
       // A stepped loading apron on the eastern shelf puts the gantries and
       // stores beside the haul road; the pit floor remains a separate lane.
       [[84, -464], [236, -298], [148, -146], [148, -68], [218, -68], [218, 90], [206, 272], [106, 462]],
@@ -16,7 +17,7 @@ export default {
       [[-88, -454], [-206, -286], [-192, -136], [-78, -86], [-112, 48], [-44, 190], [4, 458]],
       [[354, -444], [376, -230], [364, -26], [338, 170], [328, 354], [290, 470]],
       [[-258, 90], [-104, 168], [28, 90], [136, 90], [218, 90], [338, 170]],
-    ] },
+    ]) },
     marshes: [{ x: -66, z: 32, r: 38, dip: 0.8 }],
     landforms: [
       { kind: 'basin', x: -78, z: 20, rx: 178, rz: 214, height: -11.0, corridorScale: 0.7 },

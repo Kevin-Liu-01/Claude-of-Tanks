@@ -3,21 +3,22 @@
 import winter from './winter.ts';
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
+import { roundRoadBends } from './roadBends.ts';
 export default {
   id: 'whiteout', name: 'Whiteout Station',
   blurb: 'A remote polar station, frozen melt pans and snow-berm service corridors beneath a pale sky',
   terrain: {
     hillScale: 0.78, microScale: 0.54, rimH: 24, frozenMarshes: true,
     village: { x0: -160, x1: 76, z0: -150, z1: 146, cx: -52, cz: 0, feather: 46, flatten: 0.84, relief: 0.10 },
-    roads: { paths: [
+    roads: { paths: roundRoadBends([
       // Windbreak service court west of the melt pan, not a town spread
       // across the ice. Parallel station rows open into two snow corridors.
-      [[-270, -118], [-100, -104], [-20, -104], [-20, 0], [70, -104], [252, -104]],
+      [[-270, -118], [-180, -112], [-100, -104], [-20, -104], [70, -104], [252, -104]],
       [[-310, -460], [-280, -300], [-270, -118], [-274, 74], [-286, 274], [-300, 460]],
       [[-130, -462], [-98, -288], [-100, -104], [-100, 96], [-114, 262], [-90, 464]],
       [[298, -460], [270, -284], [252, -104], [258, 82], [288, 282], [326, 462]],
       [[-274, 74], [-202, 150], [-100, 96], [-20, 96], [64, 154], [202, 174], [288, 282]],
-    ] },
+    ]) },
     lakes: [{ x: 114, z: -22, r: 77, depth: 0.55 }, { x: -302, z: 300, r: 38, depth: 0.45 }],
     marshes: [],
     landforms: [

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { primeShadowCascades } from './shadowPrime.ts';
 import { createLighting } from './lighting.ts';
@@ -592,5 +593,40 @@ await withFixture(async (f) => {
     else delete globalThis.window;
   }
 });
+
+// Low -> Low context recovery does not change shadow dimensions. Surviving
+// CPU DepthTextures must not authorize a two-cascade warm on a fresh renderer.
+await withFixture(async (f) => {
+  const lighting = createLighting(f.scene, f.camera, new THREE.Vector3(1, 1, 1).normalize());
+  let disposed = 0;
+  try {
+    for (const light of lighting.csm.lights) {
+      light.shadow.map = new THREE.WebGLRenderTarget(4, 4);
+      light.shadow.map.depthTexture = new THREE.DepthTexture(4, 4);
+      light.shadow.map.addEventListener('dispose', () => disposed++);
+    }
+    lighting.setFarCascadeDormant(true);
+    f.renderer.render = () => {};
+    assert.equal((await lighting.primeShadowMaps(f.renderer, f.scene, f.camera, { cascadeLimit: 2 })).length, 2,
+      'negative control: old CPU texture objects authorize only the two near cascades');
+    lighting.setStaticPresentationDormant(true);
+    f.renderer.info = {};
+    lighting.invalidateShadowMaps();
+    assert.equal(disposed, lighting.csm.lights.length, 'every stale target is released');
+    assert.ok(lighting.csm.lights.every(light => light.shadow.map === null && light.shadow.mapPass === null));
+    lighting.update(false);
+    assert.equal(lighting.scheduledMask, (1 << lighting.csm.lights.length) - 1,
+      'static and primed latches cannot suppress the restored complete set');
+    assert.equal((await lighting.primeShadowMaps(f.renderer, f.scene, f.camera, { cascadeLimit: 2 })).length,
+      lighting.csm.lights.length, 'same-layout restoration requires every native depth target to be primed');
+  } finally { lighting.csm.remove(); lighting.csm.dispose(); }
+});
+{
+  const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  const recovery = main.slice(main.indexOf('async onRestored() {'), main.indexOf('// Some mobile browsers discard'));
+  assert.ok(recovery.indexOf('lighting.invalidateShadowMaps();') >= 0
+    && recovery.indexOf('lighting.invalidateShadowMaps();') < recovery.indexOf('applyGraphicsRecovery();'),
+  'context owner invalidates shadow readiness before any quality or covered restore work');
+}
 
 console.log('shadowPrime.selftest: exact cascades, weighted caster warmup, task boundaries, lifetime and restoration passed');

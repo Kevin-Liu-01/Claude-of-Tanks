@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
   CONTACT_SHADOW_ALPHA_OPAQUE, CONTACT_SHADOW_FADE_M, CONTACT_SHADOW_FAR_M, CONTACT_SHADOW_GLSL, CONTACT_SHADOW_NEAR_M,
-  CONTACT_SHADOW_RANGE_M,
+  CONTACT_SHADOW_RANGE_M, CONTACT_SHADOW_MAX_SCREEN_PX, contactShadowBoundedLength, contactShadowProjectedStep,
   CONTACT_SHADOW_STEPS, CONTACT_SHADOW_STRENGTH, CONTACT_SHADOW_TAIL_FADE, CONTACT_SHADOW_WIDTH_M,
   CONTACT_SHADOW_WIDTH_PER_M, CONTACT_SHADOW_WIDTH_PX, contactShadowMarchLength,
   contactShadowOcclusion, contactShadowRangeFade, contactShadowStepParameter, contactShadowStepTable, contactShadowSurfaceSupport,
@@ -39,6 +39,56 @@ assert.equal(contactShadowMarchLength(80), CONTACT_SHADOW_FAR_M);
 let previous = 0;
 for (let d = 0; d <= 60; d += 1) { const l = contactShadowMarchLength(d); assert.ok(l >= previous); previous = l; }
 assert.ok(near(contactShadowMarchLength(22), (CONTACT_SHADOW_NEAR_M + CONTACT_SHADOW_FAR_M) / 2, 1e-9), 'midpoint of the ramp');
+
+// Project actual 3D rays independently of the cap equation. Scope FOV, near-plane
+// crossings and sun directions toward/away from the camera must preserve the
+// eight-pixel endpoint and every ~one-pixel sample gap, without adding samples.
+assert.equal(CONTACT_SHADOW_MAX_SCREEN_PX, 8);
+let projectedRays = 0;
+for (const [width, height] of [[640, 360], [1920, 1080], [3840, 2160], [800, 1200]]) {
+  for (const fov of [2.4, 15, 55, 110]) {
+    const camera = new THREE.PerspectiveCamera(fov, width / height, .1, 4000);
+    for (const position of [[0, 0, -.11], [.1, -.1, -.5], [2, .2, -3], [10, -2, -40], [40, 0, -80]]) {
+      const start = new THREE.Vector3(...position);
+      const clip = new THREE.Vector4(...position, 1).applyMatrix4(camera.projectionMatrix);
+      const direction = new THREE.Vector3();
+      const screenAt = t => {
+        const p = start.clone().addScaledVector(direction, t);
+        const c = new THREE.Vector4(p.x, p.y, p.z, 1).applyMatrix4(camera.projectionMatrix);
+        assert.ok(c.w >= camera.near - 1e-9, 'ray stays in front of near plane');
+        return new THREE.Vector2(c.x / c.w * width / 2, c.y / c.w * height / 2);
+      };
+      for (const vector of [[1, 0, 0], [0, 1, 0], [0, 0, 1], [0, 0, -1], [.1, .3, 1], [1, .5, -1], [-1, 1, .7]]) {
+        direction.set(...vector).normalize();
+        const delta = new THREE.Vector4(direction.x, direction.y, direction.z, 0).applyMatrix4(camera.projectionMatrix);
+        const slope = Math.hypot((delta.x - clip.x * delta.w / clip.w) * width / 2,
+          (delta.y - clip.y * delta.w / clip.w) * height / 2);
+        const original = contactShadowMarchLength(-start.z);
+        const length = contactShadowBoundedLength(original, clip.w, delta.w, slope, camera.near);
+        assert.ok(length >= 0 && length <= original, 'cap cannot extend the authored world ray');
+        const origin = screenAt(0), end = screenAt(length);
+        assert.ok(end.distanceTo(origin) <= 8 + 1e-8, 'exact perspective endpoint <= eight pixels');
+        let last = origin, previousDistance = 0;
+        for (const u of [...contactShadowStepTable(), 1]) {
+          const distance = contactShadowProjectedStep(u, length, clip.w, delta.w);
+          assert.ok(distance >= previousDistance - 1e-12 && distance <= length + 1e-12, 'ordered world samples inside ray');
+          const screen = screenAt(distance);
+          assert.ok(screen.distanceTo(last) <= 1.06 + 1e-8, 'no uncovered large gap between projected samples');
+          assert.ok(screen.distanceTo(origin.clone().lerp(end, u)) <= 1e-8, 'quadratic fractions are exact in screen space');
+          last = screen; previousDistance = distance;
+        }
+        projectedRays++;
+      }
+    }
+  }
+}
+assert.equal(projectedRays, 560);
+assert.equal(contactShadowBoundedLength(1, .05, -1, 100, .1), 0, 'receiver behind near plane is skipped');
+{
+  const project = t => 100 * t / (1 + t);
+  assert.ok(project(8 / project(1)) > 8, 'old linear ratio demonstrably overshoots under perspective');
+  assert.ok(near(project(contactShadowBoundedLength(1, 1, 1, 100, .1)), 8), 'exact cap reaches eight pixels');
+}
 
 // 3. range fade: full to 65 m, gone at 90 m
 assert.equal(contactShadowRangeFade(10), 1);
@@ -116,6 +166,9 @@ assert.equal(contactShadowSunShare(0.8, 1, 0, amb, 0.9, 0), 0, 'no sun, no share
 // 7. the GLSL contract and the wiring
 assert.match(CONTACT_SHADOW_GLSL, new RegExp(`for \\( int i = 0; i < ${CONTACT_SHADOW_STEPS}; i\\+\\+ \\)`), 'twelve rungs');
 assert.ok(CONTACT_SHADOW_GLSL.includes('float u = s * ( 0.3 + 0.7 * s );'), 'the shader walks the same table');
+assert.match(CONTACT_SHADOW_GLSL, /float s = \( float\( i \) \+ 0\.5 \) \/ 12\.0000;/, 'stable half-step phase');
+assert.doesNotMatch(CONTACT_SHADOW_GLSL, /gl_FragCoord|float jitter/, 'no screen-space dither streaks');
+assert.match(CONTACT_SHADOW_GLSL, /vec4 c = rayStart \+ rayDir \* rayDistance;/, 'clip vectors reused at every step');
 assert.ok(CONTACT_SHADOW_GLSL.includes(`mix( ${CONTACT_SHADOW_NEAR_M.toFixed(4)}, ${CONTACT_SHADOW_FAR_M.toFixed(4)},`), 'the same length ramp');
 assert.ok(CONTACT_SHADOW_GLSL.includes(`smoothstep( ${CONTACT_SHADOW_TAIL_FADE.toFixed(4)}, 1.0, hit )`), 'the same tail fade');
 assert.ok(CONTACT_SHADOW_GLSL.includes(`${(CONTACT_SHADOW_RANGE_M - CONTACT_SHADOW_FADE_M).toFixed(4)}, ${CONTACT_SHADOW_RANGE_M.toFixed(4)}, dist`), 'the same range fade');

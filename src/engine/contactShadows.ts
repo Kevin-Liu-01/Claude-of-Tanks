@@ -22,9 +22,10 @@
  * pixel loses exactly its sun share. The share is `contactShadowSunShare` below, pinned by the receipt together
  * with the step table and the march length ramp.
  *
- * Step table: twelve samples, quadratic spacing (dense at the contact, where the seam is), jittered per pixel with
- * interleaved gradient noise so the twelve rungs read as a soft edge rather than twelve bands; the march length
- * grows from 0.55 m at 4 m to 1.4 m at 40 m (a metre shrinks to a few pixels at range) and the term fades out
+ * Step table: twelve samples, quadratic spacing in projected distance (dense at the contact, where the seam is).
+ * The world-space length grows from 0.55 m at 4 m to 1.4 m at 40 m, bounded to eight scene pixels so the last
+ * sample gap stays near one pixel. Fixed half-step sampling needs no noisy per-pixel jitter at that spacing.
+ * The term fades out
  * between 65 and 90 m, where the cascades' own penumbra is sub-pixel anyway. Thickness grows along the ray (no
  * long false shadows behind thin or distant objects); the bias grows with distance (no acne on flat ground).
  * The mobile tier and `?fx=off` never enter the block (uContact 0); a preset without the lever likewise.
@@ -32,6 +33,7 @@
 import * as THREE from 'three';
 
 export const CONTACT_SHADOW_STEPS = 12;
+export const CONTACT_SHADOW_MAX_SCREEN_PX = 8;
 export const CONTACT_SHADOW_NEAR_M = 0.55;
 export const CONTACT_SHADOW_FAR_M = 1.4;
 export const CONTACT_SHADOW_LENGTH_NEAR_DIST_M = 4;
@@ -70,6 +72,23 @@ export function contactShadowStepTable(jitter = 0.5, steps = CONTACT_SHADOW_STEP
 export function contactShadowMarchLength(distance: number): number {
   const t = THREE.MathUtils.smoothstep(distance, CONTACT_SHADOW_LENGTH_NEAR_DIST_M, CONTACT_SHADOW_LENGTH_FAR_DIST_M);
   return CONTACT_SHADOW_NEAR_M + (CONTACT_SHADOW_FAR_M - CONTACT_SHADOW_NEAR_M) * t;
+}
+
+/** Exact perspective bound: projected distance(t) = pixelSlope*t/(startW + directionW*t). */
+export function contactShadowBoundedLength(
+  worldLength: number, startW: number, directionW: number, pixelSlope: number, nearW: number,
+): number {
+  if (startW <= nearW) return 0;
+  let length = Math.max(0, worldLength);
+  if (directionW < 0) length = Math.min(length, (startW - nearW) / -directionW);
+  const denominator = pixelSlope - CONTACT_SHADOW_MAX_SCREEN_PX * directionW;
+  if (denominator > 0) length = Math.min(length, CONTACT_SHADOW_MAX_SCREEN_PX * startW / denominator);
+  return length;
+}
+
+/** World distance at fraction `u` of the bounded projected ray, rather than its world length. */
+export function contactShadowProjectedStep(u: number, length: number, startW: number, directionW: number): number {
+  return u * length * startW / (startW + (1 - u) * length * directionW);
 }
 
 /** Distance fade: 1 inside the range less the fade band, 0 at the range. */
@@ -226,19 +245,28 @@ export const CONTACT_SHADOW_GLSL = /* glsl */ `
       float len = mix( ${f(CONTACT_SHADOW_NEAR_M)}, ${f(CONTACT_SHADOW_FAR_M)},
         smoothstep( ${f(CONTACT_SHADOW_LENGTH_NEAR_DIST_M)}, ${f(CONTACT_SHADOW_LENGTH_FAR_DIST_M)}, dist ) );
       vec3 start = P + N * ( 0.012 + dist * 0.0025 );
-      float jitter = fract( 52.9829189 * fract( dot( gl_FragCoord.xy, vec2( 0.06711056, 0.00583715 ) ) ) );
+      vec4 rayStart = uContactViewProj * vec4( start, 1.0 );
+      vec4 rayDir = uContactViewProj * vec4( uSunDir, 0.0 );
+      if ( rayStart.w <= uNear ) return 0.0;
+      if ( rayDir.w < 0.0 ) len = min( len, ( rayStart.w - uNear ) / -rayDir.w );
+      // Exact projected length, including perspective foreshortening and rays approaching the eye.
+      float pixelSlope = length( ( rayDir.xy - rayStart.xy * ( rayDir.w / rayStart.w ) ) * 0.5 / uInvSize );
+      float capDenominator = pixelSlope - ${f(CONTACT_SHADOW_MAX_SCREEN_PX)} * rayDir.w;
+      if ( capDenominator > 0.0 ) len = min( len, ${f(CONTACT_SHADOW_MAX_SCREEN_PX)} * rayStart.w / capDenominator );
       float hit = 2.0;
       float support = 0.0;
       for ( int i = 0; i < ${CONTACT_SHADOW_STEPS}; i++ ) {
-        float s = ( float( i ) + jitter ) / ${f(CONTACT_SHADOW_STEPS)};
+        float s = ( float( i ) + 0.5 ) / ${f(CONTACT_SHADOW_STEPS)};
         float u = s * ( 0.3 + 0.7 * s );
-        vec4 c = uContactViewProj * vec4( start + uSunDir * ( u * len ), 1.0 );
+        // Quadratic spacing in screen pixels keeps every gap <= 1.06 px, even under strong perspective.
+        float rayDistance = u * len * rayStart.w / ( rayStart.w + ( 1.0 - u ) * len * rayDir.w );
+        vec4 c = rayStart + rayDir * rayDistance;
         if ( c.w <= 0.0 ) break;
         vec2 quv = c.xy / c.w * 0.5 + 0.5;
         if ( any( lessThan( quv, vec2( 0.0 ) ) ) || any( greaterThan( quv, vec2( 1.0 ) ) ) ) break;
         float diff = c.w - cotDepthToDist( texture2D( tDepth, quv ).x );
         float bias = 0.015 + c.w * 0.003;
-        float thick = 0.10 + u * len * 0.45 + c.w * 0.012;
+        float thick = 0.10 + rayDistance * 0.45 + c.w * 0.012;
         if ( diff > bias && diff < thick && texture2D( tDiffuse, quv ).a >= ${f(CONTACT_SHADOW_ALPHA_OPAQUE)} ) {
           // an opaque lit occluder (never a grass or leaf card, water or glass), and a wide one: wires and far
           // poles are a few pixels wide and never cast in the cascades — the depth five pixels either side of the

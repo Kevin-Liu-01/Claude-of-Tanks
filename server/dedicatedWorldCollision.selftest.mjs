@@ -20,157 +20,45 @@ const authoredWorlds = new Map();
 // so the committed rail shards had already drifted from the current planting order (railyard 7 → 6, foundry 5 → 7).
 const coalCensus = { railyard: 6, caldera: 7, foundry: 7, skybridge: 5 };
 
-// Public-fleet wreck recapture: different hulk footprints change accepted
-// placements on six maps. These exact counts preserve every non-wreck record
-// and concealment list; terrain rejection and placement budgets are unchanged.
-// The scoped coal capture adds 24 movement/shell pairs on four rail maps;
-// its exact native-control attribution is in docs/history/environment-2026-09/RAIL-COAL-STOCKPILES-CHECKPOINT.md.
-// 2026-09-11: fresh all-map road-completion capture. The original planting
-// sampler preserves seeded vegetation; only newly unsafe road/slope sites
-// are excluded. Props use the completed physical roads. Exact census deltas
-// are retained in docs/history/research/launch-collision-refresh-20260911.md.
-// 2026-09-12 map pass (native recapture of nine redressed maps, dev server +
-// agent-browser session, saltwind re-captured after a page reload with an
-// identical shard): bush/rock/outcrop/lone-tree/haystack counts rose on
-// coastal, fjord, urban, saltwind, steppe, alpine, winter, airfield and
-// desert. Seeded placement streams shift, so obstacle/collider counts move in
-// both directions; concealers grow where bush pools were not already
-// saturated (steppe keeps its 30 lone trees: 40 planted a grove on the
-// establishing-shot pose). Exact census, no tolerance.
-// 2026-09-19 hitbox pass: shards recaptured with per-part vertical extents (0.5 m clipped shell bands)
-// 2026-09-28 shoreline redesign: recaptured Coastal, Fjord, Saltwind, Oasis,
-// Polders and Red Rock after bank/ground edits changed safe prop placement.
-// These six entries pin the current native census directly (removals = 0).
-const roadCompletionCensus = {
-  verdant: [7011, 6712, 7541],
-  desert: [2840, 2762, 3292],
-  // 2026-09-23 Frosthollow redesign (owner ruling): the shard was recaptured on the new valley layout (puppeteer
-  // capture, .qa-dev/collision-capture.mjs, same pack script); no pre-repair capture exists for it, so its census IS
-  // the captured shard and its rim-road removal count below is zero.
-  // 2026-09-26 round 75: the committed shard had gone stale against main's own vegetation before the round (the
-  // deploy-98 base recaptures to these same counts, −15 / −8 / +8); recaptured headless with the warehouse parts.
-  winter: [5929, 5786, 4919],
-  urban: [4055, 9303, 3685],
-  coastal: [4163, 3964, 4249],
-  // round 48 (2026-09-24): Amberford redesigned (river-ford market town) — the shard was recaptured headless on the
-  // combined round-48 tree (.qa-dev/collision-capture.mjs, same pack script); the redesign lane had left the round-1
-  // shard in place, so the dedicated bots fought the old village on the new terrain (battlePacing: two Amberford
-  // timeouts, a bravo pair parked on the river bank). No pre-repair capture exists: census = shard, removals 0.
-  // round 61 (2026-09-24, Amberford's bridge over the river): shard recaptured on the lane tree with the capture tool's
-  // own --headless mode (private vite server + headless Chrome, the same pack script). The round-48 shard had gone stale
-  // against main's own Amberford world like Tarkhan's in round 57 — the untouched base (cb46992ac) recaptures as
-  // 5883 / 5737 / 5822 — and the bridge then retires the two parapet wall runs' records (the deck and its parapets are
-  // one compound record the ride stands on): −10 obstacles, −10 colliders, concealers unchanged.
-  // round 63 (2026-09-24, the bridge's open arches): shard recaptured headless on the lane tree — the bridge record is
-  // the same one record with 31 parts (deck, abutments, piers, vault bands, parapets), so the census is unchanged and
-  // only the shard's bytes moved (1827167 → 1829051 B).
-  // round 67 (2026-09-24, the bridge's vault bands halved): shard recaptured headless on the lane tree — the one bridge
-  // record now carries 55 parts (eight 0.1375 m haunch bands per arch); census unchanged (1829051 → 1830655 B).
+// 2026-09-29 roads/settlements: native all31-map recapture, terrain1337,
+// props2002, vegetation2001. Counts include shared tree colliders (the capture
+// console omits their duplicate storage). Explicit expected values remain
+// independent of the generated index; no historical subtraction or tolerance.
+// Verdant retains every placement: only two fleet wreck bounds
+// differ from its old shard; its complete census is unchanged.
+const expected = {
+  verdant: [6977, 6678, 7507],
+  desert: [2673, 2605, 3139],
+  winter: [5931, 5786, 4919],
+  urban: [3898, 9290, 3530],
+  coastal: [4161, 3964, 4249],
   autumn: [5873, 5727, 5822],
-  // round 48 (2026-09-23): Tarkhan Steppe redesigned by owner ruling — shard recaptured headless on the new map
-  // (grain station, kolkhoz corrals, kurgan kerbs, fort walls; shelterbelts replace most groves)
-  // round 57 (2026-09-24, the rail spur kit): shard recaptured headless on the lane tree (.qa-dev/collision-capture.mjs
-  // pattern, same pack script). The committed shard had gone stale against main's own steppe world — a recapture on
-  // the untouched base gave 2427 / 920 / 1302 records against the committed 2346 / 916 / 1278 — and the siding's berth
-  // then re-rolls the seeded wattle fences and hedgehog clusters off the line (+2 obstacles, structures unchanged).
-  // round 63 (2026-09-24, the railway cutting): shard recaptured headless on the lane tree and found byte-identical —
-  // no collision record stands in the cutting corridor (the rim band at z −181 east of x 440 seeds none) and the
-  // extended siding is soft dressing; census unchanged.
-  // round 67 (2026-09-24, the cutting's tunnel portal): shard recaptured headless on the lane tree
-  // (tools/capture-world-collision-manifests.mjs --headless --maps steppe): the one compound 'tunnel-portal' record
-  // (the gallery block and two flank walls closing the valley 125 m past the red line) joins both sinks, +1 / +1;
-  // the approach track is soft dressing; concealers unchanged (1239200 → 1239550 B, under the ceiling).
-  steppe: [2442, 2153, 1314],
-  railyard: [2977, 2937, 2135],
-  // playable-relief-collision-r1.8y4kRZ: native two-map terrain recapture;
-  // unchanged seeded rejection rules alter accepted trees/props, not tolerances.
-  frontier: [8006, 7743, 8385],
-  // 2026-09-26 round 75: stale against main before the round (the base recaptures to the same +483 / +471 / +512 —
-  // a vegetation planting drift, not this lane's); recaptured headless with the warehouse parts. Expected = census + 118.
-  fjord: [7352, 7301, 7679],
-  delta: [7920, 7613, 9827],
-  // redrock-derived-refresh-r1.p545nm: native canyon recapture. Unchanged
-  // terrain-aware placement rules reject different props/trees on steep walls.
-  // 2026-09-26 round 75: stale against main before the round (the base recaptures to the same +2 / +2 / 0);
-  // recaptured headless with the warehouse parts. Expected = census + 6.
-  badlands: [3017, 2917, 1920],
-  monsoon: [9604, 9342, 12149],
-  alpine: [9238, 9163, 8127],
-  caldera: [5048, 5155, 3856],
-  foundry: [4429, 4541, 3275],
-  ruinspires: [3006, 9400, 1247],
-  blackglass: [3720, 6129, 2403],
-  titan_gorge: [2754, 2608, 1240],
-  skybridge: [3518, 3726, 2080],
-  // Native 3c06d3352 capture: authored drainage contours change seeded
-  // vegetation/prop acceptance. Keep the exact census, not a tolerance.
-  polders: [4260, 4032, 3605],
-  // V23 native receipt (9fdbc49b): quarry-only producer A/B reproduces
-  // every captured record. Existing slope/RNG rules yield +2 surface-rock
-  // cover, -5 outcrop cover and -1 slope-rejected sapling; named prop counts
-  // and 79 bush concealers are unchanged. No census tolerance is introduced.
-  copper_mesa: [2906, 2775, 2096],
-  // The shared terrain exclusion now follows the actual hardstand rectangle
-  // plus its shoulder; the airfield configuration itself is unchanged.
-  airfield: [3734, 3713, 3234],
-  // Native19e03d36b: the authored spring contour changes terrain-aware
-  // vegetation/prop acceptance; this is the exact captured census.
-  oasis: [2729, 2527, 2029],
-  // 2026-09-26 round 75: the sheet-clad warehouses' corner trims merge two shell bands (colliders 1464 → 1462); the
-  // base recaptures byte-identical to the previous shard, so this one is the round's. Expected = census + 14.
-  whiteout: [1661, 1476, 889],
-  orchard: [4978, 4745, 5206],
-  longleaf: [6172, 5959, 6989],
-  mangrove: [5323, 5168, 6543],
-  // 2026-09-25 integration of round 67: native headless recapture on the combined
-  // tree refreshes the stale Saltwind shard. Pin the current captured census
-  // directly; the old pre-rim-road count no longer describes this layout.
-  saltwind: [3753, 3554, 4217],
-  // Refreshed forked roads, assembly hardstand and grounded waterworks.
-  reservoir: [6519, 6395, 7298],
-  // 2026-09-19 Mars (Olympus Basin): first native capture of the new orbital-station
-  // map; captured after the rim-road removal, so its removal count is zero.
-  // 2026-09-24: 24 reserved colony sites, orbital support families and reduced Earth clutter; native headless export.
-  mars: [768, 716, 0],
+  steppe: [2429, 2141, 1302],
+  railyard: [2825, 2785, 1983],
+  frontier: [7905, 7634, 8284],
+  fjord: [7357, 7301, 7679],
+  delta: [7742, 7430, 9644],
+  badlands: [3013, 2917, 1920],
+  monsoon: [9472, 9214, 12022],
+  alpine: [9118, 9045, 8009],
+  caldera: [5002, 5109, 3810],
+  foundry: [4277, 4385, 3119],
+  ruinspires: [2823, 9284, 1050],
+  blackglass: [3661, 5894, 2333],
+  titan_gorge: [2726, 2587, 1230],
+  skybridge: [3522, 3725, 2079],
+  polders: [4269, 4026, 3604],
+  copper_mesa: [2805, 2705, 1984],
+  airfield: [3673, 3652, 3173],
+  oasis: [2740, 2510, 2031],
+  whiteout: [1601, 1467, 875],
+  orchard: [4925, 4693, 5160],
+  longleaf: [6219, 6022, 7183],
+  mangrove: [5282, 5127, 6502],
+  saltwind: [3629, 3392, 4048],
+  reservoir: [6426, 6301, 7206],
+  mars: [772, 718, 0],
 };
-// Native rim-road repair removes only rooted trees inside the 9 m road margin.
-// Frozen 89784835d comparison proves every other movement/shell/concealment
-// record is unchanged. Keep both fixed censuses explicit, with no tolerance.
-const rimRoadRemovals = {
-  verdant: 34,
-  desert: 1,
-  winter: 0, // 2026-09-23: redesigned layout, census pinned directly (see above)
-  urban: 155,
-  coastal: 0,
-  autumn: 0, // 2026-09-24: redesigned layout, census pinned directly (see above; round 61 recaptured on the bridge tree)
-  steppe: 12,
-  railyard: 152,
-  frontier: 101,
-  fjord: 0,
-  delta: 183,
-  badlands: 0,
-  monsoon: 127,
-  alpine: 118,
-  caldera: 46,
-  foundry: 156,
-  ruinspires: 197,
-  blackglass: 70,
-  titan_gorge: 10,
-  skybridge: 1,
-  polders: 0,
-  copper_mesa: 67,
-  airfield: 61,
-  oasis: 0,
-  whiteout: 14,
-  orchard: 73,
-  longleaf: 84,
-  mangrove: 41,
-  saltwind: 0, // 2026-09-25: current native census pinned directly above
-  reservoir: 92,
-  mars: 0
-};
-const expected = Object.fromEntries(Object.entries(roadCompletionCensus).map(([id, counts]) =>
-  [id, counts.map(count => count - rimRoadRemovals[id])]));
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(expected), MAP_IDS, 'every registered map has a fixed census expectation');
 assert.deepEqual(Object.keys(stats), MAP_IDS, 'manifest order and map registry stay in lockstep');
@@ -394,9 +282,9 @@ function assertIntakeHood(record) {
 }
 
 function assertLoggingYard(mapWorld, independentWorld) {
-  // 2026-09-19 hitbox pass: the full recapture (a capture of pristine origin/main places the same) admits two
-  // more road-side flatbeds (propIdx 351 / 353, far from the yard) and shifts the donors' native IDs to 337 / 349;
-  // the yard assertions cover the two flatbeds parked at the authored loading bays.
+  // 2026-09-29 curved roads change the seeded traffic donors. The actual
+  // heavy-traffic stage independently reproduces these two scales and original
+  // positions; both native records still occupy the authored loading bays.
   const sitesForFilter = getMapConfig('longleaf').props.loggingYard.flatbeds;
   const atBay = record => sitesForFilter.some(site => Math.hypot(
     (record.min[0] + record.max[0]) / 2 - site.x, (record.min[2] + record.max[2]) / 2 - site.z) < 26);
@@ -404,8 +292,8 @@ function assertLoggingYard(mapWorld, independentWorld) {
   const colliders = mapWorld.getColliders().filter(record => record.kind === 'truckflatbed' && atBay(record));
   // Both original donor heights and authored destinations remain exact.
   // The original sites below still detect phantom copies after relocation.
-  const donors = [{ propIdx: 337, height: 1.8867, old: [310.07125, 360.43725] },
-    { propIdx: 349, height: 2.0051, old: [49.2173, 228.37325] }];
+  const donors = [{ propIdx: 309, height: 2.0045, old: [-149.2308419066663, -173.92149064282697] },
+    { propIdx: 310, height: 1.9813, old: [-80.60376542456797, 239.70308177010833] }];
   assert.deepEqual(flatbeds.map(record => record.propIdx), donors.map(record => record.propIdx));
   assert.deepEqual(colliders.map(record => record.propIdx), donors.map(record => record.propIdx));
   const sites = getMapConfig('longleaf').props.loggingYard.flatbeds;

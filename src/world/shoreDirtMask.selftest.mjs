@@ -1,3 +1,4 @@
+import { beforeRoadSettlementRedesign } from '../../tools/road-settlement-history-fixture.mjs';
 import assert from 'node:assert/strict';
 import { beforeShorelineContinuity, loadShorelineHistory } from './shorelineContinuity.test-support.mjs';
 import { createHash } from 'node:crypto';
@@ -295,8 +296,10 @@ function verifyOasisChannels(before, after) {
 
 function checkOasis() {
   const cfg = getMapConfig('oasis'), historical = historicalOasis(cfg);
-  const original = bake(originalRoadField(historical), historical);
-  const current = bake(originalRoadField(cfg, false), cfg);
+  const archived = beforeRoadSettlementRedesign(historical);
+  const archivedContour = beforeRoadSettlementRedesign(cfg);
+  const original = bake(originalRoadField(archived), archived);
+  const current = bake(originalRoadField(archivedContour, false), archivedContour);
   try {
     checkTexture(current, 512);
     assert.equal(hash(bytes(original)), ORIGINAL.oasis, 'preserve the original three-cell RGBA oracle');
@@ -359,6 +362,7 @@ for (const id of MAP_IDS) {
   // roads/assembly apron. The exact old input still reproduces ORIGINAL.
   if (id === 'reservoir') control = historicalReservoirConfig(control);
   if (id === 'badlands') control = historicalBadlandsInput(control);
+  control = beforeRoadSettlementRedesign(control);
   const texture = bake(originalRoadField(control), control);
   try { assert.equal(hash(bytes(texture)), ORIGINAL[id], `${id}: full original RGBA byte control`); }
   finally { texture.dispose(); }

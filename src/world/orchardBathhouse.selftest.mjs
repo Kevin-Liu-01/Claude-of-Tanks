@@ -1,3 +1,4 @@
+import { roadBuildingDoorAxis } from './roadBuildingFrontage.ts';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -429,7 +430,23 @@ function section(start, end) {
   assert.ok(a >= 0 && b > a, `actual production stage found: ${start}`);
   return source.slice(a, b);
 }
-const dependencies = {
+// V27 is a historical kit-geometry oracle. Its world-space byte hashes
+// require its original road-station/plaza recipe. Current road placement is
+// independently executed for all maps by roadBuildingFrontage.selftest.mjs.
+function historicalJunction(roads, center) {
+  let best = Infinity, result = { ...center };
+  for (let a = 0; a < roads.length; a++) for (let b = a + 1; b < roads.length; b++) {
+    for (const [ax, az] of roads[a]) for (const [bx, bz] of roads[b]) {
+      if (Math.hypot(ax - bx, az - bz) > 18) continue;
+      const x = (ax + bx) / 2, z = (az + bz) / 2, distance = Math.hypot(x - center.x, z - center.z);
+      if (distance < best) { best = distance; result = { x, z }; }
+    }
+  }
+  return result;
+}
+const dependencies = { roadBuildingDoorAxis,
+  roadSettlementJunction: historicalJunction,
+  buildingRoadStationIndices: (layout, road) => Array.from({ length: layout.roads[road].length - 2 }, (_, i) => i + 1),
   // settlement pass 2 (2026-09-12): mergeInto carries chimney tops through the exterior kit helper.
   carryExteriorChimneyTops, THREE, STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, makeTimberBathhouse,
   addCatalogExterior, jitterUV, mulberry32, sampleObbGround, deriveRuntimeStructureCollisionProfile,
@@ -464,7 +481,14 @@ function placed(config, field, seed) {
 
 assert.deepEqual(MAP_IDS.filter(id => getMapConfig(id).props.bathhouseStyle), ['orchard'],
   'only the explicit Orchard config selects this variant');
-const orchard = getMapConfig('orchard');
+const currentOrchard = getMapConfig('orchard');
+const orchard = { ...currentOrchard, terrain: { ...currentOrchard.terrain, roads: { paths: [
+  [[-88, -466], [-48, -290], [-32, -128], [-44, -66], [-20, -12], [34, 30], [50, 114], [6, 308], [68, 466]],
+  [[-360, -460], [-328, -286], [-218, -172], [-302, 6], [-222, 172], [-258, 314], [-180, 464]],
+  [[324, -458], [262, -300], [308, -132], [224, 18], [286, 164], [252, 320], [288, 466]],
+  [[-218, -172], [-112, -88], [-76, -18], [-20, -12], [24, -48], [98, -56], [202, -100], [308, -132]],
+  [[-324, 196], [-222, 172], [-100, 204], [50, 146], [178, 196], [330, 224]],
+] } } };
 assert.equal(orchard.props.plan[0], 'bathhouse', 'no new catalog ID or additional building slot');
 const previous = { ...orchard, props: { ...orchard.props, bathhouseStyle: undefined } };
 assertExplicitFrontageOwner();
@@ -493,7 +517,9 @@ for (const seed of [1337, 2025, 7719]) {
     assert.deepEqual(newProfile.contact, oldProfile.contact, 'exact authoritative movement footprint survives');
     assert.notDeepEqual(newProfile.shell, oldProfile.shell, 'shell fixture must follow the actual new roof, not stale domes');
   } finally { dispose(oldBuckets); dispose(newBuckets); }
-  const field = createHeightField(seed, orchard);
+  // V27 predates completed road exits and distance-based grade smoothing;
+  // an explicit historical ID keeps these later map policies out of its hash.
+  const field = createHeightField(seed, { ...orchard, id: 'orchard-v27-fixture' });
   const before = placed(previous, field, seed), after = placed(orchard, field, seed), replay = placed(orchard, field, seed);
   try {
     assert.equal(after.buildingFeatures.length, 1, `${seed}: actual source road placement accepts the first landmark`);

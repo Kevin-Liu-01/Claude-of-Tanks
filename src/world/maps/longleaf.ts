@@ -1,13 +1,14 @@
 // A logging country T-junction with a diagonal clearcut, a wet western
 // bypass and a screened eastern spur. Planted belts define the cut edges.
 import frontier from './frontier.ts';
+import { roundRoadBends } from './roadBends.ts';
 export default {
   id: 'longleaf', name: 'Longleaf Crossing',
   blurb: 'Pine clearcuts, timber yards and a winding logging spur around a wooded creek hollow',
   terrain: {
     hillScale: 1.05, microScale: 0.86, rimH: 30,
     village: { x0: -142, x1: 92, z0: -54, z1: 158, cx: -26, cz: 54, feather: 42, flatten: 0.84, relief: 0.16 },
-    roads: { paths: [
+    roads: { paths: roundRoadBends([
       // The timber loading lane hooks around the garage yard. The diagonal
       // clearcut route passes its open end, creating an exposed crossing.
       [[-294, 56], [-230, 50], [-116, 24], [-36, 18], [-36, 114], [40, 114], [104, 140], [228, 10]],
@@ -15,7 +16,7 @@ export default {
       [[-100, -466], [-132, -308], [-144, -150], [-36, 18], [104, 140], [210, 288], [310, 462]],
       [[334, -460], [264, -314], [282, -158], [228, 10], [294, 184], [306, 332], [354, 464]],
       [[-306, 280], [-172, 236], [-28, 256], [104, 224], [228, 254], [354, 278]],
-    ] },
+    ]) },
     marshes: [{ x: -342, z: -124, r: 38, dip: 0.9 }, { x: -334, z: -32, r: 35, dip: 0.9 }, { x: -350, z: 158, r: 36, dip: 0.8 }],
     // One worked southern harvest, following the existing stump/log stations.
     // Irregular edges leave fingers of regrowth beside the retained pine belt;

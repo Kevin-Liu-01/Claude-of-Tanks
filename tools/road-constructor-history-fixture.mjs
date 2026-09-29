@@ -4,6 +4,26 @@
 // Unknown edits still fail the old hash; do not regenerate to accept a failure.
 import assert from 'node:assert/strict';
 const deltas = [
+  ["    blendDesertRoadBanks(cfg?.id, roads, nodeElev, gRoadDist, gRoadElev, GN, MAP_SIZE, _VILLAGE.cx, _VILLAGE.cz);\n", ""],
+  ["      let roadBlendWeight = 1 - smoothstep(3.8, 14, rd);\n      if (roadBankWidth > 14) {\n        const approach = smoothstep(48 * 48, 128 * 128, (x - _VILLAGE.cx) ** 2 + (z - _VILLAGE.cz) ** 2);\n        roadBlendWeight += (1 - smoothstep(3.8, roadBankWidth, rd) - roadBlendWeight) * approach;\n      }\n", ""],
+  ["  // Desert's surveyed ramps need a finite earthwork bank, not a narrow berm.\n  const roadBankWidth = cfg?.id === 'desert' ? 104 : 14;\n\n", ""],
+  ["    if (rd < roadBankWidth) {", "    if (rd < 14) {"],
+  ["        h += (roadElevation - h) * roadBlendWeight * (1 - bridge.span);", "        h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd)) * (1 - bridge.span);"],
+  ["      } else h += (roadElevation - h) * roadBlendWeight;", "      } else h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd));"],
+
+  ["    gradeDesertRoads(cfg?.id, authoringRoads, nodeElev);\n", ""],
+  ["      alignPoldersNorthernRoadGrades(cfg?.id, roads, nodeElev);\n", ""],
+  // 2026-09-29: rounded roads use physical-distance smoothing and every real
+  // crossing. Remove only these two exact dispatches from HISTORICAL source;
+  // current 31-map emission and the 41-crossing grade tests keep both laws.
+  [
+    "    if (usesPhysicalRoadStations(cfg?.id)) { smoothRoadGradesByDistance(inheritedRoads ?? roads, nodeElev); return; }\n",
+    ""
+  ],
+  [
+    "    if (usesPhysicalRoadStations(cfg?.id)) { blendRoadNetworkGrades(gradeRoads, nodeElev); return; }\n",
+    ""
+  ],
   // 2026-09-28: project out only the new contact/traction API when authenticating
   // historical construction. Current mesh contact and dry-bank mobility have
   // independent executable coverage; the original constructor hash stays fixed.

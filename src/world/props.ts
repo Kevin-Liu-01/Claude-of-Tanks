@@ -16,7 +16,11 @@ import {
   tileableTorusNoise as torusN,
 } from './proceduralTexture.ts';
 import { applyTone, type HeightField, type TerrainLayout } from './terrain.ts';
-import { authoredRoadStationCount, authoredRoadStationIndex } from './maps/roadStations.ts';
+import { authoredRoadStationCount, authoredRoadStationIndex, buildingRoadStationIndices } from './maps/roadStations.ts';
+import { roadSettlementJunction } from './roadSettlementJunction.ts';
+import { roadFencePath, fencePathSampler } from './roadFencePath.ts';
+import { buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
+  type RoadFrontageSite } from './roadBuildingFrontage.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 
 // Environment richness (2026-09-14, owner: "add back so much environmental details — they
@@ -3185,16 +3189,20 @@ ${snowCap ? `
     x1: number,
     z1: number,
     gateChance = 0.35,
+    path?: readonly (readonly [number, number])[],
   ): void {
-    const along = Math.hypot(x1 - x0, z1 - z0);
+    const curved = path ? fencePathSampler(path) : null;
+    const along = curved?.length ?? Math.hypot(x1 - x0, z1 - z0);
     const n = Math.max(1, Math.round(along / FENCE_SEG));
     const tx = (x1 - x0) / along, tz = (z1 - z0) / along;
-    const yaw = Math.atan2(tx, tz); // module runs along local +z
+    const straightYaw = Math.atan2(tx, tz); // module runs along local +z
     let gated = false;
     let openRun = false;
     for (let k = 0; k < n; k++) {
-      const ax = x0 + tx * (k * FENCE_SEG), az = z0 + tz * (k * FENCE_SEG);
-      const bx = x0 + tx * ((k + 1) * FENCE_SEG), bz = z0 + tz * ((k + 1) * FENCE_SEG);
+      const a = curved?.at(k * along / n), b = curved?.at((k + 1) * along / n);
+      const ax = a?.[0] ?? x0 + tx * (k * FENCE_SEG), az = a?.[1] ?? z0 + tz * (k * FENCE_SEG);
+      const bx = b?.[0] ?? x0 + tx * ((k + 1) * FENCE_SEG), bz = b?.[1] ?? z0 + tz * ((k + 1) * FENCE_SEG);
+      const yaw = curved ? Math.atan2(bx - ax, bz - az) : straightYaw;
       const cx = (ax + bx) / 2, cz = (az + bz) / 2;
       if (Math.max(Math.abs(cx), Math.abs(cz)) > 478) { openRun = false; continue; }
       if (heightField._roadDist(cx, cz) < 4.6 || noVeg(cx, cz)) {
@@ -3299,25 +3307,7 @@ ${snowCap ? `
   // junction/plaza: the road crossing nearest the village/town center
   function resolveVillageJunction(): { x: number; z: number } {
     if (mapId === 'verdant') return { x: 20, z: 73 };
-    let best = 1e9;
-    let resolved = { x: v.cx, z: v.cz };
-    const inspectRoadPair = (
-      leftRoad: readonly (readonly [number, number])[],
-      rightRoad: readonly (readonly [number, number])[],
-    ): void => {
-      for (const [ax, az] of leftRoad) for (const [bx, bz] of rightRoad) {
-        if (Math.hypot(ax - bx, az - bz) > 18) continue;
-        const jx = (ax + bx) / 2, jz = (az + bz) / 2;
-        const d = Math.hypot(jx - v.cx, jz - v.cz);
-        if (d < best) { best = d; resolved = { x: jx, z: jz }; }
-      }
-    };
-    for (let leftIndex = 0; leftIndex < roads.length; leftIndex++) {
-      for (let rightIndex = leftIndex + 1; rightIndex < roads.length; rightIndex++) {
-        inspectRoadPair(roads[leftIndex], roads[rightIndex]);
-      }
-    }
-    return resolved;
+    return roadSettlementJunction(roads, { x: v.cx, z: v.cz });
   }
   const junction = resolveVillageJunction();
   // point-to-segment distance (local twin of terrain.js segDist)
@@ -3368,8 +3358,9 @@ ${snowCap ? `
 
   function collectBuildingCandidates(): Array<{ x: number; z: number; tx: number; tz: number }> {
     const result: Array<{ x: number; z: number; tx: number; tz: number }> = [];
-    for (const nodes of roads) {
-      for (let i = 1; i < nodes.length - 1; i++) {
+    for (let road = 0; road < roads.length; road++) {
+      const nodes = roads[road];
+      for (const i of buildingRoadStationIndices(L, road)) {
         const [nx, nz] = nodes[i];
         if (nx < v.x0 + 6 || nx > v.x1 - 6 || nz < v.z0 + 6 || nz > v.z1 - 6) continue;
         if (Math.hypot(nx - junction.x, nz - junction.z) < 22) continue; // keep the plaza open
@@ -3438,7 +3429,7 @@ ${snowCap ? `
   const structureContext: StructureBuildContext = {
     mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed, cladding: P.industrialCladding ?? 'brick',
   };
-  function placePlannedBuilding(px: number, pz: number, rot: number): boolean {
+  function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite): boolean {
     const tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
@@ -3449,9 +3440,64 @@ ${snowCap ? `
     if (tmp.steel?.length) ensureSteelAtlas('plan:' + structureId);
     addCatalogExterior(tmp, { id: structureId, info, variant: bi,
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
-    const fit = groundFit(px, pz, info.w, info.d, rot);
+    let fit = groundFit(px, pz, info.w, info.d, rot);
     if (fit.spread > P.maxSpread) return false;
     jitterBuildingUvs(tmp);
+    // Keep the original eligibility/build/UV draws. Only an already accepted
+    // ordinary roadside building can change parcel-facing; block fill and
+    // authored landmark/wharf/court owners never enter this branch.
+    if (roadSite && roadBuildingDoorAxis(structureId) !== undefined) {
+      const before = { x: px, z: pz, rot };
+      // The farmhouse's side wing and some porches are asymmetric: nominal
+      // kit dimensions alone do not bound their distance from the origin.
+      let w = info.w, d = info.d;
+      for (const geometry of Object.values(tmp).flat()) {
+        if (!geometry.boundingBox) geometry.computeBoundingBox();
+        const bounds = geometry.boundingBox;
+        if (!bounds) continue;
+        w = Math.max(w, 2 * Math.max(Math.abs(bounds.min.x), Math.abs(bounds.max.x)));
+        d = Math.max(d, 2 * Math.max(Math.abs(bounds.min.z), Math.abs(bounds.max.z)));
+      }
+      w += 0.3; d += 0.3;
+      const proposed = roadBuildingFrontage(structureId, roadSite, before, w, d);
+      const acceptPose = (proposed: { x: number; z: number; rot: number }): boolean => {
+        if (!buildingFootprintClearsRoads(proposed, w, d, roads)) return false;
+        const c = Math.cos(proposed.rot), s = Math.sin(proposed.rot);
+        const cornersDry = [-1, 1].every(sx => [-1, 1].every(sz => {
+          const x = proposed.x + sx * w / 2 * c + sz * d / 2 * s;
+          const z = proposed.z - sx * w / 2 * s + sz * d / 2 * c;
+          return x >= v.x0 && x <= v.x1 && z >= v.z0 && z <= v.z1 && !noVeg(x, z);
+        }));
+        const revisedFit = groundFit(proposed.x, proposed.z, w, d, proposed.rot);
+        const radius = Math.hypot(w, d) / 2;
+        if (cornersDry && !noVeg(proposed.x, proposed.z) && revisedFit.spread <= P.maxSpread
+          && !conflictsTacticalReservation(proposed.x, proposed.z, radius)
+          && placedB.every(p => Math.hypot(proposed.x - p.x, proposed.z - p.z) >= p.rr + radius + 1)) {
+          px = proposed.x; pz = proposed.z; rot = proposed.rot; fit = revisedFit; return true;
+        }
+        return false;
+      };
+      let status = proposed && acceptPose(proposed) ? 'corrected' : 'retained-authored-pose';
+      if (status !== 'corrected' && !buildingFootprintClearsRoads(before, w, d, roads)) {
+        status = 'unresolved-road-conflict';
+        const futureParcels: [[number, number], [number, number]][] = [];
+        const current = candidates.findIndex(site => site.x === roadSite.x && site.z === roadSite.z
+          && site.tx === roadSite.tx && site.tz === roadSite.tz);
+        for (let i = current; i >= 0 && i < candidates.length; i++) for (const side of [-1, 1]) {
+          if (i === current && side <= roadSite.side) continue;
+          const site = candidates[i], nx = -site.tz * side, nz = site.tx * side;
+          futureParcels.push([[site.x + nx * P.buildingLat[0], site.z + nz * P.buildingLat[0]],
+            [site.x + nx * (P.buildingLat[0] + P.buildingLat[1]), site.z + nz * (P.buildingLat[0] + P.buildingLat[1])]]);
+        }
+        for (const candidate of roadBuildingClearanceCandidates(roadSite, before)) {
+          if (!roadParcelAddsNoExclusion(before, candidate, Math.max(info.w, info.d) * .75 + P.spacingPad, futureParcels)) continue;
+          if (acceptPose(candidate)) { status = 'clearance-repaired'; break; }
+        }
+      }
+      const receipt = group.userData.roadBuildingFrontage ??= [];
+      receipt.push({ kind: structureId, before, after: { x: px, z: pz, rot },
+        w, d, status });
+    }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
     _quat.setFromAxisAngle(_upAxis, rot);
@@ -3482,7 +3528,9 @@ ${snowCap ? `
     if (heightField._roadDist(px, pz) < 7.5 || noVeg(px, pz)) return;
     if (conflictsTacticalReservation(px, pz) || !isRoadBuildingSiteClear(px, pz)) return;
     const rot = Math.atan2(cand.tx, cand.tz) + (rng() - 0.5) * 0.10;
-    placePlannedBuilding(px, pz, rot);
+    const roadSite = mapId !== 'verdant' && mapId !== 'mangrove' && mapId !== 'foundry'
+      && !P.streetRows && !P.orbitalSettlement ? { ...cand, side } : undefined;
+    placePlannedBuilding(px, pz, rot, roadSite);
   }
   function* placeRoadBuildings(): Generator<PropsBuildSlice, void, void> {
     // Monumental-city maps place their landmark plan first, then let the
@@ -4644,6 +4692,16 @@ ${snowCap ? `
       for (let i = i0; i < i1 && i < count - 1; i++) {
         const at = authoredRoadStationIndex(L, road, i);
         if (at < 0) continue;
+        if (L.roadStations?.[road]?.indices) {
+          const next = authoredRoadStationIndex(L, road, i + 1, 0, 0);
+          if (next <= at) continue;
+          const path = roadFencePath(nodes, at, next, side * 7.6);
+          const first = path[0], last = path[path.length - 1];
+          // One run/seeded module sequence per physical station interval,
+          // regardless of how many chords tessellate its turning arc.
+          placeFenceRun(roadFence, first[0], first[1], last[0], last[1], 0.30, path);
+          continue;
+        }
         const [ax, az] = nodes[at], [bx, bz] = nodes[at + 1];
         const dx = bx - ax, dz = bz - az;
         const len = Math.hypot(dx, dz);

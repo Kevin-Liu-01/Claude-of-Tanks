@@ -1,65 +1,9 @@
 {
   "version": 1,
-  "created": "2026-09-29T12:44:34.345Z",
-  "sourceDigest": "03522a8020b48a9ff9879c325fb917f9a5a1cd801628b108fa3db330431c9e59",
-  "revision": "c1ade6e0e9d70cb88812028f1d3d75e0bde0e451",
+  "created": "2026-09-29T20:13:40.477Z",
+  "sourceDigest": "506a7326f4c1f3c1164e1b187efee0b61821d9cc4867b01701b234e2bc22775a",
+  "revision": "f8817244250487e9c726acf253866245ca0c2cf6",
   "shots": [
-    {
-      "src": "/media/director-r4/gameplay/battle-opening.webp",
-      "title": "Before contact",
-      "alt": "Live battle HUD in a controlled formation demonstration.",
-      "kind": "gameplay",
-      "sequence": 1
-    },
-    {
-      "src": "/media/director-r4/gameplay/battle-impact.webp",
-      "title": "After contact",
-      "alt": "Live scope, module-hit indicators and a destroyed target in a controlled battle demonstration.",
-      "kind": "gameplay",
-      "sequence": 2
-    },
-    {
-      "src": "/media/director-r4/stills/steel-pursuit-landscape.webp",
-      "previewSrc": "/media/director-r4/previews/steel-pursuit.webp",
-      "alt": "A road convoy, filmed from track level and a rising overhead camera. In-engine staged scene.",
-      "title": "Steel pursuit",
-      "map": "verdant",
-      "feature": "scene studio",
-      "kind": "studio",
-      "effects": [
-        "day",
-        "cinematic camera"
-      ],
-      "sequence": 1
-    },
-    {
-      "src": "/media/director-r4/stills/desert-crossfire-landscape.webp",
-      "previewSrc": "/media/director-r4/previews/desert-crossfire.webp",
-      "alt": "A sunset engagement, return fire and an ammunition explosion. In-engine staged scene.",
-      "title": "Desert crossfire",
-      "map": "desert",
-      "feature": "scene studio",
-      "kind": "studio",
-      "effects": [
-        "sunset",
-        "cinematic camera"
-      ],
-      "sequence": 2
-    },
-    {
-      "src": "/media/director-r4/stills/coast-recon-landscape.webp",
-      "previewSrc": "/media/director-r4/previews/coast-recon.webp",
-      "alt": "A coastal patrol with a low side portrait and a bay reveal. In-engine staged scene.",
-      "title": "Coastal reconnaissance",
-      "map": "coastal",
-      "feature": "scene studio",
-      "kind": "studio",
-      "effects": [
-        "day",
-        "cinematic camera"
-      ],
-      "sequence": 3
-    },
     {
       "src": "/maps/verdant.webp",
       "previewSrc": "/maps/cards/verdant.webp",
@@ -464,6 +408,62 @@
       "sequence": 31
     },
     {
+      "src": "/media/director-r4/gameplay/battle-opening.webp",
+      "title": "Before contact",
+      "alt": "Live battle HUD in a controlled formation demonstration.",
+      "kind": "gameplay",
+      "sequence": 1
+    },
+    {
+      "src": "/media/director-r4/gameplay/battle-impact.webp",
+      "title": "After contact",
+      "alt": "Live scope, module-hit indicators and a destroyed target in a controlled battle demonstration.",
+      "kind": "gameplay",
+      "sequence": 2
+    },
+    {
+      "src": "/media/director-r4/stills/steel-pursuit-landscape.webp",
+      "previewSrc": "/media/director-r4/previews/steel-pursuit.webp",
+      "alt": "A road convoy, filmed from track level and a rising overhead camera. In-engine staged scene.",
+      "title": "Steel pursuit",
+      "map": "verdant",
+      "feature": "scene studio",
+      "kind": "studio",
+      "effects": [
+        "day",
+        "cinematic camera"
+      ],
+      "sequence": 1
+    },
+    {
+      "src": "/media/director-r4/stills/desert-crossfire-landscape.webp",
+      "previewSrc": "/media/director-r4/previews/desert-crossfire.webp",
+      "alt": "A sunset engagement, return fire and an ammunition explosion. In-engine staged scene.",
+      "title": "Desert crossfire",
+      "map": "desert",
+      "feature": "scene studio",
+      "kind": "studio",
+      "effects": [
+        "sunset",
+        "cinematic camera"
+      ],
+      "sequence": 2
+    },
+    {
+      "src": "/media/director-r4/stills/coast-recon-landscape.webp",
+      "previewSrc": "/media/director-r4/previews/coast-recon.webp",
+      "alt": "A coastal patrol with a low side portrait and a bay reveal. In-engine staged scene.",
+      "title": "Coastal reconnaissance",
+      "map": "coastal",
+      "feature": "scene studio",
+      "kind": "studio",
+      "effects": [
+        "day",
+        "cinematic camera"
+      ],
+      "sequence": 3
+    },
+    {
       "src": "/media/production-r1/posters/reservoir-day-landscape.webp",
       "alt": "A tank crossing water at day",
       "title": "Water in motion · day",
@@ -614,641 +614,6 @@
       "silent": true
     }
   ],
-  "assets": [
-    {
-      "src": "/media/director-r4/gameplay/battle-live.mp4",
-      "sha256": "fd97273e6a42b4b6054bfd50d582f78c8098a5ecf1ef0d6651c165f1319a9b2b",
-      "bytes": 3871118
-    },
-    {
-      "src": "/media/director-r4/gameplay/battle-live-mobile.mp4",
-      "sha256": "73ca12ad53c66d921226d00054caf8afc3c63fc5e73049dca5dac749398a3119",
-      "bytes": 1134816
-    },
-    {
-      "src": "/media/director-r4/gameplay/battle-opening.webp",
-      "sha256": "6d5f0da8af7cfe32a4eccef2a415b2f32fff8b27adac76c7fdb9490a95891e7a",
-      "bytes": 677602
-    },
-    {
-      "src": "/media/director-r4/gameplay/battle-impact.webp",
-      "sha256": "052e373d27bb54c0ad0f718113c792591a99718975c874e10a6b2b017ce0b2be",
-      "bytes": 680208
-    },
-    {
-      "src": "/media/director-r4/gameplay/battle-live.vtt",
-      "sha256": "7637c67383f38ecfabd82966103afb4c021e26ceebbcf4fda03e1c08acb9ed21",
-      "bytes": 164
-    },
-    {
-      "src": "/media/director-r4/films/steel-pursuit.mp4",
-      "sha256": "b0a258a4ec5ecc3667cf3cd81351de186a6f3cd8eaeac4fcda0a33f8cd052aa3"
-    },
-    {
-      "src": "/media/director-r4/stills/steel-pursuit-landscape.webp",
-      "sha256": "89db97432faf20913a71bedba96dd0b86e4813f5486ad85e20af229120dcde25"
-    },
-    {
-      "src": "/media/director-r4/promo/steel-pursuit-landscape.webp",
-      "sha256": "6e42c88952b8098d21b34d274559d3b0699cad7735c49d4464bcbea50ba8ddeb"
-    },
-    {
-      "src": "/media/director-r4/previews/steel-pursuit.webp",
-      "sha256": "7397b000b06594a8b86abda438ad97340ad3ef5a6a94926de27f1a38dc06abfe"
-    },
-    {
-      "src": "/media/director-r4/films/steel-pursuit.jpg",
-      "sha256": "bb25ab138d7ee3593c69e829f602655747c057d3e08481ae2f8d676cb47179a7"
-    },
-    {
-      "src": "/media/director-r4/stills/steel-pursuit-portrait.webp",
-      "sha256": "948f7fff2d1cf6e495b445852216564fdf13b1aaa145bb8443ded1263350c12f"
-    },
-    {
-      "src": "/media/director-r4/promo/steel-pursuit-portrait.webp",
-      "sha256": "443b846da84bcd0c54c01b1f74365686aacc8541bac0d350f242af79accbf707"
-    },
-    {
-      "src": "/media/director-r4/stills/steel-pursuit-square.webp",
-      "sha256": "a31b4d9be4234adb6d36f05f05d0417fa405ff0904581d5511cfb68c5b7cd855"
-    },
-    {
-      "src": "/media/director-r4/promo/steel-pursuit-square.webp",
-      "sha256": "901e2dc7fabad5b00c0832b3ba8d84f2f344e0158338d1356e9ac8fb9c2d7446"
-    },
-    {
-      "src": "/media/director-r4/films/desert-crossfire.mp4",
-      "sha256": "7b7e082b73c0a8215a294497dd6574c720529625c8383f1d40b09b3374cf6bbb"
-    },
-    {
-      "src": "/media/director-r4/stills/desert-crossfire-landscape.webp",
-      "sha256": "e4bb0dfc4e62106602c01bec0a277ec2b5a5916d72bed2909b41fc256f1f67f8"
-    },
-    {
-      "src": "/media/director-r4/promo/desert-crossfire-landscape.webp",
-      "sha256": "704057fd847e47092c2542d991177ad15854bb97202439896db4787b7967104b"
-    },
-    {
-      "src": "/media/director-r4/previews/desert-crossfire.webp",
-      "sha256": "95972c35df5805dcf6bd81c252d3a4679a4bc12cfcc418396c8aeda87d7ea36c"
-    },
-    {
-      "src": "/media/director-r4/films/desert-crossfire.jpg",
-      "sha256": "21421846231da3565cd6df4ed90ddba76a2ccf6c4f165425ba391396c72ab12b"
-    },
-    {
-      "src": "/media/director-r4/stills/desert-crossfire-portrait.webp",
-      "sha256": "1a511a4f793f2b06853cb45faec1f8981d9982bf595f149c963c27887ce914d8"
-    },
-    {
-      "src": "/media/director-r4/promo/desert-crossfire-portrait.webp",
-      "sha256": "01e3cc0479a5204f597cea4de871bb730a4619d3cfcc0549bd8e4b2e67ecae09"
-    },
-    {
-      "src": "/media/director-r4/stills/desert-crossfire-square.webp",
-      "sha256": "1cfb9368a7c2777af2d776e5e3036c4b01788a5f196f330e0988e93b8c61f0ca"
-    },
-    {
-      "src": "/media/director-r4/promo/desert-crossfire-square.webp",
-      "sha256": "3d98c9b811eed00cf7371dccef85fafc337898e6a01143c33a2af275b5b16b25"
-    },
-    {
-      "src": "/media/director-r4/films/coast-recon.mp4",
-      "sha256": "ded2c10edf2ccba1ebc93ebe348992c5c41112c88004ab458da05c02a35933ed"
-    },
-    {
-      "src": "/media/director-r4/stills/coast-recon-landscape.webp",
-      "sha256": "99a35431cd75854031c9aae6d193bdfc09c47771398ca931e59acd682d7a57a9"
-    },
-    {
-      "src": "/media/director-r4/promo/coast-recon-landscape.webp",
-      "sha256": "c3830b265f495a2c2236910e08ca9ef390ee8c8cbf4a74acf90023d758ece459"
-    },
-    {
-      "src": "/media/director-r4/previews/coast-recon.webp",
-      "sha256": "fbf7bde711aacc1b81a619cff1bca5ce9c9496f8e1bc7ffb73730459b7e1122a"
-    },
-    {
-      "src": "/media/director-r4/films/coast-recon.jpg",
-      "sha256": "9e6d84f5902bb1b35b9e908ec4e67c49e5159bfc96be671dfffef3cdc1336173"
-    },
-    {
-      "src": "/media/director-r4/stills/coast-recon-portrait.webp",
-      "sha256": "96923e5231b3174100cb13df1b10a3e5a31d9eb0d436ae28bac2b96ffa92b50e"
-    },
-    {
-      "src": "/media/director-r4/promo/coast-recon-portrait.webp",
-      "sha256": "4d418232d0d7a2800b63961629f78e4e007261595d18170103112c91507b36c8"
-    },
-    {
-      "src": "/media/director-r4/stills/coast-recon-square.webp",
-      "sha256": "467c0b4b887ba7e55f05c545dfd355817fd639ec7aeefeac1685d10dff6071b0"
-    },
-    {
-      "src": "/media/director-r4/promo/coast-recon-square.webp",
-      "sha256": "e0ebcc0086c6538fdc0b675c5d01ff0b5690ebc2280c174d9385d3d1a56c1748"
-    },
-    {
-      "src": "/media/director-r4/hero-trailer.mp4",
-      "sha256": "f6f63e4318263bd246fb6bc1f2061a362934f8536fa4cee2b726d7a5d10070af"
-    },
-    {
-      "src": "/media/director-r4/silent-loop.mp4",
-      "sha256": "a4371c9b6b8d34ef172699dac4696742a26283c029d6f6b15a0bb00458607388"
-    },
-    {
-      "src": "/media/director-r4/hero-trailer-mobile.mp4",
-      "sha256": "33231efbd329d72fa7b5f60b6a203eab1b772142eb581507ad884a5ee6de142a"
-    },
-    {
-      "src": "/media/director-r4/silent-loop-mobile.mp4",
-      "sha256": "de22a2f7cee80c35acc5f34a336a97f1699d58f19305f841ea45d98fddcad68d"
-    },
-    {
-      "src": "/media/director-r4/hero-trailer.jpg",
-      "sha256": "58d90d6e35dc71bc89cf60bb7fe9d3edf538b9fa870b8bba325fc3d765e750d6"
-    },
-    {
-      "src": "/media/director-r4/silent-loop.jpg",
-      "sha256": "58d90d6e35dc71bc89cf60bb7fe9d3edf538b9fa870b8bba325fc3d765e750d6"
-    },
-    {
-      "src": "/media/director-r4/hero-trailer.vtt",
-      "sha256": "35d11c929b20379006d168652c537d28b59ba428702c5a06db71a8f7448f5259"
-    },
-    {
-      "src": "/media/director-r4/contact-sheet.jpg",
-      "sha256": "05ff8c6294eaccdbeea740a206059b355c7667fe2f0d0eb3f24e87f005289d6d"
-    },
-    {
-      "src": "/maps/verdant.webp",
-      "sha256": "2de64d75d258b7f91a9b580e61f3774d573eacb2800e80242789529e64e1ef8b"
-    },
-    {
-      "src": "/maps/cards/verdant.webp",
-      "sha256": "5fc1b4f501a35fe37e76604fb7155d4b22d31fa9bf5f6dde3f0567f1c227d607"
-    },
-    {
-      "src": "/maps/thumbs/verdant.webp",
-      "sha256": "c69bd04b02a39c0f4705ab03a4bb813e8f09caa4e8c01c16401a3537ce56c1af"
-    },
-    {
-      "src": "/maps/desert.webp",
-      "sha256": "1473b798783a95beaf8317091cee5fc508df7d677f34e45c30e7eee138dd49de"
-    },
-    {
-      "src": "/maps/cards/desert.webp",
-      "sha256": "057ddd5df98c22568125f313bdc1da6898c5b4007f801888eb8a5600a91e4dff"
-    },
-    {
-      "src": "/maps/thumbs/desert.webp",
-      "sha256": "133bcd2e3f2215388f8a483205df090d0e50e1502fdd1cddfef841b06a2fdf9d"
-    },
-    {
-      "src": "/maps/winter.webp",
-      "sha256": "3fc738e4a73bf40710985b26362ccd109bb25b170df1e4a86b3ab4aad9b81113"
-    },
-    {
-      "src": "/maps/cards/winter.webp",
-      "sha256": "3cfac62db7ef1014e98aba03c79f7586be6d29d943e054cdef171fc3045e1f61"
-    },
-    {
-      "src": "/maps/thumbs/winter.webp",
-      "sha256": "0466374efdd81950503480603a32f25adbb9ce582c864a74ac3662ad5662c04d"
-    },
-    {
-      "src": "/maps/urban.webp",
-      "sha256": "bbfcab928018a54edb3829c7481f3344269cc0167ea461561958fd5cc6b45841"
-    },
-    {
-      "src": "/maps/cards/urban.webp",
-      "sha256": "0f9e766440c4b0a9f45235d05db60fcc507d0eca72bf7d4507ee01e53ca33e6d"
-    },
-    {
-      "src": "/maps/thumbs/urban.webp",
-      "sha256": "b4b0b2610f91ec771c53707c2af5ce5981003e8aa3f05f8b9ebab2cf85436cc1"
-    },
-    {
-      "src": "/maps/coastal.webp",
-      "sha256": "5a36635da4aebeb26b85d086f1395d6d66f91d7e260873196e4538c24c1e8d0c"
-    },
-    {
-      "src": "/maps/cards/coastal.webp",
-      "sha256": "11a8515b1c59f88495e780e316dd29a017e7d47e4678ef9d8a34d8929774eb26"
-    },
-    {
-      "src": "/maps/thumbs/coastal.webp",
-      "sha256": "646afff2a2c0812e6d2bf24d2d6a83a3dfd141910816f8270bb838e805f9eeca"
-    },
-    {
-      "src": "/maps/autumn.webp",
-      "sha256": "611091bc0c9e39ab42e875d8082c093be03659ee9cc2d1c6d6618e9f6725e986"
-    },
-    {
-      "src": "/maps/cards/autumn.webp",
-      "sha256": "043206b435a2849294204dce20f2884569345bd9d3cf0d3423ba64d70391156b"
-    },
-    {
-      "src": "/maps/thumbs/autumn.webp",
-      "sha256": "ebb741d1a90ad4e06733d4ddf8bdc52a5c7411431e1b8e4d57a2584baab903b4"
-    },
-    {
-      "src": "/maps/steppe.webp",
-      "sha256": "264bcc67af9423110105ba937b9efe1050e8f0ac62d4a9042d24ff24ee8218ff"
-    },
-    {
-      "src": "/maps/cards/steppe.webp",
-      "sha256": "b85f72d1e5aa7ae080c4cc7e8fd462cae1df75f294217725fa476712ee38c532"
-    },
-    {
-      "src": "/maps/thumbs/steppe.webp",
-      "sha256": "712925478a4932ea32a10f913937c2627942479f9708cbefe3c2a1cbfeeb7bbc"
-    },
-    {
-      "src": "/maps/railyard.webp",
-      "sha256": "7fd43131a4fd15acdf3c1316a15e81ff32a347f49f0fb306291fd9f507df2b5f"
-    },
-    {
-      "src": "/maps/cards/railyard.webp",
-      "sha256": "9322be52f96a26153741dffe3c9b559558889284f9e473a22e1f7a9730996ad9"
-    },
-    {
-      "src": "/maps/thumbs/railyard.webp",
-      "sha256": "3a5022a5fd566f2d2d5dcc6054bc3f24936dc868e739a7d9c68afb5503ea504e"
-    },
-    {
-      "src": "/maps/frontier.webp",
-      "sha256": "6bdaaf4c37788fb75480b1c38413972860020c9b3cd05a65b158f26b3d169382"
-    },
-    {
-      "src": "/maps/cards/frontier.webp",
-      "sha256": "96cba6f2ee6d681d431b2e68c2d111f576a8aa6190da7b19a3c5316286d4c1d1"
-    },
-    {
-      "src": "/maps/thumbs/frontier.webp",
-      "sha256": "be0260292b1dd0a0b1631eca66d6992431eee2dbef03a17e96dd619fb10771ec"
-    },
-    {
-      "src": "/maps/fjord.webp",
-      "sha256": "3b18dbe76e34de5bf80304c70646673cb710c56d9d364c64a4b2ff705b1fa397"
-    },
-    {
-      "src": "/maps/cards/fjord.webp",
-      "sha256": "9a953d56e69fd18f4850c21359bf36e36a3cb109bbb19ef8336c90fb26923530"
-    },
-    {
-      "src": "/maps/thumbs/fjord.webp",
-      "sha256": "c5b76d872fa6cd6eb2d8ca9786c1f94153a166f0c127e76a813ca3ed0aa860de"
-    },
-    {
-      "src": "/maps/delta.webp",
-      "sha256": "973b2eedcb007f01118f3a27cdf06e125e5d050515a329bbf43f628fcc07b057"
-    },
-    {
-      "src": "/maps/cards/delta.webp",
-      "sha256": "632e9deb39d3588b8d748464bf908858ec67618148cbae05048ad41cac4e6908"
-    },
-    {
-      "src": "/maps/thumbs/delta.webp",
-      "sha256": "11f285a469e79ed4de4037dde5a73a2606533e5e092bf0264d799c6d01c94533"
-    },
-    {
-      "src": "/maps/badlands.webp",
-      "sha256": "18213a7af08ce4eed7740c0eb95bbee37a3ae372cdbc747e550a52d202ed3cee"
-    },
-    {
-      "src": "/maps/cards/badlands.webp",
-      "sha256": "ac6855ae9f961c0c4dae28fc4f7546f90567ce995b7e9d8eb090d23ba2ea4108"
-    },
-    {
-      "src": "/maps/thumbs/badlands.webp",
-      "sha256": "262361775bf2c4cb4a9a9f50f1b556792092010b265e645e2eb9c03320f31cee"
-    },
-    {
-      "src": "/maps/monsoon.webp",
-      "sha256": "2a8945bebc08bda90fa5702842ab32c023f1268a6bf826b10f946f030f1879bb"
-    },
-    {
-      "src": "/maps/cards/monsoon.webp",
-      "sha256": "91cdf4e526e0d92220f255897f7cc5ee8c1f03c06a05dda371ce8ad6cf2e1c8c"
-    },
-    {
-      "src": "/maps/thumbs/monsoon.webp",
-      "sha256": "584daadddb4e397eb1ad1b997abc639851d4577b30d709c55345f31002526f43"
-    },
-    {
-      "src": "/maps/alpine.webp",
-      "sha256": "44a5bfd93d0c6759fadaaf519993799a0ebc93fbb91588da436997abfa1bd45a"
-    },
-    {
-      "src": "/maps/cards/alpine.webp",
-      "sha256": "cb95433dec65d3c2dbd9ced7f2fe73ea6fd06128f7b5d88bb96ce74bd3ddfe50"
-    },
-    {
-      "src": "/maps/thumbs/alpine.webp",
-      "sha256": "1d484e9f1dd67c905cf0c7071f97fcea51c79e42d373431efd11fc02f34deb20"
-    },
-    {
-      "src": "/maps/caldera.webp",
-      "sha256": "5788684a10c29421ebacdf1b56461995e92045611fcddd0734bada8cd5674bd9"
-    },
-    {
-      "src": "/maps/cards/caldera.webp",
-      "sha256": "953b521b8168962c869c400e441f9d75e8ea95573ebc7e2a4272bb9520d98a30"
-    },
-    {
-      "src": "/maps/thumbs/caldera.webp",
-      "sha256": "2469049b83eb174be959c8bb75f18dc41a53c86b8e7339513ac8b54522f0e6d8"
-    },
-    {
-      "src": "/maps/foundry.webp",
-      "sha256": "18a220ec10fa3980369b76678eb90dd61d3c69152b36e3cb9573059c4eb762f6"
-    },
-    {
-      "src": "/maps/cards/foundry.webp",
-      "sha256": "cfb13b6d749a7831aae6f6ae93cdf75fb11ada92e760b2ade341a2c6f3b655a8"
-    },
-    {
-      "src": "/maps/thumbs/foundry.webp",
-      "sha256": "c670c75ba44f97c9c4444f8fa615299a0dc4ea1eb46749cc2ec53ff09a070106"
-    },
-    {
-      "src": "/maps/ruinspires.webp",
-      "sha256": "506adb8da0f501a6b851b1cbc52c237683031fb0fa4c8a5b6f6f48ecaf0bfd4c"
-    },
-    {
-      "src": "/maps/cards/ruinspires.webp",
-      "sha256": "0c4af32b4aa0ac32021e7eac1c47fe0d1213cc711a0f0592b77ecaedc608375d"
-    },
-    {
-      "src": "/maps/thumbs/ruinspires.webp",
-      "sha256": "caa0266ce4a11b89beccc2f3fd938e385f4cb4f2f30720dc8167be6fc4e50c6f"
-    },
-    {
-      "src": "/maps/blackglass.webp",
-      "sha256": "72b9f8949223a8823219a3183a2fbbc1a8b9b348dda164af53be443e14864dca"
-    },
-    {
-      "src": "/maps/cards/blackglass.webp",
-      "sha256": "4ac1c3b1af2b06af687e05d3ed1112113bdf82a433fa4d4a2222785dcf840d48"
-    },
-    {
-      "src": "/maps/thumbs/blackglass.webp",
-      "sha256": "ba5b959eb80c10a78d62061a52d01e8f8c3be4ef62e795c29f87f121b971432d"
-    },
-    {
-      "src": "/maps/titan_gorge.webp",
-      "sha256": "13b1c0410ad460e9603f8051fa8beaf934b8d2917ce042f33948b83305cd3b46"
-    },
-    {
-      "src": "/maps/cards/titan_gorge.webp",
-      "sha256": "317fc86848d2de077d41fdb53003e1411935273429df42397c7238024e69867e"
-    },
-    {
-      "src": "/maps/thumbs/titan_gorge.webp",
-      "sha256": "ca7d6224e4e4b9f25ef5cd7e9364ae1918273e080d4ee37e3946a48b217e957f"
-    },
-    {
-      "src": "/maps/skybridge.webp",
-      "sha256": "9d7e6f200ae85217582e907a2f2376665bcdd01c208167dc2a5530990de09867"
-    },
-    {
-      "src": "/maps/cards/skybridge.webp",
-      "sha256": "d658b079cfa98ff62743f444d17d7a70f72011b37e3c32a4d8de035e8aefefa6"
-    },
-    {
-      "src": "/maps/thumbs/skybridge.webp",
-      "sha256": "e0c08e33b141a5df07bb371b81e7ed34c0bac760952617dec1e0f3a61f1505fd"
-    },
-    {
-      "src": "/maps/polders.webp",
-      "sha256": "695e18af33e3e5c75d23152ec39d3a61c91eab02ddabeb30085c3c3e0038ae62"
-    },
-    {
-      "src": "/maps/cards/polders.webp",
-      "sha256": "bd45fae893bde08d0c96ef6ed2d6d20a9980fd5435fe3772cb1b3ae34059d497"
-    },
-    {
-      "src": "/maps/thumbs/polders.webp",
-      "sha256": "89a6820e0c822c998d483f3619a4e42579679183c8c96527fb10614d67809fb1"
-    },
-    {
-      "src": "/maps/copper_mesa.webp",
-      "sha256": "54fd3c13ea327340a57dc93bb4f1e79307f4a03fefdc85f58f1cba4496639890"
-    },
-    {
-      "src": "/maps/cards/copper_mesa.webp",
-      "sha256": "f72f20f59da709f2757ae70bfb38ed36b85939020b72deebc2d2d9f1b8d71697"
-    },
-    {
-      "src": "/maps/thumbs/copper_mesa.webp",
-      "sha256": "5f1a494f00301d4ff43c96b499743d26e0a55e2bc59c412bdaff74b29213ea04"
-    },
-    {
-      "src": "/maps/airfield.webp",
-      "sha256": "e23cfaf1707f352e68c9d1ffe5f261c820a1b7c9011e6188702b1c9fd348607b"
-    },
-    {
-      "src": "/maps/cards/airfield.webp",
-      "sha256": "53319809d0cd75838ad10a31dfba58cc786b973e22896f5059c3f6a59455c370"
-    },
-    {
-      "src": "/maps/thumbs/airfield.webp",
-      "sha256": "0b14ed6544a6c30a82722206e4908af66f4bf7053ecb40070b95b0665d3ff961"
-    },
-    {
-      "src": "/maps/oasis.webp",
-      "sha256": "216393064c7c17daa7cfeb254823c98f3786a472482018d93583c327badabcee"
-    },
-    {
-      "src": "/maps/cards/oasis.webp",
-      "sha256": "4a2cc374d42b65394bbc7407e3b563adcff3eef9199857adbefa00c6dc649d11"
-    },
-    {
-      "src": "/maps/thumbs/oasis.webp",
-      "sha256": "f11029a428db9c7a059aa35f917d24b1d20c0dc80ad379e8cbc0249400b48511"
-    },
-    {
-      "src": "/maps/whiteout.webp",
-      "sha256": "66963b17ecd3a55125debff51b9ad388aac99b07ba0b647d4ff36e8c49f43db3"
-    },
-    {
-      "src": "/maps/cards/whiteout.webp",
-      "sha256": "7681fe670ff8ed7409b273bdf6cf52b990b0ba8ae9d22a582c06b06b56ab9952"
-    },
-    {
-      "src": "/maps/thumbs/whiteout.webp",
-      "sha256": "c21894c81b1ef9840cf169f37faabbddfaafd86bcf67f5ce3e564bdfa929e463"
-    },
-    {
-      "src": "/maps/orchard.webp",
-      "sha256": "8093e72b1a7e0faed270af8232240ef37ea1e219599ff3167c02d345946c4632"
-    },
-    {
-      "src": "/maps/cards/orchard.webp",
-      "sha256": "48eed40aec33d614535bde6be73a851c460047fafeebef1997e3383d56cdd0e7"
-    },
-    {
-      "src": "/maps/thumbs/orchard.webp",
-      "sha256": "a9e5c38a8292a4ed25ebec8a3d0db22e4041da6df4d5dbdf8345040e69857864"
-    },
-    {
-      "src": "/maps/longleaf.webp",
-      "sha256": "f4baf837ea5b092014478759d9c706a3aad75ad2f5640a430eb25dc07ee3f639"
-    },
-    {
-      "src": "/maps/cards/longleaf.webp",
-      "sha256": "d8f56eb7a4ea6d8f81358e5c945746d6a1278f82d689d9f41b6bc2cefcf54038"
-    },
-    {
-      "src": "/maps/thumbs/longleaf.webp",
-      "sha256": "180f3c4c4c8818b3bc1d0bb65ae3e7527feab7d57a6bc92f714a753d3018b56f"
-    },
-    {
-      "src": "/maps/mangrove.webp",
-      "sha256": "60b6c52eea505638d68f2e78d0585f39330b68cdf38494eb64ac2967f3ce8c73"
-    },
-    {
-      "src": "/maps/cards/mangrove.webp",
-      "sha256": "9f87e47630cbd42ad6bd7b46e6f361234f3657906ecc3d5a53026874abe4559b"
-    },
-    {
-      "src": "/maps/thumbs/mangrove.webp",
-      "sha256": "c605d99dc5ad28747981cd6e1bcaa97fb9f3236507edd89b87c6a2653c4e0bf8"
-    },
-    {
-      "src": "/maps/saltwind.webp",
-      "sha256": "81987e7a7ec24c3d86a33d19889af0798be28459cb1829653be24d83ac919b6f"
-    },
-    {
-      "src": "/maps/cards/saltwind.webp",
-      "sha256": "79a6dd02d325d545f0e3987ba03ffd4f959a31f049dd9ef34862f5692e47bbec"
-    },
-    {
-      "src": "/maps/thumbs/saltwind.webp",
-      "sha256": "2840c6d1b01181f79bb793e8b08b9b6bf4a51005165e4889c8a1a609d5649b77"
-    },
-    {
-      "src": "/maps/reservoir.webp",
-      "sha256": "ecfc005131d7930f14acda31385d6f90287408e133d17d6045884019440ad326"
-    },
-    {
-      "src": "/maps/cards/reservoir.webp",
-      "sha256": "1a2b75137bd33aeddd2dc1bbcc482799a1289b209707031a65f90bd1ae300ec4"
-    },
-    {
-      "src": "/maps/thumbs/reservoir.webp",
-      "sha256": "e2fa5a4c71a2b1bc03bedde2133dc75e0af5752b2f2d8c56dcfd4bb58e6f79e8"
-    },
-    {
-      "src": "/maps/mars.webp",
-      "sha256": "640427c52e4f6d84ccd48f1bd5b0e19e64e01399225217da941dedd13a6979ed"
-    },
-    {
-      "src": "/maps/cards/mars.webp",
-      "sha256": "70292701eb2798c438aab8cec130ed7e08f38aa3c533a3199b651a7ccfeddeff"
-    },
-    {
-      "src": "/maps/thumbs/mars.webp",
-      "sha256": "36ef41dbf4ebdb9472ec7058d012ef13f492da843beca3448993d1766cfb854b"
-    },
-    {
-      "src": "/media/production-r1/posters/reservoir-day-landscape.webp",
-      "sha256": "6bba45ac32e366728bf241ad47e22d9fe2c3d2d372ef80db5c13d6edd3c0df83"
-    },
-    {
-      "src": "/media/production-r1/reservoir-day.jpg",
-      "sha256": "020a2cb6ca9eaf1e1c0502283a40e5f93df80af95d5062b324888c5eb88b6b9a"
-    },
-    {
-      "src": "/media/production-r1/promo/reservoir-day-landscape.webp",
-      "sha256": "7e495f4142ac7aacc6f5c5c6e83c57de9631751f34a96fa139e6d61690384174"
-    },
-    {
-      "src": "/media/production-r1/posters/reservoir-day-portrait.webp",
-      "sha256": "eec241f22e1e46f110999f9550c6e3eb71df95ca43c7edd4928f314d74ba7602"
-    },
-    {
-      "src": "/media/production-r1/promo/reservoir-day-portrait.webp",
-      "sha256": "10f8a441f541eb4e0b56a8f4bcf6461d8f2dc731c7149b5cbe0d16627d6c600a"
-    },
-    {
-      "src": "/media/production-r1/posters/reservoir-day-square.webp",
-      "sha256": "aff103a6ebb3f74d604f5d1f423f8a8914eb228888ae7b3498e5fe26a3f2e1f9"
-    },
-    {
-      "src": "/media/production-r1/promo/reservoir-day-square.webp",
-      "sha256": "1183ef49799390a685bde1b472689685e8816b78a7800828cdfe34dd08265075"
-    },
-    {
-      "src": "/media/production-r1/posters/reservoir-sunset-landscape.webp",
-      "sha256": "4c599e96d4c98d11fbc95a3e2ec78a4b58f16fe145b549e3638064f217086768"
-    },
-    {
-      "src": "/media/production-r1/reservoir-sunset.jpg",
-      "sha256": "202e52916bbae7fc00666390b8bf6539497f4b72a40bbfee6bca555c45328e06"
-    },
-    {
-      "src": "/media/production-r1/promo/reservoir-sunset-landscape.webp",
-      "sha256": "fd58a24f5524baaad0b8c281745bbc55bfd507e4e7fdd33be1ad61af2c950923"
-    },
-    {
-      "src": "/media/production-r1/posters/reservoir-sunset-portrait.webp",
-      "sha256": "0a64458224435a4cc42b80aba585c009022a0c0bb36f9851d7a041161d95dc72"
-    },
-    {
-      "src": "/media/production-r1/promo/reservoir-sunset-portrait.webp",
-      "sha256": "2551ae648ca88bb1145fb96feff564250e7b0b209920b08bc2e34b0245c77592"
-    },
-    {
-      "src": "/media/production-r1/posters/reservoir-sunset-square.webp",
-      "sha256": "293791283ba2876ae46f50c9bc396361e13f6a5761bd89d572a35b85a9784a0b"
-    },
-    {
-      "src": "/media/production-r1/promo/reservoir-sunset-square.webp",
-      "sha256": "532188f6ec85ae2e1ca4ef824a564ba5990a3f4924207f23ff58fc77dae4ede1"
-    },
-    {
-      "src": "/media/production-r1/posters/reservoir-night-landscape.webp",
-      "sha256": "155ed6aa5582907d5b2f347d3818404320c5c4bfc01c2817a9b8efeeb31474be"
-    },
-    {
-      "src": "/media/production-r1/reservoir-night.jpg",
-      "sha256": "c5743681935e2a6000abc030f71f7df17b5e70f79101e84a5b935b66e5904cff"
-    },
-    {
-      "src": "/media/production-r1/promo/reservoir-night-landscape.webp",
-      "sha256": "6d29552a8c0a93341ad01eb12d0df4db436557949ef7d04b2c23b76c7a36e9dd"
-    },
-    {
-      "src": "/media/production-r1/posters/reservoir-night-portrait.webp",
-      "sha256": "95d567d2a5f3e9e813d855becffccc9b68cb6311054417fd765be347e0a552a9"
-    },
-    {
-      "src": "/media/production-r1/promo/reservoir-night-portrait.webp",
-      "sha256": "4d0e37730ebfd928a39f481bf474bef7e7c99ebdced81ea9eb730562befc15a4"
-    },
-    {
-      "src": "/media/production-r1/posters/reservoir-night-square.webp",
-      "sha256": "6429f00a267f7add8135cd3e02706ccd8a5934972db5360e93f9a1d4726114ed"
-    },
-    {
-      "src": "/media/production-r1/promo/reservoir-night-square.webp",
-      "sha256": "82f38f904ac8d5936d271783f07f47b31e5b198566c7bd31dd1394806cf215f9"
-    },
-    {
-      "src": "/media/production-r1/reservoir-day.mp4",
-      "sha256": "e5b5b2f400803ef5ff529e23fb7cf527c87a98b5b1339e3e6835bcc611b9aa80"
-    },
-    {
-      "src": "/media/production-r1/reservoir-sunset.mp4",
-      "sha256": "4422d54cd35aedd3bc9a6309b91c972a95990ce679ca90fb48bcc1fd3b9fb73d"
-    },
-    {
-      "src": "/media/production-r1/reservoir-night.mp4",
-      "sha256": "1ff07c8da9e2c41e10506f31a47d463cc798cc2aaa81c8b73aae13d78103b702"
-    }
-  ],
   "media": {
     "/media/production-r1/posters/reservoir-day-landscape.webp": "production-reservoir-day-landscape",
     "/media/production-r1/reservoir-day.jpg": "production-reservoir-day-landscape",
@@ -1265,6 +630,33 @@
     "/media/production-r1/reservoir-day.mp4": "production-film-reservoir-day",
     "/media/production-r1/reservoir-sunset.mp4": "production-film-reservoir-sunset",
     "/media/production-r1/reservoir-night.mp4": "production-film-reservoir-night",
+    "/media/director-r4/stills/steel-pursuit-landscape.webp": "director-steel-pursuit-landscape",
+    "/media/director-r4/promo/steel-pursuit-landscape.webp": "director-steel-pursuit-landscape",
+    "/media/director-r4/previews/steel-pursuit.webp": "director-steel-pursuit-landscape",
+    "/media/director-r4/films/steel-pursuit.jpg": "director-steel-pursuit-landscape",
+    "/media/director-r4/stills/steel-pursuit-portrait.webp": "director-steel-pursuit-portrait",
+    "/media/director-r4/promo/steel-pursuit-portrait.webp": "director-steel-pursuit-portrait",
+    "/media/director-r4/stills/steel-pursuit-square.webp": "director-steel-pursuit-square",
+    "/media/director-r4/promo/steel-pursuit-square.webp": "director-steel-pursuit-square",
+    "/media/director-r4/films/steel-pursuit.mp4": "director-film-steel-pursuit",
+    "/media/director-r4/stills/desert-crossfire-landscape.webp": "director-desert-crossfire-landscape",
+    "/media/director-r4/promo/desert-crossfire-landscape.webp": "director-desert-crossfire-landscape",
+    "/media/director-r4/previews/desert-crossfire.webp": "director-desert-crossfire-landscape",
+    "/media/director-r4/films/desert-crossfire.jpg": "director-desert-crossfire-landscape",
+    "/media/director-r4/stills/desert-crossfire-portrait.webp": "director-desert-crossfire-portrait",
+    "/media/director-r4/promo/desert-crossfire-portrait.webp": "director-desert-crossfire-portrait",
+    "/media/director-r4/stills/desert-crossfire-square.webp": "director-desert-crossfire-square",
+    "/media/director-r4/promo/desert-crossfire-square.webp": "director-desert-crossfire-square",
+    "/media/director-r4/films/desert-crossfire.mp4": "director-film-desert-crossfire",
+    "/media/director-r4/stills/coast-recon-landscape.webp": "director-coast-recon-landscape",
+    "/media/director-r4/promo/coast-recon-landscape.webp": "director-coast-recon-landscape",
+    "/media/director-r4/previews/coast-recon.webp": "director-coast-recon-landscape",
+    "/media/director-r4/films/coast-recon.jpg": "director-coast-recon-landscape",
+    "/media/director-r4/stills/coast-recon-portrait.webp": "director-coast-recon-portrait",
+    "/media/director-r4/promo/coast-recon-portrait.webp": "director-coast-recon-portrait",
+    "/media/director-r4/stills/coast-recon-square.webp": "director-coast-recon-square",
+    "/media/director-r4/promo/coast-recon-square.webp": "director-coast-recon-square",
+    "/media/director-r4/films/coast-recon.mp4": "director-film-coast-recon",
     "/maps/verdant.webp": "production-map-verdant",
     "/maps/cards/verdant.webp": "production-map-verdant",
     "/maps/thumbs/verdant.webp": "production-map-verdant",
@@ -1357,34 +749,7 @@
     "/maps/thumbs/reservoir.webp": "production-map-reservoir",
     "/maps/mars.webp": "production-map-mars",
     "/maps/cards/mars.webp": "production-map-mars",
-    "/maps/thumbs/mars.webp": "production-map-mars",
-    "/media/director-r4/stills/steel-pursuit-landscape.webp": "director-steel-pursuit-landscape",
-    "/media/director-r4/promo/steel-pursuit-landscape.webp": "director-steel-pursuit-landscape",
-    "/media/director-r4/previews/steel-pursuit.webp": "director-steel-pursuit-landscape",
-    "/media/director-r4/films/steel-pursuit.jpg": "director-steel-pursuit-landscape",
-    "/media/director-r4/stills/steel-pursuit-portrait.webp": "director-steel-pursuit-portrait",
-    "/media/director-r4/promo/steel-pursuit-portrait.webp": "director-steel-pursuit-portrait",
-    "/media/director-r4/stills/steel-pursuit-square.webp": "director-steel-pursuit-square",
-    "/media/director-r4/promo/steel-pursuit-square.webp": "director-steel-pursuit-square",
-    "/media/director-r4/films/steel-pursuit.mp4": "director-film-steel-pursuit",
-    "/media/director-r4/stills/desert-crossfire-landscape.webp": "director-desert-crossfire-landscape",
-    "/media/director-r4/promo/desert-crossfire-landscape.webp": "director-desert-crossfire-landscape",
-    "/media/director-r4/previews/desert-crossfire.webp": "director-desert-crossfire-landscape",
-    "/media/director-r4/films/desert-crossfire.jpg": "director-desert-crossfire-landscape",
-    "/media/director-r4/stills/desert-crossfire-portrait.webp": "director-desert-crossfire-portrait",
-    "/media/director-r4/promo/desert-crossfire-portrait.webp": "director-desert-crossfire-portrait",
-    "/media/director-r4/stills/desert-crossfire-square.webp": "director-desert-crossfire-square",
-    "/media/director-r4/promo/desert-crossfire-square.webp": "director-desert-crossfire-square",
-    "/media/director-r4/films/desert-crossfire.mp4": "director-film-desert-crossfire",
-    "/media/director-r4/stills/coast-recon-landscape.webp": "director-coast-recon-landscape",
-    "/media/director-r4/promo/coast-recon-landscape.webp": "director-coast-recon-landscape",
-    "/media/director-r4/previews/coast-recon.webp": "director-coast-recon-landscape",
-    "/media/director-r4/films/coast-recon.jpg": "director-coast-recon-landscape",
-    "/media/director-r4/stills/coast-recon-portrait.webp": "director-coast-recon-portrait",
-    "/media/director-r4/promo/coast-recon-portrait.webp": "director-coast-recon-portrait",
-    "/media/director-r4/stills/coast-recon-square.webp": "director-coast-recon-square",
-    "/media/director-r4/promo/coast-recon-square.webp": "director-coast-recon-square",
-    "/media/director-r4/films/coast-recon.mp4": "director-film-coast-recon"
+    "/maps/thumbs/mars.webp": "production-map-mars"
   },
   "recipes": {
     "production-reservoir-day-landscape": {
@@ -2357,688 +1722,6 @@
             ]
           }
         ]
-      }
-    },
-    "production-map-verdant": {
-      "map": "verdant",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -64,
-          55.68320319870119,
-          -148
-        ],
-        "lookAt": [
-          80,
-          2.24218078939004,
-          156
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-desert": {
-      "map": "desert",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -85,
-          116.50546548147682,
-          -162
-        ],
-        "lookAt": [
-          60,
-          18.211138611066588,
-          172
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-winter": {
-      "map": "winter",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -236,
-          75.71023250197422,
-          -318
-        ],
-        "lookAt": [
-          46,
-          -3.1783953524814694,
-          40
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-urban": {
-      "map": "urban",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -48,
-          58.426784411626805,
-          -208
-        ],
-        "lookAt": [
-          46,
-          4.537460960569614,
-          20
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-coastal": {
-      "map": "coastal",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          356,
-          60,
-          -300
-        ],
-        "lookAt": [
-          96,
-          -5.354913259358972,
-          190
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-autumn": {
-      "map": "autumn",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          388,
-          67.6917330432987,
-          -478
-        ],
-        "lookAt": [
-          -60,
-          9.039659165792045,
-          60
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-steppe": {
-      "map": "steppe",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -330,
-          65.51481602301067,
-          -470
-        ],
-        "lookAt": [
-          60,
-          8.200000047683716,
-          60
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-railyard": {
-      "map": "railyard",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -170,
-          65.95460286613113,
-          -240
-        ],
-        "lookAt": [
-          60,
-          1.2913503169060945,
-          60
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-frontier": {
-      "map": "frontier",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -132,
-          65.06969278089898,
-          -220
-        ],
-        "lookAt": [
-          36,
-          4.841559436349598,
-          116
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-fjord": {
-      "map": "fjord",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -226,
-          74.04572482919042,
-          -238
-        ],
-        "lookAt": [
-          218,
-          -4.4655479192733765,
-          38
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-delta": {
-      "map": "delta",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          248,
-          70.59819386983571,
-          -274
-        ],
-        "lookAt": [
-          -34,
-          3.3591692899531145,
-          72
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-badlands": {
-      "map": "badlands",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -236,
-          78.18568706512451,
-          -226
-        ],
-        "lookAt": [
-          38,
-          10.678703044751567,
-          54
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-monsoon": {
-      "map": "monsoon",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -176,
-          71.96304362666649,
-          -232
-        ],
-        "lookAt": [
-          44,
-          7.453932821718909,
-          92
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-alpine": {
-      "map": "alpine",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -238,
-          94.97565783504723,
-          -252
-        ],
-        "lookAt": [
-          62,
-          -9.123679069577472,
-          54
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-caldera": {
-      "map": "caldera",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -238,
-          84.7500664281491,
-          -230
-        ],
-        "lookAt": [
-          42,
-          9.361567330069732,
-          66
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-foundry": {
-      "map": "foundry",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -244,
-          73.55482349750929,
-          -248
-        ],
-        "lookAt": [
-          54,
-          3.7985646320948696,
-          72
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-ruinspires": {
-      "map": "ruinspires",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -244,
-          57.33816751595994,
-          -274
-        ],
-        "lookAt": [
-          36,
-          15.255523702260867,
-          46
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-blackglass": {
-      "map": "blackglass",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -344,
-          71.72204410413012,
-          -308
-        ],
-        "lookAt": [
-          18,
-          11.590551247565797,
-          46
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-titan_gorge": {
-      "map": "titan_gorge",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -286,
-          89.24861361585899,
-          -246
-        ],
-        "lookAt": [
-          38,
-          12.388159803463832,
-          68
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-skybridge": {
-      "map": "skybridge",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -280,
-          92.37026394058174,
-          -236
-        ],
-        "lookAt": [
-          22,
-          1.0067848217117694,
-          92
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-polders": {
-      "map": "polders",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -268,
-          76.71027707364078,
-          -256
-        ],
-        "lookAt": [
-          28,
-          -0.11077350589538204,
-          112
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-copper_mesa": {
-      "map": "copper_mesa",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -284,
-          98.69100214951693,
-          -282
-        ],
-        "lookAt": [
-          -30,
-          -7.935553142419364,
-          90
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-airfield": {
-      "map": "airfield",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -294,
-          78.14621353782931,
-          -310
-        ],
-        "lookAt": [
-          80,
-          2.4720795276440617,
-          90
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-oasis": {
-      "map": "oasis",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -252,
-          85.50761737873225,
-          -246
-        ],
-        "lookAt": [
-          86,
-          1.8519930397024273,
-          80
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-whiteout": {
-      "map": "whiteout",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -256,
-          81.43021650704293,
-          -262
-        ],
-        "lookAt": [
-          68,
-          -1.4053230451260046,
-          82
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-orchard": {
-      "map": "orchard",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -244,
-          91.22122981806643,
-          -256
-        ],
-        "lookAt": [
-          60,
-          1.468021311163469,
-          98
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-longleaf": {
-      "map": "longleaf",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -244,
-          85.34420436452615,
-          -250
-        ],
-        "lookAt": [
-          50,
-          2.4444216812417734,
-          100
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-mangrove": {
-      "map": "mangrove",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -260,
-          80.85130807780789,
-          -260
-        ],
-        "lookAt": [
-          52,
-          -0.4222072958946228,
-          90
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-saltwind": {
-      "map": "saltwind",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          120,
-          191.9742596075554,
-          280
-        ],
-        "lookAt": [
-          -260,
-          -5.651393170117241,
-          -15
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-reservoir": {
-      "map": "reservoir",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -248,
-          92.38983627607729,
-          -248
-        ],
-        "lookAt": [
-          108,
-          -9,
-          74
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-mars": {
-      "map": "mars",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -90,
-          104.95581557754039,
-          -170
-        ],
-        "lookAt": [
-          50,
-          19.385132616253095,
-          160
-        ],
-        "fov": 55
       }
     },
     "director-steel-pursuit-landscape": {
@@ -7704,157 +6387,1660 @@
         ],
         "fov": 46
       }
+    },
+    "production-map-verdant": {
+      "map": "verdant",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -64,
+          55.68320319870119,
+          -148
+        ],
+        "lookAt": [
+          80,
+          2.24218078939004,
+          156
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-desert": {
+      "map": "desert",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -85,
+          116.50546548147682,
+          -162
+        ],
+        "lookAt": [
+          60,
+          17.23198043399777,
+          172
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-winter": {
+      "map": "winter",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -236,
+          75.71023250197422,
+          -318
+        ],
+        "lookAt": [
+          46,
+          -3.1783953524814694,
+          40
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-urban": {
+      "map": "urban",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -48,
+          58.426784411626805,
+          -208
+        ],
+        "lookAt": [
+          46,
+          4.537460960569614,
+          20
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-coastal": {
+      "map": "coastal",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          356,
+          60,
+          -300
+        ],
+        "lookAt": [
+          96,
+          -5.354913259358972,
+          190
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-autumn": {
+      "map": "autumn",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          388,
+          67.6917330432987,
+          -478
+        ],
+        "lookAt": [
+          -60,
+          9.039659165792045,
+          60
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-steppe": {
+      "map": "steppe",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -330,
+          65.51481602301067,
+          -470
+        ],
+        "lookAt": [
+          60,
+          8.200000047683716,
+          60
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-railyard": {
+      "map": "railyard",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -170,
+          65.95460286613113,
+          -240
+        ],
+        "lookAt": [
+          60,
+          1.2913503169060945,
+          60
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-frontier": {
+      "map": "frontier",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -132,
+          65.06969278089898,
+          -220
+        ],
+        "lookAt": [
+          36,
+          4.841559436349598,
+          116
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-fjord": {
+      "map": "fjord",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -226,
+          74.04572482919042,
+          -238
+        ],
+        "lookAt": [
+          218,
+          -4.4655479192733765,
+          38
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-delta": {
+      "map": "delta",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          248,
+          70.59819386983571,
+          -274
+        ],
+        "lookAt": [
+          -34,
+          3.3591692899531145,
+          72
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-badlands": {
+      "map": "badlands",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -236,
+          78.18568706512451,
+          -226
+        ],
+        "lookAt": [
+          38,
+          10.678703044751567,
+          54
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-monsoon": {
+      "map": "monsoon",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -176,
+          71.96304362666649,
+          -232
+        ],
+        "lookAt": [
+          44,
+          7.453932821718909,
+          92
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-alpine": {
+      "map": "alpine",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -238,
+          94.97565783504723,
+          -252
+        ],
+        "lookAt": [
+          62,
+          -9.123679069577472,
+          54
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-caldera": {
+      "map": "caldera",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -238,
+          84.7500664281491,
+          -230
+        ],
+        "lookAt": [
+          42,
+          9.361567330069732,
+          66
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-foundry": {
+      "map": "foundry",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -244,
+          73.55482349750929,
+          -248
+        ],
+        "lookAt": [
+          54,
+          3.7985646320948696,
+          72
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-ruinspires": {
+      "map": "ruinspires",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -244,
+          57.33816751595994,
+          -274
+        ],
+        "lookAt": [
+          36,
+          15.255523702260867,
+          46
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-blackglass": {
+      "map": "blackglass",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -344,
+          71.72204410413012,
+          -308
+        ],
+        "lookAt": [
+          18,
+          11.590551247565797,
+          46
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-titan_gorge": {
+      "map": "titan_gorge",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -286,
+          89.24861361585899,
+          -246
+        ],
+        "lookAt": [
+          38,
+          12.388159803463832,
+          68
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-skybridge": {
+      "map": "skybridge",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -280,
+          92.37026394058174,
+          -236
+        ],
+        "lookAt": [
+          22,
+          1.0067848217117694,
+          92
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-polders": {
+      "map": "polders",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -268,
+          76.71027707364078,
+          -256
+        ],
+        "lookAt": [
+          28,
+          -0.11077350589538204,
+          112
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-copper_mesa": {
+      "map": "copper_mesa",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -284,
+          98.69100214951693,
+          -282
+        ],
+        "lookAt": [
+          -30,
+          -7.935553142419364,
+          90
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-airfield": {
+      "map": "airfield",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -294,
+          78.14621353782931,
+          -310
+        ],
+        "lookAt": [
+          80,
+          2.4720795276440617,
+          90
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-oasis": {
+      "map": "oasis",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -252,
+          85.50761737873225,
+          -246
+        ],
+        "lookAt": [
+          86,
+          1.8519930397024273,
+          80
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-whiteout": {
+      "map": "whiteout",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -256,
+          81.43021650704293,
+          -262
+        ],
+        "lookAt": [
+          68,
+          -1.4053230451260046,
+          82
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-orchard": {
+      "map": "orchard",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -244,
+          91.22122981806643,
+          -256
+        ],
+        "lookAt": [
+          60,
+          1.479706791989372,
+          98
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-longleaf": {
+      "map": "longleaf",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -244,
+          85.34420436452615,
+          -250
+        ],
+        "lookAt": [
+          50,
+          3.4886630390581503,
+          100
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-mangrove": {
+      "map": "mangrove",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -260,
+          80.85130807780789,
+          -260
+        ],
+        "lookAt": [
+          52,
+          -0.4222072958946228,
+          90
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-saltwind": {
+      "map": "saltwind",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          120,
+          191.9742596075554,
+          280
+        ],
+        "lookAt": [
+          -260,
+          -5.651393170117241,
+          -15
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-reservoir": {
+      "map": "reservoir",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -248,
+          92.38983627607729,
+          -248
+        ],
+        "lookAt": [
+          108,
+          -9,
+          74
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-mars": {
+      "map": "mars",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -90,
+          104.95581557754039,
+          -170
+        ],
+        "lookAt": [
+          50,
+          19.385132616253095,
+          160
+        ],
+        "fov": 55
+      }
     }
   },
+  "assets": [
+    {
+      "src": "/maps/verdant.webp",
+      "sha256": "ef48756bd534880ca4047d195cd84d597f9db9d6bf6fb2ac85b096290f1a488e"
+    },
+    {
+      "src": "/maps/cards/verdant.webp",
+      "sha256": "9ef924f6cce086709d13cbf9ac063b28b2a070c9ca54140b058816cefdd134a0"
+    },
+    {
+      "src": "/maps/thumbs/verdant.webp",
+      "sha256": "9ddb838b6eba840c86579901711d19ad82c0f5e3c4efc1dd337e885dc48e123b"
+    },
+    {
+      "src": "/maps/desert.webp",
+      "sha256": "5f88f9a0f1b65bd7901c893bfdc173e92348f1ad083399735dedf62a2f337f8c"
+    },
+    {
+      "src": "/maps/cards/desert.webp",
+      "sha256": "012a811a87bb7ca237cf057593d5dd07835aa696d725cbb044715f6d95af96cc"
+    },
+    {
+      "src": "/maps/thumbs/desert.webp",
+      "sha256": "2cfa2a26e935090e9b377124f50a2b989ed73dbe9d3d592f1716676a333aeaa4"
+    },
+    {
+      "src": "/maps/winter.webp",
+      "sha256": "537c352e0ed212337976f4a70115fe9215ee2994765cee7a77b1b59e2de2304f"
+    },
+    {
+      "src": "/maps/cards/winter.webp",
+      "sha256": "5d88af2ef4b83f130cb84d48ee3da1719f430a1144d3b57a9cc419f7cb652265"
+    },
+    {
+      "src": "/maps/thumbs/winter.webp",
+      "sha256": "0fa53f9184521d713283563e0aa1f294e0345f0e3aa13283f383e52716917a57"
+    },
+    {
+      "src": "/maps/urban.webp",
+      "sha256": "feea3705a67f35a07d6cb5b84af79f27462edca2acf72db5c5b14bda72898bd3"
+    },
+    {
+      "src": "/maps/cards/urban.webp",
+      "sha256": "0792c118f8e67f8f0133d44075bb54428bfcc050e4fe0ede6cc7269f1771884f"
+    },
+    {
+      "src": "/maps/thumbs/urban.webp",
+      "sha256": "e7efea31dd119ad00146035a2273295dcc472ef60ec5ee3fc459470483d37664"
+    },
+    {
+      "src": "/maps/coastal.webp",
+      "sha256": "051843158da5574c83436f3cf5ca9bc6acab73625f1e3d6da4ffe9a02dfe0431"
+    },
+    {
+      "src": "/maps/cards/coastal.webp",
+      "sha256": "f2900ab04ac90ab51a31288fafdb1d35a4a0cab82e9893beb8da0ca27a131ce4"
+    },
+    {
+      "src": "/maps/thumbs/coastal.webp",
+      "sha256": "449572e2aca1f397fef3f006012ca8c6109d43749cc156f9c42a23da4a4af141"
+    },
+    {
+      "src": "/maps/autumn.webp",
+      "sha256": "85358e81fd2428602f41b2e7ba6b2e86cc0f1d2b793d195cd94a0a8d0685d7a4"
+    },
+    {
+      "src": "/maps/cards/autumn.webp",
+      "sha256": "c091a0ea95a9f0d28eda6782fedc09c05db28a7c5a190ad1bcd1e4b1fed61bea"
+    },
+    {
+      "src": "/maps/thumbs/autumn.webp",
+      "sha256": "5551ce194c59a0d14d2e564d64ed4579c0376dc21cd3ebcc29cb9e84c2603cd3"
+    },
+    {
+      "src": "/maps/steppe.webp",
+      "sha256": "811c7fbe314ea9801cf568aa18160559853b8a30545035fe746fa23f015d8d53"
+    },
+    {
+      "src": "/maps/cards/steppe.webp",
+      "sha256": "75500ae62d842436ec845101c51670ecb3db651c1dff372971a6bf390ed124bb"
+    },
+    {
+      "src": "/maps/thumbs/steppe.webp",
+      "sha256": "ade92e32a580ffded43647c47716f782e4774ad386f895eb94084bf148db32e4"
+    },
+    {
+      "src": "/maps/railyard.webp",
+      "sha256": "495666556222e7081644ebb6399a697478433c3d77b2f98a6b0ee21350476985"
+    },
+    {
+      "src": "/maps/cards/railyard.webp",
+      "sha256": "61702ea26a1571614c9d385b73619f08fe49bc8cf759987d456bee60b866c592"
+    },
+    {
+      "src": "/maps/thumbs/railyard.webp",
+      "sha256": "c3ad3d8c23898dfd4edac4939625368fc429dcccbcff3493c84d2975b414fe8d"
+    },
+    {
+      "src": "/maps/frontier.webp",
+      "sha256": "7ac6bc94a30a8df1721b0a6aec242349d14992060fe0a26ceeb45e2e2fc069b3"
+    },
+    {
+      "src": "/maps/cards/frontier.webp",
+      "sha256": "29fc4d47ff43e0730c84ba152d285c0874566b5f9d8972fd977d93947dec5bb5"
+    },
+    {
+      "src": "/maps/thumbs/frontier.webp",
+      "sha256": "46602a5380e5c01613593a3ffad61a67843d42b5f79f890c38309cbbf185c801"
+    },
+    {
+      "src": "/maps/fjord.webp",
+      "sha256": "030e927e1c8d03928ae09b664255ce2ce383850e2384e2a1e75d52380dbf135c"
+    },
+    {
+      "src": "/maps/cards/fjord.webp",
+      "sha256": "ea16ea88f7679d85990839b4cc4d87264a956c95fc90fd1bb506fead475ccd37"
+    },
+    {
+      "src": "/maps/thumbs/fjord.webp",
+      "sha256": "d404561eddb5b304ae88727c89b29fe5aa1c6e97a5917d8843b1a71870ec4da0"
+    },
+    {
+      "src": "/maps/delta.webp",
+      "sha256": "1b9589210ac8c014995e1ce44ec0f4b7d31ef82bcc9ffcbb3c4a1e476088d185"
+    },
+    {
+      "src": "/maps/cards/delta.webp",
+      "sha256": "f9fc6ebcde4f64b9657880bca5ae2c83aa62438b5627aa983be9a3c700d8c46d"
+    },
+    {
+      "src": "/maps/thumbs/delta.webp",
+      "sha256": "864712bcb0a92f5bba86879857fe652f447a20df123c7f8ecf6ca105287c20aa"
+    },
+    {
+      "src": "/maps/badlands.webp",
+      "sha256": "525ac9a6749de05d29bc4345e495f1875a61ba831355bebeeaad4dcdfec07aae"
+    },
+    {
+      "src": "/maps/cards/badlands.webp",
+      "sha256": "84485663435c97de70151f90b7689cddcce0986ead61659c3223dd04bd6c36d3"
+    },
+    {
+      "src": "/maps/thumbs/badlands.webp",
+      "sha256": "8260719953201714e1f36570eee02be511c01da807d5a0f0fa4e6b0978eb34fe"
+    },
+    {
+      "src": "/maps/monsoon.webp",
+      "sha256": "1e2e59defc8f69870520fb16fbc523327239f70a7a4ff736992b6504c6a29498"
+    },
+    {
+      "src": "/maps/cards/monsoon.webp",
+      "sha256": "0c34bbca8522160d33ed1c246610b3483a038fa2e61289a9577b5e02fe300a6c"
+    },
+    {
+      "src": "/maps/thumbs/monsoon.webp",
+      "sha256": "5e5f575141ffe164775a6c984215339efb675eef0cadbed2d9415836e9cdcb06"
+    },
+    {
+      "src": "/maps/alpine.webp",
+      "sha256": "aee03b655670d2553cefd5da14c2813d8fc7831e9ab0a955309b45581964d3a0"
+    },
+    {
+      "src": "/maps/cards/alpine.webp",
+      "sha256": "871de0a97ac88c8d933ce732d04b195930413d8a1359fe9d6cbd1ce12836bba3"
+    },
+    {
+      "src": "/maps/thumbs/alpine.webp",
+      "sha256": "9ea91321b6e16ac613a9588324905247d60f041b2506593ca7497a2c85b96163"
+    },
+    {
+      "src": "/maps/caldera.webp",
+      "sha256": "b2abbc32c0b05de5280b3a66452ecf429ced4644f6bc49a597ba788a4b67f0b0"
+    },
+    {
+      "src": "/maps/cards/caldera.webp",
+      "sha256": "19d960ab88f870149a8c0fd04dcc6a3b7f672bda9903cbee6cfe6035216988fe"
+    },
+    {
+      "src": "/maps/thumbs/caldera.webp",
+      "sha256": "0d1ec4d776dbc2c3d3e9a875d32c8418e7606a2cab4f1e6b23b76d01866e63e7"
+    },
+    {
+      "src": "/maps/foundry.webp",
+      "sha256": "bac90fadbf0402ce61c115a5fc286965cc89038ff633730909d6428d6382a58f"
+    },
+    {
+      "src": "/maps/cards/foundry.webp",
+      "sha256": "a2561e22a04d23a1ae7b127fbb0ddf962872b63fafc7bd0ba260342afe0ce489"
+    },
+    {
+      "src": "/maps/thumbs/foundry.webp",
+      "sha256": "33fa101bb1f9d41c317d2b19bd105680717fa80abd062cb1da01270d0cc941a5"
+    },
+    {
+      "src": "/maps/ruinspires.webp",
+      "sha256": "1c1155b718112be169b1183f71262ac97bfbaa1cc81b0e1b260e5a817f9fa241"
+    },
+    {
+      "src": "/maps/cards/ruinspires.webp",
+      "sha256": "ac4a7b00c2734982bf7478f44ece82084763584e8471392b776a72f151100126"
+    },
+    {
+      "src": "/maps/thumbs/ruinspires.webp",
+      "sha256": "b107fc325bdf64e66ab8cdfd66ccadb819b343363586886e31cd5340a72b9ffd"
+    },
+    {
+      "src": "/maps/blackglass.webp",
+      "sha256": "adfd174d5606d787a9a20cde54779a45597c6568c7d058366e2579a31142e61c"
+    },
+    {
+      "src": "/maps/cards/blackglass.webp",
+      "sha256": "329df2d1fa2a0002598b6daf92fba65eba90ef24f88c9ecaaf5213ff5628f680"
+    },
+    {
+      "src": "/maps/thumbs/blackglass.webp",
+      "sha256": "31d89ad365ec9dd1d968ec97cd27f893f5414c5acdddc8f009a136da80167f55"
+    },
+    {
+      "src": "/maps/titan_gorge.webp",
+      "sha256": "d32b35ed3adb089b4e0c68951c97cfc16d66eb6efd461cb41d34011e768ec2b6"
+    },
+    {
+      "src": "/maps/cards/titan_gorge.webp",
+      "sha256": "34ecd93689c79bf662859353f4b29a6cb4388db96743e9c1baac5cff87cbf39f"
+    },
+    {
+      "src": "/maps/thumbs/titan_gorge.webp",
+      "sha256": "c374c566487f0b328f264934390417d138c1d132a63f4a07cee2b36e6eb4e3cd"
+    },
+    {
+      "src": "/maps/skybridge.webp",
+      "sha256": "fbb9f0f18d9654d6d001ea353e561214c948af21595e47d9007fecf5fe4b3242"
+    },
+    {
+      "src": "/maps/cards/skybridge.webp",
+      "sha256": "e71ba2e7dca5c9326cbc72e7edf13e1e092c1665a9aa77b020b3407ad9399640"
+    },
+    {
+      "src": "/maps/thumbs/skybridge.webp",
+      "sha256": "1a1eb775e46ee9e3888fdcb7a65e76972578c8abce232566e28015dcf1680d35"
+    },
+    {
+      "src": "/maps/polders.webp",
+      "sha256": "3649eacd168d56cf0a6c54bd2ed5e036f100691e7fb4e5471f4105358c5792ea"
+    },
+    {
+      "src": "/maps/cards/polders.webp",
+      "sha256": "fae03a7ae83e28d978906314f1fdf6ee2909d3dc571e203dd74552982a5ab1ca"
+    },
+    {
+      "src": "/maps/thumbs/polders.webp",
+      "sha256": "aa14e3313e6ec00f8ea97050c5d121cb3b748fba3d3eaf0b29f6beaca8bfc700"
+    },
+    {
+      "src": "/maps/copper_mesa.webp",
+      "sha256": "6e4af6412b0b1f1f2c08029b7fbb1fb9d65138789e3308969eb8b546f6043a79"
+    },
+    {
+      "src": "/maps/cards/copper_mesa.webp",
+      "sha256": "3e7990d98f31b5b2369fca865d441d548f751e14106744c8cbf8af61bf006dcb"
+    },
+    {
+      "src": "/maps/thumbs/copper_mesa.webp",
+      "sha256": "806c3d160db2ec8616884e703c1cbff0a7141d44d590a720b00a3c13a303972c"
+    },
+    {
+      "src": "/maps/airfield.webp",
+      "sha256": "3df709ae8d46ae4d68eeedb71687d531dc3350deaa619d44cfe1705a5245c091"
+    },
+    {
+      "src": "/maps/cards/airfield.webp",
+      "sha256": "cf7a0de6597d2bd32b547785bee25d4facf0fcb7a7f8cb3394386ba25b3c473b"
+    },
+    {
+      "src": "/maps/thumbs/airfield.webp",
+      "sha256": "e53ca3aef38e14d2af3b160dbfeaa5f32d1abf1011861bc63c287876cc29362f"
+    },
+    {
+      "src": "/maps/oasis.webp",
+      "sha256": "b3c47705aa6730751cbf8a066ee3a306b9c4ee75254199b58fedda168d62516d"
+    },
+    {
+      "src": "/maps/cards/oasis.webp",
+      "sha256": "6bae3134db8e3450c7c6be9a1e04e220f366faf4b71666305859b5d78feb3e4b"
+    },
+    {
+      "src": "/maps/thumbs/oasis.webp",
+      "sha256": "bcdb2d5226bf5518c37a0a992b89684fd98558e51477a4f98dd671559c82bf20"
+    },
+    {
+      "src": "/maps/whiteout.webp",
+      "sha256": "ec2d060b38fd890993dcc7069bc69e51127a78330a12308d74e35ee7bba8161d"
+    },
+    {
+      "src": "/maps/cards/whiteout.webp",
+      "sha256": "964fbf875e572389e635885f34d6db4acf10527fc6ca38228abed4e486e1c68f"
+    },
+    {
+      "src": "/maps/thumbs/whiteout.webp",
+      "sha256": "a4a438894c15bd1abb5b2d29e08d809cf95be284840482cd26378fcf7254281c"
+    },
+    {
+      "src": "/maps/orchard.webp",
+      "sha256": "71c0f9c50de4cc65e1462617144b5e5021219c7c68fa52a06d31a0b62f2d476b"
+    },
+    {
+      "src": "/maps/cards/orchard.webp",
+      "sha256": "10aee8063dc8d1736e050ba30c275eeb1dbcdceae3d71a079abfd1757ad2f16e"
+    },
+    {
+      "src": "/maps/thumbs/orchard.webp",
+      "sha256": "1efb3c29142f713a22d97aaaa8c76793344761b2791e539f20bc410293ddea9c"
+    },
+    {
+      "src": "/maps/longleaf.webp",
+      "sha256": "9d83e17590de02ae061bb75b9e1cd63c8c678bde059bac308333be21193cb3b3"
+    },
+    {
+      "src": "/maps/cards/longleaf.webp",
+      "sha256": "16d99532ebe88a62c16c330ab1e8465f56e20c0d412b846ece4b066e56a79125"
+    },
+    {
+      "src": "/maps/thumbs/longleaf.webp",
+      "sha256": "d78a56df35ef19a94af428760101281da15c5de4f4a81290e7e4bace00145b69"
+    },
+    {
+      "src": "/maps/mangrove.webp",
+      "sha256": "399b9a4e1c40bccac5c2cf94e49ff79363d95df96acafcad82ecfa0416d888ba"
+    },
+    {
+      "src": "/maps/cards/mangrove.webp",
+      "sha256": "586e7e532165c0a6ac699b11c11df960e9bdf931da86ffc1937d434c7ccc6e74"
+    },
+    {
+      "src": "/maps/thumbs/mangrove.webp",
+      "sha256": "d11622fa0f9b56023de433a5960ea238a22dabeec9d38ef34fc5932c3cb07bcc"
+    },
+    {
+      "src": "/maps/saltwind.webp",
+      "sha256": "b73f3e6fccaefdcd591ee7dd82ae6305d1d5c9b8b1d72bfc3031c23b7bbe0c91"
+    },
+    {
+      "src": "/maps/cards/saltwind.webp",
+      "sha256": "23f0d0d3829c5c5fa3ffe674935f983463674ee2d71164066c6aae8ca024f61e"
+    },
+    {
+      "src": "/maps/thumbs/saltwind.webp",
+      "sha256": "8da243f2ac7037d1c80fec096573309de1a26cf4225429003a3bb67fdb9282ec"
+    },
+    {
+      "src": "/maps/reservoir.webp",
+      "sha256": "d066c916c0e98bf1d2dce4d291b2c75159d84a762366690407ad445e236931e7"
+    },
+    {
+      "src": "/maps/cards/reservoir.webp",
+      "sha256": "53b4c8acbd1176aad49ca67752c3c7c3e6f0af3ab69ff72c06b86cfbd7146136"
+    },
+    {
+      "src": "/maps/thumbs/reservoir.webp",
+      "sha256": "c700ae5dea233c125d4721dbe3bf477e78deddf42ede91a805ddaefd2723e694"
+    },
+    {
+      "src": "/maps/mars.webp",
+      "sha256": "d7b0b15d49d614beb4b5c14869d55c37e8f9e25943447b63bd0129bd58fb6924"
+    },
+    {
+      "src": "/maps/cards/mars.webp",
+      "sha256": "e7bb2c3b9608fe8d75a5c4c5691df81ead3748e4298272a01cbdd27ea02756fe"
+    },
+    {
+      "src": "/maps/thumbs/mars.webp",
+      "sha256": "d8e00f4e1e27b7f74cf93896271d550594cbec630812d0e0a116505ab00ab9c2"
+    },
+    {
+      "src": "/media/director-r4/gameplay/battle-live.mp4",
+      "sha256": "fd97273e6a42b4b6054bfd50d582f78c8098a5ecf1ef0d6651c165f1319a9b2b",
+      "bytes": 3871118
+    },
+    {
+      "src": "/media/director-r4/gameplay/battle-live-mobile.mp4",
+      "sha256": "73ca12ad53c66d921226d00054caf8afc3c63fc5e73049dca5dac749398a3119",
+      "bytes": 1134816
+    },
+    {
+      "src": "/media/director-r4/gameplay/battle-opening.webp",
+      "sha256": "6d5f0da8af7cfe32a4eccef2a415b2f32fff8b27adac76c7fdb9490a95891e7a",
+      "bytes": 677602
+    },
+    {
+      "src": "/media/director-r4/gameplay/battle-impact.webp",
+      "sha256": "052e373d27bb54c0ad0f718113c792591a99718975c874e10a6b2b017ce0b2be",
+      "bytes": 680208
+    },
+    {
+      "src": "/media/director-r4/gameplay/battle-live.vtt",
+      "sha256": "7637c67383f38ecfabd82966103afb4c021e26ceebbcf4fda03e1c08acb9ed21",
+      "bytes": 164
+    },
+    {
+      "src": "/media/director-r4/films/steel-pursuit.mp4",
+      "sha256": "b0a258a4ec5ecc3667cf3cd81351de186a6f3cd8eaeac4fcda0a33f8cd052aa3"
+    },
+    {
+      "src": "/media/director-r4/stills/steel-pursuit-landscape.webp",
+      "sha256": "89db97432faf20913a71bedba96dd0b86e4813f5486ad85e20af229120dcde25"
+    },
+    {
+      "src": "/media/director-r4/promo/steel-pursuit-landscape.webp",
+      "sha256": "6e42c88952b8098d21b34d274559d3b0699cad7735c49d4464bcbea50ba8ddeb"
+    },
+    {
+      "src": "/media/director-r4/previews/steel-pursuit.webp",
+      "sha256": "7397b000b06594a8b86abda438ad97340ad3ef5a6a94926de27f1a38dc06abfe"
+    },
+    {
+      "src": "/media/director-r4/films/steel-pursuit.jpg",
+      "sha256": "bb25ab138d7ee3593c69e829f602655747c057d3e08481ae2f8d676cb47179a7"
+    },
+    {
+      "src": "/media/director-r4/stills/steel-pursuit-portrait.webp",
+      "sha256": "948f7fff2d1cf6e495b445852216564fdf13b1aaa145bb8443ded1263350c12f"
+    },
+    {
+      "src": "/media/director-r4/promo/steel-pursuit-portrait.webp",
+      "sha256": "443b846da84bcd0c54c01b1f74365686aacc8541bac0d350f242af79accbf707"
+    },
+    {
+      "src": "/media/director-r4/stills/steel-pursuit-square.webp",
+      "sha256": "a31b4d9be4234adb6d36f05f05d0417fa405ff0904581d5511cfb68c5b7cd855"
+    },
+    {
+      "src": "/media/director-r4/promo/steel-pursuit-square.webp",
+      "sha256": "901e2dc7fabad5b00c0832b3ba8d84f2f344e0158338d1356e9ac8fb9c2d7446"
+    },
+    {
+      "src": "/media/director-r4/films/desert-crossfire.mp4",
+      "sha256": "7b7e082b73c0a8215a294497dd6574c720529625c8383f1d40b09b3374cf6bbb"
+    },
+    {
+      "src": "/media/director-r4/stills/desert-crossfire-landscape.webp",
+      "sha256": "e4bb0dfc4e62106602c01bec0a277ec2b5a5916d72bed2909b41fc256f1f67f8"
+    },
+    {
+      "src": "/media/director-r4/promo/desert-crossfire-landscape.webp",
+      "sha256": "704057fd847e47092c2542d991177ad15854bb97202439896db4787b7967104b"
+    },
+    {
+      "src": "/media/director-r4/previews/desert-crossfire.webp",
+      "sha256": "95972c35df5805dcf6bd81c252d3a4679a4bc12cfcc418396c8aeda87d7ea36c"
+    },
+    {
+      "src": "/media/director-r4/films/desert-crossfire.jpg",
+      "sha256": "21421846231da3565cd6df4ed90ddba76a2ccf6c4f165425ba391396c72ab12b"
+    },
+    {
+      "src": "/media/director-r4/stills/desert-crossfire-portrait.webp",
+      "sha256": "1a511a4f793f2b06853cb45faec1f8981d9982bf595f149c963c27887ce914d8"
+    },
+    {
+      "src": "/media/director-r4/promo/desert-crossfire-portrait.webp",
+      "sha256": "01e3cc0479a5204f597cea4de871bb730a4619d3cfcc0549bd8e4b2e67ecae09"
+    },
+    {
+      "src": "/media/director-r4/stills/desert-crossfire-square.webp",
+      "sha256": "1cfb9368a7c2777af2d776e5e3036c4b01788a5f196f330e0988e93b8c61f0ca"
+    },
+    {
+      "src": "/media/director-r4/promo/desert-crossfire-square.webp",
+      "sha256": "3d98c9b811eed00cf7371dccef85fafc337898e6a01143c33a2af275b5b16b25"
+    },
+    {
+      "src": "/media/director-r4/films/coast-recon.mp4",
+      "sha256": "ded2c10edf2ccba1ebc93ebe348992c5c41112c88004ab458da05c02a35933ed"
+    },
+    {
+      "src": "/media/director-r4/stills/coast-recon-landscape.webp",
+      "sha256": "99a35431cd75854031c9aae6d193bdfc09c47771398ca931e59acd682d7a57a9"
+    },
+    {
+      "src": "/media/director-r4/promo/coast-recon-landscape.webp",
+      "sha256": "c3830b265f495a2c2236910e08ca9ef390ee8c8cbf4a74acf90023d758ece459"
+    },
+    {
+      "src": "/media/director-r4/previews/coast-recon.webp",
+      "sha256": "fbf7bde711aacc1b81a619cff1bca5ce9c9496f8e1bc7ffb73730459b7e1122a"
+    },
+    {
+      "src": "/media/director-r4/films/coast-recon.jpg",
+      "sha256": "9e6d84f5902bb1b35b9e908ec4e67c49e5159bfc96be671dfffef3cdc1336173"
+    },
+    {
+      "src": "/media/director-r4/stills/coast-recon-portrait.webp",
+      "sha256": "96923e5231b3174100cb13df1b10a3e5a31d9eb0d436ae28bac2b96ffa92b50e"
+    },
+    {
+      "src": "/media/director-r4/promo/coast-recon-portrait.webp",
+      "sha256": "4d418232d0d7a2800b63961629f78e4e007261595d18170103112c91507b36c8"
+    },
+    {
+      "src": "/media/director-r4/stills/coast-recon-square.webp",
+      "sha256": "467c0b4b887ba7e55f05c545dfd355817fd639ec7aeefeac1685d10dff6071b0"
+    },
+    {
+      "src": "/media/director-r4/promo/coast-recon-square.webp",
+      "sha256": "e0ebcc0086c6538fdc0b675c5d01ff0b5690ebc2280c174d9385d3d1a56c1748"
+    },
+    {
+      "src": "/media/director-r4/hero-trailer.mp4",
+      "sha256": "f6f63e4318263bd246fb6bc1f2061a362934f8536fa4cee2b726d7a5d10070af"
+    },
+    {
+      "src": "/media/director-r4/silent-loop.mp4",
+      "sha256": "a4371c9b6b8d34ef172699dac4696742a26283c029d6f6b15a0bb00458607388"
+    },
+    {
+      "src": "/media/director-r4/hero-trailer-mobile.mp4",
+      "sha256": "33231efbd329d72fa7b5f60b6a203eab1b772142eb581507ad884a5ee6de142a"
+    },
+    {
+      "src": "/media/director-r4/silent-loop-mobile.mp4",
+      "sha256": "de22a2f7cee80c35acc5f34a336a97f1699d58f19305f841ea45d98fddcad68d"
+    },
+    {
+      "src": "/media/director-r4/hero-trailer.jpg",
+      "sha256": "58d90d6e35dc71bc89cf60bb7fe9d3edf538b9fa870b8bba325fc3d765e750d6"
+    },
+    {
+      "src": "/media/director-r4/silent-loop.jpg",
+      "sha256": "58d90d6e35dc71bc89cf60bb7fe9d3edf538b9fa870b8bba325fc3d765e750d6"
+    },
+    {
+      "src": "/media/director-r4/hero-trailer.vtt",
+      "sha256": "35d11c929b20379006d168652c537d28b59ba428702c5a06db71a8f7448f5259"
+    },
+    {
+      "src": "/media/director-r4/contact-sheet.jpg",
+      "sha256": "05ff8c6294eaccdbeea740a206059b355c7667fe2f0d0eb3f24e87f005289d6d"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-day-landscape.webp",
+      "sha256": "6bba45ac32e366728bf241ad47e22d9fe2c3d2d372ef80db5c13d6edd3c0df83"
+    },
+    {
+      "src": "/media/production-r1/reservoir-day.jpg",
+      "sha256": "020a2cb6ca9eaf1e1c0502283a40e5f93df80af95d5062b324888c5eb88b6b9a"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-day-landscape.webp",
+      "sha256": "7e495f4142ac7aacc6f5c5c6e83c57de9631751f34a96fa139e6d61690384174"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-day-portrait.webp",
+      "sha256": "eec241f22e1e46f110999f9550c6e3eb71df95ca43c7edd4928f314d74ba7602"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-day-portrait.webp",
+      "sha256": "10f8a441f541eb4e0b56a8f4bcf6461d8f2dc731c7149b5cbe0d16627d6c600a"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-day-square.webp",
+      "sha256": "aff103a6ebb3f74d604f5d1f423f8a8914eb228888ae7b3498e5fe26a3f2e1f9"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-day-square.webp",
+      "sha256": "1183ef49799390a685bde1b472689685e8816b78a7800828cdfe34dd08265075"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-sunset-landscape.webp",
+      "sha256": "4c599e96d4c98d11fbc95a3e2ec78a4b58f16fe145b549e3638064f217086768"
+    },
+    {
+      "src": "/media/production-r1/reservoir-sunset.jpg",
+      "sha256": "202e52916bbae7fc00666390b8bf6539497f4b72a40bbfee6bca555c45328e06"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-sunset-landscape.webp",
+      "sha256": "fd58a24f5524baaad0b8c281745bbc55bfd507e4e7fdd33be1ad61af2c950923"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-sunset-portrait.webp",
+      "sha256": "0a64458224435a4cc42b80aba585c009022a0c0bb36f9851d7a041161d95dc72"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-sunset-portrait.webp",
+      "sha256": "2551ae648ca88bb1145fb96feff564250e7b0b209920b08bc2e34b0245c77592"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-sunset-square.webp",
+      "sha256": "293791283ba2876ae46f50c9bc396361e13f6a5761bd89d572a35b85a9784a0b"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-sunset-square.webp",
+      "sha256": "532188f6ec85ae2e1ca4ef824a564ba5990a3f4924207f23ff58fc77dae4ede1"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-night-landscape.webp",
+      "sha256": "155ed6aa5582907d5b2f347d3818404320c5c4bfc01c2817a9b8efeeb31474be"
+    },
+    {
+      "src": "/media/production-r1/reservoir-night.jpg",
+      "sha256": "c5743681935e2a6000abc030f71f7df17b5e70f79101e84a5b935b66e5904cff"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-night-landscape.webp",
+      "sha256": "6d29552a8c0a93341ad01eb12d0df4db436557949ef7d04b2c23b76c7a36e9dd"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-night-portrait.webp",
+      "sha256": "95d567d2a5f3e9e813d855becffccc9b68cb6311054417fd765be347e0a552a9"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-night-portrait.webp",
+      "sha256": "4d0e37730ebfd928a39f481bf474bef7e7c99ebdced81ea9eb730562befc15a4"
+    },
+    {
+      "src": "/media/production-r1/posters/reservoir-night-square.webp",
+      "sha256": "6429f00a267f7add8135cd3e02706ccd8a5934972db5360e93f9a1d4726114ed"
+    },
+    {
+      "src": "/media/production-r1/promo/reservoir-night-square.webp",
+      "sha256": "82f38f904ac8d5936d271783f07f47b31e5b198566c7bd31dd1394806cf215f9"
+    },
+    {
+      "src": "/media/production-r1/reservoir-day.mp4",
+      "sha256": "e5b5b2f400803ef5ff529e23fb7cf527c87a98b5b1339e3e6835bcc611b9aa80"
+    },
+    {
+      "src": "/media/production-r1/reservoir-sunset.mp4",
+      "sha256": "4422d54cd35aedd3bc9a6309b91c972a95990ce679ca90fb48bcc1fd3b9fb73d"
+    },
+    {
+      "src": "/media/production-r1/reservoir-night.mp4",
+      "sha256": "1ff07c8da9e2c41e10506f31a47d463cc798cc2aaa81c8b73aae13d78103b702"
+    }
+  ],
   "review": {
-    "reviewedAt": "2026-09-29T12:29:11.273441+00:00",
-    "notes": "Inspected both native 1920×1080 screenshots: live team lists, HP, ammo, scope and module-hit feedback remain visible; opening includes the real rollout title. The player shell receipt records ricochet with zero damage. Later target destruction is not attributed to this player shot. Encoded motion review is recorded separately. Reviewed nine motion samples across the whole 4.416-second take: convoy advance, scope entry and ricochet card remain legible; no frozen HUD composite or black frames in these samples. The later destroyed-target screenshot is an aftermath image, not a claim that destruction occurs inside the short clip.",
-    "hashes": [
-      "2a656bdee53eb3fdd810c525e68e234aba2c3b2131cd2f1ef115cbfd804fd95b",
-      "06cb23c9a55c83735fd56461a12c4d58f3fbc5f683ac90744a0dcc60e95ea904",
-      "0f22f1fbc0fd90294762e6a9b571ecfaf094c90a90667a561cf82fc97e187a95",
-      "90192dfe822d2fdcedc8bb303d84b35323b2e6e849c4e698446bfb0e039942f9"
-    ]
-  },
-  "provenance": {
-    "notice": "Controlled demonstration using the real battle simulation and live HUD. Vehicle positions, target health, movement and scope are staged; firing includes a 0.20-second simulation step. Silent. Encoded frame rate is not a gameplay performance measurement.",
-    "captureSource": {
-      "sourceDigest": "03522a8020b48a9ff9879c325fb917f9a5a1cd801628b108fa3db330431c9e59",
-      "revision": "c1ade6e0e9d70cb88812028f1d3d75e0bde0e451",
-      "sourceReceiptSha256": "7017aae3146f6441b58466dfb2d6ec9a6cfaeca2948222ee39f409be2ce4aa00",
-      "binding": "Reviewer attests the battle and referenced Studio capture shared the same frozen runtime. The battle report itself records the capture-tool hash, not the runtime digest.",
-      "attestation": "The native capture and ship-steel receipt were acquired sequentially from the same frozen source state before the subsequent Studio-only production-format persistence repair. No runtime source edits occurred between them. This binds the older digest without claiming the capture report itself recorded it."
-    },
-    "sourceFiles": [
-      {
-        "name": "capture-report.json",
-        "sha256": "2a656bdee53eb3fdd810c525e68e234aba2c3b2131cd2f1ef115cbfd804fd95b",
-        "bytes": 1060
+    "reviewedAt": "2026-09-29T20:12:54.931156+00:00",
+    "notes": "All 124 final daylight overview and settlement views inspected across 31 maps by root, layout_audit and frontage; native close-ups used where needed. Review covers sampled road/settlement placement and visible terrain transitions. Existing film batches retain their original provenance.",
+    "maps": {
+      "delta": {
+        "accepted": true,
+        "notes": "Connected causeways and bank-side roads remain clear. Village frontage sits beside the corridors in all four views.",
+        "hashes": [
+          "8db13e89dd9de40d79046efa3dc2deb5c6ca745e62000fea6b52aee481d0c000",
+          "164d1782d32c2eb6e3931a5ab25e8a809432a328a04a06adc6a103c6e66b856a",
+          "44eb48107068f9d9ebacd4391b27161c836ed9a99487007fb0d683465d5cbb50",
+          "50a3a7e4e02238187bfb312527e976178ed5cf0722737db57114550c4f29ebaa"
+        ]
       },
-      {
-        "name": "battle-live.webm",
-        "sha256": "06cb23c9a55c83735fd56461a12c4d58f3fbc5f683ac90744a0dcc60e95ea904",
-        "bytes": 128756911
+      "badlands": {
+        "accepted": true,
+        "notes": "Workshop frontage follows the hauling routes, with clear junctions and coherent canyon approaches.",
+        "hashes": [
+          "916ef4b7ae26ba13cc232e4e46563ed1c816eb53ba916a3a0f311c74e3b178a1",
+          "f5ae34fe5ff2f69bd02f2771d9b3587505de25dad793ed81eb459dc109164702",
+          "932ea0a66df9c707289a30b10944e6f4ab3596c34730cf103dfe0a303b9b62e4",
+          "4db4684835ee33c1badab342d7196e950e60df4bb040805da1dd057819eed898"
+        ]
       },
-      {
-        "name": "battle-opening.png",
-        "sha256": "0f22f1fbc0fd90294762e6a9b571ecfaf094c90a90667a561cf82fc97e187a95",
-        "bytes": 3772006
+      "monsoon": {
+        "accepted": true,
+        "notes": "The dry-bank village and crossing form a connected route; reciprocal views show clear frontage without a new cut wall.",
+        "hashes": [
+          "59958e3b68ea6ad0ad97c82033e979a3c8ce721d2c0651d7ac2d1571782a0507",
+          "1b2a325c070753a3b27495eb53f9a539b6e24c8bfcc17e88aced5539514e76dd",
+          "bff03f7d743e14ef6dbee0960e7a2619488f9bdb4fa268ec84de698710e81e41",
+          "faafb7fd3d479984837bf0af795d8547520ff440d56b3e6db6c279e0bf701c4a"
+        ]
       },
-      {
-        "name": "battle-impact.png",
-        "sha256": "90192dfe822d2fdcedc8bb303d84b35323b2e6e849c4e698446bfb0e039942f9",
-        "bytes": 3995236
+      "airfield": {
+        "accepted": true,
+        "notes": "Service buildings follow the runway access spine; side roads meet the settlement coherently and visible buildings clear the corridors.",
+        "hashes": [
+          "d618df4f12fa1303597bfc72efbaf9fb8b2011c15160c4c030690af07a2398f5",
+          "65136cf7579ba717cfe0f87835824892ae012cee65b499f15a6bafe139d5cb76",
+          "61fa4eafcadc7c8ea5aab580415af6b4c5377cd15d695190a289fae8051b5a71",
+          "6e3bc95d76e085e28b7b28b2fbc9a503fa1070fa04ac61cd0295672374dd1134"
+        ]
+      },
+      "whiteout": {
+        "accepted": true,
+        "notes": "The revised approach avoids the former triangular detour. Buildings remain beside the compact service crossroads and lake shore.",
+        "hashes": [
+          "97c75784d71154c520f50bc47dda520a63aed72fcd739528d7665bc244284c79",
+          "a5900c98fc9b6a5be59adb3fc8924786e9b4920f59aaf5a0a9364c39605b82ba",
+          "899042fc3cb49b533fc6f55ab5fb600e50c71232752a8d7d1c75c14d55ac924a",
+          "7963fabbf21d168521861d6839169726a466435764d13a9a266aed0c96aa4920"
+        ]
+      },
+      "orchard": {
+        "accepted": true,
+        "notes": "Curved approaches connect to the village and orchard lanes; reciprocal views show distinct parcels and clear junctions.",
+        "hashes": [
+          "3e7154ec3df9b881282fe890a51c420c90a266b37243bde89e14ac7da0c728b1",
+          "32241b759bf95529d86ee0a206d19b1526eff56050881a4cb9ad2a39c1fd32de",
+          "3d3f44c732f2a5186de46c9a4c674d689324d0d4240497c0433d157649ba3076",
+          "1a873d4c9a26b23101fb95453798f147d319c4841140a60b0fb7667812e907e7"
+        ]
+      },
+      "longleaf": {
+        "accepted": true,
+        "notes": "The logging settlement follows the gentle road bend, with yard buildings set back and visible access preserved.",
+        "hashes": [
+          "36f76cf492eda77ab1e994519d8edf0cc4a67d845ffa420b7a6f9ebdd483ef5c",
+          "d176c16972a04d1ee5a8012d190e7adac47653ea506fd25d52ee5d62f3b0cdff",
+          "3bcdb659456d1b243126ee927480f9b94d37e84eb85ee8ac609ab62c5e1fc952",
+          "42b188030f14cfb5d9fcd05e4f816a0c3d25a6e52e934d1918e92cea8d5e447f"
+        ]
+      },
+      "mangrove": {
+        "accepted": true,
+        "notes": "The village routes meet on dry ground, with clear roadside parcels. Lake margins and route connectivity remain coherent.",
+        "hashes": [
+          "3e54d614e817159fda936192228d390b928186b69c92a6fe71b40a67ec943e6c",
+          "7bad61fd02bbb48d8231809b38d0d52fb1c56cc6164e966ee1d25cc226589620",
+          "a93c35e3fe17451af25013979db6e75084e74b249ce1d2d70533883a370d1774",
+          "77cfdd6cf9d2b8461c93f28b3e7f0389ed94d037827a8823980705993293f53a"
+        ]
+      },
+      "saltwind": {
+        "accepted": true,
+        "notes": "The market T and coastal through-road form a coherent village layout; buildings sit inland and the natural coastline remains continuous.",
+        "hashes": [
+          "eae80fd202ab7d3d07d3d1988a684d37a4cce73baffe0849a2af5c8094bfd004",
+          "b53aa948cbfda9755bd861e4bd84b1632e164beb88af727ceb5f3c01a4d9f1bd",
+          "7bd09d11b9d1fd6b87edbd14e127193047a68e077a85949322d7f7b53355ad1c",
+          "1cc317d7c46419f5e5f3fe33c00252356f29f376e832ba59d3f320e05ab25ac7"
+        ]
+      },
+      "reservoir": {
+        "accepted": true,
+        "notes": "Village frontage follows the lake-side route and its actual junction; the road remains clear between the buildings and shoreline.",
+        "hashes": [
+          "4a373f12f4a9dd6d199be9d983d11e2070c982a92b379fed0dd62269cd9febfd",
+          "aee5dafb831051d77c5f0e546418e6393a095be38edb99f897ae946f6b932a11",
+          "07a1152d13477bdb725e54f032a2f33494770f80eccb6f4c234e82e482af2d25",
+          "6c2ae5576321b50a18c0284b071d22251f6438f4c694abd0caabf217be64264f"
+        ]
+      },
+      "mars": {
+        "accepted": true,
+        "notes": "Specialist habitat placements retain the authored service crossroads and canyon routes. No new ordinary-building placement intrusion is visible; existing steep canyon cuts remain intentional.",
+        "hashes": [
+          "b0eb3a116efc6bc48db19bedb507e6ab2d2ef6ee35acca44e64c84aed790ab5b",
+          "cb31d844e0e365681c3486dc30f89c08f4db2e929bd93f02986f3352b918294e",
+          "f5389cc5d837f48c9b2d0adbcbb1fa80a3af313b9139880d1102622ca23959f4",
+          "5308edd86a656706038520433daae836ec479f7653ce84fe0749a4a57047eb50"
+        ]
+      },
+      "verdant": {
+        "accepted": true,
+        "notes": "Overview and plan retain the protected rural crossroads layout with dispersed farm plots and continuous approaches. Reciprocal street views show buildings seated beside the road and no visible road-edge wall or frontage overlap. Windmill partially occludes one near corner, with that parcel also visible in plan.",
+        "hashes": [
+          "f5db61c8d96876e23df1d67d92c00f52501b4b5221eb7687b2fcc8343dff9bf2",
+          "a3862e1c403b85ac530df642c5f3f8b1f913b7361389500efdad5140a64e5f05",
+          "98d45853628d84704ce0dd9a97e384c65f425467cfb3f4daa49660279ca44238",
+          "e34d5202bd844f316faf539a733d13ad0ebf5166531daf54d8860245fff4dd96",
+          "6c63755c6455fe5a43d143763ee25986742b32d74d99be37419f075cb2dc5cfa"
+        ]
+      },
+      "desert": {
+        "accepted": true,
+        "notes": "Overview and plan confirm the mesa-foot bypass and removal of the previously rejected narrow sawtooth fill walls. New banks merge into surrounding foothills while the central mesa silhouette and stratified natural face remain distinct. Both reciprocal street views show continuous road surfaces through the village, with adobe fronts and courtyard walls grounded; no abrupt raised road terrace visible.",
+        "hashes": [
+          "3ba3341c136506cd394750a4e5b5aebde0aff5f5c41149b9f97108181f024678",
+          "60fdd4b0f710e5bd6f7f633114393d608d1df0b24198612556c2abd8135f2a62",
+          "50ea242dd4553beb8a32569e2d917657888452c88a4bec70b5957120afd9c0c2",
+          "528903850449217b86383313adf3af2dd43f7bdbce1109017bf962aeb69b4d33",
+          "7d75c012c53dfff73c43891b3c514cbd17aceb819f49a71ba915d87da5c6328d"
+        ]
+      },
+      "winter": {
+        "accepted": true,
+        "notes": "Overview and native plan show the main route, service loops and frozen lakes separated cleanly; no road crosses a lake sheet or raised road wall is visible. The existing angular western service alignment remains authored. North view confirms snow-supported building frontage. South view is partially obscured by conifers, so nearby parcels were also checked in the unobscured native plan.",
+        "hashes": [
+          "4c3fd15647f43e0356944051dd30f4b2554ca9e13e6fcb8ef219188508cb9096",
+          "fb608b94fd0821c1289896f04c9ea84d25f3b4ded315e573940be0d63817b814",
+          "679009ac04651b807bdd0d760ebe559958ad23828a0a8e3ee25ced9d6cdaaa43",
+          "9a93f1a0447f3bc90bfea66cc8461180e5e5ca94e6f9bd6a7c9448649031a727",
+          "5dfe7947fedb9b60ef101ffd760ac011263e7354668008bd39b38dce2a61a802"
+        ]
+      },
+      "urban": {
+        "accepted": true,
+        "notes": "Overview and plan show coherent orthogonal street blocks, continuous intersections, and building rows set back from the paved carriageways. Reciprocal street views confirm door-facing facades, connected sidewalks and grounded street corners; no building/road overlap or terrain bank discontinuity visible.",
+        "hashes": [
+          "b95fae19b8732ce07971eccc5ce1b205c38a74a5ff8505c5314af892ff92f96b",
+          "93ea12bb23920ba670363330d59243cbe0262db5eac9d391f0ff66819c98f255",
+          "e78f2f327f1c77110d261dc3ea3ec6e7400d6ff0fad810461df1d1ef427e7735",
+          "e1aaa54444577678f25e4e4388b0006bf297615324c8cdafb2e8d7319d0bb60e",
+          "7424ebe1c1257c79ee6b91255383985d2117fc5ca7bc76b218e1e3dee670e2c5"
+        ]
+      },
+      "autumn": {
+        "accepted": true,
+        "notes": "Overview and plan show a continuous rural crossroads and coherent bridge approach near the river. Church, barns and cottages form readable road frontage with open roadside clearances. Both reciprocal street views show supported building bases and continuous shoulder grades through the village; no isolated elevated road section visible.",
+        "hashes": [
+          "d88ce38abbfd4c35fcb1cdebd7dc9aa8b59c25477209dbabeacc388f0f8deaeb",
+          "a25482424610f56f32c31b794600265e27098adede4bddd491e39c1b4c07be87",
+          "37a27905c501438140fecfa6c4e199c19fc382442d57820542d298ca72fde03a",
+          "c64c58aba116ee4409255bbc59f3698d77b7fbdf7f70e5adc8e88c51c397c2bb",
+          "6e9483ba2a4373e371585d59e982f4234921db24bdb17eb4ffea74cac4bede0f"
+        ]
+      },
+      "coastal": {
+        "accepted": true,
+        "notes": "Overview and native plan show the road ending in a sandy turning court before the natural shoreline. The court remains dry and does not extend pavement into the bay. Both street views show the lighthouse and cottages grounded beside continuous pale roads; the shoreward terminal is better resolved in the native plan than from the low camera.",
+        "hashes": [
+          "31241f6054bab7edd4378fcd106469955e6fe40884a102b4ff77b7c35e6b7a4b",
+          "7324b8aad5470d8ffa31b1da34fd6a5427582e6049ba762560a346fa78dc6f46",
+          "6ded8c044ce38d7043469c23c7b0cbe15384d5e4e3e0a38b65b1a2a9c5e8cfe1",
+          "e203f12fa78118534097cfff6d8f76ddcc52611644eb3a1457f4bd74b0fc1b0d",
+          "de359bd719fa2aaeb3b079be7a4825e0483ae0908cca376e57e0ac18828be5ed"
+        ]
+      },
+      "steppe": {
+        "accepted": true,
+        "notes": "Overview and plan show a coherent small railway/service settlement with roads joining the station area and the long rail alignment remaining distinct. Reciprocal views show grounded sheds, service buildings and storage parcels with clear road space. Rail and station structures retain their intentional specialist layout.",
+        "hashes": [
+          "091d38e8f42a22f560d59938992d90aac3f63b6955eadc3673fc4df6bb94bf08",
+          "7ca41241356177966e2bde26767f0a292e26f617ca3c12444c94aef97248449c",
+          "6e0c0549d2dc4af4a92def4d2f37a3fbf121c9b475f050b1ab10e9d1701ac9f9",
+          "d3d7e1bc36ed9517b518543c866b76b896898d5462e47f4d7088cefc65487acc",
+          "25a75b38fbfe09c778d31ef3fd96fc727452087b7c1b1903706a840a208ea533"
+        ]
+      },
+      "railyard": {
+        "accepted": true,
+        "notes": "Overview and plan show the intentional parallel rail grid and orthogonal service streets with industrial buildings beside them. Reciprocal views show supported warehouses, containers and service roads. Short broken walls across portions of the yard are retained authored battlefield cover; they are not treated as a road-frontage regression.",
+        "hashes": [
+          "cf3a93ea430bd4a0ecdf87b7d2d861bdcca1470348aed50f580dbe8ba56d5f4d",
+          "20f3200c8dabe0422c6d253577572f89baeb975e3c00da11e9f57c9bdc384e40",
+          "0aa90bcbfbd081af9043fa794dd7feea6d0dfc2e8be8c67d99ee7c93081c6120",
+          "338911f5998dc188124705826ba6d04e0ba3a09e8cf57115390ef09fdb0c64e2",
+          "d37e759c1a0688bbd886d2b90601a24a04407d8e8144b3a8636829cddff5bb45"
+        ]
+      },
+      "frontier": {
+        "accepted": true,
+        "notes": "Overview and plan show gently curving country roads meeting at a clear rural crossroads, with dispersed buildings facing accessible frontage. Both reciprocal street views show supported barns/cottages and continuous road shoulders over the visible rolling terrain; no disconnected corner or artificial fill wall visible.",
+        "hashes": [
+          "7e6254a94937519bb3ca42b578a1a2c7e4a99dbdbb9571bdb2e7efece98a5133",
+          "1962848e14aae574a85c7c31a80ff44c1c2188ee5e0036b3a423998c71f1df60",
+          "1667c19bba762dd46af43d5f9968c0bd658f9e3fa0c768eba3155f8e87f8477e",
+          "9344e533a6d4b26608d4c89aa7e524890bea2a7ea967325349b62b6087b8c2d9",
+          "b178508250df066c4056b0c4eeac3a95f1e9bc839927bd27ca4f139b338f2ac5"
+        ]
+      },
+      "fjord": {
+        "accepted": true,
+        "notes": "Overview and plan show the coastal settlement roads continuing through the hills toward the harbor, with buildings aligned along the main route. Native north street view confirms barn/cabin bases meet the ground and the road through the junction remains continuous. South view confirms supported hillside parcels; its low angle hides some road length, which is visible in plan.",
+        "hashes": [
+          "5512d4aac56e2dc7c0cfbab671bce056bba34495184718f6aca636118b872591",
+          "731df9d1ea7070c2f98f1c4e1535734be4ea8131f64e105ed43a8ed27ef9ad68",
+          "d44a27d0300edc6a21009c274fd92d63c401f1d10491386544d554432d01e7ea",
+          "0770ba1c2407c3477a3ec0b55d573429c980a31b195892a1c9793bd9a30262f0",
+          "df54c209c357ec11803929cee641c69c29180148d99f762c19efef2a8f47b11d"
+        ]
+      },
+      "alpine": {
+        "accepted": true,
+        "notes": "Overview: the cabin row follows the dry road east of the frozen lake; no building visibly overlaps the carriageway. Village plan: the diagonal approach and northern crossing stay continuous across the snowy terrain; roadside houses retain visible verges. Street north: foreground porch is on the roadside plot and the road remains open; the lake occupies most of the opposite side. Street south: the low view confirms a clear shore-side approach, but snow relief hides some distant foundations.",
+        "hashes": [
+          "c6ccc31847719d48c4160bb82564b559966a77d808900d0f575df32b72c6ae37",
+          "6b2ecd3e9c3707cfcc68b709eea0e5f79e624203c672f4c2a41cb7963aa8c0ea",
+          "14ce07f29d006eaec3b1fd0f1d60996ce4721343dde670177ce4354e8cd14180",
+          "7b3f2607351ba5d17f8b89a14dbe0b68b16f1a05f472da203a7c18dc1de616a1"
+        ],
+        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/alpine-review.jpg"
+      },
+      "caldera": {
+        "accepted": true,
+        "notes": "Overview: industrial buildings occupy the rail/road benches with visible circulation space between them. Village plan: the curved road connects both yard areas without a visible building conflict. Street north: the foreground house sits beside the bend rather than in its path; road surface remains continuous. Street south: crossing and factory access remain open. Dark ground limits foundation-detail assessment.",
+        "hashes": [
+          "16934ded10f9db07762a995fcd67eeddc182f5ea129322e8ec3b484da22911b6",
+          "526d7dc5843dce54c85a52fc9f7a7b6cec897839e4499dc54a3d5ab536033db1",
+          "ae3a2704380b4f0e5dca298be087d4b711321c1e85d80cdb422e1a5b6c6b4b4c",
+          "5bfb02eb2bbb246c57ce6b5c094bce8ef6115c90e2edc7a1339df5352d21e4cf"
+        ],
+        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/caldera-review.jpg"
+      },
+      "foundry": {
+        "accepted": true,
+        "notes": "Overview: the main road and connecting factory lanes remain uninterrupted through the industrial complex. Village plan: warehouses and container groups are offset from the crossing; no evident new footprint intrusion. Street north: crossing is visible and clear; factory entrances have access from the adjacent lane. Street south: roadside warehouse fronts the access lane with rail corridors beyond. Existing rail undulation is outside this change.",
+        "hashes": [
+          "bf4acbd606c57bfc30ac55ff43d2c856868b59818254e9ffbf4355ecd48518b1",
+          "4b5de93a4a4ceb70c74cef06655299085c23df58d7b3546ef28544bcf755df00",
+          "8f768dfae24afda0677b496673f2824d218583bfa49beca647afce6ce213935c",
+          "77f4fdf50eb7f0b66b757c2c5159a45f2e1054d3ea5dc71a75fda8565172ab47"
+        ],
+        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/foundry-review.jpg"
+      },
+      "ruinspires": {
+        "accepted": true,
+        "notes": "Overview: tall landmarks remain separated from the avenue and the rowhouse grid. Village plan: connected rectangular streets remain open at every visible junction. Street north: the close rowhouse has a dark lower-wall/ground opening on its right face; this was also present in the previous baseline and is not evidence of a new placement regression. Street south: lower-rise and tower districts remain connected; open blocks preserve turning space.",
+        "hashes": [
+          "04085c1d8f9467290b6a83795558faaf418ded0d833b6b33968d78e645e4bf7c",
+          "49cd06b26ef81413953e7f94f9d736a2015e8e1afb70c5a068eba39684e550d0",
+          "e26c89fe04100dae9fa2858de868bfae83b738d6551e292afe709d9432d8ecd3",
+          "c818a71a197cf79d33771486667b15f6883b8e059c0742b1361d1e244f8606b4"
+        ],
+        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/ruinspires-review.jpg"
+      },
+      "blackglass": {
+        "accepted": true,
+        "notes": "Overview: the tower-lined central avenue remains continuous with diagonal residential feeders. Village plan: angular outer roads connect cleanly to the main axis and keep building footprints beside the road. Street north: the avenue is visibly open between the towers, scaffold frontage and roadside structures. Street south: local terrain rolls beside the building line without an evident new abrupt road shoulder. Backlighting limits base detail.",
+        "hashes": [
+          "d16928e267a082b0c1a12f1a12ca756916228c528dbb0a1d632962174fcf94fb",
+          "f58400a1ee8ce76ee11a849ffb8aab1f3a9cebe751d1ed20a77e6911fd444812",
+          "74a27aa2f10f33d01427cc9b39aaa11202b3eeb5423016b6a109e028c08e4376",
+          "a9e04338354ddcc20a5e471c845aec75732a3a629803d5f31cc934b6eb32c556"
+        ],
+        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/blackglass-review.jpg"
+      },
+      "titan_gorge": {
+        "accepted": true,
+        "notes": "Overview: roads connect the canyon benches and industrial buildings remain on adjoining dry plots. Village plan: the central saddle crossing is connected and clear; factory buildings do not occupy the visible junctions. Street north: the left road climb remains steep-looking but continuous; the compound sits on the separate bench. Street south: the factory entrance faces the open lane. The steep saddle appearance matches the previous capture rather than a new road separation.",
+        "hashes": [
+          "ee7a12374ebafa3dd63049d9e9fc51938d745dd2fe8682d28aee9090bb6022b9",
+          "34b9e0a6a5b33a51880db494ab3a15c669f76ac091013434679b5492a1e7130b",
+          "d3a72e3b931a15daa9be604711b147c39026d9c62d42341b685496d478977662",
+          "0c19b7c49a738cfcc5b7e8557d057e4d83f1a1d59dd4e0d76def41682a000374"
+        ],
+        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/titan_gorge-review.jpg"
+      },
+      "skybridge": {
+        "accepted": true,
+        "notes": "Overview: the straight elevated road spine remains continuous beside the basin. Village plan: tower and industrial footprints leave the spine/crossings open; lake water does not cut the drivable route. Street north: bank-side building groups remain separated from the road and water. Street south: the road continues uphill past the framework structure without an evident building overlap; existing rail styling is not assessed as a new regression.",
+        "hashes": [
+          "98cde4259c35e7a980c3c6dc073efa58cd03dc66f807bc6e4758ed05bd3333f8",
+          "2f791a1d4db8172e0c0ada767789da16d72e8b73f8053aa56a9cb696f8070218",
+          "0203414ce9f929edcd1b6cee031312399a218a4dc82df79f7a01405dbe61f7d0",
+          "480d95b8db4b740fd5916b145fae82e0b2f75e8d7c6b0635ba8b2fe3c01c14f3"
+        ],
+        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/skybridge-review.jpg"
+      },
+      "oasis": {
+        "accepted": true,
+        "notes": "Overview: the caravan road stays on dry ground beside the oasis, with settlement buildings east of the water. Village plan, also inspected native: rounded bends form a clear central junction. The repositioned ordinary adobe and later ruin occupy distinct plots; neither blocks the visible roads. Authored compound walls remain close to their lanes. Street north, also inspected native: market stalls and roadside buildings leave the curved passage open; fronts and shadows meet the ground without a new obvious separation. Street south: the low village buildings and compound accesses sit beside the gently rolling road. The terrain surface has strong sand patterns, which do not indicate a road geometry gap.",
+        "hashes": [
+          "d9cc4a57141455ddd3315e0e11dea3cc0403c515f1179d5682cd88e7d489ea7f",
+          "01185b1cb2ca951e5382831d692dda61347a61af93f68b3655dc8dfb1146423f",
+          "6e926e1ba557de05662ddb1019adda11f0a57044bc6d9523ba68cd7b43604cf9",
+          "8aaff7da285b178e25a01a680f20ac8d8259bad9a70b943b6d9c5cdc19a012bf"
+        ],
+        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/oasis-review.jpg"
+      },
+      "polders": {
+        "accepted": true,
+        "notes": "Overview: the curved village roads stay connected with adjoining house plots and clear crossings. Village plan: both principal junctions remain clear, and shoulders blend into the hillside rather than appearing as isolated slabs. Street north, also inspected native: the close porch and raised granary are off the carriageway; no new building/road overlap is visible. The previously stippled cloud undersides are noticeably smoother. Street south: the approach follows the slope continuously into the village. Distant foundations are partly hidden by relief.",
+        "hashes": [
+          "6b7ff7bcec6a485f685b2d44dcc1b7cf91281a4498ed4e8866080fa7fa38ce03",
+          "660f3ff6b77e862467f8edf1590e7490df829e9a521b01a3d2a1318fb0074de2",
+          "818d583e83e7241ea56e9039766cb1cda531db3df7bade12298341b26265f887",
+          "9dab1b00ea988d95aa7cf9122bb40abe9606136ccace092511726a65ea8fbe3f"
+        ],
+        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/polders-review.jpg"
+      },
+      "copper_mesa": {
+        "accepted": true,
+        "notes": "Overview: the principal S-bend follows the terrain through the industrial village with a continuous driving surface. Village plan: factory plots, container yards and utility structures sit beside connected curved access roads; visible junctions are clear. Street north: yard buildings have clear circulation space between the road and industrial frontage. Street south, also inspected native: workshops and the container structure are outside the road surface, with continuous access into the yard. No new floating foundation or abrupt shoulder break is evident in this view.",
+        "hashes": [
+          "3209e5b80df191ac1a6288fe662c1f46d6174cf21ff5150a62316a18397f3649",
+          "f11a9c4ab21cb2ba04cf3e214ae138918db07785fc41eaec8e09f28d0f37d245",
+          "4124322ec1d4e1777f60c6b18404042b555b34fb3b75057481f8970a51372c50",
+          "4e2e6ba5bf35d6d3c90b5ebe34064b9efd7870e68971976c04093df2b90e1ab8"
+        ],
+        "sheet": "/Users/kevinliu/.codex/worktrees/water-lighting-media/claude-of-tanks/.qa-dev/roads-settlements-r1/final-r4/copper_mesa-review.jpg"
       }
-    ],
-    "captureTool": {
-      "path": "tools/feature-promo-capture.mjs",
-      "sha256": "8829abd82696070c8717bb6c19d0b9500f1140aa2087fa10434b99cda9048ebb"
-    },
-    "publicationTools": [
-      {
-        "path": "tools/publish-gameplay-capture.mjs",
-        "sha256": "7c484e4f41d4325adbdbb55e1de7ef6dc6fc7f1b435efea70ad1f5c9a82959c5"
-      },
-      {
-        "path": "tools/media-production/campaignPublication.mjs",
-        "sha256": "06b94098e9a92cb43d826211d79d7e384d036449f8e4a8137e5b90cd430a7c40"
-      },
-      {
-        "path": "tools/media-production/mergePublication.mjs",
-        "sha256": "98b35a28a008ed4bc5721ee39f939e2fea13bf8feddd9b4a1a74f24aa0723fe9"
-      },
-      {
-        "path": "tools/media-production/pipeline.mjs",
-        "sha256": "7cf549560ab2097f45e28511eccd0abd9d3b2fca96d8fd32be0659e589cf1ff2"
-      }
-    ],
-    "shellResult": {
-      "targetHp": 0,
-      "targetDestroyed": true,
-      "lastShell": {
-        "shellId": 1,
-        "t": 24.07,
-        "targetId": "m1a2_sepv2_x",
-        "targetDistM": 105,
-        "targetSpeed": 0,
-        "blockedDistM": null,
-        "terminal": "tank",
-        "hitKind": "ricochet",
-        "damage": 0,
-        "missM": 2.18,
-        "hitTankId": "m1a2_sepv2_x"
-      }
-    },
-    "consoleErrors": [],
-    "optionalAnalyticsErrors": [],
-    "outcomeNotice": "The recorded player shell resolved as ricochet for 0 damage. A later target destruction is not independently attributed by this receipt.",
-    "webEncodes": [
-      {
-        "src": "/media/director-r4/gameplay/battle-live.mp4",
-        "sha256": "fd97273e6a42b4b6054bfd50d582f78c8098a5ecf1ef0d6651c165f1319a9b2b",
-        "bytes": 3871118,
-        "sourceSha256": "06cb23c9a55c83735fd56461a12c4d58f3fbc5f683ac90744a0dcc60e95ea904",
-        "profile": {
-          "width": 1920,
-          "height": 1080,
-          "fps": 60,
-          "frames": 265,
-          "duration": 4.416666666666667,
-          "audio": false,
-          "codec": "h264",
-          "pixelFormat": "yuv420p",
-          "crf": 21,
-          "maxrateKbps": 6000,
-          "bufferKbits": 12000,
-          "audioKbps": 0
-        },
-        "result": {
-          "width": 1920,
-          "height": 1080,
-          "fps": 60,
-          "frames": 265,
-          "duration": 4.416667,
-          "codec": "h264",
-          "pixelFormat": "yuv420p",
-          "audioCodec": null,
-          "bytes": 3871118,
-          "byteBudget": 4908750
-        }
-      },
-      {
-        "src": "/media/director-r4/gameplay/battle-live-mobile.mp4",
-        "sha256": "73ca12ad53c66d921226d00054caf8afc3c63fc5e73049dca5dac749398a3119",
-        "bytes": 1134816,
-        "sourceSha256": "06cb23c9a55c83735fd56461a12c4d58f3fbc5f683ac90744a0dcc60e95ea904",
-        "profile": {
-          "width": 960,
-          "height": 540,
-          "fps": 60,
-          "frames": 265,
-          "duration": 4.416666666666667,
-          "audio": false,
-          "codec": "h264",
-          "pixelFormat": "yuv420p",
-          "crf": 21,
-          "maxrateKbps": 1800,
-          "bufferKbits": 3600,
-          "audioKbps": 0
-        },
-        "result": {
-          "width": 960,
-          "height": 540,
-          "fps": 60,
-          "frames": 265,
-          "duration": 4.416667,
-          "codec": "h264",
-          "pixelFormat": "yuv420p",
-          "audioCodec": null,
-          "bytes": 1134816,
-          "byteBudget": 1472625
-        }
-      }
-    ]
+    }
   },
   "retainedBatches": [
     {
@@ -9309,608 +9495,6 @@
       ]
     },
     {
-      "created": "2026-09-29T10:16:05.704Z",
-      "revision": "8dfa4448da5917db0721c4050c636d2a5310f790",
-      "sourceDigest": "5e21285808df1f713f6cbd9f8e672dee2fb34720959286ff87cebd1aad6cc136",
-      "review": {
-        "reviewedAt": "2026-09-29T10:16:04.931318+00:00",
-        "notes": "Fresh 31-map daylight overview photography. Visually inspected every composition in three-image contact strips; additionally opened Coastal, Badlands and Saltwind masters. This review covers the published camera views, not a new shoreline sweep or live performance certification. Existing films and their original review remain separate.",
-        "maps": {
-          "verdant": {
-            "accepted": true,
-            "notes": "Village and road approach framed against wooded hills; legible green landscape.",
-            "hashes": [
-              "b35326677ad3965478b4794377e90d1adf57a3d3b71e9d1e11ed70e85f05a6b8"
-            ]
-          },
-          "desert": {
-            "accepted": true,
-            "notes": "Sandy settlement and canyon slopes visible with sky detail retained.",
-            "hashes": [
-              "397513d331cb5d795b5e7de3095d5e5e468cddd70fe5fbcc725dc90df2fe5e87"
-            ]
-          },
-          "winter": {
-            "accepted": true,
-            "notes": "Snow basin, ice and road grid visible; buildings readable against snow.",
-            "hashes": [
-              "58bae33c75e28069973d271aae5a4e468a2666f4701dfe54c5b9e37dc36f6b08"
-            ]
-          },
-          "urban": {
-            "accepted": true,
-            "notes": "Dense town roofscape and street approaches fill the foreground without clipped landmarks.",
-            "hashes": [
-              "cd691932e858c241be3df7b6c9689a5149eb10e8929ac29fc55904c6197a9530"
-            ]
-          },
-          "coastal": {
-            "accepted": true,
-            "notes": "Three coastal lobes, lighthouse and village visible; additionally opened the master to inspect continuous shoreline and near water detail.",
-            "hashes": [
-              "b6f0a845b20e8b633052939d2f9893c231af42cc1c1c4f2a9d9f376f33a9cfca"
-            ]
-          },
-          "autumn": {
-            "accepted": true,
-            "notes": "Golden forest canopy, road and distant valley retain distinct seasonal color.",
-            "hashes": [
-              "4356e87b420266d89c0eaa0d1b44baaaaf371c71a97f61d4f2d1ce84ed124eb0"
-            ]
-          },
-          "steppe": {
-            "accepted": true,
-            "notes": "Dry rolling terrain and sparse tree rows framed with long-distance roads.",
-            "hashes": [
-              "4aaf20099d64e9ce517204eb31e7806201e800523189a9646ad9725c3aeaaeb0"
-            ]
-          },
-          "railyard": {
-            "accepted": true,
-            "notes": "Rail grid, freight cars and sheds readable under overcast lighting.",
-            "hashes": [
-              "f54da22a64c282123e82630d68f44dce8bf86929d6e40505cdb1cfdca335b994"
-            ]
-          },
-          "frontier": {
-            "accepted": true,
-            "notes": "Road leading toward the village and open valley clearly framed.",
-            "hashes": [
-              "0c1f525673ba6c97c34a2b2fd5097be838d24dfc9720f65f54f504eda629727a"
-            ]
-          },
-          "fjord": {
-            "accepted": true,
-            "notes": "Cliff skyline, coastal opening and lighthouse readable; naturally shaded foreground retained.",
-            "hashes": [
-              "3248cdb652ba1bc6c1085afb3af7ce2ed1a8c5d7f84749d773824f307b16f15b"
-            ]
-          },
-          "delta": {
-            "accepted": true,
-            "notes": "Tropical vegetation and distant river water visible beyond village clearing.",
-            "hashes": [
-              "e2d22eb0bb2e343e7526276f589460fe147ffd885ac9aaa6fe37e9cc66dd3435"
-            ]
-          },
-          "badlands": {
-            "accepted": true,
-            "notes": "Terraced canyon and industrial yard visible; additionally opened the master to inspect ridges and ground continuity.",
-            "hashes": [
-              "3dc273c170475ac578225014af6a6571f6e9a5f37a1b7ed651a097c1a918f667"
-            ]
-          },
-          "monsoon": {
-            "accepted": true,
-            "notes": "River junction and both banks occupy the foreground with village beyond.",
-            "hashes": [
-              "ff1e43f0c0f627dbd68b9d4885af7a4233a64c0e625b5407d3ef9cabf4540ff6"
-            ]
-          },
-          "alpine": {
-            "accepted": true,
-            "notes": "Frozen lake, snow slopes and mountain backdrop framed without overlays.",
-            "hashes": [
-              "071a9f799b88f40193a74832ec13dfbcedccf87e7f7b502e3688b9c51aef379a"
-            ]
-          },
-          "caldera": {
-            "accepted": true,
-            "notes": "Dark volcanic floor and layered rim readable; intentional low-key lighting retained.",
-            "hashes": [
-              "ad44fd4e2a5d3fc75d4cc92a59840450617e477158d3f0d554a77dac6d3cad03"
-            ]
-          },
-          "foundry": {
-            "accepted": true,
-            "notes": "Factory roofs, chimneys and long road approaches visible beneath overcast sky.",
-            "hashes": [
-              "5a516ac84b92bf6ec92081a580647cdac808b429a0a2c148b10f8507d24c007d"
-            ]
-          },
-          "ruinspires": {
-            "accepted": true,
-            "notes": "Tower ruins fill the foreground while surrounding streets remain visible.",
-            "hashes": [
-              "980d92f7d2056a809339f2b23ad5a5eb3e17666521a2f718c4d682e63c400c2b"
-            ]
-          },
-          "blackglass": {
-            "accepted": true,
-            "notes": "Warm-lit tower group distinct against the dark industrial plain.",
-            "hashes": [
-              "fe3b72505ee0b8b743cf7ba3b6cf1c6098871b42c1e202d841142d4a70bd660c"
-            ]
-          },
-          "titan_gorge": {
-            "accepted": true,
-            "notes": "Canyon cuts and elevated road approaches readable against the large mesas.",
-            "hashes": [
-              "97c6dbf6a50facd6db76762b6dcca0fdaab6b0848063b792c13090e768427c17"
-            ]
-          },
-          "skybridge": {
-            "accepted": true,
-            "notes": "Lake, towers and their long shadows visible within red-rock basin.",
-            "hashes": [
-              "5d329fe6d850011ff66c00b365f7c35034b9ac94c1dfe2626e1e3913884a79ab"
-            ]
-          },
-          "polders": {
-            "accepted": true,
-            "notes": "Farmland, drainage edge and village visible under cloud cover.",
-            "hashes": [
-              "76c6f7f9a3293dbab01e7d912bd489c0c2df712b4e9a9e51111e1ca8f66aa12b"
-            ]
-          },
-          "copper_mesa": {
-            "accepted": true,
-            "notes": "Copper-colored hills and road junctions framed against mesa skyline.",
-            "hashes": [
-              "6d31e92f263aa214a47e2918eb4378a0e29e3296cfca70db9f44f0d7cef142ac"
-            ]
-          },
-          "airfield": {
-            "accepted": true,
-            "notes": "Runway, taxiway and hangar group remain in view.",
-            "hashes": [
-              "05a9d43876da8e7502aed87104facd915fb923b620c7fb3c0308528b82732b3a"
-            ]
-          },
-          "oasis": {
-            "accepted": true,
-            "notes": "Complete lake and palms visible against sandy settlement and hills.",
-            "hashes": [
-              "b220981d579cb4e24c6c6a8f6e9ad44cb7ea0b563e1c5411f8649d2496fb6d1b"
-            ]
-          },
-          "whiteout": {
-            "accepted": true,
-            "notes": "Snowy industrial compound and ice visible with subdued sky contrast.",
-            "hashes": [
-              "4fd7c4b59104c30abac570015459eec6867c4423965fc1759fafc5d86f8ffa63"
-            ]
-          },
-          "orchard": {
-            "accepted": true,
-            "notes": "Village approach and orchard-covered slopes framed with mountain backdrop.",
-            "hashes": [
-              "96413b6fb1a5aa5548f373088c58c67ce681cd56b0bb30a6d4e637743d4e7dfe"
-            ]
-          },
-          "longleaf": {
-            "accepted": true,
-            "notes": "Wooded ridge and village road remain clear across foreground and distance.",
-            "hashes": [
-              "b3c777fa26dd0d357d3f277e5b3a09ac330e4072088cd8a8af131db6a0a2d757"
-            ]
-          },
-          "mangrove": {
-            "accepted": true,
-            "notes": "Water and wetland margins visible behind village clearing and tropical canopy.",
-            "hashes": [
-              "02855dc452d5b9b24e4213f08ac7c62d712ee076428ba1847076a6eb2a9bd1b1"
-            ]
-          },
-          "saltwind": {
-            "accepted": true,
-            "notes": "Reframed toward the bay from the inland ridge. Opened master: harbor village, hooked bay, extended shore and seaward horizon all remain in frame.",
-            "hashes": [
-              "b94b45f6dfc01c58d7261750eef5e87314d54751d1e3a9328a79f76cd58ce2be"
-            ]
-          },
-          "reservoir": {
-            "accepted": true,
-            "notes": "Lake, village and wooded slopes framed with mountain backdrop.",
-            "hashes": [
-              "366ce66ace38fbe15bf351034874c845283e204e956e3bfc706adde1bdd77780"
-            ]
-          },
-          "mars": {
-            "accepted": true,
-            "notes": "Outpost, orange canyon and galaxy sky visible; no Earth sky or UI overlays.",
-            "hashes": [
-              "32b02c478936ec346e5737b43a99609ff271eae93b15d0fd8b7dc2ecbafc810d"
-            ]
-          }
-        }
-      },
-      "assets": [
-        {
-          "src": "/maps/verdant.webp",
-          "sha256": "2de64d75d258b7f91a9b580e61f3774d573eacb2800e80242789529e64e1ef8b"
-        },
-        {
-          "src": "/maps/cards/verdant.webp",
-          "sha256": "5fc1b4f501a35fe37e76604fb7155d4b22d31fa9bf5f6dde3f0567f1c227d607"
-        },
-        {
-          "src": "/maps/thumbs/verdant.webp",
-          "sha256": "c69bd04b02a39c0f4705ab03a4bb813e8f09caa4e8c01c16401a3537ce56c1af"
-        },
-        {
-          "src": "/maps/desert.webp",
-          "sha256": "1473b798783a95beaf8317091cee5fc508df7d677f34e45c30e7eee138dd49de"
-        },
-        {
-          "src": "/maps/cards/desert.webp",
-          "sha256": "057ddd5df98c22568125f313bdc1da6898c5b4007f801888eb8a5600a91e4dff"
-        },
-        {
-          "src": "/maps/thumbs/desert.webp",
-          "sha256": "133bcd2e3f2215388f8a483205df090d0e50e1502fdd1cddfef841b06a2fdf9d"
-        },
-        {
-          "src": "/maps/winter.webp",
-          "sha256": "3fc738e4a73bf40710985b26362ccd109bb25b170df1e4a86b3ab4aad9b81113"
-        },
-        {
-          "src": "/maps/cards/winter.webp",
-          "sha256": "3cfac62db7ef1014e98aba03c79f7586be6d29d943e054cdef171fc3045e1f61"
-        },
-        {
-          "src": "/maps/thumbs/winter.webp",
-          "sha256": "0466374efdd81950503480603a32f25adbb9ce582c864a74ac3662ad5662c04d"
-        },
-        {
-          "src": "/maps/urban.webp",
-          "sha256": "bbfcab928018a54edb3829c7481f3344269cc0167ea461561958fd5cc6b45841"
-        },
-        {
-          "src": "/maps/cards/urban.webp",
-          "sha256": "0f9e766440c4b0a9f45235d05db60fcc507d0eca72bf7d4507ee01e53ca33e6d"
-        },
-        {
-          "src": "/maps/thumbs/urban.webp",
-          "sha256": "b4b0b2610f91ec771c53707c2af5ce5981003e8aa3f05f8b9ebab2cf85436cc1"
-        },
-        {
-          "src": "/maps/coastal.webp",
-          "sha256": "5a36635da4aebeb26b85d086f1395d6d66f91d7e260873196e4538c24c1e8d0c"
-        },
-        {
-          "src": "/maps/cards/coastal.webp",
-          "sha256": "11a8515b1c59f88495e780e316dd29a017e7d47e4678ef9d8a34d8929774eb26"
-        },
-        {
-          "src": "/maps/thumbs/coastal.webp",
-          "sha256": "646afff2a2c0812e6d2bf24d2d6a83a3dfd141910816f8270bb838e805f9eeca"
-        },
-        {
-          "src": "/maps/autumn.webp",
-          "sha256": "611091bc0c9e39ab42e875d8082c093be03659ee9cc2d1c6d6618e9f6725e986"
-        },
-        {
-          "src": "/maps/cards/autumn.webp",
-          "sha256": "043206b435a2849294204dce20f2884569345bd9d3cf0d3423ba64d70391156b"
-        },
-        {
-          "src": "/maps/thumbs/autumn.webp",
-          "sha256": "ebb741d1a90ad4e06733d4ddf8bdc52a5c7411431e1b8e4d57a2584baab903b4"
-        },
-        {
-          "src": "/maps/steppe.webp",
-          "sha256": "264bcc67af9423110105ba937b9efe1050e8f0ac62d4a9042d24ff24ee8218ff"
-        },
-        {
-          "src": "/maps/cards/steppe.webp",
-          "sha256": "b85f72d1e5aa7ae080c4cc7e8fd462cae1df75f294217725fa476712ee38c532"
-        },
-        {
-          "src": "/maps/thumbs/steppe.webp",
-          "sha256": "712925478a4932ea32a10f913937c2627942479f9708cbefe3c2a1cbfeeb7bbc"
-        },
-        {
-          "src": "/maps/railyard.webp",
-          "sha256": "7fd43131a4fd15acdf3c1316a15e81ff32a347f49f0fb306291fd9f507df2b5f"
-        },
-        {
-          "src": "/maps/cards/railyard.webp",
-          "sha256": "9322be52f96a26153741dffe3c9b559558889284f9e473a22e1f7a9730996ad9"
-        },
-        {
-          "src": "/maps/thumbs/railyard.webp",
-          "sha256": "3a5022a5fd566f2d2d5dcc6054bc3f24936dc868e739a7d9c68afb5503ea504e"
-        },
-        {
-          "src": "/maps/frontier.webp",
-          "sha256": "6bdaaf4c37788fb75480b1c38413972860020c9b3cd05a65b158f26b3d169382"
-        },
-        {
-          "src": "/maps/cards/frontier.webp",
-          "sha256": "96cba6f2ee6d681d431b2e68c2d111f576a8aa6190da7b19a3c5316286d4c1d1"
-        },
-        {
-          "src": "/maps/thumbs/frontier.webp",
-          "sha256": "be0260292b1dd0a0b1631eca66d6992431eee2dbef03a17e96dd619fb10771ec"
-        },
-        {
-          "src": "/maps/fjord.webp",
-          "sha256": "3b18dbe76e34de5bf80304c70646673cb710c56d9d364c64a4b2ff705b1fa397"
-        },
-        {
-          "src": "/maps/cards/fjord.webp",
-          "sha256": "9a953d56e69fd18f4850c21359bf36e36a3cb109bbb19ef8336c90fb26923530"
-        },
-        {
-          "src": "/maps/thumbs/fjord.webp",
-          "sha256": "c5b76d872fa6cd6eb2d8ca9786c1f94153a166f0c127e76a813ca3ed0aa860de"
-        },
-        {
-          "src": "/maps/delta.webp",
-          "sha256": "973b2eedcb007f01118f3a27cdf06e125e5d050515a329bbf43f628fcc07b057"
-        },
-        {
-          "src": "/maps/cards/delta.webp",
-          "sha256": "632e9deb39d3588b8d748464bf908858ec67618148cbae05048ad41cac4e6908"
-        },
-        {
-          "src": "/maps/thumbs/delta.webp",
-          "sha256": "11f285a469e79ed4de4037dde5a73a2606533e5e092bf0264d799c6d01c94533"
-        },
-        {
-          "src": "/maps/badlands.webp",
-          "sha256": "18213a7af08ce4eed7740c0eb95bbee37a3ae372cdbc747e550a52d202ed3cee"
-        },
-        {
-          "src": "/maps/cards/badlands.webp",
-          "sha256": "ac6855ae9f961c0c4dae28fc4f7546f90567ce995b7e9d8eb090d23ba2ea4108"
-        },
-        {
-          "src": "/maps/thumbs/badlands.webp",
-          "sha256": "262361775bf2c4cb4a9a9f50f1b556792092010b265e645e2eb9c03320f31cee"
-        },
-        {
-          "src": "/maps/monsoon.webp",
-          "sha256": "2a8945bebc08bda90fa5702842ab32c023f1268a6bf826b10f946f030f1879bb"
-        },
-        {
-          "src": "/maps/cards/monsoon.webp",
-          "sha256": "91cdf4e526e0d92220f255897f7cc5ee8c1f03c06a05dda371ce8ad6cf2e1c8c"
-        },
-        {
-          "src": "/maps/thumbs/monsoon.webp",
-          "sha256": "584daadddb4e397eb1ad1b997abc639851d4577b30d709c55345f31002526f43"
-        },
-        {
-          "src": "/maps/alpine.webp",
-          "sha256": "44a5bfd93d0c6759fadaaf519993799a0ebc93fbb91588da436997abfa1bd45a"
-        },
-        {
-          "src": "/maps/cards/alpine.webp",
-          "sha256": "cb95433dec65d3c2dbd9ced7f2fe73ea6fd06128f7b5d88bb96ce74bd3ddfe50"
-        },
-        {
-          "src": "/maps/thumbs/alpine.webp",
-          "sha256": "1d484e9f1dd67c905cf0c7071f97fcea51c79e42d373431efd11fc02f34deb20"
-        },
-        {
-          "src": "/maps/caldera.webp",
-          "sha256": "5788684a10c29421ebacdf1b56461995e92045611fcddd0734bada8cd5674bd9"
-        },
-        {
-          "src": "/maps/cards/caldera.webp",
-          "sha256": "953b521b8168962c869c400e441f9d75e8ea95573ebc7e2a4272bb9520d98a30"
-        },
-        {
-          "src": "/maps/thumbs/caldera.webp",
-          "sha256": "2469049b83eb174be959c8bb75f18dc41a53c86b8e7339513ac8b54522f0e6d8"
-        },
-        {
-          "src": "/maps/foundry.webp",
-          "sha256": "18a220ec10fa3980369b76678eb90dd61d3c69152b36e3cb9573059c4eb762f6"
-        },
-        {
-          "src": "/maps/cards/foundry.webp",
-          "sha256": "cfb13b6d749a7831aae6f6ae93cdf75fb11ada92e760b2ade341a2c6f3b655a8"
-        },
-        {
-          "src": "/maps/thumbs/foundry.webp",
-          "sha256": "c670c75ba44f97c9c4444f8fa615299a0dc4ea1eb46749cc2ec53ff09a070106"
-        },
-        {
-          "src": "/maps/ruinspires.webp",
-          "sha256": "506adb8da0f501a6b851b1cbc52c237683031fb0fa4c8a5b6f6f48ecaf0bfd4c"
-        },
-        {
-          "src": "/maps/cards/ruinspires.webp",
-          "sha256": "0c4af32b4aa0ac32021e7eac1c47fe0d1213cc711a0f0592b77ecaedc608375d"
-        },
-        {
-          "src": "/maps/thumbs/ruinspires.webp",
-          "sha256": "caa0266ce4a11b89beccc2f3fd938e385f4cb4f2f30720dc8167be6fc4e50c6f"
-        },
-        {
-          "src": "/maps/blackglass.webp",
-          "sha256": "72b9f8949223a8823219a3183a2fbbc1a8b9b348dda164af53be443e14864dca"
-        },
-        {
-          "src": "/maps/cards/blackglass.webp",
-          "sha256": "4ac1c3b1af2b06af687e05d3ed1112113bdf82a433fa4d4a2222785dcf840d48"
-        },
-        {
-          "src": "/maps/thumbs/blackglass.webp",
-          "sha256": "ba5b959eb80c10a78d62061a52d01e8f8c3be4ef62e795c29f87f121b971432d"
-        },
-        {
-          "src": "/maps/titan_gorge.webp",
-          "sha256": "13b1c0410ad460e9603f8051fa8beaf934b8d2917ce042f33948b83305cd3b46"
-        },
-        {
-          "src": "/maps/cards/titan_gorge.webp",
-          "sha256": "317fc86848d2de077d41fdb53003e1411935273429df42397c7238024e69867e"
-        },
-        {
-          "src": "/maps/thumbs/titan_gorge.webp",
-          "sha256": "ca7d6224e4e4b9f25ef5cd7e9364ae1918273e080d4ee37e3946a48b217e957f"
-        },
-        {
-          "src": "/maps/skybridge.webp",
-          "sha256": "9d7e6f200ae85217582e907a2f2376665bcdd01c208167dc2a5530990de09867"
-        },
-        {
-          "src": "/maps/cards/skybridge.webp",
-          "sha256": "d658b079cfa98ff62743f444d17d7a70f72011b37e3c32a4d8de035e8aefefa6"
-        },
-        {
-          "src": "/maps/thumbs/skybridge.webp",
-          "sha256": "e0c08e33b141a5df07bb371b81e7ed34c0bac760952617dec1e0f3a61f1505fd"
-        },
-        {
-          "src": "/maps/polders.webp",
-          "sha256": "695e18af33e3e5c75d23152ec39d3a61c91eab02ddabeb30085c3c3e0038ae62"
-        },
-        {
-          "src": "/maps/cards/polders.webp",
-          "sha256": "bd45fae893bde08d0c96ef6ed2d6d20a9980fd5435fe3772cb1b3ae34059d497"
-        },
-        {
-          "src": "/maps/thumbs/polders.webp",
-          "sha256": "89a6820e0c822c998d483f3619a4e42579679183c8c96527fb10614d67809fb1"
-        },
-        {
-          "src": "/maps/copper_mesa.webp",
-          "sha256": "54fd3c13ea327340a57dc93bb4f1e79307f4a03fefdc85f58f1cba4496639890"
-        },
-        {
-          "src": "/maps/cards/copper_mesa.webp",
-          "sha256": "f72f20f59da709f2757ae70bfb38ed36b85939020b72deebc2d2d9f1b8d71697"
-        },
-        {
-          "src": "/maps/thumbs/copper_mesa.webp",
-          "sha256": "5f1a494f00301d4ff43c96b499743d26e0a55e2bc59c412bdaff74b29213ea04"
-        },
-        {
-          "src": "/maps/airfield.webp",
-          "sha256": "e23cfaf1707f352e68c9d1ffe5f261c820a1b7c9011e6188702b1c9fd348607b"
-        },
-        {
-          "src": "/maps/cards/airfield.webp",
-          "sha256": "53319809d0cd75838ad10a31dfba58cc786b973e22896f5059c3f6a59455c370"
-        },
-        {
-          "src": "/maps/thumbs/airfield.webp",
-          "sha256": "0b14ed6544a6c30a82722206e4908af66f4bf7053ecb40070b95b0665d3ff961"
-        },
-        {
-          "src": "/maps/oasis.webp",
-          "sha256": "216393064c7c17daa7cfeb254823c98f3786a472482018d93583c327badabcee"
-        },
-        {
-          "src": "/maps/cards/oasis.webp",
-          "sha256": "4a2cc374d42b65394bbc7407e3b563adcff3eef9199857adbefa00c6dc649d11"
-        },
-        {
-          "src": "/maps/thumbs/oasis.webp",
-          "sha256": "f11029a428db9c7a059aa35f917d24b1d20c0dc80ad379e8cbc0249400b48511"
-        },
-        {
-          "src": "/maps/whiteout.webp",
-          "sha256": "66963b17ecd3a55125debff51b9ad388aac99b07ba0b647d4ff36e8c49f43db3"
-        },
-        {
-          "src": "/maps/cards/whiteout.webp",
-          "sha256": "7681fe670ff8ed7409b273bdf6cf52b990b0ba8ae9d22a582c06b06b56ab9952"
-        },
-        {
-          "src": "/maps/thumbs/whiteout.webp",
-          "sha256": "c21894c81b1ef9840cf169f37faabbddfaafd86bcf67f5ce3e564bdfa929e463"
-        },
-        {
-          "src": "/maps/orchard.webp",
-          "sha256": "8093e72b1a7e0faed270af8232240ef37ea1e219599ff3167c02d345946c4632"
-        },
-        {
-          "src": "/maps/cards/orchard.webp",
-          "sha256": "48eed40aec33d614535bde6be73a851c460047fafeebef1997e3383d56cdd0e7"
-        },
-        {
-          "src": "/maps/thumbs/orchard.webp",
-          "sha256": "a9e5c38a8292a4ed25ebec8a3d0db22e4041da6df4d5dbdf8345040e69857864"
-        },
-        {
-          "src": "/maps/longleaf.webp",
-          "sha256": "f4baf837ea5b092014478759d9c706a3aad75ad2f5640a430eb25dc07ee3f639"
-        },
-        {
-          "src": "/maps/cards/longleaf.webp",
-          "sha256": "d8f56eb7a4ea6d8f81358e5c945746d6a1278f82d689d9f41b6bc2cefcf54038"
-        },
-        {
-          "src": "/maps/thumbs/longleaf.webp",
-          "sha256": "180f3c4c4c8818b3bc1d0bb65ae3e7527feab7d57a6bc92f714a753d3018b56f"
-        },
-        {
-          "src": "/maps/mangrove.webp",
-          "sha256": "60b6c52eea505638d68f2e78d0585f39330b68cdf38494eb64ac2967f3ce8c73"
-        },
-        {
-          "src": "/maps/cards/mangrove.webp",
-          "sha256": "9f87e47630cbd42ad6bd7b46e6f361234f3657906ecc3d5a53026874abe4559b"
-        },
-        {
-          "src": "/maps/thumbs/mangrove.webp",
-          "sha256": "c605d99dc5ad28747981cd6e1bcaa97fb9f3236507edd89b87c6a2653c4e0bf8"
-        },
-        {
-          "src": "/maps/saltwind.webp",
-          "sha256": "81987e7a7ec24c3d86a33d19889af0798be28459cb1829653be24d83ac919b6f"
-        },
-        {
-          "src": "/maps/cards/saltwind.webp",
-          "sha256": "79a6dd02d325d545f0e3987ba03ffd4f959a31f049dd9ef34862f5692e47bbec"
-        },
-        {
-          "src": "/maps/thumbs/saltwind.webp",
-          "sha256": "2840c6d1b01181f79bb793e8b08b9b6bf4a51005165e4889c8a1a609d5649b77"
-        },
-        {
-          "src": "/maps/reservoir.webp",
-          "sha256": "ecfc005131d7930f14acda31385d6f90287408e133d17d6045884019440ad326"
-        },
-        {
-          "src": "/maps/cards/reservoir.webp",
-          "sha256": "1a2b75137bd33aeddd2dc1bbcc482799a1289b209707031a65f90bd1ae300ec4"
-        },
-        {
-          "src": "/maps/thumbs/reservoir.webp",
-          "sha256": "e2fa5a4c71a2b1bc03bedde2133dc75e0af5752b2f2d8c56dcfd4bb58e6f79e8"
-        },
-        {
-          "src": "/maps/mars.webp",
-          "sha256": "640427c52e4f6d84ccd48f1bd5b0e19e64e01399225217da941dedd13a6979ed"
-        },
-        {
-          "src": "/maps/cards/mars.webp",
-          "sha256": "70292701eb2798c438aab8cec130ed7e08f38aa3c533a3199b651a7ccfeddeff"
-        },
-        {
-          "src": "/maps/thumbs/mars.webp",
-          "sha256": "36ef41dbf4ebdb9472ec7058d012ef13f492da843beca3448993d1766cfb854b"
-        }
-      ]
-    },
-    {
       "created": "2026-09-29T12:42:29.136Z",
       "revision": "c1ade6e0e9d70cb88812028f1d3d75e0bde0e451",
       "sourceDigest": "aba85ba95062db31f9f0fba78045d8ab3b6570f7fc843f956d3442b29a3a53b0",
@@ -10099,6 +9683,48 @@
         {
           "src": "/media/director-r4/contact-sheet.jpg",
           "sha256": "05ff8c6294eaccdbeea740a206059b355c7667fe2f0d0eb3f24e87f005289d6d"
+        }
+      ]
+    },
+    {
+      "created": "2026-09-29T12:44:34.345Z",
+      "revision": "c1ade6e0e9d70cb88812028f1d3d75e0bde0e451",
+      "sourceDigest": "03522a8020b48a9ff9879c325fb917f9a5a1cd801628b108fa3db330431c9e59",
+      "review": {
+        "reviewedAt": "2026-09-29T12:29:11.273441+00:00",
+        "notes": "Inspected both native 1920×1080 screenshots: live team lists, HP, ammo, scope and module-hit feedback remain visible; opening includes the real rollout title. The player shell receipt records ricochet with zero damage. Later target destruction is not attributed to this player shot. Encoded motion review is recorded separately. Reviewed nine motion samples across the whole 4.416-second take: convoy advance, scope entry and ricochet card remain legible; no frozen HUD composite or black frames in these samples. The later destroyed-target screenshot is an aftermath image, not a claim that destruction occurs inside the short clip.",
+        "hashes": [
+          "2a656bdee53eb3fdd810c525e68e234aba2c3b2131cd2f1ef115cbfd804fd95b",
+          "06cb23c9a55c83735fd56461a12c4d58f3fbc5f683ac90744a0dcc60e95ea904",
+          "0f22f1fbc0fd90294762e6a9b571ecfaf094c90a90667a561cf82fc97e187a95",
+          "90192dfe822d2fdcedc8bb303d84b35323b2e6e849c4e698446bfb0e039942f9"
+        ]
+      },
+      "assets": [
+        {
+          "src": "/media/director-r4/gameplay/battle-live.mp4",
+          "sha256": "fd97273e6a42b4b6054bfd50d582f78c8098a5ecf1ef0d6651c165f1319a9b2b",
+          "bytes": 3871118
+        },
+        {
+          "src": "/media/director-r4/gameplay/battle-live-mobile.mp4",
+          "sha256": "73ca12ad53c66d921226d00054caf8afc3c63fc5e73049dca5dac749398a3119",
+          "bytes": 1134816
+        },
+        {
+          "src": "/media/director-r4/gameplay/battle-opening.webp",
+          "sha256": "6d5f0da8af7cfe32a4eccef2a415b2f32fff8b27adac76c7fdb9490a95891e7a",
+          "bytes": 677602
+        },
+        {
+          "src": "/media/director-r4/gameplay/battle-impact.webp",
+          "sha256": "052e373d27bb54c0ad0f718113c792591a99718975c874e10a6b2b017ce0b2be",
+          "bytes": 680208
+        },
+        {
+          "src": "/media/director-r4/gameplay/battle-live.vtt",
+          "sha256": "7637c67383f38ecfabd82966103afb4c021e26ceebbcf4fda03e1c08acb9ed21",
+          "bytes": 164
         }
       ]
     }

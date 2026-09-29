@@ -140,3 +140,16 @@ export function frameScene(scene, format) {
   camera(result.camera);for(const shot of result.storyboard?.shots??[])camera(shot);
   return result;
 }
+
+/** Reciprocal street-level views plus an oblique plan expose frontage,
+ * road access and settlement grouping without hiding them behind HUD/tanks. */
+export function settlementSurvey(world) {
+  const v = world.heightField._layout.village;
+  const x = v.cx, z = v.cz, h = (x,z) => world.heightField.getHeightAt(x,z);
+  const radius = Math.max(80,Math.min(180,Math.max(v.x1-v.x0,v.z1-v.z0)*.6));
+  return [
+    {id:'village-plan',camera:{pos:[x+radius,h(x,z)+radius*.85,z+radius],lookAt:[x,h(x,z)+2,z],fov:58}},
+    {id:'street-north',camera:{pos:[x-radius*.7,h(x-radius*.7,z-radius*.5)+12,z-radius*.5],lookAt:[x,h(x,z)+4,z],fov:60}},
+    {id:'street-south',camera:{pos:[x+radius*.7,h(x+radius*.7,z+radius*.5)+12,z+radius*.5],lookAt:[x,h(x,z)+4,z],fov:60}},
+  ];
+}

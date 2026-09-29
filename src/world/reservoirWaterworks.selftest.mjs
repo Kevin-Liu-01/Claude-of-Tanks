@@ -206,6 +206,21 @@ async function wholeWorld(seed, revision) {
   const propsUrl = new URL('./props.ts', import.meta.url).href;
   const helperUrl = new URL('./reservoirWaterworks.ts', import.meta.url).href;
   globalThis.__waterworksRng = [];
+  // Historical geometry hashes also require the placement policy from that
+  // revision. Current worlds below keep the real segment-intersection plaza
+  // and road-facing parcels; neither safety checks nor geometry hashes change.
+  globalThis.__historicalWaterworksJunction = (roads, center) => {
+    let best = 1e9, resolved = { x: center.cx, z: center.cz };
+    for (let left = 0; left < roads.length; left++) for (let right = left + 1; right < roads.length; right++) {
+      for (const [ax, az] of roads[left]) for (const [bx, bz] of roads[right]) {
+        if (Math.hypot(ax - bx, az - bz) > 18) continue;
+        const x = (ax + bx) / 2, z = (az + bz) / 2;
+        const distance = Math.hypot(x - center.cx, z - center.cz);
+        if (distance < best) { best = distance; resolved = { x, z }; }
+      }
+    }
+    return resolved;
+  };
   let control = true, seam, partition;
   globalThis.__captureWaterworks = (args, compose) => {
     const [, , field, donors, buckets, blockers] = args;
@@ -256,6 +271,13 @@ async function wholeWorld(seed, revision) {
     if (url === propsUrl) {
       let text = result.source.toString().replace('export function mulberry32(a: number): Rng',
         'function originalMulberry32(a: number): Rng');
+      if (legacy) {
+        const junction = 'return roadSettlementJunction(roads, { x: v.cx, z: v.cz });';
+        const frontage = 'placePlannedBuilding(px, pz, rot, roadSite);';
+        for (const anchor of [junction, frontage]) assert.equal(text.split(anchor).length, 2);
+        text = text.replace(junction, 'return globalThis.__historicalWaterworksJunction(roads, v);')
+          .replace(frontage, 'placePlannedBuilding(px, pz, rot);');
+      }
       text += `\nexport function mulberry32(seed: number): Rng {
         const next = originalMulberry32(seed), row = { seed, count: 0, next };
         globalThis.__waterworksRng.push(row);

@@ -5,7 +5,7 @@ import { createLayout, createHeightField } from './terrain.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { ROAD_ENDPOINT_INTENTS, completeRoadEndpoints, roadIntersection, roadNetworkComponentCount, alignHardstandRoadPortals } from './maps/roadEndpoints.ts';
 import { gradeRoadPortalShoulders, roadPortalInnerSquare } from './fixtures/legacyRoadPortalShoulders.ts';
-import { alignFjordNorthernRoadGrades, roadBorderCorridorStart } from './maps/roadBorderCorridor.ts';
+import { alignFjordNorthernRoadGrades, alignPoldersNorthernRoadGrades, roadBorderCorridorStart } from './maps/roadBorderCorridor.ts';
 
 // The historical no-completion constructor must also omit the later grade
 // alignment owned by those added Fjord termini. All other production code,
@@ -20,7 +20,7 @@ const referenceHooks = registerHooks({ load(url, context, next) {
   if (url === referenceURL) return { format: 'module-typescript', shortCircuit: true,
     source: terrainSource.replace(borderImport, "from './maps/roadBorderCorridor.ts?withoutRoadCompletion'") };
   if (url === borderURL) return { format: 'module', shortCircuit: true,
-    source: "export * from './roadBorderCorridor.ts'; export function alignFjordNorthernRoadGrades() {} export function alignCopperNorthernRoadGrades() {}" };
+    source: "export * from './roadBorderCorridor.ts'; export function alignFjordNorthernRoadGrades() {} export function alignCopperNorthernRoadGrades() {} export function alignPoldersNorthernRoadGrades() {}" };
   return next(url, context);
 } });
 let referenceHeightField;
@@ -61,9 +61,13 @@ export function assertRoadNetwork(mapId, roads) {
   roads.forEach((road, index) => {
     for (let i = 1; i < road.length; i++) {
       const length = Math.hypot(road[i][0] - road[i - 1][0], road[i][1] - road[i - 1][1]);
-      // Legacy country/grid samples are32m along an axis, with a small
-      // cross-axis curve; authored/added straight segments are <=32m long.
-      assert.ok(length > 1e-7 && length <= 34, `${mapId}/${index}: finite nondegenerate bounded sampling`);
+      // Desert keeps its33 authored Z stations while the mesa bypass moves
+      // sideways between them. Bound its diagonal without resampling props;
+      // all other country/grid and authored routes retain the34m ceiling.
+      if (mapId === 'desert' && index === 0) {
+        assert.equal(road[i][1] - road[i - 1][1], 32, 'Desert keeps32m longitudinal stations');
+        assert.ok(length > 1e-7 && length <= 75, 'Desert lateral bypass has bounded nondegenerate stations');
+      } else assert.ok(length > 1e-7 && length <= 34, `${mapId}/${index}: finite nondegenerate bounded sampling`);
     }
     intents[index].forEach((intent, end) => {
       const p = end ? road.at(-1) : road[0];
@@ -229,6 +233,9 @@ for (const mapId of MAP_IDS) {
   if (mapId === 'fjord') assert.throws(() => alignFjordNorthernRoadGrades(mapId, source,
     source.map(road => road.map(() => 0))), /Fjord northern grade ownership changed/,
   'the actual production alignment still rejects incomplete historical termini');
+  if (mapId === 'polders') assert.throws(() => alignPoldersNorthernRoadGrades(mapId, source,
+    source.map(road => road.map(() => 0))), /Polders northern grade ownership changed/,
+    'incomplete historical termini cannot receive completed Polders alignment');
   const field = withoutCompletion(mapId, () => referenceHeightField(1337, control)), after = createHeightField(1337, { ...config, fieldTrenches: false });
   if (after._createRoadPlacementSampler) assert.equal(typeof after._createRoadPlacementSampler, 'function');
   assert.deepEqual(Object.keys(after).filter(key => key !== '_createRoadPlacementSampler'),

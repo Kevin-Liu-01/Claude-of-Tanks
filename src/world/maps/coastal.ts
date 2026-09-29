@@ -43,14 +43,14 @@ export default {
     village: { x0: 40, x1: 250, z0: -80, z1: 150, cx: 150, cz: 30, feather: 45, flatten: 0.86 },
     villageWear: 'activity-patches',
     workedGround: [
+      // Sandy turning courts explain the two shore-road termini. They meet
+      // the existing capped lanes on dry land without paving across the bay.
+      { feather: 4, strength: 0.9, boundary: [[247, -66], [261, -70], [276, -63], [280, -50], [270, -37], [251, -38], [241, -49]] },
+      { feather: 4, strength: 0.9, boundary: [[245, 81], [262, 78], [277, 86], [280, 99], [269, 112], [250, 110], [241, 96]] },
       // Market stalls flank the actual road junction (163.77, 95.66).
       { feather: 8, strength: 0.92, boundary: [[140, 76], [174, 71], [192, 88], [185, 113], [149, 118], [136, 99]] },
       // Fishery/boatshed frontages on both sides of the x≈168 coast road.
       { feather: 7, strength: 0.82, boundary: [[141, -77], [171, -77], [197, -45], [190, 7], [199, 40], [176, 51], [141, 45], [145, 9], [134, -28]] },
-      // Existing crofts and their entrances along the z≈-52 cross street.
-      { feather: 7, strength: 0.84, boundary: [[48, -73], [86, -78], [128, -74], [140, -63], [140, -29], [103, -24], [65, -27], [47, -44]] },
-      // Two cottages north of the market, leaving open pasture between yards.
-      { feather: 6, strength: 0.78, boundary: [[142, 117], [171, 113], [191, 121], [189, 140], [160, 147], [140, 135]] },
     ],
     landforms: [
       { kind: 'ridge', x: -252, z: -34, length: 322, width: 78, height: 6.6, yawDeg: 4 },

@@ -1,3 +1,4 @@
+import { beforeRoadSettlementRedesign } from '../../tools/road-settlement-history-fixture.mjs';
 import { beforeShorelineContinuity } from './shorelineContinuity.test-support.mjs';
 import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
@@ -173,7 +174,7 @@ function verifyHistoricalConfigs(resolve) {
   for (const id of MAP_IDS) {
     // Mars mode (2026-09-18): Olympus Basin postdates the other29 golden — the catalog receipts guard it
     if (id === 'mars') continue;
-    const historical = historicalAlpineHorizonInput(historicalCropPaletteInput(historicalAutumnPaletteInput(historicalFoundryPaletteInput(historicalPaletteConfig(originalExitConfig(historicalMapPassDressingInput(beforeShorelineContinuity(resolve(id)), assert)))))));
+    const historical = beforeRoadSettlementRedesign(historicalAlpineHorizonInput(historicalCropPaletteInput(historicalAutumnPaletteInput(historicalFoundryPaletteInput(historicalPaletteConfig(originalExitConfig(historicalMapPassDressingInput(beforeShorelineContinuity(resolve(id)), assert))))))));
     if (id !== 'mangrove') unchangedMaps.push([id, stringify(paletteReceiptInput(historical))]);
   }
   // 2026-09-13 lighting: eight sky presets (alpine, fjord, caldera, monsoon, delta, blackglass, foundry,

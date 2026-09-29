@@ -1588,6 +1588,9 @@ renderer.userData.contextRecovery = {
   async onRestored() {
     const restoredInfo = renderer.info;
     const isCurrentRestoration = () => renderer.info === restoredInfo && !renderer.getContext().isContextLost();
+    // CPU depth-texture objects survive a WebGL reset; their previous contents
+    // do not. Invalidate them before any dormant Garage can accept a partial warm.
+    lighting.invalidateShadowMaps();
     // A restored WebGL context has no linked programs or uploaded buffers,
     // even though the JavaScript-side warm receipts survive. Invalidate every
     // renderer-lifetime combat latch so the next covered transition rebuilds

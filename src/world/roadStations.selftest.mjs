@@ -6,7 +6,8 @@ import ts from 'typescript-compiler-api';
 import { createLayout } from './terrain.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { ROAD_ENDPOINT_INTENTS, completeRoadEndpoints } from './maps/roadEndpoints.ts';
-import { buildRoadStationOrigins, authoredRoadStationCount, authoredRoadStationIndex } from './maps/roadStations.ts';
+import { buildRoadStationOrigins, buildPhysicalRoadStationOrigins,
+  authoredRoadStationCount, authoredRoadStationIndex } from './maps/roadStations.ts';
 import { planUtilityPoleStation } from './propPlacement.ts';
 import { FENCE_SEG } from './maps/inhabitKit.ts';
 import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
@@ -126,6 +127,20 @@ function fixture(L, roadDistance = () => 20, options = {}) {
 }
 const stages = ['placeRoadFenceLines', 'placeRoadCarts', 'placeSandbagEmplacements',
   'placeUtilityPoles', 'placeTownLampposts', 'placeStreetLamps', 'placeRoadWrecks'];
+// Exercise the actual pole consumer: subdividing a curve into many small
+// geometric edges must not build a line of poles a metre apart.
+const denseRoads = [Array.from({ length: 401 }, (_, i) => [0, i - 200])];
+const sparseLayout = layout(denseRoads, buildPhysicalRoadStationOrigins('orchard', denseRoads, denseRoads, undefined));
+const physicalPoles = fixture(sparseLayout), densePoles = fixture(layout(denseRoads));
+physicalPoles.methods.placeUtilityPoles(); densePoles.methods.placeUtilityPoles();
+assert.ok(physicalPoles.utilityPolePlacements.length > 0, 'sparse station fixture actually emits poles');
+assert.ok(densePoles.utilityPolePlacements.length > physicalPoles.utilityPolePlacements.length * 10,
+  'dropping physical station mapping detects the dense-curve pole regression');
+for (let i = 1; i < physicalPoles.utilityPolePlacements.length; i++) {
+  const a = physicalPoles.utilityPolePlacements[i - 1].poles[0];
+  const b = physicalPoles.utilityPolePlacements[i].poles[0];
+  assert.ok(Math.hypot(a.x - b.x, a.z - b.z) >= 24 - 1e-7, 'actual primary poles retain physical spacing');
+}
 for (const stage of stages) {
   const before = fixture(originalLayout), after = fixture(completedLayout), naked = fixture(layout(extended));
   for (const item of [before, after, naked]) {
@@ -239,13 +254,18 @@ for (const mapId of MAP_IDS) {
   }
   const count = completed.roadStations?.filter(Boolean).length ?? 0;
   metadataRecords += count;
-  metadata.push({ mapId, arrayEntries: completed.roadStations?.length ?? 0, records: count, integerFields: count * 4 });
+  const sparseIndices = completed.roadStations?.reduce((total, origin) => total + (origin?.indices?.length ?? 0), 0) ?? 0;
+  metadata.push({ mapId, arrayEntries: completed.roadStations?.length ?? 0, records: count,
+    integerFields: count * 4 + sparseIndices, sparseIndices });
   for (let road = 0; road < before.roads.length; road++) {
-    assert.equal(authoredRoadStationCount(completed, road), before.roads[road].length, `${mapId}: original selection range`);
-    for (let i = 0; i < before.roads[road].length - 1; i++) {
+    const beforeCount = authoredRoadStationCount(before, road);
+    assert.equal(authoredRoadStationCount(completed, road), beforeCount, `${mapId}: original selection range`);
+    for (let i = 0; i < beforeCount - 1; i++) {
       const at = authoredRoadStationIndex(completed, road, i);
       if (at < 0) { omitted++; continue; }
-      assert.deepEqual(completed.roads[road].slice(at, at + 2), before.roads[road].slice(i, i + 2), `${mapId}/${road}/${i}: exact original segment/tangent`);
+      const beforeAt = authoredRoadStationIndex(before, road, i);
+      assert.ok(beforeAt >= 0, `${mapId}/${road}/${i}: completion cannot invent a dressing station`);
+      assert.deepEqual(completed.roads[road].slice(at, at + 2), before.roads[road].slice(beforeAt, beforeAt + 2), `${mapId}/${road}/${i}: exact original segment/tangent`);
       mapped++;
     }
   }
@@ -253,7 +273,9 @@ for (const mapId of MAP_IDS) {
 const hashes = Object.fromEntries(['terrain.ts', 'props.ts', 'maps/roadEndpoints.ts', 'maps/roadStations.ts']
   .map(file => [file, createHash('sha256').update(readFileSync(new URL(file, import.meta.url))).digest('hex')]));
 console.log(JSON.stringify({ test: 'roadStations', maps: MAP_IDS.length, mapped, omitted, metadataRecords, hashes, metadata,
-  retainedScalarFields: metadataRecords * 4, newTypedBackingBytes: 0, newCoordinateArrays: 0, nativeRecapture: false,
+  retainedScalarFields: metadata.reduce((total, row) => total + row.integerFields, 0),
+  newIndexArrays: metadata.filter(row => row.sparseIndices > 0).reduce((total, row) => total + row.records, 0),
+  newTypedBackingBytes: 0, newCoordinateArrays: 0, nativeRecapture: false,
   scope: 'actual station consumers; RNG parity only under identical admission, no full-props or vegetation parity claim' }));
 
 const authoredOutput = process.argv.find(arg => arg.startsWith('--authored-exit-out='))?.slice(20);

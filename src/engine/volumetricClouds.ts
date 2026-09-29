@@ -491,13 +491,14 @@ ${CLOUD_LIGHT_TAPS.map((dist, k) => `	${k >= 2 ? `if ( !short_ && od * uDensity 
 	}`).join('\n')}
 	return od * uDensity;
 }
-// round 76: the optical depth of the column above p to its top — two base-shape taps spread over the remaining
-// height (the ladder scaled per texel like the light march's): a deck's underside is lit by what its column
-// transmits, so the thick cores read dark and the thin borders bright
-float cloudColumnDepthAbove( vec3 p, Weather w, float scale, float cellK ) {
+// Optical depth through the deck above p. Keep this broad transmission estimate stable:
+// scaling both column taps by the trace's temporal jitter made the entire underside
+// brighten/darken with each 4 x 4 refresh block. The view and sun marches retain their
+// jitter; this two-tap quadrature keeps its existing positions, weights and fetch budget.
+float cloudColumnDepthAbove( vec3 p, Weather w, float cellK ) {
 	float rem = max( uBase + uThick * max( w.top, 0.05 ) - p.y, 20.0 );
-	float od = cloudDensityK( p + vec3( 0.0, rem * 0.22 * scale, 0.0 ), w, false, 0.0, cellK ) * 0.45
-		+ cloudDensityK( p + vec3( 0.0, rem * 0.66 * scale, 0.0 ), w, false, 0.0, cellK ) * 0.55;
+	float od = cloudDensityK( p + vec3( 0.0, rem * 0.22, 0.0 ), w, false, 0.0, cellK ) * 0.45
+		+ cloudDensityK( p + vec3( 0.0, rem * 0.66, 0.0 ), w, false, 0.0, cellK ) * 0.55;
 	return od * rem * uDensity;
 }
 // optical depth of the cloud above p toward the zenith (two base-shape taps): the underside of a thick lump
@@ -677,7 +678,7 @@ void main() {
 						// thin sheet as through ground glass; the near taps of the light march keep the lit walls at
 						// the breaks). From below, the lower sky and the ground bounce (the map's ambient scale: snow
 						// lifts a deck) and, near a column's top, the sky itself.
-						float tauAbove = cloudColumnDepthAbove( p, w, lightScale, cellK );
+						float tauAbove = cloudColumnDepthAbove( p, w, cellK );
 						float Tdiff = 1.0 / ( 1.0 + 0.1125 * tauAbove );
 						// (the transmitted sun at a third of its physical share: the battlefield skies are exposed for the
 						// ground with the horizon band near white, and a physically lit base — a third to a half of a lit
@@ -849,9 +850,12 @@ void main() {
 		// clamp to the range of this frame's samples around the block (with a margin): lighting and motion
 		// the reprojection missed cannot ghost, so the samples average over many frames
 		vec4 lo = vec4( 1e4 ), hi = vec4( -1e4 );
-		ivec2 tmax = ivec2( uTraceSize ) - 1;
+		// Centre the bounds on this history pixel, not its 4 x 4 refresh block.
+		// A block-constant clamp cuts smooth reprojected cloud rims into square steps.
+		// The same nine taps interpolate continuously; trace resolution/cost stays unchanged.
+		vec2 traceUv = ( ( p - uSlot ) / ${f(CLOUD_TRACE_DIVISOR)} + 0.5 ) / uTraceSize;
 		for ( int y = -1; y <= 1; y++ ) for ( int x = -1; x <= 1; x++ ) {
-			vec4 s = texelFetch( tTrace, clamp( ivec2( tp ) + ivec2( x, y ), ivec2( 0 ), tmax ), 0 );
+			vec4 s = texture2D( tTrace, traceUv + vec2( x, y ) / uTraceSize );
 			lo = min( lo, s ); hi = max( hi, s );
 		}
 		vec4 pad = ( hi - lo ) * 0.25 + 0.01;

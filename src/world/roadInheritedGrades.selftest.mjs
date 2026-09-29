@@ -6,7 +6,7 @@ import ts from 'typescript-compiler-api';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { ROAD_ENDPOINT_INTENTS, completeRoadEndpoints, usesInheritedRoadGrades,
   remapInheritedRoadElevations, alignAddedRoadJunctionGrades } from './maps/roadEndpoints.ts';
-import { buildRoadStationOrigins, authoredRoadStationIndex } from './maps/roadStations.ts';
+import { usesPhysicalRoadStations, buildRoadStationOrigins, authoredRoadStationIndex } from './maps/roadStations.ts';
 
 const selected = ['blackglass', 'titan_gorge', 'skybridge'];
 for (const id of [...MAP_IDS, undefined, 'fixture']) {
@@ -31,8 +31,10 @@ const definitions = names.map(name => {
   assert.ok(functions.has(name), `execute actual ${name}`);
   return functions.get(name);
 }).join('\n');
-const makeBake = new Function('roads', `const _junctionScratch = [0, 0, 1e9];
+const compileBake = new Function('roads', 'usesPhysicalRoadStations', 'cfg', `const _junctionScratch = [0, 0, 1e9];
   ${stripTypeScriptTypes(definitions)} return { ${names.join(',')} };`);
+// These synthetic controls exercise the inherited (legacy) grading policy.
+const makeBake = roads => compileBake(roads, usesPhysicalRoadStations, { id: 'blackglass' });
 const copy = rows => rows.map(row => row.slice());
 
 // Endpoints must retain their original boundary condition: smoothing the

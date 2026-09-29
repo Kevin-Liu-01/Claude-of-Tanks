@@ -167,14 +167,27 @@ for (const seed of [1337, 2025]) {
       assert.ok(Math.hypot(record.ob.shape2.cx - record.x, record.ob.shape2.cz - record.z) < 0.3);
       assert.equal(pushHullFromObstacle(record, 0, 1, 1, 0, 1, 0.7, record.ob, { x: 0, z: 0 }), true);
       assert.ok(Math.abs(record.ob.min[1] - record.y) < 1e-9);
-      assert.ok(record.groundSupport.spread <= 0.45);
+      // Only the first two accepted donors belong to the authored yard.
+      // Additional road traffic keeps its original pitched ground support.
+      const yardIndex = pool.records.indexOf(record);
+      if (yardIndex < receipt.flatbeds.accepted) {
+        assert.ok(record.groundSupport.spread <= 0.45);
+        const bay = longleaf.props.loggingYard.flatbeds[yardIndex];
+        assert.ok(Math.hypot(record.x - bay.x, record.z - bay.z) < 1e-9);
+      } else {
+        const original = before.records[after.records.indexOf(record)];
+        assert.deepEqual(record.groundSupport, original.groundSupport);
+        assert.deepEqual([record.x, record.y, record.z, record.yaw],
+          [original.x, original.y, original.z, original.yaw], 'non-yard traffic retains its actual supported pose');
+      }
       const canonicalPose = pool.mats4[record.slot].clone();
       record.state = 1; record.ob.crushed = true;
       if (record.col) record.col.dead = true;
       pool.imI.setMatrixAt(record.slot, new THREE.Matrix4().makeScale(0,0,0));
       after.restoreDestructibleRecord(record);
       const restored = new THREE.Matrix4(); pool.imI.getMatrixAt(record.slot, restored);
-      restored.elements.forEach((value, i) => assert.ok(Math.abs(value - canonicalPose.elements[i]) < 0.00001));
+      restored.elements.forEach((value, i) => assert.equal(value, Math.fround(canonicalPose.elements[i]),
+        'restored Float32 instance matrix exactly matches the canonical pose'));
       assert.equal(record.state, 0); assert.equal(record.ob.crushed, false);
       if (record.col) assert.equal(record.col.dead, false);
     }
@@ -185,20 +198,15 @@ for (const seed of [1337, 2025]) {
   cleanup(before); cleanup(after); cleanup(replay);
 }
 
-// Explicit PRE-layout donor envelopes from the preserved native Longleaf
-// capture (terrain1337/props2002), shard SHA256
-// 0919a68451128ff2d0e59cf00447bd53b78fb3c113b70487c01eda7216f55f42.
-// The current canonical corpus is the OUTPUT of composition. Reconstructing
-// donors at its already-relocated AABB centers runs this one-shot construction
-// backwards: their own shell colliders occupy the requested loading bays.
-// These are envelope-center test inputs, not claims of captured mesh origins
-// or yaw; the actual record builder still owns shape, pool and lifecycle data.
+// 2026-09-29 curved-road native capture. Independent replay of the actual
+// heavy-traffic stage (props2002, terrain1337) establishes these PRE-layout
+// origins and scales. Capture rounds the two vertical endpoints separately;
+// the stable height below is their measured native difference, not a looser
+// scale tolerance. The corpus is composition's output, never its input.
 const preLayoutTraffic = [
-  { propIdx: 268, bounds: [307.7485, 1.2493, 357.2405, 312.394, 3.136, 363.634] },
-  { propIdx: 280, bounds: [45.7761, -2.1775, 226.462, 52.6585, -0.1724, 230.2845] },
+  { x: -149.2308419066663, z: -173.92149064282697, height: 2.0045 },
+  { x: -80.60376542456797, z: 239.70308177010833, height: 1.9813 },
 ];
-// 2026-09-19 hitbox pass: the full shard recapture (a capture of pristine origin/main places the same) admits two
-// more road-side flatbeds far from the yard; the two preserved donors are the ones parked at the authored bays.
 const flatbedBays = longleaf.props.loggingYard.flatbeds;
 const currentTraffic = canonical.filter(ob => ob.kind === 'truckflatbed' && flatbedBays.some(point =>
   Math.hypot((ob.min[0] + ob.max[0]) / 2 - point.x, (ob.min[2] + ob.max[2]) / 2 - point.z) < 26));
@@ -207,11 +215,11 @@ assert.equal(currentTraffic.length, 2, 'canonical Longleaf genuinely preserves t
 // props shift it. Match the two preserved donors by their distinct physical
 // scales, then check their current authored destinations independently.
 const matchedTraffic = new Set();
-const savedTraffic = preLayoutTraffic.map(({ bounds: b }, index) => {
-  const sc = (b[4] - b[1]) / DESTRUCTIBLE_TYPES.truckflatbed.h;
+const savedTraffic = preLayoutTraffic.map(({ x, z, height }, index) => {
+  const sc = height / DESTRUCTIBLE_TYPES.truckflatbed.h;
   const matches = currentTraffic.filter(ob => Math.abs(
     (ob.max[1] - ob.min[1]) / DESTRUCTIBLE_TYPES.truckflatbed.h - sc) < 1e-10);
-  assert.equal(matches.length, 1, 'each historical donor has one unique current physical scale');
+  assert.equal(matches.length, 1, 'each independently replayed donor has one unique native physical scale');
   const current = matches[0];
   assert.ok(!matchedTraffic.has(current)); matchedTraffic.add(current);
   const target = longleaf.props.loggingYard.flatbeds[index];
@@ -220,7 +228,6 @@ const savedTraffic = preLayoutTraffic.map(({ bounds: b }, index) => {
     'matched current donor occupies its authored loading bay');
   assert.ok(Math.abs((current.max[1] - current.min[1]) / DESTRUCTIBLE_TYPES.truckflatbed.h - sc) < 1e-10,
     'composition preserves each captured donor scale');
-  const x = (b[0] + b[3]) / 2, z = (b[2] + b[5]) / 2;
   assert.ok(longleaf.props.loggingYard.flatbeds.every(point => Math.hypot(x - point.x, z - point.z) > 26),
     'donor input must precede, not already occupy, an authored destination');
   return { kind: 'truckflatbed', x, z, sc };

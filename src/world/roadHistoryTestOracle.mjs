@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { registerHooks } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { beforeRoadCompletionConstructor } from '../../tools/road-constructor-history-fixture.mjs';
+import { beforeRoadSettlementRedesign } from '../../tools/road-settlement-history-fixture.mjs';
 import { loadShorelineHistory } from './shorelineContinuity.test-support.mjs';
 
 // Preserve the authenticated pre-completion constructor and layout only.
@@ -30,16 +31,44 @@ assert.equal(referenceSource.split(historicalRim).length, 2, 'one historical rim
 // restores the CURRENT blend so the placement sampler is compared against the field it actually reproduces.
 const historicalRoadBlend = '    const rd = gridSample(gRoadDist, x, z);\n    if (rd < 14) h += (gridSample(gRoadElev, x, z) - h) * (1 - smoothstep(3.8, 14, rd));\n';
 assert.equal(referenceSource.split(historicalRoadBlend).length, 2, 'one historical road-plane blend in the pre-completion constructor');
-const reliefLawSource = referenceSource.replace(historicalRim,
+// Road smoothing is also a CURRENT construction law for placement admission.
+// Restore it only here; historical source authentication above keeps old grades.
+const historicalSmoothing = '  function smoothRoadElevations(nodeElev: number[][]): void {\n';
+const historicalJunctionBlend = '  function blendRoadJunctions(nodeElev: number[][]): void {\n';
+for (const declaration of [historicalSmoothing, historicalJunctionBlend]) {
+  assert.equal(referenceSource.split(declaration).length, 2, 'one historical grading declaration');
+}
+const historicalLayoutReturn = '  return {\n    village,\n';
+assert.equal(referenceSource.split(historicalLayoutReturn).length, 2, 'one historical layout return');
+// The authentic constructor indentation is retained by its fixture.
+const desertGradeAnchor = referenceSource.match(/([ \t]*)blendRoadJunctions\(nodeElev\);/);
+assert.ok(desertGradeAnchor, 'one historical junction bake to extend for current Desert placement');
+const historicalBankBake = '      gRoadElev[i] = e[s] + (e[s + 1] - e[s]) * gSegT[i];\n    }\n';
+assert.equal(referenceSource.split(historicalBankBake).length, 2, 'one historical bank bake');
+const reliefLawSource = referenceSource
+  .replace(historicalBankBake, historicalBankBake + '    blendDesertRoadBanks(cfg?.id, roads, nodeElev, gRoadDist, gRoadElev, GN, MAP_SIZE, _VILLAGE.cx, _VILLAGE.cz);\n')
+  .replace(historicalLayoutReturn, '  routeDesertRoads(cfg?.id, roads);\n' + historicalLayoutReturn)
+  .replace(desertGradeAnchor[0], desertGradeAnchor[0] + '\n' + desertGradeAnchor[1] + 'gradeDesertRoads(cfg?.id, roads, nodeElev);')
+  .replace(historicalSmoothing, historicalSmoothing +
+    '    if (usesPhysicalRoadStations(cfg?.id)) { smoothRoadGradesByDistance(roads, nodeElev); return; }\n')
+  .replace(historicalJunctionBlend, historicalJunctionBlend +
+    '    if (usesPhysicalRoadStations(cfg?.id)) { blendRoadNetworkGrades(roads, nodeElev); return; }\n')
+  .replace(historicalRim,
   '    const rim = smoothstep(430, HALF, Math.max(Math.abs(x), Math.abs(z)));\n    h += rim * rim * T.rimH * (1 - waterWeight) * (rim > 0 ? coastRimKeep(x, z) : 1);\n')
   .replace(historicalRoadBlend, `    const rd = gridSample(gRoadDist, x, z);
-    if (rd < 14) {
+    const roadBankWidth = cfg?.id === 'desert' ? 104 : 14;
+    if (rd < roadBankWidth) {
+      let roadBlendWeight = 1 - smoothstep(3.8, 14, rd);
+      if (roadBankWidth > 14) {
+        const approach = smoothstep(48 * 48, 128 * 128, (x - _VILLAGE.cx) ** 2 + (z - _VILLAGE.cz) ** 2);
+        roadBlendWeight += (1 - smoothstep(3.8, roadBankWidth, rd) - roadBlendWeight) * approach;
+      }
       let roadElevation = gridSample(gRoadElev, x, z);
       if (bridgeDecks.length) {
         const bridge = bridgeTermsAt(x, z);
         roadElevation += (bridge.deckY - roadElevation) * bridge.approach;
-        h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd)) * (1 - bridge.span);
-      } else h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd));
+        h += (roadElevation - h) * roadBlendWeight * (1 - bridge.span);
+      } else h += (roadElevation - h) * roadBlendWeight;
     }
 `);
 const reliefLawUrl = new URL('./terrain.ts?original-road-placement-relief-laws', import.meta.url).href;
@@ -48,7 +77,12 @@ const reliefLawHooks = registerHooks({ load(request, context, next) {
 } });
 let reliefLaws;
 try { reliefLaws = await import(reliefLawUrl); } finally { reliefLawHooks.deregister(); }
-export const historicalRoadHeightField = original.createHeightField;
+// This oracle reproduces historical authored geometry as well as the old
+// constructor. Current parity checks import terrain.ts directly and remain live.
+export function historicalRoadHeightField(seed, config) {
+  return original.createHeightField(seed, beforeRoadSettlementRedesign(config));
+}
 export const historicalRoadHeightFieldWithReliefLaws = reliefLaws.createHeightField;
 export const historicalRoadLayout = original.createLayout;
+export const currentRoadLayoutBeforeCompletion = reliefLaws.createLayout;
 export const historicalRoadTerrainSource = referenceSource;

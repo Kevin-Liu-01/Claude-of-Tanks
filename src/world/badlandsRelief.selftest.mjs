@@ -1,3 +1,4 @@
+import { beforeRoadSettlementSource } from '../../tools/road-settlement-source-history-fixture.mjs';
 import { historicalRoadTerrainSource } from './roadHistoryTestOracle.mjs';
 import { historicalMapPassDressingSource } from './mapPassDressing.test-support.mjs';
 import { historicalRound47PresentationSource } from './round47MapPresentation.test-support.mjs';
@@ -236,7 +237,7 @@ function historicalDrainApronSource(source, file) {
 for (const file of mapFiles) if (file !== 'badlands.ts' && file !== 'mars.ts' && file !== 'winter.ts' && file !== 'autumn.ts' && file !== 'steppe.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
   assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(
-    historicalRound75PropsSource(historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(historicalSlopeHoldSource(historicalRound47PresentationSource(historicalRound66OceanSource(historicalRound71CloudsSource(historicalRound70SnowRegradeSource(historicalRound72ReliefSource(historicalRound76DeckRegradeSource(historicalDrainApronSource(read('src/world/maps/' + file), file), file), file), file), file), file), file), file), file), file), file), file), file, assert), file), file), old('src/world/maps/' + file), id),
+    historicalRound75PropsSource(historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(historicalSlopeHoldSource(historicalRound47PresentationSource(historicalRound66OceanSource(historicalRound71CloudsSource(historicalRound70SnowRegradeSource(historicalRound72ReliefSource(historicalRound76DeckRegradeSource(historicalDrainApronSource(beforeRoadSettlementSource(read('src/world/maps/' + file), file), file), file), file), file), file), file), file), file), file), file), file), file), file, assert), file), file), old('src/world/maps/' + file), id),
     old('src/world/maps/' + file), `${file}: unchanged authoring apart from authenticated road approaches`);
 }
 

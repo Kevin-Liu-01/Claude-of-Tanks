@@ -1,5 +1,8 @@
+import { buildingRoadStationIndices } from './roadStations.ts';
+import { roadSettlementJunction } from '../roadSettlementJunction.ts';
 import { historicalRoadLayout } from '../roadHistoryTestOracle.mjs';
 import { originalExitConfig } from '../../../tools/road-authored-exit-fixture.mjs';
+import { beforeRoadSettlementRedesign } from '../../../tools/road-settlement-history-fixture.mjs';
 import assert from 'node:assert/strict';
 import { assertDeploymentRoadCoverage } from '../mapRoadCoverage.mjs';
 import { createHeightField } from '../terrain.ts';
@@ -45,19 +48,13 @@ const authoredBudgets = {
 function supportedFrontages(config, hf) {
   const village = hf._layout.village;
   const roads = hf._layout.roads;
-  let junction = [village.cx, village.cz], nearest = Infinity;
-  for (let ai = 0; ai < roads.length; ai++) for (let bi = ai + 1; bi < roads.length; bi++) {
-    for (const a of roads[ai]) for (const b of roads[bi]) {
-      if (Math.hypot(a[0] - b[0], a[1] - b[1]) > 18) continue;
-      const x = (a[0] + b[0]) / 2, z = (a[1] + b[1]) / 2;
-      const distance = Math.hypot(x - village.cx, z - village.cz);
-      if (distance < nearest) { nearest = distance; junction = [x, z]; }
-    }
-  }
+  const crossing = roadSettlementJunction(roads, { x: village.cx, z: village.cz });
+  const junction = [crossing.x, crossing.z];
   const inside = (x, z, pad = 0) => x >= village.x0 + pad && x <= village.x1 - pad
     && z >= village.z0 + pad && z <= village.z1 - pad;
   const lat = config.props.buildingLat[0] + config.props.buildingLat[1] * 0.5;
-  return roads.map((road) => road.flatMap(([x, z], index) => {
+  return roads.map((road, roadIndex) => buildingRoadStationIndices(hf._layout, roadIndex).flatMap((index) => {
+    const [x, z] = road[index];
     if (!index || index === road.length - 1 || !inside(x, z, 6)
       || Math.hypot(x - junction[0], z - junction[1]) < 22) return [];
     const a = road[index - 1], b = road[index + 1];
@@ -91,7 +88,7 @@ for (const config of maps) {
   const replay = createHeightField(1337, config);
   const roads = hf._layout.roads;
   const budget = authoredBudgets[label];
-  assert.ok(historicalRoadLayout(originalExitConfig(config)).roads.reduce((count, road) => count + road.length, 0) <= budget.roadNodes,
+  assert.ok(historicalRoadLayout(beforeRoadSettlementRedesign(originalExitConfig(config))).roads.reduce((count, road) => count + road.length, 0) <= budget.roadNodes,
     `${label}: original settlement articulation retains its lattice budget; completed approaches are checked separately`);
   const frontages = supportedFrontages(config, hf);
   assert.ok(frontages.filter((sites) => sites.length >= 3).length >= 2,
