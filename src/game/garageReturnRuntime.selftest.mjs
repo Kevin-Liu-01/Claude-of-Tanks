@@ -406,6 +406,7 @@ function contextRecoveryFixture(fixture) {
   let lost = false;
   let gpuRestores = 0;
   let rearmed = 0;
+  let environmentRebuilt = false;
   const renderer = { info: {}, getContext: () => ({ isContextLost: () => lost }) };
   const adapter = new Function('ports', `
     const {renderer, game, garageReturn, garagePhasePresentation} = ports;
@@ -413,7 +414,8 @@ function contextRecoveryFixture(fixture) {
     const getDeviceTier = () => 'desktop';
     const nextFrame = async () => {};
     const viewport = { apply() {} };
-    const post = { resetAdaptiveResolution() {}, setAdaptiveSuspended() {}, render() {} };
+    const post = { resetAdaptiveResolution() {}, setAdaptiveSuspended() {}, render() { ports.assertEnvironment(); } };
+    const sky = { bakeEnvironment() { ports.rebuildEnvironment(); } };
     const applyGraphicsRecovery = () => {};
     const pedestal = { trim() {} };
     const worldRuntime = { enforceCacheBudget() {} };
@@ -426,7 +428,10 @@ function contextRecoveryFixture(fixture) {
       get dirty() { return garagePresentationDirty; } };
   `)({ renderer, game: fixture.game, garageReturn: fixture.runtime,
     garagePhasePresentation: { async restoreGpu() { gpuRestores += 1; } },
-    rearm() { rearmed += 1; } });
+    rearm() { rearmed += 1; },
+    rebuildEnvironment() { environmentRebuilt = true; },
+    assertEnvironment() { assert.equal(environmentRebuilt, true, 'rebuild GPU-only reflections before confirming the restored frame'); },
+  });
   return { adapter, renderer, loseContext() { lost = true; },
     get gpuRestores() { return gpuRestores; }, get rearmed() { return rearmed; } };
 }

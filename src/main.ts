@@ -1600,6 +1600,9 @@ renderer.userData.contextRecovery = {
     if (!isCurrentRestoration()) throw new Error('Graphics recovery was superseded by another context loss.');
     viewport.apply();
     post.resetAdaptiveResolution();
+    // Render-target textures have no CPU image to re-upload after a reset.
+    // Rebuild the current sky reflection before any restored material draws.
+    sky.bakeEnvironment();
     lighting.update(true);
     if (game.phase === 'garage') {
       const recoveredReturn = await garageReturn.recoverAfterContextRestore(isCurrentRestoration);
