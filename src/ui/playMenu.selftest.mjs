@@ -6,7 +6,7 @@ import { runInNewContext } from 'node:vm';
 const source = await readFile(new URL('./playMenu.ts', import.meta.url), 'utf8');
 const responsive = await readFile(new URL('./responsiveSurfaces.css', import.meta.url), 'utf8');
 assert.deepEqual([...source.matchAll(/class="mode" data-mode="([^"]+)"/g)].map(match => match[1]),
-  ['solo', 'private', 'lan'], 'only supported modes have player-facing entry controls');
+  ['private', 'lan', 'solo'], 'only supported modes have player-facing entry controls');
 assert.doesNotMatch(source, /rankedServiceClient|rankedQueueLifecycle|onRankedStart|data-ranked|data-mode="ranked"/,
   'the removed mode cannot warm, queue, or render through the Play menu');
 assert.match(source, /showRoomFailure\(reason: string, mode\?: PlayMode\): void/);
@@ -144,3 +144,21 @@ assert.doesNotMatch(source, /kind: 'room_failure'[^\n]*(?:roomCode|hostName|code
 assert.match(source, /relayNote = mode === 'private' && roomIce && !roomIce\.relayAvailable\s*\? t\('playMenu\.note\.relayUnavailable'\)/,
   'the lobby note keeps the direct-only sentence');
 console.log('playMenu.selftest: ICE degradation is visible in the note, the timeout detail and the beacon');
+
+// Room setup is a separate intent and cannot emit a battle-start or mutate the solo rule.
+const openMultiplayer = garage.slice(garage.indexOf('  function openMultiplayer('), garage.indexOf('  function battle()'))
+  .replace("mode: 'private' | 'lan' = 'private'", "mode = 'private'").replace('): void {', ') {');
+for (const requested of [undefined, 'private', 'lan']) {
+  const calls = [];
+  runInNewContext(openMultiplayer + ';openMultiplayer(requested);', {
+    requested, selectedId: 'tank', selectedMapId: 'verdant', battleGameMode: 'mars',
+    closeBattleMenu: () => calls.push('close-setup'), closeMobileNavigation: () => {}, setGaragePanel: () => {},
+    emit: (event) => { assert.equal(event, 'ui:click'); },
+    opts: { onPlayRequest: (request) => calls.push(JSON.parse(JSON.stringify(request))) },
+  });
+  assert.deepEqual(calls, ['close-setup', {mode: requested || 'private', specId: 'tank', mapId: 'verdant', gameMode: 'mars'}]);
+}
+assert.match(source, /containModalTab\(event, panel, closeBtn\)/);
+const failureBody = source.slice(source.indexOf('  function showFailure('), source.indexOf('  function showRoomFailure('));
+assert.match(failureBody, /setStatus\(''\)/, 'detailed failure replaces the progress line instead of announcing the same error twice');
+console.log('playMenu.selftest: separate multiplayer intent, keyboard containment and single failure presentation');

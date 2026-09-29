@@ -1,3 +1,4 @@
+import { containModalTab } from './modal.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { revealMenuSelectOption } from './menuSelectScroll.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
@@ -176,7 +177,7 @@ const CSS = `
 .cot-play.show .panel{animation:cotPlayPanel var(--cot-motion-slow) var(--cot-ease-drawer) backwards}
 @keyframes cotPlayVeil{from{opacity:0}}
 @keyframes cotPlayPanel{from{opacity:0;transform:translateY(12px) scale(.992)}}
-.cot-play *{box-sizing:border-box}.cot-play .panel{position:relative;width:min(980px,96vw);
+.cot-play,.cot-play *{box-sizing:border-box}.cot-play .panel{position:relative;width:min(980px,96vw);
   max-height:92vh;overflow:auto;background:linear-gradient(155deg,rgba(18,24,30,.985),rgba(7,10,14,.99));
   border:1px solid rgba(181,197,210,.3);box-shadow:0 30px 100px rgba(0,0,0,.72);padding:28px;}
 .cot-play .close{position:absolute;right:14px;top:12px;width:40px;height:40px;border:0;background:none;
@@ -400,6 +401,67 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
 .cot-play .room-failure-actions{display:flex;flex-wrap:wrap;gap:10px}
 .cot-play .room-failure button.action{min-height:44px;height:auto;white-space:normal;line-height:1.35}
 .cot-play .room-failure:focus-visible{outline:2px solid #ffcc89}
+
+.cot-play .panel{display:flex;flex-direction:column;width:min(860px,96vw);padding:24px;
+  scrollbar-width:thin;scrollbar-color:#65737d #0b1117;color-scheme:dark;overscroll-behavior:contain;}
+.cot-play .panel::-webkit-scrollbar{width:6px;}
+.cot-play .panel::-webkit-scrollbar-track{background:#0b1117;}
+.cot-play .panel::-webkit-scrollbar-thumb{background:#65737d;border-radius:6px;}
+.cot-play .play-head{position:sticky;top:-24px;z-index:5;flex-shrink:0;margin:-24px -24px 0;
+  padding:20px 64px 14px 24px;background:#10171d;border-bottom:1px solid #91a5b32b;}
+.cot-play .play-head h2{font-size:28px;}
+.cot-play .lead{margin:12px 0 20px;line-height:1.5;}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .play-head{
+  top:-20px;margin:-20px -14px 0;padding:18px 60px 12px 14px;}
+.cot-play .close{min-width:44px;min-height:44px;}
+.cot-play .modes{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.cot-play .mode[data-mode='solo']{order:3;align-self:flex-start;min-height:44px;padding:8px 0;border:0;
+  background:none;font-size:11px;color:#9cafbd;}
+.cot-play.lobby-active .mode[data-mode='solo']{display:none;}
+.cot-play:not(.multiplayer-entry) .room-rules>summary{display:none;}
+.cot-play:not(.multiplayer-entry) .mode[data-mode='solo']{display:none;}
+.cot-play .mode{min-height:80px;padding:12px 56px 12px 14px;}
+.cot-play .mode i{display:none;}
+.cot-play .mode b{font-size:15px;margin:0 0 4px;}
+.cot-play .mode .mode-desc{font-size:11px;}
+.cot-play .room{order:1;margin-top:16px;padding-top:16px;}
+.cot-play .room-rules{order:2;margin-top:16px;padding-top:12px;border-top:1px solid #91a5b32b;}
+.cot-play .room-rules>summary{display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer;
+  color:#b4c2cc;font-size:12px;font-weight:750;list-style:none;}
+.cot-play .room-rules>summary::-webkit-details-marker{display:none;}
+.cot-play .room-rules>summary::before{content:'+';color:#edb66c;font-size:20px;}
+.cot-play .room-rules[open]>summary::before{content:'−';}
+.cot-play [data-selected-rule]{margin-left:auto;color:#edb66c;}
+.cot-play.multiplayer-entry :is(.brain,.campaign){display:none;}
+.cot-play .room-rules .rules{grid-template-columns:repeat(2,minmax(0,1fr));}
+.cot-play .room-rules .rule{min-height:60px;}
+.cot-play .room-rules .rule-copy b{white-space:normal;line-height:1.4;font-size:11px;}
+.cot-play .room-rules .rule-lines,.cot-play .room-rules .rule-progress{display:none;}
+.cot-play .room-action-fields{grid-template-columns:minmax(0,1fr);gap:10px;}
+.cot-play .room-action-head b{font-size:20px;}
+.cot-play .room-action-head span{font-size:12px;line-height:1.5;}
+.cot-play .room-action{gap:18px;padding:18px;}
+.cot-play button.action,.cot-play input,.cot-play .menu-select-trigger{min-height:44px;}
+.cot-play .identity{align-items:center;}
+.cot-play .identity-note{max-width:38ch;line-height:1.5;padding:0;font-size:11px;}
+.cot-play .room-failure{padding:14px;border-left-width:2px;background:#281d1a;}
+.cot-play .room-failure h3{font-size:15px;}
+.cot-play .room-failure p{font-size:12px;margin:6px 0 12px;}
+.cot-play .status[hidden]{display:none;}
+.cot-play .controls{display:grid;gap:14px;}
+.cot-play .control-options{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(0,1fr));}
+.cot-play .control-options .field{width:auto;min-width:0;}
+.cot-play .control-actions{margin-left:0;display:flex;}
+.cot-play .control-actions .leave-room{margin-right:auto;}
+.cot-play .note{font-size:11px;}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options{grid-template-columns:repeat(2,minmax(0,1fr));}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options .vehicle-field{grid-column:1/-1;}
+
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode{min-height:76px;padding:12px;}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode-icon{display:none;}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode b{font-size:13px;}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .room-action{padding:14px;gap:12px;}
+
 @media(prefers-reduced-motion:reduce){.cot-play,.cot-play .panel,.cot-play button.action.needs-ready,.cot-play button.action.can-start{animation:none;
   box-shadow:0 0 0 3px rgba(230,154,54,.16),0 0 18px rgba(230,154,54,.34)}.cot-play .menu-select-trigger,
   .cot-play .menu-select-trigger::after,.cot-play .menu-select-option{transition:none}}
@@ -656,7 +718,7 @@ export function createPlayMenu({
   ensureFonts();
   ensureStyle(STYLE_ID, CSS);
   const root = document.createElement('div');
-  root.className = 'cot-play';
+  root.className = 'cot-play multiplayer-entry';
   // campaign slice 4 (2026-09-12): the Frontline Assault card shows the campaign push
   const frontlineProgressLabel = (): string => {
     const summary = frontlineSummary();
@@ -702,49 +764,13 @@ export function createPlayMenu({
       ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b><small>${t(`playMenu.matchMode.${rule.id}.short`)}</small>${
         ruleLineCopy(rule.id) ? `<small class="rule-lines" data-rule-lines>${ruleLineCopy(rule.id)}</small>` : ''}${
         rule.id === 'frontline_assault' ? `<small class="rule-progress" data-rule-progress>${frontlineProgressLabel()}</small>` : ''}</span></button>`).join('');
-  root.innerHTML = `<div class="panel"><button class="close" type="button" aria-label="${t('playMenu.close')}">×</button>
-    <div class="eyebrow">${t('playMenu.eyebrow')}</div><h2>${t('playMenu.title')}</h2>
+  root.innerHTML = `<div class="panel" role="dialog" aria-modal="true" aria-labelledby="cot-play-title"><header class="play-head"><button class="close" type="button" aria-label="${t('playMenu.close')}">×</button>
+    <div class="eyebrow">${t('playMenu.eyebrow')}</div><h2 id="cot-play-title">${t('playMenu.title')}</h2></header>
     <p class="lead">${t('playMenu.lead')}</p>
     <div class="modes">
-      <button class="mode" data-mode="solo" type="button"><span class="mode-icon">${uiIconSVG('battleBots', 24)}</span><i>${t('playMenu.solo.kicker')}</i><b>${t('playMenu.solo.title')}</b><span class="mode-desc">${t('playMenu.solo.desc')}</span></button>
       <button class="mode" data-mode="private" type="button"><span class="mode-icon">${uiIconSVG('battlePrivate', 24)}</span><i>${t('playMenu.private.kicker')}</i><b>${t('playMenu.private.title')}</b><span class="mode-desc">${t('playMenu.private.desc')}</span></button>
       <button class="mode" data-mode="lan" type="button"><span class="mode-icon">${uiIconSVG('battleLan', 24)}</span><i>${t('playMenu.lan.kicker')}</i><b>${t('playMenu.lan.title')}</b><span class="mode-desc">${t('playMenu.lan.desc')}</span></button>
     </div>
-    <div class="rule-heading"><b>${t('playMenu.rules.heading')}</b><span>${t('playMenu.rules.sub')}</span></div>
-    <div class="rules" role="list" aria-label="${t('playMenu.battleRulesAria')}">${ruleCards}</div>
-    <small class="rule-note" data-rule-note hidden>${t('playMenu.rules.campaignSoloNote')}</small>
-    <section class="arrange" data-arrange hidden aria-label="${t('playMenu.arrange.heading')}">
-      <div class="arrange-head"><b>${t('playMenu.arrange.heading')}</b><span data-arrange-note>${t('playMenu.arrange.sub')}</span></div>
-      <div class="arrange-sides" data-arrange-sides role="group" aria-label="${t('playMenu.arrange.sides')}" hidden>
-        <span class="arrange-sides-label">${t('playMenu.arrange.sides')}</span>
-        <button type="button" data-sides="7v7" aria-pressed="true">${t('playMenu.arrange.sides7')}</button>
-        <button type="button" data-sides="14v14" aria-pressed="false">${t('playMenu.arrange.sides14')}</button>
-        <button type="button" data-sides="custom" aria-pressed="false">${t('playMenu.arrange.sidesCustom')}</button>
-        <b class="arrange-readout" data-sides-readout></b>
-      </div>
-      <div class="arrange-fields">
-        <label data-arrange-field="allies"><span>${t('playMenu.arrange.allies')}</span><select data-arrange="allies"></select></label>
-        <label data-arrange-field="enemies"><span>${t('playMenu.arrange.enemies')}</span><select data-arrange="enemies"></select></label>
-        <label data-arrange-field="alliesCount" hidden><span>${t('playMenu.arrange.allies')}</span><input type="number" inputmode="numeric" step="1" data-arrange="alliesCount"></label>
-        <label data-arrange-field="enemiesCount" hidden><span>${t('playMenu.arrange.enemiesField')}</span><input type="number" inputmode="numeric" step="1" data-arrange="enemiesCount"></label>
-        <label data-arrange-wave><span>${t('playMenu.arrange.waveSize')}</span><select data-arrange="waveSize"></select></label>
-        <label><span>${t('playMenu.arrange.nation')}</span><select data-arrange="enemyNation"></select></label>
-        <label data-arrange-field="marsGravity" hidden><span>${t('playMenu.arrange.marsGravity')}</span><select data-arrange="marsGravity"></select></label>
-        <label data-arrange-field="marsCaches" hidden><span>${t('playMenu.arrange.marsCaches')}</span><select data-arrange="marsCaches"></select></label>
-        <button class="action alt" type="button" data-arrange-reset>${t('playMenu.arrange.reset')}</button>
-      </div>
-      <small class="arrange-cap" data-arrange-cap hidden>${t('playMenu.arrange.fieldCap', { max: String(BATTLE_FIELD_LIMIT) })}</small>
-    </section>
-    <section class="brain" data-brain aria-label="${t('playMenu.brain.heading')}">
-      <div class="arrange-head"><b>${t('playMenu.brain.heading')}</b><span>${t('playMenu.brain.sub')}</span></div>
-      <div class="brain-row" role="group" aria-label="${t('playMenu.brain.heading')}">
-        <button type="button" data-brain-opponent="classic" aria-pressed="true">${t('playMenu.brain.classic')}</button>
-        <button type="button" data-brain-opponent="jev" aria-pressed="false">${t('playMenu.brain.jev')}</button>
-        <label class="brain-allies"><input type="checkbox" data-brain-allies><span>${t('playMenu.brain.allies')}</span></label>
-      </div>
-      <small class="brain-note" data-brain-note hidden>${t('playMenu.brain.note')}</small>
-    </section>
-    <section class="campaign" data-campaign>${campaignMarkup()}</section>
     <section class="room"><div class="setup">
       <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label>
         <span class="identity-note">${t('playMenu.identity.note')}</span></div>
@@ -838,7 +864,46 @@ export function createPlayMenu({
           <button class="action" data-action="rejoin" type="button" hidden>${t('playMenu.rejoin')}</button>
           <button class="action" data-action="start" type="button">${t("playMenu.start")}</button></div>
       </div><div class="note"></div>
-    </div></section></div>`;
+    </div></section>
+    <details class="room-rules"><summary>${t('playMenu.roomRules')}<span data-selected-rule></span></summary>
+    <div class="rule-heading"><b>${t('playMenu.rules.heading')}</b><span>${t('playMenu.rules.sub')}</span></div>
+    <div class="rules" role="list" aria-label="${t('playMenu.battleRulesAria')}">${ruleCards}</div>
+    <small class="rule-note" data-rule-note hidden>${t('playMenu.rules.campaignSoloNote')}</small>
+    <section class="arrange" data-arrange hidden aria-label="${t('playMenu.arrange.heading')}">
+      <div class="arrange-head"><b>${t('playMenu.arrange.heading')}</b><span data-arrange-note>${t('playMenu.arrange.sub')}</span></div>
+      <div class="arrange-sides" data-arrange-sides role="group" aria-label="${t('playMenu.arrange.sides')}" hidden>
+        <span class="arrange-sides-label">${t('playMenu.arrange.sides')}</span>
+        <button type="button" data-sides="7v7" aria-pressed="true">${t('playMenu.arrange.sides7')}</button>
+        <button type="button" data-sides="14v14" aria-pressed="false">${t('playMenu.arrange.sides14')}</button>
+        <button type="button" data-sides="custom" aria-pressed="false">${t('playMenu.arrange.sidesCustom')}</button>
+        <b class="arrange-readout" data-sides-readout></b>
+      </div>
+      <div class="arrange-fields">
+        <label data-arrange-field="allies"><span>${t('playMenu.arrange.allies')}</span><select data-arrange="allies"></select></label>
+        <label data-arrange-field="enemies"><span>${t('playMenu.arrange.enemies')}</span><select data-arrange="enemies"></select></label>
+        <label data-arrange-field="alliesCount" hidden><span>${t('playMenu.arrange.allies')}</span><input type="number" inputmode="numeric" step="1" data-arrange="alliesCount"></label>
+        <label data-arrange-field="enemiesCount" hidden><span>${t('playMenu.arrange.enemiesField')}</span><input type="number" inputmode="numeric" step="1" data-arrange="enemiesCount"></label>
+        <label data-arrange-wave><span>${t('playMenu.arrange.waveSize')}</span><select data-arrange="waveSize"></select></label>
+        <label><span>${t('playMenu.arrange.nation')}</span><select data-arrange="enemyNation"></select></label>
+        <label data-arrange-field="marsGravity" hidden><span>${t('playMenu.arrange.marsGravity')}</span><select data-arrange="marsGravity"></select></label>
+        <label data-arrange-field="marsCaches" hidden><span>${t('playMenu.arrange.marsCaches')}</span><select data-arrange="marsCaches"></select></label>
+        <button class="action alt" type="button" data-arrange-reset>${t('playMenu.arrange.reset')}</button>
+      </div>
+      <small class="arrange-cap" data-arrange-cap hidden>${t('playMenu.arrange.fieldCap', { max: String(BATTLE_FIELD_LIMIT) })}</small>
+    </section>
+    <section class="brain" data-brain aria-label="${t('playMenu.brain.heading')}">
+      <div class="arrange-head"><b>${t('playMenu.brain.heading')}</b><span>${t('playMenu.brain.sub')}</span></div>
+      <div class="brain-row" role="group" aria-label="${t('playMenu.brain.heading')}">
+        <button type="button" data-brain-opponent="classic" aria-pressed="true">${t('playMenu.brain.classic')}</button>
+        <button type="button" data-brain-opponent="jev" aria-pressed="false">${t('playMenu.brain.jev')}</button>
+        <label class="brain-allies"><input type="checkbox" data-brain-allies><span>${t('playMenu.brain.allies')}</span></label>
+      </div>
+      <small class="brain-note" data-brain-note hidden>${t('playMenu.brain.note')}</small>
+    </section>
+    <section class="campaign" data-campaign>${campaignMarkup()}</section>
+    </details>
+    <button class="mode" data-mode="solo" type="button">${t('playMenu.solo.settings')}</button>
+    </div>`;
   document.body.appendChild(root);
 
   const panel = requiredElement<HTMLElement>(root, '.panel');
@@ -1160,6 +1225,7 @@ export function createPlayMenu({
     }
     renderArrangement(selectedGameMode, fromLobby);
     renderBrain(fromLobby);
+    requiredElement<HTMLElement>(root, '[data-selected-rule]').textContent = t(`playMenu.matchMode.${selectedGameMode}.label`);
   }
   showSelectedGameMode();
 
@@ -1266,6 +1332,7 @@ export function createPlayMenu({
   function setStatus(message: RuntimeValue, error = false): void {
     status.textContent = message == null ? '' : String(message);
     status.classList.toggle('err', !!error);
+    status.hidden = !status.textContent;
   }
 
   function clearFailure(): void {
@@ -1297,7 +1364,7 @@ export function createPlayMenu({
     invalidInput?.setAttribute('aria-invalid', 'true');
     invalidInput?.setAttribute('aria-describedby', 'cot-room-failure-detail');
     failurePanel.hidden = false;
-    setStatus(failure.title, true);
+    setStatus('');
     if (root.classList.contains('show')) failurePanel.focus({ preventScroll: false });
   }
 
@@ -1754,10 +1821,24 @@ export function createPlayMenu({
     if (!button) return;
     closeMenuSelects();
     if (nextMode === 'solo') {
-      hide();
-      if (onSolo) onSolo({ gameMode: selectedGameMode });
+      closeCurrentSession('mode_changed');
+      clearFailure();
+      mode = 'solo';
+      root.classList.remove('multiplayer-entry');
+      room.classList.remove('show');
+      requiredElement<HTMLDetailsElement>(root, '.room-rules').open = true;
+      eyebrow.textContent = t('playMenu.rules.heading');
+      menuTitle.textContent = t('playMenu.solo.settings');
+      menuLead.textContent = t('playMenu.solo.settingsLead');
+      showSelectedGameMode();
+      panel.scrollTop = 0;
       return;
     }
+    if (mode === 'solo') requiredElement<HTMLDetailsElement>(root, '.room-rules').open = false;
+    root.classList.add('multiplayer-entry');
+    eyebrow.textContent = defaultEyebrow;
+    menuTitle.textContent = defaultMenuTitle;
+    menuLead.textContent = defaultMenuLead;
     closeCurrentSession('mode_changed');
     clearFailure();
     mode = nextMode;
@@ -1769,7 +1850,7 @@ export function createPlayMenu({
     if (!signalInput.value) {
       showFailure('signaling_unavailable');
     } else {
-      setStatus(t(mode === 'lan' ? 'playMenu.status.lanReady' : 'playMenu.status.privateReady'));
+      setStatus('');
     }
   }
   root.querySelectorAll<HTMLButtonElement>('.mode').forEach((button) => button.addEventListener('click', () => {
@@ -1879,6 +1960,16 @@ export function createPlayMenu({
   });
   signalInput.addEventListener('input', () => setConnecting(connecting));
   closeBtn.addEventListener('click', () => hide());
+  root.addEventListener('keydown', (event) => {
+    if (event.defaultPrevented) { event.stopPropagation(); return; }
+    containModalTab(event, panel, closeBtn);
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      if (root.querySelector('.menu-select.open')) closeMenuSelects();
+      else hide();
+    }
+    event.stopPropagation();
+  });
   root.addEventListener('pointerdown', (event) => {
     if (!(event.target instanceof Element) || !event.target.closest('.menu-select')) {
       closeMenuSelects();
@@ -1897,7 +1988,9 @@ export function createPlayMenu({
     { const campaign = root.querySelector<HTMLElement>('[data-campaign]'); if (campaign) campaign.innerHTML = campaignMarkup(); }
     if (showCurrentRoom()) return;
     revealMenu();
-    if (initialMode) selectMode(normalizePlayMode(initialMode));
+    selectMode(normalizePlayMode(initialMode || 'private'));
+    panel.scrollTop = 0;
+    if (failurePanel.hidden) closeBtn.focus({ preventScroll: true });
     const inviteCode = normalizeRoomCode(invite?.roomCode);
     if (!invite?.autoJoin || session || connecting) return;
     if (inviteCode.length !== 6) {

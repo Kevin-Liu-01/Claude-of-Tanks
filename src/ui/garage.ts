@@ -145,7 +145,7 @@ interface PlayRequest {
   readonly gameMode: GameModeId;
   readonly specId: string;
   readonly mapId: string;
-  readonly startSolo: () => void;
+  readonly startSolo?: () => void;
 }
 
 interface GarageOptions {
@@ -688,6 +688,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `</div></div></div><div class="cot-battle-menu-foot">` +
     `<span data-setup-selection></span><button type="button" data-battle-launch>` +
     `${t('garage.battle')}${uiIconSVG('chevronRight', 14)}</button></div></div>` +
+    `<button class="cot-multiplayer-entry" type="button" aria-haspopup="dialog">` +
+    `${uiIconSVG('team', 17)}<span>${t('garage.multiplayer.open')}</span></button>` +
     `<div class="cot-room-controls" role="group" aria-label="${t('garage.battle.roomReadiness')}">` +
     `<button class="cot-room-reminder" type="button" aria-label="${t('garage.battle.roomReminder')}">` +
     `<span class="rr-dot"></span><span class="rr-copy" aria-live="polite"></span></button>` +
@@ -2729,6 +2731,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (onBattle) onBattle(specId, mapId, { gameMode }); // MAP-CONFIG WIRING
   }
 
+  function openMultiplayer(mode: 'private' | 'lan' = 'private'): void {
+    closeBattleMenu();
+    closeMobileNavigation();
+    setGaragePanel('');
+    emit('ui:click', {});
+    opts.onPlayRequest?.({ mode, specId: selectedId, mapId: selectedMapId, gameMode: battleGameMode });
+  }
+
   function battle() {
     if (!selectedId) return;
     const specId = selectedId;
@@ -2839,9 +2849,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   battleControl.addEventListener('focusout', (event) => {
     if (event.relatedTarget instanceof Node && !battleControl.contains(event.relatedTarget)) closeBattleMenu();
   });
+  const multiplayerEntry = requiredElement<HTMLButtonElement>(root, '.cot-multiplayer-entry');
+  multiplayerEntry.addEventListener('click', () => openMultiplayer());
+  const warmMultiplayer = () => opts.onPlayModeIntent?.('private');
+  multiplayerEntry.addEventListener('pointerenter', warmMultiplayer, { passive: true });
+  multiplayerEntry.addEventListener('focus', warmMultiplayer);
   battleBtn.addEventListener('click', battle);
   requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-launch]').addEventListener('click', battle);
-  const signalBattleIntent = () => {
+  const signalBattleIntent = (event: Event) => {
+    if (event.target instanceof Node && multiplayerEntry.contains(event.target)) return;
     if (!selectedId) return;
     try {
       if (battleMode === 'solo') {
@@ -2870,7 +2886,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
   for (const choice of battleChoices) choice.addEventListener('click', () => {
     emit('ui:click', {});
-    setBattleMode(choice.dataset.mode);
+    if (choice.dataset.mode === 'private' || choice.dataset.mode === 'lan') {
+      openMultiplayer(choice.dataset.mode);
+    } else setBattleMode(choice.dataset.mode);
   });
   for (const choice of battleRuleChoices) choice.addEventListener('click', () => {
     emit('ui:click', {});
@@ -3291,6 +3309,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     /** Reflect persistent multiplayer membership beneath the main battle action. */
     setRoomStatus(status: GarageRoomStatus | null = null) {
       roomStatus = status;
+      requiredElement<HTMLElement>(battleBtn, '.battle-word').textContent = t(status ? 'garage.multiplayer.room' : 'garage.battle');
+      battleBtn.setAttribute('aria-label', status ? t('garage.battle.roomReminder')
+        : t('garage.battle.startRulesAria', { label: (battleRuleMeta[battleGameMode] || battleModeMeta.solo).label }));
       root.classList.toggle('has-room', !!status);
       roomControls.classList.toggle('show', !!status);
       roomReady.disabled = !status?.canSetReady;

@@ -1660,3 +1660,12 @@ body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card .nm{bottom:4p
 body[data-cot-input='coarse'] .cot-garage button,
 body[data-cot-input='coarse'] .cot-garage a{touch-action:manipulation}
 body[data-cot-input='coarse'] .cot-country-chip{min-width:44px}
+
+/* Room setup is a separate, explicit action underneath Battle. */
+.cot-multiplayer-entry{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;
+  white-space:nowrap;border:1px solid #7e929e55;background:#0b131bed;color:#d6e2ea;
+  font:750 11px/1 var(--cot-font-ui,'Inter',sans-serif);letter-spacing:.04em;cursor:pointer;}
+.cot-multiplayer-entry:hover{background:#1b2a36;border-color:#e9ab55;color:#ffce8a;}
+.cot-multiplayer-entry:focus-visible{outline:2px solid #ffb452;outline-offset:3px;}
+.cot-battle-control:has(.cot-battle-menu.open) .cot-multiplayer-entry,.has-room .cot-multiplayer-entry{display:none;}
