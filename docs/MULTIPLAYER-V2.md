@@ -1255,6 +1255,67 @@ tree (14v14, P3's arguments, one migration each; the table in 13.9.7) showed 20 
 interpolation delay — two intervals, 107 against 74 ms — with the uplink at 3,114 against 4,201 kbit/s, the desync,
 hard snaps, migration and console figures alike; `SNAPSHOT_HZ` is 20 from this lane on, and the WELCOME names it.
 
+**13.9.7 Before / after (the soak: `tools/mp-p2p-soak.mjs` at P3's arguments — 7v7: 5 min, 2 migrations; 14v14: 6 min,
+1 migration; the realism run `--host=game --seats=4 --play=2 --migrate-every=1`; every run against `wrangler dev` of the
+current Worker, host candidates, verdant, every hull driving and firing on the scripted controls, Chrome at nice 19 under
+the probe mutex, one at a time; reports in the lane's scratchpad `p3b/soak-*/`; the "before" rows are P1b's runs of
+2026-09-29 on `4902f2394` — the certification's tree with the room-cost pass, 30 Hz to every viewer, no tiers).**
+
+| Run (tree) | Host uplink kbit/s median / p95 / max | Per viewer kbit/s | Refresh Hz per entity, near / mid / far (entity-viewer pairs) | Skips | Migration: first snapshot on every seat, ms (host_changed / new host live) | Desync at the end, worst seat (median; hard snaps) | Own hull at the migration: presented allies / enemies / new host, m — on the authority rows — prediction lead |
+|---|---|---|---|---|---|---|---|
+| **before** 14v14 (P1b, 30 Hz) | 4,937 / 7,291 / 9,241 | 183 | 29.9 to every entity (–) | – | 11,321 … 11,339 on 27 of 27 (8,020 / 11,288) | 0.095 m (0.001; 34) | 5.75 / 1.75 / 1.25 — rows 1.00 / **3.88** / 0.06 — lead 4.15 |
+| **before** 7v7 (P1b, 30 Hz) | 1,596 / 2,073 / 2,567 | 123 | 30.0 (–) | – | 9,634 … 9,648 and 9,532 … 9,546 on 13 of 13 | 0.069 m (0.001; 5) | 3.97 / 5.27 / 4.33 and 4.99 / 2.78 / 0.00 — rows 0.21 / **8.89** / 0.20 and 0.49 / 4.74 / 0.00 — lead 0.99 / 1.09 |
+| **before** realism 2v2 (P3, the game page hosting) | 136 at 3 peers | 45 | 30 (–) | – | 9,250 on 3 of 3 (8,040 / 9,250) | 0.001 m | 1.42 / 0.45 / 0.26 — rows 0.08 / – / – |
+| after, 14v14 at **30 Hz** with the tiers (`2880b5e25`) | 4,201 / 5,597 / 9,682 | 156 | 29.9 / 14.9 / 9.9 (53 / 100 / 381 of 729) | 0 | 10,513 … 10,527 on 26 seats, **12,074** on one (8,012 / 10,469) | 0.311 m (0.002; 59) | 5.52 / 5.54 / 4.24 — rows 1.00 / **0.49** / 0.39 — lead 3.29; hints 19 applied / 7 refused |
+| after, 14v14 at **20 Hz** with the tiers (`2880b5e25 --snapshot-hz=20`) | **3,114 / 4,445 / 5,096** | **115** | 20 / 10 / 6.6 (51 / 111 / 384) | 0 | **10,424 … 10,443 on 27 of 27** (8,009 / 10,369) | 0.150 m (0.001; 60) | 4.20 / 5.41 / 2.62 — rows 1.00 / **0.95** / 2.62 — lead 3.50; hints 18 / 8; interpolation delay 107 ms (74 at 30 Hz) |
+| after, 14v14 on the final tree (20 Hz default, the room-socket ceiling; `750a97314`) | 3,178 / 4,438 / 5,303 | 118 | 20 / 9.9 / 6.6 (58 / 97 / 389) | 0 | 10,246 … 10,269 on 26 seats, **12,051** on one (8,010 / 10,214) | 0.957 m on one seat (next 0.155; median 0.001; 59) | 5.98 / 6.59 / 1.47 — rows 1.00 / **0.93** / 0.06 — lead 1.19; hints 19 / 7 |
+| after, 7v7 on the final tree | **1,054 / 1,285 / 1,562** | **81** | 20 / 10 / 6.6 (20 / 26 / 76 of 169) | 0 | **9,593 … 9,611 and 9,354 … 9,366 on 13 of 13** (8,006 / 9,537 and 8,006 / 9,312) | 0.771 m on one seat (next 0.073; median 0.000; 36) | 2.20 / 5.31 / 5.16 and 4.54 / 0.21 / 4.22 — rows 0.29 / **0.73** / 0.67 and 0.41 / **0.09** / 0.34 — lead 1.19 / 0.86; hints 9 / 4 |
+| after, realism 2v2 on the final tree with the message bucket (`d0f9fba9c`, the game page hosting) | **94** / 107 / 130 at 3 peers | 31 | 20 / – / – | 0 | **9,161 … 9,177 on 3 of 3** (8,117 / 9,121) | 0.001 m (0; 0) | 1.57 / 4.26 / 0.20 — rows 0.21 / **0.60** / 0.13 — lead 3.01; 0 console errors |
+| after, 14v14 on the final tree with the message bucket and the signal diagnostics (`d0f9fba9c`) | 3,211 / 4,476 / 6,424 | 119 | 20 / 10 / 6.6 (54 / 92 / 387) | 0 | 10,101 … 10,118 on 25 seats, **12,040 and 12,048** on two (8,010 / 10,069) | 0.095 m (0.001; 69) | 6.01 / 3.87 / 1.92 — rows 1.00 / **0.90** / 0.09 — lead 6.45; hints 18 / 9 |
+
+The deployed site's proof, `tools/mp-p2p-e2e.mjs --site=https://cot.kevinliu.studio --grace=8000` on this lane's tools
+(2026-09-29 07:35, the site on deploy 132 — this branch is not deployed): **PASS** in 80 s — A hosting two peers on
+`rtc://RUNQA9/1`, C saw B move 35.1 m over 360 snapshots, A closed → B elected after 8,280 ms (generation 2), C live on B,
+A back as a peer on the auto path, 0 browser errors. The proof tool runs as before.
+
+**What the table says.** The 14v14 host uplink is 3.1–3.2 Mbit/s median (from 4.9), p95 4.4–4.5 (from 7.3), 115–118
+kbit/s per viewer (from 183): under the 4 / 5.5 Mbit/s line, at the ≈ 3 aim; 7v7 1.05 Mbit/s (from 1.6). The per-entity
+refresh rates are exactly the tiers' (20 / 10 / 6.6 Hz at 20 Hz; 29.9 / 14.9 / 9.9 at 30) with the far tier holding
+about half of the entity-viewer pairs on verdant's scripted drive. Skips for slow peers: 0 on every run (no peer ever
+held 16 KB unsent on a LAN; the bound is for a home uplink). The migration seed: the enemies' hulls resume within a
+metre on the authority rows (0.49–0.95 m from 3.88 at 14v14, 0.09–0.73 from 8.89 / 4.74 at 7v7) — the own-hull *presented*
+jump stays at 4–6 m because it is the prediction lead being reset (§13.8's item (b), untouched here). Every migration
+was continuous (tick ≥ the last seen, every seat live, the old host back as a peer in 715–780 ms). Console errors: 0 on
+every run of the final tree.
+
+**Two things the table also says, honestly.** (1) At 14v14 one seat of 27 (two in the last run) came in at
+12.04–12.07 s in three of the four runs (the other: every seat by 10.44 s); those seats' first offer after the election
+got no channel and the 3.5 s offer timer re-offered it — the certification's 17.3 s seat cut to 12.0, and 40–74 ms over
+the 12 s gate. What the counters say about that first offer: the new host's acceptor answered every offer it received
+(27 / 27 and 28 / 28, 0 answers refused — the room-socket ceiling of 13.9.4 is real but not this), the room relayed every
+answer it was given (56 sent, 56 received across the room), the late seats' room clients passed the answer to their
+transports (`signalsReceived` 3 against the typical 2) and the transports did not refuse it (`staleSignals` 0) — yet the
+peer connection never reported `connecting`, which is what an answer *without ICE candidates* looks like; and the new
+host's room client refused exactly one outgoing signal that was not an answer (`refusedAnswers` 0, its `signalsRefused`
+1): a trickled candidate. The reading: the host's answer for the slowest of 27 simultaneously gathering peer
+connections left at the 2.5 s `ICE_GATHER_CAP_MS` without its candidates, and the candidate that followed was refused on
+the way out. Next: count answers sent at the cap and their embedded candidates, count trickle refusals by reason
+(`readRoomSignalPayload`, the socket), and — the fix that needs no diagnosis — re-answer a peer whose channel has not
+opened within a few seconds of a capped answer. (2) The desync gate reads one sample — the worst seat's newest reconcile error at the run's end — and
+it lands on a contact reconcile once in a while: 0.957 and 0.771 m on one seat with the next seat at 0.155 / 0.073 and
+the median at 0.001, against 0.15 / 0.31 m in the other two 14v14 runs; the harness predicts without the other hulls
+(`others: () => []`), so every ram is a free misprediction and a hard snap (36–60 per run here, 34–51 in the
+certification; the real game's prediction has the disclosed hulls in its collision world). The rate is not the cause:
+the 30 Hz tiers run read 0.311 the same way.
+
+**Open (P3b → the integrator / P4).** The lost first offer at 14v14 (above: the capped answer, diagnostics landed, the
+re-answer to build); the hull-jump
+presentation gate (the prediction lead, §13.8 (b)); the peer tab RSS on the built site (P4); the next uplink cuts if a
+home uplink needs them — events (25 kbit/s per viewer, JSON payloads to every observer) and the sealed keyframe
+(20; to host-capable seats only, or a longer cadence now that the hint covers own hulls) — the checkpoint at 10 Hz was
+measured and rejected (13.9.6); the actor's message bucket is new behaviour (150/s sustained, 900 burst) and the room's
+`ROOM_MATCH_KEYFRAME_INTERVAL_MS` contract is unchanged.
+
 **Receipts.** `server/match/interestTiers.selftest.mjs` (core): the radii, the phased cadences, the fresh-row rules and
 engagement on the pure module; then the real actor on the bare height field with hulls placed at 40 / 60 / 200 / 400 /
 420 m from the viewer — the own row, the near ally and the near enemy refreshed every snapshot, the middle ally every
