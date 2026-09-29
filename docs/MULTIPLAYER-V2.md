@@ -1184,6 +1184,41 @@ its worst phase (the frame cap), and on a dry buffer at most the frame cap plus 
 drives a near, a mid and a far entity at 10 m/s and holds every one to v·dt per frame; a held row read as fresh would
 step 0, 0, 3·v·dt.
 
+**13.9.2 The snapshot rate is the host's choice.** `MatchActorOptions.snapshotHz` (SNAPSHOT_HZ by default, any
+divisor of the tick rate) is named by the WELCOME; the client adopts it — the interpolator's delay bounds (two to four
+intervals) and extrapolation cap (one) follow in intervals, the snapshot stream's loss estimate counts gaps in the
+named cadence, the status model reads it as the expected rate (20 of 20 is not a degraded cadence). It reaches the host
+through `MatchSessionP2pOptions.snapshotHz` → `HostBootConfig.snapshotHz` on both boot paths; the peer harness takes
+`?snapshotHz=`, the soak `--snapshot-hz`. `src/mp/match/snapshotRate.selftest.mjs`: the real actor at 20 and at 30 Hz
+with a real `MatchClient` over the loopback pair on the dedicated collision world — 80 / 120 snapshots in 4 s, the delay
+100 / 68 ms, no false gaps, own misprediction 1.7 mm at both, 25 Hz refused. Which rate the near tier runs at is decided
+by the measurements in 13.9.6.
+
+**13.9.3 Per-peer rate adaptation.** `SNAPSHOT_SKIP_BYTES` = 16 KB (≈ 0.7 s of snapshots at 14v14): a viewer whose
+channel holds more unsent than that has its snapshot *skipped* — never delayed, never queued behind, so the next one it
+receives is the freshest and the other peers are untouched (each link is sent to on its own); above the 64 KB soft bound
+for 2 s, or the 512 KB hard bound at once, the link closes as BACKPRESSURE as before. The count surfaces as
+`HostCoreStats.snapshotSkips` → `MatchHost.snapshotSkips` → `SessionP2pStatus.snapshotSkips` →
+`NetworkStatusSnapshot.hostSnapshotSkips` and `window.__peer.status().host.core.snapshotSkips`, which the soak reports.
+`matchActor.selftest`: a peer over the bound is skipped and counted, the others keep their cadence, no close, deltas
+resume against the acknowledged baseline when it drains.
+
+**13.9.4 Re-offer timing.** `RTC_OFFER_CONNECT_TIMEOUT_MS` = 3.5 s counted from the moment the offer leaves (after the
+local ICE gathering, so a slow gather never eats into it): the host's answer takes its own gathering (capped at 2.5 s)
+plus two relay hops plus the DTLS and SCTP handshakes — under a second on a LAN, two to three through TURN — so an offer
+without a channel after 3.5 s is a lost offer, not a slow one, and it is re-offered **at once** (`retryDelayMs` 0), as
+is an attempt whose ICE agent reports `failed` while connecting. The WebSocket policy's 8 s attempt timeout stays as the
+outer bound from the attempt's start (a hung credential fetch), with its backoff; a dropped *open* channel keeps the 250 ms
+backoff (the host is gone, the room's election is what it waits for). And the other way a first offer is lost: an offer
+that reaches the elected seat before its acceptor exists (its `host_changed` and a peer's offer race on separate sockets)
+— `RoomClient.recentOffers()` keeps the newest offer per sender for the current generation for 5 s and
+`createRtcHostAcceptor` drains it at construction (`recoveredOffers`), so the peer is answered instead of waiting out its
+timer. Receipts: `webRtcTransport.selftest` (a mute host: the second offer leaves 3.5 s after the first, at once, and is
+answered when the host wakes; a failed agent re-offers at once; an offer that never leaves fails on the 8 s policy with
+the backoff; the never-opens window exhausts on 3.5 s attempts), `rtcClientLink.selftest` (an offer relayed before the
+acceptor existed is answered at construction, the peer never re-offers), `roomClientSignals.selftest` (one offer per
+sender, the running generation only, drained on read, gone past the window).
+
 **Receipts.** `server/match/interestTiers.selftest.mjs` (core): the radii, the phased cadences, the fresh-row rules and
 engagement on the pure module; then the real actor on the bare height field with hulls placed at 40 / 60 / 200 / 400 /
 420 m from the viewer — the own row, the near ally and the near enemy refreshed every snapshot, the middle ally every

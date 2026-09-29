@@ -269,4 +269,31 @@ bob.transport.close();
   second.close();
   renewAcceptor.close();
 }
+// ---- P3b: an offer that reached the seat before its acceptor existed (the election raced) is answered by the acceptor at construction
+{
+  const time2 = createVirtualTime();
+  const world2 = new RtcWorld();
+  const relay2 = new FakeSignalRelay('newhost', 2);
+  const hostSignaler = relay2.signalerFor('newhost');
+  const early = new WebRtcTransport({ signaler: relay2.signalerFor('early'), createPeerConnection: world2.createPeerConnection, clock: time2.clock, setTimer: time2.setTimer, clearTimer: time2.clearTimer, random: () => 0.5 });
+  early.open();
+  await settle(world2, relay2);
+  assert.equal(early.state, 'connecting');
+  assert.equal(relay2.delivered.filter((entry) => entry.kind === 'offer').length, 1, 'the offer was relayed to the seat (no acceptor listening yet)');
+  const recovered = [];
+  const acceptor2 = createRtcHostAcceptor({
+    signaler: hostSignaler, hostId: 'newhost', generation: () => relay2.generation, createPeerConnection: world2.createPeerConnection,
+    onLink: (link, peer) => recovered.push(peer.playerId), clock: time2.clock, setTimer: time2.setTimer, clearTimer: time2.clearTimer,
+  });
+  await settle(world2, relay2);
+  assert.equal(early.state, 'open', 'the early offer was answered from the recent buffer');
+  assert.deepEqual(recovered, ['early']);
+  assert.equal(acceptor2.stats().recoveredOffers, 1);
+  assert.equal(early.signalStats.sent, 1, 'the peer never had to re-offer');
+  assert.deepEqual(hostSignaler.recentOffers(), [], 'the buffer drained');
+  acceptor2.close();
+  early.close();
+  console.log('rtcClientLink.selftest: an offer that raced the election is answered by the acceptor at construction');
+}
+
 console.log('rtcClientLink.selftest: acceptor offers/answers/candidates, links, CLOSE-before-close, replacement, stale offers, timeouts, closure and per-offer ICE renewal verified');

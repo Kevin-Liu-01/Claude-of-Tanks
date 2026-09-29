@@ -387,6 +387,7 @@ export class MatchSession {
       target: () => { const hostId = this.room.hostId; return hostId ? { hostId, generation: this.room.generation } : null; },
       sendSignal: (payload) => this.room.sendSignal(payload),
       onSignal: (listener) => this.room.onSignal(listener),
+      recentOffers: () => this.room.recentOffers(),
     };
   }
 

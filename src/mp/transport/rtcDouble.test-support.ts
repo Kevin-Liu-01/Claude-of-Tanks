@@ -256,14 +256,17 @@ export class FakeSignalRelay {
   /** Signals wait here until `flush` when true (the test models relay latency). */
   hold = false;
   private readonly queued: Array<() => void> = [];
+  /** Offers relayed to a seat with no listener yet (the room client's recent-offer buffer): `recentOffers()` drains them. */
+  private readonly undelivered = new Map<string, Array<{ to: string; from: string; generation: number; kind: 'offer' | 'answer' | 'candidate'; sdp?: string; candidate?: RtcIceCandidateInitLike }>>();
 
   constructor(hostId: string, generation = 1) {
     this.hostId = hostId;
     this.generation = generation;
   }
 
-  /** The signaler a seat holds. */
+  /** The signaler a seat holds (the seat is known to the relay from here on, listener or not — as a joined seat is to the room). */
   signalerFor(playerId: string) {
+    if (!this.listeners.has(playerId)) this.listeners.set(playerId, new Set());
     return {
       target: () => (this.hostId ? { hostId: this.hostId, generation: this.generation } : null),
       sendSignal: (payload: { to: string; generation: number; kind: 'offer' | 'answer' | 'candidate'; sdp?: string; candidate?: RtcIceCandidateInitLike }) => this.relay(playerId, payload),
@@ -271,6 +274,11 @@ export class FakeSignalRelay {
         if (!this.listeners.has(playerId)) this.listeners.set(playerId, new Set());
         this.listeners.get(playerId)!.add(listener);
         return () => { this.listeners.get(playerId)?.delete(listener); };
+      },
+      recentOffers: () => {
+        const offers = (this.undelivered.get(playerId) ?? []).filter((signal) => signal.kind === 'offer' && signal.generation === this.generation);
+        this.undelivered.delete(playerId);
+        return offers;
       },
     };
   }
@@ -282,7 +290,13 @@ export class FakeSignalRelay {
     if (!this.listeners.has(payload.to)) { this.refused.push({ ...record, why: 'unknown_seat' }); return true; }
     const deliver = () => {
       this.delivered.push(record);
-      for (const listener of [...(this.listeners.get(payload.to) ?? [])]) listener({ ...payload, from });
+      const listeners = [...(this.listeners.get(payload.to) ?? [])];
+      // a seat that is in the room but has no acceptor listening yet keeps the offer for the acceptor it will make (the room client's rule)
+      if (payload.kind === 'offer' && listeners.length === 0) {
+        if (!this.undelivered.has(payload.to)) this.undelivered.set(payload.to, []);
+        this.undelivered.get(payload.to)!.push({ ...payload, from });
+      }
+      for (const listener of listeners) listener({ ...payload, from });
     };
     if (this.hold) this.queued.push(deliver);
     else deliver();

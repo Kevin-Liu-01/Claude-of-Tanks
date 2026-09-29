@@ -146,6 +146,8 @@ export interface RtcHostAcceptorStats {
   offers: number;
   staleOffers: number;
   refusedOffers: number;
+  /** Offers relayed before this acceptor existed, taken from the signaler's recent buffer at construction (P3b). */
+  recoveredOffers: number;
   answers: number;
   candidatesSent: number;
   candidatesReceived: number;
@@ -203,7 +205,7 @@ export function createRtcHostAcceptor({
   const internals = new Map<RtcHostPeer, Internal>();
   let ordinal = 0;
   let closed = false;
-  const counters: RtcHostAcceptorStats = { offers: 0, staleOffers: 0, refusedOffers: 0, answers: 0, candidatesSent: 0, candidatesReceived: 0, links: 0, timeouts: 0, bytesSent: 0, bytesReceived: 0 };
+  const counters: RtcHostAcceptorStats = { offers: 0, staleOffers: 0, refusedOffers: 0, recoveredOffers: 0, answers: 0, candidatesSent: 0, candidatesReceived: 0, links: 0, timeouts: 0, bytesSent: 0, bytesReceived: 0 };
 
   const setState = (peer: RtcHostPeer, state: RtcHostPeerState): void => {
     if (peer.state === state) return;
@@ -313,14 +315,14 @@ export function createRtcHostAcceptor({
     });
   };
 
+  const takeOffer = (signal: RtcRelayedSignal): void => {
+    counters.offers++;
+    if (!signal.sdp) { counters.refusedOffers++; return; }
+    void resolveIce().then((config) => { if (!closed) accept(signal, config); }, () => { if (!closed) accept(signal, NO_ICE); });
+  };
   const unsubscribe = signaler.onSignal((signal) => {
     if (closed || signal.to !== hostId) return;
-    if (signal.kind === 'offer') {
-      counters.offers++;
-      if (!signal.sdp) { counters.refusedOffers++; return; }
-      void resolveIce().then((config) => { if (!closed) accept(signal, config); }, () => { if (!closed) accept(signal, NO_ICE); });
-      return;
-    }
+    if (signal.kind === 'offer') { takeOffer(signal); return; }
     if (signal.kind === 'candidate' && signal.candidate) {
       const peer = peers.get(signal.from);
       const internal = peer ? internals.get(peer) : null;
@@ -334,6 +336,14 @@ export function createRtcHostAcceptor({
     }
     // An answer never reaches the host: the host answers, the peer offers.
   });
+  // Offers that reached this seat before the acceptor existed (a peer whose offer raced the election): answered now.
+  if (typeof signaler.recentOffers === 'function') {
+    for (const signal of signaler.recentOffers()) {
+      if (signal.to !== hostId || signal.kind !== 'offer' || signal.generation !== generation()) continue;
+      counters.recoveredOffers++;
+      takeOffer(signal);
+    }
+  }
 
   return {
     peers,

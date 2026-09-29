@@ -128,6 +128,12 @@ export interface Signaler {
   target(): RtcSignalTarget | null;
   sendSignal(payload: RtcSignalPayload): boolean;
   onSignal(listener: (signal: RtcRelayedSignal) => void): Unsubscribe;
+  /**
+   * Offers relayed to this seat recently (the current generation, a few seconds) that no acceptor has taken yet — an
+   * elected host's acceptor consumes them at construction, so a peer whose offer raced the election is answered
+   * instead of waiting out its attempt (P3b, 2026-09-29). Drains what it returns.
+   */
+  recentOffers?(): RtcRelayedSignal[];
 }
 
 export const RTC_MATCH_CHANNEL_LABEL = 'match';
@@ -178,6 +184,16 @@ export function selectedCandidateTypes(report: RtcStatsReportLike): RtcCandidate
  * connection, gathered in 0.5–1 s.
  */
 export const ICE_GATHER_CAP_MS = 2500;
+
+/**
+ * An offer that has not opened its channel within this time is re-offered at once (P3b, 2026-09-29; docs/MULTIPLAYER-V2.md
+ * §13.9.4): the answer takes the host's ICE gathering (capped at ICE_GATHER_CAP_MS) plus two relay hops plus the DTLS
+ * and SCTP handshakes — under a second on a LAN, two to three on TURN — so 3.5 s after the offer left is a lost offer,
+ * not a slow one. The certification's 17.3 s seat was one such offer waiting out the WebSocket policy's 8 s attempt
+ * timeout (still the outer bound, from the attempt's start: it covers a hung credential fetch). The timer counts from
+ * the offer's send, after the local gathering, so a slow gather never eats into it.
+ */
+export const RTC_OFFER_CONNECT_TIMEOUT_MS = 3500;
 
 /**
  * Resolves once the connection's ICE gathering is complete, or after `capMs`; null when there is nothing to wait for (a
@@ -240,6 +256,8 @@ export interface WebRtcTransportOptions {
   autoReconnect?: boolean;
   /** Incoming frames above this size are rejected (the wire's MAX_MESSAGE_BYTES). */
   maxFrameBytes?: number;
+  /** An offer whose channel has not opened this long after it left is re-offered at once (RTC_OFFER_CONNECT_TIMEOUT_MS). */
+  offerConnectTimeoutMs?: number;
   clock?: () => number;
   setTimer?: (callback: () => void, delayMs: number) => TimerHandle;
   clearTimer?: (handle: TimerHandle) => void;
@@ -269,6 +287,7 @@ export class WebRtcTransport implements Transport {
   private readonly createPeerConnection: RtcPeerConnectionFactory;
   private readonly autoReconnect: boolean;
   private readonly maxFrameBytes: number;
+  private readonly offerConnectTimeoutMs: number;
   private readonly clock: () => number;
   private readonly setTimer: (callback: () => void, delayMs: number) => TimerHandle;
   private readonly clearTimer: (handle: TimerHandle) => void;
@@ -284,7 +303,10 @@ export class WebRtcTransport implements Transport {
   private lostAtMs: number | null = null;
   private retryTimer: TimerHandle | null = null;
   private attemptTimer: TimerHandle | null = null;
+  private offerTimer: TimerHandle | null = null;
   private lastErrorDetail = '';
+  /** Attempts re-offered at once after an unanswered offer or a failed ICE agent (diagnostics). */
+  private immediateRetries = 0;
   private pairTypes: RtcCandidatePairTypes | null = null;
   private staleSignalCount = 0;
   private signalsSent = 0;
@@ -299,6 +321,7 @@ export class WebRtcTransport implements Transport {
     reconnect = {},
     autoReconnect = true,
     maxFrameBytes = DEFAULT_MAX_FRAME_BYTES,
+    offerConnectTimeoutMs = RTC_OFFER_CONNECT_TIMEOUT_MS,
     clock = () => (typeof performance === 'object' ? performance.now() : Date.now()),
     setTimer = (callback, delayMs) => setTimeout(callback, delayMs),
     clearTimer = (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
@@ -314,6 +337,7 @@ export class WebRtcTransport implements Transport {
     this.reconnectPolicy = { ...DEFAULT_RECONNECT, ...reconnect };
     this.autoReconnect = autoReconnect;
     this.maxFrameBytes = maxFrameBytes;
+    this.offerConnectTimeoutMs = offerConnectTimeoutMs;
     this.clock = clock;
     this.setTimer = setTimer;
     this.clearTimer = clearTimer;
@@ -337,8 +361,8 @@ export class WebRtcTransport implements Transport {
   get viaTurn(): boolean { return this.pairTypes?.viaTurn ?? false; }
   /** Signals refused for a stale generation or an unexpected sender (diagnostics). */
   get staleSignals(): number { return this.staleSignalCount; }
-  get signalStats(): { sent: number; candidatesSent: number; candidatesReceived: number; stale: number } {
-    return { sent: this.signalsSent, candidatesSent: this.candidatesSent, candidatesReceived: this.candidatesReceived, stale: this.staleSignalCount };
+  get signalStats(): { sent: number; candidatesSent: number; candidatesReceived: number; stale: number; immediateRetries: number } {
+    return { sent: this.signalsSent, candidatesSent: this.candidatesSent, candidatesReceived: this.candidatesReceived, stale: this.staleSignalCount, immediateRetries: this.immediateRetries };
   }
 
   onFrame(listener: (frame: Uint8Array) => void): Unsubscribe { return this.frameListeners.add(listener); }
@@ -461,6 +485,8 @@ export class WebRtcTransport implements Transport {
     });
     pc.onconnectionstatechange = guard(() => {
       const state = pc.connectionState;
+      // The ICE agent gave up while connecting: a fresh offer now (a new agent, fresh candidates), not after a backoff.
+      if (state === 'failed' && this.currentState === 'connecting') { this.dropConnection(); this.failAttempt(TRANSPORT_CLOSE.NETWORK, 'peer connection failed', true); return; }
       if (state === 'failed' || state === 'closed') this.handleClose(`peer connection ${state}`);
     });
     let channel: RtcDataChannelLike;
@@ -494,6 +520,13 @@ export class WebRtcTransport implements Transport {
           }
           connection.offered = true;
           this.signalsSent++;
+          // from here the host's answer and the handshakes have offerConnectTimeoutMs; past it the offer is lost
+          this.offerTimer = this.setTimer(() => {
+            this.offerTimer = null;
+            if (this.connection !== connection || this.link !== link || this.currentState !== 'connecting') return;
+            this.dropConnection();
+            this.failAttempt(TRANSPORT_CLOSE.TIMEOUT, 'the offer did not connect in time', true);
+          }, this.offerConnectTimeoutMs);
         };
         const gathering = awaitIceGathering(pc, ICE_GATHER_CAP_MS, this.setTimer, this.clearTimer);
         return gathering ? gathering.then(send) : send();
@@ -543,6 +576,7 @@ export class WebRtcTransport implements Transport {
   private handleOpen(link: number): void {
     if (this.link !== link || this.currentState !== 'connecting') return;
     if (this.attemptTimer !== null) { this.clearTimer(this.attemptTimer); this.attemptTimer = null; }
+    if (this.offerTimer !== null) { this.clearTimer(this.offerTimer); this.offerTimer = null; }
     const resumed = this.attempt > 0;
     const attempt = this.attempt;
     this.attempt = 0;
@@ -588,15 +622,16 @@ export class WebRtcTransport implements Transport {
     this.scheduleReconnect(TRANSPORT_CLOSE.NETWORK, reason);
   }
 
-  private failAttempt(reason: TransportCloseReason, detail: string): void {
+  /** `immediate`: the next offer leaves now (an unanswered offer, a failed ICE agent) instead of after the backoff. */
+  private failAttempt(reason: TransportCloseReason, detail: string, immediate = false): void {
     if (this.attempt === 0 && !this.autoReconnect) {
       this.close(reason, detail);
       return;
     }
-    this.scheduleReconnect(reason, detail);
+    this.scheduleReconnect(reason, detail, immediate);
   }
 
-  private scheduleReconnect(reason: TransportCloseReason, detail: string): void {
+  private scheduleReconnect(reason: TransportCloseReason, detail: string, immediate = false): void {
     if (this.currentState === 'closed') return;
     if (!this.autoReconnect || !RECONNECTABLE_CLOSE_REASONS.has(reason)) {
       this.close(reason, detail);
@@ -610,7 +645,8 @@ export class WebRtcTransport implements Transport {
     }
     this.attempt++;
     this.stats.reconnects++;
-    const delayMs = reconnectDelayMs(this.reconnectPolicy, this.attempt, this.random());
+    if (immediate) this.immediateRetries++;
+    const delayMs = immediate ? 0 : reconnectDelayMs(this.reconnectPolicy, this.attempt, this.random());
     this.transition('reconnecting', { reason, detail, attempt: this.attempt, retryDelayMs: delayMs });
     this.retryTimer = this.setTimer(() => {
       this.retryTimer = null;
@@ -629,6 +665,7 @@ export class WebRtcTransport implements Transport {
     this.connection = null;
     this.link++;
     this.pairTypes = null;
+    if (this.offerTimer !== null) { this.clearTimer(this.offerTimer); this.offerTimer = null; }
     if (!connection) return;
     const { pc, channel } = connection;
     if (channel) {
@@ -642,6 +679,7 @@ export class WebRtcTransport implements Transport {
   private cancelTimers(): void {
     if (this.retryTimer !== null) { this.clearTimer(this.retryTimer); this.retryTimer = null; }
     if (this.attemptTimer !== null) { this.clearTimer(this.attemptTimer); this.attemptTimer = null; }
+    if (this.offerTimer !== null) { this.clearTimer(this.offerTimer); this.offerTimer = null; }
   }
 
   private transition(state: TransportState, change: Omit<TransportStateChange, 'state' | 'previous'>): void {

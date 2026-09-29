@@ -113,6 +113,18 @@ transport.deliver({ type: 'room_signal', payload: { to: 'bob', from: 'alice', ge
 assert.equal(signals.length, 2, 'a signal for an older generation is dropped');
 assert.equal(client.sendSignal({ to: 'alice', generation: 3, kind: 'offer', sdp: 'v=0' }), false, 'and never sent');
 
+// ---- P3b: offers relayed to this seat are kept for an acceptor made after they arrived — the current generation only, one per sender, drained on read
+transport.deliver({ type: 'room_signal', payload: { to: 'bob', from: 'alice', generation: 4, kind: 'offer', sdp: 'v=0 offer first' } });
+transport.deliver({ type: 'room_signal', payload: { to: 'bob', from: 'alice', generation: 4, kind: 'offer', sdp: 'v=0 offer again' } });
+transport.deliver({ type: 'room_signal', payload: { to: 'bob', from: 'carol', generation: 5, kind: 'offer', sdp: 'v=0 offer newer generation' } });
+transport.deliver({ type: 'room_signal', payload: { to: 'bob', from: 'dave', generation: 4, kind: 'candidate', candidate: { candidate: 'c', sdpMid: null, sdpMLineIndex: null } } });
+const recent = client.recentOffers();
+assert.deepEqual(recent.map((signal) => [signal.from, signal.sdp]), [['alice', 'v=0 offer again']], 'the sender\'s newest offer for the running generation; a candidate is not an offer; a newer generation waits for its election');
+assert.deepEqual(client.recentOffers(), [], 'drained');
+transport.deliver({ type: 'room_signal', payload: { to: 'bob', from: 'alice', generation: 4, kind: 'offer', sdp: 'v=0 offer late' } });
+assert.deepEqual(client.recentOffers(0), [], 'an offer older than the window is gone');
+assert.deepEqual(client.recentOffers(), [], 'and was drained by that read');
+
 // ---- the report and the decline are room commands (acknowledged by the scripted room)
 const reporting = client.reportMatch({ matchId: 'm1-0001', generation: 4, tick: 1300, phase: 'playing' });
 await new Promise((resolve) => setTimeout(resolve, 0));

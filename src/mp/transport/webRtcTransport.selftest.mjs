@@ -9,7 +9,7 @@
 // autoReconnect: false → one attempt.
 import assert from 'node:assert/strict';
 import { DEFAULT_RECONNECT, TRANSPORT_CLOSE, WebRtcTransport, selectedCandidateTypes } from './index.ts';
-import { ICE_GATHER_CAP_MS } from './webRtcTransport.ts';
+import { ICE_GATHER_CAP_MS, RTC_OFFER_CONNECT_TIMEOUT_MS } from './webRtcTransport.ts';
 import { FakeSignalRelay, RtcWorld } from './rtcDouble.test-support.ts';
 
 // ------------------------------------------------------------ virtual time
@@ -269,7 +269,8 @@ function createTransport(time, relay, world, options = {}) {
   console.log('webRtcTransport.selftest: reconnect with backoff, retarget on election, stale signals, reconnect() verified');
 }
 
-// ------------------------------------------------------------ a channel that never opens: timeout attempts, then the window exhausts
+// ------------------------------------------------------------ a channel that never opens: an offer that left is re-offered at once every 3.5 s (P3b) until the window exhausts;
+// an offer that never leaves (a hung credential fetch) still fails on the policy's 8 s attempt timeout with the backoff
 {
   const time = createVirtualTime();
   const world = new RtcWorld();
@@ -279,18 +280,100 @@ function createTransport(time, relay, world, options = {}) {
   await settle(world, relay);
   assert.equal(relay.refused.at(-1)?.why, 'unknown_seat', 'no host listens: the relay refuses the offer');
   assert.equal(transport.state, 'connecting');
-  time.advance(DEFAULT_RECONNECT.attemptTimeoutMs);
-  assert.equal(transport.state, 'reconnecting');
-  assert.equal(changes.at(-1).reason, TRANSPORT_CLOSE.TIMEOUT);
-  time.advance(250);
-  time.advance(DEFAULT_RECONNECT.attemptTimeoutMs);
-  assert.equal(changes.at(-1).attempt, 2);
-  time.advance(60_000);
+  time.advance(RTC_OFFER_CONNECT_TIMEOUT_MS);
+  await settle(world, relay);
+  assert.equal(changes.at(-2).state, 'reconnecting');
+  assert.equal(changes.at(-2).reason, TRANSPORT_CLOSE.TIMEOUT);
+  assert.equal(changes.at(-2).retryDelayMs, 0, 'the second offer leaves at once');
+  assert.equal(transport.state, 'connecting');
+  time.advance(RTC_OFFER_CONNECT_TIMEOUT_MS);
+  await settle(world, relay);
+  assert.equal(changes.filter((change) => change.state === 'reconnecting').at(-1).attempt, 2);
+  // each offer leaves on a promise: step the clock an attempt at a time so every offer gets its microtasks
+  for (let n = 0; n < 8 && transport.state !== 'closed'; n++) { time.advance(RTC_OFFER_CONNECT_TIMEOUT_MS); await settle(world, relay); }
   assert.equal(transport.state, 'closed');
   assert.equal(changes.at(-1).reason, TRANSPORT_CLOSE.EXHAUSTED);
-  assert.equal(transport.stats.reconnects >= 2, true);
+  assert.ok(transport.stats.reconnects >= 5, `an attempt every 3.5 s inside the 20 s window (${transport.stats.reconnects})`);
   assert.equal(time.pending, 0);
 }
+{
+  const time = createVirtualTime();
+  const world = new RtcWorld();
+  const relay = new FakeSignalRelay('host', 1);
+  const { transport, changes } = createTransport(time, relay, world, { ice: () => new Promise(() => {}), reconnect: { windowMs: 20_000 } });
+  transport.open();
+  await settle(world, relay);
+  assert.equal(transport.state, 'connecting');
+  assert.equal(relay.delivered.length + relay.refused.length, 0, 'no offer left: the credential fetch hangs');
+  time.advance(DEFAULT_RECONNECT.attemptTimeoutMs - 1);
+  assert.equal(transport.state, 'connecting');
+  time.advance(1);
+  assert.equal(transport.state, 'reconnecting', 'the policy\'s attempt timeout is the outer bound');
+  assert.equal(changes.at(-1).reason, TRANSPORT_CLOSE.TIMEOUT);
+  assert.equal(changes.at(-1).retryDelayMs, 250, 'with the backoff: nothing was offered, nothing is waiting for an answer');
+  transport.close();
+  assert.equal(time.pending, 0);
+}
+
+// ------------------------------------------------------------ P3b: an offer the host never answers is re-offered at once after the offer timeout (3.5 s), not after the 8 s attempt policy;
+// a failed ICE agent while connecting re-offers at once; a dropped OPEN channel keeps its backoff
+{
+  const time = createVirtualTime();
+  const world = new RtcWorld();
+  const relay = new FakeSignalRelay('host', 1);
+  // a mute host: the seat exists and listens, but answers nothing
+  const muteSignaler = relay.signalerFor('host');
+  const heard = [];
+  const unmute = muteSignaler.onSignal((signal) => heard.push(signal.kind));
+  const { transport, changes } = createTransport(time, relay, world, {});
+  transport.open();
+  await settle(world, relay);
+  assert.equal(transport.state, 'connecting');
+  assert.deepEqual(heard, ['offer'], 'the offer reached the mute host');
+  time.advance(RTC_OFFER_CONNECT_TIMEOUT_MS - 1);
+  assert.equal(transport.state, 'connecting', 'still waiting inside the offer window');
+  time.advance(1);
+  await settle(world, relay);
+  const timedOut = changes.find((change) => change.state === 'reconnecting');
+  assert.ok(timedOut && timedOut.reason === TRANSPORT_CLOSE.TIMEOUT && /offer/.test(timedOut.detail), `the offer timed out (${timedOut?.reason}: ${timedOut?.detail})`);
+  assert.equal(timedOut.retryDelayMs, 0, 'the re-offer leaves at once');
+  assert.equal(transport.state, 'connecting', 'a fresh attempt is under way');
+  assert.deepEqual(heard, ['offer', 'offer'], 'a second offer reached the host within the same virtual instant');
+  assert.equal(transport.signalStats.immediateRetries, 1);
+  assert.ok(time.clock() - 1000 < DEFAULT_RECONNECT.attemptTimeoutMs, 'well inside the WebSocket policy\'s 8 s attempt timeout');
+  // the host wakes up and answers the second offer: open
+  unmute();
+  const host = scriptedHost(world, relay, 'host');
+  relay.inject('peer', { to: 'host', generation: 1, kind: 'offer', sdp: heard.length ? `v=0 offer pc${world.connections.size}` : '' });
+  await settle(world, relay);
+  assert.equal(transport.state, 'open', `answered on the re-offer (${transport.state})`);
+  assert.ok(host.channels.length >= 1);
+  transport.close();
+  assert.equal(time.pending, 0, 'no timer left behind');
+}
+{
+  // the ICE agent gives up while connecting: a fresh offer now
+  const time = createVirtualTime();
+  const world = new RtcWorld();
+  const relay = new FakeSignalRelay('host', 1);
+  const muteSignaler = relay.signalerFor('host');
+  const heard = [];
+  muteSignaler.onSignal((signal) => heard.push(signal.kind));
+  const { transport, changes } = createTransport(time, relay, world, {});
+  transport.open();
+  await settle(world, relay);
+  assert.equal(transport.state, 'connecting');
+  world.connections.get(1).fail();
+  time.advance(0);
+  await settle(world, relay);
+  const failed = changes.find((change) => change.state === 'reconnecting');
+  assert.ok(failed && failed.retryDelayMs === 0 && /failed/.test(failed.detail), `a failed agent re-offers at once (${failed?.detail}, ${failed?.retryDelayMs} ms)`);
+  assert.deepEqual(heard, ['offer', 'offer']);
+  assert.equal(transport.signalStats.immediateRetries, 1);
+  transport.close();
+  assert.equal(time.pending, 0);
+}
+console.log('webRtcTransport.selftest: an unanswered offer is re-offered at once after 3.5 s, a failed ICE agent at once; the open-channel backoff stands');
 
 // ------------------------------------------------------------ the room names no host yet; ICE failure → host candidates; autoReconnect false
 {

@@ -111,6 +111,9 @@ export function resolveRoomRelativeUrl(endpoint: string, url: string): string {
 
 /** The `start` command's wait: a cold match container may take the Room DO's full 30 s port wait plus the match start. */
 const START_REQUEST_TIMEOUT_MS = 45_000;
+/** Offers kept for an acceptor made after they arrived (P3b): the window and the bound. */
+const ROOM_RECENT_OFFER_MS = 5_000;
+const ROOM_RECENT_OFFER_LIMIT = 64;
 
 export class RoomClient {
   readonly endpoint: string;
@@ -139,6 +142,8 @@ export class RoomClient {
   private readonly signalListeners = new Listeners<RoomRelayedSignal>();
   private readonly hostChangedListeners = new Listeners<RoomHostChangedPayload>();
   private lastHostChange: RoomHostChangedPayload | null = null;
+  /** Offers relayed to this seat lately (P3b): an acceptor made after they arrived takes them (`recentOffers`). */
+  private readonly recentOfferBuffer: Array<{ signal: RoomRelayedSignal; atMs: number }> = [];
   private signalsSent = 0;
   private signalsReceived = 0;
   private signalsRefused = 0;
@@ -247,6 +252,16 @@ export class RoomClient {
   onClosed(listener: (change: { reason: string }) => void): Unsubscribe { return this.closedListeners.add(listener); }
   /** A WebRTC signal another seat addressed to this one (already validated; the room added `from`). */
   onSignal(listener: (signal: RoomRelayedSignal) => void): Unsubscribe { return this.signalListeners.add(listener); }
+  /**
+   * Offers relayed to this seat within `maxAgeMs` for the current generation, drained (P3b, 2026-09-29): a peer whose
+   * offer reached this seat before its acceptor existed (the election raced) is answered by the acceptor at
+   * construction instead of waiting out its attempt. Older generations and older offers are dropped.
+   */
+  recentOffers(maxAgeMs = ROOM_RECENT_OFFER_MS): RoomRelayedSignal[] {
+    const nowMs = this.clock();
+    const offers = this.recentOfferBuffer.splice(0).filter((entry) => nowMs - entry.atMs < maxAgeMs && entry.signal.generation === this.generation).map((entry) => entry.signal);
+    return offers;
+  }
   /** The room elected a new match host. */
   onHostChanged(listener: (change: RoomHostChangedPayload) => void): Unsubscribe { return this.hostChangedListeners.add(listener); }
 
@@ -501,6 +516,14 @@ export class RoomClient {
         // A signal for a generation older than the one this seat runs is the old host talking: dropped here as well.
         if (isRelayedRoomSignal(payload) && payload.to === this.playerId && payload.generation >= this.generation) {
           this.signalsReceived++;
+          if (payload.kind === 'offer') {
+            const nowMs = this.clock();
+            // one live offer per sender: a re-offer replaces it; nothing older than the window survives
+            const kept = this.recentOfferBuffer.filter((entry) => entry.signal.from !== payload.from && nowMs - entry.atMs < ROOM_RECENT_OFFER_MS);
+            this.recentOfferBuffer.length = 0;
+            this.recentOfferBuffer.push(...kept, { signal: payload, atMs: nowMs });
+            while (this.recentOfferBuffer.length > ROOM_RECENT_OFFER_LIMIT) this.recentOfferBuffer.shift();
+          }
           this.signalListeners.emit(payload);
         }
         break;
@@ -670,6 +693,7 @@ export class RoomClient {
     this.phaseListeners.clear();
     this.closedListeners.clear();
     this.signalListeners.clear();
+    this.recentOfferBuffer.length = 0;
     this.hostChangedListeners.clear();
   }
 
