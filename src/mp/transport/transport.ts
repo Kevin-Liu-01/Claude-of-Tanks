@@ -71,12 +71,16 @@ export interface TransportStats {
   reconnects: number;
   /** Times the transport reached `open`. */
   opens: number;
+  /** Keepalive frames (P1b, 2026-09-28): the configured text request sent, and its text response received. */
+  keepalivesSent: number;
+  keepalivesReceived: number;
 }
 
 export function createTransportStats(): TransportStats {
   return {
     framesSent: 0, bytesSent: 0, framesReceived: 0, bytesReceived: 0,
     framesDropped: 0, framesRejected: 0, reconnects: 0, opens: 0,
+    keepalivesSent: 0, keepalivesReceived: 0,
   };
 }
 
@@ -100,6 +104,13 @@ export interface Transport {
   close(reason?: TransportCloseReason, detail?: string): void;
   onFrame(listener: (frame: Uint8Array) => void): Unsubscribe;
   onState(listener: (change: TransportStateChange) => void): Unsubscribe;
+  /**
+   * Optional keepalive (P1b, 2026-09-28): one exact text frame the endpoint answers without handling it — the room's
+   * hibernation auto-response. Only that one text is ever surfaced; every other text frame stays rejected. Absent on
+   * transports whose endpoint has no such frame; the owner then keeps its own keepalive envelope.
+   */
+  sendKeepalive?(): boolean;
+  onKeepalive?(listener: () => void): Unsubscribe;
 }
 
 /** Backpressure policy shared by every implementation. */

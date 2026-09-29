@@ -15,6 +15,8 @@ export const token = (seed: string): string => seed.repeat(64).slice(0, 64);
 
 export class Client {
   readonly messages: Message[] = [];
+  /** P1b: text frames that are not envelopes — the room's keepalive answer (`pong`), in order. */
+  readonly raw: string[] = [];
   readonly closed: Promise<CloseEvent>;
   private readonly waiters = new Set<() => void>();
   private queue: Promise<void> = Promise.resolve();
@@ -24,12 +26,27 @@ export class Client {
       const data = event.data as string | Blob | ArrayBuffer;
       this.queue = this.queue.then(async () => {
         const text = typeof data === 'string' ? data : data instanceof Blob ? await data.text() : new TextDecoder().decode(data);
-        this.messages.push(JSON.parse(text));
+        if (typeof data === 'string' && !text.startsWith('{')) this.raw.push(text);
+        else this.messages.push(JSON.parse(text));
         for (const waiter of [...this.waiters]) waiter();
       });
     });
     this.closed = new Promise((resolve) => socket.addEventListener('close', resolve, { once: true }));
     clients.push(this);
+  }
+  /** Wait until at least `count` raw text frames arrived. */
+  rawCount(count: number, timeoutMs = 3_000): Promise<number> {
+    if (this.raw.length >= count) return Promise.resolve(this.raw.length);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { this.waiters.delete(waiter); reject(new Error(`Expected ${count} raw frames, received ${this.raw.length}`)); }, timeoutMs);
+      const waiter = () => {
+        if (this.raw.length < count) return;
+        clearTimeout(timer);
+        this.waiters.delete(waiter);
+        resolve(this.raw.length);
+      };
+      this.waiters.add(waiter);
+    });
   }
   next(predicate: (message: Message) => boolean, timeoutMs = 3_000): Promise<Message> {
     const existing = this.messages.find(predicate);

@@ -11,7 +11,10 @@ import { evictDurableObject, reset, runDurableObjectAlarm, runInDurableObject } 
 import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RoomActorState } from '../../../src/mp/room/roomActor.ts';
-import { ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_MATCH_REPORT_STALE_AFTER_MS, ROOM_MAX_PAYLOAD_BYTES, ROOM_SIGNAL_MAX_BYTES } from '../../../src/mp/room/protocol.ts';
+import {
+  ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, ROOM_MATCH_REPORT_STALE_AFTER_MS, ROOM_MAX_PAYLOAD_BYTES,
+  ROOM_RATE_MAX_MESSAGES, ROOM_SIGNAL_MAX_BYTES, ROOM_STATE_COALESCE_MS,
+} from '../../../src/mp/room/protocol.ts';
 import type { RoomHostChangedPayload, RoomMatchStartPayload, RoomSnapshot } from '../../../src/mp/room/protocol.ts';
 import { verifySeatToken } from '../../../server/match/seatToken.ts';
 import { Client, closeClients, connect, create, identity, origin, token } from './client.ts';
@@ -215,7 +218,7 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
     expect(verifySeatToken(derivedSecret(matchId), second.seatToken, Date.now()).ok).toBe(false);
   });
 
-  it('honours a decline at start and mid-match (to a willing successor only), migrates at once on a leave, and ends lost with no commander left', async () => {
+  it('honours a decline at start and mid-match (P1b: a departure — the next candidate at once, never a seat that stepped down), migrates at once on a leave, and ends lost with no commander left', async () => {
     const { admin, guest, third, watcher, matchId } = await startedRoom('ROOM15', { adminDeclines: true, third: true });
     expect(start(admin).hostId).toBe('guest');
     expect(start(admin).hostSecret).toBeUndefined();
@@ -227,29 +230,40 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
     const declined = (await third!.next((message) => message.type === 'host_changed' && message.payload.generation === 2)).payload as unknown as RoomHostChangedPayload;
     expect(declined).toEqual({ hostId: 'third', generation: 2, resumeTick: 120, reason: 'declined', hostSecret: derivedSecret(matchId) });
     expect((await admin.next((message) => message.type === 'host_changed' && message.payload.generation === 2)).payload.hostSecret).toBeUndefined();
-    // the new host declines with no willing successor left: it keeps hosting
+    expect((await storedState('ROOM15')).steppedDown).toEqual(['guest']);
+    // the new host declines with no WILLING successor left (P1 kept it and stalled its peers for the 30 s report
+    // budget): the admin — declined, but the last resort — takes over at once; the guest, which stepped down, is skipped
     expect((await third!.command({ type: 'host_decline', declined: true })).type).toBe('room_ack');
-    expect(room(watcher).host).toMatchObject({ hostId: 'third', generation: 2 });
-    expect(third!.all('host_changed').length).toBe(2);
-    // the host leaves: at once, to the admin — declined, but the admin comes first among the last resorts
-    expect((await third!.request('room_leave')).type).toBe('room_ack');
-    const left = (await admin.next((message) => message.type === 'host_changed' && message.payload.generation === 3)).payload as unknown as RoomHostChangedPayload;
-    expect(left).toEqual({ hostId: 'admin', generation: 3, resumeTick: 0, reason: 'left', hostSecret: derivedSecret(matchId) });
-    expect((await watcher.next((message) => message.type === 'host_changed' && message.payload.generation === 3)).payload.hostSecret).toBeUndefined();
-    expect(room(watcher).phase).toBe('playing');
-    // the admin leaves too: the guest (declined) hosts as the last commander; the room's admin role moved with it
+    const lastResort = (await admin.next((message) => message.type === 'host_changed' && message.payload.generation === 3)).payload as unknown as RoomHostChangedPayload;
+    expect(lastResort).toEqual({ hostId: 'admin', generation: 3, resumeTick: 0, reason: 'declined', hostSecret: derivedSecret(matchId) });
+    expect((await guest.next((message) => message.type === 'host_changed' && message.payload.generation === 3)).payload.hostSecret).toBeUndefined();
+    expect((await storedState('ROOM15')).steppedDown).toEqual(['guest', 'third']);
+    // every commander has stepped down: the admin's own decline finds nobody — it keeps hosting, no fourth election
+    expect((await admin.command({ type: 'host_decline', declined: true })).type).toBe('room_ack');
+    expect((await storedState('ROOM15')).steppedDown).toEqual(['guest', 'third', 'admin']);
+    expect(room(watcher).host).toMatchObject({ hostId: 'admin', generation: 3 });
+    expect(admin.all('host_changed').length).toBe(3);
+    // the host leaves: at once, by the full ladder — the guest, lowest joinedAt of the declined, stepped down or not
     expect((await admin.request('room_leave')).type).toBe('room_ack');
-    const last = (await guest.next((message) => message.type === 'host_changed' && message.payload.generation === 4)).payload as unknown as RoomHostChangedPayload;
-    expect(last).toEqual({ hostId: 'guest', generation: 4, resumeTick: 0, reason: 'left', hostSecret: derivedSecret(matchId) });
+    const left = (await guest.next((message) => message.type === 'host_changed' && message.payload.generation === 4)).payload as unknown as RoomHostChangedPayload;
+    expect(left).toEqual({ hostId: 'guest', generation: 4, resumeTick: 0, reason: 'left', hostSecret: derivedSecret(matchId) });
+    expect((await watcher.next((message) => message.type === 'host_changed' && message.payload.generation === 4)).payload.hostSecret).toBeUndefined();
+    expect(room(watcher).phase).toBe('playing');
     expect(room(watcher).adminId).toBe('guest');
-    // the last commander leaves: the match is lost, the room waits, only the spectator remains
+    // the guest leaves too: the third seat hosts as the last commander; the room's admin role moved with it
     expect((await guest.request('room_leave')).type).toBe('room_ack');
+    const last = (await third!.next((message) => message.type === 'host_changed' && message.payload.generation === 5)).payload as unknown as RoomHostChangedPayload;
+    expect(last).toEqual({ hostId: 'third', generation: 5, resumeTick: 0, reason: 'left', hostSecret: derivedSecret(matchId) });
+    expect(room(watcher).adminId).toBe('third');
+    // the last commander leaves: the match is lost, the room waits, only the spectator remains; the stepped-down set clears
+    expect((await third!.request('room_leave')).type).toBe('room_ack');
     const lost = await watcher.next((message) => message.type === 'match_status' && message.payload.status === 'lost');
     expect(lost.payload.verdict).toBeNull();
     const after = (await watcher.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).phase === 'waiting' && (message.payload.room as RoomSnapshot).lastResult !== null)).payload.room as RoomSnapshot;
     expect(after.lastResult).toEqual({ round: 1, result: null, reason: 'match_lost' });
-    expect(after.host).toMatchObject({ hostId: null, generation: 4 });
+    expect(after.host).toMatchObject({ hostId: null, generation: 5 });
     expect(after.players.map((player) => player.id)).toEqual(['watcher']);
+    expect((await storedState('ROOM15')).steppedDown).toEqual([]);
   });
 
   it('treats a host silent for three poll intervals as dropped', async () => {
@@ -263,5 +277,78 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
     // the silent host, still connected, is a peer now: its report is refused, the new host's accepted
     expect((await admin.command({ type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 61 })).payload.code).toBe('host_only');
     expect((await guest.command({ type: 'match_report', matchId, generation: 2, phase: 'playing', tick: 61 })).type).toBe('room_ack');
+  });
+
+  // ---- P1b cost pass (2026-09-28)
+
+  it('answers the keepalive frame through the hibernation auto-response: the object never handles it, the runtime records it, and the rate window never sees it', async () => {
+    const admin = await create('ROOM17');
+    const guest = await connect('ROOM17', 'ROOM17-guest');
+    expect((await guest.request('room_join', identity('guest', token('c'), token('d')))).type).toBe('room_joined');
+    const before = await storedState('ROOM17');
+    const socketsBefore = await runInDurableObject(env.ROOMS.getByName('ROOM17'), (_instance, state) =>
+      state.getWebSockets().map((ws) => state.getWebSocketAutoResponseTimestamp(ws)));
+    expect(socketsBefore).toEqual([null, null]);
+    // the exact text frame is answered with the exact text frame, in order, without any envelope
+    guest.socket.send(ROOM_KEEPALIVE_REQUEST);
+    expect(await guest.rawCount(1)).toBe(1);
+    expect(guest.raw).toEqual([ROOM_KEEPALIVE_RESPONSE]);
+    expect(guest.all('room_pong').length).toBe(0);
+    // the runtime recorded it on that socket alone; the actor saw nothing (its touch is unchanged)
+    const stamps = await runInDurableObject(env.ROOMS.getByName('ROOM17'), (_instance, state) =>
+      state.getWebSockets().map((ws) => state.getWebSocketAutoResponseTimestamp(ws)?.getTime() ?? null));
+    expect(stamps.filter((stamp) => stamp !== null).length).toBe(1);
+    expect(stamps.some((stamp) => stamp !== null && Math.abs(stamp - Date.now()) < 5_000)).toBe(true);
+    expect((await storedState('ROOM17')).room?.touchedAt).toBe(before.room?.touchedAt);
+    expect(await runInDurableObject(env.ROOMS.getByName('ROOM17'), (_instance, state) => state.getWebSocketAutoResponse()?.request)).toBe(ROOM_KEEPALIVE_REQUEST);
+    // the frame is a keepalive, not a message: more of them than the rate window allows leave the socket open and every
+    // one answered (the envelope ping, still accepted for older clients, closes the socket as rate_limit past the window)
+    for (let index = 0; index < ROOM_RATE_MAX_MESSAGES + 10; index++) guest.socket.send(ROOM_KEEPALIVE_REQUEST);
+    expect(await guest.rawCount(ROOM_RATE_MAX_MESSAGES + 11, 10_000)).toBe(ROOM_RATE_MAX_MESSAGES + 11);
+    expect(guest.raw.every((frame) => frame === ROOM_KEEPALIVE_RESPONSE)).toBe(true);
+    expect((await guest.request('room_ping')).type).toBe('room_pong');
+    expect((await guest.command({ type: 'set_ready', ready: true })).type).toBe('room_ack');
+    // a text frame that is not the keepalive is an envelope like any other (here: not JSON → invalid_payload)
+    guest.socket.send('nope');
+    expect((await guest.next((message) => message.type === 'error')).payload.code).toBe('invalid_payload');
+    // the same frame from an older client's envelope path still works, and the rate window counts those
+    for (let index = 0; index < ROOM_RATE_MAX_MESSAGES + 10; index++) admin.send('room_ping');
+    const closed = await admin.closed;
+    expect(closed.reason).toBe('rate_limit');
+  });
+
+  it('coalesces room_state: a burst of changes fans out once per window with the newest revision, and an ack names the revision it produced', async () => {
+    const admin = await create('ROOM18');
+    const guest = await connect('ROOM18', 'ROOM18-guest');
+    expect((await guest.request('room_join', identity('guest', token('c'), token('d')))).type).toBe('room_joined');
+    const watcher = await connect('ROOM18', 'ROOM18-watcher');
+    expect((await watcher.request('room_join', identity('watcher', token('e'), token('f'), { team: 'spectator' }))).type).toBe('room_joined');
+    await admin.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).players.length === 3);
+    // let the joins' window pass, then a burst of readiness toggles from one seat, each acknowledged
+    await new Promise((resolve) => setTimeout(resolve, ROOM_STATE_COALESCE_MS + 50));
+    const statesBefore = admin.all('room_state').length;
+    const toggles = 12;
+    const acks: number[] = [];
+    for (let index = 0; index < toggles; index++) {
+      const ack = await guest.command({ type: 'set_ready', ready: index % 2 === 0 });
+      expect(ack.type).toBe('room_ack');
+      acks.push(ack.payload.revision as number);
+    }
+    // every seat converges to the last acknowledged revision within the window
+    const final = (await admin.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).revision >= acks[toggles - 1]!, ROOM_STATE_COALESCE_MS * 4)).payload.room as RoomSnapshot;
+    expect(final.revision).toBe(acks[toggles - 1]);
+    expect(final.players.find((player) => player.id === 'guest')?.ready).toBe(false);
+    await watcher.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).revision >= acks[toggles - 1]!, ROOM_STATE_COALESCE_MS * 4);
+    const fanOut = admin.all('room_state').length - statesBefore;
+    expect(fanOut).toBeGreaterThanOrEqual(1);
+    expect(fanOut).toBeLessThan(toggles);
+    expect(acks).toEqual([...acks].sort((a, b) => a - b));
+    expect(new Set(acks).size).toBe(toggles);
+    // a join inside a window broadcasts at once, with every coalesced change folded in
+    const third = await connect('ROOM18', 'ROOM18-third');
+    expect((await guest.command({ type: 'select_vehicle', specId: 't90m' })).type).toBe('room_ack');
+    expect((await third.request('room_join', identity('third', token('1'), token('2')))).type).toBe('room_joined');
+    const joined = (await admin.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).players.length === 4)).payload.room as RoomSnapshot;
+    expect(joined.players.find((player) => player.id === 'guest')?.specId).toBe('t90m');
   });
 });

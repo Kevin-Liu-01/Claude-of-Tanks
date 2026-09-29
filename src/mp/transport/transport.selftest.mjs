@@ -53,7 +53,7 @@ class FakeSocket {
   removeEventListener(type, listener) { this.listeners.get(type)?.delete(listener); }
   emit(type, event = {}) { for (const listener of [...(this.listeners.get(type) || [])]) listener(event); }
   accept() { this.readyState = 1; this.emit('open'); }
-  send(data) { this.sent.push(data); this.bufferedAmount += data.byteLength; }
+  send(data) { this.sent.push(data); this.bufferedAmount += typeof data === 'string' ? data.length : data.byteLength; }
   close(code, reason) { this.closedWith = { code, reason }; this.readyState = 3; }
   /** The far end (or the network) closed the socket. */
   drop(code = 1006, reason = '') { this.readyState = 3; this.emit('close', { code, reason }); }
@@ -86,6 +86,52 @@ assert.equal(reconnectDelayMs(DEFAULT_RECONNECT, 1, 1), 300, 'jitter reaches +20
 assert.equal(resumeUrl('wss://h/x', 'tok', 0), 'wss://h/x', 'the first connect carries no resume token');
 assert.equal(resumeUrl('wss://h/x', 'tok', 2), 'wss://h/x?resume=tok&attempt=2');
 assert.equal(resumeUrl('wss://h/x?room=1', 'a b', 1), 'wss://h/x?room=1&resume=a%20b&attempt=1');
+
+// ------------------------------------------------------------ keepalive frames (P1b, 2026-09-28)
+{
+  sockets.length = 0;
+  const time = createVirtualTime();
+  const { transport, frames } = createTransport(time, { keepalive: { request: 'ping', response: 'pong' } });
+  const answers = [];
+  const off = transport.onKeepalive(() => answers.push(time.clock()));
+  assert.equal(transport.sendKeepalive(), false, 'nothing before open');
+  transport.open();
+  sockets[0].accept();
+  assert.equal(transport.sendKeepalive(), true);
+  assert.equal(sockets[0].sent.length, 1);
+  assert.equal(sockets[0].sent[0], 'ping', 'the configured request goes out as the exact text frame');
+  assert.equal(transport.stats.keepalivesSent, 1);
+  assert.equal(transport.stats.framesSent, 0, 'a keepalive is not a wire frame');
+  sockets[0].emit('message', { data: 'pong' });
+  assert.equal(answers.length, 1, 'the exact response is the keepalive answer');
+  assert.equal(transport.stats.keepalivesReceived, 1);
+  assert.equal(frames.length, 0, 'never delivered as a wire frame');
+  assert.equal(transport.stats.framesRejected, 0);
+  sockets[0].emit('message', { data: 'pong!' });
+  sockets[0].emit('message', { data: 'ping' });
+  assert.equal(answers.length, 1, 'any other text frame is still rejected');
+  assert.equal(transport.stats.framesRejected, 2);
+  sockets[0].emit('message', { data: new TextEncoder().encode('pong').buffer });
+  assert.equal(frames.length, 1, 'a binary frame spelling the response is a wire frame like any other');
+  assert.equal(answers.length, 1);
+  off();
+  sockets[0].emit('message', { data: 'pong' });
+  assert.equal(answers.length, 1, 'unsubscribed');
+  assert.equal(transport.stats.keepalivesReceived, 2, 'still counted');
+  transport.close();
+  assert.equal(transport.sendKeepalive(), false, 'nothing after close');
+  // no pair configured: no keepalive path at all — the owner keeps its own envelope
+  sockets.length = 0;
+  const { transport: plain } = createTransport(time);
+  plain.open();
+  sockets[0].accept();
+  assert.equal(plain.sendKeepalive(), false);
+  assert.equal(sockets[0].sent.length, 0);
+  sockets[0].emit('message', { data: 'pong' });
+  assert.equal(plain.stats.framesRejected, 1, 'without a pair every text frame is rejected');
+  assert.throws(() => new WebSocketTransport({ url: 'wss://h/x', keepalive: { request: '', response: 'pong' } }), TypeError);
+  plain.close();
+}
 
 // ------------------------------------------------------------ state machine
 {

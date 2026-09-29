@@ -21,7 +21,7 @@ import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import { RoomActor } from '../../src/mp/room/roomActor.ts';
 import type { MatchHost, MatchHostStartConfig, MatchHostStatus, RoomActorPorts, ServiceMatchHost } from '../../src/mp/room/roomActor.ts';
 import { createP2pMatchHost } from '../../src/mp/room/p2pMatchHost.ts';
-import { ROOM_MAX_PAYLOAD_BYTES, parseRoomRoute } from '../../src/mp/room/protocol.ts';
+import { ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, ROOM_MAX_PAYLOAD_BYTES, parseRoomRoute } from '../../src/mp/room/protocol.ts';
 import type { RoomEnvelope } from '../../src/mp/room/protocol.ts';
 import type { RoomPolicyGuards } from '../../src/mp/room/roomPolicy.ts';
 import { signSeatToken } from '../match/seatToken.ts';
@@ -143,6 +143,8 @@ export function createLocalRoomService({
   const rooms = new Map<string, RoomActor>();
   const sockets = new Map<string, WebSocket>();
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** P1b: the wall clock of each socket's newest keepalive frame, answered here without the actor (the Worker's auto-response). */
+  const keepalives = new Map<string, number>();
   let socketSeq = 0;
   let closed = false;
   const roomLog = log.child({ service: 'rooms' });
@@ -190,6 +192,9 @@ export function createLocalRoomService({
         timers.set(code, timer);
       },
       persist() { /* in-memory */ },
+      // P1b: what the Worker reads from the runtime (getWebSocketAutoResponseTimestamp), this service records itself.
+      keepaliveAt: (socketId) => keepalives.get(socketId) ?? null,
+      defer: (callback, delayMs) => { if (!closed) setTimeout(callback, delayMs).unref?.(); },
       guards,
       log: (level, message, fields) => roomLog[level](message, fields as Record<string, string | number | boolean | null | undefined> | undefined),
     };
@@ -215,10 +220,18 @@ export function createLocalRoomService({
     socket.on('message', (raw: RawData, isBinary: boolean) => {
       const text = socketText(raw, isBinary);
       if (text === null) { socket.close(1009, 'invalid_payload'); return; }
+      // P1b: the keepalive is one exact text frame, answered here without the actor — what the Durable Object's
+      // hibernation auto-response does; the actor learns of it only through `keepaliveAt` (the idle expiry).
+      if (!isBinary && text === ROOM_KEEPALIVE_REQUEST) {
+        keepalives.set(socketId, wallClock());
+        try { socket.send(ROOM_KEEPALIVE_RESPONSE); } catch { /* closing */ }
+        return;
+      }
       void actor.handleMessage(socketId, text);
     });
     socket.once('close', () => {
       sockets.delete(socketId);
+      keepalives.delete(socketId);
       actor.handleClose(socketId);
       if (actor.empty) rooms.delete(route.code);
     });

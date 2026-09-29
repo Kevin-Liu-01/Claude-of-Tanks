@@ -38,14 +38,18 @@ export interface P2pRoomView {
 
 export type P2pHostHealth = 'alive' | 'absent' | 'silent' | 'none';
 
-/** Seated, connected commanders (never spectators), minus `exclude`. */
-export function hostCandidates(room: RoomSnapshot, exclude: string | null = null): RoomPlayer[] {
-  return room.players.filter((player) => player.team !== 'spectator' && player.connected && player.id !== exclude);
+/** Seated, connected commanders (never spectators), minus `exclude` and minus `skip` (P1b: seats that stepped down). */
+export function hostCandidates(room: RoomSnapshot, exclude: string | null = null, skip?: ReadonlySet<string>): RoomPlayer[] {
+  return room.players.filter((player) => player.team !== 'spectator' && player.connected && player.id !== exclude && !skip?.has(player.id));
 }
 
-/** The election rule above; null when no connected commander exists. */
-export function electHost(room: RoomSnapshot, exclude: string | null = null): RoomPlayer | null {
-  const candidates = hostCandidates(room, exclude);
+/**
+ * The election rule above; null when no connected commander exists. `skip` (P1b, 2026-09-28) removes the seats that
+ * stepped down from hosting this match by declining while they hosted — a decline never hands the match back to one
+ * of them; a drop or a leave elects without it.
+ */
+export function electHost(room: RoomSnapshot, exclude: string | null = null, skip?: ReadonlySet<string>): RoomPlayer | null {
+  const candidates = hostCandidates(room, exclude, skip);
   const willing = candidates.filter((player) => !player.hostDeclined);
   const pool = willing.length ? willing : candidates;
   let best: RoomPlayer | null = null;
@@ -72,10 +76,11 @@ export interface P2pMatchHost extends MatchHostBase {
   /** The actor attaches the room it serves (once, in its constructor). */
   bind(view: P2pRoomView): void;
   /**
-   * The current host dropped, left or declined: elect the next one (excluding it), `generation + 1`, the room's
-   * `host` rewritten. Null — and the room's `host` untouched — when no connected commander can take over.
+   * The current host dropped, left or declined: elect the next one (excluding it, and the `skip` seats — P1b: those
+   * that stepped down by declining while hosting, on a decline), `generation + 1`, the room's `host` rewritten.
+   * Null — and the room's `host` untouched — when no connected commander can take over.
    */
-  migrate(exclude: string): RoomHostInfo | null;
+  migrate(exclude: string, skip?: ReadonlySet<string>): RoomHostInfo | null;
   /** The liveness `status()` reads. */
   health(): P2pHostHealth;
   /**
@@ -96,8 +101,8 @@ export function createP2pMatchHost(): P2pMatchHost {
     const room = bound().room();
     return room && room.roomCode === roomId ? room : null;
   };
-  const elect = (room: RoomSnapshot, exclude: string | null): RoomHostInfo | null => {
-    const next = electHost(room, exclude);
+  const elect = (room: RoomSnapshot, exclude: string | null, skip?: ReadonlySet<string>): RoomHostInfo | null => {
+    const next = electHost(room, exclude, skip);
     if (!next) return null;
     room.host = { transport: 'p2p', hostId: next.id, generation: room.host.generation + 1, since: bound().now() };
     return room.host;
@@ -134,9 +139,9 @@ export function createP2pMatchHost(): P2pMatchHost {
       if (roomFor(roomId)) clearElection();
     },
     clearElection,
-    migrate(exclude: string) {
+    migrate(exclude: string, skip?: ReadonlySet<string>) {
       const room = bound().room();
-      return room ? elect(room, exclude) : null;
+      return room ? elect(room, exclude, skip) : null;
     },
     health() {
       return p2pHostHealth(bound(), bound().now());

@@ -1,13 +1,13 @@
-// The client under P1's decline rule (docs/MULTIPLAYER-V2.md §13.2.1 and §13.8, P3 certification 2026-09-28), proven on
-// the REAL room actor (server/rooms with matchTransport 'p2p' — the Durable Object's own state machine, its deadlines on
-// a fake clock) and on the proofs' double (which now imports P1's `electHost` and applies the same rule): the hosting
-// admin returns to the Garage while every other commander has declined (declined, but able — the never-host switch
-// after a decline, the desktop seats of a party that left hosting to one player). The room keeps it as host: a decline
-// migrates only to a WILLING successor, so no election follows; the peers read a lost link and wait; the departed
-// host's reports fall silent, and ROOM_MATCH_REPORT_STALE_AFTER_MS later the room migrates with reason `timeout` to
-// the last resort — the lowest-seniority declined commander — which resumes from its sealed keyframe at the continued
-// tick; the other peer follows it; the old host re-enters the running match as a peer of the new one. The cost of the
-// rule is the 30 s report budget instead of the 8 s socket grace: recorded in §13.8 for P1.
+// The client under the room's decline rule (docs/MULTIPLAYER-V2.md §13.2.1 and §13.8; P1b cost pass 2026-09-28), proven
+// on the REAL room actor (server/rooms with matchTransport 'p2p' — the Durable Object's own state machine) and on the
+// proofs' double (which mirrors the rule): the hosting admin returns to the Garage while every other commander has
+// declined (declined, but able — the never-host switch after a decline, the desktop seats of a party that left hosting
+// to one player). Its actor stops and it declines; the room treats a running host's decline as its departure from
+// hosting and elects the next candidate AT ONCE with reason `declined` — the last resort, the lowest-seniority declined
+// commander — which resumes from its sealed keyframe at the continued tick; the other peer follows it; the old host
+// re-enters the running match as a peer of the new one. P1's rule (a decline moved the match only to a WILLING
+// successor) kept the departed host and stalled its peers for the 30 s report budget; the certification asked P1 to
+// treat the decline as a leave, and this receipt now proves that: the election arrives in seconds, not 30.
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
 import { createRoomsServer } from '../server/rooms/serve.ts';
@@ -19,6 +19,8 @@ import { RtcWorld } from '../src/mp/transport/rtcDouble.test-support.ts';
 import { ROOM_MATCH_REPORT_STALE_AFTER_MS } from '../src/mp/room/protocol.ts';
 
 const SECRET = 'mp-p2p-decline-seat-secret-0123456789abcdef';
+/** The election must beat the report budget by a wide margin: it is immediate, the budget is 30 s. */
+const ELECTION_BUDGET_MS = 5_000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const until = async (predicate, label, timeoutMs, describe = () => '') => {
   const started = Date.now();
@@ -28,11 +30,8 @@ const until = async (predicate, label, timeoutMs, describe = () => '') => {
   }
 };
 
-/**
- * The scenario on one room service: `url` (ws://), `advanceStale()` (make the host's reports stale: the actor's clock
- * advanced past the budget and its deadline run; the double's shortened real-time budget waited out).
- */
-async function runDeclineScenario({ name, url, advanceStale, staleBudgetLabel }) {
+/** The scenario on one room service (`url`, ws://); `steppedDown()` reads the service's record of who stepped down. */
+async function runDeclineScenario({ name, url, steppedDown }) {
   const rtc = new RtcWorld();
   const cores = [];
   const sessions = [];
@@ -54,6 +53,8 @@ async function runDeclineScenario({ name, url, advanceStale, staleBudgetLabel })
     const entry = { id, headless: null, disposed: false, elections: [] };
     entry.headless = createHeadlessSession({
       endpoint: url, player: { id, name }, createSocket: (socketUrl) => new WebSocket(socketUrl), controls: scriptedControls(index), storage: memoryStorage(),
+      // a short keepalive so the room's text frame is observed within the scenario (the client's default is 15 s)
+      room: { pingIntervalMs: 1000 },
       session: {
         p2p: {
           createPeerConnection: rtc.createPeerConnection,
@@ -62,7 +63,7 @@ async function runDeclineScenario({ name, url, advanceStale, staleBudgetLabel })
         },
       },
     });
-    entry.headless.room.onHostChanged((change) => entry.elections.push({ hostId: change.hostId, generation: change.generation, reason: change.reason, secret: typeof change.hostSecret === 'string' }));
+    entry.headless.room.onHostChanged((change) => entry.elections.push({ hostId: change.hostId, generation: change.generation, reason: change.reason, secret: typeof change.hostSecret === 'string', at: Date.now() }));
     sessions.push(entry);
     return entry;
   };
@@ -92,32 +93,28 @@ async function runDeclineScenario({ name, url, advanceStale, staleBudgetLabel })
     const keyframeTick2 = p2.headless.session.match.retainedMigration().keyframe.tick;
     const oldHostTick = cores[0].core.actor.tick;
     facts.start = { hostId: 'p1', keyframeTick2, oldHostTick };
+    assert.equal(p1.headless.room.stats().keepalive, 'frame', 'the seats keep the room socket alive with the room\'s text frame (P1b)');
 
-    // ---- the host returns to the Garage: its actor stops, it declines; P1 keeps it (no willing successor) — no election
-    const electionsBefore = p2.elections.length;
+    // ---- the host returns to the Garage: its actor stops, it declines; the room treats the decline as its departure
+    // from hosting and elects the last resort at once — p2, the lowest-seniority declined commander — with reason declined
+    const declinedAt = Date.now();
     await p1.headless.session.leaveMatch('garage');
     assert.equal(p1.headless.session.phase, 'lobby');
-    await sleep(2000);
-    assert.equal(p2.elections.length, electionsBefore, `no election follows the decline (every other commander declined): ${JSON.stringify(p2.elections)}`);
-    assert.equal(p2.headless.room.hostId, 'p1', 'the room still names the departed host');
-    assert.equal(p2.headless.room.generation, 1);
-    assert.notEqual(p2.headless.session.match.stats().transportState, 'open', 'the peer lost its link and waits');
-    assert.equal(p2.headless.session.role, 'peer');
-    facts.afterDecline = { hostKept: p2.headless.room.hostId, generation: p2.headless.room.generation, p2Transport: p2.headless.session.match.stats().transportState, p3Transport: p3.headless.session.match.stats().transportState };
-
-    // ---- the reports fall silent past the budget: the room migrates with `timeout` to the last resort (p2, declined but able)
-    const staleAt = Date.now();
-    await advanceStale();
-    await until(() => p2.elections.some((election) => election.generation === 2), 'the timeout election', 10_000);
+    await until(() => p2.elections.some((election) => election.generation === 2), 'the election on the decline', ELECTION_BUDGET_MS,
+      () => JSON.stringify({ p2: p2.elections, p2Stats: p2.headless.room.stats(), host: p2.headless.room.hostId, generation: p2.headless.room.generation }));
     const election = p2.elections.find((entry) => entry.generation === 2);
-    assert.deepEqual({ hostId: election.hostId, reason: election.reason, secret: election.secret }, { hostId: 'p2', reason: 'timeout', secret: true }, 'the last resort is elected with the secret');
+    facts.election = { ...election, afterMs: election.at - declinedAt };
+    assert.deepEqual({ hostId: election.hostId, reason: election.reason, secret: election.secret }, { hostId: 'p2', reason: 'declined', secret: true }, 'the last resort is elected at once with the secret, reason declined');
+    assert.ok(facts.election.afterMs < ELECTION_BUDGET_MS, `elected ${facts.election.afterMs} ms after the decline — not the ${ROOM_MATCH_REPORT_STALE_AFTER_MS} ms report budget`);
+    assert.deepEqual(await steppedDown(code), ['p1'], 'the departed host stepped down for this match: a decline never hands the match back to it');
     await until(() => p2.headless.session.role === 'host' && p2.headless.session.matchHost?.state === 'live', 'p2 hosts', 20_000);
     await until(() => p2.headless.session.match?.phase === 'live' && p2.headless.session.stats().p2p?.migrating === false, 'p2 live on its own actor', 15_000);
     await until(() => p3.headless.session.match?.phase === 'live' && p3.headless.session.stats().p2p?.hostId === 'p2', 'p3 live on p2', 20_000);
     const core2 = cores.find((entry) => entry.id === 'p2').core;
     assert.ok(core2.actor.tick >= keyframeTick2, `the resumed tick ${core2.actor.tick} continues past the keyframe's ${keyframeTick2}`);
     assert.ok(core2.actor.tick >= oldHostTick, `the resumed tick ${core2.actor.tick} never falls behind the old host's ${oldHostTick}`);
-    facts.migration = { electedAfterMs: Date.now() - staleAt, election, resumedTick: core2.actor.tick, p3Host: p3.headless.session.stats().p2p.hostId };
+    facts.migration = { p2LiveAfterMs: Date.now() - declinedAt, resumedTick: core2.actor.tick, p3Host: p3.headless.session.stats().p2p.hostId };
+    assert.equal(p3.elections.filter((entry) => entry.generation >= 2).length, 1, `one election, no ping-pong: ${JSON.stringify(p3.elections)}`);
 
     // ---- the old host re-enters the running match: a peer of p2 on the same seat token
     await p1.headless.session.enterMatch(p1.headless.room.matchStart);
@@ -125,7 +122,7 @@ async function runDeclineScenario({ name, url, advanceStale, staleBudgetLabel })
     await until(() => p2.headless.session.matchHost.peersConnected === 2, 'p2 serves both peers', 10_000);
     facts.rejoin = { role: p1.headless.session.role, hostId: p1.headless.session.stats().p2p.hostId, generation: p1.headless.session.stats().p2p.generation, peersOnP2: p2.headless.session.matchHost.peersConnected };
     for (const entry of sessions) assert.notEqual(entry.headless.session.stats().phase, 'lost', `${entry.id} ended in lost`);
-    console.log(`mp-p2p-decline.selftest [${name}]: decline kept p1 (no election in 2 s), silence past ${staleBudgetLabel} → p2 elected (${election.reason}) after ${facts.migration.electedAfterMs} ms, resumed at tick ${facts.migration.resumedTick} (keyframe ${keyframeTick2}, old host ${oldHostTick}); p3 live on p2; p1 back as a peer`);
+    console.log(`mp-p2p-decline.selftest [${name}]: p1's Garage return → p2 elected (${election.reason}) ${facts.election.afterMs} ms after the decline, live ${facts.migration.p2LiveAfterMs} ms after it, resumed at tick ${facts.migration.resumedTick} (keyframe ${keyframeTick2}, old host ${oldHostTick}); p3 live on p2; p1 back as a peer`);
     return facts;
   } finally {
     ticking = false;
@@ -135,43 +132,38 @@ async function runDeclineScenario({ name, url, advanceStale, staleBudgetLabel })
   }
 }
 
-// ---- the real actor (server/rooms, p2p): its clock advanced past the report budget, its deadline run
+// ---- the real actor (server/rooms, p2p): the Durable Object's own state machine
 {
-  let offset = 0;
-  const server = await createRoomsServer({ host: '127.0.0.1', port: 0, seatSecret: SECRET, world: 'terrain', matchTransport: 'p2p', countdownS: 1, wallClock: () => Date.now() + offset, log: silentLogger });
+  const server = await createRoomsServer({ host: '127.0.0.1', port: 0, seatSecret: SECRET, world: 'terrain', matchTransport: 'p2p', countdownS: 1, log: silentLogger });
   try {
     const facts = await runDeclineScenario({
-      name: 'actor', url: server.url, staleBudgetLabel: `ROOM_MATCH_REPORT_STALE_AFTER_MS (${ROOM_MATCH_REPORT_STALE_AFTER_MS} ms, the actor's clock)`,
-      advanceStale: async () => {
-        offset += ROOM_MATCH_REPORT_STALE_AFTER_MS + 1000;
-        const actor = server.roomService.rooms.get(currentCode(server));
+      name: 'actor', url: server.url,
+      steppedDown: async (code) => {
+        const actor = server.roomService.rooms.get(code);
         assert.ok(actor, 'the room actor exists');
-        await actor.tick();
+        return actor.exportState().steppedDown;
       },
     });
-    assert.equal(facts.migration.election.reason, 'timeout');
+    assert.equal(facts.election.reason, 'declined');
   } finally {
     await Promise.race([server.close(), sleep(5000)]);
   }
 }
-function currentCode(server) {
-  const codes = [...server.roomService.rooms.keys()];
-  assert.equal(codes.length, 1, `one room on the service (${codes.join(', ')})`);
-  return codes[0];
-}
 
-// ---- the double: the same rule, the shortened real-time budget
+// ---- the double: the same rule (its events name the decline and the election; nothing is kept)
 {
   const events = [];
-  // the double's budget runs in real time: longer than the scenario's 2 s "no election" window, short enough for a receipt
-  const rooms = await createP2pRoomDouble({ seatSecret: SECRET, hostGraceMs: 8000, reportStaleMs: 4000, onEvent: (event) => events.push(event) });
+  const rooms = await createP2pRoomDouble({ seatSecret: SECRET, hostGraceMs: 8000, reportStaleMs: ROOM_MATCH_REPORT_STALE_AFTER_MS, onEvent: (event) => events.push(event) });
   try {
-    const facts = await runDeclineScenario({ name: 'double', url: rooms.url, staleBudgetLabel: 'reportStaleMs 4000 ms', advanceStale: async () => { await sleep(2500); } });
-    assert.ok(events.some((event) => event.kind === 'host_decline_kept' && event.host === 'p1'), 'the double kept the host on the decline');
-    assert.ok(events.some((event) => event.kind === 'host_silent' && event.hostId === 'p1'), "the double timed the host's silence out");
-    assert.equal(facts.migration.election.reason, 'timeout');
+    const facts = await runDeclineScenario({ name: 'double', url: rooms.url, steppedDown: async (code) => [...rooms.room(code).steppedDown] });
+    assert.ok(events.some((event) => event.kind === 'host_decline' && event.playerId === 'p1' && event.declined === true), 'the double saw the decline');
+    assert.ok(events.some((event) => event.kind === 'host_changed' && event.hostId === 'p2' && event.reason === 'declined'), 'the double elected p2 on the decline');
+    assert.ok(!events.some((event) => event.kind === 'host_decline_kept'), 'nothing was kept');
+    assert.ok(!events.some((event) => event.kind === 'host_silent'), 'no report budget ran out');
+    assert.ok(events.some((event) => event.kind === 'keepalive'), 'the seats kept alive with the text frame');
+    assert.equal(facts.election.reason, 'declined');
   } finally {
     await Promise.race([rooms.close(), sleep(5000)]);
   }
 }
-console.log("mp-p2p-decline.selftest: the client behaves under P1's decline rule on the real actor and on the double");
+console.log("mp-p2p-decline.selftest: the client behaves under the room's decline rule (P1b: a departure, elected at once) on the real actor and on the double");

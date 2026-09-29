@@ -12,7 +12,8 @@ import type { WebSocketTransportOptions } from '../transport/webSocketTransport.
 import { Listeners } from '../transport/transport.ts';
 import type { Transport, TransportStateChange, Unsubscribe } from '../transport/transport.ts';
 import {
-  ROOM_CLIENT_MESSAGE, ROOM_MAX_PAYLOAD_BYTES, ROOM_MAX_REGION_CHARS, ROOM_RESUME_TOKEN_RE, ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES, RoomError, isRecord,
+  ROOM_CLIENT_MESSAGE, ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, ROOM_MAX_PAYLOAD_BYTES, ROOM_MAX_REGION_CHARS, ROOM_RESUME_TOKEN_RE,
+  ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES, RoomError, isRecord,
   isRelayedRoomSignal, isRoomChatEntry, isRoomErrorCode, isRoomHostChangedPayload, isRoomMatchStartPayload, isRoomMatchStatusPayload, normalizeRoomCode,
   parseP2pMatchUrl, parseRoomEnvelope, randomRoomCode, readRoomSignalPayload, readRoomSnapshot, roomSocketPath, utf8ByteLength,
 } from './protocol.ts';
@@ -52,7 +53,12 @@ export interface RoomClientOptions {
   random?: () => number;
   clientBuild?: string;
   requestTimeoutMs?: number;
-  /** Keepalive pings (0 disables). */
+  /**
+   * Keepalive cadence (0 disables). P1b (2026-09-28): the keepalive is the room's exact text frame
+   * (`ROOM_KEEPALIVE_REQUEST` → `ROOM_KEEPALIVE_RESPONSE`), answered by the Durable Object's hibernation auto-response
+   * without waking it — never a billed request — when the transport carries it (`sendKeepalive`); a transport without
+   * that path keeps the `room_ping` envelope. Either answer is the RTT readout and the liveness mark.
+   */
   pingIntervalMs?: number;
   setTimer?: (callback: () => void, delayMs: number) => unknown;
   clearTimer?: (handle: unknown) => void;
@@ -141,6 +147,11 @@ export class RoomClient {
   private roomRegion: string | null = null;
   private roomRttMs: number | null = null;
   private pingSentAtMs: number | null = null;
+  /** P1b: which keepalive this socket runs — the room's text frame, the `room_ping` envelope, or none. */
+  private keepaliveKind: 'frame' | 'envelope' | 'off' = 'off';
+  private keepalivesSent = 0;
+  private keepalivesAnswered = 0;
+  private lastKeepaliveAnswerAtMs: number | null = null;
   private unsubscribeTransport: Unsubscribe[] = [];
   private currentPhase: RoomClientPhase = 'idle';
   private roomCode = '';
@@ -317,11 +328,13 @@ export class RoomClient {
       resumeToken: null,
       maxFrameBytes: ROOM_MAX_PAYLOAD_BYTES * 2,
       clock: this.clock,
+      keepalive: { request: ROOM_KEEPALIVE_REQUEST, response: ROOM_KEEPALIVE_RESPONSE },
       ...this.transportOptions,
     });
     this.transport = transport;
     this.unsubscribeTransport.push(transport.onFrame((frame) => this.receive(frame)));
     this.unsubscribeTransport.push(transport.onState((change) => this.transportChanged(change)));
+    if (transport.onKeepalive) this.unsubscribeTransport.push(transport.onKeepalive(() => this.keepaliveAnswered()));
     transport.open();
   }
 
@@ -359,11 +372,19 @@ export class RoomClient {
 
   private startPings(): void {
     this.stopPings();
+    this.keepaliveKind = 'off';
     if (this.pingIntervalMs <= 0) return;
+    // The path this socket will use (a tick corrects it to the envelope when the transport's frame cannot go out).
+    this.keepaliveKind = this.transport?.sendKeepalive ? 'frame' : 'envelope';
     const tick = () => {
       this.pingTimer = null;
       if (this.currentPhase !== 'joined') return;
-      if (this.sendEnvelope({ type: ROOM_CLIENT_MESSAGE.PING, payload: {} })) this.pingSentAtMs = this.clock();
+      // The room's text frame when the transport carries it (answered by the Durable Object without waking it);
+      // the envelope otherwise (a transport double, one that predates the frame, or one configured without the pair).
+      let kind: 'frame' | 'envelope' | null = null;
+      if (this.transport?.sendKeepalive?.()) kind = 'frame';
+      else if (this.sendEnvelope({ type: ROOM_CLIENT_MESSAGE.PING, payload: {} })) kind = 'envelope';
+      if (kind) { this.pingSentAtMs = this.clock(); this.keepalivesSent++; this.keepaliveKind = kind; }
       this.pingTimer = this.setTimer(tick, this.pingIntervalMs);
     };
     this.pingTimer = this.setTimer(tick, this.pingIntervalMs);
@@ -374,6 +395,20 @@ export class RoomClient {
     this.pingTimer = null;
     this.pingSentAtMs = null;
   }
+
+  /** The keepalive's answer — the room's text frame or a `room_pong` envelope: the RTT readout and the liveness mark. */
+  private keepaliveAnswered(): void {
+    const now = this.clock();
+    this.keepalivesAnswered++;
+    this.lastKeepaliveAnswerAtMs = now;
+    if (this.pingSentAtMs !== null) {
+      this.roomRttMs = Math.max(0, now - this.pingSentAtMs);
+      this.pingSentAtMs = null;
+    }
+  }
+
+  /** Wall-clock (the client's clock) of the newest keepalive answer, null before the first. */
+  get lastKeepaliveAt(): number | null { return this.lastKeepaliveAnswerAtMs; }
 
   // ------------------------------------------------------------ wire
 
@@ -477,10 +512,7 @@ export class RoomClient {
         }
         break;
       case ROOM_SERVER_MESSAGE.PONG:
-        if (this.pingSentAtMs !== null) {
-          this.roomRttMs = Math.max(0, this.clock() - this.pingSentAtMs);
-          this.pingSentAtMs = null;
-        }
+        this.keepaliveAnswered();
         break;
       case ROOM_SERVER_MESSAGE.CLOSED:
         this.closedReason = typeof payload.reason === 'string' ? payload.reason : 'room_closed';
@@ -645,12 +677,14 @@ export class RoomClient {
   stats(): {
     phase: RoomClientPhase; roomCode: string; revision: number; players: number; transport: string; pending: number; rttMs: number | null;
     region: string | null; hostId: string | null; generation: number; signalsSent: number; signalsReceived: number; signalsRefused: number;
+    keepalive: 'frame' | 'envelope' | 'off'; keepalivesSent: number; keepalivesAnswered: number;
   } {
     return {
       phase: this.currentPhase, roomCode: this.roomCode, revision: this.roomSnapshot?.revision ?? -1,
       players: this.roomSnapshot?.players.length ?? 0, transport: this.transport?.state ?? 'none', pending: this.pending.size,
       rttMs: this.roomRttMs, region: this.roomRegion, hostId: this.hostId, generation: this.generation,
       signalsSent: this.signalsSent, signalsReceived: this.signalsReceived, signalsRefused: this.signalsRefused,
+      keepalive: this.keepaliveKind, keepalivesSent: this.keepalivesSent, keepalivesAnswered: this.keepalivesAnswered,
     };
   }
 }

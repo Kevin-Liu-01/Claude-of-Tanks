@@ -27,6 +27,7 @@ import type { MatchFrame, PredictionProvider } from '../../src/mp/match/matchCli
 import type { MatchClient } from '../../src/mp/match/matchClient.ts';
 import type { RtcIceConfig, RtcIceServerLike, RtcPeerConnectionLike } from '../../src/mp/transport/webRtcTransport.ts';
 import type { SocketLike } from '../../src/mp/transport/webSocketTransport.ts';
+import { ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE } from '../../src/mp/room/protocol.ts';
 import type { RoomCreateSettings, RoomTeam } from '../../src/mp/room/protocol.ts';
 
 // ------------------------------------------------------------ the page's parameters
@@ -153,7 +154,11 @@ function foldRetired(sample: PcSample): void {
 
 const roomMessages = { out: {} as Record<string, number>, in: {} as Record<string, number>, bytesOut: 0, bytesIn: 0, sockets: 0 };
 const decoder = new TextDecoder();
-function classify(text: string, direction: 'in' | 'out'): string {
+function classify(text: string, direction: 'in' | 'out', textFrame = false): string {
+  // P1b (2026-09-28): the keepalive is the room's exact text frame, answered by the Durable Object's auto-response
+  // without waking it — counted apart so the soak can show what is billed and what is not.
+  if (textFrame && text === ROOM_KEEPALIVE_REQUEST) return 'keepalive:ping';
+  if (textFrame && text === ROOM_KEEPALIVE_RESPONSE) return 'keepalive:pong';
   try {
     const envelope = JSON.parse(text) as { type?: string; payload?: { command?: { type?: string }; kind?: string; code?: string } };
     const type = String(envelope.type ?? 'unknown');
@@ -167,18 +172,21 @@ function countingSocket(url: string): SocketLike {
   const socket = new WebSocket(url);
   roomMessages.sockets++;
   const send = socket.send.bind(socket);
-  socket.send = ((data: Uint8Array) => {
-    const text = decoder.decode(data);
-    const key = classify(text, 'out');
+  socket.send = ((data: Uint8Array | string) => {
+    const textFrame = typeof data === 'string';
+    const text = textFrame ? data : decoder.decode(data);
+    const key = classify(text, 'out', textFrame);
     roomMessages.out[key] = (roomMessages.out[key] ?? 0) + 1;
-    roomMessages.bytesOut += data.byteLength;
+    roomMessages.bytesOut += textFrame ? new TextEncoder().encode(data).byteLength : data.byteLength;
     // The transport's frames are plain Uint8Arrays (ArrayBufferLike); the DOM signature wants a BufferSource.
-    send(data as unknown as BufferSource);
+    if (textFrame) send(data);
+    else send(data as unknown as BufferSource);
   }) as typeof socket.send;
   socket.addEventListener('message', (event) => {
     const data = event.data;
-    const text = data instanceof ArrayBuffer ? decoder.decode(data) : typeof data === 'string' ? data : '';
-    const key = classify(text, 'in');
+    const textFrame = typeof data === 'string';
+    const text = data instanceof ArrayBuffer ? decoder.decode(data) : textFrame ? data : '';
+    const key = classify(text, 'in', textFrame);
     roomMessages.in[key] = (roomMessages.in[key] ?? 0) + 1;
     roomMessages.bytesIn += data instanceof ArrayBuffer ? data.byteLength : text.length;
   });

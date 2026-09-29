@@ -27,7 +27,7 @@ import type { SeatClaims } from '../../../server/match/seatToken.ts';
 import {
   ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_CHAT_HISTORY, ROOM_CLIENT_MESSAGE, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS,
   ROOM_MATCH_LOST_AFTER_POLLS, ROOM_MATCH_POLL_MS, ROOM_MATCH_REPORT_STALE_AFTER_MS, ROOM_MAX_REGION_CHARS, ROOM_RATE_MAX_MESSAGES,
-  ROOM_RATE_WINDOW_MS, ROOM_RESUME_TOKEN_RE, ROOM_SEAT_TOKEN_TTL_MS, ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES,
+  ROOM_RATE_WINDOW_MS, ROOM_RESUME_TOKEN_RE, ROOM_SEAT_TOKEN_TTL_MS, ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES, ROOM_STATE_COALESCE_MS,
   ROOM_UNAUTHENTICATED_TIMEOUT_MS, RoomError, cleanId, isRecord, isRoomTeam, noElection, normalizeRoomChat, p2pMatchUrl,
   parseRoomEnvelope, publicRoomError, readRoomMatchReport, readRoomSignalPayload, utf8ByteLength,
 } from './protocol.ts';
@@ -103,6 +103,19 @@ export interface RoomActorPorts {
   schedule(atMs: number | null): void;
   /** Called after every durable mutation. */
   persist(): void;
+  /**
+   * P1b (2026-09-28): the host's clock of the newest keepalive frame (`ROOM_KEEPALIVE_REQUEST`) this socket sent —
+   * the Durable Object's `getWebSocketAutoResponseTimestamp`, the LAN service's own record — or null when it never
+   * did. The frames never reach the actor: the 24 h idle expiry reads them here, so a room whose seats only keep
+   * alive stays open as it did when every ping was a handled message.
+   */
+  keepaliveAt?(socketId: string): number | null;
+  /**
+   * P1b: run `callback` after `delayMs` on the host's own timer, never the durable alarm (an alarm is a billed
+   * request): the trailing edge of a coalesced `room_state` broadcast. A host without it broadcasts every revision at
+   * once. A pending callback keeps a Durable Object awake, so a coalesced change cannot be lost to hibernation.
+   */
+  defer?(callback: () => void, delayMs: number): void;
   guards?: Partial<RoomPolicyGuards>;
   /** Named in every admission reply (`region`) when the host knows where it runs. */
   region?: string;
@@ -148,6 +161,12 @@ export interface RoomActorState {
   hostReport: P2pHostReport | null;
   /** P2p: when the host's silence becomes a dropped host. */
   hostReportDueAt: number | null;
+  /**
+   * P1b (2026-09-28): seats that stepped down from hosting THIS match by declining while they were the host. A
+   * decline never hands the match back to one of them (two seats that cannot host would otherwise elect each other
+   * without end); a drop or a leave still may. Cleared at every start and end; optional on restore.
+   */
+  steppedDown?: string[];
 }
 
 function matchIdFrom(random: () => number, round: number): string {
@@ -173,9 +192,14 @@ export class RoomActor {
   private hostLeaseAt: number | null = null;
   private hostReport: P2pHostReport | null = null;
   private hostReportDueAt: number | null = null;
+  private steppedDown = new Set<string>();
   private readonly sockets = new Map<string, RoomSocketRecord>();
   private readonly socketOfPlayer = new Map<string, string>();
   private polling: Promise<void> | null = null;
+  // P1b: the coalesced room_state broadcast (runtime-only: after a restore the first change goes out at once).
+  private stateBroadcastAt = Number.NEGATIVE_INFINITY;
+  private stateFlushPending = false;
+  private stateFlushArmed = false;
 
   constructor(roomCode: string, ports: RoomActorPorts) {
     this.roomCode = roomCode;
@@ -222,6 +246,7 @@ export class RoomActor {
       hostLeaseAt: this.hostLeaseAt,
       hostReport: this.hostReport ? { ...this.hostReport, verdict: this.hostReport.verdict ? { ...this.hostReport.verdict } : null } : null,
       hostReportDueAt: this.hostReportDueAt,
+      steppedDown: [...this.steppedDown],
     };
   }
 
@@ -239,6 +264,7 @@ export class RoomActor {
     this.hostLeaseAt = state.hostLeaseAt ?? null;
     this.hostReport = state.hostReport ?? null;
     this.hostReportDueAt = state.hostReportDueAt ?? null;
+    this.steppedDown = new Set(Array.isArray(state.steppedDown) ? state.steppedDown.filter((id): id is string => typeof id === 'string') : []);
     // A start that was in flight when the host restarted never completed: the room returns to waiting.
     if (state.startInFlight && this.room) abortStart(this.room, this.ports.now());
     this.startInFlight = false;
@@ -373,10 +399,48 @@ export class RoomActor {
     return { type: ROOM_SERVER_MESSAGE.STATE, payload: { room: this.room ? serializeRoom(this.room) : null } };
   }
 
-  private broadcastState(except: string | null = null): void {
+  /**
+   * `room_state` to every seat. P1b (2026-09-28): `instant` (joins, leaves, disconnects, phase changes, elections)
+   * goes out now; a coalescable change (readiness, a team, a selection, a setting, a name, a decline) goes out now when
+   * the last broadcast is older than ROOM_STATE_COALESCE_MS and otherwise rides one trailing broadcast at the window's
+   * end carrying the newest revision — one fan-out per window however many changes a burst holds; every seat still
+   * converges within the window. A host without a `defer` port broadcasts every revision at once.
+   */
+  private broadcastState(except: string | null = null, instant = true): void {
     if (!this.room) return;
-    this.broadcast(this.stateMessage(), except);
+    const defer = this.ports.defer;
+    const now = this.ports.now();
+    if (instant || !defer || now - this.stateBroadcastAt >= ROOM_STATE_COALESCE_MS) {
+      this.stateFlushPending = false;
+      this.stateBroadcastAt = now;
+      this.broadcast(this.stateMessage(), except);
+      return;
+    }
+    this.stateFlushPending = true;
+    if (this.stateFlushArmed) return;
+    this.stateFlushArmed = true;
+    defer(() => this.flushState(), Math.max(0, this.stateBroadcastAt + ROOM_STATE_COALESCE_MS - now));
   }
+
+  /** The trailing edge: the newest state, when a coalesced change is still unsent and the window has passed. */
+  flushState(): void {
+    this.stateFlushArmed = false;
+    if (!this.stateFlushPending || !this.room) { this.stateFlushPending = false; return; }
+    const now = this.ports.now();
+    const wait = this.stateBroadcastAt + ROOM_STATE_COALESCE_MS - now;
+    if (wait > 0 && this.ports.defer) {
+      // an instant broadcast moved the window meanwhile: the coalesced change waits for its end
+      this.stateFlushArmed = true;
+      this.ports.defer(() => this.flushState(), wait);
+      return;
+    }
+    this.stateFlushPending = false;
+    this.stateBroadcastAt = now;
+    this.broadcast(this.stateMessage());
+  }
+
+  /** A coalesced `room_state` is waiting for its window (receipts and the hosts' diagnostics). */
+  get statePending(): boolean { return this.stateFlushPending; }
 
   // ------------------------------------------------------------ messages
 
@@ -555,7 +619,8 @@ export class RoomActor {
     this.touch(now);
     this.persist();
     this.send(socket.id, { type: ROOM_SERVER_MESSAGE.ACK, ...(message.requestId ? { requestId: message.requestId } : {}), payload: { revision: room.revision } });
-    this.broadcastState();
+    // A kick is a leave (instant); every other command's change is coalescable (P1b) — the ack names its revision.
+    this.broadcastState(null, kicked !== null);
     // The running p2p host was kicked, or declined while hosting: its peers move to a successor at once.
     if (kicked && this.runningP2pHostId() === kicked) this.migrateHost(now, 'left');
     else if (command.type === 'host_decline' && command.declined === true && this.runningP2pHostId() === playerId) this.migrateHost(now, 'declined');
@@ -696,6 +761,7 @@ export class RoomActor {
       this.hostReport = null;
       this.hostReportDueAt = startedAt + ROOM_MATCH_REPORT_STALE_AFTER_MS;
       this.hostLeaseAt = null;
+      this.steppedDown.clear();
     } else {
       this.nextPollAt = startedAt + ROOM_MATCH_POLL_MS;
     }
@@ -746,6 +812,7 @@ export class RoomActor {
     this.hostReportDueAt = null;
     this.hostLeaseAt = null;
     this.nextPollAt = null;
+    this.steppedDown.clear();
     this.p2p?.clearElection();
   }
 
@@ -781,24 +848,36 @@ export class RoomActor {
   /**
    * The p2p host is gone (`timeout`: socket absent past the grace or reports stopped; `left`: leave or kick;
    * `declined`: it asked not to host): elect the next connected commander, `generation + 1`, `host_changed` with the
-   * departing host's last reported tick as the resume point (the secret only on the new host's copy). A decline
-   * migrates only to a willing successor — with every other commander declined too, the host stays (a move to
-   * another unwilling seat costs a resume and gains nothing); a drop with nobody left ends the match as lost.
+   * departing host's last reported tick as the resume point (the secret only on the new host's copy). A drop or a
+   * leave with nobody left ends the match as lost.
+   *
+   * P1b (2026-09-28): a running host's decline is its departure from hosting — the client declines while hosting
+   * only when its actor is gone or never came (a Garage return, a re-entry without state, an elected seat that cannot
+   * host) — so it is treated as a leave for the election: the next candidate takes over at once, `reason: 'declined'`,
+   * willing first, a declined commander as the last resort (P1's rule kept the host unless a WILLING successor
+   * existed, which stalled its peers for the 30 s report budget). The one exclusion: a seat that already stepped down
+   * by declining while it hosted this match is never handed the match back by a decline (two seats that cannot host
+   * would otherwise elect each other without end); a drop or a leave still elects by the full ladder. With no
+   * candidate left the host keeps hosting — its seat is still in the room, unlike a leave — and its own client boots
+   * afresh when no election follows.
    */
   private migrateHost(now: number, reason: RoomHostChangedPayload['reason']): void {
     const room = this.room;
     const p2p = this.p2p;
     const old = this.runningP2pHostId();
     if (!room || !p2p || !old || !room.match) return;
+    let skip: ReadonlySet<string> | undefined;
     if (reason === 'declined') {
-      const successor = electHost(room, old);
-      if (!successor || successor.hostDeclined) {
-        this.log('info', 'host declined with no willing successor; it keeps hosting', { host: old });
+      this.steppedDown.add(old);
+      skip = this.steppedDown;
+      if (!electHost(room, old, skip)) {
+        this.log('info', 'host declined with nobody left to take over; it keeps hosting', { host: old, steppedDown: [...this.steppedDown] });
+        this.persist();
         return;
       }
     }
     const resumeTick = this.hostReport && this.hostReport.generation === room.host.generation ? this.hostReport.tick : 0;
-    const next = p2p.migrate(old);
+    const next = p2p.migrate(old, skip);
     if (!next) {
       finishMatch(room, { status: 'lost', reason: 'match_lost' }, now);
       this.log('warn', 'match lost: no commander left to host', { match: room.match.id, host: old, reason });
@@ -867,7 +946,25 @@ export class RoomActor {
 
   // ------------------------------------------------------------ timers
 
+  /**
+   * P1b: the newest keepalive frame of any seated socket keeps the room touched — the frames never reach the actor
+   * (the Durable Object answers them without waking), so the expiry reads the host's record of them here.
+   */
+  private touchFromKeepalives(): boolean {
+    const keepaliveAt = this.ports.keepaliveAt;
+    const room = this.room;
+    if (!keepaliveAt || !room) return false;
+    const before = room.touchedAt;
+    for (const [socketId, socket] of this.sockets) {
+      if (!socket.playerId) continue;
+      const at = keepaliveAt(socketId);
+      if (at !== null && Number.isFinite(at)) this.touch(at);
+    }
+    return room.touchedAt !== before;
+  }
+
   private expireIfDue(now: number): void {
+    if (this.room && this.touchFromKeepalives()) this.persist();
     const expiresAt = this.expiresAt;
     if (!this.room || expiresAt === null || now < expiresAt) return;
     this.log('info', 'room expired', { players: this.room.players.length });
@@ -882,6 +979,8 @@ export class RoomActor {
     this.hostLeaseAt = null;
     this.hostReport = null;
     this.hostReportDueAt = null;
+    this.steppedDown.clear();
+    this.stateFlushPending = false;
     this.persist();
   }
 

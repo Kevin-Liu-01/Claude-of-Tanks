@@ -54,6 +54,22 @@ export const ROOM_MAX_NAME_CHARS = 24;
 export const ROOM_MAX_EQUIPMENT = 3;
 /** `region` in the admission reply (`room_created` / `room_joined`): where the host says it runs, for the status surface. */
 export const ROOM_MAX_REGION_CHARS = 32;
+/**
+ * P1b cost pass (2026-09-28): the room socket's keepalive is one exact TEXT frame each way, never an envelope. The
+ * Durable Object answers it through the WebSocket hibernation auto-response (`setWebSocketAutoResponse`), which the
+ * runtime serves without waking the object — the frame is not a handled message, so it is not a billed request — and
+ * the LAN service and the proofs' double answer it the same way, outside the actor. `room_ping` / `room_pong`
+ * envelopes stay accepted (and billed) for clients that predate the frame.
+ */
+export const ROOM_KEEPALIVE_REQUEST = 'ping';
+export const ROOM_KEEPALIVE_RESPONSE = 'pong';
+/**
+ * P1b: `room_state` broadcasts are throttled to one per this window per room — the first change of a burst goes out
+ * at once, the rest ride one trailing broadcast carrying the newest revision — except joins, leaves, disconnects,
+ * phase changes and elections, which broadcast at once. `room_ack { revision }` still names the state a command
+ * produced; every seat converges to the newest revision within the window.
+ */
+export const ROOM_STATE_COALESCE_MS = 300;
 
 export const ROOM_CODE_RE = /^[A-Z0-9]{6}$/;
 export const ROOM_ID_RE = /^[a-zA-Z0-9_-]{1,48}$/;

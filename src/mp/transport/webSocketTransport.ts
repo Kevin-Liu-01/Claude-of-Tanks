@@ -23,7 +23,8 @@ export interface SocketLike {
   readyState: number;
   binaryType: string;
   bufferedAmount?: number;
-  send(data: Uint8Array): void;
+  /** Binary frames; a string only for the configured keepalive request (a text frame). */
+  send(data: Uint8Array | string): void;
   close(code?: number, reason?: string): void;
   addEventListener(type: string, listener: (event: SocketEvent) => void): void;
   removeEventListener(type: string, listener: (event: SocketEvent) => void): void;
@@ -51,6 +52,13 @@ export interface WebSocketTransportOptions {
   autoReconnect?: boolean;
   /** Incoming frames above this size are rejected (the wire's MAX_MESSAGE_BYTES). */
   maxFrameBytes?: number;
+  /**
+   * P1b (2026-09-28): a text keepalive the endpoint answers without handling it (the room's hibernation
+   * auto-response): `sendKeepalive()` sends `request` as a text frame; a text frame equal to `response` is the
+   * keepalive's answer (`onKeepalive`, `stats.keepalivesReceived`) and never a wire frame. Any other text frame stays
+   * rejected. Null: no keepalive frames on this transport.
+   */
+  keepalive?: { request: string; response: string } | null;
   clock?: () => number;
   setTimer?: (callback: () => void, delayMs: number) => TimerHandle;
   clearTimer?: (handle: TimerHandle) => void;
@@ -97,8 +105,10 @@ export class WebSocketTransport implements Transport {
   private readonly clearTimer: (handle: TimerHandle) => void;
   private readonly random: () => number;
   private readonly gate: BackpressureGate;
+  private readonly keepalive: { request: string; response: string } | null;
   private readonly frameListeners = new Listeners<Uint8Array>();
   private readonly stateListeners = new Listeners<TransportStateChange>();
+  private readonly keepaliveListeners = new Listeners<void>();
   private currentState: TransportState = 'idle';
   private socket: SocketLike | null = null;
   private generation = 0;
@@ -117,12 +127,16 @@ export class WebSocketTransport implements Transport {
     reconnect = {},
     autoReconnect = true,
     maxFrameBytes = DEFAULT_MAX_FRAME_BYTES,
+    keepalive = null,
     clock = () => (typeof performance === 'object' ? performance.now() : Date.now()),
     setTimer = (callback, delayMs) => setTimeout(callback, delayMs),
     clearTimer = (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
     random = Math.random,
   }: WebSocketTransportOptions) {
     if (typeof url !== 'string' || !/^wss?:\/\//.test(url)) throw new TypeError('transport url must use ws:// or wss://');
+    if (keepalive && (typeof keepalive.request !== 'string' || !keepalive.request || typeof keepalive.response !== 'string' || !keepalive.response)) {
+      throw new TypeError('transport keepalive needs a non-empty request and response text');
+    }
     this.url = url;
     this.resumeToken = resumeToken;
     this.createSocket = createSocket;
@@ -130,6 +144,7 @@ export class WebSocketTransport implements Transport {
     this.reconnectPolicy = { ...DEFAULT_RECONNECT, ...reconnect };
     this.autoReconnect = autoReconnect;
     this.maxFrameBytes = maxFrameBytes;
+    this.keepalive = keepalive ? { request: keepalive.request, response: keepalive.response } : null;
     this.clock = clock;
     this.setTimer = setTimer;
     this.clearTimer = clearTimer;
@@ -149,6 +164,26 @@ export class WebSocketTransport implements Transport {
   onFrame(listener: (frame: Uint8Array) => void): Unsubscribe { return this.frameListeners.add(listener); }
 
   onState(listener: (change: TransportStateChange) => void): Unsubscribe { return this.stateListeners.add(listener); }
+
+  /** The configured keepalive's answer arrived (a text frame equal to `keepalive.response`). */
+  onKeepalive(listener: () => void): Unsubscribe { return this.keepaliveListeners.add(listener); }
+
+  /**
+   * Send the configured keepalive request as a text frame (P1b): false without a configuration or an open socket.
+   * It bypasses the backpressure gate — four bytes on a backlogged socket change nothing, and the answer is the
+   * liveness signal the owner wants precisely then.
+   */
+  sendKeepalive(): boolean {
+    if (!this.keepalive || this.currentState !== 'open' || !this.socket) return false;
+    try {
+      this.socket.send(this.keepalive.request);
+    } catch (error) {
+      this.lastErrorDetail = error instanceof Error ? error.message : 'keepalive send failed';
+      return false;
+    }
+    this.stats.keepalivesSent++;
+    return true;
+  }
 
   open(): void {
     if (this.currentState !== 'idle' && this.currentState !== 'closed') return;
@@ -189,6 +224,7 @@ export class WebSocketTransport implements Transport {
     this.dropSocket(NORMAL_CLOSURE, detail || reason);
     this.transition('closed', { reason, detail });
     this.frameListeners.clear();
+    this.keepaliveListeners.clear();
   }
 
   // ------------------------------------------------------------ internals
@@ -257,6 +293,12 @@ export class WebSocketTransport implements Transport {
 
   private handleMessage(data: unknown): void {
     if (this.currentState !== 'open') return;
+    // The configured keepalive's answer is the one text frame the transport accepts; it is never a wire frame.
+    if (this.keepalive && typeof data === 'string' && data === this.keepalive.response) {
+      this.stats.keepalivesReceived++;
+      this.keepaliveListeners.emit(undefined);
+      return;
+    }
     const bytes = frameBytes(data);
     if (!bytes || bytes.byteLength > this.maxFrameBytes) {
       this.stats.framesRejected++;

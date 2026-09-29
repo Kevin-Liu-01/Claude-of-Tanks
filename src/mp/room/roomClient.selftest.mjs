@@ -130,6 +130,42 @@ try {
   assert.equal(b2.room.players.length, 1);
   await b2.leave();
   assert.ok(server.roomService.rooms.get(room.roomCode)?.snapshot, 'the room outlives its last player');
+
+  // ---- P1b (2026-09-28): the keepalive is the room's exact text frame, answered by the service outside the actor
+  // (the Durable Object's auto-response does the same): the answer is the RTT readout, and the actor never sees a touch
+  {
+    const keep = new RoomClient({
+      endpoint: server.url, player: { id: 'keeper', name: 'Keeper' }, storage: memory(), clientBuild: 'receipt', pingIntervalMs: 30,
+      transport: { createSocket: (url) => new WebSocket(url) },
+    });
+    clients.push(keep);
+    const kept = await keep.create({ mode: 'private', selection: { specId: 'm1a2' } });
+    const touchedAt = server.roomService.rooms.get(kept.roomCode).snapshot.touchedAt;
+    await until(() => keep.stats().keepalivesAnswered >= 4, 'four keepalive answers');
+    const stats = keep.stats();
+    assert.equal(stats.keepalive, 'frame', 'the WebSocket transport carries the room\'s text frame');
+    assert.ok(stats.keepalivesSent >= stats.keepalivesAnswered, `sent ${stats.keepalivesSent} ≥ answered ${stats.keepalivesAnswered}`);
+    assert.ok(Number.isFinite(keep.rttMs) && keep.rttMs >= 0 && keep.rttMs < 5000, `the keepalive answer is the RTT readout (${keep.rttMs})`);
+    assert.ok(keep.lastKeepaliveAt !== null);
+    assert.equal(server.roomService.rooms.get(kept.roomCode).snapshot.touchedAt, touchedAt, 'the frames never reached the actor (no touch)');
+    assert.equal(server.roomService.rooms.get(kept.roomCode).socketCount, 1);
+    keep.dispose();
+  }
+  // a transport without the frame (no pair configured) keeps the room_ping envelope: answered by the actor, which touches
+  {
+    const legacy = new RoomClient({
+      endpoint: server.url, player: { id: 'legacy', name: 'Legacy' }, storage: memory(), clientBuild: 'receipt', pingIntervalMs: 30,
+      transport: { createSocket: (url) => new WebSocket(url), keepalive: null },
+    });
+    clients.push(legacy);
+    const kept = await legacy.create({ mode: 'private', selection: { specId: 'm1a2' } });
+    const touchedAt = server.roomService.rooms.get(kept.roomCode).snapshot.touchedAt;
+    await until(() => legacy.stats().keepalivesAnswered >= 2, 'two envelope pongs');
+    assert.equal(legacy.stats().keepalive, 'envelope');
+    assert.ok(server.roomService.rooms.get(kept.roomCode).snapshot.touchedAt > touchedAt, 'a handled ping touches the room');
+    assert.ok(Number.isFinite(legacy.rttMs) && legacy.rttMs >= 0);
+    legacy.dispose();
+  }
   console.log('roomClient: PASS');
 } finally {
   for (const entry of clients) entry.dispose();

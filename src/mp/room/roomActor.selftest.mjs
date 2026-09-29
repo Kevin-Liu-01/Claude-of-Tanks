@@ -14,7 +14,7 @@ import { RoomActor } from './roomActor.ts';
 import { createP2pMatchHost } from './p2pMatchHost.ts';
 import {
   ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS, ROOM_MATCH_POLL_MS, ROOM_MATCH_REPORT_STALE_AFTER_MS,
-  ROOM_RATE_MAX_MESSAGES, ROOM_SIGNAL_MAX_BYTES, ROOM_UNAUTHENTICATED_TIMEOUT_MS,
+  ROOM_RATE_MAX_MESSAGES, ROOM_SIGNAL_MAX_BYTES, ROOM_STATE_COALESCE_MS, ROOM_UNAUTHENTICATED_TIMEOUT_MS,
 } from './protocol.ts';
 import { signSeatToken, verifySeatToken } from '../../../server/match/seatToken.ts';
 
@@ -24,10 +24,12 @@ const sha256 = (text) => createHash('sha256').update(text).digest('hex');
 /** The per-match host secret the contract names: sha256Hex(MATCH_SEAT_SECRET + ':' + matchId). */
 const hostSecretOf = (matchId) => sha256(`${SECRET}:${matchId}`);
 
-function createHarness({ code = 'ROOM01', host = null, region = undefined, transport = 'service' } = {}) {
+function createHarness({ code = 'ROOM01', host = null, region = undefined, transport = 'service', coalesce = false } = {}) {
   let now = T0;
   const sent = new Map();          // socketId -> envelopes
   const closed = new Map();        // socketId -> reason
+  const keepalives = new Map();    // P1b: socketId -> the host's clock of its newest keepalive frame (the auto-response's record)
+  const deferred = [];             // P1b: { at, callback } — the host's own timer, run by the receipt (`coalesce` opts in)
   let scheduledAt = null;
   let persists = 0;
   let seedTick = 0;
@@ -49,6 +51,8 @@ function createHarness({ code = 'ROOM01', host = null, region = undefined, trans
     closeSocket(socketId, reason) { closed.set(socketId, reason); },
     schedule(atMs) { scheduledAt = atMs; },
     persist() { persists++; },
+    keepaliveAt: (socketId) => keepalives.get(socketId) ?? null,
+    ...(coalesce ? { defer(callback, delayMs) { deferred.push({ at: now + delayMs, callback }); } } : {}),
     ...(region ? { region } : {}),
   };
   const actor = new RoomActor(code, ports);
@@ -57,8 +61,20 @@ function createHarness({ code = 'ROOM01', host = null, region = undefined, trans
   const all = (socketId, type) => (sent.get(socketId) ?? []).filter((m) => m.type === type);
   const send = async (socketId, type, payload = {}, requestId) => { await actor.handleMessage(socketId, JSON.stringify({ type, requestId, payload })); };
   const command = async (socketId, command, requestId = `r${++seedTick}`) => { await send(socketId, 'room_command', { command }, requestId); return (sent.get(socketId) ?? []).findLast((m) => m.requestId === requestId) ?? null; };
-  const advance = async (ms) => { now += ms; await actor.tick(); };
-  return { actor, ports, matchHost, sent, closed, drain, last, all, send, command, advance, get now() { return now; }, set now(v) { now = v; }, get scheduledAt() { return scheduledAt; }, get persists() { return persists; } };
+  /** Run every deferred callback due at the clock (in order): the host's timer firing. */
+  const runDeferred = () => {
+    for (;;) {
+      const index = deferred.findIndex((entry) => entry.at <= now);
+      if (index < 0) return;
+      const [entry] = deferred.splice(index, 1);
+      entry.callback();
+    }
+  };
+  const advance = async (ms) => { now += ms; runDeferred(); await actor.tick(); };
+  return {
+    actor, ports, matchHost, sent, closed, keepalives, deferred, drain, last, all, send, command, advance, runDeferred,
+    get now() { return now; }, set now(v) { now = v; }, get scheduledAt() { return scheduledAt; }, get persists() { return persists; },
+  };
 }
 
 const token = (seed) => seed.repeat(64).slice(0, 64);
@@ -556,7 +572,7 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   assert.equal(h.actor.snapshot.host.hostId, 'guest');
 }
 
-// ---- declines (a willing successor only), a leave, a kick, and the lost end
+// ---- declines (P1b: a departure from hosting — the next candidate at once, never a seat that stepped down), a leave, a kick, and the lost end
 {
   const { h, matchId } = await startedP2pRoom({ adminDeclines: true, third: true });
   assert.equal(h.actor.snapshot.host.hostId, 'guest', 'a declined admin yields the election to the lowest joinedAt willing commander');
@@ -564,32 +580,46 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   assert.equal(h.last('a', 'match_start').payload.hostSecret, undefined);
   assert.equal(h.last('t', 'match_start').payload.hostId, 'guest');
   await h.command('g', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 75 });
-  // the host declines mid-match: the third seat is the willing successor
+  // the host declines mid-match: the third seat is the willing successor, elected at once from the reported tick
   assert.equal((await h.command('g', { type: 'host_decline', declined: true })).type, 'room_ack');
   assert.deepEqual(h.last('t', 'host_changed').payload, { hostId: 'third', generation: 2, resumeTick: 75, reason: 'declined', hostSecret: hostSecretOf(matchId) });
   assert.equal(h.last('a', 'host_changed').payload.hostSecret, undefined);
   assert.equal(h.last('w', 'host_changed').payload.generation, 2);
-  // no willing successor left: the host declining keeps hosting
+  assert.deepEqual(h.actor.exportState().steppedDown, ['guest'], 'the seat that declined while hosting stepped down for this match');
+  // the new host declines with no WILLING successor left (P1's rule kept it and stalled the peers for the report
+  // budget): the admin — declined, but the last resort — takes over at once, reason declined, from tick 0 (the third
+  // seat never reported); the guest, which stepped down, is not handed the match back
   assert.equal((await h.command('t', { type: 'host_decline', declined: true })).type, 'room_ack');
-  assert.equal(h.actor.snapshot.host.hostId, 'third');
-  assert.equal(h.actor.snapshot.host.generation, 2);
-  assert.equal(h.all('t', 'host_changed').length, 2);
-  // the host leaves: at once, to the admin — declined, but first among the last resorts
-  await h.send('t', 'room_leave', {}, 'leave');
-  assert.deepEqual(h.last('a', 'host_changed').payload, { hostId: 'admin', generation: 3, resumeTick: 0, reason: 'left', hostSecret: hostSecretOf(matchId) });
-  assert.equal(h.actor.snapshot.phase, 'playing');
-  // the admin leaves: the guest, the last commander, hosts and is the admin now
-  await h.send('a', 'room_leave', {}, 'leave2');
+  assert.deepEqual(h.last('a', 'host_changed').payload, { hostId: 'admin', generation: 3, resumeTick: 0, reason: 'declined', hostSecret: hostSecretOf(matchId) });
+  assert.equal(h.last('g', 'host_changed').payload.hostSecret, undefined);
+  assert.equal(h.last('g', 'host_changed').payload.generation, 3);
+  assert.equal(h.actor.snapshot.host.hostId, 'admin');
+  assert.deepEqual(h.actor.exportState().steppedDown, ['guest', 'third']);
+  // every commander has stepped down: the admin's decline finds nobody to hand the match to — it keeps hosting, no
+  // election (the loop two seats that cannot host would otherwise run is cut here); its client boots afresh
+  assert.equal((await h.command('a', { type: 'host_decline', declined: true })).type, 'room_ack');
+  assert.equal(h.actor.snapshot.host.hostId, 'admin');
+  assert.equal(h.actor.snapshot.host.generation, 3);
+  assert.equal(h.all('a', 'host_changed').length, 3, 'start, generation 2, generation 3 — no fourth election');
+  assert.deepEqual(h.actor.exportState().steppedDown, ['guest', 'third', 'admin']);
+  // the host leaves: at once, by the full ladder — the guest, lowest joinedAt among the declined, stepped down or not
+  await h.send('a', 'room_leave', {}, 'leave');
   assert.deepEqual(h.last('g', 'host_changed').payload, { hostId: 'guest', generation: 4, resumeTick: 0, reason: 'left', hostSecret: hostSecretOf(matchId) });
-  assert.equal(h.actor.snapshot.adminId, 'guest');
+  assert.equal(h.actor.snapshot.phase, 'playing');
+  assert.equal(h.actor.snapshot.adminId, 'guest', 'the admin role moved with the leave');
+  // the guest leaves: the third seat, the last commander, hosts and is the admin now
+  await h.send('g', 'room_leave', {}, 'leave2');
+  assert.deepEqual(h.last('t', 'host_changed').payload, { hostId: 'third', generation: 5, resumeTick: 0, reason: 'left', hostSecret: hostSecretOf(matchId) });
+  assert.equal(h.actor.snapshot.adminId, 'third');
   // the last commander leaves: lost
-  await h.send('g', 'room_leave', {}, 'leave3');
+  await h.send('t', 'room_leave', {}, 'leave3');
   assert.equal(h.actor.snapshot.match.status, 'lost');
   assert.equal(h.actor.snapshot.phase, 'waiting');
   assert.deepEqual(h.actor.snapshot.lastResult, { round: 1, result: null, reason: 'match_lost' });
   assert.equal(h.last('w', 'match_status').payload.status, 'lost');
-  assert.deepEqual(h.actor.snapshot.host, { transport: 'p2p', hostId: null, generation: 4, since: h.now });
+  assert.deepEqual(h.actor.snapshot.host, { transport: 'p2p', hostId: null, generation: 5, since: h.now });
   assert.equal(h.actor.exportState().hostLeaseAt, null);
+  assert.deepEqual(h.actor.exportState().steppedDown, [], 'the stepped-down set clears with the match');
 }
 {
   // a kicked host migrates at once; a kick of a peer does not
@@ -660,6 +690,159 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   const h5 = createHarness();
   h5.actor.restore(legacy);
   assert.equal(h5.actor.snapshot.host.transport, 'service');
+}
+
+// ============================================================ P1b cost pass (2026-09-28)
+
+// ---- the keepalive frame never reaches the actor: the 24 h expiry reads the host's record of it (`keepaliveAt`)
+{
+  const h = createHarness({ transport: 'p2p' });
+  h.actor.handleOpen('a'); await h.send('a', 'room_create', { ...identity('admin'), mode: 'private' }, 'c');
+  h.actor.handleOpen('g'); await h.send('g', 'room_join', identity('guest', token('c'), token('d')), 'j');
+  h.actor.handleOpen('x');   // an unauthenticated socket: its keepalives never count
+  const touchedAt = h.actor.snapshot.touchedAt;
+  assert.equal(h.scheduledAt, T0 + ROOM_UNAUTHENTICATED_TIMEOUT_MS, 'the pending socket\'s timeout is the nearest deadline');
+  await h.advance(ROOM_UNAUTHENTICATED_TIMEOUT_MS);
+  assert.equal(h.closed.get('x'), 'authentication_timeout');
+  assert.equal(h.scheduledAt, touchedAt + ROOM_IDLE_TTL_MS, 'only the expiry remains');
+  // the seats keep alive through the runtime (the frames are auto-answered): the newest frame is the room's touch
+  const lastFrameAt = touchedAt + ROOM_IDLE_TTL_MS - 60_000;
+  h.keepalives.set('a', lastFrameAt - 3_600_000);
+  h.keepalives.set('g', lastFrameAt);
+  h.keepalives.set('x', lastFrameAt + 30_000);   // retired, unauthenticated: ignored
+  const persistsBefore = h.persists;
+  h.now = touchedAt + ROOM_IDLE_TTL_MS;
+  await h.actor.tick();
+  assert.notEqual(h.actor.snapshot, null, 'a room whose seats only keep alive does not expire');
+  assert.equal(h.actor.snapshot.touchedAt, lastFrameAt, 'the newest seated keepalive is the touch');
+  assert.equal(h.scheduledAt, lastFrameAt + ROOM_IDLE_TTL_MS, 'the expiry moved to 24 h after the newest keepalive');
+  assert.equal(h.persists, persistsBefore + 1, 'the moved touch is persisted once');
+  assert.equal(h.all('a', 'room_closed').length, 0);
+  // no newer keepalive by the moved deadline: the room expires as before
+  h.now = lastFrameAt + ROOM_IDLE_TTL_MS;
+  await h.actor.tick();
+  assert.equal(h.actor.snapshot, null, 'expired 24 h after the last keepalive');
+  assert.equal(h.last('g', 'room_closed').payload.reason, 'expired');
+  // a host without the port (the legacy service double) keeps the old rule: every touch is a handled message
+  const plain = createHarness();
+  delete plain.ports.keepaliveAt;
+  plain.actor.handleOpen('a'); await plain.send('a', 'room_create', { ...identity('admin'), mode: 'private' }, 'c');
+  plain.now = plain.actor.snapshot.touchedAt + ROOM_IDLE_TTL_MS;
+  await plain.actor.tick();
+  assert.equal(plain.actor.snapshot, null);
+}
+
+// ---- coalesced room_state: one fan-out per ROOM_STATE_COALESCE_MS, the newest revision on the trailing edge
+{
+  const h = createHarness({ transport: 'p2p', coalesce: true });
+  h.actor.handleOpen('a'); await h.send('a', 'room_create', { ...identity('admin'), mode: 'private', settings: { teamSize: 2, mapId: 'verdant' } }, 'c');
+  h.actor.handleOpen('g'); await h.send('g', 'room_join', identity('guest', token('c'), token('d')), 'j');
+  h.actor.handleOpen('w'); await h.send('w', 'room_join', { ...identity('watcher', token('e'), token('f')), team: 'spectator' }, 'w');
+  assert.equal(h.all('a', 'room_state').length, 2, 'joins broadcast at once (one per join)');
+  h.drain('a'); h.drain('g'); h.drain('w');
+  assert.equal(h.deferred.length, 0);
+  // a change inside the window a join opened is absorbed like any other (the window counts every broadcast)
+  await h.command('a', { type: 'set_ready', ready: true });
+  assert.equal(h.all('g', 'room_state').length, 0, 'absorbed into the join\'s window');
+  assert.ok(h.actor.statePending);
+  h.now = h.deferred[0].at;
+  h.runDeferred();
+  assert.equal(h.all('g', 'room_state').length, 1);
+  assert.equal(h.last('g', 'room_state').payload.room.players.find((p) => p.id === 'admin').ready, true);
+  h.drain('a'); h.drain('g'); h.drain('w');
+  h.now += ROOM_STATE_COALESCE_MS;
+  // a burst of readiness and selection changes within one window: the first goes out at once, the rest ride one flush
+  const leadAt = h.now;
+  const ready = await h.command('g', { type: 'set_ready', ready: true });
+  assert.equal(h.all('a', 'room_state').length, 1, 'the first change of a window goes out at once');
+  assert.equal(h.last('a', 'room_state').payload.room.revision, ready.payload.revision, 'the ack names the state it broadcast');
+  h.now += 50;
+  const unready = await h.command('g', { type: 'set_ready', ready: false });
+  h.now += 50;
+  const vehicle = await h.command('g', { type: 'select_vehicle', specId: 't90m' });
+  h.now += 50;
+  const readyAgain = await h.command('g', { type: 'set_ready', ready: true });
+  assert.equal(h.all('a', 'room_state').length, 1, 'changes inside the window are absorbed');
+  assert.ok(h.actor.statePending, 'a coalesced change waits for the window');
+  assert.equal(h.deferred.length, 1, 'one timer armed for the burst');
+  assert.equal(h.deferred[0].at, leadAt + ROOM_STATE_COALESCE_MS, 'armed for the window\'s end after the leading broadcast');
+  assert.ok(unready.payload.revision < vehicle.payload.revision && vehicle.payload.revision < readyAgain.payload.revision, 'every ack names its own revision');
+  h.now = h.deferred[0].at - 1;
+  h.runDeferred();
+  assert.equal(h.all('a', 'room_state').length, 1, 'nothing before the window ends');
+  h.now += 1;
+  h.runDeferred();
+  assert.equal(h.all('a', 'room_state').length, 2, 'the trailing edge: one broadcast for three changes');
+  assert.equal(h.all('g', 'room_state').length, 2);
+  assert.equal(h.all('w', 'room_state').length, 2);
+  const flushed = h.last('a', 'room_state').payload.room;
+  assert.equal(flushed.revision, readyAgain.payload.revision, 'the flush carries the newest revision');
+  assert.equal(flushed.players.find((p) => p.id === 'guest').ready, true);
+  assert.equal(flushed.players.find((p) => p.id === 'guest').specId, 't90m');
+  assert.equal(h.actor.statePending, false);
+  assert.equal(h.deferred.length, 0);
+  // an instant event (a join) inside a window supersedes a pending coalesced change; the joiner has the room already
+  h.now += ROOM_STATE_COALESCE_MS;
+  await h.command('a', { type: 'set_ready', ready: true });            // leading edge of a new window
+  h.now += 20;
+  await h.command('g', { type: 'set_ready', ready: false });           // pending
+  assert.ok(h.actor.statePending);
+  h.actor.handleOpen('t'); await h.send('t', 'room_join', identity('third', token('1'), token('2')), 't');
+  assert.equal(h.actor.statePending, false, 'the join\'s instant broadcast carried the pending change');
+  assert.equal(h.last('a', 'room_state').payload.room.players.find((p) => p.id === 'guest').ready, false);
+  assert.equal(h.last('a', 'room_state').payload.room.players.length, 4);
+  // a coalescable change right after the instant one waits for the moved window's end: the armed timer re-arms
+  const before = h.all('a', 'room_state').length;
+  h.now += 20;
+  await h.command('t', { type: 'select_vehicle', specId: 'kv2' });
+  assert.equal(h.all('a', 'room_state').length, before, 'inside the window that the join opened');
+  assert.equal(h.deferred.length, 1, 'the burst\'s timer is still the one armed');
+  h.now = h.deferred[0].at;
+  h.runDeferred();   // it fires 20 ms before the moved window's end (the join moved it): it re-arms instead of flushing
+  assert.equal(h.all('a', 'room_state').length, before);
+  assert.equal(h.deferred.length, 1, 're-armed for the window\'s end');
+  assert.equal(h.deferred[0].at, h.now + 20);
+  h.now = h.deferred[0].at;
+  h.runDeferred();
+  assert.equal(h.all('a', 'room_state').length, before + 1);
+  assert.equal(h.last('a', 'room_state').payload.room.players.find((p) => p.id === 'third').specId, 'kv2');
+  // a kick is a leave: instant
+  h.now += 20;
+  await h.command('a', { type: 'kick', playerId: 'third' });
+  assert.equal(h.all('a', 'room_state').length, before + 2, 'a kick broadcasts at once');
+  assert.equal(h.closed.get('t'), 'kicked');
+  // a host without a deferral port (a harness, an older service) broadcasts every revision at once
+  const plain = createHarness({ transport: 'p2p' });
+  plain.actor.handleOpen('a'); await plain.send('a', 'room_create', { ...identity('admin'), mode: 'private' }, 'c');
+  plain.actor.handleOpen('g'); await plain.send('g', 'room_join', identity('guest', token('c'), token('d')), 'j');
+  plain.drain('a');
+  await plain.command('g', { type: 'set_ready', ready: true });
+  await plain.command('g', { type: 'set_ready', ready: false });
+  assert.equal(plain.all('a', 'room_state').length, 2);
+  assert.equal(plain.actor.statePending, false);
+}
+
+// ---- the stepped-down set survives a hibernation round trip; a state without it restores empty
+{
+  const { h, matchId } = await startedP2pRoom({ adminDeclines: true, third: true });
+  await h.command('g', { type: 'host_decline', declined: true });
+  assert.deepEqual(h.actor.exportState().steppedDown, ['guest']);
+  const state = JSON.parse(JSON.stringify(h.actor.exportState()));
+  const h2 = createHarness({ transport: 'p2p' });
+  h2.actor.restore(state);
+  h2.actor.settleAfterRestore();
+  assert.deepEqual(h2.actor.exportState().steppedDown, ['guest']);
+  h2.actor.handleOpen('a2'); await h2.send('a2', 'room_join', identity('admin', token('b'), token('9')), 'ra');
+  h2.actor.handleOpen('g2'); await h2.send('g2', 'room_join', identity('guest', token('d'), token('8')), 'rg');
+  h2.actor.handleOpen('t2'); await h2.send('t2', 'room_join', identity('third', token('2'), token('7')), 'rt');
+  assert.equal(h2.actor.snapshot.host.hostId, 'third');
+  // the restored host declines: the guest (stepped down before the restart) is skipped, the admin takes over
+  await h2.command('t2', { type: 'host_decline', declined: true });
+  assert.deepEqual(h2.last('a2', 'host_changed').payload, { hostId: 'admin', generation: 3, resumeTick: 0, reason: 'declined', hostSecret: hostSecretOf(matchId) });
+  const legacy = { ...state, steppedDown: undefined };
+  const h3 = createHarness({ transport: 'p2p' });
+  h3.actor.restore(legacy);
+  assert.deepEqual(h3.actor.exportState().steppedDown, [], 'a pre-P1b state reads as nobody stepped down');
 }
 
 console.log('roomActor: PASS');

@@ -13,9 +13,15 @@
  *     the room elects the next and broadcasts `host_changed` (the secret only in the elected seat's copy);
  *   - `match_report` updates the room's tick / phase / verdict; a verdict ends the match (`match_status`); reports silent
  *     past P1's budget (ROOM_MATCH_REPORT_STALE_AFTER_MS, `reportStaleMs` for the proofs) migrate with `timeout`;
- *   - the election is P1's own `electHost` (a declined commander hosts only as the last resort) and a running host's
- *     decline moves the match only to a WILLING successor — with every other commander declined too, the host keeps
- *     hosting (P3 certification, 2026-09-28: the double previously elected the next seat regardless).
+ *   - the election is P1's own `electHost` (a declined commander hosts only as the last resort); a running host's
+ *     decline is its departure from hosting (P1b, 2026-09-28): the next candidate takes over at once with reason
+ *     `declined` — willing first, a declined commander as the last resort — never a seat that already stepped down by
+ *     declining while it hosted this match; with nobody left the host keeps hosting (P1's rule moved the match only
+ *     to a WILLING successor and otherwise stalled the peers for the 30 s report budget);
+ *   - the keepalive is the room's exact text frame (`ping` → `pong`), answered here outside the room logic as the
+ *     Durable Object's hibernation auto-response does (P1b); `room_ping` envelopes stay answered;
+ *   - `room_state` broadcasts are throttled to one per ROOM_STATE_COALESCE_MS with a trailing broadcast carrying the
+ *     newest revision (P1b), joins, leaves, disconnects, phase changes and elections at once — the actor's rule.
  *
  * Rooms live in memory; the policy is the shared `roomPolicy.ts`; nothing here is production code.
  */
@@ -24,7 +30,8 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import {
-  ROOM_CHAT_HISTORY, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_MATCH_REPORT_STALE_AFTER_MS, ROOM_MAX_PAYLOAD_BYTES, ROOM_SEAT_TOKEN_TTL_MS, ROOM_SIGNAL_MAX_BYTES,
+  ROOM_CHAT_HISTORY, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, ROOM_MATCH_REPORT_STALE_AFTER_MS,
+  ROOM_MAX_PAYLOAD_BYTES, ROOM_SEAT_TOKEN_TTL_MS, ROOM_SIGNAL_MAX_BYTES, ROOM_STATE_COALESCE_MS,
   RoomError, cleanId, isRecord, isRoomTeam, normalizeRoomChat, p2pMatchUrl, parseRoomEnvelope, parseRoomRoute, publicRoomError,
   readRoomMatchReport, readRoomSignalPayload, utf8ByteLength,
 } from '../src/mp/room/protocol.ts';
@@ -64,6 +71,12 @@ interface RoomState {
   matchUrl: string;
   plan: RoomStartPlan | null;
   reports: number;
+  /** P1b: seats that stepped down from hosting this match by declining while they hosted (a decline never re-elects them). */
+  steppedDown: Set<string>;
+  /** P1b: the coalesced room_state broadcast (the actor's rule: one per ROOM_STATE_COALESCE_MS, a trailing flush). */
+  stateBroadcastAt: number;
+  stateFlushPending: boolean;
+  stateFlushArmed: boolean;
 }
 
 export interface P2pRoomDoubleOptions {
@@ -98,7 +111,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
   const state = (code: string): RoomState => {
     let entry = rooms.get(code);
     if (!entry) {
-      entry = { code, room: null, seats: new Map(), chat: [], chatSeq: 0, host: { transport: 'p2p', hostId: null, generation: 0, since: 0 }, hostSecret: null, hostGrace: null, reportStale: null, lastTick: 0, matchUrl: '', plan: null, reports: 0 };
+      entry = { code, room: null, seats: new Map(), chat: [], chatSeq: 0, host: { transport: 'p2p', hostId: null, generation: 0, since: 0 }, hostSecret: null, hostGrace: null, reportStale: null, lastTick: 0, matchUrl: '', plan: null, reports: 0, steppedDown: new Set(), stateBroadcastAt: Number.NEGATIVE_INFINITY, stateFlushPending: false, stateFlushArmed: false };
       rooms.set(code, entry);
     }
     return entry;
@@ -121,7 +134,34 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
     const serialized = serializeRoom(room.room!);
     return { ...serialized, players: serialized.players.map((player) => ({ ...player, hostDeclined: room.seats.get(player.id)?.declined ?? false })), host: { ...room.host } };
   };
-  const broadcastState = (room: RoomState): void => { if (room.room) broadcast(room, { type: 'room_state', payload: { room: snapshot(room) } }); };
+  /**
+   * P1b: the actor's throttle — an instant change (join, leave, disconnect, phase, election) goes out now; a
+   * coalescable one goes out now when the last broadcast is older than ROOM_STATE_COALESCE_MS, else rides one
+   * trailing broadcast at the window's end with the newest revision.
+   */
+  const broadcastState = (room: RoomState, instant = true): void => {
+    if (!room.room) return;
+    const at = now();
+    if (instant || at - room.stateBroadcastAt >= ROOM_STATE_COALESCE_MS) {
+      room.stateFlushPending = false;
+      room.stateBroadcastAt = at;
+      broadcast(room, { type: 'room_state', payload: { room: snapshot(room) } });
+      return;
+    }
+    room.stateFlushPending = true;
+    if (room.stateFlushArmed) return;
+    room.stateFlushArmed = true;
+    const flush = (): void => {
+      room.stateFlushArmed = false;
+      if (!room.stateFlushPending || !room.room || closed) { room.stateFlushPending = false; return; }
+      const wait = room.stateBroadcastAt + ROOM_STATE_COALESCE_MS - now();
+      if (wait > 0) { room.stateFlushArmed = true; setTimeout(flush, wait).unref?.(); return; }
+      room.stateFlushPending = false;
+      room.stateBroadcastAt = now();
+      broadcast(room, { type: 'room_state', payload: { room: snapshot(room) } });
+    };
+    setTimeout(flush, Math.max(0, room.stateBroadcastAt + ROOM_STATE_COALESCE_MS - at)).unref?.();
+  };
 
   // ------------------------------------------------------------ the match: tokens, the host, the start
 
@@ -143,7 +183,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
    * double import P1's function instead of keeping its own — the previous copy excluded declined seats outright, so a
    * decline with no willing successor ended the match here while P1's room keeps the host.
    */
-  const electHost = (room: RoomState, exclude: string | null): string | null => electHostRule(snapshot(room), exclude)?.id ?? null;
+  const electHost = (room: RoomState, exclude: string | null, skip?: ReadonlySet<string>): string | null => electHostRule(snapshot(room), exclude, skip)?.id ?? null;
 
   const clearHostGrace = (room: RoomState): void => { if (room.hostGrace) { clearTimeout(room.hostGrace); room.hostGrace = null; } };
   const clearReportStale = (room: RoomState): void => { if (room.reportStale) { clearTimeout(room.reportStale); room.reportStale = null; } };
@@ -164,18 +204,21 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
 
   const changeHost = (room: RoomState, reason: 'left' | 'timeout' | 'declined' | 'start', exclude: string | null): void => {
     if (!matchLive(room)) return;
-    const next = electHost(room, exclude);
     const at = now();
-    // P1's rule: a running host's decline migrates only to a WILLING successor; with every other commander declined too,
-    // the host keeps hosting (its `left` and `timeout` still migrate, to the last resort if need be).
-    if (reason === 'declined' && (!next || room.seats.get(next)?.declined)) {
-      emit('host_decline_kept', room.code, { host: exclude, successor: next });
+    // P1b's rule: a running host's decline is its departure from hosting — the next candidate takes over at once
+    // (willing first, a declined commander as the last resort), never a seat that already stepped down by declining
+    // while it hosted this match; with nobody left the host keeps hosting (its `left` and `timeout` elect by the full ladder).
+    if (reason === 'declined' && exclude) room.steppedDown.add(exclude);
+    const next = electHost(room, exclude, reason === 'declined' ? room.steppedDown : undefined);
+    if (reason === 'declined' && !next) {
+      emit('host_decline_kept', room.code, { host: exclude, steppedDown: [...room.steppedDown] });
       return;
     }
     if (!next) {
       finishMatch(room.room!, { status: 'lost', reason: 'match_lost' }, at);
       room.host = { transport: 'p2p', hostId: null, generation: room.host.generation, since: at };
       room.hostSecret = null;
+      room.steppedDown.clear();
       for (const seat of room.seats.values()) seat.token = null;
       emit('match_lost', room.code, { reason });
       clearReportStale(room);
@@ -225,6 +268,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
     room.matchUrl = p2pMatchUrl(room.code, room.host.generation);
     room.plan = plan;
     room.lastTick = 0;
+    room.steppedDown.clear();
     recordMatch(room.room!, { id: matchId, round: plan.round, mapId: plan.mapId, seed: plan.seed, startedAt: at }, at);
     const expiresAt = at + ROOM_SEAT_TOKEN_TTL_MS;
     for (const seat of plan.seats) {
@@ -356,6 +400,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
               for (const seat of room.seats.values()) seat.token = null;
               room.hostSecret = null;
               room.host = { ...room.host, hostId: null, since: at };
+              room.steppedDown.clear();
               clearHostGrace(room);
               clearReportStale(room);
               emit('match_ended', room.code, { result: verdict?.result ?? null, reason: verdict?.reason ?? 'host_ended' });
@@ -370,8 +415,8 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
             seat.declined = command.declined !== false;
             emit('host_decline', room.code, { playerId, declined: seat.declined });
             reply('room_ack', { ok: true });
-            // P1 broadcasts the room after every command: `hostDeclined` reaches every seat (P3, 2026-09-28).
-            broadcastState(room);
+            // P1 broadcasts the room after every command: `hostDeclined` reaches every seat (P3, 2026-09-28); coalescable (P1b).
+            broadcastState(room, false);
             if (seat.declined && room.host.hostId === playerId && matchLive(room)) changeHost(room, 'declined', playerId);
             return;
           }
@@ -389,7 +434,8 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
             if (seat?.socketId) { send(seat.socketId, { type: 'room_closed', payload: { reason: 'kicked' } }); sockets.get(seat.socketId)?.socket.close(1000, 'kicked'); }
           }
           reply('room_ack', { revision: room.room!.revision });
-          broadcastState(room);
+          // a kick is a leave (instant); every other command's change is coalescable (P1b)
+          broadcastState(room, kicked !== null);
           return;
         }
         default:
@@ -430,9 +476,16 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
     if (!route) { socket.close(1008, 'invalid_room_route'); return; }
     const socketId = `s${++socketSeq}`;
     sockets.set(socketId, { socket, code: route.code, playerId: null });
-    socket.on('message', (raw: RawData) => {
+    socket.on('message', (raw: RawData, isBinary: boolean) => {
       const buffer = Array.isArray(raw) ? Buffer.concat(raw) : Buffer.isBuffer(raw) ? raw : Buffer.from(raw as ArrayBuffer);
-      handle(socketId, buffer.toString('utf8'));
+      const text = buffer.toString('utf8');
+      // P1b: the keepalive frame is answered outside the room logic, as the Durable Object's auto-response does.
+      if (!isBinary && text === ROOM_KEEPALIVE_REQUEST) {
+        emit('keepalive', route.code, { socketId });
+        try { socket.send(ROOM_KEEPALIVE_RESPONSE); } catch { /* closing */ }
+        return;
+      }
+      handle(socketId, text);
     });
     socket.once('close', () => handleClose(socketId));
     socket.on('error', () => { /* close follows */ });

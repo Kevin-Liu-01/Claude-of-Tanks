@@ -623,10 +623,23 @@ function summarize() {
   }
   const totalOut = Object.values(messages.out).reduce((a, b) => a + b, 0);
   const totalIn = Object.values(messages.in).reduce((a, b) => a + b, 0);
+  // P1b (2026-09-28): the keepalive text frame is answered by the Durable Object's auto-response without waking it —
+  // never a handled message, so never a request. `billed` counts every other client→room message as one request (the
+  // certification's conservative rule); `documented` applies Cloudflare's published rule (outgoing free, incoming
+  // WebSocket messages at 20:1) plus one request per room socket upgrade.
+  const keepalivesOut = messages.out['keepalive:ping'] ?? 0;
+  const billedOut = totalOut - keepalivesOut;
+  const documentedRequests = Math.ceil(billedOut / 20) + messages.sockets;
   const playMinutes = Math.max(1 / 60, (series.at(-1)?.atMs ?? 0) / 60_000);
   report.roomMessages = {
     byTypeOut: messages.out, byTypeIn: messages.in, clientToRoom: totalOut, roomToClient: totalIn, total: totalOut + totalIn, bytesOut: messages.bytesOut, bytesIn: messages.bytesIn, sockets: messages.sockets,
-    startBurst: report.entry?.roomMessagesStartBurst ?? null, perMinuteSteady: round((totalOut + totalIn) / playMinutes, 1), matchesPerDayHeadroom: { billedClientToRoom: Math.floor(BUDGET.freeRequestsPerDay / Math.max(1, totalOut)), bothDirections: Math.floor(BUDGET.freeRequestsPerDay / Math.max(1, totalOut + totalIn)) },
+    unbilledKeepalives: keepalivesOut, billedClientToRoom: billedOut, documentedRequests,
+    startBurst: report.entry?.roomMessagesStartBurst ?? null, perMinuteSteady: round((totalOut + totalIn) / playMinutes, 1),
+    matchesPerDayHeadroom: {
+      billedClientToRoom: Math.floor(BUDGET.freeRequestsPerDay / Math.max(1, billedOut)),
+      bothDirections: Math.floor(BUDGET.freeRequestsPerDay / Math.max(1, billedOut + totalIn)),
+      documented: Math.floor(BUDGET.freeRequestsPerDay / Math.max(1, documentedRequests)),
+    },
   };
   report.steady = {
     samples: series.length, playMinutes: round(playMinutes, 2),
@@ -713,7 +726,7 @@ function markdown() {
   }
   if (report.roomMessages) {
     const r = report.roomMessages;
-    lines.push('## Room service messages', '', `Client→room ${r.clientToRoom} (${r.bytesOut} B), room→client ${r.roomToClient} (${r.bytesIn} B), ${r.sockets} room sockets, ${r.perMinuteSteady} messages / min over the run. Headroom on the Free plan's 100,000 requests / day at this size: ${r.matchesPerDayHeadroom.billedClientToRoom} matches / day counting client→room messages, ${r.matchesPerDayHeadroom.bothDirections} counting both directions.`, '', '| Direction | Type | Count |', '|---|---|---|');
+    lines.push('## Room service messages', '', `Client→room ${r.clientToRoom} (${r.bytesOut} B), of which ${r.unbilledKeepalives} keepalive frames the Durable Object's auto-response answers without waking it (unbilled) and ${r.billedClientToRoom} handled messages; room→client ${r.roomToClient} (${r.bytesIn} B); ${r.sockets} room sockets; ${r.perMinuteSteady} messages / min over the run. Headroom on the Free plan's 100,000 requests / day at this size: ${r.matchesPerDayHeadroom.billedClientToRoom} matches / day counting every handled client→room message as one request, ${r.matchesPerDayHeadroom.bothDirections} counting both directions; by Cloudflare's published rule (outgoing free, incoming at 20:1, one request per socket upgrade) ${r.documentedRequests} requests per match → ${r.matchesPerDayHeadroom.documented} matches / day.`, '', '| Direction | Type | Count |', '|---|---|---|');
     for (const [key, count] of Object.entries(r.byTypeOut).sort((a, b) => b[1] - a[1])) lines.push(`| client→room | ${key} | ${count} |`);
     for (const [key, count] of Object.entries(r.byTypeIn).sort((a, b) => b[1] - a[1])) lines.push(`| room→client | ${key} | ${count} |`);
     lines.push('');

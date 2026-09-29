@@ -17,7 +17,7 @@ import { createHash } from 'node:crypto';
 import { signSeatToken } from '../../../server/match/seatToken.ts';
 import { RoomActor } from '../../../src/mp/room/roomActor.ts';
 import type { RoomActorState, RoomSocketRecord } from '../../../src/mp/room/roomActor.ts';
-import { parseRoomRoute } from '../../../src/mp/room/protocol.ts';
+import { ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, parseRoomRoute } from '../../../src/mp/room/protocol.ts';
 import type { RoomEnvelope } from '../../../src/mp/room/protocol.ts';
 import { createMatchHost } from './matchHost.ts';
 import { MAX_PENDING_SOCKETS, MAX_SOCKETS, allowedOrigin, frameText, isWebSocketUpgrade, json } from './util.ts';
@@ -50,6 +50,11 @@ export class Room extends DurableObject<Env> {
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
+    // P1b (2026-09-28): the client's keepalive is the exact text frame `ping`; the runtime answers `pong` on every
+    // accepted socket without waking this object (no handled message, no billed request, no duration), and records
+    // the moment per socket (`getWebSocketAutoResponseTimestamp`) — the actor's idle expiry reads it through the
+    // `keepaliveAt` port. Set on every construction: the pair is runtime state, not storage.
+    this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE));
     this.#ensureSchema();
     const row = this.ctx.storage.sql.exec<{ data: string }>('SELECT data FROM room_state WHERE id=1').toArray()[0];
     const sockets = this.ctx.getWebSockets();
@@ -99,6 +104,14 @@ export class Room extends DurableObject<Env> {
       closeSocket: (socketId, reason) => this.#close(socketId, reason),
       schedule: (atMs) => { this.#alarmWanted = atMs; },
       persist: () => this.#persist(),
+      // P1b: the runtime's record of the socket's newest auto-answered keepalive (never a handled message).
+      keepaliveAt: (socketId) => {
+        const ws = this.#sockets.get(socketId);
+        return ws ? this.ctx.getWebSocketAutoResponseTimestamp(ws)?.getTime() ?? null : null;
+      },
+      // P1b: the trailing edge of a coalesced room_state on this object's own timer — a pending timer keeps the
+      // object awake (docs: scheduled callbacks prevent hibernation), and it is not an alarm, so not a request.
+      defer: (callback, delayMs) => { setTimeout(callback, delayMs); },
       log: (level, message, fields) => console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](message, fields),
     });
     return this.#actor;
