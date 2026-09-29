@@ -1,0 +1,26 @@
+<!doctype html>
+<!--
+  The peer harness page of the peer-to-peer certification (docs/MULTIPLAYER-V2.md §13.8, P3 lane 2026-09-28): one seat
+  of a match with no renderer — served by the dev-only middleware in vite.config.ts at /mp-p2p-peer/ and driven by
+  tools/mp-p2p-soak.mjs through window.__peer. Never part of the public build (tools/mp-p2p-peer.selftest.mjs).
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude of Tanks · peer harness</title>
+  <link rel="icon" href="data:,">
+  <style>
+    html, body { margin: 0; background: #0d1117; color: #c9d1d9; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    main { padding: 12px; }
+    pre { white-space: pre-wrap; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="title">peer harness · booting</div>
+    <pre id="status"></pre>
+  </main>
+  <script type="module" src="/tools/mp-p2p-peer/peer.ts"></script>
+</body>
+</html>

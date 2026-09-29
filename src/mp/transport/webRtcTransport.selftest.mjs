@@ -328,4 +328,45 @@ function createTransport(time, relay, world, options = {}) {
   assert.deepEqual(world.connections.get(1).config, { iceServers: servers, relayOnly: true }, 'the ICE configuration reaches the factory');
   transport.close();
 }
-console.log('webRtcTransport.selftest: timeouts, the exhausted window, no-host, ICE fallback and configuration verified');
+// ------------------------------------------------------------ ICE is resolved per connection: a renewed credential reaches the next offer (P3, 2026-09-28)
+{
+  const time = createVirtualTime();
+  const world = new RtcWorld();
+  const relay = new FakeSignalRelay('host', 1);
+  const host = scriptedHost(world, relay, 'host');
+  let generation = 0;
+  const credential = () => ({ iceServers: [{ urls: 'turn:turn.example:3478', username: `${1_700_000_000 + generation}:cot`, credential: `secret-${generation}` }], relayOnly: true });
+  let iceCalls = 0;
+  const { transport } = createTransport(time, relay, world, { ice: async () => { iceCalls++; return credential(); } });
+  transport.open();
+  await settle(world, relay);
+  assert.equal(transport.state, 'open');
+  assert.equal(iceCalls, 1);
+  // the transport's own connections are the relay-only ones (the scripted host answers with host candidates)
+  const offered = () => [...world.connections.values()].filter((pc) => pc.config.relayOnly);
+  assert.equal(offered().at(-1).config.iceServers[0].credential, 'secret-0', 'the first connection carries the first credential');
+  // the credential service issued a new generation (the TTL ran out and the lease refreshed): the next connection carries it
+  generation = 1;
+  world.connections.get(1).channels[0].drop();
+  await settle(world, relay);
+  assert.equal(transport.state, 'reconnecting');
+  time.advance(DEFAULT_RECONNECT.initialDelayMs * 2);
+  await settle(world, relay);
+  assert.equal(iceCalls, 2, 'the reconnect resolved ICE again');
+  assert.equal(offered().length, 2);
+  assert.equal(offered().at(-1).config.iceServers[0].credential, 'secret-1', 'the reconnect offered with the renewed credential');
+  assert.equal(transport.state, 'open');
+  // a host migration re-targets: resolved again, the newest credential again
+  generation = 2;
+  relay.hostId = 'host2';
+  relay.generation = 2;
+  scriptedHost(world, relay, 'host2');
+  transport.retarget('host changed');
+  await settle(world, relay);
+  assert.equal(iceCalls, 3, 'the retarget resolved ICE again');
+  assert.equal(offered().length, 3);
+  assert.equal(offered().at(-1).config.iceServers[0].credential, 'secret-2', 'the re-offer carries the newest credential');
+  assert.equal(transport.state, 'open');
+  transport.close();
+}
+console.log('webRtcTransport.selftest: timeouts, the exhausted window, no-host, ICE fallback, configuration and per-connection ICE renewal verified');
