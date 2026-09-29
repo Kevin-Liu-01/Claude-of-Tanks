@@ -320,9 +320,18 @@ try {
   observe(pages.a2, 'A2');
   await pages.a2.goto(invite.href, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await waitFor(pages.a2, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A2 garage ready', 240_000);
-  await waitFor(pages.a2, () => document.querySelector('.cot-play')?.classList.contains('show') && document.querySelector('.cot-play .lobby')?.classList.contains('show'), 'A2 back in the room', 60_000);
-  await waitFor(pages.a2, () => { const button = document.querySelector('.cot-play [data-action="rejoin"]'); return !!button && !button.hidden; }, 'A2 sees Rejoin battle', 30_000);
-  await pages.a2.click('.cot-play [data-action="rejoin"]');
+  // The resumed seat returns one of two ways, both the product's: the room re-delivers match_start to it and the session
+  // re-enters the running match on its own (the loader covers the lobby at once), or the lobby is up with Rejoin battle.
+  const returnState = () => {
+    const v2 = window.__MULTIPLAYER_V2?.stats?.();
+    if (v2?.active === true && v2?.session?.phase === 'match') return 'auto';
+    const button = document.querySelector('.cot-play [data-action="rejoin"]');
+    return document.querySelector('.cot-play')?.classList.contains('show') && !!button && !button.hidden ? 'rejoin' : null;
+  };
+  await waitFor(pages.a2, () => returnState() !== null, 'A2 back in the room (re-entering, or Rejoin battle offered)', 60_000);
+  const returned = await pages.a2.evaluate(returnState);
+  if (returned === 'rejoin') await pages.a2.click('.cot-play [data-action="rejoin"]');
+  step('a2-returned', { path: returned });
   await waitFor(pages.a2, inBattle, 'A2 rejoined the battle', 240_000, { entryOf: 'A2' });
   await waitFor(pages.a2, (id) => { const p = window.__MULTIPLAYER_V2?.stats?.(); return p?.session?.p2p?.role === 'peer' && p?.session?.p2p?.hostId === id && p?.session?.match?.phase === 'live'; }, 'A2 live as a peer of B', 90_000, { args: [ids.b], polling: 250 });
   await Promise.all([pages.b, pages.c].map((page) => page.setViewport({ width: 1024, height: 640, deviceScaleFactor: 1 })));
