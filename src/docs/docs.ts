@@ -1,3 +1,4 @@
+import { t } from '../ui/i18n.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { mountBattleReels } from './battleReels.ts';
 import { mountDocsIcons } from './docsIcons.ts';
@@ -94,13 +95,15 @@ function mountArchiveMotionInfo(): void {
       wrap.className = 'docs-motion-item';
       video.replaceWith(wrap);
       wrap.append(video, createInfoButton({
-        label: 'Show the Scene Studio JSON for this video',
-        title: 'Replicate this Studio video',
+        label: t('fieldGuide.recipeLabel', { name: t('fieldGuide.videoTitle') }),
+        title: t('fieldGuide.videoTitle'),
+        guide: 'recipe',
         json: recipe,
         image: video.poster ? {
           src: video.poster,
-          alt: 'Scene Studio video frame',
-          caption: 'Game-rendered Studio frame',
+          fit: 'contain',
+          alt: t('fieldGuide.videoFrame'),
+          caption: t('fieldGuide.videoFrame'),
         } : null,
       }));
     });

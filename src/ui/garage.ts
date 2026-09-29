@@ -1357,21 +1357,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       label: t('garage.battlefield.about'),
       title: t('garage.battlefield.heading'),
       text: t('garage.battlefield.aboutText'),
-      images: () => {
-        const selected = maps.find((map) => map.id === selectedMapId && map.thumb)
-          || maps.find((map) => map.thumb);
-        if (!selected) return [];
-        const action = FEATURED_SHOTS.find((shot) => shot.maps?.includes(selected.id));
-        return [{
-          src: selected.hero || selected.thumb,
-          alt: `${selected.name} ${t('garage.battlefield.previewAlt')}`,
-          caption: `${selected.name} // ${t('garage.battlefield.previewAlt')}`,
-        }, action ? {
-          src: action.img,
-          alt: t(action.capKey, action.capVars),
-          caption: `${t(action.capKey, action.capVars)} // ${t('garage.featuredShots.liveCapture')}`,
-        } : null].filter(Boolean);
-      },
+      guide: 'maps',
       sections: [
         { icon: 'map', title: t('garage.info.soloDeploymentTitle'), text: t('garage.info.soloDeploymentText') },
         { icon: 'team', title: t('garage.info.multiplayerTitle'), text: t('garage.info.multiplayerText') },
@@ -1522,28 +1508,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           ? t('garage.camo.defaultDescription')
           : t('garage.camo.countryDescription', { country: tNation(CAMO_TAG_NATION[activeCamoCollection] || '') });
       },
-      images: () => {
-        const selected = specById.get(selectedId);
-        if (!selected) return [];
-        const tile = document.createElement('canvas');
-        tile.width = 480;
-        tile.height = 180;
-        const current = camoOpts.get(selected.id);
-        paintCamoSwatch(tile, selected, current === CUSTOM_CAMO_ID && camoOpts.getCustom
-          ? customCamoPatternId(camoOpts.getCustom(selected.id)) : current);
-        return [{
-          src: tile.toDataURL('image/png'),
-          alt: t('garage.camo.tileAlt2'),
-          caption: t('garage.camo.tileCaption'),
-        }, {
-          src: iconUrl(selected.id, 'angle'),
-          alt: t('garage.camo.referenceAlt2', { name: selected.label?.displayName || selected.name }),
-          fit: 'contain',
-          caption: t('garage.camo.referenceCaption', { name: selected.label?.displayName || selected.name }),
-        }];
-      },
+      guide: 'camo',
       sections: [
-        { icon: 'camouflage', title: t('garage.info.matchingBiomeTitle'), text: t('garage.camo.aboutText') },
         { icon: 'brush', title: t('garage.info.localStudioTitle'), text: t('garage.info.localStudioText') },
       ],
     }));
@@ -2395,8 +2361,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     disposeInfo?: () => void;
   }
 
-  function statSectionTitle(icon: string, label: string, meta = ''): string {
-    return `<div class="cot-stat-title cot-sidebar-section-title" data-stat-info="${label}">${uiIconSVG(icon, 13)}` +
+  function statSectionTitle(icon: string, label: string, meta: string, infoId: GarageInfoLabel): string {
+    return `<div class="cot-stat-title cot-sidebar-section-title" data-stat-info="${infoId}">${uiIconSVG(icon, 13)}` +
       `<span>${label}</span>${meta ? `<small>${meta}</small>` : ''}</div>`;
   }
 
@@ -2418,30 +2384,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="lr"><span>${label}</span>` +
       `<b${comparison ? ' class="stat-comparison"' : ''}>${value}</b></div>` +
       `<div class="track"><div class="fill" style="width:${pct}%"></div></div></div>`;
-  }
-
-  function garageInfoImages(spec: GarageTankSpec, label: string) {
-    const name = spec.label?.displayName || spec.name;
-    const technicalViews: Readonly<Record<string, readonly (readonly [string, string])[]>> = {
-      'Vehicle dossier': [
-        ['angle', 'Procedural vehicle render'], ['armor_side', 'Armor protection diagram'],
-        ['modules_side', 'Internal module diagram'], ['crew_side', 'Crew-station diagram'],
-      ],
-      Performance: [['angle', 'Vehicle profile'], ['side', 'Mobility silhouette']],
-      'Special system': [['modules_side', 'Special system placement'], ['angle', 'Vehicle profile']],
-      Protection: [['armor_side', 'Armor protection diagram'], ['side', 'Protection profile']],
-      Modules: [['modules_side', 'Internal module diagram'], ['crew_side', 'Crew-station context']],
-      Crew: [['crew_side', 'Crew-station diagram'], ['modules_side', 'Internal module context']],
-      Armament: [['side', 'Armament profile'], ['top', 'Weapon plan view']],
-      Ammunition: [['side', 'Ammunition platform profile'], ['modules_side', 'Ammunition and module layout']],
-      Equipment: [['modules_side', 'Equipment integration diagram'], ['angle', 'Vehicle profile']],
-    };
-    return (technicalViews[label] || [['angle', 'Procedural vehicle render']]).map(([view, caption]) => ({
-      src: iconUrl(spec.id, view),
-      alt: `${name} ${caption.toLowerCase()}`,
-      fit: 'contain',
-      caption: `${name} // ${caption}`,
-    }));
   }
 
   function activateTechnicalTab(tab: HTMLButtonElement): void {
@@ -2524,7 +2466,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const special = garageSpecialSystem(spec, reloadS);
     if (!special) return '';
     return `<section class="cot-stat-section cot-special-section">` +
-      statSectionTitle(special.icon, t('garage.dossier.section.special'), t('garage.dossier.special.activation')) +
+      statSectionTitle(special.icon, t('garage.dossier.section.special'), t('garage.dossier.special.activation'), 'Special system') +
       `<div class="cot-special-card"><span class="cot-special-icon">${uiIconSVG(special.icon, 24)}</span>` +
       `<div class="cot-special-copy"><b>${special.label}</b><p>${special.detail}</p>` +
       `<small>${special.meta}</small></div><kbd>E</kbd></div></section>`;
@@ -2646,7 +2588,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     statsEl.innerHTML =
       technicalSection +
       equipmentSection +
-      `<section class="cot-stat-section cot-performance-section">${statSectionTitle('speed', t('garage.dossier.section.performance'), `${spec.weightTons.toFixed(1)} t`)}` +
+      `<section class="cot-stat-section cot-performance-section">${statSectionTitle('speed', t('garage.dossier.section.performance'), `${spec.weightTons.toFixed(1)} t`, 'Performance')}` +
       `<div class="cot-performance-grid">` +
       statBar(t('garage.dossier.stat.hp'), `${spec.hp}`, statFrac(grp, 'hp', spec.hp), { icon: 'shield' }) +
       statBar(t('garage.dossier.stat.speed'), `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh), { icon: 'speed' }) +
@@ -2667,23 +2609,23 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           (camoModded ? ` &middot; stock ${Math.round(baseCamoOf(spec, false) * 100)} %` : '') }) +
       `</div></section>` +
       specialCard +
-      `<section class="cot-stat-section">${statSectionTitle('shell', t('garage.dossier.section.ammunition'), `${shells.length} ${t('garage.dossier.ammunition.types')}`)}` +
+      `<section class="cot-stat-section">${statSectionTitle('shell', t('garage.dossier.section.ammunition'), `${shells.length} ${t('garage.dossier.ammunition.types')}`, 'Ammunition')}` +
       magazineSpec +
       `<div class="shellhead"><span>${t('garage.dossier.shell.type')}</span><span>${t('garage.dossier.shell.round')}</span><span>${t('garage.dossier.shell.pen')}</span><span>${t('garage.dossier.shell.damage')}</span></div>` +
       shellRows + `</section>` +
-      `<section class="cot-stat-section">${statSectionTitle('shield', t('garage.dossier.section.protection'))}` +
+      `<section class="cot-stat-section">${statSectionTitle('shield', t('garage.dossier.section.protection'), '', 'Protection')}` +
       `<div class="armor-grid">` +
       `<div class="armorline">${uiIconSVG('shield', 19)}<span>${t('garage.dossier.protection.hull')}</span><b>${hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;'}</b></div>` +
       `<div class="armorline">${uiIconSVG('turretRing', 19)}<span>${t('garage.dossier.protection.turret')}</span><b>${turMm != null ? `${Math.round(turMm)} mm` : '&mdash;'}</b></div></div>` +
       `<button class="cot-layer-link" type="button" data-gallery-layer="armor">${uiIconSVG('shield', 13)}${t('garage.dossier.protection.inspect')}</button></section>` +
-      `<section class="cot-stat-section">${statSectionTitle('gun', t('garage.dossier.section.armament'), `${spec.gun.caliberMm} mm`)}` +
+      `<section class="cot-stat-section">${statSectionTitle('gun', t('garage.dossier.section.armament'), `${spec.gun.caliberMm} mm`, 'Armament')}` +
       `<div class="armor-grid">` +
       `<div class="armorline">${uiIconSVG('gun', 19)}<span>${t('garage.dossier.armament.gun')}</span><b>${spec.gun.caliberMm} mm</b></div>` +
       `<div class="armorline">${uiIconSVG('scope', 19)}<span>${t('garage.dossier.armament.arc')}</span><b>&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div></div></section>` +
-      `<section class="cot-stat-section">${statSectionTitle('engine', t('garage.dossier.section.modules'), `${moduleRows.length} ${t('garage.dossier.modules.systems')}`)}` +
+      `<section class="cot-stat-section">${statSectionTitle('engine', t('garage.dossier.section.modules'), `${moduleRows.length} ${t('garage.dossier.modules.systems')}`, 'Modules')}` +
       `<div class="cot-module-grid">${moduleChips}</div>` +
       `<button class="cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 13)}${t('garage.dossier.modules.open')}</button></section>` +
-      `<section class="cot-stat-section">${statSectionTitle('crew', t('garage.dossier.section.crew'), `${crewRows.length} ${t('garage.dossier.crew.stations')}`)}` +
+      `<section class="cot-stat-section">${statSectionTitle('crew', t('garage.dossier.section.crew'), `${crewRows.length} ${t('garage.dossier.crew.stations')}`, 'Crew')}` +
       `<div class="cot-crew-grid">${crewChips}</div></section>`;
     requiredElement<HTMLElement>(statsEl, 'h3').textContent = spec.label?.displayName || spec.name;
     const technicalImage = statsEl.querySelector<HTMLImageElement>('[data-technical-image]');
@@ -2693,7 +2635,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       label: t('garage.dossier.dossier.about'),
       title: t('garage.dossier.dossier.title'),
       text: t('garage.dossier.dossier.text'),
-      images: garageInfoImages(spec, 'Vehicle dossier'),
+      guide: 'dossier',
       sections: [
         { icon: 'shield', title: t('garage.dossier.dossier.authData'), text: t('garage.dossier.dossier.authDataText') },
         { icon: 'gallery', title: t('garage.dossier.dossier.techViews'), text: t('garage.dossier.dossier.techViewsText') },
@@ -2703,10 +2645,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const label = heading.dataset.statInfo;
       const text = label && label in GARAGE_INFO ? GARAGE_INFO[label as GarageInfoLabel] : '';
       if (text) heading.appendChild(createInfoButton({
-        label: t('garage.dossier.aboutStat', { stat: label || '' }),
-        title: label || t('garage.dossier.aboutVehicle'),
+        label: t('garage.dossier.aboutStat', { stat: heading.querySelector('span')?.textContent || '' }),
+        title: heading.querySelector('span')?.textContent || t('garage.dossier.aboutVehicle'),
         text,
-        images: garageInfoImages(spec, label || 'Vehicle dossier'),
+        guide: ({ Performance: 'performance', 'Special system': 'special', Ammunition: 'ammunition', Protection: 'protection', Armament: 'armament', Modules: 'modules', Crew: 'crew', Equipment: 'equipment' } as const)[label as GarageInfoLabel],
       }));
     });
     const equipmentHead = statsEl.querySelector('.eqhead');
@@ -2714,7 +2656,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       label: t('garage.dossier.equipment.about'),
       title: t('garage.dossier.equipment.aboutTitle'),
       text: GARAGE_INFO.Equipment,
-      images: garageInfoImages(spec, 'Equipment'),
+      guide: 'equipment',
     }));
     if (vehicleChanged) statsEl.scrollTop = 0;
     requestAnimationFrame(syncScrollFades);

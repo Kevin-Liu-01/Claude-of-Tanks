@@ -1,3 +1,4 @@
+import type { InfoGuideId } from './infoGuideTypes.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 // Accessible modal-backed context help shared by Garage and Scene Studio.
 // Info triggers deliberately open on activation (never hover) so the same
@@ -41,6 +42,7 @@ interface InfoSection {
 }
 
 export interface InfoButtonOptions {
+  guide?: InfoGuideId;
   label?: string;
   title?: string;
   text?: LiveValue<string>;
@@ -71,11 +73,11 @@ const CSS = `
 .cot-info-trigger:hover,.cot-info-trigger:focus-visible,.cot-info-trigger[aria-expanded='true']{color:#ffd27a;border-color:#f0a030;
   background:rgba(240,160,48,.13);outline:none}.cot-info-trigger:active{transform:scale(.94)}
 .cot-info-modal{display:grid;gap:22px}.cot-info-modal__lead{max-width:760px;margin:0;color:#bcc9d2;font-size:15px;line-height:1.68}
-.cot-info-modal__media{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.cot-info-modal__media{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:560px}
 .cot-info-modal__media[data-count='1']{grid-template-columns:1fr}.cot-info-modal__media[data-count='3'] figure:first-child{grid-row:span 2}
-.cot-info-modal__media figure{position:relative;min-height:220px;margin:0;overflow:hidden;border:1px solid rgba(154,174,189,.22);
+.cot-info-modal__media figure{position:relative;min-height:120px;margin:0;overflow:hidden;border:1px solid rgba(154,174,189,.22);
   background:radial-gradient(circle at 50% 35%,rgba(75,94,108,.22),transparent 62%),#070b0e}
-.cot-info-modal__media img{display:block;width:100%;height:100%;min-height:220px;max-height:390px;object-fit:cover;object-position:center;
+.cot-info-modal__media img{display:block;width:100%;height:100%;min-height:120px;max-height:200px;object-fit:cover;object-position:center;
   filter:saturate(.92) contrast(1.03)}.cot-info-modal__media figure[data-fit='contain'] img{object-fit:contain;padding:16px;
   background:linear-gradient(145deg,rgba(13,19,24,.97),rgba(4,7,9,.99))}
 .cot-info-modal__media figure::after{content:"";position:absolute;inset:55% 0 0;pointer-events:none;
@@ -90,8 +92,8 @@ const CSS = `
   background:rgba(1,4,6,.64);color:#cbd7df;font:500 12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;tab-size:2;white-space:pre}
 body[data-cot-width='phone'] .cot-info-modal{gap:15px}body[data-cot-width='phone'] .cot-info-modal__lead{font-size:14px}
 body[data-cot-width='phone'] .cot-info-modal__media{grid-template-columns:1fr!important}
-body[data-cot-width='phone'] .cot-info-modal__media figure{min-height:180px}
-body[data-cot-width='phone'] .cot-info-modal__media img{min-height:180px;max-height:280px}
+body[data-cot-width='phone'] .cot-info-modal__media figure{min-height:120px}
+body[data-cot-width='phone'] .cot-info-modal__media img{min-height:120px;max-height:180px}
 body[data-cot-width='phone'] .cot-info-modal__media[data-count='3'] figure:first-child{grid-row:auto}
 @media(hover:hover){.cot-info-trigger:hover{transform:translateY(-1px)}}
 @media(prefers-reduced-motion:reduce){.cot-info-trigger{transition:none}}
@@ -163,7 +165,7 @@ function resolveValue<T>(value: LiveValue<T>, fallback: T): T {
 
 /** Create an icon button that opens a rich shared modal dossier. */
 export function createInfoButton({
-  label, title, text = '', json = null, className = '', eyebrow = '',
+  guide, label, title, text = '', json = null, className = '', eyebrow = '',
   subtitle = '', size = 'large', image = null, images = null,
   imageAlt = '', imageFit = 'cover', imageCaption = '', sections = null,
 }: InfoButtonOptions = {}): InfoButton {
@@ -221,6 +223,20 @@ export function createInfoButton({
     dialog.body.textContent = '';
     const root = document.createElement('article');
     root.className = 'cot-info-modal';
+    if (guide) {
+      const slot = document.createElement('div');
+      slot.textContent = t('fieldGuide.loading');
+      slot.setAttribute('aria-busy', 'true');
+      root.append(slot);
+      void import('./infoGuides.ts').then(({ createInfoGuide }) => {
+        if (!slot.isConnected) return;
+        slot.replaceWith(createInfoGuide(guide));
+      }).catch(() => {
+        if (!slot.isConnected) return;
+        slot.textContent = t('fieldGuide.unavailable');
+        slot.removeAttribute('aria-busy');
+      });
+    }
     const mediaSource = images || image;
     const mediaValues = mediaSource
       ? resolveInfoImages(mediaSource, { alt: imageAlt, fit: imageFit, caption: imageCaption })
@@ -282,7 +298,12 @@ export function createInfoButton({
       const pre = document.createElement('pre');
       pre.className = 'cot-info-modal__json';
       pre.textContent = content();
-      root.appendChild(pre);
+      const details = document.createElement('details');
+      details.className = 'cot-info-modal__recipe';
+      const summary = document.createElement('summary');
+      summary.textContent = t('fieldGuide.recipeData');
+      details.append(summary, pre);
+      root.appendChild(details);
     }
     dialog.body.appendChild(root);
   };

@@ -15,13 +15,18 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { FONT_STACK, ensureFonts } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
-import { FEATURED_SHOTS } from './featuredShots.ts';
 import { mountMediaArchive } from '../presentation/mediaArchive.ts';
 import { PRODUCT_STATS } from '../productStats.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
-import { createInfoButton, type InfoButton, type InfoImage } from './contextInfo.ts';
+import { createInfoButton, type InfoButton } from './contextInfo.ts';
 import { getLocale, t } from './i18n.ts';
 import { hrefForLocale } from './localeRouting.ts';
+
+const STUDIO_GUIDES = {
+  battlefield: 'environment', map: 'environment', tanks: 'actors', addTanks: 'actors',
+  selectedTank: 'actors', effects: 'effects', layersEvents: 'effects', cinematics: 'timeline',
+  storyboard: 'timeline', camera: 'camera', output: 'output', productionArchive: 'recipe',
+} as const;
 
 const STUDIO_GROUP_INFO_KEYS = Object.freeze({
   battlefield: 'studioPanel.info.group.battlefield',
@@ -44,7 +49,6 @@ const STUDIO_SECTION_INFO_KEYS = Object.freeze({
 
 type StudioGroupInfoId = keyof typeof STUDIO_GROUP_INFO_KEYS;
 type StudioSectionInfoId = keyof typeof STUDIO_SECTION_INFO_KEYS;
-type StudioInfoId = StudioGroupInfoId | StudioSectionInfoId;
 
 type StudioActorState = string;
 
@@ -1250,41 +1254,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     if (text != null) d.textContent = String(text);
     return d;
   }
-  function studioInfoImages(infoId: StudioInfoId): InfoImage[] {
-    if (infoId === 'tanks' || infoId === 'addTanks' || infoId === 'selectedTank') {
-      const id = S._internal.selected?.spec?.id || pickedId;
-      if (!id) return [];
-      const info = specInfo(id);
-      const name = info.name || id;
-      return [{
-        src: iconUrl(id, 'angle'),
-        alt: t('studioPanel.info.image.vehicleAlt', { name }),
-        fit: 'contain',
-        caption: t('studioPanel.info.image.actorCaption', { name }),
-      }, {
-        src: iconUrl(id, 'modules_side'),
-        alt: t('studioPanel.info.image.modulesAlt', { name }),
-        fit: 'contain',
-        caption: t('studioPanel.info.image.modulesCaption', { name }),
-      }];
-    }
-    const currentMapId = S.mapId;
-    if (!currentMapId) return [];
-    const src = imageFor(MAP_HEROES, currentMapId) || imageFor(MAP_THUMBS, currentMapId);
-    if (!src) return [];
-    const info = S.getMapInfo(currentMapId);
-    const name = info.name || currentMapId;
-    const shot = FEATURED_SHOTS.find((entry) => entry.maps?.includes(currentMapId)) || FEATURED_SHOTS[0];
-    return [{
-      src,
-      alt: t('studioPanel.info.image.battlefieldAlt', { name }),
-      caption: t('studioPanel.info.image.canvasCaption', { name }),
-    }, shot ? {
-      src: shot.img,
-      alt: t(shot.capKey, shot.capVars),
-      caption: `${t(shot.capKey, shot.capVars)} // ${t('garage.featuredShots.studioOutput')}`,
-    } : null].filter(Boolean);
-  }
+
   function section(infoId: StudioSectionInfoId, title: string, sub = ''): HTMLDivElement {
     const s = el('div', 'sec');
     const h = el('div', 'h', title);
@@ -1295,7 +1265,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       title,
       text: t(helpKey),
       json: infoId === 'output' ? () => S.state() : null,
-      images: () => studioInfoImages(infoId),
+      guide: STUDIO_GUIDES[infoId],
     }));
     s.appendChild(h);
     return s;
@@ -1314,7 +1284,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       label: t('studioPanel.info.about', { title }),
       title,
       text: t(helpKey),
-      images: () => studioInfoImages(infoId),
+      guide: STUDIO_GUIDES[infoId],
     }));
     const body = el('div', 'gbody');
     groupRoot.append(head, body);
@@ -1511,7 +1481,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         label: t('studioPanel.shot.showJsonLabel', { label: shot.label }),
         title: t('studioPanel.shot.replicateTitle', { label: shot.label }),
         json: () => ({ ...S.state(), fxTime: shot.tMs, timeScale: 0 }),
-        images: () => studioInfoImages('storyboard'),
+        guide: 'recipe',
       }));
       const del = el('button', 'del warn', '✕');
       del.title = t('studioPanel.shot.removeTitle', { label: shot.label });

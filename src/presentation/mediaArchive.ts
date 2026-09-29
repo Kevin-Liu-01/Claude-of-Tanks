@@ -99,12 +99,14 @@ function shotCard(shot: PresentationShot, index: number, recipe: RuntimeValue): 
   card.appendChild(button);
   if (recipe) {
     card.appendChild(createInfoButton({
-      label: `Show the Scene Studio JSON for ${shot.title}`,
-      title: `Replicate ${shot.title}`,
+      label: t('fieldGuide.recipeLabel', { name: shot.title }),
+      title: t('fieldGuide.recipeTitle', { name: shot.title }),
+      guide: 'recipe',
       json: recipe,
       className: 'media-archive-recipe',
       image: {
         src: shot.src,
+        fit: 'contain',
         alt: shot.alt || `${shot.title} game-rendered frame`,
         caption: `${shot.title} // ${shot.map}`,
       },

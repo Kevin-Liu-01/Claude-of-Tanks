@@ -20,10 +20,9 @@ import {
   type SurfaceInspectionInfo,
 } from './surfaceMarkup.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
-import { iconUrl } from '../ui/icons.ts';
 import { flagIconUrl } from '../ui/flags.ts';
 import { createInfoButton } from '../ui/contextInfo.ts';
-import type { InfoButtonOptions, InfoImage } from '../ui/contextInfo.ts';
+import type { InfoButtonOptions } from '../ui/contextInfo.ts';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
 import { t, onLocaleChange, getLocale, formatNumber } from '../ui/i18n.ts';
 import { bindStaticI18nAuto } from '../presentation/staticI18n.ts';
@@ -64,7 +63,7 @@ const $ = <T extends HTMLElement = HTMLInputElement>(selector: string): T => {
   return element;
 };
 
-const GALLERY_SECTION_INFO_KEYS: Readonly<Record<string, string>> = Object.freeze({
+const GALLERY_SECTION_INFO_KEYS = Object.freeze({
   'gallery.dossier.section.operational': 'gallery.dossier.ratingHint',
   'gallery.dossier.section.summary': 'gallery.dossier.summaryHint',
   'gallery.dossier.section.articulation': 'gallery.dossier.articulationHint',
@@ -82,59 +81,45 @@ function appendGalleryInfo(
   }
 }
 
-function galleryVehicleImage(
-  view = 'angle',
-  caption = t('gallery.about.image.procedural'),
-): InfoImage {
-  if (!selectedId) return null;
-  const spec = getSpec(selectedId) as GalleryVehicleSpec;
-  const name = spec.label?.displayName || spec.name;
-  return {
-    src: iconUrl(spec.id, view),
-    alt: `${name} ${caption.toLowerCase()}`,
-    fit: 'contain',
-    caption: t('gallery.image.template', { name: String(name), caption: String(caption) }),
-  };
-}
-
 function mountGalleryInfo(): void {
   const workspaceHeads = document.querySelectorAll('.workspace-group-head');
   appendGalleryInfo(workspaceHeads[0], {
     label: t('gallery.about.fleet'), title: t('gallery.about.fleetTitle'),
     text: t('gallery.about.fleetText'),
-    image: () => galleryVehicleImage('angle', t('gallery.about.image.selectedArchive')),
+    guide: 'dossier',
   });
   appendGalleryInfo(workspaceHeads[1], {
     label: t('gallery.about.dossier'), title: t('gallery.about.dossierTitle'),
     text: t('gallery.about.dossierText'),
-    image: () => galleryVehicleImage('side', t('gallery.about.image.technical')),
+    guide: 'dossier',
   });
   appendGalleryInfo(document.querySelector('.view-controls-label'), {
     label: t('gallery.about.camera'), title: t('gallery.about.cameraTitle'),
     text: t('gallery.about.cameraText'),
-    image: () => galleryVehicleImage('angle', t('gallery.about.image.camera')),
+    guide: 'camera',
   });
   appendGalleryInfo(document.querySelector('.mode-dock > p'), {
     label: t('gallery.about.layers'), title: t('gallery.about.layersTitle'),
     text: t('gallery.about.layersText'),
-    image: () => galleryVehicleImage(activeMode === 'modules' ? 'modules_side'
-      : (activeMode === 'crew' ? 'crew_side'
-        : (activeMode === 'armor' ? 'armor_side' : 'angle')), t('gallery.about.image.layer')),
+    guide: 'layers',
   });
   document.querySelectorAll('.section-label').forEach((heading) => {
     const labelElement = heading.querySelector<HTMLElement>('[data-i18n]');
     const labelKey = labelElement?.dataset.i18n || '';
-    const helpKey = GALLERY_SECTION_INFO_KEYS[labelKey];
+    const helpKey = GALLERY_SECTION_INFO_KEYS[labelKey as keyof typeof GALLERY_SECTION_INFO_KEYS];
     if (helpKey) {
       const label = t(labelKey);
       appendGalleryInfo(heading, {
       label: `${t('gallery.about.layersTitle')} · ${label}`,
       title: label, text: t(helpKey),
-      image: () => galleryVehicleImage(
-        labelKey === 'gallery.dossier.section.specification'
-          || labelKey === 'gallery.dossier.section.ammunition' ? 'side' : 'angle',
-        t('gallery.about.image.reference', { label }),
-      ),
+      guide: ({
+        'gallery.dossier.section.operational': 'performance',
+        'gallery.dossier.section.summary': 'dossier',
+        'gallery.dossier.section.articulation': 'armament',
+        'gallery.dossier.section.markup': 'markup',
+        'gallery.dossier.section.specification': 'dossier',
+        'gallery.dossier.section.ammunition': 'ammunition',
+      } as const)[labelKey as keyof typeof GALLERY_SECTION_INFO_KEYS],
     });
     }
   });
