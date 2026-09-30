@@ -1,10 +1,11 @@
+import { createEnemyNationSelect } from './enemyNationSelect.ts';
 import { t } from './i18n.ts';
 import { ENEMY_NATION_OPTIONS, readTeamArrangement, writeTeamArrangement } from '../game/teamArrangement.ts';
 import { isWaveMode, matchRulesetFor, rulesetLines, RULESET_SCORE_TARGETS, TEAM_ARRANGEMENT_LIMITS } from '../sim/matchRuleset.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
 
 /** Mode-specific controls share the exact stored arrangement read by battle creation. */
-export function createBattleArrangementPanel(host: HTMLElement): { render(mode: GameModeId): void } {
+export function createBattleArrangementPanel(host: HTMLElement): { render(mode: GameModeId): void; close(): void } {
   let mode: GameModeId = 'standard';
   const fields = new Map<string, { label: HTMLLabelElement; select: HTMLSelectElement }>();
   const controls = document.createElement('div'); controls.className = 'cot-mode-settings';
@@ -21,8 +22,10 @@ export function createBattleArrangementPanel(host: HTMLElement): { render(mode: 
       render(mode);
     });
   }
+  const nation = createEnemyNationSelect(fields.get('enemyNation')!.select);
   host.append(controls, readout);
   function render(next: GameModeId): void {
+    if (mode !== next) nation.close();
     mode = next;
     const arrangement = readTeamArrangement(mode);
     const rules = matchRulesetFor(mode, null, arrangement);
@@ -50,9 +53,10 @@ export function createBattleArrangementPanel(host: HTMLElement): { render(mode: 
           : name === 'holdS' ? rules.assault?.holdS : name === 'respawnS' ? rules.respawnS
           : name === 'scoreTarget' ? rules.scoreTarget ?? RULESET_SCORE_TARGETS[mode] : rules[name as 'allies' | 'enemies']);
     }
+    nation.refresh();
     readout.replaceChildren(...rulesetLines(rules).map(({ key, values }) => {
       const chip = document.createElement('span'); chip.textContent = t(`rules.line.${key}`, key === 'enemyNation' ? { value: t(`campaign.enemy.${values.value}`) } : { ...values }); return chip;
     }));
   }
-  return { render };
+  return { render, close: nation.close };
 }

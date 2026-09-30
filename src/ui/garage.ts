@@ -2804,6 +2804,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     mars: { short: 'GRAV', label: t('garage.battle.marsLabel'), icon: 'modeMars' },
   };
   function closeBattleMenu({ restoreFocus = false } = {}) {
+    arrangementPanel.close();
     battleMenu.classList.remove('open');
     battleModeBtn.setAttribute('aria-expanded', 'false');
     if (restoreFocus) battleModeBtn.focus();

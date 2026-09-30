@@ -1,3 +1,4 @@
+import { createEnemyNationSelect } from './enemyNationSelect.ts';
 import { containModalTab } from './modal.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { revealMenuSelectOption } from './menuSelectScroll.ts';
@@ -1064,6 +1065,7 @@ export function createPlayMenu({
   // ---- team arrangement (owner 2026-09-15) --------------------------------------------------
   const arrangeSection = root.querySelector<HTMLElement>('[data-arrange]')!;
   const arrangeSelect = (name: string): HTMLSelectElement => arrangeSection.querySelector<HTMLSelectElement>(`select[data-arrange="${name}"]`)!;
+  const enemyNationSelect = createEnemyNationSelect(arrangeSelect('enemyNation'));
   const fillOptions = (select: HTMLSelectElement, entries: Array<[string, string]>, value: string): void => {
     select.innerHTML = entries.map(([id, label]) => `<option value="${id}"${id === value ? ' selected' : ''}>${label}</option>`).join('');
     select.value = value;
@@ -1088,7 +1090,7 @@ export function createPlayMenu({
   let sidesCustomOpen = false;
   function renderArrangement(mode: GameModeId, fromLobby: boolean): void {
     // a room keeps its own team size for the symmetric modes (net/lobby.ts teamSize); the wave modes arrange here
-    if (!acceptsTeamArrangement(mode) || (fromLobby && !isWaveMode(mode))) { arrangeSection.hidden = true; return; }
+    if (!acceptsTeamArrangement(mode) || (fromLobby && !isWaveMode(mode))) { arrangeSection.hidden = true; enemyNationSelect.close(); return; }
     arrangeSection.hidden = false;
     const wave = isWaveMode(mode);
     const defaults = matchRulesetFor(mode);
@@ -1138,6 +1140,7 @@ export function createPlayMenu({
     }
     const locked = fromLobby && (role !== 'host' || state?.phase !== 'waiting');
     for (const control of arrangeSection.querySelectorAll<HTMLSelectElement | HTMLInputElement>('select, input')) control.disabled = locked;
+    enemyNationSelect.refresh();
     for (const button of sidesButtons) button.disabled = locked;
     arrangeSection.querySelector<HTMLButtonElement>('[data-arrange-reset]')!.disabled = locked;
     const note = arrangeSection.querySelector<HTMLElement>('[data-arrange-note]');
@@ -1999,6 +2002,7 @@ export function createPlayMenu({
     void requestRoom('join');
   }
   function hide(closeSession = true): void {
+    enemyNationSelect.close();
     closeMenuSelects();
     const restoreFocus = !handedOff && root.contains(document.activeElement);
     root.classList.remove('show');
