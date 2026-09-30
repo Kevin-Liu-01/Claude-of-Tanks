@@ -870,7 +870,7 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
 /* CAMO PICKER SECTION: per-tank paint pattern (persisted, +concealment) */
 .cot-camos{position:static;overflow:hidden;display:flex;flex-direction:column;pointer-events:auto;}
 .cot-camos .ctitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
-  text-transform:uppercase;margin-bottom:7px;}
+  text-transform:uppercase;margin-bottom:5px;}
 .cot-camos .ctitle .cot-camo-title-actions{margin-left:auto;display:flex;align-items:center;gap:5px;letter-spacing:0}
 .cot-camos .ctitle .cot-info-trigger,.cot-maps .mtitle .cot-info-trigger{width:24px;height:24px;min-width:24px;min-height:24px}
 .cot-custom-open{min-height:24px;height:24px;display:inline-flex;align-items:center;gap:5px;padding:0 8px;border:1px solid rgba(240,176,74,.36);
@@ -878,17 +878,15 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
   letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
 .cot-custom-open:hover,.cot-custom-open:focus-visible,.cot-custom-open[aria-expanded='true']{
   border-color:#f0a030;background:rgba(240,160,48,.18);outline:none}
-.cot-camo-tags{display:flex;flex:0 0 auto;gap:4px;margin:0 0 6px;min-width:0;overflow-x:auto;
+.cot-camo-tags{display:flex;flex:0 0 auto;gap:4px;margin:0 0 4px;min-width:0;overflow-x:auto;
   overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x}
 .cot-camo-tags::-webkit-scrollbar{display:none}
-.cot-camo-collections{display:flex;flex:0 0 auto;gap:4px;min-width:0;margin-bottom:5px;overflow-x:auto;
+.cot-camo-collections{display:flex;flex:0 0 auto;gap:4px;min-width:0;margin-bottom:4px;overflow-x:auto;
   overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x;}
 .cot-camo-collections::-webkit-scrollbar{display:none;}
-body[data-cot-panels='persistent'] .cot-camos{flex-basis:calc(var(--cot-sidebar-panel-height,280px) + 64px);min-height:220px}
-body[data-cot-panels='persistent'] .cot-maps{flex-basis:calc(var(--cot-sidebar-panel-height,280px) - 64px)}
-.cot-camo-collection{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;min-width:32px;min-height:28px;
-  padding:3px 7px;border:1px solid #37434b;background:#111920;color:#c2cdd5;cursor:pointer;font-family:inherit;font-size:10px;font-weight:700;scroll-snap-align:start}
-.cot-camo-collection .cot-flag{width:20px;height:14px;object-fit:cover}
+.cot-camo-collection{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;min-width:30px;min-height:24px;
+  padding:2px 6px;border:1px solid #37434b;background:#111920;color:#c2cdd5;cursor:pointer;font-family:inherit;font-size:9px;font-weight:700;scroll-snap-align:start}
+.cot-camo-collection .cot-flag{width:18px;height:12px;object-fit:cover}
 .cot-camo-collection[aria-pressed='true']{background:#49351c;border-color:#f0a030;color:#ffd27a}
 .cot-camo-collection:focus-visible,.cot-camo-card:focus-visible{outline:2px solid #ffd27a;outline-offset:-2px}
 .cot-camo-card[hidden],.cot-camo-tag[hidden]{display:none}
@@ -1670,8 +1668,11 @@ body[data-cot-input='coarse'] .cot-country-chip{min-width:44px}
 .cot-multiplayer-entry:focus-visible{outline:2px solid #ffb452;outline-offset:3px;}
 .cot-battle-control:has(.cot-battle-menu.open) .cot-multiplayer-entry,.has-room .cot-multiplayer-entry{display:none;}
 
-.cot-map-inspect{position:absolute;right:2px;bottom:2px;width:25px;height:25px;display:grid;place-items:center;
-  border:1px solid #8fa5b666;background:#08121ddd;color:#ecbe79;cursor:zoom-in;padding:0;}
+.cot-map-inspect{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:30px;height:30px;display:grid;place-items:center;
+  border:1px solid #8fa5b666;background:#08121ddd;color:#ecbe79;cursor:zoom-in;padding:0;
+  opacity:0;pointer-events:none;transition:opacity .12s ease;}
+.cot-map-card:hover .cot-map-inspect,.cot-map-card:focus-within .cot-map-inspect{opacity:1;pointer-events:auto;}
+@media (hover:none){.cot-map-inspect{opacity:1;pointer-events:auto;}}
 .cot-map-inspect:focus-visible,.cot-map-select:focus-visible{outline:2px solid #ffc563;outline-offset:2px;}
 .cot-multiplayer-entry{border:0;padding:0 25px;isolation:isolate;background:#718493;
   clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);}
@@ -1697,7 +1698,7 @@ body[data-cot-input='coarse'] .cot-country-chip{min-width:44px}
 
 .cot-map-card{position:relative;}
 .cot-map-select{display:block;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;cursor:pointer;}
-body[data-cot-input="coarse"] .cot-map-inspect{width:44px;height:44px;bottom:14px;background:#08121dcc;}
+body[data-cot-input="coarse"] .cot-map-inspect{width:44px;height:44px;background:#08121dcc;}
 
 .cot-battle-menu .cot-battle-choice[aria-pressed="true"]{border-color:var(--mode-color);background:color-mix(in srgb,var(--mode-color) 15%,#121920);color:var(--mode-color);}
 
