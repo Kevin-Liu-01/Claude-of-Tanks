@@ -33,7 +33,8 @@ const PITCH_MIN = THREE.MathUtils.degToRad(-65); // looking down
 // with the atGunLimit reticle pin (movement.ts).
 const PITCH_MAX = THREE.MathUtils.degToRad(30);
 const MAX_AIM_DIST_M = 720;
-const PIVOT_ABOVE_TURRET_M = 2.5;
+// Bring the hull farther into the chase frame without widening the lens.
+const PIVOT_ABOVE_TURRET_M = 1.0;
 const PIVOT_FOLLOW_TAU_S = 0.1; // critically-damped-feel position lag
 const DIST_LERP_TAU_S = 0.15; // smooth lerp between orbit steps
 // >>> gameplay_feel r4: uphill framing assist -------------------------------

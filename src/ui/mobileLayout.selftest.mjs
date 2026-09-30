@@ -217,7 +217,7 @@ assert.match(shotInfo, /uiIconSVG\(cls\.icon, 11\)[\s\S]*cls\.label/,
 assert.match(shotInfo, /if \(!\(ev\.damage > 0\)\) t\.classList\.add\('deflected'\)/,
   'zero-damage incoming results must use the neutral deflection treatment instead of damage red');
 assert.match(hud,
-  /function resetCombatPresentation\(\)[\s\S]*hitDirs\.length = 0[\s\S]*hitMark = null[\s\S]*liveNums\.length = 0[\s\S]*dmgLayer\.replaceChildren\(\)[\s\S]*killfeed\.replaceChildren\(\)/,
+  /function resetCombatPresentation\(\)[\s\S]*hitDirs\.length = 0[\s\S]*hitMark = null[\s\S]*liveNums\.length = 0[\s\S]*dmgLayer\.replaceChildren\(\)[\s\S]*killLeft\.replaceChildren\(\)[\s\S]*killRight\.replaceChildren\(\)/,
   'phase changes must clear every transient combat-feedback surface together');
 assert.match(hud, /t\('hud\.aimWarning\.muzzleBlocked', \{ dist: Math\.round\(view\.blockedDistM\) \}\)[\s\S]*t\('hud\.gunTravelLimit'\)/,
   'aim warnings must distinguish a physical bore obstruction from a gun travel limit');

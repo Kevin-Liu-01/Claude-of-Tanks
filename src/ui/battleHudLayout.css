@@ -116,9 +116,9 @@ body[data-cot-width][data-cot-height][data-cot-input] .cot-es .es-actions{
 body:is(.cot-kc-live,.cot-si-report) :is(.cot-room-chat,.cot-touch,.cot-touch-aim){visibility:hidden!important;pointer-events:none!important}
 
 /* One compact instrument strip. Every available system owns the same cell. */
-.cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:112px;transform:translateX(-50%);display:flex;gap:4px;max-width:calc(100vw - 24px);padding:5px;border:1px solid #53616b;border-radius:7px;background:rgba(6,13,18,.9);box-shadow:0 3px 14px #0008;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}
+.cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:var(--hud-systems-left,12px);top:var(--hud-systems-top,80px);bottom:auto;transform:none;display:flex;gap:3px;max-width:var(--hud-systems-width,var(--hud-side-width,300px));padding:3px;border:1px solid #53616b;border-radius:4px;background:rgba(6,13,18,.9);box-shadow:0 3px 14px #0008;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}
 .cot-vehicle-controls::-webkit-scrollbar{display:none;}
-.cot-vehicle-controls>button{position:static!important;transform:none!important;flex:0 0 66px;width:66px!important;height:66px!important;min-width:0;min-height:44px;box-sizing:border-box;grid-template-columns:1fr 22px;grid-template-rows:22px 13px 10px;gap:3px 0;align-items:center;justify-items:center;padding:5px 7px;border:1px solid #4f5b64;border-radius:3px!important;background:linear-gradient(#24303b,#111b23);color:#c6d1d9;font:700 10px/1.15 var(--hud-font,system-ui);letter-spacing:.015em;text-transform:none;box-shadow:none;}
+.cot-vehicle-controls>button{pointer-events:auto;position:static!important;transform:none!important;flex:0 0 74px;width:74px!important;height:32px!important;min-width:0;min-height:32px;box-sizing:border-box;grid-template-columns:13px minmax(0,1fr) 13px;grid-template-rows:13px 8px;gap:2px;align-items:center;justify-items:center;padding:3px 2px;border:1px solid #4f5b64;border-radius:3px!important;background:linear-gradient(#24303b,#111b23);color:#c6d1d9;font:700 10px/1.15 var(--hud-font,system-ui);letter-spacing:.015em;text-transform:none;box-shadow:none;}
 .cot-vehicle-controls>.cot-auxiliary,.cot-vehicle-controls>.cot-special.show,.cot-vehicle-controls>.cot-jump.on{display:grid;}
 .cot-vehicle-controls>button[hidden],.cot-vehicle-controls[hidden]{display:none!important;}
 .cot-vehicle-controls>button.active{color:#ffdc94;border-color:#c89a50;background:linear-gradient(#443823,#252218);box-shadow:inset 0 -2px #efb84e;}
@@ -126,11 +126,57 @@ body:is(.cot-kc-live,.cot-si-report) :is(.cot-room-chat,.cot-touch,.cot-touch-ai
 .cot-vehicle-controls>button:hover:not(:disabled){border-color:#d7b16b;}
 .cot-vehicle-controls>button:focus-visible{outline:2px solid #fff;outline-offset:-2px;}
 .cot-vehicle-controls>button .si{grid-column:1;grid-row:1;display:flex;align-items:center;justify-content:center;filter:none;}
-.cot-vehicle-controls .si svg{width:20px!important;height:20px!important;}
-.cot-vehicle-controls>button .sk{grid-column:2;grid-row:1;display:grid;place-items:center;min-width:19px;height:18px;padding:0 2px;box-sizing:border-box;border:1px solid #78848d;border-radius:3px;background:#07101799;font:700 10px/1 var(--hud-font,system-ui);color:inherit;letter-spacing:0;}
-.cot-vehicle-controls>button .sl{grid-column:1/-1;grid-row:2;white-space:nowrap;font-size:10px;letter-spacing:.015em;text-align:center;}
-.cot-vehicle-controls .system-status{grid-column:1/-1;grid-row:3;font:600 9px/1 var(--hud-font,system-ui);letter-spacing:.06em;color:inherit;opacity:.85;white-space:nowrap;}
-body.cot-touch-layout .cot-vehicle-controls{bottom:calc(max(16px,env(safe-area-inset-bottom)) + 182px);}
+.cot-vehicle-controls .si svg{width:13px!important;height:13px!important;}
+.cot-vehicle-controls>button .sk{grid-column:3;grid-row:1;display:grid;place-items:center;min-width:13px;height:13px;padding:0 1px;box-sizing:border-box;border:1px solid #78848d;border-radius:3px;background:#07101799;font:700 9px/1 var(--hud-font,system-ui);color:inherit;letter-spacing:0;}
+.cot-vehicle-controls>button .sl{grid-column:2;grid-row:1;white-space:nowrap;font-size:9px;letter-spacing:0;text-align:center;}
+.cot-vehicle-controls .system-status{grid-column:1/-1;grid-row:2;font:600 9px/1 var(--hud-font,system-ui);letter-spacing:.06em;color:inherit;opacity:.85;white-space:nowrap;}
 body.cot-spectating .cot-vehicle-controls{display:none!important;}
-@media(max-width:550px){.cot-vehicle-controls{bottom:184px;gap:3px;padding:4px;}.cot-vehicle-controls>button{flex-basis:60px;width:60px!important;padding:5px 4px;}}
-@media(max-height:550px){body.cot-touch-layout .cot-vehicle-controls{bottom:90px;left:45%;}}
+
+
+
+/* Objectives share the score's center column; kill notices have bounded side lanes. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status{
+  --objective-accent:#efb84e;top:var(--hud-objective-top,68px);width:var(--hud-objective-width,312px);
+  box-sizing:border-box;min-height:40px;padding:5px 22px;gap:2px 9px;
+  grid-template-columns:18px minmax(0,1fr) auto;grid-template-rows:14px 12px;
+  clip-path:polygon(0 0,100% 0,calc(100% - 13px) 100%,13px 100%);
+  border:0;border-top:2px solid var(--objective-accent);border-bottom:1px solid #52616a;
+  background:linear-gradient(110deg,#101c24f5,#070e14f5);white-space:normal;
+  font:700 10px/1.2 var(--hud-font,system-ui);letter-spacing:.025em;
+}
+body[data-cot-battle-layout] .cot-mode-status.show{display:grid}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status[data-mode='mars']{--objective-accent:#c3a3ff}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status[data-mode='capture_the_flag']{--objective-accent:#6cccf2}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status[data-mode='zone_control']{--objective-accent:#79d7ad}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status[data-mode='endless_horde']{--objective-accent:#ef9485}
+body[data-cot-battle-layout] .cot-mode-status .mi{grid-column:1;grid-row:1/3;color:var(--objective-accent)}
+body[data-cot-battle-layout] .cot-mode-status .mn{grid-column:2;grid-row:1;color:var(--objective-accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body[data-cot-battle-layout] .cot-mode-status .mv{grid-column:2;grid-row:2;white-space:nowrap;font-size:9px;letter-spacing:0}
+body[data-cot-battle-layout] .cot-mode-status .mb{grid-column:3;grid-row:1/3;margin:0;padding:3px;min-height:28px}
+body[data-cot-battle-layout].cot-touch-layout .cot-mode-status:has(.mb:not([hidden])){min-height:52px}
+body[data-cot-battle-layout].cot-touch-layout .cot-mode-status .mb{min-width:44px;min-height:44px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-touch .mobile-chrome{top:calc(var(--hud-objective-bottom,64px) + 8px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-killfeed{display:contents}
+body[data-cot-battle-layout] .cot-kill-lane{
+  position:absolute;z-index:var(--hud-layer-status);left:12px;top:var(--hud-kill-left-top);width:var(--hud-side-width);
+  max-height:var(--hud-kill-left-height);display:flex;flex-direction:column;gap:3px;overflow:hidden;
+}
+body[data-cot-battle-layout] .cot-kill-lane.r{left:auto;right:12px;top:var(--hud-kill-right-top);max-height:var(--hud-kill-right-height)}
+body[data-cot-battle-layout] .cot-kill-lane:empty{display:none}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf{width:100%;flex:0 0 26px;padding:4px 6px;font-size:10px;gap:4px}
+body[data-cot-battle-layout] .cot-kill-lane.l .cot-kf{border-color:#79d78d}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf .si{width:22px}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d{font-size:8px;letter-spacing:0}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf .c{display:none}
+
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:max(108px,calc(var(--hud-objective-bottom,64px) + 8px))}
+
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:calc(var(--hud-objective-bottom,72px) + 8px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-height='short'][data-cot-orientation='landscape'] .cot-prebattle{top:calc(var(--hud-objective-bottom,64px) + 8px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-height='short']:not(.cot-touch-layout) .cot-prebattle{width:240px}
+
+body.cot-touch-layout .cot-vehicle-controls>button{height:44px!important;min-height:44px;grid-template-rows:16px 12px;padding-block:5px}
+body[data-cot-battle-layout] .cot-kill-lane.r .cot-kf{border-left:0;border-right:2px solid #f05a5a;background:linear-gradient(90deg,transparent,rgba(8,12,16,.82) 26%)}
+
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] :is(.cot-dp,.cot-drive){bottom:128px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait'] .cot-prebattle{top:var(--hud-portrait-countdown-top,255px)}

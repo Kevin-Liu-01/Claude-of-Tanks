@@ -36,7 +36,7 @@ const player = tanks[0];
 hud.setDamagePanel(panel);
 panel.setTank(player.spec);
 panel.setState(player.combat);
-const frame = {timeS:60, mode:'battle', player, tanks, spotting:{isSpotted:()=>true},
+const frame = {matchModeState:{id:'mars'}, auxiliaryKeyLabels:{smoke:'G',lights:'N',roofGun:'B',missile:'E'}, timeS:60, mode:'battle', player, tanks, spotting:{isSpotted:()=>true},
   aim:{shellSlot:0, reload:{t:0,totalS:6}, shells:[
     {name:'DM53',type:'APFSDS',count:24},{name:'DM12A2',type:'HEAT',count:16},{name:'DM11',type:'HE',count:12}
   ]}};
@@ -49,10 +49,16 @@ function hit(incoming=false) {
 function state(name) {
   settings.close({noRelock:true});
   chat.close({relock:false}); chat.clear(); chat.setActive(false);
-  player.spec = TANK_SPECS[name==='special'?'bwp1':'leo2a5'];
+  const modeId = name.startsWith('mode-') ? name.slice(5) : 'mars';
+  frame.matchModeState = {id:modeId, score:{alpha:2,bravo:1}, target:modeId==='capture_the_flag'?3:modeId==='turbo_ball'?5:750, horde:{wave:3,alive:12},line:{index:1,total:3},playerAmmo:24,playerAmmoCapacity:40};
+  player.spec = TANK_SPECS[name==='special'?'bwp1':'m1a3'];
   player.combat = createCombatState(player.spec);
   player.specialAction = createSpecialActionState(player.spec);
   hud.setMode('hidden'); hud.setMode('battle'); hud.update(frame); panel.update(player.combat);
+  for(let i=0;i<3;i++){
+    bus.emit('tank:destroyed',{id:tanks[8].id,killerId:player.id,cause:'fire'});
+    bus.emit('tank:destroyed',{id:tanks[1].id,killerId:tanks[9].id,cause:'fire'});
+  }
   if(name==='countdown') hud.preBattleCountdown(5);
   if(name==='reports'||name==='log'||name==='chat'||name==='combined') {
     for(let i=0;i<6;i++){hit();hit(true);}

@@ -37,13 +37,18 @@ this deterministic geometry gate; verify the live battle separately as well.
 - States: ordinary HUD, countdown, incoming/outgoing hit reports, combat log,
   chat, simultaneous chat/log/hits, spectator, Settings, sniper, enlarged map,
   expanded touch ammo, special action, and results.
+- Allied and enemy kill notifications populate both upper side lanes in every
+  battle state. All seven mode objectives are measured against the score,
+  minimap, notices and mobile toolbar.
+- The full five-control Gravity/ATGM kit is checked for 44px touch / 32px mouse target heights
+  and one correct action per click, including horizontally scrolled controls.
 - Settings tabs are clicked through; Shift+Tab is checked at the focus boundary.
 - Each case also rotates/resizes with chat/log open and enlarges the map, then
   returns to its original size. Both resized layouts are measured.
 - The production killcam phase class is checked for leaked chat/touch controls;
   the results fixture includes both Battle Again and Return to Garage actions.
 
-The full run contains **297 state/viewport checks**. It fails on overlapping
+The full run contains **393 state/viewport checks**. It fails on overlapping
 screen-fixed regions, offscreen bounds, failed ammo disclosure, focus escaping
 Settings, or browser exceptions. JSON geometry receipts and selected/failing
 screenshots are saved under `--out`. Keep evidence outside tracked source.
@@ -53,11 +58,6 @@ World-space tank names remain attached to their projected vehicles and are
 intentionally excluded from screen-fixed panel collision checks. Full-screen
 modal backdrops intentionally cover the battlefield; their internal regions
 are checked instead. The 3D killcam presentation is not part of this fixture.
-
-The older `mobileLayout.selftest.mjs` currently stops at an unrelated Garage
-source-regex assertion expecting pre-localization literal English markup.
-Do not treat that as a passing full-suite result or remove the assertion to
-make this HUD change appear green. The focused rendered gate is independent.
 
 ## Map and battlefield agreement
 

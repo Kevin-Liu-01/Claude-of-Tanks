@@ -90,6 +90,7 @@ const CSS = `
 .cot-touch .jump{right:134px;bottom:124px;width:84px;height:84px;color:#ffbe5c;border-color:rgba(255,190,91,.5);
   background:radial-gradient(circle at 50% 42%,rgba(255,170,60,.22),transparent 40%),
     radial-gradient(circle at 38% 27%,rgba(96,78,48,.9),rgba(34,28,18,.97) 48%,rgba(10,10,9,.98) 76%);}
+.cot-touch .jump[hidden]{display:none!important;}
 .cot-touch .jump svg{width:40px;height:40px;filter:drop-shadow(0 2px 3px #000);}
 .cot-touch .jump .lb{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:8px;
   font-weight:800;letter-spacing:.13em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px #000;}

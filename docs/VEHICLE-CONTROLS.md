@@ -1,6 +1,9 @@
 # Vehicle controls
 
-The battle HUD exposes one equal-size control row, limited to equipment fitted
+The battle HUD exposes one flat, equal-size control row immediately above the
+ammunition and equipment tray. Desktop buttons are 74×32 pixels; touch keeps
+44-pixel targets. Shortcuts and on/off/cooldown labels remain visible, and the
+strip scrolls horizontally on narrow screens. Controls are limited to equipment fitted
 on the current procedural model. Desktop defaults are E for the primary special
 system, G for smoke, N for lights, B for an automatic roof weapon, and F for the
 Gravity Mode / Turbo Ball jump. Settings can rebind these actions; the row shows

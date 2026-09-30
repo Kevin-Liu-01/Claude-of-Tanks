@@ -66,11 +66,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
       read('.cot-drive')?.top ?? height) - 8;
   }
   function rightFloor(height: number, width: number, map: DOMRect | null): number {
+    const ammo = read('.cot-shells');
     return Math.min(height - 92,
+      ammo && ammo.left > width / 2 ? ammo.top - 8 : height,
       map && map.left > width / 2 ? map.top - 8 : height,
       read('.cot-spec.show')?.top ?? height,
-      width < 768 ? read('.cot-drive')?.top ?? height : height,
-      width < 768 ? read('.cot-vehicle-controls')?.top ?? height : height);
+      width < 768 ? read('.cot-drive')?.top ?? height : height);
   }
   function refresh() {
     frame = 0;
@@ -79,8 +80,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       document.body.toggleAttribute('data-cot-battle-layout', visible);
     }
     if (!visible) return;
-    observe('.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-touch .joy,.cot-touch .fire.alt');
-    observe('.cot-si-toasthost,.cot-room-chat', true);
+    observe('.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
+    observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane', true);
     // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
     // asks for a relayout when it mounts, and the right roster takes the lane below it.
     observe('.cot-mp-status.battle');
@@ -90,21 +91,66 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const tray = width < 1000 ? 'stacked' : 'inline';
     if (document.body.dataset.hudTray !== tray) document.body.dataset.hudTray = tray;
     const map = read('.cot-minimap');
-    const top = read('.cot-top')?.bottom || 64;
-    const leftTop = Math.max(top, read('.cot-ear.l')?.bottom || 0,
+    const scoreBottom = read('.cot-top')?.bottom || 64;
+    const top = Math.max(scoreBottom, read('.cot-mode-status.show')?.bottom || 0);
+    const leftAnchor = Math.max(top, read('.cot-ear.l')?.bottom || 0,
       map && map.left < width / 2 ? map.bottom : 0) + 8;
-    const leftBottom = leftFloor(height, touch);
+    const systems = read('.cot-vehicle-controls');
+    const systemsHeight = systems?.height ?? 0;
+    const ammo = read('.cot-shells');
+    let systemsWidth = Math.min(440, width - 24);
+    let systemsTop = (ammo?.top ?? height - 80) - systemsHeight - 8;
+    const systemsElement = document.querySelector<HTMLElement>('.cot-vehicle-controls');
+    const naturalWidth = systemsElement ? systemsElement.scrollWidth + 2 : 0;
+    let dockWidth = Math.min(systemsWidth, naturalWidth);
+    let systemsLeft = Math.max(12, Math.min(width - dockWidth - 12,
+      (ammo ? ammo.left + ammo.width / 2 : width / 2) - dockWidth / 2));
+    if (touch && height < 550 && width > height) {
+      // Landscape phones have a vertical ammo rail. Use the lower gap between
+      // the driving instruments and aim buttons, above the health strip.
+      systemsLeft = Math.max(read('.cot-touch.on .joy')?.right || 0, read('.cot-drive')?.right || 0) + 8;
+      systemsWidth = Math.max(52, Math.min(440, (read('.cot-touch.on .autoaim')?.left || width - 12) - systemsLeft - 8));
+      dockWidth = Math.min(systemsWidth, naturalWidth);
+      systemsTop = (read('.cot-dp')?.top || height - 44) - systemsHeight - 8;
+    }
+    if (touch && width < height && map && map.left < width / 2 && map.bottom + 8 > systemsTop) {
+      systemsLeft = map.right + 8;
+      systemsWidth = Math.max(52, width - systemsLeft - 12);
+      dockWidth = Math.min(systemsWidth, naturalWidth);
+    }
+    const sideWidth = Math.min(300, width / 2 - 20);
+    const leftBottom = Math.min(leftFloor(height, touch),
+      systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);
+    const countdown = read('.cot-prebattle.on');
+    const leftKillBottom = countdown && countdown.left < 12 + Math.min(300, width / 2 - 20)
+      && countdown.bottom > leftAnchor ? Math.min(leftBottom, countdown.top - 8) : leftBottom;
+    const killHeightLeft = Math.max(0, Math.min(3, Math.floor((leftKillBottom - leftAnchor + 3) / 29)) * 29 - 3);
+    const killsLeft = Math.min(killHeightLeft, read('.cot-kill-lane.l')?.height || 0);
+    const leftTop = leftAnchor + (killsLeft ? killsLeft + 8 : 0);
     const earRight = read('.cot-ear.r');
     const strip = read('.cot-mp-status.battle');
     // A strip in the right roster's column pushes the roster below it (the roster's own top is otherwise its CSS lane).
     const rosterTopRight = strip && earRight && strip.right > earRight.left && strip.bottom > earRight.top - 8 ? Math.ceil(strip.bottom) + 6 : null;
     const rosterBottomRight = earRight ? (rosterTopRight ?? earRight.top) + (earRight.bottom - earRight.top) : 0;
-    const rightTop = Math.max(top, rosterBottomRight) + 8;
-    const rightBottom = rightFloor(height, width, map);
+    const chrome = touch ? read('.cot-touch.on .mobile-chrome') : null;
+    const rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0) + 8;
+    const rightBottom = Math.min(rightFloor(height, width, map),
+      systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? systemsTop - 8 : height);
+    const rightKillBottom = countdown && countdown.right > width - 12 - Math.min(300, width / 2 - 20)
+      && countdown.bottom > rightAnchor ? Math.min(rightBottom, countdown.top - 8) : rightBottom;
+    const killHeightRight = Math.max(0, Math.min(3, Math.floor((rightKillBottom - rightAnchor + 3) / 29)) * 29 - 3);
+    const killsRight = Math.min(killHeightRight, read('.cot-kill-lane.r')?.height || 0);
+    const rightTop = rightAnchor + (killsRight ? killsRight + 8 : 0);
     const chat = !!read('.cot-room-chat:not([hidden])');
     const toastCount = root.querySelector('.cot-si-toasthost')?.childElementCount || 0;
     const stack = battleSideStack(leftBottom - leftTop, chat, touch ? Math.min(1, toastCount) : toastCount);
     const properties = {
+      'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
+      'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
+      'objective-top': scoreBottom + 2, 'objective-bottom': top,
+      'objective-width': Math.max(0, (read('.cot-top')?.width || 344) - 32),
+      'kill-left-top': leftAnchor, 'kill-right-top': rightAnchor,
+      'kill-left-height': killHeightLeft, 'kill-right-height': killHeightRight,
       'left-top': leftTop, 'left-height': Math.max(0, leftBottom - leftTop),
       'right-top': rightTop, 'right-height': Math.max(0, rightBottom - rightTop),
       'toast-height': stack.toastHeight, 'chat-top': leftTop + stack.chatOffset,

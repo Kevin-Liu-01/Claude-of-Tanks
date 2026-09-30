@@ -16,7 +16,7 @@ const cases = [
   ['small-landscape',667,375,true],['short-mouse',844,390,false],
   ['chinese-laptop',1280,720,false,'zh-CN'],['chinese-phone',390,844,true,'zh-CN'],
 ];
-const states = ['idle','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','ended'];
+const states = ['idle','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','ended'];
 const reports=[];const errors=[];
 function measure(state){
   // Kept inside the serialized page callback so browser execution needs no
@@ -33,10 +33,10 @@ function measure(state){
   }
   const selectors = state==='settings' ? ['.cot-set-hdr','.cot-set-tabs','.cot-set-body','.cot-set-ftr'] :
     state==='ended' ? ['.es-hero','.es-report','.es-actions'] :
-    ['.cot-ear.l','.cot-ear.r','.cot-top','.cot-net','.cot-drive','.cot-dp','.cot-minimap',
+    ['.cot-ear.l','.cot-ear.r','.cot-top','.cot-mode-status.show','.cot-kill-lane.l','.cot-kill-lane.r','.cot-net','.cot-drive','.cot-dp','.cot-minimap',
      '.cot-si-toasthost','.cot-si-log.open','.cot-si-cardhost:not(:empty)',
      '.cot-room-chat:not([hidden])','.cot-spec.show','.cot-prebattle',
-     '.cot-shell','.cot-con','.cot-special','.cot-touch.on .joy','.cot-touch.on .round',
+     '.cot-shell','.cot-con','.cot-vehicle-controls','.cot-touch.on .joy','.cot-touch.on .round',
      '.cot-touch.on .mobile-chrome'];
   const rects=collectVisibleRects(selectors);
   const failures=[];
@@ -91,6 +91,22 @@ try {
     if(idleLayoutReads>1)errors.push(`${name}: unchanged HUD caused ${idleLayoutReads} layout measurements`);
     async function check(state){
       const result=await page.evaluate(measure,state);
+      const score=result.rects.find(r=>r.name==='cot-top');
+      const objective=result.rects.find(r=>r.name==='cot-mode-status show');
+      if(score&&objective&&objective.right-objective.x>=score.right-score.x)
+        result.failures.push('objective must be narrower than the scoreboard');
+      if(state!=='settings'&&state!=='ended'){
+        const decoration=await page.evaluate(()=>{
+          const notice=document.querySelector('.cot-kill-lane.r .cot-kf');
+          const style=notice?getComputedStyle(notice):null;
+          return {left:style?.borderLeftWidth,right:style?.borderRightWidth,
+            mode:document.querySelector('.cot-mode-status')?.dataset.mode};
+        });
+        if(decoration.left&& (parseFloat(decoration.left)!==0||parseFloat(decoration.right)<=0))
+          result.failures.push('enemy kill notice must use the right border');
+        if(state.startsWith('mode-')&&decoration.mode!==state.slice(5))
+          result.failures.push(`expected objective ${state.slice(5)}, saw ${decoration.mode}`);
+      }
       if(state==='combined'||state==='spectator'||result.failures.length)
         await page.screenshot({path:resolve(out,`${name}-${state}.png`)});
       reports.push({name,...page.viewportSize(),touch,locale,state,...result});
@@ -99,13 +115,45 @@ try {
     for(const state of states){
       await page.evaluate(state=>window.__HUD_LAYOUT.state(state),state);
       // ResizeObserver + its scheduled layout pass, and spectator's enter state.
-      await page.waitForTimeout(state==='ended'?1600:500);
+      if(state==='ended')await page.waitForTimeout(1600);
+      else await page.evaluate(async()=>{
+        // Wait for real finite UI transitions, rather than sleeping half a
+        // second for every state. Infinite status pulses cannot block the gate.
+        await new Promise(requestAnimationFrame);
+        await new Promise(requestAnimationFrame);
+        const animations=document.getAnimations().filter(a=>
+          a.playState==='running'&&Number.isFinite(a.effect?.getComputedTiming().endTime));
+        await Promise.race([
+          Promise.all(animations.map(a=>a.finished.catch(()=>{}))),
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error('HUD transition did not settle')),1500)),
+        ]);
+        await new Promise(requestAnimationFrame);
+      });
       if(state==='ammo-expanded'&&touch){
         await page.locator('.cot-shell.sel').click();
         await page.waitForTimeout(180);
         if(await page.locator('.cot-shell[aria-hidden="true"]').count())errors.push(`${name}: ammo drawer failed to expand`);
       }
       await check(state);
+      if(state==='idle'){
+        // The full Gravity + ATGM kit must remain usable after moving to a side lane.
+        const buttons=page.locator('.cot-vehicle-controls > button:visible');
+        if(await buttons.count()!==5)errors.push(`${name}: expected all five vehicle controls`);
+        await page.evaluate(()=>{
+          window.__controlEvents=[];
+          for(const event of ['ui:specialAction','ui:selfRight','ui:smoke','ui:lightsToggle','ui:roofGun'])
+            window.__HUD_LAYOUT.bus.on(event,()=>window.__controlEvents.push(event));
+        });
+        for(const button of await buttons.all()){
+          const box=await button.boundingBox();
+          if(box.width<44||box.height<(touch?44:32))errors.push(`${name}: vehicle control below touch target minimum`);
+          await button.click();
+        }
+        const events=await page.evaluate(()=>window.__controlEvents);
+        if(events.join(',')!=='ui:specialAction,ui:selfRight,ui:smoke,ui:lightsToggle,ui:roofGun')
+          errors.push(`${name}: vehicle control activation mismatch: ${events}`);
+        await page.evaluate(()=>document.querySelector('.cot-vehicle-controls').scrollLeft=0);
+      }
       if(state==='settings'){
         // Backward Tab at the first control must stay in Settings, not the HUD.
         await page.locator('.cot-set-close').focus();

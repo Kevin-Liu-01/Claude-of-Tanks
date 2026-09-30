@@ -124,6 +124,12 @@ assert.equal(camera.position.x, 40,
   'reveal snap samples the moved battle root instead of its stale Garage matrix');
 assert.ok(camera.position.z < -410 && camera.position.z > -420,
   'reveal snap starts beside the battle spawn before the renderer traverses the scene');
+camera.updateMatrixWorld(true);
+const hullInFrame = visualRoot.position.clone().add(new Vector3(0, 1, 0)).project(camera);
+const hullScreenFraction = (1 - hullInFrame.y) / 2;
+assert.ok(hullScreenFraction > .60 && hullScreenFraction < .66,
+  `chase hull stays in view above the bottom HUD (${hullScreenFraction})`);
+assert.equal(camera.fov, 60, 'chase framing preserves the established field of view');
 const initialAim = rig.aimPoint.clone();
 const initialDirection = new Vector3();
 camera.getWorldDirection(initialDirection);

@@ -1948,6 +1948,7 @@ export function initHud(bus: EventBus): HudRuntime {
     requestBrief();
   });
   let lastModeStatus = '';
+  const standardModeStatus: HudMatchModeState = {id:'standard',target:0};
   let objectiveTeam: 'alpha' | 'bravo' = 'alpha';
 
   // --- ping/fps readout (WoT battle constant, top-right corner) ---
@@ -2116,6 +2117,8 @@ export function initHud(bus: EventBus): HudRuntime {
   const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
 
   const killfeed = el('div', 'cot-killfeed', root);
+  const killLeft = el('div', 'cot-kill-lane l', killfeed);
+  const killRight = el('div', 'cot-kill-lane r', killfeed);
 
   // ===================== SPECTATE BAR (killcam_endscreen r1) ================
   // Driven by killcam.ts's ally-spectate controller over the bus (additive
@@ -2629,6 +2632,7 @@ export function initHud(bus: EventBus): HudRuntime {
   let alertTimer: ReturnType<typeof setTimeout> | null = null;
   let heightFieldRef: HudHeightField | null = null; // for spotting line-of-sight tests
   const nameById = new Map<string, string>();
+  const teamById = new Map<string, string | undefined>();
   const specIdById = new Map<string, string>(); // entity id -> tank spec id (icon lookups)
   // incoming-hit direction wedges (hitind r1, on the killcam_endscreen r1
   // world-anchoring): SHOOTER world pos + impact kind — screen angle re-projected
@@ -2685,7 +2689,8 @@ export function initHud(bus: EventBus): HudRuntime {
     hitMark = null;
     liveNums.length = 0;
     dmgLayer.replaceChildren();
-    killfeed.replaceChildren();
+    killLeft.replaceChildren();
+    killRight.replaceChildren();
     if (alertTimer) {
       clearTimeout(alertTimer);
       alertTimer = null;
@@ -3026,6 +3031,7 @@ export function initHud(bus: EventBus): HudRuntime {
     modeState: HudMatchModeState,
     ownScore: string | number,
   ): string {
+    if (modeState.id === 'standard') return t('hud.modeStatus.eliminate', {own:String(ownScore), target:String(modeState.target || 0)});
     if (modeState.id === 'capture_the_flag') {
       return t('hud.modeStatus.flags', { own: String(ownScore), target: String(modeState.target || 3) });
     }
@@ -3052,6 +3058,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function modeStatusIconName(modeId: string): string {
+    if (modeId === 'standard') return 'modeStandard';
     if (modeId === 'capture_the_flag') return 'modeFlag';
     if (modeId === 'mars') return 'modeMars';
     if (modeId === 'zone_control' || modeId === 'frontline_assault') return 'modeZones';
@@ -3065,7 +3072,10 @@ export function initHud(bus: EventBus): HudRuntime {
     const status = `${modeState.id}|${copy}`;
     if (status === lastModeStatus) return;
     modeStatusIcon.innerHTML = uiIconSVG(modeStatusIconName(modeState.id || ''), 15, 'currentColor');
-    modeStatusName.textContent = modeState.label || t('hud.modeStatus.objective');
+    const modeId = normalizeGameMode(modeState.id);
+    modeStatusEl.dataset.mode = modeId;
+    modeStatusEl.title = t(`playMenu.matchMode.${modeId}.label`);
+    modeStatusName.textContent = t(`hud.objective.${modeId}`);
     modeStatusValue.textContent = copy;
     modeStatusEl.classList.add('show');
     lastModeStatus = status;
@@ -3104,12 +3114,10 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function updateStandardScore(frame: HudFrame, tally: TeamTally): void {
-    if (lastModeStatus) {
-      modeStatusEl.classList.remove('show');
-      lastModeStatus = '';
-    }
     const allyKills = tally.enemyTotal - tally.enemyAlive;
     const enemyKills = tally.allyTotal - tally.allyAlive;
+    standardModeStatus.target = tally.enemyTotal;
+    updateModeStatus(standardModeStatus, allyKills);
     const score = `${allyKills}:${enemyKills}|${tally.allyAlive}/${tally.allyTotal}|${tally.enemyAlive}/${tally.enemyTotal}`;
     if (score !== lastScore) {
       fgEl.textContent = String(allyKills);
@@ -5598,7 +5606,10 @@ export function initHud(bus: EventBus): HudRuntime {
   function pushKill(payload: HudEventPayload): void {
     const killer = (payload.killerId ? nameById.get(payload.killerId) : null) || t('hud.enemy');
     const victim = (payload.id ? nameById.get(payload.id) : null) || payload.specId || t('hud.tankFallback');
-    const item = el('div', 'cot-kf', killfeed);
+    const ownTeam = teamById.get(playerId || '');
+    const alliedKill = ownTeam !== undefined && !!payload.killerId && teamById.get(payload.killerId) === ownTeam;
+    const lane = alliedKill ? killLeft : killRight;
+    const item = el('div', 'cot-kf', lane);
     const cause = causeLabel(payload.cause || '');
     // side-profile silhouettes of the actual tanks flank the names
     const kSpec = payload.killerId ? specIdById.get(payload.killerId) : null;
@@ -5612,8 +5623,8 @@ export function initHud(bus: EventBus): HudRuntime {
     if (vSpec) maskIcon(requireElement<HTMLElement>(item, '.vsi'), vSpec, 'side_silhouette', '#f28f8f');
     requireElement<HTMLElement>(item, '.k').textContent = killer;
     requireElement<HTMLElement>(item, '.v').textContent = victim;
-    killfeed.prepend(item);
-    while (killfeed.children.length > 5) killfeed.lastChild?.remove();
+    lane.prepend(item);
+    while (lane.children.length > 3) lane.lastChild?.remove();
     setTimeout(() => item.classList.add('out'), 5200);
     setTimeout(() => { if (item.parentNode) item.remove(); }, 6200);
   }
@@ -6216,6 +6227,7 @@ export function initHud(bus: EventBus): HudRuntime {
       const tank = tanks[i];
       if (!tank?.spec) continue;
       nameById.set(tank.id, tank.spec.name);
+      teamById.set(tank.id, tank.team);
       specIdById.set(tank.id, tank.spec.id);
     }
   }

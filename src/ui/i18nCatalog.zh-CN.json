@@ -3615,5 +3615,13 @@
   "systems.auto": "自动",
   "systems.on": "开启",
   "systems.cooldown": "{seconds}秒",
-  "systems.atgm.help": "选择制导导弹。发射后，用瞄准光标引导导弹。"
+  "systems.atgm.help": "选择制导导弹。发射后，用瞄准光标引导导弹。",
+  "hud.objective.standard": "消灭敌方队伍",
+  "hud.objective.capture_the_flag": "夺取并带回敌方旗帜",
+  "hud.objective.zone_control": "夺取并坚守区域",
+  "hud.objective.turbo_ball": "将球送入敌方球门",
+  "hud.objective.endless_horde": "抵御敌潮 · 寻找补给",
+  "hud.objective.frontline_assault": "依次夺取各处阵地",
+  "hud.objective.mars": "坚守区域 · 收集强化",
+  "hud.modeStatus.eliminate": "已消灭 {own} / {target}"
 }
