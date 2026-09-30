@@ -1,17 +1,13 @@
 import assert from 'node:assert/strict';
 import {matchRulesetFor,normalizeTeamArrangement,hordeWaveSize} from './matchRuleset.ts';
 import {createMatchModeController} from './matchModes.ts';
-import {createLobby,applyLobbyCommand,serializeLobby,readSerializedLobby} from '../net/lobby.ts';
+// 2026-09-30: the v1 lobby (src/net/lobby.ts) left with the first multiplayer stack; the room's arrangement rides roomPolicy's settings (below).
 import {defaultRoomSettings} from '../mp/room/roomPolicy.ts';
 import {writeTeamArrangement,readTeamArrangement} from '../game/teamArrangement.ts';
 const data=new Map(),storage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)};
 for(const [mode,input] of Object.entries({capture_the_flag:{scoreTarget:5,respawnS:10},zone_control:{scoreTarget:1500,respawnS:3},turbo_ball:{scoreTarget:7,respawnS:2},endless_horde:{waveSize:4,waveStep:2},frontline_assault:{holdS:45},mars:{marsGravity:'moon',marsCaches:'frequent',scoreTarget:500}})){
   writeTeamArrangement(mode,input,storage);const saved=readTeamArrangement(mode,storage);
   const rules=matchRulesetFor(mode,null,saved);
-  const lobby=createLobby({roomCode:'ABC123',hostId:'host',hostName:'Host',gameMode:mode,arrangement:input});
-  assert.deepEqual(lobby.arrangement,saved,`${mode}: host creation carries configured rules`);
-  applyLobbyCommand(lobby,'host',{type:'set_arrangement',arrangement:input});
-  assert.deepEqual(readSerializedLobby(serializeLobby(lobby)).arrangement,saved,`${mode}: legacy room roundtrip`);
   assert.deepEqual(defaultRoomSettings({gameMode:mode,arrangement:input}).arrangement,saved,`${mode}: v2 room boundary`);
   if(input.scoreTarget){
     const controller=createMatchModeController({mode,ruleset:rules,entities:[{id:'a',team:'alpha',state:{pos:{x:0,y:0,z:0}},combat:{destroyed:false}}],revive:()=>{}});
