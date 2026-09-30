@@ -1671,8 +1671,8 @@ body[data-cot-input='coarse'] .cot-country-chip{min-width:44px}
   opacity:0;pointer-events:none;transition:opacity .12s ease;}
 .cot-map-inspect svg{filter:drop-shadow(0 1px 2px #000) drop-shadow(0 0 3px #000);}
 .cot-map-card.sel:has(.cot-map-inspect) .cot-map-select{cursor:zoom-in;}
-.cot-map-card:hover .cot-map-inspect,.cot-map-card:focus-within .cot-map-inspect{opacity:1;pointer-events:auto;}
-@media (hover:none){.cot-map-inspect{opacity:1;pointer-events:auto;}}
+@media (hover:hover){.cot-map-card:hover .cot-map-inspect{opacity:1;pointer-events:auto;}}
+.cot-map-inspect:focus-visible{opacity:1;pointer-events:auto;}
 .cot-map-inspect:focus-visible,.cot-map-select:focus-visible{outline:2px solid #ffc563;outline-offset:2px;}
 .cot-multiplayer-entry{border:0;padding:0 25px;isolation:isolate;background:#718493;
   clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);}
