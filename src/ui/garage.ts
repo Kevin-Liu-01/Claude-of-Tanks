@@ -1,3 +1,4 @@
+import { createCustomSelect } from './customSelect.ts';
 import { guidedMissileSlot, specialActionKind, SPECIAL_ACTION_KINDS } from '../sim/specialActionPolicy.ts';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import { movementDispersionFactor } from '../sim/movementDispersion.ts';
@@ -2834,6 +2835,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   function closeBattleMenu({ restoreFocus = false } = {}) {
     arrangementPanel.close();
+    marsDropdowns.forEach(dropdown => dropdown.close());
     battleMenu.classList.remove('open');
     battleModeBtn.setAttribute('aria-expanded', 'false');
     if (restoreFocus) battleModeBtn.focus();
@@ -2987,6 +2989,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const marsLabel = requiredElement<HTMLElement>(battleMenu, '[data-mars-label]');
   const marsSettings = requiredElement<HTMLElement>(battleMenu, '[data-mars-settings]');
   const marsField = (name: string) => requiredElement<HTMLSelectElement>(marsSettings, `select[data-mars-field="${name}"]`);
+  const marsDropdowns = ['gravity', 'caches'].map(name => createCustomSelect(marsField(name)));
   const soloOptions = requiredElement<HTMLElement>(battleMenu, '[data-solo-options]');
   const teamOptions = requiredElement<HTMLElement>(battleMenu, '[data-team-options]');
   const refreshBattleTimes = bindBattleTimeChoices(battleMenu, () => emit('ui:click', {}));
@@ -3024,6 +3027,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const settings = readMarsSettings();
     marsField('gravity').value = settings.gravity;
     marsField('caches').value = settings.caches;
+    marsDropdowns.forEach(dropdown => { if (!shown) dropdown.close(); dropdown.refresh(); });
   };
   marsSettings.addEventListener('change', () => {
     emit('ui:click', {});

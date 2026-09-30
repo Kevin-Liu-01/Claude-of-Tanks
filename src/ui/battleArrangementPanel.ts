@@ -1,3 +1,4 @@
+import { createCustomSelect } from './customSelect.ts';
 import { createEnemyNationSelect } from './enemyNationSelect.ts';
 import { t } from './i18n.ts';
 import { ENEMY_NATION_OPTIONS, readTeamArrangement, writeTeamArrangement } from '../game/teamArrangement.ts';
@@ -22,10 +23,12 @@ export function createBattleArrangementPanel(host: HTMLElement): { render(mode: 
       render(mode);
     });
   }
-  const nation = createEnemyNationSelect(fields.get('enemyNation')!.select);
+  const dropdowns = [...fields].map(([name, field]) => name === 'enemyNation'
+    ? createEnemyNationSelect(field.select) : createCustomSelect(field.select));
+  const close = (): void => dropdowns.forEach(dropdown => dropdown.close());
   host.append(controls, readout);
   function render(next: GameModeId): void {
-    if (mode !== next) nation.close();
+    if (mode !== next) close();
     mode = next;
     const arrangement = readTeamArrangement(mode);
     const rules = matchRulesetFor(mode, null, arrangement);
@@ -53,10 +56,10 @@ export function createBattleArrangementPanel(host: HTMLElement): { render(mode: 
           : name === 'holdS' ? rules.assault?.holdS : name === 'respawnS' ? rules.respawnS
           : name === 'scoreTarget' ? rules.scoreTarget ?? RULESET_SCORE_TARGETS[mode] : rules[name as 'allies' | 'enemies']);
     }
-    nation.refresh();
+    dropdowns.forEach(dropdown => dropdown.refresh());
     readout.replaceChildren(...rulesetLines(rules).map(({ key, values }) => {
       const chip = document.createElement('span'); chip.textContent = t(`rules.line.${key}`, key === 'enemyNation' ? { value: t(`campaign.enemy.${values.value}`) } : { ...values }); return chip;
     }));
   }
-  return { render, close: nation.close };
+  return { render, close };
 }

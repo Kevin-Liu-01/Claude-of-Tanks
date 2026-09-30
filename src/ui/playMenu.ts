@@ -1,3 +1,4 @@
+import { createCustomSelect } from './customSelect.ts';
 import { createEnemyNationSelect } from './enemyNationSelect.ts';
 import { containModalTab } from './modal.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -1019,6 +1020,7 @@ export function createPlayMenu({
   const battlefieldCard = requiredElement<HTMLElement>(root, '.battlefield-card');
   const operationField = requiredElement<HTMLElement>(root, '[data-operation-field]');
   const operationSelect = requiredElement<HTMLSelectElement>(root, 'select[data-control="operation"]');
+  const operationDropdown = createCustomSelect(operationSelect);
   const battlefieldArt = requiredElement<HTMLElement>(root, '.battlefield-art');
   battlefieldArt.appendChild(createRandomMapMosaic(maps, { showCount: true }));
   const battlefieldName = requiredElement<HTMLElement>(root, '[data-map-name]');
@@ -1065,7 +1067,8 @@ export function createPlayMenu({
   // ---- team arrangement (owner 2026-09-15) --------------------------------------------------
   const arrangeSection = root.querySelector<HTMLElement>('[data-arrange]')!;
   const arrangeSelect = (name: string): HTMLSelectElement => arrangeSection.querySelector<HTMLSelectElement>(`select[data-arrange="${name}"]`)!;
-  const enemyNationSelect = createEnemyNationSelect(arrangeSelect('enemyNation'));
+  const arrangementDropdowns = [...arrangeSection.querySelectorAll<HTMLSelectElement>('select')].map(select =>
+    select.dataset.arrange === 'enemyNation' ? createEnemyNationSelect(select) : createCustomSelect(select));
   const fillOptions = (select: HTMLSelectElement, entries: Array<[string, string]>, value: string): void => {
     select.innerHTML = entries.map(([id, label]) => `<option value="${id}"${id === value ? ' selected' : ''}>${label}</option>`).join('');
     select.value = value;
@@ -1090,7 +1093,7 @@ export function createPlayMenu({
   let sidesCustomOpen = false;
   function renderArrangement(mode: GameModeId, fromLobby: boolean): void {
     // a room keeps its own team size for the symmetric modes (net/lobby.ts teamSize); the wave modes arrange here
-    if (!acceptsTeamArrangement(mode) || (fromLobby && !isWaveMode(mode))) { arrangeSection.hidden = true; enemyNationSelect.close(); return; }
+    if (!acceptsTeamArrangement(mode) || (fromLobby && !isWaveMode(mode))) { arrangeSection.hidden = true; arrangementDropdowns.forEach(dropdown => dropdown.close()); return; }
     arrangeSection.hidden = false;
     const wave = isWaveMode(mode);
     const defaults = matchRulesetFor(mode);
@@ -1140,7 +1143,7 @@ export function createPlayMenu({
     }
     const locked = fromLobby && (role !== 'host' || state?.phase !== 'waiting');
     for (const control of arrangeSection.querySelectorAll<HTMLSelectElement | HTMLInputElement>('select, input')) control.disabled = locked;
-    enemyNationSelect.refresh();
+    arrangementDropdowns.forEach(dropdown => dropdown.refresh());
     for (const button of sidesButtons) button.disabled = locked;
     arrangeSection.querySelector<HTMLButtonElement>('[data-arrange-reset]')!.disabled = locked;
     const note = arrangeSection.querySelector<HTMLElement>('[data-arrange-note]');
@@ -1553,6 +1556,8 @@ export function createPlayMenu({
     operationField.hidden = next.gameMode !== 'frontline_assault';
     operationSelect.value = operation?.id ?? '';
     operationSelect.disabled = role !== 'host' || next.phase !== 'waiting';
+    if (operationField.hidden) operationDropdown.close();
+    operationDropdown.refresh();
     mapSelect.value = operation?.mapId ?? next.mapId;
     const selectedMap = mapById.get(operation?.mapId ?? next.mapId) || mapById.get('random') || maps[0];
     battlefieldName.textContent = selectedMap?.name || next.mapId || t('playMenu.map.random');
@@ -2002,7 +2007,8 @@ export function createPlayMenu({
     void requestRoom('join');
   }
   function hide(closeSession = true): void {
-    enemyNationSelect.close();
+    arrangementDropdowns.forEach(dropdown => dropdown.close());
+    operationDropdown.close();
     closeMenuSelects();
     const restoreFocus = !handedOff && root.contains(document.activeElement);
     root.classList.remove('show');
