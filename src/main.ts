@@ -639,7 +639,7 @@ const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
   initialize: async ({ createFxChunked }) => {
     const live = await createFxChunked(engineCtx, hfProxy, {
       seed: 5000,
-      auxiliaryEntities: () => networkSession.bridge ? game.tankById.values() : game.tanks,
+      auxiliaryEntities: () => multiplayerV2.current?.active ? game.tankById.values() : game.tanks, // v2 is the only multiplayer (cutover)
       auxiliaryTime: () => game.timeS,
       auxiliaryVisible: entity => entity.networkVisible !== undefined ? entity.networkVisible
         : entity.team !== 'enemy' || game.spotting?.isSpotted(entity.id, 'player', game.player) === true,
