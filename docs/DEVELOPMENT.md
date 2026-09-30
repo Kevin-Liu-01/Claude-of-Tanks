@@ -666,3 +666,12 @@ therefore drops those lines from the pulled `.vercel/.env.production.local` (and
 an unset variable means the served page resolves its Workers from `src/officialHost.ts` and v1 signaling from the same
 origin — the same behaviour a hosted build with the real values would show for the official site. Secrets are never
 touched by this step; only redacted browser-visible `VITE_*` lines are removed.
+
+### Landing over another session's red (2026-09-30)
+
+The landing chain gates on the pre → core → post receipt groups. When a receipt fails, the chain re-runs exactly that receipt on
+the landing's base commit (origin/main at launch): a receipt that fails identically there is the shared main's red, not the
+landing's, and the chain continues with the receipt named in the deploy row ("landed over inherited red receipts"). A receipt
+that passes on the base and fails on the landing stops the chain as before. The rule exists because a session that deploys
+without gating on the suite can leave main red for a day; it never lets a landing make main worse, and the named receipts stay
+the repair debt of whoever broke them.
