@@ -9,9 +9,6 @@
     "typecheck": "tsc --noEmit && tsc -p test/tsconfig.json --noEmit",
     "test": "vitest run"
   },
-  "dependencies": {
-    "@cloudflare/containers": "^0.3.7"
-  },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.1.4",
     "@types/node": "^24.13.3",
