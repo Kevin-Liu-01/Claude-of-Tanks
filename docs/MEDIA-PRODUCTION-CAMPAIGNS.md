@@ -1,5 +1,14 @@
 # Campaign Studio
 
+> **Owner-directed media (2026-09-29):** Kevin withdrew the recent promotional
+> image/video rollout and restored the earlier public media. Keep the refreshed
+> map photographs. Future promotional production, selection, and publication
+> must follow Kevin’s explicit creative direction; an existing recipe or automated
+> review does not authorize a new campaign. The tooling below remains available
+> for those directed sessions. Historical publication descriptions are not the
+> current public-media selection.
+
+
 Campaign Studio finishes native Scene Studio captures into a cohesive promotional package: a 20–30-second film with paced cuts, restrained shot titles, a branded end card and synchronized original sound design; a short silent background loop; and cleanly branded landscape, portrait and square images. The game remains the source of every tank, environment, light and visual effect. The finishing pass does not fabricate geometry or imitate another game's assets.
 
 ## Capture and finish

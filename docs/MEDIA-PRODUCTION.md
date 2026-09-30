@@ -1,5 +1,14 @@
 # Media production
 
+> **Owner-directed media (2026-09-29):** Kevin withdrew the recent promotional
+> image/video rollout and restored the earlier public media. Keep the refreshed
+> map photographs. Future promotional production, selection, and publication
+> must follow Kevin’s explicit creative direction; an existing recipe or automated
+> review does not authorize a new campaign. The tooling below remains available
+> for those directed sessions. Historical publication descriptions are not the
+> current public-media selection.
+
+
 The production suite renders the current game through Scene Studio. It produces native 4K battlefield masters, overlapping shoreline review frames, map-boundary review frames, silent H.264 films, clean stills and branded promo cards in landscape, square and portrait formats. Video advances the simulation by a fixed interval for each encoded frame; rendering speed cannot drop frames or speed up a tank.
 
 Use the repository's Node/npm setup with dependencies installed, and make `ffmpeg`, `ffprobe`, and `cwebp` available on `PATH`. The capture browser uses the project's Puppeteer dependency.

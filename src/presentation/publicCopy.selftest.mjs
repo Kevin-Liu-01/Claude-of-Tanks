@@ -57,10 +57,10 @@ const readmeSource = readFileSync(join(ROOT, 'README.md'), 'utf8');
 assert.doesNotMatch(galleryHtmlSource, /Live simulation data|galleryArchiveOpen|galleryArchiveTitle/);
 assert.match(docsSource, /id="docsArchiveOpen"[\s\S]*?Visual archive[\s\S]*?88 field frames/);
 assert.match(docsSource, /id="docsArchive"[\s\S]*?id="docsArchiveBody"/);
-assert.match(homeSource, /\/media\/director-r4\/hero-trailer\.mp4/);
+assert.match(homeSource, /\/media\/promo-v13\/claude-of-tanks-promo-clean\.mp4/);
 assert.doesNotMatch(homeSource, /claude-of-tanks-promo-badged\.mp4/);
-assert.match(docsSource, /\/media\/director-r4\/hero-trailer\.mp4/);
-assert.match(docsSource, /<track kind="captions"[^>]+hero-trailer\.vtt/);
+assert.match(docsSource, /\/media\/promo-v13\/claude-of-tanks-promo-badged\.mp4/);
+assert.match(docsSource, /<track kind="captions"[^>]+claude-of-tanks-promo-v13\.vtt/);
 assert.match(
   homeStyles,
   /html\[lang\^='zh'\] \.v5-hero-copy h1\{[^}]*font-family:'PingFang SC','Noto Sans CJK SC','Microsoft YaHei'[^}]*\}/,

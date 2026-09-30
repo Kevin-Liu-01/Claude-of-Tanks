@@ -25,6 +25,10 @@ Read the screenshot contract, run one known shot, compare composition and pixel
 dimensions, then generate the requested set.
 
 ## Gotchas
+
+Kevin personally directs promotional media. Do not generate or publish a new
+image/video campaign without his explicit creative direction for that campaign.
+Keep the refreshed map photographs when changing public media selections.
 <!-- agent-docs:fill:gotchas -->
 Do not use stale source/comparison models or transient overlays in public shots.
 Stop the capture server/browser at closeout.
