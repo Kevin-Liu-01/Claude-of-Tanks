@@ -65,7 +65,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['Combat Vehicle 90', 'Stridsfordon 90', 'CV9040', 'Swedish IFV'],
   },
   cv90_mkiv: {
-    displayName: 'CV90 Mk 4', shortName: 'CV90 Mk 4',
+    displayName: 'CV90 Mk 4 Concept', shortName: 'CV90 Mk 4 Concept',
     searchAliases: ['CV90 Mk IV', 'CV90 Mark IV', 'CV90 MkIV', 'CV90 D-series'],
   },
   spz_puma_s1_x: {displayName:'Puma S1',shortName:'Puma S1',searchAliases:['SPz Puma S1 X','RCT30 MELLS']},

@@ -148,6 +148,7 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   bmpt_terminator2: { doctrine: 'armored-support', viewM: 405, still: 0.176, moving: 0.116 },
   bwp1: { doctrine: 'support', viewM: 415, still: 0.268, moving: 0.208 },
   marder1a3: { doctrine: 'support', viewM: 420, still: 0.267, moving: 0.207 },
+  marder2: { doctrine: 'support', viewM: 440, still: 0.250, moving: 0.190 },
   m3a3_bradley: { doctrine: 'recon', viewM: 470, still: 0.296, moving: 0.256 },
   bmp3: { doctrine: 'support', viewM: 430, still: 0.281, moving: 0.221 },
   bmp3m_dragun125_x: { doctrine: 'scout', viewM: 455, still: 0.352, moving: 0.352 },

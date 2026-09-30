@@ -42,7 +42,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 32 | PROD | `cv90_x` | CV9040C | Sweden | IX | Modern | Production |
 | 33 | PROD | `cv90105_tml_x` | CV90105 TML | Sweden | IX | Modern | Production |
 | 34 | PROD | `strv122` | Stridsvagn 121 | Sweden | X | Modern | Production |
-| 35 | PROD | `cv90_mkiv` | CV90 Mk 4 | Sweden | X | Next Generation | Production |
+| 35 | PROD | `cv90_mkiv` | CV90 Mk 4 Concept | Sweden | X | Next Generation | Production |
 | 36 | PROD | `cv90_mkiv_x` | CV90 Mk 4 | Sweden | X | Next Generation | Production |
 | 37 | PROD | `kv2` | KV-2 | USSR | VII | World War II | Production |
 | 38 | PROD | `chieftain5` | Chieftain Mk 3 | UK | VII | Cold War | Production |

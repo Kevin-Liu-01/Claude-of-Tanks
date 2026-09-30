@@ -8,7 +8,7 @@ import { movementDispersionFactor } from '../sim/movementDispersion.ts';
 import { auditFleetBalance } from './balanceAudit.ts';
 
 assert.deepEqual(Object.keys(VEHICLE_ROLE_PROFILES).sort(), [...ALL_TANK_IDS].sort(), 'every vehicle has an explicit role profile');
-assert.equal(ALL_TANK_IDS.length, 200);
+assert.equal(ALL_TANK_IDS.length, 201);
 const ranges = ALL_TANK_IDS.map(id => viewRangeOf(TANK_SPECS[id]));
 assert.equal(viewRangeOf(TANK_SPECS.m551a1_tts), Math.max(...ranges));
 assert.equal(viewRangeOf(TANK_SPECS.m551_sheridan), 480);
@@ -59,7 +59,7 @@ for(const order of [['fleetFactory','tankFactory'],['tankFactory','fleetFactory'
     assert.equal(stats(),before,'facade order and synchronization preserve fleet balance');
   `],{cwd:process.cwd(),stdio:'pipe',timeout:120000});
 }
-console.log('tacticalRoles: 200 profiles, scouting/handling tradeoffs, equipment law, independent audit medians and facade parity passed');
+console.log('tacticalRoles: 201 profiles, scouting/handling tradeoffs, equipment law, independent audit medians and facade parity passed');
 
 // Same battlefield witness, rather than only a range formula comparison.
 const entity=(id,spec,z)=>({id,team:id==='target'?'enemy':'player',spec,state:{pos:{x:0,y:0,z},speed:0},combat:{destroyed:false}});

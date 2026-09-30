@@ -10,6 +10,22 @@ export const VEHICLE_SIZE_FACTORS: Readonly<Record<string, number>> = Object.fre
 });
 const authoringFrames = new WeakMap<object, { source: FleetTankSpec; armor: FleetTankSpec['armor'] }>();
 
+/** Donor combat refreshes may replace the armor/gun records after resizing. */
+export function restoreInstalledVehicleFrame(spec: FleetTankSpec): void {
+  const retained = authoringFrames.get(spec);
+  if (!retained) return;
+  const factor = VEHICLE_SIZE_FACTORS[spec.id];
+  spec.armor = retained.armor;
+  if (retained.source.gun.launcherMuzzles) {
+    spec.gun.launcherMuzzles = retained.source.gun.launcherMuzzles.map(mouth =>
+      ({ ...mouth, x: mouth.x * factor, y: mouth.y * factor, z: mouth.z * factor }));
+  } else delete spec.gun.launcherMuzzles;
+  if (Array.isArray(retained.source.gun.muzzles)) {
+    spec.gun.muzzles = retained.source.gun.muzzles.map(mouth =>
+      ({ ...mouth, x: mouth.x * factor, y: mouth.y * factor, z: mouth.z * factor }));
+  }
+}
+
 /** Idempotent per registry instance. Derivatives have already cloned their
  * donor, so resizing a donor cannot resize its children a second time. */
 export function applyVehicleSizePolicy(specs: Record<string, FleetTankSpec>): void {
@@ -21,9 +37,7 @@ export function applyVehicleSizePolicy(specs: Record<string, FleetTankSpec>): vo
       // Both tool and browser facades can register in one Node process.
       // Their donor refresh republishes native gun/pivot data. Restore this
       // vehicle's installed spatial frame, including calibrated anatomy.
-      spec.armor = retained.armor;
-      spec.gun.launcherMuzzles = retained.source.gun.launcherMuzzles?.map(mouth =>
-        ({ ...mouth, x: mouth.x * factor, y: mouth.y * factor, z: mouth.z * factor }));
+      restoreInstalledVehicleFrame(spec);
       continue;
     }
     authoringFrames.set(spec, { source: structuredClone(spec), armor: spec.armor });

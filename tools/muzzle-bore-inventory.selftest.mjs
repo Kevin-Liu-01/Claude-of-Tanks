@@ -40,7 +40,8 @@ for (const id of CONVERTED) {
 // same assembled disc-depth witness the browser probe adds.
 const physical = inventoryOne('kf41_lynx_x', 'high');
 assert.equal(physical.method, 'physical-declared');
-assert.ok(physical.recess.carvedTris > 0 && physical.recess.deepestM > 0.1, 'kf41 keeps its source-measured 11 cm recess');
+assert.ok(physical.recess.carvedTris > 0 && Math.abs(physical.recess.deepestM - .11 * .90) < .002,
+  'KF41 keeps its measured 11 cm recess at the owner-approved 0.90 vehicle scale');
 assert.ok(physical.seatPass, 'physical-recess-r1 receipts pass the seat policy under node');
 // 2026-09-22: a verified physical recess is its own rim and annulus; the factory adds only the shadow disc.
 assert.equal(physical.fallback.rim + physical.fallback.throat, 0, 'no barrel-paint fallback rim or throat duplicates the physical mouth');

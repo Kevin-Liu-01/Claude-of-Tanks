@@ -12,6 +12,7 @@ assert.equal(override.glb.geometryComponentMasks, false);
 assert.match(override.glb.path, /^\/models\/community-candidates\//);
 assert.equal(certificate.sha256, 'f43fce5b07bcd04f6089aa23338ed3c4114ff75866eec0ce98e1800171891ff1');
 assert.equal(certificate.fused, true);
-assert.deepEqual(certificate.turret, [-0.3835, 2.2502, 0.5027]);
-assert.deepEqual(certificate.gun, [-0.4265, 3.078, 0.397]);
+// The original file/hash stays fixed; the approved complete assembly is 0.90.
+assert.deepEqual(certificate.turret, [-0.3835, 2.2502, 0.5027].map(v => v * .90));
+assert.deepEqual(certificate.gun, [-0.4265, 3.078, 0.397].map(v => v * .90));
 console.log('ares-apc-x-reference: PASS');

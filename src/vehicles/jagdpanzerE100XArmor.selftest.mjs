@@ -22,7 +22,11 @@ const donorRows = () => [...new Set(Object.values(SECOND_WAVE_X_DONORS))].sort()
 // are byte-identical between shared main and this tree (.qa-dev spec dump, 0 differing).
 // 2026-09-25 FSP-03: donor-spec digest re-pinned once — the regenerated combat anatomy of the roller hulls moved the
 // registry's generated enrichment (contact points / shells) on the T-72/T-90 donor rows; the authored specs are unchanged.
-const donorHash = 'f1d2943a695eee71ce1237c8ff808404b3c4c3752ea6dfeaff2976eed7b995f7';
+// 2026-09-29: only ariete_c1 armor differs from f88172442; the owner's
+// attachment repair moves its fittings to the turret and regenerates anatomy.
+// Main's 0e5fc79e2 role pass changes only traverse, aim/accuracy and movement
+// bloom across these donors (124 scalar differences; geometry/ammunition unchanged).
+const donorHash = '2a739f7b0e4f0f8cd586775a874ee6e9064d8a15e603b8f9455495d432653b8e';
 function historicalDonors(rows = donorRows()) {
   const restored = structuredClone(rows);
   const ariete = restored.find(([id]) => id === 'ariete_c1')[1];
@@ -115,7 +119,7 @@ function checkArmor(armor) {
 }
 
 assert.equal(hash(historicalDonors()), donorHash,
-  'all 22 original donor specs unchanged apart from the authenticated C1/Strv display renames');
+  'donor specs retain the approved Ariete attachment repair and authenticated C1/Strv display renames');
 const wrongLabel = structuredClone(donorRows());
 wrongLabel.find(([id]) => id === 'ariete_c1')[1].label.shortName = 'unapproved';
 assert.throws(() => historicalDonors(wrongLabel), assert.AssertionError);

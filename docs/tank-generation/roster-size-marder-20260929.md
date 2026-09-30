@@ -83,4 +83,88 @@ the dimension minimum remains 0. The source packet documents four loose
 exported panels below track ground. Neither source pieces nor thresholds were
 changed to claim success. On 2026-09-29 Kevin explicitly approved: “Publish the resize; retain the failed comparison status.” This exception applies only to the requested Challenger 1 Mk3 uniform resize, not a new shape qualification or any other vehicle.
 
-Final validation and publication receipts are appended after the checks finish.
+Publication receipts are appended after the final synchronization with main.
+
+
+## Datum arithmetic follow-up
+
+The physical concept check exposed an IEEE-754 mismatch after dimension-ratio
+scaling: Griffin Viper's ring height computed as 1.8629999999999998 m, while its
+independent approved target is 1.863 m. Spatial declaration comparisons now
+allow only eight machine epsilon steps, with regression cases accepting one
+rounding step and rejecting a 1 nm displacement or invalid coordinates. No
+geometry/source dimensions, silhouette floors, 3% envelope tolerance or weapon
+requirements changed. Griffin Viper's physical concept check passes afterward.
+
+## Integrated review corrections
+
+The broad suite exposed thirteen failures. Focused reruns pass after correcting
+the donor refresh path and bringing the affected receipts/catalogs up to date:
+
+- Both source-combat refresh functions retain the installed resized armor and
+  launcher frame. Repeating a refresh must not restore native pivots or invent
+  an undefined launcher property on cannon-only vehicles. The size regression
+  now exercises both refresh functions twice and both factory entry points.
+- Marder 2 is included in the public total (201), ammunition census and factory
+  paint catalog. The older retained CV90 Mk 4 is labeled **CV90 Mk 4 Concept**
+  so the supplied-model CV90 Mk 4 has a distinct display name.
+- Ares reference coordinates, KF41 recess witnesses and Challenger physical
+  rays use the independently fixed owner factors. Only the approved Ariete
+  attachment repair changes the old donor-spec census; all other donor rows
+  match the retained pre-edit tree.
+- Borsuk's forward skirt heel rises 40 mm in the native authoring frame. Fresh
+  strict HIGH/LOW track audits report zero band or shoe intersections in the
+  front, rear and complete sweep. The remaining vehicle shape is retained.
+- Exact original K21 and Griffin source files were recovered locally and their
+  hashes match the existing configuration records. No source hash or equipment
+  requirement was changed to clear the missing-file failures.
+
+Griffin's bore probe also exposed an exact shared-triangle-edge ray miss. The
+probe retains raw cardinal hits and requires the off-seam course plus both
+seam flanks at the unchanged radius. Actual annular-mesh regressions cover both
+scales and reject missing sectors and foreground obstructions.
+
+## Validation before main synchronization
+
+The broad run selected and completed 1,276 entries: 734 executed and 542 reused
+unchanged passing receipts. It exited 1 with thirteen failures; each failed
+entry subsequently passed a focused rerun after the corrections above. This
+is not a claim that the original broad invocation exited successfully.
+Type checking, public and private production builds, attribution and public
+repository hygiene pass.
+
+All sixteen non-legacy IDs pass the physical standard across the initial and
+corrected runs. Fresh Borsuk/K21/Griffin standards pass; Borsuk's sealed check
+and Griffin's actual rendered muzzle check pass after their corrections.
+The nineteen-ID centering, module alignment, module-hit, track-duplication and
+barrel-circularity probes pass. The three legacy repairs retain their recorded
+source exceptions; their sealed checks pass. Marder 2 retains its explicit
+photo-reference qualification and unverified numerical 3D comparison.
+
+Machine-readable invocation results remain in the ignored local evidence
+directory `.qa-dev/roster-size/`: `final-repair-validation.json`,
+`final-selftests.json`, `failure-retest.json`, `last-retest.log`,
+`remaining-release.json`, and `repair-finalize.json`.
+
+The final complete `tank:anatomy:check` passes for all 201 vehicles and 603
+technical diagrams. Its module sweep reports zero failures and zero modules
+outside the envelope; 88 inherited dimension-drift warnings remain visible.
+The final Borsuk/CV90 asset check passes all nine views, metadata and bores.
+
+## Main integration
+
+Rebased onto `9a224d6ac`, retaining the new lunar/bridge maps, role balancing,
+menu changes and 33-battlefield count. Both factory entry points run role tuning
+and the owner size policy. Marder 2 joins the new role table as support with a
+440 m view range and 0.250/0.190 stationary/moving base concealment.
+
+The twenty focused integration entries all pass across the integration run and
+the two corrected receipt reruns. The latter preserve main's intentional role
+handling differences: the donor digest changed only in 124 traverse, aim,
+accuracy and movement-bloom scalars; the second-wave test still compares the
+complete weapon payload and firing bloom. The post-rebase 21-ID assets/bores,
+type check and public build pass. Logs: `main-integration.{json,log}` and
+`post-rebase-receipts.log` under the same ignored evidence directory.
+
+The separate Sheridan contact repair is retained locally pending its own
+publication decision; it is not covered by either legacy source exception.

@@ -36,7 +36,8 @@ const original = {
 // (FSP-06 0e63f54d6 Italian cable loops, 2afd13e62 Leclerc canvas boot / jerricans, e69803182 K1A1 whip rods — landed
 // without re-pinning this receipt); amx30 (af643005 → c37d8ffd) is FSP-05's closed outer bow nose (misc.ts). All four
 // re-pinned once from the current build.
-  ariete_c1:'e9af928b', challenger1:'aa084d4d', leclerc:'0d0ed003',
+  // 2026-09-29 owner attachment repair: turret-owned fittings replace hull-owned stock.
+  ariete_c1:'5c6cceec', challenger1:'aa084d4d', leclerc:'0d0ed003',
   chieftain5:'af6150d8', chieftain_mk10:'81cf7e9f', leo2a6:'1f08700c',
   k1a1:'d75c7a71', strv122:'8bc6e141', t62mv1:'35f1a225',
   // 2026-09-25 FSP-03: the fleet T-72/T-90 pre-X goldens (t72b3m, t72bu, t90, Burlak, T-90MS) re-pinned once — three fitted return rollers per side again.
@@ -46,6 +47,13 @@ const original = {
   t90:'accad0d5', t90a_burlak:'8a91a11d', t90ms:'f03c2eb8',
 };
 const options = {proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4242};
+// Main's tactical roles intentionally give replicas and retired donor templates
+// different handling. Preserve the complete weapon payload and firing bloom;
+// the tactical-role regression owns aiming and movement/traverse dispersion.
+function armament({aimTimeS, baseAccuracy, bloom, ...weapon}) {
+  const {move, hullRot, turret, ...firingBloom} = bloom;
+  return {...weapon, bloom: firingBloom};
+}
 for (const [id, expected] of Object.entries(original)) {
   const tank = createTank(id, null, options);
   try { assert.equal(geometryFingerprint(tank.root), expected, `${id}: original model must remain untouched`); }
@@ -68,7 +76,7 @@ for (const id of SECOND_WAVE_X_IDS) {
   assert.ok(FLEET_GROUP_BY_ID[id].endsWith('X'));
   assert.equal(typeof PROCEDURAL_PROFILES[id].build, 'function');
   assert.notEqual(PROCEDURAL_PROFILES[id].build, PROCEDURAL_PROFILES[donor]?.build);
-  assert.deepEqual(spec.gun, donorRow.gun);
+  assert.deepEqual(armament(spec.gun), armament(donorRow.gun), `${id}: donor weapon payload retained`);
   assert.equal(spec.hp, donorRow.hp);
   assert.notEqual(spec.armor, donorRow.armor);
   for (const quality of ['high','low']) {

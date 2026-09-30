@@ -1,5 +1,28 @@
 import assert from 'node:assert/strict';
-import { muzzleSeatAxialFit, physicalMuzzleRimSample, muzzleBoreLuminance } from './muzzle-seat-policy.mjs';
+import { muzzleSeatAxialFit, physicalMuzzleRimSample, muzzleBoreLuminance, sampleMuzzleRingSeams } from './muzzle-seat-policy.mjs';
+import * as THREE from 'three';
+
+// Actual annular stock: shrinking must preserve the physical test radius.
+// Missing sectors and foreground solids must fail the expanded ray course.
+for (const factor of [1, .90]) {
+  const material = new THREE.MeshBasicMaterial({side: THREE.DoubleSide});
+  const ring = new THREE.Mesh(new THREE.RingGeometry(.02, .03, 18), material);
+  ring.scale.setScalar(factor); ring.updateMatrixWorld(true);
+  const sample = objects => phase => Array.from({length:16}, (_, i) => {
+    const angle = i * Math.PI / 8 + phase, radius = .03 * .83 * factor;
+    return new THREE.Raycaster(new THREE.Vector3(Math.cos(angle)*radius, Math.sin(angle)*radius, 1),
+      new THREE.Vector3(0,0,-1)).intersectObjects(objects)[0]?.object === ring;
+  });
+  assert(sampleMuzzleRingSeams(sample([ring])).required.every(Boolean), 'closed ring passes after resizing');
+  const original = ring.geometry;
+  ring.geometry = new THREE.RingGeometry(.02,.03,18,1,.01,2*Math.PI-.02);
+  assert(!sampleMuzzleRingSeams(sample([ring])).required.every(Boolean), 'finite missing sector remains a failure');
+  ring.geometry.dispose(); ring.geometry = original;
+  const obstruction = new THREE.Mesh(new THREE.BoxGeometry(.01,.01,.01), material);
+  obstruction.position.set(.03*.83*factor,0,.1); obstruction.updateMatrixWorld(true);
+  assert(!sampleMuzzleRingSeams(sample([ring,obstruction])).required.every(Boolean), 'foreground stock cannot impersonate the rim');
+  ring.geometry.dispose(); obstruction.geometry.dispose(); material.dispose();
+}
 const legacy = {revision:'terminal-surface-fit-r2',lipAdvanceM:-.009,lipFrontM:.0009,
   markerGapM:0,annulusForwardM:.0006,discForwardM:.0003};
 assert.ok(muzzleSeatAxialFit(legacy));

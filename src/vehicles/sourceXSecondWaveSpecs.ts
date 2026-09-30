@@ -5,6 +5,7 @@ import { isFleetBalanceFinalized } from './fleetBalanceState.ts';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariantFrom, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
 import { donorSpec } from './donorSpecs.ts';
+import { restoreInstalledVehicleFrame } from './vehicleSizePolicy.ts';
 import { createT62MV1XArmorZones } from './t62mv1XArmor.ts';
 import { createT72B1987XArmorZones } from './t72b1987XArmor.ts';
 import { createT80UXArmorZones } from './t80uXArmor.ts';
@@ -216,5 +217,6 @@ export function synchronizeSecondWaveXCombatMetadata(): void {
     target.armor = structuredClone(donor.armor);
     fitArmorToDims(target.armor, donor.dims, target.dims);
     applyAuthoredFrame(target, id);
+    restoreInstalledVehicleFrame(target);
   }
 }

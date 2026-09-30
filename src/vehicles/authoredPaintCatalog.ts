@@ -2,7 +2,7 @@
 // Round 31/32 (owner 2026-09-20/21): every distinct authored paint in the fleet as a reusable catalog entry, named for
 // its nation and pattern (never a vehicle); recipes that already exist as a named Signature / Service / national preset
 // are not repeated, and scale / patch / cell knobs never split one paint into two.
-// 13 entries over 62 vehicles.
+// 14 entries over 63 vehicles.
 
 export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_amx40',
@@ -14,6 +14,7 @@ export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_kurganets25_x',
   'paint_kv2',
   'paint_m1a1',
+  'paint_marder2',
   'paint_strv81',
   'paint_t72b3m',
   'paint_t90ms',
@@ -45,6 +46,7 @@ export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.free
   {id: 'paint_kurganets25_x',lead: 'kurganets25_x',sourceTankIds: ['kurganets25_x'],nation: 'Russia',label: 'Russian Digital Woodland II',tags: ['ru','woodland','digital','signature'],visual: {scheme: 'russian-digital',base: '#58634b',weather: '#6a705d',patches: ['#333c32','#76725a','#444b3d'],camoScale: 0.72}},
   {id: 'paint_kv2',lead: 'kv2',sourceTankIds: ['kv2'],nation: 'USSR',label: 'Soviet Plain Forest Green',tags: ['ru','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#37412a',weather: '#404b33',patches: []}},
   {id: 'paint_m1a1',lead: 'm1a1',sourceTankIds: ['m1a1','m1a1ha','m1a2','m1a2_tusk','m1a2_sepv2','m1a2_sepv3','t62mv1','cv90105_tml_x','m2a2_bradley','leo1a5','leopard2_proto','leo2a4','leo2a5','leo2a6','leo2_revolution_proto','leo2_revolution','leo2a7v','kf51','fv510','fv510_milan','fv510_milan_x','m60a1','sabra_mk2_x','amx30','amx30b2','m48','m60a2','m46_patton','m47_patton','m60a3','leo2a7v_x','leo2a5_x','kf51_x','leo2a6_x','amx30_x','t62mv1_x','m1a2_x','m1a2_tusk_x','m1a2_sepv2_x','m1a2_sepv3_x'],nation: 'USA',label: 'US Army Three-Tone Woodland',tags: ['usa','woodland','organic','signature'],visual: {scheme: 'nato',base: '#49543c',weather: '#525f45',patches: ['#23261f','#4a3a2c'],camoScale: 0.5}},
+  {id: 'paint_marder2',lead: 'marder2',sourceTankIds: ['marder2'],nation: 'Germany',label: 'Bundeswehr Three-Tone Woodland',tags: ['de','woodland','organic','signature'],visual: {scheme: 'nato',base: '#48533f',weather: '#73705b',patches: ['#302e27','#242c24'],camoScale: 0.5}},
   {id: 'paint_strv81',lead: 'strv81',sourceTankIds: ['strv81'],nation: 'Sweden',label: 'Swedish Woodland',tags: ['se','woodland','organic','signature'],visual: {scheme: 'woodland',base: '#39483b',weather: '#4f5948',patches: ['#263129','#62634a','#74664c'],camoScale: 0.55}},
   {id: 'paint_t72b3m',lead: 't72b3m',sourceTankIds: ['t72b3m','t72b3m_x'],nation: 'Russia',label: 'Russian Plain Deep Green',tags: ['ru','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#293a28',weather: '#2e422d',patches: [],solidWeatheringIntensity: 0.03}},
   {id: 'paint_t90ms',lead: 't90ms',sourceTankIds: ['t90ms','t90ms_x'],nation: 'USSR/Russia',label: 'Russian Plain Brown',tags: ['ru','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#6a6047',weather: '#75694e',patches: []}},

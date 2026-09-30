@@ -10,7 +10,7 @@ const EXPECTED = Object.freeze({
   m2a2_bradley:       { hp: 1650, speed: 61, reverse: 20, traverse: 44.5, damage: 58, pen: [130, 118, 106], reload: 0.42, sound: 'm242-bushmaster', missile: [540, 'tow-launch'] },
   bmp2:               { hp: 1050, speed: 65, reverse: 12, traverse: 53, damage: 42, pen: [74, 66, 58], reload: 0.28, sound: '2a42', missile: [430, 'konkurs-launch'] },
   spz_puma:           { hp: 2000, speed: 70, reverse: 30, traverse: 48.8, damage: 64, pen: [165, 150, 135], reload: 0.40, sound: 'mk30-2', missile: [520, 'spike-launch'] },
-  marder2: { hp:2750,speed:60,reverse:27,traverse:42,damage:135,pen:[185,170,155],reload:.55,sound:'xm913-50',missile:null },
+  marder2: { hp:2750,speed:60,reverse:27,traverse:44.5,damage:135,pen:[185,170,155],reload:.55,sound:'xm913-50',missile:null },
   spz_puma_s1:        { hp: 2750, speed: 70, reverse: 30, traverse: 53, damage: 82, pen: [210, 192, 174], reload: 0.38, sound: 'mk30-2', missile: [720, 'spike-launch'] },
   type89_light_tiger: { hp: 2700, speed: 78, reverse: 32, traverse: 57.2, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: [720, 'jyu-mat-launch'] },
   cv90:               { hp: 2425, speed: 70, reverse: 40, traverse: 51.9, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: null },

@@ -1,3 +1,10 @@
+/** Preserve exact seam evidence, then require both seam flanks and an offset
+ * course. Coplanar shared edges can lose an exact ray to floating-point error;
+ * finite openings and obstructions still fail at the unchanged radius. */
+export function sampleMuzzleRingSeams(sample) {
+  return { cardinal: sample(0), required: [.173, -.0001, .0001].flatMap(sample) };
+}
+
 /** Retained legacy seating, or a ray-verified physical recess at the same mouth. */
 export function muzzleSeatAxialFit(receipt) {
   if (![receipt.lipAdvanceM, receipt.annulusForwardM, receipt.discForwardM,

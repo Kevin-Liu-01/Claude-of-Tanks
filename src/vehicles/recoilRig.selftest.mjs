@@ -254,8 +254,8 @@ for (const quality of ['high', 'low']) {
   tube.geometry.computeBoundingBox();
   const span = tube.geometry.boundingBox.max.z - tube.geometry.boundingBox.min.z;
   assert.ok(span > 0 && span < .5, `${quality}: actual KF41 tube exercises the short-stock path (${span})`);
-  assert.ok(visual.root.userData.physicalMuzzleBoreVerification.minimumDepthM >= .10,
-    `${quality}: real recessed bore, not a decorative marker or hidden stub`);
+  assert.ok(visual.root.userData.physicalMuzzleBoreVerification.minimumDepthM >= .10 * .90,
+    `${quality}: real recessed bore at the approved 0.90 vehicle scale`);
   visual.recoilKick(0, .36);
   visual.syncFromState(state, .06);
   near(recoilG.position.z, -.077, 1e-6, `${quality}: measured 35 mm tube recoils`);

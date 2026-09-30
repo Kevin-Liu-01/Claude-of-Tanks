@@ -72,6 +72,17 @@ for(const id of Object.keys(FIRST_PARTY_CONCEPTS)) {
   if (design.weaponSystem === 'guided-missile-carrier') {
     const shell={guided:true,caliberMm:140,count:64,launcherTubes:16,reloadS:1};
     spec.gun={shells:[shell]};assertConceptDatums(spec,design);
+    const rounded=structuredClone(spec);
+    rounded.armor.turretPivot[1]-=Number.EPSILON;
+    assertConceptDatums(rounded,design);
+    for(const delta of [1e-9, .001, .1]) {
+      const shifted=structuredClone(spec);shifted.armor.turretPivot[1]+=delta;
+      assert.throws(()=>assertConceptDatums(shifted,design), /declared turret ring/);
+    }
+    for(const point of [[0,NaN,0],[0,Infinity,0],[0],null]) {
+      assert.throws(()=>assertConceptDatums({...spec,armor:{...spec.armor,turretPivot:point}},design));
+    }
+
     for(const patch of [{guided:false},{count:0},{count:65},{launcherTubes:15},{reloadS:.5},{caliberMm:120}])
       assert.throws(()=>assertConceptWeapons([{...shell,...patch}],design));
     continue;

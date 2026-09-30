@@ -2,19 +2,31 @@ import assert from 'node:assert/strict';
 import {conceptDesignReady} from './first-party-concept-policy.mjs';
 import {shellAmmunitionCapacity} from '../src/sim/ammunition.ts';
 
+// Spatial values are composed through dimension ratios as well as literal
+// factors. Accept only a few IEEE-754 rounding steps, not a geometric tolerance.
+function sameMetres(actual, expected, label) {
+  assert.ok(Number.isFinite(actual) && Number.isFinite(expected), `${label}: finite metres`);
+  const roundoff = 8 * Number.EPSILON * Math.max(1, Math.abs(actual), Math.abs(expected));
+  assert.ok(Math.abs(actual - expected) <= roundoff, `${label}: ${actual} != ${expected}`);
+}
+function samePoint(actual, expected, label) {
+  assert.ok(Array.isArray(actual) && actual.length === 3 && expected.length === 3, label);
+  actual.forEach((value, axis) => sameMetres(value, expected[axis], `${label}[${axis}]`));
+}
+
 /** Spec agreement accompanies, and never substitutes for, the native profile fixture. */
 export function assertConceptDatums(spec,design) {
   assert.ok(conceptDesignReady(design.id),'Complete design envelope is pending measurement/freeze');
-  assert.deepEqual(spec.armor.turretPivot,design.ring,'declared turret ring');
-  assert.deepEqual(spec.armor.gunPivot,design.gunLocal,'declared local gun trunnion');
-  assert.equal(spec.armor.gunBarrel.lengthM,design.barrelLengthM);
-  assert.equal(spec.armor.gunBarrel.radiusM,design.barrelRadiusM);
+  samePoint(spec.armor.turretPivot,design.ring,'declared turret ring');
+  samePoint(spec.armor.gunPivot,design.gunLocal,'declared local gun trunnion');
+  sameMetres(spec.armor.gunBarrel.lengthM,design.barrelLengthM,'declared barrel length');
+  sameMetres(spec.armor.gunBarrel.radiusM,design.barrelRadiusM,'declared barrel radius');
   // Some retained designs publish hull/body dimensions separately from the
   // complete equipment envelope. Both declarations remain pinned exactly.
   const dims=design.specDimensions??design;
-  assert.equal(spec.dims.hullLengthM,dims.hullLengthM,'declared hull length');
-  assert.equal(spec.dims.widthM,dims.widthM,'declared complete width');
-  assert.equal(spec.dims.overallLengthM,dims.overallLengthM,'declared complete length');
+  sameMetres(spec.dims.hullLengthM,dims.hullLengthM,'declared hull length');
+  sameMetres(spec.dims.widthM,dims.widthM,'declared complete width');
+  sameMetres(spec.dims.overallLengthM,dims.overallLengthM,'declared complete length');
   assert.equal(spec.gunElevationDeg,design.pitchDeg[1]);
   assert.equal(spec.gunDepressionDeg,-design.pitchDeg[0]);
   assertConceptWeapons(spec.gun.shells,design);

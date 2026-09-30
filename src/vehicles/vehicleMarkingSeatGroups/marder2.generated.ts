@@ -14,37 +14,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.24,
         "pos": [
-          -1.6885921,
-          1.4774237,
-          -0.0731027
+          -1.6767654,
+          1.5874897,
+          -1.2762
         ],
         "quaternion": [
-          -0.0725071,
-          -0.7035413,
-          -0.0724741,
-          0.7032211
-        ],
-        "surfaceMesh": "hull",
-        "anchorProfile": "marder2",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0025087
-      },
-      {
-        "kind": "designation",
-        "parent": "hull",
-        "size": 0.24,
-        "pos": [
-          -1.5938761,
-          1.8544744,
-          -0.0730611
-        ],
-        "quaternion": [
-          -0.0872738,
-          -0.6993839,
-          -0.0878422,
-          0.7039384
+          -0.0824527,
+          -0.7022831,
+          -0.0824527,
+          0.7022831
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "marder2",
@@ -52,6 +30,28 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
         "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.24,
+        "pos": [
+          -1.6753115,
+          1.5877483,
+          -0.0985613
+        ],
+        "quaternion": [
+          -0.0977604,
+          -0.698014,
+          -0.0983918,
+          0.7025229
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "marder2",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0020791
       }
     ]
   }

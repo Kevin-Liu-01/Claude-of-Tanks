@@ -5,6 +5,8 @@ import {tankDisplayName} from './tankLabels.ts';
 import {createTank} from './tankFactory.ts';
 import {getSpec,TANK_SPECS} from './specs.ts';
 import {applyVehicleSizePolicy,VEHICLE_SIZE_FACTORS} from './vehicleSizePolicy.ts';
+import {synchronizeSuppliedSourceCombatMetadata} from './suppliedSourceFleetSpecs.ts';
+import {synchronizeSecondWaveXCombatMetadata} from './sourceXSecondWaveSpecs.ts';
 for(const [id,name] of Object.entries({k21_x:'K21',cv90105_tml_x:'CV90105 TML',cv90_x:'CV9040C',cv90_mkiv_x:'CV90 Mk 4',sabra_mk2_x:'Sabra Mk 2',kf41_lynx_x:'KF41 Lynx',spz_puma_s1_x:'Puma S1',ajax_x:'Ajax',griffin50_x:'Griffin 50 mm',spz_puma_s1:'SPz Wotan',marder2:'Marder 2'}))assert.equal(tankDisplayName(getSpec(id)),name,`${id}: owner-selected roster identity`);
 const before=JSON.parse(readFileSync(new URL('./vehicleSizeBaseline.fixture.json',import.meta.url)));
 const near=(a,b,label,tolerance=.00002)=>assert.ok(Math.abs(a-b)<tolerance,`${label}: ${a} != ${b}`);
@@ -43,6 +45,10 @@ const dims=JSON.stringify(Object.keys(VEHICLE_SIZE_FACTORS).map(id=>getSpec(id).
 applyVehicleSizePolicy(TANK_SPECS);
 assert.equal(JSON.stringify(Object.keys(VEHICLE_SIZE_FACTORS).map(id=>getSpec(id).dims)),dims);
 const installed=Object.fromEntries(Object.keys(VEHICLE_SIZE_FACTORS).map(id=>[id,JSON.stringify([getSpec(id).armor,getSpec(id).gun.launcherMuzzles])]));
+for(let i=0;i<2;i++){
+ synchronizeSuppliedSourceCombatMetadata();synchronizeSecondWaveXCombatMetadata();
+ for(const id of Object.keys(VEHICLE_SIZE_FACTORS))assert.equal(JSON.stringify([getSpec(id).armor,getSpec(id).gun.launcherMuzzles]),installed[id],`${id}: donor refresh preserves the installed frame`);
+}
 await import('./fleetFactory.ts');
 for(const id of Object.keys(VEHICLE_SIZE_FACTORS))assert.equal(JSON.stringify([getSpec(id).armor,getSpec(id).gun.launcherMuzzles]),installed[id],`${id}: both entry points preserve installed dimensions`);
 console.log('vehicleSize: ten vehicles, high/low stock, articulation, launch exits and idempotence pass');

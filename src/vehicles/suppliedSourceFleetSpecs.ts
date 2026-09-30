@@ -8,6 +8,7 @@ import {
 } from './fleetSpecRegistry.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import { vehicleEraForId } from './taxonomy.ts';
+import { restoreInstalledVehicleFrame } from './vehicleSizePolicy.ts';
 import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from './suppliedSourceStudyIndex.ts';
 import { applyFleetLauncherMuzzles } from './fleetLauncherMuzzles.ts';
 import { GRIFFIN_HULL_LENGTH_M, GRIFFIN_TURRET_PIVOT, GRIFFIN_TURRET_SCALE as GRIFFIN_T } from './profiles/griffinProportions.ts';
@@ -295,5 +296,6 @@ export function synchronizeSuppliedSourceCombatMetadata(): void {
     fitArmorToDims(target.armor, structure.dims, target.dims);
     applySourceFrame(target, id);
     applySourceArmament(target);
+    restoreInstalledVehicleFrame(target);
   }
 }

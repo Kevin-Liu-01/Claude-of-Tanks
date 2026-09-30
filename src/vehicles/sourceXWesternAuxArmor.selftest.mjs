@@ -33,7 +33,9 @@ const cases = {
   // outboard hub cap was trimmed .2083 → .1993 so the ×1.232 family rig keeps the cap inside the tire face (wheel-review
   // PROUD gate); the Challenger 1 X draws the UK Challenger 2E hollow paired wheel and the fleet arm. Geometry repinned.
   ariete_c1_x: { main: 'a0b922dbe5da579937f27f8420ec41167ebe2c6d9634698b25ce0cfacfdd23fc', geometry: ['37c49f98', '33a43691'], counts: [210, 0] },
-  challenger1_x: { main: 'f101fa13686a0badafc64a484fe0dda5a3d98bb5c59c4db205cfccffdc24e8ec', geometry: ['6d7816ef', 'b026a7a6'], counts: [156, 0] },
+  // 2026-09-29 approved complete 1.10 resize; physical witnesses below use
+  // the same fixed transform, and the independent native receipt is retained.
+  challenger1_x: { main: '97d76a2b2d23ae7b408beb43ae2ad16c83206014e0bdc6a4c3fa779208f78a28', geometry: ['beb0854e', 'ba128570'], counts: [156, 0] },
 };
 const pose = yaw => tankPoseFromState({ pos: new THREE.Vector3(), yaw: 0, visualPitch: 0,
   visualRoll: 0, turretYaw: yaw, gunPitch: 0 });
@@ -97,7 +99,7 @@ for (const [id, expected] of Object.entries(cases)) {
   const armor = TANK_SPECS[id].armor;
   assert.equal(hash([armor.hullPlates.filter(p => p.kind !== 'spaced'), armor.turretPlates.filter(p => p.kind !== 'spaced'),
     armor.modules, armor.crew, armor.collisionShells]), expected.main,
-  `${id}: ${id === 'ariete_c1_x' ? 'approved enlarged C1' : 'pre-edit'} permanent armor, ERA, collision cells, modules and crew stay byte-identical`);
+  `${id}: ${id === 'ariete_c1_x' || id === 'challenger1_x' ? 'approved enlarged vehicle' : 'pre-edit'} permanent armor, ERA, collision cells, modules and crew stay byte-identical`);
   assert.deepEqual([armor.hullPlates.filter(p => p.surfaceGroup).length, armor.turretPlates.filter(p => p.surfaceGroup).length], expected.counts);
   const donor = TANK_SPECS[{ leo2a6_x: 'leo2a6', strv122_x: 'strv122', ariete_c1_x: 'ariete_c1', challenger1_x: 'challenger1' }[id]].armor;
   for (const plate of auxiliary(armor)) {
@@ -158,7 +160,7 @@ for (const [id, expected] of Object.entries(cases)) {
 // Historical donor slabs floating outside real stock must not be accepted.
 for (const [id, x, y, z] of [['leo2a6_x', 1.91003491, .5, 0], ['strv122_x', 1.89504, .5, 2],
   ['ariete_c1_x', 1.82505556, .75, -2], ['challenger1_x', 1.83477273, .6, 0]]) {
-  const scale = id === 'ariete_c1_x' ? ARIETE_SCALE : 1;
+  const scale = id === 'ariete_c1_x' ? ARIETE_SCALE : id === 'challenger1_x' ? 1.10 : 1;
   for (const side of [-1, 1]) assert.equal(shot(id, [side * (x * scale + .005), y * scale, z * scale],
     [side * (x * scale - .005), y * scale, z * scale]).length, 0,
     `${id}: old unsupported side slab remains gameplay air`);
@@ -175,8 +177,8 @@ for (const side of [-1, 1]) {
   assert.equal(gap.length, 1, 'real Ariete outer gap exposes only the actual inner leaf');
   close(gap[0].point.x, (side < 0 ? -1.529119 : 1.5299605) * ARIETE_SCALE, 'Ariete inner leaf through outer seam');
   for (const [rawZ, rawY, rawX] of [[-90, 40, 76.181099 - .43307], [-90, 58, 76.181099], [-73.365, 40, 70]]) {
-    const p = c1Point(side * rawX, rawY, rawZ);
-    const hits = shot('challenger1_x', [side * 2, p[1], p[2]], [side * 1.5, p[1], p[2]]);
+    const p = c1Point(side * rawX, rawY, rawZ).map(value => value * 1.10);
+    const hits = shot('challenger1_x', [side * 2.2, p[1], p[2]], [side * 1.65, p[1], p[2]]);
     assert.equal(hits.length, 1, 'Challenger field/rim/real course seam charges one exposed inherited family');
     close(hits[0].point.x, p[0], 'Challenger exact recessed sheet or raised rim');
   }
