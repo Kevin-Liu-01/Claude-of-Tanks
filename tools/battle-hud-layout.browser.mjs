@@ -129,7 +129,10 @@ try {
     for(const state of states){
       await page.evaluate(state=>window.__HUD_LAYOUT.state(state),state);
       // ResizeObserver + its scheduled layout pass, and spectator's enter state.
-      if(state==='ended')await page.waitForTimeout(1600);
+      if(state==='ended')await page.waitForFunction(()=>
+        ['.es-hero','.es-report','.es-actions'].every(selector=>
+          document.querySelector(selector)?.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})),
+        null,{timeout:10000});
       else await page.evaluate(async()=>{
         // Wait for real finite UI transitions, rather than sleeping half a
         // second for every state. Infinite status pulses cannot block the gate.
@@ -201,16 +204,21 @@ try {
       await check(`rosters-${allies}v${enemies}`);
       const issues=await page.evaluate(([allies,enemies])=>{
         const failures=[];
-        const score=document.querySelector('.cot-top').getBoundingClientRect();
-        const wedges=[...document.querySelectorAll('.cot-top .wedge')];
-        for(const [i,count] of [enemies,allies].entries()) {
-          if(wedges[i].children.length!==count)failures.push('wrong opposing marker count');
-          for(const mark of wedges[i].children){const r=mark.getBoundingClientRect();
-            if(r.x<score.x+25||r.right>score.right-25||r.bottom>score.bottom-5)failures.push('score marker outside safe scoreboard bounds');}
-        }
+        if(document.querySelector('.cot-top .wedge'))failures.push('scoreboard still contains roster squares');
         for(const [i,list] of [...document.querySelectorAll('.cot-ear-rows')].entries()) {
           if(list.children.length!==[allies,enemies][i])failures.push('missing roster entries');
+          const count=[allies,enemies][i];
+          if(list.parentElement.classList.contains('icon-grid')!==(count>14))failures.push('wrong roster presentation');
           if(!list.checkVisibility())continue;
+          if(count>14){
+            const first=list.children[0].getBoundingClientRect();
+            const second=list.children[1].getBoundingClientRect();
+            if(first.y!==second.y||first.x===second.x)failures.push('crowded roster did not form columns');
+            for(const tile of list.children){
+              if(!tile.title)failures.push('grid loses tank identity');
+              if(tile.getBoundingClientRect().height<32)failures.push('grid tank too small');
+            }
+          }
           const before=list.parentElement.getBoundingClientRect();
           list.scrollTop=list.scrollHeight;
           const last=list.lastElementChild?.getBoundingClientRect();

@@ -3,25 +3,14 @@ import { readFileSync } from 'node:fs';
 import { BATTLE_TIMES, BATTLE_WEATHER_VERSION, selectBattleWeather } from './battleWeatherPolicy.ts';
 
 const biomes = ['temperate', 'arid', 'tropical', 'cold', 'coastal'];
-assert.equal(BATTLE_WEATHER_VERSION, 3);
+assert.equal(BATTLE_WEATHER_VERSION, 4);
 
-// These are protocol fixtures, not expectations produced by a second copy of
-// the implementation. Version 3 adds sunset while preserving the shipped night domain
-// and these day/night fixtures, seed normalization and legacy descriptor field name.
-const fixtures = [
-  [0, 'temperate', { version: 3, seed: 0, biome: 'temperate', condition: 'clear',
-    timeOfDay: 'day', precipitationIntensity: 0, cloudOpacityMultiplier: 1, fogDensityMultiplier: 1 }],
-  [1337, 'tropical', { version: 3, seed: 1337, biome: 'tropical', condition: 'clear',
-    timeOfDay: 'day', precipitationIntensity: 0, cloudOpacityMultiplier: 1, fogDensityMultiplier: 1 }],
-  [3, 'cold', { version: 3, seed: 3, biome: 'cold', condition: 'clear',
-    timeOfDay: 'night', precipitationIntensity: 0, cloudOpacityMultiplier: 1, fogDensityMultiplier: 1 }],
-  [16, 'cold', { version: 3, seed: 16, biome: 'cold', condition: 'clear',
-    timeOfDay: 'night', precipitationIntensity: 0, cloudOpacityMultiplier: 1, fogDensityMultiplier: 1 }],
-  [2002, 'arid', { version: 3, seed: 2002, biome: 'arid', condition: 'clear',
-    timeOfDay: 'night', precipitationIntensity: 0, cloudOpacityMultiplier: 1, fogDensityMultiplier: 1 }],
-];
-for (const [seed, biome, expected] of fixtures) {
-  assert.deepEqual(selectBattleWeather(seed, biome), expected);
+// Version 4 changes the seeded time mapping; keep receipts explicit.
+for (const [seed, timeOfDay] of [[0, 'day'], [1, 'sunset'], [5, 'night'], [1337, 'day']]) {
+  assert.deepEqual(selectBattleWeather(seed, 'temperate'), {
+    version: 4, seed, biome: 'temperate', condition: 'clear', timeOfDay,
+    precipitationIntensity: 0, cloudOpacityMultiplier: 1, fogDensityMultiplier: 1,
+  });
 }
 
 function checkSelection(seed, biome) {
@@ -30,7 +19,7 @@ function checkSelection(seed, biome) {
   assert.equal(value.seed, seed >>> 0);
   assert.equal(value.biome, biome);
   assert.equal(Object.isFrozen(value), true, 'a consumer cannot mutate the match descriptor');
-  assert.equal(value.version, 3);
+  assert.equal(value.version, 4);
   assert.equal(value.condition, 'clear');
   assert.ok(['day', 'sunset', 'night'].includes(value.timeOfDay));
   assert.equal(value.cloudOpacityMultiplier, 1);
@@ -53,7 +42,7 @@ try {
         'day/night domain remains independent of biome');
     }
     assert.deepEqual([...counts], [['clear', 2048]], 'no seed can select rain, snow or randomized fog');
-    assert.ok(times.get('night') > 250 && times.get('night') < 600, 'night is bounded minority');
+    assert.ok(times.get('night') > 150 && times.get('night') < 260, 'night is bounded minority');
     assert.ok(times.get('day') > times.get('night'));
   }
 } finally { Math.random = random; }
@@ -77,17 +66,33 @@ const source = readFileSync(new URL('./battleWeatherPolicy.ts', import.meta.url)
 assert.doesNotMatch(source, /^import\s/m, 'pure policy must not import renderer, quality, map or fleet owners');
 assert.doesNotMatch(source, /Math\.random\(|Date\.|performance\.|setTimeout\(|requestAnimationFrame\(/,
   'no time, scheduler or global random dependency');
+// All seven preference combinations retain 60:30:10 relative weights. A large
+// deterministic sample catches accidental uniform fallback and disabled choices.
+const weights = { day: 60, sunset: 30, night: 10 };
+const sampleSize = 65536;
 for (let mask = 1; mask < 8; mask++) {
   const enabled = BATTLE_TIMES.filter((_, i) => mask & (1 << i));
-  for (let seed = 0; seed < 256; seed++) {
+  const counts = { day: 0, sunset: 0, night: 0 };
+  const totalWeight = enabled.reduce((total, time) => total + weights[time], 0);
+  for (let seed = 0; seed < sampleSize; seed++) {
     const actual = selectBattleWeather(seed, 'temperate', enabled);
     assert.ok(enabled.includes(actual.timeOfDay));
-    assert.deepEqual(actual, selectBattleWeather(seed, 'temperate', [...enabled].reverse()), 'UI order cannot re-key weather');
+    counts[actual.timeOfDay]++;
+    if (seed < 256) {
+      assert.deepEqual(actual, selectBattleWeather(seed, 'temperate', [...enabled].reverse()),
+        'UI order cannot re-key weather');
+      assert.deepEqual(actual, selectBattleWeather(seed, 'temperate', [...enabled, ...enabled]),
+        'duplicate preferences cannot increase a time’s odds');
+    }
   }
+  for (const time of BATTLE_TIMES) {
+    const expected = enabled.includes(time) ? weights[time] / totalWeight : 0;
+    assert.ok(Math.abs(counts[time] / sampleSize - expected) < 0.01,
+      `${enabled.join('/')} preserves the intended ${time} share`);
+  }
+  console.log(`  ${enabled.join('/')} selections: ${JSON.stringify(counts)}`);
 }
 assert.throws(() => selectBattleWeather(0, 'temperate', []), /At least one/);
 assert.throws(() => selectBattleWeather(0, 'temperate', ['dawn']), /valid time/);
-const sunsetCount = Array.from({length:2048}, (_,seed) => selectBattleWeather(seed,'temperate')).filter(x=>x.timeOfDay==='sunset').length;
-assert.ok(sunsetCount > 300 && sunsetCount < 500, 'sunset is a real seeded possibility');
 assert.doesNotMatch(source, /battleWeatherParticleBudget|selectCondition/);
-console.log('battleWeatherPolicy self-test: clear-only v3, exact seeded day/night fixtures and no resource/clock ownership PASS');
+console.log('battleWeatherPolicy self-test: clear-only v4, weighted seeded day/sunset/night and no resource/clock ownership PASS');

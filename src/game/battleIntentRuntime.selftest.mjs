@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createBattleIntentRuntime } from './battleIntentRuntime.ts';
+import { resolveMapId } from '../world/maps/mapIds.ts';
 
 const flushTasks = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -87,6 +88,33 @@ function createHarness(overrides = {}) {
   await flushTasks();
   assert.equal(runtime.consumeMap('hero', 'random'), 'coast',
     'a new battle count receives a new deterministic reservation');
+}
+
+{
+  const draws = [];
+  const { runtime } = createHarness({
+    resolveMapId: (mapId, previous) => {
+      draws.push({ mapId, previous });
+      // Constant entropy makes back-to-back repeat prevention observable.
+      return resolveMapId(mapId, () => 0, previous);
+    },
+  });
+  assert.equal(runtime.consumeMap('hero', 'verdant'), 'verdant');
+  runtime.preload({ specId: 'hero', mapId: 'random' });
+  runtime.preload({ specId: 'hero', mapId: 'random' });
+  await flushTasks();
+  assert.equal(draws.length, 2, 'repeat hover reuses its reservation');
+  assert.equal(draws.at(-1).previous, 'verdant');
+  runtime.invalidateMapPlan();
+  runtime.preload({ specId: 'other-tank', mapId: 'random' });
+  await flushTasks();
+  assert.equal(draws.at(-1).previous, 'verdant', 'discarded hover does not advance map history');
+  assert.equal(runtime.consumeMap('other-tank', 'random'), 'desert', 'launch uses the warmed alternative');
+  assert.equal(draws.length, 3, 'launch never rerolls a valid reservation');
+  assert.equal(runtime.consumeMap('hero', 'random'), 'verdant', 'direct launch also excludes previous map');
+  assert.equal(draws.at(-1).previous, 'desert');
+  assert.equal(runtime.consumeMap('hero', 'verdant'), 'verdant', 'explicit repeat remains allowed');
+  runtime.dispose();
 }
 
 {

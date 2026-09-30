@@ -3,12 +3,15 @@
  * battle seed. Only time of day varies; authored map atmosphere stays intact.
  * Biome is an explicit shared map-authoring input, not inferred from its name.
  */
-export const BATTLE_WEATHER_VERSION = 3;
+export const BATTLE_WEATHER_VERSION = 4;
 
 export type BattleWeatherBiome = 'temperate' | 'arid' | 'tropical' | 'cold' | 'coastal';
 type BattleWeatherCondition = 'clear';
 export const BATTLE_TIMES = Object.freeze(['day', 'sunset', 'night'] as const);
 export type BattleTimeOfDay = typeof BATTLE_TIMES[number];
+const TIME_WEIGHTS: Readonly<Record<BattleTimeOfDay, number>> = Object.freeze({
+  day: 60, sunset: 30, night: 10,
+});
 
 export interface BattleWeather {
   readonly version: typeof BATTLE_WEATHER_VERSION;
@@ -27,8 +30,7 @@ const BIOMES: Readonly<Record<BattleWeatherBiome, true>> = Object.freeze({
   temperate: true, arid: true, tropical: true, cold: true, coastal: true,
 });
 
-// Preserve the version-1 day/night hash, salt and threshold exactly. Removing
-// the independent precipitation domain must not re-key any existing match.
+// A dedicated hash domain keeps time selection independent of combat randomness.
 function weatherHash(seed: number, salt: number): number {
   let value = (seed ^ salt) >>> 0;
   value = Math.imul(value ^ (value >>> 16), 0x7feb352d);
@@ -50,11 +52,19 @@ export function selectBattleWeather(
     throw new RangeError('At least one valid time of day is required');
   }
   const canonicalSeed = seed >>> 0;
-  const roll = weatherHash(canonicalSeed, 0x85ebca6b) % 100;
-  // Keep the shipped night domain. Sunset takes 20% of the former day domain.
-  const rolled: BattleTimeOfDay = roll < 20 ? 'night' : roll >= 40 && roll < 60 ? 'sunset' : 'day';
+  // Canonical order also deduplicates preferences. Draw directly from the
+  // enabled weights so disabling a time preserves the remaining relative odds.
   const choices = BATTLE_TIMES.filter(time => enabled.includes(time));
-  const timeOfDay = choices.includes(rolled) ? rolled : choices[weatherHash(canonicalSeed, 0xc2b2ae35) % choices.length];
+  const totalWeight = choices.reduce((total, time) => total + TIME_WEIGHTS[time], 0);
+  let roll = weatherHash(canonicalSeed, 0x85ebca6b) / 0x100000000 * totalWeight;
+  let timeOfDay = choices[choices.length - 1];
+  for (const time of choices) {
+    roll -= TIME_WEIGHTS[time];
+    if (roll < 0) {
+      timeOfDay = time;
+      break;
+    }
+  }
   return Object.freeze({
     version: BATTLE_WEATHER_VERSION,
     seed: canonicalSeed,

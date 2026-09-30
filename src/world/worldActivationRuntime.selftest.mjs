@@ -343,11 +343,11 @@ function coveredAtmosphereHarness(load) {
 const coveredOptions = { precompile: false, services: false, atmosphere: 'covered-battle' };
 function assertSingleSelectedBake(h, seed) {
   assert.equal(h.bakes().length, 1, 'covered entry requests exactly one final selected IBL');
-  if (seed === 3) assert.equal(h.bakes()[0][1].skyIntensity, .08, 'that one request is moonlight, not intermediate daylight (2026-09-14 night lift: .05 -> .08)');
+  if (seed === 5) assert.equal(h.bakes()[0][1].skyIntensity, .08, 'that one request is moonlight, not intermediate daylight (2026-09-14 night lift: .05 -> .08)');
   else assert.deepEqual(h.bakes()[0][1], h.instance.current.config.sky, 'day/legacy authority keeps the exact authored preset');
 }
 
-for (const mapId of ['verdant', 'winter']) for (const seed of [3, 13, undefined]) {
+for (const mapId of ['verdant', 'winter']) for (const seed of [5, 13, undefined]) {
   const h = coveredAtmosphereHarness();
   try {
     await h.instance.ensure(mapId, null, coveredOptions);
@@ -389,9 +389,9 @@ for (const mapId of ['verdant', 'winter']) for (const seed of [3, 13, undefined]
   try {
     await h.instance.ensure('winter', null, { precompile: false, services: false });
     assert.deepEqual(h.bakes()[0][1], h.worlds.get('winter').config.sky);
-    await h.atmosphere.prepare(3, 'winter');
+    await h.atmosphere.prepare(5, 'winter');
     assert.equal(h.bakes().length, 2);
-    assert.throws(() => assertSingleSelectedBake(h, 3), /exactly one/);
+    assert.throws(() => assertSingleSelectedBake(h, 5), /exactly one/);
   } finally { h.atmosphere.current?.dispose(); }
 }
 
@@ -402,7 +402,7 @@ for (const recovery of ['ordinary-ensure', 'ordinary-activate', 'ordinary-resume
   await h.instance.ensure('winter', null, coveredOptions);
   h.instance.markEnvironmentPrepared(null);
   h.instance.markEnvironmentPrepared(h.worlds.get('desert'));
-  const stale = h.atmosphere.prepare(3, 'winter');
+  const stale = h.atmosphere.prepare(5, 'winter');
   let latest;
   if (recovery === 'new-selection') {
     await h.instance.ensure('desert', null, coveredOptions);

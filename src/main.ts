@@ -869,7 +869,7 @@ const scheduleGarageDressingBuild = garageDressingScheduler.schedule;
 // exact loaders and visuals while owning their ordering and cancellation.
 const battleIntent = createBattleIntentRuntime({
   getBattleCount: () => game.battleCount,
-  resolveMapId,
+  resolveMapId: (mapId, previousMapId) => resolveMapId(mapId, Math.random, previousMapId),
   loadWorldModule,
   prefetchWorld,
   ensureTankBuilders,

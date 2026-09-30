@@ -64,12 +64,19 @@ export function getMapName(mapId: string): string {
   return isMapId(mapId) ? MAP_NAMES[mapId] : MAP_NAMES.verdant;
 }
 
-export function resolveMapId(mapId: string, rand: () => number = Math.random): MapId {
+/** An optional previous solo map prevents immediate repeats without changing
+ * seeded multiplayer draws or explicit battlefield selections. */
+export function resolveMapId(
+  mapId: string, rand: () => number = Math.random, previousMapId?: string,
+): MapId {
   if (mapId === 'random' || !isMapId(mapId)) {
     const sample = Number(rand());
     const unit = Number.isFinite(sample)
       ? Math.max(0, Math.min(1 - Number.EPSILON, sample)) : 0;
-    return RANDOM_BATTLE_MAP_IDS[Math.floor(unit * RANDOM_BATTLE_MAP_IDS.length)];
+    const eligible = previousMapId
+      ? RANDOM_BATTLE_MAP_IDS.filter(id => id !== previousMapId)
+      : RANDOM_BATTLE_MAP_IDS;
+    return eligible[Math.floor(unit * eligible.length)];
   }
   return mapId;
 }

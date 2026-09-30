@@ -403,8 +403,6 @@ interface TeamTally {
   allyTotal: number;
   enemyAlive: number;
   enemyTotal: number;
-  deadEnemies: string[];
-  deadAllies: string[];
 }
 interface HpBar {
   root: HTMLDivElement;
@@ -1260,7 +1258,7 @@ const HUD_CSS = `
   background:linear-gradient(90deg,rgba(126,232,126,.12),transparent 34%,transparent 66%,rgba(240,90,90,.12));}
 .cot-top::after{content:none;}
 .cot-top .sc,.cot-top .tm-block{position:relative;z-index:1;}
-.cot-top .sc{display:grid;grid-template-rows:10px 1fr auto;place-items:center;gap:1px;
+.cot-top .sc{display:grid;grid-template-rows:10px 1fr;place-items:center;gap:1px;
   min-width:0;padding:6px 7px 5px;}
 .cot-top .team-label,.cot-top .tm-label{font-family:${FONT_COND};font-size:7.5px;font-weight:800;
   line-height:1;letter-spacing:.2em;text-transform:uppercase;color:#8f9eaa;white-space:nowrap;}
@@ -1283,24 +1281,12 @@ const HUD_CSS = `
 .cot-top.times-up .tm{color:#ffd27a;animation:cotTimesUp .36s steps(1,end) 7;}
 .cot-top.times-up .tm-label{color:#ffd27a;}
 @keyframes cotTimesUp{50%{opacity:.18;}}
-/* One socket per opposing vehicle; kills illuminate outward from the clock. */
-.cot-top .wedge{display:grid;grid-template-columns:repeat(var(--wedge-columns,7),minmax(0,6px));
-  gap:2px;align-items:center;justify-content:center;width:100%;min-width:0;}
-.cot-top .wedge i{display:block;width:100%;height:6px;
-  background:rgba(2,5,8,.9);border:1px solid rgba(150,166,180,.38);
-  box-shadow:inset 0 1px 1px rgba(0,0,0,.72);}
-.cot-top .wedge i.on{animation:cotChipIn .18s ease-out;
-  background:rgba(134,232,134,.95);border-color:rgba(150,244,150,.95);
-  box-shadow:0 0 4px rgba(126,232,126,.4);}
-.cot-top .wedge.r i.on{background:rgba(242,110,100,.95);border-color:rgba(250,130,120,.95);
-  box-shadow:0 0 4px rgba(240,90,90,.4);}
 .cot-mode-status{position:absolute;z-index:var(--hud-layer-score);top:64px;left:50%;transform:translateX(-50%);
   min-height:28px;display:none;align-items:center;gap:8px;padding:5px 11px;color:#e8f0f5;
   background:rgba(7,11,15,.88);border:1px solid rgba(176,194,208,.28);box-shadow:0 5px 14px rgba(0,0,0,.38);
   font:800 8px ${FONT_COND};letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;}
 .cot-mode-status.show{display:flex}.cot-mode-status .mi,.cot-mode-status .mi svg{display:block;width:15px;height:15px}
 .cot-mode-status .mi{color:#f0a030}.cot-mode-status .mv{color:#fff1d6;font-variant-numeric:tabular-nums}
-@keyframes cotChipIn{from{opacity:0}to{opacity:1}}
 /* Compact player telemetry. The engineering dashboard folds this strip into
    its richer top-right panel instead of allowing two readouts to overlap. */
 .cot-net{position:absolute;z-index:var(--hud-layer-controls);top:8px;right:10px;display:flex;align-items:center;
@@ -1447,6 +1433,18 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-ear.l .cot-er.dead{border-left-color:rgba(126,232,126,.3);}
 .cot-ear.r .cot-er.dead{border-right-color:rgba(240,90,90,.3);}
 .cot-er.dead .hpm{display:none;}
+/* Crowded rosters become a compact silhouette grid; names remain available
+   to assistive reading and in each tile's native hover description. */
+.cot-ear.icon-grid .cot-ear-rows{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:3px;padding:3px 1px;align-content:start;}
+.cot-hud .cot-ear.icon-grid .cot-er{height:32px;min-height:32px;padding:5px;
+  justify-content:center;overflow:hidden;}
+.cot-hud .cot-ear.icon-grid .cot-er .ic{width:28px;height:16px;max-width:100%;}
+.cot-ear.icon-grid .cot-er .n{position:absolute;width:1px;height:1px;padding:0;
+  overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+.cot-ear.icon-grid .cot-er.me{background:rgba(112,77,21,.48);border-color:#f0b04a;}
+.cot-ear.icon-grid .cot-er.dead::after{content:"";position:absolute;width:70%;height:1px;
+  background:#cf847d;transform:rotate(-25deg);pointer-events:none;}
 .cot-killfeed{position:absolute;z-index:var(--hud-layer-status);top:52px;left:210px;display:flex;flex-direction:column;
   gap:5px;align-items:flex-start;max-width:420px;}
 .cot-kf{display:flex;gap:7px;align-items:baseline;padding:5px 16px 5px 12px;font-size:12.5px;
@@ -1543,7 +1541,7 @@ body.cot-debug-hud .cot-net{display:none!important;}
 }
 .cot-spec .cycle:active kbd{transform:translateY(1px);box-shadow:inset 0 1px rgba(255,229,182,.06),0 1px 0 rgba(3,6,9,.78);}
 @media (prefers-reduced-motion:reduce){
-  .cot-top .wedge i.on,.cot-spec,.cot-spec .who.sw,.cot-spec .cycle,.cot-spec .gar{
+  .cot-spec,.cot-spec .who.sw,.cot-spec .cycle,.cot-spec .gar{
     animation:none;transition:none;}
 }
 /* while spectating, the DEAD player's own-tank furniture is meaningless and
@@ -1919,22 +1917,19 @@ export function initHud(bus: EventBus): HudRuntime {
   let dmgPanelRef: DamagePanelController | null = null;   // mounted damage panel (turret-bearing feed)
 
   // --- top score/timer plate ---
-  // Each score numeral carries per-team frag sockets. The clock occupies its
-  // own center bay so all three live values remain legible over bright maps.
+  // Scores and clock retain a fixed footprint regardless of roster size.
   const topPlate = el('div', 'cot-top', root);
   topPlate.innerHTML = `<div class="sc ally"><span class="team-label">${t('hud.team.ally')}</span>` +
-    `<b class="fg">0</b><div class="wedge l"></div></div>` +
+    `<b class="fg">0</b></div>` +
     `<div class="tm-block"><span class="tm-label">${t('hud.team.time')}</span><span class="tm">15:00</span></div>` +
     `<div class="sc enemy"><span class="team-label">${t('hud.team.enemy')}</span>` +
-    `<b class="fe">0</b><div class="wedge r"></div></div>`;
+    `<b class="fe">0</b></div>`;
   const fgEl = requireElement<HTMLElement>(topPlate, '.fg');
   const feEl = requireElement<HTMLElement>(topPlate, '.fe');
   const tmEl = requireElement<HTMLElement>(topPlate, '.tm');
   const allyLabelEl = requireElement<HTMLElement>(topPlate, '.sc.ally .team-label');
   const enemyLabelEl = requireElement<HTMLElement>(topPlate, '.sc.enemy .team-label');
   const timerLabelEl = requireElement<HTMLElement>(topPlate, '.tm-label');
-  const wedgeL = requireElement<HTMLElement>(topPlate, '.wedge.l');
-  const wedgeR = requireElement<HTMLElement>(topPlate, '.wedge.r');
   const modeStatusEl = el('div', 'cot-mode-status', root);
   modeStatusEl.setAttribute('role', 'status');
   modeStatusEl.innerHTML = `<span class="mi"></span><span class="mn"></span><span class="mv"></span>`;
@@ -2076,30 +2071,6 @@ export function initHud(bus: EventBus): HudRuntime {
         driveNeedleMilli = needleMilli;
         driveNeedleEl.style.rotate = `${needleMilli / 1000}deg`;
       }
-    }
-  }
-
-  // Frag counters retain one marker per opposing vehicle and wrap within
-  // their scoreboard column for large or uneven teams. Each
-  // kill a team scores fills one tick in that team's color, growing outward
-  // from the timer in the middle (tug-of-war read at a glance).
-  function syncWedge(
-    wEl: HTMLElement,
-    slots: number,
-    victims: string[],
-    reverse: boolean,
-  ): void {
-    const kills = victims.length;
-    if (wEl.children.length !== slots) {
-      wEl.textContent = '';
-      const rows = Math.max(1, Math.ceil(slots / 10));
-      wEl.style.setProperty('--wedge-columns', String(Math.max(1, Math.ceil(slots / rows))));
-      for (let i = 0; i < slots; i++) el('i', '', wEl);
-    }
-    for (let i = 0; i < slots; i++) {
-      // left wedge's inner edge is its last child; right wedge's is its first
-      const idx = reverse ? i : slots - 1 - i;
-      wEl.children[i].classList.toggle('on', idx < kills);
     }
   }
 
@@ -2897,8 +2868,6 @@ export function initHud(bus: EventBus): HudRuntime {
     allyTotal: 0,
     enemyAlive: 0,
     enemyTotal: 0,
-    deadEnemies: [],
-    deadAllies: [],
   };
 
   function rosterChanged(tanks: HudTank[]): boolean {
@@ -2945,6 +2914,7 @@ export function initHud(bus: EventBus): HudRuntime {
     requireElement<HTMLElement>(rootEl, '.tier').textContent = tierNumeral(spec.id) || '–';
     requireElement<HTMLElement>(rootEl, '.nick').textContent = nickFor(tank);
     requireElement<HTMLElement>(rootEl, '.vn').textContent = spec.name;
+    rootEl.title = `${nickFor(tank)} · ${spec.name}`;
     // Jev commander (2026-09-25): a bot under Jev's orders carries a small tag beside its vehicle
     const brainEl = requireElement<HTMLElement>(rootEl, '.brain');
     brainEl.textContent = t('hud.brain.jev');
@@ -2989,20 +2959,16 @@ export function initHud(bus: EventBus): HudRuntime {
     teamTally.allyTotal = 0;
     teamTally.enemyAlive = 0;
     teamTally.enemyTotal = 0;
-    teamTally.deadEnemies.length = 0;
-    teamTally.deadAllies.length = 0;
   }
 
-  function tallyTank(tank: HudTank, ally: boolean, dead: boolean): void {
+  function tallyTank(ally: boolean, dead: boolean): void {
     if (ally) {
       teamTally.allyTotal++;
-      if (dead) teamTally.deadAllies.push(tank.spec!.id);
-      else teamTally.allyAlive++;
+      if (!dead) teamTally.allyAlive++;
       return;
     }
     teamTally.enemyTotal++;
-    if (dead) teamTally.deadEnemies.push(tank.spec!.id);
-    else teamTally.enemyAlive++;
+    if (!dead) teamTally.enemyAlive++;
   }
 
   function updateRosterRows(tanks: HudTank[]): TeamTally {
@@ -3012,12 +2978,14 @@ export function initHud(bus: EventBus): HudRuntime {
       if (!tank?.spec) continue;
       const ally = tank.team === 'player' || !!tank.isPlayer;
       const dead = !!tank.combat?.destroyed;
-      tallyTank(tank, ally, dead);
+      tallyTank(ally, dead);
       updateEarRow(tank, ally, dead);
     }
     // sides (owner 2026-09-18): a 14 v 14 or 1 v 20 roster packs its ear so the panel stays inside the viewport
     earL.classList.toggle('dense', teamTally.allyTotal > 10);
     earR.classList.toggle('dense', teamTally.enemyTotal > 10);
+    earL.classList.toggle('icon-grid', teamTally.allyTotal > 14);
+    earR.classList.toggle('icon-grid', teamTally.enemyTotal > 14);
     return teamTally;
   }
 
@@ -3120,8 +3088,6 @@ export function initHud(bus: EventBus): HudRuntime {
       feEl.textContent = String(enemyScore);
       allyLabelEl.textContent = horde ? t('hud.wave') : t('hud.allies');
       enemyLabelEl.textContent = horde ? t('hud.hostiles') : t('hud.enemy');
-      wedgeL.textContent = '';
-      wedgeR.textContent = '';
       allyAliveEl.textContent = `${tally.allyAlive} / ${tally.allyTotal}`;
       enemyAliveEl.textContent = `${tally.enemyAlive} / ${tally.enemyTotal}`;
       lastScore = score;
@@ -3144,8 +3110,6 @@ export function initHud(bus: EventBus): HudRuntime {
       feEl.textContent = String(enemyKills);
       allyLabelEl.textContent = t('hud.allies');
       enemyLabelEl.textContent = t('hud.enemy');
-      syncWedge(wedgeL, tally.enemyTotal, tally.deadEnemies, false);
-      syncWedge(wedgeR, tally.allyTotal, tally.deadAllies, true);
       allyAliveEl.textContent = `${tally.allyAlive} / ${tally.allyTotal}`;
       enemyAliveEl.textContent = `${tally.enemyAlive} / ${tally.enemyTotal}`;
       lastScore = score;

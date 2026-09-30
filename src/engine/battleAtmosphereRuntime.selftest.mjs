@@ -46,7 +46,7 @@ try {
   runtime.prepare(2 ** 32 + 1337, 'monsoon');
   assert.equal(applied.length, callbacksBefore, 'same canonical seed cannot re-bake');
   assert.equal(authoredReads, readsBefore, 'same match requires no authored-preset read');
-  runtime.prepare(3, 'winter');
+  runtime.prepare(5, 'winter');
   const night = applied.at(-1);
   assert.equal(runtime.weather.condition, 'clear'); assert.equal(runtime.weather.timeOfDay, 'night');
   assert.equal(getVehicleReadabilityScale(), .34, 'night retains readable plates below the daylight floor (2026-09-14: lifted from .24 with the brighter moon)');
@@ -59,11 +59,11 @@ try {
   assert.equal(night.fogDensity, base.fogDensity, 'night retains authored fog density');
   assert.equal(scene.children.length, 0, 'old snow seed allocates no particles or lights');
   const beforeRematch = applied.length;
-  runtime.prepare(3, 'winter', false);
+  runtime.prepare(5, 'winter', false);
   assert.equal(runtime.weather.timeOfDay, 'day', 'night opt-out rekeys the same match seed');
   assert.deepEqual(applied.at(-1), base, 'opt-out restores exact authored daylight');
   assert.equal(getVehicleReadabilityScale(), 1);
-  runtime.prepare(3, 'winter', true);
+  runtime.prepare(5, 'winter', true);
   assert.equal(runtime.weather.timeOfDay, 'night', 're-enabling restores the existing seeded selection');
   runtime.prepare(13, 'winter');
   assert.equal(applied.length, beforeRematch + 3, 'preference and seed changes each reapply atmosphere');
@@ -73,7 +73,7 @@ try {
   runtime.prepare(16, 'winter');
   assert.equal(runtime.weather.condition, 'clear', 'old fog seed cannot amplify map fog');
   assert.equal(applied.at(-1).fogDensity, base.fogDensity);
-  runtime.prepare(3, 'winter', ['sunset']);
+  runtime.prepare(5, 'winter', ['sunset']);
   assert.equal(runtime.weather.timeOfDay, 'sunset');
   assert.equal(applied.at(-1).sunElevationDeg, 7);
   assert.equal(applied.at(-1).sunColorHex, 0xffbf80);
@@ -92,14 +92,14 @@ try {
   const afterReset = applied.length;
   runtime.reset();
   assert.equal(applied.length, afterReset, 'reset restores exactly once; no frame entry can wake');
-  runtime.prepare(3, 'winter');
+  runtime.prepare(5, 'winter');
   assert.equal(getVehicleReadabilityScale(), .34);
   assert.equal(scene.children.length, 0);
   for (const mapId of MAP_IDS) {
     runtime.reset();
-    runtime.prepare(3, mapId);
+    runtime.prepare(5, mapId);
     assert.equal(runtime.weather.timeOfDay, mapId === 'mars' || mapId === 'moon' ? 'day' : 'night', `${mapId}: fixed space key or terrestrial night selection`);
-    runtime.prepare(3, mapId, false);
+    runtime.prepare(5, mapId, false);
     assert.equal(runtime.weather.timeOfDay, 'day', `${mapId}: disabled nights stay daytime`);
     assert.deepEqual(applied.at(-1), mapId === 'mars' ? MARS_SKY_PRESET : base);
     assert.equal(runtime.weather.condition, 'clear', `${mapId}: no weather`);
@@ -155,10 +155,10 @@ function colorsRestored(fixture) {
 try {
   horizonRuntime.prepare(13, 'winter');
   colorsRestored(first);
-  horizonRuntime.prepare(3, 'winter');
-  horizonRuntime.prepare(3, 'winter', false);
+  horizonRuntime.prepare(5, 'winter');
+  horizonRuntime.prepare(5, 'winter', false);
   colorsRestored(first);
-  horizonRuntime.prepare(3, 'winter', true);
+  horizonRuntime.prepare(5, 'winter', true);
   for (const [material, identity, initial, version] of first.snapshots.slice(0, 2)) {
     assert.strictEqual(material.color, identity);
     assert.deepEqual(material.color.toArray(), [initial.r * .20, initial.g * .20, initial.b * .20],
@@ -171,30 +171,30 @@ try {
   }
   const dimmed = first.shared.color.clone();
   const detailDimmed = first.detail.color.clone();
-  horizonRuntime.prepare(3, 'winter');
+  horizonRuntime.prepare(5, 'winter');
   assert.deepEqual(first.shared.color, dimmed, 'same match never compounds tint');
   assert.deepEqual(first.detail.color, detailDimmed, 'same match never compounds new detail tint');
-  horizonRuntime.prepare(7, 'winter');
+  horizonRuntime.prepare(21, 'winter');
   assert.deepEqual(first.shared.color, dimmed, 'new night restores before collecting again');
   assert.deepEqual(first.detail.color, detailDimmed, 'night rematch restores new detail before collecting again');
   worldRoot = second.root;
-  horizonRuntime.prepare(7, 'winter');
+  horizonRuntime.prepare(21, 'winter');
   colorsRestored(first);
   assert.deepEqual(second.shared.color, dimmed, 'same map/seed but rebuilt root is re-keyed');
   assert.deepEqual(second.detail.color, detailDimmed, 'rebuilt biome-detail material is re-keyed');
   horizonRuntime.prepare(13, 'winter');
   colorsRestored(second);
-  horizonRuntime.prepare(3, 'winter'); horizonRuntime.reset();
+  horizonRuntime.prepare(5, 'winter'); horizonRuntime.reset();
   colorsRestored(second);
   horizonRuntime.reset();
   colorsRestored(second);
-  horizonRuntime.prepare(3, 'winter');
+  horizonRuntime.prepare(5, 'winter');
   worldRoot = null;
   horizonRuntime.reset();
   colorsRestored(second);
   assert.equal(horizonRuntime.weather, null, 'Garage return restores the saved detached battlefield');
   worldRoot = second.root;
-  horizonRuntime.prepare(3, 'winter'); horizonRuntime.dispose();
+  horizonRuntime.prepare(5, 'winter'); horizonRuntime.dispose();
   colorsRestored(second);
 } finally {
   horizonRuntime.dispose();

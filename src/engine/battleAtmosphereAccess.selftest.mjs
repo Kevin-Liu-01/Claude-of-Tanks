@@ -37,7 +37,7 @@ function harness(load) {
     assert.equal(h.access.update, undefined, 'fixed match lighting has no frame forwarding port');
     h.access.reset();
     assert.equal(h.loads, 0); assert.equal(h.optionsReads, 0); assert.equal(h.access.current, null);
-    const old = h.access.prepare(3, 'winter');
+    const old = h.access.prepare(5, 'winter');
     const latest = h.access.prepare(1337, 'monsoon');
     gate.resolve(h.module);
     await Promise.all([old, latest]);
@@ -55,13 +55,13 @@ function harness(load) {
     const count = h.applied.length;
     h.access.reset();
     assert.equal(h.applied.length, count, 'duplicate reset cannot reactivate the match preset');
-    await h.access.prepare(3, 'winter');
+    await h.access.prepare(5, 'winter');
     assert.equal(h.loads, 1); assert.equal(h.creates, 1);
     assert.strictEqual(h.access.current, owner, 'later battles reuse the lazy atmosphere owner');
     assert.equal(h.scene.children.length, 0);
     assert.equal(h.access.current.weather.condition, 'clear');
     assert.equal(h.access.current.weather.timeOfDay, 'night');
-    await h.access.prepare(3, 'winter', false);
+    await h.access.prepare(5, 'winter', false);
     assert.equal(h.access.current.weather.timeOfDay, 'day', 'lazy access forwards the solo preference');
     assert.deepEqual(h.applied.at(-1), h.authored);
   } finally { h.dispose(); }
@@ -70,7 +70,7 @@ function harness(load) {
 {
   const gate = deferred(), h = harness(() => gate.promise);
   try {
-    const pending = h.access.prepare(3, 'winter');
+    const pending = h.access.prepare(5, 'winter');
     h.access.reset(); // return to Garage while the chunk is still in flight
     gate.resolve(h.module);
     await pending;
@@ -87,10 +87,10 @@ function harness(load) {
   const h = harness((module, attempt) => attempt === 1
     ? Promise.reject(new Error('weather chunk unavailable')) : Promise.resolve(module));
   try {
-    await assert.rejects(h.access.prepare(3, 'winter'), /weather chunk unavailable/);
+    await assert.rejects(h.access.prepare(5, 'winter'), /weather chunk unavailable/);
     assert.equal(h.access.current, null); assert.equal(h.applied.length, 0);
     assert.equal(h.optionsReads, 0);
-    await h.access.prepare(3, 'winter');
+    await h.access.prepare(5, 'winter');
     assert.equal(h.loads, 2); assert.equal(h.creates, 1);
     assert.equal(h.access.current.weather.condition, 'clear', 'failed load remains retryable');
     assert.equal(h.access.current.weather.timeOfDay, 'night');
@@ -107,7 +107,7 @@ function harness(load) {
 {
   const gate = deferred(), h = harness(() => gate.promise);
   try {
-    const pending = h.access.prepare(3, 'winter');
+    const pending = h.access.prepare(5, 'winter');
     const rejected = assert.rejects(pending, /cancelled failed chunk/);
     h.access.reset(); gate.reject(new Error('cancelled failed chunk'));
     await rejected;
@@ -256,7 +256,7 @@ assert.deepEqual(frontlinePrepares, [[3, 'winter'], [3, 'winter']]);
 {
   const h = harness();
   try {
-    await h.access.prepare(3, 'winter');
+    await h.access.prepare(5, 'winter');
     const garagePreset = { fogDensity: .0001, sunIntensity: 5, sunElevationDeg: 60 };
     const phase = { setActive() {}, setSunTrim() {} };
     let nightResets = 0;

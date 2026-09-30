@@ -25,7 +25,7 @@ interface BattleRosterPreparation {
 
 interface BattleIntentRuntimeOptions {
   getBattleCount(): number;
-  resolveMapId(mapId: string): string;
+  resolveMapId(mapId: string, previousMapId?: string): string;
   loadWorldModule(): MaybePromise;
   prefetchWorld(mapId: string, options?: { intent?: boolean }): MaybePromise;
   ensureTankBuilders(specIds: readonly string[]): Promise<RuntimeValue>;
@@ -123,6 +123,8 @@ export function createBattleIntentRuntime({
   let textureGeneration = 0;
   let texturePromise: Promise<void> | null = null;
   let mapPlan: MapPlan | null = null;
+  // Only consumed battle choices enter history; speculative hover work does not.
+  let lastConsumedMapId: string | undefined;
   let disposed = false;
 
   const ignoreFailure = (task: () => MaybePromise) => {
@@ -144,7 +146,7 @@ export function createBattleIntentRuntime({
     if (mapPlan?.specId === specId && mapPlan.battleCount === battleCount) {
       return mapPlan.resolved;
     }
-    const resolved = resolveMapId('random');
+    const resolved = resolveMapId('random', lastConsumedMapId);
     mapPlan = { specId, battleCount, resolved };
     return resolved;
   };
@@ -230,7 +232,9 @@ export function createBattleIntentRuntime({
       ? mapPlan.resolved
       : null;
     invalidateMapPlan();
-    return planned ?? resolveMapId(requestedMapId);
+    const resolved = planned ?? resolveMapId(requestedMapId, lastConsumedMapId);
+    lastConsumedMapId = resolved;
+    return resolved;
   };
 
   const prepareRoster = async ({

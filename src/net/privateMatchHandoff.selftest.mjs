@@ -479,7 +479,7 @@ for (const mapId of MAP_IDS) {
 assert.equal(resolvePrivateMatchMap({ ...lobbyState, gameMode: 'mars', mapId: 'random' }),
   resolvePrivateMatchMap({ ...lobbyState, gameMode: 'standard', mapId: 'random' }),
   'Mars random selection uses the same deterministic rotation');
-assert.deepEqual([...RANDOM_BATTLE_MAP_IDS].sort(), MAP_IDS.filter((id) => id !== 'mars').sort(), 'the random rotation is the catalog without Mars');
+assert.deepEqual([...RANDOM_BATTLE_MAP_IDS].sort(), MAP_IDS.filter((id) => id !== 'mars' && id !== 'moon').sort(), 'the random rotation excludes the two space maps');
 assert.deepEqual(
   [...privateRandomCoverage].sort(),
   [...RANDOM_BATTLE_MAP_IDS].sort(),
