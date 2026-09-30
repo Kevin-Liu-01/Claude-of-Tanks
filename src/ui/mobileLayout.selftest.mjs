@@ -178,12 +178,8 @@ assert.match(responsiveSurfaces,
 assert.match(battleLoad,
   /\.cot-bl \.briefing\{[^}]*background:transparent;border:0;box-shadow:none/,
   'every viewport must show full-bleed loading art without the gray briefing panel');
-assert.match(battleLoad,
-  /\.cot-bl \.rows\{[^}]*grid-template-rows:repeat\(14,minmax\(20px,1fr\)\)/,
-  'team sheets must reserve all 14 positions before roster data arrives');
-assert.match(responsiveSurfaces,
-  /body\[data-cot-height='short'\] \.cot-bl \.rows\{grid-template-rows:repeat\(14,minmax\(16px,1fr\)\)/,
-  'short battle rosters must retain 14 compact positions');
+// Roster density, centering and late-asset stability are checked in the
+// rendered production component by tools/battle-load-layout.browser.mjs.
 assert.doesNotMatch(responsiveSurfaces, /\.cot-bl \.count:empty\{display:none/,
   'starting the countdown must not resize the team sheets');
 

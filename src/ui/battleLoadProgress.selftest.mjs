@@ -12,12 +12,12 @@ function element(name) {
   const attributes = new Map();
   let text = '';
   const result = {
-    name, id: '', className: '', innerHTML: '', children: [],
+    name, id: '', className: '', innerHTML: '', children: [], dataset: {},
     get textContent() { return text; },
-    set textContent(value) { mutations.push([name, 'text', value]); text = value; },
+    set textContent(value) { mutations.push([name, 'text', value]); text = value; this.children.length = 0; },
     get offsetWidth() { throw new Error('loading progress must not force layout'); },
     getBoundingClientRect() { throw new Error('loading progress must not measure layout'); },
-    style: new Proxy({}, { set(target, key, value) {
+    style: new Proxy({ setProperty(key, value) { this[key] = value; } }, { set(target, key, value) {
       assert.notEqual(key, 'width', 'loading fill must not animate layout');
       mutations.push([name, 'style', key, value]); target[key] = value; return true;
     } }),

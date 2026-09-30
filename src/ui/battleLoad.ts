@@ -112,8 +112,10 @@ const CSS = `
 /* --- rosters ------------------------------------------------------------- */
 .cot-bl .teams{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr);
   align-items:stretch;gap:clamp(16px,3vw,42px);}
-.cot-bl .team{min-width:0;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);}
-.cot-bl .thead{display:flex;align-items:center;gap:9px;padding:0 8px 8px;
+.cot-bl .team{--bl-count:1;--bl-row-gap:3px;--bl-row-inset:7px;--bl-heading:28px;min-width:0;min-height:0;align-self:center;
+  height:min(100%,calc(var(--bl-count) * (64px + var(--bl-row-gap)) + var(--bl-heading) + var(--bl-row-inset) - var(--bl-row-gap)));
+  display:grid;grid-template-rows:auto minmax(0,1fr);}
+.cot-bl .thead{height:var(--bl-heading);display:flex;align-items:center;gap:9px;padding:0 8px 8px;
   border-bottom:1px solid rgba(146,164,180,.24);font-family:${FONT_COND};
   font-size:11px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;}
 .cot-bl .team.ally .thead{color:#7fdc8a;border-bottom-color:rgba(127,220,138,.4);}
@@ -122,10 +124,10 @@ const CSS = `
 .cot-bl .thead .n{margin-left:auto;font-variant-numeric:tabular-nums;color:#8a97a3;
   letter-spacing:.12em;}
 .cot-bl .team.foe .thead .n{margin-left:0;margin-right:auto;}
-/* Reserve the complete 14-player sheet before any roster arrives. Empty
-   tracks stay unpainted; existing rows and team headers never recenter. */
-.cot-bl .rows{display:grid;grid-template-rows:repeat(14,minmax(20px,1fr));
-  min-height:0;gap:3px;padding-top:7px;overflow-y:auto;overscroll-behavior:contain;
+/* Fit the resolved roster, rather than leaving invisible slots for 14 tanks.
+   Fixed silhouette boxes keep asset loading from moving the rows. */
+.cot-bl .rows{display:grid;grid-template-rows:repeat(var(--bl-count),minmax(20px,1fr));
+  min-height:0;gap:var(--bl-row-gap);padding-top:var(--bl-row-inset);overflow-y:auto;overscroll-behavior:contain;
   scrollbar-width:thin;scrollbar-color:#596976 transparent;}
 .cot-bl .rows::-webkit-scrollbar{width:4px}
 .cot-bl .rows::-webkit-scrollbar-thumb{background:#596976}
@@ -145,6 +147,9 @@ const CSS = `
 .cot-bl .team.foe .row .sil{transform:scaleX(-1);}
 .cot-bl .row .nm{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:600;
   color:#dfe8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cot-bl :where(.team[data-density="roomy"]) .row .tier{font-size:13px;}
+.cot-bl :where(.team[data-density="roomy"]) .row .sil{flex-basis:64px;max-height:32px;}
+.cot-bl :where(.team[data-density="roomy"]) .row .nm{font-size:16px;}
 .cot-bl .team.foe .row .nm{text-align:right;}
 .cot-bl .row.me .nm{color:#ffe4b0;}
 .cot-bl .vs{width:48px;height:48px;display:grid;place-items:center;justify-self:center;align-self:center;
@@ -267,6 +272,8 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   const artEl = requiredElement<HTMLDivElement>(root, '.art');
   const nameEl = requiredElement<HTMLDivElement>(root, '.mapname');
   const kickEl = requiredElement<HTMLDivElement>(root, '.kicker');
+  const allyTeam = requiredElement<HTMLDivElement>(root, '.team.ally');
+  const foeTeam = requiredElement<HTMLDivElement>(root, '.team.foe');
   const allyRows = requiredElement<HTMLDivElement>(root, '.team.ally .rows');
   const foeRows = requiredElement<HTMLDivElement>(root, '.team.foe .rows');
   const allyN = requiredElement<HTMLSpanElement>(root, '.team.ally .n');
@@ -290,8 +297,11 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   function fillTeam(
     host: HTMLElement,
     countEl2: HTMLElement,
+    team: HTMLElement,
     rows: readonly BattleLoadRosterRow[] = [],
   ): void {
+    team.style.setProperty('--bl-count', String(Math.max(1, rows.length)));
+    team.dataset.density = rows.length <= 7 ? 'roomy' : 'compact';
     host.textContent = '';
     for (const r of rows) {
       const el = document.createElement('div');
@@ -336,8 +346,8 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       if (info.mode) kickEl.textContent = info.mode;
       artEl.className = 'art' + (info.thumb ? '' : ` ${info.biome || 'none'}`);
       artEl.style.backgroundImage = info.thumb ? `url(${info.thumb})` : '';
-      fillTeam(allyRows, allyN, info.allies);
-      fillTeam(foeRows, foeN, info.enemies);
+      fillTeam(allyRows, allyN, allyTeam, info.allies);
+      fillTeam(foeRows, foeN, foeTeam, info.enemies);
       const [h, b] = localizedTip(
         BATTLE_TIPS[Math.floor(Math.random() * BATTLE_TIPS.length)],
       );
@@ -358,8 +368,8 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       allies: readonly BattleLoadRosterRow[],
       enemies: readonly BattleLoadRosterRow[],
     ) {
-      fillTeam(allyRows, allyN, allies);
-      fillTeam(foeRows, foeN, enemies);
+      fillTeam(allyRows, allyN, allyTeam, allies);
+      fillTeam(foeRows, foeN, foeTeam, enemies);
     },
 
     /**
