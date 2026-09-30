@@ -1,20 +1,21 @@
 /** Ordered regression groups; npm test runs all of them in one invocation. */
 export const SELFTEST_SUITES = Object.freeze({
   pre: Object.freeze([
-    'src/sim/auxiliarySystems.selftest.mjs',
-    'src/sim/smokeBallistics.selftest.mjs',
-    'src/fx/auxiliaryPresentation.selftest.mjs',
-    'src/ui/vehicleControlCooldown.selftest.mjs',
-    'src/vehicles/vehicleAuxiliaryGeometry.selftest.mjs',
-    'src/sim/modeConfiguration.selftest.mjs',
-    'src/vehicles/tacticalRoles.selftest.mjs',
-    'src/world/maps/earthriseCrossing.selftest.mjs',
     // Group independent full-fleet builders to fill the four CPU slots before
     // the 45-second FIFO drain. Every check stays in its original lifecycle.
     'src/vehicles/fleetLazy.selftest.mjs',
     'src/vehicles/wheelQuality.selftest.mjs',
     'tools/wheel-axial-extents.selftest.mjs',
     'src/vehicles/eraGameplayRegistration.selftest.mjs',
+    // 2026-09-29: the three receipts of 0e5fc79e2 sit after the four whole-fleet CPU scans the receipt pins first (runner admission).
+    'src/sim/modeConfiguration.selftest.mjs',
+    'src/vehicles/tacticalRoles.selftest.mjs',
+    'src/world/maps/earthriseCrossing.selftest.mjs',
+    'src/sim/auxiliarySystems.selftest.mjs',
+    'src/sim/smokeBallistics.selftest.mjs',
+    'src/fx/auxiliaryPresentation.selftest.mjs',
+    'src/ui/vehicleControlCooldown.selftest.mjs',
+    'src/vehicles/vehicleAuxiliaryGeometry.selftest.mjs',
     'src/vehicles/internalLayoutRegistry.selftest.mjs',
     'src/vehicles/suppliedSourceWeapons.selftest.mjs',
     'src/vehicles/dragunAssaultBalance.selftest.mjs',

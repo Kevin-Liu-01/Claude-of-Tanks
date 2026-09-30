@@ -9,6 +9,7 @@
  * Node-runnable: no DOM.
  */
 import { RoomClient } from '../room/roomClient.ts';
+import type { TeamArrangement } from '../../sim/matchRuleset.ts';
 import type { RoomClientOptions, StorageLike } from '../room/roomClient.ts';
 import { normalizeRoomCode } from '../room/protocol.ts';
 import type { RoomChatEntry, RoomMatchStartPayload, RoomMode, RoomSnapshot } from '../room/protocol.ts';
@@ -59,7 +60,7 @@ export interface RoomConnectRequest {
   roomsUrl: string;
   roomCode?: string;
   player: { id: string; name: string };
-  selection: { specId: string; mapId: string; gameMode?: string; equipment: string[]; camo: string };
+  selection: { specId: string; mapId: string; gameMode?: string; equipment: string[]; camo: string; arrangement?: TeamArrangement | null };
   teamSize: number;
 }
 
