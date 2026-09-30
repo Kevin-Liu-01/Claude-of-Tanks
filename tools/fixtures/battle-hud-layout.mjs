@@ -47,6 +47,7 @@ function hit(incoming=false) {
     shellType:'APFSDS',zone:'hullFront',flightDistM:240,timeS:60,pos:[0,1,50],localPos:[0,1,2],localDir:[0,0,-1]});
 }
 function state(name) {
+  delete frame.rosterTanks; frame.tanks=tanks;
   frame.aim.gunLimitSpec = name==='notifications';
   settings.close({noRelock:true});
   chat.close({relock:false}); chat.clear(); chat.setActive(false);
@@ -87,9 +88,21 @@ function state(name) {
   }))});
   return name;
 }
-window.__HUD_LAYOUT = {state, hud, bus, chat, touch, settings, hit, frame, tanks};
+function roster(allies, enemies) {
+  const entries=Array.from({length:allies+enemies},(_,i)=>{
+    const spec=TANK_SPECS[['leo2a5','m1a2','t90m'][i%3]];
+    const tank=i===0?player:{id:`large-${i}`,isPlayer:false,team:i<allies?'player':'enemy',
+      displayName:`Commander_Long_Name_${i}`,spec,state:createTankState(spec,new Vector3(i*10,0,50),0),combat:createCombatState(spec)};
+    if(i>0&&i%3===0)tank.combat.destroyed=true;
+    return tank;
+  });
+  frame.rosterTanks=entries; frame.tanks=entries;
+  hud.update(frame);
+}
+window.__HUD_LAYOUT = {state, roster, hud, bus, chat, touch, settings, hit, frame, tanks};
 const params = new URLSearchParams(location.search);
 state(params.get('state') || 'idle');
+if(params.has('allies'))roster(Number(params.get('allies')),Number(params.get('enemies')));
 if(params.get('preview')==='1') {
   // Reissue real presentation events so a reviewer can keep a transient notice
   // visible without changing production timers, markup or styles.

@@ -1260,7 +1260,7 @@ const HUD_CSS = `
   background:linear-gradient(90deg,rgba(126,232,126,.12),transparent 34%,transparent 66%,rgba(240,90,90,.12));}
 .cot-top::after{content:none;}
 .cot-top .sc,.cot-top .tm-block{position:relative;z-index:1;}
-.cot-top .sc{display:grid;grid-template-rows:10px 1fr 7px;place-items:center;gap:1px;
+.cot-top .sc{display:grid;grid-template-rows:10px 1fr auto;place-items:center;gap:1px;
   min-width:0;padding:6px 7px 5px;}
 .cot-top .team-label,.cot-top .tm-label{font-family:${FONT_COND};font-size:7.5px;font-weight:800;
   line-height:1;letter-spacing:.2em;text-transform:uppercase;color:#8f9eaa;white-space:nowrap;}
@@ -1284,8 +1284,9 @@ const HUD_CSS = `
 .cot-top.times-up .tm-label{color:#ffd27a;}
 @keyframes cotTimesUp{50%{opacity:.18;}}
 /* One socket per opposing vehicle; kills illuminate outward from the clock. */
-.cot-top .wedge{display:flex;gap:3px;align-items:center;min-width:0;}
-.cot-top .wedge i{display:block;width:6px;height:6px;
+.cot-top .wedge{display:grid;grid-template-columns:repeat(var(--wedge-columns,7),minmax(0,6px));
+  gap:2px;align-items:center;justify-content:center;width:100%;min-width:0;}
+.cot-top .wedge i{display:block;width:100%;height:6px;
   background:rgba(2,5,8,.9);border:1px solid rgba(150,166,180,.38);
   box-shadow:inset 0 1px 1px rgba(0,0,0,.72);}
 .cot-top .wedge i.on{animation:cotChipIn .18s ease-out;
@@ -1357,10 +1358,10 @@ body.cot-debug-hud .cot-net{display:none!important;}
 @media (prefers-reduced-motion:reduce){
   .cot-drive .arc-value,.cot-drive .needle{transition:none;}
 }
-.cot-ear{position:absolute;z-index:var(--hud-layer-status);top:52px;width:194px;display:flex;flex-direction:column;gap:1px;}
+.cot-ear{position:absolute;z-index:var(--hud-layer-status);top:52px;width:194px;display:flex;flex-direction:column;gap:1px;max-height:28vh;}
 .cot-ear.l{left:0;}
 .cot-ear.r{right:0;top:var(--hud-roster-top-right,52px);}
-.cot-ear .hd{font-size:9px;font-weight:800;letter-spacing:.22em;color:#95a4af;
+.cot-ear .hd{flex-shrink:0;font-size:9px;font-weight:800;letter-spacing:.22em;color:#95a4af;
   font-family:${FONT_COND};
   text-transform:uppercase;padding:4px 10px;display:flex;justify-content:space-between;
   background:linear-gradient(180deg,rgba(13,19,24,.82),rgba(6,10,14,.68));}
@@ -1428,9 +1429,13 @@ body.cot-debug-hud .cot-net{display:none!important;}
    red strike itself to stay legible; the side accent bar desaturates so
    living rows pop against the dead ones. */
 .cot-er.dead{opacity:.45;}
-/* sides (2026-09-18): past ten rows a side packs its ear — smaller rows, no gaps, and a viewport cap
-   so a 1 v 41 roster never runs under the bottom instruments */
-.cot-ear.dense{gap:0;max-height:calc(var(--cot-viewport-height,100vh) - 210px);overflow:hidden;}
+/* Large teams keep every entry in an independently scrollable roster. */
+.cot-ear.dense{gap:0;}
+.cot-ear-rows{min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-width:thin;scrollbar-color:#657580 transparent;pointer-events:auto;}
+.cot-ear-rows::-webkit-scrollbar{width:4px}
+.cot-ear-rows::-webkit-scrollbar-thumb{background:#657580}
+.cot-ear-rows:focus-visible{outline:1px solid #f0a030;outline-offset:-1px}
 .cot-ear.dense .hd{padding:3px 8px;}
 .cot-ear.dense .cot-er{padding:1px 8px 2px 6px;font-size:9.5px;}
 .cot-ear.dense.r .cot-er{padding:1px 6px 2px 8px;}
@@ -2074,8 +2079,8 @@ export function initHud(bus: EventBus): HudRuntime {
     }
   }
 
-  // WoT frag-counter (r4): both wedges render the SAME number of identical
-  // segment ticks (max team size), always visible as slim dark notches; each
+  // Frag counters retain one marker per opposing vehicle and wrap within
+  // their scoreboard column for large or uneven teams. Each
   // kill a team scores fills one tick in that team's color, growing outward
   // from the timer in the middle (tug-of-war read at a glance).
   function syncWedge(
@@ -2087,6 +2092,8 @@ export function initHud(bus: EventBus): HudRuntime {
     const kills = victims.length;
     if (wEl.children.length !== slots) {
       wEl.textContent = '';
+      const rows = Math.max(1, Math.ceil(slots / 10));
+      wEl.style.setProperty('--wedge-columns', String(Math.max(1, Math.ceil(slots / rows))));
       for (let i = 0; i < slots; i++) el('i', '', wEl);
     }
     for (let i = 0; i < slots; i++) {
@@ -2103,6 +2110,15 @@ export function initHud(bus: EventBus): HudRuntime {
   earR.innerHTML = `<div class="hd"><span class="al"></span><span>${t('hud.team.enemies')}</span></div>`;
   const allyAliveEl = requireElement<HTMLElement>(earL, '.al');
   const enemyAliveEl = requireElement<HTMLElement>(earR, '.al');
+  const allyRoster = el('div', 'cot-ear-rows', earL);
+  const enemyRoster = el('div', 'cot-ear-rows', earR);
+  for (const [list, label] of [[allyRoster, t('hud.team.ally')], [enemyRoster, t('hud.team.enemies')]] as const) {
+    list.tabIndex = 0;
+    list.setAttribute('role', 'region');
+    list.setAttribute('aria-label', label);
+    list.addEventListener('keydown', event => { if (!document.pointerLockElement) event.stopPropagation(); });
+    list.addEventListener('keyup', event => { if (!document.pointerLockElement) event.stopPropagation(); });
+  }
   const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
 
   const killfeed = el('div', 'cot-killfeed', root);
@@ -2934,7 +2950,7 @@ export function initHud(bus: EventBus): HudRuntime {
     brainEl.textContent = t('hud.brain.jev');
     brainEl.title = t('hud.brain.jevTitle');
     brainEl.hidden = tank.brain !== 'jev';
-    (ally ? earL : earR).appendChild(rootEl);
+    (ally ? allyRoster : enemyRoster).appendChild(rootEl);
     const row = {
       root: rootEl,
       hp: requireElement<HTMLElement>(rootEl, '.hpm i'),
@@ -3065,6 +3081,13 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function updateModeStatus(modeState: HudMatchModeState, ownScore: string | number): void {
+    if (modeState.id === 'standard') {
+      if (lastModeStatus === 'standard') return;
+      modeStatusEl.classList.remove('show');
+      modeStatusEl.dataset.mode = 'standard';
+      lastModeStatus = 'standard';
+      return;
+    }
     const copy = modeStatusCopy(modeState, ownScore);
     const status = `${modeState.id}|${copy}`;
     if (status === lastModeStatus) return;
@@ -3121,9 +3144,8 @@ export function initHud(bus: EventBus): HudRuntime {
       feEl.textContent = String(enemyKills);
       allyLabelEl.textContent = t('hud.allies');
       enemyLabelEl.textContent = t('hud.enemy');
-      const slots = Math.max(tally.allyTotal, tally.enemyTotal);
-      syncWedge(wedgeL, slots, tally.deadEnemies, false);
-      syncWedge(wedgeR, slots, tally.deadAllies, true);
+      syncWedge(wedgeL, tally.enemyTotal, tally.deadEnemies, false);
+      syncWedge(wedgeR, tally.allyTotal, tally.deadAllies, true);
       allyAliveEl.textContent = `${tally.allyAlive} / ${tally.allyTotal}`;
       enemyAliveEl.textContent = `${tally.enemyAlive} / ${tally.enemyTotal}`;
       lastScore = score;

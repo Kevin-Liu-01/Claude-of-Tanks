@@ -293,12 +293,12 @@ assert.doesNotMatch(shotInfo, /kv\('(?:Distance|Result)'/,
 assert.doesNotMatch(shotInfo, /modChips\(ev, card\)|el\('div', 'cot-si-zone', diag\)|el\('div', 'cot-si-pencap', rows\)/,
   'the compact report must not append module chips, zone copy, or a penetration caption');
 assert.match(responsiveSurfaces,
-  /body\.cot-touch-layout \.cot-si-cardhost,[\s\S]*\.cot-si-log\{display:none!important\}[\s\S]*\.cot-si-toasthost\{[\s\S]*\+ 108px\)[\s\S]*width:min\(200px,48vw\);min-height:41px/,
+  /body\.cot-touch-layout \.cot-si-cardhost,[\s\S]*\.cot-si-log\{display:none!important\}[\s\S]*\.cot-si-toasthost\{[\s\S]*\+ 108px\)[\s\S]*width:min\(200px,48vw\);min-height:26px/,
   'all touch orientations must suppress the full report and keep one compact incoming reading below the minimap');
 assert.match(responsiveSurfaces,
   /data-cot-panels='overlay'\]\[data-cot-orientation='portrait'\] \.cot-minimap\{[\s\S]*\+ 100px\)[\s\S]*data-cot-orientation='portrait'\] \.cot-si-toasthost\{[\s\S]*\+ 208px\)/,
   'portrait touch battles must place the minimap below top chrome and incoming fire below the minimap');
-assert.match(shotInfo, /cot-si-toasthost[^}]*min-height:164px/,
+assert.match(shotInfo, /cot-si-toasthost[^}]*min-height:84px/,
   'the canonical incoming feed must reserve stable space for battle readings');
 
 assert.match(responsiveSurfaces,

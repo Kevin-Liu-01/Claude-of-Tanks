@@ -23,7 +23,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud .cot-si-t
   top:var(--hud-left-top);bottom:auto;left:12px;width:var(--hud-side-width);
   min-height:0;height:var(--hud-toast-height);overflow:hidden;justify-content:flex-start;
 }
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-toast{flex:0 0 48px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-toast{flex:0 0 26px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud[data-toast-rows='0'] .cot-si-toasthost{visibility:hidden}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud[data-toast-rows='1'] .cot-si-toast:nth-last-child(n+2),
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud[data-toast-rows='2'] .cot-si-toast:nth-last-child(n+3){display:none}
@@ -184,3 +184,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height='short']) .cot-alert{top:var(--hud-alert-top);bottom:auto}
 body[data-cot-battle-layout][data-cot-width][data-cot-height='short'] .cot-alert{max-width:180px;white-space:normal}
 body[data-cot-battle-layout][data-cot-width][data-cot-height='short'] .cot-sixth{width:min(214px,calc(100vw - 28px))}
+
+/* Reserve the side readouts before allowing either roster to grow. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.l{max-height:var(--hud-roster-left-height,28vh)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.r{max-height:var(--hud-roster-right-height,28vh)}

@@ -8,7 +8,7 @@ const arg = (name,fallback) => process.argv.find(v=>v.startsWith(`--${name}=`))?
 const { chromium } = await import(arg('playwright-module','playwright'));
 const out = resolve(arg('out','.qa-dev/battle-load-layout'));
 await mkdir(out,{recursive:true});
-const browser = await chromium.launch({headless:true,channel:'chrome'});
+const browser = await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
 const reports=[];
 const errors=[];
 function measure() {
@@ -35,7 +35,7 @@ try {
     await page.goto(`${arg('url','http://127.0.0.1:5204')}/tools/fixtures/battle-load-layout.html`,{waitUntil:'domcontentloaded'});
     await page.waitForFunction(()=>!!window.__LOAD_LAYOUT);
     const sizes=new Map();
-    for (const [allies,enemies] of [[0,0],[1,1],[2,2],[7,7],[14,14],[2,14],[14,3],[7,7]]) {
+    for (const [allies,enemies] of [[0,0],[1,1],[2,2],[7,7],[14,14],[2,14],[14,3],[1,41],[41,1],[21,21],[64,64],[7,7]]) {
       await page.evaluate(([a,e])=>window.__LOAD_LAYOUT.roster(a,e),[allies,enemies]);
       const m=await page.evaluate(measure);
       for (const [i,count] of [allies,enemies].entries()) {
@@ -45,9 +45,17 @@ try {
         assert.ok(team.y>=m.cap.bottom-1 && team.bottom<=m.foot.y+1,`${name}: team must not overlap header/footer`);
         assert.ok(team.x>=0 && team.right<=width,`${name}: team stays on screen`);
         for(const row of team.rows) assert.ok(row.height>=15 && row.height<=72,`${name} ${allies}v${enemies}: bounded readable row height (${row.height})`);
-        if(count && height>=720) assert.ok(team.scrollHeight<=team.viewport.height+1,`${name}: all 14 rows visible on tall screens`);
+        if(count && count<=14 && height>=720) assert.ok(team.scrollHeight<=team.viewport.height+1,`${name}: all 14 rows visible on tall screens`);
       }
       if(allies===enemies && allies) sizes.set(allies,m.teams[0].rows[0].height);
+      // Both lists remain scrollable, independent of the header and footer.
+      for(const list of await page.locator('.team .rows').all()) {
+        await list.evaluate(el=>el.scrollTop=el.scrollHeight);
+        const reachable=await list.evaluate(el=>!el.lastElementChild||el.lastElementChild.getBoundingClientRect().bottom<=el.getBoundingClientRect().bottom+1);
+        assert.ok(reachable,`${name}: final loading roster entry is reachable`);
+        await list.evaluate(el=>el.scrollTop=0);
+      }
+      if(allies===41||enemies===41)await page.screenshot({path:resolve(out,`${name}-${allies}v${enemies}.png`)});
       reports.push({name,allies,enemies,...m});
     }
     assert.ok(sizes.get(7)>=Math.min(64,sizes.get(14)*1.7)-1,`${name}: seven rows must expand into the available space`);

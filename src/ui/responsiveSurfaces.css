@@ -39,7 +39,7 @@ body[data-cot-width='compact']:not(.cot-touch-layout) .cot-ear{display:none}
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-top,
 body[data-cot-width='compact']:not(.cot-touch-layout) .cot-top{
   top:max(4px,env(safe-area-inset-top));width:min(320px,calc(100vw - 88px));min-height:52px;
-  grid-template-columns:minmax(62px,1fr) 72px minmax(62px,1fr);padding:5px 10px 7px;
+  grid-template-columns:minmax(62px,1fr) 72px minmax(62px,1fr);padding:5px 25px 7px;
 }
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-top .fg,
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-top .fe,
@@ -164,18 +164,17 @@ body[data-cot-width='compact'] .cot-si-mods,
 body[data-cot-width='phone'] .cot-si-mods{padding:5px 9px 0}
 body[data-cot-panels='overlay'] .cot-si-toasthost{
   top:max(62px,calc(env(safe-area-inset-top) + 52px));bottom:auto;left:max(8px,env(safe-area-inset-left));
-  width:min(236px,42vw);min-height:143px;
+  width:min(236px,42vw);min-height:84px;
 }
-body[data-cot-panels='overlay'] .cot-si-toast{height:41px;padding:4px 7px}
-body[data-cot-panels='overlay'] .cot-si-toast .l1{height:17px;font-size:9.5px}
+body[data-cot-panels='overlay'] .cot-si-toast{height:26px;padding:4px 6px}
+body[data-cot-panels='overlay'] .cot-si-toast .l1{height:100%;font-size:9.5px}
 body[data-cot-panels='overlay'] .cot-si-toast .l1 b{font-size:11px}
-body[data-cot-panels='overlay'] .cot-si-toast .l2{height:14px;font-size:7.5px}
 body.cot-touch-layout .cot-si-cardhost,
 body.cot-touch-layout .cot-si-log{display:none!important}
 body.cot-touch-layout .cot-si-toasthost{
   left:max(8px,env(safe-area-inset-left));right:auto;
   top:calc(max(8px,env(safe-area-inset-top)) + 108px);
-  width:min(200px,48vw);min-height:41px;
+  width:min(200px,48vw);min-height:26px;
 }
 body.cot-touch-layout .cot-si-toast:nth-last-of-type(n+2){display:none}
 

@@ -129,6 +129,8 @@ const CSS = `
 .cot-bl .rows{display:grid;grid-template-rows:repeat(var(--bl-count),minmax(20px,1fr));
   min-height:0;gap:var(--bl-row-gap);padding-top:var(--bl-row-inset);overflow-y:auto;overscroll-behavior:contain;
   scrollbar-width:thin;scrollbar-color:#596976 transparent;}
+.cot-bl .team[data-density="large"] .rows{grid-template-rows:repeat(var(--bl-count),minmax(24px,1fr))}
+.cot-bl .rows:focus-visible{outline:1px solid #f0a030;outline-offset:-1px}
 .cot-bl .rows::-webkit-scrollbar{width:4px}
 .cot-bl .rows::-webkit-scrollbar-thumb{background:#596976}
 .cot-bl .row{display:flex;align-items:center;gap:10px;min-height:0;padding:0 8px;
@@ -276,6 +278,11 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   const foeTeam = requiredElement<HTMLDivElement>(root, '.team.foe');
   const allyRows = requiredElement<HTMLDivElement>(root, '.team.ally .rows');
   const foeRows = requiredElement<HTMLDivElement>(root, '.team.foe .rows');
+  for (const [list, label] of [[allyRows, t('battleLoad.allies')], [foeRows, t('battleLoad.enemies')]] as const) {
+    list.tabIndex = 0;
+    list.setAttribute('role', 'region');
+    list.setAttribute('aria-label', label);
+  }
   const allyN = requiredElement<HTMLSpanElement>(root, '.team.ally .n');
   const foeN = requiredElement<HTMLSpanElement>(root, '.team.foe .n');
   const stageEl = requiredElement<HTMLDivElement>(root, '.fstage');
@@ -301,7 +308,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     rows: readonly BattleLoadRosterRow[] = [],
   ): void {
     team.style.setProperty('--bl-count', String(Math.max(1, rows.length)));
-    team.dataset.density = rows.length <= 7 ? 'roomy' : 'compact';
+    team.dataset.density = rows.length <= 7 ? 'roomy' : rows.length <= 14 ? 'compact' : 'large';
     host.textContent = '';
     for (const r of rows) {
       const el = document.createElement('div');

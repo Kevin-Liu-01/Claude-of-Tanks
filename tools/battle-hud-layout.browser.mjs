@@ -96,10 +96,14 @@ try {
       if(score&&objective&&(objective.x<=score.x+25 || objective.right>=score.right-25))
         result.failures.push('objective must fit inside the scoreboard bottom edge');
       if(score&&objective&&Math.abs(objective.y-score.bottom)>.5) result.failures.push('objective must touch the scoreboard');
+      const compactNotices=await page.locator('.cot-si-toast').evaluateAll(nodes=>nodes.filter(node=>node.checkVisibility({checkVisibilityCSS:true})).map(node=>({
+        height:node.getBoundingClientRect().height,secondary:!!node.querySelector('.l2'),
+      })));
+      if(compactNotices.some(row=>row.height!==26||row.secondary))result.failures.push('damage notices must share the 26px single-line kill design');
       if(state.startsWith('mode-')) {
         if(await page.locator('.cot-mode-status button').count())result.failures.push('objective must not contain a Brief button');
         const detected=result.rects.find(r=>r.name==='cot-sixth on');
-        if(!detected||!objective||detected.y<objective.bottom+7)result.failures.push('detection must clear the objective by at least 7px');
+        if(!detected||(state==='mode-standard'?!!objective:!objective||detected.y<objective.bottom+7))result.failures.push('detection must clear the objective by at least 7px');
       }
       if(state.startsWith('notifications')) {
         const hexagons=await page.locator('.cot-sixth.on,.cot-alert.show').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).clipPath));
@@ -190,6 +194,37 @@ try {
           await check('settings');
         }
       }
+    }
+    for(const [allies,enemies] of [[1,41],[41,1],[10,10],[14,14],[21,21],[64,64],[7,7]]) {
+      await page.evaluate(([a,e])=>{const f=window.__HUD_LAYOUT;f.state('reports');f.frame.matchModeState={id:'standard'};f.roster(a,e);},[allies,enemies]);
+      await page.waitForTimeout(120);
+      await check(`rosters-${allies}v${enemies}`);
+      const issues=await page.evaluate(([allies,enemies])=>{
+        const failures=[];
+        const score=document.querySelector('.cot-top').getBoundingClientRect();
+        const wedges=[...document.querySelectorAll('.cot-top .wedge')];
+        for(const [i,count] of [enemies,allies].entries()) {
+          if(wedges[i].children.length!==count)failures.push('wrong opposing marker count');
+          for(const mark of wedges[i].children){const r=mark.getBoundingClientRect();
+            if(r.x<score.x+25||r.right>score.right-25||r.bottom>score.bottom-5)failures.push('score marker outside safe scoreboard bounds');}
+        }
+        for(const [i,list] of [...document.querySelectorAll('.cot-ear-rows')].entries()) {
+          if(list.children.length!==[allies,enemies][i])failures.push('missing roster entries');
+          if(!list.checkVisibility())continue;
+          const before=list.parentElement.getBoundingClientRect();
+          list.scrollTop=list.scrollHeight;
+          const last=list.lastElementChild?.getBoundingClientRect();
+          const after=list.getBoundingClientRect();
+          if(last&&last.bottom>after.bottom+1)failures.push('last roster entry cannot be reached');
+          if(list.parentElement.getBoundingClientRect().height!==before.height)failures.push('scrolling moves roster bounds');
+          list.scrollTop=0;
+        }
+        const report=document.querySelector('.cot-si-cardhost');
+        if(report?.checkVisibility()&&innerHeight>=600&&report.getBoundingClientRect().height<100)failures.push('roster leaves no readable combat report');
+        return failures;
+      },[allies,enemies]);
+      for(const issue of issues)errors.push(`${name}/${allies}v${enemies}: ${issue}`);
+      if(allies===41||enemies===41)await page.screenshot({path:resolve(out,`${name}-${allies}v${enemies}.png`)});
     }
     // Same open panels must survive a live resize and a larger minimap.
     await page.evaluate(()=>{window.__HUD_LAYOUT.state('combined');window.__HUD_LAYOUT.bus.emit('ui:minimapZoom',{});});

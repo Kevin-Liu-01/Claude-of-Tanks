@@ -24,7 +24,7 @@ import {
 import { uiIconSVG } from './uiIcons.ts';
 import { maskIcon, iconUrl } from './icons.ts';
 import { schematicUrl as prepareSchematicUrl } from './shotSchematicClient.ts';
-import { MODULE_LABEL, CREW_LABEL, STATE_COLOR } from './moduleRegistry.ts';
+import { MODULE_LABEL } from './moduleRegistry.ts';
 import {
   createShotDiagramProjection,
   impactForShotDiagram,
@@ -404,28 +404,20 @@ const SI_CSS = `
 .cot-si-lrow .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-lrow .z{color:${COL.dim};font-size:9px;flex:0 0 auto;}
 .cot-si-empty{padding:6px 9px;font-size:9.5px;color:${COL.dim};letter-spacing:.04em;}
-.cot-si-toasthost{position:absolute;left:16px;bottom:452px;width:270px;min-height:164px;
-  display:flex;flex-direction:column;justify-content:flex-end;gap:5px;contain:layout style;}
-.cot-si-toast{height:48px;overflow:hidden;contain:layout paint style;
-  background:linear-gradient(100deg,rgba(38,12,12,.94),rgba(11,10,12,.84) 78%,rgba(8,10,13,.3));
-  border:1px solid rgba(240,90,90,.2);border-left:3px solid ${COL.red};padding:6px 10px 6px;
-  box-shadow:0 6px 18px rgba(0,0,0,.3);transition:opacity .7s ease;text-shadow:0 1px 2px rgba(0,0,0,.85);}
-.cot-si-toast.deflected{
-  background:linear-gradient(100deg,rgba(22,31,39,.94),rgba(10,14,18,.84) 78%,rgba(8,10,13,.3));
-  border-color:rgba(159,176,191,.22);box-shadow:0 6px 18px rgba(0,0,0,.25);}
+.cot-si-toasthost{position:absolute;left:16px;bottom:452px;width:270px;min-height:84px;
+  display:flex;flex-direction:column;justify-content:flex-end;gap:3px;contain:layout style;}
+.cot-si-toast{height:26px;overflow:hidden;contain:layout paint style;
+  background:linear-gradient(90deg,rgba(8,12,16,.82),transparent);
+  border:0;border-left:2px solid ${COL.red};padding:4px 6px;
+  transition:opacity .7s ease;text-shadow:0 1px 2px rgba(0,0,0,.85);}
 .cot-si-toast.out{opacity:0;}
-.cot-si-toast .l1{height:18px;display:flex;justify-content:space-between;align-items:baseline;gap:6px;
-  font-size:11px;font-weight:750;color:#f2c6bf;}
+.cot-si-toast .l1{height:100%;display:flex;justify-content:space-between;align-items:center;gap:6px;
+  font-size:10px;font-weight:750;color:#d6e2ec;}
 .cot-si-toast .l1 span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-toast .l1 b{color:#ff8f80;font-family:${FONT_COND};letter-spacing:-.01em;
-  font-variant-numeric:tabular-nums;font-size:13px;display:flex;align-items:center;gap:4px;
+  font-variant-numeric:tabular-nums;font-size:11px;display:flex;align-items:center;gap:4px;
   white-space:nowrap;}
 .cot-si-toast .l1 b svg{width:11px;height:11px;flex:0 0 auto;}
-.cot-si-toast .l2{height:16px;font-size:9px;color:#c9a9a2;letter-spacing:.04em;display:flex;
-  justify-content:space-between;gap:6px;font-variant-numeric:tabular-nums;}
-.cot-si-toast .l2>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cot-si-toast .l2 .m{font-weight:800;text-transform:uppercase;
-  font-family:${FONT_COND};letter-spacing:.07em;text-align:right;}
 .cot-si-stats{position:fixed;inset:0;z-index:71;display:none;pointer-events:none;
   flex-direction:column;align-items:center;justify-content:center;
   padding:2vh 0 4vh;overflow:hidden;
@@ -602,12 +594,11 @@ body.cot-touch-layout .cot-si-log{display:none!important;}
 /* Incoming fire remains actionable, but as one compact reading below the
    minimap—not a stack over the ammo tray or the steering/aim controls. */
 body.cot-touch-layout .cot-si-toasthost{top:calc(max(8px,env(safe-area-inset-top)) + 108px);
-  bottom:auto;left:max(8px,env(safe-area-inset-left));right:auto;width:min(200px,48vw);min-height:41px;}
+  bottom:auto;left:max(8px,env(safe-area-inset-left));right:auto;width:min(200px,48vw);min-height:26px;}
 body.cot-touch-layout .cot-si-toast:nth-last-of-type(n+2){display:none;}
-body.cot-touch-layout .cot-si-toast{height:41px;padding:4px 7px;}
-body.cot-touch-layout .cot-si-toast .l1{height:17px;font-size:9.5px;}
+body.cot-touch-layout .cot-si-toast{height:26px;padding:4px 6px;}
+body.cot-touch-layout .cot-si-toast .l1{font-size:9.5px;}
 body.cot-touch-layout .cot-si-toast .l1 b{font-size:11px;}
-body.cot-touch-layout .cot-si-toast .l2{height:14px;font-size:7.5px;}
 @media (prefers-reduced-motion:reduce){
   .cot-si-card,.cot-si-toast,.cot-si-diag svg.ov .wdg{animation:none;transition:none;}
 }
@@ -1265,26 +1256,10 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     const t = el('div', 'cot-si-toast', toastHost);
     t.dataset.damage = String(Math.round(ev.damage || 0));
     t.dataset.kind = ev.kind;
-    // Use the shared state-colored policy — never imply
-    // worse: dim for a hit that left the module 'ok', yellow damaged, red
-    // destroyed (an 'ok' Track R styled as a red casualty lied, r3 critique).
-    // Registry ramp = the damage panel's exact hues (one state, one color).
-    const stateCol = (state: string) => (
-      state === 'red' ? STATE_COLOR.red : state === 'yellow' ? STATE_COLOR.yellow : COL.dim
-    );
-    const modsLost = (ev.eraPlate
-      ? [`<span style="color:${COL.yellow}">ERA</span>`] : [])
-      .concat((ev.modulesHit || [])
-        .map((m) => `<span style="color:${stateCol(m.newState)}">` +
-          `${registryLabel(MODULE_LABEL, m.module)}${m.newState === 'red' ? ' ✕' : ''}</span>`))
-      .concat((ev.crewHit || []).map((c) => `<span style="color:${COL.red}">${registryLabel(CREW_LABEL, c)} ✕</span>`))
-      .join(', ');
-    t.innerHTML =
-      `<div class="l1"><span>${ev.attackerName || 'Enemy'}</span>` +
+    t.innerHTML = `<div class="l1"><span></span>` +
       `<b>${uiIconSVG((ev.damage || 0) > 0 ? 'damage' : cls.icon, 11)}` +
-      `${(ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : cls.label}</b></div>` +
-      `<div class="l2"><span>${ev.shellType || ''} ${shellDisplayName(ev)} · ${zoneLabel(ev.zone)}</span>` +
-      `${modsLost ? `<span class="m">${modsLost}</span>` : ''}</div>`;
+      `${(ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : cls.label}</b></div>`;
+    t.querySelector('span')!.textContent = ev.attackerName || 'Enemy';
     t.dataset.outcome = cls.id;
     if (!(ev.damage > 0)) t.classList.add('deflected');
     t.style.borderLeftColor = (ev.damage || 0) > 0 ? COL.red : cls.color;

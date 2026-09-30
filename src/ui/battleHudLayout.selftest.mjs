@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { battleSideStack, installBattleHudLayout, objectiveWidth } from './battleHudLayout.ts';
+import { battleSideStack, battleRosterHeight, installBattleHudLayout, objectiveWidth } from './battleHudLayout.ts';
 
 for(const width of [240,280,344,420]) {
   const w=objectiveWidth(width);
@@ -15,8 +15,14 @@ for(const height of [0,30,62,100,150,200,320,600])for(const chat of [false,true]
   assert.ok(layout.chatOffset+layout.chatHeight<=height);
   if(chat&&height>=62)assert.ok(layout.chatHeight>=54,'the composer retains room below the alerts');
 }
-assert.equal(battleSideStack(100,true,3).toastRows,0,'tight chat lanes collapse transient alerts, not the input');
+assert.equal(battleSideStack(100,true,3).toastRows,1,'a compact notice fits beside the reserved chat input');
 assert.equal(battleSideStack(320,false,3).toastRows,3);
+
+for(const height of [390,600,720,1080])for(const space of [0,40,100,300,600]) {
+  const roster=battleRosterHeight(height,space);
+  assert.ok(roster>=0&&roster<=space,'roster cannot exceed its available side lane');
+  if(space>=300)assert.ok(space-roster>=180,'large rosters preserve space for combat feedback');
+}
 
 // Observer lifecycle in a deterministic DOM: no-op attribute records must not
 // turn layout into a per-frame job, but real state/viewport changes still do.

@@ -4,13 +4,20 @@ export function objectiveWidth(scoreWidth: number): number {
   return Math.max(0, scoreWidth - 2 * (SCORE_BOTTOM_INSET + 8));
 }
 
+/** Keep space for three kill notices and the side's combat readout. */
+export function battleRosterHeight(viewportHeight: number, available: number): number {
+  const space = Math.max(0, available);
+  return Math.min(space, Math.max(48, Math.min(viewportHeight * .28,
+    space - 92 - Math.min(240, space * .45))));
+}
+
 /** Bounded side lanes. Reflow on UI/viewport changes, never in the render loop. */
 export function battleSideStack(height: number, chat: boolean, toastCount: number) {
   const available = Math.max(0, height);
   const chatReserve = chat ? 62 : 0;
   const toastRows = Math.min(3, toastCount,
-    Math.max(0, Math.floor((available - chatReserve - 8 + 5) / 53)));
-  const toastHeight = toastRows ? toastRows * 53 - 5 : 0;
+    Math.max(0, Math.floor((available - chatReserve - 8 + 3) / 29)));
+  const toastHeight = toastRows ? toastRows * 29 - 3 : 0;
   const gap = toastHeight && chat ? 8 : 0;
   return { toastRows, toastHeight, chatOffset: toastHeight + gap,
     chatHeight: Math.max(0, available - toastHeight - gap) };
@@ -163,6 +170,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const toastCount = root.querySelector('.cot-si-toasthost')?.childElementCount || 0;
     const stack = battleSideStack(leftBottom - leftTop, chat, touch ? Math.min(1, toastCount) : toastCount);
     const properties = {
+      'roster-left-height': battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52)),
+      'roster-right-height': battleRosterHeight(height, rightBottom - (rosterTopRight ?? earRight?.top ?? 52)),
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
       'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
       'notice-top': noticeTop, 'alert-top': noticeTop + (notice?.height ?? 48) + 8,
