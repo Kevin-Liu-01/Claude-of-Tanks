@@ -64,7 +64,10 @@ alignment passes. Garage HIGH/LOW and the marked −84° pose were inspected.
 The composed release invocation exits 1 because `m551a1_tts` has no registered
 comparison model. The standard's numerical comparison is N/A and fidelity is
 UNAVAILABLE. These are retained statuses, not a new source qualification.
-Publication of this scoped repair is awaiting the owner's explicit decision.
+After the missing comparison and pending scoped exception were disclosed,
+Kevin explicitly instructed: "now commit an dpush origin main evedrything".
+This authorizes publication of this completed attachment repair while retaining
+the N/A/UNAVAILABLE comparison statuses; it does not establish source fidelity.
 All seven remaining physical probes pass: centering, module visual alignment,
 module hits, asset freshness, track duplication, visible muzzle bore and barrel
 circularity. Module hits retain one pre-existing dimension-drift warning, with
@@ -72,4 +75,6 @@ no failures or out-of-envelope modules. The full anatomy/marking/diagram chain,
 type checking and public/private builds pass. The broad code run completed
 1,276 entries with thirteen fleet integration failures, all subsequently
 corrected and passing focused reruns; the Sheridan contact regression passed
-in the broad run. Publication still awaits the scoped comparison decision.
+in the broad run. The post-rebase integration also passes the Sheridan contact
+regression, asset checks, type checking and public build. Publication is
+authorized onto main above the already-published fleet batch `28845013e`.

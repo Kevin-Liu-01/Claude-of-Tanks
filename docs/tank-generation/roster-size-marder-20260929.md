@@ -166,5 +166,8 @@ complete weapon payload and firing bloom. The post-rebase 21-ID assets/bores,
 type check and public build pass. Logs: `main-integration.{json,log}` and
 `post-rebase-receipts.log` under the same ignored evidence directory.
 
-The separate Sheridan contact repair is retained locally pending its own
-publication decision; it is not covered by either legacy source exception.
+This fleet batch was published to `origin/main` at `28845013e`. After the
+remaining Sheridan comparison limitation was disclosed, Kevin explicitly
+authorized pushing everything, including that separate completed repair. Its
+packet records that decision and retains the unverified comparison status;
+neither legacy source exception is being extended to unrelated work.
