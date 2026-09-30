@@ -14,9 +14,9 @@ export function createEnemyNationSelect(select: HTMLSelectElement): { refresh():
 .cot-play .arrange-fields .cot-nation-field{grid-column:span 2}
 @media(max-width:650px){.cot-play .arrange-fields .cot-nation-field{grid-column:1/-1}}
 .cot-nation-trigger:disabled{opacity:.55;cursor:default}
-.cot-nation-trigger{display:flex!important;align-items:center;gap:10px;width:100%;min-width:0;min-height:46px;
- padding:10px 13px!important;border:1px solid #53636c!important;background:#10191f!important;color:#e6edf2!important;
- font-family:inherit;font-size:15px;font-weight:600;line-height:1.3;text-align:left;cursor:pointer}
+.cot-nation-trigger{display:flex!important;align-items:center;gap:8px;width:100%;min-width:0;min-height:40px;
+ padding:7px 10px!important;border:1px solid #53636c!important;background:#10191f!important;color:#e6edf2!important;
+ font-family:inherit;font-size:12px;font-weight:600;line-height:1.3;text-align:left;cursor:pointer}
 .cot-nation-trigger::after{content:'';width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;
  transform:rotate(45deg);margin-left:auto;flex-shrink:0}
 .cot-nation-trigger[aria-expanded=true]{border-color:#efa62e!important;background:#20221e!important}
@@ -26,14 +26,15 @@ export function createEnemyNationSelect(select: HTMLSelectElement): { refresh():
  scrollbar-width:thin;scrollbar-color:#aa7b35 #10191f;color-scheme:dark;font-family:inherit}
 .cot-nation-list::-webkit-scrollbar{width:6px}.cot-nation-list::-webkit-scrollbar-track{background:#10191f}
 .cot-nation-list::-webkit-scrollbar-thumb{background:#aa7b35;border-radius:3px}
-.cot-nation-list [role=option]{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:10px 12px;
- border:1px solid transparent;background:transparent;color:inherit;font-family:inherit;font-size:15px;font-weight:600;line-height:1.3;text-align:left;cursor:pointer}
+.cot-nation-list [role=option]{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;padding:7px 9px;
+ border:1px solid transparent;background:transparent;color:inherit;font-family:inherit;font-size:12px;font-weight:600;line-height:1.3;text-align:left;cursor:pointer}
 .cot-nation-list [role=option]:hover{background:#243139}
 .cot-nation-list [aria-selected=true]{background:#382b18;border-color:#b8802e;color:#ffce79}
 .cot-nation-list [aria-selected=true]::after{content:'✓';margin-left:auto;color:#ffce79}
-.cot-nation-trigger .cot-flag,.cot-nation-list .cot-flag{display:block;width:28px;height:21px;object-fit:cover;flex-shrink:0}
-.cot-nation-mark{display:flex;align-items:center;justify-content:center;width:28px;height:21px;flex-shrink:0;color:#eab052}
-.cot-nation-mark svg{width:23px;height:23px}
+.cot-nation-trigger .cot-flag,.cot-nation-list .cot-flag{display:block;width:22px;height:16px;object-fit:cover;flex-shrink:0}
+.cot-nation-mark{display:flex;align-items:center;justify-content:center;width:22px;height:16px;flex-shrink:0;color:#eab052}
+.cot-nation-mark svg{width:18px;height:18px}
+@media(pointer:coarse){.cot-nation-trigger,.cot-nation-list [role=option]{min-height:44px}}
 .cot-nation-copy{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:normal;text-transform:none}
 `);
   const trigger = document.createElement('button');
@@ -44,7 +45,7 @@ export function createEnemyNationSelect(select: HTMLSelectElement): { refresh():
   list.setAttribute('role', 'listbox'); list.setAttribute('aria-label', t('playMenu.arrange.nation'));
   trigger.setAttribute('aria-controls', list.id);
   const entries = [{ id: '', label: t('playMenu.arrange.mixed'), art: `<span class="cot-nation-mark" aria-hidden="true">${uiIconSVG('globe')}</span>` },
-    ...ENEMY_NATION_OPTIONS.map(({ id, specNations }) => ({ id, label: t(`campaign.enemy.${id}`), art: flagIconHTML(specNations[0], 28, 21) }))];
+    ...ENEMY_NATION_OPTIONS.map(({ id, specNations }) => ({ id, label: t(`campaign.enemy.${id}`), art: flagIconHTML(specNations[0], 22, 16) }))];
   const options = entries.map(entry => {
     const option = document.createElement('button'); option.type = 'button'; option.tabIndex = -1;
     option.setAttribute('role', 'option'); option.dataset.value = entry.id;
@@ -71,8 +72,8 @@ export function createEnemyNationSelect(select: HTMLSelectElement): { refresh():
   function positionList(): void {
     const rect = trigger.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
     const below = vh - rect.bottom - 12, above = rect.top - 12, down = below >= 250 || below >= above;
-    const height = Math.min(352, Math.max(44, down ? below : above));
-    const width = Math.min(Math.max(rect.width, 240), vw - 20);
+    const height = Math.min(288, Math.max(44, down ? below : above));
+    const width = Math.min(Math.max(rect.width, 200), vw - 20);
     list.style.width = `${width}px`; list.style.maxHeight = `${height}px`;
     list.style.left = `${Math.max(10, Math.min(rect.left, vw - width - 10))}px`;
     list.style.top = `${Math.max(10, down ? rect.bottom + 5 : rect.top - height - 5)}px`;

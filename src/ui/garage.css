@@ -304,9 +304,8 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
   letter-spacing:normal;word-spacing:normal;text-align:left;font-family:Inter,'Segoe UI',Arial,sans-serif;}
 .cot-battle-menu.open{display:grid;}
 .cot-battle-menu-head{display:flex;align-items:center;justify-content:space-between;gap:16px;
-  padding:12px 12px 12px 18px;border-bottom:1px solid #a0b4c322;background:#131b23;}
+  padding:8px 12px 8px 18px;border-bottom:1px solid #a0b4c322;background:#131b23;}
 .cot-battle-menu-head strong{display:block;color:#f0f4f7;font-size:17px;font-weight:800;}
-.cot-battle-menu-head p{margin-top:3px;color:#94a5b3;font-size:11px;}
 .cot-battle-menu-head button{flex:0 0 44px;width:44px;height:44px;border:1px solid transparent;
   background:transparent;color:#a7b7c4;font:26px Arial,sans-serif;cursor:pointer;}
 .cot-battle-menu-scroll{min-height:0;display:grid;grid-template-columns:minmax(0,1.04fr) minmax(0,1fr);
@@ -363,7 +362,6 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-battle-details
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-battle-preview{margin-bottom:16px;}
 body[data-cot-height='short'] .cot-battle-menu{max-height:calc(var(--cot-viewport-height,100dvh) - 94px);}
 body[data-cot-height='short'] .cot-battle-menu-head{padding-block:4px;}
-body[data-cot-height='short'] .cot-battle-menu-head p{display:none;}
 body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
 @media (hover:hover) and (pointer:fine){
   .cot-battle-menu-head button:hover{color:#fff;background:#24313d;border-color:#5f7483;}

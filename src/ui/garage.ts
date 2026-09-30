@@ -617,8 +617,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `aria-controls="cot-battle-menu" aria-label="${t('garage.battle.menuTypeBots')}">` +
     `<span>${t('garage.battle.typeBots')}</span></button>` +
     `<div class="cot-battle-menu" id="cot-battle-menu" role="dialog" aria-label="${t('garage.battle.menuAria')}">` +
-    `<div class="cot-battle-menu-head"><div><strong>${t('garage.battle.menuAria')}</strong>` +
-    `<p>${t('garage.battle.setupDescription')}</p></div>` +
+    `<div class="cot-battle-menu-head"><strong>${t('garage.battle.setupDescription')}</strong>` +
     `<button type="button" data-battle-close aria-label="${t('garage.battle.closeSetup')}">&times;</button></div>` +
     `<div class="cot-battle-menu-scroll"><div class="cot-battle-mode-list">` +
     `<button class="cot-battle-choice cot-battle-regular" type="button" data-mode="solo" aria-pressed="true">` +
