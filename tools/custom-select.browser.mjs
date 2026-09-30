@@ -7,12 +7,12 @@ const arg=(name,fallback)=>process.argv.find(v=>v.startsWith(`--${name}=`))?.sli
 const {chromium}=await import(arg('playwright-module','playwright'));
 const out=resolve(arg('out','.qa-dev/custom-select'));
 await mkdir(out,{recursive:true});
-const browser=await chromium.launch({headless:true,channel:'chrome'});
+const browser=await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
 const errors=[];let checked=0;
 try {
   for(const [name,width,height,touch] of [['desktop',1280,800,false],['phone',390,844,true],['landscape',844,390,true]]) {
     const context=await browser.newContext({viewport:{width,height},hasTouch:touch,isMobile:touch});
-    const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
+    const page=await context.newPage();page.setDefaultTimeout(5000);page.on('pageerror',error=>errors.push(error.message));
     await page.goto(`${arg('url','http://127.0.0.1:5204')}/tools/fixtures/custom-select.html`,{waitUntil:'networkidle'});
     for(const mode of ['standard','capture_the_flag','zone_control','turbo_ball','endless_horde','frontline_assault','mars']) {
       await page.evaluate(mode=>window.__SELECT_TEST.arrangement.render(mode),mode);
@@ -57,7 +57,7 @@ try {
     assert.equal(await page.locator('#dynamic').inputValue(),'a','typeahead selects matching option');
     await trigger.click();await page.keyboard.press('Escape');assert.equal(await trigger.getAttribute('aria-expanded'),'false');
     assert.equal(await trigger.evaluate(el=>document.activeElement===el),true,'Escape restores focus');
-    await trigger.click();await page.locator('#outside').click();assert.equal(await page.locator(':popover-open').count(),0,'outside dismisses');
+    await trigger.click();await page.mouse.click(2,2);assert.equal(await page.locator(':popover-open').count(),0,'outside dismisses');
     await trigger.click();await page.evaluate(()=>{window.__SELECT_TEST.dynamic.disabled=true;window.__SELECT_TEST.controller.refresh();});
     assert.equal(await trigger.isDisabled(),true,'locked host field is disabled');
     assert.equal(await page.locator(':popover-open').count(),0,'locking field closes popup');
