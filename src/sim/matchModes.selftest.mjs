@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 
 import {
   GAME_MODE_DEFINITIONS,
+  ZONE_DESTRUCTION_POINTS,
   createMatchModeController,
   normalizeGameMode,
 } from './matchModes.ts';
@@ -390,3 +391,33 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
 }
 
 console.log('matchModes.selftest: standard, flags, zones, turbo ball, horde, assault, respawns, loot, and rulesets passed');
+
+// Only confirmed hostile destructions earn points; repeated snapshots cannot farm scores.
+for (const mode of ['zone_control','mars','standard','capture_the_flag','turbo_ball','endless_horde','frontline_assault']) {
+  const a=entity('a','alpha',0,-100), b=entity('b','bravo',0,100), ally=entity('ally','alpha',20,-100);
+  if(mode==='mars'){a.team=ally.team='player';b.team='enemy';}
+  const {match,events}=controller(mode,[a,b,ally]);
+  match.recordDestruction(b.id,a.id);
+  assert.equal(match.state.score.alpha,0,'living targets never score');
+  b.combat.destroyed=true;
+  match.recordDestruction(b.id,b.id);match.recordDestruction(b.id,null);match.recordDestruction(b.id,'missing');
+  assert.equal(match.state.score.bravo,0,'suicides and missing attackers never score');
+  ally.combat.destroyed=true;match.recordDestruction(ally.id,a.id);
+  assert.equal(match.state.score.alpha,0,'friendly fire never scores');
+  match.recordDestruction(b.id,a.id);match.recordDestruction(b.id,a.id);
+  const points=mode==='zone_control'||mode==='mars';
+  assert.equal(match.state.score.alpha,points?ZONE_DESTRUCTION_POINTS:0,mode);
+  assert.equal(events.filter(e=>e.type==='mode_destruction_scored').length,points?1:0);
+  if(!points)continue;
+  match.step(0,1);match.step(0,100);
+  assert.equal(b.combat.destroyed,false);
+  b.combat.destroyed=true;match.recordDestruction(b.id,a.id);
+  assert.equal(match.state.score.alpha,ZONE_DESTRUCTION_POINTS*2,'new life can score again');
+  match.state.score.alpha=match.state.target-ZONE_DESTRUCTION_POINTS;
+  a.combat.destroyed=true;match.recordDestruction(a.id,b.id);
+  ally.combat.destroyed=true;match.recordDestruction(ally.id,b.id);
+  // A final valid kill can end the match without anyone occupying a zone.
+  match.step(0,101);match.step(0,200);
+  b.combat.destroyed=true;match.recordDestruction(b.id,a.id);
+  assert.deepEqual(match.step(0,201),{result:'alpha',reason:'score_limit'});
+}

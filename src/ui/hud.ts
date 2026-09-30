@@ -1,3 +1,4 @@
+import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 // src/ui/hud.ts — battle HUD overlay: dispersion/reload reticle, shell
 // selector with ammo counts, consumable slots, penetration indicator, sniper
@@ -8,7 +9,7 @@ import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import * as THREE from 'three';
 import { captureMinimapScene, requireSceneMinimap, type MinimapCaptureReceipt } from './minimapCapturePolicy.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
-import { installBattleHudLayout } from './battleHudLayout.ts';
+import { installBattleHudLayout, SCORE_BOTTOM_INSET } from './battleHudLayout.ts';
 import { createPreBattleOverlay } from './preBattleOverlay.ts';
 import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.ts';
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
@@ -1254,7 +1255,7 @@ const HUD_CSS = `
   border:1px solid rgba(176,194,208,.34);border-top:none;
   box-shadow:inset 0 1px 0 rgba(239,247,252,.12),inset 0 -1px 0 rgba(0,0,0,.68);
   filter:drop-shadow(0 5px 11px rgba(0,0,0,.5));
-  clip-path:polygon(0 0,100% 0,calc(100% - 25px) 100%,25px 100%);}
+  clip-path:polygon(0 0,100% 0,calc(100% - ${SCORE_BOTTOM_INSET}px) 100%,${SCORE_BOTTOM_INSET}px 100%);}
 .cot-top::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
   background:linear-gradient(90deg,rgba(126,232,126,.12),transparent 34%,transparent 66%,rgba(240,90,90,.12));}
 .cot-top::after{content:none;}
@@ -2394,21 +2395,25 @@ export function initHud(bus: EventBus): HudRuntime {
     button.title=t(`systems.${action}.help`);button.setAttribute('aria-label',button.title);
     button.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(!button.disabled)bus.emit(`ui:${action==='lights' ? 'lightsToggle' : action}`,{});});
     button.addEventListener('click',e=>{e.stopPropagation();if(e.detail===0&&!button.disabled)bus.emit(`ui:${action==='lights' ? 'lightsToggle' : action}`,{});});
-    return {action,button,status:button.querySelector('small')!,key:button.querySelector<HTMLElement>('.sk')!};
+    return {action,button,label:button.querySelector<HTMLElement>('.sl')!,status:button.querySelector('small')!,key:button.querySelector<HTMLElement>('.sk')!};
   });
+  const reloadForSlot=createVehicleCooldownReader();
   function updateSpecialAction(player: HudTank | null | undefined): void {
     const canControl=!!player?.combat&&!player.combat.destroyed;
     jumpHint.disabled=!canControl;
     controlsRow.hidden=!player;
     const kit=auxiliaryCapabilities(player?.spec), state=player?.combat?.auxiliary;
-    for(const {action,button,status} of auxiliaryButtons){
+    for(const {action,button,label,status} of auxiliaryButtons){
       button.hidden=!(action==='smoke'?kit?.smoke.length:action==='lights'?kit?.lights:kit?.guns.length);
       const cooldown=Math.max(0,Math.ceil((state?.smokeReadyAt||0)-lastTimeS));
       const active=action==='roofGun'?!!state?.gunOn:action==='lights'?(state?.lights===1 || (state?.lights!==0 && defaultLightsOn)):false;
       button.classList.toggle('active',active);
       if(action!=='smoke')button.setAttribute('aria-pressed',String(active));
       button.disabled=!canControl||(action==='smoke'&&(cooldown>0||state?.smokeCharges===0));
-      status.textContent=action==='smoke'?(cooldown?t('systems.cooldown',{seconds:cooldown}):`${state?.smokeCharges??3}/3`):active?t('systems.on'):t('systems.off');
+      label.textContent=action==='smoke' && state?.smokeCharges===0 ? '0/3'
+        : action==='smoke' && cooldown ? t('systems.cooldown',{seconds:cooldown}) : t(`systems.${action}`);
+      status.textContent=action==='smoke'?`${state?.smokeCharges??3}/3`:'';
+      if(action==='smoke')button.setAttribute('aria-label',`${t('systems.smoke.help')} ${status.textContent}${cooldown?' · '+label.textContent:''}`);
     }
     const specId = player?.spec?.id || null;
     if (specId !== specialSpecId) {
@@ -2444,9 +2449,14 @@ export function initHud(bus: EventBus): HudRuntime {
     const missileEmpty = Number.isInteger(missileSlot) && missileSlot >= 0
       && Array.isArray(ammunition)
       && (ammunition[missileSlot] || 0) <= 0;
-    specialButton.querySelector('small')!.textContent=specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD
-      ? (player?.combat?.reload.kind==='magazine' && player.combat.reload.t>0?t('systems.reloading'):t('systems.ready'))
-      : active?t('systems.on'):t('systems.off');
+    // Weapon channels keep the missile timer accurate even while the cannon is selected.
+    const combat=player?.combat;
+    const missileWait=extraMissileSlot>=0?Math.ceil(reloadForSlot(combat,extraMissileSlot,lastTimeS) || 0):0;
+    missileButton.querySelector('.sl')!.textContent=missileWait>0?t('systems.cooldown',{seconds:missileWait}):'ATGM';
+    const wait=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE?Math.ceil(reloadForSlot(combat,missileSlot,lastTimeS)||0)
+      :specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD?Math.ceil(combat?.gunReload?.t??combat?.reload.t??0):0;
+    specialLabel.textContent=wait>0?t('systems.cooldown',{seconds:wait}):specialLabel.dataset.short||'';
+    specialButton.querySelector('small')!.textContent='';
     specialButton.classList.toggle('active', active);
     specialButton.classList.toggle('empty', missileEmpty);
     specialButton.classList.remove('pending');

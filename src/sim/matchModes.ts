@@ -92,6 +92,7 @@ const FLAG_RETURN_S = 18;
 const ZONE_RADIUS_M = 30;
 const ZONE_CAPTURE_S = 8;
 const ZONE_POINTS_PER_SECOND = 2;
+export const ZONE_DESTRUCTION_POINTS = 25;
 const BALL_RADIUS_M = 2.2;
 const BALL_GOAL_RADIUS_M = 18;
 const BALL_LINEAR_DRAG = 0.992;
@@ -254,6 +255,8 @@ export interface MatchModeController<
   readonly ruleset: MatchRuleset;
   readonly state: MatchModePresentationState;
   readonly usesElimination: boolean;
+  /** Confirmed enemy destruction; ignored for goals/captures and duplicate receipts. */
+  recordDestruction(victimId: string, killerId: string | null): void;
   step(dt: number, timeS: number): MatchModeResult | null;
   tryHitBall(shell: { dead?: boolean; prevPos: Vec3Like; pos: Vec3Like; vel: Vec3Like;
     shooterId?: string }): boolean;
@@ -345,6 +348,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const spawns = new Map<string, MatchModeSpawn>();
   const entityById = new Map<string, Entity>();
   const destroyed = new Map<string, boolean>();
+  const scoredDeaths = new Set<string>();
   const respawnAt = new Map<string, { atS: number; healthScale: number }>();
   const teams: Record<ObjectiveTeam, Entity[]> = { alpha: [], bravo: [] };
   const centers: Record<ObjectiveTeam, MatchModeSpawn> = {
@@ -500,6 +504,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     stampPhysics(entity, (id === 'endless_horde' || id === 'frontline_assault') && teamOf(entity) === 'bravo'
       ? baseSpeed * (1 + Math.min(0.55, (wave - 1) * 0.045)) : baseSpeed);
     destroyed.set(entity.id, false);
+    scoredDeaths.delete(entity.id);
     respawnAt.delete(entity.id);
     setActive(entity, true);
     emit('mode_respawn', { id: entity.id, team: teamOf(entity) });
@@ -1117,6 +1122,16 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     ruleset,
     state,
     usesElimination: id === 'standard',
+    recordDestruction(victimId, killerId) {
+      if (result || objective !== 'zone_control' || !killerId || killerId === victimId || scoredDeaths.has(victimId)) return;
+      const victim=entities.find(entity=>entity.id===victimId);
+      const killer=entities.find(entity=>entity.id===killerId);
+      if (!victim?.combat.destroyed || !killer || victim.modeActive===false || teamOf(victim)===teamOf(killer)) return;
+      scoredDeaths.add(victimId);
+      const team=teamOf(killer);
+      score[team]+=ZONE_DESTRUCTION_POINTS;
+      emit('mode_destruction_scored',{team,points:ZONE_DESTRUCTION_POINTS,score:score[team]});
+    },
     step(dt, timeS) {
       if (result) return result;
       placementTimeS = timeS;

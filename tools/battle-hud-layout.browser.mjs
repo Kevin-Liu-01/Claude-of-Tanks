@@ -93,8 +93,8 @@ try {
       const result=await page.evaluate(measure,state);
       const score=result.rects.find(r=>r.name==='cot-top');
       const objective=result.rects.find(r=>r.name==='cot-mode-status show');
-      if(score&&objective&&objective.right-objective.x>=score.right-score.x)
-        result.failures.push('objective must be narrower than the scoreboard');
+      if(score&&objective&&(objective.x<=score.x+25 || objective.right>=score.right-25))
+        result.failures.push('objective must fit inside the scoreboard bottom edge');
       if(state!=='settings'&&state!=='ended'){
         const decoration=await page.evaluate(()=>{
           const notice=document.querySelector('.cot-kill-lane.r .cot-kf');

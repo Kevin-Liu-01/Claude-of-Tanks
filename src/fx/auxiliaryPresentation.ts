@@ -1,7 +1,8 @@
+import { restoreSmokeScreen } from '../sim/smokeReceipt.ts';
 import * as THREE from 'three';
 import { auxiliaryCapabilities, SMOKE_DURATION_S, type AuxiliaryState, type SmokeScreen } from '../sim/auxiliarySystems.ts';
-import {smokeVolume, type SmokeVolume} from '../sim/smokeScreen.ts';
-import { smokeSocketsFor } from '../vehicles/vehicleAuxiliaryGeometry.ts';
+import {smokeVolume, smokeBankCount, type SmokeVolume} from '../sim/smokeScreen.ts';
+import { smokeCanisterPosition, SMOKE_GRAVITY_MPS2 } from '../sim/smokeBallistics.ts';
 
 export interface AuxiliaryVisualEntity {
   id: string;
@@ -31,22 +32,23 @@ interface Actor {
   smokeBorn: number;
   recoil: number;
 }
-/** One fixed pool, one draw for ejected brass and launched smoke canisters. */
+/** Fixed pools for brass and full-size smoke canisters; no per-frame construction. */
 export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
   const casings=new THREE.InstancedMesh(new THREE.CylinderGeometry(.014,.014,.085,6),new THREE.MeshStandardMaterial({color:0xbfa35f,metalness:.7,roughness:.38}),96);
   casings.name='auxiliaryEjectedCases';casings.count=0;casings.frustumCulled=false;parent.add(casings);
-  const pool=Array.from({length:96},()=>({p:new THREE.Vector3(),v:new THREE.Vector3(),age:9,grenade:false}));
-  const actors=new Map<string,Actor>();let cursor=0,lastTime=-1,lastPuff=-1;
+  const grenades=new THREE.InstancedMesh(new THREE.CylinderGeometry(.075,.075,.28,8),
+    new THREE.MeshStandardMaterial({color:0xa8ad8f,metalness:.35,roughness:.6}),256);
+  grenades.name='auxiliarySmokeCanisters';grenades.count=0;grenades.frustumCulled=false;parent.add(grenades);
+  const pool=Array.from({length:96},()=>({p:new THREE.Vector3(),v:new THREE.Vector3(),age:9}));
+  const actors=new Map<string,Actor>();let cursor=0,lastTime=-1,lastPuff=-1,lastTrail=-1;
   let networkScreens: readonly SmokeScreen[] | null=null;
   const position=new THREE.Vector3(),direction=new THREE.Vector3(),q=new THREE.Quaternion(),turn=new THREE.Quaternion();
   const matrix=new THREE.Matrix4(),scale=new THREE.Vector3(),yAxis=new THREE.Vector3(0,1,0),rotation=new THREE.Euler();
   const color=new THREE.Color();
   const volume:SmokeVolume={x:0,y:0,z:0,radius:0,height:0,density:0};
-  const target=new THREE.Vector3();
-  function eject(p:THREE.Vector3,d:THREE.Vector3,grenade=false){
-    const item=pool[cursor++%pool.length]!;item.p.copy(p);item.age=0;item.grenade=grenade;
-    if(grenade)item.v.copy(d);
-    else item.v.set(d.z*2.4,1.7,-d.x*2.4);
+  function eject(p:THREE.Vector3,d:THREE.Vector3){
+    const item=pool[cursor++%pool.length]!;item.p.copy(p);item.age=0;
+    item.v.set(d.z*2.4,1.7,-d.x*2.4);
   }
   function prepare(entity:AuxiliaryVisualEntity,root:THREE.Object3D):Actor{
     const kit=auxiliaryCapabilities(entity.spec), mount=kit?.guns[0];
@@ -88,23 +90,17 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     actor.shots=state.shots;
     if(visible&&state.smoke&&state.smoke.born!==actor.smokeBorn){
       if(ports.time()-state.smoke.born<.6){
-        root.updateWorldMatrix(true,true);
-        let tubeIndex=0;
-        const screen=state.smoke;
-        root.traverse(o=>{for(const socket of smokeSocketsFor(o)){
-          position.fromArray(socket.position).applyMatrix4(o.matrixWorld);direction.fromArray(socket.direction).transformDirection(o.matrixWorld);
-          smokeVolume(screen,screen.born+1.05,(tubeIndex++%5)-2,volume,ports.ground);
-          target.set(volume.x,Math.max(volume.y-.8,ports.ground(volume.x,volume.z)+.8),volume.z);
-          direction.subVectors(target,position).multiplyScalar(1/1.05);direction.y+=.5*9.81*1.05;
-          eject(position,direction,true);ports.smoke(position,.12,.3,.65);
-        }});
+        for(const shot of state.smoke.canisters??[]){
+          position.set(shot[0],shot[1],shot[2]);
+          ports.smoke(position,.12,.3,.65);
+        }
       }
       actor.smokeBorn=state.smoke.born;
     }
   }
   function puff(screen:SmokeScreen,time:number){
     const age=time-screen.born;if(age<.85||age>SMOKE_DURATION_S-.3)return;
-    for(let bank=-2;bank<=2;bank++){
+    for(let bank=-2;bank<smokeBankCount(screen)-2;bank++){
       smokeVolume(screen,time,bank,volume,ports.ground);
       if(volume.density<.015)continue;
       // Different-height rolling lobes overlap the shared sight-blocking volume.
@@ -114,6 +110,19 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     }
   }
 
+  function smokeFrame(screen:SmokeScreen,now:number,trail:boolean,count:number):number{
+    const age=now-screen.born;
+    for(const shot of screen.canisters??[]){
+      if(age<0||age>shot[6]+.5||count>=256)continue;
+      smokeCanisterPosition(shot,age,position);
+      direction.set(shot[3],shot[4]-SMOKE_GRAVITY_MPS2*Math.min(age,shot[6]),shot[5]).normalize();
+      q.setFromUnitVectors(yAxis,direction);scale.setScalar(1);
+      matrix.compose(position,q,scale);grenades.setMatrixAt(count++,matrix);
+      if(trail&&age<shot[6])ports.smoke(position,.09,.4,.75);
+    }
+    return count;
+  }
+
   function updateCasings(dt:number){
       let count=0;
       for(const item of pool){
@@ -121,27 +130,38 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
         item.v.y-=9.81*dt;item.p.addScaledVector(item.v,dt);
         const ground=ports.ground(item.p.x,item.p.z)+.025;
         if(item.p.y<ground){item.p.y=ground;item.v.multiplyScalar(.35);item.v.y=Math.abs(item.v.y);}
-        q.setFromEuler(rotation.set(item.age*12,item.age*7,item.age*9));scale.setScalar(item.grenade?2.2:1);
-        matrix.compose(item.p,q,scale);casings.setMatrixAt(count,matrix);casings.setColorAt(count,color.setHex(item.grenade?0x4b5450:0xbfa35f));count++;
+        q.setFromEuler(rotation.set(item.age*12,item.age*7,item.age*9));scale.setScalar(1);
+        matrix.compose(item.p,q,scale);casings.setMatrixAt(count,matrix);casings.setColorAt(count,color.setHex(0xbfa35f));count++;
       }
       casings.count=count;casings.instanceMatrix.needsUpdate=true;if(casings.instanceColor)casings.instanceColor.needsUpdate=true;
   }
 
   return {
-    setNetworkScreens(screens:readonly SmokeScreen[]){networkScreens=screens;},
+    setNetworkScreens(screens:readonly SmokeScreen[]){
+      // Solo already owns expanded receipts and publishes them each sim step.
+      // Decode only compact network receipts, never clone the solo list per frame.
+      let compact=false;
+      for(const screen of screens)if(!screen.canisters&&screen.source){compact=true;break;}
+      networkScreens=compact?screens.map(restoreSmokeScreen):screens;
+    },
     update(){
       const now=ports.time();if(now===lastTime)return;const dt=lastTime<0?0:Math.min(.1,Math.max(0,now-lastTime));lastTime=now;
       for(const entity of ports.entities())actorFrame(entity,dt);
-      if(now-lastPuff>.4){
-        lastPuff=now;
-        if(networkScreens)for(const screen of networkScreens)puff(screen,now);
-        else for(const entity of ports.entities()){const s=entity.combat?.auxiliary?.smoke;if(s)puff(s,now);}
+      const emitPuff=now-lastPuff>.4, trail=now-lastTrail>.075;
+      if(emitPuff)lastPuff=now;if(trail)lastTrail=now;
+      let count=0;
+      if(networkScreens)for(const screen of networkScreens){
+        count=smokeFrame(screen,now,trail,count);if(emitPuff)puff(screen,now);
+      }else for(const entity of ports.entities()){
+        const screen=entity.combat?.auxiliary?.smoke;if(!screen)continue;
+        count=smokeFrame(screen,now,trail,count);if(emitPuff)puff(screen,now);
       }
+      grenades.count=count;if(count)grenades.instanceMatrix.needsUpdate=true;
       updateCasings(dt);
     },
     reset(){
       for(const a of actors.values()){if(a.gun)a.gun.quaternion.copy(a.rest);if(a.weapon){a.weapon.rotation.x=0;a.weapon.position.copy(a.restWeapon);}}
-      actors.clear();networkScreens=null;lastTime=-1;lastPuff=-1;for(const item of pool)item.age=9;casings.count=0;
+      actors.clear();networkScreens=null;lastTime=-1;lastPuff=-1;lastTrail=-1;grenades.count=0;for(const item of pool)item.age=9;casings.count=0;
     },
   };
 }

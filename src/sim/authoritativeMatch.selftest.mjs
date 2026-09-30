@@ -865,3 +865,26 @@ for (const mapId of MAP_IDS) {
 assert.equal(authoritativeTerrainCacheStats().retainedMaps, 2,
   'fallback authority terrain retains only two maps after a complete roster sweep');
 console.log('authoritativeMatch.selftest: identity, deployment, movement, world, combat authority, and events passed');
+
+// Actual authoritative shell kill must feed the points owner, not only the kill feed.
+{
+  const flat={getHeightAt:()=>0,getGroundType:()=> 'hard',getNormalAt:()=>new Vector3(0,1,0)};
+  const battle=createAuthoritativeMatch({gameMode:'zone_control',mapId:'verdant',countdownS:0,seed:1,
+    worldCollision:{mapId:'verdant',heightField:flat,obstacles:[]},players:[
+      {id:'scorer',specId:'m1a2',team:'alpha',spawn:{x:0,z:-25,yaw:0}},
+      {id:'victim',specId:'bwp1',team:'bravo',spawn:{x:0,z:25,yaw:Math.PI/2}},
+    ]});
+  battle.onMatchReady();battle.entityById.get('victim').combat.hp=1;
+  let killed=false;
+  for(let tick=0;tick<120&&!killed;tick++){
+    battle.step({dt:1/60,inputs:new Map([['scorer',{throttle:0,steer:0,brake:true,fire:true,shellSlot:0,aimYaw:0,aimPitch:-.01}]])});
+    const snapshot=battle.snapshot({tick,serverTimeMs:tick*1000/60,viewerId:'scorer'});
+    killed=snapshot.events.some(event=>event.type==='tank_destroyed'&&event.id==='victim');
+    if(killed){
+      assert.equal(snapshot.meta.modeState.score.alpha,25,'kill points reach the network snapshot');
+      assert.equal(snapshot.events.filter(event=>event.type==='mode_destruction_scored').length,1);
+    }
+    battle.afterSnapshotBroadcast();
+  }
+  assert.equal(killed,true,'fixture must exercise a real shell destruction');
+}

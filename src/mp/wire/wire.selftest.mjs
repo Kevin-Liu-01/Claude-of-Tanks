@@ -1,3 +1,7 @@
+import {requestAuxiliary} from '../../sim/auxiliarySystems.ts';
+import {packSmokeScreen} from '../../sim/smokeReceipt.ts';
+import {smokeScreenSummary} from '../../sim/smokeScreen.ts';
+import {AUXILIARY_INVENTORY} from '../../vehicles/auxiliaryInventory.generated.ts';
 import assert from 'node:assert/strict';
 import {
   ACTION_BIT_MASK, CLOSE_REASON, CLOSE_REASON_NAMES, ENTITY_FLAGS, EVENT_KIND_NAMES, MAX_ENTITIES, MAX_MESSAGE_BYTES,
@@ -479,7 +483,17 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
 {
   const frame=randomFrame(300,28);
   frame.meta.smokeJson=JSON.stringify(Array.from({length:84},(_,i)=>({x:1234.56789012345+i,y:98.765432109,z:-987.65432109876,yaw:1.234567890123,born:1234.123456789})));
-  frame.entities[0].auxiliaryJson=JSON.stringify({lights:1,gunOn:true,gunYaw:1.2,gunPitch:.1,shots:4});
+  const specId=Object.keys(AUXILIARY_INVENTORY).sort((a,b)=>AUXILIARY_INVENTORY[b].smoke.length-AUXILIARY_INVENTORY[a].smoke.length)[0];
+  const screens=Array.from({length:84},(_,i)=>{
+    const entity={id:String(i),team:'alpha',spec:{id:specId,armor:{turretPivot:[0,1.45678,.34567]}},
+      state:{pos:{x:1234.56789+i,y:78.34567,z:-876.45678},yaw:1.234567,turretYaw:.234567,visualPitch:.123456,visualRoll:.12345},combat:{}};
+    requestAuxiliary(entity,'smoke',1234.12345,()=>78);
+    return packSmokeScreen(entity.combat.auxiliary.smoke);
+  });
+  frame.meta.smokeJson=JSON.stringify(screens);
+  assert.ok(new TextEncoder().encode(frame.meta.smokeJson).length<=32768,'84 full launcher salvos fit bounded smoke metadata');
+  frame.entities[0].auxiliaryJson=JSON.stringify({lights:1,gunOn:true,gunYaw:1.23456789,gunPitch:.123456789,shots:4,nextShot:1235.12345,smokeCharges:2,smokeReadyAt:1262.12345,smoke:smokeScreenSummary(screens[0])});
+  assert.ok(new TextEncoder().encode(frame.entities[0].auxiliaryJson).length<=512,'vehicle row does not duplicate launch paths');
   const key=buildSnapshotPacket(frame,null),bytes=encodeMessage(key);
   assert.ok(bytes.length<MAX_MESSAGE_BYTES);
   const decoded=roundTrip(key).message;

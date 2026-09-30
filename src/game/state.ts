@@ -1795,7 +1795,7 @@ function emitHitOutcome(game: SoloGameState, bus: EventBus, event: SoloHitEvent)
   bus.emit('shell:hit', event);
   emitHitStateEvents(bus, event);
   if (event.destroyed && isActiveSoloEntity(target) && !target._destroyedAnnounced) {
-    announceDestroyed(bus, target, event.attackerId,
+    announceDestroyed(game, bus, target, event.attackerId,
       event.ammoRacked ? 'ammorack' : 'shot');
   }
   const shooter = game.tankById.get(event.attackerId);
@@ -1804,12 +1804,14 @@ function emitHitOutcome(game: SoloGameState, bus: EventBus, event: SoloHitEvent)
 }
 
 function announceDestroyed(
+  game: SoloGameState,
   bus: EventBus,
   ent: SoloEntity,
   killerId: string | null,
   cause: 'ammorack' | 'shot' | 'ram' | 'fire' | HullImpactKind,
 ): void {
   ent._destroyedAnnounced = true;
+  game.matchModeController?.recordDestruction(ent.id, killerId);
   // turret toss is RESERVED for ammo-rack detonations (WoT spectacle);
   // plain HP kills / burn-outs keep the turret seated (gun droop + smoke)
   ent.visual?.setDestroyed({ pop: cause === 'ammorack' });
@@ -2388,7 +2390,7 @@ function publishHullImpact(
     bus.emit('module:state', { id: entity.id, module: hit.module, state: hit.newState, source: 'impact' });
   }
   // a fatal crash or fall is self-inflicted: the hull is its own killer, as a burn-out is
-  if (result.destroyed && !entity._destroyedAnnounced) announceDestroyed(bus, entity, entity.id, kind);
+  if (result.destroyed && !entity._destroyedAnnounced) announceDestroyed(game, bus, entity, entity.id, kind);
 }
 
 /**
@@ -2621,10 +2623,10 @@ function publishRamDamage(
   emitRamModuleHits(bus, a, event.aModulesHit);
   emitRamModuleHits(bus, b, event.bModulesHit);
   if (b.combat.destroyed && !bWasWreck && !b._destroyedAnnounced) {
-    announceDestroyed(bus, b, a.id, 'ram');
+    announceDestroyed(game, bus, b, a.id, 'ram');
   }
   if (a.combat.destroyed && !a._destroyedAnnounced) {
-    announceDestroyed(bus, a, bWasWreck ? null : b.id, 'ram');
+    announceDestroyed(game, bus, a, bWasWreck ? null : b.id, 'ram');
   }
   const playerDamage = a.isPlayer ? event.dmgA : (b.isPlayer ? event.dmgB : 0);
   if (rig && playerDamage > 0) {
@@ -2738,7 +2740,7 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
   if(screens)for(let i=screens.length-1;i>=0;i--)if(game.timeS-screens[i]!.born>18)screens.splice(i,1);
   for(const entity of game.tanks){
     const bits=entity.input.auxiliaryBits||0; entity.input.auxiliaryBits=0;
-    if(bits&64 && requestAuxiliary(entity,'smoke',game.timeS)){
+    if(bits&64 && requestAuxiliary(entity,'smoke',game.timeS,world.heightField.getHeightAt)){
       const screens=game.auxiliarySmokeScreens??=[];screens.push(entity.combat.auxiliary!.smoke!);
       if(screens.length>84)screens.shift();
       bus.emit('auxiliary:smokeScreens',{screens});
@@ -2764,7 +2766,7 @@ function stepFireDamage(game: SoloGameState, bus: EventBus): void {
     const result = tickFire(entity, game.combatRng);
     if (result.extinguished) bus.emit('tank:fire', { id: entity.id, burning: false });
     if (result.destroyed && !entity._destroyedAnnounced) {
-      announceDestroyed(bus, entity, entity.id, 'fire');
+      announceDestroyed(game, bus, entity, entity.id, 'fire');
     }
   }
 }

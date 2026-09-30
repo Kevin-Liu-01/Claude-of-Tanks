@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { battleSideStack, installBattleHudLayout } from './battleHudLayout.ts';
+import { battleSideStack, installBattleHudLayout, objectiveWidth } from './battleHudLayout.ts';
+
+for(const width of [240,280,344,420]) {
+  const w=objectiveWidth(width);
+  assert.ok((width-w)/2>25, 'objective clears both clipped scoreboard corners');
+}
 
 for(const height of [0,30,62,100,150,200,320,600])for(const chat of [false,true])for(const count of [0,1,3,8]){
   const layout=battleSideStack(height,chat,count);

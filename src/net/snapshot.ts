@@ -1,3 +1,4 @@
+import { smokeScreenSummary } from '../sim/smokeScreen.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { magazineIndicator } from '../sim/magazineIndicator.ts';
 import type { MagazineIndicator, MagazineIndicatorSpec } from '../sim/magazineIndicator.ts';
@@ -380,7 +381,7 @@ export function captureEntitySnapshot(
     ammo1: Math.max(0, Number(entity.combat.ammo?.[1]) | 0),
     ammo2: Math.max(0, Number(entity.combat.ammo?.[2]) | 0),
     flags: entityFlags(entity),
-    ...(entity.combat.auxiliary ? {auxiliaryJson:JSON.stringify(entity.combat.auxiliary)} : {}),
+    ...(entity.combat.auxiliary ? {auxiliaryJson:JSON.stringify({...entity.combat.auxiliary, smoke:entity.combat.auxiliary.smoke ? smokeScreenSummary(entity.combat.auxiliary.smoke) : null})} : {}),
   };
   if (entity.combat.eraSpent?.size) {
     snapshot.eraSpent = [...entity.combat.eraSpent].sort();

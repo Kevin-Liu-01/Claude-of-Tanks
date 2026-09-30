@@ -1,3 +1,4 @@
+import { createSmokeCanister, smokeCloudBanks, smokeCanisterPosition } from './smokeBallistics.ts';
 import { Euler, Matrix4, Vector3, Quaternion } from 'three';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 export { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
@@ -55,7 +56,7 @@ function mountFrame(entity: AuxiliaryEntity, owner: 'hull' | 'turret'): Matrix4 
   }
   return matrix;
 }
-export function requestAuxiliary(entity: AuxiliaryEntity, action: AuxiliaryAction, now: number): boolean {
+export function requestAuxiliary(entity: AuxiliaryEntity, action: AuxiliaryAction, now: number, ground?: (x:number,z:number)=>number): boolean {
   if (entity.combat.destroyed || entity.modeActive === false) return false;
   const kit = auxiliaryCapabilities(entity.spec);
   if (!kit) return false;
@@ -63,13 +64,21 @@ export function requestAuxiliary(entity: AuxiliaryEntity, action: AuxiliaryActio
   if ((action === 'lights' || action === 'lightsOff') && kit.lights) { state.lights = action === 'lights' ? 1 : 0; return true; }
   if (action === 'roofGun' && kit.guns.length) { state.gunOn = !state.gunOn; return true; }
   if (action !== 'smoke' || !kit.smoke.length || !state.smokeCharges || now < state.smokeReadyAt) return false;
-  const tube = kit.smoke[0]!;
+  const terrain=ground ?? (()=>entity.state.pos.y);
+  const canisters=kit.smoke.map(socket=>{
+    const frame=mountFrame(entity,socket.owner);
+    origin.fromArray(socket.position).applyMatrix4(frame);
+    direction.fromArray(socket.direction).transformDirection(frame);
+    return createSmokeCanister(origin,direction,terrain);
+  });
   targetPoint.set(0,0,0);
-  for(const socket of kit.smoke)targetPoint.add(origin.fromArray(socket.position).applyMatrix4(mountFrame(entity,socket.owner)));
-  origin.copy(targetPoint).multiplyScalar(1/kit.smoke.length);
-  const yaw = entity.state.yaw + (tube.owner === 'turret' ? entity.state.turretYaw : 0);
-  state.smoke = { x: origin.x + Math.sin(yaw) * 12, y: entity.state.pos.y + 2,
-    z: origin.z + Math.cos(yaw) * 12, yaw, born: now };
+  for(const shot of canisters){smokeCanisterPosition(shot,shot[6],origin);targetPoint.add(origin);}
+  targetPoint.multiplyScalar(1/canisters.length);
+  const smokePivot=entity.spec.armor?.turretPivot??[0,(entity.spec.dims?.heightM??2.5)*.7,0];
+  state.smoke={x:targetPoint.x,y:targetPoint.y+1.32,z:targetPoint.z,
+    yaw:entity.state.yaw+entity.state.turretYaw,born:now,canisters,banks:smokeCloudBanks(canisters),
+    source:[entity.spec.id,entity.state.pos.x,entity.state.pos.y,entity.state.pos.z,entity.state.yaw,entity.state.turretYaw,
+      entity.state.visualPitch||0,entity.state.visualRoll||0,smokePivot[0]!,smokePivot[1]!,smokePivot[2]!]};
   state.smokeCharges--; state.smokeReadyAt = now + SMOKE_COOLDOWN_S;
   return true;
 }

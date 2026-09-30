@@ -1,3 +1,4 @@
+import { packSmokeScreen } from './smokeReceipt.ts';
 import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from './auxiliarySystems.ts';
 import { bridgeBallFloor } from './bridgeBallSupport.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from './launcherPolicy.ts';
@@ -939,6 +940,8 @@ export function createAuthoritativeMatch({
   initializeBots();
 
   function emit(type: string, payload: Record<string, RuntimeValue>): void {
+    if (type === 'tank_destroyed') modeController.recordDestruction(String(payload.id),
+      typeof payload.killerId==='string'?payload.killerId:null);
     if (pendingEvents.length >= MAX_EVENTS) pendingEvents.shift();
     pendingEvents.push({ type, timeS, ...payload });
   }
@@ -1424,7 +1427,7 @@ export function createAuthoritativeMatch({
     entity.input.actionBits = 0;
     if (!bits || entity.combat.destroyed) return;
     if (!result) {
-      if (bits & PLAYER_ACTION_BITS.SMOKE && requestAuxiliary(entity, 'smoke', timeS)) {
+      if (bits & PLAYER_ACTION_BITS.SMOKE && requestAuxiliary(entity, 'smoke', timeS, heightField.getHeightAt)) {
         auxiliarySmokeScreens.push(entity.combat.auxiliary!.smoke!);
         if(auxiliarySmokeScreens.length>84)auxiliarySmokeScreens.shift();
       }
@@ -2226,7 +2229,7 @@ export function createAuthoritativeMatch({
         canObserveEvent: (_id, event) => canObserveEvent(viewer, event),
         meta: {
           phase,
-          smokeScreens: auxiliarySmokeScreens.filter(screen=>timeS-screen.born<=18),
+          smokeScreens: auxiliarySmokeScreens.filter(screen=>timeS-screen.born<=18).map(packSmokeScreen),
           // Stable presentation seed: no draw from the combat RNG stream.
           weatherSeed: seed >>> 0,
           countdownMs: Math.round(countdownRemainingS * 1000),

@@ -1,10 +1,16 @@
+/** Matches the scoreboard polygon; the objective clears each bottom corner by 8px. */
+export const SCORE_BOTTOM_INSET = 25;
+export function objectiveWidth(scoreWidth: number): number {
+  return Math.max(0, scoreWidth - 2 * (SCORE_BOTTOM_INSET + 8));
+}
+
 /** Bounded side lanes. Reflow on UI/viewport changes, never in the render loop. */
 export function battleSideStack(height: number, chat: boolean, toastCount: number) {
   const available = Math.max(0, height);
   const chatReserve = chat ? 62 : 0;
   const toastRows = Math.min(3, toastCount,
-    Math.max(0, Math.floor((available - chatReserve - 18) / 53)));
-  const toastHeight = toastRows ? 18 + toastRows * 53 : 0;
+    Math.max(0, Math.floor((available - chatReserve - 8 + 5) / 53)));
+  const toastHeight = toastRows ? toastRows * 53 - 5 : 0;
   const gap = toastHeight && chat ? 8 : 0;
   return { toastRows, toastHeight, chatOffset: toastHeight + gap,
     chatHeight: Math.max(0, available - toastHeight - gap) };
@@ -91,7 +97,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const tray = width < 1000 ? 'stacked' : 'inline';
     if (document.body.dataset.hudTray !== tray) document.body.dataset.hudTray = tray;
     const map = read('.cot-minimap');
-    const scoreBottom = read('.cot-top')?.bottom || 64;
+    const score = read('.cot-top');
+    const scoreBottom = score?.bottom || 64;
     const top = Math.max(scoreBottom, read('.cot-mode-status.show')?.bottom || 0);
     const leftAnchor = Math.max(top, read('.cot-ear.l')?.bottom || 0,
       map && map.left < width / 2 ? map.bottom : 0) + 8;
@@ -148,7 +155,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
       'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
       'objective-top': scoreBottom + 2, 'objective-bottom': top,
-      'objective-width': Math.max(0, (read('.cot-top')?.width || 344) - 32),
+      'objective-width': objectiveWidth(score?.width || 344),
+      'objective-left': score ? score.left + score.width / 2 : width / 2,
       'kill-left-top': leftAnchor, 'kill-right-top': rightAnchor,
       'kill-left-height': killHeightLeft, 'kill-right-height': killHeightRight,
       'left-top': leftTop, 'left-height': Math.max(0, leftBottom - leftTop),

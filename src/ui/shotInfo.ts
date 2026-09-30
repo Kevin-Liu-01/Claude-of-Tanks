@@ -406,8 +406,6 @@ const SI_CSS = `
 .cot-si-empty{padding:6px 9px;font-size:9.5px;color:${COL.dim};letter-spacing:.04em;}
 .cot-si-toasthost{position:absolute;left:16px;bottom:452px;width:270px;min-height:164px;
   display:flex;flex-direction:column;justify-content:flex-end;gap:5px;contain:layout style;}
-.cot-si-toasthost:not(:empty)::before{content:"INCOMING FIRE";align-self:flex-start;
-  padding-left:8px;font:800 7.5px/1 ${FONT_COND};letter-spacing:.2em;color:#c06f66;}
 .cot-si-toast{height:48px;overflow:hidden;contain:layout paint style;
   background:linear-gradient(100deg,rgba(38,12,12,.94),rgba(11,10,12,.84) 78%,rgba(8,10,13,.3));
   border:1px solid rgba(240,90,90,.2);border-left:3px solid ${COL.red};padding:6px 10px 6px;

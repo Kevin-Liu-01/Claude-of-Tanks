@@ -78,3 +78,17 @@ node tools/minimap-contacts.browser.mjs --url=http://127.0.0.1:5189
 
 This checks hidden reserves, activation, deactivation, clean next-wave spotting
 and the distinct last-known marker through pixel comparisons of the real minimap.
+
+### Vehicle controls and score alignment
+
+The objective follows the scoreboard's measured center, including the shifted
+landscape-phone position. Its widest edge clears both clipped bottom corners
+by eight pixels. The layout probe checks those corners, not just total widths.
+Vehicle controls have transparent backgrounds, active underlines, no OFF labels,
+and replace Smoke/ATGM labels with their remaining cooldown. Exhausted smoke
+shows 0/3; it does not promise a fourth salvo. Damage notifications have no heading.
+
+Zone Control and Gravity award 25 points per confirmed enemy destruction, once
+per vehicle life. Friendly fire, self-destruction and duplicate receipts do not
+score. The shared mode tests cover both solo and network team names; the authority
+regression verifies a real shell kill reaches the score in the snapshot.

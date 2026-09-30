@@ -3618,10 +3618,10 @@
   "systems.atgm.help": "Select guided missiles. Fire, then guide the missile with your aiming cursor.",
   "hud.objective.standard": "Destroy the enemy team",
   "hud.objective.capture_the_flag": "Steal and return enemy flags",
-  "hud.objective.zone_control": "Capture and hold sectors",
+  "hud.objective.zone_control": "Hold sectors · +25 per kill",
   "hud.objective.turbo_ball": "Put the ball in the enemy goal",
   "hud.objective.endless_horde": "Survive waves · find supplies",
   "hud.objective.frontline_assault": "Take each sector in order",
-  "hud.objective.mars": "Hold sectors · collect boosts",
+  "hud.objective.mars": "Sectors · boosts · +25 per kill",
   "hud.modeStatus.eliminate": "ELIMINATED {own} / {target}"
 }

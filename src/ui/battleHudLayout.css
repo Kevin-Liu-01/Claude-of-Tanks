@@ -116,12 +116,12 @@ body[data-cot-width][data-cot-height][data-cot-input] .cot-es .es-actions{
 body:is(.cot-kc-live,.cot-si-report) :is(.cot-room-chat,.cot-touch,.cot-touch-aim){visibility:hidden!important;pointer-events:none!important}
 
 /* One compact instrument strip. Every available system owns the same cell. */
-.cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:var(--hud-systems-left,12px);top:var(--hud-systems-top,80px);bottom:auto;transform:none;display:flex;gap:3px;max-width:var(--hud-systems-width,var(--hud-side-width,300px));padding:3px;border:1px solid #53616b;border-radius:4px;background:rgba(6,13,18,.9);box-shadow:0 3px 14px #0008;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}
+.cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:var(--hud-systems-left,12px);top:var(--hud-systems-top,80px);bottom:auto;transform:none;display:flex;gap:3px;max-width:var(--hud-systems-width,var(--hud-side-width,300px));padding:2px;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}
 .cot-vehicle-controls::-webkit-scrollbar{display:none;}
-.cot-vehicle-controls>button{pointer-events:auto;position:static!important;transform:none!important;flex:0 0 74px;width:74px!important;height:32px!important;min-width:0;min-height:32px;box-sizing:border-box;grid-template-columns:13px minmax(0,1fr) 13px;grid-template-rows:13px 8px;gap:2px;align-items:center;justify-items:center;padding:3px 2px;border:1px solid #4f5b64;border-radius:3px!important;background:linear-gradient(#24303b,#111b23);color:#c6d1d9;font:700 10px/1.15 var(--hud-font,system-ui);letter-spacing:.015em;text-transform:none;box-shadow:none;}
+.cot-vehicle-controls>button{pointer-events:auto;position:static!important;transform:none!important;flex:0 0 74px;width:74px!important;height:32px!important;min-width:0;min-height:32px;box-sizing:border-box;grid-template-columns:13px minmax(0,1fr) 13px;grid-template-rows:1fr;gap:2px;align-items:center;justify-items:center;padding:3px 2px;border:0;border-bottom:1px solid #b6c8d966;border-radius:0!important;background:none;color:#c6d1d9;font:700 10px/1.15 var(--hud-font,system-ui);letter-spacing:.015em;text-transform:none;box-shadow:none;text-shadow:0 1px 3px #000,0 0 5px #000;}
 .cot-vehicle-controls>.cot-auxiliary,.cot-vehicle-controls>.cot-special.show,.cot-vehicle-controls>.cot-jump.on{display:grid;}
 .cot-vehicle-controls>button[hidden],.cot-vehicle-controls[hidden]{display:none!important;}
-.cot-vehicle-controls>button.active{color:#ffdc94;border-color:#c89a50;background:linear-gradient(#443823,#252218);box-shadow:inset 0 -2px #efb84e;}
+.cot-vehicle-controls>button.active{color:#ffdc94;border-color:#c89a50;background:none;box-shadow:inset 0 -2px #efb84e;}
 .cot-vehicle-controls>button:disabled{opacity:.64;}
 .cot-vehicle-controls>button:hover:not(:disabled){border-color:#d7b16b;}
 .cot-vehicle-controls>button:focus-visible{outline:2px solid #fff;outline-offset:-2px;}
@@ -129,14 +129,14 @@ body:is(.cot-kc-live,.cot-si-report) :is(.cot-room-chat,.cot-touch,.cot-touch-ai
 .cot-vehicle-controls .si svg{width:13px!important;height:13px!important;}
 .cot-vehicle-controls>button .sk{grid-column:3;grid-row:1;display:grid;place-items:center;min-width:13px;height:13px;padding:0 1px;box-sizing:border-box;border:1px solid #78848d;border-radius:3px;background:#07101799;font:700 9px/1 var(--hud-font,system-ui);color:inherit;letter-spacing:0;}
 .cot-vehicle-controls>button .sl{grid-column:2;grid-row:1;white-space:nowrap;font-size:9px;letter-spacing:0;text-align:center;}
-.cot-vehicle-controls .system-status{grid-column:1/-1;grid-row:2;font:600 9px/1 var(--hud-font,system-ui);letter-spacing:.06em;color:inherit;opacity:.85;white-space:nowrap;}
+.cot-vehicle-controls .system-status{display:none;grid-column:1/-1;grid-row:2;font:600 9px/1 var(--hud-font,system-ui);letter-spacing:.06em;color:inherit;opacity:.85;white-space:nowrap;}
 body.cot-spectating .cot-vehicle-controls{display:none!important;}
 
 
 
 /* Objectives share the score's center column; kill notices have bounded side lanes. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status{
-  --objective-accent:#efb84e;top:var(--hud-objective-top,68px);width:var(--hud-objective-width,312px);
+  --objective-accent:#efb84e;left:var(--hud-objective-left,50%);top:var(--hud-objective-top,68px);width:var(--hud-objective-width,278px);
   box-sizing:border-box;min-height:40px;padding:5px 22px;gap:2px 9px;
   grid-template-columns:18px minmax(0,1fr) auto;grid-template-rows:14px 12px;
   clip-path:polygon(0 0,100% 0,calc(100% - 13px) 100%,13px 100%);
@@ -175,7 +175,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-height='short'][data-cot-orientation='landscape'] .cot-prebattle{top:calc(var(--hud-objective-bottom,64px) + 8px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-height='short']:not(.cot-touch-layout) .cot-prebattle{width:240px}
 
-body.cot-touch-layout .cot-vehicle-controls>button{height:44px!important;min-height:44px;grid-template-rows:16px 12px;padding-block:5px}
+body.cot-touch-layout .cot-vehicle-controls>button{height:44px!important;min-height:44px;grid-template-rows:1fr;padding-block:5px}
 body[data-cot-battle-layout] .cot-kill-lane.r .cot-kf{border-left:0;border-right:2px solid #f05a5a;background:linear-gradient(90deg,transparent,rgba(8,12,16,.82) 26%)}
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] :is(.cot-dp,.cot-drive){bottom:128px}

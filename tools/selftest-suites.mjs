@@ -2,6 +2,9 @@
 export const SELFTEST_SUITES = Object.freeze({
   pre: Object.freeze([
     'src/sim/auxiliarySystems.selftest.mjs',
+    'src/sim/smokeBallistics.selftest.mjs',
+    'src/fx/auxiliaryPresentation.selftest.mjs',
+    'src/ui/vehicleControlCooldown.selftest.mjs',
     'src/vehicles/vehicleAuxiliaryGeometry.selftest.mjs',
     'src/sim/modeConfiguration.selftest.mjs',
     'src/vehicles/tacticalRoles.selftest.mjs',

@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {createVehicleCooldownReader} from './vehicleControlCooldown.ts';
+const read=createVehicleCooldownReader(),gun={t:1},missile={t:8};
+const combat={shellSlot:1,reload:missile,reloadChannels:[gun,missile]};
+assert.equal(read(combat,1,10),8);
+combat.shellSlot=0;combat.reload=gun;
+assert.equal(read(combat,1,13),5,'deselected network launcher continues counting down');
+assert.equal(read(combat,1,13),5,'paused match time freezes countdown');
+assert.equal(read(combat,1,20),0,'stale unselected channel cannot display a permanent timer');
+missile.t=3.5;assert.equal(read(combat,1,21),3.5,'fresh authority correction wins');
+missile.t=8;assert.equal(read(combat,1,22),8,'new launch starts a new cycle');
+assert.equal(read(combat,0,22),1,'separate cannon channel');
+assert.equal(missile.t,8,'presentation never mutates combat');
+assert.equal(read(null,1,30),0);
+console.log('vehicleControlCooldown: independent weapons, deselected snapshots, pause and corrections passed');

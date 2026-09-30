@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { auxiliaryState, requestAuxiliary, smokeBlocks, stepRoofGun, auxiliaryShot } from './auxiliarySystems.ts';
+import { smokeVolume, SMOKE_WIND_X, SMOKE_WIND_Z } from './smokeScreen.ts';
 import { AUXILIARY_INVENTORY } from '../vehicles/auxiliaryInventory.generated.ts';
 function entity(id='a',team='alpha',specId='m1a2'){
  return {id,team,spec:{id:specId,dims:{heightM:2.8},armor:{turretPivot:[0,1.4,0]}},state:{pos:{x:0,y:0,z:0},yaw:0,turretYaw:0,visualPitch:0,visualRoll:0},combat:{destroyed:false,reload:{t:4},ammo:[7,8,9]}};
@@ -10,7 +11,8 @@ assert.equal(requestAuxiliary(tank,'smoke',0),true);
 const screen=tank.combat.auxiliary.smoke;
 assert.equal(requestAuxiliary(tank,'smoke',.1),false);
 assert.equal(tank.combat.auxiliary.smokeCharges,2);
-const a={x:screen.x,y:screen.y,z:screen.z-20},b={x:screen.x,y:screen.y,z:screen.z+20};
+const center=smokeVolume(screen,3,-2,{});
+const a={x:center.x,y:center.y,z:center.z-20},b={x:center.x,y:center.y,z:center.z+20};
 assert.equal(smokeBlocks([screen],a,b,.2),false,'grenades have flight time');
 assert.equal(smokeBlocks([screen],a,b,3),true);
 assert.equal(smokeBlocks([screen],{...a,y:30},{...b,y:30},3),false,'smoke is not an infinite vertical wall');
@@ -53,13 +55,12 @@ const actual=new THREE.Vector3().fromArray(gun.muzzle).sub(new THREE.Vector3().f
 assert.ok(actual.distanceTo(auxiliaryShot.origin)<1e-6,'authoritative muzzle matches the articulated rendered muzzle');
 console.log('auxiliarySystems: smoke lifetime/charges/height, explicit lamps, target visibility, friendly lanes, burst cadence and scaled/sloped muzzle parity PASS');
 
-const {smokeVolume,SMOKE_WIND_X,SMOKE_WIND_Z}=await import('./smokeScreen.ts');
-const start={...smokeVolume(screen,screen.born+4,0,{})};
-const later={...smokeVolume(screen,screen.born+12,0,{})};
+const start={...smokeVolume(screen,screen.born+4,-2,{})};
+const later={...smokeVolume(screen,screen.born+12,-2,{})};
 assert.ok(Math.abs(later.x-start.x-SMOKE_WIND_X*8)<1e-9);
 assert.ok(Math.abs(later.z-start.z-SMOKE_WIND_Z*8)<1e-9);
-assert.equal(smokeVolume(screen,screen.born+.5,0,{}).density,0,'no instant wall before grenades arrive');
-assert.ok(smokeVolume(screen,screen.born+16,0,{}).density<start.density,'smoke thins before expiration');
+assert.equal(smokeVolume(screen,screen.born+.5,-2,{}).density,0,'no instant wall before grenades arrive');
+assert.ok(smokeVolume(screen,screen.born+16,-2,{}).density<start.density,'smoke thins before expiration');
 assert.equal(smokeBlocks([screen],{x:later.x,y:later.y,z:later.z-10},{x:later.x,y:later.y,z:later.z+10},screen.born+12),true);
 assert.equal(smokeBlocks([screen],{x:later.x,y:later.y+9,z:later.z-10},{x:later.x,y:later.y+9,z:later.z+10},screen.born+12),false);
 
@@ -67,9 +68,9 @@ assert.equal(smokeBlocks([screen],{x:later.x,y:later.y+9,z:later.z-10},{x:later.
 // hillside higher or lower than the tank which fired the smoke canisters.
 for (const elevation of [-8, 8]) {
   const ground = (x,z) => elevation + z*.04;
-  const v = smokeVolume(screen,screen.born+4,0,{},ground);
+  const v = smokeVolume(screen,screen.born+4,-2,{},ground);
   const a={x:v.x,y:v.y,z:v.z-10},b={x:v.x,y:v.y,z:v.z+10};
-  assert.ok(Math.abs(v.y-(ground(v.x,v.z)+1.4+.165))<1e-9);
+  assert.ok(Math.abs(v.y-(ground(v.x,v.z)+1.4+(4-screen.canisters[screen.banks[0]][6])*.055))<1e-9);
   assert.equal(smokeBlocks([screen],a,b,screen.born+4,ground),true,'terrain-seated visible smoke blocks sight');
   assert.equal(smokeBlocks([screen],{...a,y:v.y+9},{...b,y:v.y+9},screen.born+4,ground),false,'clear air above the bank stays visible');
 }

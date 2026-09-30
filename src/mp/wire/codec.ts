@@ -167,7 +167,7 @@ function writeMeta(writer: ByteWriter, meta: SnapshotMeta, hasVerdict: boolean):
   writer.u8(meta.verdict);
   if (hasVerdict) writer.string(meta.verdictReason, MAX_REASON_BYTES);
   writer.u32(meta.destructibleRevision);
-  writer.string(meta.smokeJson || '', 16384);
+  writer.string(meta.smokeJson || '', 32768);
 }
 
 function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: SnapshotFrame | null): void {
@@ -417,7 +417,7 @@ function readMeta(reader: ByteReader, hasVerdict: boolean): SnapshotMeta {
   if (hasVerdict !== (verdict !== 0)) throw new WireError('invalid_message', 'verdict flag disagrees with verdict');
   const verdictReason = hasVerdict ? reader.string(MAX_REASON_BYTES) : '';
   const destructibleRevision = reader.u32();
-  const smokeJson = reader.string(16384);
+  const smokeJson = reader.string(32768);
   return { phase: phase as PhaseId, countdownMs, battleTimeMs, verdict: verdict as VerdictId, verdictReason, destructibleRevision, ...(smokeJson ? {smokeJson} : {}) };
 }
 

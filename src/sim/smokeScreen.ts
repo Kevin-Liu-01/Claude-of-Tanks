@@ -1,8 +1,11 @@
+import type { SmokeSource } from './smokeReceipt.ts';
+import { smokeCanisterPosition, type SmokeCanister } from './smokeBallistics.ts';
 /** Shared deterministic smoke envelope, used by spotting and presentation. */
-export interface SmokeScreen { x:number; y:number; z:number; yaw:number; born:number }
+export interface SmokeScreen { x:number; y:number; z:number; yaw:number; born:number; canisters?:readonly SmokeCanister[]; banks?:readonly number[]; source?:SmokeSource; flightMs?:readonly number[] }
 export interface SmokeVolume { x:number; y:number; z:number; radius:number; height:number; density:number }
 export type SmokeGround = (x:number,z:number) => number;
 export const SMOKE_DURATION_S = 18;
+export const smokeBankCount = (screen:SmokeScreen):number => screen.banks?.length ?? 5;
 export const SMOKE_WIND_X = .18;
 export const SMOKE_WIND_Z = .10;
 const clamp = (v:number) => Math.max(0,Math.min(1,v));
@@ -11,6 +14,19 @@ const smooth = (v:number) => {const t=clamp(v);return t*t*(3-2*t);};
  * advects the complete screen; age is match time, never render frame count. */
 export function smokeVolume(screen:SmokeScreen,now:number,bank:number,out:SmokeVolume,ground?:SmokeGround):SmokeVolume{
   const age=now-screen.born;
+  const shot=screen.canisters?.[screen.banks?.[bank+2] ?? -1];
+  if(screen.canisters&&!shot){out.density=0;return out;}
+  if(shot){
+    smokeCanisterPosition(shot,shot[6],out);
+    const landedAge=Math.max(0,age-shot[6]);
+    out.x+=SMOKE_WIND_X*landedAge;out.z+=SMOKE_WIND_Z*landedAge;
+    out.y=(ground ? ground(out.x,out.z)+1.4 : out.y+1.32)+landedAge*.055;
+    const growth=smooth(landedAge/2.2);
+    out.radius=1.2+growth*9.3;
+    out.height=.8+growth*3.2;
+    out.density=growth*(1-smooth((age-13.5)/4.5));
+    return out;
+  }
   const growth=smooth((age-.85-Math.abs(bank)*.06)/2.2);
   const fade=1-smooth((age-13.5)/4.5);
   const side=bank*3.6+Math.sin(bank*4.1+screen.born)*.45;
@@ -29,7 +45,7 @@ const volume:SmokeVolume={x:0,y:0,z:0,radius:0,height:0,density:0};
 export function smokeBlocks(screens:Iterable<SmokeScreen>,a:{x:number;y:number;z:number},b:{x:number;y:number;z:number},now:number,ground?:SmokeGround):boolean{
   for(const screen of screens){
     if(now<screen.born || now-screen.born>SMOKE_DURATION_S)continue;
-    for(let bank=-2;bank<=2;bank++){
+    for(let bank=-2;bank<smokeBankCount(screen)-2;bank++){
       smokeVolume(screen,now,bank,volume,ground);
       if(volume.density<.22)continue;
       const ax=(a.x-volume.x)/volume.radius,ay=(a.y-volume.y)/volume.height,az=(a.z-volume.z)/volume.radius;
@@ -40,4 +56,10 @@ export function smokeBlocks(screens:Iterable<SmokeScreen>,a:{x:number;y:number;z
     }
   }
   return false;
+}
+
+/** Per-vehicle HUD state stays small; the match-owned screen list carries flights once. */
+export function smokeScreenSummary(screen:SmokeScreen):SmokeScreen {
+  const {x,y,z,yaw,born}=screen;
+  return {x,y,z,yaw,born};
 }
