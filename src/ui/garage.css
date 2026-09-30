@@ -1667,8 +1667,10 @@ body[data-cot-input='coarse'] .cot-country-chip{min-width:44px}
 .cot-battle-control:has(.cot-battle-menu.open) .cot-multiplayer-entry,.has-room .cot-multiplayer-entry{display:none;}
 
 .cot-map-inspect{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:30px;height:30px;display:grid;place-items:center;
-  border:1px solid #8fa5b666;background:#08121ddd;color:#ecbe79;cursor:zoom-in;padding:0;
+  border:0;background:none;box-shadow:none;color:#ffca7b;cursor:zoom-in;padding:0;
   opacity:0;pointer-events:none;transition:opacity .12s ease;}
+.cot-map-inspect svg{filter:drop-shadow(0 1px 2px #000) drop-shadow(0 0 3px #000);}
+.cot-map-card.sel:has(.cot-map-inspect) .cot-map-select{cursor:zoom-in;}
 .cot-map-card:hover .cot-map-inspect,.cot-map-card:focus-within .cot-map-inspect{opacity:1;pointer-events:auto;}
 @media (hover:none){.cot-map-inspect{opacity:1;pointer-events:auto;}}
 .cot-map-inspect:focus-visible,.cot-map-select:focus-visible{outline:2px solid #ffc563;outline-offset:2px;}
@@ -1696,7 +1698,7 @@ body[data-cot-input='coarse'] .cot-country-chip{min-width:44px}
 
 .cot-map-card{position:relative;}
 .cot-map-select{display:block;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;cursor:pointer;}
-body[data-cot-input="coarse"] .cot-map-inspect{width:44px;height:44px;background:#08121dcc;}
+body[data-cot-input="coarse"] .cot-map-inspect{width:44px;height:44px;}
 
 .cot-battle-menu .cot-battle-choice[aria-pressed="true"]{border-color:var(--mode-color);background:color-mix(in srgb,var(--mode-color) 15%,#121920);color:var(--mode-color);}
 

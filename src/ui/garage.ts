@@ -1425,19 +1425,26 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         }
         thumb.appendChild(tags);
       }
+      const previewMap = (trigger: HTMLElement) => {
+        void import('./mapPreview.ts').then(({ openMapPreview }) => openMapPreview(m, trigger, () => api.setSelectedMap(m.id)));
+      };
       if (m.id !== 'random') {
         const inspect = document.createElement('button');
         inspect.type = 'button'; inspect.className = 'cot-map-inspect';
         inspect.setAttribute('aria-label', t('garage.map.inspect', { name: m.name }));
-        inspect.innerHTML = uiIconSVG('zoomIn', 13);
+        inspect.innerHTML = uiIconSVG('zoomIn', 18);
         inspect.addEventListener('click', (event) => {
           event.stopPropagation();
-          void import('./mapPreview.ts').then(({ openMapPreview }) => openMapPreview(m, inspect, () => api.setSelectedMap(m.id)));
+          previewMap(inspect);
         });
         card.append(inspect);
       }
       selectMap.addEventListener('click', () => {
         emit('ui:click', {});
+        if (m.id !== 'random' && selectedMapId === m.id) {
+          previewMap(selectMap);
+          return;
+        }
         api.setSelectedMap(m.id);
         if (isOverlayPanelLayout()) setGaragePanel('');
       });
