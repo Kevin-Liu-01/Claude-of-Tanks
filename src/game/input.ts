@@ -103,6 +103,7 @@ export interface InputSettings {
   aiDifficulty: AiDifficulty;
   showPerfMeter: boolean;
   showDebugHud: boolean;
+  hideBattleUi: boolean;
   showDirectionalHitValues: boolean;
   armorAimOverlay: boolean;
   volMaster: number;
@@ -273,6 +274,7 @@ const DEFAULT_SETTINGS: InputSettings = {
   // The engineering dashboard is intentionally off for players and lazy-
   // loads only after an explicit Interface toggle or F8 press.
   showDebugHud: false,
+  hideBattleUi: false,
   // Keep blocked pre-mitigation roll details optional for new profiles;
   // applied damage and canonical outcome words are always shown by the HUD.
   showDirectionalHitValues: false,
@@ -590,6 +592,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       settings.rmbMode = storedSettings.rmbMode;
     }
     if (typeof storedSettings.showPerfMeter === 'boolean') settings.showPerfMeter = storedSettings.showPerfMeter;
+    if (typeof storedSettings.hideBattleUi === 'boolean') settings.hideBattleUi = storedSettings.hideBattleUi;
     if (typeof storedSettings.showDebugHud === 'boolean') settings.showDebugHud = storedSettings.showDebugHud;
     if (typeof storedSettings.showDirectionalHitValues === 'boolean') {
       settings.showDirectionalHitValues = storedSettings.showDirectionalHitValues;
@@ -1188,6 +1191,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       };
       if (key === 'invertY') settings.invertY = !!value;
       else if (key === 'showPerfMeter') settings.showPerfMeter = !!value;
+      else if (key === 'hideBattleUi') settings.hideBattleUi = !!value;
       else if (key === 'showDebugHud') settings.showDebugHud = !!value;
       else if (key === 'showDirectionalHitValues') settings.showDirectionalHitValues = !!value;
       else if (key === 'armorAimOverlay') settings.armorAimOverlay = !!value;

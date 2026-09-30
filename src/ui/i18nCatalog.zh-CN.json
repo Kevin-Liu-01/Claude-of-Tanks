@@ -1247,6 +1247,8 @@
   "settings.preset.mobileHigh": "移动端·高",
   "settings.sound.title": "声音",
   "settings.pad.title": "手柄",
+  "settings.interface.hideBattleUi": "隐藏战斗界面",
+  "settings.interface.hideBattleUiNote": "纯净游戏画面：隐藏战斗界面、瞄准准星、坦克标签和触控按钮。按 F10 切换，或按 Esc 打开设置。在触摸屏上，用三指轻点即可恢复界面。菜单和战斗结果仍可使用。",
   "settings.interface.title": "界面",
   "settings.interface.armorOverlay": "瞄准镜装甲手电 · 击穿渐变（默认开启）",
   "settings.interface.armorNote": "在瞄准镜视图中，瞄准的敌方装甲按红（跳弹）—橙—绿（高击穿率）渐变着色。计算依据所选弹药、距离、角度、跳弹规则、反应装甲、履带、间隙装甲。",

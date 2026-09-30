@@ -1,0 +1,5 @@
+/* The settings/resume dialogs and end-of-battle flow stay reachable. This
+   class is independent of replay veils and the HUD's inline mode styles. */
+body.cot-battle-ui-hidden :is(.cot-hud,.cot-dp,.cot-si-stats,.cot-touch,
+  .cot-hints,.cot-gear,.cot-room-chat,.cot-mp-status.battle,
+  .cot-network-diagnostics,#cot-perfhud){display:none!important}

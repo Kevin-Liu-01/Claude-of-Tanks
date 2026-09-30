@@ -696,6 +696,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/dom.selftest.mjs',
     'src/ui/keyboardOwnership.selftest.mjs',
     'src/ui/settingsControls.selftest.mjs',
+    'src/ui/battleUiVisibility.selftest.mjs',
     'src/vehicles/specHelpers.selftest.mjs',
     'src/dev/perfTrace.selftest.mjs',
     'src/ui/perfHud.selftest.mjs',

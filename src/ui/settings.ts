@@ -30,6 +30,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // BATTLE plate) + red-outline LEAVE BATTLE, overflow-gated scroll fades.
 // Behavior is UNCHANGED: same classes, same rebind/persistence/pause flow.
 
+import { installBattleUiVisibility } from './battleUiVisibility.ts';
 import { FONT_STACK, ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { readBrainSettings, writeBrainSettings } from '../game/teamArrangement.ts';
@@ -91,6 +92,7 @@ type NumericSettingKey =
 type BooleanSettingKey =
   | 'invertY'
   | 'showPerfMeter'
+  | 'hideBattleUi'
   | 'showDebugHud'
   | 'showDirectionalHitValues'
   | 'armorAimOverlay'
@@ -601,6 +603,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   gear.title = t('settings.gearAria');
   if (!gear.parentNode) document.body.appendChild(gear);
 
+  const battleUiVisibility = installBattleUiVisibility({
+    hidden: () => input.getSettings().hideBattleUi,
+    setHidden: (hidden) => input.setSetting('hideBattleUi', hidden),
+    shortcutsBlocked: () => open || isAnyModalOpen(),
+  });
+  battleUiVisibility.setBattle(isBattleActive());
+
   const hints = el('div', 'cot-hints');
   document.body.appendChild(hints);
 
@@ -1007,6 +1016,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     bindBattleTimeChoices(times, () => emit('ui:click', {}));
 
     const iface = groupCard(body, t('settings.interface.title'));
+    onOffRow(iface, t('settings.interface.hideBattleUi'), 'hideBattleUi', battleUiVisibility.refresh);
+    const cleanViewNote = el('div', 'cot-set-note', iface);
+    cleanViewNote.textContent = t('settings.interface.hideBattleUiNote');
     onOffRow(
       iface,
       t('settings.interface.armorOverlay'),
@@ -1605,12 +1617,14 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       const phase = typeof ev === 'object' && ev !== null && 'phase' in ev
         ? Reflect.get(ev, 'phase')
         : undefined;
+      battleUiVisibility.setBattle(phase === 'battle');
       if (phase !== 'battle') hideResumeVeil();
       // belt for the kill-cam flag: killcam.cancel() only emits killcam:done
       // while a replay is live, so a phase flip is the reset of last resort
       kcReplay = false;
     });
-    bus.on('ui:battleStart', updateGear);
+    bus.on('ui:battleStart', () => { battleUiVisibility.setBattle(true); updateGear(); });
+    bus.on('battle:ended', () => battleUiVisibility.setBattle(false));
     // KILL-CAM ownership window (controls_gunnery r7 MAJOR — see kcReplay).
     // begin() emits synchronously in the same task as the death branch's
     // exitPointerLock, ahead of any pointerlockchange this panel could react

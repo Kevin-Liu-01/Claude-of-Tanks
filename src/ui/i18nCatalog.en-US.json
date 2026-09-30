@@ -1247,6 +1247,8 @@
   "settings.preset.mobileHigh": "mobile-high",
   "settings.sound.title": "Sound",
   "settings.pad.title": "Controller",
+  "settings.interface.hideBattleUi": "Hide battle UI",
+  "settings.interface.hideBattleUiNote": "Clean gameplay view: hides the HUD, aiming reticle, tank labels and touch buttons. Press F10 to toggle, or Esc to open Settings. On touchscreens, tap with three fingers to restore the UI. Menus and battle results remain available.",
   "settings.interface.title": "Interface",
   "settings.interface.armorOverlay": "Scoped armor flashlight · penetration gradient (default on)",
   "settings.interface.armorNote": "In sniper view, aimed enemy armor is shaded from red (blocked) through amber to green (high penetration chance). The calculation follows the selected shell, range, angle, ricochet rules, ERA, tracks, and spaced armor.",

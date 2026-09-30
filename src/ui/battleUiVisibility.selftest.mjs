@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import { installBattleUiVisibility } from './battleUiVisibility.ts';
+import { createInput } from '../game/input.ts';
+const originals = new Map(['window','document','Element','localStorage'].map(k => [k, Object.getOwnPropertyDescriptor(globalThis,k)]));
+try {
+  const classes = new Set(), stored = new Map();
+  globalThis.window = new EventTarget();
+  globalThis.document = Object.assign(new EventTarget(), {body:{classList:{toggle:(k,on)=>on?classes.add(k):classes.delete(k),remove:k=>classes.delete(k)}}});
+  globalThis.Element = class {};
+  globalThis.localStorage = {getItem:k=>stored.get(k)??null,setItem:(k,v)=>stored.set(k,v)};
+  const input = createInput();
+  assert.equal(input.getSettings().hideBattleUi, false);
+  let blocked = false;
+  const controller = installBattleUiVisibility({hidden:()=>input.getSettings().hideBattleUi,setHidden:v=>input.setSetting('hideBattleUi',v),shortcutsBlocked:()=>blocked});
+  const hidden=()=>classes.has('cot-battle-ui-hidden');
+  const key=(extra={})=>window.dispatchEvent(Object.assign(new Event('keydown',{cancelable:true}),{code:'F10',...extra}));
+  key(); assert.equal(hidden(),false,'garage shortcut leaves UI available');
+  controller.setBattle(true); key(); assert.equal(hidden(),true);
+  assert.equal(createInput().getSettings().hideBattleUi,true,'preference survives input recreation');
+  key({repeat:true}); assert.equal(hidden(),true,'held shortcut does not flicker');
+  blocked=true;key();assert.equal(hidden(),true,'menus own keyboard input');blocked=false;
+  key({ctrlKey:true});assert.equal(hidden(),true,'modified keys are left alone');
+  window.dispatchEvent(Object.assign(new Event('touchstart',{cancelable:true}),{touches:[{},{}]}));assert.equal(hidden(),true);
+  window.dispatchEvent(Object.assign(new Event('touchstart',{cancelable:true}),{touches:[{},{},{}]}));assert.equal(hidden(),false,'three fingers restore hidden controls');
+  key();controller.setBattle(false);assert.equal(hidden(),false,'results and garage are visible');
+  controller.setBattle(true);assert.equal(hidden(),true,'next battle reapplies preference');
+  key();assert.equal(hidden(),false,'keyboard restores UI');
+  key();controller.dispose();assert.equal(hidden(),false);
+} finally { for(const [k,d] of originals) { if(d)Object.defineProperty(globalThis,k,d);else delete globalThis[k]; } }
+console.log('battleUiVisibility: persistence, recovery, menu ownership and phase transitions pass');

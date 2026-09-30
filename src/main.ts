@@ -1,3 +1,4 @@
+import './ui/battleUiVisibility.css';
 import type { RuntimeValue } from './runtimeTypes.ts';
 /**
  * main.ts — typed integration entry point (ARCHITECTURE.md §4, §5).
