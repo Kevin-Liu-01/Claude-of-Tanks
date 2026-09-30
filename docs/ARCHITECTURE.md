@@ -1034,8 +1034,14 @@ panel, transform-tracked primitives). The minimap follows the same rule:
 arrows sit on their projected positions, rotate with their own hull heading,
 and objective glyphs stay upright; nothing nudges them apart.
 
-**Mask retry policy.** `setTank` asks `tankThumbs.getTopDownMasks` for the
-real top-down masks and keeps the vector stand-in meanwhile. The subscriber is
+**Mask readiness and retry policy.** Solo and multiplayer covered entry await
+`prepareTankMasks` before revealing the battle. It joins the shared preparation
+and paints a matching active panel before reporting success; failure follows
+covered entry recovery. The private clone excludes shadow-only helpers
+(including the live-owner articulated batch) and renders even when its source
+actor is staged/hidden. `setTank` asks `tankThumbs.getTopDownMasks` for the
+real layers; an unfinished schematic stays blank, never a generic vehicle.
+The subscriber is
 notified on failure too (`onReady(ready, failure)`); a failed build is
 negatively cached for 8 s with at most 3 builds per spec per session
 (`TOP_DOWN_MASK_RETRY`), while a borrowed live visual disposed mid-build (the

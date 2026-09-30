@@ -153,6 +153,7 @@ export interface SoloBattleDeploymentRuntimeOptions {
   getDeploymentShadowWarm(): DeploymentShadowWarmOwner;
   getEntryLifecycle(): BattleEntryLifecycle;
   prepareRevealCamera(): void;
+  preparePlayerPanel(): Promise<void>;
   prepareAtmosphere?(): Promise<void>;
   prepareNightLighting?(): Promise<void>;
   runSceneWatchdog(assertCurrent: () => void): Promise<SceneWatchdogResult | void>;
@@ -279,6 +280,7 @@ function validateDeploymentPorts(options: SoloBattleDeploymentRuntimeOptions): v
         getDeploymentShadowWarm: options.getDeploymentShadowWarm,
         getEntryLifecycle: options.getEntryLifecycle,
         prepareRevealCamera: options.prepareRevealCamera,
+        preparePlayerPanel: options.preparePlayerPanel,
         getGeneration: options.getGeneration,
         advanceGeneration: options.advanceGeneration,
         setPending: options.setPending,
@@ -290,7 +292,7 @@ function validateDeploymentPorts(options: SoloBattleDeploymentRuntimeOptions): v
       },
       'solo deployment lifecycle',
       ['getWorld', 'getBattleVisuals', 'getFx', 'getWarmRender',
-        'getDeploymentShadowWarm', 'getEntryLifecycle', 'prepareRevealCamera',
+        'getDeploymentShadowWarm', 'getEntryLifecycle', 'prepareRevealCamera', 'preparePlayerPanel',
         'getGeneration', 'advanceGeneration', 'setPending', 'setDestructionWarmed',
         'now', 'yieldFrame', 'createLoadingYielder', 'runSceneWatchdog'],
     );
@@ -553,6 +555,9 @@ export function createSoloBattleDeploymentRuntime(
         await camoSweep;
         requireCurrent(generation);
         mark('camo');
+        await options.preparePlayerPanel();
+        requireCurrent(generation);
+        mark('playerPanel');
         await options.prepareAtmosphere?.();
         requireCurrent(generation);
         mark('atmosphere');

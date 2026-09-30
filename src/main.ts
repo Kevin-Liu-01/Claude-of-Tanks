@@ -1883,6 +1883,14 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     getDeploymentShadowWarm: () => deploymentShadowWarm,
     getEntryLifecycle: () => battleEntryLifecycle,
     prepareRevealCamera: prepareBattleRevealCamera,
+    preparePlayerPanel: async () => {
+      const player = game.player;
+      const panel = currentDamagePanel();
+      if (!player || !panel) throw new Error('Player damage panel was not prepared');
+      if (!await panel.prepareTankMasks(player.spec, player.visual)) {
+        throw new Error('Player top-down view could not be prepared');
+      }
+    },
     prepareAtmosphere: async () => {
       await battleAtmosphere.prepare(game.battleCount, game.mapId, battlePreferences.times);
       await frontline.prepare(game.battleCount, game.mapId);
@@ -2493,7 +2501,9 @@ function networkCompositionOptions(): NetworkBattleCompositionOptions {
             if (!entity) return;
             const panel = currentDamagePanel();
             if (!panel) throw new Error('network panel warm requires the prepared battle HUD');
-            await panel.prepareTankMasks(entity.spec, entity.visual);
+            if (!await panel.prepareTankMasks(entity.spec, entity.visual)) {
+              throw new Error('Player top-down view could not be prepared');
+            }
           },
           openingEffects: async (fx, bridge, signal) => {
             const timing: ForwardProgramCompileTiming & {

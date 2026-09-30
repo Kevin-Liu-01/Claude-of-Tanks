@@ -352,6 +352,7 @@ async function runComposed({ fail = '', cancel = '' } = {}) {
       events.push('deployment:reveal');
       if (cancel === 'deploymentReveal') generation++;
     }, coverRendering() {} }),
+    preparePlayerPanel: async () => {},
     prepareRevealCamera,
     runSceneWatchdog: async assertCurrent => { assertCurrent(); events.push('watchdog'); },
     prepareAtmosphere: async () => { if (fail === 'atmosphere') throw new Error('atmosphere failed'); },

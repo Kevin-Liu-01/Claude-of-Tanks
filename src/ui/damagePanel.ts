@@ -16,9 +16,9 @@
 // as the layers turned. Damage promotes the same marker to the shared
 // orange/red state language; hit-zone floods still come from the real armor
 // model. No letterforms inside the silhouette, ever. HP bar and fire indicator.
-// Mask readiness (2026-09-25): a failed or race-cancelled mask build is retried
-// (1.5 s without the borrowed live visual, then 8 s more) before the panel
-// keeps the vector stand-in, warns once and beacons `hud_mask_failed`.
+// Covered battle entry awaits the actual vehicle masks. Live tank switches
+// leave the schematic blank while preparing; never draw a generic vehicle.
+// Failed builds retain bounded retries and `hud_mask_failed` telemetry.
 // Contract: docs/ARCHITECTURE.md §3.7.2 (API preserved; setPose added).
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
@@ -629,7 +629,7 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
     const code = failure ? failure.code : 'unknown';
     const message = failure ? failure.message : 'no failure detail';
     console.warn(`[damagePanel] top-down mask unavailable for ${failedSpec.id} after ${attempts} attempt(s)`
-      + ` (${code}: ${message}); keeping the vector stand-in`);
+      + ` (${code}: ${message}); leaving the schematic blank`);
     let sink: DamagePanelTelemetrySink | null = null;
     if (telemetry !== undefined) sink = telemetry;
     else { try { sink = getEntryTelemetry(); } catch { sink = null; } }
@@ -939,54 +939,6 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
     }
   }
 
-  // Vector stand-in while the masks build (first frames / harness contexts):
-  // same schematic language — rounded hull plate + rails + turret dome +
-  // barrel — under the SAME camera-up rotation as the real layers.
-  function drawVectorFallback() {
-    const d = (spec && spec.dims) || {};
-    const hullL = d.hullLengthM || 6.5;
-    const hullW = d.widthM || 3.2;
-    const overall = Math.max(d.overallLengthM || hullL, hullL);
-    const bodyRadius = Math.hypot(hullW / 2, hullL / 2);
-    scaleS = (Math.min(CW, CH) / 2 - 6) / Math.max(1.5, bodyRadius);
-    const hw = hullW * scaleS / 2, hl = hullL * scaleS / 2;
-    const rw = Math.max(5, hw * 0.42);
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(hullPhi());
-    ctx.fillStyle = 'rgba(154,165,173,0.85)';
-    ctx.strokeStyle = 'rgba(9,14,19,0.7)';
-    ctx.lineWidth = 1.4;
-    roundRect(ctx, -hw + rw * 0.5, -hl, (hw - rw * 0.5) * 2, hl * 2, 4);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(120,130,138,0.95)';
-    for (const side of [-1, 1]) {
-      roundRect(ctx, side < 0 ? -hw : hw - rw, -hl + 1, rw, hl * 2 - 2, 2.5);
-      ctx.fill();
-    }
-    // turret + barrel about the armor pivot, rotated by the gun bearing
-    const tp = (spec && spec.armor && spec.armor.turretPivot) || [0, 0, 0];
-    ctx.translate(-tp[0] * scaleS, -tp[2] * scaleS);
-    ctx.rotate(-turretYawH);
-    const tr = hw * 0.62;
-    const barrel = (overall / 2 - tp[2]) * scaleS;
-    ctx.strokeStyle = 'rgba(9,14,19,0.85)';
-    ctx.lineWidth = 4.4;
-    ctx.beginPath(); ctx.moveTo(0, -tr * 0.4); ctx.lineTo(0, -barrel); ctx.stroke();
-    ctx.strokeStyle = '#d2dce4';
-    ctx.lineWidth = 2.4;
-    ctx.beginPath(); ctx.moveTo(0, -tr * 0.4); ctx.lineTo(0, -barrel + 1); ctx.stroke();
-    ctx.beginPath();
-    ctx.ellipse(0, 0, tr, tr * 1.18, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#c8d2da';
-    ctx.strokeStyle = 'rgba(9,14,19,0.8)';
-    ctx.lineWidth = 1.2;
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-  }
-
   const REGION_MODULES = ['engine', 'transmission', 'ammoRack', 'fuelTank'];
 
   function drawDamagedRegions(): void {
@@ -1048,10 +1000,9 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
 
   function draw(): void {
     ctx.clearRect(0, 0, CW, CH);
-    if (!spec) return;
-
-    if (masks && tints) drawHullLayer();
-    else drawVectorFallback();
+    lastMarkerCount = 0;
+    if (!spec || !masks || !tints) return;
+    drawHullLayer();
 
     // De-tracked running gear + damaged module hit-zones flood their REAL
     // armor-model boxes, stamped in hull space so they ride the hull layer.
@@ -1147,16 +1098,27 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
   return {
     root,
 
-    /** Populate only the shared mask cache; live player/HUD state stays unchanged. */
-    async prepareTankMasks(spec, sourceVisual = null) {
-      return (await prepareTopDownMasks(spec, sourceVisual)) !== null;
+    /** Join covered preparation and paint the active tank before reporting ready. */
+    async prepareTankMasks(preparedSpec, sourceVisual = null) {
+      const serial = maskRequestSerial;
+      const entry = await maskSource.prepare(preparedSpec, sourceVisual);
+      if (!entry) return false;
+      // Network preparation may precede setTank; cache-only in that case.
+      // A tank switch during this await owns its own request and drawing.
+      if (serial === maskRequestSerial && spec?.id === preparedSpec.id) {
+        cancelMaskRetry();
+        adoptMasks(entry);
+        lastDrawSig = null;
+        draw();
+      }
+      return true;
     },
 
     /**
      * Set the tank whose plan/modules the panel shows. Kicks the offscreen
      * top-down mask build for the ACTUAL vehicle (tankThumbs rig); the
-     * vector stand-in covers the first frames and any retry backoff
-     * (DAMAGE_PANEL_MASK_RETRY). A pending retry for the previous tank is
+     * covered entry awaits these masks. Outside that cover, an unfinished
+     * schematic stays blank. A pending retry for the previous tank is
      * cancelled and its late callbacks are ignored.
      * @param {TankSpec} s
      * @param {?object} sourceVisual already-built visual to clone for the mask

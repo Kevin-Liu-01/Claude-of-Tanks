@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import { installArticulatedShadowBatch } from '../engine/articulatedShadowBatch.ts';
+import { markShadowOnly } from '../engine/renderLayers.ts';
 import { initTopMaskRig, prepareTopDownMasks, getTopDownMasks, TOP_DOWN_MASK_RETRY } from './tankThumbs.ts';
 
 function deferred() {
@@ -124,6 +126,7 @@ function sourceVisual(id, withBatch = false) {
   const parent = new THREE.Group();
   const root = new THREE.Group();
   root.name = id;
+  root.visible = id !== 'mask-test-b'; // staged source, included in the ownership snapshot
   root.position.set(11, 3, -7);
   root.rotation.set(0.1, 0.7, -0.2);
   root.scale.set(1.2, 1.1, 0.9);
@@ -389,6 +392,7 @@ function fakeRenderer(sources) {
     compileAsync() { assert.fail('mask readiness must use the bounded exact-program owner'); },
     render(scene, camera) {
       currentFrame = describe(scene);
+      assert.equal(scene.children[0].visible, true, 'private mask root renders even when its source is staged/hidden');
       const material = scene.children[0].getObjectByName('test-hull').material;
       assert([...properties.get(material).programs.values()]
         .every((program) => program.uniforms === 1 && program.attributes === 1),
@@ -486,6 +490,7 @@ try {
   const pendingB = prepareTopDownMasks(spec('mask-test-b'), b.visual);
   const latestTrace = window.__TOP_MASK_LOAD;
   assert.deepEqual([a.clones, b.clones], [1, 1], 'each requested visual is cloned once before queued work');
+  assert.equal(b.visual.root.visible, false, 'preparation never changes live visibility');
   const originalState = fake.state();
   await advanceUntil(() => fake.events.some((event) => event.kind === 'compile'));
   assert.deepEqual(fake.state(), originalState, 'compile restores target/cube/mip synchronously before waiting');
@@ -739,7 +744,7 @@ try {
       .map(({ id, layer }) => [id, layer]),
     [[following.root.name, 'hull'], [following.root.name, 'turret']]);
     assert.equal(fake.destinations.length, copiesBefore + 2, 'no old writer copies after restoration');
-    assert.equal(timers.size, 0, 'both lost-context writers and the successor leave no detached polls');
+  assert.equal(timers.size, 0, 'both lost-context writers and the successor leave no detached polls');
     assert.deepEqual(fake.state(), afterReadbackState);
   }
 
@@ -1057,6 +1062,39 @@ try {
 
   for (const source of sources.values()) source.assertUntouched();
   fake.assertReleased();
+  // Real battle shadow helper has a constructor that native Object3D.clone
+  // cannot call without its live owner/sources. It is not presentation geometry.
+  {
+    const source = addSource('mask-shadow-batch');
+    const root = source.visual.root;
+    const material = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+    const depth = new THREE.MeshDepthMaterial();
+    const proxies = ['rig_hull', 'rig_turret'].map(name => {
+      const mesh = markShadowOnly(new THREE.Mesh(new THREE.BoxGeometry(), material));
+      mesh.geometry.clearGroups();
+      mesh.castShadow = true;
+      mesh.customDepthMaterial = depth;
+      mesh.userData.authoredShadowProxy = true;
+      root.getObjectByName(name).add(mesh);
+      return mesh;
+    });
+    const batch = installArticulatedShadowBatch(root, proxies);
+    assert.ok(batch, 'fixture installs the actual live shadow helper');
+    const nativeClone = batch.clone;
+    let cloneCalls = 0;
+    batch.clone = function(...args) { cloneCalls++; return nativeClone.apply(this, args); };
+    try {
+      const entry = await settle(prepareTopDownMasks(spec('mask-shadow-batch'), source.visual));
+      assert.ok(entry?.ready, 'actual shadow batching must not prevent the player diagram');
+      assert.equal(cloneCalls, 0, 'shadow-only helpers never enter the presentation clone');
+      assert.equal(batch.parent, root, 'live shadow helper stays attached');
+      assert.ok(proxies.every(mesh => mesh.parent), 'live shadow sources stay attached');
+    } finally {
+      batch.dispose(); batch.removeFromParent();
+      for (const mesh of proxies) { mesh.removeFromParent(); mesh.geometry.dispose(); }
+      material.dispose(); depth.dispose();
+    }
+  }
   assert.equal(timers.size, 0, 'all scheduled tasks finish without detached polling');
   await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(unhandled, [], 'restoration/readback failures leave no unhandled promise rejection');

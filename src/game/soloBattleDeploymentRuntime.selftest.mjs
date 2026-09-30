@@ -13,10 +13,12 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
   night = false, failNight = false, pauseNight = false, cancelCover = false, failCover = false,
   compileSlices = 2, cancelCompile = false, lateCancelCompile = '', lateCancelWarm = '',
   streamedCadence = null, terrainPrograms = '', vegetationPrograms = '', failPost = false,
-  watchdog = 'healthy', pauseWatchdog = false, failRevealCover = false } = {}) {
+  watchdog = 'healthy', pauseWatchdog = false, failRevealCover = false, panel = '' } = {}) {
   const calls = [];
   let releaseAtmosphere;
   const atmosphereGate = new Promise((resolve) => { releaseAtmosphere = resolve; });
+  let releasePanel;
+  const panelGate = new Promise(resolve => { releasePanel = resolve; });
   let releaseNight;
   const nightGate = new Promise((resolve) => { releaseNight = resolve; });
   let releaseWatchdog;
@@ -250,6 +252,12 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       atmosphereReady = true;
       calls.push(['atmosphereReady']);
     },
+    preparePlayerPanel: async () => {
+      calls.push(['playerPanel']);
+      if (panel === 'pause') await panelGate;
+      if (panel === 'fail') throw new Error('player panel failed');
+      calls.push(['playerPanelReady']);
+    },
     prepareNightLighting: async () => {
       calls.push(['nightLighting']);
       if (pauseNight) await nightGate;
@@ -307,7 +315,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
     calls,
     releaseAtmosphere,
     releaseWatchdog,
-    releaseNight, lamps, lightSignatures,
+    releasePanel, releaseNight, lamps, lightSignatures,
     shadow, worldGroup, playerRoot, fxGroup, sourceTarget,
     disposeWarmResources() { sourceTarget.dispose(); for (const resource of warmResources) resource.dispose(); },
     get generation() { return generation; },
@@ -442,6 +450,8 @@ assert.equal(happy.pending, true, 'deferred warm owns the pending latch after en
 assert.equal(happy.destructionWarmed, true);
 const order = happy.calls.map(([name]) => name);
 for (const [before, after] of [
+  ['playerPanel', 'playerPanelReady'],
+  ['playerPanelReady', 'atmosphere'],
   ['atmosphere', 'atmosphereReady'],
   ['atmosphereReady', 'allies'],
   ['atmosphereReady', 'compile'],
@@ -709,3 +719,20 @@ assert.throws(result.assertRevealReady, /superseded/, 'a returned receipt cannot
 delete globalThis.__BATTLE_COUNTDOWN_WARM;
 delete globalThis.__COMBAT_OPENING_WARM;
 console.log('soloBattleDeploymentRuntime.selftest: exact day/night light signatures, late actors, order, cancellation and fallback pass');
+
+for (const outcome of ['ready', 'cancelled', 'failed']) {
+  const h = createHarness({ panel: outcome === 'failed' ? 'fail' : 'pause' });
+  const work = h.runtime.warm(Promise.resolve()).then(value => ({ value }), error => ({ error }));
+  for (let i = 0; i < 20 && !h.calls.some(([name]) => name === 'playerPanel'); i++) await Promise.resolve();
+  assert.ok(h.calls.some(([name]) => name === 'playerPanel'));
+  assert.ok(!h.calls.some(([name]) => ['compile', 'reveal'].includes(name)), 'unfinished panel remains covered');
+  if (outcome === 'cancelled') h.generation++;
+  h.releasePanel();
+  const result = await work;
+  if (outcome === 'ready') assert.equal(result.value.revealPrimed, true);
+  else {
+    assert.match(String(result.error), outcome === 'failed' ? /player panel failed/ : /superseded/);
+    assert.ok(!h.calls.some(([name]) => name === 'reveal'), 'failed/stale panel cannot reveal');
+  }
+  h.disposeWarmResources();
+}

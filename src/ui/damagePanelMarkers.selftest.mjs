@@ -296,11 +296,15 @@ function proveMode(mode, entry) {
 }
 
 try {
-  const standIn = proveMode('stand-in', null);
+  installDom();
+  const pending = createDamagePanel({ maskSource: { get: () => null, async prepare() { return null; } } });
+  pending.setTank(spec);
+  assert.deepEqual(pending.debugState().markers, [], 'pending masks never draw unanchored markers');
+  assert.ok(panelContext.records.every(row => ['clearRect', 'setTransform'].includes(row.op)), 'pending masks never draw a substitute tank');
   const masks = proveMode('masks', maskEntry());
-  console.log(`damagePanelMarkers.selftest: ${FRAMES} poses x 2 modes — exact projection, overlap allowed, `
-    + `${standIn.uprightPrimitives + masks.uprightPrimitives} upright pip primitives, `
-    + `${standIn.rotatedControls + masks.rotatedControls} rotated layer controls`);
+  console.log(`damagePanelMarkers.selftest: ${FRAMES} real-mask poses — exact projection, overlap allowed, `
+    + `${masks.uprightPrimitives} upright pip primitives, `
+    + `${masks.rotatedControls} rotated layer controls`);
 } finally {
   for (const [key, descriptor] of saved) {
     if (descriptor) Object.defineProperty(globalThis, key, descriptor);

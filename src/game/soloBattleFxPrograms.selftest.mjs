@@ -267,6 +267,7 @@ function createFixture(mode, host) {
     getFx: () => currentFx, getWarmRender: () => currentWarmer,
     getDeploymentShadowWarm: () => ({ prime: async () => ({}) }),
     getEntryLifecycle: () => ({ primeReveal: async () => { events.push('reveal'); }, coverRendering() {} }),
+    preparePlayerPanel: async () => {},
     prepareRevealCamera() {},
     runSceneWatchdog: async assertCurrent => { assertCurrent(); events.push('watchdog');
       return { before: 10, after: null, rescued: false, stage: null }; },

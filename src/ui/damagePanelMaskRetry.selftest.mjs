@@ -148,6 +148,34 @@ try {
     assert.deepEqual(h.telemetry.events, [], 'a recovered race sends no beacon');
   }
 
+  // Covered preparation joins the injected mask source and adopts before returning.
+  {
+    const h = harness();
+    let resolve;
+    h.masks.source.prepare = () => new Promise(done => { resolve = done; });
+    h.panel.setTank(spec);
+    const work = h.panel.prepareTankMasks(spec);
+    assert.equal(h.panel.debugState().markers.length, 0);
+    resolve(maskEntry());
+    assert.equal(await work, true);
+    assert.equal(h.panel.debugState().masksReady, true);
+    assert.equal(h.panel.debugState().markers.length, 3);
+    h.masks.source.prepare = async () => null;
+    assert.equal(await h.panel.prepareTankMasks(spec), false, 'missing mask cannot certify readiness');
+  }
+  {
+    const h = harness();
+    let resolve;
+    h.masks.source.prepare = () => new Promise(done => { resolve = done; });
+    h.panel.setTank(spec);
+    const work = h.panel.prepareTankMasks(spec);
+    h.panel.setTank({ ...spec, id: 'new-tank' });
+    resolve(maskEntry());
+    await work;
+    assert.equal(h.panel.debugState().masksReady, false, 'late preparation cannot paint the next tank');
+    assert.equal(h.panel.debugState().specId, 'new-tank');
+  }
+
   // A synchronous cache hit needs no retry machinery at all.
   {
     const h = harness();
@@ -196,7 +224,7 @@ try {
     assert.deepEqual(validation.record.notes, ['hud_mask:receipt-tank:mask_build_error'],
       'the spec id and the pipeline code travel as one session note');
     assert.equal(h.panel.debugState().masksReady, false);
-    assert.equal(h.panel.debugState().markers.length, 3, 'the stand-in keeps painting the module map');
+    assert.equal(h.panel.debugState().markers.length, 0, 'no orphan markers or substitute vehicle on failure');
     warnings.length = 0;
   }
 

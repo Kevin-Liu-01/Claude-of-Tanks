@@ -459,8 +459,8 @@ export function ensureTankThumbs(_specs: RuntimeValue, _opts: RuntimeValue = {})
 let maskEngineCtx: TopMaskEngineContext | null = null; // main.ts hands over its engineCtx once at boot
 
 /** Wire the shared engine context (renderer + shadow hook) for mask renders.
- *  Without it, getTopDownMasks reports 'failed' and the damage panel keeps
- *  its vector fallback (harness/booth contexts). @param {object} engineCtx */
+ *  Without it, masks remain unavailable. Covered battle entry requires this
+ *  rig before preparing its player panel. @param {object} engineCtx */
 export function initTopMaskRig(engineCtx: RuntimeValue): void {
   maskEngineCtx = asTopMaskEngineContext(engineCtx);
 }
@@ -530,10 +530,42 @@ interface MaskBatchControlSnapshot {
   sourceVersion: number;
 }
 
+function isShadowOnlyMaskObject(object: THREE.Object3D): boolean {
+  return object.userData.shadowOnly === true;
+}
+
+/** Shadow-only helpers can retain live owners and require constructor arguments.
+ * Clone only the presentation hierarchy; never invoke those helpers' clone hooks.
+ */
+function cloneMaskPresentation(root: THREE.Object3D): THREE.Object3D {
+  const filteredBranches = new Set<THREE.Object3D>();
+  root.traverse((object) => {
+    if (!isShadowOnlyMaskObject(object)) return;
+    for (let parent = object.parent; parent; parent = parent.parent) {
+      filteredBranches.add(parent);
+      if (parent === root) break;
+    }
+  });
+  const cloneBranch = (source: THREE.Object3D): THREE.Object3D => {
+    if (!filteredBranches.has(source)) return source.clone(true);
+    const clone = source.clone(false);
+    try {
+      for (const child of source.children) {
+        if (!isShadowOnlyMaskObject(child)) clone.add(cloneBranch(child));
+      }
+      return clone;
+    } catch (error) {
+      disposeMaskClone(clone);
+      throw error;
+    }
+  };
+  return cloneBranch(root);
+}
+
 function snapshotMaskBatchControls(root: THREE.Object3D): MaskBatchControlSnapshot[][] {
   const snapshots: MaskBatchControlSnapshot[][] = [];
   root.traverse((object) => {
-    if (!(object instanceof THREE.BatchedMesh)) return;
+    if (!(object instanceof THREE.BatchedMesh) || isShadowOnlyMaskObject(object)) return;
     const controls = object as THREE.BatchedMesh & MaskBatchControls;
     snapshots.push(MASK_BATCH_CONTROL_KEYS.map((key) => {
       const texture = controls[key];
@@ -574,7 +606,7 @@ function cloneMaskSource(root: THREE.Object3D): THREE.Object3D {
   const snapshots = snapshotMaskBatchControls(root);
   let clone: THREE.Object3D | null = null;
   try {
-    clone = root.clone(true);
+    clone = cloneMaskPresentation(root);
     let batchIndex = 0;
     clone.traverse((object) => {
       if (!(object instanceof THREE.BatchedMesh)) return;
@@ -888,6 +920,9 @@ async function renderMaskEntry(
   const root = visual.root;
   const scene = new THREE.Scene();
   scene.add(root);
+  // A staged/culled source can be hidden; this private orthographic clone
+  // must render independently of its live visibility.
+  root.visible = true;
   root.position.set(0, 0, 0);
   root.rotation.set(0, 0, 0);
   root.updateMatrixWorld(true);
@@ -1021,8 +1056,8 @@ function notifyMaskSubscriber(
 
 /**
  * Per-tank top-down layer masks for the damage panel. Returns the cached
- * entry, or null while building/unavailable. The caller keeps its vector
- * fallback on failure. Every pending subscriber receives its own callback:
+ * entry, or null while building/unavailable. Covered entry awaits preparation;
+ * live callers leave an unfinished schematic blank. Every pending subscriber receives its own callback:
  * `onReady(true)` when the entry is cached, `onReady(false, failure)` when the
  * build failed or a hot negative cache refused it (2026-09-25: the old
  * success-only callback left the damage panel on its stand-in until reload).
