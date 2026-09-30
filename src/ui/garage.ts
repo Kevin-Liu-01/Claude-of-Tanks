@@ -2468,7 +2468,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const special = garageSpecialSystem(spec, reloadS);
     if (!special) return '';
     return `<section class="cot-stat-section cot-special-section">` +
-      statSectionTitle(special.icon, t('garage.dossier.section.special'), t('garage.dossier.special.activation'), 'Special system') +
+      statSectionTitle(special.icon, t('garage.dossier.section.special'), '', 'Special system') +
       `<div class="cot-special-card"><span class="cot-special-icon">${uiIconSVG(special.icon, 24)}</span>` +
       `<div class="cot-special-copy"><b>${special.label}</b><p>${special.detail}</p>` +
       `<small>${special.meta}</small></div><kbd>E</kbd></div></section>`;
