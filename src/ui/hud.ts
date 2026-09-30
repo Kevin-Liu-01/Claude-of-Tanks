@@ -1418,9 +1418,8 @@ body.cot-debug-hud .cot-net{display:none!important;}
 /* Large teams keep every entry in an independently scrollable roster. */
 .cot-ear.dense{gap:0;}
 .cot-ear-rows{min-height:0;overflow-y:auto;overscroll-behavior:contain;
-  scrollbar-width:thin;scrollbar-color:#657580 transparent;pointer-events:auto;}
-.cot-ear-rows::-webkit-scrollbar{width:4px}
-.cot-ear-rows::-webkit-scrollbar-thumb{background:#657580}
+  scrollbar-width:none;pointer-events:auto;}
+.cot-ear-rows::-webkit-scrollbar{display:none}
 .cot-ear-rows:focus-visible{outline:1px solid #f0a030;outline-offset:-1px}
 .cot-ear.dense .hd{padding:3px 8px;}
 .cot-ear.dense .cot-er{padding:1px 8px 2px 6px;font-size:9.5px;}
@@ -1435,11 +1434,13 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-er.dead .hpm{display:none;}
 /* Crowded rosters become a compact silhouette grid; names remain available
    to assistive reading and in each tile's native hover description. */
-.cot-ear.icon-grid .cot-ear-rows{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:3px;padding:3px 1px;align-content:start;}
-.cot-hud .cot-ear.icon-grid .cot-er{height:32px;min-height:32px;padding:5px;
+.cot-ear.icon-grid .cot-ear-rows{display:grid;grid-template-columns:repeat(var(--roster-columns,4),minmax(0,1fr));
+  grid-template-rows:repeat(var(--roster-rows,4),minmax(0,1fr));
+  height:calc(var(--roster-rows,4) * 35px + 3px);overflow:hidden;
+  gap:2px;padding:2px 1px;align-content:stretch;}
+.cot-hud .cot-ear.icon-grid .cot-er{height:auto;min-height:0;padding:1px 3px;
   justify-content:center;overflow:hidden;}
-.cot-hud .cot-ear.icon-grid .cot-er .ic{width:28px;height:16px;max-width:100%;}
+.cot-hud .cot-ear.icon-grid .cot-er .ic{width:28px;height:16px;max-width:100%;max-height:100%;}
 .cot-ear.icon-grid .cot-er .n{position:absolute;width:1px;height:1px;padding:0;
   overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 .cot-ear.icon-grid .cot-er.me{background:rgba(112,77,21,.48);border-color:#f0b04a;}
@@ -2861,6 +2862,17 @@ export function initHud(bus: EventBus): HudRuntime {
     return nick;
   }
 
+  let lastAllyRosterCount = -1;
+  let lastEnemyRosterCount = -1;
+  function setRosterLayout(ear: HTMLElement, count: number): void {
+    ear.classList.toggle('dense', count > 10);
+    ear.classList.toggle('icon-grid', count > 14);
+    if (count > 14) {
+      const columns = Math.min(8, Math.max(4, Math.ceil(Math.sqrt(count))));
+      ear.style.setProperty('--roster-columns', String(columns));
+      ear.style.setProperty('--roster-rows', String(Math.ceil(count / columns)));
+    }
+  }
   const rosterIds: string[] = [];
   const rosterPlayers: boolean[] = [];
   const teamTally: TeamTally = {
@@ -2981,11 +2993,14 @@ export function initHud(bus: EventBus): HudRuntime {
       tallyTank(ally, dead);
       updateEarRow(tank, ally, dead);
     }
-    // sides (owner 2026-09-18): a 14 v 14 or 1 v 20 roster packs its ear so the panel stays inside the viewport
-    earL.classList.toggle('dense', teamTally.allyTotal > 10);
-    earR.classList.toggle('dense', teamTally.enemyTotal > 10);
-    earL.classList.toggle('icon-grid', teamTally.allyTotal > 14);
-    earR.classList.toggle('icon-grid', teamTally.enemyTotal > 14);
+    if (teamTally.allyTotal !== lastAllyRosterCount) {
+      setRosterLayout(earL, teamTally.allyTotal);
+      lastAllyRosterCount = teamTally.allyTotal;
+    }
+    if (teamTally.enemyTotal !== lastEnemyRosterCount) {
+      setRosterLayout(earR, teamTally.enemyTotal);
+      lastEnemyRosterCount = teamTally.enemyTotal;
+    }
     return teamTally;
   }
 

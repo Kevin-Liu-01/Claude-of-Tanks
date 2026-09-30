@@ -3,6 +3,13 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { battleSideStack, battleRosterHeight, installBattleHudLayout, objectiveWidth } from './battleHudLayout.ts';
 
+for (const space of [0, 80, 124, 320, 500]) {
+  const height = battleRosterHeight(600, space, 124);
+  assert.ok(height <= space, 'grid minimum never exceeds the available side lane');
+  assert.ok(height >= Math.min(space, 124), 'crowded grid retains readable icon rows');
+  if (space >= 320) assert.ok(space - height >= 192, 'grid keeps room for kill notices and the combat report');
+}
+
 for(const width of [240,280,344,420]) {
   const w=objectiveWidth(width);
   assert.ok((width-w)/2>25, 'objective clears both clipped scoreboard corners');

@@ -216,9 +216,11 @@ try {
             if(first.y!==second.y||first.x===second.x)failures.push('crowded roster did not form columns');
             for(const tile of list.children){
               if(!tile.title)failures.push('grid loses tank identity');
-              if(tile.getBoundingClientRect().height<32)failures.push('grid tank too small');
+              if(tile.getBoundingClientRect().height<8)failures.push('grid tank too small');
             }
           }
+          if(getComputedStyle(list).scrollbarWidth!=='none')failures.push('roster scrollbar visible');
+          if(count>14 && list.scrollHeight>list.clientHeight+1)failures.push('grid must fit every tank without scrolling');
           const before=list.parentElement.getBoundingClientRect();
           list.scrollTop=list.scrollHeight;
           const last=list.lastElementChild?.getBoundingClientRect();

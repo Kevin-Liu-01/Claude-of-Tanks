@@ -50,6 +50,7 @@ try {
       if(allies===enemies && allies) sizes.set(allies,m.teams[0].rows[0].height);
       // Both lists remain scrollable, independent of the header and footer.
       for(const list of await page.locator('.team .rows').all()) {
+        assert.equal(await list.evaluate(el=>getComputedStyle(el).scrollbarWidth),'none',`${name}: no roster scrollbar`);
         await list.evaluate(el=>el.scrollTop=el.scrollHeight);
         const reachable=await list.evaluate(el=>!el.lastElementChild||el.lastElementChild.getBoundingClientRect().bottom<=el.getBoundingClientRect().bottom+1);
         assert.ok(reachable,`${name}: final loading roster entry is reachable`);

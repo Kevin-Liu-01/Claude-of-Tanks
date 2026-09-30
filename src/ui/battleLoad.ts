@@ -128,11 +128,10 @@ const CSS = `
    Fixed silhouette boxes keep asset loading from moving the rows. */
 .cot-bl .rows{display:grid;grid-template-rows:repeat(var(--bl-count),minmax(20px,1fr));
   min-height:0;gap:var(--bl-row-gap);padding-top:var(--bl-row-inset);overflow-y:auto;overscroll-behavior:contain;
-  scrollbar-width:thin;scrollbar-color:#596976 transparent;}
+  scrollbar-width:none;}
 .cot-bl .team[data-density="large"] .rows{grid-template-rows:repeat(var(--bl-count),minmax(24px,1fr))}
 .cot-bl .rows:focus-visible{outline:1px solid #f0a030;outline-offset:-1px}
-.cot-bl .rows::-webkit-scrollbar{width:4px}
-.cot-bl .rows::-webkit-scrollbar-thumb{background:#596976}
+.cot-bl .rows::-webkit-scrollbar{display:none}
 .cot-bl .row{display:flex;align-items:center;gap:10px;min-height:0;padding:0 8px;
   background:rgba(171,193,209,.045);border:1px solid rgba(161,181,196,.07);
   border-left:2px solid transparent;}

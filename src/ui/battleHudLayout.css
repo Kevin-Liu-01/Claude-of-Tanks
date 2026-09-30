@@ -188,3 +188,6 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height='short'] .cot-sixth
 /* Reserve the side readouts before allowing either roster to grow. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.l{max-height:var(--hud-roster-left-height,28vh)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.r{max-height:var(--hud-roster-right-height,28vh)}
+
+/* Icon grids can use the same width as the combat readouts below them. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.icon-grid{width:min(280px,calc(50vw - 184px))}

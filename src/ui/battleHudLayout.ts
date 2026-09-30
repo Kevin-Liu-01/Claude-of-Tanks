@@ -5,9 +5,9 @@ export function objectiveWidth(scoreWidth: number): number {
 }
 
 /** Keep space for three kill notices and the side's combat readout. */
-export function battleRosterHeight(viewportHeight: number, available: number): number {
+export function battleRosterHeight(viewportHeight: number, available: number, minimum = 48): number {
   const space = Math.max(0, available);
-  return Math.min(space, Math.max(48, Math.min(viewportHeight * .28,
+  return Math.min(space, Math.max(minimum, Math.min(viewportHeight * .28,
     space - 92 - Math.min(240, space * .45))));
 }
 
@@ -170,8 +170,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const toastCount = root.querySelector('.cot-si-toasthost')?.childElementCount || 0;
     const stack = battleSideStack(leftBottom - leftTop, chat, touch ? Math.min(1, toastCount) : toastCount);
     const properties = {
-      'roster-left-height': battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52)),
-      'roster-right-height': battleRosterHeight(height, rightBottom - (rosterTopRight ?? earRight?.top ?? 52)),
+      'roster-left-height': battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52), root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48),
+      'roster-right-height': battleRosterHeight(height, rightBottom - (rosterTopRight ?? earRight?.top ?? 52), root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48),
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
       'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
       'notice-top': noticeTop, 'alert-top': noticeTop + (notice?.height ?? 48) + 8,
