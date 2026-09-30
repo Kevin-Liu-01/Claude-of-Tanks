@@ -533,12 +533,6 @@ body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'
   top:calc(max(8px,env(safe-area-inset-top)) + 100px);
   left:calc(max(8px,env(safe-area-inset-left)) + 100px);
 }
-/* Keep the contact warning out of the top-control/minimap row. It is a
-   transient battlefield state, so it owns the first clear lane below those
-   persistent instruments instead of covering either one. */
-body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-sixth{
-  top:calc(max(8px,env(safe-area-inset-top)) + 200px);
-}
 body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-killfeed{top:calc(max(4px,env(safe-area-inset-top)) + 130px)}
 body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-touch .autoaim,
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-touch .autoaim{bottom:105px}
@@ -617,9 +611,9 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
 }
 /* At handset landscape heights the center stack has three independent
    signals: detection, transient system status, and physical muzzle warning.
-   Give each a fixed lane so none can cover the others or the bottom HP row. */
+   The shared measured layout places them; cap alert width to keep the center lane clear. */
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-alert{
-  top:118px;bottom:auto;max-width:180px;
+  bottom:auto;max-width:180px;
 }
 
 body[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-touch .joy{width:108px;height:108px}

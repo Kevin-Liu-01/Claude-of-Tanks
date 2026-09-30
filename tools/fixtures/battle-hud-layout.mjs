@@ -47,6 +47,7 @@ function hit(incoming=false) {
     shellType:'APFSDS',zone:'hullFront',flightDistM:240,timeS:60,pos:[0,1,50],localPos:[0,1,2],localDir:[0,0,-1]});
 }
 function state(name) {
+  frame.aim.gunLimitSpec = name==='notifications';
   settings.close({noRelock:true});
   chat.close({relock:false}); chat.clear(); chat.setActive(false);
   const modeId = name.startsWith('mode-') ? name.slice(5) : 'mars';
@@ -58,6 +59,11 @@ function state(name) {
   for(let i=0;i<3;i++){
     bus.emit('tank:destroyed',{id:tanks[8].id,killerId:player.id,cause:'fire'});
     bus.emit('tank:destroyed',{id:tanks[1].id,killerId:tanks[9].id,cause:'fire'});
+  }
+  if(name==='notifications'||name.startsWith('mode-')) {
+    bus.emit('player:spotted',{timeS:frame.timeS-4});
+    hud.update(frame);
+    if(name==='notifications')bus.emit('ui:magazineReloadStarted',{});
   }
   if(name==='countdown') hud.preBattleCountdown(5);
   if(name==='reports'||name==='log'||name==='chat'||name==='combined') {
@@ -82,4 +88,26 @@ function state(name) {
   return name;
 }
 window.__HUD_LAYOUT = {state, hud, bus, chat, touch, settings, hit, frame, tanks};
-state('idle');
+const params = new URLSearchParams(location.search);
+state(params.get('state') || 'idle');
+if(params.get('preview')==='1') {
+  // Reissue real presentation events so a reviewer can keep a transient notice
+  // visible without changing production timers, markup or styles.
+  const events = {
+    Reload:['ui:magazineReloadStarted',{}],
+    Damaged:['module:state',{id:player.id,module:'engine',state:'red'}],
+    Repaired:['module:state',{id:player.id,module:'engine',state:'yellow',repaired:true}],
+    Ammo:['ammo:empty',{id:player.id}],
+  };
+  let selected=events.Reload;
+  const controls=document.createElement('aside');
+  controls.style.cssText='position:fixed;z-index:1000;right:12px;top:45%;display:grid;gap:4px;padding:8px;background:#081016e8;color:#b9c8d3;font:12px system-ui';
+  const title=document.createElement('span');title.textContent='Notification preview';controls.append(title);
+  for(const [name,event] of Object.entries(events)) {
+    const button=document.createElement('button');button.textContent=name;
+    button.style.cssText='border:1px solid #53636c;background:#13212c;color:#e6edf2;padding:5px 10px;cursor:pointer';
+    button.onclick=()=>{selected=event;bus.emit(...selected);};controls.append(button);
+  }
+  document.body.append(controls);
+  setInterval(()=>bus.emit(...selected),1800);
+}

@@ -147,17 +147,11 @@ assert.match(responsiveSurfaces,
   /data-cot-width-density='narrow'\]\[data-cot-orientation='portrait'\] \.cot-touch \.autoaim\{right:152px\}[\s\S]*\.cot-special\{right:96px\}/,
   'ultra-narrow portrait controls must separate auto-aim from the joystick and special action');
 assert.match(responsiveSurfaces,
-  /data-cot-panels='overlay'\]\[data-cot-orientation='portrait'\] \.cot-sixth\{[\s\S]*\+ 200px\)/,
-  'portrait detection must occupy a clear lane below the minimap and global controls');
-assert.match(responsiveSurfaces,
   /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-net\{[\s\S]*top:calc\(max\(8px[\s\S]*left:auto;right:max\(10px/,
   'short landscape FPS and ping must clear both the score plate and minimap');
 assert.match(responsiveSurfaces,
   /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-top\{[\s\S]*left:calc\(50% - 18px\);width:294px[\s\S]*grid-template-columns:minmax\(62px,1fr\) 72px/,
   'short landscape score plate must stay inside the lane between corner controls');
-assert.match(responsiveSurfaces,
-  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-alert\{[\s\S]*top:118px;bottom:auto/,
-  'short landscape system alerts must not collide with muzzle warnings or bottom health');
 assert.match(responsiveSurfaces,
   /data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-touch \.scope\{[\s\S]*bottom:105px/,
   'portrait scope must share the auto-aim row instead of covering the health instrument');

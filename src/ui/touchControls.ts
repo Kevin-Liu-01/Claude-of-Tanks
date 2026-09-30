@@ -203,9 +203,9 @@ body.cot-touch-layout[data-cot-width='phone'] .cot-dp .hptrack,
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp .hptrack{margin-bottom:0;height:6px;}
 body.cot-touch-layout .cot-alert{bottom:28%;max-width:calc(100vw - 24px);font-size:10px;white-space:normal;}
 body.cot-touch-layout .cot-sixth{top:max(70px,12%);width:min(214px,calc(100vw - 24px));
-  min-height:42px;grid-template-columns:36px minmax(0,1fr);}
+  min-height:42px;grid-template-columns:21px minmax(0,1fr);gap:8px;}
 body.cot-touch-layout .cot-sixth .sig svg{width:21px;height:21px;}
-body.cot-touch-layout .cot-sixth .copy{padding:6px 9px 7px;}
+body.cot-touch-layout .cot-sixth .copy{padding:0;}
 body.cot-touch-layout .cot-sixth .lb{font-size:10px;}
 body.cot-touch-layout .cot-sixth .sub{font-size:7px;letter-spacing:.12em;}
 

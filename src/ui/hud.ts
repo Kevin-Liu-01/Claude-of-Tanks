@@ -1293,16 +1293,12 @@ const HUD_CSS = `
   box-shadow:0 0 4px rgba(126,232,126,.4);}
 .cot-top .wedge.r i.on{background:rgba(242,110,100,.95);border-color:rgba(250,130,120,.95);
   box-shadow:0 0 4px rgba(240,90,90,.4);}
-.cot-mode-status{position:absolute;z-index:var(--hud-layer-score);top:66px;left:50%;transform:translateX(-50%);
+.cot-mode-status{position:absolute;z-index:var(--hud-layer-score);top:64px;left:50%;transform:translateX(-50%);
   min-height:28px;display:none;align-items:center;gap:8px;padding:5px 11px;color:#e8f0f5;
   background:rgba(7,11,15,.88);border:1px solid rgba(176,194,208,.28);box-shadow:0 5px 14px rgba(0,0,0,.38);
   font:800 8px ${FONT_COND};letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;}
 .cot-mode-status.show{display:flex}.cot-mode-status .mi,.cot-mode-status .mi svg{display:block;width:15px;height:15px}
 .cot-mode-status .mi{color:#f0a030}.cot-mode-status .mv{color:#fff1d6;font-variant-numeric:tabular-nums}
-.cot-mode-status .mb{margin-left:4px;padding:4px 8px 3px;min-height:24px;border:1px solid rgba(240,176,74,.5);border-radius:3px;
-  background:rgba(240,160,48,.12);color:#ffd27a;font:inherit;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;
-  pointer-events:auto;touch-action:none}
-.cot-mode-status .mb[hidden]{display:none}.cot-mode-status .mb:hover{background:rgba(240,160,48,.24)}
 @keyframes cotChipIn{from{opacity:0}to{opacity:1}}
 /* Compact player telemetry. The engineering dashboard folds this strip into
    its richer top-right panel instead of allowing two readouts to overlap. */
@@ -1562,11 +1558,11 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 @keyframes cotFloat{0%{opacity:0;transform:translate(-50%,-30%)}10%{opacity:1}
   70%{opacity:.95}100%{opacity:0;transform:translate(-50%,-190%)}}
 .cot-alert{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:23%;max-width:calc(100vw - 32px);min-height:38px;
-  display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 14px;
+  display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 22px;
   transform:translate(-50%,7px);font-family:${FONT_COND};font-size:12px;font-weight:800;
   letter-spacing:.14em;text-align:center;text-transform:uppercase;color:#ffd27a;white-space:nowrap;
-  background:linear-gradient(100deg,rgba(7,11,15,.95),rgba(15,21,26,.91));
-  border:1px solid rgba(184,201,214,.3);border-bottom:2px solid rgba(240,160,48,.72);
+  --notice-fill:linear-gradient(100deg,rgba(7,11,15,.95),rgba(15,21,26,.91));
+  --notice-edge:#b8873f;
   box-shadow:0 9px 24px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.035);
   text-shadow:0 1px 3px rgba(0,0,0,.9);opacity:0;
   transition:opacity var(--cot-motion-base) var(--cot-ease-out),
@@ -1574,9 +1570,9 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-alert-icon{width:18px;height:18px;display:grid;place-items:center;flex:0 0 auto;}
 .cot-alert-icon svg{display:block;width:18px;height:18px;}
 .cot-alert-copy{min-width:0;overflow:hidden;text-overflow:ellipsis;}
-.cot-alert.danger{color:#ff9b91;border-bottom-color:#ef6157;}
-.cot-alert.success{color:#a8e8b2;border-bottom-color:#68cf78;}
-.cot-alert.info{color:#cbd8e2;border-bottom-color:#8fa3b4;}
+.cot-alert.danger{color:#ff9b91;--notice-edge:#ef6157;}
+.cot-alert.success{color:#a8e8b2;--notice-edge:#68cf78;}
+.cot-alert.info{color:#cbd8e2;--notice-edge:#8fa3b4;}
 /* respawn (owner 2026-09-15): in a mode that revives the player the death is a count, not a
    hand-off — kicker + numeral in the pre-battle style, a little lower so the wreck stays visible.
    Hidden the instant the revive lands (mode:respawn) or the battle ends. */
@@ -1820,21 +1816,25 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
    bulb, keeping motion quiet while the state remains active. */
 .cot-sixth{position:absolute;z-index:var(--hud-layer-controls);top:12%;left:50%;
   width:min(248px,calc(100vw - 28px));min-height:48px;transform:translate(-50%,-6px);
-  display:grid;grid-template-columns:42px minmax(0,1fr);align-items:center;
-  color:#ffd46f;background:linear-gradient(105deg,rgba(29,22,8,.96),rgba(9,13,17,.94));
-  border:1px solid rgba(240,184,72,.5);border-bottom:2px solid #e9ad3e;
+  display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;align-items:center;
+  padding:8px 22px;box-sizing:border-box;color:#ffd46f;
+  --notice-fill:linear-gradient(105deg,rgba(29,22,8,.96),rgba(9,13,17,.94));--notice-edge:#e9ad3e;
   box-shadow:0 10px 28px rgba(0,0,0,.45),inset 0 1px rgba(255,226,181,.06);
   opacity:0;transition:opacity var(--cot-motion-fast) var(--cot-ease-out),
     transform var(--cot-motion-base) var(--cot-ease-out);pointer-events:none;}
 .cot-sixth.on{opacity:1;transform:translate(-50%,0);
   animation:cotDetectedIn var(--cot-motion-slow) var(--cot-ease-out) 1;}
-.cot-sixth .sig{height:100%;display:grid;place-items:center;color:#ffd05c;
-  border-right:1px solid rgba(240,184,72,.32);background:rgba(240,184,72,.09);}
+.cot-sixth .sig{display:grid;place-items:center;color:#ffd05c;}
 .cot-sixth .sig svg{width:24px;height:24px;display:block;filter:drop-shadow(0 0 7px rgba(255,202,72,.46));}
-.cot-sixth .copy{min-width:0;padding:7px 12px 8px;display:flex;flex-direction:column;gap:3px;}
+.cot-sixth .copy{min-width:0;padding:0;display:flex;flex-direction:column;gap:3px;}
 .cot-sixth .lb{font:850 12px/1 ${FONT_COND};letter-spacing:.23em;text-transform:uppercase;color:#ffd46f;}
-.cot-sixth .sub{font:700 8px/1 ${FONT_COND};letter-spacing:.16em;text-transform:uppercase;color:#aebbc5;}
-@keyframes cotDetectedIn{0%{clip-path:inset(0 50% 0 50%)}100%{clip-path:inset(0)}}
+.cot-sixth .sub{font:700 8px/1.35 ${FONT_COND};letter-spacing:.16em;text-transform:uppercase;color:#aebbc5;}
+/* Six-sided overlays keep their full outline during the entry animation. */
+.cot-sixth,.cot-alert{isolation:isolate;border:0;background:var(--notice-edge);
+  clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);}
+.cot-sixth::before,.cot-alert::before{content:'';position:absolute;inset:1px;z-index:-1;pointer-events:none;
+  background:var(--notice-fill);clip-path:inherit;}
+@keyframes cotDetectedIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
 /* Concealment is a quiet positive-state chip on the damage panel. Detection
    belongs exclusively to the authoritative sixth-sense instrument above, so
    the same threat is never presented twice. */
@@ -1932,22 +1932,10 @@ export function initHud(bus: EventBus): HudRuntime {
   const wedgeR = requireElement<HTMLElement>(topPlate, '.wedge.r');
   const modeStatusEl = el('div', 'cot-mode-status', root);
   modeStatusEl.setAttribute('role', 'status');
-  modeStatusEl.innerHTML = `<span class="mi"></span><span class="mn"></span><span class="mv"></span>` +
-    `<button class="mb" type="button" hidden aria-label="${t('hud.modeStatus.briefAria')}">${t('hud.modeStatus.brief')}</button>`;
+  modeStatusEl.innerHTML = `<span class="mi"></span><span class="mn"></span><span class="mv"></span>`;
   const modeStatusIcon = requireElement<HTMLElement>(modeStatusEl, '.mi');
   const modeStatusName = requireElement<HTMLElement>(modeStatusEl, '.mn');
   const modeStatusValue = requireElement<HTMLElement>(modeStatusEl, '.mv');
-  // batch 21: the campaign sortie's BRIEF button re-opens the mission brief; it fires on the pointer
-  // lift (a steering thumb suppresses the synthetic click) and keeps click for keyboard activation
-  const modeBriefButton = requireElement<HTMLButtonElement>(modeStatusEl, '.mb');
-  let briefTapAt = 0;
-  const requestBrief = (): void => { bus.emit('ui:click', {}); bus.emit('ui:missionBrief', {}); };
-  modeBriefButton.addEventListener('pointerup', (e) => { e.stopPropagation(); briefTapAt = performance.now(); requestBrief(); });
-  modeBriefButton.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (performance.now() - briefTapAt < 600) { e.preventDefault(); return; }
-    requestBrief();
-  });
   let lastModeStatus = '';
   const standardModeStatus: HudMatchModeState = {id:'standard',target:0};
   let objectiveTeam: 'alpha' | 'bravo' = 'alpha';
@@ -3077,7 +3065,6 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function updateModeStatus(modeState: HudMatchModeState, ownScore: string | number): void {
-    modeBriefButton.hidden = modeState.id !== 'frontline_assault';
     const copy = modeStatusCopy(modeState, ownScore);
     const status = `${modeState.id}|${copy}`;
     if (status === lastModeStatus) return;
@@ -4127,25 +4114,33 @@ export function initHud(bus: EventBus): HudRuntime {
     const danger = warning.kind === 'blocked';
     const recovery = warning.kind === 'rollover';
     ctx.font = `800 10.5px ${FONT_COND}`;
-    const chipW = ctx.measureText(warning.text).width + 32;
+    const chipW = ctx.measureText(warning.text).width + 50;
     const chipX = draw.cx - chipW * 0.5;
     ctx.fillStyle = danger ? 'rgba(36,10,10,.92)' :
       recovery ? 'rgba(33,22,8,.94)' : 'rgba(12,17,22,.9)';
-    ctx.fillRect(chipX, y - 14, chipW, 24);
+    ctx.beginPath();
+    ctx.moveTo(chipX + 8, y - 13.5);
+    ctx.lineTo(chipX + chipW - 8, y - 13.5);
+    ctx.lineTo(chipX + chipW - 0.5, y - 2);
+    ctx.lineTo(chipX + chipW - 8, y + 9.5);
+    ctx.lineTo(chipX + 8, y + 9.5);
+    ctx.lineTo(chipX + 0.5, y - 2);
+    ctx.closePath();
+    ctx.fill();
     ctx.strokeStyle = danger ? 'rgba(240,90,90,.78)' :
       recovery ? 'rgba(240,160,48,.88)' : 'rgba(170,180,190,.55)';
     ctx.lineWidth = 1;
-    ctx.strokeRect(chipX + 0.5, y - 13.5, chipW - 1, 23);
+    ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(chipX + 13, y - 8);
-    ctx.lineTo(chipX + 19, y + 3);
-    ctx.lineTo(chipX + 7, y + 3);
+    ctx.moveTo(chipX + 18, y - 8);
+    ctx.lineTo(chipX + 24, y + 3);
+    ctx.lineTo(chipX + 12, y + 3);
     ctx.closePath();
     ctx.strokeStyle = danger ? PEN_RED : recovery ? RELOAD_ACCENT : 'rgba(190,201,210,.92)';
     ctx.stroke();
     ctx.fillStyle = danger ? '#ff9b91' : recovery ? '#ffd17b' : 'rgba(205,216,224,.96)';
     ctx.textAlign = 'left';
-    ctx.fillText(warning.text, chipX + 25, y + 1);
+    ctx.fillText(warning.text, chipX + 36, y + 1);
     ctx.textAlign = 'center';
   }
 

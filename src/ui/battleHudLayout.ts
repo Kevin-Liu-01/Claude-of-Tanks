@@ -86,7 +86,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       document.body.toggleAttribute('data-cot-battle-layout', visible);
     }
     if (!visible) return;
-    observe('.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
+    observe('.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
     observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane', true);
     // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
     // asks for a relayout when it mounts, and the right roster takes the lane below it.
@@ -148,13 +148,25 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const killHeightRight = Math.max(0, Math.min(3, Math.floor((rightKillBottom - rightAnchor + 3) / 29)) * 29 - 3);
     const killsRight = Math.min(killHeightRight, read('.cot-kill-lane.r')?.height || 0);
     const rightTop = rightAnchor + (killsRight ? killsRight + 8 : 0);
+    const notice = read('.cot-sixth');
+    // Center notices below the score. On narrow screens their horizontal
+    // footprint also crosses the team feeds, so clear those occupied lanes.
+    const noticeLeft = (width - (notice?.width ?? 248)) / 2;
+    let noticeTop = Math.max(top + 8, height * .12);
+    if (noticeLeft < sideWidth + 20) noticeTop = Math.max(noticeTop, leftTop, rightTop);
+    if (systems && noticeTop < systemsTop + systemsHeight + 8
+      && noticeTop + (notice?.height ?? 48) > systemsTop - 8
+      && noticeLeft < systemsLeft + dockWidth && width - noticeLeft > systemsLeft) {
+      noticeTop = systemsTop + systemsHeight + 8;
+    }
     const chat = !!read('.cot-room-chat:not([hidden])');
     const toastCount = root.querySelector('.cot-si-toasthost')?.childElementCount || 0;
     const stack = battleSideStack(leftBottom - leftTop, chat, touch ? Math.min(1, toastCount) : toastCount);
     const properties = {
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
       'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
-      'objective-top': scoreBottom + 2, 'objective-bottom': top,
+      'notice-top': noticeTop, 'alert-top': noticeTop + (notice?.height ?? 48) + 8,
+      'objective-top': scoreBottom, 'objective-bottom': top,
       'objective-width': objectiveWidth(score?.width || 344),
       'objective-left': score ? score.left + score.width / 2 : width / 2,
       'kill-left-top': leftAnchor, 'kill-right-top': rightAnchor,
@@ -166,7 +178,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     };
     for (const [name, value] of Object.entries(properties)) {
       const property = `--hud-${name}`;
-      const pixels = `${Math.floor(value)}px`;
+      const pixels = `${name === 'objective-top' ? value : Math.floor(value)}px`;
       if (document.body.style.getPropertyValue(property) !== pixels) {
         document.body.style.setProperty(property, pixels);
       }

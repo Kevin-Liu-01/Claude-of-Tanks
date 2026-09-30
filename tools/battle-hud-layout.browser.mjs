@@ -7,7 +7,7 @@ const arg = (name, fallback) => process.argv.find(v=>v.startsWith(`--${name}=`))
 const { chromium } = await import(arg('playwright-module','playwright'));
 const out = resolve(arg('out','outputs/battle-hud-layout'));
 await mkdir(out,{recursive:true});
-const browser = await chromium.launch({headless:true,channel:'chrome'});
+const browser = await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
 const cases = [
   ['desktop',1920,1080,false],['laptop',1366,768,false],['laptop-short',1280,720,false],
   ['small-desktop',1024,600,false],['tablet-mouse',820,1180,false],['narrow-mouse',540,720,false],
@@ -16,7 +16,7 @@ const cases = [
   ['small-landscape',667,375,true],['short-mouse',844,390,false],
   ['chinese-laptop',1280,720,false,'zh-CN'],['chinese-phone',390,844,true,'zh-CN'],
 ];
-const states = ['idle','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','ended'];
+const states = ['idle','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','ended'];
 const reports=[];const errors=[];
 function measure(state){
   // Kept inside the serialized page callback so browser execution needs no
@@ -33,7 +33,7 @@ function measure(state){
   }
   const selectors = state==='settings' ? ['.cot-set-hdr','.cot-set-tabs','.cot-set-body','.cot-set-ftr'] :
     state==='ended' ? ['.es-hero','.es-report','.es-actions'] :
-    ['.cot-ear.l','.cot-ear.r','.cot-top','.cot-mode-status.show','.cot-kill-lane.l','.cot-kill-lane.r','.cot-net','.cot-drive','.cot-dp','.cot-minimap',
+    ['.cot-sixth.on','.cot-alert.show','.cot-ear.l','.cot-ear.r','.cot-top','.cot-mode-status.show','.cot-kill-lane.l','.cot-kill-lane.r','.cot-net','.cot-drive','.cot-dp','.cot-minimap',
      '.cot-si-toasthost','.cot-si-log.open','.cot-si-cardhost:not(:empty)',
      '.cot-room-chat:not([hidden])','.cot-spec.show','.cot-prebattle',
      '.cot-shell','.cot-con','.cot-vehicle-controls','.cot-touch.on .joy','.cot-touch.on .round',
@@ -95,6 +95,16 @@ try {
       const objective=result.rects.find(r=>r.name==='cot-mode-status show');
       if(score&&objective&&(objective.x<=score.x+25 || objective.right>=score.right-25))
         result.failures.push('objective must fit inside the scoreboard bottom edge');
+      if(score&&objective&&Math.abs(objective.y-score.bottom)>.5) result.failures.push('objective must touch the scoreboard');
+      if(state.startsWith('mode-')) {
+        if(await page.locator('.cot-mode-status button').count())result.failures.push('objective must not contain a Brief button');
+        const detected=result.rects.find(r=>r.name==='cot-sixth on');
+        if(!detected||!objective||detected.y<objective.bottom+7)result.failures.push('detection must clear the objective by at least 7px');
+      }
+      if(state.startsWith('notifications')) {
+        const hexagons=await page.locator('.cot-sixth.on,.cot-alert.show').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).clipPath));
+        if(hexagons.length!==2||hexagons.some(shape=>!shape.startsWith('polygon(')||shape.split(',').length!==6)) result.failures.push('status notices must have six-sided outlines');
+      }
       if(state!=='settings'&&state!=='ended'){
         const decoration=await page.evaluate(()=>{
           const notice=document.querySelector('.cot-kill-lane.r .cot-kf');
@@ -107,7 +117,7 @@ try {
         if(state.startsWith('mode-')&&decoration.mode!==state.slice(5))
           result.failures.push(`expected objective ${state.slice(5)}, saw ${decoration.mode}`);
       }
-      if(state==='combined'||state==='spectator'||result.failures.length)
+      if(state==='notifications'||state==='combined'||state==='spectator'||result.failures.length)
         await page.screenshot({path:resolve(out,`${name}-${state}.png`)});
       reports.push({name,...page.viewportSize(),touch,locale,state,...result});
       if(result.failures.length)console.log(`${name}/${state}: ${result.failures.join('; ')}`);
@@ -135,6 +145,18 @@ try {
         if(await page.locator('.cot-shell[aria-hidden="true"]').count())errors.push(`${name}: ammo drawer failed to expand`);
       }
       await check(state);
+      if(state==='notifications') {
+        for(const variant of ['damaged','repaired','empty']) {
+          await page.evaluate(variant=>{
+            const {bus,frame}=window.__HUD_LAYOUT;
+            if(variant==='empty')bus.emit('ammo:empty',{id:frame.player.id});
+            else bus.emit('module:state',{id:frame.player.id,module:'engine',
+              state:variant==='damaged'?'red':'yellow',repaired:variant==='repaired'});
+          },variant);
+          await page.evaluate(async()=>{await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
+          await check(`notifications-${variant}`);
+        }
+      }
       if(state==='idle'){
         // The full Gravity + ATGM kit must remain usable after moving to a side lane.
         const buttons=page.locator('.cot-vehicle-controls > button:visible');
