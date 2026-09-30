@@ -111,6 +111,11 @@ const SETS = {
 // so dirt roads stop glowing against the graded grass), roughMul raises the
 // packed roughness floor so sourced sets never reintroduce specular sheen.
 const TERRAIN_PLAN = {
+  moon: {
+    G: { set: 'sand', desat: 1, tint: [.71,.73,.77], roughMul: 1.3 },
+    D: { set: 'sand', desat: 1, tint: [.62,.64,.69], roughMul: 1.3 },
+    R: { set: 'rock', desat: 1, tint: [1.42,1.46,1.52], roughMul: 1.2 }, M: null,
+  },
   verdant: {
     // 2026-09-12 visual restoration: the untinted photo grass rendered the
     // Verdant fields ~20 % brighter and yellower than the 1049e4e meadow

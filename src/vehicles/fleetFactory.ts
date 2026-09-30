@@ -1,3 +1,4 @@
+import { applyTacticalRoleBalance } from './tacticalRoleBalance.ts';
 import { prepareXk2DonorMetadata, synchronizeXk2CombatMetadata } from './xk2Specs.ts';
 // Browser-facing procedural fleet facade. The roster registry remains eager;
 // authored visual families and canonical packs that do not participate in the
@@ -101,6 +102,7 @@ synchronizeSecondWaveXCombatMetadata();
 synchronizeAbramsSourceXCombatMetadata();
 synchronizeXk2CombatMetadata();
 synchronizeIfvReplicaCombatMetadata();
+applyTacticalRoleBalance(TANK_SPECS);
 finalizeFirstPartyRoster();
 applyNativeFamilyOrderToCatalogs();
 

@@ -1,3 +1,5 @@
+import { VEHICLE_ROLE_PROFILES } from '../vehicles/roleProfiles.ts';
+
 /**
  * spotting.ts — WoT-style concealment & spotting simulation (pure logic,
  * node-runnable; selftest: src/sim/spotting.selftest.mjs).
@@ -224,22 +226,16 @@ const CHECK_MID_S = 1.0;
 const CHECK_FAR_S = 2.0;
 const LOS_TOLERANCE_M = 2.0;           // raycast slack when the hit is the target
 
-/** Per-tank view range in meters for the authored core rows; every other spec
- *  takes the mechanical-role fallback below. (The archived WWII rows and the
- *  Leopard 2A7 donor retired with the hidden fleet, 2026-09-23.) */
-export const VIEW_RANGE_M: Readonly<Record<string, number>> = {
-  m1a2: 445, t90m: 430,
-};
-
-/** Per-tank base camo { still, moving } in [0,1] for the authored core rows. */
-export const BASE_CAMO: Readonly<Record<string, CamoRow>> = {
-  m1a2:      { still: 0.17, moving: 0.12 },
-  t90m:      { still: 0.21, moving: 0.16 },
-};
+/** Explicit fleet profiles are shared by the garage and authoritative spotting. */
+export const VIEW_RANGE_M: Readonly<Record<string, number>> = Object.freeze(
+  Object.fromEntries(Object.entries(VEHICLE_ROLE_PROFILES).map(([id, profile]) => [id, profile.viewM])),
+);
+export const BASE_CAMO: Readonly<Record<string, CamoRow>> = VEHICLE_ROLE_PROFILES;
 
 /** Mechanical-role fallbacks for specs not in the tables. */
 const ROLE_CAMO: Readonly<Record<string, CamoRow>> = {
   light:  { still: 0.34, moving: 0.34 },
+  ifv:    { still: 0.27, moving: 0.21 },
   medium: { still: 0.23, moving: 0.17 },
   heavy:  { still: 0.12, moving: 0.08 },
   mbt:    { still: 0.18, moving: 0.13 },
@@ -247,7 +243,7 @@ const ROLE_CAMO: Readonly<Record<string, CamoRow>> = {
   spg:    { still: 0.08, moving: 0.05 },
 };
 const ROLE_VIEW_M: Readonly<Record<string, number>> = {
-  light: 390, medium: 370, heavy: 360, mbt: 440, td: 370, spg: 340,
+  light: 390, ifv: 435, medium: 370, heavy: 360, mbt: 440, td: 370, spg: 340,
 };
 const DEFAULT_CAMO: CamoRow = { still: 0.23, moving: 0.17 };
 

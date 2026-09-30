@@ -1,6 +1,9 @@
 /** Ordered regression groups; npm test runs all of them in one invocation. */
 export const SELFTEST_SUITES = Object.freeze({
   pre: Object.freeze([
+    'src/sim/modeConfiguration.selftest.mjs',
+    'src/vehicles/tacticalRoles.selftest.mjs',
+    'src/world/maps/earthriseCrossing.selftest.mjs',
     // Group independent full-fleet builders to fill the four CPU slots before
     // the 45-second FIFO drain. Every check stays in its original lifecycle.
     'src/vehicles/fleetLazy.selftest.mjs',

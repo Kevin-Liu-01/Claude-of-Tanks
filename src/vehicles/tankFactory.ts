@@ -1,3 +1,4 @@
+import { applyTacticalRoleBalance } from './tacticalRoleBalance.ts';
 import { prepareXk2DonorMetadata, synchronizeXk2CombatMetadata } from './xk2Specs.ts';
 // Typed eager fleet factory facade for release tools and headless audits. It
 // evaluates spec packs in donor order, seals the selectable roster, and
@@ -66,6 +67,7 @@ synchronizeSecondWaveXCombatMetadata();
 synchronizeAbramsSourceXCombatMetadata();
 synchronizeXk2CombatMetadata();
 synchronizeIfvReplicaCombatMetadata();
+applyTacticalRoleBalance(TANK_SPECS);
 finalizeFirstPartyRoster();
 for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(TANK_SPECS[id]);
 registerVehicleMarkingSeatRecords(VEHICLE_MARKING_SEATS);

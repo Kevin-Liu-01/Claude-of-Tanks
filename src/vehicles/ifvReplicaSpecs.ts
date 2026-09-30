@@ -1,3 +1,4 @@
+import { isFleetBalanceFinalized } from './fleetBalanceState.ts';
 // Additive replicas approved 2026-09-25. Originals keep their saved identities,
 // upgraded geometry and game equipment; these rows own independent frames.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
@@ -75,6 +76,8 @@ registerFleetSpecs(registries,IFV_REPLICA_IDS,newSpecs);
 
 /** Synchronize combat tuning without borrowing the donor's physical assembly. */
 export function synchronizeIfvReplicaCombatMetadata(): void {
+  // Combat donor synchronization is initialization-only once final role tuning is published.
+  if (isFleetBalanceFinalized(registries.tankSpecs)) return;
   const fields=['hp','enginePowerHp','weightTons','topSpeedKmh','reverseSpeedKmh',
     'hullTraverseDegS','terrainResistance','pivotStyle','turretTraverseDegS',
     'gunPitchDegS','gunElevationDeg','gunDepressionDeg','gun'] as const;

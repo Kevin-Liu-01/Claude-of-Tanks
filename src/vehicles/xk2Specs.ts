@@ -1,3 +1,4 @@
+import { isFleetBalanceFinalized } from './fleetBalanceState.ts';
 import { TANK_SPECS } from './specs.ts';
 import type { ArmorEnvelope } from './specHelpers.ts';
 import type { FleetDimensions, FleetGunSpec } from './specContracts.ts';
@@ -23,11 +24,15 @@ export function k2SourceMetadata(): OriginalK2Metadata {
 /** Production K2 and K2B still derive from the original K2 combat envelope.
  * Restore it before family synchronization, including mixed facade imports. */
 export function prepareXk2DonorMetadata(): void {
+  // Combat donor synchronization is initialization-only once final role tuning is published.
+  if (isFleetBalanceFinalized(TANK_SPECS)) return;
   Object.assign(TANK_SPECS.k2, k2SourceMetadata());
 }
 
 /** Apply the selected turret only after all original donor clones are ready. */
 export function synchronizeXk2CombatMetadata(): void {
+  // Combat donor synchronization is initialization-only once final role tuning is published.
+  if (isFleetBalanceFinalized(TANK_SPECS)) return;
   const spec = TANK_SPECS.k2, turret = TANK_SPECS.k1a1_x.armor;
   spec.gun = structuredClone(TANK_SPECS.k1a1_x.gun);
   // The prototype uses the transplanted gun/ammunition and a slower loading

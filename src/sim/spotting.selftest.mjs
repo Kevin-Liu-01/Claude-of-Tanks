@@ -27,7 +27,7 @@ function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a
 function tank(id, team, x, z, opts = {}) {
   return {
     id, team,
-    spec: opts.spec || { id: opts.specId || 'kv2', role: opts.role || 'medium', dims: { heightM: 2.7 } },
+    spec: opts.spec || { id: opts.specId || 'fixture_medium', role: opts.role || 'medium', dims: { heightM: 2.7 } },
     state: { pos: { x, y: 0, z }, speed: opts.speed || 0 },
     combat: { destroyed: !!opts.destroyed },
   };
@@ -48,7 +48,7 @@ for (const id of Object.keys(BASE_CAMO)) {
   ok(c.still > 0 && c.still < 0.5, `${id}: stationary camo in (0, 0.5)`);
 }
 ok(BASE_CAMO.m1a2.still < BASE_CAMO.t90m.still, 'Abrams rates below T-90M');
-ok(VIEW_RANGE_M.m1a2 > VIEW_RANGE_M.t90m, 'authored Abrams optics out-spot the T-90M row');
+ok(VIEW_RANGE_M.m551a1_tts > VIEW_RANGE_M.t90m, 'dedicated Sheridan scouting out-spots assault MBTs');
 ok(VIEW_RANGE_M.m1a2 > viewRangeOf({ id: 'kv2', role: 'heavy' }), 'modern optics out-spot the WW2 role fallback');
 ok(viewRangeOf({ id: 'nope', role: 'heavy' }) === 360, 'role view fallback');
 near(baseCamoOf({ id: 'nope', role: 'td' }, false), 0.30, 1e-9, 'role camo fallback');
@@ -306,7 +306,7 @@ console.log('[17] muzzle-flash reveal resolves fire intel THROUGH the formula');
   // this shooter, which is exactly where the old ai.ts hard bypass lived.
   // The flash branch reveals it (open ground, bloom hot, inside the
   // spotter's view range, LOS clear).
-  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'm1a2', cls: 'mbt' });
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'abramsx', cls: 'mbt' });
   const shooter = tank('p1', 'player', 0, 435);
   const open = mkSys([], [spotter, shooter]);
   open.forceCheck(1);
@@ -336,13 +336,13 @@ console.log('[17] muzzle-flash reveal resolves fire intel THROUGH the formula');
   ok(!bush.isSpotted('p1', 'enemy'), 'bush ambush @350 m survives its own shot');
 
   // The flash respects hard cover and the 445 m clamp.
-  const spotter3 = tank('e1', 'enemy', 0, 0, { specId: 'm1a2', cls: 'mbt' });
+  const spotter3 = tank('e1', 'enemy', 0, 0, { specId: 'abramsx', cls: 'mbt' });
   const walled = mkSys([], [spotter3, tank('p1', 'player', 0, 435)],
     { raycast: () => ({ dist: 100 }) });
   walled.notifyFired('p1', 2);
   walled.forceCheck(2.05);
   ok(!walled.isSpotted('p1', 'enemy'), 'flash reveal still blocked by hard cover');
-  const spotter4 = tank('e1', 'enemy', 0, 0, { specId: 'm1a2', cls: 'mbt' });
+  const spotter4 = tank('e1', 'enemy', 0, 0, { specId: 'abramsx', cls: 'mbt' });
   const far = mkSys([], [spotter4, tank('p1', 'player', 0, MAX_SPOT_RANGE_M + 30)]);
   far.notifyFired('p1', 2);
   far.forceCheck(2.05);
@@ -352,7 +352,7 @@ console.log('[17] muzzle-flash reveal resolves fire intel THROUGH the formula');
   // MUZZLE_FLASH_BLOOM_MIN (~1.4 s) no longer benefits from the flash.
   ok(fireBloomAt(0, 1.3) >= MUZZLE_FLASH_BLOOM_MIN &&
      fireBloomAt(0, 2.5) < MUZZLE_FLASH_BLOOM_MIN, 'flash window ~1.4 s');
-  const spotter5 = tank('e1', 'enemy', 0, 0, { specId: 'm1a2', cls: 'mbt' });
+  const spotter5 = tank('e1', 'enemy', 0, 0, { specId: 'abramsx', cls: 'mbt' });
   const cold = mkSys([], [spotter5, tank('p1', 'player', 0, 435)]);
   cold.notifyFired('p1', 2);
   cold.forceCheck(4.6); // bloom 0.22 — still bloom-hot camo-wise, flash gone
@@ -367,7 +367,7 @@ console.log('[18] notifyFired pulls the shooter\'s next check in (no cadence wai
   // right after a scheduled check would stay unresolved for up to 2 s; the
   // reveal must land on the very next update() tick. (m1a2 spotter: the
   // shooter sits inside its 445 m view range for the r5-clamped flash.)
-  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'm1a2', cls: 'mbt' });
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'abramsx', cls: 'mbt' });
   const shooter = tank('p1', 'player', 0, 435);
   const sys = mkSys([], [spotter, shooter]);
   const dt = 1 / 60;

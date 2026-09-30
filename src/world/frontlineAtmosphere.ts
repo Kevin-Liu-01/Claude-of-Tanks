@@ -72,7 +72,7 @@ export const FRONTLINE_INTENSITY: Readonly<Record<MapId, number>> = Object.freez
   airfield: 0.85, oasis: 0.4, whiteout: 0.4, orchard: 0.4, longleaf: 0.4,
   mangrove: 0.4, saltwind: 0.4, reservoir: 0.4,
   // Mars (round 23): a thin front — the research station is far from any war
-  mars: 0.4,
+  mars: 0.4, moon: 0.25, cliffbridge: 0.6,
 });
 
 export const FRONTLINE_LIMITS = Object.freeze({

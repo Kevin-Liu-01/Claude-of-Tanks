@@ -97,4 +97,9 @@ assert.match(lockedRammer.summary, /^Unavailable for this vehicle/);
 assert.deepEqual(lockedRammer.projectedLoadout, []);
 assert.equal(metric(lockedRammer, 'reload').changed, false);
 
+const fixedGun = equipmentHoverPreview({ ...spec, armor: { turretless: true }, hydropneumaticAim: {} }, [], 'rotation', 0);
+assert.ok(!fixedGun.metrics.some(row => row.id === 'turretTraverse'), 'fixed guns cannot claim a turret traverse benefit');
+assert.equal(metric(fixedGun, 'hullTraverse').projected, '44.0°/s');
+const casemate = equipmentHoverPreview({ ...spec, armor: { turretless: true } }, [], 'rotation', 0);
+assert.equal(metric(casemate, 'turretTraverse').label, 'Gun traverse');
 console.log('equipment hover preview: PASS');

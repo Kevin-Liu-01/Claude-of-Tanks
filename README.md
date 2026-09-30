@@ -8,7 +8,7 @@
 
 <p align="center">
   Free browser-native armored combat built with <strong>Three.js</strong>. Take 200 production-visible first-party procedural vehicles
-  across 31 battlefields with physical gunnery, plate-level armor, internal damage, guided missiles,
+  across 33 battlefields with physical gunnery, plate-level armor, internal damage, guided missiles,
   magazine autoloaders, terrain-following suspension, X-ray killcams, multiplayer rooms, and Scene Studio.
 </p>
 

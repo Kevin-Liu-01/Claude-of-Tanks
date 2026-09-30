@@ -2958,11 +2958,11 @@ export function initHud(bus: EventBus): HudRuntime {
     }
   }
 
-  function modeTimerLabel(modeId: string, waiting: boolean, limitS: number | null): string {
+  function modeTimerLabel(modeId: string, waiting: boolean, limitS: number | null, target?: number | null): string {
     if (waiting) return t('hud.timer.nextWave');
-    if (modeId === 'capture_the_flag') return t('hud.timer.capture', { target: String(RULESET_SCORE_TARGETS.capture_the_flag) });
-    if (modeId === 'zone_control' || modeId === 'mars') return t('hud.timer.first', { target: String(RULESET_SCORE_TARGETS.zone_control) });
-    if (modeId === 'turbo_ball') return t('hud.timer.first', { target: String(RULESET_SCORE_TARGETS.turbo_ball) });
+    if (modeId === 'capture_the_flag') return t('hud.timer.capture', { target: String(target ?? RULESET_SCORE_TARGETS.capture_the_flag) });
+    if (modeId === 'zone_control' || modeId === 'mars') return t('hud.timer.first', { target: String(target ?? RULESET_SCORE_TARGETS.zone_control) });
+    if (modeId === 'turbo_ball') return t('hud.timer.first', { target: String(target ?? RULESET_SCORE_TARGETS.turbo_ball) });
     if (modeId === 'frontline_assault') return t('hud.timer.takeLine');
     return limitS == null ? t('hud.timer.survive') : t('hud.team.time');
   }
@@ -3044,7 +3044,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const waitS = horde ? Math.ceil(horde.nextWaveInS || 0) : 0;
     const limitS = battleClockLimitS(frame, modeState.id);
     const timer = waitS > 0 ? `${waitS}s` : clockText(frame, limitS);
-    updateTimer(modeTimerLabel(modeState.id || '', waitS > 0, limitS), timer);
+    updateTimer(modeTimerLabel(modeState.id || '', waitS > 0, limitS, modeState.target), timer);
     updateModeStatus(modeState, ownScore);
   }
 

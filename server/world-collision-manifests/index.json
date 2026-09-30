@@ -220,6 +220,20 @@
       "obstacles": 772,
       "colliders": 718,
       "concealers": 0
+    },
+    "moon": {
+      "bytes": 382418,
+      "sha256": "c0ef7d986d9a21c078b9891c83e9937e449c5ff2ecef4295cf7308c77742f09a",
+      "obstacles": 475,
+      "colliders": 381,
+      "concealers": 0
+    },
+    "cliffbridge": {
+      "bytes": 1714863,
+      "sha256": "d127f0330cfcce1ead8b8c12ce85eb5bcb8451175def2a69e3018aa1f4aff825",
+      "obstacles": 5904,
+      "colliders": 5637,
+      "concealers": 5243
     }
   }
 }

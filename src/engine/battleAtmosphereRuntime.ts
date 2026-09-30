@@ -13,7 +13,7 @@ export const BATTLE_WEATHER_BIOMES = Object.freeze({
   ruinspires: 'arid', blackglass: 'temperate', titan_gorge: 'arid', skybridge: 'arid',
   polders: 'coastal', copper_mesa: 'arid', airfield: 'temperate', oasis: 'arid',
   whiteout: 'cold', orchard: 'temperate', longleaf: 'temperate', mangrove: 'tropical',
-  saltwind: 'coastal', reservoir: 'temperate', mars: 'arid',
+  saltwind: 'coastal', reservoir: 'temperate', mars: 'arid', moon: 'arid', cliffbridge: 'temperate',
 } satisfies Record<MapId, BattleWeatherBiome>);
 
 export interface BattleAtmosphereRuntimeOptions {
@@ -109,7 +109,7 @@ export function createBattleAtmosphereRuntime(options: BattleAtmosphereRuntimeOp
   function prepare(seed: number | undefined, mapId: string, times: readonly BattleTimeOfDay[] | boolean = BATTLE_TIMES): void {
     if (disposed) throw new Error('Battle atmosphere is disposed');
     if (!isMapId(mapId)) throw new RangeError('Battle weather requires a catalog map id');
-    const mars = options.getGameMode?.() === 'mars' || mapId === 'mars';
+    const mars = options.getGameMode?.() === 'mars' || mapId === 'mars' || mapId === 'moon';
     const selected = seed === undefined ? null : selectBattleWeather(seed, BATTLE_WEATHER_BIOMES[mapId],
       typeof times === 'boolean' ? (times ? BATTLE_TIMES : ['day']) : times);
     // Space has an authored cold daylight key under the galaxy dome; terrestrial
@@ -121,7 +121,7 @@ export function createBattleAtmosphereRuntime(options: BattleAtmosphereRuntimeOp
       return;
     }
     const nextAuthored = { ...options.getAuthoredPreset() };
-    options.applyPreset(mars ? { ...MARS_SKY_PRESET } : weatherPreset(nextAuthored, next));
+    options.applyPreset(mapId === 'moon' ? nextAuthored : mars ? { ...MARS_SKY_PRESET } : weatherPreset(nextAuthored, next));
     setVehicleReadabilityScale(next?.timeOfDay === 'night' ? .34 : 1); // 2026-09-14: was .24, night readability lifted with the moon
     restoreHorizon();
     if (next?.timeOfDay === 'night') dimHorizon(root, horizonColors);

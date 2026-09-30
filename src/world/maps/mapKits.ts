@@ -1116,6 +1116,9 @@ export function dressMapExtras({
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
   const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, shore, animated };
+  if (mapId === 'cliffbridge') {
+    for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
+  }
   if (kits.includes('coastal')) dressCoastalShore(focused);
   if (kits.includes('river')) {
     if (riverLandings?.length) dressLakeRiverLandings(focused, riverLandings);
@@ -1763,9 +1766,9 @@ function addArchedStoneBridge(
   const top = deckY - BRIDGE_BODY_TOP_UNDER_DECK_M;
   // the arches share the wet span between the abutments: N ≈ one per 11 m, piers between them
   const wetSpan = Math.max(4, (halfLength - 3) * 2);
-  const arches = Math.max(1, Math.round(wetSpan / 11));
+  const arches = Math.max(1, Math.round(wetSpan / (halfLength > 60 ? 32 : 11)));
   const chord = (wetSpan - (arches - 1) * BRIDGE_PIER_M) / arches;
-  const springY = waterY + BRIDGE_SPRING_OVER_WATER_M;
+  const springY = halfLength > 60 ? deckY - 14 : waterY + BRIDGE_SPRING_OVER_WATER_M;
   const crownY = top - BRIDGE_SPANDREL_FILL_M;
   const rise = Math.max(0.4, Math.min(chord * 0.32, crownY - springY));
   const radius = (chord * chord / 4 + rise * rise) / (2 * rise);
@@ -1874,9 +1877,12 @@ function addArchedStoneBridge(
     parts.push({ kind: 'obb', cx: cx + vx * parapetInset * side, cz: cz + vz * parapetInset * side,
       hw: BRIDGE_PARAPET_THICK_M / 2, hl: parapetHalf, yaw, y0: deckY, y1: deckY + BRIDGE_PARAPET_HEIGHT_M });
   }
-  const record = setCompoundShape({ min: [0, bottom, 0], max: [0, deckY + BRIDGE_PARAPET_HEIGHT_M, 0], kind: 'bridge' }, parts);
-  ctx.obstacles?.push(record);
-  ctx.colliders?.push(cloneCollisionRecord(record));
+  // Preserve exact vault bands within the 64-part server wire limit.
+  for (let offset = 0; offset < parts.length; offset += 64) {
+    const record = setCompoundShape({ min: [0, bottom, 0], max: [0, deckY + BRIDGE_PARAPET_HEIGHT_M, 0], kind: 'bridge' }, parts.slice(offset, offset + 64));
+    ctx.obstacles?.push(record);
+    ctx.colliders?.push(cloneCollisionRecord(record));
+  }
 }
 
 function addWeirAndMill(links: readonly LayoutDisc[], crossing: Readonly<{ x: number; z: number }> | null, heightField: DressingHeightField,

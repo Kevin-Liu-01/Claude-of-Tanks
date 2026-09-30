@@ -1193,6 +1193,8 @@ const BIOME_PATTERN: Readonly<Record<string, readonly ResolvedMaterialCamoPatter
   coastal: ['summer', 'dpm', 'merdc'],
   steppe: ['desert', 'digitaldesert', 'chocchip'],
   railyard: ['urban', 'urbanblock', 'berlin'],
+  moon: ['urban', 'urbanblock'],
+  cliffbridge: ['summer', 'flecktarn', 'dpm'],
 };
 let activeBiome: string = 'verdant';
 

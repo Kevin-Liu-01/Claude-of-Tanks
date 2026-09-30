@@ -1,3 +1,4 @@
+import { isFleetBalanceFinalized } from './fleetBalanceState.ts';
 // Additive Abrams source-study prototypes. Combat ancestry is metadata only:
 // the original profiles stay untouched and the X family owns its native build.
 // Lengths, kit widths and frames come from the registered SEP v2 source;
@@ -111,6 +112,8 @@ registerFleetSpecs(registries, ABRAMS_SOURCE_X_IDS, createAbramsSourceXSpecs(reg
 export function synchronizeAbramsSourceXCombatMetadata(
   registry: TankSpecRegistry = registries.tankSpecs,
 ): void {
+  // Combat donor synchronization is initialization-only once final role tuning is published.
+  if (isFleetBalanceFinalized(registry)) return;
   const fields = ['hp', 'enginePowerHp', 'weightTons', 'topSpeedKmh', 'reverseSpeedKmh',
     'hullTraverseDegS', 'terrainResistance', 'pivotStyle', 'turretTraverseDegS',
     'gunPitchDegS', 'gunElevationDeg', 'gunDepressionDeg', 'gun'] as const;

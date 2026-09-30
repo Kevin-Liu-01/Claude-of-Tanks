@@ -76,7 +76,7 @@ export const GAME_MODE_DEFINITIONS: Readonly<Record<GameModeId, GameModeDefiniti
     // Mars mode (owner 2026-09-18: "add mars map mode (called mars mode) ... give it a bunch of boosts and
     // settings"): Olympus Basin's zone objective under its own physics, with boost caches for the humans.
     mars: Object.freeze({
-      id: 'mars', label: 'Mars Mode', shortLabel: 'MARS', icon: 'modeMars',
+      id: 'mars', label: 'Gravity Mode', shortLabel: 'GRAV', icon: 'modeMars',
       description: 'Olympus Basin under a galaxy sky: 0.38 g, long jumps, respawns and boost caches. Hold the station sectors — first team to 750 points wins.',
       respawns: true,
     }),
@@ -140,6 +140,7 @@ interface MatchModeHooks<Entity extends MatchModeEntity> {
   revive(entity: Entity, spawn: MatchModeSpawn, healthScale: number): void;
   setActive?(entity: Entity, active: boolean): void;
   terrainHeight?(x: number, z: number): number;
+  ballFloorHeight?(x: number, z: number, previousBottomY: number): number;
   emit?(type: string, payload: MatchModeEventPayload): void;
 }
 
@@ -315,7 +316,7 @@ function pointSegmentDistanceSq(point: Vec3Like, a: Vec3Like, b: Vec3Like): numb
 /** Create one fixed-step objective controller without changing standard combat. */
 export function createMatchModeController<Entity extends MatchModeEntity>({
   mode = 'standard', entities, seed = 6000, revive, setActive = () => {},
-  terrainHeight = () => 0, emit = () => {},
+  terrainHeight = () => 0, ballFloorHeight = terrainHeight, emit = () => {},
   placement,
   ruleset: rulesetOption,
 }: MatchModeControllerOptions<Entity>): MatchModeController<Entity> {
@@ -328,7 +329,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const definition = GAME_MODE_DEFINITIONS[id];
   const ruleset: MatchRuleset = rulesetOption && rulesetOption.mode === id ? rulesetOption : matchRulesetFor(id);
   const baseSpeed = ruleset.speedMultiplier;
-  const scoreTarget = scoreTargetForMode(id) ?? Infinity;
+  const scoreTarget = ruleset.scoreTarget ?? scoreTargetForMode(id) ?? Infinity;
   // Physics the ruleset bends: the movement reads modeSpeedMultiplier / modeGravityScale every step,
   // ballistics reads the gravity scale at the muzzle; stamped at start, at every revive, and when a
   // flag changes hands.
@@ -429,7 +430,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         };
       }) : [];
   const ball: BallState | null = id === 'turbo_ball' ? {
-    x: midX, y: terrainHeight(midX, midZ) + BALL_RADIUS_M, z: midZ,
+    x: midX, y: ballFloorHeight(midX, midZ, Infinity) + BALL_RADIUS_M, z: midZ,
     vx: 0, vy: 0, vz: 0, lastTouchId: null,
   } : null;
   const goals: GoalState[] = id === 'turbo_ball'
@@ -452,7 +453,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     label: definition.label,
     perspectiveTeam: 'alpha',
     respawns: ruleset.respawnS != null,
-    target: scoreTargetForMode(id),
+    target: Number.isFinite(scoreTarget) ? scoreTarget : null,
     score,
     flags,
     zones,
@@ -852,7 +853,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (!ball) return;
     ball.x = midX;
     ball.z = midZ;
-    ball.y = terrainHeight(midX, midZ) + BALL_RADIUS_M;
+    ball.y = ballFloorHeight(midX, midZ, Infinity) + BALL_RADIUS_M;
     ball.vx = 0;
     ball.vy = 0;
     ball.vz = 0;
@@ -879,8 +880,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     emit('mode_ball_hit', { by: entity.id, team: teamOf(entity), kind: 'ram' });
   };
 
+  let previousBallBottom = 0;
   const integrateBall = (dt: number): void => {
     if (!ball) return;
+    previousBallBottom = ball.y - BALL_RADIUS_M;
     ball.vy -= BALL_GRAVITY_MPS2 * ruleset.gravityScale * dt;
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
@@ -891,7 +894,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
 
   const bounceBallFromTerrain = (): void => {
     if (!ball) return;
-    const floor = terrainHeight(ball.x, ball.z) + BALL_RADIUS_M;
+    const floor = ballFloorHeight(ball.x, ball.z, previousBallBottom) + BALL_RADIUS_M;
     if (ball.y >= floor) return;
     ball.y = floor;
     ball.vy = ball.vy < -1 ? ball.vy * -0.58 : 0;

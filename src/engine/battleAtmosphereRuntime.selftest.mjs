@@ -98,7 +98,7 @@ try {
   for (const mapId of MAP_IDS) {
     runtime.reset();
     runtime.prepare(3, mapId);
-    assert.equal(runtime.weather.timeOfDay, mapId === 'mars' ? 'day' : 'night', `${mapId}: fixed space key or terrestrial night selection`);
+    assert.equal(runtime.weather.timeOfDay, mapId === 'mars' || mapId === 'moon' ? 'day' : 'night', `${mapId}: fixed space key or terrestrial night selection`);
     runtime.prepare(3, mapId, false);
     assert.equal(runtime.weather.timeOfDay, 'day', `${mapId}: disabled nights stay daytime`);
     assert.deepEqual(applied.at(-1), mapId === 'mars' ? MARS_SKY_PRESET : base);
@@ -212,7 +212,7 @@ const space = createBattleAtmosphereRuntime({ getGameMode: () => gameMode,
 for (const mapId of MAP_IDS) for (const seed of [undefined, 3, 13]) {
   gameMode = 'mars';
   space.prepare(seed, mapId);
-  assert.deepEqual(spaceApplied.at(-1), MARS_SKY_PRESET, `${mapId}: galaxy/cloud/light recipe matches Olympus exactly`);
+  assert.deepEqual(spaceApplied.at(-1), mapId === 'moon' ? base : MARS_SKY_PRESET, `${mapId}: lunar authored sky survives Gravity mode; other maps use the galaxy preset`);
   const count = spaceApplied.length;
   space.prepare(seed, mapId);
   assert.equal(spaceApplied.length, count, 'same mode/map/seed does not rebake the environment');

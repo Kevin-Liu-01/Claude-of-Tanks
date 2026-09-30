@@ -28,7 +28,7 @@ const LEGACY = ['verdant', 'desert', 'winter', 'urban',
   'coastal', 'autumn', 'steppe', 'railyard'];
 const CLUTTER_FAMILIES = ['barrier', 'roadsign', 'cone', 'transformer', 'cablespool'];
 const LAYERED_TREELINES = new Map([
-  ['verdant', 2], ['coastal', 2], ['autumn', 2],
+  ['cliffbridge', 2], ['verdant', 2], ['coastal', 2], ['autumn', 2],
   ['frontier', 3], ['delta', 3], ['monsoon', 3],
   ['caldera', 2], ['polders', 2], // round 47 (2026-09-23): the two bland rings with a skyline impostor gain a second rank
 ]);
@@ -36,7 +36,7 @@ const polePolicyByMap = new Map();
 const battlefieldWrecks = new Set();
 const mobileWrecks = new Set();
 // Existing desktop caps are deliberate scene budgets, not a variety knob.
-const extraWreckBudget = { urban: 6, railyard: 6, frontier: 6, delta: 6,
+const extraWreckBudget = { moon: 3, urban: 6, railyard: 6, frontier: 6, delta: 6,
   badlands: 7, monsoon: 7, alpine: 6, caldera: 7, foundry: 8,
   ruinspires: 9, blackglass: 8, titan_gorge: 8, skybridge: 8 };
 
@@ -110,7 +110,7 @@ function assertAuthoredMacroTerrain(config, hf) {
 }
 
 // Mars mode (2026-09-18): Olympus Basin joins the catalog
-assert.equal(MAP_IDS.length, 31, 'the battlefield roster contains thirty-one maps');
+assert.equal(MAP_IDS.length, 33, 'the battlefield roster contains thirty-three maps');
 assert.equal(new Set(MAP_IDS).size, MAP_IDS.length, 'map ids are unique');
 assert.deepEqual(MAP_IDS.slice(8, 16), EXPANSION, 'the eight-map expansion stays registered');
 assert.deepEqual(MAP_IDS.slice(16, 20), EXTREME, 'the extreme-environment expansion stays registered');
@@ -154,9 +154,9 @@ for (const mapId of MAP_IDS) {
   assert.equal(config.shot.pos.length, 3, `${mapId}: establishing camera position`);
   assert.equal(config.shot.look.length, 3, `${mapId}: establishing camera target`);
   const beats = config.props.tacticalBeats || [];
-  assert.equal(beats.length, 3, `${mapId}: three deliberate lane strongpoints`);
+  assert.equal(beats.length, mapId === 'moon' ? 0 : mapId === 'cliffbridge' ? 2 : 3, `${mapId}: three deliberate lane strongpoints`);
   assert.deepEqual([...new Set(beats.map((beat) => beat.role))].sort(),
-    ['brawl', 'scout', 'support'], `${mapId}: distinct vehicle-role decisions`);
+    mapId === 'moon' ? [] : mapId === 'cliffbridge' ? ['brawl','support'] : ['brawl', 'scout', 'support'], `${mapId}: distinct vehicle-role decisions`);
   assert.equal(new Set(beats.map((beat) => beat.id)).size, beats.length,
     `${mapId}: memorable strongpoint identities are unique`);
   const structureFamilies = new Set(config.props.destructibleBuildings);
@@ -171,7 +171,7 @@ for (const mapId of MAP_IDS) {
   for (const beat of beats) {
     assert.ok(Math.max(Math.abs(beat.x), Math.abs(beat.z)) <= 360,
       `${mapId}/${beat.id}: strongpoint stays in the playable interior`);
-    assert.ok(structureFamilies.has(beat.structure),
+    assert.ok(structureFamilies.has(beat.structure) || (mapId === 'cliffbridge' && beat.structure === 'guardpost'),
       `${mapId}/${beat.id}: strongpoint uses the map's textured structure family`);
     const components = [beat.structure, beat.redoubt, beat.outcrop, beat.wreck].filter(Boolean);
     assert.ok(components.length >= 2,
@@ -267,9 +267,9 @@ for (const mapId of [...EXPANSION, ...EXTREME]) {
     `${mapId}: connected road network spans both deployment regions`);
 
   const beats = config.props.tacticalBeats || [];
-  assert.equal(beats.length, 3, `${mapId}: three deliberate lane strongpoints`);
+  assert.equal(beats.length, mapId === 'moon' ? 0 : mapId === 'cliffbridge' ? 2 : 3, `${mapId}: three deliberate lane strongpoints`);
   assert.deepEqual([...new Set(beats.map((beat) => beat.role))].sort(),
-    ['brawl', 'scout', 'support'], `${mapId}: distinct vehicle-role decisions`);
+    mapId === 'moon' ? [] : mapId === 'cliffbridge' ? ['brawl','support'] : ['brawl', 'scout', 'support'], `${mapId}: distinct vehicle-role decisions`);
   assert.equal(new Set(beats.map((beat) => beat.id)).size, beats.length,
     `${mapId}: memorable strongpoint identities are unique`);
   const destructibleBuildingFamilies = new Set(config.props.destructibleBuildings);

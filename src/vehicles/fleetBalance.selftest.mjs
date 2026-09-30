@@ -143,11 +143,11 @@ assert.deepEqual({
   hp: 2350,
   speed: 56,
   reverse: 20,
-  hullTraverse: 34,
-  turretTraverse: 34,
+  hullTraverse: 32,
+  turretTraverse: 32.3,
   reload: 6.7,
-  accuracy: 0.28,
-  aim: 1.8,
+  accuracy: 0.263,
+  aim: 1.76,
   alpha: 520,
   penetration: [757, 689, 620],
 }, 'Challenger 1 owns a complete heavy Tier IX profile');
@@ -174,11 +174,11 @@ assert.deepEqual({
 }, {
   hp: 1250,
   reverse: 7,
-  hullTraverse: 20,
-  turretTraverse: 10,
+  hullTraverse: 18,
+  turretTraverse: 9.2,
   reload: 20.5,
   accuracy: 0.55,
-  aim: 3.6,
+  aim: 3.78,
   shells: [
     { name: 'OF-530 HE', damage: 900, penetration: [92, 92] },
     { name: 'BR-540 APHE', damage: 700, penetration: [155, 135] },
@@ -298,10 +298,10 @@ assert.equal(garageStatGroup(TANK_SPECS.strv103a), '9/cold-war',
   'garage normalizes the 103A against its Cold War tier peers');
 
 const japaneseMbtProgression = [
-  ['type90', 9, 2250, 1550, 34, 48, 44, 30, 18.5, 3, 2.2, 500, 806, 660, 120, 600],
-  ['type90a', 9, 2400, 1500, 30, 46, 42, 34, 17.0, 3, 2.0, 510, 855, 700, 134, 672],
-  ['type10', 10, 2550, 1200, 35, 48, 46, 36, 5.2, 0, 0, 540, 891, 730, 134, 672],
-  ['type10b', 10, 2700, 1200, 45, 50, 48, 40, 5.2, 0, 0, 540, 900, 740, 145, 726],
+  ['type90', 9, 2250, 1550, 34, 52.8, 46.6, 30, 18.5, 3, 2.2, 500, 806, 660, 120, 600],
+  ['type90a', 9, 2400, 1500, 30, 50.6, 44.5, 34, 17.0, 3, 2.0, 510, 855, 700, 134, 672],
+  ['type10', 10, 2550, 1200, 35, 52.8, 48.8, 36, 5.2, 0, 0, 540, 891, 730, 134, 672],
+  ['type10b', 10, 2700, 1200, 45, 55, 50.9, 40, 5.2, 0, 0, 540, 900, 740, 145, 726],
 ];
 for (const [
   id, tier, hp, engine, reverse, hullTraverse, turretTraverse, gunPitch,
@@ -335,10 +335,10 @@ for (const [
 }
 
 const merkavaProgression = [
-  ['merkava2b', 8, 2200, 1000, 18, 32, 6.9, 525, 794, 650, 500, 650],
-  ['merkava3c', 9, 2450, 1200, 20, 36, 6.2, 540, 830, 680, 540, 700],
-  ['merkava3d', 9, 2500, 1200, 20, 38, 6.2, 560, 830, 680, 600, 780],
-  ['merkava4b', 9, 2550, 1500, 25, 40, 6.5, 520, 794, 650, 650, 850],
+  ['merkava2b', 8, 2200, 1000, 18, 30.4, 6.9, 525, 794, 650, 500, 650],
+  ['merkava3c', 9, 2450, 1200, 20, 34.2, 6.2, 540, 830, 680, 540, 700],
+  ['merkava3d', 9, 2500, 1200, 20, 36.1, 6.2, 560, 830, 680, 600, 780],
+  ['merkava4b', 9, 2550, 1500, 25, 38, 6.5, 520, 794, 650, 650, 850],
 ];
 let previousMerkavaDpm = 0;
 for (const [

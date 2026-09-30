@@ -225,6 +225,8 @@ interface MesaConfig {
 }
 
 interface TerrainSettings {
+  /** Dry viaducts: deck and approaches share one support plane with collision/navigation. */
+  bridges?: readonly { x: number; z: number; yawDeg: number; spanM: number; widthM: number; approachM: number; route: number }[];
   hillScale: number;
   microScale: number;
   rimH: number;
@@ -745,6 +747,11 @@ export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
   const lx = dx * c + dz * s;
   const lz = -dx * s + dz * c;
   const height = form.height || 0;
+  if (form.kind === 'gorge') {
+    const along = 1 - smoothstep((form.length || 700) * .36, (form.length || 700) * .5, Math.abs(lx));
+    const across = 1 - smoothstep((form.width || 90) * .65, form.width || 90, Math.abs(lz));
+    return height * along * across;
+  }
   if (form.kind === 'ridge') {
     const half = Math.max(1, (form.length || 100) * 0.5);
     const width = Math.max(1, form.width || 45);
@@ -1225,7 +1232,11 @@ function* heightFieldBuildSteps(
         h += (roadElevation - h) * roadBlendWeight * (1 - bridge.span);
       } else h += (roadElevation - h) * roadBlendWeight;
     }
-    return applyRoadShoulderDetail(x, z, h, rd, settlementWeight, marshWeight, lakeWetness, padWetness);
+    const detailed = applyRoadShoulderDetail(x, z, h, rd, settlementWeight, marshWeight, lakeWetness, padWetness);
+    // Dry viaduct abutments cut any sub-metre shoulder noise flush with the
+    // supported deck. The gorge below remains the original excavated surface.
+    const dryDeck = T.bridges?.length ? bridgeDeckOver(x, z) : null;
+    return dryDeck ? Math.min(detailed, dryDeck.deckY) : detailed;
   }
 
   function applyRoadShoulderDetail(x: number, z: number, h: number, rd: number,
@@ -1661,6 +1672,25 @@ function* heightFieldBuildSteps(
     return decks.length ? Object.freeze(decks) : EMPTY_BRIDGE_DECKS;
   }
   if (liquidWater && liquidSurfaces) bridgeDecks = resolveBridgeDecks();
+  if (T.bridges?.length) {
+    const authored = T.bridges.map(bridge => {
+      const a = bridge.yawDeg * Math.PI / 180, ux = Math.cos(a), uz = Math.sin(a);
+      const halfLength = bridge.spanM / 2;
+      const bedY = heightAt(bridge.x, bridge.z, false, false);
+      // A curved/noisy bank can stand higher than its road centre. Fit the
+      // whole deck footprint so neither tracks nor bots meet buried rock.
+      let deckY = -Infinity;
+      for (let along = -halfLength; along <= halfLength; along += 2) {
+        for (const across of [-bridge.widthM / 2, 0, bridge.widthM / 2]) {
+          deckY = Math.max(deckY, heightAt(bridge.x + ux * along - uz * across,
+            bridge.z + uz * along + ux * across, true, false));
+        }
+      }
+      deckY += .08;
+      return { ...bridge, ux, uz, halfLength, halfWidth: bridge.widthM / 2, deckY, bedY, waterY: bedY };
+    });
+    bridgeDecks = Object.freeze([...bridgeDecks, ...authored]);
+  }
 
   // Freeze original road, junction, pad and water support before activating
   // this single-map excavation. No new height grid or alternate collision

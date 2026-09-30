@@ -1,3 +1,4 @@
+import { isFleetBalanceFinalized } from './fleetBalanceState.ts';
 // Independent September 2026 second-wave X builds. Only completed authoring
 // drafts enter this registry; pending source studies never become placeholders.
 // This module is boot-light: combat donors supply rules, never visual geometry.
@@ -204,6 +205,8 @@ registerFleetSpecs(registries, SECOND_WAVE_X_IDS, specs);
 /** Mirror the balanced combat revision without inheriting donor appearance,
  * dimensions, calibration receipts, markings or rig transforms. */
 export function synchronizeSecondWaveXCombatMetadata(): void {
+  // Combat donor synchronization is initialization-only once final role tuning is published.
+  if (isFleetBalanceFinalized(registries.tankSpecs)) return;
   const fields = ['hp', 'enginePowerHp', 'weightTons', 'topSpeedKmh', 'reverseSpeedKmh',
     'hullTraverseDegS', 'terrainResistance', 'pivotStyle', 'turretTraverseDegS',
     'gunPitchDegS', 'gunElevationDeg', 'gunDepressionDeg', 'gun'] as const;

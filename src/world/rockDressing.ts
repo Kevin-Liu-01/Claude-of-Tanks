@@ -29,7 +29,7 @@ const ROCK_CLIMATE: Readonly<Record<string, readonly [number, number]>> = Object
   frontier: [0.5, 0], alpine: [0.45, 0], urban: [0.3, 0.1], railyard: [0.25, 0.15], foundry: [0.25, 0.15],
   ruinspires: [0.25, 0.1], skybridge: [0.2, 0.1], caldera: [0.05, 0.35], blackglass: [0, 0.25], steppe: [0.15, 0.4],
   airfield: [0.2, 0.4], desert: [0, 0.8], badlands: [0, 0.8], copper_mesa: [0, 0.75], titan_gorge: [0, 0.7],
-  oasis: [0, 0.7], mars: [0, 0.9], winter: [0, 0], whiteout: [0, 0],
+  oasis: [0, 0.7], mars: [0, 0.9], moon: [0, 0.7], cliffbridge: [0.6, 0.6], winter: [0, 0], whiteout: [0, 0],
 });
 
 const _soil = new THREE.Color();

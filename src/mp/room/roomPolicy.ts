@@ -119,6 +119,8 @@ function readArrangement(value: unknown): TeamArrangement | null {
   };
   return {
     allies: pick('allies') as number | null, enemies: pick('enemies') as number | null,
+    scoreTarget: pick('scoreTarget') as number | null, respawnS: pick('respawnS') as number | null,
+    waveStep: pick('waveStep') as number | null, holdS: pick('holdS') as number | null,
     waveSize: pick('waveSize') as number | null, enemyNation: pick('enemyNation') as string | null,
     marsGravity: pick('marsGravity') as TeamArrangement['marsGravity'], marsCaches: pick('marsCaches') as TeamArrangement['marsCaches'],
   };

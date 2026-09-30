@@ -17,13 +17,13 @@ import { getCamoSelection, setCamoSelection, resolveCamoVisual } from './materia
 import { compareCountryThenTierThenName } from '../ui/garageOrder.ts';
 import { auditFleetBalance, sustainedPrimaryDpm } from './balanceAudit.ts';
 
-// Authenticated before-registration browser metadata. Only the two requested
-// public names/label records may change; legacy combat/appearance/rig is exact.
+// Browser metadata after the 2026-09-29 role balance. Geometry, weapons and
+// anatomy remain exact; the approved handling changes are included here.
 const prior = {
-  ariete: '8a5e687dce100031420347a5b3040a96921b27f5e176c9bf64140acee7530cba',
-  ariete_c1: 'f1af9b6b091cecfc475fc308dc3eb8751b698fa9ee034f79aaa943fdfb4d0ab6',
-  ariete_c2: '8df926ae1073dfd29013eb8deebc13064f970f7c9a05a46c3b393e1879fde486',
-  carro45t: 'dce6f1af271554a63326ef85966d8de6e907cb1958f018cc31d2966b319856fb',
+  ariete: '41f91e4acb1c97ab75d75f5b6dc30005b532fff7ba924c5eb0315e2decec9d98',
+  ariete_c1: 'b96920fb28cb8275ba4e68ebcb2d888a1cc5c21d33a7f65fa33de713508daba4',
+  ariete_c2: 'd701b51efd7497ba06f5e9254aa7b996b02a8d5dcf10a9c2c8e51c4b8c2feca3',
+  carro45t: '5e2cb002d87dbad66d6216974d0552e774c848d6ff193c0a58d77656307347bf',
 };
 for (const [id, hash] of Object.entries(prior)) {
   const preserved = structuredClone(TANK_SPECS[id]);

@@ -191,6 +191,8 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   saltwind: { ...COAST, swashPeriodS: 7.5, swashReachM: 4.5, swashStrength: 1.6, scree: 0.2, grass: dune(0.6) },
   reservoir: { ...STILL_WATER, scree: 0.3, grass: meadow(0.8, 0.85, { reedMargin: 0.5 }) },
   mars: { ...ARID, foldMoist: 0, grass: null },
+  moon: { ...ARID, foldMoist: 0, grass: null },
+  cliffbridge: { ...TEMPERATE, scree: .3, grass: meadow(1.0) },
 });
 
 const DEFAULT_PROFILE: GroundReduxProfile = Object.freeze({ ...TEMPERATE, grass: null });

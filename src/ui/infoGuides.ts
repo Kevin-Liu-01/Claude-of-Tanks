@@ -1,3 +1,4 @@
+import { iconUrl } from './icons.ts';
 import { t } from './i18n.ts';
 import type { InfoGuideId } from './infoGuideTypes.ts';
 import { INFO_GUIDE_DIAGRAMS } from './infoGuideCatalog.ts';
@@ -70,7 +71,7 @@ export function guideDiagram(id: InfoGuideId): string {
 }
 
 let sequence = 0;
-export function createInfoGuide(id: InfoGuideId): HTMLElement {
+export function createInfoGuide(id: InfoGuideId, vehicle: { id: string; name: string } | null = null): HTMLElement {
   if (!document.getElementById('cot-info-guide-css')) {
     const style = document.createElement('style'); style.id = 'cot-info-guide-css'; style.textContent = CSS; document.head.append(style);
   }
@@ -85,6 +86,36 @@ export function createInfoGuide(id: InfoGuideId): HTMLElement {
   }
   figure.append(legend);
   const caption = document.createElement('figcaption'); caption.textContent = t('fieldGuide.diagram'); figure.append(caption);
+  // The authored diagrams use this tank's real armor/module/crew volumes.
+  const views = id === 'crew' ? ['crew_side', 'modules_side', 'armor_side']
+    : id === 'protection' ? ['armor_side', 'modules_side', 'crew_side']
+    : ['modules_side', 'crew_side', 'armor_side'];
+  let vehicleImage: HTMLImageElement | null = null;
+  if (vehicle) {
+    figure.replaceChildren();
+    vehicleImage = document.createElement('img');
+    vehicleImage.style.cssText = 'display:block;width:100%;height:auto;max-height:480px;object-fit:contain';
+    vehicleImage.alt = vehicle.name;
+    vehicleImage.dataset.vehicleId = vehicle.id;
+    const vehicleCaption = document.createElement('figcaption');
+    vehicleCaption.textContent = vehicle.name + ' · ' + t('garage.dossier.dossier.techViews');
+    const diagramControls = document.createElement('div'); diagramControls.className = 'cot-guide__steps';
+    const labels: Record<string, string> = { armor_side: 'armorSide', modules_side: 'modulesSide', crew_side: 'crewSide' };
+    for (const view of views) {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'cot-guide__step';
+      button.textContent = t(`garage.dossier.image.${labels[view]}`);
+      button.setAttribute('aria-pressed', String(view === views[0]));
+      button.addEventListener('click', () => {
+        vehicleImage!.src = iconUrl(vehicle.id, view);
+        vehicleImage!.alt = `${vehicle.name} · ${button.textContent}`;
+        for (const other of diagramControls.querySelectorAll('button')) other.setAttribute('aria-pressed', String(other === button));
+      });
+      diagramControls.append(button);
+    }
+    vehicleImage.src = iconUrl(vehicle.id, views[0]);
+    vehicleImage.alt = `${vehicle.name} · ${t(`garage.dossier.image.${labels[views[0]]}`)}`;
+    figure.append(vehicleImage, vehicleCaption, diagramControls);
+  }
   const steps = document.createElement('div'); steps.className = 'cot-guide__steps'; steps.setAttribute('role','group'); steps.setAttribute('aria-label',t('fieldGuide.steps'));
   const detail = document.createElement('div'); detail.className = 'cot-guide__detail'; detail.id = `cot-guide-detail-${++sequence}`; detail.setAttribute('aria-live','polite'); detail.setAttribute('aria-atomic','true');
   const heading = document.createElement('h3'); const paragraph = document.createElement('p'); detail.append(heading,paragraph);

@@ -83,6 +83,11 @@ function marsRulesFor(gravity: MarsGravityId, caches: MarsCachesId): MarsRules {
 export const MARS_DEFAULT_RULES: MarsRules = marsRulesFor('mars', 'standard');
 
 export interface TeamArrangement {
+  /** Free-sortie objective controls; irrelevant fields are discarded at the boundary. */
+  readonly scoreTarget?: number | null;
+  readonly respawnS?: number | null;
+  readonly waveStep?: number | null;
+  readonly holdS?: number | null;
   readonly allies?: number | null;
   readonly enemies?: number | null;
   readonly waveSize?: number | null;
@@ -180,6 +185,7 @@ const MARS_PHYSICS: RulesetPhysics = Object.freeze({
 });
 
 export interface MatchRuleset {
+  readonly scoreTarget?: number | null;
   readonly mode: GameModeId;
   /** Multiplies 9.81 m/s² for hulls in the air, shells in flight and the ball. */
   readonly gravityScale: number;
@@ -359,15 +365,23 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
   const enemyNation = typeof input.enemyNation === 'string' && /^[a-z_]{2,24}$/.test(input.enemyNation) ? input.enemyNation : null;
   const marsGravity = mode === 'mars' && isMarsGravityId(input.marsGravity) ? input.marsGravity : null;
   const marsCaches = mode === 'mars' && isMarsCachesId(input.marsCaches) ? input.marsCaches : null;
+  const hasScore = Object.prototype.hasOwnProperty.call(RULESET_SCORE_TARGETS, mode);
+  const scoreTarget = hasScore && Number.isFinite(input.scoreTarget) ? clampInt(input.scoreTarget!,
+    mode === 'capture_the_flag' ? [1, 9] : mode === 'turbo_ball' ? [1, 15] : [100, 2000]) : null;
+  const respawnS = hasScore && Number.isFinite(input.respawnS) ? clampInt(input.respawnS!, [2, 15]) : null;
+  const waveStep = mode === 'endless_horde' && Number.isFinite(input.waveStep) ? clampInt(input.waveStep!, [0, 3]) : null;
+  const holdS = mode === 'frontline_assault' && Number.isFinite(input.holdS) ? clampInt(input.holdS!, [10, 60]) : null;
   // the field limit (player included) holds whatever the two sides ask for: the enemy count is kept — it is
   // the number the player typed for a "1 v 20" — and the allied bots yield
   if (!isWaveMode(mode) && (allies != null || enemies != null)) {
     const sides = rulesetSides({ allies, enemies });
     if (sides.allies + sides.enemies + 1 > BATTLE_FIELD_LIMIT) allies = Math.max(0, BATTLE_FIELD_LIMIT - 1 - sides.enemies);
   }
-  if (allies == null && enemies == null && waveSize == null && enemyNation == null && marsGravity == null && marsCaches == null) return null;
+  if (allies == null && enemies == null && waveSize == null && enemyNation == null && marsGravity == null && marsCaches == null && scoreTarget == null && respawnS == null && waveStep == null && holdS == null) return null;
   return Object.freeze({
     allies, enemies, waveSize, enemyNation,
+    ...(scoreTarget != null ? { scoreTarget } : {}), ...(respawnS != null ? { respawnS } : {}),
+    ...(waveStep != null ? { waveStep } : {}), ...(holdS != null ? { holdS } : {}),
     ...(marsGravity ? { marsGravity } : {}), ...(marsCaches ? { marsCaches } : {}),
   });
 }
@@ -397,12 +411,16 @@ export function matchRulesetFor(
   if (arranged) {
     ruleset = {
       ...ruleset,
+      scoreTarget: arranged.scoreTarget ?? ruleset.scoreTarget,
+      respawnS: arranged.respawnS ?? ruleset.respawnS,
+      assault: ruleset.assault && arranged.holdS != null && !campaign
+        ? Object.freeze({ ...ruleset.assault, holdS: arranged.holdS }) : ruleset.assault,
       allies: arranged.allies ?? ruleset.allies,
       enemies: arranged.enemies ?? ruleset.enemies,
       // a campaign operation's formation is not overridden by the free-sortie nation setting
       enemyNation: campaign?.enemy ? ruleset.enemyNation : (arranged.enemyNation ?? ruleset.enemyNation),
-      horde: ruleset.horde && arranged.waveSize != null
-        ? Object.freeze({ ...ruleset.horde, waveSize: Math.min(arranged.waveSize, arranged.enemies ?? ruleset.enemies ?? arranged.waveSize) })
+      horde: ruleset.horde && (arranged.waveSize != null || arranged.waveStep != null)
+        ? Object.freeze({ ...ruleset.horde, waveSize: Math.min(arranged.waveSize ?? ruleset.horde.waveSize, arranged.enemies ?? ruleset.enemies ?? ruleset.horde.waveSize), waveStep: arranged.waveStep ?? ruleset.horde.waveStep })
         : ruleset.horde,
     };
   }
@@ -485,6 +503,8 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
     }
   }
   if (ruleset.enemyNation) line('enemyNation', { value: ruleset.enemyNation });
+  if (ruleset.scoreTarget != null) line('scoreTarget', { value: String(ruleset.scoreTarget) });
+  if (ruleset.assault) line('sectorHold', { value: String(ruleset.assault.holdS) });
   if (ruleset.mode === 'capture_the_flag') line('carrierSpeed', { value: percent(FLAG_CARRIER_SPEED_SCALE) });
   if (ruleset.horde) line('hordeWaves', { value: String(ruleset.horde.waveSize), step: String(ruleset.horde.waveStep) });
   if (ruleset.mode === 'endless_horde') line('waveRepair', { value: `${Math.round(HORDE_WAVE_REPAIR * 100)} %` });

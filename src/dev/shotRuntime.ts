@@ -59,7 +59,7 @@ const VIEW_TIME: Readonly<Partial<Record<ShotViewName, number>>> = {
   battlefield_mangrove: 2.0,
   battlefield_saltwind: 2.0,
   battlefield_reservoir: 2.0,
-  battlefield_mars: 2.0,
+  battlefield_mars: 2.0, battlefield_moon: 2.0, battlefield_cliffbridge: 2.0,
   killcam_firing: 1.0,
   killcam_collision: 1.0,
   killcam_xray: 1.0,
@@ -95,7 +95,7 @@ const VIEW_MAP: Partial<Record<ShotViewName, string>> = {
   battlefield_mangrove: 'mangrove',
   battlefield_saltwind: 'saltwind',
   battlefield_reservoir: 'reservoir',
-  battlefield_mars: 'mars',
+  battlefield_mars: 'mars', battlefield_moon: 'moon', battlefield_cliffbridge: 'cliffbridge',
 };
 
 interface ShotRuntimeEntity extends ShotEntity {

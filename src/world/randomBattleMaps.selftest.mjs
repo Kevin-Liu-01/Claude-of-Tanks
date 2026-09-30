@@ -8,7 +8,7 @@ import {
 assert.ok(Object.isFrozen(MAP_IDS), 'the canonical battlefield registry is immutable');
 // 2026-09-19: Mars (Olympus Basin) is reached through Mars mode, never by the random draw
 assert.ok(Object.isFrozen(RANDOM_BATTLE_MAP_IDS), 'the random-battle roster is immutable');
-assert.deepEqual([...RANDOM_BATTLE_MAP_IDS], MAP_IDS.filter((id) => id !== 'mars'),
+assert.deepEqual([...RANDOM_BATTLE_MAP_IDS], MAP_IDS.filter((id) => id !== 'mars' && id !== 'moon'),
   'Random Battle draws every canonical battlefield except Mars');
 assert.ok(MAP_IDS.includes('mars') && !RANDOM_BATTLE_MAP_IDS.includes('mars'), 'Mars stays registered but out of the draw');
 

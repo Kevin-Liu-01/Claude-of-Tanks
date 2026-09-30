@@ -1,3 +1,4 @@
+import type { TeamArrangement } from '../sim/matchRuleset.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   serializeLobby,
@@ -27,6 +28,7 @@ interface RoomSelection {
   specId: string;
   mapId: string;
   gameMode?: string;
+  arrangement?: TeamArrangement | null;
   equipment: string[];
   camo: string;
 }
@@ -331,6 +333,7 @@ PrivateRoomConnectionRuntime {
       hostCamo: request.selection.camo,
       mapId: request.selection.mapId,
       gameMode: request.selection.gameMode || 'standard',
+      arrangement: request.selection.arrangement,
       teamSize: request.teamSize,
       iceServers: acquired.ice.iceServers,
       relayOnly: acquired.ice.relayOnly,

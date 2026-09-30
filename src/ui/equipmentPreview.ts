@@ -23,6 +23,8 @@ interface EquipmentPreviewSpec {
   role?: string;
   hullTraverseDegS: number;
   turretTraverseDegS: number;
+  armor?: { turretless?: boolean };
+  hydropneumaticAim?: unknown;
   gun: {
     reloadS: number;
     aimTimeS: number;
@@ -351,15 +353,16 @@ export function equipmentHoverPreview(
     for (const metricId of ITEM_METRICS[contextItemId] || []) changedMetricIds.add(metricId);
   }
   const metrics = METRICS
-    .filter((definition) => changedMetricIds.has(definition.id))
+    .filter((definition) => changedMetricIds.has(definition.id) &&
+      !(definition.id === 'turretTraverse' && spec.armor?.turretless && spec.hydropneumaticAim))
     .map((definition): EquipmentPreviewMetric => {
       const isMagazine = definition.id === 'reload' && spec.gun.autoloader;
       return {
         id: definition.id,
-        label: isMagazine ? 'Magazine reload time' : definition.label,
+        label: isMagazine ? 'Magazine reload time' : definition.id === 'turretTraverse' && spec.armor?.turretless ? 'Gun traverse' : definition.label,
         labelKey: isMagazine
           ? 'garage.equipment.metric.magazineReload'
-          : definition.labelKey,
+          : definition.id === 'turretTraverse' && spec.armor?.turretless ? 'garage.stat.gunTraverse' : definition.labelKey,
         stock: definition.format(stock),
         current: definition.format(current),
         projected: definition.format(projected),

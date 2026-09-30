@@ -232,7 +232,7 @@ export function createRoomConnectionAdapter({
       const room = request.kind === 'create'
         ? await client.create({
           mode, selection,
-          settings: { teamSize: request.teamSize, mapId: request.selection.mapId, gameMode: request.selection.gameMode || 'standard' },
+          settings: { teamSize: request.teamSize, mapId: request.selection.mapId, gameMode: request.selection.gameMode || 'standard', arrangement: request.selection.arrangement },
         })
         : await client.join({ roomCode: normalizeRoomCode(request.roomCode), selection });
       if (pending !== attempt || generation !== attemptGeneration) { client.dispose(); return null; }

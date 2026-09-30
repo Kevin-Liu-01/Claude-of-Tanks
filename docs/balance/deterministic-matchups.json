@@ -28,8 +28,8 @@
         20
       ],
       "traverseDegS": [
-        40,
-        36
+        44,
+        38.2
       ],
       "primary": {
         "damage": 400,
@@ -40,7 +40,7 @@
         ],
         "reloadS": 6.2,
         "sustainedDpm": 3870.97,
-        "accuracy": 0.29,
+        "accuracy": 0.296,
         "aimTimeS": 1.7
       },
       "armorCeilingsMm": {
@@ -52,7 +52,7 @@
     {
       "id": "amx56",
       "revision": "make headline reload match its magazine and establish assault-branch output",
-      "tier": 10,
+      "tier": 9,
       "era": "modern",
       "role": "mbt",
       "hp": 2750,
@@ -62,8 +62,8 @@
         25
       ],
       "traverseDegS": [
-        46,
-        42
+        50.6,
+        44.5
       ],
       "primary": {
         "damage": 550,
@@ -74,7 +74,7 @@
         ],
         "reloadS": 14.5,
         "sustainedDpm": 5351.35,
-        "accuracy": 0.29,
+        "accuracy": 0.296,
         "aimTimeS": 1.6
       },
       "armorCeilingsMm": {
@@ -96,8 +96,8 @@
         20
       ],
       "traverseDegS": [
-        48,
-        52
+        50.9,
+        58.2
       ],
       "primary": {
         "damage": 60,
@@ -109,7 +109,7 @@
         "reloadS": 0.45,
         "sustainedDpm": 8000,
         "accuracy": 0.29,
-        "aimTimeS": 1.3
+        "aimTimeS": 1.22
       },
       "armorCeilingsMm": {
         "hullKe": 70,
@@ -128,7 +128,7 @@
     },
     {
       "id": "bmpt_t90",
-      "revision": "normalize guided-weapon cadence against other Tier X IFVs",
+      "revision": "normalize guided-weapon cadence against other Tier X IFVs (load stays eight: one Ataka per tube, owner 2026-09-18)",
       "tier": 10,
       "era": "modern",
       "role": "ifv",
@@ -139,8 +139,8 @@
         18
       ],
       "traverseDegS": [
-        32,
-        60
+        30.1,
+        63.6
       ],
       "primary": {
         "damage": 50,
@@ -151,7 +151,7 @@
         ],
         "reloadS": 0.28,
         "sustainedDpm": 10714.29,
-        "accuracy": 0.26,
+        "accuracy": 0.268,
         "aimTimeS": 1.2
       },
       "armorCeilingsMm": {
@@ -163,8 +163,8 @@
           "name": "9M120-1 Ataka-T",
           "damage": 500,
           "penetrationMm": 850,
-          "reloadS": 3,
-          "count": 6,
+          "reloadS": 2.9,
+          "count": 8,
           "velocityMps": 357.5
         }
       ]
@@ -182,8 +182,8 @@
         15
       ],
       "traverseDegS": [
-        32,
-        30
+        32.6,
+        30.6
       ],
       "primary": {
         "damage": 480,
@@ -195,7 +195,7 @@
         "reloadS": 6.6,
         "sustainedDpm": 4363.64,
         "accuracy": 0.3,
-        "aimTimeS": 2
+        "aimTimeS": 1.96
       },
       "armorCeilingsMm": {
         "hullKe": 336,
@@ -216,8 +216,8 @@
         20
       ],
       "traverseDegS": [
-        34,
-        34
+        32,
+        32.3
       ],
       "primary": {
         "damage": 520,
@@ -228,8 +228,8 @@
         ],
         "reloadS": 6.7,
         "sustainedDpm": 4656.72,
-        "accuracy": 0.28,
-        "aimTimeS": 1.8
+        "accuracy": 0.263,
+        "aimTimeS": 1.76
       },
       "armorCeilingsMm": {
         "hullKe": 500,
@@ -250,8 +250,8 @@
         24
       ],
       "traverseDegS": [
-        38,
-        38
+        35.7,
+        36.1
       ],
       "primary": {
         "damage": 530,
@@ -262,8 +262,8 @@
         ],
         "reloadS": 5.9,
         "sustainedDpm": 5389.83,
-        "accuracy": 0.24,
-        "aimTimeS": 1.6
+        "accuracy": 0.226,
+        "aimTimeS": 1.57
       },
       "armorCeilingsMm": {
         "hullKe": 500,
@@ -284,8 +284,8 @@
         24
       ],
       "traverseDegS": [
-        36,
-        40
+        33.8,
+        38
       ],
       "primary": {
         "damage": 530,
@@ -296,8 +296,8 @@
         ],
         "reloadS": 5.7,
         "sustainedDpm": 5578.95,
-        "accuracy": 0.22,
-        "aimTimeS": 1.5
+        "accuracy": 0.207,
+        "aimTimeS": 1.47
       },
       "armorCeilingsMm": {
         "hullKe": 500,
@@ -318,8 +318,8 @@
         13
       ],
       "traverseDegS": [
-        30,
-        28
+        28.2,
+        26.6
       ],
       "primary": {
         "damage": 510,
@@ -330,8 +330,8 @@
         ],
         "reloadS": 6.2,
         "sustainedDpm": 4935.48,
-        "accuracy": 0.28,
-        "aimTimeS": 1.85
+        "accuracy": 0.263,
+        "aimTimeS": 1.81
       },
       "armorCeilingsMm": {
         "hullKe": 450,
@@ -352,8 +352,8 @@
         18
       ],
       "traverseDegS": [
-        34,
-        32
+        32,
+        30.4
       ],
       "primary": {
         "damage": 500,
@@ -364,8 +364,8 @@
         ],
         "reloadS": 7.4,
         "sustainedDpm": 4054.05,
-        "accuracy": 0.29,
-        "aimTimeS": 1.9
+        "accuracy": 0.273,
+        "aimTimeS": 1.86
       },
       "armorCeilingsMm": {
         "hullKe": 450,
@@ -386,8 +386,8 @@
         20
       ],
       "traverseDegS": [
-        43,
-        60
+        45.6,
+        67.2
       ],
       "primary": {
         "damage": 88,
@@ -399,7 +399,7 @@
         "reloadS": 0.6,
         "sustainedDpm": 8800,
         "accuracy": 0.29,
-        "aimTimeS": 1.3
+        "aimTimeS": 1.22
       },
       "armorCeilingsMm": {
         "hullKe": 90,
@@ -417,40 +417,6 @@
       ]
     },
     {
-      "id": "is7",
-      "revision": "restore Tier X breakthrough survivability, penetration and gun cycle",
-      "tier": 10,
-      "era": "cold-war",
-      "role": "heavy",
-      "hp": 2300,
-      "powerWeight": 15.44,
-      "speedKmh": [
-        59,
-        8
-      ],
-      "traverseDegS": [
-        26,
-        16
-      ],
-      "primary": {
-        "damage": 560,
-        "penetrationMm": [
-          520,
-          450,
-          null
-        ],
-        "reloadS": 10.2,
-        "sustainedDpm": 3294.12,
-        "accuracy": 0.36,
-        "aimTimeS": 2.6
-      },
-      "armorCeilingsMm": {
-        "hullKe": 150,
-        "turretKe": 250
-      },
-      "guidedWeapons": []
-    },
-    {
       "id": "k2",
       "revision": "trade excess paper DPM for realized frontal protection and ammunition",
       "tier": 9,
@@ -463,8 +429,8 @@
         25
       ],
       "traverseDegS": [
-        44,
-        36
+        48.4,
+        38.2
       ],
       "primary": {
         "damage": 520,
@@ -475,7 +441,7 @@
         ],
         "reloadS": 6.5,
         "sustainedDpm": 4800,
-        "accuracy": 0.3,
+        "accuracy": 0.306,
         "aimTimeS": 1.9
       },
       "armorCeilingsMm": {
@@ -497,8 +463,8 @@
         30
       ],
       "traverseDegS": [
-        44,
-        44
+        48.4,
+        46.6
       ],
       "primary": {
         "damage": 530,
@@ -509,7 +475,7 @@
         ],
         "reloadS": 5.2,
         "sustainedDpm": 6115.38,
-        "accuracy": 0.29,
+        "accuracy": 0.296,
         "aimTimeS": 1.8
       },
       "armorCeilingsMm": {
@@ -531,8 +497,8 @@
         7
       ],
       "traverseDegS": [
-        20,
-        10
+        18,
+        9.2
       ],
       "primary": {
         "damage": 900,
@@ -544,7 +510,7 @@
         "reloadS": 20.5,
         "sustainedDpm": 2634.15,
         "accuracy": 0.55,
-        "aimTimeS": 3.6
+        "aimTimeS": 3.78
       },
       "armorCeilingsMm": {
         "hullKe": 75,
@@ -565,8 +531,8 @@
         25
       ],
       "traverseDegS": [
-        46,
-        42
+        50.6,
+        44.5
       ],
       "primary": {
         "damage": 530,
@@ -577,7 +543,7 @@
         ],
         "reloadS": 16.5,
         "sustainedDpm": 4478.87,
-        "accuracy": 0.29,
+        "accuracy": 0.296,
         "aimTimeS": 1.8
       },
       "armorCeilingsMm": {
@@ -589,7 +555,7 @@
     {
       "id": "leclerc_xlr",
       "revision": "add a real Tier X ammunition, protection and ready-rack step",
-      "tier": 10,
+      "tier": 9,
       "era": "modern",
       "role": "mbt",
       "hp": 2650,
@@ -599,8 +565,8 @@
         25
       ],
       "traverseDegS": [
-        46,
-        42
+        50.6,
+        44.5
       ],
       "primary": {
         "damage": 540,
@@ -611,7 +577,7 @@
         ],
         "reloadS": 15.5,
         "sustainedDpm": 4884.42,
-        "accuracy": 0.29,
+        "accuracy": 0.296,
         "aimTimeS": 1.8
       },
       "armorCeilingsMm": {
@@ -633,8 +599,8 @@
         31
       ],
       "traverseDegS": [
-        44,
-        38
+        44.9,
+        38.8
       ],
       "primary": {
         "damage": 510,
@@ -646,7 +612,7 @@
         "reloadS": 6.2,
         "sustainedDpm": 4935.48,
         "accuracy": 0.3,
-        "aimTimeS": 1.7
+        "aimTimeS": 1.67
       },
       "armorCeilingsMm": {
         "hullKe": 586,
@@ -667,8 +633,8 @@
         31
       ],
       "traverseDegS": [
-        44,
-        40
+        44.9,
+        40.8
       ],
       "primary": {
         "damage": 530,
@@ -680,7 +646,7 @@
         "reloadS": 6.1,
         "sustainedDpm": 5213.11,
         "accuracy": 0.27,
-        "aimTimeS": 1.6
+        "aimTimeS": 1.57
       },
       "armorCeilingsMm": {
         "hullKe": 774,
@@ -701,8 +667,8 @@
         25
       ],
       "traverseDegS": [
-        44,
-        40
+        44.9,
+        40.8
       ],
       "primary": {
         "damage": 530,
@@ -714,7 +680,7 @@
         "reloadS": 6.1,
         "sustainedDpm": 5213.11,
         "accuracy": 0.27,
-        "aimTimeS": 1.6
+        "aimTimeS": 1.57
       },
       "armorCeilingsMm": {
         "hullKe": 484,
@@ -735,8 +701,8 @@
         28
       ],
       "traverseDegS": [
-        46,
-        44
+        46.9,
+        44.9
       ],
       "primary": {
         "damage": 520,
@@ -748,7 +714,7 @@
         "reloadS": 6.5,
         "sustainedDpm": 4800,
         "accuracy": 0.32,
-        "aimTimeS": 1.9
+        "aimTimeS": 1.86
       },
       "armorCeilingsMm": {
         "hullKe": 516,
@@ -769,8 +735,8 @@
         34
       ],
       "traverseDegS": [
-        44,
-        48
+        44.9,
+        49
       ],
       "primary": {
         "damage": 570,
@@ -782,7 +748,7 @@
         "reloadS": 21,
         "sustainedDpm": 4800,
         "accuracy": 0.25,
-        "aimTimeS": 1.45
+        "aimTimeS": 1.42
       },
       "armorCeilingsMm": {
         "hullKe": 818,
@@ -800,74 +766,6 @@
       ]
     },
     {
-      "id": "m26_pershing",
-      "revision": "replace inherited 76 mm ammunition and restore Tier VIII medium output",
-      "tier": 8,
-      "era": "ww2",
-      "role": "medium",
-      "hp": 1600,
-      "powerWeight": 10.74,
-      "speedKmh": [
-        40,
-        8
-      ],
-      "traverseDegS": [
-        36,
-        24
-      ],
-      "primary": {
-        "damage": 240,
-        "penetrationMm": [
-          190,
-          160,
-          null
-        ],
-        "reloadS": 6.8,
-        "sustainedDpm": 2117.65,
-        "accuracy": 0.34,
-        "aimTimeS": 2.2
-      },
-      "armorCeilingsMm": {
-        "hullKe": 89,
-        "turretKe": 89
-      },
-      "guidedWeapons": []
-    },
-    {
-      "id": "m45_patton",
-      "revision": "replace inherited 76 mm ammunition and restore 105 mm assault output",
-      "tier": 8,
-      "era": "ww2",
-      "role": "medium",
-      "hp": 1650,
-      "powerWeight": 10.71,
-      "speedKmh": [
-        40,
-        8
-      ],
-      "traverseDegS": [
-        36,
-        24
-      ],
-      "primary": {
-        "damage": 370,
-        "penetrationMm": [
-          175,
-          145,
-          null
-        ],
-        "reloadS": 8.4,
-        "sustainedDpm": 2642.86,
-        "accuracy": 0.39,
-        "aimTimeS": 2.6
-      },
-      "armorCeilingsMm": {
-        "hullKe": 89,
-        "turretKe": 89
-      },
-      "guidedWeapons": []
-    },
-    {
       "id": "m48",
       "revision": "restore the M48 baseline so M60 upgrades are meaningful rather than mandatory",
       "tier": 8,
@@ -880,8 +778,8 @@
         18
       ],
       "traverseDegS": [
-        40,
-        36
+        40.8,
+        36.7
       ],
       "primary": {
         "damage": 450,
@@ -893,7 +791,7 @@
         "reloadS": 7,
         "sustainedDpm": 3857.14,
         "accuracy": 0.3,
-        "aimTimeS": 1.8
+        "aimTimeS": 1.76
       },
       "armorCeilingsMm": {
         "hullKe": 70,
@@ -914,8 +812,8 @@
         18
       ],
       "traverseDegS": [
-        40,
-        36
+        40.8,
+        36.7
       ],
       "primary": {
         "damage": 440,
@@ -927,7 +825,7 @@
         "reloadS": 6.8,
         "sustainedDpm": 3882.35,
         "accuracy": 0.3,
-        "aimTimeS": 1.8
+        "aimTimeS": 1.76
       },
       "armorCeilingsMm": {
         "hullKe": 70,
@@ -948,8 +846,8 @@
         18
       ],
       "traverseDegS": [
-        40,
-        38
+        40.8,
+        38.8
       ],
       "primary": {
         "damage": 650,
@@ -961,7 +859,7 @@
         "reloadS": 9,
         "sustainedDpm": 4333.33,
         "accuracy": 0.32,
-        "aimTimeS": 1.8
+        "aimTimeS": 1.76
       },
       "armorCeilingsMm": {
         "hullKe": 70,
@@ -991,8 +889,8 @@
         18
       ],
       "traverseDegS": [
-        42,
-        40
+        42.8,
+        40.8
       ],
       "primary": {
         "damage": 450,
@@ -1004,7 +902,7 @@
         "reloadS": 6.4,
         "sustainedDpm": 4218.75,
         "accuracy": 0.28,
-        "aimTimeS": 1.6
+        "aimTimeS": 1.57
       },
       "armorCeilingsMm": {
         "hullKe": 70,
@@ -1025,8 +923,8 @@
         25
       ],
       "traverseDegS": [
-        38,
-        38
+        36.1,
+        39.5
       ],
       "primary": {
         "damage": 490,
@@ -1037,46 +935,12 @@
         ],
         "reloadS": 8.1,
         "sustainedDpm": 3629.63,
-        "accuracy": 0.31,
-        "aimTimeS": 1.9
+        "accuracy": 0.316,
+        "aimTimeS": 1.82
       },
       "armorCeilingsMm": {
         "hullKe": 175,
         "turretKe": 227
-      },
-      "guidedWeapons": []
-    },
-    {
-      "id": "object279",
-      "revision": "restore Tier X breakthrough survivability, penetration and gun cycle",
-      "tier": 10,
-      "era": "cold-war",
-      "role": "heavy",
-      "hp": 2400,
-      "powerWeight": 15.83,
-      "speedKmh": [
-        55,
-        7
-      ],
-      "traverseDegS": [
-        16,
-        14
-      ],
-      "primary": {
-        "damage": 570,
-        "penetrationMm": [
-          550,
-          480,
-          null
-        ],
-        "reloadS": 10.5,
-        "sustainedDpm": 3257.14,
-        "accuracy": 0.35,
-        "aimTimeS": 2.5
-      },
-      "armorCeilingsMm": {
-        "hullKe": 220,
-        "turretKe": 305
       },
       "guidedWeapons": []
     },
@@ -1093,8 +957,8 @@
         30
       ],
       "traverseDegS": [
-        44,
-        44
+        49.3,
+        48.4
       ],
       "primary": {
         "damage": 550,
@@ -1106,7 +970,7 @@
         "reloadS": 15,
         "sustainedDpm": 5103.09,
         "accuracy": 0.29,
-        "aimTimeS": 1.8
+        "aimTimeS": 1.69
       },
       "armorCeilingsMm": {
         "hullKe": 550,
@@ -1127,8 +991,8 @@
         30
       ],
       "traverseDegS": [
-        44,
-        44
+        49.3,
+        48.4
       ],
       "primary": {
         "damage": 430,
@@ -1140,7 +1004,7 @@
         "reloadS": 13.5,
         "sustainedDpm": 5460.32,
         "accuracy": 0.29,
-        "aimTimeS": 1.8
+        "aimTimeS": 1.69
       },
       "armorCeilingsMm": {
         "hullKe": 550,
@@ -1161,8 +1025,8 @@
         20
       ],
       "traverseDegS": [
-        36,
-        36
+        34.2,
+        37.4
       ],
       "primary": {
         "damage": 520,
@@ -1173,8 +1037,8 @@
         ],
         "reloadS": 6.4,
         "sustainedDpm": 4875,
-        "accuracy": 0.33,
-        "aimTimeS": 2
+        "accuracy": 0.337,
+        "aimTimeS": 1.92
       },
       "armorCeilingsMm": {
         "hullKe": 486,
@@ -1195,8 +1059,8 @@
         20
       ],
       "traverseDegS": [
-        36,
-        30
+        34.2,
+        31.2
       ],
       "primary": {
         "damage": 520,
@@ -1207,8 +1071,8 @@
         ],
         "reloadS": 7,
         "sustainedDpm": 4457.14,
-        "accuracy": 0.33,
-        "aimTimeS": 2
+        "accuracy": 0.337,
+        "aimTimeS": 1.92
       },
       "armorCeilingsMm": {
         "hullKe": 450,
@@ -1219,7 +1083,7 @@
     {
       "id": "spz_puma",
       "revision": "balance the Tier VIII cannon and protection package against its peers",
-      "tier": 8,
+      "tier": 9,
       "era": "modern",
       "role": "ifv",
       "hp": 2000,
@@ -1229,8 +1093,8 @@
         30
       ],
       "traverseDegS": [
-        46,
-        60
+        48.8,
+        67.2
       ],
       "primary": {
         "damage": 64,
@@ -1242,7 +1106,7 @@
         "reloadS": 0.4,
         "sustainedDpm": 9600,
         "accuracy": 0.29,
-        "aimTimeS": 1.35
+        "aimTimeS": 1.27
       },
       "armorCeilingsMm": {
         "hullKe": 136,
@@ -1272,8 +1136,8 @@
         30
       ],
       "traverseDegS": [
-        50,
-        68
+        53,
+        76.2
       ],
       "primary": {
         "damage": 82,
@@ -1285,7 +1149,7 @@
         "reloadS": 0.38,
         "sustainedDpm": 12947.37,
         "accuracy": 0.25,
-        "aimTimeS": 1.1
+        "aimTimeS": 1.03
       },
       "armorCeilingsMm": {
         "hullKe": 234,
@@ -1315,8 +1179,8 @@
         25
       ],
       "traverseDegS": [
-        46,
-        40
+        43.7,
+        41.6
       ],
       "primary": {
         "damage": 550,
@@ -1327,8 +1191,8 @@
         ],
         "reloadS": 6.5,
         "sustainedDpm": 5076.92,
-        "accuracy": 0.29,
-        "aimTimeS": 1.8
+        "accuracy": 0.296,
+        "aimTimeS": 1.73
       },
       "armorCeilingsMm": {
         "hullKe": 900,
@@ -1349,8 +1213,8 @@
         8
       ],
       "traverseDegS": [
-        40,
-        36
+        38,
+        37.4
       ],
       "primary": {
         "damage": 430,
@@ -1361,8 +1225,8 @@
         ],
         "reloadS": 6.6,
         "sustainedDpm": 3909.09,
-        "accuracy": 0.3,
-        "aimTimeS": 1.8
+        "accuracy": 0.306,
+        "aimTimeS": 1.73
       },
       "armorCeilingsMm": {
         "hullKe": 77,
@@ -1383,8 +1247,8 @@
         12
       ],
       "traverseDegS": [
-        36,
-        30
+        34.2,
+        31.2
       ],
       "primary": {
         "damage": 510,
@@ -1395,8 +1259,8 @@
         ],
         "reloadS": 7.4,
         "sustainedDpm": 4135.14,
-        "accuracy": 0.33,
-        "aimTimeS": 2
+        "accuracy": 0.337,
+        "aimTimeS": 1.92
       },
       "armorCeilingsMm": {
         "hullKe": 450,
@@ -1417,8 +1281,8 @@
         20
       ],
       "traverseDegS": [
-        36,
-        30
+        34.2,
+        31.2
       ],
       "primary": {
         "damage": 510,
@@ -1429,8 +1293,8 @@
         ],
         "reloadS": 6.5,
         "sustainedDpm": 4707.69,
-        "accuracy": 0.33,
-        "aimTimeS": 2
+        "accuracy": 0.337,
+        "aimTimeS": 1.92
       },
       "armorCeilingsMm": {
         "hullKe": 450,
@@ -1451,8 +1315,8 @@
         18
       ],
       "traverseDegS": [
-        36,
-        34
+        34.2,
+        35.4
       ],
       "primary": {
         "damage": 510,
@@ -1463,8 +1327,8 @@
         ],
         "reloadS": 6.7,
         "sustainedDpm": 4567.16,
-        "accuracy": 0.33,
-        "aimTimeS": 2
+        "accuracy": 0.337,
+        "aimTimeS": 1.92
       },
       "armorCeilingsMm": {
         "hullKe": 477,
@@ -1485,8 +1349,8 @@
         14
       ],
       "traverseDegS": [
-        46,
-        40
+        50.6,
+        42.4
       ],
       "primary": {
         "damage": 510,
@@ -1497,7 +1361,7 @@
         ],
         "reloadS": 7.2,
         "sustainedDpm": 4250,
-        "accuracy": 0.34,
+        "accuracy": 0.347,
         "aimTimeS": 2
       },
       "armorCeilingsMm": {
@@ -1519,8 +1383,8 @@
         14
       ],
       "traverseDegS": [
-        46,
-        40
+        50.6,
+        42.4
       ],
       "primary": {
         "damage": 510,
@@ -1531,7 +1395,7 @@
         ],
         "reloadS": 7,
         "sustainedDpm": 4371.43,
-        "accuracy": 0.34,
+        "accuracy": 0.347,
         "aimTimeS": 2
       },
       "armorCeilingsMm": {
@@ -1553,8 +1417,8 @@
         12
       ],
       "traverseDegS": [
-        42,
-        38
+        39.9,
+        39.5
       ],
       "primary": {
         "damage": 550,
@@ -1565,8 +1429,8 @@
         ],
         "reloadS": 6.1,
         "sustainedDpm": 5409.84,
-        "accuracy": 0.31,
-        "aimTimeS": 1.85
+        "accuracy": 0.316,
+        "aimTimeS": 1.78
       },
       "armorCeilingsMm": {
         "hullKe": 515,
@@ -1587,8 +1451,8 @@
         5
       ],
       "traverseDegS": [
-        42,
-        38
+        39.9,
+        39.5
       ],
       "primary": {
         "damage": 510,
@@ -1599,8 +1463,8 @@
         ],
         "reloadS": 6.8,
         "sustainedDpm": 4500,
-        "accuracy": 0.33,
-        "aimTimeS": 2
+        "accuracy": 0.337,
+        "aimTimeS": 1.92
       },
       "armorCeilingsMm": {
         "hullKe": 448,
@@ -1621,8 +1485,8 @@
         5
       ],
       "traverseDegS": [
-        40,
-        36
+        38,
+        37.4
       ],
       "primary": {
         "damage": 540,
@@ -1633,8 +1497,8 @@
         ],
         "reloadS": 6,
         "sustainedDpm": 5400,
-        "accuracy": 0.34,
-        "aimTimeS": 2.1
+        "accuracy": 0.347,
+        "aimTimeS": 2.02
       },
       "armorCeilingsMm": {
         "hullKe": 448,
@@ -1655,8 +1519,8 @@
         14
       ],
       "traverseDegS": [
-        44,
-        40
+        41.8,
+        41.6
       ],
       "primary": {
         "damage": 560,
@@ -1667,8 +1531,8 @@
         ],
         "reloadS": 6.1,
         "sustainedDpm": 5508.2,
-        "accuracy": 0.3,
-        "aimTimeS": 1.7
+        "accuracy": 0.306,
+        "aimTimeS": 1.63
       },
       "armorCeilingsMm": {
         "hullKe": 588,
@@ -1689,8 +1553,8 @@
         5
       ],
       "traverseDegS": [
-        40,
-        36
+        38,
+        37.4
       ],
       "primary": {
         "damage": 540,
@@ -1701,8 +1565,8 @@
         ],
         "reloadS": 6.1,
         "sustainedDpm": 5311.48,
-        "accuracy": 0.34,
-        "aimTimeS": 2.1
+        "accuracy": 0.347,
+        "aimTimeS": 2.02
       },
       "armorCeilingsMm": {
         "hullKe": 448,
@@ -1723,8 +1587,8 @@
         45
       ],
       "traverseDegS": [
-        50,
-        48
+        55,
+        50.9
       ],
       "primary": {
         "damage": 540,
@@ -1735,7 +1599,7 @@
         ],
         "reloadS": 5.2,
         "sustainedDpm": 6230.77,
-        "accuracy": 0.25,
+        "accuracy": 0.255,
         "aimTimeS": 1.35
       },
       "armorCeilingsMm": {
@@ -1757,8 +1621,8 @@
         12
       ],
       "traverseDegS": [
-        44,
-        40
+        41.8,
+        41.6
       ],
       "primary": {
         "damage": 410,
@@ -1769,8 +1633,8 @@
         ],
         "reloadS": 6.8,
         "sustainedDpm": 3617.65,
-        "accuracy": 0.3,
-        "aimTimeS": 1.8
+        "accuracy": 0.306,
+        "aimTimeS": 1.73
       },
       "armorCeilingsMm": {
         "hullKe": 70,
@@ -1791,8 +1655,8 @@
         32
       ],
       "traverseDegS": [
-        54,
-        72
+        57.2,
+        80.6
       ],
       "primary": {
         "damage": 120,
@@ -1804,7 +1668,7 @@
         "reloadS": 0.46,
         "sustainedDpm": 15652.17,
         "accuracy": 0.23,
-        "aimTimeS": 0.95
+        "aimTimeS": 0.89
       },
       "armorCeilingsMm": {
         "hullKe": 308,
@@ -1834,8 +1698,8 @@
         34
       ],
       "traverseDegS": [
-        48,
-        44
+        52.8,
+        46.6
       ],
       "primary": {
         "damage": 500,
@@ -1846,7 +1710,7 @@
         ],
         "reloadS": 18.5,
         "sustainedDpm": 3930.13,
-        "accuracy": 0.3,
+        "accuracy": 0.306,
         "aimTimeS": 1.8
       },
       "armorCeilingsMm": {
@@ -1868,8 +1732,8 @@
         22
       ],
       "traverseDegS": [
-        40,
-        60
+        42.4,
+        67.2
       ],
       "primary": {
         "damage": 68,
@@ -1881,7 +1745,7 @@
         "reloadS": 0.38,
         "sustainedDpm": 10736.84,
         "accuracy": 0.29,
-        "aimTimeS": 1.3
+        "aimTimeS": 1.22
       },
       "armorCeilingsMm": {
         "hullKe": 78,
@@ -1911,8 +1775,8 @@
         12
       ],
       "traverseDegS": [
-        36,
-        30
+        34.2,
+        31.2
       ],
       "primary": {
         "damage": 510,
@@ -1923,8 +1787,8 @@
         ],
         "reloadS": 7.4,
         "sustainedDpm": 4135.14,
-        "accuracy": 0.33,
-        "aimTimeS": 2
+        "accuracy": 0.337,
+        "aimTimeS": 1.92
       },
       "armorCeilingsMm": {
         "hullKe": 450,
@@ -1956,11 +1820,11 @@
       "bWins": 5,
       "draws": 2,
       "aScore": 0.5,
-      "averageDurationS": 43.28,
-      "averageAEndHp": 242.92,
-      "averageBEndHp": 242.92,
-      "averageADamage": 2545.83,
-      "averageBDamage": 2545.83
+      "averageDurationS": 32.48,
+      "averageAEndHp": 182.67,
+      "averageBEndHp": 182.67,
+      "averageADamage": 2555.83,
+      "averageBDamage": 2555.83
     },
     {
       "id": "moving-mirror-control",
@@ -1984,11 +1848,11 @@
       "bWins": 6,
       "draws": 0,
       "aScore": 0.5,
-      "averageDurationS": 39.63,
-      "averageAEndHp": 399.92,
-      "averageBEndHp": 399.92,
-      "averageADamage": 2374.75,
-      "averageBDamage": 2374.75
+      "averageDurationS": 37.83,
+      "averageAEndHp": 365,
+      "averageBEndHp": 365,
+      "averageADamage": 2400.17,
+      "averageBDamage": 2400.17
     },
     {
       "id": "tier9-rifled-peers",
@@ -2012,11 +1876,11 @@
       "bWins": 4,
       "draws": 0,
       "aScore": 0.667,
-      "averageDurationS": 30.76,
-      "averageAEndHp": 329.17,
-      "averageBEndHp": 339.83,
-      "averageADamage": 2570.5,
-      "averageBDamage": 2139.17
+      "averageDurationS": 29.3,
+      "averageAEndHp": 460.33,
+      "averageBEndHp": 461.67,
+      "averageADamage": 2427,
+      "averageBDamage": 2021.08
     },
     {
       "id": "nextgen-challengers",
@@ -2036,15 +1900,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 5,
-      "bWins": 7,
+      "aWins": 4,
+      "bWins": 8,
       "draws": 0,
-      "aScore": 0.417,
-      "averageDurationS": 25.23,
-      "averageAEndHp": 310.58,
-      "averageBEndHp": 274.33,
-      "averageADamage": 2584.5,
-      "averageBDamage": 2525.33
+      "aScore": 0.333,
+      "averageDurationS": 25.15,
+      "averageAEndHp": 247.75,
+      "averageBEndHp": 427.83,
+      "averageADamage": 2433.08,
+      "averageBDamage": 2628.75
     },
     {
       "id": "nextgen-abrams-peer",
@@ -2064,15 +1928,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 8,
-      "bWins": 4,
+      "aWins": 7,
+      "bWins": 5,
       "draws": 0,
-      "aScore": 0.667,
-      "averageDurationS": 44.53,
-      "averageAEndHp": 608.75,
-      "averageBEndHp": 179.42,
-      "averageADamage": 2734.83,
-      "averageBDamage": 2247.75
+      "aScore": 0.583,
+      "averageDurationS": 44.18,
+      "averageAEndHp": 390.08,
+      "averageBEndHp": 344.08,
+      "averageADamage": 2560.92,
+      "averageBDamage": 2417.17
     },
     {
       "id": "t90-export-step",
@@ -2092,15 +1956,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 4,
-      "bWins": 3,
-      "draws": 5,
-      "aScore": 0.542,
-      "averageDurationS": 27.11,
-      "averageAEndHp": 233.25,
-      "averageBEndHp": 80.33,
-      "averageADamage": 2668.17,
-      "averageBDamage": 2477.17
+      "aWins": 5,
+      "bWins": 1,
+      "draws": 6,
+      "aScore": 0.667,
+      "averageDurationS": 28.03,
+      "averageAEndHp": 267.42,
+      "averageBEndHp": 11.25,
+      "averageADamage": 2758.83,
+      "averageBDamage": 2393
     },
     {
       "id": "chieftain-tier8",
@@ -2124,11 +1988,11 @@
       "bWins": 3,
       "draws": 2,
       "aScore": 0.667,
-      "averageDurationS": 78.88,
-      "averageAEndHp": 551.42,
-      "averageBEndHp": 388.25,
-      "averageADamage": 1864.33,
-      "averageBDamage": 1604.67
+      "averageDurationS": 75.57,
+      "averageAEndHp": 646.42,
+      "averageBEndHp": 213.83,
+      "averageADamage": 2059.67,
+      "averageBDamage": 1501.5
     },
     {
       "id": "k2-tier9-peer",
@@ -2148,15 +2012,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 3,
-      "bWins": 9,
+      "aWins": 4,
+      "bWins": 8,
       "draws": 0,
-      "aScore": 0.25,
-      "averageDurationS": 29.81,
-      "averageAEndHp": 249.5,
-      "averageBEndHp": 472.67,
-      "averageADamage": 1873.42,
-      "averageBDamage": 2605.67
+      "aScore": 0.333,
+      "averageDurationS": 30.9,
+      "averageAEndHp": 199.17,
+      "averageBEndHp": 524.25,
+      "averageADamage": 1824.83,
+      "averageBDamage": 2650.92
     },
     {
       "id": "k2-tier9-mobile-peer",
@@ -2176,15 +2040,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
+      "aWins": 7,
+      "bWins": 5,
       "draws": 0,
-      "aScore": 0.5,
-      "averageDurationS": 37.95,
-      "averageAEndHp": 368.83,
-      "averageBEndHp": 268.67,
-      "averageADamage": 2181.33,
-      "averageBDamage": 2492.58
+      "aScore": 0.583,
+      "averageDurationS": 37.21,
+      "averageAEndHp": 414.92,
+      "averageBEndHp": 248.08,
+      "averageADamage": 2224.5,
+      "averageBDamage": 2406.33
     },
     {
       "id": "k2b-cross-tier",
@@ -2204,15 +2068,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
+      "aWins": 5,
       "bWins": 2,
-      "draws": 4,
-      "aScore": 0.667,
-      "averageDurationS": 19.97,
-      "averageAEndHp": 199.92,
+      "draws": 5,
+      "aScore": 0.625,
+      "averageDurationS": 20.36,
+      "averageAEndHp": 180.67,
       "averageBEndHp": 17.67,
-      "averageADamage": 2791.42,
-      "averageBDamage": 2529.33
+      "averageADamage": 2803.58,
+      "averageBDamage": 2567.83
     },
     {
       "id": "proryv-tier10-peer",
@@ -2236,11 +2100,11 @@
       "bWins": 7,
       "draws": 0,
       "aScore": 0.417,
-      "averageDurationS": 34.97,
-      "averageAEndHp": 389.75,
-      "averageBEndHp": 597,
-      "averageADamage": 2085.67,
-      "averageBDamage": 2665.08
+      "averageDurationS": 33.61,
+      "averageAEndHp": 434.25,
+      "averageBEndHp": 517.75,
+      "averageADamage": 2206.17,
+      "averageBDamage": 2625.67
     },
     {
       "id": "merkava-tier7-peer",
@@ -2260,15 +2124,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 7,
-      "bWins": 5,
+      "aWins": 6,
+      "bWins": 6,
       "draws": 0,
-      "aScore": 0.583,
-      "averageDurationS": 21.4,
-      "averageAEndHp": 205.83,
-      "averageBEndHp": 233.08,
-      "averageADamage": 1770.75,
-      "averageBDamage": 1451.5
+      "aScore": 0.5,
+      "averageDurationS": 21.06,
+      "averageAEndHp": 221.83,
+      "averageBEndHp": 257.58,
+      "averageADamage": 1737.42,
+      "averageBDamage": 1442.58
     },
     {
       "id": "puma-tier8-peer",
@@ -2292,11 +2156,11 @@
       "bWins": 3,
       "draws": 0,
       "aScore": 0.75,
-      "averageDurationS": 49.67,
-      "averageAEndHp": 240.33,
-      "averageBEndHp": 38.92,
-      "averageADamage": 1684.08,
-      "averageBDamage": 1764.25
+      "averageDurationS": 49.38,
+      "averageAEndHp": 251.08,
+      "averageBEndHp": 43.92,
+      "averageADamage": 1681,
+      "averageBDamage": 1755.17
     },
     {
       "id": "puma-s1-tier10-peer",
@@ -2313,18 +2177,182 @@
         307,
         401,
         503,
-        601
+        601,
+        1009,
+        2006,
+        3003,
+        4000,
+        4997,
+        5994,
+        6991,
+        7988,
+        8985,
+        9982,
+        10979,
+        11976,
+        12973,
+        13970,
+        14967,
+        15964,
+        16961,
+        17958,
+        18955,
+        19952,
+        20949,
+        21946,
+        22943,
+        23940,
+        24937,
+        25934,
+        26931,
+        27928,
+        28925,
+        29922,
+        30919,
+        31916,
+        32913,
+        33910,
+        34907,
+        35904
       ],
-      "duels": 12,
-      "aWins": 2,
-      "bWins": 8,
-      "draws": 2,
-      "aScore": 0.25,
-      "averageDurationS": 28.35,
-      "averageAEndHp": 197.67,
-      "averageBEndHp": 1184.83,
-      "averageADamage": 1771.5,
-      "averageBDamage": 2761.17
+      "duels": 84,
+      "aWins": 20,
+      "bWins": 64,
+      "draws": 0,
+      "aScore": 0.238,
+      "averageDurationS": 13.9,
+      "averageAEndHp": 127.48,
+      "averageBEndHp": 773.24,
+      "averageADamage": 2269.86,
+      "averageBDamage": 2777.76
+    },
+    {
+      "id": "puma-s1-tier10-close-peer",
+      "purpose": "Tier X modern IFV guided-weapon peers",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "spz_puma_s1",
+      "bId": "bmpt_t90",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601,
+        1009,
+        2006,
+        3003,
+        4000,
+        4997,
+        5994,
+        6991,
+        7988,
+        8985,
+        9982,
+        10979,
+        11976,
+        12973,
+        13970,
+        14967,
+        15964,
+        16961,
+        17958,
+        18955,
+        19952,
+        20949,
+        21946,
+        22943,
+        23940,
+        24937,
+        25934,
+        26931,
+        27928,
+        28925,
+        29922,
+        30919,
+        31916,
+        32913,
+        33910,
+        34907,
+        35904
+      ],
+      "duels": 84,
+      "aWins": 22,
+      "bWins": 62,
+      "draws": 0,
+      "aScore": 0.262,
+      "averageDurationS": 13.63,
+      "averageAEndHp": 150.14,
+      "averageBEndHp": 657.69,
+      "averageADamage": 2375.12,
+      "averageBDamage": 2773.93
+    },
+    {
+      "id": "puma-s1-tier10-long-peer",
+      "purpose": "Tier X modern IFV guided-weapon peers",
+      "band": [
+        0.2,
+        0.8
+      ],
+      "aId": "spz_puma_s1",
+      "bId": "bmpt_t90",
+      "seeds": [
+        101,
+        211,
+        307,
+        401,
+        503,
+        601,
+        1009,
+        2006,
+        3003,
+        4000,
+        4997,
+        5994,
+        6991,
+        7988,
+        8985,
+        9982,
+        10979,
+        11976,
+        12973,
+        13970,
+        14967,
+        15964,
+        16961,
+        17958,
+        18955,
+        19952,
+        20949,
+        21946,
+        22943,
+        23940,
+        24937,
+        25934,
+        26931,
+        27928,
+        28925,
+        29922,
+        30919,
+        31916,
+        32913,
+        33910,
+        34907,
+        35904
+      ],
+      "duels": 84,
+      "aWins": 24,
+      "bWins": 60,
+      "draws": 0,
+      "aScore": 0.286,
+      "averageDurationS": 14.3,
+      "averageAEndHp": 130.29,
+      "averageBEndHp": 650.29,
+      "averageADamage": 2385.74,
+      "averageBDamage": 2764.43
     },
     {
       "id": "leopard-heavy-peer",
@@ -2344,15 +2372,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
+      "aWins": 4,
+      "bWins": 8,
       "draws": 0,
-      "aScore": 0.5,
-      "averageDurationS": 41.83,
-      "averageAEndHp": 273.58,
-      "averageBEndHp": 491.17,
-      "averageADamage": 2446,
-      "averageBDamage": 2592.33
+      "aScore": 0.333,
+      "averageDurationS": 43.1,
+      "averageAEndHp": 93.92,
+      "averageBEndHp": 366.5,
+      "averageADamage": 2563.42,
+      "averageBDamage": 2809.92
     },
     {
       "id": "leopard-tier9-peer",
@@ -2377,10 +2405,10 @@
       "draws": 4,
       "aScore": 0.417,
       "averageDurationS": 74.27,
-      "averageAEndHp": 505.42,
+      "averageAEndHp": 457.58,
       "averageBEndHp": 1071.25,
       "averageADamage": 1292.17,
-      "averageBDamage": 2047
+      "averageBDamage": 2094.83
     },
     {
       "id": "ifv-nextgen-peer",
@@ -2400,15 +2428,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
+      "aWins": 3,
+      "bWins": 9,
       "draws": 0,
-      "aScore": 0.5,
-      "averageDurationS": 22.92,
-      "averageAEndHp": 580.67,
-      "averageBEndHp": 508.33,
-      "averageADamage": 2432.5,
-      "averageBDamage": 2143.5
+      "aScore": 0.25,
+      "averageDurationS": 22.76,
+      "averageAEndHp": 67.25,
+      "averageBEndHp": 552.83,
+      "averageADamage": 2286.42,
+      "averageBDamage": 2683.83
     },
     {
       "id": "m60-guided-peer",
@@ -2428,15 +2456,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
+      "aWins": 9,
+      "bWins": 3,
       "draws": 0,
-      "aScore": 0.5,
-      "averageDurationS": 20.54,
-      "averageAEndHp": 256.5,
-      "averageBEndHp": 361,
-      "averageADamage": 1976.83,
-      "averageBDamage": 2076
+      "aScore": 0.75,
+      "averageDurationS": 17.53,
+      "averageAEndHp": 531.67,
+      "averageBEndHp": 165.83,
+      "averageADamage": 2459.92,
+      "averageBDamage": 1785.92
     }
   ]
 }

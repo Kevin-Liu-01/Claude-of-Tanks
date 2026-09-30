@@ -135,7 +135,7 @@ export function writeMarsSettings(
   const marsGravity = isMarsGravityId(gravityInput) ? gravityInput : settings === null ? null : current?.marsGravity ?? null;
   const marsCaches = isMarsCachesId(cachesInput) ? cachesInput : settings === null ? null : current?.marsCaches ?? null;
   writeTeamArrangement('mars', {
-    allies: current?.allies ?? null, enemies: current?.enemies ?? null, enemyNation: current?.enemyNation ?? null,
+    ...current,
     marsGravity, marsCaches,
   }, storage);
   return readMarsSettings(storage);

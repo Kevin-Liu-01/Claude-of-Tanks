@@ -28,11 +28,12 @@ const oldMap = old('src/world/maps/badlands.ts'), oldTerrain = old('src/world/te
 assert.equal(sha(oldMap), 'eae9a03e75913e7c1b6ba87fae136115e5a568675d4998923da47492cd7ddada');
 assert.equal(sha(oldTerrain), 'cecde431b664736c5fd68f57f593ce9499e9bf792816a66376a454a031376e6d');
 const registry = read('src/world/maps/index.ts');
+const legacyRegistry = registry.replace("import moon from './moon.ts';\n", '').replace("import cliffbridge from './cliffbridge.ts';\n", '').replace('  mars, moon, cliffbridge,', '  mars,');
 // 2026-09-19: Mars (Olympus Basin) registers after this baseline; authenticate its exact registration lines,
 // then project them away for the byte receipt (a new map never joins the historical relief loop below).
 const marsRegistration = ["// Mars mode (owner 2026-09-18): the galaxy-sky basin with its research station.\nimport mars from './mars.ts';\n", '  mars,\n'];
-for (const line of marsRegistration) assert.equal(registry.split(line).length, 2, 'index.ts: one exact Mars registration line');
-assert.equal(marsRegistration.reduce((source, line) => source.replace(line, ''), registry), old('src/world/maps/index.ts'));
+for (const line of marsRegistration) assert.equal(legacyRegistry.split(line).length, 2, 'index.ts: one exact Mars registration line');
+assert.equal(marsRegistration.reduce((source, line) => source.replace(line, ''), legacyRegistry), old('src/world/maps/index.ts'));
 const mapFiles = [...registry.matchAll(/import \w+ from '\.\/(\w+\.ts)';/g)].map(match => match[1]);
 assert.equal(mapFiles.length, MAP_IDS.length);
 // 2026-09-11 restored the 1049e4e Alpine horizon bands (treeline 0.64 -> 0.80,
@@ -234,7 +235,7 @@ function historicalDrainApronSource(source, file) {
 // Field, exact same maps — not good, need redesign"): winter.ts, autumn.ts and steppe.ts are new landforms by owner
 // decision, like the Mars registration, so their sources leave the historical byte projection instead of being projected
 // back; their own receipts (mapQuality, terrainStreaming, shoreDirtMask, assaultTrenchTerrain, roadContinuity) pin them.
-for (const file of mapFiles) if (file !== 'badlands.ts' && file !== 'mars.ts' && file !== 'winter.ts' && file !== 'autumn.ts' && file !== 'steppe.ts') {
+for (const file of mapFiles) if (file !== 'moon.ts' && file !== 'cliffbridge.ts' && file !== 'badlands.ts' && file !== 'mars.ts' && file !== 'winter.ts' && file !== 'autumn.ts' && file !== 'steppe.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
   assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(
     historicalRound75PropsSource(historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(historicalSlopeHoldSource(historicalRound47PresentationSource(historicalRound66OceanSource(historicalRound71CloudsSource(historicalRound70SnowRegradeSource(historicalRound72ReliefSource(historicalRound76DeckRegradeSource(historicalDrainApronSource(beforeRoadSettlementSource(read('src/world/maps/' + file), file), file), file), file), file), file), file), file), file), file), file), file), file), file, assert), file), file), old('src/world/maps/' + file), id),
@@ -402,7 +403,7 @@ assert.deepEqual(bufferReceipt(gatedA.supports), bufferReceipt(gatedB.supports))
 for (let z = -400; z <= 400; z += 80) for (let x = -400; x <= 400; x += 80) {
   assert.equal(gatedA.field.getHeightAt(x, z), gatedB.field.getHeightAt(x, z));
 }
-for (const id of MAP_IDS) if (id !== 'badlands') {
+for (const id of MAP_IDS) if (!['badlands','moon','cliffbridge'].includes(id)) {
   const cfg = originalExitConfig(getMapConfig(id)), a = current.constructObserved(1337, { ...cfg, fieldTrenches: false }), b = previous.constructObserved(1337, cfg);
   assert.deepEqual(bufferReceipt(a.supports), bufferReceipt(b.supports), `${id}: unchanged support arrays`);
   for (let z = -480; z <= 480; z += 80) for (let x = -480; x <= 480; x += 80) {

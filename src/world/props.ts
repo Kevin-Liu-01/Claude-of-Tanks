@@ -287,6 +287,7 @@ interface PropsSettings {
   reservoirWaterworks?: ReservoirWaterworksConfig;
   foundryServiceCourt?: FoundryServiceCourtConfig;
   plan: string[];
+  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number }[];
   tones: Record<string, ToneFunction | null | undefined>;
   rockTone: ToneFunction | null;
   wallStoneChance: number;
@@ -3429,14 +3430,16 @@ ${snowCap ? `
   const structureContext: StructureBuildContext = {
     mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed, cladding: P.industrialCladding ?? 'brick',
   };
-  function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite): boolean {
+  function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string): boolean {
     const tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
     };
-    const structureId = P.plan[bi] || 'cottage';
+    const structureId = explicitStructure ?? P.plan[bi] ?? 'cottage';
     attachStructureBuildContext(tmp, structureContext);
-    const info = builders[bi](rng, tmp, pickWall(rng));
+    const builder = explicitStructure ? BUILDER_BY_NAME[explicitStructure] : builders[bi];
+    if (!builder) throw new Error(`Unknown planned structure ${structureId}`);
+    const info = builder(rng, tmp, pickWall(rng));
     if (tmp.steel?.length) ensureSteelAtlas('plan:' + structureId);
     addCatalogExterior(tmp, { id: structureId, info, variant: bi,
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
@@ -3516,7 +3519,7 @@ ${snowCap ? `
         records: [...obstacles.slice(obstacleStart), ...colliders.slice(colliderStart)],
         feature: buildingFeatures[buildingFeatures.length - 1], placement: placedB[placedB.length - 1] });
     }
-    bi++;
+    if (!explicitStructure) bi++;
     return true;
   }
   function placeRoadBuilding(cand: BuildingCandidate, side: number): void {
@@ -3544,6 +3547,12 @@ ${snowCap ? `
         yield { fine: true };
       }
     }
+  }
+  for (const site of P.plannedSites ?? []) {
+    if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
+    if (!isRoadBuildingSiteClear(site.x, site.z)) continue;
+    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure);
+    yield { fine: true };
   }
   yield* placeRoadBuildings();
 

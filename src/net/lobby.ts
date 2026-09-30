@@ -215,6 +215,8 @@ function readArrangementField(value: RuntimeValue): TeamArrangement | null {
   };
   return {
     allies: pick('allies') as number | null, enemies: pick('enemies') as number | null,
+    scoreTarget: pick('scoreTarget') as number | null, respawnS: pick('respawnS') as number | null,
+    waveStep: pick('waveStep') as number | null, holdS: pick('holdS') as number | null,
     waveSize: pick('waveSize') as number | null, enemyNation: pick('enemyNation') as string | null,
     // Mars settings ride the same wire; normalizeTeamArrangement keeps them for the mars mode only
     marsGravity: pick('marsGravity') as TeamArrangement['marsGravity'], marsCaches: pick('marsCaches') as TeamArrangement['marsCaches'],
@@ -246,6 +248,7 @@ interface CreateLobbyOptions {
   maxSpectators?: number;
   mode?: RuntimeValue;
   gameMode?: RuntimeValue;
+  arrangement?: TeamArrangement | null;
   mapId?: RuntimeValue;
   allowTeamSwitch?: boolean;
   hostSpecId?: RuntimeValue;
@@ -442,6 +445,7 @@ export function createLobby({
   maxSpectators = MAX_SPECTATORS,
   mode = 'private',
   gameMode = 'standard',
+  arrangement = null,
   mapId = 'random',
   allowTeamSwitch = true,
   hostSpecId = null,
@@ -474,7 +478,7 @@ export function createLobby({
     locked: false,
     mapId: String(mapId || 'random'),
     teamSize,
-    arrangement: null,
+    arrangement: normalizeTeamArrangement(normalizeGameMode(gameMode), arrangement),
     campaignOperationId: null,
     revision: 0,
     updatedAtTick: 0,

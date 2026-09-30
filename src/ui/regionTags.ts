@@ -19,7 +19,7 @@ const MAP_REGIONS: Readonly<Record<MapId, readonly RegionTagId[]>> = {
   titan_gorge: ['desert'], skybridge: ['urban'], polders: ['woodland', 'maritime'],
   copper_mesa: ['desert'], airfield: ['woodland'], oasis: ['desert'], whiteout: ['winter'],
   orchard: ['woodland'], longleaf: ['woodland'], mangrove: ['tropical', 'maritime'],
-  saltwind: ['maritime', 'desert'], reservoir: ['woodland'], mars: ['desert'],
+  saltwind: ['maritime', 'desert'], reservoir: ['woodland'], mars: ['desert'], moon: ['night'], cliffbridge: ['woodland'],
 };
 
 export function regionTagIcon(tag: CamoTagId): UiIconId | undefined {

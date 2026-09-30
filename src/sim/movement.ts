@@ -1,3 +1,4 @@
+import { movementDispersionFactor } from './movementDispersion.ts';
 import { minimumMechanicalGunPitch } from './gunPitchLimits.ts';
 import type { GunPitchByYawCurve } from './gunPitchLimits.ts';
 import { usesLauncherMuzzles, type LauncherMuzzle } from './launcherPolicy.ts';
@@ -1570,11 +1571,8 @@ function updateTrackScrollAndBloom(
   state.trackScroll.r += (state.speed - state.yawRate * OUTER_TRACK_ARM_M) * dt;
 
   const bloom = spec.gun.bloom;
-  let target = Math.sqrt(1 +
-    (bloom.move * Math.abs(state.speed) * 3.6) ** 2 +
-    (bloom.hullRot * Math.abs(state.yawRate) * RAD2DEG) ** 2 +
-    (bloom.turret * Math.abs(state.turretYawRate) * RAD2DEG) ** 2);
-  if (debuff.bloomMult !== 1) target = 1 + (target - 1) * debuff.bloomMult;
+  let target = movementDispersionFactor(bloom.move, bloom.hullRot, bloom.turret,
+    state.speed * 3.6, state.yawRate * RAD2DEG, state.turretYawRate * RAD2DEG, debuff.bloomMult);
   if (debuff.gunYellow) target = Math.max(target * 2, GUN_YELLOW_BLOOM_FLOOR);
   const tau = target > state.bloomF
     ? BLOOM_GROW_TAU

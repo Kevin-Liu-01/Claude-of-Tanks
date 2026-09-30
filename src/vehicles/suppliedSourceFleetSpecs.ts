@@ -1,3 +1,4 @@
+import { isFleetBalanceFinalized } from './fleetBalanceState.ts';
 // Owner-supplied September 2026 comparison builds. The source files are
 // quarantined authoring inputs; playable geometry remains first-party and
 // procedural in independent profile modules.
@@ -278,6 +279,8 @@ for (const id of SUPPLIED_SOURCE_IDS) applySourceArmament(registries.tankSpecs[i
 /** Copy only current combat tuning from the chosen balance peer. Geometry,
  * dimensions, identity, armor frame and presentation records remain native. */
 export function synchronizeSuppliedSourceCombatMetadata(): void {
+  // Combat donor synchronization is initialization-only once final role tuning is published.
+  if (isFleetBalanceFinalized(registries.tankSpecs)) return;
   const fields = [
     'hp', 'enginePowerHp', 'weightTons', 'topSpeedKmh', 'reverseSpeedKmh',
     'hullTraverseDegS', 'terrainResistance', 'pivotStyle', 'turretTraverseDegS',

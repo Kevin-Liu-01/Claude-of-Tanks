@@ -117,22 +117,14 @@ function groupFleetBalanceRows(
   return groups;
 }
 
-function independentBalanceValues(rows: readonly BalanceRow[]): BalanceValues[] {
+/** Alias independence belongs to each measurement. Changing aim time must
+ * not give the same donor penetration an extra vote in the median. */
+function independentMetricValues(rows: readonly BalanceRow[], metric: keyof BalanceValues): number[] {
   const byId = new Map(rows.map(row => [row.id, row]));
   return rows.filter(({ id, spec }) => {
     const peer = spec.balancePeerOf ? byId.get(spec.balancePeerOf) : null;
-    // Only a present, non-aliased peer in this same era/tier/role can replace
-    // a vote. Missing peers, cycles and any metric drift stay independent.
-    if (!peer || peer.id === id || peer.spec.balancePeerOf) return true;
-    const values = balanceValues(spec), peerValues = balanceValues(peer.spec);
-    return BALANCE_METRICS.some(metric => values[metric] !== peerValues[metric]);
-  }).map(({ spec }) => balanceValues(spec));
-}
-
-function groupBalanceMedians(values: readonly BalanceValues[]): BalanceValues {
-  return Object.fromEntries(BALANCE_METRICS.map((metric) => [
-    metric, median(values.map((entry) => entry[metric])),
-  ])) as BalanceValues;
+    return !peer || peer.id === id || peer.spec.balancePeerOf || balanceValues(spec)[metric] !== balanceValues(peer.spec)[metric];
+  }).map(({ spec }) => balanceValues(spec)[metric]);
 }
 
 function outlierDirection(ratio: number): FleetBalanceOutlier['direction'] | null {
@@ -146,12 +138,12 @@ function appendGroupOutliers(
   group: string,
   rows: readonly BalanceRow[],
 ): void {
-  const peers = independentBalanceValues(rows);
-  if (peers.length < 4) return;
-  const medians = groupBalanceMedians(peers);
+  const samples = Object.fromEntries(BALANCE_METRICS.map(metric => [metric, independentMetricValues(rows, metric)])) as Record<keyof BalanceValues, number[]>;
+  const medians = Object.fromEntries(BALANCE_METRICS.map(metric => [metric, median(samples[metric])])) as BalanceValues;
   for (const { id, spec } of rows) {
     const values = balanceValues(spec);
     for (const metric of BALANCE_METRICS) {
+      if (samples[metric].length < 4) continue;
       const ratio = values[metric] / Math.max(1, medians[metric]);
       const direction = outlierDirection(ratio);
       if (!direction) continue;

@@ -4,7 +4,7 @@ import { revealMenuSelectOption } from './menuSelectScroll.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import { CAMPAIGN_OPERATIONS, campaignLadder, campaignOperationById, campaignSummary } from '../game/campaignOperations.ts';
 import {
-  ENEMY_NATION_OPTIONS, SIDES_MODES, readBrainSettings, readTeamArrangement, writeBrainSettings, writeSides, writeTeamArrangement,
+  ENEMY_NATION_OPTIONS, readBrainSettings, readTeamArrangement, writeBrainSettings, writeTeamArrangement,
 } from '../game/teamArrangement.ts';
 import {
   BATTLE_FIELD_LIMIT, SIDES_PRESETS, TEAM_ARRANGEMENT_LIMITS, acceptsTeamArrangement, isWaveMode, normalizeTeamArrangement,
@@ -1152,6 +1152,7 @@ export function createPlayMenu({
     };
     const waveSize = mode === 'endless_horde' ? Number(arrangeSelect('waveSize').value) : NaN;
     return normalizeTeamArrangement(mode, {
+      ...currentArrangement(mode),
       allies: number('allies'), enemies: number('enemies'),
       waveSize: Number.isFinite(waveSize) ? waveSize : null,
       enemyNation: arrangeSelect('enemyNation').value || null,
@@ -1163,12 +1164,6 @@ export function createPlayMenu({
     const mode = selectedGameMode;
     if (!acceptsTeamArrangement(mode)) return;
     writeTeamArrangement(mode, arrangement);
-    if (!isWaveMode(mode)) {
-      // the symmetric modes share one sides setting (game/teamArrangement.ts writeSides), each keeping its nation
-      writeSides(arrangement && (arrangement.allies != null || arrangement.enemies != null)
-        ? rulesetSides({ allies: arrangement.allies ?? null, enemies: arrangement.enemies ?? null }) : null);
-      for (const other of SIDES_MODES) if (other !== mode) refreshRuleLines(other);
-    }
     if (state && role === 'host' && state.phase === 'waiting') command({ type: 'set_arrangement', arrangement });
     renderArrangement(mode, !!state);
   }
@@ -1183,7 +1178,7 @@ export function createPlayMenu({
     if (id !== '7v7' && id !== '14v14') return;
     sidesCustomOpen = false;
     const current = currentArrangement(selectedGameMode);
-    applyArrangement(normalizeTeamArrangement(selectedGameMode, { ...SIDES_PRESETS[id], enemyNation: current?.enemyNation ?? null }));
+    applyArrangement(normalizeTeamArrangement(selectedGameMode, { ...current, ...SIDES_PRESETS[id], enemyNation: current?.enemyNation ?? null }));
   });
 
   // ---- opponent brain (owner 2026-09-25): Classic or Jev (System One) for the solo bots ---------------
@@ -1744,7 +1739,8 @@ export function createPlayMenu({
 
   async function connectRoom(kind: 'create' | 'join', generation: number): Promise<boolean> {
     if (connecting || session || privateRoomConnection.connecting || privateRoomConnection.current) return false;
-    const selection = { ...getSelection(), gameMode: selectedGameMode };
+    const selection = { ...getSelection(), gameMode: selectedGameMode,
+      arrangement: kind === 'create' ? currentArrangement(selectedGameMode) : null };
     const name = normalizePlayerName(nameInput.value) || automaticPlayerName(ownPlayerId);
     if (!name) throw new Error('Enter a player name');
     nameInput.value = name;

@@ -15,12 +15,12 @@ export const MAP_IDS = Object.freeze([
   'polders', 'copper_mesa', 'airfield', 'oasis', 'whiteout',
   'orchard', 'longleaf', 'mangrove', 'saltwind', 'reservoir',
   // Mars mode (owner 2026-09-18): the galaxy-sky basin plays through its own mode, not the random rotation
-  'mars',
+  'mars', 'moon', 'cliffbridge',
 ] as const);
 
 export type MapId = (typeof MAP_IDS)[number];
 
-export const RANDOM_BATTLE_MAP_IDS = Object.freeze(MAP_IDS.filter((id) => id !== 'mars'));
+export const RANDOM_BATTLE_MAP_IDS = Object.freeze(MAP_IDS.filter((id) => id !== 'mars' && id !== 'moon'));
 
 const MAP_NAMES = Object.freeze({
   verdant: 'Verdant Fields',
@@ -53,7 +53,7 @@ const MAP_NAMES = Object.freeze({
   mangrove: 'Mangrove Reach',
   saltwind: 'Saltwind Narrows',
   reservoir: 'Highland Reservoir',
-  mars: 'Olympus Basin',
+  mars: 'Olympus Basin', moon: 'Earthrise Basin', cliffbridge: 'Aegis Crossing',
 } satisfies Record<MapId, string>);
 
 export function isMapId(mapId: string): mapId is MapId {

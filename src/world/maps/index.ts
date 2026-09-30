@@ -53,6 +53,8 @@ import saltwind from './saltwind.ts';
 import reservoir from './reservoir.ts';
 // Mars mode (owner 2026-09-18): the galaxy-sky basin with its research station.
 import mars from './mars.ts';
+import moon from './moon.ts';
+import cliffbridge from './cliffbridge.ts';
 
 const CONFIGS = {
   verdant, desert, winter, urban, coastal, autumn, steppe, railyard,
@@ -60,7 +62,7 @@ const CONFIGS = {
   ruinspires, blackglass, titan_gorge: titanGorge, skybridge,
   polders, copper_mesa: copperMesa, airfield, oasis, whiteout,
   orchard, longleaf, mangrove, saltwind, reservoir,
-  mars,
+  mars, moon, cliffbridge,
 } satisfies Record<MapId, object>;
 
 export type BattlefieldMapConfig = (typeof CONFIGS)[MapId];

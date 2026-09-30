@@ -9,7 +9,7 @@ import { sampleObbGround } from '../propPlacement.ts';
 const config = getMapConfig('mars'), hf = createHeightField(1337, config);
 assert.equal(OLYMPUS_SETTLEMENT.length, 24, 'four full authored districts');
 assert.equal(new Set(OLYMPUS_SETTLEMENT.map(s => s.id)).size, 24);
-for (const id of MAP_IDS.filter(id => id !== 'mars')) assert.equal(getMapConfig(id).props.orbitalSettlement, undefined);
+for (const id of MAP_IDS.filter(id => id !== 'mars' && id !== 'moon')) assert.equal(getMapConfig(id).props.orbitalSettlement, undefined);
 for (const site of OLYMPUS_SETTLEMENT) {
   const type = DESTRUCTIBLE_BUILDING_TYPES[site.structure];
   assert(type && type.family === 'orbital', `${site.id}: station uses aerospace structures`);

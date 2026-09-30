@@ -1,3 +1,4 @@
+import { bridgeBallFloor } from '../sim/bridgeBallSupport.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
 /**
  * state.ts — legacy solo battle setup and fixed-step combat integration
@@ -1340,6 +1341,7 @@ export function setupBattle(
     seed: COMBAT_SEED + game.battleCount,
     placement,
     terrainHeight: (x, z) => world.heightField.getHeightAt(x, z),
+    ballFloorHeight: (x, z, previousBottomY) => bridgeBallFloor(world.heightField, x, z, previousBottomY),
     emit: (type, payload) => game.modeEvents.push({ type, payload }),
     setActive(modeEntity, active) {
       modeEntity.modeActive = active;

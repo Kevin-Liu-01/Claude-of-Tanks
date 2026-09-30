@@ -75,6 +75,8 @@ export interface SkyPreset {
   nebulaHex: number | null;
   /** Diameter in degrees of the disc at the night key-light direction (the moon at 0.8; a planet at 3). */
   planetDeg: number;
+  /** 1 renders Earth with oceans, continents and cloud systems (lunar map). */
+  earth: number;
   /** Tint of that disc. */
   planetHex: number;
   /**
@@ -486,6 +488,7 @@ const DEFAULT_PRESET: Readonly<SkyPreset> = Object.freeze({
   galaxy: 1,
   nebulaHex: null,
   planetDeg: 0.8,
+  earth: 0,
   planetHex: 0xedf2ff,
   atmosphere: null,
   cloudLayer: null,
@@ -524,7 +527,7 @@ float cotValueNoise( vec3 p ) {
 	float h = fract( sin( n + 170.0 ) * 43758.5453 ), k = fract( sin( n + 171.0 ) * 43758.5453 );
 	return mix( mix( mix( a, b, f.x ), mix( c, d, f.x ), f.y ), mix( mix( e, g, f.x ), mix( h, k, f.x ), f.y ), f.z );
 }
-vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planetR, vec3 planetTint ) {
+vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planetR, vec3 planetTint, float earth ) {
 	float horizonFade = smoothstep( 0.012, 0.15, dn.y );
 	// galactic band: a great circle tilted off the zenith, denser and faintly luminous along it; a galaxy
 	// preset widens it and paints nebula clouds along it with three octaves of value noise
@@ -571,10 +574,35 @@ vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planet
 	float terminator = smoothstep( -0.06, 0.22, dot( mn, phaseL ) );
 	float maria = 0.74 + 0.26 * cotHash3( floor( mo * 3.0 + 7.0 ) ).x;
 	vec3 moonCol = planetTint * ( 0.10 + 1.30 * lit ) * maria * terminator;
+	if (earth > 0.5 && md > 0.0 && dot(mo, mo) < 1.02) {
+		// Atlantic-facing globe. Smooth coast contours live on the sphere, never
+		// a low-resolution screen-space layer that changes when firing.
+		vec2 uv = vec2(atan(mn.x, max(mn.z, .0001)), asin(clamp(mn.y, -1.0, 1.0)));
+		float coast = (cotValueNoise(mn * 18.0) - .5) * .11;
+		float africa = length((uv - vec2(.25, -.10)) / vec2(.36, .58));
+		float europe = length((uv - vec2(.32, .59)) / vec2(.39, .24));
+		float asia = length((uv - vec2(.94, .63)) / vec2(.70, .36));
+		float southAmerica = length((uv - vec2(-.63, -.28)) / vec2(.23, .62));
+		float northAmerica = length((uv - vec2(-.94, .57)) / vec2(.55, .37));
+		float land = 1.0 - smoothstep(.96 + coast, 1.04 + coast,
+			min(min(africa, europe), min(asia, min(southAmerica, northAmerica))));
+		vec3 soil = mix(vec3(.14,.29,.13), vec3(.57,.43,.23),
+			smoothstep(.25,.57,cotValueNoise(mn * 5.0 + 3.0)));
+		vec3 surface = mix(vec3(.015,.10,.31), soil, land);
+		float polar = smoothstep(1.05,1.30,abs(uv.y));
+		surface = mix(surface, vec3(.84,.91,.96), polar);
+		vec3 weatherP = mn * 10.0 + vec3(sin(uv.y * 7.0), 0.0, cos(uv.x * 6.0));
+		float weather = cotValueNoise(weatherP)*.65 + cotValueNoise(weatherP*2.7)*.35;
+		float clouds = smoothstep(.51,.69,weather);
+		surface = mix(surface, vec3(.91,.95,1.0), clouds*.88);
+		float rim = pow(1.0-mz, 4.0);
+		moonCol = surface * (.08 + .95 * lit) * terminator + vec3(.05,.25,.57) * rim * .55;
+		disc = 1.0 - smoothstep(1.0 - fwidth(length(mo))*1.5, 1.0, length(mo));
+	}
 	// the compact glow scales with the disc (a 3 deg planet keeps a ~4 deg halo, never a quarter-sky wash)
 	float glowPow = max( 900.0 * 0.0070 / moonR, 160.0 );
-	float glow = pow( max( md, 0.0 ), glowPow ) * 0.24 + pow( max( md, 0.0 ), 48.0 ) * 0.030;
-	return ( stars * 0.90 + band * vec3( 0.16, 0.19, 0.28 ) * 0.18 + nebula * nebulaW * 0.55 ) * horizonFade
+	float glow = (1.0 - earth) * (pow( max( md, 0.0 ), glowPow ) * 0.24 + pow( max( md, 0.0 ), 48.0 ) * 0.030);
+	return (1.0 - earth * disc) * ( stars * 0.90 + band * vec3( 0.16, 0.19, 0.28 ) * 0.18 + nebula * nebulaW * 0.55 ) * horizonFade
 		+ moonCol * disc * 1.7 + planetTint * glow * horizonFade;
 }`;
 
@@ -616,6 +644,7 @@ uniform float uGalaxy;
 uniform vec3 uNebula;
 uniform float uPlanetR;
 uniform vec3 uPlanetTint;
+uniform float uEarth;
 ${ATMOSPHERE_SKY_GLSL}
 ${NIGHT_SKY_GLSL}
 varying vec3 vWorldPosition;
@@ -636,7 +665,7 @@ void main() {
 	skyCol += vec3( 1.30, 1.02, 0.68 ) * sunGlow * 0.50;
 	skyCol += ( fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5 ) * ${SKY_DITHER.toFixed(4)};
 	vec3 nightCol = vec3( 0.0 );
-	if ( uNight > 0.001 ) nightCol = cotNightSky( direction, uSunDirection, uGalaxy, uNebula, uPlanetR, uPlanetTint ) * uNight;
+	if ( uNight > 0.001 ) nightCol = cotNightSky( direction, uSunDirection, uGalaxy, uNebula, uPlanetR, uPlanetTint, uEarth ) * uNight;
 	gl_FragColor = vec4( max( skyCol, vec3( 0.0 ) ) * uSkyIntensity + nightCol, 1.0 );
 }`;
 
@@ -709,6 +738,8 @@ function configureSkyUniforms(
   u.uGalaxy.value = preset.galaxy;
   u.uNebula ??= { value: new THREE.Color(0, 0, 0) };
   if (preset.nebulaHex == null) u.uNebula.value.setRGB(0, 0, 0); else u.uNebula.value.setHex(preset.nebulaHex);
+  u.uEarth ??= { value: 0 };
+  u.uEarth.value = preset.earth;
   u.uPlanetR ??= { value: 0.007 };
   u.uPlanetR.value = preset.planetDeg * Math.PI / 360;
   u.uPlanetTint ??= { value: new THREE.Color(0xedf2ff) };
@@ -735,6 +766,7 @@ function configureSkyUniforms(
     shader.uniforms.uNight = u.uNight;
     shader.uniforms.uGalaxy = u.uGalaxy;
     shader.uniforms.uNebula = u.uNebula;
+    shader.uniforms.uEarth = u.uEarth;
     shader.uniforms.uPlanetR = u.uPlanetR;
     shader.uniforms.uPlanetTint = u.uPlanetTint;
     const patched = shader.fragmentShader.replace(
@@ -780,13 +812,14 @@ function configureSkyUniforms(
 	// break up gradient banding on the low-frequency sky ramps
 	skyCol += ( fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5 ) * ${SKY_DITHER.toFixed(4)};
 	vec3 nightCol = vec3( 0.0 );
-	if ( uNight > 0.001 ) nightCol = cotNightSky( normalize( direction ), vSunDirection, uGalaxy, uNebula, uPlanetR, uPlanetTint ) * uNight;
+	if ( uNight > 0.001 ) nightCol = cotNightSky( normalize( direction ), vSunDirection, uGalaxy, uNebula, uPlanetR, uPlanetTint, uEarth ) * uNight;
 	gl_FragColor = vec4( max( skyCol, vec3( 0.0 ) ) * uSkyIntensity + nightCol, 1.0 );`,
     );
     if (patched === shader.fragmentShader) {
       throw new Error('sky.ts: radiance-scale injection anchor not found in Sky shader');
     }
-    shader.fragmentShader = `uniform float uSkyIntensity;\nuniform float uNight;\nuniform float uGalaxy;\nuniform vec3 uNebula;\nuniform float uPlanetR;\nuniform vec3 uPlanetTint;\n${NIGHT_SKY_GLSL}\n${patched}`;
+    shader.fragmentShader = `uniform float uSkyIntensity;\nuniform float uNight;\nuniform float uGalaxy;\nuniform vec3 uNebula;\nuniform float uPlanetR;\nuniform vec3 uPlanetTint;
+uniform float uEarth;\n${NIGHT_SKY_GLSL}\n${patched}`;
   };
   sky.material.needsUpdate = true;
 }
@@ -1118,7 +1151,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       uSunDiscRadiance: { value: legacySunDiscRadiance(sunDir.y) },
       // shared by reference with the Preetham dome: configureSkyUniforms refreshes both at once
       uSkyIntensity: skyUniforms.uSkyIntensity, uNight: skyUniforms.uNight, uGalaxy: skyUniforms.uGalaxy,
-      uNebula: skyUniforms.uNebula, uPlanetR: skyUniforms.uPlanetR, uPlanetTint: skyUniforms.uPlanetTint,
+      uNebula: skyUniforms.uNebula, uEarth: skyUniforms.uEarth, uPlanetR: skyUniforms.uPlanetR, uPlanetTint: skyUniforms.uPlanetTint,
     },
     side: THREE.BackSide,
     depthWrite: false,

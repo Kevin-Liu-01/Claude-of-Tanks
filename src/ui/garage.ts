@@ -1,3 +1,5 @@
+import { movementDispersionFactor } from '../sim/movementDispersion.ts';
+import { createBattleArrangementPanel } from './battleArrangementPanel.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 // src/ui/garage.ts — full-screen garage/tank-select overlay: dark gradient
 // frame with a transparent center band (the 3D pedestal shows through),
@@ -56,9 +58,9 @@ import { t, formatNumber, formatDate, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
 import {
-  isWaveMode, BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
+  isWaveMode, matchRulesetFor, rulesetSides, BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
 } from '../sim/matchRuleset.ts';
-import { readMarsSettings, readSides, writeMarsSettings, writeSides } from '../game/teamArrangement.ts';
+import { readMarsSettings, readTeamArrangement, writeMarsSettings, writeTeamArrangement } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
 import { campaignSummary } from '../game/campaignOperations.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
@@ -73,7 +75,7 @@ import type { CustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import type { ImagePriority } from './imagePreload.ts';
 
 type BattleMode = PlayMode;
-type StatRangeKey = 'hp' | 'speed' | 'hpt' | 'dmg' | 'reload' | 'aim' | 'view' | 'camo';
+type StatRangeKey = 'hp' | 'speed' | 'hpt' | 'dmg' | 'reload' | 'aim' | 'view' | 'camo' | 'hull' | 'turret' | 'accuracy' | 'bloom';
 type StatRange = Record<StatRangeKey, [number, number]>;
 
 interface GarageTankSpec extends FleetTankSpec {
@@ -1385,6 +1387,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     for (const m of maps) {
       const card = document.createElement('div');
       card.className = 'cot-map-card';
+      const selectMap = document.createElement('button');
+      selectMap.type = 'button';
+      selectMap.className = 'cot-map-select';
+      selectMap.setAttribute('aria-label', m.name);
       card.title = m.name;
       const thumb = document.createElement('div');
       thumb.className = `mthumb ${m.id}`;
@@ -1400,7 +1406,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const nm = document.createElement('div');
       nm.className = 'mname';
       nm.textContent = m.name;
-      card.append(thumb, nm);
+      selectMap.append(thumb, nm);
+      card.append(selectMap);
       const regions = mapRegionTags(m.id);
       if (regions.length) {
         const tags = document.createElement('div');
@@ -1409,15 +1416,26 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           const tag = document.createElement('span');
           tag.className = 'cot-map-region';
           tag.dataset.region = region;
-          tag.innerHTML = uiIconSVG(regionTagIcon(region)!, 12);
+          tag.innerHTML = uiIconSVG(regionTagIcon(region)!, 9);
           const label = document.createElement('span');
           label.textContent = t(`camoTag.${region}`);
           tag.appendChild(label);
           tags.appendChild(tag);
         }
-        card.appendChild(tags);
+        thumb.appendChild(tags);
       }
-      card.addEventListener('click', () => {
+      if (m.id !== 'random') {
+        const inspect = document.createElement('button');
+        inspect.type = 'button'; inspect.className = 'cot-map-inspect';
+        inspect.setAttribute('aria-label', t('garage.map.inspect', { name: m.name }));
+        inspect.innerHTML = uiIconSVG('zoomIn', 13);
+        inspect.addEventListener('click', (event) => {
+          event.stopPropagation();
+          void import('./mapPreview.ts').then(({ openMapPreview }) => openMapPreview(m, inspect, () => api.setSelectedMap(m.id)));
+        });
+        card.append(inspect);
+      }
+      selectMap.addEventListener('click', () => {
         emit('ui:click', {});
         api.setSelectedMap(m.id);
         if (isOverlayPanelLayout()) setGaragePanel('');
@@ -1506,6 +1524,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           : t('garage.camo.countryDescription', { country: tNation(CAMO_TAG_NATION[activeCamoCollection] || '') });
       },
       guide: 'camo',
+      vehicle: () => { const spec = specById.get(selectedId); return spec ? { id: spec.id, name: spec.name } : null; },
       sections: [
         { icon: 'brush', title: t('garage.info.localStudioTitle'), text: t('garage.info.localStudioText') },
       ],
@@ -1777,21 +1796,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       label.textContent = metric.labelKey ? t(metric.labelKey) : metric.label;
       const values = document.createElement('span');
       values.className = 'metric-values';
-      if (metric.changed) {
-        const current = document.createElement('span');
-        current.className = 'current';
-        current.textContent = metric.current;
-        const arrow = document.createElement('span');
-        arrow.className = 'arrow';
-        arrow.textContent = '→';
-        const projected = document.createElement('b');
-        projected.textContent = metric.projected;
-        values.append(current, arrow, projected);
-      } else {
-        const active = document.createElement('b');
-        active.textContent = metric.projected;
-        values.appendChild(active);
-      }
+      const active = document.createElement('b');
+      active.textContent = metric.projected;
+      values.appendChild(active);
       row.append(icon, label, values);
       metrics.appendChild(row);
     }
@@ -2154,7 +2161,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           // EQUIPMENT SYSTEM rows: aim time + the spotting pair, so optics/
           // nets/rammers visibly move their bars against the same peer group
           aim: [Infinity, -Infinity], view: [Infinity, -Infinity],
-          camo: [Infinity, -Infinity],
+          camo: [Infinity, -Infinity], hull: [Infinity, -Infinity], turret: [Infinity, -Infinity],
+          accuracy: [Infinity, -Infinity], bloom: [Infinity, -Infinity],
         };
         ranges.set(group, range);
       }
@@ -2163,6 +2171,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         if (value < range[key][0]) range[key][0] = value;
         if (value > range[key][1]) range[key][1] = value;
       };
+      add('hull', spec.hullTraverseDegS);
+      add('turret', spec.turretTraverseDegS);
+      add('accuracy', spec.gun.baseAccuracy);
+      add('bloom', spec.gun.bloom.move);
       add('hp', spec.hp);
       add('speed', spec.topSpeedKmh);
       add('hpt', spec.enginePowerHp / spec.weightTons);
@@ -2366,16 +2378,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     opts: StatBarOptions = {},
   ): string {
     const pct = Math.max(2, Math.min(100, frac * 100)).toFixed(1);
-    // Keep the stock value visible; only the arrow and equipped value turn green.
-    const comparison = opts.mod && opts.stock != null;
-    const value = comparison
-      ? `<span>${opts.stock}</span> <span class="eqmod">&gt; ${valueText}</span>`
-      : valueText;
+    // Show the equipped result; stock values remain available in the tooltip.
+    const value = opts.mod ? `<span class="eqmod">${valueText}</span>` : valueText;
     const title = opts && opts.title ? ` title="${opts.title}"` : '';
     const icon = opts?.icon || 'speed';
     return `<div class="srow"${title}><span class="sicon">${uiIconSVG(icon, 16)}</span>` +
       `<div class="lr"><span>${label}</span>` +
-      `<b${comparison ? ' class="stat-comparison"' : ''}>${value}</b></div>` +
+      `<b>${value}</b></div>` +
       `<div class="track"><div class="fill" style="width:${pct}%"></div></div></div>`;
   }
 
@@ -2526,6 +2535,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       ? `${Math.round(vrMove)} / ${Math.round(vrStill)} m`
       : `${Math.round(vrMove)} m`;
     const eqTitle = (base: string): string => `Stock ${base} &middot; ${eqNames}`;
+    const movingDispersion = (coefficient: number, rate: number) => spec.gun.baseAccuracy *
+      movementDispersionFactor(coefficient, 0, 0, rate, 0, 0, eqM.bloom);
     const specialCard = specialSystemSection(spec, reloadS);
     const initialTechnicalView = technicalViews[0];
     const initialTechnicalViewLabel = translateTechnicalView(initialTechnicalView).label;
@@ -2590,6 +2601,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         { icon: 'clock', mod: eqM.reload !== 1, stock: stockReloadS.toFixed(1), title: eqTitle(`${stockReloadS.toFixed(1)} s`) }) +
       statBar(t('garage.dossier.stat.aim'), `${aimS.toFixed(aimPrecision)} s`, statFrac(grp, 'aim', aimS, true),
         { icon: 'scope', mod: eqM.aimTime !== 1, stock: spec.gun.aimTimeS.toFixed(aimPrecision), title: eqTitle(`${spec.gun.aimTimeS.toFixed(1)} s`) }) +
+      statBar(t('garage.equipment.metric.hullTraverse'), `${(spec.hullTraverseDegS * eqM.traverse).toFixed(1)} °/s`,
+        statFrac(grp, 'hull', spec.hullTraverseDegS * eqM.traverse), { icon: 'track', mod: eqM.traverse !== 1 }) +
+      (spec.armor.turretless && spec.hydropneumaticAim ? '' : statBar(t(spec.armor.turretless ? 'garage.stat.gunTraverse' : 'garage.equipment.metric.turretTraverse'), `${(spec.turretTraverseDegS * eqM.turret).toFixed(1)} °/s`,
+        statFrac(grp, 'turret', spec.turretTraverseDegS * eqM.turret), { icon: 'turretRing', mod: eqM.turret !== 1 })) +
+      statBar(t('garage.stat.accuracy'), `${spec.gun.baseAccuracy.toFixed(2)} m`,
+        statFrac(grp, 'accuracy', spec.gun.baseAccuracy, true), { icon: 'scope', title: t('garage.stat.accuracyHint') }) +
+      statBar(t('garage.stat.movementBloom'), `${movingDispersion(spec.gun.bloom.move, 30).toFixed(2)} m`,
+        1 / (1 + movingDispersion(spec.gun.bloom.move, 30)), { icon: 'scope', mod: eqM.bloom !== 1, title: t('garage.stat.bloomHint') }) +
+      statBar(t('garage.stat.hullBloom'), `${movingDispersion(spec.gun.bloom.hullRot, 20).toFixed(2)} m`,
+        1 / (1 + movingDispersion(spec.gun.bloom.hullRot, 20)), { icon: 'track', mod: eqM.bloom !== 1, title: t('garage.stat.bloomHint') }) +
+      (spec.armor.turretless && spec.hydropneumaticAim ? '' : statBar(t(spec.armor.turretless ? 'garage.stat.gunBloom' : 'garage.stat.turretBloom'), `${movingDispersion(spec.gun.bloom.turret, 20).toFixed(2)} m`,
+        1 / (1 + movingDispersion(spec.gun.bloom.turret, 20)), { icon: 'turretRing', mod: eqM.bloom !== 1, title: t('garage.stat.bloomHint') })) +
       statBar(t('garage.dossier.stat.damage'), `${bestDmg} hp`, statFrac(grp, 'dmg', bestDmg), { icon: 'damage' }) +
       statBar(t('garage.dossier.stat.view'), viewText, statFrac(grp, 'view', vrMove),
         { icon: 'optics', mod: vrMove > vrBase || vrStill > vrMove + 0.5, stock: `${Math.round(vrBase)}`,
@@ -2628,7 +2651,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       label: t('garage.dossier.dossier.about'),
       title: t('garage.dossier.dossier.title'),
       text: t('garage.dossier.dossier.text'),
-      guide: 'dossier',
+      guide: 'dossier', vehicle: { id: spec.id, name: spec.label?.displayName || spec.name },
       sections: [
         { icon: 'shield', title: t('garage.dossier.dossier.authData'), text: t('garage.dossier.dossier.authDataText') },
         { icon: 'gallery', title: t('garage.dossier.dossier.techViews'), text: t('garage.dossier.dossier.techViewsText') },
@@ -2641,6 +2664,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         label: t('garage.dossier.aboutStat', { stat: heading.querySelector('span')?.textContent || '' }),
         title: heading.querySelector('span')?.textContent || t('garage.dossier.aboutVehicle'),
         text,
+        vehicle: { id: spec.id, name: spec.label?.displayName || spec.name },
         guide: ({ Performance: 'performance', 'Special system': 'special', Ammunition: 'ammunition', Protection: 'protection', Armament: 'armament', Modules: 'modules', Crew: 'crew', Equipment: 'equipment' } as const)[label as GarageInfoLabel],
       }));
     });
@@ -2649,7 +2673,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       label: t('garage.dossier.equipment.about'),
       title: t('garage.dossier.equipment.aboutTitle'),
       text: GARAGE_INFO.Equipment,
-      guide: 'equipment',
+      guide: 'equipment', vehicle: { id: spec.id, name: spec.label?.displayName || spec.name },
     }));
     if (vehicleChanged) statsEl.scrollTop = 0;
     requestAnimationFrame(syncScrollFades);
@@ -2777,7 +2801,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     turbo_ball: { short: 'TURBO', label: t('garage.battle.ballLabel'), icon: 'modeTurbo' },
     endless_horde: { short: 'WAVE', label: t('garage.battle.hordeLabel'), icon: 'modeHorde' },
     frontline_assault: { short: 'FRONT', label: t('garage.battle.frontLabel'), icon: 'modeZones' },
-    mars: { short: 'MARS', label: t('garage.battle.marsLabel'), icon: 'modeMars' },
+    mars: { short: 'GRAV', label: t('garage.battle.marsLabel'), icon: 'modeMars' },
   };
   function closeBattleMenu({ restoreFocus = false } = {}) {
     battleMenu.classList.remove('open');
@@ -2903,7 +2927,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const sidesReadout = requiredElement<HTMLElement>(sidesCustom, '[data-sides-readout]');
   let sidesCustomOpen = false;
   function renderSides(): void {
-    const sides = readSides();
+    const sides = rulesetSides(matchRulesetFor(battleGameMode, null, readTeamArrangement(battleGameMode)));
     const preset = sidesPresetOf(sides);
     const custom = sidesCustomOpen || preset === 'custom';
     for (const choice of sidesChoices) choice.setAttribute('aria-pressed', String(choice.dataset.sides === (custom ? 'custom' : preset)));
@@ -2916,16 +2940,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     emit('ui:click', {});
     const id = choice.dataset.sides;
     if (id === 'custom') sidesCustomOpen = true;
-    else if (id === '7v7' || id === '14v14') { sidesCustomOpen = false; writeSides(SIDES_PRESETS[id]); }
-    renderSides();
+    else if (id === '7v7' || id === '14v14') { sidesCustomOpen = false; writeTeamArrangement(battleGameMode, { ...readTeamArrangement(battleGameMode), ...SIDES_PRESETS[id] }); }
+    renderBattleOptions();
   });
   sidesCustom.addEventListener('change', () => {
     const allies = Number(sidesField('allies').value), enemies = Number(sidesField('enemies').value);
-    writeSides({
+    writeTeamArrangement(battleGameMode, {
+      ...readTeamArrangement(battleGameMode),
       allies: Number.isFinite(allies) ? allies : STANDARD_SIDES.allies,
       enemies: Number.isFinite(enemies) ? enemies : STANDARD_SIDES.enemies,
     });
-    renderSides();
+    renderBattleOptions();
   });
   renderSides();
   // Mars settings: two selects on the mars arrangement (game/teamArrangement.ts), visible while Mars is the rule
@@ -2943,7 +2968,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const setupIcon = requiredElement<HTMLElement>(battleMenu, '[data-setup-icon]');
   const setupSelection = requiredElement<HTMLElement>(battleMenu, '[data-setup-selection]');
   const setupLaunch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-launch]');
+  const arrangementPanel = createBattleArrangementPanel(soloOptions);
   renderBattleOptions = () => {
+    battleMenu.dataset.rule = battleGameMode;
+    arrangementPanel.render(battleGameMode);
+    renderSides();
     const solo = battleMode === 'solo';
     const shown = solo && battleGameMode === 'mars';
     const meta = (solo && battleRuleMeta[battleGameMode]) || battleModeMeta[battleMode];

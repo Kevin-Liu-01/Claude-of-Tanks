@@ -16,7 +16,7 @@ stack, authoring tools, test rigs, and public presentation.
 | --- | --- |
 | Playable fleet | 198 production-visible and 198 local-development first-party procedural vehicles |
 | Runtime vehicle provenance | 0 playable vehicles sourced from GLB geometry |
-| Battlefields | 31 authored and destructible maps |
+| Battlefields | 33 authored and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
 | Presentation | Direct Three.js WebGL rendering with adaptive quality |
 | Modes | Standard Battle, Capture the Flag, Zone Control, Turbo Ball, Endless Horde, Frontline Assault (campaign ladder); one ruleset per mode; solo, private, LAN, and ranked deployment |
@@ -218,7 +218,9 @@ The game includes:
 28. Mangrove Reach
 29. Saltwind Narrows
 30. Highland Reservoir
-31. Olympus Basin — Mars mode's rust-red impact basin under a galaxy sky, its research station scattered across the floor (2026-09-18)
+31. Olympus Basin — Gravity mode's rust-red impact basin under a galaxy sky, its research station scattered across the floor (2026-09-18)
+32. Earthrise Basin — airless lunar craters, research habitats and a huge Earth above the horizon
+33. Aegis Crossing — a deep dry gorge, driveable stone viaduct and an eastern flanking route
 
 Each battlefield combines a generated height field, material program, authored
 landmarks, roads, structures, foliage, concealment volumes, collision,

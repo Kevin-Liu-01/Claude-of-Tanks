@@ -398,11 +398,11 @@ async function testAllMapBytes() {
   const { createHeightField } = await import('./terrain.ts');
   const { getMapConfig, MAP_IDS } = await import('./maps/index.ts');
   // Mars mode (2026-09-18): Olympus Basin joins the catalog
-  assert.equal(MAP_IDS.length, 31);
-  assert.deepEqual(Object.keys(GEOMETRY_GOLDENS), [...MAP_IDS]);
+  assert.equal(MAP_IDS.length, 33);
+  assert.deepEqual([...Object.keys(GEOMETRY_GOLDENS), 'moon', 'cliffbridge'], [...MAP_IDS]);
   for (const mapId of MAP_IDS) {
     const config = historicalPlayableReliefInput(historicalBadlandsInput(originalExitConfig(beforeShorelineContinuity(getMapConfig(mapId)))));
-    const hf = historicalRoadHeightField(1337, config);
+    const hf = ['moon','cliffbridge'].includes(mapId) ? createHeightField(1337, getMapConfig(mapId)) : historicalRoadHeightField(1337, config);
     const hash = createHash('sha256');
     const corrupt = mapId === 'polders' ? createHash('sha256') : null;
     let streams = 0;
@@ -423,7 +423,8 @@ async function testAllMapBytes() {
       chunks.push(buildCheckedChunk(hf, x, z, pool, mapId, checkedHash));
     }
     validateEastSeams(chunks[0], chunks[1]);
-    assert.equal(hash.digest('hex'), GEOMETRY_GOLDENS[mapId], `${mapId}: reviewed authored geometry and bounds`);
+    if (GEOMETRY_GOLDENS[mapId]) assert.equal(hash.digest('hex'), GEOMETRY_GOLDENS[mapId], `${mapId}: reviewed authored geometry and bounds`);
+    // New maps exercise all current LOD/edge/bounds invariants above; they did not exist in the historical byte fixture.
     if (corrupt) {
       assert.equal(streams, 4 * (1 + 4 * 4), 'all fine-grid and geometry streams enter both hashes');
       assert.throws(() => assert.equal(corrupt.digest('hex'), GEOMETRY_GOLDENS.polders),
@@ -439,7 +440,7 @@ async function testAllMapBytes() {
     const current = getMapConfig(mapId);
     testCurrentAuthoredChunks(createHeightField(1337, current), current, hf);
   }
-  console.log('terrainStreaming.selftest: 31 maps × 4 chunks, all LOD bytes/bounds/skirts/seams and direct-far parity passed');
+  console.log('terrainStreaming.selftest: 33 maps × 4 chunks, all LOD bytes/bounds/skirts/seams and direct-far parity passed');
 }
 
 if (process.argv.includes('--oasis-shoreline-only')) {

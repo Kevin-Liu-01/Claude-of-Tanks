@@ -1,3 +1,4 @@
+import { isFleetBalanceFinalized } from './fleetBalanceState.ts';
 import { k2SourceMetadata } from './xk2Specs.ts';
 // September 2026 owner-requested, separately selectable source-study rebuilds.
 // These clone combat metadata only. Geometry is independently authored in
@@ -126,6 +127,8 @@ registerFleetSpecs(registries, SOURCE_X_IDS, specs);
  * that combat revision explicitly, without inheriting their visual builders,
  * calibration receipts, dimensions, markings or identity. */
 export function synchronizeSourceXCombatMetadata(): void {
+  // Combat donor synchronization is initialization-only once final role tuning is published.
+  if (isFleetBalanceFinalized(registries.tankSpecs)) return;
   const fields = ['hp', 'enginePowerHp', 'weightTons', 'topSpeedKmh', 'reverseSpeedKmh',
     'hullTraverseDegS', 'terrainResistance', 'pivotStyle', 'turretTraverseDegS',
     'gunPitchDegS', 'gunElevationDeg', 'gunDepressionDeg', 'gun'] as const;

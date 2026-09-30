@@ -1,3 +1,4 @@
+import { bridgeBallFloor } from './bridgeBallSupport.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from './launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
@@ -969,6 +970,7 @@ export function createAuthoritativeMatch({
     revive: reviveForMode,
     setActive(entity, active) { entity.modeActive = active; },
     terrainHeight: (x, z) => heightField.getHeightAt(x, z),
+    ballFloorHeight: (x, z, previousBottomY) => bridgeBallFloor(heightField, x, z, previousBottomY),
     emit,
   });
   let nextModeRouteS = 0;

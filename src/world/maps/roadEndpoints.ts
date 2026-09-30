@@ -73,6 +73,8 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   reservoir: [['boundary', { junction: 4 }], join(0, 4), join(0, 1), join(0, 1), through],
   // Mars (round 23): the default two-road grid, both routes leaving the basin
   mars: [through, through],
+  moon: [through, through, join(0, 1)],
+  cliffbridge: [through, through, join(0, 1), join(0, 1)],
 };
 
 /** Segment intersection, including touching and collinear overlap. The

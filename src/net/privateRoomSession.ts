@@ -1,3 +1,4 @@
+import type { TeamArrangement } from '../sim/matchRuleset.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   createLobby,
@@ -130,6 +131,7 @@ export interface PrivateRoomHostOptions {
   hostCamo?: string;
   mapId?: string;
   gameMode?: string;
+  arrangement?: TeamArrangement | null;
   teamSize?: number;
   iceServers?: RTCIceServer[];
   relayOnly?: boolean;
@@ -283,6 +285,7 @@ export class PrivateRoomHostSession {
     hostCamo = 'factory',
     mapId = 'random',
     gameMode = 'standard',
+    arrangement = null,
     teamSize = 2,
     iceServers = [],
     relayOnly = false,
@@ -322,6 +325,7 @@ export class PrivateRoomHostSession {
       maxPlayers: roomInfo.maxPlayers || 14,
       mode: roomInfo.mode || 'private',
       gameMode,
+      arrangement,
       mapId,
       teamSize,
     });

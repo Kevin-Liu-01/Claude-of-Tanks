@@ -58,6 +58,8 @@ const expected = {
   saltwind: [3629, 3392, 4048],
   reservoir: [6426, 6301, 7206],
   mars: [772, 718, 0],
+  moon: [475, 381, 0],
+  cliffbridge: [5904, 5637, 5243],
 };
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(expected), MAP_IDS, 'every registered map has a fixed census expectation');
@@ -71,7 +73,7 @@ for (const [mapId, counts] of Object.entries(expected)) {
   if (mapId === 'reservoir' || mapId === 'longleaf' || mapId in coalCensus) authoredWorlds.set(mapId, mapWorld);
   const hedgehogObstacles = mapWorld.getObstacles().filter((record) => record.kind === 'hedgehog');
   const hedgehogColliders = mapWorld.getColliders().filter((record) => record.kind === 'hedgehog');
-  assert.ok(hedgehogObstacles.length >= 3 && hedgehogObstacles.length % 3 === 0,
+  assert.ok((getMapConfig(mapId).props.hedgehogs === 0 ? hedgehogObstacles.length === 0 : hedgehogObstacles.length >= 3) && hedgehogObstacles.length % 3 === 0,
     `${mapId} hedgehogs remain complete three-beam compounds`);
   assert.equal(hedgehogColliders.length, hedgehogObstacles.length,
     `${mapId} movement and shell hedgehog censuses agree`);
@@ -83,7 +85,7 @@ for (const [mapId, counts] of Object.entries(expected)) {
   const treeColliders = mapWorld.getColliders().filter((record) => record.treeIdx != null);
   // 2026-09-19: Mars (Olympus Basin) fields no vegetation by design (its species counts are zero), so
   // the reachable-tree census is empty there; every other map still captures its trees.
-  if (mapId !== 'mars') assert.ok(treeObstacles.length > 0, `${mapId} captures reachable trees as movement obstacles`);
+  if (getMapConfig(mapId).vegetation.clusterCount + getMapConfig(mapId).vegetation.loneCount > 0) assert.ok(treeObstacles.length > 0, `${mapId} captures reachable trees as movement obstacles`);
   assert.equal(treeColliders.length, treeObstacles.length,
     `${mapId} movement and shell tree censuses agree`);
   assert.ok(treeObstacles.every((record) => record.crushable && record.kind === 'tree'),

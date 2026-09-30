@@ -43,6 +43,7 @@ interface InfoSection {
 
 export interface InfoButtonOptions {
   guide?: InfoGuideId;
+  vehicle?: LiveValue<{ id: string; name: string } | null>;
   label?: string;
   title?: string;
   text?: LiveValue<string>;
@@ -165,7 +166,7 @@ function resolveValue<T>(value: LiveValue<T>, fallback: T): T {
 
 /** Create an icon button that opens a rich shared modal dossier. */
 export function createInfoButton({
-  guide, label, title, text = '', json = null, className = '', eyebrow = '',
+  guide, vehicle = null, label, title, text = '', json = null, className = '', eyebrow = '',
   subtitle = '', size = 'large', image = null, images = null,
   imageAlt = '', imageFit = 'cover', imageCaption = '', sections = null,
 }: InfoButtonOptions = {}): InfoButton {
@@ -230,7 +231,7 @@ export function createInfoButton({
       root.append(slot);
       void import('./infoGuides.ts').then(({ createInfoGuide }) => {
         if (!slot.isConnected) return;
-        slot.replaceWith(createInfoGuide(guide));
+        slot.replaceWith(createInfoGuide(guide, resolveValue(vehicle, null)));
       }).catch(() => {
         if (!slot.isConnected) return;
         slot.textContent = t('fieldGuide.unavailable');

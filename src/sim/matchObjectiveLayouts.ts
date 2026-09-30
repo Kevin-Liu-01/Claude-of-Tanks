@@ -6,6 +6,7 @@ export const MATCH_MODE_ARENA_HALF_EXTENT_M = 420;
  * They do not create terrain pads or bypass the shared placement checks. */
 export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   zones: readonly { x: number; z: number }[];
+  kickoff?: { x: number; z: number };
 }>> = {
   // Tarkhan Steppe (round 48 redesign, 2026-09-23): a 10 m lattice scan of the new height field + manifest
   // (30 m discs, relief <= 7 m, normal.y >= 0.94, firm ground, no obstacles, both teams' round-trip reach) — the
@@ -13,6 +14,7 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // yard — three graded aprons in the map file — a
   // south-west / centre / north-east diagonal. Both authorities revalidate each disc against the current terrain
   // and manifest and relocate any hint the ground no longer clears.
+  cliffbridge: { kickoff: { x: 0, z: -155 }, zones: [{ x: 0, z: -155 }, { x: 0, z: 155 }, { x: 360, z: 0 }] },
   steppe: { zones: [{ x: 60, z: 90 }, { x: 292, z: 312 }, { x: -330, z: -240 }] },
   // Validated full-disc results of the bounded search on these constrained
   // maps. Start with the known clearings; changed terrain still revalidates

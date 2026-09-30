@@ -245,6 +245,7 @@ const skyOf = (id) => {
 const table = {};
 for (const id of MAP_IDS) {
   const config = getMapConfig(id);
+  if (id === 'moon') { assert.equal(config.sky.cloudOpacity, 0); assert.equal(config.sky.cloudOpacity2, 0); continue; }
   if (id !== 'mars') assert.ok(config.clouds && isCloudscapeRegime(config.clouds.regime), `${id} authors a cloudscape regime`);
   else assert.ok(!config.clouds && MARS_SKY_PRESET.cloudscape?.regime === 'thin-ice-clouds', 'Mars carries its cloudscape on the shared preset (the ruleset applies it directly)');
   const p = deriveCloudLayerPreset(skyOf(id));
@@ -291,6 +292,7 @@ assert.deepEqual(table, {
   mangrove: { regime: 'towering-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3 },
   saltwind: { regime: 'sea-streets', coverage: 0.3, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.55 },
   reservoir: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
+  cliffbridge: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1200, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25 },
   mars: { regime: 'thin-ice-clouds', coverage: 0.06, baseM: 2500, thicknessM: 400, shadow: false, streets: 0.2, cirrus: 0.45, farBand: 0 },
 }, 'the cloudscape of every map (round 71 identity table; round 76: foundry and railyard on the industrial stratocumulus, urban on the altocumulus)');
 {
