@@ -1263,6 +1263,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/m48RoofSeating.selftest.mjs',
     'src/vehicles/profiles/m60a2Starship.selftest.mjs',
     'src/vehicles/profiles/sheridan.selftest.mjs',
+    'src/vehicles/profiles/sheridanTtsAttachmentSeats.selftest.mjs',
     'src/vehicles/profiles/m60a3TurretEra.selftest.mjs',
     'src/vehicles/profiles/kv2FrontChamferClosure.selftest.mjs',
     'src/vehicles/profiles/leopardHullClosure.selftest.mjs',

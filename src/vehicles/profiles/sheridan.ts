@@ -1138,13 +1138,34 @@ function addSheridanTurretShellAndStowage(P: SheridanBuilderPort): void {
   // them. The former full-width box filled 2.13 m of nonexistent armor and
   // dominated both the front and plan-curve error despite sharing the right
   // aggregate bounds.
-  for (const side of [-1, 1]) {
-    const x = side > 0 ? 1.06290 : -1.19296;
-    P.add('turret', box(0.11996, 0.12335, 0.06079), x, 0.04745, 1.69647);
-    P.add('turret', box(0.07499, 0.08912, 0.01566),
-      x, 0.04747, 1.65824);
-    P.add('turret', box(0.10210, 0.10214, 0.00528),
-      side > 0 ? 1.06295 : -1.19291, 0.04747, 1.72643);
+  if (P.spec.id === 'm551a1_tts') {
+    // The donor's surveyed loose lugs sat below and ahead of the casting.
+    // Seat each complete three-layer lug on the actual TTS lower cheek.
+    // Points/normals are measured from the bare procedural shell, not bounds.
+    for (const [point, normal] of [
+      [[-.78, .36, 1.197497], [-.602001, -.611844, .513070]],
+      [[ .78, .36, 1.188678], [ .617730, -.586078, .524330]],
+    ] satisfies Array<[Vec3Tuple, Vec3Tuple]>) {
+      const frame = armorSurfaceFrame(normal);
+      for (const [w, h, d, offset] of [
+        [.11996, .12335, .06079, .010],
+        [.07499, .08912, .01566, -.02823],
+        [.10210, .10214, .00528, .03996],
+      ]) {
+        const center = pointOnArmorFrame(point, frame, 0, 0, offset);
+        P.add('turret', boxOnBasis([w, h, d],
+          frame.alongAxis.toArray(), frame.acrossAxis.toArray()), ...center.toArray());
+      }
+    }
+  } else {
+    for (const side of [-1, 1]) {
+      const x = side > 0 ? 1.06290 : -1.19296;
+      P.add('turret', box(0.11996, 0.12335, 0.06079), x, 0.04745, 1.69647);
+      P.add('turret', box(0.07499, 0.08912, 0.01566),
+        x, 0.04747, 1.65824);
+      P.add('turret', box(0.10210, 0.10214, 0.00528),
+        side > 0 ? 1.06295 : -1.19291, 0.04747, 1.72643);
+    }
   }
   // Object_3 is the Sheridan's broad rear canvas bank. Exact vertical-bin
   // measurements show eight touching soft lobes, not a solid bustle plate:
@@ -1337,6 +1358,38 @@ function addSheridanM81Gun(P: SheridanBuilderPort): void {
   });
 }
 
+// Local datums surveyed on the bare casting at y=.30. Its asymmetric lower
+// cheek slopes downward, so mirroring yaw alone leaves the ERA backs in air.
+function addTtsLowerCheekEra(P: SheridanBuilderPort, side: number): void {
+  const seats: Array<[Vec3Tuple, Vec3Tuple]> = side < 0 ? [
+    [[-1.132968, .30, .50], [-.626218, -.774110, .092764]],
+    [[-1.055044, .30, .70], [-.535274, -.801477, .266677]],
+    [[-.940186, .30, .90], [-.468301, -.797564, .380245]],
+    [[-.776529, .30, 1.10], [-.453838, -.802758, .386795]],
+  ] : [
+    [[1.138481, .30, .50], [.607079, -.784943, .123776]],
+    [[1.059049, .30, .70], [.563415, -.772294, .293473]],
+    [[.935269, .30, .90], [.470986, -.792379, .387695]],
+    [[.761169, .30, 1.10], [.359195, -.818635, .448126]],
+  ];
+  const frames = seats.map(([point, normal]) => ({point, frame: armorSurfaceFrame(normal)}));
+  // Individual steel feet bridge the curved casting; no broad armor slab
+  // spans the gun opening. The carrier embeds 35 mm and the cassette 12 mm.
+  for (const {point, frame} of frames) {
+    const center = pointOnArmorFrame(point, frame, 0, 0, .015);
+    P.addEquipment('turret', boxOnBasis([.14, .09, .10],
+      frame.alongAxis.toArray(), frame.acrossAxis.toArray()), ...center.toArray());
+  }
+  const [, py, pz] = P.spec.armor.turretPivot;
+  P.eraCluster(`sheridan_turret_era_${side > 0 ? 'R' : 'L'}`, put => {
+    for (const {point, frame} of frames) {
+      const center = pointOnArmorFrame(point, frame, 0, 0, .065 + .0252 - .012);
+      put(center.x, center.y + py, center.z + pz,
+        frame.euler.x, frame.euler.y, frame.euler.z, .82, 1.34, .72);
+    }
+  }, true);
+}
+
 function addSheridanTurretProtection(P: SheridanBuilderPort): void {
   const { box } = KIT;
   // Turret cheek ERA follows the cast tangent, with attachment rails buried
@@ -1352,6 +1405,10 @@ function addSheridanTurretProtection(P: SheridanBuilderPort): void {
       side * 1.09340, 0.38575, 1.12983, 0, -side * 0.690, 0);
     P.add('turretDetail', box(0.035, 0.0354, 0.656),
       side * 0.98142, 0.18222, 0.97406, 0, -side * 0.620, 0);
+    if (P.spec.id === 'm551a1_tts') {
+      addTtsLowerCheekEra(P, side);
+      continue;
+    }
     P.eraCluster(`sheridan_turret_era_${suffix}`, (put) => {
       // Custom applique sits on the lower cast cheek. The previous pass
       // accidentally treated the Object_10 smoke-tube envelopes as ERA
