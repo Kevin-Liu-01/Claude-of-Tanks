@@ -19,6 +19,7 @@ import type { EntityRow, PhaseId, ShellRow, SnapshotFrame, VerdictId } from '../
 
 /** One presented entity in SI units (metres, m/s, radians, seconds). */
 export interface EntitySample {
+  auxiliaryJson?: string;
   entityId: number;
   x: number;
   y: number;
@@ -65,6 +66,7 @@ export interface ShellSample {
 }
 
 export interface FrameMetaSample {
+  smokeJson?: string;
   phase: PhaseId;
   countdownMs: number;
   battleTimeMs: number;
@@ -206,6 +208,7 @@ export function decodeRow(row: EntityRow, out: EntitySample): EntitySample {
   out.ammo1 = row.ammo1;
   out.ammo2 = row.ammo2;
   out.flags = row.flags;
+  out.auxiliaryJson = row.auxiliaryJson || '';
   out.eraSpent = row.eraSpent;
   out.snapped = true;
   return out;
@@ -620,6 +623,7 @@ export class RemoteInterpolator {
     meta.verdict = current.verdict;
     meta.verdictReason = current.verdictReason;
     meta.destructibleRevision = current.destructibleRevision;
+    meta.smokeJson = current.smokeJson || '';
     meta.countdownMs = current.countdownMs;
     meta.battleTimeMs = current.battleTimeMs;
     const previous = older.frame.meta;

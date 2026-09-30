@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Independent source-specific cheek covers and launcher assemblies. The
 // source is visibly warped: these original ruled/rounded surfaces regularize
 // small irregularities, without reusing its triangles or copying a contour.
@@ -81,7 +82,8 @@ function smoke(P: TankBuilderPort, pivot: Point): void {
     const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis);
     const body = new THREE.LatheGeometry([[.030, -.184], [.040, -.184],
       [.040, 0], [.030, 0], [.030, -.184]].map(([r, z]) => new THREE.Vector2(r, z)),
-    20).rotateX(Math.PI / 2).applyQuaternion(q);
+    20).rotateX(Math.PI / 2);
+    markSmokeTube(body,[0,0,1],true).applyQuaternion(q);
     const local = center.clone().sub(new THREE.Vector3(...pivot));
     P.addEquipment('turretDetail', body, ...local.toArray());
     P.addEquipment('turretDark', new THREE.CircleGeometry(.030, 20).applyQuaternion(q),

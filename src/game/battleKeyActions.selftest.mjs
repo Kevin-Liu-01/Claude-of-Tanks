@@ -50,9 +50,11 @@ assert.match(access, /if \(!input\.isTouchLayout\(\)\) return autoAim \? Promise
   runtime.dispose();
 }
 
-// --- the rocket jump: HUD keycap carries the rocket, the touch layer gets a rocket button, both driven by the ruleset
-assert.match(hud, /jumpHint\.innerHTML = `<span class="si">\$\{uiIconSVG\('rocket', 18\)\}<\/span><span class="sl"><\/span><span class="sk">F<\/span>`;/, 'the jump keycap shows a rocket');
-assert.match(hud, /jumpHint\.classList\.toggle\('on', ruleset\?\.jumpMps != null\);\n\s*\/\/ round 30[^\n]*\n\s*bus\.emit\('ui:jumpAvailable', \{ on: ruleset\?\.jumpMps != null \}\);/, 'the HUD tells the touch layer when a ruleset has a jump');
+// The equal-size controls row owns the desktop and touch jump action.
+assert.match(hud, /jumpHint.innerHTML = `[^`]*uiIconSVG\('rocket', 18\)[^`]*system-status/, 'jump has its rocket, keycap and status');
+assert.match(hud, /jumpHint.classList.toggle\('on', ruleset\?\.jumpMps != null\)/, 'only jump rulesets expose the control');
+assert.match(hud, /jumpHint.addEventListener\('pointerdown',[^\n]*bus.emit\('ui:selfRight',\{\}\)/, 'the shared control fires the real jump edge');
+assert.match(hud, /bus.emit\('ui:jumpAvailable', \{ on: false \}\)/, 'the legacy touch button stays hidden to avoid duplicate controls');
 const touch = read('../ui/touchControls.ts');
 assert.match(touch, /<button class="round jump" type="button" aria-label="\$\{t\('touch\.jumpAria'\)\}" hidden>\$\{ROCKET\}/, 'a hidden rocket button waits in the touch layer');
 assert.match(touch, /bus\.on\('ui:jumpAvailable', \(payload\) => \{\n\s*const \{ on \} = payload as \{ on\?: boolean \};\n\s*jumpButton\.hidden = !on;/, 'it appears in rulesets with a jump');

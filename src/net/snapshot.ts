@@ -31,7 +31,7 @@ const ENTITY_DELTA_FIELDS = Object.freeze([
   'hp', 'maxHp', 'reloadMs', 'reloadTotalMs', 'reloadKind',
   'gunReloadMs', 'gunReloadTotalMs', 'gunReloadKind',
   'magazineRounds', 'magazineCapacity', 'shellSlot',
-  'ammo0', 'ammo1', 'ammo2', 'flags', 'eraSpent',
+  'ammo0', 'ammo1', 'ammo2', 'flags', 'eraSpent', 'auxiliaryJson',
 ] as const);
 
 const SNAPSHOT_RELOAD_KINDS = Object.freeze({
@@ -75,6 +75,7 @@ interface SnapshotStateSource {
 }
 
 interface SnapshotCombatSource {
+  auxiliary?: import('../sim/auxiliarySystems.ts').AuxiliaryState;
   destroyed?: boolean;
   fire?: { burning?: boolean } | null;
   hp?: RuntimeValue;
@@ -111,6 +112,7 @@ export interface SnapshotShellSource {
 }
 
 interface QuantizedEntitySnapshot {
+  auxiliaryJson?: string;
   id: string;
   specId: string;
   team: string;
@@ -172,6 +174,7 @@ interface SnapshotPacket extends WorldSnapshot {
 }
 
 export interface DecodedEntitySnapshot {
+  auxiliaryJson?: string;
   id: string;
   specId: string;
   team: string;
@@ -377,6 +380,7 @@ export function captureEntitySnapshot(
     ammo1: Math.max(0, Number(entity.combat.ammo?.[1]) | 0),
     ammo2: Math.max(0, Number(entity.combat.ammo?.[2]) | 0),
     flags: entityFlags(entity),
+    ...(entity.combat.auxiliary ? {auxiliaryJson:JSON.stringify(entity.combat.auxiliary)} : {}),
   };
   if (entity.combat.eraSpent?.size) {
     snapshot.eraSpent = [...entity.combat.eraSpent].sort();
@@ -623,6 +627,7 @@ export function decodeEntitySnapshot(
   out.id = entity.id;
   out.specId = entity.specId;
   out.team = entity.team;
+  out.auxiliaryJson=entity.auxiliaryJson||'';
   out.x = entity.x / POSITION_SCALE;
   out.y = entity.y / POSITION_SCALE;
   out.z = entity.z / POSITION_SCALE;

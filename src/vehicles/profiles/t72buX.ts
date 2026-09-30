@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // First-party T-72BU X: independent scalar construction, never a donor build
 // or an imported reference mesh. Source units and joint inference are recorded
 // in the accompanying measurement packet.
@@ -199,7 +200,7 @@ function smoke(P:TankBuilderPort):void{
   for(const side of [-1,1]){
     for(const [x,y,z,yaw]of [[1.309,1.8968,.0709,.41],[1.435,1.9019,.0371,.41],
       [1.3494,1.7719,.1312,.65],[1.4931,1.7732,.0624,.65],[1.5142,1.6385,.0807,.82],[1.4044,1.6436,.1527,.82]]){
-      equipment(P,'turretDark',blindTube(.049,.032,.275,.100,20).rotateX(-.27).rotateY(side*yaw),side*(x-.002),y,z);
+      equipment(P,'turretDark',markSmokeTube(blindTube(.049,.032,.275,.100,20),[0,0,1],true).rotateX(-.27).rotateY(side*yaw),side*(x-.002),y,z);
     }
     for(const [y,z]of [[1.80,-.0404],[1.684,.0014],[1.614,.0136]])equipment(P,'turretDetail',box(.365,.035,.224).rotateY(side*.2),side*1.324,y,z);
     equipment(P,'turretDetail',beamBetween([side*1.10,1.62,-.13],[side*1.32,1.86,-.08],.025),0,0,0);

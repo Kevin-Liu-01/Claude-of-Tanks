@@ -2,6 +2,7 @@
 // Lens faces stay in the existing material buckets and follow every profile
 // geometry transform before emitter seats are measured from those faces.
 import * as THREE from 'three';
+import { registerSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
 import { registerNightLightEmitters, type NightLightEmitter } from '../engine/nightLightingRuntime.ts';
 import {
   NIGHT_EMISSION_ATTRIBUTE, NIGHT_HEADLIGHT_COLOR, NIGHT_SHTORA_COLOR,
@@ -104,6 +105,7 @@ function registerSources(mesh: THREE.Object3D, emitters: readonly NightLightEmit
 
 /** The merged mesh (not a guessed hull datum) is the emitter owner. */
 export function registerVehicleNightLensMesh(mesh: LensMesh, parts: readonly THREE.BufferGeometry[]): void {
+  registerSmokeSockets(mesh, parts);
   const lamps = parts.filter(part => lensDefinition(part));
   if (!lamps.length) return;
   const material = mesh.material;

@@ -57,6 +57,8 @@
     "tank:centering:update": "node tools/presentation-centering.mjs --update",
     "tank:centering:check": "node tools/presentation-centering.mjs --check",
     "tank:floor:check": "node src/vehicles/fleetFloorClearance.selftest.mjs",
+    "tank:controls:update": "node tools/vehicle-controls-inventory.mjs",
+    "tank:controls:check": "node tools/vehicle-controls-inventory.mjs --check",
     "tank:anatomy:update": "node tools/gen-combat-anatomy.mjs && node tools/gen-vehicle-marking-seats.mjs && node tools/genIcons.mjs --views armorSide,modulesSide,crewSide",
     "tank:anatomy:check": "node tools/gen-combat-anatomy.mjs --check && node tools/gen-vehicle-marking-seats.mjs --check && node src/vehicles/combatAnatomy.selftest.mjs && node tools/module-hit-probe.mjs && node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore",
     "tank:modules:check": "node tools/module-hit-probe.mjs",

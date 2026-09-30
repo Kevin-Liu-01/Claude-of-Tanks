@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Object 695 retains its independently authored chassis and running gear.
 // Owner-directed 2026-09-19 missile-hunter concept: raised skeletal cradle,
 // two six-cell launch pods and a short 30 mm backup cannon. This is original
@@ -201,7 +202,7 @@ function deck(P: TankBuilderPort): void {
     P.add('hullDark', part(box(0.30, 0.06, 0.52), 'smoke-base'), s * 1.30, sy, sz, 0, s * 0.20, 0);
     for (let i = 0; i < 5; i++) {
       const dz = -0.22 + i * 0.11;
-      P.add('hullDark', part(cylZ(0.042, 0.36, 12).rotateX(-0.55).translate(0, 0.14, dz), 'smoke-tube'), s * 1.30, sy + 0.02, sz, 0, s * 0.20, 0);
+      P.add('hullDark', part(markSmokeTube(cylZ(0.042, 0.36, 12)).rotateX(-0.55).translate(0, 0.14, dz), 'smoke-tube'), s * 1.30, sy + 0.02, sz, 0, s * 0.20, 0);
       P.add('hullDark', part(cylZ(0.046, 0.012, 12).rotateX(-0.55).translate(0, 0.235, dz + 0.155), 'smoke-cap'), s * 1.30, sy + 0.02, sz, 0, s * 0.20, 0);
     }
   }

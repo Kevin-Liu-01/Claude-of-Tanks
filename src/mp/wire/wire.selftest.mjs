@@ -319,7 +319,7 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
     type: MESSAGE_TYPE.INPUT, clientTick: 600, snapshotAckTick: 597, interpDelayMs: 100,
     controls: [randomControl(), randomControl(), randomControl()],
   });
-  assert.equal(input.byteLength, 12 + 3 * 15, 'a full input frame is 57 bytes');
+  assert.equal(input.byteLength, 12 + 3 * 16, 'u16 actions make a full input frame 60 bytes');
 }
 
 // ------------------------------------------------------------ 4. malformed, oversized, truncated
@@ -421,15 +421,15 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
   const resolved2 = applySnapshotPacket(decodeMessage(encodeMessage(delta2, next), { resolveBaseline: () => next }).message, next);
   assert.deepEqual(resolved2.entities, later.entities);
   assert.equal(resolved2.entities[0].tick, 104);
-  // a row from the future is a producer error; a mask past 17 bits is rejected on decode
+  // a row from the future is a producer error; a mask past 18 bits is rejected on decode
   assert.throws(() => buildSnapshotPacket({ ...key, entities: [{ ...fresh, tick: 107 }] }, null), (error) => error instanceof WireError && error.code === 'range');
   const oneRow = encodeMessage(buildSnapshotPacket({ ...key, entities: [fresh] }, null));
-  // header 2 + snapshot fields 22 + meta 12 + destroyed varint 1 + entity count 1 + entity id 1 = 39: the mask varint starts here
-  assert.equal(oneRow[37], 1, 'one entity');
-  assert.equal(oneRow[38], 4, 'entity 4');
-  const wideMask = new Uint8Array([...oneRow.slice(0, 39), 0x80, 0x80, 0x08, ...oneRow.slice(41)]);
+  // header 2 + snapshot fields 22 + meta 13 + destroyed varint 1 + entity count 1 + entity id 1 = 40: the mask varint starts here
+  assert.equal(oneRow[38], 1, 'one entity');
+  assert.equal(oneRow[39], 4, 'entity 4');
+  const wideMask = new Uint8Array([...oneRow.slice(0, 40), 0x80, 0x80, 0x10, ...oneRow.slice(42)]);
   const rejected = decodeMessage(wideMask);
-  assert.ok(!rejected.ok && rejected.error.code === 'range', `an 18-bit row mask is rejected (${rejected.ok ? 'accepted' : rejected.error.code})`);
+  assert.ok(!rejected.ok && rejected.error.code === 'range', `a 19-bit row mask is rejected (${rejected.ok ? 'accepted' : rejected.error.code})`);
   // the resume hint round-trips
   const hint = { type: MESSAGE_TYPE.RESUME_HINT, tick: 12345, x: -120000, y: 3400, z: 98765, speed: -450, verticalSpeed: 12, yaw: 65000, pitch: 5, roll: 65530, turretYaw: 30000, gunPitch: 200 };
   assert.deepEqual(roundTrip(hint).message, hint);
@@ -472,4 +472,23 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
   assert.deepEqual([...eraPlateIndices(armor)], [['k5_a', 0], ['k5_b', 1], ['k5_c', 3]]);
   assert.equal(CLOSE_REASON_NAMES[CLOSE_REASON.BACKPRESSURE], 'backpressure');
   console.log('wire.selftest: quantization resolutions, wraps and ERA index helpers hold');
+}
+
+// Auxiliary controls survive a motionless delta and reset; the complete smoke
+// capacity fits the bounded packet alongside a full battle roster.
+{
+  const frame=randomFrame(300,28);
+  frame.meta.smokeJson=JSON.stringify(Array.from({length:84},(_,i)=>({x:1234.56789012345+i,y:98.765432109,z:-987.65432109876,yaw:1.234567890123,born:1234.123456789})));
+  frame.entities[0].auxiliaryJson=JSON.stringify({lights:1,gunOn:true,gunYaw:1.2,gunPitch:.1,shots:4});
+  const key=buildSnapshotPacket(frame,null),bytes=encodeMessage(key);
+  assert.ok(bytes.length<MAX_MESSAGE_BYTES);
+  const decoded=roundTrip(key).message;
+  assert.equal(decoded.meta.smokeJson,frame.meta.smokeJson);
+  const changed={...frame,tick:301,entities:frame.entities.map((r,i)=>i? r : {...r,auxiliaryJson:'{"lights":0,"gunOn":false}'})};
+  const packet=buildSnapshotPacket(changed,frame);
+  const result=applySnapshotPacket(roundTrip(packet,frame,()=>frame).message,frame);
+  assert.equal(result.entities[0].auxiliaryJson,changed.entities[0].auxiliaryJson);
+  const reset={...changed,tick:302,entities:changed.entities.map((r,i)=>i?r:{...r,auxiliaryJson:''})};
+  const restored=applySnapshotPacket(roundTrip(buildSnapshotPacket(reset,changed),changed,()=>changed).message,changed);
+  assert.equal(restored.entities[0].auxiliaryJson,'','respawn clears auxiliary state');
 }

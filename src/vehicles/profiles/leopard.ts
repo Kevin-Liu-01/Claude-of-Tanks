@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Leopard 2 lineage + KF51 procedural profiles (fidelity oracles:
 // leo2a6_buh, recovered leo2a5 / leo2a7v / leo2_revolution / leopard2_proto,
 // kf51_grip420). Owned by the Leopard family agent.
@@ -3862,10 +3863,10 @@ function buildLeo2A6(P: TankBuilderPort) {
       for (const s of [-1, 1] as const) {
         for (let k = 0; k < 4; k++) {
           const zA = -0.40 - k * 0.14, zB = -0.47 - k * 0.14;
-          P.add('turret', KIT.cylZ(0.036, 0.24, gs), s * 1.281, 0.405, zA, -0.52, s * 0.16, 0);
+          P.add('turret', markSmokeTube(KIT.cylZ(0.036, 0.24, gs)), s * 1.281, 0.405, zA, -0.52, s * 0.16, 0);
           P.add('turretDark', KIT.cylZ(0.0435, 0.034, gs), s * 1.2955, 0.457, zA + 0.090, -0.52, s * 0.16, 0);
           P.add('turretDetail', KIT.cylZ(0.0385, 0.018, 8), s * 1.286, 0.423, zA + 0.031, -0.52, s * 0.16, 0);
-          P.add('turret', KIT.cylZ(0.036, 0.24, gs), s * 1.250, 0.468, zB, -0.52, s * 0.16, 0);
+          P.add('turret', markSmokeTube(KIT.cylZ(0.036, 0.24, gs)), s * 1.250, 0.468, zB, -0.52, s * 0.16, 0);
           P.add('turretDark', KIT.cylZ(0.041, 0.026, gs), s * 1.2645, 0.520, zB + 0.090, -0.52, s * 0.16, 0);
           P.add('turretDetail', KIT.cylZ(0.0385, 0.018, 8), s * 1.255, 0.486, zB + 0.031, -0.52, s * 0.16, 0);
         }
@@ -12087,7 +12088,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
       // Four compact source smoke tubes on broad, physically seated pads.
       P.add('turret', box(0.24, 0.10, 0.54), s * 1.13, 0.49, -0.72, 0, s * 0.16, 0);
       for (let k = 0; k < 4; k++) {
-        P.add('turretDark', cylZ(0.035, 0.24, 10), s * (1.05 + k * 0.055), 0.57, -0.64 - k * 0.09, -0.28, s * 0.20, 0);
+        P.add('turretDark', markSmokeTube(cylZ(0.035, 0.24, 10)), s * (1.05 + k * 0.055), 0.57, -0.64 - k * 0.09, -0.28, s * 0.20, 0);
       }
       P.decal('turret', 'crossgrey', null, 0.31,
         [s * 1.34, 0.36, 0.04], s > 0 ? Math.PI / 2 : -Math.PI / 2, 0, s * 0.08);
@@ -12845,7 +12846,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       for (let k = 0; k < 8; k++) {
         const row = Math.floor(k / 4), col = k % 4;
         const y = 0.34 + row * 0.18, z = 0.15 - col * 0.14;
-        P.addEquipment('turret', xform(cylZ(0.038, 0.21, P.q ? 12 : 8), 0, 0, 0, -0.54, s * 0.16, 0), s * 1.29, y, z);
+        P.addEquipment('turret', xform(markSmokeTube(cylZ(0.038, 0.21, P.q ? 12 : 8)), 0, 0, 0, -0.54, s * 0.16, 0), s * 1.29, y, z);
       }
     }
   };
@@ -13342,7 +13343,7 @@ function addLeo2A6MRoofRCWS(P: TankBuilderPort) {
   // that richer crown remains below the A6M PERI silhouette budget while the
   // gun still bears directly on the station housing.
   const weaponFootY = 0.945;
-  const remoteMachineGun = FITTINGS.pintleMG({
+  const remoteMachineGun = FITTINGS.pintleMG({ remoteControlled: true,
     mats: P.mats,
     cls: 'm2',
     scale: machineGunScale,

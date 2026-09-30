@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Independent Burlak first-party scalar construction. Its welded bustle,
 // asymmetric front curtain and separate supports are not a donor T-90 mesh.
 import * as THREE from 'three';
@@ -202,16 +203,16 @@ function smoke(P:TankBuilderPort):void{
   // Eleven actual source stocks, with measured principal axes; the supplied
   // bank is asymmetric (five left, six right), not an invented mirrored six.
   const rows:readonly(readonly[number,number,number,number,number,number])[]=[
-    [-1.588745,1.945825,.983984,-.445211,.620033,.646023],[-1.745049,1.937054,.022267,-.928788,.370611,-.001032],
-    [-1.741461,1.927549,.580755,-.928763,.370672,-.000897],[-1.372114,1.936835,1.183703,-.445558,.619833,.645976],
-    [-1.164516,1.957622,1.355568,-.445302,.620027,.645967],[1.040403,2.085859,-.928802,.887923,.263429,-.377092],
+    [-1.588745,1.945825,.983984,-.445211,.620033,.646023],[-1.745049,1.937054,.022267,-.928788,.370611,.10],
+    [-1.741461,1.927549,.580755,-.928763,.370672,.10],[-1.372114,1.936835,1.183703,-.445558,.619833,.645976],
+    [-1.164516,1.957622,1.355568,-.445302,.620027,.645967],[1.040403,2.085859,-.928802,.887923,.263429,.377092],
     [1.313383,2.070785,-.295717,.884929,.442219,.146092],[1.148953,1.909136,1.309635,.490513,.619536,.612840],
     [1.348729,1.910424,1.130039,.490729,.619441,.612762],[1.578230,1.916546,.928224,.490626,.619385,.612901],
     [1.387407,2.164495,-.102897,.884876,.442261,.146283],
   ];
   for(const[x,y,z,dx,dy,dz]of rows){
     const q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),new THREE.Vector3(dx,dy,dz).normalize());
-    top(P,'turretDark',blindTube(.0608,.037,.36,.115,24).applyQuaternion(q),x,y,z);
+    top(P,'turretDark',markSmokeTube(blindTube(.0608,.037,.36,.115,24),[0,0,1],true).applyQuaternion(q),x,y,z);
     top(P,'turretDetail',beamBetween([x*.89,y-.14,z-.13],[x-dx*.13,y-dy*.13,z-dz*.13],.015),0,0,0);
   }
 }

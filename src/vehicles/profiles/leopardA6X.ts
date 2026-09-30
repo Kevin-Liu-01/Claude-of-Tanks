@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Independent plain Leopard 2A6 source-study build. Scalar dimensions describe
 // authored solids; no donor builder, source topology, or source asset is loaded.
 import { markFixedPaintedPanel } from './fixedPaintedPanel.ts';
@@ -384,7 +385,7 @@ function smokeTube(P: TankBuilderPort, mouth: Point, direction: Point): void {
   const body = new THREE.CylinderGeometry(.0437, .0437, .2142, 16, 1, true);
   body.applyQuaternion(rotation).translate(...center.toArray());
   P.addEquipment('turretDetail', local(body, D.turretPivot));
-  const rim = new THREE.RingGeometry(.0305, .0437, 16);
+  const rim = markSmokeTube(new THREE.RingGeometry(.0305, .0437, 16));
   rim.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis));
   rim.translate(...mouth);
   P.addEquipment('turretDetail', local(rim, D.turretPivot));

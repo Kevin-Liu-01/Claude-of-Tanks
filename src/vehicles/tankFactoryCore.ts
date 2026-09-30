@@ -1,5 +1,6 @@
 import { vehicleAuthoringSpec, VEHICLE_SIZE_FACTORS } from './vehicleSizePolicy.ts';
 import { resizeAuthoredVehicle } from './profiles/vehicleSize.ts';
+import { markSmokeTube, alignSmokeBanks } from './vehicleAuxiliaryGeometry.ts';
 // src/vehicles/tankFactoryCore.ts — cycle-free procedural factory implementation.
 // Recognizable replicas composed from BufferGeometries (ARCHITECTURE §3.3.2).
 // No top-level side effects; all randomness seeded; time arrives via
@@ -5940,7 +5941,7 @@ function smokeCluster(
     const f = k - (n - 1) / 2;
     const a = yaw + f * (arc / n);
     const dx = Math.cos(yaw) * f * 0.095, dz = -Math.sin(yaw) * f * 0.095;
-    P.add('turretDetail', cylZ(0.038, 0.24, 8), x + dx, y, z + dz, -0.5, a, 0);
+    P.add('turretDetail', markSmokeTube(cylZ(0.038, 0.24, 8)), x + dx, y, z + dz, -0.5, a, 0);
   }
 }
 
@@ -8123,8 +8124,9 @@ function* createTankOwnedSteps(
         !!spec.visual.bakeDirtDeckEq);
     }
     recordAuthoredRanges(merged, authoredRanges);
+    const station=list[0]?.userData.auxiliaryStation as {name:string;stage:string}|undefined;
     equipmentDamage.bindMerged(list, merged, parentKey === 'hullG' ? 'hull' : parentKey === 'turretG' ? 'turret' : '',
-      combatHitboxRoleForBucket(bucket));
+      station ? 'equipment' : combatHitboxRoleForBucket(bucket));
     disposables.push(merged);
     const mesh = new THREE.Mesh(merged, mats[matKey]);
     tagMergedBucket(bucket, mesh);
@@ -8134,13 +8136,30 @@ function* createTankOwnedSteps(
       mesh.userData.materialOnlyPaintSourceBucket = paintSourceBucket;
     }
     registerVehicleNightLensMesh(mesh, list);
-    const parent = mergedBucketParents[parentKey];
+    const parent:THREE.Object3D|undefined = mergedBucketParents[parentKey];
+    if(station && parent){
+      mesh.name=station.name+'_'+station.stage+'_'+bucket;
+      mesh.userData.combatHitboxRole='equipment';
+      delete mesh.userData.combatHitboxPart;
+      const owner=parent, mount=root.getObjectByName(station.name);
+      if(!mount)throw new Error('Missing auxiliary station '+station.name);
+      const target=station.stage==='pitch'?mount.getObjectByName('auxiliaryWeaponPitch')!:mount;
+      root.updateMatrixWorld(true);
+      merged.applyMatrix4(new THREE.Matrix4().copy(target.matrixWorld).invert().multiply(owner.matrixWorld));
+      target.add(mesh);return;
+    }
     if (!parent) throw new Error(`${specId}: bucket ${bucket} requires authored twin barrels`);
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
     else lodWrap(parent, mesh, geometryQuality === 'low' ? 64 : LOD1_DIST);
   };
   for (const [bucket, list] of Object.entries(buckets)) {
-    mergeBucket(bucket, list);
+    const groups=new Map<string,THREE.BufferGeometry[]>();
+    for(const part of list){
+      const station=part.userData.auxiliaryStation;
+      const key=station?station.name+':'+station.stage:'';
+      const group=groups.get(key)??[];group.push(part);groups.set(key,group);
+    }
+    for(const group of groups.values())mergeBucket(bucket,group);
   }
   const coreBindMergeFinishedAt = performance.now();
 
@@ -10159,6 +10178,7 @@ function* createTankOwnedSteps(
     // Run after decoration, static batching and battle-detail regrouping so
     // every final color-pass mesh receives exactly one stable layer.
     installCoplanarDepthLayers(root);
+    alignSmokeBanks(root);
     finalizeVehicleNightLighting(root);
     const tailFinalizeFinishedAt = performance.now();
     // Retain each authored hull/turret/gun proxy and its articulation owner.

@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Independent first-party T-72B3M (2022) construction from scalar source
 // measurements. No source topology, source loading, or donor builder calls.
 import * as THREE from 'three';
@@ -239,7 +240,7 @@ function smoke(P:TankBuilderPort):void {
   // Six actual right-side stocks in a3+2+1 bank, recessed closed mouths.
   for(const [x,y,z]of [[1.16,2.163,.085],[1.37,2.129,.145],[1.58,2.067,.199],
     [1.35,1.994,.242],[1.56,1.932,.296],[1.56,1.82,.36]]){
-    const axis=new THREE.Vector3(.31,.38,.872).normalize(),g=blindTube(.041,.033,.218,.124,20);
+    const axis=new THREE.Vector3(.31,.38,.872).normalize(),g=markSmokeTube(blindTube(.041,.033,.218,.124,20),[0,0,1],true);
     g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),axis));
     topPart(P,'turretDark',g,x,y,z);
     topPart(P,'turretDetail',box(.29,.036,.095),x-.07,y-.07,z-.102);

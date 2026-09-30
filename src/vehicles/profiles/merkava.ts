@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Merkava family procedural profiles — FROM-SCRATCH curve-driven rebuild.
 // Owned by the Merkava agent.
 //
@@ -3903,6 +3904,7 @@ function addMerkavaFrameSmokeCluster(
   addMerkava4bFrameBox(P, 'turretDetail', frame, 0.36, 0.20, 0.10, 0.040, true);
   const tubeAxis = frame.up.clone().multiplyScalar(0.82)
     .addScaledVector(frame.normal, 0.57).normalize();
+  tubeAxis.z=Math.max(.25,Math.abs(tubeAxis.z));tubeAxis.normalize();
   const tubeEuler = new THREE.Euler().setFromQuaternion(
     new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), tubeAxis),
     'XYZ',
@@ -3917,7 +3919,7 @@ function addMerkavaFrameSmokeCluster(
         .addScaledVector(frame.up, v)
         .addScaledVector(frame.normal, 0.070);
       const center = foot.clone().addScaledVector(tubeAxis, tubeL * 0.46);
-      P.addEquipment(soft ? 'turretDetail' : 'turretDark', cylY(0.032, 0.036, tubeL, 8),
+      P.addEquipment(soft ? 'turretDetail' : 'turretDark', markSmokeTube(cylY(0.032, 0.036, tubeL, 8),[0,1,0]),
         center.x, center.y, center.z, tubeEuler.x, tubeEuler.y, tubeEuler.z);
       if (soft) {
         const mouth = foot.clone().addScaledVector(tubeAxis, tubeL * 0.92);
@@ -3957,15 +3959,15 @@ function addMerkavaPlanarSmokeCluster(
         // into a TEXT GLYPH cluster at hero distance (the critic's
         // "Militek decal"). Pale casings + a small dark bore dot each —
         // same geometry class, no letterform row.
-        P.add('turretDetail', cylY(0.032, 0.036, tubeL, 8),
-          x + cy * u + sy * v, y + lift + r * 0.012, z - sy * u + cy * v, pitch - 0.15, yaw, 0);
+        P.add('turretDetail', markSmokeTube(cylY(0.032, 0.036, tubeL, 8),[0,1,0]),
+          x + cy * u + sy * v, y + lift + r * 0.012, z - sy * u + cy * v, -(pitch - 0.15), yaw, 0);
         const tipDz = Math.sin(-(pitch - 0.15)) * tubeL * 0.42;
         P.add('turretDark', cylY(0.030, 0.030, 0.016, 8),
           x + cy * u + sy * v, y + lift + r * 0.012 + Math.cos(pitch - 0.15) * tubeL * 0.42,
-          z - sy * u + cy * v + tipDz, pitch - 0.15, yaw, 0);
+          z - sy * u + cy * v + tipDz, -(pitch - 0.15), yaw, 0);
       } else {
-        P.add('turretDark', cylY(0.032, 0.036, tubeL, 8),
-          x + cy * u + sy * v, y + lift + r * 0.012, z - sy * u + cy * v, pitch - 0.15, yaw, 0);
+        P.add('turretDark', markSmokeTube(cylY(0.032, 0.036, tubeL, 8),[0,1,0]),
+          x + cy * u + sy * v, y + lift + r * 0.012, z - sy * u + cy * v, -(pitch - 0.15), yaw, 0);
       }
     }
   }

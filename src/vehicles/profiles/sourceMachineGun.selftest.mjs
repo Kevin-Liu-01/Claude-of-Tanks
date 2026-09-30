@@ -15,7 +15,11 @@ for (const quality of ['high', 'low']) for (const [id, x, y, muzzleZ] of SOURCE_
     tank.root.updateMatrixWorld(true);
     const fitting = tank.root.getObjectByName('fitting_pintleMG_exact');
     assert.ok(fitting?.userData.fittingRoot && fitting.userData.fittingExact, `${id}: actual exact weapon fitting`);
-    assert.equal(fitting.parent.name, 'rig_turret');
+    if (id==='t90m_x' || id==='t90sm_x') {
+      assert.equal(fitting.parent.name, 'auxiliaryWeaponPitch');
+      assert.equal(fitting.parent.parent.userData.remoteControlled, true);
+      assert.equal(fitting.parent.parent.parent.name, 'rig_turret');
+    } else assert.equal(fitting.parent.name, 'rig_turret');
     assert.deepEqual(fitting.userData.barrelAxisLocal, [0, 0, 1]);
     assert.equal(fitting.userData.barrelElevationRad, 0);
     let visibleMeshes = 0, triangles = 0;

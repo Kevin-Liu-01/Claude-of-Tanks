@@ -1,3 +1,4 @@
+import { markSmokeTube } from './vehicleAuxiliaryGeometry.ts';
 import type { BufferGeometry } from 'three';
 import { cylZ } from './factoryGeometry.ts';
 
@@ -12,7 +13,7 @@ export function cappedSmokeLauncherGeometry(
   capDepthM: number,
   segments: number,
 ): { body: BufferGeometry; cap: BufferGeometry } {
-  const body = cylZ(radiusM, lengthM, segments);
+  const body = markSmokeTube(cylZ(radiusM, lengthM, segments));
   const cap = cylZ(capRadiusM, capDepthM, segments);
   cap.translate(0, 0, lengthM / 2);
   return { body, cap };

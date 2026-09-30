@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {beforeSmokeAnnotations} from './smokeAnnotationHistory.test-support.mjs';
 import {createHash} from 'node:crypto';
 import {beforeType10SkirtOptimization,beforeType10GearRebuild,TYPE10_ROLLER_SUPPORT_LINE} from './type10SkirtHistory.test-support.mjs';
 
@@ -96,6 +97,7 @@ const edits = {
 };
 export function beforeFixedStockPaint(name, source) {
   assert.ok(edits[name], 'undeclared paint source '+name);
+  if(name==='leopardA6X.ts')source=beforeSmokeAnnotations(name,source);
   if(name==='type10XSkirts.ts')source=beforeType10SkirtOptimization(source);
   if(name==='type10X.ts') {
     source=beforeType10GearRebuild(source);

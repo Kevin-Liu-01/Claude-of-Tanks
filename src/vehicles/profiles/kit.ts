@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Shared profile-building machinery for the per-family procedural modules in
 // this directory. Family modules own their PROFILE DATA and any family-only
 // kit/build functions; everything generic (hull styles, turret styles, the
@@ -191,6 +192,7 @@ interface MuzzleTipOptions {
 }
 
 interface FittingOptions {
+  remoteControlled?: boolean;
   mats?: RuntimeValue;
   shadows?: boolean;
   rotation?: Vec3Tuple;
@@ -1658,8 +1660,21 @@ function assemblePintleMg(context: PintleMgBuildContext): THREE.Group {
 }
 
 function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
+  // Crew-operated pintles retain their authored assembly. Only remote stations
+  // get the powered yaw/pitch rig used by the auxiliary auto-gun control.
   const context = createPintleMgBuildContext(opts);
   addPintleMgMount(context);
+  if (opts.remoteControlled) {
+    const weapon=fitParts(), weaponContext={...context,parts:weapon};
+    addPintleMgReceiver(weaponContext);addPintleMgBarrel(weaponContext);addPintleMgAmmo(weaponContext);
+    addPintleMgShield(context);addPintleMgRing(context);
+    const fitting=assemblePintleMg(context);
+    fitting.userData.remoteControlled=true;
+    fitting.userData.barrelAxisLocalY=context.trunY;
+    fitting.userData.muzzleLocalZ=context.trunZ+(.10+context.cls.barrelL+context.cls.flashL)*context.s+.011;
+    attachAuxiliaryWeapon(fitting,weapon,opts,context.recY,0,context.recZ);
+    return fitting;
+  }
   addPintleMgReceiver(context);
   addPintleMgBarrel(context);
   addPintleMgAmmo(context);
@@ -2157,13 +2172,27 @@ function assembleAmericanRws(context: AmericanRwsBuildContext): THREE.Group {
   return fitting;
 }
 
+function attachAuxiliaryWeapon(fitting: THREE.Group, parts: FittingParts, opts: FittingOptions, pivotY: number, rise=0, pivotZ=0): void {
+  for(const geos of Object.values(parts.bySlot))for(const geometry of geos)geometry.translate(0,rise-pivotY,-pivotZ);
+  const weapon=fitAssemble('auxiliaryWeapon',parts,{...opts,rotation:[0,0,0]});
+  weapon.name='auxiliaryWeaponPitch';weapon.position.set(0,pivotY,pivotZ);fitting.add(weapon);
+  fitting.userData.auxiliaryPivot=[0,pivotY,pivotZ];
+  const bb=new THREE.Box3().setFromObject(fitting);
+  fitting.userData.aabb={min:bb.min.toArray(),max:bb.max.toArray()};
+  weapon.traverse(o=>{if(o instanceof THREE.Mesh)o.userData.appearanceRole='machineGun';});
+}
 function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
   const context = createAmericanRwsBuildContext(opts);
   addAmericanRwsPedestal(context);
   addAmericanRwsSensorHead(context);
-  addAmericanRwsWeaponSystem(context);
+  const weapon=fitParts(), weaponContext={...context,parts:weapon};
+  addAmericanRwsWeaponSystem(weaponContext);
   addAmericanRwsVariantArmor(context);
-  return assembleAmericanRws(context);
+  const fitting=assembleAmericanRws(context);
+  fitting.userData.barrelAxisLocalY=context.recY;
+  fitting.userData.muzzleLocalZ=1.223*context.s;
+  attachAuxiliaryWeapon(fitting,weapon,opts,context.recY);
+  return fitting;
 }
 
 /**
@@ -2522,7 +2551,8 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   const context=createOpenYokeContext(opts);
   const { hasWeapon, parts }=context;
   addOpenYokeBase(context);
-  addOpenYokeWeapon(context);
+  const weapon=fitParts();
+  addOpenYokeWeapon({...context,parts:weapon});
   addOpenYokeSensorHead(context);
   addOpenYokeVariantArmor(context);
 
@@ -2534,6 +2564,7 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
 
   const fitting = fitAssemble('openYokeRws', parts, opts);
   stampOpenYokeMetadata(fitting, context, towerRise);
+  attachAuxiliaryWeapon(fitting,weapon,opts,context.receiverY+towerRise,towerRise);
   const weaponMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
   if (hasWeapon && weaponMesh) {
     weaponMesh.name = 'openYokeRwsMachineGun';
@@ -2914,7 +2945,7 @@ function fittingSmokeBank(opts: FittingOptions = {}): THREE.Group {
     const a = splay + f * (arc / n);
     const dx = Math.cos(splay) * f * spacing;
     const dz = -Math.sin(splay) * f * spacing;
-    parts.add(slot, xform(cylZ(r, len, 8), 0, 0, 0, pitch, a, 0), dx, 0, dz);
+    parts.add(slot, xform(markSmokeTube(cylZ(r, len, 8)), 0, 0, 0, pitch, a, 0), dx, 0, dz);
     if (opts.caps !== false) {
       parts.add('dark', xform(xform(cylZ(r * 0.88, 0.012, 8), 0, 0, len / 2 + 0.007), 0, 0, 0, pitch, a, 0), dx, 0, dz);
     }

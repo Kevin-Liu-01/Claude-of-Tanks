@@ -1,3 +1,4 @@
+import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from '../sim/auxiliarySystems.ts';
 import { bridgeBallFloor } from '../sim/bridgeBallSupport.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
 /**
@@ -294,6 +295,7 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   campaignOperationId: string | null;
   player: SoloEntity | null;
   spotting: SpottingSystem | null;
+  auxiliarySmokeScreens?: SmokeScreen[];
   openingRouteJobs: Array<() => void>;
   mapId: string;
   killcam?: KillcamRecorder | null;
@@ -612,6 +614,8 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   game.shells.length = 0;
   game.nextShellId = 1;
   game.timeS = 0;
+  game.auxiliarySmokeScreens = [];
+  auxiliaryContexts.delete(game);
   game.fireTickAcc = 0;
   game.combatRng = mulberry32(COMBAT_SEED);
   game.result = null;
@@ -680,6 +684,7 @@ function createBattleSpotting(game: SoloGameState, world: SoloWorld): SpottingSy
   return createSpottingSystem({
     getTanks: () => game.tanks as SpottingTank[],
     raycast: world.raycast,
+    opticalBlocked: (a,b) => smokeBlocks(game.auxiliarySmokeScreens||[],a,b,game.timeS,world.heightField.getHeightAt),
     concealers: world.getConcealment?.() || [],
     getCamoBonus: (tank) => {
       const entity = tank as SpottingTank & { specId: string };
@@ -2714,6 +2719,41 @@ function stepReloadAndFire(
   }
 }
 
+const auxiliaryRay = new THREE.Vector3();
+const auxiliaryContexts=new WeakMap<SoloGameState, Parameters<typeof stepRoofGun>[3]>();
+function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventBus): void {
+  if (game.result) return;
+  let context=auxiliaryContexts.get(game);
+  if(!context){context = {
+    entities: game.tanks,
+    visible: (target: {id:string}, shooter: import('../sim/spotting.ts').SpottingTank) => !!game.spotting?.isSpotted(target.id, shooter.team, shooter),
+    clear: (a: THREE.Vector3,b: THREE.Vector3) => {
+      if (smokeBlocks(game.auxiliarySmokeScreens||[],a,b,game.timeS,world.heightField.getHeightAt)) return false;
+      auxiliaryRay.copy(b).sub(a); const distance=auxiliaryRay.length(); auxiliaryRay.normalize();
+      const hit=world.raycast(a,auxiliaryRay,distance); return !hit || hit.dist>=distance-.5;
+    },
+  };auxiliaryContexts.set(game,context);}
+  context.entities=game.tanks;
+  const screens=game.auxiliarySmokeScreens;
+  if(screens)for(let i=screens.length-1;i>=0;i--)if(game.timeS-screens[i]!.born>18)screens.splice(i,1);
+  for(const entity of game.tanks){
+    const bits=entity.input.auxiliaryBits||0; entity.input.auxiliaryBits=0;
+    if(bits&64 && requestAuxiliary(entity,'smoke',game.timeS)){
+      const screens=game.auxiliarySmokeScreens??=[];screens.push(entity.combat.auxiliary!.smoke!);
+      if(screens.length>84)screens.shift();
+      bus.emit('auxiliary:smokeScreens',{screens});
+    }
+    if(bits&128)requestAuxiliary(entity,'lights',game.timeS);
+    if(bits&512)requestAuxiliary(entity,'lightsOff',game.timeS);
+    if(bits&256)requestAuxiliary(entity,'roofGun',game.timeS);
+    if(stepRoofGun(entity,game.timeS,SIM_DT,context)) {
+      const shell=acquireShell(auxiliaryShot.shell,entity.id,entity.isPlayer,auxiliaryShot.origin,auxiliaryShot.direction,game.nextShellId++);
+      shell.rocket=false;shell.gravityMps2*=entity.modeGravityScale??1;game.shells.push(shell);
+      game.spotting?.notifyFired(entity.id,game.timeS,auxiliaryShot.shell.caliberMm);
+    }
+  }
+}
+
 function stepFireDamage(game: SoloGameState, bus: EventBus): void {
   game.fireTickAcc += SIM_DT;
   if (game.fireTickAcc < FIRE_TICK_S) return;
@@ -2871,6 +2911,7 @@ export function simStep(
   resolveRamContacts(game, bus, rig, collider);
   stepRolloverRecovery(game, bus);
   stepReloadAndFire(game, bus, rig);
+  stepAuxiliarySystems(game, world, bus);
   game.killcam?.recordSimStep(game);
   stepShells(game, bus, world);
   stepFireDamage(game, bus);

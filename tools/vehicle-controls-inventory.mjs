@@ -1,0 +1,36 @@
+import * as THREE from 'three';
+import { writeFileSync, readFileSync } from 'node:fs';
+import { createTank } from '../src/vehicles/tankFactory.ts';
+import { ALL_TANK_IDS } from '../src/vehicles/specs.ts';
+import { smokeSocketsFor } from '../src/vehicles/vehicleAuxiliaryGeometry.ts';
+const check=process.argv.includes('--check');
+const rows={}; const bad=[];const missing=[];
+const round=a=>a.map(x=>+x.toFixed(4));
+for(const id of ALL_TANK_IDS){
+ const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true});
+ tank.root.updateMatrixWorld(true);
+ const hull=tank.root.getObjectByName('rig_hull'), turret=tank.root.getObjectByName('rig_turret');
+ const smoke=[], guns=[];
+ tank.root.traverse(o=>{
+  let owner='hull', parent=o; while(parent){if(parent===turret)owner='turret';parent=parent.parent;}
+  const rig=owner==='turret'?turret:hull;
+  const m=new THREE.Matrix4().copy(rig.matrixWorld).invert().multiply(o.matrixWorld);
+  for(const socket of smokeSocketsFor(o)){
+   const p=new THREE.Vector3(...socket.position).applyMatrix4(m), d=new THREE.Vector3(...socket.direction).transformDirection(m);
+   smoke.push({owner,position:round(p.toArray()),direction:round(d.toArray())});
+   if(d.z<-.001||d.y<-.001)bad.push({id,position:round(p.toArray()),direction:round(d.toArray())});
+  }
+  if(!o.userData.primaryWeapon&&o.userData.remoteControlled&&o.userData.firingAxis==='+Z'&&o.userData.hasWeapon!==false){
+   if(!o.userData.auxiliaryPivot || !Number.isFinite(o.userData.muzzleLocalZ)) { missing.push({id,name:o.name}); return; }
+   guns.push({name:o.name,owner,position:round(new THREE.Vector3().setFromMatrixPosition(m).toArray()),caliberMm:o.userData.caliberMm||12.7,muzzle:o.userData.auxiliaryMuzzle??[0,o.userData.barrelAxisLocalY,o.userData.muzzleLocalZ],pivot:o.userData.auxiliaryPivot,scale:new THREE.Vector3().setFromMatrixScale(m).toArray(),rotation:new THREE.Quaternion().setFromRotationMatrix(m.clone().extractRotation(m)).toArray()});
+  }
+ });
+ rows[id]={smoke,guns,lights:!!tank.root.userData.nightLightCoverage?.headlights};
+ tank.dispose?.();
+}
+const output=`// Generated from authored fittings by tools/vehicle-controls-inventory.mjs.\nimport type { AuxiliaryInventory } from './auxiliaryInventory.ts';\nexport const AUXILIARY_INVENTORY: Readonly<Record<string, AuxiliaryInventory>> = ${JSON.stringify(rows)};\n`;
+if(bad.length||missing.length)throw new Error(JSON.stringify({bad,missing}));
+const path='src/vehicles/auxiliaryInventory.generated.ts';
+if(check){if(readFileSync(path,'utf8')!==output)throw new Error('Auxiliary inventory is stale; run tools/vehicle-controls-inventory.mjs');}
+else writeFileSync(path,output);
+console.log(JSON.stringify({tanks:Object.keys(rows).length,smoke:Object.values(rows).filter(x=>x.smoke.length).length,guns:Object.entries(rows).filter(([,x])=>x.guns.length).map(([id,x])=>[id,x.guns]),bad},null,2));

@@ -521,8 +521,9 @@ for (let index = 0; index < happy.calls.length; index++) {
 assert.ok(order.indexOf('compileClosed') < order.indexOf('warmRender'));
 assert.deepEqual(happy.calls[order.indexOf('compileClosed') + 1], ['yield', true],
   'final submission releases its task before the first native forward bind');
-assert.deepEqual(happy.lightSignatures, [[0, 0], [0, 0]], 'day constructs no night light pool');
-assert.equal(happy.lamps.current, null);
+assert.deepEqual(happy.lightSignatures, [[2, 1], [2, 1]], 'day warms the fixed pool before manual headlights can be enabled');
+assert.ok(happy.lamps.current);
+assert.ok(happy.lamps.current.lights.every(light => light.intensity === 0), 'day starts with every manual light off');
 
 const shortCompile = createHarness({ compileSlices: 0 });
 await shortCompile.runtime.warm(Promise.resolve());

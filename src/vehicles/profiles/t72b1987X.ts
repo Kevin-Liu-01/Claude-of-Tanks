@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Independent T-72B obr.1987 source study. The supplied two-object model is
 // fused; only geometric scalar measurements inform these original solids.
 import * as THREE from 'three';
@@ -185,7 +186,7 @@ function smoke(P:TankBuilderPort):void {
   onTurret(P,'turretDetail',box(.425,.665,.031),1.413,1.799,-.124,-.19,-.19);
   for(let row=0;row<4;row++)for(let col=0;col<3;col++) {
     const x=1.306+col*.119,y=1.569+row*.147,z=.080-row*.045-col*.022;
-    onTurret(P,'turretDark',blindTube(.044,.034,.212,.130,18),x,y,z,-.49,-.31);
+    onTurret(P,'turretDark',markSmokeTube(blindTube(.044,.034,.212,.130,18),[0,0,1],true),x,y,z,-.49,-.31);
   }
 }
 

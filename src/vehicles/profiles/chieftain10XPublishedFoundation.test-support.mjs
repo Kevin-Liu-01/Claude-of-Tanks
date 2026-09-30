@@ -1,6 +1,7 @@
 // Test-only successor contract for the already published, owner-requested
 // Mk5-derived Mk10 foundation. This does not reconstruct the earlier casting.
 import assert from 'node:assert/strict';
+import {beforeSmokeAnnotations} from '../smokeAnnotationHistory.test-support.mjs';
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 
@@ -47,6 +48,7 @@ export function assertPublishedChieftainFoundationSources(
     'Complete Mk10 profile/helper family, shared foundation and its two direct geometry leaves');
   for (const [file, expected] of Object.entries(receipt.authoredSources)) {
     let source = read(file);
+    if(file==='src/vehicles/profiles/chieftain10X.ts')source=beforeSmokeAnnotations('chieftain10X.ts',source);
     if (file === receipt.laterMetadataAnnotation.file) {
       assert.equal(sha(source), receipt.laterMetadataAnnotation.currentSourceSha256,
         'Authenticate the complete subsequently published night-lamp annotation source');

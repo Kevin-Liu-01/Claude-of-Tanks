@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 // Authored Griffin 50 mm study: native solids, mechanisms and material roles.
 import * as THREE from 'three';
@@ -309,7 +310,7 @@ function turretSideCasesAndSmoke(P: TankBuilderPort, add: EquipmentAdder, side: 
     }
     const smokeStations=[[1.187,2.336,1.157],[1.200,2.249,1.098],[1.156,2.411,1.111],[1.248,2.352,1.044]];
     for(const [x,y,z] of smokeStations) {
-      add('turretDetail',cylZ(.048,.157,P.q?16:10),side*x,y,z,-.37,side*.56);
+      add('turretDetail',markSmokeTube(cylZ(.048,.157,P.q?16:10)),side*x,y,z,-.37,side*.56);
       add('turretDark',cylZ(.033,.008,P.q?16:10),side*(x+.043),y+.029,z+.065,-.37,side*.56);
     }
 }

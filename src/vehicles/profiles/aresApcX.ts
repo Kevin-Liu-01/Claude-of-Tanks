@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // ARES APC (`ares_apc_x`) is an independent first-party procedural build.
 // The owner's CC-BY-NC reference GLB is a hash-pinned, offline comparison
 // oracle only; no source vertex, material, texture, node, or topology enters
@@ -186,7 +187,7 @@ function smokeLaunchers(P: TankBuilderPort): void {
     P.addEquipment('hull', part(box(0.34, 0.20, 0.25), 'smoke-bank-base'), x, 2.18, z, 0.10, 0, side * 0.14);
     for (let index = 0; index < 4; index++) {
       const row = Math.floor(index / 2), column = index % 2;
-      P.add('hullDark', part(blindTube(0.038, 0.025, 0.25, 0.055, P.q ? 16 : 6), 'smoke-tube'),
+      P.add('hullDark', part(markSmokeTube(blindTube(0.038, 0.025, 0.25, 0.055, P.q ? 16 : 6),[0,0,1],true), 'smoke-tube'),
         x + side * (column - 0.5) * 0.095, 2.28 + row * 0.09, z + (column - 0.5) * 0.10,
         -0.30, side * 0.36, 0);
     }
@@ -243,7 +244,7 @@ function exactL111A1(P: TankBuilderPort): void {
   add(part(box(0.20, 0.13, 0.012), 'rws-optic-aperture'), P.mats.glass, 0.02, -0.12, 0.436);
   group.name = 'aresL111A1ExactRemoteWeapon';
   group.userData.weaponName = 'L111A1 12.7 mm remote weapon';
-  group.userData.remoteControlled = true;
+  group.userData.remoteControlled = true; group.userData.primaryWeapon = true;
   group.userData.firingAxis = '+Z';
   group.userData.muzzleLocalZ = ARES_APC_X_DATUMS.muzzleZ - ARES_APC_X_DATUMS.trunnion[2];
   FITTINGS.markExact(group, 'pintleMG');

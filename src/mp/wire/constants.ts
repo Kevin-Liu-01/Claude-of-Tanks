@@ -6,14 +6,16 @@
  * when the handshake or the semantics of a message change.
  */
 
-export const WIRE_VERSION = 1;
+// Vehicle controls widen action words and add auxiliary state plus smoke envelopes.
+export const WIRE_VERSION = 2;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the
  * client interpolates it at its own cadence; the client sends RESUME_HINT after a migration. The frame layout is
  * otherwise unchanged (WIRE_VERSION stays 1: the handshake is where a mismatch is caught, cleanly, as PROTOCOL_VERSION).
  */
-export const PROTOCOL_VERSION = 2;
+// 3: auxiliary controls require both peers to use wire layout 2.
+export const PROTOCOL_VERSION = 3;
 
 export const TICK_HZ = 60;
 /**
@@ -158,8 +160,12 @@ export const ACTION_BITS = Object.freeze({
   RELOAD_MAGAZINE: 1 << 3,
   SPECIAL_ACTION: 1 << 4,
   SELF_RIGHT: 1 << 5,
+  SMOKE: 1 << 6,
+  LIGHTS: 1 << 7,
+  ROOF_GUN: 1 << 8,
+  LIGHTS_OFF: 1 << 9,
 } as const);
-export const ACTION_BIT_MASK = 0x3f;
+export const ACTION_BIT_MASK = 0x3ff;
 
 /** Shell types the fleet authors; unknown types encode as OTHER. */
 export const SHELL_TYPE_NAMES = Object.freeze(['AP', 'APCR', 'APFSDS', 'HEAT', 'HE'] as const);
@@ -198,9 +204,10 @@ export const ROW_GROUP = Object.freeze({
    * a patched row without it was captured at the packet's tick. A row a delta leaves untouched keeps its baseline tick.
    */
   AGE: 1 << 16,
+  AUXILIARY: 1 << 17,
 } as const);
-/** The widest row mask the decoder admits (17 groups). */
-export const ROW_GROUP_MASK_MAX = (1 << 17) - 1;
+/** The widest row mask the decoder admits (18 groups). */
+export const ROW_GROUP_MASK_MAX = (1 << 18) - 1;
 
 /** Status word layout. */
 export const STATUS_RELOAD_KIND_SHIFT = 0;

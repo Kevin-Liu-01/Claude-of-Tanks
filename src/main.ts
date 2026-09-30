@@ -645,6 +645,11 @@ const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
   initialize: async ({ createFxChunked }) => {
     const live = await createFxChunked(engineCtx, hfProxy, {
       seed: 5000,
+      auxiliaryEntities: () => networkSession.bridge ? game.tankById.values() : game.tanks,
+      auxiliaryTime: () => game.timeS,
+      auxiliaryVisible: entity => entity.networkVisible !== undefined ? entity.networkVisible
+        : entity.team !== 'enemy' || game.spotting?.isSpotted(entity.id, 'player', game.player) === true,
+      auxiliaryReport: (id,p,caliberMm) => bus.emit('auxiliary:fired',{id,x:p.x,y:p.y,z:p.z,caliberMm}),
       // Decals must resolve every live struck entity in production. The old
       // window.__DEBUG lookup silently dropped all marks whenever diagnostics
       // were not installed, including incoming hits on the player's tank.
@@ -3108,6 +3113,7 @@ const pauseInfo = battleFrame.pauseInfo;
 // shot-mode frame so the reticle canvas stays live (forceHitMark etc.).
 let shotHudFrame = false;
 
+let lastAuxiliaryNight: boolean | null = null;
 const mainFrame = createMainFrameRuntime({
   scene,
   camera,
@@ -3123,7 +3129,11 @@ const mainFrame = createMainFrameRuntime({
   getShotMode: () => shotMode,
   getShotHudFrame: () => shotHudFrame,
   sniperFill,
-  updateNightLighting: () => nightLighting.update(),
+  updateNightLighting: () => {
+    nightLighting.update();
+    const on=battleAtmosphere.current?.weather?.timeOfDay==='night';
+    if(on!==lastAuxiliaryNight){lastAuxiliaryNight=on;bus.emit('auxiliary:defaultLights',{on});}
+  },
   resolveFxSubject,
   battleHudFrame,
   lighting,

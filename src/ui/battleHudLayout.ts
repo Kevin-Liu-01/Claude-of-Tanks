@@ -70,7 +70,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       map && map.left > width / 2 ? map.top - 8 : height,
       read('.cot-spec.show')?.top ?? height,
       width < 768 ? read('.cot-drive')?.top ?? height : height,
-      width < 768 ? read('.cot-special.show')?.top ?? height : height);
+      width < 768 ? read('.cot-vehicle-controls')?.top ?? height : height);
   }
   function refresh() {
     frame = 0;
@@ -79,7 +79,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       document.body.toggleAttribute('data-cot-battle-layout', visible);
     }
     if (!visible) return;
-    observe('.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-special,.cot-spec,.cot-top,.cot-touch .joy,.cot-touch .fire.alt');
+    observe('.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-touch .joy,.cot-touch .fire.alt');
     observe('.cot-si-toasthost,.cot-room-chat', true);
     // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
     // asks for a relayout when it mounts, and the right roster takes the lane below it.

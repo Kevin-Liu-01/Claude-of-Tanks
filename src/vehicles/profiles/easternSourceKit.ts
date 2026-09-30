@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Small first-party construction vocabulary shared by four independent source
 // studies. Every vehicle owns its primary shell sections and measured frames.
 import * as THREE from 'three';
@@ -59,7 +60,7 @@ export function smokeBank(P: TankBuilderPort, side: number, x: number,
   y: number, z: number, count: number, spacing = .16): void {
   for (let i = 0; i < count; i++) {
     const xx = side * (x + i * .055), zz = z - i * spacing;
-    equipment(P, 'turret', 'Detail', cylZ(.062, .28, P.q ? 16 : 9), xx, y, zz, -.55, side * .30);
+    equipment(P, 'turret', 'Detail', markSmokeTube(cylZ(.062, .28, P.q ? 16 : 9)), xx, y, zz, -.55, side * .30);
     equipment(P, 'turret', 'Dark', cylZ(.048, .012, 12), xx + side * .042, y + .08, zz + .12, -.55, side * .30);
   }
 }

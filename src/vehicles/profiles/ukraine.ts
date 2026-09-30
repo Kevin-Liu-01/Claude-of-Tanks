@@ -2104,7 +2104,7 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   // the print's own shoulder station in the §5.319 block below (relief
   // receipt: left cluster world z -0.80..-0.38 topping 2.36, capped 2.28).
   seat(P, 'turret', FITTINGS.smokeBank({ mats: P.mats, count: 6,
-    r: 0.042, len: 0.28, splay: 1.05, pitch: -0.42,
+    r: 0.042, len: 0.28, splay: .70, pitch: -0.42,
     arc: 0.55, spacing: 0.096, slot: 'detail',
     rotation: [0, 0.40, -0.10],
     seed: 8411 }),

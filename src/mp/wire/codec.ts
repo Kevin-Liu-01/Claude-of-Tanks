@@ -71,8 +71,8 @@ function writeControl(writer: ByteWriter, control: ControlFrame): void {
   writer.u8(control.shellSlot);
   writer.u16(control.fireSeq);
   writer.u16(control.actionSeq);
-  if (control.actionBits > 0x3f) throw new WireError('range', 'action bits exceed six bits');
-  writer.u8(control.actionBits);
+  if (control.actionBits > 0x3ff) throw new WireError('range', 'action bits exceed ten bits');
+  writer.u16(control.actionBits);
 }
 
 function writeInput(writer: ByteWriter, message: InputMessage): void {
@@ -167,6 +167,7 @@ function writeMeta(writer: ByteWriter, meta: SnapshotMeta, hasVerdict: boolean):
   writer.u8(meta.verdict);
   if (hasVerdict) writer.string(meta.verdictReason, MAX_REASON_BYTES);
   writer.u32(meta.destructibleRevision);
+  writer.string(meta.smokeJson || '', 16384);
 }
 
 function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: SnapshotFrame | null): void {
@@ -292,11 +293,11 @@ function readControl(reader: ByteReader): ControlFrame {
     shellSlot: reader.u8(),
     fireSeq: reader.u16(),
     actionSeq: reader.u16(),
-    actionBits: reader.u8(),
+    actionBits: reader.u16(),
   };
   if (control.flags > 7) throw new WireError('range', 'control flags exceed three bits');
   if (control.shellSlot > 2) throw new WireError('range', 'shell slot must be 0..2');
-  if (control.actionBits > 0x3f) throw new WireError('range', 'action bits exceed six bits');
+  if (control.actionBits > 0x3ff) throw new WireError('range', 'action bits exceed ten bits');
   return control;
 }
 
@@ -415,7 +416,9 @@ function readMeta(reader: ByteReader, hasVerdict: boolean): SnapshotMeta {
   if (verdict > 3) throw new WireError('range', 'verdict out of range');
   if (hasVerdict !== (verdict !== 0)) throw new WireError('invalid_message', 'verdict flag disagrees with verdict');
   const verdictReason = hasVerdict ? reader.string(MAX_REASON_BYTES) : '';
-  return { phase: phase as PhaseId, countdownMs, battleTimeMs, verdict: verdict as VerdictId, verdictReason, destructibleRevision: reader.u32() };
+  const destructibleRevision = reader.u32();
+  const smokeJson = reader.string(16384);
+  return { phase: phase as PhaseId, countdownMs, battleTimeMs, verdict: verdict as VerdictId, verdictReason, destructibleRevision, ...(smokeJson ? {smokeJson} : {}) };
 }
 
 function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => SnapshotFrame | null): SnapshotPacket {

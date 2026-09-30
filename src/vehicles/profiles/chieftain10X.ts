@@ -1,3 +1,4 @@
+import { markOpenSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Original Chieftain Mk10 solids from the owner's local scalar study.
 // The supplied mesh, textures and topology are never runtime dependencies.
 import * as THREE from 'three';
@@ -348,7 +349,7 @@ function launchers(P: TankBuilderPort): void {
     equipment(P, 'turretDetail', box(.25, .085, .22), x, y - .105, z - .105, -.38, yaw);
     for (let row = 0; row < 2; row++) for (let col = 0; col < 3; col++) {
       const g = new THREE.CylinderGeometry(.039, .039, .185, 16, 1, true);
-      g.rotateX(Math.PI / 2);
+      markOpenSmokeTube(g.rotateX(Math.PI / 2));
       const dx = (col - 1) * .080 + row * .015, dy = (row - .5) * .079;
       equipment(P, 'turretDetail', g, x + dx, y + dy, z, -.48, yaw);
       equipment(P, 'turretDark', cylZ(.030, .006, 16), x + dx, y + dy - .031,

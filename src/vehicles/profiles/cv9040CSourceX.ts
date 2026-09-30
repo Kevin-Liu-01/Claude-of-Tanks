@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Swedish CV9040C photo reconstruction, separate from the upgraded CV90 slot.
 // The C's appliqué cheek packets, 40 mm mount and troop-cell roof are authored
 // independently of the later Mk IV X. See the dated reference packet.
@@ -89,7 +90,7 @@ function turret(P: TankBuilderPort): void {
     for(const z of [-1.30,-.72,-.19])turretEquipment(P,'turretDetail',box(.019,.035,.08),side*1.195,2.37,z);
     // Three Galix tubes per side, canted outwards; never offensive launchers.
     for(let i=0;i<3;i++) {
-      turretEquipment(P,'turretDetail',cylZ(.050,.20,12),side*(.81+i*.11),2.56,-.25-i*.12,-.63,side*.40);
+      turretEquipment(P,'turretDetail',markSmokeTube(cylZ(.050,.20,12)),side*(.81+i*.11),2.56,-.25-i*.12,-.63,side*.40);
       turretEquipment(P,'turretDark',cylZ(.039,.012,12),side*(.85+i*.11),2.62,-.17-i*.12,-.63,side*.40);
     }
   }

@@ -207,6 +207,7 @@ const DEFAULT_WEAPON_REPORT: Readonly<WeaponReportProfile> = Object.freeze({
 });
 
 export const WEAPON_REPORT_PROFILES: Readonly<Record<string, Readonly<WeaponReportProfile>>> = Object.freeze({
+  'm2-roof': Object.freeze({ kind: 'autocannon', rate: 1.45, gain: 0.35, crackGain: 0.65, tailGain: 0.12, mechanicalHz: 1600, mechanicalGain: 0.16, toneHz: 0, hissGain: 0, durationS: 0.16, twin: false }),
   'm242-bushmaster': Object.freeze({ kind: 'autocannon', rate: 1.10, gain: 0.88, crackGain: 1.10, tailGain: 0.68, mechanicalHz: 1180, mechanicalGain: 0.22, toneHz: 0, hissGain: 0, durationS: 0.34, twin: false }),
   '2a42': Object.freeze({ kind: 'autocannon', rate: 0.97, gain: 0.96, crackGain: 1.02, tailGain: 0.78, mechanicalHz: 820, mechanicalGain: 0.25, toneHz: 0, hissGain: 0, durationS: 0.40, twin: false }),
   'mk30-2': Object.freeze({ kind: 'autocannon', rate: 0.92, gain: 1.03, crackGain: 1.08, tailGain: 0.86, mechanicalHz: 690, mechanicalGain: 0.22, toneHz: 0, hissGain: 0, durationS: 0.43, twin: false }),

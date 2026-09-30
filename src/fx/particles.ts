@@ -20,7 +20,7 @@ type Noise2D = (x: number, y: number) => number;
 type FlipbookStyle = 'smoke' | 'dust' | 'fire' | 'prop';
 type Vec3Tuple = readonly [number, number, number];
 type ParticlePoolName = 'smoke' | 'fire' | 'billow' | 'psmoke' | 'dust'
-  | 'flash' | 'jet' | 'sparks' | 'debris';
+  | 'flash' | 'jet' | 'sparks' | 'debris' | 'screen';
 
 interface ParticleTextureWarmOptions {
   /** Default preloads assets; ready-only never waits on or starts asset requests. */
@@ -94,6 +94,7 @@ interface ParticleOptionsByPool {
   fire: PuffOptions;
   billow: PuffOptions;
   psmoke: PuffOptions;
+  screen: PuffOptions;
   dust: PuffOptions;
   flash: PuffOptions;
   jet: JetOptions;
@@ -114,7 +115,7 @@ export { LATE_FX_LAYER };
 export function mulberry32(a: number): Rng {return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
-const POOL_SIZES = { smoke: 2048, fire: 1024, billow: 256, psmoke: 384, dust: 1024, sparks: 512, debris: 256, flash: 128, jet: 64 };
+const POOL_SIZES = { smoke: 2048, fire: 1024, billow: 256, psmoke: 384, screen: 768, dust: 1024, sparks: 512, debris: 256, flash: 128, jet: 64 };
 const PARTICLE_TEXTURE_ASSETS = Object.freeze({
   smoke: '/fx/particles-smoke.png',
   fire: '/fx/particles-fire.png',
@@ -508,6 +509,22 @@ void main() {
   gl_FragColor = vec4( col, a );
 }
 `;
+
+// Screening smoke uses the same depth/erosion contract with broad internal
+// shading. Continuous local-space noise is stable under camera motion: no
+// screen hash, dithering, ray marching, or extra texture allocation.
+const PUFF_FRAG_SCREEN = PUFF_FRAG_PROP.replace('void main() {', `
+float screenHash(vec2 p) {return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float screenNoise(vec2 p) {
+  vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
+  return mix(mix(screenHash(i),screenHash(i+vec2(1,0)),f.x),
+             mix(screenHash(i+vec2(0,1)),screenHash(i+vec2(1,1)),f.x),f.y);
+}
+void main() {`).replace(
+  'vec3 col = vColor.rgb * light;',
+  `float folds=.65*screenNoise(p*3.8+vT*.25)+.35*screenNoise(p*8.3-vT*.18);
+   vec3 col=vColor.rgb*(.54+.40*sun-.16*tex+.32*(folds-.5));`,
+);
 
 // --- streak (sparks / ricochet) --------------------------------------------
 
@@ -1645,6 +1662,14 @@ export function createParticleSystem(
         m.fragmentShader = PUFF_FRAG_PROP;
         return m;
       })(), PUFF_LAYOUT, POOL_SIZES.psmoke, 'aVL', 3),
+    // Dedicated obscurant budget: the cloud cannot evict cannon smoke or fire.
+    // Eroded flipbook lobes carry stable billow detail, without screen-space noise.
+    screen: new Pool('screen', makeQuadGeometry(POOL_SIZES.screen),
+      (() => {
+        const m = puffMaterial(propTex, false, .35, 1.0, 4, [.35,1.5]);
+        m.fragmentShader = PUFF_FRAG_SCREEN;
+        return m;
+      })(), PUFF_LAYOUT, POOL_SIZES.screen, 'aVL', 3),
     dust: new Pool('dust', makeQuadGeometry(POOL_SIZES.dust),
       puffMaterial(dustTex, false, 1.4, 1, 4), PUFF_LAYOUT, POOL_SIZES.dust, 'aVL', 3),
     flash: new Pool('flash', makeQuadGeometry(POOL_SIZES.flash),
@@ -1706,6 +1731,7 @@ export function createParticleSystem(
   pools.debris.mesh.renderOrder = 0;
   pools.dust.mesh.renderOrder = 20;
   pools.smoke.mesh.renderOrder = 21;
+  pools.screen.mesh.renderOrder = 21.1;
   pools.psmoke.mesh.renderOrder = 21.2; // propellant mass rides over the wake
   pools.billow.mesh.renderOrder = 21.5;
   pools.fire.mesh.renderOrder = 22;
@@ -1789,6 +1815,7 @@ export function createParticleSystem(
     fire: (o: PuffOptions) => emitPuff(pools.fire, o),
     billow: (o: PuffOptions) => emitPuff(pools.billow, o),
     psmoke: (o: PuffOptions) => emitPuff(pools.psmoke, o),
+    screen: (o: PuffOptions) => emitPuff(pools.screen, o),
     dust: (o: PuffOptions) => emitPuff(pools.dust, o),
     flash: (o: PuffOptions) => emitPuff(pools.flash, o),
     jet: (o: JetOptions) => emitJet(pools.jet, o),

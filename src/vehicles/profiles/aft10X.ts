@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { weaponAssembly } from './weaponStock.ts';
 import * as THREE from 'three';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
@@ -229,7 +230,7 @@ function addAftLauncherSensors(P: TankBuilderPort): void {
             const zz = z - rear * .3925, tilt = -.55;
             equipment(P, 'hull', 'Detail', box(.134, .020, .17), x, 1.958, zz - .14);
             equipment(P, 'hull', 'Detail', box(.036, .145, .032), x, 2.020, zz + .102);
-            equipment(P, 'hull', 'Detail', cylZ(.054, .268, P.q ? 16 : 10), x, 2.0718, zz, tilt);
+            equipment(P, 'hull', 'Detail', markSmokeTube(cylZ(.054, .268, P.q ? 16 : 10)), x, 2.0718, zz, tilt);
             equipment(P, 'hull', 'Detail', cylZ(.057, .018, P.q ? 16 : 10), x, 2.0718 - Math.sin(tilt) * .138, zz + Math.cos(tilt) * .138, tilt);
         }
     P.muzzleZ = 1.245;

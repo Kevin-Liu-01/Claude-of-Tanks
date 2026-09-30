@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Shape vocabulary only. Vehicle measurements and silhouettes belong to their
 // individual source-study profiles; no complete donor vehicle is assembled here.
 import * as THREE from 'three';
@@ -60,7 +61,7 @@ export function smokeBank(P: TankBuilderPort, side: number, x: number, y: number
   z: number, count: number): void {
   turretEquipment(P, 'turretDetail', KIT.box(.14, .16, count * .12 + .08), side * x, y, z);
   for (let i = 0; i < count; i++) {
-    turretEquipment(P, 'turretDetail', KIT.cylZ(.05, .24, P.q ? 14 : 8),
+    turretEquipment(P, 'turretDetail', markSmokeTube(KIT.cylZ(.05, .24, P.q ? 14 : 8)),
       side * (x + .04), y + .08, z + (i - (count - 1) / 2) * .12, -.6, side * .55);
     turretEquipment(P, 'turretDark', KIT.cylZ(.037, .018, P.q ? 14 : 8),
       side * (x + .095), y + .15, z + (i - (count - 1) / 2) * .12 + .09, -.6, side * .55);

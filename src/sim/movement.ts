@@ -322,6 +322,7 @@ export interface TankState {
 }
 
 export interface MovementInput {
+  auxiliaryBits?: number;
   throttle?: number;
   steer?: number;
   brake?: boolean;

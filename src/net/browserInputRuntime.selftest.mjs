@@ -51,3 +51,9 @@ assert.equal(runtime.frame({ ...player, combat: { destroyed: true } }), null);
 runtime.reset();
 assert.equal(runtime.pendingActionBits, 0);
 console.log('browserInputRuntime.selftest: lazy aim, cadence, and action-edge ownership passed');
+
+runtime.reset();
+runtime.queueAction('lights');runtime.queueAction('lightsOff');runtime.queueAction('lights');
+assert.equal(runtime.frame(player).actionBits,PLAYER_ACTION_BITS.LIGHTS,'last lamp intent wins within a send interval');
+runtime.reset();runtime.queueAction('roofGun');runtime.queueAction('roofGun');
+assert.equal(runtime.frame(player).actionBits,0,'two roof gun toggles before send cancel');

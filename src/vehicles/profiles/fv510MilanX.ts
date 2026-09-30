@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { weaponAssembly } from './weaponStock.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 // Independent first-party construction of the supplied wide-cage MILAN fit.
@@ -471,7 +472,7 @@ function turretSideFittings(P: TankBuilderPort, add: EquipmentAdder): void {
     for(const z of [-1.42,-.90,-.35,.34]) add('turretDetail',box(.028,.35,.028),p.x+side*1.02,2.17,z);
     for(let i=0;i<4;i++) {
       const x=p.x+side*(.61+i*.07), y=2.17+(i%2)*.13, z=.44-(i%2)*.12;
-      add('turretDetail',cylZ(.052,.25,P.q?16:9),x,y,z,-.2,side*.45);
+      add('turretDetail',markSmokeTube(cylZ(.052,.25,P.q?16:9)),x,y,z,-.2,side*.45);
       add('turretDark',cylZ(.040,.016,12),x+side*.057,y+.026,z+.114,-.2,side*.45);
     }
   }

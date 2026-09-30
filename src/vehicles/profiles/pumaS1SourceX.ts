@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Source-measured Puma S1 replica. The separate upgraded Puma S1 is preserved.
 // Coordinates are metres; no source mesh is loaded by the playable builder.
 import * as THREE from 'three';
@@ -142,7 +143,7 @@ function turret(P: TankBuilderPort): void {
   for(const side of [-1,1]) {
     const x=side<0?-.48:1.27;
     turretEquipment(P,'turretDetail',box(.075,.48,.22),x,2.55,-2.16);
-    for(let i=0;i<4;i++)turretEquipment(P,'turretDetail',cylZ(.036,.16,10),x,2.36+i*.109,-2.02,-.42,side*.53);
+    for(let i=0;i<4;i++)turretEquipment(P,'turretDetail',markSmokeTube(cylZ(.036,.16,10)),x,2.36+i*.109,-2.02,-.42,side*.53);
   }
 }
 

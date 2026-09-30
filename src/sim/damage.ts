@@ -1,3 +1,4 @@
+import type { AuxiliaryState } from './auxiliarySystems.ts';
 import { isUnguidedRocket, launcherMuzzleIndex, type LauncherMuzzle } from './launcherPolicy.ts';
 import type { MagazineIndicator } from './magazineIndicator.ts';
 /**
@@ -123,6 +124,7 @@ interface ReloadState {
 }
 
 export interface CombatState {
+  auxiliary?: AuxiliaryState;
   /** Cycles a separate missile rack without advancing the cannon channel. */
   launcherCursor?: number;
   /** Successful guided shots in the current rack salvo; ammunition switches do not reset it. */

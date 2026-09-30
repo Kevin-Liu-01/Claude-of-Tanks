@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Polish amphibious Borsuk with the unmanned ZSSW-30 and twin Spike LR mount.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
@@ -85,7 +86,7 @@ function buildTurret(P: TankBuilderPort): void {
     }
     // Three smoke launchers per side, distinct from the Spike battery.
     for (let i=0;i<3;i++) {
-      turretEquipment(P,'turretDetail',cylZ(.052,.25,12),side*(1.02+i*.095),2.40,-.12-i*.06,-.32,side*.12);
+      turretEquipment(P,'turretDetail',markSmokeTube(cylZ(.052,.25,12)),side*(1.02+i*.095),2.40,-.12-i*.06,-.32,side*.12);
       turretEquipment(P,'turretDark',cylZ(.040,.014,12),side*(1.03+i*.095),2.44,.005-i*.06,-.32,side*.12);
     }
   }

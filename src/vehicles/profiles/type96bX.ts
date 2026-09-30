@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
@@ -192,7 +193,7 @@ function addType96SmokeLaunchers(P: TankBuilderPort): void {
             [1.2676, 1.9677, .5398, -.44], [1.3804, 1.9786, .5619, -.44],
             [1.2603, 1.8714, .5910, -.39], [1.3775, 1.8757, .6145, -.39],
         ]) {
-            equipment(P, 'turret', 'Detail', cylZ(.0485, .196, P.q ? 16 : 10), side * x, y, z, tilt);
+            equipment(P, 'turret', 'Detail', markSmokeTube(cylZ(.0485, .196, P.q ? 16 : 10)), side * x, y, z, tilt);
             equipment(P, 'turret', 'Dark', cylZ(.043, .016, P.q ? 16 : 10), side * x, y - Math.sin(tilt) * .104, z + Math.cos(tilt) * .104, tilt);
         }
     }

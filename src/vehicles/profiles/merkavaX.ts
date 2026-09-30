@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Independent first-party Merkava X constructions. Source archives are local
 // comparison inputs only; neither builder calls an earlier Merkava profile.
 import * as THREE from 'three';
@@ -179,7 +180,7 @@ function merkava3SmokeTube(P: TankBuilderPort, side: number, row: number, i: num
     new THREE.Vector2(.043,-.124),new THREE.Vector2(.043,.124),
     new THREE.Vector2(.034,.124),new THREE.Vector2(.034,.045),
   ],16);tube.rotateX(Math.PI/2);
-  topPart(P,MK3,'turretDetail',tube,x,y-MK3.ground,z+MK3.center,rx,ry);
+  topPart(P,MK3,'turretDetail',markSmokeTube(tube,[0,0,1],true),x,y-MK3.ground,z+MK3.center,rx,ry);
   topPart(P,MK3,'turretDark',cylZ(.034,.005,16),x,y-.020-MK3.ground,z-.047+MK3.center,rx,ry);
 }
 
@@ -510,7 +511,7 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trop
     handrail(P,MK4,side*1.23,-2.28,-.81,2.43);
     handrail(P,MK4,side*1.25,-3.30,-2.58,2.42);
     for(const [x,y,z]of[[1.114,2.415,.037],[1.041,2.418,.176],[.969,2.421,.319],[1.134,2.369,.219],[1.062,2.372,.354],[.988,2.375,.499]]){
-      put('turretDetail',cylZ(.043,.42,14),side*(x+(side<0?-.055:0)),y,z,-.22,side*.46);
+      put('turretDetail',markSmokeTube(cylZ(.043,.42,14)),side*(x+(side<0?-.055:0)),y,z,-.22,side*.46);
       put('turretDark',cylZ(.034,.016,14),side*(x+.090+(side<0?-.055:0)),y+.044,z+.184,-.22,side*.46);
     }
     for(const z of[-2.22,-.95,.55])put('turretDetail',torus(.035,.011,10,6),side*.89,2.415,z,Math.PI/2);

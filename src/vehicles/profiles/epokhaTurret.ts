@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // First-party source-measured Kurganets-25 Epokha turret. Coordinates are
 // relative to its measured ring. No hull or running gear is built here.
@@ -30,7 +31,7 @@ function addKurganetsSmokeCases(P: TankBuilderPort, side: number): void {
         const housing = box(.218, .108, length).applyQuaternion(rotation);
         localTurret(P, 'turretDetail', housing, center.x, center.y, center.z);
         for (const mouth of mouths) {
-            const cap = cylZ(radius, .019, P.q ? 20 : 12).applyQuaternion(rotation);
+            const cap = markSmokeTube(cylZ(radius, .019, P.q ? 20 : 12)).applyQuaternion(rotation);
             localTurret(P, 'turretDark', cap, mouth[0], mouth[1], mouth[2]);
         }
     }

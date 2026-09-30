@@ -89,7 +89,7 @@ function fittingRecords(root) {
       records.set(object.geometry, record);
     }
   });
-  assert.equal(records.size, 13, 'all thirteen actual shared-kit merged fitting buffers');
+  assert.equal(records.size, root.getObjectByName('fitting_americanRws_standard') ? 16 : 13, 'all actual shared-kit mount and articulated weapon buffers');
   return records;
 }
 
@@ -173,7 +173,7 @@ if (process.argv.includes('--native-child')) {
   };
   const before = run(true), after = run(false);
   assert.deepEqual(after, before, 'all native geometry/material/metadata/rig/instance/LOD results stay exact');
-  assert.equal(after.builds, 16); assert.equal(after.buffers, 208);
+  assert.equal(after.builds, 16); assert.equal(after.buffers, 232);
   assert.equal(after.detachedCases, 2); assert.equal(after.batchCases, 4);
   console.log(JSON.stringify({ test: 'fitting geometry ownership', pass: true,
     nativeNodeBuilds: before.builds + after.builds, fixedBuffersReleasedOnce: after.buffers,

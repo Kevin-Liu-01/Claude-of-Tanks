@@ -86,9 +86,12 @@ export function diffEntityRow(row: EntityRow, base: EntityRow | null, packetTick
   let mask = 0;
   let era: number[] | null = null;
   const status = packStatus(row);
+  if ((row.auxiliaryJson || '') !== (base?.auxiliaryJson || '')) {
+    mask |= ROW_GROUP.AUXILIARY; fields.auxiliaryJson = row.auxiliaryJson || '';
+  }
   if (row.tick !== undefined) fields.tick = row.tick;
   if (!base) {
-    mask = KEYFRAME_GROUPS | ageGroup(row, packetTick);
+    mask |= KEYFRAME_GROUPS | ageGroup(row, packetTick);
     fields.x = row.x; fields.y = row.y; fields.z = row.z;
     fields.speed = row.speed; fields.verticalSpeed = row.verticalSpeed;
     fields.yaw = row.yaw; fields.pitch = row.pitch; fields.roll = row.roll;
@@ -244,6 +247,7 @@ export function writeEntityRowPatch(writer: ByteWriter, patch: EntityRowPatch, b
     if (tick === undefined || !Number.isInteger(tick) || tick >= packetTick || tick < 0) throw new WireError('range', 'age group needs a row tick before the packet tick');
     writer.varint(packetTick - tick);
   }
+  if (mask & ROW_GROUP.AUXILIARY) writer.string(fields.auxiliaryJson || '', 512);
 }
 
 /**
@@ -297,6 +301,7 @@ export function readEntityRowPatch(reader: ByteReader, resolveBase: (entityId: n
     if (age < 1 || age > packetTick) throw new WireError('range', `row age out of range: ${age}`);
     fields.tick = packetTick - age;
   } else fields.tick = packetTick;
+  if (mask & ROW_GROUP.AUXILIARY) fields.auxiliaryJson = reader.string(512);
   return { entityId, mask, fields, mirrors, era };
 }
 

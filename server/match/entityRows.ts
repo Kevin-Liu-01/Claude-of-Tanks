@@ -112,6 +112,7 @@ export function captureEntityRow(entity: AuthoritativeEntity, entityId: number, 
     shellSlot: Math.max(0, Math.min(2, combat.shellSlot | 0)),
     ammo0: clampU16(combat.ammo?.[0] ?? 0), ammo1: clampU16(combat.ammo?.[1] ?? 0), ammo2: clampU16(combat.ammo?.[2] ?? 0),
     flags: entityFlags(entity),
+    ...(combat.auxiliary ? { auxiliaryJson: JSON.stringify(combat.auxiliary) } : {}),
     eraSpent: era.indices(entity),
   };
 }
@@ -173,6 +174,7 @@ export function captureMeta(meta: Record<string, unknown> | null, ended: boolean
     countdownMs: clampU16(Number(meta?.countdownMs) || 0),
     battleTimeMs: Math.max(0, Math.min(0xffffffff, Math.round(Number(meta?.battleTimeMs) || 0))),
     verdict,
+    ...(Array.isArray(meta?.smokeScreens) && meta.smokeScreens.length ? {smokeJson: JSON.stringify(meta.smokeScreens)} : {}),
     verdictReason: verdict === VERDICT.NONE ? '' : String(meta?.resultReason ?? '').slice(0, 60),
     destructibleRevision: Math.max(0, Math.min(0xffffffff, Number(meta?.destructibleRevision) || 0)),
   };

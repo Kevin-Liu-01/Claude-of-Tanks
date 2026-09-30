@@ -1,3 +1,4 @@
+import { markSmokeTube } from './vehicleAuxiliaryGeometry.ts';
 // src/vehicles/modern2.ts — HD procedural builders + specs for the modern
 // roster expansion, wave 2 (docs/history/research/modern-roster.md):
 //   leo2a4  Leopard 2A4        (§9,  priority 3)
@@ -1339,11 +1340,11 @@ function galix(
   // scheme-painted stubs vanished into the wall ("GALIX splays missing").
   P.add('turret', box(0.10, 0.34, 0.72), x - s * 0.02, y - 0.06, z + 0.05, 0, s * 0.5, 0);
   for (let k = 0; k < 5; k++) {
-    P.add('turretDark', cylZ(0.052, 0.26, 8), x + s * k * 0.02, y, z + 0.3 - k * 0.14,
+    P.add('turretDark', markSmokeTube(cylZ(0.052, 0.26, 8)), x + s * k * 0.02, y, z + 0.3 - k * 0.14,
       -0.45, s * (0.9 + k * 0.16), 0);
   }
   for (let k = 0; k < 4; k++) {
-    P.add('turretDark', cylZ(0.052, 0.26, 8), x - s * 0.06, y - 0.17, z + 0.24 - k * 0.14,
+    P.add('turretDark', markSmokeTube(cylZ(0.052, 0.26, 8)), x - s * 0.06, y - 0.17, z + 0.24 - k * 0.14,
       -0.35, s * (1.0 + k * 0.16), 0);
   }
 }
@@ -3306,7 +3307,7 @@ function buildT14TurretSystems(
   // vertical smoke-tube banks on the bustle flanks
   for (const s of [-1, 1]) {
     for (let k = 0; k < 4; k++) {
-      P.add('turretDetail', cylY(0.035, 0.035, 0.3, 8), s * (0.72 + k * 0.09), 0.90 - k * 0.02, -0.68, 0.12, 0, s * 0.15);
+      P.add('turretDetail', markSmokeTube(cylY(0.035, 0.035, 0.3, 8),[0,1,0]), s * (0.72 + k * 0.09), 0.90 - k * 0.02, -0.68, 0.12, 0, s * 0.15);
     }
   }
   // Service seams lie directly on the single molded roof. The rear pair also

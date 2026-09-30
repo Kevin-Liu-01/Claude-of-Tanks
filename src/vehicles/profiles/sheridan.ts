@@ -1,3 +1,5 @@
+import { beginAuxiliaryStation } from './auxiliaryStation.ts';
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // First-party procedural M551 Sheridan. The hull proportions were measured
 // from a local comparison print, while all topology here is built from the
 // shared primitive kit and remains independent of that source asset.
@@ -42,6 +44,7 @@ interface SheridanMaterials extends Record<string, THREE.Material> {
 }
 
 interface SheridanBuilderPort {
+  forEachBucketPart(names:string|string[],visitor:(geometry:THREE.BufferGeometry,box:THREE.Box3|null,bucket:string)=>void):void;
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
@@ -453,14 +456,8 @@ function pointOnArmorFrame(
 // give the Sheridan demonstrator its own compact airborne-vehicle solution.
 // The group remains one exact fitting for equipment census purposes.
 function sheridanTtsAutocannon(P: SheridanBuilderPort): THREE.Group {
-  const group = new THREE.Group();
-  group.name = 'm551a1TtsRemoteAutocannon';
-  group.userData.remoteControlled = true;
-  group.userData.caliberMm = 30;
-  group.userData.barrelDiameterM = 0.094;
-  group.userData.americanRwsFamily = 'm551a1-tts-derived-v1';
-  group.userData.stationVariant = 'tts30-demonstrator';
-
+  const station=beginAuxiliaryStation(P,{name:'m551a1TtsRemoteAutocannon',caliberMm:30,
+    yaw:[-.49,.942,-.43],pivot:[-.49,1.205,-.28],muzzle:[-.49,1.345,1.51]});
   const body: THREE.BufferGeometry[] = [];
   const dark: THREE.BufferGeometry[] = [];
   const detail: THREE.BufferGeometry[] = [];
@@ -474,6 +471,10 @@ function sheridanTtsAutocannon(P: SheridanBuilderPort): THREE.Group {
   body.push(xform(frustum(0.31, 0.27, -0.28, 0.27, 0.24, -0.24, 0.93, 1.16),
     -0.49, 0, -0.43));
   dark.push(xform(cylX(0.085, 0.66, P.q ? 18 : 12), -0.49, 1.205, -0.28));
+
+  for(const g of body)P.addEquipment('turret',g);
+  for(const g of dark)P.add('turretDark',g);
+  body.length=0;dark.length=0;station.mark('yaw');
 
   // Breech and recoil cradle. Angled cheek plates leave a service gap below
   // the weapon while the top bridge joins both halves along a straight line.
@@ -512,33 +513,12 @@ function sheridanTtsAutocannon(P: SheridanBuilderPort): THREE.Group {
   glass.push(xform(box(0.060, 0.060, 0.024), -0.035, 1.37, 0.075, 0, 0.10, 0));
   detail.push(xform(cylY(0.045, 0.055, 0.085, P.q ? 14 : 10), -0.11, 1.645, -0.12));
 
-  // Painted armor and fittings must enter the normal profile buckets. Those
-  // buckets apply one vehicle-space box projection after merge; attaching the
-  // raw meshes directly to the articulated group would restart with white
-  // vertex colors and make the station look like an unpainted proxy.
-  P.addEquipment('turret', mergeAll(body));
-  P.add('turretDetail', mergeAll(detail));
-  P.add('turretGlass', mergeAll(glass));
-
-  const addMesh = (
-    name: string,
-    parts: THREE.BufferGeometry[],
-    material: THREE.Material,
-    appearanceRole: string,
-  ): void => {
-    const geometry = mergeAll(parts);
-    geometry.setAttribute('color', new THREE.BufferAttribute(
-      new Float32Array(geometry.attributes.position.count * 3).fill(1), 3));
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.name = name;
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    mesh.userData.appearanceRole = appearanceRole;
-    group.add(mesh);
-  };
-  addMesh('m551a1TtsAutocannonMechanism', dark, P.mats.dark, 'machineGun');
-  FITTINGS.markExact(group, 'pintleMG');
-  return group;
+  for(const g of body)P.addEquipment('turret',g);
+  for(const g of dark)P.add('turretDark',g);
+  for(const g of detail)P.add('turretDetail',g);
+  for(const g of glass)P.add('turretGlass',g);
+  station.mark('pitch');
+  return station.root;
 }
 
 function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
@@ -1564,8 +1544,8 @@ function addSheridanSmokeAndAntenna(P: SheridanBuilderPort): void {
   for (const [x, worldY, z, ax, ay, az, length] of smokeTubes) {
     const axis: Vec3Tuple = [ax, ay, az];
     const center: Vec3Tuple = [x, worldY - 1.466, z];
-    P.add('turretDetail', cylinderOnAxis(center, axis, length, 0.036,
-      P.q ? 18 : 12), 0, 0, 0);
+    P.add('turretDetail', markSmokeTube(cylinderOnAxis(center, axis, length, 0.036,
+      P.q ? 18 : 12), axis), 0, 0, 0);
     const muzzle: Vec3Tuple = [
       center[0] + ax * (length * 0.5 + 0.006),
       center[1] + ay * (length * 0.5 + 0.006),

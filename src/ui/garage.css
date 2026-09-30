@@ -879,10 +879,10 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
 .cot-custom-open:hover,.cot-custom-open:focus-visible,.cot-custom-open[aria-expanded='true']{
   border-color:#f0a030;background:rgba(240,160,48,.18);outline:none}
 .cot-camo-tags{display:flex;flex:0 0 auto;gap:4px;margin:0 0 6px;min-width:0;overflow-x:auto;
-  overscroll-behavior-x:contain;scrollbar-width:none;scroll-snap-type:x proximity}
+  overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x}
 .cot-camo-tags::-webkit-scrollbar{display:none}
 .cot-camo-collections{display:flex;flex:0 0 auto;gap:4px;min-width:0;margin-bottom:5px;overflow-x:auto;
-  overscroll-behavior-x:contain;scrollbar-width:none;scroll-snap-type:x proximity;}
+  overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x;}
 .cot-camo-collections::-webkit-scrollbar{display:none;}
 body[data-cot-panels='persistent'] .cot-camos{flex-basis:calc(var(--cot-sidebar-panel-height,280px) + 64px);min-height:220px}
 body[data-cot-panels='persistent'] .cot-maps{flex-basis:calc(var(--cot-sidebar-panel-height,280px) - 64px)}
@@ -1700,3 +1700,10 @@ body[data-cot-input='coarse'] .cot-country-chip{min-width:44px}
 body[data-cot-input="coarse"] .cot-map-inspect{width:44px;height:44px;bottom:14px;background:#08121dcc;}
 
 .cot-battle-menu .cot-battle-choice[aria-pressed="true"]{border-color:var(--mode-color);background:color-mix(in srgb,var(--mode-color) 15%,#121920);color:var(--mode-color);}
+
+.cot-system-preview{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;}
+.cot-system-preview::-webkit-scrollbar{display:none;}
+.cot-system-preview button{flex:1;min-width:42px;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:5px 3px;border:1px solid #59636a;background:#131c23;color:#e6bd78;font-family:inherit;font-weight:700;font-size:9px;line-height:1.2;cursor:help;}
+.cot-system-preview button:hover,.cot-system-preview button:focus-visible{border-color:#ffbd59;background:#29251d;}
+
+.cot-system-preview>.cot-system-control{width:auto;max-width:none;max-height:none;min-width:44px;min-height:48px;border-radius:3px;}

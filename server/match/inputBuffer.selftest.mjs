@@ -169,3 +169,14 @@ const frame = (clientTick, controls, extra = {}) => ({
   assert.equal(seat.interpDelayMs, 100);
   console.log('inputBuffer.selftest: snapshot acks are monotonic and bounded by the server tick');
 }
+
+// An acknowledged release retires the edge even inside the retransmit window.
+{
+  const seat=createSeatInputBuffer();seat.admit(frame(0,[control()]),0);seat.inputFor(1);
+  seat.admit(frame(1,[control({actionSeq:1,actionBits:256})]),0);
+  assert.equal(seat.inputFor(2).actionBits,256);
+  seat.admit(frame(2,[control({actionSeq:1,actionBits:0})]),1);
+  assert.equal(seat.inputFor(3).actionBits,0);
+  seat.admit(frame(3,[control({actionSeq:2,actionBits:256})]),2);
+  assert.equal(seat.inputFor(4).actionBits,256,'fresh roof-gun OFF press is not mistaken for retransmission');
+}

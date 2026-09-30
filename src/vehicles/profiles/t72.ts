@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Pure family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
@@ -4648,7 +4649,7 @@ function buildT72BU(P: T72BuilderPort): void {
   for (const sSm of [-1, 1]) {
     P.add('turret', box(0.40, 0.06, 0.30), sSm * 1.00, 0.44, 0.58, 0, sSm * -0.55, 0);
     for (let i = 0; i < 6; i++) {
-      P.add('turretDark', cylZ(0.040, 0.24, 8), sSm * (0.78 + i * 0.062), 0.46 + (i % 2) * 0.02, 0.84 - i * 0.070, -0.45, sSm * -(0.30 + i * 0.10), 0);
+      P.add('turretDark', markSmokeTube(cylZ(0.040, 0.24, 8)), sSm * (0.78 + i * 0.062), 0.46 + (i % 2) * 0.02, 0.84 - i * 0.070, -0.45, sSm * -(0.30 + i * 0.10), 0);
     }
   }
   for (const s of [-1, 1]) P.add('turret', box(0.24, 0.14, 0.55), s * 0.52, 0.43, 1.30);
@@ -4918,7 +4919,7 @@ function buildT72BUNative(
   for (const s of [-1, 1]) {
     P.addEquipment('turret', box(0.39, 0.08, 0.32), s * 1.00, 0.35, 0.54, 0, s * -0.58, 0);
     for (let i = 0; i < 6; i++) {
-      P.add('turretDark', cylZ(0.040, 0.24, 8), s * (0.79 + i * 0.060), 0.39 + (i % 2) * 0.024, 0.80 - i * 0.070, -0.44, s * -(0.28 + i * 0.09), 0);
+      P.add('turretDark', markSmokeTube(cylZ(0.040, 0.24, 8)), s * (0.79 + i * 0.060), 0.39 + (i % 2) * 0.024, 0.80 - i * 0.070, -0.44, s * -(0.28 + i * 0.09), 0);
     }
   }
   // Source-side Luna/1K13 housing: a broad cheek saddle and shallow framed

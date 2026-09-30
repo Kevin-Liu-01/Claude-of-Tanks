@@ -1,3 +1,5 @@
+import { beginAuxiliaryStation } from './auxiliaryStation.ts';
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Independent T-90MS Tagil X source-scalar construction. No existing vehicle
 // builder, source mesh, texture, vertex table, or source rig is used at runtime.
 import * as THREE from 'three';
@@ -218,6 +220,10 @@ function aps(P:TankBuilderPort):void{
   addShtoraEyes(P,{x:.6735,y:2.09509-YAW[1],z:1.75-YAW[2],scale:.9,round:true,kit:true,offset:[-YAW[0],0,0],lens:'blue'});
 }
 function remoteWeapon(P:TankBuilderPort):void{
+  const station=beginAuxiliaryStation(P,{name:'t90msRemoteGun',caliberMm:12.7,
+    yaw:[-.5514-YAW[0],2.28619-YAW[1],-1.12601-YAW[2]],
+    pivot:[-.582-YAW[0],2.86869-YAW[1],-1.52451-YAW[2]],
+    muzzle:[-.582-YAW[0],2.91609-YAW[1],-.71541-YAW[2]]});
   for(const[y,r,h]of [[2.19559,.2553,.1636],[2.28619,.2881,.0244],[2.30229,.308,.0098],[2.34454,.21715,.0747],[2.52154,.21715,.2803]])
     top(P,'turretDetail',cylY(r,h,32),-.5514,y,-1.12601);
   top(P,'turretDark',box(.1872,.206,.012),-.55185,2.53519,-.9786);
@@ -230,11 +236,12 @@ function remoteWeapon(P:TankBuilderPort):void{
   top(P,'turretDetail',box(.1592,.1963,.1075),-.55225,2.61824,-1.42976);
   top(P,'turretDetail',box(.2251,.1328,.1015),-.5857,2.44879,-1.43366);
   top(P,'turretDetail',box(.1201,.3027,.1162),-.708,2.81694,-1.37851);
+  station.mark('yaw');
   const mg=sourceMachineGun(P,YAW);
   mg.add('turretDark',box(.1045,.1622,.2656),-.5796,2.86869,-1.52451);
   mg.add('turretDetail',box(.125,.0826,.7422),-.58005,2.88699,-1.44731);
   mg.add('turretDark',cylZ(.02055,.5591,24),-.582,2.91609,-.99496);
-  mg.add('turretDetail',box(.0393,.07,.3701),-.494,2.90,-1.51816);mg.finish();
+  mg.add('turretDetail',box(.0393,.07,.3701),-.494,2.90,-1.51816);station.attachPitch(mg.finish());
 }
 function smoke(P:TankBuilderPort):void{
   const stocks:readonly(readonly[number,number,number,number,number,number])[]=[
@@ -247,7 +254,7 @@ function smoke(P:TankBuilderPort):void{
   ];
   for(const[x,y,z,dx,dy,dz]of stocks){
     const q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),new THREE.Vector3(dx,dy,dz).normalize());
-    top(P,'turretDark',blindTube(.0453,.032,.1947,.12,24).applyQuaternion(q),x,y,z);
+    top(P,'turretDark',markSmokeTube(blindTube(.0453,.032,.1947,.12,24),[0,0,1],true).applyQuaternion(q),x,y,z);
     top(P,'turretDetail',beamBetween([x*.94,y-.10,z-.09],[x-dx*.075,y-dy*.075,z-dz*.075],.011),0,0,0);
   }
 }

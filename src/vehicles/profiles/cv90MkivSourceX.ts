@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // Independent owner-source CV90 Mk.IV; existing cv90_mkiv stays untouched.
 import * as THREE from 'three';
@@ -19,7 +20,7 @@ function smokeMouth(P: TankBuilderPort, x: number, y: number, z: number): void {
   for(let i=0;i<index.count;i+=3){const a=index.getX(i+1);index.setX(i+1,index.getX(i+2));index.setX(i+2,a);}
   wall.computeVertexNormals();
   turretEquipment(P,'turretDark',wall,x,y-dy*.030,z-dz*.030,angle);
-  turretEquipment(P,'turretDetail',new THREE.RingGeometry(.031,.047,n),x,y,z,angle);
+  turretEquipment(P,'turretDetail',markSmokeTube(new THREE.RingGeometry(.031,.047,n)),x,y,z,angle);
   turretEquipment(P,'turretDark',new THREE.CircleGeometry(.031,n),x,y-dy*.060,z-dz*.060,angle);
 }
 

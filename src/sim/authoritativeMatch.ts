@@ -1,3 +1,4 @@
+import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from './auxiliarySystems.ts';
 import { bridgeBallFloor } from './bridgeBallSupport.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from './launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -861,9 +862,11 @@ export function createAuthoritativeMatch({
       const hitT = segmentTerrainHit(heightField, origin, _aim);
       return hitT == null ? null : { dist: hitT * maxDistance, kind: 'terrain' };
     };
+  const auxiliarySmokeScreens: SmokeScreen[] = [];
   const spotting = createSpottingSystem({
     getTanks: () => entities,
     raycast: spottingRaycast,
+    opticalBlocked: (a,b) => smokeBlocks(auxiliarySmokeScreens,a,b,timeS,heightField.getHeightAt),
     concealers: worldCollision && typeof worldCollision.getConcealment === 'function'
       ? worldCollision.getConcealment() : [],
     getEquipment: (entity) => entityById.get(entity.id)?.equip ?? null,
@@ -1420,6 +1423,15 @@ export function createAuthoritativeMatch({
     const bits = entity.input.actionBits | 0;
     entity.input.actionBits = 0;
     if (!bits || entity.combat.destroyed) return;
+    if (!result) {
+      if (bits & PLAYER_ACTION_BITS.SMOKE && requestAuxiliary(entity, 'smoke', timeS)) {
+        auxiliarySmokeScreens.push(entity.combat.auxiliary!.smoke!);
+        if(auxiliarySmokeScreens.length>84)auxiliarySmokeScreens.shift();
+      }
+      if (bits & PLAYER_ACTION_BITS.LIGHTS_OFF) requestAuxiliary(entity, 'lightsOff', timeS);
+      if (bits & PLAYER_ACTION_BITS.LIGHTS) requestAuxiliary(entity, 'lights', timeS);
+      if (bits & PLAYER_ACTION_BITS.ROOF_GUN) requestAuxiliary(entity, 'roofGun', timeS);
+    }
     if (bits & PLAYER_ACTION_BITS.RELOAD_MAGAZINE) reloadMagazine(entity);
     if (bits & PLAYER_ACTION_BITS.SPECIAL_ACTION) useSpecialAction(entity);
     if (bits & PLAYER_ACTION_BITS.SELF_RIGHT) {
@@ -2035,11 +2047,27 @@ export function createAuthoritativeMatch({
     }
   }
 
+  const auxRay = new Vector3();
+  const auxContext = {
+    entities,
+    visible: (target: {id:string}, shooter: import('./spotting.ts').SpottingTank) => spotting.isSpotted(target.id,shooter.team, shooter),
+    clear: (a:Vector3,b:Vector3) => {
+      if(smokeBlocks(auxiliarySmokeScreens,a,b,timeS,heightField.getHeightAt)) return false;
+      auxRay.copy(b).sub(a); const distance=auxRay.length(); auxRay.normalize();
+      const hit=spottingRaycast(a,auxRay,distance); return !hit || hit.dist>=distance-.5;
+    },
+  };
   function advanceWeapons(dt: number): void {
+    for(let i=auxiliarySmokeScreens.length-1;i>=0;i--)if(timeS-auxiliarySmokeScreens[i]!.born>18)auxiliarySmokeScreens.splice(i,1);
     for (const entity of entities) {
       if (entity.modeActive === false || entity.combat.destroyed) continue;
       tickReload(entity.combat, dt);
       tryFire(entity);
+      if (!result && stepRoofGun(entity,timeS,dt,auxContext)) {
+        const shell=createShell(auxiliaryShot.shell,entity.id,!entity.bot,auxiliaryShot.origin,auxiliaryShot.direction,nextShellId++);
+        shell.gravityMps2*=entity.modeGravityScale??1;shells.push(shell);
+        spotting.notifyFired(entity.id,timeS,auxiliaryShot.shell.caliberMm);
+      }
     }
     stepShells(dt);
   }
@@ -2198,6 +2226,7 @@ export function createAuthoritativeMatch({
         canObserveEvent: (_id, event) => canObserveEvent(viewer, event),
         meta: {
           phase,
+          smokeScreens: auxiliarySmokeScreens.filter(screen=>timeS-screen.born<=18),
           // Stable presentation seed: no draw from the combat RNG stream.
           weatherSeed: seed >>> 0,
           countdownMs: Math.round(countdownRemainingS * 1000),

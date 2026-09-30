@@ -54,7 +54,7 @@ interface KillcamView {
 
 interface InputView {
   getSettings(): { armorAimOverlay?: boolean };
-  getBinding(actionId: 'selfRight'): string | null;
+  getBinding(actionId: 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'shell1' | 'shell2' | 'shell3',slot?:0|1): string | null;
   labelFor(code: string | null): string;
 }
 
@@ -198,6 +198,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     spotting: null,
     matchModeState: null,
     selfRightKeyLabel: 'F',
+    auxiliaryKeyLabels: {smoke:'G',lights:'N',roofGun:'B',missile:'3'},
   };
 
   const armorTargets: TEntity[] = [];
@@ -264,7 +265,11 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     frameInfo.shells = game.shells;
     frameInfo.matchModeState = game.matchModeState;
     frameInfo.timeLimitS = clockLimitS();
-    frameInfo.selfRightKeyLabel = input.labelFor(input.getBinding('selfRight'));
+    frameInfo.selfRightKeyLabel = input.labelFor(input.getBinding('selfRight',0) ?? input.getBinding('selfRight',1));
+    const keys = frameInfo.auxiliaryKeyLabels!;
+    for (const action of ['smoke','lights','roofGun'] as const) keys[action] = input.labelFor(input.getBinding(action,0) ?? input.getBinding(action,1));
+    const missileSlot = focus.spec?.gun?.shells.findIndex(shell => shell.guided) ?? -1;
+    keys.missile = missileSlot >= 0 && missileSlot < 3 ? input.labelFor(input.getBinding((['shell1','shell2','shell3'] as const)[missileSlot]!,0) ?? input.getBinding((['shell1','shell2','shell3'] as const)[missileSlot]!,1)) : '—';
     updateSpotting(focus);
   };
 

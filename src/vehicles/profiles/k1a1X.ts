@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Original metre-space K1A1 X solids. The owner-supplied OBJ is a local-only
 // scalar/ray oracle: no source vertices, indices, textures or rig are shipped.
 import * as THREE from 'three';
@@ -401,7 +402,7 @@ function smokeBanks(P: TankBuilderPort): void {
     for(let i=0;i<6;i++) {
       const row=i%3,tier=Math.floor(i/3),x=side*(1.020+row*.095+tier*.036);
       const y=y0+.045-row*.038-tier*.078,z=z0+.104-row*.033+tier*.024;
-      turretPart(P,'turretDark',cylZ(.035,.153,16),x,y,z,-.66,side*(.08+row*.29));
+      turretPart(P,'turretDark',markSmokeTube(cylZ(.035,.153,16)),x,y,z,-.66,side*(.08+row*.29));
       // Supplied source explicitly has closed launcher caps, not dark open tubes.
       turretPart(P,'turretDetail',cylZ(.036,.014,16),x,y+.049,z+.062,-.66,side*(.08+row*.29));
     }

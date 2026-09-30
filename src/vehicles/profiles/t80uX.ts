@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // First-party T-80U solids, authored from scalar studies of the supplied fused
 // two-object model. No donor builder or external source topology is imported.
 import * as THREE from 'three';
@@ -187,7 +188,7 @@ function roofEquipment(P:TankBuilderPort):void {
 
 function smoke(P:TankBuilderPort):void {
   for(const side of [-1,1])for(const [x,y,z]of [[1.262,1.935,.306],[1.204,1.953,.492],[1.129,1.980,.679],[1.048,1.980,.865]]) {
-    onTurret(P,'turretDark',blindTube(.044,.033,.266,.168,20),side*x,y,z,-.66,side*.11);
+    onTurret(P,'turretDark',markSmokeTube(blindTube(.044,.033,.266,.168,20),[0,0,1],true),side*x,y,z,-.66,side*.11);
     onTurret(P,'turretDetail',beamBetween([side*x,y-.084,z-.09],[side*(x-.092),y-.145,z-.112],.016),0,0,0);
   }
 }

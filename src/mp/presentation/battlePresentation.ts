@@ -239,6 +239,8 @@ export function createBattlePresentation({
   let snapshotPhase: number | null = null;
   let appliedDestructibleRevision = -1;
   let lastModeStateJson: string | null = null;
+  let lastSmokeJson: string | null = null;
+  const lastAuxiliaryJson = new WeakMap<object,string>();
   let verdictSeenAtMs: number | null = null;
   let lastPredictedFireSeq = -1;
   let predictionWorldCache: PredictionWorld | null = null;
@@ -356,6 +358,11 @@ export function createBattlePresentation({
     gunReload.t = sample.gunReloadS;
     gunReload.totalS = Math.max(sample.gunReloadTotalS || 0, sample.gunReloadS);
     gunReload.kind = (sample.gunReloadKind || sample.reloadKind || 'ready') as typeof gunReload.kind;
+    if(lastAuxiliaryJson.get(combat)!==(sample.auxiliaryJson||'')){
+      lastAuxiliaryJson.set(combat,sample.auxiliaryJson||'');
+      if (sample.auxiliaryJson) combat.auxiliary = JSON.parse(sample.auxiliaryJson);
+      else delete combat.auxiliary;
+    }
     combat.shellSlot = sample.shellSlot;
     if (combat.reloadChannels?.[sample.shellSlot]) combat.reload = combat.reloadChannels[sample.shellSlot]!;
     combat.reload.t = sample.reloadS;
@@ -607,6 +614,10 @@ export function createBattlePresentation({
     if (!mounted) mount();
     publishRoster();
     game.timeS = frame.meta.battleTimeMs / 1000;
+    if(lastSmokeJson !== (frame.meta.smokeJson||'')){
+      lastSmokeJson=frame.meta.smokeJson||'';
+      bus.emit('auxiliary:smokeScreens', { screens: lastSmokeJson ? JSON.parse(lastSmokeJson) : [] });
+    }
     game.preBattleS = frame.meta.phase === PHASE.COUNTDOWN ? frame.meta.countdownMs / 1000 : 0;
     if (frame.modeStateJson !== lastModeStateJson) {
       lastModeStateJson = frame.modeStateJson;

@@ -375,6 +375,7 @@ export function createBrowserBattleBridge<
   const id = String(viewerId || '');
   if (!id) throw new TypeError('viewerId is required');
   const entities = new Map<string, BridgeEntity>();
+  const lastAuxiliaryJson = new WeakMap<CombatState,string>();
   const roster: BridgeEntity[] = [];
   const shellById = new Map<number, BridgeShell>();
   const visibleRoster: BridgeEntity[] = [];
@@ -765,6 +766,11 @@ export function createBrowserBattleBridge<
     combat.ammo[0] = snapshot.ammo0;
     combat.ammo[1] = snapshot.ammo1;
     combat.ammo[2] = snapshot.ammo2;
+    const auxiliaryJson = snapshot.auxiliaryJson || '';
+    if(lastAuxiliaryJson.get(combat)!==auxiliaryJson){
+      lastAuxiliaryJson.set(combat,auxiliaryJson);
+      if(auxiliaryJson)combat.auxiliary=JSON.parse(auxiliaryJson);else delete combat.auxiliary;
+    }
     combat.fire.burning = !!(snapshot.flags & SNAPSHOT_FLAGS.BURNING);
     const destroyed = !!(snapshot.flags & SNAPSHOT_FLAGS.DESTROYED);
     combat.destroyed = destroyed;
@@ -1478,6 +1484,7 @@ export function createBrowserBattleBridge<
       : 0;
     game.gameMode = snapshot.meta?.gameMode || 'standard';
     game.matchModeState = snapshot.meta?.modeState || null;
+    bus.emit('auxiliary:smokeScreens',{screens:snapshot.meta?.smokeScreens||[]});
   }
 
   function reconcilePersistentResult(snapshot: SampledSnapshotFrame): void {

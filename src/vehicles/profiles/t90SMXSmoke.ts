@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Original closed launcher bodies with genuine blind bores. Mouth centers,
 // axes and stock dimensions are independent scalar source measurements;
 // neither the source mesh nor its topology is part of the runtime model.
@@ -39,7 +40,7 @@ function placed(P:TankBuilderPort,bucket:string,geometry:THREE.BufferGeometry,
 
 export function addT90SMSmoke(P:TankBuilderPort):void {
   for(const row of TUBES) {
-    placed(P,'turretDetail',launcherBody(row),row);
+    placed(P,'turretDetail',markSmokeTube(launcherBody(row),[0,0,1],true),row);
     // The source cavity tapers to a closed tip: offset rays meet its inner
     // cone before the 12 cm center depth. This tiny physical dark tip is not
     // a front cap and does not obstruct that source negative space.

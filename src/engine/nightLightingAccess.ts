@@ -7,7 +7,7 @@ interface NightLightingEntity {
   readonly team?: string;
   readonly isPlayer?: boolean;
   readonly visual?: { readonly root?: Object3D | null } | null;
-  readonly combat?: { readonly destroyed?: boolean } | null;
+  readonly combat?: { readonly destroyed?: boolean; readonly auxiliary?: {readonly lights: number} } | null;
   readonly networkVisible?: boolean;
 }
 
@@ -42,13 +42,14 @@ export function createNightLightingAccess(
     return {
       root, priority: entity.isPlayer ? 1 : 0,
       isActive: () => entity.visual?.root === root && !!entity.combat && !entity.combat.destroyed
+        && (entity.combat?.auxiliary?.lights === 1 || (entity.combat?.auxiliary?.lights !== 0 && options.isNight()))
         && entity.networkVisible !== false && options.isEntityVisible(entity),
     };
   }
   function collectSources(): NightLightingRoot[] {
     const sources: NightLightingRoot[] = [];
     const world = options.getWorldRoot();
-    if (world) sources.push({ root: world });
+    if (world) sources.push({ root: world, isActive: options.isNight });
     for (const entity of options.getEntities()) {
       const source = sourceFor(entity);
       if (source) sources.push(source);
@@ -60,23 +61,23 @@ export function createNightLightingAccess(
     const requested = ++generation;
     nightPrepared = false;
     owner.current?.reset();
-    if (!options.isNight()) return;
+
     const runtime = await owner.preload();
     if (disposed) { runtime.dispose(); return; }
-    if (requested !== generation || !options.isNight()) return;
+    if (requested !== generation) return;
     runtime.prepare(collectSources(), true);
     nightPrepared = true;
     // First night uniforms/light signature are warm while input is covered.
     runtime.update(options.getCameraPosition());
   }
   function appendEntity(entity: NightLightingEntity): void {
-    if (!nightPrepared || disposed || !options.isNight()) return;
+    if (!nightPrepared || disposed) return;
     const source = sourceFor(entity);
     if (source) owner.current?.appendRoot(source);
   }
   function update(): void {
     if (!nightPrepared || disposed) return;
-    owner.current?.update(options.getCameraPosition(), options.isNight() && options.isBattlePresentation());
+    owner.current?.update(options.getCameraPosition(), options.isBattlePresentation());
   }
   function reset(): void {
     generation++; nightPrepared = false; owner.current?.reset();

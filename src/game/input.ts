@@ -60,6 +60,9 @@ const ACTION_DEFS = [
   { id: 'shell1', label: 'action.shell1', group: 'settings.group.combat' },
   { id: 'shell2', label: 'action.shell2', group: 'settings.group.combat' },
   { id: 'shell3', label: 'action.shell3', group: 'settings.group.combat' },
+  { id: 'smoke', label: 'systems.smoke', group: 'settings.group.combat' },
+  { id: 'lights', label: 'systems.lights', group: 'settings.group.combat' },
+  { id: 'roofGun', label: 'systems.roofGun', group: 'settings.group.combat' },
   { id: 'specialAction', label: 'action.specialAction', group: 'settings.group.combat' },
   { id: 'reloadMagazine', label: 'action.reloadMagazine', group: 'settings.group.combat' },
   // round 30 (owner 2026-09-20): auto-aim and the armour overlay get desktop keys
@@ -201,6 +204,9 @@ export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
   shell2: 'Digit2',
   shell3: 'Digit3',
   specialAction: 'KeyE',
+  smoke: 'KeyG',
+  lights: 'KeyN',
+  roofGun: 'KeyB',
   reloadMagazine: 'KeyC',
   autoAim: 'KeyT', // round 30: lock the sight to the enemy nearest the reticle (T again releases)
   hitboxOverlay: 'KeyH', // round 30: toggle the armour / hitbox overlay while aiming
@@ -499,6 +505,13 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
         if (typeof value === 'string' && value) maps[slot][definition.id] = value;
         else if (value === null) maps[slot][definition.id] = null;
       }
+    }
+    // Newly introduced defaults must not steal an existing player's custom key.
+    for (const action of ['smoke','lights','roofGun'] as const) {
+      const primary=storedMaps[0];
+      if(isRecord(primary) && Object.prototype.hasOwnProperty.call(primary,action))continue;
+      const code=maps[0][action];
+      if(code && storedMaps.some(stored=>isRecord(stored) && Object.entries(stored).some(([id,value])=>id!==action && value===code)))maps[0][action]=null;
     }
   }
 

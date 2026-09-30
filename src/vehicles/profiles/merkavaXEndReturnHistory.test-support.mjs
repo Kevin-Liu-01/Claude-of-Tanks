@@ -1,6 +1,7 @@
 // Test-only composition of two separately qualified additive bodywork seams.
 // Neither sibling is an inverse for physical geometry or a refreshed golden.
 import assert from 'node:assert/strict';
+import {beforeSmokeAnnotations} from '../smokeAnnotationHistory.test-support.mjs';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import {beforeBarakRearEquipment} from './merkavaBarakRearHistory.test-support.mjs';
@@ -132,7 +133,7 @@ function beforeModernIsraeliFleet(source,readHelper){
     'Complete reviewed Namer helper namerSourceFrame.ts');
   assert.equal(hash(readHelper('namerSourceHull.ts')),'ce8d8b0dc7e2db717c26e47bc5be1bbf04cdd7596b881b3f265e759747713a64',
     'Complete reviewed Namer helper namerSourceHull.ts');
-  assert.equal(hash(readHelper('namerSourceChassis.ts')),'238586a4ce2997c22991ae52dec723c7029db8c40f7915ef8b162388adfcdb1e',
+  assert.equal(hash(beforeSmokeAnnotations('namerSourceChassis.ts',readHelper('namerSourceChassis.ts'))),'238586a4ce2997c22991ae52dec723c7029db8c40f7915ef8b162388adfcdb1e',
     'Complete reviewed Namer helper namerSourceChassis.ts');
   assert.equal(hash(readHelper('namerSourceTurret.ts')),'1aa310a6f48fe217e026660c9b575b6c788ff5ad281e6830faf2f079df4238f6',
     'Complete reviewed Namer helper namerSourceTurret.ts');
@@ -496,6 +497,7 @@ export function authenticateMerkavaEndReturnHistory(requiredId, {
   source=read('merkavaX.ts'), readHelper=read,
 }={}) {
   assert.ok(MERKAVA_END_RETURN_SEAMS.some(s=>s.id===requiredId),'Known physical test owner');
+  source=beforeSmokeAnnotations('merkavaX.ts',source);
   source=beforeAttachmentSeats(source);
   source=beforeModernIsraeliFleet(source,readHelper);
   source=beforeMerkava3dLeftCheekRepair(source);

@@ -1,3 +1,6 @@
+import { createAuxiliaryPresentation, type AuxiliaryVisualEntity } from './auxiliaryPresentation.ts';
+import {SMOKE_WIND_X, SMOKE_WIND_Z} from '../sim/smokeScreen.ts';
+import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
 /**
  * effects.ts — combat VFX orchestration (public Fx API, ARCHITECTURE §3.8.2).
  *
@@ -53,6 +56,10 @@ interface FxHeightField {
 }
 
 interface FxOptions {
+  auxiliaryEntities?(): Iterable<AuxiliaryVisualEntity>;
+  auxiliaryTime?(): number;
+  auxiliaryVisible?(entity:AuxiliaryVisualEntity):boolean;
+  auxiliaryReport?(id:string,position:THREE.Vector3,caliber:number):void;
   seed?: number;
   /** Resolve the live presentation entity for any struck tank, including the player. */
   resolveEntity?(targetId: ShellId): object | null;
@@ -846,7 +853,7 @@ export async function createFxChunked(
 function* createFxSteps(
   engineCtx: FxEngineContext,
   heightField: FxHeightField,
-  { seed = 5000, resolveEntity }: FxOptions = {},
+  { seed = 5000, resolveEntity, auxiliaryEntities, auxiliaryTime, auxiliaryReport, auxiliaryVisible }: FxOptions = {},
 ): Generator<void, FxRuntime, void> {
   // Atlas RNG is independent. Prepare it before particles/clock providers so
   // no consumer can observe a half-created runtime across a painted frame.
@@ -4443,6 +4450,23 @@ function* createFxSteps(
     }
   }
 
+  const auxiliary = auxiliaryEntities && auxiliaryTime ? createAuxiliaryPresentation(group, {
+    entities: auxiliaryEntities, time: auxiliaryTime, ground: groundY, visible: auxiliaryVisible,
+    report: (id,p,caliber) => auxiliaryReport?.(id,p,caliber),
+    flash: (p,d,caliber) => { spawnMuzzleFlash(p,d,caliber,0); },
+    smoke: (p,scale,density=1,life=2.4,wind=false) => {
+      for(let i=0;i<3;i++){
+        _puffO.pos[0]=p.x+(rng()-.5)*1.4*scale;_puffO.pos[1]=p.y+(i-1)*1.7*scale;_puffO.pos[2]=p.z+(rng()-.5)*1.4*scale;
+        _puffO.vel[0]=(wind?SMOKE_WIND_X:0)+(rng()-.5)*.28;
+        _puffO.vel[1]=.12+rng()*.12;_puffO.vel[2]=(wind?SMOKE_WIND_Z:0)+(rng()-.5)*.28;
+        _puffO.life=life;_puffO.size0=(5.2+rng()*1.1)*scale;_puffO.size1=(10.5+rng()*1.4)*scale;
+        _puffO.rot=rng()*Math.PI*2;_puffO.rotVel=(rng()-.5)*.14;_puffO.grav=0;_puffO.alpha=.82*density;
+        col3(0xaeb6b8,_puffO.col0);col3(0xb8c1c2,_puffO.col1);_puffO.birthOffset=0;
+        particles.emit(wind?'screen':'psmoke',_puffO);
+      }
+    },
+  }) : null;
+
   const fx: FxRuntime = {
     group,
 
@@ -4568,6 +4592,7 @@ function* createFxSteps(
       resolveSubject: ((id: string) => FxEntity | null) | null = null,
     ): void {
       particles.update(dt);
+      if (!frozen) auxiliary?.update();
       printUniforms.uTime.value = particles.getTime();
       const tickDt = advanceFxClock();
       battleFreshS += tickDt;
@@ -4590,6 +4615,7 @@ function* createFxSteps(
      * @param {object} bus injected event bus
      */
     bindBus(bus: FxEventBus): void {
+      bus.on('auxiliary:smokeScreens', (payload) => { auxiliary?.setNetworkScreens((payload as {screens:SmokeScreen[]}).screens); });
       onFxEvent(bus, 'shell:fired', (e) => {
         _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
         _v4.set(e.dir[0], e.dir[1], e.dir[2]);
@@ -5378,6 +5404,7 @@ function* createFxSteps(
     /** Kill all particles, tracers, decals, timers, emitters and lights. */
     resetAll() {
       replaySuppressed = false;
+      auxiliary?.reset();
       particles.resetAll();
       lastTickS = particles.getTime();
       battleFreshS = 0; // fresh battle — arm the flyby exhaust start-up burst

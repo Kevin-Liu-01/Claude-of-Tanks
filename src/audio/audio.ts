@@ -3091,6 +3091,9 @@ export function createAudio({
     const on = <T>(event: string, listener: (payload: T) => void): void => {
       bus.on(event, (payload) => listener(payload as T));
     };
+    on<{id:string;x:number;y:number;z:number;caliberMm:number}>('auxiliary:fired', event => {
+      if(ctx && phase==='battle' && !battleOver)gunshot(event.x,event.y,event.z,event.caliberMm,event.id===listenerOwnerId,'m2-roof');
+    });
     on<ShellFiredEvent>('shell:fired', (event) => { if (ctx) onShellFired(event); });
     on<ShellFiredEvent>('weapon:predicted', onPredictedWeapon);
     on<ShellHitEvent>('shell:hit', (event) => { if (ctx) onShellHit(event); });

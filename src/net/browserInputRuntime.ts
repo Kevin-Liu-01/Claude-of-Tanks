@@ -2,7 +2,7 @@ import { encodeAimIntent } from './aimIntent.ts';
 import { NetworkInputCadence, type NetworkInputSample } from './inputCadence.ts';
 import { PLAYER_ACTION_BITS } from './protocol.ts';
 
-type ActionName = 'reloadMagazine' | 'specialAction' | 'selfRight';
+type ActionName = 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff';
 
 interface VectorLike {
   x: number;
@@ -45,12 +45,13 @@ const ACTION_MASK = PLAYER_ACTION_BITS.REPAIR |
   PLAYER_ACTION_BITS.EXTINGUISHER |
   PLAYER_ACTION_BITS.RELOAD_MAGAZINE |
   PLAYER_ACTION_BITS.SPECIAL_ACTION |
-  PLAYER_ACTION_BITS.SELF_RIGHT;
+  PLAYER_ACTION_BITS.SELF_RIGHT | PLAYER_ACTION_BITS.SMOKE | PLAYER_ACTION_BITS.LIGHTS | PLAYER_ACTION_BITS.ROOF_GUN | PLAYER_ACTION_BITS.LIGHTS_OFF;
 
 const NAMED_ACTION_BITS: Readonly<Record<ActionName, number>> = Object.freeze({
   reloadMagazine: PLAYER_ACTION_BITS.RELOAD_MAGAZINE,
   specialAction: PLAYER_ACTION_BITS.SPECIAL_ACTION,
   selfRight: PLAYER_ACTION_BITS.SELF_RIGHT,
+  smoke: PLAYER_ACTION_BITS.SMOKE, lights: PLAYER_ACTION_BITS.LIGHTS, roofGun: PLAYER_ACTION_BITS.ROOF_GUN, lightsOff: PLAYER_ACTION_BITS.LIGHTS_OFF,
 });
 
 /**
@@ -68,7 +69,8 @@ export class BrowserInputRuntime {
   }
 
   queueAction(action: ActionName): void {
-    this.#pendingActionBits |= NAMED_ACTION_BITS[action];
+    if(action==='lights'||action==='lightsOff')this.#pendingActionBits &= ~(PLAYER_ACTION_BITS.LIGHTS|PLAYER_ACTION_BITS.LIGHTS_OFF);
+    this.#pendingActionBits = action==='roofGun' ? this.#pendingActionBits^NAMED_ACTION_BITS[action] : this.#pendingActionBits|NAMED_ACTION_BITS[action];
   }
 
   frame(player: BrowserInputPlayer | null | undefined): BrowserNetworkInputFrame | null {

@@ -114,3 +114,23 @@ body[data-cot-width][data-cot-height][data-cot-input] .cot-es .es-actions{
 /* Chat and touch controls are siblings of the HUD, so its cinematic veil
    alone cannot hide them during the killcam/results handoff. */
 body:is(.cot-kc-live,.cot-si-report) :is(.cot-room-chat,.cot-touch,.cot-touch-aim){visibility:hidden!important;pointer-events:none!important}
+
+/* One compact instrument strip. Every available system owns the same cell. */
+.cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:112px;transform:translateX(-50%);display:flex;gap:4px;max-width:calc(100vw - 24px);padding:5px;border:1px solid #53616b;border-radius:7px;background:rgba(6,13,18,.9);box-shadow:0 3px 14px #0008;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}
+.cot-vehicle-controls::-webkit-scrollbar{display:none;}
+.cot-vehicle-controls>button{position:static!important;transform:none!important;flex:0 0 66px;width:66px!important;height:66px!important;min-width:0;min-height:44px;box-sizing:border-box;grid-template-columns:1fr 22px;grid-template-rows:22px 13px 10px;gap:3px 0;align-items:center;justify-items:center;padding:5px 7px;border:1px solid #4f5b64;border-radius:3px!important;background:linear-gradient(#24303b,#111b23);color:#c6d1d9;font:700 10px/1.15 var(--hud-font,system-ui);letter-spacing:.015em;text-transform:none;box-shadow:none;}
+.cot-vehicle-controls>.cot-auxiliary,.cot-vehicle-controls>.cot-special.show,.cot-vehicle-controls>.cot-jump.on{display:grid;}
+.cot-vehicle-controls>button[hidden],.cot-vehicle-controls[hidden]{display:none!important;}
+.cot-vehicle-controls>button.active{color:#ffdc94;border-color:#c89a50;background:linear-gradient(#443823,#252218);box-shadow:inset 0 -2px #efb84e;}
+.cot-vehicle-controls>button:disabled{opacity:.64;}
+.cot-vehicle-controls>button:hover:not(:disabled){border-color:#d7b16b;}
+.cot-vehicle-controls>button:focus-visible{outline:2px solid #fff;outline-offset:-2px;}
+.cot-vehicle-controls>button .si{grid-column:1;grid-row:1;display:flex;align-items:center;justify-content:center;filter:none;}
+.cot-vehicle-controls .si svg{width:20px!important;height:20px!important;}
+.cot-vehicle-controls>button .sk{grid-column:2;grid-row:1;display:grid;place-items:center;min-width:19px;height:18px;padding:0 2px;box-sizing:border-box;border:1px solid #78848d;border-radius:3px;background:#07101799;font:700 10px/1 var(--hud-font,system-ui);color:inherit;letter-spacing:0;}
+.cot-vehicle-controls>button .sl{grid-column:1/-1;grid-row:2;white-space:nowrap;font-size:10px;letter-spacing:.015em;text-align:center;}
+.cot-vehicle-controls .system-status{grid-column:1/-1;grid-row:3;font:600 9px/1 var(--hud-font,system-ui);letter-spacing:.06em;color:inherit;opacity:.85;white-space:nowrap;}
+body.cot-touch-layout .cot-vehicle-controls{bottom:calc(max(16px,env(safe-area-inset-bottom)) + 182px);}
+body.cot-spectating .cot-vehicle-controls{display:none!important;}
+@media(max-width:550px){.cot-vehicle-controls{bottom:184px;gap:3px;padding:4px;}.cot-vehicle-controls>button{flex-basis:60px;width:60px!important;padding:5px 4px;}}
+@media(max-height:550px){body.cot-touch-layout .cot-vehicle-controls{bottom:90px;left:45%;}}

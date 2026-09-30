@@ -30,12 +30,19 @@ function fixture(loader) {
 
 const f = fixture();
 assert.equal(f.state.loads, 0); f.access.update(); f.access.appendEntity(f.entity);
-await f.access.prepare(); assert.equal(f.state.loads, 0, 'day does not load/construct the lighting pool');
-assert.equal(f.state.scans, 0);
+await f.access.prepare(); assert.equal(f.state.loads, 1, 'day prepares the same bounded pool for explicit headlights');
+assert.equal(f.state.scans, 1);
+f.state.spotted=true;
+assert.equal(f.state.sources[1].isActive(),false,'automatic lamps are off by day');
+f.entity.combat.auxiliary={lights:1};
+assert.equal(f.state.sources[1].isActive(),true,'explicit daylight lamp switch works');
+f.entity.combat.auxiliary={lights:0};
+assert.equal(f.state.sources[1].isActive(),false);
+delete f.entity.combat.auxiliary;f.state.spotted=false;f.state.calls.length=0;f.state.scans=0;
 f.state.night = true;
 await f.access.prepare();
 assert.equal(f.state.loads, 1); assert.equal(f.state.scans, 1);
-assert.deepEqual(f.state.calls, [['prepare', true], ['update', true]], 'night first uniforms warm under cover even before phase activation');
+assert.deepEqual(f.state.calls, [['reset'], ['prepare', true], ['update', true]], 'night first uniforms warm under cover even before phase activation');
 assert.equal(f.state.sources.length, 2); assert.strictEqual(f.state.sources[0].root, f.world);
 const source = f.state.sources[1];
 assert.equal(source.isActive(), false, 'unspotted enemy has no light even if presentation is fading');
@@ -86,4 +93,4 @@ await assert.rejects(retry.access.prepare(), /missing chunk/);
 failure = false; await retry.access.prepare();
 assert.equal(retry.state.loads, 2, 'failed explicit load is retryable');
 retry.access.dispose();
-console.log('nightLightingAccess self-test: day is inert, covered night, no frame scans, strict actor admission and stale-load cleanup PASS');
+console.log('nightLightingAccess self-test: explicit daylight controls, covered night, no frame scans, strict actor admission and stale-load cleanup PASS');

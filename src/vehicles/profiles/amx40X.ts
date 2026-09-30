@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Original AMX-40 X authoring. The private GLB supplies scalar measurements,
 // never playable vertex/index buffers, materials or a donor visual builder.
 import * as THREE from 'three';
@@ -140,7 +141,7 @@ function turretFittings(P:TankBuilderPort):void {
     for(const [x,y,z] of [[1.095,1.973,1.184],[1.064,2.096,1.184],[1.037,2.223,1.180],
       [1.194,2.003,1.043],[1.121,2.122,1.030],[1.073,2.246,1.038]]) {
       put(P,'turretDetail',box(.107,.087,.055),s*x,y,z-.089+dz);
-      put(P,'turretDetail',blindTube(.057,.043,.207,.017,18),s*x,y,z+dz,-.15,s*.17);
+      put(P,'turretDetail',markSmokeTube(blindTube(.057,.043,.207,.017,18),[0,0,1],true),s*x,y,z+dz,-.15,s*.17);
     }
     for(const z of[-1.68,-1.20,-.75,-.29,.17,.47]) {
       put(P,'turretDetail',beamBetween([s*1.533,2.006,z],[s*1.414,1.794,z],.011),0,0,0);

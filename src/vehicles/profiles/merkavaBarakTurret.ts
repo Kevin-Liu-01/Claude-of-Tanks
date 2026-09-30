@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
@@ -151,7 +152,7 @@ export function addBarakCrewRoof(P: TankBuilderPort): void {
   hatchRing(P);sight(P);forwardOptic(P);rearLiftingEyes(P);
   for(const side of[-1,1])for(const [x,y,z]of[[.966,2.423,.32],[1.019,2.423,.215],[1.072,2.423,.114],
     [1.081,2.368,.203],[1.029,2.368,.303],[.975,2.368,.409]])
-    put(P,'turretDark',KIT.cylZ(.035,.31,P.q?12:8),side*x,y,z,side*.46);
+    put(P,'turretDark',markSmokeTube(KIT.cylZ(.035,.31,P.q?12:8)),side*x,y,z,side*.46);
 }
 
 export function addBarakWhips(P: TankBuilderPort): void {

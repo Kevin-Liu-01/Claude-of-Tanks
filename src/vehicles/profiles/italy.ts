@@ -777,7 +777,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
         P.addEquipment('turret', box(0.06, 0.22, 0.24), rwsX + 0.18, 1.20, rwsZ + 0.03, 0, 0, 0.08);
         P.addEquipment('turret', box(0.17, 0.18, 0.17), rwsX + 0.25, 1.09, rwsZ + 0.14);
         P.add('turretGlass', box(0.11, 0.10, 0.014), rwsX + 0.25, 1.10, rwsZ + 0.232);
-        const remoteRws = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'two-tone',
+        const remoteRws = FITTINGS.pintleMG({ remoteControlled: true, mats: P.mats, cls: 'nsvt', tone: 'two-tone',
           elev: -0.04, ammo: true, shield: true, scale: 0.88, seed: 46 });
         remoteRws.name = 'arieteC2RemoteRws';
         remoteRws.userData.remoteControlled = true;

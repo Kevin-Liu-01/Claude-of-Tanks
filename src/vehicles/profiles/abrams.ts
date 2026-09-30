@@ -1,3 +1,5 @@
+import { beginAuxiliaryStation } from './auxiliaryStation.ts';
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Strict TypeScript Abrams family procedural profiles — gate-v6 rebuild (2026-07-31).
 // Authored against TRUE-AXIS ortho mask traces (docs/references/profiles/*
 // re-extracted after the v6 camera fix, plus scratch probe curves decoded to
@@ -42,6 +44,7 @@ interface AbramsGear {
 }
 
 interface AbramsBuilderPort {
+  forEachBucketPart(names:string|string[],visitor:(geometry:THREE.BufferGeometry,box:THREE.Box3|null,bucket:string)=>void):void;
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
@@ -995,7 +998,7 @@ function smokeBank(
   for (let row = 0; row < 2; row++) {
     for (let i = 0; i < 3; i++) {
       const [px, pz] = rot((i - 1) * 0.125 * s, 0.05 * s - row * 0.075 * s);
-      P.add('turretDark', cylZ(0.04 * s, 0.26 * s, 8), px, y + 0.02 * s + row * 0.085 * s, pz, -0.42, a, 0);
+      P.add('turretDark', markSmokeTube(cylZ(0.04 * s, 0.26 * s, 8)), px, y + 0.02 * s + row * 0.085 * s, pz, -0.42, a, 0);
     }
   }
 }
@@ -1049,7 +1052,7 @@ function tejasSmokeCluster(
       // Tube axis after (rx -0.42, ry a): (sin a, 0.408 cos a, 0.913 cos a);
       // rings ~2 cm / bores ~1 cm inside the muzzle face along that axis.
       const ty = y + 0.001 + row * 0.078;
-      P.add('turretDetail', cylZ(0.040, 0.30, 10), px, ty, pz, -0.42, a, 0);
+      P.add('turretDetail', markSmokeTube(cylZ(0.040, 0.30, 10)), px, ty, pz, -0.42, a, 0);
       P.add('turretDark', cylZ(0.031, 0.012, 10), px + Math.sin(a) * 0.132,
         ty + 0.0355, pz + Math.cos(a) * 0.1205, -0.42, a, 0);
       P.add('turretDark', cylZ(0.029, 0.014, 10), px + Math.sin(a) * 0.142,
@@ -9272,6 +9275,8 @@ function buildAbramsX(P: AbramsBuilderPort): void {
   // never between the mechanism and the turret. The buried foundation below
   // spans the former 127 mm roof-to-turntable air gap without changing the
   // registered outer envelope.
+  const axStation=beginAuxiliaryStation(P,{name:'abramsXRemoteAutocannon',caliberMm:30,
+    yaw:[0,.6545,.265],pivot:[0,1.225,.245],muzzle:[0,1.260,1.978]});
   const buildAbramsXTurretStage1 = (): void => {
     P.add('turret', cylY(0.340, 0.370, 0.190, 18), 0,
       2.515 - 1.95, -0.125 + 0.39);
@@ -9295,6 +9300,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     // the turntable. Side forks still expose serviceable mechanical openings.
     P.add('turret', box(0.22, 0.28, 0.18), -0.02,
       2.950 - 1.95, -0.145 + 0.39);
+    axStation.mark('yaw');
     // Exact receiver envelope, rebuilt as a compact irregular cradle.  The
     // previous broad side plates plus full-depth top/bottom bars preserved
     // the box numerically but read as a construction-site gantry.  Sparse
@@ -9352,6 +9358,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     P.add('turretDetail', box(0.46, 0.030, 0.032), -0.055,
       3.305 - 1.95, -0.025 + 0.39);
 
+    axStation.mark('pitch');
     // Gun-right electronics case, feed wheel and visible ammunition arc.
     // Its registered bottom sat only tangent to the turntable radius. A
     // half-buried equipment foot now overlaps both the roof and case.
@@ -9486,6 +9493,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     axRwsBox('turretDark', -0.502, -0.318, 2.535, 2.720, -0.282, -0.041);
   };
   buildAbramsXTurretStage1();
+  axStation.mark('yaw');
   const buildAbramsXTurretStage2 = (): void => {
     P.add('turretDark', cylZ(0.100, 0.045, 12), -0.245,
       3.055 - 1.95, 0.330 + 0.39);
@@ -9519,6 +9527,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     }
   };
   buildAbramsXTurretStage2();
+  axStation.mark('pitch');
   // Twin whip antennas at the oracle's own (±1.15, z -1.98) stations, tops
   // 4.12 — two p95-free columns; they also zero the whip station slice.
   // §B5/§C.1 WHIP COUPLING (re-cert order 2026-08-06, mode-2 HARD 1368px):
@@ -10957,12 +10966,13 @@ function addM1A3RemoteWeaponTower(P: AbramsBuilderPort): void {
   }
   P.add('turretDark', cylX(0.055, 0.51, 12), towerX, 1.49, towerZ + 0.01);
 
-  const rws = FITTINGS.pintleMG({
+  const rws = FITTINGS.pintleMG({ remoteControlled: true,
     mats: P.mats, cls: 'm2', scale: 1.28, tone: 'dark', seed: 93,
     ammoSlot: 'dark', machineGunFinish: 'gunmetal',
     shield: false, elev: 0.035, rotation: [0, 0, 0],
   });
   rws.name = 'm1a3RemoteWeaponTower';
+  rws.userData.remoteControlled = true;
   rws.position.set(towerX, 1.42, towerZ + 0.04);
   P.turretG.add(rws);
 

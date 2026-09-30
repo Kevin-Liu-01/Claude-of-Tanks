@@ -25,7 +25,7 @@ const hullHashes = {
 const profileSource = readFileSync(new URL('./object695X.ts', import.meta.url), 'utf8');
 assert.ok(!profileSource.includes('epokhaTurret'), 'the counterpart turret is not assembled');
 assert.deepEqual([...profileSource.matchAll(/^import .* from '([^']+)';$/gm)].map(m => m[1]).sort(),
-  ['../profileBuilderAdapter.ts', '../tankFactoryCore.ts', '../vehicleNightLighting.ts', './kit.ts', './object695MissileTurret.ts', './sectionSolid.ts', 'three']);
+  ['../profileBuilderAdapter.ts', '../tankFactoryCore.ts', '../vehicleAuxiliaryGeometry.ts', '../vehicleNightLighting.ts', './kit.ts', './object695MissileTurret.ts', './sectionSolid.ts', 'three']);
 const record = JSON.parse(readFileSync(new URL('../../../docs/references/tanks/object695_x.source-measurements.json', import.meta.url), 'utf8'));
 const spec = TANK_SPECS.object695_x;
 assert.equal(spec.name, 'Object 695'); assert.equal(spec.role, 'ifv'); assert.equal(tankTier(spec.id), 10);

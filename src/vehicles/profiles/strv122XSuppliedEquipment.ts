@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Independent source-frame fittings. Recesses, cupola gaps and the aft cage
 // are modeled with individual supported walls/bars, not opaque proxy boxes.
 import * as THREE from 'three';
@@ -125,7 +126,8 @@ function smokeTube(P:TankBuilderPort,end:StrvPoint,direction:StrvPoint,r:number,
     [r*.70,-.045],[r*.97,-.027],[r,-.014],[r*.85,.005],
     [r*.60,.020],[r*.32,.025],[r*.22,.022],[0,.022],[0,-.187],[stockRadius,-.187]];
   const shell=new THREE.LatheGeometry(profile.map(([radius,z])=>new THREE.Vector2(radius,z)),32)
-    .rotateX(Math.PI/2).applyQuaternion(q);
+    .rotateX(Math.PI/2);
+  markSmokeTube(shell,[0,0,1],true).applyQuaternion(q);
   add(P,'turretDetail',shell,...end);
   return new THREE.Vector3(...end).addScaledVector(axis,-.176);
 }

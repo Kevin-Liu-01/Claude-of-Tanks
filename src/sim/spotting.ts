@@ -87,6 +87,7 @@ export interface SpottingRayHit {
 }
 
 interface SpottingDependencies {
+  opticalBlocked?: (a: SpottingVector3, b: SpottingVector3) => boolean;
   getTanks: () => SpottingTank[];
   raycast?: (
     origin: SpottingVector3,
@@ -556,9 +557,10 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
     return e.state.pos.y + (e.spec.dims ? e.spec.dims.heightM : 2.6) * 0.9;
   }
 
+  const _opticalTarget = {x:0,y:0,z:0};
   /** Hard-cover LOS: clear to either the turret top or the hull center. */
   function hardLos(spotter: SpottingTank, target: SpottingTank): boolean {
-    if (!raycast) return true;
+    if (!raycast && !deps.opticalBlocked) return true;
     const sp = spotter.state.pos, tp = target.state.pos;
     const h = target.spec.dims ? target.spec.dims.heightM : 2.6;
     const sy = eyeY(spotter);
@@ -568,8 +570,10 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
       const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
       if (dist < 1e-3) return true;
       _d.x = dx / dist; _d.y = dy / dist; _d.z = dz / dist;
+      _opticalTarget.x=tp.x;_opticalTarget.y=tp.y+h*frac;_opticalTarget.z=tp.z;
+      if(deps.opticalBlocked?.(_o,_opticalTarget))continue;
       raycastCalls++;
-      const hit = raycast(_o, _d, dist);
+      const hit = raycast?.(_o, _d, dist);
       if (!hit || hit.dist > dist - LOS_TOLERANCE_M) return true;
     }
     return false;

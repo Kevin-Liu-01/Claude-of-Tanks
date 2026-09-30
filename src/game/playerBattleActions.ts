@@ -51,7 +51,7 @@ interface BattleActionEntity extends Omit<
   spec: BattleActionSpec;
   combat: ActionCombat | null;
   state: ActionState | null;
-  input: { shellSlot: number };
+  input: { shellSlot: number; auxiliaryBits?: number };
   /** Ruleset jump launch stamped by the mode controller (Turbo Ball); null elsewhere. */
   modeJumpMps?: number | null;
 }
@@ -74,7 +74,7 @@ interface ActionInput {
 interface NetworkActionPort {
   isActive(): boolean;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff'): void;
 }
 
 interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
@@ -166,6 +166,10 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     if (!battleInputAllowed()) return;
     bus.emit('ui:specialAction', {});
   });
+
+  for (const action of ['smoke','lights','roofGun'] as const) {
+    onAction(action, () => { if (battleInputAllowed()) bus.emit(action === 'lights' ? 'ui:lightsToggle' : `ui:${action}`, {}); });
+  }
 
   onAction('selfRight', () => {
     if (!battleInputAllowed()) return;
@@ -325,6 +329,32 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     }
     bus.emit('ui:click', {});
   });
+
+  let defaultLightsOn=false, lightIntent:boolean|null=null, lightIntentAt=-Infinity;
+  let lightIntentOwner:TEntity|null=null;
+  listen('auxiliary:defaultLights',payload=>{defaultLightsOn=!!(payload as {on?:boolean}).on;});
+  listen('ui:lightsToggle',()=>{
+    const player=battleInputAllowed()?livePlayer():null;
+    if(!player)return;
+    const age=game.timeS-lightIntentAt;
+    const current=lightIntentOwner===player && age>=0 && age<1 && lightIntent!==null
+      ? lightIntent : player.combat.auxiliary?.lights===1 || (player.combat.auxiliary?.lights!==0 && defaultLightsOn);
+    lightIntent=!current;lightIntentAt=game.timeS;lightIntentOwner=player;
+    bus.emit(lightIntent?'ui:lights':'ui:lightsOff',{});
+  });
+  for (const [action, bit] of [['smoke', 64], ['lights', 128], ['roofGun', 256], ['lightsOff', 512]] as const) {
+    listen(`ui:${action}`, () => {
+      const player = battleInputAllowed() ? livePlayer() : null;
+      if (!player) return;
+      if (network.isActive()) network.queueAction(action);
+      else {
+        let pending=player.input.auxiliaryBits||0;
+        if(action==='lights'||action==='lightsOff')pending &= ~(128|512);
+        player.input.auxiliaryBits = action==='roofGun' ? pending^bit : pending|bit;
+      }
+      bus.emit('ui:click', {});
+    });
+  }
 
   listen('ui:selfRight', () => {
     const player = battleInputAllowed() ? livePlayer() : null;

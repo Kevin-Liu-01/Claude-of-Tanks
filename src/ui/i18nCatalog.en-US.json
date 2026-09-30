@@ -1,4 +1,7 @@
 {
+  "systems.ready": "READY",
+  "systems.reloading": "RELOADING",
+  "systems.off": "OFF",
   "playMenu.solo.settings": "Solo settings & campaign",
   "playMenu.solo.settingsLead": "Configure your opponents or launch a campaign operation. Your next solo battle uses these settings.",
   "garage.multiplayer.room": "Room",
@@ -3600,5 +3603,17 @@
   "rules.line.scoreTarget": "First to {value}",
   "rules.line.sectorHold": "Hold the final sector for {value} s",
   "garage.stat.gunTraverse": "Gun traverse",
-  "garage.stat.gunBloom": "Gun dispersion · 20°/s"
+  "garage.stat.gunBloom": "Gun dispersion · 20°/s",
+  "systems.title": "Vehicle controls",
+  "systems.smoke": "Smoke",
+  "systems.smoke.help": "Launch a forward smoke screen. Three salvos; 28 s cooldown. Smoke blocks sight, not shells.",
+  "systems.lights": "Lights",
+  "systems.lights.help": "Switch the fitted tank lights on or off.",
+  "systems.roofGun": "Auto gun",
+  "systems.roofGun.help": "Enable the roof weapon to track and fire bursts at spotted enemies within 240 m.",
+  "systems.available": "Available in battle",
+  "systems.auto": "Auto",
+  "systems.on": "ON",
+  "systems.cooldown": "{seconds}s",
+  "systems.atgm.help": "Select guided missiles. Fire, then guide the missile with your aiming cursor."
 }

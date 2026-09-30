@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Original parametric Type90 X; local source supplies scalar landmarks only.
 // Visual X follows the supplied uniformly registered source. Published
 // 9.80×3.40×2.30m dimensions remain separately documented, never oracle warps.
@@ -271,7 +272,7 @@ function smokeBank(P:TankBuilderPort,side:number):void {
     const outer=.052555,inner=.040,shape=new THREE.Shape();shape.absarc(0,0,outer,0,Math.PI*2,false);
     const hole=new THREE.Path();hole.absarc(0,0,inner,0,Math.PI*2,true);shape.holes.push(hole);
     const g=new THREE.ExtrudeGeometry(shape,{depth:.30487,steps:1,bevelEnabled:false,curveSegments:16});
-    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),axis));
+    markSmokeTube(g).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),axis));
     turret(P,'turretDetail',g,back.x,back.y,back.z);
     const rimShape=new THREE.Shape();rimShape.absarc(0,0,.0631,0,Math.PI*2,false);rimShape.holes.push(hole.clone());
     const rim=new THREE.ExtrudeGeometry(rimShape,{depth:.04209,steps:1,bevelEnabled:false,curveSegments:16});

@@ -46,7 +46,15 @@ assert.deepEqual(capsCollision,
     globalThis.window = new EventTarget();
     globalThis.document = Object.assign(new EventTarget(), { hidden: false });
     globalThis.localStorage = { getItem: () => null, setItem() {} };
+    globalThis.localStorage = {getItem:key=>key==='cot.bindings.v1'?JSON.stringify({hitboxOverlay:'KeyG'}):null,setItem(){}};
+    const migrated=createInput();
+    assert.equal(migrated.getBinding('hitboxOverlay'),'KeyG','new smoke default preserves existing custom keys');
+    assert.equal(migrated.getBinding('smoke'),null);
+    globalThis.localStorage = { getItem: () => null, setItem() {} };
     const controls = createInput();
+    assert.equal(controls.getBinding('smoke'),'KeyG');
+    assert.equal(controls.getBinding('lights'),'KeyN');
+    assert.equal(controls.getBinding('roofGun'),'KeyB');
     for (const event of ['blur', 'visibilitychange']) {
       controls.pressVirtual('fire');
       controls.tapVirtual('consumable1');

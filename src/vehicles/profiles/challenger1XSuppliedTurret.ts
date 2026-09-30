@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Newly authored asymmetric folded turret and fittings. Every station/plane
 // is a scalar design input; there are no source vertex/index arrays or models.
 import * as THREE from 'three';
@@ -146,7 +147,7 @@ function smoke(P:TankBuilderPort):void{
   for(const side of[-1,1]){
     for(const [dx,dy]of[[-4.3,1.6],[0,1.6],[4.3,1.6],[-2.15,-2.3],[2.15,-2.3]]){
       const x=side*33.1+dx,z=39.0-side*.36*dx;
-      equipment(P,blindTube(m(1.8),m(1.24),m(10.2),m(5.8),20).rotateX(-.17).rotateY(side*.35),x,70.3+dy,z);
+      equipment(P,markSmokeTube(blindTube(m(1.8),m(1.24),m(10.2),m(5.8),20),[0,0,1],true).rotateX(-.17).rotateY(side*.35),x,70.3+dy,z);
     }
     equipment(P,box(m(15.8),m(6.2),m(2.0)).rotateY(side*.35),side*31.4,69.4,33.4);
   }

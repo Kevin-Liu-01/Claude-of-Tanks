@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Independently authored T-72B3 X. Only measured dimensions/planes inform these
 // mathematical solids; no source mesh, rig, texture or donor builder is used.
 import * as THREE from 'three';
@@ -283,7 +284,7 @@ function smoke(P:TankBuilderPort):void {
     [1.38285,1.85265,.27655],[1.52295,1.85285,.27675]];
   for(const [x,y,z]of stations){
     turretPart(P,'turretDetail',beamBetween([x,y-.080,z-.085],[1.24,y-.10,z-.15],.020),0,0,0);
-    turretPart(P,'turretDark',blindTube(.04825,.035,.273,.170,20),x,y,z,-.70);
+    turretPart(P,'turretDark',markSmokeTube(blindTube(.04825,.035,.273,.170,20),[0,0,1],true),x,y,z,-.70);
   }
 }
 

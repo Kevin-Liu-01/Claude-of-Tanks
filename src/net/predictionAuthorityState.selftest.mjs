@@ -187,7 +187,7 @@ test('authored visual contact geometry cannot change network prediction terrain/
     const game = { tanks: [], tankById: new Map(), player: null, shells: [],
       spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null };
     const bridge = createBrowserBattleBridge({
-      engineCtx: { scene: { add() {} } }, game, viewerId: 'viewer',
+      engineCtx: { scene: { add() {} } }, game, viewerId: 'viewer', bus: { emit() {} },
       worldCollision: { heightField: field },
       createTankVisual: () => ({ root: { position: new Vector3() },
         contactGeom: visualContact, setVisible() {}, syncFromState() {}, dispose() {} }),

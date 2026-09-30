@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Euro/Asia-moderns family procedural profiles (fidelity oracles:
 // ariete-dustymojito, char_leclerc_andertan, t80u_javanilga, recovered
 // type90, type74-nullops). Owned by the misc/Euro-Asia family agent.
@@ -213,7 +214,7 @@ function galixBank(
   const { box, cylZ } = KIT;
   P.add('turret', box(0.09, 0.26, 0.16 * n * 0.72), x - side * 0.02, y - 0.04, z, 0, side * 0.55, 0);
   for (let r = 0; r < rows; r++) for (let k = 0; k < n - (r ? 1 : 0); k++) {
-    P.add('turretDark', cylZ(0.048, 0.24, 8), x + side * (k * 0.02 - r * 0.06), y + 0.05 - r * 0.15,
+    P.add('turretDark', markSmokeTube(cylZ(0.048, 0.24, 8)), x + side * (k * 0.02 - r * 0.06), y + 0.05 - r * 0.15,
       z + 0.26 - k * 0.135, -0.42 + r * 0.08, side * (0.95 + k * 0.14), 0);
   }
 }

@@ -1,3 +1,5 @@
+import { guidedMissileSlot, specialActionKind, SPECIAL_ACTION_KINDS } from '../sim/specialActionPolicy.ts';
+import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import { movementDispersionFactor } from '../sim/movementDispersion.ts';
 import { createBattleArrangementPanel } from './battleArrangementPanel.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -1508,6 +1510,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let activeCamoCollection: CamoCollectionId = 'default';
   let activeCamoTag: CamoTagId = 'all';
   let customCamoStudioAccess: CustomCamoStudioAccess | null = null;
+  function bindCamoStripScroll(strip: HTMLElement): void {
+    strip.addEventListener('wheel', (event) => {
+      // Preserve native horizontal trackpad gestures and browser pinch zoom.
+      if (event.ctrlKey || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+      const maxScroll = strip.scrollWidth - strip.clientWidth;
+      if (maxScroll <= 1) return;
+      const delta = horizontalRailWheelDelta(event.deltaX, event.deltaY, event.deltaMode, strip.clientWidth);
+      const target = Math.max(0, Math.min(maxScroll, strip.scrollLeft + delta));
+      if (Math.abs(target - strip.scrollLeft) < 0.5) return;
+      event.preventDefault();
+      strip.scrollLeft = target;
+    }, { passive: false });
+  }
   function initializeCamoPicker(): void {
     if (!camoOpts?.patterns?.length) return;
     const title = document.createElement('div');
@@ -1544,11 +1559,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     camosEl.appendChild(title);
     const collections = document.createElement('div');
     collections.className = 'cot-camo-collections';
-    collections.addEventListener('wheel', (event) => {
-      if (collections.scrollWidth <= collections.clientWidth) return;
-      event.preventDefault();
-      collections.scrollLeft += event.deltaX || event.deltaY;
-    }, { passive: false });
+    bindCamoStripScroll(collections);
     collections.setAttribute('role', 'group');
     collections.setAttribute('aria-label', t('garage.camo.collections'));
     for (const id of ['default', ...CAMO_COUNTRY_TAG_IDS] as const) {
@@ -1577,6 +1588,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     camosEl.appendChild(collections);
     const tagBar = document.createElement('div');
     tagBar.className = 'cot-camo-tags';
+    bindCamoStripScroll(tagBar);
     tagBar.setAttribute('role', 'toolbar');
     tagBar.setAttribute('aria-label', t('garage.camo.filterByTag'));
     for (const tagId of CAMO_TAG_IDS) {
@@ -2466,12 +2478,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   function specialSystemSection(spec: GarageTankSpec, reloadS: number): string {
     const special = garageSpecialSystem(spec, reloadS);
-    if (!special) return '';
+    const kit = auxiliaryCapabilities(spec);
+    const controls: {label:string;icon:string;detail:string}[] = [];
+    if(special) controls.push({label:special.shortLabel,icon:special.icon,detail:special.detail});
+    if(guidedMissileSlot(spec)>=0&&specialActionKind(spec)!==SPECIAL_ACTION_KINDS.GUIDED_MISSILE&&spec.gun.shells.some(shell=>!shell.guided))controls.push({label:'ATGM',icon:'missileRack',detail:t('systems.atgm.help')});
+    if(kit?.smoke.length) controls.push({label:t('systems.smoke'),icon:'smoke',detail:t('systems.smoke.help')});
+    if(kit?.lights) controls.push({label:t('systems.lights'),icon:'lightbulb',detail:t('systems.lights.help')});
+    if(kit?.guns.length) controls.push({label:t('systems.roofGun'),icon:'roofGun',detail:t('systems.roofGun.help')});
+    if(!controls.length)return '';
     return `<section class="cot-stat-section cot-special-section">` +
-      statSectionTitle(special.icon, t('garage.dossier.section.special'), '', 'Special system') +
-      `<div class="cot-special-card"><span class="cot-special-icon">${uiIconSVG(special.icon, 24)}</span>` +
-      `<div class="cot-special-copy"><b>${special.label}</b><p>${special.detail}</p>` +
-      `<small>${special.meta}</small></div><kbd>E</kbd></div></section>`;
+      statSectionTitle('missileRack', t('systems.title'), '', 'Special system') +
+      `<div class="cot-system-preview">${controls.map(control=>`<button type="button" title="${escapeHtmlAttribute(control.detail)}" aria-label="${escapeHtmlAttribute(control.label+': '+control.detail)}">${uiIconSVG(control.icon,19)}<span>${control.label}</span></button>`).join('')}</div></section>`;
   }
 
   function magazineDescription(gun: FleetGunSpec, reloadS: number, reloadMultiplier: number): string {
@@ -2667,6 +2684,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         vehicle: { id: spec.id, name: spec.label?.displayName || spec.name },
         guide: ({ Performance: 'performance', 'Special system': 'special', Ammunition: 'ammunition', Protection: 'protection', Armament: 'armament', Modules: 'modules', Crew: 'crew', Equipment: 'equipment' } as const)[label as GarageInfoLabel],
       }));
+    });
+    statsEl.querySelectorAll<HTMLButtonElement>('.cot-system-preview button').forEach(button=>{
+      const info=createInfoButton({title:button.textContent||'',text:button.title,guide:'special',
+        vehicle:{id:spec.id,name:spec.label?.displayName||spec.name},className:'cot-system-control'});
+      info.innerHTML=button.innerHTML;info.setAttribute('aria-label',button.getAttribute('aria-label')||'');
+      button.replaceWith(info);
     });
     const equipmentHead = statsEl.querySelector('.eqhead');
     equipmentHead?.appendChild(createInfoButton({

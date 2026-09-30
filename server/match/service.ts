@@ -421,7 +421,7 @@ export async function createMatchService({
       const decoded = decodeMessage(bytes, { maxBytes: MAX_CLIENT_MESSAGE_BYTES });
       if (!decoded.ok || decoded.message.type !== MESSAGE_TYPE.HELLO) {
         counters.rejectedHellos++;
-        link.close(CLOSE_REASON.HELLO_REQUIRED, decoded.ok ? 'first frame must be hello' : decoded.error.code);
+        link.close(!decoded.ok && decoded.error.code==='bad_version' ? CLOSE_REASON.PROTOCOL_VERSION : CLOSE_REASON.HELLO_REQUIRED, decoded.ok ? 'first frame must be hello' : decoded.error.code);
         return;
       }
       const hello = decoded.message;

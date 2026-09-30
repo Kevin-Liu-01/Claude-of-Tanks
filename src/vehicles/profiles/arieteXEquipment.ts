@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Original permanent C1 fittings informed by the dated Army side and reversed-
 // turret photographs. These are construction estimates, not AI-mesh metrics.
 import * as THREE from 'three';
@@ -21,7 +22,8 @@ function launcher(P: TankBuilderPort, pivot: Pivot, side: number, z: number): vo
   const points = [[.045, -.095], [.045, .095], [.035, .095],
     [.035, -.085], [0, -.085], [0, -.095], [.045, -.095]];
   const tube = new THREE.LatheGeometry(points.map(([r, a]) => new THREE.Vector2(r, a)), 24)
-    .rotateX(Math.PI / 2).applyQuaternion(rotation).translate(...center.toArray());
+    .rotateX(Math.PI / 2);
+  markSmokeTube(tube,[0,0,1],true).applyQuaternion(rotation).translate(...center.toArray());
   add(P, pivot, 'turretDetail', tube);
   const stock = cylZ(.0352, .010, 24).applyQuaternion(rotation);
   const back = center.clone().addScaledVector(axis, -.080);

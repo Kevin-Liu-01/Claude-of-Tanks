@@ -133,6 +133,7 @@ export interface WelcomeMessage {
 
 /** Full quantized state of one entity as the wire carries it. */
 export interface EntityRow {
+  auxiliaryJson?: string;
   entityId: number;
   /**
    * The authority tick this row was captured at (P3b, 2026-09-29). Equal to the frame's tick for a row refreshed in that
@@ -220,6 +221,7 @@ export interface ViewerState {
 
 /** Match-wide state every snapshot carries. */
 export interface SnapshotMeta {
+  smokeJson?: string;
   phase: PhaseId;
   countdownMs: number;
   battleTimeMs: number;

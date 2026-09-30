@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
@@ -30,7 +31,7 @@ function addSmokeShoulder(P: TankBuilderPort, side: number): void {
   for(const [x,y,z]of[[1.674,1.887,-1.605],[1.677,1.817,-1.498],
     [1.578,1.910,-1.493],[1.586,1.836,-1.388],[1.488,1.840,-1.324],[1.472,1.920,-1.414]]){
     put(P,'hullDetail',KIT.box(.094,.118,.192),side*x,y-.055,z-.097,-.32);
-    put(P,'hullDetail',KIT.cylZ(.050,.035,P.q?16:10),side*x,y,z,-.332,side*.035);
+    put(P,'hullDetail',markSmokeTube(KIT.cylZ(.050,.035,P.q?16:10)),side*x,y,z,-.332,side*.035);
     put(P,'hullDark',KIT.cylZ(.040,.004,P.q?16:10),side*(x+.0007),y+.0065,z+.020,-.332,side*.035);
   }
 }

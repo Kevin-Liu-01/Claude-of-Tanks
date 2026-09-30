@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {beforeSmokeAnnotations} from './smokeAnnotationHistory.test-support.mjs';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {registerProfiledBuilders} from './tankFactoryCore.ts';
@@ -33,6 +34,7 @@ export const FIXED_SOURCE_SKIRTS=Object.freeze({
 export function verifyHistoricalFixedSkirtSource(id){
   const row=FIXED_SOURCE_SKIRTS[id];assert.ok(row);
   let source=readFileSync(new URL('./profiles/'+row.file,import.meta.url),'utf8');
+  if(id==='t72bu_x')source=beforeSmokeAnnotations(row.file,source);
   source=source.replace("import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';\n",'');
   if(id==='t90_x')source=source
     .replace("'hullFixedPaintedBodywork',markFixedPaintedPanel(sectionSolid(rows.map", "'hullRubber',sectionSolid(rows.map")

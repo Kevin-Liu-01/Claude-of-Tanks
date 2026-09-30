@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Independent source-measured AW-labelled T-90 X. Analytic first-party
 // solids only: no source topology, old T-90 builder or runtime source loader.
 import * as THREE from 'three';
@@ -157,7 +158,7 @@ function smokeAndAA(P:TankBuilderPort):void{
   for(const side of [-1,1]){
     for(const[x,y,z,yaw]of [[1.4693,2.07198,.00827,.24],[1.3404,2.06818,.01427,.24],
       [1.44095,1.93033,.02657,.54],[1.5713,1.92373,-.02658,.54],[1.58,1.79,-.035,.72],[1.45,1.80,.05,.72]])
-      top(P,'turretDark',blindTube(.048,.031,.24,.10,20).rotateX(-.32).rotateY(side*yaw),side*x,y,z);
+      top(P,'turretDark',markSmokeTube(blindTube(.048,.031,.24,.10,20),[0,0,1],true).rotateX(-.32).rotateY(side*yaw),side*x,y,z);
     top(P,'turretDetail',box(.35,.03,.235),side*1.3755,2.025,-.10543);
     top(P,'turretDetail',box(.4,.03,.245),side*1.39,1.805,-.11553);
     top(P,'turretDetail',beamBetween([side*1.16,1.82,-.25],[side*1.39,2.01,-.14],.021),0,0,0);

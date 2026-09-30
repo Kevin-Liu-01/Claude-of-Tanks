@@ -7,7 +7,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  * authoritative host validates all client-authored fields here.
  */
 
-export const PROTOCOL_VERSION = 10;
+export const PROTOCOL_VERSION = 11;
 export const MATCH_TICK_HZ = 60;
 export const SNAPSHOT_HZ = 20;
 export const MAX_PLAYERS = 14;
@@ -25,6 +25,10 @@ export const PLAYER_ACTION_BITS = Object.freeze({
   RELOAD_MAGAZINE: 1 << 3,
   SPECIAL_ACTION: 1 << 4,
   SELF_RIGHT: 1 << 5,
+  SMOKE: 1 << 6,
+  LIGHTS: 1 << 7,
+  ROOF_GUN: 1 << 8,
+  LIGHTS_OFF: 1 << 9,
 } as const);
 
 export const MESSAGE_TYPES = Object.freeze({

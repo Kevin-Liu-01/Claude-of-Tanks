@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Four additive, independently authored source-study Leopards. No donor
 // builder, source loader, external topology, or texture is used here.
 import * as THREE from 'three';
@@ -897,7 +898,7 @@ function a5SmokeBanks(P:TankBuilderPort,d:Datum): void {
     [-1.325,2.071,-1.443,-.47],[-1.343,2.071,-1.215,-.47],
     [-1.355,2.073,-.850,-.39],[-1.375,2.074,-.629,-.30],
   ]) {
-    equip(P,d,'turretDetail',cylZ(.044,.26,14),x,y,z,-.79,yaw);
+    equip(P,d,'turretDetail',markSmokeTube(cylZ(.044,.26,14)),x,y,z,-.79,yaw);
     equip(P,d,'turretDark',cylZ(.034,.012,14),x+Math.sin(yaw)*.10,y+.097,z+.09,-.79,yaw);
     equip(P,d,'turretDetail',box(.11,.068,.13),x-Math.sign(x)*.014,y-.089,z-.031);
   }

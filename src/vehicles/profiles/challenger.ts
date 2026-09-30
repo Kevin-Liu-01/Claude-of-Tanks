@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // src/vehicles/profiles/challenger.ts — the Challenger family profile module
 // (§5.75 owner consistency order, 2026-08-08: one family per module; PURE
 // REFACTOR — every moved id hash-proven byte-identical across the split).
@@ -2119,7 +2120,7 @@ function buildChallenger2VariantPackage(
         const angle = side * (0.64 + k * 0.09);
         const tubeX = side * 1.02 + Math.cos(angle) * (k - 1.5) * 0.06;
         const tubeZ = 1.16 - Math.sin(angle) * (k - 1.5) * 0.06;
-        P.addEquipment('turret', cylZ(0.040, 0.22, 8), tubeX, 0.34, tubeZ, -0.48, angle, 0);
+        P.addEquipment('turret', markSmokeTube(cylZ(0.040, 0.22, 8)), tubeX, 0.34, tubeZ, -0.48, angle, 0);
         P.add('turretDark', xform(cylZ(0.032, 0.012, 10), 0, 0, 0.114),
           tubeX, 0.34, tubeZ, -0.48, angle, 0);
         smokeMouths.push({ side, tubeCenter: [tubeX, 0.34, tubeZ], rotation: [-0.48, angle, 0], mouthOffsetZ: 0.114 });
@@ -2350,7 +2351,7 @@ function buildChallenger2VariantPackage(
               const axis = new THREE.Vector3(0, 0, 1)
                 .applyEuler(new THREE.Euler(...rotation, 'XYZ'));
               const center = seat.clone().addScaledVector(axis, tubeLength * 0.5 - rearEmbed);
-              P.addEquipment('turret', cylZ(0.040, tubeLength, 8),
+              P.addEquipment('turret', markSmokeTube(cylZ(0.040, tubeLength, 8)),
                 center.x, center.y, center.z, ...rotation);
               P.add('turretDark', xform(cylZ(0.032, 0.012, 10), 0, 0, 0.109),
                 center.x, center.y, center.z, ...rotation);
@@ -4259,7 +4260,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
             const dz = -Math.sin(yaw) * f * 0.095;
             const tubeX = x + dx;
             const tubeZ = z + dz;
-            P.addEquipment('turret', cylZ(0.038, 0.24, 8), tubeX, y, tubeZ, -0.5, angle, 0);
+            P.addEquipment('turret', markSmokeTube(cylZ(0.038, 0.24, 8)), tubeX, y, tubeZ, -0.5, angle, 0);
             P.add('turretDark', xform(cylZ(0.032, 0.012, 10), 0, 0, 0.124),
               tubeX, y, tubeZ, -0.5, angle, 0);
             smokeMouths.push({ side, tubeCenter: [tubeX, y, tubeZ], rotation: [-0.5, angle, 0],

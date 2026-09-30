@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // ZTZ-100 (`ztz100_x`, owner 2026-09-17: "add a new ztz100 tank … use the glb model and our best most up to date
 // tank generation procedures based off of models"; "the ztz 100 should NOT be based off of the type 100 at all. it
 // needs to be completely separate following completely inspired generation").
@@ -630,7 +631,7 @@ function turret(P: TankBuilderPort): void {
         .rotateY(-Math.PI/2).applyQuaternion(align),'smoke-tube'),
         s*laneX,2.135509-T.pivotY,-.473386-T.pivotZ);
       // The source mouth contains an opaque circular cap inside its rim.
-      P.add('turretDark',part(cylZ(.03114,.002,P.q?16:10).applyQuaternion(align),'smoke-cap'),
+      P.add('turretDark',part(markSmokeTube(cylZ(.03114,.002,P.q?16:10)).applyQuaternion(align),'smoke-cap'),
         s*laneX,2.135509+axis.y*.001-T.pivotY,-.473386+axis.z*.001-T.pivotZ);
     }
     P.addEquipment('turret', part(box(0.12, 0.30, 0.44), 'stowage-box'), s * 0.97, 0.36, -1.75);

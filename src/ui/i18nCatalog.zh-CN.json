@@ -1,4 +1,7 @@
 {
+  "systems.ready": "就绪",
+  "systems.reloading": "装填中",
+  "systems.off": "关闭",
   "playMenu.solo.settings": "单人设置与战役",
   "playMenu.solo.settingsLead": "设置对手或开始战役行动。下一场单人战斗将使用这些设置。",
   "garage.multiplayer.room": "房间",
@@ -3600,5 +3603,17 @@
   "rules.line.scoreTarget": "率先获得 {value} 分",
   "rules.line.sectorHold": "坚守最终区域 {value} 秒",
   "garage.stat.gunTraverse": "火炮横向转速",
-  "garage.stat.gunBloom": "火炮转动散布 · 20°/秒"
+  "garage.stat.gunBloom": "火炮转动散布 · 20°/秒",
+  "systems.title": "车辆控制",
+  "systems.smoke": "烟幕",
+  "systems.smoke.help": "向前发射烟幕弹。共三轮，冷却28秒。烟幕遮挡视线，但不阻挡炮弹。",
+  "systems.lights": "车灯",
+  "systems.lights.help": "开启或关闭车辆配备的灯光。",
+  "systems.roofGun": "自动机枪",
+  "systems.roofGun.help": "启用顶部武器，跟踪并点射240米以内已发现的敌人。",
+  "systems.available": "战斗中可用",
+  "systems.auto": "自动",
+  "systems.on": "开启",
+  "systems.cooldown": "{seconds}秒",
+  "systems.atgm.help": "选择制导导弹。发射后，用瞄准光标引导导弹。"
 }

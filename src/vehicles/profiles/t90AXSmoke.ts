@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Source-specific first-party smoke fixtures: each bank has a different fan,
 // and the upper left pair actually points slightly inboard. Source files are
 // local measurement oracles only; no source geometry is used here.
@@ -30,7 +31,7 @@ function tube(P: TankBuilderPort,values: Tube): void {
       .add(new THREE.Vector3(0,-below,0).applyQuaternion(q));
     P.addEquipment(slot,g.applyQuaternion(q),p.x-.010,p.y-1.468,p.z+.0039);
   };
-  place('turretDark',KIT.cylZ(.046,length-.014,16),-.007);
+  place('turretDark',markSmokeTube(KIT.cylZ(.046,length-.014,16)),-.007);
   place('turretDetail',KIT.cylZ(.0465,.014,16),length*.5-.007);
   // A shallow carrier cradles the underside. Its axis follows its own tube,
   // instead of projecting every upper mount outboard at the lower bank angle.

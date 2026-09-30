@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Historical test-only photo draft. No playable registry imports this module.
 // Original Mk5 construction from the WEG envelope, MoD exterior equipment
 // documentation and the dated Kubinka photograph. No AI mesh metric or donor.
@@ -267,7 +268,7 @@ function smokeBank(P: TankBuilderPort, side: number): void {
     const center = new THREE.Vector3(dx, dy, 0).applyQuaternion(q).add(origin);
     equipment(P, 'turretDetail', new THREE.CylinderGeometry(.038, .042, .177, 20, 1, true)
       .rotateX(Math.PI / 2).applyQuaternion(q), ...center.toArray());
-    equipment(P, 'turretDetail', new THREE.RingGeometry(.032, .038, 20).applyQuaternion(q),
+    equipment(P, 'turretDetail', markSmokeTube(new THREE.RingGeometry(.032, .038, 20)).applyQuaternion(q),
       ...center.clone().addScaledVector(axis, .0885).toArray());
     equipment(P, 'turretDark', new THREE.CircleGeometry(.032, 20).applyQuaternion(q),
       ...center.clone().addScaledVector(axis, -.084).toArray());

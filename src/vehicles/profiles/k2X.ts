@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // First-party K2 X. The owner's quarantined source is a measurement/reference
 // input only; this module has no source loader, mesh buffers or donor builder.
 import * as THREE from 'three';
@@ -242,7 +243,7 @@ function sourceSmokeTube(P: TankBuilderPort, side: number, datum: readonly numbe
     new THREE.Vector2(.039,.014),new THREE.Vector2(.039,.006),
   ],20).rotateX(Math.PI/2).applyMatrix4(rotation);
   worldTurretEquipment(P,'turretDetail',shape,side*x,y,z);
-  const mouth=cylZ(.038,.003,20).applyMatrix4(rotation);
+  const mouth=markSmokeTube(cylZ(.038,.003,20)).applyMatrix4(rotation);
   worldTurretEquipment(P,'turretDark',mouth,side*x+direction.x*.005,y+direction.y*.005,z+direction.z*.005);
 }
 

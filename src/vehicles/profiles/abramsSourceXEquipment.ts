@@ -1,3 +1,5 @@
+import { beginAuxiliaryStation } from './auxiliaryStation.ts';
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { drainTankBuild, tankProfileCheckpoint, type TankProfileBuild } from '../tankBuildCooperation.ts';
 // First-party sparse reconstruction of the owner's SEP v2 equipment study.
 // Numbers are authored surface/axis measurements in the canonical metre frame,
@@ -391,6 +393,9 @@ function crows(C: EquipmentContext, lowProfile: boolean): void {
   // inferences; only the full-height SEP v2 station is measured by this OBJ.
   const drop = lowProfile ? .265 : 0;
   crowsFoldedCover(C);
+  const local=(p:XYZ):[number,number,number]=>[p[0]-C.frame.turret[0],p[1]-C.frame.turret[1],p[2]-C.frame.turret[2]];
+  const station=beginAuxiliaryStation(C.P,{name:'abramsSourceXCrows',caliberMm:12.7,
+    yaw:local([-.713066,2.560105,.633836]),pivot:local([-.714903,3.2519-drop,.465713]),muzzle:local([-.714903,3.2519-drop,1.744713])});
   emit(C, 'CrowsSlew', KIT.cylY(.125, .125, .0327, 40), [-.713066, 2.560105, .633836]);
   emit(C, 'CrowsStem', KIT.cylY(.09473, .09473, .06173, 20), [-.713066, 2.60731, .633896]);
   emit(C, 'CrowsRotator', KIT.cylY(.10692, .10692, .06682, 20), [-.713084, 2.671185, .633811]);
@@ -401,11 +406,14 @@ function crows(C: EquipmentContext, lowProfile: boolean): void {
   }
   box(C, 'CrowsCrossmember', [.5983, .052, .314], [-.713147, 2.83942, .35096]);
   box(C, 'CrowsFrontCradle', [.39757, .040, .19237], [-.714809, 2.83935, .854761]);
+  station.mark('yaw');
   box(C, 'CrowsAmmoBox', [.35601, .15999, .41181], [-.441105, 3.28964 - drop, .524621]);
   box(C, 'CrowsFeedNeck', [.119, .050, .137], [-.640, 3.248 - drop, .493]);
   buildAbramsSourceXCrows((name, geometry, glass) => emit(C, name, geometry,
     [0, 0, 0], 'turret', glass ? 'turretGlass' : 'turret'), C.P.q, drop);
-  sourceM2(C, 'CrowsM2', [-.714903, 3.251900 - drop, .465713], 'turret');
+  station.mark('pitch');
+  const weapon=sourceM2(C, 'CrowsM2', [-.714903, 3.251900 - drop, .465713], 'turret');
+  weapon.position.set(0,0,0);station.weapon.add(weapon);
 }
 
 function crowsFoldedCover(C: EquipmentContext): void {
@@ -764,7 +772,7 @@ function smoke(C: EquipmentContext): void {
   for (const [side, x] of [[-1, -1.566945], [1, 1.430295]] as const) {
     box(C, `SmokeBase${side}`, [.277, .054, .297], [x, 2.035, .579], 'turret', 'turret', side * .31);
     for (let row = 0; row < 2; row++) for (let i = 0; i < 3; i++) {
-      const geometry = annularZ(.043, .032, .166, C.P.q ? 18 : 8);
+      const geometry = markSmokeTube(annularZ(.043, .032, .166, C.P.q ? 18 : 8),[0,0,1],true);
       geometry.rotateX(-.70);
       geometry.rotateY(side * .46);
       emit(C, `SmokeTube${side}_${row}_${i}`, geometry,

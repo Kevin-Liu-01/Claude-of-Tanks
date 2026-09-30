@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {Vector3,Matrix4} from 'three';
 import { createTank } from '../tankFactory.ts';
 
 const tank = createTank('abramsx', null, {
@@ -84,9 +85,18 @@ const rigTurret = tank.root.getObjectByName('rig_turret');
 const feed = rigTurret?.userData?.abramsxRwsFeedReceipt;
 assert.ok(feed, 'AbramsX RWS feed receipt is present');
 assert.equal(feed.returnLinkCount, 8, 'belt has an articulated box return');
-assert.ok(hasPoint(turretDark, [0.5242, 1.110, -0.3108])
-  && hasPoint(turretDark, [0.6158, 1.190, -0.2092]),
-  'feed mouth is present in the merged turret mesh');
+const feedPoints=[];tank.root.updateMatrixWorld(true);
+const inverseTurret=new Matrix4().copy(rigTurret.matrixWorld).invert();
+const station=tank.root.getObjectByName('abramsXRemoteAutocannon');
+assert.ok(station?.userData.remoteControlled,'feed remains on the actual remote station');
+station.traverse(mesh=>{
+  const p=mesh.geometry?.getAttribute('position');if(!p)return;
+  const matrix=new Matrix4().multiplyMatrices(inverseTurret,mesh.matrixWorld);
+  for(let i=0;i<p.count;i++)feedPoints.push(new Vector3().fromBufferAttribute(p,i).applyMatrix4(matrix).toArray());
+});
+assert.ok(hasPoint(feedPoints, [0.5242, 1.110, -0.3108])
+  && hasPoint(feedPoints, [0.6158, 1.190, -0.2092]),
+  'articulated feed mouth stays at its authored turret coordinates');
 assert.ok(feed.feedMouthCenter[1] - 0.040 <= feed.ammoBoxTopY,
   'feed mouth is buried through the ammunition-box lid');
 assert.ok(Math.abs(feed.beltTailEnd[0] - feed.feedMouthCenter[0]) < 1e-6

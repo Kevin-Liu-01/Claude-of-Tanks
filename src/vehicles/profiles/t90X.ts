@@ -1,3 +1,5 @@
+import { beginAuxiliaryStation } from './auxiliaryStation.ts';
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Four independently authored September 2026 owner-reference reconstructions.
 // Source assets are quarantined comparison inputs only. Every runtime surface
 // below is an original solid primitive, not a source contour or mesh buffer.
@@ -695,7 +697,7 @@ function smoke(P: TankBuilderPort,d: Datum,modern: boolean): void {
     for(let row=0;row<3;row++)for(let c=0;c<count;c++) {
       const x=side*(1.25+c*.13-row*.06),y=d.roof-.42+row*.15,z=-.14+row*.048;
       onTurret(P,d,'turretDetail',box(.12,.085,.10),x,y-.08,z-.1,0,side*.50);
-      onTurret(P,d,'turretDark',cylZ(.050,.25,12),x,y,z,-.28,side*.60);
+      onTurret(P,d,'turretDark',markSmokeTube(cylZ(.050,.25,12)),x,y,z,-.28,side*.60);
       onTurret(P,d,'turretDetail',cylZ(.057,.036,12),x+side*.064,y+.027,z+.10,-.28,side*.60);
     }
   }
@@ -710,7 +712,7 @@ function mSmoke(P:TankBuilderPort):void {
   for(const [side,x,y,z,step]of banks)for(const i of [-1,0,1]) {
     const cx=x+i*step,cz=z+i*side*.03;
     onTurret(P,M,'turretDetail',box(.075,.036,.119),cx,y-.06,cz-.05,0,side*.72);
-    onTurret(P,M,'turretDark',cylZ(.044,.23,16),cx,y,cz,-.30,side*.72);
+    onTurret(P,M,'turretDark',markSmokeTube(cylZ(.044,.23,16)),cx,y,cz,-.30,side*.72);
     onTurret(P,M,'turretDetail',cylZ(.049,.016,16),cx+side*.070,y+.034,cz+.080,-.30,side*.72);
   }
 }
@@ -1258,22 +1260,25 @@ function mSight(P:TankBuilderPort):void {
 
 function modernMRws(P: TankBuilderPort): void {
   const d=M,x=-.426,z=-1.031;
+  const station=beginAuxiliaryStation(P,{name:'modernMRws',caliberMm:12.7,yaw:[-0.426-d.yaw[0],2.059-d.yaw[1],-1.031-d.yaw[2]],pivot:[-0.154-d.yaw[0],2.759-d.yaw[1],-1.17-d.yaw[2]],muzzle:[-0.154-d.yaw[0],2.763-d.yaw[1],-0.132-d.yaw[2]]});
   const weapon=sourceMachineGun(P,d.yaw);
-  weapon.add('turretDetail',cylY(.309,.291,28).scale(1,1,1.342),x,2.059,z);
+  onTurret(P,d,'turretDetail',cylY(.309,.291,28).scale(1,1,1.342),x,2.059,z);
   addT90MRwsHousing(P);
+  station.mark('yaw');
   weapon.add('turretDark',box(.112,.106,.48),-.154,2.759,-1.17);
   weapon.add('turretDark',cylZ(.023,.798,16),-.154,2.763,-.531);
   weapon.add('turretDark',cylZ(.012,.72,12),-.154,2.728,-.57);
   weapon.add('turretDetail',box(.246,.477,.035),-.145,2.59,-1.135);
   weapon.add('turretDetail',box(.246,.030,.29),-.145,2.814,-1.007,.15);
   weapon.add('turretDetail',box(.118,.122,.714),-.145,2.752,-1.111);
-  weapon.finish();
+  station.attachPitch(weapon.finish());
 }
 
 function modernSmRws(P: TankBuilderPort): void {
   const d=S;
+  const station=beginAuxiliaryStation(P,{name:'modernSmRws',caliberMm:12.7,yaw:[0.553045-d.yaw[0],2.31421-d.yaw[1],-0.904605-d.yaw[2]],pivot:[0.581-d.yaw[0],2.987-d.yaw[1],-1.405-d.yaw[2]],muzzle:[0.584-d.yaw[0],3.035-d.yaw[1],-0.533-d.yaw[2]]});
   const weapon=sourceMachineGun(P,d.yaw);
-  weapon.add('turretDetail',cylY(.299905,.17346,16).scale(1,1,.83672),.553045,2.31421,-.904605);
+  onTurret(P,d,'turretDetail',cylY(.299905,.17346,16).scale(1,1,.83672),.553045,2.31421,-.904605);
   addT90SMRwsBase(P);
   smRwsHousing(P);
   // Distinct rear-leaning folded hood, retaining the open weapon channel.
@@ -1281,10 +1286,11 @@ function modernSmRws(P: TankBuilderPort): void {
   smFoldedHood(P,.630,.790,.651,-1.595);
   weapon.add('turretDetail',box(.44,.30,.035),.555,2.633,-1.607);
   weapon.add('turretDetail',box(.12,.30,.16),.711,2.827,-1.31);
+  station.mark('yaw');
   weapon.add('turretDark',box(.105,.166,.286),.581,2.987,-1.405);
   weapon.add('turretDark',box(.125,.075,.800),.582,3.0505,-1.322);
   weapon.add('turretDark',cylZ(.022,.603,16),.584,3.035,-.8345);
-  weapon.finish();
+  station.attachPitch(weapon.finish());
 }
 
 function smRwsHousing(P:TankBuilderPort):void {

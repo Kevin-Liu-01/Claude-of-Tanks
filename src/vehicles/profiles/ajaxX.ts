@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 // Independent procedural reconstruction of the owner's long-skirt Ajax fit.
 import { BoxGeometry, Mesh, Quaternion, Vector3 } from 'three';
@@ -512,7 +513,7 @@ function smokeSocket(P: TankBuilderPort, add: EquipmentAdder, side: number, i: n
       const direction=new Vector3(...axis).normalize();
       const rotation=new Quaternion().setFromUnitVectors(new Vector3(0,0,1),direction);
       const socket=(radius:number,length:number,back:number,bucket='turretDetail')=>
-        add(bucket,cylZ(radius,length,P.q?16:10).applyQuaternion(rotation),
+        add(bucket,(radius===.037 ? markSmokeTube(cylZ(radius,length,P.q?16:10)) : cylZ(radius,length,P.q?16:10)).applyQuaternion(rotation),
           x-direction.x*back,y-direction.y*back,z-direction.z*back);
       socket(.039,.215,.1075);
       socket(.0465,.061,.027);

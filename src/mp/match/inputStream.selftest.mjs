@@ -64,7 +64,7 @@ assert.equal(seqNewerOrEqual(5, 5), true);
   const decoded = decodeMessage(encodeMessage(message));
   assert.equal(decoded.ok, true);
   assert.deepEqual(decoded.message.controls, message.controls, 'the wire round trip is exact');
-  assert.equal(encodeMessage(message).byteLength, 2 + 4 + 4 + 1 + 1 + 3 * 15, 'a full frame is 57 B');
+  assert.equal(encodeMessage(message).byteLength, 2 + 4 + 4 + 1 + 1 + 3 * 16, 'a full frame is 60 B');
   assert.equal((decoded.message.controls[2].flags & CONTROL_FLAGS.FIRE_HELD), 0);
 
   // Acknowledgements release bits by their first sequence and measure the ack lag.
@@ -132,4 +132,4 @@ assert.equal(seqNewerOrEqual(5, 5), true);
   assert.throws(() => new InputStream({ redundancy: 4 }));
 }
 
-console.log('mp input stream: 60 Hz scheduling, quantized replay controls, fire/action edges repeated until acknowledged, 57 B frames, lead controller pass');
+console.log('mp input stream: 60 Hz scheduling, quantized replay controls, fire/action edges repeated until acknowledged, 60 B frames, lead controller pass');

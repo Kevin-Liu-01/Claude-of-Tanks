@@ -160,17 +160,6 @@ body.cot-touch-layout .cot-con svg{transform:none;}
 /* The HUD's context-aware Special Action remains the one canonical button on
    touch. Recompose it into the fire cluster instead of adding a second mobile
    implementation or another input path. */
-body.cot-touch-layout .cot-special{left:auto;right:128px;
-  bottom:calc(max(22px,env(safe-area-inset-bottom)) + 112px);transform:none;
-  width:64px;min-width:64px;height:64px;padding:5px;border-radius:50%;
-  grid-template-columns:1fr;grid-template-rows:28px 12px;gap:0;justify-items:center;
-  border:2px solid var(--touch-edge);background:radial-gradient(circle at 38% 27%,rgba(108,122,133,.8),rgba(27,36,43,.96) 48%,var(--touch-panel) 76%);
-  box-shadow:0 6px 18px rgba(0,0,0,.52),inset 0 0 0 4px rgba(3,7,10,.3),inset 0 1px 4px rgba(255,255,255,.18);}
-body.cot-touch-layout .cot-special:active{transform:scale(.94);}
-body.cot-touch-layout .cot-special .si svg{width:27px;height:27px;}
-body.cot-touch-layout .cot-special .sl{font-size:0;letter-spacing:.07em;text-align:center;}
-body.cot-touch-layout .cot-special .sl::after{content:attr(data-short);font-size:7px;}
-body.cot-touch-layout .cot-special .sk{display:none;}
 body.cot-touch-layout .cot-net{top:max(8px,env(safe-area-inset-top));
   left:calc(max(8px,env(safe-area-inset-left)) + 124px);right:auto;width:max-content;z-index:24;}
 /* The former Garage shortcut occupied the first 44 px of this corner. With

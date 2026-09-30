@@ -1,3 +1,4 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // US Pershing/Patton family — FROM-SCRATCH rebuild against the measured
 // profile curves in docs/references/profiles/<id>.json (mask-trace-1024 of the
 // repaired reference GLBs; world meters, +z forward, y from ground) plus the
@@ -4022,7 +4023,7 @@ function pattonSmokeBank(
       const px = side * 1.17 + Math.cos(yaw) * lx;
       const pz = z - Math.sin(yaw) * lx + row * 0.06 * scale;
       const py = y + row * 0.085 * scale;
-      P.add('turretDetail', cylZ(0.043 * scale, 0.28 * scale, 10), px, py, pz, -0.43, yaw, 0);
+      P.add('turretDetail', markSmokeTube(cylZ(0.043 * scale, 0.28 * scale, 10)), px, py, pz, -0.43, yaw, 0);
       P.add('turretDark', cylZ(0.031 * scale, 0.015, 10),
         px + Math.sin(yaw) * 0.125 * scale, py + 0.052 * scale,
         pz + Math.cos(yaw) * 0.114 * scale, -0.43, yaw, 0);

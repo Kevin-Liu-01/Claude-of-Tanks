@@ -110,6 +110,7 @@ export function createSeatInputBuffer({ maxLeadTicks = 120, initialBufferTicks =
     output.fireIntentSeq = output.fire ? control.fireSeq : null;
     const actionPress = edges && !seeding && control.actionSeq !== lastAppliedActionSeq;
     let actionBits = 0;
+    if(edges)lastActionBits &= control.actionBits;
     if (actionPress) {
       // a union of un-acknowledged presses: skip what the previous sequence applied within the window
       const recent = applyTick - lastActionTick <= ACTION_REPEAT_WINDOW_TICKS ? lastActionBits : 0;

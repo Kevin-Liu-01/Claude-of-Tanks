@@ -1,3 +1,4 @@
+import { markOpenSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // HISTORICAL PHOTO DRAFT — isolated unit-only regression fixture.
 // Superseded by the owner's supplied-file target. No runtime fleet loader may
 // import this module; its tests are not current Challenger shape acceptance.
@@ -242,7 +243,7 @@ function smoke(P: TankBuilderPort): void {
     const d = new THREE.Vector3(side * .36, .53, .77).normalize();
     const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), d);
     const tube = new THREE.CylinderGeometry(.042, .044, .175, 20, 1, true);
-    tube.rotateX(Math.PI / 2).applyQuaternion(q).translate(...c.toArray());
+    markOpenSmokeTube(tube.rotateX(Math.PI / 2)).applyQuaternion(q).translate(...c.toArray());
     equipment(P, 'turretDetail', tube, 0, 0, 0);
     const back = new THREE.CircleGeometry(.034, 20);
     back.applyQuaternion(q).translate(...c.clone().addScaledVector(d, -.063).toArray());
