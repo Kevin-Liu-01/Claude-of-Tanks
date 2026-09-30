@@ -153,7 +153,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // footprint also crosses the team feeds, so clear those occupied lanes.
     const noticeLeft = (width - (notice?.width ?? 248)) / 2;
     let noticeTop = Math.max(top + 8, height * .12);
-    if (noticeLeft < sideWidth + 20) noticeTop = Math.max(noticeTop, leftTop, rightTop);
+    if (noticeLeft < sideWidth + 14) noticeTop = Math.max(noticeTop, leftTop, rightTop);
     if (systems && noticeTop < systemsTop + systemsHeight + 8
       && noticeTop + (notice?.height ?? 48) > systemsTop - 8
       && noticeLeft < systemsLeft + dockWidth && width - noticeLeft > systemsLeft) {
