@@ -98,6 +98,99 @@ function flight(entity, field, jumpMps, { dt = SIM_DT, maxS = 20 } = {}) {
   return { apexes, landings, bounces, minClearance, ticks, timeS: ticks * dt };
 }
 
+// After a rough landing, rigid-body settling may outlast track contact. It must
+// not silently replace held drive/steer with neutral once the hull is aligned.
+for (const slope of [0, 0.25, -0.25]) for (const direction of [-1, 1]) {
+  const field = makeField((_x, z) => Math.tan(slope) * z, 'hard');
+  const entity = makeEntity(field);
+  seat(entity, field);
+  const state = entity.state;
+  state._body.tumbling = true;
+  state._spring.roll = state.visualRoll = 0.2;
+  state._spring.rollV = -0.3;
+  state.speed = direction * 2;
+  state._spool = 1;
+  entity.input.throttle = direction;
+  entity.input.steer = 0.5;
+  updateTank(entity, field, SIM_DT);
+  assert.ok(state.speed * direction > 2,
+    `upright landing retains ${direction} drive on slope ${slope}: ${state.speed}`);
+  assert.ok(Math.abs(state.yawRate) > 0, 'steering resumes with supported tracks');
+  assert.equal(state._body.tumbling, true, 'restoring drive does not snap the settling attitude');
+}
+
+// Exercise the complete flight/contact path, including a tilt that enters
+// tumble in mid-air and later comes back onto its tracks.
+for (const mode of ['standard', 'mars', 'turbo_ball']) {
+  const field = makeField(flat);
+  let recoveredTicks = 0;
+  const jumper = makeEntity(field, { mode });
+  settle(jumper, field);
+  jumper.input.throttle = 1;
+  run(jumper, field, 240);
+  assert.ok(requestTankJump(jumper.state, 9));
+  jumper.state._spring.pitchV = 1;
+  for (let tick = 0; tick < 900; tick++) {
+    const state = jumper.state;
+    const supportedUpright = state.grounded && state._body.tumbling &&
+      !state.overturned && Math.cos(state.visualPitch) * Math.cos(state.visualRoll) > 0.88;
+    const speedBefore = state.speed;
+    updateTank(jumper, field, SIM_DT);
+    if (supportedUpright) {
+      recoveredTicks++;
+      assert.ok(state.speed >= speedBefore, `${mode}: recovered tracks must not coast with forward held`);
+    }
+  }
+  assert.ok(recoveredTicks > 0, `${mode}: flight exercises upright tumble settling`);
+}
+
+// Actual side/roof contact still blocks propulsion; the handbrake still wins
+// over a held throttle when the tracks have recovered.
+for (const pitch of [1.3, Math.PI, 0.2]) {
+  const field = makeField(flat);
+  const entity = makeEntity(field);
+  settle(entity, field);
+  entity.state._spring.pitch = entity.state.visualPitch = pitch;
+  entity.state._body.tumbling = true;
+  entity.state._spool = 1;
+  entity.state.speed = 2;
+  entity.input.throttle = 1;
+  entity.input.brake = pitch === 0.2;
+  updateTank(entity, field, SIM_DT);
+  assert.ok(entity.state.speed < 2, 'side/roof contact and deliberate braking do not gain drive');
+}
+
+// A held throttle keeps the engine ready during a jump without producing
+// horizontal thrust in the air; letting go or braking still closes it.
+for (const mode of ['standard', 'mars', 'turbo_ball']) {
+  for (const command of ['forward', 'reverse', 'coast', 'brake']) {
+    const field = makeField(flat);
+    const entity = makeEntity(field, { mode });
+    settle(entity, field);
+    const state = entity.state;
+    state.speed = command === 'reverse' ? -2 : 2;
+    state._spool = 1;
+    entity.input.throttle = command === 'coast' ? 0 : command === 'reverse' ? -1 : 1;
+    entity.input.brake = command === 'brake';
+    const launchSpeed = state.speed;
+    assert.ok(requestTankJump(state, 9));
+    run(entity, field, 60);
+    assert.equal(state.grounded, false, `${mode}: probe remains airborne`);
+    near(state.speed, launchSpeed, 1e-9, `${mode}/${command}: no airborne drive/brake force`);
+    const heldDrive = command === 'forward' || command === 'reverse';
+    near(state._spool, heldDrive ? 1 : 0, 1e-9,
+      `${mode}/${command}: engine follows the driver's throttle through airtime`);
+    let ticks = 0;
+    while (!state.grounded && ticks++ < 1200) updateTank(entity, field, SIM_DT);
+    assert.ok(state.grounded, `${mode}: jump lands`);
+    updateTank(entity, field, SIM_DT);
+    if (heldDrive) assert.ok(Math.abs(state.speed) > Math.abs(launchSpeed),
+      `${mode}/${command}: drive resumes on landing`);
+    else assert.ok(Math.abs(state.speed) < Math.abs(launchSpeed),
+      `${mode}/${command}: deliberate coast/brake still slows on landing`);
+  }
+}
+
 // Long low-gravity airtime must not amplify one shove into repeated flips.
 for (const mode of ['mars', 'turbo_ball']) for (const gravityScale of [.17, .38, .6, 1]) {
   const field = makeField(flat);

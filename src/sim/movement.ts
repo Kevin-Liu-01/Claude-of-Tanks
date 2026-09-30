@@ -2433,7 +2433,15 @@ function prepareDriveStep(
   const { input, spec, state } = entity;
   const drive = _driveStep;
   drive.grounded = state.grounded !== false;
-  const drivetrainLocked = debuff.immobile || body.tumbling || state.overturned;
+  // Rigid attitude settling can continue after the tracks regain purchase.
+  // Keep that animation/physics state, but stop suppressing drive and steering
+  // once the hull is aligned with its support plane. In flight the engine can
+  // spool freely; updateDriveSpool prevents any airborne traction or braking.
+  const tracksAligned = !body.tumbling ||
+    Math.cos(state._spring.pitch - state._terr.pitch) *
+      Math.cos(state._spring.roll - state._terr.roll) >= TUMBLE_EXIT_UP_Y;
+  const drivetrainLocked = debuff.immobile ||
+    (drive.grounded && (state.overturned || !tracksAligned));
   drive.throttle = drivetrainLocked ? 0 : clamp(input.throttle || 0, -1, 1);
   drive.steer = drivetrainLocked ? 0 : clamp(input.steer || 0, -1, 1);
   drive.braking = !!input.brake;
@@ -2664,7 +2672,6 @@ function selectDriveRate(
 function updateDriveSpool(state: TankState, drive: DriveStep, dt: number): void {
   if (!drive.grounded) {
     drive.rate = 0;
-    drive.spoolTarget = 0;
   }
   state._spool = drive.spoolTarget > 0
     ? Math.min(1, (state._spool || 0) + dt / SPOOL_S)
