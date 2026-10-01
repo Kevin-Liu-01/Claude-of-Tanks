@@ -1708,3 +1708,15 @@ body[data-cot-input="coarse"] .cot-map-inspect{width:44px;height:44px;}
 .cot-system-preview button:hover,.cot-system-preview button:focus-visible{border-color:#ffbd59;background:#29251d;}
 
 .cot-system-preview>.cot-system-control{width:auto;max-width:none;max-height:none;min-width:44px;min-height:48px;border-radius:3px;}
+
+/* Short landscape drawers need their own reading space: fixed filters must
+   never consume the entire scrollable camouflage catalog. */
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-multiplayer-entry{visibility:hidden}
+@media (max-height: 340px) and (orientation: landscape){
+  body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-garage[data-garage-panel]{
+    --cot-drawer-bottom:max(8px,env(safe-area-inset-bottom));
+  }
+  body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-leftcol{
+    padding:4px;
+  }
+}

@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Photo-led Marder 2 VT 001 / TS503. No Puma donor geometry is used.
 // Dimensions of individual fittings are photographic estimates; see reference packet.
 import { KIT } from './kit.ts';
@@ -52,7 +53,7 @@ export function buildMarder2(P: TankBuilderPort): void {
     }
     P.addEquipment('hullRubber',box(.49,.55,.034),side*1.47,1.105,-3.69);
     P.addEquipment('hullDetail',box(.33,.19,.23),side*1.02,1.22,3.32);
-    P.addEquipment('hullGlass',cylZ(.059,.012,16),side*1.02,1.24,3.442);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.059,.012,16), 'headlight'),side*1.02,1.24,3.442);
     KIT.liftEye(P,'hullDetail',side*.78,1.13,3.30);
     KIT.liftEye(P,'hullDetail',side*1.28,2.035,-3.05);
     for(const z of [-2.88,-2.45,-2.02]) KIT.periscope(P,'hullDetail',side*.90,2.03,z);

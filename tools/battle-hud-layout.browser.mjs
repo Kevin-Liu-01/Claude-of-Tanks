@@ -14,6 +14,8 @@ const cases = [
   ['phone-mouse',390,844,false],['tablet',1024,768,true],['tablet-portrait',768,1024,true],
   ['phone',390,844,true],['small-phone',360,640,true],['landscape',844,390,true],
   ['small-landscape',667,375,true],['short-mouse',844,390,false],
+  ['tiny-landscape',568,320,true],['browser-landscape',844,300,true],['wide-landscape',932,430,true],
+  ['chinese-landscape',667,375,true,'zh-CN'],
   ['chinese-laptop',1280,720,false,'zh-CN'],['chinese-phone',390,844,true,'zh-CN'],
 ];
 const states = ['idle','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','ended'];
@@ -266,7 +268,7 @@ try {
     }
     // Same open panels must survive a live resize and a larger minimap.
     await page.evaluate(()=>{window.__HUD_LAYOUT.state('combined');window.__HUD_LAYOUT.bus.emit('ui:minimapZoom',{});});
-    await page.setViewportSize({width:height,height:width});
+    await page.setViewportSize({width:name==='browser-landscape'?390:height,height:width});
     await page.waitForTimeout(180);
     await check('resized-combined');
     await page.setViewportSize({width,height});

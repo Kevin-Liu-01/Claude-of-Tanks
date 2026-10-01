@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Independent Sabra Mk.2 source study, with permanent shaped armor and open rack.
 import * as THREE from 'three';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
@@ -71,7 +72,7 @@ function addSabraHeadlamps(P: TankBuilderPort, side: number): void {
       const segments=P.q?20:12;
       P.addEquipment('hullDetail',new THREE.CylinderGeometry(.058,.058,.098,segments,1,true).rotateX(Math.PI/2),lampX+dx,lampY,3.136);
       P.addEquipment('hullDetail',new THREE.RingGeometry(.047,.058,segments),lampX+dx,lampY,3.185);
-      P.addEquipment('hullGlass',cylZ(.0498,.018,segments),lampX+dx,lampY,3.1806);
+      P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.0498,.018,segments), 'headlight'),lampX+dx,lampY,3.1806);
     }
 }
 

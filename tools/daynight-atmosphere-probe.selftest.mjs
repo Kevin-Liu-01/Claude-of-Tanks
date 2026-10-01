@@ -120,7 +120,7 @@ const checkNightLightingCycle = load('checkNightLightingCycle', { validNightLigh
 const checks = load('checkAtmosphereCase', { lightingReceipt,
   clearWeatherState: load('clearWeatherState'), actualLightingChanges: load('actualLightingChanges'),
   requestedScenarios: load('requestedScenarios'), checkNightLightingCycle });
-const weather = (timeOfDay, seed) => ({ version: 2, seed, biome: 'cold', condition: 'clear',
+const weather = (timeOfDay, seed) => ({ version: 4, seed, biome: 'cold', condition: 'clear',
   precipitationIntensity: 0, cloudOpacityMultiplier: 1, fogDensityMultiplier: 1, timeOfDay });
 const state = (timeOfDay, seed) => ({
   weather: weather(timeOfDay, seed), phase: 'battle', mapId: 'winter',
@@ -130,8 +130,8 @@ const state = (timeOfDay, seed) => ({
   hemi: .4, hemiColor: [1, 1, 1], clouds: [1.1, 1], cloudDecks: [],
   fogColor: [.1, .2, .3], environmentIntensity: 1, cloudShadeAmp: .1,
   worldUuid: 'same-world', camera: [[1, 2, 3], [0, 0, 0, 1], 50], playerPose: [1], raster: [2360, 1640],
-  nightLighting: { ownerAvailable: true, uuid: 'pool', attached: timeOfDay === 'night',
-    emitterCount: timeOfDay === 'night' ? 3 : 0, playerCoverage: { headlights: 2, shtora: 0 },
+  nightLighting: { ownerAvailable: true, uuid: 'pool', attached: true,
+    emitterCount: 3, playerCoverage: { headlights: 2, shtora: 0 },
     lights: ['spot', 'spot', 'point'].map((kind, index) => ({ kind, uuid: `lamp-${index}`,
       intensity: timeOfDay === 'night' ? 80 : 0, castShadow: false, shadowMap: false })),
     materials: [{ uuid: 'lens', masked: true, kind: 'masked', color: [1, 1, 1],
@@ -152,6 +152,8 @@ assert(airfieldConfig.props.tacticalBeats.some(beat => beat.id === 'eastern-rada
 assert.deepEqual(requestedVehicleFixtures([]), []);
 assert.deepEqual(requestedVehicleFixtures(['--vehicle-fixtures=m1a3,mbt70,t90m,t90m_proryv']),
   ['m1a3', 'mbt70', 't90m', 't90m_proryv']);
+assert.deepEqual(requestedVehicleFixtures(['--vehicle-fixtures=namer_ifv,leo2_revolution_proto,cv90_x,m1a2_x']),
+  ['namer_ifv', 'leo2_revolution_proto', 'cv90_x', 'm1a2_x']);
 for (const value of ['', 'm1a3,m1a3', 'proryv', 'm1a3,mbt70,t90m,t90m_proryv,m1a1']) {
   assert.throws(() => requestedVehicleFixtures([`--vehicle-fixtures=${value}`]), /canonical repair IDs/);
 }
@@ -163,6 +165,7 @@ function focusedRow(kind) {
       point: [1.2, 2, 3], sourcePoint: [1, 2, 3], lineOfSight: 'authored-emissive-face' } };
   for (const state of [row.day, row.night, row.restored]) {
     state.preset = 'high'; state.playerSpecId = row.specId;
+    state.nightLighting.lights.push(...state.nightLighting.lights.map(light => ({...light, uuid: light.uuid + '-spare', intensity: 0})));
     state.nightLighting.playerCoverage.shtora = 2;
     for (const light of state.nightLighting.lights) light.position = [1, 2, 3];
   }
@@ -214,7 +217,7 @@ for (const kind of ['shtora', 'streetlamp']) {
     row => { row.night.nightLighting.lights[2].castShadow = true; },
     row => { row.night.nightLighting.lights[0].intensity = NaN; },
     row => { row.night.nightLighting.lights.pop(); },
-    row => { row.restored.nightLighting.attached = true; },
+    row => { row.restored.nightLighting.attached = false; },
   ]) {
     const bad = structuredClone(row); mutate(bad);
     assert(Object.values(focusedChecks(bad)).some(value => !value), 'remote fixture still requires exact visible source, bounded pool and reset');
@@ -323,7 +326,7 @@ for (const mutate of [
   row => { row.restored.nightLighting.lights[0].uuid = 'reconstructed-light'; },
   row => { row.legacy[1].nightLighting.lights[0].uuid = 'replaced-legacy-light'; },
   row => { row.restored.nightLighting.lights[0].intensity = 80; },
-  row => { row.restored.nightLighting.attached = true; },
+  row => { row.restored.nightLighting.attached = false; },
 ]) {
   const bad = structuredClone(good); mutate(bad);
   assert(Object.values(checks(bad, 'mobile')).some(value => !value), 'reject broken actual scenario/lighting/render receipt');
@@ -554,6 +557,7 @@ await exerciseEquipment(); await exerciseEquipment('duplicate'); await exerciseE
 
 for (const fault of [null, 'attached', 'weather', 'lighting', 'lamps', 'lamp-glow']) {
   const baseline = { ...structuredClone(good.day), phase: 'garage', weather: null };
+  baseline.nightLighting.attached = false; baseline.nightLighting.emitterCount = 0;
   const restored = structuredClone(baseline);
   if (fault === 'attached') restored.precipitationAttached = true;
   if (fault === 'weather') restored.weather = good.night.weather;
@@ -586,6 +590,7 @@ assert.equal(coldExpected.timeOfDay, 'night');
 const assertColdNightEntry = load('assertColdNightEntry', { assert, assertRenderedState, validNightLightState });
 async function coldEntryFixture(fault = null) {
   const pool = structuredClone(good.night.nightLighting), calls = [], token = {};
+  pool.lights.push(...pool.lights.map(light => ({...light, uuid: light.uuid + '-spare', intensity: 0})));
   let renders = 0, observedPool = structuredClone(good.day.nightLighting);
   const window = { innerWidth: 1440, innerHeight: 900, __VISUAL_LOAD_TIMINGS: [] };
   const game = { phase: 'garage', battleCount: 0 };

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { DOCS_ICON_SPECS, docsIconKeys } from './docsIcons.ts';
 import { uiIconIds, uiIconSVG } from '../ui/uiIcons.ts';
 
-const docs = await readFile(new URL('../../docs.html', import.meta.url), 'utf8');
+const docs = await readFile(new URL('../../site/docs.html', import.meta.url), 'utf8');
 const sharedIds = new Set(uiIconIds());
 
 for (const key of docsIconKeys()) {

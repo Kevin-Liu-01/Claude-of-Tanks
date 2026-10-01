@@ -8,6 +8,8 @@ If two current documents disagree, SYSTEMS.md owns runtime architecture,
 MULTIPLAYER-V2.md owns network behavior, and BUILD-STANDARD.md plus
 GEOMETRY-GATE.md own vehicle-authoring acceptance.
 
+See [repository layout and documentation ownership](REPOSITORY-LAYOUT.md) for source locations, history and generated references.
+
 ## Start here
 
 | Document | Audience | Purpose |
@@ -25,7 +27,7 @@ GEOMETRY-GATE.md own vehicle-authoring acceptance.
 | DECISIONS.md | Contributors | Current architecture decisions, non-goals, and proof requirements |
 
 The public browser field manual is available at
-https://cot.kevinliu.studio/docs and is sourced from ../docs.html.
+https://cot.kevinliu.studio/docs and is sourced from ../site/docs.html.
 
 The current public presentation is image-led and sourced from a reproducible
 88-frame archive: 13 owner-selected features, 60 approved 4K campaign frames,
@@ -174,7 +176,7 @@ When behavior changes:
 
 1. Update the nearest current subsystem document.
 2. Update README.md or FEATURES.md if the visible product changed.
-3. Update docs.html if the public technical reference changed, and GALLERY.md
+3. Update site/docs.html if the public technical reference changed, and GALLERY.md
    when the Tank Gallery contract changed.
 4. Update the source-level module comment when ownership or invariants changed.
 5. Record only a durable, still-binding architecture choice in `DECISIONS.md`;

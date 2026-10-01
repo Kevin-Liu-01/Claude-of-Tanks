@@ -6,8 +6,8 @@ import { BATTLE_REELS } from './battleReels.ts';
 import { BATTLE_REEL_SCENARIOS, battleReelId } from '../../tools/studio-example-scenarios.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const docs = readFileSync(join(ROOT, 'docs.html'), 'utf8');
-const home = readFileSync(join(ROOT, 'home.html'), 'utf8');
+const docs = readFileSync(join(ROOT, 'site/docs.html'), 'utf8');
+const home = readFileSync(join(ROOT, 'site/home.html'), 'utf8');
 const manifest = JSON.parse(readFileSync(join(ROOT, 'public/media/battle-reels-v3/manifest.json'), 'utf8'));
 
 assert.equal(BATTLE_REELS.length, 20, 'the Docs reel library must contain all 20 approved scenes');

@@ -2,22 +2,22 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const entrypoints = [
-  'home.html',
-  'docs.html',
-  'docs-topic.html',
-  'docs-build.html',
-  'docs-models.html',
-  'docs-simulation.html',
-  'docs-vehicles.html',
-  'docs-rendering.html',
-  'docs-performance.html',
-  'docs-worlds.html',
-  'docs-ai.html',
-  'docs-multiplayer.html',
-  'docs-audio.html',
-  'docs-interface.html',
-  'docs-studio.html',
-  'gallery.html',
+  'site/home.html',
+  'site/docs.html',
+  'site/docs-topic.html',
+  'site/docs-build.html',
+  'site/docs-models.html',
+  'site/docs-simulation.html',
+  'site/docs-vehicles.html',
+  'site/docs-rendering.html',
+  'site/docs-performance.html',
+  'site/docs-worlds.html',
+  'site/docs-ai.html',
+  'site/docs-multiplayer.html',
+  'site/docs-audio.html',
+  'site/docs-interface.html',
+  'site/docs-studio.html',
+  'site/gallery.html',
 ];
 
 const gameEntry = await readFile('index.html', 'utf8');

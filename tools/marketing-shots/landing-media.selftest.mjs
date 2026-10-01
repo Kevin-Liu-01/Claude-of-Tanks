@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 const root = resolve('.');
 const manifest = JSON.parse(await readFile(resolve(root, 'public/media/landing-r1/manifest.json'), 'utf8'));
 const mobileVideoManifest = JSON.parse(await readFile(resolve(root, 'public/media/web-video-r1/manifest.json'), 'utf8'));
-const home = await readFile(resolve(root, 'home.html'), 'utf8');
+const home = await readFile(resolve(root, 'site/home.html'), 'utf8');
 const presentation = await readFile(resolve(root, 'public/home.css'), 'utf8');
 const threeMark = await readFile(resolve(root, 'public/brand/threejs-mark.svg'), 'utf8');
 const publicPages = await readFile(resolve(root, 'src/presentation/publicPages.ts'), 'utf8');

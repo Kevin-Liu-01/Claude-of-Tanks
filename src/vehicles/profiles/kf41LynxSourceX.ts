@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Independent KF41 Lynx prototype study. See docs/references/tanks/kf41_lynx_x.md.
 import * as THREE from 'three';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
@@ -86,7 +87,7 @@ function buildLynxHull(P: TankBuilderPort): void {
     P.addExternalArmor('hull',cell);
     for (const z of [-2.78,-1.42,-.02,1.35]) P.addEquipment('hullDark',box(.012,1.28,.014),side*1.803,1.55,z);
     P.addEquipment('hullDetail',box(.24,.11,.13),side*1.38,1.565,3.75,.27);
-    P.addEquipment('hullGlass',box(.17,.055,.015),side*1.38,1.562,3.819,.27);
+    P.addEquipment('hullGlass',markVehicleNightLens(box(.17,.055,.015), 'headlight'),side*1.38,1.562,3.819,.27);
     deckGrille(P,side*1.10,2.293,-3.24,1.02,.90);
   }
   // The source ramp is recessed roughly 0.45m between the two aft vent wings.

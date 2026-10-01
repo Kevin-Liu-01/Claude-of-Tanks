@@ -4,7 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const pageFiles = ['home.html', 'gallery.html', 'docs.html'];
+const pageFiles = ['site/home.html', 'site/gallery.html', 'site/docs.html'];
 const supportingFiles = [
   'README.md',
   'src/gallery/catalog.ts',
@@ -49,10 +49,10 @@ const docsScriptSource = readFileSync(join(ROOT, 'src/docs/docs.ts'), 'utf8');
 assert.doesNotMatch(gallerySource, /mountMediaArchive|galleryArchiveOpen/);
 assert.match(docsScriptSource, /mountMediaArchive\([\s\S]*?\{ mode: 'wall', limit: 88, filters: false \}/);
 
-const homeSource = readFileSync(join(ROOT, 'home.html'), 'utf8');
+const homeSource = readFileSync(join(ROOT, 'site/home.html'), 'utf8');
 const homeStyles = readFileSync(join(ROOT, 'public/home.css'), 'utf8');
-const docsSource = readFileSync(join(ROOT, 'docs.html'), 'utf8');
-const galleryHtmlSource = readFileSync(join(ROOT, 'gallery.html'), 'utf8');
+const docsSource = readFileSync(join(ROOT, 'site/docs.html'), 'utf8');
+const galleryHtmlSource = readFileSync(join(ROOT, 'site/gallery.html'), 'utf8');
 const readmeSource = readFileSync(join(ROOT, 'README.md'), 'utf8');
 assert.doesNotMatch(galleryHtmlSource, /Live simulation data|galleryArchiveOpen|galleryArchiveTitle/);
 assert.match(docsSource, /id="docsArchiveOpen"[\s\S]*?Visual archive[\s\S]*?88 field frames/);

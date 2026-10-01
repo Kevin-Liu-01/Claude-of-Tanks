@@ -221,3 +221,22 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .compact-shot-report .cot-si-kicker{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .compact-shot-report .cot-si-hd{min-height:26px;padding-block:3px}
+
+/* Short landscape is a height budget, not a miniature desktop. Leave the
+   center notices clear of the second fire button and the bottom system strip. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='landscape'][data-cot-width='compact'] .cot-touch .fire.alt{left:12px}
+@media (max-height:340px) and (orientation:landscape){
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle{grid-template-rows:20px 48px auto;row-gap:3px;transform:translateX(-50%)}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle .k{font-size:11px;letter-spacing:.1em;padding:4px 8px;white-space:nowrap}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle .n{height:48px;font-size:44px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{min-height:32px;padding-block:4px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth .sub{display:none}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert{font-size:9px;padding-block:5px;min-height:28px}
+}
+@media (max-width:340px) and (orientation:portrait){
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .joy{width:88px;height:88px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .arrow.u,
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .arrow.d{left:36px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .arrow.l,
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .arrow.r{top:33px}
+}

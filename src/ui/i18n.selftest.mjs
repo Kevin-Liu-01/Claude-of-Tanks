@@ -162,7 +162,7 @@ for (const name of rootHtmlFiles) {
 // The landing-page catalog used to exist without any home.html bindings,
 // which made the page claim zh-CN while rendering English. Every home.* key
 // must therefore be connected to a supported static-i18n attribute.
-const homeSource = fs.readFileSync(path.join(REPO, 'home.html'), 'utf8');
+const homeSource = fs.readFileSync(path.join(REPO, 'site/home.html'), 'utf8');
 const homeBindings = new Set(
   [...homeSource.matchAll(/\bdata-i18n(?:-html|-placeholder|-title|-alt|-aria-label|-aria)?="([^"]+)"/g)]
     .map((match) => match[1]),

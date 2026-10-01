@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 // Authored Griffin 50 mm study: native solids, mechanisms and material roles.
@@ -67,7 +68,7 @@ function hull(P: TankBuilderPort): void {
     P.addEquipment('hullDetail',deckPlate(.829,.664,.025),side*1.282,2.122,-2.666);
     for(const [lampX,lampY,r] of [[1.419,1.299,.072],[1.256,1.261,.072]]) {
       P.addEquipment('hullDetail',cylZ(r+.016,.062,P.q?20:12),side*lampX,lampY,3.444);
-      P.addEquipment('hullGlass',cylZ(r,.009,P.q?20:12),side*lampX,lampY,3.477);
+      P.addEquipment('hullGlass',markVehicleNightLens(cylZ(r,.009,P.q?20:12), 'headlight'),side*lampX,lampY,3.477);
     }
     // The source towing eyes stand in the YZ plane: only 55 mm across X.
     P.addEquipment('hullDetail',box(.0552,.2373,.037),side*1.0105,1.28245,3.3310);

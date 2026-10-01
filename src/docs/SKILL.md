@@ -16,7 +16,7 @@ game-rendered evidence, without booting the playable world.
 `topics.ts` owns topic order, content, section/media definitions, and rendering.
 `docsIcons.ts` maps manual concepts to the shared typed icon vocabulary.
 `battleReels.ts` owns selectable recorded battle clips; `docs.css` styles the
-manual. Root `docs.html` and `docs-*.html` are the corresponding page entries.
+manual. `site/docs.html` and `site/docs-*.html` are the corresponding page entries.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
@@ -33,7 +33,7 @@ manual. Root `docs.html` and `docs-*.html` are the corresponding page entries.
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
 
-- Add/update a topic: inspect `topics.ts` and its root HTML entry; run
+- Add/update a topic: inspect `topics.ts` and its HTML entry in `site/`; run
   `node src/docs/topics.selftest.mjs`.
 - Icons or reels: run `docsIcons.selftest.mjs` or `battleReels.selftest.mjs`.
 - Shared navigation, metadata, or media loading: read

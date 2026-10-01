@@ -1,0 +1,27 @@
+// Production surface owners, deterministic catalog, no renderer or live room writes.
+import '../../src/ui/motion.css';
+import '../../src/ui/responsiveSurfaces.css';
+import '../../src/ui/garage.css';
+import {installResponsiveLayout} from '../../src/ui/responsiveLayout.ts';
+import {createGarage} from '../../src/ui/garage.ts';
+import {createSettings} from '../../src/ui/settings.ts';
+import {createTouchControls} from '../../src/ui/touchControls.ts';
+import {createPlayMenu} from '../../src/ui/playMenu.ts';
+import {createInput} from '../../src/game/input.ts';
+import {createBus} from '../../src/game/stateCore.ts';
+import {TANK_SPECS} from '../../src/vehicles/specs.ts';
+import {CAMO_CATALOG_PATTERN_IDS, CAMO_PATTERN_LABEL} from '../../src/vehicles/camoPolicy.ts';
+import {setLocale} from '../../src/ui/i18n.ts';
+setLocale(new URLSearchParams(location.search).get('locale') || 'en-US');
+installResponsiveLayout();
+const bus=createBus(), input=createInput();
+const maps=[{id:'random',name:'Random'},{id:'verdant',name:'Verdant Fields'},{id:'desert',name:'Sirocco Wadi'},{id:'winter',name:'Frosthollow'}];
+const specs=Object.values(TANK_SPECS).filter(spec=>['m1a3','m1a2','m2a2_bradley','sheridan','leo2a5','t90m'].includes(spec.id));
+const paint=new Map();
+const menu=createPlayMenu({maps,vehicles:specs,getSelection:()=>({specId:'m1a3',mapId:'verdant',equipment:[],camo:'factory'})});
+const garage=createGarage({specs,maps,bus,onPlayRequest:request=>menu.show(request.mode),camo:{patterns:CAMO_CATALOG_PATTERN_IDS,label:CAMO_PATTERN_LABEL,get:id=>paint.get(id)||'factory',set:(id,value)=>paint.set(id,value)}});
+const settings=createSettings({input,bus,isBattleActive:()=>false,gearVisible:()=>true});
+createTouchControls({input,bus,isBattleActive:()=>false,onOpenSettings:()=>settings.open()});
+garage.attachSettingsControl(settings.gear);
+garage.show('m1a3');
+window.__MOBILE_SURFACES={garage,settings,menu};

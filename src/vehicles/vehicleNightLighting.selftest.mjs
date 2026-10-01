@@ -125,8 +125,8 @@ for (const kind of ['headlight', 'shtora', 'marker']) for (const pitch of [-.12,
     assert.ok(Math.abs(actual.x * outward.z - actual.z * outward.x) < 2e-7 && actual.dot(outward) > 0,
       'optical correction preserves horizontal azimuth, including its sign');
   } else close(actual, outward, `${kind}/${pitch}: already-valid aim or non-driving role unchanged`);
-  assert.equal(emitter.intensity, kind === 'headlight' ? 80 : 0);
-  assert.equal(emitter.range, kind === 'headlight' ? 42 : 0);
+  assert.equal(emitter.intensity, kind === 'headlight' ? 1200 : 0);
+  assert.equal(emitter.range, kind === 'headlight' ? 75 : 0);
   for (const [key, original] of Object.entries(bytes)) assert.deepEqual(lens.getAttribute(key).array, original, `${key}: registration leaves every aperture/mask byte unchanged`);
   assert.deepEqual(lens.index?.array, indices);
   assert.strictEqual(emitter.emission.material, lensMaterial);
@@ -252,6 +252,11 @@ const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--ph
   const offset = Number(process.argv.find(arg => arg.startsWith('--offset='))?.slice(9) ?? 0);
   const count = Number(process.argv.find(arg => arg.startsWith('--count='))?.slice(8) ?? Infinity);
   const ids = (requestedIds ?? allIds ?? (physicalRun ? physicalIds : ['m48', ...tejasIds, 't90a_vladimir', 't90a_x'])).slice(offset, offset + count);
+  const restoredCounts = {cv90_x:4,cv90105_tml_x:2,cv90_mkiv_x:2,dardo:2,lrmv_lynx:2,
+    leo2_revolution_proto:2,type96b_x:2,aft10_x:2,fv510_milan_x:2,ajax_x:2,sabra_mk2_x:4,
+    namer_ifv:2,borsuk:4,bmp3m_dragun125_x:2,griffin50_x:4,kf41_lynx_x:2,k21_x:2,
+    m1a2_x:2,m1a2_tusk_x:2,m1a2_sepv2_x:2,m1a2_sepv3_x:2,ua_m1a1_x:2,
+    griffin_viper:4,spz_puma_s1_x:4,type89_x:2,amx10p:2,amx10p_25:2,marder2:2};
   const rows = [];
   for (const id of ids) for (const quality of ['high', 'low']) {
     const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
@@ -280,6 +285,8 @@ const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--ph
     });
     const coverage = visual.root.userData.nightLightCoverage ?? { headlights: 0, shtora: 0 };
     if (!baseline) {
+      assert.ok(coverage.headlights > 0, `${id}/${quality}: every playable vehicle has working driving lamps`);
+      if (restoredCounts[id]) assert.equal(coverage.headlights, restoredCounts[id], `${id}/${quality}: correct authored driving-lamp count`);
       if (id === 'm1a3') assertM1A3RoadBeams(visual.root, `${id}/${quality}`);
       if (sourceStudyLampIds.has(id)) assert.ok(coverage.headlights > 0, `${id}/${quality} retains actual authored front fixtures`);
       if (coverage.headlights + coverage.shtora + (coverage.markers ?? 0) > 0) assert.ok(maskBytes > 0, `${id}/${quality} registration requires real masked aperture vertices`);
@@ -324,6 +331,7 @@ const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--ph
     }
     rows.push({ id, quality, meshCount, materialCount: materials.size, vertices, digest: hash.digest('hex'), hullDigest: hullHash.digest('hex'), maskBytes, coverage });
     visual.dispose();
+    console.log(`NIGHT_COVERAGE ${id}/${quality}: ${coverage.headlights} driving lamps`);
   }
   console.log('NIGHT_FLEET_ORACLE ' + JSON.stringify(rows));
 }

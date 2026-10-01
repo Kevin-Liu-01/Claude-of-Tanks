@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { weaponAssembly } from './weaponStock.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 import * as THREE from 'three';
@@ -137,11 +138,11 @@ function frontLampReceivers(P: TankBuilderPort): void {
         shape.holes.push(hole);
         const receiver = new THREE.ExtrudeGeometry(shape, { depth: .0762, bevelEnabled: false, steps: 1, curveSegments: segments / 2 });
         equipment(P, 'hull', 'Detail', receiver, mainX, 1.57605, 3.5156);
-        equipment(P, 'hull', 'Dark', cylZ(.05375, .004, segments), mainX, 1.57605, 3.5859);
+        equipment(P, 'hull', 'Dark', markVehicleNightLens(cylZ(.05375, .004, segments), 'headlight'), mainX, 1.57605, 3.5859);
         equipment(P, 'hull', 'Detail', box(.1055, .1065, .0566), lobeX, 1.57655, 3.5537);
         equipment(P, 'hull', 'Detail', box(.0224, .0068, .0332), mainX, 1.6498, 3.5576);
         equipment(P, 'hull', 'Detail', cylZ(.03665, .0547, segments), smallX, 1.6092, 3.56645);
-        equipment(P, 'hull', 'Dark', cylZ(.029, .0019, segments), smallX, 1.6092, 3.59475);
+        equipment(P, 'hull', 'Dark', markVehicleNightLens(cylZ(.029, .0019, segments), 'marker'), smallX, 1.6092, 3.59475);
         equipment(P, 'hull', 'Detail', box(.0215, .0107, .0332), smallX, 1.64785, 3.5576);
     }
 }

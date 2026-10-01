@@ -188,3 +188,19 @@ body[data-cot-width='phone'] .doc-section h2{align-items:flex-start;gap:10px}bod
 :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .battle-reel-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .battle-reel-card>span{grid-template-columns:17px minmax(0,1fr);padding:8px 7px}
 :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .battle-reel-card strong{font-size:7px}
+
+/* Readable, collapsible references keep the complete fleet useful on phones. */
+.manual-search{display:grid;gap:8px;color:#c9d4dc;font-weight:700;margin:24px 0 8px}
+.manual-search input{width:100%;box-sizing:border-box;min-height:44px;padding:12px;border:1px solid #566774;background:#0d151b;color:#edf3f8;font:inherit}
+.manual-count{font-variant-numeric:tabular-nums;color:#9daeb9}
+.manual-record{border:1px solid #34434e;background:#101920;margin:10px 0;padding:0 16px}
+.manual-record[hidden]{display:none}
+.manual-record summary{cursor:pointer;min-height:48px;padding:14px 0;line-height:1.5}
+.manual-record summary strong{color:#f2c576;margin-right:12px}.manual-record summary span{color:#a8bac7;font-size:12px}
+.manual-record dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px;margin:12px 0 18px}
+.manual-record dt{font-size:12px;color:#9eafba}.manual-record dd{margin:4px 0;font-variant-numeric:tabular-nums;color:#edf3f8}
+.manual-atlas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:14px}
+.manual-atlas .manual-record{margin:0;padding:0 12px 12px}.manual-atlas summary{list-style:none}
+.manual-atlas img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;display:block;margin-bottom:12px}
+.manual-atlas summary strong,.manual-atlas summary span{display:block}
+.manual-record :focus-visible{outline:2px solid #efb555;outline-offset:4px}

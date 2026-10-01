@@ -1,6 +1,6 @@
 # Claude of Tanks: full public reference
 
-> Canonical, agent-readable reference for the public Claude of Tanks product and technical documentation. Last reviewed 2026-09-01. Canonical site: https://cot.kevinliu.studio/. Creator: Kevin B. Liu, https://github.com/Kevin-Liu-01.
+> Canonical, agent-readable reference for the public Claude of Tanks product and technical documentation. Last reviewed 2026-09-30. Canonical site: https://cot.kevinliu.studio/. Creator: Kevin B. Liu, https://github.com/Kevin-Liu-01.
 
 ## Identity and access
 
@@ -10,12 +10,12 @@ The name is "Claude of Tanks." The creator and copyright holder is Kevin B. Liu.
 
 ## Current public-build facts
 
-- Production-visible fleet: 201 first-party procedural vehicles.
-- Local-development fleet: the same 201 first-party procedural vehicles.
-- Saved vehicle records: 201.
+- Production-visible fleet: 205 first-party procedural vehicles.
+- Local-development fleet: the same 205 first-party procedural vehicles.
+- Saved vehicle records: 205.
 - Authored battlefields: 33.
 - Simulation rate: fixed 60 Hz.
-- Standard battle format: teams of up to seven vehicles, presented as 7v7 where the selected mode supports it.
+- Battle setup: 7v7, 14v14 and mode-specific custom solo rosters, with a 42-vehicle solo field limit. Multiplayer room capacity follows the selected room format.
 - Supported play: local bot battles and multiplayer paths documented in the technical manual.
 - Rendering: Three.js and WebGL2, with adaptive presentation quality separated from combat simulation.
 - Public tools: Tank Gallery and Scene Studio.
@@ -23,7 +23,7 @@ The name is "Claude of Tanks." The creator and copyright holder is Kevin B. Liu.
 - Account requirement for the public game: none.
 - Public access price: USD 0.
 
-The repository retains 201 saved first-party vehicles, all in the production and local-development catalogs. Fleet counts were checked against the repository registries on 2026-09-29; verify the live application version before describing deployment status.
+The repository retains 205 saved first-party vehicles, all in the production and local-development catalogs. Fleet counts were checked against the repository registries on 2026-09-30; verify the live application version before describing deployment status.
 
 ## Gameplay and combat model
 
@@ -43,7 +43,7 @@ The Tank Gallery at https://cot.kevinliu.studio/gallery exposes the production f
 
 ## Battlefields and world systems
 
-The thirty-one current battlefields are Verdant Fields, Sirocco Wadi, Frosthollow, Steinburg, Saltmere Bay, Amberford, Tarkhan Steppe, Cinder Junction, Frontier Basin, Nordhavn Fjord, Jade River Delta, Redrock Divide, Monsoon Ridge, Glacier Pass, Obsidian Caldera, Ironworks, Ruinspires, Blackglass District, Titan Gorge, Skybridge Chasm, Tidegate Polders, Copper Mesa Mine, Kestrel Airfield, Sunscar Oasis, Whiteout Station, Orchard Valley, Longleaf Crossing, Mangrove Reach, Saltwind Narrows, and Highland Reservoir and Olympus Basin.
+The 33 current battlefields are Verdant Fields, Sirocco Wadi, Frosthollow, Steinburg, Saltmere Bay, Amberford, Tarkhan Steppe, Cinder Junction, Frontier Basin, Nordhavn Fjord, Jade River Delta, Redrock Divide, Monsoon Ridge, Glacier Pass, Obsidian Caldera, Ironworks, Ruinspires, Blackglass District, Titan Gorge, Skybridge Chasm, Tidegate Polders, Copper Mesa Mine, Kestrel Airfield, Sunscar Oasis, Whiteout Station, Orchard Valley, Longleaf Crossing, Mangrove Reach, Saltwind Narrows, Highland Reservoir, Olympus Basin, Earthrise Basin and Aegis Crossing.
 
 Map configurations provide terrain and simulation descriptors without requiring the renderer. World presentation adds roads, structures, foliage, fog, sky, lighting, cover, collision, minimaps, destructibles, movable and crushable props, toppling objects, wrecks, detached remnants, utility networks, craters, and persistent destruction where the current mode supports it.
 

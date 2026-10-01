@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 
-const html = await readFile(new URL('../../gallery.html', import.meta.url), 'utf8');
+const html = await readFile(new URL('../../site/gallery.html', import.meta.url), 'utf8');
 const match = html.match(/<script>\s*(\/\/ GALLERY CHUNK RECOVERY[\s\S]*?)<\/script>/);
 assert.ok(match, 'Gallery chunk recovery must remain inline ahead of its module entries');
 assert.ok(html.indexOf('// GALLERY CHUNK RECOVERY') < html.indexOf('<script type="module"'),

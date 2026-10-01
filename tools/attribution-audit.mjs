@@ -55,7 +55,7 @@ assert.equal(packageJson.private, true, 'package must not be publishable to npm'
 assert.equal(packageJson.license, PROJECT_PACKAGE_LICENSE);
 assert.doesNotMatch(attribution, /private, personal-use, never-published/i);
 
-const publicPages = ['home.html', 'index.html', 'docs.html', 'gallery.html'];
+const publicPages = ['site/home.html', 'index.html', 'site/docs.html', 'site/gallery.html'];
 for (const path of publicPages) {
   const html = read(path);
   assert.match(html, /<meta name="author" content="Kevin B\. Liu"\s*\/?>/i, `${path}: author meta`);

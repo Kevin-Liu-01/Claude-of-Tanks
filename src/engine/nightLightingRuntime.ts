@@ -87,7 +87,7 @@ function validateEmitter(emitter: NightLightEmitter): void {
     requirePoint(emitter.direction, 'direction');
     if (Math.hypot(...emitter.direction) < 1e-6) throw new RangeError('Night light direction must be nonzero');
   }
-  requireBounded(emitter.intensity ?? 80, 300, 'intensity');
+  requireBounded(emitter.intensity ?? 80, emitter.kind === 'headlight' ? 2000 : 300, 'intensity');
   requireBounded(emitter.range ?? 42, 100, 'range');
   requireBounded(emitter.color ?? 0xffe2ad, 0xffffff, 'color');
   if (emitter.emission) {
@@ -285,10 +285,10 @@ export interface NightLightingRuntime {
   dispose(): void;
 }
 
-/** Covered activation owns a constant three-light maximum: no shadow maps,
+/** Covered activation owns a constant tier-specific light budget: no shadow maps,
  * light-count changes, scene additions, allocations or shader invalidation in
  * update. All lamps may glow; only local authored sources get pooled lighting.
- * Day/Garage detach is a COVERED transition and must precede forward warm-up.
+ * Garage detach is covered. Battle keeps the pool prepared for manual toggles.
  * This bounded implementation still requires native cost/visual acceptance.
  */
 export function createNightLightingRuntime(scene: THREE.Scene, budget: NightLightingBudget = DEFAULT_BUDGET): NightLightingRuntime {

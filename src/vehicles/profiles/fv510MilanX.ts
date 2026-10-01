@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { weaponAssembly } from './weaponStock.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
@@ -559,10 +560,10 @@ function turretRearStowage(P: TankBuilderPort, add: EquipmentAdder): void {
 
 function hullSideLights(P: TankBuilderPort, side: number): void {
     P.addEquipment('hullDetail',box(.227,.226,.172),side*(side<0?1.2617:1.2837),1.401,2.994);
-    P.addEquipment('hullGlass',cylZ(.068,.025,P.q?18:10),side*(side<0?1.2617:1.2837),1.401,3.093);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.068,.025,P.q?18:10), 'headlight'),side*(side<0?1.2617:1.2837),1.401,3.093);
     for(const y of [1.448,1.340]) {
       P.addEquipment('hullDetail',cylZ(.050,.053,P.q?16:10),side*(side<0?1.4243:1.4458),y,3.04);
-      P.addEquipment('hullGlass',cylZ(.040,.013,P.q?16:10),side*(side<0?1.4243:1.4458),y,3.073);
+      P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.040,.013,P.q?16:10), 'marker'),side*(side<0?1.4243:1.4458),y,3.073);
     }
     P.addEquipment('hullDetail', torus(.085, .018, P.q ? 16 : 10, 6), side * .75, .92, 3.16);
 }

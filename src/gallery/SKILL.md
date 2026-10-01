@@ -19,7 +19,7 @@ module boxes, and crew boxes into disposable diagnostic geometry;
 `surfaceMarkup.ts` owns live triangle/patch selection, articulation ownership,
 review annotations, JSON, and PNG capture. `gallery.ts` owns the separate-page
 renderer, vehicle state, camera, articulation, URL, DOM, and browser automation
-contract. `gallery.html` and `gallery.css` own the public surface;
+contract. `site/gallery.html` and `gallery.css` own the public surface;
 `docs/GALLERY.md` owns its documented contract.
 
 ## Patterns to follow / invariants

@@ -19,7 +19,7 @@ assert.deepEqual(
   'topic anchors stay unique and locale-independent when headings are translated',
 );
 
-const landing = readFileSync(join(ROOT, 'docs.html'), 'utf8');
+const landing = readFileSync(join(ROOT, 'site/docs.html'), 'utf8');
 const docsCss = readFileSync(join(ROOT, 'src/docs/docs.css'), 'utf8');
 const topicsSource = readFileSync(join(ROOT, 'src/docs/topics.ts'), 'utf8');
 for (const id of TOPIC_ORDER) {
@@ -35,7 +35,7 @@ for (const id of TOPIC_ORDER) {
   for (const asset of [topic.hero, ...topic.media.map(([src]) => src)]) {
     assert.ok(existsSync(join(ROOT, 'public', asset)), `${id}: referenced media exists (${asset})`);
   }
-  assert.ok(existsSync(join(ROOT, `docs-${id}.html`)), `${id} has an independently indexed HTML entry`);
+  assert.ok(existsSync(join(ROOT, `site/docs-${id}.html`)), `${id} has an independently indexed HTML entry`);
   assert.match(landing, new RegExp(`href="/docs/${id}"`), `${id} is discoverable from the manual index`);
 }
 

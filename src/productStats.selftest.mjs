@@ -40,8 +40,8 @@ assert.equal(Object.keys(PRODUCT_STAT_TOKENS).length, Object.keys(PRODUCT_STATS)
   'every shared stat needs one template token');
 
 const htmlTemplates = [
-  'index.html', 'home.html', 'gallery.html', 'docs.html',
-  'docs-vehicles.html', 'docs-worlds.html',
+  'index.html', 'site/home.html', 'site/gallery.html', 'site/docs.html',
+  'site/docs-vehicles.html', 'site/docs-worlds.html',
 ];
 for (const file of htmlTemplates) {
   const source = readFileSync(join(ROOT, file), 'utf8');
@@ -61,7 +61,7 @@ const currentFacts = [
   'public/site.webmanifest',
 ].map((file) => readFileSync(join(ROOT, file), 'utf8')).join('\n');
 
-const gallery = renderProductStats(readFileSync(join(ROOT, 'gallery.html'), 'utf8'));
+const gallery = renderProductStats(readFileSync(join(ROOT, 'site/gallery.html'), 'utf8'));
 const galleryTitle = `Tank Gallery — Inspect ${PRODUCT_STATS.productionVehicles} Claude of Tanks Vehicles`;
 assert.ok(gallery.includes(`<title>${galleryTitle}</title>`), 'Gallery tab title follows the live fleet count');
 assert.ok(gallery.includes(`property="og:title" content="${galleryTitle}"`), 'Gallery share title follows the live fleet count');

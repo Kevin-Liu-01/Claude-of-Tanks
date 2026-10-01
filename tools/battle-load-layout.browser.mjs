@@ -25,6 +25,7 @@ try {
   for (const [name,width,height,touch] of [
     ['desktop',1440,900,false],['laptop',1280,720,false],['tablet',820,1180,true],
     ['phone',390,844,true],['landscape',844,390,true],['small-landscape',667,375,true],
+    ['tiny-landscape',568,320,true],['browser-landscape',844,300,true],['wide-landscape',932,430,true],
   ]) {
     const context=await browser.newContext({viewport:{width,height},hasTouch:touch,isMobile:touch,deviceScaleFactor:1});
     const page=await context.newPage();
@@ -59,7 +60,7 @@ try {
       if(allies===41||enemies===41)await page.screenshot({path:resolve(out,`${name}-${allies}v${enemies}.png`)});
       reports.push({name,allies,enemies,...m});
     }
-    assert.ok(sizes.get(7)>=Math.min(64,sizes.get(14)*1.7)-1,`${name}: seven rows must expand into the available space`);
+    assert.ok(sizes.get(7)>=Math.min(64,sizes.get(14)*1.7,Math.max(15,(await page.locator('.teams').evaluate(el=>el.clientHeight)-30)/7-3))-1,`${name}: seven rows must expand into the available space`);
     assert.ok(sizes.get(2)>=sizes.get(7)-1,`${name}: smaller rosters retain larger rows`);
     const before=await page.evaluate(measure);
     release(); await page.waitForLoadState('networkidle');

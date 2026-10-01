@@ -10,30 +10,30 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const SITE = 'https://cot.kevinliu.studio';
 const indexedPages = new Map([
   ['index.html', `${SITE}/`],
-  ['home.html', `${SITE}/home`],
-  ['gallery.html', `${SITE}/gallery`],
-  ['docs.html', `${SITE}/docs`],
-  ['docs-build.html', `${SITE}/docs/build`],
-  ['docs-models.html', `${SITE}/docs/models`],
-  ['docs-simulation.html', `${SITE}/docs/simulation`],
-  ['docs-vehicles.html', `${SITE}/docs/vehicles`],
-  ['docs-rendering.html', `${SITE}/docs/rendering`],
-  ['docs-performance.html', `${SITE}/docs/performance`],
-  ['docs-worlds.html', `${SITE}/docs/worlds`],
-  ['docs-ai.html', `${SITE}/docs/ai`],
-  ['docs-multiplayer.html', `${SITE}/docs/multiplayer`],
-  ['docs-audio.html', `${SITE}/docs/audio`],
-  ['docs-interface.html', `${SITE}/docs/interface`],
-  ['docs-studio.html', `${SITE}/docs/studio`],
+  ['site/home.html', `${SITE}/home`],
+  ['site/gallery.html', `${SITE}/gallery`],
+  ['site/docs.html', `${SITE}/docs`],
+  ['site/docs-build.html', `${SITE}/docs/build`],
+  ['site/docs-models.html', `${SITE}/docs/models`],
+  ['site/docs-simulation.html', `${SITE}/docs/simulation`],
+  ['site/docs-vehicles.html', `${SITE}/docs/vehicles`],
+  ['site/docs-rendering.html', `${SITE}/docs/rendering`],
+  ['site/docs-performance.html', `${SITE}/docs/performance`],
+  ['site/docs-worlds.html', `${SITE}/docs/worlds`],
+  ['site/docs-ai.html', `${SITE}/docs/ai`],
+  ['site/docs-multiplayer.html', `${SITE}/docs/multiplayer`],
+  ['site/docs-audio.html', `${SITE}/docs/audio`],
+  ['site/docs-interface.html', `${SITE}/docs/interface`],
+  ['site/docs-studio.html', `${SITE}/docs/studio`],
 ]);
 const socialCards = new Map([
   ['index.html', 'brand/og-image.png'],
-  ['home.html', 'brand/og/home.jpg'],
-  ['gallery.html', 'brand/og/gallery.jpg'],
-  ['docs.html', 'brand/og/docs.jpg'],
+  ['site/home.html', 'brand/og/home.jpg'],
+  ['site/gallery.html', 'brand/og/gallery.jpg'],
+  ['site/docs.html', 'brand/og/docs.jpg'],
   ...[...indexedPages.keys()]
-    .filter((file) => file.startsWith('docs-'))
-    .map((file) => [file, `brand/og/${file.replace(/\.html$/, '')}.jpg`]),
+    .filter((file) => file.startsWith('site/docs-'))
+    .map((file) => [file, `brand/og/${file.replace(/^site\//, '').replace(/\.html$/, '')}.jpg`]),
 ]);
 
 function attribute(html, element, key, value, wanted = 'content') {
@@ -124,7 +124,7 @@ for (const card of socialCards.values()) {
   assert.deepEqual(imageDimensions(cardPath), [1200, 630], `public/${card} must be 1200x630`);
 }
 
-const topicFallback = renderProductStats(readFileSync(join(ROOT, 'docs-topic.html'), 'utf8'));
+const topicFallback = renderProductStats(readFileSync(join(ROOT, 'site/docs-topic.html'), 'utf8'));
 assert.match(attribute(topicFallback, 'meta', 'name', 'robots'), /noindex, follow/);
 assert.equal(attribute(topicFallback, 'link', 'rel', 'canonical', 'href'), `${SITE}/docs`);
 
@@ -167,20 +167,20 @@ assert.equal(manifest.scope, '/');
 for (const icon of manifest.icons) assert.ok(existsSync(join(ROOT, 'public', icon.src.replace(/^\//, ''))), `missing manifest icon ${icon.src}`);
 
 const publicMetadata = [
-  ...indexedPages.keys(), 'docs-topic.html', 'public/robots.txt', 'public/sitemap.xml',
+  ...indexedPages.keys(), 'site/docs-topic.html', 'public/robots.txt', 'public/sitemap.xml',
 ].map((file) => readFileSync(join(ROOT, file), 'utf8')).join('\n');
 assert.doesNotMatch(publicMetadata, /https:\/\/claude-of-tanks\.vercel\.app/, 'former deployment must not remain canonical');
-const homeVisibleText = renderProductStats(readFileSync(join(ROOT, 'home.html'), 'utf8'))
+const homeVisibleText = renderProductStats(readFileSync(join(ROOT, 'site/home.html'), 'utf8'))
   .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 assert.doesNotMatch(homeVisibleText, /16 battlefields/);
 assert.doesNotMatch(homeVisibleText, /(?:Choose from |Drive )111 tanks|111 production vehicles/);
 const currentPublicCopy = [
-  'index.html', 'home.html', 'gallery.html', 'docs.html', 'docs-vehicles.html',
+  'index.html', 'site/home.html', 'site/gallery.html', 'site/docs.html', 'site/docs-vehicles.html',
   'README.md', 'public/llms.txt', 'public/llms-full.txt', 'public/docs/llms.txt',
 ].map((file) => renderProductStats(readFileSync(join(ROOT, file), 'utf8'))).join('\n');
 assert.doesNotMatch(currentPublicCopy, /111 (?:production|first-party procedural)|148 keyed|150 saved/,
   `public fleet facts must track the canonical ${PRODUCT_STATS.productionVehicles} / ${PRODUCT_STATS.developmentVehicles} / ${PRODUCT_STATS.savedVehicleRecords} roster projections`);
-assert.doesNotMatch(renderProductStats(readFileSync(join(ROOT, 'docs.html'), 'utf8')),
+assert.doesNotMatch(renderProductStats(readFileSync(join(ROOT, 'site/docs.html'), 'utf8')),
   /16 (?:maps|authored battlefields)/);
 assert.doesNotMatch(readFileSync(join(ROOT, 'src/docs/topics.ts'), 'utf8'), /Sixteen battlefields/);
 
@@ -208,7 +208,7 @@ assert.match(privateRoomMetadata(new URL(`${SITE}/?room=I0O123`))?.description |
   'crawler metadata must normalize ambiguous room characters exactly like the lobby');
 
 const vercel = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8'));
-for (const [file, canonical] of [...indexedPages].filter(([file]) => file.startsWith('docs-'))) {
+for (const [file, canonical] of [...indexedPages].filter(([file]) => file.startsWith('site/docs-'))) {
   const path = new URL(canonical).pathname;
   assert.ok(vercel.rewrites.some((rewrite) => rewrite.source === path), `${file} must be published at ${path}`);
 }

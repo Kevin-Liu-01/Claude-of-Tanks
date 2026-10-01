@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 import * as THREE from 'three';
 import { KIT, FITTINGS } from './kit.ts';
@@ -155,7 +156,7 @@ function addDragunBowLamps(P: TankBuilderPort): void {
         stations.push(new THREE.Vector2(0, length));
         const lamp = new THREE.LatheGeometry(stations, P.q ? 24 : 16).rotateX(Math.PI / 2);
         add('bow-lamp-body', lamp.translate(x, y, back));
-        add('bow-lamp-face', cylZ(.081, .008, P.q ? 24 : 16).translate(x, y, front + .001), 'Glass');
+        add('bow-lamp-face', markVehicleNightLens(cylZ(.081, .008, P.q ? 24 : 16), 'headlight').translate(x, y, front + .001), 'Glass');
         add('bow-lamp-bezel', torus(.085, .007, P.q ? 24 : 16, 6).translate(x, y, front + .002));
         // Actual lower pedestal enters both the lamp shell and the local bow deck.
         add('bow-lamp-seat', box(.075, .058, .092).translate(x + .025, y - .070, back + .024));

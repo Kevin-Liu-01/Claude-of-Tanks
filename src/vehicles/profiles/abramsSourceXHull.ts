@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { drainTankBuild, type TankProfileBuild } from '../tankBuildCooperation.ts';
 // Independent SEP v2 source-study hull. Sparse scalar dimensions below are in
 // the approved metre frame [-rawX, rawY + .203945, .357965 - rawZ].
@@ -382,7 +383,7 @@ function bowEquipment(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
     const x = side * .947;
     P.addEquipment('hullDetail', box(.242, .103, .093), x, 1.220, 3.790);
-    P.addEquipment('hullGlass', box(.185, .067, .006), x, 1.221, 3.840);
+    P.addEquipment('hullGlass', markVehicleNightLens(box(.185, .067, .006), 'headlight'), x, 1.221, 3.840);
     P.addEquipment('hullDetail', roundMember([x - .139, 1.17, 3.798], [x - .139, 1.313, 3.798], .011));
     P.addEquipment('hullDetail', roundMember([x + .139, 1.17, 3.798], [x + .139, 1.313, 3.798], .011));
     P.addEquipment('hullDetail', roundMember([x - .139, 1.313, 3.798], [x + .139, 1.313, 3.798], .011));

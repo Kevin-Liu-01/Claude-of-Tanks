@@ -1,0 +1,9 @@
+.manual-start{padding-block:42px;color:#ecf2f7}
+.manual-start>h2{font-size:clamp(25px,3vw,38px);margin:0 0 12px}
+.manual-start>p{color:#aebdc7;line-height:1.7;max-width:70ch}
+.manual-start-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px;margin-top:24px}
+.manual-start-grid a{display:flex;flex-direction:column;gap:12px;padding:22px;background:#111b22;border:1px solid #344650;color:inherit;text-decoration:none}
+.manual-start-grid strong{color:#f2c477;font-size:18px;line-height:1.4}
+.manual-start-grid span{font-size:14px;line-height:1.7;color:#afbfca}
+.manual-start-grid a:hover{border-color:#e4aa4b;background:#18262f}
+.manual-start-grid a:focus-visible{outline:2px solid #ffd181;outline-offset:4px}

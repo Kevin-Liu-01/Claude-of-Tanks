@@ -137,6 +137,16 @@ export function installBattleHudLayout(root: HTMLElement): void {
       systemsWidth = Math.max(52, width - systemsLeft - 12);
       dockWidth = Math.min(systemsWidth, naturalWidth);
     }
+    // Portrait rotation can leave the system strip level with the settings
+    // buttons. Keep the touch navigation reachable before placing that strip.
+    const touchChrome = touch ? read('.cot-touch.on .mobile-chrome') : null;
+    if (touch && width < height && touchChrome && systemsLeft + dockWidth > touchChrome.left
+      && systemsTop < touchChrome.bottom + 8) systemsTop = touchChrome.bottom + 8;
+    if (touch && width < height && ammo && systemsTop + systemsHeight > ammo.top
+      && systemsTop < ammo.bottom && systemsLeft < ammo.left) {
+      systemsWidth = Math.max(52, ammo.left - systemsLeft - 8);
+      dockWidth = Math.min(systemsWidth, naturalWidth);
+    }
     const sideWidth = Math.min(300, width / 2 - 20);
     const leftBottom = Math.min(leftFloor(height, touch),
       systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);

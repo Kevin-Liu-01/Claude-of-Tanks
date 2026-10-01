@@ -171,7 +171,7 @@ assert.throws(() => createNightLightingRuntime(scene, { spotLights: 2, pointLigh
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'glass', position: [0, 0, 0] }]), /kind/);
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [NaN, 0, 0] }]), /finite/);
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [0, 0, 0], direction: [0, 0, 0] }]), /nonzero/);
-assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [0, 0, 0], intensity: 301 }]), /intensity/);
+assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [0, 0, 0], intensity: 2001 }]), /intensity/);
 const source = readFileSync(new URL('./nightLightingRuntime.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(source, /Math\.random\(|performance\.|setTimeout\(|requestAnimationFrame\(|needsUpdate\s*=/);
 assert.doesNotMatch(source, /from ['"].*(?:quality|fleet|tankFactory)/, 'runtime stays independent of fleet and quality overrides');

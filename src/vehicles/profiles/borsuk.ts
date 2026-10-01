@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Polish amphibious Borsuk with the unmanned ZSSW-30 and twin Spike LR mount.
 import * as THREE from 'three';
@@ -36,7 +37,7 @@ function buildHull(P: TankBuilderPort): void {
     P.addMudguard(`borsuk-front-${side}`,'hullRubber',box(.53,.25,.028),side*1.34,1.27,3.61,-.57);
     P.addMudguard(`borsuk-rear-${side}`,'hullRubber',box(.51,.28,.028),side*1.34,.96,-3.41,.10);
     P.addEquipment('hullDark',box(.37,.16,.026),side*1.17,1.80,2.99,-.23);
-    for (const dx of [-.085,.085]) P.addEquipment('hullGlass',cylZ(.045,.022,16),side*1.17+dx,1.80,3.013,-.23);
+    for (const dx of [-.085,.085]) P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.045,.022,16), 'headlight'),side*1.17+dx,1.80,3.013,-.23);
     KIT.liftEye(P,'hullDetail',side*1.23,1.58,3.50);
     // Wing mirrors have continuous stalks fixed to the front deck.
     P.addEquipment('hullDark',cylY(.014,.014,.38,8),side*1.18,2.00,2.15);

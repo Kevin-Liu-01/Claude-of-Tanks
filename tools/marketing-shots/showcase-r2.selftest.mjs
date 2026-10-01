@@ -66,7 +66,7 @@ assert.match(archiveSource, /\/media\/showcase-r1\/manifest\.json/,
   'live media archive must keep the original action library');
 
 const pageText = [
-  'index.html', 'home.html', 'docs.html', 'README.md',
+  'index.html', 'site/home.html', 'site/docs.html', 'README.md',
   'src/docs/topics.ts', 'src/ui/featuredShots.ts',
   'docs/SHOWCASE-LIBRARY.md', 'docs/SCREENSHOT_CONTRACT.md',
   'docs/GALLERY.md', 'docs/HOW-IT-WORKS.md', 'docs/INDEX.md',

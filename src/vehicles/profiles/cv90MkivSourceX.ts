@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // Independent owner-source CV90 Mk.IV; existing cv90_mkiv stays untouched.
@@ -42,9 +43,9 @@ function addCv90FendersAndLamps(P: TankBuilderPort, side: number): void {
     P.addEquipment('hullDetail',box(lampW,.035,.041),lampX,1.132,3.21,.09);
     const mainLightX=side<0?-1.406:1.336;
     P.addEquipment('hullDark',cylZ(.045,.024,P.q?18:10),mainLightX,1.064,3.193);
-    P.addEquipment('hullGlass',cylZ(.035,.012,P.q?18:10),mainLightX,1.064,3.208);
-    for(const dx of [-.093,.093])P.addEquipment('hullGlass',box(.025,.052,.013),mainLightX+dx,1.066,3.205);
-    P.addEquipment('hullGlass',box(.098,.04,.012),side<0?-1.17:.966,1.073,3.201);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.035,.012,P.q?18:10), 'headlight'),mainLightX,1.064,3.208);
+    for(const dx of [-.093,.093])P.addEquipment('hullGlass',markVehicleNightLens(box(.025,.052,.013), 'marker'),mainLightX+dx,1.066,3.205);
+    P.addEquipment('hullGlass',markVehicleNightLens(box(.098,.04,.012), 'marker'),side<0?-1.17:.966,1.073,3.201);
     for(const dx of [-lampW*.38,0,lampW*.38])P.addEquipment('hullDetail',cylY(.006,.006,.009,6),lampX+dx,1.18,3.08);
     P.addEquipment('hullDetail',box(.03,.04,1.48),side*1.32,1.53,1.13,0,0,-side*.02);
     for(const z of [-2.62,-2.01])P.addHatch('hullDetail',box(.84,.025,.51),side*.89,1.748,z);

@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Independent Namer hull stock from sparse source-only planes and sections.
 // The rear access lane is exterior air between two closed shoulder wings.
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -123,5 +124,12 @@ export function addNamerSourceHull(P: TankBuilderPort): void {
   addRearAccess(P);
   addRearLights(P);
   addBowTowStock(P);
+  // Paired driving lights on the outer glacis, clear of the central tow gear.
+  // The rear of each pod intersects the sloped shoulder; its aperture faces +Z.
+  for (const side of [-1, 1]) {
+    put(P, 'hullDetail', KIT.box(.19, .13, .20), side * 1.27, 1.48, 2.99);
+    put(P, 'hullGlass', markVehicleNightLens(KIT.cylZ(.055, .012, 16), 'headlight'),
+      side * 1.27, 1.48, 3.097);
+  }
   addDriverEquipment(P);
 }

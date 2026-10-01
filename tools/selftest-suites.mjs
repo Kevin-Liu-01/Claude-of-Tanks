@@ -565,6 +565,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/gt-enforcement.selftest.mjs',
     'src/docs/docsIcons.selftest.mjs',
     'src/docs/topics.selftest.mjs',
+    'tools/generate-manual-reference.selftest.mjs',
     'src/productStats.selftest.mjs',
     'src/ui/garageDossier.selftest.mjs',
     'src/ui/damagePanel.selftest.mjs',

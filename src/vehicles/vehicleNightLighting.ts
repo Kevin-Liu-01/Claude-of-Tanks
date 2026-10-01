@@ -116,8 +116,8 @@ export function registerVehicleNightLensMesh(mesh: LensMesh, parts: readonly THR
     return {
       kind: definition.kind, ...apertureFrame(part, definition),
       color: definition.kind === 'shtora' || definition.tint === 'red' ? NIGHT_SHTORA_COLOR : NIGHT_HEADLIGHT_COLOR,
-      intensity: definition.kind === 'headlight' ? 80 : 0,
-      range: definition.kind === 'headlight' ? 42 : 0,
+      intensity: definition.kind === 'headlight' ? 1200 : 0,
+      range: definition.kind === 'headlight' ? 75 : 0,
       emission: { material, color: 0xffffff, intensity: 3 },
     };
   }));

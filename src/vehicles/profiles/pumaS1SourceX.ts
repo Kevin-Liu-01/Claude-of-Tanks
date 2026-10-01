@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Source-measured Puma S1 replica. The separate upgraded Puma S1 is preserved.
 // Coordinates are metres; no source mesh is loaded by the playable builder.
@@ -42,7 +43,7 @@ function hull(P: TankBuilderPort): void {
     P.addMudguard(`puma-x-front-${side}`,'hullRubber',box(.56,.43,.028),side*1.22,.94,3.43,-.20);
     P.addMudguard(`puma-x-rear-${side}`,'hullRubber',box(.64,.24,.025),side*1.30,1.06,-3.36,.23);
     P.addEquipment('hullDetail',box(.34,.14,.18),side*1.40,1.34,3.43);
-    for(const dx of [-.075,.075])P.addEquipment('hullGlass',cylZ(.044,.015,12),side*1.40+dx,1.34,3.53);
+    for(const dx of [-.075,.075])P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.044,.015,12), 'headlight'),side*1.40+dx,1.34,3.53);
     // Both mirror heads and their continuous stalk use the measured bow
     // station; the upper head must remain above the roof from front/rear.
     P.addEquipment('hullDetail',box(.027,.734,.027),side*1.795,1.805,2.891,0,0,-side*.323);

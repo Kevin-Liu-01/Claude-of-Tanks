@@ -26,6 +26,7 @@ for(const id of ALL_TANK_IDS){
   }
  });
  rows[id]={smoke,guns,lights:!!tank.root.userData.nightLightCoverage?.headlights};
+ if(!rows[id].lights)missing.push({id,name:'driving lights'});
  tank.dispose?.();
 }
 const output=`// Generated from authored fittings by tools/vehicle-controls-inventory.mjs.\nimport type { AuxiliaryInventory } from './auxiliaryInventory.ts';\nexport const AUXILIARY_INVENTORY: Readonly<Record<string, AuxiliaryInventory>> = ${JSON.stringify(rows)};\n`;

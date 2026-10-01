@@ -20,7 +20,7 @@
 // Build output is unaffected: the plugin only applies to `vite dev`/`serve`,
 // and every headless tool that calls createServer() inherits this config.
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, renameSync } from 'node:fs';
 import type { ServerResponse } from 'node:http';
 import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -99,7 +99,13 @@ const rewriteRoutes = (documentRoot: string): Connect.NextHandleFunction => (req
     req.url = '/404.html' + query;
   } else if (localePath.route) {
     if (localePath.route.id === 'notFound') forceNotFoundStatus(res);
-    req.url = `/${localePath.route.sourceHtml}${localizedQuery}`;
+    const entry = localePath.route.sourceHtml;
+    const source = existsSync(resolve(documentRoot, entry)) ? entry : `site/${entry}`;
+    req.url = `/${source}${localizedQuery}`;
+  }
+  else if (/^\/(?:home|gallery|docs(?:-[a-z]+)?)\.html$/.test(path)
+    && existsSync(resolve(documentRoot, `site${path}`))) {
+    req.url = `/site${path}${query}`;
   }
   else if (path !== '/' && !path.startsWith('/api/') &&
     req.headers.accept?.includes('text/html') && !isExistingProjectDocument(path,documentRoot)) {
@@ -231,6 +237,19 @@ export default defineConfig({
         return localizeHtmlDocument(html, route, locale);
       },
     },
+    {
+      name: 'cot-site-entry-output',
+      enforce: 'post',
+      // Source organization must not change deployed URLs or localized output.
+      writeBundle(options) {
+        const outputRoot = resolve(options.dir || 'dist');
+        const entries = resolve(outputRoot, 'site');
+        if (!existsSync(entries)) return;
+        for (const name of readdirSync(entries)) {
+          if (/^[^/]+\.html$/.test(name)) renameSync(resolve(entries, name), resolve(outputRoot, name));
+        }
+      },
+    },
     peerHarnessPlugin(),
     {
       name: 'cot-routes',
@@ -279,22 +298,22 @@ export default defineConfig({
       input: {
         main: resolve(process.cwd(), 'index.html'),
         notFound: resolve(process.cwd(), '404.html'),
-        home: resolve(process.cwd(), 'home.html'),
-        docs: resolve(process.cwd(), 'docs.html'),
-        docsTopic: resolve(process.cwd(), 'docs-topic.html'),
-        docsBuild: resolve(process.cwd(), 'docs-build.html'),
-        docsModels: resolve(process.cwd(), 'docs-models.html'),
-        docsSimulation: resolve(process.cwd(), 'docs-simulation.html'),
-        docsVehicles: resolve(process.cwd(), 'docs-vehicles.html'),
-        docsRendering: resolve(process.cwd(), 'docs-rendering.html'),
-        docsPerformance: resolve(process.cwd(), 'docs-performance.html'),
-        docsWorlds: resolve(process.cwd(), 'docs-worlds.html'),
-        docsAi: resolve(process.cwd(), 'docs-ai.html'),
-        docsMultiplayer: resolve(process.cwd(), 'docs-multiplayer.html'),
-        docsAudio: resolve(process.cwd(), 'docs-audio.html'),
-        docsInterface: resolve(process.cwd(), 'docs-interface.html'),
-        docsStudio: resolve(process.cwd(), 'docs-studio.html'),
-        gallery: resolve(process.cwd(), 'gallery.html'),
+        home: resolve(process.cwd(), 'site/home.html'),
+        docs: resolve(process.cwd(), 'site/docs.html'),
+        docsTopic: resolve(process.cwd(), 'site/docs-topic.html'),
+        docsBuild: resolve(process.cwd(), 'site/docs-build.html'),
+        docsModels: resolve(process.cwd(), 'site/docs-models.html'),
+        docsSimulation: resolve(process.cwd(), 'site/docs-simulation.html'),
+        docsVehicles: resolve(process.cwd(), 'site/docs-vehicles.html'),
+        docsRendering: resolve(process.cwd(), 'site/docs-rendering.html'),
+        docsPerformance: resolve(process.cwd(), 'site/docs-performance.html'),
+        docsWorlds: resolve(process.cwd(), 'site/docs-worlds.html'),
+        docsAi: resolve(process.cwd(), 'site/docs-ai.html'),
+        docsMultiplayer: resolve(process.cwd(), 'site/docs-multiplayer.html'),
+        docsAudio: resolve(process.cwd(), 'site/docs-audio.html'),
+        docsInterface: resolve(process.cwd(), 'site/docs-interface.html'),
+        docsStudio: resolve(process.cwd(), 'site/docs-studio.html'),
+        gallery: resolve(process.cwd(), 'site/gallery.html'),
       },
       output: {
         // 2026-09-25: hashes encode as base36 — every /assets URL changed once so no edge node keeps serving
@@ -306,11 +325,11 @@ export default defineConfig({
   },
   optimizeDeps: {
     entries: [
-      'index.html', '404.html', 'home.html', 'docs.html', 'docs-topic.html', 'gallery.html',
-      'docs-build.html', 'docs-models.html',
-      'docs-simulation.html', 'docs-vehicles.html', 'docs-rendering.html',
-      'docs-performance.html', 'docs-worlds.html', 'docs-ai.html',
-      'docs-multiplayer.html', 'docs-audio.html', 'docs-interface.html', 'docs-studio.html',
+      'index.html', '404.html', 'site/home.html', 'site/docs.html', 'site/docs-topic.html', 'site/gallery.html',
+      'site/docs-build.html', 'site/docs-models.html',
+      'site/docs-simulation.html', 'site/docs-vehicles.html', 'site/docs-rendering.html',
+      'site/docs-performance.html', 'site/docs-worlds.html', 'site/docs-ai.html',
+      'site/docs-multiplayer.html', 'site/docs-audio.html', 'site/docs-interface.html', 'site/docs-studio.html',
     ],
     include: [
       'three',

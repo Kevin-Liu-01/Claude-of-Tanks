@@ -7,7 +7,7 @@
 <h1 align="center">CLAUDE OF TANKS</h1>
 
 <p align="center">
-  Free browser-native armored combat built with <strong>Three.js</strong>. Take 200 production-visible first-party procedural vehicles
+  Free browser-native armored combat built with <strong>Three.js</strong>. Take 205 production-visible first-party procedural vehicles
   across 33 battlefields with physical gunnery, plate-level armor, internal damage, guided missiles,
   magazine autoloaders, terrain-following suspension, X-ray killcams, multiplayer rooms, and Scene Studio.
 </p>
@@ -47,7 +47,7 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
   <img src="public/brand/nav/studio.svg" width="72" alt="Scene Studio icon" title="Direct">
 </p>
 
-- **Fight:** enter Standard Battle, Capture the Flag, Zone Control, armed low-gravity Turbo Ball, cooperative
+- **Fight:** enter Standard Battle, Capture the Flag, Zone Control, armed low-gravity Turbo Ball, Gravity Mode, cooperative
   Endless Horde, or the six-operation Frontline Assault campaign in solo or multiplayer, with physical shell travel, armor geometry, component damage, spotting,
   terrain, collision, destructible structures, persistent wrecks, mode-specific respawns, and authority-owned results.
 - **Inspect:** open any vehicle in Tank Gallery, articulate the live rig, isolate armor or internal anatomy, and export an
@@ -59,16 +59,16 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
 
 | | Current runtime |
 | --- | --- |
-| Fleet | **200** first-party procedural vehicles in production and local development; **0** GLB-sourced playables |
-| Worlds | **31** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
+| Fleet | **205** first-party procedural vehicles in production and local development; **0** GLB-sourced playables |
+| Worlds | **33** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
-| Play | Five battle rules, solo bots, browser-hosted private rooms, LAN rooms, room chat, spectators, respawns, and rematches |
+| Play | Seven battle modes, solo bots, browser-hosted private rooms, LAN rooms, room chat, spectators, respawns, and rematches |
 | Platforms | Mouse/keyboard and complete touch controls with safe-area layout and device-adaptive rendering |
 | Languages | English and Simplified Chinese across the game, Garage, Studio, Gallery, and public docs; local reviewed catalogs managed with General Translation |
 | Tools | Scene Studio, Tank Gallery, exact-surface review, deterministic capture, vehicle anatomy, and release gates |
 
-Language selection lives under **Settings → Graphics → Language**. See the
+Language selection lives under **Settings → Language → Language**. See the
 [localization guide](docs/LOCALIZATION.md) for coverage, intentional exclusions,
 the General Translation workflow, and release gates.
 

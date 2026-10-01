@@ -19,7 +19,7 @@ stack, authoring tools, test rigs, and public presentation.
 | Battlefields | 33 authored and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
 | Presentation | Direct Three.js WebGL rendering with adaptive quality |
-| Modes | Standard Battle, Capture the Flag, Zone Control, Turbo Ball, Endless Horde, Frontline Assault (campaign ladder); one ruleset per mode; solo, private, LAN, and ranked deployment |
+| Modes | Regular Battle, Capture the Flag, Zone Control, Turbo Ball, Endless Horde, Frontline Assault (campaign ladder), Gravity Mode; one ruleset per mode; solo, private and LAN deployment |
 | Platforms | Desktop and mobile browsers |
 | Authoring | Scene Studio and Tank Gallery surface markup |
 | Progression | No currency, experience grind, or tech-tree lock |
@@ -220,14 +220,13 @@ The game includes:
 30. Highland Reservoir
 31. Olympus Basin — Gravity mode's rust-red impact basin under a galaxy sky, its research station scattered across the floor (2026-09-18)
 32. Earthrise Basin — airless lunar craters, research habitats and a huge Earth above the horizon
-33. Aegis Crossing — a deep dry gorge, driveable stone viaduct and an eastern flanking route
+33. Aegis Crossing — a lush green gorge, huge driveable bridge, surrounding buildings and flanking approaches
 
 Each battlefield combines a generated height field, material program, authored
 landmarks, roads, structures, foliage, concealment volumes, collision,
-destructibles, sky, lighting, fog, and minimap. Browser-hosted and dedicated
-matches use matching collision descriptions.
+destructibles, sky, lighting, fog, and minimap. Solo and browser-hosted matches use matching collision descriptions.
 
-All thirty-one maps use the same modern world-quality vocabulary: 28 procedural
+All 33 maps use the same modern world-quality vocabulary: 28 procedural
 structure families, independently destructible huts and camps, persistent
 debris, vehicle wreck families and detached remnants, topple interactions,
 connected utility networks, loose physical props, terrain attachment, and
@@ -516,3 +515,24 @@ The detailed verification map is in docs/DEVELOPMENT.md. The dated
 conversation-to-practice synthesis, with fresh renderer captures and commit
 evidence, is summarized in docs/TECHNICAL-OVERVIEW.md and the architecture
 decision records.
+
+## Vehicle lighting and current manual references
+
+Every one of the 205 playable vehicles registers actual driving-light apertures.
+The auxiliary inventory is generated from the complete model, including inherited
+variants, so the Lights control follows working fittings rather than a name list.
+Blackout/service markers do not claim a driving-beam slot, and shared optics and
+armor stay dark. The Namer IFV and Revolution Prototype have paired bow fixtures;
+other restored families use their existing authored lenses.
+
+Driving beams use intensity 1,200 and a 75 m falloff cutoff, up from 80 and 42 m.
+This is the renderer's light input and cutoff, not a guaranteed visibility range.
+Desktop retains four spotlights and two world lights; mobile retains two and one.
+Lenses can glow outside the pooled beam budget. Off, destruction, visibility and
+Garage return continue to remove the appropriate contribution.
+
+The public manual has searchable source-derived vehicle statistics, a 33-map
+atlas using the approved pictures, and seven mode-default cards. Generated data
+lives in `src/docs/reference.generated.json`; refresh it with
+`node tools/generate-manual-reference.mjs` after changing specs, capabilities,
+maps or rules. Public HTML now lives in `site/`, with unchanged deployed URLs.

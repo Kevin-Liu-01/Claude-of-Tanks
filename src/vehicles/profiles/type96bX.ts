@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
@@ -54,7 +55,11 @@ function addType96HullSides(P: TankBuilderPort): void {
         }
         P.addMudguard(`type96-front-${side}`, 'hullRubber', box(.57, .29, .033), side * 1.381, 1.315, 3.46, -.41);
         P.addMudguard(`type96-rear-${side}`, 'hullRubber', box(.57, .32, .034), side * 1.381, 1.235, -3.42, .18);
-        optic(P, 'hull', side * .98, 1.31, 2.96, .23, .13, .17);
+        // These two bow fixtures are driving lamps, not crew optics.
+        equipment(P, 'hull', 'Detail', box(.23, .13, .17), side * .98, 1.31, 2.96);
+        equipment(P, 'hull', 'Dark', box(.23 * .76, .13 * .70, .018), side * .98, 1.31, 2.96 + .17 / 2 + .005);
+        equipment(P, 'hull', 'Glass', markVehicleNightLens(box(.23 * .62, .13 * .52, .012), 'headlight'),
+          side * .98, 1.31, 2.96 + .17 / 2 + .017);
         equipment(P, 'hull', 'Detail', box(.045, .17, .27), side * .98, 1.40, 2.98);
         towEye(P, side, .73, .99, 3.35);
         equipment(P, 'hull', 'Detail', box(.11, .10, .34), side * 1.37, 1.58, -2.61);

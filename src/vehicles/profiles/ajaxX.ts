@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 // Independent procedural reconstruction of the owner's long-skirt Ajax fit.
@@ -264,7 +265,7 @@ function hullSideArmor(P: TankBuilderPort): void {
     }
     rearFlap(P,side);
     P.addEquipment('hullDetail',box(.27,.17,.13),side*1.47,1.55,3.13,-.13);
-    P.addEquipment('hullGlass',cylZ(.057,.02,P.q?20:10),side*1.47,1.56,3.207);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.057,.02,P.q?20:10), 'headlight'),side*1.47,1.56,3.207);
     // Object_10's towing eyes stand in YZ planes below the sloped bow.
     P.addEquipment('hullDetail',torus(.073,.036,P.q?18:10,7)
       .rotateZ(Math.PI/2).scale(1,1,1.147),side*1.0395,1.309,3.188);

@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Independent Japanese Type 89 X; the upgraded Light Tiger remains unchanged.
 // All stock is authored here; the local source is only a measurement oracle.
 import * as THREE from 'three';
@@ -40,7 +41,7 @@ function hull(P: TankBuilderPort): void {
     P.addMudguard(`type89-rear-${side}`,'hullRubber',box(.45,.37,.035),side*1.34,.89,-3.19,.10);
     P.addEquipment('hullDetail',box(.32,.10,.18),side*1.33,1.31,3.10);
     P.addEquipment('hullDark',cylZ(.073,.045,16),side*1.34,1.28,3.185);
-    P.addEquipment('hullGlass',cylZ(.054,.008,16),side*1.34,1.28,3.210);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.054,.008,16), 'headlight'),side*1.34,1.28,3.210);
     for(const z of [-2.82,.64,2.42])KIT.liftEye(P,'hullDetail',side*1.27,z>1?1.46:1.84,z);
   }
   // Engine left of the driver's tandem access covers (vehicle +X is right).

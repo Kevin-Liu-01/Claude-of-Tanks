@@ -8684,6 +8684,12 @@ function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
     P.add('hullDetail', box(0.16, 0.028, 0.16), 0.35, 1.386, 3.15);
   };
   buildLeo2RevolutionHullStage2();              // pedestal cap (top 1.40 = ref 1.400-1.404 cols)
+  // Prototype's driving lamps sit on the bow shoulders, below the gun sweep.
+  for (const side of [-1, 1]) {
+    P.addEquipment('hullDetail', box(.22, .12, .20), side * .80, 1.36, 3.37);
+    P.addEquipment('hullGlass', markVehicleNightLens(box(.15, .07, .012), 'headlight'),
+      side * .80, 1.36, 3.477);
+  }
   // (§B5 DE-FUSION r16: the r14 clamp front A-leg at 2.02 died with the vlo
   // bake — its 2.028@3.43 hull-row target was bake content; the honest
   // chassis line there is the falling beak 1.29-1.33.)

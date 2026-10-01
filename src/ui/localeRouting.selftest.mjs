@@ -46,8 +46,8 @@ assert.equal(synchronizeLocaleRoute('zh-CN', {
 const routeIds = new Set(PUBLIC_ROUTE_RECORDS.map(({ id }) => id));
 assert.equal(routeIds.size, PUBLIC_ROUTE_RECORDS.length, 'public route ids must remain unique');
 for (const route of PUBLIC_ROUTE_RECORDS) {
-  assert.ok(readFileSync(join(ROOT, route.sourceHtml), 'utf8'), `${route.sourceHtml} must exist`);
-  const source = renderProductStats(readFileSync(join(ROOT, route.sourceHtml), 'utf8'));
+  assert.ok(readFileSync(join(ROOT, route.sourceHtml === 'index.html' || route.sourceHtml === '404.html' ? route.sourceHtml : `site/${route.sourceHtml}`), 'utf8'), `${route.sourceHtml} must exist`);
+  const source = renderProductStats(readFileSync(join(ROOT, route.sourceHtml === 'index.html' || route.sourceHtml === '404.html' ? route.sourceHtml : `site/${route.sourceHtml}`), 'utf8'));
   const localized = localizeHtmlDocument(source, route, 'zh-CN');
   assert.match(localized, /<html\b[^>]*lang="zh-CN"/i, `${route.id} needs canonical HTML language`);
   assert.match(localized, new RegExp(`<title>${route.id === 'notFound' ? '未找到路线' : '[^<]+'}`),

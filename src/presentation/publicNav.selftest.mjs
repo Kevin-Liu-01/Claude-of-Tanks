@@ -10,22 +10,22 @@ import {
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const pages = [
-  ['home.html', '/home'],
-  ['gallery.html', '/gallery'],
-  ['docs.html', '/docs'],
-  ['docs-topic.html', '/docs'],
-  ['docs-build.html', '/docs'],
-  ['docs-models.html', '/docs'],
-  ['docs-simulation.html', '/docs'],
-  ['docs-vehicles.html', '/docs'],
-  ['docs-rendering.html', '/docs'],
-  ['docs-performance.html', '/docs'],
-  ['docs-worlds.html', '/docs'],
-  ['docs-ai.html', '/docs'],
-  ['docs-multiplayer.html', '/docs'],
-  ['docs-audio.html', '/docs'],
-  ['docs-interface.html', '/docs'],
-  ['docs-studio.html', '/docs'],
+  ['site/home.html', '/home'],
+  ['site/gallery.html', '/gallery'],
+  ['site/docs.html', '/docs'],
+  ['site/docs-topic.html', '/docs'],
+  ['site/docs-build.html', '/docs'],
+  ['site/docs-models.html', '/docs'],
+  ['site/docs-simulation.html', '/docs'],
+  ['site/docs-vehicles.html', '/docs'],
+  ['site/docs-rendering.html', '/docs'],
+  ['site/docs-performance.html', '/docs'],
+  ['site/docs-worlds.html', '/docs'],
+  ['site/docs-ai.html', '/docs'],
+  ['site/docs-multiplayer.html', '/docs'],
+  ['site/docs-audio.html', '/docs'],
+  ['site/docs-interface.html', '/docs'],
+  ['site/docs-studio.html', '/docs'],
 ];
 const expectedLinks = [
   ['/home', 'Home'],
@@ -225,7 +225,7 @@ assert.match(garageSource,
 assert.doesNotMatch(garageSource, /data-github-stars[^>]*>\s*\d+\s*<\/span>/,
   'garage GitHub control must not ship a stale numeric fallback');
 
-for (const file of ['home.html', 'docs.html']) {
+for (const file of ['site/home.html', 'site/docs.html']) {
   const html = readFileSync(join(ROOT, file), 'utf8');
   const repositoryLinks = [...html.matchAll(/<a[^>]+href="https:\/\/github\.com\/Kevin-Liu-01\/(?:Claude-of-Tanks|claude-of-tanks)"[^>]*>([\s\S]*?)<\/a>/g)];
   assert.ok(repositoryLinks.length >= 2, `${file} must retain navbar and footer repository controls`);

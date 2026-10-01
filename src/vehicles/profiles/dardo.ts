@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Dardo production IFV: HITFIST 25 turret and six-wheel Italian chassis.
 // Dimensions and photographed equipment: docs/references/batches/europe-ifvs-20260925.md.
 import { KIT } from './kit.ts';
@@ -31,7 +32,7 @@ function buildHull(P: TankBuilderPort): void {
     P.addMudguard(`dardo-front-${side}`, 'hullRubber', box(.47,.30,.027), side*1.255,1.07,3.23,-.62);
     P.addMudguard(`dardo-rear-${side}`, 'hullRubber', box(.46,.30,.026), side*1.255,.83,-3.22,.17);
     P.addEquipment('hullDetail', box(.30,.23,.24), side*1.15,1.37,2.97);
-    P.addEquipment('hullGlass', cylZ(.070,.016,16), side*1.15,1.39,3.095);
+    P.addEquipment('hullGlass', markVehicleNightLens(cylZ(.070,.016,16), 'headlight'), side*1.15,1.39,3.095);
     P.addEquipment('hullDetail', box(.29,.045,.25), side*1.15,1.505,2.99);
     for (const z of [-2.52,-1.69]) P.addHatch('hull',box(.77,.032,.67),side*.75,1.772,z);
     // Stern stowage rails are attached at every upright, not floating wires.

@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { weaponAssembly } from './weaponStock.ts';
 import * as THREE from 'three';
@@ -65,7 +66,7 @@ function addAftSideLampsAndTowEyes(P: TankBuilderPort, side: number): void {
     equipment(P, 'hull', 'Detail', box(.442, .026, .045), side * 1.390, 1.173, 3.680);
     equipment(P, 'hull', 'Detail', box(.442, .027, .052), side * 1.390, 1.327, 3.677);
     equipment(P, 'hull', 'Detail', cylZ(.068, .036, P.q ? 20 : 12), side * 1.399, 1.260, 3.687);
-    equipment(P, 'hull', 'Glass', cylZ(.054, .006, P.q ? 20 : 12), side * 1.399, 1.260, 3.708);
+    equipment(P, 'hull', 'Glass', markVehicleNightLens(cylZ(.054, .006, P.q ? 20 : 12), 'headlight'), side * 1.399, 1.260, 3.708);
     equipment(P, 'hull', 'Detail', box(.052, .20, .055), side * 1.608, 1.405, 3.678);
     // Upright fore/aft towing eyes retain real air and their measured brackets.
     equipment(P, 'hull', 'Detail', box(.056, .10, .067), side * .940, .867, 3.490);

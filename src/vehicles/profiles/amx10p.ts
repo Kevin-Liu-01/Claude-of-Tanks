@@ -1,3 +1,4 @@
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // AMX-10P boat hull, Toucan II and Dragar: authored from photographic studies.
 // Dimensions and configuration boundaries: docs/references/batches/amx10p-20260928.md.
 import { KIT } from './kit.ts';
@@ -25,7 +26,7 @@ function buildHull(P: TankBuilderPort, upgraded: boolean): void {
     P.addMudguard(`amx10p-front-${side}`, 'hullRubber', box(.40, .23, .025), side*1.20,1.12,2.73,-.56);
     P.addMudguard(`amx10p-rear-${side}`, 'hullRubber', box(.40,.25,.025),side*1.20,.83,-2.78,.18);
     P.addEquipment('hullDetail', box(.23,.20,.23), side*1.12,1.62,2.17);
-    P.addEquipment('hullGlass', cylZ(.060,.015,14),side*1.12,1.64,2.292);
+    P.addEquipment('hullGlass', markVehicleNightLens(cylZ(.060,.015,14), 'headlight'),side*1.12,1.64,2.292);
     P.addEquipment('hullDetail',box(.26,.025,.28),side*1.12,1.735,2.19);
     // Vertical hull stiffeners and their paired footings are a defining feature.
     for (let i=0;i<9;i++) {

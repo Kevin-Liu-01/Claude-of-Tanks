@@ -72,9 +72,10 @@ function requestedVehicleFixtures(args) {
   const argument = args.find(value => value.startsWith('--vehicle-fixtures='));
   if (argument === undefined) return [];
   const ids = argument.slice('--vehicle-fixtures='.length).split(',');
-  const supported = ['m1a3', 'mbt70', 't90m', 't90m_proryv'];
+  const supported = ['m1a3', 'mbt70', 't90m', 't90m_proryv',
+    'namer_ifv', 'leo2_revolution_proto', 'cv90_x', 'm1a2_x'];
   assert(ids.length <= 4 && new Set(ids).size === ids.length && ids.every(id => supported.includes(id)),
-    'Vehicle fixture suite requires unique canonical repair IDs: m1a3, mbt70, t90m, t90m_proryv');
+    `Vehicle fixture suite requires up to four unique canonical repair IDs: ${supported.join(', ')}`);
   return ids;
 }
 
@@ -633,7 +634,7 @@ function lightingReceipt(state) {
 }
 
 function clearWeatherState(state) {
-  return state.weather?.version === 2 && state.weather.condition === 'clear'
+  return state.weather?.version === 4 && state.weather.condition === 'clear'
     && state.weather.precipitationIntensity === 0 && state.weather.cloudOpacityMultiplier === 1
     && state.weather.fogDensityMultiplier === 1 && !state.precipitationAttached;
 }
@@ -652,17 +653,21 @@ function requestedScenarios(row, states) {
 
 function validNightLightState(state, requirePlayerHeadlights = true) {
   const pool = state.nightLighting;
-  if (!pool?.ownerAvailable || pool.lights.length > 3 || pool.lights.some(light => light.castShadow || light.shadowMap
-    || !Number.isFinite(light.intensity) || light.intensity < 0)) return false;
-  if (state.weather?.timeOfDay !== 'night') {
-    return !pool.attached && pool.emitterCount === 0 && pool.lights.every(light => light.intensity === 0);
-  }
-  return pool.attached && pool.emitterCount > 0
-    && pool.lights.filter(light => light.kind === 'spot').length === 2
-    && pool.lights.filter(light => light.kind === 'point').length === 1
-    && (!requirePlayerHeadlights || pool.playerCoverage?.headlights > 0
-      && pool.lights.some(light => light.kind === 'spot' && light.intensity > 0)
-      && pool.materials.some(material => material.masked && material.intensity >= 3));
+  if (state.phase === 'garage') return !!pool?.ownerAvailable && !pool.attached && pool.emitterCount === 0
+    && pool.lights.every(light => light.intensity === 0);
+  // The current battle owner keeps the fixed pool prepared in daylight so
+  // manually toggling lamps cannot compile a new lighting shader mid-frame.
+  const spots = state.preset === 'mobile' ? 2 : 4, points = state.preset === 'mobile' ? 1 : 2;
+  if (!pool?.ownerAvailable || !pool.attached || pool.emitterCount <= 0
+    || pool.lights.length !== spots + points
+    || pool.lights.filter(light => light.kind === 'spot').length !== spots
+    || pool.lights.filter(light => light.kind === 'point').length !== points
+    || pool.lights.some(light => light.castShadow || light.shadowMap
+      || !Number.isFinite(light.intensity) || light.intensity < 0)) return false;
+  if (state.weather?.timeOfDay !== 'night') return pool.lights.every(light => light.intensity === 0);
+  return !requirePlayerHeadlights || pool.playerCoverage?.headlights > 0
+    && pool.lights.some(light => light.kind === 'spot' && light.intensity > 0)
+    && pool.materials.some(material => material.masked && material.intensity >= 3);
 }
 
 function checkNightLightingCycle(row, states, requirePlayerHeadlights = true) {

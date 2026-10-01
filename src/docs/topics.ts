@@ -257,6 +257,17 @@ export const topics: Record<string, TopicDefinition> = {
   },
 };
 
+// Practical field guides follow the original technical anchors.
+const guideCounts: Record<string, number> = {"vehicles": 3, "simulation": 6, "worlds": 1, "interface": 2, "ai": 2, "rendering": 1, "performance": 1, "studio": 1};
+for (const [slug, count] of Object.entries(guideCounts)) {
+  const topic = topics[slug];
+  const guides: TopicSection[] = Array.from({length: count}, (_, i) => [
+    t(`docs.guide.${slug}.${i + 1}.t`), t(`docs.guide.${slug}.${i + 1}.p1`), t(`docs.guide.${slug}.${i + 1}.p2`),
+  ]);
+  topic.sections = [...topic.sections, ...guides];
+  topic.sectionIcons = [...topic.sectionIcons, ...guides.map(() => topic.icon)];
+}
+
 function mediaFigure([src, caption]: TopicMedia): string {
   return `<figure class="topic-figure"><img src="${src}" alt="${caption}" loading="lazy"><figcaption>${caption}</figcaption></figure>`;
 }
@@ -290,8 +301,12 @@ function renderTopicPage(): void {
   root.innerHTML = `
     <header class="topic-hero">${heroMarkup}<div class="topic-hero-shade"></div><div class="shell"><p class="topic-kicker"><span data-doc-icon="${topic.icon}"></span><span>${t('docs.topic.kicker', { label: topic.label })}</span></p><h1>${topic.title}</h1><p>${topic.lede}</p></div></header>
     <nav class="topic-nav" aria-label="${t('docs.topic.navAria')}"><div class="shell"><a href="/docs"><span class="topic-nav-icon" data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${topicNav}</div></nav>
-    <div class="shell topic-layout"><article><nav class="topic-section-map" aria-label="${t('docs.topic.onThisPage')}">${sectionMap}</nav>${topic.sections.map((section, index) => sectionMarkup(section, index, topic.sectionIcons[index] || topic.icon, topic.media[index === 1 ? 0 : index === 3 ? 1 : -1])).join('')}</article><aside><span class="topic-aside-icon" data-doc-icon="${topic.icon}"></span><p>${t('docs.topic.asideKicker')}</p><strong>${topic.label}</strong><span>${t('docs.topic.asideBody')}</span><a href="/docs">${t('docs.topic.asideLink')}</a></aside></div>`;
+    <div class="shell topic-layout"><article><nav class="topic-section-map" aria-label="${t('docs.topic.onThisPage')}">${sectionMap}${['vehicles','worlds','simulation'].includes(slug) ? `<a href="#reference"><strong>${t(`docs.reference.${slug}.title`)}</strong></a>` : ''}</nav>${topic.sections.map((section, index) => sectionMarkup(section, index, topic.sectionIcons[index] || topic.icon, topic.media[index === 1 ? 0 : index === 3 ? 1 : -1])).join('')}</article><aside><span class="topic-aside-icon" data-doc-icon="${topic.icon}"></span><p>${t('docs.topic.asideKicker')}</p><strong>${topic.label}</strong><span>${t('docs.topic.asideBody')}</span><a href="/docs">${t('docs.topic.asideLink')}</a></aside></div>`;
   mountDocsIcons(root);
+  const article = root.querySelector<HTMLElement>('article');
+  if (article && ['vehicles', 'worlds', 'simulation'].includes(slug)) {
+    void import('./reference.ts').then(({mountReference}) => mountReference(article, slug));
+  }
 
   const navStrip = root.querySelector<HTMLElement>('.topic-nav .shell');
   const activeTopic = navStrip?.querySelector<HTMLElement>('[aria-current="page"]');
