@@ -30,3 +30,11 @@ Displayed Leopard 2A7V (`leo2a7v_x`), Leopard 2A6M (`leo2a6m_x`), Leopard 2A5M (
 Receipts: `.qa-dev/leopard-mantlets/qualification.json`, `existing-leopard-final.log`, `preservation.log`, `opening-test.log`, and `release.log`. Initial failed attempts remain in their original logs. Actual 1280×900 garage images and nine-view gallery: `.qa-dev/leopard-mantlets/review.html`.
 
 No commit, push or deployment performed for this repair. Earlier national-modernization work is preserved in this worktree.
+
+## Main integration — 2026-10-01
+
+After the local-only status and missing-reference blockers were explicitly reported, the owner instructed “get it on my main.” This authorizes publishing both batches with those limitations retained. The batch was committed and rebased onto origin/main at 10109cdbb; only fleet-count documentation needed conflict resolution. Main’s 33 maps, seven modes, lighting, multiplayer, and UI changes are preserved. Full post-rebase tests and production build are recorded separately; this authorization does not convert unavailable comparison results into passes.
+
+Post-rebase verification: type checking and public build passed. Full npm test was attempted with a bounded heap, then stopped after the first 57 registered tests to investigate failures (not a full-suite pass). The 217-vehicle demand-load sweep and wheel/track quality passed. Two new-fleet expectation failures (205 versus 217 roles, missing 12 concept IDs) were corrected and rerun successfully. The TOS donor hash and supplied-source armor-registration failures reproduce identically on clean main 10109cdbb in an isolated checkout: same T-90MS hash and same AFT-10 permanent plate count 10 versus 15. They remain upstream failures, not waived passes.
+
+Post-rebase focused tests pass: tactical roles, exact concept authorization, national modernization, existing Leopard geometry, 810 opening rays / 54 poses, manual reference, product counts, roster policy and AFV balance. Regenerated main’s newly introduced auxiliary inventory and manual catalog for all 217 vehicles; all 12 concepts have one 12.7 mm remote station and driving lights. Logs: `.qa-dev/leopard-mantlets/integration-results.json`, `post-rebase-tests.log`, `integrated-main-donor.log`, `integrated-main-armor.log`, and `publish-final-build.log`.

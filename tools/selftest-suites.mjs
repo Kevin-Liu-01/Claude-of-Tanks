@@ -371,7 +371,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t90XEraBindings.selftest.mjs',
     'src/vehicles/profiles/t90AXFenderClosures.selftest.mjs',
     'src/vehicles/profiles/leopardX.selftest.mjs',
-  'src/vehicles/profiles/leopardGunOpening.selftest.mjs',
+    'src/vehicles/profiles/leopardGunOpening.selftest.mjs',
     'src/vehicles/profiles/leopardA5XDetails.selftest.mjs',
     'src/vehicles/profiles/t90XGeometry.selftest.mjs',
     'src/vehicles/profiles/t90AXGun.selftest.mjs',
