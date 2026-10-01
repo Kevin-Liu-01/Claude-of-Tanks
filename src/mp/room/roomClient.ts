@@ -647,19 +647,28 @@ export class RoomClient {
     this.roomCode = code;
     this.setPhase('connecting', kind);
     this.openTransport(code);
-    await this.waitForOpen();
+    // 2026-09-30 (lane mp/ui-sync-check): a first admission is bounded by the request timeout. A room host that never opens
+    // its socket (the service down, a dead port) used to be reported only when the transport's 60 s reconnect window ran
+    // out — "Creating room…" for a minute before "Room service unavailable" (65 s measured in the walk); a resume after a
+    // blip keeps the whole window (transportChanged), this is the create / join path alone.
+    await this.waitForOpen(this.requestTimeoutMs);
     return this.admit(kind, { ...payload, roomCode: code });
   }
 
-  private waitForOpen(): Promise<void> {
+  private waitForOpen(timeoutMs: number): Promise<void> {
     const transport = this.transport;
     if (!transport) return Promise.reject(new RoomError('internal', 'no transport'));
     if (transport.state === 'open') return Promise.resolve();
     return new Promise((resolve, reject) => {
+      let timer: unknown = null;
+      const settle = (): void => { if (timer !== null) this.clearTimer(timer); timer = null; off(); };
       const off = transport.onState((change) => {
-        if (change.state === 'open') { off(); resolve(); }
-        else if (change.state === 'closed') { off(); reject(new RoomConnectError(change.reason ?? 'closed')); }
+        if (change.state === 'open') { settle(); resolve(); }
+        else if (change.state === 'closed') { settle(); reject(new RoomConnectError(change.reason ?? 'closed')); }
       });
+      if (timeoutMs > 0 && Number.isFinite(timeoutMs)) {
+        timer = this.setTimer(() => { timer = null; off(); reject(new RoomConnectError('timeout')); }, timeoutMs);
+      }
     });
   }
 

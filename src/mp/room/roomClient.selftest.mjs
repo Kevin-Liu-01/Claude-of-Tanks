@@ -4,7 +4,7 @@
 // refused, admin migration on leave, a lost match, rematch, leave.
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
-import { RoomClient } from './roomClient.ts';
+import { RoomClient, RoomConnectError } from './roomClient.ts';
 import { RoomError } from './protocol.ts';
 import { createRoomsServer } from '../../../server/rooms/serve.ts';
 import { silentLogger } from '../../../server/match/log.ts';
@@ -240,6 +240,34 @@ try {
     assert.equal(lost.lastClosedReason, 'room_unreachable');
     assert.ok(phases.includes('reconnecting'), 'the interruption was surfaced first');
     assert.equal(lost.phase, 'closed');
+  }
+
+  // ---- a first admission against a room host that never opens its socket (the service down, a dead port) ends within the
+  // request timeout as `room_unreachable` — not after the transport's 60 s reconnect window (lane mp/ui-sync-check,
+  // 2026-09-30: "Creating room…" sat for 65 s before "Room service unavailable" in the browser walk); nothing is left open
+  {
+    const { createServer } = await import('node:net');
+    const deadPort = await new Promise((resolve, reject) => { const probe = createServer(); probe.once('error', reject); probe.listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => resolve(port)); }); });
+    const sockets = [];
+    const dead = new RoomClient({
+      endpoint: `ws://127.0.0.1:${deadPort}`, player: { id: 'dead', name: 'Dead' }, storage: memory(), clientBuild: 'receipt', pingIntervalMs: 0, requestTimeoutMs: 400,
+      transport: { createSocket: (url) => { const ws = new WebSocket(url); ws.on('error', () => {}); sockets.push(ws); return ws; }, reconnect: { initialDelayMs: 20, maxDelayMs: 40, factor: 1, jitterFraction: 0, windowMs: 60_000, attemptTimeoutMs: 300 } },
+    });
+    clients.push(dead);
+    const startedAt = Date.now();
+    await assert.rejects(dead.create({ mode: 'private', selection: { specId: 'm1a2' } }), (error) => error instanceof RoomConnectError && error.code === 'room_unreachable' && error.transportReason === 'timeout');
+    const tookMs = Date.now() - startedAt;
+    assert.ok(tookMs < 5_000, `the admission gave up in ${tookMs} ms, inside the request timeout, not the 60 s window`);
+    assert.equal(dead.phase, 'idle', 'the failed create leaves the client idle');
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    assert.ok(sockets.every((ws) => ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING), 'no socket keeps retrying after the refusal');
+    // a join against the dead host takes the same bounded path
+    const deadJoin = new RoomClient({
+      endpoint: `ws://127.0.0.1:${deadPort}`, player: { id: 'dead2', name: 'Dead Two' }, storage: memory(), clientBuild: 'receipt', pingIntervalMs: 0, requestTimeoutMs: 400,
+      transport: { createSocket: (url) => { const ws = new WebSocket(url); ws.on('error', () => {}); return ws; }, reconnect: { initialDelayMs: 20, maxDelayMs: 40, factor: 1, jitterFraction: 0, windowMs: 60_000, attemptTimeoutMs: 300 } },
+    });
+    clients.push(deadJoin);
+    await assert.rejects(deadJoin.join({ roomCode: 'ABCDEF' }), (error) => error instanceof RoomConnectError && error.transportReason === 'timeout');
   }
   console.log('roomClient: PASS');
 } finally {
