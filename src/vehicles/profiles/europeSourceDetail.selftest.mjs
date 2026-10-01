@@ -51,8 +51,12 @@ for (const quality of ['high','low']) for (const id of ids) {
       assert.equal(weapon.geometry.attributes.position.count/3,quality==='high'?172:140,
         'one original receiver and tube, with no added proxy or duplicate weapon');
       assert.equal(weapon.parent.isLOD,true);
-      assert.equal(weapon.parent.levels[1].distance,quality==='high'?150:64,
-        'source weapon retains the previous turret-detail distance reduction');
+      assert.equal(weapon.parent.levels[1].distance,Infinity,
+        'working roof weapon stays present beyond cosmetic detail ranges');
+      const distantCamera = new THREE.PerspectiveCamera();
+      distantCamera.position.set(0, 0, 720); distantCamera.updateMatrixWorld(true);
+      weapon.parent.update(distantCamera);
+      assert.equal(weapon.visible, true, 'actual distant LOD update retains the working weapon');
       roofGunDisposals={count:0};
       weapon.geometry.addEventListener('dispose',()=>roofGunDisposals.count++);
       for(const side of [-1,1]) for(const dx of [-.0657,.0657]) {

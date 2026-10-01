@@ -129,7 +129,8 @@ async function nativeChild(reference) {
         assert.ok(groups.length > 0);
         a.syncFromState(createTankState(getSpec(id), new THREE.Vector3(), 0), 0, 150);
         assert.ok(groups.every(group => group.parent === null), 'far detail really leaves the scene');
-        assert.ok([...first.values()].some(record => !a.root.getObjectById(record.mesh.id)), 'fitting buffer lives in detached detail');
+        assert.ok([...first.values()].every(record => a.root.getObjectById(record.mesh.id)),
+          'working fittings remain resident while cosmetic detail detaches');
         detachedCases++;
       }
     }
