@@ -88,11 +88,16 @@ const BEFORE=[
 // fitting now projects its camo at the fleet constant 0.5 repeats/m and the first bake reads the pattern stream, so
 // the uv attributes and material descriptors inside these payloads moved again (gun and other alike); positions and
 // gun ownership are unchanged — re-based on the round-35 staged tree.
+// 2026-09-30: marking the existing headlamp faces adds nightEmissionMask and
+// the night-light material hook to the non-gun payload. Physical attributes,
+// transforms and paint match 7e9efd1a490a978625546119d94efb3ca3af8cd1
+// at HIGH/LOW (vehicleNightLighting --fleet baseline comparison). Keep hashing
+// the complete new payload; the unchanged gun fingerprints remain above.
 const NATIVE_OTHER_BEFORE = [
- '4807ea719e065098c3dbf7715449f7b04c504cde5e783b9a7dc5802e7b4e9142' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m (camoWorldScale.ts) — uv attributes move on every mesh outside the gun too */,
- 'c3ab8dd47c769b82a0c3ba0da01c6b1a8d95bf983b0c8582ec68bf209469e618',
- 'eab76c184cc1a641dcc1e3fc86d315eca40b704822e433cd936d5825af3be966',
- '8e1c883ea3b9c6192df0e6f9f024895eae9697e3eda6ed615cf3669ae969f595',
+ '0a7bf0951f8e444ddb359b8d4f03eab5d0aeb82eec96b21610396b5e377a7d04' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m (camoWorldScale.ts) — uv attributes move on every mesh outside the gun too */,
+ 'c81bccf8a609e83220aa5579e44d2ef738f589a71e11621502176ac2febf9eb0',
+ 'e492d2c466cdb69066988059f65888803434bcdf50df62b35f6cb7aa7974bf92',
+ 'f03a74ff5447541d2ef8aafa31a18fb8d4e9a08b149050554bf4a9f9c72ead84',
 ];
 
 const near=(a,b,label,eps=1e-6)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=eps,`${label}: ${a} vs ${b}`);
