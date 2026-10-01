@@ -240,10 +240,10 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
     'sectors sit at 25/55/85 % of the way from the alpha centre to the bravo centre');
   assert.equal(match.state.horde.wave, 1);
   assert.equal(enemies.filter((target) => target.modeActive !== false).length, 3, 'wave 1 fields three defenders');
-  assert.deepEqual(match.botTarget(ally), { x: match.state.zones[0].x, z: match.state.zones[0].z },
+  assert.deepEqual(match.botTarget(ally), { x: match.state.zones[0].x, z: match.state.zones[0].z, mission: 'assault' },
     'attackers push for the live sector');
   const defender = enemies.find((target) => target.modeActive !== false);
-  assert.deepEqual(match.botTarget(defender), { x: match.state.zones[0].x, z: match.state.zones[0].z },
+  assert.deepEqual(match.botTarget(defender), { x: match.state.zones[0].x, z: match.state.zones[0].z, mission: 'assault' },
     'defenders fall back on the live sector when no attacker is closer');
   let timeS = 0;
   const hold = (seconds) => {
@@ -420,4 +420,61 @@ for (const mode of ['zone_control','mars','standard','capture_the_flag','turbo_b
   match.step(0,101);match.step(0,200);
   b.combat.destroyed=true;match.recordDestruction(b.id,a.id);
   assert.deepEqual(match.step(0,201),{result:'alpha',reason:'score_limit'});
+}
+
+// Each mission needs a formation, not a team-sized pile at one point.
+{
+  const bots = Array.from({length: 9}, (_, i) => entity(`squad-${i}`, 'alpha', i * 2, -100, {bot: true}));
+  const enemy = entity('opponent', 'bravo', 0, 100);
+  const {match} = controller('zone_control', [...bots, enemy]);
+  const targets = new Set(bots.map(bot => JSON.stringify(match.botTarget(bot))));
+  assert.ok(targets.size >= 2, 'a squad allocates capture pressure across more than one zone');
+}
+
+{
+  const carrier=entity('carrier','alpha',0,-100,{bot:true});
+  const rescue=entity('rescue','alpha',10,-100,{bot:true});
+  const bravo=entity('thief','bravo',0,100,{bot:true});
+  const {match}=controller('capture_the_flag',[carrier,rescue,bravo]);
+  const own=match.state.flags.find(f=>f.team==='alpha'), stolen=match.state.flags.find(f=>f.team==='bravo');
+  stolen.status='carried';stolen.carrierId=carrier.id;stolen.x=0;stolen.z=70;
+  own.status='dropped';own.x=40;own.z=-20;
+  assert.deepEqual(match.botTarget(carrier),{x:own.baseX,z:own.baseZ,mission:'carrier'},'carrier heads home, not toward another flag');
+  assert.deepEqual(match.botTarget(rescue),{x:40,z:-20,mission:'recover'},'another bot recovers the dropped home flag');
+}
+{
+  const striker=entity('striker','alpha',0,-100,{bot:true});
+  const enemy=entity('other','bravo',0,100,{bot:true});
+  const {match}=controller('turbo_ball',[striker,enemy]);
+  const ball=match.state.ball, goal=match.state.goals.find(g=>g.team==='bravo');
+  const dz=Math.sign(goal.z-ball.z);
+  striker.state.pos.x=ball.x;striker.state.pos.z=ball.z+dz*20;
+  const approach=match.botTarget(striker);
+  assert.ok((approach.z-ball.z)*dz<0,'a striker on the wrong side circles behind the ball');
+  striker.state.pos.z=ball.z-dz*25;
+  const push=match.botTarget(striker);
+  assert.ok((push.z-ball.z)*dz>0,'an aligned striker drives through the ball toward the enemy goal');
+}
+
+{
+  const bots = Array.from({length: 7}, (_, i) => entity(`roles-${i}`, 'alpha', i * 12, -100, {bot: true}));
+  const {match} = controller('capture_the_flag', [...bots, entity('enemy-base', 'bravo', 0, 100)]);
+  const jobs = bots.map(bot => match.botObjective(bot));
+  assert.ok(jobs.some(job => job.mission === 'raid') && jobs.some(job => job.mission === 'defend'),
+    'flag team retains home defense while sending separated raiders');
+  const flag = match.state.flags.find(f => f.team === 'bravo');
+  flag.status = 'carried'; flag.carrierId = bots[0].id;
+  const escorts = bots.slice(1).map(bot => match.botObjective(bot)).filter(job => job.mission === 'escort');
+  assert.equal(escorts.length, 2);
+  assert.ok(Math.hypot(escorts[0].x - escorts[1].x, escorts[0].z - escorts[1].z) > 30,
+    'escorts cover opposite sides of the carrier instead of blocking its hull');
+}
+{
+  const bots = Array.from({length: 6}, (_, i) => entity(`ball-role-${i}`, 'alpha', i * 10, -80, {bot: true}));
+  const {match} = controller('turbo_ball', [...bots, entity('goalkeeper', 'bravo', 0, 100)]);
+  const jobs = bots.map(bot => match.botObjective(bot));
+  assert.equal(jobs.filter(job => job.mission === 'striker').length, 1, 'one committed ball striker');
+  assert.equal(jobs.filter(job => job.mission === 'screen').length, 5, 'teammates cover lanes');
+  assert.ok(new Set(jobs.map(job => `${job.x.toFixed(1)}:${job.z.toFixed(1)}`)).size >= 3,
+    'screening positions spread across the field');
 }

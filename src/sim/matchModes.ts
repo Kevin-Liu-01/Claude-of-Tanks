@@ -155,6 +155,9 @@ interface MatchModeControllerOptions<Entity extends MatchModeEntity>
   ruleset?: MatchRuleset;
 }
 
+export type BotMission = 'carrier' | 'recover' | 'escort' | 'raid' | 'defend' | 'striker' | 'screen' | 'capture' | 'assault';
+interface BotDestination { x: number; z: number; mission?: BotMission }
+
 interface TeamScore { alpha: number; bravo: number }
 
 interface FlagState {
@@ -262,7 +265,7 @@ export interface MatchModeController<
     shooterId?: string }): boolean;
   botTarget(entity: Entity): { x: number; z: number } | null;
   /** The objective the bot's targets are ranked against: the same point with its capture reach. */
-  botObjective(entity: Entity): { x: number; z: number; radiusM: number } | null;
+  botObjective(entity: Entity): { x: number; z: number; radiusM: number; mission?: BotMission } | null;
   serialize(viewerId?: string | null): MatchModePresentationState;
 }
 
@@ -684,14 +687,11 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     return null;
   };
 
-  const assaultBotTarget = (entity: Entity, team: ObjectiveTeam): ObjectivePoint | null => {
+  const assaultBotTarget = (): ObjectivePoint | null => {
     const zone = liveLine();
     if (!zone) return null;
-    if (team === 'bravo') {
-      // Defenders hold the live sector unless an attacker is closer than it.
-      const nearest = hordeBotTarget(entity, team);
-      if (nearest && squaredDistance(entity, nearest.x, nearest.z) < squaredDistance(entity, zone.x, zone.z)) return nearest;
-    }
+    // Visible attackers are handled by local perception. Mission orders must
+    // not pull defenders toward the live position of an unspotted attacker.
     return { x: zone.x, z: zone.z };
   };
 
@@ -1061,25 +1061,138 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     };
   };
 
-  const flagBotTarget = (entity: Entity, team: ObjectiveTeam): ObjectivePoint | null => {
-    const carried = flagCarriedBy(entity.id);
-    if (carried) return { x: centers[team].x, z: centers[team].z };
+  const activeFriend = (friend: Entity, team: ObjectiveTeam): boolean =>
+    teamOf(friend) === team && friend.modeActive !== false && !friend.combat.destroyed;
+
+  function responderRank(entity: Entity, team: ObjectiveTeam, point: ObjectivePoint): number {
+    const ownDistance = squaredDistance(entity, point.x, point.z);
+    let ahead = 0;
+    for (const friend of teams[team]) {
+      if (friend === entity || !friend.bot || !activeFriend(friend, team) || flagCarriedBy(friend.id)) continue;
+      const distance = squaredDistance(friend, point.x, point.z);
+      if (distance < ownDistance || (distance === ownDistance && friend.id < entity.id)) ahead++;
+    }
+    return ahead;
+  }
+
+  const flagBotTarget = (entity: Entity, team: ObjectiveTeam): BotDestination | null => {
+    const home = centers[team];
+    if (flagCarriedBy(entity.id)) return { x: home.x, z: home.z, mission: 'carrier' };
+    const ownFlag = flagForTeam(team);
     const enemyFlag = flagForTeam(otherTeam(team));
-    return enemyFlag ? { x: enemyFlag.x, z: enemyFlag.z } : null;
+    if (!enemyFlag) return null;
+    let squadSize = 0;
+    for (const friend of teams[team]) if (friend.bot && activeFriend(friend, team)) squadSize++;
+    // Public flag markers supply interception information, never hidden tanks.
+    if (ownFlag && ownFlag.status !== 'home'
+        && responderRank(entity, team, ownFlag) < Math.min(2, Math.max(1, Math.ceil(squadSize / 3)))) {
+      return { x: ownFlag.x, z: ownFlag.z, mission: 'recover' };
+    }
+    const rank = responderRank(entity, team, enemyFlag);
+    const side = rank % 2 === 0 ? 1 : -1;
+    const dx = home.x - enemyFlag.x, dz = home.z - enemyFlag.z;
+    const length = Math.hypot(dx, dz) || 1, nx = dx / length, nz = dz / length;
+    if (enemyFlag.carrierId) {
+      if (rank < 2) return { x: enemyFlag.x + nx * 24 + nz * side * 22,
+        z: enemyFlag.z + nz * 24 - nx * side * 22, mission: 'escort' };
+      // Remaining teammates protect the return area, rather than chasing their
+      // carrier and trapping it in a pile of friendly hulls.
+      return { x: home.x - nx * 35 + nz * side * (18 + rank * 5),
+        z: home.z - nz * 35 - nx * side * (18 + rank * 5), mission: 'defend' };
+    }
+    if (squadSize >= 4 && rank >= Math.ceil(squadSize * .7)) {
+      return { x: home.x - nx * 28 + nz * side * 24,
+        z: home.z - nz * 28 - nx * side * 24, mission: 'defend' };
+    }
+    // One runner touches the flag; the other attackers approach on separated
+    // lanes until nearby. This opens crossfire without sacrificing the runner.
+    const offset = rank > 0 && squaredDistance(entity, enemyFlag.x, enemyFlag.z) > 70 ** 2 ? side * 32 : 0;
+    return { x: enemyFlag.x + nz * offset, z: enemyFlag.z - nx * offset, mission: 'raid' };
   };
 
-  const zoneBotTarget = (entity: Entity, team: ObjectiveTeam): ObjectivePoint | null => {
-    let best: ZoneState | null = null;
-    let bestDistance = Infinity;
-    for (const zone of zones) {
-      if (zone.owner === team) continue;
-      const distance = squaredDistance(entity, zone.x, zone.z);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        best = zone;
+  // Assignment is a once-per-second team task, not an O(team²) per-bot/per-tick
+  // search. Stable ID ordering and distance costs keep both authorities equal.
+  const zoneAssignments = new Map<string, ZoneState>();
+  let zoneAssignmentAt = -Infinity;
+  function assignZones(): void {
+    if (placementTimeS < zoneAssignmentAt + 1) return;
+    zoneAssignmentAt = placementTimeS;
+    zoneAssignments.clear();
+    for (const team of ['alpha', 'bravo'] as const) {
+      const assigned = new Map<ZoneState, number>();
+      for (const zone of zones) {
+        const humans = teams[team].filter(e => !e.bot && activeFriend(e, team)
+          && squaredDistance(e, zone.x, zone.z) < ZONE_RADIUS_M ** 2).length;
+        assigned.set(zone, humans);
+      }
+      const squad = teams[team].filter(e => e.bot && activeFriend(e, team)).sort((a, b) => a.id < b.id ? -1 : 1);
+      for (const bot of squad) {
+        let best: ZoneState | null = null, bestCost = Infinity;
+        for (const zone of zones) {
+          const cost = Math.sqrt(squaredDistance(bot, zone.x, zone.z)) + (assigned.get(zone) ?? 0) * 150
+            + (zone.owner === team && !zone.contested ? 300 : 0) - (zone.contested ? 120 : 0);
+          if (cost < bestCost) { best = zone; bestCost = cost; }
+        }
+        if (best) { zoneAssignments.set(bot.id, best); assigned.set(best, (assigned.get(best) ?? 0) + 1); }
       }
     }
+  }
+  const zoneBotTarget = (entity: Entity, team: ObjectiveTeam): ObjectivePoint | null => {
+    assignZones();
+    const assigned = zoneAssignments.get(entity.id);
+    if (assigned) return { x: assigned.x, z: assigned.z };
+    let best: ZoneState | null = null, bestDistance = Infinity;
+    for (const zone of zones) {
+      if (zone.owner === team && !zone.contested) continue;
+      const distance = squaredDistance(entity, zone.x, zone.z);
+      if (distance < bestDistance) { bestDistance = distance; best = zone; }
+    }
     return best ? { x: best.x, z: best.z } : null;
+  };
+
+  // A striker keeps its job for four seconds unless a teammate is substantially
+  // closer. This prevents two hulls swapping roles on every simulation tick.
+  const strikers = new Map<ObjectiveTeam, { id: string; untilS: number }>();
+  const ballBotTarget = (entity: Entity, team: ObjectiveTeam): BotDestination | null => {
+    if (!ball) return null;
+    const goal = goals.find(goal => goal.team !== team);
+    if (!goal) return null;
+    let closest: Entity | null = null, closestDistance = Infinity;
+    for (const friend of teams[team]) {
+      if (!friend.bot || !activeFriend(friend, team)) continue;
+      const distance = squaredDistance(friend, ball.x, ball.z);
+      if (distance < closestDistance || (distance === closestDistance && friend.id < (closest?.id ?? ''))) {
+        closest = friend; closestDistance = distance;
+      }
+    }
+    const previous = strikers.get(team), incumbent = previous ? entityById.get(previous.id) : null;
+    if (!incumbent || !activeFriend(incumbent, team) || placementTimeS >= previous!.untilS
+        || Math.sqrt(squaredDistance(incumbent, ball.x, ball.z)) > Math.sqrt(closestDistance) + 40) {
+      if (closest) strikers.set(team, { id: closest.id, untilS: placementTimeS + 4 });
+    }
+    const dx = goal.x - ball.x, dz = goal.z - ball.z, length = Math.hypot(dx, dz) || 1;
+    const nx = dx / length, nz = dz / length;
+    const bx = entity.state.pos.x - ball.x, bz = entity.state.pos.z - ball.z;
+    if (strikers.get(team)?.id !== entity.id) {
+      const own = centers[team], rank = responderRank(entity, team, ball);
+      const side = rank % 2 ? 1 : -1;
+      // Screen the passing lanes and cover the home goal, leaving the striker
+      // enough room to turn and hit the ball in the right direction.
+      const weight = rank <= 2 ? .7 : .3;
+      return { x: own.x * (1 - weight) + ball.x * weight + nz * side * 28,
+        z: own.z * (1 - weight) + ball.z * weight - nx * side * 28, mission: 'screen' };
+    }
+    const along = bx * nx + bz * nz, lateral = bx * nz - bz * nx;
+    // Go around from the wrong side, then line up centrally behind the ball.
+    // Keep pushing through contact: a six-metre arrival stop cannot be used
+    // as the destination when the ball itself needs a physical ram.
+    if (along > -7 || Math.abs(lateral) > 7) {
+      const side = lateral >= 0 ? 1 : -1;
+      const offset = along > -7 ? side * 16 : 0;
+      return { x: ball.x - nx * 20 + nz * offset,
+        z: ball.z - nz * 20 - nx * offset, mission: 'striker' };
+    }
+    return { x: ball.x + nx * 18, z: ball.z + nz * 18, mission: 'striker' };
   };
 
   const hordeBotTarget = (entity: Entity, team: ObjectiveTeam): ObjectivePoint | null => {
@@ -1098,21 +1211,27 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
 
   // bot philosophy r1 (owner 2026-09-17): enemies standing on the objective rank first for the bots
-  const botObjective = (entity: Entity): { x: number; z: number; radiusM: number } | null => {
+  const botObjective = (entity: Entity): { x: number; z: number; radiusM: number; mission?: BotMission } | null => {
     const point = botTarget(entity);
     if (!point) return null;
     const radiusM = objective === 'zone_control' || id === 'frontline_assault' ? ZONE_RADIUS_M
       : id === 'capture_the_flag' ? 20 : id === 'turbo_ball' ? 15 : 25;
-    return { x: point.x, z: point.z, radiusM };
+    return { ...point, radiusM };
   };
-  const botTarget = (entity: Entity): ObjectivePoint | null => {
+  const botTarget = (entity: Entity): BotDestination | null => {
     if (entity.modeActive === false || entity.combat.destroyed) return null;
     const team = teamOf(entity);
     if (id === 'capture_the_flag') return flagBotTarget(entity, team);
-    if (objective === 'zone_control') return zoneBotTarget(entity, team);
-    if (id === 'turbo_ball' && ball) return { x: ball.x, z: ball.z };
+    if (objective === 'zone_control') {
+      const point = zoneBotTarget(entity, team);
+      return point ? { ...point, mission: 'capture' } : null;
+    }
+    if (id === 'turbo_ball') return ballBotTarget(entity, team);
     if (id === 'endless_horde') return hordeBotTarget(entity, team);
-    if (id === 'frontline_assault') return assaultBotTarget(entity, team);
+    if (id === 'frontline_assault') {
+      const point = assaultBotTarget();
+      return point ? { ...point, mission: 'assault' } : null;
+    }
     return null;
   };
 

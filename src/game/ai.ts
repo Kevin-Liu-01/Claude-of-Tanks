@@ -23,7 +23,12 @@
  */
 
 import { Euler, Quaternion, Vector3 } from 'three';
+import type { BotMission } from '../sim/matchModes.ts';
+import { createBotAbilityPlanner, type BotAbilityContext } from './botAbilities.ts';
 import { computeDispersionRadM } from '../sim/movement.ts';
+import { createBotTerrainSafety } from '../sim/botTerrainSafety.ts';
+import type { RulesetPhysics } from '../sim/matchRuleset.ts';
+import type { NavigationBridgeDeck } from '../sim/bridgeDeckNavigation.ts';
 import { createNavigationLiquidSafety } from '../sim/navigationLiquidSafety.ts';
 import { solveBallisticGunLay } from '../sim/ballistics.ts';
 import { botNominalGunLaneClear } from '../sim/botGunLane.ts';
@@ -118,12 +123,14 @@ interface FriendlyFireRisk {
 interface AiController {
   update(dt: number, timeS: number): void;
   setWaypoints(points: Array<[number, number]>, options?: { loop?: boolean }): void;
-  notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'>): void;
+  notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'> & Partial<Pick<HitEvent, 'shellName'>>): void;
   notifyUnderFire(shooter: AiEntity, info?: HitReactionInfo): void;
   notifyPlayerFired(shooter: AiEntity, rank?: number): void;
   notifyFriendlyBlocked(risk: FriendlyFireRisk): void;
   /** Take (or clear) a commander's standing order; see AiOrder. */
   setOrder(order: AiOrder | null): void;
+  hasClearShot(targetId: string): boolean;
+  readonly terrainBlocked: boolean;
   readonly targetId: string | null;
   debugInfo(): AiControllerDebugInfo;
   state: string;
@@ -133,6 +140,10 @@ interface AiEntity {
   id: string;
   team: string;
   isPlayer?: boolean;
+  modeActive?: boolean;
+  modeJumpMps?: number | null;
+  modeGravityScale?: number;
+  modePhysics?: RulesetPhysics | null;
   spec: AiSpec;
   state: TankState;
   combat?: CombatState;
@@ -148,6 +159,7 @@ type ControllerOwnedEntity = AiEntity & {
 
 /** The mode's live objective for this bot's team (zone centre, flag, ball, sector). */
 interface AiObjective {
+  mission?: BotMission;
   x: number;
   z: number;
   radiusM: number;
@@ -266,6 +278,7 @@ export function chooseAiSupportActionBits(
 }
 
 interface AiObstacle {
+  kind?: string;
   min: [number, number, number];
   max: [number, number, number];
   shape2?: CollisionShape;
@@ -275,6 +288,7 @@ interface AiObstacle {
 
 interface AiHeightField {
   readonly navigationWaterPolicy?: 'avoid-liquid';
+  readonly bridgeDecks?: readonly NavigationBridgeDeck[];
   getWaterMaskAt?(x: number, z: number): number;
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
@@ -886,6 +900,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   const deps = opts.deps;
   const tier = selectDifficultyTier(opts.difficulty);
   const rng = selectRandomSource(opts.rng);
+  const abilities = createBotAbilityPlanner(entity.spec);
+  const abilityContext: BotAbilityContext = { hitBearing: 0, hitAtS: -Infinity, retreating: false, reloadS: 0, contactM: Infinity, safeJump: false };
+  const jumpOrigin = new Vector3(), jumpDirection = new Vector3();
   const supportContext: AiSupportContext = {
     safeToReloadMagazine: false,
     wantsSuspensionAim: false,
@@ -916,6 +933,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   const spec = entity.spec;
   const liquidSafe = createNavigationLiquidSafety(hf, spec);
+  const terrainSafety = createBotTerrainSafety(hf);
+  let terrainCheckAtS = -Infinity, terrainBlocked = false;
+  let terrainAvoidUntilS = -Infinity, terrainEscapeYaw = 0;
   // BATTLE-AI r7 doctrine wiring (see roleOf/ROLE_TUNE above).
   const role = roleOf(spec);
   const tune = ROLE_TUNE[role];
@@ -928,6 +948,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   const heSlot = findHeShellSlot(spec);
   const slotHasAmmo = (slot: number): boolean =>
     !Array.isArray(entity.combat?.ammo) || (entity.combat!.ammo[slot] || 0) > 0;
+  const slotReloadS = (slot: number): number =>
+    (entity.combat?.reloadChannels?.[slot] ?? entity.combat?.reload)?.t ?? 0;
   const firstAvailableSlot = (): number => {
     for (let slot = 0; slot < spec.gun.shells.length; slot++) {
       if (slotHasAmmo(slot)) return slot;
@@ -1876,9 +1898,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     heBurstHFrac = 0.5;
     heBurstLatFrac = 0;
     const distance = currentTargetDistance();
+    let readyWeapon = false;
+    for (let slot = 0; slot < spec.gun.shells.length; slot++) {
+      if (slotHasAmmo(slot) && slotReloadS(slot) <= 1e-3) { readyWeapon = true; break; }
+    }
     for (let slot = 0; slot < spec.gun.shells.length; slot++) {
       const shell = spec.gun.shells[slot];
-      if (!shell || !slotHasAmmo(slot)) continue;
+      if (!shell || !slotHasAmmo(slot) || (readyWeapon && slotReloadS(slot) > 1e-3)) continue;
       evaluateProbeSlot(slot, shell, pose, armor, lateralX, lateralZ);
       if (probeResult.ratio >= Math.max(1.05, penGateRatio(distance)) && probeResult.slot === 0) break;
     }
@@ -1998,7 +2024,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   function startFlank(timeS: number, forcedSide = 0): void {
-    if (!target) return;
+    if (!target || !isVisibleToTeam(target)) return;
     const st = entity.state;
     const tp = target.state.pos;
     const dx = st.pos.x - tp.x, dz = st.pos.z - tp.z;
@@ -2068,7 +2094,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       : obstacles;
     for (let i = 0; i < candidates.length; i++) {
       const o = candidates[i];
-      if (o.crushed) continue; // gameplay_feel r6: felled crushables don't block
+      if (o.crushed || o.kind === 'bridge') continue; // decks are road; edge safety owns parapets
+      // gameplay_feel r6: felled crushables don't block
       if (!collisionFootprintContainsPoint(o as CollisionRecord, px, pz, margin)) continue;
       // BATTLE-AI r7: a CRUSHABLE in the lane is driven THROUGH, not around —
       // and with authority. The old ×0.6 damping (and the ease-in) parked
@@ -2338,7 +2365,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       distance <= TERRAIN_ROUTE_LOOK_M; distance += TERRAIN_ROUTE_STEP_M) {
       const x = sx + ux * distance;
       const z = sz + uz * distance;
-      const height = hf.getHeightAt(x, z);
+      const height = terrainSafety.surfaceY(x, z);
       const rise = (height - previousH) / TERRAIN_ROUTE_STEP_M;
       const ground = driveGroundTypeAt(hf, x, z);
       const cost = terrainTravelCostFactor(
@@ -2359,7 +2386,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     goalX: number,
     goalZ: number,
   ): boolean {
-    const startH = hf.getHeightAt(sx, sz);
+    const startH = terrainSafety.surfaceY(sx, sz);
     if (Number.isFinite(terrainLineCost(sx, sz, startH, dirx, dirz))) {
       return false;
     }
@@ -2407,7 +2434,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     let box: AiObstacle | null = null;
     for (let i = 0; i < obstacles.length; i++) {
       const o = obstacles[i];
-      if (o.crushed || o.crushable) continue;
+      if (o.crushed || o.crushable || o.kind === 'bridge') continue;
       const entry = rayCollisionFootprintEntry2(
         o as CollisionRecord,
         sourceX, sourceZ, directionX, directionZ,
@@ -2546,7 +2573,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       let clear = 34;
       for (let i = 0; i < obstacles.length; i++) {
         const o = obstacles[i];
-        if (o.crushed || o.crushable) continue;
+        if (o.crushed || o.crushable || o.kind === 'bridge') continue;
         const entry = rayCollisionFootprintEntry2(
           o as CollisionRecord, sx, sz, ux, uz, clear, margin,
         );
@@ -2555,7 +2582,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (clear < 12) continue;
       const ex = sx + ux * clear, ez = sz + uz * clear;
       if (Math.max(Math.abs(ex), Math.abs(ez)) > 470) continue;
-      const h0 = hf.getHeightAt(sx, sz);
+      const h0 = terrainSafety.surfaceY(sx, sz);
       const terrainCost = terrainLineCost(sx, sz, h0, ux, uz);
       if (!Number.isFinite(terrainCost)) continue;
       const score = clear - (terrainCost - 1) * 4 + rng() * 3;
@@ -3026,20 +3053,25 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   /**
-   * A commander's posture while engaging a visible target beyond the hold band: a push closes on the
-   * target at full throttle (the no-suicide guard yields — the commander read the whole team's picture),
-   * a capture or support drives to the ordered point and fights from there. Returns true when it drove.
+   * A push closes only with local support and beyond the hold band. Capture
+   * and support follow terrain-safe waypoints while fighting en route.
    */
   function driveOrderedPosture(input: AiInput, distToTarget: number, navX: number, navZ: number): boolean {
-    if (!orderActive() || distToTarget <= roleHoldR()) return false;
+    if (!orderActive()) return false;
     const posture = order!.posture;
     if (posture === 'push') {
+      if (distToTarget <= roleHoldR() || outnumberedSolo()) return false;
       chaseToXZ(input, navX, navZ, 1.0);
       return true;
     }
     const point = order!.point;
     if ((posture === 'capture' || posture === 'support') && point) {
-      return !driveToXZ(input, point.x, point.z, 1.0); // arrived: the ordinary engagement driving resumes
+      if (Math.hypot(point.x - entity.state.pos.x, point.z - entity.state.pos.z) < ARRIVE_DIST_M) return false;
+      setWaypoints([[point.x, point.z]], { loop: false });
+      const waypoint = waypoints[wpIndex];
+      if (!waypoint) return false;
+      if (driveToXZ(input, waypoint.x, waypoint.z, 1.0) && wpIndex < waypoints.length - 1) wpIndex++;
+      return true;
     }
     return false;
   }
@@ -3064,7 +3096,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     let near = 0;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
-      if (!enemyAlive(e)) continue;
+      if (!enemyAlive(e) || !isVisibleToTeam(e)) continue;
       const dx = e.state.pos.x - target.state.pos.x;
       const dz = e.state.pos.z - target.state.pos.z;
       if (dx * dx + dz * dz < 200 * 200) near++;
@@ -3367,7 +3399,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function selectedShell(combat: CombatState | undefined): DamageShellSpec | null {
     const loadingSlot = combat?.shellSlot;
-    if ((combat?.reload?.t ?? 0) > 1e-3 && loadingSlot != null && slotHasAmmo(loadingSlot)) {
+    if ((combat?.reload?.t ?? 0) > 1e-3 && loadingSlot != null && slotHasAmmo(loadingSlot)
+        && (combat?.reloadChannels?.[chosenSlot] ?? combat?.reload) === combat?.reload) {
       chosenSlot = loadingSlot;
     } else if (!slotHasAmmo(chosenSlot)) {
       chosenSlot = firstAvailableSlot();
@@ -3461,7 +3494,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function setShotInput(input: AiInput): void {
     input.aimPoint.copy(_vD);
-    input.shellSlot = clamp(chosenSlot, 0, Math.min(2, spec.gun.shells.length - 1));
+    input.shellSlot = clamp(chosenSlot, 0, spec.gun.shells.length - 1);
   }
 
   function updateBasicFireGates(distance: number, timeS: number): void {
@@ -3470,7 +3503,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     fireGate.distance = distance;
     fireGate.reactionReady = timeS - acquiredAtS >= tier.reactionS;
     fireGate.reloadReady = !combat || (
-      !!combat.reload && combat.reload.t <= 1e-3 && !combat.destroyed && !gunDisabled
+      !!combat.reload && slotReloadS(chosenSlot) <= 1e-3 && !combat.destroyed && !gunDisabled
     );
     fireGate.rangeReady = distance <= MAX_FIRE_RANGE_M;
     fireGate.dispersionReady = computeDispersionRadM(
@@ -4255,6 +4288,33 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
   }
 
+  let squadThinkAtS = 0, squadFlankAtS = -Infinity;
+  function updateSquadManeuver(timeS: number, distance: number): void {
+    if (timeS < squadThinkAtS) return;
+    squadThinkAtS = timeS + 1;
+    if (!target || !losClear || !getAllies || orderActive() || getObjective?.()?.mission
+        || mode !== 'engage' || distance < 70 || distance > 280
+        || timeS < squadFlankAtS + 22 || (entity.combat?.hp ?? 1) / (entity.combat?.maxHp ?? 1) < .45) return;
+    // The slow/armoured hull pins the target while one faster teammate changes
+    // angle. Elect by mobility then ID, so controllers agree without messages
+    // or random side choices. Existing flanks count as a commitment.
+    let partners = 0, betterFlankers = 0, alreadyFlanking = false;
+    const mobility = (spec.topSpeedKmh ?? 40) + (role === 'flanker' ? 20 : 0);
+    for (const friend of getAllies()) {
+      if (friend === entity || !enemyAlive(friend)) continue;
+      const ctl = (friend as ControllerOwnedEntity).aiCtl ?? (friend as ControllerOwnedEntity).ai;
+      if (ctl?.targetId !== target.id || Math.hypot(friend.state.pos.x - entity.state.pos.x, friend.state.pos.z - entity.state.pos.z) > 220) continue;
+      partners++;
+      if (ctl.state === 'flank') alreadyFlanking = true;
+      if ((friend.combat?.hp ?? 1) / (friend.combat?.maxHp ?? 1) < .45) continue;
+      const rank = (friend.spec.topSpeedKmh ?? 40) + (roleOf(friend.spec) === 'flanker' ? 20 : 0);
+      if (rank > mobility || (rank === mobility && friend.id < entity.id)) betterFlankers++;
+    }
+    if (!partners || betterFlankers || alreadyFlanking) return;
+    squadFlankAtS = timeS;
+    startFlank(timeS);
+  }
+
   function updateDoctrine(
     combat: CombatState | undefined,
     dt: number,
@@ -4267,6 +4327,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     updateProbeRelocation(dt, timeS);
     updatePenDeniedManeuver(dt, timeS);
     maybeStartFallback(combat, timeS, targetDistance);
+    updateSquadManeuver(timeS, targetDistance);
   }
 
   // Round 48 pacing (2026-09-24, Frosthollow seed 3 of server/battlePacing): a lone Strv 103 stood 263 m from
@@ -4562,9 +4623,33 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return false;
   }
 
+  function driveMission(input: AiInput): boolean {
+    const objective = getObjective?.();
+    if (!objective?.mission) return false;
+    const destination = objective.mission === 'capture' && orderActive() && order!.point
+      && (order!.posture === 'capture' || order!.posture === 'support') ? order!.point! : objective;
+    // A flag carrier and a striker must keep doing their job under contact.
+    // Other roles may briefly retreat at critical health, then resume it.
+    const critical = (entity.combat?.hp ?? 1) / (entity.combat?.maxHp ?? 1) < .25;
+    if (critical && objective.mission !== 'carrier' && objective.mission !== 'striker'
+        && nowS < fallbackUntilS) return false;
+    if (objective.mission === 'striker' && Math.hypot(destination.x - entity.state.pos.x, destination.z - entity.state.pos.z) < 55) {
+      // The last ball approach follows its live position, not a coarse grid
+      // waypoint or a several-second target commitment.
+      driveToXZ(input, destination.x, destination.z, 1);
+      return true;
+    }
+    if (missionRouteNeedsRefresh(destination.x, destination.z)) {
+      setWaypoints([[destination.x, destination.z]], { loop: false });
+    }
+    drivePatrol(input);
+    return true;
+  }
+
   function driveCurrentMode(input: AiInput, timeS: number, targetDistance: number): void {
     input.brake = false;
     driveIntent = false;
+    if (driveMission(input)) return;
     if (driveReaction(input, timeS)) return;
     if (passivePressing && target && losClear) {
       drivePassivePress(input);
@@ -4678,7 +4763,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function finishStep(input: AiInput, dt: number, timeS: number): void {
     avoidAllies(input, dt);
-    if (liquidSafe) {
+    if (liquidSafe && entity.state.grounded) {
       const st = entity.state;
       const speed = Math.abs(st.speed);
       const sign = speed > 0.2 ? Math.sign(st.speed) : Math.sign(input.throttle);
@@ -4691,11 +4776,72 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         routeTimer = Math.min(routeTimer,0.1);
       }
     }
+    // Braking belongs only to grounded driving. Airborne controls must never
+    // turn a jump into an accidental persistent handbrake on landing.
+    if (entity.state.grounded && (Math.abs(input.throttle) > .1 || Math.abs(entity.state.speed) > .5 || timeS < terrainAvoidUntilS)) {
+      const st = entity.state;
+      const speed = Math.abs(st.speed), direction = speed > .5 ? Math.sign(st.speed) : Math.sign(input.throttle);
+      if (timeS >= terrainCheckAtS) {
+        terrainCheckAtS = timeS + .1;
+        terrainBlocked = !terrainSafety.corridorSafe(entity, st.yaw, direction * (2 + speed * .35 + speed * speed / 4));
+      }
+      if (terrainBlocked && timeS >= terrainAvoidUntilS) {
+        const waypoint = waypoints[wpIndex];
+        const goalYaw = waypoint ? Math.atan2(waypoint.x - st.pos.x, waypoint.z - st.pos.z) : st.yaw + Math.PI;
+        let bestCost = Infinity;
+        terrainEscapeYaw = st.yaw + Math.PI;
+        // Find an actually drivable escape direction. Fixed left/right turns
+        // can send a tank from one bridge parapet directly toward the other.
+        for (let i = 0; i < 16; i++) {
+          const yaw = goalYaw + i * TAU / 16;
+          if (!terrainSafety.corridorSafe(entity, yaw, 10)) continue;
+          const cost = Math.abs(wrapAngle(yaw - goalYaw)) + .15 * Math.abs(wrapAngle(yaw - st.yaw));
+          if (cost < bestCost) { bestCost = cost; terrainEscapeYaw = yaw; }
+        }
+        terrainAvoidUntilS = timeS + 3;
+        routeTimer = 0;
+      }
+      if (terrainBlocked || timeS < terrainAvoidUntilS) {
+        // Hold the escape turn long enough to complete it. Handing the hull
+        // back to its old waypoint on the first safe sample oscillated along
+        // the gorge edge instead of turning away from it.
+        const error = wrapAngle(terrainEscapeYaw - st.yaw);
+        input.throttle = speed <= 3 && Math.abs(error) < .2 && terrainSafety.corridorSafe(entity, st.yaw, 8) ? .4 : 0;
+        input.brake = speed > 3;
+        input.steer = clamp(error * 2, -1, 1);
+      }
+    } else if (!entity.state.grounded) {
+      terrainBlocked = false;
+      terrainCheckAtS = -Infinity;
+    }
     supportContext.safeToReloadMagazine = !target || !losClear || mode === 'seekCover';
     supportContext.wantsSuspensionAim = !!target && losClear
       && Math.abs(entity.state.speed) < 1.5
       && Math.abs(input.throttle) < 0.2;
     input.actionBits = chooseAiSupportActionBits(entity, timeS, supportContext);
+    abilityContext.retreating = mode === 'seekCover' || timeS < fallbackUntilS
+      || (reaction !== null && timeS < reactUntilS) || (orderActive() && order!.posture === 'retreat');
+    abilityContext.reloadS = slotReloadS(chosenSlot);
+    abilityContext.contactM = target && losClear && isVisibleToTeam(target) ? currentTargetDistance() : Infinity;
+    abilityContext.safeJump = false;
+    if (abilities.jumpEligible(entity, timeS, abilityContext) && input.throttle > 0.2 && !input.brake) {
+      const st = entity.state;
+      const travel = st.speed * 2 * entity.modeJumpMps! / (9.81 * Math.max(0.1, entity.modeGravityScale ?? 1));
+      let safe = travel > 0 && travel <= 120 && terrainSafety.jumpLandingSafe(entity, travel) && (!liquidSafe || liquidSafe(st.pos.x, st.pos.z, st.yaw, travel));
+      const baseY = hf.getHeightAt(st.pos.x, st.pos.z);
+      for (let d = 5; safe && d <= travel + 5; d += 5) {
+        const distance = Math.min(travel, d);
+        const y = hf.getHeightAt(st.pos.x + Math.sin(st.yaw) * distance, st.pos.z + Math.cos(st.yaw) * distance);
+        if (!Number.isFinite(y) || Math.abs(y - baseY) > 3) safe = false;
+      }
+      if (safe) {
+        jumpOrigin.set(st.pos.x, st.pos.y + 1, st.pos.z);
+        jumpDirection.set(Math.sin(st.yaw), 0, Math.cos(st.yaw));
+        safe = !deps.raycast(jumpOrigin, jumpDirection, travel + 5);
+      }
+      abilityContext.safeJump = safe;
+    }
+    input.actionBits |= abilities.update(entity, timeS, abilityContext);
     if (entity.state.overturned === true) {
       // round 60 pacing: on its roof the drive only resets the rollover settle (see chooseAiSupportActionBits)
       input.throttle = 0;
@@ -4765,10 +4911,27 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * @param {Array<[number, number]>} points [x,z] pairs in world meters
    * @param {{loop?: boolean}} options route behavior; patrol routes loop by default
    */
+  let missionRouteX = Infinity, missionRouteZ = Infinity, missionRouteAtS = -Infinity;
+  function missionRouteNeedsRefresh(x: number, z: number): boolean {
+    return Math.hypot(x - missionRouteX, z - missionRouteZ) >= 12
+      || (nowS - missionRouteAtS >= 6 && (waypoints.length === 0 || terrainBlocked || navNoProgressT > 4));
+  }
+
   function setWaypoints(
-    points: Array<[number, number]>,
+    points: readonly (readonly [number, number])[],
     { loop = true }: { loop?: boolean } = {},
   ): void {
+    // Live modes and Jev supply destinations, not terrain-safe paths. Resolve
+    // those through the same navigation grid as opening/search routes. Keep an
+    // unchanged route's cursor between frequent moving-objective refreshes.
+    if (!loop && points.length === 1) {
+      const [x, z] = points[0];
+      if (!missionRouteNeedsRefresh(x, z)) return;
+      missionRouteX = x; missionRouteZ = z; missionRouteAtS = nowS;
+      if (deps.planRoute) points = deps.planRoute(entity.state.pos, { x, z });
+    } else {
+      missionRouteX = missionRouteZ = Infinity;
+    }
     waypoints.length = 0;
     for (let i = 0; i < points.length; i++) {
       waypoints.push({ x: points[i][0], z: points[i][1] });
@@ -4784,8 +4947,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * every result also resamples the aim error and forces a fresh weak-spot probe.
    * @param {object} hitEvent HitEvent (§2.6)
    */
-  function notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'>): void {
+  function notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'> & Partial<Pick<HitEvent, 'shellName'>>): void {
+    // A roof-gun bounce says nothing about the cannon's penetration solution.
+    // Do not re-roll main aim or trigger a flank for each automatic-gun bullet.
     if (!hitEvent) return;
+    if (hitEvent.shellName && !spec.gun.shells.some(shell => shell.name === hitEvent.shellName)) return;
     if (target && hitEvent.targetId === target.id) {
       const k = hitEvent.kind;
       if (k === 'nonpen' || k === 'ricochet' || k === 'spaced_absorb' || k === 'era') {
@@ -4814,6 +4980,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // sticky attacker-of-record slot (r4) — teammate hits can't erase it
       playerAggro = shooterEnt;
       playerAggroUntilS = nowS + PLAYER_AGGRO_WINDOW_S;
+    }
+    if (info.selfHit) {
+      abilityContext.hitAtS = nowS;
+      abilityContext.hitBearing = Math.atan2(shooterEnt.state.pos.x - entity.state.pos.x, shooterEnt.state.pos.z - entity.state.pos.z);
     }
     underFire = shooterEnt;
     underFireUntilS = nowS + UNDER_FIRE_WINDOW_S;
@@ -5021,6 +5191,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     notifyPlayerFired,
     notifyFriendlyBlocked,
     setOrder,
+    get terrainBlocked() { return terrainBlocked; },
+    hasClearShot: (id) => target?.id === id && losClear && friendlyBlockT <= 0 && gunLaneBlockedT <= 0 && penGateOk,
     get targetId() { return target ? target.id : null; },
     /** Headless-probe introspection (controls_gunnery r5): gate snapshot. */
     debugInfo: () => ({
@@ -5028,7 +5200,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       targetIsPlayer: !!(target && target.isPlayer),
       // BATTLE-AI r7 doctrine surface: class role + measurable signals
       // (sniper relocations, live scoot/kite/fallback windows) for probes.
-      role, relocations, shotsFromSpot,
+      role, relocations, shotsFromSpot, terrainBlocked, terrainAvoiding: nowS < terrainAvoidUntilS,
       // bot philosophy r1: live hit reaction, count, and the unseen gun the hull is turning onto
       reaction, reactions, suspectId: suspect && nowS < suspectUntilS ? suspect.id : null,
       scooting: nowS < scootUntilS,
@@ -5060,6 +5232,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       searching, searchKind, searchLegs, searchFailures,
       searchGoalX: Math.round(searchGoal.x), searchGoalZ: Math.round(searchGoal.z),
       wpIndex, wpCount: waypoints.length,
+      waypointX: waypoints[wpIndex]?.x ?? null, waypointZ: waypoints[wpIndex]?.z ?? null,
       conserveHolds, emptyRack, ramming, ramRuns,
       playerBudgetT: +(nowS - lastPlayerEngageS).toFixed(1),   // r6 budget arm
       pressing: nowS < pressUntilS,

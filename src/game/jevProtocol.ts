@@ -47,6 +47,24 @@ export interface JevSeenEnemy {
   readonly m: number;
 }
 
+const ABILITIES = new Set(['smoke_ready', 'smoke_reloading', 'roof_gun', 'guided_missile', 'magazine', 'suspension', 'jump', 'airborne', 'burning', 'edge_risk']);
+const MISSIONS = new Set(['carrier', 'recover', 'escort', 'raid', 'defend', 'striker', 'screen', 'capture', 'assault']);
+export interface JevTactics {
+  readonly mission?: string;
+  readonly allies_nearby: number;
+  readonly enemies_nearby: number;
+  readonly abilities: readonly string[];
+  readonly shootable: readonly string[];
+}
+
+/** Local danger uses only the team's known contacts and this hull's own damage. */
+export function jevLocalThreat(bot: JevBotView): number {
+  const enemies = bot.tactics?.enemies_nearby ?? bot.sees.length;
+  if (!enemies && !bot.under_fire) return 0;
+  const isolated = enemies > (bot.tactics?.allies_nearby ?? 0) + 1;
+  return Math.min(3, 1 + Number(isolated || bot.hp < 0.45) + Number(bot.under_fire && bot.hp < 0.45));
+}
+
 export interface JevBotView {
   readonly vehicle: string;
   readonly class: string;
@@ -62,6 +80,8 @@ export interface JevBotView {
   readonly objective: { readonly bearing: string; readonly distance_m: number } | null;
   readonly current_target: string | null;
   readonly current_stance: string;
+  /** Optional so older deployed clients remain compatible with the proxy. */
+  readonly tactics?: JevTactics;
 }
 
 export interface JevEnemyView {
@@ -220,10 +240,26 @@ function readBot(raw: Unknown, enemyIds: ReadonlySet<string>): Validation<JevBot
     return fail('invalid_state:bot.current_target');
   }
   if (!isText(raw.current_stance, 16)) return fail('invalid_state:bot.current_stance');
+  let tactics: JevTactics | undefined;
+  if (raw.tactics !== undefined) {
+    const t = raw.tactics;
+    if (!isRecord(t) || !Number.isInteger(t.allies_nearby) || typeof t.allies_nearby !== 'number'
+        || t.allies_nearby < 0 || t.allies_nearby > 99 || !Number.isInteger(t.enemies_nearby)
+        || typeof t.enemies_nearby !== 'number' || t.enemies_nearby < 0 || t.enemies_nearby > 99
+        || (t.mission !== undefined && (typeof t.mission !== 'string' || !MISSIONS.has(t.mission)))
+        || !Array.isArray(t.abilities) || t.abilities.length > ABILITIES.size
+        || !t.abilities.every(a => typeof a === 'string' && ABILITIES.has(a))
+        || !isLabelList(t.shootable, 'e', JEV_LIMITS.seesPerBot)
+        || !t.shootable.every(id => seen.some(e => e.id === id))) return fail('invalid_state:bot.tactics');
+    tactics = { allies_nearby: t.allies_nearby, enemies_nearby: t.enemies_nearby,
+      abilities: t.abilities.map(String), shootable: t.shootable,
+      ...(typeof t.mission === 'string' ? { mission: t.mission } : {}) };
+  }
   return { ok: true, value: {
     vehicle: raw.vehicle, class: raw.class, role: raw.role, hp: raw.hp, ammo: raw.ammo, gun: raw.gun,
     moving: raw.moving, under_fire: raw.under_fire, modules_damaged: modules.map(String), sees: seen,
     nearest_ally_m: raw.nearest_ally_m, objective, current_target: raw.current_target, current_stance: raw.current_stance,
+    ...(tactics ? { tactics } : {}),
   } };
 }
 
@@ -332,13 +368,13 @@ export function validateJevRequest(input: Unknown): Validation<JevRequestBody> {
 // Every bot's posture question repeats these criteria, so they are terse: input tokens are the whole bill
 // (measured 2026-09-25: 7 bots = 27 questions; the criteria were most of the request before this trim).
 const POSTURE_CRITERIA: Readonly<Record<JevPosture, string>> = Object.freeze({
-  hold: 'Fight from the current position or hull-down spot: it has cover, the enemy comes to it, or it is outnumbered.',
-  push: 'Close on its target or the nearest enemy at full throttle: the enemy is weak, isolated, reloading, or outnumbered there.',
-  flank_left: 'Swing round the left of its target to the side or rear armour: a front our shells do not penetrate, a target busy elsewhere.',
-  flank_right: 'Swing round the right of its target to the side or rear armour: a front our shells do not penetrate, a target busy elsewhere.',
-  retreat: 'Fall back to friendly support or away from the threat: low hull points, damaged tracks or engine, alone against several.',
-  capture: 'Drive to the objective and take or hold it: a zone, sector, flag or goal matters more than this duel.',
-  support: 'Move to the weakest or most pressed teammate and fight beside it: a teammate about to die that this tank can reach.',
+  hold: 'Keep a useful firing lane or defend a contested objective. Snipers cover advancing allies; do not camp without contact.',
+  push: 'Exploit a local numbers advantage or finish a weak isolated hull. Avoid unsupported charges, dangerous edges, empty racks and long reloads.',
+  flank_left: 'Take a left firing angle on tough armour while an ally pins it. Mobile flankers and scouts suit this role.',
+  flank_right: 'Take a right firing angle; prefer the opposite side from other flankers. Keep nearby support.',
+  retreat: 'Preserve a wounded, burning or immobilized hull under pressure. Reverse towards cover/support while smoke and repairs recover it.',
+  capture: 'Follow this tank’s assigned mission. Prioritize the score/clock, flag return, live sector or ball approach over chasing kills.',
+  support: 'Reinforce a reachable pressured ally from a separate firing lane. Avoid crowding one hull or leaving all objectives undefended.',
 });
 
 const THREAT_LEVELS = Object.freeze([
@@ -360,9 +396,9 @@ function enemyLine(id: string, enemy: JevEnemyView): string {
 
 /**
  * The question set for one team document — built on the server, never by the
- * browser. Every bot gets a posture and a threat question; a bot that sees an
- * enemy also gets a target choice over exactly those enemies and a fire
- * judgement; a battle with objectives gets one team focus choice. All of them
+ * browser. Every bot gets a posture; danger is a local reflex for modern
+ * clients. Visible enemies get a target choice; a ready, shootable gun gets
+ * a fire judgement; a battle with objectives gets one team focus choice. All of them
  * run in one request (speculative fan-out) and the commander consumes only the
  * answers the battle still needs.
  */
@@ -372,10 +408,10 @@ export function buildJevQuestions(state: JevBattleState): Record<string, JevQues
     const path = `our_tanks.${id}`;
     questions[`posture_${id}`] = {
       type: 'choice',
-      instructions: `Which posture should our tank \`${path}\` (a ${bot.vehicle}, ${bot.role} role) take for the next few seconds, given the whole battle picture in the state?`,
+      instructions: `Which posture should our tank \`${path}\` (a ${bot.vehicle}, ${bot.role} role) take for the next few seconds, given the whole battle picture in the state? Preserve its assigned mission: carriers return flags, strikers play the ball, escorts protect the runner, screens cover lanes. For combat, keep an armoured anchor firing while a healthy mobile teammate flanks; avoid ordering the entire team around the same side.`,
       criteria: POSTURE_CRITERIA,
     };
-    questions[`threat_${id}`] = {
+    if (!bot.tactics) questions[`threat_${id}`] = {
       type: 'score',
       instructions: `How much danger is our tank \`${path}\` in right now?`,
       criteria: THREAT_LEVELS,
@@ -393,7 +429,7 @@ export function buildJevQuestions(state: JevBattleState): Record<string, JevQues
       instructions: `Which enemy should our tank \`${path}\` engage now? Prefer the one that threatens it or the team most, that it can hurt, that stands on the objective, or that a teammate already has under fire when finishing it wins the exchange.`,
       criteria: targets,
     };
-    questions[`fire_${id}`] = {
+    if (bot.gun === 'ready' && (!bot.tactics || bot.tactics.shootable.length > 0)) questions[`fire_${id}`] = {
       type: 'noul',
       instructions: `Should our tank \`${path}\` fire on its target as soon as its gun is laid, rather than holding the round?`,
       criteria: {
@@ -412,7 +448,7 @@ export function buildJevQuestions(state: JevBattleState): Record<string, JevQues
     focus[JEV_FOCUS_NONE] = 'No objective needs the team now: fight the enemy force where it stands.';
     questions.focus = {
       type: 'choice',
-      instructions: 'Which objective should our whole team concentrate on for the next minute, given the score, the clock and where the enemies are?',
+      instructions: 'Which objective most needs reinforcement in the next few seconds? Consider score, clock, contested ownership and current assignments. Keep other lanes covered; flag carriers must still return home.',
       criteria: focus,
     };
   }

@@ -7,7 +7,7 @@
  * probabilities in a few hundred milliseconds; it writes no text. So the
  * commander asks it, once per TEAM every few seconds, one fan-out request over
  * a compact view of the battle from that team's side — a posture, a target, a
- * fire judgement and a threat read per bot, plus one team focus — and turns the
+ * ready-gun fire judgement, plus one team focus — and turns the
  * answers into standing ORDERS the classic controller (game/ai.ts) executes:
  * a target claim, a hold band, a flank side, a fallback, a point to drive to, a
  * fire discipline. Every order expires on its own, so whenever the proxy is
@@ -18,9 +18,10 @@
  * integration (game/state.ts) and, later, the authoritative match can satisfy;
  * the transport is injected (createJevFetchTransport for the browser).
  */
+import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import { roleOf, type AiOrder, type AiOrderPosture } from './ai.ts';
 import {
-  bearingWord, JEV_FOCUS_NONE, JEV_LIMITS, JEV_POSTURES, JEV_PROTOCOL_VERSION, JEV_TARGET_NONE, readJevResponse,
+  bearingWord, jevLocalThreat, JEV_FOCUS_NONE, JEV_LIMITS, JEV_POSTURES, JEV_PROTOCOL_VERSION, JEV_TARGET_NONE, readJevResponse,
   type JevAnswer, type JevBattleState, type JevBotView, type JevEnemyView, type JevObjectiveView, type JevRequestBody,
   type JevResponseBody,
 } from './jevProtocol.ts';
@@ -31,15 +32,20 @@ export interface JevCommanderEntity {
   readonly isPlayer?: boolean;
   readonly bot?: boolean;
   readonly modeActive?: boolean;
-  readonly spec: { readonly name: string; readonly role?: string; readonly topSpeedKmh?: number; readonly enginePowerHp?: number; readonly weightTons?: number };
-  readonly state: { readonly pos: { readonly x: number; readonly z: number }; readonly yaw: number; readonly speed: number } | null;
+  readonly modeJumpMps?: number | null;
+  readonly specialAction?: { readonly kind: string } | null;
+  readonly spec: { readonly id?: string; readonly gun?: { readonly shells: readonly { readonly guided?: boolean }[] }; readonly name: string; readonly role?: string; readonly topSpeedKmh?: number; readonly enginePowerHp?: number; readonly weightTons?: number };
+  readonly state: { readonly pos: { readonly x: number; readonly z: number }; readonly yaw: number; readonly speed: number; readonly grounded?: boolean } | null;
   readonly combat: {
     readonly hp: number; readonly maxHp: number; readonly destroyed: boolean;
     readonly ammo?: readonly number[]; readonly ammoCapacity?: readonly number[];
     readonly reload?: { readonly t: number };
+    readonly magazine?: { readonly rounds: number; readonly capacity: number } | null;
+    readonly fire?: { readonly burning: boolean };
+    readonly auxiliary?: { readonly smokeCharges: number; readonly smokeReadyAt: number };
     readonly modules?: Partial<Record<string, { readonly state: string } | undefined>>;
   } | null;
-  readonly aiCtl: { readonly targetId?: string | null; readonly state?: string; setOrder?(order: AiOrder | null): void } | null;
+  readonly aiCtl: { readonly targetId?: string | null; readonly state?: string; readonly terrainBlocked?: boolean; hasClearShot?(id: string): boolean; setOrder?(order: AiOrder | null): void } | null;
 }
 
 interface JevZoneLike { readonly id?: string; readonly x: number; readonly z: number; readonly owner: string | null; readonly contested: boolean }
@@ -65,7 +71,7 @@ export interface JevBattleView {
   readonly spotting: { isSpotted(id: string, team: string): boolean } | null;
   readonly modeState: JevModeStateView | null;
   /** The mode's live objective for a bot (matchModeController.botObjective), null when the mode has none. */
-  objectiveFor?(entity: JevCommanderEntity): { readonly x: number; readonly z: number; readonly radiusM: number } | null;
+  objectiveFor?(entity: JevCommanderEntity): { readonly x: number; readonly z: number; readonly radiusM: number; readonly mission?: string } | null;
 }
 
 export type JevTransportResult =
@@ -158,12 +164,12 @@ const CLASS_WORDS: Readonly<Record<string, string>> = Object.freeze({
 });
 
 /** What each side is trying to do, in the words the model reads (docs/GAME-MODES.md). */
-function modeGoal(mode: string, attackers: boolean): string {
+function modeGoal(mode: string, attackers: boolean, target: number | null | undefined): string {
   switch (mode) {
-    case 'capture_the_flag': return 'carry the enemy flag home while our flag stays home; first team to 3 captures wins';
-    case 'zone_control': return 'capture and hold the three zones; first team to 750 points wins';
-    case 'mars': return 'hold the three station sectors in low gravity; first team to 750 points wins';
-    case 'turbo_ball': return 'drive or shoot the ball into the enemy goal; first team to 5 goals wins';
+    case 'capture_the_flag': return `carry the enemy flag home while our flag stays home; first team to ${target ?? 3} captures wins`;
+    case 'zone_control': return `capture and hold the three zones; first team to ${target ?? 750} points wins`;
+    case 'mars': return `hold the three station sectors in low gravity; first team to ${target ?? 750} points wins`;
+    case 'turbo_ball': return `drive or shoot the ball into the enemy goal; first team to ${target ?? 5} goals wins`;
     case 'endless_horde': return attackers ? 'survive the waves and protect the human player' : 'destroy the human player and its escorts';
     case 'frontline_assault': return attackers ? 'take the trench sectors in turn and hold the last one before the clock runs out'
       : 'hold the trench sectors against the attackers until the clock runs out';
@@ -177,7 +183,7 @@ function objectiveTeamOf(team: string): 'alpha' | 'bravo' {
 
 function cleanName(value: string | null | undefined): string {
   // eslint-disable-next-line no-control-regex
-  const text = String(value || 'vehicle').replace(/[ -]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  const text = String(value || 'vehicle').replace(/[\0-]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
   return (text || 'vehicle').slice(0, JEV_LIMITS.text);
 }
 
@@ -232,6 +238,7 @@ interface TeamSnapshot {
   readonly hp: ReadonlyMap<string, number>;
   /** a cheap signature of what the team can see and hold, for the quiet cadence */
   readonly signature: string;
+  readonly nextBotOffset: number;
 }
 
 function objectiveRadius(view: JevBattleView, entity: JevCommanderEntity): number {
@@ -246,15 +253,29 @@ function objectiveRadius(view: JevBattleView, entity: JevCommanderEntity): numbe
  * score and the clock. Distances and bearings only, never a coordinate.
  */
 export function buildJevTeamState(
-  view: JevBattleView, team: string, previousHp: ReadonlyMap<string, number> | null,
+  view: JevBattleView, team: string, previousHp: ReadonlyMap<string, number> | null, botOffset = 0,
 ): TeamSnapshot | null {
   const ours = view.tanks.filter((entity) => entity.team === team && alive(entity));
-  const bots = ours.filter((entity) => !entity.isPlayer && !!entity.aiCtl).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).slice(0, JEV_LIMITS.bots);
+  const allBots = ours.filter((entity) => !entity.isPlayer && !!entity.aiCtl).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const offset = botOffset >= allBots.length ? 0 : Math.max(0, botOffset);
+  const bots = allBots.slice(offset, offset + JEV_LIMITS.bots);
+  const nextBotOffset = offset + bots.length >= allBots.length ? 0 : offset + bots.length;
   if (bots.length === 0) return null;
   const human = ours.find((entity) => entity.isPlayer) ?? null;
-  const spotted = view.tanks
+  const visible = view.tanks
     .filter((entity) => entity.team !== team && alive(entity) && (!view.spotting || view.spotting.isSpotted(entity.id, team)))
-    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).slice(0, JEV_LIMITS.enemies);
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  // In large battles, spend the bounded contact budget on this squad's nearest
+  // known opponents, not the first 24 entity IDs. No hidden contact enters it.
+  const contactDistance = (enemy: JevCommanderEntity): number => {
+    let nearest = Infinity;
+    for (const bot of bots) nearest = Math.min(nearest, Math.hypot(enemy.state!.pos.x - bot.state!.pos.x, enemy.state!.pos.z - bot.state!.pos.z));
+    return nearest;
+  };
+  const spotted = visible.length <= JEV_LIMITS.enemies ? visible : visible
+    .map(enemy => ({ enemy, distance: contactDistance(enemy) }))
+    .sort((a, b) => a.distance - b.distance).slice(0, JEV_LIMITS.enemies).map(row => row.enemy)
+    .sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
   const theirsAlive = view.tanks.filter((entity) => entity.team !== team && alive(entity)).length;
   // the team's centroid anchors the enemy and objective bearings
   let cx = 0, cz = 0;
@@ -325,10 +346,15 @@ export function buildJevTeamState(
       engagedBy.set(targetLabel, list);
     }
     let nearestAlly: number | null = null;
+    let alliesNearby = 0, enemiesNearby = 0;
+    for (const enemy of visible) {
+      if (Math.hypot(enemy.state!.pos.x - position.x, enemy.state!.pos.z - position.z) <= 250) enemiesNearby++;
+    }
     for (const friend of ours) {
       if (friend === entity) continue;
       const distance = Math.hypot(friend.state!.pos.x - position.x, friend.state!.pos.z - position.z);
       if (nearestAlly === null || distance < nearestAlly) nearestAlly = distance;
+      if (distance <= 200) alliesNearby++;
     }
     const modules: string[] = [];
     for (const [name, module] of Object.entries(combat.modules ?? {})) {
@@ -336,6 +362,19 @@ export function buildJevTeamState(
     }
     const objective = view.objectiveFor?.(entity) ?? null;
     const previous = previousHp?.get(entity.id);
+    const kit = auxiliaryCapabilities(entity.spec);
+    const abilities: string[] = [];
+    if (kit?.smoke.length && (combat.auxiliary?.smokeCharges ?? 3) > 0) {
+      abilities.push(view.timeS >= (combat.auxiliary?.smokeReadyAt ?? 0) ? 'smoke_ready' : 'smoke_reloading');
+    }
+    if (kit?.guns.length) abilities.push('roof_gun');
+    if (entity.spec.gun?.shells.some(shell => shell.guided)) abilities.push('guided_missile');
+    if (combat.magazine) abilities.push('magazine');
+    if (entity.specialAction?.kind === 'hydropneumatic_aim') abilities.push('suspension');
+    if ((entity.modeJumpMps ?? 0) > 0) abilities.push('jump');
+    if (state.grounded === false) abilities.push('airborne');
+    if (entity.aiCtl?.terrainBlocked) abilities.push('edge_risk');
+    if (combat.fire?.burning) abilities.push('burning');
     ourTanks[label] = {
       vehicle: cleanName(entity.spec.name),
       class: CLASS_WORDS[String(entity.spec.role || '')] ?? 'armoured vehicle',
@@ -351,6 +390,9 @@ export function buildJevTeamState(
       objective: objective ? { bearing: bearingFrom(position.x, position.z, objective.x, objective.z), distance_m: metres(Math.hypot(objective.x - position.x, objective.z - position.z)) } : null,
       current_target: targetLabel && (sees.some((seen) => seen.id === targetLabel) ? targetLabel : null),
       current_stance: String(entity.aiCtl?.state || 'patrol').slice(0, 16),
+      tactics: { allies_nearby: alliesNearby, enemies_nearby: enemiesNearby, abilities,
+        ...(objective?.mission ? { mission: objective.mission } : {}),
+        shootable: sees.filter(seen => entity.aiCtl?.hasClearShot?.(enemyId.get(seen.id)!)).map(seen => seen.id) },
     };
   }
 
@@ -387,7 +429,7 @@ export function buildJevTeamState(
     v: JEV_PROTOCOL_VERSION,
     battle: {
       mode: view.mode.slice(0, 24),
-      goal: modeGoal(view.mode, attackers),
+      goal: modeGoal(view.mode, attackers, modeState?.target),
       elapsed_s: Math.max(0, Math.round(view.timeS)),
       remaining_s: view.timeLimitS == null ? null : Math.max(0, Math.round(view.timeLimitS - view.timeS)),
       score,
@@ -401,13 +443,14 @@ export function buildJevTeamState(
     enemies,
     objectives,
   };
-  const signature = `${spotted.length}|${Object.values(objectives).map((objective) => `${objective.owner}${objective.contested ? '!' : ''}`).join(',')}|${bots.length}`;
-  return { state, labels: { bots: botLabel, enemies: enemyLabel, botIds: botId, enemyIds: enemyId, objectives: objectivePoints }, hp, signature };
+  const signature = `${visible.map(e => e.id).join(',')}|${Object.values(objectives).map(o => `${o.owner}:${o.contested}:${o.distance_m}`).join(',')}|${ours.map(e => `${e.id}:${fraction(e.combat!.hp, e.combat!.maxHp)}`).join(',')}|${score?.ours}:${score?.theirs}`;
+  return { state, labels: { bots: botLabel, enemies: enemyLabel, botIds: botId, enemyIds: enemyId, objectives: objectivePoints }, hp, signature, nextBotOffset };
 }
 
 interface PendingRequest {
   readonly team: string;
   readonly issuedAtS: number;
+  readonly startedAtMs: number;
   readonly snapshot: TeamSnapshot;
   readonly controller: AbortController;
 }
@@ -443,6 +486,7 @@ export function createJevCommander({
   for (const team of teams) stats.set(team, emptyStats());
   const nextAtS = new Map<string, number>();
   const lastSentS = new Map<string, number>();
+  const botOffsets = new Map<string, number>();
   const lastSignature = new Map<string, string>();
   const lastHp = new Map<string, ReadonlyMap<string, number>>();
   const failures = new Map<string, number>();
@@ -469,19 +513,22 @@ export function createJevCommander({
       row.budgetSpent = true;
       return;
     }
-    const snapshot = buildJevTeamState(view, team, lastHp.get(team) ?? null);
+    const snapshot = buildJevTeamState(view, team, lastHp.get(team) ?? null, botOffsets.get(team) ?? 0);
     if (!snapshot) return;
-    lastHp.set(team, snapshot.hp);
     const quiet = Object.keys(snapshot.state.enemies).length === 0 && lastSignature.get(team) === snapshot.signature;
-    if (quiet && view.timeS - (lastSentS.get(team) ?? -Infinity) < quietCadenceS) {
+    if (quiet && !(botOffsets.get(team) ?? 0) && view.timeS - (lastSentS.get(team) ?? -Infinity) < quietCadenceS) {
       row.skippedQuiet++;
       return;
     }
+    const hp = new Map(lastHp.get(team));
+    for (const [id, value] of snapshot.hp) hp.set(id, value);
+    lastHp.set(team, hp);
+    botOffsets.set(team, snapshot.nextBotOffset);
     lastSignature.set(team, snapshot.signature);
     lastSentS.set(team, view.timeS);
     row.requests++;
     const controller = new AbortController();
-    const pending: PendingRequest = { team, issuedAtS: view.timeS, snapshot, controller };
+    const pending: PendingRequest = { team, issuedAtS: view.timeS, startedAtMs: now(), snapshot, controller };
     inFlight.set(team, pending);
     const startedAt = now();
     const body: JevRequestBody = { v: JEV_PROTOCOL_VERSION, sid: transport.sid, kind: 'team_orders', state: snapshot.state };
@@ -496,7 +543,7 @@ export function createJevCommander({
     const row = teamStats(team);
     row.inputTokens += body.usage.input_tokens;
     row.outputTokens += body.usage.output_tokens;
-    if (view.timeS - issuedAtS > staleAfterS) {
+    if (view.timeS - issuedAtS > Math.min(staleAfterS, orderTtlS) || view.mode !== snapshot.state.battle.mode) {
       row.discardedStale++;
       return;
     }
@@ -507,13 +554,16 @@ export function createJevCommander({
     const byId = new Map<string, JevCommanderEntity>();
     for (const entity of view.tanks) byId.set(entity.id, entity);
     const ours = view.tanks.filter((entity) => entity.team === team && alive(entity));
+    let focusAssignments = 0;
+    const supported = new Map<string, number>();
     for (const [label, entityId] of snapshot.labels.botIds) {
       const entity = byId.get(entityId);
       const posture = choice(answers[`posture_${label}`]);
       const targetAnswer = choice(answers[`target_${label}`]);
       const fireAnswer = answers[`fire_${label}`];
       const threatAnswer = answers[`threat_${label}`];
-      const threat = threatAnswer && threatAnswer.type === 'score' ? threatAnswer.score : 0;
+      const threat = snapshot.state.our_tanks[label]?.tactics ? jevLocalThreat(snapshot.state.our_tanks[label]!)
+        : threatAnswer && threatAnswer.type === 'score' ? threatAnswer.score : 0;
       const entry = (applied: boolean, reason: string, order: AiOrder | null): void => log({
         t: view.timeS, team, id: entityId, posture: order?.posture ?? posture?.choice ?? null, target: order?.targetId ?? null,
         fire: order?.fire ?? null, threat: Math.round(threat * 100) / 100, confidence: posture?.confidence ?? 0, applied, reason,
@@ -534,7 +584,7 @@ export function createJevCommander({
       if (targetAnswer && targetAnswer.choice !== JEV_TARGET_NONE && targetAnswer.confidence >= minTargetConfidence) {
         const candidateId = snapshot.labels.enemyIds.get(targetAnswer.choice) ?? null;
         const candidate = candidateId ? byId.get(candidateId) : null;
-        if (candidate && alive(candidate) && (!view.spotting || view.spotting.isSpotted(candidate.id, team))) targetId = candidate.id;
+        if (snapshot.state.our_tanks[label]?.sees.some(seen => seen.id === targetAnswer.choice) && candidate && alive(candidate) && (!view.spotting || view.spotting.isSpotted(candidate.id, team))) targetId = candidate.id;
       }
       // A seven-way posture spreads probability (a live 7 v 7 read 0.18–0.48 on most bots): below the bar
       // the posture stays classic, but a confident target still rides a target-only order.
@@ -551,29 +601,44 @@ export function createJevCommander({
       let mapped: AiOrderPosture | null = postureConfident ? posture!.choice as AiOrderPosture : null;
       if (mapped === 'capture') {
         const own = view.objectiveFor?.(entity) ?? null;
-        point = focusPoint ?? (own ? { x: own.x, z: own.z } : null);
+        // A focus is a reinforcement request, not permission to abandon a
+        // carried flag, the live Frontline sector or the ball's approach lane.
+        const zoneMode = view.mode === 'zone_control' || view.mode === 'mars';
+        const focusIndex = focus?.choice.startsWith('zone_') ? focus.choice.charCodeAt(5) - 97 : -1;
+        const liveFocus = focusPoint && zoneMode ? view.modeState?.zones?.[focusIndex] : null;
+        if (liveFocus && focusAssignments < Math.max(1, Math.ceil(ours.length / 3))) {
+          point = { x: liveFocus.x, z: liveFocus.z };
+          focusAssignments++;
+        } else point = own ? { x: own.x, z: own.z } : null;
         if (!point) {
           row.unmapped++;
           entry(false, 'no_objective', null);
           continue;
         }
       } else if (mapped === 'support') {
-        let weakest: JevCommanderEntity | null = null, weakestHp = Infinity;
+        let weakest: JevCommanderEntity | null = null, supportCost = Infinity;
         for (const friend of ours) {
           if (friend === entity || !friend.state || !friend.combat) continue;
           const friendHp = fraction(friend.combat.hp, friend.combat.maxHp);
-          if (friendHp < weakestHp) { weakestHp = friendHp; weakest = friend; }
+          const distance = Math.hypot(friend.state.pos.x - entity.state!.pos.x, friend.state.pos.z - entity.state!.pos.z);
+          const cost = friendHp * 200 + distance + (supported.get(friend.id) ?? 0) * 180;
+          if (cost < supportCost) { supportCost = cost; weakest = friend; }
         }
         if (!weakest) {
           row.unmapped++;
           entry(false, 'no_teammate', null);
           continue;
         }
-        point = { x: weakest.state!.pos.x, z: weakest.state!.pos.z };
+        supported.set(weakest.id, (supported.get(weakest.id) ?? 0) + 1);
+        // Stop on our approach side, outside a hull's collision footprint. The
+        // regular route planner still owns water, obstacles and ally avoidance.
+        const dx = entity.state!.pos.x - weakest.state!.pos.x, dz = entity.state!.pos.z - weakest.state!.pos.z;
+        const length = Math.hypot(dx, dz) || 1;
+        point = { x: weakest.state!.pos.x + dx / length * 24, z: weakest.state!.pos.z + dz / length * 24 };
       }
-      const fire: AiOrder['fire'] = fireAnswer && fireAnswer.type === 'noul'
+      const fire: AiOrder['fire'] = (entity.combat!.reload?.t ?? 0) > 0.05 ? null : fireAnswer && fireAnswer.type === 'noul'
         ? fireAnswer.noul >= 0.7 ? 'press' : fireAnswer.noul <= 0.3 ? 'hold' : null : null;
-      const order: AiOrder = { posture: mapped, targetId, fire, threat, point, untilS: view.timeS + orderTtlS };
+      const order: AiOrder = { posture: mapped, targetId, fire, threat, point, untilS: issuedAtS + orderTtlS };
       entity.aiCtl.setOrder(order);
       row.ordersApplied++;
       if (!mapped) row.targetOnly++;
@@ -585,7 +650,8 @@ export function createJevCommander({
     while (arrivals.length) {
       const arrival = arrivals.shift()!;
       const { team } = arrival.pending;
-      if (inFlight.get(team) === arrival.pending) inFlight.delete(team);
+      if (inFlight.get(team) !== arrival.pending) continue;
+      inFlight.delete(team);
       const row = teamStats(team);
       const latency = arrival.latencyMs;
       row.lastLatencyMs = Math.round(latency);
@@ -639,6 +705,14 @@ export function createJevCommander({
       settle(view);
       if (!active) return;
       for (const team of teams) {
+        const pending = inFlight.get(team);
+        if (pending && now() - pending.startedAtMs > 5000) {
+          pending.controller.abort();
+          inFlight.delete(team);
+          const row = teamStats(team);
+          row.failed++; row.lastError = 'commander_timeout'; row.backoffS = cadenceS;
+          nextAtS.set(team, view.timeS + cadenceS);
+        }
         if (inFlight.has(team) || view.timeS < (nextAtS.get(team) ?? 0)) continue;
         nextAtS.set(team, view.timeS + cadenceS);
         issue(view, team);
@@ -646,6 +720,9 @@ export function createJevCommander({
     },
     stop(): void {
       active = false;
+      for (const pending of inFlight.values()) pending.controller.abort();
+      inFlight.clear();
+      arrivals.length = 0;
     },
     dispose(): void {
       active = false;

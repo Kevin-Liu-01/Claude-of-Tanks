@@ -7,8 +7,7 @@ Jev is TypeSafe's System One model. It does not write text: it answers typed que
 over options, a yes/no **Noul**, a **Score** over ordered levels — about a JSON state, with calibrated
 probabilities, in a few hundred milliseconds. That shape fits a tank commander exactly: the game keeps
 every rule, every gun lay and every metre of driving in code (the classic controller in `src/game/ai.ts`),
-and asks Jev the judgement calls a commander makes — *what posture, which enemy, fire or hold, how much
-danger, which objective* — a few times a minute per team. The answers become **standing orders** the
+and asks Jev the judgement calls a commander makes — *what posture, which enemy, fire or hold, which objective* — a few times a minute per team. The answers become **standing orders** the
 classic controller executes and that expire on their own, so the battle never waits on the network.
 
 | Piece | File | Receipt |
@@ -93,6 +92,16 @@ objectives, the human ally). The allied view names the human player as `human_al
 the enemy view lists it under `enemies` with `human_player: true`. Objectives: `zone_a…` / `sector_1…`
 (zones and Frontline sectors with their holder and contest), `flag_ours` / `flag_theirs`, `ball`,
 `goal_theirs`. Bounds (`JEV_LIMITS`): 20 bots, 24 enemies, 8 objectives, 32 KB body.
+Larger teams rotate through fair batches (41 bots: 20, 20, 1) while every bot keeps
+running its local controller. Health history survives batch rotation; quiet suppression
+never skips the remaining batches. If more than 24 enemies are spotted, contacts
+nearest the current batch take precedence.
+
+Optional `tactics` describes nearby friendly/known enemy counts, the mission
+(carrier, recovery, escort, raid, defense, striker, screen, capture or assault),
+available smoke/gun/missile/magazine/suspension/jump systems, airborne/fire/edge
+warnings, and the subset of spotted targets with a locally verified firing lane.
+The old v1 shape remains valid for clients already open during deployment.
 
 ## The questions (built by the proxy, `buildJevQuestions`)
 
@@ -101,9 +110,9 @@ Per bot `bN`:
 - `posture_bN` — **Choice** over `hold | push | flank_left | flank_right | retreat | capture | support`, each
   with a one-line rubric ("Close on its target or the nearest enemy at full throttle: the enemy is weak,
   isolated, reloading, or outnumbered there").
-- `threat_bN` — **Score** over four levels: safe / pressured / in danger / about to die.
+- `threat_bN` — legacy clients only. Modern clients compute local danger from damage, health and known support immediately.
 - `target_bN` — **Choice** over exactly the enemies that bot `sees` plus `none` (only when it sees one).
-- `fire_bN` — **Noul**: fire as soon as the gun is laid, or hold the round (only when it sees one).
+- `fire_bN` — **Noul**: fire as soon as the gun is laid, or hold the round (only when the gun is ready and a local firing lane is clear).
 
 Per team, when the mode has objectives: `focus` — **Choice** over the objective ids plus
 `fight_where_we_stand`.
@@ -130,15 +139,22 @@ The order is `{ posture, targetId, fire, threat, point, untilS }`:
 | --- | --- | --- |
 | `targetId` | `target_bN` choice ≥ 0.4, not `none`, the enemy alive and still spotted | claimed right after the return-fire lock on the player, before the classic ranking; no line of sight → the vantage search moves the hull |
 | `hold` | posture | hold band × 1.35, cover discipline × 1.25 |
-| `push` | posture | hold band × 0.55, `pressUntilS` (the stalemate-push machinery: no reload cover, the outnumbered guard yields), closes at full throttle beyond the band |
+| `push` | posture | hold band × 0.55, `pressUntilS` (the stalemate-push machinery: no reload cover, the outnumbered guard remains active), closes at full throttle beyond the band |
 | `flank_left` / `flank_right` | posture | `startFlank` on the named side (left = the bot's left while facing the target) |
 | `retreat` | posture | the low-health fallback's own machinery toward the nearest support (or away from the target) |
-| `capture` | posture + the `focus` objective (or the bot's own mode objective) | routes to the point; with a target beyond the hold band it drives to the point and fights from there |
-| `support` | posture | routes to the weakest living teammate the same way |
+| `capture` | posture + the `focus` objective (or the bot's own mode objective) | routes to the point; it keeps moving and fights en route; carrier, recovery and ball jobs preserve their live mission destination |
+| `support` | posture | balances health, distance and existing support assignments; stops 24 m short of the teammate |
 | `fire` | `fire_bN` ≥ 0.7 → `press`, ≤ 0.3 → `hold` | `press` takes every ready lay; `hold` wants an expected hit chance of at least 0.7 |
-| `threat` | `threat_bN` score | ≥ 2.5 raises the cover discipline × 1.3 |
+| `threat` | local danger (legacy: `threat_bN`) | ≥ 2.5 raises the cover discipline × 1.3 |
 
-Every order expires at `untilS` = issue + `orderTtlS` (5 s); the classic brain resumes by itself. That is
+Modern question sets ask for complementary roles: an armoured anchor holds contact while
+one mobile partner changes angle; flag carriers and strikers retain their assignments.
+Zone focus is a reinforcement request capped at one third of the commanded batch.
+Smoke, roof guns, fall avoidance and jumps remain local reflexes, with the same player
+inventory, spotting and physics rules. See [Bot tactics](BOT-TACTICS.md).
+
+A five-second wall deadline aborts a stalled transport so it cannot strand a team;
+late callbacks are ignored. Every order expires at `untilS` = issue + `orderTtlS` (5 s); the classic brain resumes by itself. That is
 the fallback for everything: a slow proxy, a failed request (the commander backs off, doubling from one
 cadence to 30 s, or what the proxy's `retryAfterMs` asks), an exhausted budget (`requestsPerTeam` = 450 per
 battle), a low-confidence answer. The commander keeps a bounded **order log** (64 entries: bot, posture,

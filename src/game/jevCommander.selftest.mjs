@@ -6,7 +6,7 @@ import { getSpec } from '../vehicles/specs.ts';
 import { createTankState, SIM_DT } from '../sim/movement.ts';
 import { createAI, mulberry32 } from './ai.ts';
 import { buildJevTeamState, createJevCommander, createJevFetchTransport } from './jevCommander.ts';
-import { buildJevQuestions, JEV_FOCUS_NONE, JEV_TARGET_NONE, validateJevRequest, validateJevState } from './jevProtocol.ts';
+import { buildJevQuestions, jevLocalThreat, JEV_FOCUS_NONE, JEV_TARGET_NONE, validateJevRequest, validateJevState } from './jevProtocol.ts';
 
 // The commander is driven headless with real controllers (game/ai.ts) on a
 // fixture battle and a fake transport: the team document, the question set
@@ -178,8 +178,8 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   f.byId('t90m').combat.hp = 420;
   // the questions the proxy builds from it: one fan-out per team
   const questions = buildJevQuestions(state);
-  assert.deepEqual(Object.keys(questions).sort(), ['fire_b1', 'fire_b2', 'fire_b3', 'focus', 'posture_b1', 'posture_b2', 'posture_b3',
-    'target_b1', 'target_b2', 'target_b3', 'threat_b1', 'threat_b2', 'threat_b3'].sort(), 'four questions per seeing bot plus the team focus');
+  assert.deepEqual(Object.keys(questions).sort(), ['focus', 'posture_b1', 'posture_b2', 'posture_b3',
+    'target_b1', 'target_b2', 'target_b3'].sort(), 'only decisions with current tactical value are sent to Jev');
   assert.deepEqual(Object.keys(questions.target_b3.criteria), ['e2', 'e1', JEV_TARGET_NONE]);
   assert.deepEqual(Object.keys(questions.focus.criteria), ['zone_a', 'zone_b', 'zone_c', JEV_FOCUS_NONE]);
   const size = JSON.stringify({ state, questions, model: 'jev-latest' }).length;
@@ -251,12 +251,12 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   const kv2 = f.byId('kv2').aiCtl.debugInfo();
   assert.equal(kv2.orderPosture, 'push');
   assert.equal(kv2.orderTarget, 'm1a2', 'the target label resolved back to the entity id');
-  assert.equal(kv2.orderFire, 'press');
+  assert.equal(kv2.orderFire, null, 'no speculative firing order without a locally clear shot');
   assert.equal(kv2.ordersTaken, 1);
   const t72 = f.byId('t72b3m').aiCtl.debugInfo();
   assert.equal(t72.orderPosture, 'flank_left');
   assert.equal(t72.orderTarget, null, 'a none target keeps the classic pick');
-  assert.equal(t72.orderFire, 'hold');
+  assert.equal(t72.orderFire, null);
   assert.equal(f.byId('t90ms').aiCtl.debugInfo().orderPosture, null);
   assert.equal(f.byId('leo2a6').aiCtl.debugInfo().orderPosture, null, 'the other team took no order from this answer');
   // the controllers act on the orders: the pushed bot claims the ordered target on its next perception tick
@@ -265,9 +265,9 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   assert.ok(f.byId('kv2').aiCtl.debugInfo().pressing, 'a push order presses');
   const applied = commander.orderLog.filter((entry) => entry.applied);
   assert.deepEqual(applied.map((entry) => [entry.team, entry.id, entry.posture, entry.target, entry.fire]),
-    [['enemy', 'kv2', 'push', 'm1a2', 'press'], ['enemy', 't72b3m', 'flank_left', null, 'hold']]);
+    [['enemy', 'kv2', 'push', 'm1a2', null], ['enemy', 't72b3m', 'flank_left', null, null]]);
   assert.equal(commander.orderLog.find((entry) => entry.id === 't90ms').reason, 'low_confidence');
-  assert.equal(applied[0].threat, 2.6);
+  assert.equal(applied[0].threat, jevLocalThreat(fake.requests[0].body.state.our_tanks.b1));
   // orders expire on their own: after the ttl the controllers are classic again
   f.set(2.5 + SIM_DT + 5.01);
   f.byId('kv2').aiCtl.update(SIM_DT, f.view.timeS);
@@ -532,3 +532,89 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 console.log('jevCommander.selftest: team document, question fan-out, order application, freshness and confidence gates, fallback, budget, quiet cadence and the browser transport pass');
+
+{
+  console.log('[8] every bot gets orders in a large team; requests remain bounded');
+  const f = fixture();
+  const tanks = Array.from({length: 41}, (_, i) => entity(`bot-${String(i).padStart(2, '0')}`, 'm1a2', 'player', i * 6, 0));
+  const orders = new Map();
+  for (const tank of tanks) tank.aiCtl = { setOrder: order => orders.set(tank.id, order) };
+  tanks.push(entity('visible-enemy', 't90m', 'enemy', 0, 100));
+  const view = {...f.view, tanks, mode: 'standard', modeState: null, objectiveFor: () => null, timeS: 0};
+  const fake = fakeTransport();
+  const commander = createJevCommander({transport: fake.transport, teams: ['player'], now: () => 0});
+  for (let round = 0; round < 3; round++) {
+    view.timeS = round * 2;
+    commander.step(view);
+    assert.ok(Buffer.byteLength(JSON.stringify(fake.requests.at(-1).body)) < 32768, 'largest request fits proxy body cap');
+    assert.equal(validateJevRequest(fake.requests.at(-1).body).ok, true);
+    fake.answer((id, q) => id.startsWith('posture_') ? confident('hold', Object.keys(q.criteria)) : null);
+    await tick(); view.timeS += .1; commander.step(view);
+  }
+  assert.equal(orders.size, 41, 'all 41 bots get a turn within three bounded planning requests');
+  assert.deepEqual(fake.requests.map(r => Object.keys(r.body.state.our_tanks).length), [20, 20, 1]);
+  assert.equal(orders.get('bot-00').untilS, 5, 'network delay does not extend stale orders');
+  commander.dispose();
+}
+{
+  console.log('[9] current abilities, local fire lanes, custom scores and legacy wire compatibility');
+  const f = fixture();
+  const bot = f.byId('t90m');
+  bot.modeJumpMps = 6; bot.state.grounded = false;
+  bot.combat.fire.burning = true;
+  bot.aiCtl.hasClearShot = id => id === 't72b3m';
+  f.view.modeState.target = 1250;
+  const snapshot = buildJevTeamState(f.view, 'player', null);
+  const state = snapshot.state;
+  assert.match(state.battle.goal, /1250 points/);
+  const modern = state.our_tanks.b3;
+  assert.ok(modern.tactics.abilities.includes('smoke_ready'));
+  assert.ok(modern.tactics.abilities.includes('jump'));
+  assert.ok(modern.tactics.abilities.includes('airborne'));
+  assert.ok(modern.tactics.abilities.includes('burning'));
+  assert.deepEqual(modern.tactics.shootable, ['e2']);
+  assert.ok(buildJevQuestions(state).fire_b3, 'Jev can judge firing discipline when a real lane exists');
+  const reload = structuredClone(state); reload.our_tanks.b3.gun = 'reloading 8 s';
+  assert.equal(buildJevQuestions(reload).fire_b3, undefined, 'no inference wasted on a reloading weapon');
+  assert.equal(validateJevState(state).ok, true);
+  const bad = structuredClone(state); bad.our_tanks.b3.tactics.shootable = ['e99'];
+  assert.equal(validateJevState(bad).ok, false, 'shootable references cannot disclose a hidden contact');
+  bad.our_tanks.b3.tactics.shootable = []; bad.our_tanks.b3.tactics.allies_nearby = 100000;
+  assert.equal(validateJevState(bad).ok, false, 'tactical data is bounded');
+  const legacy = structuredClone(state);
+  for (const b of Object.values(legacy.our_tanks)) delete b.tactics;
+  assert.equal(validateJevState(legacy).ok, true, 'already open older clients still work');
+  assert.ok(buildJevQuestions(legacy).threat_b3);
+}
+{
+  console.log('[10] public focus cannot redirect a flag carrier away from its return route');
+  const f = fixture(), orders = [];
+  for (const tank of f.tanks) if (!tank.isPlayer) tank.aiCtl = {setOrder: order => orders.push(order)};
+  const view = {...f.view, mode: 'capture_the_flag',
+    modeState: {target: 7, flags: [{team:'bravo', x:90, z:90, status:'carried'}]},
+    objectiveFor: () => ({x:0, z:-100, radiusM:20})};
+  const fake = fakeTransport(), commander = createJevCommander({transport:fake.transport, teams:['player'], now:()=>0});
+  commander.step(view);
+  assert.match(fake.requests[0].body.state.battle.goal, /7 captures/);
+  fake.answer((id,q) => id === 'focus' ? confident('flag_theirs',Object.keys(q.criteria))
+    : id.startsWith('posture_') ? confident('capture',Object.keys(q.criteria)) : null);
+  await tick(); commander.step(view);
+  assert.equal(orders.length, 3);
+  assert.ok(orders.every(o => o.point.x === 0 && o.point.z === -100), 'live mission assignments beat generic focus');
+  commander.dispose();
+}
+{
+  console.log('[11] hung transports and late callbacks never strand the team');
+  const f=fixture(), fake=fakeTransport(); let clock=0;
+  const commander=createJevCommander({transport:fake.transport,teams:['player'],now:()=>clock});
+  commander.step(f.view); clock=5001; f.set(1); commander.step(f.view);
+  assert.equal(fake.requests[0].signal.aborted,true);
+  assert.equal(commander.stats().lastError,'commander_timeout');
+  fake.answer((id,q)=>id.startsWith('posture_')?confident('push',Object.keys(q.criteria)):null);
+  await tick(); commander.step(f.view);
+  assert.equal(commander.stats().ordersApplied,0,'late completion of an aborted request is ignored');
+  f.set(3.1); commander.step(f.view);
+  assert.equal(fake.requests.length,2,'a later planning request can proceed');
+  commander.stop(); assert.equal(fake.requests[1].signal.aborted,true,'battle end aborts outstanding work');
+  commander.dispose();
+}

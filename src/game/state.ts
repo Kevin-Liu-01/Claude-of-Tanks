@@ -56,7 +56,7 @@ import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { tankTier } from '../vehicles/tier.ts';
 import {
-  createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
+  createTankState, updateTank, requestTankJump, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
   applyShellKnock, shellKnockMps, IMPACT_SOURCE_CLIFF, IMPACT_SOURCE_COLLIDER, type RecoilLaunch,
 } from '../sim/movement.ts';
 import {
@@ -2339,7 +2339,12 @@ function applyBotSupportActions(game: SoloGameState, bus: EventBus): void {
     }
     if (actionBits & PLAYER_ACTION_BITS.SPECIAL_ACTION) activateSpecialAction(entity);
     // round 60 pacing: an overturned bot asks for the self-right a player has (the authority does the same)
-    if (actionBits & PLAYER_ACTION_BITS.SELF_RIGHT) requestTankSelfRight(entity.state);
+    if (actionBits & PLAYER_ACTION_BITS.SELF_RIGHT) {
+      if (!requestTankSelfRight(entity.state)) requestTankJump(entity.state, entity.modeJumpMps);
+    }
+    entity.input.auxiliaryBits = (entity.input.auxiliaryBits || 0) | (actionBits & (
+      PLAYER_ACTION_BITS.SMOKE | PLAYER_ACTION_BITS.LIGHTS | PLAYER_ACTION_BITS.LIGHTS_OFF | PLAYER_ACTION_BITS.ROOF_GUN
+    ));
     const readyAt = entity.consumableReadyAt || (entity.consumableReadyAt = [0, 0, 0]);
     for (let slot = 0; slot < CONSUMABLE_RULES.length; slot++) {
       const bit = 1 << slot;

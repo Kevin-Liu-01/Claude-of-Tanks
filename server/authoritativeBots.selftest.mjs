@@ -91,13 +91,19 @@ for (let sample = 0; sample < 8; sample++) {
     worldCollision: createDedicatedWorldCollision('verdant'),
   });
   match.onMatchReady();
+  const cannonShots = new Set();
+  const cannonHits = new Set();
   for (let tick = 0; tick < 75 * 60 && !match.result; tick++) {
     match.step({ dt: 1 / 60, inputs: new Map() });
     if ((tick + 1) % 15 !== 0) continue;
     const snapshot = match.snapshot({ tick, serverTimeMs: tick * 1000 / 60 });
     for (const event of snapshot.events) {
-      if (event.type === 'shell_fired') calibrationShots++;
-      if (event.type === 'shell_hit') calibrationHits++;
+      if (event.type === 'shell_fired') { cannonShots.add(event.shellId); calibrationShots++; }
+      // Roof MGs now fire too. Measure this cannon-aim contract against its
+      // actual projectiles, counting a shell at most once (including HE bursts).
+      if (event.type === 'shell_hit' && cannonShots.has(event.shellId) && !cannonHits.has(event.shellId)) {
+        cannonHits.add(event.shellId); calibrationHits++;
+      }
     }
     match.afterSnapshotBroadcast();
   }

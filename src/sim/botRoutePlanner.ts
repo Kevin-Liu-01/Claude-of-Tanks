@@ -66,6 +66,8 @@ export interface BotNavigationGrid {
   readonly navigationWaterPolicy?: NavigationWaterPolicy;
   /** One bit per NEIGHBOR_STEPS edge; allocated only for explicit dry routing. */
   readonly waterBlockedEdges?: Uint8Array;
+  /** Bridge parapets are not entrances, even when both grid endpoints are dry. */
+  readonly bridgeBlockedEdges?: Uint8Array;
   readonly liquidField?: NavigationHeightField;
   readonly exactConnectorClear?: (x: number, z: number) => boolean;
   readonly heights: Float32Array;
@@ -333,6 +335,33 @@ function addDryNavigationPolicy(
   });
 }
 
+function bridgeSideEdges(decks: readonly NavigationBridgeDeck[], positions: Float32Array): Uint8Array {
+  const edges = new Uint8Array(GRID_N * GRID_N);
+  for (let iz = 0; iz < GRID_N; iz++) for (let ix = 0; ix < GRID_N; ix++) {
+    const index = cellIndex(ix, iz), x = cellX(positions, index), z = cellZ(positions, index);
+    for (let direction = 0; direction < NEIGHBOR_STEPS.length; direction++) {
+      const [dx, dz] = NEIGHBOR_STEPS[direction];
+      if (isOutsideGrid(ix + dx, iz + dz)) continue;
+      const next = cellIndex(ix + dx, iz + dz);
+      const nx = cellX(positions, next), nz = cellZ(positions, next);
+      for (const deck of decks) {
+        const along = (x - deck.x) * deck.ux + (z - deck.z) * deck.uz;
+        const side = (x - deck.x) * deck.uz - (z - deck.z) * deck.ux;
+        const da = (nx - x) * deck.ux + (nz - z) * deck.uz;
+        const ds = (nx - x) * deck.uz - (nz - z) * deck.ux;
+        if (Math.abs(ds) < 1e-6) continue;
+        for (const sign of [-1, 1]) {
+          const t = (sign * deck.halfWidth - side) / ds;
+          if (t >= 0 && t <= 1 && Math.abs(along + t * da) < deck.halfLength - .01) {
+            edges[index] |= 1 << direction;
+          }
+        }
+      }
+    }
+  }
+  return edges;
+}
+
 /** Build the immutable terrain/cover grid once for every bot in a match. */
 export function createBotNavigationGrid<T extends NavigationObstacle>({
   heightField,
@@ -353,16 +382,18 @@ export function createBotNavigationGrid<T extends NavigationObstacle>({
     sampleNavigationRow(iz, heightField, queryObstacles, obstacles, candidates,
       heights, groundTypes, blocked, cellPositions);
   }
+  const bridgeBlockedEdges = cellPositions ? bridgeSideEdges(heightField.bridgeDecks!, cellPositions) : undefined;
   if (heightField.navigationWaterPolicy === 'avoid-liquid') {
-    return addDryNavigationPolicy(heightField, heights, blocked, groundTypes, (x,z) => {
+    const grid = addDryNavigationPolicy(heightField, heights, blocked, groundTypes, (x,z) => {
       const nearby = queryObstacles ? queryObstacles(x-4.5,z-4.5,x+4.5,z+4.5,candidates) : obstacles;
       return !isSolidObstacleAt(nearby,x,z);
     }, cellPositions);
+    return bridgeBlockedEdges ? Object.freeze({ ...grid, bridgeBlockedEdges }) : grid;
   }
   if (heightField.navigationWaterPolicy !== undefined) {
     throw new TypeError('unknown navigation water policy');
   }
-  return Object.freeze({ heights, blocked, groundTypes, ...(cellPositions ? { cellPositions } : {}) });
+  return Object.freeze({ heights, blocked, groundTypes, ...(cellPositions ? { cellPositions, bridgeBlockedEdges } : {}) });
 }
 
 function isValidNavigationGrid(navigation: BotNavigationGrid): boolean {
@@ -414,11 +445,12 @@ function reachableNeighbor(node: HeapNode, direction: number, navigation: BotNav
   const index = cellIndex(x, z);
   if (navigation.blocked[index] || diagonalCornerIsBlocked(node, dx, dz, navigation.blocked)) return -1;
   if (navigation.waterBlockedEdges && navigation.waterBlockedEdges[node.index] & (1 << direction)) return -1;
+  if (navigation.bridgeBlockedEdges && navigation.bridgeBlockedEdges[node.index] & (1 << direction)) return -1;
   const grade = (navigation.heights[index] - navigation.heights[node.index]) / (CELL_M * scale);
   const ground = routeGroundType(spec, navigation.groundTypes, node.index, index);
   // Objective access must permit carrying the flag/ball back out as well as
-  // descending into a clearing. This objective-only flood is conservative;
-  // the bot planner's existing directional movement policy is unchanged.
+  // descending into a clearing. Route searches use the same two-way slope
+  // constraint so the outward route cannot become a one-way cliff shortcut.
   return terrainSlopeMargin(spec, ground, grade) > TERRAIN_MARGIN_EPS
     && terrainSlopeMargin(spec, ground, -grade) > TERRAIN_MARGIN_EPS ? index : -1;
 }
@@ -512,10 +544,12 @@ function relaxNeighbor(
   if (closed[nextIndex] || navigation.blocked[nextIndex]) return;
   if (diagonalCornerIsBlocked(node, dx, dz, navigation.blocked)) return;
   if (navigation.waterBlockedEdges && (navigation.waterBlockedEdges[node.index] & edgeBit)) return;
+  if (navigation.bridgeBlockedEdges && (navigation.bridgeBlockedEdges[node.index] & edgeBit)) return;
   const distance = CELL_M * distanceScale;
   const signedGrade = (navigation.heights[nextIndex] - navigation.heights[node.index]) / distance;
   const ground = routeGroundType(spec, navigation.groundTypes, node.index, nextIndex);
-  if (terrainSlopeMargin(spec, ground, signedGrade) <= TERRAIN_MARGIN_EPS) return;
+  if (terrainSlopeMargin(spec, ground, signedGrade) <= TERRAIN_MARGIN_EPS
+      || terrainSlopeMargin(spec, ground, -signedGrade) <= TERRAIN_MARGIN_EPS) return;
   const terrainCost = terrainTravelCostFactor(spec, ground, signedGrade);
   const variability = 1 + hashNoise(search.seed, nx, nz) * 0.22;
   const nextCost = costs[node.index] + distance * terrainCost * variability;
@@ -576,7 +610,9 @@ function solveRoute(
     if (closed[node.index]) continue;
     closed[node.index] = 1;
     if (node.index === goalIndex) break;
-    for (const step of NEIGHBOR_STEPS) relaxNeighbor(node, step, search);
+    for (let direction = 0; direction < NEIGHBOR_STEPS.length; direction++) {
+      relaxNeighbor(node, NEIGHBOR_STEPS[direction], search, 1 << direction);
+    }
   }
   return reconstructRoute(parents, costs, startIndex, goalIndex, navigation.cellPositions);
 }

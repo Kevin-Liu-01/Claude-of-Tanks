@@ -25,10 +25,10 @@ wreck, Studio/shared FX, and covered deployment-program residency behind a
 retryable typed access facade; `ai.ts`
 owns bot decisions and is injected into the headless multiplayer authority;
 `jevCommander.ts` is the Jev commander (docs/JEV-COMMANDER.md): one text-only
-team document per team every few seconds through an injected transport,
+team document per team every few seconds (rotating bounded batches for large teams) through an injected transport,
 TypeSafe's answers gated by freshness and confidence into standing orders the
 classic controller takes through `setOrder()` and drops on expiry — the
-classic brain is byte-identical with no order; `jevProtocol.ts` is the shared
+shared local controller owns mission driving, coordinated flanks, fall safety and ability reflexes even without orders (docs/BOT-TACTICS.md); `jevProtocol.ts` is the shared
 wire schema the proxy validates and builds the questions from;
 `input.ts` normalizes devices; `profile.ts` persists real local match history;
 `playerBattleActions.ts` owns ammunition, consumable, special-action, and

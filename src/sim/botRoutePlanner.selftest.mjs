@@ -133,3 +133,24 @@ assert.ok(bogRoute.some(([, z]) => Math.abs(z) >= 110),
   'bot prefers firm terrain over a costly soft-ground role waypoint');
 
 console.log('botRoutePlanner.selftest: seeded, vehicle-aware traversability passed');
+
+// A dry bank and the bridge deck may have equal heights with a gorge between
+// them. Endpoint slope alone used to route a flag runner through the parapet.
+{
+  const deck = {x:0,z:0,ux:0,uz:1,halfLength:100,halfWidth:9,deckY:0,approachM:75};
+  const field = {getHeightAt:(_x,z)=>Math.abs(z)<100?-30:0,
+    getGroundType:()=> 'hard', bridgeDecks:[deck]};
+  const navigation = createBotNavigationGrid({heightField:field});
+  const route = planBotRoute({start:{x:-50,z:-150},goal:{x:50,z:150},navigation,
+    spec:routeSpec,rng:seeded(612),useRoleDetour:false});
+  assert.ok(route.length>0,'bridge crossing remains reachable');
+  let previous=[-50,-150];
+  for (const point of route) {
+    const length=Math.hypot(point[0]-previous[0],point[1]-previous[1]);
+    for(let d=0;d<=length;d+=1){
+      const t=d/Math.max(1,length),x=previous[0]+(point[0]-previous[0])*t,z=previous[1]+(point[1]-previous[1])*t;
+      if(Math.abs(z)<99)assert.ok(Math.abs(x)<=deck.halfWidth,'route enters through an abutment and stays on the deck');
+    }
+    previous=point;
+  }
+}

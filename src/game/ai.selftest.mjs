@@ -671,6 +671,83 @@ console.log('[21] round 62: an empty rack rams when the ram law allows it and re
   ok(wounded.info.ramming === false, 'a hull that would not survive its own ram does not run');
 }
 
+console.log('[22] modern vehicle abilities use the shared bot control path');
+{
+  const bot = entity('smoke-bot', 'm1a2', 'player', 0, 0);
+  const enemy = entity('smoke-threat', 't90m', 'enemy', 0, 90);
+  bot.combat.hp = 280;
+  bot.combat.reload.t = 6;
+  const ctl = controller(bot, [enemy], []);
+  ctl.update(SIM_DT, 20);
+  ctl.notifyUnderFire(enemy, { selfHit: true, damaging: true });
+  ctl.update(SIM_DT, 20.3);
+  ok(!!(bot.input.actionBits & PLAYER_ACTION_BITS.SMOKE), 'a wounded bot under frontal fire deploys its actual smoke launchers');
+}
+
+console.log('[23] independent launcher channels and every authored ammo slot');
+{
+  const bot = entity('multi-weapon', 'm1a2', 'player', 0, 0);
+  const enemy = entity('multi-weapon-target', 't90m', 'enemy', 0, 80);
+  const missile = {...bot.spec.gun.shells[1], guided: true, pen100Mm: 1200, pen1000Mm: 1200, velocityMps: 350};
+  bot.spec = {...bot.spec, gun: {...bot.spec.gun, shells: [...bot.spec.gun.shells.slice(0,3), missile]}};
+  bot.combat.ammo = [10,10,10,5]; bot.combat.ammoCapacity = [10,10,10,5];
+  const cannon = {t: 7, totalS:7, kind:'shell'}, launcher = {t:0,totalS:12,kind:'ready'};
+  bot.combat.reload = cannon; bot.combat.gunReload = cannon;
+  bot.combat.reloadChannels = [cannon,cannon,cannon,launcher];
+  const ctl = controller(bot,[enemy],[]);
+  ctl.update(SIM_DT,20);
+  for (let i = 1; i <= 60; i++) ctl.update(SIM_DT, 20 + i * SIM_DT);
+  ok(bot.input.shellSlot === 3, 'a ready independent fourth-slot launcher is selected while the cannon reloads');
+  ok(bot.combat.reload === cannon && cannon.t === 7, 'decision does not mutate weapon clocks or bypass the authority');
+}
+
+console.log('[24] fall danger overrides a route without braking a flying tank');
+{
+  const bot=entity('edge-driver','m1a2','player',0,0);
+  const cliff={...hf,getHeightAt:(_x,z)=>z>15?-25:0};
+  const ctl=controller(bot,[],[],41,'normal',{heightField:cliff});
+  ctl.setWaypoints([[0,80]],{loop:false});
+  bot.state.speed=12;
+  ctl.update(SIM_DT,20);
+  ok(ctl.debugInfo().terrainBlocked && bot.input.brake && bot.input.throttle===0,
+    'a fast bot brakes before a dangerous drop even when its objective lies beyond it');
+  bot.state.grounded=false;
+  ctl.update(SIM_DT,20.1);
+  ok(!ctl.debugInfo().terrainBlocked, 'airborne movement is not held by the cliff brake');
+}
+
+console.log('[25] mission movement survives visible combat distractions');
+for (const mission of ['carrier', 'striker', 'recover', 'escort']) {
+  const bot = entity(`mission-${mission}`, 'm1a2', 'player', 0, 0, Math.PI);
+  const enemy = entity('distraction', 't90m', 'enemy', 0, 90);
+  let routeCalls = 0;
+  const ctl = controller(bot, [enemy], [], 912, 'normal', {
+    getObjective: () => ({ x: 0, z: -100, radiusM: 15, mission }),
+    planRoute: () => { routeCalls++; return [[0, -50], [0, -100]]; },
+  });
+  ctl.update(SIM_DT, 1);
+  ok(bot.input.throttle > .5 && Math.abs(bot.input.steer) < .1,
+    `${mission} keeps driving toward its job while tracking an enemy behind it`);
+  for (let i = 1; i < 60; i++) ctl.update(SIM_DT, 1 + i * SIM_DT);
+  ok(routeCalls === 1, `${mission} reuses its route between objective updates`);
+}
+console.log('[26] a mobile teammate flanks while its partner pins the contact');
+{
+  const fast = entity('a-mobile', 'leo2a7v', 'player', -30, 0);
+  const anchor = entity('b-anchor', 'm1a2', 'player', 30, 25);
+  const enemy = entity('crossfire-target', 't90m', 'enemy', 0, 90, Math.PI);
+  fast.spec = { ...fast.spec, topSpeedKmh: 80 };
+  anchor.spec = { ...anchor.spec, topSpeedKmh: 40 };
+  const a = controller(fast, [enemy], [anchor], 333);
+  const b = controller(anchor, [enemy], [fast], 334);
+  let coordinated = false;
+  for (let i = 1; i < 240; i++) {
+    a.update(SIM_DT, i * SIM_DT); b.update(SIM_DT, i * SIM_DT);
+    if (a.state === 'flank' && b.state !== 'flank') coordinated = true;
+  }
+  ok(coordinated, 'mobility election sends one partner around the target without abandoning the anchor');
+}
+
 // round 67 (2026-09-24): the failure count is checked at the end too — checks [14]–[22] printed FAIL and still exited 0
 if (failures) {
   console.error(`ai.selftest: ${failures} failure(s)`);

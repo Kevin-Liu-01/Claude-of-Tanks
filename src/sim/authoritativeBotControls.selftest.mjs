@@ -106,3 +106,18 @@ for (const countdownS of [undefined, SIM_DT, 0]) {
 }
 
 console.log('authoritativeBotControls.selftest: countdown/AI/human/lifecycle control handoff passed');
+
+{
+  const match=fixture(0), inputs=new Map(); match.onMatchReady();
+  const bot=match.entityById.get('bot'), enemy=match.entityById.get('human');
+  match.step({dt:SIM_DT,inputs});
+  bot.combat.hp=bot.combat.maxHp*.25;
+  bot.combat.reload.t=6;
+  bot.state.yaw=Math.atan2(enemy.state.pos.x-bot.state.pos.x,enemy.state.pos.z-bot.state.pos.z);
+  bot.state.turretYaw=0;
+  bot.aiCtl.notifyUnderFire(enemy,{selfHit:true,damaging:true});
+  for(let i=0;i<30;i++)match.step({dt:SIM_DT,inputs});
+  assert.equal(bot.combat.auxiliary.smokeCharges,2,'AI command consumes an actual authoritative smoke charge');
+  assert.ok(bot.combat.auxiliary.smoke.canisters.length>0,'AI smoke uses ballistic canisters');
+  assert.equal(bot.combat.auxiliary.lights,0,'AI lighting control reaches the authority');
+}
