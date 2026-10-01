@@ -9,6 +9,7 @@ import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import * as THREE from 'three';
 import { captureMinimapScene, requireSceneMinimap, type MinimapCaptureReceipt } from './minimapCapturePolicy.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
+import { isAnyModalOpen } from './modal.ts';
 import { installBattleHudLayout, SCORE_BOTTOM_INSET } from './battleHudLayout.ts';
 import { createPreBattleOverlay } from './preBattleOverlay.ts';
 import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.ts';
@@ -1415,7 +1416,7 @@ body.cot-debug-hud .cot-net{display:none!important;}
    red strike itself to stay legible; the side accent bar desaturates so
    living rows pop against the dead ones. */
 .cot-er.dead{opacity:.45;}
-/* Large teams keep every entry in an independently scrollable roster. */
+/* Lists through fourteen; larger teams use the silhouette grid. */
 .cot-ear.dense{gap:0;}
 .cot-ear-rows{min-height:0;overflow-y:auto;overscroll-behavior:contain;
   scrollbar-width:none;pointer-events:auto;}
@@ -2092,6 +2093,15 @@ export function initHud(bus: EventBus): HudRuntime {
     list.addEventListener('keyup', event => { if (!document.pointerLockElement) event.stopPropagation(); });
   }
   const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
+  window.addEventListener('keydown', event => {
+    if (event.code !== 'Tab' || mode === 'hidden' || isAnyModalOpen() || document.querySelector('.cot-settings.open') ||
+        (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable="true"],.cot-room-chat'))) return;
+    event.preventDefault();
+    root.classList.add('rosters-expanded');
+  }, true);
+  const collapseRosters = (): void => { root.classList.remove('rosters-expanded'); };
+  window.addEventListener('keyup', event => { if (event.code === 'Tab') collapseRosters(); }, true);
+  window.addEventListener('blur', collapseRosters);
 
   const killfeed = el('div', 'cot-killfeed', root);
   const killLeft = el('div', 'cot-kill-lane l', killfeed);
@@ -2865,6 +2875,8 @@ export function initHud(bus: EventBus): HudRuntime {
   let lastAllyRosterCount = -1;
   let lastEnemyRosterCount = -1;
   function setRosterLayout(ear: HTMLElement, count: number): void {
+    ear.dataset.count = String(count);
+    ear.style.setProperty('--roster-count', String(Math.max(1, count)));
     ear.classList.toggle('dense', count > 10);
     ear.classList.toggle('icon-grid', count > 14);
     if (count > 14) {
@@ -3001,6 +3013,7 @@ export function initHud(bus: EventBus): HudRuntime {
       setRosterLayout(earR, teamTally.enemyTotal);
       lastEnemyRosterCount = teamTally.enemyTotal;
     }
+    root.classList.toggle('compact-shot-report', Math.max(teamTally.allyTotal, teamTally.enemyTotal) >= 14);
     return teamTally;
   }
 
@@ -6421,6 +6434,7 @@ export function initHud(bus: EventBus): HudRuntime {
       netLastMs = 0;
       netLastPaintMs = 0;
       if (m === 'hidden') {
+        collapseRosters();
         preBattleOverlay.reset();
         setTouchAmmoOpen(false);
         ctx.clearRect(0, 0, w, h);

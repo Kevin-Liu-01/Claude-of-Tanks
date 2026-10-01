@@ -5,8 +5,13 @@ export function objectiveWidth(scoreWidth: number): number {
 }
 
 /** Keep space for three kill notices and the side's combat readout. */
-export function battleRosterHeight(viewportHeight: number, available: number, minimum = 48): number {
+export function battleRosterHeight(viewportHeight: number, available: number, minimum = 48, count = 0, expanded = false): number {
   const space = Math.max(0, available);
+  if (count > 0 && count <= 14) {
+    const reserve = Math.min(232, Math.max(112, space - (22 + count * 16)));
+    const wanted = 22 + count * (expanded ? 30 : 24);
+    return Math.min(space, Math.max(Math.min(48, space), Math.min(wanted, space - reserve)));
+  }
   return Math.min(space, Math.max(minimum, Math.min(viewportHeight * .28,
     space - 92 - Math.min(240, space * .45))));
 }
@@ -150,9 +155,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0) + 8;
     const rightBottom = Math.min(rightFloor(height, width, map),
       systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? systemsTop - 8 : height);
+    const reportReserve = root.querySelector('.cot-si-card') ? (root.classList.contains('compact-shot-report') ? 100 : 160) : 0;
+    const rightKillFloor = Math.max(rightAnchor, rightBottom - reportReserve - (reportReserve ? 8 : 0));
     const rightKillBottom = countdown && countdown.right > width - 12 - Math.min(300, width / 2 - 20)
       && countdown.bottom > rightAnchor ? Math.min(rightBottom, countdown.top - 8) : rightBottom;
-    const killHeightRight = Math.max(0, Math.min(3, Math.floor((rightKillBottom - rightAnchor + 3) / 29)) * 29 - 3);
+    const killHeightRight = Math.max(0, Math.min(3, Math.floor((Math.min(rightKillBottom, rightKillFloor) - rightAnchor + 3) / 29)) * 29 - 3);
     const killsRight = Math.min(killHeightRight, read('.cot-kill-lane.r')?.height || 0);
     const rightTop = rightAnchor + (killsRight ? killsRight + 8 : 0);
     const notice = read('.cot-sixth');
@@ -170,8 +177,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const toastCount = root.querySelector('.cot-si-toasthost')?.childElementCount || 0;
     const stack = battleSideStack(leftBottom - leftTop, chat, touch ? Math.min(1, toastCount) : toastCount);
     const properties = {
-      'roster-left-height': battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52), root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48),
-      'roster-right-height': battleRosterHeight(height, rightBottom - (rosterTopRight ?? earRight?.top ?? 52), root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48),
+      'roster-left-height': battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52), root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0, root.classList.contains('rosters-expanded')),
+      'roster-right-height': battleRosterHeight(height, rightBottom - (rosterTopRight ?? earRight?.top ?? 52), root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.r')?.dataset.count) || 0, root.classList.contains('rosters-expanded')),
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
       'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
       'notice-top': noticeTop, 'alert-top': noticeTop + (notice?.height ?? 48) + 8,
@@ -205,7 +212,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if (!frame) frame = requestAnimationFrame(refresh);
   }
   watchAttributes(document.body, ['class'], true);
-  watchAttributes(root, ['style'], true);
+  watchAttributes(root, ['style', 'class'], true);
   window.addEventListener('resize', schedule, { passive: true });
   window.addEventListener('cot-hud-relayout', schedule);
   window.visualViewport?.addEventListener('resize', schedule, { passive: true });

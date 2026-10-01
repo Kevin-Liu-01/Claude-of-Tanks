@@ -202,8 +202,36 @@ try {
       await page.evaluate(([a,e])=>{const f=window.__HUD_LAYOUT;f.state('reports');f.frame.matchModeState={id:'standard'};f.roster(a,e);},[allies,enemies]);
       await page.waitForTimeout(120);
       await check(`rosters-${allies}v${enemies}`);
+      if(allies===14&&enemies===14&&!touch&&width>=820&&height>=600){
+        const normalWidth=await page.locator('.cot-ear.l').evaluate(el=>el.getBoundingClientRect().width);
+        await page.keyboard.down('Tab');
+        await page.waitForTimeout(120);
+        const expandedWidth=await page.locator('.cot-ear.l').evaluate(el=>el.getBoundingClientRect().width);
+        if(expandedWidth<=normalWidth)errors.push(`${name}: Tab did not widen the roster`);
+        await check('rosters-tab-expanded');
+        await page.keyboard.up('Tab');
+        await page.waitForTimeout(120);
+        if(await page.locator('.rosters-expanded').count())errors.push(`${name}: releasing Tab did not collapse rosters`);
+      }
+
       const issues=await page.evaluate(([allies,enemies])=>{
         const failures=[];
+        const root=document.querySelector('.cot-hud');
+        if(root.classList.contains('compact-shot-report')!==(Math.max(allies,enemies)>=14))failures.push('wrong penetration report density');
+        const shotHost=document.querySelector('.cot-si-cardhost');
+        const detail=document.querySelector('.cot-si-rows');
+        if(shotHost?.checkVisibility()&&detail&&Math.max(allies,enemies)>=14&&detail.checkVisibility())failures.push('large roster still shows detail rows');
+        for(const diagram of document.querySelectorAll('.cot-si-diag')){
+          if(!diagram.checkVisibility())continue;
+          const d=diagram.getBoundingClientRect(), host=shotHost.getBoundingClientRect();
+          if(d.left<host.left-1||d.right>host.right+1||d.top<host.top-1||d.bottom>host.bottom+1)failures.push('diagram clipped by combat readout');
+          for(const box of diagram.querySelectorAll('.box')){
+            const r=box.getBoundingClientRect();
+            if(r.left<d.left-1||r.right>d.right+1||r.top<d.top-1||r.bottom>d.bottom+1)failures.push('tank view clipped by diagram');
+            const ratio=box.dataset.view==='Top'?1:2;
+            if(r.height>0&&Math.abs(r.width/r.height-ratio)>.02)failures.push('tank diagram aspect ratio distorted');
+          }
+        }
         if(document.querySelector('.cot-top .wedge'))failures.push('scoreboard still contains roster squares');
         for(const [i,list] of [...document.querySelectorAll('.cot-ear-rows')].entries()) {
           if(list.children.length!==[allies,enemies][i])failures.push('missing roster entries');
@@ -220,7 +248,7 @@ try {
             }
           }
           if(getComputedStyle(list).scrollbarWidth!=='none')failures.push('roster scrollbar visible');
-          if(count>14 && list.scrollHeight>list.clientHeight+1)failures.push('grid must fit every tank without scrolling');
+          if(list.scrollHeight>list.clientHeight+1)failures.push('roster must fit every tank without scrolling');
           const before=list.parentElement.getBoundingClientRect();
           list.scrollTop=list.scrollHeight;
           const last=list.lastElementChild?.getBoundingClientRect();
@@ -230,7 +258,7 @@ try {
           list.scrollTop=0;
         }
         const report=document.querySelector('.cot-si-cardhost');
-        if(report?.checkVisibility()&&innerHeight>=600&&report.getBoundingClientRect().height<100)failures.push('roster leaves no readable combat report');
+        if(report?.checkVisibility()&&innerHeight>=600&&report.getBoundingClientRect().height<100)failures.push(`roster leaves no readable combat report (${report.getBoundingClientRect().height}px)`);
         return failures;
       },[allies,enemies]);
       for(const issue of issues)errors.push(`${name}/${allies}v${enemies}: ${issue}`);

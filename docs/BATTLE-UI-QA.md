@@ -92,3 +92,21 @@ Zone Control and Gravity award 25 points per confirmed enemy destruction, once
 per vehicle life. Friendly fire, self-destruction and duplicate receipts do not
 score. The shared mode tests cover both solo and network team names; the authority
 regression verifies a real shell kill reaches the score in the snapshot.
+
+### Expanded rosters and contained shot diagrams
+
+Hold Tab during battle to widen both team lists and use spare vertical room;
+release Tab or switch away from the window to collapse them. Settings, modals
+and text entry keep normal keyboard navigation. Up to fourteen entries remain
+rows; fifteen or more use the icon grid. Row height adapts without scrolling,
+with the vehicle subtitle omitted only where a short row cannot fit it.
+
+When either side reaches fourteen tanks, the shot card omits Angle, Armor,
+Damage and Pen detail rows. The outcome, damage total, shell and target remain.
+Top and side diagrams preserve their aspect ratios, contained within the card;
+the hit overlays and tint coordinates scale with them. The right-side kill
+feed reserves room for the readout and the gap above it.
+
+The rendered matrix now includes Tab expansion/release, every roster entry
+fitting without scrolling, report density, diagram containment and aspect
+ratios across the existing desktop/mobile and English/Chinese cases.

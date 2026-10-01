@@ -10,6 +10,14 @@ for (const space of [0, 80, 124, 320, 500]) {
   if (space >= 320) assert.ok(space - height >= 192, 'grid keeps room for kill notices and the combat report');
 }
 
+for (const count of [7, 14]) {
+  const normal = battleRosterHeight(1080, 700, 48, count);
+  const expanded = battleRosterHeight(1080, 700, 48, count, true);
+  assert.ok(expanded > normal, 'Tab uses spare height for larger roster rows');
+  assert.ok(700 - expanded >= 112, 'expanded list still reserves the diagram readout');
+  assert.ok(battleRosterHeight(600, 320, 48, count) <= 208, 'short layout preserves readout plus gap');
+}
+
 for(const width of [240,280,344,420]) {
   const w=objectiveWidth(width);
   assert.ok((width-w)/2>25, 'objective clears both clipped scoreboard corners');

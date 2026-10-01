@@ -191,3 +191,33 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.r{max-hei
 
 /* Icon grids can use the same width as the combat readouts below them. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.icon-grid{width:min(280px,calc(50vw - 184px))}
+
+/* Fit the whole roster; Tab widens names without covering the score. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.l{--roster-height:var(--hud-roster-left-height,28vh)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.r{--roster-height:var(--hud-roster-right-height,28vh)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .cot-ear-rows{
+  display:grid;grid-template-rows:repeat(var(--roster-count,7),minmax(0,1fr));
+  height:calc(var(--roster-height) - 22px);overflow:hidden;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .cot-er{min-height:0;overflow:hidden;padding-block:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .rosters-expanded .cot-ear{width:min(320px,calc(50vw - 184px))}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .compact-shot-report .cot-si-rows{display:none}
+/* The diagram layers share a contained viewport, including their hit overlays. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost{overflow:hidden}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-card{max-height:100%;min-height:0;display:flex;flex-direction:column;flex-shrink:1}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-body{min-height:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag{
+  box-sizing:border-box;grid-template-columns:minmax(0,90fr) minmax(0,172fr);gap:6px;
+  --diagram-size:clamp(0px,calc(var(--hud-right-height) - 160px),90px);
+  min-height:0;height:calc(var(--diagram-size) + 10px);flex-shrink:1;overflow:visible;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .compact-shot-report .cot-si-diag{--diagram-size:clamp(0px,calc(var(--hud-right-height) - 60px),90px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag .box{width:min(100%,var(--diagram-size))!important;height:auto!important;aspect-ratio:1;min-width:0;min-height:0;justify-self:center}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag .box:nth-child(2){width:min(100%,calc(var(--diagram-size) * 2))!important;aspect-ratio:2}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag :is(.pf,.sil){background-size:contain;mask-size:contain;object-fit:contain}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag svg.ov{width:100%;height:100%;object-fit:contain}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .cot-er{container:roster-row / size}
+@container roster-row (max-height:22px){.cot-hud .cot-ear .cot-er .n .veh{display:none}.cot-hud .cot-ear .cot-er .n .nick{font-size:9px;line-height:1.1}}
+
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .compact-shot-report .cot-si-kicker{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .compact-shot-report .cot-si-hd{min-height:26px;padding-block:3px}

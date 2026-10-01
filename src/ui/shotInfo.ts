@@ -771,7 +771,7 @@ function addDiagramZoneTint(
   const tint = el('div', 'sil', parent);
   maskIcon(tint, specId, view, 'transparent');
   tint.style.background =
-    `radial-gradient(circle ${radius}px at ${x.toFixed(1)}px ${y.toFixed(1)}px,` +
+    `radial-gradient(circle ${radius}px at ${(x / (view === 'top_silhouette' ? CARD_TOP_S : CARD_SIDE_W) * 100).toFixed(2)}% ${(y / (view === 'top_silhouette' ? CARD_TOP_S : CARD_SIDE_H) * 100).toFixed(2)}%,` +
     `${color}ff 0%,${color}c0 55%,${color}00 100%)`;
 }
 
