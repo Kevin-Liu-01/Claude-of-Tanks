@@ -83,3 +83,34 @@ worktree's `.qa-dev/publish-fleet-20260930/`; earlier scoped logs and actual
 1280 px garage captures remain in `.qa-dev/fleet-renewal-20260930/` and
 `.qa-dev/underbody-removal-20260930/`. External comparison GLBs remain ignored
 local authoring inputs and are not included in the commit or playable runtime.
+
+## Publication recheck
+
+The integrated source at `c9e0487cc` passes type checking and the public
+production build. The core run attempted 1,295 checks and stopped at 399
+completed checks (349 executed, 50 unchanged-input proofs reused): 31 reported
+failures, including the heavy `awSecondWaveGeometry` process terminated with
+status 137. The remaining 896 were not reached. This is an incomplete failed
+suite, not a fleet-wide pass. Its full report and output are retained as
+`core-report.json` and `validate.log` in the publication evidence directory.
+
+The ammunition-channel census failure was traced to the four explicitly added
+three-channel concept loadouts. Their twelve channels now have a separate
+asserted count and are subtracted from the unchanged historical 560-channel
+census, matching the existing treatment of earlier additions. Runtime ammunition
+behavior and the old census are unchanged; the final committed replay includes
+this test correction.
+
+The 51-vehicle release attempt fails geometry, sealing and fidelity qualification;
+later release stages were not reached. Type 89's sealing probe reports 93 raw open
+pixels against its existing 15-pixel ledger allowance (zero views exceed the
+separate clustered-open threshold). The Jagdpanzer E100 lane-aware watertight
+regression reports 4.58 L rather than the allowed 0.05 L after the requested
+underbody removal. These remain open defects; neither threshold was relaxed.
+Available comparison checks pass for CV90 Mk IV, Type 89 and Jagdpanzer E100;
+missing reference inputs are recorded as unavailable, not passes.
+
+The latest bot traffic, scope zoom, multiplayer, UI and smoke changes on shared
+main are retained during publication integration. The final exact-commit
+validation and remote-freshness preflight are retained alongside the earlier
+reports; a successful push does not assert these unresolved checks passed.

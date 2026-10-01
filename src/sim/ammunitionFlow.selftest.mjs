@@ -199,6 +199,9 @@ const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCoun
 assert.equal(ifvBatchChannels, 16, 'the six 2026-09-25 IFV additions carry sixteen channels');
 const frenchIfvChannels = laterChannelCounts.amx10p + laterChannelCounts.amx10p_25;
 assert.equal(frenchIfvChannels, 4, 'the French autocannon IFVs add four conventional ammunition channels');
+const fleetRenewalChannels = ['type96_72_long', 'type96_80_feng', 'type96_72m_lei', 't72_rys']
+  .reduce((count, id) => count + laterChannelCounts[id], 0);
+assert.equal(fleetRenewalChannels, 12, 'the four fleet-renewal concepts add twelve separately covered channels');
 const laterIds = new Set([...Object.keys(laterChannelCounts), ...SUPPLIED_SOURCE_IDS]);
 for (const [id, count] of Object.entries(laterChannelCounts)) {
   assert.equal(TANK_SPECS[id].gun.shells.length, count,
@@ -225,8 +228,8 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // 2026-09-22 cleanup: 675 -> 666 for the same three retired ww2 study variants; 2026-09-23: 666 -> 560
 // when the remaining 36 hidden records retired (the same 106 channels as the census above).
 // 2026-09-25: the sixteen IFV identity channels are subtracted the same way; the 560 stay covered separately.
-// The French IFVs' four channels and Marder's two are also additions.
-assert.equal(authoredShellChannels - laterChannelCounts.ariete_c2_x - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2, 560,
+// The French IFVs' four channels, Marder's two and the renewal concepts' twelve are also additions.
+assert.equal(authoredShellChannels - laterChannelCounts.ariete_c2_x - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

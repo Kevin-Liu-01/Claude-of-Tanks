@@ -104,7 +104,7 @@
    ]
   },
   "actual": {
-   "heightM": 2.7383017636835576,
+   "heightM": 2.6878593627735974,
    "hullLengthM": 6.687221149206161,
    "overallLengthM": 6.896196810118854,
    "widthM": 3.1994894291460514
@@ -112,15 +112,15 @@
  },
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 94.65835412311993,
+ "rawGeoMin": 94.66432543213536,
  "rawComponents": {
-  "wholeCurves": 94.65835412311993,
-  "dims": 96.17801998183465,
+  "wholeCurves": 94.66432543213536,
+  "dims": 98.84468664850135,
   "floaters": 100
  },
  "components": {
   "wholeCurves": 94.7,
-  "dims": 96.2,
+  "dims": 98.8,
   "floaters": 100
  },
  "wholeShapeMetric": "registered-standard-view-masks (fused reference)",
@@ -235,7 +235,7 @@
    ]
   },
   "side_whole": {
-   "score": 83.25917846125394,
+   "score": 83.19551110313107,
    "meanPct": 1.13,
    "p95Pct": 3.97,
    "coverPct": 0.56,
@@ -312,9 +312,9 @@
      "at": 1.44,
      "refTop": 0.71,
      "refBot": -1.91,
-     "procTop": 0.59,
+     "procTop": 0.53,
      "procBot": -1.92,
-     "errM": 0.062
+     "errM": 0.091
     },
     {
      "at": -0.43,
@@ -667,8 +667,8 @@
    ]
   },
   "front_whole": {
-   "score": 81.10786469146018,
-   "meanPct": 1.29,
+   "score": 81.04184001692944,
+   "meanPct": 1.3,
    "p95Pct": 5.61,
    "coverPct": 0,
    "reg": {
@@ -680,9 +680,9 @@
      "at": 1.11,
      "refTop": 1.93,
      "refBot": -1.92,
-     "procTop": 0.81,
+     "procTop": 0.79,
      "procBot": -1.92,
-     "errM": 0.565
+     "errM": 0.575
     },
     {
      "at": 1.07,
@@ -818,9 +818,9 @@
    "refW": 3.191,
    "procW": 3.201,
    "refTop": 2.711,
-   "procTop": 2.738,
+   "procTop": 2.683,
    "wPct": 0.3416254391559806,
-   "topPct": 0.7137241346150053
+   "topPct": 0.7138113883159174
   },
   {
    "i": 4,
@@ -916,9 +916,9 @@
  "dimRows": [
   {
    "name": "heightM",
-   "actual": 2.7383017636835576,
+   "actual": 2.6878593627735974,
    "published": 2.7022714773193,
-   "pct": 1.3333333333333366,
+   "pct": 0.5333333333333281,
    "method": "paired identical masks in source-only fixed frame"
   },
   {
@@ -975,7 +975,7 @@
   "len": 6.597
  },
  "proceduralBodyExtent": {
-  "h": 2.743,
+  "h": 2.736,
   "len": 6.677
  },
  "floaterFails": 0,
@@ -986,7 +986,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 244680,
+     "area": 244228,
      "minX": 59,
      "minY": 241,
      "maxX": 963,
@@ -1000,7 +1000,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 238097,
+     "area": 238295,
      "minX": 59,
      "minY": 241,
      "maxX": 992,
@@ -1014,7 +1014,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 243971,
+     "area": 243468,
      "minX": 59,
      "minY": 241,
      "maxX": 963,
@@ -1028,7 +1028,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 242388,
+     "area": 241936,
      "minX": 59,
      "minY": 241,
      "maxX": 963,
@@ -1042,7 +1042,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 246216,
+     "area": 245764,
      "minX": 59,
      "minY": 241,
      "maxX": 963,
