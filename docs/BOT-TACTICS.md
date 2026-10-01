@@ -37,6 +37,21 @@ terrain-aware navigation grid.
   decisions continue. Independent missile channels can be selected while the
   cannon reloads, including authored ammunition slots beyond the first three.
 
+## Traffic and keeping the battle moving
+
+Both teams give human drivers right-of-way, predict the actual direction of a
+moving hull while it brakes, and share deterministic bot-to-bot yielding.
+Reverse escapes persist across route updates and check teammates, solid cover,
+water and dangerous drops every tick. A parked tank triggers a committed
+passing path instead of alternating steering back toward the blocked route.
+No-contact bots begin seeking a new approach after 25 seconds, independently
+of the opening long-range fire restriction. Combat destinations crossing a
+bridge use the same navigation grid and abutments as mission destinations.
+
+The traffic regressions run actual movement for both teams: parked hulls,
+oncoming pairs, and a three-bot queue. The pacing target is 4–8 minutes with
+no default match under two minutes; prolonged idle deployment is not a tactic.
+
 ## Terrain and bridges
 
 `src/sim/botTerrainSafety.ts` samples the stopping corridor across the hull and

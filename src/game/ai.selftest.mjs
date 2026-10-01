@@ -190,6 +190,90 @@ console.log('[7] ally right-of-way and predictive yielding');
     'yield combines an evasive lane with a meaningful speed cap');
 }
 
+console.log('[7b] human right-of-way and sustained safe escape on both teams');
+for (const team of ['player', 'enemy']) {
+  const bot = entity('a-bot', 'm1a2', team, 0, 0);
+  const human = entity('z-human', 'm1a2', team, 0, 7, Math.PI);
+  human.isPlayer = true;
+  const friends = [human];
+  const ctl = controller(bot, [], friends, 73);
+  ctl.setWaypoints([[0, 220]], { loop: false });
+  let reverseTicks = 0;
+  for (let i = 0; i < 120; i++) {
+    ctl.update(SIM_DT, 20 + i * SIM_DT);
+    if (bot.input.throttle < -.3) reverseTicks++;
+  }
+  ok(ctl.debugInfo().allyYielding, `${team}: human has right-of-way regardless of ID`);
+  ok(reverseTicks > 30, `${team}: reverse escape persists across route updates`);
+  const rear = entity('rear', 'm1a2', team, 0, -5);
+  friends.push(rear);
+  ctl.update(SIM_DT, 22);
+  ok(bot.input.throttle >= 0, `${team}: new rear traffic cancels escape immediately`);
+}
+for (const hazard of ['wall', 'cliff', 'water']) {
+  const bot = entity('a-bot', 'm1a2', 'player', 0, 0);
+  const human = entity('z-human', 'm1a2', 'player', 0, 7, Math.PI);
+  human.isPlayer = true;
+  const extra = hazard === 'wall' ? {
+    getObstacles: () => [{ min: [-8, -1, -9], max: [8, 8, -4], kind: 'building' }],
+  } : hazard === 'cliff' ? {
+    heightField: { ...hf, getHeightAt: (_x, z) => z < -3 ? -35 : 0 },
+  } : { heightField: { ...hf, navigationWaterPolicy: 'avoid-liquid', getWaterMaskAt: (_x, z) => z < -5 ? 1 : 0 } };
+  const ctl = controller(bot, [], [human], 73, 'normal', extra);
+  ctl.setWaypoints([[0, 220]], { loop: false });
+  let reversed = false;
+  for (let i = 0; i < 150; i++) {
+    ctl.update(SIM_DT, 20 + i * SIM_DT);
+    reversed ||= bot.input.throttle < -.1;
+  }
+  ok(!reversed, `blocked bot never backs into ${hazard}`);
+}
+
+console.log('[7c] real movement clears stopped teammates and head-on traffic');
+for (const team of ['player', 'enemy']) {
+  for (const headOn of [false, true]) {
+    const a = entity('a-route', 'm1a2', team, 0, 0);
+    const b = entity('z-route', 'm1a2', team, 0, headOn ? 28 : 12, headOn ? Math.PI : 0);
+    const ca = controller(a, [], [b], 73);
+    const cb = headOn ? controller(b, [], [a], 74) : null;
+    ca.setWaypoints([[0, 160]], { loop: false });
+    cb?.setWaypoints([[0, -160]], { loop: false });
+    let closest = Infinity;
+    for (let i = 0; i < 30 * 60; i++) {
+      ca.update(SIM_DT, 20 + i * SIM_DT);
+      cb?.update(SIM_DT, 20 + i * SIM_DT);
+      updateTank(a, hf, SIM_DT);
+      if (cb) updateTank(b, hf, SIM_DT);
+      closest = Math.min(closest, a.state.pos.distanceTo(b.state.pos));
+    }
+    ok(a.state.pos.z > 40 && (!cb || b.state.pos.z < -15),
+      `${team}: ${headOn ? 'both oncoming bots pass' : 'bot passes a parked teammate'} and resume route (z=${a.state.pos.z.toFixed(1)}, ${b.state.pos.z.toFixed(1)})`);
+    ok(closest > 4, `${team}: traffic keeps hull clearance (${closest.toFixed(1)}m)`);
+  }
+}
+
+console.log('[7d] a stalled friendly column clears and keeps advancing');
+for (const team of ['player', 'enemy']) {
+  const lead = entity('parked', 'm1a2', team, 0, 22);
+  const bots = [0, 1, 2].map(i => entity(`column-${i}`, 'm1a2', team, 0, 10 - i * 13));
+  const controls = bots.map((bot, i) => controller(bot, [], [lead, ...bots.filter(b => b !== bot)], 80 + i));
+  controls.forEach(c => c.setWaypoints([[0, 180]], { loop: false }));
+  for (let i = 0; i < 60 * 60; i++) {
+    controls.forEach(c => c.update(SIM_DT, 20 + i * SIM_DT));
+    bots.forEach(bot => updateTank(bot, hf, SIM_DT));
+  }
+  ok(bots.every(bot => bot.state.pos.z > 55), `${team}: every bot leaves the queue (${bots.map(b => b.state.pos.z.toFixed(0)).join(', ')})`);
+}
+console.log('[7e] opening routes do not strand bots outside combat for minutes');
+for (const team of ['player', 'enemy']) {
+  const bot = entity('opening', 'm1a2', team, 0, 0);
+  const foe = entity('contact', 't90m', team === 'player' ? 'enemy' : 'player', 0, 200, Math.PI / 2);
+  const ctl = controller(bot, [foe], [], 71);
+  ctl.setWaypoints([[0, 0]], { loop: false });
+  tick(ctl, bot, 30);
+  ok(ctl.debugInfo().searchLegs >= 1 && ctl.debugInfo().wpCount > 0, `${team}: finished opening route starts a new advance within 30 seconds`);
+}
+
 console.log('[8] humanized fire-control estimate');
 {
   const bot = entity('aim-bot', 't90m', 'player', 0, 0);

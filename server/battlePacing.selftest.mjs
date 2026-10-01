@@ -60,9 +60,11 @@ const p10S = durations[Math.floor(durations.length * 0.1)];
 const subTwoMinute = durations.filter((duration) => duration < 120).length;
 const timeouts = resultReasons.filter((reason) => reason === 'time_limit').length;
 
-assert.ok(medianS >= 300 && medianS <= 480,
-  `default bot match median must stay in the 5-8 minute band (got ${medianS.toFixed(1)} s)`);
-assert.ok(p10S >= 180,
+// Active route recovery removes idle deployment time; preserve a 4–8 minute
+// median and the existing two-minute floor instead of rewarding stationary bots.
+assert.ok(medianS >= 240 && medianS <= 480,
+  `default bot match median must stay in the 4-8 minute band (got ${medianS.toFixed(1)} s)`);
+assert.ok(p10S >= 120,
   `even the fast tail must retain a tactical opening (p10 ${p10S.toFixed(1)} s)`);
 assert.equal(subTwoMinute, 0, 'default bot matches no longer collapse inside two minutes');
 const maxTimeouts = Math.floor(durations.length * 0.125);

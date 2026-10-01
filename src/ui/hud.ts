@@ -3157,7 +3157,7 @@ export function initHud(bus: EventBus): HudRuntime {
   //      mid-frame — still no ring boundary, no tunnel);
   //   2. FULL-WIDTH HAIRLINES — 1px cross lines running from the screen
   //      edges up to the dispersion circle's rim (interior stays clean);
-  //   3. the zoom readout anchored below reticle center (drawReticle).
+  //   3. the zoom readout anchored above reticle center (drawReticle).
   function ensureScopeGradients(zoom: number): void {
     if (scopeGrad && scopeChromGrad && scopeGradZoom === zoom) return;
     const deep = 0.48;
@@ -4085,7 +4085,9 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function paintSniperZoom(view: HudAimView, draw: ReticleDrawState): void {
     if (window.__HUD_HIDE_ZOOM_PLATE) return;
-    const y = h - 96;
+    // Keep magnification with the aiming readouts, clear of the bottom
+    // vehicle console. Bound bloom clearance so it stays near the scope.
+    const y = draw.cy - Math.max(56, Math.min(draw.radius + 20, 96));
     const text = `×${(view.zoom || 8).toFixed(1)}`;
     ctx.font = `700 16px ${FONT_COND}`;
     ctx.fillStyle = 'rgba(196,246,202,0.95)';
@@ -4268,11 +4270,8 @@ export function initHud(bus: EventBus): HudRuntime {
     paintPhysicalGunMarker(view, draw);
     ctx.globalAlpha = 1;
 
-    // --- readouts (r7, WoT PC layout): everything hangs CENTERED below the
-    // reticle. The reload countdown sits just under the center marker; the
-    // chambered-shell count + aim distance anchor below the dispersion
-    // circle's lower rim (the old 4-o'clock side tag collided with the
-    // circle stroke); sniper appends the zoom factor to the same stack.
+    // Scope readouts stay around the aiming point: magnification above,
+    // reload and ammunition below, range beside the lower-right rim.
     ctx.textAlign = 'center';
     ctx.shadowColor = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur = 3;
@@ -4283,7 +4282,7 @@ export function initHud(bus: EventBus): HudRuntime {
     // three-line mid-frame column is gone —
     //   - chambered count: ONE compact line hugging the circle's lower rim
     //   - distance: a small corner tag hanging off the reticle's 4:30 rim
-    //   - zoom factor: anchored BOTTOM-CENTER above the shell tray (WoT)
+    //   - zoom factor: above the reticle, clear of the vehicle controls
     paintSniperReadouts(view, draw);
     paintAimWarning(view, draw);
     ctx.shadowBlur = 0;

@@ -1200,6 +1200,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let allyEmergencyActive = false;
   let allyEmergencyStops = 0;
   let allyReverseEscapes = 0;
+  let allyEscapeUntilS = -1;
+  let allyEscapeSteer = 0;
+  let trafficDetourUntilS = -1;
+  let trafficDetourStage = 0;
+  const trafficNear = { x: 0, z: 0 }, trafficFar = { x: 0, z: 0 };
 
   // Stuck / gun-limit recovery.
   let lowSpeedT = 0;
@@ -2200,7 +2205,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function scanAllyRisk(input: AiInput): boolean {
     if (!getAllies) return false;
     const st = entity.state;
-    allyRisk.motionSign = input.throttle >= 0 ? 1 : -1;
+    // Braking/reversing input does not instantly reverse a moving hull.
+    allyRisk.motionSign = Math.abs(st.speed) > 0.5
+      ? Math.sign(st.speed) : input.throttle >= 0 ? 1 : -1;
     const forwardX = Math.sin(st.yaw) * allyRisk.motionSign;
     const forwardZ = Math.cos(st.yaw) * allyRisk.motionSign;
     allyRisk.speed = Math.abs(st.speed || 0);
@@ -2216,7 +2223,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     let bestScore = Infinity;
     for (let i = 0; i < allyRisk.friends.length; i++) {
       const ally = allyRisk.friends[i];
-      if (!ally || !ally.state || (ally.combat && ally.combat.destroyed)) continue;
+      if (!ally || ally === entity || !ally.state || ally.modeActive === false ||
+          (ally.combat && ally.combat.destroyed)) continue;
       bestScore = considerAllyRisk(
         ally, forwardX, forwardZ, look, ownHalfLength, bestScore,
       );
@@ -2231,7 +2239,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     allyClosestM = allyRisk.distance;
     const following = allyRisk.headingDot > 0.55 && allyRisk.along > 0;
     const headOn = allyRisk.headingDot < -0.25;
-    const hasPriority = String(entity.id) < String(best.id);
+    // Human drivers cannot participate in our deterministic bot ID handshake.
+    const hasPriority = !best.isPlayer && String(entity.id) < String(best.id);
     const mustYield = following || !hasPriority;
     allyYielding = mustYield;
     const side = headOn ? 1 : Math.sign(
@@ -2242,13 +2251,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return mustYield;
   }
 
-  function aftCorridorClear(best: AiEntity): boolean {
+  function aftCorridorClear(): boolean {
     const st = entity.state;
     const backX = -Math.sin(st.yaw);
     const backZ = -Math.cos(st.yaw);
     for (let i = 0; i < allyRisk.friends.length; i++) {
       const other = allyRisk.friends[i];
-      if (!other || other === best || !other.state ||
+      if (!other || other === entity || !other.state || other.modeActive === false ||
           (other.combat && other.combat.destroyed)) continue;
       const relativeX = other.state.pos.x - st.pos.x;
       const relativeZ = other.state.pos.z - st.pos.z;
@@ -2258,10 +2267,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         return false;
       }
     }
-    return true;
+    return !findBlockingObstacle(st.pos.x, st.pos.z, backX, backZ, 8,
+      (spec.dims.widthM || 3) * 0.5 + 1) &&
+      terrainSafety.corridorSafe(entity, st.yaw, -8) &&
+      (!liquidSafe || liquidSafe(st.pos.x, st.pos.z, st.yaw, -8));
   }
 
-  function resolveAllyEmergency(input: AiInput, dt: number, mustYield: boolean): boolean {
+  function resolveAllyEmergency(input: AiInput, dt: number, mustYield: boolean, timeS: number): boolean {
     const best = allyRisk.ally;
     if (!best) return false;
     const longitudinalGap = allyRisk.along - allyRisk.longSafe;
@@ -2275,8 +2287,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     input.brake = allyRisk.speed > 0.45;
     allyDeadlockT += allyRisk.speed < 0.7 ? dt : 0;
     if (mustYield && allyDeadlockT > 0.9 && allyRisk.speed < 0.45 &&
-        aftCorridorClear(best)) {
+        aftCorridorClear()) {
+      // A one-frame reverse impulse was immediately overwritten by the
+      // waypoint driver. Commit briefly, but recheck the rear every tick.
+      allyEscapeUntilS = timeS + 1.25;
+      allyEscapeSteer = -Math.sign(input.steer || 1);
       input.throttle = -0.42;
+      input.steer = allyEscapeSteer;
       input.brake = false;
       allyReverseEscapes++;
       allyDeadlockT = 0;
@@ -2307,15 +2324,78 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     input.throttle = Math.max(input.throttle, -Math.max(0.08, cap * 0.7));
   }
 
-  function avoidAllies(input: AiInput, dt: number): void {
-    if (Math.abs(input.throttle) <= 0.05 || !scanAllyRisk(input)) {
+  function trafficLegSafe(x: number, z: number, tx: number, tz: number): boolean {
+    const distance = Math.hypot(tx - x, tz - z);
+    const yaw = Math.atan2(tx - x, tz - z);
+    return !findBlockingObstacle(x, z, Math.sin(yaw), Math.cos(yaw), distance,
+      (spec.dims.widthM || 3) * .5 + 1) &&
+      Number.isFinite(terrainLineCost(x, z, terrainSafety.surfaceY(x, z), Math.sin(yaw), Math.cos(yaw))) &&
+      (!liquidSafe || liquidSafe(x, z, yaw, distance));
+  }
+
+  function startTrafficDetour(timeS: number): void {
+    const best = allyRisk.ally;
+    if (!best || Math.abs(best.state.speed) > 1 || allyYieldT < 1.25 || allyRisk.speed > 3) return;
+    const st = entity.state;
+    const fx = Math.sin(st.yaw), fz = Math.cos(st.yaw);
+    const width = (spec.dims.widthM + best.spec.dims.widthM) * .5 + 5;
+    const preferred = Math.sign(-allyRisk.cross || 1);
+    for (let i = 0; i < 2; i++) {
+      const side = i === 0 ? preferred : -preferred;
+      const nx = st.pos.x + fz * width * side, nz = st.pos.z - fx * width * side;
+      const advance = Math.max(0, allyRisk.along) + allyRisk.longSafe + 6;
+      const tx = nx + fx * advance, tz = nz + fz * advance;
+      if (!trafficLegSafe(st.pos.x, st.pos.z, nx, nz) || !trafficLegSafe(nx, nz, tx, tz)) continue;
+      trafficNear.x = nx; trafficNear.z = nz;
+      trafficFar.x = tx; trafficFar.z = tz;
+      trafficDetourStage = 0;
+      trafficDetourUntilS = timeS + 24;
+      allyEscapeUntilS = -1;
+      break;
+    }
+  }
+
+  function driveTrafficDetour(input: AiInput, timeS: number): void {
+    if (timeS >= trafficDetourUntilS) return;
+    const st = entity.state;
+    let point = trafficDetourStage === 0 ? trafficNear : trafficFar;
+    if (Math.hypot(point.x - st.pos.x, point.z - st.pos.z) < 2) {
+      if (trafficDetourStage === 1) { trafficDetourUntilS = -1; return; }
+      trafficDetourStage = 1;
+      point = trafficFar;
+    }
+    const error = wrapAngle(Math.atan2(point.x - st.pos.x, point.z - st.pos.z) - st.yaw);
+    input.steer = clamp(error * 2.2, -1, 1);
+    input.throttle = Math.abs(error) < .45 ? .65 : 0;
+    input.brake = Math.abs(error) >= .45 && Math.abs(st.speed) > .5;
+    driveIntent = true;
+  }
+
+  function avoidAllies(input: AiInput, dt: number, timeS: number): void {
+    if (!entity.state.grounded) return;
+    if (timeS < allyEscapeUntilS && getAllies) {
+      allyRisk.friends = getAllies();
+      if (aftCorridorClear()) {
+        input.throttle = -0.42;
+        input.steer = allyEscapeSteer;
+        input.brake = false;
+        allyYielding = true;
+        return;
+      }
+      allyEscapeUntilS = -1;
+      input.throttle = 0;
+      input.brake = Math.abs(entity.state.speed) > 0.45;
+      return;
+    }
+    if (!scanAllyRisk(input)) {
       decayAllyAvoidance(dt);
       return;
     }
     const mustYield = applyAllySteering(input);
     if (mustYield) allyYieldT += dt;
     else allyYieldT = Math.max(0, allyYieldT - dt);
-    if (resolveAllyEmergency(input, dt, mustYield)) return;
+    if (timeS >= trafficDetourUntilS) startTrafficDetour(timeS);
+    if (resolveAllyEmergency(input, dt, mustYield, timeS)) return;
     allyDeadlockT = Math.max(0, allyDeadlockT - dt * 2);
     applyAllySpeedCap(input, mustYield);
   }
@@ -2628,8 +2708,45 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * Drive toward (x,z). Returns true when within ARRIVE_DIST_M.
    * Steering = signed angle to the point; throttle eases off in tight turns.
    */
+  let combatRoute: ReadonlyArray<readonly [number, number]> = [];
+  let combatRouteIndex = 0, combatRouteAtS = -Infinity;
+  let combatGoalX = Infinity, combatGoalZ = Infinity;
+  const combatGoal = { x: 0, z: 0 };
+  function crossesBridgeTo(x: number, z: number): boolean {
+    const st = entity.state;
+    for (const deck of hf.bridgeDecks ?? []) {
+      const start = (st.pos.x - deck.x) * deck.ux + (st.pos.z - deck.z) * deck.uz;
+      const end = (x - deck.x) * deck.ux + (z - deck.z) * deck.uz;
+      if (Math.abs(start - end) > 25 && Math.min(start, end) < deck.halfLength &&
+          Math.max(start, end) > -deck.halfLength) return true;
+    }
+    return false;
+  }
+
+  function combatBridgeWaypoint(x: number, z: number): readonly [number, number] | null {
+    const planner = deps.planRoute;
+    if (!planner) return null;
+    const st = entity.state;
+    if (nowS - combatRouteAtS > 4 || Math.hypot(x - combatGoalX, z - combatGoalZ) > 35) {
+      combatGoal.x = combatGoalX = x; combatGoal.z = combatGoalZ = z;
+      combatRoute = planner(st.pos, combatGoal);
+      combatRouteIndex = 0; combatRouteAtS = nowS;
+    }
+    while (combatRouteIndex < combatRoute.length - 1 &&
+        Math.hypot(combatRoute[combatRouteIndex][0] - st.pos.x, combatRoute[combatRouteIndex][1] - st.pos.z) < 7) combatRouteIndex++;
+    return combatRoute[combatRouteIndex] ?? null;
+  }
+
   function driveToXZ(input: AiInput, x: number, z: number, speedScale: number): boolean {
     const st = entity.state;
+    // Combat chase/flank destinations need the same bridge ingress as mission
+    // routes. Local steering alone tried to cross gorge walls at target bearing.
+    const crossBridge = !!deps.planRoute && crossesBridgeTo(x, z);
+    if (crossBridge) {
+      const point = combatBridgeWaypoint(x, z);
+      if (point) { x = point[0]; z = point[1]; }
+      else { input.throttle = 0; input.steer = 0; input.brake = Math.abs(st.speed) > .5; return false; }
+    }
     let dx = x - st.pos.x, dz = z - st.pos.z;
     let dist = Math.hypot(dx, dz);
     trackNavProgress(x, z, dist); // r6 wedge watchdog (see update())
@@ -2637,6 +2754,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       input.throttle = 0;
       input.steer = 0;
       input.brake = Math.abs(st.speed) > 0.5;
+      if (crossBridge && combatRouteIndex < combatRoute.length - 1) { combatRouteIndex++; return false; }
       return true;
     }
     // r7 CORNER-HOP ROUTER (see planRoute): re-plan when the goal moved or
@@ -4111,7 +4229,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       }
       return;
     }
-    const maySearch = timeS >= deploymentUntilS && timeS - lastFiredAtS > 25 && !emptyRack; // an empty rack
+    // Deployment limits distant opening shots, not movement toward the battle.
+    const maySearch = timeS >= 25 && timeS - lastFiredAtS > 25 && !emptyRack; // an empty rack
     if (!maySearch) return;                                                                   // retires, it does not hunt
     const enemy = nearestLivingEnemy();
     if (!enemy) return;
@@ -4762,7 +4881,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   function finishStep(input: AiInput, dt: number, timeS: number): void {
-    avoidAllies(input, dt);
+    avoidAllies(input, dt, timeS);
     if (liquidSafe && entity.state.grounded) {
       const st = entity.state;
       const speed = Math.abs(st.speed);
@@ -4877,6 +4996,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     updateGunLaneRelocation(timeS);
 
     driveCurrentMode(input, timeS, distToTarget);
+    driveTrafficDetour(input, timeS);
 
     // ---- stuck detection & recovery ----
     // Real displacement rate (EMA). The drivetrain `st.speed` lies when the
