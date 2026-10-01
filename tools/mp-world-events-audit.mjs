@@ -154,6 +154,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     peer.rounds.push(record);
     let path = 'none';
     let presentedTick = -1;
+    let frameGap = 0;
     const newestTick = () => peer.session.match?.snapshots.latest?.tick ?? -1;
     const worldCollision = {
       heightField: reference.heightField,
@@ -161,7 +162,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       queryObstacles: (minX, minZ, maxX, maxZ, target) => reference.queryObstacles(minX, minZ, maxX, maxZ, target),
       crushObstacle(obstacle, dx, dz, speed, _cause, options) {
         const index = obstacles.indexOf(obstacle);
-        record.applied.push({ kind: 'crush', key: `prop:${index}`, index, dx, dz, speed, settled: !!(options && options.settled), path, presentedTick, newestTick: newestTick(), wallMs: now() });
+        record.applied.push({ kind: 'crush', key: `prop:${index}`, index, dx, dz, speed, settled: !!(options && options.settled), path, presentedTick, frameGap, newestTick: newestTick(), wallMs: now() });
       },
     };
     const bus = {
@@ -171,7 +172,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         const propIndex = type === 'prop:crushed' ? (payload.obstacleIndex ?? obstacleIndexAt(pos)) : null;
         const hostId = peer.session.p2p?.hostId ?? peer.id;
         const busKey = busKeyOf(type, payload);
-        record.applied.push({ kind: type, key: type === 'prop:crushed' ? (propIndex !== null ? `prop:${propIndex}` : null) : (busKey ? `${hostId}/${busKey}` : null), hostId, pos, path, presentedTick, newestTick: newestTick(), wallMs: now(),
+        record.applied.push({ kind: type, key: type === 'prop:crushed' ? (propIndex !== null ? `prop:${propIndex}` : null) : (busKey ? `${hostId}/${busKey}` : null), hostId, pos, path, presentedTick, frameGap, newestTick: newestTick(), wallMs: now(),
           index: propIndex, shooterId: payload.shooterId ?? null, feedbackPredicted: payload.feedbackPredicted ?? null, fireIntentSeq: payload.fireIntentSeq ?? null });
       },
     };
@@ -181,7 +182,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     });
     const adapter = {
       applyRoster: (roster, context) => presentation.applyRoster(roster, context),
-      applyFrame(frame) { path = 'frame'; presentedTick = frame.tick; record.frames++; try { presentation.applyFrame(frame); } finally { path = 'none'; } },
+      applyFrame(frame) { path = 'frame'; frameGap = presentedTick < 0 ? 0 : frame.tick - presentedTick; presentedTick = frame.tick; record.frames++; try { presentation.applyFrame(frame); } finally { path = 'none'; } },
       applyEvent(event, context) { path = 'event'; try { presentation.applyEvent(event, context); } finally { path = 'none'; } },
       applyVerdict: (verdict, reason) => presentation.applyVerdict(verdict, reason),
       setVisibility: (entityId, visible) => presentation.setVisibility(entityId, visible),
@@ -303,7 +304,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     const rejoin = p3.rounds.at(-1);
     const rejoinCrushes = rejoin.applied.filter((e) => e.kind === 'crush');
     const replayedOnJoin = rejoinCrushes.filter((e) => destroyedBeforeRejoin.includes(e.index));
-    report.steps.rejoin = { destroyedBefore: destroyedBeforeRejoin.length, welcomeTick: rejoin.welcomeTick, crushesApplied: rejoinCrushes.length, replayedOnJoin: replayedOnJoin.length, replayedAnimated: replayedOnJoin.filter((e) => !e.settled).length, replayedSettled: replayedOnJoin.filter((e) => e.settled).length, fxOnJoin: rejoin.applied.filter((e) => e.kind === 'prop:crushed' && e.wallMs < marks.rejoinFramesAt + 500).length };
+    report.steps.rejoin = { destroyedBefore: destroyedBeforeRejoin.length, welcomeTick: rejoin.welcomeTick, crushesApplied: rejoinCrushes.length, replayedOnJoin: replayedOnJoin.length, replayedAnimated: replayedOnJoin.filter((e) => !e.settled).length, replayedSettled: replayedOnJoin.filter((e) => e.settled).length, fxOnJoin: rejoin.applied.filter((e) => e.kind === 'prop:crushed' && destroyedBeforeRejoin.includes(e.index)).length };
     log(`rejoin: ${report.steps.rejoin.destroyedBefore} props already destroyed; p3's new presentation applied ${report.steps.rejoin.crushesApplied} crushes, ${report.steps.rejoin.replayedOnJoin} of them replays (${report.steps.rejoin.replayedAnimated} animated, ${report.steps.rejoin.replayedSettled} settled)`);
 
     // ---- 3. p2's link reconnects (a fresh offer; the actor replaces the seat; the client resets for the new socket)
@@ -329,6 +330,11 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     marks.hostClosedAt = now();
     p1.room.disconnect('tab closed');
     retire(p1);
+    await until(() => core1.core.stopped, 'the old host stopped', 5_000);
+    // what the elected seat holds now is what its boot overlays on the sealed keyframe (nothing new arrives on the dead link)
+    const knownByElected = p2.session.match?.retainedMigration().latestFrame;
+    const knownByElectedAtClose = knownByElected?.destroyed.length ?? -1;
+    const knownRevisionAtClose = knownByElected?.meta.destructibleRevision ?? -1;
     await until(() => roomEvents.some((event) => event.kind === 'host_changed' && event.generation === 2), 'host_changed after the grace', hostGraceMs + 15_000);
     await until(() => p2.session.role === 'host' && p2.session.matchHost?.state === 'live', 'p2 hosts', 30_000);
     const core2 = hostCores.find((entry) => entry.id === 'p2');
@@ -339,7 +345,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     const oldSet = new Set(destroyedOld.indices);
     const newSet = new Set(destroyedNew.indices);
     report.steps.migration = {
-      oldHostTick, resumedTick: core2.core.actor.tick, destroyedOld: destroyedOld.indices.length, revisionOld: destroyedOld.revision, destroyedNewAtBoot: destroyedNew.indices.length, revisionNewAtBoot: destroyedNew.revision,
+      oldHostTick, resumedTick: core2.core.actor.tick, destroyedOld: destroyedOld.indices.length, revisionOld: destroyedOld.revision, knownByElectedAtClose, knownRevisionAtClose, destroyedNewAtBoot: destroyedNew.indices.length, revisionNewAtBoot: destroyedNew.revision,
       restored: destroyedOld.indices.filter((i) => newSet.has(i)).length, lostOnMigration: destroyedOld.indices.filter((i) => !newSet.has(i)).length, inventedOnMigration: destroyedNew.indices.filter((i) => !oldSet.has(i)).length,
     };
     log(`migration: old host had ${report.steps.migration.destroyedOld} destroyed (revision ${report.steps.migration.revisionOld}); the new host booted with ${report.steps.migration.destroyedNewAtBoot} (revision ${report.steps.migration.revisionNewAtBoot}): ${report.steps.migration.restored} restored, ${report.steps.migration.lostOnMigration} lost`);
@@ -394,7 +400,8 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       const judged = (e) => e.wallMs < roundEnd - END_GUARD_MS && e.wallMs < hostStoppedAt(e.host) - END_GUARD_MS &&
         !peer.resets.some((reset) => e.wallMs >= reset - END_GUARD_MS && e.wallMs <= reset + 50) &&
         !(e.type === 'shell_fired' && e.shooterId === peer.id && round.actors === 0);
-      const sent = hostLog.filter((e) => e.viewerId === peer.id && e.wallMs >= round.welcomeAtMs - 50 && judged(e));
+      const sentAll = hostLog.filter((e) => e.viewerId === peer.id && e.wallMs >= round.welcomeAtMs - 50 && e.wallMs < roundEnd);
+      const sent = sentAll.filter(judged);
       const applied = round.applied;
       const used = new Set();
       const rows = {};
@@ -424,7 +431,9 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
           const dTick = first.presentedTick - event.tick;
           row.dTicks.push(dTick);
           row.dWallMs.push(first.wallMs - event.wallMs);
-          if (dTick > SNAPSHOT_TICKS * 2) row.late++;
+          // late: beyond two snapshot intervals, and beyond what the budget's 4-tick deadline plus the presenter's own frame
+          // gap allows (a slow frame of the single-process harness is not the client's lateness)
+          if (dTick > SNAPSHOT_TICKS * 2 && dTick > 4 + (first.frameGap ?? 0)) row.late++;
           if (dTick < 0) row.early++;
           if (crush) {
             if (crush.path === 'frame') row.viaFrame++; else row.viaEvent++;
@@ -435,9 +444,13 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
           const err = dist(fx?.pos ?? null, event.pos);
           if (err !== null) { row.posErrM.push(err); if (err > 0.5) row.wrongPlace++; }
         }
-        // duplicates: applications of a key this view received, beyond the number of sends of that key
-        const sentKeys = new Set(sentOfKind.map((e) => e.key));
-        applied.forEach((a, i) => { if (!used.has(i) && a.key && sentKeys.has(a.key) && (a.kind === busKind || (type === 'world_prop_destroyed' && a.kind === 'crush'))) { row.duplicate++; used.add(i); } });
+        // duplicates: applications of a key beyond the number of sends of that key to this seat (judged or not)
+        const sendsPerKey = new Map();
+        for (const e of sentAll) if (e.type === type) sendsPerKey.set(e.key, (sendsPerKey.get(e.key) ?? 0) + 1);
+        const appliedPerKey = new Map();
+        applied.forEach((a) => { if (a.key && sendsPerKey.has(a.key) && a.kind === busKind) appliedPerKey.set(a.key, (appliedPerKey.get(a.key) ?? 0) + 1); });
+        for (const [key, count] of appliedPerKey) if (count > sendsPerKey.get(key)) row.duplicate += count - sendsPerKey.get(key);
+        applied.forEach((a, i) => { if (!used.has(i) && a.key && sendsPerKey.has(a.key) && (a.kind === busKind || (type === 'world_prop_destroyed' && a.kind === 'crush'))) used.add(i); });
         const sortedTicks = [...row.dTicks].sort((a, b) => a - b);
         const sortedWall = [...row.dWallMs].sort((a, b) => a - b);
         const sortedErr = [...row.posErrM].sort((a, b) => a - b);
@@ -447,10 +460,13 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         rows[type] = row;
         matrix.push(row);
       }
-      // crushes applied by this presentation that match no event sent to it in this view: replays of older state (a late joiner), or the backstop
-      const unmatchedCrushes = applied.filter((a, i) => a.kind === 'crush' && !used.has(i));
+      // crushes applied by this presentation that match no judged send: replays of state older than the view (a late joiner's
+      // settled list), applications of sends the guards left unjudged (a reset or a view end within END_GUARD_MS), or — with
+      // no send of that prop to this seat at any time — unexplained
+      const everSent = (a) => hostLog.some((e) => e.type === 'world_prop_destroyed' && e.viewerId === peer.id && e.index === a.index && e.wallMs <= a.wallMs);
+      const unmatchedCrushes = applied.filter((a, i) => a.kind === 'crush' && !used.has(i) && !everSent(a));
       const predating = unmatchedCrushes.filter((a) => hostLog.some((e) => e.type === 'world_prop_destroyed' && e.index === a.index && e.wallMs < round.welcomeAtMs));
-      const ghostFx = applied.filter((a, i) => a.kind === 'prop:crushed' && !used.has(i));
+      const ghostFx = applied.filter((a, i) => a.kind === 'prop:crushed' && !used.has(i) && !everSent(a));
       perPeer[`${peer.id}#${round.roundIndex}`] = { welcomeTick: round.welcomeTick, welcomes: round.welcomes, actors: round.actors, rosterError: round.rosterError, frames: round.frames, ghostFx: ghostFx.length, unmatchedCrushes: unmatchedCrushes.length, replaysOfOlderState: predating.length, replaysAnimated: predating.filter((a) => !a.settled).length, replaysSettled: predating.filter((a) => a.settled).length,
         ownShotFlashes: applied.filter((a) => a.kind === 'weapon:predicted').length, ownShellFiredUnpredicted: applied.filter((a) => a.kind === 'shell:fired' && a.shooterId === peer.id && a.feedbackPredicted === false).length, ownShellFiredPredicted: applied.filter((a) => a.kind === 'shell:fired' && a.shooterId === peer.id && a.feedbackPredicted === true).length };
     }
@@ -483,7 +499,7 @@ export function formatMatrix(report) {
   lines.push('');
   lines.push('## Per presentation: replays of older state, own-shot feedback');
   lines.push('');
-  lines.push('| seat#view | welcome tick | welcomes | actors | frames | ghost FX (prop:crushed with no crush and no send) | crushes matching no send to this view | of which replays of state older than the view | animated | settled | own flashes predicted | own shell_fired unpredicted | own shell_fired predicted |');
+  lines.push('| seat#view | welcome tick | welcomes | actors | frames | ghost FX (prop:crushed for a prop never sent to this seat) | crushes of props never sent to this seat | of which replays of state older than the view | animated | settled | own flashes predicted | own shell_fired unpredicted | own shell_fired predicted |');
   lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|');
   for (const [key, row] of Object.entries(report.perPeer)) {
     lines.push(`| ${key} | ${row.welcomeTick} | ${row.welcomes} | ${row.actors}${row.rosterError ? ` (roster: ${row.rosterError})` : ''} | ${row.frames} | ${row.ghostFx} | ${row.unmatchedCrushes} | ${row.replaysOfOlderState} | ${row.replaysAnimated} | ${row.replaysSettled} | ${row.ownShotFlashes} | ${row.ownShellFiredUnpredicted} | ${row.ownShellFiredPredicted} |`);

@@ -789,6 +789,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-rooms-p2p-e2e.selftest.mjs',
     'tools/mp-exit-e2e.selftest.mjs',
     'tools/mp-p2p-headless.selftest.mjs',
+    'tools/mp-world-events-audit.selftest.mjs',
+    'tools/sim-determinism-audit.selftest.mjs',
     'tools/mp-p2p-peer.selftest.mjs',
     'tools/mp-p2p-decline.selftest.mjs',
     'tools/mp-p2p-stepdown.selftest.mjs',

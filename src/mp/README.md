@@ -62,7 +62,8 @@ v1's bridge fed (`game.tanks/tankById/player/shells/spotting`, `timeS`,
 `module:state`, `tank:fire`, `tank:ram`, `battle:ended`, `ui:*`, `ammo:*`,
 `weapon:predicted`, `mode:*`; the tank visuals' `setVisible`, `syncFromState`
 seeding, `stripEra/resetEra`, `setDestroyed/resetDestroyed`, `recoilKick`,
-`gunMuzzleWorld/gunDirWorld`; `worldCollision.crushObstacle`) and owns no
+`gunMuzzleWorld/gunDirWorld`; `worldCollision.crushObstacle`, with
+`{ settled: true }` for destruction older than this seat's view) and owns no
 rule: combat values are the authority's rows, the own tank renders the
 predictor's state object directly, effects are the authority's events.
 
@@ -85,7 +86,8 @@ predictor's state object directly, effects are the authority's events.
 | Resting hull | held while nothing requests motion and the re-prediction stays within 3 cm / 2.5 cm / 0.0035 rad | quantization chatter never reaches the screen; drive intent releases it at once |
 | Display tick | a fractional tick advancing at 1 tick per tick of local time, slewed ⅒ per frame toward the sampler, blending a 32-pose ring | lead and RTT changes never hitch the local hull |
 | Own shot feedback | flash on a fire edge only when authority ≤ 250 ms old says the slot is ready, once per ready epoch; the `shell_fired` carrying that `fireIntentSeq` confirms | v1's `shotFeedbackVersion 1` rule |
-| Events | released once the presented tick reaches theirs, ≤ 3 per frame, a heavy one (shot, hit, impact, destruction, prop) ends the flush; own shots bypass | v1's volley budget |
+| Events | released once the presented tick reaches theirs, ≤ 3 per frame, a heavy one (shot, hit, impact, destruction, prop) ends the flush — for at most 4 ticks past their tick, then everything due lands together; own shots bypass | v1's volley budget; the deadline from the world state audit (2026-10-01): one heavy beat per frame put a volley's or a tree line's tail 13–20 ticks behind the world on a 30 Hz presenter |
+| Destroyed props | the persistent destroyed list every snapshot carries is settled state: a prop it names that this seat has not seen fall is laid at its final pose, no fall, no sound; a prop whose `world_prop_destroyed` the client still owes the presentation (queued, staged, or in the frame's events — `MatchFrame.destroyedPending`) is left to that event, which fells it live with the authority's direction and speed; a prop already down falls once (a migrated host's re-send is no second crunch); the list is compared by content, not by revision alone | the world state audit (2026-10-01): the list arrives one interpolation delay ahead of the presented world and used to fell every tree first — early, toward +Z, at speed 0 — while a rejoin or a return replayed every earlier fall as an animation |
 | Recovery | stalled after 5 s without accepted authority (one reconnect request), live only after a snapshot on the socket, failed 60 s after the loss, explicit leave | v1's watchdog and grace; WELCOME alone never ends an outage |
 | Status verdict | `good` / `degraded` / `bad` / `offline` from one table (round-trip floor 160 / 300 ms, spread 40 / 100 ms, 4 s loss 6 / 15 %, snapshot age 250 / 1000 ms, cadence 80 / 50 % of 30 Hz, visible corrections 2 / 6 per s) after the transport and link states; sampled at 4 Hz | `docs/MULTIPLAYER-V2.md` §12; the round trip is the 16-sample window minimum (a busy main thread can only inflate a pong), a window with a ≥ 250 ms self-stall judges neither cadence nor freshness |
 
