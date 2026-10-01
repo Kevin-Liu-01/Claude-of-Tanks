@@ -1,6 +1,6 @@
 /* One event-measured lane per side: rosters above, driving controls below.
    These selectors intentionally outrank battle-lazy injected component CSS. */
-body[data-cot-battle-layout][data-cot-width][data-cot-height]{--hud-side-width:min(300px,calc(50vw - 24px))}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]{--hud-side-width:min(300px,calc(50vw - 24px));--hud-feed-width:min(240px,calc(50vw - 24px))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-drive{left:184px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-minimap{
   max-width:32vh;max-height:32vh;
@@ -20,7 +20,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow .b{wi
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow .z{text-align:right}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag{max-width:100%;overflow:hidden}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud .cot-si-toasthost{
-  top:var(--hud-left-top);bottom:auto;left:12px;width:var(--hud-side-width);
+  top:var(--hud-left-top);bottom:auto;left:0;width:var(--hud-feed-width);
   min-height:0;height:var(--hud-toast-height);overflow:hidden;justify-content:flex-start;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-toast{flex:0 0 26px}
@@ -155,10 +155,10 @@ body[data-cot-battle-layout] .cot-mode-status .mv{grid-column:2;grid-row:2;white
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-touch .mobile-chrome{top:calc(var(--hud-objective-bottom,64px) + 8px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-killfeed{display:contents}
 body[data-cot-battle-layout] .cot-kill-lane{
-  position:absolute;z-index:var(--hud-layer-status);left:12px;top:var(--hud-kill-left-top);width:var(--hud-side-width);
+  position:absolute;z-index:var(--hud-layer-status);left:0;top:var(--hud-kill-left-top);width:var(--hud-feed-width);
   max-height:var(--hud-kill-left-height);display:flex;flex-direction:column;gap:3px;overflow:hidden;
 }
-body[data-cot-battle-layout] .cot-kill-lane.r{left:auto;right:12px;top:var(--hud-kill-right-top);max-height:var(--hud-kill-right-height)}
+body[data-cot-battle-layout] .cot-kill-lane.r{left:auto;right:0;top:var(--hud-kill-right-top);max-height:var(--hud-kill-right-height)}
 body[data-cot-battle-layout] .cot-kill-lane:empty{display:none}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf{width:100%;flex:0 0 26px;padding:4px 6px;font-size:10px;gap:4px}
 body[data-cot-battle-layout] .cot-kill-lane.l .cot-kf{border-color:#79d78d}
@@ -239,4 +239,70 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .arrow.d{left:36px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .arrow.l,
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .arrow.r{top:33px}
+}
+
+/* The feed borders touch the screen; text stays clear of phone display cutouts. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.cot-si-toast,.cot-kill-lane.l .cot-kf){padding-left:max(6px,env(safe-area-inset-left))}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .cot-kf{padding-right:max(6px,env(safe-area-inset-right))}
+
+/* A browser toolbar can leave less than 300 CSS pixels of landscape height.
+   Keep one fire button, and give ammo and consumables separate 44px rows. */
+@media (max-height:299px) and (orientation:landscape){
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire.alt{display:none}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire:not(.alt){bottom:8px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:66px;bottom:auto!important}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell{height:44px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-cons{top:116px;bottom:auto!important}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-con{height:44px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{left:122px;transform:none;width:136px;min-height:32px;font-size:9px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert{box-sizing:border-box;font-size:8px;line-height:1.2;padding:4px 12px;top:var(--hud-notice-top);left:266px;transform:none;width:134px;max-width:134px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle.on{display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle .n{font-size:30px;height:36px}
+}
+@media (max-width:340px) and (orientation:portrait){
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{width:180px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:215px;bottom:auto!important}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell{height:44px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle{grid-template-rows:20px 42px auto;gap:3px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle .k{font-size:10px;padding:3px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle .n{font-size:38px;height:42px}
+}
+
+/* Physical gun warnings used to be painted on the reticle canvas, invisible
+   to layout checks and directly over the system buttons on short phones. */
+.cot-aim-warning{position:fixed;left:50%;top:calc(50% + 48px);transform:translateX(-50%);width:180px;box-sizing:border-box;min-height:24px;padding:4px 12px;background:#0c1116ed;border:1px solid #aab4be8c;color:#cdd8e0;font:800 10px/1.2 var(--hud-font,system-ui);text-align:center;text-transform:uppercase;clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,8px 100%,0 50%);pointer-events:none}
+.cot-aim-warning[hidden]{display:none}
+.cot-aim-warning[data-kind='blocked']{color:#ff9b91;border-color:#f05a5a;background:#240a0aeb}
+.cot-aim-warning[data-kind='rollover']{color:#ffd17b;border-color:#f0a030;background:#211608eb}
+@media (max-height:299px) and (orientation:landscape){
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-minimap{width:88px!important;height:88px!important}
+  .cot-touch-aim .aimhint{display:none}
+}
+@media (max-width:340px) and (orientation:portrait){
+  .cot-touch-aim .aimhint{display:none}
+}
+
+@media (max-height:549px) and (orientation:landscape){
+  .cot-aim-warning{left:8px;top:var(--hud-aim-warning-top,118px);transform:none;width:106px;font-size:9px;line-height:10px;padding:2px 10px}
+}
+@media (max-height:340px) and (orientation:landscape){
+  .cot-touch-aim .aimhint{display:none}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire.alt{display:none}
+}
+@media (max-width:340px) and (orientation:portrait){
+  .cot-aim-warning{top:326px;left:94px;transform:none;width:156px}
+}
+
+/* Live FPS only appears after 30 frames. Reserve a small instrument row below
+   the joystick so it cannot cover the ammo drawer or mobile settings. Network
+   latency has its own touch button and detail reader in multiplayer. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-net{top:auto;right:auto;left:max(14px,env(safe-area-inset-left));bottom:calc(env(safe-area-inset-bottom) + 2px);box-sizing:border-box;width:88px;height:20px;min-height:20px;padding:0;justify-content:center}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-net .ping{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .joy{bottom:calc(env(safe-area-inset-bottom) + 24px)}
+
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout.cot-spectating .cot-net{top:var(--hud-fps-top,8px);bottom:auto}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-net{left:var(--hud-network-left,120px);right:auto;top:calc(var(--hud-objective-bottom,64px) + 8px);width:88px;height:20px;min-height:20px;padding:0;justify-content:center;box-sizing:border-box}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-net .ping{display:none}
+@media (max-width:340px) and (orientation:portrait){
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .autoaim{width:44px;height:44px}
 }

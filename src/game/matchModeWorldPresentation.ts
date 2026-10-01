@@ -720,7 +720,7 @@ export function createMatchModeWorldPresentation(
       group.position.set(mark.x, spawn?.y ?? (options.groundHeight?.(mark.x, mark.z) ?? 0), mark.z);
       tintTeam(group, mark.side);
       setIcon(group.userData.icon, `spawn:${mark.side}`, (ctx, c) =>
-        drawSpawnGlyph(ctx, c, c + 6, 34, sideColor(mark.side), sideFill(mark.side)));
+        drawSpawnGlyph(ctx, c, c, 44, sideColor(mark.side), sideFill(mark.side)));
       fadeByViewer(group);
     }
   };

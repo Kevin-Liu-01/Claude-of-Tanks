@@ -12,7 +12,7 @@ const browser=await chromium.launch({headless:true,channel:'chrome',args:['--dis
 const reports=[],errors=[];
 try {
 for(const [name,width,height,locale='en-US'] of [
-  ['small-landscape',667,375],['landscape',844,390],['wide-landscape',932,430],
+  ['small-phone',320,568],['phone',390,844],['short-landscape',568,256],['small-landscape',667,375],['landscape',844,390],['wide-landscape',932,430],
   ['tiny-landscape',568,320],['browser-landscape',844,300],['chinese-landscape',667,375,'zh-CN'],
 ]) {
   if(arg('case','')&&!arg('case','').split(',').includes(name))continue;
@@ -37,6 +37,13 @@ for(const [name,width,height,locale='en-US'] of [
     },selectors);
     reports.push({name,label,width:page.viewportSize().width,height:page.viewportSize().height,issues});
     if(issues.length)await page.screenshot({path:resolve(out,`${name}-${label}-FAIL.png`)});
+  }
+  async function closeDrawer(){
+    const point=await page.locator('.cot-garage-panel-scrim').evaluate(el=>{
+      for(let y=8;y<innerHeight;y+=16)for(let x=8;x<innerWidth;x+=16)if(document.elementFromPoint(x,y)===el)return {x,y};
+      return null;
+    });
+    assert.ok(point,`${name}: drawer has a tappable dismiss area`);await page.touchscreen.tap(point.x,point.y);
   }
   async function reachable(selector){
     const el=page.locator(selector).first();await el.scrollIntoViewIfNeeded();
@@ -64,7 +71,11 @@ for(const [name,width,height,locale='en-US'] of [
     await tap(`button[data-garage-panel="${panel}"]`);
     await check(panel,[panel==='equipment'?'.cot-garage .stats':'.cot-leftcol']);
     if(panel==='maps'){
+      const inspect=page.locator('.cot-map-card').filter({has:page.locator('.cot-map-select[aria-label="Verdant Fields"]')}).locator('.cot-map-inspect');
+      assert.equal(await inspect.isDisabled(),true,'unselected map cannot be enlarged');
       await tap('.cot-map-select[aria-label="Verdant Fields"]');
+      assert.equal(await page.locator('.cot-modal-root.is-open').count(),0,'first tap only selects the map');
+      assert.equal(await inspect.isEnabled(),true,'selected map can now be enlarged');
       await tap('button[data-garage-panel="maps"]');
       await tap('.cot-map-select[aria-label="Verdant Fields"]');
       await page.locator('.cot-modal-root.is-open .cot-modal').waitFor({state:'visible'});
@@ -74,8 +85,9 @@ for(const [name,width,height,locale='en-US'] of [
     if(panel==='appearance')await reachable('.cot-camos .cot-camo-card:not([hidden]):last-of-type');
     if(panel==='equipment')await reachable('.eqslot');
     await page.screenshot({path:resolve(out,`${name}-${panel}.png`)});
-    if(panel==='equipment')await page.locator('.cot-garage-panel-scrim').tap({position:{x:145,y:height/2}});
-    else await tap(`button[data-garage-panel="${panel}"]`);
+    if(panel==='equipment')await closeDrawer();
+    else if(await page.locator(`button[data-garage-panel="${panel}"]`).isVisible()) await tap(`button[data-garage-panel="${panel}"]`);
+    else await closeDrawer();
   }
   await page.evaluate(()=>window.__MOBILE_SURFACES.settings.open());
   for(const tab of ['gameplay','sound','graphics','language']){

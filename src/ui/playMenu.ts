@@ -278,7 +278,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
   position:absolute;right:13px;top:50%;width:7px;height:7px;border-right:2px solid #cbd6dd;border-bottom:2px solid #cbd6dd;
   transform:translateY(-68%) rotate(45deg);
   transition:transform var(--cot-motion-fast) var(--cot-ease-out)}.cot-play .menu-select.open .menu-select-trigger::after{
-  transform:translateY(-30%) rotate(225deg)}.cot-play .menu-select-list{position:fixed;z-index:112;display:none;gap:3px;
+  transform:translateY(-30%) rotate(225deg)}.cot-play .menu-select-list{position:fixed;margin:0;box-sizing:border-box;z-index:112;display:none;gap:3px;
   padding:6px;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;background:linear-gradient(155deg,#1b2229,#090d12 82%);
   border:1px solid rgba(230,154,54,.62);box-shadow:0 24px 60px rgba(0,0,0,.72),inset 0 1px rgba(255,255,255,.04)}
 .cot-play .menu-select-list::-webkit-scrollbar{display:none}.cot-play .menu-select.open .menu-select-list{display:grid}
@@ -453,6 +453,7 @@ body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode-ico
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode b{font-size:13px;}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .room-action{padding:14px;gap:12px;}
 
+body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 @media(prefers-reduced-motion:reduce){.cot-play,.cot-play .panel,.cot-play button.action.needs-ready,.cot-play button.action.can-start{animation:none;
   box-shadow:0 0 0 3px rgba(230,154,54,.16),0 0 18px rgba(230,154,54,.34)}.cot-play .menu-select-trigger,
   .cot-play .menu-select-trigger::after,.cot-play .menu-select-option{transition:none}}
@@ -530,6 +531,8 @@ function bindMenuSelect(
 ): MenuSelectController {
   const trigger = requiredElement<HTMLButtonElement>(control, '[data-select-trigger]');
   const list = requiredElement<HTMLElement>(control, '[role="listbox"]');
+  // Escape scroll/transform containing blocks in the connected room panel.
+  list.popover = 'manual';
   const valueLabel = requiredElement<HTMLElement>(trigger, '[data-select-value]');
   const metaLabel = trigger.querySelector<HTMLElement>('[data-select-meta]');
   const triggerThumb = trigger.querySelector<HTMLElement>('[data-select-thumb]');
@@ -563,6 +566,7 @@ function bindMenuSelect(
   function close(restoreFocus = false): void {
     if (!control.classList.contains('open')) return;
     control.classList.remove('open');
+    if (list.matches(':popover-open')) list.hidePopover();
     trigger.setAttribute('aria-expanded', 'false');
     if (restoreFocus) trigger.focus();
   }
@@ -586,10 +590,10 @@ function bindMenuSelect(
     const above = rect.top - margin - 6;
     const openBelow = below >= Math.min(naturalHeight, 260) || below >= above;
     const availableHeight = Math.max(104, openBelow ? below : above);
-    const maxHeight = Math.min(naturalHeight, availableHeight, wide ? 420 : 300);
+    const maxHeight = Math.min(naturalHeight, availableHeight, viewportHeight - margin * 2, wide ? 420 : 300);
     const top = openBelow ? rect.bottom + 6 : rect.top - maxHeight - 6;
     list.style.left = `${Math.round(left)}px`;
-    list.style.top = `${Math.round(Math.max(margin, top))}px`;
+    list.style.top = `${Math.round(Math.max(margin, Math.min(top, viewportHeight - maxHeight - margin)))}px`;
     list.style.maxHeight = `${Math.round(maxHeight)}px`;
     control.classList.toggle('drop-up', !openBelow);
   }
@@ -598,6 +602,7 @@ function bindMenuSelect(
     if (disabled) return;
     if (beforeOpen) beforeOpen(control);
     control.classList.add('open');
+    list.showPopover();
     trigger.setAttribute('aria-expanded', 'true');
     positionList();
     const option = options[Math.max(0, Math.min(options.length - 1, index))];

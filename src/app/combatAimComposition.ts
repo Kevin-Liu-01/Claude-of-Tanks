@@ -22,6 +22,7 @@ interface CombatAimCompositionOptions {
   getGame(): MainGameState;
   worldRaycast: CombatRaycast;
   getShellCards(): ShellCard[];
+  getIsometricView?(): boolean;
 }
 
 interface CombatAimComposition {
@@ -43,6 +44,7 @@ export function createCombatAimComposition({
   getGame,
   worldRaycast,
   getShellCards,
+  getIsometricView,
 }: CombatAimCompositionOptions): CombatAimComposition {
   let rig!: CameraRig;
   const targetVisible: AimControllerDependencies['targetVisible'] = (target) => {
@@ -70,6 +72,7 @@ export function createCombatAimComposition({
     raycast: worldRaycast,
     aimRaycast: battleClient.aimController.raycast,
     getPlayer: activeCameraPlayer,
+    getIsometricView,
   });
 
   return { battleClient, rig, targetVisible };

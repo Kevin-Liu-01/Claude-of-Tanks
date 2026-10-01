@@ -1427,11 +1427,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         thumb.appendChild(tags);
       }
       const previewMap = (trigger: HTMLElement) => {
-        void import('./mapPreview.ts').then(({ openMapPreview }) => openMapPreview(m, trigger, () => api.setSelectedMap(m.id)));
+        if (selectedMapId !== m.id) return;
+        void import('./mapPreview.ts').then(({ openMapPreview }) => {
+          if (selectedMapId === m.id) openMapPreview(m, trigger, () => api.setSelectedMap(m.id));
+        });
       };
       if (m.id !== 'random') {
         const inspect = document.createElement('button');
         inspect.type = 'button'; inspect.className = 'cot-map-inspect';
+        inspect.disabled = true;
         inspect.setAttribute('aria-label', t('garage.map.inspect', { name: m.name }));
         inspect.innerHTML = uiIconSVG('zoomIn', 18);
         inspect.addEventListener('click', (event) => {
@@ -2495,7 +2499,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if(!controls.length)return '';
     return `<section class="cot-stat-section cot-special-section">` +
       statSectionTitle('missileRack', t('systems.title'), '', 'Special system') +
-      `<div class="cot-system-preview">${controls.map(control=>`<button type="button" title="${escapeHtmlAttribute(control.detail)}" aria-label="${escapeHtmlAttribute(control.label+': '+control.detail)}">${uiIconSVG(control.icon,19)}<span>${control.label}</span></button>`).join('')}</div></section>`;
+      `<div class="cot-system-preview">${controls.map(control=>`<button type="button" data-guide="${control.icon==='smoke'?'smoke':'special'}" title="${escapeHtmlAttribute(control.detail)}" aria-label="${escapeHtmlAttribute(control.label+': '+control.detail)}">${uiIconSVG(control.icon,19)}<span>${control.label}</span></button>`).join('')}</div></section>`;
   }
 
   function magazineDescription(gun: FleetGunSpec, reloadS: number, reloadMultiplier: number): string {
@@ -2693,7 +2697,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       }));
     });
     statsEl.querySelectorAll<HTMLButtonElement>('.cot-system-preview button').forEach(button=>{
-      const info=createInfoButton({title:button.textContent||'',text:button.title,guide:'special',
+      const info=createInfoButton({title:button.textContent||'',text:button.title,guide:button.dataset.guide==='smoke'?'smoke':'special',
         vehicle:{id:spec.id,name:spec.label?.displayName||spec.name},className:'cot-system-control'});
       info.innerHTML=button.innerHTML;info.setAttribute('aria-label',button.getAttribute('aria-label')||'');
       button.replaceWith(info);
@@ -3441,7 +3445,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setSelectedMap(mapId: string) {
       if (!mapCardById.has(mapId)) return;
       selectedMapId = mapId;
-      for (const [id, card] of mapCardById) card.classList.toggle('sel', id === mapId);
+      for (const [id, card] of mapCardById) {
+        card.classList.toggle('sel', id === mapId);
+        const inspect = card.querySelector<HTMLButtonElement>('.cot-map-inspect');
+        if (inspect) inspect.disabled = id !== mapId;
+      }
       refreshCompactMapPreview();
       if (opts.onMapSelect) opts.onMapSelect(mapId);   // CAMO WIRING: AUTO preview
       // Keep packaged portraits healthy after the biome/camo transition.

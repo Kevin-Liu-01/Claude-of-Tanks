@@ -145,7 +145,7 @@ as a damaged gun and a red gun mount prevents its casemate weapon from firing.
 
 ## Presentation contracts
 
-- Scoped armor flashlight (`game/armorAimOverlay.ts`): default-on, optional in
+- Scoped armor flashlight (`game/armorAimOverlay.ts`): default-off, enabled in
   Gameplay → Interface, and visible only in the gunner scope on an already
   spotted live target. It renders the same closed collision faces used by
   combat and colors them continuously red → amber → green by the selected

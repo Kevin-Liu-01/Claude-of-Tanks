@@ -1,0 +1,1411 @@
+{
+  "version": 1,
+  "width": 1600,
+  "height": 900,
+  "shots": [
+    {
+      "id": "ammunition",
+      "file": "ammunition.webp",
+      "sha256": "de1bfb531b85573cb9336e75f055cc16fa3bc4b3a97913568b454f4abe9e33bf",
+      "sourceCommit": "fefce24846f8a3c9cff903ff72ddb5eff2b67170",
+      "recipeSha256": "bee33f5797ccb3b5afbaf08989065f0cba6cb49527fbb246165e888644247d8d",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+      "launch": {
+        "verified": true,
+        "argumentCount": 36,
+        "checkedBackgroundFlags": 3,
+        "backgroundOverridesPresent": 0
+      },
+      "scene": {
+        "map": "verdant",
+        "seed": 5126,
+        "timeOfDay": "day",
+        "actors": [
+          {
+            "id": "m1a2_x",
+            "name": "hero",
+            "pos": [
+              -56,
+              -14
+            ],
+            "facingDeg": 0,
+            "turretDeg": -12,
+            "gunDeg": 0,
+            "camo": "summer",
+            "camoSeed": 261
+          }
+        ],
+        "effects": [
+          {
+            "type": "fire",
+            "actor": "hero",
+            "tMs": 100,
+            "params": {
+              "slot": 0,
+              "tracer": true,
+              "recoil": true
+            }
+          }
+        ],
+        "fxTime": 155,
+        "timeScale": 0
+      },
+      "camera": {
+        "pos": [
+          -46,
+          8.256957113899531,
+          -4
+        ],
+        "lookAt": [
+          -56,
+          4.556957113899532,
+          -12
+        ],
+        "groundRel": false,
+        "fov": 45
+      },
+      "textures": {
+        "mapId": "verdant",
+        "requested": 6,
+        "applied": 6
+      },
+      "overlay": null,
+      "overlayCount": 0,
+      "smoke": null,
+      "arcs": [],
+      "vehicle": {
+        "id": "m1a2_x",
+        "name": "M1A2 Abrams"
+      },
+      "map": "Verdant Fields"
+    },
+    {
+      "id": "armament",
+      "file": "armament.webp",
+      "sha256": "c6e08beabe5a894e3aa4b07ec725fedbef5349c7ae69947f366ba8683bcb3d7a",
+      "sourceCommit": "fefce24846f8a3c9cff903ff72ddb5eff2b67170",
+      "recipeSha256": "bee33f5797ccb3b5afbaf08989065f0cba6cb49527fbb246165e888644247d8d",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+      "launch": {
+        "verified": true,
+        "argumentCount": 36,
+        "checkedBackgroundFlags": 3,
+        "backgroundOverridesPresent": 0
+      },
+      "scene": {
+        "map": "verdant",
+        "seed": 5126,
+        "timeOfDay": "day",
+        "actors": [
+          {
+            "id": "m1a2_x",
+            "name": "hero",
+            "pos": [
+              -56,
+              -14
+            ],
+            "facingDeg": 0,
+            "turretDeg": -12,
+            "gunDeg": -5,
+            "camo": "summer",
+            "camoSeed": 261
+          }
+        ],
+        "effects": [],
+        "fxTime": 0,
+        "timeScale": 0
+      },
+      "camera": {
+        "pos": [
+          -45,
+          6.2569571138995315,
+          -11
+        ],
+        "lookAt": [
+          -56,
+          4.856957113899532,
+          -13
+        ],
+        "groundRel": false,
+        "fov": 43
+      },
+      "textures": {
+        "mapId": "verdant",
+        "requested": 6,
+        "applied": 6
+      },
+      "overlay": null,
+      "overlayCount": 0,
+      "smoke": null,
+      "arcs": [],
+      "vehicle": {
+        "id": "m1a2_x",
+        "name": "M1A2 Abrams"
+      },
+      "map": "Verdant Fields"
+    },
+    {
+      "id": "camo",
+      "file": "camo.webp",
+      "sha256": "7620e23c3b2a379f80170e04bc3787da3c3c7133a923eb822079ae661c7f9f5d",
+      "sourceCommit": "fefce24846f8a3c9cff903ff72ddb5eff2b67170",
+      "recipeSha256": "bee33f5797ccb3b5afbaf08989065f0cba6cb49527fbb246165e888644247d8d",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+      "launch": {
+        "verified": true,
+        "argumentCount": 36,
+        "checkedBackgroundFlags": 3,
+        "backgroundOverridesPresent": 0
+      },
+      "scene": {
+        "map": "verdant",
+        "seed": 5126,
+        "timeOfDay": "day",
+        "actors": [
+          {
+            "id": "m1a2_x",
+            "name": "hero",
+            "pos": [
+              -56,
+              -14
+            ],
+            "facingDeg": 0,
+            "turretDeg": -12,
+            "gunDeg": 0,
+            "camo": "summer",
+            "camoSeed": 261
+          }
+        ],
+        "effects": [],
+        "fxTime": 0,
+        "timeScale": 0
+      },
+      "camera": {
+        "pos": [
+          -39,
+          14.256957113899531,
+          11
+        ],
+        "lookAt": [
+          -59,
+          4.2569571138995315,
+          -16
+        ],
+        "groundRel": false,
+        "fov": 44
+      },
+      "textures": {
+        "mapId": "verdant",
+        "requested": 6,
+        "applied": 6
+      },
+      "overlay": null,
+      "overlayCount": 0,
+      "smoke": null,
+      "arcs": [],
+      "vehicle": {
+        "id": "m1a2_x",
+        "name": "M1A2 Abrams"
+      },
+      "map": "Verdant Fields"
+    },
+    {
+      "id": "crew",
+      "file": "crew.webp",
+      "sha256": "ce5bd1d8e9082966758732359e6e9f419062b2298e9f923d5ac7a7a2f69a2d22",
+      "sourceCommit": "fefce24846f8a3c9cff903ff72ddb5eff2b67170",
+      "recipeSha256": "bee33f5797ccb3b5afbaf08989065f0cba6cb49527fbb246165e888644247d8d",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+      "launch": {
+        "verified": true,
+        "argumentCount": 36,
+        "checkedBackgroundFlags": 3,
+        "backgroundOverridesPresent": 0
+      },
+      "scene": {
+        "map": "verdant",
+        "seed": 5126,
+        "timeOfDay": "day",
+        "actors": [
+          {
+            "id": "m1a2_x",
+            "name": "hero",
+            "pos": [
+              -56,
+              -14
+            ],
+            "facingDeg": 0,
+            "turretDeg": -12,
+            "gunDeg": 0,
+            "camo": "summer",
+            "camoSeed": 261
+          }
+        ],
+        "effects": [],
+        "fxTime": 0,
+        "timeScale": 0
+      },
+      "camera": {
+        "pos": [
+          -48,
+          13.256957113899531,
+          -9
+        ],
+        "lookAt": [
+          -56,
+          4.456957113899532,
+          -14
+        ],
+        "groundRel": false,
+        "fov": 36
+      },
+      "textures": {
+        "mapId": "verdant",
+        "requested": 6,
+        "applied": 6
+      },
+      "overlay": "crew",
+      "overlayCount": 4,
+      "smoke": null,
+      "arcs": [],
+      "vehicle": {
+        "id": "m1a2_x",
+        "name": "M1A2 Abrams"
+      },
+      "map": "Verdant Fields"
+    },
+    {
+      "id": "dossier",
+      "file": "dossier.webp",
+      "sha256": "0d88639ee8eacfb486d74e1cfe078484ad65473b239798baedca82ff29cb192d",
+      "sourceCommit": "fefce24846f8a3c9cff903ff72ddb5eff2b67170",
+      "recipeSha256": "bee33f5797ccb3b5afbaf08989065f0cba6cb49527fbb246165e888644247d8d",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+      "launch": {
+        "verified": true,
+        "argumentCount": 36,
+        "checkedBackgroundFlags": 3,
+        "backgroundOverridesPresent": 0
+      },
+      "scene": {
+        "map": "verdant",
+        "seed": 5126,
+        "timeOfDay": "day",
+        "actors": [
+          {
+            "id": "m1a2_x",
+            "name": "hero",
+            "pos": [
+              -56,
+              -14
+            ],
+            "facingDeg": 0,
+            "turretDeg": -12,
+            "gunDeg": 0,
+            "camo": "summer",
+            "camoSeed": 261
+          }
+        ],
+        "effects": [],
+        "fxTime": 0,
+        "timeScale": 0
+      },
+      "camera": {
+        "pos": [
+          -48,
+          8.256957113899531,
+          -5
+        ],
+        "lookAt": [
+          -56,
+          4.456957113899532,
+          -14
+        ],
+        "groundRel": false,
+        "fov": 38
+      },
+      "textures": {
+        "mapId": "verdant",
+        "requested": 6,
+        "applied": 6
+      },
+      "overlay": null,
+      "overlayCount": 0,
+      "smoke": null,
+      "arcs": [],
+      "vehicle": {
+        "id": "m1a2_x",
+        "name": "M1A2 Abrams"
+      },
+      "map": "Verdant Fields"
+    },
+    {
+      "id": "equipment",
+      "file": "equipment.webp",
+      "sha256": "a1b9a583c0eeb82a3070b0d1ff6201789ab304a0f7f3439e946d38a1a30fcb7e",
+      "sourceCommit": "fefce24846f8a3c9cff903ff72ddb5eff2b67170",
+      "recipeSha256": "bee33f5797ccb3b5afbaf08989065f0cba6cb49527fbb246165e888644247d8d",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+      "launch": {
+        "verified": true,
+        "argumentCount": 36,
+        "checkedBackgroundFlags": 3,
+        "backgroundOverridesPresent": 0
+      },
+      "scene": {
+        "map": "verdant",
+        "seed": 5126,
+        "timeOfDay": "day",
+        "actors": [
+          {
+            "id": "m1a2_x",
+            "name": "hero",
+            "pos": [
+              -56,
+              -14
+            ],
+            "facingDeg": 0,
+            "turretDeg": -12,
+            "gunDeg": 0,
+            "camo": "summer",
+            "camoSeed": 261
+          }
+        ],
+        "effects": [],
+        "fxTime": 0,
+        "timeScale": 0
+      },
+      "camera": {
+        "pos": [
+          -64,
+          9.256957113899531,
+          -4
+        ],
+        "lookAt": [
+          -56,
+          4.556957113899532,
+          -14
+        ],
+        "groundRel": false,
+        "fov": 39
+      },
+      "textures": {
+        "mapId": "verdant",
+        "requested": 6,
+        "applied": 6
+      },
+      "overlay": null,
+      "overlayCount": 0,
+      "smoke": null,
+      "arcs": [],
+      "vehicle": {
+        "id": "m1a2_x",
+        "name": "M1A2 Abrams"
+      },
+      "map": "Verdant Fields"
+    },
+    {
+      "id": "maps",
+      "file": "maps.webp",
+      "sha256": "5aefe4374fecd7acc87b8828a6176b09560079a4b72eb2439ebddf4b42e36412",
+      "sourceCommit": "fefce24846f8a3c9cff903ff72ddb5eff2b67170",
+      "recipeSha256": "bee33f5797ccb3b5afbaf08989065f0cba6cb49527fbb246165e888644247d8d",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+      "launch": {
+        "verified": true,
+        "argumentCount": 36,
+        "checkedBackgroundFlags": 3,
+        "backgroundOverridesPresent": 0
+      },
+      "scene": {
+        "map": "verdant",
+        "seed": 5126,
+        "timeOfDay": "day",
+        "actors": [
+          {
+            "id": "m1a2_x",
+            "name": "hero",
+            "pos": [
+              -56,
+              -14
+            ],
+            "facingDeg": 0,
+            "turretDeg": -12,
+            "gunDeg": 0,
+            "camo": "summer",
+            "camoSeed": 261
+          }
+        ],
+        "effects": [],
+        "fxTime": 0,
+        "timeScale": 0
+      },
+      "camera": {
+        "pos": [
+          180,
+          240,
+          220
+        ],
+        "lookAt": [
+          0,
+          0,
+          0
+        ],
+        "groundRel": false,
+        "fov": 48
+      },
+      "textures": {
+        "mapId": "verdant",
+        "requested": 6,
+        "applied": 6
+      },
+      "overlay": null,
+      "overlayCount": 0,
+      "smoke": null,
+      "arcs": [],
+      "vehicle": {
+        "id": "m1a2_x",
+        "name": "M1A2 Abrams"
+      },
+      "map": "Verdant Fields"
+    },
+    {
+      "id": "modules",
+      "file": "modules.webp",
+      "sha256": "4485a299b6f3a13fa388b105eca61fa5dca77a2b51fe5d04fa118b31603268d8",
+      "sourceCommit": "fefce24846f8a3c9cff903ff72ddb5eff2b67170",
+      "recipeSha256": "bee33f5797ccb3b5afbaf08989065f0cba6cb49527fbb246165e888644247d8d",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+      "launch": {
+        "verified": true,
+        "argumentCount": 36,
+        "checkedBackgroundFlags": 3,
+        "backgroundOverridesPresent": 0
+      },
+      "scene": {
+        "map": "verdant",
+        "seed": 5126,
+        "timeOfDay": "day",
+        "actors": [
+          {
+            "id": "m1a2_x",
+            "name": "hero",
+            "pos": [
+              -56,
+              -14
+            ],
+            "facingDeg": 0,
+            "turretDeg": -12,
+            "gunDeg": 0,
+            "camo": "summer",
+            "camoSeed": 261
+          }
+        ],
+        "effects": [],
+        "fxTime": 0,
+        "timeScale": 0
+      },
+      "camera": {
+        "pos": [
+          -46,
+          11.256957113899531,
+          -13
+        ],
+        "lookAt": [
+          -56,
+          4.2569571138995315,
+          -14
+        ],
+        "groundRel": false,
+        "fov": 40
+      },
+      "textures": {
+        "mapId": "verdant",
+        "requested": 6,
+        "applied": 6
+      },
+      "overlay": "modules",
+      "overlayCount": 10,
+      "smoke": null,
+      "arcs": [],
+      "vehicle": {
+        "id": "m1a2_x",
+        "name": "M1A2 Abrams"
+      },
+      "map": "Verdant Fields"
+    },
+    {
+      "id": "performance",
+      "file": "performance.webp",
+      "sha256": "e9f06a5664a9beabf9b6d419584cc12fb89f890551fd0f6e38deb1f1005df675",
+      "sourceCommit": "fefce24846f8a3c9cff903ff72ddb5eff2b67170",
+      "recipeSha256": "bee33f5797ccb3b5afbaf08989065f0cba6cb49527fbb246165e888644247d8d",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+      "launch": {
+        "verified": true,
+        "argumentCount": 36,
+        "checkedBackgroundFlags": 3,
+        "backgroundOverridesPresent": 0
+      },
+      "scene": {
+        "map": "verdant",
+        "seed": 5126,
+        "timeOfDay": "day",
+        "actors": [
+          {
+            "id": "m1a2_x",
+            "name": "hero",
+            "pos": [
+              -56,
+              -14
+            ],
+            "facingDeg": 0,
+            "turretDeg": -12,
+            "gunDeg": 0,
+            "camo": "summer",
+            "camoSeed": 261
+          }
+        ],
+        "effects": [],
+        "fxTime": 0,
+        "timeScale": 0
+      },
+      "camera": {
+        "pos": [
+          -45,
+          7.2569571138995315,
+          -13
+        ],
+        "lookAt": [
+          -56,
+          4.356957113899532,
+          -14
+        ],
+        "groundRel": false,
+        "fov": 46
+      },
+      "textures": {
+        "mapId": "verdant",
+        "requested": 6,
+        "applied": 6
+      },
+      "overlay": null,
+      "overlayCount": 0,
+      "smoke": null,
+      "arcs": [],
+      "vehicle": {
+        "id": "m1a2_x",
+        "name": "M1A2 Abrams"
+      },
+      "map": "Verdant Fields"
+    },
+    {
+      "id": "protection",
+      "file": "protection.webp",
+      "sha256": "6ef4710e99c192fa192aa94ee7e3051418206998158f22c6b97b7d7b1aea7a67",
+      "sourceCommit": "fefce24846f8a3c9cff903ff72ddb5eff2b67170",
+      "recipeSha256": "bee33f5797ccb3b5afbaf08989065f0cba6cb49527fbb246165e888644247d8d",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+      "launch": {
+        "verified": true,
+        "argumentCount": 36,
+        "checkedBackgroundFlags": 3,
+        "backgroundOverridesPresent": 0
+      },
+      "scene": {
+        "map": "verdant",
+        "seed": 5126,
+        "timeOfDay": "day",
+        "actors": [
+          {
+            "id": "m1a2_x",
+            "name": "hero",
+            "pos": [
+              -56,
+              -14
+            ],
+            "facingDeg": 0,
+            "turretDeg": -12,
+            "gunDeg": 0,
+            "camo": "summer",
+            "camoSeed": 261
+          }
+        ],
+        "effects": [],
+        "fxTime": 0,
+        "timeScale": 0
+      },
+      "camera": {
+        "pos": [
+          -49,
+          8.256957113899531,
+          -4
+        ],
+        "lookAt": [
+          -56,
+          4.456957113899532,
+          -14
+        ],
+        "groundRel": false,
+        "fov": 38
+      },
+      "textures": {
+        "mapId": "verdant",
+        "requested": 6,
+        "applied": 6
+      },
+      "overlay": "armor",
+      "overlayCount": 2444,
+      "smoke": null,
+      "arcs": [],
+      "vehicle": {
+        "id": "m1a2_x",
+        "name": "M1A2 Abrams"
+      },
+      "map": "Verdant Fields"
+    },
+    {
+      "id": "smoke",
+      "file": "smoke.webp",
+      "sha256": "44a576a1ed7f5515db52b388d5b0b7d1dd1fed860e9c9c5e626225e5a6cecf85",
+      "sourceCommit": "fefce24846f8a3c9cff903ff72ddb5eff2b67170",
+      "recipeSha256": "bee33f5797ccb3b5afbaf08989065f0cba6cb49527fbb246165e888644247d8d",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+      "launch": {
+        "verified": true,
+        "argumentCount": 36,
+        "checkedBackgroundFlags": 3,
+        "backgroundOverridesPresent": 0
+      },
+      "scene": {
+        "map": "verdant",
+        "seed": 5126,
+        "timeOfDay": "day",
+        "actors": [
+          {
+            "id": "m1a2_x",
+            "name": "hero",
+            "pos": [
+              -56,
+              -14
+            ],
+            "facingDeg": 0,
+            "turretDeg": -12,
+            "gunDeg": 0,
+            "camo": "summer",
+            "camoSeed": 261
+          }
+        ],
+        "effects": [],
+        "fxTime": 0,
+        "timeScale": 0
+      },
+      "camera": {
+        "pos": [
+          -31,
+          21.25695711389953,
+          7
+        ],
+        "lookAt": [
+          -57,
+          4.2569571138995315,
+          -4
+        ],
+        "groundRel": false,
+        "fov": 47
+      },
+      "textures": {
+        "mapId": "verdant",
+        "requested": 6,
+        "applied": 6
+      },
+      "overlay": null,
+      "overlayCount": 0,
+      "smoke": {
+        "x": -60.043616504445225,
+        "y": 4.078361017973599,
+        "z": 6.47471372739871,
+        "yaw": -0.20943951023931956,
+        "born": 0,
+        "canisters": [
+          [
+            -57.686025881758454,
+            5.44837023150975,
+            -13.59922389529577,
+            -6.51875747976985,
+            8.967321323016108,
+            8.549441456009001,
+            2.0899495442708353
+          ],
+          [
+            -57.59213287410508,
+            5.446720413786219,
+            -13.579289472422696,
+            -6.51875747976985,
+            8.967321323016108,
+            8.549441456009001,
+            2.089493815104169
+          ],
+          [
+            -57.498239866451705,
+            5.4450705960626875,
+            -13.559355049549621,
+            -6.517609496418291,
+            8.967601775578993,
+            8.550022505632988,
+            2.0890950520833353
+          ],
+          [
+            -57.66319152360349,
+            5.521788725345502,
+            -13.700699591157095,
+            -6.517609496418291,
+            8.967601775578993,
+            8.550022505632988,
+            2.0965901692708364
+          ],
+          [
+            -57.569298515950116,
+            5.520138907621972,
+            -13.68076516828402,
+            -6.51875747976985,
+            8.967321323016108,
+            8.549441456009001,
+            2.0960937500000023
+          ],
+          [
+            -57.47540550829674,
+            5.5184890898984404,
+            -13.660830745410946,
+            -6.517609496418291,
+            8.967601775578993,
+            8.550022505632988,
+            2.095678710937503
+          ],
+          [
+            -54.699445796650714,
+            5.395892279420437,
+            -12.965143127741385,
+            2.7802658557839037,
+            8.804226462223664,
+            10.524054265017963,
+            2.057128906250002
+          ],
+          [
+            -54.60555278899734,
+            5.394242461696907,
+            -12.94520870486831,
+            2.781540748137554,
+            8.803903436700551,
+            10.523987616094127,
+            2.0570068359375027
+          ],
+          [
+            -54.511659781343965,
+            5.392592643973376,
+            -12.925274281995236,
+            2.7802658557839037,
+            8.804226462223664,
+            10.524054265017963,
+            2.056998697916669
+          ],
+          [
+            -54.67661143849575,
+            5.46931077325619,
+            -13.066618823602711,
+            2.7802658557839037,
+            8.804226462223664,
+            10.524054265017963,
+            2.0635823567708362
+          ],
+          [
+            -54.58271843084238,
+            5.467660955532659,
+            -13.046684400729637,
+            2.781540748137554,
+            8.803903436700551,
+            10.523987616094127,
+            2.0634684244791694
+          ],
+          [
+            -54.488825423189,
+            5.466011137809128,
+            -13.02674997785656,
+            2.7802658557839037,
+            8.804226462223664,
+            10.524054265017963,
+            2.063452148437503
+          ]
+        ],
+        "banks": [
+          0,
+          6
+        ],
+        "source": [
+          "m1a2_x",
+          -56,
+          3.272082097830887,
+          -13.97,
+          0,
+          -0.20943951023931956,
+          -0.01694993157193424,
+          -0.013969352097146897,
+          -0.000286,
+          1.513295,
+          0.392712
+        ]
+      },
+      "arcs": [
+        [
+          [
+            65.37,
+            39.56
+          ],
+          [
+            63.02,
+            35.92
+          ],
+          [
+            60.62,
+            32.72
+          ],
+          [
+            58.17,
+            30.01
+          ],
+          [
+            55.7,
+            27.8
+          ],
+          [
+            53.22,
+            26.12
+          ],
+          [
+            50.74,
+            24.96
+          ],
+          [
+            48.3,
+            24.34
+          ],
+          [
+            45.9,
+            24.24
+          ],
+          [
+            43.56,
+            24.65
+          ],
+          [
+            41.29,
+            25.55
+          ],
+          [
+            39.11,
+            26.91
+          ],
+          [
+            37.03,
+            28.71
+          ],
+          [
+            35.05,
+            30.9
+          ],
+          [
+            33.18,
+            33.46
+          ],
+          [
+            31.44,
+            36.34
+          ],
+          [
+            29.81,
+            39.5
+          ]
+        ],
+        [
+          [
+            68.01,
+            44.29
+          ],
+          [
+            66.49,
+            42.41
+          ],
+          [
+            64.81,
+            40.93
+          ],
+          [
+            62.95,
+            39.89
+          ],
+          [
+            60.91,
+            39.37
+          ],
+          [
+            58.7,
+            39.42
+          ],
+          [
+            56.31,
+            40.11
+          ],
+          [
+            53.76,
+            41.48
+          ],
+          [
+            51.04,
+            43.59
+          ],
+          [
+            48.18,
+            46.48
+          ],
+          [
+            45.19,
+            50.17
+          ],
+          [
+            42.1,
+            54.68
+          ],
+          [
+            38.93,
+            60.02
+          ],
+          [
+            35.72,
+            66.14
+          ],
+          [
+            32.5,
+            73.03
+          ],
+          [
+            29.3,
+            80.61
+          ],
+          [
+            26.16,
+            88.82
+          ]
+        ]
+      ],
+      "vehicle": {
+        "id": "m1a2_x",
+        "name": "M1A2 Abrams"
+      },
+      "map": "Verdant Fields"
+    },
+    {
+      "id": "smoke-launch",
+      "file": "smoke-launch.webp",
+      "sha256": "205b50720094b954207bbf754db65a4d11a00868d9eb7a91abd8c31cd3609879",
+      "sourceCommit": "fefce24846f8a3c9cff903ff72ddb5eff2b67170",
+      "recipeSha256": "bee33f5797ccb3b5afbaf08989065f0cba6cb49527fbb246165e888644247d8d",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+      "launch": {
+        "verified": true,
+        "argumentCount": 36,
+        "checkedBackgroundFlags": 3,
+        "backgroundOverridesPresent": 0
+      },
+      "scene": {
+        "map": "verdant",
+        "seed": 5126,
+        "timeOfDay": "day",
+        "actors": [
+          {
+            "id": "m1a2_x",
+            "name": "hero",
+            "pos": [
+              -56,
+              -14
+            ],
+            "facingDeg": 0,
+            "turretDeg": -12,
+            "gunDeg": 0,
+            "camo": "summer",
+            "camoSeed": 261
+          }
+        ],
+        "effects": [],
+        "fxTime": 0,
+        "timeScale": 0
+      },
+      "camera": {
+        "pos": [
+          -31,
+          21.25695711389953,
+          7
+        ],
+        "lookAt": [
+          -57,
+          4.2569571138995315,
+          -4
+        ],
+        "groundRel": false,
+        "fov": 47
+      },
+      "textures": {
+        "mapId": "verdant",
+        "requested": 6,
+        "applied": 6
+      },
+      "overlay": null,
+      "overlayCount": 0,
+      "smoke": {
+        "x": -60.043616504445225,
+        "y": 4.078361017973599,
+        "z": 6.47471372739871,
+        "yaw": -0.20943951023931956,
+        "born": 0,
+        "canisters": [
+          [
+            -57.686025881758454,
+            5.44837023150975,
+            -13.59922389529577,
+            -6.51875747976985,
+            8.967321323016108,
+            8.549441456009001,
+            2.0899495442708353
+          ],
+          [
+            -57.59213287410508,
+            5.446720413786219,
+            -13.579289472422696,
+            -6.51875747976985,
+            8.967321323016108,
+            8.549441456009001,
+            2.089493815104169
+          ],
+          [
+            -57.498239866451705,
+            5.4450705960626875,
+            -13.559355049549621,
+            -6.517609496418291,
+            8.967601775578993,
+            8.550022505632988,
+            2.0890950520833353
+          ],
+          [
+            -57.66319152360349,
+            5.521788725345502,
+            -13.700699591157095,
+            -6.517609496418291,
+            8.967601775578993,
+            8.550022505632988,
+            2.0965901692708364
+          ],
+          [
+            -57.569298515950116,
+            5.520138907621972,
+            -13.68076516828402,
+            -6.51875747976985,
+            8.967321323016108,
+            8.549441456009001,
+            2.0960937500000023
+          ],
+          [
+            -57.47540550829674,
+            5.5184890898984404,
+            -13.660830745410946,
+            -6.517609496418291,
+            8.967601775578993,
+            8.550022505632988,
+            2.095678710937503
+          ],
+          [
+            -54.699445796650714,
+            5.395892279420437,
+            -12.965143127741385,
+            2.7802658557839037,
+            8.804226462223664,
+            10.524054265017963,
+            2.057128906250002
+          ],
+          [
+            -54.60555278899734,
+            5.394242461696907,
+            -12.94520870486831,
+            2.781540748137554,
+            8.803903436700551,
+            10.523987616094127,
+            2.0570068359375027
+          ],
+          [
+            -54.511659781343965,
+            5.392592643973376,
+            -12.925274281995236,
+            2.7802658557839037,
+            8.804226462223664,
+            10.524054265017963,
+            2.056998697916669
+          ],
+          [
+            -54.67661143849575,
+            5.46931077325619,
+            -13.066618823602711,
+            2.7802658557839037,
+            8.804226462223664,
+            10.524054265017963,
+            2.0635823567708362
+          ],
+          [
+            -54.58271843084238,
+            5.467660955532659,
+            -13.046684400729637,
+            2.781540748137554,
+            8.803903436700551,
+            10.523987616094127,
+            2.0634684244791694
+          ],
+          [
+            -54.488825423189,
+            5.466011137809128,
+            -13.02674997785656,
+            2.7802658557839037,
+            8.804226462223664,
+            10.524054265017963,
+            2.063452148437503
+          ]
+        ],
+        "banks": [
+          0,
+          6
+        ],
+        "source": [
+          "m1a2_x",
+          -56,
+          3.272082097830887,
+          -13.97,
+          0,
+          -0.20943951023931956,
+          -0.01694993157193424,
+          -0.013969352097146897,
+          -0.000286,
+          1.513295,
+          0.392712
+        ]
+      },
+      "arcs": [
+        [
+          [
+            65.37,
+            39.56
+          ],
+          [
+            63.02,
+            35.92
+          ],
+          [
+            60.62,
+            32.72
+          ],
+          [
+            58.17,
+            30.01
+          ],
+          [
+            55.7,
+            27.8
+          ],
+          [
+            53.22,
+            26.12
+          ],
+          [
+            50.74,
+            24.96
+          ],
+          [
+            48.3,
+            24.34
+          ],
+          [
+            45.9,
+            24.24
+          ],
+          [
+            43.56,
+            24.65
+          ],
+          [
+            41.29,
+            25.55
+          ],
+          [
+            39.11,
+            26.91
+          ],
+          [
+            37.03,
+            28.71
+          ],
+          [
+            35.05,
+            30.9
+          ],
+          [
+            33.18,
+            33.46
+          ],
+          [
+            31.44,
+            36.34
+          ],
+          [
+            29.81,
+            39.5
+          ]
+        ],
+        [
+          [
+            68.01,
+            44.29
+          ],
+          [
+            66.49,
+            42.41
+          ],
+          [
+            64.81,
+            40.93
+          ],
+          [
+            62.95,
+            39.89
+          ],
+          [
+            60.91,
+            39.37
+          ],
+          [
+            58.7,
+            39.42
+          ],
+          [
+            56.31,
+            40.11
+          ],
+          [
+            53.76,
+            41.48
+          ],
+          [
+            51.04,
+            43.59
+          ],
+          [
+            48.18,
+            46.48
+          ],
+          [
+            45.19,
+            50.17
+          ],
+          [
+            42.1,
+            54.68
+          ],
+          [
+            38.93,
+            60.02
+          ],
+          [
+            35.72,
+            66.14
+          ],
+          [
+            32.5,
+            73.03
+          ],
+          [
+            29.3,
+            80.61
+          ],
+          [
+            26.16,
+            88.82
+          ]
+        ]
+      ],
+      "vehicle": {
+        "id": "m1a2_x",
+        "name": "M1A2 Abrams"
+      },
+      "map": "Verdant Fields"
+    },
+    {
+      "id": "special",
+      "file": "special.webp",
+      "sha256": "017f0ea6947f191c5c52a45fe53b2fb54a5470820eb757921cc2e189a2ddea7b",
+      "sourceCommit": "fefce24846f8a3c9cff903ff72ddb5eff2b67170",
+      "recipeSha256": "bee33f5797ccb3b5afbaf08989065f0cba6cb49527fbb246165e888644247d8d",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
+      "launch": {
+        "verified": true,
+        "argumentCount": 36,
+        "checkedBackgroundFlags": 3,
+        "backgroundOverridesPresent": 0
+      },
+      "scene": {
+        "map": "verdant",
+        "seed": 5126,
+        "timeOfDay": "day",
+        "actors": [
+          {
+            "id": "m1a2_x",
+            "name": "hero",
+            "pos": [
+              -56,
+              -14
+            ],
+            "facingDeg": 0,
+            "turretDeg": -12,
+            "gunDeg": 0,
+            "camo": "summer",
+            "camoSeed": 261
+          }
+        ],
+        "effects": [],
+        "fxTime": 0,
+        "timeScale": 0
+      },
+      "camera": {
+        "pos": [
+          -50,
+          11.256957113899531,
+          -8
+        ],
+        "lookAt": [
+          -56,
+          4.7569571138995315,
+          -14
+        ],
+        "groundRel": false,
+        "fov": 38
+      },
+      "textures": {
+        "mapId": "verdant",
+        "requested": 6,
+        "applied": 6
+      },
+      "overlay": null,
+      "overlayCount": 0,
+      "smoke": null,
+      "arcs": [],
+      "vehicle": {
+        "id": "m1a2_x",
+        "name": "M1A2 Abrams"
+      },
+      "map": "Verdant Fields"
+    }
+  ]
+}

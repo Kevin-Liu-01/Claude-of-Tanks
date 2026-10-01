@@ -93,6 +93,7 @@ type BooleanSettingKey =
   | 'invertY'
   | 'showPerfMeter'
   | 'hideBattleUi'
+  | 'isometricView'
   | 'showDebugHud'
   | 'showDirectionalHitValues'
   | 'armorAimOverlay'
@@ -903,6 +904,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       toDisp: (v) => v * 100, fromDisp: (v) => v / 100,
     });
     onOffRow(aim, t('settings.mouse.invertY'), 'invertY');
+    onOffRow(aim, t('settings.camera.isometric'), 'isometricView');
+    const isometricNote = el('div', 'cot-set-note', aim);
+    isometricNote.textContent = t('settings.camera.isometricNote');
 
     // gunnery r1 (owner): what right-click does — hold-to-aim (default),
     // toggle-aim, or the classic gun-lock free look. Persisted as

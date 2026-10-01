@@ -1192,3 +1192,22 @@ regression record.
   backing store is native through DPR 3 while under the 4 MP mobile output
   budget. Adaptive scene/post density remains an independent performance
   lever and its reconstruction mode is exposed in telemetry.
+
+
+### Combat equipment visibility at range
+
+`src/vehicles/combatVisibility.ts` protects gameplay-tagged armor/equipment,
+ERA-bound geometry, weapon stock, smoke apertures and complete working weapon
+assemblies from both renderer LOD cutoffs and mobile/bot cosmetic detachment.
+Authored wrappers remain intact through profile assembly; their combat-bearing
+levels receive an infinite cull horizon afterward. Cosmetic detail keeps its
+existing distance thresholds. This changes visibility only, not geometry,
+collision, damage or spotting.
+
+Regression: `node src/vehicles/combatVisibility.selftest.mjs` covers 31 vehicles
+(including every external-launcher platform), both geometry tiers, six ranges
+through 720 metres and ERA consumption/reset. The native rendered gate
+`nice -n 19 node tools/combat-visibility.browser.mjs` verifies actual color-pass
+submission: all 55 checked combat meshes remain at 540 metres while total
+fixture draws fall from 135 to 97. These are fixture draw counts, not a fleet FPS
+claim. Evidence is retained locally under `.qa-dev/combat-visibility/`.

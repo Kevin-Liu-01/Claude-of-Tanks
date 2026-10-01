@@ -1,6 +1,7 @@
 import type { InfoGuideId } from './infoGuideTypes.ts';
 export const INFO_GUIDE_DIAGRAMS = {
   "camo": "concealment",
+  "smoke": "smoke",
   "maps": "map",
   "dossier": "dossier",
   "performance": "mobility",

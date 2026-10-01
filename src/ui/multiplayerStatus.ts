@@ -92,6 +92,7 @@ export const MP_STATUS_CSS = `.cot-mp-status{position:fixed;z-index:91;top:38px;
 .cot-mp-panel{width:300px;max-width:calc(100vw - 20px);box-sizing:border-box;padding:8px 10px 10px;border:1px solid rgba(174,193,207,.22);
   background:rgba(7,11,15,.92);box-shadow:0 12px 36px rgba(0,0,0,.45);color:#cbeaff;font-size:10.5px;font-weight:700;letter-spacing:.04em;pointer-events:auto}
 .cot-mp-panel[hidden]{display:none}
+.cot-mp-panel .notice{margin:0 0 8px;font-size:12px;line-height:1.5;text-transform:none;color:#f2bd73}
 .cot-mp-panel .head{display:flex;justify-content:space-between;gap:10px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(171,190,204,.2);font-size:11px;color:#dce6ed}
 .cot-mp-panel .head .verdict{color:#b9e7c0}.cot-mp-panel.degraded .head .verdict{color:#ffd27a}.cot-mp-panel.bad .head .verdict,.cot-mp-panel.offline .head .verdict{color:#ff8c82}
 .cot-mp-panel .row{display:grid;grid-template-columns:minmax(74px,auto) 1fr;column-gap:10px;padding:2px 0;text-transform:none}
@@ -106,6 +107,17 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
   top:calc(max(8px,env(safe-area-inset-top)) + 84px);right:max(10px,env(safe-area-inset-right))}
 body[data-cot-width='phone'] .cot-mp-panel{width:calc(100vw - (var(--cot-edge) * 2));max-width:none}
 body[data-cot-width='phone'] .cot-mp-banner{width:calc(100vw - (var(--cot-edge) * 2));min-width:0}
+/* Touch keeps a named signal button beside the map. Details are a bounded
+   reader; an outage is announced and also named on the button itself. */
+body.cot-touch-layout[data-cot-width][data-cot-height] .cot-mp-status.battle{
+  left:var(--hud-network-left,116px);top:var(--hud-network-top,112px);right:auto;align-items:flex-start}
+body.cot-touch-layout .cot-mp-status.battle .cot-mp-strip{box-sizing:border-box;width:44px;height:44px;padding:3px;gap:2px;flex-wrap:wrap;justify-content:center;font-size:9px}
+body.cot-touch-layout .cot-mp-status.battle .unit:not(.ping),body.cot-touch-layout .cot-mp-status.battle .unit i{display:none}
+.cot-mp-strip .notice{display:none}
+body.cot-touch-layout .cot-mp-status.battle .notice:not(:empty){display:block;width:100%;font-size:9px;line-height:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.cot-touch-layout .cot-mp-status.battle .cot-mp-panel{position:fixed;right:max(8px,env(safe-area-inset-right));top:calc(var(--hud-network-top,112px) + 50px);width:min(300px,calc(100vw - 16px));max-width:calc(100vw - 16px);max-height:calc(100dvh - var(--hud-network-top,112px) - 58px);overflow:auto;overscroll-behavior:contain}
+body.cot-touch-layout .cot-mp-banner.battle{position:fixed;width:1px!important;height:1px;min-width:0;padding:0;border:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+body.cot-touch-layout .cot-mp-banner.battle .leave{display:none}
 body.cot-debug-hud .cot-mp-status.battle{display:none!important}`;
 
 // ------------------------------------------------------------ pure formatting (receipt-tested)
@@ -263,6 +275,7 @@ export function createMultiplayerStatusSurface({
   const rosterUnit = createElement('span', 'unit roster', strip);
   const rosterValue = createElement('b', '', rosterUnit);
   rosterValue.textContent = '0/28';
+  const touchNotice = createElement('span', 'notice', strip);
   const banner = createElement('div', `cot-mp-banner ${host}`, host === 'battle' ? document.body : root);
   banner.setAttribute('role', 'status');
   banner.setAttribute('aria-live', 'polite');
@@ -280,6 +293,8 @@ export function createMultiplayerStatusSurface({
   const panelTitle = createElement('span', 'title', panelHead);
   panelTitle.textContent = t('mpStatus.panelAria');
   const panelVerdict = createElement('span', 'verdict', panelHead);
+  const panelNotice = createElement('p', 'notice', panel);
+  panelNotice.hidden = true;
   const panelRows = createElement('div', 'rows', panel);
   const panelLeave = createElement('button', 'cot-mp-leave', panel);
   panelLeave.type = 'button';
@@ -323,6 +338,8 @@ export function createMultiplayerStatusSurface({
     const armed = arming.armed(nowMs);
     const text = armed ? t('mpStatus.banner.leaveArmed') : formatBanner(fact);
     const shown = text.length > 0;
+    panelNotice.hidden = !shown;
+    if (panelNotice.textContent !== text) panelNotice.textContent = text;
     if (banner.hidden === shown) banner.hidden = !shown;
     if (!shown) { lastBannerText = ''; return; }
     if (text !== lastBannerText) { lastBannerText = text; bannerText.textContent = text; }
@@ -336,6 +353,8 @@ export function createMultiplayerStatusSurface({
     if (disposed) return;
     lastSnapshot = s;
     lastBanner = fact;
+    const shortNotice = fact ? healthLabel(s.health) : '';
+    if (touchNotice.textContent !== shortNotice) touchNotice.textContent = shortNotice;
     const text = formatStrip(s);
     if (text.health !== lastHealth) {
       lastHealth = text.health;
@@ -374,6 +393,9 @@ export function createMultiplayerStatusSurface({
 
   const leaveNow = (): void => { if (!disposed && onLeave) { arming.disarm(); onLeave(); } };
   strip.addEventListener('click', () => togglePanel());
+  root.addEventListener('keydown', (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && panelOpen) { event.preventDefault(); event.stopPropagation(); togglePanel(false); strip.focus(); }
+  });
   panelLeave.addEventListener('click', leaveNow);
   bannerLeave.addEventListener('click', leaveNow);
   strip.setAttribute('title', t('mpStatus.toggleAria.show'));

@@ -14,6 +14,8 @@ import { TANK_SPECS } from '../../src/vehicles/specs.ts';
 import { createTankState } from '../../src/sim/movement.ts';
 import { createCombatState } from '../../src/sim/damage.ts';
 import { createSpecialActionState } from '../../src/sim/specialActionPolicy.ts';
+import {createMultiplayerStatusSurface} from '../../src/ui/multiplayerStatus.ts';
+import {NetworkStatusModel} from '../../src/mp/session/networkStatus.ts';
 import { setLocale } from '../../src/ui/i18n.ts';
 
 setLocale(new URLSearchParams(location.search).get('locale') || 'en-US');
@@ -44,7 +46,16 @@ function hit(incoming=false) {
     kind:'pen',damage:420,dmgRoll:460,penRoll:560,effectiveArmor:350,baseArmor:220,impactAngleDeg:34,
     shellType:'APFSDS',zone:'hullFront',flightDistM:240,timeS:60,pos:[0,1,50],localPos:[0,1,2],localDir:[0,0,-1]});
 }
+let network=null;
+function multiplayer(kind='healthy') {
+  network?.dispose();
+  network=createMultiplayerStatusSurface({onLeave:()=>window.__HUD_LEFT=true});
+  const snapshot=Object.assign(new NetworkStatusModel().snapshot,{attached:true,health:kind==='healthy'?'good':'offline',room:'joined',roomPhase:'playing',link:'live',rttMs:42,rttMedianMs:45,rosterCount:28,seat:1,role:'host',peersConnected:27});
+  network.set(snapshot,kind==='healthy'?null:{kind:'reconnecting',scope:'match',attempt:2,nextRetryS:3});
+  return network;
+}
 function state(name) {
+  network?.dispose();network=null;
   delete frame.rosterTanks; frame.tanks=tanks;
   frame.aim.gunLimitSpec = name==='notifications';
   settings.close({noRelock:true});
@@ -53,7 +64,10 @@ function state(name) {
   player.spec = TANK_SPECS[name==='special'?'bwp1':'m1a3'];
   player.combat = createCombatState(player.spec);
   player.specialAction = createSpecialActionState(player.spec);
-  hud.setMode('hidden'); hud.setMode('battle'); hud.update(frame); panel.update(player.combat);
+  hud.setMode('hidden'); hud.setMode('battle');
+  // Cross the real 30-frame FPS threshold; single-frame fixtures miss this plate.
+  for(let i=0;i<31;i++)hud.update(frame);
+  panel.update(player.combat);
   for(let i=0;i<3;i++){
     bus.emit('tank:destroyed',{id:tanks[8].id,killerId:player.id,cause:'fire'});
     bus.emit('tank:destroyed',{id:tanks[1].id,killerId:tanks[9].id,cause:'fire'});
@@ -93,7 +107,7 @@ function roster(allies, enemies) {
   frame.rosterTanks=entries; frame.tanks=entries;
   hud.update(frame);
 }
-window.__HUD_LAYOUT = {state, roster, hud, bus, touch, settings, hit, frame, tanks};
+window.__HUD_LAYOUT = {multiplayer,state, roster, hud, bus, touch, settings, hit, frame, tanks};
 const params = new URLSearchParams(location.search);
 state(params.get('state') || 'idle');
 if(params.has('allies'))roster(Number(params.get('allies')),Number(params.get('enemies')));

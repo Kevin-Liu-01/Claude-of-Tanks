@@ -16,6 +16,24 @@ camera/aim source equals HEAD's `src/engine/cameraRig.ts` / `src/game/input.ts`.
 
 ## Derived coupling rules (the spec)
 
+These rules describe the default chase camera. The opt-in **Isometric view**
+setting uses `isometricCamera.ts` through the same camera rig: a fixed 45°
+world azimuth, roughly 56° downward pitch and 38° perspective lens. The hull
+anchor stays centered; distance eases with speed, manual zoom and portrait
+aspect. Collision probes raise the pitch immediately and ease it back when
+clear. Mouse/controller/touch deltas move a bounded screen-space reticle
+instead of rotating the camera. The existing visible-target aim raycast and
+physical gun solver remain authoritative for aiming. Sniper entry preserves
+that world aim point; exit restores the overhead framing and projects the
+scope's aim back into it. Death, spectator and external replay owners retain
+precedence. The default and saved preferences live in `InputSettings`.
+
+Regression coverage: `src/engine/cameraRig.selftest.mjs` and
+`nice -n 19 node tools/isometric-camera.browser.mjs`. The browser test uses the
+real settings and battle renderer, native mouse input, and desktop plus
+568×256, 320×568 and 844×390 touch layouts. Captures are written to the ignored
+`.qa-dev/isometric/` directory.
+
 1. **Mouse-look leads the camera; the gun chases the reticle.** +400 px of
    mouse-right under pointer lock yaws the camera ~-50 deg (BASE_SENS
    0.0022 rad/px); the turret then converges the gun onto the camera's

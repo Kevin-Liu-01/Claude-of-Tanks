@@ -52,6 +52,17 @@ assert.deepEqual(capsCollision,
     assert.equal(migrated.getBinding('smoke'),null);
     globalThis.localStorage = { getItem: () => null, setItem() {} };
     const controls = createInput();
+    assert.equal(controls.getSettings().isometricView, false, 'overhead view is opt-in');
+    controls.setSetting('isometricView', true);
+    assert.equal(controls.getSettings().isometricView, true);
+    assert.equal(createInput().getSettings().isometricView, false, 'missing saved preference retains chase view');
+    assert.equal(controls.getSettings().armorAimOverlay, false, 'armor highlighting is opt-in for new profiles');
+    for (const enabled of [true, false]) {
+      globalThis.localStorage = {getItem:key=>key==='cot.settings.v1'?JSON.stringify({armorAimOverlay:enabled,isometricView:enabled}):null,setItem(){}};
+      assert.equal(createInput().getSettings().isometricView, enabled, 'saved camera preference is restored');
+      assert.equal(createInput().getSettings().armorAimOverlay, enabled, 'explicit saved armor preference is preserved');
+    }
+    globalThis.localStorage = { getItem: () => null, setItem() {} };
     assert.equal(controls.getBinding('smoke'),'KeyG');
     assert.equal(controls.getBinding('lights'),'KeyN');
     assert.equal(controls.getBinding('roofGun'),'KeyB');

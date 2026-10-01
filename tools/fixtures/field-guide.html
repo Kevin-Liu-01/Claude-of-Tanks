@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Field Manual review</title><style>html,body{margin:0;min-height:100%;background:#101b22;color:#d9e4eb;font-family:Arial,sans-serif}nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:12px;padding:16px;box-sizing:border-box}nav button{min-width:0;width:100%!important;min-height:44px}</style></head><body><nav id="chapters" aria-label="Field Manual chapters"></nav><script type="module">
+import '/src/ui/motion.css';
+import '/src/ui/responsiveSurfaces.css';
+import {installResponsiveLayout} from '/src/ui/responsiveLayout.ts';
+import {setLocale} from '/src/ui/i18n.ts';
+import {createInfoButton} from '/src/ui/contextInfo.ts';
+import {INFO_GUIDE_CAPTURES} from '/src/ui/infoGuideCaptures.ts';
+setLocale(new URLSearchParams(location.search).get('locale')||'en-US');installResponsiveLayout();
+let vehicle={id:'m1a2_x',name:'M1A2 Abrams'};
+for(const id of Object.keys(INFO_GUIDE_CAPTURES)){
+ const button=createInfoButton({guide:id,title:id,vehicle:()=>vehicle});button.dataset.chapter=id;button.textContent=id;document.querySelector('#chapters').append(button);
+}
+window.__GUIDE_QA={setVehicle:(id,name)=>{vehicle={id,name}}};
+</script></body></html>

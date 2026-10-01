@@ -55,6 +55,7 @@ export const SETTINGS_OPTION_ICONS = Object.freeze({
   aiDifficulty: { id: 'battleBots', tone: 'red' },
   showPerfMeter: { id: 'performance', tone: 'green' },
   hideBattleUi: { id: 'graphics', tone: 'cyan' },
+  isometricView: { id: 'map', tone: 'cyan' },
   showDebugHud: { id: 'telemetry', tone: 'violet' },
   showDirectionalHitValues: { id: 'damage', tone: 'red' },
   armorAimOverlay: { id: 'armorFlashlight' },

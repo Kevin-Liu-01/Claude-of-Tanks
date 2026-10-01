@@ -1,0 +1,30 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Combat detail at range</title><style>html,body{margin:0;background:#25313b;overflow:hidden}canvas{display:block}</style></head><body><script type="module">
+import * as THREE from 'three';
+import {createTank} from '/src/vehicles/tankFactory.ts';
+import {getSpec} from '/src/vehicles/specs.ts';
+import {createTankState} from '/src/sim/movement.ts';
+const scene=new THREE.Scene();scene.background=new THREE.Color('#25313b');
+scene.add(new THREE.HemisphereLight(0xddeeff,0x75674e,3));
+const sun=new THREE.DirectionalLight(0xffeed4,4);sun.position.set(10,20,12);scene.add(sun);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(1200,700);document.body.append(renderer.domElement);
+const camera=new THREE.PerspectiveCamera(42,1200/700,.1,2000),tanks=[],required=[],drawn=new Set();
+for(const [i,id] of ['m1a2','t90m','tos1a_tagil'].entries()){
+ const spec=getSpec(id),tank=createTank(id,null,{proceduralOnly:true,batchStatic:true,battleDetailLod:true,geometryReceipt:true});
+ const state=createTankState(spec,new THREE.Vector3((i-1)*8,0,0),.25);state.turretYaw=-.25;
+ scene.add(tank.root);tanks.push({tank,state});
+ tank.root.traverse(o=>{
+  if(!o.isMesh)return;
+  if(['armor','externalArmor','equipment'].includes(o.userData.combatHitboxRole)||o.userData.combatVisibility
+    ||o.userData.appearanceRole==='machineGun'||o.userData.fitting==='smokeBank')required.push(o.id);
+  const prior=o.onBeforeRender;o.onBeforeRender=function(...args){drawn.add(o.id);prior.apply(this,args);};
+ });
+}
+window.__LOD_QA={render(far){
+ const scale=far?15:1;camera.position.set(17*scale,15*scale,28*scale);camera.lookAt(0,1,0);
+ camera.fov=THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(THREE.MathUtils.degToRad(42)/2)/scale));camera.updateProjectionMatrix();
+ for(const {tank,state} of tanks)tank.syncFromState(state,0,far?550:35);
+ drawn.clear();renderer.render(scene,camera);
+ return {distance:camera.position.length(),required:required.length,missing:required.filter(id=>!drawn.has(id)),draws:renderer.info.render.calls,triangles:renderer.info.render.triangles};
+}};
+window.__LOD_QA.render(false);
+</script></body></html>

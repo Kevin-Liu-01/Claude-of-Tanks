@@ -12,6 +12,7 @@ import { markSmokeTube, alignSmokeBanks } from './vehicleAuxiliaryGeometry.ts';
 
 import * as THREE from 'three';
 import { shareBattleGeometry } from './battleGeometrySharing.ts';
+import { combatVisibleObjects, retainCombatLods } from './combatVisibility.ts';
 import { detachEmptyLodSentinels } from '../engine/lodEmptySentinels.ts';
 import {fitLoadedTrackContact,loadedContactScratch} from './loadedTrackContact.ts';
 import { seatStaggeredTrackGround } from './staggeredTrackGround.ts';
@@ -1414,8 +1415,10 @@ function collectMobileDetailObjects(
   rigParents: readonly THREE.Object3D[],
 ): StaticDetailRecord[] {
   const records: StaticDetailRecord[] = [];
+  const combatObjects = combatVisibleObjects(root);
   const managedGroups = new Set<THREE.Object3D>();
   root.traverse((object) => {
+    if (combatObjects.has(object)) return;
     if (!(object instanceof THREE.Group)) return;
     const name = object.name || '';
     if (name.startsWith('rig_decor_') || name.startsWith('fitting_')
@@ -1431,7 +1434,7 @@ function collectMobileDetailObjects(
   for (const group of managedGroups) records.push({ object: group, baseVisible: group.visible });
   const fineGear = /^(gearRoadWheel.*(?:Inset|Ring|Rim|Bowl|Hub|Dish|Recess)|gearReturnRollers|gearEndWheelHardware)$/;
   root.traverse((object) => {
-    if (!isVehicleMesh(object) || underManagedGroup(object)) return;
+    if (!isVehicleMesh(object) || combatObjects.has(object) || underManagedGroup(object)) return;
     const name = object.name || '';
     const anonymousStatic = !name && object.parent !== null && rigParents.includes(object.parent)
       && Object.keys(object.userData || {}).length === 0
@@ -8132,6 +8135,13 @@ function* createTankOwnedSteps(
     disposables.push(merged);
     const mesh = new THREE.Mesh(merged, mats[matKey]);
     tagMergedBucket(bucket, mesh);
+    // A merged material bucket can contain live equipment mixed with trim.
+    // Retain its exact stock without splitting/rebuilding damage-bound ranges.
+    if (authoredRanges.length || /OpenLattice/.test(bucket) || list.some(part =>
+      part.userData.weaponStock || part.userData.smokeAperture
+      || part.userData.openSmokeAperture || part.userData.vehicleNightLens)) {
+      mesh.userData.combatVisibility = true;
+    }
     const paintSourceBucket = materialOnlyPaintSourceBucket(list);
     if (paintSourceBucket) {
       mesh.userData.materialOnlyPaintMigration = true;
@@ -10135,6 +10145,8 @@ function* createTankOwnedSteps(
     // outside this normalization.
     normalizeTankAppearance(root, { wheelPaint: mats.wheels, wheelPaintShade: mats.wheelsRecessed ?? null });
     const tailNormalizeFinishedAt = performance.now();
+
+    retainCombatLods(root);
 
     if ((geometryQuality === 'low' && !deferStaticBatch) || batchStatic) {
       const mobileBatchParents = [hullG, turretG, gunG, recoilG];

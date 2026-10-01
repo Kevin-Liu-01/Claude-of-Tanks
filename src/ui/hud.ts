@@ -1885,6 +1885,9 @@ export function initHud(bus: EventBus): HudRuntime {
   document.body.appendChild(root);
   installBattleHudLayout(root);
 
+  const touchAimWarning = el('div', 'cot-aim-warning', root);
+  touchAimWarning.hidden = true;
+  touchAimWarning.setAttribute('role', 'status');
   const retCanvas = el('canvas', 'cot-ret', root);
   const ctx = requireCanvasContext(retCanvas);
   const on = (event: string, listener: (payload: HudEventPayload) => void): (() => void) =>
@@ -2811,7 +2814,7 @@ export function initHud(bus: EventBus): HudRuntime {
       rememberSpottedPose(memory, state);
     }
     memory.vis = authoritative ? seen : seen || timeS - memory.lastT < SPOT_PERSIST_S;
-    if (memory.vis) rememberSpottedPose(memory, state);
+    // Hidden contacts retain the last observed pose, including during fallback linger.
   }
 
   function updateSpotting(frame: HudFrame): void {
@@ -2828,14 +2831,13 @@ export function initHud(bus: EventBus): HudRuntime {
         spotById.delete(tank.id);
         continue;
       }
-      const memory = spotMemoryFor(tank);
       if (tank.combat?.destroyed) {
-        // wrecks are permanently known once dead
-        memory.vis = true;
-        memory.ever = true;
-        rememberSpottedPose(memory, tank.state);
+        // Wreck crosses are drawn separately. A dead tank's contact must never
+        // survive into its next life at an unseen respawn point.
+        spotById.delete(tank.id);
         continue;
       }
+      const memory = spotMemoryFor(tank);
       // SPOTTING SECTION: when the concealment sim is wired in (frame.spotting
       // from src/sim/spotting.ts via main.ts) it is the single source of truth
       // — camo values, bushes, fire bloom and the 5 s linger all live there.
@@ -3170,7 +3172,7 @@ export function initHud(bus: EventBus): HudRuntime {
   //      mid-frame — still no ring boundary, no tunnel);
   //   2. FULL-WIDTH HAIRLINES — 1px cross lines running from the screen
   //      edges up to the dispersion circle's rim (interior stays clean);
-  //   3. the zoom readout anchored above reticle center (drawReticle).
+  //   3. the zoom readout just below the scope ammunition line (drawReticle).
   function ensureScopeGradients(zoom: number): void {
     if (scopeGrad && scopeChromGrad && scopeGradZoom === zoom) return;
     const deep = 0.48;
@@ -4058,15 +4060,21 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.textAlign = 'center';
   }
 
+  function sniperAmmoReadoutY(draw: ReticleDrawState): number {
+    // Short landscape keeps the whole readout stack close to the scope.
+    if (h <= 430) return draw.cy + 44;
+    return Math.min(
+      draw.cy + Math.max(draw.radius * 1.02 + 24, draw.radius * 1.55 + 18, 96),
+      h - 176,
+    );
+  }
+
   function paintSniperAmmoReadout(draw: ReticleDrawState): void {
     if (draw.blocked) return;
     const shell = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
     const count = ammunitionCountText(shell);
     const type = shell.type || '';
-    const y = Math.min(
-      draw.cy + Math.max(draw.radius * 1.02 + 24, draw.radius * 1.55 + 18, 96),
-      h - 150,
-    );
+    const y = sniperAmmoReadoutY(draw);
     ctx.font = `700 13.5px ${FONT_COND}`;
     const countW = ctx.measureText(`${count} `).width;
     ctx.font = `800 9px ${FONT_COND}`;
@@ -4098,9 +4106,9 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function paintSniperZoom(view: HudAimView, draw: ReticleDrawState): void {
     if (window.__HUD_HIDE_ZOOM_PLATE) return;
-    // Keep magnification with the aiming readouts, clear of the bottom
-    // vehicle console. Bound bloom clearance so it stays near the scope.
-    const y = draw.cy - Math.max(56, Math.min(draw.radius + 20, 96));
+    // Keep the familiar zoom line directly beneath ammunition, not over the
+    // target or detached down beside the vehicle console.
+    const y = sniperAmmoReadoutY(draw) + 24;
     const text = `×${(view.zoom || 8).toFixed(1)}`;
     ctx.font = `700 16px ${FONT_COND}`;
     ctx.fillStyle = 'rgba(196,246,202,0.95)';
@@ -4125,6 +4133,13 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function paintAimWarning(view: HudAimView, draw: ReticleDrawState): void {
     const warning = aimWarningState(view, aimWarningScratch);
+    const touchWarning = document.body.classList.contains('cot-touch-layout') && warning.visible;
+    if (touchAimWarning.hidden === touchWarning) touchAimWarning.hidden = !touchWarning;
+    if (touchWarning) {
+      if (touchAimWarning.textContent !== warning.text) touchAimWarning.textContent = warning.text;
+      if (touchAimWarning.dataset.kind !== warning.kind) touchAimWarning.dataset.kind = warning.kind;
+      return;
+    }
     if (!warning.visible) return;
     const y = draw.cy + Math.max(62, draw.radius + 24);
     const danger = warning.kind === 'blocked';
@@ -4283,8 +4298,8 @@ export function initHud(bus: EventBus): HudRuntime {
     paintPhysicalGunMarker(view, draw);
     ctx.globalAlpha = 1;
 
-    // Scope readouts stay around the aiming point: magnification above,
-    // reload and ammunition below, range beside the lower-right rim.
+    // Scope readouts stay around the aiming point: ammunition and magnification
+    // below, with range beside the lower-right rim.
     ctx.textAlign = 'center';
     ctx.shadowColor = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur = 3;
@@ -4295,7 +4310,7 @@ export function initHud(bus: EventBus): HudRuntime {
     // three-line mid-frame column is gone —
     //   - chambered count: ONE compact line hugging the circle's lower rim
     //   - distance: a small corner tag hanging off the reticle's 4:30 rim
-    //   - zoom factor: above the reticle, clear of the vehicle controls
+    //   - zoom factor: directly beneath ammunition, clear of vehicle controls
     paintSniperReadouts(view, draw);
     paintAimWarning(view, draw);
     ctx.shadowBlur = 0;
@@ -5293,35 +5308,32 @@ export function initHud(bus: EventBus): HudRuntime {
     _liveBlipCount++;
   }
 
-  // Last-known contacts use one neutral stale-intel marker. Era is metadata,
-  // never a combat shape, and exact vehicle silhouettes stay in team panels.
-  function ghostMarkerPath(c: CanvasRenderingContext2D, s: number): void {
-    c.beginPath();
-    c.moveTo(0, -4.1 * s); c.lineTo(4.6 * s, 0);
-    c.lineTo(0, 4.1 * s); c.lineTo(-4.6 * s, 0);
-    c.closePath();
-  }
+  // Last-known contacts keep the vehicle's last observed heading. A hollow,
+  // muted arrow distinguishes stale intelligence from a live filled arrow.
   function drawGhostMarker(
     c: CanvasRenderingContext2D,
     x: number,
     y: number,
+    yaw: number,
   ): void {
     c.save();
     c.translate(x, y);
-    const s = 1.35;                          // ~13 px wide, live-blip footprint
-    c.globalAlpha = 0.8;                     // dark keyline pops it off terrain
-    c.strokeStyle = 'rgba(8,12,16,0.85)';
-    c.lineWidth = 3.2;
-    ghostMarkerPath(c, s); c.stroke();
-    c.globalAlpha = 0.4;                     // ghosted stale-intel fill
-    c.fillStyle = 'rgb(242,140,132)';
-    ghostMarkerPath(c, s); c.fill();
-    c.globalAlpha = 0.9;                     // thin outline keeps it legible
-    c.lineWidth = 1.1;
-    c.strokeStyle = 'rgba(255,178,170,0.95)';
-    ghostMarkerPath(c, s); c.stroke();
-    c.globalAlpha = 0.75; c.fillStyle = 'rgb(242,140,132)';
-    c.beginPath(); c.arc(0, 0, 1.7, 0, Math.PI * 2); c.fill();
+    c.rotate(minimapYawForHeading(yaw));
+    const s = 5.5;
+    c.globalAlpha = 0.7;
+    c.beginPath();
+    c.moveTo(0, -s);
+    c.lineTo(s * 0.74, s * 0.9);
+    c.lineTo(0, s * 0.42);
+    c.lineTo(-s * 0.74, s * 0.9);
+    c.closePath();
+    c.lineJoin = 'round';
+    c.strokeStyle = 'rgba(8,12,16,0.9)';
+    c.lineWidth = 3;
+    c.stroke();
+    c.strokeStyle = '#e5a19b';
+    c.lineWidth = 1;
+    c.stroke();
     c.restore();
   }
 
@@ -5335,9 +5347,7 @@ export function initHud(bus: EventBus): HudRuntime {
       const dimmed = Math.hypot(x - playerMapX, y - playerMapY) < 15;
       mmCtx.save();
       if (dimmed) mmCtx.globalAlpha = 0.55;
-      // tactical map 2026-09-15: the base is the shared spawn glyph — keylined
-      // ring with cardinal ticks, team cap and pennant (ui/objectiveGlyphs.ts),
-      // the same mark the mode objectives and the world beacons use.
+      // The same tank-and-return glyph marks spawns on the map and in world.
       drawSpawnGlyph(mmCtx, x, y, 10, flag.color, flag.fill || 'rgba(240,246,252,0.07)');
       mmCtx.restore();
     }
@@ -5359,8 +5369,9 @@ export function initHud(bus: EventBus): HudRuntime {
     const breath = 0.5 + 0.5 * Math.sin(timeS * 5.2);
     for (const marker of markers) {
       const point = worldToMap(marker.x, marker.z);
-      const x = Math.max(7, Math.min(MM - 7, point[0]));
-      const y = Math.max(7, Math.min(MM - 7, point[1]));
+      const inset = marker.kind === 'spawn' ? 11 : 7;
+      const x = Math.max(inset, Math.min(MM - inset, point[0]));
+      const y = Math.max(inset, Math.min(MM - inset, point[1]));
       const color = sideColor(marker.side);
       const fill = sideFill(marker.side);
       const nearPlayer = Math.hypot(x - playerMapX, y - playerMapY) < 14;
@@ -5475,7 +5486,7 @@ export function initHud(bus: EventBus): HudRuntime {
       pushLiveBlip(point[0], point[1], state.yaw, PEN_RED, 5, 0.95, false);
     } else if (spotted?.ever) {
       const point = worldToMap(spotted.lastX, spotted.lastZ);
-      drawGhostMarker(mmCtx, point[0], point[1]);
+      drawGhostMarker(mmCtx, point[0], point[1], spotted.lastYaw);
     }
   }
 
@@ -5586,8 +5597,8 @@ export function initHud(bus: EventBus): HudRuntime {
       const pm = worldToMap(player.state.pos.x, player.state.pos.z);
       plMapX = pm[0]; plMapY = pm[1];
     }
-    // team bases under everything else: WoT convention — a white circle
-    // outline (the base perimeter) with the team-colored flag at its center.
+    // Team bases sit under vehicle contacts, using the shared team-tinted
+    // tank-and-return glyph. Vehicle arrows remain on top of the base marker.
     // r6/r6-2/r7-2 history: both bases carry the identical full-weight
     // treatment and a base under the player arrow drops to 55 %.
     // tactical map 2026-09-15: modes whose objectives stand on the spawns
@@ -5827,7 +5838,11 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   let playerRef: HudTank | null = null;
-  on('tank:destroyed', (p) => { pushKill(p); reviveCountdown.onDestroyed(p.id); });
+  on('tank:destroyed', (p) => {
+    if (p.id) spotById.delete(p.id);
+    pushKill(p);
+    reviveCountdown.onDestroyed(p.id);
+  });
   // Shell hotkeys route through input.ts actions only (main.ts emits this) —
   // the HUD renders selection state from the bus instead of its own listener.
   on('ui:shellSelect', ({ slot }) => {
@@ -6038,6 +6053,8 @@ export function initHud(bus: EventBus): HudRuntime {
     });
   });
   on('mode:respawn', ({ id }) => {
+    // All tanks, not just the player: events can skip the intermediate dead frame.
+    if (id) spotById.delete(id);
     if (playerId != null && id !== playerId) return;
     reviveCountdown.hide();
     showAlert(t('hud.alert.respawned'), { icon: 'rematch', tone: 'info' });

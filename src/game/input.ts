@@ -107,6 +107,7 @@ export interface InputSettings {
   showPerfMeter: boolean;
   showDebugHud: boolean;
   hideBattleUi: boolean;
+  isometricView: boolean;
   showDirectionalHitValues: boolean;
   armorAimOverlay: boolean;
   volMaster: number;
@@ -281,13 +282,13 @@ const DEFAULT_SETTINGS: InputSettings = {
   // loads only after an explicit Interface toggle or F8 press.
   showDebugHud: false,
   hideBattleUi: false,
+  isometricView: false,
   // Keep blocked pre-mitigation roll details optional for new profiles;
   // applied damage and canonical outcome words are always shown by the HUD.
   showDirectionalHitValues: false,
-  // Scoped armor flashlight (official WoT/Blitz convention): new profiles
-  // start with the shot-dependent red/amber/green surface overlay enabled;
-  // players can opt out in Gameplay → Interface.
-  armorAimOverlay: true,
+  // Keep scoped armor highlighting opt-in. Explicit saved preferences and
+  // the live keyboard / Interface toggle still control the overlay.
+  armorAimOverlay: false,
   // Sound mix (settings panel SOUND tab). The synth audio stack
   // (src/audio/audio.ts) reads these at graph build and live-follows the
   // 'ui:volumes' bus event the panel emits on every slider change.
@@ -606,6 +607,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     }
     if (typeof storedSettings.showPerfMeter === 'boolean') settings.showPerfMeter = storedSettings.showPerfMeter;
     if (typeof storedSettings.hideBattleUi === 'boolean') settings.hideBattleUi = storedSettings.hideBattleUi;
+    if (typeof storedSettings.isometricView === 'boolean') settings.isometricView = storedSettings.isometricView;
     if (typeof storedSettings.showDebugHud === 'boolean') settings.showDebugHud = storedSettings.showDebugHud;
     if (typeof storedSettings.showDirectionalHitValues === 'boolean') {
       settings.showDirectionalHitValues = storedSettings.showDirectionalHitValues;
@@ -1205,6 +1207,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       if (key === 'invertY') settings.invertY = !!value;
       else if (key === 'showPerfMeter') settings.showPerfMeter = !!value;
       else if (key === 'hideBattleUi') settings.hideBattleUi = !!value;
+      else if (key === 'isometricView') settings.isometricView = !!value;
       else if (key === 'showDebugHud') settings.showDebugHud = !!value;
       else if (key === 'showDirectionalHitValues') settings.showDirectionalHitValues = !!value;
       else if (key === 'armorAimOverlay') settings.armorAimOverlay = !!value;

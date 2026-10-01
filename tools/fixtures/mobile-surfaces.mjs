@@ -24,4 +24,18 @@ const settings=createSettings({input,bus,isBattleActive:()=>false,gearVisible:()
 createTouchControls({input,bus,isBattleActive:()=>false,onOpenSettings:()=>settings.open()});
 garage.attachSettingsControl(settings.gear);
 garage.show('m1a3');
-window.__MOBILE_SURFACES={garage,settings,menu};
+// Drive the real lobby surface through its public adapter; no transport is faked as live.
+const roomCommands=[];
+function room(mode,gameMode,seat='host',count=28) {
+  const playerId=seat==='host'?'p0':seat==='spectator'?'spectator':'p1';
+  const state={roomCode:'ABC123',mode,gameMode,phase:'waiting',hostId:'p0',maxPlayers:28,maxSpectators:4,
+    allowTeamSwitch:true,locked:false,mapId:'verdant',teamSize:14,arrangement:null,campaignOperationId:null,
+    revision:1,matchSeed:null,round:1,lastResult:null,
+    players:Array.from({length:count},(_,i)=>({id:`p${i}`,name:`Commander with a long name ${i}`,team:i%2?'bravo':'alpha',specId:'m1a3',equipment:[],camo:'factory',ready:true,connected:true,isHost:i===0,rating:null}))};
+  if(seat==='spectator')state.players.push({id:playerId,name:'Observer',team:'spectator',specId:null,equipment:[],camo:'factory',ready:false,connected:true,isHost:false,rating:null});
+  menu.show(mode);menu.attachActiveRoom({state,playerId,role:seat==='host'?'host':'client',
+    command(command){roomCommands.push(command);if(command.type==='set_ready'){state.players.find(p=>p.id===playerId).ready=command.ready;menu.updateActiveRoom(state);}return true;},
+    leave(reason){roomCommands.push({type:'leave',reason});}});
+  return state;
+}
+window.__MOBILE_SURFACES={garage,settings,menu,room,roomCommands};

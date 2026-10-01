@@ -24,7 +24,7 @@ function measure() {
 try {
   for (const [name,width,height,touch] of [
     ['desktop',1440,900,false],['laptop',1280,720,false],['tablet',820,1180,true],
-    ['phone',390,844,true],['landscape',844,390,true],['small-landscape',667,375,true],
+    ['narrow-phone',320,568,true],['short-landscape',568,256,true],['phone',390,844,true],['landscape',844,390,true],['small-landscape',667,375,true],
     ['tiny-landscape',568,320,true],['browser-landscape',844,300,true],['wide-landscape',932,430,true],
   ]) {
     const context=await browser.newContext({viewport:{width,height},hasTouch:touch,isMobile:touch,deviceScaleFactor:1});

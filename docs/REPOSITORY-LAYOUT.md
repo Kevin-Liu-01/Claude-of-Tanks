@@ -18,6 +18,7 @@ The Mac home folder is outside this cleanup.
 | `tools/fixtures/` | Small deterministic browser regression surfaces |
 | `server/`, `cloudflare/`, `api/` | Distinct authority, room-service and HTTP infrastructure |
 | `public/` | Shipped static assets and approved imagery |
+| `public/field-guide/` | Real in-game instructional photographs and capture provenance; annotations live in `src/ui/` |
 | `.qa-dev/` | Ignored temporary captures, logs and investigation output |
 
 ## Read the current contract first

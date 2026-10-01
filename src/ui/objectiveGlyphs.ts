@@ -157,37 +157,42 @@ export function drawPennant(ctx: Ctx, x: number, y: number, h: number, color: st
   ctx.restore();
 }
 
-/** Team spawn / base: keylined ring with four cardinal ticks, tinted cap and the pennant. */
+/** Team spawn / base: a tank inside a return arrow, legible at minimap size. */
 export function drawSpawnGlyph(
-  ctx: Ctx, x: number, y: number, r: number, color: string, fill: string, pennant = true,
+  ctx: Ctx, x: number, y: number, r: number, color: string, fill: string,
 ): void {
   ctx.save();
-  ctx.lineCap = 'butt';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  // A dark backing separates the symbol from bright terrain and tank clusters.
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = OBJECTIVE_PALETTE.keyline;
+  ctx.fill();
   ctx.fillStyle = fill;
   ctx.fill();
-  ctx.lineWidth = r * 0.36;
-  ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
-  ctx.stroke();
-  ctx.lineWidth = r * 0.2;
-  ctx.strokeStyle = color;
-  ctx.stroke();
-  // cardinal ticks outside the ring
-  ctx.lineWidth = r * 0.16;
+
+  // Clockwise return arrow; leave a gap beside the tank's barrel.
   ctx.beginPath();
-  for (let i = 0; i < 4; i++) {
-    const angle = i * Math.PI / 2;
-    ctx.moveTo(x + Math.cos(angle) * (r + r * 0.16), y + Math.sin(angle) * (r + r * 0.16));
-    ctx.lineTo(x + Math.cos(angle) * (r + r * 0.42), y + Math.sin(angle) * (r + r * 0.42));
-  }
-  ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
-  ctx.lineWidth = r * 0.3;
-  ctx.stroke();
+  ctx.arc(x, y, r * 0.8, -Math.PI * 0.35, Math.PI * 1.35);
   ctx.strokeStyle = color;
-  ctx.lineWidth = r * 0.14;
+  ctx.lineWidth = r * 0.17;
   ctx.stroke();
-  if (pennant) drawPennant(ctx, x, y + r * 0.1, r * 1.3, color);
+  ctx.beginPath();
+  ctx.moveTo(x - r * 0.65, y - r * 0.32);
+  ctx.lineTo(x - r * 0.16, y - r * 0.75);
+  ctx.lineTo(x - r * 0.73, y - r * 0.89);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  // Upright top-down tank: two tracks, hull, turret and forward barrel.
+  ctx.fillRect(x - r * 0.43, y - r * 0.22, r * 0.16, r * 0.64);
+  ctx.fillRect(x + r * 0.27, y - r * 0.22, r * 0.16, r * 0.64);
+  ctx.fillRect(x - r * 0.22, y - r * 0.19, r * 0.44, r * 0.53);
+  ctx.fillStyle = OBJECTIVE_PALETTE.chalk;
+  ctx.fillRect(x - r * 0.11, y - r * 0.15, r * 0.22, r * 0.24);
+  ctx.fillRect(x - r * 0.06, y - r * 0.54, r * 0.12, r * 0.4);
   ctx.restore();
 }
 

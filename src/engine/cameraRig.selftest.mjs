@@ -240,3 +240,59 @@ try {
 }
 
 console.log('cameraRig.selftest: live gun-hold sight, snap-free release, and mouse/minimap handedness passed');
+
+// Isometric is a presentation preference; aiming and scope still use the real rig.
+{
+  let enabled = true, wall = false;
+  const camera = new PerspectiveCamera(60, 16 / 9, .1, 2000);
+  const player = {state:{pos:new Vector3(),yaw:0,turretYaw:0,speed:0},
+    spec:{dims:{heightM:2.4}},input:{aimPoint:new Vector3()},combat:{destroyed:false}};
+  const ground = (origin, direction, max) => {
+    const distance = -origin.y / direction.y;
+    return distance > 0 && distance < max ? {point:origin.clone().addScaledVector(direction,distance),dist:distance,normal:new Vector3(0,1,0)} : null;
+  };
+  const rig = createCameraRig(camera,{heightField:{getHeightAt:()=>0},
+    getPlayer:()=>player,getIsometricView:()=>enabled,aimRaycast:ground,
+    raycast:(origin,direction)=>wall && direction.y < .95
+      ? {point:origin.clone().addScaledVector(direction,10),dist:10,normal:new Vector3(0,1,0)} : null});
+  const center = () => player.state.pos.clone().add(new Vector3(0,1.44,0));
+  const projected = () => {camera.updateMatrixWorld(true);return center().project(camera);};
+  const settle = () => {for(let i=0;i<180;i++)rig.update(1/60,idle);};
+  rig.snapArcade(2,0,-.2);
+  assert.equal(camera.fov,38,'covered battle reveal uses the saved overhead view');
+  assert.ok(Math.abs(projected().x)<1e-6 && Math.abs(projected().y)<1e-6,'tank centered');
+  const orientation = camera.quaternion.clone(), firstAim = rig.aimPoint.clone();
+  rig.update(1/60,{...idle,mouseDX:-80,mouseDY:-20});
+  assert.ok(rig.aimPoint.distanceTo(firstAim)>1,'mouse moves the actual sight ray');
+  assert.ok(camera.quaternion.angleTo(orientation)<1e-6,'aiming does not spin the world');
+  const rayOrigin=new Vector3(),rayDirection=new Vector3();rig.getAimRay(rayOrigin,rayDirection);
+  assert.ok(rayDirection.angleTo(rig.aimPoint.clone().sub(rayOrigin))<1e-6,'public aim ray matches the reticle');
+  const stillDistance=camera.position.distanceTo(center());
+  player.state.speed=25;settle();
+  assert.ok(camera.position.distanceTo(center())>stillDistance+10,'speed widens framing');
+  player.state.pos.set(40,12,-15);rig.update(1/60,idle);
+  assert.ok(Math.abs(projected().x)<1e-6 && Math.abs(projected().y)<1e-6,'movement and airtime remain centered');
+  player.state.speed=0;settle();
+  wall=true;rig.update(1/60,idle);
+  assert.ok(camera.position.clone().sub(center()).normalize().y>.95,'obstruction raises overhead angle');
+  wall=false;settle();
+  for(const aspect of [568/256,320/568,16/9]){
+    camera.aspect=aspect;camera.updateProjectionMatrix();settle();
+    assert.ok(Math.abs(projected().x)<1e-6 && Math.abs(projected().y)<1e-6,'rotation keeps tank centered');
+    assert.ok(camera.position.y>player.state.pos.y+25,'overhead terrain clearance');
+  }
+  for(let i=0;i<50;i++)rig.update(1/60,{...idle,wheel:3});
+  assert.equal(rig.mode,'ARCADE','overhead zoom cannot accidentally enter sniper');
+  assert.ok(camera.position.distanceTo(center())>35,'zoom is bounded outside the hull');
+  rig.enterSniper();rig.update(1/60,idle);
+  assert.equal(rig.mode,'SNIPER');assert.equal(camera.userData.scoped,true);
+  rig.exitSniper(true);rig.update(1/60,idle);
+  assert.equal(camera.fov,38,'scope exits back to overhead preference');
+  assert.ok(Math.abs(projected().x)<1e-6 && Math.abs(projected().y)<1e-6);
+  enabled=false;rig.update(1/60,idle);assert.equal(camera.fov,60,'toggle restores chase');
+  enabled=true;rig.update(1/60,idle);assert.equal(camera.fov,38);
+  rig.setExternalPose(new Vector3(1,50,2),new Vector3(),45);
+  rig.update(1/60,{...idle,mouseDX:200});
+  assert.deepEqual(camera.position.toArray(),[1,50,2],'replay and external camera owners retain control');
+}
+console.log('cameraRig.selftest: isometric framing, input, terrain, rotation, zoom and scope passed');

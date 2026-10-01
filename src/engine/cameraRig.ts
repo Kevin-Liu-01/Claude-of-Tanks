@@ -19,6 +19,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 import * as THREE from 'three';
 import { ImprovedNoise } from 'three/examples/jsm/math/ImprovedNoise.js';
+import { createIsometricCamera } from './isometricCamera.ts';
 
 const ORBIT_STEPS = [24, 18, 13, 9, 6, 4]; // meters, wheel-in moves toward the end
 const SNIPER_ZOOMS_BASE = [2, 4, 8];
@@ -122,6 +123,7 @@ export interface CameraEntity {
     pos: THREE.Vector3;
     yaw: number;
     turretYaw: number;
+    speed?: number;
   };
   input?: {
     aimPoint?: THREE.Vector3 | null;
@@ -145,6 +147,7 @@ export interface CameraRigDeps {
   raycast: CameraRaycast;
   aimRaycast?: CameraAimRaycast;
   getPlayer(): CameraEntity | null;
+  getIsometricView?(): boolean;
 }
 
 interface CameraInputFrame {
@@ -258,6 +261,9 @@ export function createCameraRig(
   // reticle sticks to vehicles; camera collision keeps the world-only raycast.
   const aimRaycast = deps.aimRaycast || raycast;
   const noise = new ImprovedNoise();
+  const isometric = createIsometricCamera(camera, deps);
+  const isIsometric = () => !!deps.getIsometricView?.() && rig.mode === 'ARCADE';
+  let wasIsometric = false;
 
   // Shared aim angles (both modes; switching modes never snaps the view).
   let aimYaw = 0;
@@ -369,6 +375,14 @@ export function createCameraRig(
 
   /** Place the arcade camera for the current angles. `snap` skips all smoothing. */
   function solveArcade(player: CameraEntity, dt: number, snap: boolean): void {
+    if (isIsometric()) {
+      if (!wasIsometric || snap) isometric.reset();
+      setFov(isometric.fov);
+      isometric.solve(player, dt, snap);
+      wasIsometric = true;
+      return;
+    }
+    if (wasIsometric) { pivotInitialized = false; wasIsometric = false; }
     pivotTargetFor(player, _pivotTarget);
     if (snap || !pivotInitialized) {
       pivot.copy(_pivotTarget);
@@ -768,6 +782,7 @@ export function createCameraRig(
 
   function updateWheelZoom(camInput: CameraInputFrame): void {
     if (!camInput.wheel) return;
+    if (isIsometric()) { isometric.zoom(camInput.wheel); return; }
     const direction = camInput.wheel > 0 ? 1 : -1;
     for (let remaining = Math.min(Math.abs(camInput.wheel | 0), 3);
       remaining > 0; remaining--) stepZoom(direction);
@@ -918,14 +933,24 @@ export function createCameraRig(
       updateScopeActions(camInput);
 
       updateWheelZoom(camInput);
-      updateAimAngles(player, dt, camInput);
+      if (!isIsometric()) updateAimAngles(player, dt, camInput);
 
       applyPlayerVisibility(player, rig.mode !== 'SNIPER');
       if (rig.mode === 'ARCADE') solveArcade(player, dt, false);
       else solveSniper(player);
 
+      if (isIsometric()) {
+        isometric.aim(camInput.mouseDX, camInput.mouseDY, !!camInput.cursorAim, camInput.cursorX, camInput.cursorY);
+        if (camInput.autoAimPoint) isometric.aimAt(camInput.autoAimPoint);
+        cursorAimOn = true;
+        cursorNdcX = isometric.cursorX;
+        cursorNdcY = isometric.cursorY;
+        aimTouched = true;
+      }
+
       updateAim(player);
-      applyCameraMotion(dt);
+      if (!isIsometric()) applyCameraMotion(dt);
+      else { trauma = 0; recoil = 0; fovKick = 0; }
     },
 
     /**
@@ -1143,6 +1168,7 @@ export function createCameraRig(
     enterSniper(): void {
       if (rig.mode === 'SNIPER') return;
       if (isWreck(getPlayer())) return; // death r1: a wreck never scopes in
+      if (isIsometric()) { cursorAimOn = false; aimTouched = true; }
       rig.mode = 'SNIPER';
       preSniperStep = step; // gameplay_feel r6: restored on Shift-exit
       // AIM PRESERVATION (gunnery r1, owner bug 2 — bidirectional with
@@ -1251,6 +1277,10 @@ export function createCameraRig(
         }
       }
       applyPlayerVisibility(player, true);
+      if (isIsometric() && player) {
+        solveArcade(player, 0, true);
+        isometric.aimAt(rig.aimPoint);
+      }
     },
 
     /**
@@ -1262,7 +1292,10 @@ export function createCameraRig(
      */
     getAimRay(outOrigin: THREE.Vector3, outDir: THREE.Vector3): void {
       outOrigin.copy(camera.position);
-      camera.getWorldDirection(outDir);
+      if (cursorAimOn) {
+        camera.updateMatrixWorld();
+        outDir.set(cursorNdcX, cursorNdcY, 0.5).unproject(camera).sub(outOrigin).normalize();
+      } else camera.getWorldDirection(outDir);
     },
 
     // --- deterministic screenshot hooks -------------------------------------
@@ -1329,6 +1362,12 @@ export function createCameraRig(
       // matrix barrier before querying articulation anchors.
       player.visual?.root.updateWorldMatrix(true, true);
       solveArcade(player, 0, true);
+      if (isIsometric()) {
+        isometric.resetAim();
+        cursorAimOn = true;
+        cursorNdcX = isometric.cursorX;
+        cursorNdcY = isometric.cursorY;
+      }
       updateAim(player);
       camera.updateMatrixWorld(true);
     },

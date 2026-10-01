@@ -170,6 +170,7 @@ interface TeamSpotState {
 }
 
 interface SpottingRecord {
+  lifeEnded: boolean;
   firedAtS: number;
   nextCheckS: number;
   fireLoss?: number;
@@ -540,13 +541,33 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
     let r = recs.get(ent.id);
     if (!r) {
       r = {
+        lifeEnded: false,
         firedAtS: -1e9,
         nextCheckS: rng() * CHECK_NEAR_S, // stagger initial checks
         byTeam: makeTeamState(),
       };
       recs.set(ent.id, r);
     }
+    if (!ent.combat?.destroyed) r.lifeEnded = false;
     return r;
+  }
+
+  function retireContact(id: string): void {
+    const record = recs.get(id);
+    if (!record || record.lifeEnded) return;
+    // Retain the allocation: a dead player's concealment HUD still queries
+    // this record every frame, but none of its previous life can be inherited.
+    record.lifeEnded = true;
+    record.firedAtS = -1e9;
+    record.nextCheckS = 0;
+    record.fireLoss = undefined;
+    for (const team of teams) {
+      const state = record.byTeam[team];
+      state.spotted = false;
+      state.lastPassS = -1e9;
+      state.spottedAtS = -1e9;
+      state.spotter = null;
+    }
   }
 
   function alive(e: SpottingTank | null | undefined): e is SpottingTank {
@@ -816,7 +837,13 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
       const tanks = deps.getTanks();
       for (let i = 0; i < tanks.length; i++) {
         const t = tanks[i];
-        if (!alive(t)) continue;
+        const id = t.id;
+        if (!alive(t)) {
+          // Contacts and firing bloom belong to this life. Keeping a wreck's
+          // record would reveal its next spawn during the old spotting linger.
+          retireContact(id);
+          continue;
+        }
         const rec = recOf(t);
         if (timeS >= rec.nextCheckS) checkTarget(t, tanks, timeS);
       }
@@ -828,7 +855,9 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
       events.length = 0;
       const tanks = deps.getTanks();
       for (const t of tanks) {
+        const id = t.id;
         if (alive(t)) checkTarget(t, tanks, timeS);
+        else retireContact(id);
       }
       return events;
     },
@@ -868,6 +897,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
       let r = recs.get(id);
       if (!r) {
         r = {
+          lifeEnded: false,
           firedAtS: -1e9, nextCheckS: 0,
           byTeam: makeTeamState(),
         };

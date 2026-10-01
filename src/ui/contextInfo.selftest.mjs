@@ -81,3 +81,35 @@ assert.ok(Math.abs(combineCamo({ base: .2, paint: CAMO_PAINT_BONUS }) - .235) < 
 assert.ok(combineCamo({ base: .2, paint: CAMO_PAINT_BONUS, bloom: 1 }) < .235);
 for (const dictionary of Object.values(CATALOG)) assert.match(dictionary['fieldGuide.camo.0.body'], /3\.5/);
 console.log(`contextInfo.selftest: ${drawings.size} illustrated guides, chapter targets, locale coverage and paint explanation passed`);
+
+// Real-capture chapters must ship their photographs, complete localized image
+// descriptions, bounded annotation anchors and a provenance hash for each frame.
+const { INFO_GUIDE_CAPTURES, VEHICLE_TECHNICAL_GUIDES } = await import('./infoGuideCaptures.ts');
+const { readFileSync } = await import('node:fs');
+const { createHash } = await import('node:crypto');
+const manifest = JSON.parse(readFileSync(new URL('../../public/field-guide/manifest.json',import.meta.url)));
+const photos = new Set();
+for (const [id,capture] of Object.entries(INFO_GUIDE_CAPTURES)) {
+  assert(!photos.has(capture.file),`${id}: distinct subject composition`);photos.add(capture.file);
+  assert.equal(capture.annotations.length,3);
+  for(const annotation of capture.annotations)for(const point of [annotation.at,annotation.target]) {
+    assert.equal(point.length,2);assert(point.every(value=>Number.isFinite(value)&&value>=0&&value<=100),`${id}: bounded anchors`);
+  }
+  for(const file of new Set([capture.file,...(capture.stepFiles??[])])) {
+    const bytes=readFileSync(new URL(`../../public/field-guide/${file}.webp`,import.meta.url));
+    const shot=manifest.shots.find(shot=>shot.id===file);assert(shot,`${file}: receipt`);
+    assert.equal(createHash('sha256').update(bytes).digest('hex'),shot.sha256,`${file}: capture provenance matches asset`);
+  }
+  for(const dictionary of Object.values(CATALOG))assert(dictionary[`fieldGuide.${id}.photoAlt`]?.length>20,`${id}: localized image description`);
+}
+assert.deepEqual([...VEHICLE_TECHNICAL_GUIDES],['dossier','protection','modules','crew']);
+const smoke=manifest.shots.find(shot=>shot.id==='smoke');
+assert.equal(smoke.arcs.length,2);assert(smoke.smoke.canisters.length>0);
+for(const points of smoke.arcs)assert(INFO_GUIDE_CAPTURES.smoke.annotations[0].paths.includes('M '+points.map(p=>p.join(' ')).join(' L ')),'Smoke paths must be traced from the launcher simulation');
+const {SMOKE_COOLDOWN_S}=await import('../sim/auxiliarySystems.ts');
+const {SMOKE_DURATION_S}=await import('../sim/smokeScreen.ts');
+for(const dictionary of Object.values(CATALOG)){
+ assert(dictionary['fieldGuide.smoke.2.body'].includes(String(SMOKE_COOLDOWN_S)));
+ assert(dictionary['fieldGuide.smoke.2.body'].includes(String(SMOKE_DURATION_S)));
+}
+console.log(`contextInfo.selftest: ${photos.size} real-capture guides, localized annotations and smoke receipts passed`);

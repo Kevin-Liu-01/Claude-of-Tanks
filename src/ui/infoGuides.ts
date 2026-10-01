@@ -1,3 +1,5 @@
+import { createGuidePhoto } from './infoGuidePhoto.ts';
+import { VEHICLE_TECHNICAL_GUIDES } from './infoGuideCaptures.ts';
 import { iconUrl } from './icons.ts';
 import { t } from './i18n.ts';
 import type { InfoGuideId } from './infoGuideTypes.ts';
@@ -21,6 +23,20 @@ const CSS = `
 body[data-cot-width='phone'] .cot-guide__steps{grid-template-columns:1fr;gap:5px}
 body[data-cot-width='phone'] .cot-guide__step{padding:9px 12px}body[data-cot-width='phone'] .cot-guide__overview{font-size:14px}
 body[data-cot-width='phone'] .cot-guide__detail{padding:13px;min-height:0}
+.cot-guide__photo{position:relative;aspect-ratio:16/9;container-type:inline-size;isolation:isolate}
+.cot-guide__image-error{padding:20px;color:#b9c9d2;font-size:14px}
+.cot-guide__photo>img{display:block;width:100%;height:100%;object-fit:contain}
+.cot-guide__photo>svg{position:absolute;inset:0;width:100%;height:100%;max-height:none;pointer-events:none;z-index:1;filter:drop-shadow(0 1px 2px #000)}
+.cot-guide__photo svg path,.cot-guide__photo svg ellipse{stroke-width:2;vector-effect:non-scaling-stroke}
+.cot-guide__photo [data-part]{opacity:.65}.cot-guide__photo [data-part].active{opacity:1}
+.cot-guide__pin{position:absolute;z-index:2;transform:translate(-20px,-50%);display:flex;align-items:center;gap:6px;max-width:27%;min-height:44px;padding:6px 9px 6px 6px;border:1px solid #bacbd45c;background:#071217ed;color:var(--pin-color);font-family:inherit;font-weight:600;cursor:pointer;border-radius:4px;text-align:left}
+.cot-guide__photo button[data-part]{opacity:1}
+.cot-guide__pin b{display:grid;place-items:center;width:25px;height:25px;border:1px solid currentColor;border-radius:50%;flex:none;font-size:12px}
+.cot-guide__pin span{font-size:12px;line-height:1.35}.cot-guide__pin[aria-pressed='true']{border-color:var(--pin-color);box-shadow:0 0 0 1px #071217}
+.cot-guide__pin:focus-visible{outline:2px solid #fff;outline-offset:3px;opacity:1}
+.cot-guide__technical summary{padding:15px;border:1px solid #34434a;background:#101a20;color:#d1dce2;cursor:pointer;font-size:14px}
+.cot-guide__technical[open] summary{border-bottom:0}
+@container (max-width:540px){.cot-guide__pin{max-width:none;width:44px;height:44px;padding:0;justify-content:center;background:#071217db}.cot-guide__pin span{display:none}}
 @media(prefers-reduced-motion:reduce){.cot-guide__figure [data-part]{transition:none}}
 `;
 const line = (d: string, color = '#78c7d4', dash = '') => `<path d="${d}" fill="none" stroke="${color}" stroke-width="3" ${dash ? `stroke-dasharray="${dash}"` : ''}/>`;
@@ -35,6 +51,7 @@ const arrow = (x:number,y:number) => line(`M ${x} ${y} h 60 m -12 -8 l 12 8 -12 
 /** Schematic geometry only: never a replacement for the selected vehicle's combat volumes. */
 export function guideDiagram(id: InfoGuideId): string {
   switch (INFO_GUIDE_DIAGRAMS[id]) {
+    case 'smoke': return side(110,200,.6)+part(0,line('M 130 180 Q 260 10 400 190','#edaa46','7 5'),260,70)+part(1,[450,510,570].map(x=>circle(x,160,48)).join(''),510,70)+part(2,line('M 640 240 H 155','#9ab67c','9 6'),650,210);
     case 'concealment': return tank(95,145,.65,90)+tank(557,145,.9,-90)+
       part(0,box(500,106,115,79,'#9ab67c')+line('M 507 113 l 37 23 -28 29 46 12 38 -40','#9ab67c'),620,87)+
       part(1,line('M 152 145 H 500','#78c7d4','8 6')+[[-25,0],[0,-15],[20,12]].map(([x,y])=>circle(330+x,145+y,30,'#9ab67c')).join(''),330,85)+
@@ -77,7 +94,10 @@ export function createInfoGuide(id: InfoGuideId, vehicle: { id: string; name: st
   }
   const root = document.createElement('section'); root.className = 'cot-guide'; root.dataset.guide = id;
   const overview = document.createElement('p'); overview.className = 'cot-guide__overview'; overview.textContent = t(`fieldGuide.${id}.overview`);
-  const figure = document.createElement('figure'); figure.className = 'cot-guide__figure';
+  const photo = createGuidePhoto(id, index => choose(index));
+  const figure = photo?.figure ?? document.createElement('figure');
+  if (!photo) {
+  figure.className = 'cot-guide__figure';
   figure.innerHTML = `<svg viewBox="0 0 720 280" xmlns="http://www.w3.org/2000/svg" role="img">${guideDiagram(id)}</svg>`;
   figure.querySelector('svg')!.setAttribute('aria-label', overview.textContent);
   const legend = document.createElement('div'); legend.className = 'cot-guide__legend';
@@ -86,16 +106,21 @@ export function createInfoGuide(id: InfoGuideId, vehicle: { id: string; name: st
   }
   figure.append(legend);
   const caption = document.createElement('figcaption'); caption.textContent = t('fieldGuide.diagram'); figure.append(caption);
+  }
   // The authored diagrams use this tank's real armor/module/crew volumes.
   const views = id === 'crew' ? ['crew_side', 'modules_side', 'armor_side']
     : id === 'protection' ? ['armor_side', 'modules_side', 'crew_side']
     : ['modules_side', 'crew_side', 'armor_side'];
   let vehicleImage: HTMLImageElement | null = null;
-  if (vehicle) {
-    figure.replaceChildren();
+  let technicalDetails: HTMLDetailsElement | null = null;
+  if (vehicle && VEHICLE_TECHNICAL_GUIDES.has(id)) {
+    technicalDetails = document.createElement('details'); technicalDetails.className = 'cot-guide__technical';
+    const summary = document.createElement('summary'); summary.textContent = t('fieldGuide.capture.selected', { vehicle: vehicle.name });
+    const technicalFigure = document.createElement('figure'); technicalFigure.className = 'cot-guide__figure';
+    technicalDetails.append(summary, technicalFigure);
     vehicleImage = document.createElement('img');
     vehicleImage.style.cssText = 'display:block;width:100%;height:auto;max-height:480px;object-fit:contain';
-    vehicleImage.alt = vehicle.name;
+    vehicleImage.alt = vehicle.name; vehicleImage.loading = 'lazy';
     vehicleImage.dataset.vehicleId = vehicle.id;
     const vehicleCaption = document.createElement('figcaption');
     vehicleCaption.textContent = vehicle.name + ' · ' + t('garage.dossier.dossier.techViews');
@@ -114,12 +139,13 @@ export function createInfoGuide(id: InfoGuideId, vehicle: { id: string; name: st
     }
     vehicleImage.src = iconUrl(vehicle.id, views[0]);
     vehicleImage.alt = `${vehicle.name} · ${t(`garage.dossier.image.${labels[views[0]]}`)}`;
-    figure.append(vehicleImage, vehicleCaption, diagramControls);
+    technicalFigure.append(vehicleImage, vehicleCaption, diagramControls);
   }
   const steps = document.createElement('div'); steps.className = 'cot-guide__steps'; steps.setAttribute('role','group'); steps.setAttribute('aria-label',t('fieldGuide.steps'));
   const detail = document.createElement('div'); detail.className = 'cot-guide__detail'; detail.id = `cot-guide-detail-${++sequence}`; detail.setAttribute('aria-live','polite'); detail.setAttribute('aria-atomic','true');
   const heading = document.createElement('h3'); const paragraph = document.createElement('p'); detail.append(heading,paragraph);
   const choose = (index:number) => {
+    photo?.select(index);
     steps.querySelectorAll('button').forEach((button,i)=>button.setAttribute('aria-pressed', String(i===index)));
     figure.querySelectorAll<SVGGElement>('[data-part]').forEach(part=>part.classList.toggle('active',part.dataset.part===String(index)));
     heading.textContent = t(`fieldGuide.${id}.${index}.title`); paragraph.textContent = t(`fieldGuide.${id}.${index}.body`);
@@ -130,5 +156,5 @@ export function createInfoGuide(id: InfoGuideId, vehicle: { id: string; name: st
     const label = document.createElement('span'); label.textContent=t(`fieldGuide.${id}.${i}.title`); button.append(number,label);
     button.addEventListener('click',()=>choose(i)); steps.append(button);
   }
-  choose(0); root.append(overview,figure,steps,detail); return root;
+  choose(0); root.append(overview,figure,steps,detail); if (technicalDetails) root.append(technicalDetails); return root;
 }

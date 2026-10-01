@@ -404,7 +404,7 @@ const SI_CSS = `
 .cot-si-lrow .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-lrow .z{color:${COL.dim};font-size:9px;flex:0 0 auto;}
 .cot-si-empty{padding:6px 9px;font-size:9.5px;color:${COL.dim};letter-spacing:.04em;}
-.cot-si-toasthost{position:absolute;left:16px;bottom:452px;width:270px;min-height:84px;
+.cot-si-toasthost{position:absolute;left:0;bottom:452px;width:240px;min-height:84px;
   display:flex;flex-direction:column;justify-content:flex-end;gap:3px;contain:layout style;}
 .cot-si-toast{height:26px;overflow:hidden;contain:layout paint style;
   background:linear-gradient(90deg,rgba(8,12,16,.82),transparent);
@@ -414,7 +414,9 @@ const SI_CSS = `
 .cot-si-toast .l1{height:100%;display:flex;justify-content:space-between;align-items:center;gap:6px;
   font-size:10px;font-weight:750;color:#d6e2ec;}
 .cot-si-toast .l1 span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cot-si-toast .l1 b{color:#ff8f80;font-family:${FONT_COND};letter-spacing:-.01em;
+.cot-si-toast .l1 .attacker{flex:1;}
+.cot-si-toast .l1 .si{display:inline-block;width:22px;height:12px;flex:0 0 22px;}
+.cot-si-toast .l1 b{flex:0 0 auto;color:#ff8f80;font-family:${FONT_COND};letter-spacing:-.01em;
   font-variant-numeric:tabular-nums;font-size:11px;display:flex;align-items:center;gap:4px;
   white-space:nowrap;}
 .cot-si-toast .l1 b svg{width:11px;height:11px;flex:0 0 auto;}
@@ -1253,21 +1255,26 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
 
   // ---------- 3. incoming toasts ----------
   function showToast(ev: ShotHitEvent, cls: HitOutcomePresentation): void {
-    const t = el('div', 'cot-si-toast', toastHost);
-    t.dataset.damage = String(Math.round(ev.damage || 0));
-    t.dataset.kind = ev.kind;
-    t.innerHTML = `<div class="l1"><span></span>` +
+    const attacker = ev.attackerId ? combatants.get(ev.attackerId) : null;
+    const specId = ev.attackerSpecId || attacker?.specId;
+    const toast = el('div', 'cot-si-toast', toastHost);
+    toast.dataset.damage = String(Math.round(ev.damage || 0));
+    toast.dataset.kind = ev.kind;
+    toast.innerHTML = `<div class="l1"><span class="si" aria-hidden="true"></span><span class="attacker"></span>` +
       `<b>${uiIconSVG((ev.damage || 0) > 0 ? 'damage' : cls.icon, 11)}` +
       `${(ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : cls.label}</b></div>`;
-    t.querySelector('span')!.textContent = ev.attackerName || 'Enemy';
-    t.dataset.outcome = cls.id;
-    if (!(ev.damage > 0)) t.classList.add('deflected');
-    t.style.borderLeftColor = (ev.damage || 0) > 0 ? COL.red : cls.color;
-    const outcomeValue = t.querySelector<HTMLElement>('.l1 b');
+    const silhouette = toast.querySelector<HTMLElement>('.si')!;
+    if (specId) maskIcon(silhouette, specId, 'side_silhouette', '#f28f8f');
+    else silhouette.remove(); // Never guess a tank model from an entity ID.
+    toast.querySelector('.attacker')!.textContent = ev.attackerName || attacker?.name || t('hud.enemy');
+    toast.dataset.outcome = cls.id;
+    if (!(ev.damage > 0)) toast.classList.add('deflected');
+    toast.style.borderLeftColor = (ev.damage || 0) > 0 ? COL.red : cls.color;
+    const outcomeValue = toast.querySelector<HTMLElement>('.l1 b');
     if (outcomeValue) outcomeValue.style.color = (ev.damage || 0) > 0 ? COL.red : cls.color;
     while (toastHost.children.length > 3) toastHost.firstChild?.remove();
-    setTimeout(() => t.classList.add('out'), 4600);
-    setTimeout(() => { if (t.parentNode) t.remove(); }, 5500);
+    setTimeout(() => toast.classList.add('out'), 4600);
+    setTimeout(() => { if (toast.parentNode) toast.remove(); }, 5500);
   }
 
   // ---------- 4. session stats -> END SCREEN (killcam_endscreen r1) ----------

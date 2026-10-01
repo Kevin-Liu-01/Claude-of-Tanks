@@ -423,6 +423,31 @@ console.log('[19] getConcealment double-bush truth while the fire bloom is hot (
     'no-leak: unspotted enemies never feed the hot snapshot');
 }
 
+console.log('[respawn] spotting belongs to one life');
+{
+  for (const force of [false, true]) {
+    const observer = tank('observer', 'player', 0, 0);
+    const target = tank('returning', 'enemy', 0, 30);
+    const sys = mkSys([], [observer, target]);
+    const advance = time => force ? sys.forceCheck(time) : sys.update(1 / 60, time);
+    for (let life = 0; life < 5; life++) {
+      const time = 10 + life * 10;
+      target.state.pos.z = 30;
+      sys.forceCheck(time);
+      ok(sys.isSpotted(target.id, 'player'), 'each life can be spotted normally');
+      sys.notifyFired(target.id, time, 120);
+      target.combat.destroyed = true;
+      advance(time + 0.1);
+      ok(!sys.isSpotted(target.id, 'player'), 'death clears authority spotting before the linger expires');
+      target.combat = { destroyed: false };
+      target.state.pos.z = 1500;
+      advance(time + 2);
+      ok(!sys.isSpotted(target.id, 'player'), 'respawning outside vision does not inherit the old sighting');
+      ok(sys.getConcealment(target, time + 2).bloom === 0, 'new life does not inherit old muzzle-flash bloom');
+    }
+  }
+}
+
 console.log('');
 if (failed > 0) {
   console.error(`spotting.selftest: ${failed} FAILED, ${passed} passed`);

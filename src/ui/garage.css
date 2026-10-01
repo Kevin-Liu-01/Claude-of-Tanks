@@ -305,7 +305,7 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
 .cot-battle-menu.open{display:grid;}
 .cot-battle-menu-head{display:flex;align-items:center;justify-content:space-between;gap:16px;
   padding:8px 12px 8px 18px;border-bottom:1px solid #a0b4c322;background:#131b23;}
-.cot-battle-menu-head strong{display:block;color:#f0f4f7;font-size:17px;font-weight:800;}
+.cot-battle-menu-head strong{display:block;color:#f0f4f7;font-size:17px;font-weight:800;text-transform:uppercase;}
 .cot-battle-menu-head button{flex:0 0 44px;width:44px;height:44px;border:1px solid transparent;
   background:transparent;color:#a7b7c4;font:26px Arial,sans-serif;cursor:pointer;}
 .cot-battle-menu-scroll{min-height:0;display:grid;grid-template-columns:minmax(0,1.04fr) minmax(0,1fr);
@@ -320,7 +320,7 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
 .cot-battle-preview-icon{width:40px;height:40px;display:grid;place-items:center;color:#ffca78;
   background:#e99a2514;border:1px solid #e99a254d;}
 .cot-battle-preview small{display:block;color:#d5a565;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;}
-.cot-battle-preview h3{margin-top:2px;color:#f1f5f8;font-size:17px;line-height:1.3;}
+.cot-battle-preview h3{margin-top:2px;color:#f1f5f8;font-size:17px;line-height:1.3;text-transform:uppercase;}
 .cot-battle-preview p{grid-column:1/-1;color:#adbdc9;font-size:12px;line-height:1.6;}
 .cot-battle-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
 .cot-battle-solo-options{display:grid;gap:16px;}
@@ -329,7 +329,7 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
   outline:2px solid #ffca78;outline-offset:-3px;}
 .cot-battle-menu-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;
   padding:12px 16px;border-top:1px solid #a0b4c322;background:#131b23;}
-.cot-battle-menu-foot>span{color:#adbdc9;font-size:12px;font-weight:700;}
+.cot-battle-menu-foot>span{color:#adbdc9;font-size:12px;font-weight:700;text-transform:uppercase;}
 .cot-battle-menu-foot button{min-height:44px;min-width:146px;display:flex;align-items:center;justify-content:center;
   gap:26px;padding:0 18px;border:1px solid #ffb74b;background:#ee941d;color:#211608;
   font:800 12px 'ABC Monument Grotesk','Inter','Segoe UI',Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;}
@@ -441,7 +441,7 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
   color:#dce6ed;cursor:pointer;text-align:left;font:700 11px 'ABC Monument Grotesk','Inter','Segoe UI',Arial,sans-serif;line-height:1.4;}
 .cot-battle-choice .choice-icon{width:24px;height:28px;display:grid;place-items:center;color:#91a6b7;}
 .cot-battle-choice .choice-icon svg{display:block;width:19px;height:19px;}
-.cot-battle-choice .choice-name{letter-spacing:normal;}
+.cot-battle-choice .choice-name{letter-spacing:normal;text-transform:uppercase;}
 .cot-battle-choice .choice-description{display:block;margin-top:3px;color:#96a9b8;font-size:10px;font-weight:500;line-height:1.4;}
 .cot-battle-choice::after{content:'';position:absolute;right:10px;top:calc(50% - 6px);width:5px;height:9px;
   border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(45deg);opacity:0;}
@@ -1671,8 +1671,8 @@ body[data-cot-input='coarse'] .cot-country-chip{min-width:44px}
   opacity:0;pointer-events:none;transition:opacity .12s ease;}
 .cot-map-inspect svg{filter:drop-shadow(0 1px 2px #000) drop-shadow(0 0 3px #000);}
 .cot-map-card.sel:has(.cot-map-inspect) .cot-map-select{cursor:zoom-in;}
-@media (hover:hover){.cot-map-card:hover .cot-map-inspect{opacity:1;pointer-events:auto;}}
-.cot-map-inspect:focus-visible{opacity:1;pointer-events:auto;}
+@media (hover:hover){.cot-map-card.sel:hover .cot-map-inspect:not(:disabled){opacity:1;pointer-events:auto;}}
+.cot-map-card.sel .cot-map-inspect:focus-visible{opacity:1;pointer-events:auto;}
 .cot-map-inspect:focus-visible,.cot-map-select:focus-visible{outline:2px solid #ffc563;outline-offset:2px;}
 .cot-multiplayer-entry{border:0;padding:0 25px;isolation:isolate;background:#718493;
   clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);}
@@ -1708,6 +1708,11 @@ body[data-cot-input="coarse"] .cot-map-inspect{width:44px;height:44px;}
 .cot-system-preview button:hover,.cot-system-preview button:focus-visible{border-color:#ffbd59;background:#29251d;}
 
 .cot-system-preview>.cot-system-control{width:auto;max-width:none;max-height:none;min-width:44px;min-height:48px;border-radius:3px;}
+/* These full-size controls sit inside a scroll clip: keep the help button's
+   hover lift and press shrink from cutting their borders or shifting the row. */
+.cot-system-preview>.cot-system-control:is(:hover,:focus-visible,:active,[aria-expanded='true']){transform:none;}
+.cot-system-preview>.cot-system-control::after{display:none;}
+
 
 /* Short landscape drawers need their own reading space: fixed filters must
    never consume the entire scrollable camouflage catalog. */

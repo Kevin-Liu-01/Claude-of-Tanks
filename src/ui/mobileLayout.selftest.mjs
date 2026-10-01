@@ -203,7 +203,7 @@ assert.match(shotInfo,
   'outgoing and incoming shot records must both classify through the shared hit-outcome registry');
 assert.match(shotInfo, /uiIconSVG\(cls\.icon, 11\)[\s\S]*cls\.label/,
   'combat-result surfaces must use the shared result label and icon vocabulary');
-assert.match(shotInfo, /if \(!\(ev\.damage > 0\)\) t\.classList\.add\('deflected'\)/,
+assert.match(shotInfo, /if \(!\(ev\.damage > 0\)\) toast\.classList\.add\('deflected'\)/,
   'zero-damage incoming results must use the neutral deflection treatment instead of damage red');
 assert.match(hud,
   /function resetCombatPresentation\(\)[\s\S]*hitDirs\.length = 0[\s\S]*hitMark = null[\s\S]*liveNums\.length = 0[\s\S]*dmgLayer\.replaceChildren\(\)[\s\S]*killLeft\.replaceChildren\(\)[\s\S]*killRight\.replaceChildren\(\)/,

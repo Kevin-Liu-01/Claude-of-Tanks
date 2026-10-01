@@ -43,6 +43,9 @@ function argValue(name, fallback) {
   return raw ? raw.slice(prefix.length) : fallback;
 }
 const json = process.argv.includes('--json');
+const mobile = process.argv.includes('--mobile');
+const mobileViewport = {width:Number(argValue('width',667)),height:Number(argValue('height',375)),deviceScaleFactor:1,isMobile:true,hasTouch:true};
+const testViewport = mobile ? mobileViewport : {width:1024,height:640,deviceScaleFactor:1};
 const headful = process.argv.includes('--headful');
 const outputDir = resolve(argValue('out', join(root, '.qa-dev', 'mp-p2p-e2e')));
 const cacheDir = resolve(argValue('cache-dir', join(outputDir, 'vite-cache')));
@@ -65,7 +68,7 @@ const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms)
 const startedAt = performance.now();
 const elapsedMs = () => Math.round(performance.now() - startedAt);
 
-const report = { pass: false, failures: [], errors: [], steps: [], screenshots: [], playS, graceMs, wallMs: 0, room: null, start: {}, play: {}, migration: {}, rejoin: {}, roomEvents: [] };
+const report = { pass: false, failures: [], errors: [], steps: [], screenshots: [], mobile, viewport:testViewport, playS, graceMs, wallMs: 0, room: null, start: {}, play: {}, migration: {}, rejoin: {}, roomEvents: [] };
 const failures = report.failures;
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
 const errors = report.errors;
@@ -73,7 +76,16 @@ function observe(page, label) {
   page.on('pageerror', (error) => errors.push({ page: label, kind: 'pageerror', text: error.stack || error.message }));
   page.on('console', (message) => { if (message.type() === 'error') errors.push({ page: label, kind: 'console', text: message.text() }); });
 }
+// A/B retain a host-capable graphics tier; touch/viewport emulation is independent.
 const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
+async function activate(page,selector){
+  if(!mobile)return page.click(selector);
+  const el=await page.waitForSelector(selector,{visible:true});await el.scrollIntoView();
+  const box=await el.boundingBox();
+  if(!box||box.width<43.5||box.height<43.5)throw new Error(`Mobile control too small: ${selector} ${JSON.stringify(box)}`);
+  if(!await el.evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return !!hit&&(hit===el||el.contains(hit));}))throw new Error(`Mobile control blocked: ${selector}`);
+  await el.tap();
+}
 
 /** The entry pipeline's own failure on a page (it returns the player to the Garage): the wait ends at once, with its reason. */
 const entryFailureOf = (label, since) => errors.slice(since).find((entry) => entry.page === label && /\[multiplayer v2 entry\]/.test(entry.text)) ?? null;
@@ -182,16 +194,16 @@ try {
   pages.a = await contextA.newPage();
   pages.b = await contextB.newPage();
   pages.c = await contextC.newPage();
-  for (const [label, page] of Object.entries(pages)) if (page) { await page.setViewport({ width: 1024, height: 640, deviceScaleFactor: 1 }); observe(page, label.toUpperCase()); }
+  for (const [label, page] of Object.entries(pages)) if (page) { await page.setViewport(testViewport); observe(page, label.toUpperCase()); }
 
   // ---- A: boot, create the LAN room with three seats per side
   await pages.a.goto(`${origin}/?${BOOT_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await waitFor(pages.a, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A garage ready', 240_000);
   step('a-garage-ready');
   // 2026-09-29: multiplayer has its own entry since the play-menu split (8ccc472c2) — the battle button launches solo.
-  await pages.a.click('.cot-multiplayer-entry');
+  await activate(pages.a,'.cot-multiplayer-entry');
   await waitFor(pages.a, () => document.querySelector('.cot-play')?.classList.contains('show'), 'A play menu', 30_000);
-  await pages.a.click('.cot-play .modes [data-mode="lan"]');
+  await activate(pages.a,'.cot-play .modes [data-mode="lan"]');
   await waitFor(pages.a, () => document.querySelector('.cot-play .modes [data-mode="lan"]')?.classList.contains('on'), 'A LAN mode', 10_000);
   await pages.a.evaluate(() => {
     const name = document.querySelector('.cot-play [data-field="name"]');
@@ -199,7 +211,7 @@ try {
     const size = document.querySelector('.cot-play [data-field="create-size"]');
     if (size) size.value = '3';
   });
-  await pages.a.click('.cot-play [data-action="create"]');
+  await activate(pages.a,'.cot-play [data-action="create"]');
   await waitFor(pages.a, () => document.querySelector('.cot-play .lobby')?.classList.contains('show') && /[?&]room=[A-Z0-9]{6}/.test(location.search), 'A room created', 30_000);
   const invite = new URL(await pages.a.evaluate(() => location.href));
   const roomCode = invite.searchParams.get('room');
@@ -235,11 +247,11 @@ try {
     if (seated.length !== 3 || !ids.a || !ids.b || !ids.c || rooms.room(roomCode)?.room?.adminId !== ids.a) throw new Error(`the lobby seats read ${JSON.stringify(seated.map((player) => [player.id, player.joinedAt]))}`);
     step('lobby-ready', ids);
   }
-  await pages.c.click('.cot-play [data-action="ready"]');
-  await pages.b.click('.cot-play [data-action="ready"]');
-  await pages.a.click('.cot-play [data-action="ready"]');
+  await activate(pages.c,'.cot-play [data-action="ready"]');
+  await activate(pages.b,'.cot-play [data-action="ready"]');
+  await activate(pages.a,'.cot-play [data-action="ready"]');
   await waitFor(pages.a, () => !document.querySelector('.cot-play [data-action="start"]')?.disabled, 'A start enabled', 30_000);
-  await pages.a.click('.cot-play [data-action="start"]');
+  await activate(pages.a,'.cot-play [data-action="start"]');
   step('a-started');
 
   // ---- every seat reaches the battle over WebRTC: A hosts, B and C are its peers
@@ -248,6 +260,23 @@ try {
     waitFor(pages.b, inBattle, 'B battle revealed', 240_000, { entryOf: 'B' }),
     waitFor(pages.c, inBattle, 'C battle revealed', 240_000, { entryOf: 'C' }),
   ]);
+  if(mobile){
+    for(const viewport of [mobileViewport,{...mobileViewport,width:568,height:256},{...mobileViewport,width:320,height:568},mobileViewport]){
+      await pages.c.setViewport(viewport);await sleep(200);
+      const issues=await pages.c.evaluate(()=>{
+        const issues=[];
+        for(const selector of ['.cot-mp-strip','.cot-touch.on .fire:not(.alt)','.cot-touch.on .scope','.cot-touch.on .autoaim','.cot-touch.on .mobile-chrome','.cot-vehicle-controls']){
+          const el=document.querySelector(selector);if(!el?.checkVisibility({checkVisibilityCSS:true})){issues.push(`${selector}: missing`);continue;}
+          const r=el.getBoundingClientRect();if(r.x<0||r.y<0||r.right>innerWidth+1||r.bottom>innerHeight+1)issues.push(`${selector}: offscreen`);
+          const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);if(!hit||!(hit===el||el.contains(hit)))issues.push(`${selector}: blocked`);
+        }
+        return issues;
+      });
+      if(issues.length)throw new Error(`Live mobile ${viewport.width}x${viewport.height}: ${issues.join(', ')}`);
+      await screenshot(pages.c,`mobile-${viewport.width}x${viewport.height}.png`);
+      step('mobile-battle-controls',{width:viewport.width,height:viewport.height});
+    }
+  }
   if (live) {
     const ownId = (page) => page.evaluate(() => window.__MULTIPLAYER_V2?.stats?.().session?.playerId ?? null);
     Object.assign(ids, { a: await ownId(pages.a), b: await ownId(pages.b), c: await ownId(pages.c) });
@@ -274,11 +303,18 @@ try {
 
   // ---- play: B drives, C sees B move, every seat keeps receiving snapshots
   const before = { b: await sample(pages.b, ids.c), c: await sample(pages.c, ids.b) };
-  await pages.b.keyboard.down('KeyW');
-  await pages.b.keyboard.down('KeyA');
+  if(mobile){
+    const joy=await pages.b.$('.cot-touch.on .joy');const box=await joy?.boundingBox();
+    if(!box)throw new Error('Mobile joystick is missing');
+    const x=box.x+box.width/2,y=box.y+box.height/2;
+    await pages.b.touchscreen.touchStart(x,y);
+    await pages.b.touchscreen.touchMove(x-24,y-40);
+  }else{
+    await pages.b.keyboard.down('KeyW');await pages.b.keyboard.down('KeyA');
+  }
   await sleep(playS * 1000);
-  await pages.b.keyboard.up('KeyA');
-  await pages.b.keyboard.up('KeyW');
+  if(mobile)await pages.b.touchscreen.touchEnd();
+  else{await pages.b.keyboard.up('KeyA');await pages.b.keyboard.up('KeyW');}
   const after = { b: await sample(pages.b, ids.c), c: await sample(pages.c, ids.b) };
   const movedM = after.c.other && before.c.other ? Math.hypot(after.c.other.x - before.c.other.x, after.c.other.z - before.c.other.z) : 0;
   report.play = { movedBAsCSaw: movedM, snapshotsC: after.c.snapshots - before.c.snapshots, snapshotsB: after.b.snapshots - before.b.snapshots, keyframesRetainedC: await pages.c.evaluate(() => window.__MULTIPLAYER_V2?.stats?.().session?.match ? true : null) };
@@ -328,10 +364,10 @@ try {
   // ---- A returns: a fresh page in its context (the resume capability in localStorage), the running match as a peer of B.
   // B (hosting) and C draw at 320×200 meanwhile: two full battle frames starve the shared headless GPU process while A2
   // compiles its programs against a wall-clock budget; they get their size back once A2 plays.
-  await Promise.all([pages.b, pages.c].map((page) => page.setViewport({ width: 320, height: 200, deviceScaleFactor: 1 })));
+  await Promise.all([pages.b, pages.c].map((page) => page.setViewport({ ...testViewport, width: 320, height: 200 })));
   step('b-c-shrunk', { viewport: '320x200' });
   pages.a2 = await contextA.newPage();
-  await pages.a2.setViewport({ width: 1024, height: 640, deviceScaleFactor: 1 });
+  await pages.a2.setViewport(testViewport);
   observe(pages.a2, 'A2');
   await pages.a2.goto(invite.href, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await waitFor(pages.a2, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A2 garage ready', 240_000);
@@ -366,7 +402,7 @@ try {
   }
   report.rejoin = { path: returned, timeline: returnTimeline };
   if (!returned) throw new Error(`A2 never returned within 180 s: ${JSON.stringify(returnTimeline.slice(-3))}`);
-  if (returned === 'rejoin') await pages.a2.click('.cot-play [data-action="rejoin"]');
+  if (returned === 'rejoin') await activate(pages.a2,'.cot-play [data-action="rejoin"]');
   step('a2-returned', { path: returned, timeline: returnTimeline });
   let a2Attempts = 1;
   try {
@@ -377,14 +413,14 @@ try {
     failures.push(error instanceof Error ? error.message : String(error));
     await waitFor(pages.a2, () => { const button = document.querySelector('.cot-play [data-action="rejoin"]'); return document.querySelector('.cot-play')?.classList.contains('show') && !!button && !button.hidden; }, 'A2 offered Rejoin battle after the failed entry', 60_000);
     a2Attempts = 2;
-    await pages.a2.click('.cot-play [data-action="rejoin"]');
+    await activate(pages.a2,'.cot-play [data-action="rejoin"]');
     step('a2-garage-retry');
     await waitFor(pages.a2, inBattle, 'A2 rejoined the battle (Garage retry)', 240_000, { entryOf: 'A2' });
   }
   await waitFor(pages.a2, (id) => { const p = window.__MULTIPLAYER_V2?.stats?.(); return p?.session?.p2p?.role === 'peer' && p?.session?.p2p?.hostId === id && p?.session?.match?.phase === 'live'; }, 'A2 live as a peer of B', 90_000, { args: [ids.b], polling: 250 });
-  await Promise.all([pages.b, pages.c].map((page) => page.setViewport({ width: 1024, height: 640, deviceScaleFactor: 1 })));
+  await Promise.all([pages.b, pages.c].map((page) => page.setViewport(testViewport)));
   const a2Entry = await pages.a2.evaluate(() => ({ stages: window.__NETWORK_LOAD?.stages ?? null, totalMs: window.__NETWORK_LOAD?.totalMs ?? null, status: window.__NETWORK_LOAD?.status ?? null }));
-  step('b-c-restored', { viewport: '1024x640', a2Entry });
+  step('b-c-restored', { viewport: `${testViewport.width}x${testViewport.height}`, a2Entry });
   report.rejoin = { ...report.rejoin, a: await startOf(pages.a2), p2p: await p2pOf(pages.a2), peersOnB: (await p2pOf(pages.b))?.peersConnected ?? null, attempts: a2Attempts, entry: a2Entry };
   step('a-rejoined', report.rejoin);
   if (report.rejoin.p2p?.role !== 'peer' || report.rejoin.p2p?.hostId !== ids.b) failures.push(`A2 ${JSON.stringify(report.rejoin.p2p)}`);
@@ -392,6 +428,7 @@ try {
   await screenshot(pages.a2, 'a-rejoined-as-peer.png');
 } catch (error) {
   failures.push(error instanceof Error ? error.stack || error.message : String(error));
+  for(const [label,page] of Object.entries(pages))if(page&&!page.isClosed())await screenshot(page,`${label}-failure.png`).catch(()=>{});
 } finally {
   report.wallMs = elapsedMs();
   const relevant = errors.filter((entry) => !/favicon|ERR_ABORTED/i.test(entry.text));

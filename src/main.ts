@@ -1319,6 +1319,7 @@ const {
   getGame: () => game,
   worldRaycast,
   getShellCards: () => playerBattleActions?.shellCards || [],
+  getIsometricView: () => input.getSettings().isometricView,
 });
 const {
   aimController,

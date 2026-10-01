@@ -80,7 +80,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       status ? status.top - (touch ? 8 : 36) : height,
       read('.cot-spec.show')?.top ?? height,
       touch ? read('.cot-touch.on .joy')?.top ?? height : height,
-      touch ? read('.cot-touch.on .fire.alt')?.top ?? height : height,
+      touch ? read('.cot-touch.on .fire.alt')?.top ?? (height <= 340 ? height - 206 : height) : height,
       read('.cot-drive')?.top ?? height) - 8;
   }
   function rightFloor(height: number, width: number, map: DOMRect | null): number {
@@ -98,7 +98,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       document.body.toggleAttribute('data-cot-battle-layout', visible);
     }
     if (!visible) return;
-    observe('.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
+    observe('.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
     observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane', true);
     // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
     // asks for a relayout when it mounts, and the right roster takes the lane below it.
@@ -112,7 +112,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const score = read('.cot-top');
     const scoreBottom = score?.bottom || 64;
     const top = Math.max(scoreBottom, read('.cot-mode-status.show')?.bottom || 0);
+    const telemetry = read('.cot-net');
     const leftAnchor = Math.max(top, read('.cot-ear.l')?.bottom || 0,
+      !touch && width < 768 && telemetry && telemetry.top < height / 2 ? telemetry.bottom : 0,
+      touch && width > height ? read('.cot-aim-warning:not([hidden])')?.bottom || 0 : 0,
       map && map.left < width / 2 ? map.bottom : 0) + 8;
     const systems = read('.cot-vehicle-controls');
     const systemsHeight = systems?.height ?? 0;
@@ -186,14 +189,20 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const chat = !!read('.cot-room-chat:not([hidden])');
     const toastCount = root.querySelector('.cot-si-toasthost')?.childElementCount || 0;
     const stack = battleSideStack(leftBottom - leftTop, chat, touch ? Math.min(1, toastCount) : toastCount);
+    if (touch && width > height && height <= 340) noticeTop = Math.max(top + 8, scoreBottom + 52);
+    const network = !!read('.cot-mp-status.battle');
     const properties = {
+      'network-left': width > height ? Math.max(122, (map?.right ?? 104) + 8) : (map?.right ?? 104) + 8,
+      'aim-warning-top': width > height ? (map?.bottom ?? 114) + 4 : height * .5 + 48,
+      'fps-top': (read('.cot-spec.show')?.top ?? 36) - 28,
+      'network-top': width > height ? scoreBottom + 4 : (chrome?.top ?? top + 8),
       'roster-left-height': battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52), root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0, root.classList.contains('rosters-expanded')),
       'roster-right-height': battleRosterHeight(height, rightBottom - (rosterTopRight ?? earRight?.top ?? 52), root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.r')?.dataset.count) || 0, root.classList.contains('rosters-expanded')),
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
       'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
       'notice-top': noticeTop, 'alert-top': noticeTop + (notice?.height ?? 48) + 8,
       'objective-top': scoreBottom, 'objective-bottom': top,
-      'objective-width': objectiveWidth(score?.width || 344),
+      'objective-width': objectiveWidth(score?.width || 344) - (touch && network && width > height ? 52 : 0),
       'objective-left': score ? score.left + score.width / 2 : width / 2,
       'kill-left-top': leftAnchor, 'kill-right-top': rightAnchor,
       'kill-left-height': killHeightLeft, 'kill-right-height': killHeightRight,

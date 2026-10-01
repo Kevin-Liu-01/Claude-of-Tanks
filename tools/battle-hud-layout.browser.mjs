@@ -12,13 +12,13 @@ const cases = [
   ['desktop',1920,1080,false],['laptop',1366,768,false],['laptop-short',1280,720,false],
   ['small-desktop',1024,600,false],['tablet-mouse',820,1180,false],['narrow-mouse',540,720,false],
   ['phone-mouse',390,844,false],['tablet',1024,768,true],['tablet-portrait',768,1024,true],
-  ['phone',390,844,true],['small-phone',360,640,true],['landscape',844,390,true],
+  ['narrow-phone',320,568,true],['short-landscape',568,256,true],['phone',390,844,true],['small-phone',360,640,true],['landscape',844,390,true],
   ['small-landscape',667,375,true],['short-mouse',844,390,false],
   ['tiny-landscape',568,320,true],['browser-landscape',844,300,true],['wide-landscape',932,430,true],
   ['chinese-landscape',667,375,true,'zh-CN'],
   ['chinese-laptop',1280,720,false,'zh-CN'],['chinese-phone',390,844,true,'zh-CN'],
 ];
-const states = ['idle','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','ended'];
+const states = ['idle','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','ended'];
 const reports=[];const errors=[];
 function measure(state){
   // Kept inside the serialized page callback so browser execution needs no
@@ -35,7 +35,7 @@ function measure(state){
   }
   const selectors = state==='settings' ? ['.cot-set-hdr','.cot-set-tabs','.cot-set-body','.cot-set-ftr'] :
     state==='ended' ? ['.es-hero','.es-report','.es-actions'] :
-    ['.cot-sixth.on','.cot-alert.show','.cot-ear.l','.cot-ear.r','.cot-top','.cot-mode-status.show','.cot-kill-lane.l','.cot-kill-lane.r','.cot-net','.cot-drive','.cot-dp','.cot-minimap',
+    ['.cot-aim-warning:not([hidden])','.cot-sixth.on','.cot-alert.show','.cot-ear.l','.cot-ear.r','.cot-top','.cot-mode-status.show','.cot-kill-lane.l','.cot-kill-lane.r','.cot-net','.cot-drive','.cot-dp','.cot-minimap',
      '.cot-si-toasthost','.cot-si-log.open','.cot-si-cardhost:not(:empty)',
      '.cot-room-chat:not([hidden])','.cot-spec.show','.cot-prebattle',
      '.cot-shell','.cot-con','.cot-vehicle-controls','.cot-touch.on .joy','.cot-touch.on .round',
@@ -102,6 +102,28 @@ try {
         height:node.getBoundingClientRect().height,secondary:!!node.querySelector('.l2'),
       })));
       if(compactNotices.some(row=>row.height!==26||row.secondary))result.failures.push('damage notices must share the 26px single-line kill design');
+      const feedChecks=await page.evaluate(()=>{
+        const failures=[];
+        for(const el of document.querySelectorAll('.cot-si-toasthost,.cot-kill-lane')){
+          if(!el.checkVisibility({checkVisibilityCSS:true}))continue;
+          const r=el.getBoundingClientRect();
+          if(r.width>240.5)failures.push('notification feed exceeds its compact width');
+          if(el.classList.contains('r')?Math.abs(r.right-innerWidth)>.5:Math.abs(r.left)>.5)
+            failures.push('notification feed is indented from the screen edge');
+        }
+        for(const toast of document.querySelectorAll('.cot-si-toast')){
+          if(!toast.checkVisibility({checkVisibilityCSS:true}))continue;
+          const icon=toast.querySelector('.si'),name=toast.querySelector('.attacker'),value=toast.querySelector('b');
+          if(!icon||!getComputedStyle(icon).maskImage.includes('t90m_side_silhouette.png')){
+            failures.push('incoming damage must use the attacking tank silhouette');continue;
+          }
+          const a=icon.getBoundingClientRect(),b=name.getBoundingClientRect(),c=value.getBoundingClientRect();
+          if(a.width<21||a.height<11||a.right>b.left+.5||b.right>c.left+.5)
+            failures.push('damage icon, attacker and outcome must remain separate in one row');
+        }
+        return failures;
+      });
+      result.failures.push(...feedChecks);
       if(state.startsWith('mode-')) {
         if(await page.locator('.cot-mode-status button').count())result.failures.push('objective must not contain a Brief button');
         const detected=result.rects.find(r=>r.name==='cot-sixth on');
@@ -268,7 +290,7 @@ try {
     }
     // Same open panels must survive a live resize and a larger minimap.
     await page.evaluate(()=>{window.__HUD_LAYOUT.state('combined');window.__HUD_LAYOUT.bus.emit('ui:minimapZoom',{});});
-    await page.setViewportSize({width:name==='browser-landscape'?390:height,height:width});
+    await page.setViewportSize({width:name==='browser-landscape'?390:Math.max(320,height),height:width});
     await page.waitForTimeout(180);
     await check('resized-combined');
     await page.setViewportSize({width,height});

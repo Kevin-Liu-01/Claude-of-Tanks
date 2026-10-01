@@ -449,6 +449,25 @@ the scope. Mobile receives a dedicated touch layout with movement
 joystick, swipe aim, pinch-to-scope, dynamic fire controls, safe-area handling,
 and mobile aim assistance.
 
+**Settings → Gameplay → Isometric view** switches to an angled overhead battle
+camera. It follows the tank at the center of the screen, keeps a stable compass
+orientation while aiming, widens its framing at speed, and raises the viewing
+angle to clear terrain and buildings. Mouse movement, touch swipes and the
+controller's right stick move the aiming reticle. The mouse wheel adjusts the
+overhead distance within safe limits; Shift, the configured aim button, or the
+mobile Scope button/pinch still enters sniper view. Leaving the scope returns
+to the overhead camera. The preference is saved, applies immediately to the
+player camera in solo and multiplayer, and leaves spectator/replay cameras
+under their existing controls. Turning it off restores the chase camera.
+This is a perspective overhead presentation; spotting, weapon reach, gun
+limits, cover and server-authoritative combat remain unchanged.
+
+ERA, external armor, missile launchers, working roof guns and smoke launchers
+remain rendered at combat distances on desktop and mobile. Cosmetic distance
+detail still reduces decorative fittings and running-gear trim; it cannot hide
+combat equipment or restore spent ERA. Equipment articulation and damage keep
+their original owners.
+
 The quality system changes rendering cost rather than combat rules. Resolution,
 shadows, post effects, vegetation, texture sizes, particle budgets, and
 background work adapt independently. Smaller layouts reduce nonessential
