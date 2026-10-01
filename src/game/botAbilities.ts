@@ -1,6 +1,6 @@
 /** Local reflexes shared by Classic and Jev. All commands pass through the same
  * inventory, cooldown, physics and spotting rules as a player's controls. */
-import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
+import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts'; // the shared action table (src/net left with v1)
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import { SMOKE_COOLDOWN_S, type AuxiliaryState } from '../sim/auxiliarySystems.ts';
 
