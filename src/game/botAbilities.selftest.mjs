@@ -5,7 +5,7 @@ import { getSpec } from '../vehicles/specs.ts';
 import { createCombatState } from '../sim/damage.ts';
 import { createTankState, requestTankJump } from '../sim/movement.ts';
 import { auxiliaryState, requestAuxiliary, stepRoofGun } from '../sim/auxiliarySystems.ts';
-import { PLAYER_ACTION_BITS as B } from '../net/protocol.ts';
+import { PLAYER_ACTION_BITS as B } from '../sim/playerActions.ts';
 import { createBotAbilityPlanner } from './botAbilities.ts';
 
 function fixture(team = 'alpha') {
