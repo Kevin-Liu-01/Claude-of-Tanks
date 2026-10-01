@@ -21,6 +21,9 @@ import { createTankState, shotRecoilScale } from '../../sim/movement.ts';
 import type { TankState } from '../../sim/movement.ts';
 import { SPECIAL_ACTION_KINDS, createSpecialActionState } from '../../sim/specialActionPolicy.ts';
 import type { SpecialActionState } from '../../sim/specialActionPolicy.ts';
+import { matchRulesetFor } from '../../sim/matchRuleset.ts';
+import type { MatchRuleset } from '../../sim/matchRuleset.ts';
+import { normalizeGameMode } from '../../sim/matchModes.ts';
 import { createTank, ensureTankBuilder } from '../../vehicles/fleetFactory.ts';
 import { prebakeSharedTextures } from '../../vehicles/materials.ts';
 import type { FleetTankSpec } from '../../vehicles/specContracts.ts';
@@ -127,6 +130,21 @@ export interface PresentationGameState {
   mapId?: string;
   gameMode?: RuntimeValue;
   matchModeState?: RuntimeValue;
+  /** The ruleset the authority plays by (its WELCOME's rulesetJson): the HUD clock, the respawn countdown and the jump hint read it. */
+  ruleset?: MatchRuleset;
+}
+
+/**
+ * The ruleset the authority named in its WELCOME (`rulesetJson`: the room's mode bent by its arrangement — hostRuleset.ts),
+ * else the mode's own table (a fixture's placeholder, a build whose table disagrees on the mode).
+ */
+function rulesetFromWelcome(json: string, mode: RuntimeValue): MatchRuleset {
+  const id = normalizeGameMode(mode);
+  try {
+    const parsed = JSON.parse(json) as { mode?: unknown } | null;
+    if (parsed && typeof parsed === 'object' && parsed.mode === id) return parsed as MatchRuleset;
+  } catch { /* not a ruleset */ }
+  return matchRulesetFor(id);
 }
 
 export interface EventBus {
@@ -324,6 +342,7 @@ export function createBattlePresentation({
     const own = entries.find((entry) => entry.entityId === rosterContext.ownEntityId);
     if (own && !spectator) viewerTeam = own.team;
     game.gameMode = rosterContext.mode || 'standard';
+    game.ruleset = rulesetFromWelcome(rosterContext.rulesetJson, game.gameMode);
     rosterReady = rosterReady.then(() => prepareRoster(entries, rosterContext));
     return rosterReady;
   }
@@ -760,14 +779,18 @@ export function createBattlePresentation({
       case 'world_prop_destroyed': {
         const index = Number(payload.obstacleIndex);
         const obstacle = worldCollision?.getObstacles && Number.isSafeInteger(index) && index >= 0 ? worldCollision.getObstacles()[index] : null;
-        if (obstacle && !obstacle.crushed && worldCollision?.crushObstacle) {
+        // A prop this viewer's world does not have (the mobile tier's lighter world, a world without the manifest) has no
+        // position for the effect: nothing to crush here, nothing to emit (2026-09-30, lane mp/ui-sync-check: a `pos: null`
+        // event threw inside the frame pump on every such crush — combatFeedbackRuntime reads pos[0]).
+        if (!obstacle) return;
+        if (!obstacle.crushed && worldCollision?.crushObstacle) {
           worldCollision.crushObstacle(obstacle, Number(payload.directionX) || 0, Number(payload.directionZ) || 0, Number(payload.speedMps) || 0);
           obstacle.crushed = true;
         }
         bus.emit('prop:crushed', {
           kind: payload.kind, speedMps: payload.speedMps, cause: payload.cause,
-          pos: obstacle ? [(obstacle.min[0] + obstacle.max[0]) * 0.5, obstacle.min[1], (obstacle.min[2] + obstacle.max[2]) * 0.5] : null,
-          dir: [payload.directionX, 0, payload.directionZ],
+          pos: [(obstacle.min[0] + obstacle.max[0]) * 0.5, obstacle.min[1], (obstacle.min[2] + obstacle.max[2]) * 0.5],
+          dir: [Number(payload.directionX) || 0, 0, Number(payload.directionZ) || 0],
         });
         return;
       }

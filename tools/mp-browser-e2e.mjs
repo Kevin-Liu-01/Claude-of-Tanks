@@ -215,8 +215,7 @@ try {
   await pageA.click('.cot-play .modes [data-mode="lan"]');
   await pageA.waitForFunction(() => document.querySelector('.cot-play .modes [data-mode="lan"]')?.classList.contains('on'), { timeout: 10_000 });
   await waitFor(pageA, () => document.querySelector('.cot-play')?.classList.contains('show'), 'A play menu', 30_000);
-  const signalUrl = await pageA.$eval('.cot-play [data-field="signal"]', (input) => input.value);
-  if (signalUrl !== rooms.url) failures.push(`A's room host field reads ${signalUrl}, expected ${rooms.url}`);
+  // 2026-09-30: the room host is the deployment's (VITE_ROOMS_URL names this in-process service); the v1 connection-settings field is gone.
   await pageA.evaluate(() => {
     const name = document.querySelector('.cot-play [data-field="name"]');
     if (name) name.value = 'Alpha Lead';
@@ -228,7 +227,7 @@ try {
   await waitFor(pageA, () => document.querySelector('.cot-play .lobby')?.classList.contains('show') && /[?&]room=[A-Z0-9]{6}/.test(location.search), 'A room created', 30_000);
   const invite = new URL(await pageA.evaluate(() => location.href));
   const roomCode = invite.searchParams.get('room');
-  report.room = { code: roomCode, inviteVersion: invite.searchParams.get('v'), mode: invite.searchParams.get('mode'), host: invite.searchParams.get('host'), signalUrl };
+  report.room = { code: roomCode, inviteVersion: invite.searchParams.get('v'), mode: invite.searchParams.get('mode'), host: invite.searchParams.get('host'), roomsUrl: rooms.url };
   if (invite.searchParams.get('v') !== '2') failures.push(`the invite link is not stamped v=2: ${invite.href}`);
   step('a-room-created', report.room);
   await screenshot(pageA, 'a-lobby.png');
@@ -387,7 +386,7 @@ try {
   const garageStats = await stats(pageB);
   report.leave.roomKeptInGarage = !!garageStats?.room;
   if (!garageStats?.room) failures.push('B lost the room on the Garage return');
-  await pageB.click('.cot-multiplayer-entry'); // 2026-09-29: the play dialog (with the kept room's lobby) opens from the multiplayer entry
+  await pageB.click('.cot-room-reminder'); // 2026-09-30: with a room kept the Garage hides the multiplayer entry; its room strip (ui:roomOpen) reopens the lobby
   await waitFor(pageB, () => document.querySelector('.cot-play')?.classList.contains('show') && document.querySelector('.cot-play .lobby')?.classList.contains('show'), 'B reopened the room', 30_000);
   await screenshot(pageB, 'b-room-after-battle.png');
 
@@ -410,7 +409,7 @@ try {
   if (!report.rejoin.strip?.visible) failures.push('B has no network strip after the rejoin');
   await pageB.evaluate(() => window.__DEBUG.leaveBattleToGarage());
   await waitFor(pageB, () => window.__DEBUG?.game?.phase === 'garage' && window.__MULTIPLAYER_V2?.stats?.().active === false, 'B back in the Garage after the rejoin', 60_000);
-  await pageB.click('.cot-multiplayer-entry'); // 2026-09-29: the play dialog (with the kept room's lobby) opens from the multiplayer entry
+  await pageB.click('.cot-room-reminder'); // 2026-09-30: with a room kept the Garage hides the multiplayer entry; its room strip (ui:roomOpen) reopens the lobby
   await waitFor(pageB, () => document.querySelector('.cot-play')?.classList.contains('show') && document.querySelector('.cot-play .lobby')?.classList.contains('show'), 'B reopened the room again', 30_000);
   await pageB.click('.cot-play [data-action="leave"]');
   await waitFor(pageB, () => window.__MULTIPLAYER_V2?.stats?.().room === null && !document.querySelector('.cot-play .lobby')?.classList.contains('show'), 'B left the room', 30_000);

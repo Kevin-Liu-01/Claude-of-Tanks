@@ -12,7 +12,7 @@ import {
   NETWORK_HEALTH_THRESHOLDS, NetworkStatusModel, SEAT_DROP_REASONS, closeReasonName, networkBannerFor, resolveNetworkHealth,
 } from './networkStatus.ts';
 import { createLoopbackPair } from '../transport/index.ts';
-import { CLOSE_REASON, MESSAGE_TYPE, SNAPSHOT_HZ, TEAM } from '../wire/index.ts';
+import { CLOSE_REASON, MESSAGE_TYPE, SNAPSHOT_HZ, TEAM, VERDICT } from '../wire/index.ts';
 import { HeadlessMatchClientDriver, MatchClient } from '../match/index.ts';
 import { ScriptedMatchServer } from '../match/scriptedServer.test-support.ts';
 
@@ -291,6 +291,26 @@ const player = (id, team, seat) => ({ id, name: id, team, seat, specId: 'm1a2', 
   ended.emitPhase('left');
   assert.deepEqual([s.health, s.healthReason], ['offline', 'left']);
   assert.equal(model.banner(), null);
+
+  // ---- the round is over (lane mp/ui-sync-check, 2026-09-30): once the authority named a verdict, the actor closing its links
+  // after the ending hold is not a lost link — "Connection lost · the battle continues without you" sat over VICTORY — and an
+  // election nobody resumes is not a migration; the room link alone may still speak
+  const over = scriptedMatch();
+  model.attachMatch(over);
+  assert.deepEqual([s.verdict, s.roundOver], [false, false], 'a fresh attachment carries no verdict');
+  over.emitPhase('live');
+  assert.equal(model.banner(), null);
+  over.lastVerdict = VERDICT.BRAVO;
+  over.emitPhase('failed', 'data channel closed');
+  assert.deepEqual([s.verdict, s.roundOver, s.link], [true, true, 'failed'], 'the verdict rides the snapshot');
+  assert.equal(model.banner(), null, 'the end screen owns the story: no lost-link banner after the verdict');
+  assert.deepEqual(networkBannerFor({ ...s, roundOver: true, link: 'live', migrating: true, migrationHostId: 'bob', role: 'peer' }), null, 'nor a migration banner after it');
+  assert.deepEqual(networkBannerFor({ ...s, roundOver: true, link: 'stalled' }), null);
+  assert.deepEqual(networkBannerFor({ ...s, roundOver: true, room: 'reconnecting', roomReconnectAttempt: 2, roomRetryAtMs: null }), { kind: 'reconnecting', scope: 'room', attempt: 2, nextRetryS: 0 }, 'the room link still speaks');
+  assert.deepEqual(networkBannerFor({ ...s, roundOver: false, verdict: false, link: 'failed', migrating: false, migrationHostId: null }), { kind: 'failed' }, 'a live round losing its link keeps the banner');
+  assert.deepEqual(networkBannerFor({ ...s, roundOver: false, verdict: false, link: 'live', migrating: true, migrationHostId: 'bob', role: 'peer' }), { kind: 'migrating', host: 'bob', self: false }, 'a live round migrating keeps the banner');
+  model.detachMatch();
+  assert.deepEqual([s.verdict, s.roundOver], [false, false], 'detaching clears the round');
   // A close with no wire reason (the transport gave up) is a lost link.
   const lost = scriptedMatch();
   model.attachMatch(lost);

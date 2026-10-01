@@ -7,6 +7,7 @@
  */
 import type { CloseReasonId } from '../wire/constants.ts';
 import type { SnapshotFrame } from '../wire/messages.ts';
+import type { TeamArrangement } from '../../sim/matchRuleset.ts';
 
 export interface HostBootSeat {
   seat: number;
@@ -64,6 +65,10 @@ export interface HostBootConfig {
   resume: (HostResumeState & { resumeTick: number }) | null;
   /** The snapshot rate for the near tier (SNAPSHOT_HZ when absent; a divisor of the tick rate). */
   snapshotHz?: number;
+  /** The room's team arrangement (sides, wave size, enemy nation, score target, respawn, Mars settings): with the mode it names the ruleset the actor plays by (hostRuleset.ts). Absent on a pre-lane sealed config: the mode's own table. */
+  arrangement?: TeamArrangement | null;
+  /** A Frontline room's campaign operation: its clock and difficulty bend the ruleset. */
+  campaignOperationId?: string | null;
 }
 
 export interface HostMatchReport {

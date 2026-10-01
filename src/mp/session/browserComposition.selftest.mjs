@@ -248,7 +248,7 @@ function createRecordedPresentation(options, record) {
   return presentation;
 }
 
-function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000 } = {}) {
+function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000, p2p = null } = {}) {
   const calls = [];
   const bus = [];
   const game = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'verdant', phase: 'garage', gameMode: 'standard', matchModeState: null };
@@ -360,6 +360,7 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
       report: (summary, reason) => { statusReports.push([reason, summary]); calls.push(`status.report:${reason}`); },
     },
   };
+  if (p2p) ports.p2p = p2p;
   const composition = createBrowserComposition({
     ports,
     factories: {
@@ -373,6 +374,7 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
     setTimer: (callback, delayMs) => { const handle = { callback, delayMs, fired: false, fire() { handle.fired = true; callback(); } }; timers.push(handle); return handle; },
     clearTimer: (handle) => { handle.cleared = true; },
     reportError: (scope, error) => calls.push(`error:${scope}:${error instanceof Error ? error.message : String(error)}`),
+    reportWarning: (scope, detail) => calls.push(`warn:${scope}:${detail}`),
   });
   return { calls, bus, game, sessions, presentations, menu, battleLoad, lifecycle, garageStatus, roomStates, statusSurfaces, statusEvents, statusReports, timers, ports, composition };
 }
@@ -819,4 +821,23 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
 
 composition.dispose();
 assert.ok(calls.includes('client.leave'), 'disposing the composition leaves the seat');
+// ------------------------------------------------------------ the host's log levels (lane mp/ui-sync-check, 2026-09-30): a warn
+// ("match report refused host_only" after an election, "elected but cannot host") is a warning, never a console error — the
+// browser proofs fail a run on any console error, and these are the product's own expected transients
+{
+  const hosted = createHarness({ p2p: { createHostPort: () => { throw new Error('the receipt never boots a host'); }, manifestBase: null, tier: 'desktop' } });
+  const room = makeRoomSession(hosted.calls);
+  hosted.composition.beginRoom({ role: 'host', session: room, lobbyState: room.lobby });
+  const onLog = hosted.sessions[0]?.options?.p2p?.onLog;
+  assert.equal(typeof onLog, 'function', 'the session owner receives the host log sink with its p2p ports');
+  onLog('warn', 'match report refused', { error: 'host_only' });
+  onLog('info', 'host actor booted', { tick: 0 });
+  onLog('error', 'host boot failed', { error: 'manifest' });
+  assert.ok(hosted.calls.includes('warn:multiplayer v2 host warn:match report refused {"error":"host_only"}'), 'a host warn reaches the warning sink');
+  assert.ok(!hosted.calls.some((entry) => entry.startsWith('error:multiplayer v2 host warn')), 'and never the error sink');
+  assert.ok(hosted.calls.includes('error:multiplayer v2 host error:host boot failed {"error":"manifest"}'), 'a host error stays an error');
+  assert.ok(!hosted.calls.some((entry) => /multiplayer v2 host info/.test(entry)), 'info lines stay quiet');
+  hosted.composition.dispose();
+}
+
 console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, and runs a shader preparation past its budget once more before failing');

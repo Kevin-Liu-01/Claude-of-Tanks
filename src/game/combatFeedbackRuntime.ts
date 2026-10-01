@@ -175,7 +175,8 @@ export function createCombatFeedbackRuntime({
   listen('prop:crushed', (payload) => {
     const event = payload as PropCrushedEvent;
     const fx = getFx();
-    if (!fx) return;
+    // a crush without a place (a prop this world lacks) has no effect to play; the listener must never throw inside the frame pump
+    if (!fx || !event.pos || !event.dir) return;
     effectPosition.set(event.pos[0], event.pos[1], event.pos[2]);
     effectDirection.set(event.dir[0], 0, event.dir[2]);
     fx.propCrush(effectPosition, effectDirection, event.h);

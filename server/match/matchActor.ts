@@ -178,6 +178,8 @@ export interface ResumeHintStats {
 
 export interface MatchActor {
   readonly roomId: string;
+  /** The ruleset the match plays by (the WELCOME's rulesetJson): the mode's table bent by the room's arrangement. */
+  readonly ruleset: MatchRuleset;
   readonly tick: number;
   readonly ended: boolean;
   readonly stopped: boolean;
@@ -882,6 +884,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   return {
     roomId,
+    ruleset,
     get tick() { return loop.tick; },
     get ended() { return ended; },
     get stopped() { return stopped; },
