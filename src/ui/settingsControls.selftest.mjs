@@ -28,7 +28,7 @@ assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 31,
   'every remappable action has a settings icon');
 assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
   'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay',
-  'graphicsQuality', 'hideBattleUi', 'invertY', 'padSensitivity', 'rmbMode', 'sensitivity',
+  'graphicsQuality', 'hideBattleUi', 'invertY', 'isometricView', 'padSensitivity', 'rmbMode', 'sensitivity',
   'showDebugHud', 'showDirectionalHitValues', 'showPerfMeter', 'sniperSensScale', 'volAmbience',
   'volCombat', 'volEngine', 'volMaster', 'volUi', 'volVoice',
 ].sort(), 'every gameplay, sound, and graphics option has a settings icon');
