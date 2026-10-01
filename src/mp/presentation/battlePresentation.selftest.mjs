@@ -208,6 +208,14 @@ assert.equal(expired.payload.hitKind, 'prop');
 assert.deepEqual(expired.payload.normal, [0, 0.2, -0.98]);
 presentation.applyEvent({ kind: 'module_state', payload: { id: 'foe', module: 'gun', state: 'red', source: 'hit' } }, { own: false, feedbackPredicted: false });
 assert.equal(busEvents.at(-1).type, 'module:state');
+// a prop this viewer's world does not have (lane mp/ui-sync-check, 2026-09-30): nothing crushed, nothing emitted, no throw —
+// a `pos: null` prop:crushed threw in the feedback runtime inside the frame pump on the mobile tier's lighter world
+{
+  const before = busEvents.length;
+  presentation.applyEvent({ kind: 'world_prop_destroyed', payload: { obstacleIndex: 99, kind: 'fence', cause: 'ram', directionX: 1, directionZ: 0, speedMps: 8 } }, { own: false, feedbackPredicted: false });
+  assert.equal(busEvents.length, before, 'an unknown obstacle index emits nothing');
+  assert.equal(crushed.length, 0, 'and crushes nothing');
+}
 presentation.applyEvent({ kind: 'world_prop_destroyed', payload: { obstacleIndex: 1, kind: 'fence', cause: 'ram', directionX: 1, directionZ: 0, speedMps: 8 } }, { own: false, feedbackPredicted: false });
 assert.deepEqual(crushed, [[1, 1, 0, 8]], 'a destroyed prop crushes the world obstacle');
 assert.equal(busEvents.at(-1).type, 'prop:crushed');

@@ -1642,7 +1642,11 @@ hold and the status banner read "Connection lost · the battle continues without
 lost match the elected-but-unable peer's "New host: … · resuming…" stayed over the after-action report. The status snapshot
 now carries the round's verdict (the client's `lastVerdict`) and `roundOver` (a verdict, or the room's match ended / lost):
 once the round is over the banner says nothing about the match link (the room link alone may still reconnect), and a
-session ends an open migration when its round ends (`networkStatus.selftest`, `matchSessionP2p.selftest`). Open: a malformed invite link (`?room=AB`) is dropped silently by `parseRoomInvite` — the "Check the room
+session ends an open migration when its round ends (`networkStatus.selftest`, `matchSessionP2p.selftest`). (6) A
+`world_prop_destroyed` for a prop this viewer's world does not have (the mobile tier's lighter world; a world without the
+manifest) became a `prop:crushed` bus event with `pos: null`, and the combat feedback listener threw inside the frame pump —
+six page errors per lost-host run on the mobile-tier peers; the presentation emits nothing for a prop it cannot place and the
+listener never throws (`battlePresentation.selftest`, `combatFeedbackRuntime.selftest`). Open: a malformed invite link (`?room=AB`) is dropped silently by `parseRoomInvite` — the "Check the room
 code" dialog exists but no product path reaches it.
 
 ## 10. Decisions for the owner

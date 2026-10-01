@@ -779,14 +779,18 @@ export function createBattlePresentation({
       case 'world_prop_destroyed': {
         const index = Number(payload.obstacleIndex);
         const obstacle = worldCollision?.getObstacles && Number.isSafeInteger(index) && index >= 0 ? worldCollision.getObstacles()[index] : null;
-        if (obstacle && !obstacle.crushed && worldCollision?.crushObstacle) {
+        // A prop this viewer's world does not have (the mobile tier's lighter world, a world without the manifest) has no
+        // position for the effect: nothing to crush here, nothing to emit (2026-09-30, lane mp/ui-sync-check: a `pos: null`
+        // event threw inside the frame pump on every such crush — combatFeedbackRuntime reads pos[0]).
+        if (!obstacle) return;
+        if (!obstacle.crushed && worldCollision?.crushObstacle) {
           worldCollision.crushObstacle(obstacle, Number(payload.directionX) || 0, Number(payload.directionZ) || 0, Number(payload.speedMps) || 0);
           obstacle.crushed = true;
         }
         bus.emit('prop:crushed', {
           kind: payload.kind, speedMps: payload.speedMps, cause: payload.cause,
-          pos: obstacle ? [(obstacle.min[0] + obstacle.max[0]) * 0.5, obstacle.min[1], (obstacle.min[2] + obstacle.max[2]) * 0.5] : null,
-          dir: [payload.directionX, 0, payload.directionZ],
+          pos: [(obstacle.min[0] + obstacle.max[0]) * 0.5, obstacle.min[1], (obstacle.min[2] + obstacle.max[2]) * 0.5],
+          dir: [Number(payload.directionX) || 0, 0, Number(payload.directionZ) || 0],
         });
         return;
       }

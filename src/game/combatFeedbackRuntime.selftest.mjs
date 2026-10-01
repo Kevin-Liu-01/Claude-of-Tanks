@@ -93,6 +93,15 @@ fx = { propCrush: (position, direction, height) => {
   calls.push(['crush', position.toArray(), direction.toArray(), height]);
 } };
 bus.emit('prop:crushed', { pos: [2, 3, 4], dir: [5, 6, 7], h: 8 });
+// a crush without a place (a prop this viewer's world lacks — the mobile tier's lighter world): no effect, and never a throw
+// inside the frame pump (lane mp/ui-sync-check, 2026-09-30: six page errors per lost-host run on the mobile peers)
+{
+  const crushesBefore = calls.filter((entry) => Array.isArray(entry) && entry[0] === 'crush').length;
+  assert.doesNotThrow(() => bus.emit('prop:crushed', { pos: null, dir: [1, 0, 0], h: 2 }));
+  assert.doesNotThrow(() => bus.emit('prop:crushed', { kind: 'fence', dir: null, h: 2 }));
+  const crushesAfter = calls.filter((entry) => Array.isArray(entry) && entry[0] === 'crush').length;
+  assert.equal(crushesAfter, crushesBefore, 'a position-less crush plays no effect');
+}
 assert.deepEqual(calls.at(-1), ['crush', [2, 3, 4], [5, 0, 7], 8],
   'prop crush feedback reuses world-position and planar-direction scratch');
 
