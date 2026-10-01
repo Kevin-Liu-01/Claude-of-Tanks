@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import '../src/vehicles/fleetFactory.ts';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.ts';
 import { createDedicatedWorldCollision } from './dedicatedWorldCollision.ts';
-import { PLAYER_ACTION_BITS } from '../src/net/protocol.ts';
+import { PLAYER_ACTION_BITS } from '../src/sim/playerActions.ts';
 import { SIM_DT } from '../src/sim/movement.ts';
 
 // Real terrain, structures, routes, objective controllers and fall physics.
