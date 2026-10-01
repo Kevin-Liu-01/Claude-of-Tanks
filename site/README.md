@@ -24,7 +24,9 @@ desktop and both phone orientations, and legacy page URLs. It requires a local
 Playwright installation; `--playwright-module=<absolute-module-path>` can use
 an existing tool runtime. Save captures with `--out=.qa-dev/manual-browser`.
 
-Garage and battle layout probes remain `tools/mobile-surfaces.browser.mjs`,
+Custom dropdown keyboard and pointer behavior is checked by
+`tools/custom-select.browser.mjs`. Garage and battle layout probes remain
+`tools/mobile-surfaces.browser.mjs`,
 `tools/battle-hud-layout.browser.mjs`, and `tools/battle-load-layout.browser.mjs`.
 They exercise the actual UI owners in fixtures, including rotation and crowded
 rosters; native gameplay and graphics checks are separate.
