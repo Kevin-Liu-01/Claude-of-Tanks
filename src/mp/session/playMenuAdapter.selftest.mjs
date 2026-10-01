@@ -160,8 +160,8 @@ try {
     await until(() => events.some(([name]) => name === 'close'), 'the menu hears the close', 5000);
     const close = events.find(([name]) => name === 'close');
     assert.equal(close[1], 'room_unreachable');
-    const failure = classifyPrivateRoomFailure({ code: close[1] });
-    assert.equal(failure.code, 'signaling_unavailable', 'presented as the room service being unavailable');
+    const failure = classifyRoomFailure({ code: close[1] });
+    assert.equal(failure.code, 'room_service_unavailable', 'presented as the room service being unavailable');
     assert.equal(failure.canRetry, true, 'with Try again');
     assert.ok(events.some(([name, state]) => name === 'status' && state === 'reconnecting'), 'the interruption was shown first');
     assert.equal(menu.current, null);
