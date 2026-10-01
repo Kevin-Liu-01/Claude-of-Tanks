@@ -131,6 +131,15 @@ async function joinedClient({ tier = 'desktop', playerId = 'me' } = {}) {
   assert.equal(stopped.stopped, true, 'its actor stopped');
   assert.ok(events.some((event) => event.kind === 'migration' && event.phase === 'begin' && event.hostId === 'other'), 'the newer election counted as a migration');
   assert.ok(events.some((event) => event.kind === 'role' && event.role === 'peer'));
+  // the round ends while that migration is still open (the room lost the match — nobody resumed): the migration ends with it,
+  // so the status banner never keeps "New host: … · resuming…" over the end screen (lane mp/ui-sync-check, 2026-09-30)
+  assert.equal(session.p2p.migrating, true, 'the election onto the never-welcoming host is still open');
+  transport.deliver({ type: 'match_status', payload: { matchId, round: 1, status: 'lost', verdict: null } });
+  await sleep(20);
+  assert.equal(session.phase, 'lost');
+  assert.equal(session.p2p.migrating, false, 'a lost round leaves nothing migrating');
+  assert.equal(session.p2p.migrationHostId, null);
+  assert.ok(events.some((event) => event.kind === 'migration' && event.phase === 'end' && event.detail === 'lost'), 'the migration ended with the round');
   clearInterval(pump);
   void ticks;
   await session.leaveMatch('done');

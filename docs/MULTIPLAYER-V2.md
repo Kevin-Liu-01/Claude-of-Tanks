@@ -1637,7 +1637,12 @@ admission against a dead room host took 65 s to fail; bounded by the request tim
 warn-level logs ("match report refused host_only" after an election, an elected mobile seat declining) were console errors,
 which the browser proofs count as failures; they are warnings now (`browserComposition.selftest`). (4) The shipped
 `npm run test:net:v2:browser` read the removed connection-settings field and clicked the hidden multiplayer entry; fixed
-and green (73 s). Open: a malformed invite link (`?room=AB`) is dropped silently by `parseRoomInvite` — the "Check the room
+and green (73 s). (5) Two stale banners on end screens: after a verdict the actor closes its links at the end of the ending
+hold and the status banner read "Connection lost · the battle continues without you" (with Leave battle) over VICTORY; on a
+lost match the elected-but-unable peer's "New host: … · resuming…" stayed over the after-action report. The status snapshot
+now carries the round's verdict (the client's `lastVerdict`) and `roundOver` (a verdict, or the room's match ended / lost):
+once the round is over the banner says nothing about the match link (the room link alone may still reconnect), and a
+session ends an open migration when its round ends (`networkStatus.selftest`, `matchSessionP2p.selftest`). Open: a malformed invite link (`?room=AB`) is dropped silently by `parseRoomInvite` — the "Check the room
 code" dialog exists but no product path reaches it.
 
 ## 10. Decisions for the owner

@@ -320,6 +320,8 @@ export class MatchClient {
   // ------------------------------------------------------------ public surface
 
   get welcome(): WelcomeMessage | null { return this.welcomeMessage; }
+  /** The verdict the authority's frames named (NONE/null before one): the status surface reads it — a close after it is the end screen's business. */
+  get lastVerdict(): VerdictId | null { return this.verdict; }
   get roster(): readonly RosterEntry[] { return this.welcomeMessage?.roster ?? []; }
   get phase(): ConnectionPhase { return this.recovery.current; }
   get isSeated(): boolean { return !!this.welcomeMessage && this.welcomeMessage.entityId !== NO_ENTITY; }

@@ -17,8 +17,8 @@ import type { RoomMatchStatus, RoomPhase, RoomSnapshot } from '../room/protocol.
 import { ROOM_MAX_PLAYERS } from '../room/protocol.ts';
 import { Listeners } from '../transport/transport.ts';
 import type { TransportCloseReason, TransportState, TransportStateChange, TransportStats, Unsubscribe } from '../transport/transport.ts';
-import { CLOSE_REASON, CLOSE_REASON_NAMES, SNAPSHOT_HZ } from '../wire/index.ts';
-import type { CloseReasonId } from '../wire/index.ts';
+import { CLOSE_REASON, CLOSE_REASON_NAMES, SNAPSHOT_HZ, VERDICT } from '../wire/index.ts';
+import type { CloseReasonId, VerdictId } from '../wire/index.ts';
 import type { RtcCandidateType } from '../transport/webRtcTransport.ts';
 import type { SessionP2pEvent, SessionP2pStatus, SessionRole } from './matchSession.ts';
 
@@ -68,6 +68,8 @@ export interface NetworkStatusMatchSource {
   };
   readonly phase: ConnectionPhase;
   readonly welcome: unknown;
+  /** The verdict the authority named (VERDICT.NONE or null before one); a scripted source may omit it. */
+  readonly lastVerdict?: VerdictId | null;
   /** The authority's snapshot rate as the WELCOME named it (P3b); a scripted source may omit it and the configured rate stands. */
   readonly snapshotRateHz?: number;
   readonly serverClock: {
@@ -147,6 +149,10 @@ export interface NetworkStatusSnapshot {
   bytesOutPerS: number;
   /** The wire CLOSE reason name when the server closed the link, else null. */
   closeReason: string | null;
+  /** The round has a verdict (the authority's frame named it). */
+  verdict: boolean;
+  /** The round is over for everyone — a verdict, or the room ended / lost the match: the end screen owns the story, the banner says nothing about the link. */
+  roundOver: boolean;
   /** The close ended this seat (a kick, a timeout, a replacement — never the match ending or the client leaving). */
   seatDropped: boolean;
   room: RoomClientPhase;
@@ -274,6 +280,13 @@ export function resolveNetworkHealth(
 /** The banner for a snapshot, or null when nothing needs saying. Pure. */
 export function networkBannerFor(s: Readonly<NetworkStatusSnapshot>, nowMs: number = s.sampledAtMs, hostName: (id: string) => string = (id) => id): NetworkBanner {
   const seconds = (retryAtMs: number | null) => (retryAtMs === null ? 0 : Math.max(0, Math.ceil((retryAtMs - nowMs) / 1000)));
+  // The round is over (2026-09-30, lane mp/ui-sync-check): the end screen owns the story. The actor closing its links after
+  // the ending hold is not a lost link ("Connection lost · the battle continues without you" sat over VICTORY), and an
+  // election nobody resumes is not a migration ("New host: … · resuming…" sat over the lost match's report). The room
+  // link alone may still have something to say.
+  if (s.roundOver) {
+    return s.room === 'reconnecting' ? { kind: 'reconnecting', scope: 'room', attempt: Math.max(1, s.roomReconnectAttempt), nextRetryS: seconds(s.roomRetryAtMs) } : null;
+  }
   // A host election outranks every link fact: the link is moving to the new host (or this seat is becoming it).
   if (s.migrating && s.migrationHostId && s.link !== 'left') return { kind: 'migrating', host: hostName(s.migrationHostId), self: s.role === 'host' };
   if (s.attached) {
@@ -312,7 +325,7 @@ function createSnapshot(expectedSnapshotHz: number, rosterCapacity: number): Net
     sampledAtMs: 0, attached: false, transport: 'idle', transportReason: null, transportDetail: '', reconnectAttempt: 0,
     retryAtMs: null, nextRetryMs: 0, reconnects: 0, link: 'idle', welcomed: false, rttMs: null, rttMedianMs: null, rttJitterMs: 0,
     localStallMs: 0, snapshotHz: expectedSnapshotHz, expectedSnapshotHz, snapshotAgeMs: 0, interpolationDelayMs: 0, bufferedFrames: 0,
-    lossRate: 0, correctionsPerS: 0, bytesInPerS: 0, bytesOutPerS: 0, closeReason: null, seatDropped: false,
+    lossRate: 0, correctionsPerS: 0, bytesInPerS: 0, bytesOutPerS: 0, closeReason: null, seatDropped: false, verdict: false, roundOver: false,
     room: 'idle', roomReconnectAttempt: 0, roomRetryAtMs: null, roomReconnects: 0, roomRttMs: null, roomRegion: null, seat: null,
     rosterCount: 0, rosterCapacity, roomPhase: null, matchStatus: null,
     role: null, generation: 0, hostId: null, candidateType: null, viaTurn: false, hostUplinkKbps: 0, peersConnected: 0, hostSnapshotSkips: 0, migrating: false, migrationHostId: null,
@@ -442,6 +455,8 @@ export class NetworkStatusModel {
     s.retryAtMs = null;
     s.closeReason = null;
     s.seatDropped = false;
+    s.verdict = false;
+    s.roundOver = false;
     this.windowStartMs = null;
     this.lossWindowStartMs = null;
     this.matchSubscriptions.push(match.transport.onState((change) => {
@@ -480,6 +495,8 @@ export class NetworkStatusModel {
     if (this.match) {
       this.match = null;
       this.snapshot.attached = false;
+      this.snapshot.verdict = false;
+      this.snapshot.roundOver = false;
       this.closeImpairment(this.clock());
       this.sample(this.clock(), true);
     }
@@ -558,6 +575,8 @@ export class NetworkStatusModel {
     if (match) {
       s.transport = match.transport.state;
       s.link = match.phase;
+      s.verdict = typeof match.lastVerdict === 'number' && match.lastVerdict !== VERDICT.NONE;
+      s.roundOver = s.verdict || s.matchStatus === 'ended' || s.matchStatus === 'lost';
       s.welcomed = match.welcome !== null && match.welcome !== undefined;
       // the authority's rate as the WELCOME named it (P3b: 20 or 30 Hz): the cadence health compares against it
       if (typeof match.snapshotRateHz === 'number' && match.snapshotRateHz > 0) s.expectedSnapshotHz = match.snapshotRateHz;

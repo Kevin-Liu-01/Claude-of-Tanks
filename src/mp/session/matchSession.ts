@@ -261,6 +261,9 @@ export class MatchSession {
 
   private setPhase(phase: SessionPhase, detail = ''): void {
     if (this.currentPhase === phase) return;
+    // a round that ends (a verdict, a lost match, the lobby) ends its migration too: nothing resumes after it (2026-09-30:
+    // the status banner kept "New host: … · resuming…" over the lost match's end screen)
+    if (this.migrationActive && (phase === 'ended' || phase === 'lost' || phase === 'lobby')) this.endMigration(phase);
     this.currentPhase = phase;
     this.phaseListeners.emit({ phase, detail });
   }
