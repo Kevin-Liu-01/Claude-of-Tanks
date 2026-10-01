@@ -1,7 +1,9 @@
 // The Multiplayer v2 exit flow end-to-end (four headless sessions, one in-process room host with
 // real sockets): leave battle releases the seat's client at once and keeps the room seat, the seat
 // re-enters the running match with its retained match_start (same token, same entity), a second tab
-// replaces the first (a seat drop the first reads as REPLACED), an explicit room leave drops the seat
+// takes the seat (the room retires the first tab's socket as resume_denied and the first tab never
+// resumes — 2026-09-30, §13.11: it stole the seat back before and the two tabs flapped without end;
+// its session leaves the match through the room's close), an explicit room leave drops the seat
 // and a fresh join by code is refused while the room plays (room_locked), the admin kick ends room and
 // match links together, the verdict reaches the survivors, the fresh join seats the player again and
 // the rematch welcomes it.
@@ -13,7 +15,9 @@ console.log(formatReport(report));
 assert.equal(report.pass, true, report.failures.join('; '));
 assert.equal(report.steps.reentry?.sameToken, true);
 assert.equal(report.steps.reentry?.sameEntity, true);
-assert.equal(report.steps.replaced?.reasonName, 'replaced');
+assert.equal(report.steps.replaced?.reasonName, 'resume_denied');
+assert.equal(report.steps.replaced?.firstPhase, 'lobby');
+assert.equal(report.steps.replaced?.roomSockets, report.steps.replaced?.roomSocketsBefore, 'one seat changed hands; the first tab never resumed');
 assert.equal(report.steps.roomLeave?.freshJoinRefused, 'room_locked');
 assert.equal(report.steps.rejoin?.seated, true);
 assert.equal(report.steps.rematch?.freshSeatWelcomed, true);

@@ -594,7 +594,8 @@ once when its presentation goes; the reveal's `entry_result` now says `network` 
   guard; `src/entry/telemetry.selftest.mjs` the kinds, the note, the follow-up and the budget.
 - `tools/mp-exit-e2e.mjs` (+ its core receipt, ~20 s wall): four headless sessions against the
   local rooms server — leave (the actor drops to 3 clients, the hull moved 0 m in 2 s, the seat and
-  its `match_start` kept), re-entry (same token, same entity, live), a second tab (`replaced`),
+  its `match_start` kept), re-entry (same token, same entity, live), a second tab (the room's `resume_denied`
+  to the first tab, which never resumes — §13.11, 2026-09-30),
   `room_locked` for a fresh join mid-match, the kick (room and match together), the verdict, the
   fresh join after it and the rematch welcoming it.
 - `tools/mp-browser-e2e.mjs` — the strip on both battles, the F3 panel with its 13 rows
