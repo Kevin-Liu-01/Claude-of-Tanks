@@ -1522,6 +1522,32 @@ and ran against wrangler dev (Table 1) as the brief asked.
 | f3 | PASS | 0.50 s | 4/5 | one seat, one socket — with this lane's client; the deployed client flaps (fix 7) |
 | g | PASS | 10.37 s | 40/40 | 20 rooms, every socket closed |
 
+**Table 2b — the deployed Worker after this lane's actor (`6635b70d-97fc-4ef5-8690-bf285c7a33ac`, uploaded 2026-09-30 17:50
+from `c363e1e67`; the site Origin, read-only rooms, every scenario the tool can run remotely, `--slow` for b2/c3/c4/d4).**
+The first full run started within seconds of the upload and failed scenario a (`room snapshot identity`) while the actor
+still ran `feec176b`; a alone (0.22 s, 6/10, "joined, admin, started") and a clean full run (13/13 in 59.7 s) passed, so
+the row below is that clean run plus the slow set (4/4 in 166 s). Nothing hung.
+
+| Scenario | Outcome | Resolution | Messages →/← | Detail |
+|---|---|---|---|---|
+| a | PASS | 0.22 s | 6/10 | joined, admin, started — the emptied room belongs to its first new joiner (fix 1) |
+| b1 | PASS | 0.08 s | 9/23 | admin passed |
+| b2 | PASS | 31.06 s | 9/20 | the admin passed at the disconnect grace; p3's leave no longer clears p1's lease (fix 2) |
+| c1 | PASS | 0.16 s | 13/37 | playing |
+| c2 | PASS | 8.07 s | 11/38 | successor elected |
+| c3 | PASS | 30.88 s | 12/30 | silent host replaced |
+| c4 | PASS | 70.57 s | 47/57 | session lost at the link window |
+| d1 | PASS | 0.16 s | 29/57 | everyone gone, the new seat admin at once (`adminAfterMs` 0) |
+| d2 | PASS | 0.35 s | 38/74 | everyone gone, host first; the new seat admin at once |
+| d3 | PASS | 0.05 s | 18/30 | the only seat left; the new seat admin at once |
+| d4 | PASS | 33.77 s | 27/68 | sockets closed mid-match; the new seat admin after the grace, match started |
+| e1 | PASS | 8.21 s | 29/55 | elected in 8.05 s, every seat live |
+| e2 | PASS | 8.14 s | 16/32 | terminal (`lost`) within the grace — the unable last-resort host ends the match at once (fix 5) |
+| f1 | PASS | 0.29 s | 1/1 | clean refusals |
+| f2 | PASS | 1.53 s | 10/19 | `room_locked`, spectators too |
+| f3 | PASS | 0.91 s | 4/5 | one seat, one socket |
+| g | PASS | 10.0 s | 40/40 | 20 rooms, every socket closed |
+
 **Table 3 — the base actor (`a80a8b8c3`'s `server/rooms` LAN helper with `COT_ROOMS_MATCH_TRANSPORT=p2p`, this lane's
 client and tool, every scenario with `--slow`): what the proofs find before the fixes.** a FAIL (identity), b1 PASS,
 b2 HANG (35.0 s), c1 PASS, c2 PASS 8.14 s, c3 PASS 30.07 s, c4 PASS 69.6 s, **d1 / d2 / d3 FAIL** (identity: the new seat
