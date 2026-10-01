@@ -763,6 +763,14 @@ with `src/mp/room/p2pMatchHost.ts`, shared by the Durable Object and the local r
   never the reason); the mobile tier and the "never host" switch send `host_decline { declined: true }` before the start
   (and may at any time); `src/mp/session/exitFlow.selftest.mjs`'s snapshot fixture may add `host` (not required: the
   validator normalizes).
+- **Lifecycle additions (2026-09-30, §13.11)**: `RoomHostDeclineCommand.unable?: boolean` — a running host's decline
+  with it and no candidate left ends the match `lost` at once (without it the P1b rule keeps the host); the client sends it
+  on every path that cannot host (the mobile tier's decline on join, a named or elected seat without a host thread, a boot
+  that failed, a Garage return that stopped its actor) and keeps the re-entry decline a preference. `ROOM_SEAT_DISCONNECT_TTL_MS`
+  (5 min): a seat whose socket is gone is reaped while the room waits — its slot, capability and token — and kept for a
+  running match, its lease restarting at the match's end (`RoomActorState.seatLeases`, optional on restore). An emptied
+  room keeps its code for the idle TTL and the next seat to join owns it (`joinRoom`). The admin lease is an alarm only
+  while a connected seat exists to migrate to; a later admission runs a due lease at once.
 
 ### 13.3 Host capacity — the honest limit
 
@@ -1432,6 +1440,114 @@ the v1 tools and their receipts, the dedicated/container match pieces).
 - Verification: `npm test` (the room actor, the p2p host, the client, the composition, the headless p2p flow),
   `npm run test:net:v2:rooms` (the Worker under the Workers runtime), `npm run test:net:v2:p2p` (three real browsers),
   `npm run test:net:v2:p2p:soak`, and `tools/mp-p2p-e2e.mjs --site=https://cot.kevinliu.studio` against production.
+
+### 13.11 Rooms never hang — the lifecycle proofs (lane `mp/room-lifecycle`, 2026-09-30)
+
+**The owner's request**: "test that rooms dont stay hanging or anything." `tools/mp-room-lifecycle.mjs` drives real room
+clients over real WebSockets (`ws`) — and, where a match must run, real sessions hosting on the scripted WebRTC world through
+`createHeadlessSession` — through eighteen lifecycle scenarios against any room service (`--local`: the in-process
+`server/rooms` with the p2p host, the Durable Object's own state machine; `--rooms=ws://…` wrangler dev with
+`--var ALLOWED_ORIGINS:http://127.0.0.1:0` and `--origin=http://127.0.0.1:0`; `--rooms=wss://cot-rooms.kk23907751.workers.dev`
+the deployed Worker with the site Origin header, rooms created and left, nothing deployed). Every step has a hard budget
+(the contract's constant plus 5 s of slack); a step that never completes is a **HANG** named by what it waited for and every
+seat's state at that moment; a wrong outcome is a FAIL; the table prints the time to resolution and the room messages
+(client→room / room→client, keepalive frames included) per scenario, and the exit code is non-zero on any hang or failure.
+The receipt `tools/mp-room-lifecycle.selftest.mjs` (core group, ≈ 40 s) runs the fast set on the real actor;
+`npm run test:net:v2:rooms:lifecycle` adds the slow budgets (b2 the 30 s admin grace, c3 the 30 s report budget, c4 the
+60 s link window, d4 the admin lease after every seat dropped).
+
+**The contract, where the brief left a choice.** (a) A room every seat has left keeps its code for the 24 h idle TTL
+(README: "rooms never close because a player leaves"; a shared invite link keeps working) with the expiry as its only
+deadline, and **the next seat to join owns it** — `joinRoom` makes the first seat of an empty roster the admin. (f) A join
+during `starting` / `playing` is refused `room_locked`, spectators included; a seat with a capability resumes and receives
+its `match_start` again. (e) An elected last resort that cannot host says so (`unable`) and the match ends `lost` at once
+when nobody else can; a preference decline keeps the P1b rule (the host is kept, it may boot afresh).
+
+**Found and fixed** (each receipted in `roomActor` / `roomPolicy` / `roomClient` / `matchSessionP2p` / `playMenuAdapter` /
+`playMenu` and, actor-side, in the Workers-runtime suite `cloudflare/rooms/test/p2p.test.ts` — five new tests on the real
+Durable Object with its alarms; the proofs' double `tools/mp-p2p-room-double.ts` mirrors every rule):
+
+| # | Where | What hung | Fix |
+|---|---|---|---|
+| 1 | actor (`roomPolicy.joinRoom`) | an emptied room kept its departed creator as `adminId`; `readRoomSnapshot` requires the admin among the players, so every later joiner's client refused its own `room_joined` snapshot (`invalid_payload: room snapshot identity`) and the code was dead until the 24 h expiry — scenarios a, d1–d3 on the deployed Worker and the base actor | the first seat to join an emptied room is its admin |
+| 2 | actor (`leave`) | a non-admin's leave cleared a disconnected admin's lease (`if (room.adminId !== playerId) adminLeaseAt = null` was true for every non-admin leaver): the seats left behind had no admin to start with until the admin returned — b2 hung 35 s on the deployed Worker and the base actor | `settleAdminLease`: cleared only when the admin is connected or gone, armed when the admin seat is disconnected without one |
+| 3 | actor (`tick`) | the admin lease re-armed every 30 s while nobody else was connected: an abandoned room (every tab closed, the common exit) fired 2,880 billed alarms a day, each a storage write — 35 such rooms exhaust the Free plan's daily requests | a due lease with no migration target is not an alarm (`nextDeadline` gates it on `adminMigrationTarget`); the next admission's reschedule runs it at once, so a newcomer owns the room without a further wait |
+| 4 | actor (`seatLeases`, `reapSeats`) | seats whose sockets closed were never reaped: a 1v1 room whose guest closed the tab refused every newcomer (`room_full`) for 24 h | `ROOM_SEAT_DISCONNECT_TTL_MS` = 5 min while the room waits (housekeeping: the idle clock does not restart); a seat of a running match is kept and its lease restarts at the end; durable, optional on restore (a pre-lane state gives every socketless seat a lease from the restore) |
+| 5 | actor (`migrateHost`) + client | the last resort elected after the host's tab died could not host (the mobile tier, a failed boot, a Garage return): the room kept it as a host that never reported and the peers waited out the 30 s report budget — e2 resolved in 38.0 s on the base actor | `host_decline { unable: true }` ends the match `lost` at once when nobody else can (`loseMatch`); the client says `unable` on every cannot-host path; e2 resolves in 8.0 s (the host grace) |
+| 6 | client (`RoomClient.transportChanged`) | a resume the room refused (`room_not_found` after the room went away) was swallowed: the client sat in `connecting` while the room retired the silent socket every 15 s and the transport reopened it — without end | the refusal ends the client with the room's code (`onClosed('room_not_found')` → the menu's "room expired") |
+| 7 | client (`RoomClient.receive`) | two clients of one seat sharing its capability (two tabs of one browser) flapped the seat between them without end — the room retires the first with `resume_denied`, the first reconnects and resumes, the room retires the second, … every hop a billed message — f3 hung on the local actor with the deployed client's logic | an unsolicited `resume_denied` ends the retired client; it never resumes; f3 resolves in 0.02 s |
+| 8 | client (`closeReasonFor`) | the reconnect window running out (`exhausted`) reached the Play menu as a generic connection failure | `room_unreachable` — the code a failed admission carries — so the menu shows "Room service unavailable" with Try again (`playMenuAdapter.selftest` over real sockets: the service closes the socket and stays away → `onClose('room_unreachable')`, `signaling_unavailable`, `canRetry`); Return to Garage stays unconditional (`playMenu.selftest`) |
+
+No wrangler migration tag changes: the `Room` class and its storage shape are unchanged (`RoomActorState` gains an optional
+field). This lane deployed nothing; items 1–5 reach production with the next deploy, items 6–8 with the next client build.
+
+**Table 1 — wrangler dev (this branch's Worker code under miniflare, 2026-09-30 17:05, every scenario with `--slow`).**
+
+| Scenario | Outcome | Resolution | Messages →/← | Detail |
+|---|---|---|---|---|
+| a creator leaves an empty lobby; a new seat joins the same code | PASS | 0.03 s | 6/10 | joined as admin, started |
+| b1 creator leaves with seats present | PASS | 0.03 s | 9/23 | admin passed at once; the new admin started |
+| b2 creator drops with seats present; a seat leaves during the grace | PASS | 30.03 s | 9/20 | admin passed at the 30 s grace; the dropped seat held for its lease |
+| c1 a seat drops at match start (scripted host) | PASS | 0.06 s | 13/37 | `playing` on the host's report; `waiting` with the verdict |
+| c2 the host drops at match start | PASS | 8.01 s | 11/39 | `host_changed` (timeout) to the next commander, the secret on its copy alone; playing, then the verdict |
+| c3 the host stays connected and never reports | PASS | 30.00 s | 12/30 | replaced at the report budget |
+| c4 a peer whose host reports but never accepts its link | PASS | 66.51 s | 47/57 | the session reaches `lost` at the 60 s link window; the room stayed `starting` on the hanging host's reports |
+| d1 all seats leave mid-match, host last; a new seat starts a new match | PASS | 0.01 s | 28/56 | lost → waiting; the new seat admin at once, its host live |
+| d2 all seats leave mid-match, host first | PASS | 0.17 s | 38/74 | two elections at once (`declined`: the Garage return declines before the leave), then lost; the new seat starts |
+| d3 the only seat leaves mid-match | PASS | 0.00 s | 18/30 | lost → waiting; the new seat starts |
+| d4 all seats drop mid-match (sockets closed) | PASS | 8.01 s | 26/67 | lost at the host grace; the new seat admin 22.0 s after joining (the 30 s lease from the host's drop), its match live |
+| e1 the host's tab dies with a willing successor | PASS | 8.13 s | 29/55 | elected 8,021 ms after the drop; every seat live on the successor, nobody migrating |
+| e2 the host's tab dies with no willing successor | PASS | 8.03 s | 16/32 | the last resort elected at the grace, `unable` → lost at once; the peer terminal (`lost`), the room waiting |
+| f1 a bogus and a malformed room code | PASS | 0.02 s | 1/1 | `room_not_found`; `invalid_room_code` before any socket |
+| f2 a join during playing (commander and spectator) | PASS | 0.04 s | 10/19 | `room_locked` for both; the lobby admits after the verdict |
+| f3 a double join of the same seat, and a stranger with its id | PASS | 0.02 s | 4/5 | one seat, one socket; the retired client `resume_denied`, never resuming; the stranger refused |
+| g twenty rooms created and left | PASS | 0.61 s | 40/40 | every socket closed |
+
+**Table 2 — the deployed Worker (`wss://cot-rooms.kk23907751.workers.dev`, deploy 155 = the actor before this lane,
+this lane's client and tool, the site Origin, read-only rooms; 2026-09-30 17:05).** Scenarios d and e need a match host
+and ran against wrangler dev (Table 1) as the brief asked.
+
+| Scenario | Outcome | Resolution | Messages →/← | Detail |
+|---|---|---|---|---|
+| a | **FAIL** | – | 3/3 | `RoomError: room snapshot identity` — the departed creator is still admin; the joiner's client refuses the snapshot (fix 1, lands with the next deploy) |
+| b1 | PASS | 0.08 s | 9/23 | admin passed |
+| b2 | **HANG** | – | 6/12 | the admin never passed in 35 s: p3's leave during the grace cleared p1's lease; p2 left with a disconnected admin and no start (fix 2) |
+| c1 | PASS | 0.21 s | 13/37 | playing |
+| c2 | PASS | 8.04 s | 11/39 | successor elected |
+| c3 | PASS | 30.00 s | 12/30 | silent host replaced |
+| c4 | PASS | 66.53 s | 47/57 | session lost at the link window |
+| f1 | PASS | 0.53 s | 1/1 | clean refusals |
+| f2 | PASS | 0.41 s | 10/19 | `room_locked`, spectators too |
+| f3 | PASS | 0.50 s | 4/5 | one seat, one socket — with this lane's client; the deployed client flaps (fix 7) |
+| g | PASS | 10.37 s | 40/40 | 20 rooms, every socket closed |
+
+**Table 3 — the base actor (`a80a8b8c3`'s `server/rooms` LAN helper with `COT_ROOMS_MATCH_TRANSPORT=p2p`, this lane's
+client and tool, every scenario with `--slow`): what the proofs find before the fixes.** a FAIL (identity), b1 PASS,
+b2 HANG (35.0 s), c1 PASS, c2 PASS 8.14 s, c3 PASS 30.07 s, c4 PASS 69.6 s, **d1 / d2 / d3 FAIL** (identity: the new seat
+cannot join the emptied room), **d4 HANG** (the new seat never admin in 35 s: the watcher's leave cleared the lease), e1 PASS
+9.16 s, **e2 FAIL** (terminal after **38.0 s** — the grace plus the report budget — not within the grace), f1–f3 PASS, g PASS.
+The local receipt's fast set on this branch: 14 scenarios PASS in 38.8 s (local run 2; f3 hung 5 s in run 1 before fix 7).
+
+**What the tables say.** On the Worker's own code with this lane every scenario resolves inside the contract's constant:
+the admin at once on a leave and at the 30 s grace on a drop, the host at the 8 s grace (c2, d4, e1, e2), a silent host at
+the 30 s report budget (c3), a peer whose host never links at the client's 60 s window (c4 — the one bound that is the
+client's, surfaced as `lost` → the entry failure / the disconnect overlay), every refusal clean (f), twenty rooms churned
+with every socket closed and each actor holding only its idle expiry (g, asserted on the local actor). On production today
+(deploy 155) two of the eleven room-only scenarios are stuck states — a (dead code after the creator leaves) and b2 (no admin
+after a leave during the grace) — and the client-side hangs 6–7 are in the deployed client; none of them needs a Worker
+class change.
+
+**Receipts.** `tools/mp-room-lifecycle.selftest.mjs` (core), `roomActor.selftest` (six new sections: the emptied room,
+the un-re-armed lease and the admission that runs it, the lease kept across a leave, the reap with its match exception
+and restart, `unable` at once against the P1b keep, the leases' hibernation round trip and the legacy state),
+`roomPolicy.selftest`, `roomClient.selftest` (the refused resume, the two-tab flap, `room_unreachable`),
+`matchSessionP2p.selftest` (`unable` on the cannot-host and Garage-return declines, the re-entry decline a preference),
+`playMenuAdapter.selftest` (the service closing the socket → "Room service unavailable" with Try again), `playMenu.selftest`
+(Try again and Return to Garage pinned), `cloudflare/rooms/test/p2p.test.ts` (ROOM19–ROOM23: the emptied room's alarm and
+owner, the un-re-armed lease and the admission migration, the lease across a leave, the reap and its match exception,
+`unable` at once), `roomWorkerProgram.selftest` (DOM-free). The new receipts fail on the base commit (a scratch worktree at
+`a80a8b8c3`: `roomPolicy` "the first seat to join an emptied room owns it", `roomClient` "timeout: the refused resume ends
+the client").
 
 ## 10. Decisions for the owner
 

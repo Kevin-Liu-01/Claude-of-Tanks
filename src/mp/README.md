@@ -101,7 +101,10 @@ swap its link onto it; the other peers re-offer to the new host; a replaced host
 (no Worker, the mobile tier, the never-host switch) send `host_decline` on join. The status model shows the role,
 the generation, the candidate path (TURN), the host uplink and the migration banner. Receipts: `transport/webRtcTransport`,
 `match/rtcClientLink`, `host/*`, `room/roomClientSignals`, the extended session / status / surface / telemetry ones,
-and the headless three-seat proof `tools/mp-p2p-headless.mjs` (core group) on `tools/mp-p2p-room-double.ts`;
+the headless three-seat proof `tools/mp-p2p-headless.mjs` (core group) on `tools/mp-p2p-room-double.ts`, and the
+lifecycle proofs `tools/mp-room-lifecycle.mjs` (docs/MULTIPLAYER-V2.md §13.11: eighteen scenarios in which no room, seat or
+client may hang, against the local actor, wrangler dev or the deployed Worker; its receipt in the core group,
+`npm run test:net:v2:rooms:lifecycle` with the slow budgets);
 `npm run test:net:v2:p2p` runs the same flow in three headless Chromes with real WebRTC (`--rooms=wss://…` for the real
 room service; the two tabs still rendering draw at 320×200 while the old host re-enters, so its program compile is not
 starved by two full battle frames on the shared headless GPU). The v2 entry itself extends a shader preparation that ran

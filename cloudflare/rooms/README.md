@@ -59,7 +59,17 @@ are documented in `docs/MULTIPLAYER-V2.md` §13.2 and its addendum §13.2.1.
    generation, resumeTick, reason }`, the new host's copy with the secret. The old
    host coming back is a peer. No commander left after a drop or a leave:
    `match_status lost`, the room `waiting` — the admin may start again; after a
-   decline the host keeps hosting.
+   decline the host keeps hosting — unless the decline says `unable: true` (the seat
+   cannot host at all): then the match is lost at once (2026-09-30, §13.11).
+6. The lifecycle rules of 2026-09-30 (docs/MULTIPLAYER-V2.md §13.11, proven by
+   `tools/mp-room-lifecycle.mjs` against this Worker under wrangler dev and the
+   deployed one): a room every seat has left keeps its code for the idle TTL and the
+   next seat to join owns it; the admin lease is an alarm only while a connected seat
+   exists to migrate to (a later admission runs a due lease at once — no 30 s re-arm
+   loop on an abandoned room); a seat whose socket is gone is reaped after
+   `ROOM_SEAT_DISCONNECT_TTL_MS` (5 min) while the room waits, kept for a running
+   match (its lease restarts at the end); another seat's leave never clears a
+   disconnected admin's lease.
 
 Alarms carry every deadline (admin lease, host lease, report budget, 24 h expiry);
 the object hibernates between them and restores the host state from its SQLite
