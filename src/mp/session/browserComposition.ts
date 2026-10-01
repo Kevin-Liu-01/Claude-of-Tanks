@@ -340,6 +340,8 @@ export interface BrowserCompositionOptions {
   setTimer?: (callback: () => void, delayMs: number) => unknown;
   clearTimer?: (handle: unknown) => void;
   reportError?: (scope: string, error: RuntimeValue) => void;
+  /** The host's warn-level log lines (a report the room refused after an election, an elected seat that cannot host): a warning, never a console error. */
+  reportWarning?: (scope: string, detail: string) => void;
 }
 
 export interface BrowserRoundStats {
@@ -582,6 +584,7 @@ export function createBrowserComposition({
   setTimer = (callback, delayMs) => setTimeout(callback, delayMs),
   clearTimer = (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
   reportError = (scope, error) => console.error(`[${scope}]`, error),
+  reportWarning = (scope, detail) => console.warn(`[${scope}]`, detail),
 }: BrowserCompositionOptions): BrowserComposition {
   validatePorts(ports);
   const { lifecycle, load, roster, scene, presentation: activation, room: roomPorts } = ports;
@@ -824,7 +827,11 @@ export function createBrowserComposition({
         p2p: {
           ...p2pPorts,
           ice: p2pPorts.loadIce ? () => p2pPorts.loadIce!(roomMode()) : undefined,
-          onLog: (level, message, fields) => { if (level !== 'info') reportError(`multiplayer v2 host ${level}`, fields ? `${message} ${JSON.stringify(fields)}` : message); },
+          onLog: (level, message, fields) => {
+            const detail = fields ? `${message} ${JSON.stringify(fields)}` : message;
+            if (level === 'error') reportError(`multiplayer v2 host ${level}`, detail);
+            else if (level === 'warn') reportWarning(`multiplayer v2 host ${level}`, detail);
+          },
         },
       } : {}),
     });
