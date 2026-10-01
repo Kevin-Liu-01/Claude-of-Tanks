@@ -1712,11 +1712,9 @@ body[data-cot-input="coarse"] .cot-map-inspect{width:44px;height:44px;}
 /* Short landscape drawers need their own reading space: fixed filters must
    never consume the entire scrollable camouflage catalog. */
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-multiplayer-entry{visibility:hidden}
-@media (max-height: 340px) and (orientation: landscape){
-  body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-garage[data-garage-panel]{
-    --cot-drawer-bottom:max(8px,env(safe-area-inset-bottom));
-  }
-  body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-leftcol{
-    padding:4px;
-  }
+body[data-cot-height-density='tight'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-garage[data-garage-panel]{
+  --cot-drawer-bottom:max(8px,env(safe-area-inset-bottom));
+}
+body[data-cot-height-density='tight'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-leftcol{
+  padding:4px;
 }
