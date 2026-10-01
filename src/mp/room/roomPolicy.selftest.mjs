@@ -240,4 +240,26 @@ function fullRoom({ teamSize = 14 } = {}) {
   assert.throws(() => readRoomSnapshot({ ...serialized, v: 1 }), /version/);
 }
 
+// ---- the lifecycle proofs (2026-09-30): an emptied room's next joiner is its admin; `unable` on a decline is a boolean
+{
+  const room = createRoom({ roomCode: 'ROOM13', mode: 'private', creator: { id: 'creator', name: 'Creator' }, selection: { specId: 'm1a2' }, settings: { teamSize: 2 }, now: T0 });
+  assert.equal(removePlayer(room, 'creator', T0 + 1), true);
+  assert.deepEqual(room.players, []);
+  assert.equal(room.adminId, 'creator', 'nothing to migrate to: the departed id stays on record while the room is empty');
+  assert.doesNotThrow(() => readRoomSnapshot(JSON.parse(JSON.stringify(serializeRoom(room)))), 'an empty room validates');
+  const late = joinRoom(room, { player: { id: 'late', name: 'Late' }, selection: { specId: 't90m' }, now: T0 + 2 });
+  assert.equal(late.isAdmin, true, 'the first seat to join an emptied room owns it');
+  assert.equal(room.adminId, 'late');
+  assert.doesNotThrow(() => readRoomSnapshot(JSON.parse(JSON.stringify(serializeRoom(room)))), 'the joiner\'s snapshot validates (the departed creator as admin failed the identity check before)');
+  const second = joinRoom(room, { player: { id: 'second', name: 'Second' }, selection: { specId: 't90m' }, now: T0 + 3 });
+  assert.equal(second.isAdmin, false, 'only the first seat');
+  assert.equal(room.players.filter((p) => p.isAdmin).length, 1);
+  applyRoomCommand(room, 'late', { type: 'set_ready', ready: true }, T0 + 4);
+  applyRoomCommand(room, 'second', { type: 'set_ready', ready: true }, T0 + 5);
+  assert.equal(canStart(room), true, 'and can start');
+  applyRoomCommand(room, 'second', { type: 'host_decline', declined: true, unable: true }, T0 + 6);
+  assert.equal(room.players.find((p) => p.id === 'second').hostDeclined, true, 'unable is a decline for the policy; the actor reads the flag');
+  reject(() => applyRoomCommand(room, 'second', { type: 'host_decline', declined: true, unable: 'yes' }, T0 + 7), 'invalid_command');
+}
+
 console.log('roomPolicy: PASS');

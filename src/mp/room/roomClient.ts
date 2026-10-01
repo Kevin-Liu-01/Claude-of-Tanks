@@ -313,9 +313,12 @@ export class RoomClient {
     return this.command({ type: 'match_report', ...report });
   }
 
-  /** This seat declines (or accepts again) to host peer-to-peer matches. */
-  declineHost(declined: boolean): Promise<Record<string, unknown>> {
-    const command: RoomHostDeclineCommand = { type: 'host_decline', declined };
+  /**
+   * This seat declines (or accepts again) to host peer-to-peer matches. `unable` (2026-09-30): it cannot host at all —
+   * a running host's decline with it and nobody left to take over ends the match at once (§13.2.1).
+   */
+  declineHost(declined: boolean, { unable = false }: { unable?: boolean } = {}): Promise<Record<string, unknown>> {
+    const command: RoomHostDeclineCommand = { type: 'host_decline', declined, ...(unable ? { unable: true } : {}) };
     return this.command({ ...command });
   }
 
@@ -387,18 +390,38 @@ export class RoomClient {
 
   private transportChanged(change: TransportStateChange): void {
     if (change.state === 'open' && change.resumed && this.admission && this.roomCode) {
-      // A dropped socket came back: present the capability again (the host retires the old socket).
+      // A dropped socket came back: present the capability again (the host retires the old socket). A resume the room
+      // refuses ends the client with the room's code (2026-09-30, the lifecycle proofs: a `room_not_found` after the room
+      // went away was swallowed here, the client sat in `connecting`, the room retired the silent socket after 15 s, the
+      // transport reopened it — without end; a refusal the room follows with a close, `resume_denied`, reached onClosed).
       this.setPhase('connecting', 'resuming');
-      void this.admit('join', this.rejoinPayload(this.roomCode)).catch(() => { /* reported through onClosed */ });
+      void this.admit('join', this.rejoinPayload(this.roomCode)).catch((error: unknown) => {
+        if (this.currentPhase !== 'connecting') return;
+        this.finish(this.closedReason ?? (error instanceof RoomError ? error.code : 'room_resume_failed'));
+      });
     } else if (change.state === 'reconnecting') {
       this.failPending(new RoomError('internal', 'connection lost'));
       this.stopPings();
+      // the room ended this seat's membership before the socket went: nothing to resume
+      if (this.closedReason === 'resume_denied' || this.closedReason === 'expired' || this.closedReason === 'kicked') { this.finish(this.closedReason); return; }
       this.setPhase('reconnecting', change.detail ?? '', { attempt: change.attempt, retryDelayMs: change.retryDelayMs });
     } else if (change.state === 'closed') {
       this.failPending(new RoomError('internal', `connection closed (${change.reason ?? 'unknown'})`));
       this.stopPings();
-      if (this.currentPhase !== 'closed') this.finish(change.reason === 'server' ? (this.closedReason ?? 'room_connection_closed') : (change.reason ?? 'closed'));
+      if (this.currentPhase !== 'closed') this.finish(this.closeReasonFor(change.reason));
     }
+  }
+
+  /**
+   * The reason `onClosed` names: the room's own when it sent one (kicked, expired, resume_denied); else, for a reconnect
+   * window that ran out (`exhausted`) or a connect that never opened (`timeout`), `room_unreachable` — the same code a
+   * failed admission carries (`RoomConnectError`), so the Play menu shows "Room service unavailable" with Try again when
+   * the room host closes the socket and stays away (2026-09-30; both read as a generic connection failure before).
+   */
+  private closeReasonFor(reason: string | undefined): string {
+    if (reason === 'server') return this.closedReason ?? 'room_connection_closed';
+    if (reason === 'exhausted' || reason === 'timeout') return this.closedReason ?? 'room_unreachable';
+    return reason ?? 'closed';
   }
 
   private finish(reason: string): void {
@@ -495,7 +518,14 @@ export class RoomClient {
       const code = isRoomErrorCode(payload.code) ? payload.code : 'internal';
       const entry = requestId ? this.pending.get(requestId) : null;
       if (entry && requestId) { this.pending.delete(requestId); this.clearTimer(entry.timer); entry.reject(new RoomError(code)); }
-      if (code === 'resume_denied' || code === 'expired' || code === 'kicked') this.closedReason = code;
+      if (code === 'resume_denied' || code === 'expired' || code === 'kicked') {
+        this.closedReason = code;
+        // An unsolicited `resume_denied` is the room retiring THIS socket: another client of the same seat presented the
+        // capability. The close that follows must not reconnect — a resume would take the seat back and retire the other
+        // client, which resumes in turn: two tabs of one seat flapped it between them without end, every hop a billed
+        // room message (found by the lifecycle proofs, 2026-09-30). The seat is the other client's now.
+        if (!entry) this.finish(code);
+      }
       return;
     }
     if (requestId) {

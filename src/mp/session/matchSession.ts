@@ -292,7 +292,8 @@ export class MatchSession {
     if (!this.p2pOptions || this.canHost || this.declinedHosting || this.room.phase !== 'joined') return;
     this.declinedHosting = true;
     this.p2pListeners.emit({ kind: 'declined' });
-    void this.room.declineHost(true).catch(() => { this.declinedHosting = false; });
+    // `unable` (2026-09-30): this seat cannot host at all — elected as the last resort, its decline ends the match at once
+    void this.room.declineHost(true, { unable: true }).catch(() => { this.declinedHosting = false; });
   }
 
   /** Enter (or re-enter) the announced match: presentation, transport on the seat token, client. */
@@ -478,7 +479,7 @@ export class MatchSession {
         this.log('warn', 'named host cannot host; declining', { canHost: this.canHost, secret: !!this.hostSecret });
         this.declinedHosting = true;
         this.p2pListeners.emit({ kind: 'declined' });
-        void this.room.declineHost(true).catch(() => { /* the room may predate the command */ });
+        void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
       }
       const peer = this.createPeerTransport();
       this.peerTransport = peer;
@@ -557,7 +558,9 @@ export class MatchSession {
       this.p2pListeners.emit({ kind: 'migration', phase: 'failed', hostId: me, generation: change.generation, role: this.role, detail: 'cannot host' });
       this.migrationActive = false;
       this.migrationHostId = null;
-      void this.room.declineHost(true).catch(() => { /* the room may predate the command */ });
+      // the last resort that cannot host: the room ends the match now when nobody else can (2026-09-30), instead of
+      // keeping this seat as a host that never reports for the 30 s budget
+      void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
       return;
     }
     this.hostSecret = secret;
@@ -617,7 +620,7 @@ export class MatchSession {
       this.p2pListeners.emit({ kind: 'migration', phase: 'failed', hostId: me, generation: change.generation, role: this.role, detail: 'boot failed' });
       this.migrationActive = false;
       this.migrationHostId = null;
-      void this.room.declineHost(true).catch(() => { /* the room may predate the command */ });
+      void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
       return;
     }
     if (this.host !== host || this.matchClient !== client) { host.stop(); return; }
@@ -673,9 +676,10 @@ export class MatchSession {
       client.dispose();
     }
     if (host) {
-      // The peers' channels drop silently and the room hears this seat will not host: it elects the next one.
+      // The peers' channels drop silently and the room hears this seat will not host: it elects the next one — and, its
+      // actor being gone (`unable`), ends the match at once when nobody else can take it (2026-09-30).
       host.stop(CLOSE_REASON.CLIENT_LEAVE, reason);
-      if (this.room.phase === 'joined') void this.room.declineHost(true).catch(() => { /* the room may predate the command */ });
+      if (this.room.phase === 'joined') void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
       this.declinedHosting = true;
       this.p2pListeners.emit({ kind: 'role', role: null, generation: this.room.generation });
     }

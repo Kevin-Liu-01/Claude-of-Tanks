@@ -46,6 +46,13 @@ export const ROOM_CHAT_HISTORY = 48;
 export const ROOM_CHAT_MAX_CHARS = 240;
 /** A socket that has not authenticated within this time is retired. */
 export const ROOM_UNAUTHENTICATED_TIMEOUT_MS = 15_000;
+/**
+ * A seat whose socket is gone stays in the roster this long while the room waits (a reload or a network blip resumes
+ * it; the transport's own reconnect window is 60 s), then the room reaps it — its slot, its capability and its token.
+ * A seat of a running match is kept for the match; its lease restarts when the match ends (2026-09-30, the lifecycle
+ * proofs: seats whose tabs closed held a room's slots for the 24 h idle TTL, and a 1v1 room refused every newcomer).
+ */
+export const ROOM_SEAT_DISCONNECT_TTL_MS = 5 * 60 * 1000;
 /** Message rate ceiling per socket (a 10 s window). */
 export const ROOM_RATE_WINDOW_MS = 10_000;
 export const ROOM_RATE_MAX_MESSAGES = 120;
@@ -545,6 +552,13 @@ export interface RoomMatchReportCommand {
 export interface RoomHostDeclineCommand {
   type: 'host_decline';
   declined: boolean;
+  /**
+   * 2026-09-30 (the lifecycle proofs): the seat cannot run the match at all — no host thread, the mobile tier, a boot
+   * that failed, a Garage return that stopped its actor. A running host's decline with `unable` and no candidate left
+   * ends the match `lost` at once; without it the P1b rule keeps the host (its client may boot afresh) and the peers
+   * wait out the report budget. Optional: a client that predates it declines by preference.
+   */
+  unable?: boolean;
 }
 
 /** The p2p match URL: `rtc://<roomId>/<generation>`; the client opens a data channel to `hostId` through `room_signal`. */

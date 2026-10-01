@@ -78,6 +78,7 @@ async function joinedClient({ tier = 'desktop', playerId = 'me' } = {}) {
   const decline = transport.outbound.find((envelope) => envelope.type === 'room_command' && envelope.payload.command?.type === 'host_decline');
   assert.ok(decline, 'the mobile tier sends host_decline on join');
   assert.equal(decline.payload.command.declined, true);
+  assert.equal(decline.payload.command.unable, true, 'a seat that cannot host at all says so (2026-09-30): elected as the last resort, the room ends the match at once');
   assert.equal(session.canHost, false);
   assert.deepEqual(events, [{ kind: 'declined' }]);
   session.dispose(); client.dispose();
@@ -180,12 +181,17 @@ console.log('matchSessionP2p.selftest: the host boot and its reports, the start 
   await until(() => quick.phase === 'match', 'the re-entry round entered');
   assert.equal(quick.role, 'peer', 'the re-named host enters as a peer');
   assert.ok(transport.outbound.some((envelope) => envelope.payload?.command?.type === 'host_decline' && envelope.payload.command.declined === true), 'it declined so a peer with the keyframe resumes');
+  assert.equal(transport.outbound.filter((envelope) => envelope.payload?.command?.type === 'host_decline').at(-1).payload.command.unable, undefined,
+    'the re-entry decline is a preference: this seat can still boot afresh, so the room keeps it when nobody else can host');
   assert.ok(quickEvents.some((event) => event.kind === 'declined'));
   // nobody else could host: no election comes; after the wait it boots afresh through the election path
   await until(() => quick.role === 'host', 'the fallback fresh boot', 5000);
   await until(() => quick.matchHost?.state === 'live', 'the fallback host live', 10_000);
   assert.ok(quickEvents.some((event) => event.kind === 'migration' && event.phase === 'begin' && event.hostId === 'me'), 'the fallback rode the election path');
   await quick.leaveMatch('done');
+  const departure = transport.outbound.filter((envelope) => envelope.payload?.command?.type === 'host_decline').at(-1);
+  assert.deepEqual({ declined: departure.payload.command.declined, unable: departure.payload.command.unable }, { declined: true, unable: true },
+    'a Garage return that stopped the actor declines as unable: with nobody left the room ends the match now, not after the report budget');
   quick.dispose(); client.dispose();
   room.match = null;
   room.phase = 'waiting';

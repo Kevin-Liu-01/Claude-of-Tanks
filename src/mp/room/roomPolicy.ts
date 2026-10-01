@@ -277,10 +277,15 @@ export function joinRoom(room: RoomSnapshot, { player, selection, team, now }: J
   const requested: RoomTeam = isCoopGameMode(room.settings.gameMode) ? 'alpha' : (team && isRoomTeam(team) ? team : autoTeam(room));
   const target = resolveJoinTeam(room, requested);
   if (room.players.length >= ROOM_MAX_SEATS) throw new RoomError('room_full');
+  // 2026-09-30 (the lifecycle proofs): a room every seat has left keeps its code for the idle TTL, and the next seat
+  // to join owns it — the departed creator's id stayed admin before, so no joiner's snapshot validated (`readRoomSnapshot`
+  // requires the admin among the players) and the code was dead until it expired.
+  const first = room.players.length === 0;
   const seated = createPlayer(room, {
-    id, name: uniqueName(room, cleanName(player.name), null), team: target, selection, isAdmin: false, now,
+    id, name: uniqueName(room, cleanName(player.name), null), team: target, selection, isAdmin: first, now,
   });
   room.players.push(seated);
+  if (first) room.adminId = seated.id;
   touch(room, now);
   return seated;
 }
@@ -379,7 +384,8 @@ export function applyRoomCommand(
       player.name = uniqueName(room, cleanName(command.name), id);
       break;
     case 'host_decline':
-      if (typeof command.declined !== 'boolean') throw new RoomError('invalid_command');
+      // `unable` (2026-09-30) is the actor's concern — a running host that cannot host at all with nobody left ends the match
+      if (typeof command.declined !== 'boolean' || (command.unable !== undefined && typeof command.unable !== 'boolean')) throw new RoomError('invalid_command');
       player.hostDeclined = command.declined;
       break;
     case 'select_vehicle': {

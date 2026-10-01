@@ -27,7 +27,8 @@ import type { SeatClaims } from '../../../server/match/seatToken.ts';
 import {
   ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_CHAT_HISTORY, ROOM_CLIENT_MESSAGE, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS,
   ROOM_MATCH_LOST_AFTER_POLLS, ROOM_MATCH_POLL_MS, ROOM_MATCH_REPORT_STALE_AFTER_MS, ROOM_MAX_REGION_CHARS, ROOM_RATE_MAX_MESSAGES,
-  ROOM_RATE_WINDOW_MS, ROOM_RESUME_TOKEN_RE, ROOM_SEAT_TOKEN_TTL_MS, ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES, ROOM_STATE_COALESCE_MS,
+  ROOM_RATE_WINDOW_MS, ROOM_RESUME_TOKEN_RE, ROOM_SEAT_DISCONNECT_TTL_MS, ROOM_SEAT_TOKEN_TTL_MS, ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES,
+  ROOM_STATE_COALESCE_MS,
   ROOM_UNAUTHENTICATED_TIMEOUT_MS, RoomError, cleanId, isRecord, isRoomTeam, noElection, normalizeRoomChat, p2pMatchUrl,
   parseRoomEnvelope, publicRoomError, readRoomMatchReport, readRoomSignalPayload, utf8ByteLength,
 } from './protocol.ts';
@@ -167,6 +168,12 @@ export interface RoomActorState {
    * without end); a drop or a leave still may. Cleared at every start and end; optional on restore.
    */
   steppedDown?: string[];
+  /**
+   * 2026-09-30 (the lifecycle proofs): the deadline at which each disconnected seat is reaped while the room waits
+   * (`ROOM_SEAT_DISCONNECT_TTL_MS` after its socket went, restarted at a match's end). Optional on restore: a state
+   * written before it gives every disconnected seat a fresh lease at the restore.
+   */
+  seatLeases?: Record<string, number>;
 }
 
 function matchIdFrom(random: () => number, round: number): string {
@@ -193,6 +200,8 @@ export class RoomActor {
   private hostReport: P2pHostReport | null = null;
   private hostReportDueAt: number | null = null;
   private steppedDown = new Set<string>();
+  /** playerId → the reap deadline of a disconnected seat (2026-09-30). */
+  private seatLeases = new Map<string, number>();
   private readonly sockets = new Map<string, RoomSocketRecord>();
   private readonly socketOfPlayer = new Map<string, string>();
   private polling: Promise<void> | null = null;
@@ -247,6 +256,7 @@ export class RoomActor {
       hostReport: this.hostReport ? { ...this.hostReport, verdict: this.hostReport.verdict ? { ...this.hostReport.verdict } : null } : null,
       hostReportDueAt: this.hostReportDueAt,
       steppedDown: [...this.steppedDown],
+      seatLeases: Object.fromEntries(this.seatLeases),
     };
   }
 
@@ -265,6 +275,7 @@ export class RoomActor {
     this.hostReport = state.hostReport ?? null;
     this.hostReportDueAt = state.hostReportDueAt ?? null;
     this.steppedDown = new Set(Array.isArray(state.steppedDown) ? state.steppedDown.filter((id): id is string => typeof id === 'string') : []);
+    this.seatLeases = new Map(Object.entries(isRecord(state.seatLeases) ? state.seatLeases : {}).filter((entry): entry is [string, number] => Number.isFinite(entry[1])));
     // A start that was in flight when the host restarted never completed: the room returns to waiting.
     if (state.startInFlight && this.room) abortStart(this.room, this.ports.now());
     this.startInFlight = false;
@@ -303,6 +314,11 @@ export class RoomActor {
       const hostId = this.runningP2pHostId();
       if (hostId && !this.socketOfPlayer.has(hostId) && this.hostLeaseAt === null) this.hostLeaseAt = now + ROOM_HOST_DISCONNECT_GRACE_MS;
       if (hostId && this.socketOfPlayer.has(hostId)) this.hostLeaseAt = null;
+      // a seat the restart left without a socket and without a lease (a state written before the leases) is reaped from now
+      for (const player of this.room.players) {
+        if (player.connected) this.seatLeases.delete(player.id);
+        else if (!this.seatLeases.has(player.id)) this.seatLeases.set(player.id, now + ROOM_SEAT_DISCONNECT_TTL_MS);
+      }
     }
     this.reschedule();
   }
@@ -316,12 +332,70 @@ export class RoomActor {
     let next: number | null = null;
     const consider = (at: number | null) => { if (at !== null && (next === null || at < next)) next = at; };
     consider(this.expiresAt);
-    consider(this.adminLeaseAt);
+    // The admin lease is an alarm only while a seat exists to migrate to: with nobody else connected it stays due and
+    // the next admission's reschedule runs it at once (2026-09-30 — re-arming it every grace kept an abandoned room's
+    // alarm firing 2,880 times a day, each a billed request and a storage write).
+    if (this.adminMigrationTarget()) consider(this.adminLeaseAt);
     consider(this.nextPollAt);
     consider(this.hostLeaseAt);
     consider(this.hostReportDueAt);
+    // disconnected seats are reaped while the room waits; a seat of a running match is kept for the match
+    if (this.room?.phase === 'waiting') for (const at of this.seatLeases.values()) consider(at);
     for (const socket of this.sockets.values()) if (!socket.playerId) consider(socket.acceptedAt + ROOM_UNAUTHENTICATED_TIMEOUT_MS);
     return next;
+  }
+
+  /** A connected seat other than the admin exists: the admin lease can migrate somewhere. */
+  private adminMigrationTarget(): boolean {
+    const room = this.room;
+    return !!room && room.players.some((player) => player.id !== room.adminId && player.connected);
+  }
+
+  /**
+   * The admin lease after a roster change: cleared when the admin is connected (or gone), armed when the admin seat is
+   * disconnected and holds none. A non-admin's leave used to clear a disconnected admin's lease outright (found by the
+   * lifecycle proofs, 2026-09-30): the seats left behind then had no admin to start with until the admin returned.
+   */
+  private settleAdminLease(now: number): void {
+    const room = this.room;
+    if (!room) { this.adminLeaseAt = null; return; }
+    const admin = room.players.find((player) => player.id === room.adminId);
+    if (!admin || admin.connected) this.adminLeaseAt = null;
+    else if (this.adminLeaseAt === null) this.adminLeaseAt = now + ROOM_ADMIN_DISCONNECT_GRACE_MS;
+  }
+
+  /** The match is over: every disconnected seat's lease restarts now (a seat kept for the match may still return). */
+  private rebaseSeatLeases(now: number): void {
+    const room = this.room;
+    if (!room) return;
+    for (const player of room.players) if (!player.connected) this.seatLeases.set(player.id, now + ROOM_SEAT_DISCONNECT_TTL_MS);
+  }
+
+  /**
+   * Disconnected seats past their lease while the room waits are reaped: the seat, its capability and its token go
+   * (a resume after that joins afresh). Housekeeping, not a message — the 24 h idle clock does not restart.
+   */
+  private reapSeats(now: number): void {
+    const room = this.room;
+    if (!room || room.phase !== 'waiting') return;
+    let reaped = 0;
+    for (const [playerId, at] of [...this.seatLeases]) {
+      if (now < at) continue;
+      this.seatLeases.delete(playerId);
+      const player = room.players.find((entry) => entry.id === playerId);
+      if (!player || player.connected) continue;
+      const touchedAt = room.touchedAt;
+      removePlayer(room, playerId, now);
+      room.touchedAt = touchedAt;
+      this.resumeHashes.delete(playerId);
+      this.matchTokens.delete(playerId);
+      reaped++;
+      this.log('info', 'seat reaped', { player: playerId, admin: room.adminId, players: room.players.length });
+    }
+    if (reaped === 0) return;
+    this.settleAdminLease(now);
+    this.persist();
+    this.broadcastState();
   }
 
   private reschedule(): void {
@@ -360,6 +434,7 @@ export class RoomActor {
       if (this.room?.players.some((player) => player.id === socket.playerId)) {
         const now = this.ports.now();
         setPlayerConnected(this.room, socket.playerId, false, now);
+        this.seatLeases.set(socket.playerId, now + ROOM_SEAT_DISCONNECT_TTL_MS);
         if (this.room.adminId === socket.playerId) this.adminLeaseAt = now + ROOM_ADMIN_DISCONNECT_GRACE_MS;
         // The p2p host's socket is gone: its peers stall until it returns or the grace elects a successor.
         if (this.runningP2pHostId() === socket.playerId) this.hostLeaseAt = now + ROOM_HOST_DISCONNECT_GRACE_MS;
@@ -569,6 +644,7 @@ export class RoomActor {
     socket.playerId = playerId;
     this.socketOfPlayer.set(playerId, socket.id);
     setPlayerConnected(room, playerId, true, now);
+    this.seatLeases.delete(playerId);
     if (room.adminId === playerId) this.adminLeaseAt = null;
     // The p2p host is back inside its grace: it stays the host (and receives its match_start, with the secret, below).
     if (this.runningP2pHostId() === playerId) this.hostLeaseAt = null;
@@ -611,6 +687,7 @@ export class RoomActor {
       const kickedSocket = this.socketOfPlayer.get(kicked);
       this.resumeHashes.delete(kicked);
       this.matchTokens.delete(kicked);
+      this.seatLeases.delete(kicked);
       if (kickedSocket) {
         this.send(kickedSocket, { type: ROOM_SERVER_MESSAGE.CLOSED, payload: { reason: 'kicked' } });
         this.retire(kickedSocket, 'kicked');
@@ -623,7 +700,7 @@ export class RoomActor {
     this.broadcastState(null, kicked !== null);
     // The running p2p host was kicked, or declined while hosting: its peers move to a successor at once.
     if (kicked && this.runningP2pHostId() === kicked) this.migrateHost(now, 'left');
-    else if (command.type === 'host_decline' && command.declined === true && this.runningP2pHostId() === playerId) this.migrateHost(now, 'declined');
+    else if (command.type === 'host_decline' && command.declined === true && this.runningP2pHostId() === playerId) this.migrateHost(now, 'declined', command.unable === true);
   }
 
   private chatMessage(socket: RoomSocketRecord, message: RoomEnvelope): void {
@@ -655,7 +732,8 @@ export class RoomActor {
     removePlayer(room, playerId, now);
     this.resumeHashes.delete(playerId);
     this.matchTokens.delete(playerId);
-    if (room.adminId !== playerId) this.adminLeaseAt = null;
+    this.seatLeases.delete(playerId);
+    this.settleAdminLease(now);
     this.touch(now);
     this.persist();
     this.send(socket.id, { type: ROOM_SERVER_MESSAGE.ACK, ...(message.requestId ? { requestId: message.requestId } : {}), payload: { left: true } });
@@ -836,6 +914,7 @@ export class RoomActor {
       finishMatch(room, report.verdict ? { status: 'ended', result: report.verdict.result, reason: report.verdict.reason } : { status: 'lost', reason: 'host_ended' }, now);
       this.log('info', 'match ended', { match: report.matchId, result: report.verdict?.result ?? null, reason: report.verdict?.reason ?? 'host_ended', tick: report.tick });
       this.endP2pMatch();
+      this.rebaseSeatLeases(now);
       changed = true;
     }
     this.touch(now);
@@ -859,9 +938,11 @@ export class RoomActor {
    * by declining while it hosted this match is never handed the match back by a decline (two seats that cannot host
    * would otherwise elect each other without end); a drop or a leave still elects by the full ladder. With no
    * candidate left the host keeps hosting — its seat is still in the room, unlike a leave — and its own client boots
-   * afresh when no election follows.
+   * afresh when no election follows. `unable` (2026-09-30, the lifecycle proofs): the declining host cannot run the
+   * match at all (no host thread, a failed boot, a Garage return that stopped its actor) — with nobody left the match
+   * ends `lost` now, where the peers used to wait out the 30 s report budget for the same end.
    */
-  private migrateHost(now: number, reason: RoomHostChangedPayload['reason']): void {
+  private migrateHost(now: number, reason: RoomHostChangedPayload['reason'], unable = false): void {
     const room = this.room;
     const p2p = this.p2p;
     const old = this.runningP2pHostId();
@@ -871,6 +952,7 @@ export class RoomActor {
       this.steppedDown.add(old);
       skip = this.steppedDown;
       if (!electHost(room, old, skip)) {
+        if (unable) { this.loseMatch(now, old, 'host_unable'); return; }
         this.log('info', 'host declined with nobody left to take over; it keeps hosting', { host: old, steppedDown: [...this.steppedDown] });
         this.persist();
         return;
@@ -878,15 +960,7 @@ export class RoomActor {
     }
     const resumeTick = this.hostReport && this.hostReport.generation === room.host.generation ? this.hostReport.tick : 0;
     const next = p2p.migrate(old, skip);
-    if (!next) {
-      finishMatch(room, { status: 'lost', reason: 'match_lost' }, now);
-      this.log('warn', 'match lost: no commander left to host', { match: room.match.id, host: old, reason });
-      this.endP2pMatch();
-      this.persist();
-      this.broadcast(this.matchStatusMessage());
-      this.broadcastState();
-      return;
-    }
+    if (!next) { this.loseMatch(now, old, reason); return; }
     this.hostReport = null;
     this.hostReportDueAt = now + ROOM_MATCH_REPORT_STALE_AFTER_MS;
     this.hostLeaseAt = null;
@@ -895,6 +969,19 @@ export class RoomActor {
     this.persist();
     this.log('info', 'host migrated', { from: old, to: next.hostId, generation: next.generation, resumeTick, reason });
     this.sendHostChanged(reason, resumeTick);
+    this.broadcastState();
+  }
+
+  /** No commander can host the match: lost, the room back to `waiting`, the disconnected seats' leases restarted. */
+  private loseMatch(now: number, host: string, reason: string): void {
+    const room = this.room;
+    if (!room || !room.match) return;
+    finishMatch(room, { status: 'lost', reason: 'match_lost' }, now);
+    this.log('warn', 'match lost: no commander left to host', { match: room.match.id, host, reason });
+    this.endP2pMatch();
+    this.rebaseSeatLeases(now);
+    this.persist();
+    this.broadcast(this.matchStatusMessage());
     this.broadcastState();
   }
 
@@ -917,6 +1004,7 @@ export class RoomActor {
       finishMatch(room, { status: 'ended', result: status.verdict.result, reason: status.verdict.reason }, now);
       this.matchTokens.clear();
       this.nextPollAt = null;
+      this.rebaseSeatLeases(now);
       this.log('info', 'match ended', { match: room.match.id, result: status.verdict.result, reason: status.verdict.reason });
       this.persist();
       this.broadcast(this.matchStatusMessage());
@@ -938,6 +1026,7 @@ export class RoomActor {
     finishMatch(room, { status: 'lost', reason: 'match_lost' }, now);
     this.matchTokens.clear();
     this.nextPollAt = null;
+    this.rebaseSeatLeases(now);
     this.log('warn', 'match lost', { match: room.match.id });
     this.persist();
     this.broadcast(this.matchStatusMessage());
@@ -980,6 +1069,7 @@ export class RoomActor {
     this.hostReport = null;
     this.hostReportDueAt = null;
     this.steppedDown.clear();
+    this.seatLeases.clear();
     this.stateFlushPending = false;
     this.persist();
   }
@@ -991,16 +1081,18 @@ export class RoomActor {
       if (!socket.playerId && socket.acceptedAt + ROOM_UNAUTHENTICATED_TIMEOUT_MS <= now) this.retire(socketId, 'authentication_timeout');
     }
     this.expireIfDue(now);
+    this.reapSeats(now);
     if (this.room && this.adminLeaseAt !== null && now >= this.adminLeaseAt) {
-      this.adminLeaseAt = null;
       if (migrateAdminIfAbsent(this.room, now)) {
+        this.adminLeaseAt = null;
         this.log('info', 'admin migrated', { admin: this.room.adminId });
         this.persist();
         this.broadcastState();
       } else {
+        // Nobody else is connected: the lease stays due without being an alarm (nextDeadline) — the next admission's
+        // reschedule runs it at once. An admin that is back (or gone) needs none.
         const admin = this.room.players.find((player) => player.id === this.room!.adminId);
-        // Nobody else is connected: re-check when someone is (the next admission clears the lease).
-        if (admin && !admin.connected) this.adminLeaseAt = now + ROOM_ADMIN_DISCONNECT_GRACE_MS;
+        if (!admin || admin.connected) this.adminLeaseAt = null;
       }
     }
     if (this.room && this.hostLeaseAt !== null && now >= this.hostLeaseAt) {
