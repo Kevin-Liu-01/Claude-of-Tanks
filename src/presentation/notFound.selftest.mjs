@@ -59,7 +59,7 @@ assert.match(vite, /notFound: resolve\(process\.cwd\(\), '404\.html'\)/,
   'the 404 page must ship as a production build entry');
 assert.match(vite, /function forceNotFoundStatus\([\s\S]*?res\.statusCode = 404;[\s\S]*?args\[0\] = 404;/,
   'local preview must preserve a real 404 status through Vite static serving');
-assert.match(vite, /forceNotFoundStatus\(res\);[\s\S]*?req\.url = `\/\$\{localePath\.route\.sourceHtml\}/,
+assert.match(vite, /forceNotFoundStatus\(res\);[\s\S]*?const entry = localePath\.route\.sourceHtml;[\s\S]*?const source = existsSync[\s\S]*?req\.url = `\/\$\{source\}/,
   'missing document routes must use the centralized status-preserving 404 rewrite');
 assert.doesNotMatch(vercel, /"source":\s*"\/\(\.\*\)"/,
   'a catch-all production rewrite must not mask Vercel static 404 handling');
