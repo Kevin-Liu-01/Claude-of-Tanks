@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-09-30",
+    "request": "Add three Chinese tanks blending detailed T-72/T-80U hulls with Type 96B turret variations, plus a Polish T-72 concept based on the T-80U.",
+    "scope": "Four explicitly named original game concepts; donor structural stock remains covered by the fleet-renewal regression."
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "dimensionToleranceFraction": 0.03,
+  "designs": {
+    "type96_72_long": {
+      "id": "type96_72_long",
+      "ring": [
+        0,
+        1.475,
+        0.065591
+      ],
+      "gunLocal": [
+        0,
+        0.2602,
+        1.75
+      ],
+      "barrelLengthM": 4.92211,
+      "barrelRadiusM": 0.071,
+      "pitchDeg": [
+        -7,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 0,
+      "hullLengthM": 6.356300116,
+      "widthM": 3.7653725147247314,
+      "overallLengthM": 10.60975112763977,
+      "tallestM": 5.143904304504394,
+      "specDimensions": {
+        "hullLengthM": 6.356300116,
+        "overallLengthM": 9.915851058,
+        "widthM": 3.765600068,
+        "heightM": 2.891
+      },
+      "test": "src/vehicles/fleetRenewal.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "hullWidthM": 3.765600068,
+      "silhouette": "T-72B3 chassis and complete Type 96B welded turret; radial cheek ERA, compact attached rear cage and field pack"
+    },
+    "type96_80_feng": {
+      "id": "type96_80_feng",
+      "ring": [
+        0,
+        1.565,
+        0.07187
+      ],
+      "gunLocal": [
+        0,
+        0.2602,
+        1.75
+      ],
+      "barrelLengthM": 4.92211,
+      "barrelRadiusM": 0.071,
+      "pitchDeg": [
+        -7,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 0,
+      "hullLengthM": 6.720291335,
+      "widthM": 3.5999999046325684,
+      "overallLengthM": 10.26855483734131,
+      "tallestM": 5.233904304504394,
+      "specDimensions": {
+        "hullLengthM": 6.720291335,
+        "overallLengthM": 10.1041256675,
+        "widthM": 3.6,
+        "heightM": 2.981
+      },
+      "test": "src/vehicles/fleetRenewal.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "hullWidthM": 3.6,
+      "silhouette": "T-80U turbine chassis and complete Type 96B turret; clipped bolted shoulders, supported panoramic sensor and rear observation cage"
+    },
+    "type96_72m_lei": {
+      "id": "type96_72m_lei",
+      "ring": [
+        0,
+        1.545,
+        0.114315
+      ],
+      "gunLocal": [
+        0,
+        0.2602,
+        1.75
+      ],
+      "barrelLengthM": 4.92211,
+      "barrelRadiusM": 0.071,
+      "pitchDeg": [
+        -7,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 0,
+      "hullLengthM": 6.68398928642,
+      "widthM": 3.951275110244751,
+      "overallLengthM": 10.460425105514526,
+      "tallestM": 5.2139043045043945,
+      "specDimensions": {
+        "hullLengthM": 6.68398928642,
+        "overallLengthM": 10.12841964321,
+        "widthM": 3.95101606846,
+        "heightM": 2.961
+      },
+      "test": "src/vehicles/fleetRenewal.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "hullWidthM": 3.95101606846,
+      "silhouette": "T-72B3M chassis and Type 96B turret; extended command bustle, paired warning receivers, cheek ERA and supported thermal head"
+    },
+    "t72_rys": {
+      "id": "t72_rys",
+      "ring": [
+        0,
+        1.55158,
+        0.0718698169
+      ],
+      "gunLocal": [
+        0,
+        0.20484740709999993,
+        1.3480699999999999
+      ],
+      "barrelLengthM": 4.5828147161,
+      "barrelRadiusM": 0.068,
+      "pitchDeg": [
+        -5,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.720291335,
+      "widthM": 3.5999999046325684,
+      "overallLengthM": 9.528229266973241,
+      "tallestM": 2.649079966621399,
+      "specDimensions": {
+        "hullLengthM": 6.720291335,
+        "overallLengthM": 9.534282731,
+        "widthM": 3.6,
+        "heightM": 2.172451481
+      },
+      "test": "src/vehicles/fleetRenewal.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "hullWidthM": 3.6,
+      "silhouette": "Polish game concept on the complete T-80U chassis and casting, with seated cheek ERA, command optics, open rear cage and field equipment"
+    }
+  }
+}

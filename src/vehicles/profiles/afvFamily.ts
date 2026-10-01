@@ -1,3 +1,6 @@
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { buildT72B3M2022Hull } from './t72ModernVariants.ts';
+import { attachedCage, strappedPack, supportedSensor } from './modernizationFittings.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // First-party procedural AFV family.
 //
@@ -38,55 +41,7 @@ interface SideArmorOptions {
   cap?: boolean;
 }
 
-interface AfvMaterials extends Record<string, THREE.MeshStandardMaterial> {
-  dark: THREE.MeshStandardMaterial;
-  rubber: THREE.MeshStandardMaterial;
-  wheels: THREE.MeshStandardMaterial;
-  wheelsRecessed: THREE.MeshStandardMaterial;
-}
-
-interface AfvBuilderPort {
-  readonly hullG: THREE.Group;
-  readonly turretG: THREE.Group;
-  readonly gunG: THREE.Group;
-  readonly recoilG: THREE.Group;
-  readonly mats: AfvMaterials;
-  readonly rng: () => number;
-  readonly disposables: THREE.BufferGeometry[];
-  readonly spec: {
-    readonly armor: { readonly gunPivot: readonly [number, number, number] };
-    readonly visual: { readonly number?: string };
-  };
-  topY?: number;
-  muzzleZ: number;
-  add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
-  addCupola(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
-  addEquipment(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
-  addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
-  addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
-  addMudguard(id: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
-  clear(...slots: string[]): void;
-  clearDecals(owner: VehicleAssemblyOwner): void;
-  decal(
-    owner: VehicleAssemblyOwner,
-    kind: string,
-    label: string | null,
-    scale: number,
-    position: Vec3Tuple,
-    ...orientation: number[]
-  ): void;
-  eraCluster(key: string, build: (put: EraPut) => void, turret?: boolean): void;
-  forEachBucketPart(
-    slots: readonly string[],
-    visit: (geometry: THREE.BufferGeometry, bounds: THREE.Box3) => void,
-  ): void;
-  scaleBuckets(slots: readonly string[], x: number, y: number, z: number): void;
-  visualEraCluster(
-    key: string,
-    owner: VehicleAssemblyOwner,
-    build: () => void,
-  ): void;
-}
+type AfvBuilderPort = TankBuilderPort;
 
 const nonUniformXform = KIT.xform as (
   geometry: THREE.BufferGeometry,
@@ -121,7 +76,7 @@ function armorTile(
 
 function clearUpperStructure(P: AfvBuilderPort): void {
   P.clear('turret', 'turretDark', 'turretDetail', 'turretGlass', 'turretCloth',
-    'turretExternalArmor', 'gun', 'gunDark', 'gunMount', 'gunMountDark');
+    'turretExternalArmor', 'turretCupola', 'turretHatch', 'gun', 'gunDark', 'gunMount', 'gunMountDark');
   P.clearDecals('turret');
   for (const child of [...P.turretG.children]) {
     if (child !== P.gunG) P.turretG.remove(child);
@@ -494,34 +449,11 @@ function addTerminatorStation(P: AfvBuilderPort): void {
 }
 
 function buildBMPT2(P: AfvBuilderPort): void {
-  T72_PROFILES.t72b3m.build(P);
+  buildT72B3M2022Hull(P);
+  P.turretG.position.set(0,1.54,.12);
   addTerminatorStation(P);
-  // Terminator-specific material ownership pass. The station inherits the
-  // T-72B3M's fixed semantic buckets after its digital texture has already
-  // been generated; the old lighter bucket colors therefore appeared as
-  // mint replacement armor and neutral-grey equipment. Re-seat every solid
-  // painted class in this vehicle's deeper olive family. Working track steel,
-  // rubber and track bands deliberately remain neutral semantic gear.
-  P.mats.dark.color.setHex(0x273127);
-  P.mats.dark.emissive.setHex(0x10150c);
-  // (owner 2026-09-22 running-gear finish: the wheel paint stays the hull scheme tone.)
-  P.visualEraCluster('bmpt2-relikt-hull-era', 'hull', () => {
-  sideArmorCourse(P, { x: 1.73, y: 1.04, h: 0.44, d: 0.62, count: 7,
-    front: 2.15, step: 0.76 });
-  for (const side of [-1, 1]) for (let i = 0; i < 4; i++) {
-    armorTile(P, 'hull', side * (0.27 + i * 0.31), 1.25, 2.08,
-      0.28, 0.105, 0.34, [-0.29, 0, 0], true);
-  }
-  });
-  // OWNER "much better" ROUND (2026-08-17): the single sparse tile row read
-  // as the critic's "brick ERA" defect class — a second STAGGERED course up
-  // the glacis plane (half-pitch x offset, same rake) makes the dense
-  // Kontakt field of the §5.269 fix bar. Center-narrow: |x| <= 1.19 keeps
-  // the wings clear of the wrap lanes (§B4).
-  for (const side of [-1, 1]) for (let i = 0; i < 3; i++) {
-    armorTile(P, 'hull', side * (0.425 + i * 0.31), 1.33, 1.81,
-      0.28, 0.105, 0.34, [-0.29, 0, 0], true);
-  }
+  P.hullG.userData.familyRebuild={donor:'t72b3m',revision:1};
+
 }
 
 function addBWP1Station(P: AfvBuilderPort): void {
@@ -929,7 +861,8 @@ function addM3A3Turret(P: AfvBuilderPort): void {
   P.scaleBuckets([
     'turret', 'turretDark', 'turretDetail', 'turretGlass', 'turretCupola',
   ], 1, TURRET_HEIGHT_SCALE, 1);
-  P.forEachBucketPart(['turretEquipment'], (geo: THREE.BufferGeometry, bounds: THREE.Box3) => {
+  P.forEachBucketPart(['turretEquipment'], (geo: THREE.BufferGeometry, bounds: THREE.Box3 | null) => {
+    if (!bounds) return;
     geo.translate(0, bounds.min.y * (TURRET_HEIGHT_SCALE - 1), 0);
   });
   for (const child of P.turretG.children) child.position.y *= TURRET_HEIGHT_SCALE;
@@ -1536,6 +1469,21 @@ function buildUpior(P: AfvBuilderPort): void {
   muzzleBore(P, { len: 2.40, r: 0.035 });
   P.addGunExtraDark(cylZ(0.013, 0.50, 8), 0.15, 0.03, 0.85);                   // coax tube
   muzzleTipDot(P, 0.15, 0.03, 1.09, 0.010, { parent: 'gunG' });
+  // Larger owner-directed reconnaissance/escort fit. Brackets close each
+  // cage back to the body; roof gear retains the turret's articulation.
+  attachedCage(P,'hull',[0,1.13,-2.71],1.90,.48,.35);
+  for(const side of [-1,1]){
+    for(let i=0;i<4;i++){
+      const z=-1.63+i*.81;
+      P.addEquipment('hullDetail',box(.11,.42,.72),side*1.13,1.10,z);
+      P.addEquipment('hullDetail',box(.15,.038,.75),side*1.11,1.32,z);
+    }
+    strappedPack(P,'hull',[side*.88,1.59,-1.58],[.36,.24,.61]);
+    P.addEquipment('turretDetail',box(.17,.13,.25),side*.72,.28,-.32);
+    P.addEquipment('turretGlass',box(.10,.055,.014),side*.72,.29,-.188);
+  }
+  supportedSensor(P,[.32,.60,-.48],.36);
+  attachedCage(P,'turret',[0,.20,-1.00],1.21,.32,.25);
   P.topY = Math.max(P.topY || 0, 1.62);
 }
 

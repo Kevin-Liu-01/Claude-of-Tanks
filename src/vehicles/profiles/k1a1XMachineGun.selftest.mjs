@@ -27,7 +27,8 @@ for(const quality of ['high','low']){
     near(ray(gun,[X,Y,1.90],[0,0,-1])?.point.z,1.61,1e-6,'recessed bore back is closed');
     near(ray(gun,[X+.06,Y,.949],[-1,0,0])?.point.x,X+.023,1e-5,'round jacket hole exposes separate inner barrel');
     near(ray(gun,[X+.06,Y,.922],[-1,0,0])?.point.x,X+.036,1e-5,'real jacket skin remains beside perforation');
-    const detail=tank.root.getObjectByName('turretDetail');
+    const detail=gun.getObjectByName('k1a1XPhotoRoofMachineGun_yaw_turretDetail');
+    assert(detail, 'source yoke travels on the roof gun yaw bearing');
     for(const point of [[-.43,2.708,.648],[-.3444,2.708,.648]]){
       closedAt(detail,point,[0,1,0]);closedAt(gun,point,[0,1,0]);
     }

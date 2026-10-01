@@ -12,6 +12,8 @@ const before=JSON.parse(readFileSync(new URL('./vehicleSizeBaseline.fixture.json
 const near=(a,b,label,tolerance=.00002)=>assert.ok(Math.abs(a-b)<tolerance,`${label}: ${a} != ${b}`);
 // f88172442 measurements, taken before the owner's 2026-09-29 size request.
 // These cover finished shell stock, pivots, muzzle and load-bearing contact.
+// Upiór's baseline is its complete 0857fff5c AFV builder before the 2026-09-30
+// enlargement, measured with the current shared factory and no size override.
 for(const [id,factor] of Object.entries(VEHICLE_SIZE_FACTORS)){
  const spec=getSpec(id),b=before[id];
  for(const key of Object.keys(b.dims))near(spec.dims[key],b.dims[key]*factor,`${id}/${key}`);
@@ -51,4 +53,4 @@ for(let i=0;i<2;i++){
 }
 await import('./fleetFactory.ts');
 for(const id of Object.keys(VEHICLE_SIZE_FACTORS))assert.equal(JSON.stringify([getSpec(id).armor,getSpec(id).gun.launcherMuzzles]),installed[id],`${id}: both entry points preserve installed dimensions`);
-console.log('vehicleSize: ten vehicles, high/low stock, articulation, launch exits and idempotence pass');
+console.log('vehicleSize: eleven vehicles, high/low stock, articulation, launch exits and idempotence pass');

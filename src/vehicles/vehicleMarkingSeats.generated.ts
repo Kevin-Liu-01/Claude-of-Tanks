@@ -55,12 +55,14 @@ import { VEHICLE_MARKING_SEATS as SEATS_PUMAS1SOURCEX } from './vehicleMarkingSe
 import { VEHICLE_MARKING_SEATS as SEATS_RUSSIA } from './vehicleMarkingSeatGroups/russia.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_SABRAMK2SOURCEX } from './vehicleMarkingSeatGroups/sabraMk2SourceX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_SHERIDAN } from './vehicleMarkingSeatGroups/sheridan.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_SINOSOVIETCONCEPTS } from './vehicleMarkingSeatGroups/sinoSovietConcepts.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_SOVIETHEAVY } from './vehicleMarkingSeatGroups/sovietHeavy.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_STRV122X } from './vehicleMarkingSeatGroups/strv122X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_SWEDEN } from './vehicleMarkingSeatGroups/sweden.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_T14X } from './vehicleMarkingSeatGroups/t14X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_T62MV1X } from './vehicleMarkingSeatGroups/t62mv1X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_T72 } from './vehicleMarkingSeatGroups/t72.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_T72RYS } from './vehicleMarkingSeatGroups/t72Rys.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_T72B1987X } from './vehicleMarkingSeatGroups/t72b1987X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_T72B3X } from './vehicleMarkingSeatGroups/t72b3X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_T72B3MX } from './vehicleMarkingSeatGroups/t72b3mX.generated.ts';
@@ -137,12 +139,14 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_RUSSIA,
   SEATS_SABRAMK2SOURCEX,
   SEATS_SHERIDAN,
+  SEATS_SINOSOVIETCONCEPTS,
   SEATS_SOVIETHEAVY,
   SEATS_STRV122X,
   SEATS_SWEDEN,
   SEATS_T14X,
   SEATS_T62MV1X,
   SEATS_T72,
+  SEATS_T72RYS,
   SEATS_T72B1987X,
   SEATS_T72B3X,
   SEATS_T72B3MX,

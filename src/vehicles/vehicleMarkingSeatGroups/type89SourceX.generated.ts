@@ -12,11 +12,11 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       {
         "kind": "insignia",
         "parent": "hull",
-        "size": 0.24,
+        "size": 0.2,
         "pos": [
           -1.0659999,
-          1.284,
-          -0.4848
+          0.7078,
+          -0.02
         ],
         "quaternion": [
           0,
@@ -34,17 +34,17 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       {
         "kind": "designation",
         "parent": "hull",
-        "size": 0.24,
+        "size": 0.2,
         "pos": [
-          -1.0659999,
-          1.284,
-          -0.0864
+          -1.5406936,
+          1.4210804,
+          1.5739919
         ],
         "quaternion": [
-          0,
-          -0.7071068,
-          0,
-          0.7071068
+          -0.1824815,
+          -0.6588157,
+          -0.1948181,
+          0.703355
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "type89_x",

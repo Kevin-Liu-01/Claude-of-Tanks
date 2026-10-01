@@ -38,7 +38,9 @@ const original = {
 // re-pinned once from the current build.
   // 2026-09-29 owner attachment repair: turret-owned fittings replace hull-owned stock.
   ariete_c1:'5c6cceec', challenger1:'aa084d4d', leclerc:'0d0ed003',
-  chieftain5:'af6150d8', chieftain_mk10:'81cf7e9f', leo2a6:'1f08700c',
+  // 2026-09-30 owner-marked underbody removal: only auxiliary bay walls and
+  // inner-track filler changed; primary hull/turret/gun and real gear match.
+  chieftain5:'cbb7431d', chieftain_mk10:'8ff22a97', leo2a6:'1f08700c',
   k1a1:'d75c7a71', strv122:'8bc6e141', t62mv1:'35f1a225',
   // 2026-09-25 FSP-03: the fleet T-72/T-90 pre-X goldens (t72b3m, t72bu, t90, Burlak, T-90MS) re-pinned once — three fitted return rollers per side again.
   t72b3m:'dbbc46ad',

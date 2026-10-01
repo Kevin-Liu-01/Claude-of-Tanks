@@ -68,7 +68,8 @@ function ammunitionTray(mg:Weapon):void {
 }
 
 export function addK1A1XMachineGun(P:TankBuilderPort):void {
-  const mg=sourceMachineGun(P,[0,1.49566,.42564]);
+  const mg=sourceMachineGun(P,[0,1.49566,.42564],P.spec.id==='k1a1_x'?{name:'k1a1XPhotoRoofMachineGun',caliberMm:12.7,
+    yaw:[X,2.590,.6952],pivot:[X,2.703,.648],muzzle:[X,Y,1.837]}:undefined);
   receiver(mg);barrel(mg);perforatedJacket(mg);ammunitionTray(mg);
   const group=mg.finish();group.name='k1a1XPhotoRoofMachineGun';
   group.userData.reference='DVIDS3912303-photo-inferred-dimensions';

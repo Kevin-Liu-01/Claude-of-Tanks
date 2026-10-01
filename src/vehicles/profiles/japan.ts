@@ -9,6 +9,7 @@ import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.j
 import { buildType10BBase } from '../modern3.ts';
 import { buildType90 } from './misc.ts';
 import { TYPE10_MANTLET_FIT } from './type10GunSeat.ts';
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount as mountFitting } from './fittingMount.ts';
 import { sampleArmorFace as sampleFace } from './armorFaceSampling.ts';
@@ -19,6 +20,7 @@ type Axis = 'x' | 'y' | 'z';
 type Quad = [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
 
 interface JapaneseBuilderPort {
+  readonly forEachBucketPart: TankBuilderPort['forEachBucketPart'];
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;

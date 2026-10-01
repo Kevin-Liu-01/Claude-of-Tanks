@@ -10,48 +10,70 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
     "schemaVersion": 1,
     "seats": [
       {
-        "kind": "insignia",
+        "kind": "designation",
         "parent": "turret",
-        "size": 0.24,
+        "size": 0.22,
         "pos": [
-          -1.209806,
-          0.1714502,
-          -0.0934387
+          1.4561296,
+          0.2903465,
+          -0.2987863
         ],
         "quaternion": [
-          0,
-          -0.7787987,
-          0,
-          0.6272739
+          -0.0186289,
+          0.6312795,
+          0.0228698,
+          0.7749942
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t62mv1_x",
+        "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0086636
+        "maximumSurfaceErrorM": 0.0038482
       },
       {
         "kind": "designation",
         "parent": "turret",
-        "size": 0.24,
+        "size": 0.22,
         "pos": [
-          -1.1066772,
-          0.1714502,
-          -0.4975036
+          -1.4561296,
+          0.2903465,
+          -0.2987863
         ],
         "quaternion": [
-          0,
-          0.8671422,
-          0,
-          -0.4980607
+          -0.0186289,
+          -0.6312796,
+          -0.0228698,
+          0.7749942
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0038482
+      },
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.24,
+        "pos": [
+          -1.468217,
+          0.2353507,
+          -0.6514241
+        ],
+        "quaternion": [
+          -0.0204028,
+          -0.7068124,
+          -0.0204028,
+          0.7068124
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "t62mv1_x",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0152015
+        "maximumSurfaceErrorM": 0.0135826
       }
     ]
   }

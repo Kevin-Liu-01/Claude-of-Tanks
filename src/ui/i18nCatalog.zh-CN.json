@@ -3563,7 +3563,7 @@
   "systems.lights": "车灯",
   "systems.lights.help": "开启或关闭车辆配备的灯光。",
   "systems.roofGun": "自动机枪",
-  "systems.roofGun.help": "启用顶部武器，跟踪并点射240米以内已发现的敌人。",
+  "systems.roofGun.help": "启用顶部武器，跟踪并点射其有效射程内已发现的敌人。",
   "systems.available": "战斗中可用",
   "systems.auto": "自动",
   "systems.on": "开启",

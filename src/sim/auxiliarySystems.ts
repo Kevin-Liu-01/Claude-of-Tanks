@@ -1,6 +1,7 @@
 import { createSmokeCanister, smokeCloudBanks, smokeCanisterPosition } from './smokeBallistics.ts';
 import { Euler, Matrix4, Vector3, Quaternion } from 'three';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
+import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
 export { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import type { DamageShellSpec } from './damage.ts';
 
@@ -28,10 +29,7 @@ export interface AuxiliaryEntity {
   modeActive?: boolean;
 }
 export const SMOKE_COOLDOWN_S = 28;
-export const ROOF_GUN_SHELL: DamageShellSpec = {
-  type: 'AP', name: 'Roof MG AP', caliberMm: 12.7, velocityMps: 850,
-  pen100Mm: 26, pen1000Mm: 12, pen2000Mm: 5, dmg: 8, moduleDmg: 3,
-};
+export const ROOF_GUN_SHELL: DamageShellSpec = auxiliaryWeaponProfile(12.7).shell;
 export function auxiliaryState(entity: Pick<AuxiliaryEntity, 'combat'>): AuxiliaryState {
   return entity.combat.auxiliary ??= {
     lights: -1, gunOn: false, gunYaw: 0, gunPitch: 0, nextShot: 0, shots: 0,
@@ -42,8 +40,7 @@ const matrix = new Matrix4(), local = new Matrix4(), euler = new Euler();
 const origin = new Vector3(), direction = new Vector3(), targetPoint = new Vector3();
 const xAxis=new Vector3(1,0,0),yAxis=new Vector3(0,1,0);
 const inverse = new Matrix4(), base = new Matrix4(), gunMatrix = new Matrix4(), one=new Vector3(1,1,1), quaternion=new Quaternion();
-const localTarget = new Vector3(), pivot = new Vector3(), bore = new Vector3();
-const autocannonShell:DamageShellSpec={...ROOF_GUN_SHELL,name:'Roof autocannon AP',caliberMm:30,velocityMps:900,pen100Mm:65,pen1000Mm:40,pen2000Mm:20,dmg:22,moduleDmg:10};
+const localTarget = new Vector3(), pivot = new Vector3(), bore = new Vector3(), mountScale = new Vector3();
 export const auxiliaryShot = { origin, direction, shell:ROOF_GUN_SHELL };
 /** Match the authored hull -> turret frame; no camera or rendered model in authority. */
 function mountFrame(entity: AuxiliaryEntity, owner: 'hull' | 'turret'): Matrix4 {
@@ -88,35 +85,44 @@ interface GunContext {
   clear(a: Vector3, b: Vector3): boolean;
 }
 const wrap = (v:number) => Math.atan2(Math.sin(v), Math.cos(v));
-/** Independent 5-round bursts. Acquires only spotted, unobstructed enemies; finite traverse before discharge. */
+/** Independent weapon-specific bursts. Only spotted enemies with a clear firing lane qualify. */
 export function stepRoofGun(entity: AuxiliaryEntity, now: number, dt: number, context: GunContext): boolean {
   const state = entity.combat.auxiliary, gun = auxiliaryCapabilities(entity.spec)?.guns[0];
   if (!state?.gunOn || !gun || entity.combat.destroyed || entity.modeActive === false) return false;
+  const profile=auxiliaryWeaponProfile(gun.caliberMm,entity.spec.id);
   base.copy(mountFrame(entity, gun.owner));
-  gunMatrix.compose(targetPoint.fromArray(gun.position),quaternion.fromArray(gun.rotation),one.fromArray(gun.scale));base.multiply(gunMatrix);
-  inverse.copy(base).invert();pivot.fromArray(gun.pivot);origin.copy(pivot).applyMatrix4(base);
-  const target = selectRoofTarget(entity, context);
+  gunMatrix.compose(targetPoint.fromArray(gun.position),quaternion.fromArray(gun.rotation),one);base.multiply(gunMatrix);
+  inverse.copy(base).invert();pivot.fromArray(gun.pivot);mountScale.fromArray(gun.scale);
+  origin.copy(pivot).multiply(mountScale).applyMatrix4(base);
+  const target = selectRoofTarget(entity, context, profile.rangeM);
   if(!target)return false;
   direction.set(target.state.pos.x,target.state.pos.y+(target.spec.dims?.heightM??2.5)*.5,target.state.pos.z).sub(origin);
-  localTarget.copy(origin).add(direction).applyMatrix4(inverse).sub(pivot);
+  localTarget.copy(origin).add(direction).applyMatrix4(inverse);
   const desiredYaw=Math.atan2(localTarget.x,localTarget.z);
+  localTarget.applyAxisAngle(yAxis,-desiredYaw).divide(mountScale).sub(pivot);
   const desiredPitch=Math.atan2(localTarget.y,Math.hypot(localTarget.x,localTarget.z));
-  if(desiredPitch<-.18||desiredPitch>.75)return false;
+  if(desiredPitch < -profile.depressionRad || desiredPitch > profile.elevationRad)return false;
   const turn=wrap(desiredYaw-state.gunYaw), pitch=desiredPitch-state.gunPitch;
-  state.gunYaw=wrap(state.gunYaw+Math.max(-dt*1.7,Math.min(dt*1.7,turn)));
-  state.gunPitch+=Math.max(-dt,Math.min(dt,pitch));
+  state.gunYaw=wrap(state.gunYaw+Math.max(-dt*profile.yawRateRadS,Math.min(dt*profile.yawRateRadS,turn)));
+  state.gunPitch+=Math.max(-dt*profile.pitchRateRadS,Math.min(dt*profile.pitchRateRadS,pitch));
   if(Math.abs(turn)>.035||Math.abs(pitch)>.035||now<state.nextShot)return false;
   const cp=Math.cos(state.gunPitch);
-  direction.set(Math.sin(state.gunYaw)*cp,Math.sin(state.gunPitch),Math.cos(state.gunYaw)*cp).transformDirection(base);
+  // THREE applies local scale before the animated yaw. Doing the reverse
+  // displaced the stretched Challenger mount muzzle by over 12 cm.
+  direction.set(0,Math.sin(state.gunPitch),cp).multiply(mountScale)
+    .applyAxisAngle(yAxis,state.gunYaw).transformDirection(base);
   bore.fromArray(gun.muzzle).sub(pivot).applyAxisAngle(xAxis,-state.gunPitch).add(pivot);
-  bore.applyAxisAngle(yAxis,state.gunYaw);origin.copy(bore).applyMatrix4(base);
-  auxiliaryShot.shell=gun.caliberMm>=20?autocannonShell:ROOF_GUN_SHELL;
-  state.shots++; state.nextShot=now+(state.shots%5===0?1.4:.12);
+  bore.multiply(mountScale).applyAxisAngle(yAxis,state.gunYaw);origin.copy(bore).applyMatrix4(base);
+  // Recheck from the actual moving muzzle, not merely the mount center.
+  targetPoint.set(target.state.pos.x,target.state.pos.y+(target.spec.dims?.heightM??2.5)*.5,target.state.pos.z);
+  if(!friendlyLaneClear(entity,target,context.entities,origin,targetPoint)||!context.clear(origin,targetPoint))return false;
+  auxiliaryShot.shell=profile.shell;
+  state.shots++; state.nextShot=now+(state.shots%profile.burstRounds===0?profile.burstPauseS:profile.shotIntervalS);
   return true;
 }
 
-function selectRoofTarget(entity: AuxiliaryEntity, context: GunContext): AuxiliaryEntity | null {
-  let target: AuxiliaryEntity | null = null, best=240*240;
+function selectRoofTarget(entity: AuxiliaryEntity, context: GunContext, rangeM:number): AuxiliaryEntity | null {
+  let target: AuxiliaryEntity | null = null, best=rangeM*rangeM;
   for (const other of context.entities) {
     if(other===entity || other.team===entity.team || other.combat.destroyed || other.modeActive===false || !context.visible(other,entity)) continue;
     targetPoint.set(other.state.pos.x,other.state.pos.y+(other.spec.dims?.heightM??2.5)*.5,other.state.pos.z);

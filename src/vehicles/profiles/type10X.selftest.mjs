@@ -148,7 +148,7 @@ function measuredWhipsAndWeapon(tank,quality) {
     `${quality}: true air between the two separate rear grips`);
   assert.ok(!hit(tank.root,v(-.224478,2.9795,1),v(0,0,-1),.68),
     `${quality}: actual forward sight hoop and rear notch remain open`);
-  const weapon=tank.root.getObjectByName('sourceMachineGun_turretDetail');
+  const weapon=tank.root.getObjectByName('type10RemoteM2');
   const foot=hit(weapon,v(-.31,2.35,.50),v(0,1,0))?.point.y;
   const roof=hit(tank.root.getObjectByName('turretDetail'),v(-.31,2.44,.50),v(0,-1,0))?.point.y;
   assert.ok(roof-foot>.02&&roof-foot<.04,`${quality}: actual weapon foot engages retained cupola ${roof-foot}`);

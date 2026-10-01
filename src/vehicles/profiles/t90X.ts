@@ -750,13 +750,15 @@ function classicVCradle(P: TankBuilderPort): void {
   // This supplied gun has a slender NSVT body, not the dimensions of the
   // generic Browning fitting. All spans are authored from hardware bounds.
   const d=V;
-  const weapon=sourceMachineGun(P,d.yaw);
+  const weapon=sourceMachineGun(P,d.yaw,{name:'vladimirRemoteNSVT',caliberMm:12.7,
+    yaw:[-.6353,2.5078,.2909],pivot:[-.6125,2.66,.294],muzzle:[-.6125,2.7254,1.83385]});
   weapon.add('turretDark',box(.0704,.1118,.5967),-.6125,2.7015,.5357);
   weapon.add('turretDark',cylZ(.0225,1.052,20),-.6125,2.7254,1.30785);
   weapon.add('turretDark',cylZ(.0177,.6694,16),-.6125,2.672,.7892+ .6694/2);
   weapon.add('turretDetail',box(.0454,.1046,.0162),-.6125,2.755,1.4727);
   weapon.add('turretDetail',box(.1012,.0343,.1937),-.6244,2.7481,.3273);
   weapon.add('turretDetail',box(.1184,.0373,.2197),-.6248,2.776,.5527);
+  weapon.stage('yaw');
   weapon.add('turretDetail',box(.208,.183,.140),-.6655,2.3868,-.0258);
   for(const x of [-.7935,-.4772])weapon.add('turretDetail',box(.0481,.2098,.1876),x,2.4069,.2728);
   weapon.add('turretDetail',box(.3342,.1728,.0266),-.6515,2.4185,.0632);
@@ -773,7 +775,8 @@ function classicVCradle(P: TankBuilderPort): void {
 
 function classicACradle(P: TankBuilderPort): void {
   const d=A;
-  const weapon=sourceMachineGun(P,d.yaw);
+  const weapon=sourceMachineGun(P,d.yaw,{name:'t90aRemoteNSVT',caliberMm:12.7,
+    yaw:[.631,2.304,-.021],pivot:[.632,2.595,.275],muzzle:[.632,2.656,1.527]});
   weapon.add('turretDark',box(.109,.134,.482),.632,2.657,.275);
   weapon.add('turretDark',cylZ(.014,1.011,16),.632,2.656,1.0215);
   weapon.add('turretDark',cylZ(.011,.65,12),.632,2.607,.806);
@@ -783,7 +786,8 @@ function classicACradle(P: TankBuilderPort): void {
   weapon.add('turretDetail',box(.414,.244,.171),.917,2.547,.303);
   weapon.add('turretDetail',box(.452,.068,.198),.909,2.657,.303);
   weapon.add('turretDetail',box(.320,.334,.206),.901,2.563,.028);
-  addT90ARwsBracket(P);
+  addT90ARwsBracket(P);weapon.markSupport();
+  weapon.stage('yaw');
   weapon.add('turretDetail',box(.136,.302,.273),.500,2.538,.332);
   weapon.add('turretDetail',box(.203,.197,.153),.631,2.355,-.155);
   weapon.add('turretDetail',cylY(.092,.195,20),.631,2.304,-.021);

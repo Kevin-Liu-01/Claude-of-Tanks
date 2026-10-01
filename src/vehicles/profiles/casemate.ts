@@ -438,7 +438,6 @@ export function buildStrv103(P: CasemateBuilderPort): void {
       P.add('hullDetail', box(0.018, 0.12, 0.54), s * 1.81, 1.07, z);
     }
     for (let k = 0; k < 8; k++) P.add('hullDetail', KIT.cylZ(0.018, 0.018, 8), s * 1.812, 1.40, -2.32 + k * 0.57, 0, s * Math.PI / 2, 0);
-    P.add('hullRunningGearDark', box(0.02, 0.70, 4.4), s * 1.02, 0.55, -0.1);  // bay shadow wall belongs to the running-gear well
   }
   steelGear(P, {
     style: 'rubber', dishR: 0.72, wheelR: 0.40, wheelW: 0.22, wheelY: 0.50, xc: 1.30,

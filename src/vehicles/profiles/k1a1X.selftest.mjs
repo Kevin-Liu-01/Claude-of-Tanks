@@ -125,7 +125,7 @@ function gunAndAirChecks(tank,label) {
 }
 
 function roofFixtures(tank,label) {
-  near(top(tank.root.getObjectByName('turretDetail'),-.4436,.641),2.75246,.001,`${label}: retained source left yoke crown`);
+  near(top(tank.root.getObjectByName('k1a1XPhotoRoofMachineGun_yaw_turretDetail'),-.4436,.641),2.75246,.001,`${label}: retained source left yoke crown`);
   assert.ok(!hit(tank.root,v(-.3867,2.67,.90),v(0,0,-1),.40),
     `${label}: actual air between the retained tray and photo-led weapon cross-pin`);
   near(hit(tank.root,v(.842,2.6,.85),v(0,0,-1))?.point.z,.781092,.01,

@@ -288,7 +288,7 @@ function roofFurniture(P: TankBuilderPort): void {
       onTurret(P,'turretGlass',box(.012,.068,.079),side*.856,2.695,z);
     }
   }
-  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', scale: 1.275, seed: 2042, tone: 'two-tone', ammo: true, shield: false, ring: false });
+  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', scale: 1.275, remoteControlled: true, seed: 2042, tone: 'two-tone', ammo: true, shield: false, ring: false });
   mg.position.set(-.74, 2.53032 + GROUND - YAW_Y, .5425 - CENTER_Z - YAW_Z);
   P.turretG.add(mg);
 }

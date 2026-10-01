@@ -193,6 +193,7 @@ const laterChannelCounts = {
   // 2026-09-25 IFV identity batch: three X replicas beside their kept originals and three photographic additions.
   spz_puma_s1_x: 3, cv90_x: 3, type89_x: 3, dardo: 2, lrmv_lynx: 2, borsuk: 3,
   amx10p: 2, amx10p_25: 2, marder2: 2,
+  type96_72_long: 3, type96_80_feng: 3, type96_72m_lei: 3, t72_rys: 3,
 };
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
 assert.equal(ifvBatchChannels, 16, 'the six 2026-09-25 IFV additions carry sixteen channels');

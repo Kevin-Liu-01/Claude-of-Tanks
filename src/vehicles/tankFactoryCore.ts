@@ -501,6 +501,8 @@ export interface RunningGearConfig {
   coveredTop?: boolean;
   wheelFaceLayers?: WheelFaceLayer[];
   recessDepth?: number;
+  /** Disable the legacy opaque bay backdrop while retaining interleaved wheels. */
+  bayShadow?: boolean;
   bayShadowTop?: number;
   bayShadowBucket?: string;
   dishR?: number;
@@ -3590,7 +3592,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     });
     // Schachtellaufwerk depth cue: a near-black AO wall inside the wheel bay so
     // recessed rows separate from the hull side instead of camo-on-camo.
-    if (layers) {
+    if (layers && cfg.bayShadow !== false) {
       const z0 = Math.min(...wheelZs) - wheelR, z1 = Math.max(...wheelZs) + wheelR;
       // r4: cfg.bayShadowTop lets a raised-sponson hull (Tiger) extend the AO
       // wall up to its new sponson floor so the taller gear band never opens a
@@ -8139,6 +8141,7 @@ function* createTankOwnedSteps(
     const parent:THREE.Object3D|undefined = mergedBucketParents[parentKey];
     if(station && parent){
       mesh.name=station.name+'_'+station.stage+'_'+bucket;
+      mesh.userData.surfaceMarkupSelectable=true;
       mesh.userData.combatHitboxRole='equipment';
       delete mesh.userData.combatHitboxPart;
       const owner=parent, mount=root.getObjectByName(station.name);

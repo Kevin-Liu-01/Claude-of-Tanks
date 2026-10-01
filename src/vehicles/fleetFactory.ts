@@ -62,6 +62,7 @@ import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
 import './europePhotoIfvSpecs.ts';
 import './amx10pSpecs.ts';
 import './marder2Specs.ts';
+import {synchronizeFleetRenewalMetadata} from './fleetRenewalSpecs.ts';
 
 import {
   SAVED_TANK_IDS,
@@ -104,6 +105,7 @@ synchronizeSecondWaveXCombatMetadata();
 synchronizeAbramsSourceXCombatMetadata();
 synchronizeXk2CombatMetadata();
 synchronizeIfvReplicaCombatMetadata();
+synchronizeFleetRenewalMetadata();
 applyTacticalRoleBalance(TANK_SPECS);
 finalizeFirstPartyRoster();
 applyVehicleSizePolicy(TANK_SPECS);
@@ -138,6 +140,8 @@ function registerProfiles(profiles: VehicleProfileRecord): void {
 }
 
 const GROUP_LOADERS = Object.freeze({
+  sinoSovietConcepts: () => import('./profiles/sinoSovietConcepts.ts').then(mod => registerProfiles(mod.SINO_SOVIET_CONCEPT_PROFILES)),
+  t72Rys: () => import('./profiles/t72Rys.ts').then(mod => registerProfiles({t72_rys:{build:mod.buildT72Rys}})),
   aresApcX: () => import('./profiles/aresApcX.ts').then((mod) => registerProfiles(mod.ARES_APC_X_PROFILES)),
   leopardA6X: () => import('./profiles/leopardA6X.ts').then((mod) => registerProfiles(mod.LEOPARD_A6_X_PROFILES)),
   xk2: () => import('./profiles/xk2.ts').then((mod) => registerProfiles(mod.XK2_PROFILES)),

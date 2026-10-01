@@ -19,6 +19,11 @@ function hull(P: TankBuilderPort): void {
     [3.30,1.00,1.53,1.43,.85,1.18,1.31],
   ],1.06));
   for (const side of [-1,1]) {
+    // Continuous upper apron joins the hinged skirt to the shoulder. It
+    // stays outboard of the moving track and follows the falling bow deck.
+    sideWall(P,side,1.576,1.603,[
+      [-3.205,1.19,1.475],[.74,1.19,1.455],[2.565,1.19,1.239],
+    ]);
     // Thin skirts expose the road wheels; no invented deep composite jacket.
     for(let i=0;i<5;i++) {
       const z=-2.64+i*1.16;

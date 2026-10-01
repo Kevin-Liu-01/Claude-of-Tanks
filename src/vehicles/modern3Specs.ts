@@ -505,7 +505,7 @@ const MODERN3_SPECS = {
   },
 
   type89_light_tiger: {
-    id: 'type89_light_tiger', name: 'Type 89 Light Tiger', nation: 'Japan', era: 'next-generation', role: 'ifv',
+    id: 'type89_light_tiger', name: 'Raijū IFV', nation: 'Japan', era: 'next-generation', role: 'ifv',
     hp: 2650,
     enginePowerHp: 1000, weightTons: 38.5, topSpeedKmh: 78, reverseSpeedKmh: 32,
     hullTraverseDegS: 54,
@@ -647,7 +647,7 @@ const MODERN3_SPECS = {
   },
 
   type89: {
-    id: 'type89', name: 'Type 89 IFV', nation: 'Japan', era: 'modern', role: 'ifv',
+    id: 'type89', name: 'Hayate IFV', nation: 'Japan', era: 'modern', role: 'ifv',
     hp: 1450,
     enginePowerHp: 600, weightTons: 26.5, topSpeedKmh: 70, reverseSpeedKmh: 16,
     hullTraverseDegS: 46,

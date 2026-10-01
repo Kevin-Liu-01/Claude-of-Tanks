@@ -75,7 +75,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   lrmv_lynx: {displayName:'LRMV Lynx',shortName:'LRMV Lynx',searchAliases:['Italian Lynx KF41','A2CS IFV','Lance 30']},
   borsuk: {displayName:'Borsuk',shortName:'Borsuk',searchAliases:['BWP Borsuk','ZSSW-30']},
   cv90_x: {displayName:'CV9040C',shortName:'CV9040C',searchAliases:['CV90 X','Stridsfordon 9040C']},
-  type89_x: {displayName:'Type 89 X',shortName:'Type 89 X',searchAliases:['Japanese Type 89 IFV X']},
+  type89_x: {displayName:'Type 89',shortName:'Type 89',searchAliases:['Japanese Type 89 IFV X']},
   cv90_mkiv_x: {
     displayName: 'CV90 Mk 4', shortName: 'CV90 Mk 4',
     searchAliases: ['CV90 Mk IV X', 'CV90 MkIV X', 'CV90 Mark 4 X'],
@@ -202,7 +202,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['SPz Puma S1', 'Former Puma S1 upgrade'],
   },
   type89_light_tiger: {
-    displayName: 'Type 89 Light Tiger', shortName: 'Light Tiger',
+    displayName: 'Raijū IFV', shortName: 'Raijū',
     searchAliases: ['Type 89 Light Tiger IFV', 'Type 89 LT', 'JGSDF Light Tiger'],
   },
   ares_apc_x: {

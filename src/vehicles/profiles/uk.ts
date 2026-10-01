@@ -891,10 +891,7 @@ function chieftain5Build(P: UKBuilderPort): void {
     [1.523, 1.045, 3.755], [1.556, 1.045, 3.755], [1.556, 1.13, 3.55], [1.523, 1.13, 3.55]));
   addChieftainClosedShoulderMudguards(P, 'chieftain5');
   for (const s of [-1, 1]) P.add('hull', box(0.21, 0.06, 0.62), s * 0.945, 1.02, 2.81);
-  // Right inner-track ground filler: the certified left-shifted print
-  // grounds |x| 0.89..1.05 on the RIGHT side only (left track owns
-  // 1.05..1.49 on both) — a dark sponson-shadow wall fills the band.
-  segBoxZ(P, 'hullRunningGearDark', 0.225, 0.456, 4.8, 1.0025, 0.228, 0);
+  // Owner 2026-09-30: the segmented inner-track filler blocks are removed.
   segBoxZ(P, 'hullRunningGearDark', 0.045, 0.05, 4.4, 1.4625, 0.025, -0.1);
   segBoxZ(P, 'hullRunningGearDark', 0.045, 0.05, 4.4, -1.4625, 0.025, -0.1);
   segBoxZ(P, 'hullRunningGearDark', 0.04, 0.05, 4.4, -1.0965, 0.025, -0.1);
@@ -1001,11 +998,6 @@ function chieftain5Build(P: UKBuilderPort): void {
   for (const zTab of [1.86, 0.98, 0.10, -0.78, -1.66]) {
     P.add('hullRunningGearDark', box(0.203, 0.10, 0.045), -1.6115, 0.055, zTab);
   }
-  // Wheel-bay backdrop: with the hem raised the wheel gaps see the olive
-  // belt face — a near-black panel inboard of the wheel faces keeps the
-  // bays reading as shadow (ref gear-zone p5 ~26). Interval-interior on
-  // every row (top deck-owned, bottom track-owned, plan wing-owned).
-  P.add('hullRunningGearDark', box(0.02, 0.66, 5.0), -1.105, 0.43, 0.075);
   // r5 O2b, source-proportion re-seat: retain both corner flaps but rake
   // them into the forward shoulder cap. The native idler now occupies the
   // bay beneath them, so the flaps close the mudguard crown rather than
@@ -1721,14 +1713,7 @@ function chieftainMk10Build(P: UKBuilderPort): void {
   // The former paired fender boxes and their strapped roll have moved to the
   // turret owner.  Leaving no duplicate hull lids here prevents the boxes
   // from staying behind when the turret yaws.
-  // ---- wheel-bay shadow backdrops (interval-interior: deck-owned tops,
-  // track-owned bottoms; the under-skirt zone reads as bay shade, not a
-  // pale belt face). x 1.07..1.09 + z ±2.40 keep the panel edges clear of
-  // the 1.115 band inner face and the ground-ramp corners (§B4 audit: a
-  // 1.10/±2.5 first cut kissed the ramp at 2 vox).
-  for (const s of [-1, 1]) {
-    P.add('hullShadow', box(0.02, 0.66, 4.8), s * 0.99, 0.43, 0.0);
-  }
+  // Open wheel bays: no opaque shadow backdrops beneath the real belly.
 
   // ---- TURRET: the family cast saucer + reclined face, with the Mk 10
   // STILLBREW masses over the front third and the TOGS barbette right.

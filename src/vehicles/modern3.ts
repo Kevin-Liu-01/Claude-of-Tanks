@@ -9,7 +9,7 @@ import { weaponAssembly } from './profiles/weaponStock.ts';
 // modern3Specs.ts so unrelated garages never transfer this geometry pack.
 
 import * as THREE from 'three';
-import { KIT, type RunningGearConfig } from './tankFactoryCore.ts';
+import { KIT, type RunningGearConfig, type TankBuilderPort } from './tankFactoryCore.ts';
 import { FITTINGS } from './profiles/kit.ts';
 import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.ts';
 import { K2_ROAD_WHEELS } from './profiles/k2RoadWheels.ts';
@@ -26,8 +26,8 @@ export interface Modern3BuilderPort {
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
   readonly recoilG: THREE.Group;
-  readonly mats: Record<string, THREE.Material> & { readonly rubber: THREE.Material };
-  readonly disposables: THREE.BufferGeometry[];
+  readonly mats: { readonly rubber: THREE.Material };
+  readonly disposables: TankBuilderPort['disposables'];
   readonly spec: {
     readonly armor: { readonly gunPivot: readonly [number, number, number] };
     readonly visual: { readonly number?: string };
@@ -347,20 +347,8 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
       P.add('hullRunningGearDetail', box(0.070, 0.075, 0.42), s * 1.46, 0.83, z + 0.16, s * 0.62, 0, 0);
     }
   }
-  // Near-black bay walls behind the wheel line (type10 §B8.1 device).  The
-  // backing follows the measured rising end wraps; the rejected rectangular
-  // wall continued at ground level behind both end wheels and manufactured
-  // the same two "hanging track" strips even after the real band was fixed.
-  for (const s of [-1, 1]) {
-    P.add('hullRunningGearDark', box(0.02, 1.23, 2.70), s * 1.10, 0.69, 0.15);
-    const bayWall = (z0: number, b0: number, z1: number, b1: number) => P.add('hullRunningGearDark', slab(
-      [s * 0.94, b0, z0], [s * 0.96, b0, z0], [s * 0.96, b1, z1], [s * 0.94, b1, z1],
-      [s * 0.94, 1.305, z0], [s * 0.96, 1.305, z0], [s * 0.96, 1.305, z1], [s * 0.94, 1.305, z1]));
-    bayWall(-1.20, 0.075, -2.70, 0.40);
-    bayWall(-2.70, 0.40, -3.10, 0.62);
-    bayWall(1.50, 0.075, 2.70, 0.15);
-    bayWall(2.70, 0.15, 3.10, 0.31);
-  }
+  // The open wheel bays use the real hull and running gear for shade.
+  // Owner 2026-09-30: remove the full-height inboard backdrop walls.
   };
   buildK2RunningGear();
 

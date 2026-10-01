@@ -90,7 +90,7 @@ await runFleetSweep(`
   assert.equal(fleet.isTankBuilderReady('t14'), true);
   assert.equal(fleet.isTankBuilderReady('mbt70'), true);
   const t14 = fleet.createTank('t14', null, { proceduralOnly: true, geometryReceipt: true });
-  assert.ok(t14.root.getObjectByName('rig_turret')?.userData?.t14RoofFidelityReceipt,
+  assert.ok(t14.root.getObjectByName('rig_turret')?.userData?.object148Design,
     'lazy T-14 route constructs the authored Armata builder, not the box placeholder');
   t14.dispose();
   const mbt70 = fleet.createTank('mbt70', null, { proceduralOnly: true, geometryReceipt: true });

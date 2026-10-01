@@ -3563,7 +3563,7 @@
   "systems.lights": "Lights",
   "systems.lights.help": "Switch the fitted tank lights on or off.",
   "systems.roofGun": "Auto gun",
-  "systems.roofGun.help": "Enable the roof weapon to track and fire bursts at spotted enemies within 240 m.",
+  "systems.roofGun.help": "Enable the roof weapon to track and fire bursts at spotted enemies within its effective range.",
   "systems.available": "Available in battle",
   "systems.auto": "Auto",
   "systems.on": "ON",

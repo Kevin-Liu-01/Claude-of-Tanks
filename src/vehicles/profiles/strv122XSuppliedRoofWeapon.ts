@@ -51,7 +51,9 @@ function centerLink():THREE.BufferGeometry {
 }
 
 export function addStrv122XSuppliedRoofWeapon(P:TankBuilderPort):void {
-  support(P);const weapon=sourceMachineGun(P,D.turretPivot);
+  const weapon=sourceMachineGun(P,D.turretPivot,{name:'strv122RemoteRoofGun',caliberMm:7.62,
+    yaw:[-.633,2.590,-.354],pivot:[-.633,2.80,-.370],muzzle:[-.473,2.865,.587366]});
+  support(P);weapon.markSupport();
   for(const [x,y,end,r]of [[-.760,2.866,.533,.0223],[-.473,2.865,.587366,.023]]){
     weapon.add('turretDark',box(.133,.128,.424),x,2.873,-.306);
     weapon.add('turretDetail',box(.153,.026,.321),x,2.947,-.312);

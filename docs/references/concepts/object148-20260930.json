@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-09-30",
+    "request": "obj 148 proto (redesign its turret to be a lot better and less basic and like a true prototype to the t14 armata and keep the cutouts and negative space and update its hull too)",
+    "scope": "Completely replace both hull and turret, preserving real cutouts and negative space. Retain the qualified seven-wheel course and main-gun dimensions.",
+    "clarification": "the object 148 has to be completely redesigned tho, as i requested"
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "dimensionToleranceFraction": 0.03,
+  "historicalReference": {
+    "path": "public/models/community-candidates/t-14_armara_uralvagon_factory.glb",
+    "purpose": "Historical shape guidance; the requested development vehicle is not a replica of this production Armata model.",
+    "previousReceipt": "docs/geometry-gate/t14.json",
+    "previousGeoMin": 59.9,
+    "previousGatePassed": false,
+    "note": "Historical failed receipt retained unchanged; no source parity claimed and no comparison threshold changed."
+  },
+  "designs": {
+    "t14": {
+      "id": "t14",
+      "test": "src/vehicles/profiles/t14RoofFidelity.selftest.mjs",
+      "ring": [
+        0,
+        1.685,
+        -0.6
+      ],
+      "gunLocal": [
+        0,
+        0.345,
+        0.6
+      ],
+      "barrelLengthM": 5.64,
+      "barrelRadiusM": 0.07,
+      "pitchDeg": [
+        -8,
+        20
+      ],
+      "mainCaliberMm": 125,
+      "weaponSystem": "conventional-cannon",
+      "roofMachineGuns": 1,
+      "hullLengthM": 8.7,
+      "hullWidthM": 3.9,
+      "widthM": 3.898,
+      "overallLengthM": 10.0136,
+      "tallestM": 3.49712,
+      "specDimensions": {
+        "hullLengthM": 8.7,
+        "widthM": 3.9,
+        "overallLengthM": 9.98
+      },
+      "silhouette": "Object 148 complete development-vehicle rebuild: long three-seat crew capsule, stepped engine deck, replaceable side cassettes, open rear cages, separate unmanned cheek modules with deep sight apertures, open main-gun channel, chamfered service bustle and independently articulated 30 mm roof cannon"
+    }
+  }
+}

@@ -314,7 +314,9 @@ function roofEquipment(P:TankBuilderPort):void {
 }
 
 function roofWeapon(P:TankBuilderPort):void {
-  const weapon=sourceMachineGun(P,PIVOT);
+  const weapon=sourceMachineGun(P,PIVOT,{name:'type10RemoteM2',caliberMm:12.7,
+    yaw:[-.227075,2.69277,.64549],pivot:[-.224478,2.825,.64549],muzzle:[-.224478,2.887,1.8175]});
+  weapon.stage('yaw');
   weapon.add('turretDetail',cylinder(.209,.045,32),-.3086,2.405,.496);
   for(const [x0,z0,x1,z1,w]of[[-.175,.424,-.213,.611,.050],[-.35,.636,-.257,.636,.030]]) {
     const a=new THREE.Vector3(x0,2.424,z0),b=new THREE.Vector3(x1,2.644,z1),d=b.clone().sub(a);
@@ -324,6 +326,7 @@ function roofWeapon(P:TankBuilderPort):void {
   weapon.add('turretDetail',cylinder(.0359,.089,20),-.227075,2.6385,.64549);
   weapon.add('turretDetail',cylinder(.020362,.028,16),-.227075,2.69277,.64549);
   weapon.add('turretDetail',box(.079216,.140,.106583),-.227075,2.7575,.64549);
+  weapon.stage('pitch');
   weapon.add('turretDark',box(.177016,.132317,.582882),-.224478,2.882302,.577148);
   weapon.add('turretDark',cylZ(.027,.957,20),-.224478,2.887,1.339);
   weapon.add('turretDark',cylZ(.019,.600,16),-.224478,2.843,1.102);
@@ -332,6 +335,7 @@ function roofWeapon(P:TankBuilderPort):void {
     weapon.add('turretDetail',box(.08749,.008,.090),x,y,.244);
   weaponSights(weapon);
   weapon.add('turretDetail',box(.167,.154,.080),-.3965,2.864,.735);
+  weapon.stage('yaw');
   weaponCradle(weapon);
   weapon.add('turretDetail',box(.196514,.075,.075),-.380257,2.7495,.7415);
   weapon.finish();

@@ -1,3 +1,4 @@
+import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 // New first-party Armata X: authored from scalar source measurements and
 // neutral source views, not the old T-14 builder or source topology.
 import * as THREE from 'three';
@@ -506,8 +507,10 @@ function addRoofEquipment(P: TankBuilderPort): void {
   for (const [x, y] of [[.14243, 3.16535], [-.64682, 3.16265]]) {
     P.addEquipment('turretDark', cylY(.0164, .0164, .0338, 12), x, localY(y), localZ(-1.698));
   }
+  const finishRws=captureAuxiliaryStock(P,'armataXRemoteMachineGun');
   addRwsCradle(P);
-  const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: 1.50,
+  finishRws();
+  const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: 1.50, remoteControlled: true,
     tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, barrelBridge: true, seed: 260905 });
   weapon.name = 'armataXRemoteMachineGun';
   weapon.position.set(-.087, localY(2.718), localZ(-1.7115));

@@ -69,7 +69,9 @@ const moduleCrewHash = 'd5651996036b6549b60468dc22d78670b0a4780980458fa09bd26cfe
 // so both LOW geometry digests moved; the HIGH digests are byte-identical to the closed-tube values. Repinned from the
 // combined round-40 build (closed tube + LOW wheel tier together).
 const geometryHashes = {
-  jpz_e100_x: { high: '7d7517c4', low: '70519134' },
+  // 2026-09-30 owner removal of both hullShadow backdrops. Exact geometry
+  // snapshots retain primary bodies, gun and every real running-gear mesh.
+  jpz_e100_x: { high: 'a3fce71f', low: '391912f3' },
 };
 const pose = (turretYaw = 0, gunPitch = 0) => tankPoseFromState({
   pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw, gunPitch,

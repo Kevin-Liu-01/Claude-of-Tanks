@@ -6,7 +6,7 @@ import { voxelise, floodExterior, deepInterior } from './tank-voxel-body.mjs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
 
 const id = 'bmp3m_dragun125_x';
-const configuredIds = [id, 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'amx10p_25'];
+const configuredIds = [id, 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'amx10p_25', 't80u'];
 const names = ['hull', 'hullDetail', 'hullDark', 'turret', 'turretDetail', 'gun',
   'gunDark', 'gunMount', 'gunMountDark', 'muzzleBoreShadowFallbackDisc', 'track'];
 const triangles = names.map((name, mesh) => ({ mesh, identity: name }));
@@ -87,7 +87,7 @@ for (const configuredId of configuredIds) for (const quality of ['high', 'low'])
     const boundary = interiorFillBoundaryTriangles(configuredId, tris, meshes);
     const withFittings = leaks(tris, meshes), primary = leaks(boundary, meshes);
     assert.ok(withFittings.count > 0, 'the former broad family span invents exterior cage/optic pockets');
-    if (configuredId === id || configuredId === 'amx10p_25') assert.equal(primary.count, 0,
+    if (configuredId === id || configuredId === 'amx10p_25' || configuredId === 't80u') assert.equal(primary.count, 0,
       `${configuredId}: actual authored primary bodies are closed at generator resolution`);
     const gun = rows => rows.filter(row => /^(gun|mantlet|muzzle)/i.test(meshes[row.mesh]));
     assert.deepEqual(gun(boundary), gun(tris), 'complete physical bore/mount stock remains in the body input');

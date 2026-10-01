@@ -2338,8 +2338,14 @@ function addOpenYokeSensorHead(context: OpenYokeBuildContext): void {
   // has an unobstructed firing lane and the two systems remain visually
   // distinct.
   if (roofSensor) {
+    // Carry the panoramic head from the fork tips. The unarmed variant has
+    // no receiver above the shaft, so the former raised shelf floated here.
+    const footY = 0.46 * s, shelfY = sensorY - 0.12 * s;
+    for (const side of [-1, 1]) parts.add(body,
+      box(0.055 * s, shelfY - footY, 0.105 * s),
+      side * 0.145 * s, (footY + shelfY) / 2, -0.015 * s);
     parts.add(body,box(0.34 * s,0.040 * s,0.29 * s),
-      0,sensorY - 0.125 * s,0.025 * s);
+      0,shelfY,0.025 * s);
   }
   parts.add(body,box(0.215 * s,(twinOptics ? 0.20 : 0.24) * s,0.215 * s),
     sensorX,sensorY,0.055 * s);

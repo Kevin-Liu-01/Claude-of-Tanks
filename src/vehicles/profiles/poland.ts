@@ -1,3 +1,4 @@
+import { buildJaguarModern } from './t72ModernVariants.ts';
 // Polish armored family — §5.248 GROUND-UP REBUILDS (owner order 2026-08-17:
 // "completely new ones built from the ground up doing high quality visual
 // AND exact geometric comparison with the 3d models... leclerc highest
@@ -2243,7 +2244,7 @@ function buildPL01(P: PolishBuilderPort): void {
 }
 
 export const POLAND_PROFILES = {
-  t72m1_jaguar: { build: buildT72M1Jaguar },
+  t72m1_jaguar: { build: buildJaguarModern },
   pt91_twardy: { build: buildPT91Twardy },
   pl01: { build: buildPL01 },
   pl01_105: { build: buildPL01 },

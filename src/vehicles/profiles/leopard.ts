@@ -13980,7 +13980,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     P.add('turretDetail', box(0.08, 0.05, 0.10), -0.86, 0.645, -2.62);
     {
       const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.66, elev: 0,
+        mats: P.mats, cls: 'mag', remoteControlled: P.spec.id==='leo2a6_ua', tone: 'two-tone', scale: 0.66, elev: 0,
         shield: false, ammo: true, seed: 3450, rotation: [0, Math.PI / 2, 0],
       });
       mg.position.set(-0.58, 0.67, -2.62);

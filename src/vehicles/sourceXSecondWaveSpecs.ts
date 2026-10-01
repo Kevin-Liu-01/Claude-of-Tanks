@@ -40,7 +40,7 @@ const entries = [
   ['amx40_x', 'amx40', 'AMX-40'],
   ['ariete_c1_x', 'ariete_c1', 'C1 Ariete'],
   ['strv122_x', 'strv122', 'Stridsvagn 122'],
-  ['t72b3m_x', 't72b3m', 'T-72B3M obr. 2022'],
+  ['t72b3m_x', 't72b3m', 'T-72B3M obr. 2016'],
   ['challenger1_x', 'challenger1', 'Challenger 1 Mk 3'],
   ['t72bu_x', 't72bu', 'T-72BU'],
   ['chieftain5_x', 'chieftain5', 'Chieftain Mk 5'],

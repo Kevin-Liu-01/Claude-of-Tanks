@@ -6,7 +6,7 @@ import { fitArmorToDims } from './specs.ts';
 export const VEHICLE_SIZE_FACTORS: Readonly<Record<string, number>> = Object.freeze({
   k21_x: .90, kf41_lynx_x: .90, type100: .90, lrmv_lynx: .90,
   borsuk: .90, ajax_x: .90, ares_apc_x: .90, griffin50_x: .90,
-  griffin_viper: .90, challenger1_x: 1.10,
+  griffin_viper: .90, challenger1_x: 1.10, upior: 1.10,
 });
 const authoringFrames = new WeakMap<object, { source: FleetTankSpec; armor: FleetTankSpec['armor'] }>();
 

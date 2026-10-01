@@ -393,22 +393,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretNode:'^challendger[ _]2_0$', gunNode:'^Gun$', autoPivot:true,
     },
   },
-  t14: {
-    // "T-14 Armara Uralvagon Factory" by 3DYAROSLAV2 (CC-BY-4.0).
-    // 223 MB LOCAL-ONLY GLB (gitignored community-candidates/ staging —
-    // extracts committed, GLB never pushes; this row is a local
-    // instrument). Flat OBJ print: turret shell Object_8 + BASHNYA/roof
-    // cluster followers; gun tube Object_14 (raw muzzle -z -> yaw PI).
-    // Height clamp binds on the sensor mast (s 1.9169), width safeScale
-    // k 1.073 recovers the frame (net -0.5% vs length anchor).
-    source:'glb',
-    glb:{
-      path:'/models/community-candidates/t-14_armara_uralvagon_factory.glb',
-      turretNode:'^Object_8$', gunNode:'^Object_14$', autoPivot:true,
-      yawOffset:Math.PI,
-      turretFollowers:'^Object_(?:9|10|11|15)$',
-    },
-  },
+  // Object 148 is an owner-authored development vehicle; see concept policy.
   // (the t72b3 BASE-id entry that lived here moved to the t72b3m key
   // above: the owner delisted t72b3 from the roster AND overrode the
   // graduate's oracle to this print — see the t72b3m entry comment.)

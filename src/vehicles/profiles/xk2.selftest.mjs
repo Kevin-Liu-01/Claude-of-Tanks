@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {createHash} from 'node:crypto';
+import {neutralStock} from './neutralStock.test-support.mjs';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import {getSpec} from '../specs.ts';
@@ -7,20 +7,7 @@ import {XK2_FRAME as D} from './xk2Frame.ts';
 import {synchronizeSourceXCombatMetadata} from '../sourceXFleetSpecs.ts';
 
 const options={proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242};
-const hash=geometry=>{
-  const h=createHash('sha256');
-  for(const a of [geometry.attributes.position,geometry.attributes.normal,geometry.index])
-    if(a)h.update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
-  return h.digest('hex');
-};
-function turretStock(tank){
-  const rows=[];
-  tank.root.getObjectByName('rig_turret').traverse(o=>{
-    if(!o.isMesh||o.userData.shadowOnly||o.userData.vehicleMarking||/interior|Shadow/.test(o.name))return;
-    rows.push({name:o.name,hash:hash(o.geometry),matrix:o.matrix.toArray()});
-  });
-  return rows;
-}
+const turretStock=tank=>neutralStock(tank.root.getObjectByName('rig_turret'));
 function receivingClearance(tank,yaw){
   const turret=tank.root.getObjectByName('rig_turret');
   turret.rotation.y=yaw;tank.root.updateMatrixWorld(true);

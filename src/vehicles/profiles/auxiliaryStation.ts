@@ -1,19 +1,22 @@
 import * as THREE from 'three';
-import type { TankBuilderPort } from '../tankFactoryCore.ts';
+type AuxiliaryStockPort = {
+  forEachBucketPart(names: string[], visitor: (geometry: THREE.BufferGeometry) => void): void;
+};
 
 type Point=readonly [number,number,number];
 export interface StationDatum {name:string;caliberMm:number;yaw:Point;pivot:Point;muzzle:Point}
 const BUCKETS=['turret','turretEquipment','turretDetail','turretDark','turretGlass','turretGunmetal','turretTrack'];
 /** Capture only explicitly authored station stock. The factory still performs
  * its normal material, UV, damage and receipt work before mounting that stock. */
-export function beginAuxiliaryStation(P:Pick<TankBuilderPort,'turretG'|'forEachBucketPart'>, datum:StationDatum) {
+export function beginAuxiliaryStation(P:AuxiliaryStockPort & {turretG: THREE.Group}, datum:StationDatum) {
   const root=new THREE.Group(), weapon=new THREE.Group();
   root.name=datum.name;root.position.fromArray(datum.yaw);weapon.name='auxiliaryWeaponPitch';
   weapon.position.fromArray(datum.pivot).sub(root.position);root.add(weapon);P.turretG.add(root);
   const muzzle=new THREE.Vector3(...datum.muzzle).sub(root.position);
   Object.assign(root.userData,{remoteControlled:true,firingAxis:'+Z',caliberMm:datum.caliberMm,
     auxiliaryPivot:weapon.position.toArray(),auxiliaryMuzzle:muzzle.toArray(),muzzleLocalZ:muzzle.z,
-    barrelAxisLocalY:muzzle.y,fittingRoot:true,fitting:'pintleMG',fittingExact:true});
+    barrelAxisLocalY:muzzle.y,fittingRoot:true,fitting:'pintleMG',fittingExact:true,
+    surfaceMarkupSelectable:true});
   const seen=new Set<THREE.BufferGeometry>();
   P.forEachBucketPart(BUCKETS,part=>seen.add(part));
   return {root,weapon, attachPitch(stock:THREE.Object3D){
@@ -24,4 +27,14 @@ export function beginAuxiliaryStation(P:Pick<TankBuilderPort,'turretG'|'forEachB
       part.userData.auxiliaryStation={name:root.name,stage};
     });
   }};
+}
+
+/** Mark a bounded authoring scope for an existing fitting's yaw owner. */
+export function captureAuxiliaryStock(P:AuxiliaryStockPort,
+  name:string, stage:'yaw'|'pitch'='yaw'):()=>void {
+  const seen=new Set<THREE.BufferGeometry>();
+  P.forEachBucketPart(BUCKETS,part=>seen.add(part));
+  return ()=>P.forEachBucketPart(BUCKETS,part=>{
+    if(!seen.has(part))part.userData.auxiliaryStation={name,stage};
+  });
 }

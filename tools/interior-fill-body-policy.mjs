@@ -1,6 +1,15 @@
 // Authored body boundaries for fill generation only. Visible fittings remain in
 // the native tank and in every source/continuity/physical-stock check.
+// Rebuilt hulls keep external optics, cage rails and smoke launchers separate
+// from the watertight shell. Their air spaces must never become solid voxels.
+const RENEWED_BODY_IDS = [
+  't72b3m', 'bmpt_terminator2', 't80u', 't72bu', 't72bu_x',
+  't64bv1', 'ua_t64bv', 't62mv1', 't62mv1_x', 't72m1_jaguar',
+  't72_rys', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei',
+  'amx30', 'amx30b2', 'upior', 'type89_x',
+];
 const PRIMARY_BODY_BUCKETS = Object.freeze({
+  ...Object.fromEntries(RENEWED_BODY_IDS.map(id => [id, Object.freeze(['hull', 'turret'])])),
   // The owner-requested AMX field kit adds strapped packs and open baskets
   // around closed hull/turret shells. Air behind cargo is outside the vehicle,
   // so never bridge it with generated interior solids. Native audits keep it.

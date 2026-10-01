@@ -176,10 +176,14 @@ function buildCv90TurretArmor(P: TankBuilderPort, py: number, pz: number): void 
 function buildCv90CrewHatch(P: TankBuilderPort, px: number, py: number, pz: number): void {
   // The circular hatch has separate base, narrow waist, raised lid and actual
   // asymmetric hinge/clamp furniture measured from the supplied configuration.
+  // The outboard half stands beyond the raised citadel. A cast coaming
+  // connects the entire hatch to the lower shoulder instead of hovering.
+  P.addCupola('turret',cylY(.369,.393,.176,P.q?32:16),.7308-px,2.208-py,-.148-pz);
   turretEquipment(P,'turretDetail',cylY(.3774,.3774,.056,P.q?32:16),.7308,2.314,-.148);
   turretEquipment(P,'turretDark',cylY(.359,.359,.030,P.q?32:16),.7308,2.357,-.148);
   P.addHatch('turret',cylY(.359,.375,.036,P.q?32:16),.7308-px,2.394-py,-.148-pz);
   for(const z of [-.32,-.23]) {
+    turretEquipment(P,'turretDetail',box(.19,.05,.075),1.106,2.307,z,0,-.34);
     turretEquipment(P,'turretDetail',box(.19,.040,.060),1.08,2.398,z,0,-.34);
     turretEquipment(P,'turretDetail',box(.068,.133,.058),1.188,2.37,z,0,-.34);
   }
@@ -205,7 +209,7 @@ function buildCv90RoofSights(P: TankBuilderPort, px: number, py: number, pz: num
   ]));
   turretEquipment(P,'turretGlass',box(.194,.135,.018),.2341,2.725,-.550,-.50);
   for(const side of [-1,1]) {
-    const x=side<0?-.570:.923,baseY=side<0?2.193:2.248;
+    const x=side<0?-.570:.923,baseY=side<0?2.193:2.173;
     turretEquipment(P,'turretDetail',box(.40,.15,.32),x,baseY,-1.425);
     for(const dx of [-.080,.080])turretEquipment(P,'turretDetail',box(.043,.31,.24),x+dx,baseY+.22,-1.425,-.16);
     turretEquipment(P,'turretDetail',box(.205,.045,.26),x,baseY+.080,-1.425);

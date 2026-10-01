@@ -221,7 +221,7 @@ function addType96Cupola(P: TankBuilderPort): void {
     equipment(P, 'turret', 'Detail', box(.418, .105, .304), -.592, 2.350, -.539);
     equipment(P, 'turret', 'Detail', cylX(.036, .34, P.q ? 20 : 12), -.592, 2.432, -.493);
 }
-function buildType96Turret(P: TankBuilderPort): void {
+export function buildType96Turret(P: TankBuilderPort): void {
     P.add('turret', cylY(1.00, 1.04, .15, P.q ? 40 : 22), 0, .045, 0);
     P.add('turret', sectionSolid([
         turretStation(P, -2.04, .79, 1.17, .97, 1.75, 1.95, 2.20),

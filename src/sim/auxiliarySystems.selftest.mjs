@@ -74,3 +74,45 @@ for (const elevation of [-8, 8]) {
   assert.equal(smokeBlocks([screen],a,b,screen.born+4,ground),true,'terrain-seated visible smoke blocks sight');
   assert.equal(smokeBlocks([screen],{...a,y:v.y+9},{...b,y:v.y+9},screen.born+4,ground),false,'clear air above the bank stays visible');
 }
+
+// The mount can see past an edge while its articulated muzzle is obstructed.
+// Visibility from the pivot alone must never authorize that shot.
+const edgeShooter=entity('edge');
+const edgeTarget=entity('edge-target','bravo');edgeTarget.state.pos.z=100;
+requestAuxiliary(edgeShooter,'roofGun',0);
+let pivotZ=null, blockedMuzzles=0;
+const edgeContext={entities:[edgeShooter,edgeTarget],visible:()=>true,clear:from=>{
+  if(pivotZ===null)pivotZ=from.z;
+  if(Math.abs(from.z-pivotZ)>.05){blockedMuzzles++;return false;}
+  return true;
+}};
+for(let i=0;i<300;i++)assert.equal(stepRoofGun(edgeShooter,i/60,1/60,edgeContext),false);
+assert.ok(blockedMuzzles>0,'clear pivot does not bypass a blocked moving muzzle');
+console.log('auxiliarySystems: actual muzzle obstruction veto PASS');
+
+// Same-caliber mounts must retain their own cartridge identity when different
+// vehicles fire consecutively; the emitted shell is also the hit-feed source.
+for (const [id, name] of [
+  ['m1a2', '12.7×99 mm M2 AP'],
+  ['t90a_x', '12.7×108 mm B-32 API'],
+  ['ztz100_x', '12.7×108 mm Type 54 API'],
+  ['vt4a1', '12.7×108 mm Type 54 API'],
+  ['t14_x', '7.62×54R mm B-32 API'],
+  ['challenger2e', '7.62×51 mm M61 AP'],
+  ['t14', '30×165 mm 3UBR6 AP-T'],
+  ['abramsx', '30×113 mm M789 HEDP'],
+  ['m551a1_tts', '30×113 mm M789 HEDP'],
+  ['m1a2', '12.7×99 mm M2 AP'],
+]) {
+  const namedShooter=entity('named','alpha',id), namedTarget=entity('named-target','bravo');
+  namedTarget.state.pos.z=100;
+  requestAuxiliary(namedShooter,'roofGun',0);
+  const namedContext={entities:[namedShooter,namedTarget],visible:()=>true,clear:()=>true};
+  let emitted=false;
+  for(let i=0;i<600&&!emitted;i++)emitted=stepRoofGun(namedShooter,i/60,1/60,namedContext);
+  assert.ok(emitted,id+' emits named ammunition');
+  assert.equal(auxiliaryShot.shell.name,name,id+' uses its own cartridge');
+  assert.deepEqual(namedShooter.combat.ammo,[7,8,9]);
+  assert.equal(namedShooter.combat.reload.t,4);
+}
+console.log('auxiliarySystems: vehicle-specific cartridge names and independent main ammo PASS');

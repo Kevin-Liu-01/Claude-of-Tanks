@@ -140,10 +140,11 @@ function canisterStocks(t,all){
 
 function weaponAndContact(t,all){
   const mg=t.root.getObjectByName('sourceMachineGun_turretDark');
-  assert.ok(mg?.parent?.parent===t.root.getObjectByName('rig_turret'),
+  const station=t.root.getObjectByName('strv122RemoteRoofGun');
+  assert.ok(station?.parent===t.root.getObjectByName('rig_turret')&&station.getObjectById(mg?.id),
     'complete measured weapon remains recognized and yaw-owned');
-  assert.equal(mg.parent.userData.sourceMeasuredMachineGun,true);
-  assert.equal(mg.parent.userData.fittingExact,true);
+  assert.equal(station.userData.sourceMeasuredMachineGun,true);
+  assert.equal(station.userData.fittingExact,true);
   near(hit(all,[-.7385,2.866,.7],[0,0,-1])?.point.z,.533,.001,
     'source left narrow foretip reaches its actual terminal plane');
   assert.equal(Boolean(hit(all,[-.760,2.866,.527],[0,0,-1],.14)),false,

@@ -1,3 +1,5 @@
+import { buildT64Modern } from './t72ModernVariants.ts';
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
 // Ukrainian tracked-vehicle family — §5.248 GROUND-UP REBUILDS (ukraine wave).
 //
 // Every build below is a first-party procedural §K construction measured from
@@ -2559,7 +2561,7 @@ function buildUAM1A1(P: UkraineBuilderPort): void {
 }
 
 export const UKRAINE_PROFILES = {
-  ua_t64bv: { build: (builder: ProfileBuilderPort) => buildUAT64BV(builder as UkraineBuilderPort) },
+  ua_t64bv: { build: (P: TankBuilderPort) => buildT64Modern(P, true) },
   ua_t80bv: { build: (builder: ProfileBuilderPort) => buildUAT80BV(builder as UkraineBuilderPort) },
   ua_t80u_kursk: { build: (builder: ProfileBuilderPort) => buildUAT80UKursk(builder as UkraineBuilderPort) },
   ua_t84_oplot_m: { build: (builder: ProfileBuilderPort) => buildUAOplotM(builder as UkraineBuilderPort) },

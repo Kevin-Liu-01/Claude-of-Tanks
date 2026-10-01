@@ -54,12 +54,14 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_PUMAS1SOURCEX } from './com
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_RUSSIA } from './combatAnatomyGroups/russia.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SABRAMK2SOURCEX } from './combatAnatomyGroups/sabraMk2SourceX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SHERIDAN } from './combatAnatomyGroups/sheridan.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SINOSOVIETCONCEPTS } from './combatAnatomyGroups/sinoSovietConcepts.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SOVIETHEAVY } from './combatAnatomyGroups/sovietHeavy.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_STRV122X } from './combatAnatomyGroups/strv122X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_SWEDEN } from './combatAnatomyGroups/sweden.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T14X } from './combatAnatomyGroups/t14X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T62MV1X } from './combatAnatomyGroups/t62mv1X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T72 } from './combatAnatomyGroups/t72.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T72RYS } from './combatAnatomyGroups/t72Rys.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T72B1987X } from './combatAnatomyGroups/t72b1987X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T72B3X } from './combatAnatomyGroups/t72b3X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T72B3MX } from './combatAnatomyGroups/t72b3mX.generated.ts';
@@ -134,12 +136,14 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_RUSSIA,
   CALIBRATIONS_SABRAMK2SOURCEX,
   CALIBRATIONS_SHERIDAN,
+  CALIBRATIONS_SINOSOVIETCONCEPTS,
   CALIBRATIONS_SOVIETHEAVY,
   CALIBRATIONS_STRV122X,
   CALIBRATIONS_SWEDEN,
   CALIBRATIONS_T14X,
   CALIBRATIONS_T62MV1X,
   CALIBRATIONS_T72,
+  CALIBRATIONS_T72RYS,
   CALIBRATIONS_T72B1987X,
   CALIBRATIONS_T72B3X,
   CALIBRATIONS_T72B3MX,

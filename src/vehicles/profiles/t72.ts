@@ -1,3 +1,4 @@
+import { buildT72B3M2022, buildT72BU1989 } from './t72ModernVariants.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Pure family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
@@ -5057,9 +5058,9 @@ function buildT72BUHybridNative2026(P: T72BuilderPort): void {
 
 export const T72_PROFILES = {
   t72b3m: {
-    build: (P: ProfileBuilderPort) => buildT72B3M(P as T72BuilderPort),
+    build: buildT72B3M2022,
   },
   t72bu: {
-    build: (P: ProfileBuilderPort) => buildT72BUHybridNative2026(P as T72BuilderPort),
+    build: buildT72BU1989,
   },
 } satisfies VehicleProfileRecord;

@@ -605,13 +605,11 @@ function buildUdes03(P: SwedishBuilderPort): void {
       Math.PI / 2, 0, 0);
   }
 
-  // Exposed four-wheel hydropneumatic course. Shallow fenders and a recessed
-  // bay wall keep the wheels readable while the deformable lower track run
-  // has the full ±0.50 m spec-owned hydraulic envelope.
+  // Exposed four-wheel hydropneumatic course with open bays beneath the
+  // shallow fenders and the full ±0.50 m spec-owned hydraulic envelope.
   for (const side of [-1, 1]) {
     P.add('hull', box(0.20, 0.045, 5.38), side * 1.28, 1.27, -0.04);
     P.add('hull', box(0.055, 0.20, 5.14), side * 1.35, 1.35, -0.06);
-    P.add('hullRunningGearDark', box(0.025, 0.62, 4.88), side * 0.81, 0.58, -0.04);
     for (let k = 0; k < 9; k++) {
       P.add('hullDetail', box(0.020, 0.095, 0.45), side * 1.382, 1.37, 2.22 - k * 0.56);
     }
@@ -658,8 +656,6 @@ function addStrv103ARunningGear(P: SwedishBuilderPort): void {
       P.add('hull', box(0.07, 0.32, 0.60), side * 1.70, 1.13, z);
       P.add('hullDark', box(0.016, 0.24, 0.52), side * 1.745, 1.13, z);
     }
-    P.add('hullRunningGearDark', box(0.02, 0.72, 4.5),
-      side * 1.00, 0.56, 0.05);
   }
   // owner 2026-09-23 (round 46 wheel follow-up, same defect as the round-40 hulls): r 0.40 on the
   // print's 0.77 middle pitch put 2R/pitch at 1.04 — the two centre tires overlapped by 3 cm while

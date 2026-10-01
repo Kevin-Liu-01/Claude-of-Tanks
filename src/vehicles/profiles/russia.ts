@@ -1,3 +1,5 @@
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { buildT64Modern } from './t72ModernVariants.ts';
 // Soviet/Russian modern family procedural profiles (fidelity oracles:
 // recovered T-62/T-64/T-72/T-90 variants + PT-91M). Owned by the
 // Russia-modern family agent.
@@ -76,7 +78,7 @@ interface RussiaMudguardPort extends RussiaGeometryPort {
 }
 
 interface RussiaOffsetPort extends RussiaGeometryPort {
-  offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
+  offsetBuckets(slots: string[], x?: number, y?: number, z?: number): void;
 }
 
 interface RussiaChassisPort extends RussiaGeometryPort {
@@ -89,9 +91,7 @@ interface RussiaEraPort extends RussiaGeometryPort {
 
 interface RussiaBuilderPort
   extends RussiaGunPort, RussiaGunMountPort, RussiaMudguardPort, RussiaOffsetPort, RussiaEraPort {
-  readonly mats: Record<string, THREE.MeshStandardMaterial> & {
-    readonly dark: THREE.MeshStandardMaterial;
-  };
+  readonly mats: TankBuilderPort['mats'];
   readonly spec: { readonly visual: { readonly number?: string } };
   _shtoraRed?: THREE.MeshStandardMaterial;
 }
@@ -1313,7 +1313,7 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
   widthAnchor(P, 1.815, 1.344, -0.463);
 }
 
-function buildT62MV1(P: RussiaBuilderPort): void {
+export function buildT62Obr1975(P: RussiaBuilderPort): void {
   const { box, cylX, cylY, cylZ } = KIT;
   buildT62Obr1975Chassis(P);
 
@@ -3184,8 +3184,8 @@ export function ruShtora(P: RussiaShtoraPort, p: ShtoraOptions, y: number): void
 // turretPivotZ stays hull-center relative; gun muzzle = zC+pivotZ+gunZ+len.
 // ---------------------------------------------------------------------------
 export const RUSSIA_PROFILES = {
-  t62mv1: { build: buildT62MV1 },
-  t64bv1: { build: buildT64BV1 },
+  t62mv1: { build: buildT62Obr1975 },
+  t64bv1: { build: (P: TankBuilderPort) => buildT64Modern(P) },
   // type59 §5.304: builder moved to profiles/china.ts (buildType59 on the
   // widened obr-1975 chassis) — profiledProcedurals.ts keys it from
   // CHINA_PROFILES at the same carousel position.

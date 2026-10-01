@@ -295,7 +295,7 @@ function buildJagdpanzerE100X(P:TankBuilderPort):void {
   P.gear=KIT.buildRunningGear(P,{
     style:'dished',wheelR:.450,wheelW:.28,wheelY:.51965,
     wheelZs:[...JPZE100_X_DATUMS.wheelZs],xc:1.546796,trackW:1.000952,
-    layers:[[-.184,.060],[-.070]],
+    layers:[[-.184,.060],[-.070]],bayShadow:false,
     // A pin-span-wide smooth ribbon wrongly fills the chamfered shoulder
     // between real link webs. The full metre-wide moving shoes remain intact;
     // their continuous inner web follows the narrower source cross section.

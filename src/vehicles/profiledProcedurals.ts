@@ -1,3 +1,5 @@
+import {SINO_SOVIET_CONCEPT_PROFILES} from './profiles/sinoSovietConcepts.ts';
+import {buildT72Rys} from './profiles/t72Rys.ts';
 import { buildAmx10p } from './profiles/amx10p.ts';
 import { buildDardo } from './profiles/dardo.ts';
 import { buildLrmvLynx } from './profiles/lrmvLynx.ts';
@@ -179,6 +181,8 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   cv90_x: { build: buildCv9040CX },
   type89_x: { build: buildType89X },
 
+  ...SINO_SOVIET_CONCEPT_PROFILES,
+  t72_rys: {build:buildT72Rys},
   ...POLAND_PROFILES,
   ...KOREA_PROFILES,
   ...JAPAN_PROFILES,

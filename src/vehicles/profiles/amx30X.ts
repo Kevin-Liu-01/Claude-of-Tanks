@@ -144,7 +144,7 @@ function castSection([z, low, high, foot, lower, middle, upper, roofLeft, roofRi
   return { z: z - YAW_Z, ring: ring.map(([x, y]) => [x, y - YAW_Y]) };
 }
 
-function casting(P: TankBuilderPort): void {
+export function buildAmx30Casting(P: Pick<TankBuilderPort, 'add'>): void {
   const rows: CastRow[] = [
     [-1.861, 1.684, 1.738, .185, .223, .213, .202, .19, .19],
     [-1.60, 1.684, 1.9753, .704, .717, .615, .349, .2765, .2742],
@@ -355,7 +355,7 @@ export function buildAmx30X(P: TankBuilderPort): void {
     rigidLinkChords:true,
     topY: 1.129, botY, paintedEnds: true, arms: true, coveredTop: false,
   });
-  casting(P); roof(P); basket(P); gun(P);
+  buildAmx30Casting(P); roof(P); basket(P); gun(P);
   P.topY = AMX30_X_DATUMS.overallHeightM - YAW_Y;
   P.hullG.userData.xRebuild = { candidate: 'amx30_x', independent: true, datumVersion: 1, sourceLocalOnly: true };
 }

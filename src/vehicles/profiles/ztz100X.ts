@@ -1,3 +1,4 @@
+import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // ZTZ-100 (`ztz100_x`, owner 2026-09-17: "add a new ztz100 tank … use the glb model and our best most up to date
 // tank generation procedures based off of models"; "the ztz 100 should NOT be based off of the type 100 at all. it
@@ -26,7 +27,7 @@ import { ZTZ100_TIRE_BANDS, ztz100RoadWheelCore, ztz100RoadWheelHardware } from 
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
-import { KIT, FITTINGS, orientedSlab } from './kit.ts';
+import { KIT, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection, type SectionPoint } from './sectionSolid.ts';
 import { mergeAll } from '../factoryGeometry.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -415,6 +416,9 @@ function tower(P: TankBuilderPort, s: number): void {
 /** Weapon station at the rear centre: base ring, fork, cannon body with twin tubes, sight plate, forward barrel. */
 function weaponStation(P: TankBuilderPort): void {
   const z = -0.20;
+  const station=beginAuxiliaryStation(P,{name:'ztz100RemoteMachineGun',caliberMm:12.7,
+    yaw:[0,T.roof+.11,z],pivot:[0,2.855-T.pivotY,-.855-T.pivotZ],
+    muzzle:[0,2.895-T.pivotY,.3445-T.pivotZ]});
   P.add('turretDark', part(cylY(0.26, 0.28, 0.06, 24), 'rws-ring'), 0, T.roof + 0.03, z);
   P.add('turret', part(cylY(0.22, 0.24, 0.10, 20), 'rws-base'), 0, T.roof + 0.11, z);
   for (const side of [-1, 1]) {
@@ -429,6 +433,7 @@ function weaponStation(P: TankBuilderPort): void {
     P.add('turretDark',part(cylX(.078,.144,P.q?20:10),'rws-fork-bolt'),
       side*.2188,2.855-T.pivotY,-.855-T.pivotZ);
   }
+  station.mark('yaw');
   // Object_26: receiver and forward barrel. The fitting marker describes
   // this visible authored gun; it does not substitute a generic weapon.
   const pieces: THREE.BufferGeometry[] = [];
@@ -454,10 +459,9 @@ function weaponStation(P: TankBuilderPort): void {
   const mesh = new THREE.Mesh(geometry,P.mats.dark);
   mesh.castShadow = mesh.receiveShadow = true;
   const weapon = new THREE.Group(); weapon.add(mesh);
-  FITTINGS.markExact(weapon,'pintleMG');
-  weapon.name = 'ztz100RemoteMachineGun';
+  weapon.name = 'ztz100MachineGunStock';
   weapon.userData.sourceOwner = 'Object_26/Object_34';
-  P.turretG.add(weapon); P.disposables.push(geometry);
+  station.attachPitch(weapon); P.disposables.push(geometry);
   // Objects 18/19 and their Object 26 clamps are offset from the receiver;
   // the old relative offsets put both cylinders 193 mm too far aft and
   // 55 mm too low. Keep these measured seats independent of the roof datum.
@@ -487,6 +491,7 @@ function weaponStation(P: TankBuilderPort): void {
     P.addModuleVisual('optics', 'turretGlass', part(cylZ(radius, .003, P.q?20:12), 'rws-sight-front-glass'),
       x, y-T.pivotY, faceZ-.001-T.pivotZ);
   }
+  station.mark('yaw');
 }
 
 function turret(P: TankBuilderPort): void {

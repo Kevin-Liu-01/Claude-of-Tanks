@@ -378,6 +378,12 @@ const LAYOUTS = Object.freeze({
     ['driver', 'hull', 'frontRight'], ['gunner', 'turret', 'frontRight'],
     ['commander', 'turret', 'rearRight'], ['loader', 'turret', 'frontLeft'],
   ), systems: systems({ ammoRack: { placement: 'hull', form: 'hullBins' } }) },
+  // September 30 owner-directed hybrids retain a three-person layout and
+  // the donor chassis' carousel architecture; these are not sourced interiors.
+  conceptAzHybrid: { confidence: 'owner-directed', sources: [], crew: THREE_MAN_AUTO,
+    systems: systems({ ammoRack: { placement: 'hull', form: 'azCarouselCassette' }, autoloader: { placement: 'hull', form: 'azCarousel' } }) },
+  conceptMzHybrid: { confidence: 'owner-directed', sources: [], crew: THREE_MAN_AUTO,
+    systems: systems({ ammoRack: { placement: 'hull', form: 'mzCarouselCassette' }, autoloader: { placement: 'hull', form: 'mzBasket' } }) },
   sovietAz: { confidence: 'documented', sources: ['t72Manual', 't72T90Carousel', 'roeT90'], crew: THREE_MAN_AUTO, systems: systems({ ammoRack: { placement: 'hull', form: 'azCarouselCassette' }, autoloader: { placement: 'hull', form: 'azCarousel' } }) },
   sovietMz: { confidence: 'platform-inferred', sources: ['t72Manual'], crew: THREE_MAN_AUTO, systems: systems({ ammoRack: { placement: 'hull', form: 'mzCarouselCassette' }, autoloader: { placement: 'hull', form: 'mzBasket' } }) },
   bustleAuto: { confidence: 'documented', sources: ['kndsLeclerc', 'hyundaiK2', 'japanType10'], crew: THREE_MAN_AUTO, systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
@@ -504,6 +510,8 @@ const IDS_BY_LAYOUT = Object.freeze({
     'merkava4_x', 'merkava3d_x', 'merkava4_trophy', 'merkava4_barak',
   ],
   sovietManual: ['t62mv1_x', 't62mv1'],
+  conceptAzHybrid: ['type96_72_long','type96_72m_lei'],
+  conceptMzHybrid: ['type96_80_feng','t72_rys'],
   sovietAz: ['type96b_x', 't90ms_x', 't90a_burlak_x', 't90_x', 't72bu_x', 't72b3m_x', 't72b3_x', 't72b_1987_x', 't72b3m', 't72bu', 'pt91m', 't90', 't90a', 't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m', 't90m_proryv', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 't72m1_jaguar', 'pt91_twardy', 't90a_x', 't90a_vladimir_x', 't90m_x', 't90sm_x'],
   sovietMz: ['t80u_x', 't64bv1', 't80', 't80b', 't80bv', 't80u', 't84', 'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m'],
   bustleAuto: ['type90_x', 'type10_x', 'leclerc_x', 'leclerc_classic_x', 'k2', 'k2b', 'type90', 'type90a', 'type10', 'type10b', 'leclerc', 'leclerc_xlr', 'amx56', 'vt4a1', 'k2_x', 'ztz100_x'],

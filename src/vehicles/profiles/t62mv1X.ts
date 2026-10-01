@@ -1,3 +1,4 @@
+import { buildT62MV1Modern } from './t62Modernization.ts';
 // T-62MV-1 X: independently authored solids from the owner-supplied fused
 // FBX's scalar sections. No donor builder, model buffer or source texture.
 import * as THREE from 'three';
@@ -210,4 +211,4 @@ export function buildT62MV1X(P:TankBuilderPort):void {
   addT62MV1Sight(P);
 }
 
-export const T62MV1_X_PROFILES={t62mv1_x:{build:buildT62MV1X}} as const;
+export const T62MV1_X_PROFILES={t62mv1_x:{build:buildT62MV1Modern}} as const;

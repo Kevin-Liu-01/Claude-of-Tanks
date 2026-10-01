@@ -226,10 +226,14 @@ function mainGun(P:TankBuilderPort):void {
   P.muzzleZ=muzzle-GUN[2];
 }
 
-function buildT80UX(P:TankBuilderPort):void {
+export function buildT80UXHull(P:TankBuilderPort):void {
+  P.hullG.position.set(0,0,0);hull(P);runningGear(P);engineDeck(P);glacisEra(P);
+}
+
+export function buildT80UX(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.muzzleZ=T80U_X_DATUMS.muzzleZ-GUN[2];P.topY=T80U_X_DATUMS.highestFittingM-YAW[1];
-  hull(P);runningGear(P);engineDeck(P);glacisEra(P);casting(P);turretEra(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P);
+  buildT80UXHull(P);casting(P);turretEra(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P);
 }
 export const T80U_X_PROFILES={t80u_x:{build:buildT80UX}} as const;

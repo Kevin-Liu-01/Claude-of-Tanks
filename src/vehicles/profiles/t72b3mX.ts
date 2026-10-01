@@ -292,11 +292,16 @@ function mainGun(P:TankBuilderPort):void {
   P.muzzleZ=muzzle-GUN[2];
 }
 
-function buildT72B3MX(P:TankBuilderPort):void {
+export function buildT72B3MXHull(P:TankBuilderPort):void {
+  P.hullG.position.set(0,0,0);
+  hull(P);runningGear(P);hullCassettes(P);deckEquipment(P);rearEquipment(P);
+}
+
+export function buildT72B3MX(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.topY=T72B3M_X_DATUMS.highestFittingM-YAW[1];
-  hull(P);runningGear(P);hullCassettes(P);deckEquipment(P);rearEquipment(P);turret(P);
+  buildT72B3MXHull(P);turret(P);
   cheekCassettes(P);roofCassettes(P);bustle(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P);
 }
 export const T72B3M_X_PROFILES={t72b3m_x:{build:buildT72B3MX}} as const;

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import {createTank} from './tankFactory.ts';
 import {SECOND_WAVE_X_IDS} from './sourceXSecondWaveSpecs.ts';
 import {SUPPLIED_SOURCE_IDS} from './suppliedSourceFleetSpecs.ts';
+import {FLEET_RENEWAL_NEW_IDS} from './fleetRenewalSpecs.ts';
 import {SURFACE_MARKING_STYLE,VEHICLE_MARKING_ANCHORS} from './vehicleMarkings.ts';
 
 // This immutable hash is the 151 original anchor records at c26b3194200f52b,
@@ -22,7 +23,9 @@ const laterIds=new Set([...laterAbramsIds,'type100','ztz100_x','ztz100_prototype
   // 2026-09-25 IFV identity batch: three X replicas and three photographic additions with their own anchors.
   'spz_puma_s1_x','cv90_x','type89_x','dardo','lrmv_lynx','borsuk',
   // 2026-09-28 French IFVs are additions, not changes to the historical anchors.
-  'amx10p','amx10p_25','marder2',...SUPPLIED_SOURCE_IDS]);
+  'amx10p','amx10p_25','marder2',...SUPPLIED_SOURCE_IDS,
+  // Owner-authored September 30 additions have no record in the historical fleet.
+  ...FLEET_RENEWAL_NEW_IDS]);
 assert.equal(newIds.size,23,'the C2 addition does not change the original second-wave batch');
 assert.equal(newIds.has('ariete_c2_x'),false);
 assert.deepEqual(VEHICLE_MARKING_ANCHORS.ariete_c2_x,{
@@ -109,7 +112,11 @@ function visiblePhysicalMeshes(tank) {
 function assertActualFootprints(tank,id,phase,checkExternalVisibility=true) {
   tank.root.updateMatrixWorld(true);
   const footprints=markingMeshes(tank).flatMap(connectedFootprints),physical=visiblePhysicalMeshes(tank);
-  assert.equal(footprints.length,2,`${id}/${phase}: actual insignia and designation buffers`);
+  // Owner's 2026-09-30 T-62 rebuild preserves the 1975 donor's two numbered
+  // cheeks and adds its own left national insignia. Inspect all three seats.
+  const donorNumbers=id==='t62mv1_x';
+  const expectedCount=donorNumbers?3:2;
+  assert.equal(footprints.length,expectedCount,`${id}/${phase}: actual insignia and designation buffers`);
   const intended=VEHICLE_MARKING_ANCHORS[id].owner,supportNames=new Set();
   const sides=[];
   for(const mark of footprints) {
@@ -118,7 +125,8 @@ function assertActualFootprints(tank,id,phase,checkExternalVisibility=true) {
     const side=VEHICLE_MARKING_ANCHORS[id].side==='left'?-1:1;
     // 2026-09-14: the T-72B3M X skirt gap is closed (owner ruling); its marks now sit on the
     // turret's right cheek like every other explicitly sided anchor.
-    assert.ok(local.x*side>.10,`${id}/${phase}: both marks stay on their explicitly chosen side`);
+    assert.ok(donorNumbers?Math.abs(local.x)>.10:local.x*side>.10,
+      `${id}/${phase}: markings remain on the intended cheek`);
     sides.push(Math.sign(local.x));
     for(const u of [-.28,0,.28])for(const v of [-.28,0,.28]) {
       const point=mark.center.clone().addScaledVector(mark.u,u).addScaledVector(mark.v,v);
@@ -141,16 +149,21 @@ function assertActualFootprints(tank,id,phase,checkExternalVisibility=true) {
       `${id}/${phase}: no equipment obscures paint (${u},${v}); offset=${offset}; hit=${outside.object.name}`);
     }
   }
-  assert.equal(sides.length,2,`${id}: two real footprints`);
+  assert.equal(sides.length,expectedCount,`${id}: complete real footprints`);
+  if(donorNumbers)assert.deepEqual(sides.sort(),[-1,-1,1],`${id}: two donor cheeks plus left insignia`);
   return{footprints,supportNames:[...supportNames].sort()};
 }
 
 function assertHighMetadata(tank,id) {
   const marks=markingMeshes(tank);
-  assert.deepEqual(marks.map(m=>m.userData.markingKind).sort(),['designation','insignia'],
-    `${id}: two real marking kinds`);
+  const donorNumbers=id==='t62mv1_x';
+  assert.deepEqual(marks.map(m=>m.userData.markingKind).sort(),
+    donorNumbers?['designation','designation','insignia']:['designation','insignia'],
+    `${id}: complete authored marking kinds`);
   for(const mark of marks) {
-    assert.equal(mark.userData.markingAnchorProfile,id,`${id}: explicit own anchor`);
+    const expectedAnchor=donorNumbers&&mark.userData.markingKind==='designation'?'authored-surface-seat':id;
+    assert.equal(mark.userData.markingAnchorProfile,expectedAnchor,`${id}: explicit own or retained donor anchor`);
+    if(donorNumbers&&mark.userData.markingKind==='insignia')assert.ok(mark.position.x<0,'T-62 national insignia stays left');
     assert.equal(mark.userData.surfaceSupported,true,`${id}: authoritative physical solver seat`);
     assert.equal(mark.userData.visibilityClearSamples,9,`${id}: all nine footprint rays clear`);
     assert.ok(mark.userData.maximumSurfaceErrorM<=SURFACE_MARKING_STYLE.visibilityToleranceM,
@@ -185,7 +198,7 @@ function verify(id,quality) {
       assert.ok(VEHICLE_MARKING_ANCHORS[id].owner==='hull'?distance<1e-6:distance>.02,
         `${id}: actual high/low paint follows only its owning hull/turret rig`);
     }
-    console.log(`${id}/${quality}: two readable permanent footprints, nine visible rays, ERA spent/reset and owner pose PASS`);
+    console.log(`${id}/${quality}: all readable permanent footprints, nine visible rays, ERA spent/reset and owner pose PASS`);
   } finally {tank.dispose();}
 }
 

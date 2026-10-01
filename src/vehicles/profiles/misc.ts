@@ -1,3 +1,5 @@
+import { buildT80UK } from './t80ukRenewal.ts';
+import { buildAmx30Casting } from './amx30X.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Euro/Asia-moderns family procedural profiles (fidelity oracles:
 // ariete-dustymojito, char_leclerc_andertan, t80u_javanilga, recovered
@@ -28,6 +30,7 @@ import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.j
 import { KIT, FITTINGS, MUDGUARDS, convexSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { buildT80CastTurret, domeBoxPlanSeat, tubeGun } from './russia.ts';
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec2Tuple = readonly [number, number];
@@ -51,6 +54,7 @@ interface EraPlacement {
 }
 
 interface MiscBuilderPort {
+  readonly forEachBucketPart: TankBuilderPort['forEachBucketPart'];
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
@@ -3983,6 +3987,9 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     // body with NO skirt below it — the entire wheel train reads (§B9). The
     // 1.26 floor clears the 1.215 return-shoe crown (§B4). ------------------
     segZ('hull', 3.02, 0.325, 0, 1.4225, -3.20, 1.50);
+    // Close the waist between the lower tub and upper sponsons. Keep the
+    // return-track lanes outside this narrow structural riser clear.
+    segZ('hull', 1.89, 0.18, 0, 1.18, -2.90, 2.60);
     P.add('hull', frustum(1.51, 1.90, 1.46, 1.51, 1.88, 1.46, 1.26, 1.56));      // fore-body course closing the sponson flank under the glacis shoulder
     segZ('hull', 2.98, 0.045, 0, 1.5625, -1.16, 1.48);                           // FORE DECK 1.585, inset behind a chamfered ±1.51 shoulder
     // ENGINE DECK (amx40 identity: REAR-RAISED, stepped): step 1.615, rear
@@ -4283,6 +4290,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
   const castUpper = (point: Vec2Tuple): number => 0.60 - aftF(point) * 0.085;
   const castCrown = (point: Vec2Tuple): number => 0.655 - aftF(point) * 0.115; // long falling bustle taper (roof world 2.24 -> 2.13)
   const buildAMX30TurretStage1 = (): void => {
+    if (b2) { buildAmx30Casting(P); return; }
     P.add('turret', geometryXform(cylY(0.94, 0.98, 0.11, P.q ? 24 : 14), 0, 0, 0, 0, 0, 0, [1, 1, 0.62]), 0, 0.005, 0.10); // oval ring riser
     P.add('turret', box(1.80, 0.14, 1.24), 0, 0.07, 0.10);                       // ring-zone throat bridging into the cast shell
     P.add('turret', polyMultiLoft(PLAN, [
@@ -4306,6 +4314,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
   // dress it with a low cast crown plate over the fan center (top 0.687,
   // under the pub-2.29 roof datum; roof kit re-seats on the plate).
   const buildAMX30TurretStage2 = (): void => {
+    if (b2) return;
     P.add('turret', cylY(0.34, 0.37, 0.022, 20), planCx, 0.676, planCz);
   };
   const buildAMX30AssemblyStage7 = (): void => {
@@ -4323,12 +4332,6 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
       // courses per side (y 0.17 / 0.34) spanning |x| 0.44..1.16: the inner
       // stations ARE the mantlet-flank bricks; the rotor throat stays clear.
       const TP = P.spec.armor.turretPivot;
-      const insetAt = (y: number): number => y <= 0.195
-        ? 1.00 + ((y - 0.045) / 0.15) * 0.045
-        : 1.045 - ((y - 0.195) / 0.24) * 0.08;
-      const leanAt = (y: number, radius: number): number => (
-        (y <= 0.195 ? 0.30 : -0.3333) * radius
-      );
       const arcSegs: ArcSegment[] = [];
       for (let i = 0; i < PLAN.length; i++) {
         const a = PLAN[i], b3 = PLAN[(i + 1) % PLAN.length];
@@ -4343,11 +4346,22 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
       arcSegs.sort((q, r) => q.mx - r.mx);
       const G2T = [0.30 / 0.28, 0.16 / 0.13, 0.09 / 0.07];
       const cheekSeat = (seg: ArcSegment, y: number): CheekSeat => {
-        const s = insetAt(y);
-        const wx = planCx + (seg.mx - planCx) * s, wz = planCz + (seg.mz - planCz) * s;
-        const rlen = Math.hypot(seg.mx - planCx, seg.mz - planCz);
-        const rx = Math.atan(leanAt(y, rlen)) * 0.45;
-        return { x: wx + seg.nx * 0.058, z: wz + seg.nz * 0.058, rx, ry: Math.atan2(seg.nx, seg.nz), wx, wz };
+        const outward=new THREE.Vector3(seg.mx,0,seg.mz).normalize();
+        const origin=outward.clone().multiplyScalar(4);origin.y=y;
+        const ray=new THREE.Raycaster(origin,outward.clone().negate(),0,5);
+        const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
+        let nearest:THREE.Intersection|undefined;
+        P.forEachBucketPart(['turret'],geometry=>{
+          const mesh=new THREE.Mesh(geometry,material);mesh.updateMatrixWorld(true);
+          const hit=ray.intersectObject(mesh)[0];
+          if(hit&&(!nearest||hit.distance<nearest.distance))nearest=hit;
+        });
+        material.dispose();
+        if(!nearest?.face)throw new Error('AMX-30 B2 cheek ERA has no cast-shell seat');
+        const normal=nearest.face.normal.clone();if(normal.dot(outward)<0)normal.negate();
+        const rotation=new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),normal));
+        return {x:nearest.point.x+normal.x*.040,z:nearest.point.z+normal.z*.040,
+          rx:rotation.x,ry:rotation.y,wx:nearest.point.x,wz:nearest.point.z};
       };
       const brickSeats: Array<readonly [CheekSeat, number]> = [];                // [seat, yLocal]
       for (const seg of arcSegs) brickSeats.push([cheekSeat(seg, 0.17), 0.17]);  // course A: every station
@@ -4377,11 +4391,13 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
       P.add('turret', KIT.cylX(0.13, 0.16, 14, 0.11), s * 1.02, 0.50, 0.42);
       P.add('turretDark', KIT.cylX(0.065, 0.02, 12), s * (1.02 + 0.09), 0.50, 0.42);
     }
-    // ---- bustle: the long cast taper carries a supported rack (§B3.2) -----
+    // The source casting already contains B2's complete tapered bustle.
+    if (!b2) {
     P.add('turret', frustum(0.68, -1.55, -2.02, 0.55, -1.58, -1.98, 0.16, 0.52)); // tapering cast bustle course beyond the shell tail
     P.add('turret', slab(                                                        // bustle spine: the taper read from above
       [-0.38, 0.50, -1.30], [0.38, 0.50, -1.30], [0.26, 0.46, -2.00], [-0.26, 0.46, -2.00],
       [-0.38, 0.56, -1.30], [0.38, 0.56, -1.30], [0.26, 0.50, -2.00], [-0.26, 0.50, -2.00]));
+    }
     for (const y of [0.24, 0.50]) P.add('turretDetail', box(1.30, 0.032, 0.032), 0, y, -2.06); // rack rails
     for (const x of [-0.62, -0.21, 0.21, 0.62]) P.add('turretDetail', box(0.028, 0.30, 0.028), x, 0.37, -2.06);
     for (const s of [-1, 1]) P.add('turretDetail', box(0.032, 0.30, 0.44), s * 0.66, 0.37, -1.84, 0, s * 0.10, 0); // rack side posts
@@ -4421,7 +4437,66 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
   // print's curved AA arc rail carrying the remote 7.62. World crown ~2.70;
   // silhouetteHeightM re-derived from the measured p95 (§5.318 convention).
   const cupX = 0.45, cupZ = -0.38;
+  const buildAMX30B2Roof = (): void => {
+    // Match the asymmetric AMX-30 B casting: commander at negative local X,
+    // loader at positive X (source roof() in amx30X.ts). Do not infer
+    // the side from a camera-facing left/right label. Roof y≈0.70.
+    // Structural coamings remain hittable; sights and field kit are equipment.
+    const commanderX=-.553, commanderZ=-.520, loaderX=.552, loaderZ=-.439;
+    P.addCupola('turret', cylY(.355,.405,.15,24), commanderX,.755,commanderZ);
+    P.addCupola('turret', cylY(.322,.355,.19,24), commanderX,.920,commanderZ);
+    P.add('turretDark', torus(.327,.012,24), commanderX,1.017,commanderZ);
+    P.addCupola('turret', cylY(.302,.327,.045,24), commanderX,1.033,commanderZ);
+    P.addEquipment('turret', KIT.lathe([[.295,0],[.265,.032],[.17,.060],[.02,.075]],24), commanderX,1.057,commanderZ);
+    for(let i=0;i<10;i++) {
+      const a=(i+.5)*Math.PI/5;
+      P.addEquipment('turret', geometryXform(box(.105,.079,.051),0,0,.329,0,0,0), commanderX,.974,commanderZ,0,a,0);
+      P.add('turretGlass', geometryXform(box(.077,.047,.014),0,0,.358,0,0,0), commanderX,.980,commanderZ,0,a,0);
+    }
+    P.addEquipment('turret', box(.23,.14,.21), commanderX,1.055,commanderZ+.316);
+    P.add('turretGlass', box(.15,.065,.014), commanderX,1.062,commanderZ+.429);
+    for(const z of [commanderZ-.11,commanderZ+.11])P.addEquipment('turret',box(.07,.055,.09),commanderX+.29,1.066,z);
+    P.add('turretDark',box(.16,.024,.025),commanderX-.04,1.135,commanderZ-.05);
+    // Flat loader hatch and its hinge remain separate from the commander drum.
+    P.addCupola('turret',cylY(.242,.265,.087,24),loaderX,.739,loaderZ);
+    P.addEquipment('turret',cylY(.236,.244,.025,24),loaderX,.792,loaderZ);
+    P.add('turretDark',box(.18,.015,.023),loaderX,.81,loaderZ);
+    P.addEquipment('turret',box(.10,.06,.13),loaderX+.24,.778,loaderZ);
+    for(const [x,z] of [[loaderX-.09,loaderZ+.34],[loaderX-.40,loaderZ+.34]]){
+      P.addEquipment('turret',box(.17,.11,.15),x,.736,z);
+      P.add('turretGlass',box(.12,.045,.014),x,.771,z+.082);
+    }
+    // Forward COTAC sight: shoe overlaps the roof, protected aperture stays clear.
+    P.addEquipment('turret',box(.34,.25,.34),-.46,.807,.30,0,.06,0);
+    P.addEquipment('turret',box(.37,.027,.37),-.46,.943,.30,0,.06,0);
+    P.add('turretDark',box(.25,.11,.023),-.46,.83,.475);
+    P.add('turretGlass',box(.17,.065,.014),-.46,.83,.491);
+    // Two complete, supported AA machine-gun fittings. No floating receiver,
+    // barrel or sight duplicate; these remain decorative roof weapons.
+    for(const [name,x,y,z,scale] of [
+      ['commander',commanderX-.33,1.012,commanderZ+.03,.98], ['loader',loaderX+.30,.80,loaderZ-.16,.87],
+    ] as const){
+      const base=name==='commander'?.79:.69;
+      P.addEquipment('turret',cylY(.075,.10,y-base,16),x,(y+base)/2,z);
+      P.add('turretDark',box(.17,.045,.21),x,y,z);
+      const gun=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale,tone:'dark',elev:.03,ammo:true});
+      gun.name=`amx30b2_${name}_machine_gun`;gun.position.set(x,y+.015,z);P.turretG.add(gun);
+    }
+    for(const side of [-1,1]){
+      P.addEquipment('turret',box(.17,.16,.36),side*1.02,.31,-1.16);
+      const smoke=FITTINGS.smokeBank({mats:P.mats,count:3,r:.042,len:.27,spacing:.13,splay:side*.85,pitch:-.36,seed:334+side});
+      smoke.position.set(side*1.02,.38,-1.16);P.turretG.add(smoke);
+      P.addEquipment('turret',cylY(.064,.087,.12,14),side*.79,.56,-1.54);
+      const whip=FITTINGS.antennaWhip({mats:P.mats,h:side<0?.84:.72,r:.013,rake:side*.06,seed:310+side});
+      whip.position.set(side*.79,.62,-1.54);P.turretG.add(whip);
+    }
+    P.addEquipment('turret',box(.26,.12,.34),.28,.731,-1.18);
+    P.addEquipment('turret',box(.29,.023,.36),.28,.803,-1.18);
+    for(const x of [.37,.19])P.add('turretDark',box(.02,.12,.35),x,.735,-1.18);
+    P.turretG.userData.amx30b2Roof={revision:2,machineGuns:2,cupola:'TOP-7',sight:'COTAC',commanderX,commanderZ,loaderX,loaderZ};
+  };
   const buildAMX30MarkingsStage2 = (): void => {
+    if (b2) { buildAMX30B2Roof(); return; }
     P.add('turret', cylY(0.372, 0.428, 0.21, 16), cupX, 0.665, cupZ);            // raised cast collar base
     for (let k = 0; k < 8; k++) {                                                // gusset skirt (print tell)
       const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
@@ -4620,7 +4695,7 @@ export const MISC_PROFILES = {
   leclerc: { build: buildLeclerc },
   leclerc_xlr: { build: buildLeclercXLR },
   amx56: { build: buildAMX56 },
-  t80u: { build: buildT80UNative2026 },
+  t80u: { build: buildT80UK },
   type74: { build: buildType74 },
   // FRANCE ROUND: the AMX-30s render procedural (the ahab GLBs carry a
   // baked-in hull/turret 180 — see the buildAMX30 header note)

@@ -1,3 +1,4 @@
+import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 // Strictly typed family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -774,6 +775,8 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
     [fit(0.18), fitY(0.15), fit(0.15)], [-fit(0.18), fitY(0.15), fit(0.15)],
   ), x, foundationTopY, z + fit(0.03), 0, yaw, 0);
 
+  const finishStation = ['t90','t90m_proryv'].includes(P.spec.id)
+    ? captureAuxiliaryStock(P,weaponName) : null;
   P.addEquipment('turret', box(fit(0.40), fitY(0.34), fit(0.36)),
     x, headCenterY, z + fit(0.04), 0, yaw, 0);
   P.add('turretDark', box(fit(0.44), fitY(0.045), fit(0.40)),
@@ -797,9 +800,11 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   P.add('turretGlass', KIT.cylZ(fit(0.054), fit(0.012), 14),
     x - fit(0.25), headCenterY + fitY(0.08), z + fit(0.294), 0, yaw, 0);
 
+  finishStation?.();
   const weapon = FITTINGS.pintleMG({
     mats: P.mats,
     cls: weaponClass,
+    remoteControlled: ['t90', 't90m_proryv'].includes(P.spec.id),
     // The weapon and yoke stay dark against the painted armored head so the
     // single automated package remains legible in the normal three-quarter
     // gallery view. A camouflage-painted receiver made the consolidated
@@ -7506,13 +7511,23 @@ function rebuildT90MSTurretExact(P: T90BuilderPort): void {
       -0.25 + 0.18 * t, 1.225 + 0.035 * t, 0.09 + 0.10 * t, 0, 0, -0.18);
   }
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'kord', tone: 'dark', elev: -0.10, ammo: true, shield: true, scale: 1.16 });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'kord', remoteControlled: true, tone: 'dark', elev: -0.10, ammo: true, shield: true, scale: 1.16 });
     // The Kord is carried by the top yoke, not buried beside the bustle.  Its
     // foot enters the faceted station above and the receiver/barrel now own
     // the reference-height horizontal combat silhouette.
     mg.position.set(0.09, 1.12, 0.075);
     mg.rotation.y = 0;
     mg.name = 't90msTagilRemoteKord';
+    // The armored head, feed box and sights share the gun's traverse bearing.
+    // Only the buried foundation stays fixed to the main turret. Preserve the
+    // authored neutral pose while making this ownership explicit.
+    mg.updateMatrix();
+    const toBearing = mg.matrix.clone().invert();
+    for (const part of [...tagilTower.children]) {
+      if (part.name === 't90msTagilTowerFoundation') continue;
+      part.applyMatrix4(toBearing);
+      mg.add(part);
+    }
     tagilTower.add(mg);
   }
   P.turretG.add(tagilTower);

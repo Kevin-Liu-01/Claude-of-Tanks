@@ -1,3 +1,4 @@
+import {neutralStock} from './neutralStock.test-support.mjs';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import * as T from 'three';
@@ -224,11 +225,13 @@ function commanderDonor(t,options){
     const original=donor.root.getObjectByName('fitting_browningDerived_m2');
     assert(actual&&original,'both actual K2-style fittings exist');
     near(actual.scale.x,.70,1e-12,'installed roof fitting is 70% donor size');
-    for(const mesh of stock(original)){
-      const counterpart=actual.getObjectByName(mesh.name);
-      assert(counterpart,`same K2 fitting component ${mesh.name}`);
-      assert.equal(hash(counterpart.geometry.attributes.position),hash(mesh.geometry.attributes.position),
-        'exact K2 receiver, connected barrel, mount and ammunition housing');
+    const actualStock=neutralStock(actual),donorStock=neutralStock(original);
+    assert.equal(actualStock.length,donorStock.length,'same complete K2 fitting triangle census');
+    // The moving receiver is stored about its pivot in Float32; transforming
+    // it back to the fitting frame can differ by a fraction of a micron.
+    for(let i=0;i<actualStock.length;i++) {
+      const a=actualStock[i].split(/[;,]/).map(Number),b=donorStock[i].split(/[;,]/).map(Number);
+      a.forEach((v,j)=>near(v/1e5,b[j]/1e5,2e-5,'same neutral K2 fitting stock'));
     }
     assert(getSpec('ariete_c2_x').gun.shells.every(s=>s.caliberMm===120),
       'decorative roof fitting cannot be selected as a playable weapon');

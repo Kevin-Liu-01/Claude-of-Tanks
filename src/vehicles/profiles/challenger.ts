@@ -1,3 +1,4 @@
+import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // src/vehicles/profiles/challenger.ts — the Challenger family profile module
 // (§5.75 owner consistency order, 2026-08-08: one family per module; PURE
@@ -70,6 +71,7 @@ interface ChallengerGearPort {
 }
 
 interface ChallengerBuilderPort extends UKBuilderPort {
+  forEachBucketPart(slots:string|string[],visit:(geometry:THREE.BufferGeometry,bounds:THREE.Box3|null,bucket:string)=>void):void;
   readonly spec: {
     readonly id: string;
     readonly armor: { readonly turretPivot: Vec3Tuple };
@@ -1900,7 +1902,7 @@ function addChallenger2WeaponTowerMg(
   P: ChallengerBuilderPort,
   stationX: (value: number) => number,
   stationY: (value: number) => number,
-): void {
+): THREE.Group {
   const { box, cylX } = KIT;
   const stationMg = new THREE.Group();
   const stationPart = (
@@ -1946,6 +1948,7 @@ function addChallenger2WeaponTowerMg(
   stationMg.userData.weaponClass = 'mag58';
   FITTINGS.markExact(stationMg, 'pintleMG');
   P.turretG.add(stationMg);
+  return stationMg;
 }
 
 function buildChallenger2WeaponTower(
@@ -1956,8 +1959,29 @@ function buildChallenger2WeaponTower(
   const stationX = (x: number): number => x + centerX - 0.7095;
   const stationY = (y: number): number => y + seatY - 0.690;
 
+  const automatic = P.spec.id==='challenger2e' || P.spec.id==='ua_challenger2';
+  const station = automatic ? beginAuxiliaryStation(P, {
+    name:'challengerRemoteGPMG',caliberMm:7.62,
+    yaw:[stationX(.77),stationY(.69),.20],
+    pivot:[stationX(.775),stationY(.835),.20],
+    muzzle:[stationX(.775),stationY(.925),.575],
+  }) : null;
   addChallenger2WeaponTowerCradle(P, stationX, stationY);
-  addChallenger2WeaponTowerMg(P, stationX, stationY);
+  const stationMg=addChallenger2WeaponTowerMg(P, stationX, stationY);
+  if(station){
+    delete stationMg.userData.fittingRoot;
+    delete stationMg.userData.fitting;
+    delete stationMg.userData.fittingExact;
+    // Turn the source's crosswise barrel forward about its receiver, then
+    // move the complete receiver/feed stock into the elevation cradle.
+    const origin=new THREE.Vector3(stationX(.775),stationY(.925),.20);
+    const matrix=new THREE.Matrix4().makeTranslation(...origin.toArray())
+      .multiply(new THREE.Matrix4().makeRotationY(-Math.PI/2))
+      .multiply(new THREE.Matrix4().makeTranslation(...origin.clone().negate().toArray()));
+    for(const child of stationMg.children)child.applyMatrix4(matrix);
+    station.attachPitch(stationMg);
+  }
+
 
   for (const x of [0.685, 0.735]) {
     P.add('turretDark', cylZ(0.012, 0.58, P.q ? 14 : 10), stationX(x), stationY(0.902), 0.015);
@@ -1991,6 +2015,7 @@ function buildChallenger2WeaponTower(
       stationY(0.947 - Math.abs(k - 2.5) * 0.003), 0.21);
   }
 
+  station?.mark('yaw');
   const baseBottomY = seatY - 0.035;
   const receipt = Object.freeze({
     exactChallenger2Assembly: true,
@@ -4901,7 +4926,7 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     P.add('turretDetail', frustum(0.22, 0.04, -0.04, 0.105, 0.03, -0.03, 0, 0.26),
       0.70, 1.17, -0.48);                                                        // source RWS rear face begins world z .67
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', seed: 31, elev: 0.05, ammo: true });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', remoteControlled: true, tone: 'two-tone', seed: 31, elev: 0.05, ammo: true });
       mg.position.set(0.72, C3H + 0.22, -0.10);
       mg.scale.z = 1.55;                                                         // measured .73..2.67 world run
       P.turretG.add(mg);

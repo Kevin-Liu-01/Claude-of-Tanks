@@ -9,7 +9,7 @@ const near = (actual, expected, tolerance, label) => assert.ok(
 );
 const hit = (mesh, origin, direction) => new THREE.Raycaster(
   new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, 12,
-).intersectObject(mesh, false)[0]?.point;
+).intersectObject(mesh, true)[0]?.point;
 
 function sourceFixtureChecks(root) {
   const detail = root.getObjectByName('turretDetail');
@@ -20,7 +20,7 @@ function sourceFixtureChecks(root) {
   // the tall optic head. An oversized cylinder passes outer silhouette IoU.
   near(hit(detail, [-2, 2.95, -1.254], [1, 0, 0])?.x, -.60075, .003, 'actual upper optic radius');
   for (const [y, z] of [[2.9, -1.47542], [3.1, -1.59968], [3.14, -1.62631]]) {
-    near(hit(detail, [.14, y, 0], [0, 0, -1])?.z, z, .004, 'sloping RWS fork face');
+    near(hit(root.getObjectByName('armataXRemoteMachineGun'), [.14, y, 0], [0, 0, -1])?.z, z, .004, 'sloping RWS fork face');
   }
   for (const [x, z, y] of [[-.60, 1.80, 1.68108], [.60, 1.60, 1.68877]]) {
     near(hit(deck, [x, 2, z], [0, -1, 0])?.y, y, .004, 'staggered source crew hatch seat');

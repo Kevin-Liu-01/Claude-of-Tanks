@@ -145,11 +145,15 @@ function cheeks(P:TankBuilderPort):void{
     [.96027,1.77862,1.3914,.203147,.888427,.411618,.59,.400],
   ];
   for(const [x,y,z,nx,ny,nz,w,d]of cells){
-    const n=new THREE.Vector3(nx,ny,nz).normalize(),pitch=Math.acos(n.y),yaw=Math.atan2(n.x,n.z);
-    const g=roofSheet([[-d/2,-w/2,w/2,0,0],[d/2,-w/2,w/2,0,0]],.036);
-    const lower=roofSheet([[-d/2,-w/2,w/2,-.22,-.22],[d/2,-w/2,w/2,-.030,-.030]],.024);
+    // Two petals share the outward ridge. The former lower sheet was
+    // translated down into the casting and disappeared from the front.
+    const yaw=Math.atan2(nx,nz),depth=d*.76;
+    const upper=roofSheet([[-depth*.55,-w/2,w/2,.17,.17],[depth*.45,-w/2,w/2,0,0]],.032);
+    const lower=roofSheet([[-depth*.55,-w/2,w/2,-.17,-.17],[depth*.45,-w/2,w/2,0,0]],.032);
     P.destructibleCluster(`turret_era_${x<0?'L':'R'}`,()=>{
-      for(const solid of [g,lower])P.addExternalArmor('turret',markEraHitFaces(solid,[0,1,0]).rotateX(pitch).rotateY(yaw),x-YAW[0],y-YAW[1],z-YAW[2]);
+      for(const [solid,normal] of [[upper,[0,1,0]],[lower,[0,-1,0]]] as const)
+        P.addExternalArmor('turret',markEraHitFaces(solid,normal).rotateY(yaw),
+          x-YAW[0]+Math.sin(yaw)*.065,y-YAW[1],z-YAW[2]+Math.cos(yaw)*.065);
     });
     equipment(P,'turretDetail',beamBetween([x*.82,1.55,z*.82],[x,y-.16,z],.017),0,0,0);
   }
