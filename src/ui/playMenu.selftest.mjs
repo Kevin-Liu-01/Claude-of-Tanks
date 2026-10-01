@@ -32,6 +32,15 @@ assert.match(source, /version: 2,/, 'invite links stamp the room version the com
 assert.match(source, /failureTitle\.textContent = failure\.title/);
 assert.match(source, /failureDetail\.textContent = failure\.detail/);
 assert.match(source, /retryBtn\.hidden = !failure\.canRetry \|\| !lastConnectionKind/);
+// The lifecycle proofs (2026-09-30, docs/MULTIPLAYER-V2.md §13.11): a room host that closes the socket and stays away reaches
+// the menu as `room_unreachable` (src/mp/room/roomClient.ts closeReasonFor) — the room service being unavailable, with Try
+// again — and Return to Garage is unconditional: it closes whatever the menu holds (a pending attempt included) and hides.
+assert.match(source, /retryBtn\.addEventListener\('click', \(\) => \{\s*if \(!lastConnectionKind \|\| connecting \|\| session \|\| activeRoom \|\| retryBtn\.hidden\) return;\s*closeCurrentSession\('room_retry'\);\s*void requestRoom\(lastConnectionKind\);/,
+  'Try again reconnects with the last kind after releasing the failed acquisition');
+assert.match(source, /garageBtn\.addEventListener\('click', \(\) => \{\s*closeCurrentSession\('back_to_menu'\);\s*clearFailure\(\);\s*hide\(false\);\s*\}\);/,
+  'Return to Garage always works: no guard, the session closed, the failure cleared, the menu hidden');
+assert.match(source, /if \(isIntentionalRoomCloseReason\(reason\)\) return;\s*if \(!wasHandedOff\) showRoomFailure\(reason\);/,
+  'every non-intentional close of the menu\'s own seat is presented (an unreachable host included)');
 assert.match(source, /generation === requestGeneration\) showFailure\(error\)/,
   'a retired request must not repaint a closed or replacement menu');
 assert.match(source, /if \(session \|\| activeRoom \|\| connecting \|\| roomConnection\.current\s*\|\| roomConnection\.connecting\) return/,

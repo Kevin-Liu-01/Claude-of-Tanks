@@ -14,7 +14,8 @@ import { RoomActor } from './roomActor.ts';
 import { createP2pMatchHost } from './p2pMatchHost.ts';
 import {
   ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS, ROOM_MATCH_POLL_MS, ROOM_MATCH_REPORT_STALE_AFTER_MS,
-  ROOM_RATE_MAX_MESSAGES, ROOM_SIGNAL_MAX_BYTES, ROOM_STATE_COALESCE_MS, ROOM_UNAUTHENTICATED_TIMEOUT_MS,
+  ROOM_RATE_MAX_MESSAGES, ROOM_SEAT_DISCONNECT_TTL_MS, ROOM_SIGNAL_MAX_BYTES, ROOM_STATE_COALESCE_MS, ROOM_UNAUTHENTICATED_TIMEOUT_MS,
+  readRoomSnapshot,
 } from './protocol.ts';
 import { signSeatToken, verifySeatToken } from '../../../server/match/seatToken.ts';
 
@@ -843,6 +844,188 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   const h3 = createHarness({ transport: 'p2p' });
   h3.actor.restore(legacy);
   assert.deepEqual(h3.actor.exportState().steppedDown, [], 'a pre-P1b state reads as nobody stepped down');
+}
+
+// ============================================================ the lifecycle proofs (2026-09-30): rooms never hang
+
+// ---- an emptied room keeps its code for the idle TTL with the expiry as its only deadline; the next seat to join owns it
+// (the departed creator's id stayed admin before, so no joiner's snapshot validated: a dead code for 24 h)
+{
+  const h = createHarness({ transport: 'p2p' });
+  h.actor.handleOpen('a'); await h.send('a', 'room_create', { ...identity('admin'), mode: 'private', settings: { teamSize: 1, mapId: 'verdant' } });
+  await h.send('a', 'room_leave', {}, 'leave');
+  assert.equal(h.closed.get('a'), 'client_leave');
+  assert.ok(h.actor.snapshot, 'the room outlives its last seat');
+  assert.deepEqual(h.actor.snapshot.players, []);
+  assert.equal(h.actor.snapshot.phase, 'waiting');
+  assert.equal(h.actor.nextDeadline(), h.actor.snapshot.touchedAt + ROOM_IDLE_TTL_MS, 'the idle expiry is its only deadline: no lease, no alarm loop');
+  h.actor.handleOpen('b'); await h.send('b', 'room_join', identity('late', token('c'), token('d')), 'j');
+  const joined = h.last('b', 'room_joined').payload.room;
+  assert.equal(joined.adminId, 'late', 'the next seat owns the room');
+  assert.equal(joined.players[0].isAdmin, true);
+  assert.doesNotThrow(() => readRoomSnapshot(JSON.parse(JSON.stringify(joined))), 'its snapshot validates on the client');
+  await h.command('b', { type: 'set_ready', ready: true });
+  assert.equal((await h.command('b', { type: 'start' }, 'start')).type, 'room_ack', 'and it can start');
+  assert.equal(h.actor.snapshot.host.hostId, 'late');
+  assert.equal(h.last('b', 'match_start').payload.hostId, 'late');
+}
+
+// ---- the admin lease is no alarm while nobody else is connected (no 30 s re-arm loop: 2,880 alarms a day per abandoned room);
+// a later admission runs the due lease at once, so the newcomer owns the room without a further wait
+{
+  const h = createHarness({ transport: 'p2p' });
+  h.actor.handleOpen('a'); await h.send('a', 'room_create', { ...identity('admin'), mode: 'private', settings: { teamSize: 2 } });
+  h.actor.handleClose('a');
+  const droppedAt = h.now;
+  assert.equal(h.actor.exportState().adminLeaseAt, droppedAt + ROOM_ADMIN_DISCONNECT_GRACE_MS, 'the lease is held');
+  assert.equal(h.scheduledAt, droppedAt + ROOM_SEAT_DISCONNECT_TTL_MS, 'but the next alarm is the seat reap: nobody is there to migrate to');
+  await h.advance(ROOM_ADMIN_DISCONNECT_GRACE_MS);
+  assert.equal(h.actor.snapshot.adminId, 'admin');
+  assert.equal(h.scheduledAt, droppedAt + ROOM_SEAT_DISCONNECT_TTL_MS, 'the due lease is not re-armed');
+  await h.advance(ROOM_ADMIN_DISCONNECT_GRACE_MS);
+  assert.equal(h.scheduledAt, droppedAt + ROOM_SEAT_DISCONNECT_TTL_MS, 'still no alarm for it a grace later');
+  // a guest joins two minutes into the absence: the admission's reschedule finds the lease due and the tick migrates at once
+  h.now = droppedAt + 120_000;
+  h.actor.handleOpen('g'); await h.send('g', 'room_join', identity('guest', token('c'), token('d')), 'j');
+  assert.ok(h.scheduledAt <= h.now, `the due lease is the next alarm now (${h.scheduledAt - h.now} ms)`);
+  await h.actor.tick();
+  assert.equal(h.actor.snapshot.adminId, 'guest', 'the newcomer is admin at once, not 30 s later');
+  assert.equal(h.last('g', 'room_state').payload.room.adminId, 'guest');
+  assert.equal(h.actor.exportState().adminLeaseAt, null);
+  // the old admin back: a plain seat, and its own lease is gone with its return
+  h.actor.handleOpen('a2'); await h.send('a2', 'room_join', identity('admin', token('b'), token('9')));
+  assert.equal(h.actor.snapshot.players.find((p) => p.id === 'admin').isAdmin, false);
+  assert.equal(h.actor.exportState().seatLeases.admin, undefined);
+}
+
+// ---- another seat's leave during the admin's grace keeps the lease (it cleared it before: the seats left behind had no admin)
+{
+  const h = createHarness({ transport: 'p2p' });
+  h.actor.handleOpen('a'); await h.send('a', 'room_create', { ...identity('admin'), mode: 'private', settings: { teamSize: 3 } });
+  h.actor.handleOpen('g'); await h.send('g', 'room_join', identity('guest', token('c'), token('d')));
+  h.actor.handleOpen('t'); await h.send('t', 'room_join', identity('third', token('e'), token('f')));
+  h.actor.handleClose('a');
+  const droppedAt = h.now;
+  assert.equal(h.scheduledAt, droppedAt + ROOM_ADMIN_DISCONNECT_GRACE_MS, 'a target exists: the lease is the alarm');
+  await h.advance(1000);
+  await h.send('t', 'room_leave', {}, 'leave');
+  assert.equal(h.actor.exportState().adminLeaseAt, droppedAt + ROOM_ADMIN_DISCONNECT_GRACE_MS, 'the third seat\'s leave leaves the admin lease alone');
+  assert.equal(h.scheduledAt, droppedAt + ROOM_ADMIN_DISCONNECT_GRACE_MS);
+  await h.advance(ROOM_ADMIN_DISCONNECT_GRACE_MS - 1000);
+  assert.equal(h.actor.snapshot.adminId, 'guest', 'the guest is admin when the grace ends');
+  assert.equal(h.last('g', 'room_state').payload.room.adminId, 'guest');
+}
+
+// ---- a disconnected seat is reaped ROOM_SEAT_DISCONNECT_TTL_MS after its socket went while the room waits (a 1v1 room
+// otherwise refused every newcomer for 24 h); a resume inside the lease keeps the seat; a seat of a running match waits
+// for the match's end, then its lease restarts
+{
+  const h = createHarness({ transport: 'p2p' });
+  h.actor.handleOpen('a'); await h.send('a', 'room_create', { ...identity('admin'), mode: 'private', settings: { teamSize: 1, mapId: 'verdant' } });
+  h.actor.handleOpen('g'); await h.send('g', 'room_join', identity('guest', token('c'), token('d')));
+  h.actor.handleClose('g');
+  const droppedAt = h.now;
+  assert.equal(h.actor.exportState().seatLeases.guest, droppedAt + ROOM_SEAT_DISCONNECT_TTL_MS);
+  assert.equal(h.scheduledAt, droppedAt + ROOM_SEAT_DISCONNECT_TTL_MS, 'the reap is the next alarm');
+  h.actor.handleOpen('n'); await h.send('n', 'room_join', identity('new', token('1'), token('2')), 'n1');
+  assert.equal(h.last('n', 'error').payload.code, 'room_full', 'the ghost holds bravo: the stuck 1v1 room');
+  h.actor.handleClose('n');
+  // a resume inside the lease keeps the seat and drops the lease
+  h.actor.handleOpen('g2'); await h.send('g2', 'room_join', identity('guest', token('d'), token('7')));
+  assert.equal(h.actor.exportState().seatLeases.guest, undefined);
+  h.actor.handleClose('g2');
+  const droppedAgainAt = h.now;
+  await h.advance(ROOM_SEAT_DISCONNECT_TTL_MS - 1);
+  assert.equal(h.actor.snapshot.players.length, 2, 'inside the lease the seat stays');
+  const touchedBefore = h.actor.snapshot.touchedAt;
+  await h.advance(1);
+  assert.deepEqual(h.actor.snapshot.players.map((p) => p.id), ['admin'], 'the seat is reaped at the lease');
+  assert.equal(h.actor.snapshot.touchedAt, touchedBefore, 'housekeeping does not restart the 24 h idle clock');
+  assert.equal(h.actor.exportState().seatLeases.guest, undefined);
+  assert.equal(h.last('a', 'room_state').payload.room.players.length, 1, 'the seats present hear the roster change');
+  assert.ok(h.now - droppedAgainAt === ROOM_SEAT_DISCONNECT_TTL_MS);
+  h.actor.handleOpen('n2'); await h.send('n2', 'room_join', identity('new', token('1'), token('2')), 'n2');
+  assert.equal(h.last('n2', 'room_joined').payload.room.players.length, 2, 'the newcomer takes the freed slot');
+  // never during a match: the seat's lease waits for the match's end, then restarts
+  await h.command('a', { type: 'set_ready', ready: true });
+  await h.command('n2', { type: 'set_ready', ready: true });
+  const ack = await h.command('a', { type: 'start' }, 'start');
+  assert.equal(ack.type, 'room_ack');
+  h.actor.handleClose('n2');
+  const inMatchDropAt = h.now;
+  assert.equal(h.actor.exportState().seatLeases.new, inMatchDropAt + ROOM_SEAT_DISCONNECT_TTL_MS);
+  assert.ok(h.actor.nextDeadline() < inMatchDropAt + ROOM_SEAT_DISCONNECT_TTL_MS, 'the report budget, not the reap, is the next deadline');
+  await h.advance(ROOM_MATCH_POLL_MS);
+  await h.command('a', { type: 'match_report', matchId: ack.payload.matchId, generation: 1, phase: 'playing', tick: 600 });
+  await h.advance(ROOM_MATCH_POLL_MS);
+  await h.command('a', { type: 'match_report', matchId: ack.payload.matchId, generation: 1, phase: 'ended', tick: 1200, verdict: { result: 'alpha', reason: 'elimination' } });
+  assert.equal(h.actor.snapshot.phase, 'waiting');
+  assert.equal(h.actor.snapshot.players.length, 2, 'the seat is still there when the match ends');
+  assert.equal(h.actor.exportState().seatLeases.new, h.now + ROOM_SEAT_DISCONNECT_TTL_MS, 'its lease restarts at the end');
+  assert.equal(h.scheduledAt, h.now + ROOM_SEAT_DISCONNECT_TTL_MS);
+  await h.advance(ROOM_SEAT_DISCONNECT_TTL_MS);
+  assert.deepEqual(h.actor.snapshot.players.map((p) => p.id), ['admin']);
+}
+
+// ---- the elected last resort cannot host (`unable`): with nobody left the match is lost at once — not after the 30 s report budget
+{
+  const { h, matchId } = await startedP2pRoom();
+  // the guest cannot host at all (the mobile tier says so on join); the admin hosts
+  assert.equal((await h.command('g', { type: 'host_decline', declined: true, unable: true })).type, 'room_ack');
+  assert.equal(h.actor.snapshot.host.hostId, 'admin');
+  h.actor.handleClose('a');
+  await h.advance(ROOM_HOST_DISCONNECT_GRACE_MS);
+  assert.deepEqual(h.last('g', 'host_changed').payload, { hostId: 'guest', generation: 2, resumeTick: 0, reason: 'timeout', hostSecret: hostSecretOf(matchId) }, 'the last resort is elected');
+  // its client answers at once: elected but unable
+  const resolvedAt = h.now;
+  assert.equal((await h.command('g', { type: 'host_decline', declined: true, unable: true })).type, 'room_ack');
+  assert.equal(h.actor.snapshot.match.status, 'lost');
+  assert.equal(h.actor.snapshot.phase, 'waiting');
+  assert.deepEqual(h.actor.snapshot.lastResult, { round: 1, result: null, reason: 'match_lost' });
+  assert.equal(h.last('w', 'match_status').payload.status, 'lost');
+  assert.equal(h.last('g', 'match_status').payload.status, 'lost');
+  assert.equal(h.actor.snapshot.host.hostId, null);
+  assert.equal(h.actor.exportState().hostReportDueAt, null, 'no report budget is left to run');
+  assert.equal(h.now, resolvedAt, 'resolved within the same instant');
+  assert.deepEqual(h.actor.exportState().steppedDown, []);
+}
+{
+  // a preference decline from the last resort keeps it hosting (P1b, unchanged): only `unable` ends the match
+  const { h } = await startedP2pRoom();
+  await h.command('g', { type: 'host_decline', declined: true });
+  h.actor.handleClose('a');
+  await h.advance(ROOM_HOST_DISCONNECT_GRACE_MS);
+  assert.equal(h.actor.snapshot.host.hostId, 'guest');
+  await h.command('g', { type: 'host_decline', declined: true });
+  assert.equal(h.actor.snapshot.host.hostId, 'guest', 'kept: it may boot afresh');
+  assert.ok(['starting', 'playing'].includes(h.actor.snapshot.match.status), 'the match runs on');
+  assert.equal(h.actor.exportState().hostReportDueAt, h.now + ROOM_MATCH_REPORT_STALE_AFTER_MS, 'the report budget is what ends it if the kept host never boots');
+}
+
+// ---- seat leases survive a hibernation round trip; a state written before them gives every disconnected seat a lease from the restore
+{
+  const h = createHarness({ transport: 'p2p' });
+  h.actor.handleOpen('a'); await h.send('a', 'room_create', { ...identity('admin'), mode: 'private', settings: { teamSize: 2 } });
+  h.actor.handleOpen('g'); await h.send('g', 'room_join', identity('guest', token('c'), token('d')));
+  h.actor.handleClose('g');
+  const state = JSON.parse(JSON.stringify(h.actor.exportState()));
+  assert.equal(state.seatLeases.guest, h.now + ROOM_SEAT_DISCONNECT_TTL_MS);
+  const h2 = createHarness({ transport: 'p2p' });
+  h2.now = h.now + 1000;
+  h2.actor.restore(state);
+  h2.actor.attachSocket({ ...h.actor.socketRecord('a') });
+  h2.actor.settleAfterRestore();
+  assert.equal(h2.actor.exportState().seatLeases.guest, state.seatLeases.guest, 'the lease keeps its deadline across the restart');
+  assert.equal(h2.actor.exportState().seatLeases.admin, undefined, 'a re-attached seat holds none');
+  assert.equal(h2.scheduledAt, state.seatLeases.guest);
+  const legacy = { ...state };
+  delete legacy.seatLeases;
+  const h3 = createHarness({ transport: 'p2p' });
+  h3.now = h.now + 5000;
+  h3.actor.restore(legacy);
+  h3.actor.settleAfterRestore();
+  assert.equal(h3.actor.exportState().seatLeases.admin, h3.now + ROOM_SEAT_DISCONNECT_TTL_MS, 'a state without leases: every seat left without a socket is reaped from the restore');
+  assert.equal(h3.actor.exportState().seatLeases.guest, h3.now + ROOM_SEAT_DISCONNECT_TTL_MS);
 }
 
 console.log('roomActor: PASS');

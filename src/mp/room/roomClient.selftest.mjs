@@ -7,6 +7,7 @@ import { WebSocket } from 'ws';
 import { RoomClient } from './roomClient.ts';
 import { RoomError } from './protocol.ts';
 import { createRoomsServer } from '../../../server/rooms/serve.ts';
+import { silentLogger } from '../../../server/match/log.ts';
 import { verifySeatToken } from '../../../server/match/seatToken.ts';
 
 const SECRET = 'room-client-receipt-secret-0123456789';
@@ -165,6 +166,80 @@ try {
     assert.ok(server.roomService.rooms.get(kept.roomCode).snapshot.touchedAt > touchedAt, 'a handled ping touches the room');
     assert.ok(Number.isFinite(legacy.rttMs) && legacy.rttMs >= 0);
     legacy.dispose();
+  }
+
+  // ---- the lifecycle proofs (2026-09-30): a resume the room refuses ends the client with the room's code — it sat in
+  // `connecting` before while the room retired the silent socket every 15 s and the transport reopened it, without end
+  {
+    const sockets = [];
+    const gone = new RoomClient({
+      endpoint: server.url, player: { id: 'gone', name: 'Gone' }, storage: memory(), clientBuild: 'receipt', pingIntervalMs: 0,
+      transport: { createSocket: (url) => { const ws = new WebSocket(url); ws.on('error', () => {}); sockets.push(ws); return ws; }, reconnect: { initialDelayMs: 10, maxDelayMs: 20, factor: 1, jitterFraction: 0, windowMs: 5000, attemptTimeoutMs: 1000 } },
+    });
+    clients.push(gone);
+    const closedReasons = [];
+    const phases = [];
+    gone.onClosed(({ reason }) => closedReasons.push(reason));
+    gone.onPhase((change) => phases.push(change.phase));
+    const created = await gone.create({ mode: 'private', selection: { specId: 'm1a2' } });
+    // the room goes away behind the client's back (its storage reset, a redeploy) and the socket drops: the transport
+    // reconnects inside its window and the client presents its capability to a room that has no such seat
+    server.roomService.rooms.delete(created.roomCode);
+    sockets.at(-1).terminate();
+    await until(() => closedReasons.length === 1, 'the refused resume ends the client', 5000);
+    assert.equal(closedReasons[0], 'room_not_found', 'the room\'s refusal reaches onClosed (the Play menu shows the room as gone)');
+    assert.equal(gone.phase, 'closed');
+    assert.equal(gone.lastClosedReason, 'room_not_found');
+    assert.ok(phases.includes('reconnecting') && phases.includes('connecting'), `the resume was attempted (${phases.join(',')})`);
+    assert.equal(gone.stats().transport, 'none', 'the socket is released');
+  }
+
+  // ---- two clients of one seat sharing its capability (two tabs): the room retires the first; it must not resume and take
+  // the seat back — the two flapped it between them without end before (the lifecycle proofs, 2026-09-30)
+  {
+    const shared = memory();
+    const first = client('twin', shared);
+    const firstReasons = [];
+    const firstPhases = [];
+    first.onClosed(({ reason }) => firstReasons.push(reason));
+    first.onPhase((change) => firstPhases.push(change.phase));
+    const created = await first.create({ mode: 'private', selection: { specId: 'm1a2' } });
+    const second = client('twin', shared);
+    const secondReasons = [];
+    second.onClosed(({ reason }) => secondReasons.push(reason));
+    const rejoined = await second.join({ roomCode: created.roomCode });
+    assert.equal(rejoined.players.length, 1, 'one seat');
+    await until(() => firstReasons.length === 1, 'the first client ends', 3000);
+    assert.equal(firstReasons[0], 'resume_denied');
+    assert.equal(first.phase, 'closed');
+    assert.ok(!firstPhases.includes('reconnecting'), `no reconnect attempt (${firstPhases.join(',')})`);
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    assert.equal(second.phase, 'joined', 'the second client keeps the seat');
+    assert.deepEqual(secondReasons, [], 'and is never retired by a resume of the first');
+    assert.equal(server.roomService.rooms.get(created.roomCode).socketCount, 1, 'one socket on the room');
+    second.dispose();
+  }
+
+  // ---- the room host gone for the whole reconnect window: `room_unreachable` — the code a failed admission carries too, so
+  // the Play menu shows "Room service unavailable" with Try again instead of a generic connection failure
+  {
+    const away = await createRoomsServer({ host: '127.0.0.1', port: 0, seatSecret: SECRET, world: 'terrain', matchTransport: 'p2p', log: silentLogger });
+    const lost = new RoomClient({
+      endpoint: away.url, player: { id: 'lost', name: 'Lost' }, storage: memory(), clientBuild: 'receipt', pingIntervalMs: 0,
+      transport: { createSocket: (url) => { const ws = new WebSocket(url); ws.on('error', () => {}); return ws; }, reconnect: { initialDelayMs: 20, maxDelayMs: 40, factor: 1, jitterFraction: 0, windowMs: 600, attemptTimeoutMs: 300 } },
+    });
+    clients.push(lost);
+    const reasons = [];
+    const phases = [];
+    lost.onClosed(({ reason }) => reasons.push(reason));
+    lost.onPhase((change) => phases.push(change.phase));
+    await lost.create({ mode: 'private', selection: { specId: 'm1a2' } });
+    await away.close();
+    await until(() => reasons.length === 1, 'the window ran out', 5000);
+    assert.equal(reasons[0], 'room_unreachable');
+    assert.equal(lost.lastClosedReason, 'room_unreachable');
+    assert.ok(phases.includes('reconnecting'), 'the interruption was surfaced first');
+    assert.equal(lost.phase, 'closed');
   }
   console.log('roomClient: PASS');
 } finally {

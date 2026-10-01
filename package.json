@@ -116,6 +116,7 @@
     "quality:coverage:damage": "c8 --include src/sim/damage.ts --all --reporter=text --check-coverage --lines 100 --functions 100 --statements 100 --branches 100 node -e \"import('./src/sim/combat.selftest.mjs').then(() => import('./src/sim/ammunitionFlow.selftest.mjs')).then(() => import('./src/sim/autoloader.selftest.mjs')).then(() => import('./src/sim/specialActions.selftest.mjs')).then(() => import('./src/sim/combatMaintenance.selftest.mjs')).then(() => import('./src/game/equipment.selftest.mjs')).then(() => import('./src/vehicles/sourceXEraMultiplicity.selftest.mjs'))\"",
     "test:net:v2:soak": "node --expose-gc tools/mp-soak.mjs",
     "test:net:v2:rooms": "npm --prefix cloudflare/rooms test",
+    "test:net:v2:rooms:lifecycle": "node tools/mp-room-lifecycle.mjs --local --slow",
     "test:net:v2:browser": "node tools/mp-browser-e2e.mjs",
     "test:net:v2:p2p": "node tools/mp-p2p-e2e.mjs",
     "test:net:v2:p2p:headless": "node tools/mp-p2p-headless.mjs",

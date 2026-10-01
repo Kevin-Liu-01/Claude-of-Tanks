@@ -10,9 +10,12 @@
  *      hull braked), the room still seats the player;
  *   2. the seat re-enters the running match with its retained match_start —
  *      welcomed again with the same token and entity, frames flowing;
- *   3. a second tab on the same seat replaces the first: the actor's REPLACED
- *      close reaches the first session as a seat drop (`lost`, the reason
- *      readable), which cleans up through the same leave;
+ *   3. a second tab on the same seat takes it: the room retires the first tab's
+ *      socket (`resume_denied`) and the first tab never resumes (2026-09-30: it
+ *      used to reconnect and steal the seat back, the two tabs flapping without
+ *      end; before that the actor's REPLACED reached it as a seat drop) — its
+ *      session leaves the match through the room's close (`lobby`) and the
+ *      second tab is welcomed, one client per seat on the actor;
  *   4. an explicit room leave drops the seat; a fresh join by code is refused
  *      while the room's match plays (`room_locked`: the roster is frozen for
  *      the round; only a resume with the capability re-enters mid-match);
@@ -24,14 +27,13 @@
  *   node tools/mp-exit-e2e.mjs            15 s battle, ~45 s wall (the core receipt)
  *   node tools/mp-exit-e2e.mjs --battle=30 --map=alpine --world=dedicated --json
  *
- * Gates (exit 1 on any): every step above, plus no session ends in `lost`
- * except the replaced one, and every client disposes without a stray socket.
+ * Gates (exit 1 on any): every step above, plus no session ends in `lost`,
+ * and every client disposes without a stray socket.
  */
 import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
 import { createRoomsServer } from '../server/rooms/serve.ts';
 import { createHeadlessSession, memoryStorage, scriptedControls } from '../src/mp/session/headlessSession.ts';
-import { CLOSE_REASON } from '../src/mp/wire/index.ts';
 
 function argValue(name, fallback) {
   const prefix = `--${name}=`;
@@ -139,15 +141,23 @@ export async function runExitE2E({ battleS = 15, world = 'terrain', mapId = 'ver
     if (!report.steps.reentry.sameToken || !report.steps.reentry.sameEntity || !report.steps.reentry.sameMatch) failures.push('re-entry: not the same seat');
     if (report.steps.reentry.actorClients !== 4) failures.push(`re-entry: actor clients ${report.steps.reentry.actorClients}`);
 
-    // ---- 3. a second tab on the seat: the actor replaces the first client, which reads a seat drop
+    // ---- 3. a second tab on the seat: the room retires the first tab's socket (resume_denied) and it never resumes — its
+    //         session leaves the match through the room's close; the second tab is welcomed; one client per seat on the actor
+    const roomSocketsBefore = server.roomService.rooms.get(code)?.socketCount ?? 0;
     const tab2 = spawn('p3', 'Three (tab 2)', p3.storage, 2);
     await tab2.headless.room.join({ roomCode: code });
     await until(() => !!tab2.headless.session.match?.welcome, 'the second tab welcomed', 15_000);
-    await until(() => p3.headless.session.phase === 'lost', 'the first tab reads lost', 10_000);
-    const dropReason = p3.headless.session.match?.lastCloseReason ?? null;
-    report.steps.replaced = { firstPhase: p3.headless.session.phase, reason: dropReason, reasonName: dropReason === CLOSE_REASON.REPLACED ? 'replaced' : String(dropReason), secondPhase: tab2.headless.session.match.phase };
-    log(`a second tab took the seat: first tab ${report.steps.replaced.firstPhase} (${report.steps.replaced.reasonName}), second tab ${report.steps.replaced.secondPhase}`);
-    if (dropReason !== CLOSE_REASON.REPLACED) failures.push(`replaced: the first tab's close reason is ${dropReason}`);
+    await until(() => p3.headless.room.phase === 'closed' && p3.headless.session.phase === 'lobby', 'the first tab reads the room\'s refusal and leaves the match', 10_000);
+    await sleep(600);
+    const roomReason = p3.headless.room.lastClosedReason;
+    report.steps.replaced = {
+      firstRoomPhase: p3.headless.room.phase, firstPhase: p3.headless.session.phase, reasonName: String(roomReason), secondPhase: tab2.headless.session.match.phase,
+      roomSockets: server.roomService.rooms.get(code)?.socketCount ?? 0, roomSocketsBefore, firstReconnects: p3.headless.room.stats().transport,
+    };
+    log(`a second tab took the seat: first tab room ${report.steps.replaced.firstRoomPhase} (${report.steps.replaced.reasonName}), session ${report.steps.replaced.firstPhase}; second tab ${report.steps.replaced.secondPhase}; room sockets ${report.steps.replaced.roomSockets} (were ${roomSocketsBefore})`);
+    if (roomReason !== 'resume_denied') failures.push(`replaced: the first tab's room closed as ${roomReason}`);
+    if (report.steps.replaced.roomSockets !== roomSocketsBefore) failures.push(`replaced: ${report.steps.replaced.roomSockets} room sockets, one seat changed hands (the first tab must not resume)`);
+    if (report.steps.replaced.firstReconnects !== 'none') failures.push(`replaced: the first tab still holds a room transport (${report.steps.replaced.firstReconnects})`);
     await p3.headless.session.leaveMatch('dropped');
     p3.headless.room.disconnect('tab closed');
     retire(p3);

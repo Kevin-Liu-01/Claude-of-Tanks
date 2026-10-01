@@ -143,6 +143,30 @@ try {
   assert.equal(failure.canRetry, true);
   assert.equal(nobody.current, null);
   assert.equal(nobody.connecting, false, 'the menu may retry at once');
+
+  // ---- the lifecycle proofs (2026-09-30): the room host closes the socket and stays away for the reconnect window →
+  // the menu hears `room_unreachable` — "Room service unavailable" with Try again — after showing the interruption
+  {
+    const away = await createRoomsServer({ seatSecret: 'play-menu-adapter-receipt-secret-0123456789', world: 'terrain', countdownS: 1, battleLimitS: 30 });
+    const events = [];
+    const menu = adapter(events, { createRoomClient: (options) => {
+      const client = new RoomClient({ ...options, pingIntervalMs: 0, transport: { createSocket: socket, reconnect: { initialDelayMs: 20, maxDelayMs: 40, factor: 1, jitterFraction: 0, windowMs: 600, attemptTimeoutMs: 300 } } });
+      clients.push(client);
+      return client;
+    } });
+    const connection = await menu.connect({ kind: 'create', mode: 'private', roomsUrl: away.url, player: { id: 'fay', name: 'Fay' }, selection, teamSize: 1 });
+    assert.ok(connection && menu.current === connection);
+    await away.close();
+    await until(() => events.some(([name]) => name === 'close'), 'the menu hears the close', 5000);
+    const close = events.find(([name]) => name === 'close');
+    assert.equal(close[1], 'room_unreachable');
+    const failure = classifyRoomFailure({ code: close[1] });
+    assert.equal(failure.code, 'room_service_unavailable', 'presented as the room service being unavailable');
+    assert.equal(failure.canRetry, true, 'with Try again');
+    assert.ok(events.some(([name, state]) => name === 'status' && state === 'reconnecting'), 'the interruption was shown first');
+    assert.equal(menu.current, null);
+    assert.equal(menu.connecting, false, 'Try again may connect at once');
+  }
   assert.throws(() => createRoomConnectionAdapter({ onHostStart: 'nope' }), /requires every lifecycle port/);
 } finally {
   for (const client of clients) { try { client.dispose(); } catch { /* already gone */ } }

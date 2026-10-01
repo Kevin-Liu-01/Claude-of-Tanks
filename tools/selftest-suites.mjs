@@ -789,6 +789,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-p2p-peer.selftest.mjs',
     'tools/mp-p2p-decline.selftest.mjs',
     'tools/mp-p2p-stepdown.selftest.mjs',
+    'tools/mp-room-lifecycle.selftest.mjs',
     'src/mp/session/browserComposition.selftest.mjs',
     'src/mp/session/lobbyIntent.selftest.mjs',
     'src/mp/session/playMenuAdapter.selftest.mjs',

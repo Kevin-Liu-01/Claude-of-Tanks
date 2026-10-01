@@ -12,8 +12,9 @@ import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RoomActorState } from '../../../src/mp/room/roomActor.ts';
 import {
-  ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, ROOM_MATCH_REPORT_STALE_AFTER_MS, ROOM_MAX_PAYLOAD_BYTES,
-  ROOM_RATE_MAX_MESSAGES, ROOM_SIGNAL_MAX_BYTES, ROOM_STATE_COALESCE_MS,
+  ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS, ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE,
+  ROOM_MATCH_REPORT_STALE_AFTER_MS, ROOM_MAX_PAYLOAD_BYTES, ROOM_RATE_MAX_MESSAGES, ROOM_SEAT_DISCONNECT_TTL_MS, ROOM_SIGNAL_MAX_BYTES,
+  ROOM_STATE_COALESCE_MS,
 } from '../../../src/mp/room/protocol.ts';
 import type { RoomHostChangedPayload, RoomMatchStartPayload, RoomSnapshot } from '../../../src/mp/room/protocol.ts';
 import { verifySeatToken } from '../../../server/match/seatToken.ts';
@@ -26,6 +27,14 @@ const start = (client: Client): RoomMatchStartPayload => client.last('match_star
 function storedState(code: string): Promise<RoomActorState> {
   return runInDurableObject(env.ROOMS.getByName(code), (_instance, state) => JSON.parse(state.storage.sql
     .exec<{ data: string }>('SELECT data FROM room_state WHERE id=1').one().data) as RoomActorState);
+}
+
+const alarmOf = (code: string): Promise<number | null> => runInDurableObject(env.ROOMS.getByName(code), (_instance, state) => state.storage.getAlarm());
+
+/** Drop a socket from the room's side at once (a client-side close without a status trails by seconds in this runtime). */
+async function dropSocket(client: Client): Promise<void> {
+  client.socket.send(new Uint8Array(ROOM_MAX_PAYLOAD_BYTES + 1));
+  await client.closed;
 }
 
 /** Move the clock past `ms` and run the room's alarm (the leases and the report budget are alarms). */
@@ -356,5 +365,150 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
     expect((await third.request('room_join', identity('third', token('1'), token('2')))).type).toBe('room_joined');
     const joined = (await admin.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).players.length === 4)).payload.room as RoomSnapshot;
     expect(joined.players.find((player) => player.id === 'guest')?.specId).toBe('t90m');
+  });
+
+  // ---- the lifecycle proofs (2026-09-30, docs/MULTIPLAYER-V2.md §13.11): rooms never hang
+
+  it('keeps an emptied room for its idle TTL with the expiry as its only alarm; the next seat to join owns it and can start', async () => {
+    const admin = await create('ROOM19', { teamSize: 1, mapId: 'verdant' });
+    const createdAt = (await storedState('ROOM19')).room!.createdAt;
+    expect((await admin.request('room_leave')).type).toBe('room_ack');
+    await admin.closed;
+    const emptied = await storedState('ROOM19');
+    expect(emptied.room?.players).toEqual([]);
+    expect(emptied.room?.phase).toBe('waiting');
+    expect(emptied.adminLeaseAt).toBeNull();
+    const alarm = await alarmOf('ROOM19');
+    expect(alarm).not.toBeNull();
+    expect(Math.abs((alarm ?? 0) - (emptied.room!.touchedAt + ROOM_IDLE_TTL_MS))).toBeLessThanOrEqual(1_000);
+    expect(emptied.room!.touchedAt).toBeGreaterThanOrEqual(createdAt);
+    // the departed creator's id stayed admin before: no joiner's snapshot validated, the code was dead for 24 h
+    const late = await connect('ROOM19', 'ROOM19-late');
+    const joined = await late.request('room_join', identity('late', token('c'), token('d')));
+    expect(joined.type).toBe('room_joined');
+    const snapshot = joined.payload.room as RoomSnapshot;
+    expect(snapshot.adminId).toBe('late');
+    expect(snapshot.players.map((player) => [player.id, player.isAdmin])).toEqual([['late', true]]);
+    expect((await late.command({ type: 'set_ready', ready: true })).type).toBe('room_ack');
+    const ack = await late.command({ type: 'start' });
+    expect(ack.type).toBe('room_ack');
+    await late.next((message) => message.type === 'match_start');
+    expect(start(late).hostId).toBe('late');
+    expect(start(late).hostSecret).toBe(derivedSecret(ack.payload.matchId as string));
+  });
+
+  it('does not re-arm the admin lease while nobody else is connected, and hands the room to the next seat admitted at once', async () => {
+    const admin = await create('ROOM20', { teamSize: 2 });
+    await dropSocket(admin);
+    const dropped = await storedState('ROOM20');
+    const droppedAt = dropped.room!.touchedAt;
+    expect(dropped.adminLeaseAt).toBe(droppedAt + ROOM_ADMIN_DISCONNECT_GRACE_MS);
+    // the lease is held, but the alarm is the seat's reap: there is nobody to migrate to (the lease re-armed every 30 s before)
+    const alarm = await alarmOf('ROOM20');
+    expect(Math.abs((alarm ?? 0) - (droppedAt + ROOM_SEAT_DISCONNECT_TTL_MS))).toBeLessThanOrEqual(1_000);
+    // the reap alarm run early (the runtime helper runs whatever alarm is set): the due lease finds nobody and stays, un-re-armed
+    await alarmAfter('ROOM20', ROOM_ADMIN_DISCONNECT_GRACE_MS);
+    expect((await storedState('ROOM20')).adminLeaseAt).toBe(droppedAt + ROOM_ADMIN_DISCONNECT_GRACE_MS);
+    expect((await storedState('ROOM20')).room!.adminId).toBe('admin');
+    expect(Math.abs(((await alarmOf('ROOM20')) ?? 0) - (droppedAt + ROOM_SEAT_DISCONNECT_TTL_MS))).toBeLessThanOrEqual(1_000);
+    // two minutes into the absence a guest joins: the due lease becomes the alarm and runs at once — the guest is admin
+    vi.useFakeTimers();
+    vi.setSystemTime(droppedAt + 120_000);
+    const guest = await connect('ROOM20', 'ROOM20-guest');
+    expect((await guest.request('room_join', identity('guest', token('c'), token('d')))).type).toBe('room_joined');
+    const due = await alarmOf('ROOM20');
+    expect(due).not.toBeNull();
+    expect(due!).toBeLessThanOrEqual(Date.now());
+    await runDurableObjectAlarm(env.ROOMS.getByName('ROOM20'));
+    vi.useRealTimers();
+    const migrated = (await guest.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).adminId === 'guest')).payload.room as RoomSnapshot;
+    expect(migrated.players.find((player) => player.id === 'guest')?.isAdmin).toBe(true);
+    expect((await storedState('ROOM20')).adminLeaseAt).toBeNull();
+  });
+
+  it('keeps a disconnected admin\'s lease when another seat leaves during the grace', async () => {
+    const admin = await create('ROOM21', { teamSize: 3 });
+    const guest = await connect('ROOM21', 'ROOM21-guest');
+    expect((await guest.request('room_join', identity('guest', token('c'), token('d')))).type).toBe('room_joined');
+    const third = await connect('ROOM21', 'ROOM21-third');
+    expect((await third.request('room_join', identity('third', token('e'), token('f')))).type).toBe('room_joined');
+    await dropSocket(admin);
+    const leaseAt = (await storedState('ROOM21')).adminLeaseAt;
+    expect(leaseAt).not.toBeNull();
+    expect((await third.request('room_leave')).type).toBe('room_ack');
+    await third.closed;
+    // the leave cleared the lease before: the guest then had no admin until the admin came back or the room expired
+    expect((await storedState('ROOM21')).adminLeaseAt).toBe(leaseAt);
+    expect(Math.abs(((await alarmOf('ROOM21')) ?? 0) - leaseAt!)).toBeLessThanOrEqual(1_000);
+    expect(await alarmAfter('ROOM21', ROOM_ADMIN_DISCONNECT_GRACE_MS)).toBe(true);
+    const migrated = (await guest.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).adminId === 'guest')).payload.room as RoomSnapshot;
+    expect(migrated.players.map((player) => player.id).sort()).toEqual(['admin', 'guest']);
+  });
+
+  it('reaps a seat whose socket stayed gone for the disconnect TTL while the room waits — never during a match, whose end restarts the lease', async () => {
+    const admin = await create('ROOM22', { teamSize: 1, mapId: 'verdant' });
+    const guest = await connect('ROOM22', 'ROOM22-guest');
+    expect((await guest.request('room_join', identity('guest', token('c'), token('d')))).type).toBe('room_joined');
+    await dropSocket(guest);
+    const dropped = await storedState('ROOM22');
+    const droppedAt = dropped.room!.touchedAt;
+    expect(dropped.seatLeases).toEqual({ guest: droppedAt + ROOM_SEAT_DISCONNECT_TTL_MS });
+    expect(Math.abs(((await alarmOf('ROOM22')) ?? 0) - (droppedAt + ROOM_SEAT_DISCONNECT_TTL_MS))).toBeLessThanOrEqual(1_000);
+    // the ghost holds bravo: a newcomer is refused (the stuck 1v1 room the proofs found)
+    const newcomer = await connect('ROOM22', 'ROOM22-new');
+    expect((await newcomer.request('room_join', identity('new', token('1'), token('2')))).payload.code).toBe('room_full');
+    newcomer.socket.close();
+    expect(await alarmAfter('ROOM22', ROOM_SEAT_DISCONNECT_TTL_MS)).toBe(true);
+    const reaped = (await admin.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).players.length === 1)).payload.room as RoomSnapshot;
+    expect(reaped.players.map((player) => player.id)).toEqual(['admin']);
+    expect(reaped.touchedAt).toBe(droppedAt);
+    const afterReap = await storedState('ROOM22');
+    expect(afterReap.seatLeases).toEqual({});
+    expect(afterReap.resumeHashes.guest).toBeUndefined();
+    // the freed slot: the newcomer joins; then a match starts and its seat drops — kept for the match
+    const again = await connect('ROOM22', 'ROOM22-again');
+    expect((await again.request('room_join', identity('new', token('1'), token('2')))).type).toBe('room_joined');
+    expect((await admin.command({ type: 'set_ready', ready: true })).type).toBe('room_ack');
+    expect((await again.command({ type: 'set_ready', ready: true })).type).toBe('room_ack');
+    const ack = await admin.command({ type: 'start' });
+    expect(ack.type).toBe('room_ack');
+    const matchId = ack.payload.matchId as string;
+    await dropSocket(again);
+    const inMatch = await storedState('ROOM22');
+    expect(inMatch.seatLeases!.new).toBeDefined();
+    expect(inMatch.room!.players.length).toBe(2);
+    const budget = await alarmOf('ROOM22');
+    expect(budget!).toBeLessThan(inMatch.seatLeases!.new!);
+    expect((await admin.command({ type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 60 })).type).toBe('room_ack');
+    expect((await admin.command({ type: 'match_report', matchId, generation: 1, phase: 'ended', tick: 900, verdict: { result: 'alpha', reason: 'elimination' } })).type).toBe('room_ack');
+    await admin.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).phase === 'waiting' && (message.payload.room as RoomSnapshot).lastResult !== null);
+    const ended = await storedState('ROOM22');
+    expect(ended.room!.players.length).toBe(2);
+    expect(ended.seatLeases!.new).toBe(ended.room!.match!.endedAt! + ROOM_SEAT_DISCONNECT_TTL_MS);
+    expect(Math.abs(((await alarmOf('ROOM22')) ?? 0) - ended.seatLeases!.new!)).toBeLessThanOrEqual(1_000);
+  });
+
+  it('ends the match at once when the elected last resort cannot host (`unable`) and nobody else can — the report budget ran before', async () => {
+    const { admin, guest, watcher, matchId } = await startedRoom('ROOM23');
+    expect((await guest.command({ type: 'host_decline', declined: true, unable: true })).type).toBe('room_ack');
+    expect((await guest.command({ type: 'host_decline', declined: true, unable: 'yes' })).payload.code).toBe('invalid_command');
+    expect((await admin.command({ type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 90 })).type).toBe('room_ack');
+    await dropSocket(admin);
+    expect(await alarmAfter('ROOM23', ROOM_HOST_DISCONNECT_GRACE_MS)).toBe(true);
+    const elected = (await guest.next((message) => message.type === 'host_changed' && message.payload.generation === 2)).payload as unknown as RoomHostChangedPayload;
+    expect(elected).toEqual({ hostId: 'guest', generation: 2, resumeTick: 90, reason: 'timeout', hostSecret: derivedSecret(matchId) });
+    expect((await storedState('ROOM23')).hostReportDueAt).not.toBeNull();
+    // its client answers at once: elected but unable — the match is lost now, not after the 30 s report budget
+    expect((await guest.command({ type: 'host_decline', declined: true, unable: true })).type).toBe('room_ack');
+    for (const client of [guest, watcher]) expect((await client.next((message) => message.type === 'match_status')).payload.status).toBe('lost');
+    const lost = (await watcher.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).phase === 'waiting' && (message.payload.room as RoomSnapshot).lastResult !== null)).payload.room as RoomSnapshot;
+    expect(lost.lastResult).toEqual({ round: 1, result: null, reason: 'match_lost' });
+    expect(lost.host).toMatchObject({ hostId: null, generation: 2 });
+    const stored = await storedState('ROOM23');
+    expect(stored.hostReportDueAt).toBeNull();
+    expect(stored.hostLeaseAt).toBeNull();
+    expect(stored.steppedDown).toEqual([]);
+    // the admin's seat, disconnected, is kept for its lease from the match's end
+    expect(stored.seatLeases!.admin).toBe(stored.room!.match!.endedAt! + ROOM_SEAT_DISCONNECT_TTL_MS);
   });
 });

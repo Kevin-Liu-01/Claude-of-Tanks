@@ -21,7 +21,11 @@
  *   - the keepalive is the room's exact text frame (`ping` → `pong`), answered here outside the room logic as the
  *     Durable Object's hibernation auto-response does (P1b); `room_ping` envelopes stay answered;
  *   - `room_state` broadcasts are throttled to one per ROOM_STATE_COALESCE_MS with a trailing broadcast carrying the
- *     newest revision (P1b), joins, leaves, disconnects, phase changes and elections at once — the actor's rule.
+ *     newest revision (P1b), joins, leaves, disconnects, phase changes and elections at once — the actor's rule;
+ *   - the lifecycle rules of 2026-09-30 (docs/MULTIPLAYER-V2.md §13.11): a running host's decline with `unable` and
+ *     nobody left ends the match at once; a disconnected seat is reaped after `seatTtlMs` (ROOM_SEAT_DISCONNECT_TTL_MS)
+ *     while no match runs, its lease restarting at a match's end; an admin absent past the grace with nobody to migrate
+ *     to hands the role to the next seat admitted, at once; an emptied room's next joiner is its admin (`joinRoom`).
  *
  * Rooms live in memory; the policy is the shared `roomPolicy.ts`; nothing here is production code.
  */
@@ -31,7 +35,7 @@ import type { AddressInfo } from 'node:net';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import {
   ROOM_CHAT_HISTORY, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, ROOM_MATCH_REPORT_STALE_AFTER_MS,
-  ROOM_MAX_PAYLOAD_BYTES, ROOM_SEAT_TOKEN_TTL_MS, ROOM_SIGNAL_MAX_BYTES, ROOM_STATE_COALESCE_MS,
+  ROOM_MAX_PAYLOAD_BYTES, ROOM_SEAT_DISCONNECT_TTL_MS, ROOM_SEAT_TOKEN_TTL_MS, ROOM_SIGNAL_MAX_BYTES, ROOM_STATE_COALESCE_MS,
   RoomError, cleanId, isRecord, isRoomTeam, normalizeRoomChat, p2pMatchUrl, parseRoomEnvelope, parseRoomRoute, publicRoomError,
   readRoomMatchReport, readRoomSignalPayload, utf8ByteLength,
 } from '../src/mp/room/protocol.ts';
@@ -77,6 +81,10 @@ interface RoomState {
   stateBroadcastAt: number;
   stateFlushPending: boolean;
   stateFlushArmed: boolean;
+  /** 2026-09-30: the reap timer of each disconnected seat (restarted at a match's end; a seat of a running match waits). */
+  seatLeases: Map<string, ReturnType<typeof setTimeout>>;
+  /** 2026-09-30: when the admin's socket went (null while it is connected) — a later admission past the grace migrates at once. */
+  adminAbsentAt: number | null;
 }
 
 export interface P2pRoomDoubleOptions {
@@ -86,6 +94,8 @@ export interface P2pRoomDoubleOptions {
   hostGraceMs?: number;
   /** P1's ROOM_MATCH_REPORT_STALE_AFTER_MS (30 s); the proofs shorten it. */
   reportStaleMs?: number;
+  /** ROOM_SEAT_DISCONNECT_TTL_MS (5 min): a disconnected seat's reap while no match runs; the proofs shorten it. */
+  seatTtlMs?: number;
   /** A hook the proofs observe (elections, relays, reports). */
   onEvent?: (event: { kind: string; room: string; [key: string]: unknown }) => void;
   now?: () => number;
@@ -99,7 +109,7 @@ export interface P2pRoomDouble {
   close(): Promise<void>;
 }
 
-export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSecret, hostGraceMs = ROOM_HOST_DISCONNECT_GRACE_MS, reportStaleMs = ROOM_MATCH_REPORT_STALE_AFTER_MS, onEvent = () => {}, now = () => Date.now() }: P2pRoomDoubleOptions): Promise<P2pRoomDouble> {
+export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSecret, hostGraceMs = ROOM_HOST_DISCONNECT_GRACE_MS, reportStaleMs = ROOM_MATCH_REPORT_STALE_AFTER_MS, seatTtlMs = ROOM_SEAT_DISCONNECT_TTL_MS, onEvent = () => {}, now = () => Date.now() }: P2pRoomDoubleOptions): Promise<P2pRoomDouble> {
   if (typeof seatSecret !== 'string' || seatSecret.length < 16) throw new TypeError('seatSecret must be at least 16 characters');
   const rooms = new Map<string, RoomState>();
   const sockets = new Map<string, { socket: WebSocket; code: string; playerId: string | null }>();
@@ -111,7 +121,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
   const state = (code: string): RoomState => {
     let entry = rooms.get(code);
     if (!entry) {
-      entry = { code, room: null, seats: new Map(), chat: [], chatSeq: 0, host: { transport: 'p2p', hostId: null, generation: 0, since: 0 }, hostSecret: null, hostGrace: null, reportStale: null, lastTick: 0, matchUrl: '', plan: null, reports: 0, steppedDown: new Set(), stateBroadcastAt: Number.NEGATIVE_INFINITY, stateFlushPending: false, stateFlushArmed: false };
+      entry = { code, room: null, seats: new Map(), chat: [], chatSeq: 0, host: { transport: 'p2p', hostId: null, generation: 0, since: 0 }, hostSecret: null, hostGrace: null, reportStale: null, lastTick: 0, matchUrl: '', plan: null, reports: 0, steppedDown: new Set(), stateBroadcastAt: Number.NEGATIVE_INFINITY, stateFlushPending: false, stateFlushArmed: false, seatLeases: new Map(), adminAbsentAt: null };
       rooms.set(code, entry);
     }
     return entry;
@@ -202,15 +212,48 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
 
   const matchLive = (room: RoomState): boolean => !!room.room?.match && (room.room.match.status === 'starting' || room.room.match.status === 'playing');
 
-  const changeHost = (room: RoomState, reason: 'left' | 'timeout' | 'declined' | 'start', exclude: string | null): void => {
+  // ---- 2026-09-30: disconnected seats are reaped after `seatTtlMs` while no match runs (the actor's ROOM_SEAT_DISCONNECT_TTL_MS)
+  const clearSeatLease = (room: RoomState, playerId: string): void => {
+    const timer = room.seatLeases.get(playerId);
+    if (timer) { clearTimeout(timer); room.seatLeases.delete(playerId); }
+  };
+  const reapSeat = (room: RoomState, playerId: string): void => {
+    const seat = room.seats.get(playerId);
+    if (!seat || seat.socketId || !room.room || !room.room.players.some((player) => player.id === playerId)) return;
+    const touchedAt = room.room.touchedAt;
+    removePlayer(room.room, playerId, now());
+    room.room.touchedAt = touchedAt; // housekeeping, not a message
+    room.seats.delete(playerId);
+    emit('seat_reaped', room.code, { playerId, players: room.room.players.length, admin: room.room.adminId });
+    broadcastState(room);
+  };
+  const armSeatLease = (room: RoomState, playerId: string): void => {
+    clearSeatLease(room, playerId);
+    const timer = setTimeout(() => {
+      room.seatLeases.delete(playerId);
+      if (closed || !room.room) return;
+      // a seat of a running match is kept for the match; its lease restarts when the match ends
+      if (matchLive(room)) return;
+      reapSeat(room, playerId);
+    }, seatTtlMs);
+    timer.unref?.();
+    room.seatLeases.set(playerId, timer);
+  };
+  /** The match is over: every disconnected seat's lease restarts now. */
+  const rebaseSeatLeases = (room: RoomState): void => {
+    for (const [playerId, seat] of room.seats) if (!seat.socketId) armSeatLease(room, playerId);
+  };
+
+  const changeHost = (room: RoomState, reason: 'left' | 'timeout' | 'declined' | 'start', exclude: string | null, unable = false): void => {
     if (!matchLive(room)) return;
     const at = now();
     // P1b's rule: a running host's decline is its departure from hosting — the next candidate takes over at once
     // (willing first, a declined commander as the last resort), never a seat that already stepped down by declining
-    // while it hosted this match; with nobody left the host keeps hosting (its `left` and `timeout` elect by the full ladder).
+    // while it hosted this match; with nobody left the host keeps hosting (its `left` and `timeout` elect by the full ladder)
+    // — unless it cannot host at all (`unable`, 2026-09-30): the match ends now.
     if (reason === 'declined' && exclude) room.steppedDown.add(exclude);
     const next = electHost(room, exclude, reason === 'declined' ? room.steppedDown : undefined);
-    if (reason === 'declined' && !next) {
+    if (reason === 'declined' && !next && !unable) {
       emit('host_decline_kept', room.code, { host: exclude, steppedDown: [...room.steppedDown] });
       return;
     }
@@ -220,8 +263,9 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
       room.hostSecret = null;
       room.steppedDown.clear();
       for (const seat of room.seats.values()) seat.token = null;
-      emit('match_lost', room.code, { reason });
+      emit('match_lost', room.code, { reason: reason === 'declined' ? 'host_unable' : reason });
       clearReportStale(room);
+      rebaseSeatLeases(room);
       broadcast(room, { type: 'match_status', payload: { matchId: room.room!.match!.id, round: room.room!.match!.round, status: 'lost', verdict: null } });
       broadcastState(room);
       return;
@@ -324,7 +368,14 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
           room.seats.set(playerId, seat);
           entry.playerId = playerId;
           setPlayerConnected(room.room!, playerId, true, at);
+          clearSeatLease(room, playerId);
           if (room.host.hostId === playerId) clearHostGrace(room);
+          // 2026-09-30: the admin back clears its absence; another seat admitted past the admin's grace takes the role at once
+          if (room.room!.adminId === playerId) room.adminAbsentAt = null;
+          else if (room.adminAbsentAt !== null && at - room.adminAbsentAt >= hostGraceMs && migrateAdminIfAbsent(room.room!, at)) {
+            room.adminAbsentAt = null;
+            emit('admin_migrated', room.code, { admin: room.room!.adminId, on: 'admission' });
+          }
           const me = room.room!.players.find((player) => player.id === playerId)!;
           reply(message.type === 'room_create' ? 'room_created' : 'room_joined', { room: snapshot(room), playerId, seat: me.seat, chat: room.chat.slice(-ROOM_CHAT_HISTORY), region: 'double' });
           if (seat.token && matchLive(room) && seat.token.matchId === room.room!.match!.id) sendToPlayer(room, playerId, { type: 'match_start', payload: { ...matchStartPayload(room, playerId) } });
@@ -350,6 +401,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
           const wasHost = room.host.hostId === playerId;
           removePlayer(room.room!, playerId, at);
           room.seats.delete(playerId);
+          clearSeatLease(room, playerId);
           entry.playerId = null;
           reply('room_ack', { left: true });
           entry.socket.close(1000, 'client_leave');
@@ -403,6 +455,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
               room.steppedDown.clear();
               clearHostGrace(room);
               clearReportStale(room);
+              rebaseSeatLeases(room);
               emit('match_ended', room.code, { result: verdict?.result ?? null, reason: verdict?.reason ?? 'host_ended' });
               broadcast(room, { type: 'match_status', payload: { matchId: match.id, round: match.round, status: verdict ? 'ended' : 'lost', verdict: verdict ? { result: verdict.result, reason: verdict.reason } : null } });
               broadcastState(room);
@@ -417,7 +470,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
             reply('room_ack', { ok: true });
             // P1 broadcasts the room after every command: `hostDeclined` reaches every seat (P3, 2026-09-28); coalescable (P1b).
             broadcastState(room, false);
-            if (seat.declined && room.host.hostId === playerId && matchLive(room)) changeHost(room, 'declined', playerId);
+            if (seat.declined && room.host.hostId === playerId && matchLive(room)) changeHost(room, 'declined', playerId, command.unable === true);
             return;
           }
           if (command.type === 'start') {
@@ -431,6 +484,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
           if (kicked) {
             const seat = room.seats.get(kicked);
             room.seats.delete(kicked);
+            clearSeatLease(room, kicked);
             if (seat?.socketId) { send(seat.socketId, { type: 'room_closed', payload: { reason: 'kicked' } }); sockets.get(seat.socketId)?.socket.close(1000, 'kicked'); }
           }
           reply('room_ack', { revision: room.room!.revision });
@@ -463,8 +517,12 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
       seat.socketId = null;
       if (room.room?.players.some((player) => player.id === entry.playerId)) {
         setPlayerConnected(room.room, entry.playerId, false, now());
+        armSeatLease(room, entry.playerId);
         if (room.host.hostId === entry.playerId && matchLive(room)) { emit('host_absent', room.code, { hostId: entry.playerId }); scheduleHostGrace(room); }
-        if (room.room.adminId === entry.playerId) setTimeout(() => { if (room.room && migrateAdminIfAbsent(room.room, now())) broadcastState(room); }, hostGraceMs).unref?.();
+        if (room.room.adminId === entry.playerId) {
+          room.adminAbsentAt = now();
+          setTimeout(() => { if (room.room && migrateAdminIfAbsent(room.room, now())) { room.adminAbsentAt = null; broadcastState(room); } }, hostGraceMs).unref?.();
+        }
         broadcastState(room);
       }
     }
@@ -516,7 +574,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
     room: (code) => rooms.get(code) ?? null,
     async close() {
       closed = true;
-      for (const room of rooms.values()) { clearHostGrace(room); clearReportStale(room); }
+      for (const room of rooms.values()) { clearHostGrace(room); clearReportStale(room); for (const playerId of [...room.seatLeases.keys()]) clearSeatLease(room, playerId); }
       for (const entry of sockets.values()) { try { entry.socket.close(1001, 'server_drain'); } catch { /* closed */ } }
       const deadline = Date.now() + 1000;
       while (wss.clients.size > 0 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 20));
