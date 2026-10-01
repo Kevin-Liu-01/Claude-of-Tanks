@@ -1,90 +1,114 @@
-// Twelve owner-authorized hull derivatives with separate national equipment layouts.
-import {KIT,orientedSlab} from './kit.ts';
-import {buildT80UXHull} from './t80uX.ts';
-import {buildT72B3MXHull} from './t72b3mX.ts';
-import {buildT72B3XHull} from './t72b3X.ts';
-import {buildT90SMXTurret} from './t90X.ts';
-import {attachedCage,eraCassette,supportedSensor,strappedPack} from './modernizationFittings.ts';
-import {addVehicleGhillieSuit} from '../ghillieSuit.ts';
+// Native hulls and fenders remain recognizable beneath national modernization
+// packages. Country modules own cast-turret proportions, armor and equipment.
+import {KIT} from './kit.ts';
+import {buildT80UXRunningGear,buildT80UXFenders,buildT80UXHullCore} from './t80uX.ts';
+import {buildT72B3MXRunningGear,buildT72B3MXFenders,buildT72B3MXHullCore} from './t72b3mX.ts';
+import {buildT72B3XRunningGear,buildT72B3XFenders,buildT72B3XHullCore} from './t72b3X.ts';
+import {buildNationalUkraine} from './nationalUkraine.ts';
+import {buildNationalPoland} from './nationalPoland.ts';
+import {buildNationalChina} from './nationalChina.ts';
+import {buildNationalRussia} from './nationalRussia.ts';
+import {buildHetmanII} from './hetmanII.ts';
+import {buildZubrII} from './zubrII.ts';
+import {NATIONAL_LEGACY_CONFIG} from '../nationalLegacyConfig.ts';
+import {boxSections} from './measuredPrimitives.ts';
+import {sourceMachineGun} from './sourceMachineGun.ts';
 import {NATIONAL_MODERNIZATION_CONFIG,type NationalModernizationConfig} from '../nationalModernizationConfig.ts';
+import {nationalModernizationDesign,NATIONAL_GUN_PIVOT,NATIONAL_BARREL_LENGTH} from '../nationalModernizationDesign.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
-const {box,cylY}=KIT;
-function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
-  if(c.model===0)buildT80UXHull(P);else if(c.model===1)buildT72B3MXHull(P);else buildT72B3XHull(P);
-  buildT90SMXTurret(P,true);P.turretG.position.set(.008,c.y,c.z);
-  // The SM assembly has one physical gun inside a separately marked mount.
-  // Classify its base as support equipment, leaving the nested gun as the
-  // sole weapon fitting (and keeping the remote-controlled articulation).
-  const station=P.turretG.getObjectByName('modernSmRws');
-  if(station)station.userData.fitting='weaponStationMount';
-  const russian=c.package==='ru',polish=c.package==='pl',chinese=c.package==='cn';
-  // A proper clipped bustle extends the load-bearing shell. The forward SM
-  // aperture, gun, sights, hatch and remote station retain their working space.
-  const end=c.model===0?-2.45:c.model===1?-2.70:-2.28;
-  const half=polish?1.03:chinese?1.25:russian?1.38:1.14;
-  P.add('turret',orientedSlab(
-    [-.68,.20,-1.38],[.68,.20,-1.38],[half,.22,end],[-half,.22,end],
-    [-.65,.64,-1.38],[.65,.64,-1.38],[half-.18,.62,end+.13],[-half+.18,.62,end+.13]));
-  for(const side of [-1,1]) {
-    // A continuous thin fender extension carries the new spaced skirt bank.
-    // Its folded inner flange seats on the donor fender; the wheel bay below
-    // remains open and the moving shoe envelope stays clear.
-    P.addEquipment('hullDetail',box(.30,.028,5.20),side*1.865,1.44,-.05);
-    P.addEquipment('hullDetail',box(.026,.095,5.20),side*1.73,1.407,-.05);
-    if(c.model===1)P.addEquipment('hullDetail',box(.30,.028,.60),side*1.865,1.44,2.83);
-    // Separate spaced side armor banks, bracketed to the donor fender. The
-    // lower hem stays above the wheel course; no synthetic wheel-bay walls.
-    const count=polish?7:russian?5:6;
-    for(let i=0;i<count;i++){
-      const z=-2.18+i*4.30/(count-1),x=side*(russian?2.00:1.95);
-      P.addEquipment('hullDetail',box(.26,.045,.42),side*1.84,1.39,z);
-      // Outboard drop joins the raised bridge to the cassette without
-      // entering the moving track's inboard shoe envelope.
-      P.addEquipment('hullDetail',box(.035,.13,.12),side*(russian?1.95:1.92),1.35,z);
-      eraCassette(P,'hull',`skirt_era_${side<0?'L':'R'}`,[x,1.10,z],[.13,.46,4.15/count]);
-      if(russian)strappedPack(P,'hull',[x,.76,z],[.15,.22,.70]);
-    }
-    // National shoulder silhouette: Polish vertical tile stacks, Chinese
-    // swept wedge rails, Ukrainian spaced flank screens, Russian deep pods.
-    if(chinese){
-      P.addExternalArmor('turret',orientedSlab(
-        [side*.98,.20,.45],[side*1.43,.20,.35],[side*1.38,.20,-1.62],[side*.98,.20,-1.62],
-        [side*1.02,.57,.39],[side*1.30,.57,.29],[side*1.21,.64,-1.55],[side*1.02,.64,-1.55]));
-      P.addEquipment('turretDetail',box(.26,.18,.27),side*1.20,.69,-1.38);
-      P.addModuleVisual('optics','turretGlass',box(.18,.08,.012),side*1.20,.70,-1.239);
-    }else if(polish){
-      for(let i=0;i<4;i++){
-        const z=-.34-i*.31;
-        P.addEquipment('turretDetail',box(.65,.055,.12),side*.90,.30,z);
-        eraCassette(P,'turret',`turret_era_${side<0?'L':'R'}`,[side*1.20,.30,z],[.10,.30,.27]);
-      }
-      strappedPack(P,'turret',[side*.72,.72,end+.40],[.36,.22,.52]);
-    }else if(russian){
-      P.addExternalArmor('turret',orientedSlab(
-        [side*1.04,.05,-.40],[side*1.52,.05,-.52],[side*1.48,.12,end+.22],[side*1.04,.12,end+.22],
-        [side*1.04,.52,-.40],[side*1.38,.52,-.52],[side*1.32,.61,end+.30],[side*1.04,.61,end+.30]));
-      for(let i=0;i<3;i++)eraCassette(P,'turret',`turret_era_${side<0?'L':'R'}`,[side*1.43,.30,-.75-i*.44],[.12,.36,.38]);
-      P.addEquipment('turretDetail',box(.24,.055,.29),side*1.08,.615,end+.52);
-      P.addEquipment('turretDetail',box(.30,.18,.33),side*1.08,.72,end+.52);
-    }else{
-      for(const z of [-.90,-1.40])P.addEquipment('turretDetail',box(.86,.04,.035),side*.90,.37,z);
-      P.addEquipment('turretDetail',box(.025,.42,.98),side*1.32,.38,-1.16);
-      strappedPack(P,'turret',[side*.73,.72,end+.38],[.48,.22,.44]);
-    }
-  }
-  attachedCage(P,'turret',[0,.40,end-.23],half*2,.42,.36);
-  if(c.model===1)supportedSensor(P,[0,.92,end+.37],.63);
-  else {
-    P.addEquipment('turretDetail',cylY(.055,.08,.11,12),0,.68,end+.35);
-    P.addEquipment('turretDark',cylY(.009,.014,c.model===0?.75:.42,10),0,c.model===0?1.10:.94,end+.35);
-  }
-  if(c.package==='ua')addVehicleGhillieSuit(P,{
-    id:c.id,seed:801+c.model,style:'leafy',density:.82,leafScale:.94,
-    light:0x768452,dark:0x35462f,netColor:'rgba(40,55,32,0.8)',
-    turret:{top:[{x0:-.58,x1:.58,z0:end+.18,z1:-1.55,nx:10,nz:12,yAt:()=>.65}]},
-    hull:{side:[-1,1].map(side=>({side,z0:-2.30,z1:2.28,nz:26,ny:5,topAt:()=>1.34,bottomAt:()=>.90,outAt:()=>2.04}))},
-  });
-  P.hullG.userData.familyRebuild={donor:c.donor,turret:'t90sm_x',package:c.package,model:c.model,revision:1,concept:true};
+const {box,cylY,cylX,cylZ}=KIT;
+
+function mainWeapon(P:TankBuilderPort,c:Pick<NationalModernizationConfig,'package'>):void {
+ P.gunG.position.set(...NATIONAL_GUN_PIVOT);
+ // The closed mantlet sleeve and trunnion move with pitch; only the barrel
+ // slides under recoil. Its rear lies inside the open cheek throat.
+ P.add('gunMount',cylX(.245,.84,32),0,0,-.06);
+ // A full-width rotating shield follows the cheek throat with a 9 mm side
+ // seam. The old narrow sleeve left 125 mm of daylight on either side.
+ // Pitch changes Y/Z only, so these side clearances remain constant.
+ P.add('gunMount',boxSections([[-.27,.371,.285,-.285],[.47,.371,.25,-.25],[.65,.365,.21,-.21],[.79,.20,.17,-.17]]));
+ for(const side of [-1,1])P.add('gunMountDark',cylX(.276,.020,32),side*.367,0,-.04);
+ // The rear dust seal and front cuff share the elevating owner. Neither is
+ // a fixed cap across the gun's depression/elevation corridor.
+ P.add('gunMountCanvasSkin',boxSections([[-.29,.369,.28,-.28],[-.20,.369,.28,-.28]]));
+ P.add('gunMountDark',cylZ(.181,.045,32),0,0,.785);
+ KIT.buildGun(P,{len:NATIONAL_BARREL_LENGTH,r:.105,baseR:.14,sleeve:false,collar:false});
+ for(const [start,end,r]of [[.37,1.80,.139],[1.87,3.04,.126],[3.12,3.61,.161],[3.67,4.89,.118]])
+  P.add('gun',cylZ(r,end-start,32),0,0,(start+end)/2);
+ for(const z of [.48,1.72,2.95,3.69,4.84])P.add('gunDark',cylZ(.144,.027,28),0,0,z);
+ P.addEquipment('gun',box(.035,.039,.74),0,.154,3.37);
+ // A national mantlet collar changes the shield outline without changing its
+ // articulation owner or masking the intentional clearance at the cheeks.
+ if(c.package==='pl')P.add('gunMount',box(.72,.51,.09),0,0,.30);
+ if(c.package==='cn')P.add('gunMount',boxSections([[.28,.368,.264,-.255],[.57,.36,.23,-.23]]));
+ if(c.package==='ru')P.add('gunMount',cylZ(.229,.15,32),0,0,.65);
+ P.muzzleZ=NATIONAL_BARREL_LENGTH;
 }
-export const NATIONAL_MODERNIZATION_PROFILES=Object.fromEntries(
-  NATIONAL_MODERNIZATION_CONFIG.map(c=>[c.id,{build:(P:TankBuilderPort)=>build(P,c)}]));
+function roofWeapon(P:TankBuilderPort,c:Pick<NationalModernizationConfig,'package'>,
+ d:{rws:readonly[number,number,number];cupola:readonly[number,number,number]}):void {
+ const [x,baseY,z]=d.rws,y=baseY+.05;
+ const gun=sourceMachineGun(P,[0,0,0],{name:`${c.package}ModernRws`,caliberMm:12.7,
+  yaw:[x,baseY,z],pivot:[x,y+.36,z-.03],muzzle:[x,y+.36,z+1.05]});
+ gun.stage('yaw');
+ gun.add('turretDetail',cylY(.19,.23,.13,24),x,baseY+.055,z);
+ // An extra 50 mm at the supported trunnion clears the neighboring cupola
+ // at full depression without reducing the roof weapon's operating range.
+ gun.add('turretDetail',box(.17,.28,.22),x,baseY+.230,z);
+ for(const side of [-1,1])gun.add('turretDetail',box(.045,.21,.30),x+side*.115,y+.30,z);
+ gun.stage('pitch');
+ gun.add('turretDark',box(.16,.13,.43),x,y+.36,z-.08);
+ gun.add('turretDark',cylZ(.044,.14,24),x,y+.36,z+.17);
+ gun.add('turretDark',cylZ(.027,.84,24),x,y+.36,z+.60);
+ gun.add('turretDark',cylZ(.035,.08,20),x,y+.36,z+1.01);
+ gun.add('turretDetail',box(.24,.22,.30),x+.22,y+.31,z-.06);
+ // Side-mounted feed channel physically joins the ammo case to receiver.
+ gun.add('turretDark',box(.10,.07,.08),x+.115,y+.39,z-.02);
+ // National receiver guards and sights retain the same real yaw/pitch rig.
+ if(c.package==='ua') {
+  gun.add('turretDetail',box(.13,.14,.15),x-.145,y+.36,z+.09);
+  gun.add('turretDark',box(.094,.075,.009),x-.145,y+.37,z+.17);
+  for(const side of [-1,1])gun.add('turretDetail',box(.028,.18,.39),x+side*.098,y+.35,z+.09);
+ } else if(c.package==='pl') {
+  gun.add('turretDetail',box(.15,.20,.23),x-.165,y+.38,z+.06);
+  gun.add('turretDark',cylZ(.041,.014,16),x-.165,y+.425,z+.183);
+  gun.add('turretDark',cylZ(.027,.014,16),x-.165,y+.335,z+.183);
+  gun.add('turretDetail',box(.19,.026,.46),x,y+.444,z-.07);
+ } else if(c.package==='cn') {
+  gun.add('turretDetail',boxSections([[z-.27,.14,y+.45,y+.29],[z+.22,.11,y+.425,y+.29]]),x,0,0);
+  gun.add('turretDetail',box(.16,.16,.20),x-.185,y+.355,z+.12);
+  gun.add('turretDark',box(.112,.073,.012),x-.185,y+.377,z+.225);
+ } else {
+  gun.add('turretDetail',cylZ(.081,.25,24),x-.17,y+.36,z+.065);
+  gun.add('turretDark',cylZ(.062,.013,24),x-.17,y+.36,z+.195);
+  gun.add('turretDetail',box(.037,.20,.31),x-.265,y+.33,z+.02);
+  gun.add('turretDetail',box(.09,.09,.12),x-.10,y+.36,z+.05);
+  gun.add('turretDetail',box(.29,.032,.34),x+.22,y+.435,z-.06);
+ }
+ gun.finish();
+ const [cx,cy,cz]=d.cupola;
+ KIT.cupola(P,'turret',cx,cy-.006,cz,.27,.11,8);
+}
+function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
+ P.hullG.position.set(0,0,0);P.turretG.position.set(.008,c.y,c.z);
+ if(c.model===0){buildT80UXRunningGear(P);buildT80UXHullCore(P);buildT80UXFenders(P);}
+ else if(c.model===1){buildT72B3MXRunningGear(P);buildT72B3MXHullCore(P);buildT72B3MXFenders(P);}
+ else {buildT72B3XRunningGear(P);buildT72B3XHullCore(P);buildT72B3XFenders(P);}
+ ({ua:buildNationalUkraine,pl:buildNationalPoland,cn:buildNationalChina,ru:buildNationalRussia}[c.package])(P,c);
+ P.add('turret',cylY(.94,.94,.20,64),0,.005,0);
+ mainWeapon(P,c);roofWeapon(P,c,nationalModernizationDesign(c));
+ P.topY=nationalModernizationDesign(c).roofY;
+ P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,model:c.model,revision:5,concept:true,
+  preserved:'native-hull-core-running-gear-and-fenders',primaryHull:'donor-with-add-on-modernization',primaryTurret:'cast-ancestry-with-national-armor'};
+}
+export const NATIONAL_MODERNIZATION_PROFILES={
+ ...Object.fromEntries(NATIONAL_MODERNIZATION_CONFIG.map(c=>[c.id,{build:(P:TankBuilderPort)=>build(P,c)}])),
+ ...Object.fromEntries(NATIONAL_LEGACY_CONFIG.map(c=>[c.id,{build:(P:TankBuilderPort)=>{
+   (c.package==='ua'?buildHetmanII:buildZubrII)(P);
+   // Hetman II owns its deeper bearing; Zubr II shares the compact ring.
+   if(c.package==='pl')P.add('turret',cylY(.94,.94,.20,64),0,.005,0);
+   mainWeapon(P,c);roofWeapon(P,c,c.design);
+   P.topY=c.design.roofY;
+   P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,revision:1,concept:true,
+     preserved:'earlier-welded-turret-concept-lineage',primaryTurret:'independent-national-welded-turret'};
+ }}])),
+};

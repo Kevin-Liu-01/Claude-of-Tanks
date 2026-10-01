@@ -20,7 +20,7 @@ function topPart(P:TankBuilderPort,bucket:string,g:THREE.BufferGeometry,x:number
   P.addEquipment(bucket,g,x-YAW[0],y-YAW[1],z-YAW[2],rx,ry,rz);
 }
 
-function hull(P:TankBuilderPort):void {
+export function buildT72B3MXHullCore(P:TankBuilderPort):void {
   // The narrow main tub is separate from the wide over-track decks. Closed
   // carrier beneath the measured forward removable covers is inferred.
   P.add('hull',boxSections([
@@ -31,6 +31,10 @@ function hull(P:TankBuilderPort):void {
     [3.20,1.145,1.001,.82261],[3.342,1.145,.967,.955],
   ]));
   P.add('hull',cylY(1.318788,.026,48),YAW[0],1.512,YAW[2]);
+}
+
+function hull(P:TankBuilderPort):void {
+  buildT72B3MXHullCore(P);
   for(const side of [-1,1])fenders(P,side);
   addT72B3MSideMounts(P);
 }
@@ -305,3 +309,12 @@ export function buildT72B3MX(P:TankBuilderPort):void {
   cheekCassettes(P);roofCassettes(P);bustle(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P);
 }
 export const T72B3M_X_PROFILES={t72b3m_x:{build:buildT72B3MX}} as const;
+
+/** Native mechanical foundation for owner-authorized complete hull rebuilds. */
+export function buildT72B3MXRunningGear(P:TankBuilderPort):void { runningGear(P); }
+
+/** Native upper track decks, rounded front guards and flexible rear leaves.
+ * The donor hull, running gear, side cassettes and curtains are not emitted. */
+export function buildT72B3MXFenders(P:TankBuilderPort):void {
+  for(const side of [-1,1])fenders(P,side);
+}
