@@ -21,6 +21,7 @@ import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import { RoomActor } from '../../src/mp/room/roomActor.ts';
 import type { MatchHost, MatchHostStartConfig, MatchHostStatus, RoomActorPorts, ServiceMatchHost } from '../../src/mp/room/roomActor.ts';
 import { createP2pMatchHost } from '../../src/mp/room/p2pMatchHost.ts';
+import { hostRulesetFor } from '../../src/mp/host/hostRuleset.ts';
 import { ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, ROOM_MAX_PAYLOAD_BYTES, parseRoomRoute } from '../../src/mp/room/protocol.ts';
 import type { RoomEnvelope } from '../../src/mp/room/protocol.ts';
 import type { RoomPolicyGuards } from '../../src/mp/room/roomPolicy.ts';
@@ -86,6 +87,7 @@ export function createInProcessMatchHost({
         roomId: config.roomId, mapId: config.mapId, mode: config.mode, seed: config.seed,
         seats: config.seats.map((seat) => ({ seat: seat.seat, playerId: seat.playerId, name: seat.name, team: seat.team, specId: seat.specId, equipment: seat.equipment })),
         bots: config.bots, world, countdownS: config.countdownS ?? countdownS, battleLimitS,
+        ruleset: hostRulesetFor(config.mode, config.arrangement, config.campaignOperationId),
         onVerdict: () => onVerdict?.(config.roomId),
       });
       matchIds.set(config.roomId, config.matchId);

@@ -21,6 +21,9 @@ import { createTankState, shotRecoilScale } from '../../sim/movement.ts';
 import type { TankState } from '../../sim/movement.ts';
 import { SPECIAL_ACTION_KINDS, createSpecialActionState } from '../../sim/specialActionPolicy.ts';
 import type { SpecialActionState } from '../../sim/specialActionPolicy.ts';
+import { matchRulesetFor } from '../../sim/matchRuleset.ts';
+import type { MatchRuleset } from '../../sim/matchRuleset.ts';
+import { normalizeGameMode } from '../../sim/matchModes.ts';
 import { createTank, ensureTankBuilder } from '../../vehicles/fleetFactory.ts';
 import { prebakeSharedTextures } from '../../vehicles/materials.ts';
 import type { FleetTankSpec } from '../../vehicles/specContracts.ts';
@@ -127,6 +130,21 @@ export interface PresentationGameState {
   mapId?: string;
   gameMode?: RuntimeValue;
   matchModeState?: RuntimeValue;
+  /** The ruleset the authority plays by (its WELCOME's rulesetJson): the HUD clock, the respawn countdown and the jump hint read it. */
+  ruleset?: MatchRuleset;
+}
+
+/**
+ * The ruleset the authority named in its WELCOME (`rulesetJson`: the room's mode bent by its arrangement — hostRuleset.ts),
+ * else the mode's own table (a fixture's placeholder, a build whose table disagrees on the mode).
+ */
+function rulesetFromWelcome(json: string, mode: RuntimeValue): MatchRuleset {
+  const id = normalizeGameMode(mode);
+  try {
+    const parsed = JSON.parse(json) as { mode?: unknown } | null;
+    if (parsed && typeof parsed === 'object' && parsed.mode === id) return parsed as MatchRuleset;
+  } catch { /* not a ruleset */ }
+  return matchRulesetFor(id);
 }
 
 export interface EventBus {
@@ -324,6 +342,7 @@ export function createBattlePresentation({
     const own = entries.find((entry) => entry.entityId === rosterContext.ownEntityId);
     if (own && !spectator) viewerTeam = own.team;
     game.gameMode = rosterContext.mode || 'standard';
+    game.ruleset = rulesetFromWelcome(rosterContext.rulesetJson, game.gameMode);
     rosterReady = rosterReady.then(() => prepareRoster(entries, rosterContext));
     return rosterReady;
   }

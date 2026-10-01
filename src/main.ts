@@ -2447,8 +2447,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             const hud = currentHud();
             hud?.setPreBattleWaiting(waiting);
             if (!waiting) hud?.preBattleCountdown(game.preBattleS);
-            // network rooms play the mode's own ruleset (the authority applies the same table)
-            if (!waiting) hud?.setPreBattleRules(matchRulesetFor(normalizeGameMode(game.gameMode)));
+            // network rooms play the ruleset their WELCOME named (the room's mode bent by its arrangement, set on game.ruleset by the
+            // battle presentation); the mode's own table until it arrives
+            if (!waiting) hud?.setPreBattleRules(game.ruleset.mode === normalizeGameMode(game.gameMode) ? game.ruleset : matchRulesetFor(normalizeGameMode(game.gameMode)));
             // campaign slice 5: the brief opens with the countdown and fades a few seconds into play
             if (!waiting && game.gameMode === 'frontline_assault') {
               missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: game.preBattleS + 14 });

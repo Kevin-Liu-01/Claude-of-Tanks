@@ -9,6 +9,7 @@
  * migration it boots from the retained state at the tick the main thread computed. DOM-free.
  */
 import { createMatchActor } from '../../../server/match/matchActor.ts';
+import { hostRulesetFor } from './hostRuleset.ts';
 import type { ActorWorldCollision, MatchActor } from '../../../server/match/matchActor.ts';
 import type { ClientLink } from '../../../server/match/link.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
@@ -317,6 +318,7 @@ export function createMatchHostCore({
     const created = createMatchActor({
       roomId: next.roomId, mapId: next.mapId, mode: next.mode, seed: next.seed,
       seats: next.seats.map((seat) => ({ ...seat })), bots: next.bots.map((bot) => ({ ...bot })),
+      ruleset: hostRulesetFor(next.mode, next.arrangement, next.campaignOperationId),
       countdownS: next.countdownS, ...(next.battleLimitS != null ? { battleLimitS: next.battleLimitS } : {}),
       world, now, ...(schedule ? { schedule } : {}), autoStart: false,
       ...(endedLingerTicks !== undefined ? { endedLingerTicks } : {}),

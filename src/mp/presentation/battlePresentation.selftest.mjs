@@ -324,4 +324,23 @@ assert.deepEqual(game.tanks, []);
   assert.equal(recorder.disposed, true);
 }
 
+// ------------------------------------------------------------ the authority's ruleset reaches the game state (lane mp/ui-sync-check, 2026-09-30)
+{
+  const { matchRulesetFor } = await import('../../sim/matchRuleset.ts');
+  assert.equal(game.ruleset?.mode, 'standard', 'a placeholder rulesetJson leaves the mode\'s own table');
+  const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'winter' };
+  const q = createBattlePresentation({ engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit() {} }, worldCollision, createTankVisual: fakeVisual, prepareVisualTextures: async () => {}, clearVehicleDecals: () => {}, camoFor: () => 'summer', clock: () => nowMs });
+  const arranged = matchRulesetFor('zone_control', null, { allies: null, enemies: null, waveSize: null, enemyNation: null, scoreTarget: 100 });
+  await q.applyRoster(roster, { ...context, mode: 'zone_control', rulesetJson: JSON.stringify(arranged) });
+  assert.equal(state.gameMode, 'zone_control');
+  assert.equal(state.ruleset?.scoreTarget, 100, 'the WELCOME\'s ruleset (the room\'s arrangement) is what the HUD reads');
+  assert.equal(state.ruleset?.respawnS, 6);
+  await q.applyRoster(roster, { ...context, mode: 'zone_control', rulesetJson: JSON.stringify({ mode: 'standard', scoreTarget: 1 }) });
+  assert.equal(state.ruleset?.mode, 'zone_control', 'a table naming another mode is refused: the mode\'s own');
+  assert.equal(state.ruleset?.scoreTarget, undefined, 'the mode\'s own table names no target (the controller scores to 750)');
+  await q.applyRoster(roster, { ...context, mode: 'zone_control', rulesetJson: 'not json' });
+  assert.equal(state.ruleset?.scoreTarget, undefined, 'unparseable: the mode\'s own');
+  q.dispose();
+}
+
 console.log('mp battle presentation: roster → hidden visuals, frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, verdicts, disconnect, spectator perspective, prediction world pass');

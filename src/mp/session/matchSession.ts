@@ -462,6 +462,7 @@ export class MatchSession {
       const config: HostBootConfig = {
         roomId: round.room.roomCode, matchId: payload.matchId, generation: this.room.generation, mapId: payload.mapId, mode: payload.mode, seed: payload.seed,
         seats: plan.seats, bots: plan.bots, countdownS: p2p.countdownS ?? 5, battleLimitS: null, hostSecret: this.hostSecret, manifestBase: p2p.manifestBase ?? null, resume: null,
+        arrangement: round.room.settings.arrangement ?? null, campaignOperationId: round.room.settings.campaignOperationId ?? null,
         ...(p2p.snapshotHz !== undefined ? { snapshotHz: p2p.snapshotHz } : {}),
       };
       const host = this.createHost();
@@ -573,12 +574,17 @@ export class MatchSession {
     let resume: HostBootConfig['resume'] = null;
     let plan: HostBootPlan | null = null;
     let battleLimitS: number | null = null;
+    // the ruleset the first host booted with rides the sealed configuration; a pre-lane blob leaves the room's own settings
+    let arrangement = round.room.settings.arrangement ?? null;
+    let campaignOperationId = round.room.settings.campaignOperationId ?? null;
     try {
       const key = await deriveMigrationKey(secret);
       if (retained.config) {
         const config = decodeBootConfig(await openMigrationBlob(key, retained.config.blob));
         plan = { seats: config.seats, bots: config.bots };
         battleLimitS = config.battleLimitS ?? null;
+        if (config.arrangement !== undefined) arrangement = config.arrangement;
+        if (config.campaignOperationId !== undefined) campaignOperationId = config.campaignOperationId;
       }
       if (retained.keyframe) {
         const keyframe = decodeMigrationKeyframe(await openMigrationBlob(key, retained.keyframe.blob));
@@ -610,6 +616,7 @@ export class MatchSession {
       roomId: round.room.roomCode, matchId: round.matchStart.matchId, generation: change.generation, mapId: round.matchStart.mapId, mode: round.matchStart.mode,
       seed: welcome ? welcome.seed : round.matchStart.seed, seats: plan.seats, bots: plan.bots, countdownS: resume ? 0 : this.p2pOptions?.countdownS ?? 5, battleLimitS, hostSecret: secret,
       manifestBase: this.p2pOptions?.manifestBase ?? null, resume,
+      arrangement, campaignOperationId,
       ...(this.p2pOptions?.snapshotHz !== undefined ? { snapshotHz: this.p2pOptions.snapshotHz } : {}),
     };
     try {
