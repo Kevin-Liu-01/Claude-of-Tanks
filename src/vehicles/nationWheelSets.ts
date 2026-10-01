@@ -1,3 +1,4 @@
+import {NATIONAL_MODERNIZATION_CONFIG} from './nationalModernizationConfig.ts';
 // Nation road-wheel sets — the one table that says which road-wheel construction every playable hull draws.
 //
 // Owner 2026-09-22: "im going to give 2 wheel variations for each nation: china uses ztz-100 wheels or type 100
@@ -267,6 +268,8 @@ function resolved(kind: 'donor' | 'standard', donor: WheelDonorId, reason: strin
 export function resolveNationWheel(spec: NationWheelSpec | null | undefined): NationWheelResolution {
   const id = String(spec?.id || '').toLowerCase();
   if (!id) return Object.freeze({ kind: 'keep', reason: 'no vehicle id' });
+  const concept=NATIONAL_MODERNIZATION_CONFIG.find(c=>c.id===id);
+  if(concept)return resolved('standard','t90','Owner-selected Russian donor chassis retains its pressed running gear');
   const self = DONOR_OF_SELF.get(id);
   if (self) return resolved('donor', self, `${id} draws the ${self} construction natively`);
   const era = String(spec?.era || '').toLowerCase();

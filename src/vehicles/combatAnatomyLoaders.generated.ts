@@ -53,6 +53,7 @@ export const COMBAT_ANATOMY_GROUP_LOADERS: Readonly<Record<string, () => Promise
   "misc": () => import('./combatAnatomyGroups/misc.generated.ts'),
   "modern2": () => import('./combatAnatomyGroups/modern2.generated.ts'),
   "modern3Core": () => import('./combatAnatomyGroups/modern3Core.generated.ts'),
+  "nationalModernization": () => import('./combatAnatomyGroups/nationalModernization.generated.ts'),
   "patton": () => import('./combatAnatomyGroups/patton.generated.ts'),
   "poland": () => import('./combatAnatomyGroups/poland.generated.ts'),
   "pumaS1SourceX": () => import('./combatAnatomyGroups/pumaS1SourceX.generated.ts'),

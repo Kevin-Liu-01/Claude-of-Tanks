@@ -1,3 +1,4 @@
+import {NATIONAL_MODERNIZATION_CONFIG} from './nationalModernizationConfig.ts';
 // Published/internal-layout metadata for every playable vehicle. This is the
 // presentation and topology source of truth shared by combat anatomy, Gallery
 // diagnostics and the kill cam. Exact armour envelopes remain geometry-derived
@@ -37,6 +38,7 @@ type InternalCrewTuple = readonly [
 ];
 
 export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
+  ownerNationalModernization: Object.freeze({title:'Owner-approved national modernization concepts, 2026-10-01',url:'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/concepts/national-modernization-20261001.json',kind:'owner-authored-concept'}),
   amx10pHandbook: Object.freeze({ title: 'USMC MCIA Qatar and Singapore country handbooks: AMX-10P',
     url: 'https://info.publicintelligence.net/MCIA-QatarHandbook.pdf', kind: 'military-handbook' }),
   amx10pDragarStudy: Object.freeze({ title: 'AMX-10P 25 Dragar configuration and original photographic study',
@@ -380,6 +382,10 @@ const LAYOUTS = Object.freeze({
   ), systems: systems({ ammoRack: { placement: 'hull', form: 'hullBins' } }) },
   // September 30 owner-directed hybrids retain a three-person layout and
   // the donor chassis' carousel architecture; these are not sourced interiors.
+  nationalSmDiesel: { confidence: 'owner-directed', sources: ['ownerNationalModernization'], crew: THREE_MAN_AUTO,
+    systems: systems({ ammoRack: {placement:'hull',form:'azCarouselCassette'},autoloader:{placement:'hull',form:'azCarousel'} }) },
+  nationalSmTurbine: { confidence: 'owner-directed', sources: ['ownerNationalModernization'], crew: THREE_MAN_AUTO,
+    systems: systems({ engine:{placement:'rear',form:'gasTurbinePowerpack'},ammoRack: {placement:'hull',form:'azCarouselCassette'},autoloader:{placement:'hull',form:'azCarousel'} }) },
   conceptAzHybrid: { confidence: 'owner-directed', sources: [], crew: THREE_MAN_AUTO,
     systems: systems({ ammoRack: { placement: 'hull', form: 'azCarouselCassette' }, autoloader: { placement: 'hull', form: 'azCarousel' } }) },
   conceptMzHybrid: { confidence: 'owner-directed', sources: [], crew: THREE_MAN_AUTO,
@@ -509,11 +515,13 @@ const IDS_BY_LAYOUT = Object.freeze({
     'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b',
     'merkava4_x', 'merkava3d_x', 'merkava4_trophy', 'merkava4_barak',
   ],
-  sovietManual: ['t62mv1_x', 't62mv1'],
-  conceptAzHybrid: ['type96_72_long','type96_72m_lei'],
+  sovietManual: ['t62mv1'],
+  nationalSmDiesel: NATIONAL_MODERNIZATION_CONFIG.filter(c=>c.model!==0).map(c=>c.id),
+  nationalSmTurbine: NATIONAL_MODERNIZATION_CONFIG.filter(c=>c.model===0).map(c=>c.id),
+  conceptAzHybrid: ['type96_72_long','type96_72m_lei','t62mv1_x','ua_t64bv'],
   conceptMzHybrid: ['type96_80_feng','t72_rys'],
   sovietAz: ['type96b_x', 't90ms_x', 't90a_burlak_x', 't90_x', 't72bu_x', 't72b3m_x', 't72b3_x', 't72b_1987_x', 't72b3m', 't72bu', 'pt91m', 't90', 't90a', 't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m', 't90m_proryv', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 't72m1_jaguar', 'pt91_twardy', 't90a_x', 't90a_vladimir_x', 't90m_x', 't90sm_x'],
-  sovietMz: ['t80u_x', 't64bv1', 't80', 't80b', 't80bv', 't80u', 't84', 'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m'],
+  sovietMz: ['t80u_x', 't64bv1', 't80', 't80b', 't80bv', 't80u', 't84', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m'],
   bustleAuto: ['type90_x', 'type10_x', 'leclerc_x', 'leclerc_classic_x', 'k2', 'k2b', 'type90', 'type90a', 'type10', 'type10b', 'leclerc', 'leclerc_xlr', 'amx56', 'vt4a1', 'k2_x', 'ztz100_x'],
   fixedAuto: ['udes03', 'strv103a', 'strv103'],
   mbt70: ['mbt70'],

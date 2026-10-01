@@ -1,0 +1,434 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-10-01",
+    "request": "Yes\u201412 new concept tanks: three T-80U, T-72B3M and T-72B3 derivatives per country for Ukraine, Poland, China and Russia, with Russia receiving the strongest package.",
+    "scope": "Twelve original game concepts; preserves the three donor hulls and SM gun, mantlet and remote weapon."
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "dimensionToleranceFraction": 0.03,
+  "designs": {
+    "ua_t80u_modern": {
+      "id": "ua_t80u_modern",
+      "ring": [
+        0.008,
+        1.565,
+        0.07187
+      ],
+      "gunLocal": [
+        -0.007,
+        0.3710899999999999,
+        1.201
+      ],
+      "barrelLengthM": 5.479900000000001,
+      "barrelRadiusM": 0.105,
+      "pitchDeg": [
+        -6,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.720291335,
+      "hullWidthM": 4.06,
+      "widthM": 4.118,
+      "overallLengthM": 10.278,
+      "tallestM": 3.183,
+      "specDimensions": {
+        "hullLengthM": 6.720291335,
+        "overallLengthM": 10.112915667500001,
+        "widthM": 4.06,
+        "heightM": 2.3223
+      },
+      "test": "src/vehicles/nationalModernization.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "silhouette": "Retained detailed t80u chassis, SM-derived front turret and open gun aperture, with spaced side screens, rear cage and supported leaf camouflage"
+    },
+    "ua_t72b3m_modern": {
+      "id": "ua_t72b3m_modern",
+      "ring": [
+        0.008,
+        1.545,
+        0.114315
+      ],
+      "gunLocal": [
+        -0.007,
+        0.3710899999999999,
+        1.201
+      ],
+      "barrelLengthM": 5.479900000000001,
+      "barrelRadiusM": 0.105,
+      "pitchDeg": [
+        -6,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.68398928642,
+      "hullWidthM": 4.06,
+      "widthM": 4.118,
+      "overallLengthM": 10.47,
+      "tallestM": 3.163,
+      "specDimensions": {
+        "hullLengthM": 6.68398928642,
+        "overallLengthM": 10.137209643210001,
+        "widthM": 4.06,
+        "heightM": 2.3023
+      },
+      "test": "src/vehicles/nationalModernization.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "silhouette": "Retained detailed t72b3m chassis, SM-derived front turret and open gun aperture, with spaced side screens, rear cage and supported leaf camouflage"
+    },
+    "ua_t72b3_modern": {
+      "id": "ua_t72b3_modern",
+      "ring": [
+        0.008,
+        1.475,
+        0.065591
+      ],
+      "gunLocal": [
+        -0.007,
+        0.3710899999999999,
+        1.201
+      ],
+      "barrelLengthM": 5.479900000000001,
+      "barrelRadiusM": 0.105,
+      "pitchDeg": [
+        -6,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.356300116,
+      "hullWidthM": 4.06,
+      "widthM": 4.118,
+      "overallLengthM": 10.619,
+      "tallestM": 3.093,
+      "specDimensions": {
+        "hullLengthM": 6.356300116,
+        "overallLengthM": 9.924641058,
+        "widthM": 4.06,
+        "heightM": 2.2323
+      },
+      "test": "src/vehicles/nationalModernization.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "silhouette": "Retained detailed t72b3 chassis, SM-derived front turret and open gun aperture, with spaced side screens, rear cage and supported leaf camouflage"
+    },
+    "pl_t80u_modern": {
+      "id": "pl_t80u_modern",
+      "ring": [
+        0.008,
+        1.565,
+        0.07187
+      ],
+      "gunLocal": [
+        -0.007,
+        0.3710899999999999,
+        1.201
+      ],
+      "barrelLengthM": 5.479900000000001,
+      "barrelRadiusM": 0.105,
+      "pitchDeg": [
+        -6,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.720291335,
+      "hullWidthM": 4.06,
+      "widthM": 4.05,
+      "overallLengthM": 10.278,
+      "tallestM": 3.183,
+      "specDimensions": {
+        "hullLengthM": 6.720291335,
+        "overallLengthM": 10.112915667500001,
+        "widthM": 4.06,
+        "heightM": 2.3223
+      },
+      "test": "src/vehicles/nationalModernization.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "silhouette": "Retained detailed t80u chassis, SM-derived front turret and open gun aperture, with compact bustle, upright modular tile stacks and roof stowage"
+    },
+    "pl_t72b3m_modern": {
+      "id": "pl_t72b3m_modern",
+      "ring": [
+        0.008,
+        1.545,
+        0.114315
+      ],
+      "gunLocal": [
+        -0.007,
+        0.3710899999999999,
+        1.201
+      ],
+      "barrelLengthM": 5.479900000000001,
+      "barrelRadiusM": 0.105,
+      "pitchDeg": [
+        -6,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.68398928642,
+      "hullWidthM": 4.06,
+      "widthM": 4.05,
+      "overallLengthM": 10.47,
+      "tallestM": 3.163,
+      "specDimensions": {
+        "hullLengthM": 6.68398928642,
+        "overallLengthM": 10.137209643210001,
+        "widthM": 4.06,
+        "heightM": 2.3023
+      },
+      "test": "src/vehicles/nationalModernization.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "silhouette": "Retained detailed t72b3m chassis, SM-derived front turret and open gun aperture, with compact bustle, upright modular tile stacks and roof stowage"
+    },
+    "pl_t72b3_modern": {
+      "id": "pl_t72b3_modern",
+      "ring": [
+        0.008,
+        1.475,
+        0.065591
+      ],
+      "gunLocal": [
+        -0.007,
+        0.3710899999999999,
+        1.201
+      ],
+      "barrelLengthM": 5.479900000000001,
+      "barrelRadiusM": 0.105,
+      "pitchDeg": [
+        -6,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.356300116,
+      "hullWidthM": 4.06,
+      "widthM": 4.05,
+      "overallLengthM": 10.619,
+      "tallestM": 3.093,
+      "specDimensions": {
+        "hullLengthM": 6.356300116,
+        "overallLengthM": 9.924641058,
+        "widthM": 4.06,
+        "heightM": 2.2323
+      },
+      "test": "src/vehicles/nationalModernization.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "silhouette": "Retained detailed t72b3 chassis, SM-derived front turret and open gun aperture, with compact bustle, upright modular tile stacks and roof stowage"
+    },
+    "cn_t80u_modern": {
+      "id": "cn_t80u_modern",
+      "ring": [
+        0.008,
+        1.565,
+        0.07187
+      ],
+      "gunLocal": [
+        -0.007,
+        0.3710899999999999,
+        1.201
+      ],
+      "barrelLengthM": 5.479900000000001,
+      "barrelRadiusM": 0.105,
+      "pitchDeg": [
+        -6,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.720291335,
+      "hullWidthM": 4.06,
+      "widthM": 4.05,
+      "overallLengthM": 10.278,
+      "tallestM": 3.183,
+      "specDimensions": {
+        "hullLengthM": 6.720291335,
+        "overallLengthM": 10.112915667500001,
+        "widthM": 4.06,
+        "heightM": 2.3223
+      },
+      "test": "src/vehicles/nationalModernization.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "silhouette": "Retained detailed t80u chassis, SM-derived front turret and open gun aperture, with wide swept shoulder wedges and twin optical housings"
+    },
+    "cn_t72b3m_modern": {
+      "id": "cn_t72b3m_modern",
+      "ring": [
+        0.008,
+        1.545,
+        0.114315
+      ],
+      "gunLocal": [
+        -0.007,
+        0.3710899999999999,
+        1.201
+      ],
+      "barrelLengthM": 5.479900000000001,
+      "barrelRadiusM": 0.105,
+      "pitchDeg": [
+        -6,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.68398928642,
+      "hullWidthM": 4.06,
+      "widthM": 4.05,
+      "overallLengthM": 10.47,
+      "tallestM": 3.163,
+      "specDimensions": {
+        "hullLengthM": 6.68398928642,
+        "overallLengthM": 10.137209643210001,
+        "widthM": 4.06,
+        "heightM": 2.3023
+      },
+      "test": "src/vehicles/nationalModernization.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "silhouette": "Retained detailed t72b3m chassis, SM-derived front turret and open gun aperture, with wide swept shoulder wedges and twin optical housings"
+    },
+    "cn_t72b3_modern": {
+      "id": "cn_t72b3_modern",
+      "ring": [
+        0.008,
+        1.475,
+        0.065591
+      ],
+      "gunLocal": [
+        -0.007,
+        0.3710899999999999,
+        1.201
+      ],
+      "barrelLengthM": 5.479900000000001,
+      "barrelRadiusM": 0.105,
+      "pitchDeg": [
+        -6,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.356300116,
+      "hullWidthM": 4.06,
+      "widthM": 4.05,
+      "overallLengthM": 10.619,
+      "tallestM": 3.093,
+      "specDimensions": {
+        "hullLengthM": 6.356300116,
+        "overallLengthM": 9.924641058,
+        "widthM": 4.06,
+        "heightM": 2.2323
+      },
+      "test": "src/vehicles/nationalModernization.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "silhouette": "Retained detailed t72b3 chassis, SM-derived front turret and open gun aperture, with wide swept shoulder wedges and twin optical housings"
+    },
+    "ru_t80u_modern": {
+      "id": "ru_t80u_modern",
+      "ring": [
+        0.008,
+        1.565,
+        0.07187
+      ],
+      "gunLocal": [
+        -0.007,
+        0.3710899999999999,
+        1.201
+      ],
+      "barrelLengthM": 5.479900000000001,
+      "barrelRadiusM": 0.105,
+      "pitchDeg": [
+        -6,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.720291335,
+      "hullWidthM": 4.18,
+      "widthM": 4.15,
+      "overallLengthM": 10.278,
+      "tallestM": 3.183,
+      "specDimensions": {
+        "hullLengthM": 6.720291335,
+        "overallLengthM": 10.112915667500001,
+        "widthM": 4.18,
+        "heightM": 2.3223
+      },
+      "test": "src/vehicles/nationalModernization.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "silhouette": "Retained detailed t80u chassis, SM-derived front turret and open gun aperture, with deep armored side pods, additional ERA and lower skirt cases"
+    },
+    "ru_t72b3m_modern": {
+      "id": "ru_t72b3m_modern",
+      "ring": [
+        0.008,
+        1.545,
+        0.114315
+      ],
+      "gunLocal": [
+        -0.007,
+        0.3710899999999999,
+        1.201
+      ],
+      "barrelLengthM": 5.479900000000001,
+      "barrelRadiusM": 0.105,
+      "pitchDeg": [
+        -6,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.68398928642,
+      "hullWidthM": 4.18,
+      "widthM": 4.15,
+      "overallLengthM": 10.47,
+      "tallestM": 3.163,
+      "specDimensions": {
+        "hullLengthM": 6.68398928642,
+        "overallLengthM": 10.137209643210001,
+        "widthM": 4.18,
+        "heightM": 2.3023
+      },
+      "test": "src/vehicles/nationalModernization.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "silhouette": "Retained detailed t72b3m chassis, SM-derived front turret and open gun aperture, with deep armored side pods, additional ERA and lower skirt cases"
+    },
+    "ru_t72b3_modern": {
+      "id": "ru_t72b3_modern",
+      "ring": [
+        0.008,
+        1.475,
+        0.065591
+      ],
+      "gunLocal": [
+        -0.007,
+        0.3710899999999999,
+        1.201
+      ],
+      "barrelLengthM": 5.479900000000001,
+      "barrelRadiusM": 0.105,
+      "pitchDeg": [
+        -6,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.356300116,
+      "hullWidthM": 4.18,
+      "widthM": 4.15,
+      "overallLengthM": 10.619,
+      "tallestM": 3.093,
+      "specDimensions": {
+        "hullLengthM": 6.356300116,
+        "overallLengthM": 9.924641058,
+        "widthM": 4.18,
+        "heightM": 2.2323
+      },
+      "test": "src/vehicles/nationalModernization.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "silhouette": "Retained detailed t72b3 chassis, SM-derived front turret and open gun aperture, with deep armored side pods, additional ERA and lower skirt cases"
+    }
+  }
+}

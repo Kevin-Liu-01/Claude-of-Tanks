@@ -1,5 +1,5 @@
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import { buildT72B3M2022Hull } from './t72ModernVariants.ts';
+import { buildT80UXHull } from './t80uX.ts';
 import { attachedCage, strappedPack, supportedSensor } from './modernizationFittings.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // First-party procedural AFV family.
@@ -334,34 +334,32 @@ function buildUAM2A3(P: AfvBuilderPort): void {
 function addTerminatorStation(P: AfvBuilderPort): void {
   const { box, cylY, cylZ } = KIT;
   clearUpperStructure(P);
-  // The B3M donor has a complete crown/track layer in this bucket. The BMPT
+  // Clear any inherited crown/track layer from the upper assembly. The BMPT
   // needs only its own compact turntable; keep this exception local so other
   // AFV donor rebuilds retain their authored roof hardware.
   P.clear('turretTrack');
   delete P.turretG.userData.t72B3MTurretCleanupReceipt;
   delete P.turretG.userData.t72b3mForwardAttachmentReceipt;
-  // Moving the compact station aft exposes the donor hull's two tiny
-  // L-shaped fender notches in plan view. Continue the existing rubber flap
-  // course across those corners so the roof/fender silhouette stays closed;
-  // these are olive rubber bridges, not the retired black wheel-bay inserts.
-  for (const side of [-1, 1]) {
-    P.add('hullRubber', box(0.11, 0.105, 0.045), side * 1.655, 1.02, 2.04);
-  }
-  P.hullG.userData.bmptTerminator2HullClosureReceipt = Object.freeze({
-    revision: 'front-fender-notch-bridges-r1',
-    bridgeCount: 2,
-    syntheticWheelBayShadows: 0,
-  });
   P.gunG.position.set(0, 0.50, 0.36);
   // Low armored turntable and narrow unmanned weapons tower.
-  // This is the BMPT's own ring: do not retain a donor T-72 crown skin as an
+  // This is the BMPT's own ring: do not retain a donor crown skin as an
   // invisible second turret below the station.
   P.add('turretTrack', cylY(1.04, 1.10, 0.08, 24), 0, -0.025, 0);
   P.add('turret', cylY(0.98, 1.16, 0.22, 24), 0, 0.09, 0);
   P.add('turret', orientedSlab(
     [-0.72, 0.10, 0.98], [0.72, 0.10, 0.98], [0.92, 0.10, -1.05], [-0.92, 0.10, -1.05],
     [-0.50, 0.58, 0.76], [0.50, 0.58, 0.76], [0.64, 0.62, -0.88], [-0.64, 0.62, -0.88]));
-  P.add('turret', box(0.72, 0.44, 1.20), 0, 0.56, 0.05);
+  // Chamfered upper receiver with a narrowed brow and a long equipment bustle.
+  P.add('turret', orientedSlab(
+    [-.36,.34,.65],[.36,.34,.65],[.44,.34,-.78],[-.44,.34,-.78],
+    [-.28,.78,.48],[.28,.78,.48],[.34,.78,-.66],[-.34,.78,-.66]));
+  P.add('turret', orientedSlab(
+    [-.62,.23,-.66],[.62,.23,-.66],[.51,.23,-1.40],[-.51,.23,-1.40],
+    [-.48,.65,-.66],[.48,.65,-.66],[.40,.55,-1.40],[-.40,.55,-1.40]));
+  for(const side of [-1,1]) {
+    P.addEquipment('turretDetail',box(.20,.055,.56),side*.50,.59,-.95);
+    for(let i=0;i<4;i++)P.addEquipment('turretDark',box(.015,.015,.40),side*(.43+i*.045),.625,-.95);
+  }
   P.add('turretDark', box(0.56, 0.20, 0.28), 0, 0.60, 0.76);
   // Twin 2A42 cannon plant. Closed collars overlap the tower face; the
   // individual bore mouths are explicit so the pair never reads as rods.
@@ -431,7 +429,7 @@ function addTerminatorStation(P: AfvBuilderPort): void {
   }
   radioPair(P, 0.78, -0.60, 3320, 0.43);
   P.decal('turret', 'number', 'BMPT-2', 0.20, [1.16, 0.44, -0.32], Math.PI / 2);
-  // The B3M donor pivot sits ahead of the hull's geometric center. Move the
+  // The donor pivot sits ahead of the hull's geometric center. Move the
   // complete BMPT station aft as one articulated assembly, including its gun
   // and object-based fittings, while leaving the hull and running gear fixed.
   const stationShiftZM = -0.32;
@@ -449,10 +447,10 @@ function addTerminatorStation(P: AfvBuilderPort): void {
 }
 
 function buildBMPT2(P: AfvBuilderPort): void {
-  buildT72B3M2022Hull(P);
-  P.turretG.position.set(0,1.54,.12);
+  buildT80UXHull(P);
+  P.turretG.position.set(0,1.565,.39187);
   addTerminatorStation(P);
-  P.hullG.userData.familyRebuild={donor:'t72b3m',revision:1};
+  P.hullG.userData.familyRebuild={donor:'t80u_x',revision:2};
 
 }
 

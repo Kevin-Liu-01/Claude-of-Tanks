@@ -53,10 +53,23 @@ export function synchronizeFleetRenewalMetadata():void{
   for(const [id,donor] of Object.entries(FLEET_RENEWAL_DONORS))copyPhysicalFrame(TANK_SPECS[id],donors[donor]);
   TANK_SPECS.t72b3m.name='T-72B3M obr. 2022';
   TANK_SPECS.t72b3m_x.name='T-72B3M obr. 2016';
-  // T-62 authoring uses the current long casting's actual ring and trunnion.
+  // Owner-directed turret transplants keep hull-local damage owners and use
+  // the complete donor turret's plates, gun, crew and turret-local modules.
+  const transplant=(id:string,upperId:string,pivot:[number,number,number])=>{
+    const target=TANK_SPECS[id],upper=donors[upperId],lower=structuredClone(target);
+    target.armor=structuredClone(upper.armor);
+    target.armor.hullPlates=lower.armor.hullPlates;
+    target.armor.modules=hybridModules(lower,upper);
+    target.armor.crew=[...lower.armor.crew.filter(c=>!c.turretLocal),...target.armor.crew.filter(c=>c.turretLocal)];
+    target.armor.turretPivot=pivot;target.gun=structuredClone(upper.gun);
+    target.gunElevationDeg=upper.gunElevationDeg;target.gunDepressionDeg=upper.gunDepressionDeg;
+    target.dims.heightM=upper.dims.heightM-upper.armor.turretPivot[1]+pivot[1];
+    target.dims.overallLengthM=lower.dims.hullLengthM/2+pivot[2]+target.armor.gunPivot[2]+target.armor.gunBarrel.lengthM;
+  };
+  transplant('t72b3m','t90sm_x',[.008,1.545,.114315]);
+  transplant('t62mv1_x','t72b_1987_x',[0,1.4804,.676]);
+  // The T-62 chassis now carries the complete 125 mm T-72B 1987 upper assembly.
   TANK_SPECS.t62mv1_x.armor.turretPivot=[0,1.4804,.676];
-  TANK_SPECS.t62mv1_x.armor.gunPivot=[0,.2866,1.019];
-  TANK_SPECS.t62mv1_x.armor.gunBarrel.lengthM=4.68;
   const t62Era=createT62MV1XArmorZones();
   TANK_SPECS.t62mv1_x.armor.hullPlates.push(...t62Era.hullPlates);
   // The rebuilt MV-1 adds two independently removable side fields beyond
@@ -66,18 +79,17 @@ export function synchronizeFleetRenewalMetadata():void{
     leftSidePlate('skirt_era_L',15,1.67,.895,1.67,1.325,-2.215,1.915,sideEra),
     rightSidePlate('skirt_era_R',15,1.67,.895,1.67,1.325,-2.215,1.915,sideEra),
   );
-  TANK_SPECS.t62mv1_x.armor.turretPlates.push(...t62Era.turretPlates);
   for(const id of ['amx30','amx30b2']) {
     TANK_SPECS[id].armor.turretPivot=[0,1.60,-.05];
     TANK_SPECS[id].armor.gunPivot=[0,.33,1.30];
     TANK_SPECS[id].armor.gunBarrel.lengthM=4.95;
   }
   TANK_SPECS.t72b3m.dims.widthM=4.10;
-  const bmpt=TANK_SPECS.bmpt_terminator2, hull=donors.t72b3m_x;
+  const bmpt=TANK_SPECS.bmpt_terminator2, hull=donors.t80u_x;
   bmpt.dims={...hull.dims,overallLengthM:hull.dims.hullLengthM,heightM:3.33};stripSilhouetteDimensions(bmpt.dims);
   bmpt.armor.hullPlates=structuredClone(hull.armor.hullPlates);
   bmpt.armor.modules=hybridModules(hull,bmpt);
-  bmpt.armor.turretPivot=[0,1.54,-.20];bmpt.armor.gunPivot=[0,.50,.36];
+  bmpt.armor.turretPivot=[0,1.565,.07187];bmpt.armor.gunPivot=[0,.50,.36];
   bmpt.armor.gunBarrel={lengthM:3.22,radiusM:.033};
   bmpt.visual.trackWidthM=hull.visual.trackWidthM;
   const variants=[['type96_72_long','t72b3_x',1.475,.065591],['type96_80_feng','t80u_x',1.565,.07187],['type96_72m_lei','t72b3m_x',1.545,.114315]] as const;

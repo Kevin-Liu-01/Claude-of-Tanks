@@ -84,6 +84,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'ajax_x', 'aft10_x', 'k21_x', 'type96b_x', 'cv90105_tml_x', 'sabra_mk2_x',
   ]),
   [VEHICLE_ERAS.NEXT_GENERATION]: Object.freeze([
+    'ua_t80u_modern','ua_t72b3m_modern','ua_t72b3_modern','pl_t80u_modern','pl_t72b3m_modern','pl_t72b3_modern','cn_t80u_modern','cn_t72b3m_modern','cn_t72b3_modern','ru_t80u_modern','ru_t72b3m_modern','ru_t72b3_modern',
     // Source-specific prototypes join the existing next-generation families.
     'kurganets25_x', 'griffin50_x', 'kf41_lynx_x', 'cv90_mkiv_x', 'bmp3m_dragun125_x',
     'kf51_x', 't14_x',

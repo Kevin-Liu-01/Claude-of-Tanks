@@ -47,6 +47,7 @@
 // imports — the track-geometry selftest imports tankFactory — must stay
 // safe).
 
+import {NATIONAL_MODERNIZATION_IDS} from './nationalModernizationConfig.ts';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
@@ -2416,6 +2417,9 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
 
 /** Resolve the manifest rows for one spec (curated table or era default). */
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
+  // These concepts own their complete stowage and mounts. Generic aft cargo
+  // falls behind the native fuel drums, outside any physical support.
+  if (NATIONAL_MODERNIZATION_IDS.some(id=>id===spec.id)) return [];
   // AMX-10P photo-authored turret/coax configurations own their fittings.
   // Random roof guns and crates would change the real equipment and silhouette.
   if (spec.id === 'amx10p' || spec.id === 'amx10p_25') return [];
@@ -3881,6 +3885,12 @@ export function* attachTankDecorationsSteps(
         for (const [dx, dz] of cands) {
           const x = xBase + dx, z = zBase + dz;
           if (Math.abs(x) < 0.24 && z > 0 && !casemate) continue; // gun corridor
+          // The repaired Leopard throats are real air, including the full
+          // footprint beside the moving shield, not just its center ray.
+          if (['leo2a7v_x','leo2a6m_x','leo2a4m_x'].includes(spec.id)) {
+            const pivot = turretG.getObjectByName('rig_gun')?.position;
+            if (pivot && Math.abs(x-pivot.x)<.44+w/2 && z+d/2>pivot.z-.70) continue;
+          }
           const seat = seatProbe(turP, x, z, Math.min(w, 0.42), Math.min(d, 0.42), 3.5, spread);
           if (!seat || !seat.n || seat.n.y < minNy) continue;
           if (commit(name, parts, 'turret', V(x, seat.y - 0.008, z), E(0, (rng() - 0.5) * 0.2, 0), placedTurret)) return true;

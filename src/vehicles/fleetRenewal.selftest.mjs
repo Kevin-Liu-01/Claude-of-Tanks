@@ -6,7 +6,7 @@ import {FLEET_RENEWAL_NEW_IDS,FLEET_RENEWAL_DONORS} from './fleetRenewalSpecs.ts
 import {VEHICLE_ROLE_PROFILES} from './roleProfiles.ts';
 import {ensureInteriorFills} from './interiorFills.ts';
 
-const donors={...FLEET_RENEWAL_DONORS,bmpt_terminator2:'t72b3m_x',
+const donors={...FLEET_RENEWAL_DONORS,bmpt_terminator2:'t80u_x',
   type96_72_long:'t72b3_x',type96_80_feng:'t80u_x',type96_72m_lei:'t72b3m_x'};
 const stock=mesh=>Array.from(mesh.geometry.getAttribute('position').array);
 assert.equal(getSpec('t72b3m').name,'T-72B3M obr. 2022');

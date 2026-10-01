@@ -48,6 +48,7 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_MERKAVAX } from './combatAn
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_MISC } from './combatAnatomyGroups/misc.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_MODERN2 } from './combatAnatomyGroups/modern2.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_MODERN3CORE } from './combatAnatomyGroups/modern3Core.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_NATIONALMODERNIZATION } from './combatAnatomyGroups/nationalModernization.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_PATTON } from './combatAnatomyGroups/patton.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_POLAND } from './combatAnatomyGroups/poland.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_PUMAS1SOURCEX } from './combatAnatomyGroups/pumaS1SourceX.generated.ts';
@@ -130,6 +131,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_MISC,
   CALIBRATIONS_MODERN2,
   CALIBRATIONS_MODERN3CORE,
+  CALIBRATIONS_NATIONALMODERNIZATION,
   CALIBRATIONS_PATTON,
   CALIBRATIONS_POLAND,
   CALIBRATIONS_PUMAS1SOURCEX,

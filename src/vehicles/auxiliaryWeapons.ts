@@ -48,6 +48,19 @@ const ubr6=ammunition(cannon,'30×165 mm 3UBR6 AP-T');
 // The remaining authored stations use NATO M2/M61 or lightweight 30×113 mm
 // cannon ammunition. Keep this boot-light: no fleet builders or registry import.
 const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
+  t72b3m:b32Heavy,
+  ua_t80u_modern:b32Heavy,
+  ua_t72b3m_modern:b32Heavy,
+  ua_t72b3_modern:b32Heavy,
+  pl_t80u_modern:heavy,
+  pl_t72b3m_modern:heavy,
+  pl_t72b3_modern:heavy,
+  cn_t80u_modern:type54,
+  cn_t72b3m_modern:type54,
+  cn_t72b3_modern:type54,
+  ru_t80u_modern:b32Heavy,
+  ru_t72b3m_modern:b32Heavy,
+  ru_t72b3_modern:b32Heavy,
   t90:b32Heavy,t90ms:b32Heavy,t90m_proryv:b32Heavy,
   t90a_x:b32Heavy,t90a_vladimir_x:b32Heavy,t90m_x:b32Heavy,
   t90sm_x:b32Heavy,t90ms_x:b32Heavy,

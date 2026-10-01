@@ -49,6 +49,7 @@ import { VEHICLE_MARKING_SEATS as SEATS_MERKAVAX } from './vehicleMarkingSeatGro
 import { VEHICLE_MARKING_SEATS as SEATS_MISC } from './vehicleMarkingSeatGroups/misc.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_MODERN2 } from './vehicleMarkingSeatGroups/modern2.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_MODERN3CORE } from './vehicleMarkingSeatGroups/modern3Core.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_NATIONALMODERNIZATION } from './vehicleMarkingSeatGroups/nationalModernization.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_PATTON } from './vehicleMarkingSeatGroups/patton.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_POLAND } from './vehicleMarkingSeatGroups/poland.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_PUMAS1SOURCEX } from './vehicleMarkingSeatGroups/pumaS1SourceX.generated.ts';
@@ -133,6 +134,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_MISC,
   SEATS_MODERN2,
   SEATS_MODERN3CORE,
+  SEATS_NATIONALMODERNIZATION,
   SEATS_PATTON,
   SEATS_POLAND,
   SEATS_PUMAS1SOURCEX,

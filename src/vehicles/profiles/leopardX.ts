@@ -4,6 +4,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
+import { addLeopardTurretWithGunOpening, addLeopardMovingMantlet } from './leopardGunOpening.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { bindPartitionedEraCover } from './sourceEraCover.ts';
 import { markEraFurniture } from './eraHitFaces.ts';
@@ -76,7 +77,13 @@ function shellSection(d: Datum, [z, left, right, bottom, top]: ShellStation,
 
 function shell(P: TankBuilderPort, d: Datum, stations: readonly ShellStation[],
   bevelWidth=.12,upperDepth=.16): void {
-  P.add('turret', sectionSolid(stations.map((station) => shellSection(d, station,bevelWidth,upperDepth))));
+  addTurretSections(P,d,stations.map((station) => shellSection(d, station,bevelWidth,upperDepth)));
+}
+
+function addTurretSections(P:TankBuilderPort,d:Datum,sections:readonly SolidSection[]):void {
+  if(d===LEOPARD_X_DATUMS.leo2a5_x) P.add('turret',sectionSolid(sections));
+  else addLeopardTurretWithGunOpening(P,sections,
+    d.trunnion[0]-d.turretPivot[0],d.trunnion[2]-d.turretPivot[2]);
 }
 
 function equip(P: TankBuilderPort, d: Datum, bucket: string, geometry: THREE.BufferGeometry,
@@ -133,7 +140,7 @@ function a7ForwardCheek(P:TankBuilderPort,d:Datum): void {
       x-d.turretPivot[0],y-d.turretPivot[1],
     ] as [number,number]),
   }));
-  P.add('turret',sectionSolid(sections));
+  addTurretSections(P,d,sections);
 }
 
 function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean): void {
@@ -141,7 +148,7 @@ function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean): v
   KIT.buildGun(P, { len: length, r: radius, baseR: radius * 1.6,
     sleeve: true, evac: long ? .43 : .35, evacR: 1.66, collar: true, paintSleeveBands: true });
   // The existing physical collar pitches but is not part of barrel recoil.
-  P.add('gunMount', box(.41, .41, .52), 0, .025, .18);
+  addLeopardMovingMantlet(P);
   P.add('gunDark', cylZ(radius * .84, .016, 24), 0, 0, length + .001);
   P.add('gun', torus(radius * .93, radius * .10, 24, 6), 0, 0, length + .007, Math.PI / 2);
   P.addEquipment('gun', box(.066, .055, .15), 0, radius + .025, length - .41);
@@ -388,7 +395,8 @@ function surfacePanel(P:TankBuilderPort,d:Datum,owner:'hull'|'turret',corners:re
 function roofPlateEdges(P:TankBuilderPort,d:Datum,front:number,rear:number,eraPrefix?:string): void {
   // Positive cheek's broad top cover, the narrow opposite outer cheek, and
   // two accessible roof lids. The EMES approach at negative X is untouched.
-  const right:PlanPoint[]=[[.25,rear],[1.04,rear+.08],[.66,front],[.29,front+.05]];
+  const inner=d===LEOPARD_X_DATUMS.leo2a5_x?.25:d.trunnion[0]+.44;
+  const right:PlanPoint[]=[[inner,rear],[1.04,rear+.08],[.66,front],[inner+.04,front+.05]];
   const left:PlanPoint[]=[[-1.24,rear],[-1.11,rear+.04],[-1.10,front-.43],[-1.22,front-.48]];
   if(eraPrefix) {
     bindPartitionedEraCover(P,'turret',`${eraPrefix}_R`,right);
@@ -1033,7 +1041,7 @@ function a7FrontalRack(P:TankBuilderPort,d:Datum): void {
     ring:[[.3325,bottom],[1.26655,bottom],[1.26655,top],[.3325,top]] as [number,number][],
   }));
   equip(P,d,'turretDetail',sectionSolid(tray),0,0,0);
-  for(const x of [.40,1.10])equip(P,d,'turretDetail',box(.030,.21,.047),x,2.390,2.492);
+  for(const x of [.46,1.10])equip(P,d,'turretDetail',box(.030,.21,.047),x,2.390,2.492);
   const radius=.0480369,length=.2234353,rake=.27477,zScale=.92099385;
   const outline=new THREE.Shape();
   outline.absarc(0,0,radius,0,Math.PI*2,false);

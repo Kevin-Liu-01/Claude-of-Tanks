@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-10-01T01:04:57.906Z",
+ "generatedAt": "2026-10-01T09:58:17.838Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 66,
+ "passed": 64,
  "total": 170,
  "rows": [
   {
@@ -607,6 +607,36 @@
   },
   {
    "id": "strv122_x",
+   "geoMin": 0,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "oracleAvailability": 0
+   }
+  },
+  {
+   "id": "leo2a7v_x",
+   "geoMin": 0,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "oracleAvailability": 0
+   }
+  },
+  {
+   "id": "leo2a4m_x",
+   "geoMin": 0,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "oracleAvailability": 0
+   }
+  },
+  {
+   "id": "leo2a6m_x",
    "geoMin": 0,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",
@@ -1531,19 +1561,6 @@
    }
   },
   {
-   "id": "leo2a7v_x",
-   "geoMin": 91.9,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": false,
-   "components": {
-    "wholeCurves": 91.9,
-    "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "t90ms_x",
    "geoMin": 92.2,
    "requiredMinimum": 90,
@@ -1645,19 +1662,6 @@
    "components": {
     "wholeCurves": 92.5,
     "dims": 98,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "leo2a4m_x",
-   "geoMin": 92.5,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 92.5,
-    "dims": 97,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -1816,19 +1820,6 @@
    "components": {
     "wholeCurves": 93.5,
     "dims": 98.1,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "leo2a6m_x",
-   "geoMin": 93.5,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 93.5,
-    "dims": 100,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"

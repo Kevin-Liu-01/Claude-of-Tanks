@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-29T23:34:02.559Z",
+ "generatedAt": "2026-10-01T08:38:41.749Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening) and inside-out pixel totals over the 33 census views. Gate: a tank may not exceed its ledger open px by more than max(12, 10%) and a sealed tank must stay sealed.",
@@ -128,9 +128,9 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 213,
-   "seeThroughPx": 22,
-   "tris": 85860
+   "insideOutPx": 216,
+   "seeThroughPx": 0,
+   "tris": 93156
   },
   "bwp1": {
    "sealed": true,
@@ -910,11 +910,11 @@
   },
   "t62mv1_x": {
    "sealed": true,
-   "openPx": 2,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 356,
-   "seeThroughPx": 2,
-   "tris": 67238
+   "insideOutPx": 386,
+   "seeThroughPx": 0,
+   "tris": 89470
   },
   "t64bv1": {
    "sealed": false,
@@ -942,11 +942,11 @@
   },
   "t72b3m": {
    "sealed": true,
-   "openPx": 0,
+   "openPx": 8,
    "openViews": 0,
-   "insideOutPx": 92,
-   "seeThroughPx": 18,
-   "tris": 113110
+   "insideOutPx": 52,
+   "seeThroughPx": 0,
+   "tris": 115494
   },
   "t72b3m_x": {
    "sealed": true,
@@ -1269,12 +1269,12 @@
    "tris": 77706
   },
   "ua_t64bv": {
-   "sealed": false,
-   "openPx": 764,
-   "openViews": 22,
-   "insideOutPx": 686,
-   "seeThroughPx": 5570,
-   "tris": 93772
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 104,
+   "seeThroughPx": 81,
+   "tris": 105036
   },
   "ua_t80bv": {
    "sealed": true,
@@ -1459,6 +1459,102 @@
    "insideOutPx": 242,
    "seeThroughPx": 0,
    "tris": 101600
+  },
+  "ua_t80u_modern": {
+   "sealed": true,
+   "openPx": 1,
+   "openViews": 0,
+   "insideOutPx": 76,
+   "seeThroughPx": 4,
+   "tris": 101358
+  },
+  "ua_t72b3m_modern": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 56,
+   "seeThroughPx": 23,
+   "tris": 114530
+  },
+  "ua_t72b3_modern": {
+   "sealed": true,
+   "openPx": 1,
+   "openViews": 0,
+   "insideOutPx": 101,
+   "seeThroughPx": 0,
+   "tris": 105418
+  },
+  "pl_t80u_modern": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 102,
+   "seeThroughPx": 0,
+   "tris": 99398
+  },
+  "pl_t72b3m_modern": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 42,
+   "seeThroughPx": 0,
+   "tris": 112462
+  },
+  "pl_t72b3_modern": {
+   "sealed": true,
+   "openPx": 1,
+   "openViews": 0,
+   "insideOutPx": 101,
+   "seeThroughPx": 0,
+   "tris": 103544
+  },
+  "cn_t80u_modern": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 102,
+   "seeThroughPx": 0,
+   "tris": 98090
+  },
+  "cn_t72b3m_modern": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 42,
+   "seeThroughPx": 0,
+   "tris": 111154
+  },
+  "cn_t72b3_modern": {
+   "sealed": true,
+   "openPx": 1,
+   "openViews": 0,
+   "insideOutPx": 101,
+   "seeThroughPx": 0,
+   "tris": 102236
+  },
+  "ru_t80u_modern": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 61,
+   "seeThroughPx": 0,
+   "tris": 99866
+  },
+  "ru_t72b3m_modern": {
+   "sealed": true,
+   "openPx": 7,
+   "openViews": 0,
+   "insideOutPx": 68,
+   "seeThroughPx": 0,
+   "tris": 112930
+  },
+  "ru_t72b3_modern": {
+   "sealed": true,
+   "openPx": 2,
+   "openViews": 0,
+   "insideOutPx": 90,
+   "seeThroughPx": 0,
+   "tris": 104012
   }
  }
 }

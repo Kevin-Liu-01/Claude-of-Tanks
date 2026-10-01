@@ -1,3 +1,4 @@
+import {NATIONAL_MODERNIZATION_PROFILES} from './profiles/nationalModernization.ts';
 import {SINO_SOVIET_CONCEPT_PROFILES} from './profiles/sinoSovietConcepts.ts';
 import {buildT72Rys} from './profiles/t72Rys.ts';
 import { buildAmx10p } from './profiles/amx10p.ts';
@@ -182,6 +183,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   type89_x: { build: buildType89X },
 
   ...SINO_SOVIET_CONCEPT_PROFILES,
+  ...NATIONAL_MODERNIZATION_PROFILES,
   t72_rys: {build:buildT72Rys},
   ...POLAND_PROFILES,
   ...KOREA_PROFILES,
