@@ -12,6 +12,14 @@ import type { EventMessage, WireEvent } from '../wire/index.ts';
 
 const DEFAULT_MAX_EVENTS_PER_FLUSH = 3;
 const DEFAULT_MAX_PENDING = 4096;
+/**
+ * The budget's deadline (world state audit, 2026-10-01): a beat the budget has held this many ticks past its own tick is
+ * released whatever the budget says. One heavy event per display frame spread a volley or a hull plowing a tree line
+ * over as many frames as it had beats — the audit read hits and impacts 13–20 ticks (220–330 ms) behind their tick on a
+ * 30 Hz presenter — so the smoothing applies to the first four ticks (67 ms, one snapshot interval at 20 Hz) and the
+ * tail lands together rather than late.
+ */
+const DEFAULT_MAX_LATE_TICKS = 4;
 /** Events that allocate large audio, particle, light or debris graphs end a flush. */
 export const HEAVY_EVENT_KINDS: ReadonlySet<string> = new Set([
   'shell_fired', 'shell_hit', 'shell_impact', 'tank_destroyed', 'world_prop_destroyed',
@@ -26,6 +34,8 @@ export interface ReliableEventQueueOptions {
   maxEventsPerFlush?: number;
   maxPending?: number;
   isHeavy?: (event: WireEvent) => boolean;
+  /** Ticks past its own tick a beat may be held by the budget before it is released regardless (DEFAULT_MAX_LATE_TICKS). */
+  maxLateTicks?: number;
 }
 
 export interface ReliableEventQueueStats {
@@ -38,42 +48,76 @@ export interface ReliableEventQueueStats {
 export class ReliableEventQueue {
   readonly maxEventsPerFlush: number;
   readonly maxPending: number;
+  readonly maxLateTicks: number;
   readonly isHeavy: (event: WireEvent) => boolean;
   private pending: QueuedEvent[] = [];
   private pendingHead = 0;
-  private staged: WireEvent[] = [];
+  private staged: QueuedEvent[] = [];
   private stagedHead = 0;
   private emitted = 0;
   private peakPending = 0;
+  /**
+   * Obstacle indices of the `world_prop_destroyed` events this queue still owes the presentation — queued, staged, or
+   * flushed into the frame being presented (released by `release`) — with a count per index (world state audit,
+   * 2026-10-01): the persistent destroyed list a snapshot carries reaches the presentation ahead of the presented tick,
+   * and a prop whose fall is still on its way here must not be laid down by that list first.
+   */
+  private readonly pendingObstacles = new Map<number, number>();
 
   constructor({
     maxEventsPerFlush = DEFAULT_MAX_EVENTS_PER_FLUSH,
     maxPending = DEFAULT_MAX_PENDING,
     isHeavy = (event) => HEAVY_EVENT_KINDS.has(event.kind),
+    maxLateTicks = DEFAULT_MAX_LATE_TICKS,
   }: ReliableEventQueueOptions = {}) {
     this.maxEventsPerFlush = maxEventsPerFlush;
     this.maxPending = maxPending;
     this.isHeavy = isHeavy;
+    this.maxLateTicks = maxLateTicks;
   }
 
   get size(): number { return this.pending.length - this.pendingHead + this.staged.length - this.stagedHead; }
 
   /** Append a message's events (the socket already ordered them). Throws when the backlog is absurd. */
   push(message: EventMessage): void {
-    for (const event of message.events) this.pending.push({ tick: message.tick, event });
+    for (const event of message.events) {
+      this.pending.push({ tick: message.tick, event });
+      this.notePending(event, 1);
+    }
     if (this.pending.length - this.pendingHead > this.maxPending) {
       throw new RangeError('reliable event backlog exceeded its limit');
     }
     this.peakPending = Math.max(this.peakPending, this.size);
   }
 
+  /** The events a frame finished presenting (the client calls it before the next flush): no longer owed. */
+  release(events: readonly WireEvent[]): void {
+    for (const event of events) this.notePending(event, -1);
+  }
+
+  /** Whether a `world_prop_destroyed` for this obstacle is still owed to the presentation (queued, staged or being presented). */
+  isObstaclePending(index: number): boolean {
+    return this.pendingObstacles.has(index);
+  }
+
+  private notePending(event: WireEvent, delta: number): void {
+    if (event.kind !== 'world_prop_destroyed') return;
+    const index = Number(event.payload.obstacleIndex);
+    if (!Number.isSafeInteger(index) || index < 0) return;
+    const next = (this.pendingObstacles.get(index) ?? 0) + delta;
+    if (next > 0) this.pendingObstacles.set(index, next);
+    else this.pendingObstacles.delete(index);
+  }
+
   /**
    * Stage every event whose tick the presentation has reached, then emit up
-   * to the budget (a heavy event ends the flush). Staged events carry over.
+   * to the budget (a heavy event ends the flush). Staged events carry over —
+   * for at most `maxLateTicks` past their tick, then the rest of what is due
+   * is released together.
    */
   flush(throughTick: number, out: WireEvent[]): number {
     while (this.pendingHead < this.pending.length && this.pending[this.pendingHead]!.tick <= throughTick) {
-      this.staged.push(this.pending[this.pendingHead++]!.event);
+      this.staged.push(this.pending[this.pendingHead++]!);
     }
     if (this.pendingHead > 256 && this.pendingHead * 2 > this.pending.length) {
       this.pending = this.pending.slice(this.pendingHead);
@@ -84,11 +128,17 @@ export class ReliableEventQueue {
     }
     let count = 0;
     while (this.stagedHead < this.staged.length && count < this.maxEventsPerFlush) {
-      const event = this.staged[this.stagedHead++]!;
+      const event = this.staged[this.stagedHead++]!.event;
       out.push(event);
       count++;
       this.emitted++;
       if (this.isHeavy(event)) break;
+    }
+    // the deadline: whatever the budget has held past its tick for maxLateTicks lands now, together
+    while (this.stagedHead < this.staged.length && throughTick - this.staged[this.stagedHead]!.tick >= this.maxLateTicks) {
+      out.push(this.staged[this.stagedHead++]!.event);
+      count++;
+      this.emitted++;
     }
     if (this.stagedHead === this.staged.length) {
       this.staged.length = 0;
@@ -105,7 +155,7 @@ export class ReliableEventQueue {
       if (this.pending[index]!.event.kind === kind) return true;
     }
     for (let index = this.stagedHead; index < this.staged.length; index++) {
-      if (this.staged[index]!.kind === kind) return true;
+      if (this.staged[index]!.event.kind === kind) return true;
     }
     return false;
   }
@@ -115,6 +165,7 @@ export class ReliableEventQueue {
     this.pendingHead = 0;
     this.staged.length = 0;
     this.stagedHead = 0;
+    this.pendingObstacles.clear();
   }
 
   stats(): ReliableEventQueueStats {

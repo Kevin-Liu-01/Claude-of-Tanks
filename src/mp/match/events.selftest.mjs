@@ -47,6 +47,65 @@ const message = (tick, kinds) => ({ type: MESSAGE_TYPE.EVENT, tick, events: kind
   assert.throws(() => tiny.push(message(1, ['a', 'b', 'c'])), /backlog/);
 }
 
+// ------------------------------------------------------------ the budget's deadline (world state audit, 2026-10-01)
+// A volley of heavy beats is smoothed one per frame for at most maxLateTicks past their tick; then the rest lands together,
+// so no hit, impact or fall presents 13–20 ticks behind the world it belongs to.
+{
+  const queue = new ReliableEventQueue();
+  assert.equal(queue.maxLateTicks, 4, 'one snapshot interval at 20 Hz');
+  queue.push(message(100, ['shell_hit', 'shell_hit', 'shell_hit', 'shell_hit', 'shell_hit', 'shell_hit']));
+  const out = [];
+  assert.equal(queue.flush(100, out), 1, 'one heavy beat per frame while the volley is fresh');
+  assert.equal(queue.flush(101, out), 1);
+  assert.equal(queue.flush(103, out), 1);
+  assert.equal(queue.flush(104, out), 3, 'four ticks on: the budget\'s one, then everything the budget still held');
+  assert.equal(queue.size, 0);
+  assert.equal(out.length, 6);
+  queue.push(message(200, ['shell_hit']));
+  queue.push(message(203, ['shell_hit', 'shell_hit', 'shell_hit']));
+  out.length = 0;
+  assert.equal(queue.flush(204, out), 1, 'the deadline is per beat: the tick-200 beat goes under the budget, the tick-203 ones are not yet four ticks old');
+  assert.equal(queue.flush(205, out), 1, 'one tick-203 beat under the budget, two held');
+  assert.equal(queue.flush(207, out), 2, 'four ticks after 203: the budget\'s one and the held one together');
+  assert.equal(queue.size, 0);
+  const patient = new ReliableEventQueue({ maxLateTicks: 100 });
+  patient.push(message(10, ['shell_hit', 'shell_hit']));
+  out.length = 0;
+  assert.equal(patient.flush(60, out), 1, 'a long deadline keeps the one-per-frame smoothing');
+}
+
+// ------------------------------------------------------------ the destroyed-list guard (world state audit, 2026-10-01)
+// A `world_prop_destroyed` is owed to the presentation from its arrival until the frame that presented it is done — queued
+// behind the presented tick, staged by the budget, or in the frame's own event list — so the persistent destroyed list a
+// snapshot carries (one interpolation delay ahead of the presented world) never lays a prop down before its fall.
+{
+  const queue = new ReliableEventQueue();
+  const prop = (index) => ({ kind: 'world_prop_destroyed', payload: { obstacleIndex: index } });
+  queue.push({ type: MESSAGE_TYPE.EVENT, tick: 40, events: [prop(5), { kind: 'shell_fired', payload: {} }, prop(5), prop(9)] });
+  assert.equal(queue.isObstaclePending(5), true);
+  assert.equal(queue.isObstaclePending(9), true);
+  assert.equal(queue.isObstaclePending(6), false, 'an index nobody sent is not owed');
+  const out = [];
+  queue.flush(39, out);
+  assert.equal(out.length, 0);
+  assert.equal(queue.isObstaclePending(9), true, 'queued behind the presented tick: owed');
+  queue.flush(40, out);
+  assert.deepEqual(out.map((event) => event.kind), ['world_prop_destroyed'], 'the heavy prop event flushes alone');
+  assert.equal(queue.isObstaclePending(5), true, 'in the frame being presented: still owed until the client releases it');
+  queue.release(out); out.length = 0;
+  assert.equal(queue.isObstaclePending(5), true, 'the second send of the same index is still staged');
+  queue.flush(40, out); queue.release(out); out.length = 0; // shell_fired
+  queue.flush(40, out);
+  assert.equal(out[0].payload.obstacleIndex, 5);
+  queue.release(out); out.length = 0;
+  assert.equal(queue.isObstaclePending(5), false, 'both sends presented: no longer owed');
+  assert.equal(queue.isObstaclePending(9), true);
+  queue.release([prop(77)]);
+  assert.equal(queue.isObstaclePending(77), false, 'releasing what was never owed is harmless');
+  queue.clear();
+  assert.equal(queue.isObstaclePending(9), false, 'a new socket owes nothing (its keyframe settles the list)');
+}
+
 // ------------------------------------------------------------ own-shot rule
 {
   const predictor = new OwnShotPredictor();
@@ -90,4 +149,4 @@ const message = (tick, kinds) => ({ type: MESSAGE_TYPE.EVENT, tick, events: kind
   assert.equal(predictor.authorityTick, -1);
 }
 
-console.log('mp events: tick-gated reliable delivery on a three-per-frame budget with heavy breaks, own-shot feedback rule pass');
+console.log('mp events: tick-gated reliable delivery on a three-per-frame budget with heavy breaks, the owed destroyed-prop guard, own-shot feedback rule pass');

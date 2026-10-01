@@ -28,7 +28,11 @@ export interface WorldCollisionLike {
   heightField?: MovementHeightField | null;
   queryObstacles?(minX: number, minZ: number, maxX: number, maxZ: number, target: PredictionObstacle[]): PredictionObstacle[];
   getObstacles?(): PredictionObstacle[];
-  crushObstacle?(obstacle: PredictionObstacle, directionX: number, directionZ: number, speedMps: number): void;
+  /** `options.settled` lays the prop at its final pose at once — no fall, no debris, no sound (the world's seam: src/world/map.ts). */
+  crushObstacle?(
+    obstacle: PredictionObstacle, directionX: number, directionZ: number, speedMps: number,
+    cause?: 'ram' | 'shell', options?: { settled?: boolean },
+  ): boolean | void;
 }
 
 /** A disclosed tank the prediction may collide with. */

@@ -327,10 +327,13 @@ export function createMatchHostCore({
       onVerdict: () => { const live = actor; if (live) report(live, now()); },
     });
     let restored = 0;
+    let destroyedRestored = 0;
     if (resume) {
       const applied = applyResumeState(created, resume);
       restored = applied.restored;
+      destroyedRestored = applied.destroyedRestored;
       if (applied.skipped) log('warn', 'resume rows without an entity', { skipped: applied.skipped });
+      if (applied.destroyedUnknown) log('warn', 'resume destroyed props this world does not have', { unknown: applied.destroyedUnknown });
     }
     actor = created;
     booted = true;
@@ -339,7 +342,7 @@ export function createMatchHostCore({
     report(created, now());
     created.start();
     post({ type: 'ready', tick: created.tick, entities: created.authority.entities.length, resumed: !!resume });
-    log('info', 'host actor booted', { tick: created.tick, entities: created.authority.entities.length, restored, resumed: !!resume });
+    log('info', 'host actor booted', { tick: created.tick, entities: created.authority.entities.length, restored, destroyedRestored, resumed: !!resume });
     for (const { peer, label, frames } of pendingOpens.splice(0)) {
       openLink(peer, label);
       for (const frame of frames) admit(peer, frame);

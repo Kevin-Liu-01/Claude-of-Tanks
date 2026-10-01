@@ -99,6 +99,12 @@ export interface MatchFrame {
   /** Persistent destroyed obstacle indices and their revision (from the newest frame). */
   destroyed: readonly number[];
   destructibleRevision: number;
+  /**
+   * Whether a `world_prop_destroyed` for this obstacle index is still on its way to the presentation (queued behind the
+   * presented tick, staged by the budget, or in this frame's `events`): the newest frame's destroyed list already names
+   * it, but its fall belongs to the event, not to the list (world state audit, 2026-10-01).
+   */
+  destroyedPending: (index: number) => boolean;
   viewer: ViewerFrame;
   /** This frame's budgeted reliable events (array reused between frames). */
   events: WireEvent[];
@@ -307,6 +313,7 @@ export class MatchClient {
       tick: 0, renderTimeMs: 0, entities: [], shells: [],
       meta: { phase: 0, countdownMs: 0, battleTimeMs: 0, verdict: 0, verdictReason: '', destructibleRevision: 0 },
       modeStateJson: null, destroyed: [], destructibleRevision: 0,
+      destroyedPending: (index) => this.events.isObstaclePending(index),
       viewer: {
         entityId: NO_ENTITY, playerId: '', state: null, row: null, viewer: null, authorityTick: -1,
         authorityReceivedAtMs: null, predictedShot: null,
@@ -435,6 +442,8 @@ export class MatchClient {
     viewer.authorityTick = this.ownAuthorityTick;
     viewer.authorityReceivedAtMs = this.ownAuthorityAtMs;
     viewer.predictedShot = this.predictedShot;
+    // the previous frame's events were presented: the queue no longer owes them (a destroyed-list entry may now settle)
+    this.events.release(frame.events);
     frame.events.length = 0;
     this.events.flush(sample.tick, frame.events);
     // Double-buffered: shots that arrived since the last frame are this frame's; the other array collects the next.

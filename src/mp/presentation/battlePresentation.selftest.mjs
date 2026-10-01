@@ -351,4 +351,55 @@ assert.deepEqual(game.tanks, []);
   q.dispose();
 }
 
-console.log('mp battle presentation: roster → hidden visuals, frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, verdicts, disconnect, spectator perspective, prediction world pass');
+// ------------------------------------------------------------ destroyed props: settled state vs live events (world state audit, 2026-10-01)
+// The persistent destroyed list reaches the presentation one interpolation delay ahead of the presented world. Before this
+// lane it felled every listed prop on arrival — early, toward +Z, at speed 0 — and the `world_prop_destroyed` event found
+// nothing left to fell; a late joiner watched every earlier fall replay; a host migration's re-sends crunched twice.
+{
+  const propObstacles = Array.from({ length: 6 }, (_, index) => ({ min: [index * 4, 0, 40], max: [index * 4 + 1, 2, 41], crushed: false, crushable: true, crushMin: 0, shape2: null }));
+  const propCalls = [];
+  const propFx = [];
+  const propWorld = {
+    heightField: worldCollision.heightField,
+    getObstacles: () => propObstacles,
+    crushObstacle(obstacle, dx, dz, speed, cause, options) { propCalls.push([propObstacles.indexOf(obstacle), dx, dz, speed, cause ?? null, options?.settled === true]); },
+  };
+  const propGame = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'winter' };
+  const props = createBattlePresentation({ engineCtx: { scene, anisotropy: 1 }, game: propGame, bus: { emit(type, payload) { propFx.push({ type, payload }); } }, worldCollision: propWorld, createTankVisual: fakeVisual, prepareVisualTextures: async () => {}, clock: () => nowMs });
+  await props.applyRoster(roster, context);
+  const owed = new Set([2]);
+  const crushFx = () => propFx.filter((event) => event.type === 'prop:crushed').length;
+  const propFrame = (overrides) => frame({ destroyedPending: (index) => owed.has(index), ...overrides });
+  // a late joiner's first frame: the list is settled state — final pose, no fall, no sound; the prop whose event is owed waits for it
+  props.applyFrame(propFrame({ tick: 500, destroyed: [0, 2, 4], destructibleRevision: 3 }));
+  assert.deepEqual(propCalls, [[0, 0, 1, 0, 'ram', true], [4, 0, 1, 0, 'ram', true]], 'what predates the view lands settled; the owed prop is left to its event');
+  assert.equal(crushFx(), 0, 'settled state makes no sound');
+  assert.equal(propObstacles[2].crushed, false);
+  // the owed event arrives: a live fall with the authority\'s direction and speed, and the crunch
+  props.applyEvent({ kind: 'world_prop_destroyed', payload: { obstacleIndex: 2, kind: 'tree', cause: 'ram', directionX: 0.6, directionZ: -0.8, speedMps: 7 } }, { own: false, feedbackPredicted: false });
+  assert.deepEqual(propCalls.at(-1), [2, 0.6, -0.8, 7, 'ram', false], 'the event fells the prop live, in its direction, at its speed');
+  assert.equal(crushFx(), 1);
+  assert.deepEqual(propFx.at(-1).payload.dir, [0.6, 0, -0.8]);
+  owed.delete(2);
+  // the same list again, the owed prop released meanwhile: nothing more to lay down
+  props.applyFrame(propFrame({ tick: 503, destroyed: [0, 2, 4], destructibleRevision: 3 }));
+  assert.equal(propCalls.length, 3);
+  // a duplicate send (a host migration re-destroying what already fell here): no second fall, no second crunch
+  props.applyEvent({ kind: 'world_prop_destroyed', payload: { obstacleIndex: 2, kind: 'tree', cause: 'ram', directionX: 1, directionZ: 0, speedMps: 9 } }, { own: false, feedbackPredicted: false });
+  assert.equal(propCalls.length, 3, 'a prop falls once');
+  assert.equal(crushFx(), 1, 'and crunches once');
+  // a shell-felled prop carries its cause
+  props.applyEvent({ kind: 'world_prop_destroyed', payload: { obstacleIndex: 3, kind: 'fence', cause: 'shell', directionX: 0, directionZ: 1, speedMps: 900 } }, { own: false, feedbackPredicted: false });
+  assert.deepEqual(propCalls.at(-1), [3, 0, 1, 900, 'shell', false]);
+  // the new host\'s list reads lower for a moment (a revision regression across a migration) yet names a prop this view
+  // has not laid down: the content decides, not the number
+  props.applyFrame(propFrame({ tick: 600, destroyed: [0, 1], destructibleRevision: 2 }));
+  assert.deepEqual(propCalls.at(-1), [1, 0, 1, 0, 'ram', true]);
+  // a frame without the owed-prop predicate (a recorder, an older client) still settles its list
+  props.applyFrame(frame({ tick: 700, destroyed: [0, 1, 5], destructibleRevision: 4 }));
+  assert.deepEqual(propCalls.at(-1), [5, 0, 1, 0, 'ram', true]);
+  assert.equal(crushFx(), 2, 'only the two live events sounded');
+  props.dispose();
+}
+
+console.log('mp battle presentation: roster → hidden visuals, frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, settled destroyed lists vs live prop falls, verdicts, disconnect, spectator perspective, prediction world pass');

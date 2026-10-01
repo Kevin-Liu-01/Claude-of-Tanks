@@ -202,6 +202,8 @@ export interface BattlePresentation extends PresentationAdapter {
 }
 
 const POS_SCALE = 1;
+/** The persistent destroyed list lays props down as settled state: final pose, no fall, no debris, no sound. */
+const SETTLED_CRUSH: Readonly<{ settled: true }> = Object.freeze({ settled: true as const });
 const scratchSample = createEntitySample();
 const muzzleTip = new Vector3();
 const shotDirection = new Vector3();
@@ -256,6 +258,7 @@ export function createBattlePresentation({
   let legacy: Pick<PresentationGameState, 'tanks' | 'tankById' | 'player' | 'shells' | 'spotting'> | null = null;
   let snapshotPhase: number | null = null;
   let appliedDestructibleRevision = -1;
+  let appliedDestroyedLength = -1;
   let lastModeStateJson: string | null = null;
   let lastSmokeJson: string | null = null;
   const lastAuxiliaryJson = new WeakMap<object,string>();
@@ -563,15 +566,28 @@ export function createBattlePresentation({
     game.shells = liveShells;
   }
 
-  function applyDestroyed(indices: readonly number[], revision: number): void {
-    if (revision <= appliedDestructibleRevision) return;
+  /**
+   * The persistent destroyed list (every snapshot carries it) is settled state: what it names and this seat has not
+   * seen fall is laid down at its final pose — no fall, no debris, no sound — because its fall happened before this
+   * seat looked (a late joiner, a rejoin, a reconnect's lost events). A prop whose `world_prop_destroyed` is still on
+   * its way to the presented tick is left to that event, which fells it live with the authority's direction and speed:
+   * the list arrives one interpolation delay ahead of the presented world, and until the world state audit
+   * (2026-10-01) it felled every tree first — early, toward +Z, at speed 0 — and the event found nothing left to fell.
+   * Compared by content, not by a monotonic revision alone: a migrated host continues the old revision, but a list
+   * may still read differently with a lower number for a moment.
+   */
+  function applyDestroyed(indices: readonly number[], revision: number, pending: ((index: number) => boolean) | null): void {
+    if (revision === appliedDestructibleRevision && indices.length === appliedDestroyedLength) return;
     appliedDestructibleRevision = revision;
+    appliedDestroyedLength = indices.length;
     if (!worldCollision || typeof worldCollision.getObstacles !== 'function') return;
     const obstacles = worldCollision.getObstacles();
     for (const index of indices) {
       const obstacle = obstacles[index];
       if (!obstacle || obstacle.crushed) continue;
-      worldCollision.crushObstacle?.(obstacle, 0, 1, 0);
+      // its event is owed to this presentation: it falls then, live
+      if (pending && pending(index)) { appliedDestroyedLength = -1; continue; }
+      worldCollision.crushObstacle?.(obstacle, 0, 1, 0, 'ram', SETTLED_CRUSH);
       obstacle.crushed = true;
     }
   }
@@ -644,7 +660,7 @@ export function createBattlePresentation({
       catch { game.matchModeState = null; }
     }
     applyShells(frame.shells);
-    applyDestroyed(frame.destroyed, frame.destructibleRevision);
+    applyDestroyed(frame.destroyed, frame.destructibleRevision, typeof frame.destroyedPending === 'function' ? frame.destroyedPending : null);
     const predicted = frame.viewer.predictedShot;
     if (predicted && predicted.fireSeq !== lastPredictedFireSeq && own) {
       lastPredictedFireSeq = predicted.fireSeq;
@@ -783,10 +799,14 @@ export function createBattlePresentation({
         // position for the effect: nothing to crush here, nothing to emit (2026-09-30, lane mp/ui-sync-check: a `pos: null`
         // event threw inside the frame pump on every such crush — combatFeedbackRuntime reads pos[0]).
         if (!obstacle) return;
-        if (!obstacle.crushed && worldCollision?.crushObstacle) {
-          worldCollision.crushObstacle(obstacle, Number(payload.directionX) || 0, Number(payload.directionZ) || 0, Number(payload.speedMps) || 0);
-          obstacle.crushed = true;
-        }
+        // A prop that already fell on this seat — laid down as settled state, or felled by this event's first delivery
+        // before a host migration re-sent it — falls once: no second fall, no second crunch (world state audit, 2026-10-01).
+        if (obstacle.crushed) return;
+        worldCollision?.crushObstacle?.(
+          obstacle, Number(payload.directionX) || 0, Number(payload.directionZ) || 0, Number(payload.speedMps) || 0,
+          payload.cause === 'shell' ? 'shell' : 'ram',
+        );
+        obstacle.crushed = true;
         bus.emit('prop:crushed', {
           kind: payload.kind, speedMps: payload.speedMps, cause: payload.cause,
           pos: [(obstacle.min[0] + obstacle.max[0]) * 0.5, obstacle.min[1], (obstacle.min[2] + obstacle.max[2]) * 0.5],

@@ -267,7 +267,8 @@ export interface VegetationRuntime {
   ): void;
   treeObstacles: TreeObstacle[];
   concealers: ConcealmentDisc[];
-  crushTree(record: TreeObstacle, dx: number, dz: number): boolean;
+  /** Fell a trunk toward (dx, dz); `settled` lays it at its final pose at once (state that fell before this viewer looked). */
+  crushTree(record: TreeObstacle, dx: number, dz: number, settled?: boolean): boolean;
   resetToppled(): void;
   _clusters: VegetationDisc[];
   /** Round 77b: the rim-forest blocks as discs (their understorey's stands) and the impostor library (null: lobes). */
@@ -5685,7 +5686,10 @@ function* vegetationBuildSteps(
   const _tcax = new THREE.Vector3();
   const _tcm1 = new THREE.Matrix4();
   const _tcm2 = new THREE.Matrix4();
-  function crushTree(ob: TreeObstacle, dx: number, dz: number): boolean {
+  // `settled` (multiplayer world state, 2026-10-01): a trunk the authority had already felled before this viewer saw it
+  // (a late joiner, a reconnect, the persistent destroyed list) starts at the end of its fall — the next update writes
+  // the final pose once and retires the animation — so nothing falls at the wrong time and nothing sounds.
+  function crushTree(ob: TreeObstacle, dx: number, dz: number, settled = false): boolean {
     const t = trees[ob.treeIdx];
     if (!t || t.crushed) return false;
     if (!t.uprightMat) t.uprightMat = t.mat.clone();
@@ -5695,7 +5699,7 @@ function* vegetationBuildSteps(
     setToppleAxis(_tcax, dx, dz);
     treeCrushAnims.push({
       t, base: t.mat.clone(), x: t.x, y: ob.min[1], z: t.z,
-      ax: _tcax.x, az: _tcax.z, u: 0,
+      ax: _tcax.x, az: _tcax.z, u: settled ? 1.1 : 0,
       maxAng: settledToppleAngle(heightField, t.x, ob.min[1], t.z, dx, dz,
         t.fallH!, t.fallR!),
     });
