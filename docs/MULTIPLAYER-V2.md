@@ -1576,6 +1576,70 @@ owner, the un-re-armed lease and the admission migration, the lease across a lea
 `a80a8b8c3`: `roomPolicy` "the first seat to join an emptied room owns it", `roomClient` "timeout: the refused resume ends
 the client").
 
+### 13.12 UI states and syncing walked (lane `mp/ui-sync-check`, 2026-09-30)
+
+**The owner's request**: "double check UI states and syncing." Three headless Chromes (puppeteer, `nice -n 19`, one probe
+at a time) on a vite dev server of this tree against the in-process LAN room helper with the peer-to-peer host
+(`createRoomsServer({ matchTransport: 'p2p' })`, the Durable Object's own state machine), plus the shipped proofs. Every
+state below was screenshot and read back from the DOM (localized copy, no raw i18n keys, no leftover v1 field: the
+dialog carries `name`, `code` and the size select only); every sync figure was sampled from all tabs at one wall time.
+
+**UI states — what the player sees.** Garage → *Multiplayer* opens the play dialog with Private selected and Join
+disabled until six characters; LAN selects; Create gives the lobby with the six-character code, the invite URL stamped
+`v=2`, START disabled, the HOST badge on the creator, Ready enabled, Rejoin hidden; the Garage behind it shows the room
+strip ("LAN lobby CODE · not ready · 0/1 ready") and, with a room held, hides the multiplayer entry (the strip reopens the
+lobby). A second seat opening the invite sees "Join Alpha Lead's Game / LAN invitation / You are in room CODE…" with the
+HOST badge on the creator and no START; its row reaches the creator's list 1–11 ms after its own (joins and leaves are
+never coalesced); the arrangement of three seats across two teams reads identically on all three tabs; a leave drops the
+row on the others within 2–11 ms and leaves the leaver in a clean Garage with no room socket. START enables only when
+every active seat is READY (a spectator reads WATCHING and does not block it) and disables again when one un-readies; the
+Garage strip's Ready relays into the room ("· ready · 3/3 ready"). Start covers every tab with the loader, reveals the
+battle on all three (13.9 / 19.4 / 14.0 s), the strip reads "9 MS · HOST · SEAT 0 · 3/28" on the host and "1 MS · SEAT 1 ·
+3/28" on a peer, F3 expands the panel (17 rows: Link Live, Round trip, Updates 19.7 of 20 Hz, Role Hosting for 2 / Peer,
+Path this browser / direct, Host uplink, Generation 1, Room Joined · In battle, Seat, Seated 3 / 28). Dialogs: a wrong
+code → "Room not found or expired" with *Join another room* and *Return to garage*; a full 1v1 room → "This room is full";
+a join while the room plays → "Room access unavailable" (`room_locked`); a second tab of one seat → the first tab's
+"This connection was replaced" while the second holds the seat; the room service down → every lobby shows "Connection
+interrupted. Trying to reconnect for a limited time…", a fresh Create shows "Room service unavailable" with *Try again*
+after 10.1 s (65 s before this lane: the first admission waited out the transport's 60 s window — fixed in
+`roomClient.ts`), the service back → the lobbies' refused resume reads "Room not found or expired" and *Try again* creates a
+room; every dialog's *Return to garage* leaves a clean Garage. Host loss with a successor: the peer's banner "New host:
+Commander FJG4 · resuming…", the elected seat's "You are the new host · resuming the match…", elected 8.3 s after the
+close, the first snapshot from the new host on the peer 10.7 s after it, the HOST badge moved, generation 2 on both,
+scores and hulls continuous (0 m), the banner cleared. Host loss with no successor (two mobile-tier peers): terminal in
+8.3 s, "The match connection was interrupted. No result was recorded." on both end screens, *Return to garage* → clean
+Garage, the room waiting with no Rejoin. The end screen after a verdict shows the same result by team (victory / defeat /
+defeat), the same scores (25 : 100) and clock (70.9 s) on every tab, the rematch panel ("READY FOR NEXT BATTLE", the admin's
+"WAITING FOR TEAM" until everyone is ready) and *Return to garage*; after it each tab holds the Garage with one room
+socket, no peers, no loader, no banner, no battle strip, the lobby back to waiting. Mobile 390×844: the dialog and the
+lobby fit the viewport (panel 370 px wide, no horizontal overflow, no overlapping controls, no clipped labels).
+
+**Syncing — the numbers.** `tools/mp-p2p-headless.mjs`: discontinuity across the migration 0.04 m (gate 1.0 m; raw 0.70 m
+over 0.07 s of driving), elected 1.5 s after the grace, the rejoined seat welcomed by the new host. The three-tab battle
+(zone control, 150 s, 233 samples at 500 ms, wall skew ≤ 103 ms): hull divergence between tabs 0.26 m median / 1.28 m p95 /
+2.59 m max while a hull moves (the ~230–300 ms interpolation delay at up to 10 m/s) and 0 / 0.01 / 0.12 m at rest; both
+allies saw each other drive 47–65 m; 116 hits and 4 destructions over the window, every hit on a hull a tab could see
+present on that tab (183 of 183), damage values identical where two tabs saw one hit, every destruction on all three
+tabs, the kill feed naming the same pairs; scores never differed beyond a tab reading one sample behind a 25-point kill;
+the clock within 0.08 s p95 across tabs; 20 Hz snapshots on every peer (soak: 20 Hz median, min 19.9; host uplink 103
+kbit/s median at 3 seats; peer desync 0.17 m; tick p95 0.3 ms). Scores and clock agreed at the verdict on every tab. A
+seat back in the Garage with the room kept is offered *Rejoin battle*; a fresh join by code while the room plays is
+`room_locked` (the contract of §13.11, not a late join). No human was destroyed in the sampled windows, so the respawn
+flow was not observed in a browser (the bots' destructions and the mode's respawn table were).
+
+**Found and fixed (receipted).** (1) The room's arrangement never reached the match: the lobby's rule card promised
+"respawn in 6 s · First to 100" and every tab played to 750 — `HostBootConfig` carried neither `arrangement` nor
+`campaignOperationId`, the host core and the LAN helper's in-process match booted `matchRulesetFor(mode)`;
+`src/mp/host/hostRuleset.ts` now derives the ruleset the lobby promises, the session passes the room's settings (and the
+sealed configuration's across an election), the WELCOME's `rulesetJson` reaches `game.ruleset` for the HUD; after the fix
+the three tabs played to 100 and ended by score (`hostRuleset.selftest`, `battlePresentation.selftest`). (2) A first
+admission against a dead room host took 65 s to fail; bounded by the request timeout (`roomClient.selftest`). (3) Host
+warn-level logs ("match report refused host_only" after an election, an elected mobile seat declining) were console errors,
+which the browser proofs count as failures; they are warnings now (`browserComposition.selftest`). (4) The shipped
+`npm run test:net:v2:browser` read the removed connection-settings field and clicked the hidden multiplayer entry; fixed
+and green (73 s). Open: a malformed invite link (`?room=AB`) is dropped silently by `parseRoomInvite` — the "Check the room
+code" dialog exists but no product path reaches it.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers
