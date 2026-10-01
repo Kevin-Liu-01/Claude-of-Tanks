@@ -196,5 +196,37 @@ console.log('matchSessionP2p.selftest: the host boot and its reports, the start 
   room.match = null;
   room.phase = 'waiting';
 }
+// ---- a peer whose host never answers its offers gives up at the link window: the session ends `lost` — a bounded wait with
+//      a user-visible outcome (the entry failure / the disconnect overlay), never `connecting` for ever (the lifecycle proofs
+//      of 2026-09-30, §13.11; c4 runs the production window of 60 s against the real room service, this receipt a short one)
+{
+  const { transport, client, session } = await joinedClient();
+  session.dispose();
+  const matchId = 'm3-0000dead';
+  const hostSecret = createHash('sha256').update(`${SEAT_SECRET}:${matchId}`).digest('hex');
+  const token = signSeatToken(hostSecret, { v: 1, roomId: roomCode, seat: 0, playerId: 'me', name: 'Me', team: 'alpha', specId: 'm1a2', iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
+  const phases = [];
+  const peer = new MatchSession({
+    room: client, clock: () => performance.now(),
+    createPresentation: () => { const presentation = new RecordingPresentation(8); return { adapter: presentation, controls: null, prediction: null, dispose: () => presentation.dispose() }; },
+    transport: { reconnect: { initialDelayMs: 10, maxDelayMs: 20, factor: 1, jitterFraction: 0, windowMs: 1500, attemptTimeoutMs: 400 } },
+    p2p: { createPeerConnection: world.createPeerConnection, manifestBase: null, tier: 'desktop', countdownS: 1 },
+  });
+  peer.onPhase((change) => phases.push(change.phase));
+  peer.start();
+  transport.deliver({ type: 'room_state', payload: { room: snapshotWith({ transport: 'p2p', hostId: 'other', generation: 1, since: 2000 }) } });
+  transport.deliver({ type: 'match_start', payload: { matchId, round: 1, mapId: 'verdant', mode: 'standard', seed: 7, seat: 0, team: 'alpha', seatToken: token, matchUrl: p2pMatchUrl(roomCode, 1), hostId: 'other', expiresAt: Date.now() + 3_600_000 } });
+  await until(() => peer.phase === 'match', 'the peer entered');
+  assert.equal(peer.role, 'peer');
+  const started = performance.now();
+  await until(() => transport.outbound.some((envelope) => envelope.type === 'room_signal' && envelope.payload.kind === 'offer'), 'an offer left for the host');
+  await until(() => peer.phase === 'lost', 'the session gives up at the window', 6000);
+  const waitedMs = performance.now() - started;
+  assert.ok(waitedMs >= 1000 && waitedMs < 5000, `bounded by the link window (${Math.round(waitedMs)} ms)`);
+  assert.ok(transport.outbound.filter((envelope) => envelope.type === 'room_signal' && envelope.payload.kind === 'offer').length >= 2, 'it re-offered before giving up');
+  assert.equal(phases.filter((phase) => phase === 'lost').length, 1);
+  assert.equal(peer.stats().p2p?.migrating ?? false, false, 'nothing left migrating');
+  peer.dispose(); client.dispose();
+}
 for (const core of cores) core.dispose();
-console.log('matchSessionP2p.selftest: the re-entry decline and its fallback boot verified');
+console.log('matchSessionP2p.selftest: the re-entry decline and its fallback boot verified; a peer whose host never links gives up at the window');
