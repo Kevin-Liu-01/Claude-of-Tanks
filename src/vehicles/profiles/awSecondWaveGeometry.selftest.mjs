@@ -126,19 +126,20 @@ function reactive(t,s){
 function roofWeapon(t,id){
   const mg=t.root.getObjectByName('sourceMachineGun_turretDark'),census=censusEquipment(t.root);
   if(id==='t90_x'){
-    assert.equal(mg,undefined,'source-empty T90 channel is not a fabricated named weapon');
+    assert.ok(mg === undefined,'source-empty T90 channel is not a fabricated named weapon');
     const added=t.root.getObjectByName('t90XMountedNsvt');
     const body=added?.getObjectByName('browningDerivedMachineGunBody');
     assert.ok(body?.isMesh&&body.geometry.attributes.position.count>0,
       'added T90 weapon requires a physical complete NSVT body, not a census marker');
-    assert.equal(added.parent,t.root.getObjectByName('rig_turret'));
+    assert.ok(added.parent === t.root.getObjectByName('rig_turret'),'added NSVT belongs to the turret');
     assert.equal(added.userData.weaponClass,'nsvt');
     assert.equal(census.mg,1,'complete owner-added T90 weapon earns exactly one census entry');
     assert.equal(standardWeaponPass({census}),true,'real NSVT satisfies unchanged standard MG rule');
     return added;
   }
   assert.ok(mg?.isMesh,`${id}: complete source weapon remains a real mesh`);
-  assert.equal(mg.parent.parent,t.root.getObjectByName('rig_turret'));
+  // Compare identity without asking assert to inspect the entire cyclic scene on failure.
+  assert.ok(mg.parent.parent === t.root.getObjectByName('rig_turret'),`${id}: source weapon mount belongs to the turret`);
   assert.equal(census.mg,1,`${id}: actual complete source weapon earns one census entry`);
   assert.equal(standardWeaponPass({census},id),true,`${id}: true weapon satisfies unchanged standard MG rule`);
   return mg;
@@ -164,9 +165,9 @@ function historicalEmptyT90Mount(t){
   const hit=(p,d,far)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(meshes,false)[0];
   near(hit([-.6,2.65,.11],[0,-1,0],.025)?.point.y,2.636280059814453,.00001,'actual source channel lower web remains present');
   near(hit([-.624,2.75,.29],[0,-1,0],.13)?.point.y,2.659679889678955,.00001,'actual source channel rim remains present');
-  assert.equal(hit([-.6,2.65,.42],[0,-1,0],.025),undefined,'source lower-web slot stays genuinely open');
-  assert.equal(hit([-.58615,2.66803,.8],[0,0,-1],.7),undefined,'empty source weapon axis contains no fictitious barrel');
-  assert.equal(hit([-.42,2.72,.40],[0,-1,0],.10),undefined,'source guard and chute retain their open mouth');
+  assert.ok(hit([-.6,2.65,.42],[0,-1,0],.025) === undefined,'source lower-web slot stays genuinely open');
+  assert.ok(hit([-.58615,2.66803,.8],[0,0,-1],.7) === undefined,'empty source weapon axis contains no fictitious barrel');
+  assert.ok(hit([-.42,2.72,.40],[0,-1,0],.10) === undefined,'source guard and chute retain their open mouth');
   assert.throws(()=>roofWeapon(t,'t90a_burlak_x'),/complete source weapon remains a real mesh/,
     'negative control: absence cannot satisfy the armed-family requirement');
   const fake=new THREE.Group();fake.name='t90XMountedNsvt';fake.userData={fittingRoot:true,fitting:'pintleMG',weaponClass:'nsvt'};t.root.add(fake);
