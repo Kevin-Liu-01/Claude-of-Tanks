@@ -365,6 +365,12 @@ export interface FxCinematicPort {
    */
   setMuzzleExposure(light: number, cards: number): void;
   stampTrackPrint(pos: THREE.Vector3, dir: THREE.Vector3, water: boolean, surface: TrackSurface): void;
+  /**
+   * Studio scene determinism: pin the shared particle clock (and the
+   * fxNow() visual timelines) back to 0 after resetAll(), so every load or
+   * replay of one scene renders the same absolute-time flicker phases.
+   */
+  resetClock(): void;
 }
 
 export interface FxRuntime {
@@ -5505,6 +5511,11 @@ function* createFxSteps(
           }
         },
         stampTrackPrint,
+        resetClock: () => {
+          particles.setFrozen(frozen, 0);
+          lastTickS = 0;
+          registerFxClock(() => particles.getTime());
+        },
       };
       return cinematicPortState;
     },

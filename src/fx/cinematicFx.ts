@@ -170,6 +170,7 @@ uniform float uDur;
 uniform float uAlpha;
 uniform float uSeed;
 uniform vec3 uColor;
+uniform vec3 uTint;
 varying vec2 vUv;
 ${DECAL_NOISE}
 void main() {
@@ -185,7 +186,7 @@ void main() {
   float n = dNoise( vec2( ang * 5.0 + uSeed, r * 7.0 - t * 2.5 ) ) * 0.6 + dNoise( vec2( ang * 19.0 - uSeed, r * 23.0 ) ) * 0.4;
   float a = band * smoothstep( 0.22, 0.72, n ) * uAlpha * pow( 1.0 - t, 1.3 );
   if ( a < 0.004 ) discard;
-  gl_FragColor = vec4( uColor, a );
+  gl_FragColor = vec4( uColor * uTint, a );
 }
 `;
 
@@ -292,9 +293,9 @@ function lightTintFromRig(scene: THREE.Scene, out: THREE.Color): THREE.Color {
   const sunI = rig.sunIntensity ?? 4.5, hemiI = rig.hemiIntensity ?? 0.45;
   const sc = rig.sunColor, hc = rig.hemiSky;
   const sunLum = 0.2126 * sc.r + 0.7152 * sc.g + 0.0722 * sc.b;
-  const level = cineClamp((sunI * sunLum * 0.75 + hemiI * 0.5) / 3.2, 0.06, 1);
+  const level = cineClamp((sunI * sunLum * 0.75 + hemiI * 0.9) / 3.4, 0.06, 1);
   // hue: sun and sky poles weighted by their share of the light
-  const ws = sunI * 0.75, wh = hemiI * 0.5;
+  const ws = sunI * 0.75, wh = hemiI * 0.9;
   let r = sc.r * ws + hc.r * wh, g = sc.g * ws + hc.g * wh, b = sc.b * ws + hc.b * wh;
   const peak = Math.max(r, g, b, 1e-4);
   r /= peak; g /= peak; b /= peak;
@@ -472,6 +473,7 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
   }
   const rings = makeDecalPool(14, RING_FRAG, 5, () => ({
     uBirth: { value: -1e9 }, uDur: { value: 1 }, uAlpha: { value: 0 }, uSeed: { value: 0 }, uColor: { value: new THREE.Color() },
+    uTint: port.sharing.uLightTint,
   }));
   const scorches = makeDecalPool(24, SCORCH_FRAG, 3, () => ({
     uBirth: { value: -1e9 }, uAlpha: { value: 0 }, uSeed: { value: 0 },
@@ -685,7 +687,7 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       }
     }
     picks.sort((a, b) => b.priority - a.priority);
-    const dayK = 0.35 + 0.65 * env.night;
+    const dayK = 0.2 + 0.8 * env.night;
     // borrowed light: the strongest source (flares outrank fires)
     let used = -1;
     if (borrowed) {
@@ -720,7 +722,7 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       if (!e.glow || !e.glow(nowS, _glow)) continue;
       const decal = glows[n++];
       conformGlow(decal, _glow.x, _glow.z, _glow.radius);
-      decal.mesh.material.uniforms.uIntensity.value = _glow.intensity * (0.08 + 0.92 * env.night) * 0.12;
+      decal.mesh.material.uniforms.uIntensity.value = _glow.intensity * (0.03 + 0.97 * env.night) * 0.12;
       decal.mesh.material.uniforms.uSeed.value = _glow.seed;
       decal.mesh.visible = true;
     }
@@ -1035,7 +1037,12 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       addEmitter(emberEmitter(`${id}:embers`, rngFor(id, 15), now + 0.3, now + durationS, pos.x, port.groundY(pos.x, pos.z) + 0.3, pos.z, radiusM * 0.8, 6 + radiusM * 2, 3));
     },
     stats() {
-      const out: Record<string, number> = { emitters: emitters.length, pulses: pulses.length, sprites: spriteGeo.instanceCount };
+      const out: Record<string, number> = {
+        emitters: emitters.length, pulses: pulses.length, sprites: spriteGeo.instanceCount,
+        borrowedLight: borrowed ? Math.round(borrowed.intensity) : -1,
+        borrowedLightY: borrowed ? Math.round(borrowed.position.y * 10) / 10 : 0,
+        night: Math.round(env.night * 100) / 100,
+      };
       for (const [name, pool] of Object.entries(particles.pools)) out[`pool.${name}`] = pool.highWater;
       return out;
     },

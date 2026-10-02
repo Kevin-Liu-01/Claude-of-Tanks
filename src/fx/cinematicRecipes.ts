@@ -254,12 +254,12 @@ const EMBER = hex(0xffa848);
 const SPARK = hex(0xffd58a);
 const SOOT0 = hex(0x4a423a);
 const SOOT1 = hex(0x2b2723);
-const SMOKE_DARK0 = hex(0x2c2824);
-const SMOKE_DARK1 = hex(0x4e4a44);
+const SMOKE_DARK0 = hex(0x3a3531);
+const SMOKE_DARK1 = hex(0x58534c);
 const SMOKE_MID = hex(0x6e6a63);
 const PROP0 = hex(0xaba79f);
 const PROP1 = hex(0x8f8c86);
-const FIRE_LIGHT = hex(0xff8a3c);
+const FIRE_LIGHT = hex(0xff9a58);
 const SPRAY0 = hex(0xd8e2dc);
 const SPRAY1 = hex(0x8ca9aa);
 const _emit: Vec3 = [0, 0, 0];
@@ -282,7 +282,7 @@ function glowPuff(
 
 /** Emission share of fire-lit smoke: a warm kiss in daylight, the key light at night. */
 function glowShare(ctx: CineCtx, k: number): number {
-  return k * (0.22 + 0.78 * ctx.env.night);
+  return k * (0.05 + 0.95 * ctx.env.night);
 }
 
 function toneAt(ctx: CineCtx, x: number, z: number): GroundTone {
@@ -331,7 +331,7 @@ export function muzzleBlast(
       0.05 + r() * 0.04, 0.22 * s, 0.25 * s, (0.9 + r() * 0.7) * s, FLAME_Y, 0.55 * hot, 0);
   }
   // propellant ring (the doughnut thrown out perpendicular to the bore)
-  const ringN = 22;
+  const ringN = 30;
   for (let i = 0; i < ringN; i++) {
     const a = (i / ringN) * TAU + r() * 0.35;
     const cx = u[0] * Math.cos(a) + v[0] * Math.sin(a);
@@ -342,10 +342,10 @@ export function muzzleBlast(
     puff(ctx, 'psmoke', px + dx * 0.9 * s + cx * 0.3, py + dy * 0.9 * s + cy * 0.3, pz + dz * 0.9 * s + cz * 0.3,
       cx * sp + dx * fwd, cy * sp + dy * fwd + 0.35, cz * sp + dz * fwd,
       2.6 + r() * 2.2, (0.7 + r() * 0.4) * s, (2.6 + r() * 1.6) * s,
-      PROP0, PROP1, 0.30 + r() * 0.14, 0.22, -r() * 0.03);
+      PROP0, PROP1, 0.40 + r() * 0.16, 0.22, -r() * 0.03);
   }
   // forward gas cone: smoke pushed far down the bore line
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 18; i++) {
     const sp = (7 + r() * 13) * s;
     const spread = 0.10 + r() * 0.16;
     const a = r() * TAU;
@@ -355,7 +355,7 @@ export function muzzleBlast(
     puff(ctx, 'psmoke', px + dx * 0.8, py + dy * 0.8, pz + dz * 0.8,
       cx * sp, cy * sp + 0.3, cz * sp,
       2.2 + r() * 2.4, (0.8 + r() * 0.5) * s, (3.0 + r() * 2.0) * s,
-      PROP0, PROP1, 0.20 + r() * 0.12, 0.25, -r() * 0.05);
+      PROP0, PROP1, 0.30 + r() * 0.15, 0.25, -r() * 0.05);
   }
   // unburnt propellant sparks spat down range
   for (let i = 0; i < 16; i++) {
@@ -376,7 +376,7 @@ export function muzzleBlast(
   const tone = toneAt(ctx, px + dx * 2, pz + dz * 2);
   const flatL = Math.hypot(dx, dz) || 1;
   const fx = dx / flatL, fz = dz / flatL;
-  const fanN = Math.round(26 * (0.5 + 0.5 * groundK));
+  const fanN = Math.round(36 * (0.5 + 0.5 * groundK));
   for (let i = 0; i < fanN; i++) {
     // fan centred on the bore, widening to the sides; the strongest gust runs forward
     const a = (r() - 0.5) * Math.PI * 1.35;
@@ -387,7 +387,7 @@ export function muzzleBlast(
     puff(ctx, 'dust', ox, ctx.world.groundY(ox, oz) + 0.35 + r() * 0.4, oz,
       rx * reach * 1.4, 0.6 + r() * 1.5, rz * reach * 1.4,
       2.8 + r() * 2.8, (0.7 + r() * 0.5) * s, (3.0 + r() * 2.6) * s,
-      tone.light, tone.dark, (0.22 + r() * 0.16) * (0.55 + 0.45 * groundK), 0.18, -r() * 0.02);
+      tone.light, tone.dark, (0.32 + r() * 0.2) * (0.55 + 0.45 * groundK), 0.18, -r() * 0.02);
   }
   // grit + grass bits
   for (let i = 0; i < 10; i++) {
@@ -400,11 +400,11 @@ export function muzzleBlast(
       0.9 + r() * 0.5, 0.025 + r() * 0.035, g, 0, 0);
   }
   // hanging haze that drifts for many seconds after the shot
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 10; i++) {
     const ox = px + fx * (2 + r() * 6) + (r() - 0.5) * 3, oz = pz + fz * (2 + r() * 6) + (r() - 0.5) * 3;
     puff(ctx, 'dust', ox, ctx.world.groundY(ox, oz) + 0.8 + r(), oz,
       fx * 1.5 + WIND_X * 0.4, 0.25 + r() * 0.3, fz * 1.5 + WIND_Z * 0.4,
-      6 + r() * 4, 2.2 * s, (6 + r() * 3) * s, tone.light, tone.dark, 0.11 + r() * 0.06, 0.03, 0.1 + r() * 0.3);
+      6 + r() * 4, 2.2 * s, (6 + r() * 3) * s, tone.light, tone.dark, 0.2 + r() * 0.1, 0.03, 0.1 + r() * 0.3);
   }
   ctx.shockRing(px + fx * 1.4, pz + fz * 1.4, (7 + 6 * groundK) * s, 0.7 * groundK, 0);
 }
@@ -435,18 +435,18 @@ export function fireball(ctx: CineCtx, x: number, y: number, z: number, o: Fireb
   // flash
   for (let i = 0; i < 3; i++) {
     puff(ctx, 'flash', x + (r() - 0.5) * k, y + r() * k, z + (r() - 0.5) * k, 0, 2, 0,
-      0.10 + r() * 0.08, (3.0 + r()) * k, (7.5 + r() * 2.5) * k, WHITE_HOT, FLAME_Y, 1.0, 0, d - r() * 0.01);
+      0.08 + r() * 0.06, (2.4 + r()) * k, (5.8 + r() * 2.0) * k, WHITE_HOT, FLAME_Y, 0.85, 0, d - r() * 0.01);
   }
   // incandescent core: fast radial burst, additive
-  const coreN = Math.round(18 + 10 * Math.min(k, 2));
+  const coreN = Math.round(13 + 8 * Math.min(k, 2));
   for (let i = 0; i < coreN; i++) {
     const a = r() * TAU, b = Math.acos(1 - 2 * r()) * 0.75;
     const sp = (5 + r() * 9) * k;
     const sx = Math.sin(b) * Math.cos(a), sy = Math.abs(Math.cos(b)), sz = Math.sin(b) * Math.sin(a);
     puff(ctx, 'fire', x + sx * 0.6 * k, y + sy * 0.4 * k, z + sz * 0.6 * k,
       sx * sp, sy * sp * 0.7 + 2.2 * rise, sz * sp,
-      0.55 + r() * 0.75, (1.6 + r() * 1.1) * k, (4.2 + r() * 2.6) * k,
-      i < coreN / 3 ? WHITE_HOT : FLAME_Y, FLAME_O, 0.62 + r() * 0.3, 2.4 * rise, d + r() * 0.12);
+      0.55 + r() * 0.75, (1.4 + r() * 0.9) * k, (3.6 + r() * 2.2) * k,
+      i < coreN / 5 ? WHITE_HOT : FLAME_Y, FLAME_O, 0.42 + r() * 0.26, 2.4 * rise, d + r() * 0.12);
   }
   // billow body: occluding fire-in-smoke lobes rolling upward
   const bodyN = Math.round(14 + 8 * Math.min(k, 2));
@@ -471,7 +471,7 @@ export function fireball(ctx: CineCtx, x: number, y: number, z: number, o: Fireb
     glowPuff(ctx, 'smoke', x + Math.cos(a) * out, y + lift, z + Math.sin(a) * out,
       Math.cos(a) * (0.8 + r() * 1.6) * k + WIND_X * 0.5, (2.6 + r() * 3.2) * k * rise, Math.sin(a) * (0.8 + r() * 1.6) * k + WIND_Z * 0.5,
       5.5 + r() * 4.5 + 2 * rise, (3.2 + r() * 1.4) * k, (8.5 + r() * 4.5) * k,
-      FIRE_LIGHT, glow * (1 - i / smokeN), SMOKE_DARK0, 0.62 + r() * 0.18, 0.9 * rise, birth);
+      FIRE_LIGHT, glow * 0.6 * (1 - i / smokeN), SMOKE_DARK0, 0.62 + r() * 0.18, 0.9 * rise, birth);
   }
   if (o.ground !== false) {
     shockwave(ctx, x, z, 10 + 9 * k, 0.8 + 0.4 * Math.min(k, 1.5), d);
@@ -806,7 +806,7 @@ export function burningEmitter(
           glowPuff(ctx, 'smoke', s.x + (r() - 0.5) * s.size, s.y + 1.1 + r() * 0.6, s.z + (r() - 0.5) * s.size,
             WIND_X * 0.6 + (r() - 0.5) * 0.6, 2.2 + r() * 1.4, WIND_Z * 0.6 + (r() - 0.5) * 0.6,
             3.2 + r() * 1.8, (0.9 + r() * 0.5) * s.size, (3.2 + r() * 1.6) * s.size,
-            FIRE_LIGHT, glow * 1.1, SMOKE_DARK0, 0.46 + r() * 0.16, 0.8, off - r() * 0.03);
+            FIRE_LIGHT, glow * 0.55, SMOKE_DARK0, 0.46 + r() * 0.16, 0.8, off - r() * 0.03);
         }
       }
       // tall column: every band refreshed, base-heavy, leaning downwind
@@ -820,7 +820,7 @@ export function burningEmitter(
           glowPuff(ctx, 'smoke', cx + WIND_X * lean + (r() - 0.5) * w, cy + 1.6 + h, cz + WIND_Z * lean + (r() - 0.5) * w,
             WIND_X * (0.6 + h * 0.07) + (r() - 0.5) * 0.7, 1.6 + r() * 1.4, WIND_Z * (0.6 + h * 0.07) + (r() - 0.5) * 0.7,
             3.5 + r() * 2 + hN * 2.5, (1.4 + r() * 0.8 + h * 0.10), (4.2 + r() * 2.2 + h * 0.28),
-            FIRE_LIGHT, glow * 0.6 * (1 - hN) * (1 - hN), hN > 0.6 ? SMOKE_DARK1 : SMOKE_DARK0,
+            FIRE_LIGHT, glow * 0.4 * Math.max(0, 1 - hN * 2.2), hN > 0.6 ? SMOKE_DARK1 : SMOKE_DARK0,
             (0.28 + r() * 0.14) * (0.6 + 0.4 * k), 0.35, off - r() * 0.03);
         }
       }
@@ -879,7 +879,7 @@ export function fireFieldEmitter(
         }
         if (smoke && r() < 0.16) {
           glowPuff(ctx, 'smoke', pts[i], pts[i + 1] + 1.0, pts[i + 2], WIND_X * 0.8 + (r() - 0.5) * 0.5, 1.4 + r(), WIND_Z * 0.8 + (r() - 0.5) * 0.5,
-            3.5 + r() * 2.5, 0.9 + s, 3.2 + s * 2, FIRE_LIGHT, glow, SMOKE_DARK0, 0.34 + r() * 0.14, 0.45, off - r() * 0.04);
+            3.5 + r() * 2.5, 0.9 + s, 3.2 + s * 2, FIRE_LIGHT, glow * 0.55, SMOKE_DARK0, 0.34 + r() * 0.14, 0.45, off - r() * 0.04);
         }
       }
     },
@@ -941,7 +941,7 @@ export function columnEmitter(
         glowPuff(ctx, 'smoke', x + WIND_X * lean + (r() - 0.5) * w, y + h + 1, z + WIND_Z * lean + (r() - 0.5) * w,
           WIND_X * (0.8 + h * 0.06) + (r() - 0.5), 2 + r() * 2, WIND_Z * (0.8 + h * 0.06) + (r() - 0.5),
           4.5 + r() * 2.5 + hN * 3, widthM * (0.45 + r() * 0.3) + h * 0.12, widthM * (1.3 + r() * 0.7) + h * 0.32,
-          FIRE_LIGHT, hN < 0.3 ? glow * (1 - hN / 0.3) : 0, albedo, (0.32 + r() * 0.14) * fade, 0.3, off - r() * 0.05);
+          FIRE_LIGHT, hN < 0.3 ? glow * 0.5 * (1 - hN / 0.3) : 0, albedo, (0.32 + r() * 0.14) * fade, 0.3, off - r() * 0.05);
       }
     },
   });

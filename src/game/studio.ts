@@ -2112,6 +2112,17 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * still refreshes tracer ribbons/lights so frozen frames render correctly.
    * @param {number} dt seconds (already time-scaled)
    */
+  function emitDamageSmoke(birthOffset: number): void {
+    for (const a of actors) {
+      if (!a.smoking) continue;
+      _fwd.set(Math.sin(a.state.yaw), 0, Math.cos(a.state.yaw));
+      _v2.copy(a.state.pos).addScaledVector(_fwd, -a.spec.dims.hullLengthM * 0.42);
+      _v2.y += a.spec.dims.heightM * 0.72;
+      fx.exhaust(_v2, 1, true, birthOffset);
+      fx.exhaust(_v2, 0.85, true, birthOffset); // doubled: damage smoke, not idle haze
+    }
+  }
+
   /** Exact terrain crossing inside the last shell step (cinematic quality). */
   function refineShellCrossing(sh: StudioShell, px: number, py: number, pz: number): void {
     let lo = 0, hi = 1;
@@ -2154,22 +2165,17 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           sh.dead = true;
         }
       }
-      // continuous per-actor emitters on the fixed 60 Hz timeline grid: the
-      // canonical 1/60 s cadence emits exactly as before, and 2-8 ms export
-      // steps no longer multiply the damage smoke (births are backdated).
-      smokeAccS += dt;
-      while (smokeAccS >= FX_STEP_S - 1e-9) {
-        smokeAccS = Math.max(0, smokeAccS - FX_STEP_S);
-        for (const a of actors) {
-          if (a.smoking) {
-            _fwd.set(Math.sin(a.state.yaw), 0, Math.cos(a.state.yaw));
-            _v2.copy(a.state.pos).addScaledVector(_fwd, -a.spec.dims.hullLengthM * 0.42);
-            _v2.y += a.spec.dims.heightM * 0.72;
-            fx.exhaust(_v2, 1, true, -smokeAccS);
-            fx.exhaust(_v2, 0.85, true, -smokeAccS); // doubled: damage smoke, not idle haze
-          }
+      // continuous per-actor emitters. Battle quality keeps the historical
+      // one-emission-per-step look; cinematic quality emits on the fixed
+      // 60 Hz timeline grid with backdated births, so 2-8 ms export steps
+      // (and the playhead's integer-ms partial steps) never multiply it.
+      if (exactShells) {
+        smokeAccS += dt;
+        while (smokeAccS >= FX_STEP_S - 1e-9) {
+          smokeAccS = Math.max(0, smokeAccS - FX_STEP_S);
+          emitDamageSmoke(-smokeAccS);
         }
-      }
+      } else emitDamageSmoke(0);
     }
     fx.update(dt, shells, camera, resolveFxSubject);
     cinematics?.update(dt, clockMs / 1000, shells, trackActors(), camera.position);
@@ -2223,6 +2229,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     fx.resetAll();
     fx.resetSeed(seed);
     fx.setFrozen(false);
+    // every load / replay starts the fx clock at 0: identical flicker phases
+    fx.cinematicPort().resetClock();
     cinematics?.reset();
     smokeAccS = 0;
     clockMs = 0;

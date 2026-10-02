@@ -82,8 +82,10 @@ function run(nextDt, { endS = 6.4, captureEvery = 0, seed = 5000 } = {}) {
       if (captureEvery && sinceCapture >= captureEvery) { sinceCapture = 0; cin.update(0, now, [], [DRIVER]); }
     }
   };
-  for (const [t, fire] of cues) { advance(t); cin.beginEffect(t); fire(); }
-  advance(endS);
+  const lightAt = [];
+  const sampleLight = () => lightAt.push(log.flashes.length ? log.flashes[log.flashes.length - 1] : null);
+  for (const [t, fire] of cues) { advance(t); sampleLight(); cin.beginEffect(t); fire(); }
+  for (const t of [3.4, 4.1, 5.2, endS]) { advance(t); sampleLight(); }
   cin.update(0, now, [], [DRIVER]);
   const pools = port.group.children[0].children[0].children.map((mesh) => {
     const out = {};
@@ -93,7 +95,7 @@ function run(nextDt, { endS = 6.4, captureEvery = 0, seed = 5000 } = {}) {
     }
     return { name: mesh.material.type, count: mesh.geometry.instanceCount, attrs: out };
   });
-  return { pools, log, cin, time: sharing.uTime.value, now };
+  return { pools, log, cin, time: sharing.uTime.value, now, lightAt };
 }
 
 function assertSame(a, b, label) {
@@ -133,11 +135,19 @@ assertSame(a, fine, '16.67 ms vs 4 ms');
 const jitterRng = cineRng(99);
 const jitter = run(() => 0.002 + jitterRng() * 0.006, { captureEvery: 0.05 });
 assertSame(a, jitter, '16.67 ms vs 2-8 ms + captures');
-assert.equal(a.log.flashes.length, fine.log.flashes.length, 'same number of light pulses at any step');
-for (let i = 0; i < a.log.flashes.length; i++) {
-  assert.ok(Math.abs(a.log.flashes[i][0] - fine.log.flashes[i][0]) < 1e-6, `pulse ${i} fires at its authored time`);
-  assert.ok(Math.abs(a.log.flashes[i][1] - fine.log.flashes[i][1]) < 1e-9, `pulse ${i} keeps its peak`);
+// The pooled explosion light at every sampled playhead comes from the same
+// pulse (born at its authored time with its peak) whatever the step size;
+// pulses superseded inside one coarse step are never visible in a capture.
+for (const other of [fine, jitter]) {
+  assert.equal(a.lightAt.length, other.lightAt.length);
+  for (let i = 0; i < a.lightAt.length; i++) {
+    const x = a.lightAt[i], y = other.lightAt[i];
+    if (!x || !y) { assert.equal(x, y, `light sample ${i}`); continue; }
+    assert.ok(Math.abs(x[0] - y[0]) < 1e-6, `light sample ${i}: pulse born at its authored time`);
+    assert.ok(Math.abs(x[1] - y[1]) < 1e-9, `light sample ${i}: pulse keeps its peak`);
+  }
 }
+assert.ok(a.log.flashes.length >= 8, `cook-offs, fireballs and bursts pulse the light (${a.log.flashes.length})`);
 assert.equal(a.log.prints, fine.log.prints, 'track prints are distance-keyed, not frame-keyed');
 assert.ok(a.log.prints > 40, `the driven actor printed its path (${a.log.prints})`);
 
