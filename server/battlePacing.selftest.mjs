@@ -70,18 +70,11 @@ const timeouts = resultReasons.filter((reason) => reason === 'time_limit').lengt
 // the 4–8 minute target. Until the owner rules (accept a 3–8 minute band, or slow the bots), a median in
 // [180, 240) passes as this pending ruling; anything faster still fails.
 //
-// The same pending ruling bounds the two-minute floor: at most 4 of the default matches, and never more than 3 %
-// of them (rounded to the nearest whole match, so 4 of the fleet's 132 and none of a single map's 4), may end
-// inside 120 s; none may end inside 90 s; and each fast match is named. On 87fbeaec1, the merged tree with the
-// maps lane's rebuilt Sirocco Wadi, Steinburg and Cinder Junction, they are Verdant Fields 98 s, Frontier Basin
-// 104 s, Saltwind Narrows 104 s and Saltmere Bay 113 s. All four predate the maps lane: the PR head 1cc106369,
-// with the old pilot maps, ends the same four matches at the same times. Those four maps lead the maps lane's
-// next layout batch, each rebuilt for a longer opening; remove this allowance once their matches clear 120 s.
-// Frontier Basin's rebuild (2026-10-02) clears its match: seed 29003 now ends at 177 s, and the fleet median is 222.4 s.
-// Saltwind Narrows' rebuild (2026-10-02) clears its match too: seed 49002 now ends at 161 s; fleet median 218.2 s.
-// Saltmere Bay's rebuild (2026-10-02) clears seed 25001 (140 s); fleet median 217.0 s, Verdant's match the last one.
-// Verdant Fields' rebuild (2026-10-02) clears seed 21002 (182 s): all four matches clear 120 s, and the fleet runs
-// 132 matches with none inside 120 s (median 219.2 s, p10 147.2 s).
+// The two-minute floor is the original rule again: no default bot match may end inside 120 s. The same pending ruling
+// had allowed four named fast matches (614323cc7): Verdant Fields 98 s, Frontier Basin 104 s, Saltwind Narrows 104 s
+// and Saltmere Bay 113 s, all from before the maps lane. The maps lane's batch 1 (2026-10-02) rebuilt those four maps
+// for a longer opening; on the merged tree with the bot-stall fixes (a06a1fe42) none of the 132 matches ends inside
+// 120 s (median 215.9 s, p10 146.6 s, fastest Tarkhan Steppe 123 s), so the allowance is gone.
 const TARGET_MEDIAN_S = { min: 240, max: 480 };
 const PENDING_RULING_MEDIAN_FLOOR_S = 180;
 assert.ok(medianS >= PENDING_RULING_MEDIAN_FLOOR_S && medianS <= TARGET_MEDIAN_S.max,
@@ -93,22 +86,9 @@ if (medianS < TARGET_MEDIAN_S.min) {
 }
 assert.ok(p10S >= 120,
   `even the fast tail must retain a tactical opening (p10 ${p10S.toFixed(1)} s)`);
-const PENDING_RULING_FAST = { maxMatches: 4, maxShare: 0.03, floorS: 90 };
-const fastAllowed = Math.min(PENDING_RULING_FAST.maxMatches, Math.round(matches.length * PENDING_RULING_FAST.maxShare));
 const fastMatches = matches.filter((entry) => entry.timeS < 120);
-const fastList = fastMatches.map((entry) => `${entry.mapId} seed ${entry.seed} ${entry.timeS.toFixed(0)} s`).join(', ');
-assert.equal(subTwoMinute, fastMatches.length, 'every sub-two-minute match is accounted for');
-assert.ok(matches.every((entry) => entry.timeS >= PENDING_RULING_FAST.floorS),
-  `no default bot match may end inside ${PENDING_RULING_FAST.floorS} s (got ${matches
-    .filter((entry) => entry.timeS < PENDING_RULING_FAST.floorS)
-    .map((entry) => `${entry.mapId} seed ${entry.seed} ${entry.timeS.toFixed(0)} s`).join(', ')})`);
-assert.ok(fastMatches.length <= fastAllowed,
-  'default bot matches no longer collapse inside two minutes: at most ' +
-  `${fastAllowed} of ${matches.length} under the pending owner ruling (got ${fastMatches.length}: ${fastList})`);
-if (fastMatches.length) {
-  console.log(`battlePacing.selftest: ${fastMatches.length} of ${matches.length} matches ended inside 120 s ` +
-    `(target 0; passing as the pending owner ruling of 2026-10-02, at most ${fastAllowed}): ${fastList}`);
-}
+assert.equal(subTwoMinute, 0, 'default bot matches no longer collapse inside two minutes (got ' +
+  `${fastMatches.map((entry) => `${entry.mapId} seed ${entry.seed} ${entry.timeS.toFixed(0)} s`).join(', ')})`);
 const maxTimeouts = Math.floor(durations.length * 0.125);
 assert.ok(timeouts <= maxTimeouts,
   `no more than 12.5% may reach the safety cap (got ${timeouts}/${durations.length})`);
