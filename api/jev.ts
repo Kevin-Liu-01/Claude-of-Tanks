@@ -19,8 +19,8 @@ import {
  * document carries no personal field (the validator refuses names, room codes,
  * addresses and raw coordinates outright).
  *
- * Abuse guards, all in process memory like the telemetry sink: an origin
- * allow-list, a body cap, a per-address token bucket keyed by a salted hash, a
+ * Abuse guards, all in process memory like the telemetry sink: a required,
+ * allow-listed origin, a body cap, a per-address token bucket keyed by a salted hash, a
  * per-session bucket and a hard per-session request budget, a global
  * per-minute ceiling under TypeSafe's published limit, and a cool-down after
  * an upstream 429/529 so a rate-limited key is never hammered. One structured
@@ -75,8 +75,12 @@ function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/**
+ * The origin gate (INFRA-P7, 2026-10-01). Browsers send `Origin` on every POST, same-origin included, so a request
+ * without one is a script spending the TypeSafe key — refused like a foreign origin (it used to pass).
+ */
 function originAllowed(origin: string, env: NodeJS.ProcessEnv, allowLocal: boolean): boolean {
-  if (!origin) return true;
+  if (!origin) return false;
   if (allowedApiOrigins(env).has(origin)) return true;
   return allowLocal && LOCAL_ORIGIN_RE.test(origin);
 }

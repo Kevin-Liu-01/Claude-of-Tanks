@@ -173,8 +173,11 @@ For fixed credentials or another provider, use a JSON array of ICE servers:
 
     COT_TURN_ICE_SERVERS_JSON
 
-`COT_TURN_TTL_SECONDS` controls the self-hosted or Cloudflare credential
-lifetime (clamped to one hour through one day; default eight hours).
+Credentials last one hour (2026-10-01; eight hours before): the client fetches
+them per peer connection and a connection lives one match. `COT_TURN_TTL_SECONDS`
+may shorten the self-hosted or Cloudflare lifetime to twenty minutes and can no
+longer lengthen it. `/api/ice` answers only a same-origin page
+(`Sec-Fetch-Site: same-origin`) or an allow-listed `Origin`; a bare `curl` gets 403.
 `VITE_ICE_CONFIG_URL` is only needed when credentials are served from
 a different endpoint. Long-lived provider secrets must never use the `VITE_`
 prefix or enter the browser bundle.
@@ -182,7 +185,7 @@ prefix or enter the browser bundle.
 Before certifying private rooms in production, check the room Worker and the ICE endpoint:
 
     curl -fsS https://cot-rooms.kk23907751.workers.dev/healthz
-    curl -fsS https://cot.kevinliu.studio/api/ice
+    curl -fsS -H 'Origin: https://cot.kevinliu.studio' https://cot.kevinliu.studio/api/ice
 
 Then run the three-browser proof against the deployed site, the only origin the Worker admits:
 
