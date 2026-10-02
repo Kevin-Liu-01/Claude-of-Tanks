@@ -15,7 +15,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
-| 347 sound-effect assets, 554 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 16 MB | per battle: the battle set at the battle phase edge, everything else on first use |
+| 352 sound-effect assets, 564 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 16.5 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
 | 13 crew radio packs × 98 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.5 MB per language | only the crew's pack (and English if a national take is missing) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
@@ -68,6 +68,11 @@ profile from `soundCues.ts` (per manifest group, with per-asset overrides):
   from seven height samples on the line of sight (up to 9 dB and a strong
   lowpass), speed-of-sound delay beyond 18 m (Earth 343 m/s, Mars 240 m/s and
   14 dB thinner; vacuum on the Moon).
+- **Own hits**: a round fired by the listener's tank (the occupied one, or the
+  one being watched) is heard landing under `OWN_HIT_FOCUS`: three times the
+  cue's reference distance, rolloff at most 0.55, at least 2.6 km of range and
+  no HDR culling. It still arrives at the speed of sound, darkened by the air,
+  from the target's bearing.
 - **HDR window**: the loudest recent event sets the window top (instant attack,
   12 dB/s release). A new voice more than 18 dB below it is trimmed by half the
   excess (at most 12 dB); one more than 50 dB below is not started. The loudest
@@ -144,6 +149,52 @@ timed from the shell's closest approach and muzzle velocity. Reloads play the
 loader's choreography (manual, carousel, bustle, autocannon, missile,
 magazine, intra-clip) at the matching reload progress.
 
+### Hits and misses
+
+There is no interface hit marker. A hit is confirmed the way a crew
+experiences it:
+
+- **The impact at the target.** Armour hits crossfade by range from the close
+  banks (tearing metal, a heavy clang, a dull thud) into distant banks (a
+  crack, knock or clang with an outdoor echo) between about 140 and 620 m, for
+  every shooter. HE and HEAT add their blasts, ERA its cassettes. Our own
+  rounds carry under the own-hit law above, so a penetration at 700 m is a
+  distant crack two seconds after the shell lands.
+- **The target going up.** A kill is the destruction itself (blast, sub-bass,
+  debris, turret, cook-off), carried like our hits, with the far explosion
+  layer beyond 600 m.
+- **The gunner's call.** Every main-gun result is called about half a second
+  after it lands, the time it takes to see it: "Penetration", "Ricochet", "No
+  penetration", module and crew effects, "Target destroyed". Autocannon and
+  machine-gun hits are called now and then. A main-gun miss is called too:
+  "Short. Adjusting." when the round came down before the enemy it was laid on
+  (the live enemy nearest the line of fire), a plain "Miss." otherwise; the
+  radio can ask for a line's take by index for that.
+
+### Aircraft and mode sounds
+
+`aerialRig.ts` plays the aircraft of the Drone and AC-130 modes: one moving
+loop placed in the listener frame (distance law, air absorption, pan, Doppler),
+or an own perspective for the pilot or crew.
+
+- **Drone.** FPV drones fly as shells, so the live shell list reaches the audio
+  update. An enemy drone buzzes where it flies (loud close, gone within about
+  500 m) and pitches up as it closes in. Our own spins up on our hull, is then
+  heard through its band-limited feed, whose hiss rises toward the 850 m range
+  limit and the last ten seconds of battery, and cuts out in a burst of static
+  when it strikes, is recalled or dies. The pilot stays in the tank, so the
+  strike's explosion arrives from there, seconds later.
+- **AC-130.** A gunship is a roster tank pinned to its orbit; it never gets a
+  tank rig. The ground hears four turboprops circling overhead; its crew hears
+  the cabin drone. Its guns use the normal report classes.
+- **Gun Game.** Advancing a stage plays the weapon changeover (breech, ram or
+  missile tube, latch) and the loader's call for the new round. **Infected.**
+  Being turned plays a grave sting and radio interference. The drone switch
+  clicks.
+
+The aircraft set decodes on first sight of an aircraft; the Infected sting
+rides every battle set.
+
 ### Environment
 
 `environmentScenes.ts` gives each of the 33 maps a scene: a stereo bed, an
@@ -162,9 +213,9 @@ Atmosphere events (artillery, flak, AA, flyovers) and destructible props
 cooldowns and staleness; `crewRadio.ts` schedules them with radio discipline:
 one transmission at a time, survival calls interrupt chatter, a 0.8 s gap, a
 two-line queue, stale calls dropped rather than played late. Routine chatter
-(reload done, shot results, kill confirms by allies) is probability-gated and
-spot calls are throttled to one per five seconds unless several contacts
-appear at once.
+(reload done, allies' kills, autocannon results) is probability-gated, our
+main-gun results are called almost every time, and spot calls are throttled to
+one per five seconds unless several contacts appear at once.
 
 A hull's crew speaks its nation's language (en-US, en-GB, de, ru, uk, zh, fr,
 sv, ja, ko, it, pl, he), or English or the interface language by setting.
@@ -182,7 +233,7 @@ language (national / English / interface), the concussion toggle and the
 critical-damage heartbeat. After resume, `window.__COT_AUDIO` exposes the
 context, a master PCM tap (`startTap` / `stopTap` / `readTapB64`), the sound-route
 log, the sfx log (asset, start, gain, rate, distance, bus), the voice log,
-library stats, listener and rig state, effective bus levels, and test hooks
+library stats, listener, rig and aircraft state, effective bus levels, and test hooks
 (`play`, `preload`, `sayVoice`, `setEngineProbeSolo`, `forceCrewLanguage`).
 
 ## How generation worked
@@ -203,7 +254,7 @@ re-running any step with unchanged inputs spends nothing.
 
 ```
 sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──→ build-sfx.mjs (score, pick, master) ──→ public/audio/sfx + manifest
-   347 entries        772 raw takes         onsets, decay, seams,     master.mjs presets, picks override
+   352 entries        ~810 raw takes        onsets, decay, seams,     master.mjs presets, picks override
    prompt, dur,       eleven_text_to_       spectral bands,
    takes, variants    sound_v2, pcm_48000   clipping
 ```
@@ -290,8 +341,12 @@ crew-lines.json ─┐                    crew-voices.json
    bar, since by edit distance alone a doubled short call scores 0.5. Below
    0.62 (0.34 for calls of four characters or fewer) a take is regenerated —
    three attempts by default, and because earlier attempts come from the
-   cache, `--attempts 8` on the flagged lines pays only for the new ones — and
-   the best is kept. Takes still under 0.34 are reported for review; most
+   cache, `--attempts 10` on the flagged lines pays only for the new ones — and
+   the best is kept, a clean attempt before a repeated one. The model says a
+   one- or two-word call twice on nearly every attempt, so when none passes,
+   each attempt is cut at its pauses and a cut is kept when its own transcript
+   reads as the script (0.75, stricter than the take bar, so a fragment of a
+   longer call never passes). Takes still under 0.34 are reported for review; most
    are exact homophones the transcriber spells differently (Japanese
    装填 / 争点, 徹甲弾 / 鉄鋼弾, 奪取 / ダッシュ), which no text comparison can
    separate.
@@ -327,17 +382,32 @@ crew-lines.json ─┐                    crew-voices.json
     buoy bells, songbirds, skylarks, tropical birds, breaking glass, car alarms)
     replaced by darker ones.
   - The garage scene got an audible room tone and indoor spot placement.
+  - The speech model often doubled very short calls ("Loading. Loading",
+    発射、発射) on every attempt; the voice build now detects repeats, prefers
+    clean attempts and cuts takes at their pauses (36 flagged takes became 2).
+- **2026-10-02, hit realism and the new modes.** The owner asked for hits to
+  sound far more realistic, and six modes had landed on main. The interface
+  hit markers were removed in favour of the impact at the target (new distant
+  armour-hit banks, the own-hit law), the target's destruction and the gunner's
+  calls including misses; the drone, gunship, Gun Game and Infected sounds
+  were generated and wired as above.
 
 ### Cost
 
 Credits from the local ledger (`ledgerSpend()` in `elevenlabs.mjs`), both
 rounds:
 
-| Kind | Credits |
-|---|---|
-| Sound generation | about 29,000 |
-| Text-to-speech (both casts and builds, auditions) | about 11,600 + the second voice build |
-| Speech-to-text verification | about 2,100 |
+| Kind | First round | Feedback rounds | Total |
+|---|---|---|---|
+| Sound generation | 26,625 | 4,116 | 30,741 |
+| Text-to-speech (casts, auditions, builds, re-rolls) | 9,029 | 10,520 | 19,549 |
+| Speech-to-text verification | 1,718 | 1,909 | 3,627 |
+| **All** | **37,372** | **16,545** | **53,917** |
+
+The feedback rounds' sound generation is the regenerated interface, stingers
+and foley, the distant armour hits (400) and the aircraft and Infected sounds
+(1,350); nearly all of their speech is the serious recast and rebuild of all 13
+packs (10,873) plus the re-rolls of doubled calls (634).
 
 ## Changing or extending it
 
@@ -347,6 +417,8 @@ rounds:
 | Replace a weak take | Re-run `build-sfx --ids <id>` after adjusting the prompt or `takes`, or pin takes in `tools/audio/sfx-picks.json` |
 | Add or change a voice line | Edit `crew-lines.json` (all 13 languages, same number of variants) and its `VOICE_LINES` entry in `voiceLines.ts` → `npm run audio:voices:build -- --lines <id>` |
 | Rebuild one language | `npm run audio:voices:build -- --langs de` |
+| Re-roll flagged takes | `npm run audio:voices:build -- --langs ja --lines firing --attempts 10` (earlier attempts come from the cache; the shipped packs used this on their flagged lines, so rebuild those lines with the same flag to reproduce them) |
+| Remove a sound | Delete its catalog entry and run `build-sfx`: assets dropped from the catalog leave the manifest and the disk |
 | Recast a language | `voice-casting.mjs --search`, audition with `voice-audition.mjs --candidates <file> --langs <lang>`, update `crew-voices.json`, rebuild the language |
 | Retune the mix | `mixPolicy.ts` (levels, HDR, snapshots, budgets), `soundCues.ts` (per-asset distance laws and caps), then the mix-balance probe |
 
@@ -367,7 +439,7 @@ Headless selftests (all in `npm test`):
 | `src/audio/soundAssets.selftest.mjs` | manifests against files, every engine reference, families, tracks, scenes, packs, payload budgets |
 | `src/audio/assetLibrary.selftest.mjs` | pinning, eviction and reload, voice bytes, the mobile variant cap |
 | `src/audio/crewRadio.selftest.mjs` | radio discipline, interrupts, stale drops, national packs with fallback, damage, language resolution |
-| `src/audio/audioEngine.selftest.mjs` | the engine against the shipped manifests: rigs, crews, scenes, weapon layering and delay, HDR trim, sub-bass, reloads, hits, edge cases, destruction, concussion, kill-cam, panning, scope, pause, garage |
+| `src/audio/audioEngine.selftest.mjs` | the engine against the shipped manifests: rigs, crews, scenes, weapon layering and delay, HDR trim, sub-bass, reloads, hits, edge cases, destruction, concussion, our hits (distant bank, own-hit law, no marker), the gunner's calls and misses, kill-cam, panning, scope, aircraft (gunship, enemy and own drones), mode events, pause, garage |
 | `src/audio/lazyAudio.selftest.mjs` | deferred engine and loading tone |
 
 Browser probes (they take the machine-wide GPU capture lock; set
@@ -393,4 +465,9 @@ Browser probes (they take the machine-wide GPU capture lock; set
   reuses the cache, but regenerating without it produces different takes.
 - The renderings were written for each army's register and checked by
   speech-to-text, not by native speakers or veterans; corrections go in
-  `crew-lines.json`.
+  `crew-lines.json`. Two takes remain flagged (a scripted exhale before the
+  Chinese near-miss call, a one-syllable Hebrew "goal"), besides homophones
+  the transcriber spells differently.
+- The mix-balance probe's last run was queued behind other sessions' GPU work
+  and timed out; its thresholds are the ones above, not yet measured on this
+  build.

@@ -1355,7 +1355,7 @@ sounds come from a few metres away); `voiceLines.ts` + `crewRadio.ts` (crew
 radio); `procedural.ts` (synthesized fallbacks and alarms); `mixPolicy.ts`
 (every level, snapshot, HDR, budget and LOD constant).
 
-**Assets.** 347 sound assets (554 variant files, 16 MB WebM/Opus) under
+**Assets.** 352 sound assets (564 variant files, 16.5 MB WebM/Opus) under
 `public/audio/sfx/<group>/`, described by `sfxManifest.generated.ts`
 (duration, channels, rate, loop points, size). Crew radio: 13 language packs
 × 98 lines (one to four takes each, mostly two; ~1.5 MB per pack) under
@@ -1388,6 +1388,11 @@ rifle fire while playing in full itself. A close blast on the occupied hull
 triggers a concussion (muffle and recovery, optional tinnitus; settings
 toggle). Cannons, HE bursts, vehicle explosions and penetrations of the
 occupied hull carry a synthesized sub-bass thump under the samples.
+Hits have no interface marker: the impact at the target (close banks
+crossfading into distant armour-hit banks by range), the target's
+destruction and the gunner's call confirm them, and the listener's own
+rounds are heard landing under a gentler law (`OWN_HIT_FOCUS`: three times
+the reference distance, rolloff at most 0.55, never culled).
 
 **Spatial model.** Distance is measured from the occupied/spectated tank in
 live play (camera pullback must not change range) and from the camera in
@@ -1434,8 +1439,18 @@ crew calls; consumables, shell selection, magazine reloads, dry fire,
 auto-aim lock, armor overlay, minimap zoom, spectate, jump, self-right,
 smoke screens, artillery/flak/AA/flyover atmosphere, killcam:begin / done /
 impact / shot / collision (the replay's debris stretches to its 0.55×
-rate), ui:pause, battle phase edges and results, and thirteen match-mode
-events (zones, flags, waves, goals, respawns, pickups).
+rate), ui:pause, battle phase edges and results, and fifteen match-mode
+events (zones, flags, waves, goals, respawns, pickups, Infected conversions,
+Gun Game weapon changeovers).
+
+**Aircraft.** `aerialRig.ts` plays the Drone and AC-130 aircraft: a moving
+loop with distance law, air absorption, pan and Doppler, or the pilot's or
+crew's own perspective. FPV drones fly as shells, so the listener runtime
+passes the live shell list to the audio update; an enemy drone buzzes where it
+flies, ours spins up on our hull and is heard through its band-limited feed
+until it strikes or is recalled. A gunship is a roster tank pinned to its
+orbit: it never gets a tank rig; the ground hears its turboprops overhead and
+its crew the cabin.
 
 **Crew radio.** National crews: a hull speaks its nation's language
 (en-US, en-GB, de, ru, uk, zh, fr, sv, ja, ko, it, pl, he; commander and crew
@@ -1444,12 +1459,15 @@ in a controlled delivery, never cheering or panicked), or English or the
 interface language by setting. Radio discipline: priority 0–4 with
 interrupts for survival calls, per-line and per-group cooldowns, stale
 drops, a 0.8 s gap between calls, a two-line queue, probability gates on
-routine chatter (reloads, shot results) and at most one spot call per five
-seconds unless several contacts appear at once. Every line goes through an
-intercom chain (a 24 dB/oct 320 Hz–3.4 kHz band, a
-1.9 kHz presence peak, compression, drive, a headset speaker roll-off, a
-static bed and squelch); a damaged radio module narrows the band and adds
-drive, dropouts and interference.
+routine chatter (reloads, allies' kills, autocannon results) and at most one
+spot call per five seconds unless several contacts appear at once. Our
+main-gun results, misses included ("short" by the line's second take when the
+round fell before the enemy it was laid on), are called almost every time,
+half a second after the round lands. Every line goes through an intercom
+chain (a 24 dB/oct 320 Hz–3.4 kHz band, a 1.9 kHz presence peak,
+compression, drive, a headset speaker roll-off, a static bed and squelch); a
+damaged radio module narrows the band and adds drive, dropouts and
+interference.
 
 **Budgets.** Desktop 32 voices with reverb; mobile 16 voices, no convolution
 reverb, assets decoded at 24 kHz with one variant each. The battle set (about
