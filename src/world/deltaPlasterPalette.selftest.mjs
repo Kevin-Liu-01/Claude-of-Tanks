@@ -145,11 +145,13 @@ if (process.argv[2] === '--fixture') {
   assert.deepEqual(folded.physical, control.physical, 'all collision, destruction, grounding and feature records are exact');
   assert.ok(control.rng.length > 5 && control.rng.some(row => row.count > 1000));
   assert.deepEqual(folded.rng, control.rng, 'every production RNG stream and subsequent draws are unchanged');
-  assert.equal(control.materials, 21); assert.equal(folded.materials, 20);
+  // 2026-10-01 (frozen pins retired): the absolute Delta material/texture counts (21/20, 36/35) tracked the whole props
+  // library; the fold's own contract is relative: it removes exactly one material and one albedo texture.
+  assert.equal(folded.materials, control.materials - 1, 'the fold removes exactly one material');
   // The two procedural variants now share identical relief. Folding Delta's
   // third pigment removes only its albedo; the shared normal/surface stay live.
   assert.deepEqual(control.facadeTextures, { map: 2, normalMap: 1, roughnessMap: 1 });
   assert.deepEqual(folded.facadeTextures, { map: 1, normalMap: 1, roughnessMap: 1 });
-  assert.equal(control.textures, 36 /* round 75 item 6 (2026-09-26): the rock tile joins the library (+3) */); assert.equal(folded.textures, 35);
+  assert.equal(folded.textures, control.textures - 1, 'the fold removes exactly one albedo texture');
   console.log('deltaPlasterPalette.selftest: actual production arrays/physics/RNG preserved; Delta reuses two plaster families; other29 maps unchanged');
 }
