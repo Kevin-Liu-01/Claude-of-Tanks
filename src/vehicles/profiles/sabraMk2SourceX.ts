@@ -7,7 +7,7 @@ import { KIT, FITTINGS } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { armorLoft, turretEquipment, openTube, optic, antenna, smokeBank, deckGrille, mirrorX } from './europeSourcePrimitives.ts';
-const {box,cylY,cylZ,cylX}=KIT;
+const {box,cylY,cylZ}=KIT;
 
 /** Source Object_4 has a thin curved crown, folded side edges and a short
  * sloping terminal sheet. These sparse stations are measured dimensions;

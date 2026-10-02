@@ -17,9 +17,9 @@ import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 const {
-  box, cylX, cylY, cylZ, sph, torus, frustum, lathe,
+  box, cylX, cylY, cylZ, sph, torus, lathe,
   liftEye, periscope, headlight, cupola, pintleMG, smokeCluster,
-  stowage, tarpRoll, jerryCan, spareTrackStrip, polyMultiLoft,
+  stowage, tarpRoll, spareTrackStrip, polyMultiLoft,
 } = KIT;
 // §C.1 winding guard on slab. These direct aliases replace the former dynamic
 // Proxy without changing any geometry calls and make the shared UK kit visible
@@ -810,7 +810,6 @@ function addChieftainClosedShoulderMudguards(
 function chieftain5Build(P: UKBuilderPort): void {
   const g = CHIEFTAIN_HULL;
   ukHull(P, g);
-  const { rng } = P;
   // Bow fender WINGS, r4 retable to UNSHIFTED columns. r3's wing tip carried
   // a 0.28-0.30 m band through the LAST side column (3.6753..3.7967) while
   // the ref tip reads 0.214 there — with the 12%-of-height body threshold at

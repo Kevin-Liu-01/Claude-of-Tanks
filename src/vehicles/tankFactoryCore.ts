@@ -140,13 +140,6 @@ interface TankMaterials {
   dispose(): void;
 }
 
-interface TankFittings {
-  spareTrackLinks: (options: object) => THREE.Object3D;
-  antennaWhip: (options: object) => THREE.Object3D;
-  pintleMG: (options: object) => THREE.Object3D;
-  [name: string]: (options: object) => THREE.Object3D;
-}
-
 interface FactoryConfiguration {
   canonicalBuilderPacks: Array<readonly [string, TankBuilderRecord]>;
   profiledBuilders?: TankBuilderRecord;
@@ -1248,7 +1241,6 @@ function isVehicleMaterial(resource: DisposableVehicleResource): resource is THR
   return resource instanceof THREE.Material;
 }
 
-let KIT_FITTINGS: TankFittings | null = null;
 const PROFILED_BUILDER_IDS = new Set<string>();
 
 // PERF (120 Hz): track-link placement and suspension conformance are close-
@@ -2643,7 +2635,7 @@ function sprocketGeo(
   r: number,
   w: number,
   seg: number,
-  teeth = 12,
+  _teeth = 12,
   toothOuter: number | null = null,
   linkM = 0.165,
   ringSpan: number | null = null,
@@ -2913,7 +2905,7 @@ function trackCourseSupports(
   const maxOffset = layers ? Math.max(...layers.flat()) : 0;
   return wheelZs
     .map((z, index) => ({ z, y: (wheelYs?.[index] ?? wheelY) + wheelR + trackTh / 2 - 0.02 }))
-    .filter((point, index) => !layers || layers[index % layers.length].includes(maxOffset));
+    .filter((_point, index) => !layers || layers[index % layers.length].includes(maxOffset));
 }
 
 function orderedTrackEndpoints(
@@ -2977,7 +2969,7 @@ function loadedRunStations(
  * piece into ≤ 0.1 m stations lets the loaded-run fit bend the ramp around the tire. Straight pieces keep the
  * loop length, so shoe counts do not move.
  */
-function subdivideLoadedRamps(points: TrackPoint[], botY: number, ceilingY: number, maxPieceM = 0.1): void {
+function subdivideLoadedRamps(points: TrackPoint[], _botY: number, ceilingY: number, maxPieceM = 0.1): void {
   for (let index = 0; index < points.length; index++) {
     const point = points[index];
     const next = points[(index + 1) % points.length];
@@ -4086,7 +4078,6 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   const sprocketWrap = endpointWrap(sprocket, trackWrapClearanceM(trackTh));
   const idlerWrap = endpointWrap(idler, trackWrapClearanceM(trackTh));
   const bandOuterR = sprocketWrap + trackTh / 2;
-  const idlerBandOuterR = idlerWrap + trackTh / 2;
   // r5 track gate: end drums widened toward the band width — the old 0.7/0.62
   // drums left the outermost interleave row standing PROUD of the sprocket
   // face (the "non-concentric flat camo disc inside the wrap" read) and a
@@ -4742,7 +4733,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     // pads, no vertical breakpoint pile. The unspooled band reads as one
     // crumpled ribbon lying behind the bare wheel run.
     for (let i = 0; i < RIB_N; i++) {
-      const [px, py, pz, t, drape] = ribPts[i];
+      const [px, py, pz, _t, drape] = ribPts[i];
       const nb = ribPts[Math.min(i + 1, RIB_N - 1)];
       const pb = ribPts[Math.max(i - 1, 0)];
       const tanYaw = Math.atan2(nb[0] - pb[0], -(nb[2] - pb[2])) * -1;
@@ -6408,19 +6399,6 @@ export function configureTankFactory({
   const profileEntries = collectProfileBuilderEntries(profiledBuilders);
   requireFactoryFittings(fittings);
   registerConfiguredBuilders(canonicalEntries, profileEntries);
-  const fitting = (name: 'spareTrackLinks' | 'antennaWhip' | 'pintleMG') =>
-    (options: object): THREE.Object3D => {
-      const result = Reflect.apply(fittings[name], undefined, [options]);
-      if (!(result instanceof THREE.Object3D)) {
-        throw new TypeError(`Tank fitting ${name} did not return an Object3D`);
-      }
-      return result;
-    };
-  KIT_FITTINGS = {
-    spareTrackLinks: fitting('spareTrackLinks'),
-    antennaWhip: fitting('antennaWhip'),
-    pintleMG: fitting('pintleMG'),
-  };
   factoryConfigured = true;
 }
 
@@ -8650,9 +8628,7 @@ function* createTankOwnedSteps(
   // stiff 4-corner attitude — squat on accel, dive on braking, settle over ruts.
   // Works in visualPitch/visualRoll space (nose-up positive / right-down
   // positive) and is ADDED to the sim attitude before the root rotation.
-  let suspP = 0, suspR = 0, suspPV = 0, suspRV = 0;
-  let prevSpeed = 0;
-  const SUSP_W = 7.2, SUSP_Z = 0.65;
+  let suspP = 0, suspR = 0;
   // r6 VISIBLE hull dynamics: the sim spring (movement.ts state._susp) is
   // tuned for terrain-contact correctness, but its rock is sub-pixel at
   // gameplay camera distance — no readable squat/dive/roll (r5 critique).
@@ -9071,7 +9047,6 @@ function* createTankOwnedSteps(
           // attitude — the old half-lift hack floated the whole contact patch
           // 12-17 cm during full-speed turns (r1 drive gate evidence).
         }
-        prevSpeed = renderState.speed;
         root.rotation.set(-(renderState.visualPitch + suspP) + flinchP, renderState.yaw,
           renderState.visualRoll + suspR + sway + flinchR, 'YXZ');
       };
@@ -9623,8 +9598,7 @@ function* createTankOwnedSteps(
       mats.burnt.emissiveIntensity = 0.018;
       flinchP = flinchR = flinchPV = flinchRV = 0;
       pendFlinchPV = pendFlinchRV = 0;
-      suspP = suspR = suspPV = suspRV = 0;
-      prevSpeed = 0;
+      suspP = suspR = 0;
       if (P.gear && P.gear.setBroken) {
         P.gear.setBroken('trackL', false);
         P.gear.setBroken('trackR', false);

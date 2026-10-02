@@ -2790,7 +2790,7 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
 }
 
 function buildChallenger2(P: ChallengerBuilderPort): void {
-  const { cylX, cupola, tarpRoll, jerryCan, ammoCan } = KIT;
+  const { cylX, tarpRoll, ammoCan } = KIT;
   const { rng } = P;
   const variant = P.spec.id;
   const isBaseChallenger2 = variant === 'challenger2';
@@ -4376,9 +4376,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
 // ---------------------------------------------------------------------------
 function buildChallenger3(P: ChallengerBuilderPort): void {
   const { box, cylY, cylZ, slab, frustum, headlight, liftEye,
-    periscope, smokeCluster, stowage, jerryCan, tarpRoll,
-    ammoCan, buildGun, buildRunningGear, openRackGrid, torus } = KIT;
-  const { rng } = P;
+    periscope, smokeCluster, buildGun, buildRunningGear, openRackGrid, torus } = KIT;
 
   // ---- running gear (§B6 trapezoid; print seats): 6 Hydrogas wheels on
   // the print's longitudinal run, HIGH-TUCKED idler/sprocket (approach
@@ -4700,7 +4698,7 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
   // left a second turret stacked above the low forward brow.  The connected
   // crown now peaks at 0.68 m and every C3H-relative fitting follows that
   // real roof instead of the deleted superstructure datum.
-  const C3W = 1.41, C3H = 0.68;
+  const C3H = 0.68;
   // Leclerc-method shell: the oracle's largest connected turret component
   // has two distinct height courses.  Its broad flank shoulders live at
   // world 2.11..2.22 while only the inset center roof reaches 2.30..2.40.

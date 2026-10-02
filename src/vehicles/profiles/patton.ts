@@ -3887,8 +3887,8 @@ function pattonFaceCassette(
   rx = 0,
   ry = 0,
   rz = 0,
-  rows = 1,
-  cols = 1,
+  _rows = 1,
+  _cols = 1,
 ): void {
   const { box, cylZ, xform } = KIT;
   P.add(bucket, box(w, h, d), x, y, z, rx, ry, rz);
@@ -4580,7 +4580,7 @@ function applyM60CompactScale(
 }
 
 function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
-  const { box, cylY, cylZ, cylX, sph, xform, liftEye, buildGun, tarpRoll, torus, towCable } = KIT;
+  const { box, cylY, cylZ, cylX, xform, liftEye, buildGun, torus, towCable } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   // SHADED-PARITY r3 item 3 (m60-scoped material lift): 'glass' (near-black
   // metallic) never read as optics on the proof board — the reference pods
@@ -5346,7 +5346,7 @@ function addM60A2ShoulderArmor(P: PattonBuilderPort, cfg: M60A2BuildConfig): voi
   }
 }
 
-function addM60A2HullFurniture(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
+function addM60A2HullFurniture(P: PattonBuilderPort, _cfg: M60A2BuildConfig): void {
   const { box, cylZ } = KIT;
   const slab = orientedSlab;
   // outer skirt lip to 1.78 (ref front 1.85 at 1.75-1.79), then the LOW
@@ -5719,7 +5719,7 @@ function m48RadialRoofSeat(
 }
 
 function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
-  const { box, cylX, cylY, cylZ, sph, buildGun, tarpRoll } = KIT;
+  const { box, cylX, cylY, cylZ, sph, buildGun } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const hull = curveHull(P, cfg.hull);
   const buildM48HullStage1 = (): void => {

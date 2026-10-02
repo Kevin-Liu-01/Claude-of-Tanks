@@ -104,8 +104,8 @@ const variablePolyLoft = KIT.polyLoft as (
 // 2.66..4.58 — a build honoring the 2.40 datum cannot corroborate it; the
 // divergence is certified, §E furniture-band warp queued as recovery.
 export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } = {}) {
-  const { box, cylX, cylY, cylZ, frustum, xform, buildGun, buildRunningGear,
-    headlight, liftEye, periscope, smokeCluster, stowage, ammoCan,
+  const { box, cylX, cylY, cylZ, xform, buildGun, buildRunningGear,
+    liftEye, periscope, smokeCluster, stowage, ammoCan,
     openRackGrid, torus } = KIT;
   const slab = orientedSlab;                                                   // §C.1 winding guard on every mirrored slab
   const { rng } = P;
@@ -1605,8 +1605,8 @@ function buildType10Native2026(
   P: Modern3BuilderPort,
   { compactRightGunnerSight = true }: Type10BuildOptions = {},
 ) {
-  const { box, cylX, cylY, cylZ, frustum, polyMultiLoft, buildGun, buildRunningGear,
-    fenders, headlight, liftEye, periscope, openRackGrid, stowage, ammoCan, torus } = KIT;
+  const { box, cylX, cylY, cylZ, polyMultiLoft, buildGun, buildRunningGear,
+    fenders, liftEye, periscope, openRackGrid, stowage, ammoCan, torus } = KIT;
   const slab = orientedSlab;                                                    // §C.1 winding guard on every mirrored slab
   const { rng } = P;
   // ---- hull core: tub + sponsons + two-plane glacis + stern ---------------
@@ -3668,7 +3668,7 @@ function addBradleySkirtMountCourse(P: Modern3BuilderPort) {
 }
 
 export function bradleyFlankDressing(P: Modern3BuilderPort) {
-  const { box, slab, cylY, polyMultiLoft } = KIT;
+  const { cylY, polyMultiLoft } = KIT;
   // All three Bradley playables share the donor's compact bearing beneath
   // much broader turret furniture. A faceted, turret-owned belly pan and
   // collar close the low side sight-line while preserving traverse and the
@@ -4466,7 +4466,7 @@ function muzzleBore(
 // bmp2 (boat prow + cone) and fv510 (ribbed strakes + manned box turret):
 // the Puma reads as a low wedge wearing a flat robotic turret.
 export function buildPuma(P: Modern3BuilderPort) {
-  const { box, cylX, cylY, cylZ, frustum, buildGun, buildRunningGear,
+  const { box, cylY, cylZ, frustum, buildGun, buildRunningGear,
     liftEye, periscope, stowage, torus } = KIT;
   const slab = orientedSlab;                                                    // §C missing-side law
   const { rng } = P;
@@ -4921,8 +4921,8 @@ function buildType89ProwSide(P: Modern3BuilderPort, side: number) {
 }
 
 function buildType89Hull(P: Modern3BuilderPort) {
-  const { box, cylX, cylY, cylZ, frustum, buildGun, buildRunningGear,
-    liftEye, periscope, stowage, shovelTool, torus, sph, xform } = KIT;
+  const { box, cylY, frustum, buildRunningGear,
+    liftEye, periscope, stowage, shovelTool, sph } = KIT;
   const slab = orientedSlab;                                                    // §C missing-side law
   const { rng } = P;
   const num = P.spec.visual.number || '';
@@ -5091,8 +5091,7 @@ function buildType89Hull(P: Modern3BuilderPort) {
 }
 
 function buildType89Turret(P: Modern3BuilderPort) {
-  const { box, cylX, cylY, cylZ, frustum, buildGun, buildRunningGear,
-    liftEye, periscope, stowage, shovelTool, torus, sph, xform } = KIT;
+  const { box, cylY, cylZ, buildGun, stowage, torus } = KIT;
   const slab = orientedSlab;
   const { rng } = P;
   const num = P.spec.visual.number || '';

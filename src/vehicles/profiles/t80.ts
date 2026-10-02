@@ -781,7 +781,7 @@ function buildT80BV(P: T80BuilderPort): void { buildT80Line(P, 2); }
 
 
 function buildT84(P: T80BuilderPort): void {
-  const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
+  const { box, cylX, cylY, slab, buildRunningGear } = KIT;
   // ---- hull loft: ends at the V-bow face 1.99 (plan center truth); the
   // stern boxes own −4.30..−4.86 because the overhang is NOT full width
   // (plan rear −4.71 center / −4.55 notch / −4.86 corners-only).

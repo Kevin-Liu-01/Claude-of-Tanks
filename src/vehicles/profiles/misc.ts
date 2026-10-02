@@ -354,7 +354,7 @@ function muzzleBore(P: MiscBuilderPort, r: number, zTip: number): void {
 // ---------------------------------------------------------------------------
 export function buildAriete(P: MiscBuilderPort): void {
   const { box, cylX, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
-    fenders, headlight, liftEye, openRackGrid, periscope, towCable, stowage, jerryCan } = KIT;
+    fenders, headlight, liftEye, openRackGrid, periscope, towCable, stowage } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
   // ---- hull tub + sponsons + stepped deck ----
@@ -802,7 +802,7 @@ export function buildAriete(P: MiscBuilderPort): void {
 function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'): void {
   const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, jerryCan, ammoCan,
-    spareTrackStrip, shovelTool } = KIT;
+    shovelTool } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
   const tacticalNumber = variant === 'xlr' ? '104' : variant === 'amx56' ? '056' : '33';
@@ -2147,7 +2147,7 @@ function buildAMX56(P: MiscBuilderPort): void {
 // band 0.159 + evac 0.246 both under the ~0.28 side body cut).
 // ---------------------------------------------------------------------------
 function buildType90HullStructure(P: MiscBuilderPort): void {
-  const { box, cylY, frustum, fenders, headlight, liftEye, periscope, torus } = KIT;
+  const { box, cylY, frustum, headlight, liftEye, periscope, torus } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   // ---- hull tub + sponsons + stepped deck ----
   // WIDTH PROFILE (ref stations, profiles extraction): the hull is WIDE at
@@ -3171,8 +3171,8 @@ function buildType74(P: MiscBuilderPort): void {
 // owner-decreed divergence — the §5.304 type59 class).
 function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
   const {
-    box, cylX, cylY, cylZ, frustum, torus, xform, polyMultiLoft,
-    buildGun, buildRunningGear, headlight, liftEye, periscope,
+    box, cylX, cylY, cylZ, frustum, torus, polyMultiLoft,
+    buildGun, buildRunningGear, liftEye, periscope,
     jerryCan, ammoCan, stowage,
   } = KIT;
   const slab = orientedSlab;                                                   // §C winding guard on every mirrored slab

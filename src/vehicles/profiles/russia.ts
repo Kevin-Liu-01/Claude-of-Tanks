@@ -1107,7 +1107,7 @@ export function ruFlaps(P: RussiaMudguardPort, o: FlapOptions): void {
 // + 100 mm kit. o.gear spreads over the base running-gear config (the Type
 // 59 wheel-gap pattern); defaults are byte-identical to the widened T-62.
 export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOptions = {}): void {
-  const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
+  const { box, cylX, cylZ, slab, buildRunningGear } = KIT;
   const bowService = o.bowService || {};
   // §5.304 OWNER-DECREED WIDEN (2026-08-17, order verbatim: "update our t62
   // obr 1975 10% wider ..."): every LATERAL (x) station below is the
@@ -1715,7 +1715,7 @@ export function liftT64HullAboveTallTrack(P: RussiaOffsetPort, {
 export function domeRailRu(
   P: RussiaGeometryPort,
   rings: readonly DomeRing[],
-  sz: number,
+  _sz: number,
   y: number,
   len: number,
 ): void {

@@ -195,7 +195,6 @@ function bowFascia(P: TankBuilderPort): void {
 }
 function bowDeckPanels(P: TankBuilderPort): void {
     const pitch = Math.atan2(.27694, .96089), c = Math.cos(pitch), s = Math.sin(pitch);
-    const deckY = (z: number) => 1.9667 - (z - 1.8428) * (.5059 / 1.7373);
     // Actual thin upper receiver, with source-width lamp recesses at the nose.
     const deck = sectionSolid([{ z: 1.8428, ring: [[-1.4861, 1.9515], [1.4885, 1.9515], [1.4885, 1.9667], [-1.4861, 1.9667]] },
         { z: 3.3867, ring: [[-1.4861, 1.5023], [1.4885, 1.5023], [1.4885, 1.5175], [-1.4861, 1.5175]] }]);

@@ -361,7 +361,7 @@ function addModernizedT80TurretSuite(
   variant: T80ModernizationVariant,
   dome: DomeProfile,
 ): void {
-  const { box, cylX, cylY, torus } = KIT;
+  const { box, cylY, torus } = KIT;
   const kursk = variant === 'kursk';
   const suite = kursk ? 't80u-kursk-t90-style' : 't80bv-ua-t90-style';
   P.turretG.userData.uaT80ModernizationSuite = suite;
@@ -514,7 +514,7 @@ function addModernizedT80TurretSuite(
 // to the 2.24 line; glacis raft; NSVT right cupola; white-cross-era stowage.
 // ---------------------------------------------------------------------------
 function buildUAT80BV(P: UkraineBuilderPort): void {
-  const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
+  const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
 
   const buildBVHullBase = (): void => {
   // T-80 hull loft to the print lines at the published datum: 1.51 mid
@@ -839,7 +839,7 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
 // crates, rolled snorkel across the bustle, triangle-era stowage.
 // ---------------------------------------------------------------------------
 function buildUAT80UKursk(P: UkraineBuilderPort): void {
-  const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
+  const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
 
   const buildKurskHull = (): void => {
   // T-80U hull: same turbine chassis lines as the T-80 family at the

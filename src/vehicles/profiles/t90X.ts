@@ -118,7 +118,7 @@ function onTurret(P: TankBuilderPort,d: Datum,bucket: string,g: THREE.BufferGeom
   P.addEquipment(bucket,g,x-d.yaw[0],y-d.yaw[1],z-d.yaw[2],rx,ry,rz);
 }
 
-function ring(P: TankBuilderPort,d: Datum,r: number): void {
+function ring(P: TankBuilderPort,_d: Datum,r: number): void {
   P.add('turret',cylY(r,.082,48),0,.029,0);
 }
 
@@ -629,7 +629,7 @@ function mFrontFixtures(P: TankBuilderPort): void {
   }
 }
 
-function classicSensors(P: TankBuilderPort,d: Datum,mirror: number): void {
+function classicSensors(P: TankBuilderPort,d: Datum,_mirror: number): void {
   // Use the original fleet's round red OTShU drums, fins and cheek plates.
   // The narrow carrier overlaps the actual fore casting and emitter stock.
   addShtoraEyes({ mats: P.mats, turretG: P.turretG,
@@ -783,7 +783,7 @@ function classicACradle(P: TankBuilderPort): void {
   weapon.finish();
 }
 
-function classicMasts(P: TankBuilderPort,d: Datum,mirror: number): void {
+function classicMasts(P: TankBuilderPort,d: Datum,_mirror: number): void {
   if(d===V) { classicVMasts(P);return; }
   const x=-.36218,z=-1.00694;
   onTurret(P,d,'turretDetail',KIT.cylY(.0285,.0157,.445,24).scale(1,1,1.205),x,2.2683,z);

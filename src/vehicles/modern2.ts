@@ -1543,7 +1543,7 @@ function buildMBT70BareHull(P: Modern2BuilderPort): void {
 
 function buildMBT70(P: Modern2BuilderPort) {
   const {
-    xform, box, polyMultiLoft, cylY, cylZ, sph, torus,
+    box, polyMultiLoft, cylY, cylZ, sph, torus,
     buildGun, liftEye, periscope,
     smokeCluster,
   } = KIT;

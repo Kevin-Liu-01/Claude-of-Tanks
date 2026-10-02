@@ -277,8 +277,8 @@ function erawaCourse(P: PolishBuilderPort, o: EraCourseOptions): void {
 // strips are subdivided so every ~0.52 m station slab contains real
 // cross-section faces. lerp the two profile rows and emit <=maxLen pieces.
 function segmentedStrip(
-  P: PolishBuilderPort,
-  bucket: string,
+  _P: PolishBuilderPort,
+  _bucket: string,
   row0: StripRow,
   row1: StripRow,
   emit: (row0: StripRow, row1: StripRow) => void,

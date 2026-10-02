@@ -905,7 +905,7 @@ function addKV2TurretRearFurniture(P: SovietHeavyBuilderPort): void {
 }
 
 function addKV2TurretSideHardware(P: SovietHeavyBuilderPort): void {
-  const { box, cylX, cylZ } = KIT;
+  const { box, cylX } = KIT;
 
   // flank grab handles: two rows (ref front band 2.09..2.60 at x ±1.0)
   for (const s of [-1, 1]) for (const hy of [0.86, 0.49]) {

@@ -3990,11 +3990,6 @@ function publishAmericanArmorFinish(P: AbramsBuilderPort): void {
 }
 
 function tejasToneKit(P: AbramsBuilderPort): void {
-  const rehook = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
-    m.onBeforeCompile = vehicleAmbientFloorHook;
-    m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    return m;
-  };
   // Optics: kill the saturated sky-mirror blue slivers (item 9 — commander
   // fence, doghouse/EO windows). Merkava dark-olive lens numbers.
   P.mats.glass.color.setHex(0x393d33);
@@ -6178,7 +6173,6 @@ function buildAbramsX(P: AbramsBuilderPort): void {
   };
   buildAbramsXHullStage4();
   const axHullAdd = P.add;
-  let axKitY = { src: 1.50, dst: 1.413, scale: (2.53 - 1.413) / (2.44 - 1.50) };
   const buildAbramsXHullStage5 = (): void => {
     P.add = (bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) => {
       if (!bucket.startsWith('hull')) return axHullAdd(bucket, geo, x, y, z, rx, ry, rz, s);
@@ -6313,14 +6307,6 @@ function buildAbramsX(P: AbramsBuilderPort): void {
       P.add('turretDark', box(0.113, 0.136, 0.097), side * 1.300,
         2.588 - 1.95, -0.697 + 0.39);
     }
-    // RWS / sensor bridge. The unwarped kit measures y=2.49..3.47; map the
-    // old compressed authored carrier into that measured band while retaining
-    // every x/z station and the independently authored XM914 components.
-    // The legacy bridge is the lower carrier, not the tall receiver.  Its
-    // measured side plateau is 3.25 m; the asymmetric receiver is authored
-    // separately above it below.  Mapping the full bridge to 3.47 made a
-    // false wall across the front silhouette.
-    axKitY = { src: 1.525, dst: 2.49, scale: (3.25 - 2.49) / (2.435 - 1.525) };
     // RWS / sensor bridge (hull mask in the oracle, 3.22-3.46 over ~2.4 m of
     // z): clamped to a 2.44 bridge deck + single mast head at 3.46 (p95
     // budget). The oracle's bridge peak sits at (x ~0.5, z -0.3..-0.5).
@@ -6752,9 +6738,6 @@ function buildAbramsX(P: AbramsBuilderPort): void {
         P.add('hullDark', box(0.05, 0.155, 0.05), side * 1.15, 2.3925, -1.98); // mast (top 2.47 = the warped print's own whip line)
       }
     }
-    // The aft carrier is a separate measured band (world y 1.93..2.53), not
-    // part of the tall RWS pedestal mapping.
-    axKitY = { src: 1.50, dst: 1.93, scale: (2.40 - 1.93) / (2.32 - 1.50) };
     // REAR SENSOR DECK (Order-B retune — the warped print's band B): a
     // raised equipment deck over the hull rear, z -1.37..-2.26, tops 2.31
     // out to x ±1.45 (ref front cols ±1.42-1.47 read 2.25-2.33), standing

@@ -497,7 +497,7 @@ function turretHatches(P: TankBuilderPort, add: EquipmentAdder): void {
   }
 }
 
-function turretPeriscopes(P: TankBuilderPort, add: EquipmentAdder): void {
+function turretPeriscopes(_P: TankBuilderPort, add: EquipmentAdder): void {
   // Source periscope housings have an overhanging sloped hood, separate
   // cheeks and a rear receiver; their full envelope is not a solid box.
   for(const x of [-.2624,.6158]) {
