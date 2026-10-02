@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { digest, requireReview } from './pipeline.mjs';
-import { shorelineSurvey, landscapeSurvey } from './recipes.mjs';
+import { shorelineSurvey, landscapeSurvey, mapScene, sunForCamera, MAP_SUN_MODES } from './recipes.mjs';
 import { mergePublication } from './mergePublication.mjs';
 
 const previous={created:'yesterday',revision:'old',sourceDigest:'old-inputs',review:{notes:'old review'},
@@ -53,4 +53,16 @@ for(let station=0;station<8;station++) {
   assert.ok(Math.max(Math.abs(drive.pos[0]),Math.abs(drive.pos[2]))<512,'boundary view begins inside the playable map');
   assert.ok(Math.max(Math.abs(drive.lookAt[0]),Math.abs(drive.lookAt[2]))>512,'view crosses the boundary instead of only inspecting inland terrain');
 }
-console.log('media production: rejects missing/stale/unreviewed/tampered captures; complete shoreline coverage PASS');
+// media r5: the overview's sun bearing against its camera (looking along +X = bearing 90)
+const lookX={pos:[0,10,0],lookAt:[100,0,0]};
+assert.deepEqual([...MAP_SUN_MODES],['map','back','rim','side','front']);
+assert.equal(sunForCamera(lookX,'map'),null,'map keeps the authored sun');
+assert.deepEqual(sunForCamera(lookX,'back'),{sunAzimuthDeg:90},'backlight faces the camera into the sun');
+assert.deepEqual(sunForCamera(lookX,'front'),{sunAzimuthDeg:270},'front light stands behind the camera');
+assert.deepEqual(sunForCamera({pos:[0,0,0],lookAt:[0,0,-5]},'side'),{sunAzimuthDeg:270});
+assert.throws(()=>sunForCamera(lookX,'noon'),/Unknown sun mode/);
+const shotWorld={mapId:'verdant',config:{shot:{pos:[0,20,-300],look:[0,0,0]}},heightField:{getHeightAt:()=>0}};
+assert.equal(mapScene(shotWorld,'golden').light,undefined,'a default overview has no light block');
+assert.deepEqual(mapScene(shotWorld,'golden','rim').light,{sunAzimuthDeg:32});
+assert.equal(mapScene(shotWorld,'dusk','back').timeOfDay,'dusk');
+console.log('media production: rejects missing/stale/unreviewed/tampered captures; complete shoreline coverage; overview sun bearings PASS');

@@ -433,8 +433,13 @@ export function sampleCameraRail(
   return true;
 }
 
-/** Deterministic local-axis camera impulses; sampling allocates no frame objects. */
-export function sampleCameraCues(cues: readonly CameraCue[], timeMs: number, out: CameraCueSample): boolean {
+/**
+ * Deterministic local-axis camera impulses; sampling allocates no frame objects.
+ * `attackMs` > 0 eases every impulse in over that time: a film camera cannot
+ * teleport, so a jolt that starts mid-shutter must smear rather than expose
+ * two camera poses. Live preview and stills keep the instantaneous kick (0).
+ */
+export function sampleCameraCues(cues: readonly CameraCue[], timeMs: number, out: CameraCueSample, attackMs = 0): boolean {
   out.rightM = 0; out.upM = 0; out.forwardM = 0; out.rollDeg = 0; out.fovKickDeg = 0;
   let active = false;
   for (const cue of cues) {
@@ -443,7 +448,11 @@ export function sampleCameraCues(cues: readonly CameraCue[], timeMs: number, out
     if (elapsedMs > cue.durationMs) continue;
     active = true;
     const progress = elapsedMs / cue.durationMs;
-    const envelope = (1 - progress) * (1 - progress);
+    let envelope = (1 - progress) * (1 - progress);
+    if (attackMs > 0 && elapsedMs < attackMs) {
+      const rise = elapsedMs / attackMs;
+      envelope *= rise * rise * (3 - 2 * rise);
+    }
     const angle = cue.seed * 0.754877666 + elapsedMs * cue.frequencyHz * Math.PI * 0.002;
     const amplitude = cue.amplitudeM * envelope;
     out.rightM += amplitude * (Math.sin(angle) * 0.72 + Math.sin(angle * 2.13 + 0.8) * 0.28);
