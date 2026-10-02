@@ -6107,7 +6107,7 @@ and the composite multiplies the clouds by it again, so the sky light reached th
 the moon reached them once, and the night preset's dark blue `cloudTintHex` (a colour for the painted decks) became
 their albedo.
 
-**The layered sky (`src/engine/cloudWeatherLayers.ts`, drawn by the slab's trace, lit by the same atmosphere).**
+**The layered sky (placed by `src/engine/cloudWeatherLayers.ts`, written in the slab's trace program so the build's GLSL minifier strips its comments with the program's, lit by the same atmosphere).**
 - *Mid-level layer* — altocumulus elements ranked in rows across the upper wind (a mackerel sky), an altostratus veil,
   cirrocumulus ripples, altocumulus lenticularis standing still over the ranges — as a 2.5D sheet: an element's
   thickness from the shape volume's billow octaves on a slowly turning slice (the elements form and fade as they
@@ -6139,11 +6139,19 @@ cirrus in patches and curved by the jet's eddies (the same mean coverage, the st
 front's clear radius (shadows fell under the sky the front keeps open).
 
 **Time of day (`cloudPresets.ts`).** The diurnal cycle of convective cloud: a cumuliform sky (not a deck, a sheet or a
-front's anvils) thins and flattens toward sunset (coverage × 0.8, towers × 0.45, thickness × 0.78) and has mostly gone
-by night (× 0.58, × 0.25, × 0.62); a front's towers live through the night. A map's `sunset` / `night` knobs win over
-the law (most temperate maps raise an altocumulus layer for their sunset). At sunset and night the layer keeps a
-grey-white albedo and lets the light bring the hue (the sunset preset's warm deck tint warmed the low sun twice);
-`diurnal: false` holds an authored constant sky (Mars).
+front's anvils) flattens a little toward sunset (coverage × 0.88, towers × 0.65, thickness × 0.88 — the first cut at
+0.8 / 0.45 / 0.78 emptied the evening sky) and has mostly gone by night (× 0.58, × 0.25, × 0.62); a front's towers
+live through the night. A map's `sunset` / `night` knobs win over the law (most temperate maps raise an altocumulus
+layer for their sunset). At night the layer keeps a grey-white albedo and lets the moonlight bring the hue (the night
+preset's dark blue deck tint made black cut-outs); the sunset keeps the preset's warm deck tint (without it the
+captures showed the front-lit evening cumulus grey-white — the low sun's back-scattered share is small beside the
+sky's light). `diurnal: false` holds an authored constant sky (Mars).
+
+**Captures and drifts (2026-10-02).** The capture tools zero the cloud drifts for a frame-comparable field. The drifts
+wrapped by a positive modulo, so a zeroed drift jumped a whole wrap on the next frame — a seam for every lookup whose
+period does not divide the wrap, above all the boil (the shape volume's vertical period follows the slab's
+thickness): the settled history blended two fields and every captured cloud of the lane ghosted. The drifts now stay
+inside (−w, w), continuous through zero; the boil wraps at 600 km (238 hours at 0.7 m/s).
 
 **Night.** The ambient is dimmed once (the summary's sky intensity undone before the composite applies it), the
 moonlight's hue (the night key light at luminance one) lights the clouds, and a lit town's glow rides on the bases

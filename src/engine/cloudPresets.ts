@@ -154,7 +154,8 @@ export const CLOUD_LAYER_RULES = Object.freeze({
   coveragePower: 1.3,
   coverageBias: 0,
   coverageMin: 0.05,
-  coverageMax: 0.97,
+  // (2026-10-02: 1 — a whiteout's total overcast; at the old 0.97 its deck kept a blue ink-blot hole in the sky west)
+  coverageMax: 1,
   /** sky.ts's overcast rule: cloudOpacity ≥ 0.95, cloudOpacity2 ≥ 0.9, turbidity ≥ 7 */
   overcastOpacity: 0.95,
   overcastOpacity2: 0.9,

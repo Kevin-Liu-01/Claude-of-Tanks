@@ -47,7 +47,7 @@ export default {
   horizon:{...verdant.horizon,amp:1.55,baseHex:0x456a38,rockHex:0x777c70,treeline:.95,haze:.7},
   sky:{...verdant.sky,sunElevationDeg:34,sunAzimuthDeg:235,cloudOpacity:.56,cloudOpacity2:.2,cloudAltM:1250,
     fogDensity:.00028,fogTintHex:0xb3c4b6,sunColorHex:0xfff0d9,sunIntensity:3.5,postExposure:.98},
-  clouds:{regime:'fair-weather-cumulus',baseM:1200,coverage:.28,contrails: 0.3, cirrus: 0.25, sunset: { mid: 'altocumulus', midCoverage: 0.4 }},
+  clouds:{regime:'fair-weather-cumulus',baseM:1200,coverage:.28,contrails: 0.3, cirrus: 0.25},
   minimap:{...verdant.minimap},
   shot:{pos:[-170,45,-170],look:[20,-4,30]},
 } satisfies MapCompositionConfig;
