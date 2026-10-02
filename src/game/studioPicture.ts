@@ -261,14 +261,14 @@ const LOOKS: readonly LookDefinition[] = Object.freeze([
     // low warm sun: amber highlights, soft glowing shoulder, cool shadows, foliage kept olive
     id: 'golden-hour', label: 'Golden hour',
     values: {
-      exposure: 0.06, temperature: 14, tint: 3, contrast: 1.06, toe: 0.18, shoulder: 0.45, vibrance: 0.1,
-      gain: [1.03, 1.0, 0.95],
-      split: { shadowHue: 215, shadowAmount: 0.28, highlightHue: 36, highlightAmount: 0.5, balance: -0.1 },
-      greens: { hue: 4, saturation: 0.72, lightness: -0.06 }, warms: { saturation: 1.15, lightness: 0.04 },
-      blues: { hue: 6, saturation: 0.85 },
-      bloom: 1.35, halation: { amount: 0.3, threshold: 1.4 }, streaks: { amount: 0.1 },
+      exposure: 0.04, temperature: 6, tint: 3, contrast: 1.08, toe: 0.2, shoulder: 0.45, vibrance: 0.08,
+      gain: [1.02, 1.0, 0.97],
+      split: { shadowHue: 215, shadowAmount: 0.3, highlightHue: 34, highlightAmount: 0.38, balance: -0.1 },
+      greens: { hue: 8, saturation: 0.7, lightness: -0.06 }, warms: { saturation: 1.12, lightness: 0.03 },
+      blues: { hue: 6, saturation: 0.88 },
+      bloom: 1.3, halation: { amount: 0.28, threshold: 1.4 }, streaks: { amount: 0.1 },
       vignette: { amount: 0.24, roundness: 0.65, softness: 0.7 }, grain: { amount: 0.08 },
-      sunShafts: { mode: 'on', intensity: 1.25 }, lensFlare: { mode: 'on', intensity: 1.15 },
+      sunShafts: { mode: 'on', intensity: 1.2 }, lensFlare: { mode: 'on', intensity: 1.1 },
     },
   },
   {
@@ -310,12 +310,12 @@ const LOOKS: readonly LookDefinition[] = Object.freeze([
     // cool moonlight: blue night with firelight that still burns orange
     id: 'night-ops', label: 'Night ops',
     values: {
-      exposure: 0.15, temperature: -30, tint: -4, contrast: 1.18, toe: 0.38, shoulder: 0.25, saturation: 0.74, vibrance: 0.08,
+      temperature: -30, tint: -4, contrast: 1.18, toe: 0.38, shoulder: 0.4, saturation: 0.74, vibrance: 0.08,
       lift: [0, 0.004, 0.014],
       split: { shadowHue: 216, shadowAmount: 0.52, highlightHue: 196, highlightAmount: 0.1, balance: 0.15 },
       warms: { saturation: 1.4, lightness: 0.08 }, greens: { hue: 8, saturation: 0.42, lightness: -0.1 }, blues: { saturation: 1.08 },
-      bloom: 1.3, bloomThreshold: 0.9, streaks: { amount: 0.34, threshold: 2.6, length: 0.68 },
-      halation: { amount: 0.2, threshold: 1.5 }, chromaticAberration: 0.12,
+      bloom: 1.05, streaks: { amount: 0.26, threshold: 3, length: 0.65 },
+      halation: { amount: 0.16, threshold: 1.8 }, chromaticAberration: 0.12,
       vignette: { amount: 0.38, roundness: 0.55, softness: 0.6 }, grain: { amount: 0.16, size: 1.1, color: 0.08, response: 0.55 },
     },
   },

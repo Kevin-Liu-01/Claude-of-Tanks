@@ -629,15 +629,20 @@ ${HDR_COMMON}
 uniform float uHalThreshold;
 uniform float uStreakThreshold;
 uniform float uStreakClamp;
+uniform float uHalClamp;
 in vec2 vUv;
 layout( location = 0 ) out vec4 oHal;
 layout( location = 1 ) out vec4 oStreak;
+// Flash-aware: a muzzle-flash or fireball core saturates the glow sources instead of dumping
+// unbounded energy into them, so a night flash cannot white out the frame through its streak.
+vec3 capEnergy( vec3 c, float cap ) {
+  float m = max( max( c.r, c.g ), c.b );
+  return m > cap ? c * ( cap / m ) : c;
+}
 void main() {
   vec3 c = cinemaExposed( vUv );   // bilinear 2×2 box at the half-res texel centre
-  oHal = vec4( cinemaKnee( c, uHalThreshold ), 1.0 );
-  vec3 s = cinemaKnee( c, uStreakThreshold );
-  float sl = max( max( s.r, s.g ), s.b );
-  oStreak = vec4( sl > uStreakClamp ? s * ( uStreakClamp / sl ) : s, 1.0 );
+  oHal = vec4( capEnergy( cinemaKnee( c, uHalThreshold ), uHalClamp ), 1.0 );
+  oStreak = vec4( capEnergy( cinemaKnee( c, uStreakThreshold ), uStreakClamp ), 1.0 );
 }`;
 
 const GAUSS_TAPS = 24;
@@ -742,7 +747,8 @@ class CinemaHdrPass extends Pass {
     this.grade = grade;
     this.needsSwap = true;
     this.extractMaterial = quadMaterial('Cinema.hdrExtract', HDR_EXTRACT, {
-      tColor: { value: null }, ...this.common, uHalThreshold: { value: 1 }, uStreakThreshold: { value: 3 }, uStreakClamp: { value: 40 },
+      tColor: { value: null }, ...this.common, uHalThreshold: { value: 1 }, uStreakThreshold: { value: 3 },
+      uStreakClamp: { value: 8 }, uHalClamp: { value: 6 },
     }, true);
     this.gaussMaterial = quadMaterial('Cinema.halationBlur', HDR_GAUSS, {
       tSrc: { value: null }, uDir: { value: new THREE.Vector2() },
