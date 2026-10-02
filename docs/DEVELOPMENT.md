@@ -345,7 +345,35 @@ Build the private artifact:
 The private build retains local authoring and comparison resources required by
 internal workflows.
 
+### Frozen pins retired; generated ledgers (2026-10-01)
+
+The owner retired frozen-history receipts: a receipt no longer asserts that a past state stays byte-identical
+("original … remains", "the other N maps unchanged", a pinned digest of an old version) or replays historical source
+to reproduce one. Each such receipt was converted to the invariants it protected (contact, seating, closure, budgets,
+registration, determinism checked by a same-run rebuild, A/B against a live opt-out) or retired; the history-replay
+support went with it. Visual change detection lives in generated ledgers that one command re-pins:
+
+- `npm run tank:geometry:check` / `npm run tank:geometry:update` — `docs/references/fleet-geometry-ledger.json`, every
+  playable tank at HIGH and LOW (camo seed 4242, unbatched), digested per rig group (hull, turret, gun, running gear,
+  other). `npm test` verifies every row without a second fleet build: `wheelQuality.selftest` (HIGH) and
+  `gunArticulation.selftest` (LOW) digest the models they already build, and `fleetGeometryLedger.selftest` guards the
+  roster, the wiring and the negative controls (digest and comparison live in `tools/fleet-geometry-digest.mjs`).
+  After an intended geometry or material change, re-pin the moved rows
+  (`npm run tank:geometry:update -- --ids=<ids>`, or the whole fleet without `--ids`), review which tanks and groups
+  moved, and commit the ledger with the change.
+- `npm run fx:textures:bake` rewrites the committed particle atlases and `src/fx/particleAtlases.ledger.json`
+  (`COT_UPDATE_LEDGER=1 node src/fx/particleTextureAssets.selftest.mjs` rewrites the ledger from the committed PNGs).
+- `npm run tank:anatomy:update` and `tank:anatomy:check` keep the combat anatomy ledger as before.
+
+A new receipt asserts properties of the current build. When a change needs a reviewed before/after record, capture it
+(screenshots or a ledger diff) in the change itself rather than pinning bytes in a receipt.
+
 ### Re-basing frozen digests after an intended fleet-wide change (2026-09-22)
+
+2026-10-01: the whole-model digests this section was written for are retired (see "Frozen pins retired; generated
+ledgers" above); whole-tank change detection is the fleet geometry ledger's, re-pinned with
+`npm run tank:geometry:update`. The procedure below still applies to the literal pins that remain (committed asset
+checksums, pixel digests such as `src/world/leafDetail.selftest.mjs`).
 
 Many receipts freeze whole-model or material-inclusive digests of hulls (`tankFactoryStaging`, `sourceXFleet`,
 `sourceX*AuxArmor`, `equipmentDamage`, `wrecks`, the preservation ledgers…). They are change detectors: after an
@@ -421,9 +449,16 @@ Verify fleet ordering:
 
     npm run tank:family:check
 
-Verify the recorded geometry freeze:
+Verify the fleet geometry ledger (Node; `npm test` verifies the same rows inside the wheel-quality and
+gun-articulation sweeps):
 
-    npm run tank:freeze:check
+    npm run tank:geometry:check
+
+Re-pin it after an intended geometry change and review the diff:
+
+    npm run tank:geometry:update -- --ids=<ids>
+
+The browser-era `npm run tank:freeze:check` ledger (`docs/FLEET-FREEZE-CURRENT.json`) is no longer maintained.
 
 Run a targeted release check:
 

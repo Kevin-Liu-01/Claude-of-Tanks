@@ -457,6 +457,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/tankAssets.selftest.mjs',
     'src/vehicles/combatAnatomy.selftest.mjs',
     'src/vehicles/gunArticulation.selftest.mjs',
+    // 2026-10-01: the fleet geometry ledger (one full-fleet HIGH+LOW sweep) replaces the frozen per-receipt geometry pins.
+    'src/vehicles/fleetGeometryLedger.selftest.mjs',
     'tools/media-production/pipeline.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/tool-only-public-files.selftest.mjs',
