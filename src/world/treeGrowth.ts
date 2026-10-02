@@ -30,7 +30,7 @@ type EnvelopeShape = 'cone' | 'ellipsoid' | 'dome' | 'column' | 'umbrella' | 'fl
 /** The card a leaf site takes: a spray seated on a branch, a hanging curtain, a flat tier spray, an upright frond. */
 type SprayHabit = 'spray' | 'hanging' | 'flat' | 'upright' | 'tuft';
 
-export interface GrowthProfile {
+interface GrowthProfile {
   family: 'broadleaf' | 'conifer' | 'birch' | 'dead';
   /** Nominal height (m) at variant 1 and instance scale 1; the variants span ±heightSpread. */
   height: number;
@@ -206,8 +206,8 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
   }),
 });
 
-export interface GrowthNode { x: number; y: number; z: number; r: number; flex: number }
-export interface GrowthBranch {
+interface GrowthNode { x: number; y: number; z: number; r: number; flex: number }
+interface GrowthBranch {
   order: number;
   parent: number;
   nodes: GrowthNode[];
@@ -216,7 +216,7 @@ export interface GrowthBranch {
   /** A broken stub (snags): its tip ends blunt, not tapered to a twig. */
   broken: boolean;
 }
-export interface LeafSite {
+interface LeafSite {
   /** Seat of the spray on its branch (tree space). */
   x: number; y: number; z: number;
   /** The spray's long axis (unit) and its face normal (unit, perpendicular to the axis). */
@@ -230,7 +230,7 @@ export interface LeafSite {
   tile: number;
   bend: number;
 }
-export interface TreeSkeleton {
+interface TreeSkeleton {
   species: GrowthSpecies;
   height: number;
   branches: GrowthBranch[];
@@ -239,7 +239,7 @@ export interface TreeSkeleton {
   crown: { x: number; y: number; z: number; r: number };
 }
 
-export interface GrowthOptions {
+interface GrowthOptions {
   /** 0, 1, 2: the near variants (smaller/younger, typical, larger/older); shapes the height and crown. */
   variant?: number;
   /** Detail tier: 'desktop' or 'mobile' (fewer sprays and side shoots, same silhouette). */
@@ -746,7 +746,7 @@ export const GROWTH_TUBE_SIDES: Readonly<Record<'desktop' | 'mobile', readonly n
   mobile: Object.freeze([9, 5, 3, 3]),
 });
 
-export interface BranchEmitOptions {
+interface BranchEmitOptions {
   tier?: 'desktop' | 'mobile';
   /** Bark tint (linear multipliers) for the lower stem and, when given, the upper stem/limbs. */
   tint: readonly [number, number, number];
@@ -869,7 +869,7 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
   return geometry;
 }
 
-export interface CardEmitOptions {
+interface CardEmitOptions {
   /** The card tint: hue/sat around the species palette (HSL, sRGB), and the lightness the shade law starts from. */
   tint(shade: number, site: LeafSite, rng: Rng): readonly [number, number, number];
   /** Atlas tiles per side (2 = a 2×2 atlas). */
@@ -1027,12 +1027,6 @@ export function emitCrownShadowHull(skeleton: TreeSkeleton, clusters = 8): Float
     ico.dispose();
   }
   return new Float32Array(out);
-}
-
-/** Triangle counts of a grown tree's two geometries (receipts and the lane's budget table). */
-export function growthBudget(wood: THREE.BufferGeometry, cards: THREE.BufferGeometry): { woodTris: number; cardTris: number } {
-  const tris = (g: THREE.BufferGeometry): number => (g.index ? g.index.count : g.getAttribute('position').count) / 3;
-  return { woodTris: tris(wood), cardTris: tris(cards) };
 }
 
 /**
