@@ -24,7 +24,8 @@ function requireIntegration(source) {
   assert.ok(cacheAssignment, 'The material declares its custom shader cache identity');
   // Vista pass (2026-09-19): the desktop tier compiles one vista program per style; `tiles` is the vista's tile
   // set (null on the mobile tier, which keeps the legacy identities below).
-  const cacheKey = new Function('mapId', 'style', 'tiles', `return (${cacheAssignment[1]})();`);
+  // terrain v2 (2026-10-01): the desktop vista is lit when the engine registers it (litRing), with its own identity
+  const cacheKey = new Function('mapId', 'style', 'tiles', 'litRing', `return (${cacheAssignment[1]})();`);
   // round 22 (2026-09-18): the mesa / rolling / escarpment programs gained the near-field surface block
   // (grain, rock bare, relight within 650 m of the camera), so those identities moved one revision; the
   // alpine world-surface program is exempt and keeps its identity
@@ -37,7 +38,8 @@ function requireIntegration(source) {
   for (const [style, expected] of Object.entries(styleKeys)) {
     for (const mapId of ['titan_gorge', 'desert', 'winter', 'coastal', 'verdant']) {
       assert.equal(cacheKey(mapId, style, null), expected, 'Style cache identities remain exact and carry no map-specific branch');
-      assert.equal(cacheKey(mapId, style, {}), 'horizon-ring-vista-r4-' + style, 'The vista program carries one identity per style'); // round 55 (2026-09-24): r4, the below-treeline outcrop term
+      assert.equal(cacheKey(mapId, style, {}, false), 'horizon-ring-vista-r4-' + style, 'The vista program carries one identity per style'); // round 55 (2026-09-24): r4, the below-treeline outcrop term
+      assert.equal(cacheKey(mapId, style, {}, true), 'horizon-ring-vista-lit-r5-' + style, 'The lit vista program carries its own identity per style'); // terrain v2 (2026-10-01)
     }
   }
   assert.doesNotMatch(source, /VERDANT_HORIZON_FRAGMENT|verdant-classic|horizon-verdant-watershed/,

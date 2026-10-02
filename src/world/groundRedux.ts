@@ -72,6 +72,15 @@ export interface GroundReduxProfile {
   midAlbedo: number;
   /** Round 73b: the snow drifts' shaded lee edge (0 off the snow maps). */
   driftEdge: number;
+  /** Terrain v2 (2026-10-01, grounded realism): slope exposure — how strongly a slope turned to the map's sun dries
+   * and pales and a slope turned away holds moisture (0 = off, 1.3 max), and which ecology answers it: `vegetated`
+   * (straw on the sun side, moss on the shade side), `arid` (bleach vs varnish), `snow` (crust vs powder). */
+  exposure: number;
+  climate: 'vegetated' | 'arid' | 'snow';
+  /** Terrain v2: how far the cliff beds leave the world-height sine for the non-periodic bed signal (0..1). */
+  bedIrregularity: number;
+  /** Terrain v2: the cover's own 2–8 m patchwork (paler and darker swards, lag and blown sand, crust and powder), 0..1. */
+  patchwork: number;
   /** The tall-grass biome, or null for a map with no sward (arid, Mars). */
   grass: TallGrassBiome | null;
 }
@@ -139,16 +148,17 @@ const TEMPERATE: Omit<GroundReduxProfile, 'grass'> = {
   heightBlend: 0.6, midDetail: 1.0, scree: 0, glint: 0, snowRipple: 0, snowMacro: 0,
   foldMoist: 0.7, foldAO: 0.5, foldCrest: 0.5, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0, swashLines: 0,
   lip: 0.8, verge: 0.8, rim: 0.7, rimTint: LICHEN, midAlbedo: 1.0, driftEdge: 0,
+  exposure: 0.9, climate: 'vegetated', bedIrregularity: 1, patchwork: 1,
 };
 // the arid maps' worn-sand patches take a gentler transition (the owner's history with black contours on sand): the
 // hard-edge share on Sirocco's chase view went 8 → 22 % at 0.45 with no grass in the frame; the lip stays low there
 const ARID: Omit<GroundReduxProfile, 'grass'> = {
   ...TEMPERATE, heightBlend: 0.3, foldMoist: 0.35, foldAO: 0.55, foldCrest: 0.35,
-  lip: 0.25, verge: 0.5, rim: 0.5, rimTint: DUST, midAlbedo: 0.7,
+  lip: 0.25, verge: 0.5, rim: 0.5, rimTint: DUST, midAlbedo: 0.7, exposure: 0.8, climate: 'arid', patchwork: 0.7,
 };
 const SNOW: Omit<GroundReduxProfile, 'grass'> = {
   ...TEMPERATE, heightBlend: 0.5, glint: 0.9, snowRipple: 0.16, snowMacro: 0.6, foldMoist: 0.22, foldAO: 0.6, foldCrest: 0.3,
-  lip: 0.4, verge: 0.3, rim: 0.5, rimTint: HOAR, midAlbedo: 0.6, driftEdge: 1.0,
+  lip: 0.4, verge: 0.3, rim: 0.5, rimTint: HOAR, midAlbedo: 0.6, driftEdge: 1.0, exposure: 0.7, climate: 'snow', patchwork: 0.6,
 };
 const COAST: Omit<GroundReduxProfile, 'grass'> = {
   ...TEMPERATE, swashPeriodS: 8.5, swashReachM: 4.5, swashStrength: 1.5, swashLines: 1.0,
@@ -190,8 +200,8 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   mangrove: { ...COAST, swashPeriodS: 6.5, swashReachM: 3, swashStrength: 0.9, rimTint: MOSS, grass: reed(0.7, 1.5, 0.85, 0.45) },
   saltwind: { ...COAST, swashPeriodS: 7.5, swashReachM: 4.5, swashStrength: 1.6, scree: 0.2, grass: dune(0.6) },
   reservoir: { ...STILL_WATER, scree: 0.3, grass: meadow(0.8, 0.85, { reedMargin: 0.5 }) },
-  mars: { ...ARID, foldMoist: 0, grass: null },
-  moon: { ...ARID, foldMoist: 0, grass: null },
+  mars: { ...ARID, foldMoist: 0, exposure: 0.5, grass: null },
+  moon: { ...ARID, foldMoist: 0, exposure: 0, grass: null }, // airless regolith: no weathering follows the sun
   cliffbridge: { ...TEMPERATE, scree: .3, grass: meadow(1.0) },
 });
 
@@ -214,6 +224,7 @@ export function groundReduxUniformValues(profile: GroundReduxProfile): {
   reduxSnow: [number, number, number];
   reduxB: [number, number, number, number];
   reduxC: [number, number, number, number];
+  reduxD: [number, number, number, number];
 } {
   const clamp01 = (v: number): number => (Number.isFinite(v) ? Math.min(1.3, Math.max(0, v)) : 0);
   const tint = (v: number): number => (Number.isFinite(v) ? Math.min(1.5, Math.max(0.3, v)) : 1);
@@ -231,6 +242,9 @@ export function groundReduxUniformValues(profile: GroundReduxProfile): {
     reduxSnow: [clamp01(profile.snowMacro), clamp01(profile.snowRipple), 0],
     reduxB: [clamp01(profile.lip), clamp01(profile.verge), clamp01(profile.rim), clamp01(profile.midAlbedo)],
     reduxC: [tint(profile.rimTint?.[0] ?? 1), tint(profile.rimTint?.[1] ?? 1), tint(profile.rimTint?.[2] ?? 1), clamp01(profile.driftEdge)],
+    // terrain v2: exposure strength, the climate class (0 vegetated, 1 arid, 2 snow), the bed irregularity, the patchwork
+    reduxD: [clamp01(profile.exposure ?? 0), profile.climate === 'snow' ? 2 : profile.climate === 'arid' ? 1 : 0,
+      Math.min(1, clamp01(profile.bedIrregularity ?? 0)), Math.min(1, clamp01(profile.patchwork ?? 0))],
   };
 }
 

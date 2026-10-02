@@ -42,11 +42,14 @@ import {
   bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from '../horizonRelief.ts';
 import { buildHorizonFarRange } from '../horizonFarRange.ts';
+import { resolveGroundReduxProfile } from '../groundRedux.ts'; // terrain v2: the ranges answer the battlefield's exposure law
 import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
 import { continuedGroundAt } from '../horizonSurface.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
+  HORIZON_VISTA_LIT_AO_FRAGMENT, HORIZON_VISTA_LIT_EMISSIVE_FRAGMENT, HORIZON_VISTA_LIT_HAZE_FRAGMENT,
+  HORIZON_VISTA_LIT_LIGHT_FRAGMENT, HORIZON_VISTA_LIT_NORMAL_FRAGMENT,
   type VistaGround,
   type HorizonForestSpeciesPalette,
 } from '../horizonVista.ts';
@@ -2298,6 +2301,18 @@ interface HorizonMaterialContext {
   relief: { bake: HorizonReliefBake | null; settings: HorizonReliefSettings };
   /** Round 72: the map's lighting the ring's gains follow (the sky preset's sun and hemisphere, the deck's cover). */
   lighting: HorizonLighting;
+  /** Terrain v2 (2026-10-01): the engine's cascaded-shadow registration; given (the desktop vista), the ranges are a
+   * lit standard material in the scene's own light. Absent (receipts, the mobile tier) the ring stays unlit. */
+  lit?: HorizonLitSetup | null;
+}
+
+/** Terrain v2: engineCtx.setupShadowMaterial's shape (it replaces onBeforeCompile; the ring's hook rides as its second argument). */
+type HorizonLitSetup = (material: THREE.Material, hook: (shader: Parameters<THREE.Material['onBeforeCompile']>[0]) => void) => void;
+
+/** Terrain v2: the lit-ring registration an engine context offers (null without one: receipts and headless builds). */
+function litSetupOf(engineCtx: object | null): HorizonLitSetup | null {
+  const setup = (engineCtx as { setupShadowMaterial?: (m: THREE.Material, h: (shader: Parameters<THREE.Material['onBeforeCompile']>[0]) => void) => unknown } | null)?.setupShadowMaterial;
+  return typeof setup === 'function' ? (material, hook) => { setup.call(engineCtx, material, hook); } : null;
 }
 
 /** Round 72: the vista's sun and sky gains, and the far range's, from the map's own lighting. */
@@ -2426,17 +2441,23 @@ float horizonWaterVariation = 0.0;
 
 function* buildHorizonMaterialSteps({
   noise: gnoi, banding, snowline, treeline, grainAmp, style, seed, mapId,
-  sun, maxHeight: maxH, retainedTextures, base, forest, snow, rock, fog, haze, vista, ground, bareRock, outcrops, relief, lighting,
-}: HorizonMaterialContext): Generator<void, THREE.MeshBasicMaterial, void> {
+  sun, maxHeight: maxH, retainedTextures, base, forest, snow, rock, fog, haze, vista, ground, bareRock, outcrops, relief, lighting, lit,
+}: HorizonMaterialContext): Generator<void, THREE.MeshBasicMaterial | THREE.MeshStandardMaterial, void> {
   const [lx, ly, lz] = sun;
   const gullyAmp = style === 'alpine' ? 0.06 : style === 'mesa' ? 0.14 : 0.0;
   const detailTex = yield* makeHorizonTextureSteps(gnoi, {
     banding, snowline, treeline, grainAmp, gullyAmp, coolRock: style === 'alpine',
     mesaSurface: style === 'mesa', toneOnly: vista,
   });
-  const mat = new THREE.MeshBasicMaterial({
-    vertexColors: true, side: THREE.DoubleSide, map: detailTex,
-  }); // unlit; scene fog still applies
+  // Terrain v2 (2026-10-01, grounded realism): the desktop vista is LIT — a standard material registered with the
+  // cascades, so the ranges take the battlefield's own sun, sky light, overcast dome and exposure under any light model
+  // (the lighting lane's physical rig included) instead of gains fitted to the preset's legacy sun and hemisphere; the
+  // atmosphere runtime's night dim skips it (it dims unlit horizons only) because the night light already darkens it.
+  const litRing = vista && !!lit;
+  const mat: THREE.MeshBasicMaterial | THREE.MeshStandardMaterial = litRing
+    ? new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, map: detailTex, roughness: 1, metalness: 0 })
+    : new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, map: detailTex }); // unlit; scene fog still applies
+  if (litRing) mat.defines = { ...(mat.defines ?? {}), HORIZON_VISTA_LIT: '' };
   mat.color.setRGB(1.61, 1.61, 1.61);
   // r8: the alpine wall's product (0.62-gray texture x 1.61 recenter x snow
   // vertex colors x sun-side relight) landed at 0.9-1.4 LINEAR — squarely on
@@ -2552,6 +2573,11 @@ function* buildHorizonMaterialSteps({
       uVSkyTint: { value: skyTint },
       uVSparkle: { value: snowline <= 1 ? 0.6 : 0 },
       uVDebug: { value: 0 },
+      // terrain v2 (2026-10-01): the battlefield's exposure law and bed irregularity on the ranges (groundRedux.ts)
+      uVExposure: { value: new THREE.Vector2(
+        Math.min(1.3, Math.max(0, resolveGroundReduxProfile(mapId).exposure ?? 0)),
+        resolveGroundReduxProfile(mapId).climate === 'snow' ? 2 : resolveGroundReduxProfile(mapId).climate === 'arid' ? 1 : 0) },
+      uVBedIrregular: { value: Math.min(1, Math.max(0, resolveGroundReduxProfile(mapId).bedIrregularity ?? 0)) },
       // round 72: the layer's cloud shadow fields, bound per frame by the ring's onBeforeRender (off until bound)
       ...createHorizonCloudShadeUniforms(),
       // round 29: arid rings sample the sand tile as their ground layer
@@ -2596,7 +2622,7 @@ function* buildHorizonMaterialSteps({
     mat.userData.horizonDetailNoise = detailNoise;
     mat.userData.horizonDetail2 = detail2; // round 72: the far range's mottle reads the same tile
     if (tiles) mat.userData.horizonVista = { uniforms: vistaUniforms, base: base.clone(), canopyMean: tiles.canopyMean };
-    mat.onBeforeCompile = (shader) => {
+    const vistaHook = (shader: Parameters<THREE.Material['onBeforeCompile']>[0]): void => {
       Object.assign(shader.uniforms, vistaUniforms);
       shader.uniforms.uNearDetail = { value: nearDetail };
       shader.uniforms.uNearRel = { value: nearRel };
@@ -2723,15 +2749,30 @@ function* buildHorizonMaterialSteps({
               diffuseColor.rgb * vec3(0.90, 0.94, 1.07), max(-ndl, 0.0) * 0.32 * farAtt);
           }
         }`)
-        .replace('#include <color_fragment>', (tiles || style === 'alpine' ? '' : HORIZON_NEAR_DETAIL_FRAGMENT) + /* glsl */`#include <color_fragment>` + (tiles ? HORIZON_VISTA_HAZE_FRAGMENT : '') + /* glsl */`
+        .replace('#include <color_fragment>', (tiles || style === 'alpine' ? '' : HORIZON_NEAR_DETAIL_FRAGMENT) + /* glsl */`#include <color_fragment>` + (tiles && !litRing ? HORIZON_VISTA_HAZE_FRAGMENT : '') + /* glsl */`
         // Sea is a sky-reflecting continuation of the bay, not a zero-height
         // forest. Reuse the existing two detail samples as very quiet wave
         // breakup, replacing the degenerate altitude-clamped base texture.
         diffuseColor.rgb = mix(diffuseColor.rgb,
           diffuse * vColor.rgb * (1.0 + horizonWaterVariation), horizonMarine);`);
+      if (litRing) {
+        // terrain v2: the lit ring's stages (horizonVista.ts) — the relieved normal, the baked sun visibility and
+        // occlusion on three's own light terms, the glints as emission, and the haze on the final radiance
+        const stage = (anchor: string, text: string, after = true): void => {
+          if (!shader.fragmentShader.includes(anchor)) throw new Error(`horizon lit ring: shader anchor missing: ${anchor}`);
+          shader.fragmentShader = shader.fragmentShader.replace(anchor, after ? `${anchor}\n${text}` : `${text}\n${anchor}`);
+        };
+        shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_maps>', HORIZON_VISTA_LIT_NORMAL_FRAGMENT);
+        stage('#include <lights_fragment_end>', HORIZON_VISTA_LIT_LIGHT_FRAGMENT);
+        stage('#include <aomap_fragment>', HORIZON_VISTA_LIT_AO_FRAGMENT);
+        stage('#include <emissivemap_fragment>', HORIZON_VISTA_LIT_EMISSIVE_FRAGMENT);
+        stage('#include <fog_fragment>', HORIZON_VISTA_LIT_HAZE_FRAGMENT, false);
+      }
     };
+    if (litRing) lit!(mat, vistaHook);
+    else mat.onBeforeCompile = vistaHook;
     // round 55 (2026-09-24): r3 → r4, the below-treeline outcrop term joined the vista program
-    mat.customProgramCacheKey = () => tiles ? 'horizon-ring-vista-r4-' + style : style === 'mesa' ? 'horizon-ring-mesa-surface-r3'
+    mat.customProgramCacheKey = () => tiles ? (litRing ? 'horizon-ring-vista-lit-r5-' : 'horizon-ring-vista-r4-') + style : style === 'mesa' ? 'horizon-ring-mesa-surface-r3'
       : (style === 'alpine' ? 'horizon-ring-world-surface-r3-' : 'horizon-ring-relief-r3-') + style;
   }
   return mat;
@@ -3312,6 +3353,8 @@ export function* buildHorizonRingSteps(
     sun: [lx, ly, lz], maxHeight: maxH, retainedTextures,
     base, forest: forestC, snow: snowC, rock: rockC, fog: fogC, haze, vista, ground: vistaGround, bareRock, outcrops,
     relief: { bake: reliefBake, settings: reliefSettings }, lighting,
+    // terrain v2: the engine's cascade registration lights the desktop vista (receipts pass no engine and stay unlit)
+    lit: litSetupOf(_engineCtx),
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'horizon-ring';
@@ -3355,6 +3398,7 @@ export function* buildHorizonRingSteps(
       treeline: treeline > 0 && treeline < 1.5 ? treeline : 0, seaOpenings, nearMaxHeight: maxH,
       nearEdge: { columns: HORIZON_SEGMENTS, positions: pos, heights: hs },
       detailTexture: mat.userData.horizonDetail2 as THREE.Texture | undefined,
+      lit: litSetupOf(_engineCtx), // terrain v2: the far range in the scene's own light, like the ring in front of it
     });
     if (farRange) mesh.add(farRange);
   }

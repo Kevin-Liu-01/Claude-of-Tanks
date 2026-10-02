@@ -328,6 +328,9 @@ uniform float uVOutcrop;  // round 55: gneiss knobs and scree through the turf o
 uniform sampler2D uVRelief; uniform vec2 uVReliefR; uniform float uVReliefGrad; uniform float uVReliefAmp;
 uniform float uVAoStrength; uniform float uVShadow; uniform vec3 uVSkyTint; uniform float uVSparkle;
 uniform float uVDebug; // QA: 1 the relief gradient, 2 the occlusion, 3 the sun visibility, 4 the relieved normal's y, 5 the cloud shade, 6 the material weights
+// Terrain v2 (2026-10-01, grounded realism): the battlefield's slope exposure carried onto the ranges (strength, climate
+// class 0 vegetated / 1 arid / 2 snow — groundRedux.ts) and the non-periodic bedding (0 = the world-height sines)
+uniform vec2 uVExposure; uniform float uVBedIrregular;
 ${HORIZON_CLOUD_SHADE_UNIFORM_DECLARATIONS}
 // round 72c (perf, integrator: Whiteout's ring over the +0.6 ms line — 4.4 x the pixels of the rolling ring it replaced):
 // the tiles' far LOD. Inside 880 m of the camera every tile is the world triplanar projection (three fetches); past
@@ -336,6 +339,12 @@ ${HORIZON_CLOUD_SHADE_UNIFORM_DECLARATIONS}
 // height) — with a 120 m blend between. The two finest noise fields (45 m knobs, 12 m grain: under a pixel at 1 km)
 // are dropped past it as well. Twenty-seven fetches become fifteen on the far rows.
 float gLodFar = 0.0; vec3 gP = vec3(0.0); vec3 gAw = vec3(0.0); float gCylU = 0.0;
+// Terrain v2 (2026-10-01, grounded realism — the lit ring): with HORIZON_VISTA_LIT the ranges are a lit standard
+// material in the scene's own light (the sun, the sky's image-based light, the overcast dome, the exposure — whatever
+// light model the engine runs, the battlefield's), so the map edge and the mountains behind it share one light. The
+// fragment then hands three its world normal, the baked sun visibility (ridge shadows x cloud shade) for the direct
+// light, the occlusion for the indirect light and the snow glints as emission, instead of shading by its own gains.
+vec3 gVistaN = vec3(0.0, 1.0, 0.0); float gVistaSun = 1.0; float gVistaAo = 1.0; vec3 gVistaGlint = vec3(0.0);
 vec4 vTile(sampler2D tex, float s, vec2 o, float cyl) {
   vec4 flatTap = texture2D(tex, gP.xz * s + o);
   if (gLodFar > 0.999) return flatTap * gAw.y + texture2D(tex, vec2(gCylU * cyl, gP.y * s) + o + vec2(0.37, 0.11)) * (1.0 - gAw.y);
@@ -458,6 +467,14 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   // stretches of wall carry the same parallel bands; a second thin-bed term breaks each bed into laminae
   float bedPhase = P.y * 0.42 + nB * 9.0 + nC * 2.4;
   float bed = sin(bedPhase) * 0.6 + sin(P.y * 0.13 + nC * 5.0) * 0.4;
+  // terrain v2 (the beds read as a printed ladder on every mesa wall): two lines of the detail noise along the world
+  // height — packages of 12–96 m over beds of 4–30 m, offset along the wall by the broad fields — so the beds run in
+  // unequal thicknesses and no two stretches of wall share a sequence
+  if (uVBedIrregular > 0.001) {
+    float bedI = (texture2D(uDetail2, vec2(P.y * 0.0042 + nB * 0.9, nC * 0.35 + 0.61)).r - 0.5) * 3.0
+               + (texture2D(uDetail2, vec2(P.y * 0.0013 + nC * 0.4, nB * 0.27 + 0.13)).r - 0.5) * 1.6;
+    bed = mix(bed, clamp(bedI, -1.0, 1.0), uVBedIrregular);
+  }
   float lamina = sin(P.y * 1.9 + nD * 3.0 + nE * 1.2);
   float bedW = uVBanding * max(wall, 0.5 * ledgeSlope * rockW);
   float shelf = smoothstep(0.30, 0.80, bed);                       // the lit top of a bed
@@ -511,6 +528,17 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
     vec3 snowCol = mix(uVSnowColor * snowMod, uVRockTint * 1.15 * snowMod, scour * 0.55);
     col = mix(col, snowCol, snowW * (1.0 - rockW * mix(0.45, 0.85, uVBareRock))); // round 49: scoured ribs stay bare
   }
+  // Terrain v2 (2026-10-01, grounded realism): exposure, as on the battlefield (terrain.ts) — a range's sun side dries
+  // and pales (straw, bleached rock, crusted snow), its shaded side holds moisture (darker, greener; varnish; powder),
+  // so the largest colour pattern of the ranges follows their relief under the map's own sun
+  if (uVExposure.x > 0.001) {
+    float tiltE = length(n0.xz);
+    float facingE = tiltE > 1e-4 ? dot(n0.xz / tiltE, normalize(uSunDirW.xz + vec2(1e-5))) : 0.0;
+    float expoE = facingE * smoothstep(0.02, 0.26, slope) * uVExposure.x * (1.0 - horizonMarine);
+    vec3 sunMulE = uVExposure.y < 0.5 ? vec3(1.07, 1.035, 0.89) : uVExposure.y < 1.5 ? vec3(1.06, 1.045, 1.01) : vec3(0.965, 0.975, 0.99);
+    vec3 shadeMulE = uVExposure.y < 0.5 ? vec3(0.88, 0.96, 0.90) : uVExposure.y < 1.5 ? vec3(0.91, 0.88, 0.86) : vec3(1.025, 1.025, 1.03);
+    col *= mix(vec3(1.0), sunMulE, max(expoE, 0.0)) * mix(vec3(1.0), shadeMulE, max(-expoE, 0.0));
+  }
   // Round 29: the near skirt used to blur into a 12 m-per-feature wall beside a battlefield textured at
   // centimetres (the vista replaced the round-22 near overlay). Two finer world fields and the ground tile at a
   // 2.4 m repeat fade in inside 380 m and are gone by the first ridge, so the texture no longer "just stops".
@@ -528,7 +556,13 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   // Round 35: the height field is the wall's own structure — bed shelves step out, seams and gullies cut in, knobs
   // and grain sit on top — and the broad terms keep shading the ranges past the fine-grain fade
   float hLedge = smoothstep(-0.25, 0.55, bed) * bedW;
-  float hb = (hLedge * 0.9 - gully * 0.9 - seam * 0.5) * rockW * macroFade
+  // terrain v2 (2026-10-01, grounded realism — "the mesa and canyon walls read as flat cardboard"): buttresses and
+  // alcoves. An eroded wall is a row of spurs and recesses some 20–60 m across that run the height of the face; one
+  // detail-noise lookup in the ring's own arc frame (24 tiles around: 33 m spurs at a kilometre) stretched tall (the
+  // world height at a 1.7 km tile), wandered by the broad fields, gives every wall lit and shaded flanks under the sun
+  float buttress = 0.0;
+  if (wall > 0.01) buttress = (texture2D(uDetail2, vec2(gCylU * 24.0 + nB * 0.35, P.y * 0.0006 + nC * 0.25) + vec2(0.29, 0.83)).r - 0.5) * 2.0;
+  float hb = (hLedge * 0.9 - gully * 0.9 - seam * 0.5 + buttress * 1.6 * wall) * rockW * macroFade
     + ((nD * 0.55 + nE * 0.45) * (0.35 + 0.65 * rockW + 0.4 * forestW)
        + (nE * 0.6 + nD * 0.3) * talusW
        + (nF * 0.35 + nG * 0.25) * nearW * (0.4 + 0.6 * rockW)) * fineW;
@@ -553,10 +587,19 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   // a ridge's cast shadow takes 70 % of the ambient (the sky it sees is the half away from the sun), so the lit and
   // shaded sides of a range stand a stop apart before the haze
   float shadeSide = max(turned, 1.0 - sunVis);
+#ifdef HORIZON_VISTA_LIT
+  // the lit ring: albedo out, the light terms to three's own lighting (the stand self-shadow is the canopy's own
+  // occlusion, the cavity the folds' occlusion)
+  vec3 lit = col;
+  gVistaN = n; gVistaSun = sunVis; gVistaAo = ao * cavity * (1.0 - forestW * 0.10);
+#else
   vec3 lit = col * (uVAmbient * sky * ao * skyLight * (1.0 - 0.30 * shadeSide) + uVSunGain * sunL * sunVis * (0.6 + 0.4 * ao)) * cavity;
+#endif
+#ifndef HORIZON_VISTA_LIT
   lit = mix(lit, lit * vec3(0.92, 0.95, 1.06), max(-ndl, 0.0) * 0.2);
   // canopy self-shadow: stands darken on their shaded side a little more than open ground
   lit *= 1.0 - forestW * 0.10 * (1.0 - sunL);
+#endif
   // round 72: sun glitter on the snowfields at a grazing sun — a sparse world-anchored hash picks the facets (a
   // 3 m cell, one in sixty), the sun's mirror direction against the eye lights them, only where the detail fields
   // still resolve (detailW, gone by 1.5 km) and the sun reaches; a shimmer of pale points, never a speckle field
@@ -564,7 +607,11 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
     vec3 viewDir = normalize(cameraPosition - P);
     float glintH = fract(sin(dot(floor(P.xz * 0.33) + floor(P.y * 0.33), vec2(12.9898, 78.233))) * 43758.5453);
     float glint = step(0.984, glintH) * pow(max(dot(reflect(-uSunDirW, n), viewDir), 0.0), 32.0);
+#ifdef HORIZON_VISTA_LIT
+    gVistaGlint = uVSnowColor * glint * snowW * uVSparkle * detailW * sunVis * 1.6 * uVSunGain;
+#else
     lit += uVSnowColor * glint * snowW * uVSparkle * detailW * sunVis * 1.6;
+#endif
   }
   // Round 29 (2026-09-20): the tints above are ABSOLUTE linear colours (the map's own ground albedo mean, rock,
   // forest and snow colours), so the baked biome tone and the vertex colour — both base-hued — are divided back
@@ -576,7 +623,12 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   // battle's horizon by scaling this material's colour (battleAtmosphereRuntime dimHorizon, ×0.20). The absolute
   // colours above must carry that scale — read it as the ratio of the live diffuse to the authored day value.
   horizonDim = diffuse.r / max(uVDayDiffuse, 0.01);
+#ifdef HORIZON_VISTA_LIT
+  // the lit ring: an albedo (no altitude shade, no night dim — the scene's light does both)
+  diffuseColor.rgb = lit / max(vColor.rgb, vec3(0.02));
+#else
   diffuseColor.rgb = lit * vistaAltShade * horizonDim / max(vColor.rgb, vec3(0.02));
+#endif
   horizonWaterVariation = nC * 0.008 + nB * 0.015;
   // Round 40 (2026-09-22, AAA program check 13 "water at the edge: same level and shader beyond"): a sea aperture is
   // water, not ground. The absolute ground/rock/forest tints above replaced the vertex bake for every face, so the
@@ -612,6 +664,28 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
 // carries the same live dim as the surface colour.
 export const HORIZON_VISTA_HAZE_FRAGMENT = /* glsl */`
 diffuseColor.rgb = mix(diffuseColor.rgb, uVFogTint * horizonDim, vistaHaze);`;
+
+/**
+ * Terrain v2 (2026-10-01, the lit ring): the stages a lit vista adds to three's standard program. The normal stage
+ * takes the vista's relieved world normal; after the lights, the baked sun visibility gates the direct light and the
+ * occlusion the indirect light; the glints are emission; the vista's own haze is scattered light, so it mixes the
+ * final radiance toward the live fog colour (the scene's own horizon, which follows day and night) instead of the
+ * albedo toward the authored day tint.
+ */
+export const HORIZON_VISTA_LIT_NORMAL_FRAGMENT = /* glsl */`
+normal = normalize((viewMatrix * vec4(gVistaN, 0.0)).xyz);`;
+export const HORIZON_VISTA_LIT_LIGHT_FRAGMENT = /* glsl */`
+reflectedLight.directDiffuse *= gVistaSun; reflectedLight.directSpecular *= gVistaSun;`;
+export const HORIZON_VISTA_LIT_AO_FRAGMENT = /* glsl */`
+reflectedLight.indirectDiffuse *= gVistaAo; reflectedLight.indirectSpecular *= gVistaAo;`;
+export const HORIZON_VISTA_LIT_EMISSIVE_FRAGMENT = /* glsl */`
+totalEmissiveRadiance += gVistaGlint;`;
+export const HORIZON_VISTA_LIT_HAZE_FRAGMENT = /* glsl */`
+#ifdef USE_FOG
+gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, vistaHaze);
+#else
+gl_FragColor.rgb = mix(gl_FragColor.rgb, uVFogTint, vistaHaze);
+#endif`;
 
 // ---------------------------------------------------------------------------
 // ring forest
