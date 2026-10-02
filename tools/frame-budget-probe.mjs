@@ -36,6 +36,7 @@ import {
 } from './map-probe-runtime.mjs';
 import { selectMapViews } from './map-view-probe-views.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
+import { captureLuminance, encodeLum } from './frame-capture-compare.mjs';
 import {
   FRAME_PASS_TIMER_PROTOCOL, MID_RANGE_PROXIES, installFramePassTimer, pairDeltas, projectFrameMs, proxyRatios,
   summarizePassFrames,
@@ -478,7 +479,10 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }) {
         const after = await page.evaluate(graphicsState);
         const suffix = scale === null ? '' : `-s${Math.round(scale * 100)}`;
         if (options.shots) {
-          await page.screenshot({ path: path.join(options.out, `${options.tag}-${slot.key}-${viewport}-${view}${suffix}.png`) });
+          const stem = path.join(options.out, `${options.tag}-${slot.key}-${viewport}-${view}${suffix}`);
+          await page.screenshot({ path: `${stem}.png` });
+          // the pose once more as luminance, rendered and read in one task (tools/frame-capture-compare.mjs)
+          writeFileSync(`${stem}.lum`, encodeLum(await page.evaluate(captureLuminance)));
         }
         const emulation = options.emulate ? await page.evaluate(() => ({ ...window.__FBP_EMULATOR?.state })) : null;
         samples.push({ viewport, view: `${view}${suffix}`, scale, pose, graphics, graphicsAfter: after, emulation, ...measured });

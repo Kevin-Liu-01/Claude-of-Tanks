@@ -7,6 +7,7 @@ import {
   summarizePassFrames,
 } from './frame-pass-timer.mjs';
 import { acquireProbeLocks, buildFrameReport, parseFrameProbeArgs, pinnedOpponents } from './frame-budget-probe.mjs';
+import { compareCaptureSet, crc32, decodeLum, encodeLum, encodeRgbPng } from './frame-capture-compare.mjs';
 
 // ---------------------------------------------------------------------------------------------- fake page
 
@@ -219,6 +220,26 @@ assert.equal(stats([]).med, null);
   assert.deepEqual(t.deltas.gpuFrame.deltas, [-2, -2.5]);
   assert.deepEqual(t.deltas.steps.shadow.gpu.deltas, [-3, -3.2]);
   assert.equal(t.byLabel.off.n, 2);
+}
+
+// cross-build captures: a build difference counts only where both builds reproduce themselves across two loads
+{
+  const a1 = Uint8Array.from([10, 10, 50, 90, 200, 7]);
+  const a2 = Uint8Array.from([10, 10, 58, 90, 200, 7]); // pixel 2 animates (the cloud history, water)
+  const b1 = Uint8Array.from([10, 20, 70, 90, 196, 7]);
+  const b2 = Uint8Array.from([10, 20, 51, 91, 196, 9]); // pixel 5 differs within B: excluded
+  const r = compareCaptureSet(a1, a2, b1, b2, 1);
+  assert.equal(r.floorA, 1); assert.equal(r.floorB, 2);
+  assert.equal(r.stable, 4, 'pixels 0, 1, 3, 4 reproduce in both builds');
+  assert.equal(r.changed, 2, 'pixel 1 (brighter) and pixel 4 (darker) are the change; pixel 3 moved one level only');
+  assert.equal(r.darker, 1); assert.equal(r.maxChanged, 10);
+  assert.deepEqual([...r.classes], [0, 3, 1, 0, 2, 1]);
+  const lum = decodeLum(encodeLum({ width: 3, height: 2, b64: Buffer.from(a1).toString('base64') }));
+  assert.equal(lum.width, 3); assert.deepEqual([...lum.data], [...a1]);
+  assert.equal(crc32(Buffer.from('IEND', 'ascii')), 0xae426082, 'PNG chunk CRC');
+  const png = encodeRgbPng(2, 1, Uint8Array.from([255, 0, 0, 0, 255, 0]));
+  assert.deepEqual([...png.subarray(0, 8)], [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  assert.equal(png.readUInt32BE(16), 2, 'IHDR width');
 }
 
 console.log('frame-budget probe: per-pass timer label algebra, whole-frame check, restore, pair deltas, roster pin, lock order, projection PASS');
