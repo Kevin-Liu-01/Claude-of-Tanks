@@ -460,6 +460,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/gunArticulation.selftest.mjs',
     'tools/media-production/pipeline.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
+    'tools/tool-only-public-files.selftest.mjs',
     'server/processShutdown.selftest.mjs',
     'tools/local-import-integrity.selftest.mjs',
     'tools/telemetry-report.selftest.mjs',
