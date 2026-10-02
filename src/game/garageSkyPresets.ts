@@ -30,7 +30,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     cloudAltM: 320, cloudHazeK: 0.00013, cloudUvM: 2200,
     sunIntensity: 1.35, sunColorHex: 0xdfe7f2, hemiIntensity: 0.74,
     postExposure: 0.86, // round 48: mirrors winter.ts (owner-approved round-44 snow re-grade)
-    lighting: { groundAlbedoHex: 0xe5e7ec, warmth: 0.25 }, // 2026-10-01: mirrors winter.sky (the grounded light model's levers)
+    lighting: { groundAlbedoHex: 0xe5e7ec, warmth: 0.25, exposureEV: -0.25 }, // 2026-10-01: mirrors winter.sky (the grounded light model's levers)
   }),
   urban: Object.freeze({
     sunElevationDeg: 36, sunAzimuthDeg: 115,
@@ -72,7 +72,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     cloudOpacity: 1.12, cloudOpacity2: 0.82, cloudTintHex: 0xe8eef3,
     sunIntensity: 4.2, sunColorHex: 0xf8eedb, hemiIntensity: 0.34, // lighting 2026-09-13: mirrors alpine.sky
     postExposure: 0.95,
-    lighting: { groundAlbedoHex: 0x9ea0a2 }, // 2026-10-01: mirrors alpine.sky (the grounded light model's levers)
+    lighting: { groundAlbedoHex: 0x9ea0a2, exposureEV: -0.25 }, // 2026-10-01: mirrors alpine.sky (the grounded light model's levers)
   }),
   badlands: Object.freeze({
     sunElevationDeg: 30, sunAzimuthDeg: 116,

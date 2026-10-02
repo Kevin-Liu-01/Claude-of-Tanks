@@ -353,10 +353,17 @@ const AERIAL_SCATTER_CEILING = 0.55;
 // out) so a range keeps half its own colour and contrast, and rising again toward the far range (900–2600 m out) so
 // the far peaks stay bluer and lighter, never gone: with the ring's own material haze the ridge contrast holds about
 // half the near value at 2 km and a fifth at 3.3 km. The playable terrain keeps round 39's ceilings untouched.
-const AERIAL_RING_EXT_NEAR = 0.50;
-const AERIAL_RING_EXT_FAR = 0.64;
-const AERIAL_RING_SCATTER_NEAR = 0.44;
-const AERIAL_RING_SCATTER_FAR = 0.58;
+// 2026-10-02 (the grounded light model; the terrain lane's ring lab and the visual census: every ring face sat at
+// these ceilings, the "mountains paler than the sky" of desert, badlands, titan_gorge, saltwind, alpine and oasis was
+// mostly this wash, and the ring now draws with the battlefield's own terrain material, so the veil no longer has
+// low detail to hide): about a third lower across the ring — a range 1-3 km out keeps most of its own colour and
+// relief, as on a clear day; still continuous with the square's ceilings at the seam, still rising toward the far
+// range so the far peaks read bluer and lighter. The square's ceilings above are shared with the volumetric clouds'
+// aerial law (volumetricClouds.ts CLOUD_AERIAL) and stay as they are.
+const AERIAL_RING_EXT_NEAR = 0.34;
+const AERIAL_RING_EXT_FAR = 0.46;
+const AERIAL_RING_SCATTER_NEAR = 0.30;
+const AERIAL_RING_SCATTER_FAR = 0.42;
 const AERIAL_RING_EDGE_IN_M = 260;
 const AERIAL_RING_FAR_START_M = 900;
 const AERIAL_RING_FAR_END_M = 2600;
