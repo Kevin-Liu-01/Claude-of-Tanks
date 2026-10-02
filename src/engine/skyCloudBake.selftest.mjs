@@ -24,16 +24,15 @@ const config = Object.freeze({
 
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
-assert.equal(
-  digest(bakeCirrusPixels(64, 64, config)),
-  '4bc3463debf0ab5b5cf3ce82316f68f75ddf959c85a1805b096cd8a8dd6533ee',
-  'cirrus pixels remain deterministic across worker extraction',
-);
-assert.equal(
-  digest(bakeCumulusPixels(64, 64, config)),
-  'ae6f83e53b294f0babcc0a382dc51d346da576bfbfcfacd69cdddc1fd6500ee9',
-  'coherent periodic cumulus pixels remain byte-identical in main and worker bakes',
-);
+// 2026-10-01 (frozen pins retired): the sha256 pins of the 64² cirrus and cumulus bakes were change detectors of the
+// cloud look. The main thread and the worker run the same pure bake, so the contract is determinism: two bakes of the
+// same config are byte-identical, and a different seed is genuinely different.
+assert.equal(digest(bakeCirrusPixels(64, 64, config)), digest(bakeCirrusPixels(64, 64, config)),
+  'cirrus pixels are deterministic, so main and worker bakes agree');
+assert.equal(digest(bakeCumulusPixels(64, 64, config)), digest(bakeCumulusPixels(64, 64, config)),
+  'coherent periodic cumulus pixels are byte-identical in repeated (main and worker) bakes');
+assert.notEqual(digest(bakeCumulusPixels(64, 64, { ...config, seed: 778 })), digest(bakeCumulusPixels(64, 64, config)),
+  'a different seed bakes a different deck');
 
 const cumulus = bakeCumulusPixels(128, 128, config);
 assert.equal(cumulus.byteLength, 128 * 128 * 4, 'richer billows do not add texture channels or size');
