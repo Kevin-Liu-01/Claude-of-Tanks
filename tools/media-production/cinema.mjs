@@ -19,11 +19,13 @@ import { digest, sourceDigest, contactSheet } from './pipeline.mjs';
 import { normalizeFilm, filmOutputSize, createFilmPlan } from '../../src/game/studioFilmPlan.ts';
 
 const JOB_OPTIONS = ['scene', 'formats', 'resolution', 'fps', 'samples', 'max-samples', 'shutter', 'filter', 'shake', 'start-ms', 'end-ms',
-  'frames', 'stills', 'still-samples', 'supersample', 'film', 'master', 'proxy', 'keep-frames', 'out', 'resume'];
+  'frames', 'stills', 'still-samples', 'still-exposure-ms', 'still-max-samples', 'supersample', 'film', 'master', 'proxy',
+  'keep-frames', 'out', 'resume'];
 const OPTIONS = [...JOB_OPTIONS, 'jobs', 'port', 'cache-dir'];
 const help = `npm run media:cinema -- --scene=scene.json [--formats=landscape,portrait,square] [--resolution=1080|1440|2160]
   [--fps=24|30|60] [--samples=1-64] [--max-samples=<samples>-128] [--shutter=0-360] [--filter=gaussian|box] [--shake=0-2]
   [--start-ms=0] [--end-ms=<storyboard>] [--frames=<limit>] [--stills=<timeline ms,...>] [--still-samples=32]
+  [--still-exposure-ms=0-1000] [--still-max-samples=<still-samples>-128]
   [--supersample=1-2] [--film=true|false] [--master=prores|none] [--proxy=true|false] [--keep-frames=false]
   [--out=shots/cinema] [--resume=true] [--port=5381] [--cache-dir=<vite cache>]
   or --jobs=jobs.json: an array of jobs with the same keys (without "--"); every job needs its own "out".
@@ -73,6 +75,8 @@ async function prepareJob(raw) {
     frameLimit: raw.frames ? Number(raw.frames) : null,
     stills: raw.stills ? raw.stills.split(',').map(Number) : [],
     stillSamples: Number(raw['still-samples'] ?? 32),
+    stillExposureMs: Number(raw['still-exposure-ms'] ?? 0),
+    stillMaxSamples: raw['still-max-samples'] ? Number(raw['still-max-samples']) : null,
     supersample: Number(raw.supersample ?? 1),
     renderFilms: (raw.film ?? 'true') === 'true',
     master: raw.master ?? 'prores',
@@ -84,12 +88,16 @@ async function prepareJob(raw) {
     || (job.frameLimit !== null && !(Number.isInteger(job.frameLimit) && job.frameLimit > 0))
     || !job.stills.every(ms => Number.isFinite(ms) && ms >= 0 && ms <= durationMs)
     || !(Number.isInteger(job.stillSamples) && job.stillSamples >= 1 && job.stillSamples <= 64)
+    || !(job.stillExposureMs >= 0 && job.stillExposureMs <= 1000)
+    || (job.stillMaxSamples !== null && !(Number.isInteger(job.stillMaxSamples) && job.stillMaxSamples >= job.stillSamples
+      && job.stillMaxSamples <= 128))
     || !(job.supersample >= 1 && job.supersample <= 2) || !['prores', 'none'].includes(job.master)
     || (!job.renderFilms && !job.stills.length)) throw Error(`Invalid cinema settings for ${raw.scene}\n${help}`);
   mkdirSync(job.out, { recursive: true });
   job.receiptFile = join(job.out, 'cinema-receipt.json');
   const config = { scene, formats, resolution, film, startMs: job.startMs, endMs: job.endMs, frameLimit: job.frameLimit,
-    stills: job.stills, stillSamples: job.stillSamples, supersample: job.supersample, renderFilms: job.renderFilms,
+    stills: job.stills, stillSamples: job.stillSamples, stillExposureMs: job.stillExposureMs, stillMaxSamples: job.stillMaxSamples,
+    supersample: job.supersample, renderFilms: job.renderFilms,
     master: job.master, proxy: job.proxy };
   if (raw.resume === 'true' && existsSync(job.receiptFile)) {
     const receipt = JSON.parse(readFileSync(job.receiptFile, 'utf8'));
@@ -338,16 +346,20 @@ try {
     for (const format of job.formats) for (const ms of job.stills) {
       if (interrupted) break;
       const { width, height } = filmOutputSize(format, job.resolution);
-      const stem = `${scene.map ?? 'scene'}-${format}-${job.resolution}p-still-${Math.round(ms)}ms`;
+      const exposed = job.stillExposureMs > 0 ? `-e${job.stillExposureMs}ms` : '';
+      const stem = `${scene.map ?? 'scene'}-${format}-${job.resolution}p-still-${Math.round(ms)}ms${exposed}`;
       if (receipt.stills.some(row => row.stem === stem && row.complete)) continue;
-      const row = { stem, format, width, height, timelineMs: ms, samples: job.stillSamples, supersample: job.supersample, files: [] };
+      const row = { stem, format, width, height, timelineMs: ms, samples: job.stillSamples, exposureMs: job.stillExposureMs,
+        supersample: job.supersample, files: [] };
       receipt.stills.push(row);
       try {
         const framed = await sceneFor(scene, format);
         await page.evaluate(({ value, ms }) => window.__STUDIO.load({ ...value, fxTime: ms, timeScale: 0 }), { value: framed, ms });
         await prepareView();
         const capture = await page.evaluate(options => window.__STUDIO.capture(options),
-          { width, height, samples: job.stillSamples, supersample: job.supersample, filter: film.filter });
+          { width, height, samples: job.stillSamples, supersample: job.supersample, filter: film.filter,
+            exposureMs: job.stillExposureMs, maxSamples: job.stillMaxSamples ?? undefined, shake: film.shake });
+        row.samplesUsed = capture.samples;
         const bytes = Buffer.from(capture.dataURL.split(',')[1], 'base64');
         const [w, h] = pngSize(bytes);
         if (w !== width || h !== height) throw Error('Still dimensions mismatch');

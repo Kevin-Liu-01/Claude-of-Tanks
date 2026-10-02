@@ -80,9 +80,10 @@ import { createProductionScene, productionPreset, productionCamera, productionAs
 import type { ProductionOptions, ProductionRigId, ProductionFormat } from './studioProduction.ts';
 import { createStudioFilm } from './studioFilm.ts';
 import type { FilmFrameInfo, FilmSessionInfo } from './studioFilm.ts';
-import { normalizeFilm, filmOutputSize, FILM_CUE_ATTACK_MS, FILM_DEFAULTS } from './studioFilmPlan.ts';
+import { createFilmTimeMap, normalizeFilm, filmOutputSize, FILM_CUE_ATTACK_MS, FILM_DEFAULTS } from './studioFilmPlan.ts';
 import type { FilmFilter, FilmSettings, FilmSettingsInput } from './studioFilmPlan.ts';
 import type { FilmExportProgress, FilmExportResult } from './studioFilmExport.ts';
+import type { FilmSoundCue, FilmSoundKind } from './studioFilmAudio.ts';
 import {
   applySiteMetadataToDocument,
   localizedGameMetadata,
@@ -348,6 +349,12 @@ interface CaptureOptions {
   filter?: FilmFilter;
   /** Film still: render this many times larger, then downsample. */
   supersample?: number;
+  /** Motion-blur still: timeline ms integrated around the playhead (≤ 1000; 0 = frozen instant). */
+  exposureMs?: number;
+  /** Motion-blur still: adaptive sample ceiling (samples..128, default max(samples, 64)). */
+  maxSamples?: number;
+  /** Motion-blur still: camera-cue scale (default the scene's film.shake, else 1). */
+  shake?: number;
 }
 
 interface FilmBeginOptions extends FilmSettingsInput {
@@ -360,6 +367,8 @@ interface FilmBeginOptions extends FilmSettingsInput {
 interface FilmExportRequest extends FilmBeginOptions {
   /** Short-side resolution for the production format (1080, 1440, 2160); ignored with width/height. */
   resolution?: number;
+  /** Mix the game's combat sound into the file (default true). */
+  audio?: boolean;
   bitrate?: number;
   container?: 'auto' | 'mp4' | 'webm';
   download?: boolean;
@@ -565,6 +574,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   // 60 Hz timeline grid and track phase follows the exact sample instant.
   let sceneFilm: FilmSettings | null = null;
   let filming = false;
+  // Soundtrack cues of an exported film (studioFilmAudio.ts): every combat sound
+  // the timeline produces while the film renders, at its exact instant.
+  let filmCues: FilmSoundCue[] | null = null;
+  function filmCue(kind: FilmSoundKind, x: number, y: number, z: number, caliberMm: number,
+    cause?: 'ammorack' | 'shot' | 'fire'): void {
+    if (filmCues && filmCues.length < 4096) filmCues.push({ timelineMs: clockMs, kind, x, y, z, caliberMm, ...(cause ? { cause } : {}) });
+  }
   let filmShake = 1; // the open film's camera-cue scale (film.shake)
   function scaleFilmCue(cue: { rightM: number; upM: number; forwardM: number; rollDeg: number; fovKickDeg: number }): void {
     if (!filming || filmShake === 1) return;
@@ -1500,6 +1516,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       muzzlePos: [_v2.x, _v2.y, _v2.z],
       dir: [_v3.x, _v3.y, _v3.z],
     });
+    filmCue('cannon', _v2.x, _v2.y, _v2.z, shellSpec.caliberMm);
     if (params.tracer !== false) {
       const shell = createShell(shellSpec, actor.uid, false, _v2, _v3, shellId);
       shell.rocket = isUnguidedRocket(actor.spec.gun, shellSpec);
@@ -1518,6 +1535,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       _v3.set(Math.sin(direction), 0, Math.cos(direction));
     }
     fx.muzzleFlash(_v2, _v3, params.caliberMm || (actor ? actor.spec.gun.caliberMm : 120));
+    filmCue('cannon', _v2.x, _v2.y, _v2.z, params.caliberMm || (actor ? actor.spec.gun.caliberMm : 120));
     return true;
   }
 
@@ -1562,11 +1580,17 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       pos: [position.x, position.y, position.z],
       normal: [_v2.x, _v2.y, _v2.z],
     });
+    const kind = params.kind || defaultKind;
+    filmCue(kind === 'pen' ? 'pen' : kind === 'ricochet' ? 'ricochet' : kind === 'era' ? 'era'
+      : kind === 'terrain' ? 'dirt' : kind === 'he_pen' || kind === 'he_splash' ? 'he' : 'nonpen',
+    position.x, position.y, position.z, params.caliberMm || defaultCaliberMm);
     return true;
   }
 
   function fireExplosion({ position, params }: StudioEffectExecution): boolean {
     const size = params.size || 'large';
+    filmCue(size === 'small' ? 'he' : 'tank', position.x, position.y, position.z, 122,
+      size === 'small' ? undefined : size === 'medium' ? 'shot' : (params.cause === 'fire' || params.cause === 'shot' ? params.cause : 'ammorack'));
     if (size === 'small') {
       fxBus.emit('shell:expired', {
         shellId: -1,
@@ -1583,6 +1607,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (!actor) return false;
     _v2.copy(actor.state.pos);
     fx.destruction(_v2, actor.visual, params.cause || 'ammorack');
+    filmCue('tank', _v2.x, _v2.y, _v2.z, actor.spec.gun.caliberMm,
+      params.cause === 'fire' || params.cause === 'shot' ? params.cause : 'ammorack');
     actor.visual.setDestroyed({ pop: params.pop !== false, ageS: 0 });
     actor.stateName = params.pop !== false ? 'turret-popped' : 'wrecked';
     actor.stateAgeS = 0;
@@ -1913,6 +1939,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         if (sh.pos.y <= gy) {
           sh.pos.y = gy + 0.05;
           sh.dead = true;
+          filmCue('dirt', sh.pos.x, sh.pos.y, sh.pos.z, sh.spec?.caliberMm ?? 120);
           fxBus.emit('shell:expired', {
             shellId: sh.id, hitTerrain: true, pos: [sh.pos.x, sh.pos.y, sh.pos.z],
           });
@@ -2790,7 +2817,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     W = Math.max(320, Math.min(maxTex, W));
     let H = Math.round(opts.height || W / aspect);
     H = Math.max(180, Math.min(maxTex, H));
-    if ((opts.samples ?? 1) > 1 || (opts.supersample ?? 1) > 1) return captureFilmStill(W, H, opts);
+    if ((opts.samples ?? 1) > 1 || (opts.supersample ?? 1) > 1 || (opts.exposureMs ?? 0) > 0) return captureFilmStill(W, H, opts);
     let dataURL = '';
     const savedRail = rail.group.visible, savedMarker = marker.group.visible;
     try {
@@ -3246,16 +3273,25 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function captureFilmStill(width: number, height: number, opts: CaptureOptions) {
     const busy = filmBusy();
     if (busy) throw new Error(busy);
-    let dataURL = '';
+    let dataURL = '', samples = 1, exposureMs = 0;
+    const exposure = Math.max(0, Number(opts.exposureMs) || 0);
+    filmShake = exposure > 0 ? Math.min(2, Math.max(0, opts.shake ?? sceneFilm?.shake ?? 1)) : 1;
     try {
       const still = filmRenderer.renderStill({
         width, height,
-        samples: opts.samples,
+        // An exposure needs several instants; 16 is the base before motion adapts it.
+        samples: opts.samples ?? (exposure > 0 ? 16 : undefined),
         filter: opts.filter,
         supersample: opts.supersample,
+        exposureMs: exposure,
+        maxSamples: opts.maxSamples,
+        durationMs: storyboard.durationMs,
       });
       dataURL = still.canvas.toDataURL(opts.type || 'image/png', opts.quality);
+      samples = still.samples;
+      exposureMs = still.exposureMs;
     } finally {
+      filmShake = 1;
       renderCaptureFrame(); // restore a complete live view after the size change
     }
     if (opts.download) {
@@ -3264,7 +3300,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       link.download = opts.name || `studio_${getWorld()?.mapId || 'map'}_${Date.now()}.png`;
       link.click();
     }
-    return { dataURL, width, height };
+    return { dataURL, width, height, samples, exposureMs };
   }
 
   function getFilm(): FilmSettings | null {
@@ -3300,15 +3336,39 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     filmExport = session;
     const run = async (): Promise<FilmExportResult> => {
       const { exportFilm } = await import('./studioFilmExport.ts');
+      const withAudio = opts.audio !== false;
       return exportFilm({
-        begin: () => beginFilm({ ...settings, width: size.width, height: size.height, startMs: opts.startMs, endMs: opts.endMs }),
+        begin: () => {
+          filmCues = withAudio ? [] : null;
+          const session = beginFilm({ ...settings, width: size.width, height: size.height, startMs: opts.startMs, endMs: opts.endMs });
+          // The opening seek replays every earlier event: keep only those at the film's first instant.
+          if (filmCues) filmCues = filmCues.filter((cue) => cue.timelineMs >= session.startMs - 1e-3);
+          return session;
+        },
         renderNext: () => {
           const frame = filmRenderer.renderNext();
           perf.renderedFrames++;
           return frame;
         },
-        end: () => { endFilm(); },
+        end: () => { filmCues = null; endFilm(); },
         canvas: renderer.domElement,
+        soundtrack: withAudio ? async (session) => {
+          const cues = filmCues ?? [];
+          filmCues = null;
+          const { renderFilmSoundtrack } = await import('./studioFilmAudio.ts');
+          const map = createFilmTimeMap(settings.speed, session.startMs, session.endMs);
+          const aspect = session.width / session.height;
+          return renderFilmSoundtrack(cues, {
+            listenerAt(timelineMs, out) {
+              poseMotionCamera(timelineMs, aspect);
+              const e = _motionCam.matrixWorld.elements;
+              out.x = e[12]; out.y = e[13]; out.z = e[14];
+              out.rightX = e[0]; out.rightY = e[1]; out.rightZ = e[2];
+            },
+            filmMsAt: (timelineMs) => map.filmAt(timelineMs),
+            speedAt: (timelineMs) => map.speedAt(timelineMs),
+          }, { durationS: session.frames / session.fps, seed: sceneMeta.seed || 5000 });
+        } : undefined,
       }, {
         width: size.width,
         height: size.height,

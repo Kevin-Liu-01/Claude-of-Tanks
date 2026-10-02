@@ -690,7 +690,7 @@
   "studio.film.fpsOption": "{fps} FPS",
   "studio.film.summary": "{ratio} · {width}×{height} · {seconds} S · {frames} FRAMES",
   "studio.film.export": "EXPORT FILM",
-  "studio.film.hint": "Every frame rendered offline with motion blur and anti-aliasing; nothing is dropped. Silent.",
+  "studio.film.hint": "Every frame rendered offline with motion blur and anti-aliasing; nothing is dropped. The game's combat sound is mixed in.",
   "studio.film.unsupported": "OFFLINE VIDEO ENCODING IS UNAVAILABLE IN THIS BROWSER",
   "studio.film.veilTitle": "RENDERING FILM",
   "studio.film.preparing": "PREPARING ENCODER…",

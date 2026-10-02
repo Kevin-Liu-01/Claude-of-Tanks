@@ -9,7 +9,7 @@
  * exactly the planned frame count at a constant rate, whatever the render
  * speed. No third-party code: the containers are studioFilmMux.ts.
  */
-import { muxMp4, muxWebm, type MuxColor, type MuxSample } from './studioFilmMux.ts';
+import { muxMp4, muxWebm, type MuxAudioTrack, type MuxColor, type MuxSample } from './studioFilmMux.ts';
 import type { FilmFrameInfo, FilmSessionInfo } from './studioFilm.ts';
 
 export interface FilmExportPorts {
@@ -20,6 +20,8 @@ export interface FilmExportPorts {
   /** Close the session and restore the live Studio. */
   end(): void;
   readonly canvas: HTMLCanvasElement;
+  /** Optional soundtrack of the rendered film (null: silent). Called after the last frame. */
+  soundtrack?(session: FilmSessionInfo): Promise<AudioBuffer | null>;
 }
 
 export interface FilmExportProgress {
@@ -55,6 +57,8 @@ export interface FilmExportResult {
   readonly fps: number;
   readonly bytes: number;
   readonly elapsedMs: number;
+  /** The file carries the mixed game sound. */
+  readonly audio: boolean;
 }
 
 interface EncoderChoice {
@@ -215,14 +219,23 @@ export async function exportFilm(ports: FilmExportPorts, options: FilmExportOpti
     await encoder.flush();
     if (failure) throw failure;
     if (samples.length !== frames) throw new Error(`The encoder returned ${samples.length} of ${frames} frames`);
+    let audio: MuxAudioTrack | null = null;
+    if (ports.soundtrack) {
+      const mix = await ports.soundtrack(session);
+      if (options.signal?.aborted) throw abortError();
+      if (mix) {
+        const { encodeFilmSoundtrack } = await import('./studioFilmAudio.ts');
+        audio = await encodeFilmSoundtrack(mix, choice.container);
+      }
+    }
     let parts: Uint8Array[];
     let mimeType: string;
     if (choice.container === 'mp4') {
       if (!description) throw new Error('The H.264 encoder did not provide its decoder configuration');
-      parts = muxMp4({ width: session.width, height: session.height, fps: session.fps, description, samples, color });
+      parts = muxMp4({ width: session.width, height: session.height, fps: session.fps, description, samples, color }, audio);
       mimeType = 'video/mp4';
     } else {
-      parts = muxWebm({ width: session.width, height: session.height, fps: session.fps, codec: 'V_VP9', samples });
+      parts = muxWebm({ width: session.width, height: session.height, fps: session.fps, codec: 'V_VP9', samples }, audio);
       mimeType = 'video/webm';
     }
     const blob = new Blob(parts as BlobPart[], { type: mimeType });
@@ -237,6 +250,7 @@ export async function exportFilm(ports: FilmExportPorts, options: FilmExportOpti
       fps: session.fps,
       bytes: blob.size,
       elapsedMs: performance.now() - started,
+      audio: !!audio,
     };
   } finally {
     try { if (encoder.state !== 'closed') encoder.close(); } catch { /* already closed by an error */ }

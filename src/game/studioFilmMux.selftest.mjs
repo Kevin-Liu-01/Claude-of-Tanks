@@ -11,7 +11,7 @@ const view = (bytes) => new DataView(bytes.buffer, bytes.byteOffset, bytes.byteL
 const fourcc = (bytes, at) => String.fromCharCode(bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]);
 
 /** Walk ISO BMFF boxes; containers recurse. Returns {type, start, size, body, children}. */
-const CONTAINERS = new Set(['moov', 'trak', 'mdia', 'minf', 'stbl', 'dinf']);
+const CONTAINERS = new Set(['moov', 'trak', 'mdia', 'minf', 'stbl', 'dinf', 'edts']);
 function parseBoxes(bytes, start = 0, end = bytes.length) {
   const boxes = [];
   for (let at = start; at < end;) {
@@ -99,7 +99,7 @@ const aac = Uint8Array.of(0x11, 0x90);
 const audioChunks = Array.from({ length: 5 }, (_, index) => ({ key: true, frames: 1024, data: Uint8Array.of(0xa0 + index, 1, 2) }));
 const withAudio = join(muxMp4(
   { width: 64, height: 64, fps: 24, description: avcC, samples: frames.map((frame) => ({ ...frame, key: true })) },
-  { sampleRate: 48000, channels: 2, description: aac, samples: audioChunks },
+  { sampleRate: 48000, channels: 2, description: aac, samples: audioChunks, primingFrames: 2112 },
 ));
 const avTop = parseBoxes(withAudio);
 const traks = findAll(find(avTop, 'moov').children, 'trak');
@@ -111,6 +111,12 @@ const audioOffset = view(withAudio).getUint32(find(audioStbl.children, 'stco').b
 const videoBytes = frames.reduce((sum, frame) => sum + frame.data.length, 0);
 assert.equal(audioOffset, find(avTop, 'mdat').body + videoBytes, 'audio follows the video chunk');
 assert.equal(withAudio[audioOffset], 0xa0);
+const elst = find([traks[1]], 'trak/edts/elst');
+assert.equal(view(withAudio).getUint32(elst.body + 4), 1, 'one edit');
+assert.equal(view(withAudio).getUint32(elst.body + 8), Math.round((5 * 1024 - 2112) * 1000 / 48000), 'edit spans the presented audio (movie ms)');
+assert.equal(view(withAudio).getUint32(elst.body + 12), 2112, 'presentation starts after the encoder priming');
+assert.equal(view(withAudio).getUint16(elst.body + 16), 1, 'normal rate');
+assert.equal(findAll(traks[0].children, 'edts').length, 0, 'video needs no edit list');
 const audioMdhd = find([traks[1]], 'trak/mdia/mdhd');
 assert.equal(view(withAudio).getUint32(audioMdhd.body + 12), 48000);
 assert.equal(view(withAudio).getUint32(audioMdhd.body + 16), 5 * 1024);

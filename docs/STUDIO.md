@@ -13,7 +13,8 @@ authoring controls. Guides stay out of exported images.
 PNG exports use the selected native frame dimensions. **Export film** (Output)
 renders the storyboard offline at a native 1080p, 1440p or 2160p production
 format with real motion blur and anti-aliasing, encodes every frame in the
-browser and downloads an MP4 (see [Film renderer](#film-renderer)). The live
+browser with the game's combat sound and downloads an MP4 (see
+[Film renderer](#film-renderer)). The live
 recorder below it uses the current canvas ratio, records in real time and is
 silent. For ProRes trailer masters from Node, see
 [Cinema masters](MEDIA-PRODUCTION.md#cinema-masters). For synchronized original
@@ -156,6 +157,16 @@ aspect. Clamped to the GPU max texture size (≤ 6144). `download: true` also
 saves the PNG from the browser. Headless drivers read `dataURL` and write the
 file themselves (see `tools/studio-selftest.mjs`).
 
+`exposureMs` (≤ 1000) makes a **motion-blur still**: the shutter stays open
+across that much timeline centred on the playhead while actors, the camera
+rail and effects move (16 base samples unless `samples` says otherwise,
+adapted to the image motion up to `maxSamples`, default 64, ≤ 128; `shake`
+scales camera cues, default the scene's `film.shake`). A rail that tracks a
+tank keeps it sharp against a streaked world; no sample crosses a storyboard
+cut, and the playhead returns to its instant afterwards. The result adds
+`samples` (used) and `exposureMs`. Typical values: 4 (1/250 s), 17 (1/60 s),
+33 (1/30 s), 125 (1/8 s), 250 (1/4 s).
+
 `samples > 1` makes a **film still**: that many sub-pixel-jittered renders of
 the same instant (time does not move) are averaged in linear HDR before bloom,
 grade and reconstruction, which removes geometric aliasing and shimmer from
@@ -253,7 +264,7 @@ film, `renderFilmFrame(opts)` renders a film still of the current instant (the
 `capture()` options above).
 
 `exportFilm({ resolution, fps, samples, maxSamples, shutterDeg, filter, shake,
-startMs, endMs, bitrate, container, download, name, onProgress, onFrame })`
+startMs, endMs, audio, bitrate, container, download, name, onProgress, onFrame })`
 renders the same frames at the production format's native size (`resolution`
 1080, 1440 or 2160; or explicit `width`/`height`) and encodes them offline with
 WebCodecs: H.264 High in a fast-start MP4 where the browser can encode it,
@@ -263,6 +274,22 @@ constant rate. Default bitrate ≈ 0.2 bits per pixel per frame (8–100 Mbit/s)
 The playhead returns to where it was; `cancelFilmExport()` aborts (the promise
 rejects with an `AbortError`). The containers are written by
 `studioFilmMux.ts`; there is no third-party dependency.
+
+**Sound** (`audio`, default `true`; the result's `audio` says whether the file
+carries it): while the film renders, every combat sound the timeline produces —
+gun reports, armour hits (penetrating, absorbed, ricochet, ERA), HE bursts,
+shell strikes on terrain and vehicle destructions — is logged at its exact
+instant and position. After the last frame `studioFilmAudio.ts` mixes them
+offline (OfflineAudioContext, 48 kHz stereo) from the game's baked SFX with the
+live mixer's distance gain and air-absorption curves, panned against the film
+camera at that instant and delayed by the speed of sound beyond 40 m. Speed
+ramps slow the sound with the picture (a 0.2× beat plays pitched down and
+stretched). A seeded RNG picks the variants, so a film mixes the same sound
+every time. The mix is encoded with WebCodecs (AAC-LC in MP4, with an edit
+list that hides the encoder's measured priming so reports land on their
+frames; Opus in WebM). Engine, track and ambience beds, machine guns and radio
+voices are not part of the film mix; a browser without an audio encoder exports
+the film silent.
 
 In the panel, **Output → Film** offers Size (1080p / 1440p / 2160p in the
 current production format), Rate (24 / 30 / 60 fps), Blur (Off · 1, Draft · 4,
@@ -455,8 +482,10 @@ burning, a tracer, a detrack, or a kill leaves no orphaned visual state.
   cadence. The frozen composition path (`load`/`advanceFx`) remains deterministic.
 - Video capture does not include audio and uses the browser's available MediaRecorder
   codec. Encoded bytes are not expected to be identical across browsers.
-- Film exports are silent. Their frames are reproducible for the same scene,
-  settings, browser and GPU; encoded bytes depend on the browser's encoder.
+- Film exports carry combat sound only (no engine, track, ambience, machine-gun
+  or radio beds), and the Node cinema masters stay silent (score them in the
+  edit). Frames are reproducible for the same scene, settings, browser and GPU;
+  encoded bytes depend on the browser's encoders.
 - Film motion blur is sampled, not analytic: very fast motion beyond the
   adaptive ceiling (shell flights, the strongest shake cues) can still show
   faint stepping; raise `maxSamples` (≤ 128) for those shots.

@@ -331,7 +331,7 @@ export interface FilmPlan {
  * FILM_MOTION_STEP_PX apart (no stepped copies), within [samples, maxSamples].
  * One sample stays one sample: blur off means instantaneous frames.
  */
-export function adaptiveSampleCount(pathPx: number, settings: FilmSettings): number {
+export function adaptiveSampleCount(pathPx: number, settings: Pick<FilmSettings, 'samples' | 'maxSamples'>): number {
   if (settings.samples <= 1 || settings.maxSamples <= settings.samples || !(pathPx > 0)) return settings.samples;
   const needed = Math.ceil(pathPx / FILM_MOTION_STEP_PX) + 1;
   return Math.min(settings.maxSamples, Math.max(settings.samples, needed));
@@ -339,6 +339,42 @@ export function adaptiveSampleCount(pathPx: number, settings: FilmSettings): num
 
 /** How far before a camera cut a clamped sample lands (timeline ms). */
 export const FILM_CUT_EPSILON_MS = 1e-3;
+
+/** Longest exposure a motion-blur still integrates (timeline ms). */
+export const FILM_MAX_EXPOSURE_MS = 1000;
+
+/**
+ * Shutter instants of a motion-blur still centred on timeline `centerMs`:
+ * `count` stratified samples across `exposureMs` (≤ FILM_MAX_EXPOSURE_MS),
+ * inside [0, durationMs] and, like a film frame, on the centre's side of every
+ * storyboard cut (a still never exposes two shots). Monotone; returns `out`.
+ */
+export function exposureSampleTimes(
+  centerMs: number,
+  exposureMs: number,
+  count: number,
+  cutsMs: readonly number[],
+  durationMs: number,
+  out: Float64Array,
+): Float64Array {
+  if (!(Number.isInteger(count) && count >= 1)) throw new RangeError('Sample count must be a positive integer');
+  if (out.length < count) throw new RangeError('Sample buffer is too small');
+  const exposure = Math.min(FILM_MAX_EXPOSURE_MS, Math.max(0, finite(exposureMs, 0)));
+  for (let i = 0; i < count; i++) {
+    const offset = count === 1 ? 0 : ((i + 0.5) / count - 0.5) * exposure;
+    out[i] = Math.min(durationMs, Math.max(0, centerMs + offset));
+  }
+  if (count > 1) {
+    for (const cut of cutsMs) {
+      if (!Number.isFinite(cut) || !(out[0] < cut && out[count - 1] >= cut)) continue;
+      for (let i = 0; i < count; i++) {
+        if (centerMs < cut) out[i] = Math.min(out[i], cut - FILM_CUT_EPSILON_MS);
+        else out[i] = Math.max(out[i], cut);
+      }
+    }
+  }
+  return out;
+}
 
 /**
  * Plan the frames of a film over timeline `[startMs, endMs]`. `cutsMs` are

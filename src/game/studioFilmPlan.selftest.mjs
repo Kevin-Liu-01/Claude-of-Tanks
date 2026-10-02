@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import {
+  exposureSampleTimes,
+  FILM_MAX_EXPOSURE_MS,
   FILM_DEFAULTS,
   FILM_GAUSSIAN_SIGMA_PX,
   FILM_MOTION_STEP_PX,
@@ -195,4 +197,23 @@ assert.deepEqual(filmOutputSize('portrait', 1080), { width: 1080, height: 1920 }
 assert.deepEqual(filmOutputSize('square', 1440), { width: 1440, height: 1440 });
 assert.throws(() => filmOutputSize('landscape', 720), /1080, 1440 or 2160/);
 
+// Motion-blur stills: stratified, centred, inside the storyboard, never across a cut.
+{
+  const out = new Float64Array(8);
+  exposureSampleTimes(5000, 80, 8, [], 12000, out);
+  assert.ok(Math.abs(out.reduce((sum, t) => sum + t, 0) / 8 - 5000) < 1e-9, 'centred on the playhead');
+  assert.ok(Math.abs(out[0] - (5000 - 35)) < 1e-9 && Math.abs(out[7] - (5000 + 35)) < 1e-9, 'stratified across the exposure');
+  for (let i = 1; i < 8; i++) assert.ok(out[i] > out[i - 1], 'monotone');
+  exposureSampleTimes(20, 250, 8, [], 12000, out);
+  assert.ok(out[0] === 0 && out[7] <= 20 + 125, 'clamped at the timeline start');
+  exposureSampleTimes(11990, 250, 8, [], 12000, out);
+  assert.equal(out[7], 12000, 'clamped at the storyboard end');
+  exposureSampleTimes(5000, 250, 8, [4950], 12000, out);
+  assert.ok(out.every((t) => t >= 4950), 'the shot that began inside the exposure owns it');
+  exposureSampleTimes(5000, 250, 8, [5060], 12000, out);
+  assert.ok(out.every((t) => t < 5060), 'the next shot never leaks in');
+  assert.equal(exposureSampleTimes(5000, 250, 1, [], 12000, out)[0], 5000, 'one sample is the instant');
+  exposureSampleTimes(5000, 1e6, 4, [], 1e7, out);
+  assert.ok(Math.abs(out[3] - out[0] - FILM_MAX_EXPOSURE_MS * 0.75) < 1e-9, 'exposure is capped');
+}
 console.log('studioFilmPlan.selftest: settings, speed ramps, monotone shutter schedules, jitter and output sizes passed');

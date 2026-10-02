@@ -44,6 +44,8 @@ export interface MuxAudioTrack {
   readonly description: Uint8Array;
   /** Each chunk with its duration in samples at `sampleRate`. */
   readonly samples: ReadonlyArray<MuxSample & { readonly frames: number }>;
+  /** Encoder priming at the start of the stream (samples); MP4 trims it with an edit list. */
+  readonly primingFrames?: number;
 }
 
 // --- byte helpers -----------------------------------------------------------------
@@ -205,8 +207,15 @@ export function muxMp4(video: Mp4VideoTrack, audio: MuxAudioTrack | null = null)
         if (last && last.delta === sample.frames) last.count++;
         else runs.push({ count: 1, delta: sample.frames });
       }
+      const priming = Math.max(0, Math.round(audio.primingFrames ?? 0));
+      const presented = Math.max(0, audioFrames - priming);
+      const presentedMs = Math.round(presented * 1000 / audio.sampleRate);
+      // The edit list starts presentation after the encoder's priming samples,
+      // so the first decoded sample lines up with the first video frame.
+      const edits = box('edts', fullBox('elst', 0, 0, u32(1), u32(presentedMs), u32(priming), u16(1), u16(0)));
       traks.push(box('trak',
-        trackHeader(2, Math.round(audioFrames * 1000 / audio.sampleRate), 0, 0, true),
+        trackHeader(2, presentedMs, 0, 0, true),
+        edits,
         box('mdia', mediaHeader(Math.round(audio.sampleRate), audioFrames), handler('soun', 'SoundHandler'),
           box('minf', fullBox('smhd', 0, 0, u16(0), u16(0)), dataInformation(),
             sampleTable(aacSampleEntry(audio), runs, audio.samples, audioOffset, false)))));

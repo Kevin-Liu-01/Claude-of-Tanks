@@ -19,7 +19,10 @@ import type { PostRuntime } from '../engine/post.ts';
 import {
   adaptiveSampleCount,
   createFilmPlan,
+  exposureSampleTimes,
   filmJitter,
+  FILM_MAX_ADAPTIVE_SAMPLES,
+  FILM_MAX_EXPOSURE_MS,
   normalizeFilm,
   type FilmPlan,
   type FilmSettings,
@@ -113,6 +116,25 @@ export interface FilmStillOptions {
   /** Render this many times larger, then downsample (stills only). */
   readonly supersample?: number;
   readonly maxSize?: number;
+  /**
+   * Motion-blur still: integrate this much timeline (ms, ≤ 1000) centred on
+   * the playhead while actors, camera and effects move (0 = frozen instant).
+   */
+  readonly exposureMs?: number;
+  /** Motion-adaptive ceiling for an exposure (samples..128; default max(samples, 64)). */
+  readonly maxSamples?: number;
+  /** Storyboard length (ms): exposure samples stay inside it. */
+  readonly durationMs?: number;
+}
+
+export interface FilmStill {
+  readonly canvas: HTMLCanvasElement;
+  readonly width: number;
+  readonly height: number;
+  /** Samples the still accumulated (an exposure adapts them to image motion). */
+  readonly samples: number;
+  /** Exposure integrated (ms); 0 for a frozen instant. */
+  readonly exposureMs: number;
 }
 
 interface SavedState {
@@ -439,27 +461,55 @@ export function createStudioFilm(ports: StudioFilmPorts) {
 
     /**
      * Supersampled still at the current timeline instant: `samples` jittered
-     * renders (no time passes), optionally at `supersample` x resolution.
-     * Returns the canvas holding the frame and its pixel size; the caller
-     * reads it back in the same task (downsampling when supersampled).
+     * renders, optionally at `supersample` x resolution. With `exposureMs`
+     * the shutter stays open across that much timeline centred on the
+     * playhead: actors, camera rail and effects move between the samples (a
+     * panning shot keeps its tracked tank sharp against a streaked world), the
+     * count adapts to the image motion up to `maxSamples`, no sample crosses a
+     * storyboard cut, and the playhead returns to its instant afterwards.
+     * Returns the canvas holding the frame; the caller reads it back in the
+     * same task (downsampling when supersampled).
      */
-    renderStill(options: FilmStillOptions): { canvas: HTMLCanvasElement; width: number; height: number } {
+    renderStill(options: FilmStillOptions): FilmStill {
       if (plan || saved) throw new Error('Finish the film render first');
-      const samples = Math.round(Math.min(128, Math.max(1, options.samples ?? 16)));
+      const samples = Math.round(Math.min(FILM_MAX_ADAPTIVE_SAMPLES, Math.max(1, options.samples ?? 16)));
+      const exposureMs = Math.min(FILM_MAX_EXPOSURE_MS, Math.max(0, Number(options.exposureMs) || 0));
+      const moving = exposureMs > 0 && samples > 1;
+      const maxSamples = moving
+        ? Math.round(Math.min(FILM_MAX_ADAPTIVE_SAMPLES, Math.max(samples, options.maxSamples ?? Math.max(samples, 64))))
+        : samples;
       const maxSize = Math.min(options.maxSize ?? 6144, renderer.capabilities.maxTextureSize || 6144);
       const scale = Math.max(1, Math.min(options.supersample ?? 1, maxSize / options.width, maxSize / options.height));
       const width = Math.round(options.width * scale), height = Math.round(options.height * scale);
-      useJitter(samples, options.filter ?? 'gaussian');
+      const centerMs = ports.clockMs();
+      let count = samples;
       enter(width, height);
       try {
+        if (moving) {
+          // Film mode is on, so the probe sees the same cue attack and shake scale as the render.
+          ensureBuffers(maxSamples);
+          const cuts = ports.cutTimes(), durationMs = options.durationMs ?? Infinity;
+          exposureSampleTimes(centerMs, exposureMs, samples, cuts, durationMs, times);
+          const motionPx = ports.motionPathPx(times, samples, options.width, options.height);
+          count = adaptiveSampleCount(motionPx, { samples, maxSamples });
+          exposureSampleTimes(centerMs, exposureMs, count, cuts, durationMs, times);
+          ports.seek(Math.floor(times[0]));
+          if (times[0] > ports.clockMs()) ports.advanceTo(times[0]);
+        }
+        useJitter(count, options.filter ?? 'gaussian');
         clouds()?.setCaptureTime?.(ports.clockMs() / 1000, true);
-        // Time stands still: stage the camera, shadows and FX once; every
-        // jittered sample reuses them (shadow fits never see the jitter).
+        // A frozen still stages the camera, shadows and FX once and every
+        // jittered sample reuses them (shadow fits never see the jitter); an
+        // exposure stages every sample instant like a film frame.
         stageSample(true);
         post.lensFlare.fixedDt = 10;
         post.render(0);
         settleClouds();
-        accumulate(samples, null);
+        accumulate(count, moving ? (index) => {
+          if (times[index] > ports.clockMs()) ports.advanceTo(times[index]);
+          stageSample(index === 0);
+          if (index === 0) settleClouds();
+        } : null);
         const output = document.createElement('canvas');
         output.width = Math.round(options.width);
         output.height = Math.round(options.height);
@@ -468,9 +518,11 @@ export function createStudioFilm(ports: StudioFilmPorts) {
         context.imageSmoothingEnabled = true;
         context.imageSmoothingQuality = 'high';
         context.drawImage(renderer.domElement, 0, 0, output.width, output.height);
-        return { canvas: output, width: output.width, height: output.height };
+        return { canvas: output, width: output.width, height: output.height, samples: count, exposureMs: moving ? exposureMs : 0 };
       } finally {
         leave();
+        // An exposure moved the timeline across its shutter: put the playhead back.
+        if (moving) ports.seek(centerMs);
       }
     },
   };

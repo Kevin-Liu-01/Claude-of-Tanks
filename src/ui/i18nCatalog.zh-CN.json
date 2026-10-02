@@ -690,7 +690,7 @@
   "studio.film.fpsOption": "{fps} 帧/秒",
   "studio.film.summary": "{ratio} · {width}×{height} · {seconds} 秒 · {frames} 帧",
   "studio.film.export": "导出影片",
-  "studio.film.hint": "每一帧都离线渲染，带运动模糊与抗锯齿，不丢帧。无声。",
+  "studio.film.hint": "每一帧都离线渲染，带运动模糊与抗锯齿，不丢帧。并混入游戏中的战斗音效。",
   "studio.film.unsupported": "此浏览器不支持离线视频编码",
   "studio.film.veilTitle": "正在渲染影片",
   "studio.film.preparing": "正在准备编码器…",

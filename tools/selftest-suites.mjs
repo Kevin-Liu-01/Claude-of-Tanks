@@ -199,6 +199,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioTimeline.selftest.mjs',
     'src/game/studioFilmPlan.selftest.mjs',
     'src/game/studioFilmMux.selftest.mjs',
+    'src/game/studioFilmAudio.selftest.mjs',
     'src/game/studioProduction.selftest.mjs',
     'src/game/studioProductionPersistence.selftest.mjs',
     'src/ui/studioProductionPanel.selftest.mjs',

@@ -81,6 +81,8 @@ reviewed reframing), `--resolution` 1080/1440/2160 (short side), `--fps` 24/30/6
 `--shutter` 0–360°, `--filter` gaussian/box, `--shake` 0–2 (camera-cue scale),
 `--start-ms`/`--end-ms` (timeline range),
 `--frames` (limit, for benchmarks), `--stills` (timeline ms list), `--still-samples`,
+`--still-exposure-ms` 0–1000 (motion-blur stills integrated around each instant) with
+`--still-max-samples` (adaptive ceiling, ≤ 128),
 `--supersample` 1–2 (stills), `--film=false` (stills only), `--master=prores|none`,
 `--proxy=true|false`, `--keep-frames=true` (keep every PNG; by default only the sheet frames
 remain after the encodes verify), `--resume=true`, `--port`, `--cache-dir`. Settings default
@@ -124,7 +126,9 @@ Recommended trailer masters: `--resolution=2160 --fps=24 --shutter=180 --samples
 camera-shake cues usually read better with `--shake=0.5` (or `film.shake` in the scene): motion
 blur turns a preview-sized jolt into a long smear. Slow motion comes from `film.speed` keys in the
 scene (for example 0.2× from 400 ms before a kill to 1 s after), rendered at 16 samples. Key art:
-`--film=false --stills=<ms,...> --still-samples=32 --supersample=1.5`. `--shake` (0–2) scales the
+`--film=false --stills=<ms,...> --still-samples=32 --supersample=1.5`; a panning key frame with a
+sharp tracked tank and a streaked world adds `--still-exposure-ms=33` (1/30 s; 125 for 1/8 s)
+`--still-max-samples=128`. `--shake` (0–2) scales the
 storyboard's camera cues for the film only.
 
 ## September 27, 2026 production
