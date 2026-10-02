@@ -365,6 +365,8 @@ export default {
     fogDensity: 0.00070, fogTintHex: 0x9aa3b5, fogMix: 0.55, envIntensity: 0.2,
     cloudOpacity: 0.75, cloudOpacity2: 0.5, cloudTintHex: 0xfff4e4,
     sunIntensity: 4.3, sunColorHex: 0xffe6bd, hemiIntensity: 0.30,
+    // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
+    lighting: { groundAlbedoHex: 0x817359 },
   },
 
   minimap: {
