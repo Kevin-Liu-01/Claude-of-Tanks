@@ -6196,6 +6196,8 @@ ${snowCap ? `
       const nearSpawn = [L.spawns.player, ...L.spawns.enemies]
         .some((spawn) => Math.hypot(x - spawn.x, z - spawn.z) < 20);
       if (nearSpawn || Math.hypot(x - junction.x, z - junction.z) < 16) return false;
+      // a pile stands on dry ground, never in a channel or a lake
+      if (heightField.getWaterMaskAt(x, z) > 0) return false;
       // The pile keeps its whole footprint out of the road core, moved off the road when it reaches in. Where no seat
       // within 8 m clears, it keeps its old seat: it is drive-through rubble, and its draws feed the next candidates.
       const pr = 1.6 + rrng() * 1.3;
