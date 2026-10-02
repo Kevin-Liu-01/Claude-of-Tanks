@@ -2205,10 +2205,10 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
       }).sort((a, b) => b.y - a.y)
       : skeleton.leaves.filter(site => site.ny >= 0.6).sort((a, b) => b.y - a.y);
     for (const site of upward) {
-      if (lobes >= 6) break;
+      if (lobes >= 4) break;
       const heightT = clamp(site.y / skeleton.height, 0, 1);
       if (lobes >= 2 && rng() > snow * (0.15 + 0.5 * heightT)) continue;
-      const lr = site.length * (profile.family === 'conifer' ? 0.22 : 0.16) * (0.8 + rng() * 0.4);
+      const lr = site.length * (profile.family === 'conifer' ? 0.16 : 0.12) * (0.8 + rng() * 0.4);
       const lobe = new THREE.IcosahedronGeometry(lr, 0);
       shapeTreeSnowLobe(lobe, rng);
       lobe.scale(1.7, 0.22, 1.0);
@@ -2229,10 +2229,24 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
     family: profile.family === 'dead' ? 'broadleaf' : profile.family, radialSegments: GROWTH_TUBE_SIDES.desktop[0],
     verticalSegments: stem.nodes.length - 1, rootButtresses: roots, rootFlare: true, organicWarp: true,
   };
+  // a winter palette's snow lies on the sprays that face the sky: the atlas paints it on its top tile row only
+  // (treeSprayAtlas.ts), so the upward sprays high in the crown take those snow-laden tiles and every other spray —
+  // the side and under faces a viewer on the ground mostly sees — a bare one. A position hash decides (no draw from
+  // the tree's stream); the column of the tile is kept.
+  if (snow > 0.05) {
+    for (const site of skeleton.leaves) {
+      const heightT = clamp(site.y / skeleton.height, 0, 1);
+      const up = clamp((site.ny - 0.3) / 0.45, 0, 1);
+      const hash = Math.sin(site.x * 12.9898 + site.y * 78.233 + site.z * 37.719) * 43758.5453;
+      const laden = hash - Math.floor(hash) < up * (0.45 + 0.55 * heightT) * Math.min(1, snow * 1.1);
+      site.tile = (laden ? 0 : SPRAY_ATLAS_TILES) + (site.tile % SPRAY_ATLAS_TILES);
+    }
+  }
   // the card tint law of the grown crowns: the legacy HSL multiplier around the atlas (hue and saturation from the map
-  // palette or the family default), a dark interior and a lit shell from the site's shade, a little per-spray jitter,
-  // and a winter palette's snow load whitening the upward sprays high in the crown. The gain sits a little over the
-  // legacy 1.7: the spray atlases paint a touch darker than the round-8 ones.
+  // palette or the family default), a dark interior and a lit shell from the site's shade, a little per-spray jitter;
+  // a snow-laden spray takes the snow's neutral, lifted tint (its painted snow stays white, its needles frosted) and a
+  // bare one none. The gain sits a little over the legacy 1.7: the spray atlases paint a touch darker than the round-8
+  // ones.
   const tintLaw: Record<string, readonly [number, number, number]> = {
     broadleaf: [0.228, 0.19, 1.85], conifer: [0.30, 0.18, 1.95], birch: [0.08, 0.06, 1.8], dead: [0.08, 0.05, 1.7],
   };
@@ -2241,8 +2255,8 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   const cards = weldGrownGeometry(emitLeafCards(skeleton, {
     tiles: SPRAY_ATLAS_TILES, rng: mulberry32((seed ^ 0x5eed) >>> 0),
     tint(shade, site, r) {
-      const heightT = clamp(site.y / skeleton.height, 0, 1);
-      const sk = snow * Math.max(0, site.ny) * (0.48 + 0.52 * heightT) * (0.6 + r() * 0.4);
+      const jitter = r();
+      const sk = snow > 0.05 && site.tile < SPRAY_ATLAS_TILES ? 0.85 + jitter * 0.15 : 0;
       _c.setHSL(hue0 + (r() - 0.5) * 0.06 + (0.585 - hue0) * sk, (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5,
         THREE.SRGBColorSpace);
       const value = (0.52 + 0.48 * shade) * (0.92 + r() * 0.16) * (1 + sk * 0.75);
@@ -4367,7 +4381,8 @@ function* vegetationBuildSteps(
     if (!grownTrees) return legacy;
     return {
       texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed,
-      tex: (r, pal) => makeSprayAtlas(grownSprayKind(species, pal), r, texSize(512), pal.texTone || null, pal.snow ?? 0),
+      // a snowy palette's texTone is the round-8 cards' hoar-frost wash (their snow); the spray atlas paints its snow
+      tex: (r, pal) => makeSprayAtlas(grownSprayKind(species, pal), r, texSize(512), (pal.snow ?? 0) > 0.05 ? null : pal.texTone || null, pal.snow ?? 0),
       near: (k, pal) => buildGrownTree(species, seed + legacy.nearSeed + k * 7, k, pal),
       far: legacy.far,
     };

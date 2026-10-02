@@ -177,6 +177,17 @@ try {
     atlasRows.push({ kind, coverage: +coverage.toFixed(3), pixels: sha(d) });
     t.dispose(); again.dispose();
   }
+  // a winter palette's snow: painted on the top tile row only (the snow-laden sprays); the bottom row is the snow-free
+  // atlas pixel for pixel, and the top row is whiter
+  for (const kind of ['spruce', 'birch-bare']) {
+    const bare = makeSprayAtlas(kind, mulberry32(2054), 256), snowy = makeSprayAtlas(kind, mulberry32(2054), 256, null, 0.9);
+    const s = bare.image.width, half = (s / SPRAY_ATLAS_TILES) * s * 4;
+    const rowSha = (d, row) => sha(d.subarray(row * half, (row + 1) * half));
+    assert.equal(rowSha(snowy.image.data, 1), rowSha(bare.image.data, 1), `${kind}: the bare tile row is the snow-free atlas`);
+    const white = (d, row) => { let n = 0; for (let i = row * half; i < (row + 1) * half; i += 4) if (d[i + 3] >= 97 && Math.min(d[i], d[i + 1], d[i + 2]) > 200) n++; return n; };
+    assert.ok(white(snowy.image.data, 0) > white(bare.image.data, 0) + 200, `${kind}: the laden row carries snow`);
+    bare.dispose(); snowy.dispose();
+  }
   // the desktop palm's pinnate frond (one frond across the texture, its rachis rising from the bottom centre)
   {
     const t = makePalmFrondAtlas(mulberry32(2053), 256), again = makePalmFrondAtlas(mulberry32(2053), 256);
@@ -287,6 +298,25 @@ try {
       assert.equal(cards.castShadow, false);
     }
   } finally { desktop.dispose(); disposeObject3DResources(desktop.group); }
+  // Frosthollow's snow load: the sky-facing sprays take the laden (top) tile row and the snow's lifted neutral tint,
+  // the rest the bare row and the palette's green — per card, from its UVs and its tint
+  const winter = build('winter');
+  try {
+    const conifer = pools(winter).filter((m) => m.userData.treeFoliage).map((m) => m.geometry);
+    let laden = 0, bare = 0, ladenY = 0, bareY = 0, ladenSat = 0, bareSat = 0;
+    for (const g of conifer) {
+      const idx = g.index.array, uv = g.attributes.uv, col = g.attributes.color;
+      for (let c = 0; c < idx.length; c += 12) {
+        const v = idx[c];
+        const r = col.getX(v), gg = col.getY(v), b = col.getZ(v), y = 0.2126 * r + 0.7152 * gg + 0.0722 * b;
+        const sat = (Math.max(r, gg, b) - Math.min(r, gg, b)) / Math.max(1e-6, Math.max(r, gg, b));
+        if (uv.getY(v) >= 0.5 - 1e-6) { laden++; ladenY += y; ladenSat += sat; } else { bare++; bareY += y; bareSat += sat; }
+      }
+    }
+    assert.ok(laden > 0.08 * (laden + bare) && bare > 0.2 * (laden + bare), `the snow load splits the sprays (laden ${laden}, bare ${bare})`);
+    assert.ok(ladenY / laden > 1.3 * (bareY / bare), 'a laden spray is lifted');
+    assert.ok(ladenSat / laden < bareSat / bare, 'a laden spray is neutral, a bare one keeps its green');
+  } finally { winter.dispose(); disposeObject3DResources(winter.group); }
   // legacyTrees: the legacy card trees and lobe-hull proxies
   const legacy = build('fjord', { legacyTrees: true });
   try {

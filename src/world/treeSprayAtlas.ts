@@ -513,8 +513,9 @@ export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: To
     const twigs = kind === 'birch-bare' ? paintBareTile(ctx, S, rng)
       : BROADLEAF_RECIPES[kind] ? paintBroadleafTile(ctx, S, rng, kind, BROADLEAF_RECIPES[kind])
         : paintConiferTile(ctx, S, rng, kind);
-    // a winter palette's snow load rides the twigs (its own stream: the leaf painting never moves)
-    if (snow > 0.05) paintSpraySnow(ctx, twigs, S * (kind === 'birch-bare' ? 0.035 : 0.07), snow, snowRng);
+    // a winter palette's snow load rides the twigs of the top tile row — the snow-laden sprays the sky-facing seats
+    // take (vegetation.ts buildGrownTree); the bottom row stays bare (its own stream: the leaf painting never moves)
+    if (snow > 0.05 && ty === 0) paintSpraySnow(ctx, twigs, S * (kind === 'birch-bare' ? 0.035 : 0.07), snow, snowRng);
     ctx.restore();
   }
   const image = ctx.getImageData(0, 0, s, s);
