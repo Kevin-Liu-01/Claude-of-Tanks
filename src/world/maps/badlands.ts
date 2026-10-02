@@ -91,7 +91,7 @@ export default {
     mieCoefficient: 0.0095, mieDirectionalG: 0.86, fogDensity: 0.00058,
     fogTintHex: 0xb18b77, fogMix: 0.56, envIntensity: 0.17,
     cloudOpacity: 0.62, cloudOpacity2: 0.26, cloudTintHex: 0xffe4cb,
-    sunIntensity: 4.25, sunColorHex: 0xffd4ad, hemiIntensity: 0.25, postExposure: 0.92,
+    sunIntensity: 4.45, sunColorHex: 0xfff1df, hemiIntensity: 0.25, postExposure: 0.92,
   },
   minimap: {
     base: [137, 81, 59], hard: [124, 91, 72], soft: [105, 69, 54],

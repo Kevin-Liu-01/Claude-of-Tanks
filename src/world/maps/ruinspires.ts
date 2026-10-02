@@ -117,7 +117,7 @@ export default {
     // broken deck of 2400 m masses; diffuse light patchiness (cloudShadowAmp 0.12)
     cloudOpacity: 1.08, cloudOpacity2: 0.82, cloudTintHex: 0xd0d1ce,
     cloudAltM: 360, cloudHazeK: 0.00014, cloudUvM: 2400, cloudShadowAmp: 0.12,
-    sunIntensity: 3.8, sunColorHex: 0xffd0aa, hemiIntensity: 0.34, postExposure: 0.94,
+    sunIntensity: 4.29, sunColorHex: 0xffedd5, hemiIntensity: 0.34, postExposure: 0.94,
   },
   minimap: {
     base: [76, 79, 78], hard: [88, 88, 87], soft: [59, 65, 64],

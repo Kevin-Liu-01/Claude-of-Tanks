@@ -238,7 +238,7 @@ export default {
     // buildings at 300 m keep local contrast.
     fogDensity: 0.00062, fogTintHex: 0x8d99a8, fogMix: 0.62, envIntensity: 0.2,
     cloudOpacity: 0.85, cloudOpacity2: 0.5, cloudTintHex: 0xe8e4dc,
-    sunIntensity: 4.2, sunColorHex: 0xffedd6, hemiIntensity: 0.36,
+    sunIntensity: 4.53, sunColorHex: 0xfff0db, hemiIntensity: 0.36,
   },
 
   minimap: {

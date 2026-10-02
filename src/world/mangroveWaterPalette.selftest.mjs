@@ -1,4 +1,5 @@
 import { beforeRoadSettlementRedesign } from '../../tools/road-settlement-history-fixture.mjs';
+import { previousSunConfig } from './lightModelSun.test-support.mjs'; // 2026-10-01: the derived sun leaves, projected back
 import { beforeShorelineContinuity } from './shorelineContinuity.test-support.mjs';
 import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
@@ -176,7 +177,7 @@ function verifyHistoricalConfigs(resolve) {
   // non-palette digest follows below). Olympus Basin (2026-09-18; the catalog receipts guard it), Earthrise Basin and
   // Aegis Crossing (0e5fc79e2) postdate the golden and stay out of it; the unmutated-input check reads every map.
   for (const id of PRE_MARS_MAP_IDS) {
-    const historical = beforeRoadSettlementRedesign(historicalAlpineHorizonInput(historicalCropPaletteInput(historicalAutumnPaletteInput(historicalFoundryPaletteInput(historicalPaletteConfig(originalExitConfig(historicalMapPassDressingInput(beforeShorelineContinuity(resolve(id)), assert))))))));
+    const historical = beforeRoadSettlementRedesign(historicalAlpineHorizonInput(historicalCropPaletteInput(historicalAutumnPaletteInput(historicalFoundryPaletteInput(historicalPaletteConfig(originalExitConfig(historicalMapPassDressingInput(beforeShorelineContinuity(previousSunConfig(resolve(id))), assert))))))));
     if (id !== 'mangrove') unchangedMaps.push([id, stringify(paletteReceiptInput(historical))]);
   }
   // 2026-09-13 lighting: eight sky presets (alpine, fjord, caldera, monsoon, delta, blackglass, foundry,
@@ -189,7 +190,7 @@ function verifyHistoricalConfigs(resolve) {
     // saltwind.ts authored its bay as one contour open to the west — the other-29 config digest moved for those two maps
     'bb0a2247d841b6d25b1e28b3b0e26c42e4ed3bba589f1ea1cc10e978dc768d8a', // 2026-09-25 (round 70): whiteout.ts authors sourcedTint, a snowpack fallback law and postExposure 0.83 — the owner-approved snow re-grade (was d95c13b7…: round 66, the eleven sea-sheet maps author an `ocean` block; 2bac4c86…: round 57, steppe.ts terrain block authors railSpurs; 89a7af50…: round 55, fjord.ts horizon block authors outcrops: 1; e4c7ce4b…: Frosthollow / Amberford / Tarkhan player pads moved, round-48 pacing landing)
     'other29 config digest retains original donor policy and authenticated historical Foundry/Autumn inputs');
-  const historical = paletteReceiptInput(historicalShorelineConfig(resolve('mangrove')));
+  const historical = paletteReceiptInput(historicalShorelineConfig(previousSunConfig(resolve('mangrove'))));
   assert.equal(hash(stringify({ ...historical, splat: { ...historical.splat, mudTone: null, iceSky: null } })),
     'a8ce6bce896ab53be33e1b9754aa5c1b551fbc6af4c9995d0ad256dafc524870', 'original non-palette Mangrove digest (2026-09-13 lighting: mangrove key 3.7 -> 4.0, repinned; 2026-09-24 round 66: mangrove.ts authors its `ocean` block, was 66f31f32…)');
 }

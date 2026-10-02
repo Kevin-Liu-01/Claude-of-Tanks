@@ -218,7 +218,7 @@ export default {
     // camera; the heavier marine fog washed the water to featureless grey
     fogDensity: 0.00046, fogTintHex: 0x93a7bd, fogMix: 0.6, envIntensity: 0.24,
     cloudOpacity: 0.85, cloudOpacity2: 0.55, cloudTintHex: 0xffffff,
-    sunIntensity: 4.5, sunColorHex: 0xfff3e0, hemiIntensity: 0.36,
+    sunIntensity: 4.46, sunColorHex: 0xffeed3, hemiIntensity: 0.36,
   },
 
   minimap: {

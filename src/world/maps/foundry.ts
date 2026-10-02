@@ -133,7 +133,7 @@ export default {
     // factory and trunk shadows read as flat discoloration. Keep the authored
     // warm overcast fill, but give the directional sun enough separation to
     // hold across every shadow-map tier.
-    sunIntensity: 4.2, sunColorHex: 0xfde3c4, hemiIntensity: 0.36, postExposure: 0.96, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.8 / 0xffd6ad / 0.48); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
+    sunIntensity: 0.86, sunColorHex: 0xfeffff, hemiIntensity: 0.36, postExposure: 0.96, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.8 / 0xffd6ad / 0.48); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
   },
   minimap: {
     base: [73, 75, 73], hard: [91, 91, 88], soft: [64, 67, 65],

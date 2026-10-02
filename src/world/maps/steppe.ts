@@ -338,7 +338,7 @@ export default {
     turbidity: 4.2, rayleigh: 1.15, mieCoefficient: 0.007, mieDirectionalG: 0.78,
     fogDensity: 0.00052, fogTintHex: 0xb3ab94, fogMix: 0.62, envIntensity: 0.18,
     cloudOpacity: 0.55, cloudOpacity2: 0.32, cloudTintHex: 0xfdf6ea,
-    sunIntensity: 4.25, sunColorHex: 0xfff0d6, hemiIntensity: 0.30,
+    sunIntensity: 4.61, sunColorHex: 0xfff3e4, hemiIntensity: 0.30,
   },
 
   minimap: {

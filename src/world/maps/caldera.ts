@@ -113,7 +113,7 @@ export default {
     cloudAltM: 360, cloudHazeK: 0.00014, cloudUvM: 2300, cloudShadowAmp: 0.12,
     // Preserve the smoky low-key grade while keeping direct/ambient
     // separation strong enough for reliable terrain and structure shadows.
-    sunIntensity: 4.0, sunColorHex: 0xffc9a0, hemiIntensity: 0.42, postExposure: 0.95, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.5 / 0xffb985 / 0.64); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
+    sunIntensity: 4.11, sunColorHex: 0xffecd2, hemiIntensity: 0.42, postExposure: 0.95, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.5 / 0xffb985 / 0.64); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
   },
   minimap: {
     base: [60, 57, 50], hard: [77, 73, 67], soft: [57, 54, 49],

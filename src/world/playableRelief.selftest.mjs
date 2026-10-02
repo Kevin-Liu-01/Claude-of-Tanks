@@ -1,5 +1,6 @@
 import { historicalRound47PresentationSource } from './round47MapPresentation.test-support.mjs';
 import { historicalRound71CloudsSource } from './round71Clouds.test-support.mjs';
+import { historicalLightModelSkySource, previousSunSky } from './lightModelSun.test-support.mjs';
 import { historicalRoadTerrainSource } from './roadHistoryTestOracle.mjs';
 import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
@@ -32,7 +33,7 @@ const selected=new Map([['frontier','frontier'],['alpine','alpine']]);
 const seeds=[1337,7719],receipts=[];
 // Round 47 (owner map audit) re-authored Titan's presentation blocks (palette route, tints, ring rows, sky decks); relief
 // authoring never feeds heights, so the byte receipt projects those exact blocks back before comparing (badlandsRelief law).
-assert.equal(historicalRound47PresentationSource(historicalRound71CloudsSource(readFileSync(new URL('./maps/titanGorge.ts',import.meta.url),'utf8'),'titanGorge.ts'),'titanGorge.ts'),oldSource('src/world/maps/titanGorge.ts'),
+assert.equal(historicalRound47PresentationSource(historicalRound71CloudsSource(historicalLightModelSkySource(readFileSync(new URL('./maps/titanGorge.ts',import.meta.url),'utf8'),'titanGorge.ts'),'titanGorge.ts'),'titanGorge.ts'),oldSource('src/world/maps/titanGorge.ts'),
   'Held Titan authoring is byte-exact baseline once round 47\'s presentation blocks are projected; its heights also pass the 28-map legacy loop below');
 // The legacy loop below covers an explicit roster, the pre-lunar battlefields (Mars joined it 2026-09-19). It compares
 // two historical terrain programs, and Aegis Crossing's gorge landform and authored dry viaduct (0e5fc79e2) did not
@@ -64,6 +65,8 @@ for(const [id,file]of selected){
   ports.set(url,stripTypeScriptTypes(oldSource(`src/world/maps/${file}.ts`)));
   const old=(await import(url)).default,cfg=historicalMapPassDressingInput(originalExitConfig(getMapConfig(id)),assert);
   const normalized={...cfg,terrain:{...cfg.terrain,landforms:cfg.terrain.landforms.map(stripRelief)}};
+  // 2026-10-01 (the grounded light model): the sky's two sun leaves are the model's derivation, projected back first
+  normalized.sky=previousSunSky(cfg,id);
   if(id==='alpine'){
     // 2026-09-11 restored the 1049e4e Alpine horizon bands (owner direction).
     // Horizon bands never feed relief; guard the live values, then project
@@ -75,9 +78,9 @@ for(const [id,file]of selected){
     // 2026-09-13 lighting: the alpine key/fill moved toward the 1049e4e ratio (sun 2.85 -> 4.2,
     // colour 0xffddbe -> 0xf8eedb, hemisphere 0.54 -> 0.34). Sky presets never feed relief; guard
     // the live leaves, then project only them back so every other authoring field stays exact.
-    assert.equal(cfg.sky.sunIntensity,4.2,'alpine: 2026-09-13 key');assert.equal(cfg.sky.sunColorHex,0xf8eedb);assert.equal(cfg.sky.hemiIntensity,0.34);
+    assert.equal(normalized.sky.sunIntensity,4.2,'alpine: 2026-09-13 key');assert.equal(normalized.sky.sunColorHex,0xf8eedb);assert.equal(cfg.sky.hemiIntensity,0.34);
     assert.equal(old.sky.sunIntensity,2.85);assert.equal(old.sky.sunColorHex,0xffddbe);assert.equal(old.sky.hemiIntensity,0.54);
-    normalized.sky={...cfg.sky,sunIntensity:2.85,sunColorHex:0xffddbe,hemiIntensity:0.54};
+    normalized.sky={...normalized.sky,sunIntensity:2.85,sunColorHex:0xffddbe,hemiIntensity:0.54};
   }
   // round 71 (2026-09-25): the cloudscape block (the volumetric layer's per-map authoring) never feeds relief; projected out
   delete normalized.clouds;

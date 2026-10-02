@@ -8,6 +8,7 @@ import { historicalRound71CloudsSource } from './round71Clouds.test-support.mjs'
 import { historicalRound72ReliefSource } from './round72Relief.test-support.mjs';
 import { historicalRound75PropsSource } from './round75Props.test-support.mjs';
 import { historicalRound76DeckRegradeSource } from './round76DeckRegrade.test-support.mjs';
+import { historicalLightModelSkySource, previousSunSky } from './lightModelSun.test-support.mjs';
 import { originalExitConfig, historicalAuthoredExitSource } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -238,7 +239,7 @@ function historicalDrainApronSource(source, file) {
 for (const file of mapFiles) if (file !== 'moon.ts' && file !== 'cliffbridge.ts' && file !== 'badlands.ts' && file !== 'mars.ts' && file !== 'winter.ts' && file !== 'autumn.ts' && file !== 'steppe.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
   assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(
-    historicalRound75PropsSource(historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(historicalSlopeHoldSource(historicalRound47PresentationSource(historicalRound66OceanSource(historicalRound71CloudsSource(historicalRound70SnowRegradeSource(historicalRound72ReliefSource(historicalRound76DeckRegradeSource(historicalDrainApronSource(beforeRoadSettlementSource(read('src/world/maps/' + file), file), file), file), file), file), file), file), file), file), file), file), file), file), file, assert), file), file), old('src/world/maps/' + file), id),
+    historicalRound75PropsSource(historicalMapPassDressingSource(historicalLightingSource(historicalVistaGroundSource(historicalSkyRayleighSource(historicalSeaApertureSource(historicalSlopeHoldSource(historicalRound47PresentationSource(historicalRound66OceanSource(historicalRound71CloudsSource(historicalRound70SnowRegradeSource(historicalRound72ReliefSource(historicalRound76DeckRegradeSource(historicalDrainApronSource(beforeRoadSettlementSource(historicalLightModelSkySource(read('src/world/maps/' + file), file), file), file), file), file), file), file), file), file), file), file), file), file), file), file, assert), file), file), old('src/world/maps/' + file), id),
     old('src/world/maps/' + file), `${file}: unchanged authoring apart from authenticated road approaches`);
 }
 
@@ -277,7 +278,8 @@ for (const index of [0, 2]) {
 }
 // Later material-only refinement is independently bounded by redrockMaterial.
 // round 71 (2026-09-25): the cloudscape block (the volumetric layer's per-map authoring) never feeds relief; projected out
-assert.equal(serialize({ ...config, blurb: original.blurb, terrain: original.terrain,
+// 2026-10-01 (the grounded light model): the sky's two sun leaves are the model's derivation; projected back like the rest
+assert.equal(serialize({ ...config, sky: previousSunSky(config, 'badlands'), blurb: original.blurb, terrain: original.terrain,
   splat: original.splat, horizon: original.horizon, clouds: undefined,
   props: { ...config.props, tacticalBeats: original.props.tacticalBeats, wallRuns: original.props.wallRuns } }),
 serialize(original), 'only scoped terrain, blurb, materials and floor-reseated tactical/wall records change');
