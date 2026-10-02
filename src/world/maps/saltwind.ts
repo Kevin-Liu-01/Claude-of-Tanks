@@ -96,11 +96,6 @@ export default {
       ]),
     ],
   },
-  layoutBrief: { exceptions: {
-    solidPropsInRoad: 'one roadside tank wreck from the shared wreck pass (a centre clearance against a 5 m hull '
-      + 'footprint) overhangs the harbour road\'s carriageway edge by 0.3 m; the shared footprint fix that follows '
-      + 'roll-out batch 1 removes this exception',
-  } },
 
   spawns: {
     // Alpha deploys on the southern upland behind the southern terrace flight; bravo's seven pads (two rows, 60 m

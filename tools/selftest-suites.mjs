@@ -1014,6 +1014,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/map-layout-metrics.selftest.mjs',
     'src/world/mapLayoutBrief.selftest.mjs',
     'server/collisionManifestDrift.selftest.mjs',
+    'src/world/roadFootprint.selftest.mjs', // 2026-10-02: solids from the scatter passes keep their footprints out of the road core
     'tools/visual-census.selftest.mjs', // 2026-10-01: the redesign baseline census (camera set, site selection, metrics, reports)
     'tools/environment-motion-probe.selftest.mjs',
     'tools/horizon-construction-bench.selftest.mjs',

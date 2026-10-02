@@ -159,6 +159,11 @@ props code shaped every layout, and the next maps should start from them:
   rejected when the ground under its footprint varies by more than the map's `maxSpread`; check that every landmark
   actually stands.
 - **Worked ground.** A `workedGround` patch takes at most 24 vertices; split larger ones.
+- **Footprints, not centres.** The rubble, boulder, field-work, wreck and well passes keep a solid's whole footprint
+  4 m from every road centreline (`src/world/roadFootprint.ts`): the 3.5 m core plus the road-distance grid's margin.
+  A wreck or rubble pile that reaches in steps straight off the road, and a well takes the nearest clear seat round its
+  junction. A boulder or field-work piece that would reach in is left out, with its draws still taken so no other
+  placement moves. Planned and street-row buildings still clear only their centres; that law is its own fix.
 - **Bot hit rates.** The bots' moving-battle hit rate follows the ground between the hulls, so clearer sightlines raise
   it. The authoritativeBots calibration (four bots from fixed seats 250 m apart, eight seeds) runs on Verdant. Run on
   each batch-1 map with the aim model unchanged, it rose 67.0 → 71.7 % on Verdant Fields, whose even village square

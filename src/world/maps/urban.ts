@@ -128,8 +128,8 @@ export default {
   // docs/MAP-LAYOUT-BRIEF.md exceptions (tools/map-layout-metrics.mjs reports the reason instead of a miss).
   layoutBrief: { exceptions: {
     solidPropsInRoad: 'one street-front row building at the south wall lane\'s eastern chamfer stands 0.35 m into the '
-      + 'carriageway: street rows keep clear of other roads but not of the other legs of their own road; the shared '
-      + 'law is fixed fleet-wide in roll-out batch 1',
+      + 'carriageway: street rows keep clear of other roads but not of the other legs of their own road. The road '
+      + 'footprint fix (2026-10-02) covers the scatter passes; the street-row and planned-building law is its own fix',
   } },
 
   spawns: {

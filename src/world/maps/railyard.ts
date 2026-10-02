@@ -125,12 +125,6 @@ export default {
     ],
   },
 
-  layoutBrief: { exceptions: {
-    solidPropsInRoad: 'a roadside wreck and a field-work pillbox from the shared props passes (centre clearances of 6 m '
-      + 'against footprint radii up to 5.8 m) reach the carriageway edge; the shared laws are fixed fleet-wide in '
-      + 'roll-out batch 1',
-  } },
-
   spawns: {
     // Alpha deploys south of the yard between the spoil bank and the eastern works; bravo's pads are the rotation.
     player: { x: -40, z: -400 },

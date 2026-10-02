@@ -96,7 +96,10 @@ assert.ok(p10S >= 120,
   `even the fast tail must retain a tactical opening (p10 ${p10S.toFixed(1)} s)`);
 const FAST_TAIL = { maxMatches: 2, maxShare: 0.015, floorS: 90 };
 /** One-line causes of known fast matches, keyed `${mapId} ${seed}`. */
-const FAST_MATCH_CAUSES = {};
+const FAST_MATCH_CAUSES = {
+  'badlands 32002': 'the road footprint fix left out a boulder that stood in the road at (-200, 21); alpha\'s bot '
+    + 'drives straight up the road and wins its 1v2',
+};
 const fastAllowed = Math.min(FAST_TAIL.maxMatches, Math.round(matches.length * FAST_TAIL.maxShare));
 const fastMatches = matches.filter((entry) => entry.timeS < 120);
 const fastName = (entry) => `${entry.mapId} seed ${entry.seed} ${entry.timeS.toFixed(0)} s` +
