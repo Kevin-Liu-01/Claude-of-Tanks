@@ -30,8 +30,9 @@ import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 // first all-map review's fixes (fuller sprays, narrower spruce and fir, darker bark, snow in the needles: verdant
 // e2ad75c1, fjord d5c01887, delta e49114df) and for the welded (indexed) grown geometry and the eucalyptus' tint;
 // Nordhavn again for the slender spruce and fir crowns (fjord 3a94851f); the Delta for the furrowed sheet painted
-// exactly as the single sheet (its palms' compensated trunks; delta 4f0633f2).
-const PINS = { verdant: '54fd12bc', fjord: '003ab1a7', delta: 'a661c8e6' };
+// exactly as the single sheet (its palms' compensated trunks; delta 4f0633f2); all three for the canopy's sky
+// occlusion baked into the grown wood (verdant 54fd12bc, fjord 003ab1a7, delta a661c8e6).
+const PINS = { verdant: '6fa2a092', fjord: '7f0550c6', delta: 'e3faa808' };
 // every producer's digest is reported before the pin is asserted (a re-pin reads all three from one run)
 const digestMismatches = [];
 

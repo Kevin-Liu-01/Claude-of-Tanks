@@ -740,6 +740,29 @@ export const GROWTH_LEAF_BUDGET: Readonly<Record<'desktop' | 'mobile', number>> 
 /** Side shoots (order >= 2) emitted as tubes, thickest first. */
 export const GROWTH_SIDE_TUBE_BUDGET: Readonly<Record<'desktop' | 'mobile', number>> = Object.freeze({ desktop: 14, mobile: 6 });
 
+/**
+ * The share of the sky the crown takes from the wood that its tint keeps out: the near trunks receive no cascade
+ * shadow (their stability rule), so a grown trunk under its own crown would read as lit in the open — the canopy's
+ * sky occlusion (canopySkyOcclusion) is baked into the wood's tint at this weight.
+ */
+export const GROWTH_CANOPY_AO = 0.5;
+
+/**
+ * The sky the sprays above a point hide from it: each spray's opaque area (a third of its card) over its squared
+ * distance, cosine-weighted toward the zenith, summed and saturated (1 − e^−Σ, overlapping sprays shade as a layer).
+ * 0 in the open (a snag), toward 1 under a dense crown.
+ */
+export function canopySkyOcclusion(skeleton: TreeSkeleton, x: number, y: number, z: number): number {
+  let sum = 0;
+  for (const l of skeleton.leaves) {
+    const dy = l.y - y;
+    if (dy <= 0.1) continue;
+    const dx = l.x - x, dz = l.z - z, d2 = dx * dx + dy * dy + dz * dz;
+    sum += (l.length * l.width * 0.35) * (dy / Math.sqrt(d2)) / (Math.PI * d2);
+  }
+  return 1 - Math.exp(-sum);
+}
+
 /** The tube sides per branch order: the stem round enough for the trunk-quality receipt, twigs triangular. */
 export const GROWTH_TUBE_SIDES: Readonly<Record<'desktop' | 'mobile', readonly number[]>> = Object.freeze({
   desktop: Object.freeze([10, 6, 4, 3]),
@@ -813,7 +836,10 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
       // stability rule — so the canopy's occlusion is baked: the deeper in the crown, the darker the limb)
       const cdx = node.x - skeleton.crown.x, cdy = (node.y - skeleton.crown.y) * 1.2, cdz = node.z - skeleton.crown.z;
       const inner = skeleton.leaves.length ? clamp01(1 - Math.hypot(cdx, cdy, cdz) / skeleton.crown.r) : 0;
-      const shade = ground * branchTint * (branch.order >= 2 ? 0.92 : 1) * (1 - 0.5 * inner * inner * (3 - 2 * inner));
+      // and under it: the sky the sprays above take (the stem below a broad crown, the limbs within it)
+      const canopy = 1 - GROWTH_CANOPY_AO * canopySkyOcclusion(skeleton, node.x, node.y, node.z);
+      const shade = ground * branchTint * (branch.order >= 2 ? 0.92 : 1)
+        * Math.min(1 - 0.5 * inner * inner * (3 - 2 * inner), canopy);
       const row: Array<[number, number, number, number, number, number, number]> = [];
       for (let j = 0; j <= s; j++) {
         const phi = (j / s) * Math.PI * 2;

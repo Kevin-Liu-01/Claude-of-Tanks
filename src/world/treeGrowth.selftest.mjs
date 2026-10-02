@@ -15,7 +15,7 @@ import * as THREE from 'three';
 import {
   emitBranchGeometry, emitCrownShadowHull, emitLeafCards, envelopeFraction, growTreeSkeleton, GROWTH_LEAF_BUDGET,
   GROWTH_LOWEST_WOOD_M, GROWTH_SIDE_TUBE_BUDGET, GROWTH_SPECIES, GROWTH_SPRAY_CLEARANCE_M, TREE_GROWTH_PROFILES,
-  weldGrownGeometry,
+  weldGrownGeometry, canopySkyOcclusion, GROWTH_CANOPY_AO,
 } from './treeGrowth.ts';
 import { finishSprayTiles, makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
 
@@ -212,6 +212,24 @@ try {
 } finally {
   if (priorDocument === undefined) delete globalThis.document; else globalThis.document = priorDocument;
   if (priorImageData === undefined) delete globalThis.ImageData; else globalThis.ImageData = priorImageData;
+}
+
+// the canopy's sky occlusion baked into the wood: none in the open (a snag, a crown stripped of its sprays), most of
+// the sky under a broad crown, more toward the crown; the wood under a crown is that much darker than the same wood
+// grown bare
+{
+  const oak = growTreeSkeleton('oak', mulberry32(2001 + 7), { variant: 1 });
+  const snag = growTreeSkeleton('snag', mulberry32(2001 + 7), { variant: 1 });
+  assert.equal(canopySkyOcclusion(snag, 0, 0.3, 0) < 0.35, true, 'a snag leaves most of the sky to its stem');
+  const foot = canopySkyOcclusion(oak, 0, 0.3, 0), crown = canopySkyOcclusion(oak, 0, 1.6, 0);
+  assert.ok(foot > 0.5 && crown >= foot, `the oak's stem loses its sky to the crown (${foot.toFixed(2)} at the foot, ${crown.toFixed(2)} below the crown)`);
+  const profile = TREE_GROWTH_PROFILES.oak;
+  const emit = (sk) => emitBranchGeometry(sk, { tint: profile.barkTint, topTint: profile.barkTopTint, barkStyle: profile.bark, rng: mulberry32(5), tier: 'desktop' });
+  const shaded = emit(oak), open = emit({ ...oak, leaves: [] });
+  const footLuma = (g) => { const p = g.attributes.position, c = g.attributes.color; let s = 0, n = 0;
+    for (let i = 0; i < p.count; i++) if (p.getY(i) < 0.6 && Math.hypot(p.getX(i), p.getZ(i)) < 0.6) { s += c.getY(i); n++; } return s / n; };
+  const ratio = footLuma(shaded) / footLuma(open);
+  assert.ok(Math.abs(ratio - (1 - GROWTH_CANOPY_AO * foot)) < 0.08, `the oak's foot takes the canopy shade (${ratio.toFixed(2)} of the open wood)`);
 }
 
 // the weld: the same triangle list (every corner's every attribute) from fewer vertices, deterministic, idempotent

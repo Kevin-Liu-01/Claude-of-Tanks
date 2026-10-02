@@ -35,8 +35,8 @@ import { createTreeImpostorLibrary, type TreeImpostorLibrary, type TreeImpostorR
 // p2 trees lane (2026-10-01): the grown near trees — skeleton, wood, spray cards and crown shadow hull — and their
 // branch-spray atlases
 import {
-  emitBranchGeometry, emitCrownShadowHull, emitLeafCards, growTreeSkeleton, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES,
-  weldGrownGeometry, type GrowthSpecies,
+  canopySkyOcclusion, emitBranchGeometry, emitCrownShadowHull, emitLeafCards, growTreeSkeleton, GROWTH_CANOPY_AO,
+  GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type GrowthSpecies,
 } from './treeGrowth.ts';
 import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
@@ -2186,7 +2186,10 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   })];
   const stem = skeleton.branches[0];
   const stemR = stem.nodes[Math.min(1, stem.nodes.length - 1)].r;
-  const footColor = new THREE.Color(profile.barkTint[0] * 0.80, profile.barkTint[1] * 0.78, profile.barkTint[2] * 0.76);
+  // the flare and the root tongues stand in the crown's sky shade too (the stem's foot, canopySkyOcclusion)
+  const footShade = 1 - GROWTH_CANOPY_AO * canopySkyOcclusion(skeleton, 0, 0.3, 0);
+  const footColor = new THREE.Color(profile.barkTint[0] * 0.80 * footShade, profile.barkTint[1] * 0.78 * footShade,
+    profile.barkTint[2] * 0.76 * footShade);
   parts.push(paintFlat(buildRootFlare(stemR, stemR * 1.36, 0.62, 10, rng() * Math.PI * 2), footColor, 0));
   const roots = profile.family === 'conifer' || profile.family === 'birch' ? 4 : 5;
   addRootButtresses(parts, rng, footColor, stemR * 1.28, roots);
