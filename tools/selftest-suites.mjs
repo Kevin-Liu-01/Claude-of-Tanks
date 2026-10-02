@@ -84,6 +84,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/dragunForwardRoofStock.selftest.mjs',
     'tools/interior-fill-body-policy.selftest.mjs',
     'tools/track-lane-boxes.selftest.mjs',
+    // 2026-10-02: the fleet watertight gate's own controls (the gate itself runs in fleetPassDefault)
+    'src/vehicles/watertightAudit.selftest.mjs',
     'tools/barak-rear-bay-fill-policy.selftest.mjs',
     'src/vehicles/profiles/kurganetsRearDoorStock.selftest.mjs',
     'src/vehicles/profiles/kurganetsBowStock.selftest.mjs',
