@@ -12,7 +12,7 @@ function fakePort() {
     uCameraNear: { value: 0.5 }, uCameraFar: { value: 4000 }, uLightTint: { value: new THREE.Color(1, 1, 1) },
     textures: { smoke: tex(), fire: tex(), prop: tex(), dust: tex(), flash: tex(), jet: tex() },
   };
-  const log = { flashes: [], prints: 0, scorches: 0, rings: 0, lateFx: null, columnCap: undefined, tinted: false };
+  const log = { flashes: [], prints: 0, lateFx: null, columnCap: undefined, tinted: false };
   let flashAt = -1e9;
   const port = {
     group: new THREE.Group(), sharing,
@@ -26,8 +26,6 @@ function fakePort() {
     setLightTintShading: (on) => { log.tinted = on; },
     setMuzzleExposure: (light, cards) => { log.muzzle = [light, cards]; },
     stampTrackPrint: () => { log.prints++; },
-    spawnScorch: () => { log.scorches++; },
-    spawnShockRing: () => { log.rings++; },
   };
   return { port, log, sharing };
 }

@@ -146,6 +146,67 @@ void main() {
 }
 `;
 
+// Procedural value noise shared by the ground decals (no canvas textures, so
+// the layer also constructs in Node receipts).
+const DECAL_NOISE = `
+float dHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 ); }
+float dNoise( vec2 p ) {
+  vec2 i = floor( p ), f = fract( p );
+  f = f * f * ( 3.0 - 2.0 * f );
+  return mix( mix( dHash( i ), dHash( i + vec2( 1.0, 0.0 ) ), f.x ),
+              mix( dHash( i + vec2( 0.0, 1.0 ) ), dHash( i + vec2( 1.0, 1.0 ) ), f.x ), f.y );
+}
+`;
+
+// Ground pressure ring: a torn dust band racing out and decelerating.
+const RING_FRAG = `
+uniform float uTime;
+uniform float uBirth;
+uniform float uDur;
+uniform float uAlpha;
+uniform float uSeed;
+uniform vec3 uColor;
+varying vec2 vUv;
+${DECAL_NOISE}
+void main() {
+  float t = ( uTime - uBirth ) / uDur;
+  if ( t < 0.0 || t > 1.0 ) discard;
+  vec2 p = vUv * 2.0 - 1.0;
+  float r = length( p );
+  float k = 1.0 - pow( 1.0 - t, 2.4 );
+  float front = 0.08 + 0.92 * k;
+  float w = 0.05 + 0.20 * k;
+  float band = smoothstep( front - w, front - w * 0.3, r ) * ( 1.0 - smoothstep( front, front + 0.035, r ) );
+  float ang = atan( p.y, p.x );
+  float n = dNoise( vec2( ang * 5.0 + uSeed, r * 7.0 - t * 2.5 ) ) * 0.6 + dNoise( vec2( ang * 19.0 - uSeed, r * 23.0 ) ) * 0.4;
+  float a = band * smoothstep( 0.22, 0.72, n ) * uAlpha * pow( 1.0 - t, 1.3 );
+  if ( a < 0.004 ) discard;
+  gl_FragColor = vec4( uColor, a );
+}
+`;
+
+// Charred ground: a dark irregular blot that appears with its blast.
+const SCORCH_FRAG = `
+uniform float uTime;
+uniform float uBirth;
+uniform float uAlpha;
+uniform float uSeed;
+varying vec2 vUv;
+${DECAL_NOISE}
+void main() {
+  float age = uTime - uBirth;
+  if ( age < 0.0 ) discard;
+  vec2 p = vUv * 2.0 - 1.0;
+  float r = length( p );
+  float n = dNoise( p * 3.2 + uSeed ) * 0.62 + dNoise( p * 9.5 - uSeed ) * 0.38;
+  float edge = 1.0 - smoothstep( 0.42 + 0.38 * n, 1.0, r );
+  float core = 1.0 - smoothstep( 0.0, 0.6, r );
+  float a = edge * ( 0.5 + 0.4 * core ) * uAlpha * smoothstep( 0.0, 0.12, age );
+  if ( a < 0.004 ) discard;
+  gl_FragColor = vec4( vec3( 0.018, 0.016, 0.014 ) + vec3( 0.03, 0.022, 0.015 ) * n, a );
+}
+`;
+
 // Ground fire-glow decal: additive warm pool with a living flicker.
 const GLOW_FRAG = `
 uniform float uTime;
@@ -184,8 +245,12 @@ export interface StudioCinematics {
    * depend on the export step).
    */
   beginEffect(atS: number): void;
-  update(dtS: number, nowS: number, shells: readonly CineShell[], tracks: readonly CineTrackActor[]): void;
-  muzzleBlast(id: string, pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number): void;
+  /** `focus` (the camera) ranks sustained fires for the two scene lights. */
+  update(dtS: number, nowS: number, shells: readonly CineShell[], tracks: readonly CineTrackActor[],
+    focus?: { x: number; y: number; z: number } | null): void;
+  muzzleBlast(id: string, pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number, ageS?: number): void;
+  /** Frozen destruction still: the cinematic fireball backdated by ageS. */
+  explosionMoment(id: string, pos: THREE.Vector3, ageS: number): void;
   groundHit(id: string, pos: THREE.Vector3, caliberMm: number, shellType: string): void;
   impact(id: string, kind: string, pos: THREE.Vector3, normal: THREE.Vector3, caliberMm: number): void;
   explosion(id: string, pos: THREE.Vector3, size: string, cause?: string): void;
@@ -291,15 +356,15 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
   const emitterCtx = new Map<CineEmitter, CineCtx>();
   const _pv = new THREE.Vector3();
 
-  function makeCtx(rng: Rng): CineCtx {
+  function makeCtx(rng: Rng, shift = 0): CineCtx {
     const ctx: CineCtx = {
-      sink, world, env, rng,
+      sink, world, env, rng, shift,
       pulse(x, y, z, peak, offsetS) {
-        pulses.push({ atS: env.nowS + offsetS, x, y, z, peak });
+        pulses.push({ atS: env.nowS + offsetS + ctx.shift, x, y, z, peak });
       },
       addEmitter(emitter) { addEmitter(emitter); },
-      scorch(x, z, radius) { port.spawnScorch(x, z, radius); },
-      shockRing(x, z, scale, alpha) { port.spawnShockRing(x, z, 0, scale, alpha); },
+      scorch(x, z, radius, offsetS) { spawnScorchDecal(x, z, radius, offsetS + ctx.shift, ctx.rng()); },
+      shockRing(x, z, radiusM, alpha, offsetS) { spawnRing(x, z, radiusM, alpha, offsetS + ctx.shift, ctx.rng()); },
     };
     return ctx;
   }
@@ -314,8 +379,8 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
     addEmitter(emitter);
   }
 
-  function ctxFor(id: string, salt = 0): CineCtx {
-    return makeCtx(cineRng(cineSeed(opts.seed(), id, salt)));
+  function ctxFor(id: string, salt = 0, shift = 0): CineCtx {
+    return makeCtx(cineRng(cineSeed(opts.seed(), id, salt)), shift);
   }
 
   function rngFor(id: string, salt: number): Rng {
@@ -378,6 +443,80 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       arr[i] = wx; arr[i + 1] = port.groundY(wx, wz) + 0.06; arr[i + 2] = wz;
     }
     attr.needsUpdate = true;
+  }
+
+  // --- shock rings + scorch decals (Studio pools; births on the shared clock) ---
+  interface TimedDecal { mesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial> }
+  function makeDecalPool(count: number, frag: string, renderOrder: number, uniforms: () => Record<string, THREE.IUniform>): TimedDecal[] {
+    const out: TimedDecal[] = [];
+    for (let i = 0; i < count; i++) {
+      const geo = new THREE.PlaneGeometry(2, 2, GLOW_SEG, GLOW_SEG);
+      geo.rotateX(-Math.PI / 2);
+      (geo.getAttribute('position') as THREE.BufferAttribute).setUsage(THREE.DynamicDrawUsage);
+      const mat = new THREE.ShaderMaterial({
+        vertexShader: GLOW_VERT, fragmentShader: frag,
+        uniforms: { uTime: port.sharing.uTime, ...uniforms() },
+        transparent: true, depthWrite: false,
+        polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.visible = false; mesh.frustumCulled = false; mesh.matrixAutoUpdate = false; mesh.renderOrder = renderOrder;
+      group.add(mesh);
+      out.push({ mesh });
+    }
+    return out;
+  }
+  const rings = makeDecalPool(14, RING_FRAG, 5, () => ({
+    uBirth: { value: -1e9 }, uDur: { value: 1 }, uAlpha: { value: 0 }, uSeed: { value: 0 }, uColor: { value: new THREE.Color() },
+  }));
+  const scorches = makeDecalPool(24, SCORCH_FRAG, 3, () => ({
+    uBirth: { value: -1e9 }, uAlpha: { value: 0 }, uSeed: { value: 0 },
+  }));
+  let ringCursor = 0, scorchCursor = 0;
+  const _ringTone: GroundTone = { light: [0, 0, 0], dark: [0, 0, 0], snow: false, wet: false };
+
+  function conformDecal(mesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>, x: number, z: number, radius: number, lift: number): void {
+    const attr = mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const arr = attr.array as Float32Array;
+    for (let i = 0; i < arr.length; i += 3) {
+      const wx = x + glowTemplatePos[i] * radius, wz = z + glowTemplatePos[i + 2] * radius;
+      arr[i] = wx; arr[i + 1] = port.groundY(wx, wz) + lift; arr[i + 2] = wz;
+    }
+    attr.needsUpdate = true;
+  }
+
+  function spawnRing(x: number, z: number, radiusM: number, alpha: number, offsetS: number, seed: number): void {
+    const decal = rings[ringCursor];
+    ringCursor = (ringCursor + 1) % rings.length;
+    conformDecal(decal.mesh, x, z, Math.max(2, radiusM), 0.3);
+    const u = decal.mesh.material.uniforms;
+    u.uBirth.value = port.sharing.uTime.value + offsetS;
+    u.uDur.value = cineClamp(0.32 + radiusM * 0.022, 0.35, 1.4);
+    u.uAlpha.value = alpha * 0.55;
+    u.uSeed.value = seed * 10;
+    world.tone(x, z, _ringTone);
+    (u.uColor.value as THREE.Color).setRGB(_ringTone.light[0], _ringTone.light[1], _ringTone.light[2]);
+    decal.mesh.visible = true;
+  }
+
+  function spawnScorchDecal(x: number, z: number, radius: number, offsetS: number, seed: number): void {
+    const decal = scorches[scorchCursor];
+    scorchCursor = (scorchCursor + 1) % scorches.length;
+    conformDecal(decal.mesh, x, z, radius, 0.07);
+    const u = decal.mesh.material.uniforms;
+    u.uBirth.value = port.sharing.uTime.value + offsetS;
+    u.uAlpha.value = 0.88;
+    u.uSeed.value = seed * 10;
+    decal.mesh.visible = true;
+  }
+
+  function updateRings(): void {
+    const now = port.sharing.uTime.value;
+    for (const decal of rings) {
+      if (!decal.mesh.visible) continue;
+      const u = decal.mesh.material.uniforms;
+      if (now > u.uBirth.value + u.uDur.value) decal.mesh.visible = false;
+    }
   }
 
   // --- smoke-grenade canisters -------------------------------------------------
@@ -503,11 +642,18 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
     }
   }
 
+  let lightFocus: { x: number; y: number; z: number } | null = null;
   function directLights(nowS: number): void {
     picks.length = 0;
     for (const e of emitters) {
       if (e.light && e.light(nowS, _light)) {
-        picks.push({ x: _light.x, y: _light.y, z: _light.z, intensity: _light.intensity, range: _light.range, color: _light.color, priority: _light.priority });
+        // fires nearest the lens win the scene lights; flares always outrank fires
+        let priority = _light.priority;
+        if (priority < 10 && lightFocus) {
+          const d = Math.hypot(_light.x - lightFocus.x, _light.y - lightFocus.y, _light.z - lightFocus.z);
+          priority = priority / (1 + d / 35);
+        }
+        picks.push({ x: _light.x, y: _light.y, z: _light.z, intensity: _light.intensity, range: _light.range, color: _light.color, priority });
       }
     }
     picks.sort((a, b) => b.priority - a.priority);
@@ -677,6 +823,9 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       spriteGeo.instanceCount = 0;
       canisters.count = 0;
       for (const g of glows) { g.mesh.visible = false; g.x = NaN; }
+      for (const d of rings) d.mesh.visible = false;
+      for (const d of scorches) d.mesh.visible = false;
+      ringCursor = 0; scorchCursor = 0;
       if (borrowed) borrowed.intensity = 0;
       if (explosionDriven) { explosionLight.distance = explosionSaved.distance; explosionDriven = false; }
     },
@@ -684,14 +833,16 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       env.nowS = atS;
       refreshEnvironment();
     },
-    update(_dtS, nowS, shells, tracks) {
+    update(_dtS, nowS, shells, tracks, focus = null) {
       env.nowS = nowS;
       refreshEnvironment();
+      lightFocus = focus;
       if (trackDustOn && tracks.length) registerTracks(tracks);
       tickEmitters(nowS);
       firePulses(nowS);
       directLights(nowS);
       updateGlows(nowS);
+      updateRings();
       updateSprites(nowS, shells);
       updateCanisters(nowS);
       // the companion shares the battle clock: update(0) only uploads this
@@ -699,8 +850,15 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       particles.update(0);
       group.visible = true;
     },
-    muzzleBlast(id, pos, dir, caliberMm) {
-      muzzleBlast(ctxFor(id, 1), pos.x, pos.y, pos.z, dir.x, dir.y, dir.z, caliberMm);
+    muzzleBlast(id, pos, dir, caliberMm, ageS = 0) {
+      muzzleBlast(ctxFor(id, 1, -ageS), pos.x, pos.y, pos.z, dir.x, dir.y, dir.z, caliberMm);
+    },
+    explosionMoment(id, pos, ageS) {
+      const ctx = ctxFor(id, 16, -ageS);
+      const y = Math.max(pos.y - 0.4, port.groundY(pos.x, pos.z)) + 1.2;
+      fireball(ctx, pos.x, y, pos.z, { scale: 1.1, smoke: 1.1, rise: 1.1 });
+      debrisBurst(ctx, pos.x, y + 0.6, pos.z, 26, 20, 0.7, 1);
+      emberBurst(ctx, pos.x, y + 1.5, pos.z, 90, 13);
     },
     groundHit(id, pos, caliberMm, shellType) {
       const ctx = ctxFor(id, 2);
@@ -765,7 +923,7 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
           ctx.sink.jet({
             pos: [actor.x, y + 0.6, actor.z], axis: [(r() - 0.5) * 0.25, 1, (r() - 0.5) * 0.25],
             life: 0.7 + r() * 0.5, width: 0.9 + r() * 0.4, len0: 1.5, len1: 7 + r() * 4,
-            seed: r(), col: [1, 0.66, 0.2], alpha: 0.9, birthOffset: i * 0.12,
+            seed: r(), col: [1, 0.66, 0.2], alpha: 0.9, birthOffset: i * 0.12 + ctx.shift,
           });
         }
       }
@@ -820,7 +978,7 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
         ctx.sink.puff('flash', {
           pos: [muzzle.x + dir.x * 0.2, muzzle.y + dir.y * 0.2, muzzle.z + dir.z * 0.2], vel: [dir.x * 2, dir.y * 2, dir.z * 2],
           life: 0.045, size0: 0.35, size1: 0.8, rot: r() * Math.PI * 2, rotVel: 0,
-          col0: [1, 0.9, 0.6], col1: [1, 0.55, 0.2], alpha: 0.9, grav: 0, birthOffset: off,
+          col0: [1, 0.9, 0.6], col1: [1, 0.55, 0.2], alpha: 0.9, grav: 0, birthOffset: off + ctx.shift,
         });
         sparkShower(ctx, muzzle.x + dir.x * 0.3, muzzle.y + dir.y * 0.3, muzzle.z + dir.z * 0.3, dir.x, dir.y, dir.z, 3, 40, 0.15, off);
       }
@@ -874,6 +1032,7 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       }
       spriteGeo.dispose(); spriteMat.dispose();
       for (const g of glows) { g.mesh.geometry.dispose(); g.mesh.material.dispose(); }
+      for (const d of [...rings, ...scorches]) { d.mesh.geometry.dispose(); d.mesh.material.dispose(); }
       glowTemplate.dispose();
       canisterGeo.dispose(); canisterMat.dispose(); canisters.dispose();
     },

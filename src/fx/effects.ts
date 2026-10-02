@@ -365,8 +365,6 @@ export interface FxCinematicPort {
    */
   setMuzzleExposure(light: number, cards: number): void;
   stampTrackPrint(pos: THREE.Vector3, dir: THREE.Vector3, water: boolean, surface: TrackSurface): void;
-  spawnScorch(x: number, z: number, radius: number): void;
-  spawnShockRing(x: number, z: number, ageS: number, scaleK: number, alphaK: number): void;
 }
 
 export interface FxRuntime {
@@ -5507,8 +5505,6 @@ function* createFxSteps(
           }
         },
         stampTrackPrint,
-        spawnScorch,
-        spawnShockRing,
       };
       return cinematicPortState;
     },

@@ -1835,7 +1835,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return true;
   }
 
-  function fireFiringMoment({ actor, params }: StudioEffectExecution): boolean {
+  function fireFiringMoment({ id, actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
     const shellSpec = actor.spec.gun.shells[Math.max(0, Math.min(actor.spec.gun.shells.length - 1, (params.slot ?? 0) | 0))];
     const launcher = usesLauncherMuzzles(actor.spec.gun, shellSpec);
@@ -1856,14 +1856,18 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       velocityMps: shellSpec.velocityMps,
       ageS: params.ageS != null ? params.ageS : 0.05,
     });
+    if (cinematicFor(params) && !isUnguidedRocket(actor.spec.gun, shellSpec)) {
+      ensureCinematics().muzzleBlast(id, _v2, _v3, params.caliberMm || shellSpec.caliberMm, params.ageS != null ? params.ageS : 0.05);
+    }
     return true;
   }
 
-  function fireExplosionMoment({ position, params }: StudioEffectExecution): boolean {
+  function fireExplosionMoment({ id, position, params }: StudioEffectExecution): boolean {
     fx.composeExplosionMoment({
       pos: position.clone(),
       ageS: params.ageS != null ? params.ageS : 0.6,
     });
+    if (cinematicFor(params)) ensureCinematics().explosionMoment(id, position, params.ageS != null ? params.ageS : 0.6);
     return true;
   }
 
@@ -2168,7 +2172,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       }
     }
     fx.update(dt, shells, camera, resolveFxSubject);
-    cinematics?.update(dt, clockMs / 1000, shells, trackActors());
+    cinematics?.update(dt, clockMs / 1000, shells, trackActors(), camera.position);
   }
 
   /**

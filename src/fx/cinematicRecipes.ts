@@ -90,10 +90,17 @@ export interface CineCtx {
   readonly world: CineWorld;
   readonly env: CineEnv;
   rng: Rng;
+  /**
+   * Seconds added to every one-shot birth and pulse: 0 normally, -ageS for
+   * the frozen composers (firing_moment / explosion_moment).
+   */
+  shift: number;
   pulse(x: number, y: number, z: number, peak: number, offsetS: number): void;
   addEmitter(emitter: CineEmitter): void;
-  scorch(x: number, z: number, radius: number): void;
-  shockRing(x: number, z: number, scale: number, alpha: number): void;
+  /** Charred ground decal appearing at `offsetS` (relative to now). */
+  scorch(x: number, z: number, radius: number, offsetS: number): void;
+  /** Ground pressure-ring decal racing out to `radiusM`, born at `offsetS`. */
+  shockRing(x: number, z: number, radiusM: number, alpha: number, offsetS: number): void;
 }
 
 export interface CineEmitter {
@@ -196,7 +203,7 @@ function puff(
   P.life = life; P.size0 = size0; P.size1 = size1;
   P.rot = ctx.rng() * TAU; P.rotVel = rotVel;
   set3(P.col0, col0[0], col0[1], col0[2]); set3(P.col1, col1[0], col1[1], col1[2]);
-  P.alpha = alpha; P.grav = grav; P.birthOffset = birthOffset;
+  P.alpha = alpha; P.grav = grav; P.birthOffset = birthOffset + ctx.shift;
   ctx.sink.puff(pool, P);
 }
 
@@ -206,7 +213,7 @@ function streak(
 ): void {
   set3(S.pos, x, y, z); set3(S.vel, vx, vy, vz);
   S.life = life; S.width = width; S.stretch = stretch; S.grav = grav;
-  set3(S.col, col[0], col[1], col[2]); S.alpha = alpha; S.seed = ctx.rng(); S.birthOffset = birthOffset;
+  set3(S.col, col[0], col[1], col[2]); S.alpha = alpha; S.seed = ctx.rng(); S.birthOffset = birthOffset + ctx.shift;
   ctx.sink.streak(S);
 }
 
@@ -218,7 +225,7 @@ function jet(
   const l = Math.hypot(ax, ay, az) || 1;
   set3(J.axis, ax / l, ay / l, az / l);
   J.life = life; J.width = width; J.len0 = len0; J.len1 = len1;
-  J.seed = ctx.rng(); set3(J.col, col[0], col[1], col[2]); J.alpha = alpha; J.birthOffset = birthOffset;
+  J.seed = ctx.rng(); set3(J.col, col[0], col[1], col[2]); J.alpha = alpha; J.birthOffset = birthOffset + ctx.shift;
   ctx.sink.jet(J);
 }
 
@@ -229,7 +236,7 @@ function chunk(
   set3(C.pos, x, y, z); set3(C.vel, vx, vy, vz);
   C.life = life; C.scale = scale; C.groundY = groundY; C.hot = hot;
   set3(C.axis, ctx.rng() - 0.5, ctx.rng() - 0.5, ctx.rng() - 0.5);
-  C.spin = 5 + ctx.rng() * 16; C.seed = ctx.rng(); C.birthOffset = birthOffset;
+  C.spin = 5 + ctx.rng() * 16; C.seed = ctx.rng(); C.birthOffset = birthOffset + ctx.shift;
   ctx.sink.chunk(C);
 }
 
@@ -297,7 +304,9 @@ export function muzzleBlast(
   const s = clamp(caliberMm / 120, 0.35, 1.45);
   const u: Vec3 = _a, v: Vec3 = _b;
   basis(dx, dy, dz, u, v);
-  // incandescent fireball (fire pool: additive, short)
+  // incandescent fireball (fire pool: additive, short); calmer at night so a
+  // front-on shot keeps the hull readable instead of clipping the frame
+  const hot = 1 - 0.35 * ctx.env.night;
   for (let i = 0; i < 9; i++) {
     const along = (0.25 + r() * 1.6) * s;
     const sp = (6 + r() * 14) * s;
@@ -307,7 +316,7 @@ export function muzzleBlast(
     puff(ctx, 'fire', px + dx * along + ox, py + dy * along + oy, pz + dz * along + oz,
       dx * sp + ox * 6, dy * sp + oy * 6 + 0.4, dz * sp + oz * 6,
       0.07 + r() * 0.11, (0.9 + r() * 0.5) * s, (2.4 + r() * 1.3) * s,
-      i < 3 ? WHITE_HOT : FLAME_Y, FLAME_O, 0.75 + r() * 0.2, 0.5, -r() * 0.012);
+      i < 3 ? WHITE_HOT : FLAME_Y, FLAME_O, (0.75 + r() * 0.2) * hot, 0.5, -r() * 0.012);
   }
   // radial overpressure flash disc: short jets perpendicular to the bore
   for (let i = 0; i < 6; i++) {
@@ -317,7 +326,7 @@ export function muzzleBlast(
     const cz = u[2] * Math.cos(a) + v[2] * Math.sin(a);
     jet(ctx, px + dx * 0.35 * s, py + dy * 0.35 * s, pz + dz * 0.35 * s,
       cx + dx * 0.35, cy + dy * 0.35, cz + dz * 0.35,
-      0.05 + r() * 0.04, 0.22 * s, 0.25 * s, (0.9 + r() * 0.7) * s, FLAME_Y, 0.55, 0);
+      0.05 + r() * 0.04, 0.22 * s, 0.25 * s, (0.9 + r() * 0.7) * s, FLAME_Y, 0.55 * hot, 0);
   }
   // propellant ring (the doughnut thrown out perpendicular to the bore)
   const ringN = 22;
@@ -395,7 +404,7 @@ export function muzzleBlast(
       fx * 1.5 + WIND_X * 0.4, 0.25 + r() * 0.3, fz * 1.5 + WIND_Z * 0.4,
       6 + r() * 4, 2.2 * s, (6 + r() * 3) * s, tone.light, tone.dark, 0.11 + r() * 0.06, 0.03, 0.1 + r() * 0.3);
   }
-  ctx.shockRing(px + fx * 1.4, pz + fz * 1.4, 0.55 + 0.35 * groundK * s, 0.75 * groundK);
+  ctx.shockRing(px + fx * 1.4, pz + fz * 1.4, (7 + 6 * groundK) * s, 0.7 * groundK, 0);
 }
 
 export interface FireballOptions {
@@ -462,7 +471,10 @@ export function fireball(ctx: CineCtx, x: number, y: number, z: number, o: Fireb
       5.5 + r() * 4.5 + 2 * rise, (3.2 + r() * 1.4) * k, (8.5 + r() * 4.5) * k,
       FIRE_LIGHT, glow * (1 - i / smokeN), SMOKE_DARK0, 0.62 + r() * 0.18, 0.9 * rise, birth);
   }
-  if (o.ground !== false) shockwave(ctx, x, z, 10 + 9 * k, 0.8 + 0.4 * Math.min(k, 1.5), d);
+  if (o.ground !== false) {
+    shockwave(ctx, x, z, 10 + 9 * k, 0.8 + 0.4 * Math.min(k, 1.5), d);
+    ctx.scorch(x, z, 2.8 + 2.4 * k, d);
+  }
   ctx.pulse(x, y + 2.5 * k, z, 1.15 + 0.5 * Math.min(k, 2), d);
 }
 
@@ -495,7 +507,7 @@ export function shockwave(ctx: CineCtx, x: number, z: number, radiusM: number, s
       2.6 + r() * 2.6, 1.6, (4 + r() * 3) * Math.max(0.8, radiusM / 16), tone.light, tone.dark,
       0.24 * clamp(strength, 0.2, 1.6), 0.15, delayS + r() * 0.08);
   }
-  ctx.shockRing(x, z, clamp(radiusM / 15, 0.4, 3.5), clamp(strength, 0.2, 1.4));
+  ctx.shockRing(x, z, radiusM * 1.1, clamp(strength, 0.2, 1.4), delayS);
 }
 
 /** Hot and cold fragments with smoke/ember trails and landing dust. */
@@ -673,7 +685,7 @@ export function heBurst(ctx: CineCtx, x: number, z: number, scale: number, delay
       Math.cos(a) * (0.8 + r()) + WIND_X * 0.6, 0.45 + r() * 0.6, Math.sin(a) * (0.8 + r()) + WIND_Z * 0.6,
       5 + r() * 4, 1.6 * k, (5.6 + r() * 2.2) * k, tone.light, tone.dark, 0.26 + r() * 0.1, 0.08, delayS + 0.25 + r() * 0.6);
   }
-  ctx.scorch(x, z, 1.8 + 1.4 * k);
+  ctx.scorch(x, z, 1.8 + 1.4 * k, delayS);
   ctx.pulse(x, y + 1.5 * k, z, 0.4 + 0.25 * fireK, delayS);
 }
 
@@ -1007,7 +1019,10 @@ export function flareEmitter(
       if (k <= 0.01) return false;
       at(t, pos);
       out.x = pos[0]; out.y = pos[1]; out.z = pos[2];
-      out.intensity = 52000 * opts.intensity * k; out.range = opts.heightM * 3.2 + 80; out.color = col;
+      // keep the lit ground at a cinematic ~1.3 (twice the moon) as the flare
+      // sinks: candela follows height^2 instead of overexposing the finale
+      const h = Math.max(10, pos[1] - y0);
+      out.intensity = 1.3 * h * h * opts.intensity * k; out.range = h * 4.2 + 70; out.color = col;
       out.priority = 10 + opts.intensity * k;
       return true;
     },
