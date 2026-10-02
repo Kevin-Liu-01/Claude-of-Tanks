@@ -41,10 +41,10 @@ assert.equal(encodedFixture.obstacles[0].s[1], 0, 'fixed corpus exercises refere
 assert.ok(Buffer.byteLength(JSON.stringify(encodedFixture)) < Buffer.byteLength(codecFixtureText) * 0.8,
   'exact dictionary materially reduces the fixed mixed primitive corpus');
 assert.deepEqual(collisionCaptureOptions(['owned-session']), {
-  session: 'owned-session', mapIds: MAP_IDS, partial: false, headless: false, cacheDir: null,
+  session: 'owned-session', mapIds: MAP_IDS, partial: false, headless: false, cacheDir: null, node: false, check: false,
 }, 'existing complete export keeps the full canonical roster');
 assert.deepEqual(collisionCaptureOptions(['owned-session', '--maps', 'whiteout']), {
-  session: 'owned-session', mapIds: ['whiteout'], partial: true, headless: false, cacheDir: null,
+  session: 'owned-session', mapIds: ['whiteout'], partial: true, headless: false, cacheDir: null, node: false, check: false,
 });
 assert.deepEqual(collisionCaptureOptions(['--maps=whiteout,polders']).mapIds, ['polders', 'whiteout']);
 for (const args of [['--maps'], ['--maps='], ['--maps=invalid'], ['--maps=whiteout,whiteout'],
@@ -54,8 +54,19 @@ for (const args of [['--maps'], ['--maps='], ['--maps=invalid'], ['--maps=whiteo
 // round 61 (2026-09-24): the headless mode captures on the tool's own checkout without a session; a warm optimizer
 // cache is the caller's own and applies to that mode only
 assert.deepEqual(collisionCaptureOptions(['--headless', '--maps', 'autumn', '--cache-dir=/tmp/warm']), {
-  session: 'cot-manifest', mapIds: ['autumn'], partial: true, headless: true, cacheDir: '/tmp/warm',
+  session: 'cot-manifest', mapIds: ['autumn'], partial: true, headless: true, cacheDir: '/tmp/warm', node: false, check: false,
 }, 'a headless partial capture names its maps and its own cache');
+// 2026-10-01: the Node build (tools/headlessWorldCollision.mjs) regenerates or checks shards without a browser; a
+// check never writes, and neither mode takes a browser session
+assert.deepEqual(collisionCaptureOptions(['--node', '--maps', 'desert']), {
+  session: 'cot-manifest', mapIds: ['desert'], partial: true, headless: false, cacheDir: null, node: true, check: false,
+}, 'a Node partial build names its maps');
+assert.deepEqual(collisionCaptureOptions(['--check']), {
+  session: 'cot-manifest', mapIds: MAP_IDS, partial: false, headless: false, cacheDir: null, node: true, check: true,
+}, 'a drift check builds every map in Node');
+for (const args of [['--node', '--headless'], ['--node', 'owned-session'], ['--check', '--check'], ['--node', '--node']]) {
+  assert.throws(() => collisionCaptureOptions(args), /node|check|session|headless/);
+}
 for (const args of [['--headless', 'owned-session'], ['--headless', '--headless'], ['--cache-dir=/tmp/warm'],
   ['--headless', '--cache-dir='], ['--headless', '--cache-dir=/a', '--cache-dir=/b']]) {
   assert.throws(() => collisionCaptureOptions(args), /headless|cache-dir/);
