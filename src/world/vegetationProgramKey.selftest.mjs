@@ -202,6 +202,9 @@ function checkRound77Mechanisms(parameters) {
 // alpha test
 function checkEdgeFade(material, parameters) {
   assert.ok('COT_CARD_EDGE_FADE' in (material.defines ?? {}), 'the desktop grown cards fade edge-on');
+  assert.equal(material.defines.COT_GROWN_CROWN, '1.60', 'and pass more of the back light');
+  assert.match(parameters.fragmentShader, /float canopyBack = pow\( saturate\( dot\( -geometryViewDir, directLight\.direction \) \), 3\.0 \);\s*#ifdef COT_GROWN_CROWN\s*canopyBack \*= COT_GROWN_CROWN;\s*#endif/,
+    'the transmission gain sits on the back-light term only');
   const fragment = parameters.fragmentShader;
   assert.match(fragment, /vec3 cotDx = dFdx\( vViewPosition \), cotDy = dFdy\( vViewPosition \);/, 'the derivatives in uniform control flow');
   assert.match(fragment, /vec3 cotFace = normalize\( cross\( cotDx, cotDy \) \);/);
@@ -230,6 +233,7 @@ function checkMobileFoliage(species, environment) {
     const fragment = environment.expand(foliage[0]).parameters.fragmentShader;
     assert.doesNotMatch(fragment, /vWindLift \*/, 'the phones keep their foliage fragment: no gust lift');
     assert.ok(!('COT_CARD_EDGE_FADE' in (foliage[0].defines ?? {})), 'the phones keep their cards: no edge-on fade');
+    assert.ok(!('COT_GROWN_CROWN' in (foliage[0].defines ?? {})), 'and no transmission gain');
     vegetation.dispose(); disposeObject3DResources(vegetation.group);
     for (const material of registered) releaseCsmShaderMaterial(lighting.csm, material);
     lighting.csm.remove(); lighting.csm.dispose();

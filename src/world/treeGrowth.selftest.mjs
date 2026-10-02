@@ -397,6 +397,7 @@ const shrubRows = [];
       assert.ok(cards.geometry.getAttribute('aCard'), 'grown cards carry the cascade sample');
       assert.equal(cards.castShadow, false);
       assert.ok('COT_CARD_EDGE_FADE' in (cards.material.defines ?? {}), 'grown cards fade edge-on');
+      assert.ok(Number(cards.material.defines.COT_GROWN_CROWN) > 1, 'and pass more of a low sun behind them');
     }
     // the shrubs grow from the bush species' sprays: welded two-triangle cards with the cascade sample
     const shrubs = desktop.group.children.filter((m) => m.userData.bush || m.userData.understorey);
@@ -536,7 +537,7 @@ const shrubRows = [];
       assert.ok(!m.geometry.index && !m.geometry.getAttribute('aCard'), 'a legacy build keeps the round-8 shrub cards');
     }
     for (const m of pools(legacy).filter((c) => c.userData.treeFoliage)) {
-      assert.ok(!('COT_CARD_EDGE_FADE' in (m.material.defines ?? {})), 'a legacy build keeps its cards unfaded');
+      assert.ok(!('COT_CARD_EDGE_FADE' in (m.material.defines ?? {})) && !('COT_GROWN_CROWN' in (m.material.defines ?? {})), 'a legacy build keeps its cards unfaded and its transmission');
     }
   } finally { legacy.dispose(); disposeObject3DResources(legacy.group); }
   // the mobile tier (resolved once, last): the legacy trees

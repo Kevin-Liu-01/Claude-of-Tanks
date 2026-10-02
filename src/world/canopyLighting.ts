@@ -24,7 +24,11 @@ export function applyCanopyDiffuseWrap(
   // Round 77 (2026-09-26): leaf translucency for the battlefield's crowns — the share of the (shadowed) direct light
   // a back-lit cluster transmits toward the viewer, raised to the third power of the view-against-sun cosine so it
   // reads as the glowing rim of a crown between the camera and the sun and nowhere else. 0 (the horizon ring's far
-  // crowns, solid bark) leaves the expression byte-identical.
+  // crowns, solid bark) leaves the expression byte-identical. p2 trees lane (2026-10-02): a grown crown's material
+  // defines COT_GROWN_CROWN, its transmission gain — the grown crown's own hull shadows its anti-sun cards (each card
+  // samples the cascades once, pushed sunward by the crown's radius), so a back-lit grown crown passes less of the
+  // shadowed light than the round-8 lobe proxies let through; the gain gives that light back where the view looks
+  // toward the sun and nowhere else.
   thin = 0,
 ): void {
   if (wrap <= 0) return;
@@ -43,7 +47,7 @@ export function applyCanopyDiffuseWrap(
     'reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseContribution );',
     `float canopyDiffuseNL = saturate( ( canopyRawNL + ${wrap.toFixed(2)} ) * ${reciprocal} ) * ${reciprocal};\n\t${matteCanopy ? 'canopyDiffuseNL = canopyDiffuseNL * 0.70 + 0.075;\n\t' : ''}reflectedLight.directDiffuse += canopyDiffuseNL * directLight.color * BRDF_Lambert( material.diffuseContribution );${
       thin > 0
-        ? `\n\tfloat canopyBack = pow( saturate( dot( -geometryViewDir, directLight.direction ) ), 3.0 );\n\treflectedLight.directDiffuse += canopyBack * ${thin.toFixed(2)} * directLight.color * BRDF_Lambert( material.diffuseContribution );`
+        ? `\n\tfloat canopyBack = pow( saturate( dot( -geometryViewDir, directLight.direction ) ), 3.0 );\n\t#ifdef COT_GROWN_CROWN\n\tcanopyBack *= COT_GROWN_CROWN;\n\t#endif\n\treflectedLight.directDiffuse += canopyBack * ${thin.toFixed(2)} * directLight.color * BRDF_Lambert( material.diffuseContribution );`
         : ''}`,
   );
   if (matteCanopy) {

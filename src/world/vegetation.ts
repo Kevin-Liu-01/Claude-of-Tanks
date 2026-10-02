@@ -2180,6 +2180,13 @@ export function grownSprayKind(species: Species, palette: VegetationPalette = {}
  * side shoots as tubes, the legacy fluted root flare and root tongues at the foot, a winter palette's snow lobes on the
  * limbs), the spray cards and the crown's own shadow hull. Deterministic from the seed; the desktop tiers' builder.
  */
+/**
+ * p2 trees lane (2026-10-02): the grown crowns' back-lit transmission gain (canopyLighting.ts COT_GROWN_CROWN) — the
+ * a4 capture read Saltmere's and Frontier's crowns 19 % under the base where the stand and macro views look into a low
+ * sun, while the per-species values hold them at parity front- and side-lit (.qa-dev species-luma).
+ */
+const GROWN_CROWN_TRANSMISSION = 1.6;
+
 /** The grown crowns' card tint law per family: the legacy HSL multiplier's hue and saturation, and its gain. */
 function grownTintLaw(family: string): readonly [number, number, number] {
   if (family === 'conifer') return [0.30, 0.18, 1.95];
@@ -4675,8 +4682,9 @@ function* vegetationBuildSteps(
       // phones keep the flat card program). The tile is a material property, so every species shares one program.
       const leafTile = leafDetail.texture(leafDetail.classOf(sp, palOf(sp)));
       if (leafTile) { fm.normalMap = leafTile; fm.normalScale.set(LEAF_DETAIL_NORMAL_SCALE, LEAF_DETAIL_NORMAL_SCALE); }
-      // p2 trees lane: the grown crowns' edge-on fade (foliageWindHook)
-      if (SPECIES[sp].grown) fm.defines = { ...(fm.defines ?? {}), COT_CARD_EDGE_FADE: '' };
+      // p2 trees lane: the grown crowns' edge-on fade (foliageWindHook) and their back-lit transmission gain
+      // (canopyLighting.ts COT_GROWN_CROWN: the dark Saltmere and Frontier crowns against a low sun)
+      if (SPECIES[sp].grown) fm.defines = { ...(fm.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2) };
       engineCtx.setupShadowMaterial(fm, foliageWindHook);
       // Species vary textures/uniforms, not this shared shader hook. Three
       // already keys material/geometry defines; a species suffix needlessly
