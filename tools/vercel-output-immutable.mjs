@@ -29,10 +29,10 @@ export const RUNTIME_CACHE_CONTROL = 'public, max-age=3600, stale-while-revalida
 /** Vite's `[name]-[hash][extname]` (an eight-character base64url hash). */
 export const HASHED_ASSET_RE = /-[A-Za-z0-9_-]{8}\.[a-z0-9]+$/;
 /** The collision manifests vite.config.ts emits as `<map>.<sha256[0..12]>.json`; `index.json` names them and is not hashed. */
-export const COLLISION_MANIFEST_RE = /^[a-z0-9_-]+\.[0-9a-f]{12}\.json$/;
+const COLLISION_MANIFEST_RE = /^[a-z0-9_-]+\.[0-9a-f]{12}\.json$/;
 /** Public directories the game loads at runtime; only their images, audio and fonts take the moderate TTL. */
-export const RUNTIME_DIRS = Object.freeze(['textures', 'icons', 'fonts', 'audio', 'maps', 'minimaps']);
-export const RUNTIME_FILE_RE = /\.(?:png|webp|jpe?g|avif|gif|svg|ktx2|ogg|mp3|wav|m4a|opus|woff2?|ttf|otf)$/i;
+const RUNTIME_DIRS = Object.freeze(['textures', 'icons', 'fonts', 'audio', 'maps', 'minimaps']);
+const RUNTIME_FILE_RE = /\.(?:png|webp|jpe?g|avif|gif|svg|ktx2|ogg|mp3|wav|m4a|opus|woff2?|ttf|otf)$/i;
 export const DEFAULT_GROUP = 40;
 /** Keep each route's `src` well under the 4,096-character source limit Vercel documents for routing rules. */
 const MAX_SOURCE_LENGTH = 3000;
