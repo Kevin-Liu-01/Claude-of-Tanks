@@ -31,13 +31,21 @@ const join = (start: number, end: number): RoadEnds => [{ junction: start }, { j
  * sole shore termini; Caldera's first road is a genuine closed mining loop.
  */
 export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>> = {
-  verdant: [through, through], desert: [through, through],
+  verdant: [through, through],
+  // Sirocco Wadi redesign (2026-10-01): the caravan road and the wadi track run edge to edge through the ksar; each
+  // ring lane leaves the caravan road and ends on the wadi track.
+  desert: [through, through, join(0, 1), join(0, 1)],
   // Frosthollow redesign (owner 2026-09-23): the valley road and the moraine track run edge to edge, the pass road
   // leaves the west border and ends on the valley road, the Bystra crossing starts there and leaves east, the sawmill
   // lateral links the valley road to the moraine track, the back lane joins the valley road to the pass road and the
   // yard loop rejoins the valley road at both ends.
   winter: [through, ['boundary', { junction: 0 }], [{ junction: 0 }, 'boundary'], through, join(0, 3), join(0, 1), join(0, 0)],
-  urban: Array.from({ length: 8 }, () => through),
+  // Steinburg redesign (2026-10-01): the Hauptstrasse, the trade road and the bypass run edge to edge; each valley
+  // road enters from the west edge and ends on the bypass; the farm road links the two valley roads; each wall lane
+  // leaves the Hauptstrasse west of the square for the trade road, and its second leg leaves the trade road for the
+  // Hauptstrasse east of the square.
+  urban: [through, through, through, ['boundary', { junction: 2 }], ['boundary', { junction: 2 }],
+    join(3, 4), join(0, 1), join(1, 0), join(0, 1), join(1, 0)],
   coastal: [through, through, ['boundary', 'shore'], ['boundary', 'shore']],
   // Amberford redesign (owner 2026-09-23): the coach road runs edge to edge; the manor lane leaves the cross lanes
   // and exits north-east; the mill lane leaves the market square west; the sunken lane enters from the west edge and
@@ -46,7 +54,9 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   // Tarkhan Steppe (round 48, owner 2026-09-23 redesign): highway, station road, east track and plateau road
   // all leave the square; the sor track starts on the station road and ends at the salt pan's shore.
   steppe: [through, through, through, through, [{ junction: 1 }, 'shore']],
-  railyard: Array.from({ length: 6 }, () => through),
+  // Cinder Junction redesign (2026-10-01): the central road, the two crossing roads and the two yard service roads all
+  // run edge to edge; each works road leaves a service road and ends on a crossing road.
+  railyard: [through, through, through, through, through, join(3, 2), join(4, 1)],
   frontier: [through, through, through, join(0, 2)],
   fjord: [through, through, through, join(0, 2), join(0, 2)],
   // The two southwest approaches converge before the border: one shared
