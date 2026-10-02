@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { closeSync, mkdirSync, openSync, writeFileSync } from 'node:fs';
 import { availableParallelism, constants, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -81,11 +81,25 @@ export function selftestWorkerCount(env = process.env, availableCpus = available
   return count;
 }
 
-export function runSelftestFile(file, { spawnProcess = spawn, signals = process, env = selftestChildEnv() } = {}) {
+// `logFile` (gate P13, `--logs=<dir>`) sends the child's stdout and stderr to that file through a
+// file descriptor, never a pipe: a grandchild that outlives the receipt cannot hold the runner open.
+// `cwd` lets the gate run a receipt in a baseline worktree. Defaults keep the inherited terminal.
+export function runSelftestFile(file, { spawnProcess = spawn, signals = process, env = selftestChildEnv(),
+  cwd = process.cwd(), logFile = null } = {}) {
   return new Promise((resolveResult) => {
-    const child = spawnProcess(process.execPath, [file], {
-      cwd: process.cwd(), env, stdio: 'inherit',
-    });
+    let output = null;
+    if (logFile) {
+      mkdirSync(dirname(logFile), { recursive: true });
+      output = openSync(logFile, 'w');
+    }
+    let child;
+    try {
+      child = spawnProcess(process.execPath, [file], {
+        cwd, env, stdio: output === null ? 'inherit' : ['inherit', output, output],
+      });
+    } finally {
+      if (output !== null) closeSync(output); // the child holds its own descriptor
+    }
     let error, interruptedBy;
     const interrupt = () => { interruptedBy ??= 'SIGINT'; child.kill('SIGINT'); };
     const terminate = () => { interruptedBy ??= 'SIGTERM'; child.kill('SIGTERM'); };
@@ -234,7 +248,7 @@ export function selftestCommand(args, { durations = loadDurationSnapshot() } = {
   const registered = name === 'all' ? Object.values(SELFTEST_SUITES).flat() : SELFTEST_SUITES[name];
   if (!registered) throw new Error(`Unknown self-test suite "${name}". Expected: all, ${Object.keys(SELFTEST_SUITES).join(', ')}`);
   const options = { name, files: registered, plan: false, report: null, changed: null, order: 'longest',
-    only: [], shard: null, writeDurations: false };
+    only: [], shard: null, writeDurations: false, logs: null };
   for (const arg of args) {
     if (arg === '--plan') options.plan = true;
     else if (arg === '--all') continue; // handled by the cache; applies to every selected group
@@ -244,6 +258,7 @@ export function selftestCommand(args, { durations = loadDurationSnapshot() } = {
     else if (arg.startsWith('--only=')) options.only.push(...splitGlobs(arg.slice(7)));
     else if (arg.startsWith('--shard=') && !options.shard) options.shard = parseShard(arg.slice(8));
     else if (arg === '--write-durations') options.writeDurations = true;
+    else if (arg.startsWith('--logs=') && arg.length > 7) options.logs = resolve(arg.slice(7));
     else throw new Error(`Unknown self-test option: ${arg}`);
   }
   if (options.changed && !options.plan) throw new Error('--changed explains impact with --plan; it never skips required checks');
@@ -263,7 +278,7 @@ export function selftestCommand(args, { durations = loadDurationSnapshot() } = {
 }
 function writeDurationsConflict(options) {
   return options.writeDurations && (options.name !== 'all' || options.plan || options.only.length || options.shard
-    || options.changed || options.report || options.order !== 'longest');
+    || options.changed || options.report || options.logs || options.order !== 'longest');
 }
 
 export function selftestPlan(files, cache, changed = null, root = process.cwd()) {
@@ -319,11 +334,13 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       const runMsOf = file => runtimes.runMsOf(file) ?? snapshot.get(file);
       const order = command.order === 'longest' ? admissionOrder(suite, { runMsOf, barriers: new Set(SELFTEST_BARRIER_FILES) }) : undefined;
       if (order) console.log(`[selftests] ${suiteName}: admission longest-first (${suite.filter(file => runMsOf(file) !== undefined).length} of ${suite.length} run times known; barriers first); --order=registry admits in registry order`);
+      const logOf = file => join(command.logs, `${file}.log`);
       process.exitCode = await runSelftestSuite(suiteName, suite, {
         concurrency,
         failFast: selftestFailFast(),
         cache,
         order,
+        ...(command.logs ? { runFile: file => runSelftestFile(file, { logFile: logOf(file) }) } : {}),
         onTiming(row) {
           rows.push({ ...row, error: row.error?.message });
           completed++; executionMs += row.runMs; queueMs += row.queueMs;
@@ -332,7 +349,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
           if (!row.error && Number.isInteger(row.status) && row.status >= 0 && row.status < 128) runtimes.record(row.file, row.runMs);
           const state = row.status === 0 && !row.error ? 'PASS' : 'FAIL';
           if (state === 'FAIL') failures.push(row.file);
-          console.log(`[selftests] ${suiteName} ${completed}/${suite.length} ${state} ${row.file}: ${row.runMs.toFixed(0)}ms child, ${row.queueMs.toFixed(0)}ms FIFO`);
+          console.log(`[selftests] ${suiteName} ${completed}/${suite.length} ${state} ${row.file}: ${row.runMs.toFixed(0)}ms child, ${row.queueMs.toFixed(0)}ms FIFO${command.logs && state === 'FAIL' ? ` (log: ${logOf(row.file)})` : ''}`);
         },
       });
       cache.persist();
@@ -344,7 +361,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       mkdirSync(dirname(reportPath), { recursive: true });
       writeFileSync(reportPath, JSON.stringify({ startedAt, finishedAt: new Date().toISOString(),
         status: process.exitCode, admission: command.order, ...(command.only.length ? { only: command.only } : {}),
-        ...(command.shard ? { shard: command.shard } : {}), selected: suite.length, completed, executed: completed - skipped,
+        ...(command.shard ? { shard: command.shard } : {}), ...(command.logs ? { logs: command.logs } : {}),
+        selected: suite.length, completed, executed: completed - skipped,
         reused: skipped, elapsedMs: performance.now() - suiteStarted, executionMs, queueMs, rows }, null, 2) + '\n');
       console.log(`[selftests] report: ${reportPath}`);
     }

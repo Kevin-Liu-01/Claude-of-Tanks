@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
@@ -353,4 +353,28 @@ try {
   assert.notEqual(changed.status, 0);
   assert.match(changed.stderr, /changed source still executes/);
 } finally { rmSync(cacheFixture, { recursive: true, force: true }); }
+// Gate P13 (2026-10-01): --logs sends each receipt's stdout and stderr to its own file through a
+// descriptor (never a pipe), and the gate can run a receipt in another worktree through cwd.
+const logFixture = mkdtempSync(join(tmpdir(), 'cot-receipt-logs-'));
+try {
+  const signals = new EventEmitter(), child = new EventEmitter();
+  child.kill = () => true;
+  let launched;
+  const logFile = join(logFixture, 'nested', 'src', 'x.selftest.mjs.log');
+  const pending = runSelftestFile('src/x.selftest.mjs', { signals, cwd: logFixture, logFile,
+    spawnProcess: (...args) => { launched = args; return child; } });
+  assert.equal(launched[2].cwd, logFixture);
+  assert.equal(launched[2].stdio[0], 'inherit');
+  assert.equal(typeof launched[2].stdio[1], 'number', 'stdout goes to a file descriptor, not a pipe');
+  assert.equal(launched[2].stdio[1], launched[2].stdio[2], 'stderr shares the receipt log');
+  child.emit('close', 0);
+  assert.deepEqual(await pending, { status: 0, error: undefined });
+  const script = join(logFixture, 'speaks.mjs');
+  writeFileSync(script, "console.log('to stdout'); console.error('to stderr'); process.exitCode = 3;\n");
+  const realLog = join(logFixture, 'speaks.log');
+  assert.deepEqual(await runSelftestFile(script, { logFile: realLog }), { status: 3, error: undefined });
+  assert.equal(readFileSync(realLog, 'utf8'), 'to stdout\nto stderr\n', 'a fresh child writes both streams to its log');
+  assert.equal(selftestCommand(['--logs=/tmp/receipt-logs']).logs, '/tmp/receipt-logs');
+  assert.throws(() => selftestCommand(['--write-durations', '--logs=/tmp/x']), /records the whole registry/);
+} finally { rmSync(logFixture, { recursive: true, force: true }); }
 console.log('run-selftests: separate execution/FIFO timings and source-invalidated fresh-process compile caching pass');
