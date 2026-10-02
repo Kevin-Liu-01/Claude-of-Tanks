@@ -77,7 +77,6 @@ export const MESSAGE_TYPE = Object.freeze({
   CLOSE: 20,
   ERROR: 21,
 } as const);
-export type MessageTypeId = typeof MESSAGE_TYPE[keyof typeof MESSAGE_TYPE];
 
 /** Finite reasons for CLOSE, ERROR and LEAVE. */
 export const CLOSE_REASON = Object.freeze({

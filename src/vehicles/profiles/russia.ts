@@ -255,18 +255,6 @@ interface T62ChassisOptions {
   readonly gear?: Readonly<Record<string, RuntimeValue>>;
 }
 
-interface TallTrackLiftOptions {
-  readonly trackHeightIncreaseM: number;
-  readonly hullRideHeightIncreaseM?: number;
-  readonly lowerHullDropM?: number;
-  readonly trackBottomY: number;
-  readonly trackTopY: number;
-  readonly authoredEnvelopeHeightM: number;
-  readonly roadWheelRadiusM: number;
-  readonly roadWheelCenterY: number;
-  readonly frontIdlerLiftM?: number;
-}
-
 interface EraLowerLeafOptions {
   readonly dy?: number;
   readonly tuck?: number;
@@ -496,20 +484,6 @@ export function loftHull(P: RussiaGeometryPort, o: LoftHullOptions): void {
         [wl0, Math.max(u0, b0), z0], [-wl0, Math.max(u0, b0), z0]));
     }
   }
-}
-
-// T-64BV lower-hull correction shared by the BV1 and Donbas builds. Keep the
-// traced upper armor/deck stations byte-identical and lower only the belly
-// profile; the forward belly segment is the lower-glacis underside, so it
-// grows down to the same datum without moving the upper glacis or bow crest.
-export const T64_LOWER_HULL_DROP_M = 0.08;
-// The BV-family bow sits slightly higher than the original print-derived
-// course. Keep this as one shared correction so the BV1 and Donbas running
-// gear retain the same front-idler stance without lifting either sprocket or
-// the loaded lower run.
-export const T64_FRONT_IDLER_LIFT_M = 0.04;
-export function lowerT64BellyProfile(points: ProfileCurve, dropM = T64_LOWER_HULL_DROP_M): Vec2Tuple[] {
-  return points.map(([z, y]) => [z, y - dropM]);
 }
 
 // Canonical T-80 cast-turret shell, shared by every T-80 family builder.
@@ -1497,57 +1471,6 @@ export function buildT62Obr1975(P: RussiaBuilderPort): void {
 // (is7 precedent) so safeScale stays 1.0 and authored heights hold.
 export function widthAnchor(P: RussiaGeometryPort, halfW: number, y: number, z: number): void {
   for (const s of [-1, 1]) P.add('hull', KIT.box(0.012, 0.02, 0.02), s * (halfW - 0.006), y, z);
-}
-
-// T-64 ride-height correction shared by the Russian and Ukrainian profiles.
-// Hull buckets are still unmerged here, while fittings and running gear are
-// direct rig children. Moving only non-running-gear ownership keeps the
-// lower course planted and raises the complete vehicle body above it.
-export function liftT64HullAboveTallTrack(P: RussiaOffsetPort, {
-  trackHeightIncreaseM,
-  hullRideHeightIncreaseM = trackHeightIncreaseM,
-  lowerHullDropM = 0,
-  trackBottomY,
-  trackTopY,
-  authoredEnvelopeHeightM,
-  roadWheelRadiusM,
-  roadWheelCenterY,
-  frontIdlerLiftM = 0,
-}: TallTrackLiftOptions): void {
-  P.offsetBuckets([
-    'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
-    'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth',
-    'hullGlass', 'hullShadow', 'hullTrack', 'hullTrackDetailL',
-    'hullTrackDetailR', 'hullTrackTrimL', 'hullTrackTrimR',
-    'hullTrackGuardL', 'hullTrackGuardR',
-  ], 0, hullRideHeightIncreaseM, 0);
-
-  let liftedDirectHullChildren = 0;
-  for (const child of P.hullG.children) {
-    let containsRunningGear = child.userData.runningGear === true;
-    child.traverse((node: THREE.Object3D) => { containsRunningGear ||= node.userData.runningGear === true; });
-    if (containsRunningGear) continue;
-    child.position.y += hullRideHeightIncreaseM;
-    liftedDirectHullChildren += 1;
-  }
-
-  P.turretG.position.y += hullRideHeightIncreaseM;
-  P.hullG.userData.t64TallTrackReceipt = Object.freeze({
-    authoredEnvelopeHeightM,
-    trackHeightIncreaseM,
-    installedEnvelopeHeightM: trackTopY - trackBottomY,
-    trackBottomY,
-    trackTopY,
-    roadWheelRadiusM,
-    roadWheelCenterY,
-    frontIdlerLiftM,
-    hullRideHeightIncreaseM,
-    lowerHullDropM,
-    upperHullShiftM: 0,
-    runningGearShiftM: 0,
-    lowerGlacisExtendedToBelly: lowerHullDropM > 0,
-    liftedDirectHullChildren,
-  });
 }
 
 // ---- T-80 line: T-80 (1976) / T-80B / T-80BV ------------------------------
