@@ -106,7 +106,7 @@ has no secrets and no deploy; a receipts job follows once main is green.
 The deployment owner releases a gated commit with the versioned tool instead of the scratchpad
 `deploy-prod-main.sh`; [DEPLOYS.md](DEPLOYS.md) keeps the policy and the ledger.
 
-    node tools/release.mjs build <sha>       # worktree of <sha>; npm ci; vercel pull; vercel build --prod; immutable routes
+    node tools/release.mjs build <sha>       # worktree of <sha>; npm ci; vercel pull; vercel build --prod; carry-forward; immutable routes
     node tools/release.mjs deploy <sha> --title="deploy N: <title>"   # vercel deploy --prebuilt --prod, then verify
     node tools/release.mjs verify <sha> --sweep   # served stamp names <sha>; every chunk 200; a missing chunk uncacheable
     node tools/release.mjs rollback [--to=<deployment>]   # promote the deployment before the live one
@@ -118,6 +118,22 @@ The deployment owner releases a gated commit with the versioned tool instead of 
   settings" below); secrets are never printed or changed.
 - The build's own install rewrites `package-lock.json`; the tool restores it and refuses a tree with
   other tracked changes, so the stamp is never `.dirty`.
+- **Old tabs keep their chunks (2026-10-02).** A tab opened before a deploy keeps importing the hashed
+  chunks its page named; a deploy used to delete every one the new build did not emit (deploy 163: one
+  tab requested a removed chunk 33,875 times in a day, 6 % of the week's requests). `build` therefore
+  keeps a release cache outside git (`--asset-cache=<dir>`, `COT_RELEASE_ASSET_CACHE`, default
+  `~/.cache/cot-release`): every build records its own hashed `/assets` files there, and copies the files
+  of the last `--carry=<N>` releases (default 3; `--carry=0` turns it off) that it does not emit itself
+  into `.vercel/output/static/assets`, newest release first and at most `--carry-max-mb=<MB>` (default
+  200), before `tools/vercel-output-immutable.mjs` writes the immutable routes — so the carried files are
+  immutable too. Hashed names never collide, so nothing the build emits is replaced; a release records only
+  its own files, so a carried file leaves with the release that emitted it; the cache keeps the newest
+  N + 1 releases and prunes everything else; a rebuild of the same commit replaces its entry (a build that is
+  never deployed still occupies one slot). The output directory is removed before `vercel build`, so a reused
+  worktree cannot record an earlier run's carried files as its own. A missing cache only means nothing is
+  carried that time. `tools/release.selftest.mjs` drives the carry, the cap, the pruning and the lock on
+  temporary directories. Collision manifests (`/mp-collision/`) are not carried: the host reads their index
+  before each fetch.
 - `deploy` attaches the branch-link metadata (`githubCommitSha`, `githubCommitRef=main`, the subject
   or `--title`, the repository ids) and then waits for the served `application-version` to name the
   commit. Append the DEPLOYS.md row by hand: number, time, sha, title, served bundle, deployment id.
