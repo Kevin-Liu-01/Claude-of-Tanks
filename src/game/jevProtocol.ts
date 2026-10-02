@@ -426,7 +426,7 @@ export function buildJevQuestions(state: JevBattleState): Record<string, JevQues
     targets[JEV_TARGET_NONE] = 'No enemy is worth engaging right now: keep moving, hold or retreat instead.';
     questions[`target_${id}`] = {
       type: 'choice',
-      instructions: `Which enemy should our tank \`${path}\` engage now? Prefer the one that threatens it or the team most, that it can hurt, that stands on the objective, or that a teammate already has under fire when finishing it wins the exchange.`,
+      instructions: `Which enemy should our tank \`${path}\` engage now? Prefer the one that threatens it or the team most, that it can hurt, that stands on the objective, or that a teammate already has under fire when finishing it wins the exchange. Human and bot opponents have equal priority. Keep a viable local engagement instead of chasing a distant gunshot; spread across uncovered threats and only concentrate fire when it wins a local exchange.`,
       criteria: targets,
     };
     if (bot.gun === 'ready' && (!bot.tactics || bot.tactics.shootable.length > 0)) questions[`fire_${id}`] = {

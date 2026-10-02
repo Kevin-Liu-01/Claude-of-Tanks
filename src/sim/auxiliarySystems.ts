@@ -3,7 +3,7 @@ import { Euler, Matrix4, Vector3, Quaternion } from 'three';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
 export { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
-import type { DamageShellSpec } from './damage.ts';
+import type { DamageShellSpec, CombatState } from './damage.ts';
 
 export type AuxiliaryAction = 'smoke' | 'lights' | 'roofGun' | 'lightsOff';
 import type { SmokeScreen } from './smokeScreen.ts';
@@ -24,8 +24,8 @@ export interface AuxiliaryEntity {
   id: string;
   team: string;
   spec: { id: string; dims?: { heightM: number }; armor?: { turretPivot?: readonly number[] } | null };
-  state: { pos: { x: number; y: number; z: number }; yaw: number; turretYaw: number; visualPitch?: number; visualRoll?: number };
-  combat: { destroyed?: boolean; auxiliary?: AuxiliaryState };
+  state: { pos: { x: number; y: number; z: number }; yaw: number; turretYaw: number; visualPitch?: number; visualRoll?: number; roofGunYaw?: number; roofGunPitch?: number };
+  combat: { destroyed?: boolean; auxiliary?: AuxiliaryState; modules?: CombatState['modules'] };
   modeActive?: boolean;
 }
 export const SMOKE_COOLDOWN_S = 28;
@@ -48,7 +48,7 @@ function mountFrame(entity: AuxiliaryEntity, owner: 'hull' | 'turret'): Matrix4 
   matrix.makeRotationFromEuler(euler.set(-(s.visualPitch || 0), s.yaw, s.visualRoll || 0, 'YXZ'));
   matrix.setPosition(s.pos.x, s.pos.y, s.pos.z);
   if (owner === 'turret') {
-    const p = entity.spec.armor?.turretPivot ?? [0, (entity.spec.dims?.heightM ?? 2.5) * .7, 0];
+    const p = auxiliaryCapabilities(entity.spec)?.turretPivot ?? entity.spec.armor?.turretPivot ?? [0, (entity.spec.dims?.heightM ?? 2.5) * .7, 0];
     local.makeRotationY(s.turretYaw); local.setPosition(p[0]!, p[1]!, p[2]!); matrix.multiply(local);
   }
   return matrix;
@@ -59,7 +59,7 @@ export function requestAuxiliary(entity: AuxiliaryEntity, action: AuxiliaryActio
   if (!kit) return false;
   const state = auxiliaryState(entity);
   if ((action === 'lights' || action === 'lightsOff') && kit.lights) { state.lights = action === 'lights' ? 1 : 0; return true; }
-  if (action === 'roofGun' && kit.guns.length) { state.gunOn = !state.gunOn; return true; }
+  if (action === 'roofGun' && kit.guns.length && entity.combat.modules?.roofGun?.state !== 'red') { state.gunOn = !state.gunOn; return true; }
   if (action !== 'smoke' || !kit.smoke.length || !state.smokeCharges || now < state.smokeReadyAt) return false;
   const terrain=ground ?? (()=>entity.state.pos.y);
   const canisters=kit.smoke.map(socket=>{
@@ -71,7 +71,7 @@ export function requestAuxiliary(entity: AuxiliaryEntity, action: AuxiliaryActio
   targetPoint.set(0,0,0);
   for(const shot of canisters){smokeCanisterPosition(shot,shot[6],origin);targetPoint.add(origin);}
   targetPoint.multiplyScalar(1/canisters.length);
-  const smokePivot=entity.spec.armor?.turretPivot??[0,(entity.spec.dims?.heightM??2.5)*.7,0];
+  const smokePivot=kit.turretPivot??entity.spec.armor?.turretPivot??[0,(entity.spec.dims?.heightM??2.5)*.7,0];
   state.smoke={x:targetPoint.x,y:targetPoint.y+1.32,z:targetPoint.z,
     yaw:entity.state.yaw+entity.state.turretYaw,born:now,canisters,banks:smokeCloudBanks(canisters),
     source:[entity.spec.id,entity.state.pos.x,entity.state.pos.y,entity.state.pos.z,entity.state.yaw,entity.state.turretYaw,
@@ -88,7 +88,12 @@ const wrap = (v:number) => Math.atan2(Math.sin(v), Math.cos(v));
 /** Independent weapon-specific bursts. Only spotted enemies with a clear firing lane qualify. */
 export function stepRoofGun(entity: AuxiliaryEntity, now: number, dt: number, context: GunContext): boolean {
   const state = entity.combat.auxiliary, gun = auxiliaryCapabilities(entity.spec)?.guns[0];
+  entity.state.roofGunYaw = state?.gunYaw ?? 0;
+  entity.state.roofGunPitch = state?.gunPitch ?? 0;
   if (!state?.gunOn || !gun || entity.combat.destroyed || entity.modeActive === false) return false;
+  const damage = entity.combat.modules?.roofGun?.state;
+  if (damage === 'red') { state.gunOn = false; return false; }
+  const handling = damage === 'yellow' ? .5 : 1;
   const profile=auxiliaryWeaponProfile(gun.caliberMm,entity.spec.id);
   base.copy(mountFrame(entity, gun.owner));
   gunMatrix.compose(targetPoint.fromArray(gun.position),quaternion.fromArray(gun.rotation),one);base.multiply(gunMatrix);
@@ -103,8 +108,9 @@ export function stepRoofGun(entity: AuxiliaryEntity, now: number, dt: number, co
   const desiredPitch=Math.atan2(localTarget.y,Math.hypot(localTarget.x,localTarget.z));
   if(desiredPitch < -profile.depressionRad || desiredPitch > profile.elevationRad)return false;
   const turn=wrap(desiredYaw-state.gunYaw), pitch=desiredPitch-state.gunPitch;
-  state.gunYaw=wrap(state.gunYaw+Math.max(-dt*profile.yawRateRadS,Math.min(dt*profile.yawRateRadS,turn)));
-  state.gunPitch+=Math.max(-dt*profile.pitchRateRadS,Math.min(dt*profile.pitchRateRadS,pitch));
+  state.gunYaw=wrap(state.gunYaw+Math.max(-dt*handling*profile.yawRateRadS,Math.min(dt*handling*profile.yawRateRadS,turn)));
+  state.gunPitch+=Math.max(-dt*handling*profile.pitchRateRadS,Math.min(dt*handling*profile.pitchRateRadS,pitch));
+  entity.state.roofGunYaw = state.gunYaw; entity.state.roofGunPitch = state.gunPitch;
   if(Math.abs(turn)>.035||Math.abs(pitch)>.035||now<state.nextShot)return false;
   const cp=Math.cos(state.gunPitch);
   // THREE applies local scale before the animated yaw. Doing the reverse
@@ -117,7 +123,7 @@ export function stepRoofGun(entity: AuxiliaryEntity, now: number, dt: number, co
   targetPoint.set(target.state.pos.x,target.state.pos.y+(target.spec.dims?.heightM??2.5)*.5,target.state.pos.z);
   if(!friendlyLaneClear(entity,target,context.entities,origin,targetPoint)||!context.clear(origin,targetPoint))return false;
   auxiliaryShot.shell=profile.shell;
-  state.shots++; state.nextShot=now+(state.shots%profile.burstRounds===0?profile.burstPauseS:profile.shotIntervalS);
+  state.shots++; state.nextShot=now+(damage === 'yellow' ? 1.6 : 1)*(state.shots%profile.burstRounds===0?profile.burstPauseS:profile.shotIntervalS);
   return true;
 }
 

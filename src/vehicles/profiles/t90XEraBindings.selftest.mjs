@@ -1,65 +1,15 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { Matrix4, Triangle, Vector3 } from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import {addT90VFrontGuard} from './t90VXFrontGuards.ts';
 import {addT90AXFenderClosures} from './t90AXFenderClosures.ts';
-import {withHistoricalClassicShtora} from '../classicShtoraHistory.test-support.mjs';
-import {withHistoricalClosedWheelFaces} from '../sourceXWheelFaceHistory.test-support.mjs';
 
-// Immutable world-vertex multiset snapshots taken before the ERA wrappers.
-// Paint decals and invisible shadow proxies are excluded, not real gun rims,
-// native gear, permanent carriers, cassette furniture or stowage surfaces.
-// 2026-09-11 fleet standard: every mouth lining seats on its tube edge and
-// fittings carry camouflage; vertex counts are unchanged, only the moved
-// lining vertices differ from the frozen captures below.
-const BASELINES = {
-  t90a_x: [
-// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
-// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
-// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
-// values below are repinned from the current build.
-    // (t90a_x binds A_NON_GUN_BASELINES below; these complete hashes stay as provenance.)
-    [266200,'35689375dfffe09d65ce595c64629854dfeca68a6cf1a998f0e339dee2bdb168'],
-    [252088,'4f0903dda8ad0700f181b4f078dd26726c5bf6377cf47669cdb726c8f05a9c71'],
-  ],
-  t90a_vladimir_x: [
-    [217648,'e2a54c8fdb92b54a16505346db4fd78caa82c59f18ccb071eb407183443466df'],
-    [203536,'9ee892f180732ebd7c32db69e0d3e720adec5dd780a3f81194df81461f39c955'],
-  ],
-  t90m_x: [
-    // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: af34269f…, 233176, df148cfa…, 217048, 267205c2…, 288700, baa4ad47…, 272572, ea948078…, 303370, d1d5ac2a…, 287242.
-    [288624,'e10add83d325ad09efe98b2eb058c32755ff063a1aac4419fe6d53c1b69cf378'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (288624 ->)
-    // 2026-09-22 LOW road-wheel tier: LOW baseline moved with the base disc (272496 -> 255792); HIGH byte-identical.
-    [255792,'fc49d2d7090027841fbe7203ba6d601efdd6fb98a1180c940579d7f307f3cd1a'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (255792 ->)
-  ],
-  t90sm_x: [
-    [303294,'585834dc6daae7f884baa7926655163802e9fa392d21e589aa95c9eacd4c5d3f'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (303294 ->)
-    // 2026-09-22 LOW road-wheel tier: LOW baseline moved with the base disc (287166 -> 270462); HIGH byte-identical.
-    [270462,'dbef6233cb06ee02d198d2490f491ad5052e0c4398ce1205b7870732d62cb6fd'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (270462 ->)
-  ],
-};
-
-// Captured before the later source-confirmed A barrel taper/MRS correction.
-// The original complete hashes above remain the binding-only provenance;
-// gun geometry is now independently pinned by t90AXGun.selftest.mjs.
-// 2026-09-22 LOW road-wheel tier (roadWheelGeometry.ts WheelDetail): the pressed-six base disc under the T-90 X source face draws
-// no ribs, lightening holes or bolt heads at LOW, so the LOW vertex baseline moved (262440 -> 245736); HIGH is byte-identical.
-// 2026-09-23 (round 46, owner: the real T-72/T-90 family has no return rollers): the inferred hidden rollers left every T-90 X
-// hull, so both LODs of every baseline moved — the roller rotors are gone at HIGH and the rollerless upper run re-samples the
-// shoe course (count and hash repinned from the current build; hull, turret, ERA and gun stock are unchanged).
-const A_NON_GUN_BASELINES=[
-  [278184,'bfa6962f7e03fd61b45bb32d913a9e727aef6d03d005ad4ba8753d27f74869dc'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (278184 ->)
-  [245736,'f2b53460a7d15229d1a4d531c37afcb3b66ae3fbd56bc03b8e9f734c7e9667cd'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (245736 ->)
-];
-// Independently captured before the V repair, subtracting only the exact
-// two old guard solids (72 vertices), with multiplicity; no spatial mask.
-// 2026-09-22 LOW road-wheel tier: the V's LOW vertex baseline moved with its base disc (216972 -> 200268); HIGH is byte-identical.
-const V_NON_GUARD_BASELINES=[
-  [233100,'6c5c9122ce98d63c1532f02987626eb564aa8141db9d61c805e3b33ce20aaa41'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (233100 ->)
-  [200268,'fe095ad95af7337fc5a92749fe4acc3cd226ab5b085dc1602a8fd1582e679cf1'], // 2026-09-25 FSP-03: source-measured return rollers restored, back to the pre-2026-09-23 count (200268 ->)
-];
+// The frozen pre-wrapper world-vertex multisets (and their historical Shtora / SM tire-face replays) are retired:
+// whole-tank change detection of the four T-90 X hulls is the fleet geometry ledger's. Kept: the independently
+// tested V guards and A fender closures really are in the built tank (exact vertex multiplicity), the inherited ERA
+// gameplay zones, donor ERA values, removable-facet registration, fixed backing, reset and rig anchors.
+const IDS=['t90a_x','t90a_vladimir_x','t90m_x','t90sm_x'];
 
 function visible(object) {
   for(let cursor=object;cursor;cursor=cursor.parent)if(!cursor.visible)return false;
@@ -112,21 +62,18 @@ function subtractExactVertices(points,removed){
   return kept;
 }
 
-function vertexFingerprint(root,excludeGun=false,removeVGuards=false,removeAFenders=false) {
+function worldVertices(root) {
   root.updateMatrixWorld(true);
   const points=[],instance=new Matrix4(),world=new Matrix4();
   root.traverse(mesh=>{
     if(!mesh.isMesh||!visible(mesh))return;
-    if(excludeGun)for(let owner=mesh;owner;owner=owner.parent)if(owner.name==='rig_gun')return;
     if(!mesh.isInstancedMesh) {appendVertices(mesh,mesh.matrixWorld,points);return;}
     for(let i=0;i<mesh.count;i++) {
       mesh.getMatrixAt(i,instance);world.multiplyMatrices(mesh.matrixWorld,instance);
       appendVertices(mesh,world,points);
     }
   });
-  const retained=removeVGuards?subtractExactVertices(points,currentVGuardVertices())
-    :removeAFenders?subtractExactVertices(points,currentAFenderVertices()):points;
-  return [retained.length,createHash('sha256').update(retained.sort().join('\n')).digest('hex')];
+  return points;
 }
 
 function meshSnapshots(root) {
@@ -204,21 +151,13 @@ function assertZone(tank,row,snapshots,label) {
 }
 
 const anchorFailures=[];
-for(const [id,baselines]of Object.entries(BASELINES))for(const [lod,quality]of ['high','low'].entries()) {
+for(const id of IDS)for(const quality of ['high','low']) {
   const tank=createTank(id,null,{quality,geometryReceipt:true,proceduralOnly:true,staticPreview:true});
   try {
     const label=`${id}/${quality}`,spec=getSpec(id);
-    const baseline=id==='t90a_x'?A_NON_GUN_BASELINES[lod]
-      :id==='t90a_vladimir_x'?V_NON_GUARD_BASELINES[lod]:baselines[lod];
-    const classic=id==='t90a_x'||id==='t90a_vladimir_x';
-    const historical=classic?withHistoricalClassicShtora(id,()=>createTank(id,null,
-      {quality,geometryReceipt:true,proceduralOnly:true,staticPreview:true}))
-      : id==='t90sm_x'?withHistoricalClosedWheelFaces(id,()=>createTank(id,null,
-        {quality,geometryReceipt:true,proceduralOnly:true,staticPreview:true})):null;
-    try{
-      assert.deepEqual(vertexFingerprint(historical?.root??tank.root,id==='t90a_x',id==='t90a_vladimir_x',id==='t90a_x'),baseline,
-        `${label}: immutable world-vertex baseline with exact inverses of independently tested Shtora, fender and SM tire-face repairs; all frozen baseline vertices retained`);
-    }finally{historical?.dispose();}
+    // The independently tested repair solids are physically present in the actual build, with exact multiplicity.
+    if(id==='t90a_vladimir_x')subtractExactVertices(worldVertices(tank.root),currentVGuardVertices());
+    if(id==='t90a_x')subtractExactVertices(worldVertices(tank.root),currentAFenderVertices());
     const rows=tank.root.userData.eraVisualBindingReceipt.plates;
     assert.deepEqual(rows.map(row=>row.name).sort(),expectedZones(id),`${label}: exactly inherited gameplay zones`);
     assertDonorValues(id,[...spec.armor.hullPlates,...spec.armor.turretPlates].filter(plate=>plate.kind==='era'));
@@ -230,7 +169,7 @@ for(const [id,baselines]of Object.entries(BASELINES))for(const [lod,quality]of [
     const gun=tank.root.getObjectByName('rig_gun').position.toArray();
     if(spec.armor.gunPivot.some((value,index)=>Math.abs(value-gun[index])>1e-9))
       anchorFailures.push(`${label}: combat and source trunnions differ`);
-    console.log(`${label}: pinned unchanged geometry outside source-tested repairs, exact removable facets, fixed backing and reset PASS`);
+    console.log(`${label}: wired source-tested repairs, inherited zones/donor values, exact removable facets, fixed backing and reset PASS`);
   } finally {tank.dispose();}
 }
 assert.deepEqual(anchorFailures,[],'all four combat/source rig anchors must agree at both LODs');

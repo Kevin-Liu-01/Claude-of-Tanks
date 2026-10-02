@@ -145,3 +145,28 @@ npm run perf:garage-entry -- --url=http://127.0.0.1:4178
 Machine-generated screenshots and performance traces remain local QA evidence.
 This document and the owner-approved contact sheet are the maintained public
 description of the system.
+
+### Tree foliage attachment audit (October 2026)
+
+Battle and Garage tree builders now connect each leaf/needle cluster to the
+nearest actual wooden branch surface. The attachment samples the bent card's
+centre, including species scaling, rather than its unbent placement marker.
+Branchlets are tapered, merge into the existing instanced bark geometry, and
+inherit wind flexibility at both ends. The wind phase is continuous across a
+card; wrapping it before applying the secondary harmonic caused discontinuities.
+
+Low broadleaf sprays follow the species' branch-collar height. Palm frond roots
+sit inside the crown collar and use the collar's wind flexibility. The solid
+palm crown also shares its deformed corners, closing its formerly split faces. Snow loads
+receive wooden support and are excluded when choosing a parent branch. Desktop
+far impostors bake the corrected near trees; mobile/fallback opaque crown lobes
+also receive support. Tree positions, trunk collision and spotting volumes are
+unchanged. Each added branchlet costs six triangles and no additional draw calls.
+
+Validation: `node src/world/treeAttachments.selftest.mjs` covers all 13 species,
+three seeds, three variants, summer and snow palettes, physical surface contact,
+deterministic output, bounded geometry and wind interpolation. It also checks
+36 distant tree variants and 321 map/species/variant combinations from the
+actual battlefield registry. `node tools/tree-crown-audit.browser.mjs` saves native
+before/after supporting-branch views and real battlefield captures under
+`.qa-dev/tree-crowns`. These checks do not constitute a device frame-rate benchmark.

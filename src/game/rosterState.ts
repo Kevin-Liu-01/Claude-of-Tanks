@@ -33,6 +33,7 @@ export interface BattleVisual {
   resetDestroyed?(): void;
   hitFlinch?(normalX: number, normalZ: number, strength: number, yaw?: number): void;
   setTrackState?(module: string, destroyed: boolean): void;
+  setWeaponModuleState?(module: string, state: 'ok' | 'yellow' | 'red'): void;
   stripEra?(plateName: string): void;
   dispose(): void;
 }

@@ -48,7 +48,7 @@ let didFire=false;for(let i=0;i<500&&!didFire;i++)didFire=stepRoofGun(scaled,i/6
 assert.ok(didFire);const gun=AUXILIARY_INVENTORY.cv90.guns[0],state=auxiliaryState(scaled);
 const hull=new THREE.Group(),turret=new THREE.Group(),mount=new THREE.Group(),pitch=new THREE.Group();
 hull.rotation.set(-scaled.state.visualPitch,scaled.state.yaw,scaled.state.visualRoll,'YXZ');
-turret.position.fromArray(scaled.spec.armor.turretPivot);turret.rotation.y=scaled.state.turretYaw;hull.add(turret);
+turret.position.fromArray(AUXILIARY_INVENTORY.cv90.turretPivot);turret.rotation.y=scaled.state.turretYaw;hull.add(turret);
 mount.position.fromArray(gun.position);mount.quaternion.fromArray(gun.rotation).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),state.gunYaw));mount.scale.fromArray(gun.scale);turret.add(mount);
 pitch.position.fromArray(gun.pivot);pitch.rotation.x=-state.gunPitch;mount.add(pitch);hull.updateMatrixWorld(true);
 const actual=new THREE.Vector3().fromArray(gun.muzzle).sub(new THREE.Vector3().fromArray(gun.pivot)).applyMatrix4(pitch.matrixWorld);

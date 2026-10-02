@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import * as THREE from 'three';
-import {readFileSync} from 'node:fs';
 import { createTank } from '../tankFactory.ts';
 import { addChieftain10XServiceFrame } from './chieftain10XServiceFrame.ts';
-import {assertPublishedChieftainFoundationSources, PRE_FOUNDATION_HISTORY, publishedChieftainNonTrackMultiset}
-  from './chieftain10XPublishedFoundation.test-support.mjs';
+
+// The published-foundation source-byte contract and the frozen successor / non-track vertex multisets
+// (docs/references/tanks/chieftain_mk10_x.published-foundation-preservation.json) are retired: whole-tank
+// change detection of chieftain_mk10_x is the fleet geometry ledger's. Kept: source crowns and air, real
+// rail gaps, seated folded feet, every service-frame vertex actually drawn by the factory, hull ownership.
 
 const ray = (meshes, p, d, far = 8) => new THREE.Raycaster(new THREE.Vector3(...p),
   new THREE.Vector3(...d), 0, far).intersectObjects(meshes, false)[0];
@@ -99,81 +100,24 @@ function counts(root) {
   }); return map;
 }
 
-function successorRows(tank, fixture) {
+function wiredRows(tank, fixture) {
   const actual = counts(tank.root), added = counts(fixture.group);
   for (const [key, n] of added) {
     assert.ok(actual.get(key) >= n, `every added draw vertex exists with exact multiplicity: ${key}`);
     actual.set(key, actual.get(key) - n);
   }
-  return [...actual].filter(([, n]) => n).sort(([a], [b]) => a.localeCompare(b));
-}
-const multisetOf = rows => ({ count: rows.reduce((sum, [, n]) => sum + n, 0),
-  sha256: createHash('sha256').update(JSON.stringify(rows)).digest('hex') });
-
-function preservation(tank, fixture, expectedCount, expectedHash) {
-  const rows = successorRows(tank, fixture);
-  assert.equal(rows.reduce((sum, [, n]) => sum + n, 0), expectedCount);
-  assert.equal(createHash('sha256').update(JSON.stringify(rows)).digest('hex'), expectedHash,
-    'subtracting only the service helper preserves the published099 post-foundation physical vertices, including all gear and turret');
 }
 
-// The 2026-09-14 tangent track wrap (tankFactoryCore roadWheelWrap) is the only later change to
-// this successor: every draw vertex outside the track band and shoe meshes must still be the
-// muzzle-seat successor's, re-derived here rather than trusted from the ledger text.
-function nonTrackRows(tank) {
-  const track = [];
-  tank.root.traverse(m => { if (m.isMesh && /^gearTrack/.test(m.name)) track.push(m); });
-  const parents = track.map(m => [m, m.parent]);
-  for (const [m] of parents) m.removeFromParent();
-  try { return [...counts(tank.root)].sort(([a], [b]) => a.localeCompare(b)); }
-  finally { for (const [m, parent] of parents) parent.add(m); }
-}
-
-function negativeControls(tank, fixture, count, hash) {
-  const p = tank.root.getObjectByName('turret').geometry.attributes.position;
-  const oldX = p.getX(0);
-  try {
-    p.setX(0, oldX + .001);
-    assert.throws(() => preservation(tank, fixture, count, hash),
-      /published099 post-foundation physical vertices/, 'A 1 mm actual unrelated turret change must fail');
-  } finally { p.setX(0, oldX); }
-  let wheel;
-  tank.root.traverse(m => { if (!wheel && m.isInstancedMesh && m.userData.runningGear) wheel = m; });
-  assert.ok(wheel, 'A native moving-gear instance participates in the control');
-  const original = new THREE.Matrix4(); wheel.getMatrixAt(0, original);
-  try {
-    const changed = original.clone(); changed.elements[12] += .001; wheel.setMatrixAt(0, changed);
-    assert.throws(() => preservation(tank, fixture, count, hash),
-      /published099 post-foundation physical vertices/, 'A moved actual gear instance must fail');
-  } finally { wheel.setMatrixAt(0, original); }
+function wiringNegativeControl(tank, fixture) {
   const part = fixture.parts[0].geometry.attributes.position, x = part.getX(0);
   try {
     part.setX(0, x + .001);
-    assert.throws(() => preservation(tank, fixture, count, hash),
+    assert.throws(() => wiredRows(tank, fixture),
       /every added draw vertex exists/, 'An invented service-frame subtraction must fail');
   } finally { part.setX(0, x); }
-  preservation(tank, fixture, count, hash);
 }
 
-// The old pre-foundation receipt remains explicit history, not an active claim
-// that the later owner-requested casting never changed. The successor values
-// were captured independently from immutable published099, not this candidate.
-const UPDATE_LEDGER = process.env.COT_UPDATE_LEDGER === '1';
-const ledgerUrl = new URL('../../../docs/references/tanks/chieftain_mk10_x.published-foundation-preservation.json', import.meta.url);
-// In update mode the ledger is about to be rewritten, so its successor is read raw and the source
-// contract is authenticated on the normal run that must follow.
-const published = UPDATE_LEDGER ? JSON.parse(readFileSync(ledgerUrl, 'utf8')).successor
-  : assertPublishedChieftainFoundationSources();
-if (!UPDATE_LEDGER) for (const mutated of ['src/vehicles/profiles/chieftain10X.ts',
-  'src/vehicles/profiles/chieftain10XBowLights.ts']) {
-  assert.throws(() => assertPublishedChieftainFoundationSources(file => {
-    const source = readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
-    return file === mutated ? source + '\n// unauthorized source mutation' : source;
-  }), /source contract|annotation source/, 'Family source mutations cannot silently replace the published contract');
-}
-const ledgerUpdate = UPDATE_LEDGER ? { successor: {}, nonTrack: {} } : null;
-for (const [quality] of PRE_FOUNDATION_HISTORY) {
-  const {count, sha256:hash} = published[quality];
+for (const quality of ['high', 'low']) {
   const tank = createTank('chieftain_mk10_x', null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false }), fixture = fixtures();
   try {
@@ -181,16 +125,7 @@ for (const [quality] of PRE_FOUNDATION_HISTORY) {
     const all = []; tank.root.traverse(m => { if (m.isMesh && !m.userData.vehicleMarking
       && !m.name.startsWith('procShadow_')) all.push(m); });
     sourceSurfaces(all); contacts(fixture.parts, all);
-    if (ledgerUpdate) {
-      // COT_UPDATE_LEDGER=1: record the current build as the active successor (2026-09-14 wrap).
-      ledgerUpdate.successor[quality] = multisetOf(successorRows(tank, fixture));
-      ledgerUpdate.nonTrack[quality] = multisetOf(nonTrackRows(tank));
-      continue;
-    }
-    preservation(tank, fixture, count, hash);
-    assert.deepEqual(multisetOf(nonTrackRows(tank)), publishedChieftainNonTrackMultiset(quality),
-      `${quality}: every draw vertex outside the track meshes is the muzzle-seat successor's (only the tangent wrap changed the tracks)`);
-    negativeControls(tank, fixture, count, hash);
+    wiredRows(tank, fixture); wiringNegativeControl(tank, fixture);
     const hull = all.filter(m => m.name === 'hull' || m.name.startsWith('hull'));
     const matrices = hull.map(m => m.matrixWorld.clone()), buffers = hull.map(m => m.geometry);
     for (const yaw of [-.71, .63, 0]) {
@@ -200,43 +135,4 @@ for (const [quality] of PRE_FOUNDATION_HISTORY) {
     }
   } finally { tank.dispose(); fixture.dispose(); }
 }
-if (ledgerUpdate) {
-  const ledger = JSON.parse(readFileSync(ledgerUrl, 'utf8'));
-  // 2026-09-22 (owner: holes are added, not carved, to save triangles): the muzzle-cap record
-  // supersedes the ground-datum successor and is cumulative — a later re-run on the same day (the
-  // fleet fallback lip became a flat 2N ring) keeps the ground-datum successor as its base, so the
-  // chain history[1] + trackWrap + groundDatum + drawVertexDelta === successor stays authenticated.
-  // successorHistory and the earlier dated records are history and stay untouched.
-  if (process.env.COT_UPDATE_LEDGER_RECORD === 'lowTierNationWheels') {
-    // Round 40 (2026-09-22, coordinator decision after the owner's "whats this?" on the +58 % / +38 % road-wheel
-    // triangles): the LOW quality tier of every nation wheel construction draws tire, plate and dish contours only
-    // (roadWheelGeometry.ts WheelDetail) — the Mk 10 X's twelve UK Challenger 2E wheels lose their bolt rings and
-    // ribs at LOW while HIGH is byte-identical. The record supersedes the muzzle-cap successor; the chain stays
-    // authenticated per quality through drawVertexDelta.
-    const previous = ledger.successor;
-    ledger.successor = ledgerUpdate.successor;
-    ledger.laterLowTierNationWheels = {
-      branch: 'r40-wheels', capturedAt: '2026-09-22',
-      scope: 'Round 40: LOW-tier tessellation of the nation wheel constructions (roadWheelGeometry.ts WheelDetail: no bolt rings, bolt heads, ribs or lightening holes at LOW; 8/6-sided hubs). The Mk 10 X draws the UK Challenger 2E hollow paired wheel, so its LOW multiset moved and its HIGH multiset is byte-identical; the draw-vertex delta is recorded per quality and the non-track multiset is re-derived by the receipt.',
-      drawVertexDelta: { high: ledgerUpdate.successor.high.count - previous.high.count, low: ledgerUpdate.successor.low.count - previous.low.count },
-      nonTrack: ledgerUpdate.nonTrack, supersededSuccessor: previous,
-    };
-    const { writeFileSync } = await import('node:fs');
-    writeFileSync(ledgerUrl, JSON.stringify(ledger, null, 2) + '\n');
-    console.log(`chieftain10XServiceFrame: ledger rewritten — successor high ${ledgerUpdate.successor.high.count} low ${ledgerUpdate.successor.low.count}, LOW-tier wheel delta ${ledger.laterLowTierNationWheels.drawVertexDelta.high}/${ledger.laterLowTierNationWheels.drawVertexDelta.low}`);
-    process.exit(0);
-  }
-  const base = ledger.laterMuzzleBoreCap?.supersededSuccessor ?? ledger.successor;
-  const delta = ledgerUpdate.successor.high.count - base.high.count;
-  ledger.successor = ledgerUpdate.successor;
-  ledger.laterMuzzleBoreCap = {
-    branch: 'r38-bores', capturedAt: '2026-09-22',
-    scope: 'Owner 2026-09-22: "the point of adding holes instead of carving them into the barrel is that we save on triangles". (1) chieftain10XGun.ts closes the open loft with one 48-segment CircleGeometry cap at the source mouth instead of the carved 32 cm recess (inner wall, ring, capped floor cylinder) that sat behind the factory fallback disc with no physical-bore contract. (2) The fleet fallback hole became the minimal construction: a flat dark ring (lip and annular face in one 2N mesh) plus the shadow disc, with a throat sleeve only when the tube stops short, instead of the 10N torus lip plus a separate annulus (tankFactoryCore, terminal-surface-fit-r3). Only the gun bucket and the muzzleBoreShadowFallback meshes changed (drawVertexDelta is cumulative from the ground-datum successor); every other draw vertex is re-derived by the receipt and must match exactly.',
-    drawVertexDelta: delta, nonTrack: ledgerUpdate.nonTrack, supersededSuccessor: base,
-  };
-  const { writeFileSync } = await import('node:fs');
-  writeFileSync(ledgerUrl, JSON.stringify(ledger, null, 2) + '\n');
-  console.log(`chieftain10XServiceFrame: ledger rewritten — successor high ${ledgerUpdate.successor.high.count} low ${ledgerUpdate.successor.low.count}, muzzle-cap draw-vertex delta ${delta}`);
-  process.exit(0);
-}
-console.log('chieftain10XServiceFrame: high/low source crowns/web underside, five real rail gaps, supported folded feet, published099 successor preservation, rejection controls and hull ownership pass; pre-foundation receipt retained as history');
+console.log('chieftain10XServiceFrame: high/low source crowns/web underside, five real rail gaps, supported folded feet, factory-drawn service frame (+ invented-subtraction control) and hull ownership pass');

@@ -1,15 +1,14 @@
 import assert from 'node:assert/strict';
 import {shoulderCoverTop} from './t72b3mXSideMounts.ts';
-import fs from 'node:fs';
-import {createHash} from 'node:crypto';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT72B3MSideMounts} from './t72b3mXSideMounts.ts';
 
-const PRESERVED=JSON.parse(fs.readFileSync(new URL('../../../docs/references/tanks/t72b3m_x.side-mount-preservation.json',import.meta.url),'utf8'));
+// The held-out per-mesh preservation ledger (docs/references/tanks/t72b3m_x.side-mount-preservation.json, rewritten by
+// COT_UPDATE_LEDGER) is retired: whole-tank change detection of t72b3m_x is the fleet geometry ledger's. The marking
+// validation, source surfaces/air, helper wiring and ERA-depleted attachment proofs stay.
 function legacyAttributeNames(g){
-  // The held-out shape ledger predates semantic lamp masks. Validate that
-  // exact byte channel independently, retaining every original buffer/order.
+  // Validate the semantic lamp-mask byte channel independently of the paint attributes.
   const a=g.getAttribute('nightEmissionMask');
   if(a){
     assert.ok(a.array instanceof Uint8Array,'night mask is byte-sized');
@@ -19,38 +18,6 @@ function legacyAttributeNames(g){
   }
   return Object.keys(g.attributes).filter(k=>k!=='nightEmissionMask');
 }
-function geometryHash(m){
-  const h=createHash('sha256');
-  for(const key of legacyAttributeNames(m.geometry)){
-    const a=m.geometry.attributes[key];
-    h.update(key);h.update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
-  }
-  const i=m.geometry.index;if(i)h.update(Buffer.from(i.array.buffer,i.array.byteOffset,i.array.byteLength));
-  h.update(JSON.stringify(m.matrixWorld.elements));
-  if(m.isInstancedMesh)h.update(Buffer.from(m.instanceMatrix.array.buffer));
-  return h.digest('hex');
-}
-
-{
-  const g=new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute([0,0,0,1,0,0,0,1,0],3));
-  g.setAttribute('normal',new T.Float32BufferAttribute([0,0,1,0,0,1,0,0,1],3));
-  g.setAttribute('uv',new T.Float32BufferAttribute([0,0,1,0,0,1],2));g.setIndex([0,1,2]);
-  const m=new T.InstancedMesh(g,new T.MeshBasicMaterial(),1),measure=()=>geometryHash(m),legacy=measure();
-  g.setAttribute('nightEmissionMask',new T.Uint8BufferAttribute([0,1,2],1));assert.equal(measure(),legacy);
-  for(const invalid of [new T.Float32BufferAttribute([0,1,2],1),new T.Uint8BufferAttribute([0,1,2],3),
-    new T.Uint8BufferAttribute([0,1],1),new T.Uint8BufferAttribute([0,1,2],1,true),new T.Uint8BufferAttribute([0,1,3],1)]){
-    g.setAttribute('nightEmissionMask',invalid);assert.throws(measure);
-  }
-  g.setAttribute('nightEmissionMask',new T.Uint8BufferAttribute([0,1,2],1));
-  g.setAttribute('unrecognizedSemanticChannel',new T.Uint8BufferAttribute([0,1,2],1));
-  assert.notEqual(measure(),legacy,'unknown channels remain hashed');g.deleteAttribute('unrecognizedSemanticChannel');
-  for(const a of [g.attributes.position,g.attributes.normal,g.attributes.uv,g.index,m.instanceMatrix]){
-    const old=a.array[0];a.array[0]=old+1;assert.notEqual(measure(),legacy,'all original geometry/index/instance bytes remain guarded');a.array[0]=old;
-  }
-  m.matrixWorld.elements[12]=1;assert.notEqual(measure(),legacy,'ownership frame remains guarded');m.matrixWorld.elements[12]=0;
-  assert.equal(measure(),legacy);g.dispose();m.material.dispose();
-}
-
 function paintQuadSide(m,start){
   // 2026-09-14: the insignia pair may sit on the hull tub or, with the fender-to-skirt gap closed,
   // on the turret cheek. The quad is verified structurally: one 240 mm square with four distinct
@@ -118,44 +85,16 @@ function verifiedPaintMeshes(tank){
   return paint;
 }
 
-function preserveNonTarget(tank,quality){
-  // Batch names restart under each articulation parent. The new verified
-  // hull-paint batch precedes the old gun-mouth batch in traversal; it is not
-  // a change to that physical batch. Validate every paint vertex first, then
-  // recover the original non-paint ordinals without skipping any physical draw.
-  const paint=verifiedPaintMeshes(tank),meshes=new Map(),seen={};
-  tank.root.traverse(m=>{if(!m.isMesh||paint.has(m))return;
-    const n=seen[m.name]??0;seen[m.name]=n+1;meshes.set(`${m.name}#${n}`,m);});
-  // round 46b (2026-09-23, owner: the T-72 family has no return rollers): a deliberate gear change may REMOVE meshes,
-  // so the ledger update rebuilds the held-out set from the current non-paint meshes instead of asserting every old
-  // name still exists; the check run still requires every ledger entry to be present and byte-identical.
-  if(process.env.COT_UPDATE_LEDGER==='1'){
-    PRESERVED[quality]=Object.fromEntries([...meshes].map(([name,m])=>[name,geometryHash(m)]));
-  }
-  for(const [name,expected]of Object.entries(PRESERVED[quality])){
-    const m=meshes.get(name);assert.ok(m?.isMesh,`ledger mesh ${quality} ${name} exists`);
-    // COT_UPDATE_LEDGER=1 rewrites the held-out ledger after a deliberate fleet-wide gear change
-    // (2026-09-14: wheel paint isolation and the end-wheel track wrap moved every gear batch;
-    // 2026-09-22: the Russia nation wheel — T-90M X pressed face — and the fleet arm seated against it moved
-    // exactly the road-wheel disc/inset rows and the suspension link/boss rows at both tiers).
-    if(process.env.COT_UPDATE_LEDGER==='1'){PRESERVED[quality][name]=geometryHash(m);continue;}
-    assert.equal(geometryHash(m),expected,`unchanged pre-mount ${quality} ${name} geometry, ownership frame and native instance course`);
-  }
+function markings(tank,quality){
+  const paint=verifiedPaintMeshes(tank);
   // 2026-09-22 (owner: holes are added, not carved, to save triangles): the fleet fallback mouth is a
-  // flat ring + disc, so at low quality the lone Rim mesh no longer forms mobileStaticBatch_0 with a
-  // separate Annulus; the standalone Rim is the held-out physical non-paint mesh the control uses.
-  if(quality==='low')preservationNegativeControls(meshes.get('muzzleBoreShadowFallbackRim#0'));
-}
-
-function preservationNegativeControls(batch){
-  assert.throws(()=>verifiedPaintBuffer(batch),assert.AssertionError,
-    'the complete original non-paint batch cannot qualify for the paint exclusion');
-  const changed=batch.clone();changed.geometry=batch.geometry.clone();
-  try{
-    const p=changed.geometry.attributes.position;p.setX(0,p.getX(0)+.001);
-    assert.notEqual(geometryHash(changed),PRESERVED.low['muzzleBoreShadowFallbackRim#0'],
-      'a 1 mm physical-batch edit still fails the unchanged immutable hash');
-  }finally{changed.geometry.dispose();}
+  // flat ring + disc, so at low quality the standalone Rim is the physical non-paint mesh the control uses.
+  if(quality==='low'){
+    let rim;tank.root.traverse(m=>{if(!rim&&m.isMesh&&!paint.has(m)&&m.name==='muzzleBoreShadowFallbackRim')rim=m;});
+    assert.ok(rim,'physical non-paint control mesh exists');
+    assert.throws(()=>verifiedPaintBuffer(rim),assert.AssertionError,
+      'the complete original non-paint batch cannot qualify for the paint exclusion');
+  }
 }
 
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a}, source ${b} ±${t}`);
@@ -247,14 +186,10 @@ for(const quality of ['high','low']){
   const tank=createTank('t72b3m_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{
     tank.root.updateMatrixWorld(true);const all=physicalMeshes(tank.root),detail=tank.root.getObjectByName('hullDetail');
-    sourceSurfaces(all);sourceAir(all);actualWiring(detail);preserveNonTarget(tank,quality);
+    sourceSurfaces(all);sourceAir(all);actualWiring(detail);markings(tank,quality);
     for(const plate of tank.root.userData.eraVisualBindingReceipt.plates)tank.stripEra(plate.name);
     attachment(tank,all);sourceAir(all);
     assert.equal(tank.resetEra(),true);sourceSurfaces(all);
   }finally{tank.dispose();}
-}
-if(process.env.COT_UPDATE_LEDGER==='1'){
-  fs.writeFileSync(new URL('../../../docs/references/tanks/t72b3m_x.side-mount-preservation.json',import.meta.url),JSON.stringify(PRESERVED,null,1)+'\n');
-  console.log('t72b3mXSideMounts: preservation ledger rewritten');
 }
 console.log('t72b3mXSideMounts: high/low actual source surfaces, full helper wiring, permanent attachment after ERA stripping, shoulder cover closes the fender-to-skirt gap, clamp air PASS');

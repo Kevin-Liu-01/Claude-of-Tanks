@@ -1,5 +1,4 @@
 // Original older-file turret solids; scalar sections are not source contours.
-import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { classicTurret, LECLERC_CLASSIC_X_DATUMS as D } from './leclercClassicXFrame.ts';

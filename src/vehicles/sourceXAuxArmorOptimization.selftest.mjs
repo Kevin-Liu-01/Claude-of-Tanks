@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
 import {Vector3,Matrix4,Euler,Quaternion} from 'three';
 import {createTank} from './tankFactory.ts';
 import {getSpec} from './specs.ts';
@@ -8,48 +7,9 @@ import {traceTank,tankPoseFromState} from '../sim/armor.ts';
 import {assertArmorTraceBounds} from '../sim/armorOutline.test-support.mjs';
 const ids=['k1a1_x','amx30_x','leclerc_x','leclerc_classic_x','type10_x','type90_x','amx40_x'];
 const serialize=v=>JSON.stringify(v,(key,value)=>key==='traceBounds'?undefined:value);
-const hash=v=>crypto.createHash('sha256').update(serialize(v)).digest('hex');
-function beforeType10TrackCalibration(armor){
-  const copy=structuredClone(armor);
-  // Independently compared against 9919b26b9's generated calibration, loaded
-  // through the same spec finalizer: only these 16 scalar leaves changed.
-  // Keep the original whole-armor golden; never substitute this witness in
-  // the current-candidate trace/geometry checks below.
-  for(const side of ['trackL','trackR']){
-    const tracks=copy.modules.filter(m=>m.module===side);assert.equal(tracks.length,1);
-    const m=tracks[0];assert.equal(m.shapes.length,1);assert.equal(m.shapes[0].kind,'ellipsoid');
-    // 2026-09-17 track law (28 mm band, ground datum, end wraps at the engagement radius) regenerated the
-    // Type 10 X track module: the CURRENT leaves follow the new anatomy; the PREVIOUS (9919b26b9) leaves stay.
-    for(const [values,current,previous] of [
-      [m.min,[.0005,-3.1963],[.063,-3.2251]],
-      [m.max,[1.2255,3.5765],[1.23,3.6056]],
-      [m.shapes[0].center,[.613,.19009999999999994],[.6465,.19025000000000003]],
-      [m.shapes[0].radii,[.55125,3.115488],[.52515,3.142122]],
-    ]){
-      assert.deepEqual(values.slice(1),current,'only the declared fitted-track calibration may be reversed');
-      values.splice(1,2,...previous);
-    }
-  }
-  return copy;
-}
-const type10Armor=getSpec('type10_x').armor,type10Before=serialize(type10Armor);
-const invalidTrack=structuredClone(type10Armor);
-invalidTrack.modules.find(m=>m.module==='trackL').min[1]-=.001;
-assert.throws(()=>beforeType10TrackCalibration(invalidTrack));
-// 2026-09-12: amx40_x returned to its measured track band/pads (.020/.028) and
-// its combat anatomy was regenerated, so the seven-object golden is repinned.
-// 2026-09-12 (evening): the fleet track standard (.024 band) and the botY .050
-// contact fix regenerated the AMX-40 X anatomy again; golden repinned once more.
-assert.equal(hash(ids.map(id=>({id,armor:id==='type10_x'
-  ?beforeType10TrackCalibration(getSpec(id).armor):getSpec(id).armor}))),
-// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
-// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
-// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
-// values below are repinned from the current build.
-  '17d18278b16564ba06b300c75e0559f98e1ccc0e530df0081f76d597d2f5b6f5',
-  'all seven pre-optimization armor objects retain their golden, with the declared Type 10 track-only inverse');
-assert.equal(serialize(type10Armor),type10Before,'historical witness must not mutate the current candidate');
-
+// 2026-10-01 (owner: retire frozen pins): the pinned sha256 of all seven pre-optimization armor objects,
+// the declared Type 10 track-calibration inverse that reached it and its negative control are gone. Cache
+// isolation and exact full-result trace equivalence with and without trace bounds remain the contract.
 for(const[id,donor]of[['type10_x','type10'],['leclerc_x','leclerc']]){
   const original=structuredClone(getSpec(donor)),first=structuredClone(original),second=structuredClone(original);
   applySourceXOtherAuxArmor(first,id);const before=serialize(first);
@@ -91,4 +51,4 @@ for(const id of ids){
       `${id}/${i}: full ordered hit results retain all geometric fields, layers, normals, owners and exact seam behavior`);total++;
   }
 }
-console.log(`sourceXAuxArmorOptimization: PASS — ${total} actual full-result controls; ${bounds} conservative bounds, ${fallback} exact fallbacks; unchanged seven-ID contour/donor hashes and isolated cache instances`);
+console.log(`sourceXAuxArmorOptimization: PASS — ${total} actual full-result controls; ${bounds} conservative bounds, ${fallback} exact fallbacks; isolated cache instances`);

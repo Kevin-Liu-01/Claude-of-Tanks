@@ -1,15 +1,12 @@
 import assert from 'node:assert/strict';
-import {createHash} from 'node:crypto';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import {ensureInteriorFills} from '../interiorFills.ts';
 import {installCanvasFixture} from '../canvasFixture.test-support.mjs';
 import {SHADOW_ONLY_LAYER} from '../../engine/renderLayers.ts';
-const digest=x=>createHash('sha256').update(JSON.stringify(x)).digest('hex');
-function material(m){return {type:m.type,name:m.name,color:m.color?.toArray(),roughness:m.roughness,metalness:m.metalness,side:m.side,vertexColors:m.vertexColors,transparent:m.transparent,opacity:m.opacity,depthWrite:m.depthWrite,colorWrite:m.colorWrite,defines:m.defines??{},maps:['map','normalMap','roughnessMap','metalnessMap'].map(k=>m[k]?{key:k,repeat:m[k].repeat.toArray(),offset:m[k].offset.toArray(),wrapS:m[k].wrapS,wrapT:m[k].wrapT}:null),hook:String(m.onBeforeCompile),cache:m.customProgramCacheKey()};}
 function authoredNonGunShadow(mesh) {
  if (mesh.userData.authoredShadowProxy !== true) return false;
- assert.match(mesh.name, /^procShadow_(hull|turret)$/, 'only the two actual non-gun proxies may leave the native-stock hash');
+ assert.match(mesh.name, /^procShadow_(hull|turret)$/, 'only the two actual non-gun proxies are authored shadow stock');
  assert.equal(mesh.userData.shadowOnly, true, 'excluded proxy must be shadow-only');
  assert.equal(mesh.layers.mask, 1 << SHADOW_ONLY_LAYER, 'excluded proxy cannot enter the ordinary color layer');
  assert.equal(mesh.geometry.userData.authoredShadowHull, true, 'excluded proxy must contain authored shadow geometry');
@@ -18,99 +15,29 @@ function authoredNonGunShadow(mesh) {
  assert.ok((Array.isArray(mesh.material) ? mesh.material : [mesh.material]).every(m => m.colorWrite === false), 'excluded proxy cannot write visible color');
  return true;
 }
-function payload(root){root.updateMatrixWorld(true);const gun=root.getObjectByName('rig_gun'),triangles=[],others=[],nativeOthers=[],shadows=[];
+function proxies(root){root.updateMatrixWorld(true);const gun=root.getObjectByName('rig_gun'),shadows=[];
 root.traverse(o=>{if(!o.isMesh)return;let p=o.parent,inside=false;while(p){if(p===gun)inside=true;p=p.parent;}
-const g=o.geometry,attrs=Object.keys(g.attributes).sort(),mi=Array.isArray(o.material)?o.material:[o.material],mats=mi.map(material);
-if(!inside){const row=[o.name,attrs.map(k=>[k,g.attributes[k].itemSize,Array.from(g.attributes[k].array)]),g.index?Array.from(g.index.array):null,o.matrixWorld.elements,mats,o.count??null,o.instanceMatrix?Array.from(o.instanceMatrix.array):null];others.push(row);if(authoredNonGunShadow(o))shadows.push(o.name);else nativeOthers.push(row);return;}
-const idx=g.index,ct=idx?.count??g.attributes.position.count;for(let i=0;i<ct;i+=3){const corners=[];for(let k=0;k<3;k++){const ix=idx?idx.getX(i+k):i+k;corners.push(attrs.map(a=>{const at=g.attributes[a];return [a,Array.from(at.array.slice(ix*at.itemSize,(ix+1)*at.itemSize))];}));}const cycles=[0,1,2].map(k=>JSON.stringify([corners[k],corners[(k+1)%3],corners[(k+2)%3]])).sort();const gr=g.groups.find(v=>i>=v.start&&i<v.start+v.count);triangles.push(JSON.stringify([cycles[0],o.matrixWorld.elements,mats[gr?.materialIndex??0],o.userData.combatHitboxRole]));}});
-assert.deepEqual(shadows.sort(),['procShadow_hull','procShadow_turret'],'only validated invisible authored proxies are excluded');
-return {gun:digest(triangles.sort()),other:digest(others),otherNativeStock:digest(nativeOthers),gunTriangles:triangles.length};}
+if(!inside&&authoredNonGunShadow(o))shadows.push(o.name);});
+assert.deepEqual(shadows.sort(),['procShadow_hull','procShadow_turret'],'only validated invisible authored proxies outside the gun');
+return shadows;}
 
 import {getSpec} from '../specs.ts';
 import {createTankState} from '../../sim/movement.ts';
-// Authenticated before the ownership edit: profile SHA
-// fb249c071781c985a452272c8a1374f4a3f2ea2f44199a399d711a0d710305f1.
-// Oriented neutral triangles include every attribute and material descriptor;
-// non-gun geometry, instance transforms and material descriptors remain exact.
-// 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is
-// that we save on triangles"): type96b_x is a declared physical bore, so the factory now adds only
-// the shadow disc at its floor — the barrel-paint fallback Rim and Annulus that duplicated the hull's
-// own mouth annulus are gone (12N = 216 gun triangles at both qualities: 1526 -> 1310, 994 -> 778).
-// The "other" digests are untouched. Superseded gun digests: d802c038…, a60bdd8c….
-const BEFORE=[
-  {
-    "quality": "high",
-    "camoPattern": "factory",
-    "gun": "87d1b99cd9b8dfdbd0dfcc6eb659d7e671aa34ce27574219d5a9abb520315f96",
-    "other": "5cdf2fe1fb522c5574a610e12e83ed19d1fc9aa287ff04da82e37f8556460e9d",
-    "gunTriangles": 1310
-  },
-  {
-    "quality": "high",
-    "camoPattern": "winter",
-    "gun": "87d1b99cd9b8dfdbd0dfcc6eb659d7e671aa34ce27574219d5a9abb520315f96",
-    "other": "28073e67d7dcd789b07fed6ba0dedff68bc771a8d5cd7d76a16b6b4bc7bbf598",
-    "gunTriangles": 1310
-  },
-  {
-    "quality": "low",
-    "camoPattern": "factory",
-    "gun": "0cc00b7e016a750051a7a7da6eea6ed6768551b60dbafbfd9a58cd9fc4f5930f",
-    "other": "c243d210b3dc85b6a807d625445b1102903d6231dc02bc6b0593ae397a6a079b",
-    "gunTriangles": 778
-  },
-  {
-    "quality": "low",
-    "camoPattern": "winter",
-    "gun": "0cc00b7e016a750051a7a7da6eea6ed6768551b60dbafbfd9a58cd9fc4f5930f",
-    "other": "c5403fb244689cd6b468c47b2e641f57dc4c5086271129259829101b98c2452d",
-    "gunTriangles": 778
-  }
-];
-
-// Derived from that exact hash-pinned original profile, not the current model.
-// Replaying it first reproduced all four complete BEFORE payloads above. The
-// original/current per-mesh comparison then found only procShadow_hull changed
-// after the separately tested bow-armor shadow opt-in. Preserve the complete
-// historical hashes, but compare non-gun native stock without the two validated
-// invisible proxies. suppliedShadowCoverage.selftest owns their actual coverage
-// and budgets; gun shadow stock stays inside the original gun hash unchanged.
-// Evidence: .qa-dev/tank-run/type96-gun-ownership/shadow-fixture-replay.json.
-// 2026-09-21 (r35, fleet interior-fill regeneration under the track-lane rule,
-// tools/gen-interior-fills.mjs --rounds=8 --min-fine=1): payload() hashes every
-// mesh outside rig_gun, which includes the two generated *InteriorFill meshes, so
-// the regenerated type96b_x record moved these four digests. With the fill meshes
-// skipped the digests are identical before and after the regeneration (high/factory
-// bf43f4236155…, high/winter cb9cd9cd3ab0…, low/factory 5dab33048edf…, low/winter
-// 7d3b783a0378…), so no authored native stock changed; re-based from the record
-// generated 2026-09-18 in 547457932 (ce5ef1ff09cc…, db5e8bb9493a…, 8561e26e68c7…, 354d8ebcbba0…).
-// 2026-09-22 (r35, camo world scale — src/vehicles/camoWorldScale.ts): every merged hull/turret surface and every
-// fitting now projects its camo at the fleet constant 0.5 repeats/m and the first bake reads the pattern stream, so
-// the uv attributes and material descriptors inside these payloads moved again (gun and other alike); positions and
-// gun ownership are unchanged — re-based on the round-35 staged tree.
-// 2026-09-30: marking the existing headlamp faces adds nightEmissionMask and
-// the night-light material hook to the non-gun payload. Physical attributes,
-// transforms and paint match 7e9efd1a490a978625546119d94efb3ca3af8cd1
-// at HIGH/LOW (vehicleNightLighting --fleet baseline comparison). Keep hashing
-// the complete new payload; the unchanged gun fingerprints remain above.
-const NATIVE_OTHER_BEFORE = [
- '0a7bf0951f8e444ddb359b8d4f03eab5d0aeb82eec96b21610396b5e377a7d04' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m (camoWorldScale.ts) — uv attributes move on every mesh outside the gun too */,
- 'c81bccf8a609e83220aa5579e44d2ef738f589a71e11621502176ac2febf9eb0',
- 'e492d2c466cdb69066988059f65888803434bcdf50df62b35f6cb7aa7974bf92',
- 'f03a74ff5447541d2ef8aafa31a18fb8d4e9a08b149050554bf4a9f9c72ead84',
-];
+// The frozen gun / non-gun payload digests and gun-triangle counts (pinned per quality and camo pattern) are
+// retired: whole-tank change detection of type96b_x, including the 2026-10-01 forward smoke correction, is the
+// fleet geometry ledger's. Kept: the boot is gun-owned and the tube recoil-owned at every legal pitch/yaw, the
+// measured boot envelope and seat, the wrong-parent control, distance-policy survival and the authored
+// shadow-proxy contract (+ its two rejecting controls).
+const CASES=[{quality:'high',camoPattern:'factory'},{quality:'high',camoPattern:'winter'},
+  {quality:'low',camoPattern:'factory'},{quality:'low',camoPattern:'winter'}];
 
 const near=(a,b,label,eps=1e-6)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=eps,`${label}: ${a} vs ${b}`);
 const restore=installCanvasFixture(),rows=[];
 await ensureInteriorFills(['type96b_x']);
-try {for(const [caseIndex,expected] of BEFORE.entries()){
- const {quality,camoPattern}=expected;
+try {for(const {quality,camoPattern} of CASES){
  const tank=createTank('type96b_x',null,{quality,proceduralOnly:true,materialMode:'rendered',geometryReceipt:false,batchStatic:false,decor:true,camoPattern,camoSeed:4242});
  try {
-  const neutral=payload(tank.root);
-  assert.equal(neutral.gun,expected.gun,'oriented gun stock, attributes/materials and gun shadow must remain exact');
-  assert.equal(neutral.gunTriangles,expected.gunTriangles,'gun ownership cannot add or remove stock');
-  assert.equal(neutral.otherNativeStock,NATIVE_OTHER_BEFORE[caseIndex],'all non-gun native stock, instances, transforms, paint/UV/colors must remain exact');
+  proxies(tank.root);
   const shadow=tank.root.getObjectByName('procShadow_hull');
   shadow.userData.shadowOnly=false;
   try {assert.throws(()=>authoredNonGunShadow(shadow),/must be shadow-only/,'a proxy flag alone cannot exclude ordinary stock');}
@@ -161,7 +88,7 @@ try {for(const [caseIndex,expected] of BEFORE.entries()){
    tank.syncFromState(state,1);fixed();near(recoil.position.z,0,'tube returns to battery');
   }
   for(const distance of[15,75,200]){const camera=new T.PerspectiveCamera();camera.position.set(0,0,distance);camera.updateMatrixWorld(true);root.traverse(o=>{if(o.isLOD)o.update(camera)});assert.ok(mount.visible&&mount.parent===gun,'actual fixed boot survives original distance policy');}
-  rows.push({quality,camoPattern,legalPitchYawCases:9,wrongParentNegatives:9,gunTriangles:expected.gunTriangles,historicalFullOther:expected.other,currentFullOther:neutral.other,otherNativeStock:neutral.otherNativeStock});
+  rows.push({quality,camoPattern,legalPitchYawCases:9,wrongParentNegatives:9});
  } finally {tank.dispose();}
 }} finally {restore();}
 console.log(JSON.stringify({pass:true,rows,limitation:'CPU stock/material/UV/motion proof; canvas fixture draws no pixels. Final regenerated-fill native views remain separate.'}));

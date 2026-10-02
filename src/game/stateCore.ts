@@ -23,6 +23,8 @@ export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, Match
   preBattleS: number;
   mapId: string;
   tanks: Entity[];
+  /** Complete announced multiplayer roster for names/scores; never use for world visibility or targeting. */
+  rosterTanks?: Entity[];
   allTanks: Entity[];
   battleCount: number;
   /** Injected once at app entry; roster planning stays deterministic within a session. */

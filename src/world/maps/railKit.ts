@@ -54,13 +54,6 @@ function paintGeo(
 // RAIL YARD BUILDERS
 // =============================================================================
 
-/** Sheet-steel paint for the light kit's corrugated tile (props.ts structureMetal): vertex colour, box UVs at the kit's 0.55 uv/m. */
-function sheetPart(geo: THREE.BufferGeometry, local: () => number, hex: number, scale = 1): THREE.BufferGeometry {
-  paintHex(geo, local, hex, scale, 0.05);
-  geo.userData.uvJitter = 'none';
-  return geo;
-}
-
 /** A part new to the builder's stream: it takes no draws from the shared stream (props.ts jitterBuildingUvs). */
 function dressing<T extends THREE.BufferGeometry>(geo: T): T {
   geo.userData.uvJitter = 'none';
@@ -75,7 +68,6 @@ const WAREHOUSE_TRIM_HEX_SNOW = INDUSTRIAL_CLADDING.trimSnow;
 const WAREHOUSE_SNOW_HEX = INDUSTRIAL_CLADDING.snow;
 const WAREHOUSE_DOOR_HEX = 0x5f6d6a;       // roller shutters, grey-green
 const WAREHOUSE_DOOR_HEX_STEEL = 0x8b5a3c; // on a sheet hall the shutters are the oxide red of the plant
-const WAREHOUSE_TRIM_HEX = 0x3a3f42;
 
 /**
  * Freight warehouse: long hall, shallow gable in grey sheeting, roller shutters on the street face over a loading

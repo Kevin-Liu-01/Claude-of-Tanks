@@ -1,6 +1,4 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import { Vector3 } from 'three';
@@ -24,18 +22,15 @@ function spawnSource(text) {
   assert.ok(text.indexOf(end) > text.indexOf(start));
   return text.slice(text.indexOf(start), text.indexOf(end));
 }
-const historicalSource = spawnSource(execFileSync('git', ['show',
-  '76039d225d4c9718ea99845498536a869210215c:src/sim/authoritativeMatch.ts'], { encoding: 'utf8' }));
-assert.equal(createHash('sha256').update(historicalSource).digest('hex'),
-  'b3a4341449a74a3bcd9e754846f1d160a8ad9d96a9af3582a60f4ab93c865218',
-  'independently published pre-f9 nominal policy, never a refreshed output golden');
+// 2026-10-01 (frozen pins retired): the nominal policy used to be compared with a `git show` of the pre-f9 policy
+// (76039d225, sha256-pinned). It is now held to its explicit formula below (four 8 m columns and 10 m rows on default
+// pads, authored spacing rotated with the pad yaw), plus safe placement, settlement composition and rejecting mutants.
 const currentSource = spawnSource(readFileSync(new URL('./authoritativeMatch.ts', import.meta.url), 'utf8'));
 // sides (2026-09-18): the live policy re-uses a pad through sim/spawnPads.ts once a side outgrows its pads
-// (index >= pads.length); the seven-a-side rosters here never reach that path, so the historical and the
-// current policy stay comparable — the sandbox only has to know the helper.
+// (index >= pads.length); the seven-a-side rosters here never reach that path — the sandbox only has to know the helper.
 const compileSpawn = source => new Function('TEAM_ALPHA', 'finite', 'reuseSpawnPad',
   `${stripTypeScriptTypes(source)}; return spawnFor;`)('alpha', (value, fallback) => Number.isFinite(value) ? value : fallback, reuseSpawnPad);
-const historicalSpawn = compileSpawn(historicalSource), currentSpawn = compileSpawn(currentSource);
+const currentSpawn = compileSpawn(currentSource);
 
 const roster = ['t84', 'jpz_e100_x', 'm1a2', 'k2', 'strv103', 'jpz_e100_x', 'leclerc'];
 const players = ['alpha', 'bravo'].flatMap(team => roster.map((specId, index) => ({ id: `${team}-${index}`, team, specId })));
@@ -46,7 +41,7 @@ function make(field, records = players, obstacles = []) {
 function rows(match) {
   return match.entities.map(entity => ({ id: entity.id, pos: entity.state.pos.toArray(), yaw: entity.state.yaw }));
 }
-function preferred(field, policy = historicalSpawn, records = players) {
+function preferred(field, policy = currentSpawn, records = players) {
   const slots = { alpha: 0, bravo: 0 };
   return records.map(record => ({ ...record, spawn: policy(slots[record.team]++, record.team, field._layout, record.spawn) }));
 }
@@ -88,13 +83,12 @@ function assertComposed(field, nominal, label, obstacles = []) {
   const expected = resolved(field, nominal, obstacles);
   assertSafe(field, expected, obstacles);
   assert.deepEqual(rows(make(field, players, obstacles)), rows(make(field, expected, obstacles)),
-    `${label}: original nominal policy, safe placement and canonical thirty-step settlement`);
+    `${label}: nominal policy, safe placement and canonical thirty-step settlement`);
   return expected;
 }
 
-// Keep the original independent old-map formula, not current output. Check
-// nominal policy separately, then apply the maintained safety resolver to both
-// its historical result and the live match before comparing exact settlement.
+// Check the nominal policy against its explicit formula, then apply the maintained safety resolver to it and to the
+// live match before comparing exact settlement.
 let defaultMaps = 0, relocatedMaps = 0;
 for (const mapId of MAP_IDS) {
   const field = createHeightField(1337, getMapConfig(mapId)), pads = field._layout.spawns;
@@ -105,11 +99,10 @@ for (const mapId of MAP_IDS) {
       : pad };
   });
   if (!pads.player.formation) {
-    assert.deepEqual(preferred(field, currentSpawn), nominal, `${mapId}: original default nominal formula unchanged`);
+    assert.deepEqual(preferred(field, currentSpawn), nominal, `${mapId}: default nominal formula (four 8 m columns, 10 m rows)`);
     defaultMaps++;
   }
   const original = preferred(field);
-  assert.deepEqual(preferred(field, currentSpawn), original, `${mapId}: exact published nominal policy`);
   const placed = assertComposed(field, original, mapId);
   if (placed.some((record, i) => record.spawn.x !== original[i].spawn.x || record.spawn.z !== original[i].spawn.z)) relocatedMaps++;
 }
@@ -131,7 +124,6 @@ for (const yaw of [0, Math.PI / 2, -Math.PI / 2, Math.PI, .31, -.77]) {
     _layout: { ...template._layout, spawns: { ...template._layout.spawns,
       player: { x: 20, z: -30, yaw, formation: { columnSpacingM: 8, rowSpacingM: 13 } } } } };
   const nominal = preferred(field, currentSpawn);
-  assert.deepEqual(nominal, preferred(field), 'six-yaw policy retains the exact published formula');
   for (let index = 0; index < 7; index++) {
     const state = nominal[index].spawn, dx = state.x - 20, dz = state.z + 30;
     assert.ok(Math.abs(dx * Math.cos(yaw) - dz * Math.sin(yaw) - (index % 4 - 1.5) * 8) < 1e-10, 'columns follow tank right');
@@ -172,4 +164,4 @@ for (const yaw of [0, Math.PI / 2, -Math.PI / 2, Math.PI, .31, -.77]) {
     assertComposed(field, preferred(field), 'real obstacle relocation', [wall]);
   }
 }
-console.log(`formationPlacement.selftest: ${MAP_IDS.length} maps (${defaultMaps} old-formula, ${relocatedMaps} relocated), exact pre-f9 policy/settlement, six orientations, explicit bypass, Bravo, malformed policy and rejecting mutants passed`);
+console.log(`formationPlacement.selftest: ${MAP_IDS.length} maps (${defaultMaps} old-formula, ${relocatedMaps} relocated), explicit nominal formula/settlement, six orientations, explicit bypass, Bravo, malformed policy and rejecting mutants passed`);

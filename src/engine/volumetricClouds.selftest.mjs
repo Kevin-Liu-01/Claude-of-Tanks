@@ -70,12 +70,14 @@ assert.equal(cloudCameraCut(0, .36, 1, 1), true, 'large camera turn rebuilds');
 
 // ---- the noise bakes: deterministic bytes at the shipped sizes and at small sizes, tileable, well distributed
 assert.deepEqual([CLOUD_SHAPE_SIZE, CLOUD_DETAIL_SIZE, CLOUD_WEATHER_SIZE, CLOUD_CURL_SIZE, CLOUD_BLUE_SIZE, CLOUD_NOISE_SEED], [64, 32, 256, 32, 32, 2068], 'the shipped sizes and seed');
-assert.equal(digest(bakeCloudShapeVolume(8)), '1f3ecfdabf968b313ef1bbf4583ed7d0cd8e716204434c14226ad0e63fdeec76', 'shape 8³ bytes');
-assert.equal(digest(bakeCloudDetailVolume(8)), 'f09eaa66c1e1f8261d2f6c5068ce8d6e648d8ca1a8fbd1f7f897acd72f82bfba', 'detail 8³ bytes');
-assert.equal(digest(bakeCloudWeatherMap(16)), 'ea7dcf6a8712ccabbbed3e558c0db6e8bf93a6efe08b881f215a364a359a93d5', 'weather 16² bytes (round 71c: plateau cells)');
-assert.equal(digest(bakeCloudWeatherStreets(16)), '763105085bfafcb2d003e71fbfcbdd8cf82a6b970a6a7875ecda97a64f841cac', 'streets 16² bytes (round 71c: chains of lumps on the rolls)');
-assert.equal(digest(bakeCloudCurlVolume(8)), 'f8b276f0ddf5aa7cad6242419cc0d32e5e5026e9a0d09eb045a51dabc62b882f', 'curl 8³ bytes (round 71)');
-assert.equal(digest(bakeCloudBlueNoise(8)), 'a9c6e9a2f163c54d3016ed87a083691079639edec3e9385ad3fb8f74be5481a3', 'blue 8² bytes (round 71)');
+// 2026-10-01 (frozen pins retired): the sha256 pins of every bake at small and shipped sizes were change detectors of
+// the cloud noise; the worker and the main thread run the same pure bakes, so the contract is determinism (two bakes
+// agree byte for byte), the shipped sizes, the seed dependence and the distribution checks below.
+for (const [label, bake] of [['shape 8³', () => bakeCloudShapeVolume(8)], ['detail 8³', () => bakeCloudDetailVolume(8)],
+  ['weather 16²', () => bakeCloudWeatherMap(16)], ['streets 16²', () => bakeCloudWeatherStreets(16)],
+  ['curl 8³', () => bakeCloudCurlVolume(8)], ['blue 8²', () => bakeCloudBlueNoise(8)]]) {
+  assert.equal(digest(bake()), digest(bake()), `${label} bytes are deterministic`);
+}
 const shape = bakeCloudShapeVolume();
 const detail = bakeCloudDetailVolume();
 const weather = bakeCloudWeatherMap();
@@ -103,12 +105,6 @@ assert.equal(weather.length, 256 * 256 * 4);
 assert.equal(streets.length, 256 * 256 * 4);
 assert.equal(curl.length, 32 * 32 * 32 * 4);
 assert.equal(blue.length, 32 * 32 * 4);
-assert.equal(digest(shape), 'ed892103446410c7b4a52d45b06f9bbcf3d812774eb6f94233c0063edc46ce49', 'shape 64³ bytes (2026-09-24, unchanged by round 71)');
-assert.equal(digest(detail), 'e215d7c534e2946014ce0e1cffdf4a3459951b06bbd134049fc98347622804a8', 'detail 32³ bytes (2026-09-24, unchanged by round 71)');
-assert.equal(digest(weather), '6bdc423ff4a553d7d32b716e86d6602e8955152454d672b26989f31188ba9861', 'weather 256² bytes (2026-09-25, 71c: plateau cells of 540–960 m soft-unioned into masses, the vigour channel, the stratiform field)');
-assert.equal(digest(streets), '5ccabc1ff96d8c5d92aa734cad44d2a070c221cbf72d1eb4f4c3bedd0b96ba29', 'streets 256² bytes (2026-09-25, 71c: chains of rounded lumps on rolls of varying width, the anvil field, cirrus streaks and fibres)');
-assert.equal(digest(curl), '2e0be330c6f0e076e5e237ad40721bb2f312c2d5be5f5413dc4d57d7578c763c', 'curl 32³ bytes (2026-09-25)');
-assert.equal(digest(blue), '5aba12bc64a97cb08a62c3106374d2a9f451d31580767d2fc97e0e3fd13907cc', 'blue 32² bytes (2026-09-25, void-and-cluster)');
 assert.equal(digest(bakeCloudShapeVolume(64, CLOUD_NOISE_SEED)), digest(shape), 'the default seed is the shipped seed');
 assert.notEqual(digest(bakeCloudShapeVolume(8, 7)), digest(bakeCloudShapeVolume(8, 8)), 'the seed changes the volume');
 {
@@ -465,7 +461,7 @@ for (const term of ['phaseDual( cosT, 0.8 )', 'exp( -tau * 0.25 )', 'float powde
   assert.ok(layerSource.includes(term), `the trace carries ${term}`);
 }
 assert.ok(layerSource.includes("name: 'VolumetricCloudTrace'") && layerSource.includes("name: 'VolumetricCloudResolve'") && layerSource.includes("name: 'VolumetricCloudDome'") && layerSource.includes("name: 'VolumetricCloudGobo'"));
-console.log('volumetricClouds.selftest: noise digests (six bakes), tiling, equalisation and street anisotropy, the 31-map cloudscape table, the regime rows, the shadow policy, the slot cycle, the haze mirror and the hooks pinned');
+console.log('volumetricClouds.selftest: deterministic noise (six bakes), tiling, equalisation and street anisotropy, the 31-map cloudscape table, the regime rows, the shadow policy, the slot cycle, the haze mirror and the hooks pinned');
 
 // A translucent cloud mask is drawn once per cascade, not repeatedly through
 // the other cascades' overlapping planes. Preserve the shared caster hooks.

@@ -40,15 +40,22 @@ assert.equal(policy.isPauseEligible(), false);
 assert.equal(policy.canRecapturePointer({ settingsOpen: false, spectating: false }), false);
 state.killcam = false;
 assert.equal(policy.canRecapturePointer({ settingsOpen: true, spectating: false }), false);
-assert.equal(policy.canRecapturePointer({ settingsOpen: false, spectating: true }), false);
+assert.equal(policy.canRecapturePointer({ settingsOpen: false, spectating: true }), true);
 
 state.controllable = false;
 assert.equal(policy.canOpenBattleSettings(), false);
 assert.equal(policy.canRecapturePointer({ settingsOpen: false, spectating: false }), false);
 assert.equal(policy.shouldPresentDisconnect(), true,
   'a dead player still sees a live network-disconnect recovery state');
+assert.equal(policy.canRecapturePointer({ settingsOpen: false, spectating: true }), true,
+  'a dead spectator can recapture with a canvas click');
+state.loading = true;
+assert.equal(policy.canRecapturePointer({ settingsOpen: false, spectating: true }), false);
+state.loading = false;
 state.controllable = true;
 state.result = true;
+assert.equal(policy.canRecapturePointer({ settingsOpen: false, spectating: true }), false,
+  'the report keeps cursor ownership');
 assert.equal(policy.canOpenBattleSettings(), false);
 assert.equal(policy.isPauseEligible(), false);
 assert.equal(policy.shouldPresentDisconnect(), false);

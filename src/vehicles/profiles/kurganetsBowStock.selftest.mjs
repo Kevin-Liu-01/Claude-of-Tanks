@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
 import * as T from 'three';
 import { createTank } from '../tankFactory.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
@@ -11,7 +10,6 @@ import { getSpec } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { isTrackShoeMesh } from '../../../tools/track-clip-classification.mjs';
 const id = 'kurganets25_x', front = new T.MeshBasicMaterial({ side: T.FrontSide }), double = new T.MeshBasicMaterial({ side: T.DoubleSide });
-const sha = value => crypto.createHash('sha256').update(value).digest('hex');
 const visible = h => {
     for (let n = h.object; n; n = n.parent)
         if (!n.visible || n.userData.shadowOnly)
@@ -26,16 +24,6 @@ function triangles(g) {
     for (let i = 0; i < (ix?.count ?? p.count); i += 3)
         rows.push(new T.Triangle(...[0, 1, 2].map(k => new T.Vector3().fromBufferAttribute(p, ix ? ix.getX(i + k) : i + k))));
     return rows;
-}
-function geometryHash(g) {
-    const h = crypto.createHash('sha256');
-    for (const [n, a] of Object.entries(g.attributes).sort()) {
-        h.update(n);
-        h.update(Buffer.from(a.array.buffer, a.array.byteOffset, a.array.byteLength));
-    }
-    if (g.index)
-        h.update(Buffer.from(g.index.array.buffer, g.index.array.byteOffset, g.index.array.byteLength));
-    return h.digest('hex');
 }
 function build(builder, quality, mutation) {
     const parts = [];
@@ -168,20 +156,6 @@ function air(b) {
     emptySpan(b.tank.root, 1.4, 3.516, 'air behind lower folded skin');
     emptySpan(b.tank.root, 1.5, 3.58, 'air behind upper folded skin');
 }
-function oldFrontFlap(p) {
-    const b = p.mesh.geometry.boundingBox;
-    return p.bucket === 'hullRubber' && b.min.z > 3.42 && b.max.z < 3.55 && b.min.y < .9;
-}
-function preserved(b) {
-    const unchanged = b.parts.filter(p => p.bucket !== 'hull' && !p.role && !oldFrontFlap(p)).map(p => [p.bucket, geometryHash(p.mesh.geometry)]);
-    const aft = b.parts.filter(p => p.bucket === 'hull').flatMap(p => triangles(p.mesh.geometry).filter(t => Math.max(t.a.z, t.b.z, t.c.z) <= 3 + 1e-7).map(t => [t.a, t.b, t.c].flatMap(v => v.toArray())));
-    const gear = [];
-    b.tank.root.traverse(o => {
-        if (o.isMesh && !o.userData.shadowOnly && /gear|track|wheel|idler|sprocket/i.test(o.name))
-            gear.push([o.name, geometryHash(o.geometry), o.matrixWorld.toArray(), o.isInstancedMesh ? sha(Buffer.from(o.instanceMatrix.array.buffer)) : null]);
-    });
-    return { unchanged: sha(JSON.stringify(unchanged)), aft: sha(JSON.stringify(aft)), gear: sha(JSON.stringify(gear)) };
-}
 function clearance(b, intrude = false) {
     const stock = b.parts.filter(p => p.bucket === 'hull' || p.role).flatMap(p => triangles(p.mesh.geometry)).filter(t => Math.max(t.a.z, t.b.z, t.c.z) > 3);
     const shoes = [];
@@ -218,31 +192,14 @@ function clearance(b, intrude = false) {
     }
     return count;
 }
-// Authenticated pre-correction stock receipts; private before/after construction
-// compares the same expanded stock and actual gear in both quality levels.
-// Non-hull stock refreshed for the authorized 2026-09-21 gun/recess correction;
-// the original aft-hull and running-gear receipts remain exact.
-// 2026-09-22 nation wheel standard: kurganets25_x draws the BMP-3M Dragun wheel (nationWheelSets.ts); gear digests repinned.
-const originalStock = {
-    "high": {
-        "unchanged": "d43ff27403d444b5d2c889fe2a350775ec6c31153f144c5f05125a4350aa8ba4",
-        "aft": "5a76805eec7e78ee11be9e7561920cc0c14e462ab56ae093c63eec8500f63f97",
-        "gear": "943727827cd55967386ec50891343d0d3ae7ee83f90d227f2a82c2880ea48dcd"
-    },
-    "low": {
-        "unchanged": "076787992f85fbe81fec310ced65fb420bf09a463a6321a96e1fcfa205bd718e",
-        "aft": "5a76805eec7e78ee11be9e7561920cc0c14e462ab56ae093c63eec8500f63f97",
-        "gear": "3208d1a6e0630a4c72a8cf099dd9946d0591c85a22f38b817c2b45137c03816d" // 2026-09-22 LOW road-wheel tier (roadWheelGeometry.ts WheelDetail): the Dragun web turns at 12 segments at LOW; HIGH unchanged
-    }
-};
+// The frozen pre-correction stock digests (unchanged non-hull parts, aft hull, running gear) are retired:
+// whole-tank change detection of kurganets25_x is the fleet geometry ledger's.
 await ensureInteriorFills([id]);
 assert.ok(hasInteriorFills(id), 'test must exercise the generated runtime fill');
 const report = [];
 for (const quality of ['high', 'low']) {
     const built = build(candidate, quality);
     try {
-        const stock = preserved(built);
-        assert.deepEqual(stock, originalStock[quality], 'unchanged stock, aft hull and actual gear remain exact');
         const maxResidualM = sourceProof(built);
         const finiteJoints = seats(built);
         structuralArmor(built);
@@ -255,7 +212,7 @@ for (const quality of ['high', 'low']) {
         assert.ok(triangleCount <= 80000);
         const movingShoeChecks = clearance(built);
         assert.throws(() => clearance(built, true), assert.AssertionError, 'actual track intrusion is rejected');
-        report.push({ quality, filled: hasInteriorFills(id), maxResidualM, finiteJoints, triangleCount, movingShoeChecks, preserved: stock });
+        report.push({ quality, filled: hasInteriorFills(id), maxResidualM, finiteJoints, triangleCount, movingShoeChecks });
     }
     finally {
         built.dispose();

@@ -160,7 +160,6 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
   const { box, cylY, polyMultiLoft } = KIT;
   const { variant, heightScale, widthScale, depthScale } = config;
   const heightRatio = heightScale / 0.75;
-  const roofLift = 0.89 * heightScale - 0.6675;
   const sx = (value: number): number => value * widthScale;
   const sz = (value: number): number => value * depthScale;
   const cz = (value: number): number => value * config.chevronDepthScale;
@@ -359,7 +358,6 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
   const rearTopY = (value: number, z: number): number => (
     sy(value) + config.rearCrownLiftM * rearProgress(z)
   );
-  const shellHeight = 0.89 * heightScale;
 
   // Roof equipment is re-seated to the lower 3/4-height crown. Sights,
   // warning heads and the RWS preserve their own dimensions but no longer

@@ -337,7 +337,6 @@ function hexChannelDistance(a: number, b: number): number {
  * nothing brighter or more saturated than the table's window. Camouflage-mapped paint carries only a
  * multiplier, so its window is not read. */
 function auditRunningGearFinish(object: Object3D, issues: WheelQualityIssue[]): void {
-  const renderObject = object as RenderObject;
   const objectData = object.userData as RunningGearObjectData & { runningGear?: boolean; dynamicWheelFace?: boolean };
   if (objectData.runningGear !== true && objectData.dynamicWheelFace !== true) return;
   const name = object.name || object.type;

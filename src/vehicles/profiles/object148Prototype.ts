@@ -182,8 +182,15 @@ function buildUnmannedTurret(P: Port): void {
     P.add('turretDark',box(.013,.21,.48),side*1.320,.54,-1.18);
     // Smoke banks sit on their own attached rear shoulder shelves.
     P.addEquipment('turretDetail',box(.29,.06,.62),side*1.18,.91,-1.40);
-    for(let k=0;k<4;k++)P.add('turretDetail',markSmokeTube(cylY(.033,.033,.24,10),[0,1,0]),
-      side*(1.10+k*.065),1.035,-1.4,0,0,side*.14);
+    for(let k=0;k<4;k++) {
+      // Seat each tube's base on the shelf and fan its bore forward/upward.
+      // The old vertical outlets dropped the salvo alongside the turret.
+      const yaw=side*(.25+k*.10), elevation=.60, halfLength=.12;
+      const x=Math.sin(yaw)*Math.cos(elevation), y=Math.sin(elevation), z=Math.cos(yaw)*Math.cos(elevation);
+      const tube=markSmokeTube(cylZ(.033,.24,10)).rotateX(-elevation).rotateY(yaw);
+      P.addEquipment('turretDetail',tube,side*(1.10+k*.065)+x*halfLength,
+        .94+y*halfLength,-1.4+z*halfLength);
+    }
   }
   // Roof service access, rear electronics cover and an open bustle rack.
   P.addEquipment('turretDetail',box(.70,.025,.76),.12,.952,-1.33);

@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { Color } from 'three';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
@@ -13,21 +12,9 @@ import { shapeRedrockOutland, tintRedrockOutlandFloor } from './horizonRedrock.t
 // ridged relief, the first ridge stands 700-720 m out and the skirt seats on the terrain; every geometry receipt below is
 // re-established at this commit (the 1049e4e byte identity it guarded is superseded by that owner direction).
 const columns = HORIZON_SEGMENTS, config = getMapConfig('badlands');
-const seeds = [1337, 2049, 7719];
-// Exact source/build-independent pre-canyon Badlands geometry, captured before
-// modifying the horizon. Never refresh these to make an unrelated change pass.
-// Round 72 (2026-09-25): with the canyon opted out the relief field applies to Badlands like every other map, so the
-// historical opt-out digests were re-pinned once against the relieved geometry (the canyon's own rows are byte-identical).
-const historicalHashes = [
-  '3981f5983dce63823eb300c775911a9f64bdc1811f1a7951177eaf763fd6502c' /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */,
-  'dc0f993f777d389913b7bcf3910326ee6be81380a297f0f007d73d7a2f6bb283' /* 2026-09-19 vista pass */,
-  'bd17c7de5e40d64d7c3ca25a2b88d8e4b7b7caf7d08f663ee7649d354a08f905',
-];
-function digest(ring) {
-  return createHash('sha256').update(new Uint8Array(ring.positions.buffer))
-    .update(new Uint8Array(ring.heights.buffer)).update(JSON.stringify(ring.rows))
-    .update(String(ring.maxHeight)).digest('hex');
-}
+// 2026-10-01 (frozen pins retired): the sha256 pins of the pre-canyon (opt-out) Badlands ring at three seeds were
+// change detectors; the opt-out ring is still built live as the negative control the refinement must beat, and every
+// other map's ring answers to horizonResources' shared gates.
 
 /** Intersect actual indexed triangles in XZ; do not substitute the analytic
  * field at the probe point or infer a visible canyon from its vertices alone. */
@@ -118,9 +105,7 @@ for (const [height, slope] of [[-22, 0], [42, 0], [90, .2], [4, .6]]) {
 // Production fixes the horizon seed to1337 while the ground has its own seed.
 // Exercise those real pairs as well as independently seeded ring stress cases.
 for (const [ringSeed, groundSeed] of [[1337,1337],[2049,2049],[7719,7719],[1337,2049],[1337,7719]]) {
-  const seedIndex = seeds.indexOf(ringSeed);
   const previous = sampleHorizonGeometry({ ...config, horizon: { ...config.horizon, redrockCanyon: false } }, ringSeed);
-  assert.equal(digest(previous), historicalHashes[seedIndex], 'Historical opt-out is the exact original geometry');
   const field = createHeightField(groundSeed, config);
   let constructionQueries=0;
   const constructionStart=performance.now();
@@ -231,4 +216,4 @@ for (const id of MAP_IDS) if (id !== 'badlands') {
   assert.ok(oldProtrusion>1.5,`Negative control reproduces the visible ledge: ${oldProtrusion}`);
 }
 console.log(JSON.stringify({ test: 'redrockCanyonHorizon', receipts,
-  limits: 'CPU actual-triangle seam/mouth/topology and historical preservation. Native visual/prop/collision/FPS acceptance remains separate.' }, null, 2));
+  limits: 'CPU actual-triangle seam/mouth/topology. Native visual/prop/collision/FPS acceptance remains separate.' }, null, 2));

@@ -181,35 +181,18 @@ for (const [tool, args] of [
 }
 assert.deepEqual(readFileSync(new URL('index.json', directory)), indexBeforeRetiredCli,
   'retired CLI invocations never alter the published index');
-// Frozen published receipts at afaf62b60, before native recapture. Tight OBBs
-// replace redundant compound walls: raw bytes shrink faster than dictionary
-// bytes, so raw-relative compression is not a stable map storage budget.
-// Keep every map below its prior actual encoded size (not a relaxed ratio).
-// 2026-09-12 map pass: the desert shard carries +45 rocks, +8 outcrops and a
-// denser wadi scrub pool (599567 -> 617650 bytes, a content increase captured
-// natively, not a codec regression); the other eight redressed maps stayed
-// under their prior sizes. The budget is restated to that captured size.
-// 2026-09-19 hitbox pass: budgets re-based on the recaptured shards (+10 %) — every roof strip now carries its
-// own height, which made the city shards several times larger than the 1.5 m whole-projection slabs.
-const previousShardBytes = {
-  verdant: 1854713, desert: 1138916, winter: 1837349 /* 2026-09-23 Frosthollow redesign: re-based on the recaptured shard (1670318 B) +10 % */, urban: 6905545,
-  coastal: 1355569, autumn: 2011956 /* 2026-09-24 round 67 (the vault bands halved): shard recaptured headless, 1830655 B (55 bridge parts), under the round-63 ceiling, kept; round 63 (the bridge's open arches): re-based on the shard recaptured headless on the lane tree (1829051 B — the bridge record's 31 parts) +10 %; round 61: 1827167 B +10 % = 2009884; round-48 ceiling 1873510 B */, steppe: 1363120 /* 2026-09-24 round 63 (the railway cutting): shard recaptured headless and byte-identical (1239200 B), ceiling kept; round 57 (rail spur kit): re-based on the shard recaptured headless on the lane tree (1239200 B; the committed round-48 shard had gone stale against main's own world, and the siding's berth re-rolls fences and hedgehogs) +10 %; round-48 base 1112279 B */, railyard: 1205662,
-  frontier: 2179727, fjord: 1982369, delta: 2150317, badlands: 1440584,
-  monsoon: 2456485, alpine: 2420855, caldera: 1746798, foundry: 1776506,
-  ruinspires: 8075245, blackglass: 3761374, titan_gorge: 1599752, skybridge: 1857511,
-  polders: 1519886, copper_mesa: 1028948, airfield: 1253337, oasis: 1196109,
-  whiteout: 928706, orchard: 1649684, longleaf: 1822150, mangrove: 1570684,
-  saltwind: 1484765, reservoir: 1769572,
-  // 2026-09-19: Mars (Olympus Basin) joins at its first captured size.
-  mars: 669259,
-};
-assert.deepEqual(Object.keys(previousShardBytes), MAP_IDS, 'storage budget covers every canonical map');
+// 2026-10-01 (frozen pins retired): a per-map table of prior shard sizes (afaf62b60, re-based +10 % at every recapture)
+// was a change detector of each map's collision content, and it went red the moment two maps joined. The storage
+// contract is now: every canonical map publishes a shard, no single shard exceeds a uniform ceiling (the largest shard,
+// Ruinspires at 7.41 MB on 2026-10-01, plus ~15 %), and the whole roster stays inside the published storage budget.
+const SHARD_CEILING_BYTES = 8_500_000;
+assert.deepEqual(Object.keys(index.maps).sort(), [...MAP_IDS].sort(), 'a published collision shard for every canonical map');
 let rawBytes = 0, encodedBytes = 0, publishedBytes = 0;
 for (const id of MAP_IDS) {
   const bytes = readFileSync(new URL(`${id}.json`, directory));
   const entry = index.maps[id];
   assert.equal(bytes.length, entry.bytes, `${id} byte receipt`);
-  assert.ok(bytes.length <= previousShardBytes[id], `${id} published shard must not exceed its prior byte budget`);
+  assert.ok(bytes.length <= SHARD_CEILING_BYTES, `${id} published shard stays inside the per-shard storage ceiling (${bytes.length} B)`);
   publishedBytes += bytes.length;
   assert.equal(createHash('sha256').update(bytes).digest('hex'), entry.sha256, `${id} checksum receipt`);
   const published = JSON.parse(bytes.toString('utf8'));

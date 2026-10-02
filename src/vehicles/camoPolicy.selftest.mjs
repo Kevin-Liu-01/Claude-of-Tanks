@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import {
   CAMO_CATALOG_PATTERN_IDS,
   CAMO_PATTERN_IDS,
@@ -246,41 +245,14 @@ assert.deepEqual(normalizeCustomCamo({ style: 'bad', base: 'red', repeat: 999 })
   repeatX: 3, repeatY: 2, rotation: 0, mirror: true, strokes: [],
 });
 
-const nations = [
-  null, 'USA', 'Germany', 'Russia', 'USSR', 'USSR/Russia', 'UK', 'France',
-  'China', 'Italy', 'Japan', 'Poland', 'South Korea', 'Sweden', 'Israel',
-  'Ukraine', 'Atlantis',
-];
-const eras = [null, 'interwar', 'ww2', 'cold-war', 'modern'];
-const catalogContract = {
-  brushes: CUSTOM_CAMO_BRUSHES,
-  assets: CUSTOM_CAMO_ASSETS,
-  customId: CUSTOM_CAMO_ID,
-  styles: CUSTOM_CAMO_STYLES,
-  patterns: CAMO_PATTERN_IDS,
-  catalog: CAMO_CATALOG_PATTERN_IDS,
-  patternLabels: CAMO_PATTERN_LABEL,
-  tagIds: CAMO_TAG_IDS,
-  tagLabels: CAMO_TAG_LABEL,
-  presets: SHARED_CAMO_PRESETS,
-  factory: FACTORY_CAMO_PATTERN_BY_NATION,
-  signatures: SIGNATURE_CAMO_TANK_IDS,
-  tagsByPatternAndNation: CAMO_PATTERN_IDS.flatMap((patternId) => (
-    nations.map((nation) => [patternId, nation, camoPatternTags(patternId, nation)])
-  )),
-  factoryByNationAndEra: nations.flatMap((nation) => (
-    eras.map((era) => [nation, era, factoryCamoPatternIdFor(nation, era)])
-  )),
-  defaultCustom: normalizeCustomCamo(),
-};
-// The new signature appends one network ID; every preceding catalog byte stays fixed.
+// 2026-10-01 (owner: retire frozen pins): the two pinned sha256 digests of the reversed full catalog
+// contract (ids, labels, palettes, tags, national/era routing) and the reversal that reached them are
+// gone. Each appended paint keeps its live identity, network, label, recipe and ordering contract.
 assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('national_usa') - 1], 'sig_amx10p_25'); // new photo IFV finishes extend the base catalog; round 31: the base list ends here; national colours and generated paints follow
 assert.equal(defaultCamoPatternId('tos1a_tagil'), 'factory');
 assert.equal(stockCamoPatternIdFor('tos1a_tagil'), 'sig_tos1a_tagil');
 assert.equal(CAMO_PATTERN_LABEL.sig_tos1a_tagil, 'TOS-1A Steppe Bands');
-const precedingCatalog = structuredClone(catalogContract);
-// The photographic fleet appends five stock finishes. Removing precisely
-// those additions must reproduce both historical catalog hashes unchanged.
+// The photographic fleet appends five stock finishes after the TOS-1A signature.
 const photoFinishes=['sig_dardo','sig_lrmv_lynx','sig_borsuk','sig_amx10p','sig_amx10p_25'];
 assert.deepEqual(CAMO_PATTERN_IDS.slice(CAMO_PATTERN_IDS.indexOf('sig_tos1a_tagil')+1,CAMO_PATTERN_IDS.indexOf('national_usa')),photoFinishes);
 for(const pattern of photoFinishes){
@@ -288,18 +260,10 @@ for(const pattern of photoFinishes){
   assert.equal(networkCamoId(pattern),pattern);
   assert.equal(stockCamoPatternIdFor(owner),pattern);
   assert.equal(sharedCamoPreset(pattern).sourceTankId,owner);
-  precedingCatalog.patterns=precedingCatalog.patterns.filter(id=>id!==pattern);
-  precedingCatalog.catalog=precedingCatalog.catalog.filter(id=>id!==pattern);
-  delete precedingCatalog.patternLabels[pattern];
-  precedingCatalog.presets=precedingCatalog.presets.filter(row=>row.id!==pattern);
-  precedingCatalog.signatures=precedingCatalog.signatures.filter(id=>id!==owner);
-  precedingCatalog.tagsByPatternAndNation=precedingCatalog.tagsByPatternAndNation.filter(([id])=>id!==pattern);
 }
 // The owner renamed this vehicle without changing its saved paint ID or recipe.
 assert.equal(CAMO_PATTERN_LABEL.service_strv122, 'Strv 121 Splinter');
-precedingCatalog.patternLabels.service_strv122 = 'Strv 122 Splinter';
-// The new American concept adds exactly one authored paint. Validate its
-// complete recipe, then retain the earlier catalog hashes unchanged.
+// The new American concept adds exactly one authored paint with this complete recipe.
 // round 32: authored paints are named for nation and pattern, never a vehicle (the Griffin's tri-tone is a second US
 // Army three-tone coat beside the Abrams family's)
 assert.equal(CAMO_PATTERN_LABEL.paint_griffin_viper, 'US Army Three-Tone Woodland II');
@@ -312,52 +276,18 @@ assert.deepEqual(sharedCamoPreset('paint_griffin_viper'), {
   visual: { scheme: 'nato', base: '#555d42', weather: '#777864',
     patches: ['#343a32', '#827756'], camoScale: .5 },
 });
-precedingCatalog.patterns = precedingCatalog.patterns.filter(id => id !== 'paint_griffin_viper');
-precedingCatalog.catalog = precedingCatalog.catalog.filter(id => id !== 'paint_griffin_viper');
-delete precedingCatalog.patternLabels.paint_griffin_viper;
-precedingCatalog.presets = precedingCatalog.presets.filter(row => row.id !== 'paint_griffin_viper');
-precedingCatalog.tagsByPatternAndNation = precedingCatalog.tagsByPatternAndNation.filter(([id]) => id !== 'paint_griffin_viper');
-precedingCatalog.patterns = precedingCatalog.patterns.filter(id => id !== 'sig_tos1a_tagil');
-precedingCatalog.catalog = precedingCatalog.catalog.filter(id => id !== 'sig_tos1a_tagil');
-delete precedingCatalog.patternLabels.sig_tos1a_tagil;
-precedingCatalog.presets = precedingCatalog.presets.filter(row => row.id !== 'sig_tos1a_tagil');
-precedingCatalog.signatures = precedingCatalog.signatures.filter(id => id !== 'tos1a_tagil');
-precedingCatalog.tagsByPatternAndNation = precedingCatalog.tagsByPatternAndNation.filter(([id]) => id !== 'sig_tos1a_tagil');
-// Preserve the preceding full catalog receipt after reversing only the earlier
-// four appended paints, Sabra default, and three corrected brand labels.
+// The four earlier appended paints (with the Sabra default) close the base list ahead of the TOS-1A signature.
+// round 31: the national colours and the generated authored paints append after the base catalog.
 const addedPaints = ['mono', 'carbon', 'prism', 'sig_sabra_mk2_x'];
-// round 31: the national colours and the generated authored paints append after the base catalog, so these four
-// close the BASE list (the TOS-1A signature now follows them there) rather than the whole one
-const basePreceding = precedingCatalog.patterns.filter((id) => !id.startsWith('national_') && !id.startsWith('paint_'));
-assert.deepEqual(basePreceding.slice(-4), addedPaints);
+const tosIndex = CAMO_PATTERN_IDS.indexOf('sig_tos1a_tagil');
+assert.deepEqual(CAMO_PATTERN_IDS.slice(tosIndex - addedPaints.length, tosIndex), addedPaints);
 assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('sig_amx10p_25') + 1], 'national_usa', 'the national colours follow the base catalog');
 assert.ok(CAMO_PATTERN_IDS.at(-1).startsWith('paint_'), 'the generated authored paints close the catalog');
 assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);
 assert.deepEqual(['openai', 'xai', 'gemini'].map(id => CAMO_PATTERN_LABEL[id]), ['OpenAI', 'X', 'Gemini']);
 assert.equal(defaultCamoPatternId('sabra_mk2_x'), 'factory');
 assert.equal(stockCamoPatternIdFor('sabra_mk2_x'), 'sig_sabra_mk2_x');
-const historicalCatalog = structuredClone(precedingCatalog);
-historicalCatalog.patterns = historicalCatalog.patterns.filter(id => !addedPaints.includes(id));
-historicalCatalog.catalog = historicalCatalog.catalog.filter(id => !addedPaints.includes(id));
-for (const id of addedPaints) delete historicalCatalog.patternLabels[id];
-Object.assign(historicalCatalog.patternLabels, { openai: 'OpenAI Mono', xai: 'xAI Carbon', gemini: 'Gemini Prism' });
-historicalCatalog.presets = historicalCatalog.presets.filter(row => row.id !== 'sig_sabra_mk2_x');
-historicalCatalog.signatures = historicalCatalog.signatures.filter(id => id !== 'sabra_mk2_x');
-historicalCatalog.tagsByPatternAndNation = historicalCatalog.tagsByPatternAndNation.filter(([id]) => !addedPaints.includes(id));
-assert.equal(createHash('sha256').update(JSON.stringify(historicalCatalog)).digest('hex'),
-// round 32 (2026-09-21): digest re-based — Factory = national service pattern again, deduplicated authored paints
-// round 46 (2026-09-23): digest re-based — the hidden fleet retired: sig_merkava4 (unregistered Mk 4 donor) and the
-// six generated paints whose lead hulls left (paint_tiger1, paint_panther_g, paint_sturmtiger, paint_t95,
-// paint_isu122s, paint_m26_pershing) are no longer catalog entries
-  'b0c1da0b18bdbfc65a9a240b9f023d4559884ed73792dafc0a9d2b1740044ab0',
-  'all other catalog fields, order, recipes, tags and national routing remain exact');
-assert.equal(
-  createHash('sha256').update(JSON.stringify(precedingCatalog)).digest('hex'),
-  // round 32 (2026-09-21): digest re-based — Factory = national service pattern again, deduplicated authored paints
-  // round 46 (2026-09-23): digest re-based — hidden fleet retired (see the historical digest note above)
-  'ff60bcb3ca8e0e53c767ad0de9b0061a74b3e33462157f7d3b308c56b007af3c', // September 20 official marks, independent prints, Sabra default.
-  'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
-);
+
 
 console.log('camoPolicy.selftest: network boundary and custom pattern codec passed');
 
