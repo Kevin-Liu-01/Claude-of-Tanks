@@ -189,14 +189,15 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
     return [...eligible].filter((material) => !blocked.has(material));
   }
 
+  /** The terrain's shared wall-sky sun uniform (one object per terrain material, read by every program variant). */
   function terrainSunUniforms(root: THREE.Object3D): Uniform<THREE.Vector3>[] {
     const out = new Set<Uniform<THREE.Vector3>>();
     root.traverse((object) => {
       const mesh = object as THREE.Mesh;
       if (!mesh.isMesh) return;
       for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
-        const list = material?.userData?.sunDirUniforms as Uniform<THREE.Vector3>[] | undefined;
-        if (list) for (const uniform of list) out.add(uniform);
+        const uniform = material?.userData?.sunDirUniform as Uniform<THREE.Vector3> | undefined;
+        if (uniform?.value?.isVector3) out.add(uniform);
       }
     });
     return [...out];

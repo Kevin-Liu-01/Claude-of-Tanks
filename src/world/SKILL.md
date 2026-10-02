@@ -164,6 +164,6 @@ on the garage boot path. AI navigation must use traversability, not visuals.
 The horizon ring, its far range and the terrain's wall sky light bake the map's
 authored sun at build. Scene Studio relights a cached battlefield through the
 objects they publish (`material.userData.horizonSunDir`, `horizonFarShading`,
-`sunDirUniforms`, the ring's non-enumerable `horizonReliefSource`) and restores
+`sunDirUniform`, the ring's non-enumerable `horizonReliefSource`) and restores
 them on exit; keep those uniform objects shared by every compile when editing
 these materials, or a Studio time leaves a stale sun behind.

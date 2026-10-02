@@ -181,12 +181,12 @@ function fakeWorld(mapId = 'verdant') {
   };
   const shared = new THREE.MeshBasicMaterial({ color: 0x336699 }); // a horizon alias also used by a prop: untouched
   const terrain = new THREE.MeshStandardMaterial();
-  terrain.userData.sunDirUniforms = [{ value: new THREE.Vector3(0.1, 0.9, 0.1) }];
+  terrain.userData.sunDirUniform = { value: new THREE.Vector3(0.1, 0.9, 0.1) };
   const geometry = new THREE.BoxGeometry();
   const add = (name, material) => { const mesh = new THREE.Mesh(geometry, material); mesh.name = name; group.add(mesh); };
   add('horizon-ring', ring); add('horizon-far-range', far); add('horizon-treeline', shared); add('prop', shared); add('terrain', terrain);
   const snapshot = () => JSON.stringify([ring.color, ring.userData.horizonSunDir.value, ring.userData.horizonVista.uniforms,
-    far.color, far.userData.horizonFarShading, shared.color, terrain.userData.sunDirUniforms]);
+    far.color, far.userData.horizonFarShading, shared.color, terrain.userData.sunDirUniform]);
   return { world: { mapId, group, config: { sky: { ...authored } } }, ring, far, shared, terrain, snapshot };
 }
 const scene = new THREE.Scene();
@@ -213,7 +213,7 @@ assert.notEqual(active.snapshot(), pristine, 'the baked horizon is relit');
 assert.ok(Math.abs(active.ring.color.r - 1.61 * runtime.plan.horizon.dim) < 1e-6, 'the ring takes the time dim');
 assert.equal(active.shared.color.getHex(), 0x336699, 'a material shared with a non-horizon mesh is never dimmed');
 assert.ok(active.ring.userData.horizonSunDir.value.distanceTo(scene.userData.sunDirWorld) < 1e-9, 'the ring takes the sky sun');
-assert.ok(active.terrain.userData.sunDirUniforms[0].value.distanceTo(scene.userData.sunDirWorld) < 1e-9, 'the wall sky light turns');
+assert.ok(active.terrain.userData.sunDirUniform.value.distanceTo(scene.userData.sunDirWorld) < 1e-9, 'the wall sky light turns');
 assert.equal(getVehicleReadabilityScale(), runtime.plan.readability);
 assert.equal(historyResets, 1); assert.equal(taaResets, 1);
 runtime.apply('golden', null);
