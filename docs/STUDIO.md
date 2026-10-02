@@ -321,19 +321,20 @@ authored day is exact. Moonlight and the blue-hour glow are absolute keys.
 
 | `timeOfDay` | Sun elevation: default (band) | Look |
 |---|---|---|
-| `dawn` | 4° (1–9°) | sun just clear of the horizon: rose key, lavender haze, soft low-contrast light |
+| `dawn` | 4° (1–9°) | sun just clear of the horizon: rose key, a lavender sky (an ozone violet cast), soft low-contrast light, gentle haze |
 | `morning` | 17° (12–30°) | clean deep-blue air, crisp shadows, near-white key |
 | `day` | the map's authored sun (10–80° when moved) | the battlefield as authored |
 | `golden` | 11° (6–18°) | rich warm gold, long shadows, a strong key over cool shade |
-| `sunset` | 4.5° (1–8°) | a deep orange key on the horizon, glowing sky, darker land |
-| `dusk` | −4° (−9 to −1°), the set sun | blue hour: deep blue dome over the warm glow band, a faint warm key from the glow (5° up its bearing), windows, street lamps and headlights lit |
-| `night` | 20° (8–70°), the moon | silver moonlight, stars and the moon disc, lamps and headlights lit |
+| `sunset` | 3.5° (1–8°) | a deep orange key on the horizon, a glowing band under a deepening blue, darker land |
+| `dusk` | −4° (−9 to −1°), the set sun | blue hour: a deep twilight dome over the warm glow band and the Belt of Venus, first stars, dark land under a faint warm key from the glow (5° up its bearing); windows, street lamps and headlights lit |
+| `night` | 20° (8–70°), the moon | silver moonlight, stars, the moon disc and moonlit clouds; windows, lamps and headlights lit |
 
 The scene JSON `light` block overrides the sun (the moon at night). `sunAzimuthDeg` is the bearing in the map sky
 convention (0 = +Z, 90 = +X; wraps into [0, 360)); `sunElevationDeg` is clamped into the time's band (at dusk it is
-the set sun's depression). An omitted field keeps the time's own sun: the map's authored bearing and the time's
-default elevation. `setTimeOfDay(time)` keeps a bearing override and drops an elevation override (each time has its
-own band); `setTimeOfDay(time, light)` and `load()` set both. `state()` writes `light` only while an override exists
+the set sun's depression); `headlights: false` keeps the actors' lamps dark at dusk and night (a blacked-out column;
+the default `true` is not written). An omitted field keeps the time's own sun: the map's authored bearing and the time's
+default elevation. `setTimeOfDay(time)` keeps a bearing override and the headlights choice and drops an elevation override (each time
+has its own band); `setTimeOfDay(time, light)` and `load()` set both. `state()` writes `light` only while an override exists
 and reports the clamped values, so `load(state())` is identity. `getLight()` reports the rendered sun and the band.
 
 Mars and the Moon keep their authored space lighting: every requested time renders `day` (`state()` and
@@ -362,8 +363,9 @@ The **Sun** compass is north-up like the tactical map (world +Z up, −X right):
 night), the blue wedge is the camera's bearing; drag around it or use the arrow keys (Shift = 15°). **Back** puts the
 sun ahead of the camera (backlit subjects, bright rims), **Rim** 32° off that axis (rim light with the disc out of
 frame), **Side** across the frame, **Front** behind the camera; **Map** returns to the authored bearing. **Height**
-moves the sun inside the time's band; **Auto** returns to the time's default. Slider-rate changes coalesce to one
-apply; time changes run behind the loading cover.
+moves the sun inside the time's band; **Auto** returns to the time's default; **Headlights** toggles the actors'
+lamps for dusk and night. Slider-rate changes coalesce to one apply; time changes run behind the loading cover. The
+first dusk or night of a session compiles the lamp-lit material variants once (several seconds behind the cover).
 
 **Scripting a backlit shot.** The camera bearing is `atan2(lookAt.x − pos.x, lookAt.z − pos.z)` in degrees; set
 `light.sunAzimuthDeg` to it for a backlit hero, +32° for rim light, +180° for front light.

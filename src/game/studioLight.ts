@@ -257,11 +257,12 @@ const RECIPES: Readonly<Record<Exclude<StudioTimeOfDay, 'day'>, TimeRecipe>> = O
   // the dome is dim on purpose (envValidityScale) instead of mistaking it for a poisoned bake.
   dusk: {
     key: 0.5, keyAbsolute: true, keyHex: 0xffa884, keyBlend: 0.9,
-    hemi: 0.8, hemiRange: [0.15, 0.4], fill: 0.45, env: 1.2,
+    // the sky fill reads a lamp-less battlefield at blue hour (orchestrator review: Cinder Junction, Nordhavn's sea side)
+    hemi: 1.0, hemiRange: [0.22, 0.5], fill: 0.55, env: 1.35,
     skyIntensity: 1.5, turbidity: 1.0, mie: 0.7, rayleigh: 1.3,
     fogDensity: 1.1, fogHex: 0x2e3d5e, fogBlend: 0.9, fogMix: 0.62,
     cloudHex: 0x9aa0b8, cloudBlend: 0.6,
-    exposure: 1.1, readability: 0.4, horizonDim: 0.36,
+    exposure: 1.12, readability: 0.4, horizonDim: 0.36,
     atmosphere: { ozoneScale: 0.8, sunIlluminance: 64 },
     extra: { nightSky: 0.15, envValidityScale: 0.1 },
     cloudLayer: { shadow: false },
