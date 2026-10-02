@@ -3,14 +3,13 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {registerProfiledBuilders} from '../tankFactoryCore.ts';
 import {buildStrv122X} from './strv122XPhotoDraft.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Preserve the photo-draft contract without qualifying the supplied-file ID.
 registerProfiledBuilders({strv122_x:buildStrv122X});
 
 // These are photo-led assembly/air contracts, not millimetric measurements
 // invented from a photograph. Primary FMV envelope tests remain separate.
-const near=(a,b,eps,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=eps,
-  `${label}: ${a} versus ${b} ± ${eps}`);
 function cast(meshes,origin,direction,far=20,matrix=new THREE.Matrix4()) {
   return new THREE.Raycaster(new THREE.Vector3(...origin).applyMatrix4(matrix),
     new THREE.Vector3(...direction).transformDirection(matrix),0,far).intersectObjects(meshes,false)[0];

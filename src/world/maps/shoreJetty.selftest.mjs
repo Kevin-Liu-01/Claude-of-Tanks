@@ -18,11 +18,11 @@ import {
   JETTY_DECK_HALF_WIDTH_M, JETTY_DECK_THICKNESS_M, JETTY_FREEBOARD_M, JETTY_MAX_SPANS, JETTY_MIN_SPANS,
   JETTY_ROAD_CLEARANCE_M, JETTY_SPAN_M, MOORED_BOAT_DRAFT_M, landingStream, planShoreJetty,
 } from './shoreJetty.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const names = ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked'];
 const seaMaps = MAP_IDS.filter(id => (getMapConfig(id).terrain.lakes ?? []).some(lake => lake.shelfM !== undefined));
 assert.deepEqual(seaMaps, ['coastal', 'fjord', 'saltwind'], 'the strand law reaches every authored shelf, and only those');
-const near = (a, b, tol, label) => assert.ok(Math.abs(a - b) <= tol, `${label}: ${a} vs ${b}`);
 
 /** Every rule of the law against one plan on its field. */
 function auditPlan(field, lake, plan, spawns, label) {

@@ -219,6 +219,8 @@ export const ROOM_CLIENT_MESSAGE = Object.freeze({
   PING: 'room_ping',
   /** WebRTC signaling between two seats of a p2p match; the room relays it as `room_signal` with `from` added. */
   SIGNAL: 'room_signal',
+  /** The ICE servers (relay credentials) for one peer connection of this seat; answered `room_relay` (`RoomRelayPayload`). */
+  RELAY: 'room_relay',
 } as const);
 
 /**
@@ -241,6 +243,8 @@ export const ROOM_SERVER_MESSAGE = Object.freeze({
   SIGNAL: 'room_signal',
   /** The room elected a new match host (`RoomHostChangedPayload`); peers reconnect to `hostId`. */
   HOST_CHANGED: 'host_changed',
+  /** The answer to a seat's `room_relay` (`RoomRelayPayload`), to that seat alone. */
+  RELAY: 'room_relay',
 } as const);
 
 /**
@@ -315,6 +319,8 @@ export const ROOM_ERROR_CODES = Object.freeze([
   // P1 rooms lane (2026-09-28): a refused room_signal (target, generation, size, phase) and a match_report from a seat
   // that is not the host of the current generation.
   'signal_target', 'signal_generation', 'signal_size', 'signal_phase', 'host_only',
+  // 2026-10-02 (relay credentials from the room): a room_relay from a seat that holds no seat of a running p2p match.
+  'relay_phase',
 ] as const);
 export type RoomErrorCode = typeof ROOM_ERROR_CODES[number];
 const ROOM_ERROR_SET: ReadonlySet<string> = new Set(ROOM_ERROR_CODES);
@@ -655,5 +661,99 @@ export function readRoomMatchReport(value: unknown): RoomMatchReport {
   return {
     matchId: value.matchId, generation: value.generation, phase: value.phase as RoomMatchReportPhase, tick: value.tick ?? 0,
     verdict: verdict ? { result: verdict.result, reason: verdict.reason } : null,
+  };
+}
+
+// ---- Relay credentials from the room (2026-10-02, lane mp/room-relay-credentials; docs/MULTIPLAYER-V2.md §13.14). The
+// public `/api/ice` function minted TURN credentials for any page that passed its origin check; the room mints them
+// now, for its own seats only. Shared by the room hosts (the admission rule and the limits) and the client (the reply).
+
+/**
+ * `room_relay` (client → room, with a requestId; no payload): the ICE servers for ONE peer connection of this seat — a
+ * peer's connect attempt (each reconnect and migration) or an offer its host accepts. Admitted, each refusal with its
+ * code, from a seated socket (`not_in_room`) whose player holds a seat token of the running peer-to-peer match
+ * (`relay_phase`), within ROOM_RELAY_SEAT_LIMIT grants per seat and ROOM_RELAY_ROOM_LIMIT per room in each
+ * ROOM_RELAY_WINDOW_MS (`rate_limit`); a request without a requestId is `invalid_payload`. The room mints once per
+ * admitted request — never cached across seats or requests, never logged — and answers `room_relay` with this payload
+ * to the requesting seat alone. A room with no relay configured, or whose provider failed, answers with its STUN servers
+ * only (`relay: false`, possibly no server at all): never an error, so a link degrades to direct paths and joining never
+ * depends on a relay.
+ */
+export interface RoomRelayPayload {
+  iceServers: RoomIceServer[];
+  /** At least one server is a TURN relay (`turn:` / `turns:`). */
+  relay: boolean;
+  /** The credentials' lifetime from the answer, in seconds (absent when nothing expires: STUN only, fixed servers). */
+  expiresInSeconds?: number;
+}
+
+/** One ICE server as RTCPeerConnection takes it. */
+export interface RoomIceServer {
+  urls: string | string[];
+  username?: string;
+  credential?: string;
+}
+
+/** The rate windows (fixed windows, runtime-only: a room object that hibernated starts fresh ones). */
+export const ROOM_RELAY_WINDOW_MS = 60_000;
+/**
+ * Grants per seat per window. The client reuses one grant for its reuse window (`RELAY_GRANT_REUSE_MS` in
+ * src/mp/transport/iceConfig.ts, 30 s) and shares a request in flight, so a host answering a 14v14 election's 27 offers
+ * asks once and a struggling link about twice a minute; six leave room for reloads and a migration storm.
+ */
+export const ROOM_RELAY_SEAT_LIMIT = 6;
+/** Grants per room per window: every seat of a full room at a start and again at a migration in the same minute (2 × 36), with headroom. */
+export const ROOM_RELAY_ROOM_LIMIT = 96;
+/** The client's budget for one `room_relay` (the room bounds its provider call well inside it). */
+export const ROOM_RELAY_REQUEST_TIMEOUT_MS = 6_000;
+/** Bounds on an answer: servers, URLs per server, characters per URL or credential field. */
+export const ROOM_RELAY_MAX_SERVERS = 8;
+const ROOM_RELAY_MAX_URLS = 16;
+const ROOM_RELAY_MAX_FIELD_CHARS = 512;
+
+const ICE_URL_RE = /^(?:stun|turns?):/i;
+const TURN_URL_RE = /^turns?:/i;
+
+/** One ICE server, validated and copied (urls as one string or a bounded list; optional string credentials); null when malformed. */
+export function readRoomIceServer(value: unknown): RoomIceServer | null {
+  if (!isRecord(value)) return null;
+  const urls = typeof value.urls === 'string' ? [value.urls] : Array.isArray(value.urls) ? value.urls : null;
+  if (!urls || urls.length === 0 || urls.length > ROOM_RELAY_MAX_URLS ||
+      !urls.every((url): url is string => typeof url === 'string' && url.length <= ROOM_RELAY_MAX_FIELD_CHARS && ICE_URL_RE.test(url))) return null;
+  for (const field of ['username', 'credential'] as const) {
+    const entry = value[field];
+    if (entry !== undefined && (typeof entry !== 'string' || entry.length > ROOM_RELAY_MAX_FIELD_CHARS)) return null;
+  }
+  return {
+    urls: urls.length === 1 ? urls[0]! : [...urls],
+    ...(typeof value.username === 'string' ? { username: value.username } : {}),
+    ...(typeof value.credential === 'string' ? { credential: value.credential } : {}),
+  };
+}
+
+/** True when a server list holds a TURN relay. */
+export function hasRoomRelayServer(servers: readonly RoomIceServer[]): boolean {
+  return servers.some((server) => (typeof server.urls === 'string' ? [server.urls] : server.urls).some((url) => TURN_URL_RE.test(url)));
+}
+
+/**
+ * A `room_relay` answer, validated field by field (`invalid_payload` otherwise): a bounded list of well-formed servers
+ * and an optional positive lifetime; `relay` is recomputed from the servers, never taken on trust.
+ */
+export function readRoomRelayPayload(value: unknown): RoomRelayPayload {
+  if (!isRecord(value) || !Array.isArray(value.iceServers) || value.iceServers.length > ROOM_RELAY_MAX_SERVERS ||
+      (value.expiresInSeconds !== undefined && !(Number.isSafeInteger(value.expiresInSeconds) && (value.expiresInSeconds as number) > 0))) {
+    throw new RoomError('invalid_payload', 'room relay fields');
+  }
+  const iceServers: RoomIceServer[] = [];
+  for (const entry of value.iceServers) {
+    const server = readRoomIceServer(entry);
+    if (!server) throw new RoomError('invalid_payload', 'room relay server');
+    iceServers.push(server);
+  }
+  return {
+    iceServers,
+    relay: hasRoomRelayServer(iceServers),
+    ...(typeof value.expiresInSeconds === 'number' ? { expiresInSeconds: value.expiresInSeconds } : {}),
   };
 }

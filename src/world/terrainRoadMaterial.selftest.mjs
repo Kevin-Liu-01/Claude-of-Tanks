@@ -17,10 +17,12 @@ assert.match(terrainSource, /float openNear2 = dNear2 \* \(1\.0 - roadCore\);/,
   'the closest clod-scale octave is explicitly excluded from compacted roads');
 assert.match(terrainSource, /vec3 packedRoad = groundSamp\(uAlbD,/,
   'the continuous dirt-road core uses the smoothed packed-earth layer');
-assert.match(terrainSource, /vec3 packedRoad = groundSamp\(uAlbD, uv \* 0\.210, df, mipB \+ 4\.0\)\.rgb;/,
+// terrain v2 (2026-10-01, the cost pass): the soil sample takes the layer's measured mean (its far variant's tile mean),
+// the packed-earth normal is skipped past the far band (nrmOn), and the block runs only on the carriageway (dW)
+assert.match(terrainSource, /vec3 packedRoad = groundSamp\(uAlbD, uMeanD, uv \* 0\.210, df, mipB \+ 4\.0\)\.rgb;/,
   'the dirt-road palette keeps a smoothed mip: soil grain survives, no single source clod is stamped');
 assert.match(terrainSource,
-  /vec2 packedRoadN = groundNrm\(uNrmD,[\s\S]{0,240}n\.xy = mix\(n\.xy, packedRoadN, dW\);/,
+  /vec2 packedRoadN = nrmOn \? groundNrm\(uNrmD,[\s\S]{0,240}n\.xy = mix\(n\.xy, packedRoadN, dW\);/,
   'the dirt-road core replaces the open-ground normal with its shallow packed-earth response');
 assert.match(terrainSource, /packedRoadN = mix\(vec2\(0\.5\), packedRoadN, 0\.30\);/,
   'the packed-earth normal stays shallow (30% of the smoothed sample)');

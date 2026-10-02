@@ -1,6 +1,6 @@
 // Nation road-wheel sets (owner 2026-09-22: "standardize our wheels across NATIONS! then we can delete any
 // wheels we dont use anymore"; correction: "sabra uses the m60a3 wheels"). Pure table/resolver/builder receipt:
-// no tank is built here (the fleet build is wheelQuality.selftest and tools/wheel-review.mjs --all --gate).
+// no tank is built here (the fleet build is fleetPassHigh.selftest and tools/wheel-review.mjs --all --gate).
 import assert from 'node:assert/strict';
 import './tankFactory.ts';
 import { ALL_TANK_IDS, TANK_SPECS } from './specs.ts';

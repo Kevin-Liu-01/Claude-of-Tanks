@@ -3,6 +3,7 @@ import {shoulderCoverTop} from './t72b3mXSideMounts.ts';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT72B3MSideMounts} from './t72b3mXSideMounts.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // The held-out per-mesh preservation ledger (docs/references/tanks/t72b3m_x.side-mount-preservation.json, rewritten by
 // COT_UPDATE_LEDGER) is retired: whole-tank change detection of t72b3m_x is the fleet geometry ledger's. The marking
@@ -97,7 +98,6 @@ function markings(tank,quality){
   }
 }
 
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a}, source ${b} ±${t}`);
 const ray=(meshes,p,d=[0,-1,0],far=10)=>new T.Raycaster(new T.Vector3(...p),new T.Vector3(...d),0,far).intersectObjects(meshes,false)[0];
 function stocksAt(mesh,p){
   const material=new T.MeshBasicMaterial({side:T.DoubleSide}),probe=new T.Mesh(mesh.geometry,material);

@@ -1,6 +1,6 @@
 {
  "id": "leo2a4m_x",
- "geoMin": 92.5,
+ "geoMin": 92.8,
  "requiredMinimum": 92,
  "registration": {
   "mode": "legacy-hull-translation"
@@ -9,14 +9,14 @@
  "dimensionTarget": "published specification",
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 92.54667904331387,
+ "rawGeoMin": 92.75878706616372,
  "rawComponents": {
-  "wholeCurves": 92.54667904331387,
+  "wholeCurves": 92.75878706616372,
   "dims": 97.03055116869028,
   "floaters": 100
  },
  "components": {
-  "wholeCurves": 92.5,
+  "wholeCurves": 92.8,
   "dims": 97,
   "floaters": 100
  },
@@ -132,29 +132,29 @@
    ]
   },
   "side_whole": {
-   "score": 64.6213883402837,
-   "meanPct": 2.46,
-   "p95Pct": 8.31,
+   "score": 66.58125505906877,
+   "meanPct": 2.31,
+   "p95Pct": 8.19,
    "coverPct": 0.56,
    "reg": {
     "dAlong": -0.11367733971734495,
-    "dy": 0.0512635054939964
+    "dy": 0.04592526616574898
    },
    "worst": [
     {
      "at": 3.44,
      "refTop": 2.18,
      "refBot": -2.17,
-     "procTop": 0.45,
-     "procBot": -2.13,
+     "procTop": 0.44,
+     "procBot": -2.14,
      "errM": 0.888
     },
     {
      "at": 3.33,
      "refTop": 2.18,
      "refBot": -2.16,
-     "procTop": 0.45,
-     "procBot": -2.13,
+     "procTop": 0.44,
+     "procBot": -2.14,
      "errM": 0.883
     },
     {
@@ -163,14 +163,14 @@
      "refBot": -0.7,
      "procTop": -0.68,
      "procBot": -1.26,
-     "errM": 0.427
+     "errM": 0.433
     },
     {
      "at": -2.88,
      "refTop": -0.19,
      "refBot": -0.36,
-     "procTop": -0.14,
-     "procBot": -1.17,
+     "procTop": -0.15,
+     "procBot": -1.18,
      "errM": 0.424
     },
     {
@@ -178,63 +178,63 @@
      "refTop": 0.94,
      "refBot": -2.16,
      "procTop": 1.63,
-     "procBot": -2.13,
-     "errM": 0.364
+     "procBot": -2.14,
+     "errM": 0.359
+    },
+    {
+     "at": 2.32,
+     "refTop": 0.9,
+     "refBot": -2.17,
+     "procTop": 0.28,
+     "procBot": -2.14,
+     "errM": 0.328
     },
     {
      "at": 2.99,
      "refTop": 0.38,
      "refBot": -2.16,
      "procTop": 1.01,
-     "procBot": -2.13,
-     "errM": 0.334
-    },
-    {
-     "at": 2.32,
-     "refTop": 0.9,
-     "refBot": -2.17,
-     "procTop": 0.29,
-     "procBot": -2.13,
+     "procBot": -2.14,
      "errM": 0.328
     },
     {
      "at": 3.21,
      "refTop": 1.56,
      "refBot": -2.16,
-     "procTop": 2.18,
-     "procBot": -2.13,
-     "errM": 0.325
-    },
-    {
-     "at": 1.07,
-     "refTop": 0.34,
-     "refBot": -2.17,
-     "procTop": 0.85,
-     "procBot": -2.13,
-     "errM": 0.273
+     "procTop": 2.17,
+     "procBot": -2.14,
+     "errM": 0.32
     },
     {
      "at": 2.43,
      "refTop": 0.81,
      "refBot": -2.17,
      "procTop": 0.31,
-     "procBot": -2.13,
+     "procBot": -2.14,
      "errM": 0.27
+    },
+    {
+     "at": 1.07,
+     "refTop": 0.34,
+     "refBot": -2.17,
+     "procTop": 0.84,
+     "procBot": -2.14,
+     "errM": 0.268
     },
     {
      "at": 3.89,
      "refTop": 0.15,
      "refBot": -2.05,
-     "procTop": -0.25,
-     "procBot": -1.94,
+     "procTop": -0.26,
+     "procBot": -1.95,
      "errM": 0.255
     },
     {
      "at": 4.01,
      "refTop": 0.08,
      "refBot": -1.96,
-     "procTop": -0.27,
-     "procBot": -1.84,
+     "procTop": -0.28,
+     "procBot": -1.85,
      "errM": 0.234
     }
    ]
@@ -778,18 +778,18 @@
    "refW": 3.725,
    "procW": 3.762,
    "refTop": -0.035,
-   "procTop": 0.125,
+   "procTop": 0.181,
    "wPct": 0.9937888198757726,
-   "topPct": 3.6470996849113444
+   "topPct": 4.913471971581202
   },
   {
    "i": 11,
    "refW": 0.19,
    "procW": 3.762,
    "refTop": -0.183,
-   "procTop": -0.018,
+   "procTop": 0.097,
    "wPct": 1786.2812164502905,
-   "topPct": 3.7526307088004995
+   "topPct": 6.390906306029369
   },
   {
    "i": 12,
@@ -886,7 +886,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 167493,
+     "area": 167542,
      "minX": 214,
      "minY": 286,
      "maxX": 965,
@@ -914,7 +914,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 170822,
+     "area": 170906,
      "minX": 169,
      "minY": 286,
      "maxX": 961,

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs independent source ${b} ±${t}`);
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 function visibleMeshes(t){const meshes=[];t.root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)meshes.push(m);});return meshes;}
 function top(meshes,x,z){return new THREE.Raycaster(new THREE.Vector3(x,1.8,z),new THREE.Vector3(0,-1,0),0,1).intersectObjects(meshes,false)[0];}
 function exhaust(meshes){

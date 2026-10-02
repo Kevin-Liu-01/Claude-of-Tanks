@@ -1,10 +1,14 @@
 import {NATIONAL_MODERNIZATION_IDS} from '../src/vehicles/nationalModernizationConfig.ts';
+import {NATIONAL_LEGACY_IDS} from '../src/vehicles/nationalLegacyConfig.ts';
 // Authored body boundaries for fill generation only. Visible fittings remain in
 // the native tank and in every source/continuity/physical-stock check.
 // Rebuilt hulls keep external optics, cage rails and smoke launchers separate
 // from the watertight shell. Their air spaces must never become solid voxels.
 const RENEWED_BODY_IDS = [
   ...NATIONAL_MODERNIZATION_IDS,
+  // The separate welded-turret descendants likewise have closed primary
+  // shells; open external screens and stowage cannot bound interior volume.
+  ...NATIONAL_LEGACY_IDS,
   't72b3m', 'bmpt_terminator2', 't80u', 't72bu', 't72bu_x',
   't64bv1', 'ua_t64bv', 't62mv1', 't62mv1_x', 't72m1_jaguar',
   't72_rys', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei',
@@ -18,6 +22,9 @@ const PRIMARY_BODY_BUCKETS = Object.freeze({
   // around closed hull/turret shells. Air behind cargo is outside the vehicle,
   // so never bridge it with generated interior solids. Native audits keep it.
   amx10p_25: Object.freeze(['hull', 'turret']),
+  // AMX 56 now carries the same kind of open field racks and skirt screens.
+  // Their standoff/cargo air is exterior, not a new hull or turret cavity.
+  leclerc_classic_x: Object.freeze(['hull', 'turret']),
   // Namer's closed rear roof channel lies beneath a separate raised cover
   // and paired bodies. Those fittings do not make the intervening air part
   // of the turret shell; its closed access-door recess is exterior too.

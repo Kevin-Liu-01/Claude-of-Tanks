@@ -11,9 +11,7 @@ import {
   resolveHullImpact, ramShares, ramAggression, exchangeRamMomentum, hullVelocityAlong, shiftHullVelocityAlong,
   CREW_SHOCK_IMPACT_MPS, CREW_SHOCK_FALL_MPS,
 } from './impact.ts';
-
-const near = (actual, expected, tol, message) =>
-  assert.ok(Math.abs(actual - expected) <= tol, `${message} — expected ${expected} ±${tol}, got ${actual}`);
+import { near } from '../../tools/receipt-kit.test-support.mjs';
 
 // ---- ruleset blocks --------------------------------------------------------------------------------------
 for (const mode of GAME_MODE_IDS) {

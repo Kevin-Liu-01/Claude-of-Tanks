@@ -40,8 +40,12 @@ assert.throws(() => selftestCommand(['all', '--order=random']), /Unknown self-te
     assert.equal(new Set(shards.map(shard => shard.shard.partition)).size, 1, 'every shard job derives the same partition');
     assert.equal(shards[0].shard.selected, registry.length);
     if (!durations) {
+      // 2026-10-02: a shard holding one receipt cannot be split; since the fleet passes the weighted fleetLazy barrier
+      // (8 x its run time) alone outweighs the even share, so it is measured against, not inside, the balance.
       const loads = shards.map(shard => shard.shard.loadMs);
-      assert.ok(Math.max(...loads) / Math.min(...loads) < 1.25, `the committed snapshot balances six shards (${loads.join(', ')} ms)`);
+      const divisible = shards.filter(shard => shard.files.length > 1).map(shard => shard.shard.loadMs);
+      assert.ok(divisible.length >= 5 && Math.max(...divisible) / Math.min(...loads) < 1.25,
+        `the committed snapshot balances six shards (${loads.join(', ')} ms)`);
     } else {
       const counts = shards.map(shard => shard.files.length);
       assert.ok(Math.max(...counts) - Math.min(...counts) <= 8, 'without a snapshot the shards balance by count');

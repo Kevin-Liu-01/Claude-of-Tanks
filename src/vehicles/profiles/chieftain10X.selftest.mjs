@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank, KIT } from '../tankFactory.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-const near = (got, target, tolerance, label) => assert.ok(Number.isFinite(got)
-  && Math.abs(got - target) <= tolerance, `${label}: ${got}; source ${target} ± ${tolerance}`);
 const ray = (meshes, origin, direction, far = 15) => new THREE.Raycaster(
   new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, far,
 ).intersectObjects(meshes, false)[0];

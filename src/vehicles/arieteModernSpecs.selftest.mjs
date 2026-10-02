@@ -197,7 +197,8 @@ globalThis.localStorage = { getItem: key => storage.get(key) ?? null, setItem: (
 try {
   for (const spec of [c1, c2]) {
     assert.equal(defaultCamoPatternId(spec.id), 'factory');
-    assert.equal(stockCamoPatternIdFor(spec.id), 'service_ariete_c1');
+    // 2026-10-02 (main, Italian woodland refresh): the C1 keeps the service finish and the C2 carries its own signature.
+    assert.equal(stockCamoPatternIdFor(spec.id), spec === c2 ? 'sig_ariete_c2' : 'service_ariete_c1');
     assert.equal(getCamoSelection(spec.id), 'factory');
     setCamoSelection(spec.id, 'winter');
     assert.equal(getCamoSelection(spec.id), 'winter', 'explicit saved paint overrides new default');

@@ -316,12 +316,14 @@ body[data-cot-width='tablet'] .cot-bl .teams{grid-template-columns:minmax(0,1fr)
 body[data-cot-width='tablet'] .cot-bl .vs,
 body[data-cot-width='compact'] .cot-bl .vs,
 body[data-cot-width='phone'] .cot-bl .vs{display:none}
+body[data-cot-height='standard'][data-cot-panels='persistent'] .cot-bl .team,
+body[data-cot-height='compact'][data-cot-panels='persistent'] .cot-bl .team{--bl-row-height:20px}
 body[data-cot-panels='overlay'] .cot-bl .cap{padding-bottom:10px}
 body[data-cot-panels='overlay'] .cot-bl .cap::before{margin-bottom:5px;font-size:7px}
 body[data-cot-panels='overlay'] .cot-bl .mapname{margin-top:4px;font-size:clamp(22px,6vw,34px)}
 body[data-cot-panels='overlay'] .cot-bl .kicker{font-size:8.5px}
 body[data-cot-panels='overlay'] .cot-bl .thead{font-size:9px;padding:0 4px 4px}
-body[data-cot-panels='overlay'] .cot-bl .team{--bl-row-gap:2px;--bl-row-inset:4px;--bl-heading:24px}
+body[data-cot-panels='overlay'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:2px;--bl-row-inset:4px;--bl-heading:24px}
 body[data-cot-panels='overlay'] .cot-bl .row{gap:5px;padding-inline:4px}
 body[data-cot-panels='overlay'] .cot-bl .row .tier{flex-basis:20px;font-size:9px}
 body[data-cot-panels='overlay'] .cot-bl .row .sil{flex-basis:38px;max-height:20px}
@@ -346,8 +348,7 @@ body[data-cot-height='short'] .cot-bl .cap::before{display:none}
 body[data-cot-height='short'] .cot-bl .mapname{margin-top:3px;font-size:clamp(18px,3vw,26px)}
 body[data-cot-height='short'] .cot-bl .kicker{font-size:7.5px}
 body[data-cot-height='short'] .cot-bl .teams{gap:8px}
-body[data-cot-height='short'] .cot-bl .team{--bl-row-gap:1px;--bl-heading:18px}
-body[data-cot-height='short'] .cot-bl .rows{grid-template-rows:repeat(var(--bl-count),minmax(16px,1fr))}
+body[data-cot-height='short'] .cot-bl .team{--bl-row-height:18px;--bl-row-gap:1px;--bl-heading:18px}
 body[data-cot-height='short'] .cot-bl .row{gap:5px;padding-inline:4px}
 body[data-cot-height='short'] .cot-bl .row .tier{flex-basis:20px;font-size:8.5px}
 body[data-cot-height='short'] .cot-bl .row .sil{flex-basis:36px;max-height:18px}

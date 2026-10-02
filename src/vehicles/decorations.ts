@@ -1,4 +1,5 @@
 import { markSmokeTube, registerSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
+import {NATIONAL_LEGACY_IDS} from './nationalLegacyConfig.ts';
 // src/vehicles/decorations.ts — cosmetic external-stowage / fittings kit for
 // the whole fleet ("decoration system", 2026-07 round).
 //
@@ -2422,7 +2423,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   // These concepts own their complete stowage and mounts. Generic aft cargo
   // falls behind the native fuel drums, outside any physical support.
-  if (NATIONAL_MODERNIZATION_IDS.some(id=>id===spec.id)) return [];
+  if (NATIONAL_MODERNIZATION_IDS.some(id=>id===spec.id)||NATIONAL_LEGACY_IDS.some(id=>id===spec.id)) return [];
   // AMX-10P photo-authored turret/coax configurations own their fittings.
   // Random roof guns and crates would change the real equipment and silhouette.
   if (spec.id === 'amx10p' || spec.id === 'amx10p_25') return [];

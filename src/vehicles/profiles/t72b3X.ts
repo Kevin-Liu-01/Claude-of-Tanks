@@ -23,7 +23,7 @@ function turretPart(P:TankBuilderPort,bucket:string,g:THREE.BufferGeometry,x:num
   P.addEquipment(bucket,g,x-YAW[0],y-YAW[1],z-YAW[2],rx,ry,rz);
 }
 
-function hull(P:TankBuilderPort):void {
+export function buildT72B3XHullCore(P:TankBuilderPort):void {
   P.add('hull',boxSections([
     [-3.17815,1.1104,1.222,1.206],[-3.10,1.1104,1.285,1.145],[-2.93,1.1104,1.390,.954],
     [-2.70,1.1104,1.3925,.585],[-2.46,1.1104,1.3949,.418],[-1.402,1.1104,1.4053,.4160],
@@ -37,18 +37,15 @@ function hull(P:TankBuilderPort):void {
     [.067,-1.3911,1.3911,1.4571,1.4571],[.49,-1.316,1.316,1.4571,1.4571],
     [.88,-1.11,1.11,1.4571,1.4571],
   ],.021));
+}
+
+function hull(P:TankBuilderPort):void {
+  buildT72B3XHullCore(P);
   for(const side of [-1,1])fender(P,side);
 }
 
 function fender(P:TankBuilderPort,side:number):void {
-  const left=side<0?-1.7905:1.105,right=side<0?-1.105:1.8113;
-  P.addMudguard('t72b3-x-fender','hull',roofSheet([
-    [-3.36035,left,right,1.118,1.118],[-3.18,left,right,1.2395,1.2395],[-2.96,left,right,1.400,1.400],
-    [-2.76,left,right,1.422,1.422],[-1.89,left,right,1.444,1.444],[.395,left,right,1.4438,1.4438],
-    [1.70,left,right,1.392,1.392],[2.50,left,right,1.30735,1.30735],[3.08,left,right,1.242,1.242],
-    [3.22,left,right,1.209,1.209],[3.34,left,right,1.120,1.120],[3.43,left,right,1.026,1.026],
-    [3.51805,left,right,.838, .838],
-  ],.020));
+  fenderShell(P,side);
   const x=side<0?-1.769:1.781;
   // Forward sections behind the soft-ERA bank are rigid painted panels; the
   // rear rubber-fabric run is painted in the vehicle scheme like the rest of
@@ -62,6 +59,21 @@ function fender(P:TankBuilderPort,side:number):void {
   const upper=side<0?-1.66:1.674;
   P.addMudguard('t72b3-x-inner-apron','hullRubber',box(.018,.200,5.62),upper,1.340,-.209);
   for(const z of [-2.12,-.587,.805,2.222,3.178])P.addEquipment('hullDetail',box(.019,.26,.022),x+side*.012,1.02,z);
+  rearFenderGuard(P,side);
+}
+
+function fenderShell(P:TankBuilderPort,side:number):void {
+  const left=side<0?-1.7905:1.105,right=side<0?-1.105:1.8113;
+  P.addMudguard('t72b3-x-fender','hull',roofSheet([
+    [-3.36035,left,right,1.118,1.118],[-3.18,left,right,1.2395,1.2395],[-2.96,left,right,1.400,1.400],
+    [-2.76,left,right,1.422,1.422],[-1.89,left,right,1.444,1.444],[.395,left,right,1.4438,1.4438],
+    [1.70,left,right,1.392,1.392],[2.50,left,right,1.30735,1.30735],[3.08,left,right,1.242,1.242],
+    [3.22,left,right,1.209,1.209],[3.34,left,right,1.120,1.120],[3.43,left,right,1.026,1.026],
+    [3.51805,left,right,.838, .838],
+  ],.020));
+}
+
+function rearFenderGuard(P:TankBuilderPort,side:number):void {
   P.addMudguard('t72b3-x-rear-guard','hullRubber',roofSheet([
     [-3.36035,Math.min(side*1.052,side*1.786),Math.max(side*1.052,side*1.786),1.116,1.116],
     [-3.03395,Math.min(side*1.052,side*1.786),Math.max(side*1.052,side*1.786),1.242,1.242],
@@ -332,3 +344,12 @@ export function buildT72B3X(P:TankBuilderPort):void {
   roofEquipment(P);antennae(P);smoke(P);machineGun(P);mainGun(P);
 }
 export const T72B3_X_PROFILES={t72b3_x:{build:buildT72B3X}} as const;
+
+/** Native mechanical foundation for owner-authorized complete hull rebuilds. */
+export function buildT72B3XRunningGear(P:TankBuilderPort):void { runningGear(P); }
+
+/** Native folded track guards. Broad lower curtains, their straps and the
+ * inner apron belong to the donor skirt and are deliberately absent. */
+export function buildT72B3XFenders(P:TankBuilderPort):void {
+  for(const side of [-1,1]) { fenderShell(P,side); rearFenderGuard(P,side); }
+}

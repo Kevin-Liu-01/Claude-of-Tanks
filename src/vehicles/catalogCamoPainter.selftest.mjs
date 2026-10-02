@@ -95,3 +95,25 @@ for (const id of ['openai', 'gemini', 'xai', 'claude', 'spark']) {
   assert.equal(hash(pixels(c)), before);
 }
 console.log(`catalogCamoPainter: ${CATALOG_CAMO_ART_IDS.length} catalog and ${SHARED_CAMO_PRESETS.length} fleet paints, worker parity, Factory equivalence and logo isolation passed`);
+
+// Factory and the explicitly selected reusable finish must share the same
+// actual pigment coverage, including LOW-sized maps and cached rebakes.
+for (const [id,nation] of [['ariete_c1_x','Italy'],['ariete_c2_x','Italy'],['lrmv_lynx','Italy'],
+  ['type100','China'],['ztz100_x','China'],['ztz100_prototype','China']]) {
+  const tank={...spec,id,nation},visual=resolveCamoVisual(tank,'factory');
+  const pattern=stockCamoPatternIdFor(id,nation),selected=resolveCamoVisual(tank,pattern);
+  assert.deepEqual(visual.patches,selected.patches,`${id}: selected coat matches Factory`);
+  const palette=[visual.base,...visual.patches].map(hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)));
+  for(let i=0;i<palette.length;i++) for(let j=i+1;j<palette.length;j++)
+    assert.ok(Math.hypot(...palette[i].map((v,c)=>v-palette[j][c]))>30,`${id}: pigment tones are visibly distinct`);
+  for(const size of [128,512]) {
+    const canvas=createCanvas(size,size);
+    catalog(canvas.getContext('2d'),size,visual,painter.mulberry32(camoPatternStreamSeed(visual,camoPatternIdHash(pattern))));
+    const data=pixels(canvas),coverage=palette.map(()=>0);
+    for(let at=0;at<data.length;at+=4) {
+      const distances=palette.map(color=>color.reduce((sum,v,c)=>sum+(v-data[at+c])**2,0));
+      coverage[distances.indexOf(Math.min(...distances))]++;
+    }
+    for(const count of coverage) assert.ok(count/(size*size)>.10,`${id}/${size}: every pigment covers useful armor area`);
+  }
+}

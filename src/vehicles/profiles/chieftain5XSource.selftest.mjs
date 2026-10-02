@@ -4,6 +4,7 @@ import { createTank, KIT } from '../tankFactory.ts';
 import { auditTankWheelQuality } from '../wheelQuality.ts';
 import { CHIEFTAIN5_X_DATUMS } from './chieftain5X.ts';
 import { chieftain5SourceSmokeMouths } from './chieftain5XSourceApplique.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // This tests the CURRENT actual-ID supplied-file construction, not the
 // historical photo fixture. Canonical source SHA2a781a79…268e79 retained all
@@ -11,8 +12,6 @@ import { chieftain5SourceSmokeMouths } from './chieftain5XSourceApplique.ts';
 // Warped source axes/cup banks are explicitly regularized construction, and
 // these focused checks do not assert whole-model silhouette qualification.
 const D = CHIEFTAIN5_X_DATUMS.chieftain5_x;
-const near = (a, b, tolerance, label) => assert.ok(Number.isFinite(a)
-  && Math.abs(a - b) <= tolerance, `${label}: ${a}; expected ${b} ±${tolerance}`);
 const cast = (objects, origin, direction, far = 12) => new THREE.Raycaster(
   new THREE.Vector3(...origin), new THREE.Vector3(...direction).normalize(), 0, far)
   .intersectObjects(objects, false)[0];
