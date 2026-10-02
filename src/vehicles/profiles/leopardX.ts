@@ -83,7 +83,7 @@ function shell(P: TankBuilderPort, d: Datum, stations: readonly ShellStation[],
 function addTurretSections(P:TankBuilderPort,d:Datum,sections:readonly SolidSection[]):void {
   if(d===LEOPARD_X_DATUMS.leo2a5_x) P.add('turret',sectionSolid(sections));
   else addLeopardTurretWithGunOpening(P,sections,
-    d.trunnion[0]-d.turretPivot[0],d.trunnion[2]-d.turretPivot[2]);
+    d.trunnion[0]-d.turretPivot[0],d.trunnion[1]-d.turretPivot[1],d.trunnion[2]-d.turretPivot[2]);
 }
 
 function equip(P: TankBuilderPort, d: Datum, bucket: string, geometry: THREE.BufferGeometry,
@@ -148,7 +148,12 @@ function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean): v
   KIT.buildGun(P, { len: length, r: radius, baseR: radius * 1.6,
     sleeve: true, evac: long ? .43 : .35, evacR: 1.66, collar: true, paintSleeveBands: true });
   // The existing physical collar pitches but is not part of barrel recoil.
-  addLeopardMovingMantlet(P);
+  const fit=d===LEOPARD_X_DATUMS.leo2a7v_x
+    ? {crown:.515,noseZ:1.10,noseRoof:.145}
+    : d===LEOPARD_X_DATUMS.leo2a6m_x
+      ? {crown:.390,noseZ:1.24,noseRoof:.105}
+      : {crown:.445,noseZ:1.04,noseRoof:.120};
+  addLeopardMovingMantlet(P,fit);
   P.add('gunDark', cylZ(radius * .84, .016, 24), 0, 0, length + .001);
   P.add('gun', torus(radius * .93, radius * .10, 24, 6), 0, 0, length + .007, Math.PI / 2);
   P.addEquipment('gun', box(.066, .055, .15), 0, radius + .025, length - .41);

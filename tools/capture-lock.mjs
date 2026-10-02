@@ -17,9 +17,6 @@ const DEFAULT_LOCK_DIR = '/tmp/cot-shots.lock';
 const DEFAULT_QUEUE_DIR = '/tmp/cot-shots.queue';
 const DEFAULT_LOCK_STALE_MS = 5 * 60 * 1000;
 const DEFAULT_TICKET_STALE_MS = 60 * 60 * 1000;
-// A waiter renews its own ticket this often, so the reaping age only removes tickets whose process died or stopped
-// renewing (a reused PID); before 2026-10-02 a live waiter past the reaping age was reaped and silently lost its place.
-const DEFAULT_TICKET_REFRESH_MS = 30 * 1000;
 
 function ticketPid(name) {
   const match = name.match(/-(\d+)\.t$/);
@@ -96,7 +93,8 @@ function reapStaleLock(lockDir, staleMs) {
   }
 }
 
-/** Renew a waiting ticket; restore it under the same name (so the same place) when another process reaped it. */
+/** Renew a waiting ticket; restore it under the same name (so the same place) when a process on an older copy of
+ *  this module reaped it while we were still waiting. */
 function keepTicket(path) {
   const now = new Date();
   try {
@@ -128,7 +126,7 @@ export function createCaptureLock({
   queueDir = DEFAULT_QUEUE_DIR,
   lockStaleMs = DEFAULT_LOCK_STALE_MS,
   ticketStaleMs = DEFAULT_TICKET_STALE_MS,
-  ticketRefreshMs = DEFAULT_TICKET_REFRESH_MS,
+  ticketRefreshMs = Math.max(1, Math.min(30_000, ticketStaleMs / 3)),
 } = {}) {
   let held = false;
 
@@ -142,13 +140,12 @@ export function createCaptureLock({
     const ownTicket = reserveTicket(queueDir);
     const ownPath = join(queueDir, ownTicket);
     const startedAt = Date.now();
-    let renewedAt = startedAt;
+    // A legitimate capture ahead of us can outlast ticketStaleMs. Keep our waiting ticket alive without changing its
+    // filename or FIFO position, and restore it if an older copy of this module reaped it anyway.
+    const ticketHeartbeat = setInterval(() => keepTicket(ownPath), ticketRefreshMs);
+    ticketHeartbeat.unref();
     try {
       for (;;) {
-        if (Date.now() - renewedAt >= ticketRefreshMs) {
-          renewedAt = Date.now();
-          keepTicket(ownPath);
-        }
         const head = queueHead(queueDir, readQueue(queueDir, ownTicket), ownTicket, ticketStaleMs);
         if (head === ownTicket && claimLock(lockDir)) {
           held = true;
@@ -156,9 +153,10 @@ export function createCaptureLock({
         }
         if (head === ownTicket && reapStaleLock(lockDir, lockStaleMs)) continue;
         if (Date.now() - startedAt > timeoutMs) throw new Error('cot-shots lock timeout');
-        await new Promise((resolve) => setTimeout(resolve, Math.min(head === ownTicket ? 300 : 1000, ticketRefreshMs)));
+        await new Promise((resolve) => setTimeout(resolve, head === ownTicket ? 300 : 1000));
       }
     } finally {
+      clearInterval(ticketHeartbeat);
       try { unlinkSync(join(queueDir, ownTicket)); } catch { /* already removed */ }
     }
   }
