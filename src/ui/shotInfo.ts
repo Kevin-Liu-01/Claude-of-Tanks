@@ -14,6 +14,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 //   4. SESSION STATS — end-of-battle report (bus 'battle:ended').
 // Mounted by the clearly-marked SHOT-INFO section in src/ui/hud.ts.
 
+import { MAX_BATTLE_NOTIFICATIONS } from './battleHudLayout.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
 import {
@@ -289,6 +290,7 @@ const GLYPH: Record<string, string> = {
   transmission: uiIconSVG('transmission', 12),
   autoloader: uiIconSVG('autoloader', 12),
   feedSystem: uiIconSVG('feedSystem', 12),
+  roofGun: uiIconSVG('roofGun', 12),
   missileRack: uiIconSVG('missileRack', 12),
   crew: uiIconSVG('crew', 12),
 };
@@ -597,7 +599,6 @@ body.cot-touch-layout .cot-si-log{display:none!important;}
    minimap—not a stack over the ammo tray or the steering/aim controls. */
 body.cot-touch-layout .cot-si-toasthost{top:calc(max(8px,env(safe-area-inset-top)) + 108px);
   bottom:auto;left:max(8px,env(safe-area-inset-left));right:auto;width:min(200px,48vw);min-height:26px;}
-body.cot-touch-layout .cot-si-toast:nth-last-of-type(n+2){display:none;}
 body.cot-touch-layout .cot-si-toast{height:26px;padding:4px 6px;}
 body.cot-touch-layout .cot-si-toast .l1{font-size:9.5px;}
 body.cot-touch-layout .cot-si-toast .l1 b{font-size:11px;}
@@ -1272,7 +1273,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     toast.style.borderLeftColor = (ev.damage || 0) > 0 ? COL.red : cls.color;
     const outcomeValue = toast.querySelector<HTMLElement>('.l1 b');
     if (outcomeValue) outcomeValue.style.color = (ev.damage || 0) > 0 ? COL.red : cls.color;
-    while (toastHost.children.length > 3) toastHost.firstChild?.remove();
+    toastHost.prepend(toast);
+    while (toastHost.children.length > MAX_BATTLE_NOTIFICATIONS) toastHost.lastChild?.remove();
     setTimeout(() => toast.classList.add('out'), 4600);
     setTimeout(() => { if (toast.parentNode) toast.remove(); }, 5500);
   }

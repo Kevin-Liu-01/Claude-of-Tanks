@@ -113,6 +113,21 @@ assert.equal(runtime.frameInfo.player, null);
 assert.equal(runtime.frameInfo.tanks, game.tanks);
 assert.equal(runtime.frameInfo.shells, game.shells);
 
+// Names/counts use the full announcement; targeting and world UI remain spotted-only.
+killcam.active = false;
+killcam.spectate.active = false;
+game.player = player;
+game.rosterTanks = [player, enemy, hiddenEnemy, ally];
+game.tanks = [player, enemy, ally];
+runtime.update(true, false);
+assert.equal(runtime.frameInfo.rosterTanks, game.rosterTanks);
+assert.equal(runtime.frameInfo.tanks, game.tanks);
+assert.equal(runtime.frameInfo.spotting.isSpotted('hidden'), false);
+assert.deepEqual(overlayFrames.at(-1).targets, [enemy]);
+game.rosterTanks = undefined;
+runtime.reset();
+assert.equal(runtime.frameInfo.rosterTanks, game.tanks, 'solo restores the ordinary complete roster');
+
 assert.throws(() => createBattleHudFrameRuntime({}), /requires every presentation port/);
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { objectiveRing, fitObjectiveSurface } from './objectiveSurface.ts';
 
 import type { MatchModePresentationState, ObjectiveTeam } from '../sim/matchModes.ts';
 import { objectiveMarkers, type ObjectiveMarker } from '../ui/minimapObjectives.ts';
@@ -332,17 +333,6 @@ export function createMatchModeWorldPresentation(
     mesh.position.y = BEACON_HEIGHT_M / 2;
     return mesh;
   };
-  const arcGeometries: (THREE.RingGeometry | null)[] = Array.from({ length: ARC_STEPS + 1 }, () => null);
-  const arcGeometry = (step: number): THREE.RingGeometry => {
-    const q = Math.max(0, Math.min(ARC_STEPS, step));
-    let geometry = arcGeometries[q];
-    if (!geometry) {
-      const length = Math.max(1e-3, (q / ARC_STEPS) * Math.PI * 2);
-      geometry = new THREE.RingGeometry(ZONE_RADIUS_M - 3.4, ZONE_RADIUS_M - 1.2, Math.max(3, Math.round(48 * q / ARC_STEPS)), 1, Math.PI / 2, length);
-      arcGeometries[q] = geometry;
-    }
-    return geometry;
-  };
   const perspectiveOf = (state: MatchModePresentationState): ObjectiveTeam =>
     state.perspectiveTeam === 'bravo' ? 'bravo' : 'alpha';
   const sideOf = (team: ObjectiveTeam, state: MatchModePresentationState): ObjectiveSide =>
@@ -377,11 +367,11 @@ export function createMatchModeWorldPresentation(
   // base while the flag itself travels with its carrier
   const buildFlagBases = (): MarkerGroup[] => {
     if (flagBaseMarkers) return flagBaseMarkers;
-    const haloGeometry = new THREE.RingGeometry(8.6, 9.6, 48);
+
     flagBaseMarkers = (['alpha', 'bravo'] as const).map((team) => {
       const marker = new THREE.Group() as MarkerGroup;
       marker.name = `${team}-flag-base`;
-      const halo = new THREE.Mesh(haloGeometry, basic(teamColor(team), 0.3));
+      const halo = new THREE.Mesh(objectiveRing(8.6, 9.6), basic(teamColor(team), 0.3));
       halo.rotation.x = -Math.PI / 2;
       halo.position.y = 0.1;
       const column = beacon(teamColor(team), 0.14);
@@ -398,11 +388,11 @@ export function createMatchModeWorldPresentation(
   // ring, light column and the spawn mark floating above
   const buildSpawns = (): MarkerGroup[] => {
     if (spawnMarkers) return spawnMarkers;
-    const ringGeometry = new THREE.RingGeometry(5.4, 6.6, 48);
+
     spawnMarkers = (['alpha', 'bravo'] as const).map((team) => {
       const marker = new THREE.Group() as MarkerGroup;
       marker.name = `${team}-spawn`;
-      const ring = new THREE.Mesh(ringGeometry, basic(teamColor(team), 0.34));
+      const ring = new THREE.Mesh(objectiveRing(5.4, 6.6), basic(teamColor(team), 0.34));
       ring.rotation.x = -Math.PI / 2;
       ring.position.y = 0.1;
       const column = beacon(teamColor(team), 0.12);
@@ -420,14 +410,14 @@ export function createMatchModeWorldPresentation(
 
   const buildZones = (): MarkerGroup[] => {
     if (zoneMarkers) return zoneMarkers;
-    const ringGeometry = new THREE.RingGeometry(ZONE_RADIUS_M, 30, 64);
+
     const coreGeometry = new THREE.CylinderGeometry(0.28, 0.55, 7, 10);
-    const discGeometry = new THREE.CircleGeometry(ZONE_RADIUS_M, 48);
+
     zoneMarkers = Array.from({ length: 3 }, (_, index) => {
       const marker = new THREE.Group() as MarkerGroup;
       marker.name = `capture-zone-${index + 1}`;
       const material = basic(NEUTRAL, 0.4);
-      const ring = new THREE.Mesh(ringGeometry, material);
+      const ring = new THREE.Mesh(objectiveRing(ZONE_RADIUS_M, 30), material);
       ring.rotation.x = -Math.PI / 2;
       const core = new THREE.Mesh(coreGeometry, material);
       core.position.y = 3.5;
@@ -436,11 +426,11 @@ export function createMatchModeWorldPresentation(
       // capture progress as an arc inside the ring, its letter / sector number
       // as a floating badge
       const discMaterial = basic(NEUTRAL, 0.09);
-      const disc = new THREE.Mesh(discGeometry, discMaterial);
+      const disc = new THREE.Mesh(objectiveRing(0, ZONE_RADIUS_M), discMaterial);
       disc.rotation.x = -Math.PI / 2;
       disc.position.y = 0.05;
       const arcMaterial = basic(NEUTRAL, 0.85);
-      const arc = new THREE.Mesh(arcGeometry(0), arcMaterial);
+      const arc = new THREE.Mesh(objectiveRing(ZONE_RADIUS_M - 3.4, ZONE_RADIUS_M - 1.2), arcMaterial);
       arc.rotation.x = -Math.PI / 2;
       arc.position.y = 0.14;
       arc.visible = false;
@@ -688,7 +678,8 @@ export function createMatchModeWorldPresentation(
       marker.position.set(flag.x, flag.y - 2.5, flag.z);
       marker.rotation.y = timeS * 0.22 + index * Math.PI;
       const homeRing = marker.children[2];
-      homeRing.visible = flag.status === 'home';
+      // The stationary base halo marks home; the carried banner never drags a ground decal.
+      homeRing.visible = false;
       if (flag.status === 'home') marker.position.y = flag.baseY;
       tintTeam(marker, side);
       setIcon(marker.userData.icon, `flag:${side}`, (ctx, c) => drawPennant(ctx, c - 14, c + 8, 92, sideColor(side)));
@@ -697,6 +688,7 @@ export function createMatchModeWorldPresentation(
       if (base) {
         base.visible = true;
         base.position.set(flag.baseX, flag.baseY, flag.baseZ);
+        fitObjectiveSurface(base.children[0] as THREE.Mesh, flag.baseX, flag.baseY, flag.baseZ, options.groundHeight);
         tintTeam(base, side);
         // the halo breathes while the flag is away
         const halo = base.userData.teamMaterials?.[0];
@@ -718,6 +710,7 @@ export function createMatchModeWorldPresentation(
       if (!group) continue;
       group.visible = true;
       group.position.set(mark.x, spawn?.y ?? (options.groundHeight?.(mark.x, mark.z) ?? 0), mark.z);
+      fitObjectiveSurface(group.children[0] as THREE.Mesh, group.position.x, group.position.y, group.position.z, options.groundHeight);
       tintTeam(group, mark.side);
       setIcon(group.userData.icon, `spawn:${mark.side}`, (ctx, c) =>
         drawSpawnGlyph(ctx, c, c, 44, sideColor(mark.side), sideFill(mark.side)));
@@ -733,6 +726,9 @@ export function createMatchModeWorldPresentation(
       if (!marker) break;
       marker.visible = true;
       marker.position.set(zone.x, zone.y, zone.z);
+      fitObjectiveSurface(marker.children[0] as THREE.Mesh, zone.x, zone.y, zone.z, options.groundHeight);
+      fitObjectiveSurface(marker.children[2] as THREE.Mesh, zone.x, zone.y, zone.z, options.groundHeight);
+      fitObjectiveSurface(marker.children[3] as THREE.Mesh, zone.x, zone.y, zone.z, options.groundHeight, .095);
       const mark = zoneMarks[index];
       const material = marker.userData.markerMaterial;
       if (material) {
@@ -754,7 +750,20 @@ export function createMatchModeWorldPresentation(
         const partial = progress > 0.01 && progress < 0.995 && !!mark.progressSide;
         arc.visible = partial;
         if (partial) {
-          arc.geometry = arcGeometry(Math.round(progress * ARC_STEPS));
+          // A full ring with a bounded index range keeps both the terrain fit
+          // and the GPU buffer stable as capture progresses. Ring indices are
+          // grouped by radial row, so reveal each angular slice through groups.
+          const geometry = arc.geometry as THREE.RingGeometry;
+          const step = Math.round(progress * ARC_STEPS);
+          if (arc.userData.progressStep !== step) {
+            const { thetaSegments, phiSegments } = geometry.parameters;
+            geometry.clearGroups();
+            const count = Math.round(thetaSegments * step / ARC_STEPS) * 6;
+            for (let row = 0; row < phiSegments; row++) geometry.addGroup(row * thetaSegments * 6, count, 0);
+            // Groups apply to material arrays; one shared material, no clones.
+            arc.material = [arcMaterial];
+            arc.userData.progressStep = step;
+          }
           arcMaterial.color.setHex(sideHex(mark.progressSide ?? 'neutral'));
         }
       }
@@ -821,6 +830,7 @@ export function createMatchModeWorldPresentation(
 
   const update = (state: MatchModePresentationState | null, timeS: number): void => {
     if (!state || state.id === 'standard') {
+      if (root.visible) root.traverse(object => { delete object.userData.surfacePlacement; });
       root.visible = false;
       return;
     }
@@ -853,7 +863,6 @@ export function createMatchModeWorldPresentation(
       const meshMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       for (const material of meshMaterials) if (material) materials.add(material);
     });
-    for (const geometry of arcGeometries) if (geometry) geometries.add(geometry);
     if (beaconGeometry) geometries.add(beaconGeometry);
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) material.dispose();

@@ -1,3 +1,4 @@
+import type { AuxiliaryInventory } from './auxiliaryInventory.ts';
 import * as THREE from 'three';
 import { isPostwarVehicleEra } from './taxonomy.ts';
 
@@ -12,6 +13,7 @@ export interface ArmorPlatePort {
   name?: string;
   kind?: string;
   gunFollow?: boolean;
+  roofGunFollow?: boolean;
   verts?: readonly Vec3Tuple[];
 }
 
@@ -43,6 +45,7 @@ interface EllipticCylinderShape {
 type AnatomyShape = EllipsoidShape | CapsuleShape | EllipticCylinderShape;
 
 export interface AnatomyVolumePort {
+  roofGunFollow?: boolean;
   min: Vec3Tuple;
   max: Vec3Tuple;
   module?: string;
@@ -69,6 +72,7 @@ export interface InternalCrewVolumePort extends AnatomyVolumePort {
 }
 
 export interface InternalArmorModelPort {
+  roofGun?: AuxiliaryInventory['guns'][number];
   hullPlates?: readonly ArmorPlatePort[];
   turretPlates?: readonly ArmorPlatePort[];
   collisionShells?: { hull?: readonly ArmorCollisionCellPort[] };
@@ -786,6 +790,15 @@ export function addInternalModuleModel(
   const sz = volume.max[2] - volume.min[2];
   const group = proxyGroup(volume, hullGroup, turretGroup, `module_${kind}`);
   if (volume.gunFollow && gunContainer) gunContainer.add(group);
+  if (volume.roofGunFollow && armor?.roofGun) {
+    const mount = armor.roofGun;
+    const frame = new THREE.Group();
+    frame.name = 'roofGunAnatomyFrame';
+    frame.position.fromArray(mount.position); frame.quaternion.fromArray(mount.rotation); frame.scale.fromArray(mount.scale);
+    const pitchFrame = new THREE.Group(); pitchFrame.position.fromArray(mount.pivot);
+    (mount.owner === 'turret' ? turretGroup : hullGroup).add(frame);
+    frame.add(pitchFrame); pitchFrame.add(group);
+  }
   group.userData.internalAnatomy = {
     type: 'module', key: kind, ...(form ? { form } : {}),
     visualAnchorPolicy: volume === authoredVolume ? 'authoredVolume' : 'preciseCombatShapes',

@@ -13,6 +13,10 @@ import {
   MIGRATION_CHUNK_BYTES, MigrationStore, applyResumeState, captureEntityExtras, chunkMigrationBlob, decodeBootConfig, decodeMigrationKeyframe,
   deriveMigrationKey, encodeBootConfig, encodeMigrationKeyframe, openMigrationBlob, sealMigrationBlob,
 } from './migrationState.ts';
+import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
+
+// The actor reads finalized combat anatomy; production hosts load their roster's groups first (Node: all).
+await ensureAuthorityFleet();
 
 // ---- seal / open
 const SECRET = 'host-secret-0123456789abcdef0123456789abcdef';

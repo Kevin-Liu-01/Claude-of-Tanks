@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { battleSideStack, battleRosterHeight, installBattleHudLayout, objectiveWidth } from './battleHudLayout.ts';
+import { battleSideStack, battleNotificationRows, battleRosterHeight, installBattleHudLayout, objectiveWidth } from './battleHudLayout.ts';
 
 for (const space of [0, 80, 124, 320, 500]) {
   const height = battleRosterHeight(600, space, 124);
@@ -10,10 +10,11 @@ for (const space of [0, 80, 124, 320, 500]) {
   if (space >= 320) assert.ok(space - height >= 192, 'grid keeps room for kill notices and the combat report');
 }
 
-for (const count of [7, 14]) {
+for (const count of [1, 2, 3, 7, 10, 14]) {
   const normal = battleRosterHeight(1080, 700, 48, count);
   const expanded = battleRosterHeight(1080, 700, 48, count, true);
-  assert.ok(expanded > normal, 'Tab uses spare height for larger roster rows');
+  assert.equal(normal, 22 + count * 24, 'fewer players do not inflate normal rows');
+  assert.equal(expanded, 22 + count * 30, 'only Tab requests taller rows');
   assert.ok(700 - expanded >= 112, 'expanded list still reserves the diagram readout');
   assert.ok(battleRosterHeight(600, 320, 48, count) <= 208, 'short layout preserves readout plus gap');
 }
@@ -25,13 +26,22 @@ for(const width of [240,280,344,420]) {
 
 for(const height of [0,30,62,100,150,200,320,600])for(const chat of [false,true])for(const count of [0,1,3,8]){
   const layout=battleSideStack(height,chat,count);
-  assert.ok(layout.toastRows<=3&&layout.toastRows<=count);
+  assert.ok(layout.toastRows<=8&&layout.toastRows<=count);
   assert.ok(layout.toastHeight<=height);
   assert.ok(layout.chatOffset+layout.chatHeight<=height);
   if(chat&&height>=62)assert.ok(layout.chatHeight>=54,'the composer retains room below the alerts');
 }
 assert.equal(battleSideStack(100,true,3).toastRows,1,'a compact notice fits beside the reserved chat input');
 assert.equal(battleSideStack(320,false,3).toastRows,3);
+assert.equal(battleSideStack(320,false,20).toastRows,8);
+for(let height=0;height<500;height++){
+  const rows=battleNotificationRows(height,20);
+  assert.ok(rows<=8&&rows>=0);
+  assert.ok(!rows||rows*29-3<=height,'only complete notification rows fit');
+  assert.ok(rows>=battleNotificationRows(height-1,20),'more space never reduces capacity');
+}
+assert.equal(battleNotificationRows(84,20),3);
+assert.equal(battleNotificationRows(229,20),8);
 
 for(const height of [390,600,720,1080])for(const space of [0,40,100,300,600]) {
   const roster=battleRosterHeight(height,space);

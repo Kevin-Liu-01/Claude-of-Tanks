@@ -4,13 +4,19 @@ export function objectiveWidth(scoreWidth: number): number {
   return Math.max(0, scoreWidth - 2 * (SCORE_BOTTOM_INSET + 8));
 }
 
-/** Keep space for three kill notices and the side's combat readout. */
+export const MAX_BATTLE_NOTIFICATIONS = 8;
+/** Whole 26px rows, separated by 3px, within the available lane. */
+export function battleNotificationRows(height: number, count = MAX_BATTLE_NOTIFICATIONS): number {
+  return Math.min(MAX_BATTLE_NOTIFICATIONS, Math.max(0, count), Math.max(0, Math.floor((height + 3) / 29)));
+}
+
+/** Keep space for kill notices and the side's combat readout. */
 export function battleRosterHeight(viewportHeight: number, available: number, minimum = 48, count = 0, expanded = false): number {
   const space = Math.max(0, available);
   if (count > 0 && count <= 14) {
     const reserve = Math.min(232, Math.max(112, space - (22 + count * 16)));
     const wanted = 22 + count * (expanded ? 30 : 24);
-    return Math.min(space, Math.max(Math.min(48, space), Math.min(wanted, space - reserve)));
+    return Math.min(space, Math.max(Math.min(22, space), Math.min(wanted, space - reserve)));
   }
   return Math.min(space, Math.max(minimum, Math.min(viewportHeight * .28,
     space - 92 - Math.min(240, space * .45))));
@@ -20,8 +26,7 @@ export function battleRosterHeight(viewportHeight: number, available: number, mi
 export function battleSideStack(height: number, chat: boolean, toastCount: number) {
   const available = Math.max(0, height);
   const chatReserve = chat ? 62 : 0;
-  const toastRows = Math.min(3, toastCount,
-    Math.max(0, Math.floor((available - chatReserve - 8 + 3) / 29)));
+  const toastRows = battleNotificationRows(available - chatReserve - (chat ? 8 : 0), toastCount);
   const toastHeight = toastRows ? toastRows * 29 - 3 : 0;
   const gap = toastHeight && chat ? 8 : 0;
   return { toastRows, toastHeight, chatOffset: toastHeight + gap,
@@ -71,7 +76,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (observed.has(node)) continue;
       observed.add(node);
       resize.observe(node);
-      watchAttributes(node, ['class', 'hidden'], content);
+      watchAttributes(node, ['class', 'hidden', 'data-count'], content);
     }
   };
   function leftFloor(height: number, touch: boolean): number {
@@ -150,13 +155,31 @@ export function installBattleHudLayout(root: HTMLElement): void {
       systemsWidth = Math.max(52, ammo.left - systemsLeft - 8);
       dockWidth = Math.min(systemsWidth, naturalWidth);
     }
-    const sideWidth = Math.min(300, width / 2 - 20);
+    const sideWidth = Math.min(400, width / 2 - 24);
+    const chat = !!read('.cot-room-chat:not([hidden])');
+    const toastHost = root.querySelector<HTMLElement>('.cot-si-toasthost');
+    const toastCount = toastHost?.childElementCount || 0;
+    const setRows = (host: Element | null, rows: number) => {
+      if (!host) return;
+      for (let index = 0; index < host.children.length; index++) {
+        const item = host.children[index] as HTMLElement;
+        item.hidden = index >= rows;
+      }
+    };
+    const killLeft = root.querySelector('.cot-kill-lane.l');
+    const killRight = root.querySelector('.cot-kill-lane.r');
     const leftBottom = Math.min(leftFloor(height, touch),
       systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);
     const countdown = read('.cot-prebattle.on');
-    const leftKillBottom = countdown && countdown.left < 12 + Math.min(300, width / 2 - 20)
+    const leftKillBottom = countdown && countdown.left < sideWidth
       && countdown.bottom > leftAnchor ? Math.min(leftBottom, countdown.top - 8) : leftBottom;
-    const killHeightLeft = Math.max(0, Math.min(3, Math.floor((leftKillBottom - leftAnchor + 3) / 29)) * 29 - 3);
+    const leftSpace = Math.max(0, leftKillBottom - leftAnchor);
+    // Keep incoming damage and an open chat usable during a burst of kills.
+    const chatReserve = chat ? Math.min(leftSpace, Math.max(62, Math.min(140, leftSpace * .4))) : 0;
+    const damageReserve = toastCount ? Math.min(116, Math.max(0, (leftSpace - chatReserve) * .45)) : 0;
+    const killRowsLeft = battleNotificationRows(leftSpace - chatReserve - damageReserve - (chat || toastCount ? 8 : 0), killLeft?.childElementCount || 0);
+    setRows(killLeft, killRowsLeft);
+    const killHeightLeft = Math.max(0, killRowsLeft * 29 - 3);
     const killsLeft = Math.min(killHeightLeft, read('.cot-kill-lane.l')?.height || 0);
     const leftTop = leftAnchor + (killsLeft ? killsLeft + 8 : 0);
     const earRight = read('.cot-ear.r');
@@ -170,9 +193,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
       systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? systemsTop - 8 : height);
     const reportReserve = root.querySelector('.cot-si-card') ? (root.classList.contains('compact-shot-report') ? 100 : 160) : 0;
     const rightKillFloor = Math.max(rightAnchor, rightBottom - reportReserve - (reportReserve ? 8 : 0));
-    const rightKillBottom = countdown && countdown.right > width - 12 - Math.min(300, width / 2 - 20)
+    const rightKillBottom = countdown && countdown.right > width - sideWidth
       && countdown.bottom > rightAnchor ? Math.min(rightBottom, countdown.top - 8) : rightBottom;
-    const killHeightRight = Math.max(0, Math.min(3, Math.floor((Math.min(rightKillBottom, rightKillFloor) - rightAnchor + 3) / 29)) * 29 - 3);
+    const killRowsRight = battleNotificationRows(Math.min(rightKillBottom, rightKillFloor) - rightAnchor, killRight?.childElementCount || 0);
+    setRows(killRight, killRowsRight);
+    const killHeightRight = Math.max(0, killRowsRight * 29 - 3);
     const killsRight = Math.min(killHeightRight, read('.cot-kill-lane.r')?.height || 0);
     const rightTop = rightAnchor + (killsRight ? killsRight + 8 : 0);
     const notice = read('.cot-sixth');
@@ -186,9 +211,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       && noticeLeft < systemsLeft + dockWidth && width - noticeLeft > systemsLeft) {
       noticeTop = systemsTop + systemsHeight + 8;
     }
-    const chat = !!read('.cot-room-chat:not([hidden])');
-    const toastCount = root.querySelector('.cot-si-toasthost')?.childElementCount || 0;
-    const stack = battleSideStack(leftBottom - leftTop, chat, touch ? Math.min(1, toastCount) : toastCount);
+    const stack = battleSideStack(leftBottom - leftTop, chat, toastCount);
+    setRows(toastHost, stack.toastRows);
     if (touch && width > height && height <= 340) noticeTop = Math.max(top + 8, scoreBottom + 52);
     const network = !!read('.cot-mp-status.battle');
     const properties = {

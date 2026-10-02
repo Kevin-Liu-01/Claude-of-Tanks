@@ -145,7 +145,7 @@ function writeViewer(writer: ByteWriter, viewer: ViewerState): void {
     if (state < 0 || state > 2) throw new WireError('range', 'module state out of range');
     modules |= state << (index * 2);
   }
-  writer.u16(modules);
+  writer.u32(modules);
   writer.u8(viewer.crewBits);
   if (viewer.equipment.length !== VIEWER_EQUIPMENT.length) throw new WireError('invalid_message', 'viewer equipment length');
   for (const value of viewer.equipment) writer.u16(value);
@@ -381,7 +381,7 @@ function readShell(reader: ByteReader): ShellRow {
 function readViewer(reader: ByteReader): ViewerState {
   const entityId = reader.u8();
   if (entityId < 1 || entityId > MAX_ENTITIES) throw new WireError('range', 'viewer entity out of range');
-  const packedModules = reader.u16();
+  const packedModules = reader.u32();
   const modules: number[] = [];
   for (let index = 0; index < VIEWER_MODULES.length; index++) {
     const state = (packedModules >> (index * 2)) & 3;

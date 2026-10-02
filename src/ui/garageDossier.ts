@@ -117,6 +117,7 @@ const MODULE_I18N: Readonly<Record<string, string>> = Object.freeze({
   autoloader: 'garage.module.autoloader',
   feedSystem: 'garage.module.feedSystem',
   missileRack: 'garage.module.missileRack',
+  roofGun: 'garage.module.roofGun',
   engine: 'garage.module.engine',
   transmission: 'garage.module.transmission',
   fuelTank: 'garage.module.fuelTank',

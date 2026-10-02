@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { physicalPropRecords } from '../../tools/fixtures/physical-prop-records.mjs';
 import * as THREE from 'three';
 import { createHeightField } from './terrain.ts';
 import { MAP_IDS } from './maps/index.ts';
@@ -153,12 +154,19 @@ async function wholeWorld(seed) {
     assert.equal(after.props[key].length, before.props[key].length);
     for (let i = 0; i < before.props[key].length; i++) {
       if (indices.includes(i)) assert.equal(after.props[key][i].kind, 'waterworks');
-      else assert.deepEqual(after.props[key][i], before.props[key][i], 'all other full-world physical records unchanged');
+      else assert.deepEqual(physicalPropRecords(after.props[key][i], after.props),
+        physicalPropRecords(before.props[key][i], before.props), 'all other full-world physical records and resolved destruction owners unchanged');
     }
   }
   for (const key of ['crushables', 'destructibles', 'looseRecords', 'tankWreckSpots',
     'utilityNetwork', 'utilityPolePlacements', 'decorationGroundingReceipts', 'features']) {
-    assert.equal(hash(JSON.stringify(after.props[key])), hash(JSON.stringify(before.props[key])), `${key}: later authoring preserved`);
+    // The three former rubble donors become solid waterworks, so only their
+    // obsolete crushable owners disappear. Every other binding stays exact.
+    const original = key === 'destructibles'
+      ? before.props[key].filter(record => !before.seam.donors.some(donor => donor.obstacle === record.ob))
+      : before.props[key];
+    assert.deepEqual(physicalPropRecords(after.props[key], after.props),
+      physicalPropRecords(original, before.props), `${key}: later authoring preserved`);
   }
   console.log(JSON.stringify({ seed, donors: after.seam.result.donors, before: after.seam.result.before,
     after: after.seam.result.after, bodies: after.seam.result.bodies, fullWorldVertices: [before.meshes.vertices, after.meshes.vertices] }));
