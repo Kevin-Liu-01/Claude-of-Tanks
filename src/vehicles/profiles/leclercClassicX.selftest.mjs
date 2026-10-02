@@ -37,8 +37,11 @@ function framesAndEnvelope(tank, all) {
   // lining sits 0.3-0.9 mm proud of the terminal face as a shading device; the
   // source envelope receipt measures authored stock only.
   const bounds = worldBounds(all.filter((mesh) => !/^muzzleBoreShadowFallback/.test(mesh.name)));
-  near(bounds.min.x, -1.8, .0001, 'source forward guard left extreme');
-  near(bounds.max.x, 1.8, .0001, 'source forward guard right extreme');
+  near(bounds.min.x, -2.0625, .0001, 'owner-added side armor fastener left extreme');
+  near(bounds.max.x, 2.0625, .0001, 'owner-added side armor fastener right extreme');
+  const sourceHull = worldBounds(all.filter(m => m.name === 'hull'));
+  near(sourceHull.min.x, -1.8, .0001, 'original source forward guard left extreme retained');
+  near(sourceHull.max.x, 1.8, .0001, 'original source forward guard right extreme retained');
   near(bounds.min.y, 0, .0001, 'actual source ground plane');
   near(bounds.min.z, -3.71963792937, .00001, 'real fuel-carry aft bracket');
   // Low quality folds the flush lining into the static batch, so the stock
@@ -135,7 +138,9 @@ function rearRoofFold(all) {
   for (const [x, z, y, tolerance] of [[-.13, -1.90, 2.208530438, .00001],
     [1.30, -.60, 2.256898184, .00001], [.12, -1.95, 2.297250389, .0001],
     [.5, -1.92, 2.34582165, .005]])
-    near(ray(all, [x, 4, z], [0, -1, 0])?.point.y, y, tolerance,
+    // The owner-added service cases sit on this bin. Sample its retained
+    // source roof below their pallet, rather than calling the case a defect.
+    near(ray(all, [x, x === .5 ? 2.352 : 4, z], [0, -1, 0])?.point.y, y, tolerance,
       'actual source aft fold, separate support and unchanged overlying bin');
   near(ray(all, [1.32, 2.24, -2.2], [0, 0, 1])?.point.z, -1.771119291, .00001,
     'source outer folded face, not the former rectangular rear shoulder');
@@ -243,6 +248,45 @@ function groundScroll(tank, gear) {
   }
 }
 
+function fieldPackage(tank, all) {
+  const armor=all.filter(m=>m.name==='hullExternalArmor');
+  const cage=all.filter(m=>m.name==='hullOpenLattice');
+  assert(cage.length && armor.length,'separate real armor and open lattice');
+  for(const side of [-1,1]) {
+    for(const z of [-1.8,-.8,.2,1.0]) {
+      const outside=ray(armor,[side*3,1.19,z],[-side,0,0]);
+      const inside=ray(armor,[side*1.70,1.19,z],[side,0,0]);
+      assert(outside && inside && Math.abs(outside.point.x-inside.point.x)>.20,
+        'new skirt is finite thick stock outside the original running gear');
+      assert(ray(armor,[side*1.72,2,z],[0,-1,0]),'continuous bridge joins fender to skirt');
+    }
+    for(const z of [-2.925,-1.575,-.225,1.125,2.475]) {
+      assert(ray(cage,[side*2.4,.43,z],[-side,0,0],.65),'physical cage rail');
+      assert.equal(ray(all,[side*2.4,.469,z],[-side,0,0],.65),undefined,'actual air between slats, including regenerated fills');
+    }
+  }
+  const turret=tank.root.getObjectByName('rig_turret');
+  const moving=all.filter(m=>m.name==='turretOpenLattice'||m.name==='turretCloth');
+  const fixed=all.filter(m=>['hull','hullExternalArmor','hullDetail'].includes(m.name));
+  assert(moving.length>=2,'cargo and cages have separate finishes');
+  const sample=new THREE.Vector3();let supported=0;
+  for(let yaw=0;yaw<360;yaw+=15){
+    turret.rotation.y=yaw*Math.PI/180;tank.root.updateMatrixWorld(true);
+    for(const mesh of moving){
+      let owner=mesh.parent;while(owner&&owner!==turret)owner=owner.parent;
+      assert.equal(owner,turret,'baskets and cargo belong to turret yaw');
+      const positions=mesh.geometry.attributes.position;
+      for(let i=0;i<positions.count;i+=3){
+        sample.fromBufferAttribute(positions,i).applyMatrix4(mesh.matrixWorld);
+        const roof=ray(fixed,[sample.x,5,sample.z],[0,-1,0]);
+        if(roof){assert(sample.y-roof.point.y>.15,'all added moving equipment clears hull through full yaw');supported++;}
+      }
+    }
+  }
+  assert(supported>100,'sweep covers actual overlapping hull projections');
+  turret.rotation.y=0;tank.root.updateMatrixWorld(true);
+}
+
 for (const quality of ['high', 'low']) {
   const original = KIT.buildRunningGear;
   let tank, gear;
@@ -255,7 +299,7 @@ for (const quality of ['high', 'low']) {
     const all = visibleMeshes(tank.root);
     framesAndEnvelope(tank, all); heldOutSurfaces(all); opticalAir(all); correctedRoof(all); guardAndCarry(all);
     hullEquipment(all); rearRoofFold(all);
-    boreAndOwnership(tank, all); groundScroll(tank, gear);
+    boreAndOwnership(tank, all); groundScroll(tank, gear); fieldPackage(tank, all);
   } finally { tank.dispose(); }
 }
 console.log('leclercClassicX: actual high/low source frame, selected surfaces/optical and basket air, round deep bore, ownership and48-phase ground PASS');

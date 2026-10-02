@@ -3,6 +3,7 @@
 // Coordinates are turret-local; the receiving throat matches the shared gun.
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
+import {addNationalReceiver} from './nationalMantlet.ts';
 
 export interface ModernizedCasting {
   halfWidth:number;
@@ -14,6 +15,7 @@ export interface ModernizedCasting {
 }
 
 export function castModernizedTurret(P:TankBuilderPort,d:ModernizedCasting):void {
+  addNationalReceiver(P,d.roofY);
   const floor=.10,shoulder=d.shoulderY??.28,crown=d.crownHalf??.68;
   // Transverse courses round down from a compact, serviceable roof onto the
   // broad cast shoulder, rather than a welded vertical box with bevels.

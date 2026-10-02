@@ -3,7 +3,8 @@
   "ownerDecision": {
     "date": "2026-10-01",
     "request": "Yes—12 new concept tanks: three T-80U, T-72B3M and T-72B3 derivatives per country for Ukraine, Poland, China and Russia, with Russia receiving the strongest package.",
-    "scope": "Retain unmistakable T-72/T-80 ancestry: original primary donor hull cores, running gear and curved/folded fenders, compact rounded cast turret cores, country-specific bolted armor and bustle additions. Preserve functioning remote machine guns, distinct ERA patterns, lights, sights and equipment. Owner supplied T-72/Moderna visual examples on 2026-10-01, then approved these bases and requested complete structural cheek/flank/rear assemblies plus thick modern skirts wrapping around both track shoulders. Preserve the approved primary cast cores. Revision 5 closes lateral fender/skirt gaps with continuous fitted covers, fits a full-width elevating mantlet, and adds seated national roof/bustle equipment."
+    "scope": "Retain unmistakable T-72/T-80 ancestry: original primary donor hull cores, running gear and curved/folded fenders, compact rounded cast turret cores, country-specific bolted armor and bustle additions. Preserve functioning remote machine guns, distinct ERA patterns, lights, sights and equipment. Owner supplied T-72/Moderna visual examples on 2026-10-01, then approved these bases and requested complete structural cheek/flank/rear assemblies plus thick modern skirts wrapping around both track shoulders. Preserve the approved primary cast cores. Revision 5 closes lateral fender/skirt gaps with continuous fitted covers, fits a full-width elevating mantlet, and adds seated national roof/bustle equipment.",
+    "roofRevision": "Owner requested 14 national variants including Hetman II and Zubr II, with different roof weapons, paired mantlet lamps, optics, eye/monocle housings and roof equipment. Measurements below include the new stations; primary hulls, fenders and turrets are retained."
   },
   "comparisonPurpose": "owner-authored-concept",
   "comparisonApplicable": false,
@@ -34,16 +35,16 @@
       "hullWidthM": 4.331,
       "widthM": 4.331,
       "overallLengthM": 9.5328,
-      "tallestM": 2.9308,
+      "tallestM": 3.17,
       "specDimensions": {
         "hullLengthM": 6.72,
         "overallLengthM": 9.531870000000001,
         "widthM": 4.331,
-        "heightM": 2.93081
+        "heightM": 3.17
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Ukrainian T-80U assault modernization: the native low turbine hull and curved fenders carry a compact rounded turret, connected split-chevron cheek and flank housings, a short joined rear return, mounted ERA, assault utility cases, guarded lamps and thick chamfered skirt assemblies joined to the native fenders by fitted shoulder panels."
+      "silhouette": "Ukrainian T-80U assault modernization: the native low turbine hull and curved fenders carry a compact rounded turret, connected split-chevron cheek and flank housings, a short joined rear return, mounted ERA, assault utility cases, guarded lamps and thick chamfered skirt assemblies joined to the native fenders by fitted shoulder panels. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "ua_t72b3m_modern": {
       "id": "ua_t72b3m_modern",
@@ -69,16 +70,16 @@
       "hullWidthM": 4.391,
       "widthM": 4.391,
       "overallLengthM": 9.6902,
-      "tallestM": 2.962,
+      "tallestM": 3.33,
       "specDimensions": {
         "hullLengthM": 7.31,
         "overallLengthM": 9.869315,
         "widthM": 4.391,
-        "heightM": 2.96198
+        "heightM": 3.33
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Ukrainian T-72B3M command modernization: a retained low native hull, rounded turret core, connected angular cheek housings joined into a command electronics bustle, compact panoramic sight, ventilated communications cases and cable reel, and layered skirt assemblies connected to the native fenders by fitted shoulder panels."
+      "silhouette": "Ukrainian T-72B3M command modernization: a retained low native hull, rounded turret core, connected angular cheek housings joined into a command electronics bustle, compact panoramic sight, ventilated communications cases and cable reel, and layered skirt assemblies connected to the native fenders by fitted shoulder panels. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "ua_t72b3_modern": {
       "id": "ua_t72b3_modern",
@@ -104,16 +105,16 @@
       "hullWidthM": 4.53417,
       "widthM": 4.5342,
       "overallLengthM": 9.5268,
-      "tallestM": 2.8496,
+      "tallestM": 3.05,
       "specDimensions": {
         "hullLengthM": 6.8784,
         "overallLengthM": 9.604791,
         "widthM": 4.53417,
-        "heightM": 2.84958
+        "heightM": 3.05
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Ukrainian T-72B3 field modernization: the original low glacis and folded fenders remain exposed beneath a compact rounded turret, structural cheek banks joined to lower flank armor and open upper screens, leafy camouflage, field tools, strapped utility cans and a rear tarpaulin roll, and thick removable skirt modules over a permanent wraparound carrier with fitted fender connections."
+      "silhouette": "Ukrainian T-72B3 field modernization: the original low glacis and folded fenders remain exposed beneath a compact rounded turret, structural cheek banks joined to lower flank armor and open upper screens, leafy camouflage, field tools, strapped utility cans and a rear tarpaulin roll, and thick removable skirt modules over a permanent wraparound carrier with fitted fender connections. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "pl_t80u_modern": {
       "id": "pl_t80u_modern",
@@ -139,16 +140,16 @@
       "hullWidthM": 4.303,
       "widthM": 4.303,
       "overallLengthM": 9.5628,
-      "tallestM": 3.005,
+      "tallestM": 3.24,
       "specDimensions": {
         "hullLengthM": 6.82,
         "overallLengthM": 9.58187,
         "widthM": 4.303,
-        "heightM": 3.005
+        "heightM": 3.24
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Polish T-80U modernization concept retaining its native low hull and rounded turret ancestry, with a connected ERAWA cheek-and-pannier armor frame, a broad rear basket carrying field stores and a strapped canvas roll, guarded sensors, pannier tool racks, turbine service fittings and thick wraparound skirts joined to the native fenders by continuous fitted shoulders."
+      "silhouette": "Polish T-80U modernization concept retaining its native low hull and rounded turret ancestry, with a connected ERAWA cheek-and-pannier armor frame, a broad rear basket carrying field stores and a strapped canvas roll, guarded sensors, pannier tool racks, turbine service fittings and thick wraparound skirts joined to the native fenders by continuous fitted shoulders. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "pl_t72b3m_modern": {
       "id": "pl_t72b3m_modern",
@@ -174,16 +175,16 @@
       "hullWidthM": 4.463,
       "widthM": 4.463,
       "overallLengthM": 9.6902,
-      "tallestM": 3.025,
+      "tallestM": 3.39,
       "specDimensions": {
         "hullLengthM": 7.31,
         "overallLengthM": 9.869315,
         "widthM": 4.463,
-        "heightM": 3.025
+        "heightM": 3.39
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Polish T-72B3M heavy modernization concept retaining the native glacis and compact cast turret, with a deep connected cheek-and-bustle armor assembly, three-course ERAWA protection, armored communications cabinets and spare-track stores, guarded sensors and heavy layered skirts with continuous fitted shoulders and front and rear returns."
+      "silhouette": "Polish T-72B3M heavy modernization concept retaining the native glacis and compact cast turret, with a deep connected cheek-and-bustle armor assembly, three-course ERAWA protection, armored communications cabinets and spare-track stores, guarded sensors and heavy layered skirts with continuous fitted shoulders and front and rear returns. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "pl_t72b3_modern": {
       "id": "pl_t72b3_modern",
@@ -209,16 +210,16 @@
       "hullWidthM": 4.283,
       "widthM": 4.283,
       "overallLengthM": 9.5268,
-      "tallestM": 2.855,
+      "tallestM": 3.05,
       "specDimensions": {
         "hullLengthM": 6.95035,
         "overallLengthM": 9.640766,
         "widthM": 4.283,
-        "heightM": 2.855
+        "heightM": 3.05
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Polish T-72B3 compact modernization concept retaining its low native hull and small rounded cast turret, with a compact connected ERAWA armor frame, fine cheek tile fields, asymmetric service cabinets, clamped tools, a compact camouflage-roll basket and beveled wraparound skirts joined to the native fenders by continuous fitted shoulders."
+      "silhouette": "Polish T-72B3 compact modernization concept retaining its low native hull and small rounded cast turret, with a compact connected ERAWA armor frame, fine cheek tile fields, asymmetric service cabinets, clamped tools, a compact camouflage-roll basket and beveled wraparound skirts joined to the native fenders by continuous fitted shoulders. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "cn_t80u_modern": {
       "id": "cn_t80u_modern",
@@ -244,16 +245,16 @@
       "hullWidthM": 4.34,
       "widthM": 4.34,
       "overallLengthM": 9.5328,
-      "tallestM": 2.8552,
+      "tallestM": 3.19,
       "specDimensions": {
         "hullLengthM": 6.72,
         "overallLengthM": 9.531870000000001,
         "widthM": 4.34,
-        "heightM": 2.85519
+        "heightM": 3.19
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Yun T-80U retrofit concept: original turbine hull and compact casting, swept arrowhead armor housing, linked low electronics and service cases, six thick layered skirt modules with fitted continuous shoulders and chamfered wrap returns."
+      "silhouette": "Yun T-80U retrofit concept: original turbine hull and compact casting, swept arrowhead armor housing, linked low electronics and service cases, six thick layered skirt modules with fitted continuous shoulders and chamfered wrap returns. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "cn_t72b3m_modern": {
       "id": "cn_t72b3m_modern",
@@ -279,16 +280,16 @@
       "hullWidthM": 4.54,
       "widthM": 4.54,
       "overallLengthM": 9.6902,
-      "tallestM": 2.905,
+      "tallestM": 3.36,
       "specDimensions": {
         "hullLengthM": 7.31,
         "overallLengthM": 9.869315,
         "widthM": 4.54,
-        "heightM": 2.90502
+        "heightM": 3.36
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Kunlun T-72B3M retrofit concept: low T-72 hull and rounded casting, deep Chinese wedge housings with paired guarded sensors and wing service cases, open rear maintenance frame and seven thick staggered skirt modules with fitted shoulders and armored returns."
+      "silhouette": "Kunlun T-72B3M retrofit concept: low T-72 hull and rounded casting, deep Chinese wedge housings with paired guarded sensors and wing service cases, open rear maintenance frame and seven thick staggered skirt modules with fitted shoulders and armored returns. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "cn_t72b3_modern": {
       "id": "cn_t72b3_modern",
@@ -314,16 +315,16 @@
       "hullWidthM": 4.363,
       "widthM": 4.363,
       "overallLengthM": 9.5268,
-      "tallestM": 2.7519,
+      "tallestM": 3.05,
       "specDimensions": {
         "hullLengthM": 6.8784,
         "overallLengthM": 9.604791,
         "widthM": 4.363,
-        "heightM": 2.75189
+        "heightM": 3.05
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Qilin T-72B3 retrofit concept: exposed cast crown and lower shoulders within enclosing chevron armor, compact roof camera, field-tool roll and rear rack, original low hull and five ribbed layered skirt modules joined by fitted shoulders and tapered returns."
+      "silhouette": "Qilin T-72B3 retrofit concept: exposed cast crown and lower shoulders within enclosing chevron armor, compact roof camera, field-tool roll and rear rack, original low hull and five ribbed layered skirt modules joined by fitted shoulders and tapered returns. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "ru_t80u_modern": {
       "id": "ru_t80u_modern",
@@ -349,16 +350,16 @@
       "hullWidthM": 4.47,
       "widthM": 4.47,
       "overallLengthM": 9.5328,
-      "tallestM": 2.786,
+      "tallestM": 3.25,
       "specDimensions": {
         "hullLengthM": 6.84,
         "overallLengthM": 9.59187,
         "widthM": 4.47,
-        "heightM": 2.786
+        "heightM": 3.25
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Bars-M: T-80U turbine hull and compact cast turret with a connected heavy cheek/flank/rear armor housing beneath two-course ERA, round protection sensors, broad rear cage and deep chamfered side skirts wrapping around both track ends."
+      "silhouette": "Bars-M: T-80U turbine hull and compact cast turret with a connected heavy cheek/flank/rear armor housing beneath two-course ERA, round protection sensors, broad rear cage and deep chamfered side skirts wrapping around both track ends. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "ru_t72b3m_modern": {
       "id": "ru_t72b3m_modern",
@@ -384,16 +385,16 @@
       "hullWidthM": 4.61,
       "widthM": 4.61,
       "overallLengthM": 9.6902,
-      "tallestM": 2.9752,
+      "tallestM": 3.41,
       "specDimensions": {
         "hullLengthM": 7.31,
         "overallLengthM": 9.869315,
         "widthM": 4.61,
-        "heightM": 2.97517
+        "heightM": 3.41
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Bulat-M: T-72B3M low hull and cast-core turret with a deep continuous armored cheek-and-command-bustle enclosure, layered ERA, thick wraparound side armor with soft lower packets and protected panoramic sensors."
+      "silhouette": "Bulat-M: T-72B3M low hull and cast-core turret with a deep continuous armored cheek-and-command-bustle enclosure, layered ERA, thick wraparound side armor with soft lower packets and protected panoramic sensors. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "ru_t72b3_modern": {
       "id": "ru_t72b3_modern",
@@ -419,16 +420,16 @@
       "hullWidthM": 4.45,
       "widthM": 4.45,
       "overallLengthM": 9.5268,
-      "tallestM": 2.656,
+      "tallestM": 3.08,
       "specDimensions": {
         "hullLengthM": 6.92035,
         "overallLengthM": 9.625766,
         "widthM": 4.45,
-        "heightM": 2.656
+        "heightM": 3.08
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Bastion-M: compact T-72B3 hull and rounded turret with a compact connected cheek-and-pannier armor frame, broad cheek banks, fine side cassettes, thick returned skirt modules, a short open basket and rectangular sight guards."
+      "silhouette": "Bastion-M: compact T-72B3 hull and rounded turret with a compact connected cheek-and-pannier armor frame, broad cheek banks, fine side cassettes, thick returned skirt modules, a short open basket and rectangular sight guards. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     }
   },
   "revision": 5,

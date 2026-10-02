@@ -3,6 +3,7 @@
 import { addLeclercClassicXHull } from './leclercClassicXHull.ts';
 import { addLeclercClassicXTurret } from './leclercClassicXTurret.ts';
 import { addLeclercClassicXEquipment } from './leclercClassicXEquipment.ts';
+import { addLeclercClassicXFieldKit } from './leclercClassicXFieldKit.ts';
 import { addLeclercClassicXGear } from './leclercClassicXGear.ts';
 import { LECLERC_CLASSIC_X_DATUMS as D } from './leclercClassicXFrame.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -18,6 +19,7 @@ function buildLeclercClassicX(P: TankBuilderPort): void {
   addLeclercClassicXGear(P);
   addLeclercClassicXTurret(P);
   addLeclercClassicXEquipment(P);
+  addLeclercClassicXFieldKit(P);
   P.hullG.userData.xRebuild = { candidate: 'leclerc_classic_x', independent: true,
     sourceLocalOnly: true, datumVersion: 1 };
 }

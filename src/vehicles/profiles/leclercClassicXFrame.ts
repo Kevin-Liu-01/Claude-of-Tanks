@@ -7,6 +7,9 @@ type ClassicPoint = readonly [number, number, number];
 export const LECLERC_CLASSIC_X_DATUMS = Object.freeze({
   dims: { hullLengthM: 7.43927585874, overallLengthM: 10.03416968112,
     widthM: 3.6, heightM: 2.4667723048 },
+  // Owner-added side modules include their exposed fastener heads. Original
+  // supplied-file dimensions above remain unchanged for source comparison.
+  fieldKitWidthM: 4.125,
   structuralRoofY: 2.4667723048, fixedOpticHeightM: 2.886042,
   highestFittingM: 3.19835755241,
   // The inner bearing axis is measured. The outer collar is offset by about

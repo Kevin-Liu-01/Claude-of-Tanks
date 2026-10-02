@@ -22,6 +22,9 @@ const PRIMARY_BODY_BUCKETS = Object.freeze({
   // around closed hull/turret shells. Air behind cargo is outside the vehicle,
   // so never bridge it with generated interior solids. Native audits keep it.
   amx10p_25: Object.freeze(['hull', 'turret']),
+  // AMX 56 now carries the same kind of open field racks and skirt screens.
+  // Their standoff/cargo air is exterior, not a new hull or turret cavity.
+  leclerc_classic_x: Object.freeze(['hull', 'turret']),
   // Namer's closed rear roof channel lies beneath a separate raised cover
   // and paired bodies. Those fittings do not make the intervening air part
   // of the turret shell; its closed access-door recess is exterior too.

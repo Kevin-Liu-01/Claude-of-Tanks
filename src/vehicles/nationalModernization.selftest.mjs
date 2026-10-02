@@ -6,6 +6,7 @@ import {getSpec,ALL_TANK_IDS} from './specs.ts';
 import {NATIONAL_MODERNIZATION_CONFIG} from './nationalModernizationConfig.ts';
 import {NATIONAL_LEGACY_CONFIG} from './nationalLegacyConfig.ts';
 const configs=[...NATIONAL_MODERNIZATION_CONFIG,...NATIONAL_LEGACY_CONFIG.map(c=>({...c,model:c.donor==='t72b3m_x'?1:2}))];
+import {NATIONAL_ROOF_LOADOUTS} from './nationalRoofConfig.ts';
 import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
 import {decorManifestFor} from './decorations.ts';
 import {censusEquipment} from '../../tools/source-equipment-policy.mjs';
@@ -38,7 +39,7 @@ function physicalMounts(tank,c){
  const shell=tank.root.getObjectByName('turret'),hull=tank.root.getObjectByName('hull'),d=c.design??nationalModernizationDesign(c);
  const mat=new MeshBasicMaterial({side:DoubleSide}),target=new Mesh(shell.geometry,mat),body=new Mesh(hull.geometry,mat);
  target.updateMatrixWorld(true);body.updateMatrixWorld(true);const ray=new Raycaster();
- const surroundings=[];tank.root.traverse(o=>{if(o.isMesh&&o.name==='turretExternalArmor'){
+ const surroundings=[];tank.root.traverse(o=>{if(o.isMesh&&['turretExternalArmor','turretInteriorFill'].includes(o.name)){
   const proxy=new Mesh(o.geometry,mat);proxy.updateMatrixWorld(true);surroundings.push(proxy);
  }});
  const receiving=[target,...surroundings];
@@ -55,7 +56,7 @@ function physicalMounts(tank,c){
   // pitch corridor must remain open ahead of the transverse rear bulkhead.
   for(const x of [-.34,0,.34])for(const y of [.14,.43,.71]){
    ray.set(new Vector3(x,y,3),new Vector3(0,0,-1));const hit=ray.intersectObjects(receiving,false)[0];
-   assert(!hit||hit.point.z<=.36,`${c.id} primary gun aperture is real air`);
+   assert(!hit||hit.point.z<=(c.design?.36:.56),`${c.id} primary gun aperture is real air ahead of its rear receiver`);
   }
   const mount=tank.root.getObjectByName('gunMount');mount.geometry.computeBoundingBox();
   const moving=new Mesh(mount.geometry,mat);moving.updateMatrixWorld(true);
@@ -75,6 +76,32 @@ function physicalMounts(tank,c){
    const fixedHit=ray.intersectObject(target)[0];assert(fixedHit,`${c.id}: receiving cheek alongside shield at pitch ${pitch}, z ${z}`);
    const seam=Math.abs(fixedHit.point.x)-Math.abs(movingHit.point.x);
    assert(seam>=.002&&seam<=.020,`${c.id}: mantlet/cheek seam ${seam}m at pitch ${pitch}, z ${z}`);
+  }
+  if(!c.design) {
+   const movingStock=[moving];
+   tank.root.traverse(o=>{if(o.isMesh&&/^(gunMount|gunInteriorFill)/.test(o.name)&&o.name!=='gunMount')movingStock.push(new Mesh(o.geometry,mat));});
+   let rearSamples=0;
+   for(const pitch of [-.24435,0,.10472]) {
+    for(const stock of movingStock){stock.position.set(0,.43,.90);stock.rotation.x=pitch;stock.updateMatrixWorld(true);}
+    for(const x of [-.30,0,.30])for(let degrees=-60;degrees<=60;degrees+=10) {
+     const a=degrees*Math.PI/180,center=new Vector3(x,.43,.90),dir=new Vector3(0,Math.sin(a),-Math.cos(a));
+     ray.set(center,dir);ray.near=.20;ray.far=.90;
+     const wall=ray.intersectObjects(receiving,false)[0];if(!wall)continue;
+     ray.set(center.clone().addScaledVector(dir,2),dir.clone().negate());ray.near=0;ray.far=1.8;
+     const skin=ray.intersectObjects(movingStock,false)[0];if(!skin)continue;
+     const gap=wall.distance-(2-skin.distance);
+     assert(gap>=.020,`${c.id}: rear receiver collision ${gap} at ${degrees}°, pitch ${pitch}`);
+     rearSamples++;
+    }
+   }
+   assert(rearSamples>35,`${c.id}: finite rear receiver sweep coverage`);
+   moving.position.set(0,0,0);moving.rotation.x=0;moving.updateMatrixWorld(true);
+   ray.near=0;ray.far=Infinity;
+   for(const x of [-.28,0,.28])for(const z of [-.35,-.20,0,.20]) {
+    ray.set(new Vector3(x,.8,z),new Vector3(0,-1,0));
+    const h=ray.intersectObject(moving)[0];
+    assert(h&&h.point.y>.19,`${c.id}: full upper cover occupies rear gap at ${x},${z}`);
+   }
   }
   // Dense longitudinal probes fall between the old isolated support beams.
   // Use only permanent surface geometry, never the generated interior fill.
@@ -160,8 +187,8 @@ for(const quality of ['high','low']) {
    assert(Math.abs(new Box3().setFromObject(tank.root).getSize(new Vector3()).y-spec.dims.heightM)<.005,`${c.id}: listed height includes roof weapon and tallest fitting`);
    const rws=(c.design??nationalModernizationDesign(c)).rws,stock=[];
    tank.root.traverse(o=>{if(o.isMesh&&o.name.startsWith('sourceMachineGun_')&&o.name!=='sourceMachineGun_yawSupport')stock.push(o);});
-   const contactRay=new Raycaster(),localPoints=[[rws[0],rws[1]+.41,rws[2]+.155]];
-   if(c.package==='ru')localPoints.push([rws[0]-.085,rws[1]+.41,rws[2]+.05],[rws[0]-.260,rws[1]+.41,rws[2]+.02]);
+   const loadout=NATIONAL_ROOF_LOADOUTS[c.id];
+   const contactRay=new Raycaster(),localPoints=[[rws[0],rws[1]+loadout.axisHeight,rws[2]+.255]];
    for(const p of localPoints){
     const origin=turret.localToWorld(new Vector3(p[0],p[1]+.20,p[2]));
     contactRay.set(origin,new Vector3(0,-1,0));contactRay.far=.40;
@@ -173,7 +200,7 @@ for(const quality of ['high','low']) {
     turret.rotation.y=yaw;gun.rotation.x=pitch;tank.root.updateMatrixWorld(true);
     assert(tank.gunMuzzleWorld(new Vector3()).toArray().every(Number.isFinite));
    }
-   assert(!auxiliaryWeaponProfile(12.7,c.id).shell.name.includes('roof'));
+   assert(!auxiliaryWeaponProfile(loadout.caliber,c.id).shell.name.includes('roof'));
    const live=armorFingerprint(tank.root);
    for(const sector of ['skirt_era_L','skirt_era_R']){
     assert.equal(tank.stripEra(sector),true,`${c.id}: live skirt ERA is removable`);
