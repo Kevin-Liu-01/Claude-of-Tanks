@@ -19,6 +19,43 @@ assert.throws(() => selftestCommand(['all', '--changed=src/main.ts']), /never sk
 assert.equal(selftestCommand([]).order, 'longest', 'gate P7: longest-first admission is the default');
 assert.equal(selftestCommand(['all', '--order=registry']).order, 'registry');
 assert.throws(() => selftestCommand(['all', '--order=random']), /Unknown self-test option/);
+// Gate P8 (2026-10-01): --only selects registry entries by glob; --shard=i/n runs one of n
+// deterministic shards that together cover the selection exactly once, each in registry order.
+{
+  const registry = Object.values(SELFTEST_SUITES).flat();
+  assert.deepEqual(selftestCommand(['all', '--only=tools/run-selftests*.mjs']).files, ['tools/run-selftests.selftest.mjs']);
+  const vehicles = selftestCommand(['--only=src/vehicles/**']).files;
+  assert.deepEqual(vehicles, registry.filter(file => file.startsWith('src/vehicles/')), 'a tree glob keeps registry order');
+  assert.ok(vehicles.length > 400);
+  assert.deepEqual(selftestCommand(['core', '--only=tools/{capture-lock,selftest-cpu-pool}.selftest.mjs']).files,
+    SELFTEST_SUITES.core.filter(file => ['tools/capture-lock.selftest.mjs', 'tools/selftest-cpu-pool.selftest.mjs'].includes(file)),
+    'a group narrows first');
+  assert.deepEqual(selftestCommand(['--only=tools/capture-lock.selftest.mjs', '--only=tools/capture-command.selftest.mjs']).files,
+    registry.filter(file => file === 'tools/capture-lock.selftest.mjs' || file === 'tools/capture-command.selftest.mjs'));
+  assert.throws(() => selftestCommand(['--only=nowhere/**']), /matched no registered receipt/);
+  for (const durations of [undefined, new Map()]) {
+    const shards = [1, 2, 3, 4, 5, 6].map(index => selftestCommand(['all', `--shard=${index}/6`], durations ? { durations } : undefined));
+    assert.deepEqual(shards.flatMap(shard => shard.files).sort(), [...registry].sort(), 'six shards cover the registry exactly once');
+    for (const shard of shards) assert.deepEqual(shard.files, registry.filter(file => shard.files.includes(file)), 'registry order inside a shard');
+    assert.equal(new Set(shards.map(shard => shard.shard.partition)).size, 1, 'every shard job derives the same partition');
+    assert.equal(shards[0].shard.selected, registry.length);
+    if (!durations) {
+      const loads = shards.map(shard => shard.shard.loadMs);
+      assert.ok(Math.max(...loads) / Math.min(...loads) < 1.25, `the committed snapshot balances six shards (${loads.join(', ')} ms)`);
+    } else {
+      const counts = shards.map(shard => shard.files.length);
+      assert.ok(Math.max(...counts) - Math.min(...counts) <= 8, 'without a snapshot the shards balance by count');
+    }
+  }
+  const narrowed = selftestCommand(['--only=src/ui/**', '--shard=2/3']);
+  assert.ok(narrowed.files.every(file => file.startsWith('src/ui/')), '--shard partitions the --only selection');
+  assert.throws(() => selftestCommand(['--shard=0/3']), /--shard must be i\/n/);
+  assert.throws(() => selftestCommand(['--shard=1/3', '--shard=2/3']), /Unknown self-test option/, 'one shard per invocation');
+  assert.equal(selftestCommand(['--write-durations']).writeDurations, true);
+  for (const args of [['pre', '--write-durations'], ['--write-durations', '--only=src/**'], ['--write-durations', '--shard=1/2'], ['--write-durations', '--plan']]) {
+    assert.throws(() => selftestCommand(args), /records the whole registry/);
+  }
+}
 assert.ok(SELFTEST_FRESH_FILES.includes('server/match/tickCost.selftest.mjs'));
 assert.ok(SELFTEST_FRESH_FILES.includes('server/match/loop.selftest.mjs'));
 assert.ok(SELFTEST_FRESH_FILES.includes('src/mp/wire/wireFuzz.selftest.mjs'));

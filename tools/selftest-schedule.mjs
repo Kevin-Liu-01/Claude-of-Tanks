@@ -108,3 +108,106 @@ export function admissionOrder(files, { runMsOf = () => undefined, barriers = ne
     || (a.barrier ? 0 : b.ms - a.ms)
     || (a.index - b.index)).map((row) => row.index);
 }
+
+// Gate P8 (2026-10-01): receipt selection for targeted runs and CI shards.
+
+/** `--only` globs: `**` spans directories, `*` and `?` stay inside one, `{a,b}` alternates; a trailing `/` selects a tree. */
+export function globToRegExp(glob) {
+  let source = '', depth = 0;
+  for (let index = 0; index < glob.length; index++) {
+    const char = glob[index];
+    if (char === '*' && glob[index + 1] === '*') {
+      index++;
+      if (glob[index + 1] === '/') { index++; source += '(?:.*/)?'; } else source += '.*';
+    } else if (char === '*') source += '[^/]*';
+    else if (char === '?') source += '[^/]';
+    else if (char === '{') { depth++; source += '(?:'; }
+    else if (char === '}' && depth) { depth--; source += ')'; }
+    else if (char === ',' && depth) source += '|';
+    else source += char.replace(/[.+^$()|[\]\\{}]/g, '\\$&');
+  }
+  if (depth) throw new Error(`Unbalanced braces in --only glob: ${glob}`);
+  if (glob.endsWith('/')) source += '.*';
+  return new RegExp(`^${source}$`);
+}
+
+/** Split an `--only` value on commas outside braces. */
+export function splitGlobs(value) {
+  const parts = [];
+  let depth = 0, current = '';
+  for (const char of value) {
+    if (char === '{') depth++;
+    else if (char === '}') depth = Math.max(0, depth - 1);
+    if (char === ',' && depth === 0) { if (current) parts.push(current); current = ''; } else current += char;
+  }
+  if (current) parts.push(current);
+  return parts;
+}
+
+/** Registry entries matching any glob, in registry order; matching nothing is an error, never an empty gate. */
+export function selectReceipts(files, globs) {
+  if (!globs?.length) return files;
+  const patterns = globs.map(globToRegExp);
+  const selected = files.filter((file) => patterns.some((pattern) => pattern.test(file)));
+  if (!selected.length) throw new Error(`--only=${globs.join(',')} matched no registered receipt`);
+  return selected;
+}
+
+/** `i/n` with 1 <= i <= n. */
+export function parseShard(value) {
+  const match = /^([1-9]\d*)\/([1-9]\d*)$/.exec(value);
+  if (!match || Number(match[1]) > Number(match[2])) throw new Error(`--shard must be i/n with 1 <= i <= n, got ${value}`);
+  return { index: Number(match[1]), count: Number(match[2]) };
+}
+
+/**
+ * Deterministic shards balanced by run time: longest-first onto the least-loaded shard (ties:
+ * registry order, lowest shard). A barrier runs alone, so it loads its shard as `barrierFactor`
+ * workers' worth. Each shard lists registry indices in registry order. Every receipt lands in
+ * exactly one shard, and the result depends only on the inputs, so separate CI jobs agree.
+ */
+export function partitionShards(files, count, { weightOf = () => 1, barriers = new Set(), barrierFactor = 8 } = {}) {
+  const loads = new Array(count).fill(0);
+  const shards = Array.from({ length: count }, () => []);
+  const rows = files.map((file, index) => ({ index, load: (barriers.has(file) ? barrierFactor : 1) * weightOf(file) }))
+    .sort((a, b) => b.load - a.load || a.index - b.index);
+  for (const row of rows) {
+    let target = 0;
+    for (let shard = 1; shard < count; shard++) if (loads[shard] < loads[target]) target = shard;
+    shards[target].push(row.index);
+    loads[target] += row.load;
+  }
+  return shards.map((list, shard) => ({ indices: list.sort((a, b) => a - b), loadMs: loads[shard] }));
+}
+
+/**
+ * The committed run-time snapshot (tools/selftest-durations.json) weights shards: the same file at
+ * the same commit gives every CI job the same partition, which a per-machine cache could not.
+ * Receipts it lacks weigh the median of those it has; without a snapshot every receipt weighs 1.
+ */
+export const DURATION_SNAPSHOT_URL = new URL('./selftest-durations.json', import.meta.url);
+export function loadDurationSnapshot(url = DURATION_SNAPSHOT_URL) {
+  try {
+    const parsed = JSON.parse(readFileSync(url, 'utf8'));
+    return new Map(Object.entries(parsed.runMs ?? {}).filter(([, ms]) => isRunMs(ms)));
+  } catch {
+    return new Map();
+  }
+}
+export function snapshotWeights(files, snapshot) {
+  const known = files.map((file) => snapshot.get(file)).filter(isRunMs).sort((a, b) => a - b);
+  if (!known.length) return () => 1;
+  const median = known[Math.floor((known.length - 1) / 2)];
+  return (file) => isRunMs(snapshot.get(file)) ? snapshot.get(file) : median;
+}
+export function durationSnapshotText(files, runMsOf) {
+  const runMs = {};
+  for (const file of [...files].sort()) {
+    const ms = runMsOf(file);
+    if (isRunMs(ms)) runMs[file] = Math.max(100, Math.round(ms / 100) * 100);
+  }
+  return JSON.stringify({
+    about: 'Per-receipt child run times in ms (rounded to 100) that balance `run-selftests.mjs --shard=i/n` and order a cold pool. Regenerate with `node tools/run-selftests.mjs --write-durations` after a full run; a stale entry only unbalances, it never selects or skips a receipt.',
+    runMs,
+  }, null, 2) + '\n';
+}
