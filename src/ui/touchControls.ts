@@ -366,7 +366,7 @@ export function createMobileFireGesture({
 }
 
 export function createTouchControls({
-  input, bus, isBattleActive, isSniper = () => false,
+  input, bus, isBattleActive, isSniper = () => false, getFlightKind = () => undefined,
   onOpenSettings = () => {}, onToggleSound = () => false,
 }: TouchControlsOptions): TouchControlsRuntime {
   if (!document.getElementById('cot-touch-style')) {
@@ -628,13 +628,17 @@ export function createTouchControls({
   // Losing the page (app switch, notification shade, tab change) must drop every held
   // touch: the fire gesture AND the joystick / aim pad / pinch (2026-09-14 touch QA: the
   // knob stayed 40 px off centre and the tank kept driving after a backgrounded hold).
-  const releaseAllTouch = (): void => { cancelFireGesture(); resetMove(); };
+  const climb=document.createElement('button');climb.type='button';climb.className='flight-climb';climb.textContent=t('flight.climb');root.append(climb);
+  climb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();climb.setPointerCapture(e.pointerId);input.pressVirtual('handbrake');});
+  const releaseClimb=()=>input.releaseVirtual('handbrake');
+  climb.addEventListener('pointerup',releaseClimb);climb.addEventListener('pointercancel',releaseClimb);climb.addEventListener('lostpointercapture',releaseClimb);
+  const releaseAllTouch = (): void => { cancelFireGesture(); resetMove(); releaseClimb(); };
   window.addEventListener('blur', releaseAllTouch);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) releaseAllTouch();
   });
   root.querySelector<HTMLButtonElement>('.scope')!.addEventListener('pointerdown', (e) => {
-    e.preventDefault(); e.stopPropagation(); input.tapVirtual('sniperToggle'); bus.emit('ui:click', {});
+    e.preventDefault(); e.stopPropagation(); input.tapVirtual(getFlightKind()==='gunship'?'zoomIn':'sniperToggle'); bus.emit('ui:click', {});
   });
   // round 30: the rocket jump / flip button — pointerdown so it fires while the other thumb steers
   const jumpButton = root.querySelector<HTMLButtonElement>('.jump')!;

@@ -7,6 +7,7 @@ import { withMapProbeSession, openGamePage, beginSoloBattle } from './map-probe-
 const out=resolve('.qa-dev/six-modes');mkdirSync(out,{recursive:true});
 const lock=createCaptureLock();let heartbeat;
 const reports=[];
+const battleModes=process.env.COT_AERIAL_ONLY?['drone','ac130']:['drone','ac130','juggernaut','infected','realistic','gun_game'];
 
 try{
  await lock.acquire();heartbeat=setInterval(()=>lock.refresh(),30000);
@@ -26,15 +27,19 @@ try{
   }
   await page.screenshot({path:resolve(out,`garage-modes-${suffix}.png`)});
   await page.click('[data-battle-close]');
-  for(const mode of ['drone','ac130','juggernaut','infected','realistic','gun_game']){
+  for(const mode of battleModes){
    await page.evaluate(async mode=>{const {writeTeamArrangement}=await import('/src/game/teamArrangement.ts');writeTeamArrangement(mode,{allies:1,enemies:2});},mode);
    console.log('six-modes: entering',mode,suffix);
    await beginSoloBattle(page,{specId:'m1a2',mapId:'verdant',gameMode:mode});
    assert.equal(await page.evaluate(()=>window.__DEBUG.game.gameMode),mode);
    if(mode==='drone'){
+    assert.equal(await page.evaluate(()=>!!window.__DEBUG.game.player.visual.root.getObjectByName('Docked FPV mission payload')?.visible),true,'drone starts on the carrier');
+    await page.screenshot({path:resolve(out,`drone-docked-${suffix}.png`)});
     if(mobile)await page.tap('.cot-drone-control');
     else {await page.mouse.click(640,400);await page.keyboard.press('KeyV');}
     await page.waitForFunction(()=>window.__DEBUG.game.player.aerial?.active,{timeout:10000});
+    await new Promise(r=>setTimeout(r,700));
+    await page.screenshot({path:resolve(out,`drone-launch-${suffix}.png`)});
     await page.waitForFunction(()=>!window.__DEBUG.game.player.aerial.launching,{timeout:10000});
     const before=await page.evaluate(()=>{const v=window.__DEBUG.game.player.aerial;return{x:v.x,y:v.y,z:v.z};});
     if(mobile){
@@ -45,7 +50,7 @@ try{
     const after=await page.evaluate(()=>{const v=window.__DEBUG.game.player.aerial;return{x:v.x,y:v.y,z:v.z};});
     assert.ok(Math.hypot(after.x-before.x,after.y-before.y,after.z-before.z)>3,'pilot movement flies the drone');
     await page.screenshot({path:resolve(out,`drone-flight-${suffix}.png`)});
-    if(mobile)await page.tap('.cot-drone-control');else await page.keyboard.press('KeyV');await page.waitForFunction(()=>!window.__DEBUG.game.player.aerial.active);
+    if(mobile)await page.tap('.cot-drone-return');else await page.keyboard.press('KeyV');await page.waitForFunction(()=>!window.__DEBUG.game.player.aerial.active);
     reports.push({mode,mobile,before,after,returned:true});
    }else if(mode==='ac130'){
     const before=await page.evaluate(()=>({...window.__DEBUG.game.player.aerial}));
@@ -53,8 +58,17 @@ try{
     const after=await page.evaluate(()=>({...window.__DEBUG.game.player.aerial}));
     assert.ok(Math.hypot(after.x-before.x,after.z-before.z)>1,'aircraft orbits during play');
     assert.equal(await page.evaluate(()=>window.__DEBUG.game.player.spec.gun.shells[1].caliberMm),152);
+    assert.ok(after.y>=230,'gunship starts and stays airborne');
+    assert.match(await page.$eval('.flight-weapons',el=>el.textContent),/30 mm cannon.*152 mm HE.*Guided missile/s);
+    const howitzer=await page.$('.flight-weapon:nth-child(2)');if(mobile)await howitzer.tap();else await howitzer.click();
+    await page.waitForFunction(()=>window.__DEBUG.game.player.combat.shellSlot===1);
     reports.push({mode,mobile,before,after});
    }else reports.push({mode,mobile,state:await page.evaluate(()=>window.__DEBUG.game.matchModeState)});
+   if(mode==='ac130'){
+    const bounds=await page.$eval('.flight-console',el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom};});
+    assert.ok(bounds.x>=0&&bounds.y>=0&&bounds.right<=initialViewport.width&&bounds.bottom<=initialViewport.height,'flight controls fit screen');
+    assert.equal(await page.$eval('.cot-drive',el=>getComputedStyle(el).display),'none','no tank speedometer in gunship');
+   }
    if(mode==='gun_game')assert.equal(await page.$$eval('.cot-shell:not([hidden])',els=>els.length),1,'Gun Game exposes only the current weapon');
    if(mode==='juggernaut')assert.match(await page.$eval('.cot-mode-status',el=>el.textContent),/SURVIVE/,'the boss receives its own survival objective');
    await page.screenshot({path:resolve(out,`${mode}-${suffix}.png`)});

@@ -1,3 +1,4 @@
+import { createAerialHud } from './aerialHud.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
@@ -2386,8 +2387,7 @@ export function initHud(bus: EventBus): HudRuntime {
   droneButton.setAttribute('aria-label', t('systems.drone.help'));
   droneButton.addEventListener('pointerdown', event => { event.preventDefault(); event.stopPropagation(); if (!droneButton.disabled) bus.emit('ui:drone', {}); });
   droneButton.addEventListener('click', event => { event.stopPropagation(); if (event.detail === 0 && !droneButton.disabled) bus.emit('ui:drone', {}); });
-  const aerialReadout = el('div', 'cot-aerial-readout', root); aerialReadout.hidden = true;
-  aerialReadout.setAttribute('aria-live', 'polite');
+  const aerialHud = createAerialHud(root,bus);
   const missileButton=el('button','cot-auxiliary',controlsRow);missileButton.type='button';missileButton.hidden=true;
   missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">ATGM</span><span class="sk"></span><small class="system-status"></small>`;
   let missilePlayer:HudTank|null|undefined=null,previousConventionalSlot=0;
@@ -2419,8 +2419,7 @@ export function initHud(bus: EventBus): HudRuntime {
     droneButton.classList.toggle('active', !!flight?.active);
     droneButton.setAttribute('aria-pressed', String(!!flight?.active));
     droneButton.querySelector('.sl')!.textContent = flight?.active ? t('systems.drone.return') : (flight?.cooldownS ?? 0) > 0 ? `${Math.ceil(flight!.cooldownS)}s` : t('systems.drone');
-    aerialReadout.hidden = !flight?.active;
-    if (flight?.active) aerialReadout.textContent = t(flight.kind === 'drone' ? 'hud.aerial.drone' : 'hud.aerial.gunship', { seconds: Math.ceil(flight.batteryS) });
+
     root.classList.toggle('aerial-active', !!flight?.active);
     root.classList.toggle('aerial-drone', flight?.kind === 'drone' && flight.active);
     document.documentElement.classList.toggle('cot-thermal-flight', !!flight?.active && !flight.launching && mode !== 'hidden');
@@ -6265,9 +6264,9 @@ export function initHud(bus: EventBus): HudRuntime {
       reticlePaint.valid = false;
       return;
     }
-    if (mode === 'sniper') drawScope(aimView);
+    if (mode === 'sniper' && !playerRef?.aerial?.active) drawScope(aimView);
     drawHitIndicators(lastTimeS);
-    drawReticle(aimView, dt);
+    if (!playerRef?.aerial?.active) drawReticle(aimView, dt);
     drawHitMark(aimView, lastTimeS);
     captureReticlePaint(aimView);
   }
@@ -6285,7 +6284,7 @@ export function initHud(bus: EventBus): HudRuntime {
     return sceneCanvasEl;
   }
   function applyMode(): void {
-    if (mode === 'hidden') document.documentElement.classList.remove('cot-thermal-flight');
+    if (mode === 'hidden') {document.documentElement.classList.remove('cot-thermal-flight');document.documentElement.dataset.flight='';}
     root.style.display = mode === 'hidden' ? 'none' : 'block';
     // scope shadow fades in over ~0.1 s on ENTERING sniper (movement §9.2)
     if (mode === 'sniper' && scopePrevMode !== 'sniper') scopeFadeMs = performance.now();
@@ -6345,6 +6344,7 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     root.classList.toggle('realistic-mode', frame.matchModeState?.id === 'realistic');
     updateSpecialAction(frame.player || playerRef);
+    aerialHud.update(frame.player || playerRef,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden');
     updateDriveReadout(frame.player || playerRef, frame.timeS);
     updateDamagePanelPose(state.camera);
     shotInfo.setPlayer(playerId);

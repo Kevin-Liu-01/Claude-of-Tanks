@@ -3769,5 +3769,19 @@
   "docs.topic.simulation.roles.p2": "Realistic keeps vehicles visible and removes hull HP attrition: armor, crew casualties, ammunition destruction and persistent module damage decide the fight. Gun Game replaces the main weapon with a five-stage ladder: 30 mm AP, 105 mm APFSDS, 120 mm APFSDS, 152 mm HE and a guided HEAT missile. Two kills advance each stage; respawns preserve progress.",
   "docs.topic.simulation.flight.t": "Direct drone flight and the AC-130 scope",
   "docs.topic.simulation.flight.p1": "In Drone mode, press V or tap the drone control to launch a quadcopter from your tank. After the launch animation you directly pilot its first-person view. W/S move, A/D strafe, Space climbs and mouse or touch look steers; pitch down and fly forward to dive. The battery lasts 40 seconds within an 850 m radius. Fly into an enemy to deliver an explosive impact. V returns to your parked, vulnerable tank and starts the 25-second cooldown.",
-  "docs.topic.simulation.flight.p2": "The AC-130 follows an automatic orbit with an overhead aiming scope. Mouse or touch controls aim; the wheel zooms. Select the 30 mm autocannon, 152 mm explosive howitzer or guided missiles with 1–3 or the ammunition buttons. These have independent reload channels and unlimited ammunition. Shots and drone impacts use the same host-authoritative collision, armor and damage rules as tank weapons."
+  "docs.topic.simulation.flight.p2": "The AC-130 follows an automatic orbit with an overhead aiming scope. Mouse or touch controls aim; the wheel zooms. Select the 30 mm autocannon, 152 mm explosive howitzer or guided missiles with 1–3 or the ammunition buttons. These have independent reload channels and unlimited ammunition. Shots and drone impacts use the same host-authoritative collision, armor and damage rules as tank weapons.",
+  "flight.battery": "Drone battery",
+  "flight.drone": "FPV · RECON",
+  "flight.launching": "LAUNCHING",
+  "flight.gunship": "AC-130 · GUNSHIP",
+  "flight.return": "Return to tank · V",
+  "flight.weapon.0": "30 mm cannon",
+  "flight.weapon.1": "152 mm HE",
+  "flight.weapon.2": "Guided missile",
+  "flight.telemetry.drone": "{seconds}s · {range}m LINK · {speed}km/h",
+  "flight.telemetry.gunship": "×{zoom} · {range}m",
+  "flight.ready": "READY · {ammo}",
+  "flight.hint.drone": "WASD fly · Mouse steer · Space climb · Spot enemies or collide to detonate",
+  "flight.hint.gunship": "Mouse aim · Click fire · 1 / 2 / 3 weapons · Scroll zoom",
+  "flight.climb": "Climb"
 }

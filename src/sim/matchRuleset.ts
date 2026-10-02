@@ -19,8 +19,8 @@ export const GUN_GAME_WEAPONS = Object.freeze([
   shell('Guided Missile', 'HEAT', 152, 1100, 1100, 1000, 350, { guided: true, reloadS: 5 }),
 ]);
 export const AERIAL_RULES = Object.freeze({
-  drone: Object.freeze({ launchS: 1.4, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: 12 }),
-  gunship: Object.freeze({ altitudeM: 240, radiusM: 180, orbitRadS: .065 }),
+  drone: Object.freeze({ launchS: 2.4, responseHz: 4.5, spotRangeM: 350, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: 12 }),
+  gunship: Object.freeze({ altitudeM: 240, radiusM: 90, orbitRadS: .09 }),
 });
 export const GUNSHIP_WEAPONS = Object.freeze([
   shell('30 mm Autocannon', 'AP', 30, 220, 180, 160, 1300, { reloadS: .14, reloadGroup: 'gunship-cannon' }),

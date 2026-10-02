@@ -1,8 +1,9 @@
 /** Fixed-step flight shared by solo and multiplayer. Hits stay in the normal projectile pipeline. */
-import { Vector3 } from 'three';
+import { Vector3, Euler } from 'three';
 import { createShell, type ShellEntity } from './ballistics.ts';
 import { AERIAL_RULES, DRONE_WARHEAD, type MatchRuleset } from './matchRuleset.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
+import { missionAttachmentFor, DRONE_DOCK_HEIGHT_M, type MissionCarrierSpec } from './missionAttachment.ts';
 import type { ShellSpec } from '../vehicles/specHelpers.ts';
 
 export interface AerialView {
@@ -12,7 +13,8 @@ export interface AerialView {
 }
 export interface AerialEntity {
   id: string; bot?: boolean; isPlayer?: boolean; team: string;
-  state: { pos: Vector3; yaw: number; speed: number };
+  spec?: MissionCarrierSpec;
+  state: { pos: Vector3; yaw: number; speed: number; visualPitch?: number; visualRoll?: number };
   combat: { destroyed: boolean };
   input: { throttle: number; steer: number; fire: boolean; brake: boolean; aimPoint: Vector3; auxiliaryBits?: number };
   aerial?: AerialView;
@@ -23,6 +25,7 @@ interface Flight {
 }
 const flights = new WeakMap<AerialEntity, Flight>();
 const direction = new Vector3();
+const attitude = new Euler(0,0,0,'YXZ');
 export function isGunship(entity: { aerial?: AerialView }): boolean { return entity.aerial?.kind === 'gunship'; }
 export function aerialControlsActive(entity: { aerial?: AerialView }): boolean { return !!entity.aerial?.active; }
 export function initializeAerial(entity: AerialEntity, ruleset: MatchRuleset): void {
@@ -32,7 +35,28 @@ export function initializeAerial(entity: AerialEntity, ruleset: MatchRuleset): v
   const view: AerialView = { kind: ruleset.aerial === 'drone' ? 'drone' : 'gunship', active: ruleset.aerial === 'gunship', launching: false,
     x: entity.state.pos.x, y: entity.state.pos.y, z: entity.state.pos.z, yaw: entity.state.yaw, pitch: -.6, batteryS: 0, cooldownS: 0 };
   entity.aerial = view;
-  flights.set(entity, { view, shell: null, shellId: -1, readyAt: 0, born: 0, center: new Vector3(0, entity.state.pos.y, 0), launch: new Vector3() });
+  const flight = { view, shell: null, shellId: -1, readyAt: 0, born: 0, center: new Vector3(0, entity.state.pos.y, 0), launch: new Vector3() };
+  flights.set(entity, flight);
+  if(view.kind === 'gunship') positionGunship(entity, flight, 0);
+}
+function positionGunship(entity: AerialEntity, flight: Flight, timeS: number): void {
+  const v=flight.view;
+    const rules = AERIAL_RULES.gunship;
+    const angle = timeS * rules.orbitRadS;
+    v.x = flight.center.x + Math.sin(angle) * rules.radiusM;
+    v.z = flight.center.z + Math.cos(angle) * rules.radiusM;
+    v.y = flight.center.y + rules.altitudeM;
+    v.yaw = angle + Math.PI / 2;
+    entity.state.pos.set(v.x, v.y, v.z); entity.state.yaw = v.yaw; entity.state.speed = 0;
+    entity.input.throttle = 0; entity.input.steer = 0; entity.input.brake = true;
+}
+function launchOrigin(entity: AerialEntity, out: Vector3): void {
+  if(entity.spec){
+    const mount=missionAttachmentFor(entity.spec);
+    out.set(mount.x,mount.y+DRONE_DOCK_HEIGHT_M,mount.z);
+  }else out.set(0,3.5,0);
+  attitude.set(-(entity.state.visualPitch ?? 0),entity.state.yaw,entity.state.visualRoll ?? 0);
+  out.applyEuler(attitude).add(entity.state.pos);
 }
 function steerDrone(entity: AerialEntity, v: AerialView, shell: ShellEntity<ShellSpec>, dt: number): void {
   const rules = AERIAL_RULES.drone;
@@ -63,14 +87,7 @@ export function stepAerial(entity: AerialEntity, timeS: number, dt: number, next
     v.active = false; flight.shell = null; return;
   }
   if (v.kind === 'gunship') {
-    const rules = AERIAL_RULES.gunship;
-    const angle = timeS * rules.orbitRadS;
-    v.x = flight.center.x + Math.sin(angle) * rules.radiusM;
-    v.z = flight.center.z + Math.cos(angle) * rules.radiusM;
-    v.y = flight.center.y + rules.altitudeM;
-    v.yaw = angle + Math.PI / 2;
-    entity.state.pos.set(v.x, v.y, v.z); entity.state.yaw = v.yaw; entity.state.speed = 0;
-    entity.input.throttle = 0; entity.input.steer = 0; entity.input.brake = true;
+    positionGunship(entity, flight, timeS);
     return;
   }
   const rules = AERIAL_RULES.drone;
@@ -81,10 +98,10 @@ export function stepAerial(entity: AerialEntity, timeS: number, dt: number, next
     if (flight.shell.id === flight.shellId) flight.shell.dead = true;
     flight.shell = null; v.active = false; v.launching = false; flight.readyAt = timeS + rules.cooldownS;
   } else if (toggle && !flight.shell && timeS >= flight.readyAt) {
-    flight.launch.copy(entity.state.pos); flight.launch.y += 3.5;
+    launchOrigin(entity, flight.launch);
     direction.set(Math.sin(entity.state.yaw), .4, Math.cos(entity.state.yaw)).normalize();
     const shell = createShell(DRONE_WARHEAD, entity.id, !!entity.isPlayer, flight.launch, direction, nextId());
-    shell.gravityMps2 = 0;
+    shell.gravityMps2 = 0; shell.vel.set(0,0,0);
     flight.shell = shell; flight.shellId = shell.id; flight.born = timeS;
     v.active = true; v.launching = true; v.yaw = entity.state.yaw; v.pitch = .2;
     launchShell(shell);
@@ -92,13 +109,24 @@ export function stepAerial(entity: AerialEntity, timeS: number, dt: number, next
   v.cooldownS = Math.max(0, flight.readyAt - timeS);
   const shell = flight.shell;
   if (!shell) return;
+  advanceDrone(entity,flight,shell,timeS,dt);
+}
+
+function advanceDrone(entity:AerialEntity,flight:Flight,shell:ShellEntity<ShellSpec>,timeS:number,dt:number):void {
+  const v=flight.view,rules=AERIAL_RULES.drone;
   const age = timeS - flight.born;
   v.launching = age < rules.launchS;
-  if (v.launching) direction.set(Math.sin(v.yaw) * 5, rules.launchHeightM / rules.launchS, Math.cos(v.yaw) * 5);
+  if (v.launching) {
+    // Smooth rotor spool-up, lift clear of the carrier, then ease into a hover.
+    const u=Math.min(1,Math.max(0,age/rules.launchS));
+    const lift=rules.launchHeightM*30*u*u*(1-u)*(1-u)/rules.launchS;
+    direction.set(Math.sin(v.yaw)*2*u, lift, Math.cos(v.yaw)*2*u);
+  }
   else {
     steerDrone(entity, v, shell, dt);
   }
-  shell.vel.copy(direction);
+  if(v.launching) shell.vel.copy(direction);
+  else shell.vel.lerp(direction, 1-Math.exp(-dt*AERIAL_RULES.drone.responseHz));
   v.x = shell.pos.x; v.y = shell.pos.y; v.z = shell.pos.z;
   v.batteryS = Math.max(0, rules.batteryS - age);
 }
@@ -125,7 +153,7 @@ export function restoreAerial(entity: AerialEntity, checkpoint: AerialCheckpoint
     const saved = checkpoint.shell;
     direction.fromArray(saved.velocity).normalize();
     const shell = createShell(DRONE_WARHEAD, entity.id, !!entity.isPlayer, new Vector3().fromArray(saved.pos), direction, nextId());
-    shell.vel.fromArray(saved.velocity); shell.ageS = saved.ageS; shell.distM = saved.distM; shell.gravityMps2 = 0;
+    shell.vel.fromArray(saved.velocity); shell.ageS = saved.ageS; shell.distM = saved.distM; shell.gravityMps2 = 0; shell.vel.set(0,0,0);
     flight.shell = shell; flight.shellId = shell.id; launchShell(shell);
   }
 }

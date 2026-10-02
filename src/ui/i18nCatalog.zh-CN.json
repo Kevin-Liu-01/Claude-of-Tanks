@@ -3769,5 +3769,19 @@
   "docs.topic.simulation.roles.p2": "真实模式始终显示车辆，取消车体生命值消耗，由装甲、乘员伤亡、弹药殉爆和持续模块损伤决定战斗。武器晋级有五级主武器：30毫米穿甲弹、105毫米尾翼稳定脱壳穿甲弹、120毫米尾翼稳定脱壳穿甲弹、152毫米高爆弹和制导破甲导弹。每级击毁两辆敌车即可晋级，重生保留进度。",
   "docs.topic.simulation.flight.t": "直接驾驶无人机与AC-130瞄准镜",
   "docs.topic.simulation.flight.p1": "无人机模式中按V或点击无人机按钮，从坦克发射四旋翼无人机。升空动画结束后直接驾驶第一人称视角：W/S前后移动，A/D横移，空格上升，鼠标或触摸控制朝向；向下瞄准并前进即可俯冲。电池持续40秒，活动半径850米。撞击敌车造成爆炸伤害。按V返回停在原地且仍可被攻击的坦克，并开始25秒冷却。",
-  "docs.topic.simulation.flight.p2": "AC-130自动绕战场盘旋，提供俯视瞄准镜。鼠标或触摸瞄准，滚轮缩放。用1–3或弹药按钮选择30毫米机炮、152毫米高爆榴弹炮和制导导弹，各自独立装填且弹药无限。炮弹与无人机撞击都使用与坦克武器相同的主机权威碰撞、装甲和伤害规则。"
+  "docs.topic.simulation.flight.p2": "AC-130自动绕战场盘旋，提供俯视瞄准镜。鼠标或触摸瞄准，滚轮缩放。用1–3或弹药按钮选择30毫米机炮、152毫米高爆榴弹炮和制导导弹，各自独立装填且弹药无限。炮弹与无人机撞击都使用与坦克武器相同的主机权威碰撞、装甲和伤害规则。",
+  "flight.battery": "无人机电量",
+  "flight.drone": "FPV · 侦察",
+  "flight.launching": "起飞中",
+  "flight.gunship": "AC-130 · 空中炮艇",
+  "flight.return": "返回坦克 · V",
+  "flight.weapon.0": "30毫米机炮",
+  "flight.weapon.1": "152毫米高爆弹",
+  "flight.weapon.2": "制导导弹",
+  "flight.telemetry.drone": "{seconds}秒 · 链路{range}米 · {speed}公里/时",
+  "flight.telemetry.gunship": "×{zoom} · {range}米",
+  "flight.ready": "就绪 · {ammo}",
+  "flight.hint.drone": "WASD飞行 · 鼠标转向 · 空格爬升 · 侦察敌人或撞击引爆",
+  "flight.hint.gunship": "鼠标瞄准 · 点击开火 · 1 / 2 / 3武器 · 滚轮缩放",
+  "flight.climb": "爬升"
 }

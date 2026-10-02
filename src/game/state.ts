@@ -1377,7 +1377,7 @@ export function setupBattle(
       ent.visual?.resetDestroyed?.();
       ent.visual?.setVisible(true);
       refreshContactGeometry(ent);
-      for (let tick = 0; tick < 30; tick++) {
+      for (let tick = 0; !isGunship(ent) && tick < 30; tick++) {
         updateTank(ent, world.heightField, SIM_DT);
       }
       ent.visual?.syncFromState?.(ent.state);
