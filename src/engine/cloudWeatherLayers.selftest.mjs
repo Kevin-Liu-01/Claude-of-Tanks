@@ -130,7 +130,6 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   assert.ok(!/TRACE_FRAGMENT[\s\S]*uFlash[\s\S]*const RESOLVE_FRAGMENT/.test(layerSrc), 'never in the trace (the history would smear it)');
   assert.ok(layerSrc.includes('if ( uClear.z > 0.0 ) shade *= smoothstep( uClear.z * 0.6, uClear.z * 1.4, length( vXZ - uClear.xy ) );'), 'a front\'s clear radius holds the cloud shadows off the camera like its towers');
   assert.ok(layerSrc.includes('(g.uClear.value as THREE.Vector3).set(C.pos.x, C.pos.z, preset.clearRadiusM);'), 'the clear centre follows the camera');
-  assert.ok(layerSrc.includes('float wispy = clamp( mix( 0.55 - hN * 0.9, 1.0, uWispiness ), 0.0, 1.0 );') && layerSrc.includes('wispy = max( wispy, anv );'), 'cauliflower tops, rags at the base, wisps where the map or the anvil asks');
   assert.ok(layerSrc.includes('float patchC = 0.35 + 1.3 * cw.b;'), 'the cirrus comes in patches (the same mean coverage)');
   assert.ok(layerSrc.includes('tauAbove *= mix( 1.0, 0.2 + 1.6 * ( mo.b * 0.6 + mo.a * 0.4 ), 0.75 * uCells );'), 'a deck\'s underside mottles with its rolls');
   assert.ok(layerSrc.includes('ns.y = wrapDrift(ns.y - CLOUD_BOIL_M_PER_S'), 'the billows boil');

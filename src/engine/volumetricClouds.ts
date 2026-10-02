@@ -38,7 +38,7 @@
  * (cloudWeatherLayers.ts) — a fog bank lying on the sea and rain shafts / virga under the base in front of the slab;
  * the distant storm cells, the far band and a mid-level layer (altocumulus, altostratus, cirrocumulus, lenticular)
  * behind it, sorted by distance; the cirrus sheet with contrails last — and the composite adds lightning in a night
- * storm. The slab's heads billow (cauliflower on the tops, rags at the base), a deck's underside mottles with its
+ * storm. A deck's underside mottles with its
  * rolls, the noise boils, the cirrus comes in patches; the sky light reaches the clouds dimmed once (the summary's sky
  * intensity undone), the moonlight's hue lights them at night and a town's glow rides on the bases; a camera in or
  * over a low deck sees the cloud in front of the terrain.
@@ -507,13 +507,10 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 			vec3 dn2 = texture( tDetail, dp * 3.7 + 0.37 ).rgb;
 			hf = mix( hf, hf * 0.55 + ( dn2.r * 0.5 + dn2.g * 0.3 + dn2.b * 0.2 ) * 0.45, fineW );
 		}
-		// 2026-10-01: cauliflower on the tops and the sunlit flanks, rags only at the base — a growing cumulus' head
-		// is billowed bulge on bulge, its base flat with a few fractus tatters; wisps on the tops come from the map's
-		// wispiness (a decaying or icy regime) and the anvil (round 71 had it upside down: wispy tops read as cotton
-		// candy on every tower, the open "cauliflower only at the outline"). The erosion still grows with height
-		// (a crisp dense base, deeply billowed tops), a front's base is ragged, a stratus erodes little.
-		float wispy = clamp( mix( 0.55 - hN * 0.9, 1.0, uWispiness ), 0.0, 1.0 );
-		wispy = max( wispy, anv );
+		// billowy lumps (the Worley cells) under the base and on the flanks, wisps (the inverted cells) on the
+		// tops — the wispy share grows with height and with the map's wispiness; the erosion grows with height
+		// too (a crisp dense base, wispy tops), a front's base is ragged, a stratus erodes little
+		float wispy = clamp( mix( hN * 1.4 - 0.15, 1.0, uWispiness ), 0.0, 1.0 );
 		float erode = mix( hf, 1.0 - hf, wispy );
 		float amount = ( mix( 0.3, 0.85, smoothstep( 0.05, 0.6, hN ) ) + uTowers * 0.35 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) )
 			* ( 1.0 - uStratiform * 0.8 ) * mix( 0.8, 1.25, uWispiness ) * mix( 0.35, 1.0, smoothstep( 0.0, 0.2, uWispiness ) )
@@ -521,9 +518,7 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 		d = remap( d, erode * amount, 1.0, 0.0, 1.0 );
 		// a sharper threshold: the density saturates a short way in from the outline (crisper edges, no
 		// semi-transparent halo around every mass)
-		// (2026-10-01: crisper still on a billowed cumulus — a congestus' outline is hard — the wispy and the
-		// stratiform keep their soft margins)
-		d = smoothstep( 0.03, mix( 0.42, 0.6, max( uWispiness, uStratiform ) ), d );
+		d = smoothstep( 0.03, 0.6, d );
 		// round 76: the interior octave — the coarse detail lumps (25–100 m) modulate the density inside the mass
 		// instead of vanishing in the remap, so the light march shades the lit face bulge by bulge
 		if ( uInterior > 0.0 ) d *= mix( 1.0, 0.5 + 0.5 * hfCoarse, uInterior );

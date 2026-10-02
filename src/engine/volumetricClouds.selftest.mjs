@@ -309,14 +309,8 @@ assert.deepEqual(table, {
   // low stratus — keep the round-71 numbers byte for byte; the deck rows carry cells and the transmitted lighting
   for (const name of ['fair-weather-cumulus', 'cloud-streets', 'sea-streets', 'towering-cumulus', 'cumulonimbus-front', 'storm-front', 'cumulus-humilis', 'lenticular', 'low-stratus', 'high-cirrus', 'thin-ice-clouds']) {
     const row = CLOUDSCAPE_REGIMES[name];
-    assert.deepEqual([row.cells, row.deckLight, row.undulatus], [0, 0, 0], `${name}: the round-71 layer untouched by the deck pass`);
+    assert.deepEqual([row.cells, row.deckLight, row.undulatus, row.interior], [0, 0, 0, 0], `${name}: the round-71 layer untouched by the deck pass`);
   }
-  // 2026-10-01: the cumuliform rows take the interior octave (a lit face shades bulge by bulge — the open "cauliflower
-  // only at the outline"); low stratus, the high sheets and the lenticular stay smooth
-  for (const name of ['fair-weather-cumulus', 'cloud-streets', 'sea-streets', 'towering-cumulus', 'cumulonimbus-front', 'storm-front', 'cumulus-humilis']) {
-    assert.ok(CLOUDSCAPE_REGIMES[name].interior >= 0.3 && CLOUDSCAPE_REGIMES[name].interior <= 0.4, `${name}: the interior octave`);
-  }
-  for (const name of ['lenticular', 'low-stratus', 'high-cirrus', 'thin-ice-clouds']) assert.equal(CLOUDSCAPE_REGIMES[name].interior, 0, `${name}: smooth`);
   for (const name of ['stratocumulus-deck', 'industrial-stratocumulus', 'dense-overcast', 'overcast-stratus', 'hazy-altostratus', 'ice-fog-stratus']) {
     const row = CLOUDSCAPE_REGIMES[name];
     assert.ok(row.cells > 0 && row.deckLight === 1 && row.undulatus > 0, `${name}: a cellular deck lit by what its columns transmit`);

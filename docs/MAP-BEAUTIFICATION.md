@@ -6129,9 +6129,11 @@ their albedo.
 - *Lightning* in a night storm, drawn in the composite at the frame rate (the history refreshes a sixteenth of its
   texels a frame and would smear a flash): a strike every 4–16 s in a cell, one to three return strokes.
 
-**The slab.** Cauliflower heads (the wispy share falls with height — rags at the base, billows on the head — wisps
-where the map's wispiness or an anvil asks), crisper cumulus outlines (the density saturates by 0.42 instead of 0.6
-on a billowed cumulus), the interior octave on every cumuliform regime (the lit face shades bulge by bulge), a slow
+**The slab.** The cumulus shape is main's (83b0c0b62, "break up cylindrical cloud silhouettes": the warped unequal
+weather lobes, shear from the base, the silhouette-scale curl, billows kept through the body), verified there on
+Verdant and Steinburg; the lane's own cumulus laws (the wispy share falling with height, a 0.42 outline saturation,
+the interior octave on the cumuliform rows, a 0.42–0.78 fair-weather type range) showed no clear gain in the labs and
+were withdrawn at the merge so that work stands as tested. The lane keeps a slow
 convective boil (the noise rises 0.7 m/s through a cumulus, a deck's cells turn over at a fifth of that), mottled deck
 undersides (the shape volume's mid octaves at half the cell period thicken and thin the column over each point), the
 cirrus in patches and curved by the jet's eddies (the same mean coverage, the streak frame warped by ±1.3 km), the
@@ -6161,7 +6163,7 @@ cloud on every open horizon (Redrock, the Delta, Mangrove, the Steppe) and, lit 
 Kept: the contrails (crisp paired lines that spread, Verdant, Sirocco, the polders, the airfield), the patchy curved
 cirrus (Sirocco's comb is gone), the moonlit night decks and fronts (grey masses instead of black cut-outs), the
 lightning in Monsoon's night front (the slab's own towers lit from inside), the warm sunset; Whiteout's coverage 1
-closes its ink-blot hole; fair-weather cumulus at the type range 0.42–0.78 (flatter grey bases, lobed masses).
+closes its ink-blot hole (a dark smudge remains).
 
 **Night.** The ambient is dimmed once (the summary's sky intensity undone before the composite applies it), the
 moonlight's hue (the night key light at luminance one) lights the clouds, and a lit town's glow rides on the bases
