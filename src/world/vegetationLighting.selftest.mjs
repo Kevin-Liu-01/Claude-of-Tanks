@@ -183,6 +183,11 @@ for (const species of ['pine', 'birch']) {
         }
       }
     }
+    // p2 trees lane: a welded (indexed) grown trunk counts its triangle corners — the flat count it stands for
+    if (tree.index) {
+      snowVertices = 0; barkVertices = 0;
+      for (const vertex of tree.index.array) if (initialUV[vertex * 2] < 0) snowVertices++; else barkVertices++;
+    }
     assert.ok(snowVertices >= 60 && barkVertices >= 600,
       'the fixture exercises real snow lobes and a complete branched trunk');
     const packed = uv.array.slice();

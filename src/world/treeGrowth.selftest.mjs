@@ -15,6 +15,7 @@ import * as THREE from 'three';
 import {
   emitBranchGeometry, emitCrownShadowHull, emitLeafCards, envelopeFraction, growTreeSkeleton, GROWTH_LEAF_BUDGET,
   GROWTH_LOWEST_WOOD_M, GROWTH_SIDE_TUBE_BUDGET, GROWTH_SPECIES, GROWTH_SPRAY_CLEARANCE_M, TREE_GROWTH_PROFILES,
+  weldGrownGeometry,
 } from './treeGrowth.ts';
 import { finishSprayTiles, makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
 
@@ -202,6 +203,30 @@ try {
   if (priorImageData === undefined) delete globalThis.ImageData; else globalThis.ImageData = priorImageData;
 }
 
+// the weld: the same triangle list (every corner's every attribute) from fewer vertices, deterministic, idempotent
+{
+  const corners = (g) => {
+    const out = {};
+    for (const [name, a] of Object.entries(g.attributes)) {
+      const idx = g.index?.array, n = idx ? idx.length : a.count, arr = new Float32Array(n * a.itemSize);
+      for (let i = 0; i < n; i++) for (let c = 0; c < a.itemSize; c++) arr[i * a.itemSize + c] = a.array[(idx ? idx[i] : i) * a.itemSize + c];
+      out[name] = sha(arr);
+    }
+    return out;
+  };
+  for (const species of ['oak', 'spruce', 'birch', 'snag']) {
+    const { wood, cards } = grow(species, 1);
+    for (const flat of [wood, cards]) {
+      const welded = weldGrownGeometry(flat);
+      assert.ok(welded.index, `${species}: the weld indexes`);
+      assert.deepEqual(corners(welded), corners(flat), `${species}: the welded triangle list is the flat one`);
+      assert.ok(welded.getAttribute('position').count <= flat.getAttribute('position').count * 0.55, `${species}: the weld shares vertices`);
+      assert.equal(weldGrownGeometry(welded), welded, 'an indexed geometry passes through');
+      assert.equal(sha(weldGrownGeometry(flat).index.array), sha(welded.index.array), 'the weld is deterministic');
+    }
+  }
+}
+
 // the integration: the real build on the desktop tier (no renderer), then legacyTrees, then the mobile tier
 {
   const { createHeightField } = await import('./terrain.ts');
@@ -239,9 +264,17 @@ try {
     for (const trunk of trunks) {
       const hull = trunk.geometry.userData.shadowHull;
       assert.ok(hull instanceof Float32Array && hull.length > 0, 'a grown trunk carries its crown hull');
-      const proxy = proxies.find((p) => p.name.startsWith('treeCanopyShadow_') && p.geometry.attributes.position.array.length === hull.length
-        && sha(p.geometry.attributes.position.array) === sha(hull));
+      // the proxy is the hull welded (indexed): expanded through its index it is the hull's triangle list
+      const expanded = (g) => { const p = g.attributes.position.array, idx = g.index?.array; if (!idx) return p;
+        const out = new Float32Array(idx.length * 3); for (let i = 0; i < idx.length; i++) for (let k = 0; k < 3; k++) out[i * 3 + k] = p[idx[i] * 3 + k]; return out; };
+      const proxy = proxies.find((p) => {
+        if (!p.name.startsWith('treeCanopyShadow_')) return false;
+        const e = expanded(p.geometry);
+        return e.length === hull.length && e.every((v, i) => Math.abs(v - hull[i]) <= 1e-4);
+      });
       assert.ok(proxy, 'the pool casts its own hull');
+      assert.ok(proxy.geometry.index && proxy.geometry.attributes.position.count < hull.length / 3 * 0.5, 'the hull is welded');
+      assert.ok(trunk.geometry.index && meshes.find((m) => m.userData.treeFoliage)?.geometry.index, 'the grown wood and cards are welded');
       assert.equal(trunk.castShadow, false, 'the trunk casts through the proxy');
     }
     for (const cards of meshes.filter((m) => m.userData.treeFoliage)) {

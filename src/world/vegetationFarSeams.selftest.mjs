@@ -121,6 +121,7 @@ function compile(input = text, mode = 'current') {
     vegetationGrowsTrees: () => true, texSize: (px) => px, makeSprayAtlas, SPRAY_ATLAS_TILES,
     growTreeSkeleton: growth.growTreeSkeleton, emitBranchGeometry: growth.emitBranchGeometry, emitLeafCards: growth.emitLeafCards,
     emitCrownShadowHull: growth.emitCrownShadowHull, GROWTH_TUBE_SIDES: growth.GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES: growth.TREE_GROWTH_PROFILES,
+    weldGrownGeometry: growth.weldGrownGeometry,
     _c: new THREE.Color(), _v3: new THREE.Vector3(), _e: new THREE.Euler(),
     _qq: new THREE.Quaternion(), _m: new THREE.Matrix4(), _scale: new THREE.Vector3(1, 1, 1),
   });

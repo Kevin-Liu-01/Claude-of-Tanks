@@ -138,7 +138,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'ellipsoid', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 0.85, angleHigh: 0.45,
     droop: 0.35, upturn: 0.2, sidePerM: 1.9, sideAngle: 0.7, sideRatio: 0.55, sideDroop: 0.45, twigPerM: 0,
     leafOrder: 1, leafPerM: 2.8, leafFrom: 0.3, spray: [1.0, 1.5], aspect: 0.55, habit: 'hanging', tipSprays: 2,
-    cardBend: 0.10, flatRoll: 0.6, flatDroop: 0.0, bark: 2, barkTint: [0.80, 0.76, 0.70], barkTopTint: [0.86, 0.84, 0.80],
+    cardBend: 0.10, flatRoll: 0.6, flatDroop: 0.0, bark: 2, barkTint: [0.64, 0.60, 0.54], barkTopTint: [0.74, 0.72, 0.66],
   }),
   pine: P({
     family: 'conifer', height: 7.2, heightSpread: 0.12, trunkR: 0.25, form: 'excurrent',
@@ -1033,4 +1033,58 @@ export function emitCrownShadowHull(skeleton: TreeSkeleton, clusters = 8): Float
 export function growthBudget(wood: THREE.BufferGeometry, cards: THREE.BufferGeometry): { woodTris: number; cardTris: number } {
   const tris = (g: THREE.BufferGeometry): number => (g.index ? g.index.count : g.getAttribute('position').count) / 3;
   return { woodTris: tris(wood), cardTris: tris(cards) };
+}
+
+/**
+ * Weld a flat triangle list: vertices whose every attribute is bit-identical (the emitters write a tube's ring vertex
+ * and a card's row vertex once per triangle that uses them) collapse to one, and an index carries the triangles —
+ * the same triangle list, drawn through the vertex cache. Exact comparison, hashed on the position's float bits;
+ * O(vertices). Indexed input returns unchanged; userData carries over.
+ */
+export function weldGrownGeometry(source: THREE.BufferGeometry): THREE.BufferGeometry {
+  if (source.index) return source;
+  const names = Object.keys(source.attributes);
+  const attrs = names.map((name) => source.getAttribute(name) as THREE.BufferAttribute);
+  const arrays = attrs.map((a) => a.array as Float32Array);
+  const sizes = attrs.map((a) => a.itemSize);
+  const position = source.getAttribute('position') as THREE.BufferAttribute;
+  const count = position.count;
+  const pos = position.array as Float32Array;
+  const bits = new Uint32Array(pos.buffer, pos.byteOffset, pos.length);
+  const head = new Map<number, number>();
+  const next = new Int32Array(count).fill(-1);
+  const firstOf = new Int32Array(count);
+  const remap = new Uint32Array(count);
+  let unique = 0;
+  const same = (a: number, b: number): boolean => {
+    for (let k = 0; k < arrays.length; k++) {
+      const arr = arrays[k], s = sizes[k];
+      for (let c = 0; c < s; c++) if (arr[a * s + c] !== arr[b * s + c]) return false;
+    }
+    return true;
+  };
+  for (let v = 0; v < count; v++) {
+    const h = (Math.imul(bits[v * 3] ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(bits[v * 3 + 1], 0xc2b2ae35)
+      ^ Math.imul(bits[v * 3 + 2], 0x27d4eb2f)) | 0;
+    const first = head.get(h);
+    let found = -1;
+    for (let u = first ?? -1; u >= 0; u = next[u]) if (same(firstOf[u], v)) { found = u; break; }
+    if (found < 0) {
+      found = unique++;
+      firstOf[found] = v;
+      next[found] = first ?? -1;
+      head.set(h, found);
+    }
+    remap[v] = found;
+  }
+  const out = new THREE.BufferGeometry();
+  names.forEach((name, k) => {
+    const s = sizes[k], src = arrays[k];
+    const dst = new (src.constructor as Float32ArrayConstructor)(unique * s);
+    for (let u = 0; u < unique; u++) for (let c = 0; c < s; c++) dst[u * s + c] = src[firstOf[u] * s + c];
+    out.setAttribute(name, new THREE.BufferAttribute(dst, s, attrs[k].normalized));
+  });
+  out.setIndex(new THREE.BufferAttribute(unique < 65536 ? Uint16Array.from(remap) : remap, 1));
+  out.userData = source.userData;
+  return out;
 }

@@ -36,7 +36,7 @@ import { createTreeImpostorLibrary, type TreeImpostorLibrary, type TreeImpostorR
 // branch-spray atlases
 import {
   emitBranchGeometry, emitCrownShadowHull, emitLeafCards, growTreeSkeleton, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES,
-  type GrowthSpecies,
+  weldGrownGeometry, type GrowthSpecies,
 } from './treeGrowth.ts';
 import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
@@ -2218,7 +2218,10 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
       lobes++;
     }
   }
-  const trunk = mergeParts(parts);
+  // the grown wood and cards are emitted as flat triangle lists; welded (identical vertices shared, an index) they draw
+  // through the vertex cache: a ring vertex of a tube runs once instead of six times, a card's four triangles from six
+  // vertices instead of twelve — fewer vertex invocations per grown tree than the flat legacy tree it replaces
+  const trunk = weldGrownGeometry(mergeParts(parts));
   trunk.userData.trunkQuality = {
     family: profile.family === 'dead' ? 'broadleaf' : profile.family, radialSegments: GROWTH_TUBE_SIDES.desktop[0],
     verticalSegments: stem.nodes.length - 1, rootButtresses: roots, rootFlare: true, organicWarp: true,
@@ -2232,7 +2235,7 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   };
   const [hueBase, satBase, gain] = tintLaw[profile.family];
   const hue0 = pal.cardHue ?? hueBase, sat0 = pal.cardSat ?? satBase;
-  const cards = emitLeafCards(skeleton, {
+  const cards = weldGrownGeometry(emitLeafCards(skeleton, {
     tiles: SPRAY_ATLAS_TILES, rng: mulberry32((seed ^ 0x5eed) >>> 0),
     tint(shade, site, r) {
       const heightT = clamp(site.y / skeleton.height, 0, 1);
@@ -2242,7 +2245,7 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
       const value = (0.52 + 0.48 * shade) * (0.92 + r() * 0.16) * (1 + sk * 0.75);
       return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
     },
-  });
+  }));
   // the crown's own shadow hull rides on the trunk (createTreeMeshPools builds the pool's proxy from it)
   trunk.userData.shadowHull = emitCrownShadowHull(skeleton);
   return { trunk, cards };
@@ -5242,6 +5245,8 @@ function* vegetationBuildSteps(
           if (hull) {
             proxyGeometry = new THREE.BufferGeometry();
             proxyGeometry.setAttribute('position', new THREE.BufferAttribute(hull.slice(), 3));
+            // position-only: the welded hull shares every corner (its shadow passes run a fraction of the vertices)
+            proxyGeometry = weldGrownGeometry(proxyGeometry);
             proxyGeometry.computeBoundingSphere();
           } else {
             proxyGeometry = canopyShadowProxyGeometry(treeGeoFar[sp][variant % treeGeoFar[sp].length].canopy, g.trunk);
