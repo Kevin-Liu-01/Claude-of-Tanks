@@ -23,6 +23,7 @@ import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import { createInfoButton, type InfoButton } from './contextInfo.ts';
 import { getLocale, t } from './i18n.ts';
 import { hrefForLocale } from './localeRouting.ts';
+import { FILM_RESOLUTIONS, createFilmPlan, filmOutputSize, normalizeFilm } from '../game/studioFilmPlan.ts';
 
 const STUDIO_GUIDES = {
   battlefield: 'environment', map: 'environment', tanks: 'actors', addTanks: 'actors',
@@ -135,6 +136,30 @@ interface StudioRecordingStatus {
   readonly mimeType?: string | null;
 }
 
+interface StudioFilmProgress {
+  readonly stage: 'preparing' | 'rendering' | 'finishing';
+  readonly frame: number;
+  readonly frames: number;
+  readonly remainingMs: number | null;
+}
+
+interface StudioFilmSettings {
+  readonly fps: number;
+  readonly samples: number;
+  readonly shutterDeg: number;
+  readonly filter: string;
+  readonly speed: ReadonlyArray<{ readonly tMs: number; readonly speed: number; readonly ease: string }>;
+}
+
+interface StudioFilmExportOptions {
+  readonly resolution: number;
+  readonly fps: number;
+  readonly samples: number;
+  readonly download: boolean;
+  readonly onProgress: (progress: StudioFilmProgress) => void;
+  readonly onFrame: (canvas: HTMLCanvasElement) => void;
+}
+
 interface StudioEffectRecipe {
   readonly type: string;
   readonly actor?: string;
@@ -203,6 +228,11 @@ export interface StudioPanelApi {
   recordVideo(options: { readonly fps: number; readonly download: boolean }): Promise<{ size: number }>;
   stopRecording(): RuntimeValue;
   capture(options: { readonly width: number; readonly height?: number; readonly download: boolean }): RuntimeValue;
+  exportFilm(options: StudioFilmExportOptions): Promise<{ readonly bytes: number }>;
+  cancelFilmExport(): RuntimeValue;
+  filmExportStatus(): { readonly active: boolean; readonly supported: boolean };
+  getFilm(): StudioFilmSettings | null;
+  setFilm(patch: Readonly<Record<string, RuntimeValue>> | null): RuntimeValue;
   load(state: RuntimeValue): Promise<RuntimeValue>;
   updateEffect(id: string, patch: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
   removeEffect(id: string): RuntimeValue;
@@ -501,6 +531,22 @@ const CSS = `
 .cot-studio .recStatus{margin:6px 0;font-size:8px;font-weight:800;letter-spacing:.1em;
   color:#71808d;text-transform:uppercase;text-align:center;}
 .cot-studio .recStatus.on{color:#ff806b;animation:studioRecPulse 1s ease-in-out infinite;}
+.cot-studio .filmHead{display:flex;align-items:center;gap:6px;margin:1px 0 8px;font-size:8px;font-weight:900;
+  letter-spacing:.2em;color:#e69a2d;text-transform:uppercase;}
+.cot-studio .filmHead::after{content:'';flex:1;height:1px;background:rgba(230,154,45,.25);}
+.cot-studio .filmHead.live{margin-top:12px;}
+.cot-studio .filmHint{margin:5px 0 2px;font-size:8px;line-height:1.5;letter-spacing:.06em;color:#71808d;}
+.cot-studio .filmVeil{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;
+  justify-content:center;gap:13px;padding:24px 16px;pointer-events:auto;background:rgba(3,5,8,.86);
+  backdrop-filter:blur(3px);}
+.cot-studio .filmVeil.on{display:flex;}
+.cot-studio .filmVeil .fvTitle{font-size:11px;font-weight:900;letter-spacing:.26em;color:#ffd27a;}
+.cot-studio .filmVeil .fvPreview{display:block;max-width:min(78vw,960px);max-height:58vh;background:#05080b;
+  border:1px solid rgba(230,154,45,.45);box-shadow:0 18px 60px rgba(0,0,0,.75);}
+.cot-studio .filmVeil .fvBar{width:min(78vw,560px);height:4px;background:rgba(190,204,216,.18);}
+.cot-studio .filmVeil .fvBar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#d95f00,#ffd27a);}
+.cot-studio .filmVeil .fvText{font-size:10px;font-weight:800;letter-spacing:.14em;color:#c9d4dd;text-align:center;}
+.cot-studio .filmVeil button{min-width:160px;min-height:36px;}
 @keyframes studioRecPulse{50%{opacity:.45;}}
 .cot-studio .foot{position:absolute;left:20px;bottom:14px;pointer-events:none;
   font-size:10px;font-weight:600;letter-spacing:.08em;color:#9fb0bf;
@@ -1105,6 +1151,138 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const outputGroup = panelGroup('05', 'output', t('studioPanel.panel.output.title'), t('studioPanel.panel.output.sub'));
   dock.appendChild(outputGroup.root);
   const secCap = section('output', t('studioPanel.section.output'), t('studioPanel.section.outputSub'));
+  // --- film: deterministic offline export (studioFilm*.ts) ----------------------
+  secCap.appendChild(el('div', 'filmHead', t('studio.film.heading')));
+  const filmSizeRow = el('div', 'row');
+  const filmSize = document.createElement('select');
+  for (const resolution of FILM_RESOLUTIONS) {
+    const option = document.createElement('option');
+    option.value = String(resolution);
+    option.textContent = `${resolution}p`;
+    filmSize.appendChild(option);
+  }
+  const filmFps = document.createElement('select');
+  for (const fps of [24, 30, 60]) {
+    const option = document.createElement('option');
+    option.value = String(fps);
+    option.textContent = t('studio.film.fpsOption', { fps });
+    filmFps.appendChild(option);
+  }
+  filmSizeRow.append(el('label', 'k', t('studio.film.size')), filmSize, el('label', 'k', t('studio.film.rate')), filmFps);
+  secCap.appendChild(filmSizeRow);
+  const filmBlurRow = el('div', 'row');
+  const filmBlur = document.createElement('select');
+  for (const [key, samples] of [['studio.film.blurOff', 1], ['studio.film.blurDraft', 4], ['studio.film.blurGood', 8],
+    ['studio.film.blurBest', 16], ['studio.film.blurMaster', 32]] as const) {
+    const option = document.createElement('option');
+    option.value = String(samples);
+    option.textContent = t(key);
+    filmBlur.appendChild(option);
+  }
+  filmBlur.value = '8';
+  filmFps.value = '30';
+  filmBlurRow.append(el('label', 'k', t('studio.film.blur')), filmBlur);
+  secCap.appendChild(filmBlurRow);
+  const filmSummary = el('div', 'recStatus', '');
+  secCap.appendChild(filmSummary);
+  const filmBtn = el('button', 'prime', t('studio.film.export'));
+  secCap.appendChild(filmBtn);
+  secCap.appendChild(el('div', 'filmHint', t('studio.film.hint')));
+  // Authoring the export settings records them in the scene's `film` block.
+  for (const control of [filmFps, filmBlur]) {
+    control.addEventListener('change', () => {
+      try { S.setFilm({ fps: Number(filmFps.value), samples: Number(filmBlur.value) }); } catch { /* exporting */ }
+      updateFilmSummary();
+    });
+  }
+  filmSize.addEventListener('change', () => updateFilmSummary());
+  // Export veil: blocks the canvas and panel while frames render; live preview at the native aspect.
+  const filmVeil = el('div', 'filmVeil');
+  filmVeil.setAttribute('role', 'dialog');
+  filmVeil.setAttribute('aria-modal', 'true');
+  filmVeil.setAttribute('aria-label', t('studio.film.veilTitle'));
+  const veilPreview = document.createElement('canvas');
+  veilPreview.className = 'fvPreview';
+  const veilBar = el('div', 'fvBar');
+  const veilFill = el('i');
+  veilBar.appendChild(veilFill);
+  const veilText = el('div', 'fvText', t('studio.film.preparing'));
+  veilText.setAttribute('aria-live', 'polite');
+  const veilCancel = el('button', 'warn', t('studio.film.cancel'));
+  veilCancel.addEventListener('click', () => S.cancelFilmExport());
+  filmVeil.append(el('div', 'fvTitle', t('studio.film.veilTitle')), veilPreview, veilBar, veilText, veilCancel);
+  for (const evName of ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'keydown']) {
+    filmVeil.addEventListener(evName, (e) => e.stopPropagation());
+  }
+  root.appendChild(filmVeil);
+  const clockText = (ms: number): string => {
+    const seconds = Math.max(0, Math.round(ms / 1000));
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  };
+  function showFilmProgress(progress: StudioFilmProgress): void {
+    veilFill.style.width = `${progress.frames ? (progress.frame / progress.frames) * 100 : 0}%`;
+    veilText.textContent = progress.stage === 'preparing' ? t('studio.film.preparing')
+      : progress.stage === 'finishing' ? t('studio.film.finishing')
+        : progress.remainingMs === null
+          ? t('studio.film.progressFirst', { frame: progress.frame, frames: progress.frames })
+          : t('studio.film.progress', { frame: progress.frame, frames: progress.frames, remaining: clockText(progress.remainingMs) });
+  }
+  function drawFilmPreview(canvas: HTMLCanvasElement): void {
+    const aspect = canvas.width / Math.max(1, canvas.height);
+    const width = aspect >= 1 ? 640 : Math.round(480 * aspect);
+    const height = Math.round(width / aspect);
+    if (veilPreview.width !== width || veilPreview.height !== height) { veilPreview.width = width; veilPreview.height = height; }
+    veilPreview.getContext('2d')?.drawImage(canvas, 0, 0, width, height);
+  }
+  filmBtn.addEventListener('click', () => {
+    if (S.filmExportStatus().active || S.recordingStatus().active) return;
+    filmVeil.classList.add('on');
+    veilFill.style.width = '0%';
+    veilText.textContent = t('studio.film.preparing');
+    veilCancel.focus();
+    S.exportFilm({
+      resolution: Number(filmSize.value),
+      fps: Number(filmFps.value),
+      samples: Number(filmBlur.value),
+      download: true,
+      onProgress: showFilmProgress,
+      onFrame: drawFilmPreview,
+    })
+      .then((result) => flashBusy(t('studio.film.saved', { size: (result.bytes / 1048576).toFixed(1) })))
+      .catch((error: RuntimeValue) => flashBusy(error instanceof Error && error.name === 'AbortError'
+        ? t('studio.film.cancelled')
+        : t('studio.film.failed', { error: errorMessage(error) })))
+      .finally(() => { filmVeil.classList.remove('on'); api.refreshStoryboard(); });
+  });
+  let filmSignature = '';
+  function updateFilmSummary(): void {
+    const film = S.getFilm();
+    const signature = film ? `${film.fps}/${film.samples}` : '';
+    if (signature !== filmSignature) {
+      filmSignature = signature;
+      if (film) {
+        filmFps.value = String(film.fps);
+        if ([...filmBlur.options].some((option) => option.value === String(film.samples))) filmBlur.value = String(film.samples);
+      }
+    }
+    const status = S.filmExportStatus();
+    const busyOutput = status.active || S.recordingStatus().active;
+    filmBtn.disabled = busyOutput || !status.supported;
+    for (const control of [filmSize, filmFps, filmBlur]) control.disabled = busyOutput;
+    if (!status.supported) { filmSummary.textContent = t('studio.film.unsupported'); return; }
+    try {
+      const format = S.productionFormat;
+      const { width, height } = filmOutputSize(format, Number(filmSize.value));
+      const plan = createFilmPlan(normalizeFilm({ ...(film ?? {}), fps: Number(filmFps.value), samples: Number(filmBlur.value) }), 0, S.durationMs);
+      filmSummary.textContent = t('studio.film.summary', {
+        ratio: format === 'portrait' ? '9:16' : format === 'square' ? '1:1' : '16:9',
+        width, height, seconds: (plan.map.durationMs / 1000).toFixed(1), frames: plan.frames,
+      });
+    } catch (error) {
+      filmSummary.textContent = errorMessage(error);
+    }
+  }
+  secCap.appendChild(el('div', 'filmHead live', t('studio.film.liveHeading')));
   const videoRow = el('div', 'row');
   videoRow.appendChild(el('label', 'k', 'Video'));
   const fpsSel = document.createElement('select');
@@ -1649,6 +1827,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       railBtn.disabled = isRecording;
       timeSelect.disabled = isRecording;
       rebuildStoryboard();
+      updateFilmSummary();
       api.refreshTime();
     },
     refreshMap() {

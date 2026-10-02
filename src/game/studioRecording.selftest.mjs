@@ -25,7 +25,7 @@ function fixture() {
   const track=()=>{const t={stopped:false,stop(){this.stopped=true;},requestFrame(){if(throwAt==='requestFrame')throw Error('requestFrame');if(++submitted===chunkAfter)encoders.at(-1).chunk();}};tracks.push(t);return t;};
   const make=new Function('ports',`
     const {MediaRecorder,renderer,performance,setTimeout,clearTimeout,document,post}=ports;
-    let recording=null,timeScale=0,clockMs=0;
+    let recording=null,timeScale=0,clockMs=0,filming=false;
     const storyboard={durationMs:15000},videoMimeType=()=> 'video/webm';
     const rail={updateVisibility(){}},lighting={update(){},updateFrustums(){}},panel={tick(){},refreshStoryboard(){},refreshTime(){}};
     let poolSweepAcc=0,frameDirty=false,lastFov=60;

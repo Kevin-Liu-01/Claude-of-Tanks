@@ -78,6 +78,11 @@ import type {
 import { createFrameBudgetYielder } from '../engine/frameScheduler.ts';
 import { createProductionScene, productionPreset, productionCamera, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
 import type { ProductionOptions, ProductionRigId, ProductionFormat } from './studioProduction.ts';
+import { createStudioFilm } from './studioFilm.ts';
+import type { FilmFrameInfo, FilmSessionInfo } from './studioFilm.ts';
+import { normalizeFilm, filmOutputSize, FILM_DEFAULTS } from './studioFilmPlan.ts';
+import type { FilmFilter, FilmSettings, FilmSettingsInput } from './studioFilmPlan.ts';
+import type { FilmExportProgress, FilmExportResult } from './studioFilmExport.ts';
 import {
   applySiteMetadataToDocument,
   localizedGameMetadata,
@@ -243,6 +248,9 @@ interface StudioActor extends MovementEntity, StudioPanelActor {
   supportX: number;
   supportZ: number;
   supportYaw: number;
+  /** Film renders: track travel since the last fixed support step (presentation only). */
+  filmScrollL?: number;
+  filmScrollR?: number;
   timelineTrack: ActorTrack | null;
 }
 
@@ -334,6 +342,36 @@ interface CaptureOptions {
   name?: string;
   type?: string;
   quality?: number;
+  /** Film still: jittered accumulation samples (1 = the classic single render). */
+  samples?: number;
+  filter?: FilmFilter;
+  /** Film still: render this many times larger, then downsample. */
+  supersample?: number;
+}
+
+interface FilmBeginOptions extends FilmSettingsInput {
+  width?: number;
+  height?: number;
+  startMs?: number;
+  endMs?: number;
+}
+
+interface FilmExportRequest extends FilmBeginOptions {
+  /** Short-side resolution for the production format (1080, 1440, 2160); ignored with width/height. */
+  resolution?: number;
+  bitrate?: number;
+  container?: 'auto' | 'mp4' | 'webm';
+  download?: boolean;
+  name?: string;
+  onProgress?: (progress: FilmExportProgress) => void;
+  onFrame?: (canvas: HTMLCanvasElement) => void;
+}
+
+interface FilmRenderOptions {
+  /** Also return the frame as a data URL (headless exporters). */
+  dataURL?: boolean;
+  type?: string;
+  quality?: number;
 }
 
 interface VideoOptions {
@@ -384,6 +422,8 @@ interface StudioSceneInput {
   camera?: CameraConfig;
   fxTime?: number;
   timeScale?: number;
+  /** Optional film settings (studioFilmPlan.ts); absent = none authored. */
+  film?: FilmSettingsInput | null;
 }
 
 interface EnterOptions {
@@ -518,6 +558,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let actorKeyUidSeq = 1;
   let railVisible = true;
   let recording: RecordingSession | null = null;
+  // Film renderer (studioFilm.ts): the scene's authored `film` block, and the
+  // live-session latch. While filming, the live tick and authoring input stand
+  // still, the timeline advances unrounded, continuous emitters follow the
+  // 60 Hz timeline grid and track phase follows the exact sample instant.
+  let sceneFilm: FilmSettings | null = null;
+  let filming = false;
   const perf = { renderedFrames: 0, skippedFrames: 0, poolSweeps: 0 };
 
   function invalidate() { frameDirty = true; }
@@ -633,11 +679,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           point.userData.studioShotId = shot.id;
           group.add(point);
         }
-        group.visible = active && railVisible && timeScale === 0 && !recording && shots.length > 0;
+        group.visible = active && railVisible && timeScale === 0 && !recording && !filming && shots.length > 0;
         invalidate();
       },
       updateVisibility() {
-        group.visible = active && railVisible && timeScale === 0 && !recording
+        group.visible = active && railVisible && timeScale === 0 && !recording && !filming
           && storyboard.shots.length > 0;
       },
     };
@@ -1247,7 +1293,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function onPointerDown(e: PointerEvent): void {
     if (!active || e.target !== renderer.domElement) return;
-    if (recording) return;
+    if (recording || filming) return;
     if (e.button === 0) {
       const hitActor = pickActor(e);
       if (hitActor && !placeArmed) {
@@ -1263,7 +1309,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function onPointerMove(e: PointerEvent): void {
-    if (!active) return;
+    if (!active || filming) return;
     if (dragActor) {
       if (terrainHit(e, _v3)) {
         updateActor(dragActor, { x: _v3.x, z: _v3.z, _drag: true });
@@ -1310,6 +1356,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function onWheel(e: WheelEvent): void {
     if (!active || e.target !== renderer.domElement) return;
+    if (filming) { e.preventDefault(); return; }
     e.preventDefault();
     const k = e.deltaY < 0 ? 1 : -1;
     if (cam.mode === 'orbit') {
@@ -1331,6 +1378,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function onKeyDown(e: KeyboardEvent): void {
+    if (filming) return; // an offline film owns the Studio until it ends
     if (e.code === 'F8' && !e.repeat) {
       if (active) { exit(); e.preventDefault(); return; }
       if (game.phase === 'garage') {
@@ -1848,6 +1896,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   function stepFx(dt: number): void {
     if (dt > 0) {
+      const previousMs = clockMs;
       clockMs += dt * 1000;
       // projectiles
       for (const sh of shells) {
@@ -1866,14 +1915,21 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           sh.dead = true;
         }
       }
-      // continuous per-actor emitters
-      for (const a of actors) {
-        if (a.smoking) {
-          _fwd.set(Math.sin(a.state.yaw), 0, Math.cos(a.state.yaw));
-          _v2.copy(a.state.pos).addScaledVector(_fwd, -a.spec.dims.hullLengthM * 0.42);
-          _v2.y += a.spec.dims.heightM * 0.72;
-          fx.exhaust(_v2, 1, true);
-          fx.exhaust(_v2, 0.85, true); // doubled: damage smoke, not idle haze
+      // continuous per-actor emitters: one pulse per live step; a film's
+      // sub-sample steps pulse once per 1/60 s of timeline they cross, so
+      // motion-blur sampling never multiplies the smoke.
+      const pulses = filming
+        ? Math.floor(clockMs / (FX_STEP_S * 1000) + 1e-6) - Math.floor(previousMs / (FX_STEP_S * 1000) + 1e-6)
+        : 1;
+      for (let pulse = 0; pulse < pulses; pulse++) {
+        for (const a of actors) {
+          if (a.smoking) {
+            _fwd.set(Math.sin(a.state.yaw), 0, Math.cos(a.state.yaw));
+            _v2.copy(a.state.pos).addScaledVector(_fwd, -a.spec.dims.hullLengthM * 0.42);
+            _v2.y += a.spec.dims.heightM * 0.72;
+            fx.exhaust(_v2, 1, true);
+            fx.exhaust(_v2, 0.85, true); // doubled: damage smoke, not idle haze
+          }
         }
       }
     }
@@ -1908,6 +1964,21 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     world.advanceWater(dt, actors[0]?.state.pos.x ?? camera.position.x, actors[0]?.state.pos.z ?? camera.position.z);
   }
 
+  /**
+   * Present one actor. Track/wheel phase advances on the fixed support grid;
+   * a film sample between grid steps adds the exact travel since the last
+   * step for this presentation only, so rolling wheels and track links blur
+   * continuously instead of double-imaging at 60 Hz.
+   */
+  function syncActorVisual(a: StudioActor, dt: number): void {
+    const l = filming ? a.filmScrollL ?? 0 : 0, r = filming ? a.filmScrollR ?? 0 : 0;
+    if (l === 0 && r === 0) { a.visual.syncFromState(a.state, dt); return; }
+    const scroll = a.state.trackScroll, baseL = scroll.l, baseR = scroll.r;
+    scroll.l = baseL + l; scroll.r = baseR + r;
+    try { a.visual.syncFromState(a.state, dt); }
+    finally { scroll.l = baseL; scroll.r = baseR; }
+  }
+
   function advanceFx(ms: number): void {
     let remainingS = Math.max(0, ms / 1000);
     while (remainingS > 1e-7) {
@@ -1915,7 +1986,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       applyStoryboardActors(clockMs + dt * 1000, dt);
       stepFx(dt);
       advanceWater(dt);
-      for (const a of actors) a.visual.syncFromState(a.state, dt);
+      for (const a of actors) syncActorVisual(a, dt);
       remainingS -= dt;
     }
     applyStoryboardCamera(clockMs);
@@ -1992,7 +2063,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function seekTimeline(timeMs: number, opts: SeekOptions = {}): number {
-    if (recording && !opts.recording) return Math.round(clockMs);
+    if ((recording && !opts.recording) || filming) return Math.round(clockMs);
     const target = clampStudioTime(timeMs, storyboard.durationMs);
     if (opts.pause !== false) timeScale = 0;
     rebuildEffects(target);
@@ -2010,8 +2081,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return next;
   }
 
-  function advanceTimeline(ms: number): number {
-    const target = clampStudioTime(clockMs + Math.max(0, ms), storyboard.durationMs);
+  function advanceTimeline(ms: number, exact = false): number {
+    // Film samples sit between whole milliseconds (a 0.2x shutter spans a
+    // few); every other caller keeps the authored millisecond grid.
+    const target = exact
+      ? Math.min(storyboard.durationMs, clockMs + Math.max(0, ms))
+      : clampStudioTime(clockMs + Math.max(0, ms), storyboard.durationMs);
     let due = nextPendingEffect(target);
     while (due) {
       advanceFx(Math.max(0, due.tMs - clockMs));
@@ -2028,6 +2103,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function playTimeline() {
+    if (filming) return false;
     if (clockMs >= storyboard.durationMs - 0.5) seekTimeline(0, { pause: false });
     timeScale = 1;
     rail.updateVisibility();
@@ -2148,6 +2224,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       } else if (support) {
         st.speed = 0;
         st.yawRate = 0;
+      } else if (filming) {
+        const signedDist = dx * Math.sin(yaw) + dz * Math.cos(yaw);
+        a.filmScrollL = signedDist + dyaw * 1.5;
+        a.filmScrollR = signedDist - dyaw * 1.5;
       }
       if (support) {
         a.supportX = _actorSample.x; a.supportZ = _actorSample.z; a.supportYaw = yaw;
@@ -2699,6 +2779,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     W = Math.max(320, Math.min(maxTex, W));
     let H = Math.round(opts.height || W / aspect);
     H = Math.max(180, Math.min(maxTex, H));
+    if ((opts.samples ?? 1) > 1 || (opts.supersample ?? 1) > 1) return captureFilmStill(W, H, opts);
     let dataURL = '';
     const savedRail = rail.group.visible, savedMarker = marker.group.visible;
     try {
@@ -2753,6 +2834,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   function recordVideo(opts: VideoOptions = {}): Promise<VideoResult> {
     if (recording) return recording.promise;
+    if (filming) return Promise.reject(new Error('Finish the film render first'));
     if (typeof MediaRecorder === 'undefined' || !renderer.domElement.captureStream) {
       return Promise.reject(new Error('This browser does not support Studio video recording'));
     }
@@ -2916,6 +2998,326 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     };
   }
 
+  // --- film renderer (studioFilm.ts) ------------------------------------------
+  const savedGuides = { marker: false };
+  // Motion probe for adaptive sample counts: the storyboard camera and every
+  // tracked actor sampled across one shutter, without touching the live rig.
+  const _motionCam = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 5000);
+  const _motionRail: CameraRailSample & Required<Pick<
+    CameraRailSample, 'x' | 'y' | 'z' | 'lookX' | 'lookY' | 'lookZ' | 'fov' | 'rollDeg'
+  >> = { x: 0, y: 0, z: 0, lookX: 0, lookY: 0, lookZ: 0, fov: 50, rollDeg: 0, shotId: undefined };
+  const _motionCue = { rightM: 0, upM: 0, forwardM: 0, rollDeg: 0, fovKickDeg: 0 };
+  const _motionActor: ActorTrackSample & Required<Pick<ActorTrackSample, 'x' | 'z' | 'facingDeg' | 'turretDeg' | 'gunDeg'>> = {
+    x: 0, z: 0, facingDeg: 0, turretDeg: 0, gunDeg: 0, keyId: undefined,
+  };
+  const MOTION_DEPTHS_M = [3, 12, 50, 400] as const;
+  const MOTION_GRID = [-0.8, 0, 0.8] as const;
+  const MOTION_PROBES = 9;
+  const _motionAnchors = Array.from({ length: MOTION_DEPTHS_M.length * 9 }, () => new THREE.Vector3());
+  let _motionLength = new Float64Array(64), _motionPrev = new Float64Array(128);
+  const _motionV = new THREE.Vector3(), _motionF = new THREE.Vector3();
+  const _motionR = new THREE.Vector3(), _motionU = new THREE.Vector3();
+
+  /** Same pose math as applyStoryboardCamera, into the probe camera. */
+  function poseMotionCamera(timeMs: number, aspect: number): void {
+    const probe = _motionCam;
+    let fov = camera.fov;
+    if (sampleCameraRail(storyboard.shots, timeMs, _motionRail)) {
+      probe.position.set(_motionRail.x, _motionRail.y, _motionRail.z);
+      _motionV.set(_motionRail.lookX, _motionRail.lookY, _motionRail.lookZ);
+      if (sampleCameraCues(storyboard.cameraCues, timeMs, _motionCue)) {
+        _motionF.copy(_motionV).sub(probe.position).normalize();
+        _motionR.crossVectors(_motionF, _up).normalize();
+        _motionU.crossVectors(_motionR, _motionF).normalize();
+        probe.position.addScaledVector(_motionR, _motionCue.rightM);
+        probe.position.addScaledVector(_motionU, _motionCue.upM);
+        probe.position.addScaledVector(_motionF, _motionCue.forwardM);
+      }
+      fov = Math.max(10, Math.min(120, _motionRail.fov + _motionCue.fovKickDeg));
+      _motionF.copy(_motionV).sub(probe.position);
+      probe.rotation.order = 'YXZ';
+      probe.rotation.set(Math.atan2(_motionF.y, Math.hypot(_motionF.x, _motionF.z)),
+        Math.atan2(-_motionF.x, -_motionF.z), (_motionRail.rollDeg + _motionCue.rollDeg) * DEG);
+    } else {
+      probe.position.copy(camera.position);
+      probe.quaternion.copy(camera.quaternion);
+    }
+    probe.fov = fov; probe.aspect = aspect; probe.near = camera.near; probe.far = camera.far;
+    probe.updateProjectionMatrix();
+    probe.updateMatrixWorld(true);
+  }
+
+  /** Project into output pixels; false when the point is behind the lens or far off frame. */
+  function motionPixel(point: THREE.Vector3, width: number, height: number, out: Float64Array, at: number): boolean {
+    _motionV.copy(point).project(_motionCam);
+    if (!(_motionV.z > -1 && _motionV.z < 1) || Math.abs(_motionV.x) > 1.25 || Math.abs(_motionV.y) > 1.25) return false;
+    out[at] = _motionV.x * width / 2;
+    out[at + 1] = _motionV.y * height / 2;
+    return true;
+  }
+
+  function filmMotionPathPx(times: Float64Array, count: number, width: number, height: number): number {
+    const open = times[0], close = times[count - 1];
+    if (!(close > open)) return 0;
+    const aspect = width / height;
+    poseMotionCamera((open + close) / 2, aspect);
+    let n = 0;
+    for (const depth of MOTION_DEPTHS_M) {
+      for (const v of MOTION_GRID) {
+        for (const u of MOTION_GRID) {
+          _motionF.set(u, v, 0.5).unproject(_motionCam).sub(_motionCam.position).normalize();
+          _motionAnchors[n++].copy(_motionCam.position).addScaledVector(_motionF, depth);
+        }
+      }
+    }
+    const points = n + actors.length;
+    if (_motionLength.length < points) { _motionLength = new Float64Array(points); _motionPrev = new Float64Array(points * 2); }
+    _motionLength.fill(0, 0, points);
+    const valid: boolean[] = new Array(points).fill(false);
+    for (let j = 0; j < MOTION_PROBES; j++) {
+      const t = open + (close - open) * j / (MOTION_PROBES - 1);
+      poseMotionCamera(t, aspect);
+      for (let i = 0; i < points; i++) {
+        let point = _motionAnchors[i];
+        if (i >= n) {
+          const actor = actors[i - n];
+          const track = actorTrackFor(actor);
+          if (track && sampleActorTrack(track.keys, t, _motionActor)) {
+            _motionU.set(_motionActor.x, hfProxy.getHeightAt(_motionActor.x, _motionActor.z) + actor.spec.dims.heightM * 0.6, _motionActor.z);
+          } else {
+            _motionU.copy(actor.state.pos);
+            _motionU.y += actor.spec.dims.heightM * 0.6;
+          }
+          point = _motionU;
+        }
+        const x = _motionPrev[i * 2], y = _motionPrev[i * 2 + 1];
+        const inFrame = motionPixel(point, width, height, _motionPrev, i * 2);
+        if (inFrame && valid[i]) _motionLength[i] += Math.hypot(_motionPrev[i * 2] - x, _motionPrev[i * 2 + 1] - y);
+        valid[i] = inFrame;
+      }
+    }
+    let longest = 0;
+    for (let i = 0; i < points; i++) longest = Math.max(longest, _motionLength[i]);
+    return longest;
+  }
+  const filmRenderer = createStudioFilm({
+    renderer, scene, camera, post, lighting,
+    clockMs: () => clockMs,
+    seek: (ms: number) => rebuildEffects(ms),
+    advanceTo: (ms: number) => { advanceTimeline(ms - clockMs, true); },
+    refreshFxForCamera: () => stepFx(0),
+    prepareWorld(complete: boolean) {
+      const world = getWorld();
+      if (!world) return;
+      camera.getWorldDirection(_fwd);
+      world.update(0, camera.position, _fwd, null);
+      // Paused cameras do not drive ordinary streaming; finish this view's
+      // terrain lookahead so a frame never depends on how fast the host is.
+      if (complete) for (let jobs = 0; jobs < 256; jobs++) if (!world.warmTerrainLookahead(camera.position, 1)) break;
+    },
+    cutTimes: () => storyboard.shots.filter((shot) => shot.transition === 'cut').map((shot) => shot.tMs),
+    motionPathPx: filmMotionPathPx,
+    setFilmMode(on: boolean) {
+      if (on === filming) return;
+      filming = on;
+      if (on) {
+        timeScale = 0;
+        savedGuides.marker = marker.group.visible;
+        marker.group.visible = false;
+      } else {
+        marker.group.visible = savedGuides.marker;
+        for (const actor of actors) { actor.filmScrollL = 0; actor.filmScrollR = 0; }
+      }
+      rail.updateVisibility();
+      invalidate();
+    },
+  });
+
+  function filmSettingsFor(opts: FilmSettingsInput): FilmSettings {
+    const base = sceneFilm ?? FILM_DEFAULTS;
+    return normalizeFilm({
+      fps: opts.fps ?? base.fps,
+      shutterDeg: opts.shutterDeg ?? base.shutterDeg,
+      samples: opts.samples ?? base.samples,
+      filter: opts.filter ?? base.filter,
+      speed: opts.speed ?? base.speed,
+    });
+  }
+
+  function filmBusy(): string | null {
+    if (recording) return 'Stop recording before rendering a film';
+    if (loading || mapChange || productionLoading) return 'Finish the current Studio operation first';
+    if (filmRenderer.active) return 'A film render is already active';
+    return null;
+  }
+
+  /**
+   * Open an offline film over the storyboard (or [startMs, endMs]) at an exact
+   * output size. Settings default to the scene's `film` block, then
+   * FILM_DEFAULTS. Frames render in order via renderFilmFrame(); endFilm()
+   * restores the live Studio.
+   */
+  function beginFilm(opts: FilmBeginOptions = {}): FilmSessionInfo {
+    const busy = filmBusy();
+    if (busy) throw new Error(busy);
+    const settings = filmSettingsFor(opts);
+    const [defaultW, defaultH] = productionFormat === 'portrait' ? [1080, 1920]
+      : productionFormat === 'square' ? [1080, 1080] : [1920, 1080];
+    timeScale = 0;
+    const session = filmRenderer.begin({
+      width: opts.width ?? defaultW,
+      height: opts.height ?? defaultH,
+      settings,
+      startMs: opts.startMs,
+      endMs: opts.endMs,
+    }, storyboard.durationMs);
+    perf.renderedFrames++;
+    return session;
+  }
+
+  function filmFrameDataUrl(opts: FilmRenderOptions): string {
+    return renderer.domElement.toDataURL(opts.type || 'image/png', opts.quality);
+  }
+
+  /**
+   * One film frame: the next frame of the open film (beginFilm), or without
+   * one a supersampled still of the current instant (capture() options plus
+   * `samples`, `filter`, `supersample`; `dataURL: true` returns the PNG).
+   */
+  function renderFilmFrame(opts: FilmRenderOptions & CaptureOptions = {}): (FilmFrameInfo & { dataURL?: string })
+    | { dataURL: string; width: number; height: number } {
+    if (!filmRenderer.active) {
+      return capture({ ...opts, samples: opts.samples ?? (sceneFilm ?? FILM_DEFAULTS).samples });
+    }
+    const frame = filmRenderer.renderNext();
+    perf.renderedFrames++;
+    return opts.dataURL ? { ...frame, dataURL: filmFrameDataUrl(opts) } : frame;
+  }
+
+  function endFilm(): boolean {
+    if (!filmRenderer.active) return false;
+    filmRenderer.end();
+    panel.refreshAll();
+    renderCaptureFrame(); // a complete live frame at the restored viewport
+    return true;
+  }
+
+  function captureFilmStill(width: number, height: number, opts: CaptureOptions) {
+    const busy = filmBusy();
+    if (busy) throw new Error(busy);
+    let dataURL = '';
+    try {
+      const still = filmRenderer.renderStill({
+        width, height,
+        samples: opts.samples,
+        filter: opts.filter,
+        supersample: opts.supersample,
+      });
+      dataURL = still.canvas.toDataURL(opts.type || 'image/png', opts.quality);
+    } finally {
+      renderCaptureFrame(); // restore a complete live view after the size change
+    }
+    if (opts.download) {
+      const link = document.createElement('a');
+      link.href = dataURL;
+      link.download = opts.name || `studio_${getWorld()?.mapId || 'map'}_${Date.now()}.png`;
+      link.click();
+    }
+    return { dataURL, width, height };
+  }
+
+  function getFilm(): FilmSettings | null {
+    return sceneFilm ? normalizeFilm(sceneFilm) : null;
+  }
+
+  // --- in-browser offline export (studioFilmExport.ts, lazy) ----------------------
+  let filmExport: { controller: AbortController; progress: FilmExportProgress | null } | null = null;
+
+  /**
+   * Render the storyboard as a film and encode it in the browser (WebCodecs:
+   * H.264/MP4, else VP9/WebM). Deterministic frames, nothing dropped; the
+   * playhead returns to where it was. Resolves with the file (downloaded
+   * unless `download: false`).
+   */
+  function exportFilmFile(opts: FilmExportRequest = {}): Promise<FilmExportResult> {
+    if (filmExport) return Promise.reject(new Error('A film export is already running'));
+    const busy = filmBusy();
+    if (busy) return Promise.reject(new Error(busy));
+    let settings: FilmSettings;
+    let size: { width: number; height: number };
+    try {
+      settings = filmSettingsFor(opts);
+      size = opts.width && opts.height
+        ? { width: opts.width, height: opts.height }
+        : filmOutputSize(productionFormat, opts.resolution ?? 1080);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+    const playhead = clockMs;
+    const controller = new AbortController();
+    const session = { controller, progress: null as FilmExportProgress | null };
+    filmExport = session;
+    const run = async (): Promise<FilmExportResult> => {
+      const { exportFilm } = await import('./studioFilmExport.ts');
+      return exportFilm({
+        begin: () => beginFilm({ ...settings, width: size.width, height: size.height, startMs: opts.startMs, endMs: opts.endMs }),
+        renderNext: () => {
+          const frame = filmRenderer.renderNext();
+          perf.renderedFrames++;
+          return frame;
+        },
+        end: () => { endFilm(); },
+        canvas: renderer.domElement,
+      }, {
+        width: size.width,
+        height: size.height,
+        fps: settings.fps,
+        bitrate: opts.bitrate,
+        container: opts.container,
+        signal: controller.signal,
+        onProgress(progress) { session.progress = progress; opts.onProgress?.(progress); },
+        onFrame: opts.onFrame ? (canvas) => opts.onFrame?.(canvas) : undefined,
+      });
+    };
+    return run().then((result) => {
+      if (opts.download !== false) {
+        const url = URL.createObjectURL(result.blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = opts.name ||
+          `studio_${getWorld()?.mapId || 'film'}_${size.height}p${settings.fps}.${result.container}`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+      }
+      return result;
+    }).finally(() => {
+      if (filmExport === session) filmExport = null;
+      seekTimeline(playhead);
+      panel.refreshAll();
+    });
+  }
+
+  function cancelFilmExport(): boolean {
+    if (!filmExport) return false;
+    filmExport.controller.abort();
+    return true;
+  }
+
+  function filmExportStatus() {
+    return {
+      active: !!filmExport,
+      supported: typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined',
+      progress: filmExport?.progress ?? null,
+    };
+  }
+
+  /** Author the scene's `film` block (merged onto the current one); null removes it. */
+  function setFilm(patch: FilmSettingsInput | null): FilmSettings | null {
+    if (filmRenderer.active) throw new Error('Finish the film render first');
+    sceneFilm = patch === null ? null : normalizeFilm({ ...(sceneFilm ?? FILM_DEFAULTS), ...patch });
+    return getFilm();
+  }
+
   // --- scene JSON --------------------------------------------------------------
   /** @returns {object} round-trippable scene JSON (docs/STUDIO.md schema). */
   function stateJson() {
@@ -2956,6 +3358,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       camera: getCamera(),
       fxTime: Math.round(clockMs),
       timeScale,
+      ...(sceneFilm ? { film: getFilm() } : {}),
     };
   }
 
@@ -3033,6 +3436,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   ): Promise<ReturnType<typeof stateJson>> {
     const loadedFormat = json.productionFormat ?? 'landscape';
     productionAspect(loadedFormat); // Validate before replacing any scene state.
+    const loadedFilm = json.film == null ? null : normalizeFilm(json.film);
+    if (filmRenderer.active) throw new Error('Finish the film render before loading a scene');
     if (json.timeOfDay !== undefined && !BATTLE_TIMES.includes(json.timeOfDay)) throw new RangeError('Unknown time of day');
     if (recording) throw new Error('Stop recording before loading a scene');
     if (loading) throw new Error('studio.load already in flight');
@@ -3055,6 +3460,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       replaceLoadEffects(json, fxMs);
       await yieldForFrameBudget();
       productionFormat = loadedFormat; // Camera keys already carry this framing; never reframe on load.
+      sceneFilm = loadedFilm;
       restoreLoadedPresentation(json, fxMs);
       return stateJson();
     } finally {
@@ -3065,6 +3471,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   async function setTimeOfDay(time: BattleTimeOfDay): Promise<BattleTimeOfDay> {
     if (!BATTLE_TIMES.includes(time)) throw new RangeError('Unknown time of day');
     if (recording) throw new Error('Stop recording before changing the light');
+    if (filming) throw new Error('Finish the film render first');
     if (time === timeOfDay) return time;
     await transition.run(async () => {
       await ctx.prepareStudioAtmosphere?.(time);
@@ -3324,6 +3731,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   // --- per-frame (owns the whole frame while active; called from main tick) ---
   function tick(dt: number, frameWallDtSeconds = dt): void {
+    if (filming) return; // an offline film renders its own frames
     const cameraMoved = updateCamera(dt);
     poolSweepAcc += dt;
     if (poolSweepAcc >= 0.5) {
@@ -3468,7 +3876,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     exit,
     /** Offline export: monotonic fixed steps, no wall clock or MediaRecorder frame drops. */
     advanceFrame(ms: number) {
-      if (recording || !Number.isFinite(ms) || ms < 0 || ms > 1000) throw new RangeError('Invalid export step');
+      if (recording || filming || !Number.isFinite(ms) || ms < 0 || ms > 1000) throw new RangeError('Invalid export step');
       timeScale = 0;
       advanceTimeline(ms);
       getWorld()?.setWindTime(0.35 + clockMs / 1000);
@@ -3478,8 +3886,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     },
     get timeOfDay() { return timeOfDay; },
     setTimeOfDay,
-    setMap: (id: string) => recording
-      ? Promise.reject(new Error('Stop recording before changing battlefield'))
+    setMap: (id: string) => recording || filming
+      ? Promise.reject(new Error(filming ? 'Finish the film render first' : 'Stop recording before changing battlefield'))
       : setMap(id),
     get active() { return active; },
     get mapId() { const w = getWorld(); return w ? w.mapId : null; },
@@ -3519,7 +3927,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     },
     advanceFx: (ms: number) => seekTimeline(clockMs + ms),
     setTimeScale: (v: number) => {
-      if (recording) return timeScale;
+      if (recording || filming) return timeScale;
       const next = Math.max(0, Math.min(4, v));
       if (next > 0 && clockMs >= storyboard.durationMs - 0.5) {
         seekTimeline(0, { pause: false });
@@ -3560,6 +3968,18 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     recordVideo,
     stopRecording,
     recordingStatus,
+    // offline film renderer (studioFilm.ts; docs/STUDIO.md "Film renderer")
+    beginFilm,
+    renderFilmFrame,
+    endFilm,
+    getFilm,
+    setFilm,
+    get filming() { return filmRenderer.active; },
+    get filmInfo() { return filmRenderer.info; },
+    exportFilm: exportFilmFile,
+    cancelFilmExport,
+    filmExportStatus,
+    FILM_DEFAULTS,
     // camera
     setCamera: (cfg: CameraConfig) => recording ? getCamera() : applyCamera(cfg),
     getCamera,
