@@ -3742,6 +3742,7 @@
   "systems.drone.return": "返回坦克",
   "systems.drone.help": "发射或返回。W/S：前进/后退。A/D：横移。空格：上升。瞄准控制方向，撞击敌车引爆。",
   "hud.modeStatus.juggernaut": "击毁重装巨兽 · {hp} / {max}",
+  "hud.modeStatus.juggernautBoss": "坚持生存 · {hp} / {max}",
   "hud.modeStatus.infected": "{survivors} 名幸存者 · {infected} 名感染者",
   "hud.modeStatus.realistic": "摧毁模块 · 消灭乘员",
   "hud.modeStatus.gun_game": "武器 {stage}/{total} · 击毁 {kills}/{required}",

@@ -3742,6 +3742,7 @@
   "systems.drone.return": "Return",
   "systems.drone.help": "Launch or return. W/S: forward/reverse. A/D: strafe. Space: climb. Look to steer; fly into an enemy to detonate.",
   "hud.modeStatus.juggernaut": "DESTROY THE JUGGERNAUT · {hp} / {max}",
+  "hud.modeStatus.juggernautBoss": "SURVIVE · {hp} / {max}",
   "hud.modeStatus.infected": "{survivors} SURVIVORS · {infected} INFECTED",
   "hud.modeStatus.realistic": "DESTROY MODULES · ELIMINATE CREW",
   "hud.modeStatus.gun_game": "WEAPON {stage}/{total} · {kills}/{required} KILLS",

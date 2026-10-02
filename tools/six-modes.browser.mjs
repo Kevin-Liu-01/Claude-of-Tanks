@@ -51,6 +51,7 @@ try{
     reports.push({mode,mobile,before,after});
    }else reports.push({mode,mobile,state:await page.evaluate(()=>window.__DEBUG.game.matchModeState)});
    if(mode==='gun_game')assert.equal(await page.$$eval('.cot-shell:not([hidden])',els=>els.length),1,'Gun Game exposes only the current weapon');
+   if(mode==='juggernaut')assert.match(await page.$eval('.cot-mode-status',el=>el.textContent),/SURVIVE/,'the boss receives its own survival objective');
    await page.screenshot({path:resolve(out,`${mode}-${suffix}.png`)});
    await page.evaluate(()=>document.exitPointerLock());
    await page.setViewport({...initialViewport,width:568,height:320,deviceScaleFactor:1});

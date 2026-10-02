@@ -213,7 +213,7 @@ export interface HudSpottingView {
 // tactical map 2026-09-15: the objective arrays (flags, zones, ball, goals, pickups, spawns)
 // ride along structurally from the sim's presentation state for the minimap markers.
 export interface HudMatchModeState extends ObjectiveStateView {
-  boss?: { hp: number; maxHp: number };
+  boss?: { id?: string; hp: number; maxHp: number };
   infection?: { survivors: number; infected: number };
   weaponStage?: { index: number; total: number; name: string; kills: number; required: number };
   id?: string;
@@ -3076,7 +3076,7 @@ export function initHud(bus: EventBus): HudRuntime {
     modeState: HudMatchModeState,
     ownScore: string | number,
   ): string {
-    if (modeState.id === 'juggernaut') return t('hud.modeStatus.juggernaut', { hp: Math.ceil(modeState.boss?.hp ?? 0), max: Math.ceil(modeState.boss?.maxHp ?? 0) });
+    if (modeState.id === 'juggernaut') return t(modeState.boss?.id === playerRef?.id ? 'hud.modeStatus.juggernautBoss' : 'hud.modeStatus.juggernaut', { hp: Math.ceil(modeState.boss?.hp ?? 0), max: Math.ceil(modeState.boss?.maxHp ?? 0) });
     if (modeState.id === 'infected') return t('hud.modeStatus.infected', { survivors: modeState.infection?.survivors ?? 0, infected: modeState.infection?.infected ?? 0 });
     if (modeState.id === 'realistic' || modeState.id === 'ac130') return t(`hud.modeStatus.${modeState.id}`);
     if (modeState.id === 'drone') return t('hud.modeStatus.drone', { own: ownScore, target: modeState.target ?? 20 });
