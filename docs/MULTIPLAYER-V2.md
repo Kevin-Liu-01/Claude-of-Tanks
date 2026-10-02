@@ -5,8 +5,8 @@ never close, first-time entry that does not fail, no lag, the cleanest code, bui
 
 This document is the program's charter: what the current design cannot do, the target
 architecture, the numbers it is sized to, the phases with their acceptance gates, and the
-decisions that are the owner's. `docs/MULTIPLAYER-ARCHITECTURE.md` describes the v1 stack that
-this program replaces; it stays accurate for v1 until each of its sections is retired here.
+decisions that are the owner's. The v1 stack this program replaced left the tree with the cutover
+of 2026-09-29 (§13.10); its architecture document survives only in Git history.
 
 ## 1. Requirements
 
@@ -20,7 +20,7 @@ this program replaces; it stays accurate for v1 until each of its sections is re
 
 ## 2. Why v1 cannot get there (first-principles reading)
 
-The v1 stack (`docs/MULTIPLAYER-ARCHITECTURE.md`) runs the match authority in one player's
+The v1 stack (retired at the cutover, §13.10) runs the match authority in one player's
 browser and fans out over WebRTC data channels; a Cloudflare Durable Object relays signaling;
 TURN credentials come from `/api/ice`. It was built for 2v2 to 7v7 between friends and is
 verified to 14 players. Its limits follow from where the authority lives, not from bugs:
@@ -1410,8 +1410,8 @@ the v1 tools and their receipts, the dedicated/container match pieces).
   `lobby-prefetch-before-ready`, `multiplayer-loading-build-probe`, `multiplayer-render-perf`, the CDP observers only
   they consumed, the dual-screen marketing capture) and their receipts, the `test:net:*` scripts other than `v2`,
   `server:signal`, `server:match`, `selfhost:config`, `multiplayer:config`, `net:prod:check`, the
-  `quality:coverage:prediction` script; `docs/MULTIPLAYER-ARCHITECTURE.md` and `docs/MULTIPLAYER-HOSTING.md` are
-  two-line pointers here.
+  `quality:coverage:prediction` script; the two v1 documents (`MULTIPLAYER-ARCHITECTURE.md`, `MULTIPLAYER-HOSTING.md`)
+  became two-line pointers here and were deleted on 2026-10-01.
 - *Vocabulary*: the room failure codes are the room's (`src/mp/session/roomFailure.ts`: `expired`, `kicked`,
   `resume_denied`, `room_closed`, `room_full`, `invalid_room_code`, `access_denied`, `room_service_unavailable`,
   `connection_failed`); the i18n keys of the v1-only failures (host left, host runtime failed, the WebRTC timeouts) left
@@ -1427,7 +1427,7 @@ the v1 tools and their receipts, the dedicated/container match pieces).
   class, v2 deleted the container class); the `@cloudflare/containers` dependency stays in `package.json` until the
   integrator can run `npm uninstall @cloudflare/containers` in `cloudflare/rooms` (this lane installs nothing).
 
-**Hosting after the cutover (what `docs/MULTIPLAYER-HOSTING.md` said that is still true).**
+**Hosting after the cutover (what the v1 hosting runbook said that is still true).**
 
 - Internet rooms: the rooms Worker (`cloudflare/rooms`, Free plan; `cloudflare/rooms/README.md` deploys it), named by
   `VITE_ROOMS_URL` on the site build or, on the official site, by `src/officialHost.ts`. The room host is resolved by
