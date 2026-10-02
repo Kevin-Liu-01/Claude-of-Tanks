@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
+import { isLayoutBriefMap } from './maps/layoutBriefMaps.ts';
 import { createHeightField, createLayout } from './terrain.ts';
 import { roadNetworkComponentCount } from './maps/roadEndpoints.ts';
 import { authoredRoadStationCount, authoredRoadStationIndex } from './maps/roadStations.ts';
@@ -154,7 +155,10 @@ for (const mapId of MAP_IDS) {
   assert.equal(config.shot.pos.length, 3, `${mapId}: establishing camera position`);
   assert.equal(config.shot.look.length, 3, `${mapId}: establishing camera target`);
   const beats = config.props.tacticalBeats || [];
-  assert.equal(beats.length, mapId === 'moon' ? 0 : mapId === 'cliffbridge' ? 2 : 3, `${mapId}: three deliberate lane strongpoints`);
+  // Layout-brief maps (2026-10-01, docs/MAP-LAYOUT-BRIEF.md) author their strongpoints in symmetric pairs, with
+  // optional posts on the symmetry line: at least three, every role present.
+  if (isLayoutBriefMap(mapId)) assert.ok(beats.length >= 3, `${mapId}: at least three deliberate lane strongpoints`);
+  else assert.equal(beats.length, mapId === 'moon' ? 0 : mapId === 'cliffbridge' ? 2 : 3, `${mapId}: three deliberate lane strongpoints`);
   assert.deepEqual([...new Set(beats.map((beat) => beat.role))].sort(),
     mapId === 'moon' ? [] : mapId === 'cliffbridge' ? ['brawl','support'] : ['brawl', 'scout', 'support'], `${mapId}: distinct vehicle-role decisions`);
   assert.equal(new Set(beats.map((beat) => beat.id)).size, beats.length,
@@ -267,7 +271,10 @@ for (const mapId of [...EXPANSION, ...EXTREME]) {
     `${mapId}: connected road network spans both deployment regions`);
 
   const beats = config.props.tacticalBeats || [];
-  assert.equal(beats.length, mapId === 'moon' ? 0 : mapId === 'cliffbridge' ? 2 : 3, `${mapId}: three deliberate lane strongpoints`);
+  // Layout-brief maps (2026-10-01, docs/MAP-LAYOUT-BRIEF.md) author their strongpoints in symmetric pairs, with
+  // optional posts on the symmetry line: at least three, every role present.
+  if (isLayoutBriefMap(mapId)) assert.ok(beats.length >= 3, `${mapId}: at least three deliberate lane strongpoints`);
+  else assert.equal(beats.length, mapId === 'moon' ? 0 : mapId === 'cliffbridge' ? 2 : 3, `${mapId}: three deliberate lane strongpoints`);
   assert.deepEqual([...new Set(beats.map((beat) => beat.role))].sort(),
     mapId === 'moon' ? [] : mapId === 'cliffbridge' ? ['brawl','support'] : ['brawl', 'scout', 'support'], `${mapId}: distinct vehicle-role decisions`);
   assert.equal(new Set(beats.map((beat) => beat.id)).size, beats.length,

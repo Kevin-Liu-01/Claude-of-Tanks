@@ -275,8 +275,6 @@ for (const edge of [18, 64]) {
 }
 const constraintSource = terrainSource.slice(terrainSource.indexOf('  function applyHeightConstraints('),
   terrainSource.indexOf('  function heightAt(', terrainSource.indexOf('  function applyHeightConstraints(')));
-const roadBankPolicy = terrainSource.match(/const roadBankWidth = [^;]+;/)?.[0];
-assert.ok(roadBankPolicy, 'production road-bank width policy is present');
 const constraintFactory = new Function('fixture', `
   const { cfg = { id: 'alpine' }, GN, gRoadDist, gRoadElev, sampleHeightGridCell, composeLakeHeight,
     _LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons, lakeHeightResult,
@@ -285,7 +283,6 @@ const constraintFactory = new Function('fixture', `
     bridgeDecks = [], bridgeTermsAt = () => ({ span: 0, approach: 0, deckY: 0 }),
     // 0e5fc79e2: a dry viaduct (T.bridges, Aegis Crossing) cuts shoulder noise flush with its deck; none authored here
     T = {}, bridgeDeckOver = () => null } = fixture;
-  ${roadBankPolicy}
   ${stripTypeScriptTypes(constraintSource)}
   return applyHeightConstraints;
 `);

@@ -22,10 +22,9 @@ const rimStatements = heightNode.body.statements.filter(node => ts.isExpressionS
 assert.equal(rimStatements.length, 1, 'identify the actual heightAt rim operation');
 const rim = rimStatements[0], heightSource = heightNode.getText();
 const constraints = declaration(source, 'applyHeightConstraints').getText();
-// Keep the extracted function's construction-time closure in sync with terrain.
-// These fixtures exercise ordinary banks; Desert's wider bank has its own map gate.
-const roadBankPolicy = source.match(/const roadBankWidth = [^;]+;/)?.[0];
-assert.ok(roadBankPolicy, 'production road-bank width policy is present');
+// Keep the extracted function's construction-time closure in sync with terrain. Every map grades the same 14 m
+// road bank (2026-10-01: Sirocco Wadi's 104 m earthworks left with its old roads, docs/MAP-LAYOUT-BRIEF.md).
+assert.equal(source.includes('roadBankWidth'), false, 'no map-specific road-bank width remains');
 const helperSource = ['sampleRoadSupportDistance', 'roadCorridorDistanceWeight', 'roadRimWeight',
   'roadShoulderWeight', 'applyRoadShoulderDetail'].map(name => declaration(source, name).getText()).join('\n');
 const ownership = source.match(/let boundedRoadCorridor = [\s\S]*?;/)?.[0];
@@ -66,7 +65,6 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
     // 2026-09-17 field trenches: the projected height function also reads the standard-map field plan (null here)
     const fieldTrenchPlan = fixture.fieldTrenchPlan ?? (() => null);
     const assaultTrenchCarveDepth = fixture.assaultTrenchCarveDepth ?? (() => 0);
-    ${roadBankPolicy}
     ${stripTypeScriptTypes(helpers)}
     ${stripTypeScriptTypes(constraintBody)}
     ${stripTypeScriptTypes(body)}

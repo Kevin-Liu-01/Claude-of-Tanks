@@ -214,11 +214,14 @@ for (const id of [
 const used = new Set();
 for (const mapId of MAP_IDS) {
   const props = getMapConfig(mapId).props;
+  // 2026-10-01: an authored orbital settlement (Olympus Basin, Earthrise Basin) places kit families by id like the
+  // destructible loop does; Earthrise Basin's outpost is built from eight of them and has no plan or loop of its own.
   const mapTypes = [
     ...props.plan.filter((id) => STRUCTURE_BUILDERS[id]),
     ...(props.destructibleBuildings || []),
+    ...(props.orbitalSettlement || []).map((site) => site.structure),
   ];
-  assert.ok(mapTypes.length >= 4, `${mapId}: at least four new structure beats`);
+  assert.ok(new Set(mapTypes).size >= 4, `${mapId}: at least four new structure beats`);
   assert.equal(new Set(props.destructibleBuildings || []).size,
     (props.destructibleBuildings || []).length, `${mapId}: no repeated light-building family`);
   for (const id of mapTypes) {

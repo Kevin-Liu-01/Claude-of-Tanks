@@ -1,7 +1,28 @@
-// src/world/maps/urban.ts — Himmelsdorf/Ensk vibes: a DENSE town core on
-// flattened ground — a tight street grid walled with rowhouses, a central
-// plaza, ruined shells and rubble at the intersections, park hills outside
-// the blocks.
+// src/world/maps/urban.ts — Steinburg, redesigned 2026-10-01 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
+// The palette, sky, vegetation, building tones, name and id are the map's identity and stay; the battlefield under
+// them is new. The old layout was a 4 × 4 street lattice drawn edge to edge across a flat field, every building inside
+// one square, under Verdant's landform skeleton (two flank ridges, a north ridge, a south-east knoll, a south-west
+// basin) and Verdant's three beat sites. Zone control placed its centre zone 31 m from the bravo pad.
+//
+// Reference: the walled hill towns of Franconia and Saxony (Kronach, Meissen, Pappenheim). An old town stands on the
+// back of a ridge spur between two valleys, its main street along the crest and a market square where the old trade
+// road crosses it. A castle crowns the rock where the spur ends. Back lanes run parallel to the main street, and the
+// town wall survives in stretches. Brickworks and a goods station sit down in the valleys beside the valley roads,
+// and a modern bypass runs through the gap beyond the castle rock.
+//
+// The story on the ground: the Steinberg spur runs from the west edge to the castle rock east of centre, above the two
+// valleys, broad and gentle on its back. The old town covers the spur's back between the west gate and the castle.
+// The Hauptstrasse runs along the crest and the trade road across it at the market square; a wall lane runs inside
+// the old town wall north and south of the Hauptstrasse, each meeting the trade road on its way round. Off the town's
+// east end the Hauptstrasse drops in a long slant past the castle rock's south foot, crosses the bypass in the gap
+// beyond the rock and runs on to the east. Each valley has its own road and suburb: brickworks in the south, a goods
+// station in the north. A farm road crosses the spur's open west end through the orchards, a garage yard stands on
+// the spur's flank above each valley road, and a farmstead on each lower slope of the castle rock.
+//
+// The layout is mirror-symmetric across the spur's crest. Alpha comes up from the south valley, bravo from the north.
+// The town, the castle rock and the three zone-control objectives stand on the spur (the market square, the west farm
+// crossing, the bypass gap) and are equally far from both teams. Three lanes cross the midfield: the open west ridge,
+// the town's streets, and the east gap under the castle rock; the garage yards and the farmsteads mark them off.
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
@@ -36,39 +57,88 @@ for (let i = 0; i < 108; i++) {
 export default {
   id: 'urban',
   name: 'Steinburg',
-  blurb: 'Dense town grid — paved streets, rowhouse blocks, rubble cover',
+  blurb: 'A walled hill town on a ridge spur between two valleys, crowned by a castle rock',
 
   terrain: {
     hillScale: 0.55,
-    microScale: 0.45,
+    microScale: 0.7,
     rimH: 25,
     marshes: [],
-    // Tight core: blocks of ~65 m so the grid actually reads as a town, not
-    // farmhouses scattered over 350 m of open grass.
-    // r6: relief 0.30 (new knob, terrain.js) — keep ~30% of the smooth
-    // terrain drift inside the town rect so the grid rolls over 1-3 m of
-    // elevation instead of sitting on a perfectly flat pancake
-    village: { x0: -168, x1: 168, z0: -152, z1: 176, cx: 36, cz: -16, feather: 55, flatten: 0.92, relief: 0.30 },
+    // The old town on the spur's back, west gate to castle rock. The spur keeps 60 % of its height inside the town
+    // (settlementScale 0.6), so the streets climb its crown gently instead of sitting on a pancake.
+    village: { x0: -232, x1: 72, z0: -102, z1: 102, cx: -50, cz: 0, feather: 42, flatten: 0.86, relief: 0.15 },
     landforms: [
-      { kind: 'ridge', x: -274, z: -18, length: 330, width: 72, height: 5.8, yawDeg: 4, settlementScale: 0.82 },
-      { kind: 'ridge', x: 276, z: 18, length: 326, width: 72, height: 5.6, yawDeg: -4, settlementScale: 0.82 },
-      { kind: 'ridge', x: -12, z: 274, length: 240, width: 64, height: 5.0, yawDeg: 88, settlementScale: 0.84 },
-      { kind: 'knoll', x: 208, z: -232, rx: 82, rz: 64, height: 4.8, yawDeg: 18 },
-      { kind: 'basin', x: -214, z: -226, rx: 92, rz: 68, height: -2.2, yawDeg: -16 },
+      // The Steinberg spur: one long ridge from past the west edge to the castle rock, its crest a few metres north
+      // of the square's centreline; the east end tapers into the rock.
+      { kind: 'ridge', x: -210, z: 22, length: 700, width: 236, height: 11, yawDeg: -2.6, settlementScale: 0.6, corridorScale: 0.85 },
+      // The Burgberg: the castle rock where the spur ends.
+      { kind: 'knoll', x: 152, z: 6, r: 62, height: 19, settlementScale: 1 },
+      // The two valleys, each a long shallow trough under its road.
+      { kind: 'basin', x: -60, z: -236, rx: 330, rz: 104, height: -3.2, yawDeg: -3 },
+      { kind: 'basin', x: -60, z: 248, rx: 330, rz: 104, height: -3.2, yawDeg: 3 },
+      // Valley-floor hillocks (field hedges and spoil), each with its mirror across the crest.
+      { kind: 'knoll', x: 176, z: -300, rx: 58, rz: 44, height: 4.2, yawDeg: 20 },
+      { kind: 'knoll', x: 176, z: 312, rx: 58, rz: 44, height: 4.2, yawDeg: -20 },
+      { kind: 'knoll', x: -390, z: -320, rx: 64, rz: 46, height: 4.6, yawDeg: -14 },
+      { kind: 'knoll', x: -390, z: 332, rx: 64, rz: 46, height: 4.6, yawDeg: 14 },
     ],
-    roads: { grid: { xs: [-112, -40, 36, 112], zs: [-96, -16, 60, 136], jitter: 0.8 } },
+    // Authored paths stop inside the square; the endpoint completion adds each exit and grades it through the rim.
+    roads: { paths: [
+      // 0 — the Hauptstrasse: in through the west gate along the crest, through the market square, then down off the
+      // town's east end in a long slant past the castle rock's south foot, across the bypass and out to the east.
+      // Road 0 carries the utility-pole line (mapQuality); a node every 24-25 m, since Steinburg's road stations are
+      // physical (maps/roadStations.ts) and the poles stand at the road's vertices. Inside the old town the
+      // Hauptstrasse and the trade road run on the bot planner's 25 m lattice lines (z = 0, x = -50), so the
+      // street-front rows leave a chain of open cells down each and the square at their crossing is reachable.
+      [[-448, 39], [-423, 35], [-398, 31], [-373, 27], [-349, 24], [-324, 19], [-299, 14], [-275, 9], [-250, 4],
+        [-225, 0], [-200, 0], [-175, 0], [-150, 0], [-125, 0], [-100, 0], [-75, 0], [-50, 0], [-25, 0], [0, 0],
+        [25, 0], [50, 0], [73, -5], [88, -23], [99, -43], [114, -62], [131, -77], [153, -85], [176, -90],
+        [199, -93], [223, -94], [246, -95], [270, -96], [294, -98], [318, -100], [342, -102], [366, -104],
+        [390, -106], [414, -108], [438, -110], [448, -111]],
+      // 1 — the old trade road: up out of the south valley, across the market square, down into the north valley.
+      [[-30, -448], [-32, -420], [-40, -330], [-46, -240], [-50, -150], [-50, -100], [-50, -75], [-50, -50], [-50, 0],
+        [-50, 50], [-50, 75], [-50, 100], [-54, 170], [-62, 250], [-78, 340], [-88, 420], [-92, 448]],
+      // 2 — the bypass: edge to edge through the gap between the castle rock and the east edge.
+      [[304, -448], [306, -400], [300, -290], [284, -180], [270, -96], [262, 0], [270, 96], [284, 180],
+        [300, 290], [306, 400], [304, 448]],
+      // 3 / 4 — the valley roads, west edge to the bypass, each through its suburb.
+      [[-448, -232], [-400, -230], [-300, -226], [-200, -232], [-120, -238], [-46, -240], [40, -232],
+        [120, -214], [200, -190], [284, -180]],
+      [[-448, 240], [-400, 238], [-300, 234], [-200, 238], [-120, 244], [-62, 250], [40, 242], [120, 224],
+        [200, 200], [284, 180]],
+      // 5 — the farm road over the spur's open west end, valley road to valley road through the orchards.
+      [[-300, -226], [-318, -130], [-330, 24], [-318, 130], [-300, 234]],
+      // 6–9 — the old town's wall lanes, north and south of the Hauptstrasse along the old town wall (lattice lines),
+      // each in two legs that meet on the trade road, so every leg grades into the two streets it joins.
+      // (chamfered corners: a rowhouse strip along one leg must not reach into the next)
+      [[-200, 0], [-200, 50], [-175, 75], [-125, 75], [-50, 75]],
+      [[-50, 75], [25, 75], [50, 50], [50, 0]],
+      [[-200, 0], [-200, -50], [-175, -75], [-125, -75], [-50, -75]],
+      [[-50, -75], [25, -75], [50, -50], [50, 0]],
+    ] },
+    // The market square and the farm crossing: level paved aprons the zone-control placement seats its 30 m discs on
+    // (the square also keeps the rowhouse strips and the monument back from the crossing). The bypass zone seats on
+    // the road's natural floor in the gap: an apron there would ramp the bypass past a road grade.
+    hardstands: [
+      { x: -50, z: 0, width: 64, length: 64, yawDeg: 0, grade: 0 },
+      { x: -330, z: 24, width: 60, length: 60, yawDeg: 0, grade: 0 },
+    ],
   },
 
+  // docs/MAP-LAYOUT-BRIEF.md exceptions (tools/map-layout-metrics.mjs reports the reason instead of a miss).
+  layoutBrief: { exceptions: {
+    solidPropsInRoad: 'one street-front row building at the south wall lane\'s eastern chamfer stands 0.35 m into the '
+      + 'carriageway: street rows keep clear of other roads but not of the other legs of their own road; the shared '
+      + 'law is fixed fleet-wide in roll-out batch 1',
+  } },
+
   spawns: {
-    player: { x: 0, z: -330 },
-    // BATTLE-AI r7 TEAM SPAWNS: one enemy spawn arc north of the town (the
-    // old list scattered to ±330 x with two points at z<=30 — practically
-    // beside the player's own half). Flat-scanned via
-    // tools/tmp-ai-r7-spawnscan.mjs — minNy>=0.86, relief<=5 m, outside the
-    // town rect by 40 m, >=38 m apart, >=380 m from the player pad.
+    // Alpha deploys in the south valley west of the trade road; bravo's seven pads are its mirror in the north valley.
+    // The spur and the old town screen each anchor from the other; 803 m apart.
+    player: { x: -36, z: -404 },
     enemies: [
-      { x: 37, z: 300 }, { x: -18, z: 310 }, { x: 92, z: 310 }, { x: -73, z: 326 },
-      { x: 139, z: 318 }, { x: -118, z: 354 }, { x: 192, z: 346 },
+      { x: -36, z: 404 }, { x: -88, z: 392 }, { x: 16, z: 392 }, { x: -136, z: 372 },
+      { x: 64, z: 372 }, { x: -62, z: 432 }, { x: -10, z: 432 },
     ],
   },
 
@@ -121,13 +191,35 @@ export default {
       'guardpost', 'checkpointhut', 'fieldhospital', 'transformershed', 'motorpool',
       'securityoffice', 'servicegarage', 'relaystation', 'corneroffice',
     ],
+    // Mirror pairs across the spur's crest, and posts on the crest itself (equally far from both teams): a garage
+    // yard in each valley suburb, the castle forecourt and the bypass gap.
     tacticalBeats: [
-      { id: 'western-ringroad-gate', role: 'brawl', x: -250, z: -60, yawDeg: 2,
-        structure: 'guardpost', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: -14 },
-      { id: 'eastern-overwatch-post', role: 'scout', x: 245, z: -70, yawDeg: -2,
-        structure: 'checkpointhut', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },
-      { id: 'northern-relief-yard', role: 'support', x: 8, z: 252, yawDeg: 0,
-        structure: 'fieldhospital', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -14 },
+      { id: 'south-garage-yard', role: 'brawl', x: -246, z: -124, yawDeg: 0,
+        structure: 'servicegarage', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: -14 },
+      { id: 'north-garage-yard', role: 'brawl', x: -216, z: 114, yawDeg: 180,
+        structure: 'servicegarage', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: 14 },
+      { id: 'castle-forecourt', role: 'support', x: 112, z: 46, yawDeg: 270,
+        structure: 'fieldhospital', redoubt: true, outcrop: { count: 5, radius: 9 } },
+      { id: 'bypass-gap-post', role: 'scout', x: 320, z: 40, yawDeg: 270,
+        structure: 'motorpool', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },
+    ],
+    // The valley suburbs and the castle: authored lots outside the old town (the street rows own the town).
+    plannedSites: [
+      { structure: 'factory', x: 70, z: -258, yawDeg: 10 },
+      { structure: 'rowhouse', x: -86, z: -264, yawDeg: 0 },
+      { structure: 'rowhouse', x: -12, z: -264, yawDeg: 0 },
+      { structure: 'cottage', x: -128, z: -212, yawDeg: 180 },
+      { structure: 'depot', x: 50, z: 280, yawDeg: 190 },
+      { structure: 'rowhouse', x: -94, z: 272, yawDeg: 180 },
+      { structure: 'rowhouse', x: -20, z: 270, yawDeg: 180 },
+      { structure: 'cottage', x: -136, z: 222, yawDeg: 0 },
+      { structure: 'tower', x: 156, z: 12, yawDeg: 0 },
+      // the farmsteads on the castle rock's lower slopes, one in each valley
+      { structure: 'barn', x: 128, z: -126, yawDeg: 10 },
+      { structure: 'farmhouse', x: 152, z: -136, yawDeg: 10 },
+      { structure: 'barn', x: 160, z: 114, yawDeg: 170 },
+      { structure: 'farmhouse', x: 152, z: 136, yawDeg: 170 },
+      { structure: 'ruin', x: 140, z: -4, yawDeg: 30 },
     ],
     // street frontage is built by CONTIGUOUS rowhouse strips (shared walls,
     // varied heights, collapsed slots spilling rubble) + kerbed pavements
@@ -168,33 +260,28 @@ export default {
     sideSkip: 0.04,
     spacingPad: 2,
     maxSpread: 2.4,
+    // The surviving stretches of the town wall (gaps at the gates), courtyard walls behind the street rows, and
+    // field walls in the valleys, every outside run with its mirror across the crest.
     wallRuns: [
-      [-150, -60, -96, -60, 2], [64, -130, 64, -76, 1], [96, 88, 152, 88, 3],
-      [-120, 152, -60, 152, 2], [-14, 22, 24, 22, 4], [140, -44, 140, 2, 1],
-      [-76, -122, -20, -122, 2], [86, 154, 86, 108, 0],
-      // r6: field-boundary walls in the open approaches (the establishing
-      // camera at z~-240 saw nothing but empty lawn between it and the town)
-      [-96, -206, -38, -206, 2], [8, -188, 66, -188, 3],
-      [-46, -236, -46, -178, 1], [104, -172, 152, -172, 2],
-      [-160, -180, -112, -180, 3],
-      // r6: courtyard/garden wall rectangles inside the blocks — the map spec
-      // calls for yards behind the street rows, not bare block interiors
-      [-88, 8, -60, 8, 2], [-88, 8, -88, 38, 1], [-60, 8, -60, 38, 2],
-      [58, -66, 92, -66, 1], [58, -66, 58, -40, 3], [92, -66, 92, -40, 1],
-      [-16, 84, 16, 84, 2], [-16, 84, -16, 116, 1], [16, 84, 16, 116, 3],
-      [64, 96, 96, 96, 1], [96, 96, 96, 126, 2],
+      [-226, -96, -78, -96, 2], [-46, -96, 66, -96, 3], [-226, 96, -78, 96, 1], [-46, 96, 66, 96, 2],
+      [-226, -96, -226, 2, 1], [-226, 40, -226, 96, 2], [66, -96, 66, -10, 1], [66, 32, 66, 96, 3],
+      [-150, -18, -110, -18, 2], [-150, 36, -110, 36, 1], [-20, -16, 20, -16, 3], [-20, 34, 20, 34, 0],
+      [-250, -150, -190, -150, 2], [-250, 170, -190, 170, 2], [40, -150, 100, -150, 3], [40, 170, 100, 170, 3],
+      [-420, -180, -360, -180, 1], [-420, 200, -360, 200, 1], [150, -250, 210, -250, 2], [150, 270, 210, 270, 2],
     ],
     // r6: fences on — split-rail runs break up the open outskirt fields
     well: true, hayCrates: false, fences: true, telegraph: true, carts: true, logs: false,
     // r1: fewer bare boulders (they read as blobs on lawn), more rubble piles
     // r7 terrain_environment: craters 88 -> 102, rubble 132 -> 152 — the
     // fought-over brief needs debris fields reading along the main streets
-    haystacks: 0, rocks: 70, outcrops: 6, craters: 102, rubblePiles: 152,
+    // 2026-10-01: rubble 152 -> 64 — the street rubble (placeStreetRubble lays piles 4.5-16 m off a road) clogged the
+    // old town's through-streets for hulls and the bot planner; the ruined rows still spill their own rubble
+    haystacks: 0, rocks: 70, outcrops: 6, craters: 102, rubblePiles: 64,
     // r6 terrain_environment: street furniture + battle debris — lampposts
     // march the paved grid, anti-tank hedgehogs hold intersections/approaches
     // and two more road wrecks ("urban streets missing furniture, wrecks and
     // debris variety" critique)
-    lampposts: true, hedgehogs: 16,
+    lampposts: true, hedgehogs: 8, // 2026-10-01: 16 -> 8, roadblocks at the gates rather than every crossing
     // DESTRUCTIBLES r1: modern hulks in the streets (baked roster tanks) —
     // the shelled-town read finally includes the armor that died taking it
     tankWrecks: {
@@ -217,6 +304,7 @@ export default {
       modernClutter: { barrier: 8, roadsign: 7, cone: 10, transformer: 5, cablespool: 5 },
     },
   },
+
 
   horizon: {
     // r7: treeline 0.5 -> 0.92 — kills the bald-ramp band above the forest
@@ -254,5 +342,6 @@ export default {
   // r9: camera pulled ~30 m closer and 8 m higher — from z=-238 nearly half
   // the establishing frame was the empty grass approach field; the town brief
   // is "street grid, rowhouses, rubble", so the grid should fill the frame
-  shot: { pos: [-48, 34, -208], look: [46, 2, 20] },
+  // from the south valley up the trade road to the market square, the castle rock on the right
+  shot: { pos: [-110, 40, -236], look: [-30, 8, 20] },
 } satisfies import('./contracts.ts').MapCompositionConfig;
