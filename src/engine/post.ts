@@ -169,6 +169,8 @@ export interface PostRuntime {
   setQuality(level: 'high' | 'low'): void;
   resetPerfTrims(): void;
   setAdaptiveSuspended(suspended: boolean): void;
+  /** 2026-10-01: the battlefield's ground height (world x, z → y) — the base of the aerial haze layer. */
+  setGroundHeightSource(source: ((x: number, z: number) => number) | null): void;
   resetAdaptiveResolution(): void;
   forcePerfTrim(level: number): void;
   /** Round 69: the desktop light effects (postLightFxPolicy.ts) — resolved flags and the two quarter-res passes. */
@@ -462,6 +464,13 @@ const AERIAL_HEIGHT_REF = 30; // m above camera where the falloff starts
 const AERIAL_HEIGHT_SCALE = 150; // e-fold height of the scatter falloff (m)
 const AERIAL_HEIGHT_SCATTER_K = 0.75; // share of scatter-in that obeys altitude
 const AERIAL_HEIGHT_EXT_K = 0.35; // share of extinction that obeys altitude
+// 2026-10-01 (the grounded light model; the visual census: "haze flattens every overview — bird-view saturation 0.17
+// against 0.50 at chase height"): the battlefield haze is a layer over the ground, so a camera high above it looks
+// down through less of it than a camera on the ground sees along the same distance. The path-averaged density of an
+// exponential layer (scale height AERIAL_LAYER_H over the ground under the camera, uHazeDatum) between the camera's
+// height and the pixel's, over the same path from the ground — the camera's altitude alone, since the pixel's height
+// is AERIAL_HEIGHT_*'s: 1 for every camera on the ground (the chase, the sights), 0.63 for the census bird at 300 m.
+const AERIAL_LAYER_H = 300;
 // r4 LP2 FAR-FIELD HUE CLAMP ("sniper_view top half: horizon forest renders
 // as solid two-tone teal blobs under a saturated jade-green fog — sampled RGB
 // [55,90,73] G-dominant where atmospheric haze must be blue-grey, B>=G").
@@ -928,6 +937,8 @@ const AerialShader = {
     uCamFwd: { value: new THREE.Vector3(0, 0, -1) },
     uTan: { value: new THREE.Vector2(1, 1) },
     uCamPos: { value: new THREE.Vector3() },
+    // 2026-10-01: world y of the haze layer's base (the ground under the camera; setGroundHeightSource)
+    uHazeDatum: { value: 0 },
     uDetailW: { value: 0 }, // sniper far-field detail weight (0 in arcade)
     uCloudShade: { value: CLOUD_SHADE_DEFAULT }, // per-map cloud-shadow depth
     // aa-r1: composer-buffer texel size for the firefly clamp's diagonal
@@ -972,6 +983,7 @@ const AerialShader = {
     uniform vec3 uCamFwd;
     uniform vec2 uTan;
     uniform vec3 uCamPos;
+    uniform float uHazeDatum;
     uniform float uDetailW;
     uniform float uCloudShade;
     uniform vec2 uInvSize;
@@ -1086,7 +1098,19 @@ const AerialShader = {
         float wy = uCamPos.y + ray.y * rayT;
         float hAtt = exp( -max( wy - uCamPos.y - ${AERIAL_HEIGHT_REF.toFixed(1)}, 0.0 )
           / ${AERIAL_HEIGHT_SCALE.toFixed(1)} );
-        float x = -viewZ * uDensity;
+        // the haze layer seen from the camera's altitude (AERIAL_LAYER_H note): the path-averaged density between the
+        // camera's height and the pixel's over the same path from the ground
+        float hzY0 = max( uCamPos.y - uHazeDatum, 0.0 );
+        float hzY1 = max( wy - uHazeDatum, 0.0 );
+        float hzLayer = 1.0;
+        if ( hzY0 > 1.0 ) {
+          float hzH = ${AERIAL_LAYER_H.toFixed(1)};
+          float hzFromCam = abs( hzY0 - hzY1 ) < 1.0 ? exp( -0.5 * ( hzY0 + hzY1 ) / hzH )
+            : hzH * ( exp( -hzY1 / hzH ) - exp( -hzY0 / hzH ) ) / ( hzY0 - hzY1 );
+          float hzFromGround = hzY1 < 1.0 ? exp( -0.5 * hzY1 / hzH ) : hzH * ( 1.0 - exp( -hzY1 / hzH ) ) / hzY1;
+          hzLayer = clamp( hzFromCam / max( hzFromGround, 1e-3 ), 0.0, 1.0 );
+        }
+        float x = -viewZ * uDensity * hzLayer;
         float f = 1.0 - exp( -x * x );
         f *= mix( 1.0, hAtt, ${AERIAL_HEIGHT_EXT_K.toFixed(2)} );
         // round 39 (owner 2026-09-22, "it still seems too disappear-y"): extinction used to reach 0.88 at 1 km and
@@ -1127,7 +1151,7 @@ const AerialShader = {
         // the backdrop atmospheric without re-tealing the canopy.
         float dHaze = max( uHazeDensity,
           uHazeFull * 0.50 * smoothstep( 430.0, 780.0, rayT ) );
-        float x2 = hzD * dHaze;
+        float x2 = hzD * dHaze * hzLayer;
         float f2 = 1.0 - exp( -x2 * x2 );
         f2 *= 0.25 + 0.75 * smoothstep( 0.0, 0.05, lum );
         f2 *= mix( 1.0, hAtt, ${AERIAL_HEIGHT_SCATTER_K.toFixed(2)} );
@@ -1152,7 +1176,7 @@ const AerialShader = {
           float gDom = smoothstep( 0.0, 0.032, texel.g - texel.b );
           float hl = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
           vec3 grey = hl * vec3( ${AERIAL_HUE_GREY[0].toFixed(3)}, ${AERIAL_HUE_GREY[1].toFixed(3)}, ${AERIAL_HUE_GREY[2].toFixed(3)} );
-          texel.rgb = mix( texel.rgb, grey, hueW * gDom );
+          texel.rgb = mix( texel.rgb, grey, hueW * gDom * hzLayer );
         }
         // Same arcade/scope amplitude, distances and chroma policy; sample
         // true world volume so every slope retains two surface dimensions.
@@ -2510,12 +2534,16 @@ export function createPost(
     }
   }
 
+  let groundHeightAt: ((x: number, z: number) => number) | null = null;
   function updateAerialCameraBasis(): void {
     const elements = camera.matrixWorld.elements;
     aerial.uniforms.uCamRight.value.set(elements[0], elements[1], elements[2]);
     aerial.uniforms.uCamUp.value.set(elements[4], elements[5], elements[6]);
     aerial.uniforms.uCamFwd.value.set(-elements[8], -elements[9], -elements[10]);
     aerial.uniforms.uCamPos.value.set(elements[12], elements[13], elements[14]);
+    // 2026-10-01: the haze layer's base under the camera (the battlefield's ground; 0 before a world supplies it)
+    const ground = groundHeightAt ? groundHeightAt(elements[12], elements[14]) : 0;
+    aerial.uniforms.uHazeDatum.value = Number.isFinite(ground) ? ground : 0;
     const halfFovTangent = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
     aerial.uniforms.uTan.value.set(halfFovTangent * camera.aspect, halfFovTangent);
     const sunDirection = scene.userData.sunDirWorld;
@@ -2745,6 +2773,10 @@ export function createPost(
      * @param {boolean} suspended
      * @returns {void}
      */
+    setGroundHeightSource(source) {
+      groundHeightAt = source;
+    },
+
     setAdaptiveSuspended(suspended) {
       const next = !!suspended;
       if (next === adaptiveSuspended) return;

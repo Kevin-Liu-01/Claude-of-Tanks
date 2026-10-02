@@ -161,6 +161,19 @@ const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
 assert.match(post, /outputColor\.rgb \*= uExposure \* uWhiteBalance;[\s\S]{0,200}mix\( vec3\( sceneLuma \), outputColor\.rgb, uSatLinear \)[\s\S]{0,80}outputColor\.rgb = 0\.18 \* pow\( max\( outputColor\.rgb, vec3\( 1e-6 \) \) \* \( 1\.0 \/ 0\.18 \), vec3\( uContrast \) \);\s*#ifdef LINEAR_TONE_MAPPING/,
   'exposure, white balance, the scene-referred saturation and contrast are linear, before the tone curve');
 assert.doesNotMatch(post, /GRADE_PIVOT|GRADE_BLACK_LIFT|GRADE_SHADOW_TINT|GRADE_GREEN_DESAT|GRADE_KNEE/, 'the ACES-era grade stack is retired');
+// the aerial haze is a layer over the ground: a high camera looks down through less of it (the census bird view)
+assert.match(post, /float x = -viewZ \* uDensity \* hzLayer;/, 'the extinction curve takes the layer factor');
+assert.match(post, /float x2 = hzD \* dHaze \* hzLayer;/, 'and the scatter-in curve');
+assert.match(post, /aerial\.uniforms\.uHazeDatum\.value = Number\.isFinite\(ground\) \? ground : 0;/, 'the datum is the ground under the camera');
+{
+  const H = 300;
+  const fromCam = (y0, y1) => Math.abs(y0 - y1) < 1 ? Math.exp(-0.5 * (y0 + y1) / H) : H * (Math.exp(-y1 / H) - Math.exp(-y0 / H)) / (y0 - y1);
+  const fromGround = (y1) => y1 < 1 ? Math.exp(-0.5 * y1 / H) : H * (1 - Math.exp(-y1 / H)) / y1;
+  const layer = (y0, y1) => (y0 > 1 ? Math.min(1, fromCam(y0, y1) / fromGround(y1)) : 1);
+  assert.equal(layer(0.5, 0), 1, 'a camera on the ground sees the full haze');
+  near(layer(4, 0), 1, 0.01, 'the chase camera (4 m) is unchanged');
+  near(layer(300, 0), 0.632, 0.002, 'the census bird (300 m over the ground) looks through 63 % of it');
+}
 const renderer = readFileSync(new URL('./renderer.ts', import.meta.url), 'utf8');
 assert.match(renderer, /renderer\.toneMapping = THREE\.AgXToneMapping;/, 'AgX');
 assert.match(renderer, /renderer\.toneMappingExposure = 1\.0;/, 'the exposure is the light model\'s');
@@ -169,6 +182,7 @@ assert.match(sky, /resolveLightModel\(preset, params, \{ irradianceRaw: [^}]*\},
 assert.match(lighting, /const authoredSun = authoredSunOf\(opts\);/);
 assert.match(main, /setSun: \(skyConfig\) => lighting\.setSun\(sky\.sunDir, withWorldCloudscape\(skyConfig\)\),/, 'the world activation sets the light with the deck');
 assert.match(main, /getBattleSkyConfig: \(\) => withWorldCloudscape\(currentWorld\(\)\?\.config\.sky \?\? null\),/, 'and so does the Garage trim\'s restore');
+assert.match(main, /post\.setGroundHeightSource\(\(x, z\) => hfProxy\.getHeightAt\(x, z\)\);/, 'the battlefield ground feeds the haze layer');
 assert.match(main, /getLightReadability: \(\) => \(scene\.userData\.lightModel as \{ vehicleReadability\?: number \} \| undefined\)\?\.vehicleReadability \?\? 1,/,
   'the battle atmosphere reads the light\'s readability share');
 
