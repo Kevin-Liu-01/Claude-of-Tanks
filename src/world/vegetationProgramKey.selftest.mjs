@@ -198,11 +198,13 @@ function checkRound77Mechanisms(parameters) {
 // canopy albedo lifts ±4 % around the still crown, on the near cards and the impostors; the phones' foliage fragment
 // keeps no such term (their varying links away).
 // p2 trees lane (2026-10-02): the grown crowns' edge-on fade — the desktop cards carry COT_CARD_EDGE_FADE, their
-// coverage falls with the card's derivative face against the view after the mip give-back and before the alpha test
+// coverage falls with the card's derivative face against a view looking up, after the mip give-back and before the
+// alpha test
 function checkEdgeFade(material, parameters) {
   assert.ok('COT_CARD_EDGE_FADE' in (material.defines ?? {}), 'the desktop grown cards fade edge-on');
   const fragment = parameters.fragmentShader;
   assert.match(fragment, /#ifdef COT_CARD_EDGE_FADE\s*\{\s*vec3 cotFace = normalize\( cross\( dFdx\( vViewPosition \), dFdy\( vViewPosition \) \) \);/);
+  assert.match(fragment, /float cotUp = smoothstep\( 0\.35, 0\.75, dot\( cotRay, cotUpV \) \);/, 'only a view looking up into the crown fades its edge-on cards');
   const fade = fragment.indexOf('#ifdef COT_CARD_EDGE_FADE');
   assert.ok(fragment.indexOf('aaMip') < fade && fade < fragment.indexOf('#include <alphatest_fragment>'), 'after the mip give-back, before the alpha test');
 }

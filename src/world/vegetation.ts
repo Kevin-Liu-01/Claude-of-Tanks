@@ -4182,16 +4182,21 @@ function* vegetationBuildSteps(
     // (the canopyWindHook dissolve above keeps the <alphatest_fragment>
     // anchor, so this composes as: mip boost -> alpha test -> dissolve).
     mipAlphaGuard(shader);
-    // p2 trees lane (2026-10-02): a grown crown's cards fade as they turn edge-on to the view (COT_CARD_EDGE_FADE, the
-    // desktop grown builds). A spray seen along its own plane squeezes its leaves into a sliver that the mip give-back
-    // above closes into a solid dark blade — the look up from under a broadleaf. Its coverage falls with the card's
-    // facing (its geometric face, from the view position's derivatives: a bent card fades row by row) before the
-    // alpha test, which alpha-to-coverage feathers. The phones and `?legacyTrees=1` keep their cards as they were.
+    // p2 trees lane (2026-10-02): a grown crown's cards fade as they turn edge-on to a view looking up into the crown
+    // (COT_CARD_EDGE_FADE, the desktop grown builds). From under a broadleaf a spray seen along its own plane squeezes
+    // its leaves into a sliver that the mip give-back above closes into a solid dark blade. Its coverage falls with
+    // the card's facing (its geometric face, from the view position's derivatives: a bent card fades row by row),
+    // before the alpha test, which alpha-to-coverage feathers. Only as the view climbs past 20° to 49° above level:
+    // seen from the side, a conifer's level sprays edge-on are the dark tiers that draw its layers, and they stay.
+    // The phones and `?legacyTrees=1` keep their cards as they were.
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
       #ifdef COT_CARD_EDGE_FADE
       {
         vec3 cotFace = normalize( cross( dFdx( vViewPosition ), dFdy( vViewPosition ) ) );
-        diffuseColor.a *= smoothstep( 0.05, 0.28, abs( dot( cotFace, normalize( vViewPosition ) ) ) );
+        vec3 cotUpV = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );
+        vec3 cotRay = normalize( - vViewPosition );
+        float cotUp = smoothstep( 0.35, 0.75, dot( cotRay, cotUpV ) );
+        diffuseColor.a *= mix( 1.0, smoothstep( 0.05, 0.28, abs( dot( cotFace, cotRay ) ) ), cotUp );
       }
       #endif
       #include <alphatest_fragment>`);
