@@ -19,9 +19,10 @@ if (typeof global.gc !== 'function') {
 // without constructing a renderer or exposing production test APIs. Three's
 // real meshes, lights and attributes exercise the same proxy build, per-cascade
 // compaction, upload marking and draw hooks the shadow pass uses.
-const source = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
+// 2026-10-02: the block moved from lighting.ts into its own module (loaded outside the boot entry) unchanged.
+const source = readFileSync(new URL('./shadowCasterProxies.ts', import.meta.url), 'utf8');
 const start = source.indexOf('const SHADOW_CULL_MIN_TRIS =');
-const end = source.indexOf('// --- r6 SHADOW-CASTER RESCUE', start);
+const end = source.indexOf('// --- end of the r8 caster-proxy block', start);
 assert.ok(start >= 0 && end > start, 'the complete production caster-proxy block must be present');
 const actual = stripTypeScriptTypes(source.slice(start, end), { mode: 'strip' });
 const shadows = new Function('THREE', 'markShadowOnly', `${actual}\nreturn {
@@ -241,6 +242,18 @@ function buildDiscardedWorld(sharedGeometry) {
   assert.equal(library.get('cached-pole'), shared, 'the shared geometry itself stays strongly alive');
   shadows.update(lights, world, true);
   assert.ok(shadows.owners.every((ref) => ref.deref() !== undefined), 'the per-frame pass prunes dead owners');
+}
+
+// lighting.ts loads the block outside the boot entry and registers the rig's cascades before any hook can meet an
+// owner (an unregistered cascade count builds no proxies and remembers the owner as unproxied)
+{
+  const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(lighting, /^import \{[^}]*\} from '\.\/shadowCasterProxies\.ts';/m, 'no static import pulls the proxies into the entry');
+  assert.match(lighting, /module\.registerCasterCascades\(lights\);[^\n]*\n\s*casterProxies = module;/, 'registration precedes publication');
+  assert.match(lighting, /loadCasterProxies\(csm\.lights\);/);
+  assert.match(lighting, /casterProxies\?\.casterProxyBeforeShadow\(object, shadowCamera\);/);
+  assert.match(lighting, /casterProxies\?\.casterProxyAfterShadow\(object\);/);
+  assert.doesNotMatch(lighting, /const SHADOW_CULL_MIN_TRIS/, 'one copy of the block');
 }
 
 console.log(`shadowGeometryClaims.selftest: caster proxies — gate, per-cascade compaction in owner order, upload ranges, draw hooks (owner/proxy/noCull), rewrites, detached worlds, geometry swap and GC PASS`);

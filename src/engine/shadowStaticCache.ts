@@ -191,7 +191,7 @@ interface ShadowStaticCacheTelemetry {
   targetBytes: number;
 }
 
-interface ShadowStaticCache {
+export interface ShadowStaticCache {
   /** lighting.update(): hash the static content and arm this frame's cascades. */
   beginFrame(input: { scene: THREE.Scene; lights: readonly THREE.DirectionalLight[]; forced: boolean; enabled: boolean }): void;
   /** The shadow router: render one cascade through the cache; false = render it the ordinary way. */

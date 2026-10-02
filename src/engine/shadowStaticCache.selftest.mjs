@@ -287,10 +287,16 @@ const copies = (log) => log.filter((e) => e.kind === 'copy').map((e) => `${e.fro
 // lighting.ts arms the cache last in its update, after the caster masks it hashes, and disarms on a dormant frame
 {
   const lighting = await readFile(new URL('./lighting.ts', import.meta.url), 'utf8');
-  assert.match(lighting, /evaluateCasterProfiles\(false\);\s*\/\/ last:[^\n]*\n\s*staticShadowCache\?\.beginFrame\(/,
+  assert.match(lighting, /evaluateCasterProfiles\(false\);\s*if \(!staticShadowCacheRequested && scene\.children\.some\(isFrozenWorldRoot\)\) requestStaticShadowCache\(\);\s*\/\/ last:[^\n]*\n\s*staticShadowCache\?\.beginFrame\(/,
     'the cache hashes the static content after this frame\'s caster profiles');
   assert.match(lighting, /consumeDormantOrPrimedFrame\(force\)\) \{ staticShadowCache\?\.disarm\(\); return; \}/);
-  assert.match(lighting, /mobileTier \? null : createShadowStaticCache\(\)/, 'phones keep the plain render');
+  // the module loads with the first battle world, outside the boot entry (tools/bundle-budget.mjs); phones never ask
+  assert.match(lighting, /let staticShadowCacheRequested = mobileTier;/, 'phones keep the plain render');
+  assert.match(lighting, /import\('\.\/shadowStaticCache\.ts'\)\.then\(\(module\) => \{\s*staticShadowCache = module\.createShadowStaticCache\(\);\s*setShadowCascadeCache\(staticShadowCache\);/);
+  assert.doesNotMatch(lighting, /^import \{[^}]*\} from '\.\/shadowStaticCache\.ts';/m, 'no static import pulls the cache into the entry');
+  assert.match(lighting, /const isFrozenWorldRoot = \(object: THREE\.Object3D\): boolean => object\.userData\.matrixTraversalFrozen === true;/,
+    'the trigger is the same frozen world root the cache partitions on');
+  assert.equal(isStaticShadowRoot({ userData: { matrixTraversalFrozen: true } }), true);
   assert.match(lighting, /function forceAllCascades\(\): void \{[\s\S]{0,80}staticShadowCache\?\.invalidate\('force'\)/);
   assert.match(lighting, /invalidateShadowMaps\(\): void \{[\s\S]{0,140}staticShadowCache\?\.dispose\(\)/);
 }

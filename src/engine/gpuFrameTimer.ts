@@ -26,7 +26,7 @@ interface TimerGl {
 
 interface TimerExtension { readonly TIME_ELAPSED_EXT: number; readonly GPU_DISJOINT_EXT: number }
 
-interface GpuFrameTimer {
+export interface GpuFrameTimer {
   /** Before the frame's GPU work: begins a query on sampled frames. */
   beginFrame(): void;
   /** After the frame's GPU work. */

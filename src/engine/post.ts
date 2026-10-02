@@ -96,7 +96,7 @@ import {
 import { createPostFrameAccounting, type CompletedPostFrame } from './postFrameAccounting.ts';
 import { LEGACY_EXPOSURE, lightTune, type LightModel } from './lightModel.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
-import { createGpuFrameTimer } from './gpuFrameTimer.ts';
+import type { GpuFrameTimer } from './gpuFrameTimer.ts';
 
 interface ReconstructionTelemetry {
   mode: ReconstructionMode;
@@ -2161,7 +2161,7 @@ export function createPost(
     // the governor's GPU sample closes with the frame's last pass (dynGovern opens it)
     const renderUpscaler = upscaler.render.bind(upscaler);
     upscaler.render = (...args: Parameters<FsrUpscalePass['render']>) => {
-      try { renderUpscaler(...args); } finally { gpuFrameTimer.endFrame(); }
+      try { renderUpscaler(...args); } finally { gpuFrameTimer?.endFrame(); }
     };
   }
 
@@ -2261,8 +2261,11 @@ export function createPost(
     baseDynamicScale(renderer.getPixelRatio(), preset),
   );
   // 2026-10-02 (the frame-budget lane): the frame's GPU time, sampled every fourth frame, lets the policy predict an
-  // up-step's cost and tell a GPU overload from a main-thread one (gpuFrameTimer.ts, adaptiveQualityPolicy.ts).
-  const gpuFrameTimer = createGpuFrameTimer(renderer.getContext() as WebGL2RenderingContext);
+  // up-step's cost and tell a GPU overload from a main-thread one (gpuFrameTimer.ts, adaptiveQualityPolicy.ts). The
+  // timer loads at the governor's first decision over a battle world (map.ts freezes its root), outside the boot
+  // graph; until it arrives, or without the timer extension, the policy decides on the frame cadence alone.
+  let gpuFrameTimer: GpuFrameTimer | null = null;
+  let gpuFrameTimerRequested = false;
   let dynEma = 0; // ms (r5 kept seconds; ms reads directly against budgets)
   let dynClock = 0;
   let telemetryClock = 0;
@@ -2382,8 +2385,10 @@ export function createPost(
     // The frame's sampled GPU time opens here, at the top of the frame transaction, and closes after the final pass
     // (the upscaler's render, wrapped below). Only a live governor reads the samples: a pinned or suspended one leaves
     // the timer target to the probes' own queries (they cannot nest).
-    gpuFrameTimer.paused = adaptiveSuspended || dynPin !== null;
-    gpuFrameTimer.beginFrame();
+    if (gpuFrameTimer) {
+      gpuFrameTimer.paused = adaptiveSuspended || dynPin !== null;
+      gpuFrameTimer.beginFrame();
+    }
     if (adaptiveSuspended) return;
     if (!(dt > 0)) return; // adaptiveFrameSeconds excludes warm/hitch samples
     // rAF-starvation fallback frames (main.ts ticks hidden documents at
@@ -2407,7 +2412,7 @@ export function createPost(
       renderer.domElement.dataset.frameEmaMs = dynEma.toFixed(2);
       renderer.domElement.dataset.dynScale = qualityPolicy.dynamicScale.toFixed(3);
       renderer.domElement.dataset.dynBudgetMs = dynBudgetMs.toFixed(2);
-      const gpuMs = gpuFrameTimer.lastMs;
+      const gpuMs = gpuFrameTimer?.lastMs ?? null;
       if (gpuMs !== null) renderer.domElement.dataset.gpuFrameMs = gpuMs.toFixed(2);
     }
     if (dynPin !== null) return; // QA pin owns the scale; telemetry stays live
@@ -2434,6 +2439,12 @@ export function createPost(
     dynWinFrames = 0;
     dynWinMisses = 0;
     dynLastDecision = dynClock;
+    if (!gpuFrameTimerRequested && scene.children.some((o) => o.userData.matrixTraversalFrozen === true)) {
+      gpuFrameTimerRequested = true;
+      import('./gpuFrameTimer.ts').then((module) => {
+        gpuFrameTimer = module.createGpuFrameTimer(renderer.getContext() as WebGL2RenderingContext);
+      }, () => { /* the cadence rules alone */ });
+    }
     const action = qualityPolicy.evaluate({
       clockSeconds: dynClock,
       frameEmaMs: dynEma,
@@ -2443,7 +2454,7 @@ export function createPost(
       dynamicScaleFloor: dynamicScaleFloor(renderer.getPixelRatio(), preset),
       maximumTrim: trimMax(),
       mayRaiseTier: canRecoverAutoTier(),
-      gpuFrameMs: gpuFrameTimer.takeWindow(),
+      gpuFrameMs: gpuFrameTimer?.takeWindow() ?? null,
     });
     renderer.domElement.dataset.fps = windowFps.toFixed(1);
     renderer.domElement.dataset.fpsBaseline = qualityPolicy.learnedBaselineFps.toFixed(1);
@@ -2455,7 +2466,7 @@ export function createPost(
   }
   function resetGovernorState() {
     dynPin = null;
-    gpuFrameTimer.reset();
+    gpuFrameTimer?.reset();
     qualityPolicy.reset(baseDynamicScale(renderer.getPixelRatio(), preset), dynClock);
     dynEma = 0;
     dynRingN = 0;
@@ -2764,7 +2775,7 @@ export function createPost(
     get dynScale() { return qualityPolicy.dynamicScale; },
 
     /** The governor's sampled GPU frame time (ms; null before a sample or without the timer extension). */
-    get gpuFrameMs() { return gpuFrameTimer.lastMs; },
+    get gpuFrameMs() { return gpuFrameTimer?.lastMs ?? null; },
 
     /**
      * QA hook (engine-aa r1): pin the governor at a fixed scale so dpr-2
