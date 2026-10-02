@@ -1,4 +1,4 @@
-import { beginAuxiliaryStation } from './auxiliaryStation.ts';
+import { beginAuxiliaryStation, captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // src/vehicles/profiles/challenger.ts — the Challenger family profile module
 // (§5.75 owner consistency order, 2026-08-08: one family per module; PURE
@@ -4702,6 +4702,10 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
   // crown now peaks at 0.68 m and every C3H-relative fitting follows that
   // real roof instead of the deleted superstructure datum.
   const C3W = 1.41, C3H = 0.68;
+  // Capture the authored Protector body around the existing M2 rig. Roof
+  // foundations and independent sights remain fixed; rails follow elevation.
+  const rwsStock = (stage: 'yaw' | 'pitch' = 'yaw'): (() => void) =>
+    captureAuxiliaryStock(P, 'fitting_browningDerived_m2', stage);
   // Leclerc-method shell: the oracle's largest connected turret component
   // has two distinct height courses.  Its broad flank shoulders live at
   // world 2.11..2.22 while only the inset center roof reaches 2.30..2.40.
@@ -4856,19 +4860,27 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       0.72, 0.59, -0.22);
     P.add('turret', box(0.64, 0.12, 0.58), 0.72, C3H, -0.22);                   // roof shoe: foundation overlaps its underside
     P.add('turret', cylY(0.18, 0.24, 0.14, 8), 0.72, C3H + 0.06, -0.18);         // octagonal pedestal
+    const finishRwsBody = rwsStock();
     P.add('turretDetail', frustum(0.27, 0.28, -0.28, 0.20, 0.22, -0.22, 0, 0.26),
       0.72, C3H + 0.12, -0.22);                                                  // low faceted open-mount body
     for (const sx of [-1, 1]) P.add('turretDetail', box(0.075, 0.34, 0.10), 0.72 + sx * 0.22, C3H + 0.33, -0.22);
     P.add('turretDetail', box(0.50, 0.055, 0.10), 0.72, C3H + 0.49, -0.22);      // visible but structurally continuous cradle
+    finishRwsBody();
+    const finishRwsSpine = rwsStock('pitch');
     P.addEquipment('turret', box(0.28, 0.18, 0.50), 0.745, C3H + 0.43, 0.18);            // receiver spine: mount body -> recoil rails
+    finishRwsSpine();
+    const finishRwsInnerSensor = rwsStock();
     P.add('turretDark', cylY(0.105, 0.12, 0.18, 8), 0.43, C3H + 0.40, -0.22);   // faceted sensor head
     P.add('turretGlass', box(0.14, 0.08, 0.02), 0.43, C3H + 0.40, -0.11);
+    finishRwsInnerSensor();
     // Forward open cradle follows the source RWS component's measured
     // z=.67..2.70 world run.  Twin rails + a faceted terminal optic give the
     // right silhouette mass without substituting the print's Boxer cannon
     // for the required M2.
+    const finishRwsRails = rwsStock('pitch');
     for (const x of [0.61, 0.88]) P.add('turretDetail', box(0.045, 0.045, 1.08), x, C3H + 0.52, 0.40);
     P.add('turretDetail', box(0.31, 0.045, 0.045), 0.745, C3H + 0.52, 0.93);
+    finishRwsRails();
     // The forward optic is turret-face equipment, not a pod hanging from the
     // elevated gun rails.  Seat its tapered body and neck directly into the
     // descending brow at z .82..1.05; the old C3H-relative placement was the
@@ -4877,9 +4889,11 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       0.75, 0.075, 0.93);
     P.add('turretDetail', box(0.22, 0.20, 0.14), 0.75, 0.18, 0.82);
     P.add('turretGlass', box(0.18, 0.09, 0.016), 0.75, 0.245, 1.05);
+    const finishRwsOuterSensor = rwsStock();
     P.add('turretDark', frustum(0.14, 0.13, -0.13, 0.11, 0.09, -0.09, 0, 0.23),
       1.01, C3H + 0.34, -0.15);                                                  // measured outer RWS sensor at x .87..1.15
     P.add('turretDetail', box(0.14, 0.20, 0.12), 0.94, C3H + 0.24, -0.17);      // sensor bracket overlaps mount body and pod
+    finishRwsOuterSensor();
     // Independent rear-left panoramic sight.  The source connected-component
     // seat is x -.59..-.14 / world z -1.21..-.86: the old front-center tower
     // was both misplaced and an unbroken rectangular proxy.
@@ -4919,12 +4933,16 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     // 2.575..2.607 (its boxy RCWS base runs rearward; ours ended z_w 0.555
     // and those columns fell to the 2.38 roof). Top 2.60w; front columns
     // unchanged (the 2.85 mount body owns x -0.13..-0.47 tops).
+    const finishRwsRearBody = rwsStock();
     P.add('turretDetail', frustum(0.22, 0.16, -0.16, 0.18, 0.13, -0.13, 0, 0.30),
       0.72, C3H + 0.03, -0.42);                                                  // faceted ammunition/junction tier
+    finishRwsRearBody();
     P.add('turret', box(0.40, 0.25, 0.28), 0.72, 0.755, -0.42);                 // buried roof-to-tier service trunk
+    const finishRwsRearCover = rwsStock();
     P.add('turretDark', box(0.34, 0.025, 0.23), 0.72, C3H + 0.335, -0.42);       // lid seam
     P.add('turretDetail', frustum(0.22, 0.04, -0.04, 0.105, 0.03, -0.03, 0, 0.26),
       0.70, 1.17, -0.48);                                                        // source RWS rear face begins world z .67
+    finishRwsRearCover();
     {
       const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', remoteControlled: true, tone: 'two-tone', seed: 31, elev: 0.05, ammo: true });
       mg.position.set(0.72, C3H + 0.22, -0.10);

@@ -13,6 +13,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/earthriseCrossing.selftest.mjs',
     'src/sim/auxiliarySystems.selftest.mjs',
     'src/vehicles/remoteGunFleet.selftest.mjs',
+    'src/vehicles/profiles/challenger3MachineGunAssembly.selftest.mjs',
     'src/vehicles/profiles/amx30B2Roof.selftest.mjs',
     'src/vehicles/fleetRenewal.selftest.mjs',
     'src/vehicles/nationalModernization.selftest.mjs',
