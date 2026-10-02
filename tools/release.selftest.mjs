@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { cacheControlIsLong, chunkPaths, createRunner, deployMetadata, displayCommand, githubSlug, parseReleaseArgs,
-  parseVersionStamp, previousProductionDeployment, RELEASE_DEFAULTS, stampNames, stripRedactedPublicEnv, verify,
-  VERCEL_CLI_MAJOR, workerDeployArgs } from './release.mjs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { ASSET_CARRY_DEFAULTS, cacheControlIsLong, carryForwardReleaseAssets, chunkPaths, createRunner, defaultAssetCacheDir,
+  deployMetadata, displayCommand, githubSlug, parseReleaseArgs, parseVersionStamp, previousProductionDeployment, RELEASE_DEFAULTS,
+  stampNames, stripRedactedPublicEnv, verify, VERCEL_CLI_MAJOR, workerDeployArgs } from './release.mjs';
 import { REPO_ROOT } from './selftest-cache.mjs';
 
 // Infra P14/P17, hygiene H2d (2026-10-01): tools/release.mjs is the versioned production release.
@@ -25,8 +25,95 @@ import { REPO_ROOT } from './selftest-cache.mjs';
   assert.equal(parseReleaseArgs(['rollback', '--to=claude-of-tanks-abc123-kl01s-projects.vercel.app']).to, 'claude-of-tanks-abc123-kl01s-projects.vercel.app');
   assert.equal(parseReleaseArgs(['workers', 'HEAD', '--only=rooms']).only, 'rooms');
   for (const bad of [[], ['publish'], ['deploy'], ['build', 'HEAD', '--prod'], ['rollback', 'HEAD'], ['verify', 'HEAD', '--keep'],
-    ['build', 'HEAD', '--site=https://cot.kevinliu.studio/path'], ['workers', 'HEAD', '--only=../x'], ['build', 'a b'], ['deploy', 'HEAD', '--to=x']]) {
+    ['build', 'HEAD', '--site=https://cot.kevinliu.studio/path'], ['workers', 'HEAD', '--only=../x'], ['build', 'a b'], ['deploy', 'HEAD', '--to=x'],
+    ['build', 'HEAD', '--carry=x'], ['build', 'HEAD', '--carry=51'], ['build', 'HEAD', '--carry-max-mb=0'], ['deploy', 'HEAD', '--carry=2'],
+    ['build', 'HEAD', '--asset-cache=']]) {
     assert.throws(() => parseReleaseArgs(bad, {}), Error, `${bad.join(' ')} is rejected`);
+  }
+  // the asset carry-forward: three releases and 200 MB by default, a cache outside any checkout
+  assert.deepEqual([build.carryReleases, build.carryMaxBytes], [3, 200 * 1024 * 1024]);
+  assert.deepEqual(ASSET_CARRY_DEFAULTS, { releases: 3, maxBytes: 200 * 1024 * 1024 });
+  assert.equal(build.assetCache, join(homedir(), '.cache', 'cot-release'), 'the default cache lives in the user cache directory');
+  assert.equal(defaultAssetCacheDir({ COT_RELEASE_ASSET_CACHE: '/srv/cot-cache' }), '/srv/cot-cache', 'the environment names another cache');
+  assert.equal(defaultAssetCacheDir({}, '/home/release'), '/home/release/.cache/cot-release');
+  const carry = parseReleaseArgs(['build', 'HEAD', '--carry=5', '--carry-max-mb=64', '--asset-cache=cache-dir'], {});
+  assert.deepEqual([carry.carryReleases, carry.carryMaxBytes, carry.assetCache], [5, 64 * 1024 * 1024, join(process.cwd(), 'cache-dir')]);
+  assert.equal(parseReleaseArgs(['build', 'HEAD', '--carry=0'], {}).carryReleases, 0, '--carry=0 turns the carry-forward off');
+}
+
+// the asset carry-forward on temporary directories: old tabs keep the chunks their page named
+{
+  const scratch = mkdtempSync(join(tmpdir(), 'cot-release-carry-'));
+  try {
+    const cacheDir = join(scratch, 'cache');
+    const sha = (letter) => letter.repeat(40);
+    const files = (staticDir) => readdirSync(join(staticDir, 'assets'), { recursive: true })
+      .filter((name) => !name.endsWith('/') && /\.[a-z0-9]+$/.test(name)).map(String).sort();
+    let serial = 0;
+    /** A fresh build output: `{ name: contents }` under static/assets. */
+    const output = (assets) => {
+      const staticDir = join(scratch, `build-${++serial}`, 'static');
+      for (const [name, text] of Object.entries(assets)) {
+        mkdirSync(dirname(join(staticDir, 'assets', name)), { recursive: true });
+        writeFileSync(join(staticDir, 'assets', name), text);
+      }
+      return staticDir;
+    };
+    const carry = (staticDir, commit, extra = {}) => carryForwardReleaseAssets({ staticDir, cacheDir, commit,
+      now: () => `2026-10-02T00:00:0${serial}Z`, ...extra });
+
+    // release a: nothing cached yet; only hashed names are recorded
+    const a = output({ 'main-aaaaaaa1.js': 'a-main', 'shared-ssssssss.js': 'shared', 'fonts/inter-aaaaaaa2.woff2': 'a-font', 'notes.txt': 'unhashed' });
+    assert.deepEqual(carry(a, sha('a')), { own: 3, carried: 0, carriedBytes: 0, overBudget: 0, missing: 0, pruned: 0, fromReleases: [], cachedReleases: 1 });
+    // release b: carries a's files it lacks (nested paths too), never a file it emits itself
+    const b = output({ 'main-bbbbbbb1.js': 'b-main', 'shared-ssssssss.js': 'shared' });
+    const rb = carry(b, sha('b'));
+    assert.deepEqual([rb.own, rb.carried, rb.fromReleases], [2, 2, [sha('a')]]);
+    assert.deepEqual(files(b), ['fonts/inter-aaaaaaa2.woff2', 'main-aaaaaaa1.js', 'main-bbbbbbb1.js', 'shared-ssssssss.js']);
+    assert.equal(readFileSync(join(b, 'assets', 'main-aaaaaaa1.js'), 'utf8'), 'a-main', 'a carried file keeps its bytes');
+    const index = JSON.parse(readFileSync(join(cacheDir, 'releases.json'), 'utf8'));
+    assert.deepEqual(index.releases.map((release) => [release.commit, release.files.map((file) => file.path)]),
+      [[sha('a'), ['fonts/inter-aaaaaaa2.woff2', 'main-aaaaaaa1.js', 'shared-ssssssss.js']], [sha('b'), ['main-bbbbbbb1.js', 'shared-ssssssss.js']]],
+      'a release records only its own files, so a carried file ages out with the release that emitted it');
+    // releases c, d, e: the last three are carried (newest first); the cache keeps the newest four and prunes the rest
+    carry(output({ 'main-ccccccc1.js': 'c-main' }), sha('c'));
+    carry(output({ 'main-ddddddd1.js': 'd-main' }), sha('d'));
+    const e = output({ 'main-eeeeeee1.js': 'e-main' });
+    const re = carry(e, sha('e'));
+    assert.deepEqual(re.fromReleases, [sha('d'), sha('c'), sha('b')], 'the last three releases, newest first');
+    assert.deepEqual(files(e), ['main-bbbbbbb1.js', 'main-ccccccc1.js', 'main-ddddddd1.js', 'main-eeeeeee1.js', 'shared-ssssssss.js']);
+    assert.equal(re.pruned, 2, 'release a\'s own main chunk and font leave the cache once four newer releases exist');
+    assert.deepEqual(readdirSync(join(cacheDir, 'assets'), { recursive: true }).map(String).filter((name) => name.endsWith('.js')).sort(),
+      ['main-bbbbbbb1.js', 'main-ccccccc1.js', 'main-ddddddd1.js', 'main-eeeeeee1.js', 'shared-ssssssss.js']);
+    // the byte cap drops the oldest releases first
+    const f = output({ 'main-fffffff1.js': 'f-main' });
+    const rf = carry(f, sha('f'), { maxBytes: 12 });
+    assert.deepEqual([rf.carried, rf.carriedBytes, rf.overBudget], [2, 12, 1], 'e and d (6 bytes each) fit, c does not; b (the shared chunk) is four releases back');
+    assert.deepEqual(files(f), ['main-ddddddd1.js', 'main-eeeeeee1.js', 'main-fffffff1.js']);
+    // a rebuild of the same commit replaces its entry; --carry=0 copies nothing yet still records the build
+    const f2 = output({ 'main-fffffff1.js': 'f-main' });
+    const rf2 = carry(f2, sha('f'), { releases: 0 });
+    assert.deepEqual([rf2.carried, rf2.fromReleases, rf2.cachedReleases], [0, [], 1]);
+    assert.deepEqual(JSON.parse(readFileSync(join(cacheDir, 'releases.json'), 'utf8')).releases.map((release) => release.commit), [sha('f')]);
+    // a missing cache file or an unsafe recorded path is skipped, never fatal and never written outside the output
+    carry(output({ 'main-ggggggg1.js': 'g-main' }), sha('1'));
+    const tampered = JSON.parse(readFileSync(join(cacheDir, 'releases.json'), 'utf8'));
+    tampered.releases.at(-1).files.push({ path: '../escape-hhhhhhh1.js', bytes: 1 }, { path: 'gone-iiiiiii1.js', bytes: 1 });
+    writeFileSync(join(cacheDir, 'releases.json'), JSON.stringify(tampered));
+    const h = output({ 'main-hhhhhhh1.js': 'h-main' });
+    const rh = carry(h, sha('2'));
+    assert.deepEqual([rh.carried, rh.missing], [2, 1], 'f and g carried; the vanished file is counted, the escaping path ignored');
+    assert.equal(existsSync(join(h, 'escape-hhhhhhh1.js')), false);
+    // another build holding the cache stops this one; a foreign index is refused
+    mkdirSync(join(cacheDir, '.lock'));
+    assert.throws(() => carry(output({ 'main-jjjjjjj1.js': 'j' }), sha('d')), /another release build holds/);
+    rmSync(join(cacheDir, '.lock'), { recursive: true });
+    writeFileSync(join(cacheDir, 'releases.json'), JSON.stringify({ version: 99, releases: [] }));
+    assert.throws(() => carry(output({ 'main-kkkkkkk1.js': 'k' }), sha('e')), /not a version-1 release cache index/);
+    assert.equal(existsSync(join(cacheDir, '.lock')), false, 'a failed carry releases its lock');
+    assert.throws(() => carryForwardReleaseAssets({ staticDir: join(scratch, 'none'), cacheDir, commit: sha('a') }), /emitted no hashed assets/);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
   }
 }
 
@@ -150,6 +237,13 @@ import { REPO_ROOT } from './selftest-cache.mjs';
   }
   assert.ok(build.stdout.indexOf('finally: delete') > build.stdout.indexOf('vercel-output-immutable.mjs --check'), 'the environment files go last');
   assert.equal(existsSync(join(tmpdir(), `cot-release-${head.slice(0, 12)}`)), false, 'a dry run creates no worktree');
+  const at = (text) => build.stdout.indexOf(text);
+  assert.match(build.stdout, /carry-forward: copy the hashed \/assets files of the last 3 releases cached in \S+ that this build lacks into \S+\/\.vercel\/output\/static\/assets \(newest first, at most 200 MB\)/);
+  assert.ok(at('remove ') < at('vercel-must-not-run build --prod') && at('git checkout -- package-lock.json') < at('carry-forward:')
+    && at('carry-forward:') < at('$ node tools/vercel-output-immutable.mjs'), 'a fresh output, then the carry-forward between the build and the immutable routes');
+  const noCarry = run('build', 'HEAD', '--carry=0');
+  assert.equal(noCarry.status, 0, noCarry.stderr);
+  assert.match(noCarry.stdout, /carry-forward: off \(--carry=0\)/);
   const deploy = run('deploy', 'HEAD', '--title=deploy 164: gate');
   assert.equal(deploy.status, 0, deploy.stderr);
   assert.match(deploy.stdout, new RegExp(`vercel-must-not-run deploy --prebuilt --prod --yes --scope kl01s-projects -m githubDeployment=1 -m githubCommitRef=main -m githubCommitSha=${head}`));

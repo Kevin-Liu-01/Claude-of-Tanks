@@ -9,6 +9,8 @@ import { applyNativeFamilyOrder, NATIVE_FAMILY_ORDER } from './fleetOrder.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
 import { tankTier } from './tier.ts';
 import { vehicleEraForId } from './taxonomy.ts';
+import { VEHICLE_ROLE_PROFILES } from './roleProfiles.ts';
+import { tacticalRoleHandling } from './tacticalRoleBalance.ts';
 
 const expectedIds = ['merkava4_trophy', 'merkava4_barak', 'namer_ifv'];
 assert.deepEqual(MERKAVA_MODERN_IDS, expectedIds);
@@ -73,9 +75,13 @@ assert.equal(tankTier('namer_ifv'), 9);
 assert.equal(namer.role, 'ifv');
 assert.equal(namer.balanceCohort, 'heavy-survivability',
   'Namer does not redefine scout-IFV mobility medians');
+// 2026-10-01: the role balance (0e5fc79e2, tacticalRoleBalance.ts) layers the Namer's armored-support doctrine
+// onto its authored 60 deg/s turret traverse after the tradeoff below is published (x1.06 -> 63.6).
+assert.equal(VEHICLE_ROLE_PROFILES.namer_ifv.doctrine, 'armored-support', 'Namer keeps its armored-support doctrine');
 assert.deepEqual(
   [namer.enginePowerHp, namer.weightTons, namer.topSpeedKmh, namer.hp, namer.turretTraverseDegS],
-  [1200, 63.5, 54, 2650, 60],
+  [1200, 63.5, 54, 2650, tacticalRoleHandling({ hullTraverseDegS: 0, turretTraverseDegS: 60, gun: namer.gun },
+    'armored-support').turretTraverseDegS],
   'Namer keeps its heavy protected-carrier mobility tradeoff',
 );
 assert.equal(namer.gun.caliberMm, 30);
@@ -100,10 +106,19 @@ assert.deepEqual(
   [9, 9, 9, 9],
   'Mk 3D and baseline Mk 4 identities stay at tier IX',
 );
+// 2026-10-01: the role balance (0e5fc79e2) layers each vehicle's doctrine onto the authored accuracy and aim time
+// below; the authored envelopes are unchanged and the doctrine factors are the tactical-role regression's.
+const roleTunedAim = (id, baseAccuracy, aimTimeS) => {
+  const doctrine = VEHICLE_ROLE_PROFILES[id]?.doctrine;
+  if (!doctrine) return [baseAccuracy, aimTimeS];
+  const { gun } = tacticalRoleHandling({ hullTraverseDegS: 0, turretTraverseDegS: 0,
+    gun: { ...TANK_SPECS[id].gun, baseAccuracy, aimTimeS } }, doctrine);
+  return [gun.baseAccuracy, gun.aimTimeS];
+};
 for (const id of ['merkava3d', 'merkava3d_x']) {
   const spec = TANK_SPECS[id];
   assert.deepEqual([spec.hp, spec.gun.reloadS, spec.gun.baseAccuracy, spec.gun.aimTimeS],
-    [2500, 6.2, 0.29, 1.7], `${id}: Tier-IX Mk 3D balance envelope`);
+    [2500, 6.2, ...roleTunedAim(id, 0.29, 1.7)], `${id}: Tier-IX Mk 3D balance envelope`);
   assert.deepEqual(spec.gun.shells.slice(0, 1).map((round) =>
     [round.pen100Mm, round.pen1000Mm, round.pen2000Mm, round.dmg]),
   [[830, 755, 680, 560]], `${id}: Tier-IX M322 gameplay row`);
@@ -111,7 +126,7 @@ for (const id of ['merkava3d', 'merkava3d_x']) {
 for (const id of ['merkava4_x', 'merkava4b']) {
   const spec = TANK_SPECS[id];
   assert.deepEqual([spec.hp, spec.gun.reloadS, spec.gun.baseAccuracy, spec.gun.aimTimeS],
-    [2550, 6.5, 0.31, 1.9], `${id}: common baseline Mk 4 balance envelope`);
+    [2550, 6.5, ...roleTunedAim(id, 0.31, 1.9)], `${id}: common baseline Mk 4 balance envelope`);
 }
 
 const reversed = applyNativeFamilyOrder([...ALL_TANK_IDS].reverse());
