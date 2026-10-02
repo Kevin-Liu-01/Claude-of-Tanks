@@ -40,3 +40,15 @@ docs/qa-evidence-manifest.json
 docs/critique/*
 .quality-reports/
 coverage/
+
+# Tool and agent output that must never be staged: every `.qa-*` evidence
+# directory (map environment, bots, entry, loading, smoke, certification
+# audits), local source models, the Graphify sidecar output, Wrangler state,
+# editor/backup copies and agent worktrees placed inside the checkout.
+.qa-*/
+public/models/
+graphify-out/
+.wrangler/
+*.bak
+.wt-*/
+.codex-worktrees/
