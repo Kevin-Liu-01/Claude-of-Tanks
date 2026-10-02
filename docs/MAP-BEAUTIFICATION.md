@@ -6198,11 +6198,45 @@ cumulus its virga). The night column is the diurnal law's cover and the town glo
 | Olympus Basin (mars) | thin-ice-clouds 0.06 @ 2500 m | cirrus 0.45 | cover 0.06 |
 | Aegis Crossing (cliffbridge) | fair-weather-cumulus 0.28 @ 1200 m | 2 contrails, cirrus 0.25 | cover 0.16 |
 
-**Cost.** The trace's per-slot cost by repetition and the whole-frame A/B against c959ac4b6 are recorded with the lane's report (the shared probe mutex held the GPU runs back); the mobile tier never creates the layer, so phones keep the baked decks unchanged.
+**Cost** (`$SP/p2/clouds/bench-a12.json`: the PR with the light lane, ccd3c3703, against the lane on it, 2e21e663a;
+desktop High at 1600 × 900 on an M5 Max 40-core GPU; sky-w; A B B A per map; the cloud pass measured by repetition —
+K = 1 and K = 11 trace slots between one-pixel reads, which Chrome's GPU process answers only after every queued
+command ran (`gl.finish()` does not wait there: the first bench read a slot as 0.01 ms)). The layer traces one slot a
+frame. Per slot, base → lane (ms, mean of two runs each, run spread under 0.01 ms except Sirocco's ±0.1): Verdant
+1.083 → 1.140 (+0.06), Sirocco 0.151 → 0.293 (+0.14, the patchy cirrus and two trails over a nearly clear sky),
+Frosthollow 0.646 → 0.756 (+0.11), Monsoon 0.853 → 0.918 (+0.07), Whiteout 0.666 → 0.647 (−0.02), Nordhavn 1.156 →
+1.282 (+0.13), the polders 1.033 → 1.171 (+0.14), Caldera 0.244 → 0.305 (+0.06), Ironworks 0.519 → 0.554 (+0.04),
+Mangrove 1.327 → 1.471 (+0.14): +0.09 ms a frame on average, +0.14 at most. On the mid-range laptop proxy (a 10-core
+Apple GPU or an RTX 4050/4060 laptop part, about a quarter to a fifth of this GPU) that is +0.35–0.7 ms of a 16.7 ms
+frame. Whole-frame GPU medians (a timer query around post.render) moved −0.03 to +2.4 ms with run spreads of 1–6 ms
+under a machine load of 24–120 from other sessions; the first run of every A B B A set read low (a warm-up the
+pattern does not cancel), so they bound nothing finer than ±2 ms and the per-slot figures stand as the cost. The
+removed mid layer and storm cells took 2,794 of the trace's 10,753 GLSL tokens and 11 KB of the game entry; the lane
+now adds 11,096 B raw / 2,992 B brotli to the entry (765,690 / 228,689 against the 766,616 / 229,050 budget). The
+mobile tier never creates the layer, so phones are unchanged by construction.
 
-**Receipts.** `cloudWeatherLayers.selftest.mjs` (new, core group): placement, packing, gating, the composite, the
-time of day, lightning, the cloudscape on every sky path. `volumetricClouds.selftest.mjs`: the identity table
-re-pinned with the weather fields, the cumuliform rows' interior octave.
+**Receipts.** `cloudWeatherLayers.selftest.mjs` (new, core group): the trails' placement, the packing, the gating, the
+composite, the time of day, lightning, the drifts through zero, the removed layers staying out, the cloudscape on
+every sky path. `volumetricClouds.selftest.mjs`: the identity table re-pinned with the weather fields (contrails, rain,
+virga, fog bank) and Whiteout's coverage 1; the aerial mirror with the haze layer, the datum hand-off and the
+square's ceilings.
+
+**The haze layer and the square's ceilings (2026-10-02, handed over by the lighting lane).** The clouds' aerial law
+(CLOUD_AERIAL) now takes the pass's 300 m haze layer — the path-averaged density from the camera's height, from the
+datum the pass computes for the frame — so a cloud bank and the ground under it haze alike from a raised camera, and
+the square's ceilings came down a third with the pass's (0.60 / 0.55 → 0.42 / 0.38). Measured on seven maps (Verdant,
+Sirocco, Frosthollow, Monsoon, the polders, Nordhavn, Glacier Pass; `$SP/p2/clouds/final3`, the lane before and after
+in one FIFO turn): the census bird and centre-far frames moved by a mean of 0.1–0.9 levels, under 2 % of their pixels
+by more than 8 (grass and tree motion) — the ceilings do not bite in those views, so the far half's ground haze is set
+elsewhere (the materials' FogExp2 at the preset's fogDensity × FOG_EXTINCTION_SHARE, and the pass's scatter-in target).
+That stays open with the lighting lane; the clouds composite in the dome and take no material fog.
+
+**The overcast light (the lighting lane's model).** A cloudscape that casts no cloud shadows drives the light as an
+overcast deck by its coverage (lightModel.ts resolveOvercast: smoothstep 0.6–0.97). That holds five maps: Titan Gorge
+(dense overcast 0.96 → 1.0), Cinder Junction (industrial Sc 0.92 → 0.95), Ironworks (0.88 → 0.85), Frosthollow (Sc
+deck 0.86 → 0.79) and Whiteout Station (1 → 1) — each a closed or nearly closed deck, so a shadowless (or nearly
+shadowless) light is what those skies give; the broken decks of Nordhavn (0.62) and the polders (0.68) keep their
+cloud shadows and the sun.
 
 **Every sky path carries the cloudscape.** `worldActivationRuntime.restoreAtmosphere` (the shots, the Studio staging,
 the census frames) applied the sky block alone, so those frames rendered the legacy layer derived from it — Titan
