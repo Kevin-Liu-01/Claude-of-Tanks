@@ -109,19 +109,37 @@ for(const mapId of MAP_IDS) {
     // two parapets above it; every other kit stays soft dressing. Round 63 (2026-09-24): the record's parts follow the
     // geometry (the deck from the crown line, the abutments and piers footed below the bed, the vaults' haunch bands,
     // the parapets last) — archedBridgeCollision.selftest certifies the openings; here only the footprint contract.
-    const bridges=candidate.obstacles.filter(record=>record.kind==='bridge');
-    assert.equal(bridges.length,mapId==='autumn'?1:0,`${mapId}: only Amberford's river kit spans a bridge`);
+    // 2026-10-01: Cliffbridge's viaduct (its terrain.bridges deck over the gorge) is the second map whose deck the arched
+    // stone builder dresses. A tall bridge's parts exceed the 64-part server wire limit and split into consecutive
+    // records of at most 64 parts, so the footprint contract below holds for each deck's records read in order.
+    const bridges=candidate.obstacles.filter(record=>record.kind==='bridge'), decks=field.bridgeDecks??[];
+    assert.equal(bridges.length>0,mapId==='autumn'||mapId==='cliffbridge',
+      `${mapId}: only Amberford's river kit and Cliffbridge's viaduct span a bridge`);
     assert.equal(candidate.colliders.filter(record=>record.kind==='bridge').length,bridges.length);
+    const deckRecords=decks.map(()=>[]);
     for(const bridge of bridges){
-      const deck=field.bridgeDecks[0];
-      assert.equal(bridge.shape2.kind,'compound');assert.ok(bridge.shape2.parts.length>3,'the deck, abutments, piers, vault bands and two parapets');
-      const parts=bridge.shape2.parts, [body]=parts, parapets=parts.slice(-2);
+      const cx=(bridge.min[0]+bridge.max[0])/2, cz=(bridge.min[2]+bridge.max[2])/2;
+      let nearest=0;
+      decks.forEach((deck,index)=>{if(Math.hypot(deck.x-cx,deck.z-cz)<Math.hypot(decks[nearest].x-cx,decks[nearest].z-cz)) nearest=index;});
+      deckRecords[nearest].push(bridge);
+    }
+    deckRecords.forEach((records,index)=>{
+      if(!bridges.length) return;
+      const deck=decks[index];
+      assert.ok(records.length>0,`${mapId}: every bridge deck is dressed`);
+      assert.ok(records.every(record=>record.shape2.kind==='compound'),'every record of a bridge is a compound');
+      assert.ok(records.every((record,at)=>record.shape2.parts.length<=64&&(at===records.length-1||record.shape2.parts.length===64)),
+        'records split only at the 64-part wire limit');
+      const parts=records.flatMap(record=>record.shape2.parts), [body]=parts, parapets=parts.slice(-2);
+      assert.ok(parts.length>3,'the deck, abutments, piers, vault bands and two parapets');
       assert.equal(body.y1,deck.deckY,'the deck part\'s top is the deck plane');assert.ok(body.y0<deck.deckY-0.9,'the deck part is a standable floor (round 63: from the crown line)');
       assert.ok(body.hw===deck.halfWidth&&body.hl>deck.halfLength,'the deck spans the road and its abutments');
       assert.ok(parts.slice(1,3).every(part=>part.y0<deck.bedY&&part.hw===deck.halfWidth),'the abutments are footed below the bed');
-      assert.equal(Math.min(...parts.map(part=>part.y0)),bridge.min[1]);assert.equal(Math.max(...parts.map(part=>part.y1)),bridge.max[1]);
+      for(const record of records){
+        assert.equal(Math.min(...parts.map(part=>part.y0)),record.min[1]);assert.equal(Math.max(...parts.map(part=>part.y1)),record.max[1]);
+      }
       for(const parapet of parapets){assert.equal(parapet.y0,deck.deckY);assert.ok(parapet.y1-parapet.y0>=1,'a parapet stops a hull');}
-    }
+    });
     // Round 67 (2026-09-24): Tarkhan's tunnel portal is the third — the rail kit's one record where a spur's cutting
     // leaves the square (a compound: the gallery block and two flank walls closing the valley at the headwall's
     // plane, footed under the outland bed); railCutting.selftest certifies its parts, here only the footprint contract.
