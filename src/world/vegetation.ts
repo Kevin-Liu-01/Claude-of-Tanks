@@ -2217,6 +2217,47 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   return { trunk, cards };
 }
 
+/**
+ * p2 trees lane (2026-10-01): the share of a battlefield's trees that stand as shell-killed snags — read off the map's
+ * crater count (how fought-over the authored field is): a farmland map with a few dozen craters keeps one dead tree
+ * in forty, a shelled district one in sixteen. 0 without craters (and wherever a config carries no props block).
+ */
+function battleSnagShare(cfg: VegetationMapConfig | null): number {
+  const craters = Number(cfg?.props?.craters ?? 0);
+  if (!(craters > 0)) return 0;
+  return Math.min(0.07, 0.012 + (craters / 120) * 0.05);
+}
+
+/**
+ * p2 trees lane: the snag's far stand-in (the impostor atlas holds the living species only): its broken stem as a
+ * tapered six-sided pole with two or three limb stubs, and a token of dead twig mass at the stubs — a dark mark on
+ * a far stand, the way a burnt tree reads across a field.
+ */
+function buildSnagFarGeometry(rng: RandomSource, k: number): FarTreeGeometryPair {
+  const trunkParts: THREE.BufferGeometry[] = [], canopyParts: THREE.BufferGeometry[] = [];
+  const H = 4.6 + k * 0.8 + rng() * 0.6;
+  const trunk = new THREE.CylinderGeometry(0.12, 0.30, H, 6, 1);
+  trunk.translate(0, H / 2, 0);
+  _c.setRGB(0.30, 0.28, 0.26);
+  trunkParts.push(paintFlat(trunk, _c.clone(), 0));
+  const stubs = 2 + ((rng() * 2) | 0);
+  for (let i = 0; i < stubs; i++) {
+    const len = 0.8 + rng() * 1.2;
+    const limb = new THREE.CylinderGeometry(0.03, 0.08, len, 4, 1);
+    limb.translate(0, len / 2, 0);
+    limb.rotateZ(0.8 + rng() * 0.6);
+    limb.rotateY(rng() * Math.PI * 2);
+    limb.translate(0, H * (0.45 + rng() * 0.4), 0);
+    trunkParts.push(paintFlat(limb, _c.clone(), 0.1));
+    const twigs = new THREE.IcosahedronGeometry(0.35 + rng() * 0.2, 0);
+    twigs.scale(1.3, 0.6, 1.3);
+    sphereNormals(twigs, 0, 0, 0, 0.5);
+    twigs.translate((rng() - 0.5) * 1.6, H * (0.55 + rng() * 0.35), (rng() - 0.5) * 1.6);
+    canopyParts.push(paintCanopy(twigs, 0.07, 0.10, 0.16, 0.22, H * 0.4, H, rng, 0.2));
+  }
+  return { trunk: mergeParts(trunkParts), canopy: mergeParts(canopyParts) };
+}
+
 /** Deterministic near-trunk geometry used by the strict visual/shape audit. */
 export function buildTreeTrunkAuditGeometry(
   species: TreeSpecies,
@@ -4332,13 +4373,25 @@ function* vegetationBuildSteps(
       far: (r, pal) => scaleFar(buildBirchFarGeometry(r, pal), ...TREE_GEOMETRY_SCALE.aspen),
     }),
   };
+  // p2 trees lane: the battle zones' snags (desktop tiers, maps with craters) — a species of their own pools,
+  // converted from placed trees by position after placement (convertSnags); outside the impostor atlas
+  const snagShare = grownTrees ? battleSnagShare(cfg) : 0;
+  if (snagShare > 0) {
+    (SPECIES as Record<string, SpeciesDefinition>).snag = {
+      texSeed: 65, nearSeed: 361, farSeed: 381,
+      tex: (r) => makeSprayAtlas('birch-bare', r, texSize(512), (_h, sat, l) => [0.07, sat * 0.35, l * 0.42]),
+      near: (k) => buildGrownTree('snag', seed + 361 + k * 7, k, {}),
+      far: (r, _pal, k) => buildSnagFarGeometry(r, k),
+    };
+  }
   const speciesList = veg.species.filter((sp) => SPECIES[sp]);
+  if (snagShare > 0) speciesList.push('snag' as Species);
   const bushSpecies = speciesList.includes(veg.bushSpecies) ? veg.bushSpecies : speciesList[0];
   if (!bushSpecies) throw new Error('world/vegetation: at least one species is required');
   const palOf = (sp: Species): VegetationPalette => {
     const explicit = veg.palettes[sp];
     if (explicit) return explicit;
-    const family = TREE_ARCHETYPES[sp].family;
+    const family = TREE_ARCHETYPES[sp]?.family; // p2 trees lane: the snag has no archetype (it reads no palette)
     if (family === 'conifer') return veg.palettes.pine || {};
     if (family === 'birch') return veg.palettes.birch || {};
     if (family === 'palm') return veg.palettes.palm || {};
@@ -4428,13 +4481,14 @@ function* vegetationBuildSteps(
   // species and far variant. The atlas gutters flood with the leaf atlases' mean opaque tone, so the mips of a tile
   // never average toward black.
   const treeImpostors: TreeImpostorLibrary | null = bakeRenderer ? createTreeImpostorLibrary({
-    rows: speciesList.flatMap(sp => treeGeo[sp].map((pair, variant) => ({
+    rows: speciesList.filter(sp => (sp as string) !== 'snag').flatMap(sp => treeGeo[sp].map((pair, variant) => ({
       species: sp, variant, trunk: pair.trunk, cards: pair.cards, foliage: foliageTex[sp],
     }))),
     bark: barkTex.albedo,
     flood: (() => {
       let r = 0, g = 0, b = 0, n = 0;
       for (const sp of speciesList) {
+        if ((sp as string) === 'snag') continue;
         const image = foliageTex[sp].image as { data?: Uint8ClampedArray; width?: number } | null;
         const data = image?.data;
         if (!data) continue;
@@ -4940,6 +4994,49 @@ function* vegetationBuildSteps(
   // Each LOD is a trunk mesh (opaque bark) + a card mesh (alpha foliage) sharing
   // the same instance matrices.
   const _whiteScratch = new THREE.Color(1, 1, 1);
+  // p2 trees lane (2026-10-01): the battle zones' snags. After every placement, exclusion and relocation pass (the
+  // placement streams, the records' admission and the stand shade never move), a share of the living trees — by a
+  // position hash, thickest toward the middle of the field where the lines meet, never within 45 m of a spawn,
+  // never a palm or a tidal mangrove — stands as a shell-killed snag: its species, its archetype-derived crown and
+  // fall measures, a charred grey tint, a slimmer trunk record and almost no concealment. Its pools are its own.
+  function convertSnags(): number {
+    if (!(snagShare > 0)) return 0;
+    const SNAG = { trunkHeightM: 4.2, canopyCenterM: 3.4, canopyRadiusM: 1.4, fallHeightM: 5.4, fallRadiusM: 0.16, rootDecalRadiusM: 1.2, trunkR: 0.27 };
+    const obstacleOf = new Map<number, TreeObstacle>();
+    for (const ob of treeObstacles) obstacleOf.set(ob.treeIdx, ob);
+    const concealerAt = new Map<string, ConcealmentDisc>();
+    for (const disc of concealers) concealerAt.set(`${disc.x},${disc.z}`, disc);
+    let converted = 0;
+    for (let i = 0; i < trees.length; i++) {
+      const t = trees[i];
+      if (t.species === 'palm' || (t.species === 'willow' && veg.willowForm === 'tidalMangrove')) continue;
+      if (!isClearOfSpawns(t.x, t.z, protectedSpawns, 45)) continue;
+      const middle = 1 - smoothstepJs(180, 470, Math.hypot(t.x, t.z));
+      if (treePositionNoise(t.x, t.z, 9) >= snagShare * (0.35 + 1.3 * middle)) continue;
+      const e = t.mat.elements;
+      const sxz = Math.max(Math.hypot(e[0], e[1], e[2]), Math.hypot(e[8], e[9], e[10])), sy = Math.hypot(e[4], e[5], e[6]);
+      (t as { species: string }).species = 'snag';
+      t.cy = e[13] + SNAG.canopyCenterM * sy;
+      t.cr = SNAG.canopyRadiusM * sxz;
+      t.fallH = SNAG.fallHeightM * sy;
+      t.fallR = SNAG.fallRadiusM * sxz;
+      t.dr = SNAG.rootDecalRadiusM * sxz;
+      const value = 0.62 + treePositionNoise(t.x, t.z, 10) * 0.25;
+      t.tint.setRGB(value, value * 0.96, value * 0.92);
+      const ob = obstacleOf.get(i);
+      if (ob) {
+        const radius = SNAG.trunkR * sxz, groundY = ob.min[1];
+        ob.min[0] = t.x - radius; ob.min[2] = t.z - radius;
+        ob.max[0] = t.x + radius; ob.max[1] = groundY + SNAG.trunkHeightM * sy; ob.max[2] = t.z + radius;
+        setCircleShape(ob, t.x, t.z, radius);
+      }
+      const disc = concealerAt.get(`${t.x},${t.z}`);
+      if (disc) { disc.r = SNAG.canopyRadiusM * sxz * 0.6; disc.add = 0.02; }
+      converted++;
+    }
+    return converted;
+  }
+  group.userData.battleSnags = { share: snagShare, converted: convertSnags() };
   // The visible near tree dissolves through aLodF while its far stand-in is
   // already present. The shared engine shadow policy mirrors that dissolve for
   // every compatible caster on every battlefield. Without it, a promoted crown
@@ -5124,7 +5221,7 @@ function* vegetationBuildSteps(
       });
       // r7: far LOD is now a 2-variant array (silhouette variety at range)
       farMeshes[sp] = treeGeoFar[sp].map((g, fv) => {
-        if (treeImpostors) {
+        if (treeImpostors && (sp as string) !== 'snag') {
           // Round 77b: one quad pool per species and far variant on the impostor atlas (the second variant mirrored);
           // aImpRow (the tree's near variant, written with its slot) picks the species' row. No shadow either way:
           // the far tier casts nothing (the near proxies carry the crowns) and receives nothing, as the lobes did.
@@ -5148,6 +5245,7 @@ function* vegetationBuildSteps(
         farTrunk.userData.treeTrunk = true;
         farTrunk.userData.treeLod = 'far';
         const pair: TreeMesh[] = [farTrunk, farCanopy];
+        if ((sp as string) === 'snag') for (const m of pair) m.userData.battleSnag = true; // p2 trees lane: outside the atlas
         // PERF (perf-budget r3): far-partition trees (beyond ~260 m) do NOT cast
         // shadows — a tree shadow out there is subpixel at 1080p (see lighting.ts
         // far-cascade rationale) yet every lobe/trunk was re-rasterized by the
@@ -6176,14 +6274,19 @@ function* vegetationBuildSteps(
   const rimTreeTint: [number, number, number] = [1, 1, 1];
   if (treeImpostors && rimTrees.length > 0) {
     let sum = 0, r = 0, g = 0, b = 0;
+    let living = 0;
     for (const tree of rimTrees) {
+      if ((tree.species as string) === 'snag') continue;
+      living++;
       const row = treeImpostors.rows[treeImpostors.rowBase(tree.species) + tree.variant % treeImpostors.variants];
       const e = tree.mat.elements;
       sum += Math.hypot(e[4], e[5], e[6]) * row.heightM;
       r += tree.tint.r; g += tree.tint.g; b += tree.tint.b;
     }
-    rimTreeHeightM = sum / rimTrees.length;
-    rimTreeTint[0] = r / rimTrees.length; rimTreeTint[1] = g / rimTrees.length; rimTreeTint[2] = b / rimTrees.length;
+    if (living > 0) {
+      rimTreeHeightM = sum / living;
+      rimTreeTint[0] = r / living; rimTreeTint[1] = g / living; rimTreeTint[2] = b / living;
+    }
   }
   rimTrees.length = 0;
   return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,

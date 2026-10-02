@@ -63,6 +63,7 @@ for (const species of GROWTH_SPECIES) {
     assert.ok(tris(wood) <= 1400, `${species}/${variant}: wood ${tris(wood)} triangles`);
     assert.ok(hull.length / 9 <= 700, `${species}/${variant}: shadow hull ${hull.length / 9} triangles`);
     if (profile.family !== 'dead') assert.ok(skeleton.leaves.length >= 40, `${species}/${variant}: a crown of ${skeleton.leaves.length} sprays`);
+    else assert.ok(skeleton.leaves.length <= 40, `${species}/${variant}: a snag keeps a few dead twig sprays (${skeleton.leaves.length})`);
     // structure: the stem from the ground; every branch rooted in its parent
     const stem = skeleton.branches[0];
     assert.equal(stem.order, 0); assert.equal(stem.parent, -1);
@@ -135,11 +136,14 @@ assert.ok(shape.pine.crownBase > 0.4 && shape.eucalyptus.crownBase > 0.3, 'the p
 assert.ok(shape.oak.aspect > shape.poplar.aspect * 1.6, 'the oak spreads where the poplar rises');
 // the envelopes narrow the way the species do
 assert.ok(envelopeFraction('cone', 0.9) < envelopeFraction('cone', 0.2) && envelopeFraction('column', 0.5) > 0.9);
-// the snag: a broken stem, dead limbs, no foliage
+// the snag: a broken stem, dead limbs (some snapped), a few dead twig sprays and no sprays on a snapped limb
 {
-  const { skeleton, cards } = grow('snag', 1);
-  assert.equal(skeleton.leaves.length, 0); assert.equal(tris(cards), 0);
+  const { skeleton } = grow('snag', 1);
   assert.ok(skeleton.branches[0].broken, 'the stem is snapped');
+  for (const site of skeleton.leaves) {
+    const owner = skeleton.branches.filter((b) => !b.broken).some((b) => distanceToBranch(b, site) < 0.05);
+    assert.ok(owner, 'dead twigs seat on unbroken limbs only');
+  }
 }
 
 // the spray atlases (native canvas)

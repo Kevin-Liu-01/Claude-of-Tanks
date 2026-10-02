@@ -201,8 +201,8 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.38, crownR: 2.0,
     envelope: 'ellipsoid', whorled: false, perWhorl: [1, 1], spacing: 0.9, angleLow: 1.1, angleHigh: 0.65,
     droop: 0.15, upturn: 0.15, sidePerM: 0.6, sideAngle: 0.7, sideRatio: 0.45, sideDroop: 0.1, twigPerM: 0,
-    leafOrder: 9, leafPerM: 0, leafFrom: 1, spray: [0.8, 1.1], aspect: 0.8, habit: 'spray', tipSprays: 0,
-    cardBend: 0, flatRoll: 0.0, flatDroop: 0.0, bark: 0, barkTint: [0.36, 0.33, 0.30], barkTopTint: [0.22, 0.20, 0.19],
+    leafOrder: 1, leafPerM: 0.9, leafFrom: 0.55, spray: [0.7, 1.05], aspect: 0.9, habit: 'spray', tipSprays: 1,
+    cardBend: 0.05, flatRoll: 0.0, flatDroop: 0.0, bark: 0, barkTint: [0.36, 0.33, 0.30], barkTopTint: [0.22, 0.20, 0.19],
   }),
 });
 
@@ -558,7 +558,8 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
       const tipSeat = t >= 0.97;
       let axis: V3, face: V3;
       const roll = (rng() - 0.5);
-      const habit = profile.habit === 'hanging' && branch.order < 2 && profile.form === 'decurrent' ? 'spray' : profile.habit;
+      // a weeping crown's scaffolds carry the dome's sprays along them and curtains at their tips
+      const habit = profile.habit === 'hanging' && branch.order < 2 && profile.form === 'decurrent' && !tipOnly ? 'spray' : profile.habit;
       switch (habit) {
         case 'hanging': {
           // curtains: the spray hangs from its seat, swung outward a little
@@ -663,6 +664,7 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
   const leaves: LeafSite[] = [];
   if (profile.family === 'dead') {
     growSnag(ctx);
+    seatLeaves(ctx, leaves);
   } else if (profile.form === 'decurrent') {
     const forkY = ctx.crownBaseY;
     const stem = growStem(ctx, forkY, profile.trunkR, profile.trunkR * 0.78, 4);
