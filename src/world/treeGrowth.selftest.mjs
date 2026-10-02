@@ -16,7 +16,7 @@ import {
   emitBranchGeometry, emitCrownShadowHull, emitLeafCards, envelopeFraction, growTreeSkeleton, GROWTH_LEAF_BUDGET,
   GROWTH_LOWEST_WOOD_M, GROWTH_SIDE_TUBE_BUDGET, GROWTH_SPECIES, GROWTH_SPRAY_CLEARANCE_M, TREE_GROWTH_PROFILES,
   weldGrownGeometry, canopySkyOcclusion, GROWTH_CANOPY_AO, growthCrownAttachments, growShrubSkeleton, GROWTH_SHRUB_SPRAYS,
-  GROWTH_SHRUB_VALUE,
+  GROWTH_SHRUB_VALUE, GROWTH_CONIFER_LEAF_SHARE, growthCardRows,
 } from './treeGrowth.ts';
 import { finishSprayTiles, makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
 
@@ -57,7 +57,7 @@ for (const species of GROWTH_SPECIES) {
     assert.equal(sha(a.hull), sha(b.hull), `${species}/${variant}: hull deterministic`);
     const { skeleton, wood, cards, hull, profile } = a;
     // budgets (desktop)
-    const leafBudget = Math.round(GROWTH_LEAF_BUDGET.desktop * (profile.family === 'conifer' ? 1.3 : 1));
+    const leafBudget = Math.round(GROWTH_LEAF_BUDGET.desktop * (profile.family === 'conifer' ? GROWTH_CONIFER_LEAF_SHARE : 1));
     assert.ok(skeleton.leaves.length <= leafBudget, `${species}/${variant}: ${skeleton.leaves.length} sprays within ${leafBudget}`);
     assert.equal(tris(cards), skeleton.leaves.length * 4, 'four triangles per spray card');
     const sideTubes = skeleton.branches.filter((br) => br.mesh && br.order >= 2 && !br.support).length;
@@ -137,7 +137,7 @@ for (const species of GROWTH_SPECIES) {
       woodTris: tris(wood), cardTris: tris(cards), hullTris: hull.length / 9, crownR: +cardMaxR.toFixed(2), wood: sha(wp.array) });
     // the mobile budgets
     const m = grow(species, variant, 'mobile');
-    assert.ok(m.skeleton.leaves.length <= Math.round(GROWTH_LEAF_BUDGET.mobile * (profile.family === 'conifer' ? 1.3 : 1)), `${species}: mobile sprays`);
+    assert.ok(m.skeleton.leaves.length <= Math.round(GROWTH_LEAF_BUDGET.mobile * (profile.family === 'conifer' ? GROWTH_CONIFER_LEAF_SHARE : 1)), `${species}: mobile sprays`);
     assert.ok(tris(m.wood) <= tris(wood) + 1, `${species}/${variant}: the mobile wood is no heavier`);
   }
 }
@@ -398,7 +398,10 @@ const shrubRows = [];
       assert.equal(cards.castShadow, false);
       assert.ok('COT_CARD_EDGE_FADE' in (cards.material.defines ?? {}), 'grown cards fade edge-on');
       assert.ok(Number(cards.material.defines.COT_GROWN_CROWN) > 1, 'and pass more of a low sun behind them');
+      // Nordhavn's spruce, fir and birch take the two-row card (growthCardRows): two triangles to four welded vertices
+      assert.equal(cards.geometry.index.count / 3 * 2, cards.geometry.getAttribute('position').count, 'two-row conifer and birch cards');
     }
+    assert.deepEqual(['oak', 'spruce', 'birch', 'palm', 'snag'].map((sp) => growthCardRows(TREE_GROWTH_PROFILES[sp].family)), [3, 2, 2, 3, 2]);
     // the shrubs grow from the bush species' sprays: welded two-triangle cards with the cascade sample
     const shrubs = desktop.group.children.filter((m) => m.userData.bush || m.userData.understorey);
     assert.equal(shrubs.length, 3, 'two bush shapes and the understorey');

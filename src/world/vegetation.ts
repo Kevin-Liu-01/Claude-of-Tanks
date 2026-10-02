@@ -36,7 +36,7 @@ import { createTreeImpostorLibrary, type TreeImpostorLibrary, type TreeImpostorR
 // p2 trees lane (2026-10-01): the grown near trees — skeleton, wood, spray cards and crown shadow hull — and their
 // branch-spray atlases
 import {
-  canopySkyOcclusion, emitBranchGeometry, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCrownAttachments,
+  canopySkyOcclusion, emitBranchGeometry, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCardRows, GROWTH_CROWN_STEM_WIDTH, growthCrownAttachments,
   growTreeSkeleton, GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type GrowthSpecies,
 } from './treeGrowth.ts';
 import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
@@ -2400,7 +2400,8 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   // a palm's frond atlas holds one frond (makePalmFrondAtlas); its dead fronds (shade 0) are straw-brown
   const palm = profile.family === 'palm';
   const cards = weldGrownGeometry(emitLeafCards(skeleton, {
-    tiles: palm ? 1 : SPRAY_ATLAS_TILES, rng: mulberry32((seed ^ 0x5eed) >>> 0),
+    tiles: palm ? 1 : SPRAY_ATLAS_TILES, rng: mulberry32((seed ^ 0x5eed) >>> 0), rows: growthCardRows(profile.family),
+    stemWidth: GROWTH_CROWN_STEM_WIDTH,
     tint(shade, site, r) {
       const jitter = r();
       const sk = snow > 0.05 && site.tile < SPRAY_ATLAS_TILES ? 0.85 + jitter * 0.15 : 0;

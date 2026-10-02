@@ -950,7 +950,7 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
   // the budgets: a grown crown keeps its silhouette at a bounded card and tube count — surplus sprays are thinned
   // evenly along the seat order (each survivor grows by the area it inherits) and the thinnest side shoots stop being
   // tubes (their sprays still seat on them)
-  const leafBudget = Math.round(GROWTH_LEAF_BUDGET[mobile ? 'mobile' : 'desktop'] * (profile.family === 'conifer' ? 1.3 : 1));
+  const leafBudget = Math.round(GROWTH_LEAF_BUDGET[mobile ? 'mobile' : 'desktop'] * (profile.family === 'conifer' ? GROWTH_CONIFER_LEAF_SHARE : 1));
   if (leaves.length > leafBudget) {
     const kept: LeafSite[] = [];
     const grow = Math.min(1.32, Math.sqrt(leaves.length / leafBudget));
@@ -1028,6 +1028,24 @@ const GROWTH_RESEAT_M = 0.6;
 export const GROWTH_LOWEST_WOOD_M = 1.7;
 /** Spray cards per near tree (the conifers take a tenth more): ~600 card triangles on the desktop tiers. */
 export const GROWTH_LEAF_BUDGET: Readonly<Record<'desktop' | 'mobile', number>> = Object.freeze({ desktop: 150, mobile: 88 });
+/**
+ * A conifer's share of the leaf budget: its sprays are smaller and denser than a broadleaf's. 1.1 since 2026-10-02 (1.3
+ * before): Frosthollow's chase view cost +4.1 ms GPU on desktop high against the same build's legacy trees, whose
+ * conifers draw 100 card triangles from 300 vertices to the grown crowns' 692 from 1038 — the near tier's card
+ * vertices (each runs the wind, the fade and the four-cascade sample) over three times the base's.
+ */
+export const GROWTH_CONIFER_LEAF_SHARE = 1.1;
+
+/**
+ * The card rows a grown crown's sprays take (emitLeafCards): two (a near-square quad, 2 triangles from 4 vertices) for
+ * the conifers' and the birches' many small sprays, three (the bent, tapered card, 4 triangles from 6) for the
+ * broadleaves' and the palms' larger ones, whose bend reads. Same budget reasoning as GROWTH_CONIFER_LEAF_SHARE.
+ */
+export function growthCardRows(family: GrowthProfile['family']): 2 | 3 {
+  return family === 'conifer' || family === 'birch' || family === 'dead' ? 2 : 3;
+}
+/** A grown crown's two-row card narrows toward its stem (the tile's spray does): the three-row card's area, not more. */
+export const GROWTH_CROWN_STEM_WIDTH = 0.7;
 /** Side shoots (order >= 2) emitted as tubes, thickest first. */
 export const GROWTH_SIDE_TUBE_BUDGET: Readonly<Record<'desktop' | 'mobile', number>> = Object.freeze({ desktop: 14, mobile: 6 });
 
@@ -1239,6 +1257,8 @@ interface CardEmitOptions {
    * quad, 2 triangles — the shrubs' card, where a spray's bend reads at no distance and the triangles are the budget).
    */
   rows?: 2 | 3;
+  /** A two-row card's stem-row width (a fraction of the tip row's): 0.92 keeps the tile undistorted (the shrubs). */
+  stemWidth?: number;
 }
 
 /**
@@ -1251,7 +1271,7 @@ interface CardEmitOptions {
 export function emitLeafCards(skeleton: TreeSkeleton, options: CardEmitOptions): THREE.BufferGeometry {
   const tiles = Math.max(1, options.tiles | 0);
   const volume = options.volume ?? 0.62, upBias = options.upBias ?? 0.32;
-  const rowCount = options.rows ?? 3, perCard = (rowCount - 1) * 6;
+  const rowCount = options.rows ?? 3, perCard = (rowCount - 1) * 6, stemWidth = options.stemWidth ?? 0.92;
   const { crown } = skeleton;
   const count = skeleton.leaves.length;
   const pos = new Float32Array(count * perCard * 3), nrm = new Float32Array(count * perCard * 3), uv = new Float32Array(count * perCard * 2);
@@ -1272,7 +1292,7 @@ export function emitLeafCards(skeleton: TreeSkeleton, options: CardEmitOptions):
       const along = -0.06 * site.length + t * site.length;
       const sag = site.bend * site.length * t * t;
       const cx = site.x + axis.x * along, cy = site.y + axis.y * along - sag, cz = site.z + axis.z * along;
-      const half = site.width * 0.5 * (rowCount === 2 ? (r === 0 ? 0.92 : 1) : r === 0 ? 0.55 : r === 1 ? 1 : 0.9);
+      const half = site.width * 0.5 * (rowCount === 2 ? (r === 0 ? stemWidth : 1) : r === 0 ? 0.55 : r === 1 ? 1 : 0.9);
       rows.push([v3(cx - right.x * half, cy - right.y * half, cz - right.z * half), v3(cx + right.x * half, cy + right.y * half, cz + right.z * half)]);
     }
     const centre = v3(site.x + axis.x * site.length * 0.45, site.y + axis.y * site.length * 0.45, site.z + axis.z * site.length * 0.45);
