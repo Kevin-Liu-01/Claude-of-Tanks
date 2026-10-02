@@ -75,6 +75,29 @@ export function compareCaptureSet(a1, a2, b1, b2, threshold = 1) {
   return { pixels: n, floorA, floorB, raw, stable, changed, darker, brighter: changed - darker, maxChanged, classes };
 }
 
+/**
+ * Changed pixels at least `radius` pixels from any unstable one: a pixel on the border of an animated region (a cloud
+ * edge, exhaust) can reproduce within each build by chance and still differ across loads; one inside a stable region
+ * cannot. Returns the count and the largest difference among them.
+ */
+export function interiorChanges(classes, width, height, a1, b1, radius = 2) {
+  const near = new Uint8Array(classes.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (classes[y * width + x] !== 1) continue;
+      for (let dy = -radius; dy <= radius; dy++) {
+        const yy = y + dy; if (yy < 0 || yy >= height) continue;
+        for (let dx = -radius; dx <= radius; dx++) { const xx = x + dx; if (xx >= 0 && xx < width) near[yy * width + xx] = 1; }
+      }
+    }
+  }
+  let count = 0, max = 0;
+  for (let p = 0; p < classes.length; p++) {
+    if ((classes[p] === 2 || classes[p] === 3) && !near[p]) { count++; max = Math.max(max, Math.abs(b1[p] - a1[p])); }
+  }
+  return { count, max };
+}
+
 // --- PNG (RGB8, no filter) -----------------------------------------------------------------------------------
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);
@@ -138,7 +161,8 @@ function run({ dir, labels, threshold, png }) {
     const [b1, b2] = B.slice(0, 2).map((x) => decodeLum(readFileSync(x.file)));
     const r = compareCaptureSet(a1.data, a2.data, b1.data, b2.data, threshold);
     const { classes, ...counts } = r;
-    const row = { pose: key, ...counts, stableShare: +(r.stable / r.pixels).toFixed(4) };
+    const interior = interiorChanges(classes, a1.width, a1.height, a1.data, b1.data);
+    const row = { pose: key, ...counts, interior: interior.count, interiorMax: interior.max, stableShare: +(r.stable / r.pixels).toFixed(4) };
     if (png) {
       const out = path.join(dir, `capture-diff-${key.replace(/[^a-z0-9]+/gi, '-')}.png`);
       writeFileSync(out, diffImage(a1.width, a1.height, a1.data, classes));
@@ -148,7 +172,7 @@ function run({ dir, labels, threshold, png }) {
   }
   writeFileSync(path.join(dir, 'capture-compare.json'), JSON.stringify({ labels, threshold, results }, null, 1));
   for (const r of results) {
-    console.log(r.skipped ? `${r.pose}: ${r.skipped}` : `${r.pose}: floor ${la} ${r.floorA} / ${lb} ${r.floorB} px; raw ${r.raw}; stable ${(r.stableShare * 100).toFixed(1)} %; changed on stable ${r.changed} px (max Δ ${r.maxChanged})`);
+    console.log(r.skipped ? `${r.pose}: ${r.skipped}` : `${r.pose}: floor ${la} ${r.floorA} / ${lb} ${r.floorB} px; raw ${r.raw}; stable ${(r.stableShare * 100).toFixed(1)} %; changed on stable ${r.changed} px (max Δ ${r.maxChanged}); inside stable regions ${r.interior} px (max Δ ${r.interiorMax})`);
   }
   return results;
 }

@@ -9,7 +9,7 @@ import {
 import {
   acquireProbeLocks, buildFrameReport, buildProfileReport, chunkOfUrl, parseFrameProbeArgs, pinnedOpponents, profileSelfByChunk,
 } from './frame-budget-probe.mjs';
-import { compareCaptureSet, crc32, decodeLum, encodeLum, encodeRgbPng } from './frame-capture-compare.mjs';
+import { compareCaptureSet, crc32, decodeLum, encodeLum, encodeRgbPng, interiorChanges } from './frame-capture-compare.mjs';
 
 // ---------------------------------------------------------------------------------------------- fake page
 
@@ -255,6 +255,11 @@ assert.equal(stats([]).med, null);
   assert.equal(r.changed, 2, 'pixel 1 (brighter) and pixel 4 (darker) are the change; pixel 3 moved one level only');
   assert.equal(r.darker, 1); assert.equal(r.maxChanged, 10);
   assert.deepEqual([...r.classes], [0, 3, 1, 0, 2, 1]);
+  // 6 x 1: pixel 1 sits next to the unstable pixel 2, pixel 4 next to 5: neither is inside a stable region
+  assert.deepEqual(interiorChanges(r.classes, 6, 1, a1, b1, 1), { count: 0, max: 0 });
+  const wide = Uint8Array.from([3, 0, 0, 0, 0, 1]);
+  assert.deepEqual(interiorChanges(wide, 6, 1, Uint8Array.from([10, 0, 0, 0, 0, 0]), Uint8Array.from([25, 0, 0, 0, 0, 0]), 2),
+    { count: 1, max: 15 }, 'a change four pixels from the nearest unstable one is inside');
   const lum = decodeLum(encodeLum({ width: 3, height: 2, b64: Buffer.from(a1).toString('base64') }));
   assert.equal(lum.width, 3); assert.deepEqual([...lum.data], [...a1]);
   assert.equal(crc32(Buffer.from('IEND', 'ascii')), 0xae426082, 'PNG chunk CRC');
