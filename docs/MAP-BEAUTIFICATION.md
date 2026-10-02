@@ -6148,7 +6148,7 @@ tablelands' and the martian scarps' flanks and walls (relief characters `mesa` a
 over the face's own slope from 20° to 41° (`uRingReliefWall`, set at the ring's bind); the caps keep it, the occlusion
 and the cast shadows keep their weight everywhere, and the snow, alpine, rolling and coastal ranges keep it in full —
 their ridges are its relief. Earthrise Basin's regolith palette is a dark, faintly warm grey (the census: "the
-regolith reads as snow").
+regolith reads as snow"), its slopes the same regolith rather than pale rock.
 
 **Measured (2026-10-02, Apple M5 Max through ANGLE Metal, headless Chrome, 1600×900, desktop High with the dynamic
 scale pinned at 1, every bot frozen; `.qa-dev/terrain-perf-probe.mjs` in the lane, untracked).** Frame GPU time from

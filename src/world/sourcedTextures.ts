@@ -116,7 +116,7 @@ const TERRAIN_PLAN = {
     // (albedo ~0.12, so mid-grey under the lunar sun), not the cool near-white the sand set carried at .71–.77
     G: { set: 'sand', desat: 1, tint: [.44,.43,.41], roughMul: 1.3 },
     D: { set: 'sand', desat: 1, tint: [.37,.36,.35], roughMul: 1.3 },
-    R: { set: 'rock', desat: 1, tint: [1.02,1.01,1.00], roughMul: 1.2 }, M: null,
+    R: { set: 'rock', desat: 1, tint: [.80,.79,.78], roughMul: 1.2 }, M: null, // the slopes are the same regolith, not pale rock
   },
   verdant: {
     // 2026-09-12 visual restoration: the untinted photo grass rendered the
