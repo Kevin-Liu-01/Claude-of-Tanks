@@ -4199,11 +4199,15 @@ function* vegetationBuildSteps(
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
       #ifdef COT_CARD_EDGE_FADE
       {
-        vec3 cotFace = normalize( cross( dFdx( vViewPosition ), dFdy( vViewPosition ) ) );
-        vec3 cotUpV = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );
+        // the derivatives in uniform control flow; the view's climb (the view ray against world up, viewMatrix's second
+        // column) decides whether the face is worth forming: a level or downward look pays nothing more
+        vec3 cotDx = dFdx( vViewPosition ), cotDy = dFdy( vViewPosition );
         vec3 cotRay = normalize( - vViewPosition );
-        float cotUp = smoothstep( 0.35, 0.75, dot( cotRay, cotUpV ) );
-        diffuseColor.a *= mix( 1.0, smoothstep( 0.05, 0.28, abs( dot( cotFace, cotRay ) ) ), cotUp );
+        float cotUp = smoothstep( 0.35, 0.75, dot( cotRay, viewMatrix[ 1 ].xyz ) );
+        if ( cotUp > 0.0 ) {
+          vec3 cotFace = normalize( cross( cotDx, cotDy ) );
+          diffuseColor.a *= mix( 1.0, smoothstep( 0.05, 0.28, abs( dot( cotFace, cotRay ) ) ), cotUp );
+        }
       }
       #endif
       #include <alphatest_fragment>`);

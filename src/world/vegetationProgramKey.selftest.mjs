@@ -203,8 +203,9 @@ function checkRound77Mechanisms(parameters) {
 function checkEdgeFade(material, parameters) {
   assert.ok('COT_CARD_EDGE_FADE' in (material.defines ?? {}), 'the desktop grown cards fade edge-on');
   const fragment = parameters.fragmentShader;
-  assert.match(fragment, /#ifdef COT_CARD_EDGE_FADE\s*\{\s*vec3 cotFace = normalize\( cross\( dFdx\( vViewPosition \), dFdy\( vViewPosition \) \) \);/);
-  assert.match(fragment, /float cotUp = smoothstep\( 0\.35, 0\.75, dot\( cotRay, cotUpV \) \);/, 'only a view looking up into the crown fades its edge-on cards');
+  assert.match(fragment, /vec3 cotDx = dFdx\( vViewPosition \), cotDy = dFdy\( vViewPosition \);/, 'the derivatives in uniform control flow');
+  assert.match(fragment, /vec3 cotFace = normalize\( cross\( cotDx, cotDy \) \);/);
+  assert.match(fragment, /float cotUp = smoothstep\( 0\.35, 0\.75, dot\( cotRay, viewMatrix\[ 1 \]\.xyz \) \);\s*if \( cotUp > 0\.0 \) \{/, 'only a view looking up into the crown fades its edge-on cards (and pays for the face)');
   const fade = fragment.indexOf('#ifdef COT_CARD_EDGE_FADE');
   assert.ok(fragment.indexOf('aaMip') < fade && fade < fragment.indexOf('#include <alphatest_fragment>'), 'after the mip give-back, before the alpha test');
 }
