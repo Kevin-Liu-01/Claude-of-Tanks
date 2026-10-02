@@ -93,6 +93,14 @@ The default local URL is usually http://localhost:5173.
 The home and docs routes are separate Vite entries. They must remain able to
 load without preloading the game module graph.
 
+`vercel.json` publishes them with pattern rewrites (`/docs/:topic(...)` →
+`/docs-:topic.html` and the `/cn` twins; the topic list matches
+`PUBLIC_ROUTE_RECORDS`). A trailing-slash form of a slashless page answers 308
+to the canonical path; `/cn/` keeps its slash because it is the zh-CN game's
+canonical URL, which is why there is no global `trailingSlash` setting.
+`tools/vercel-routes.selftest.mjs` resolves every route through the conversion
+`vercel build` runs (`@vercel/routing-utils`) against the frozen deploy-163 table.
+
 ### Capture-lock wait (2026-09-25)
 
 The selftest runners wait for the shared capture lock (`/tmp/cot-shots.lock`, FIFO tickets in `/tmp/cot-shots.queue`) before their browser receipts; `COT_SHOTS_LOCK_TIMEOUT_MS` sets that wait (default 45 min — chain 94 died at 1/413 behind another session's browser audit, so landing chains export three hours).

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { PRODUCT_STATS, renderProductStats } from '../productStats.ts';
 import { privateRoomMetadata, STUDIO_METADATA } from './siteMetadata.ts';
 import { hrefForLocale, PUBLIC_ROUTE_RECORDS } from '../ui/localeRouting.ts';
+import { resolveVercelRequest, vercelJsonRoutes } from '../../tools/vercelRoutes.test-support.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const SITE = 'https://cot.kevinliu.studio';
@@ -207,10 +208,16 @@ assert.match(readFileSync(join(ROOT, 'index.html'), 'utf8'),
 assert.match(privateRoomMetadata(new URL(`${SITE}/?room=I0O123`))?.description || '', /room LQQL23/,
   'crawler metadata must normalize ambiguous room characters exactly like the lobby');
 
-const vercel = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8'));
+// vercel.json publishes the docs topics through pattern rewrites (INFRA-P20, 2026-10-01): resolve each canonical path
+// (and its /cn twin) through the routes `vercel build` derives, and require the page's own document.
+const vercelRoutes = vercelJsonRoutes(JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8')));
 for (const [file, canonical] of [...indexedPages].filter(([file]) => file.startsWith('site/docs-'))) {
   const path = new URL(canonical).pathname;
-  assert.ok(vercel.rewrites.some((rewrite) => rewrite.source === path), `${file} must be published at ${path}`);
+  const document = `/${file.slice('site/'.length)}`;
+  for (const [requestPath, served] of [[path, document], [`/cn${path}`, `/cn${document}`]]) {
+    const resolved = resolveVercelRequest(vercelRoutes, { path: requestPath }, new Set([served]));
+    assert.deepEqual([resolved.status, resolved.file], [200, served], `${file} must be published at ${requestPath}`);
+  }
 }
 
 console.log(`SEO metadata selftest passed (${indexedPages.size} indexed pages)`);
