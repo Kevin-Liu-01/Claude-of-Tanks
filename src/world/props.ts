@@ -59,6 +59,7 @@ import {
 } from './maps/inhabitKit.ts';
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { boxClearOfRoadCore, discClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
+import { FISHERY_WHARF_LAKE_INDEX } from './fisheryWharfSite.ts';
 import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } from './loggingYard.ts';
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
 import { composeMangroveFisheryWharf, type FisheryPacket, type FisheryVegetation } from './mangroveFisheryWharf.ts';
@@ -3562,7 +3563,8 @@ ${snowCap ? `
     if (heightField._roadDist(px, pz) < 7.5 || noVeg(px, pz)) return;
     if (conflictsTacticalReservation(px, pz) || !isRoadBuildingSiteClear(px, pz)) return;
     const rot = Math.atan2(cand.tx, cand.tz) + (rng() - 0.5) * 0.10;
-    const roadSite = mapId !== 'verdant' && mapId !== 'mangrove' && mapId !== 'foundry'
+    // 2026-10-02: Mangrove Reach, rebuilt to the layout brief, takes the frontage law as well
+    const roadSite = mapId !== 'verdant' && mapId !== 'foundry'
       && !P.streetRows && !P.orbitalSettlement ? { ...cand, side } : undefined;
     placePlannedBuilding(px, pz, rot, roadSite);
   }
@@ -6937,7 +6939,7 @@ ${snowCap ? `
   function composeAuthoredFisheryWharf(): void {
     if (mapId !== 'mangrove') return;
     group.userData.fisheryWharf = composeMangroveFisheryWharf(mapId, heightField, wharfFishery,
-      P.riverLandings?.find(site => site.lakeIndex === 20), [...obstacles, ...colliders],
+      P.riverLandings?.find(site => site.lakeIndex === FISHERY_WHARF_LAKE_INDEX), [...obstacles, ...colliders],
       vegetation, buckets.wood.slice(wharfDressingStart));
     wharfFishery = null;
   }

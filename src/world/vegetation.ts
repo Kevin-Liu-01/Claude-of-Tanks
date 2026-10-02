@@ -19,7 +19,8 @@ import {
   type TreeSpecies,
 } from './treeSpecies.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
-import { createStructureClearances, excludeStructureVegetation, excludeVegetation, overlapsStructureClearance } from './vegetationClearance.ts';
+import { createStructureClearances, excludeStructureVegetation, excludeVegetation, overlapsStructureClearance,
+  placedStructureClearances } from './vegetationClearance.ts';
 import { compactGroundCoverInstances, type GroundCoverBlocked } from './groundCoverClearance.ts';
 import { attachTreeCards, attachTreeLobes } from './treeAttachments.ts';
 import { applyCanopyDiffuseWrap } from './canopyLighting.ts'; // round 55: shared with the horizon ring (leaf module)
@@ -5249,9 +5250,13 @@ function* vegetationBuildSteps(
   // oriented roof footprints against the complete crown + lean envelope.
   // This runs after every RNG-driven placement, and before any tree pool or
   // root decal is built, so no rejected tree survives as collision/spotting.
-  const structureClearances = createStructureClearances(
+  // Placed structures that need clear ground (Mangrove's fishery wharf) join them with the footprint their own plan
+  // gives; no other map publishes one.
+  const placedClearances = placedStructureClearances((cfg as { id?: string } | null)?.id, heightField,
+    cfg?.props?.riverLandings ?? []);
+  const structureClearances = [...createStructureClearances(
     cfg?.props?.tacticalBeats ?? [], DESTRUCTIBLE_BUILDING_TYPES,
-  );
+  ), ...placedClearances];
   group.userData.structureClearance = {
     sites: structureClearances.length,
     rejectedTrees: excludeStructureVegetation(
@@ -5683,6 +5688,8 @@ function* vegetationBuildSteps(
       _q.setFromAxisAngle(_up, rng() * Math.PI * 2);
       _m4.compose(_pv.set(x, y - 0.05, z), _q, _sv.set(sc, sc * (1.05 + rng() * 0.35), sc));
       const variant=(rng()*2)|0,keep=!newlyUnsafeRoadSite(x,z,6,.78);
+      // a placed structure's clear ground takes no bush either: dropped after its draws, so every later bush stays
+      if (placedClearances.length && overlapsStructureClearance(placedClearances, x, z, 2.5 * sc + 0.3)) return;
       bushPlacements[variant].push(_m4.clone());bushKeep[variant].push(keep);
       if(keep)concealers.push({ x, z, r: 2.0 * sc, add: 0.35 }); // SPOTTING WIRING: bush cover
     }

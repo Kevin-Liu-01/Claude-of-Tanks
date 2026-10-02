@@ -3,6 +3,7 @@ import { Box3, Matrix4, Vector3, type BufferGeometry } from 'three';
 import { convexHull2, type CollisionRecord } from './collision.ts';
 import { applyStructureCollisionBand, deriveRuntimeStructureCollisionProfile, mergeStructureCollisionBand } from './structureCollision.ts';
 import { planRiverLanding, type RiverLandingAnchor } from './maps/riverLandings.ts';
+import { fisheryWharfPose } from './fisheryWharfSite.ts';
 
 type Buckets = Record<string, BufferGeometry[]>;
 interface Pose { x: number; y: number; z: number; yaw: number }
@@ -60,11 +61,7 @@ function support(field: Field, p: Pose, x0: number, x1: number, z0: number, z1: 
 function plan(field: Field, anchor: RiverLandingAnchor): WharfPlan {
   const landing = planRiverLanding(field, field._layout.lakes, anchor);
   if (!landing) throw new Error('authored creek landing is unavailable');
-  const yaw = Math.atan2(Math.cos(landing.angle), Math.sin(landing.angle));
-  // The long dock meets the west side of the existing jetty. The boat keeps
-  // its complete east-side beach and approach; no landing kit is moved.
-  const p = { x: landing.x - Math.cos(yaw) * 8.7 - Math.sin(yaw) * 9.75,
-    z: landing.z + Math.sin(yaw) * 8.7 - Math.cos(yaw) * 9.75, y: 0, yaw };
+  const p = fisheryWharfPose(landing);
   const ground = support(field, p, -5.1, 5.1, -7.75, 7.75);
   p.y = Math.max(landing.deckY - 0.405, ground.max - 0.35 + 0.02);
   const annex = support(field, p, -8.7, -4.5, -4.9, 0.1);

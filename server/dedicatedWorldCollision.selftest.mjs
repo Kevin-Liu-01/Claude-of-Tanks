@@ -63,7 +63,7 @@ const expected = {
   whiteout: [1601, 1467, 875],
   orchard: [4923, 4691, 5160],
   longleaf: [6218, 6021, 7183],
-  mangrove: [5282, 5127, 6502],
+  mangrove: [5377, 5204, 6535], // 2026-10-02 Mangrove Reach redesign (docs/MAP-LAYOUT-BRIEF.md); was [5282, 5127, 6502]
   saltwind: [3811, 3614, 4260], // 2026-10-02 Saltwind Narrows redesign (docs/MAP-LAYOUT-BRIEF.md); was [3629, 3392, 4048]
   reservoir: [6425, 6300, 7206],
   mars: [769, 715, 0],

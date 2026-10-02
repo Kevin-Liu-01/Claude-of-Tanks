@@ -4,7 +4,7 @@
 // byte; receipts that preserve the other maps' authoring exclude it by consulting this list.
 
 /** Maps rebuilt to the layout brief: their layout, landform, roads, settlements, spawns and objectives are new. */
-export const LAYOUT_BRIEF_MAPS = Object.freeze(['desert', 'urban', 'railyard', 'frontier', 'saltwind', 'coastal', 'verdant'] as const);
+export const LAYOUT_BRIEF_MAPS = Object.freeze(['desert', 'urban', 'railyard', 'frontier', 'saltwind', 'coastal', 'verdant', 'mangrove'] as const);
 
 export type LayoutBriefMapId = (typeof LAYOUT_BRIEF_MAPS)[number];
 

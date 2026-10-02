@@ -10,7 +10,7 @@ import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { setCircleShape } from './collision.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
-import { createStructureClearances, excludeStructureVegetation, overlapsStructureClearance } from './vegetationClearance.ts';
+import { createStructureClearances, excludeStructureVegetation, overlapsStructureClearance, placedStructureClearances } from './vegetationClearance.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { authoredTreeStations, redistributeAuthoredTrees } from './authoredTreePlacement.ts';
 import { SHORELINE_SEGMENTS, shorelineDistance, shorelineRadiusAt } from './shoreline.ts';
@@ -29,7 +29,7 @@ const noiseEnd = source.indexOf('function _mustReplace(', noiseStart);
 assert.ok(start > 0 && end > start && noiseEnd > noiseStart);
 const dependencies = { THREE, mulberry32, treeRichness, TREE_ARCHETYPES, treeTrunkCollisionRadiusM, setCircleShape,
   PLAYABLE_HALF_EXTENT_M, isClearOfSpawns, createStructureClearances, excludeStructureVegetation,
-  DESTRUCTIBLE_BUILDING_TYPES, redistributeAuthoredTrees };
+  DESTRUCTIBLE_BUILDING_TYPES, redistributeAuthoredTrees, placedStructureClearances };
 const builder = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* placement(heightField, cfg) {
   const seed = 2001, rng = mulberry32(seed), group = new THREE.Group();
   const veg = { parks: null, palettes: {}, avoid: null, ...cfg.vegetation };

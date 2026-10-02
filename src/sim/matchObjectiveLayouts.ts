@@ -48,6 +48,9 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Verdant Fields (redesign 2026-10-02): three level aprons, rotationally symmetric about the village — the southern
   // field green, the village square (also the turbo-ball kickoff), the northern field green.
   verdant: { kickoff: { x: 10, z: 20 }, zones: [{ x: -250, z: -150 }, { x: 10, z: 20 }, { x: 270, z: 190 }] },
+  // Mangrove Reach (redesign 2026-10-02): three seats on the line of equal distance between the deployments — the
+  // western meadow below the creek, the fishing village (also the turbo-ball kickoff), the eastern island's flats.
+  mangrove: { kickoff: { x: -55, z: 10 }, zones: [{ x: -230, z: 95 }, { x: -55, z: 10 }, { x: 240, z: -90 }] },
   skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
   copper_mesa: { zones: [{ x: 95.75601429460295, z: 25.16493186989846 }, { x: 103.52551824388397, z: -48.38643546884091 }, { x: 159.75453586673763, z: -8.089799185507083 }] },
 };
