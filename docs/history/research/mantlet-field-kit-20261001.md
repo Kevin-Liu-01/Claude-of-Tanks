@@ -321,3 +321,38 @@ authorizes deployment of the requested field kit in that disclosed state.
 The failed AMX geometry/fidelity measurements remain failed; no oracle,
 threshold or recorded outcome is changed. The remaining combined-tree checks
 are being completed before publication.
+
+
+## Final main intakes and production-package evidence — 2026-10-02
+
+The eighteen-ID release completed with the disclosed AMX 56 stock-source
+geometry/fidelity failures. All eighteen sealed-hull checks pass (zero open
+views out of 33); all three Leopard fidelity checks pass. The AMX discrepancy
+is retained under the owner's publication instruction, never converted to a
+passing comparison. Fourteen additional combined-source quarter views were
+inspected.
+
+Main advanced twice while the shared capture queue was busy: `c3008fe7a`
+repairs Challenger 3 roof-station articulation and damage-owned vertex colors;
+`5a5223b41` refreshes Italian woodland and Type 100/ZTZ-100 digital camouflage.
+Both were rebased into this branch. Generated-inventory conflicts were merged
+by vehicle, preserving both upstream Challenger rows and all fourteen national
+rows. The camouflage intake rebased without conflicts and changes exactly the
+upstream file set. National geometry, roof packages and their own paint presets
+remain unchanged. No shared dirty checkout was modified.
+
+The clean prebuilt package at `1ab8a2c89` (including the Challenger intake)
+passed type checking, build, immutable-route verification, and 21 real Garage
+selections spanning all eighteen edited vehicles and a cached return. Served
+version `v1.0.0+g1ab8a2c89`, entry `main-ciec33xb.js`; no browser errors. Root
+reviewed all eighteen captured heroes and observed no new floating stock or
+clipping in those quarter poses. This is preproduction evidence, not a live
+deployment claim; the camouflage intake requires a new package.
+
+A fresh isolated `c3008fe7a` replay of the previously failing 81-test set
+completed: 73 failures reproduce on main, 8 pass. Individual raw logs and the
+complete report are in `.qa-dev/mantlet-final/c3008/baseline/`. This is baseline
+evidence, not a waiver for a new regression. The two broad candidate runs were
+stopped while queued, without active children, when main advanced. Each had
+completed only its all-219 demand-loading sweep; neither is a complete-suite
+qualification. The full suite restarts on the final combined tree.
