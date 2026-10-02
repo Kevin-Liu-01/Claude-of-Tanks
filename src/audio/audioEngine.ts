@@ -59,7 +59,7 @@ export interface AudioTerrainProbe {
   getWaterDepthAt?(x: number, z: number): number;
 }
 
-export interface AudioMixerOptions {
+interface AudioMixerOptions {
   context?: AudioContext | null;
   getMapId?(): string | null;
   getTerrain?(): AudioTerrainProbe | null;

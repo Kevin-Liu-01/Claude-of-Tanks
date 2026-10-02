@@ -14,8 +14,6 @@ import type { EngineFamilyProfile } from './vehicleAudioProfiles.ts';
 
 export type SurfaceId = 'earth' | 'hard' | 'sand' | 'snow' | 'mud' | 'water';
 
-export const SURFACE_IDS: readonly SurfaceId[] = Object.freeze(['earth', 'hard', 'sand', 'snow', 'mud', 'water']);
-
 export type ModuleHealth = 'ok' | 'yellow' | 'red';
 
 /** One tick of simulated hull state, read straight off the entity. */
@@ -37,17 +35,17 @@ export interface VehicleAudioInput {
   immobilized: boolean;
 }
 
-export type VehicleAudioEventType =
+type VehicleAudioEventType =
   | 'shiftUp' | 'shiftDown' | 'brakeSqueal' | 'land' | 'bump'
   | 'stall' | 'restart' | 'skidStart';
 
-export interface VehicleAudioEvent {
+interface VehicleAudioEvent {
   type: VehicleAudioEventType;
   /** 0..1 */
   strength: number;
 }
 
-export interface VehicleAudioEvents {
+interface VehicleAudioEvents {
   readonly items: VehicleAudioEvent[];
   count: number;
 }

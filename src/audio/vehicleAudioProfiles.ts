@@ -10,7 +10,7 @@
  * fans of its air-cooled AVDS-1790.
  */
 
-export type EngineFamilyId =
+type EngineFamilyId =
   | 'turbine_agt'
   | 'turbine_gtd'
   | 'diesel_v12_soviet'
@@ -33,10 +33,10 @@ export const CREW_LANGUAGES: readonly CrewLanguage[] = Object.freeze([
   'en-US', 'en-GB', 'de', 'ru', 'uk', 'zh', 'fr', 'sv', 'ja', 'ko', 'it', 'pl', 'he',
 ]);
 
-export type TrackClass = 'light' | 'heavy';
-export type TurretDrive = 'electric' | 'hydraulic';
+type TrackClass = 'light' | 'heavy';
+type TurretDrive = 'electric' | 'hydraulic';
 export type LoaderKind = 'manual' | 'carousel' | 'bustle' | 'autocannon' | 'missile';
-export type ShiftStyle = 'manual' | 'automatic' | 'none';
+type ShiftStyle = 'manual' | 'automatic' | 'none';
 
 /** Powertrain behaviour the RPM model and the layer mixer read. */
 export interface EngineFamilyProfile {
@@ -85,7 +85,7 @@ export interface VehicleAudioIdentity {
 }
 
 /** The plain spec fields this module reads; every fleet row satisfies it. */
-export interface VehicleAudioSpecInput {
+interface VehicleAudioSpecInput {
   readonly id?: unknown;
   readonly nation?: unknown;
   readonly era?: unknown;

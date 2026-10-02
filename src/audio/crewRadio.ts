@@ -19,7 +19,7 @@ import type { Mixer } from './mixer.ts';
 import { radioSquelch, type NoiseBank } from './procedural.ts';
 import { RADIO_DISCIPLINE, VOICE_LINES, type VoiceLineMeta } from './voiceLines.ts';
 
-export interface SayOptions {
+interface SayOptions {
   prob?: number;
   force?: boolean;
   delayS?: number;
@@ -35,7 +35,7 @@ interface Request {
   expiresAt: number;
 }
 
-export interface RadioLogEntry {
+interface RadioLogEntry {
   id: string;
   lang: string;
   t: number;
@@ -55,7 +55,7 @@ export interface CrewRadio {
   debugState(): { currentPri: number; currentGroup: string | null; currentEnd: number; pending: Request[] };
 }
 
-export interface CrewRadioOptions {
+interface CrewRadioOptions {
   mixer: Mixer;
   library: AssetLibrary;
   noise: NoiseBank;

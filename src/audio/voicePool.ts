@@ -57,7 +57,7 @@ export interface ActiveVoice {
 }
 
 /** One started voice: asset, start time, linear gain, rate, distance (m) and bus. */
-export interface SfxLogEntry {
+interface SfxLogEntry {
   seq: number;
   n: string;
   t: number;
@@ -67,7 +67,7 @@ export interface SfxLogEntry {
   b: BusId;
 }
 
-export interface VoicePoolOptions {
+interface VoicePoolOptions {
   mixer: Mixer;
   library: AssetLibrary;
   random: () => number;

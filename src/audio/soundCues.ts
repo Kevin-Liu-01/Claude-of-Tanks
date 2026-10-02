@@ -61,7 +61,7 @@ export const GROUP_PROFILES: Readonly<Record<string, CueProfile>> = Object.freez
 const o = (value: Partial<ProfileSeed>): Partial<CueProfile> => Object.freeze(value);
 
 /** Assets that differ from their group default. */
-export const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.freeze({
+const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.freeze({
   // Main guns carry across the whole battlefield as distant thunder.
   gun_far_light: o({ refM: 80, rolloff: 0.85, maxM: 2600, absorb: 0.5, send: 0.3, loudDb: 140 }),
   gun_far_medium: o({ refM: 90, rolloff: 0.85, maxM: 2800, absorb: 0.45, send: 0.3, loudDb: 144 }),

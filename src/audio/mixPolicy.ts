@@ -112,7 +112,7 @@ export const VEHICLE_LOD = Object.freeze({ nearInM: 140, nearOutM: 165, farInM: 
 
 export type ReverbId = 'open' | 'forest' | 'urban' | 'mountain' | 'canyon' | 'desert' | 'snow' | 'hangar' | 'mars' | 'none';
 
-export interface ReverbPreset {
+interface ReverbPreset {
   readonly decayS: number;
   readonly preDelayS: number;
   /** Lowpass the tail closes towards (Hz) — high frequencies die first outdoors. */

@@ -9,7 +9,7 @@
 
 import type { ReverbId } from './mixPolicy.ts';
 
-export type GunTail = 'open' | 'forest' | 'urban' | 'mountain' | 'none';
+type GunTail = 'open' | 'forest' | 'urban' | 'mountain' | 'none';
 
 export interface EnvironmentScene {
   readonly bed: string;

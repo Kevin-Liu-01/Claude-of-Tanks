@@ -21,7 +21,7 @@ const PROBE_WEBM_B64 = 'GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYECGFOAZwEA
 
 type DecodeContext = Pick<BaseAudioContext, 'decodeAudioData'>;
 
-export interface AssetLibraryOptions {
+interface AssetLibraryOptions {
   context: AudioContext;
   /** Base URL of the deployed public directory (import.meta.env.BASE_URL). */
   base?: string;

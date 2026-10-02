@@ -35,7 +35,7 @@ import { ENGINE_FAMILIES, type VehicleAudioIdentity } from './vehicleAudioProfil
 
 export type RigLod = 'own' | 'near' | 'far';
 
-export interface RigDeps {
+interface RigDeps {
   readonly mixer: Mixer;
   readonly library: AssetLibrary;
   readonly pool: VoicePool;

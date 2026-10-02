@@ -22,7 +22,7 @@ import {
 } from './mixPolicy.ts';
 import type { BusId } from './soundCues.ts';
 
-export interface MixerOptions {
+interface MixerOptions {
   context: AudioContext;
   reverb: boolean;
   channelVolumes: Record<SettingsChannel, number>;
@@ -74,7 +74,7 @@ function makeSoftClip(ctx: BaseAudioContext): WaveShaperNode {
  * decaying noise whose brightness closes towards `dampHz`, a pre-delay, and
  * discrete terrain/façade echoes. Seeded so a map always sounds the same.
  */
-export function buildImpulse(ctx: BaseAudioContext, id: ReverbId, maxS = 2.4): AudioBuffer {
+function buildImpulse(ctx: BaseAudioContext, id: ReverbId, maxS = 2.4): AudioBuffer {
   const preset = REVERB_PRESETS[id];
   const sr = ctx.sampleRate;
   const length = Math.max(1, Math.round(Math.min(maxS, preset.preDelayS + preset.decayS * 1.3) * sr));

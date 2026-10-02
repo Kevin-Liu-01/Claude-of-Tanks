@@ -15,9 +15,9 @@ export type WeaponClassId =
   | 'gun_90' | 'gun_105' | 'gun_120' | 'gun_125' | 'gun_130' | 'gun_152'
   | 'atgm' | 'rocket_heavy';
 
-export type WeaponFamily = 'mg' | 'autocannon' | 'cannon' | 'launcher';
+type WeaponFamily = 'mg' | 'autocannon' | 'cannon' | 'launcher';
 
-export interface WeaponClassProfile {
+interface WeaponClassProfile {
   readonly id: WeaponClassId;
   readonly family: WeaponFamily;
   /** Reference loudness of the report at 1 m (dB, engine-internal scale). */
@@ -104,7 +104,7 @@ export function weaponClassForCaliber(caliberMm: number): WeaponClassId {
   return 'rocket_heavy';
 }
 
-export interface ResolvedWeaponReport {
+interface ResolvedWeaponReport {
   readonly cls: WeaponClassProfile;
   readonly rate: number;
   readonly gainDb: number;
@@ -130,7 +130,7 @@ export type ReloadCueType =
   | 'carouselTurn' | 'cassetteLift' | 'chainRam' | 'stubEject'
   | 'bustleIndex' | 'clipIndex' | 'feedClank' | 'magazineSwap' | 'tubeLoad' | 'latch';
 
-export interface ReloadCue {
+interface ReloadCue {
   readonly at: number;
   readonly type: ReloadCueType;
 }

@@ -21,7 +21,7 @@ export interface AmbienceDirector {
   state(): Record<string, unknown>;
 }
 
-export interface AmbienceOptions {
+interface AmbienceOptions {
   mixer: Mixer;
   library: AssetLibrary;
   pool: VoicePool;
