@@ -60,6 +60,8 @@ export const GROUP_PROFILES: Readonly<Record<string, CueProfile>> = Object.freez
   radio: seed({ bus: 'voice', space: 'flat', priority: 95, maxInstances: 2, cooldownS: 0, refM: 1, rolloff: 0, maxM: 1e9, absorb: 0, send: 0, loudDb: 100, gainDb: -12, pitch: [0.98, 1.02] }),
   ui: seed({ bus: 'ui', space: 'flat', priority: 90, maxInstances: 3, cooldownS: 0.03, refM: 1, rolloff: 0, maxM: 1e9, absorb: 0, send: 0, loudDb: 100, gainDb: -6, pitch: [0.99, 1.01] }),
   stingers: seed({ bus: 'music', space: 'flat', priority: 92, maxInstances: 1, cooldownS: 0.5, refM: 1, rolloff: 0, maxM: 1e9, absorb: 0, send: 0, loudDb: 100, gainDb: -5, pitch: [1, 1] }),
+  // Drone and AC-130 aircraft: their engine loops run in aerialRig; these place the one-shots.
+  aerial: seed({ bus: 'vehicles', space: 'world', priority: 65, maxInstances: 3, cooldownS: 0.3, refM: 6, rolloff: 1, maxM: 500, absorb: 1, send: 0.12, loudDb: 118, gainDb: -3 }),
 });
 
 const o = (value: Partial<ProfileSeed>): Partial<CueProfile> => Object.freeze(value);

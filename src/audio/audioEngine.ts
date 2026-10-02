@@ -43,6 +43,7 @@ import {
   synthImpact, synthShot, type NoiseBank, type Rig,
 } from './procedural.ts';
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
+import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
 import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
 import type { ModuleHealth, SurfaceId, VehicleAudioInput } from './vehicleAudioModel.ts';
 import { resolveReloadCuePlan, resolveWeaponReport, type ReloadCuePlan, type ReloadCueType, type WeaponClassId } from './weaponAudio.ts';
@@ -70,7 +71,7 @@ interface AudioMixerOptions {
 export interface AudioMixer {
   resume(): void;
   bindBus(bus: EventBus): void;
-  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[]): void;
+  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[]): void;
   setMasterVolume(value: number): void;
   mute(muted: boolean): void;
   playGarageSting(): void;
@@ -122,6 +123,8 @@ interface AudioEntity {
     slopeBlocked?: boolean;
   };
   input?: { throttle?: number; brake?: boolean };
+  /** Drone and AC-130 modes: the tank's drone in flight, or the gunship this entity is. */
+  aerial?: { kind?: string; active?: boolean; x?: number; y?: number; z?: number; batteryS?: number };
   combat?: {
     destroyed?: boolean;
     hp: number;
@@ -256,7 +259,11 @@ const UI_SET = [
   'ui_slider', 'ui_ready', 'sting_garage',
 ];
 
+/** Aircraft of the Drone and AC-130 modes, decoded on first sight of one. */
+const AERIAL_SET = ['drone_fpv_loop', 'drone_spinup', 'drone_feed_static_loop', 'drone_link_lost', 'gunship_orbit_loop', 'gunship_cabin_loop'];
+
 const MODE_SET = [
+  'sting_infected',
   'ui_capture_tick', 'ui_objective_gain', 'ui_objective_loss', 'ui_pickup', 'ui_goal', 'ui_ball_hit', 'ui_respawn',
   'ui_flag_taken', 'ui_flag_captured', 'ui_flag_returned', 'ui_flag_dropped', 'ui_wave_clear', 'ui_line_advance',
   'ui_score', 'sting_wave', 'sting_victory', 'sting_defeat', 'sting_draw', 'killcam_in', 'killcam_out', 'spectate_switch',
@@ -1107,10 +1114,30 @@ export function createAudio({
       case 'respawn':
         if (payload.id === playerId) { play('ui_respawn'); say('respawn', { prob: 0.6, delayS: 0.5 }); }
         break;
+      case 'infected':
+        // Infected: our crew has been turned to the other side.
+        if (payload.id === playerId) { play('sting_infected'); play('radio_interference', { space: 'flat', bus: 'voice', gainDb: -4 }); }
+        break;
+      case 'weapon_advanced':
+        // Gun Game: the crew changes over to the next weapon on the ladder and loads it.
+        if (payload.id === playerId) weaponChangeover(Number(payload.stage));
+        break;
       default:
         break;
     }
     logSound(`mode:${type}`, { team, byMe });
+  }
+
+  /** Gun Game stages in order: 30 mm AP, 105 and 120 mm APFSDS, 152 mm HE, the guided missile. */
+  const LADDER_LOAD = ['load_kinetic', 'load_kinetic', 'load_kinetic', 'load_he', 'load_missile'];
+
+  function weaponChangeover(stage: number): void {
+    const missile = stage >= LADDER_LOAD.length - 1;
+    play('breech_open', hullOptions());
+    play(missile ? 'missile_tube_load' : 'shell_ram', hullOptions({ delayS: 0.55 }));
+    if (!missile) play('breech_close', hullOptions({ delayS: 1.15 }));
+    play('latch_ready', hullOptions({ delayS: missile ? 1.4 : 1.5 }));
+    say(LADDER_LOAD[clamp(Math.floor(stage) || 0, 0, LADDER_LOAD.length - 1)], { delayS: 0.3 });
   }
 
   // ------------------------------------------------------------ alarms/edge ---
@@ -1284,6 +1311,7 @@ export function createAudio({
     for (let i = 0; i < list.length; i++) {
       const entity = toEntity(list[i]);
       if (!entity || entity.combat?.destroyed || entity.modeActive === false) continue;
+      if (entity.aerial?.kind === 'gunship') continue;
       if (probeSolo != null && entity.id !== probeSolo) continue;
       const p = entity.state.pos;
       const d = Math.hypot(p.x - frame.x, p.y - frame.y, p.z - frame.z);
@@ -1372,7 +1400,131 @@ export function createAudio({
     }
   }
 
+  // ------------------------------------------------------------- aircraft ---
+
+  // Drones heard from outside (by shell id), gunships heard from the ground (by
+  // entity id), and the listener's own aircraft: its drone's feed or the cabin.
+  const droneRigs = new Map<number, AerialRig>();
+  const gunshipRigs = new Map<string, AerialRig>();
+  let ownAerial: AerialRig | null = null;
+  let ownDroneFlying = false;
+  let aerialWarmed = false;
+  const seenAerial = new Set<number | string>();
+  const aerialFrame: AerialFrame = { rel: { right: 0, up: 0, ahead: 0, distance: 0 }, atmosphere, doppler: 1, speedK: 0, strain: 0 };
+
+  interface DroneShell { id?: number; shooterId?: string; dead?: boolean; pos?: { x: number; y: number; z: number }; vel?: { x: number; y: number; z: number }; spec?: { tracer?: string } }
+
+  function aerialDeps() {
+    return { mixer: mixer!, library: library!, random, reverb: budget.reverb };
+  }
+
+  /** Doppler of a source at p moving at v, from the listener frame. */
+  function radialDoppler(p: { x: number; y: number; z: number }, vx: number, vy: number, vz: number, distance: number): number {
+    if (distance < 0.5) return 1;
+    return dopplerRatio(-((p.x - frame.x) * vx + (p.y - frame.y) * vy + (p.z - frame.z) * vz) / distance, atmosphere);
+  }
+
+  function updateAerial(list: readonly RuntimeValue[], shells: readonly RuntimeValue[]): void {
+    if (!mixer || !library || !pool) return;
+    seenAerial.clear();
+    aerialFrame.atmosphere = atmosphere;
+    let me: AudioEntity | null = null;
+    for (let i = 0; i < list.length; i++) {
+      const entity = toEntity(list[i]);
+      if (!entity?.aerial?.kind) continue;
+      if (!aerialWarmed) { aerialWarmed = true; library.pin(AERIAL_SET); void library.load(AERIAL_SET); }
+      if (entity.id === listenerOwnerId) me = entity;
+      if (entity.aerial.kind !== 'gunship' || entity.combat?.destroyed || entity.id === listenerOwnerId) continue;
+      // A gunship circling overhead, heard from the ground.
+      seenAerial.add(entity.id);
+      let rig = gunshipRigs.get(entity.id);
+      if (!rig) { rig = createAerialRig(aerialDeps(), 'gunship', 'world'); gunshipRigs.set(entity.id, rig); logSound('aerial:start', { id: entity.id, kind: 'gunship' }); }
+      const p = entity.state.pos;
+      const info = tanks.get(entity.id);
+      toListenerFrame(frame, p.x, p.y, p.z, aerialFrame.rel);
+      aerialFrame.doppler = info ? radialDoppler(p, info.vx, info.vy, info.vz, aerialFrame.rel.distance) : 1;
+      aerialFrame.speedK = 1;
+      aerialFrame.strain = 0;
+      rig.update(aerialFrame);
+    }
+    for (const [id, rig] of gunshipRigs) if (!seenAerial.has(id)) { rig.kill(1.5); gunshipRigs.delete(id); }
+
+    // Drones in flight are shells; the listener's own drone is heard through its feed instead.
+    for (let i = 0; i < shells.length; i++) {
+      const shell = shells[i] as DroneShell;
+      if (shell?.spec?.tracer !== 'DRONE' || shell.dead || shell.id == null || !shell.pos) continue;
+      if (listenerShot(shell.shooterId)) continue;
+      const p = shell.pos;
+      toListenerFrame(frame, p.x, p.y, p.z, aerialFrame.rel);
+      let rig = droneRigs.get(shell.id);
+      if (!rig) {
+        if (aerialFrame.rel.distance > 520) continue;
+        if (!aerialWarmed) { aerialWarmed = true; library.pin(AERIAL_SET); void library.load(AERIAL_SET); }
+        rig = createAerialRig(aerialDeps(), 'drone', 'world');
+        droneRigs.set(shell.id, rig);
+        logSound('aerial:start', { id: shell.id, kind: 'drone' });
+      }
+      seenAerial.add(shell.id);
+      const v = shell.vel;
+      const speed = v ? Math.hypot(v.x, v.y, v.z) : 0;
+      aerialFrame.doppler = v ? radialDoppler(p, v.x, v.y, v.z, aerialFrame.rel.distance) : 1;
+      aerialFrame.speedK = clamp(speed / 42, 0, 1);
+      aerialFrame.strain = 0;
+      rig.update(aerialFrame);
+    }
+    for (const [id, rig] of droneRigs) if (!seenAerial.has(id)) { rig.kill(0.25); droneRigs.delete(id); }
+
+    // Our own aircraft: the gunship's cabin, or the drone's feed while it flies.
+    const view = me?.aerial;
+    const flying = view?.kind === 'drone' && !!view.active && !me?.combat?.destroyed;
+    const cabin = view?.kind === 'gunship' && !me?.combat?.destroyed;
+    if (flying && !ownDroneFlying) {
+      // The quadcopter spins up on our hull, then we hear it through its feed.
+      play('drone_spinup', hullOptions({ bus: 'own', lowpassHz: 7000 }));
+      logSound('aerial:launch', { id: me?.id });
+    } else if (!flying && ownDroneFlying) {
+      play('drone_link_lost', { space: 'flat', bus: 'own', lowpassHz: 5000 });
+      logSound('aerial:feed-lost', { id: me?.id });
+    }
+    ownDroneFlying = flying;
+    const wantKind = flying ? 'drone' : cabin ? 'gunship' : null;
+    if (ownAerial && ownAerial.kind !== wantKind) { ownAerial.kill(flying || cabin ? 0.3 : 0.15); ownAerial = null; }
+    if (!wantKind || !me || !view) return;
+    if (!ownAerial) ownAerial = createAerialRig(aerialDeps(), wantKind, 'own');
+    aerialFrame.doppler = 1;
+    aerialFrame.rel.distance = 0;
+    aerialFrame.rel.right = 0;
+    if (wantKind === 'drone') {
+      const p = me.state.pos;
+      const range = Math.hypot((view.x ?? p.x) - p.x, (view.y ?? p.y) - p.y, (view.z ?? p.z) - p.z);
+      // The link frays toward the 850 m range limit and the last ten seconds of battery.
+      aerialFrame.strain = Math.max(rampBetween(range, 550, 850), rampBetween(10 - (view.batteryS ?? 40), 0, 10));
+      let speed = 0;
+      for (let i = 0; i < shells.length; i++) {
+        const shell = shells[i] as DroneShell;
+        if (shell?.spec?.tracer === 'DRONE' && !shell.dead && shell.vel && listenerShot(shell.shooterId)) { speed = Math.hypot(shell.vel.x, shell.vel.y, shell.vel.z); break; }
+      }
+      aerialFrame.speedK = clamp(speed / 42, 0, 1);
+    } else {
+      aerialFrame.strain = 0;
+      aerialFrame.speedK = 1;
+    }
+    ownAerial.update(aerialFrame);
+  }
+
+  function stopAerial(): void {
+    for (const rig of droneRigs.values()) rig.kill(0.3);
+    for (const rig of gunshipRigs.values()) rig.kill(0.3);
+    droneRigs.clear();
+    gunshipRigs.clear();
+    ownAerial?.kill(0.3);
+    ownAerial = null;
+    ownDroneFlying = false;
+    aerialWarmed = false;
+  }
+
   function stopWorld(reason: string): void {
+    stopAerial();
     for (const [id, rig] of rigs) { rig.kill(0.3); logSound('engine:stop', { id, reason }); }
     rigs.clear();
     surfaceCache.clear();
@@ -1548,6 +1700,8 @@ export function createAudio({
     on<undefined>('ui:armorOverlayState', () => play('ui_toggle'));
     on<undefined>('ui:minimapZoom', () => play('ui_tab', { gainDb: -6 }));
     on<undefined>('spectate:cycle', () => play('spectate_switch'));
+    // Drone mode: the launch switch in the turret (the spin-up follows once the quadcopter lifts).
+    on<undefined>('ui:drone', () => { if (phase === 'battle') play('switch_toggle', hullOptions()); });
     on<{ id?: string }>('tank:jump', (e) => { if (isOwn(e?.id)) play('jump_launch', hullOptions({ bus: 'own' })); });
     const righted = (e: { id?: string } | undefined) => {
       const id = e?.id ?? null;
@@ -1671,7 +1825,7 @@ export function createAudio({
       volumeEvents++;
     });
     for (const type of ['zone_captured', 'flag_taken', 'flag_captured', 'flag_returned', 'flag_dropped', 'wave_started', 'wave_cleared',
-      'line_advanced', 'goal_scored', 'ball_hit', 'pickup_collected', 'destruction_scored', 'respawn']) {
+      'line_advanced', 'goal_scored', 'ball_hit', 'pickup_collected', 'destruction_scored', 'respawn', 'infected', 'weapon_advanced']) {
       on<Record<string, unknown>>(`mode:${type}`, (payload) => onMode(type, payload || {}));
     }
   }
@@ -1693,7 +1847,7 @@ export function createAudio({
     say(id, { delayS: 0.12 });
   }
 
-  function update(dt: number, listener: AudioListenerPose, list: readonly RuntimeValue[]): void {
+  function update(dt: number, listener: AudioListenerPose, list: readonly RuntimeValue[], shells: readonly RuntimeValue[] = []): void {
     if (!ready() || !mixer || !pool || !ctx) return;
     frame.x = listener.pos.x;
     frame.y = listener.pos.y;
@@ -1724,6 +1878,7 @@ export function createAudio({
       }
       if (phase === 'battle') {
         updateRigs(list, dt);
+        updateAerial(list, shells);
         if (startEngineSoon && playerId) {
           const rig = rigs.get(playerId);
           if (rig) { rig.startEngine(); startEngineSoon = false; }
@@ -1812,6 +1967,11 @@ export function createAudio({
         cutoffHz: Math.min(rig.lastCutoff, mixer ? SNAPSHOTS[mixer.snapshot][rig.lod === 'own' ? 'ownHz' : 'worldHz'] : 20000),
         rpm: +rig.state.rpm.toFixed(3), gear: rig.state.gear, load: +rig.state.load.toFixed(2), scrub: +rig.state.scrub.toFixed(2),
       })).sort((a, b) => a.dist - b.dist),
+      aerialState: () => ({
+        drones: [...droneRigs.entries()].map(([id, rig]) => ({ id, gain: +rig.lastGain.toFixed(4), rate: +rig.lastRate.toFixed(3) })),
+        gunships: [...gunshipRigs.entries()].map(([id, rig]) => ({ id, gain: +rig.lastGain.toFixed(4), rate: +rig.lastRate.toFixed(3) })),
+        own: ownAerial ? { kind: ownAerial.kind, gain: +ownAerial.lastGain.toFixed(4) } : null,
+      }),
       setEngineProbeSolo(id: string | null = null) { probeSolo = id || null; return probeSolo; },
       sayVoice: (id: string) => radio?.say(id, { force: true }) ?? false,
       forceCrewLanguage(lang: string | null = null) {

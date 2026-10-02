@@ -259,6 +259,60 @@ assert.equal(probe.snapshot, 'scoped');
 assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'scope_in'));
 listener.scoped = false;
 
+// AC-130: the gunship circling overhead is four turboprops, never a tank on the ground.
+const gunship = tank('gunship', { x: 0, z: 200, team: 'enemy', specId: 'm1a2', nation: 'USA' });
+gunship.state.pos.y = 240;
+gunship.aerial = { kind: 'gunship', active: true, x: 0, y: 240, z: 200 };
+const withGunship = [...tanks, gunship];
+for (let i = 0; i < 6; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, withGunship); }
+// The aircraft set decodes on first sight of one (in a Drone or AC-130 battle, at its start).
+for (let i = 0; i < 6; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+let air = probe.aerialState();
+assert.equal(air.gunships.length, 1, 'the gunship drones overhead');
+assert.ok(air.gunships[0].gain > 0.05, `and carries to the ground (${air.gunships[0].gain})`);
+assert.ok(!probe.engineState().some((e) => e.id === 'gunship'), 'no tank engine or tracks in the sky');
+for (let i = 0; i < 3; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks); }
+assert.equal(probe.aerialState().gunships.length, 0, 'and fades when it is gone');
+
+// Drone: an enemy quadcopter is heard where it flies; ours spins up on our hull, flies on its
+// feed (no world loop for it) and cuts out with the link.
+const drone = { id: 500, shooterId: 'foe', dead: false, spec: { tracer: 'DRONE', type: 'HE' }, pos: { x: 20, y: 25, z: 60 }, vel: { x: 0, y: 0, z: -40 } };
+for (let i = 0; i < 3; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks, [drone]); }
+air = probe.aerialState();
+assert.equal(air.drones.length, 1, 'an enemy drone buzzes');
+assert.ok(air.drones[0].gain > 0.05 && air.drones[0].rate > 1, `close and closing in (${JSON.stringify(air.drones[0])})`);
+drone.dead = true;
+ctx.advance(1 / 60);
+audio.update(1 / 60, listener, tanks, [drone]);
+assert.equal(probe.aerialState().drones.length, 0, 'its buzz ends with it');
+since = mark();
+me.aerial = { kind: 'drone', active: true, x: 0, y: 14, z: 6, batteryS: 40 };
+const ours = { id: 501, shooterId: 'me', dead: false, spec: { tracer: 'DRONE', type: 'HE' }, pos: { x: 0, y: 14, z: 6 }, vel: { x: 0, y: 5, z: 30 } };
+for (let i = 0; i < 3; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks, [ours]); }
+air = probe.aerialState();
+assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'drone_spinup'), 'our drone spins up on the hull');
+assert.equal(air.own?.kind, 'drone', 'and we hear it through its feed');
+assert.equal(air.drones.length, 0, 'not as a drone in the world');
+since = mark();
+me.aerial = { kind: 'drone', active: false, x: 0, y: 2, z: 0, batteryS: 0 };
+ctx.advance(1 / 60);
+audio.update(1 / 60, listener, tanks, []);
+assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'drone_link_lost'), 'the feed dies in a burst of static');
+assert.equal(probe.aerialState().own, null);
+delete me.aerial;
+
+// Gun Game: the crew changes over to the next weapon and calls the load; Infected: a grave sting.
+settle(4);
+since = mark();
+bus.emit('mode:weapon_advanced', { id: 'me', stage: 3, name: '152 mm Howitzer' });
+names = probe.sfxLog.slice(since).map((e) => e.n);
+for (const id of ['breech_open', 'shell_ram', 'breech_close', 'latch_ready']) assert.ok(names.includes(id), `weapon changeover plays ${id} (${names})`);
+for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(0.25, listener, tanks); }
+assert.equal(probe.voiceLog.at(-1)?.id, 'load_he', 'and the loader calls the howitzer round');
+since = mark();
+bus.emit('mode:infected', { id: 'me', team: 'bravo' });
+assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'sting_infected'), 'turned to the infected side');
+
 // Leaving battle tears every world loop down — here from the pause menu.
 bus.emit('ui:pause', { on: true });
 audio.update(1 / 60, listener, tanks);
@@ -278,4 +332,4 @@ bus.emit('phase:change', { phase: 'battle' });
 audio.update(1 / 60, listener, tanks);
 assert.equal(probe.snapshot, 'battle', 'a battle left from the pause menu leaves no pause behind');
 
-console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope and teardown passed (${probe.sfxLog.length} voices logged)`);
+console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope, aircraft, mode events and teardown passed (${probe.sfxLog.length} voices logged)`);

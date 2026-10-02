@@ -518,6 +518,18 @@ const ui = [
   sfx('ui_slider', 'ui', `One-shot ${UI}: one small heavy detent click of a steel dial, low and dull.`, 0.5, { variants: 1, takes: 3, proc: 'ui' }),
 ];
 
+// ---------------------------------------------------------------- aerial ---
+// Drone and AC-130 modes: the FPV quadcopter (heard from the ground, and through
+// its pilot's feed) and the four-engine gunship circling overhead.
+const aerial = [
+  sfx('drone_fpv_loop', 'aerial', `Seamless loop of a small FPV combat drone flying close by: four small electric motors at high rpm, an aggressive buzzing propeller whine, steady and constant. ${FIELD}, ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 4, proc: 'loop' }),
+  sfx('drone_spinup', 'aerial', `Sound effect: a small quadcopter drone's four electric motors spinning up from rest and lifting off, a rising buzzing whine. ${NO_MUSIC}.`, 2, { variants: 1, takes: 4, proc: 'foley' }),
+  sfx('drone_feed_static_loop', 'aerial', `Seamless loop of a weak analog video link: a low soft steady hiss with faint crackle and brief dropouts. ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
+  sfx('drone_link_lost', 'aerial', `Sound effect: a video feed dropping out, a short harsh burst of static that cuts off into silence. ${NO_MUSIC}.`, 1.2, { variants: 1, takes: 4, proc: 'foley' }),
+  sfx('gunship_orbit_loop', 'aerial', `Seamless loop of a large four-engine turboprop military aircraft circling slowly overhead at low altitude: a deep droning propeller hum with a slow pulsing beat between the engines, heard from the ground. ${FIELD}, ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 4, proc: 'loop' }),
+  sfx('gunship_cabin_loop', 'aerial', `Seamless loop inside the cargo hold of a four-engine turboprop military aircraft in flight: a deep constant engine drone, airframe vibration and rushing air. ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
+];
+
 // -------------------------------------------------------------- stingers ---
 // Grave war-film stings: low brass, timpani, restraint. No fanfares.
 const STING = 'short grave cinematic war film sting, low brass and timpani, dark and serious, no fanfare, no vocals';
@@ -528,12 +540,13 @@ const stingers = [
   sfx('sting_defeat', 'stingers', `One-shot ${STING}: defeat, very low falling brass and a muffled drum, mournful.`, 6, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
   sfx('sting_draw', 'stingers', `One-shot ${STING}: an unresolved ending, two flat low horn calls.`, 4, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
   sfx('sting_wave', 'stingers', `One-shot ${STING}: an enemy wave approaching, low war drums building, no melody.`, 3, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
+  sfx('sting_infected', 'stingers', `One-shot ${STING}: turned to the other side, a low dissonant brass cluster swelling into one dull timpani hit, unsettling.`, 4, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
 ];
 
 export const SFX_CATALOG = Object.freeze([
   ...weapons, ...autocannons, ...machineGuns, ...launchers, ...mechanisms, ...flybys,
   ...impacts, ...destruction, ...props, ...collisions, ...foley, ...engines, ...tracks,
-  ...equipment, ...ambience, ...spots, ...edgeCases, ...radio, ...ui, ...stingers,
+  ...equipment, ...ambience, ...spots, ...edgeCases, ...radio, ...ui, ...aerial, ...stingers,
 ]);
 
 /** Generated seconds (credits ≈ 10 per second on the sound-effects model). */
