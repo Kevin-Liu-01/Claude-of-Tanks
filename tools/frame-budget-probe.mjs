@@ -319,8 +319,8 @@ export function foreignGpuCpu() {
 
 /** The FIFO, then (optionally) the session mutex — taken only while the FIFO is ours; a busy mutex returns the FIFO. */
 export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, fifoTimeoutMs = 3 * 60 * 60 * 1000,
-  mutexWaitMs = 60_000, lock = createCaptureLock(), tryMutex = defaultTryMutex, releaseMutex = defaultReleaseMutex,
-  pause = sleep } = {}) {
+  mutexWaitMs = 60_000, mutexIdleWaitMs = 45 * 60_000, lock = createCaptureLock(), tryMutex = defaultTryMutex,
+  releaseMutex = defaultReleaseMutex, pause = sleep } = {}) {
   for (let round = 1; ; round++) {
     await lock.acquire(fifoTimeoutMs);
     if (!sessionMutex) return { round, release: () => lock.release(), refresh: () => lock.refresh() };
@@ -334,9 +334,20 @@ export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, f
       await pause(500);
     }
     lock.release();
-    log(`session mutex busy for ${Math.round(mutexWaitMs / 1000)} s at the FIFO head: FIFO released, queueing again (round ${round})`);
-    await pause(15_000);
+    log(`session mutex busy for ${Math.round(mutexWaitMs / 1000)} s at the FIFO head: FIFO released, queueing again once it is free (round ${round})`);
+    // its holder is most likely queued behind us: hold no ticket until the mutex is free, so the next head is not
+    // the same standoff
+    const waitFrom = Date.now();
+    while (mutexBusy(sessionMutex) && Date.now() - waitFrom < mutexIdleWaitMs) await pause(5_000);
+    await pause(2_000);
   }
+}
+function mutexBusy(dir) {
+  try {
+    const owner = Number(readFileSync(path.join(dir, 'pid'), 'utf8').trim());
+    if (!owner) return existsSync(dir);
+    try { process.kill(owner, 0); return true; } catch { return false; } // a dead owner's mutex is stale
+  } catch { return existsSync(dir); }
 }
 function defaultTryMutex(dir) {
   try { mkdirSync(dir); writeFileSync(path.join(dir, 'pid'), String(process.pid)); return true; } catch { return false; }
