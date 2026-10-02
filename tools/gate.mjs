@@ -226,6 +226,7 @@ export function renderGateMarkdown(summary) {
 // Execution
 
 const git = (root, ...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+const tryGit = (root, ...args) => { try { return git(root, ...args); } catch { return null; } };
 
 /** Run one command, teeing its output to the step log (and the console unless quiet). */
 function runCommand(argv, { cwd, log, echo }) {
@@ -357,6 +358,7 @@ async function runPreflight({ root, head, options, out, echo }) {
   const started = Date.now();
   const row = { step: 'preflight', log: join(out, 'preflight.log') };
   const fail = (error) => ({ ...row, status: 'fail', error, ms: Date.now() - started });
+  if (!head) return fail('not a git checkout: the preflight validates a commit');
   if (git(root, 'rev-parse', 'HEAD') !== head) return fail('HEAD moved during the gate; validate the current commit');
   if (git(root, 'status', '--porcelain=v1', '--untracked-files=no')) return fail('tracked files changed or are uncommitted: the gate validated a tree that is not HEAD; commit and rerun');
   let base = options.base;
@@ -381,16 +383,18 @@ async function runPreflight({ root, head, options, out, echo }) {
 }
 
 export async function runGate(options, { root, planner = planGate }) {
-  const head = git(root, 'rev-parse', 'HEAD');
-  const dirty = Boolean(git(root, 'status', '--porcelain=v1', '--untracked-files=no'));
+  // A checkout without Git (an export) still runs its steps; the preflight and --baseline need a commit.
+  const head = tryGit(root, 'rev-parse', 'HEAD');
+  const dirty = head ? Boolean(tryGit(root, 'status', '--porcelain=v1', '--untracked-files=no')) : null;
+  const shortHead = head?.slice(0, 12) ?? 'no-git';
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
-  const out = options.out ?? join(tmpdir(), 'cot-gate', `${stamp}-${head.slice(0, 9)}`);
+  const out = options.out ?? join(tmpdir(), 'cot-gate', `${stamp}-${shortHead.slice(0, 9)}`);
   const echo = !options.quiet;
   const plans = planner(options, { root, out });
   if (options.dryRun) {
-    console.log(`[gate] dry run at ${head.slice(0, 12)}${dirty ? ' (uncommitted changes)' : ''}; output would go to ${out}`);
+    console.log(`[gate] dry run at ${shortHead}${dirty ? ' (uncommitted changes)' : ''}; output would go to ${out}`);
     for (const plan of plans) {
-      if (plan.step === 'preflight') console.log(`[gate] preflight: node tools/shared-main-preflight.mjs --base=${options.base ?? '<merge-base HEAD origin/main>'} --validated-head=${head}${options.reviewedMain ? ` --reviewed-main=${options.reviewedMain}` : ''} (in place when the checkout is clean, else in a detached worktree of HEAD)`);
+      if (plan.step === 'preflight') console.log(`[gate] preflight: node tools/shared-main-preflight.mjs --base=${options.base ?? '<merge-base HEAD origin/main>'} --validated-head=${head ?? '<no git: the preflight would fail>'}${options.reviewedMain ? ` --reviewed-main=${options.reviewedMain}` : ''} (in place when the checkout is clean, else in a detached worktree of HEAD)`);
       else if (plan.skip) console.log(`[gate] ${plan.step}: skipped (${plan.skip})`);
       else if (plan.error) console.log(`[gate] ${plan.step}: would fail (${plan.error})`);
       else for (const argv of plan.commands) console.log(`[gate] ${plan.step}: ${argv.join(' ')}`);
@@ -442,7 +446,7 @@ export async function runGate(options, { root, planner = planGate }) {
     summary.ok = !failed && summary.steps.every((row) => row.status === 'pass' || row.status === 'skip');
     writeFileSync(join(out, 'gate.json'), JSON.stringify(summary, null, 2) + '\n');
     writeFileSync(join(out, 'gate.md'), renderGateMarkdown(summary));
-    console.log(`[gate] ${summary.ok ? 'PASS' : 'FAIL'} ${head.slice(0, 12)}: ${join(out, 'gate.md')}`);
+    console.log(`[gate] ${summary.ok ? 'PASS' : 'FAIL'} ${shortHead}: ${join(out, 'gate.md')}`);
   }
   return summary.ok ? 0 : 1;
 }

@@ -161,6 +161,16 @@ const nodeFailure = (root, message, extra = '') => [
     const green = await runGate({ ...parseGateArgs(['--quiet']), out: join(out, 'green') }, { root: REPO_ROOT, planner: () => planner().filter((row) => row.step !== 'build') });
     assert.equal(green, 0);
     assert.equal(JSON.parse(readFileSync(join(out, 'green', 'gate.json'), 'utf8')).ok, true, 'skipped steps do not fail the gate');
+    // an export without Git still runs its steps; the preflight fails cleanly instead of crashing
+    const exported = mkdtempSync(join(tmpdir(), 'cot-gate-export-'));
+    try {
+      const steps = () => [{ step: 'typecheck', commands: [[node, '-e', "console.log('typed')"]] }, { step: 'preflight', commands: [] }];
+      assert.equal(await runGate({ ...parseGateArgs(['--quiet', '--keep-going']), out: join(out, 'export') }, { root: exported, planner: steps }), 1);
+      const summary = JSON.parse(readFileSync(join(out, 'export', 'gate.json'), 'utf8'));
+      assert.equal(summary.head, null);
+      assert.deepEqual(summary.steps.map((row) => [row.step, row.status]), [['typecheck', 'pass'], ['preflight', 'fail']]);
+      assert.match(summary.steps[1].error, /not a git checkout/);
+    } finally { rmSync(exported, { recursive: true, force: true }); }
   } finally { rmSync(out, { recursive: true, force: true }); }
 }
 
