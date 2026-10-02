@@ -441,7 +441,7 @@ export function createSoloBattleLoadingRuntime(
         () => preloadBattleClient(),
         () => preloadBattleWarm(),
         () => preloadBattleStart(),
-        () => audio.warmBattleEvents(),
+        () => audio.warmBattleEvents(plannedRoster),
         () => fxTexture,
         () => ensureKillcam(),
         () => rosterTexture,

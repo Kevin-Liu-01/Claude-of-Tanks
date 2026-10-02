@@ -206,6 +206,8 @@ function buildSharedGarageTreeGrove(
   const trunkMaterial = source.trunkMaterial;
   const foliageMaterial = source.foliageMaterial;
   const foliageTexture = foliageMaterial.map;
+  // a grown kit's bark sheet (vegetation.ts buildGrownGarageTree); the round-8 kits' trunks paint none
+  const barkTextures = [trunkMaterial.map, trunkMaterial.normalMap];
   source.trunk.dispose();
   source.foliage.dispose();
   return {
@@ -219,6 +221,7 @@ function buildSharedGarageTreeGrove(
       trunk.dispose();
       foliage.dispose();
       foliageTexture?.dispose();
+      for (const texture of barkTextures) texture?.dispose();
       trunkMaterial.dispose();
       foliageMaterial.dispose();
     },
