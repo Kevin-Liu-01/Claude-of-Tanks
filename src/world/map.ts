@@ -34,6 +34,7 @@ import type { CrushableRecord } from './props.ts';
 import { getMapConfig, type BattlefieldMapConfig } from './maps/index.ts';
 import { createGroundCoverClearance } from './groundCoverClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
+import { getDeviceTier } from '../engine/quality.ts';
 import {
   createObstacleGrid,
   rayCollisionRecord,
@@ -140,6 +141,12 @@ export interface WorldRuntime {
   mapId: string;
   /** Non-null for the assault-trenches build of this map; never reused for standard battles. */
   terrainVariant: 'assault-trenches' | null;
+  /**
+   * The device tier this world's placements were counted at (props environmentRichness, vegetation treeRichness): the
+   * mobile tier places fewer props and trees, so its obstacle list is laid out otherwise than the desktop tier's — the
+   * layout the multiplayer collision manifests are captured from (ghost-crunch lane, 2026-10-02).
+   */
+  layoutTier: 'mobile' | 'desktop';
   /** Release external callbacks at final eviction, not temporary dormancy. */
   dispose(): void;
   /** Readiness snapshot only; never performs streaming work. */
@@ -545,6 +552,7 @@ function assembleWorld(
     },
     config,
     heightField,
+    layoutTier: getDeviceTier(),
     minimapTextureState,
     // Checkpoint-only diagnostics; never force streaming or alter readiness.
     getGrassWorkState: () => vegetation.getGrassWorkState(),

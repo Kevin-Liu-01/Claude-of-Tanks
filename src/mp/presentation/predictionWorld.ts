@@ -38,6 +38,10 @@ export interface PredictionObstacle extends CollisionRecord {
 
 export interface WorldCollisionLike {
   heightField?: MovementHeightField | null;
+  /** The device tier the world's placements were counted at (map.ts); 'mobile' lays out fewer props and trees. */
+  layoutTier?: string | null;
+  /** A terrain variant of the map (Frontline Assault's trench works add records); null for the base map. */
+  terrainVariant?: string | null;
   queryObstacles?(minX: number, minZ: number, maxX: number, maxZ: number, target: PredictionObstacle[]): PredictionObstacle[];
   getObstacles?(): PredictionObstacle[];
   /** `options.settled` lays the prop at its final pose at once — no fall, no debris, no sound (the world's seam: src/world/map.ts). */

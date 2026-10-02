@@ -40,6 +40,8 @@ import type { PredictionWorld } from '../match/prediction.ts';
 import type { EventContext, PresentationAdapter, RosterContext } from './adapter.ts';
 import { createPredictionWorld } from './predictionWorld.ts';
 import type { WorldCollisionLike } from './predictionWorld.ts';
+import { createAuthorityObstacles } from './authorityObstacles.ts';
+import type { ObstacleIdentity } from './authorityObstacles.ts';
 
 type RuntimeValue = {} | null | undefined;
 
@@ -201,6 +203,13 @@ export interface BattlePresentation extends PresentationAdapter {
   /** Spectators: which team reads as "player" (allies) in the HUD. */
   setPerspective(entityId: number): boolean;
   readonly ownActor: MatchActor | null;
+  /** Whether this world's obstacle list is the authority's index space (false for a world laid out otherwise). */
+  readonly sharesAuthorityIndices: boolean;
+  /**
+   * The authority's obstacle identities by index (its collision manifest), so a world laid out otherwise can read the
+   * persistent destroyed list; the list is applied again with them.
+   */
+  setAuthorityObstacles(identity: (index: number) => ObstacleIdentity | null): void;
 }
 
 const POS_SCALE = 1;
@@ -261,6 +270,8 @@ export function createBattlePresentation({
   let snapshotPhase: number | null = null;
   let appliedDestructibleRevision = -1;
   let appliedDestroyedLength = -1;
+  // which record of this world is the authority's obstacle: its index where this world shares them, else its identity
+  const authorityObstacles = createAuthorityObstacles(worldCollision);
   let lastModeStateJson: string | null = null;
   let lastSmokeJson: string | null = null;
   const lastAuxiliaryJson = new WeakMap<object,string>();
@@ -586,9 +597,10 @@ export function createBattlePresentation({
     appliedDestructibleRevision = revision;
     appliedDestroyedLength = indices.length;
     if (!worldCollision || typeof worldCollision.getObstacles !== 'function') return;
-    const obstacles = worldCollision.getObstacles();
+    // the list carries indices only: a world laid out otherwise reads it through the authority's identities, or not at all
+    if (!authorityObstacles.listReadable) return;
     for (const index of indices) {
-      const obstacle = obstacles[index];
+      const obstacle = authorityObstacles.listed(index);
       if (!obstacle || obstacle.crushed) continue;
       // its event is owed to this presentation: it falls then, live
       if (pending && pending(index)) { appliedDestroyedLength = -1; continue; }
@@ -791,18 +803,24 @@ export function createBattlePresentation({
         const id = String(payload.id ?? '');
         if (typeof payload.cause === 'string') destructionCause.set(id, payload.cause);
         const actor = actors.get(id);
+        // The authority's death position (ghost-crunch lane, 2026-10-02): the explosion, the wreck's smoke column
+        // (effects.ts lastKnownPos) and the killcam sit where the hull died, not where this frame's interpolated or
+        // predicted pose happens to be — up to one snapshot interval of a fall or a slide away. An older host's event
+        // carries no position: the presented pose stands in.
+        const died = typeof payload.x === 'number' && typeof payload.y === 'number' && typeof payload.z === 'number';
         bus.emit('tank:destroyed', {
           id, specId: actor?.specId, killerId: payload.killerId, cause: payload.cause === 'ammo_rack' ? 'ammorack' : payload.cause,
-          pos: actor ? [actor.state.pos.x, actor.state.pos.y, actor.state.pos.z] : null,
+          pos: died ? [payload.x, payload.y, payload.z] : actor ? [actor.state.pos.x, actor.state.pos.y, actor.state.pos.z] : null,
         });
         return;
       }
       case 'world_prop_destroyed': {
         const index = Number(payload.obstacleIndex);
-        const obstacle = worldCollision?.getObstacles && Number.isSafeInteger(index) && index >= 0 ? worldCollision.getObstacles()[index] : null;
-        // A prop this viewer's world does not have (the mobile tier's lighter world, a world without the manifest) has no
-        // position for the effect: nothing to crush here, nothing to emit (2026-09-30, lane mp/ui-sync-check: a `pos: null`
-        // event threw inside the frame pump on every such crush — combatFeedbackRuntime reads pos[0]).
+        // This world's record of the prop that fell — never another prop in its stead (authorityObstacles.ts). A prop this
+        // viewer's world does not have (the mobile tier's lighter world, a world without the manifest) has no position for
+        // the effect: nothing to crush here, nothing to emit (2026-09-30, lane mp/ui-sync-check: a `pos: null` event threw
+        // inside the frame pump on every such crush — combatFeedbackRuntime reads pos[0]).
+        const obstacle = authorityObstacles.fallen(index, payload);
         if (!obstacle) return;
         // A prop that already fell on this seat — laid down as settled state, or felled by this event's first delivery
         // before a host migration re-sent it — falls once: no second fall, no second crunch (world state audit, 2026-10-01).
@@ -813,7 +831,13 @@ export function createBattlePresentation({
         );
         obstacle.crushed = true;
         bus.emit('prop:crushed', {
+          // what fell, by the authority's index (ghost-crunch lane, 2026-10-02): a position cannot name it — a hedgehog's
+          // crossed beams share one box centre, and an audit that read the effect back from `pos` called the sibling's
+          // crunch a ghost
+          obstacleIndex: index,
           kind: payload.kind, speedMps: payload.speedMps, cause: payload.cause,
+          // the prop's height sizes the splinters and picks the sound, as the solo step's crush event does
+          h: obstacle.max[1] - obstacle.min[1],
           pos: [(obstacle.min[0] + obstacle.max[0]) * 0.5, obstacle.min[1], (obstacle.min[2] + obstacle.max[2]) * 0.5],
           dir: [Number(payload.directionX) || 0, 0, Number(payload.directionZ) || 0],
         });
@@ -955,6 +979,11 @@ export function createBattlePresentation({
     endDisconnected,
     setPerspective,
     get ownActor() { return ownActor(); },
+    get sharesAuthorityIndices() { return authorityObstacles.shared; },
+    setAuthorityObstacles(identity: (index: number) => ObstacleIdentity | null): void {
+      authorityObstacles.setIdentities(identity);
+      appliedDestructibleRevision = -1;
+    },
     dispose,
   };
 }
