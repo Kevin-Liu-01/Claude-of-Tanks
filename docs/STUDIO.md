@@ -295,6 +295,8 @@ the battle runtime itself is unchanged and battle sessions never create it.
 | `tank_kill` | flash → rolling fireball and dark smoke roll → turret-ring blowtorch (ammo rack) → secondary cook-off pops with light pulses (6 / 2 / 1 for ammorack / shot / fire) → burning debris → a burning wreck with licking flames, embers, fire-lit smoke and a 26 m leaning column |
 | `burning` | the same burning-wreck emitter (18 m column); `burning` with `off` extinguishes the actor's cinematic fires |
 | `dust`, `mg_burst`, `barrage` | billowing dust packets; per-round MG flashes and sparks; staggered walking salvo |
+| `tracer`, `fire`, `mg_burst` shells | a hot glare sprite rides every projectile head (larger and brighter at night) |
+| `flare` | parachute canopy above the candle, lit from below by the flare light |
 
 Night shots: smoke and dust follow the scene light (white in daylight, the
 exact battle look; warm at sunset; dim moonlit blue at night) and puffs born
@@ -381,8 +383,9 @@ burning, a tracer, a detrack, or a kill leaves no orphaned visual state.
 ## Known limitations
 
 - Cinematic quality changes only Studio output. The frozen composers
-  (`firing_moment`, `explosion_moment`) keep the battle look; author a
-  timeline effect and `fxTime` for a cinematic still.
+  (`firing_moment`, `explosion_moment`) add the cinematic one-shot layer
+  backdated by `ageS` (no burning-wreck emitter; author a `tank_kill` on
+  the timeline for that).
 - One borrowed light serves flares: several simultaneous flares share it
   (the brightest wins), and the explosion light lights one sustained fire at
   a time; other fires glow through their decals and self-lit smoke.

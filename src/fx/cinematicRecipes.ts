@@ -120,6 +120,8 @@ export interface CineEmitter {
   sprite?(nowS: number, index: number, out: CineSprite): boolean;
   /** Smoke-grenade canister positions in flight (smoke_screen). */
   canisters?(nowS: number, visit: (x: number, y: number, z: number, dx: number, dy: number, dz: number) => void): void;
+  /** Flare parachute canopy position (world), false when not deployed. */
+  parachute?(nowS: number, out: [number, number, number]): boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -831,7 +833,7 @@ export function burningEmitter(
       const t = nowS * 1.0 + flick;
       const f = 0.78 + 0.12 * Math.sin(t * 13.1) + 0.07 * Math.sin(t * 7.3 + 1.7) + 0.05 * Math.sin(t * 23.7 + 0.4);
       out.x = cx; out.y = cy + 1.4; out.z = cz;
-      out.intensity = 60 * k * f; out.range = 22; out.color = 0xff8a3c; out.priority = 1 + k;
+      out.intensity = 34 * k * f; out.range = 22; out.color = 0xff8a3c; out.priority = 1 + k;
       return true;
     },
     glow(nowS, out) {
@@ -886,7 +888,7 @@ export function fireFieldEmitter(
       const t = nowS + flick;
       const f = 0.8 + 0.1 * Math.sin(t * 11.3) + 0.1 * Math.sin(t * 5.9 + 0.8);
       out.x = x; out.y = world.groundY(x, z) + 1.2; out.z = z;
-      out.intensity = (28 + radiusM * 7) * intensity * f; out.range = 10 + radiusM * 2.5; out.color = 0xff8a3c;
+      out.intensity = (14 + radiusM * 4) * intensity * f; out.range = 10 + radiusM * 2.5; out.color = 0xff8a3c;
       out.priority = 0.8 + intensity * radiusM * 0.08;
       return true;
     },
@@ -1024,6 +1026,14 @@ export function flareEmitter(
       const h = Math.max(10, pos[1] - y0);
       out.intensity = 1.3 * h * h * opts.intensity * k; out.range = h * 4.2 + 70; out.color = col;
       out.priority = 10 + opts.intensity * k;
+      return true;
+    },
+    parachute(nowS, out) {
+      const t = nowS - startS;
+      if (t < climbS + 0.4 || nowS > endS) return false;
+      at(t, pos);
+      // canopy rides ~2.2 m above the burning candle, swinging with it
+      out[0] = pos[0] - Math.sin(t * 0.9 + sway) * 0.35; out[1] = pos[1] + 2.2; out[2] = pos[2] - Math.cos(t * 0.7 + sway) * 0.35;
       return true;
     },
     sprite(nowS, index, out) {

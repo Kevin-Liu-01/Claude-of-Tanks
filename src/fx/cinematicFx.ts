@@ -139,7 +139,11 @@ void main() {
   float halo = exp( -r2 * 7.0 ) * 0.32 + exp( -r2 * 2.2 ) * 0.10;
   vec3 col = ( vec3( 1.0 ) * core * 1.6 + vCI.rgb * halo ) * vCI.w;
   #ifdef USE_FOG
-    float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
+    #ifdef FOG_EXP2
+      float fogFactor = 1.0 - exp( -fogDensity * fogDensity * vFogDepth * vFogDepth );
+    #else
+      float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
+    #endif
     col *= 1.0 - fogFactor * 0.85;
   #endif
   gl_FragColor = vec4( col, 1.0 );
@@ -530,6 +534,30 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
   const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(1, 1, 1);
   const _yAxis = new THREE.Vector3(0, 1, 0), _dir = new THREE.Vector3(), _cp = new THREE.Vector3();
 
+  // --- flare parachutes ---------------------------------------------------------------
+  const chuteGeo = new THREE.SphereGeometry(0.75, 10, 5, 0, Math.PI * 2, 0, Math.PI * 0.42);
+  const chuteMat = new THREE.MeshStandardMaterial({ color: 0x8f8f86, roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
+  const chutes = new THREE.InstancedMesh(chuteGeo, chuteMat, 8);
+  chutes.name = 'studioFlareParachutes';
+  chutes.count = 0; chutes.frustumCulled = false;
+  chutes.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  group.add(chutes);
+  const _chute: [number, number, number] = [0, 0, 0];
+  const _chuteQ = new THREE.Quaternion();
+
+  function updateParachutes(nowS: number): void {
+    let n = 0;
+    for (const e of emitters) {
+      if (n >= 8 || !e.parachute || !e.parachute(nowS, _chute)) continue;
+      _cp.set(_chute[0], _chute[1], _chute[2]);
+      _chuteQ.setFromAxisAngle(_yAxis, nowS * 0.4 + n);
+      _m.compose(_cp, _chuteQ, _s);
+      chutes.setMatrixAt(n++, _m);
+    }
+    chutes.count = n;
+    if (n) chutes.instanceMatrix.needsUpdate = true;
+  }
+
   // --- borrowed light ---------------------------------------------------------------
   const borrowed = opts.light;
   const borrowedSaved = borrowed ? {
@@ -692,7 +720,7 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       if (!e.glow || !e.glow(nowS, _glow)) continue;
       const decal = glows[n++];
       conformGlow(decal, _glow.x, _glow.z, _glow.radius);
-      decal.mesh.material.uniforms.uIntensity.value = _glow.intensity * (0.12 + 0.88 * env.night) * 0.55;
+      decal.mesh.material.uniforms.uIntensity.value = _glow.intensity * (0.08 + 0.92 * env.night) * 0.12;
       decal.mesh.material.uniforms.uSeed.value = _glow.seed;
       decal.mesh.visible = true;
     }
@@ -822,6 +850,7 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       trackEmitters.clear();
       spriteGeo.instanceCount = 0;
       canisters.count = 0;
+      chutes.count = 0;
       for (const g of glows) { g.mesh.visible = false; g.x = NaN; }
       for (const d of rings) d.mesh.visible = false;
       for (const d of scorches) d.mesh.visible = false;
@@ -845,6 +874,7 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       updateRings();
       updateSprites(nowS, shells);
       updateCanisters(nowS);
+      updateParachutes(nowS);
       // the companion shares the battle clock: update(0) only uploads this
       // step's emissions (and the live sun direction) before the next draw
       particles.update(0);
@@ -1035,6 +1065,7 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       for (const d of [...rings, ...scorches]) { d.mesh.geometry.dispose(); d.mesh.material.dispose(); }
       glowTemplate.dispose();
       canisterGeo.dispose(); canisterMat.dispose(); canisters.dispose();
+      chuteGeo.dispose(); chuteMat.dispose(); chutes.dispose();
     },
   };
   return api;
