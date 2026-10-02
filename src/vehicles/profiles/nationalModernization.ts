@@ -12,11 +12,9 @@ const {box,cylY}=KIT;
 function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
   if(c.model===0)buildT80UXHull(P);else if(c.model===1)buildT72B3MXHull(P);else buildT72B3XHull(P);
   buildT90SMXTurret(P,true);P.turretG.position.set(.008,c.y,c.z);
-  // The SM assembly has one physical gun inside a separately marked mount.
-  // Classify its base as support equipment, leaving the nested gun as the
-  // sole weapon fitting (and keeping the remote-controlled articulation).
-  const station=P.turretG.getObjectByName('modernSmRws');
-  if(station)station.userData.fitting='weaponStationMount';
+  // The SM assembly's station root is classified as its gun's mount by
+  // beginAuxiliaryStation().attachPitch, leaving the nested gun as the sole
+  // weapon fitting (and keeping the remote-controlled articulation).
   const russian=c.package==='ru',polish=c.package==='pl',chinese=c.package==='cn';
   // A proper clipped bustle extends the load-bearing shell. The forward SM
   // aperture, gun, sights, hatch and remote station retain their working space.

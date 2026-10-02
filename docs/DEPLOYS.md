@@ -19,8 +19,9 @@ and the production branch owns the deployment; `title` and `gateHead` ride along
 ran it through a session-scratchpad script; from 2026-10-01 it is the versioned
 `tools/release.mjs` ([DEVELOPMENT.md](DEVELOPMENT.md#releasing-toolsreleasemjs-2026-10-01)):
 `node tools/release.mjs build <sha>` (a temporary worktree of the commit, `npm ci`, `vercel pull`,
-the redacted-setting strip, `vercel build --prod`, the lockfile restore,
-`node tools/vercel-output-immutable.mjs` and `--check`, and the pulled `.vercel/.env*.local` files
+the redacted-setting strip, `vercel build --prod`, the lockfile restore, the carry-forward of the
+last three releases' hashed `/assets` files from the local release cache (so a tab opened before the
+deploy keeps loading its chunks), `node tools/vercel-output-immutable.mjs` and `--check`, and the pulled `.vercel/.env*.local` files
 deleted whatever happens), then `node tools/release.mjs deploy <sha> --title="deploy N: <title>"`,
 which waits for the served version stamp. Every subcommand takes `--dry-run`. Append the row below
 by hand. `node tools/release.mjs rollback` promotes the production deployment before the live one

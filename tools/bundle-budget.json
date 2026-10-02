@@ -7,8 +7,8 @@
       "raw": 3365001,
       "gzip": 1019724,
       "brotli": 862067,
-      "entryRaw": 792326,
-      "entryBrotli": 238307
+      "entryRaw": 766616,
+      "entryBrotli": 229050
     },
     "home": {
       "requests": 8,
@@ -39,8 +39,8 @@
       "raw": 3632943,
       "gzip": 1114963,
       "brotli": 937813,
-      "entryRaw": 792326,
-      "entryBrotli": 238307
+      "entryRaw": 766616,
+      "entryBrotli": 229050
     }
   }
 }

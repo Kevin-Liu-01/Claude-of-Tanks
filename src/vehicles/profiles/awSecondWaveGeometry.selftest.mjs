@@ -139,7 +139,11 @@ function roofWeapon(t,id){
   }
   assert.ok(mg?.isMesh,`${id}: complete source weapon remains a real mesh`);
   // Compare identity without asking assert to inspect the entire cyclic scene on failure.
-  assert.ok(mg.parent.parent === t.root.getObjectByName('rig_turret'),`${id}: source weapon mount belongs to the turret`);
+  // 2026-09-30 (4c34b3e8b, owner's remote roof weapons): a converted roof gun pitches inside its remote station
+  // (rig_turret > station > auxiliaryWeaponPitch > weapon group); a manned mount still hangs on rig_turret directly.
+  const turretRig=t.root.getObjectByName('rig_turret'),station=mg.parent.parent?.parent;
+  const remoteMount=mg.parent.parent?.name==='auxiliaryWeaponPitch'&&station?.userData.remoteControlled&&station.parent===turretRig;
+  assert.ok(remoteMount||mg.parent.parent===turretRig,`${id}: source weapon mount belongs to the turret`);
   assert.equal(census.mg,1,`${id}: actual complete source weapon earns one census entry`);
   assert.equal(standardWeaponPass({census},id),true,`${id}: true weapon satisfies unchanged standard MG rule`);
   return mg;

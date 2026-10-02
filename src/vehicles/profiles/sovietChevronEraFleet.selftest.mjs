@@ -2,11 +2,25 @@ import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
+import { FLEET_RENEWAL_DONORS } from '../fleetRenewalSpecs.ts';
+
+// 2026-10-01: three former carrier builds are owner-directed rebuilds since 4c34b3e8b (fleet-renewal-publication-
+// 20260930.md): t72bu on t72bu_x (its Kontakt chevrons, "lower ERA chevron halves restored on both BUs"), t80u (now
+// the T-80UK) on t80u_x and t64bv1 on t72b3_x. Their reactive armour is the donor study's own construction, not this
+// shared two-row carrier, so they leave the carrier cases below and are held to their donor's reactive sectors.
+const REBUILT = Object.freeze({ t72bu: 't72bu_x', t80u: 't80u_x', t64bv1: 't72b3_x' });
+const eraSectors = (id) => {
+  const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
+  try { return [...(tank.root.userData.eraFinishReceipt?.sectors ?? [])].sort(); } finally { tank.dispose(); }
+};
+for (const [id, donorId] of Object.entries(REBUILT)) {
+  assert.equal(FLEET_RENEWAL_DONORS[id], donorId, `${id}: the renewal rebuilds it on ${donorId}`);
+  const sectors = eraSectors(id);
+  assert.ok(sectors.length > 0, `${id}: keeps live reactive sectors`);
+  assert.deepEqual(sectors, eraSectors(donorId), `${id}: carries exactly its donor study's reactive sectors`);
+}
 
 const cases = Object.freeze({
-  t64bv1: Object.freeze({ receiptKey: 't64BV1ChevronEraReceipt', forwardM: 0 }),
-  t72bu: Object.freeze({ receiptKey: 't72BUChevronEraReceipt', forwardM: 0 }),
-  t80u: Object.freeze({ receiptKey: 't80UChevronEraReceipt', forwardM: 0.14, minimumRidgeY: 0.365 }),
   t80bv: Object.freeze({ receiptKey: 't80BVChevronEraReceipt', forwardM: 0.26, minimumRidgeY: 0.34 }),
   ua_t80bv: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.23, minimumRidgeY: 0.32, omittedCarrierSurfaces: 1 }),
   ua_t80u_kursk: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14 }),

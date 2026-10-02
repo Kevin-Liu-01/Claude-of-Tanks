@@ -21,6 +21,12 @@ against the live material from fixed supplied poses. Its required `--url`,
 produce native before/after/restore images and resource receipts. It owns the
 capture lease; do not wrap it in another lease or treat images as timing proof.
 
+`visual-census.mjs` is the visual-redesign baseline: the same seven views of
+every registered map (authored time of day, desktop High, 1600x900) through
+`__SHOTS.set` and the capture readiness gates, per-frame metrics in one
+census.json, contact sheets, an index and an A/B `compare`; `capture` resumes
+in bounded batches and takes the cot-shots lease itself (probe mutex = caller).
+
 Performance probes drive the browser and record JSON; fleet/geometry tools audit
 authored tanks; screenshot/visual tools stage canonical views; strip/release
 tools enforce public asset boundaries. `local-import-integrity.selftest.mjs`

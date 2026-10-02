@@ -207,8 +207,12 @@ try {
   if (priorStorage === undefined) delete globalThis.localStorage;
   else globalThis.localStorage = priorStorage;
 }
-for (const facade of ['tankFactory.ts', 'fleetFactory.ts']) {
-  assert.match(readFileSync(new URL(facade, import.meta.url), 'utf8'), /import '\.\/arieteModernSpecs\.ts'/);
+// 2026-10-02: every facade registers the fleet through the one ordered registration (83f2c6992, fleet parity):
+// the Ariete metadata must be part of it and every facade, including the authorities', must load it.
+assert.match(readFileSync(new URL('fleetRegistration.ts', import.meta.url), 'utf8'), /import '\.\/arieteModernSpecs\.ts'/);
+for (const facade of ['tankFactory.ts', 'fleetFactory.ts', 'authorityFleet.ts']) {
+  assert.match(readFileSync(new URL(facade, import.meta.url), 'utf8'), /import '\.\/fleetRegistration\.ts'/,
+    `${facade} loads the shared ordered fleet registration`);
 }
 const browser = readFileSync(new URL('fleetFactory.ts', import.meta.url), 'utf8');
 assert.match(browser, /arieteX: \(\) => import\('\.\/profiles\/arieteX\.ts'\)/);

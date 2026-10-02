@@ -7,8 +7,10 @@
 //
 //   build <sha>    temporary git worktree of <sha>; npm ci; vercel pull --yes --environment=production;
 //                  drop the redacted VITE_*="[SENSITIVE]" lines the pull writes; vercel build --prod;
-//                  restore the lockfile the build's install rewrites; node tools/vercel-output-immutable.mjs
-//                  and its --check. The pulled .vercel/.env*.local files are deleted in a finally block.
+//                  restore the lockfile the build's install rewrites; carry the previous releases' hashed
+//                  /assets files forward from the local release cache (below); node
+//                  tools/vercel-output-immutable.mjs and its --check. The pulled .vercel/.env*.local files
+//                  are deleted in a finally block.
 //   deploy <sha>   vercel deploy --prebuilt --prod from that worktree with the git metadata of <sha>,
 //                  then verify, then remove the worktree (--keep keeps it, --no-verify skips verify).
 //   verify <sha>   the served application-version stamp names <sha> (retried while the alias moves);
@@ -24,11 +26,23 @@
 // Options: --scope=<team> (env COT_VERCEL_SCOPE; default kl01s-projects), --site=<origin>
 // (default https://cot.kevinliu.studio), --dir=<build worktree> (default <tmp>/cot-release-<sha12>).
 // The Vercel CLI is `vercel` on PATH (or COT_VERCEL_BIN) and must be major version VERCEL_CLI_MAJOR.
+//
+// Old tabs after a deploy (2026-10-02): a tab opened before a deploy keeps importing the chunks its
+// page named, and a deploy used to remove every hashed file the new build did not emit (deploy 163:
+// one tab asked for a removed chunk 33,875 times in a day, 6 % of the week's requests). `build` keeps
+// a local release cache outside git (--asset-cache=<dir>, env COT_RELEASE_ASSET_CACHE, default
+// ~/.cache/cot-release): every build records its own hashed /assets files there, and the next builds
+// copy the files of the last --carry=<N> releases (default 3, 0 disables) that the new build lacks into
+// .vercel/output/static/assets before the immutable routes are written, newest release first, up to
+// --carry-max-mb=<MB> (default 200). Hashed names never collide, so nothing the new build emits is
+// replaced; the cache keeps the newest N + 1 releases and prunes every file none of them names.
 import { execFileSync, spawn } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { constants as fsConstants, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync,
+  writeFileSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { listHashedAssets } from './vercel-output-immutable.mjs';
 
 export const RELEASE_DEFAULTS = Object.freeze({
   scope: 'kl01s-projects',
@@ -41,8 +55,15 @@ export const RELEASE_DEFAULTS = Object.freeze({
   githubRepoId: '1316388080',
 });
 export const VERCEL_CLI_MAJOR = 58;
+/** How many earlier releases' hashed /assets files a build carries forward, and the byte cap on what it copies. */
+export const ASSET_CARRY_DEFAULTS = Object.freeze({ releases: 3, maxBytes: 200 * 1024 * 1024 });
 const COMMANDS = new Set(['build', 'deploy', 'verify', 'rollback', 'workers', 'clean']);
 const NEEDS_SHA = new Set(['build', 'deploy', 'verify', 'workers', 'clean']);
+
+/** The local release cache: --asset-cache, else COT_RELEASE_ASSET_CACHE, else ~/.cache/cot-release (never in a checkout). */
+export function defaultAssetCacheDir(env = process.env, home = homedir()) {
+  return env.COT_RELEASE_ASSET_CACHE ? resolve(env.COT_RELEASE_ASSET_CACHE) : join(home, '.cache', 'cot-release');
+}
 
 /** Parse the command line; throws on misuse (exit 2). */
 export function parseReleaseArgs(argv, env = process.env) {
@@ -50,12 +71,16 @@ export function parseReleaseArgs(argv, env = process.env) {
   if (!COMMANDS.has(command)) throw new Error(`Usage: node tools/release.mjs <${[...COMMANDS].join('|')}> [<sha>] [options] [--dry-run]`);
   const options = { command, sha: null, dryRun: false, scope: env.COT_VERCEL_SCOPE || RELEASE_DEFAULTS.scope,
     site: RELEASE_DEFAULTS.site, dir: null, title: null, ref: RELEASE_DEFAULTS.ref, to: null, only: null,
-    attempts: 12, intervalMs: 10_000, sweep: false, keep: false, verify: true };
+    attempts: 12, intervalMs: 10_000, sweep: false, keep: false, verify: true,
+    assetCache: defaultAssetCacheDir(env), carryReleases: ASSET_CARRY_DEFAULTS.releases, carryMaxBytes: ASSET_CARRY_DEFAULTS.maxBytes };
   for (const arg of rest) {
     const [flag, ...parts] = arg.split('=');
     const value = parts.join('=');
     if (!arg.startsWith('--') && !options.sha && NEEDS_SHA.has(command)) options.sha = arg;
     else if (arg === '--dry-run') options.dryRun = true;
+    else if (flag === '--asset-cache' && value && command === 'build') options.assetCache = resolve(value);
+    else if (flag === '--carry' && /^\d+$/.test(value) && Number(value) <= 50 && command === 'build') options.carryReleases = Number(value);
+    else if (flag === '--carry-max-mb' && /^[1-9]\d*$/.test(value) && command === 'build') options.carryMaxBytes = Number(value) * 1024 * 1024;
     else if (flag === '--scope' && /^[\w.-]+$/.test(value)) options.scope = value;
     else if (flag === '--site' && /^https?:\/\/[^/\s]+$/.test(value)) options.site = value;
     else if (flag === '--dir' && value) options.dir = resolve(value);
@@ -157,6 +182,95 @@ export function workerDeployArgs({ commit, subject }) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// The release asset cache (2026-10-02): old tabs keep the chunks they named
+
+const ASSET_CACHE_INDEX = 'releases.json';
+const ASSET_CACHE_VERSION = 1;
+
+function readAssetCacheIndex(cacheDir) {
+  const path = join(cacheDir, ASSET_CACHE_INDEX);
+  if (!existsSync(path)) return { version: ASSET_CACHE_VERSION, releases: [] };
+  const index = JSON.parse(readFileSync(path, 'utf8'));
+  if (index?.version !== ASSET_CACHE_VERSION || !Array.isArray(index.releases)) {
+    throw new Error(`${path} is not a version-${ASSET_CACHE_VERSION} release cache index; move it aside to start a fresh cache`);
+  }
+  return index;
+}
+
+/** A hashed path relative to assets/: no absolute part, no parent step, no empty segment. */
+function safeAssetPath(path) {
+  return typeof path === 'string' && path.length > 0 && !path.startsWith('/') && path.split('/').every((part) => part && part !== '.' && part !== '..');
+}
+
+/**
+ * Carry the hashed /assets files of the last `releases` cached releases into a fresh build output, then
+ * record this build's own hashed files as the newest release and prune the cache to the newest
+ * `releases + 1` releases. Newer releases are carried first; a file the build already has is never
+ * replaced, and copying stops adding files once `maxBytes` would be exceeded (the oldest are dropped).
+ * Only the build's own files are recorded, so a carried file ages out with the release that emitted it.
+ * A rebuild of the same commit replaces that commit's entry. Returns counts and bytes; throws when
+ * another build holds the cache.
+ */
+export function carryForwardReleaseAssets({ staticDir, cacheDir, commit, releases = ASSET_CARRY_DEFAULTS.releases,
+  maxBytes = ASSET_CARRY_DEFAULTS.maxBytes, now = () => new Date().toISOString() }) {
+  const assetsDir = join(staticDir, 'assets');
+  if (!existsSync(assetsDir)) throw new Error(`no ${assetsDir}: the build emitted no hashed assets`);
+  if (!/^[0-9a-f]{7,40}$/.test(String(commit))) throw new Error(`Not a commit: ${commit}`);
+  mkdirSync(join(cacheDir, 'assets'), { recursive: true });
+  const lock = join(cacheDir, '.lock');
+  try { mkdirSync(lock); } catch (error) {
+    if (error?.code === 'EEXIST') throw new Error(`another release build holds ${lock}; remove it if no build is running`);
+    throw error;
+  }
+  try {
+    const own = listHashedAssets(staticDir).map((path) => ({ path, bytes: statSync(join(assetsDir, path)).size }));
+    const ownPaths = new Set(own.map(({ path }) => path));
+    const index = readAssetCacheIndex(cacheDir);
+    const earlier = index.releases.filter((release) => release.commit !== commit);
+    const previous = (releases > 0 ? earlier.slice(-releases) : []).reverse();
+    const carried = new Set();
+    let carriedBytes = 0, overBudget = 0, missing = 0;
+    for (const release of previous) {
+      for (const file of release.files ?? []) {
+        if (!safeAssetPath(file?.path) || ownPaths.has(file.path) || carried.has(file.path)) continue;
+        const source = join(cacheDir, 'assets', file.path);
+        if (!existsSync(source)) { missing++; continue; }
+        const bytes = statSync(source).size;
+        if (carriedBytes + bytes > maxBytes) { overBudget++; continue; }
+        const target = join(assetsDir, file.path);
+        mkdirSync(dirname(target), { recursive: true });
+        copyFileSync(source, target, fsConstants.COPYFILE_EXCL | fsConstants.COPYFILE_FICLONE);
+        carried.add(file.path);
+        carriedBytes += bytes;
+      }
+    }
+    // Record this build's own files (content-addressed by name: an existing copy of the same size is kept).
+    for (const { path, bytes } of own) {
+      const target = join(cacheDir, 'assets', path);
+      if (existsSync(target) && statSync(target).size === bytes) continue;
+      mkdirSync(dirname(target), { recursive: true });
+      copyFileSync(join(assetsDir, path), target, fsConstants.COPYFILE_FICLONE);
+    }
+    const kept = [...index.releases.filter((release) => release.commit !== commit), { commit, builtAt: now(), files: own }]
+      .slice(-(Math.max(0, releases) + 1));
+    const named = new Set(kept.flatMap((release) => (release.files ?? []).map((file) => file.path)));
+    let pruned = 0;
+    for (const path of listHashedAssets(cacheDir)) {
+      if (named.has(path)) continue;
+      rmSync(join(cacheDir, 'assets', path), { force: true });
+      pruned++;
+    }
+    const indexPath = join(cacheDir, ASSET_CACHE_INDEX);
+    writeFileSync(`${indexPath}.tmp`, `${JSON.stringify({ version: ASSET_CACHE_VERSION, releases: kept }, null, 1)}\n`);
+    renameSync(`${indexPath}.tmp`, indexPath);
+    return { own: own.length, carried: carried.size, carriedBytes, overBudget, missing, pruned,
+      fromReleases: previous.map((release) => release.commit), cachedReleases: kept.length };
+  } finally {
+    rmSync(lock, { recursive: true, force: true });
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
 // Execution
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -216,6 +330,24 @@ function deletePulledEnvFiles(dir, runner) {
   runner.note(`deleted ${files.length} pulled environment file(s)`);
 }
 
+/** The build's carry-forward step: earlier releases' hashed files into .vercel/output/static/assets (see the header). */
+function carryReleaseAssets(options, { commit, dir, runner }) {
+  const staticDir = join(dir, '.vercel', 'output', 'static');
+  const cap = `${Math.round(options.carryMaxBytes / 1024 / 1024)} MB`;
+  if (options.carryReleases === 0) { runner.note('carry-forward: off (--carry=0); old tabs lose every chunk this build does not emit'); return; }
+  if (runner.dryRun) {
+    runner.note(`carry-forward: copy the hashed /assets files of the last ${options.carryReleases} releases cached in ${options.assetCache} `
+      + `that this build lacks into ${join(staticDir, 'assets')} (newest first, at most ${cap}), then record this build there`);
+    return;
+  }
+  const result = carryForwardReleaseAssets({ staticDir, cacheDir: options.assetCache, commit,
+    releases: options.carryReleases, maxBytes: options.carryMaxBytes });
+  runner.note(`carry-forward: ${result.carried} hashed files (${(result.carriedBytes / 1024 / 1024).toFixed(1)} MB) from `
+    + `${result.fromReleases.length} earlier release(s) ${result.fromReleases.map((sha) => sha.slice(0, 9)).join(' ') || '(none cached yet)'}`
+    + `${result.overBudget ? `; ${result.overBudget} left out by the ${cap} cap` : ''}${result.missing ? `; ${result.missing} missing from the cache` : ''}`
+    + `; recorded ${result.own} own files; the cache holds ${result.cachedReleases} release(s), ${result.pruned} file(s) pruned`);
+}
+
 async function build(options, { root, runner }) {
   const commit = resolveCommit(root, options.sha);
   const dir = buildDir(options, commit);
@@ -244,6 +376,9 @@ async function build(options, { root, runner }) {
       const { text, dropped } = stripRedactedPublicEnv(readFileSync(file, 'utf8'));
       if (dropped.length) { writeFileSync(file, text); runner.note(`dropped redacted public settings: ${dropped.join(' ')}`); }
     }
+    // A reused worktree must not keep an earlier run's output: the carry-forward records exactly the files this build emits.
+    if (runner.dryRun) runner.note(`remove ${join(dir, '.vercel', 'output')} (a fresh output for this build)`);
+    else rmSync(join(dir, '.vercel', 'output'), { recursive: true, force: true });
     await runner.run([vercelBin(), 'build', '--prod', '--yes', '--scope', options.scope], { cwd: dir });
     // the build's install step rewrites the lockfile; it never changes what ships
     await runner.run(['git', 'checkout', '--', 'package-lock.json'], { cwd: dir });
@@ -251,6 +386,7 @@ async function build(options, { root, runner }) {
       const dirty = gitText(dir, 'status', '--porcelain', '--untracked-files=no');
       if (dirty) throw new Error(`the build left tracked changes in ${dir}:\n${dirty}`);
     }
+    carryReleaseAssets(options, { commit, dir, runner });
     if (runner.dryRun || existsSync(join(dir, 'tools', 'vercel-output-immutable.mjs'))) {
       await runner.run(['node', 'tools/vercel-output-immutable.mjs'], { cwd: dir });
       await runner.run(['node', 'tools/vercel-output-immutable.mjs', '--check'], { cwd: dir });

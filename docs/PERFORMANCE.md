@@ -460,6 +460,51 @@ the implementation choose a readback-appropriate backing strategy.
 The option should be used only for genuinely readback-heavy canvases. It can
 reduce GPU acceleration for draw-heavy canvases, so it is not a global flag.
 
+## Workers share the page's chunks (2026-10-02)
+
+Vite bundles every `new Worker(new URL(...))` as a separate build, so a worker that imports the fleet used to
+re-emit every page module it reaches under other hashes: the wreck bake worker's graph was 12.40 MB raw /
+2.26 MB brotli and the Garage workshop worker's 2.53 MB, all of it page code. `tools/viteSharedWorkers.ts` (a
+build-only plugin listed in `vite.config.ts`) emits those two workers as entries of the page build instead, so
+they statically import the chunk files the page loads and the browser serves them from its HTTP cache. Two
+details keep page chunks unchanged and safe in a worker: Vite's preload helper is guarded (no `document`: import
+directly; no `window`: rethrow), and the Garage worker gets a private copy of the stateless 298-byte
+`profileBuilderAdapter.ts` so the page's `fleetFactory` chunk is not split (that split would add a request to
+the game and gallery boot). The workers execute exactly their source static closures (199 and 154 repository
+modules, plus `three.core` and the helper); a misconfigured worker, an unused private copy or a changed helper
+fails the build (`tools/viteSharedWorkers.selftest.mjs` builds a fixture and runs its worker in a realm with
+no `document`, with the unguarded helper as the failing control).
+
+Measured: `dist/assets` 954 files / 34.86 MB → 682 / 27.66 MB; a fresh-profile session (Garage boot, the
+five workshop exhibits, a solo battle on Desert with its five wreck donors) fetched 312 → 275 `/assets` files,
+16.16 → 11.21 MB raw, 3.800 → 2.744 MB brotli; the game, gallery, home, docs and 404 boot closures keep their
+request counts. Both workers' replies were byte-identical between the two builds in headless Chrome (the
+workshop's `begin` message differs only in its `buildMs` timing field). The match host worker keeps its own
+bundle: its spec-only graph would split four boot chunks (+5 game / +4 gallery requests) or pull the builder
+core into the host. The small sky, cloud, schematic, painter and texture workers are single self-contained
+files. Baking wrecks on the main thread instead would cost 36–158 ms per donor (Node, first bake) as single
+long tasks under the loading countdown, which is why the worker stays.
+
+## Shader programs minified at build (2026-10-02)
+
+The game's shader programs ship as JS literals with long explanatory comments. `tools/viteGlslMinify.ts` (a
+build-only transform listed in `vite.config.ts`) removes GLSL comments, line-start indentation, trailing
+whitespace and blank lines from the literals under `src/` that hold a complete stage (`void main() {`). It never
+joins lines (every `#` directive stays on its own line and starts it), never changes text inside a line, never
+touches `${…}` interpolations, tagged templates or a literal's outer edges, and leaves a literal alone when a
+comment could continue past it. Library shaders (three's chunks, postprocessing) and shader fragments are never
+rewritten: game code patches them by verbatim anchors, some indented across lines — the first cut also stripped
+three's chunks and broke `lighting.ts`'s `'\t\t#pragma unroll_loop_end\n\t#elif defined (USE_SHADOWMAP)'`
+anchor ("shadow-density anchors not found", the boot never finished). Every rewrite is checked at build time (the
+GLSL token stream and the directive lines must be unchanged, or the build fails), and
+`tools/viteGlslMinify.selftest.mjs` checks all 66 project programs against the 37 patch anchors the source uses.
+
+Measured: game boot 3,626,263 → 3,594,943 B raw and 871,651 → 861,280 B brotli (the entry chunk 775,316 →
+744,287 B raw); 232 literal pieces, 47 kB of source. In headless Chrome every program linked in both builds
+(Garage 88/88, Studio Desert 159–182), with no console or page error, and the Desert Studio capture differed from
+the unminified build by no more than two captures of one build differ from each other (23,292 px, max Δ 54,
+against 22–27 thousand px, max Δ 29–60).
+
 ## Asset and geometry policy
 
 Playable tanks are assembled from first-party code and cached/generated
