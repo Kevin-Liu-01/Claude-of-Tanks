@@ -5,6 +5,7 @@ import {registerProfiledBuilders} from './tankFactoryCore.ts';
 import {buildAbramsX,ABRAMS_SOURCE_X_FRAME as FRAME} from './profiles/abramsSourceX.ts';
 import {ABRAMS_SOURCE_X_IDS} from './abramsSourceXSpecs.ts';
 import {KIT} from './profiles/kit.ts';
+import { nearStrict as near } from '../../tools/receipt-kit.test-support.mjs';
 
 // Independent full143-owner OBJ rays, source SHA85c33cee…, unchanged frame.
 // .qa-dev/reports/abrams-user-surface-r5-CN8qH3/source.json retains all hits.
@@ -13,7 +14,6 @@ import {KIT} from './profiles/kit.ts';
 const SOURCE_LEFT=[[-3.3,1.7008664095973516],[-2.988,1.7006656160587232],[-2.5,1.7003515543700995]];
 const material=new T.MeshBasicMaterial({side:T.FrontSide});
 const ray=(targets,p,d,far)=>new T.Raycaster(new T.Vector3(...p),new T.Vector3(...d),0,far).intersectObjects(targets,false);
-const near=(a,b,epsilon,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<epsilon,`${label}: ${a} vs ${b}`);
 let builds=0,poses=0,contacts=0,air=0;
 for(const quality of['high','low'])for(const id of ABRAMS_SOURCE_X_IDS){
  const hull=[],turret=[],brackets=[];

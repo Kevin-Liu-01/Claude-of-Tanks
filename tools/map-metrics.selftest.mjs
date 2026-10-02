@@ -15,9 +15,9 @@ import {
   parseBox, percentile, powerSpectrum, resolveBoxSpec, rgbToHsv, skylineRatio, skylineTable, std, stripeMetrics,
   wallStats,
 } from './map-metrics.mjs';
+import { near } from './receipt-kit.test-support.mjs';
 
 const dir = mkdtempSync(path.join(tmpdir(), 'cot-map-metrics-selftest-'));
-const near = (a, b, tol, label) => assert.ok(Math.abs(a - b) <= tol, `${label}: ${a} vs ${b} (tol ${tol})`);
 
 /** Paint a frame from a per-pixel rgb callback and write it as a real PNG. */
 function writeFrame(file, width, height, rgbAt) {

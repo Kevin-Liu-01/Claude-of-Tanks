@@ -44,6 +44,8 @@ ordering cannot silently substitute the analysis parser for the project compiler
 Pin URL, flags, roster, timings, and output path. Make gates fail visibly and
 avoid editing generated evidence manually. Combat-anatomy generation always
 uses `ALL_TANK_IDS`; donor/retired spec rows are not part of the playable gate.
+Receipts import `near`, `nearStrict` and `geometryHash` from
+`receipt-kit.test-support.mjs` instead of defining their own copies.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

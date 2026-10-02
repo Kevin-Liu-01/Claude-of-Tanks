@@ -5,8 +5,7 @@ import { addChieftain10XUpperFittings } from './chieftain10XUpperFittings.ts';
 import { addChieftain10XBowLights } from './chieftain10XBowLights.ts';
 import { addChieftain10XRearSupport } from './chieftain10XRearSupport.ts';
 import { addChieftain10XRearEquipment } from './chieftain10XRearEquipment.ts';
-const near = (a, b, tolerance, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b) <= tolerance,
-  `${label}: ${a} versus source ${b}`);
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 const ray = (objects, origin, direction, far = 8) => new THREE.Raycaster(new THREE.Vector3(...origin),
   new THREE.Vector3(...direction), 0, far).intersectObjects(objects, false)[0];
 const coordinate = (objects, origin, direction, axis, expected, tolerance, label) => {

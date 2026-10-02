@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT90SMGunSaddles} from './t90SMXGunSaddles.ts';
+import { nearStrict as near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Independent source misc_b mid-span rays, not builder-derived targets.
 const SOURCE=[
@@ -12,10 +13,6 @@ const SOURCE=[
   [6.19367,2.006304602,1.994680998],
   [6.75148,2.007030526,1.994993112],
 ];
-function near(actual,target,tolerance,label) {
-  assert.ok(Number.isFinite(actual)&&Math.abs(actual-target)<tolerance,
-    `${label}: ${actual} vs source ${target} ± ${tolerance}`);
-}
 function helperParts(material) {
   const root=new THREE.Group();root.position.set(.001,1.90309,1.56);
   addT90SMGunSaddles({add(bucket,geometry,x,y,z){

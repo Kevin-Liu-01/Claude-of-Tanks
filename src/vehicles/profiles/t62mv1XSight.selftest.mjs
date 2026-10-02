@@ -5,9 +5,9 @@ import {createTank} from '../tankFactory.ts';
 import {registerProfiledBuilders} from '../tankFactoryCore.ts';
 import {buildT62MV1X} from './t62mv1X.ts';
 import {addT62MV1Sight} from './t62mv1XSight.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const PIVOT=new THREE.Vector3(0,1.446436,.3041853764);
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} versus source ${b} ±${t}`);
 const bufferHash=a=>createHash('sha256').update(Buffer.from(a.buffer,a.byteOffset,a.byteLength)).digest('hex');
 const ray=(meshes,p,d,far=5)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(meshes,false)[0];
 function physical(root){const meshes=[];root.traverse(m=>{if(m.isMesh&&!m.userData.shadowOnly&&!m.userData.vehicleMarking)meshes.push(m);});return meshes;}

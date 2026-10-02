@@ -10,6 +10,7 @@ import { ensureInteriorFills, hasInteriorFills, interiorFillRecord } from '../in
 import { createTankState } from '../../sim/movement.ts';
 import { ZTZ100_PROTOTYPE_PROFILES, ZTZ100_PROTOTYPE_DATUMS as D,
   ZTZ100_PROTOTYPE_LAUNCHER as L } from './ztz100Prototype.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const id = 'ztz100_prototype', spec = TANK_SPECS[id];
 assert.deepEqual(spec.armor.turretPivot, [0, 1.41, -.55]);
@@ -40,10 +41,6 @@ registerProfiledBuilders({ [id]: port => ZTZ100_PROTOTYPE_PROFILES[id].build(new
     return typeof value === 'function' ? value.bind(target) : value;
   },
 })) });
-function near(actual, expected, tolerance, message) {
-  assert.ok(Number.isFinite(actual) && Math.abs(actual - expected) <= tolerance,
-    `${message}: ${actual} versus ${expected}`);
-}
 function selectNear(root) {
   root.traverse(o => { if (o.isLOD) {
     o.autoUpdate = false; o.levels.forEach((level, i) => level.object.visible = i === 0);

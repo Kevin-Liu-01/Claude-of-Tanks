@@ -6,6 +6,7 @@ import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { K2_X_PROFILES } from './k2X.ts';
 import { KF51_X_PROFILES } from './kf51X.ts';
 import { MERKAVA_X_PROFILES } from './merkavaX.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 registerProfiledBuilders(Object.fromEntries(Object.entries({
   ...K2_X_PROFILES, ...KF51_X_PROFILES, ...MERKAVA_X_PROFILES,
@@ -34,10 +35,6 @@ const sources = {
     roofs: [[-2.0, 1.604], [0, 1.604], [2.8, 1.347], [3.77, 1.0475]] },
 };
 
-const near = (value, expected, tolerance, label) => assert.ok(
-  Number.isFinite(value) && Math.abs(value - expected) <= tolerance,
-  `${label}: ${value} vs ${expected} ± ${tolerance}`,
-);
 const verticalHit = (object, x, z, up = false) => new THREE.Raycaster(
   new THREE.Vector3(x, up ? -.2 : 6, z), new THREE.Vector3(0, up ? 1 : -1, 0), 0, 7,
 ).intersectObject(object, false)[0]?.point.y;

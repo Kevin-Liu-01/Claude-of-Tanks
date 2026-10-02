@@ -8,6 +8,7 @@ import {ABRAMS_SOURCE_X_IDS} from './abramsSourceXSpecs.ts';
 import {ABRAMS_SOURCE_X_GUIDE_PROFILE as PROFILE} from './profiles/abramsSourceXHull.ts';
 import {getSpec} from './specs.ts';
 import {createTankState} from '../sim/movement.ts';
+import { geometryHash } from '../../tools/receipt-kit.test-support.mjs';
 
 // Independent source120 intervals, selected OBJ85c33cee…bd29, canonical
 // [-rawX, rawY+.203945, .357965-rawZ]. Ground guide is a thin hollow wedge,
@@ -17,7 +18,6 @@ const SOURCE = [[.075,1.440958141,1.410661378],[.10,1.437824855,1.413864798],
 const material=new T.MeshBasicMaterial({side:T.DoubleSide});
 const hash=value=>createHash('sha256').update(value).digest('hex');
 function bytes(a){return Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength);}
-function geometryHash(g){const h=createHash('sha256');for(const key of Object.keys(g.attributes).sort())h.update(key).update(bytes(g.attributes[key]));if(g.index)h.update(bytes(g.index));return h.digest('hex');}
 function triangles(g){
   const result=[],keys=Object.keys(g.attributes).sort(),count=g.index?.count??g.attributes.position.count;
   for(let i=0;i<count;i+=3){const corners=[0,1,2].map(k=>{const v=g.index?g.index.getX(i+k):i+k;return keys.map(key=>{const a=g.attributes[key];return[key,...Array.from({length:a.itemSize},(_,c)=>a.getComponent(v,c))];});});
