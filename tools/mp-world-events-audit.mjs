@@ -24,6 +24,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { WebSocket } from 'ws';
 import { Vector3 } from 'three';
 import { createP2pRoomDouble } from './mp-p2p-room-double.ts';
@@ -99,8 +100,12 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
   const peers = [];
   const failures = [];
   const marks = {};
-  const report = { label: null, mapId: MAP_ID, playMs, afterMs, hostGraceMs, teamSize, steps: {}, wallMs: 0 };
+  const report = { label: null, mapId: MAP_ID, playMs, afterMs, hostGraceMs, teamSize, steps: {}, wallMs: 0, loopDelay: null };
   const startedAt = now();
+  // The host, the seats and the transport share this one process: its event-loop delay says whether the harness kept
+  // its frame cadence, so a reader can tell a late beat of a starved harness from a late client.
+  const loopDelay = monitorEventLoopDelay({ resolution: 10 });
+  loopDelay.enable();
   let ticking = true;
 
   // ------------------------------------------------------------ the host hook: what the authority sent to whom
@@ -377,6 +382,9 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     failures.push(error instanceof Error ? error.stack ?? error.message : String(error));
   } finally {
     report.wallMs = Math.round(now() - startedAt);
+    loopDelay.disable();
+    report.loopDelay = { p99Ms: Math.round(loopDelay.percentile(99) / 1e5) / 10, maxMs: Math.round(loopDelay.max / 1e5) / 10,
+      meanMs: Math.round(loopDelay.mean / 1e5) / 10 };
     ticking = false;
     await ticker;
     for (const peer of peers) retire(peer);
