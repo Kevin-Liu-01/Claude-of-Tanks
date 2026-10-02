@@ -4,8 +4,11 @@ import { createTank } from '../tankFactory.ts';
 const options = { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true };
 const first = createTank('t72b3m', null, options);
 const sibling = createTank('t72b3m', null, options);
+// 2026-10-01: the owner's obr. 2022 rebuild (cdbfe54dc: t72b3m_x hull with the T-90SM X turret) retired the legacy
+// builder's private ring-gap band and dark gun finishes. The lifetime law is the factory's and is held on the
+// rebuild's own independent finishes: soft-case canvas, turret dark stock and the pitching gun mount.
 function capture(tank) {
-  const names = ['turretRingGapShadowBand', 'gunDark', 'gunMountDark'];
+  const names = ['hullCloth', 'turretDark', 'gunMount'];
   const meshes = names.map(name => {
     const mesh = tank.root.getObjectByName(name);
     assert.ok(mesh?.isMesh, `actual ${name} owner is present`);
@@ -27,11 +30,11 @@ first.resetForGaragePresentation();
 assert.deepEqual(a.meshes.map(mesh => mesh.material), a.materials, 'reset retains exact original finish owners');
 assert.ok([...a.disposed.values()].every(count => count === 0), 'wreck/reset does not prematurely dispose live finishes');
 first.dispose();
-assert.ok([...a.disposed.values()].every(count => count === 1), 'all three private materials and ring geometry dispose exactly once');
+assert.ok([...a.disposed.values()].every(count => count === 1), 'all three private materials and their stock geometry dispose exactly once');
 assert.ok([...b.disposed.values()].every(count => count === 0), 'first disposal leaves every sibling resource alive');
 sibling.setDestroyed({ pop: true, ageS: 2 });
 sibling.resetDestroyed();
 assert.deepEqual(b.meshes.map(mesh => mesh.material), b.materials, 'surviving sibling still resets to its own exact materials');
 sibling.dispose();
 assert.ok([...b.disposed.values()].every(count => count === 1));
-console.log('t72MaterialLifetime.selftest: actual private finish and ring owners survive wreck/reset and dispose once without affecting sibling');
+console.log('t72MaterialLifetime.selftest: actual private finish and stock owners survive wreck/reset and dispose once without affecting sibling');

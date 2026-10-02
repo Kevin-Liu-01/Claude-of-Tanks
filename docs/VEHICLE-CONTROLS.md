@@ -26,6 +26,13 @@ also drives recoil, muzzle flashes and pooled ejected cases. Only remotely
 controlled modeled stations qualify; a manually crewed pintle or a vehicle's
 primary remote turret does not become an extra automatic gun.
 
+The Challenger 3 and Challenger 3 Prototype stations include their authored
+cradle, sensor pods and rear housing in the rotating mount. The receiver spine
+and recoil rails elevate with the gun; the roof foundation and independent
+turret sights stay fixed. `challenger3MachineGunAssembly.selftest.mjs` checks
+these relationships and support damage/repair in both detail levels, and
+`tools/challenger-assembly.browser.mjs` checks the live Garage and cached return.
+
 Lights start automatically at night, and explicit on/off requests work in every
 lighting preset. The existing bounded lighting pool is prepared behind the
 battle loading screen to avoid compiling a new light signature on first use.

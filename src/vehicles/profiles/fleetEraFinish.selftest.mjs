@@ -20,16 +20,16 @@ const ERA_VEHICLE_IDS = Object.freeze([
   'kf51b',
 ]);
 
+// 2026-10-01: the owner's September renewal (4c34b3e8b, fleet-renewal-publication-20260930.md: "T-64BV1 and UA
+// Donbas use modernized t72b3_x foundations") retired the old T-64 builder and its visual-only K-1 packages
+// (t64bv1-k1-hull-era, ukraine-k1-hull, ...). Every reactive cassette of the rebuilds is now a gameplay sector of
+// the T-72B3 study plus the modernization's own turret and side cassettes, routed through the same painted finish.
+const REBUILT_T64_ERA_SECTORS = Object.freeze([
+  'glacis_era_L', 'glacis_era_R', 'skirt_era_L', 'skirt_era_R', 'turret_era_L', 'turret_era_R',
+]);
 const REQUIRED_T64_ERA_SECTORS = Object.freeze({
-  t64bv1: Object.freeze([
-    't64bv1-k1-hull-era',
-    't64bv1-k1-turret-era',
-  ]),
-  ua_t64bv: Object.freeze([
-    'ua-t64bv-k1-hull-glacis-era',
-    'ukraine-k1-hull',
-    'ukraine-layered-turret',
-  ]),
+  t64bv1: REBUILT_T64_ERA_SECTORS,
+  ua_t64bv: REBUILT_T64_ERA_SECTORS,
 });
 
 const uvSpan = (mesh) => {
@@ -66,7 +66,7 @@ for (const id of ERA_VEHICLE_IDS) {
   assert.ok(receipt.authoredParts > 0, `${id} records authored ERA geometry`);
   assert.ok(receipt.sectors.length > 0, `${id} records at least one ERA sector`);
   for (const sector of REQUIRED_T64_ERA_SECTORS[id] || []) {
-    assert.ok(receipt.visualSectors.includes(sector),
+    assert.ok(receipt.sectors.includes(sector) || receipt.visualSectors.includes(sector),
       `${id} routes ${sector} through the painted layered ERA finish`);
     assert.ok(receipt.partsBySector[sector] > 0,
       `${id} records painted geometry for ${sector}`);

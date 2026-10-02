@@ -31,6 +31,7 @@
  * Loading is tolerant by design: a missing/undecodable file mutes that line
  * and logs one warning — the game never breaks on audio assets.
  */
+import { runtimeFileUrl } from '../runtimeFiles.ts';
 
 interface VoiceLine {
   files: readonly string[];
@@ -171,7 +172,7 @@ export function createVoiceRadio(rng: () => number): VoiceRadio {
     }
     let failures = 0;
     const jobs = [...names].map((name) =>
-      fetch(`${base}audio/voice/${name}`)
+      fetch(runtimeFileUrl(`audio/voice/${name}`, base))
         .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); })
         .then((ab) => audioCtx.decodeAudioData(ab))
         .then((buf) => { buffers.set(name, buf); })
