@@ -6084,7 +6084,7 @@ quiet, against −129 draws and −0.83 M triangles. Ready to run in the next qu
 `zsh $SP/r79/winter-quiet.sh w1 $SP/r79/snap-base $SP/r79/snap-d` (the six pairs), then `zsh $SP/r79/winter-chain.sh`
 (the attribution, only if ≥ 4 of 6 stay positive).
 
-### Terrain v2 — 2026-10-01: the ground at a fraction of the cost, grounded terms, the horizon in the scene's own light
+### Terrain v2/v3 — 2026-10-01/02: the ground at a fraction of the cost, grounded terms, sand in trains, the ring as the battlefield's own material
 
 The Opus 5.5 redesign's terrain-and-horizon lane (branch `visual/terrain-horizon`; owner direction: grounded realism,
 natural light, photographic materials, the desktop high tier inside 60 fps on a mid-range laptop GPU, phones never
@@ -6099,7 +6099,7 @@ that fills every skyline view. A static model of the executed fetches: open gras
 about 33 after (23 of them isotropic explicit-LOD reads); open grass at 400 m about 94 before (all anisotropic), about
 27–33 after.
 
-**The cost pass (program key v53).** Every coverage weight is known before any layer is fetched (the height
+**The cost pass (program key v53; v54 with terrain v3).** Every coverage weight is known before any layer is fetched (the height
 transitions keep 0 at 0 and 1 at 1), so each layer is fetched inside its own coverage branch and the base tile only
 where the layers above it leave any of it (`covG`, executed on scalar ports by `terrainMaterialV2.selftest`); the
 rotation blend and the wall projections fetch their second sampling only inside the crossover band; past the far
@@ -6149,6 +6149,18 @@ over the face's own slope from 20° to 41° (`uRingReliefWall`, set at the ring'
 and the cast shadows keep their weight everywhere, and the snow, alpine, rolling and coastal ranges keep it in full —
 their ridges are its relief. Earthrise Basin's regolith palette is a dark, faintly warm grey (the census: "the
 regolith reads as snow").
+
+**Measured (2026-10-02, Apple M5 Max through ANGLE Metal, headless Chrome, 1600×900, desktop High with the dynamic
+scale pinned at 1, every bot frozen; `.qa-dev/terrain-perf-probe.mjs` in the lane, untracked).** Frame GPU time from
+EXT_disjoint_timer_query_webgl2 (one query per frame, p25 of 180 frames per pose), the PR base (c959ac4b6) against
+terrain v2 (3c1c33490) from frozen production builds, alternated A B B A per map in two runs on different hours (four
+pairs per map and pose), each pair the delta of adjacent slots; median [min..max]: Whiteout chase −2.9 ms [−7.3..−2.3],
+sky-w −2.5 [−3.7..−1.2]; Sirocco Wadi chase −3.5 [−5.3..−2.1], sky-w −1.3 [−3.7..+0.4]; Monsoon Ridge chase −2.0
+[−2.8..−1.5], sky-w −1.2 [−4.0..+1.3]; Verdant chase −0.7 [−3.9..+1.6], sky-w −1.0 [−1.5..0.0] (whole frames of
+16–22 ms; main-thread CPU unchanged within ±1 ms). The mobile tier (A B B A, two pairs): Whiteout chase −2.5 ms
+[−2.9..−2.0], Verdant +0.2 [−0.5..+0.8], i.e. not slower. The machine carried other sessions' GPU work through most
+pairs (load 7–109, foreign GPU-process CPU up to 12 cores), which is why single pairs spread; the interleaved
+hide/show attribution was too noisy under that load to split terrain from ring and is not quoted.
 
 ## Acceptance is visual and measured
 
