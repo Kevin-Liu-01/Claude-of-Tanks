@@ -51,7 +51,7 @@ export function installFramePassTimer() {
   passes.forEach((pass, i) => { if (!passLabels.has(pass)) passLabels.set(pass, `pass${i}`); });
 
   // --- state -------------------------------------------------------------------------------------------------
-  let mode = 'off';            // 'off' | 'segmented' | 'whole' | 'prefix'
+  let mode = 'off';            // 'off' | 'segmented' | 'whole' | 'prefix' | 'cpu' (no query: a live governor owns them)
   let flushPieces = false;     // segmented: commit the command buffer at every label boundary
   let prefixLabels = [];       // prefix: the checkpoints the frames rotate through
   let prefixCursor = 0;
@@ -143,7 +143,7 @@ export function installFramePassTimer() {
   }
   function resolvePending() {
     if (!pending.length) return;
-    if (!ext) { while (pending.length) done.push(finishRecord(pending.shift(), null)); return; }
+    if (!ext || pending.every((f) => f.mode === 'cpu')) { while (pending.length) done.push(finishRecord(pending.shift(), null)); return; }
     if (gl.getParameter(ext.GPU_DISJOINT_EXT)) {
       disjointFrames += pending.length;
       for (const f of pending.splice(0)) for (const p of f.pieces) pool.push(p.q);
@@ -151,6 +151,7 @@ export function installFramePassTimer() {
     }
     while (pending.length) {
       const f = pending[0];
+      if (f.mode === 'cpu') { pending.shift(); done.push(finishRecord(f, null)); continue; }
       if (!f.pieces.every((p) => gl.getQueryParameter(p.q, gl.QUERY_RESULT_AVAILABLE))) return;
       pending.shift();
       const gpu = {};

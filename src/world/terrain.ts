@@ -5354,6 +5354,7 @@ function* terrainBuildSteps(
         heightField.addWaterImpulse = ripples.addImpulse;
         heightField.waterRipplesActive = () => true;
         group.userData.disposeWater = ripples.dispose;
+        group.userData.waterRipples = ripples; // read-only handle for probes (its sleep state, its steps)
       }
       if (ocean) {
         // round 66: the ocean's targets go with the field's (one disposer, called by the world's dispose)

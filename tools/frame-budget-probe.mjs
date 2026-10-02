@@ -45,16 +45,17 @@ const TOOL = 'frame-budget-probe';
 const DEFAULTS = Object.freeze({
   pattern: 'ABBA', views: ['chase', 'centre-far'], viewports: ['1600x900', '1920x1080'], frames: 240, block: 30,
   sides: '13x14', spec: 't90m_x', preset: 'high', governor: 'pinned', port: 5395, budgetMin: 18, settleMs: 2500,
-  tier: 'desktop', prefixFrames: 330, noFlush: false, segmented: false, scales: null,
+  tier: 'desktop', prefixFrames: 330, noFlush: false, segmented: false, scales: null, liveSeconds: 40,
 });
 /** Runtime A/B switches the probe can flip inside one page (off = the baseline). */
 const FRAME_PROBE_TOGGLES = Object.freeze({
   // the static shadow-caster cache (engine/shadowStaticCache.ts): off forces every caster every frame
   'shadow-cache': Object.freeze({ on: 'window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: false })',
     off: 'window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true })' }),
-  // the water / grass simulations' idle sleep (world/simulationSleep.ts): off steps them every frame
+  // the water / grass simulations' idle sleep (waterRipples.ts, groundPressure.ts): off steps them every frame; the
+  // ripple field falls asleep only after 20 s of quiet, so an 'on' block that follows an 'off' one waits that long
   'sim-sleep': Object.freeze({ on: 'window.__WORLD_SIM_DEBUG = Object.assign(window.__WORLD_SIM_DEBUG || {}, { noSleep: false })',
-    off: 'window.__WORLD_SIM_DEBUG = Object.assign(window.__WORLD_SIM_DEBUG || {}, { noSleep: true })' }),
+    off: 'window.__WORLD_SIM_DEBUG = Object.assign(window.__WORLD_SIM_DEBUG || {}, { noSleep: true })', onSettleMs: 21000 }),
 });
 
 // ---------------------------------------------------------------------------------------------- arguments
@@ -93,6 +94,7 @@ export function parseFrameProbeArgs(argv) {
       case 'no-flush': if (raw !== undefined) throw new Error('--no-flush takes no value'); o.noFlush = true; break;
       case 'segmented': if (raw !== undefined) throw new Error('--segmented takes no value'); o.segmented = true; break;
       case 'scales': o.scales = list(need()).map(Number); break;
+      case 'live-seconds': o.liveSeconds = Math.max(5, Number(need()) || 40); break;
       case 'tier': o.tier = need(); break;
       case 'out': o.out = path.resolve(need()); break;
       case 'tag': o.tag = need(); break;
@@ -201,26 +203,27 @@ function graphicsState() {
 }
 
 /**
- * Mid-range emulation: after every frame, one fullscreen pass into a small target whose loop count tracks
- * (1/ratio − 1) × the frame's own GPU time, measured by a whole-frame timer query (EMA over the last answers).
- * The burn is GPU-only (one draw), so the main thread is untouched and the presented frame time is the proxy's.
+ * Mid-range emulation for a LIVE governor: a GPU-only burn (one fullscreen draw into a 64² target, a loop of
+ * `iterations`) drawn right before the final pass — inside the governor's own GPU sample (post.ts opens it in
+ * dynGovern and closes it after the upscaler) — so the governor sees the proxy's GPU time: real / ratio. The real
+ * frame is the governor's sample minus the burn's known cost; the burn's cost per iteration is calibrated with the
+ * probe's own query on frames where the governor's timer is paused (a pin at the current scale, released again;
+ * every 4 s). The main thread is untouched, so a main-thread-bound frame stays one.
  */
 function installGpuEmulator(ratio) {
   if (window.__FBP_EMULATOR) return window.__FBP_EMULATOR.state;
-  const D = window.__DEBUG; const R = D.renderer; const gl = R.getContext();
+  const D = window.__DEBUG; const R = D.renderer; const gl = R.getContext(); const post = D.post;
   const ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
   if (!ext) return { ok: false, reason: 'no timer query' };
   const vs = '#version 300 es\nin vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }';
   const fs = '#version 300 es\nprecision highp float; uniform int uN; uniform float uS; out vec4 o;\n'
-    + 'void main(){ vec2 v = gl_FragCoord.xy * 0.001 + uS; float a = 0.0; for (int i = 0; i < 100000; i++) { if (i >= uN) break; v = fract(v * 1.618 + vec2(0.13, 0.37)); a += v.x * v.y; } o = vec4(a * 1e-6); }';
-  const compile = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
+    + 'void main(){ vec2 v = gl_FragCoord.xy * 0.001 + uS; float a = 0.0; for (int i = 0; i < 200000; i++) { if (i >= uN) break; v = fract(v * 1.618 + vec2(0.13, 0.37)); a += v.x * v.y; } o = vec4(a * 1e-6); }';
+  const compile = (type, src) => { const sh = gl.createShader(type); gl.shaderSource(sh, src); gl.compileShader(sh); return sh; };
   const prog = gl.createProgram();
   gl.attachShader(prog, compile(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fs));
   gl.linkProgram(prog);
   if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return { ok: false, reason: gl.getProgramInfoLog(prog) };
-  const buf = gl.createBuffer();
-  const vao = gl.createVertexArray();
-  const tex = gl.createTexture();
+  const buf = gl.createBuffer(); const vao = gl.createVertexArray(); const tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 64, 64, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
   const fbo = gl.createFramebuffer();
@@ -231,60 +234,60 @@ function installGpuEmulator(ratio) {
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
   const loc = gl.getAttribLocation(prog, 'p');
-  gl.enableVertexAttribArray(loc);
-  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
   gl.bindVertexArray(null);
+  R.resetState();
   const uN = gl.getUniformLocation(prog, 'uN'), uS = gl.getUniformLocation(prog, 'uS');
-  const state = { ok: true, ratio, frameGpuMs: 0, burnGpuMs: 0, iterations: 64, targetBurnMs: 0, frames: 0 };
-  const pendingFrame = [], pendingBurn = [];
-  let frameQuery = null;
-  const post = D.post;
-  const original = post.render;
-  const readQueries = () => {
-    if (gl.getParameter(ext.GPU_DISJOINT_EXT)) { pendingFrame.length = 0; pendingBurn.length = 0; return; }
-    while (pendingFrame.length && gl.getQueryParameter(pendingFrame[0], gl.QUERY_RESULT_AVAILABLE)) {
-      const q = pendingFrame.shift();
-      const ms = gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6; gl.deleteQuery(q);
-      state.frameGpuMs = state.frameGpuMs ? state.frameGpuMs + (ms - state.frameGpuMs) * 0.2 : ms;
-    }
-    while (pendingBurn.length && gl.getQueryParameter(pendingBurn[0].q, gl.QUERY_RESULT_AVAILABLE)) {
-      const { q, n } = pendingBurn.shift();
-      const ms = gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6; gl.deleteQuery(q);
-      state.burnGpuMs = ms;
-      // proportional control of the loop count toward the target burn time (the per-iteration cost is ~constant)
-      if (ms > 0.02 && state.targetBurnMs > 0) state.iterations = Math.max(1, Math.min(100000, Math.round(n * state.targetBurnMs / ms)));
-    }
+  const state = { ok: true, ratio, msPerIteration: 0, iterations: 0, realMs: 0, burnMs: 0, governorMs: null, calibrations: 0, frames: 0 };
+  let calibrating = 0, calibrationQ = null, lastCalibrationAt = -1e9, pendingCalibration = null;
+  const draw = (n, query) => {
+    if (n <= 0 && !query) return;
+    if (query) gl.beginQuery(ext.TIME_ELAPSED_EXT, query);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.viewport(0, 0, 64, 64);
+    gl.disable(gl.BLEND); gl.disable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE); gl.disable(gl.SCISSOR_TEST);
+    gl.useProgram(prog); gl.uniform1i(uN, Math.max(1, n)); gl.uniform1f(uS, (state.frames++ % 97) * 0.01);
+    gl.bindVertexArray(vao); gl.drawArrays(gl.TRIANGLES, 0, 3); gl.bindVertexArray(null);
+    if (query) gl.endQuery(ext.TIME_ELAPSED_EXT);
+    R.resetState(); // three cached the bindings this draw replaced
   };
-  post.render = function (...args) {
-    readQueries();
-    // The frame-pass timer owns the TIME_ELAPSED target while it samples (queries cannot nest): read its frames then.
-    const timer = window.__FRAME_PASS_TIMER;
-    const own = !(timer && timer.active);
-    if (own && !frameQuery) { frameQuery = gl.createQuery(); gl.beginQuery(ext.TIME_ELAPSED_EXT, frameQuery); }
-    try { return original.apply(this, args); } finally {
-      if (own && frameQuery) { gl.endQuery(ext.TIME_ELAPSED_EXT); pendingFrame.push(frameQuery); frameQuery = null; }
-      if (!own && timer.lastGpuTotal > 0) {
-        state.frameGpuMs = state.frameGpuMs ? state.frameGpuMs + (timer.lastGpuTotal - state.frameGpuMs) * 0.2 : timer.lastGpuTotal;
+  const upscaler = post.upscaler;
+  const original = upscaler.render;
+  upscaler.render = function (...args) {
+    const now = performance.now();
+    if (pendingCalibration && gl.getQueryParameter(pendingCalibration.q, gl.QUERY_RESULT_AVAILABLE)) {
+      const ms = gl.getQueryParameter(pendingCalibration.q, gl.QUERY_RESULT) / 1e6; gl.deleteQuery(pendingCalibration.q);
+      if (!gl.getParameter(ext.GPU_DISJOINT_EXT) && ms > 0) {
+        const c = ms / pendingCalibration.n;
+        state.msPerIteration = state.msPerIteration ? state.msPerIteration * 0.5 + c * 0.5 : c;
+        state.calibrations++;
       }
-      state.targetBurnMs = state.frameGpuMs * (1 / ratio - 1);
-      const q = gl.createQuery();
-      const prevFbo = gl.getParameter(gl.FRAMEBUFFER_BINDING), prevProg = gl.getParameter(gl.CURRENT_PROGRAM);
-      const prevVao = gl.getParameter(gl.VERTEX_ARRAY_BINDING), prevViewport = gl.getParameter(gl.VIEWPORT);
-      const blend = gl.isEnabled(gl.BLEND), depth = gl.isEnabled(gl.DEPTH_TEST), cull = gl.isEnabled(gl.CULL_FACE), scissor = gl.isEnabled(gl.SCISSOR_TEST);
-      gl.beginQuery(ext.TIME_ELAPSED_EXT, q);
-      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.viewport(0, 0, 64, 64);
-      gl.disable(gl.BLEND); gl.disable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE); gl.disable(gl.SCISSOR_TEST);
-      gl.useProgram(prog); gl.uniform1i(uN, state.iterations); gl.uniform1f(uS, (state.frames++ % 97) * 0.01);
-      gl.bindVertexArray(vao); gl.drawArrays(gl.TRIANGLES, 0, 3);
-      gl.endQuery(ext.TIME_ELAPSED_EXT); pendingBurn.push({ q, n: state.iterations });
-      gl.bindVertexArray(prevVao); gl.useProgram(prevProg); gl.bindFramebuffer(gl.FRAMEBUFFER, prevFbo);
-      gl.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
-      if (blend) gl.enable(gl.BLEND); if (depth) gl.enable(gl.DEPTH_TEST); if (cull) gl.enable(gl.CULL_FACE); if (scissor) gl.enable(gl.SCISSOR_TEST);
-      // three caches GL state: tell it every binding it relied on may have changed
-      R.resetState();
+      pendingCalibration = null;
     }
+    if (!pendingCalibration && (now - lastCalibrationAt > 4000 || !state.msPerIteration) && !calibrating) {
+      // pause the governor's timer for a frame (a pin at the current scale) and time the burn alone
+      calibrating = 2; lastCalibrationAt = now;
+      post.pinDynScale(post.dynScale);
+    }
+    if (calibrating === 1) {
+      const n = state.iterations > 0 ? state.iterations : 4000;
+      const q = gl.createQuery(); draw(n, q); pendingCalibration = { q, n };
+    } else if (!calibrating) {
+      // the governor's sample holds real + burn; the burn's own cost is known per iteration
+      const governorMs = post.gpuFrameMs;
+      if (governorMs !== null && state.msPerIteration > 0) {
+        state.governorMs = governorMs;
+        const real = Math.max(0.5, governorMs - state.burnMs);
+        state.realMs = state.realMs ? state.realMs + (real - state.realMs) * 0.25 : real;
+        const target = state.realMs * (1 / ratio - 1);
+        state.iterations = Math.max(0, Math.min(200000, Math.round(target / state.msPerIteration)));
+        state.burnMs = state.iterations * state.msPerIteration;
+      }
+      if (state.iterations > 0) draw(state.iterations, null);
+    }
+    if (calibrating) { calibrating--; if (!calibrating) post.pinDynScale(null); }
+    return original.apply(this, args);
   };
-  window.__FBP_EMULATOR = { state, uninstall() { post.render = original; delete window.__FBP_EMULATOR; } };
+  window.__FBP_EMULATOR = { state, uninstall() { upscaler.render = original; delete window.__FBP_EMULATOR; } };
   return state;
 }
 
@@ -366,9 +369,27 @@ async function sampleView(page, options) {
   // segmented pieces over-count on ANGLE Metal (their command-buffer spans overlap: the pieces summed to 4-5x the
   // whole frame in the 2026-10-02 pilots), so they are a diagnostic only (--segmented); the per-pass split is the
   // prefix decomposition — one query per frame from its start to a rotating checkpoint
-  const modesOf = () => (options.segmented ? ['whole', 'segmented'] : ['whole']);
+  // a live governor owns the TIME_ELAPSED target (post.ts samples every fourth frame): the probe keeps to the CPU
+  const modesOf = () => (options.governor === 'live' ? ['cpu'] : options.segmented ? ['whole', 'segmented'] : ['whole']);
   const sample = (frames, modes = modesOf()) => page.evaluate((cfg) => window.__FRAME_PASS_TIMER.sample(cfg),
     { frames, block: options.block, modes, flush: !options.noFlush, timeoutMs: Math.max(60000, frames * 400) });
+  if (options.governor === 'live') {
+    // the governor's own record: the scale it holds, its GPU sample, the presented cadence, every half second
+    const series = await page.evaluate(async (seconds) => {
+      const D = window.__DEBUG; const c = D.renderer.domElement; const out = [];
+      const t0 = performance.now();
+      while (performance.now() - t0 < seconds * 1000) {
+        await new Promise((r) => setTimeout(r, 500));
+        const e = window.__FBP_EMULATOR?.state;
+        out.push({ t: +((performance.now() - t0) / 1000).toFixed(1), dynScale: D.post.dynScale, gpuMs: D.post.gpuFrameMs,
+          frameEmaMs: Number(c.dataset.frameEmaMs) || null, fps: Number(c.dataset.fps) || null, renderScale: Number(c.dataset.renderScale) || null,
+          emulatedRealMs: e ? +e.realMs.toFixed(2) : null, burnMs: e ? +e.burnMs.toFixed(2) : null });
+      }
+      return out;
+    }, options.liveSeconds);
+    const result = await sample(options.frames);
+    return { result, series };
+  }
   if (!options.toggle) {
     const result = await sample(options.frames);
     const prefix = options.prefixFrames > 0 ? await sample(options.prefixFrames, ['prefix']) : null;
@@ -377,10 +398,18 @@ async function sampleView(page, options) {
   const t = FRAME_PROBE_TOGGLES[options.toggle];
   const half = Math.max(30, Math.round(options.frames / 2));
   const blocks = [];
+  let previous = 'on';
   for (const side of ['off', 'on', 'on', 'off']) {
     await page.evaluate(t[side]);
-    await sleep(700);
-    blocks.push({ side, result: await sample(half) });
+    await sleep(side === 'on' && previous === 'off' && t.onSettleMs ? t.onSettleMs : 700);
+    const state = await page.evaluate(() => {
+      const w = window.__DEBUG.world; const g = w?._tallGrass?.pressure; const r = w?.group?.getObjectByName?.('terrain')?.userData?.waterRipples ?? null;
+      const c = window.__DEBUG.lighting?.getShadowTelemetry?.().staticCache;
+      return { pressureSkipped: g?.skippedFrames ?? null, pressureSteps: g?.steps ?? null, rippleAsleep: r?.asleep ?? null,
+        cacheReuses: c ? (c.reuses || []).reduce((a, v) => a + (v || 0), 0) : null, cacheRebuilds: c ? (c.rebuilds || []).reduce((a, v) => a + (v || 0), 0) : null };
+    });
+    blocks.push({ side, state, result: await sample(half) });
+    previous = side;
   }
   await page.evaluate(t.on);
   return { toggle: options.toggle, blocks };

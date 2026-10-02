@@ -2,15 +2,21 @@
 // Rendered proof of the static shadow-caster cache (engine/shadowStaticCache.ts, P20): every scenario renders the
 // same scene state twice inside ONE page task — once through the cache, once with __SHADOW_DEBUG.noStaticCache — and
 // compares the frames pixel for pixel (8-bit luminance). Inside one task no game frame, wind tick or cloud step runs
-// between the two renders, so any difference is the cache's. The A/A floor (the uncached render twice) is measured
-// first. Scenarios: a still frame (the reuse path), a hull moved and turned (the dynamic layer on the reused copy), a
-// camera step across the cascade snaps, the sun moved (a time-of-day change), a tree felled and a prop destroyed with
-// the fall animated through world.update (rebuild, then the moving caster promoted to the dynamic layer), and two
-// sequences compared frame by frame — a hull driving past a still camera (every frame the reuse path) and a camera
-// dolly (every frame a pose change) — rendered once cached and once uncached from the same scripted states.
+// between the two renders, and the temporal AA (its sub-pixel jitter and history) is off for these renders unless
+// --temporal, so a frame is a function of the scene state and any difference is the cache's. The A/A floor (the
+// uncached render twice) is measured first. After every comparison the cache is re-warmed, so each step captures the
+// path its change actually takes: a still frame (the reuse path), a hull moved and turned (the dynamic layer on the
+// reused copy), camera steps across the cascade snaps (pose rebuilds, then the held reuse), the sun moved (a
+// time-of-day change), a tree felled and a prop destroyed with the fall animated through world.update (a content
+// rebuild, then the moving caster promoted to the dynamic layer), and two sequences compared frame by frame — a hull
+// driving past a still camera (every frame the reuse path) and a camera dolly (every frame a pose change) — rendered
+// once cached and once uncached from the same scripted states. Last, the live flicker meter of the 2026-09-12 shadow
+// flashing investigation (consecutive rAF frames copied in-page; a blip is a pixel whose luminance jumps more than
+// 20 levels and returns within one frame) runs on real game frames with the temporal AA on — the player driving and
+// turning — cache on and off in A B B A segments.
 //
 //   node tools/shadow-cache-truth.mjs --root=<tree with dist/> --maps=verdant,monsoon [--out=<dir>] [--port=5395]
-//        [--session-mutex=<dir>] [--query=clouds=off] [--gate]
+//        [--session-mutex=<dir>] [--query=clouds=off] [--gate] [--temporal] [--flicker-frames=90] [--no-flicker]
 //
 // --gate exits 1 when any scenario differs by more than the A/A floor (+ --tolerance px). Writes <out>/result.json
 // and, for every scenario with a difference, a diff PNG (red: darker with the cache, green: darker without).
@@ -25,7 +31,8 @@ import {
 
 function parseArgs(argv) {
   const o = { root: null, maps: ['verdant'], out: path.resolve('.qa-dev', 'reports', 'shadow-cache-truth'), port: 5395,
-    sessionMutex: null, query: '', gate: false, tolerance: 0, viewport: [1600, 900], spec: 't90m_x', sides: [6, 7] };
+    sessionMutex: null, query: '', gate: false, tolerance: 0, viewport: [1600, 900], spec: 't90m_x', sides: [6, 7],
+    temporal: false, flickerFrames: 90, flicker: true };
   for (const arg of argv) {
     const m = /^--([a-z-]+)(?:=(.*))?$/.exec(arg);
     if (!m) throw new Error(`Unknown argument ${arg}`);
@@ -39,6 +46,9 @@ function parseArgs(argv) {
     else if (k === 'gate') o.gate = true;
     else if (k === 'tolerance') o.tolerance = Number(v);
     else if (k === 'sides') o.sides = v.split('x').map(Number);
+    else if (k === 'temporal') o.temporal = true;
+    else if (k === 'flicker-frames') o.flickerFrames = Number(v);
+    else if (k === 'no-flicker') o.flicker = false;
     else throw new Error(`Unknown argument --${k}`);
   }
   if (!o.root) throw new Error('--root=<tree with a production dist> is required');
@@ -48,7 +58,7 @@ function parseArgs(argv) {
 // ---------------------------------------------------------------------------------------------- page side
 
 /** Installs window.__SCT: render(cached) → 8-bit luminance, diff(a, b) → counts and a diff image. */
-function installTruthHelpers() {
+function installTruthHelpers(temporal) {
   const D = window.__DEBUG;
   const src = D.renderer.domElement;
   const cv = document.createElement('canvas');
@@ -62,6 +72,14 @@ function installTruthHelpers() {
     return out;
   };
   const debug = () => (window.__SHADOW_DEBUG = window.__SHADOW_DEBUG || {});
+  const taaWas = { taa: D.post.taa.enabled, accumulation: D.post.upscaler.temporalAccumulation };
+  /** The scripted comparisons render without the temporal AA (no jitter, no history): a frame is a function of state. */
+  const setTemporal = (on) => {
+    D.post.taa.enabled = on && taaWas.taa;
+    D.post.upscaler.temporalAccumulation = on && taaWas.accumulation;
+    D.post.taa.resetHistory?.();
+  };
+  setTemporal(!!temporal);
   /** One complete frame of the current state: the lighting update (it arms the cache), then the post transaction. */
   const frame = (cached) => {
     debug().noStaticCache = !cached;
@@ -69,23 +87,31 @@ function installTruthHelpers() {
     D.post.render(0, 0);
   };
   const telemetry = () => D.lighting.getShadowTelemetry().staticCache;
+  const sum = (x) => (x || []).reduce((s, v) => s + (v || 0), 0);
   window.__SCT = {
     width: cv.width, height: cv.height,
     frame,
     lum,
     telemetry,
-    /** `warm` cached frames, capture; one uncached frame, capture; the cache back on. */
-    pair(warm = 3) {
-      const before = telemetry();
-      for (let i = 0; i < warm; i++) frame(true);
-      const a = lum();
+    setTemporal,
+    /**
+     * `warm` cached frames, the last one captured, with the path it took; one uncached frame, captured; then two
+     * cached frames re-warm the copies (an uncached frame stamps them stale), so the next step's change decides its
+     * own path.
+     */
+    pair(warm = 1) {
+      for (let i = 0; i < warm - 1; i++) frame(true);
+      const pre = telemetry();
+      frame(true);
       const mid = telemetry();
+      const a = lum();
       frame(false);
       const b = lum();
+      frame(true); frame(true);
       debug().noStaticCache = false;
-      return { a, b, cache: { reusesDuring: (mid.reuses || []).reduce((s, v) => s + (v || 0), 0) - (before.reuses || []).reduce((s, v) => s + (v || 0), 0),
-        rebuildsDuring: (mid.rebuilds || []).reduce((s, v) => s + (v || 0), 0) - (before.rebuilds || []).reduce((s, v) => s + (v || 0), 0),
-        promoted: mid.promoted, lastRebuildReason: mid.lastRebuildReason, enabled: mid.enabled } };
+      return { a, b, cache: { reuses: sum(mid.reuses) - sum(pre.reuses), rebuilds: sum(mid.rebuilds) - sum(pre.rebuilds),
+        skippedCopies: mid.skippedCopies - pre.skippedCopies, fullRenders: mid.fullRenders - pre.fullRenders,
+        promoted: mid.promoted, reason: mid.rebuilds.join() !== pre.rebuilds.join() ? mid.lastRebuildReason : null, enabled: mid.enabled } };
     },
     diff(a, b, threshold = 1) {
       let px = 0, onlyA = 0, max = 0;
@@ -107,7 +133,7 @@ function installTruthHelpers() {
       return cv.toDataURL('image/png');
     },
   };
-  return { width: cv.width, height: cv.height, cacheEnabled: !!telemetry()?.enabled };
+  return { width: cv.width, height: cv.height, cacheEnabled: !!telemetry()?.enabled, taa: D.post.taa.enabled };
 }
 
 /** Run one scenario in the page: `body` mutates the state between pairs and returns the pairs to compare. */
@@ -127,6 +153,7 @@ const S_FLOOR = `(() => {
   window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { forceAll: true });
   T.frame(false); const a = T.lum(); T.frame(false); const b = T.lum();
   items.push({ diff: T.diff(a, b), note: 'uncached twice: the driver floor' });
+  T.frame(true); T.frame(true);
   window.__SHADOW_DEBUG.noStaticCache = false;
   return { items };
 })()`;
@@ -163,8 +190,11 @@ const S_CAMERA = `(() => {
   for (const [dx, dy, dz, note] of steps) {
     const c = dx || dy || dz ? cam.clone().add(new V(dx, dy, dz)) : cam.clone();
     D.rig.setExternalPose(c, at.clone().add(new V(dx, dy, dz)), D.camera.fov);
-    const { a, b, cache } = T.pair(1); const diff = T.diff(a, b);
-    items.push({ step: note.split(':')[0].replace(/[^a-z0-9]+/gi, '-'), diff, cache, png: diff.px ? T.diffPng(a, b) : null, note });
+    const key = note.split(':')[0].replace(/[^a-z0-9]+/gi, '-');
+    let { a, b, cache } = T.pair(1); let diff = T.diff(a, b);
+    items.push({ step: key, diff, cache, png: diff.px ? T.diffPng(a, b) : null, note });
+    ({ a, b, cache } = T.pair(1)); diff = T.diff(a, b);
+    items.push({ step: key + '-held', diff, cache, png: diff.px ? T.diffPng(a, b) : null, note: note + ', held' });
   }
   return { items };
 })()`;
@@ -178,12 +208,13 @@ const S_SUN = `(() => {
   T.pair(3);
   const axis = new toSun.constructor(0, 1, 0);
   const moved = toSun.clone().applyAxisAngle(axis, 0.12);
-  L.setSun(moved, preset);
-  let { a, b, cache } = T.pair(3); let diff = T.diff(a, b);
-  items.push({ step: 'moved', diff, cache, png: diff.px ? T.diffPng(a, b) : null, note: 'the sun turned 7 degrees in azimuth' });
-  L.setSun(toSun, preset);
-  ({ a, b, cache } = T.pair(3)); diff = T.diff(a, b);
-  items.push({ step: 'back', diff, cache, png: diff.px ? T.diffPng(a, b) : null, note: 'the sun back' });
+  for (const [dir, step, note] of [[moved, 'moved', 'the sun turned 7 degrees in azimuth'], [toSun, 'back', 'the sun back']]) {
+    L.setSun(dir, preset);
+    let { a, b, cache } = T.pair(1); let diff = T.diff(a, b);
+    items.push({ step, diff, cache, png: diff.px ? T.diffPng(a, b) : null, note });
+    ({ a, b, cache } = T.pair(1)); diff = T.diff(a, b);
+    items.push({ step: step + '-held', diff, cache, png: diff.px ? T.diffPng(a, b) : null, note: note + ', held' });
+  }
   return { items };
 })()`;
 
@@ -251,6 +282,88 @@ const S_SEQUENCE = (kind) => `(() => {
   return { items };
 })()`;
 
+/**
+ * The consecutive-frame flicker meter of the 2026-09-12 shadow-flashing investigation (.qa-dev/shadow-flicker.mjs):
+ * a rAF hook copies the WebGL canvas after each game frame (the same task), so frames are truly consecutive; a blip
+ * is a pixel whose luminance jumps more than `threshold` and returns within one frame. Serialized into the page.
+ */
+async function flickerMeter({ frames, threshold }) {
+  const src = window.__DEBUG.renderer.domElement;
+  const W = 320, H = 180;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  const lums = [];
+  const t0 = performance.now();
+  await new Promise((done) => {
+    const tick = () => {
+      ctx.drawImage(src, 0, 0, W, H);
+      const d = ctx.getImageData(0, 0, W, H).data; const L = new Float32Array(W * H);
+      for (let p = 0; p < W * H; p++) L[p] = 0.299 * d[p * 4] + 0.587 * d[p * 4 + 1] + 0.114 * d[p * 4 + 2];
+      lums.push(L);
+      if (lums.length >= frames) done(); else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  const captureMs = performance.now() - t0;
+  let blips = 0, motion = 0;
+  for (let t = 1; t + 1 < lums.length; t++) {
+    const a = lums[t - 1], b = lums[t], c = lums[t + 1];
+    for (let p = 0; p < W * H; p++) {
+      const d1 = Math.abs(b[p] - a[p]), d2 = Math.abs(c[p] - b[p]), d02 = Math.abs(c[p] - a[p]);
+      motion += d1;
+      if (d1 > threshold && d2 > threshold && d02 < threshold * 0.45) blips++;
+    }
+  }
+  const pairs = lums.length - 2;
+  const t = window.__DEBUG.lighting.getShadowTelemetry().staticCache;
+  return { frames: lums.length, fps: +(lums.length / (captureMs / 1000)).toFixed(1), blipsPerFrame: +(blips / pairs).toFixed(1),
+    blipRate: +((blips / (pairs * W * H)) * 100).toFixed(4), meanMotion: +(motion / (pairs * W * H)).toFixed(2),
+    speed: +(window.__DEBUG.game?.player?.state?.speed ?? 0).toFixed(2),
+    cache: { enabled: t?.enabled ?? null, reuses: (t?.reuses || []).reduce((s, v) => s + (v || 0), 0), rebuilds: (t?.rebuilds || []).reduce((s, v) => s + (v || 0), 0) } };
+}
+
+/** Live frames, temporal AA on, the real cascade scheduler: driving and turning, cache on and off in A B B A order. */
+async function flickerPhase(page, options) {
+  await page.evaluate(() => {
+    const S = window.__SHADOW_DEBUG || (window.__SHADOW_DEBUG = {});
+    S.forceAll = false; S.noStaticCache = false;
+    window.__SCT.setTemporal(true);
+    window.__DEBUG.rig.release();
+  });
+  await sleep(1500);
+  const plan = [
+    ['drive', true, 'KeyW'], ['drive', false, 'KeyS'], ['drive', false, 'KeyW'], ['drive', true, 'KeyS'],
+    ['turn', true, 'KeyA'], ['turn', false, 'KeyD'], ['turn', false, 'KeyA'], ['turn', true, 'KeyD'],
+  ];
+  const segments = [];
+  for (const [kind, cached, key] of plan) {
+    await page.evaluate((c) => { window.__SHADOW_DEBUG.noStaticCache = !c; }, cached);
+    await page.keyboard.down(key);
+    await sleep(1500);
+    let r;
+    try {
+      const before = await page.evaluate(() => window.__DEBUG.lighting.getShadowTelemetry().staticCache);
+      r = await page.evaluate(flickerMeter, { frames: options.flickerFrames, threshold: 20 });
+      const sum = (x) => (x || []).reduce((s, v) => s + (v || 0), 0);
+      r.cache.reuses -= sum(before.reuses); r.cache.rebuilds -= sum(before.rebuilds);
+    } finally {
+      await page.keyboard.up(key);
+    }
+    await sleep(700);
+    segments.push({ kind, cached, key, ...r });
+  }
+  await page.evaluate(() => { window.__SHADOW_DEBUG.noStaticCache = false; });
+  const summary = {};
+  for (const kind of ['drive', 'turn']) {
+    const of = (cached) => segments.filter((x) => x.kind === kind && x.cached === cached).map((x) => x.blipsPerFrame);
+    const mean = (v) => +(v.reduce((s, x) => s + x, 0) / v.length).toFixed(1);
+    const on = of(true), off = of(false);
+    summary[kind] = { cached: on, uncached: off, delta: +(mean(on) - mean(off)).toFixed(1),
+      spread: +Math.max(Math.abs(on[0] - on[1]), Math.abs(off[0] - off[1])).toFixed(1) };
+  }
+  return { segments, summary };
+}
+
 // ---------------------------------------------------------------------------------------------- host side
 
 async function run(options) {
@@ -283,7 +396,7 @@ async function run(options) {
         await sleep(2500);
         // freeze the wind and the water clocks so a capture pair differs only by the cache
         await page.evaluate(() => { window.__DEBUG.world.setWindTime?.(12.5); });
-        const setup = await page.evaluate(installTruthHelpers);
+        const setup = await page.evaluate(installTruthHelpers, options.temporal);
         const results = [];
         const tag = mapId;
         await scenario(page, 'floor', S_FLOOR, options.out, results, tag);
@@ -300,8 +413,10 @@ async function run(options) {
         const floor = results.find((r) => r.scenario === 'floor')?.px ?? 0;
         const over = results.filter((r) => r.scenario !== 'floor' && r.px > floor + options.tolerance);
         for (const r of over) report.failures.push(`${mapId} ${r.scenario}${r.step ? `/${r.step}` : ''}: ${r.px} px (floor ${floor})`);
-        report.maps[mapId] = { setup, floor, results, pageErrors: errors };
         log(`${mapId}: floor ${floor} px; ${results.filter((r) => r.scenario !== 'floor').map((r) => `${r.scenario}${r.step ? `/${r.step}` : ''} ${r.px}`).join(', ')}`);
+        const flicker = options.flicker ? await flickerPhase(page, options) : null;
+        if (flicker) log(`${mapId} flicker (blips/frame, cache on vs off): ${Object.entries(flicker.summary).map(([k, v]) => `${k} on ${v.cached.join('/')} off ${v.uncached.join('/')} delta ${v.delta} spread ${v.spread}`).join('; ')}`);
+        report.maps[mapId] = { setup, floor, results, flicker, pageErrors: errors };
       } finally {
         await page.close().catch(() => {});
       }
