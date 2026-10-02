@@ -138,7 +138,7 @@ export const NEUTRAL_PICTURE: StudioPicture = deepFreeze({
   bloom: 1,
   bloomThreshold: 1,
   streaks: { amount: 0, threshold: 3, length: 0.55, tint: [0.55, 0.72, 1] },
-  halation: { amount: 0, threshold: 1.1, radius: 1, tint: [1, 0.36, 0.12] },
+  halation: { amount: 0, threshold: 1.6, radius: 1, tint: [1, 0.36, 0.12] },
   sunShafts: { mode: 'auto', intensity: 1 },
   lensFlare: { mode: 'auto', intensity: 1 },
   dof: {
@@ -232,104 +232,125 @@ interface LookDefinition {
 const LOOKS: readonly LookDefinition[] = Object.freeze([
   { id: 'natural', label: 'Natural', values: {} },
   {
+    // teal/orange filmic: warm accents against teal shadows, foliage pushed toward olive-teal
     id: 'cinematic', label: 'Cinematic',
     values: {
-      exposure: 0.05, temperature: 4, contrast: 1.1, toe: 0.22, shoulder: 0.28, saturation: 0.95, vibrance: 0.12,
-      split: { shadowHue: 192, shadowAmount: 0.4, highlightHue: 34, highlightAmount: 0.32, balance: 0.05 },
-      bloom: 1.25, streaks: { amount: 0.22 }, halation: { amount: 0.18 },
-      chromaticAberration: 0.12, vignette: { amount: 0.24, roundness: 0.55, softness: 0.6 },
-      grain: { amount: 0.1, size: 1, color: 0.15 },
+      temperature: 4, contrast: 1.18, toe: 0.35, shoulder: 0.32, saturation: 0.95, vibrance: 0.12,
+      split: { shadowHue: 190, shadowAmount: 0.62, highlightHue: 32, highlightAmount: 0.45, balance: 0.05 },
+      greens: { hue: 18, saturation: 0.66, lightness: -0.1 }, blues: { hue: -8, saturation: 0.92 },
+      warms: { hue: -4, saturation: 1.18 },
+      bloom: 1.2, streaks: { amount: 0.2 }, halation: { amount: 0.18, threshold: 1.6 },
+      chromaticAberration: 0.12, vignette: { amount: 0.3, roundness: 0.55, softness: 0.6 }, grain: { amount: 0.1 },
     },
   },
   {
+    // modern action: punchy contrast, crushed blacks, saturated warm highlights, blue streaks, forced sun FX
     id: 'blockbuster', label: 'Blockbuster',
     values: {
-      exposure: 0.1, temperature: 6, contrast: 1.24, pivot: 0.42, toe: 0.45, shoulder: 0.2, saturation: 1.06, vibrance: 0.2,
-      split: { shadowHue: 196, shadowAmount: 0.52, highlightHue: 30, highlightAmount: 0.4, balance: 0 },
-      bloom: 1.55, bloomThreshold: 0.85, streaks: { amount: 0.55, threshold: 2.6, length: 0.7 },
-      halation: { amount: 0.22 }, chromaticAberration: 0.16,
-      vignette: { amount: 0.32, roundness: 0.5, softness: 0.55 }, grain: { amount: 0.08 },
-      sunShafts: { mode: 'on', intensity: 1.35 }, lensFlare: { mode: 'on', intensity: 1.2 },
+      exposure: 0.05, temperature: 5, contrast: 1.26, toe: 0.5, shoulder: 0.2, saturation: 1.04, vibrance: 0.22,
+      split: { shadowHue: 194, shadowAmount: 0.62, highlightHue: 30, highlightAmount: 0.42 },
+      greens: { hue: 18, saturation: 0.66, lightness: -0.12 }, blues: { hue: -10, saturation: 1.05 },
+      warms: { hue: -3, saturation: 1.2, lightness: 0.05 },
+      bloom: 1.3, streaks: { amount: 0.42, threshold: 2.8, length: 0.7 }, halation: { amount: 0.2, threshold: 1.6 },
+      chromaticAberration: 0.16, vignette: { amount: 0.34, roundness: 0.5, softness: 0.55 }, grain: { amount: 0.08 },
+      sunShafts: { mode: 'on', intensity: 1.2 }, lensFlare: { mode: 'on', intensity: 1.1 },
     },
   },
   {
+    // low warm sun: amber highlights, soft glowing shoulder, cool shadows, foliage kept olive
     id: 'golden-hour', label: 'Golden hour',
     values: {
-      exposure: 0.12, temperature: 26, tint: 4, contrast: 1.06, toe: 0.12, shoulder: 0.42, saturation: 1.04, vibrance: 0.16,
-      gain: [1.03, 1.0, 0.94],
-      split: { shadowHue: 222, shadowAmount: 0.22, highlightHue: 40, highlightAmount: 0.42, balance: -0.1 },
-      bloom: 1.6, bloomThreshold: 0.8, halation: { amount: 0.34, threshold: 0.9 }, streaks: { amount: 0.12 },
-      vignette: { amount: 0.22, roundness: 0.65, softness: 0.7 }, grain: { amount: 0.08 },
-      sunShafts: { mode: 'on', intensity: 1.6 }, lensFlare: { mode: 'on', intensity: 1.4 },
+      exposure: 0.06, temperature: 14, tint: 3, contrast: 1.06, toe: 0.18, shoulder: 0.45, vibrance: 0.1,
+      gain: [1.03, 1.0, 0.95],
+      split: { shadowHue: 215, shadowAmount: 0.28, highlightHue: 36, highlightAmount: 0.5, balance: -0.1 },
+      greens: { hue: 4, saturation: 0.72, lightness: -0.06 }, warms: { saturation: 1.15, lightness: 0.04 },
+      blues: { hue: 6, saturation: 0.85 },
+      bloom: 1.35, halation: { amount: 0.3, threshold: 1.4 }, streaks: { amount: 0.1 },
+      vignette: { amount: 0.24, roundness: 0.65, softness: 0.7 }, grain: { amount: 0.08 },
+      sunShafts: { mode: 'on', intensity: 1.25 }, lensFlare: { mode: 'on', intensity: 1.15 },
     },
   },
   {
+    // cold desaturated war film
     id: 'steel', label: 'Steel',
     values: {
-      exposure: -0.1, temperature: -22, tint: -3, contrast: 1.2, toe: 0.3, shoulder: 0.18, saturation: 0.62, vibrance: -0.1,
-      split: { shadowHue: 205, shadowAmount: 0.38, highlightHue: 195, highlightAmount: 0.1, balance: 0.1 },
-      bloom: 0.9, halation: { amount: 0.06 }, chromaticAberration: 0.1,
-      vignette: { amount: 0.3, roundness: 0.45, softness: 0.55 }, grain: { amount: 0.16, size: 1.1, color: 0.08 },
+      exposure: -0.1, temperature: -20, tint: -2, contrast: 1.22, toe: 0.35, shoulder: 0.18, saturation: 0.62, vibrance: -0.1,
+      split: { shadowHue: 208, shadowAmount: 0.4, highlightHue: 200, highlightAmount: 0.1, balance: 0.1 },
+      greens: { hue: 12, saturation: 0.55, lightness: -0.1 }, blues: { saturation: 0.8 }, warms: { saturation: 0.85 },
+      bloom: 0.9, halation: { amount: 0.05, threshold: 1.8 }, chromaticAberration: 0.1,
+      vignette: { amount: 0.32, roundness: 0.45, softness: 0.55 }, grain: { amount: 0.16, size: 1.1, color: 0.08 },
     },
   },
   {
+    // skipped bleach: silver retained — high contrast, low saturation, crunchy blacks, heavy grain
     id: 'bleach-bypass', label: 'Bleach bypass',
     values: {
-      exposure: 0.05, temperature: -4, contrast: 1.32, pivot: 0.46, toe: 0.5, shoulder: -0.1, saturation: 0.42, vibrance: -0.2,
-      gain: [1.02, 1.02, 1.0], split: { shadowHue: 200, shadowAmount: 0.12, highlightHue: 50, highlightAmount: 0.08 },
-      bloom: 1.1, halation: { amount: 0.1 }, chromaticAberration: 0.08,
-      vignette: { amount: 0.34, roundness: 0.45, softness: 0.5 }, grain: { amount: 0.22, size: 1.15, color: 0.05, response: 0.8 },
+      exposure: 0.06, temperature: -3, contrast: 1.4, pivot: 0.46, toe: 0.62, shoulder: -0.15, saturation: 0.4, vibrance: -0.25,
+      split: { shadowHue: 205, shadowAmount: 0.12, highlightHue: 50, highlightAmount: 0.06 },
+      greens: { saturation: 0.7 },
+      bloom: 1.1, halation: { amount: 0.08, threshold: 1.8 }, chromaticAberration: 0.08,
+      vignette: { amount: 0.34, roundness: 0.45, softness: 0.5 }, grain: { amount: 0.26, size: 1.15, color: 0.05, response: 0.8 },
     },
   },
   {
+    // sun-bleached heat: orange-amber sand, teal shadows, soft blown highlights
     id: 'desert-heat', label: 'Desert heat',
     values: {
-      exposure: 0.08, temperature: 32, tint: 6, contrast: 1.12, toe: 0.3, shoulder: 0.5, saturation: 0.98, vibrance: 0.2,
-      gamma: [1.02, 1.0, 0.96], gain: [1.04, 0.99, 0.88],
-      split: { shadowHue: 186, shadowAmount: 0.3, highlightHue: 42, highlightAmount: 0.46, balance: -0.05 },
-      bloom: 1.45, bloomThreshold: 0.8, halation: { amount: 0.28, threshold: 0.95 }, streaks: { amount: 0.18 },
-      chromaticAberration: 0.1, vignette: { amount: 0.26, roundness: 0.6, softness: 0.65 }, grain: { amount: 0.1 },
-      sunShafts: { mode: 'on', intensity: 1.3 },
+      exposure: 0.08, temperature: 20, tint: 4, contrast: 1.14, toe: 0.32, shoulder: 0.5, vibrance: 0.18,
+      gamma: [1.02, 1.0, 0.97], gain: [1.04, 0.99, 0.9],
+      split: { shadowHue: 188, shadowAmount: 0.36, highlightHue: 40, highlightAmount: 0.42, balance: -0.05 },
+      warms: { hue: -5, saturation: 1.18 }, greens: { hue: -6, saturation: 0.72 }, blues: { hue: -12, saturation: 0.9 },
+      bloom: 1.25, halation: { amount: 0.24, threshold: 1.5 }, streaks: { amount: 0.15 },
+      chromaticAberration: 0.1, vignette: { amount: 0.28, roundness: 0.6, softness: 0.65 }, grain: { amount: 0.1 },
+      sunShafts: { mode: 'on', intensity: 1.15 },
     },
   },
   {
+    // cool moonlight: blue night with firelight that still burns orange
     id: 'night-ops', label: 'Night ops',
     values: {
-      exposure: 0.25, temperature: -38, tint: -6, contrast: 1.16, toe: 0.32, shoulder: 0.25, saturation: 0.7, vibrance: 0.1,
-      lift: [0.0, 0.006, 0.02],
-      split: { shadowHue: 214, shadowAmount: 0.5, highlightHue: 190, highlightAmount: 0.16, balance: 0.15 },
-      bloom: 1.5, bloomThreshold: 0.75, streaks: { amount: 0.5, threshold: 2.4, length: 0.65 },
-      halation: { amount: 0.3, threshold: 0.9 }, chromaticAberration: 0.12,
-      vignette: { amount: 0.38, roundness: 0.55, softness: 0.6 }, grain: { amount: 0.2, size: 1.1, color: 0.1, response: 0.55 },
+      exposure: 0.15, temperature: -30, tint: -4, contrast: 1.18, toe: 0.38, shoulder: 0.25, saturation: 0.74, vibrance: 0.08,
+      lift: [0, 0.004, 0.014],
+      split: { shadowHue: 216, shadowAmount: 0.52, highlightHue: 196, highlightAmount: 0.1, balance: 0.15 },
+      warms: { saturation: 1.4, lightness: 0.08 }, greens: { hue: 8, saturation: 0.42, lightness: -0.1 }, blues: { saturation: 1.08 },
+      bloom: 1.3, bloomThreshold: 0.9, streaks: { amount: 0.34, threshold: 2.6, length: 0.68 },
+      halation: { amount: 0.2, threshold: 1.5 }, chromaticAberration: 0.12,
+      vignette: { amount: 0.38, roundness: 0.55, softness: 0.6 }, grain: { amount: 0.16, size: 1.1, color: 0.08, response: 0.55 },
     },
   },
   {
+    // fire-lit combat: molten highlights, halation and warm streaks against cool shadows
     id: 'ember', label: 'Ember',
     values: {
-      exposure: 0.1, temperature: 12, contrast: 1.18, toe: 0.4, shoulder: 0.32, saturation: 1.02, vibrance: 0.25,
-      split: { shadowHue: 205, shadowAmount: 0.48, highlightHue: 26, highlightAmount: 0.5, balance: 0.1 },
-      bloom: 1.8, bloomThreshold: 0.7, streaks: { amount: 0.42, threshold: 2.4, length: 0.6, tint: [1, 0.62, 0.36] },
-      halation: { amount: 0.42, threshold: 0.85, radius: 1.2 }, chromaticAberration: 0.14,
+      exposure: 0.06, temperature: 10, contrast: 1.2, toe: 0.45, shoulder: 0.32, saturation: 1.02, vibrance: 0.22,
+      split: { shadowHue: 205, shadowAmount: 0.5, highlightHue: 26, highlightAmount: 0.5, balance: 0.1 },
+      warms: { hue: -6, saturation: 1.25, lightness: 0.06 }, greens: { hue: 10, saturation: 0.6 }, blues: { saturation: 0.95 },
+      bloom: 1.5, bloomThreshold: 0.9, streaks: { amount: 0.34, threshold: 2.6, length: 0.6, tint: [1, 0.62, 0.36] },
+      halation: { amount: 0.34, threshold: 1.3, radius: 1.2 }, chromaticAberration: 0.14,
       vignette: { amount: 0.36, roundness: 0.55, softness: 0.6 }, grain: { amount: 0.12 },
     },
   },
   {
+    // black and white through a red-orange filter: dark skies and foliage, hard light, heavy grain
     id: 'noir', label: 'Noir',
     values: {
-      exposure: 0.05, contrast: 1.36, pivot: 0.45, toe: 0.55, shoulder: 0.12, saturation: 0, mono: 1,
-      monoMix: [0.52, 0.42, 0.06], bloom: 1.25, halation: { amount: 0.12, tint: [1, 1, 1] },
-      vignette: { amount: 0.44, roundness: 0.6, softness: 0.55 }, grain: { amount: 0.26, size: 1.2, color: 0, response: 0.75 },
+      exposure: 0.05, contrast: 1.36, pivot: 0.45, toe: 0.55, shoulder: 0.12, mono: 1, monoMix: [0.7, 0.3, 0],
+      blues: { lightness: -0.45 }, greens: { lightness: -0.25 },
+      bloom: 1.2, halation: { amount: 0.12, threshold: 1.6, tint: [1, 1, 1] },
+      vignette: { amount: 0.44, roundness: 0.6, softness: 0.55 }, grain: { amount: 0.28, size: 1.2, color: 0, response: 0.75 },
     },
   },
   {
+    // print-film emulation: milky shoulder, faded blacks, warm highs, cyan lows, olive foliage, grain
     id: 'vintage-print', label: 'Vintage print',
     values: {
-      exposure: 0.05, temperature: 10, tint: 3, contrast: 1.04, toe: -0.35, shoulder: 0.62, saturation: 0.86, vibrance: 0.05,
-      lift: [0.0, 0.012, 0.022], gain: [1.02, 0.99, 0.93],
-      split: { shadowHue: 186, shadowAmount: 0.42, highlightHue: 38, highlightAmount: 0.44, balance: 0 },
-      bloom: 1.3, bloomThreshold: 0.85, halation: { amount: 0.45, threshold: 0.85, radius: 1.3 },
+      exposure: 0.04, temperature: 8, tint: 2, contrast: 1.06, toe: -0.45, shoulder: 0.7, saturation: 0.84, vibrance: 0.05,
+      lift: [0, 0.01, 0.02], gain: [1.02, 0.99, 0.93],
+      split: { shadowHue: 186, shadowAmount: 0.5, highlightHue: 40, highlightAmount: 0.48 },
+      greens: { hue: -8, saturation: 0.68 }, blues: { hue: -12, saturation: 0.8 }, warms: { saturation: 1.05 },
+      bloom: 1.2, halation: { amount: 0.38, threshold: 1.3, radius: 1.3 },
       chromaticAberration: 0.2, vignette: { amount: 0.36, roundness: 0.7, softness: 0.75 },
-      grain: { amount: 0.3, size: 1.35, color: 0.3, response: 0.65 },
+      grain: { amount: 0.36, size: 1.35, color: 0.3, response: 0.65 },
     },
   },
 ] satisfies readonly LookDefinition[]);
@@ -533,6 +554,16 @@ export const PICTURE_SENSOR_MM: Readonly<Record<PictureSensor, number>> = Object
   super35: 24.89, fullframe: 36.0, alexa65: 54.12, imax: 70.41,
 });
 
+/**
+ * Cinematic defocus gain. On the wide lenses Studio frames with (32–50° vertical), a thin lens is
+ * close to hyperfocal: f/2.8 on a 40° Super 35 frame focused 12 m away blurs the horizon by under
+ * one pixel. Cinema gets its separation from long lenses and big formats; Studio renders the
+ * thin-lens circle of confusion × this gain (as if the format were 16× larger), so f/2.8 on that
+ * 40° frame visibly softens the background while f/11 stays near-sharp. `bokehScale: 0.0625`
+ * restores strictly physical Super 35 defocus.
+ */
+export const PICTURE_DEFOCUS_GAIN = 16;
+
 /** Lens focal length (mm) that frames the camera's field of view on the sensor. */
 export function pictureFocalLengthMm(fovDeg: number, aspect: number, sensor: PictureSensor): number {
   const tanV = Math.tan((Math.max(1, Math.min(170, fovDeg)) * Math.PI) / 360);
@@ -546,7 +577,7 @@ export interface PictureLensState {
   readonly focalMm: number;
   /**
    * Signed CoC diameter as a fraction of the frame's long side is `coc(d) = k · (d − s) / d`
-   * (negative = near field). k = f² / (N · (s − f)) / sensorLong, scaled by `bokehScale`.
+   * (negative = near field). k = f² / (N · (s − f)) / sensorLong × PICTURE_DEFOCUS_GAIN × bokehScale.
    */
   readonly cocScale: number;
 }
@@ -562,7 +593,7 @@ export function pictureLensState(
   const f = focalMm / 1000;
   const s = Math.max(f * 1.05, focusM);
   const sensorLong = PICTURE_SENSOR_MM[dof.sensor] / 1000;
-  const cocScale = (f * f) / (dof.fStop * (s - f)) / sensorLong * dof.bokehScale;
+  const cocScale = (f * f) / (dof.fStop * (s - f)) / sensorLong * PICTURE_DEFOCUS_GAIN * dof.bokehScale;
   return { focusM: s, focalMm, cocScale };
 }
 

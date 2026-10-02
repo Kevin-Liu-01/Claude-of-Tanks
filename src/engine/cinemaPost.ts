@@ -44,6 +44,8 @@ import * as THREE from 'three';
 import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import type { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import type { PostRuntime } from './post.ts';
+import { LateFxSceneView } from './lateFxSceneView.ts';
+import { LATE_FX_LAYER } from '../fx/layers.ts';
 
 // --- engine-facing settings (studioPicture.ts derives them) -----------------------------------
 
@@ -121,10 +123,38 @@ uniform float uFar;
 uniform float uFocusM;
 uniform float uCocPx;       // CoC RADIUS in full-res px per unit of (1 - s/d)
 uniform float uMaxCocPx;    // max radius (full-res px)
+uniform sampler2D tFxNear;  // late-FX coverage in front of 0.8 × focus
+uniform sampler2D tFxFocus; // ... in front of 1.25 × focus
+uniform sampler2D tFxMid;   // ... in front of 2 × focus
+uniform sampler2D tFxAll;   // ... in front of the opaque scene
+uniform float uFxOn;
+uniform float uFxNearCoc;   // CoC radius of the near bin's representative depth
+uniform float uFxMidCoc;    // ... of the 1.25–2 × focus bin
+uniform float uFxFarCoc;    // CoC radius at 2 × focus (the far bin's near edge)
 float cinemaCoc( float depth ) {
   // device depth → distance along the view axis; the cleared sky (depth 1) is at infinity
   float invD = depth >= 0.999999 ? 0.0 : ( uFar - depth * ( uFar - uNear ) ) / ( uNear * uFar );
   return clamp( uCocPx * ( 1.0 - uFocusM * invD ), -uMaxCocPx, uMaxCocPx );
+}
+float fxCoverage( sampler2D t, vec2 uv ) {
+  vec4 c = texture2D( t, uv );
+  return 1.0 - exp( -( c.a + 0.6 * dot( c.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) ) );
+}
+// Transparent combat media are not in the depth buffer. Their coverage in front of three depth
+// planes around the focus splits them into near / in-focus / mid / far bins, so an in-focus
+// muzzle flash against the sky stays sharp instead of inheriting the sky's infinite distance.
+float effectiveCoc( vec2 uv, float depth ) {
+  float rc = cinemaCoc( depth );
+  if ( uFxOn < 0.5 ) return rc;
+  float allC = fxCoverage( tFxAll, uv );
+  if ( allC < 0.02 ) return rc;
+  float nearC = min( fxCoverage( tFxNear, uv ), allC );
+  float focusC = clamp( fxCoverage( tFxFocus, uv ), nearC, allC );
+  float midC = clamp( fxCoverage( tFxMid, uv ), focusC, allC );
+  // far bin: between 2 × focus and the surface behind, halfway in CoC
+  float farCoc = 0.5 * ( max( rc, uFxFarCoc ) + uFxFarCoc );
+  float fxCoc = ( nearC * uFxNearCoc + ( midC - focusC ) * uFxMidCoc + ( allC - midC ) * farCoc ) / allC;
+  return mix( rc, fxCoc, clamp( allC * 1.6, 0.0, 1.0 ) );
 }`;
 
 /** Concentric-ring disc kernel: ring i holds 8i taps at radius i/rings (uniform area density). */
@@ -184,8 +214,8 @@ void main() {
   ivec2 p2 = min( base + ivec2( 0, 1 ), full ), p3 = min( base + ivec2( 1, 1 ), full );
   vec3 c0 = texelFetch( tColor, p0, 0 ).rgb, c1 = texelFetch( tColor, p1, 0 ).rgb;
   vec3 c2 = texelFetch( tColor, p2, 0 ).rgb, c3 = texelFetch( tColor, p3, 0 ).rgb;
-  vec4 r = vec4( cinemaCoc( texelFetch( tDepth, p0, 0 ).r ), cinemaCoc( texelFetch( tDepth, p1, 0 ).r ),
-    cinemaCoc( texelFetch( tDepth, p2, 0 ).r ), cinemaCoc( texelFetch( tDepth, p3, 0 ).r ) );
+  vec4 r = vec4( effectiveCoc( vUv, texelFetch( tDepth, p0, 0 ).r ), effectiveCoc( vUv, texelFetch( tDepth, p1, 0 ).r ),
+    effectiveCoc( vUv, texelFetch( tDepth, p2, 0 ).r ), effectiveCoc( vUv, texelFetch( tDepth, p3, 0 ).r ) );
   // blurred texels outweigh focused ones, so a focused silhouette cannot tint the blur layers
   vec4 w = clamp( abs( r ), 0.02, 1.0 );
   vec3 c = ( c0 * w.x + c1 * w.y + c2 * w.z + c3 * w.w ) / dot( w, vec4( 1.0 ) );
@@ -309,7 +339,7 @@ ${DEPTH_GLSL}
 varying vec2 vUv;
 void main() {
   vec3 sharp = texture2D( tSharp, vUv ).rgb;
-  float rc = cinemaCoc( texture2D( tDepth, vUv ).r );
+  float rc = effectiveCoc( vUv, texture2D( tDepth, vUv ).r );
   // bilateral 2×2 upsample of the far layer: texels whose CoC disagrees with this pixel lose weight
   vec2 hp = vUv * uHalfSize - 0.5;
   vec2 f = fract( hp );
@@ -331,6 +361,108 @@ void main() {
   gl_FragColor = vec4( col, 1.0 );
 }`;
 
+/** Depth planes (× focus distance) that split late-FX coverage into near / in focus / mid / far. */
+const FX_SLICES = Object.freeze([0.8, 1.25, 2]);
+/** Representative distances of the near and mid bins (× focus distance). */
+const FX_NEAR_REPRESENTATIVE = 0.55;
+const FX_MID_REPRESENTATIVE = 1.55;
+
+const FX_DEPTH_PLANE = /* glsl */ `
+uniform sampler2D tDepth;
+uniform float uPlane;
+varying vec2 vUv;
+void main() {
+  gl_FragDepth = min( texture2D( tDepth, vUv ).r, uPlane );
+  gl_FragColor = vec4( 0.0 );
+}`;
+
+interface SoftParticleState {
+  uSoftViewport: THREE.IUniform<THREE.Vector2>;
+  isActive(): boolean;
+}
+
+/**
+ * Quarter-resolution coverage of the late-FX layer in front of three depth planes (near slice,
+ * far slice, the opaque scene). Re-renders the same pooled FX with their own materials — no
+ * shader is patched — against a depth buffer of min(scene depth, plane).
+ */
+class FxSlices {
+  readonly targets: THREE.WebGLRenderTarget[];
+  private readonly plane: THREE.ShaderMaterial;
+  private readonly quad: FullScreenQuad;
+  private readonly view: LateFxSceneView;
+  private readonly scene: THREE.Scene;
+  private readonly lateFx: { softState: SoftParticleState | null };
+
+  constructor(scene: THREE.Scene, depth: THREE.DepthTexture, lateFx: { softState: SoftParticleState | null }) {
+    this.scene = scene;
+    this.lateFx = lateFx;
+    this.view = new LateFxSceneView(scene);
+    this.targets = ['near', 'focus', 'mid', 'all'].map((name) => {
+      const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: true, stencilBuffer: false });
+      target.texture.name = `Cinema.fxCoverage.${name}`;
+      return target;
+    });
+    this.plane = new THREE.ShaderMaterial({
+      name: 'Cinema.fxDepthPlane', vertexShader: QUAD_VERTEX, fragmentShader: FX_DEPTH_PLANE,
+      uniforms: { tDepth: { value: depth }, uPlane: { value: 1 } },
+      depthTest: true, depthWrite: true, depthFunc: THREE.AlwaysDepth, colorWrite: false, toneMapped: false,
+    });
+    this.quad = new FullScreenQuad(this.plane);
+  }
+
+  /** Render coverage; false when no late FX are alive (the lens then reads plain depth). */
+  render(renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera, fullW: number, fullH: number, focusM: number): boolean {
+    const soft = this.lateFx.softState;
+    if (!soft || !soft.isActive()) return false;
+    const w = Math.max(1, Math.ceil(fullW / 4)), h = Math.max(1, Math.ceil(fullH / 4));
+    for (const target of this.targets) setTargetSize(target, w, h);
+    const near = camera.near, far = camera.far;
+    const deviceDepth = (z: number): number => THREE.MathUtils.clamp((far / (far - near)) * (1 - near / Math.max(near, z)), 0, 1);
+    const planes = [...FX_SLICES.map((k) => deviceDepth(focusM * k)), 1];
+    const scene = this.scene;
+    const oldMask = camera.layers.mask;
+    const oldBackground = scene.background;
+    const oldAutoUpdate = scene.matrixWorldAutoUpdate;
+    const oldAutoClear = renderer.autoClear;
+    const oldViewport = soft.uSoftViewport.value.clone();
+    const oldClear = renderer.getClearColor(new THREE.Color());
+    const oldAlpha = renderer.getClearAlpha();
+    try {
+      renderer.autoClear = false;
+      renderer.setClearColor(0x000000, 0);
+      soft.uSoftViewport.value.set(w, h);
+      for (let i = 0; i < this.targets.length; i++) {
+        renderer.setRenderTarget(this.targets[i]);
+        renderer.clear(true, false, false);
+        this.plane.uniforms.uPlane.value = planes[i];
+        this.quad.render(renderer);
+        camera.layers.set(LATE_FX_LAYER);
+        scene.background = null;
+        scene.matrixWorldAutoUpdate = false; // the frame's scene pass already updated every transform
+        renderer.render(this.view.select(camera), camera);
+        camera.layers.mask = oldMask;
+        scene.background = oldBackground;
+        scene.matrixWorldAutoUpdate = oldAutoUpdate;
+      }
+    } finally {
+      camera.layers.mask = oldMask;
+      scene.background = oldBackground;
+      scene.matrixWorldAutoUpdate = oldAutoUpdate;
+      soft.uSoftViewport.value.copy(oldViewport);
+      renderer.autoClear = oldAutoClear;
+      renderer.setClearColor(oldClear, oldAlpha);
+    }
+    return true;
+  }
+
+  dispose(): void {
+    for (const target of this.targets) target.dispose();
+    this.plane.dispose();
+    this.quad.dispose();
+  }
+}
+
 class CinemaLensPass extends Pass {
   private readonly pre = halfTarget('Cinema.dofPre');
   private readonly tile = halfTarget('Cinema.dofTile', 1, THREE.NearestFilter);
@@ -339,7 +471,11 @@ class CinemaLensPass extends Pass {
   private readonly filtered = halfTarget('Cinema.dofFiltered', 2);
   private readonly depthUniforms = {
     uNear: { value: 0.5 }, uFar: { value: 4000 }, uFocusM: { value: 20 }, uCocPx: { value: 0 }, uMaxCocPx: { value: 1 },
+    tFxNear: { value: null as THREE.Texture | null }, tFxFocus: { value: null as THREE.Texture | null },
+    tFxMid: { value: null as THREE.Texture | null }, tFxAll: { value: null as THREE.Texture | null },
+    uFxOn: { value: 0 }, uFxNearCoc: { value: 0 }, uFxMidCoc: { value: 0 }, uFxFarCoc: { value: 0 },
   };
+  private readonly fx: FxSlices;
   private readonly prefilter: THREE.ShaderMaterial;
   private readonly tileMax: THREE.ShaderMaterial;
   private readonly neighborMax: THREE.ShaderMaterial;
@@ -356,12 +492,23 @@ class CinemaLensPass extends Pass {
   private readonly camera: THREE.PerspectiveCamera;
   private readonly provider: () => CinemaLensFrame;
 
-  constructor(camera: THREE.PerspectiveCamera, depth: THREE.DepthTexture, provider: () => CinemaLensFrame) {
+  constructor(
+    camera: THREE.PerspectiveCamera,
+    depth: THREE.DepthTexture,
+    provider: () => CinemaLensFrame,
+    scene: THREE.Scene,
+    lateFx: { softState: SoftParticleState | null },
+  ) {
     super();
     this.camera = camera;
     this.provider = provider;
     this.needsSwap = true;
+    this.fx = new FxSlices(scene, depth, lateFx);
     const d = this.depthUniforms;
+    d.tFxNear.value = this.fx.targets[0].texture;
+    d.tFxFocus.value = this.fx.targets[1].texture;
+    d.tFxMid.value = this.fx.targets[2].texture;
+    d.tFxAll.value = this.fx.targets[3].texture;
     this.prefilter = quadMaterial('Cinema.dofPrefilter', DOF_PREFILTER, { tColor: { value: null }, tDepth: { value: depth }, ...d });
     this.tileMax = quadMaterial('Cinema.dofTileMax', DOF_TILE_MAX, { tPre: { value: this.pre.texture }, uTile: { value: 8 } });
     this.neighborMax = quadMaterial('Cinema.dofNeighborMax', DOF_NEIGHBOR_MAX, { tTile: { value: this.tile.texture } });
@@ -408,6 +555,11 @@ class CinemaLensPass extends Pass {
     setTargetSize(this.tile, Math.ceil(halfW / tileHalf), Math.ceil(halfH / tileHalf));
     setTargetSize(this.neighbor, this.tile.width, this.tile.height);
     this.tileMax.uniforms.uTile.value = tileHalf;
+    d.uFxOn.value = this.fx.render(renderer, this.camera, fullW, fullH, frame.focusM) ? 1 : 0;
+    const binCoc = (k: number): number => THREE.MathUtils.clamp(d.uCocPx.value * (1 - 1 / k), -maxR, maxR);
+    d.uFxNearCoc.value = binCoc(FX_NEAR_REPRESENTATIVE);
+    d.uFxMidCoc.value = binCoc(FX_MID_REPRESENTATIVE);
+    d.uFxFarCoc.value = binCoc(FX_SLICES[2]);
 
     const quad = this.quad;
     this.prefilter.uniforms.tColor.value = readBuffer.texture;
@@ -441,6 +593,7 @@ class CinemaLensPass extends Pass {
 
   dispose(): void {
     for (const target of [this.pre, this.tile, this.neighbor, this.gather, this.filtered]) target.dispose();
+    this.fx.dispose();
     for (const material of [this.prefilter, this.tileMax, this.neighborMax, this.gatherMaterials.preview,
       this.gatherMaterials.capture, this.postfilter, this.composite]) material.dispose();
     this.quad.dispose();
@@ -963,7 +1116,8 @@ void main() {
     float start = mix( 0.72, 0.18, uVignette.z );
     float end = mix( 1.05, 1.45, uVignette.z );
     float fall = smoothstep( start, end, rr );
-    col *= 1.0 - uVignette.x * fall * ( 2.0 - fall ) * 0.85;
+    // in stops, like a lens wide open: amount 0.3 ≈ 0.9 stop at the corners, 1 ≈ 3 stops
+    col *= exp2( -uVignette.x * 3.2 * fall * ( 2.0 - fall ) );
   }
   col = toDisplay( max( col, 0.0 ) );
   if ( uGrain.x > 0.0 ) {
@@ -977,7 +1131,7 @@ void main() {
     float l = clamp( dot( col, LUMA ), 0.0, 1.0 );
     float bell = 1.0 - pow( abs( l - 0.42 ) / 0.58, 2.0 );
     float resp = mix( 1.0, max( bell, 0.08 ), uGrain.w );
-    col += g * uGrain.x * 0.11 * resp;
+    col += g * uGrain.x * 0.26 * resp;   // amount 1 ≈ σ 0.08 display (heavy 16 mm), 0.1 ≈ 2 LSB
   }
   // interleaved-gradient dither before the 8-bit canvas
   float ign = fract( 52.9829189 * fract( dot( px, vec2( 0.06711056, 0.00583715 ) ) ) );
@@ -1211,7 +1365,7 @@ export function createCinemaPost(
       current = settings;
       // LENS
       if (settings?.lens) {
-        lens ??= new CinemaLensPass(camera, depth, providers.lens);
+        lens ??= new CinemaLensPass(camera, depth, providers.lens, post.lateFx.scene, post.lateFx);
         lens.quality = quality;
         lens.anamorphic = settings.lens.anamorphic;
         lens.maxRadius = settings.lens.maxRadius;

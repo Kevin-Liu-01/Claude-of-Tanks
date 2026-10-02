@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   NEUTRAL_PICTURE,
+  PICTURE_DEFOCUS_GAIN,
   PICTURE_PRESETS,
   PICTURE_SENSOR_MM,
   applyPicturePatch,
@@ -135,13 +136,21 @@ const lens = pictureLensState(dof, 12, 16 / 9, 25);
 assert.equal(lens.focusM, 25);
 assert.ok(Math.abs(pictureCocAt(lens, 25)) < 1e-12, 'the focal plane is sharp');
 assert.ok(pictureCocAt(lens, 100) > 0 && pictureCocAt(lens, 10) < 0, 'far positive, near negative');
-assert.ok(Math.abs(pictureCocAt(lens, 1e9) - lens.cocScale) < 1e-9, 'infinity converges on the scale');
+assert.ok(Math.abs(pictureCocAt(lens, 1e9) / lens.cocScale - 1) < 1e-6, 'infinity converges on the scale');
 const wide = pictureLensState({ ...dof, fStop: 5.6 }, 12, 16 / 9, 25);
 assert.ok(Math.abs(wide.cocScale * 2 - lens.cocScale) < 1e-12, 'one f-stop doubling halves the blur');
 const large = pictureLensState({ ...dof, sensor: 'alexa65' }, 12, 16 / 9, 25);
 assert.ok(large.cocScale > lens.cocScale, 'a larger format defocuses more at the same field of view');
 const thinLens = (f, N, s, d, sensor) => (f * f) / (N * (s - f)) * Math.abs(d - s) / d / sensor;
-assert.ok(Math.abs(pictureCocAt(lens, 100) - thinLens(lens.focalMm / 1000, 2.8, 25, 100, 0.02489)) < 1e-12, 'thin-lens CoC');
+assert.ok(Math.abs(pictureCocAt(lens, 100) - PICTURE_DEFOCUS_GAIN * thinLens(lens.focalMm / 1000, 2.8, 25, 100, 0.02489)) < 1e-12,
+  'thin-lens CoC × the documented cinematic gain');
+const physical = pictureLensState({ ...dof, bokehScale: 1 / PICTURE_DEFOCUS_GAIN }, 12, 16 / 9, 25);
+assert.ok(Math.abs(pictureCocAt(physical, 100) - thinLens(physical.focalMm / 1000, 2.8, 25, 100, 0.02489)) < 1e-12,
+  'bokehScale 1/gain is strictly physical Super 35');
+// The owner's calibration frame: f/2.8, 40° vertical, hero 12 m — background visibly soft (radius ≥ 4 px at 1080p).
+const brief = pictureLensState(dof, 40, 16 / 9, 12);
+assert.ok(pictureCocAt(brief, 80) * 1920 / 2 >= 4, 'f/2.8 on a 40° frame softens an 80 m background');
+assert.ok(pictureCocAt(pictureLensState({ ...dof, fStop: 11 }, 40, 16 / 9, 12), 80) * 1920 / 2 < 2, 'f/11 stays near-sharp');
 assert.ok(pictureLensState(dof, 12, 16 / 9, 0.001).focusM > lens.focalMm / 1000, 'focus never inside the focal length');
 
 // Letterbox mattes in whole pixels, shared with the engine.

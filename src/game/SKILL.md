@@ -71,7 +71,10 @@ skip), `battleEndingCamera.ts` poses its camera beats through the rig, and
 `killcamAccess.ts` owns retryable replay acquisition and its stable inactive
 facade; `killcam.ts` owns replay presentation, while `studio.ts` renders the
 Scene Studio and `studioTimeline.ts` owns its strict JSON-safe storyboard and
-allocation-free camera/actor sampling contract.
+allocation-free camera/actor sampling contract. `studioPicture.ts` owns the
+pure Studio picture schema (neutral default, clamps, named looks, minimal
+`state()` diff, thin-lens/letterbox/grain-seed physics) that
+`engine/cinemaPost.ts` renders; a neutral stage must never insert a pass.
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
 residency, switch convergence, and battle visual handoff; it composes
 `garagePedestalPreloader.ts` for exact card-intent and quiet neighbor warming.

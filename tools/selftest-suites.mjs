@@ -197,6 +197,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/autoloader.selftest.mjs',
     'src/sim/weaponReload.selftest.mjs',
     'src/game/studioTimeline.selftest.mjs',
+    'src/game/studioPicture.selftest.mjs',
     'src/game/studioProduction.selftest.mjs',
     'src/game/studioProductionPersistence.selftest.mjs',
     'src/ui/studioProductionPanel.selftest.mjs',

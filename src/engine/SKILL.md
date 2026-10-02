@@ -20,7 +20,10 @@ cadence; `lighting.ts` reuses proven static Garage depth maps until explicit
 presentation invalidation, then forces a complete refresh before motion;
 `shadowStability.ts` owns texel snapping and cascade-scaled receiver bias;
 `simplexFast.ts` owns allocation-free, reference-identical terrain noise;
-`post.ts` and `sky.ts` build the frame, while `temporalAoPolicy.ts` owns the
+`post.ts` and `sky.ts` build the frame; `cinemaPost.ts` is the Studio-only
+picture stack (depth of field, HDR highlights/exposure/white balance, display
+grade, per-output-frame finish) inserted into post.ts' composer at runtime only
+while a stage is non-neutral and removed on Studio exit, while `temporalAoPolicy.ts` owns the
 asymmetric stale-dark release used by temporal GTAO; `renderLayers.ts` owns
 presentation/shadow-only routing for authored proxy casters;
 `phaseSceneResidency.ts` detaches mutually exclusive Garage and battlefield
@@ -50,6 +53,9 @@ Do not dispose inactive-phase materials merely to lower the live program count:
 returning can create a larger cache of light-count variants and a visible
 compile spike. Gate programs, buffers, textures, heap, objects, calls and
 triangles independently with `npm run perf:resources:gate`.
+Studio picture passes must stay out of the battle composer: never import
+`cinemaPost.ts` from boot or battle modules, and keep its stage gating in
+`game/studioPicture.ts` so the neutral picture stays byte-identical.
 Keep each rate-capped far-cascade projection paired with the depth map rendered
 from that pose. Do not move its light fit on an unscheduled frame. Shadow visual
 changes must pass both the raw CSM motion comparison and composed temporal-AO
