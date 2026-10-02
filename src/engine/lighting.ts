@@ -34,7 +34,7 @@ import {
 } from './groundBounce.ts';
 import { currentPostLightFxQuery, resolvePostLightFx } from './postLightFxPolicy.ts';
 import type { PublishedLightRig } from './contactShadows.ts';
-import { resolveLightModel, type LightModel, type LightModelPreset } from './lightModel.ts';
+import { authoredSunOf, resolveLightModel, type LightModel, type LightModelPreset } from './lightModel.ts';
 import type { AtmosphereParams } from './atmosphere.ts';
 
 /** What sky.ts publishes on scene.userData.atmosphere that the grounded light model reads (sky.ts AtmospherePublishedState). */
@@ -1403,8 +1403,7 @@ export function createLighting(
     const atmo = scene.userData.atmosphere as AtmosphereLightInputs | undefined;
     const irr = atmo?.irradianceRaw;
     const physical = physicalRig && !farCascadeDormant && !!atmo?.active && !!atmo.params && !!irr;
-    const authoredSun = opts.sunIntensity != null || opts.sunColorHex != null
-      ? { intensity: opts.sunIntensity ?? SUN_INTENSITY, colorHex: opts.sunColorHex ?? SUN_COLOR } : null;
+    const authoredSun = authoredSunOf(opts);
     const model = resolveLightModel(opts, physical ? atmo!.params! : null,
       physical ? { irradianceRaw: [irr!.r, irr!.g, irr!.b] } : null, authoredSun);
     rigModel = model;

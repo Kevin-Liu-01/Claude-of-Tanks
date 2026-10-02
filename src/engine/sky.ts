@@ -33,7 +33,7 @@ import {
   type AtmosphereSummary,
 } from './atmosphere.ts';
 import { SkyEnvironmentCache } from './skyEnvironmentCache.ts';
-import { resolveLightModel, type LightingConfig } from './lightModel.ts';
+import { authoredSunOf, resolveLightModel, type LightingConfig, type LightModelPreset } from './lightModel.ts';
 import type { AtmosphereParams } from './atmosphere.ts';
 import {
   bakeCirrusPixels,
@@ -1246,7 +1246,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     // 2026-10-01: the grounded light model's environment — the sky at its own radiance (an overcast deck dims the clear
     // sky's share) over the shaded ground below the horizon; a galaxy sky keeps the authored rig and the full dome's
     // bake, as before
-    const model = resolveLightModel(preset, params, { irradianceRaw: [summary.irradianceRaw.r, summary.irradianceRaw.g, summary.irradianceRaw.b] });
+    const model = resolveLightModel(preset, params, { irradianceRaw: [summary.irradianceRaw.r, summary.irradianceRaw.g, summary.irradianceRaw.b] },
+      authoredSunOf(preset as LightModelPreset)); // the night's moon, as lighting.ts resolves it
     physicalEnvIntensity = model.mode === 'physical' ? model.envIntensity : null;
     (u.uEnvGround.value as THREE.Color).setRGB(model.groundRadiance[0], model.groundRadiance[1], model.groundRadiance[2]);
     atmosphereKeySuffixLive = model.mode === 'physical'

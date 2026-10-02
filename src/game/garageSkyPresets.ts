@@ -30,7 +30,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     cloudAltM: 320, cloudHazeK: 0.00013, cloudUvM: 2200,
     sunIntensity: 1.35, sunColorHex: 0xdfe7f2, hemiIntensity: 0.74,
     postExposure: 0.86, // round 48: mirrors winter.ts (owner-approved round-44 snow re-grade)
-    lighting: { groundAlbedoHex: 0xe5e7ec }, // 2026-10-01: mirrors winter.sky (the grounded light model's levers)
+    lighting: { groundAlbedoHex: 0xe5e7ec, warmth: 0.25 }, // 2026-10-01: mirrors winter.sky (the grounded light model's levers)
   }),
   urban: Object.freeze({
     sunElevationDeg: 36, sunAzimuthDeg: 115,

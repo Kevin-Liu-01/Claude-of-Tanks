@@ -24,8 +24,9 @@
  *              lights open ground, not a ninth), and the clear sky's share fades under an overcast deck
  *   overcast   the deck's own diffuse light, the hemisphere light's new role: the sunlight and skylight the cloud
  *              transmits, neutral grey from above, the ground's reflection from below
- *   ground     below the horizon the environment shows the shaded ground (its albedo under the sky light); the sunlit
- *              excess reaches the faces turned to the ground through groundBounce.ts
+ *   ground     below the horizon the environment shows the ground (its albedo under the sky light, and half of it
+ *              sunlit — the share a clutter of shadows leaves, so a mirror turned down sees lit ground); the sunlit
+ *              rest reaches the faces the sun lights through groundBounce.ts
  *   exposure   a camera that adapts part of the way: EXPOSURE_KEY · (E_ref / E)^ADAPTATION, E the horizontal
  *              illuminance (sun + sky + deck); a darker scene reads darker, never black, a brighter one never blows
  *
@@ -146,6 +147,8 @@ export const NIGHT_SKY_GLOW = 0.16;
 export const NIGHT_EV = -0.5;
 /** Its colour: the blue of a moonlit sky (linear, luminance ≈ 1). */
 export const NIGHT_GLOW_COLOR: Rgb = Object.freeze([0.72, 0.95, 1.38]) as Rgb;
+/** The sunlit share of the ground the environment shows below the horizon (groundBounce.ts adds the rest). */
+export const GROUND_SUNLIT_SHARE = 0.5;
 /** Temperate ground (dry grass and soil), linear. */
 export const DEFAULT_GROUND_ALBEDO: Rgb = Object.freeze([0.21, 0.18, 0.11]) as Rgb;
 /** Exposure law: the key that lands Verdant's lit midtones, its reference illuminance and the adaptation share. */
@@ -162,6 +165,12 @@ export const LEGACY_EXPOSURE = 1.5;
 /** The engine defaults the legacy rig falls back to (lighting.ts). */
 const LEGACY_SUN = 4.5;
 const LEGACY_SUN_HEX = 0xfff1dc;
+
+/** A preset's authored key (the legacy rig's sun, the night's moon), with the engine's defaults; null when it carries none. */
+export function authoredSunOf(preset: LightModelPreset): { intensity: number; colorHex: number } | null {
+  return preset.sunIntensity != null || preset.sunColorHex != null
+    ? { intensity: preset.sunIntensity ?? LEGACY_SUN, colorHex: preset.sunColorHex ?? LEGACY_SUN_HEX } : null;
+}
 const LEGACY_HEMI = 0.36;
 const LEGACY_FILL = 0.66;
 const LEGACY_ENV = 0.2;
@@ -400,7 +409,8 @@ export function resolveLightModel(
     hemiGround,
     fillIntensity: 0,
     groundAlbedo: ground,
-    groundRadiance: [ground[0] * irr[0], ground[1] * irr[1], ground[2] * irr[2]],
+    groundRadiance: [0, 1, 2].map((c) => ground[c] * (irr[c] + lightTune('GROUND_SUNLIT_SHARE', GROUND_SUNLIT_SHARE)
+      * sunIntensity * sunColor[c] * sinEl / (Math.PI * Math.max(envDiffuseGain, 1e-3)))) as unknown as Rgb,
     overcast,
     illuminance,
     exposure,
