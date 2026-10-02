@@ -431,7 +431,8 @@ audit received, and fails the audit that left a difference. A failing audit stop
 on, its build is discarded, and the pass names every failed audit and tank. Measured on this host (CPU-seconds, load
 about 25): the ten receipts 1,961 s, the five that replace them 1,025 s (the three passes 602 s).
 
-Source-shape guards, functional simulation tests and real visual checks still make different claims:
+Receipts share `tools/receipt-kit.test-support.mjs` (`near`, `nearStrict`, `geometryHash`) instead of defining their
+own copies. Source-shape guards, functional simulation tests and real visual checks still make different claims:
 a source regex does not prove a rendered result. The full gate inventory is not a
 substitute for the map/contact, shadow-motion and real Garage/battle review.
 

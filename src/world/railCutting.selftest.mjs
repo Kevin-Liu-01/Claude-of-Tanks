@@ -28,8 +28,7 @@ import {
   RAIL_CUTTING_SEED_NORMAL_Y, railCuttingBedY, railCuttingExcludes, railCuttingFaceSeedAt, railCuttingHeight,
   railCuttingSeedAdmits, railCuttingTunnel, resolveRailCuttings,
 } from './railSpurs.ts';
-
-const near = (a, b, tolerance, message) => assert.ok(Math.abs(a - b) <= tolerance, `${message}: ${a} vs ${b}`);
+import { near } from '../../tools/receipt-kit.test-support.mjs';
 
 // ------------------------------------------------------------------ resolution
 assert.equal(resolveRailCuttings(undefined), null); assert.equal(resolveRailCuttings([]), null);

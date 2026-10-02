@@ -21,9 +21,9 @@ import { parseUniformIsoArgs } from './terrain-uniform-iso-probe.mjs';
 import { DEFAULT_HIDDEN_LAYERS, parseLayerIsolationArgs } from './world-layer-isolation-probe.mjs';
 import { SALVO_PROBE_DEFAULT_CASES, parseSalvoCases, parseSalvoIndicatorArgs } from './salvo-indicator-probe.mjs';
 import { WATER_DRIVE_ENTRIES, parseWaterDriveArgs } from './water-drive-probe.mjs';
+import { near } from './receipt-kit.test-support.mjs';
 
 const ROOT = path.resolve(new URL('..', import.meta.url).pathname);
-const near = (a, b, tol, label) => assert.ok(Math.abs(a - b) <= tol, `${label}: ${a} vs ${b}`);
 
 // ------------------------------------------------------------------ argument parsing (fails closed, no launch)
 const base = { tool: 'x-probe', accepts: ['root', 'out', 'maps', 'views', 'tag', 'spec', 'speed', 'iso-uniforms', 'flat-normals', 'hide', 'ids', 'cache-dir', 'executable-path'] };

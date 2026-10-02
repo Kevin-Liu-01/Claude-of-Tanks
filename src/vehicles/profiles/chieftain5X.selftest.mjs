@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank, KIT } from '../tankFactory.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildChieftain5XPhotoDraft } from './chieftain5XPhotoDraft.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Historical fixture only: these original photo assertions are deliberately
 // unchanged. Current source-profile acceptance has its own actual-ID test.
@@ -10,8 +11,6 @@ registerProfiledBuilders({ chieftain5_x: buildChieftain5XPhotoDraft });
 
 // WEG printed 4-7 anchors the chassis envelope and two six-cup banks.
 // Other constants below test explicit construction estimates, not AI metrics.
-const near = (got, target, tolerance, label) => assert.ok(Number.isFinite(got)
-  && Math.abs(got - target) <= tolerance, `${label}: ${got}; expected ${target} ± ${tolerance}`);
 const ray = (meshes, from, direction, far = 15) => new THREE.Raycaster(
   new THREE.Vector3(...from), new THREE.Vector3(...direction), 0, far,
 ).intersectObjects(meshes, false)[0];

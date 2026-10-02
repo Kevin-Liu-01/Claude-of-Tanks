@@ -1073,6 +1073,7 @@
     "tools/procedural-fidelity-lifecycle.selftest.mjs": 100,
     "tools/publicBuildEnv.selftest.mjs": 100,
     "tools/publish-gameplay-capture.selftest.mjs": 200,
+    "tools/receipt-kit.selftest.mjs": 100,
     "tools/receipt-repin.selftest.mjs": 300,
     "tools/reference-gun-pivot.selftest.mjs": 100,
     "tools/reference-supplement.selftest.mjs": 100,

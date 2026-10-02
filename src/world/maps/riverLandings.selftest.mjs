@@ -8,6 +8,7 @@ import { planRiverLanding } from './riverLandings.ts';
 import { dressMapExtras } from './mapKits.ts';
 import mangrove from './mangrove.ts';
 import saltwind from './saltwind.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const hf = createHeightField(1337, mangrove);
 const anchors = mangrove.props.riverLandings;
@@ -127,7 +128,6 @@ for (const seed of [2025, 7719]) {
 // (13.3 m) at −25° and 8 (15.2 m) at 45° at every seed — so the wood and receipt strides are the landing's own
 // (the landing stream keys on the spans, so the mast draw re-rolled: the −25° hull carries none).
 const SALTWIND_SPANS = { '-25': 7, '45': 8 };
-const near = (a, b, tolerance, message) => assert.ok(Math.abs(a - b) <= tolerance, `${message}: ${a} vs ${b}`);
 const landingWood = (spans, mast) => 10 + 2 * (spans + 1) + spans + 4 + (mast ? 12 : 10) + 4;
 const landingReceipts = (spans) => 1 + 2 * (spans + 1) + 2;
 function checkSaltwindSite(field, site, wood, supportReceipts, woodStart, receiptStart) {

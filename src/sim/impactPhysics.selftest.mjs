@@ -13,9 +13,7 @@ import {
 } from './movement.ts';
 import { matchRulesetFor, STANDARD_PHYSICS } from './matchRuleset.ts';
 import { createStructureSupportField } from './structureSupport.ts';
-
-const near = (actual, expected, tol, message) =>
-  assert.ok(Math.abs(actual - expected) <= tol, `${message} — expected ${expected} ±${tol}, got ${actual}`);
+import { near } from '../../tools/receipt-kit.test-support.mjs';
 
 // the movement receipt's medium-tank fixture, with a top speed high enough for the 40 m/s wall test
 const SPEC = {

@@ -3,10 +3,10 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {getSpec} from '../specs.ts';
 import {measureTurretBarrelCircularity} from '../turretBarrelCircularity.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const SOURCE={yaw:[.00489819586996,1.33032792438745,.248076543568282],
   gun:[.002245869663885,1.629788855115796,1.37094868816255],muzzle:6.558946867971733,floor:6.453155544449773};
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs source ${b} ±${t}`);
 function opaque(root){const out=[];root.traverseVisible(m=>{
   if(m.isMesh&&!m.userData.shadowOnly&&(Array.isArray(m.material)?m.material:[m.material]).some(a=>a.visible&&a.colorWrite!==false&&!a.transparent))out.push(m);
 });return out;}

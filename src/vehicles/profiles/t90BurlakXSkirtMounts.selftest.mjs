@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 const hit=(meshes,p,d,far=10)=>new T.Raycaster(new T.Vector3(...p),
   new T.Vector3(...d),0,far).intersectObjects(meshes,false)[0];
-const near=(a,b,e,message)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=e,
-  `${message}: ${a} vs complete-source ${b} ±${e}`);
 function inside(mesh,p){
   const material=new T.MeshBasicMaterial({side:T.DoubleSide});
   const probe=new T.Mesh(mesh.geometry,material);probe.matrixWorld.copy(mesh.matrixWorld);

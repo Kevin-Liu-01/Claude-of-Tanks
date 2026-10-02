@@ -123,6 +123,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/sealed-ledger-policy.selftest.mjs',
     'tools/muzzle-seat-policy.selftest.mjs',
     'tools/receipt-repin.selftest.mjs',
+    // the shared receipt kit (near, nearStrict, geometryHash) about 110 receipts import
+    'tools/receipt-kit.selftest.mjs',
     'tools/muzzle-bore-inventory.selftest.mjs',
     'tools/source-x-oracle.selftest.mjs',
     'src/vehicles/eraAuthoredFaces.selftest.mjs',

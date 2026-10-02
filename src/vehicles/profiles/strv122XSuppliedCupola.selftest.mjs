@@ -6,9 +6,8 @@ import {createTank} from '../tankFactory.ts';
 import {addStrv122XSuppliedCupola} from './strv122XSuppliedCupola.ts';
 import {addStrv122XSuppliedEquipment} from './strv122XSuppliedEquipment.ts';
 import {STRV122_SUPPLIED_DATUMS as D} from './strv122XSuppliedFrame.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-const near=(a,b,e,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=e,
-  `${label}: ${a} versus complete-source ${b} ±${e}`);
 const hit=(a,p,d,far=10)=>new T.Raycaster(new T.Vector3(...p),
   new T.Vector3(...d),0,far).intersectObjects(a,false)[0];
 const material=new T.MeshBasicMaterial({side:T.DoubleSide});
