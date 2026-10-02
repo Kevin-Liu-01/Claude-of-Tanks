@@ -26,8 +26,12 @@ export const CLOUD_CONTRAIL_MAX = 6;
 export const CLOUD_STORM_MAX = 3;
 /** The storm cells' billows sample the shape volume at this world period (m): kilometre lumps on a tower. */
 const CLOUD_STORM_SHAPE_TILE_M = 7000;
-/** Rain shafts under the slab: the ray's run under the base is sampled from here to there (m) at this many points. */
-const CLOUD_RAIN_RANGE_M = Object.freeze([1500, 24000] as const);
+/**
+ * Rain shafts under the slab: the ray's run under the base is sampled from here to there (m) at this many points. The
+ * run starts near the composite's 3.4 km dome: the terrain inside it hides the dome, so nearer rain could only be
+ * mis-occluded by a hill behind it.
+ */
+const CLOUD_RAIN_RANGE_M = Object.freeze([3000, 24000] as const);
 const CLOUD_RAIN_SAMPLES = 8;
 /** The sea fog bank begins past the terrain (all of it stands inside the cloud dome's 3.4 km) and ends here (m). */
 const CLOUD_FOGBANK_RANGE_M = Object.freeze([3600, 30000] as const);
