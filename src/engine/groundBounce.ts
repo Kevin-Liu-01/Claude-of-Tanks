@@ -40,7 +40,8 @@
  */
 import * as THREE from 'three';
 
-/** Fraction of the physical bounce applied: the rig's hemisphere / fill were tuned without it. */
+/** Fraction of the physical bounce the legacy rig applies (its hemisphere / fill were tuned without it); the grounded
+ * model (lightModel.ts) passes 1 through GroundBounceRigInput.gain. */
 export const GROUND_BOUNCE_GAIN = 0.6;
 /** Share of the view a face turned from a low sun loses to its own object's shadow. */
 export const GROUND_BOUNCE_SELF_SHADE = 0.6;
@@ -96,6 +97,12 @@ export interface GroundBounceUniforms {
   uCotBounceRad: THREE.IUniform<THREE.Vector3>;
   uCotBounceHemi: THREE.IUniform<THREE.Vector3>;
   uCotBounceSun: THREE.IUniform<THREE.Vector3>;
+  /**
+   * 2026-10-01 (the grounded light model, lightModel.ts): the sky's diffuse share over the environment's
+   * specular scale — the environment stays at the dome's own radiance so a mirror reflects the sky the eye
+   * sees, while the shade it lights takes the aerosol and cloud light the clean dome lacks. 1 = the legacy rig.
+   */
+  uCotSkyDiffuse: THREE.IUniform<number>;
 }
 
 export function createGroundBounceUniforms(): GroundBounceUniforms {
@@ -103,6 +110,7 @@ export function createGroundBounceUniforms(): GroundBounceUniforms {
     uCotBounceRad: { value: new THREE.Vector3() },
     uCotBounceHemi: { value: new THREE.Vector3() },
     uCotBounceSun: { value: new THREE.Vector3(0, 1, 0) },
+    uCotSkyDiffuse: { value: 1 },
   };
 }
 
@@ -113,6 +121,7 @@ export function attachGroundBounceUniforms(
   shader.uniforms.uCotBounceRad = uniforms.uCotBounceRad;
   shader.uniforms.uCotBounceHemi = uniforms.uCotBounceHemi;
   shader.uniforms.uCotBounceSun = uniforms.uCotBounceSun;
+  shader.uniforms.uCotSkyDiffuse = uniforms.uCotSkyDiffuse;
 }
 
 export interface GroundBounceRigInput {
@@ -123,6 +132,8 @@ export interface GroundBounceRigInput {
   groundTone: THREE.Color;
   hemiGround: THREE.Color;
   hemiIntensity: number;
+  /** 2026-10-01: the share of the physical bounce applied (the grounded model applies all of it); default the legacy gain. */
+  gain?: number;
 }
 
 /** Refresh the shared uniforms from the light rig (setSun, preset changes, the policy). */
@@ -131,7 +142,7 @@ export function applyGroundBounceRig(uniforms: GroundBounceUniforms, rig: Ground
     uniforms.uCotBounceRad.value.set(0, 0, 0);
     return;
   }
-  const radiance = groundBounceRadiance(rig.sunColor, rig.sunIntensity, rig.sunDir, rig.groundTone);
+  const radiance = groundBounceRadiance(rig.sunColor, rig.sunIntensity, rig.sunDir, rig.groundTone, rig.gain ?? GROUND_BOUNCE_GAIN);
   uniforms.uCotBounceRad.value.set(radiance.r, radiance.g, radiance.b);
   uniforms.uCotBounceHemi.value.set(
     rig.hemiGround.r * rig.hemiIntensity, rig.hemiGround.g * rig.hemiIntensity, rig.hemiGround.b * rig.hemiIntensity);
@@ -145,6 +156,7 @@ export const GROUND_BOUNCE_GLSL_PARS = /* glsl */ `
 uniform vec3 uCotBounceRad;
 uniform vec3 uCotBounceHemi;
 uniform vec3 uCotBounceSun;
+uniform float uCotSkyDiffuse;
 `;
 
 /**
@@ -152,6 +164,7 @@ uniform vec3 uCotBounceSun;
  * `geometryNormal` (view space), `viewMatrix` and `cotSunVis` are in scope there.
  */
 export const GROUND_BOUNCE_GLSL_TERM = /* glsl */ `
+	iblIrradiance *= uCotSkyDiffuse;
 	if ( dot( uCotBounceRad, vec3( 1.0 ) ) > 0.0 ) {
 		vec3 cotNw = normalize( ( vec4( geometryNormal, 0.0 ) * viewMatrix ).xyz );
 		vec2 cotSunH = uCotBounceSun.xz / max( length( uCotBounceSun.xz ), 1e-3 );
