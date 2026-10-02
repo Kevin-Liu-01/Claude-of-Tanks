@@ -93,8 +93,12 @@ export const SNAPSHOTS = Object.freeze({
 
 export type SnapshotId = keyof typeof SNAPSHOTS;
 
-/** Concussion recovery (s) and the blast that triggers it. */
-export const CONCUSSION = Object.freeze({ recoverS: 4.5, triggerDb: 132, cooldownS: 6 });
+/**
+ * Concussion: recovery (s), re-trigger cooldown (s), and the blast radius (m)
+ * around the occupied hull per 100 mm of HE (scaled by bore, capped).
+ * Explicit triggers only — the engine's own gun never concusses its crew.
+ */
+export const CONCUSSION = Object.freeze({ recoverS: 4.5, cooldownS: 6, radiusPer100mmM: 9, maxRadiusM: 16 });
 
 export type DeviceTier = 'desktop' | 'mobile';
 

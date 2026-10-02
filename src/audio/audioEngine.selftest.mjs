@@ -89,6 +89,7 @@ assert.ok(!names.includes('ac_30_close'), 'no close report at 700 m');
 since = mark();
 bus.emit('shell:fired', { shellId: 3, shooterId: 'me', isPlayer: true, muzzlePos: [0, 2, 3], dir: [0, 0, 1], caliberMm: 125, shellType: 'APFSDS' });
 assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'gun_125_close'));
+assert.equal(probe.busGains().concussion, 0, 'our own gun never concusses its crew');
 since = mark();
 for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 7 * (1 - progress), progress });
 bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 0, progress: 1, done: true });
@@ -137,6 +138,20 @@ audio.update(1 / 60, listener, tanks.filter((t) => t.id !== 'foe'));
 assert.ok(['target_destroyed', 'double_kill'].includes(probe.voiceLog.at(-1)?.id), `kill confirm (${probe.voiceLog.at(-1)?.id})`);
 assert.ok(!probe.engineState().some((e) => e.id === 'foe'), 'the dead tank stops idling');
 
+// Concussion: a close HE burst muffles the mix and rings the ears; the settings toggle turns it off.
+const settle = (seconds) => { for (let t = 0; t < seconds; t += 0.25) { ctx.advance(0.25); audio.update(0.25, listener, tanks); } };
+settle(8);
+since = mark();
+bus.emit('shell:hit', { shellId: 5, pos: [3, 0, 3], kind: 'he_splash', targetId: 'ally', attackerId: 'foe', damage: 0, caliberMm: 152, targetHpAfter: 1000 });
+assert.ok(probe.busGains().concussion > 0.3, `a 152 mm burst 5 m away concusses the crew (${probe.busGains().concussion})`);
+assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'tinnitus'), 'and rings the ears');
+settle(8);
+assert.equal(probe.busGains().concussion, 0, 'the crew recovers');
+bus.emit('ui:volumes', { concussion: false });
+bus.emit('shell:hit', { shellId: 6, pos: [3, 0, 3], kind: 'he_splash', targetId: 'ally', attackerId: 'foe', damage: 0, caliberMm: 152, targetHpAfter: 1000 });
+assert.equal(probe.busGains().concussion, 0, 'the concussion setting turns it off');
+bus.emit('ui:volumes', { concussion: true });
+
 // Kill-cam replay: a crisp blast, then debris stretched to the 0.55x replay, all on the cinematic bus.
 since = mark();
 ctx.advance(6);
@@ -171,4 +186,4 @@ assert.equal(probe.engineState().length, 0, 'no rig survives the garage edge');
 assert.equal(probe.snapshot, 'garage');
 assert.equal(probe.ambientState().bed, 'amb_garage');
 
-console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, panning, scope and teardown passed (${probe.sfxLog.length} voices logged)`);
+console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, kill-cam, panning, scope and teardown passed (${probe.sfxLog.length} voices logged)`);

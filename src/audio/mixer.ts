@@ -45,7 +45,8 @@ export interface Mixer {
   setReverb(id: ReverbId): void;
   /** Report a started world event's logical loudness; true if it survives the window. */
   admit(loudDb: number, priority: number, drivesWindow?: boolean): boolean;
-  concussion(strength: number): void;
+  /** Muffle the mix and recover over CONCUSSION.recoverS; false while cooling down. */
+  concussion(strength: number): boolean;
   duckForVoice(active: boolean): void;
   cabinLevel(): number;
   update(dtS: number): void;
@@ -271,16 +272,13 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
     admit(loudDb, priority, drivesWindow = true) {
       if (loudDb < hdrTop - HDR.windowDb && priority < HDR.protectPriority) return false;
       if (drivesWindow && loudDb > hdrTop) hdrTop = loudDb;
-      if (loudDb >= CONCUSSION.triggerDb && drivesWindow && concussionCooldown <= 0) {
-        concussionK = Math.max(concussionK, clamp((loudDb - CONCUSSION.triggerDb) / 12 + 0.45, 0, 1));
-        concussionCooldown = CONCUSSION.cooldownS;
-      }
       return true;
     },
     concussion(strength) {
-      if (concussionCooldown > 0) return;
+      if (concussionCooldown > 0) return false;
       concussionK = Math.max(concussionK, clamp(strength, 0, 1));
       concussionCooldown = CONCUSSION.cooldownS;
+      return true;
     },
     duckForVoice(active) {
       voiceDuck = active ? 1 : 0;

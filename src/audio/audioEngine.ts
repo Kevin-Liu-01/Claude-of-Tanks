@@ -37,7 +37,7 @@ import { createVoicePool, type PlayOptions, type VoicePool } from './voicePool.t
 import { createCrewRadio, type CrewRadio } from './crewRadio.ts';
 import { createAmbienceDirector, sceneAssets, type AmbienceDirector } from './ambienceDirector.ts';
 import { GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
-import { BUDGETS, BUS_LEVELS, SNAPSHOTS, VEHICLE_LOD, type DeviceTier, type SettingsChannel } from './mixPolicy.ts';
+import { BUDGETS, BUS_LEVELS, CONCUSSION, SNAPSHOTS, VEHICLE_LOD, type DeviceTier, type SettingsChannel } from './mixPolicy.ts';
 import {
   ammoRackBeep, createNoiseBank, fireKlaxon, heartbeat, loadingBed, synthBoom, synthClick,
   synthImpact, synthShot, type NoiseBank, type Rig,
@@ -560,9 +560,22 @@ export function createAudio({
 
   // --------------------------------------------------------------- impacts ---
 
+  /**
+   * A blast close to the occupied hull muffles the mix and rings the ears
+   * (setting-gated). Strength falls off across the bore-scaled radius.
+   */
+  function blastNearHull(distance: number, caliberMm: number): void {
+    if (!concussionFx || !mixer || !listenerValid || phase !== 'battle' || playerEntityInfo()?.alive === false) return;
+    const radius = Math.min(CONCUSSION.maxRadiusM, CONCUSSION.radiusPer100mmM * Math.max(0.4, caliberMm / 100));
+    if (distance >= radius) return;
+    const strength = clamp(1 - distance / radius, 0, 1);
+    if (mixer.concussion(0.35 + 0.5 * strength) && strength > 0.45) play('tinnitus', { delayS: 0.15 });
+  }
+
   function explosion(x: number, y: number, z: number, caliberMm: number, bus?: 'cinematic'): void {
     const id = caliberMm >= 140 ? 'expl_he_large' : caliberMm >= 61 ? 'expl_he_medium' : 'expl_he_small';
     const distance = distanceTo(x, y, z);
+    if (!bus) blastNearHull(distance, caliberMm);
     const rate = clamp(1.08 - (caliberMm - 100) / 600, 0.86, 1.12);
     if (!play(id, { x, y, z, rate, ...(bus ? { bus } : {}) }) && noise && mixer) {
       synthBoom(mixer.ctx, mixer.input('impacts'), noise, mixer.ctx.currentTime + Math.min(3, distance / atmosphere.speedOfSoundMps), 0.5 + caliberMm / 150, dbToGain(distanceAttenuationDb(distance, 14, 0.95)) * 0.8, random);
@@ -707,9 +720,9 @@ export function createAudio({
   function onShellHit(event: ShellHitEvent): void {
     const ownHull = playerHull(event);
     impactSounds(event, ownHull);
-    if (ownHull && concussionFx && (event.kind === 'he_pen' || event.kind === 'he_splash' || (event.kind === 'pen' && (event.caliberMm || 0) >= 100))) {
-      mixer?.concussion(event.kind === 'pen' ? 0.45 : 0.7);
-      if (event.kind !== 'pen') play('tinnitus', { delayS: 0.15 });
+    // A heavy round through our own armour rattles the crew (HE splash concusses via its blast).
+    if (ownHull && concussionFx && (event.kind === 'he_pen' || (event.kind === 'pen' && (event.caliberMm || 0) >= 100))) {
+      if (mixer?.concussion(event.kind === 'pen' ? 0.45 : 0.7) && event.kind !== 'pen') play('tinnitus', { delayS: 0.15 });
     }
     logSound('shell:hit', { id: event.shellId, kind: event.kind, targetId: event.targetId, attackerId: event.attackerId, occupied: ownHull, damage: event.damage || 0 });
     if (playerId == null) return;
@@ -759,6 +772,7 @@ export function createAudio({
       play('debris_metal', { x, y, z, delayS: 0.25 * stretch, ...slow });
       if (cause === 'ammorack') play('turret_land', { x: x + (random() - 0.5) * 8, y, z: z + (random() - 0.5) * 8, delayS: (1.5 + random() * 1.1) * stretch, ...slow });
     }
+    if (!cinematic && cause !== 'fire' && event.id !== playerId) blastNearHull(distanceTo(x, y, z), cause === 'ammorack' ? 160 : 110);
     if (!cinematic && ctx) {
       const now = ctx.currentTime;
       const voices: ReturnType<VoicePool['play']>[] = [];
