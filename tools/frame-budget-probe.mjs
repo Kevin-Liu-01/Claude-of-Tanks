@@ -120,7 +120,11 @@ export function parseFrameProbeArgs(argv) {
   for (const ch of o.pattern) if (ch.charCodeAt(0) - 65 >= o.roots.length) throw new Error(`--pattern letter ${ch} has no root`);
   if (!/^\d+x\d+$/.test(o.sides)) throw new Error('--sides is <allies>x<enemies> (13x14 = the 14 v 14 preset)');
   for (const v of o.viewports) if (!/^\d+x\d+$/.test(v)) throw new Error(`--viewports entries are WxH, got ${v}`);
-  for (const v of o.views) if (!(v in HULL_RELATIVE_POSES)) selectMapViews([v]);
+  for (const v of o.views) {
+    const [base, speed] = v.split('@');
+    if (speed !== undefined && !(Number(speed) > 0 && Number(speed) <= 30)) throw new Error(`a moving view is <view>@<m/s> (0..30], got ${v}`);
+    if (!(base in HULL_RELATIVE_POSES)) selectMapViews([base]);
+  }
   if (!['pinned', 'live'].includes(o.governor)) throw new Error('--governor is pinned or live');
   if (o.scales && (o.governor !== 'pinned' || o.scales.some((v) => !(v > 0 && v <= 1)))) throw new Error('--scales are pinned render scales in (0, 1]');
   if (o.toggle && !FRAME_PROBE_TOGGLES[o.toggle]) throw new Error(`--toggle must be one of ${Object.keys(FRAME_PROBE_TOGGLES).join(', ')}`);
@@ -299,6 +303,36 @@ function installGpuEmulator(ratio) {
   return state;
 }
 
+/**
+ * A moving view (`<view>@<m/s>`): the pose glides along its own horizontal heading at the given speed, the camera and
+ * its target each keeping their clearance over the ground, set just before every lighting update (so the cascades fit
+ * the frame's camera). `restart()` returns it to the start of the path. Serialized into the page.
+ */
+function installMover(speed) {
+  const D = window.__DEBUG; const V = D.camera.position.constructor; const hf = D.world.heightField;
+  const look = D.camera.getWorldDirection(new V());
+  const cam0 = D.camera.position.clone(); const at0 = cam0.clone().addScaledVector(look, 40);
+  const dir = new V(look.x, 0, look.z).normalize();
+  const camClear = cam0.y - hf.getHeightAt(cam0.x, cam0.z), atClear = at0.y - hf.getHeightAt(at0.x, at0.z);
+  const fov = D.camera.fov; const c = new V(), a = new V();
+  let t0 = null;
+  const L = D.lighting; const original = L.update;
+  L.update = function (...args) {
+    if (t0 !== null) {
+      const d = speed * (performance.now() - t0) / 1000;
+      c.copy(cam0).addScaledVector(dir, d); c.y = hf.getHeightAt(c.x, c.z) + camClear;
+      a.copy(at0).addScaledVector(dir, d); a.y = hf.getHeightAt(a.x, a.z) + atClear;
+      D.rig.setExternalPose(c, a, fov);
+    }
+    return original.apply(this, args);
+  };
+  window.__FBP_MOVER = {
+    restart() { t0 = performance.now(); },
+    uninstall() { L.update = original; t0 = null; D.rig.setExternalPose(cam0, at0, fov); delete window.__FBP_MOVER; },
+  };
+  return { speed, camClear: +camClear.toFixed(2), heading: [+dir.x.toFixed(3), +dir.z.toFixed(3)] };
+}
+
 // ---------------------------------------------------------------------------------------------- host side
 
 function loadAverage() { return os.loadavg().map((v) => +v.toFixed(2)); }
@@ -384,14 +418,18 @@ export const grassSettled = () => {
   return !g || !g.enabled || (!g.near.pending && !g.far.pending);
 };
 
-async function sampleView(page, options) {
+async function sampleView(page, options, { moving = false } = {}) {
   // segmented pieces over-count on ANGLE Metal (their command-buffer spans overlap: the pieces summed to 4-5x the
   // whole frame in the 2026-10-02 pilots), so they are a diagnostic only (--segmented); the per-pass split is the
   // prefix decomposition — one query per frame from its start to a rotating checkpoint
   // a live governor owns the TIME_ELAPSED target (post.ts samples every fourth frame): the probe keeps to the CPU
   const modesOf = () => (options.governor === 'live' ? ['cpu'] : options.segmented ? ['whole', 'segmented'] : ['whole']);
-  const sample = (frames, modes = modesOf(), checkpoints = undefined) => page.evaluate((cfg) => window.__FRAME_PASS_TIMER.sample(cfg),
-    { frames, block: options.block, modes, flush: !options.noFlush, timeoutMs: Math.max(60000, frames * 400), ...(checkpoints ? { checkpoints } : {}) });
+  const sample = async (frames, modes = modesOf(), checkpoints = undefined) => {
+    // a moving view starts its path again for every sample, so each block of an A B B A covers the same ground
+    if (moving) await page.evaluate(() => window.__FBP_MOVER.restart());
+    return page.evaluate((cfg) => window.__FRAME_PASS_TIMER.sample(cfg),
+      { frames, block: options.block, modes, flush: !options.noFlush, timeoutMs: Math.max(60000, frames * 400), ...(checkpoints ? { checkpoints } : {}) });
+  };
   if (options.governor === 'live') {
     // the governor's own record: the scale it holds, its GPU sample, the presented cadence, every half second
     const series = await page.evaluate(async (seconds) => {
@@ -478,7 +516,10 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }) {
       await sleep(1500);
     }
     for (const view of options.views) {
-      const pose = await poseView(page, view);
+      const [viewName, speedText] = view.split('@');
+      const pose = await poseView(page, viewName);
+      const moving = speedText !== undefined;
+      if (moving) pose.mover = await page.evaluate(installMover, Number(speedText));
       await sleep(1200);
       await page.waitForFunction(grassSettled, { timeout: 20000, polling: 250 }).catch(() => {});
       if (options.governor === 'live') await sleep(Math.max(0, options.settleMs * 3)); // let the governor walk
@@ -486,7 +527,7 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }) {
         if (scale !== null) { await page.evaluate((v) => window.__DEBUG.post.pinDynScale(v), scale); await sleep(1200); }
         await sleep(options.settleMs);
         const graphics = await page.evaluate(graphicsState);
-        const measured = await sampleView(page, options);
+        const measured = await sampleView(page, options, { moving });
         const after = await page.evaluate(graphicsState);
         const suffix = scale === null ? '' : `-s${Math.round(scale * 100)}`;
         if (options.shots) {
@@ -498,6 +539,7 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }) {
         const emulation = options.emulate ? await page.evaluate(() => ({ ...window.__FBP_EMULATOR?.state })) : null;
         samples.push({ viewport, view: `${view}${suffix}`, scale, pose, graphics, graphicsAfter: after, emulation, ...measured });
       }
+      if (moving) await page.evaluate(() => window.__FBP_MOVER.uninstall());
       if (options.scales) await page.evaluate(() => window.__DEBUG.post.pinDynScale(1));
     }
   }

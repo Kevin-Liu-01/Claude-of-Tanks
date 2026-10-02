@@ -179,6 +179,9 @@ assert.equal(stats([]).med, null);
   assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=AB']), /no root/);
   assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--toggle=nope']), /toggle/);
   assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--sides=14']), /sides/);
+  assert.deepEqual(parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--views=chase,chase@7']).views, ['chase', 'chase@7'],
+    'a moving view glides at <m/s>');
+  assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--views=chase@0']), /moving view/);
 }
 {
   // the lock order: FIFO first; a busy session mutex gives the FIFO back before queueing again
