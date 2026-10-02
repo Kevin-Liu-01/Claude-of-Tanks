@@ -9,12 +9,16 @@ import {
   CLOUD_CONTRAIL_MAX, applyCloudWeatherPreset, cloudContrails, createCloudWeatherUniforms,
 } from './cloudWeatherLayers.ts';
 import {
-  CLOUD_DIURNAL, cloudLayerKey, cloudNightAmount, cloudTimeOfDay, deriveCloudLayerPreset,
+  cloudLayerKey, cloudNightAmount, cloudTimeOfDay, deriveCloudLayerPreset, loadCloudscapeLayers,
 } from './cloudPresets.ts';
+import { CLOUD_DIURNAL } from './cloudscapeLayer.ts';
+
 import { CLOUDSCAPE_REGIMES } from './cloudscapes.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { getMapConfig } from '../world/maps/index.ts';
 import { MAP_IDS } from '../world/maps/catalog.ts';
+
+await loadCloudscapeLayers(); // a map's cloudscape resolves behind the battle entry (2026-10-02, the boot weight)
 
 const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
 

@@ -950,7 +950,15 @@ export function createAuthoritativeMatch({
     if (type === 'tank_destroyed') modeController.recordDestruction(String(payload.id),
       typeof payload.killerId==='string'?payload.killerId:null);
     if (pendingEvents.length >= MAX_EVENTS) pendingEvents.shift();
-    pendingEvents.push({ type, timeS, ...payload });
+    const event: AuthoritativeEvent = { type, timeS, ...payload };
+    // Where the hull died (ghost-crunch lane, 2026-10-02), as tank_ram and tank_impact carry theirs: a peer presents the
+    // death one interpolation step from the pose it shows that frame — mid-fall, mid-slide — and its explosion, wreck
+    // smoke and killcam sat 0.3–0.8 m from the authority's hull (the world-events audit's p2 fall death).
+    if (type === 'tank_destroyed' && typeof payload.x !== 'number') {
+      const dead = entityById.get(String(payload.id));
+      if (dead) { event.x = dead.state.pos.x; event.y = dead.state.pos.y; event.z = dead.state.pos.z; }
+    }
+    pendingEvents.push(event);
   }
 
   function reviveForMode(
@@ -1245,6 +1253,12 @@ export function createAuthoritativeMatch({
       directionX,
       directionZ,
       speedMps,
+      // What fell in any world (ghost-crunch lane, 2026-10-02): the record's box centre at its base. The index is this
+      // authority's (the map's collision manifest); a peer whose world is laid out otherwise — the mobile tier's lighter
+      // placements, Frontline Assault's trench works — finds its own record of the prop by this, or none.
+      x: (obstacle.min[0] + obstacle.max[0]) * 0.5,
+      y: obstacle.min[1],
+      z: (obstacle.min[2] + obstacle.max[2]) * 0.5,
     });
     return true;
   }

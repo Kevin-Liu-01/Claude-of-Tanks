@@ -14,6 +14,7 @@ import * as loose from './loosePropPhysics.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { registerWorldNightLighting } from './worldNightLighting.ts';
 import { setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
+import { createAuthorityObstacles } from '../mp/presentation/authorityObstacles.ts';
 
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const start = source.indexOf('  const D_CELL = 8;');
@@ -175,7 +176,8 @@ function sourceFunction(path, name, next) {
 const soloCaller = sourceFunction('../game/state.ts', 'crushWorldPropFromShell',
   'const MAX_SHELL_PASS_THROUGH_HITS_PER_STEP');
 // The multiplayer caller is the battle presentation's `world_prop_destroyed` event case
-// (src/mp/presentation/battlePresentation.ts), sliced into a function over the same two closure ports.
+// (src/mp/presentation/battlePresentation.ts), sliced into a function over the same closure ports — the world, the
+// bus, and (ghost-crunch lane, 2026-10-02) the real resolver of which record is the authority's obstacle.
 const netCaller = (() => {
   const text = readFileSync(new URL('../mp/presentation/battlePresentation.ts', import.meta.url), 'utf8');
   const from = text.indexOf("case 'world_prop_destroyed': {"), to = text.indexOf("case 'module_state':", from);
@@ -195,7 +197,7 @@ function exerciseAuthority(mode, f) {
       call(world, bus, { spec: { velocityMps: 900 } }, { record: record.col || record.ob });
     }
   } else {
-    const call = compileFunction(`${netCaller};return emitWorldPropDestroyed;`, ['worldCollision', 'bus'])(world, bus);
+    const call = compileFunction(`${netCaller};return emitWorldPropDestroyed;`, ['worldCollision', 'bus', 'authorityObstacles'])(world, bus, createAuthorityObstacles(world));
     for (let index = 0; index < world.getObstacles().length; index++) {
       call({ obstacleIndex: index, directionX: 1, directionZ: 0, speedMps: 900, cause: 'shell' });
     }
