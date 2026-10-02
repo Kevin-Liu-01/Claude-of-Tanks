@@ -326,10 +326,11 @@ are emitted at fire time with scheduled births. Stepping a scene at
 1/60 s, 4 ms or jittered 2–8 ms produces the same particles in the same
 order (`src/fx/cinematicFx.selftest.mjs`). Battle-recipe particles in the
 same shot are rate- and birth-stable but share the battle stream, so their
-random draws may interleave differently at another step size. Engine smoke
-(`engine_smoke`, `engine-smoking`) now emits on the fixed 60 Hz timeline grid
-with backdated births: identical at the canonical 1/60 s cadence, no longer
-multiplied by 2–8 ms export steps.
+random draws may interleave differently at another step size. In cinematic
+quality, engine smoke (`engine_smoke`, `engine-smoking`) pulses once per
+1/60 s timeline grid line and each birth is scheduled at its grid time, so
+2–8 ms export steps neither multiply nor shift it; battle quality keeps the
+live one-pulse-per-step look.
 
 Parameters and panel: **Effects → Cinematic pyro** toggles CINEMATIC FX and
 TRACK DUST and fires the new types (smoke screen on the selected tank;

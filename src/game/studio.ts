@@ -562,7 +562,6 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   // media r5: scene FX quality + the lazily created cinematic layer
   let fxSettings: StudioFxSettings = normalizeStudioFx(null);
   let cinematics: StudioCinematics | null = null;
-  let smokeAccS = 0; // engine-smoke 60 Hz grid remainder (step-size independent)
   let paletteMapId = '';
   let paletteId = 'verdant';
   let effectFireS = 0; // authored cue time of the effect being fired
@@ -2138,6 +2137,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function stepFx(dt: number): void {
     if (dt > 0) {
+      const previousMs = clockMs;
       clockMs += dt * 1000;
       const exactShells = fxSettings.quality === 'cinematic';
       // projectiles
@@ -2166,14 +2166,16 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         }
       }
       // continuous per-actor emitters. Battle quality keeps the historical
-      // one-emission-per-step look; cinematic quality emits on the fixed
-      // 60 Hz timeline grid with backdated births, so 2-8 ms export steps
-      // (and the playhead's integer-ms partial steps) never multiply it.
+      // one-emission-per-step look; cinematic quality pulses once per 1/60 s
+      // timeline grid line the step crosses and schedules each birth at that
+      // grid time (the fx clock still reads the step's start here, so the
+      // offset is positive), so 2-8 ms export steps and the playhead's
+      // integer-ms partial steps neither multiply nor shift the plume.
       if (exactShells) {
-        smokeAccS += dt;
-        while (smokeAccS >= FX_STEP_S - 1e-9) {
-          smokeAccS = Math.max(0, smokeAccS - FX_STEP_S);
-          emitDamageSmoke(-smokeAccS);
+        const gridMs = FX_STEP_S * 1000;
+        const last = Math.floor(clockMs / gridMs + 1e-6);
+        for (let k = Math.floor(previousMs / gridMs + 1e-6) + 1; k <= last; k++) {
+          emitDamageSmoke(Math.max(0, (k * gridMs - previousMs) / 1000));
         }
       } else emitDamageSmoke(0);
     }
@@ -2232,7 +2234,6 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // every load / replay starts the fx clock at 0: identical flicker phases
     fx.cinematicPort().resetClock();
     cinematics?.reset();
-    smokeAccS = 0;
     clockMs = 0;
     activeEffectIds.clear();
     const w = getWorld();
