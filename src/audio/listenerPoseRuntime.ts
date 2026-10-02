@@ -24,6 +24,8 @@ interface AudioGame {
   player: AudioTank | null;
   tanks: readonly AudioTank[];
   tankById: ReadonlyMap<string, AudioTank>;
+  /** Live projectiles: FPV drones fly as shells in the Drone mode. */
+  shells?: readonly unknown[];
 }
 
 interface AudioRig {
@@ -36,7 +38,7 @@ interface AudioKillcam {
 }
 
 interface AudioMixer {
-  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly AudioTank[]): void;
+  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly AudioTank[], shells?: readonly unknown[]): void;
 }
 
 interface ListenerPoseRuntimeOptions {
@@ -100,7 +102,7 @@ export function createListenerPoseRuntime({
         pose.ownerId = null;
         pose.scoped = false;
       }
-      audio.update(dtSeconds, pose, game.tanks);
+      audio.update(dtSeconds, pose, game.tanks, game.shells);
     },
   };
 }

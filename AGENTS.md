@@ -17,6 +17,9 @@ worktree and never stage generated tank work wholesale.
 - `docs/DEVELOPMENT.md#publishing-to-shared-main` — shared Codex/Claude integration,
   overlap review and preflight; read before integrating or publishing changes.
 - `docs/ARCHITECTURE.md` — original module contracts and simulation invariants.
+- `docs/AUDIO.md` — the sound engine and how its sounds were generated (ElevenLabs
+  catalog, takes, selection, mastering, crew script and cast); read before changing
+  `src/audio/` or regenerating sounds.
 - `docs/MULTIPLAYER-V2.md` — the peer-to-peer multiplayer: rooms Worker, wire, host, client, the cutover (§13.10).
 - `docs/tank-generation/README.md` — source/markup intake, measured construction,
   prompts, quality gates and resumable tank-generation handoffs. Read before

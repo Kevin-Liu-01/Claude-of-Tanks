@@ -8,7 +8,7 @@
  */
 
 export type BusId =
-  | 'weapons' | 'impacts' | 'vehicles' | 'own' | 'interior' | 'environment'
+  | 'weapons' | 'impacts' | 'vehicles' | 'own' | 'ownCombat' | 'interior' | 'environment'
   | 'ambience' | 'ui' | 'music' | 'voice' | 'alarm' | 'cinematic';
 
 /** How a cue is placed: world-positioned, attached to the occupied hull, or flat. */
@@ -39,14 +39,18 @@ type ProfileSeed = Omit<CueProfile, 'pitch'> & { pitch?: readonly [number, numbe
 const seed = (value: ProfileSeed): CueProfile => Object.freeze({ pitch: [0.97, 1.03] as const, ...value });
 
 export const GROUP_PROFILES: Readonly<Record<string, CueProfile>> = Object.freeze({
-  weapons: seed({ bus: 'weapons', space: 'world', priority: 85, maxInstances: 10, cooldownS: 0, refM: 12, rolloff: 1, maxM: 1800, absorb: 0.9, send: 0.16, loudDb: 145, gainDb: 0, pitch: [0.96, 1.04] }),
+  // Gunfire, impacts and destruction use a compressed distance law (a game mix,
+  // not inverse-square): a battle stays audible across the map instead of
+  // sinking under the idling engine at a hundred metres.
+  weapons: seed({ bus: 'weapons', space: 'world', priority: 85, maxInstances: 10, cooldownS: 0, refM: 25, rolloff: 0.6, maxM: 1800, absorb: 0.9, send: 0.16, loudDb: 145, gainDb: 0, pitch: [0.96, 1.04] }),
   mechanism: seed({ bus: 'interior', space: 'hull', priority: 70, maxInstances: 4, cooldownS: 0.05, refM: 1, rolloff: 0, maxM: 1e9, absorb: 0, send: 0.04, loudDb: 105, gainDb: -6 }),
   flyby: seed({ bus: 'impacts', space: 'world', priority: 80, maxInstances: 4, cooldownS: 0.08, refM: 6, rolloff: 1.1, maxM: 120, absorb: 1, send: 0.1, loudDb: 128, gainDb: -1 }),
-  impacts: seed({ bus: 'impacts', space: 'world', priority: 78, maxInstances: 12, cooldownS: 0, refM: 10, rolloff: 1.05, maxM: 1400, absorb: 1, send: 0.2, loudDb: 138, gainDb: 0 }),
-  destruction: seed({ bus: 'impacts', space: 'world', priority: 88, maxInstances: 6, cooldownS: 0, refM: 18, rolloff: 0.95, maxM: 2500, absorb: 0.7, send: 0.26, loudDb: 152, gainDb: 0, pitch: [0.95, 1.04] }),
-  props: seed({ bus: 'environment', space: 'world', priority: 55, maxInstances: 6, cooldownS: 0.05, refM: 10, rolloff: 1.05, maxM: 700, absorb: 1, send: 0.2, loudDb: 128, gainDb: -2 }),
-  collisions: seed({ bus: 'impacts', space: 'world', priority: 70, maxInstances: 4, cooldownS: 0.12, refM: 9, rolloff: 1.05, maxM: 500, absorb: 1, send: 0.16, loudDb: 132, gainDb: -1 }),
-  vehicle: seed({ bus: 'vehicles', space: 'world', priority: 50, maxInstances: 6, cooldownS: 0.08, refM: 8, rolloff: 1.1, maxM: 450, absorb: 1, send: 0.12, loudDb: 118, gainDb: -3 }),
+  impacts: seed({ bus: 'impacts', space: 'world', priority: 78, maxInstances: 12, cooldownS: 0, refM: 15, rolloff: 0.75, maxM: 1400, absorb: 1, send: 0.2, loudDb: 138, gainDb: 0 }),
+  destruction: seed({ bus: 'impacts', space: 'world', priority: 88, maxInstances: 6, cooldownS: 0, refM: 30, rolloff: 0.6, maxM: 2500, absorb: 0.7, send: 0.26, loudDb: 152, gainDb: 0, pitch: [0.95, 1.04] }),
+  // Small clutter stays local: a battle of fourteen tanks is otherwise a wall of foley.
+  props: seed({ bus: 'environment', space: 'world', priority: 55, maxInstances: 6, cooldownS: 0.05, refM: 10, rolloff: 1.05, maxM: 260, absorb: 1, send: 0.2, loudDb: 128, gainDb: -2 }),
+  collisions: seed({ bus: 'impacts', space: 'world', priority: 70, maxInstances: 4, cooldownS: 0.12, refM: 9, rolloff: 1.05, maxM: 320, absorb: 1, send: 0.16, loudDb: 132, gainDb: -1 }),
+  vehicle: seed({ bus: 'vehicles', space: 'world', priority: 40, maxInstances: 6, cooldownS: 0.08, refM: 8, rolloff: 1.1, maxM: 140, absorb: 1, send: 0.12, loudDb: 118, gainDb: -3 }),
   engines: seed({ bus: 'vehicles', space: 'world', priority: 45, maxInstances: 4, cooldownS: 0.5, refM: 10, rolloff: 1, maxM: 900, absorb: 0.8, send: 0.1, loudDb: 120, gainDb: -2 }),
   tracks: seed({ bus: 'vehicles', space: 'world', priority: 40, maxInstances: 4, cooldownS: 0.5, refM: 8, rolloff: 1.1, maxM: 600, absorb: 1, send: 0.08, loudDb: 115, gainDb: -3 }),
   equipment: seed({ bus: 'interior', space: 'hull', priority: 60, maxInstances: 2, cooldownS: 0.3, refM: 1, rolloff: 0, maxM: 1e9, absorb: 0, send: 0.04, loudDb: 104, gainDb: -5 }),
@@ -56,6 +60,8 @@ export const GROUP_PROFILES: Readonly<Record<string, CueProfile>> = Object.freez
   radio: seed({ bus: 'voice', space: 'flat', priority: 95, maxInstances: 2, cooldownS: 0, refM: 1, rolloff: 0, maxM: 1e9, absorb: 0, send: 0, loudDb: 100, gainDb: -12, pitch: [0.98, 1.02] }),
   ui: seed({ bus: 'ui', space: 'flat', priority: 90, maxInstances: 3, cooldownS: 0.03, refM: 1, rolloff: 0, maxM: 1e9, absorb: 0, send: 0, loudDb: 100, gainDb: -6, pitch: [0.99, 1.01] }),
   stingers: seed({ bus: 'music', space: 'flat', priority: 92, maxInstances: 1, cooldownS: 0.5, refM: 1, rolloff: 0, maxM: 1e9, absorb: 0, send: 0, loudDb: 100, gainDb: -5, pitch: [1, 1] }),
+  // Drone and AC-130 aircraft: their engine loops run in aerialRig; these place the one-shots.
+  aerial: seed({ bus: 'vehicles', space: 'world', priority: 65, maxInstances: 3, cooldownS: 0.3, refM: 6, rolloff: 1, maxM: 500, absorb: 1, send: 0.12, loudDb: 118, gainDb: -3 }),
 });
 
 const o = (value: Partial<ProfileSeed>): Partial<CueProfile> => Object.freeze(value);
@@ -63,35 +69,40 @@ const o = (value: Partial<ProfileSeed>): Partial<CueProfile> => Object.freeze(va
 /** Assets that differ from their group default. */
 const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.freeze({
   // Main guns carry across the whole battlefield as distant thunder.
-  gun_far_light: o({ refM: 80, rolloff: 0.85, maxM: 2600, absorb: 0.5, send: 0.3, loudDb: 140 }),
-  gun_far_medium: o({ refM: 90, rolloff: 0.85, maxM: 2800, absorb: 0.45, send: 0.3, loudDb: 144 }),
-  gun_far_heavy: o({ refM: 100, rolloff: 0.85, maxM: 3000, absorb: 0.4, send: 0.3, loudDb: 148 }),
-  ac_far_light: o({ refM: 50, rolloff: 0.9, maxM: 1600, absorb: 0.55, send: 0.26, loudDb: 128 }),
-  ac_far_heavy: o({ refM: 60, rolloff: 0.9, maxM: 1900, absorb: 0.55, send: 0.26, loudDb: 133 }),
-  mg_far: o({ refM: 40, rolloff: 0.95, maxM: 1100, absorb: 0.6, send: 0.24, loudDb: 116, gainDb: -3 }),
-  mg_rifle_close: o({ maxInstances: 8, refM: 6, maxM: 500, loudDb: 120, gainDb: -3, pitch: [0.95, 1.05] }),
-  mg_heavy_close: o({ maxInstances: 8, refM: 8, maxM: 700, loudDb: 126, gainDb: -2, pitch: [0.95, 1.05] }),
+  gun_far_light: o({ refM: 80, rolloff: 0.62, maxM: 2600, absorb: 0.5, send: 0.3, loudDb: 140 }),
+  gun_far_medium: o({ refM: 90, rolloff: 0.62, maxM: 2800, absorb: 0.45, send: 0.3, loudDb: 144 }),
+  gun_far_heavy: o({ refM: 100, rolloff: 0.62, maxM: 3000, absorb: 0.4, send: 0.3, loudDb: 148 }),
+  ac_far_light: o({ refM: 50, rolloff: 0.68, maxM: 1600, absorb: 0.55, send: 0.26, loudDb: 128 }),
+  ac_far_heavy: o({ refM: 60, rolloff: 0.68, maxM: 1900, absorb: 0.55, send: 0.26, loudDb: 133 }),
+  mg_far: o({ refM: 40, rolloff: 0.72, maxM: 900, absorb: 0.6, send: 0.24, loudDb: 116, gainDb: -2 }),
+  mg_rifle_close: o({ maxInstances: 8, refM: 14, rolloff: 0.7, maxM: 500, loudDb: 120, gainDb: -2, pitch: [0.95, 1.05] }),
+  mg_heavy_close: o({ maxInstances: 8, refM: 16, rolloff: 0.68, maxM: 700, loudDb: 126, gainDb: -1, pitch: [0.95, 1.05] }),
   tail_open: o({ refM: 60, rolloff: 0.7, maxM: 2500, absorb: 0.4, send: 0.1, gainDb: -4 }),
   tail_forest: o({ refM: 60, rolloff: 0.7, maxM: 2500, absorb: 0.45, send: 0.1, gainDb: -4 }),
   tail_urban: o({ refM: 60, rolloff: 0.7, maxM: 2500, absorb: 0.4, send: 0.1, gainDb: -3 }),
   tail_mountain: o({ refM: 70, rolloff: 0.65, maxM: 3000, absorb: 0.35, send: 0.1, gainDb: -3 }),
-  gun_interior_medium: o({ bus: 'own', space: 'hull', loudDb: 140 }),
-  gun_interior_large: o({ bus: 'own', space: 'hull', loudDb: 142 }),
-  gun_interior_heavy: o({ bus: 'own', space: 'hull', loudDb: 144 }),
+  gun_interior_medium: o({ bus: 'ownCombat', space: 'hull', loudDb: 140 }),
+  gun_interior_large: o({ bus: 'ownCombat', space: 'hull', loudDb: 142 }),
+  gun_interior_heavy: o({ bus: 'ownCombat', space: 'hull', loudDb: 144 }),
   missile_flight_loop: o({ priority: 70, maxM: 900, loudDb: 128 }),
   rocket_salvo: o({ loudDb: 150, maxM: 3000 }),
   smoke_launcher: o({ priority: 60, refM: 8, maxM: 400, loudDb: 120, gainDb: -2 }),
   smoke_burst: o({ priority: 40, refM: 8, maxM: 300, loudDb: 112, gainDb: -4 }),
   // Interior and hull-attached impacts: the receiving end of a hit.
-  pen_interior: o({ bus: 'own', space: 'hull', priority: 92, loudDb: 140 }),
-  nonpen_interior: o({ bus: 'own', space: 'hull', priority: 90, loudDb: 134 }),
-  bullet_armor: o({ maxInstances: 6, refM: 4, maxM: 260, loudDb: 112, cooldownS: 0.03 }),
-  bullet_dirt: o({ maxInstances: 6, refM: 4, maxM: 200, loudDb: 106, cooldownS: 0.03, priority: 30 }),
-  bullet_water: o({ maxInstances: 4, refM: 4, maxM: 200, loudDb: 104, priority: 28 }),
-  ricochet_light: o({ refM: 6, maxM: 350, loudDb: 116 }),
+  pen_interior: o({ bus: 'ownCombat', space: 'hull', priority: 92, loudDb: 140 }),
+  nonpen_interior: o({ bus: 'ownCombat', space: 'hull', priority: 90, loudDb: 134 }),
+  bullet_armor: o({ maxInstances: 4, refM: 4, maxM: 180, loudDb: 112, cooldownS: 0.05, gainDb: -3 }),
+  bullet_dirt: o({ maxInstances: 4, refM: 4, maxM: 120, loudDb: 106, cooldownS: 0.05, priority: 30, gainDb: -3 }),
+  bullet_water: o({ maxInstances: 3, refM: 4, maxM: 120, loudDb: 104, priority: 28 }),
+  ricochet_light: o({ refM: 6, maxM: 220, loudDb: 116, gainDb: -3 }),
+  // Distant armour hits carry their distance in the recording: the close banks' slope,
+  // shifted by their quieter master so the range crossfade stays level, with less air loss.
+  impact_far_pen: o({ refM: 35, maxM: 2600, absorb: 0.5, send: 0.3, loudDb: 132 }),
+  impact_far_nonpen: o({ refM: 35, maxM: 2400, absorb: 0.5, send: 0.3, loudDb: 130 }),
+  impact_far_ricochet: o({ refM: 35, maxM: 2400, absorb: 0.5, send: 0.3, loudDb: 130 }),
   expl_he_small: o({ loudDb: 136 }),
-  expl_he_medium: o({ refM: 14, rolloff: 0.95, maxM: 2200, absorb: 0.75, send: 0.24, loudDb: 148 }),
-  expl_he_large: o({ refM: 18, rolloff: 0.9, maxM: 3000, absorb: 0.6, send: 0.28, loudDb: 154 }),
+  expl_he_medium: o({ refM: 22, rolloff: 0.68, maxM: 2200, absorb: 0.75, send: 0.24, loudDb: 148 }),
+  expl_he_large: o({ refM: 28, rolloff: 0.62, maxM: 3000, absorb: 0.6, send: 0.28, loudDb: 154 }),
   expl_far: o({ refM: 120, rolloff: 0.8, maxM: 3500, absorb: 0.4, send: 0.3, loudDb: 150 }),
   debris_dirt: o({ priority: 40, maxM: 250, loudDb: 112, gainDb: -5 }),
   ground_dirt: o({ loudDb: 130 }),
@@ -104,7 +115,7 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   // Own-hull foley that must stay intimate.
   gear_shift: o({ maxM: 120, loudDb: 108, gainDb: -6 }),
   susp_creak: o({ maxM: 100, loudDb: 102, gainDb: -6 }),
-  brake_squeal: o({ maxM: 300, loudDb: 120 }),
+  brake_squeal: o({ maxM: 150, loudDb: 120, gainDb: -6 }),
   track_break: o({ priority: 70, maxM: 500, loudDb: 128 }),
   turret_stop: o({ bus: 'own', space: 'hull', gainDb: -8 }),
   hydro_susp: o({ maxM: 150, loudDb: 108 }),
@@ -115,7 +126,7 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   extinguisher: o({ gainDb: -3 }),
   // Edge-case cues: world-placed ones.
   rollover: o({ bus: 'impacts', space: 'world', priority: 70, refM: 10, rolloff: 1.05, maxM: 500, absorb: 1, send: 0.15, loudDb: 128, gainDb: -1 }),
-  hull_debris_patter: o({ bus: 'own', gainDb: -4 }),
+  hull_debris_patter: o({ bus: 'ownCombat', gainDb: -4 }),
   missile_warning: o({ bus: 'alarm', space: 'flat', priority: 94, gainDb: -8 }),
   lock_on: o({ bus: 'alarm', space: 'flat', gainDb: -10 }),
   lock_off: o({ bus: 'alarm', space: 'flat', gainDb: -12 }),
@@ -135,7 +146,8 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   distant_mg: o({ bus: 'environment', space: 'world', priority: 10, refM: 150, rolloff: 0.6, maxM: 4000, absorb: 0.35, send: 0.3, loudDb: 140, gainDb: -8 }),
   jet_flyover: o({ bus: 'environment', space: 'world', priority: 30, refM: 200, rolloff: 0.7, maxM: 6000, absorb: 0.3, send: 0.2, loudDb: 160, gainDb: -6 }),
   heli_loop: o({ bus: 'environment', space: 'world', priority: 25, refM: 120, rolloff: 0.7, maxM: 5000, absorb: 0.35, send: 0.2, loudDb: 150, gainDb: -6 }),
-  garage_clank: o({ bus: 'ambience', space: 'world', refM: 10, rolloff: 1, maxM: 200, absorb: 0.6, send: 0.4, loudDb: 100, gainDb: -8 }),
+  // Workshop sounds inside the hangar: placed a few metres away (indoor scene).
+  garage_clank: o({ bus: 'ambience', space: 'world', refM: 6, rolloff: 0.9, maxM: 80, absorb: 0.3, send: 0.45, loudDb: 100, gainDb: -2 }),
 });
 
 const profileCache = new Map<string, CueProfile>();

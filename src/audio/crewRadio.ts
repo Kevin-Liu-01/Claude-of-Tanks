@@ -24,6 +24,8 @@ interface SayOptions {
   force?: boolean;
   delayS?: number;
   staleS?: number;
+  /** Speak this take of the line (its index in the script) instead of a random one. */
+  take?: number;
 }
 
 interface Request {
@@ -33,6 +35,7 @@ interface Request {
   atReq: number;
   readyAt: number;
   expiresAt: number;
+  take?: number;
 }
 
 interface RadioLogEntry {
@@ -40,6 +43,7 @@ interface RadioLogEntry {
   lang: string;
   t: number;
   dur: number;
+  take?: number;
 }
 
 export interface CrewRadio {
@@ -151,11 +155,11 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
     drive.curve = driveCurve(damage === 2 ? 0.75 : damage === 1 ? 0.45 : 0.25);
   }
 
-  function bufferFor(id: string): { buffer: AudioBuffer; lang: string } | null {
-    const own = library.voice(language, id, random);
+  function bufferFor(id: string, take?: number): { buffer: AudioBuffer; lang: string } | null {
+    const own = library.voice(language, id, random, take);
     if (own) return { buffer: own, lang: language };
     if (language === fallbackLanguage) return null;
-    const fallback = library.voice(fallbackLanguage, id, random);
+    const fallback = library.voice(fallbackLanguage, id, random, take);
     // The fallback crew loads only when a national take is actually missing.
     if (!fallback) void library.loadVoice(fallbackLanguage);
     return fallback ? { buffer: fallback, lang: fallbackLanguage } : null;
@@ -178,9 +182,9 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
     mixer.duckForVoice(false);
   }
 
-  function playNow(id: string): boolean {
+  function playNow(id: string, take?: number): boolean {
     const line = VOICE_LINES[id];
-    const chosen = line ? bufferFor(id) : null;
+    const chosen = line ? bufferFor(id, take) : null;
     if (!line || !chosen) return false;
     const now = ctx.currentTime;
     const keyS = radioSquelch(ctx, speaker, noise, now + 0.005, false, damage === 2 ? 0.55 : 0.4, random);
@@ -240,7 +244,7 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
     currentGroup = line.group || id;
     lastPlay.set(id, now);
     lastGroupPlay.set(currentGroup, { t: now, pri: line.pri });
-    log.push({ id, lang: chosen.lang, t: +now.toFixed(3), dur: +dur.toFixed(3) });
+    log.push({ id, lang: chosen.lang, t: +now.toFixed(3), dur: +dur.toFixed(3), ...(take != null ? { take } : {}) });
     if (log.length > 64) log.shift();
     return true;
   }
@@ -280,13 +284,13 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
     return !!currentSrc && currentEnd - now > 0.12 && ((pri >= 4 && currentPri < 4) || (pri >= 3 && currentPri <= 1));
   }
 
-  function enqueue(id: string, line: VoiceLineMeta, now: number, delayS: number, staleS: number | undefined): boolean {
+  function enqueue(id: string, line: VoiceLineMeta, now: number, delayS: number, staleS: number | undefined, take: number | undefined): boolean {
     const group = line.group || id;
     if (!replaceQueuedGroup(group, line.pri)) return false;
     if (line.pri >= 3) removeLowerPriority(line.pri);
     if (!reserveSlot(line.pri)) return false;
     const readyAt = now + Math.max(0, delayS);
-    queue.push({ id, pri: line.pri, group, atReq: now, readyAt, expiresAt: readyAt + (staleS ?? line.staleS ?? RADIO_DISCIPLINE.defaultStaleS) });
+    queue.push({ id, pri: line.pri, group, atReq: now, readyAt, expiresAt: readyAt + (staleS ?? line.staleS ?? RADIO_DISCIPLINE.defaultStaleS), ...(take != null ? { take } : {}) });
     return true;
   }
 
@@ -294,10 +298,11 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
     say(id, options) {
       const line = VOICE_LINES[id];
       if (!line) return false;
+      const take = options?.take;
       if (options?.force) {
         queue.length = 0;
         stopCurrent();
-        return playNow(id);
+        return playNow(id, take);
       }
       if (typeof options?.prob === 'number' && random() > options.prob) return false;
       const now = ctx.currentTime;
@@ -306,15 +311,15 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
       const busyUntil = currentEnd + RADIO_DISCIPLINE.gapS;
       if (currentGroup === (line.group || id) && now < currentEnd && line.pri <= currentPri) return false;
       if (delayS === 0) {
-        if (now >= busyUntil) return playNow(id);
+        if (now >= busyUntil) return playNow(id, take);
         if (canInterrupt(line.pri, now)) {
           stopCurrent();
           removeLowerPriority(line.pri);
-          return playNow(id);
+          return playNow(id, take);
         }
       }
       if (line.pri === 0 && now < busyUntil) return false;
-      return enqueue(id, line, now, delayS, options?.staleS);
+      return enqueue(id, line, now, delayS, options?.staleS, take);
     },
     update() {
       if (!queue.length) return;
@@ -330,8 +335,8 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
         if (!canInterrupt(queue[best].pri, now)) return;
         stopCurrent();
       }
-      const { id } = queue.splice(best, 1)[0];
-      if (!cooldownActive(id, VOICE_LINES[id], now)) playNow(id);
+      const { id, take } = queue.splice(best, 1)[0];
+      if (!cooldownActive(id, VOICE_LINES[id], now)) playNow(id, take);
     },
     silence() {
       queue.length = 0;
