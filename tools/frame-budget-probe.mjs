@@ -35,7 +35,7 @@ import {
   resolveHullRelativePose, sleep,
 } from './map-probe-runtime.mjs';
 import { selectMapViews } from './map-view-probe-views.mjs';
-import { createCaptureLock } from './capture-lock.mjs';
+import { CAPTURE_QUEUE_DIR, createCaptureLock } from './capture-lock.mjs';
 import { captureLuminance, encodeLum } from './frame-capture-compare.mjs';
 import {
   FRAME_PASS_TIMER_PROTOCOL, MID_RANGE_PROXIES, installFramePassTimer, pairDeltas, projectFrameMs, proxyRatios,
@@ -398,34 +398,47 @@ export function foreignGpuCpu() {
 /** The FIFO, then (optionally) the session mutex — taken only while the FIFO is ours; a busy mutex returns the FIFO. */
 export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, fifoTimeoutMs = 3 * 60 * 60 * 1000,
   mutexWaitMs = 60_000, mutexIdleWaitMs = 45 * 60_000, lock = createCaptureLock(), tryMutex = defaultTryMutex,
-  releaseMutex = defaultReleaseMutex, pause = sleep } = {}) {
+  releaseMutex = defaultReleaseMutex, pause = sleep, mutexBusy = defaultMutexBusy, holderQueued = defaultHolderQueued } = {}) {
+  let ticket = null; // the first ticket: our place in the FIFO, kept across a turn given back
   for (let round = 1; ; round++) {
-    await lock.acquire(fifoTimeoutMs);
+    await lock.acquire(fifoTimeoutMs, ticket ? { ticket } : {});
+    ticket ??= lock.lastTicket ?? null;
     if (!sessionMutex) return { round, release: () => lock.release(), refresh: () => lock.refresh() };
+    // a holder queued behind us cannot release while we hold the head: give the turn back at once; any other holder
+    // (between its own captures) gets mutexWaitMs
+    const queued = holderQueued(sessionMutex);
     const started = Date.now();
-    while (Date.now() - started < mutexWaitMs) {
+    for (;;) {
       if (tryMutex(sessionMutex)) {
         log(`capture FIFO and session mutex held (round ${round})`);
         return { round, refresh: () => lock.refresh(), release: () => { releaseMutex(sessionMutex); lock.release(); } };
       }
+      if (queued || Date.now() - started >= mutexWaitMs) break;
       lock.refresh();
       await pause(500);
     }
     lock.release();
-    log(`session mutex busy for ${Math.round(mutexWaitMs / 1000)} s at the FIFO head: FIFO released, queueing again once it is free (round ${round})`);
-    // its holder is most likely queued behind us: hold no ticket until the mutex is free, so the next head is not
-    // the same standoff
+    log(`session mutex busy at the FIFO head (its holder ${queued ? 'is queued behind us' : `kept it ${Math.round(mutexWaitMs / 1000)} s`}): `
+      + `turn given back; re-entering at our place once it is free (round ${round})`);
+    // no ticket while the holder works, then our original ticket: the next head is not the same standoff, and the
+    // turn given back costs one holder's batch, not the whole queue
     const waitFrom = Date.now();
     while (mutexBusy(sessionMutex) && Date.now() - waitFrom < mutexIdleWaitMs) await pause(5_000);
     await pause(2_000);
   }
 }
-function mutexBusy(dir) {
-  try {
-    const owner = Number(readFileSync(path.join(dir, 'pid'), 'utf8').trim());
-    if (!owner) return existsSync(dir);
-    try { process.kill(owner, 0); return true; } catch { return false; } // a dead owner's mutex is stale
-  } catch { return existsSync(dir); }
+function mutexOwner(dir) {
+  try { return Number(readFileSync(path.join(dir, 'pid'), 'utf8').trim()) || null; } catch { return null; }
+}
+function defaultMutexBusy(dir) {
+  const owner = mutexOwner(dir);
+  if (!owner) return existsSync(dir);
+  try { process.kill(owner, 0); return true; } catch { return false; } // a dead owner's mutex is stale
+}
+function defaultHolderQueued(dir) {
+  const owner = mutexOwner(dir);
+  if (!owner) return false;
+  try { return readdirSync(CAPTURE_QUEUE_DIR).some((name) => name.endsWith(`-${owner}.t`)); } catch { return false; }
 }
 function defaultTryMutex(dir) {
   try { mkdirSync(dir); writeFileSync(path.join(dir, 'pid'), String(process.pid)); return true; } catch { return false; }

@@ -198,6 +198,22 @@ assert.equal(stats([]).med, null);
   assert.deepEqual(events.slice(-2), ['mutex-release', 'fifo-release']);
 }
 {
+  // the mutex's holder is queued behind us: the turn goes back at once, and we re-enter under our first ticket
+  const calls = [];
+  let free = false;
+  const lock = {
+    lastTicket: null,
+    acquire: async (_ms, opts = {}) => { calls.push(opts.ticket ?? 'new'); lock.lastTicket = opts.ticket ?? 'T1'; },
+    release: () => calls.push('release'), refresh: () => {},
+  };
+  const logs = [];
+  const held = await acquireProbeLocks({ sessionMutex: '/m', lock, log: (l) => logs.push(l), mutexWaitMs: 10_000, pause: async () => { free = true; },
+    tryMutex: () => free && calls.length > 2, releaseMutex: () => {}, mutexBusy: () => !free, holderQueued: () => !free });
+  assert.equal(held.round, 2);
+  assert.deepEqual(calls, ['new', 'release', 'T1'], 'given back without waiting, then the original ticket');
+  assert.match(logs[0], /queued behind us/);
+}
+{
   const slot = (label, order, gpu) => ({ mapId: 'verdant', label, key: `verdant-s${order}-${label}`, samples: [{ viewport: '1600x900', view: 'chase',
     summary: { gpuFrame: { med: gpu, p25: gpu - 1 }, cpuFrame: { med: 5 }, calls: { med: 600 }, tris: { med: 1 }, segmentedOverWhole: 1,
       passes: { scene: { gpu: { med: gpu / 2 }, cpu: { med: 1 }, calls: { med: 300 } } } } }] });
