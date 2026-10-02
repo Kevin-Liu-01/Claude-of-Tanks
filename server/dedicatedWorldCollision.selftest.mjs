@@ -39,9 +39,11 @@ const expected = {
   fjord: [7357, 7301, 7679],
   delta: [7742, 7430, 9644],
   badlands: [3013, 2917, 1920],
-  monsoon: [9472, 9214, 12022],
+  // Native recapture with prior prop code also contains this additional wreck.
+  monsoon: [9473, 9215, 12022],
   alpine: [9118, 9045, 8009],
-  caldera: [5002, 5109, 3810],
+  // Same prior-props baseline verification as Monsoon.
+  caldera: [5003, 5110, 3810],
   foundry: [4277, 4385, 3119],
   ruinspires: [2823, 9284, 1050],
   blackglass: [3661, 5894, 2333],
@@ -81,6 +83,18 @@ for (const [mapId, counts] of Object.entries(expected)) {
     `${mapId} dedicated movement preserves narrow hedgehog beam shapes`);
   assert.ok(hedgehogColliders.every((record) => record.shape2?.kind === 'obb'),
     `${mapId} dedicated shell collision preserves narrow hedgehog beam shapes`);
+  for (const kind of ['rubble', 'hedgehog', 'small-rock']) {
+    const clutter = mapWorld.getObstacles().filter(record => record.kind === kind);
+    assert.ok(clutter.every(record => record.crushable && record.crushMin === 0 && record.crushKeep === 1 && Number.isInteger(record.propIdx)),
+      `${mapId}/${kind}: contact yields without a speed or track-damage impact`);
+    for (const propIdx of new Set(clutter.map(record => record.propIdx))) {
+      const members = clutter.filter(record => record.propIdx === propIdx);
+      const shells = mapWorld.getColliders().filter(record => record.propIdx === propIdx);
+      assert.equal(members.length, kind === 'hedgehog' ? 3 : 1);
+      assert.equal(shells.length, members.length, 'movement and shell members share their destruction owner');
+      assert.ok(shells.every(record => record.crushable && record.kind === kind));
+    }
+  }
   const treeObstacles = mapWorld.getObstacles().filter((record) => record.treeIdx != null);
   const treeColliders = mapWorld.getColliders().filter((record) => record.treeIdx != null);
   // 2026-09-19: Mars (Olympus Basin) fields no vegetation by design (its species counts are zero), so

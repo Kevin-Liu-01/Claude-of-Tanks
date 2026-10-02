@@ -6,8 +6,10 @@ class FakeGear extends EventTarget {
 }
 
 let action = null;
+let spectating = false;
+let releases = 0;
 const busHandlers = new Map();
-const input = { onAction(_id, handler) { action = handler; } };
+const input = { releaseLock() { releases++; }, onAction(_id, handler) { action = handler; } };
 const bus = { on(event, handler) { busHandlers.set(event, handler); } };
 const gear = new FakeGear();
 let now = 1000;
@@ -22,6 +24,7 @@ const access = createSettingsAccess({
   input,
   bus,
   gearVisible: () => true,
+  isSpectating: () => spectating,
 }, async () => {
   attempts++;
   if (attempts === 1) throw new Error('simulated settings chunk failure');
@@ -82,5 +85,15 @@ now += 251;
 gear.dispatchEvent(new Event('click'));
 await Promise.resolve();
 assert.equal(opens, 2);
+
+access.close();
+spectating = true;
+action('Escape');
+await Promise.resolve();
+assert.equal(releases, 1, 'spectator Escape explicitly releases capture');
+assert.equal(access.isOpen(), false, 'spectator Escape never opens Settings');
+action('Pad9');
+await Promise.resolve();
+assert.equal(access.isOpen(), true, 'gamepad menu remains available while spectating');
 
 console.log('settingsAccess.selftest: retry, intent, modal and replay gates passed');

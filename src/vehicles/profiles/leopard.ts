@@ -12774,8 +12774,9 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
     // tapering gently to z=-2.3 rather than a circular pancake.  Two dense
     // ellipsoid skins give the curved side/roof read while the rear closure
     // gives the basket and antenna bases a physical load path.
-    P.add('turret', xform(sph(1, P.q ? 30 : 20), 0, 0, 0, 0, 0, 0, [1.30, 0.43, 1.78]), 0, 0.39, -0.42);
-    P.add('turret', xform(sph(1, P.q ? 28 : 18), 0, 0, 0, 0, 0, 0, [1.17, 0.31, 1.57]), 0, 0.61, -0.36);
+    // Keep the functional launcher seating surface identical at every quality.
+    P.add('turret', xform(sph(1, 30), 0, 0, 0, 0, 0, 0, [1.30, 0.43, 1.78]), 0, 0.39, -0.42);
+    P.add('turret', xform(sph(1, 28), 0, 0, 0, 0, 0, 0, [1.17, 0.31, 1.57]), 0, 0.61, -0.36);
     P.add('turret', box(1.68, 0.055, 1.92), 0, 0.78, -0.62);
     P.add('turret', slab(
       [-0.90, 0.04, -1.48], [0.90, 0.04, -1.48], [0.62, 0.08, -2.25], [-0.62, 0.08, -2.25],

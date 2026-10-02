@@ -11,7 +11,7 @@ assert.doesNotMatch(garageTs.slice(headerStart, headerEnd), /cot-garage-variant-
   'staging selection does not consume space in the primary header');
 
 assert.match(garageTs,
-  /<div class="cot-leftcol">` \+\s*`<div class="cot-garage-variant-control">` \+[\s\S]*?<div class="cot-maps"/,
+  /<div class="cot-leftcol">` \+\s*`<div class="cot-drawer-heading">[^\n]+\n\s*`<div class="cot-garage-variant-control">` \+[\s\S]*?<div class="cot-maps"/,
   'the staging selector sits immediately above Battlefield in the setup rail');
 assert.match(garageTs,
   /class="cot-garage-variant-trigger-thumb"[\s\S]*?class="cot-garage-variant-label"/,

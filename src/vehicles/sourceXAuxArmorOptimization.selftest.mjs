@@ -46,7 +46,13 @@ assert.equal(hash(ids.map(id=>({id,armor:id==='type10_x'
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-  '17d18278b16564ba06b300c75e0559f98e1ccc0e530df0081f76d597d2f5b6f5',
+  // 2026-10-01: full JSON comparison with 24c5c5b03 proves the only
+  // differences across all seven armor objects are one added roofGun module
+  // on k1a1_x and type10_x. Existing armor, ERA, modules and crew are exact.
+  // Version the complete golden, including both new damageable weapons;
+  // the historical golden was 17d18278b16564ba06b300c75e0559f98e1ccc0e530df0081f76d597d2f5b6f5.
+  // Evidence: .qa-dev/module-armor-{main,current}.json.
+  '0f9b70f9edfd933b9c77a4e0ad6ee64eff31d438ea5a61564b4e692eb910c6ca',
   'all seven pre-optimization armor objects retain their golden, with the declared Type 10 track-only inverse');
 assert.equal(serialize(type10Armor),type10Before,'historical witness must not mutate the current candidate');
 

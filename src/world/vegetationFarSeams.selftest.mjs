@@ -50,8 +50,8 @@ for (const fn of functions) {
   }
   visit(fn);
 }
-assert.deepEqual(callOwners, [farNames[0], farNames[1], farNames[1], farNames[2], farNames[2], farNames[3]],
-  'only the six far-shell callsites opt in; near palms cannot silently change');
+assert.deepEqual(callOwners, ['buildPalmGeometry', farNames[0], farNames[1], farNames[1], farNames[2], farNames[2], farNames[3]],
+  'six far shells and the near palm crown use joined corners');
 for (const name of ['canopyJitterNoise', 'canopyCornerKey', 'jitterFarShell']) {
   const fn = functions.find(node => node.name.text === name);
   assert.ok(fn);
@@ -79,6 +79,7 @@ function compile(input = text, mode = 'current') {
     }
     visit(src); assert.ok(value, name); return value;
   };
+  const oldJitterFixture = fns.some(n => n.name.text === 'jitterRadial') ? '' : originalJitter;
   const code = fns.slice(first, last + 1).map(node => {
     const name = node.name.text;
     if (mode === 'historical' && name === 'jitterRadial') return originalJitter;
@@ -86,8 +87,8 @@ function compile(input = text, mode = 'current') {
     if (mode === 'historical' && name === 'mergeParts') return originalMerge;
     let code = node.getText(src).replace(/^export /, '');
     if (mode === 'near-palm' && name === 'buildPalmGeometry') {
-      assert.ok(code.includes('jitterRadial(core, rng, 0.25)'));
-      code = code.replace('jitterRadial(core, rng, 0.25)', 'jitterFarShell(core, rng, 0.25)');
+      assert.ok(code.includes('jitterFarShell(core, rng, 0.25)'));
+      code = code.replace('jitterFarShell(core, rng, 0.25)', 'jitterRadial(core, rng, 0.25)');
     }
     if (mode === 'indexed' && name === 'mergeParts') return 'function mergeParts(parts) { return mergeGeometries(parts, false); }';
     if (mode === 'poisoned' && name === 'jitterFarShell') code = code.replace('  return geo;', "  geo.getAttribute('normal').array.fill(NaN);\n  return geo;");
@@ -105,7 +106,7 @@ function compile(input = text, mode = 'current') {
       const receipt = streams.map(({seed, calls, next}) => ({seed, calls, tail: [next(), next(), next(), next()]}));
       streams.length = 0; return receipt;
     }
-    const BIRCH_VAR = ${variable('BIRCH_VAR')};\n${get('makeBirchFoliageTexture')}\n${code}
+    const BIRCH_VAR = ${variable('BIRCH_VAR')};\n${get('makeBirchFoliageTexture')}\n${oldJitterFixture}\n${code}
     function library(seed, input) {
       const cfg = { vegetation: input }, veg = ${variable('veg')};
       ${input.slice(start, end)}
@@ -237,7 +238,17 @@ function compareLibrary(seed, veg, label) {
       const actual = a.SPECIES[species].near(k, a.palOf(species)), old = b.SPECIES[species].near(k, b.palOf(species));
       assert.deepEqual(JSON.parse(JSON.stringify(current.rngReceipt())), JSON.parse(JSON.stringify(historical.rngReceipt())),
         label + '/near exact constructor RNG tails');
-      for (const key of Object.keys(actual)) { exact(actual[key], old[key], `${label}/${species}/${k}/near/${key}`); actual[key].dispose(); old[key].dispose(); }
+      for (const key of Object.keys(actual)) {
+        if(species==='palm'&&key==='trunk'){
+          assert.deepEqual(budget(actual[key]),budget(old[key]),'palm crown keeps its geometry budget');
+          for(const attr of ['uv','color','aFlex'])assert.deepEqual(actual[key].attributes[attr].array,old[key].attributes[attr].array);
+          const p=actual[key].attributes.position, corners=new Set();
+          for(const attr of ['position','normal'])assert.deepEqual(actual[key].attributes[attr].array.subarray(0,(p.count-60)*3),old[key].attributes[attr].array.subarray(0,(p.count-60)*3),'only palm core changes');
+          for(let i=p.count-60;i<p.count;i++)corners.add(`${p.getX(i)},${p.getY(i)},${p.getZ(i)}`);
+          assert.equal(corners.size,12,'palm crown corners stay joined');
+        }else exact(actual[key], old[key], `${label}/${species}/${k}/near/${key}`);
+        actual[key].dispose();old[key].dispose();
+      }
       near++;
     }
     for (let k = 0; k < 2; k++) {
@@ -297,4 +308,4 @@ assert.ok(skyFill && Number(skyFill[1]) === HORIZON_FOREST_IMPOSTOR_SKY_FILL, 't
 const ringImpostorLaw = { wrap: HORIZON_FOREST_IMPOSTOR_WRAP, thin: HORIZON_FOREST_IMPOSTOR_THIN, skyFill: HORIZON_FOREST_IMPOSTOR_SKY_FILL };
 console.log(JSON.stringify({ protocol: 'vegetation-far-seams-v1', primitives, near, far, bushes, tornGaps, ringImpostorLaw,
   baselineSource: baselinePath ?? 'literal original jitter/merge with current authored builders' }));
-console.log('Far seams: near storage/geometry/transforms exact, far topology/RNG/budgets preserved, historical tears/near-palm/index/attribute mutations rejected. No native art or cost acceptance.');
+console.log('Tree seams: joined palm core verified, other near geometry exact, far topology/RNG/budgets preserved, historical tears/index/attribute mutations rejected. No native art or cost acceptance.');

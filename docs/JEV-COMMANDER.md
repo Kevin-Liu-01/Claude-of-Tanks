@@ -137,7 +137,7 @@ The order is `{ posture, targetId, fire, threat, point, untilS }`:
 
 | Order part | From | Effect in the classic brain (all gated on a live order; nothing changes without one) |
 | --- | --- | --- |
-| `targetId` | `target_bN` choice ≥ 0.4, not `none`, the enemy alive and still spotted | claimed right after the return-fire lock on the player, before the classic ranking; no line of sight → the vantage search moves the hull |
+| `targetId` | `target_bN` choice ≥ 0.4, not `none`, the enemy alive and still spotted | claimed before the classic ranking; no line of sight → the vantage search moves the hull |
 | `hold` | posture | hold band × 1.35, cover discipline × 1.25 |
 | `push` | posture | hold band × 0.55, `pressUntilS` (the stalemate-push machinery: no reload cover, the outnumbered guard remains active), closes at full throttle beyond the band |
 | `flank_left` / `flank_right` | posture | `startFlank` on the named side (left = the bot's left while facing the target) |

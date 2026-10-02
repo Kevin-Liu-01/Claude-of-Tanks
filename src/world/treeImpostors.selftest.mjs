@@ -24,7 +24,8 @@ import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 // The pinned bake-input digests (seed 2001, the real leaf atlases): a changed builder or atlas moves them — re-pin deliberately.
 // Round 77c (2026-09-26): re-pinned for the elevated ring — the layout text carries the ring's elevation ('flat' where the
 // atlas has none) and every row its capture elevation; Nordhavn's atlas gains its three 45° rows.
-const PINS = { verdant: '33ca4146', fjord: 'a9c982e2', delta: 'a43cefd0' };
+// October 2026: reviewed branch-supported crowns and species-relative lower sprays.
+const PINS = { verdant: '62b3806e', fjord: '7cfbf58d', delta: 'ae9be18e' };
 
 // --- the layout law -------------------------------------------------------------------------------------------
 assert.equal(resolveTreeImpostorTile(6), 128, 'two species fit 128 px tiles');

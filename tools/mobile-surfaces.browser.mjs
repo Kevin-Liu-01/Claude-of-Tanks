@@ -39,11 +39,7 @@ for(const [name,width,height,locale='en-US'] of [
     if(issues.length)await page.screenshot({path:resolve(out,`${name}-${label}-FAIL.png`)});
   }
   async function closeDrawer(){
-    const point=await page.locator('.cot-garage-panel-scrim').evaluate(el=>{
-      for(let y=8;y<innerHeight;y+=16)for(let x=8;x<innerWidth;x+=16)if(document.elementFromPoint(x,y)===el)return {x,y};
-      return null;
-    });
-    assert.ok(point,`${name}: drawer has a tappable dismiss area`);await page.touchscreen.tap(point.x,point.y);
+    await page.locator('.cot-dossier-close:visible,.cot-drawer-close:visible').first().tap();
   }
   async function reachable(selector){
     const el=page.locator(selector).first();await el.scrollIntoViewIfNeeded();
@@ -85,9 +81,7 @@ for(const [name,width,height,locale='en-US'] of [
     if(panel==='appearance')await reachable('.cot-camos .cot-camo-card:not([hidden]):last-of-type');
     if(panel==='equipment')await reachable('.eqslot');
     await page.screenshot({path:resolve(out,`${name}-${panel}.png`)});
-    if(panel==='equipment')await closeDrawer();
-    else if(await page.locator(`button[data-garage-panel="${panel}"]`).isVisible()) await tap(`button[data-garage-panel="${panel}"]`);
-    else await closeDrawer();
+    await closeDrawer();
   }
   await page.evaluate(()=>window.__MOBILE_SURFACES.settings.open());
   for(const tab of ['gameplay','sound','graphics','language']){

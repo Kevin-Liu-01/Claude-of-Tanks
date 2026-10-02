@@ -42,7 +42,7 @@ for(const [id,caliber] of Object.entries(requested)){
  assert.deepEqual(shooter.combat.ammo,[4,6]);assert.equal(shooter.combat.reload.t,9,id+' independent main reload');
  const hull=new THREE.Group(),turret=new THREE.Group(),root=new THREE.Group(),gun=new THREE.Group();
  hull.position.copy(vector(Object.values(shooter.state.pos)));hull.rotation.set(-.03,.2,-.04,'YXZ');
- turret.position.fromArray(shooter.spec.armor.turretPivot);turret.rotation.y=.3;hull.add(turret);
+ turret.position.fromArray(kit.turretPivot);turret.rotation.y=.3;hull.add(turret);
  root.position.fromArray(g.position);root.scale.fromArray(g.scale);root.quaternion.fromArray(g.rotation)
   .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),shooter.combat.auxiliary.gunYaw));turret.add(root);
  gun.position.fromArray(g.pivot);gun.rotation.x=-shooter.combat.auxiliary.gunPitch;root.add(gun);hull.updateMatrixWorld(true);

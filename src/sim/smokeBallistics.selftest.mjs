@@ -16,7 +16,7 @@ for(const [id,kit] of Object.entries(AUXILIARY_INVENTORY)) {
   assert.equal(requestAuxiliary(tank,'smoke',10,ground),true);
   const screen=tank.combat.auxiliary.smoke;
   const hull=new THREE.Group(),turret=new THREE.Group();
-  hull.rotation.set(-.1,.35,-.04,'YXZ');turret.rotation.y=-.7;turret.position.set(0,1.5,0);hull.add(turret);hull.updateMatrixWorld(true);
+  hull.rotation.set(-.1,.35,-.04,'YXZ');turret.rotation.y=-.7;turret.position.fromArray(kit.turretPivot??[0,1.5,0]);hull.add(turret);hull.updateMatrixWorld(true);
   assert.equal(screen.canisters.length,kit.smoke.length);
   for(let i=0;i<kit.smoke.length;i++){
    const socket=kit.smoke[i],frame=socket.owner==='turret'?turret:hull,shot=screen.canisters[i];

@@ -5,6 +5,7 @@ import {createTank} from './tankFactory.ts';
 import {SECOND_WAVE_X_IDS} from './sourceXSecondWaveSpecs.ts';
 import {SUPPLIED_SOURCE_IDS} from './suppliedSourceFleetSpecs.ts';
 import {FLEET_RENEWAL_NEW_IDS} from './fleetRenewalSpecs.ts';
+import {NATIONAL_MODERNIZATION_IDS} from './nationalModernizationConfig.ts';
 import {SURFACE_MARKING_STYLE,VEHICLE_MARKING_ANCHORS} from './vehicleMarkings.ts';
 
 // This immutable hash is the 151 original anchor records at c26b3194200f52b,
@@ -25,7 +26,7 @@ const laterIds=new Set([...laterAbramsIds,'type100','ztz100_x','ztz100_prototype
   // 2026-09-28 French IFVs are additions, not changes to the historical anchors.
   'amx10p','amx10p_25','marder2',...SUPPLIED_SOURCE_IDS,
   // Owner-authored September 30 additions have no record in the historical fleet.
-  ...FLEET_RENEWAL_NEW_IDS]);
+  ...FLEET_RENEWAL_NEW_IDS,...NATIONAL_MODERNIZATION_IDS]);
 assert.equal(newIds.size,23,'the C2 addition does not change the original second-wave batch');
 assert.equal(newIds.has('ariete_c2_x'),false);
 assert.deepEqual(VEHICLE_MARKING_ANCHORS.ariete_c2_x,{
@@ -37,6 +38,8 @@ assert.ok(VEHICLE_MARKING_ANCHORS.ztz100_prototype,'the separately restored hist
 for(const id of SUPPLIED_SOURCE_IDS)assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: new supplied-source anchor is present`);
 for(const id of laterAbramsIds)assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: later Abrams anchor remains present`);
 for(const id of ['amx10p','amx10p_25'])assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: new French IFV anchor is present`);
+assert.equal(NATIONAL_MODERNIZATION_IDS.length,12,'the national modernization batch has twelve separate anchors');
+for(const id of NATIONAL_MODERNIZATION_IDS)assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: new national variant anchor is present`);
 const oldAnchors=Object.fromEntries(Object.entries(VEHICLE_MARKING_ANCHORS)
   .filter(([id])=>!newIds.has(id)&&!laterIds.has(id)).sort(([a],[b])=>a.localeCompare(b)));
 assert.equal(Object.keys(oldAnchors).length,141,'all pre-second-wave anchors of the live fleet remain');
