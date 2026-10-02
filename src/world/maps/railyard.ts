@@ -126,9 +126,9 @@ export default {
   },
 
   layoutBrief: { exceptions: {
-    solidPropsInRoad: 'roadside wrecks, scattered boulders, rubble and a field-work pillbox from the shared props passes '
-      + '(centre clearances of 4.5-6 m against footprint radii up to 5.8 m) can reach a carriageway edge; the shared laws '
-      + 'are fixed fleet-wide in roll-out batch 1',
+    solidPropsInRoad: 'a roadside wreck and a field-work pillbox from the shared props passes (centre clearances of 6 m '
+      + 'against footprint radii up to 5.8 m) reach the carriageway edge; the shared laws are fixed fleet-wide in '
+      + 'roll-out batch 1',
   } },
 
   spawns: {

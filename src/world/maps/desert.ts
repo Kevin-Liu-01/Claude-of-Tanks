@@ -162,12 +162,6 @@ export default {
     ],
   },
 
-  // docs/MAP-LAYOUT-BRIEF.md exceptions (tools/map-layout-metrics.mjs reports the reason instead of a miss).
-  layoutBrief: { exceptions: {
-    solidPropsInRoad: 'street rubble from the shared placeStreetRubble pass (4.5 m centre clearance against a pile '
-      + 'radius of up to 2.9 m) can reach a carriageway edge; the shared law is fixed fleet-wide in roll-out batch 1',
-  } },
-
   spawns: {
     // Alpha deploys directly south of the Gara, which screens the pad from the ford and the north; bravo's seven
     // pads are the rotation of that ground, an arc north of the Erg Dune (its screen), clear of the North Mesa by

@@ -127,8 +127,9 @@ export default {
 
   // docs/MAP-LAYOUT-BRIEF.md exceptions (tools/map-layout-metrics.mjs reports the reason instead of a miss).
   layoutBrief: { exceptions: {
-    solidPropsInRoad: 'street rubble and scattered boulders from the shared props passes (centre clearances of 4.5 m '
-      + 'and 6 m against pile and boulder radii up to 5 m) can reach a carriageway edge; fixed fleet-wide in roll-out batch 1',
+    solidPropsInRoad: 'one street-front row building at the south wall lane\'s eastern chamfer stands 0.35 m into the '
+      + 'carriageway: street rows keep clear of other roads but not of the other legs of their own road; the shared '
+      + 'law is fixed fleet-wide in roll-out batch 1',
   } },
 
   spawns: {
