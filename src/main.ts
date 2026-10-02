@@ -2173,8 +2173,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
     import('./mp/host/browserHostPort.ts'),
     import('./mp/host/worldCollision.ts'),
     import('./mp/transport/iceConfig.ts'),
-    import('./mp/session/endpoint.ts'),
-  ]).then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE }, { loadIceConfiguration }, { resolveIceConfigUrl }]) => {
+  ]).then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE }, { createRoomIceResolver }]) => {
     // The launch runs on the app's ports: the loader, the world, the warm owners, the activation.
     const options = multiplayerAppPorts();
     const activation = createActivationRuntime(options.activation);
@@ -2224,17 +2223,13 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           report: (summary, reason) => entryTelemetry.send({ kind: 'mp_exit', mode: 'network', code: reason, reason: summary.health, link: summary }),
         },
         // Peer-to-peer (docs/MULTIPLAYER-V2.md §13): the host actor's Worker chunk, the collision manifests the build serves,
-        // ICE from the credential service (api/ice.ts through src/mp/transport/iceConfig.ts), the device tier (the mobile tier never hosts).
+        // ICE from the room this seat holds (§13.14: its relay credentials through src/mp/transport/iceConfig.ts), the
+        // device tier (the mobile tier never hosts).
         p2p: {
           createHostPort: createBrowserHostPort,
           manifestBase: COLLISION_MANIFEST_ROUTE,
           tier: getDeviceTier(),
-          loadIce: async (mode) => {
-            const configuration = mode === 'lan'
-              ? await loadIceConfiguration({ mode })
-              : await loadIceConfiguration({ mode, endpoint: resolveIceConfigUrl({ configured: import.meta.env.VITE_ICE_CONFIG_URL, protocol: location.protocol }) });
-            return { iceServers: configuration.iceServers, relayOnly: configuration.relayOnly };
-          },
+          createIceResolver: (mode, room) => createRoomIceResolver({ mode, room }),
         },
       },
     });

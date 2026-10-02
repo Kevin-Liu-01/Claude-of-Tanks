@@ -7,7 +7,8 @@
  * - The browser reads it through `src/officialHost.ts`, and the site metadata through `src/presentation/siteMetadata.ts`;
  *   it therefore imports nothing and stays DOM-free (the rooms Worker's program reaches it through the session endpoint).
  * - Copies that cannot import it are pinned to it by `tools/deployment-policy.selftest.mjs`: the Workers'
- *   `ALLOWED_ORIGINS` (`cloudflare/rooms/wrangler*.jsonc`, `cloudflare/telemetry/wrangler.jsonc`) and the dependency-free
+ *   `ALLOWED_ORIGINS` (`cloudflare/rooms/wrangler*.jsonc`, `cloudflare/telemetry/wrangler.jsonc`), the rooms Worker's
+ *   `COT_STUN_URLS` and the dependency-free
  *   entry telemetry module (`src/entry/telemetry.ts`); the inline boot watchdog's two literals in `index.html` by
  *   `src/entry/inlineWatchdogSink.selftest.mjs`; vercel.json's alias-host redirects by `tools/vercel-routes.selftest.mjs`.
  *
@@ -40,6 +41,12 @@ export const TELEMETRY_ALLOWED_ORIGINS: readonly string[] = ALLOWED_ORIGINS;
 export const OFFICIAL_ROOMS_URL = 'wss://cot-rooms.kk23907751.workers.dev';
 /** The telemetry sink (`cloudflare/telemetry`); the Vercel route `/api/telemetry` stays the fallback elsewhere. */
 export const OFFICIAL_TELEMETRY_URL = 'https://cot-telemetry.kk23907751.workers.dev';
+/**
+ * The official STUN servers (2026-10-02, docs/MULTIPLAYER-V2.md §13.14): what a seat's relay grant from the rooms Worker
+ * carries when no TURN credential can be minted (`COT_STUN_URLS` in cloudflare/rooms/wrangler.jsonc, pinned here by
+ * tools/deployment-policy.selftest.mjs) and the deprecated `/api/ice` answer for tabs loaded before the move.
+ */
+export const OFFICIAL_STUN_URLS: readonly string[] = Object.freeze(['stun:stun.cloudflare.com:3478']);
 
 /** True for the deployed site's own host (case-insensitive, no port). */
 export function isOfficialSiteHost(hostname: unknown): boolean {

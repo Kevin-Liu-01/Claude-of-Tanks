@@ -37,6 +37,7 @@ import type { WorldCollisionLike } from '../presentation/predictionWorld.ts';
 import type { ControlSample } from '../match/inputStream.ts';
 import type { MatchFrame } from '../match/matchClient.ts';
 import type { Unsubscribe } from '../transport/transport.ts';
+import type { RtcIceConfig } from '../transport/webRtcTransport.ts';
 import { ACTION_BITS, VERDICT } from '../wire/index.ts';
 import type { VerdictId, WelcomeMessage, WireEvent } from '../wire/index.ts';
 import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
@@ -270,12 +271,15 @@ export interface BrowserStatusPorts {
 }
 
 /**
- * The peer-to-peer surfaces (P2 client lane, 2026-09-28): ICE from v1's credential source per room mode, the host
- * actor's Worker, where the collision manifests are served, the device tier (the mobile tier never hosts).
+ * The peer-to-peer surfaces (P2 client lane, 2026-09-28): the ICE of each room session, the host actor's Worker, where
+ * the collision manifests are served, the device tier (the mobile tier never hosts).
  */
 export interface BrowserP2pPorts extends Omit<MatchSessionP2pOptions, 'ice' | 'onLog'> {
-  /** ICE servers for a room mode (`lan` needs none; `private` asks the credential service). */
-  loadIce?(mode: RoomMode): Promise<MatchSessionP2pOptions['ice'] extends infer T ? Exclude<T, undefined | (() => unknown)> : never>;
+  /**
+   * The ICE resolver of one room session (2026-10-02, docs/MULTIPLAYER-V2.md §13.14): `lan` needs no server; a private
+   * room's relay credentials come from the room this seat holds (`RoomClient.requestRelay`), per peer connection.
+   */
+  createIceResolver?(mode: RoomMode, room: V2RoomSession['client']): () => Promise<RtcIceConfig>;
 }
 
 export interface BrowserCompositionPorts {
@@ -826,7 +830,7 @@ export function createBrowserComposition({
       ...(p2pPorts ? {
         p2p: {
           ...p2pPorts,
-          ice: p2pPorts.loadIce ? () => p2pPorts.loadIce!(roomMode()) : undefined,
+          ice: p2pPorts.createIceResolver ? p2pPorts.createIceResolver(roomMode(), next.client) : undefined,
           onLog: (level, message, fields) => {
             const detail = fields ? `${message} ${JSON.stringify(fields)}` : message;
             if (level === 'error') reportError(`multiplayer v2 host ${level}`, detail);

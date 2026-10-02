@@ -14,7 +14,8 @@ import { RoomActor } from './roomActor.ts';
 import { createP2pMatchHost } from './p2pMatchHost.ts';
 import {
   ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS, ROOM_MATCH_POLL_MS, ROOM_MATCH_REPORT_STALE_AFTER_MS,
-  ROOM_RATE_MAX_MESSAGES, ROOM_SEAT_DISCONNECT_TTL_MS, ROOM_SIGNAL_MAX_BYTES, ROOM_STATE_COALESCE_MS, ROOM_UNAUTHENTICATED_TIMEOUT_MS,
+  ROOM_RATE_MAX_MESSAGES, ROOM_RELAY_ROOM_LIMIT, ROOM_RELAY_SEAT_LIMIT, ROOM_RELAY_WINDOW_MS, ROOM_SEAT_DISCONNECT_TTL_MS, ROOM_SIGNAL_MAX_BYTES,
+  ROOM_STATE_COALESCE_MS, ROOM_UNAUTHENTICATED_TIMEOUT_MS,
   readRoomSnapshot,
 } from './protocol.ts';
 import { signSeatToken, verifySeatToken } from '../../../server/match/seatToken.ts';
@@ -1026,6 +1027,182 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   h3.actor.settleAfterRestore();
   assert.equal(h3.actor.exportState().seatLeases.admin, h3.now + ROOM_SEAT_DISCONNECT_TTL_MS, 'a state without leases: every seat left without a socket is reaped from the restore');
   assert.equal(h3.actor.exportState().seatLeases.guest, h3.now + ROOM_SEAT_DISCONNECT_TTL_MS);
+}
+
+
+// ============================================================ relay credentials from the room (2026-10-02, §13.14)
+
+/** A minting port: every call recorded, each grant its own credential (`cred-<n>`); `hold` parks the next answer. */
+function mintingPort(h) {
+  const calls = [];
+  let held = null;
+  h.ports.relayCredentials = async (request) => {
+    calls.push(request);
+    const grant = { iceServers: [{ urls: 'stun:stun.example.test:3478' }, { urls: ['turns:turn.example.test:443?transport=tcp'], username: `u-${calls.length}`, credential: `cred-${calls.length}` }], relay: true, expiresInSeconds: 3600 };
+    if (held) { const gate = held; held = null; await gate.promise; }
+    return grant;
+  };
+  return {
+    calls,
+    hold() { let release; const promise = new Promise((resolve) => { release = resolve; }); held = { promise }; return () => release(); },
+  };
+}
+const relayOf = (h, socket, requestId) => (h.sent.get(socket) ?? []).findLast((m) => m.requestId === requestId) ?? null;
+const relayCode = (h, socket, requestId) => { const m = relayOf(h, socket, requestId); return m?.type === 'error' ? m.payload.code : m?.type ?? null; };
+
+// ---- no port (the receipts' rooms, an unconfigured host): the seat is answered with no server, never an error
+{
+  const { h } = await startedP2pRoom();
+  const before = h.persists;
+  await h.send('g', 'room_relay', {}, 'rl0');
+  assert.deepEqual(relayOf(h, 'g', 'rl0'), { type: 'room_relay', requestId: 'rl0', payload: { iceServers: [], relay: false } });
+  assert.equal(h.persists, before, 'a relay request persists nothing');
+}
+
+// ---- a seat of the running match: one mint per request — host, peer and spectator alike — to the requesting socket alone
+{
+  const { h } = await startedP2pRoom();
+  const port = mintingPort(h);
+  h.drain('a'); h.drain('g'); h.drain('w');
+  await h.send('g', 'room_relay', {}, 'rl1');
+  await h.send('a', 'room_relay', {}, 'rl2');
+  await h.send('w', 'room_relay', {}, 'rl3');
+  await h.send('g', 'room_relay', {}, 'rl4');
+  assert.deepEqual(port.calls, [{ roomCode: 'ROOM01', playerId: 'guest' }, { roomCode: 'ROOM01', playerId: 'admin' }, { roomCode: 'ROOM01', playerId: 'watcher' }, { roomCode: 'ROOM01', playerId: 'guest' }],
+    'every admitted request is its own mint: nothing is cached across seats or requests');
+  assert.equal(relayOf(h, 'g', 'rl1').payload.iceServers[1].credential, 'cred-1');
+  assert.equal(relayOf(h, 'a', 'rl2').payload.iceServers[1].credential, 'cred-2');
+  assert.equal(relayOf(h, 'w', 'rl3').payload.iceServers[1].credential, 'cred-3');
+  assert.deepEqual(relayOf(h, 'g', 'rl4').payload, { iceServers: [{ urls: 'stun:stun.example.test:3478' }, { urls: 'turns:turn.example.test:443?transport=tcp', username: 'u-4', credential: 'cred-4' }], relay: true, expiresInSeconds: 3600 },
+    'the grant as the protocol validates it');
+  for (const socket of ['a', 'g', 'w']) {
+    const others = (h.sent.get(socket) ?? []).filter((m) => m.type !== 'room_relay');
+    assert.doesNotMatch(JSON.stringify(others), /cred-\d/, `${socket}: no grant rides another message`);
+  }
+  assert.equal(h.all('a', 'room_relay').length, 1, 'a grant reaches the requesting socket alone');
+  assert.doesNotMatch(JSON.stringify(h.actor.exportState()), /cred-\d|u-\d/, 'a grant is never persisted');
+}
+
+// ---- refusals, each with its code and none reaching the port
+{
+  const { h, matchId } = await startedP2pRoom();
+  const port = mintingPort(h);
+  h.actor.handleOpen('z');
+  await h.send('z', 'room_relay', {}, 'n1');
+  assert.equal(relayCode(h, 'z', 'n1'), 'not_in_room', 'an unseated socket');
+  await h.send('g', 'room_relay', {});
+  assert.equal(h.last('g', 'error').payload.code, 'invalid_payload', 'a request without a requestId could be answered to nobody');
+  // a seat without this match's token (the state restored without it): no seat of the running match
+  const state = h.actor.exportState();
+  delete state.matchTokens.guest;
+  const restored = createHarness({ transport: 'p2p' });
+  const restoredPort = mintingPort(restored);
+  restored.actor.restore(state);
+  restored.actor.attachSocket({ id: 'g', playerId: 'guest', acceptedAt: restored.now, lastActivity: restored.now, rateStart: restored.now, rateCount: 0 });
+  restored.actor.attachSocket({ id: 'a', playerId: 'admin', acceptedAt: restored.now, lastActivity: restored.now, rateStart: restored.now, rateCount: 0 });
+  restored.actor.settleAfterRestore();
+  await restored.send('g', 'room_relay', {}, 'n2');
+  assert.equal(relayCode(restored, 'g', 'n2'), 'relay_phase', 'a seat without a seat token of the running match');
+  await restored.send('a', 'room_relay', {}, 'n3');
+  assert.equal(relayCode(restored, 'a', 'n3'), 'room_relay', 'the host, which holds its token, still gets its grant');
+  assert.equal(restoredPort.calls.length, 1);
+  // the match ends: every seat token goes, and with it the relay
+  assert.equal((await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'ended', tick: 300, verdict: { result: 'alpha', reason: 'elimination' } })).type, 'room_ack');
+  await h.send('g', 'room_relay', {}, 'n4');
+  assert.equal(relayCode(h, 'g', 'n4'), 'relay_phase', 'after the end');
+  assert.equal(port.calls.length, 0, 'no refused request reached the port');
+  // a waiting room, and a service-hosted match (no WebRTC at all)
+  const waiting = createHarness({ transport: 'p2p' });
+  const waitingPort = mintingPort(waiting);
+  waiting.actor.handleOpen('a'); await waiting.send('a', 'room_create', { ...identity('admin'), mode: 'private' });
+  await waiting.send('a', 'room_relay', {}, 'n5');
+  assert.equal(relayCode(waiting, 'a', 'n5'), 'relay_phase', 'before any match');
+  const service = createHarness();
+  const servicePort = mintingPort(service);
+  service.actor.handleOpen('a'); await service.send('a', 'room_create', { ...identity('admin'), mode: 'private', settings: { teamSize: 1 } });
+  service.actor.handleOpen('g'); await service.send('g', 'room_join', identity('guest', token('c'), token('d')));
+  await service.command('a', { type: 'set_ready', ready: true });
+  await service.command('g', { type: 'set_ready', ready: true });
+  assert.equal((await service.command('a', { type: 'start' })).type, 'room_ack');
+  await service.send('g', 'room_relay', {}, 'n6');
+  assert.equal(relayCode(service, 'g', 'n6'), 'relay_phase', 'a service-hosted match has no peer connection');
+  assert.equal(waitingPort.calls.length + servicePort.calls.length, 0);
+}
+
+// ---- a seat that leaves (or is kicked) while its grant is minted receives nothing
+{
+  const { h } = await startedP2pRoom({ third: true });
+  const port = mintingPort(h);
+  const release = port.hold();
+  const pending = h.send('g', 'room_relay', {}, 'k1');
+  await h.command('a', { type: 'kick', playerId: 'guest' });
+  release();
+  await pending;
+  assert.equal(port.calls.length, 1, 'the mint was under way');
+  assert.equal(relayOf(h, 'g', 'k1'), null, 'the kicked seat\'s socket receives no grant');
+  const releaseLeave = port.hold();
+  const leaving = h.send('t', 'room_relay', {}, 'k2');
+  await h.send('t', 'room_leave', {}, 'k3');
+  releaseLeave();
+  await leaving;
+  assert.equal(relayOf(h, 't', 'k2'), null, 'a seat that left receives no grant');
+}
+
+// ---- a port that fails, or answers garbage: the seat gets no server and the log names no secret
+{
+  const { h } = await startedP2pRoom();
+  const lines = [];
+  h.ports.log = (level, message, fields) => lines.push({ level, message, fields });
+  h.ports.relayCredentials = async () => { throw new Error('provider said: Bearer token-sensitive'); };
+  await h.send('g', 'room_relay', {}, 'f1');
+  assert.deepEqual(relayOf(h, 'g', 'f1').payload, { iceServers: [], relay: false });
+  assert.deepEqual(lines.map((line) => [line.level, line.message, line.fields.error]), [['warn', 'relay credentials unavailable', 'Error']]);
+  assert.doesNotMatch(JSON.stringify(lines), /sensitive|Bearer/, 'the failure is logged by name, never by message');
+  h.ports.relayCredentials = async () => ({ iceServers: [{ urls: 'https://not-ice.test' }], relay: true });
+  await h.send('g', 'room_relay', {}, 'f2');
+  assert.deepEqual(relayOf(h, 'g', 'f2').payload, { iceServers: [], relay: false }, 'a malformed grant never reaches the seat');
+}
+
+// ---- the windows: ROOM_RELAY_SEAT_LIMIT per seat and ROOM_RELAY_ROOM_LIMIT per room in each ROOM_RELAY_WINDOW_MS
+{
+  const { h } = await startedP2pRoom();
+  const port = mintingPort(h);
+  for (let index = 0; index < ROOM_RELAY_SEAT_LIMIT; index++) await h.send('g', 'room_relay', {}, `w${index}`);
+  await h.send('g', 'room_relay', {}, 'wx');
+  assert.equal(relayCode(h, 'g', 'wx'), 'rate_limit', 'the seat\'s seventh grant of the window');
+  await h.send('a', 'room_relay', {}, 'wa');
+  assert.equal(relayCode(h, 'a', 'wa'), 'room_relay', 'the window is the seat\'s own');
+  assert.equal(port.calls.length, ROOM_RELAY_SEAT_LIMIT + 1, 'a refused request never reaches the port');
+  h.now += ROOM_RELAY_WINDOW_MS;
+  await h.send('g', 'room_relay', {}, 'wy');
+  assert.equal(relayCode(h, 'g', 'wy'), 'room_relay', 'the next window grants again');
+  // the room's window binds before the seats': a room larger than ROOM_RELAY_ROOM_LIMIT / ROOM_RELAY_SEAT_LIMIT seats
+  const seats = Math.floor(ROOM_RELAY_ROOM_LIMIT / ROOM_RELAY_SEAT_LIMIT) + 1;
+  const big = createHarness({ transport: 'p2p' });
+  const bigPort = mintingPort(big);
+  big.actor.handleOpen('s0'); await big.send('s0', 'room_create', { ...identity('p0'), mode: 'private', settings: { teamSize: 14, mapId: 'verdant' } });
+  for (let index = 1; index < seats; index++) {
+    big.actor.handleOpen(`s${index}`);
+    await big.send(`s${index}`, 'room_join', identity(`p${index}`, token(String(index % 10)), token(String((index + 5) % 10))));
+    assert.equal(big.last(`s${index}`, 'room_joined')?.payload.playerId, `p${index}`);
+  }
+  for (let index = 0; index < seats; index++) await big.command(`s${index}`, { type: 'set_ready', ready: true });
+  assert.equal((await big.command('s0', { type: 'start' })).type, 'room_ack');
+  let granted = 0;
+  for (let index = 0; index < seats - 1; index++) {
+    for (let request = 0; request < ROOM_RELAY_SEAT_LIMIT; request++) {
+      await big.send(`s${index}`, 'room_relay', {}, `b${index}-${request}`);
+      if (relayCode(big, `s${index}`, `b${index}-${request}`) === 'room_relay') granted++;
+    }
+  }
+  assert.equal(granted, ROOM_RELAY_ROOM_LIMIT, 'the room grants its window\'s worth');
+  const lastSeat = `s${seats - 1}`;
+  await big.send(lastSeat, 'room_relay', {}, 'bz');
+  assert.equal(relayCode(big, lastSeat, 'bz'), 'rate_limit', 'a seat with an untouched window is refused once the room\'s is spent');
+  assert.equal(bigPort.calls.length, ROOM_RELAY_ROOM_LIMIT);
+  big.now += ROOM_RELAY_WINDOW_MS;
+  await big.send(lastSeat, 'room_relay', {}, 'bn');
+  assert.equal(relayCode(big, lastSeat, 'bn'), 'room_relay', 'the room\'s next window grants again');
 }
 
 console.log('roomActor: PASS');

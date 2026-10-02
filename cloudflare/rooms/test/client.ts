@@ -112,3 +112,24 @@ export function closeClients(): void {
     try { client.socket.close(); } catch { /* already closed */ }
   }
 }
+
+/**
+ * Admin + guest (commanders, plus a third commander on request) + a spectator, everyone ready, the admin starts;
+ * returns the sockets and the match id.
+ */
+export async function startedRoom(code: string, { adminDeclines = false, third = false } = {}): Promise<{ admin: Client; guest: Client; third: Client | null; watcher: Client; matchId: string }> {
+  const admin = await create(code);
+  const guest = await connect(code, `${code}-guest`);
+  expect((await guest.request('room_join', identity('guest', token('c'), token('d')))).type).toBe('room_joined');
+  const thirdClient = third ? await connect(code, `${code}-third`) : null;
+  if (thirdClient) expect((await thirdClient.request('room_join', identity('third', token('1'), token('2')))).type).toBe('room_joined');
+  const watcher = await connect(code, `${code}-watcher`);
+  expect((await watcher.request('room_join', identity('watcher', token('e'), token('f'), { team: 'spectator' }))).type).toBe('room_joined');
+  if (adminDeclines) expect((await admin.command({ type: 'host_decline', declined: true })).type).toBe('room_ack');
+  for (const client of [admin, guest, thirdClient]) if (client) expect((await client.command({ type: 'set_ready', ready: true })).type).toBe('room_ack');
+  const ack = await admin.command({ type: 'start' });
+  expect(ack.type).toBe('room_ack');
+  const matchId = ack.payload.matchId as string;
+  for (const client of [admin, guest, thirdClient, watcher]) if (client) await client.next((message) => message.type === 'match_start');
+  return { admin, guest, third: thirdClient, watcher, matchId };
+}
