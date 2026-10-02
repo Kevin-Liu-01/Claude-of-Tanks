@@ -23,7 +23,10 @@ for (const species of TREE_SPECIES) {
     finiteAttribute(geometry, 'normal');
     finiteAttribute(geometry, 'color');
     finiteAttribute(geometry, 'aFlex');
-    assert.ok(position.count >= 600, `${species}: trunk retains a detailed silhouette`);
+    // p2 trees lane (2026-10-01): counted in triangles — the grown trunk is welded (indexed), and the flat legacy
+    // floor of 600 vertices is 200 triangles
+    const triangles = (geometry.index ? geometry.index.count : position.count) / 3;
+    assert.ok(triangles >= 200, `${species}: trunk retains a detailed silhouette`);
 
     geometry.computeBoundingBox();
     const bounds = geometry.boundingBox;
