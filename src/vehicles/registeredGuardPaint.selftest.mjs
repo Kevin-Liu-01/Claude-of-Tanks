@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import * as T from 'three';
 import {createTank} from './tankFactory.ts';
@@ -10,11 +9,11 @@ import {buildLeopard2A6X} from './profiles/leopardA6X.ts';
 import {buildLeclercX} from './profiles/leclercX.ts';
 import {buildType10X} from './profiles/type10X.ts';
 import {AMX40_X_PROFILES} from './profiles/amx40X.ts';
-import {GUARD_PRE_PAINT_SHA,beforeRegisteredGuardPaint} from './registeredGuardPaint.test-support.mjs';
 import {installCanvasFixture} from './canvasFixture.test-support.mjs';
 
-for(const name of Object.keys(GUARD_PRE_PAINT_SHA)){const source=readFileSync(new URL('./profiles/'+name,import.meta.url),'utf8');
- beforeRegisteredGuardPaint(name,source);assert.throws(()=>beforeRegisteredGuardPaint(name,source+'\n'),'undeclared source edits reject');}
+// 2026-10-01 (owner: retire frozen pins): the pinned pre-paint profile source digests (and their
+// undeclared-edit negative control) are gone. The live differential stays: each build is compared with
+// the same build whose declared painted guards are returned to hullDetail, so the paint stays material-only.
 const cases=[
  {id:'leo2a6_x',build:buildLeopard2A6X,label:['a6-fixed-front-guard','a6-fixed-upper-sheet'],count:8},
  {id:'leclerc_x',build:buildLeclercX,label:'leclerc-fixed-bow-guard',count:2},
@@ -96,5 +95,5 @@ try{for(const row of cases)for(const quality of['high','low'])for(const camo of[
   rows.push({id:row.id,quality,camo,selected:row.count,decorTriangles:after.tank.root.userData.__decorSummary.tris});
  }finally{before.tank.dispose();after.tank.dispose();}
 }}finally{restore();}
-console.log(JSON.stringify({pass:true,originalSources:GUARD_PRE_PAINT_SHA,emissions,posedSpentReceivingRays:rays,rows,
+console.log(JSON.stringify({pass:true,emissions,posedSpentReceivingRays:rays,rows,
  limitation:'Material-only fixed guards, not flexible flaps. Full physical differential and actual UV/material checks; separate native pixels required.'}));

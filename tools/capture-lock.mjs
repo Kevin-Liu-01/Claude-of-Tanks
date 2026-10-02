@@ -156,7 +156,22 @@ export function createCaptureLock({
     try { rmdirSync(lockDir); } catch { /* already released */ }
   }
 
-  return { acquire, refresh, release };
+  // Read-only count of acquisitions queued behind the owner (2026-10-01, gate P5). An owner's own
+  // ticket is removed once it holds the lock, so every ticket of a live process is someone waiting.
+  // A ticket is counted while its process lives, even past the reaping age (waiters never refresh
+  // their tickets): a long batch must yield to a long waiter. Nothing is reaped here. An unreadable
+  // queue reports one waiter, so a caller that yields to waiters keeps the draining behaviour.
+  function waiting() {
+    let names;
+    try {
+      names = readdirSync(queueDir);
+    } catch (error) {
+      return error.code === 'ENOENT' ? 0 : 1;
+    }
+    return names.filter((name) => name.endsWith('.t') && ticketAlive(name)).length;
+  }
+
+  return { acquire, refresh, release, waiting };
 }
 
 const sharedCaptureLock = createCaptureLock();

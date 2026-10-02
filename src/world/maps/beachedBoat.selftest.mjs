@@ -1,6 +1,3 @@
-import { historicalRoadHeightField } from '../roadHistoryTestOracle.mjs';
-import { beforeShorelineContinuity, loadShorelineHistory } from '../shorelineContinuity.test-support.mjs';
-import { originalExitConfig } from '../../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { registerHooks } from 'node:module';
@@ -18,7 +15,6 @@ const hook = registerHooks({ load(url, context, next) {
 } });
 const { dressMapExtras, beachedBoat } = await import(kitUrl);
 hook.deregister();
-const { dressMapExtras: historicalDress } = await loadShorelineHistory(new URL('./mapKits.ts', import.meta.url));
 const names = ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'wood',
   'dark', 'glass', 'curtain', 'straw', 'baked'];
 const consumers = ['coastal', 'fjord', 'mangrove', 'saltwind'];
@@ -66,12 +62,12 @@ function inventory(built) {
   return { other: other.digest('hex'), boat: boat.digest('hex'), vertices, indices, bytes, geometries };
 }
 
-function build(mapId, seed, historical = false) {
-  const config = historical ? originalExitConfig(beforeShorelineContinuity(getMapConfig(mapId))) : getMapConfig(mapId);
-  const field = (historical ? historicalRoadHeightField : createHeightField)(seed, config);
+function build(mapId, seed) {
+  const config = getMapConfig(mapId);
+  const field = createHeightField(seed, config);
   const built = capture(), random = mulberry32(seed ^ 0x5a17);
   let calls = 0;
-  (historical ? historicalDress : dressMapExtras)({ mapId, extraKits: config.props.extraKits,
+  dressMapExtras({ mapId, extraKits: config.props.extraKits,
     riverLandings: config.props.riverLandings, L: field._layout, heightField: field,
     rng: () => { calls++; return random(); }, buckets: built.buckets, groundingReceipts: built.receipts });
   return { ...built, field, calls, next: random() };
@@ -81,39 +77,10 @@ function dispose(built) {
   for (const geometries of Object.values(built.buckets)) for (const g of geometries) g.dispose();
 }
 
-// Current shoreline inventory: RNG calls/tail, boat count, raw kit geometry
-// budgets and exact non-boat bytes. Published buoy waterlines and individually
-// seated river reeds are accounted for; driftwood and all boat support checks
-// below remain unchanged. Saltwind retains its approved 19 m piers.
-// 2026-09-24 (round 56): every strand row re-pinned — the wrack line's mats, sticks, pebbles, shells and landing pieces
-// now follow the kits (vertex-coloured `baked` plus the timber and crate planks in wood) and the coastal driftwood lies
-// in the strand's band instead of on the plain 1.03–1.12 R circle; the mangrove rows (no authored shelf) are unchanged.
-// 2026-09-24 (round 58, jetties at the water's edge): the nine strand rows re-pinned again — the coastal kit's jetty and
-// Saltwind's piers now stand where the strand law puts them (shoreJetty.ts: planted piles from the bed, the deck a
-// constant freeboard over the water surface, a gangway, a moored clinker hull with bollards and lines). The kit burns
-// the retired jetty's 94 draws, so every boat, log and buoy keeps its place; the wrack line's per-piece draws follow
-// its admission past the deck's keep-out, so the shared count and the non-boat bytes still move on Saltmere and
-// Nordhavn; Saltwind's count is unchanged; the mangrove rows are unchanged.
-const controls = {
-'coastal:1337': [921, 0.6025387896224856, 7, 32193, 49260, 1459392, 1331, '423fa911ecae4bcfc07d6f21c5dca629aed040e75d37ea030e1de3a34e9b89d6'],
-  'fjord:1337': [1113, 0.11280965339392424, 0, 16605, 27576, 732096, 663, '60d03aabc74a27a8d6013dfd4923efacb3fe3760e3f8eb055a489954b70d94f6'],
-  'mangrove:1337': [948, 0.8354170476086438, 3, 2918, 5652, 104680, 157, 'afec74e5fc20f8317d4206b2223ab748a0f2e98460e788a7ba984c22c4cf2bb7'],
-  // 2026-09-24 (round 67): the three Saltwind rows re-pinned — the piers take the strand law's shelf-sized length (7 and
-  // 8 spans instead of 10), so the pile, deck and landing-stream bytes and the draws that follow them move; the beached
-  // boats keep their positions (they key on the shore end and the gangway, not the spans). Then all nine strand rows
-  // re-pinned for the wrack line's per-station draw budget (strandWrack.ts: every station draws from its own stream,
-  // so the whole line's bytes move once and a moved keep-out no longer re-rolls the stations past it)
-  'saltwind:1337': [327, 0.49958163732662797, 2, 22788, 34668, 1036872, 945, '4ae0382d46ca943d2131464ae7f303e250faacd5e3a341f35c0dec31cc0c79bd'],
-  'coastal:2049': [919, 0.7120672950986773, 7, 32913, 50340, 1494096, 1361, '02bc9f34dc05f1d92f1c154e43785b41ece6e9f3e732d443786ad447f3b71444'],
-  'fjord:2049': [1113, 0.03331061592325568, 0, 19605, 32076, 874824, 788, '5304735d73166f47b9e54a462dd654b86a6687cb113e981105a8dd8156751457'],
-  'mangrove:2049': [1171, 0.2525088486727327, 3, 3324, 6696, 119760, 186, '1829ce951029eb888a7a82b89b10c5053853311c66e89bb4c0f73f439e277e86'],
-  'saltwind:2049': [327, 0.5719069924671203, 2, 22092, 33624, 1004160, 916, '43ccf8140cef9800e6c810cba0cf3dd5c80105ff56162efaa6ef4e054060d77a'],
-  'coastal:7719': [920, 0.04555910429917276, 7, 35049, 53544, 1595064, 1450, 'b9cfdbfd8f6c14fb6b2351e4b0f05ac00617a9c3accfb07fafd8e9e4e7aebe15'],
-  'fjord:7719': [1113, 0.8480063327588141, 0, 10575, 18288, 453672, 414, '66a55f5b8bebbb78a359dd1b854b18625bc8b3f2c8887ebadab6d428e59cd9cd'],
-  'mangrove:7719': [1154, 0.6781580389942974, 3, 3338, 6732, 120280, 187, '42198b4f72d2e8384ca6ce9dd62224e2c485747b01025935d9fc187a4507eef7'],
-  'saltwind:7719': [327, 0.3591820828150958, 2, 24348, 37008, 1110192, 1010, '01a50fd5494fa9099201b309a75079c887b800e909f5679d3860e20b7ce76545'],
-};
-
+// 2026-10-01 (frozen pins retired): per-map/seed RNG counts and tails, boat counts, kit budgets and non-boat byte digests
+// built on the historical road/shoreline/exit inputs and the historical mapKits module (re-pinned at rounds 56, 58 and
+// 67) were change detectors. Every consumer is now built on its current terrain: every boat seated shallowly with its
+// strakes visible and its mast attached, no vacuous coverage, and a byte-identical rebuild.
 function point(g, index) {
   return new THREE.Vector3().fromBufferAttribute(g.attributes.position, index);
 }
@@ -160,12 +127,8 @@ function auditBoat(boat, field) {
 
 let realBoats = 0, mastBoats = 0, deepest = 0;
 for (const seed of [1337, 2049, 7719]) for (const mapId of consumers) {
-  const historical = build(mapId, seed, true), prior = inventory(historical);
   const built = build(mapId, seed), stats = inventory(built);
   try {
-    assert.deepEqual([historical.calls, historical.next, historical.boats.length, prior.vertices, prior.indices,
-      prior.bytes, prior.geometries, prior.other], controls[`${mapId}:${seed}`],
-    `${mapId}/${seed}: exact shared RNG, budgets and ALL non-boat geometry bytes preserved`);
     // Round 47 follow-up: a shore may author `boats: 0` on every lake (Nordhavn's fjord arms — a clinker hull on a
     // 0.14 R rock bank buries its tips; the jetties stay). That is a deliberate opt-out, not vacuous coverage.
     const optedOut = (getMapConfig(mapId).terrain.lakes ?? []).every(lake => lake.boats === 0);
@@ -176,10 +139,11 @@ for (const seed of [1337, 2049, 7719]) for (const mapId of consumers) {
       deepest = Math.min(deepest, audit.minGap); realBoats++; mastBoats += +boat.withMast;
     }
     const repeated = build(mapId, seed);
-    assert.deepEqual(inventory(repeated), stats, 'new boat bytes are deterministic');
+    assert.deepEqual(inventory(repeated), stats, 'boat and kit bytes are deterministic');
+    assert.deepEqual([repeated.calls, repeated.next], [built.calls, built.next], 'the rebuild draws the same seeded stream');
     assert.deepEqual([...repeated.receipts], [...built.receipts]);
     dispose(repeated);
-  } finally { dispose(built); dispose(historical); }
+  } finally { dispose(built); }
 }
 console.log(`beachedBoat.selftest: ${realBoats} real boats, ${mastBoats} attached masts; worst penetration ${deepest} m`);
 

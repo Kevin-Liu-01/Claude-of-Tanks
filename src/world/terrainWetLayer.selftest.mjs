@@ -14,51 +14,11 @@ import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } fr
 // the sandboxed material steps take the real functions
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 
-// Frozen synchronous painter from 465a68f7c, independent of candidate steps.
+// 2026-10-01 (frozen pins retired): the control used to be a copy of the 465a68f7c synchronous ground painter and the
+// noise observer pinned its exact frequencies/offsets, so any intended repaint of mud or rock failed here. The control
+// is now the CURRENT synchronous wrapper: the eight-row stepped painter must reproduce its native RGBA, texture
+// settings and pre-normal heights exactly, in row-major noise order, with no partial texture publication.
 // Native Canvas2D is mandatory. No upload-only stub or rasterizer skip is used.
-const originalGround = `function originalGround(seed, kind, anisotropy, tone = null, roughMul = 1) {
-  const s = texSize(256);
-  const noi = new SimplexNoise({ random: mulberry32(seed) });
-  const px = new Uint8ClampedArray(s * s * 4);
-  const hgt = new Float32Array(s * s);
-  let nStrength = 2.0;
-  for (let y = 0; y < s; y++) {
-    const v = y / s;
-    for (let x = 0; x < s; x++) {
-      const u = x / s, i = y * s + x, j = i * 4;
-      let rough = 0.9, hn = 0.5;
-      if (kind === 'rock') {
-        const tone = torusNoise(noi, u, v, 3, 3, 17) * 0.5 + 0.5;
-        const r1 = 1 - Math.abs(torusNoise(noi, u, v, 6, 6, 41));
-        const r2 = 1 - Math.abs(torusNoise(noi, u, v, 15, 15, 8));
-        const ridge = r1 * 0.62 + r2 * 0.38;
-        const crack = smoothstep(0.86, 0.985, ridge);
-        hn = 0.72 - crack * 0.62 + (tone - 0.5) * 0.34;
-        _col.setHSL(0.082, 0.055 + tone * 0.035, (0.40 + tone * 0.14) * (1 - crack * 0.45));
-        rough = 0.76 + crack * 0.12 - tone * 0.06;
-        nStrength = 3.0;
-      } else {
-        const macro = torusNoise(noi, u, v, 3, 3, 29) * 0.5 + 0.5;
-        const rip = torusNoise(noi, u, v, 42, 42, 13) * 0.5 + 0.5;
-        const puddle = smoothstep(0.56, 0.76, macro);
-        hn = macro * 0.55 + rip * 0.18 - puddle * 0.28 + 0.25;
-        _col.setHSL(0.068, 0.27 - puddle * 0.12, 0.145 + (1 - puddle) * 0.075 + rip * 0.028);
-        rough = 0.84 - puddle * 0.10;
-        nStrength = 1.5;
-      }
-      hn = clamp(hn, 0, 1);
-      hgt[i] = hn;
-      const cav = 0.72 + 0.28 * hn;
-      px[j] = _col.r * cav * 255; px[j + 1] = _col.g * cav * 255; px[j + 2] = _col.b * cav * 255;
-      px[j + 3] = clamp(rough * roughMul, 0.45, 1) * 255;
-    }
-  }
-  applyTone(px, tone);
-  return {
-    albedo: canvasToTexture(px, s, { srgb: true, anisotropy }),
-    normal: normalFromHeight(hgt, s, nStrength, anisotropy),
-  };
-}`;
 const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const ast = ts.createSourceFile('terrain.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 function declaration(name, text = source) {
@@ -109,14 +69,13 @@ function fixture({ text = source, observe = null } = {}) {
     function* buildFineGridSteps() { return {}; }
     function* buildChunkGeometrySteps() { state.chunks++; return new THREE.BufferGeometry(); }
     ${declarations}
-    ${originalGround}
     const rawGroundSteps = makeGroundLayerSteps;
     makeGroundLayerSteps = function* (...args) {
       const pending = rawGroundSteps(...args);
       state.pending = pending;
       try { return yield* pending; } finally { state.closes++; }
     };
-  `) + `return { sync: makeGroundLayer, original: originalGround, steps: makeGroundLayerSteps,
+  `) + `return { sync: makeGroundLayer, steps: makeGroundLayerSteps,
     wet: createWetSplatLayerSteps, build: buildTerrainMeshes, buildAsync: buildTerrainMeshesAsync };`);
   const api = create(THREE, SimplexNoise, texSize, (...args) => {
     observe?.(state.calls, args);
@@ -143,8 +102,8 @@ function raster(layer) {
     generateMipmaps: texture.generateMipmaps, minFilter: texture.minFilter, magFilter: texture.magFilter,
   }]));
 }
-function checkedDrain(f, args, maxRows = 8) {
-  const steps = f.api.steps(...args), size = texSize(256), perPixel = args[1] === 'mud' ? 2 : 3;
+function checkedDrain(f, args, perPixel, maxRows = 8) {
+  const steps = f.api.steps(...args), size = texSize(256);
   let checkpoints = 0, maxCalls = 0;
   for (;;) {
     const before = f.state.calls, textureCount = f.state.textures.length;
@@ -157,13 +116,11 @@ function checkedDrain(f, args, maxRows = 8) {
     assert.equal(f.state.textures.length, textureCount, 'no partial texture publication');
   }
 }
-function noiseOrder(kind) {
-  const coordinates = kind === 'mud' ? [[3, 29], [42, 13]] : [[3, 17], [6, 41], [15, 8]];
-  return (call, [, u, v, fu, fv, offset]) => {
-    const size = texSize(256), pixel = Math.floor(call / coordinates.length);
-    const expected = coordinates[call % coordinates.length];
+function rowMajorNoiseOrder(perPixel) {
+  // Every pixel takes the same number of noise samples, in row-major order: (u, v) follow the pixel index.
+  return (call, [, u, v]) => {
+    const size = texSize(256), pixel = Math.floor(call / perPixel);
     assert.equal(u, (pixel % size) / size); assert.equal(v, Math.floor(pixel / size) / size);
-    assert.equal(fu, expected[0]); assert.equal(fv, expected[0]); assert.equal(offset, expected[1]);
   };
 }
 const receipts = [];
@@ -172,20 +129,22 @@ function parityCases(tier) {
   for (const kind of ['mud', 'rock']) for (const seed of [3003, 0xffffffff]) {
     for (const [tone, rough] of [[null, 1], [urbanTone, 0], [urbanTone, 1.5]]) {
       const args = [seed, kind, 16, tone, rough];
-      const actual = fixture({ observe: noiseOrder(kind) }), original = fixture(), sync = fixture();
+      const sync = fixture(), expected = raster(sync.api.sync(...args)), size = texSize(256);
+      const perPixel = sync.state.calls / (size * size);
+      assert.ok(Number.isInteger(perPixel) && perPixel > 0, `${kind}: a whole number of noise samples per pixel`);
+      const actual = fixture({ observe: rowMajorNoiseOrder(perPixel) });
       try {
-        const stepped = checkedDrain(actual, args), expected = original.api.original(...args);
+        const stepped = checkedDrain(actual, args, perPixel);
         const output = raster(stepped.layer);
-        assert.deepEqual(output, raster(expected), 'all returned native RGBA and texture settings match the frozen painter');
-        assert.deepEqual(output, raster(sync.api.sync(...args)), 'synchronous wrapper drains to exactly the same pixels');
-        assert.deepEqual(actual.state.heights, original.state.heights, 'every pre-normal Float32 height is unchanged');
+        assert.deepEqual(output, expected, 'the stepped painter returns exactly the synchronous native RGBA and texture settings');
+        assert.deepEqual(actual.state.heights, sync.state.heights, 'every pre-normal Float32 height matches the synchronous paint');
         assert.equal(stepped.checkpoints, texSize(256) / 8);
         assert.equal(actual.state.textures.length, 2);
         receipts.push({ tier, kind, seed, toned: !!tone, rough, size: texSize(256),
           checkpoints: stepped.checkpoints, maxNoiseCalls: stepped.maxCalls,
           albedo: createHash('sha256').update(output.albedo.pixels).digest('hex'),
           normal: createHash('sha256').update(output.normal.pixels).digest('hex') });
-      } finally { actual.dispose(); original.dispose(); sync.dispose(); }
+      } finally { actual.dispose(); sync.dispose(); }
     }
   }
 }
@@ -291,7 +250,9 @@ try {
   const noYield = source.replace('if ((y & 7) === 7) yield;', '');
   assert.notEqual(noYield, source);
   const mutant = fixture({ text: noYield });
-  try { assert.throws(() => checkedDrain(mutant, [3003, 'mud', 16]), /eight rows/,
+  const mudProbe = fixture(); mudProbe.api.sync(3003, 'mud', 16);
+  const mudPerPixel = mudProbe.state.calls / (texSize(256) ** 2); mudProbe.dispose();
+  try { assert.throws(() => checkedDrain(mutant, [3003, 'mud', 16], mudPerPixel), /eight rows/,
     'negative: an atomic painter cannot pass the step-bound assertion'); } finally { mutant.dispose(); }
   globalThis.window = { location: { search: '?tier=mobile' }, localStorage: { getItem() { return null; } } };
   assert.equal(resolveDeviceTier(), 'mobile');

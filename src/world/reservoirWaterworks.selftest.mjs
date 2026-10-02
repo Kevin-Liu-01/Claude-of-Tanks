@@ -6,7 +6,6 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 import { createHeightField } from './terrain.ts';
-import { historicalRoadHeightField } from './roadHistoryTestOracle.mjs';
 import { MAP_IDS } from './maps/index.ts';
 import reservoir from './maps/reservoir.ts';
 import { slabBox } from './propGeometry.ts';
@@ -20,150 +19,11 @@ const geometryHash = geometry => hash(Buffer.concat([
   ...(geometry.index ? [bytes(geometry.index.array)] : []),
 ]));
 const clone = value => JSON.parse(JSON.stringify(value));
-// Captured from the V25 producer before the intake-only reprofile. The named
-// kiosk/bank/penstock partition includes every position/normal/UV/index byte.
-const fixedPartition = {
-  1337: '1a3aeae9cd1844391de1b7b832f9352404d511d4b7a3cfa833b477d2d1bcb45f',
-  2049: 'de198fa60378d42bec58042783b0da71bcc7ac87d260ed374ee718dd514703b3',
-  7719: '0a4508862b4253469e1400708e8cd209a1ac8ce81e9e6c1392421f2961345a9e',
-};
-// V27 / 8d089c51d producer: all 28 pieces except the three +Z approach bars.
-// Includes the +X bars, both screens, closed hood, body, pipe and supports.
-const fixedReadabilityPartition = {
-  1337: 'aaa39aa3acaa91dfc1684354c53a5848d2e69ce0f0f9197711bd5871a127d627',
-  2049: '15e1b1f2c17b02e81c5400c3d5f2e49ea2cc56fcb301ea285e24a9ab6153260b',
-  7719: '20c2552c7ac4ad288881fea88f54d21a62b04a75da5a824c115f4ae2ac564807',
-};
-
-// c8476fa77 intentionally changes road grading / deployment support. These
-// separate current-layout receipts do not replace the six original oracles.
-// Cross-layout checks below attribute every changed byte to grounded Y, metric
-// V, or the penstock's resulting normals; all other shape streams stay exact.
-const currentPartition = {
-  1337: '9e5e8061563b030161cea838c0d082a9416d47a63d27b3c1905cb8ebc741c347',
-  2049: 'bad6ed617187fb359335c8840607d2ff9b9a936d739392465621ef421b65a00b',
-  7719: '6da922fc8dc154e393d46aa0c24ee6726f528e6deb58d3d25c5b6f14798eed7e',
-};
-const currentReadabilityPartition = {
-  1337: '69048f6054bc5f83a8da16f8f2a157c20ee43c23eacc2f268fdd67b3c775558d',
-  2049: 'de6e52941c8ee0819caac66e452f456725275b452323be23227ce3d58cb9ea17',
-  7719: '33cb4d4f273a016465bf1cbb4186d13d3ae673081c5a8693b4fd0fa0615fe378',
-};
-const historicalLayout = JSON.parse(readFileSync(new URL('./fixtures/reservoirWaterworksHistoricalLayout.json', import.meta.url), 'utf8'));
-
-function snapshotPartition(geometry, buckets) {
-  return geometry.map(g => ({
-    name: g.name, bucket: Object.keys(buckets).find(key => buckets[key].includes(g)),
-    index: Array.from(g.index.array),
-    attributes: Object.fromEntries(Object.entries(g.attributes).map(([name, a]) => [name, {
-      type: a.array.constructor.name, itemSize: a.itemSize, normalized: a.normalized,
-      count: a.count, data: Array.from(a.array),
-    }])),
-  }));
-}
-
-function close(actual, expected, label) {
-  assert.ok(Math.abs(actual - expected) < 2e-6, `${label}: ${actual} versus ${expected}`);
-}
-
-function verifyGroundedBox(before, after) {
-  const oldP = before.attributes.position.data, newP = after.attributes.position.data;
-  const ys = p => p.filter((_, i) => i % 3 === 1);
-  const oldMin = Math.min(...ys(oldP)), oldMax = Math.max(...ys(oldP));
-  const newMin = Math.min(...ys(newP)), newMax = Math.max(...ys(newP));
-  for (let i = 1; i < oldP.length; i += 3) {
-    const lower = Math.abs(oldP[i] - oldMin) < 1e-6;
-    close(oldP[i], lower ? oldMin : oldMax, 'original box vertex is at an end plane');
-    close(newP[i], lower ? newMin : newMax, 'same original vertex follows its end plane');
-  }
-  assert.deepEqual(after.attributes.normal, before.attributes.normal, 'grounded box normals stay exact');
-  const oldUv = before.attributes.uv.data, newUv = after.attributes.uv.data;
-  const heightDelta = (newMax - newMin) - (oldMax - oldMin);
-  for (let i = 0; i < oldUv.length; i++) {
-    const face = Math.floor(i / 8), changesV = i % 2 === 1 && ![2, 3].includes(face) && oldUv[i] !== 0;
-    close(newUv[i], oldUv[i] + (changesV ? heightDelta * .65 : 0), 'existing metric slab UV projection');
-  }
-}
-
-function verifyFollowingPipe(before, after, oldPipe, newPipe) {
-  const oldP = before.attributes.position.data, newP = after.attributes.position.data;
-  const oldUv = before.attributes.uv.data, newUv = after.attributes.uv.data;
-  let distance = 0;
-  const distances = newPipe.map((p, i) => {
-    if (i) distance += Math.hypot(...p.map((value, axis) => value - newPipe[i - 1][axis]));
-    return distance;
-  });
-  for (let i = 0; i < 58; i++) {
-    const ring = i < 56 ? Math.floor(i / 7) : i === 56 ? 0 : 7;
-    close(newP[i * 3 + 1], oldP[i * 3 + 1] + newPipe[ring][1] - oldPipe[ring][1], 'same tube ring follows supported height');
-    assert.equal(newUv[i * 2], oldUv[i * 2], 'pipe U circumference stays exact');
-    close(newUv[i * 2 + 1], i < 56 ? distances[ring] : .5, 'pipe V is actual new centreline distance');
-  }
-  const rebuilt = new THREE.BufferGeometry();
-  rebuilt.setAttribute('position', new THREE.Float32BufferAttribute(newP, 3));
-  rebuilt.setIndex(after.index); rebuilt.computeVertexNormals();
-  assert.deepEqual(Array.from(rebuilt.attributes.normal.array), after.attributes.normal.data,
-    'only the normal implied by the unchanged tube topology and supported Y is accepted');
-  rebuilt.dispose();
-}
-
-function verifyLayoutAttribution(before, after) {
-  assert.equal(before.parts.length, 31); assert.equal(after.parts.length, 31);
-  let fixed = 0, following = 0;
-  for (let i = 0; i < before.parts.length; i++) {
-    const a = before.parts[i], b = after.parts[i];
-    assert.equal(b.name, a.name); assert.equal(b.bucket, a.bucket);
-    assert.deepEqual(b.index, a.index, 'every original triangle index and ordering stays exact');
-    assert.deepEqual(Object.keys(b.attributes), Object.keys(a.attributes));
-    for (const [name, attribute] of Object.entries(a.attributes)) {
-      const { data: oldData, ...oldMeta } = attribute;
-      const { data: newData, ...newMeta } = b.attributes[name];
-      assert.deepEqual(newMeta, oldMeta, 'all original attribute types, capacity and semantics stay exact');
-      if (name === 'position') for (let j = 0; j < oldData.length; j++) {
-        if (j % 3 !== 1) assert.equal(newData[j], oldData[j], 'every X/Z vertex remains exact');
-      }
-    }
-    if (a.name === 'reservoir-kiosk-body' || a.name === 'reservoir-penstock-support') {
-      verifyGroundedBox(a, b); following++;
-    } else if (a.name.startsWith('reservoir-kiosk-')) {
-      const delta = after.bodies[0].top - before.bodies[0].top;
-      for (let j = 1; j < a.attributes.position.data.length; j += 3) {
-        close(b.attributes.position.data[j], a.attributes.position.data[j] + delta, 'attached kiosk fixture follows roof height');
-      }
-      assert.deepEqual(b.attributes.normal, a.attributes.normal);
-      assert.deepEqual(b.attributes.uv, a.attributes.uv); following++;
-    } else if (a.name === 'reservoir-connected-penstock') {
-      verifyFollowingPipe(a, b, before.pipe, after.pipe); following++;
-    } else { assert.deepEqual(b, a, 'all non-ground-following parts remain byte-identical'); fixed++; }
-  }
-  assert.equal(fixed, 19); assert.equal(following, 12);
-}
-
-function unchangedReadabilityHash(geometry) {
-  const excluded = new Set(geometry.filter(g => g.name === 'reservoir-screen-crossbar').slice(0, 3));
-  assert.equal(excluded.size, 3);
-  const h = createHash('sha256');
-  for (const g of geometry) if (!excluded.has(g)) {
-    h.update(g.name);
-    for (const a of Object.values(g.attributes)) h.update(bytes(a.array));
-    h.update(bytes(g.index.array));
-  }
-  return h.digest('hex');
-}
-
-function unchangedPartitionHash(geometry) {
-  const h = createHash('sha256');
-  for (const name of ['kiosk-body', 'kiosk-cap', 'bank-body', 'bank-cap', 'kiosk-door',
-    'kiosk-window', 'kiosk-lintel', 'kiosk-vent', 'bank-hatch', 'bank-stop',
-    'connected-penstock', 'penstock-support']) {
-    for (const g of geometry.filter(g => g.name === `reservoir-${name}`)) {
-      h.update(g.name);
-      for (const a of Object.values(g.attributes)) h.update(bytes(a.array));
-      h.update(bytes(g.index.array));
-    }
-  }
-  return h.digest('hex');
-}
+// 2026-10-01 (frozen pins retired): the V25/V27 partition sha256 pins, the current-layout partition pins, the exact
+// source/merged budget literal and the whole-world replay of the historical layout (historical road field and junction
+// recipe, with a cross-layout byte attribution) were change detectors. Each seed now builds today's Reservoir twice in
+// a child process, with and without the waterworks composer: every non-donor byte, record, material family, instance
+// and RNG draw must match, the three bodies must be seated on the current terrain and the budgets may only shrink.
 
 function installFixtureCanvas() {
   globalThis.ImageData = class { constructor(data) { this.data = data; } };
@@ -199,29 +59,12 @@ function recordMeshes(props) {
   return { rows, mats: [...mats].sort(), vertices, attributeBytes };
 }
 
-async function wholeWorld(seed, revision) {
-  const legacy = revision === 'historical';
-  // 2026-09-17 field trenches: the historical layout predates the all-map carve, so its field is built untrenched
-  const config = legacy ? { ...reservoir, terrain: historicalLayout.terrain, spawns: historicalLayout.spawns, fieldTrenches: false } : reservoir;
+async function wholeWorld(seed) {
+  const config = reservoir;
   const propsUrl = new URL('./props.ts', import.meta.url).href;
   const helperUrl = new URL('./reservoirWaterworks.ts', import.meta.url).href;
   globalThis.__waterworksRng = [];
-  // Historical geometry hashes also require the placement policy from that
-  // revision. Current worlds below keep the real segment-intersection plaza
-  // and road-facing parcels; neither safety checks nor geometry hashes change.
-  globalThis.__historicalWaterworksJunction = (roads, center) => {
-    let best = 1e9, resolved = { x: center.cx, z: center.cz };
-    for (let left = 0; left < roads.length; left++) for (let right = left + 1; right < roads.length; right++) {
-      for (const [ax, az] of roads[left]) for (const [bx, bz] of roads[right]) {
-        if (Math.hypot(ax - bx, az - bz) > 18) continue;
-        const x = (ax + bx) / 2, z = (az + bz) / 2;
-        const distance = Math.hypot(x - center.cx, z - center.cz);
-        if (distance < best) { best = distance; resolved = { x, z }; }
-      }
-    }
-    return resolved;
-  };
-  let control = true, seam, partition;
+  let control = true, seam;
   globalThis.__captureWaterworks = (args, compose) => {
     const [, , field, donors, buckets, blockers] = args;
     assert.equal(donors.length, 3, 'three actually accepted full-production street-rubble packets');
@@ -256,12 +99,7 @@ async function wholeWorld(seed, revision) {
       }
       validateAssembly(result, buckets, field);
       const geometry = Object.values(buckets).flat().filter(g => g.name.startsWith('reservoir-'));
-      assert.equal(unchangedPartitionHash(geometry), (legacy ? fixedPartition : currentPartition)[seed],
-        `${revision}: kiosk, bank, pipe and supports match their own exact terrain inputs`);
-      assert.equal(unchangedReadabilityHash(geometry), (legacy ? fixedReadabilityPartition : currentReadabilityPartition)[seed],
-        `${revision}: all28 non-approach-bar pieces match their own exact terrain inputs`);
       validateIntake(result, geometry, donors[2].collider);
-      partition = snapshotPartition(geometry, buckets);
     } else assert.deepEqual(records.map(clone), before);
     seam = { donors: donors.slice(), before, result };
     return result;
@@ -271,13 +109,6 @@ async function wholeWorld(seed, revision) {
     if (url === propsUrl) {
       let text = result.source.toString().replace('export function mulberry32(a: number): Rng',
         'function originalMulberry32(a: number): Rng');
-      if (legacy) {
-        const junction = 'return roadSettlementJunction(roads, { x: v.cx, z: v.cz });';
-        const frontage = 'placePlannedBuilding(px, pz, rot, roadSite);';
-        for (const anchor of [junction, frontage]) assert.equal(text.split(anchor).length, 2);
-        text = text.replace(junction, 'return globalThis.__historicalWaterworksJunction(roads, v);')
-          .replace(frontage, 'placePlannedBuilding(px, pz, rot);');
-      }
       text += `\nexport function mulberry32(seed: number): Rng {
         const next = originalMulberry32(seed), row = { seed, count: 0, next };
         globalThis.__waterworksRng.push(row);
@@ -304,7 +135,7 @@ async function wholeWorld(seed, revision) {
   installFixtureCanvas();
   async function build() {
     globalThis.__waterworksRng = [];
-    const props = createProps((legacy ? historicalRoadHeightField : createHeightField)(seed, config), { anisotropy: 4, setupShadowMaterial() {} }, 2002, config);
+    const props = createProps(createHeightField(seed, config), { anisotropy: 4, setupShadowMaterial() {} }, 2002, config);
     await props.sourcedTexturesReady;
     const rng = globalThis.__waterworksRng.map(row => ({ seed: row.seed, count: row.count, tail: [row.next(), row.next(), row.next()] }));
     return { props, rng, seam, meshes: recordMeshes(props) };
@@ -331,8 +162,6 @@ async function wholeWorld(seed, revision) {
   }
   console.log(JSON.stringify({ seed, donors: after.seam.result.donors, before: after.seam.result.before,
     after: after.seam.result.after, bodies: after.seam.result.bodies, fullWorldVertices: [before.meshes.vertices, after.meshes.vertices] }));
-  console.log(`WATERWORKS_PARTITION ${JSON.stringify({ revision, seed, parts: partition,
-    bodies: after.seam.result.bodies, pipe: after.seam.result.pipe })}`);
 }
 
 function validateBodySupport(body, geometry, field) {
@@ -357,8 +186,6 @@ function validateAssembly(receipt, buckets, field) {
   assert.ok(receipt.after.triangles <= receipt.before.triangles);
   assert.ok(receipt.after.sourceBytes <= receipt.before.sourceBytes);
   assert.ok(receipt.after.mergedBytes <= receipt.before.mergedBytes);
-  assert.deepEqual(receipt.after, { geometries: 31, triangles: 456, sourceBytes: 27632, mergedBytes: 43776 },
-    'the intake reprofile preserves every current source/merged budget, not just the larger donor allowance');
   const geometry = Object.values(buckets).flat().filter(g => g.name.startsWith('reservoir-'));
   const bars = geometry.filter(g => g.name === 'reservoir-screen-crossbar');
   assert.equal(bars.length, 6);
@@ -593,7 +420,7 @@ function fixture() {
 }
 
 if (process.argv[2] === '--world') {
-  await wholeWorld(Number(process.argv[3]), process.argv[4] || 'current');
+  await wholeWorld(Number(process.argv[3]));
 } else {
   const { composeReservoirWaterworks } = await import('./reservoirWaterworks.ts');
   const field = createHeightField(1337, reservoir), cfg = reservoir.props.reservoirWaterworks;
@@ -619,24 +446,11 @@ if (process.argv[2] === '--world') {
     geometry.forEach(g => g.dispose());
   }
   for (const seed of [1337, 2049, 7719]) {
-    const partitions = ['historical', 'current'].map(revision => {
-      const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--world', String(seed), revision],
-        { encoding: 'utf8', timeout: 90000, maxBuffer: 4 * 1024 * 1024 });
-      assert.equal(child.status, 0, child.stderr || String(child.error));
-      const lines = child.stdout.trim().split('\n');
-      const receipts = lines.filter(line => line.startsWith('WATERWORKS_PARTITION '));
-      assert.equal(receipts.length, 1);
-      console.log(lines.filter(line => !line.startsWith('WATERWORKS_PARTITION ')).join('\n'));
-      return JSON.parse(receipts[0].slice('WATERWORKS_PARTITION '.length));
-    });
-    verifyLayoutAttribution(...partitions);
-    const corrupted = clone(partitions[1]); corrupted.parts[0].attributes.position.data[0] += .01;
-    assert.throws(() => verifyLayoutAttribution(partitions[0], corrupted), /every X\/Z vertex/);
-    const wrongNormal = clone(partitions[1]); wrongNormal.parts[0].attributes.normal.data[0] += .01;
-    assert.throws(() => verifyLayoutAttribution(partitions[0], wrongNormal), /grounded box normals/);
-    const extraStream = clone(partitions[1]); extraStream.parts[0].attributes.unknown = clone(extraStream.parts[0].attributes.uv);
-    assert.throws(() => verifyLayoutAttribution(partitions[0], extraStream));
-    console.log(`reservoir/${seed}: historical/current partition guards plus exact19-part parity and12-part ground-following attribution PASS`);
+    const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--world', String(seed)],
+      { encoding: 'utf8', timeout: 90000, maxBuffer: 4 * 1024 * 1024 });
+    assert.equal(child.status, 0, child.stderr || String(child.error));
+    console.log(child.stdout.trim());
+    console.log(`reservoir/${seed}: full-world composer A/B, seated bodies and intake PASS`);
   }
-  console.log('reservoirWaterworks: actual3-seed full-world donors, atomic safety, budgets, geometry/physics/RNG and other29 guards PASS');
+  console.log('reservoirWaterworks: actual3-seed full-world donors, atomic safety, budgets, geometry/physics/RNG and other-map no-op guards PASS');
 }
