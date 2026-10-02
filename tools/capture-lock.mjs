@@ -93,6 +93,16 @@ function reapStaleLock(lockDir, staleMs) {
   }
 }
 
+// The heartbeat in acquire() keeps a live waiter's ticket from looking stale, but a ticket can still vanish under its
+// owner (a clock jump, a suspended process reaped by a peer, a manual queue cleanup). queueHead() then never returns
+// the owner while any later ticket is live, so it starves. Put the ticket back under its original name to keep its place.
+function restoreTicket(queueDir, name) {
+  try {
+    mkdirSync(queueDir, { recursive: true });
+    writeFileSync(join(queueDir, name), String(process.pid), { flag: 'wx' });
+  } catch { /* raced with another restore, or the queue is unwritable */ }
+}
+
 // Distinguish acquisitions launched by concurrent workers in one process.
 // Keep the PID last for legacy ticket liveness checks and use exclusive creation.
 let nextTicketSequence = 0;
@@ -137,7 +147,12 @@ export function createCaptureLock({
     ticketHeartbeat.unref();
     try {
       for (;;) {
-        const head = queueHead(queueDir, readQueue(queueDir, ownTicket), ownTicket, ticketStaleMs);
+        let names = readQueue(queueDir, ownTicket);
+        if (!names.includes(ownTicket)) {
+          restoreTicket(queueDir, ownTicket);
+          names = readQueue(queueDir, ownTicket);
+        }
+        const head = queueHead(queueDir, names, ownTicket, ticketStaleMs);
         if (head === ownTicket && claimLock(lockDir)) {
           held = true;
           return;
