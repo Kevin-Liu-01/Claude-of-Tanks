@@ -18,6 +18,12 @@
  * p2's link reconnects (a fresh offer, the actor replaces the seat); p1 (the host) closes its tab → the room elects p2
  * → p2 resumes from the sealed keyframe (the destroyed set compared before and after); p1 returns as a peer of p2.
  *
+ * Scripted at the start of live play (ghost-crunch lane, 2026-10-02), so every run judges the two cases a bot fill only
+ * sometimes produces: a bot driven into a hedgehog whose crossed beams share one box centre (one event fells the whole
+ * prop; an effect read back from its position names the wrong beam), and a bot dropped from 40 m on one hit point beside
+ * a crushable tree (a fall death: the presented pose is mid-air one interpolation step before the landing). Effects are
+ * attributed by the obstacle index the presentation names; a box centre two records share attributes nothing.
+ *
  *   node tools/mp-world-events-audit.mjs                       # ~2 min wall
  *   node tools/mp-world-events-audit.mjs --play=30 --after=12 --out=/path --label=before
  */
@@ -35,6 +41,7 @@ import { createInProcessHostPort } from '../src/mp/host/inProcessHost.ts';
 import { RtcWorld } from '../src/mp/transport/rtcDouble.test-support.ts';
 import { createBattlePresentation } from '../src/mp/presentation/battlePresentation.ts';
 import { createDedicatedWorldCollision } from '../server/dedicatedWorldCollision.ts';
+import { createObstacleGrid } from '../src/world/collision.ts';
 import { PHASE, TICK_HZ } from '../src/mp/wire/constants.ts';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -84,7 +91,7 @@ function busKeyOf(type, payload) {
 const pct = (sorted, p) => (sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] : null);
 const dist = (a, b) => (a && b ? Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) : null);
 
-export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, hostGraceMs = 1500, frameHz = 30, teamSize = 4, log = () => {} } = {}) {
+export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, hostGraceMs = 1500, frameHz = 30, teamSize = 4, scripted = true, log = () => {} } = {}) {
   const SECRET = 'mp-world-events-audit-seat-secret-0123456789abcdef';
   const roomEvents = [];
   const rooms = await createP2pRoomDouble({ seatSecret: SECRET, hostGraceMs, onEvent: (event) => roomEvents.push(event) });
@@ -92,9 +99,37 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
   const reference = createDedicatedWorldCollision(MAP_ID);
   const referenceObstacles = reference.getObstacles();
   const obstaclePos = (index) => { const o = referenceObstacles[index]; return o ? [(o.min[0] + o.max[0]) * 0.5, o.min[1], (o.min[2] + o.max[2]) * 0.5] : null; };
+  // A box centre names an obstacle only when no other record shares it (a hedgehog's crossed beams do): -1 marks a shared one.
   const indexByCenter = new Map();
-  referenceObstacles.forEach((_o, index) => { indexByCenter.set(obstaclePos(index).map((v) => v.toFixed(3)).join(','), index); });
-  const obstacleIndexAt = (pos) => (Array.isArray(pos) ? indexByCenter.get(pos.map((v) => Number(v).toFixed(3)).join(',')) ?? null : null);
+  const centerKey = (pos) => pos.map((v) => Number(v).toFixed(3)).join(',');
+  referenceObstacles.forEach((_o, index) => { const key = centerKey(obstaclePos(index)); indexByCenter.set(key, indexByCenter.has(key) ? -1 : index); });
+  const obstacleIndexAt = (pos) => { const index = Array.isArray(pos) ? indexByCenter.get(centerKey(pos)) ?? null : null; return index === -1 ? null : index; };
+  // The scripted sites: a crushable prop whose records share a box centre (verdant: a hedgehog's crossed beams) — the one
+  // whose southernmost record, the first a hull driving north meets, is of the shared pair, so its one event names a
+  // record its centre cannot — and the crushable tree nearest the map centre.
+  const scriptedSites = (() => {
+    const byCenter = new Map();
+    referenceObstacles.forEach((o, index) => {
+      if (!o.crushable || o.propIdx == null) return;
+      const key = centerKey(obstaclePos(index));
+      if (!byCenter.has(key)) byCenter.set(key, []);
+      byCenter.get(key).push(index);
+    });
+    const pairs = [...byCenter.values()].filter((list) => list.length > 1);
+    const southernmost = (pair) => referenceObstacles.map((o, i) => ({ o, i })).filter(({ o }) => o.propIdx === referenceObstacles[pair[0]].propIdx)
+      .sort((a, b) => a.o.min[2] - b.o.min[2])[0].i;
+    const pair = pairs.find((list) => list.includes(southernmost(list))) ?? pairs[0] ?? null;
+    const propIdx = pair ? referenceObstacles[pair[0]].propIdx : null;
+    const hedgehog = pair ? { propIdx, kind: referenceObstacles[pair[0]].kind, records: referenceObstacles.map((o, i) => (o.propIdx === propIdx ? i : -1)).filter((i) => i >= 0), sharedCenter: pair, center: obstaclePos(pair[0]) } : null;
+    let tree = null;
+    let best = Infinity;
+    referenceObstacles.forEach((o, index) => {
+      if (o.treeIdx == null || !o.crushable) return;
+      const [x, , z] = obstaclePos(index);
+      if (Math.hypot(x, z) < best) { best = Math.hypot(x, z); tree = { index, center: obstaclePos(index) }; }
+    });
+    return { hedgehog, tree };
+  })();
   const hostLog = [];          // every event as sent to each viewer
   const hostCores = [];        // { id, core, hooked, generation }
   const peers = [];
@@ -126,6 +161,8 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         const payload = event;
         let pos = null;
         if (type === 'world_prop_destroyed') pos = obstaclePos(Number(payload.obstacleIndex));
+        // a death is judged against the hull itself at its tick, not against the position its own payload carries
+        else if (type === 'tank_destroyed' && typeof payload.id === 'string' && authority.entityById.get(payload.id)) { const e = authority.entityById.get(payload.id); pos = [e.state.pos.x, e.state.pos.y, e.state.pos.z]; }
         else if (typeof payload.x === 'number') pos = [payload.x, payload.y, payload.z];
         else if (Array.isArray(payload.pos)) pos = [...payload.pos];
         else if (typeof payload.id === 'string') { const e = authority.entityById.get(payload.id); if (e) pos = [e.state.pos.x, e.state.pos.y, e.state.pos.z]; }
@@ -155,6 +192,8 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     const roundIndex = peer.rounds.length;
     const game = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: MAP_ID };
     const obstacles = cloneObstacles();
+    // the presentation's own records (their `crushed` flags are this view's), queried as the browser world's grid is
+    const queryClones = createObstacleGrid(obstacles);
     const record = { roundIndex, welcomeTick: null, welcomeAtMs: null, endedAtMs: null, welcomes: 0, frames: 0, applied: [], hostIdAtWelcome: null, actors: 0, rosterError: null };
     peer.rounds.push(record);
     let path = 'none';
@@ -164,7 +203,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     const worldCollision = {
       heightField: reference.heightField,
       getObstacles: () => obstacles,
-      queryObstacles: (minX, minZ, maxX, maxZ, target) => reference.queryObstacles(minX, minZ, maxX, maxZ, target),
+      queryObstacles: (minX, minZ, maxX, maxZ, target) => queryClones(minX, minZ, maxX, maxZ, target),
       crushObstacle(obstacle, dx, dz, speed, _cause, options) {
         const index = obstacles.indexOf(obstacle);
         record.applied.push({ kind: 'crush', key: `prop:${index}`, index, dx, dz, speed, settled: !!(options && options.settled), path, presentedTick, frameGap, newestTick: newestTick(), wallMs: now() });
@@ -210,7 +249,9 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
   // ------------------------------------------------------------ seats
   const createSocket = (url) => new WebSocket(url);
   const spawn = (id, name, storage, index, { canHost = true } = {}) => {
-    const peer = { id, name, storage, index, controls: scriptedControls(index), rounds: [], disposed: false, room: null, session: null, p2pEvents: [], hostLiveTick: null, resets: [], lastReconnects: 0 };
+    // the returning p1 is a second seat instance under the same player id: its views are labelled p1' in the report
+    const label = `${id}${"'".repeat(peers.filter((other) => other.id === id).length)}`;
+    const peer = { id, label, name, storage, index, controls: scriptedControls(index), rounds: [], disposed: false, room: null, session: null, p2pEvents: [], hostLiveTick: null, resets: [], lastReconnects: 0 };
     const room = new RoomClient({ endpoint: rooms.url, player: { id, name }, storage, clientBuild: 'audit', transport: { createSocket } });
     const session = new MatchSession({
       room, clientBuild: 'audit', transport: { createSocket },
@@ -285,8 +326,33 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     report.steps.start = { host: p1.session.role, entities: core1.core.actor.authority.entities.length, obstacles: referenceObstacles.length, crushable: referenceObstacles.filter((o) => o.crushable).length };
     log(`start: p1 hosts ${report.steps.start.entities} entities on ${MAP_ID} (${report.steps.start.obstacles} obstacles, ${report.steps.start.crushable} crushable)`);
 
-    // ---- 1. live play
+    // ---- 1. live play (the scripted cases first: a bot into the shared-centre prop, a bot falling to its death by a tree)
     marks.playStart = now();
+    if (scripted) {
+      const authority = core1.core.actor.authority;
+      const bots = authority.entities.filter((entity) => entity.bot && !entity.combat.destroyed);
+      const groundAt = (x, z) => authority.heightField.getHeightAt(x, z);
+      report.steps.scripted = {};
+      if (scriptedSites.hedgehog && bots[0]) {
+        const [x, , z] = scriptedSites.hedgehog.center;
+        bots[0].state.pos.set(x, groundAt(x, z - 4.5) + 0.05, z - 4.5);
+        bots[0].state.yaw = 0;
+        bots[0].state.speed = 8;
+        report.steps.scripted.hedgehog = { botId: bots[0].id, propIdx: scriptedSites.hedgehog.propIdx, kind: scriptedSites.hedgehog.kind, records: scriptedSites.hedgehog.records, sharedCenter: scriptedSites.hedgehog.sharedCenter };
+      }
+      if (scriptedSites.tree && bots[1]) {
+        const [x, , z] = scriptedSites.tree.center;
+        // 40 m up (the ride integrator owns the hull's height), one hit point: the authority's fall pricing kills it on landing
+        bots[1].state.pos.set(x + 2.5, groundAt(x + 2.5, z) + 40, z);
+        Object.assign(bots[1].state._ride, { y: bots[1].state.pos.y, v: 0, grounded: false });
+        bots[1].state.grounded = false;
+        bots[1].state.yaw = 0;
+        bots[1].state.speed = 0;
+        bots[1].combat.hp = 1;
+        report.steps.scripted.fall = { botId: bots[1].id, tree: scriptedSites.tree.index };
+      }
+      log(`scripted: ${JSON.stringify(report.steps.scripted)}`);
+    }
     await sleep(playMs);
     marks.playEnd = now();
     const liveCrushes = hostEventsBetween(marks.playStart, marks.playEnd, 'world_prop_destroyed');
@@ -392,6 +458,31 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     await Promise.race([rooms.close(), sleep(5000)]);
   }
 
+  // ------------------------------------------------------------ the scripted cases' outcome
+  const scriptedCases = report.steps.scripted;
+  if (scriptedCases?.hedgehog) {
+    const sends = hostLog.filter((e) => e.type === 'world_prop_destroyed' && scriptedCases.hedgehog.records.includes(e.index));
+    const events = [...new Set(sends.map((e) => `${e.host}:${e.index}:${e.tick}`))];
+    scriptedCases.hedgehog.events = events.length;
+    scriptedCases.hedgehog.eventIndices = [...new Set(sends.map((e) => e.index))];
+    scriptedCases.hedgehog.eventSharesCenter = sends.some((e) => scriptedCases.hedgehog.sharedCenter.includes(e.index));
+  }
+  if (scriptedCases?.fall) {
+    const deaths = hostLog.filter((e) => e.type === 'tank_destroyed' && e.key.endsWith(`/dead:${scriptedCases.fall.botId}`));
+    scriptedCases.fall.died = deaths.length > 0;
+    scriptedCases.fall.cause = deaths[0]?.cause ?? null;
+    scriptedCases.fall.tick = deaths[0]?.tick ?? null;
+    scriptedCases.fall.presentedErrM = {};
+    for (const peer of peers) for (const round of peer.rounds) {
+      for (const a of round.applied) {
+        if (a.kind !== 'tank:destroyed' || !a.key?.endsWith(`/dead:${scriptedCases.fall.botId}`)) continue;
+        const sent = deaths.find((e) => e.viewerId === peer.id && e.key === a.key);
+        const err = dist(a.pos, sent?.pos ?? null);
+        if (err !== null) scriptedCases.fall.presentedErrM[`${peer.label}#${round.roundIndex}`] = Number(err.toFixed(4));
+      }
+    }
+  }
+
   // ------------------------------------------------------------ the diff: host deliveries vs peer applications
   const matrix = [];
   const perPeer = {};
@@ -429,7 +520,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       for (const type of HOST_KINDS) {
         const busKind = BUS_FOR[type];
         const sentOfKind = sent.filter((e) => e.type === type);
-        const row = { peer: peer.id, round: round.roundIndex, kind: type, sent: sentOfKind.length, applied: 0, missing: 0, duplicate: 0, late: 0, early: 0, wrongPlace: 0, dTicks: [], dWallMs: [], posErrM: [], viaFrame: 0, viaEvent: 0, cannedDirection: 0, settled: 0, fxWithoutCrush: 0, crushWithoutFx: 0 };
+        const row = { peer: peer.label, round: round.roundIndex, kind: type, sent: sentOfKind.length, applied: 0, missing: 0, duplicate: 0, late: 0, early: 0, wrongPlace: 0, dTicks: [], dWallMs: [], posErrM: [], viaFrame: 0, viaEvent: 0, cannedDirection: 0, settled: 0, fxWithoutCrush: 0, crushWithoutFx: 0 };
         for (const event of sentOfKind) {
           const crush = type === 'world_prop_destroyed' ? nextApplied(event.key, ['crush'], event.wallMs) : null;
           const fx = nextApplied(event.key, [busKind], event.wallMs);
@@ -474,8 +565,10 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       const everSent = (a) => hostLog.some((e) => e.type === 'world_prop_destroyed' && e.viewerId === peer.id && e.index === a.index && e.wallMs <= a.wallMs);
       const unmatchedCrushes = applied.filter((a, i) => a.kind === 'crush' && !used.has(i) && !everSent(a));
       const predating = unmatchedCrushes.filter((a) => hostLog.some((e) => e.type === 'world_prop_destroyed' && e.index === a.index && e.wallMs < round.welcomeAtMs));
-      const ghostFx = applied.filter((a, i) => a.kind === 'prop:crushed' && !used.has(i) && !everSent(a));
-      perPeer[`${peer.id}#${round.roundIndex}`] = { welcomeTick: round.welcomeTick, welcomes: round.welcomes, actors: round.actors, rosterError: round.rosterError, frames: round.frames, ghostFx: ghostFx.length, unmatchedCrushes: unmatchedCrushes.length, replaysOfOlderState: predating.length, replaysAnimated: predating.filter((a) => !a.settled).length, replaysSettled: predating.filter((a) => a.settled).length,
+      // an effect that names no obstacle cannot be judged: counted on its own, never read back from a shared box centre
+      const unattributedFx = applied.filter((a) => a.kind === 'prop:crushed' && a.index === null);
+      const ghostFx = applied.filter((a, i) => a.kind === 'prop:crushed' && a.index !== null && !used.has(i) && !everSent(a));
+      perPeer[`${peer.label}#${round.roundIndex}`] = { welcomeTick: round.welcomeTick, welcomes: round.welcomes, actors: round.actors, rosterError: round.rosterError, frames: round.frames, ghostFx: ghostFx.length, unattributedFx: unattributedFx.length, unmatchedCrushes: unmatchedCrushes.length, replaysOfOlderState: predating.length, replaysAnimated: predating.filter((a) => !a.settled).length, replaysSettled: predating.filter((a) => a.settled).length,
         ownShotFlashes: applied.filter((a) => a.kind === 'weapon:predicted').length, ownShellFiredUnpredicted: applied.filter((a) => a.kind === 'shell:fired' && a.shooterId === peer.id && a.feedbackPredicted === false).length, ownShellFiredPredicted: applied.filter((a) => a.kind === 'shell:fired' && a.shooterId === peer.id && a.feedbackPredicted === true).length };
     }
   }
@@ -484,7 +577,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
   report.hostEvents = hostLog.length;
   report.failures = failures;
   report.pass = failures.length === 0;
-  report.raw = { hostLog, peers: peers.map((peer) => ({ id: peer.id, rounds: peer.rounds.map((round) => ({ roundIndex: round.roundIndex, welcomeTick: round.welcomeTick, welcomeAtMs: round.welcomeAtMs, frames: round.frames, applied: round.applied })) })), marks, roomEvents: roomEvents.filter((e) => e.kind === 'host_changed' || e.kind === 'match_report') };
+  report.raw = { hostLog, peers: peers.map((peer) => ({ id: peer.id, label: peer.label, rounds: peer.rounds.map((round) => ({ roundIndex: round.roundIndex, welcomeTick: round.welcomeTick, welcomeAtMs: round.welcomeAtMs, frames: round.frames, applied: round.applied })) })), marks, roomEvents: roomEvents.filter((e) => e.kind === 'host_changed' || e.kind === 'match_report') };
   return report;
 }
 
@@ -507,10 +600,10 @@ export function formatMatrix(report) {
   lines.push('');
   lines.push('## Per presentation: replays of older state, own-shot feedback');
   lines.push('');
-  lines.push('| seat#view | welcome tick | welcomes | actors | frames | ghost FX (prop:crushed for a prop never sent to this seat) | crushes of props never sent to this seat | of which replays of state older than the view | animated | settled | own flashes predicted | own shell_fired unpredicted | own shell_fired predicted |');
-  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+  lines.push('| seat#view | welcome tick | welcomes | actors | frames | ghost FX (prop:crushed for a prop never sent to this seat) | prop:crushed naming no obstacle | crushes of props never sent to this seat | of which replays of state older than the view | animated | settled | own flashes predicted | own shell_fired unpredicted | own shell_fired predicted |');
+  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
   for (const [key, row] of Object.entries(report.perPeer)) {
-    lines.push(`| ${key} | ${row.welcomeTick} | ${row.welcomes} | ${row.actors}${row.rosterError ? ` (roster: ${row.rosterError})` : ''} | ${row.frames} | ${row.ghostFx} | ${row.unmatchedCrushes} | ${row.replaysOfOlderState} | ${row.replaysAnimated} | ${row.replaysSettled} | ${row.ownShotFlashes} | ${row.ownShellFiredUnpredicted} | ${row.ownShellFiredPredicted} |`);
+    lines.push(`| ${key} | ${row.welcomeTick} | ${row.welcomes} | ${row.actors}${row.rosterError ? ` (roster: ${row.rosterError})` : ''} | ${row.frames} | ${row.ghostFx} | ${row.unattributedFx} | ${row.unmatchedCrushes} | ${row.replaysOfOlderState} | ${row.replaysAnimated} | ${row.replaysSettled} | ${row.ownShotFlashes} | ${row.ownShellFiredUnpredicted} | ${row.ownShellFiredPredicted} |`);
   }
   lines.push('');
   for (const failure of report.failures) lines.push(`FAIL: ${failure}`);

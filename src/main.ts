@@ -2190,7 +2190,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
     import('./mp/host/browserHostPort.ts'),
     import('./mp/host/worldCollision.ts'),
     import('./mp/transport/iceConfig.ts'),
-  ]).then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE }, { createRoomIceResolver }]) => {
+  ]).then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }, { createRoomIceResolver }]) => {
     // The launch runs on the app's ports: the loader, the world, the warm owners, the activation.
     const options = multiplayerAppPorts();
     const activation = createActivationRuntime(options.activation);
@@ -2198,7 +2198,8 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
       clientBuild: import.meta.env.MODE,
       ports: {
         lifecycle: battleEntryLifecycle,
-        load: options.load,
+        // a world laid out otherwise than the host's manifest reads the destroyed list through the manifest's identities
+        load: { ...options.load, loadAuthorityObstacles: (mapId, signal) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal }) },
         roster: options.roster,
         scene: {
           engineCtx,
