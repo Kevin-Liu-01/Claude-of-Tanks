@@ -499,6 +499,12 @@ type channel and a street / anvil / cirrus companion field in the wind frame, ty
 curl-warped erosion, the Hillaire multiple-scattering octaves under a dual-lobe phase with Beer–powder toward the sun,
 a far stratocumulus band and a cirrus sheet behind the slab; the shadow gobos discard by the same fields through a
 custom depth material, and the baked cirrus veil hides while the layer shows.
+The layered sky (2026-10-01): `engine/cloudWeatherLayers.ts` adds to the same trace the weather beyond the slab — a
+sea fog bank and rain shafts / virga in front of it; distant cumulonimbus cells with anvils and rain, the far band and
+a 2.5D mid-level layer (altocumulus, altostratus, cirrocumulus, lenticular) behind it, sorted by distance; contrails on
+the cirrus sheet — placed deterministically per map from the `clouds` block, with lightning in a night storm drawn in
+the composite. `cloudPresets.ts` resolves the block for the battle's time of day (the diurnal law of convective cloud,
+per-time knobs, a neutral albedo at sunset and night, the moonlight's hue, a town's glow on the bases).
 
 Horizon ring — vista pass (round 24, 2026-09-19; owner: "the stuff around the map like mountains needs to
 be so much better … consider this a triple AAA pass"). `world/maps/horizon.ts` now builds a 431-column
