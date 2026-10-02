@@ -168,6 +168,10 @@ export interface PublishedLightRig {
   fillColor: THREE.Color;
   /** World direction toward the fill light. */
   fillDir: THREE.Vector3;
+  /** 2026-10-01: the sky's diffuse gain over the environment (lightModel.ts; 1 on the legacy rig). */
+  envDiffuseGain?: number;
+  /** 2026-10-01: the legacy disc's shadowless fill folded into the environment (0 on the grounded model's disc-less bake). */
+  envDiscFill?: number;
 }
 
 const luma = (c: THREE.Color): number => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
@@ -190,7 +194,8 @@ export function updateContactShadowUniforms(
   if (!rig) return;
   const skyIrradiance = scene.userData.skyIrradiance as THREE.Color | undefined;
   const envIntensity = typeof scene.environmentIntensity === 'number' ? scene.environmentIntensity : 1;
-  const envLum = ((skyIrradiance ? luma(skyIrradiance) : 0.35) + ENV_DISC_FILL) * envIntensity;
+  const envLum = ((skyIrradiance ? luma(skyIrradiance) : 0.35) * (rig.envDiffuseGain ?? 1) + (rig.envDiscFill ?? ENV_DISC_FILL))
+    * envIntensity;
   u.uContactAmb.value.set(
     rig.hemiIntensity * luma(rig.hemiSky),
     rig.hemiIntensity * luma(rig.hemiGround),

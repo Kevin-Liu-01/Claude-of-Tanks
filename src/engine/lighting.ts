@@ -34,6 +34,19 @@ import {
 } from './groundBounce.ts';
 import { currentPostLightFxQuery, resolvePostLightFx } from './postLightFxPolicy.ts';
 import type { PublishedLightRig } from './contactShadows.ts';
+import { authoredSunOf, resolveLightModel, type LightModel, type LightModelPreset } from './lightModel.ts';
+import type { AtmosphereParams } from './atmosphere.ts';
+
+/** What sky.ts publishes on scene.userData.atmosphere that the grounded light model reads (sky.ts AtmospherePublishedState). */
+interface AtmosphereLightInputs {
+  active?: boolean;
+  skyView?: THREE.Texture | null;
+  params?: AtmosphereParams | null;
+  irradianceRaw?: THREE.Color | null;
+}
+
+/** setSun's preset: the sky preset fields the rig reads (a map's sky block, the Garage trim, a weather preset). */
+type SunPreset = LightModelPreset & { sunIntensity?: number; sunColorHex?: number; hemiIntensity?: number; fillIntensity?: number };
 
 interface ShadowDebugOptions {
   noCull?: boolean;
@@ -311,6 +324,8 @@ const FILL_INTENSITY = 0.66;
 // canopies lift out of black without flattening ground-shadow contrast.
 const FILL_ELEV_Y = 70;
 const FILL_HORIZ_M = 230;
+/** The legacy environment's share of shadowless sun the PMREM folds from the dome's disc (round 65; contactShadows.ts). */
+const LEGACY_ENV_DISC_FILL = 0.5;
 
 type DrawableImage = CanvasImageSource & { width: number; height: number };
 
@@ -1202,15 +1217,35 @@ export function createLighting(
     sunIntensity: SUN_INTENSITY, sunColor: new THREE.Color(SUN_COLOR),
     hemiIntensity: hemi.intensity, hemiSky: hemi.color, hemiGround: hemi.groundColor,
     fillIntensity: FILL_INTENSITY, fillColor: new THREE.Color(FILL_COLOR), fillDir: new THREE.Vector3(0, 1, 0),
+    envDiffuseGain: 1, envDiscFill: LEGACY_ENV_DISC_FILL,
   };
   scene.userData.lightRig = lightRig;
   const sunDirWorld = new THREE.Vector3();
+  // 2026-10-01: the grounded model's ground (its albedo) and the ground pole the sky light already gives a face
+  // turned down (the environment's shaded ground + the deck's reflection), so the bounce adds only the sunlit excess
+  let rigModel: LightModel | null = null;
+  const groundTone = new THREE.Color();
+  const groundPole = new THREE.Color();
   function applyGroundBounce(): void {
     sunDirWorld.copy(csm.lightDirection).negate().normalize();
+    const model = rigModel?.mode === 'physical' ? rigModel : null;
+    if (model) {
+      groundTone.setRGB(model.groundAlbedo[0], model.groundAlbedo[1], model.groundAlbedo[2]);
+      const iblDown = Math.PI * model.envIntensity * model.envDiffuseGain;
+      groundPole.setRGB(
+        model.groundRadiance[0] * iblDown + model.hemiGround[0] * model.hemiIntensity,
+        model.groundRadiance[1] * iblDown + model.hemiGround[1] * model.hemiIntensity,
+        model.groundRadiance[2] * iblDown + model.hemiGround[2] * model.hemiIntensity,
+      );
+      groundBounceUniforms.uCotSkyDiffuse.value = model.envDiffuseGain;
+    } else {
+      groundBounceUniforms.uCotSkyDiffuse.value = 1;
+    }
     applyGroundBounceRig(groundBounceUniforms, {
       enabled: lightFx.flags.groundBounce, sunDir: sunDirWorld, sunColor: lightRig.sunColor,
-      sunIntensity: lightRig.sunIntensity, groundTone: hemi.groundColor, hemiGround: hemi.groundColor,
-      hemiIntensity: hemi.intensity,
+      sunIntensity: lightRig.sunIntensity, groundTone: model ? groundTone : hemi.groundColor,
+      hemiGround: model ? groundPole : hemi.groundColor, hemiIntensity: model ? 1 : hemi.intensity,
+      ...(model ? { gain: 1 } : {}),
     });
   }
   // Round 65 (2026-09-24): the hemisphere light's sky colour follows the rendered sky. sky.ts publishes the
@@ -1245,6 +1280,12 @@ export function createLighting(
   fill.target.position.set(0, 0, 0);
   scene.add(fill);
   scene.add(fill.target);
+  // 2026-10-01 (the grounded light model, lightModel.ts): wherever the physically based sky runs — sky.ts built its
+  // sky-view LUT before this rig exists (desktop) — the sky's own light, the deck and the ground replace the
+  // anti-sun rescue fill, a second unshadowed sun on every backlit face: setSun drives its intensity to zero. The
+  // light itself stays in the scene so every lit program keeps one light signature whichever rig a preset resolves
+  // to (a zero-intensity directional costs a few ALU per fragment; a signature change recompiles every program).
+  const physicalRig = !!(scene.userData.atmosphere as AtmosphereLightInputs | undefined)?.skyView;
   lightRig.fillDir.copy(fill.position).normalize();
   applyGroundBounce();
 
@@ -1350,6 +1391,62 @@ export function createLighting(
     evaluateCasterProfiles(false);
   }
 
+  /**
+   * 2026-10-01: resolve and apply the light (lightModel.ts) for a sky preset — the grounded model on the physically
+   * based sky, the authored rig on the Preetham tier and inside the Garage. The Garage is the phase that asked for
+   * far-cascade dormancy (an enclosed presentation: setFarCascadeDormant): the sky does not light a sealed bay, so it
+   * keeps the rig its showroom lights were tuned with, under the legacy rig's exposure. The model owns
+   * scene.environmentIntensity from here (sky.ts sets the same value when it installs an environment).
+   */
+  let lastSunPreset: SunPreset | null = null;
+  function applyRig(opts: SunPreset): void {
+    const atmo = scene.userData.atmosphere as AtmosphereLightInputs | undefined;
+    const irr = atmo?.irradianceRaw;
+    const physical = physicalRig && !farCascadeDormant && !!atmo?.active && !!atmo.params && !!irr;
+    const authoredSun = authoredSunOf(opts);
+    const model = resolveLightModel(opts, physical ? atmo!.params! : null,
+      physical ? { irradianceRaw: [irr!.r, irr!.g, irr!.b] } : null, authoredSun);
+    rigModel = model;
+    scene.userData.lightModel = model;
+    scene.userData.lightEnclosed = farCascadeDormant;
+    scene.environmentIntensity = model.envIntensity;
+    const intensity = model.mode === 'physical' ? model.sunIntensity : (opts.sunIntensity ?? SUN_INTENSITY);
+    const colorHex = opts.sunColorHex ?? SUN_COLOR;
+    fill.intensity = model.mode === 'physical' ? 0 : (opts.fillIntensity ?? FILL_INTENSITY);
+    csm.lightIntensity = intensity;
+    for (let k = 0; k < csm.lights.length; k++) {
+      csm.lights[k].intensity = intensity;
+      if (model.mode === 'physical') csm.lights[k].color.setRGB(model.sunColor[0], model.sunColor[1], model.sunColor[2]);
+      else csm.lights[k].color.setHex(colorHex);
+    }
+    if (model.mode === 'physical') {
+      // the deck's glow from above and its reflection off the ground from below (0 under an open sky)
+      hemi.intensity = model.hemiIntensity;
+      hemi.color.setRGB(model.hemiSky[0], model.hemiSky[1], model.hemiSky[2]);
+      hemi.groundColor.setRGB(model.hemiGround[0], model.hemiGround[1], model.hemiGround[2]);
+    } else {
+      const presetHemi = opts.hemiIntensity ?? HEMI_INTENSITY;
+      hemi.intensity = presetHemi + hemiFloorFor(presetHemi);
+      hemi.groundColor.setHex(HEMI_GROUND_COLOR);
+      applyHemisphereSkyHue();
+    }
+    const sun = csm.lightDirection;
+    const fx = sun.x, fz = sun.z; // csm.lightDirection points FROM the sun: its xz is the anti-sun azimuth
+    const fl = Math.hypot(fx, fz) || 1;
+    fill.position.set((fx / fl) * FILL_HORIZ_M, FILL_ELEV_Y, (fz / fl) * FILL_HORIZ_M);
+    lightRig.envDiffuseGain = model.mode === 'physical' ? model.envDiffuseGain : 1;
+    lightRig.envDiscFill = model.mode === 'physical' ? 0 : LEGACY_ENV_DISC_FILL;
+    // round 69: the published rig and the ground bounce follow the preset
+    lightRig.sunIntensity = intensity;
+    lightRig.sunColor.setHex(colorHex);
+    if (model.mode === 'physical') lightRig.sunColor.setRGB(model.sunColor[0], model.sunColor[1], model.sunColor[2]);
+    lightRig.hemiIntensity = hemi.intensity;
+    lightRig.fillIntensity = fill.intensity;
+    lightRig.fillDir.copy(fill.position).normalize();
+    applyGroundBounce();
+    shadowFitCache.invalidate();
+  }
+
   // Round 79 (2026-09-28, the performance lane): the caster profiles (renderLayers.setShadowCasterProfile) are
   // evaluated against this frame's cascades — the frusta of the cascades that render, each map's texel size and the
   // view depth its map is sampled from under three's CSM fade — and the sun's elevation (engine/shadowCasterProfiles.ts).
@@ -1416,6 +1513,8 @@ export function createLighting(
       const next = !!on;
       if (farCascadeDormant === next) return;
       farCascadeDormant = next;
+      // 2026-10-01: an enclosed presentation keeps the authored rig; leaving it restores the grounded model
+      if (lastSunPreset) applyRig(lastSunPreset);
       if (next) applyFarCascadeDormancy();
       else forceAllCascades();
     },
@@ -1628,34 +1727,10 @@ export function createLighting(
      * @param {{sunIntensity?:number, sunColorHex?:number, hemiIntensity?:number}} [opts]
      * @returns {void}
      */
-    setSun(
-      dir: THREE.Vector3,
-      opts: { sunIntensity?: number; sunColorHex?: number; hemiIntensity?: number; fillIntensity?: number } = {},
-    ): void {
+    setSun(dir: THREE.Vector3, opts: SunPreset = {}): void {
       csm.lightDirection.copy(dir).negate().normalize();
-      const intensity = opts.sunIntensity ?? SUN_INTENSITY;
-      const colorHex = opts.sunColorHex ?? SUN_COLOR;
-      fill.intensity = opts.fillIntensity ?? FILL_INTENSITY;
-      csm.lightIntensity = intensity;
-      for (let k = 0; k < csm.lights.length; k++) {
-        csm.lights[k].intensity = intensity;
-        csm.lights[k].color.setHex(colorHex);
-      }
-      {
-        const presetHemi = opts.hemiIntensity ?? HEMI_INTENSITY;
-        hemi.intensity = presetHemi + hemiFloorFor(presetHemi);
-      }
-      applyHemisphereSkyHue();
-      const fx = -dir.x, fz = -dir.z;
-      const fl = Math.hypot(fx, fz) || 1;
-      fill.position.set((fx / fl) * FILL_HORIZ_M, FILL_ELEV_Y, (fz / fl) * FILL_HORIZ_M);
-      // round 69: the published rig and the ground bounce follow the preset
-      lightRig.sunIntensity = intensity;
-      lightRig.sunColor.setHex(colorHex);
-      lightRig.hemiIntensity = hemi.intensity;
-      lightRig.fillIntensity = fill.intensity;
-      lightRig.fillDir.copy(fill.position).normalize();
-      applyGroundBounce();
+      lastSunPreset = opts;
+      applyRig(opts);
       shadowFitCache.invalidate();
       prepareCurrentCascadeFits(true);
       applyStableCascadePoses(csm, allCascadeMask);

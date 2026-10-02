@@ -505,6 +505,50 @@ Measured: game boot 3,626,263 → 3,594,943 B raw and 871,651 → 861,280 B brot
 the unminified build by no more than two captures of one build differ from each other (23,292 px, max Δ 54,
 against 22–27 thousand px, max Δ 29–60).
 
+## Battle hull static draw merges (2026-10-02, P21)
+
+Battle and Garage builds (`batchStatic`) fold every contiguous run of a hull's final coplanar depth-layer order
+whose meshes share an articulation owner, material, vertex layout, raster flags, LOD switch, near-hull shadow and
+distance-detail membership into one draw (`src/vehicles/staticDrawMerge.ts`). Every color-pass mesh has a unique
+polygon offset (`installCoplanarDepthLayers`), so only a run with no foreign layer between its members can share
+one offset without reversing a cross-mesh winner; unmerged meshes keep their exact layer and the run takes its
+top layer. Only parts already at their owner's frame fold (every vertex byte and world matrix unchanged), at most
+16,384 vertices per merged draw; running gear, ERA/equipment/weapon damage buffers, proxies, markings,
+transparent, multi-material, instanced and batched meshes never fold. The merged draw's side table
+(`staticMergeParts.ts`) keeps each source's name, userData, layer, geometry and frame chain; rest contact, the
+presentation floor and the showroom framing box replay the sources exactly, and near-hull shadow casters,
+distance-detail records, night lenses and smoke sockets move to the merged draw.
+
+Measured (node census, near-visible forward draws, the 217-hull fleet; on the 219-tank tree the rewritten
+national concepts and the two new hulls stay equal to the unmerged build draw for draw, and the new hulls fold
+nothing): bots 58.2 → 55.8 per hull, player builds
+58.8 → 56.4; the five Abrams source-X hulls (`m1a2_x`, `m1a2_tusk_x`, `m1a2_sepv2_x`, `m1a2_sepv3_x`,
+`ua_m1a1_x`) −88 each, 76 hulls −1 or −2, 135 unchanged. The round-79 estimate (27 per hull) counted same-material
+meshes regardless of layer order, LOD switch, shadow or detail class; folding across a foreign layer is not
+pixel-exact. Same-build pairs (`?staticmerge=off`, one ABBA per map, a pinned 14v14 roster with one Abrams
+source-X bot, headless High, 1600×900): at chase only the player and one or two bots are on screen (the other
+hulls submitted just their off-screen `fx_impactDecals`, fixed below), so calls move by 0 to −6; an overview of the field drops
+93 draws on Verdant Fields and Sirocco Wadi (tank forward 841 → 748), and the phone tier 93–102. An Abrams
+source-X player hull is −87 to −89 calls in every chase frame and −181 to −184 with two in an overview. CPU
+frame-time deltas stayed inside this loaded host's noise (GPU-bound 22–38 ms frames; the four seeded overview
+pairs read −0.5 to −1.6 ms at p25). `staticDrawMerge.selftest.mjs` and the fleet-wide off/merged comparison
+hold the merged scene equal draw for draw. Float-target captures (13 vehicles × bot and player builds × High and
+Low × six cameras, every capture of a pose in one task, so the renderer's own run-to-run noise is exactly 0 px
+and a 0.5 mm shift moves at least 31,962 px) were bit-identical in 302 of 312 pose captures; ten differed by one
+pixel (`ua_m1a1_x` and `m1a2_sepv3_x` chase, `challenger_3x` at 140 m), from the polygon-offset compression
+inside a run. The opt-in translation bake (`staticDrawMerge: 'translations'`, `?staticmerge=translations`) saves
+more draws but moved up to 1,615 px (float rounding of baked positions), so it is not the default.
+
+Impact decals now cull with their own quads. Each scarred hull's `fx_impactDecals` mesh had
+`frustumCulled = false`, so an off-screen or distant hull with a scar still submitted that one draw every frame.
+`writeQuad` (`src/fx/impactDecals.ts`) keeps the mesh's bounding sphere over the quads it writes (pool reuse
+empties it) and the mesh uses the default culling; the covered network warm lifts culling on its staged scar for
+that one draw. Same build, the pinned 14v14 roster, each pose read live and with the pre-fix submission restored
+in the page (decal meshes unculled) as an ABBA (draw counts, so the pairs are exact): chase forward draws
+319 → 309 on Verdant Fields, 304 → 295 on Sirocco Wadi and 301 → 291 at the phone tier, with ten of the 28 hulls
+carrying a scar. The hulls that submit any draw fall from 13 to 3, 11 to 2 and 13 to 3. The overview, with
+every scarred hull in view, is unchanged.
+
 ## Asset and geometry policy
 
 Playable tanks are assembled from first-party code and cached/generated

@@ -103,6 +103,22 @@ and calibrates armor/module/crew coordinates to checked geometry receipts.
 Procedural low-polygon shadow hulls are presentation-invisible proxies: route
 them with `markShadowOnly()` rather than relying on `colorWrite: false`, which
 still incurs a forward submission in Three.js.
+Battle and Garage builds (`batchStatic`) fold every contiguous run of the final
+coplanar depth-layer order that shares an owner, material, vertex layout, raster
+flags, LOD switch, near-hull shadow and distance-detail membership into one draw
+(`staticDrawMerge.ts`, P21; at most 16,384 vertices per merged draw); unmerged
+meshes keep their layer, so no coplanar winner changes. A folded source keeps its name, userData, layer, geometry and
+frame chain in the merged draw's side table (`staticMergeParts.ts`): resolve a
+name with `findStaticMergePart`, a raycast face with `staticMergePartForFace`,
+and replay per-mesh measurements through `staticMergePartMatrixWorld` (rest
+contact, the presentation floor and showroom framing do). A runtime system that
+edits a vehicle buffer in place must be pinned in the factory's merge options
+(`ownsGeometry`), or the merge folds it; running gear never folds.
+Only parts already at their owner's frame fold by default, so every vertex byte
+is unchanged; `staticDrawMerge: 'translations'` also bakes pure translations but
+moved up to 1,615 px in the P21 float-target captures (float rounding of baked
+positions), so it stays an opt-in. `?staticmerge=off|translations` switches the
+mode on one build for probes.
 Destroyed-only char and ember atlases must remain demand-owned. The battle warm
 pipeline prepares fielded variants before rollout, while `setDestroyed()` is
 the correctness fallback for Studio and diagnostic callers that skip warming;
