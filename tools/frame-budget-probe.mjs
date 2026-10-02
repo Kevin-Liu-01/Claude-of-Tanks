@@ -212,6 +212,15 @@ function graphicsState() {
     perfTrim: D.post.perfTrim, postAa: c.dataset.postAa || null, lightFx: c.dataset.lightFx || null,
     shadowSizes: t ? t.cascades.map((x) => x.size) : null, shadowMaxFar: t?.maxFar ?? null,
     programs: D.renderer.info.programs?.length ?? null,
+    // the static shadow-caster cache's running counts (null on a build without it): a sample's paths are the
+    // difference of its graphics and graphicsAfter readings
+    staticCache: t?.staticCache ? {
+      reuses: (t.staticCache.reuses || []).reduce((a, v) => a + (v || 0), 0),
+      rebuilds: (t.staticCache.rebuilds || []).reduce((a, v) => a + (v || 0), 0),
+      unsettled: t.staticCache.unsettled ?? null, fullRenders: t.staticCache.fullRenders, contentChanges: t.staticCache.contentChanges,
+      promoted: t.staticCache.promoted, lastRebuildReason: t.staticCache.lastRebuildReason, targetBytes: t.staticCache.targetBytes,
+      hashMs: t.staticCache.hashMs, staticCasters: t.staticCache.staticCasters,
+    } : null,
   };
 }
 

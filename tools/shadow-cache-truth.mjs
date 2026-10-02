@@ -13,8 +13,8 @@
 // driving past a still camera (every frame the reuse path) and a camera dolly (every frame a pose change) — rendered
 // once cached and once uncached from the same scripted states. Last, the live flicker meter of the 2026-09-12 shadow
 // flashing investigation (consecutive rAF frames copied in-page; a blip is a pixel whose luminance jumps more than
-// 20 levels and returns within one frame) runs on real game frames with the temporal AA on — the player driving and
-// turning — cache on and off in A B B A segments.
+// 20 levels and returns within one frame) runs on real game frames with the temporal AA on — the player driving,
+// turning and parked — cache on and off in A B B A segments.
 //
 //   node tools/shadow-cache-truth.mjs --root=<tree with dist/> --maps=verdant,monsoon [--out=<dir>] [--port=5395]
 //        [--session-mutex=<dir>] [--query=clouds=off] [--gate] [--temporal] [--flicker-frames=90] [--no-flicker]
@@ -115,7 +115,7 @@ function installTruthHelpers(temporal) {
       frame(true); frame(true);
       debug().noStaticCache = false;
       return { a, b, cache: { reuses: sum(mid.reuses) - sum(pre.reuses), rebuilds: sum(mid.rebuilds) - sum(pre.rebuilds),
-        skippedCopies: mid.skippedCopies - pre.skippedCopies, fullRenders: mid.fullRenders - pre.fullRenders,
+        unsettled: mid.unsettled - pre.unsettled, fullRenders: mid.fullRenders - pre.fullRenders,
         promoted: mid.promoted, reason: mid.rebuilds.join() !== pre.rebuilds.join() ? mid.lastRebuildReason : null, enabled: mid.enabled } };
     },
     diff(a, b, threshold = 1) {
@@ -197,7 +197,9 @@ const S_CAMERA = `(() => {
     const c = dx || dy || dz ? cam.clone().add(new V(dx, dy, dz)) : cam.clone();
     D.rig.setExternalPose(c, at.clone().add(new V(dx, dy, dz)), D.camera.fov);
     const key = note.split(':')[0].replace(/[^a-z0-9]+/gi, '-');
-    let { a, b, cache } = T.pair(1); let diff = T.diff(a, b);
+    // a moved cascade renders the ordinary way until its pose has held STATIC_SHADOW_SETTLE_FRAMES (2): the third
+    // frame is the re-render at the new pose
+    let { a, b, cache } = T.pair(3); let diff = T.diff(a, b);
     items.push({ step: key, diff, cache, png: diff.px ? T.diffPng(a, b) : null, note });
     ({ a, b, cache } = T.pair(1)); diff = T.diff(a, b);
     items.push({ step: key + '-held', diff, cache, png: diff.px ? T.diffPng(a, b) : null, note: note + ', held' });
@@ -216,7 +218,7 @@ const S_SUN = `(() => {
   const moved = toSun.clone().applyAxisAngle(axis, 0.12);
   for (const [dir, step, note] of [[moved, 'moved', 'the sun turned 7 degrees in azimuth'], [toSun, 'back', 'the sun back']]) {
     L.setSun(dir, preset);
-    let { a, b, cache } = T.pair(1); let diff = T.diff(a, b);
+    let { a, b, cache } = T.pair(3); let diff = T.diff(a, b);
     items.push({ step, diff, cache, png: diff.px ? T.diffPng(a, b) : null, note });
     ({ a, b, cache } = T.pair(1)); diff = T.diff(a, b);
     items.push({ step: step + '-held', diff, cache, png: diff.px ? T.diffPng(a, b) : null, note: note + ', held' });
@@ -264,7 +266,8 @@ const S_SEQUENCE = (kind) => `(() => {
   };
   const run = (cached) => {
     const frames = [];
-    for (let k = 0; k <= N; k++) { apply(k); T.frame(cached); T.frame(cached); frames.push(T.lum()); }
+    // each state held three frames: a dolly step re-renders the moved cascades once they settle (the third frame)
+    for (let k = 0; k <= N; k++) { apply(k); T.frame(cached); T.frame(cached); T.frame(cached); frames.push(T.lum()); }
     return frames;
   };
   const before = T.telemetry();
@@ -325,7 +328,8 @@ async function flickerMeter({ frames, threshold }) {
   return { frames: lums.length, fps: +(lums.length / (captureMs / 1000)).toFixed(1), blipsPerFrame: +(blips / pairs).toFixed(1),
     blipRate: +((blips / (pairs * W * H)) * 100).toFixed(4), meanMotion: +(motion / (pairs * W * H)).toFixed(2),
     speed: +(window.__DEBUG.game?.player?.state?.speed ?? 0).toFixed(2),
-    cache: { enabled: t?.enabled ?? null, reuses: (t?.reuses || []).reduce((s, v) => s + (v || 0), 0), rebuilds: (t?.rebuilds || []).reduce((s, v) => s + (v || 0), 0) } };
+    cache: { enabled: t?.enabled ?? null, reuses: (t?.reuses || []).reduce((s, v) => s + (v || 0), 0), rebuilds: (t?.rebuilds || []).reduce((s, v) => s + (v || 0), 0),
+      unsettled: t?.unsettled ?? 0 } };
 }
 
 /** Live frames, temporal AA on, the real cascade scheduler: driving and turning, cache on and off in A B B A order. */
@@ -341,27 +345,29 @@ async function flickerPhase(page, options) {
   const plan = [
     ['drive', true, 'KeyW'], ['drive', false, 'KeyS'], ['drive', false, 'KeyW'], ['drive', true, 'KeyS'],
     ['turn', true, 'KeyA'], ['turn', false, 'KeyD'], ['turn', false, 'KeyA'], ['turn', true, 'KeyD'],
+    // parked, the camera held: the cache's reuse path on live frames (the moving segments render the ordinary way)
+    ['still', true, null], ['still', false, null], ['still', false, null], ['still', true, null],
   ];
   const segments = [];
   for (const [kind, cached, key] of plan) {
     await page.evaluate((c) => { window.__SHADOW_DEBUG.noStaticCache = !c; }, cached);
-    await page.keyboard.down(key);
-    await sleep(1500);
+    if (key) await page.keyboard.down(key);
+    await sleep(key ? 1500 : 2500);
     let r;
     try {
       const before = await page.evaluate(() => window.__DEBUG.lighting.getShadowTelemetry().staticCache);
       r = await page.evaluate(flickerMeter, { frames: options.flickerFrames, threshold: 20 });
       const sum = (x) => (x || []).reduce((s, v) => s + (v || 0), 0);
-      r.cache.reuses -= sum(before.reuses); r.cache.rebuilds -= sum(before.rebuilds);
+      r.cache.reuses -= sum(before.reuses); r.cache.rebuilds -= sum(before.rebuilds); r.cache.unsettled -= before.unsettled ?? 0;
     } finally {
-      await page.keyboard.up(key);
+      if (key) await page.keyboard.up(key);
     }
     await sleep(700);
     segments.push({ kind, cached, key, ...r });
   }
   await page.evaluate(() => { window.__SHADOW_DEBUG.noStaticCache = false; });
   const summary = {};
-  for (const kind of ['drive', 'turn']) {
+  for (const kind of ['drive', 'turn', 'still']) {
     const of = (cached) => segments.filter((x) => x.kind === kind && x.cached === cached).map((x) => x.blipsPerFrame);
     const mean = (v) => +(v.reduce((s, x) => s + x, 0) / v.length).toFixed(1);
     const on = of(true), off = of(false);
