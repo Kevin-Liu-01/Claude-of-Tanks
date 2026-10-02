@@ -1,6 +1,6 @@
 //! cot-world-kernel — a bit-exact Rust/WebAssembly port of `src/engine/simplexFast.ts` (the Gustavson simplex
 //! noise of three.js's `SimplexNoise`, with the same permutation tables and the same floating-point operation
-//! order), loaded by `src/wasm/worldKernel.ts` behind the `?wasm=world` opt-in.
+//! order), loaded by `src/engine/worldKernel.ts` behind the `?wasm=world` opt-in.
 //!
 //! Why noise, and why it may run outside JavaScript: a battlefield build evaluates the exact height field a few
 //! million times (terrain chunks, the fold grid, grass and props placement), and every sample spends about half of

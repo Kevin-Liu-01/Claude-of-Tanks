@@ -23,7 +23,7 @@ export interface SimplexNoiseMethods {
 }
 
 /**
- * An optional exact accelerator (src/wasm/worldKernel.ts installs the Rust/WebAssembly port behind `?wasm=world`).
+ * An optional exact accelerator (src/engine/worldKernel.ts installs the Rust/WebAssembly port behind `?wasm=world`).
  * `bind` receives each new instance's tables and returns replacement methods, or null to keep the JavaScript ones.
  * An accelerator must return the identical doubles: world heights are authoritative.
  */

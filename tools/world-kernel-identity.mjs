@@ -1,6 +1,6 @@
 /**
  * world-kernel-identity.mjs — the digests that tie the committed world-kernel binary to its Rust sources
- * (shared by tools/build-world-kernel.mjs and src/wasm/worldKernel.selftest.mjs; no toolchain needed).
+ * (shared by tools/build-world-kernel.mjs and src/engine/worldKernel.selftest.mjs; no toolchain needed).
  */
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';

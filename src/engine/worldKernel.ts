@@ -2,10 +2,15 @@
 //
 // What it does: compiles wasm/world-kernel/pkg/cot_world_kernel.wasm (a bit-exact Rust port of simplexFast.ts,
 // ≈ 6 KB, ≈ 1.6 KB brotli) and installs it as SimplexNoise's accelerator, so every noise table constructed
-// afterwards — the height field's, the props', the horizon's — evaluates in WebAssembly. A battlefield build spends
-// about half of each exact height sample in noise; the kernel returns the identical doubles
-// (src/engine/worldKernel.selftest.mjs proves it on random, edge-case and whole-battlefield samples), so collision,
-// spotting, the receipts and the multiplayer host see the same world, sooner.
+// afterwards — the height field's, the props', the horizon's — evaluates in WebAssembly. The kernel returns the
+// identical doubles (src/engine/worldKernel.selftest.mjs proves it on random, edge-case and whole-battlefield
+// samples), so collision, spotting, the receipts and the multiplayer host see the same world.
+//
+// Measured payoff (wgpu spike, 2026-10-01): an exact height sample spends about half its time in noise, but at this
+// granularity — one JS→Wasm crossing per noise call, the JavaScript calls inlined by TurboFan — the kernel runs
+// terrain's core() 1.2× faster and whole battlefield builds within ±5% of the JavaScript path (warm Node builds,
+// CPU time). A kernel that owns core() (nine noises per crossing) measured 2.3–2.5× on core() and ≈ +3–10 % of a
+// build; that needs a hook inside terrain.ts's hash-pinned constructor, so it stays an owner decision.
 //
 // Scope and fallback: main.ts imports this module only when the page URL carries `?wasm=world`, and awaits the
 // installation before the world module loads; without the flag nothing here is fetched or evaluated. Any failure —
