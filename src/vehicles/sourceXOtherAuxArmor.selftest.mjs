@@ -7,12 +7,12 @@ import {assertConvexArmorOutline} from '../sim/armorOutline.test-support.mjs';
 import {tankPoseFromState,traceTank} from '../sim/armor.ts';
 import {createShell} from '../sim/ballistics.ts';
 import {createCombatState,resolveShellHit} from '../sim/damage.ts';
+import { near } from '../../tools/receipt-kit.test-support.mjs';
 const DONORS={k1a1_x:'k1a1',amx30_x:'amx30',leclerc_x:'leclerc',leclerc_classic_x:'leclerc',type10_x:'type10',type90_x:'type90',amx40_x:'amx40'};
 // 2026-10-01 (owner: retire frozen pins): the fourteen pinned whole-model digests, the historical
 // finish/gear/tint inverses that reached them and their oracle-only negative controls are gone; the
 // fleet geometry ledger owns whole-tank change detection. Every check below runs on the actual model.
 const pose=tankPoseFromState({pos:new THREE.Vector3(),yaw:0,visualPitch:0,visualRoll:0,turretYaw:0,gunPitch:0});
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b} ±${t}`);
 const vec=p=>new THREE.Vector3(...p);
 // Lighting adds a semantic byte channel; a malformed mask must still fail.
 function assertNightMasks(root){

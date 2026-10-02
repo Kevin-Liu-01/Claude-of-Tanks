@@ -54,6 +54,8 @@ for (const id of ['desert', 'oasis', 'skybridge', 'titan_gorge']) {
   assert.ok(!getMapConfig(id).splat.rippleShoreOnly, id + ' keeps dry sand relief even around water');
 }
 assert.match(source, /uniform vec4 uRipple;/, 'reuse the existing uniform without a new texture');
-assert.match(source, /new THREE\.Vector4\(rd\[0\] \/ rl, rd\[1\] \/ rl, S\.rippleAmp \?\? 0, S\.rippleShoreOnly \? 1 : 0\)/,
+// terrain v2 (2026-10-01): the authored amplitude reaches the shader scaled by the ground profile's wind share
+// (groundRedux windRipple — 0 on the airless moon, 1 everywhere else)
+assert.match(source, /new THREE\.Vector4\(rd\[0\] \/ rl, rd\[1\] \/ rl, \(S\.rippleAmp \?\? 0\) \* Math\.max\(0, groundProfile\.windRipple \?\? 1\), S\.rippleShoreOnly \? 1 : 0\)/,
   'authoring opt-in reaches the actual shader uniform');
 console.log('terrainSandCoverage: real shader shore gating, retained dry response, branch/sample isolation and negative controls PASS');

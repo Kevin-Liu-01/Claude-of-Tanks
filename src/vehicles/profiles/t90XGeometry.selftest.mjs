@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Use the normal eager fleet entry point; a missing registration or fallback
 // cannot be papered over by installing the tested builders within this test.
@@ -28,11 +29,6 @@ const SOURCE = {
     wheels:[-1.93988,-.98038,-.02818,.87757,1.77558,2.70061],
     wheelYs:[.48649001121520996,.46959999203681946,.46959999203681946,.46959999203681946,.46959999203681946,.5290799736976624], rear:-4.0973 },
 };
-
-function near(value,target,tolerance,label) {
-  assert.ok(Number.isFinite(value)&&Math.abs(value-target)<=tolerance,
-    `${label}: actual ${value}, source ${target} ± ${tolerance}`);
-}
 
 function vertices(mesh) {
   const attribute=mesh.geometry.getAttribute('position');

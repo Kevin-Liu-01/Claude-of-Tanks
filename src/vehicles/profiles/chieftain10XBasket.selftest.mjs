@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { createTank, KIT } from '../tankFactory.ts';
 import { addChieftain10XBasket } from './chieftain10XBasket.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Fixed, complete-source turret witnesses, not isolated candidate targets.
 // Canonical SHA256 252e45ee57928c6256252fa7dcdba8c42bfc2c2c86a6d4548ea68291b45c6f85.
@@ -22,8 +23,6 @@ const witnesses = [
   [[0, 1.05, 1.2], [0, -1, 0], 1, .794757790882],
   [[.1, .95, .6], [0, -1, 0], 1, .912637622915],
 ];
-const near = (a, b, tolerance, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b) <= tolerance,
-  `${label}: ${a} vs ${b}`);
 const ray = (meshes, origin, direction, far = 7) => new THREE.Raycaster(
   new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, far,
 ).intersectObjects(meshes, false)[0];

@@ -147,11 +147,13 @@ function assertProjectionContract(text) {
   'near-slope relief retains the same exclusions and distance/slope weights');
   const graze = compact(block(text, 'if (grazeW > 0.004)').body);
   const face = compact(block(text, 'if (faceW > 0.004)').body);
+  // terrain v2 (2026-10-01, the cost pass): the splat samples carry the layer's measured mean (the far variant's tile
+  // mean) and the two noise reads go through the explicit-LOD helper nz() — same fields, same chart
   for (const expression of [
-    'splatSamp(uAlbG, uvG * 0.240, df, 0.0)',
-    'splatSamp(uNrmG, uvG * 0.240, df, 0.0)',
-    'texture2D(uNoise, uvG * 0.0117).r',
-    'texture2D(uNoise, uvG * 0.0031 + vec2(0.41, 0.13)).g',
+    'splatSamp(uAlbG, uvG * 0.240, df, 0.0, uMeanG)',
+    'splatSamp(uNrmG, uvG * 0.240, df, 0.0, NRM_MEAN)',
+    'nz(uvG, 0.0117, vec2(0.0)).r',
+    'nz(uvG, 0.0031, vec2(0.41, 0.13)).g',
     'aG.rgb *= (0.88 + n1G * 0.18) * (0.94 + n2G * 0.12);',
     'aG.rgb *= 0.92 + n1w * 0.16;',
     'float gMix = grazeW * 0.38;',
@@ -161,8 +163,8 @@ function assertProjectionContract(text) {
   assert.ok(face.includes(compact('n.xy += dnF * 0.5 * faceW;'))); // relief pass 2 (2026-09-12): 0.22 -> 0.5
   // At most 8 grazing fetches (2 splat calls × 3 reads + 2 noise reads),
   // plus 1 near-face read. This scopes the budget to the changed paths.
-  const calls = body => body.match(/\b(?:texture2D|\w*Samp|wallTex|groundNrm)\(/g) ?? [];
-  assert.deepEqual(calls(graze), ['splatSamp(', 'splatSamp(', 'texture2D(', 'texture2D(']);
+  const calls = body => body.match(/\b(?:texture2D|\w*Samp|wallTex|groundNrm|nz)\(/g) ?? [];
+  assert.deepEqual(calls(graze), ['splatSamp(', 'splatSamp(', 'nz(', 'nz(']);
   assert.deepEqual(calls(face), ['texture2D(']);
   assert.ok((uncomment(block(text, 'vec4 splatSamp(').body).match(/texture2D\(/g) ?? []).length <= 3);
 }

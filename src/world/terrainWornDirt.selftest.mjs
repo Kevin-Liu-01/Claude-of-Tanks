@@ -109,16 +109,18 @@ assert.equal(compact(scalar(source, 'worn')), 'smoothstep(0.55,0.80,n2w+(n1w-0.5
   'raw worn field retains its existing grass-scatter correlation');
 assert.ok(compact(vegetation).includes('constdirtPatch=smoothstepJs(0.55,0.80,sn.n2+(sn.n1-0.5)*0.45);'));
 assert.doesNotMatch(vegetation, /wornDirtStrength/, 'no change to CPU scatter admission, RNG or resources');
+// terrain v2 (2026-10-01): the soil samples take the layer's measured mean (the far variant's tile mean) and the
+// normal mixes sit behind the far-band switch; the statements are otherwise unchanged
 for (const statement of [
-  'a = mix(a, groundSamp(uAlbD, uv * 0.210, df, mipB), seaSand);',
+  'a = mix(a, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), seaSand);',
   'n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), seaSand);',
-  'a = mix(a, groundSamp(uAlbD, uv * 0.210, df, mipB), driftW * 0.85);',
-  'vec3 packedRoad = groundSamp(uAlbD, uv * 0.210, df, mipB + 4.0).rgb;', // road pass 2026-09-12: smoothed, not deep
+  'a = mix(a, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), driftW * 0.85);',
+  'vec3 packedRoad = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;', // road pass 2026-09-12: smoothed, not deep
 ]) assert.ok(compact(source).includes(compact(statement)), 'beach, shoal and road detail paths remain unchanged');
 assertTerrainFetchExpressionCensus(source);
 assert.deepEqual(source.match(/texSize\(\d+\)/g), [...Array(6).fill('texSize(256)'), 'texSize(512)']);
 assert.match(source, /uniform float [^;]*\buWornDirtStrength\b[^;]*;/, 'exactly one new scalar uniform, not a sampler');
 assert.equal((source.match(/shader\.uniforms\.uWornDirtStrength\s*=/g) ?? []).length, 1);
-assert.match(source, /world-terrain-splat-v52-/, 'material-owned detail advances the fragment program key'); // relief pass 2 (2026-09-12); round 49 (2026-09-23): v38 jointed strata; round 55 (2026-09-24): v39 analytic wall crag on the bedded maps; round 73b (2026-09-26): v43 the borders and the strand in metres
+assert.match(source, /world-terrain-splat-v54-/, 'material-owned detail advances the fragment program key'); // terrain v3 (2026-10-02): v54; terrain v2 (2026-10-01): v53 // relief pass 2 (2026-09-12); round 49 (2026-09-23): v38 jointed strata; round 55 (2026-09-24): v39 analytic wall crag on the bedded maps; round 73b (2026-09-26): v43 the borders and the strand in metres
 assert.deepEqual(MAP_IDS.map(id => stringify(getMapConfig(id))), before, 'projections and controls never mutate live authoring');
 console.log('terrainWornDirt: coastal-only authored blend, 810 scalar combinations, legacy dry response, protected coverage and mutation/resource gates PASS');

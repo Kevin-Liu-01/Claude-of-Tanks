@@ -7,12 +7,11 @@ import { addChieftain5XSourceClosure, chieftain5SourceClothRoll } from './chieft
 import { addChieftain5XSourceHull } from './chieftain5XSourceHull.ts';
 import { addChieftain5XSourceHullEquipment } from './chieftain5XSourceHullEquipment.ts';
 import { addChieftain5XSourceTurretEquipment } from './chieftain5XSourceTurretEquipment.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Fixed original-source witnesses, not camera bins or candidate-derived targets.
 // Canonical SHA2a781a79…268e79 retains all eleven owners. Only concealed case
 // and inner-web roots are continued into the permanent native receiving skin.
-const near = (a, b, e, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b) <= e,
-  `${label}: ${a}, source ${b} ±${e}`);
 const hit = (objects, p, d, far = 5) => new THREE.Raycaster(new THREE.Vector3(...p),
   new THREE.Vector3(...d).normalize(), 0, far).intersectObjects(objects, false)[0];
 function collect(build) {

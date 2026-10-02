@@ -144,6 +144,38 @@ assert.deepEqual(decline.payload.command, { type: 'host_decline', declined: true
 transport.deliver({ type: 'room_ack', requestId: decline.requestId, payload: { ok: true } });
 await declining;
 
+// ---- relay credentials from the room (2026-10-02, §13.14): `room_relay` with a request id, the answer validated, the
+// room's refusal codes carried, a malformed answer refused, the request bounded by its own budget
+{
+  const asking = client.requestRelay();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const request = transport.outbound.findLast((envelope) => envelope.type === 'room_relay');
+  assert.ok(request && typeof request.requestId === 'string', 'room_relay leaves with a request id');
+  assert.deepEqual(request.payload, {}, 'and nothing else: the seat is the credential');
+  transport.deliver({ type: 'room_relay', requestId: request.requestId, payload: {
+    iceServers: [{ urls: ['stun:stun.cloudflare.com:3478'] }, { urls: ['turns:turn.cloudflare.com:443?transport=tcp'], username: 'u', credential: 'c' }],
+    relay: false, expiresInSeconds: 3600,
+  } });
+  assert.deepEqual(await asking, {
+    iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }, { urls: 'turns:turn.cloudflare.com:443?transport=tcp', username: 'u', credential: 'c' }],
+    relay: true, expiresInSeconds: 3600,
+  }, 'validated: relay recomputed from the servers, never taken on trust');
+  for (const code of ['relay_phase', 'rate_limit', 'not_in_room', 'unknown_message']) {
+    const refused = client.requestRelay();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const sent = transport.outbound.findLast((envelope) => envelope.type === 'room_relay');
+    transport.deliver({ type: 'error', requestId: sent.requestId, payload: { code } });
+    await assert.rejects(refused, (error) => error.code === code, `the room's ${code} reaches the caller`);
+  }
+  const malformed = client.requestRelay();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  transport.deliver({ type: 'room_relay', requestId: transport.outbound.findLast((envelope) => envelope.type === 'room_relay').requestId, payload: { iceServers: [{ urls: 'https://x.test' }] } });
+  await assert.rejects(malformed, (error) => error.code === 'invalid_payload', 'a malformed answer is refused');
+  const startedAt = Date.now();
+  await assert.rejects(client.requestRelay({ timeoutMs: 30 }), (error) => error.code === 'internal', 'an unanswered request times out on its own budget');
+  assert.ok(Date.now() - startedAt < 900, 'well inside the ordinary request timeout');
+}
+
 // ---- the match's end clears the election and the match_start; a new match starts from its own URL
 transport.deliver({ type: 'match_status', payload: { matchId: 'm1-0001', round: 1, status: 'ended', verdict: { result: 'alpha', reason: 'elimination' } } });
 assert.equal(client.lastHostChanged, null);
@@ -188,4 +220,5 @@ transport.deliver({ type: 'match_start', payload: {
 assert.equal(client.generation, 10, 'an equal generation keeps the election');
 assert.equal(client.isHost, true);
 client.dispose();
-console.log('roomClientSignals.selftest: signal relay, host elections, generations, a re-sent match_start superseding a stale election, report and decline commands verified');
+await assert.rejects(client.requestRelay(), (error) => error.code === 'not_in_room', 'a closed client asks nothing');
+console.log('roomClientSignals.selftest: signal relay, host elections, generations, a re-sent match_start superseding a stale election, report and decline commands, relay requests verified');

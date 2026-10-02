@@ -2,11 +2,13 @@
 export const SELFTEST_SUITES = Object.freeze({
   pre: Object.freeze([
     // Group independent full-fleet builders to fill the four CPU slots before
-    // the 45-second FIFO drain. Every check stays in its original lifecycle.
+    // the 45-second FIFO drain. 2026-10-02: one fleet pass per build (fleetPass.test-support.mjs) hosts the
+    // ten former whole-fleet receipts' audits: HIGH (wheelQuality, surfaceMarkupFleet) and LOW (gunArticulation,
+    // eraGameplayRegistration) here, the default build in core; fleetLazy and fleetFloorClearance keep their own.
     'src/vehicles/fleetLazy.selftest.mjs',
-    'src/vehicles/wheelQuality.selftest.mjs',
+    'src/vehicles/fleetPassHigh.selftest.mjs',
     'tools/wheel-axial-extents.selftest.mjs',
-    'src/vehicles/eraGameplayRegistration.selftest.mjs',
+    'src/vehicles/fleetPassLow.selftest.mjs',
     // 2026-09-29: the three receipts of 0e5fc79e2 sit after the four whole-fleet CPU scans the receipt pins first (runner admission).
     'src/sim/modeConfiguration.selftest.mjs',
     'src/vehicles/tacticalRoles.selftest.mjs',
@@ -121,6 +123,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/sealed-ledger-policy.selftest.mjs',
     'tools/muzzle-seat-policy.selftest.mjs',
     'tools/receipt-repin.selftest.mjs',
+    // the shared receipt kit (near, nearStrict, geometryHash) about 110 receipts import
+    'tools/receipt-kit.selftest.mjs',
     'tools/muzzle-bore-inventory.selftest.mjs',
     'tools/source-x-oracle.selftest.mjs',
     'src/vehicles/eraAuthoredFaces.selftest.mjs',
@@ -454,13 +458,12 @@ export const SELFTEST_SUITES = Object.freeze({
   ]),
   core: Object.freeze([
     // Group independent full-fleet builders to fill the four CPU slots before
-    // the 45-second FIFO drain. Every check stays in its original lifecycle.
-    'src/gallery/surfaceMarkupFleet.selftest.mjs',
+    // the 45-second FIFO drain. The default-build pass hosts combatAnatomy, mudguardFenderSeating,
+    // vehicleMarkings and tankAssets (2026-10-02).
+    'src/vehicles/fleetPassDefault.selftest.mjs',
     'src/vehicles/fleetFloorClearance.selftest.mjs',
-    'src/vehicles/vehicleMarkings.selftest.mjs',
-    'src/vehicles/tankAssets.selftest.mjs',
-    'src/vehicles/combatAnatomy.selftest.mjs',
-    'src/vehicles/gunArticulation.selftest.mjs',
+    // the fleet pass harness itself, on a scripted factory (no fleet build)
+    'src/vehicles/fleetPass.selftest.mjs',
     // 2026-10-01: the fleet geometry ledger (one full-fleet HIGH+LOW sweep) replaces the frozen per-receipt geometry pins.
     'src/vehicles/fleetGeometryLedger.selftest.mjs',
     // 2026-10-01: one fleet on every path (each facade alone, every saved spec digested).
@@ -845,6 +848,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/localWeaponPresentation.selftest.mjs',
     'server/githubStars.selftest.mjs',
     'server/ice.selftest.mjs',
+    'server/relayCredentials.selftest.mjs',
     'server/telemetryRecord.selftest.mjs',
     'server/telemetry.selftest.mjs',
     'server/jev.selftest.mjs',
@@ -1063,6 +1067,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundLitter.selftest.mjs',
     // round 73 (2026-09-25): the ground redux — the profile table and material contract, the pressure field, the tall-grass tier
     'src/world/groundRedux.selftest.mjs',
+    'src/world/terrainMaterialV2.selftest.mjs',
     'src/world/groundPressure.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',
     'src/world/roadLookupGrid.selftest.mjs',
@@ -1245,9 +1250,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/marketing-shots/showcase-r2.selftest.mjs',
   ]),
   post: Object.freeze([
-    // Group independent full-fleet builders to fill the four CPU slots before
-    // the 45-second FIFO drain. Every check stays in its original lifecycle.
-    'src/vehicles/mudguardFenderSeating.selftest.mjs',
     'src/audio/lazyAudio.selftest.mjs',
     'src/vehicles/profiles/strv81TurretClosure.selftest.mjs',
     'src/vehicles/profiles/pt91mPendekarFidelity.selftest.mjs',
