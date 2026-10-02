@@ -472,6 +472,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/selftest-cache.selftest.mjs',
     'tools/selftest-cache-dir.selftest.mjs',
     'tools/selftest-cpu-pool.selftest.mjs',
+    'tools/selftest-schedule.selftest.mjs',
     'src/vehicles/fleetSweep.selftest.mjs',
     'tools/code-quality-metrics.selftest.mjs',
     'tools/capture-lock.selftest.mjs',

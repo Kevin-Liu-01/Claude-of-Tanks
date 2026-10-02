@@ -208,6 +208,36 @@ assert.equal(fair.held, false);
   renewed.finish('after'); assert.equal(await run, 0); assert.equal(renewed.held, false);
 }
 
+// Gate P7 (2026-10-01): the admission order is a permutation of registry indices. Work starts in
+// that order; the earliest REGISTRY failure still supplies the status and failures are named in
+// registry order, so reporting does not depend on what ran first.
+{
+  const ordered = fixture(2);
+  const run = runSelftestSuite('p7-order', ['a', 'b', 'c', 'd'], { ...ordered.options, order: [3, 1, 0, 2] });
+  await tick(); assert.deepEqual(ordered.starts, ['d', 'b'], 'admission follows the order, not the registry');
+  ordered.finish('d', { status: 9 }); await tick();
+  assert.deepEqual(ordered.starts, ['d', 'b', 'a']);
+  ordered.finish('a', { status: 7 }); await tick();
+  assert.deepEqual(ordered.starts, ['d', 'b', 'a', 'c']);
+  ordered.finish('b'); ordered.finish('c');
+  assert.equal(await run, 7, 'the earliest registry failure supplies the status, whatever finished first');
+  assert.deepEqual(ordered.errors, ['[selftests] FAIL a', '[selftests] FAIL d'], 'failures are named in registry order');
+  assert.equal(ordered.held, false);
+  for (const order of [[0, 1, 2], [0, 0, 1, 2], [0, 1, 1, 3], [0, 1, 2, 4], [0.5, 1, 2, 3], 'nope']) {
+    const invalid = fixture(2);
+    await assert.rejects(runSelftestSuite('p7-invalid', ['a', 'b', 'c', 'd'], { ...invalid.options, order }), /permutation/);
+    assert.deepEqual(invalid.starts, []); assert.equal(invalid.acquisitions, 0);
+  }
+  // a barrier admitted first runs alone before the pool fills
+  const barrierFirst = fixture(2);
+  const barrierRun = runSelftestSuite('p7-barrier', ['a', 'b', 'browser'], { ...barrierFirst.options, order: [2, 0, 1] });
+  await tick(); assert.deepEqual(barrierFirst.starts, ['browser']); assert.equal(barrierFirst.held, false);
+  barrierFirst.finish('browser'); await tick();
+  assert.deepEqual(barrierFirst.starts, ['browser', 'a', 'b']);
+  barrierFirst.finish('a'); barrierFirst.finish('b');
+  assert.equal(await barrierRun, 0); assert.equal(barrierFirst.acquisitions, 1, 'no drain was needed for the barrier');
+}
+
 const browserFailure = fixture();
 const browserRun = runSelftestSuite('browser-failure', ['browser', 'never'], browserFailure.options);
 await tick(); browserFailure.finish('browser', { status: 4 }); await tick();

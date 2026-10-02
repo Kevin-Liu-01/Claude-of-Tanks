@@ -16,6 +16,9 @@ assert.deepEqual(selftestCommand([]).files, Object.values(SELFTEST_SUITES).flat(
 assert.equal(selftestCommand(['core', '--plan']).plan, true);
 assert.throws(() => selftestCommand(['all', '--typo']), /Unknown self-test option/);
 assert.throws(() => selftestCommand(['all', '--changed=src/main.ts']), /never skips required checks/);
+assert.equal(selftestCommand([]).order, 'longest', 'gate P7: longest-first admission is the default');
+assert.equal(selftestCommand(['all', '--order=registry']).order, 'registry');
+assert.throws(() => selftestCommand(['all', '--order=random']), /Unknown self-test option/);
 assert.ok(SELFTEST_FRESH_FILES.includes('server/match/tickCost.selftest.mjs'));
 assert.ok(SELFTEST_FRESH_FILES.includes('server/match/loop.selftest.mjs'));
 assert.ok(SELFTEST_FRESH_FILES.includes('src/mp/wire/wireFuzz.selftest.mjs'));
