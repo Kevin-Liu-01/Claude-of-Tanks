@@ -11,10 +11,16 @@
  * seats of a p2p match and never parsed (`room_signal`, §13), and the room
  * outlives every departure: only the 24 h idle expiry closes it, after which
  * the object deallocates its storage.
+ *
+ * Relay credentials (2026-10-02, docs/MULTIPLAYER-V2.md §13.14): the actor admits a seat's `room_relay` and this
+ * object mints the TURN credentials from its secrets (`server/relayCredentials.ts`: Cloudflare Realtime TURN, one
+ * provider call per admitted request, never cached, never logged; STUN only while the secrets are unset).
  */
 import { DurableObject } from 'cloudflare:workers';
 import { createHash } from 'node:crypto';
 import { signSeatToken } from '../../../server/match/seatToken.ts';
+import { createRelayIssuer, pickRelayEnv } from '../../../server/relayCredentials.ts';
+import type { RelayIssuer } from '../../../server/relayCredentials.ts';
 import { RoomActor } from '../../../src/mp/room/roomActor.ts';
 import type { RoomActorState, RoomSocketRecord } from '../../../src/mp/room/roomActor.ts';
 import { ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, parseRoomRoute } from '../../../src/mp/room/protocol.ts';
@@ -47,6 +53,8 @@ export class Room extends DurableObject<Env> {
   #alarmWanted: number | null | undefined = undefined;
   /** Sockets the actor retired during the current event, closed once the event's storage work is done (see #close). */
   #pendingCloses: Array<{ ws: WebSocket; reason: string }> = [];
+  /** The relay credential issuer, made from this object's secrets on the first admitted `room_relay`. */
+  #relay: RelayIssuer | null = null;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -112,6 +120,8 @@ export class Room extends DurableObject<Env> {
       // P1b: the trailing edge of a coalesced room_state on this object's own timer — a pending timer keeps the
       // object awake (docs: scheduled callbacks prevent hibernation), and it is not an alarm, so not a request.
       defer: (callback, delayMs) => { setTimeout(callback, delayMs); },
+      // §13.14: one grant per admitted request, minted from the Worker's secrets (STUN only while they are unset).
+      relayCredentials: () => (this.#relay ??= createRelayIssuer({ env: pickRelayEnv(this.env) })).issue(),
       log: (level, message, fields) => console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](message, fields),
     });
     return this.#actor;
