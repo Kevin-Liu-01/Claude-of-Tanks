@@ -159,4 +159,15 @@ props code shaped every layout, and the next maps should start from them:
   rejected when the ground under its footprint varies by more than the map's `maxSpread`; check that every landmark
   actually stands.
 - **Worked ground.** A `workedGround` patch takes at most 24 vertices; split larger ones.
+- **Budget.** All three pilots exceed point 10's 10 % triangle budget. The coordinator approved this for PR #9 on
+  October 2, 2026, pending the owner. The extra triangles are content the brief wants. Trimming goes to frame-time
+  work, such as shadow caching and LOD for parapets and wire, rather than to removing content. Whole-map prop
+  triangles changed as follows:
+  - Sirocco Wadi +16 %.
+  - Steinburg −21 %; its vegetation grew 8 % on the old town core's ground, which renders 18 % more triangles at
+    the fixed overhead pose.
+  - Cinder Junction +33 %. Of its +282 k prop triangles, 172 k are the sandbag parapets and wire belts of the four
+    standard field-trench lines, which the old street lattice left no room for.
+
+  Draw calls fell at the fixed overhead pose: −10 %, 0 % and −21 %.
 
