@@ -319,6 +319,9 @@ export default defineConfig({
     },
   },
   build: {
+    // Vite's per-chunk gzip report re-compresses ~950 chunks on every build. Sizes are owned by
+    // tools/bundle-budget.mjs (`npm run check:bundle`), which measures the page closures instead.
+    reportCompressedSize: false,
     rollupOptions: {
       // Multi-page build: the game and independently bootable public/tools
       // surfaces. Presentation routes never inherit the playable boot graph.
