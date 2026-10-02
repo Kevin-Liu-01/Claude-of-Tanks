@@ -17,11 +17,12 @@
 import * as THREE from 'three';
 
 export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus'
-  | 'pine' | 'spruce' | 'fir' | 'cedar' | 'cypress' | 'birch' | 'aspen' | 'palm' | 'snag';
+  | 'pine' | 'spruce' | 'fir' | 'cedar' | 'cypress' | 'birch' | 'aspen' | 'palm' | 'snag' | 'mangrove';
 type Rng = () => number;
 
 export const GROWTH_SPECIES: readonly GrowthSpecies[] = Object.freeze([
   'oak', 'poplar', 'willow', 'acacia', 'eucalyptus', 'pine', 'spruce', 'fir', 'cedar', 'cypress', 'birch', 'aspen', 'palm', 'snag',
+  'mangrove',
 ]);
 
 /** How a crown envelope narrows from its base (t = 0) to its top (t = 1): the radius fraction at t. */
@@ -91,7 +92,8 @@ interface GrowthProfile {
    * The crown's value in light: a multiplier on the card tint, set per species so a grown crown keeps the effective
    * albedo (card tint × atlas reflectance) the legacy crown of its species had — the conifers' spray atlases paint
    * darker than the old needle sheets (.qa-dev card-albedo: spruce 0.87, fir 0.90, pine 0.96, cedar 0.79, cypress 0.65
-   * of the legacy albedo before it). 1 when unset.
+   * of the legacy albedo before it); the grown palm's fronds paint brighter than the round-8 palm's dark cards (1.74)
+   * and the mangrove's leathery sprays darker than the round-8 willow-form crown (0.67). 1 when unset.
    */
   foliageValue?: number;
 }
@@ -212,6 +214,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     droop: 0, upturn: 0, sidePerM: 0, sideAngle: 0, sideRatio: 0, sideDroop: 0, twigPerM: 0,
     leafOrder: 0, leafPerM: 0, leafFrom: 0, spray: [3.0, 3.9], aspect: 0.36, habit: 'upright', tipSprays: 0,
     cardBend: 0.5, flatRoll: 0, flatDroop: 0, bark: 2, barkTint: [0.46, 0.41, 0.35], barkTopTint: [0.40, 0.35, 0.29],
+    foliageValue: 0.58,
   }),
   snag: P({
     family: 'dead', height: 5.6, heightSpread: 0.22, trunkR: 0.27, form: 'excurrent',
@@ -220,6 +223,18 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     droop: 0.15, upturn: 0.15, sidePerM: 0.6, sideAngle: 0.7, sideRatio: 0.45, sideDroop: 0.1, twigPerM: 0,
     leafOrder: 1, leafPerM: 0.9, leafFrom: 0.55, spray: [0.7, 1.05], aspect: 0.9, habit: 'spray', tipSprays: 1,
     cardBend: 0.05, flatRoll: 0.0, flatDroop: 0.0, bark: 0, barkTint: [0.36, 0.33, 0.30], barkTopTint: [0.22, 0.20, 0.19],
+  }),
+  // the tidal mangrove (the Mangrove map's willow form, vegetation.ts): a short bole forking low into spreading
+  // scaffolds under a broad, dense, rounded crown of leathery sprays; smooth grey-brown bark; the stilt roots are
+  // the builder's (vegetation.ts buildGrownTree, the reviewed bent-cone arches)
+  mangrove: P({
+    family: 'broadleaf', height: 6.2, heightSpread: 0.12, trunkR: 0.26, form: 'decurrent',
+    forkAt: [0.30, 0.38], scaffolds: [4, 6], scaffoldAngle: [0.75, 1.1], crownBase: 0.34, crownR: 3.35,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 1.2, angleHigh: 0.7,
+    droop: 0.32, upturn: 0.3, sidePerM: 2.4, sideAngle: 0.8, sideRatio: 0.66, sideDroop: 0.3, twigPerM: 1.6,
+    leafOrder: 1, leafPerM: 2.6, leafFrom: 0.3, spray: [0.9, 1.35], aspect: 0.8, habit: 'spray', tipSprays: 1,
+    cardBend: 0.12, flatRoll: 0.6, flatDroop: 0.0, bark: 2, barkTint: [0.42, 0.39, 0.34], barkTopTint: null,
+    foliageValue: 1.49,
   }),
 });
 
@@ -809,10 +824,11 @@ export const GROWTH_SHRUB_SPRAYS: Readonly<Record<'bush' | 'understorey', number
  * The grown shrub's value in light per bush species, on top of the crown's foliageValue: the round-8 bush cards carried
  * their own tint law (hue 0.24, a 1.7 gain, a radial shade) over the legacy sheets, so a shrub keeps the effective
  * albedo (card tint × atlas reflectance) the round-8 bush of its map had — .qa-dev shrub-stats, grown / legacy before
- * this: oak 0.86, poplar 0.92, willow 0.85, acacia 0.78, birch 0.78, spruce 1.02, pine 0.94, cedar 1.05. 1 when unset.
+ * this: oak 0.86, poplar 0.92, willow 0.85, acacia 0.78, birch 0.78, spruce 1.02, pine 0.94, cedar 1.05, mangrove 1.10
+ * (its foliageValue in). 1 when unset.
  */
 export const GROWTH_SHRUB_VALUE: Readonly<Partial<Record<GrowthSpecies, number>>> = Object.freeze({
-  oak: 1.16, poplar: 1.09, willow: 1.17, acacia: 1.29, birch: 1.27, spruce: 0.98, pine: 1.07, cedar: 0.95,
+  oak: 1.16, poplar: 1.09, willow: 1.17, acacia: 1.29, birch: 1.27, spruce: 0.98, pine: 1.07, cedar: 0.95, mangrove: 0.91,
 });
 
 /**

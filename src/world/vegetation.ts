@@ -2195,8 +2195,7 @@ function grownTintLaw(family: string): readonly [number, number, number] {
  * atlas they drew four sprays each), the trees' tint law (the understorey a touch younger and yellower), a snowy
  * palette's laden tiles on the sky-facing sprays. Cards only, welded: the shrub's stems stand inside its foliage.
  */
-function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: VegetationPalette, species: Species): THREE.BufferGeometry {
-  const growth = species as GrowthSpecies;
+function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: VegetationPalette, growth: GrowthSpecies): THREE.BufferGeometry {
   const profile = TREE_GROWTH_PROFILES[growth];
   const skeleton = growShrubSkeleton(growth, kind, rng);
   // a snowy palette's load lies on the sprays facing the sky highest on the mound: a fixed share of the shrub's sprays
@@ -2246,9 +2245,31 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   const footShade = 1 - GROWTH_CANOPY_AO * canopySkyOcclusion(skeleton, 0, 0.3, 0);
   const footColor = new THREE.Color(profile.barkTint[0] * 0.80 * footShade, profile.barkTint[1] * 0.78 * footShade,
     profile.barkTint[2] * 0.76 * footShade);
-  parts.push(paintFlat(buildRootFlare(stemR, stemR * 1.36, 0.62, 10, rng() * Math.PI * 2), footColor, 0));
+  // the tidal mangrove stands on the reviewed stilt roots (addRootButtresses' bent cones, tidalMangrove.ts) over the
+  // two-ring eased collar; every other tree takes the fluted collar and its swept root tongues
+  const tidal = species === 'mangrove';
+  parts.push(paintFlat(buildRootFlare(stemR, stemR * (tidal ? 1.13 : 1.36), 0.62, 10, rng() * Math.PI * 2, tidal ? 0 : 5), footColor, 0));
   const roots = profile.family === 'conifer' || profile.family === 'birch' ? 4 : 5;
-  addRootButtresses(parts, rng, footColor, stemR * 1.28, roots);
+  const rootFirst = parts.length;
+  addRootButtresses(parts, rng, footColor, tidal ? 0.38 : stemR * 1.28, roots, tidal);
+  const rootEnd = parts.length;
+  if (tidal) {
+    // the arches are drawn round the origin's axis: each joins the grown stem where it stands at the arch's collar
+    for (let i = rootFirst; i < rootEnd; i++) {
+      const p = parts[i].getAttribute('position');
+      let top = -Infinity;
+      for (let v = 0; v < p.count; v++) top = Math.max(top, p.getY(v));
+      const nodes = stem.nodes;
+      let ax = nodes[nodes.length - 1].x, az = nodes[nodes.length - 1].z;
+      for (let n = 1; n < nodes.length; n++) {
+        if (nodes[n].y < top) continue;
+        const t = clamp((top - nodes[n - 1].y) / Math.max(1e-6, nodes[n].y - nodes[n - 1].y), 0, 1);
+        ax = nodes[n - 1].x + (nodes[n].x - nodes[n - 1].x) * t; az = nodes[n - 1].z + (nodes[n].z - nodes[n - 1].z) * t;
+        break;
+      }
+      parts[i].translate(ax, 0, az);
+    }
+  }
   // a winter palette's snow load: the spray atlas paints the snow on the needles and twigs; a few thin pads lie flush
   // on the upward-facing sprays high in the crown (the bark sheet's snow strip) for the load's volume
   const snow = pal.snow ?? 0;
@@ -2290,6 +2311,23 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   const flatTrunk = mergeParts(parts);
   const crownAttachments = growthCrownAttachments(skeleton, flatTrunk, branchRanges);
   const trunk = weldGrownGeometry(flatTrunk);
+  if (tidal) {
+    // the stilt roots' receipt (treeGrowth.selftest): the stem's triangle corners in the welded index (the wood leads
+    // the merge) and each arch's vertex range in the welded trunk (the weld keeps first-seen order and an arch shares
+    // no corner with the wood or the collar)
+    const index = trunk.index!.array, arches: Array<readonly [number, number]> = [];
+    let corner = 0;
+    for (let i = 0; i < rootEnd; i++) {
+      const n = parts[i].index ? parts[i].index!.count : parts[i].getAttribute('position').count;
+      if (i >= rootFirst) {
+        let lo = Infinity, hi = -1;
+        for (let c = corner; c < corner + n; c++) { lo = Math.min(lo, index[c]); hi = Math.max(hi, index[c]); }
+        arches.push([lo, hi + 1]);
+      }
+      corner += n;
+    }
+    trunk.userData.stiltRoots = { variant, stemCorners: branchRanges[0] ?? [0, 0], arches };
+  }
   trunk.userData.crownAttachments = crownAttachments;
   trunk.userData.originalTrunkVertices = trunk.getAttribute('position').count;
   trunk.userData.trunkQuality = {
@@ -2332,8 +2370,18 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
       return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
     },
   }));
-  // the crown's own shadow hull rides on the trunk (createTreeMeshPools builds the pool's proxy from it)
-  trunk.userData.shadowHull = emitCrownShadowHull(skeleton);
+  // the crown's own shadow hull rides on the trunk (createTreeMeshPools builds the pool's proxy from it); a mangrove's
+  // stilt arches cast with it
+  let hull = emitCrownShadowHull(skeleton);
+  if (tidal) {
+    const arches = parts.slice(rootFirst, rootEnd).map((g) => (g.index ? g.toNonIndexed() : g).getAttribute('position').array as Float32Array);
+    const joined = new Float32Array(hull.length + arches.reduce((n, a) => n + a.length, 0));
+    joined.set(hull);
+    let o = hull.length;
+    for (const a of arches) { joined.set(a, o); o += a.length; }
+    hull = joined;
+  }
+  trunk.userData.shadowHull = hull;
   return { trunk, cards };
 }
 
@@ -4460,7 +4508,7 @@ function* vegetationBuildSteps(
   // the species whose foliage material paints a spray atlas (the grown crowns' 2 × 2 tiles): the shrubs of such a
   // species grow from its sprays too (buildGrownShrub); any other bush species keeps the round-8 bush cards
   const sprayAtlasSpecies = new Set<Species>();
-  function grownDefinition(species: Exclude<GrowthSpecies, 'snag' | 'palm'>, legacy: SpeciesDefinition): SpeciesDefinition {
+  function grownDefinition(species: Exclude<GrowthSpecies, 'snag' | 'palm' | 'mangrove'>, legacy: SpeciesDefinition): SpeciesDefinition {
     if (!grownTrees) return legacy;
     sprayAtlasSpecies.add(species);
     return {
@@ -4468,6 +4516,19 @@ function* vegetationBuildSteps(
       // a snowy palette's texTone is the round-8 cards' hoar-frost wash (their snow); the spray atlas paints its snow
       tex: (r, pal) => makeSprayAtlas(grownSprayKind(species, pal), r, texSize(512), (pal.snow ?? 0) > 0.05 ? null : pal.texTone || null, pal.snow ?? 0),
       near: (k, pal) => buildGrownTree(species, seed + legacy.nearSeed + k * 7, k, pal),
+      far: legacy.far,
+    };
+  }
+  // p2 trees lane (2026-10-02): the tidal mangrove (the Mangrove map's willow form) grows on the desktop tiers — the
+  // mangrove's own broad crown and leathery spray atlas over the reviewed stilt roots (buildGrownTree); the legacy
+  // definition's seeds and far stand-ins (the stilt-stemmed lobes, shapeMangroveFarStem). The phones keep it all.
+  function mangroveDefinition(legacy: SpeciesDefinition): SpeciesDefinition {
+    if (!grownTrees) return legacy;
+    sprayAtlasSpecies.add('willow');
+    return {
+      texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed,
+      tex: (r, pal) => makeSprayAtlas('mangrove', r, texSize(512), (pal.snow ?? 0) > 0.05 ? null : pal.texTone || null, pal.snow ?? 0),
+      near: (k, pal) => buildGrownTree('mangrove', seed + legacy.nearSeed + k * 7, k, pal),
       far: legacy.far,
     };
   }
@@ -4480,7 +4541,7 @@ function* vegetationBuildSteps(
     oak: grownDefinition('oak', broadleafDefinition(51, 65, 73, OAK_SHAPES, [1, 1, 1])),
     poplar: grownDefinition('poplar', broadleafDefinition(59, 211, 231, POPLAR_SHAPES, [0.58, 1.25, 0.58])),
     willow: veg.willowForm === 'tidalMangrove'
-      ? broadleafDefinition(60, 241, 261, WILLOW_SHAPES, [1.45, 0.82, 1.45], true)
+      ? mangroveDefinition(broadleafDefinition(60, 241, 261, WILLOW_SHAPES, [1.45, 0.82, 1.45], true))
       : grownDefinition('willow', broadleafDefinition(60, 241, 261, WILLOW_SHAPES, [1.45, 0.82, 1.45])),
     acacia: grownDefinition('acacia', broadleafDefinition(62, 271, 291, ACACIA_SHAPES, [1.48, 0.78, 1.42])),
     eucalyptus: grownDefinition('eucalyptus', broadleafDefinition(63, 301, 321, EUCALYPTUS_SHAPES, [0.68, 1.35, 0.72])),
@@ -5504,8 +5565,10 @@ function* vegetationBuildSteps(
   function createBushes(): void {
     const bushPal = palOf(bushSpecies);
     // p2 trees lane: the desktop shrubs grow from the bush species' sprays (buildGrownShrub); the phones keep the cards
+    // the shrub grows from the sprays its material paints: the Mangrove map's willow form is the mangrove
+    const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove' : bushSpecies;
     const bushGeos = sprayAtlasSpecies.has(bushSpecies)
-      ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, bushSpecies), buildGrownShrub('bush', mulberry32(seed + 32), bushPal, bushSpecies)]
+      ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, shrubGrowth), buildGrownShrub('bush', mulberry32(seed + 32), bushPal, shrubGrowth)]
       : [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
     const bushPlacements: [THREE.Matrix4[], THREE.Matrix4[]] = [[], []];
     const bushKeep: [boolean[],boolean[]]=[[],[]];
@@ -5664,7 +5727,7 @@ function* vegetationBuildSteps(
     function createUnderstoreyMesh(): void {
       const n = understoreyPlacements.length;
       if (n === 0) return;
-      const geometry = sprayAtlasSpecies.has(bushSpecies) ? buildGrownShrub('understorey', mulberry32(seed + 33), bushPal, bushSpecies)
+      const geometry = sprayAtlasSpecies.has(bushSpecies) ? buildGrownShrub('understorey', mulberry32(seed + 33), bushPal, shrubGrowth)
         : buildUnderstoreyCards(mulberry32(seed + 33), bushPal);
       geometry.userData.understorey = true;
       geometry.setAttribute('aFadeI', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));

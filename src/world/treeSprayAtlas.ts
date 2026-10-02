@@ -18,9 +18,9 @@ type Rng = () => number;
 type ToneFunction = (hue: number, saturation: number, lightness: number) => readonly [number, number, number];
 
 export type SprayKind = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus' | 'birch' | 'aspen' | 'birch-bare'
-  | 'spruce' | 'fir' | 'pine' | 'cedar' | 'cypress';
+  | 'spruce' | 'fir' | 'pine' | 'cedar' | 'cypress' | 'mangrove';
 export const SPRAY_KINDS: readonly SprayKind[] = Object.freeze(['oak', 'poplar', 'willow', 'acacia', 'eucalyptus',
-  'birch', 'aspen', 'birch-bare', 'spruce', 'fir', 'pine', 'cedar', 'cypress']);
+  'birch', 'aspen', 'birch-bare', 'spruce', 'fir', 'pine', 'cedar', 'cypress', 'mangrove']);
 /** Tiles per side of every spray atlas. */
 export const SPRAY_ATLAS_TILES = 2;
 
@@ -40,6 +40,8 @@ const LEAF_COLOR: Readonly<Record<SprayKind, LeafColor>> = Object.freeze({
   pine: { hue: 0.27, sat: 0.32, light: 0.17 },
   cedar: { hue: 0.37, sat: 0.22, light: 0.165 },
   cypress: { hue: 0.31, sat: 0.36, light: 0.145 },
+  // the tidal mangrove's thick, glossy, dark elliptic leaves (the Mangrove map's willow form)
+  mangrove: { hue: 0.235, sat: 0.40, light: 0.17 },
 });
 
 const _cc = new THREE.Color();
@@ -243,6 +245,7 @@ const BROADLEAF_RECIPES: Readonly<Record<string, BroadleafRecipe>> = Object.free
   eucalyptus: { shape: 'falcate', leafLen: 0.20, leafAspect: 0.16, petiole: 0.10, spacing: 0.06, leafAngle: 0.55, twigs: [2, 4], twigLen: [0.30, 0.48], twigAngle: 0.4, hang: 0.7, droop: 0.7, stemWidth: 2.2 },
   birch: { shape: 'oval', leafLen: 0.09, leafAspect: 0.44, petiole: 0.3, spacing: 0.042, leafAngle: 0.95, twigs: [4, 6], twigLen: [0.30, 0.50], twigAngle: 0.55, hang: 0.85, droop: 0.4, stemWidth: 1.6 },
   aspen: { shape: 'round', leafLen: 0.085, leafAspect: 0.5, petiole: 0.45, spacing: 0.045, leafAngle: 0.95, twigs: [3, 5], twigLen: [0.22, 0.36], twigAngle: 0.6, hang: 0, droop: 0.45, stemWidth: 2.0 },
+  mangrove: { shape: 'oval', leafLen: 0.13, leafAspect: 0.40, petiole: 0.10, spacing: 0.05, leafAngle: 0.8, twigs: [3, 5], twigLen: [0.24, 0.36], twigAngle: 0.6, hang: 0, droop: 0.22, stemWidth: 2.8 },
 });
 
 /** One broadleaf spray tile: a stem, side twigs, a back layer and a front layer of leaves. */

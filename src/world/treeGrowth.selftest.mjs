@@ -287,7 +287,7 @@ try {
 // the faces turned outward; the two-row cards two triangles each, welded to four vertices; inside the cover disc
 const shrubRows = [];
 {
-  const bushSpecies = ['oak', 'poplar', 'willow', 'acacia', 'birch', 'spruce', 'pine', 'cedar'];
+  const bushSpecies = ['oak', 'poplar', 'willow', 'acacia', 'birch', 'spruce', 'pine', 'cedar', 'mangrove'];
   for (const species of bushSpecies) for (const kind of ['bush', 'understorey']) {
     const a = growShrubSkeleton(species, kind, mulberry32(31)), b = growShrubSkeleton(species, kind, mulberry32(31));
     assert.deepEqual(a, b, `${species} ${kind}: deterministic`);
@@ -442,6 +442,75 @@ const shrubRows = [];
     assert.ok(ladenY / laden > 1.3 * (bareY / bare), 'a laden spray is lifted');
     assert.ok(ladenSat / laden < bareSat / bare, 'a laden spray is neutral, a bare one keeps its green');
   } finally { winter.dispose(); disposeObject3DResources(winter.group); }
+  // the tidal mangrove (2026-10-02): the Mangrove map's willow form grows on the desktop tiers — the mangrove's crown on
+  // its own spray atlas over the reviewed stilt arches (five a trunk): each arch's toe at the authored -0.75 m and
+  // seated in the ground under every placed willow, each collar inside the grown stem, the arches casting with the
+  // crown hull; the shrubs grow from the mangrove's sprays; the collision and concealment records are the legacy build's
+  {
+    const tidal = build('mangrove');
+    let tidalRecords = null;
+    try {
+      tidalRecords = records(tidal);
+      const { createHeightField: heightField } = await import('./terrain.ts');
+      const ground = heightField(1337, getMapConfig('mangrove'));
+      const trunks = pools(tidal).filter((m) => m.userData.treeTrunk && m.geometry.userData.stiltRoots);
+      assert.equal(trunks.length, 3, 'three grown mangrove trunk pools');
+      const byVariant = new Map(trunks.map((m) => [m.geometry.userData.stiltRoots.variant, m.geometry]));
+      const ray = new THREE.Ray(), hit = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+      const toes = new Map();
+      for (const [variant, g] of byVariant) {
+        const { stemCorners, arches } = g.userData.stiltRoots, p = g.attributes.position, idx = g.index.array;
+        assert.equal(arches.length, 5, 'five stilt arches');
+        const variantToes = [];
+        for (const [lo, hi] of arches) {
+          let toe = lo, collar = new THREE.Vector3(), n = 0;
+          for (let v = lo; v < hi; v++) {
+            if (p.getY(v) < p.getY(toe)) toe = v;
+            if (p.getY(v) > 1) { collar.add(a.fromBufferAttribute(p, v)); n++; }
+          }
+          assert.ok(Math.abs(p.getY(toe) + 0.75) < 1e-5, `the arch ends at its authored toe (${p.getY(toe)})`);
+          assert.ok(n > 0, 'the arch rises to its collar');
+          collar.multiplyScalar(1 / n);
+          // inside the stem: a ray from the collar's centre crosses the stem's surface an odd number of times
+          ray.set(collar, new THREE.Vector3(0.937, 0.173, 0.302).normalize());
+          const distances = [];
+          for (let k = stemCorners[0]; k < stemCorners[1]; k += 3) {
+            if (!ray.intersectTriangle(a.fromBufferAttribute(p, idx[k]), b.fromBufferAttribute(p, idx[k + 1]), c.fromBufferAttribute(p, idx[k + 2]), false, hit)) continue;
+            const d = hit.distanceTo(collar);
+            if (!distances.some((old) => Math.abs(old - d) < 1e-6)) distances.push(d);
+          }
+          assert.equal(distances.length % 2, 1, 'the arch collar is embedded in the grown stem');
+          variantToes.push(new THREE.Vector3().fromBufferAttribute(p, toe));
+        }
+        toes.set(variant, variantToes);
+        // the arches cast with the crown: the trunk's hull carries every toe
+        const hull = g.userData.shadowHull;
+        for (const toe of variantToes) {
+          let found = false;
+          for (let k = 0; k < hull.length && !found; k += 3) found = Math.abs(hull[k] - toe.x) < 1e-6 && Math.abs(hull[k + 1] - toe.y) < 1e-6 && Math.abs(hull[k + 2] - toe.z) < 1e-6;
+          assert.ok(found, 'the stilt arches cast with the crown hull');
+        }
+      }
+      let seated = 0;
+      const point = new THREE.Vector3();
+      for (const tree of tidal._trees) {
+        if (tree.species !== 'willow') continue;
+        for (const toe of toes.get(tree.variant % 3)) {
+          point.copy(toe).applyMatrix4(tree.mat);
+          assert.ok(point.y - ground.getHeightAt(point.x, point.z) <= 1e-5, `a stilt toe seated in the ground (${(point.y - ground.getHeightAt(point.x, point.z)).toFixed(3)} m)`);
+          seated++;
+        }
+      }
+      assert.ok(seated > 500, `every placed mangrove's toes checked (${seated})`);
+      const shrubs = tidal.group.children.filter((m) => m.userData.bush || m.userData.understorey);
+      assert.ok(shrubs.length === 3 && shrubs.every((m) => m.geometry.index && m.geometry.getAttribute('aCard')), 'the Mangrove shrubs grow from the mangrove sprays');
+    } finally { tidal.dispose(); disposeObject3DResources(tidal.group); }
+    const tidalLegacy = build('mangrove', { legacyTrees: true });
+    try {
+      assert.equal(records(tidalLegacy), tidalRecords, 'the grown mangroves change the look, never the records');
+      assert.ok(pools(tidalLegacy).every((m) => !m.geometry.userData.stiltRoots), 'legacyTrees keeps the reviewed legacy mangrove');
+    } finally { tidalLegacy.dispose(); disposeObject3DResources(tidalLegacy.group); }
+  }
   // legacyTrees: the legacy card trees and lobe-hull proxies
   const legacy = build('fjord', { legacyTrees: true });
   try {
