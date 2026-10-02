@@ -2307,16 +2307,23 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
       // out along the bough, where the load shows past the sprays above it
       const along = site.length * (conifer ? 0.58 : 0.45);
       const cx = site.x + site.ax * along, cy = site.y + site.ay * along, cz = site.z + site.az * along;
-      // a conifer's pad is a bough's load, wider low in the crown; a limb's load follows its spray
-      const lr = conifer ? (0.28 + rng() * 0.16) * (0.8 + 0.5 * (1 - heightT)) : site.length * 0.15 * (0.8 + rng() * 0.4);
-      const lobe = new THREE.IcosahedronGeometry(lr, 0);
-      shapeTreeSnowLobe(lobe, rng);
-      lobe.scale(conifer ? 1.5 + rng() * 0.4 : 1.7, conifer ? 0.45 : 0.26, conifer ? 0.95 + rng() * 0.3 : 1.0);
-      // along the spray, a little out from its seat, lying on its face
-      lobe.rotateY(Math.atan2(site.ax, site.az) + Math.PI / 2);
-      lobe.translate(cx + site.nx * 0.05, cy + site.ny * 0.05, cz + site.nz * 0.05);
-      _c.setHSL(0.585, 0.04, 0.62, THREE.SRGBColorSpace).multiplyScalar(1.55);
-      parts.push(paintFlat(lobe, _c.clone(), 0.12));
+      // a conifer's pad is a bough's load, wider low in the crown — a mounded clump and a smaller one heaped beside it
+      // along the bough (a squashed single lobe read as a plate); a limb's load follows its spray
+      const lr = conifer ? (0.26 + rng() * 0.14) * (0.8 + 0.5 * (1 - heightT)) : site.length * 0.15 * (0.8 + rng() * 0.4);
+      const yaw = Math.atan2(site.ax, site.az) + Math.PI / 2;
+      const clumps = conifer ? 2 : 1;
+      for (let c = 0; c < clumps; c++) {
+        const r = c === 0 ? lr : lr * (0.55 + rng() * 0.15);
+        const lobe = new THREE.IcosahedronGeometry(r, 0);
+        shapeTreeSnowLobe(lobe, rng);
+        lobe.scale(conifer ? 1.35 + rng() * 0.35 : 1.7, conifer ? 0.62 + rng() * 0.14 : 0.26, conifer ? 0.95 + rng() * 0.25 : 1.0);
+        // along the spray, a little out from its seat, lying on its face; the second clump heaped beside the first
+        lobe.rotateY(yaw + (rng() - 0.5) * 0.5);
+        const side = c === 0 ? 0 : (rng() < 0.5 ? -1 : 1) * lr * 0.95;
+        lobe.translate(cx + site.nx * 0.05 + site.ax * side, cy + site.ny * 0.05 + r * 0.12 * c, cz + site.nz * 0.05 + site.az * side);
+        _c.setHSL(0.585, 0.04, 0.62, THREE.SRGBColorSpace).multiplyScalar(1.55);
+        parts.push(paintFlat(lobe, _c.clone(), 0.12));
+      }
       lastAz = Math.atan2(site.z, site.x);
     }
     if (conifer) {
