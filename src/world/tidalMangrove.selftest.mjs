@@ -580,8 +580,12 @@ for (const tone of [mangrove.vegetation.grassTexTone, mangrove.vegetation.tuftTo
 
 for (const seed of [1337, 2025, 7719]) {
   const field = createHeightField(seed, mangrove);
-  const control = { ...mangrove, vegetation: { ...mangrove.vegetation, willowForm: undefined, tidalTrees: undefined } };
-  const before = build(field, control), after = build(field, mangrove);
+  // p2 trees lane (2026-10-01): the desktop tiers grow their near trees (treeGrowth.ts); this receipt's reviewed
+  // comparison is the tidal stilt willow against the legacy swept-root willow, so both builds keep the legacy trees
+  // (vegetation.legacyTrees) — the grown species are treeTrunkQuality / growthTrees / vegetationFarSeams' subject
+  const legacy = { ...mangrove, vegetation: { ...mangrove.vegetation, legacyTrees: true } };
+  const control = { ...legacy, vegetation: { ...legacy.vegetation, willowForm: undefined, tidalTrees: undefined } };
+  const before = build(field, control), after = build(field, legacy);
   console.log(seed, JSON.stringify(after.group.userData.tidalMangroves.map(({ treeIndices, ...r }) => r)));
   assert.equal(after.trees.length, before.trees.length);
   // 2026-09-13: the rim forest / saddle tree spawn clearance returned to 20 m (was 36 m

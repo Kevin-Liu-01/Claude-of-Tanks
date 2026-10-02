@@ -32,6 +32,13 @@ import {
 // far tier as impostors baked from the near trees
 import { createLeafDetailLibrary, LEAF_DETAIL_LAW, LEAF_DETAIL_NORMAL_SCALE } from './leafDetail.ts';
 import { createTreeImpostorLibrary, type TreeImpostorLibrary, type TreeImpostorRenderer } from './treeImpostors.ts';
+// p2 trees lane (2026-10-01): the grown near trees — skeleton, wood, spray cards and crown shadow hull — and their
+// branch-spray atlases
+import {
+  emitBranchGeometry, emitCrownShadowHull, emitLeafCards, growTreeSkeleton, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES,
+  type GrowthSpecies,
+} from './treeGrowth.ts';
+import { makeSprayAtlas, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
@@ -171,6 +178,9 @@ interface VegetationConfig {
   stubblePatches?: readonly GrassStubblePatch[];
   /** Reuses the willow species/library slots; no fourth material or atlas. */
   willowForm?: 'tidalMangrove';
+  /** p2 trees lane: keep the legacy card trees on this world even on the desktop tiers (the tidal-mangrove receipt's
+   * reviewed comparison, same-build A/B through `?legacyTrees=1`). */
+  legacyTrees?: boolean;
   tidalTrees?: readonly TidalMangroveFeature[];
 }
 
@@ -483,20 +493,27 @@ function finishAlphaTexture(
 // bucket, but must never inherit bark fissures or their tangent-space normals.
 const TREE_SURFACE_SIZE = 256;
 const TREE_BARK_COLUMNS = 240;
-function _nrmFromHeight(h: Float32Array, s: number, strength: number): THREE.CanvasTexture {
-  const px = new Uint8ClampedArray(s * s * 4);
-  const H = (x: number, y: number): number => h[((y + s) % s) * s + ((x + s) % s)];
+// p2 trees lane (2026-10-01): the bark sheet carries four styles side by side, each a 256-column block (240 bark
+// columns + a 16-column gutter): 0 the furrowed sheet above (its exact painting stream; the snow strip in its gutter),
+// 1 the scaly plates of a pine or spruce, 2 the smooth mottled bark of a eucalyptus or fir, 3 the papery lenticelled
+// white of a birch or aspen. The grown trees (treeGrowth.ts) select a style through their u (2 + 2 × style + the
+// fraction round the stem); every legacy builder's u in [0, 1] stays on style 0 and the snow's -1 on the strip.
+const TREE_BARK_STYLES = 4;
+const TREE_BARK_ATLAS_WIDTH = TREE_SURFACE_SIZE * TREE_BARK_STYLES;
+function _nrmFromHeight(h: Float32Array, s: number, strength: number, w = s): THREE.CanvasTexture {
+  const px = new Uint8ClampedArray(w * s * 4);
+  const H = (x: number, y: number): number => h[((y + s) % s) * w + ((x + w) % w)];
   const v = new THREE.Vector3();
-  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
+  for (let y = 0; y < s; y++) for (let x = 0; x < w; x++) {
     const dx = (H(x + 1, y - 1) + 2 * H(x + 1, y) + H(x + 1, y + 1)) - (H(x - 1, y - 1) + 2 * H(x - 1, y) + H(x - 1, y + 1));
     const dy = (H(x - 1, y + 1) + 2 * H(x, y + 1) + H(x + 1, y + 1)) - (H(x - 1, y - 1) + 2 * H(x, y - 1) + H(x + 1, y - 1));
     v.set(-dx * strength, -dy * strength, 1).normalize();
-    const i = (y * s + x) * 4;
+    const i = (y * w + x) * 4;
     px[i] = v.x * 127.5 + 127.5; px[i + 1] = v.y * 127.5 + 127.5; px[i + 2] = v.z * 127.5 + 127.5; px[i + 3] = 255;
   }
   const c = document.createElement('canvas');
-  c.width = c.height = s;
-  context2d(c).putImageData(new ImageData(px as Uint8ClampedArray<ArrayBuffer>, s, s), 0, 0);
+  c.width = w; c.height = s;
+  context2d(c).putImageData(new ImageData(px as Uint8ClampedArray<ArrayBuffer>, w, s), 0, 0);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 8;
@@ -507,12 +524,15 @@ function makeBarkTexture(seed: number): {
   normal: THREE.CanvasTexture;
   meanReflectance: number;
 } {
-  const s = TREE_SURFACE_SIZE;
+  const s = TREE_SURFACE_SIZE, W = TREE_BARK_ATLAS_WIDTH;
   const rng = mulberry32(seed);
   const c = document.createElement('canvas');
-  c.width = c.height = s;
+  c.width = W; c.height = s;
   const ctx = context2d(c, { willReadFrequently: true });
   ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, TREE_BARK_COLUMNS, s);
+  ctx.clip();
   ctx.scale(TREE_BARK_COLUMNS / s, 1);
   ctx.fillStyle = '#aea89f'; // near-neutral: species vertex tints own the hue (birch stays pale)
   ctx.fillRect(0, 0, s, s);
@@ -584,17 +604,18 @@ function makeBarkTexture(seed: number): {
   ctx.restore();
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(TREE_BARK_COLUMNS, 0, s - TREE_BARK_COLUMNS, s);
-  const id = ctx.getImageData(0, 0, s, s);
-  const hgt = new Float32Array(s * s);
+  paintBarkStyles(ctx, mulberry32((seed ^ 0xba4c) >>> 0), s);
+  const id = ctx.getImageData(0, 0, W, s);
+  const hgt = new Float32Array(W * s);
   const linear = new Float32Array(256);
   for (let value = 0; value < 256; value++) {
     _cc.setRGB(value / 255, value / 255, value / 255, THREE.SRGBColorSpace);
     linear[value] = _cc.r;
   }
   let sumReflectance = 0;
-  for (let i = 0; i < s * s; i++) {
+  for (let i = 0; i < W * s; i++) {
     hgt[i] = (id.data[i * 4] * 0.5 + id.data[i * 4 + 1] * 0.35 + id.data[i * 4 + 2] * 0.15) / 255;
-    if (i % s < TREE_BARK_COLUMNS) {
+    if (i % W < TREE_BARK_COLUMNS) {
       sumReflectance += linear[id.data[i * 4]] * 0.2126
         + linear[id.data[i * 4 + 1]] * 0.7152 + linear[id.data[i * 4 + 2]] * 0.0722;
     }
@@ -605,9 +626,84 @@ function makeBarkTexture(seed: number): {
   albedo.anisotropy = 8;
   return {
     albedo,
-    normal: _nrmFromHeight(hgt, s, 2.2),
+    normal: _nrmFromHeight(hgt, s, 2.2, W),
     meanReflectance: sumReflectance / (TREE_BARK_COLUMNS * s),
   };
+}
+
+/**
+ * p2 trees lane: bark styles 1–3 beside the furrowed sheet (style 0), each painted wrapped into its own 240 columns
+ * (the strokes repeat at ±240 so the stem's seam tiles) with its 16-column gutter a copy of its first columns.
+ */
+function paintBarkStyles(ctx: CanvasRenderingContext2D, rng: RandomSource, s: number): void {
+  const B = TREE_BARK_COLUMNS;
+  const wrapped = (style: number, draw: (offset: number) => void): void => {
+    ctx.save();
+    ctx.translate(style * s, 0);
+    ctx.beginPath(); ctx.rect(0, 0, B, s); ctx.clip();
+    for (const offset of [-B, 0, B]) draw(offset);
+    ctx.restore();
+  };
+  // 1 — scaly plates: irregular rounded plates on dark furrows (pine, spruce; the vertex tint warms a pine's top)
+  ctx.save(); ctx.translate(s, 0); ctx.fillStyle = '#5a4e46'; ctx.fillRect(0, 0, B, s); ctx.restore();
+  const plates: Array<[number, number, number, number, number]> = [];
+  for (let k = 0; k < 120; k++) plates.push([rng() * B, rng() * s, 10 + rng() * 26, 7 + rng() * 15, 0.52 + rng() * 0.24]);
+  wrapped(1, (offset) => {
+    for (const [x, y, w, h, l] of plates) {
+      _cc.setHSL(0.07 + rng() * 0.02, 0.16 + rng() * 0.08, l * 0.62);
+      ctx.fillStyle = _cc.getStyle();
+      ctx.beginPath();
+      ctx.ellipse(x + offset, y, w * 0.5, h * 0.5, (rng() - 0.5) * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+      _cc.setHSL(0.07, 0.14, l * 0.74);
+      ctx.fillStyle = _cc.getStyle();
+      ctx.beginPath();
+      ctx.ellipse(x + offset - w * 0.08, y - h * 0.12, w * 0.32, h * 0.28, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+  // 2 — smooth: pale grey-buff with soft peeling patches and fine horizontal lenticels (eucalyptus, fir)
+  ctx.save(); ctx.translate(2 * s, 0); ctx.fillStyle = '#a8a294'; ctx.fillRect(0, 0, B, s); ctx.restore();
+  const patches: Array<[number, number, number, number, number]> = [];
+  for (let k = 0; k < 40; k++) patches.push([rng() * B, rng() * s, 14 + rng() * 40, 20 + rng() * 60, rng()]);
+  const marks: Array<[number, number, number]> = [];
+  for (let k = 0; k < 90; k++) marks.push([rng() * B, rng() * s, 3 + rng() * 9]);
+  wrapped(2, (offset) => {
+    for (const [x, y, w, h, t] of patches) {
+      _cc.setHSL(0.09 + t * 0.04, 0.10 + t * 0.10, 0.50 + (t - 0.5) * 0.22);
+      ctx.fillStyle = _cc.getStyle();
+      ctx.globalAlpha = 0.55;
+      ctx.beginPath(); ctx.ellipse(x + offset, y, w * 0.5, h * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = '#6e685e';
+    for (const [x, y, w] of marks) ctx.fillRect(x + offset, y, w, 1.2);
+    ctx.globalAlpha = 1;
+  });
+  // 3 — papery white: chalky base, dark horizontal lenticel dashes, dark lozenge scars (birch, aspen)
+  ctx.save(); ctx.translate(3 * s, 0); ctx.fillStyle = '#e6e3dc'; ctx.fillRect(0, 0, B, s); ctx.restore();
+  const dashes: Array<[number, number, number, number]> = [];
+  for (let k = 0; k < 150; k++) dashes.push([rng() * B, rng() * s, 4 + rng() * 22, 0.8 + rng() * 1.8]);
+  const scars: Array<[number, number, number]> = [];
+  for (let k = 0; k < 9; k++) scars.push([rng() * B, rng() * s, 6 + rng() * 12]);
+  wrapped(3, (offset) => {
+    ctx.fillStyle = '#c9c4ba';
+    ctx.globalAlpha = 0.5;
+    for (let k = 0; k < 24; k++) ctx.fillRect(((k * 53) % B) + offset, (k * 97) % s, 30, 8);
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = '#2e2a28';
+    for (const [x, y, w, h] of dashes) ctx.fillRect(x + offset, y, w, h);
+    for (const [x, y, r] of scars) {
+      ctx.beginPath();
+      ctx.moveTo(x + offset - r, y); ctx.lineTo(x + offset, y - r * 0.45); ctx.lineTo(x + offset + r, y); ctx.lineTo(x + offset, y + r * 0.45);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  });
+  // the gutters of styles 1–3 continue their first columns (filtering across the stem's seam stays continuous)
+  for (let style = 1; style < TREE_BARK_STYLES; style++) {
+    ctx.drawImage(ctx.canvas, style * s, 0, s - B, s, style * s + B, 0, s - B, s);
+  }
 }
 
 // Two tuft variants: 0 = lush meadow tuft, 1 = drier mixed tuft. Dense at the
@@ -1079,13 +1175,18 @@ export function prepareTreeBarkSurface(
   const color = attribute(geometry, 'color');
   const compensation = 1 / clamp(meanReflectance, 0.4, 1);
   for (let index = 0; index < uv.count; index++) {
-    if (uv.getX(index) < 0) {
+    const u = uv.getX(index);
+    if (u < 0) {
       // Constant UV selects the middle of the smooth white strip, including
       // its flat normal. No snow mask, extra fetch, material or varying.
-      uv.setXY(index, (TREE_BARK_COLUMNS + 8) / TREE_SURFACE_SIZE, 0.5);
+      uv.setXY(index, (TREE_BARK_COLUMNS + 8) / TREE_BARK_ATLAS_WIDTH, 0.5);
       continue;
     }
-    uv.setX(index, (2 + uv.getX(index) * (TREE_BARK_COLUMNS - 4)) / TREE_SURFACE_SIZE);
+    // p2 trees lane: u ≥ 2 = a grown trunk's styled bark (2 + 2 × style + the fraction round the stem); [0, 1] the
+    // legacy builders' furrowed sheet (style 0)
+    const style = u >= 2 ? Math.min(TREE_BARK_STYLES - 1, Math.floor((u - 2) / 2)) : 0;
+    const frac = u >= 2 ? clamp(u - 2 - style * 2, 0, 1) : u;
+    uv.setX(index, (style * TREE_SURFACE_SIZE + 2 + frac * (TREE_BARK_COLUMNS - 4)) / TREE_BARK_ATLAS_WIDTH);
     const r = color.getX(index), g = color.getY(index), b = color.getZ(index);
     const luminance = r * 0.2126 + g * 0.7152 + b * 0.0722;
     // Dark trunk tints predate the bark sheet and were multiplied down twice.
@@ -2038,12 +2139,91 @@ function buildBirchGeometry(
   return { trunk, cards: mergeParts(cardParts) };
 }
 
+/** The spray atlas a species paints on a map: birches and aspens carry leaves only where the palette says so. */
+export function grownSprayKind(species: Species, palette: VegetationPalette = {}): SprayKind {
+  if (species === 'birch' || species === 'aspen') return palette.birchLeaves === true ? species : 'birch-bare';
+  return species as SprayKind;
+}
+
+/**
+ * p2 trees lane: one grown near tree (treeGrowth.ts) as the pool's geometries — the wood (stem, scaffolds, limbs and
+ * side shoots as tubes, the legacy fluted root flare and root tongues at the foot, a winter palette's snow lobes on the
+ * limbs), the spray cards and the crown's own shadow hull. Deterministic from the seed; the desktop tiers' builder.
+ */
+function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, pal: VegetationPalette = {}): TreeGeometryPair {
+  const profile = TREE_GROWTH_PROFILES[species];
+  const rng = mulberry32(seed);
+  const skeleton = growTreeSkeleton(species, rng, { variant, tier: 'desktop' });
+  const parts: THREE.BufferGeometry[] = [emitBranchGeometry(skeleton, {
+    tint: profile.barkTint, topTint: profile.barkTopTint, barkStyle: profile.bark, rng, tier: 'desktop',
+  })];
+  const stem = skeleton.branches[0];
+  const stemR = stem.nodes[Math.min(1, stem.nodes.length - 1)].r;
+  const footColor = new THREE.Color(profile.barkTint[0] * 0.80, profile.barkTint[1] * 0.78, profile.barkTint[2] * 0.76);
+  parts.push(paintFlat(buildRootFlare(stemR, stemR * 1.36, 0.62, 10, rng() * Math.PI * 2), footColor, 0));
+  const roots = profile.family === 'conifer' || profile.family === 'birch' ? 4 : 5;
+  addRootButtresses(parts, rng, footColor, stemR * 1.28, roots);
+  // a winter palette's snow load: lobes riding the limbs high in the crown (the bark sheet's snow strip)
+  const snow = pal.snow ?? 0;
+  if (snow > 0.25 || (profile.family === 'birch' && snow > 0.01)) {
+    let lobes = 0;
+    const sites = profile.family === 'conifer'
+      ? skeleton.branches.filter(b => b.order === 1).map(b => b.nodes[Math.max(1, Math.floor(b.nodes.length * 0.6))])
+      : skeleton.leaves.filter(l => l.ny > 0.45).map(l => ({ x: l.x, y: l.y, z: l.z, r: 0.04, flex: l.flex }));
+    for (const at of sites) {
+      if (lobes >= 10) break;
+      const heightT = clamp(at.y / skeleton.height, 0, 1);
+      if (rng() > snow * (0.30 + 0.70 * heightT)) continue;
+      const lr = (profile.family === 'conifer' ? 0.26 : 0.16) + rng() * 0.18;
+      const lobe = new THREE.IcosahedronGeometry(lr, 0);
+      shapeTreeSnowLobe(lobe, rng);
+      lobe.scale(1.6 + rng() * 0.5, 0.5, 1.0 + rng() * 0.4);
+      lobe.rotateY(Math.atan2(at.x, at.z) + Math.PI / 2);
+      lobe.translate(at.x, at.y + lr * 0.45 + 0.05, at.z);
+      _c.setHSL(0.585, 0.04, 0.62, THREE.SRGBColorSpace).multiplyScalar(1.55);
+      parts.push(paintFlat(lobe, _c.clone(), 0.12));
+      lobes++;
+    }
+  }
+  const trunk = mergeParts(parts);
+  trunk.userData.trunkQuality = {
+    family: profile.family === 'dead' ? 'broadleaf' : profile.family, radialSegments: GROWTH_TUBE_SIDES.desktop[0],
+    verticalSegments: stem.nodes.length - 1, rootButtresses: roots, rootFlare: true, organicWarp: true,
+  };
+  // the card tint law of the grown crowns: the legacy HSL multiplier around the atlas (hue and saturation from the map
+  // palette or the family default), a dark interior and a lit shell from the site's shade, a little per-spray jitter,
+  // and a winter palette's snow load whitening the upward sprays high in the crown. The gain sits a little over the
+  // legacy 1.7: the spray atlases paint a touch darker than the round-8 ones.
+  const tintLaw: Record<string, readonly [number, number, number]> = {
+    broadleaf: [0.228, 0.19, 1.85], conifer: [0.30, 0.18, 1.95], birch: [0.08, 0.06, 1.8], dead: [0.08, 0.05, 1.7],
+  };
+  const [hueBase, satBase, gain] = tintLaw[profile.family];
+  const hue0 = pal.cardHue ?? hueBase, sat0 = pal.cardSat ?? satBase;
+  const cards = emitLeafCards(skeleton, {
+    tiles: SPRAY_ATLAS_TILES, rng: mulberry32((seed ^ 0x5eed) >>> 0),
+    tint(shade, site, r) {
+      const heightT = clamp(site.y / skeleton.height, 0, 1);
+      const sk = snow * Math.max(0, site.ny) * (0.48 + 0.52 * heightT) * (0.6 + r() * 0.4);
+      _c.setHSL(hue0 + (r() - 0.5) * 0.06 + (0.585 - hue0) * sk, (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5,
+        THREE.SRGBColorSpace);
+      const value = (0.52 + 0.48 * shade) * (0.92 + r() * 0.16) * (1 + sk * 0.75);
+      return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
+    },
+  });
+  // the crown's own shadow hull rides on the trunk (createTreeMeshPools builds the pool's proxy from it)
+  trunk.userData.shadowHull = emitCrownShadowHull(skeleton);
+  return { trunk, cards };
+}
+
 /** Deterministic near-trunk geometry used by the strict visual/shape audit. */
 export function buildTreeTrunkAuditGeometry(
   species: TreeSpecies,
   seed = 0x71ee,
   palette: VegetationPalette = {},
 ): THREE.BufferGeometry {
+  // p2 trees lane: the desktop tiers' near trunk is the grown one (every species but the palm); the mobile tier's
+  // the legacy builder below
+  if (species !== 'palm' && vegetationGrowsTrees()) return buildGrownTree(species, seed, 1, palette).trunk;
   const rng = mulberry32(seed);
   const archetype = TREE_ARCHETYPES[species];
   if (archetype.family === 'conifer') {
@@ -2811,6 +2991,14 @@ export function buildGrassTuftGeometry(
 // clearances trimmed since 1049e4e (verdant 899 -> 812 trees at the spawn pose). Mobile keeps
 // the authored counts. Read at build time, after the device tier is resolved.
 export function treeRichness(): number { return getDeviceTier() === 'mobile' ? 1 : 1.1; }
+
+/** p2 trees lane (2026-10-01): the desktop tiers grow their near trees (treeGrowth.ts); the mobile tier keeps the
+ * legacy card trees. Read at build time, after the device tier is resolved. */
+export function vegetationGrowsTrees(): boolean {
+  if (getDeviceTier() === 'mobile') return false;
+  // the same-build A/B of the tree redesign (the probes): `?legacyTrees=1` keeps the legacy trees on every map
+  return !(typeof location !== 'undefined' && /[?&]legacyTrees=1(&|$)/.test(location.search ?? ''));
+}
 
 export function createVegetation(
   heightField: HeightField,
@@ -4080,24 +4268,41 @@ function* vegetationBuildSteps(
       },
     };
   }
+  // p2 trees lane (2026-10-01): the desktop tiers grow their near trees (treeGrowth.ts) and paint branch-spray atlases
+  // (treeSprayAtlas.ts); the far tier is the bake of those trees (treeImpostors.ts). The mobile tier keeps the
+  // legacy card trees, atlases and lobe tier exactly — the phones' cheaper path — and so do the palms and the
+  // tidal-mangrove willow form (its reviewed stilt-rooted trunk). Seeds, variants and the far builders are the
+  // legacy definition's, so a species' placement and its lobe stand-ins never move.
+  const grownTrees = vegetationGrowsTrees() && !veg.legacyTrees;
+  function grownDefinition(species: Exclude<GrowthSpecies, 'snag'>, legacy: SpeciesDefinition): SpeciesDefinition {
+    if (!grownTrees) return legacy;
+    return {
+      texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed,
+      tex: (r, pal) => makeSprayAtlas(grownSprayKind(species, pal), r, texSize(512), pal.texTone || null),
+      near: (k, pal) => buildGrownTree(species, seed + legacy.nearSeed + k * 7, k, pal),
+      far: legacy.far,
+    };
+  }
   const SPECIES: Record<Species, SpeciesDefinition> = {
-    pine: coniferDefinition(52, 61, 71, TREE_GEOMETRY_SCALE.pine),
-    spruce: coniferDefinition(55, 91, 111, TREE_GEOMETRY_SCALE.spruce),
-    fir: coniferDefinition(56, 121, 141, TREE_GEOMETRY_SCALE.fir),
-    cedar: coniferDefinition(57, 151, 171, TREE_GEOMETRY_SCALE.cedar),
-    cypress: coniferDefinition(58, 181, 201, TREE_GEOMETRY_SCALE.cypress),
-    oak: broadleafDefinition(51, 65, 73, OAK_SHAPES, [1, 1, 1]),
-    poplar: broadleafDefinition(59, 211, 231, POPLAR_SHAPES, [0.58, 1.25, 0.58]),
-    willow: broadleafDefinition(60, 241, 261, WILLOW_SHAPES, [1.45, 0.82, 1.45], veg.willowForm === 'tidalMangrove'),
-    acacia: broadleafDefinition(62, 271, 291, ACACIA_SHAPES, [1.48, 0.78, 1.42]),
-    eucalyptus: broadleafDefinition(63, 301, 321, EUCALYPTUS_SHAPES, [0.68, 1.35, 0.72]),
+    pine: grownDefinition('pine', coniferDefinition(52, 61, 71, TREE_GEOMETRY_SCALE.pine)),
+    spruce: grownDefinition('spruce', coniferDefinition(55, 91, 111, TREE_GEOMETRY_SCALE.spruce)),
+    fir: grownDefinition('fir', coniferDefinition(56, 121, 141, TREE_GEOMETRY_SCALE.fir)),
+    cedar: grownDefinition('cedar', coniferDefinition(57, 151, 171, TREE_GEOMETRY_SCALE.cedar)),
+    cypress: grownDefinition('cypress', coniferDefinition(58, 181, 201, TREE_GEOMETRY_SCALE.cypress)),
+    oak: grownDefinition('oak', broadleafDefinition(51, 65, 73, OAK_SHAPES, [1, 1, 1])),
+    poplar: grownDefinition('poplar', broadleafDefinition(59, 211, 231, POPLAR_SHAPES, [0.58, 1.25, 0.58])),
+    willow: veg.willowForm === 'tidalMangrove'
+      ? broadleafDefinition(60, 241, 261, WILLOW_SHAPES, [1.45, 0.82, 1.45], true)
+      : grownDefinition('willow', broadleafDefinition(60, 241, 261, WILLOW_SHAPES, [1.45, 0.82, 1.45])),
+    acacia: grownDefinition('acacia', broadleafDefinition(62, 271, 291, ACACIA_SHAPES, [1.48, 0.78, 1.42])),
+    eucalyptus: grownDefinition('eucalyptus', broadleafDefinition(63, 301, 321, EUCALYPTUS_SHAPES, [0.68, 1.35, 0.72])),
     palm: {
       texSeed: 53, nearSeed: 81, farSeed: 75,
       tex: (r, pal) => makePalmFrondTexture(r, pal.texTone || null),
       near: (k, pal) => buildPalmGeometry(mulberry32(seed + 81 + k * 7), pal, PALM_VAR[k % 3]),
       far: (r, pal, k) => buildPalmFarGeometry(r, pal, k),
     },
-    birch: {
+    birch: grownDefinition('birch', {
       texSeed: 54, nearSeed: 85, farSeed: 77,
       tex: makeBirchFoliageTexture,
       // content_breadth r3: pal now reaches the near builder (winter card
@@ -4106,8 +4311,8 @@ function* vegetationBuildSteps(
       // height/crown proportions so stands stop reading as clones
       near: (k, pal) => buildBirchGeometry(mulberry32(seed + 85 + k * 7), pal, BIRCH_VAR[k % 3]),
       far: (r, pal) => buildBirchFarGeometry(r, pal),
-    },
-    aspen: {
+    }),
+    aspen: grownDefinition('aspen', {
       texSeed: 64, nearSeed: 331, farSeed: 351,
       tex: makeBirchFoliageTexture,
       near: (k, pal) => scaleNear(
@@ -4115,7 +4320,7 @@ function* vegetationBuildSteps(
         ...TREE_GEOMETRY_SCALE.aspen,
       ),
       far: (r, pal) => scaleFar(buildBirchFarGeometry(r, pal), ...TREE_GEOMETRY_SCALE.aspen),
-    },
+    }),
   };
   const speciesList = veg.species.filter((sp) => SPECIES[sp]);
   const bushSpecies = speciesList.includes(veg.bushSpecies) ? veg.bushSpecies : speciesList[0];
@@ -4888,11 +5093,20 @@ function* vegetationBuildSteps(
         const pool: TreeMesh[] = [trunk, foliage];
         if (canopyShadowProxies) {
           // Round 79: the crown proxy carries the trunk's shadow too (canopyShadowProxyGeometry); the trunk mesh
-          // stops casting so the pool submits one shadow draw per cascade, not two
+          // stops casting so the pool submits one shadow draw per cascade, not two. p2 trees lane: a grown tree
+          // casts its own hull — its stem, its thick limbs and its crown masses (treeGrowth.ts emitCrownShadowHull) —
+          // so the shadow on the ground is the shape the crown above it has.
           trunk.castShadow = false;
-          pool.push(makeCanopyShadowProxy(
-            canopyShadowProxyGeometry(treeGeoFar[sp][variant % treeGeoFar[sp].length].canopy, g.trunk),
-            sp, capacity, `treeCanopyShadow_${sp}_${variant}`));
+          let proxyGeometry: THREE.BufferGeometry;
+          const hull = g.trunk.userData.shadowHull as Float32Array | undefined;
+          if (hull) {
+            proxyGeometry = new THREE.BufferGeometry();
+            proxyGeometry.setAttribute('position', new THREE.BufferAttribute(hull.slice(), 3));
+            proxyGeometry.computeBoundingSphere();
+          } else {
+            proxyGeometry = canopyShadowProxyGeometry(treeGeoFar[sp][variant % treeGeoFar[sp].length].canopy, g.trunk);
+          }
+          pool.push(makeCanopyShadowProxy(proxyGeometry, sp, capacity, `treeCanopyShadow_${sp}_${variant}`));
         }
         // the pool's one shadow caster (the proxy, or the trunk on the tiers without proxies) reports the near tier's reach
         setShadowCasterProfile(pool[pool.length - 1].castShadow ? pool[pool.length - 1] : trunk, nearTierShadowProfile);

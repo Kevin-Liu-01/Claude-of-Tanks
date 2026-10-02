@@ -63,6 +63,18 @@ species where that keeps the row cap and the ground tile (every 3-species map); 
 tile toward it and tilts the card. The bake runs under cover through `world.warmImpostors()` (the solo loading
 runtime, the activation runtime's precompile). `horizonForestImpostors.selftest.mjs` and the `vegetationFarSeams`
 law section pin the seam.
+p2 trees lane (2026-10-01): the desktop tiers GROW their near trees — `treeGrowth.ts` (a THREE-free skeleton per
+species profile: stem or leader, scaffolds or whorls, side shoots and twigs bent by gravity and clipped by the crown
+envelope; spray seats on the outer branches) and its emitters (tapered tubes with styled bark UVs — u = 2 + 2 × style
++ the fraction round the stem, mapped by `prepareTreeBarkSurface` onto the four-style bark sheet; spray cards with
+volume normals, aFlex and aCard; a position-only crown shadow hull the pool's proxy casts instead of the far lobe
+hull) — and `treeSprayAtlas.ts` paints one 2 × 2 branch-spray atlas per species (leaf shapes per species, bare winter
+twigs where no palette opts birches into leaves). `vegetation.ts buildGrownTree` adds the legacy root flare, root
+tongues and winter snow pads; the species registry routes every species but the palm and the tidal-mangrove willow
+through it when `vegetationGrowsTrees()` (desktop, not `?legacyTrees=1`) and the config has no `legacyTrees`. The
+mobile tier keeps the legacy card trees, atlases and lobe tier exactly. Placements, RNG streams, records, pools and
+draws are unchanged; the impostor bake takes the grown trees. `treeGrowth.selftest.mjs` pins the budgets, structure,
+silhouettes, atlases and routing.
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.
 `propPlacement.ts` owns typed terrain-support, rigid-footprint, utility-pole,

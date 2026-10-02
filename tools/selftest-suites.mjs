@@ -1102,6 +1102,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/leafDetail.selftest.mjs',
     // round 77c (2026-09-26): the horizon ring's forest drawn from the far tier's impostor atlas
     'src/world/horizonForestImpostors.selftest.mjs',
+    // p2 trees lane (2026-10-01): the grown near trees, their branch-spray atlases and the build's routing
+    'src/world/treeGrowth.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',

@@ -11,6 +11,8 @@ import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, TREE_SPECIES } from './treeSpecie
 import { bendMangroveRoot, shapeMangroveFarStem } from './tidalMangrove.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { HORIZON_FOREST_IMPOSTOR_SKY_FILL, HORIZON_FOREST_IMPOSTOR_THIN, HORIZON_FOREST_IMPOSTOR_WRAP } from './horizonForestImpostors.ts';
+import * as growth from './treeGrowth.ts';
+import { makeSprayAtlas, SPRAY_ATLAS_TILES } from './treeSprayAtlas.ts';
 
 // Original jitter remains at 0823acd74e7bcf573e717f96f28ef5f1551dbef7.
 // Literal also authenticated by the earlier R12 seam control; no Git needed.
@@ -114,6 +116,11 @@ function compile(input = text, mode = 'current') {
       jitterShell: typeof jitterFarShell === 'function' ? jitterFarShell : jitterRadial,
       ${farNames.join(',')}});`), {
     THREE, mergeGeometries, Float32Array, TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, bendMangroveRoot, shapeMangroveFarStem, shapeFarTreeBase,
+    // p2 trees lane (2026-10-01): the desktop registry grows its near trees (treeGrowth.ts) and paints spray atlases;
+    // both compiles take the same grown builders, so the near comparison stays exact on the desktop path
+    vegetationGrowsTrees: () => true, texSize: (px) => px, makeSprayAtlas, SPRAY_ATLAS_TILES,
+    growTreeSkeleton: growth.growTreeSkeleton, emitBranchGeometry: growth.emitBranchGeometry, emitLeafCards: growth.emitLeafCards,
+    emitCrownShadowHull: growth.emitCrownShadowHull, GROWTH_TUBE_SIDES: growth.GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES: growth.TREE_GROWTH_PROFILES,
     _c: new THREE.Color(), _v3: new THREE.Vector3(), _e: new THREE.Euler(),
     _qq: new THREE.Quaternion(), _m: new THREE.Matrix4(), _scale: new THREE.Vector3(1, 1, 1),
   });

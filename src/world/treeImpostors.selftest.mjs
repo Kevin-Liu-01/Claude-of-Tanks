@@ -24,7 +24,11 @@ import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 // The pinned bake-input digests (seed 2001, the real leaf atlases): a changed builder or atlas moves them — re-pin deliberately.
 // Round 77c (2026-09-26): re-pinned for the elevated ring — the layout text carries the ring's elevation ('flat' where the
 // atlas has none) and every row its capture elevation; Nordhavn's atlas gains its three 45° rows.
-const PINS = { verdant: '33ca4146', fjord: 'a9c982e2', delta: 'a43cefd0' };
+// p2 trees lane (2026-10-01): re-pinned for the grown near trees (treeGrowth.ts) and their spray atlases
+// (treeSprayAtlas.ts) — the far tier bakes the new trees; was verdant 33ca4146, fjord a9c982e2, delta a43cefd0.
+const PINS = { verdant: '42f4633a', fjord: '4e933f67', delta: 'b8ddb3f9' };
+// every producer's digest is reported before the pin is asserted (a re-pin reads all three from one run)
+const digestMismatches = [];
 
 // --- the layout law -------------------------------------------------------------------------------------------
 assert.equal(resolveTreeImpostorTile(6), 128, 'two species fit 128 px tiles');
@@ -152,7 +156,10 @@ try {
     assert.equal(library.normal.width, library.width / 2); assert.equal(library.normal.height, library.height / 2);
     assert.ok(library.bytes <= TREE_IMPOSTOR_BUDGET_BYTES, `${id}: ${library.bytes} bytes`);
     for (const row of library.rows) {
-      assert.ok(row.cellM > 4 && row.cellM < 40 && row.baseV > 0 && row.baseV < 0.3 && row.heightM > 3, `${id}: ${row.species}/${row.variant} measured (${row.cellM}, ${row.baseV}, ${row.heightM})`);
+      // p2 trees lane (2026-10-01): a grown conifer's skirt is wide against its height, so seen from the elevated
+      // ring's 45° more of the crown projects below its base point (the base at up to ~0.33 of the tile)
+      const baseCap = row.elevation > 0.5 ? 0.4 : 0.3;
+      assert.ok(row.cellM > 4 && row.cellM < 40 && row.baseV > 0 && row.baseV < baseCap && row.heightM > 3, `${id}: ${row.species}/${row.variant} measured (${row.cellM}, ${row.baseV}, ${row.heightM})`);
     }
     assert.equal(library.material.customProgramCacheKey(), TREE_IMPOSTOR_PROGRAM_KEY);
     assert.strictEqual(library.material.map, library.albedo.texture);
@@ -231,7 +238,7 @@ try {
     receipts.push({ id, tile: library.tile, rows: library.rows.length, elevated: library.elevated, atlas: `${library.width}x${library.height}`, mb: +(library.bytes / 1048576).toFixed(2),
       farDraws: impostorMeshes.length, lobeDraws: species.length * 4, trees: world._trees.length,
       farTrianglesAllTrees: { impostor: world._trees.length * 2, lobes: farTrianglesLobes }, digest });
-    assert.equal(digest, PINS[id], `${id}: the pinned bake-input digest (${digest})`);
+    if (digest !== PINS[id]) digestMismatches.push(`${id}: the pinned bake-input digest (${digest}, pinned ${PINS[id]})`);
     world.dispose(); disposeObject3DResources(world.group);
   }
   // no renderer: the lobe tier, as the receipts build it
@@ -256,4 +263,5 @@ try {
   if (savedWindow === undefined) delete globalThis.window; else globalThis.window = savedWindow;
 }
 console.log(JSON.stringify({ receipts, lobeTriangles, budget: budgetRows }));
+assert.deepEqual(digestMismatches, [], digestMismatches.join('; '));
 console.log('treeImpostors.selftest: the layout law and budget on 31 maps, the row measure, impostor pools (2 draws / species, 2 tris / far tree) on three producers, the bake from the first update with the render state restored and after a suspension, far slots carrying their variants through the partition, pinned deterministic bake inputs, lobes without a renderer and on mobile PASS');
