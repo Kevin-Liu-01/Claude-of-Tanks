@@ -69,6 +69,15 @@ export const HDR = Object.freeze({
   protectPriority: 88,
 });
 
+/**
+ * The listener's own hits. A crew watches its own round land, so the impact at
+ * the target (still delayed by the speed of sound, darkened by the air and
+ * coming from the target's bearing) follows a gentler law: three times the
+ * cue's reference distance, rolloff at most 0.55, carried to at least 2.6 km
+ * and never culled by the HDR window. It replaces an interface hit marker.
+ */
+export const OWN_HIT_FOCUS = Object.freeze({ refScale: 3, maxRolloff: 0.55, minRangeM: 2600, priority: 90 });
+
 /** Crew speech ducks the beds so it stays intelligible; gunfire barely moves. */
 export const VOICE_DUCK = Object.freeze({ ambienceDb: -6, worldDb: -1, attackS: 0.04, releaseS: 0.45 });
 

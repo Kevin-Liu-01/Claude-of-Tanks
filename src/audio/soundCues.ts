@@ -93,6 +93,11 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   bullet_dirt: o({ maxInstances: 4, refM: 4, maxM: 120, loudDb: 106, cooldownS: 0.05, priority: 30, gainDb: -3 }),
   bullet_water: o({ maxInstances: 3, refM: 4, maxM: 120, loudDb: 104, priority: 28 }),
   ricochet_light: o({ refM: 6, maxM: 220, loudDb: 116, gainDb: -3 }),
+  // Distant armour hits carry their distance in the recording: the close banks' slope,
+  // shifted by their quieter master so the range crossfade stays level, with less air loss.
+  impact_far_pen: o({ refM: 35, maxM: 2600, absorb: 0.5, send: 0.3, loudDb: 132 }),
+  impact_far_nonpen: o({ refM: 35, maxM: 2400, absorb: 0.5, send: 0.3, loudDb: 130 }),
+  impact_far_ricochet: o({ refM: 35, maxM: 2400, absorb: 0.5, send: 0.3, loudDb: 130 }),
   expl_he_small: o({ loudDb: 136 }),
   expl_he_medium: o({ refM: 22, rolloff: 0.68, maxM: 2200, absorb: 0.75, send: 0.24, loudDb: 148 }),
   expl_he_large: o({ refM: 28, rolloff: 0.62, maxM: 3000, absorb: 0.6, send: 0.28, loudDb: 154 }),

@@ -37,7 +37,7 @@ import { createVoicePool, type PlayOptions, type VoicePool } from './voicePool.t
 import { createCrewRadio, type CrewRadio } from './crewRadio.ts';
 import { createAmbienceDirector, sceneAssets, type AmbienceDirector } from './ambienceDirector.ts';
 import { GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
-import { BUDGETS, BUS_LEVELS, CONCUSSION, SNAPSHOTS, VEHICLE_LOD, type DeviceTier, type SettingsChannel } from './mixPolicy.ts';
+import { BUDGETS, BUS_LEVELS, CONCUSSION, OWN_HIT_FOCUS, SNAPSHOTS, VEHICLE_LOD, type DeviceTier, type SettingsChannel } from './mixPolicy.ts';
 import {
   ammoRackBeep, createNoiseBank, fireKlaxon, heartbeat, loadingBed, subThump, synthBoom, synthClick,
   synthImpact, synthShot, type NoiseBank, type Rig,
@@ -77,7 +77,6 @@ export interface AudioMixer {
   loadingOn(active: boolean): void;
   warmBattleEvents(roster?: readonly string[]): Promise<void> | void;
   ambientOn(active: boolean): void;
-  hitConfirm(kind: string, damage?: number): void;
 }
 
 // ---------------------------------------------------------------- entities ---
@@ -199,7 +198,7 @@ interface ShellHitEvent {
   eraActivations?: readonly { plate: string; pos?: Vec3 }[];
 }
 
-interface ShellExpiredEvent { shellId?: number; hitTerrain?: boolean; hitKind?: string; surfaceKind?: string; caliberMm?: number; pos?: Vec3 }
+interface ShellExpiredEvent { shellId?: number; shooterId?: string; hitTerrain?: boolean; hitKind?: string; surfaceKind?: string; caliberMm?: number; pos?: Vec3 }
 interface TankDestroyedEvent { id: string; killerId?: string | null; pos: Vec3; cause?: string }
 interface ModuleStateEvent { id: string; module: string; state: string; source?: string; repaired?: boolean }
 interface TankImpactEvent { id?: string; pos: Vec3; speedMps: number }
@@ -228,6 +227,7 @@ const WEAPON_FAR: Readonly<Record<WeaponClassId, string>> = Object.freeze({
 /** Assets every battle needs before the first shot. */
 const CORE_BATTLE = [
   'pen_heavy', 'pen_light', 'pen_interior', 'ricochet_heavy', 'ricochet_light', 'nonpen_heavy', 'nonpen_interior',
+  'impact_far_pen', 'impact_far_nonpen', 'impact_far_ricochet',
   'heat_impact', 'he_armor', 'era_det', 'bullet_armor', 'bullet_dirt', 'bullet_water', 'ground_dirt', 'ground_rock',
   'ground_sand', 'ground_snow', 'ground_mud', 'ground_concrete', 'ground_wood', 'ground_metal', 'water_big', 'water_small',
   'expl_he_small', 'expl_he_medium', 'expl_he_large', 'expl_far', 'debris_dirt', 'tank_explode', 'tank_explode_ammo',
@@ -238,7 +238,7 @@ const CORE_BATTLE = [
   'track_skid_loop', 'water_wade_loop', 'water_enter', 'engine_knock_loop', 'engine_stall', 'turret_stop',
   'tail_open', 'tail_forest', 'tail_urban', 'tail_mountain', 'gun_far_light', 'gun_far_medium', 'gun_far_heavy',
   'ac_far_light', 'ac_far_heavy', 'mg_far', 'mg_rifle_close', 'mg_heavy_close', 'smoke_launcher', 'smoke_burst',
-  'radio_interference', 'ui_hit_pen', 'ui_hit_ricochet', 'ui_hit_nonpen', 'ui_kill', 'ui_crit', 'ui_alert',
+  'radio_interference', 'ui_alert',
   'sting_battle', 'distant_artillery', 'distant_flak', 'distant_mg', 'jet_flyover',
 ];
 
@@ -338,6 +338,9 @@ export function createAudio({
   const soundLog: Record<string, unknown>[] = [];
   let soundSeq = 0;
   const killcamLog: Record<string, unknown>[] = [];
+
+  // The listener's main-gun rounds in flight (muzzle and unit direction), for the gunner's miss call.
+  const ownRounds = new Map<number, { x: number; y: number; z: number; dx: number; dy: number; dz: number }>();
 
   // Player battle bookkeeping.
   let rolledOut = false;
@@ -553,6 +556,10 @@ export function createAudio({
       else say('firing', { prob: 0.1, delayS: 0.08 });
     }
     const [mx, my, mz] = event.muzzlePos;
+    if (ownShot && event.shellId != null && event.caliberMm >= 60 && !/launch/.test(String(event.weaponSound || ''))) {
+      if (ownRounds.size >= 12) ownRounds.delete(ownRounds.keys().next().value as number);
+      ownRounds.set(event.shellId, { x: mx, y: my, z: mz, dx: event.dir[0], dy: event.dir[1], dz: event.dir[2] });
+    }
     const dist = ownShot || !listenerValid ? 0 : distanceTo(mx, my, mz);
     logSound('shell:fired', {
       id: event.shellId, own: ownShot, scoped: listenerScoped, caliberMm: event.caliberMm,
@@ -582,20 +589,27 @@ export function createAudio({
     if (mixer.concussion(0.35 + 0.5 * strength) && strength > 0.45) play('tinnitus', { delayS: 0.15 });
   }
 
-  function explosion(x: number, y: number, z: number, caliberMm: number, bus?: 'cinematic'): void {
+  /** A synthesized layer's level under a cue's distance law, carried by the own-hit focus law when it is ours. */
+  function lawGain(distance: number, refM: number, rolloff: number, focus: boolean): number {
+    return focus
+      ? dbToGain(distanceAttenuationDb(distance, refM * OWN_HIT_FOCUS.refScale, Math.min(rolloff, OWN_HIT_FOCUS.maxRolloff)))
+      : dbToGain(distanceAttenuationDb(distance, refM, rolloff));
+  }
+
+  function explosion(x: number, y: number, z: number, caliberMm: number, bus?: 'cinematic', focus = false): void {
     const id = caliberMm >= 140 ? 'expl_he_large' : caliberMm >= 61 ? 'expl_he_medium' : 'expl_he_small';
     const distance = distanceTo(x, y, z);
-    if (noise && mixer && caliberMm >= 61 && distance < 600) {
+    if (noise && mixer && caliberMm >= 61 && distance < (focus ? 1200 : 600)) {
       const size = clamp((caliberMm - 61) / 90, 0, 1);
       subThump(mixer.ctx, mixer.input(bus ?? 'impacts'), noise, mixer.ctx.currentTime + 0.004 + propagationDelayS(distance, atmosphere),
-        70 - 16 * size, 30 - 6 * size, 0.6 + 0.4 * size, 0.85 * dbToGain(distanceAttenuationDb(distance, 22, 0.7)), random);
+        70 - 16 * size, 30 - 6 * size, 0.6 + 0.4 * size, 0.85 * lawGain(distance, 22, 0.7, focus), random);
     }
     if (!bus) blastNearHull(distance, caliberMm);
     const rate = clamp(1.08 - (caliberMm - 100) / 600, 0.86, 1.12);
-    if (!play(id, { x, y, z, rate, ...(bus ? { bus } : {}) }) && noise && mixer) {
+    if (!play(id, { x, y, z, rate, focus, ...(bus ? { bus } : {}) }) && noise && mixer) {
       synthBoom(mixer.ctx, mixer.input('impacts'), noise, mixer.ctx.currentTime + Math.min(3, distance / atmosphere.speedOfSoundMps), 0.5 + caliberMm / 150, dbToGain(distanceAttenuationDb(distance, 14, 0.95)) * 0.8, random);
     }
-    if (distance > 700) play('expl_far', { x, y, z, gainDb: -4 });
+    if (distance > 700) play('expl_far', { x, y, z, gainDb: -4, focus });
     if (distance < 40 && caliberMm >= 61) play('debris_dirt', { x, y, z, delayS: 0.35, gainDb: -4 });
   }
 
@@ -610,6 +624,25 @@ export function createAudio({
     }
   }
 
+  /** Whether a round came from the listener's tank (the occupied one, or the one being watched). */
+  function listenerShot(shooterId: string | null | undefined): boolean {
+    if (shooterId == null) return false;
+    return listenerOwnerId != null ? shooterId === listenerOwnerId : shooterId === playerId;
+  }
+
+  /**
+   * An armour hit crossfaded by range: the close bank's detail within a few
+   * hundred metres, the distant bank's crack, knock or clang beyond. Machine-gun
+   * hits have no distant bank.
+   */
+  function armourHit(close: string, far: string | null, x: number, y: number, z: number, gainDb: number, rate: number, focus: boolean): void {
+    const distance = distanceTo(x, y, z);
+    const closeK = far ? 1 - rampBetween(distance, 260, 620) : 1;
+    const farK = far ? rampBetween(distance, 140, 440) : 0;
+    if (closeK > 0.03) play(close, { x, y, z, rate, focus, gainDb: gainDb + gainToDb(closeK) });
+    if (far && farK > 0.03) play(far, { x, y, z, focus, gainDb: gainDb + gainToDb(farK) });
+  }
+
   function playerHull(event: ShellHitEvent): boolean {
     return (listenerOwnerId != null && event.targetId === listenerOwnerId)
       || (listenerOwnerId == null && playerId != null && event.targetId === playerId);
@@ -621,47 +654,52 @@ export function createAudio({
     const small = caliber < 23;
     const medium = caliber >= 23 && caliber < 61;
     const heat = event.shellType === 'HEAT';
+    // Our own cannon and autocannon hits carry (OWN_HIT_FOCUS); machine-gun pings stay local.
+    const focus = !small && listenerShot(event.attackerId);
     const seqBefore = pool?.log.at(-1)?.seq ?? 0;
     // Reactive armour is additive to the deeper result: every positioned
     // cassette detonates, and a pass-through activation without positions
     // still gets its blast at the impact point.
     let cassettes = 0;
     for (const activation of event.eraActivations || []) {
-      if (activation?.pos?.length === 3) { play('era_det', at(activation.pos)); cassettes++; }
+      if (activation?.pos?.length === 3) { play('era_det', { ...at(activation.pos), focus }); cassettes++; }
     }
-    if (!cassettes && isEraActivation(event) && event.kind !== 'era') play('era_det', { x, y, z });
+    if (!cassettes && isEraActivation(event) && event.kind !== 'era') play('era_det', { x, y, z, focus });
     switch (event.kind) {
       case 'pen':
-        play(small ? 'bullet_armor' : medium ? 'pen_light' : 'pen_heavy', { x, y, z });
-        if (heat) play('heat_impact', { x, y, z, gainDb: -3 });
+        if (small) play('bullet_armor', { x, y, z });
+        else armourHit(medium ? 'pen_light' : 'pen_heavy', 'impact_far_pen', x, y, z, medium ? -5 : 0, 1, focus);
+        if (heat) play('heat_impact', { x, y, z, gainDb: -3, focus });
         if (ownHull && (event.damage || 0) > 0) {
           play('pen_interior', hullOptions({ bus: 'ownCombat', gainDb: small ? -14 : medium ? -6 : 0 }));
           if (!small && noise && mixer) subThump(mixer.ctx, mixer.input('ownCombat'), noise, mixer.ctx.currentTime + 0.004, 96, 46, 0.3, medium ? 0.45 : 0.8, random);
         }
         break;
       case 'ricochet':
-        play(small || medium ? 'ricochet_light' : 'ricochet_heavy', { x, y, z });
+        if (small) play('ricochet_light', { x, y, z });
+        else armourHit(medium ? 'ricochet_light' : 'ricochet_heavy', 'impact_far_ricochet', x, y, z, medium ? -5 : 0, 1, focus);
         if (ownHull && !small) play('nonpen_interior', hullOptions({ bus: 'ownCombat', gainDb: medium ? -10 : -5 }));
         break;
       case 'nonpen':
       case 'spaced_absorb':
-        play(small ? 'bullet_armor' : 'nonpen_heavy', { x, y, z, rate: medium ? 1.18 : 1 });
-        if (heat) play('heat_impact', { x, y, z, gainDb: -5 });
+        if (small) play('bullet_armor', { x, y, z });
+        else armourHit('nonpen_heavy', 'impact_far_nonpen', x, y, z, medium ? -4 : 0, medium ? 1.18 : 1, focus);
+        if (heat) play('heat_impact', { x, y, z, gainDb: -5, focus });
         if (ownHull && !small) play('nonpen_interior', hullOptions({ bus: 'ownCombat', gainDb: medium ? -8 : 0 }));
         break;
       case 'era':
-        if (!(event.eraActivations || []).length) play('era_det', { x, y, z });
+        if (!(event.eraActivations || []).length) play('era_det', { x, y, z, focus });
         break;
       case 'he_pen':
       case 'he_splash':
-        play('he_armor', { x, y, z });
-        explosion(x, y, z, caliber);
+        play('he_armor', { x, y, z, focus });
+        explosion(x, y, z, caliber, undefined, focus);
         if (ownHull) play('nonpen_interior', hullOptions({ bus: 'ownCombat', gainDb: -2 }));
         break;
       case 'terrain': {
-        explosion(x, y, z, caliber);
+        explosion(x, y, z, caliber, undefined, focus);
         const { surface } = surfaceAt(x, z);
-        play(groundImpactAsset(surface, x, z), { x, y, z, gainDb: -4 });
+        play(groundImpactAsset(surface, x, z), { x, y, z, gainDb: -4, focus });
         break;
       }
       default:
@@ -718,24 +756,57 @@ export function createAudio({
     say('low_hp', { delayS: 0.35 });
   }
 
+  /**
+   * The gunner's call on our own round, as a crew calls every main-gun shot:
+   * what it did, about half a second after it lands (the time to see it).
+   * Autocannon and machine-gun hits are called only now and then.
+   */
   function reportOutgoing(event: ShellHitEvent): void {
     if (event.targetId == null || event.destroyed) return;
     if (sameTeam(event.targetId, playerId)) { say('friendly_fire', { delayS: 0.12 }); return; }
     const modules = new Map((event.modulesHit || []).map((m) => [m.module, m.newState] as const));
     const damaged = (event.damage || 0) > 0;
-    if (event.fireStarted) { say('enemy_fire', { delayS: 0.2 }); return; }
-    if (modules.has('ammoRack')) { say('enemy_ammo_rack', { delayS: 0.18 }); return; }
-    if ((modules.get('trackL') === 'red' || modules.get('trackR') === 'red')) { say('enemy_immobilized', { prob: 0.6, delayS: 0.18 }); return; }
-    if (modules.has('gun') || modules.has('gunMount')) { say('enemy_gun_damaged', { prob: 0.6, delayS: 0.18 }); return; }
-    if (modules.has('engine')) { say('enemy_engine_hit', { prob: 0.55, delayS: 0.18 }); return; }
-    if ((event.crewHit?.length || 0) > 0 && damaged) { say('enemy_crew_hit', { prob: 0.5, delayS: 0.18 }); return; }
-    if (modules.size > 0 && damaged) { say('enemy_crit', { prob: 0.45, delayS: 0.18 }); return; }
-    if ((event.kind === 'pen' || event.kind === 'he_pen') && damaged) { say('penetration', { prob: 0.55, delayS: 0.18 }); return; }
-    if (event.kind === 'ricochet') say('ricochet', { prob: 0.45, delayS: 0.16 });
-    else if (event.kind === 'nonpen' || event.kind === 'spaced_absorb') say('nonpen', { prob: 0.45, delayS: 0.16 });
+    const k = (event.caliberMm || 0) >= 60 ? 1 : 0.3;
+    const call = (id: string, prob: number): void => { say(id, { prob: prob * k, delayS: 0.4 + random() * 0.15 }); };
+    if (event.fireStarted) { call('enemy_fire', 1); return; }
+    if (modules.has('ammoRack')) { call('enemy_ammo_rack', 1); return; }
+    if (modules.get('trackL') === 'red' || modules.get('trackR') === 'red') { call('enemy_immobilized', 0.9); return; }
+    if (modules.has('gun') || modules.has('gunMount')) { call('enemy_gun_damaged', 0.9); return; }
+    if (modules.has('engine')) { call('enemy_engine_hit', 0.85); return; }
+    if ((event.crewHit?.length || 0) > 0 && damaged) { call('enemy_crew_hit', 0.8); return; }
+    if (modules.size > 0 && damaged) { call('enemy_crit', 0.8); return; }
+    if ((event.kind === 'pen' || event.kind === 'he_pen') && damaged) { call('penetration', 0.95); return; }
+    if (event.kind === 'ricochet') call('ricochet', 0.9);
+    else if (event.kind === 'nonpen' || event.kind === 'spaced_absorb') call('nonpen', 0.9);
+  }
+
+  /**
+   * The gunner calls our main-gun miss: "short" (the line's second take) when
+   * the round came down before the enemy it was laid on, the live enemy
+   * nearest the line of fire, and a plain "miss" otherwise.
+   */
+  function callMiss(round: { x: number; y: number; z: number; dx: number; dy: number; dz: number }, pos: Vec3 | null): void {
+    if (playerId == null) return;
+    let laidOn = Infinity;
+    let nearest = Infinity;
+    for (const [id, info] of tanks) {
+      if (!info.alive || sameTeam(id, playerId)) continue;
+      const rx = info.pos.x - round.x;
+      const ry = info.pos.y - round.y;
+      const rz = info.pos.z - round.z;
+      const along = rx * round.dx + ry * round.dy + rz * round.dz;
+      if (along < 30) continue;
+      const off = Math.hypot(rx - round.dx * along, ry - round.dy * along, rz - round.dz * along);
+      if (off > Math.max(6, along * 0.03) || off >= nearest) continue;
+      nearest = off;
+      laidOn = along;
+    }
+    const landed = pos ? (pos[0] - round.x) * round.dx + (pos[1] - round.y) * round.dy + (pos[2] - round.z) * round.dz : Infinity;
+    say('miss', { take: landed < laidOn - 8 ? 1 : 0, delayS: 0.45 + random() * 0.15 });
   }
 
   function onShellHit(event: ShellHitEvent): void {
+    if (event.shellId != null) ownRounds.delete(event.shellId);
     const ownHull = playerHull(event);
     impactSounds(event, ownHull);
     // A heavy round through our own armour rattles the crew (HE splash concusses via its blast).
@@ -749,19 +820,26 @@ export function createAudio({
   }
 
   function onShellExpired(event: ShellExpiredEvent): void {
+    const round = event.shellId != null ? ownRounds.get(event.shellId) : undefined;
+    if (round && event.shellId != null) {
+      ownRounds.delete(event.shellId);
+      callMiss(round, event.pos ?? null);
+    }
     if (!event.pos || !(event.hitTerrain || event.hitKind === 'prop')) return;
     const [x, y, z] = event.pos;
     const caliber = event.caliberMm || 76;
     const small = caliber < 23;
     const water = event.surfaceKind === 'water';
+    // Our own round landing short or wide is heard like our hits are.
+    const focus = !small && listenerShot(event.shooterId);
     if (small) {
       play(water ? 'bullet_water' : 'bullet_dirt', { x, y, z });
     } else if (water) {
-      play(caliber >= 61 ? 'water_big' : 'water_small', { x, y, z });
+      play(caliber >= 61 ? 'water_big' : 'water_small', { x, y, z, focus });
     } else if (event.hitKind === 'prop') {
-      play(random() < 0.5 ? 'ground_wood' : 'ground_concrete', { x, y, z });
+      play(random() < 0.5 ? 'ground_wood' : 'ground_concrete', { x, y, z, focus });
     } else {
-      play(groundImpactAsset(surfaceAt(x, z).surface, x, z), { x, y, z, rate: clamp(1.1 - caliber / 900, 0.9, 1.08) });
+      play(groundImpactAsset(surfaceAt(x, z).surface, x, z), { x, y, z, focus, rate: clamp(1.1 - caliber / 900, 0.9, 1.08) });
     }
     if (!small && listenerValid && playerEntityInfo()?.alive && distanceTo(x, y, z) < 10) {
       play('hull_debris_patter', hullOptions({ bus: 'ownCombat', delayS: 0.25, gainDb: -3 }));
@@ -782,18 +860,21 @@ export function createAudio({
     const bus = cinematic ? { bus: 'cinematic' as const } : {};
     const slow = cinematic ? { ...bus, rate: slowRate } : bus;
     const stretch = cinematic ? 1 / slowRate : 1;
+    // Our kill is confirmed by the target itself going up, carried like our hits.
+    const focus = !cinematic && listenerShot(event.killerId);
     if (cause === 'fire') {
-      play('burnout_blast', { x, y, z, ...bus });
+      play('burnout_blast', { x, y, z, focus, ...bus });
     } else {
-      const ok = play(cause === 'ammorack' ? 'tank_explode_ammo' : 'tank_explode', { x, y, z, ...bus });
+      const ok = play(cause === 'ammorack' ? 'tank_explode_ammo' : 'tank_explode', { x, y, z, focus, ...bus });
       const blastM = distanceTo(x, y, z);
-      if (noise && mixer && blastM < 900) {
+      if (noise && mixer && blastM < (focus ? 1800 : 900)) {
         subThump(mixer.ctx, mixer.input(cinematic ? 'cinematic' : 'impacts'), noise, mixer.ctx.currentTime + 0.004 + (cinematic ? 0 : propagationDelayS(blastM, atmosphere)),
-          cause === 'ammorack' ? 58 : 64, cause === 'ammorack' ? 22 : 26, cause === 'ammorack' ? 1.3 : 1.0, 0.95 * dbToGain(distanceAttenuationDb(blastM, 30, 0.6)), random);
+          cause === 'ammorack' ? 58 : 64, cause === 'ammorack' ? 22 : 26, cause === 'ammorack' ? 1.3 : 1.0, 0.95 * lawGain(blastM, 30, 0.6, focus), random);
       }
       if (!ok && noise && mixer) synthBoom(mixer.ctx, mixer.input(cinematic ? 'cinematic' : 'impacts'), noise, mixer.ctx.currentTime, 1.8, 0.8 * dbToGain(distanceAttenuationDb(distanceTo(x, y, z), 18, 0.95)), random);
-      play('debris_metal', { x, y, z, delayS: 0.25 * stretch, ...slow });
-      if (cause === 'ammorack') play('turret_land', { x: x + (random() - 0.5) * 8, y, z: z + (random() - 0.5) * 8, delayS: (1.5 + random() * 1.1) * stretch, ...slow });
+      if (!cinematic && blastM > 600) play('expl_far', { x, y, z, focus, gainDb: -3 });
+      play('debris_metal', { x, y, z, delayS: 0.25 * stretch, focus, ...slow });
+      if (cause === 'ammorack') play('turret_land', { x: x + (random() - 0.5) * 8, y, z: z + (random() - 0.5) * 8, delayS: (1.5 + random() * 1.1) * stretch, focus, ...slow });
     }
     if (!cinematic && cause !== 'fire' && event.id !== playerId) blastNearHull(distanceTo(x, y, z), cause === 'ammorack' ? 160 : 110);
     if (!cinematic && ctx) {
@@ -813,9 +894,8 @@ export function createAudio({
       playerBurning = false;
       radio?.silence();
     } else if (playerId != null && event.killerId === playerId) {
-      play('ui_kill');
       const now = ctx?.currentTime ?? 0;
-      say(now - lastKillAt < 12 ? 'double_kill' : 'target_destroyed', { delayS: 0.22 });
+      say(now - lastKillAt < 12 ? 'double_kill' : 'target_destroyed', { delayS: 0.45 + random() * 0.15 });
       lastKillAt = now;
     } else if (playerId != null && info) {
       const near = listenerValid && distanceTo(x, y, z) < 300;
@@ -1832,12 +1912,6 @@ export function createAudio({
       if (!ready() || !ambience) return;
       if (on) applyScene();
       else if (phase === 'battle') ambience.stop(0.5);
-    },
-    hitConfirm(kind, damage = 0) {
-      if (!ready()) return;
-      const pen = kind === 'pen' || kind === 'he_pen' || damage > 0;
-      const id = pen ? 'ui_hit_pen' : kind === 'ricochet' ? 'ui_hit_ricochet' : 'ui_hit_nonpen';
-      if (!play(id) && mixer) synthClick(mixer.ctx, mixer.input('ui'), mixer.ctx.currentTime, 0.3, pen ? 1.3 : 0.7);
     },
   };
 }

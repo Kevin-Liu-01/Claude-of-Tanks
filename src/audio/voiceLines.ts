@@ -52,7 +52,7 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   enemy_engine_hit: V(1, 10, 'shot_result', 0.9, 3),
   target_destroyed: V(3, 3.5, 'shot_result', 2.0),
   double_kill: V(3, 20, 'shot_result', 2.0),
-  miss: V(0, 14, 'shot_result', 0.6),
+  miss: V(1, 8, 'shot_result', 0.8, 3.5),
   friendly_fire: V(2, 6, 'team', 1.0),
   // loading
   reloading: V(0, 9, 'gun_cycle', 0.45),

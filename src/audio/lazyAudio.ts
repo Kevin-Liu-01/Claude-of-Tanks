@@ -58,7 +58,6 @@ export interface LazyAudio {
   /** Load the battle's sound groups (optionally its planned roster) before rollout. */
   warmBattleEvents(roster?: readonly string[]): Promise<RuntimeValue>;
   ambientOn(active: boolean): void;
-  hitConfirm(kind: string, damage?: number): void;
   readonly ready: boolean;
   readonly loadingActive: boolean;
 }
@@ -339,7 +338,6 @@ export function createLazyAudio({
       ambientRequested = !!on;
       real?.ambientOn(ambientRequested);
     },
-    hitConfirm(kind: string, damage = 0) { real?.hitConfirm(kind, damage); },
     get ready() { return !!real; },
     get loadingActive() { return !!fallback || loadingRequested; },
   };

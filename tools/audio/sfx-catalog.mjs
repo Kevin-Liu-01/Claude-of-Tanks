@@ -132,6 +132,11 @@ const impacts = [
   sfx('nonpen_interior', 'impacts', `One-shot heard from inside a tank as a heavy shell slams into the armour outside without penetrating: loud dull bong, hull rattling. ${NO_MUSIC}.`, 2, { variants: 2, takes: 3, proc: 'impact' }),
   sfx('heat_impact', 'impacts', `One-shot of a shaped-charge warhead detonating on tank armour: sharp explosive crack and a hissing jet of molten metal. ${NO_MUSIC}.`, 2, { variants: 2, takes: 3, proc: 'impact' }),
   sfx('he_armor', 'impacts', `One-shot of a high-explosive shell exploding against a tank hull: loud blast with shrapnel peppering steel. ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 3, proc: 'impact' }),
+  // Distant armour hits, crossfaded in by range: what a crew hears of a round striking a tank hundreds of
+  // metres away (the close banks above carry the detail up close).
+  sfx('impact_far_pen', 'impacts', `Sound effect: a single tank shell punching through armour about 600 metres away, heard across an open battlefield: a sharp distant metallic crack over a heavy low thud, then a short outdoor echo. ${FIELD}, ${NO_MUSIC}.`, 2.5, { inf: 0.6, variants: 3, takes: 5, proc: 'weapon-far' }),
+  sfx('impact_far_nonpen', 'impacts', `Sound effect: a single tank shell slamming into thick armour without getting through, about 600 metres away across open ground: a dull heavy distant metallic knock, then a short outdoor echo. ${FIELD}, ${NO_MUSIC}.`, 2.2, { inf: 0.6, variants: 3, takes: 5, proc: 'weapon-far' }),
+  sfx('impact_far_ricochet', 'impacts', `Sound effect: a single tank shell glancing off armour about 600 metres away: a hard distant metallic clang and the faint fading whine of the deflected round, then a short outdoor echo. ${FIELD}, ${NO_MUSIC}.`, 2.5, { inf: 0.6, variants: 3, takes: 5, proc: 'weapon-far' }),
   sfx('era_det', 'impacts', `One-shot of an explosive reactive armour tile detonating: very sharp powerful bang and a metal plate flung away. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 3, proc: 'impact' }),
   sfx('bullet_armor', 'impacts', `Sound effect: one single heavy machine-gun bullet hitting thick tank armour: a short hard dull thwack with a brief spark, not a high ping. ${NO_MUSIC}. Very loud, with an immediate hard attack.`, 1, { inf: 0.7, variants: 4, takes: 5, proc: 'impact' }),
   sfx('bullet_dirt', 'impacts', `One-shot of one single bullet impact in dirt: short dull thud and puff. ${NO_MUSIC}.`, 1, { inf: 0.7, variants: 3, takes: 4, proc: 'impact' }),
@@ -494,11 +499,6 @@ const ui = [
   sfx('ui_deploy', 'ui', `One-shot ${UI}: a heavy steel tank hatch slammed shut, a deep booming clang in a large space.`, 2, { variants: 1, takes: 3, proc: 'ui', ch: 'stereo' }),
   sfx('ui_countdown_tick', 'ui', `One-shot ${UI}: a single heavy mechanical clock escapement tick, low and dull.`, 0.6, { variants: 1, takes: 3, proc: 'ui' }),
   sfx('ui_countdown_go', 'ui', `One-shot ${UI_BRASS}: battle begins, a deep distant artillery thud and one short low horn blast.`, 1.6, { variants: 1, takes: 3, proc: 'ui', ch: 'stereo' }),
-  sfx('ui_hit_pen', 'ui', `One-shot ${UI}: armour penetration confirmed, a deep heavy crunching steel thud, short, no ring.`, 0.6, { variants: 2, takes: 4, proc: 'ui' }),
-  sfx('ui_hit_ricochet', 'ui', `One-shot ${UI}: a heavy shell glancing off thick armour heard from inside a tank, a short low metallic scrape.`, 0.6, { variants: 1, takes: 3, proc: 'ui' }),
-  sfx('ui_hit_nonpen', 'ui', `One-shot ${UI}: a heavy shell stopped by thick armour, a dull low muted knock.`, 0.6, { variants: 1, takes: 3, proc: 'ui' }),
-  sfx('ui_kill', 'ui', `One-shot ${UI}: target destroyed, a deep distant heavy explosion thump, dark and low.`, 1.2, { variants: 1, takes: 3, proc: 'ui' }),
-  sfx('ui_crit', 'ui', `One-shot ${UI}: a heavy internal component of a tank breaking, a short low crunching metallic crack.`, 0.8, { variants: 1, takes: 3, proc: 'ui' }),
   sfx('ui_capture_tick', 'ui', `One-shot ${UI}: a single low muffled relay click of an old field telephone.`, 0.5, { variants: 1, takes: 3, proc: 'ui' }),
   sfx('ui_objective_gain', 'ui', `One-shot ${UI_BRASS}: objective secured, one low solemn brass note over a deep timpani hit.`, 1.6, { variants: 1, takes: 3, proc: 'ui', ch: 'stereo' }),
   sfx('ui_objective_loss', 'ui', `One-shot ${UI_BRASS}: objective lost, a low ominous brass swell with a muffled drum.`, 1.6, { variants: 1, takes: 3, proc: 'ui', ch: 'stereo' }),

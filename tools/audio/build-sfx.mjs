@@ -134,6 +134,16 @@ for (const entry of SFX_CATALOG) {
   console.log(`${entry.id.padEnd(34)} ${files.length} × [${files.map((f) => `${f.dur}s ${f.mMax ?? f.lufs}LU tp${f.truePeak}`).join(' | ')}] picks ${chosen.map((c) => c.take).join(',')}`);
 }
 
+// An asset dropped from the catalog leaves the manifest and the disk.
+const catalogIds = new Set(SFX_CATALOG.map((entry) => entry.id));
+for (const id of Object.keys(manifest)) {
+  if (catalogIds.has(id)) continue;
+  const dir = join(OUT, manifest[id].g);
+  if (existsSync(dir)) for (const name of readdirSync(dir)) if (takeFileOf(id).test(name)) rmSync(join(dir, name));
+  delete manifest[id];
+  console.log(`${id.padEnd(34)} removed (no longer in the catalog)`);
+}
+
 writeFileSync(join(HERE, '.sfx-manifest.json'), JSON.stringify(manifest, null, 1));
 
 const lines = Object.keys(manifest).sort().map((id) => `  ${JSON.stringify(id)}: ${JSON.stringify(manifest[id])},`);

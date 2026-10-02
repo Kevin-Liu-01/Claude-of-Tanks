@@ -17,6 +17,7 @@ import {
 import { cueProfile, type BusId, type CueProfile, type CueSpace } from './soundCues.ts';
 import type { AssetLibrary } from './assetLibrary.ts';
 import { WORLD_BUSES, type Mixer } from './mixer.ts';
+import { OWN_HIT_FOCUS } from './mixPolicy.ts';
 
 export interface PlayOptions {
   x?: number;
@@ -39,6 +40,8 @@ export interface PlayOptions {
   pan?: number;
   /** Whether this voice may raise the HDR window (default: world buses + own). */
   drivesWindow?: boolean;
+  /** The listener's own hit: carried by the gentler OWN_HIT_FOCUS law and protected from culling. */
+  focus?: boolean;
   /** Play this exact buffer instead of picking a variant. */
   buffer?: AudioBuffer;
   /** Loop the asset between its manifest loop points until stopped. */
@@ -146,7 +149,10 @@ export function createVoicePool({ mixer, library, random, budget, reverb }: Voic
   function play(id: string, options: PlayOptions = {}): ActiveVoice | null {
     const record = library.record(id);
     if (!record && !options.buffer) return null;
-    const base = cueProfile(id, record?.g ?? 'impacts');
+    const cue = cueProfile(id, record?.g ?? 'impacts');
+    const base = options.focus
+      ? { ...cue, refM: cue.refM * OWN_HIT_FOCUS.refScale, rolloff: Math.min(cue.rolloff, OWN_HIT_FOCUS.maxRolloff), maxM: Math.max(cue.maxM, OWN_HIT_FOCUS.minRangeM), priority: Math.max(cue.priority, OWN_HIT_FOCUS.priority) }
+      : cue;
     const bus = options.bus ?? base.bus;
     const space = options.space ?? base.space;
     const priority = options.priority ?? base.priority;

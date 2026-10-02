@@ -179,9 +179,10 @@ since = mark();
 ctx.advance(10);
 bus.emit('tank:destroyed', { id: 'foe', killerId: 'me', pos: [-40, 0, 120], cause: 'ammorack' });
 names = probe.sfxLog.slice(since).map((e) => e.n);
-for (const id of ['tank_explode_ammo', 'debris_metal', 'turret_land', 'cookoff_loop', 'ui_kill']) assert.ok(names.includes(id), `${id} on an ammo-rack kill (${names})`);
-ctx.advance(0.4);
-audio.update(1 / 60, listener, tanks.filter((t) => t.id !== 'foe'));
+for (const id of ['tank_explode_ammo', 'debris_metal', 'turret_land', 'cookoff_loop']) assert.ok(names.includes(id), `${id} on an ammo-rack kill (${names})`);
+assert.ok(!probe.sfxLog.slice(since).some((e) => e.b === 'ui'), 'the target going up confirms the kill, not an interface sound');
+// The crew calls it once they have seen it go up, about half a second later.
+for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(1 / 60, listener, tanks.filter((t) => t.id !== 'foe')); }
 assert.ok(['target_destroyed', 'double_kill'].includes(probe.voiceLog.at(-1)?.id), `kill confirm (${probe.voiceLog.at(-1)?.id})`);
 assert.ok(!probe.engineState().some((e) => e.id === 'foe'), 'the dead tank stops idling');
 
@@ -198,6 +199,38 @@ bus.emit('ui:volumes', { concussion: false });
 bus.emit('shell:hit', { shellId: 6, pos: [3, 0, 3], kind: 'he_splash', targetId: 'ally', attackerId: 'foe', damage: 0, caliberMm: 152, targetHpAfter: 1000 });
 assert.equal(probe.busGains().concussion, 0, 'the concussion setting turns it off');
 bus.emit('ui:volumes', { concussion: true });
+
+// Our hits are confirmed by the world, not an interface marker: the impact at the target from
+// its bearing and distance (the distant bank beyond a few hundred metres, carried further than
+// anyone else's hit), then the gunner's call once the crew has seen it land.
+settle(4);
+since = mark();
+bus.emit('shell:hit', { shellId: 7, pos: [0, 1.5, 700], kind: 'pen', targetId: 'far', attackerId: 'me', damage: 300, caliberMm: 125, targetMaxHp: 1000, targetHpAfter: 700 });
+const hit = probe.sfxLog.slice(since);
+const ourFar = hit.find((e) => e.n === 'impact_far_pen');
+assert.ok(ourFar, `a 700 m penetration is the distant crack (${hit.map((e) => e.n)})`);
+assert.ok(!hit.some((e) => e.n === 'pen_heavy'), 'no close-up tearing metal from 700 m');
+assert.ok(ourFar.t > ctx.currentTime + 1.8, 'heard when its sound arrives (700 m is about 2 s)');
+assert.ok(!hit.some((e) => e.b === 'ui'), 'no interface hit marker');
+since = mark();
+bus.emit('shell:hit', { shellId: 8, pos: [0, 1.5, 700], kind: 'pen', targetId: 'far', attackerId: 'ally', damage: 300, caliberMm: 125, targetMaxHp: 1000, targetHpAfter: 400 });
+const theirFar = probe.sfxLog.slice(since).find((e) => e.n === 'impact_far_pen');
+assert.ok(theirFar && theirFar.g < ourFar.g * 0.5, `our own hit carries further than an ally's (${ourFar.g} vs ${theirFar?.g})`);
+for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(0.25, listener, tanks); }
+assert.equal(probe.voiceLog.at(-1)?.id, 'penetration', 'the gunner calls the penetration');
+
+// A main-gun miss is called too: "short" when the round came down before the enemy it was laid
+// on (the line's second take), a plain "miss" when it went over.
+const miss = (shellId, landedZ) => {
+  settle(9);
+  bus.emit('shell:fired', { shellId, shooterId: 'me', muzzlePos: [0, 2, 3], dir: [0, 0, 1], caliberMm: 125, shellType: 'APFSDS' });
+  ctx.advance(0.3);
+  bus.emit('shell:expired', { shellId, shooterId: 'me', pos: [0, 0, landedZ], hitTerrain: true, caliberMm: 125 });
+  for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(0.25, listener, tanks); }
+  return [probe.voiceLog.at(-1)?.id, probe.voiceLog.at(-1)?.take];
+};
+assert.deepEqual(miss(9, 400), ['miss', 1], 'a round short of the target is called short');
+assert.deepEqual(miss(10, 900), ['miss', 0], 'a round over the target is a plain miss');
 
 // Kill-cam replay: a crisp blast, then debris stretched to the 0.55x replay, all on the cinematic bus.
 since = mark();
@@ -245,4 +278,4 @@ bus.emit('phase:change', { phase: 'battle' });
 audio.update(1 / 60, listener, tanks);
 assert.equal(probe.snapshot, 'battle', 'a battle left from the pause menu leaves no pause behind');
 
-console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, kill-cam, panning, scope and teardown passed (${probe.sfxLog.length} voices logged)`);
+console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope and teardown passed (${probe.sfxLog.length} voices logged)`);

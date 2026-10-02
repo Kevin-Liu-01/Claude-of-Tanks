@@ -1430,7 +1430,6 @@ createCombatFeedbackRuntime({
   bus,
   game,
   rig,
-  audio,
   getFx: () => fxRuntimeAccess.current,
   hasNetworkMatch: networkMatchActive,
   shotRecoilScale,

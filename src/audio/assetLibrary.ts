@@ -56,7 +56,8 @@ export interface AssetLibrary {
   touch(id: string): void;
   loadVoice(language: string): Promise<void>;
   voiceReady(language: string): boolean;
-  voice(language: string, line: string, random: () => number): AudioBuffer | null;
+  /** A decoded take of a crew line: the given take when it exists, else a random one (no immediate repeat). */
+  voice(language: string, line: string, random: () => number, take?: number): AudioBuffer | null;
   voiceTakes(language: string, line: string): number;
   stats(): { assets: number; decodedMb: number; sfxMb: number; voiceMb: number; pinned: number; pending: number; failed: number; voices: string[] };
 }
@@ -296,9 +297,15 @@ export function createAssetLibrary({
       return promise;
     },
     voiceReady: (language) => readyVoices.has(language),
-    voice(language, line, random) {
+    voice(language, line, random, take) {
       const entry = voiceEntries.get(voiceKey(language, line));
       if (!entry || entry.state !== 'ready') return null;
+      const exact = take != null ? entry.buffers[take] : null;
+      if (take != null && exact) {
+        entry.lastVariant = take;
+        entry.last = performance.now();
+        return exact;
+      }
       return choose(entry, random);
     },
     voiceTakes(language, line) {
