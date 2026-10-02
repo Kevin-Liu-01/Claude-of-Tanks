@@ -6083,6 +6083,48 @@ quiet, against −129 draws and −0.83 M triangles. Ready to run in the next qu
 `zsh $SP/r79/winter-quiet.sh w1 $SP/r79/snap-base $SP/r79/snap-d` (the six pairs), then `zsh $SP/r79/winter-chain.sh`
 (the attribution, only if ≥ 4 of 6 stay positive).
 
+### Terrain v2 — 2026-10-01: the ground at a fraction of the cost, grounded terms, the horizon in the scene's own light
+
+The Opus 5.5 redesign's terrain-and-horizon lane (branch `visual/terrain-horizon`; owner direction: grounded realism,
+natural light, photographic materials, the desktop high tier inside 60 fps on a mid-range laptop GPU, phones never
+slower). The architecture audit measured the terrain material at about 60 % of Whiteout's GPU frame.
+
+**Why it cost that much.** The splat fragment sampled all four layers (base, soil, wet, rock), albedo and normal,
+through `groundSamp` (two samplings of a rotation blend) over `splatSamp` (a near tap plus a far variant plus a deep-mip
+"tile mean" tap) at every fragment, and multiplied most of them by a zero coverage; the packed-road palette and the
+mid-band rock relief ran under every fragment too, and the 256 px shared noise texture — read some forty times per
+fragment — went through the x16 anisotropic sampler, up to sixteen trilinear probes per read on the grazing far ground
+that fills every skyline view. A static model of the executed fetches: open grass at 15 m about 59 fetches before,
+about 33 after (23 of them isotropic explicit-LOD reads); open grass at 400 m about 94 before (all anisotropic), about
+27–33 after.
+
+**The cost pass (program key v53).** Every coverage weight is known before any layer is fetched (the height
+transitions keep 0 at 0 and 1 at 1), so each layer is fetched inside its own coverage branch and the base tile only
+where the layers above it leave any of it (`covG`, executed on scalar ports by `terrainMaterialV2.selftest`); the
+rotation blend and the wall projections fetch their second sampling only inside the crossover band; past the far
+band (`farM > 0.98`) no layer detail normal is fetched (sub-pixel there — the geometric normal and the coarse relief
+terms carry the shading); the far variant is one fetch and its tile mean, like every deep-mip mean of the transitions
+and the zero-mean octaves, is the layer's measured mean (`uMeanG/D/R/M`, measured from the layer image at build and
+again after the sourced swap); the noise reads take an explicit isotropic level of detail from one footprint per
+fragment (`nz`, `textureLod`) — the near, high-frequency reads keep the anisotropic path. Same ten samplers.
+
+**Grounded terms (one per-map table, `groundRedux.ts`: `exposure`, `climate`, `bedIrregularity`, `patchwork`; packed in
+`uReduxD`, no sampler).** Slope exposure: a slope turned to the map's sun dries and pales (straw, bleached rock, crusted
+snow), one turned away holds moisture (darker, greener, mossier; desert varnish; powder) — the largest colour pattern of
+a real landscape follows its relief, on the battlefield and on the ranges (`uVExposure`). The cover's 2–8 m patchwork
+(one non-repeating field below the macro tints, inside the gameplay band). Non-periodic cliff beds (`bedSignal`: two
+noise lines along the world height replace the world-height sines of the marker beds, laminae and far ledges; the vista
+does the same with its detail noise) and buttresses and alcoves on the ring walls (a tall arc-frame lookup feeding the
+vista's bump height).
+
+**The lit ring.** The desktop vista ring and the far range are lit standard materials registered with the cascades
+(`engineCtx.setupShadowMaterial`): the ranges take the battlefield's own sun, sky light, overcast dome and exposure,
+whatever light model the engine runs, instead of the gains `resolveHorizonLightingGains` fitted to the presets'
+legacy sun and hemisphere (the lighting lane's physical model would otherwise have left them on the old key). The
+relief bake's sun visibility (with the cloud shade) gates three's direct light, its occlusion the indirect light, the
+glints are emission, and the vista's own haze mixes the radiance toward the live fog colour; the atmosphere runtime's
+night dim (unlit horizons only) leaves them to the night light. The mobile tier keeps its unlit per-vertex bake.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
