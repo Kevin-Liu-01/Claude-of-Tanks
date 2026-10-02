@@ -13,6 +13,8 @@ import { disposeObject3DResources, visitOwnedObject3DGeometries } from '../engin
 // shapes. That replayed history. The current producer is held to the live bush contracts: every populated bush
 // instance links to its unchanged cover disc, the prototype stays a grounded three-dimensional envelope inside the
 // cover radius, the fade/LOD streams are inert, and the envelope gate bites on flattened and raised negatives.
+// p2 trees lane (2026-10-02): the desktop bushes grow from their species' sprays (buildGrownShrub); the audit takes
+// either producer's two bush shapes, and the envelope gate holds the grown shape and the round-8 cards alike.
 const sha = value => createHash('sha256').update(value).digest('hex');
 const url = new URL('./vegetation.ts', import.meta.url), source = readFileSync(url, 'utf8');
 const ast = ts.createSourceFile('vegetation.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
@@ -28,6 +30,7 @@ const hook = registerHooks({ load(href, context, next) {
   if (!href.startsWith(url.href + '?growth-')) return result;
   assert.equal(result.source.toString(), source, 'load the complete actual producer');
   let code = replaceOnce(source, 'function buildBushCards(', 'function originalBushCards(');
+  code = replaceOnce(code, 'function buildGrownShrub(', 'function originalGrownShrub(');
   code = replaceOnce(code, 'export function mulberry32(', 'function originalMulberry32(');
   return { ...result, source: code + `
     let auditBushes = [], auditRng = [];
@@ -37,6 +40,9 @@ const hook = registerHooks({ load(href, context, next) {
     }
     export function buildBushCards(rng, palette) {
       const g = originalBushCards(rng, palette); auditBushes.push(g); return g;
+    }
+    export function buildGrownShrub(kind, rng, palette, species) {
+      const g = originalGrownShrub(kind, rng, palette, species); if (kind === 'bush') auditBushes.push(g); return g;
     }
     export function mulberry32(seed) {
       const next = originalMulberry32(seed), row = { seed, count:0, next }; auditRng.push(row);
@@ -153,7 +159,10 @@ function produce(module, id) {
   } finally { world.dispose(); disposeObject3DResources(world.group); module.resetGrowthAudit(); }
 }
 function negativeControls() {
-  const a = current.buildBushCards(current.mulberry32(2032));
+  for (const make of [() => current.buildBushCards(current.mulberry32(2032)),
+    () => current.buildGrownShrub('bush', current.mulberry32(2032), {}, 'oak')]) negativeControl(make());
+}
+function negativeControl(a) {
   try {
     assertEnvelope(envelope(a));
     const flat = a.clone(), raised = a.clone();

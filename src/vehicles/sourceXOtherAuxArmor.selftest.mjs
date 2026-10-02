@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {createTank} from './tankFactory.ts';
 import {getSpec} from './specs.ts';
 import {applySourceXOtherAuxArmor} from './sourceXOtherAuxArmor.ts';
+import {AMX56_KIT_SURFACE_GROUP} from './leclercClassicXKitArmor.ts';
 import {assertConvexArmorOutline} from '../sim/armorOutline.test-support.mjs';
 import {tankPoseFromState,traceTank} from '../sim/armor.ts';
 import {createShell} from '../sim/ballistics.ts';
@@ -86,7 +87,7 @@ function facets(id,spec,meshes){
   const plates=spec.armor.hullPlates.filter(p=>p.name.includes('_source_'));
   if(['k1a1_x','amx30_x'].includes(id)){assert.equal(plates.length,0);return;}
   assert.ok(plates.length>0,'actual factory spec is wired');
-  let maximumError=0;
+  let maximumError=0;const kitCovered={[-1]:0,[1]:0};
   for(const p of plates){
     try{assertConvexArmorOutline(p.verts,`${id}/${p.name}`,p.openEdges);}
     catch(error){console.log(JSON.stringify({id,name:p.name,verts:p.verts,openEdges:p.openEdges}));throw error;}
@@ -95,8 +96,21 @@ function facets(id,spec,meshes){
     const nativeHits=new THREE.Raycaster(from,new THREE.Vector3(-side,0,0),0,.23).intersectObjects(meshes,false);
     // Fascia sits behind separate unarmored U straps. Verify the outward
     // physical sheet at its own depth, not an unrelated protruding fastener.
-    const native=id==='type10_x'?nativeHits.find(h=>Math.abs(h.point.x-point.x)<=.003
+    let native=id==='type10_x'?nativeHits.find(h=>Math.abs(h.point.x-point.x)<=.003
       &&h.face.normal.clone().transformDirection(h.object.matrixWorld).x*side>.5):nativeHits[0];
+    // 2026-10-02: the owner's AMX 56 field kit (6e8c2fbd3) mounts thick folded side modules outside the
+    // retained source skirt. Where one covers a source face, the outermost stock is that module and must carry
+    // its own spaced kit plate (leclercClassicXKitArmor.ts); the source face is then witnessed at its own depth.
+    if(id==='leclerc_classic_x'&&native&&Math.abs(native.point.x-point.x)>.00015){
+      assert.equal(native.object.name,'hullExternalArmor',`${id}/${p.name}: the covering stock is the installed field-kit module`);
+      const kit=traceTank(native.point.clone().add(new THREE.Vector3(side*.01,0,0)),
+        native.point.clone().add(new THREE.Vector3(-side*.01,0,0)),pose,spec.armor)
+        .filter(h=>h.kind==='plate'&&h.plate.surfaceGroup===`${AMX56_KIT_SURFACE_GROUP}:${side}`);
+      assert.equal(kit.length,1,`${id}/${p.name}: the covering module carries one spaced kit plate`);
+      near(kit[0].point?.x??kit[0].pos?.x,native.point.x,.00015,`${id}/${p.name}: the kit plate lies on the module's outer face`);
+      kitCovered[side]++;
+      native=nativeHits.find(h=>Math.abs(h.point.x-point.x)<=.00015);
+    }
     assert.ok(native,`${id}/${p.name} faces real installed armor`);
     const error=Math.abs(native.point.x-point.x);maximumError=Math.max(maximumError,error);
     near(native.point.x,point.x,id==='type10_x'?.003:.00015,`${id}/${p.name} actual physical outer face`);
@@ -105,11 +119,14 @@ function facets(id,spec,meshes){
     const template=getSpec(DONORS[id]).armor.hullPlates.find(t=>t.name===`skirt_${side<0?'L':'R'}`);
     assert.deepEqual([p.physicalMm,p.keMm,p.ceMm],[template.physicalMm,template.keMm,template.ceMm],'unchanged donor protection family');
   }
-  console.log(`${id}: ${plates.length} actual auxiliary faces, maximum transverse surface error ${maximumError}`);
+  if(id==='leclerc_classic_x')assert.ok(kitCovered[-1]>0&&kitCovered[1]>0,
+    `${id}: both field-kit modules cover source faces with their own plates (${JSON.stringify(kitCovered)})`);
+  console.log(`${id}: ${plates.length} actual auxiliary faces, maximum transverse surface error ${maximumError}${id==='leclerc_classic_x'?`, ${kitCovered[-1]}+${kitCovered[1]} under the field kit`:''}`);
 }
 function seams(id,spec){
   const edges=new Map();let count=0;
-  for(const p of spec.armor.hullPlates.filter(p=>p.surfaceGroup))for(let i=0;i<p.verts.length;i++){
+  // The AMX 56 field-kit plates are not source faces; profiles/leclercClassicX.selftest.mjs owns their seams.
+  for(const p of spec.armor.hullPlates.filter(p=>p.surfaceGroup&&!p.surfaceGroup.startsWith(`${AMX56_KIT_SURFACE_GROUP}:`)))for(let i=0;i<p.verts.length;i++){
     const a=p.verts[i],b=p.verts[(i+1)%p.verts.length];
     const key=`${p.surfaceGroup}:`+[a,b].map(v=>v.map(n=>n.toFixed(8)).join(',')).sort().join('|');
     if(edges.has(key)){

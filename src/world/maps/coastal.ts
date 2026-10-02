@@ -284,7 +284,7 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'sea-streets', windDirDeg: 190, farBand: 0.65 },
+  clouds: { regime: 'sea-streets', windDirDeg: 190, farBand: 0.65, fogBank: 0.45, fogBankTopM: 110, nightGlow: 0.25 },
   sky: {
     sunElevationDeg: 38, sunAzimuthDeg: 115,
     turbidity: 2.8, rayleigh: 1.8, mieCoefficient: 0.004, mieDirectionalG: 0.80,
