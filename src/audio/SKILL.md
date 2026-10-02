@@ -12,6 +12,8 @@ audio without owning gameplay decisions.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
+Start from [`docs/AUDIO.md`](../../docs/AUDIO.md): the runtime design, the generation
+pipeline (SFX and crew voices) and how to change or extend it.
 `audioEngine.ts` owns the bus subscriptions, listener frame, vehicle rigs,
 weapons, impacts, ambience, alarms and the `window.__COT_AUDIO` debug surface.
 Pure, DOM-free policy: `audioMath.ts` (distance, air absorption, delay,
@@ -43,10 +45,11 @@ repo.
 <!-- agent-docs:fill:tasks -->
 Trace the originating bus event, verify payload semantics, then extend the
 engine handler and its `audioEngine.selftest.mjs` scene. Use the pure
-selftests for policy, `tools/sfx-smoke.mjs` for assets/calibres/distance,
-`tools/voice-smoke.mjs` for the crews, `tools/audio-spatial-killcam-probe.mjs`
-for listener/distance PCM and `tools/audio-probe.mjs` for the canonical event
-and bus matrix.
+selftests for policy, `tools/audio-mix-balance.mjs` for what a player hears
+(garage tone, gunfire over the battle bed, radio level, live density),
+`tools/sfx-smoke.mjs` for assets/calibres/distance, `tools/voice-smoke.mjs`
+for the crews, `tools/audio-spatial-killcam-probe.mjs` for listener/distance
+PCM and `tools/audio-probe.mjs` for the canonical event and bus matrix.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
