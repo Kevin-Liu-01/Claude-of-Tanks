@@ -1052,6 +1052,7 @@ interface CombatWarmFxPort extends StudioFxPort {
     normal: Vector3,
     caliberMm: number,
   ): void;
+  clearVehicleDecals(visual: { root: Object3D }): void;
 }
 
 interface CombatWarmWorld extends BattleWarmWorld {
@@ -1532,37 +1533,49 @@ export function* createCombatRareWarmSteps(
 
   yield* warmDestroyedRosterVariantsSteps(context);
   mark('wreckVariants');
-  for (const entity of game.tanks) {
-    if (!entity.visual?.root || !entity.state) continue;
-    context.scratch1.copy(entity.state.pos);
-    context.scratch1.y += (entity.spec?.dims?.heightM || 2.4) * 0.5;
-    context.scratch2.set(0, 0, 1);
-    try { fx.armorScar({ root: entity.visual.root }, context.scratch1, context.scratch2, 100); }
-    catch (_) { /* warm only */ }
-    yield;
-  }
-  mark('armorScars');
-  yield* warmCombatDestructionEffectSteps(context);
-  mark('destructionEffects');
-
-  context.warmWreckTextures(renderer);
-  fx.group.traverse((object) => {
-    const renderable = object as Object3D & { material?: Material | Material[] };
-    const materials = Array.isArray(renderable.material)
-      ? renderable.material : (renderable.material ? [renderable.material] : []);
-    for (const material of materials) {
-      initializeMaterialTextures(renderer, material);
+  // One warm-only armour scar per fielded hull lets the hidden-variant compile below prepare the impact-decal
+  // program inside every hull before a real hit needs it. The scars are this warm's own state and leave with it
+  // (done, failed or closed). They used to leave only through the destruction warm's resetAll, which a cached
+  // destruction warm skips: the covered deployment warms destruction first, so on every solo battle they
+  // survived into the battle on hulls that were never hit.
+  const warmScars: Array<{ root: Object3D }> = [];
+  try {
+    for (const entity of game.tanks) {
+      if (!entity.visual?.root || !entity.state) continue;
+      context.scratch1.copy(entity.state.pos);
+      context.scratch1.y += (entity.spec?.dims?.heightM || 2.4) * 0.5;
+      context.scratch2.set(0, 0, 1);
+      const scar = { root: entity.visual.root };
+      warmScars.push(scar);
+      try { fx.armorScar(scar, context.scratch1, context.scratch2, 100); }
+      catch (_) { /* warm only */ }
+      yield;
     }
-  });
-  yield;
-  mark('textures');
+    mark('armorScars');
+    yield* warmCombatDestructionEffectSteps(context);
+    mark('destructionEffects');
 
-  for (const _ of context.deploymentShadowWarm.warmDepthProgramSteps()) yield;
-  mark('shadows');
-  rareTrace.hiddenDetail = { startedAt: performance.now() };
-  try { yield* compileHiddenVariantsSteps(context, rareTrace.hiddenDetail, execution); }
-  finally { rareTrace.hiddenDetail.finishedAt = performance.now(); }
-  mark('hiddenVariants');
+    context.warmWreckTextures(renderer);
+    fx.group.traverse((object) => {
+      const renderable = object as Object3D & { material?: Material | Material[] };
+      const materials = Array.isArray(renderable.material)
+        ? renderable.material : (renderable.material ? [renderable.material] : []);
+      for (const material of materials) {
+        initializeMaterialTextures(renderer, material);
+      }
+    });
+    yield;
+    mark('textures');
+
+    for (const _ of context.deploymentShadowWarm.warmDepthProgramSteps()) yield;
+    mark('shadows');
+    rareTrace.hiddenDetail = { startedAt: performance.now() };
+    try { yield* compileHiddenVariantsSteps(context, rareTrace.hiddenDetail, execution); }
+    finally { rareTrace.hiddenDetail.finishedAt = performance.now(); }
+    mark('hiddenVariants');
+  } finally {
+    for (const scar of warmScars) fx.clearVehicleDecals(scar);
+  }
   context.markRareReady();
   rareTrace.totalMs = Math.round(performance.now() - startedAt);
   if (typeof window !== 'undefined') {
