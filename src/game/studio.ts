@@ -99,6 +99,12 @@ import type {
   TankState,
 } from '../sim/movement.ts';
 import type { PostRuntime } from '../engine/post.ts';
+import { createCinemaPost, type CinemaRuntime } from '../engine/cinemaPost.ts';
+import {
+  NEUTRAL_PICTURE, PICTURE_PRESETS, applyPicturePatch, isNeutralPicture, pictureCinemaSettings,
+  pictureGrainSeed, pictureLensState, pictureLetterboxBars, pictureStateJson, resolvePicture,
+  type PicturePatch, type StudioPicture,
+} from './studioPicture.ts';
 import type { WorldRuntime } from '../world/map.ts';
 
 type TankSpec = ReturnType<typeof getSpec>;
@@ -434,6 +440,7 @@ interface StudioSceneInput {
   timeScale?: number;
   /** Optional film settings (studioFilmPlan.ts); absent = none authored. */
   film?: FilmSettingsInput | null;
+  picture?: PicturePatch | null;
 }
 
 interface EnterOptions {
@@ -2787,6 +2794,88 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
   const r2 = (v: number): number => Math.round(v * 100) / 100;
 
+  // --- picture (studioPicture.ts schema, engine/cinemaPost.ts passes) -------------
+  // Neutral = no Studio pass in the composer (byte-identical to the house render). The
+  // runtime is created on the first non-neutral picture and disposed on exit.
+  let picture: StudioPicture = NEUTRAL_PICTURE;
+  let cinema: CinemaRuntime | null = null;
+  const _focusPoint = new THREE.Vector3();
+  const _focusAxis = new THREE.Vector3();
+
+  function pictureFocusActor(): StudioActor | null {
+    const ref = picture.dof.focusActor;
+    if (ref == null) return null;
+    return findActor(ref) || (/^\d+$/.test(ref) ? findActor(Number(ref)) : null);
+  }
+
+  /** Focus distance along the optical axis this frame: the actor's turret band, or the set distance. */
+  function pictureFocusDistance(): number {
+    const dof = picture.dof;
+    const actor = pictureFocusActor();
+    let distance = dof.focusDistance;
+    if (actor) {
+      _focusPoint.copy(actor.state.pos);
+      _focusPoint.y += actor.spec.dims.heightM * 0.55;
+      camera.getWorldDirection(_focusAxis);
+      distance = _focusPoint.sub(camera.position).dot(_focusAxis);
+    }
+    return Math.max(0.3, distance + dof.focusOffset);
+  }
+
+  function ensureCinema(): CinemaRuntime {
+    cinema ??= createCinemaPost(post, renderer, camera, {
+      lens: () => pictureLensState(picture.dof, camera.fov, pictureFocusDistance()),
+      grainSeed: () => pictureGrainSeed(sceneMeta.seed || 5000, clockMs),
+    });
+    return cinema;
+  }
+
+  /** Studio exit: every picture pass, hook and render target leaves with the Studio. */
+  function disposePicture(): void {
+    picture = NEUTRAL_PICTURE;
+    cinema?.dispose();
+    cinema = null;
+  }
+
+  /** Passes exist only while the Studio owns the frame (the Garage/battle composer stays pristine). */
+  function applyPictureRuntime(): void {
+    if (!active || isNeutralPicture(picture)) cinema?.apply(null);
+    else ensureCinema().apply(pictureCinemaSettings(picture));
+    invalidate();
+  }
+
+  function getPicture(): StudioPicture {
+    return JSON.parse(JSON.stringify(picture)) as StudioPicture;
+  }
+
+  /** `preset` switches the look; other fields override; null resets to neutral. */
+  function setPicture(patch: PicturePatch | null): StudioPicture {
+    picture = applyPicturePatch(picture, patch);
+    applyPictureRuntime();
+    panel.refreshPicture();
+    return getPicture();
+  }
+
+  /**
+   * Derived lens/finish facts for tooling (focal length, focus, matte, active stages). `size`
+   * (default: the live viewport) is the output the matte is computed for, e.g. a capture size.
+   */
+  function pictureInfo(size: { width?: number; height?: number } = {}) {
+    renderer.getSize(_size);
+    const width = Math.round(size.width || _size.x), height = Math.round(size.height || (size.width ? size.width * _size.y / _size.x : _size.y));
+    const lens = pictureLensState(picture.dof, camera.fov, pictureFocusDistance());
+    const bars = pictureLetterboxBars(picture.letterbox, width, height);
+    return {
+      neutral: isNeutralPicture(picture),
+      stages: cinema ? [...cinema.activeStages] : [],
+      focalLengthMm: r2(lens.focalMm),
+      focusM: r2(lens.focusM),
+      focusActor: pictureFocusActor()?.uid ?? null,
+      cocInfinity: Math.round(lens.cocScale * 1e6) / 1e6,
+      letterboxPx: bars,
+    };
+  }
+
   // --- capture -----------------------------------------------------------------
   function renderCaptureFrame(): void {
     // A resize or camera cut invalidates the interleaved cloud history. Complete
@@ -2831,9 +2920,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       camera.updateMatrixWorld(true);
       lighting.update(true); // every cascade fresh — deterministic capture
       stepFx(0);             // rebuild tracer ribbons/lights for this camera
+      cinema?.setQuality('capture'); // picture: full lens/finish tap counts
       renderCaptureFrame();
       dataURL = renderer.domElement.toDataURL(opts.type || 'image/png', opts.quality);
     } finally {
+      cinema?.setQuality('preview');
       renderer.setPixelRatio(prevPR);
       renderer.setSize(prevW, prevH, false);
       camera.aspect = prevW / Math.max(1, prevH);
@@ -3184,6 +3275,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     setFilmMode(on: boolean) {
       if (on === filming) return;
       filming = on;
+      // Picture passes render at capture quality for every film frame and film still.
+      cinema?.setQuality(on ? 'capture' : 'preview');
       if (on) {
         timeScale = 0;
         savedGuides.marker = marker.group.visible;
@@ -3460,7 +3553,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       fxTime: Math.round(clockMs),
       timeScale,
       ...(sceneFilm ? { film: getFilm() } : {}),
+      ...pictureStateEntry(),
     };
+  }
+
+  /** Scenes without a picture keep exactly the earlier state() shape. */
+  function pictureStateEntry(): { picture?: Record<string, RuntimeValue> } {
+    const json = pictureStateJson(picture);
+    return json ? { picture: json } : {};
   }
 
   async function ensureLoadMap(json: StudioSceneInput): Promise<void> {
@@ -3540,6 +3640,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const loadedFilm = json.film == null ? null : normalizeFilm(json.film);
     if (filmRenderer.active) throw new Error('Finish the film render before loading a scene');
     if (json.timeOfDay !== undefined && !BATTLE_TIMES.includes(json.timeOfDay)) throw new RangeError('Unknown time of day');
+    const loadedPicture = resolvePicture(json.picture); // validate before replacing scene state
     if (recording) throw new Error('Stop recording before loading a scene');
     if (loading) throw new Error('studio.load already in flight');
     loading = true;
@@ -3562,6 +3663,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       await yieldForFrameBudget();
       productionFormat = loadedFormat; // Camera keys already carry this framing; never reframe on load.
       sceneFilm = loadedFilm;
+      picture = loadedPicture;
+      applyPictureRuntime();
       restoreLoadedPresentation(json, fxMs);
       return stateJson();
     } finally {
@@ -3755,6 +3858,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       }
       panel.setBusy(null);
       panel.refreshAll();
+      applyPictureRuntime(); // a picture set before entry takes effect with the Studio frame
       invalidate();
       mark('present');
     };
@@ -3824,6 +3928,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     actorKeyUidSeq = 1;
     rail.rebuild();
     rail.updateVisibility();
+    disposePicture();
     unsweepPool();
     await enterGarage(); // restores camo overrides, sun trim, spots, showroom
     syncRoute(false);
@@ -4084,6 +4189,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // camera
     setCamera: (cfg: CameraConfig) => recording ? getCamera() : applyCamera(cfg),
     getCamera,
+    // picture (docs/STUDIO.md "Picture")
+    setPicture: (patch: PicturePatch | null) => recording ? getPicture() : setPicture(patch),
+    getPicture,
+    pictureInfo,
+    PICTURE_PRESETS,
     // constants for tooling/panel
     TANK_IDS: VISIBLE_TANK_IDS,
     MAP_IDS,
@@ -4121,6 +4231,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       cam,
       actors,
       findActor,
+      /** Film accumulation (picture↔film contract): the finish runs once per output frame. */
+      picture: {
+        setFinishBypass: (bypass: boolean) => ensureCinema().setFinishBypass(bypass),
+        renderFinish: (...args: Parameters<CinemaRuntime['renderFinish']>) => ensureCinema().renderFinish(...args),
+        setQuality: (quality: Parameters<CinemaRuntime['setQuality']>[0]) => cinema?.setQuality(quality),
+        get runtime() { return cinema; },
+      },
     },
   };
 

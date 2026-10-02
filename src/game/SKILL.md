@@ -78,7 +78,10 @@ session: TAA bypass, per-sample cascades, cloud settle, flare film clock),
 `studioFilmExport.ts` (lazy WebCodecs encoder) and `studioFilmMux.ts` (pure
 MP4/WebM containers); while a film is open the live tick and Studio input stand
 still, the timeline advances unrounded, smoke emitters pulse on the 60 Hz grid
-and track phase follows the exact sample instant.
+and track phase follows the exact sample instant. `studioPicture.ts` owns the
+pure Studio picture schema (neutral default, clamps, named looks, minimal
+`state()` diff, thin-lens/letterbox/grain-seed physics) that
+`engine/cinemaPost.ts` renders; a neutral stage must never insert a pass.
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
 residency, switch convergence, and battle visual handoff; it composes
 `garagePedestalPreloader.ts` for exact card-intent and quiet neighbor warming.

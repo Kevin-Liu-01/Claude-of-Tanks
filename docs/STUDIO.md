@@ -130,6 +130,9 @@ await __STUDIO.exportFilm(opts)     // WebCodecs film → {blob, container, code
 __STUDIO.cancelFilmExport() / .filmExportStatus()
 __STUDIO.getFilm() / .setFilm(patch | null) / .FILM_DEFAULTS / .filming / .filmInfo
 __STUDIO.setCamera(cfg) / .getCamera()
+__STUDIO.setPicture(patch) / .getPicture()          // film-grade picture (see "Picture")
+__STUDIO.pictureInfo({width, height}?)              // focal length, focus, mattes, stages
+__STUDIO.PICTURE_PRESETS                            // [{id, label}] named looks
 __STUDIO.TANK_IDS / .MAP_IDS / .ACTOR_STATES / .EFFECT_TYPES / .CAMO_PATTERN_IDS
 __STUDIO.getMapInfo(id)             // {id, name}
 __STUDIO.getSpecInfo(id)            // {name, gunElevationDeg, gunDepressionDeg, shells}
@@ -375,6 +378,9 @@ live preview at the native aspect, progress, time left and **Cancel**.
   "fxTime": 600,                // ms: advance the fx timeline exactly this far
                                 //   after firing the effects, then FREEZE
   "timeScale": 0,               // post-load time scale (default 0 = stay frozen)
+  "picture": { "preset": "cinematic", "letterbox": "2.39",
+               "dof": { "enabled": true, "focusActor": "hero", "fStop": 2.8 } },
+                                // optional; omitted = the neutral house picture
 
   "film": {                     // optional; absent = no film settings authored
     "fps": 24,                  // 24 | 30 | 60
@@ -465,6 +471,127 @@ the visible state), resets the FX pools, and deterministically replays the
 remaining stack to the same `fxTime`. This is why deleting engine smoke,
 burning, a tracer, a detrack, or a kill leaves no orphaned visual state.
 
+## Picture
+
+Film-grade picture settings for stills and films (media r5): a named look plus overrides for
+exposure, white balance, a display grade, hue secondaries, HDR highlights, a thin-lens depth of
+field and a finishing pass. Schema and looks: `src/game/studioPicture.ts`; passes:
+`src/engine/cinemaPost.ts`; panel: `src/ui/studioPicturePanel.ts` (the **Picture** section of
+the Cinematics group, under the workspace's TIMELINE tab, after Camera).
+
+**Neutral is the house render.** A stage with neutral values inserts no pass, so a scene without
+`"picture"` (or with `{"preset": "natural"}`) renders byte-for-byte as before and `state()` omits
+the key. Passes exist only while the Studio owns the frame (a picture set before entry applies on
+entry) and everything — passes, the bloom/light-FX hooks, light-FX overrides, FSR as the final
+pass — is restored on Studio exit; battle never loads the module.
+
+Where the stages sit in the live post chain (post.ts, extended at runtime only):
+
+```
+sceneAA → aerial → GTAO → lateFx → TAA → [LENS] → bloom (×bloom, ×bloomThreshold) → sun shafts
+→ lens flare (forced/scaled) → [HDR] → house grade (ACES + sRGB + grade) → [GRADE] → SMAA
+→ FSR → [FINISH]
+```
+
+### Scene JSON `picture`
+
+`{ "preset": "<look id>", ...overrides }`. Any field below overrides the look; groups merge
+key by key. Values are clamped to the range and quantized to 1e-4; unknown keys, presets or
+enum values throw (`load()` rejects before replacing the scene).
+
+| Field | Range | Neutral | Meaning |
+|---|---|---|---|
+| `exposure` | −4…4 EV | 0 | Linear scene exposure before the tonemap (also scales sun shafts/flare). |
+| `temperature` / `tint` | −100…100 | 0 | LMS white balance (+warm / +magenta), grey luminance preserved. |
+| `contrast`, `pivot` | 0.5…2, 0.1…0.9 | 1, 0.43 | Symmetric power S-curve around a display-space pivot. |
+| `toe` | −1…1 | 0 | + filmic toe (deeper blacks), − matte/faded blacks. |
+| `shoulder` | −1…1 | 0 | + softer, milkier highlight roll-off, − harder top end. |
+| `saturation`, `vibrance` | 0…2, −1…1 | 1, 0 | Luma-preserving; vibrance favours low-chroma pixels. |
+| `lift` / `gamma` / `gain` | [r,g,b] −0.3…0.3 / 0.3…3 / 0…3 | 0 / 1 / 1 | Primary wheels (a scalar fills all channels). |
+| `split` | `shadowHue`/`highlightHue` 0…360°, amounts 0…1, `balance` −1…1 | amounts 0 | Luma-keyed split toning (moves chroma, not level). |
+| `warms` / `greens` / `blues` | `hue` −60…60°, `saturation` 0…2, `lightness` −1…1 | 0, 1, 0 | Hue secondaries around orange 32°, yellow-green 102°, sky blue 212°; +hue rotates toward green→cyan→blue. |
+| `mono`, `monoMix` | 0…1, [r,g,b] | 0, Rec.709 | Black and white with a filter mix (normalized). |
+| `bloom`, `bloomThreshold` | 0…4, 0.25…4 | 1, 1 | Scales on the house bloom strength/threshold. |
+| `streaks` | `amount` 0…3, `threshold` 0.5…32 (linear HDR), `length` 0…1, `tint` | amount 0 | Anamorphic horizontal streaks from hot pixels (horizontal mip pyramid: sharp core, long tail). |
+| `halation` | `amount` 0…3, `threshold` 0.1…16, `radius` 0.25…4, `tint` | amount 0 | Red-orange film glow around bright edges (σ = 0.45 % of frame height × radius). |
+
+Streak and halation sources saturate at a per-pixel energy cap, so a muzzle-flash or fireball
+core cannot flood a night frame through its glow.
+| `sunShafts` / `lensFlare` | `mode` auto/on/off, `intensity` 0…4 | auto, 1 | Force or scale the round-69 light effects (works on presets that disable them). |
+| `dof` | see below | `enabled: false` | Thin-lens depth of field. |
+| `chromaticAberration` | 0…1 | 0 | Radial lateral fringe, edge-weighted (r²), spectral taps. |
+| `vignette` | `amount` 0…1, `roundness` 0…1, `softness` 0…1 | amount 0 | Linear-light lens falloff (roundness 1 = circular in pixels). |
+| `grain` | `amount` 0…1, `size` 0.5…4, `color` 0…1, `response` 0…1 | amount 0 | Luma-weighted film grain; size in px at 1080 lines (scales with the output). |
+| `letterbox` | `none`, `2.39`, `2.00`, `1.85` | none | Black mattes in whole pixels against the output aspect (pillarbox when narrower). |
+
+`dof`: `enabled`, `focusActor` (actor name, uid or index; follows the actor every frame at
+0.55 × its height, measured along the optical axis), `focusDistance` (0.5…5000 m, used when no
+actor), `focusOffset` (−50…50 m), `fStop` (0.7…32), `sensor` (`super35` 24.89 mm,
+`fullframe` 36 mm, `alexa65` 54.12 mm, `imax` 70.41 mm — the width, used with a 16:9
+extraction, so Super 35 is 14.0 mm tall), `anamorphic` (0…1: oval bokeh up to 2:1),
+`bokehScale` (0…8, default 1).
+
+Lens physics: focal length `f = (sensorHeight / 2) / tan(fov / 2)` from the camera's vertical
+FOV; signed circle of confusion `c(d) = f² / (N (s − f)) · (d − s) / d` as a fraction of the frame
+height, so the live viewport (narrower than 16:9 beside the dock), 4K captures and the
+portrait/square formats defocus identically. Studio renders it × `PICTURE_DEFOCUS_GAIN` (16):
+on Studio's wide lenses a strict thin lens is near hyperfocal (f/2.8 on a 40° Super 35 frame
+focused at 12 m blurs the horizon by < 1 px); with the gain that frame gives a ~6 px-radius
+background at 1080p while f/11 stays near-sharp. `bokehScale: 0.0625` is strictly physical.
+The gather runs at half resolution with near/far separation (far samples never wider than the
+centre's CoC, so focused edges neither bleed into nor get smeared by the blur behind them; the
+near field is dilated through a tile max so a blurred foreground spreads over the subject), a
+bilateral full-resolution composite, and the sky at infinity. The radius is capped at 2.8 % of
+the frame height. Live preview gathers 81 taps; `capture()` uses 225. Smoke, fire and flashes are
+placed in depth by quarter-resolution coverage slices (see Known limitations).
+
+### Looks (`__STUDIO.PICTURE_PRESETS`)
+
+| id | Intent |
+|---|---|
+| `natural` | The house render (neutral). |
+| `cinematic` | Teal/orange filmic: warm accents against teal shadows, foliage toward olive-teal. |
+| `blockbuster` | Punchy contrast, crushed blacks, saturated warm highlights, blue streaks, forced sun FX. |
+| `golden-hour` | Amber highlights, glowing soft shoulder, cool shadows, olive foliage. |
+| `steel` | Cold, desaturated war film. |
+| `bleach-bypass` | Silver retained: high contrast, low saturation, heavy grain. |
+| `desert-heat` | Sun-bleached orange/amber with teal shadows. |
+| `night-ops` | Cool moonlight; firelight still burns orange; restrained blue streaks. |
+| `ember` | Fire-lit combat: molten highlights, halation, warm streaks. |
+| `noir` | Black and white through a red-orange filter: dark skies, hard light, grain. |
+| `vintage-print` | Print-film emulation: milky shoulder, faded blacks, warm highs, cyan lows, grain. |
+
+Looks never set a letterbox or depth of field — framing and focus belong to the shot.
+
+### API
+
+- `setPicture(patch)` → resolved picture. `preset` switches the look (earlier overrides are
+  discarded); other fields override the current values; `setPicture(null)` resets to neutral.
+  Ignored while recording.
+- `getPicture()` → the full resolved picture (JSON-safe copy).
+- `pictureInfo({ width?, height? })` → `{ neutral, stages, focalLengthMm, focusM, focusActor,
+  cocInfinity, letterboxPx: {x, y} }` for that output size (default: the live viewport), e.g.
+  `pictureInfo({ width: 3840, height: 2160 }).letterboxPx` to crop a 2.39 deliverable from a
+  capture.
+- `state().picture` is `{ preset, ...minimal overrides }`; `load(state())` is identity.
+
+### Film accumulation contract
+
+Grain, chromatic aberration, vignette and the letterbox are FINISH operations applied once per
+output frame at native resolution after FSR. For sub-sample accumulation:
+`__STUDIO._internal.picture.setFinishBypass(true)` removes the finish from the composer (the
+canvas then shows the pre-finish frame), and `renderFinish(texture, target | null, { seed? })`
+runs it once on the average (null = the canvas). The grain seed is
+`pictureGrainSeed(scene seed, Studio clock)` — 240 distinct fields per Studio second, never wall
+time. `setQuality('capture' | 'preview')` selects the tap counts.
+
+### Cost
+
+Measured on the M5 Max reference host at 1920×1080 (pixel ratio 1), median of interleaved blocks
+on a shared, loaded machine: the full stack (blockbuster look + depth of field + letterbox) adds
+about 4 ms per frame; the grade, HDR and finish stages are each about 1–3 ms, the lens with three
+FX coverage slices about 1–3 ms. Studio renders on demand while frozen.
+
 ## Known limitations
 
 - **Camo is per-spec**: two actors of the same tank id share one paint bake
@@ -501,6 +628,13 @@ burning, a tracer, a detrack, or a kill leaves no orphaned visual state.
   terrain LOD lands a frame earlier on a faster run.
 - Supersampling (`supersample`) applies to stills only. A film's export size is
   rendered directly; 2160p films need a desktop-class GPU (about 1 GB of render targets).
+- Transparent combat media (smoke, fire, flashes) are not in the depth buffer. The lens
+  re-renders that layer at quarter resolution against depth planes at 0.8, 1.25 and 2 × the
+  focus distance and bins its coverage (near / in focus / mid / far), so an in-focus muzzle
+  flash stays sharp against the sky; within a bin the depth is approximate, and a pixel carries
+  one CoC for the medium and the surface behind it.
+- Volumetric cloud texels can differ by a few levels between consecutive captures of the same
+  frame (temporal cloud history); byte comparisons should mask the sky.
 
 ## Self-test
 

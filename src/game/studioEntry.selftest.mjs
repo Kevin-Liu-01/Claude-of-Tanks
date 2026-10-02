@@ -67,6 +67,8 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     rail: { rebuild: noop, updateVisibility: noop }, unsweepPool: noop,
     enterGarage: async () => { calls.push('enter-garage'); game.phase = 'garage'; presentation.setSunTrim(true); },
     stopRecording: noop,
+    disposePicture: () => calls.push('picture-disposed'),
+    applyPictureRuntime: () => calls.push('picture-applied'),
   };
   const code = stripTypeScriptTypes(`
     function makeStudioEntry(ports) {
@@ -99,10 +101,14 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   assert.deepEqual(calls[sunIndex - 1], ['atmosphere', time],
     'the selected atmosphere is prepared after world activation and before restoring its sun');
   assert.equal(calls.includes('covered-frame'), directBoot);
+  assert.ok(calls.indexOf('picture-applied') > calls.indexOf('world-activated'),
+    'a picture set before entry applies once the Studio owns the frame');
   await studio.doExit();
   assert.equal(game.phase, 'garage');
   assert.equal(studio.active(), false);
   assert.ok(calls.indexOf('actors-cleared') < calls.indexOf('enter-garage'));
+  assert.ok(calls.includes('picture-disposed') && calls.indexOf('picture-disposed') < calls.indexOf('enter-garage'),
+    'Studio picture passes leave the composer before the Garage renders');
   assert.equal(calls.at(-1)[1].sunIntensity, garageSky.sunIntensity * 0.55,
     'actual Studio exit restores the Garage trim after its teardown');
 }
