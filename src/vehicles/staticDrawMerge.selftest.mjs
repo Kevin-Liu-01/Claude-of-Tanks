@@ -28,6 +28,8 @@ const PINNED = {
   challenger_3x: { saved: 2, owners: { rig_turret: 1, auxiliaryWeaponPitch: 1 } },
   m1a2: { saved: 1, owners: { 'fitting_abramsM2HB_m1a2-split-loader': 1 } },
   t90m: { saved: 0, owners: {} },
+  // turret + a 77,472-vertex turretDetail would be one more draw saved for a 3.4 MB copy: the 16,384-vertex cap keeps both
+  strv122_x: { saved: 0, owners: {} },
 };
 const IDENTITY = new THREE.Matrix4();
 
@@ -98,6 +100,7 @@ function equivalent(id, options, label) {
       const owner = (mesh.parent.isLOD ? mesh.parent.parent : mesh.parent).name;
       stats.owners[owner] = (stats.owners[owner] ?? 0) + parts.length - 1;
       assert.ok(parts.length > 1 && mesh.matrix.equals(IDENTITY), `${label} ${id}: a merged draw sits at its owner frame`);
+      assert.ok(mesh.geometry.getAttribute('position').count <= 16384, `${label} ${id}: ${mesh.name} stays within the merged-vertex cap`);
       parts.forEach((part, i) => { if (i) assert.equal(part.layer, parts[i - 1].layer + 1, `${label} ${id}: ${mesh.name} folds consecutive layers only`); });
       assert.equal(layer, parts.at(-1).layer, `${label} ${id}: ${mesh.name} collapses onto its run's top layer`);
     }

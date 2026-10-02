@@ -68,6 +68,9 @@ interface StaticMergeResult {
 }
 
 const IDENTITY = new THREE.Matrix4();
+/** Largest vertex count one merged draw may copy (P21: 97 % of the fleet's
+ * merge savings at half the copied bytes of an unbounded merge). */
+const MAX_MERGED_VERTICES = 16384;
 const INERT_GEOMETRY_USER_DATA = new Set(['abramsLoaderStock', 'sourceOwner', 'aresApc']);
 
 function localMatrix(object: THREE.Object3D): THREE.Matrix4 {
@@ -295,22 +298,37 @@ export function mergeContiguousStaticRuns(
   const output: CoplanarLayerRecord[] = [];
   let sourceMeshes = 0, merges = 0;
   let run: Candidate[] = [];
-  const flush = (): void => {
-    if (run.length > 1) {
-      const mesh = mergeRun(run, merges, disposables, options);
-      if (mesh) {
-        installMerged(run, mesh);
-        options.onMerge(run.map(({ record }) => record.object), mesh);
-        // Collapse onto the run's top layer: every foreign layer is below the
-        // first part or above the last, so no cross-mesh order changes.
-        output.push({ object: mesh, materials: [mesh.material as THREE.Material], layer: run[run.length - 1].record.layer });
-        sourceMeshes += run.length;
-        merges++;
-        run = [];
-        return;
-      }
+  const mergeChunk = (chunk: Candidate[]): void => {
+    const mesh = chunk.length > 1 ? mergeRun(chunk, merges, disposables, options) : null;
+    if (!mesh) {
+      for (const candidate of chunk) output.push(candidate.record);
+      return;
     }
-    for (const candidate of run) output.push(candidate.record);
+    installMerged(chunk, mesh);
+    options.onMerge(chunk.map(({ record }) => record.object), mesh);
+    // Collapse onto the chunk's top layer: every foreign layer is below the
+    // first part or above the last, so no cross-mesh order changes.
+    output.push({ object: mesh, materials: [mesh.material as THREE.Material], layer: chunk[chunk.length - 1].record.layer });
+    sourceMeshes += chunk.length;
+    merges++;
+  };
+  const flush = (): void => {
+    // A merged draw copies its sources' vertices once; bound that copy so a
+    // large shell never doubles its memory to save one draw. Consecutive
+    // chunks of the run stay contiguous in layer order.
+    let chunk: Candidate[] = [], vertices = 0;
+    for (const candidate of run) {
+      const count = candidate.record.object.geometry.getAttribute('position').count;
+      if (count > MAX_MERGED_VERTICES) {
+        mergeChunk(chunk); chunk = []; vertices = 0;
+        output.push(candidate.record);
+        continue;
+      }
+      if (vertices + count > MAX_MERGED_VERTICES) { mergeChunk(chunk); chunk = []; vertices = 0; }
+      chunk.push(candidate);
+      vertices += count;
+    }
+    mergeChunk(chunk);
     run = [];
   };
   for (const record of ordered) {
