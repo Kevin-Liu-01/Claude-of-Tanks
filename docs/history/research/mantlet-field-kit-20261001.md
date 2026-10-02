@@ -281,3 +281,32 @@ Fresh combined-tree results are in `.qa-dev/mantlet-final/rebased/results.json` 
 - Generated control inventories outside the owned set remain exact to main.
 
 The stricter source/standard release chain and broader regression run remain pending at this checkpoint. AMX 56 still requires the requested owner exception for its intentionally widened stock-source comparison; no approval has been received and no publication is claimed. Pre-rebase pictures remain available, and fresh combined-build quarter views of all fourteen national tanks are queued.
+
+
+## Combined source comparison and capture queue follow-up
+
+The fresh combined-tree geometry run completed on 2026-10-02 at 11:28 UTC.
+All three Leopards retained their passing minimum scores (92.7, 93.7, 92.8).
+AMX 56 retained its failed stock-source result; all numerical packet contents
+were unchanged and only the generated ledger timestamp changed. The fourteen
+original concepts are correctly excluded from source-model comparisons, not
+from physical qualification. The remaining release steps and broad regression
+run are still pending; no full-release pass or publication is claimed.
+
+The fresh quarter-view capture encountered a verified tooling defect before
+any browser worker started: the shared queue expired a live waiting ticket
+at sixty minutes. `capture-lock.mjs` now renews waiting-ticket liveness without
+changing its filename or FIFO order, and clears that timer on acquisition or
+timeout. The new private-queue regression failed on the previous implementation
+and passes with the correction. Existing same-millisecond FIFO, dead/stale
+recovery, timeout cleanup, capture-command ownership and CPU-pool checks also
+pass. The changed-file complexity check reports 27 functions and no violations.
+Only the expired owned capture was stopped and re-enqueued; other jobs and
+queue entries were not removed. Capture retry evidence is under
+`.qa-dev/mantlet-final/rebased/captures-retry.log`.
+
+The review page now explicitly groups the national total as Ukraine 4, Poland 4,
+China 3 and Russia 3 and describes each vehicle's weapon mount, observation
+package, roof equipment and paired mantlet lamps. The 175 previously reviewed
+pictures remain available while the fourteen combined-build quarter views wait.
+The AMX stock-comparison publication exception remains unanswered.
