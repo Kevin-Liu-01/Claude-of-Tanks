@@ -10,7 +10,16 @@ interface RenderScalePreset {
   maxPixelRatio?: number;
   adaptiveBasePixelRatio?: number;
   dynMin?: number;
+  /** The floor below the retina threshold (native-density displays); absent keeps the native fence. */
+  nativeDynMin?: number;
 }
+
+/**
+ * 2026-10-02 (the frame-budget lane): the density from which a display counts as retina for the dynamic floor. Below
+ * it a preset's `nativeDynMin` (when it declares one) bounds the governor: High may trade raster for cadence there —
+ * down to the FSR "quality" ratio — where a 1080p laptop at 100-150 % scaling has no denser raster to give up.
+ */
+export const RETINA_PIXEL_RATIO = 1.75;
 
 type OverloadReliefLever = 'trim' | 'resolution' | 'tier';
 export type ReconstructionMode = 'linear' | 'easu' | 'easu+rcas' | 'native-rcas';
@@ -47,10 +56,15 @@ export function dynamicScaleFloor(
   rendererPixelRatio: number,
   preset: RenderScalePreset | null | undefined,
 ): number {
+  const native = preset?.nativeDynMin;
+  if (rendererPixelRatio < RETINA_PIXEL_RATIO && typeof native === 'number' && Number.isFinite(native)) {
+    return Math.min(1, Math.max(0.5, native));
+  }
   const configured = typeof preset?.dynMin === 'number' && Number.isFinite(preset.dynMin)
     ? preset.dynMin : DEFAULT_DYNAMIC_MIN;
-  // A native-density desktop canvas must not be blurred below 1 CSS pixel per
-  // axis. Retina/mobile presets carry their own explicit floor.
+  // A native-density desktop canvas is not blurred below 1 CSS pixel per axis
+  // unless its preset declares a nativeDynMin (above); retina/mobile presets
+  // carry their own explicit floor.
   return Math.min(1, Math.max(
     rendererPixelRatio < 1.25 ? 1 : 0,
     configured,

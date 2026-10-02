@@ -54,6 +54,8 @@ function createSizing(ports) {
   { ${bloomSize} }
   ${declarations}
   const qualityPolicy = new AdaptiveQualityPolicy(scale);
+  // 2026-10-02: the governor's sampled GPU time (gpuFrameTimer.ts) — a reset clears its window; no GPU in this receipt
+  const gpuFrameTimer = { reset() {} };
   let quality = 'high', adaptiveSuspended = false;
   let dynPin = null, dynClock = 17, dynEma = 19, dynRingN = 4, dynRingI = 3;
   let dynWinFrames = 6, dynWinMisses = 2, dynBudgetMs = 3, dynBestCadenceMs = 4, dynLastDecision = 1;
@@ -172,7 +174,10 @@ try {
       'public ratio setter uses old CSS size before final size setter');
   }
   {
-    const f = fixture(PRESETS.high, 0.91, 2);
+    // 2026-10-02: High now declares a native-density floor (nativeDynMin 0.67, the frame-budget lane); the fenced
+    // reconciliation below is the contract of every preset without one, so it runs on High with the field removed
+    const { nativeDynMin: _nativeFloor, ...fencedHigh } = PRESETS.high;
+    const f = fixture(fencedHigh, 0.91, 2);
     f.policy.forceTrim(1, 1); f.resize(); traversals(f, 2, 'native-sized explicit-target construction');
     assert.equal(f.policy.dynamicScale, 0.91);
     assert.equal(f.renderer.domElement.dataset.renderScale, '1.365');
@@ -194,6 +199,15 @@ try {
     const before = f.dimensions(); f.policy.setDynamicScale(0.5); f.clear(); f.resize();
     traversals(f, 1, 'policy scale changes effective raster');
     assert.notDeepEqual(f.dimensions().color, before.color);
+  }
+  {
+    // High's native floor: a 1080p laptop at DPR 1 keeps the governor's 0.91 instead of being fenced back to 1, and
+    // the composer rasterizes 91 % of the native canvas per axis (FSR reconstructs the rest)
+    const f = fixture(PRESETS.high, 0.91, 1);
+    f.resize();
+    assert.equal(f.policy.dynamicScale, 0.91, 'below the retina threshold High keeps its governed scale');
+    assert.equal(f.renderer.domElement.dataset.renderScale, '0.910');
+    assert.deepEqual(f.output.toArray(), [1440, 900], 'the final pass still writes the native canvas');
   }
   {
     const base = 1.25 / 1.4;
