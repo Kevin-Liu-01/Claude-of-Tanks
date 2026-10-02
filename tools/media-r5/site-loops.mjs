@@ -7,7 +7,8 @@
 //   <id>-mobile.mp4   960x540 H.264 24 fps, silent (phone variants, the web-video-r1 budget)
 //   <id>.jpg          1920x1080 poster = the loop's first frame
 //   <id>.webp         1920x1080 still from the 4K master; <id>-4k.png the master itself
-//   node tools/media-r5/site-loops.mjs <rendersRoot> [deliverRoot=shots/media-r5/site50/deliver] [ids,...]
+//   node tools/media-r5/site-loops.mjs [rendersRoot=shots/media-r5/site50/renders] [deliverRoot=shots/media-r5/site50/deliver] [ids,...]
+// rendersRoot holds the cinema outputs as films/<id>/ (cinema-jobs films) and stills/<id>/ (cinema-jobs blur).
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, copyFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -23,10 +24,10 @@ const probe = f => Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries
 const pick = (dir, re) => existsSync(dir) ? readdirSync(dir).filter(f => re.test(f)).sort().map(f => join(dir, f))[0] : null;
 mkdirSync(deliver, { recursive: true });
 const rows = [];
-for (const id of readdirSync(renders).filter(d => /^s\d\d-/.test(d)).sort()) {
+for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders, 'films')) : []).filter(d => /^s\d\d-/.test(d)).sort()) {
   if (only && !only.some(o => id.includes(o))) continue;
-  const master = pick(join(renders, id, 'films'), /-master\.mov$/) ?? pick(join(renders, id, 'films'), /-proxy\.mp4$/);
-  const still = pick(join(renders, id, 'stills'), /\.png$/);
+  const master = pick(join(renders, 'films', id, 'films'), /-master\.mov$/) ?? pick(join(renders, 'films', id, 'films'), /-proxy\.mp4$/);
+  const still = pick(join(renders, 'stills', id, 'stills'), /\.png$/);
   if (!master) { console.log(`${id}: no film yet`); continue; }
   const out = join(deliver, id); mkdirSync(out, { recursive: true });
   const D = probe(master), X = XFADE_MS / 1000, L = +(D - X).toFixed(3);

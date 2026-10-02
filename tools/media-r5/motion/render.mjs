@@ -19,13 +19,14 @@ let failed = 0;
 for (const p of projects.length ? projects : FILMS) {
   const dir = join(MOTION, p), t0 = Date.now();
   const lint = run(dir, 'lint');
-  const summary = /(\d+) errors?, (\d+) warnings?/.exec(lint.out)?.[0] ?? 'lint output unreadable';
-  if (!lint.ok || !/^0 errors/.test(summary)) { console.log(`${p}: lint FAILED (${summary})\n${lint.out.slice(-2000)}`); failed++; continue; }
+  const summary = /(\d+) error(?:s|\(s\))?, (\d+) warning(?:s|\(s\))?/.exec(lint.out)?.[0] ?? "lint output unreadable";
+  if (!/^0 error/.test(summary)) { console.log(`${p}: lint FAILED (${summary})\n${lint.out.slice(-2000)}`); failed++; continue; }
   if ('lint-only' in flags) { console.log(`${p}: ${summary}`); continue; }
   if (flags.snap) {
-    rmSync(join(dir, 'snap'), { recursive: true, force: true });
-    const s = run(dir, 'snapshot', '--at', flags.snap, '-o', 'snap');
-    console.log(`${p}: ${summary}; snapshots ${s.ok ? 'written to snap/' : `FAILED\n${s.out.slice(-1500)}`}`); if (!s.ok) failed++;
+    const snapDir = flags['snap-out'] ?? 'snap';
+    rmSync(join(dir, snapDir), { recursive: true, force: true });
+    const s = run(dir, 'snapshot', '--at', flags.snap, '--no-end', '-o', snapDir);
+    console.log(`${p}: ${summary}; snapshots ${s.ok ? `written to ${snapDir}/` : `FAILED\n${s.out.slice(-1500)}`}`); if (!s.ok) failed++;
     continue;
   }
   mkdirSync(join(dir, 'renders'), { recursive: true });

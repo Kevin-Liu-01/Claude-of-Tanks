@@ -116,7 +116,7 @@ window.__timelines["${id}"] = tl;
 .ttl-stat .num{font-weight:700;font-size:${px(184)};line-height:1;color:#ffd27a;font-variant-numeric:tabular-nums;display:flex;text-shadow:0 6px 40px rgba(7,9,12,.5)}
 .ttl-stat .lab{font-weight:700;font-size:${px(72)};letter-spacing:.1em;text-transform:uppercase;margin-top:${px(6)};text-shadow:0 4px 30px rgba(7,9,12,.5)}
 .ttl-line.center .inner{align-items:center;justify-content:center;padding:0}
-.ttl-line .ln{font-weight:700;font-size:${px(88)};letter-spacing:.03em;text-transform:uppercase;line-height:1.02;max-width:${px(PORTRAIT ? 900 : 1500)};text-shadow:0 6px 40px rgba(7,9,12,.5)}
+.ttl-line .ln{font-weight:700;font-size:${px(88)};letter-spacing:.03em;text-transform:uppercase;line-height:1.02;max-width:${px(PORTRAIT ? 900 : 1728)};text-wrap:balance;text-shadow:0 6px 40px rgba(7,9,12,.5)}
 .ttl-line.center .ln{text-align:center}
 .ttl-logo .dim{position:absolute;inset:0;background:#07090c}
 .ttl-logo .lockup{position:absolute;inset:0;display:flex;${PORTRAIT ? 'flex-direction:column;' : ''}align-items:center;justify-content:center;gap:${px(40)}}

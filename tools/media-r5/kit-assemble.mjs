@@ -95,7 +95,29 @@ for (const [name, label] of [['logo-mark-metal.svg', 'Crest, metal'], ['logo-mar
   const file = join(REPO, 'public/brand', name); if (!existsSync(file)) continue; const dst = join(KIT, 'logos', basename(file)); copyFileSync(file, dst); logos.push({ file: rel(dst), label });
 }
 
+// --- the site fifty (site-loops.mjs deliverables, linked in place: they are already in the site's formats) -------
+const siteShots = [];
+const SITE = join(FINAL, '..', 'site50');
+const siteMeta = existsSync(join(SITE, 'site50-manifest.json')) ? JSON.parse(readFileSync(join(SITE, 'site50-manifest.json'), 'utf8')) : [];
+const delivered = existsSync(join(SITE, 'deliver/deliver-index.json')) ? JSON.parse(readFileSync(join(SITE, 'deliver/deliver-index.json'), 'utf8')) : [];
+if (delivered.length) {
+  mkdirSync(join(KIT, 'site'), { recursive: true });
+  for (const d of delivered) {
+    const meta = siteMeta.find(m => m.id === d.id); if (!meta) continue;
+    const files = {};
+    for (const [key, f] of Object.entries(d.files)) {
+      if (key === 'still4k') continue; // the 4K master stays in the deliver folder
+      const dst = join(KIT, 'site', f.split('/').pop());
+      if (!existsSync(dst) || statSync(dst).size !== statSync(join(SITE, 'deliver', f)).size) copyFileSync(join(SITE, 'deliver', f), dst);
+      files[{ webm: 'webm', mp4: 'loop', mobile: 'mobile', poster: 'poster', still: 'still' }[key] ?? key] = rel(dst);
+    }
+    files.preview = files.still ?? files.poster;
+    siteShots.push({ n: meta.n, id: d.id, kind: meta.kind, title: meta.title, mapName: mapName(meta.map), time: meta.time, loopS: d.loopS, files });
+  }
+  siteShots.sort((a, b) => a.n - b.n);
+}
+
 const out = { release: copy.release, generatedAt: new Date().toISOString(), facts: copy.facts, boilerplate: copy.boilerplate, footer: copy.footer,
-  films, frames50, stills, posters, logos };
+  films, siteShots, frames50, stills, posters, logos };
 writeFileSync(join(KIT, 'manifest.json'), JSON.stringify(out, null, 1));
-console.log(`kit: ${films.length} films, ${frames50.length} of fifty frames, ${stills.length} key art, ${posters.length} posters, ${logos.length} logos -> ${KIT}`);
+console.log(`kit: ${films.length} films, ${siteShots.length} site shots, ${frames50.length} of fifty frames, ${stills.length} key art, ${posters.length} posters, ${logos.length} logos -> ${KIT}`);
