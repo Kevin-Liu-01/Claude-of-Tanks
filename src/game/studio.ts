@@ -80,7 +80,7 @@ import { createProductionScene, productionPreset, productionCamera, productionAs
 import type { ProductionOptions, ProductionRigId, ProductionFormat } from './studioProduction.ts';
 import { createStudioFilm } from './studioFilm.ts';
 import type { FilmFrameInfo, FilmSessionInfo } from './studioFilm.ts';
-import { normalizeFilm, filmOutputSize, FILM_DEFAULTS } from './studioFilmPlan.ts';
+import { normalizeFilm, filmOutputSize, FILM_CUE_ATTACK_MS, FILM_DEFAULTS } from './studioFilmPlan.ts';
 import type { FilmFilter, FilmSettings, FilmSettingsInput } from './studioFilmPlan.ts';
 import type { FilmExportProgress, FilmExportResult } from './studioFilmExport.ts';
 import {
@@ -121,6 +121,7 @@ interface StudioFxRuntime {
   bindBus(bus: ReturnType<typeof createBus>): void;
   resetAll(): void;
   resetSeed(seed: number): void;
+  resetClock(atTimeS?: number): void;
   setFrozen(frozen: boolean): void;
   update(
     deltaSeconds: number,
@@ -564,6 +565,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   // 60 Hz timeline grid and track phase follows the exact sample instant.
   let sceneFilm: FilmSettings | null = null;
   let filming = false;
+  let filmShake = 1; // the open film's camera-cue scale (film.shake)
+  function scaleFilmCue(cue: { rightM: number; upM: number; forwardM: number; rollDeg: number; fovKickDeg: number }): void {
+    if (!filming || filmShake === 1) return;
+    cue.rightM *= filmShake; cue.upM *= filmShake; cue.forwardM *= filmShake;
+    cue.rollDeg *= filmShake; cue.fovKickDeg *= filmShake;
+  }
   const perf = { renderedFrames: 0, skippedFrames: 0, poolSweeps: 0 };
 
   function invalidate() { frameDirty = true; }
@@ -1997,6 +2004,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     ensureFxBus();
     shells.length = 0;
     fx.resetAll();
+    // The fx clock restarts with the timeline: replays (seek, load, film) must
+    // not inherit the page's history in clock-phased shading.
+    fx.resetClock(0);
     fx.resetSeed(seed);
     fx.setFrozen(false);
     clockMs = 0;
@@ -2191,7 +2201,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     camera.position.set(_cameraSample.x, _cameraSample.y, _cameraSample.z);
     cam.mode = 'fly';
     _v2.set(_cameraSample.lookX, _cameraSample.lookY, _cameraSample.lookZ);
-    if (sampleCameraCues(storyboard.cameraCues, timeMs, _cameraCueSample)) {
+    if (sampleCameraCues(storyboard.cameraCues, timeMs, _cameraCueSample, filming ? FILM_CUE_ATTACK_MS : 0)) {
+      scaleFilmCue(_cameraCueSample);
       _fwd.copy(_v2).sub(camera.position).normalize();
       _v3.crossVectors(_fwd, _up).normalize();
       _v1.crossVectors(_v3, _fwd).normalize();
@@ -3027,7 +3038,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (sampleCameraRail(storyboard.shots, timeMs, _motionRail)) {
       probe.position.set(_motionRail.x, _motionRail.y, _motionRail.z);
       _motionV.set(_motionRail.lookX, _motionRail.lookY, _motionRail.lookZ);
-      if (sampleCameraCues(storyboard.cameraCues, timeMs, _motionCue)) {
+      if (sampleCameraCues(storyboard.cameraCues, timeMs, _motionCue, FILM_CUE_ATTACK_MS)) {
+        scaleFilmCue(_motionCue);
         _motionF.copy(_motionV).sub(probe.position).normalize();
         _motionR.crossVectors(_motionF, _up).normalize();
         _motionU.crossVectors(_motionR, _motionF).normalize();
@@ -3163,6 +3175,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return normalizeFilm({
       fps: opts.fps ?? base.fps,
       shutterDeg: opts.shutterDeg ?? base.shutterDeg,
+      shake: opts.shake ?? base.shake,
       samples: opts.samples ?? base.samples,
       maxSamples: opts.maxSamples ?? base.maxSamples,
       filter: opts.filter ?? base.filter,
@@ -3190,6 +3203,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const [defaultW, defaultH] = productionFormat === 'portrait' ? [1080, 1920]
       : productionFormat === 'square' ? [1080, 1080] : [1920, 1080];
     timeScale = 0;
+    filmShake = settings.shake;
     const session = filmRenderer.begin({
       width: opts.width ?? defaultW,
       height: opts.height ?? defaultH,
@@ -3223,6 +3237,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function endFilm(): boolean {
     if (!filmRenderer.active) return false;
     filmRenderer.end();
+    filmShake = 1;
     panel.refreshAll();
     renderCaptureFrame(); // a complete live frame at the restored viewport
     return true;

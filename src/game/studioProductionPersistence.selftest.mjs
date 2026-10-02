@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { createProductionScene, productionPreset, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
+import { normalizeFilm } from './studioFilmPlan.ts';
 
 // Execute the real serialization, loading and reframing callers, retaining
 // authored camera positions. A recipe-only round trip misses private format state.
@@ -16,7 +17,8 @@ function visit(node) {
 visit(source);
 assert.equal(functions.length, names.size);
 const create = new Function('ports', `
-  const {createProductionScene, productionPreset, productionAspect, reframeProductionPoint, reframeProductionFov} = ports;
+  const {createProductionScene, productionPreset, productionAspect, reframeProductionPoint, reframeProductionFov, normalizeFilm} = ports;
+  let sceneFilm=null; const filmRenderer={active:false}, getFilm=()=>sceneFilm;
   let productionFormat='landscape', productionLoading=false, loading=false, recording=false;
   let storyboard={shots:[],durationMs:8000}, clockMs=0, timeScale=0, timeOfDay='day', selectedShotId=null;
   let camera={pos:[0,4,-10],lookAt:[0,1.7,0],fov:40,rollDeg:0}, map='verdant', replacements=0, refreshed=[];
@@ -39,7 +41,7 @@ const create = new Function('ports', `
   ${stripTypeScriptTypes(functions.join('\n'))}
   return {load,stateJson,setProductionFormat,directProduction,stats:()=>({replacements,format:productionFormat,refreshed})};
 `);
-const runtime = create({ createProductionScene, productionPreset, productionAspect, reframeProductionPoint, reframeProductionFov });
+const runtime = create({ createProductionScene, productionPreset, productionAspect, reframeProductionPoint, reframeProductionFov, normalizeFilm });
 for (const format of ['portrait', 'square', 'landscape']) {
   const recipe = createProductionScene({ presetId:'steel-pursuit', format }, () => 0);
   assert.equal(recipe.productionFormat, format, 'CLI recipes carry their actual framing');

@@ -1256,6 +1256,28 @@ export class VolumetricCloudLayer {
     this.historyValid = false;
   }
 
+  /**
+   * Scene Studio film capture: put the wind drift where `timeS` seconds of scene time carry it (live frames
+   * integrate their wall-clock dt instead) and, with `restart`, begin a fresh trace sequence and history. A
+   * film's clouds then depend on its camera and timeline alone, whatever the page rendered before.
+   */
+  setCaptureTime(timeS: number, restart = false): void {
+    const preset = this.preset;
+    if (!preset) return;
+    const wrap = (value: number, tile: number): number => ((value % tile) + tile) % tile;
+    const travel = preset.windSpeed * Math.max(0, timeS);
+    const wdx = Math.cos(preset.windDirRad), wdz = Math.sin(preset.windDirRad);
+    this.weatherShift.set(wrap(-wdx * travel, CLOUD_WEATHER_TILE_M), wrap(-wdz * travel, CLOUD_WEATHER_TILE_M));
+    this.noiseShift.x = wrap(-wdx * travel * 0.8, CLOUD_SHAPE_TILE_STRATUS_M);
+    this.noiseShift.z = wrap(-wdz * travel * 0.8, CLOUD_SHAPE_TILE_STRATUS_M);
+    this.cirrusShift.x = wrap(-2 * travel, CLOUD_CIRRUS_TILE_M);
+    if (!restart) return;
+    this.frame = 0;
+    this.traces = 0;
+    this.hasPrev = false;
+    this.resetHistory();
+  }
+
   /** The CSM lights whose cascades carry the cloud shadows (one plane each on the shadow-only layer, discarding by the cloud field). */
   attachShadowCascades(cascades: CloudShadowCascades): void {
     if (this.cascades === cascades) return;

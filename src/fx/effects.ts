@@ -392,6 +392,8 @@ export interface FxRuntime {
   propBreak(kind: string, pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
   setFrozen(frozen: boolean, atTimeS?: number | null): void;
   resetSeed(seed: number): void;
+  /** Pin the shared fx clock to exactly `atTimeS` (every live stamp keeps its age). */
+  resetClock(atTimeS?: number): void;
   resetAll(): void;
   composeFiringMoment(moment: FiringMoment): void;
   composeExplosionMoment(moment: ExplosionMoment): void;
@@ -4032,9 +4034,9 @@ function* createFxSteps(
     particles.emit('dust', _puffO);
   }
 
-  function rebaseFxClock(atTimeS: number): void {
+  function rebaseFxClock(atTimeS: number, exact = false): void {
     const delta = atTimeS - particles.getTime();
-    if (Math.abs(delta) <= 20) return;
+    if (exact ? delta === 0 : Math.abs(delta) <= 20) return;
     particles.shiftTime(delta);
     for (const tracer of staticTracers) if (tracer.length > 14) tracer[14] += delta;
     for (const state of lightStates) state.bornAt += delta;
@@ -5399,6 +5401,19 @@ function* createFxSteps(
      */
     resetSeed(newSeed: number): void {
       rng = mulberry32(newSeed);
+    },
+
+    /**
+     * Pin the shared clock to exactly `atTimeS` with the age-preserving rebase
+     * (no 20 s threshold). Scene Studio pins 0 at every load and seek, so
+     * clock-phased shading (fire flicker) and every stamp derived from the
+     * clock depend on the timeline alone, never on how long the page has run.
+     * @param {number} [atTimeS]
+     */
+    resetClock(atTimeS = 0): void {
+      rebaseFxClock(atTimeS, true);
+      particles.setFrozen(frozen, atTimeS);
+      printUniforms.uTime.value = atTimeS;
     },
 
     /** Kill all particles, tracers, decals, timers, emitters and lights. */

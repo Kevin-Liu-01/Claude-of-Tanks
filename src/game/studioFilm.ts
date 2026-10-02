@@ -34,6 +34,8 @@ interface FilmLighting {
 interface FilmClouds {
   beforeSceneRender(renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera, dt: number, width: number, height: number): void;
   settleForCapture(camera: THREE.PerspectiveCamera): boolean;
+  /** Wind drift at scene time (s); `restart` begins a fresh trace sequence and history. */
+  setCaptureTime?(timeS: number, restart?: boolean): void;
 }
 
 /** Studio internals the film renderer drives (src/game/studio.ts wires them). */
@@ -260,6 +262,8 @@ export function createStudioFilm(ports: StudioFilmPorts) {
 
   /** Camera-dependent state for the sample instant the timeline now holds. */
   function stageSample(complete: boolean): void {
+    // Clouds drift with the timeline, not the wall clock.
+    clouds()?.setCaptureTime?.(ports.clockMs() / 1000);
     camera.updateMatrixWorld(true);
     if (camera.fov !== lastFov) {
       lighting.updateFrustums();
@@ -362,6 +366,8 @@ export function createStudioFilm(ports: StudioFilmPorts) {
         previousCloseMs = -Infinity;
         plan.sampleTimes(0, times);
         ports.seek(times[0]);
+        // A fresh cloud trace sequence: the film never inherits the live layer's history.
+        clouds()?.setCaptureTime?.(ports.clockMs() / 1000, true);
         // One complete warm frame at the new size: allocates targets, links
         // programs and gives the clouds their history size before settling.
         stageSample(true);
@@ -446,6 +452,7 @@ export function createStudioFilm(ports: StudioFilmPorts) {
       useJitter(samples, options.filter ?? 'gaussian');
       enter(width, height);
       try {
+        clouds()?.setCaptureTime?.(ports.clockMs() / 1000, true);
         // Time stands still: stage the camera, shadows and FX once; every
         // jittered sample reuses them (shadow fits never see the jitter).
         stageSample(true);

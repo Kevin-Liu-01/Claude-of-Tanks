@@ -18,11 +18,11 @@ import { createCaptureLock } from '../capture-lock.mjs';
 import { digest, sourceDigest, contactSheet } from './pipeline.mjs';
 import { normalizeFilm, filmOutputSize, createFilmPlan } from '../../src/game/studioFilmPlan.ts';
 
-const JOB_OPTIONS = ['scene', 'formats', 'resolution', 'fps', 'samples', 'max-samples', 'shutter', 'filter', 'start-ms', 'end-ms',
+const JOB_OPTIONS = ['scene', 'formats', 'resolution', 'fps', 'samples', 'max-samples', 'shutter', 'filter', 'shake', 'start-ms', 'end-ms',
   'frames', 'stills', 'still-samples', 'supersample', 'film', 'master', 'proxy', 'keep-frames', 'out', 'resume'];
 const OPTIONS = [...JOB_OPTIONS, 'jobs', 'port', 'cache-dir'];
 const help = `npm run media:cinema -- --scene=scene.json [--formats=landscape,portrait,square] [--resolution=1080|1440|2160]
-  [--fps=24|30|60] [--samples=1-64] [--max-samples=<samples>-128] [--shutter=0-360] [--filter=gaussian|box]
+  [--fps=24|30|60] [--samples=1-64] [--max-samples=<samples>-128] [--shutter=0-360] [--filter=gaussian|box] [--shake=0-2]
   [--start-ms=0] [--end-ms=<storyboard>] [--frames=<limit>] [--stills=<timeline ms,...>] [--still-samples=32]
   [--supersample=1-2] [--film=true|false] [--master=prores|none] [--proxy=true|false] [--keep-frames=false]
   [--out=shots/cinema] [--resume=true] [--port=5381] [--cache-dir=<vite cache>]
@@ -62,6 +62,7 @@ async function prepareJob(raw) {
     maxSamples: raw['max-samples'] ? Number(raw['max-samples']) : authored.maxSamples,
     shutterDeg: raw.shutter ? Number(raw.shutter) : authored.shutterDeg,
     filter: raw.filter ?? authored.filter,
+    shake: raw.shake ? Number(raw.shake) : authored.shake,
     speed: authored.speed,
   });
   const durationMs = scene.storyboard?.durationMs ?? 12000;
@@ -215,7 +216,8 @@ try {
     for (const format of job.renderFilms ? job.formats : []) {
       if (interrupted) break;
       const { width, height } = filmOutputSize(format, job.resolution);
-      const stem = `${scene.map ?? 'scene'}-${format}-${height}p${film.fps}-n${film.samples}`;
+      // Named by the short side, so a portrait 1080x1920 film reads 1080p like its landscape sibling.
+      const stem = `${scene.map ?? 'scene'}-${format}-${job.resolution}p${film.fps}-n${film.samples}`;
       if (receipt.films.some(row => row.stem === stem && row.complete)) { console.log(`[cinema] preserved ${stem}`); continue; }
       const dir = join(job.out, 'films', stem);
       mkdirSync(dir, { recursive: true });
@@ -231,7 +233,7 @@ try {
         const plan = createFilmPlan(film, Math.round(job.startMs), Math.min(job.endMs, framed.storyboard.durationMs));
         const session = await page.evaluate(options => window.__STUDIO.beginFilm(options),
           { width, height, fps: film.fps, samples: film.samples, maxSamples: film.maxSamples, shutterDeg: film.shutterDeg,
-            filter: film.filter, speed: film.speed, startMs: job.startMs, endMs: job.endMs });
+            filter: film.filter, shake: film.shake, speed: film.speed, startMs: job.startMs, endMs: job.endMs });
         if (session.frames !== plan.frames) throw Error(`Studio planned ${session.frames} frames, the exporter ${plan.frames}`);
         const frames = Math.min(session.frames, job.frameLimit ?? Infinity);
         row.filmDurationMs = session.filmDurationMs;
@@ -280,10 +282,12 @@ try {
         row.frameDigests = sequence.map(hash => hash.slice(0, 16));
         row.sequenceSha256 = digest(Buffer.from(sequence.join('\n')));
         const input = ['-hide_banner', '-loglevel', 'error', '-y', '-framerate', String(film.fps), '-i', join(dir, 'frame-%05d.png'), '-frames:v', String(frames)];
+        // Encoders tag what the frames carry: setparams marks BT.709 limited range on every frame.
         const toVideo = 'scale=out_color_matrix=bt709:out_range=tv';
+        const tagged = 'setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709';
         if (job.master === 'prores') {
           const path = join(job.out, 'films', `${stem}-master.mov`);
-          execFileSync('ffmpeg', [...input, '-vf', `${toVideo},format=yuv422p10le`, '-c:v', 'prores_ks', '-profile:v', '3', '-vendor', 'apl0',
+          execFileSync('ffmpeg', [...input, '-vf', `${toVideo},format=yuv422p10le,${tagged}`, '-c:v', 'prores_ks', '-profile:v', '3', '-vendor', 'apl0',
             '-pix_fmt', 'yuv422p10le', ...colorTags, path]);
           const meta = probe(path);
           const stream = meta.streams[0];
@@ -294,7 +298,7 @@ try {
         }
         if (job.proxy) {
           const path = join(job.out, 'films', `${stem}-proxy.mp4`);
-          execFileSync('ffmpeg', [...input, '-vf', `${toVideo},format=yuv420p`, '-c:v', 'libx264', '-preset', 'slow', '-crf', '14',
+          execFileSync('ffmpeg', [...input, '-vf', `${toVideo},format=yuv420p,${tagged}`, '-c:v', 'libx264', '-preset', 'slow', '-crf', '14',
             '-profile:v', 'high', '-pix_fmt', 'yuv420p', ...colorTags, '-movflags', '+faststart', path]);
           const meta = probe(path);
           const stream = meta.streams[0];
@@ -309,7 +313,8 @@ try {
         if (picks[picks.length - 1] !== frames - 1) picks.push(frames - 1);
         const sheetFrames = picks.map(index => ({ path: join(dir, frameName(index)),
           label: `${format} · frame ${index} · ${(row.frames[index].timelineMs / 1000).toFixed(2)} s · ${row.frames[index].samples} samples` }));
-        await contactSheet(sheetFrames, join(dir, 'motion-sheet.jpg'), `${stem.toUpperCase()} / ${film.shutterDeg}° / ${film.samples}–${film.maxSamples} SAMPLES`);
+        const sampling = film.samples === 1 ? '1 SAMPLE' : film.maxSamples > film.samples ? `${film.samples}–${film.maxSamples} SAMPLES` : `${film.samples} SAMPLES`;
+        await contactSheet(sheetFrames, join(dir, 'motion-sheet.jpg'), `${stem.toUpperCase()} / ${film.shutterDeg}° / ${sampling}`);
         row.files.push(await fileRecord(join(dir, 'motion-sheet.jpg'), { kind: 'review-sheet' }));
         row.reviewFrames = [];
         for (const file of sheetFrames) row.reviewFrames.push(await fileRecord(file.path, { kind: 'review-frame', label: file.label }));
@@ -333,7 +338,7 @@ try {
     for (const format of job.formats) for (const ms of job.stills) {
       if (interrupted) break;
       const { width, height } = filmOutputSize(format, job.resolution);
-      const stem = `${scene.map ?? 'scene'}-${format}-${height}p-still-${Math.round(ms)}ms`;
+      const stem = `${scene.map ?? 'scene'}-${format}-${job.resolution}p-still-${Math.round(ms)}ms`;
       if (receipt.stills.some(row => row.stem === stem && row.complete)) continue;
       const row = { stem, format, width, height, timelineMs: ms, samples: job.stillSamples, supersample: job.supersample, files: [] };
       receipt.stills.push(row);

@@ -31,6 +31,9 @@ assert.equal(clamped.shutterDeg, 360);
 assert.equal(normalizeFilm({ samples: 4 }).maxSamples, 64);
 assert.equal(normalizeFilm({ samples: 4, maxSamples: 2 }).maxSamples, 4);
 assert.equal(normalizeFilm({ maxSamples: 999 }).maxSamples, 128);
+assert.equal(normalizeFilm({ shake: 0.4 }).shake, 0.4);
+assert.equal(normalizeFilm({ shake: 9 }).shake, 2, 'shake clamps to 2');
+assert.equal(normalizeFilm({ shake: -1 }).shake, 0, 'shake clamps to 0');
 assert.deepEqual(clamped.speed, [
   { tMs: 300, speed: 8, ease: 'linear' },
   { tMs: 900, speed: 0.5, ease: 'step' },

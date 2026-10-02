@@ -146,6 +146,7 @@ interface StudioFilmProgress {
 interface StudioFilmSettings {
   readonly fps: number;
   readonly samples: number;
+  readonly shake: number;
   readonly shutterDeg: number;
   readonly filter: string;
   readonly speed: ReadonlyArray<{ readonly tMs: number; readonly speed: number; readonly ease: string }>;
@@ -155,6 +156,7 @@ interface StudioFilmExportOptions {
   readonly resolution: number;
   readonly fps: number;
   readonly samples: number;
+  readonly shake: number;
   readonly download: boolean;
   readonly onProgress: (progress: StudioFilmProgress) => void;
   readonly onFrame: (canvas: HTMLCanvasElement) => void;
@@ -1181,7 +1183,16 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
   filmBlur.value = '8';
   filmFps.value = '30';
-  filmBlurRow.append(el('label', 'k', t('studio.film.blur')), filmBlur);
+  const filmShake = document.createElement('select');
+  for (const [key, shake] of [['studio.film.shakeFull', 1], ['studio.film.shakeHalf', 0.5],
+    ['studio.film.shakeQuarter', 0.25], ['studio.film.shakeOff', 0]] as const) {
+    const option = document.createElement('option');
+    option.value = String(shake);
+    option.textContent = t(key);
+    filmShake.appendChild(option);
+  }
+  filmShake.title = t('studio.film.shakeTitle');
+  filmBlurRow.append(el('label', 'k', t('studio.film.blur')), filmBlur, el('label', 'k', t('studio.film.shake')), filmShake);
   secCap.appendChild(filmBlurRow);
   const filmSummary = el('div', 'recStatus', '');
   secCap.appendChild(filmSummary);
@@ -1189,9 +1200,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   secCap.appendChild(filmBtn);
   secCap.appendChild(el('div', 'filmHint', t('studio.film.hint')));
   // Authoring the export settings records them in the scene's `film` block.
-  for (const control of [filmFps, filmBlur]) {
+  for (const control of [filmFps, filmBlur, filmShake]) {
     control.addEventListener('change', () => {
-      try { S.setFilm({ fps: Number(filmFps.value), samples: Number(filmBlur.value) }); } catch { /* exporting */ }
+      try { S.setFilm({ fps: Number(filmFps.value), samples: Number(filmBlur.value), shake: Number(filmShake.value) }); } catch { /* exporting */ }
       updateFilmSummary();
     });
   }
@@ -1244,6 +1255,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       resolution: Number(filmSize.value),
       fps: Number(filmFps.value),
       samples: Number(filmBlur.value),
+      shake: Number(filmShake.value),
       download: true,
       onProgress: showFilmProgress,
       onFrame: drawFilmPreview,
@@ -1257,18 +1269,19 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   let filmSignature = '';
   function updateFilmSummary(): void {
     const film = S.getFilm();
-    const signature = film ? `${film.fps}/${film.samples}` : '';
+    const signature = film ? `${film.fps}/${film.samples}/${film.shake}` : '';
     if (signature !== filmSignature) {
       filmSignature = signature;
       if (film) {
         filmFps.value = String(film.fps);
         if ([...filmBlur.options].some((option) => option.value === String(film.samples))) filmBlur.value = String(film.samples);
+        if ([...filmShake.options].some((option) => option.value === String(film.shake))) filmShake.value = String(film.shake);
       }
     }
     const status = S.filmExportStatus();
     const busyOutput = status.active || S.recordingStatus().active;
     filmBtn.disabled = busyOutput || !status.supported;
-    for (const control of [filmSize, filmFps, filmBlur]) control.disabled = busyOutput;
+    for (const control of [filmSize, filmFps, filmBlur, filmShake]) control.disabled = busyOutput;
     if (!status.supported) { filmSummary.textContent = t('studio.film.unsupported'); return; }
     try {
       const format = S.productionFormat;

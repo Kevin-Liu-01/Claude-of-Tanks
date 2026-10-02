@@ -35,6 +35,8 @@ export const FILM_MAX_SAMPLES = 64;
 export const FILM_MAX_ADAPTIVE_SAMPLES = 128;
 /** Adaptive sampling targets at most this much image motion between two samples. */
 export const FILM_MOTION_STEP_PX = 1.5;
+/** Film renders ease camera-cue impulses in over this long (studioTimeline.sampleCameraCues). */
+export const FILM_CUE_ATTACK_MS = 12;
 export const FILM_MAX_SPEED_KEYS = 32;
 /** Standard deviation of the Gaussian reconstruction filter, in output pixels. */
 export const FILM_GAUSSIAN_SIGMA_PX = 0.42;
@@ -54,6 +56,8 @@ export interface FilmSettings {
   /** Motion-adaptive ceiling: frames whose image moves fast take up to this many. */
   readonly maxSamples: number;
   readonly filter: FilmFilter;
+  /** Scale of the storyboard's camera-shake cues while the film renders (1 = as authored). */
+  readonly shake: number;
   readonly speed: readonly FilmSpeedKey[];
 }
 
@@ -63,6 +67,7 @@ export interface FilmSettingsInput {
   readonly samples?: number;
   readonly maxSamples?: number;
   readonly filter?: string;
+  readonly shake?: number;
   readonly speed?: ReadonlyArray<{ readonly tMs?: number; readonly speed?: number; readonly ease?: string }>;
 }
 
@@ -72,6 +77,7 @@ export const FILM_DEFAULTS: FilmSettings = Object.freeze({
   samples: 8,
   maxSamples: 64,
   filter: 'gaussian',
+  shake: 1,
   speed: Object.freeze([]) as readonly FilmSpeedKey[],
 });
 
@@ -96,6 +102,7 @@ export function normalizeFilm(input: FilmSettingsInput | null | undefined = {}):
   const maxSamples = Math.round(Math.min(FILM_MAX_ADAPTIVE_SAMPLES,
     Math.max(samples, finite(source.maxSamples, Math.max(samples, FILM_DEFAULTS.maxSamples)))));
   const shutterDeg = Math.min(360, Math.max(0, finite(source.shutterDeg, FILM_DEFAULTS.shutterDeg)));
+  const shake = Math.min(2, Math.max(0, finite(source.shake, FILM_DEFAULTS.shake)));
   const rawKeys = Array.isArray(source.speed) ? source.speed : [];
   if (rawKeys.length > FILM_MAX_SPEED_KEYS) throw new RangeError(`A film supports at most ${FILM_MAX_SPEED_KEYS} speed keys`);
   const keys: FilmSpeedKey[] = [];
@@ -117,7 +124,7 @@ export function normalizeFilm(input: FilmSettingsInput | null | undefined = {}):
     if (unique.length && Math.abs(unique[unique.length - 1].tMs - key.tMs) < 1e-6) unique[unique.length - 1] = key;
     else unique.push(key);
   }
-  return { fps: fps as FilmFps, shutterDeg, samples, maxSamples, filter: filter as FilmFilter, speed: unique };
+  return { fps: fps as FilmFps, shutterDeg, samples, maxSamples, filter: filter as FilmFilter, shake, speed: unique };
 }
 
 // --- speed ramps --------------------------------------------------------------

@@ -192,6 +192,12 @@ camera, independent of render speed:
   up to 360° the timeline only advances, so effects fire once at their `tMs`.
   A storyboard **cut** never falls inside a shutter: the frame before the cut
   closes just before it, the next one opens on it (no double exposures).
+  Camera-shake **cues** ease in over 12 ms while a film renders (live preview
+  keeps the instant kick): a camera cannot teleport, so a jolt that starts
+  mid-shutter smears instead of exposing two camera poses. `film.shake`
+  (0–2, default 1) scales every cue while the film renders: motion blur turns
+  a preview-sized jolt into a long smear, so kill shots often read better at
+  0.5.
 - **Motion-adaptive samples.** Before each frame the renderer projects probe
   points (four depths across the view and every tracked actor) through the
   storyboard camera across the shutter. When the image moves fast (whip pans,
@@ -213,9 +219,13 @@ camera, independent of render speed:
   steps, continuous emitters pulse on the 60 Hz timeline grid (sub-samples
   never thicken engine smoke), track/wheel phase follows the exact sample
   instant, the lens-flare easing follows the film clock and snaps on cuts,
-  volumetric clouds settle every frame, terrain lookahead for the frame camera
+  the fx clock restarts with the timeline at every load and seek (clock-phased
+  fire flicker never inherits the page's history), volumetric clouds drift
+  with the timeline and start a fresh trace sequence when a film or still
+  begins (then settle every frame), terrain lookahead for the frame camera
   completes before it renders, and the adaptive governor is suspended. The
-  live tick and Studio input are suspended while a film is open.
+  live tick and Studio input are suspended while a film is open. See Known
+  limitations for what is not yet byte-exact between runs.
 - **Speed ramps.** `film.speed` keys are authored on the timeline:
   `{tMs, speed, ease}` with speed 0.05–8 (1 = real time) and `ease`
   `smooth` (default), `linear` or `step` describing the ramp **into** that
@@ -242,7 +252,7 @@ order; `endFilm()` restores the live viewport, TAA and governor. Without an open
 film, `renderFilmFrame(opts)` renders a film still of the current instant (the
 `capture()` options above).
 
-`exportFilm({ resolution, fps, samples, maxSamples, shutterDeg, filter,
+`exportFilm({ resolution, fps, samples, maxSamples, shutterDeg, filter, shake,
 startMs, endMs, bitrate, container, download, name, onProgress, onFrame })`
 renders the same frames at the production format's native size (`resolution`
 1080, 1440 or 2160; or explicit `width`/`height`) and encodes them offline with
@@ -255,10 +265,11 @@ rejects with an `AbortError`). The containers are written by
 `studioFilmMux.ts`; there is no third-party dependency.
 
 In the panel, **Output → Film** offers Size (1080p / 1440p / 2160p in the
-current production format), Rate (24 / 30 / 60 fps) and Blur (Off · 1, Draft · 4,
-Good · 8, Best · 16, Master · 32 samples; adaptive up to 64 on fast motion),
-shows the frame count and length (including speed ramps), and records the
-chosen rate and blur in the scene's `film` block. Export opens a veil with a
+current production format), Rate (24 / 30 / 60 fps), Blur (Off · 1, Draft · 4,
+Good · 8, Best · 16, Master · 32 samples; adaptive up to 64 on fast motion) and
+Shake (as authored, half, quarter, off), shows the frame count and length
+(including speed ramps), and records the chosen rate, blur and shake in the
+scene's `film` block. Export opens a veil with a
 live preview at the native aspect, progress, time left and **Cancel**.
 
 ## Scene JSON schema
@@ -344,6 +355,7 @@ live preview at the native aspect, progress, time left and **Cancel**.
     "samples": 16,              // 1–64 per frame (1 = no motion blur)
     "maxSamples": 64,           // adaptive ceiling for fast frames (≤ 128)
     "filter": "gaussian",       // gaussian | box (sub-pixel reconstruction)
+    "shake": 1,                 // 0–2: camera-shake cue scale while filming
     "speed": [                  // speed ramp keys on the TIMELINE (sorted)
       { "tMs": 5600, "speed": 1 },
       { "tMs": 6000, "speed": 0.2, "ease": "smooth" },  // ramp INTO this key
@@ -355,8 +367,8 @@ live preview at the native aspect, progress, time left and **Cancel**.
 ```
 
 `state()` includes `film` only when the scene authored one (`setFilm(patch)`,
-the Output panel's Rate/Blur, or a loaded scene), so older scenes round-trip
-unchanged.
+the Output panel's Rate/Blur/Shake, or a loaded scene), so older scenes
+round-trip unchanged.
 
 ### Effect types
 
@@ -448,9 +460,16 @@ burning, a tracer, a detrack, or a kill leaves no orphaned visual state.
 - Film motion blur is sampled, not analytic: very fast motion beyond the
   adaptive ceiling (shell flights, the strongest shake cues) can still show
   faint stepping; raise `maxSamples` (≤ 128) for those shots.
-- Volumetric clouds hold their drift during a film (as in stills); clouds,
-  foliage and water still render per sample. Ambient occlusion is off on every
-  quality tier; a tier that enables GTAO keeps its temporal history per sample.
+- Volumetric clouds drift with the timeline during a film (a 0.2× hold slows
+  them too) and start a fresh trace sequence when a film or still begins.
+  Ambient occlusion is off on every quality tier; a tier that enables GTAO
+  keeps its temporal history across samples, and that history reseeds after a
+  250 ms wall-clock gap, so AO would not be byte-exact between runs.
+- Two renders of one scene match in every authored element (timing, sample
+  counts, camera, effects, clouds) but are not yet byte-identical: grass,
+  carpet and terrain streaming finish on cooperative time budgets, so the
+  first frames after a large camera move can differ where a grass chunk or a
+  terrain LOD lands a frame earlier on a faster run.
 - Supersampling (`supersample`) applies to stills only. A film's export size is
   rendered directly; 2160p films need a desktop-class GPU (about 1 GB of render targets).
 

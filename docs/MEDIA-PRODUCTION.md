@@ -78,12 +78,17 @@ npm run media:cinema -- --scene=shots/my-scene.json --resolution=2160 --film=fal
 Options: `--formats` (default: the scene's production format; other formats use the Studio's
 reviewed reframing), `--resolution` 1080/1440/2160 (short side), `--fps` 24/30/60,
 `--samples` 1–64 per frame (1 = no motion blur), `--max-samples` adaptive ceiling (≤ 128),
-`--shutter` 0–360°, `--filter` gaussian/box, `--start-ms`/`--end-ms` (timeline range),
+`--shutter` 0–360°, `--filter` gaussian/box, `--shake` 0–2 (camera-cue scale),
+`--start-ms`/`--end-ms` (timeline range),
 `--frames` (limit, for benchmarks), `--stills` (timeline ms list), `--still-samples`,
 `--supersample` 1–2 (stills), `--film=false` (stills only), `--master=prores|none`,
 `--proxy=true|false`, `--keep-frames=true` (keep every PNG; by default only the sheet frames
 remain after the encodes verify), `--resume=true`, `--port`, `--cache-dir`. Settings default
 to the scene's `film` block, then 30 fps, 180°, 8 samples (adaptive to 64), gaussian.
+`--jobs=jobs.json` renders an array of jobs (the same keys without `--`, each with its own `out`)
+in one browser session under one capture lock, for example
+`[{"scene": "shots/kill.json", "resolution": 2160, "fps": 24, "samples": 12, "max-samples": 64,
+"shake": 0.5, "out": "shots/cinema-kill"}]`.
 
 Frames stream from the page to the private dev server as PNG blobs (encoded off the page's main
 thread), so a 4K frame never crosses the DevTools protocol as base64. The receipt
@@ -95,7 +100,32 @@ complete films and stills only when the sources and settings are unchanged; a pa
 renders again from its first frame (frames depend on the whole shutter history, so a film is
 never stitched from two runs). The shared capture lock serializes GPU work.
 
-FILM_TIMINGS_PLACEHOLDER
+Throughput, measured 2026-10-01 on the lane machine (Apple silicon GPU through headless Chrome and
+ANGLE/Metal) with the two-tank desert duel (fast rail moves, firing, a kill), in seconds per output
+frame. *Draw* is the time inside `renderFilmFrame` (the GPU finishes inside the readback); *wall*
+is the honest planning figure and adds the browser's PNG encode, the transfer and the digests.
+
+| Output | Samples per frame | Draw s/frame | Wall s/frame |
+| --- | --- | ---: | ---: |
+| 1920×1080 | 1 (no blur) | 0.011 | 0.31 |
+| 1920×1080 | 8 | 0.059 | 0.48 |
+| 1920×1080 | 16 | 0.142 | 0.60 |
+| 1920×1080 | 8, adaptive to 64 (mean 29.6) | 0.308 | 0.89 |
+| 1920×1080 | 16, adaptive to 64, 0.2× ramp (mean 20.7) | 0.162 | 0.66 |
+| 3840×2160 | 1 | 0.018 | 1.29 |
+| 3840×2160 | 8 | 0.067 | 1.44 |
+| 3840×2160 | 16 | 0.156 | 1.59 |
+
+At 2160p the browser's PNG encoder (about 1.2 s a frame) dominates, so extra samples cost little:
+a 10 s, 24 fps 4K shot at 16 samples takes about 6–7 minutes before the encodes.
+
+Recommended trailer masters: `--resolution=2160 --fps=24 --shutter=180 --samples=12
+--max-samples=64 --filter=gaussian --master=prores --proxy=true`. Kill shots and heavy
+camera-shake cues usually read better with `--shake=0.5` (or `film.shake` in the scene): motion
+blur turns a preview-sized jolt into a long smear. Slow motion comes from `film.speed` keys in the
+scene (for example 0.2× from 400 ms before a kill to 1 s after), rendered at 16 samples. Key art:
+`--film=false --stills=<ms,...> --still-samples=32 --supersample=1.5`. `--shake` (0–2) scales the
+storyboard's camera cues for the film only.
 
 ## September 27, 2026 production
 
