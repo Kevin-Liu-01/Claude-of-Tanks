@@ -972,11 +972,18 @@ function renderNetworkOpeningEffects(
   const mask = camera.layers.mask;
   const visible = fx.group.visible;
   const rootVisible = scar?.visual.root.visible;
+  // Live decal meshes cull with their own quads (impactDecals.ts); the covered
+  // draw must still submit the staged scar wherever the warm camera looks.
+  const culling = scar ? scar.objects.map(({ object }) => [object, object.frustumCulled] as const) : [];
   try {
-    if (scar) { restoreNetworkScarObjects(scar); scar.visual.root.visible = true; }
+    if (scar) {
+      restoreNetworkScarObjects(scar); scar.visual.root.visible = true;
+      for (const [object] of culling) object.frustumCulled = false;
+    }
     stageAndRenderNetworkEffects(options);
     valid();
   } finally {
+    for (const [object, frustumCulled] of culling) object.frustumCulled = frustumCulled;
     camera.layers.mask = mask;
     fx.group.visible = visible;
     if (scar && !scar.detached) scar.visual.root.visible = rootVisible!;
