@@ -6,10 +6,14 @@
 // takes nothing. Run: node src/sim/impactParity.selftest.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { Group, Vector3 } from 'three';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
-import { resetTankVerticalState } from './movement.ts';
+import { createTankState, resetTankVerticalState } from './movement.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
 import { hardImpactDamage, fallDamage } from './impact.ts';
+import { createCombatState } from './damage.ts';
+import { getSpec } from '../vehicles/specs.ts';
+import { createBus, createGameState, simStep } from '../game/state.ts';
 
 const solo = readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8');
 const authority = readFileSync(new URL('./authoritativeMatch.ts', import.meta.url), 'utf8');
@@ -42,8 +46,38 @@ assert.match(solo, /exchangeRamMomentum\(contact\.a\.state, contact\.b\.state, c
 assert.match(authority, /exchangeRamMomentum\(contact\.a\.state, contact\.b\.state, contact\.nx, contact\.nz,\s*contact\.a\.spec\.weightTons, contact\.b\.spec\.weightTons, contact\.vAn, contact\.vBn, ruleset\.physics\.ramRestitution\)/,
   'the authority exchanges momentum with the ruleset restitution');
 assert.match(modes, /entity\.modePhysics = ruleset\.physics;/, 'the mode controller stamps the physics block on every entity');
-assert.match(solo, /announceDestroyed\(bus, entity, entity\.id, kind\)/, 'a self-inflicted destruction names its cause (impact / fall) and its own hull as the killer in solo, as a burn-out does');
-assert.match(authority, /emit\('tank_destroyed', \{ id: entity\.id, killerId: entity\.id, cause: kind \}\)/, 'and on the wire');
+assert.match(authority, /emit\('tank_destroyed', \{ id: entity\.id, killerId: entity\.id, cause: kind \}\)/, 'a self-inflicted destruction names its cause and its own hull as the killer on the wire');
+
+// ---- the solo step, run for real: a fatal crash or fall is self-inflicted, as a burn-out is ------------------------
+// A one-hull solo roster at 1 hp (a stub collider, a flat field or a terrain wall): driven into the wall it dies of an
+// `impact`, dropped 12 m it dies of a `fall`, and either way the bus names its own hull as the killer exactly once.
+function soloSelfDestruction(heightAt, throttle, prepare) {
+  const up = new Vector3(0, 1, 0);
+  const world = { heightField: { getHeightAt: heightAt, getGroundType: () => 'hard', getNormalAt: () => up }, raycast: () => null };
+  const spec = getSpec('m1a2'), combat = createCombatState(spec), game = createGameState();
+  const entity = { id: 'solo-hull', specId: spec.id, spec, isPlayer: false, team: 'player', combat,
+    state: createTankState(spec, new Vector3(0, 0, -90), 0),
+    input: { throttle, steer: 0, brake: throttle === 0, fire: false, shellSlot: 0, aimYaw: 0, aimPitch: 0, aimDistance: 300, actionBits: 0 },
+    visual: { root: new Group(), gunMuzzleWorld: (out) => out.set(0, 5, 10), gunDirWorld: (out) => out.set(0, 0, 1),
+      recoilKick() {}, setDestroyed() {} } };
+  combat.equipMults = {};
+  game.tanks = [entity]; game.allTanks = [entity]; game.tankById.set(entity.id, entity);
+  const destroyed = [];
+  const bus = createBus((name, payload) => { if (name === 'tank:destroyed') destroyed.push(payload); });
+  const collider = { setSelf() {}, collide: () => false, pendingCrush: [], pendingRams: [], queueRam() {} };
+  simStep(game, bus, world, null, collider);
+  prepare(entity);
+  for (let i = 0; i < 900 && !destroyed.length; i++) simStep(game, bus, world, null, collider);
+  for (let i = 0; i < 30; i++) simStep(game, bus, world, null, collider);
+  return destroyed.map(({ id, killerId, cause }) => ({ id, killerId, cause }));
+}
+for (const [cause, heightAt, throttle, prepare] of [
+  ['impact', (_x, z) => (z > 30 ? 40 : 0), 1, (entity) => { entity.combat.hp = 1; }],
+  ['fall', () => 0, 0, (entity) => { entity.combat.hp = 1; resetTankVerticalState(entity.state, entity.state.pos.y + 12, 0, false); }],
+]) {
+  assert.deepEqual(soloSelfDestruction(heightAt, throttle, prepare), [{ id: 'solo-hull', killerId: 'solo-hull', cause }],
+    'a self-inflicted destruction names its cause (impact / fall) and its own hull as the killer in solo, as a burn-out does');
+}
 
 // ---- the authority crashes into a wall: hit points, event, modules ---------------------------------------------
 const wall = { min: [-12, 0, -36], max: [12, 6, -34], shape2: { kind: 'obb', cx: 0, cz: -35, hw: 12, hl: 1, yaw: 0 } };
@@ -158,4 +192,4 @@ function impactEvents(match, tick, viewerId, seen, out, id = null) {
   assert.ok(wreck.state.grounded, 'and lands');
 }
 
-console.log('impactParity.selftest: shared impact functions and attribution in both sims, the mode stamp, an authoritative wall crash and a fall priced by the law, a wreck landing free, and a bit-for-bit 600-step replay pass');
+console.log('impactParity.selftest: shared impact functions and attribution in both sims (solo self-destruction run for real), the mode stamp, an authoritative wall crash and a fall priced by the law, a wreck landing free, and a bit-for-bit 600-step replay pass');

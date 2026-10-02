@@ -3,6 +3,7 @@ import {
 } from './impactDecals.ts';
 import { SURFACE_MARKING_STYLE } from '../vehicles/vehicleMarkings.ts';
 import { readFile } from 'node:fs/promises';
+import ts from 'typescript-compiler-api';
 
 if (IMPACT_DECAL_CAP < 16) throw new Error('impact decal vehicle budget regressed');
 if (IMPACT_DECAL_LIFT_M <= 0 || IMPACT_DECAL_LIFT_M > 0.01) {
@@ -35,9 +36,42 @@ if (!/onFxEvent\(bus, 'shell:hit',[\s\S]{0,1800}impactDecals\.stampFromEvent\(e,
   throw new Error('authoritative shell:hit impact-decal ownership left effects.ts');
 }
 
+// Read the production construction structurally rather than by character distance (the options object grew the
+// auxiliary-system hooks ahead of resolveEntity): the one awaited createFxChunked(engineCtx, hfProxy, { ... }) call in
+// main.ts must pass a resolveEntity option that resolves through resolveFxSubject.
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
-if (!/await createFxChunked\(engineCtx, hfProxy, \{[\s\S]{0,320}resolveEntity:[\s\S]{0,120}resolveFxSubject/.test(mainSource)) {
+const mainTree = ts.createSourceFile('main.ts', mainSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+const fxConstructions = [];
+(function visit(node) {
+  if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'createFxChunked') fxConstructions.push(node);
+  ts.forEachChild(node, visit);
+})(mainTree);
+function callsResolveFxSubject(node) {
+  if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'resolveFxSubject') return true;
+  return ts.forEachChild(node, callsResolveFxSubject) === true;
+}
+function resolvesProductionSubjects(call) {
+  const [context, field, options] = call.arguments;
+  if (!ts.isAwaitExpression(call.parent) || !context || !ts.isIdentifier(context) || context.text !== 'engineCtx'
+    || !field || !ts.isIdentifier(field) || field.text !== 'hfProxy' || !options || !ts.isObjectLiteralExpression(options)) return false;
+  const resolver = options.properties.find(property => ts.isPropertyAssignment(property)
+    && ts.isIdentifier(property.name) && property.name.text === 'resolveEntity');
+  return !!resolver && callsResolveFxSubject(resolver.initializer);
+}
+if (fxConstructions.length !== 1 || !resolvesProductionSubjects(fxConstructions[0])) {
   throw new Error('production FX must resolve struck solo, network, and player-owned tanks');
+}
+{
+  // Negative control: the same call with its resolver swapped for one that resolves nothing must fail the check.
+  const resolver = fxConstructions[0].arguments[2].properties.find(property => property.name?.getText(mainTree) === 'resolveEntity');
+  const detached = mainSource.slice(0, resolver.initializer.getStart(mainTree)) + '() => null' + mainSource.slice(resolver.initializer.end);
+  const detachedTree = ts.createSourceFile('main.ts', detached, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  let detachedCall = null;
+  (function visit(node) {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'createFxChunked') detachedCall = node;
+    ts.forEachChild(node, visit);
+  })(detachedTree);
+  if (!detachedCall || resolvesProductionSubjects(detachedCall)) throw new Error('the FX resolver check must reject a detached resolver');
 }
 if (!/const resolved = resolveEntity\?\.\(targetId\);[\s\S]{0,100}isDecalEntity\(resolved\)/.test(effectsSource)) {
   throw new Error('impact decals must prefer the injected production entity resolver');
