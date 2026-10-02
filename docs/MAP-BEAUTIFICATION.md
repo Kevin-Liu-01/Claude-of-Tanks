@@ -6153,48 +6153,59 @@ period does not divide the wrap, above all the boil (the shape volume's vertical
 thickness): the settled history blended two fields and every captured cloud of the lane ghosted. The drifts now stay
 inside (−w, w), continuous through zero; the boil wraps at 600 km (238 hours at 0.7 m/s).
 
+**The labs (2026-10-02; `$SP/p2/clouds/lab1`, `lab2`: preset variants laid over the live layer, one boot per map).**
+Withdrawn until rebuilt, wired and gated (one branch each): the mid layer — its 2.5D sheet read as white pancakes
+(altostratus; thinner, wider and softer variants smeared), dozens of small discs (lenticular) and dark specks at
+sunset (altocumulus) — and the distant cumulonimbus, whose narrow tower under a round flat anvil read as a mushroom
+cloud on every open horizon (Redrock, the Delta, Mangrove, the Steppe) and, lit by a night strike, as an explosion.
+Kept: the contrails (crisp paired lines that spread, Verdant, Sirocco, the polders, the airfield), the patchy curved
+cirrus (Sirocco's comb is gone), the moonlit night decks and fronts (grey masses instead of black cut-outs), the
+lightning in Monsoon's night front (the slab's own towers lit from inside), the warm sunset; Whiteout's coverage 1
+closes its ink-blot hole; fair-weather cumulus at the type range 0.42–0.78 (flatter grey bases, lobed masses).
+
 **Night.** The ambient is dimmed once (the summary's sky intensity undone before the composite applies it), the
 moonlight's hue (the night key light at luminance one) lights the clouds, and a lit town's glow rides on the bases
 (`nightGlow` / `nightGlowHex`: sodium on the yards and the industrial maps, greenhouse orange on the polders, a warm
 white over the station and the airfield).
 
-**Per map** (`clouds` blocks; the regime row fills the rest — towering cumulus and the fronts bring storm cells and rain,
-dry-air cumulus its virga). The night column is the diurnal law's cover and the town glow:
+**Per map** (`clouds` blocks; the regime row fills the rest — towering cumulus and the fronts bring rain, dry-air
+cumulus its virga). The night column is the diurnal law's cover and the town glow. The mid layer and the distant storm
+cells are wired and gated but raised by no regime or map (the labs of 2026-10-02 below):
 
-| map | slab (day) | mid layer (day / sunset) | weather | night |
-|---|---|---|---|---|
-| Verdant Fields (verdant) | fair-weather-cumulus 0.36 @ 1400 m | — / altocumulus 0.45 | 2 contrails, cirrus 0.12 | cover 0.21 |
-| Sirocco Wadi (desert) | cumulus-humilis 0.14 @ 1700 m | — / — | 2 contrails, rain 0.3 / virga 0.85, cirrus 0.5 | cover 0.08 |
-| Frosthollow (winter) | stratocumulus-deck 0.86 @ 700 m | — / — | — | cover 0.86, town glow |
-| Steinburg (urban) | altocumulus 0.55 @ 2800 m | — / — | 4 contrails, cirrus 0.3 | cover 0.55, town glow |
-| Saltmere Bay (coastal) | sea-streets 0.32 @ 1100 m | — / — | fog bank 0.45, cirrus 0.08 | cover 0.19, town glow |
-| Amberford (autumn) | fair-weather-cumulus 0.26 @ 1400 m | altocumulus 0.4 / altocumulus 0.55 | 2 contrails, cirrus 0.12 | cover 0.15 |
-| Tarkhan Steppe (steppe) | cloud-streets 0.34 @ 1400 m | — / — | 1 storm cell, rain 0.2, cirrus 0.2 | cover 0.20 |
-| Cinder Junction (railyard) | industrial-stratocumulus 0.92 @ 800 m | — / — | — | cover 0.92, town glow |
-| Frontier Basin (frontier) | cloud-streets 0.40 @ 1400 m | — / altocumulus 0.4 | 2 contrails, cirrus 0.15 | cover 0.23 |
-| Nordhavn Fjord (fjord) | broken-stratocumulus 0.62 @ 900 m | — / — | rain 0.3 / virga 0.15, fog bank 0.4, cirrus 0.1 | cover 0.62, town glow |
-| Jade River Delta (delta) | towering-cumulus 0.38 @ 1200 m | — / — | 2 storm cells, rain 0.45 / virga 0.1, cirrus 0.1 | cover 0.22 |
-| Redrock Divide (badlands) | cumulus-humilis 0.18 @ 1700 m | — / — | 1 storm cell, rain 0.3 / virga 0.9, cirrus 0.35 | cover 0.10 |
-| Monsoon Ridge (monsoon) | cumulonimbus-front 0.40 @ 1000 m | altostratus 0.3 / altostratus 0.3 | 2 storm cells, rain 0.85, cirrus 0.25 | cover 0.40 |
-| Glacier Pass (alpine) | towering-cumulus 0.26 @ 1900 m | lenticular 0.35 / lenticular 0.35 | rain 0.15 / virga 0.1, cirrus 0.3 | cover 0.15 |
-| Obsidian Caldera (caldera) | cumulus-humilis 0.22 @ 1500 m | altostratus 0.3 / altostratus 0.3 | rain 0.3 / virga 0.85, cirrus 0.45 | cover 0.13 |
-| Ironworks (foundry) | industrial-stratocumulus 0.88 @ 850 m | — / — | — | cover 0.88, town glow |
-| Ruinspires (ruinspires) | fair-weather-cumulus 0.42 @ 1100 m | — / altocumulus 0.35 | rain 0.25 / virga 0.6, cirrus 0.12 | cover 0.24 |
-| Blackglass District (blackglass) | ash-veil 0.55 @ 800 m | — / — | cirrus 0.5 | cover 0.55, town glow |
-| Titan Gorge (titan_gorge) | dense-overcast 0.96 @ 450 m | — / — | rain 0.25 / virga 0.55 | cover 0.96 |
-| Skybridge Chasm (skybridge) | fair-weather-cumulus 0.42 @ 700 m | — / — | rain 0.2 / virga 0.5, cirrus 0.12 | cover 0.24 |
-| Tidegate Polders (polders) | broken-stratocumulus 0.68 @ 600 m | — / — | 3 contrails, rain 0.2 / virga 0.2, fog bank 0.35, cirrus 0.1 | cover 0.68, town glow |
-| Copper Mesa Mine (copper_mesa) | cumulus-humilis 0.20 @ 1900 m | — / — | 1 storm cell, rain 0.3 / virga 0.85, cirrus 0.4 | cover 0.12 |
-| Kestrel Airfield (airfield) | fair-weather-cumulus 0.38 @ 1400 m | — / altocumulus 0.35 | 6 contrails, cirrus 0.12 | cover 0.22, town glow |
-| Sunscar Oasis (oasis) | cumulus-humilis 0.17 @ 1700 m | cirrocumulus 0.25 / cirrocumulus 0.25 | rain 0.3 / virga 0.85, cirrus 0.4 | cover 0.10 |
-| Whiteout Station (whiteout) | low-stratus 0.97 @ 300 m | — / — | — | cover 0.97, town glow |
-| Orchard Valley (orchard) | fair-weather-cumulus 0.28 @ 1400 m | cirrocumulus 0.3 / altocumulus 0.45 | 2 contrails, cirrus 0.12 | cover 0.16 |
-| Longleaf Crossing (longleaf) | fair-weather-cumulus 0.32 @ 1400 m | — / — | 1 storm cell, rain 0.3, cirrus 0.12 | cover 0.19 |
-| Mangrove Reach (mangrove) | towering-cumulus 0.34 @ 1200 m | — / — | 2 storm cells, rain 0.45 / virga 0.1, cirrus 0.1 | cover 0.20 |
-| Saltwind Narrows (saltwind) | sea-streets 0.30 @ 1100 m | — / — | fog bank 0.35, cirrus 0.08 | cover 0.17 |
-| Highland Reservoir (reservoir) | fair-weather-cumulus 0.26 @ 1400 m | altocumulus 0.3 / altocumulus 0.3 | 2 contrails, cirrus 0.12 | cover 0.15 |
-| Olympus Basin (mars) | thin-ice-clouds 0.06 @ 2500 m | — / — | cirrus 0.45 | cover 0.06 |
-| Aegis Crossing (cliffbridge) | fair-weather-cumulus 0.28 @ 1200 m | — / altocumulus 0.4 | 2 contrails, cirrus 0.25 | cover 0.16 |
+| map | slab (day) | weather | night |
+|---|---|---|---|
+| Verdant Fields (verdant) | fair-weather-cumulus 0.36 @ 1400 m | 2 contrails, cirrus 0.12 | cover 0.21 |
+| Sirocco Wadi (desert) | cumulus-humilis 0.14 @ 1700 m | 2 contrails, rain 0.3 / virga 0.85, cirrus 0.5 | cover 0.08 |
+| Frosthollow (winter) | stratocumulus-deck 0.86 @ 700 m | — | cover 0.86, town glow |
+| Steinburg (urban) | altocumulus 0.55 @ 2800 m | 4 contrails, cirrus 0.3 | cover 0.55, town glow |
+| Saltmere Bay (coastal) | sea-streets 0.32 @ 1100 m | fog bank 0.45, cirrus 0.08 | cover 0.19, town glow |
+| Amberford (autumn) | fair-weather-cumulus 0.26 @ 1400 m | 2 contrails, cirrus 0.12 | cover 0.15 |
+| Tarkhan Steppe (steppe) | cloud-streets 0.34 @ 1400 m | rain 0.2, cirrus 0.2 | cover 0.20 |
+| Cinder Junction (railyard) | industrial-stratocumulus 0.92 @ 800 m | — | cover 0.92, town glow |
+| Frontier Basin (frontier) | cloud-streets 0.40 @ 1400 m | 2 contrails, cirrus 0.15 | cover 0.23 |
+| Nordhavn Fjord (fjord) | broken-stratocumulus 0.62 @ 900 m | rain 0.3 / virga 0.15, fog bank 0.4, cirrus 0.1 | cover 0.62, town glow |
+| Jade River Delta (delta) | towering-cumulus 0.38 @ 1200 m | rain 0.45 / virga 0.1, cirrus 0.1 | cover 0.22 |
+| Redrock Divide (badlands) | cumulus-humilis 0.18 @ 1700 m | rain 0.3 / virga 0.9, cirrus 0.35 | cover 0.10 |
+| Monsoon Ridge (monsoon) | cumulonimbus-front 0.40 @ 1000 m | rain 0.85, cirrus 0.25 | cover 0.40 |
+| Glacier Pass (alpine) | towering-cumulus 0.26 @ 1900 m | rain 0.15 / virga 0.1, cirrus 0.3 | cover 0.15 |
+| Obsidian Caldera (caldera) | cumulus-humilis 0.22 @ 1500 m | rain 0.3 / virga 0.85, cirrus 0.45 | cover 0.13 |
+| Ironworks (foundry) | industrial-stratocumulus 0.88 @ 850 m | — | cover 0.88, town glow |
+| Ruinspires (ruinspires) | fair-weather-cumulus 0.42 @ 1100 m | rain 0.25 / virga 0.6, cirrus 0.12 | cover 0.24 |
+| Blackglass District (blackglass) | ash-veil 0.55 @ 800 m | cirrus 0.5 | cover 0.55, town glow |
+| Titan Gorge (titan_gorge) | dense-overcast 0.96 @ 450 m | rain 0.25 / virga 0.55 | cover 0.96 |
+| Skybridge Chasm (skybridge) | fair-weather-cumulus 0.42 @ 700 m | rain 0.2 / virga 0.5, cirrus 0.12 | cover 0.24 |
+| Tidegate Polders (polders) | broken-stratocumulus 0.68 @ 600 m | 3 contrails, rain 0.2 / virga 0.2, fog bank 0.35, cirrus 0.1 | cover 0.68, town glow |
+| Copper Mesa Mine (copper_mesa) | cumulus-humilis 0.20 @ 1900 m | rain 0.3 / virga 0.85, cirrus 0.4 | cover 0.12 |
+| Kestrel Airfield (airfield) | fair-weather-cumulus 0.38 @ 1400 m | 6 contrails, cirrus 0.12 | cover 0.22, town glow |
+| Sunscar Oasis (oasis) | cumulus-humilis 0.17 @ 1700 m | rain 0.3 / virga 0.85, cirrus 0.4 | cover 0.10 |
+| Whiteout Station (whiteout) | low-stratus 1.00 @ 300 m | — | cover 1.00, town glow |
+| Orchard Valley (orchard) | fair-weather-cumulus 0.28 @ 1400 m | 2 contrails, cirrus 0.12 | cover 0.16 |
+| Longleaf Crossing (longleaf) | fair-weather-cumulus 0.32 @ 1400 m | rain 0.3, cirrus 0.12 | cover 0.19 |
+| Mangrove Reach (mangrove) | towering-cumulus 0.34 @ 1200 m | rain 0.45 / virga 0.1, cirrus 0.1 | cover 0.20 |
+| Saltwind Narrows (saltwind) | sea-streets 0.30 @ 1100 m | fog bank 0.35, cirrus 0.08 | cover 0.17 |
+| Highland Reservoir (reservoir) | fair-weather-cumulus 0.26 @ 1400 m | 2 contrails, cirrus 0.12 | cover 0.15 |
+| Olympus Basin (mars) | thin-ice-clouds 0.06 @ 2500 m | cirrus 0.45 | cover 0.06 |
+| Aegis Crossing (cliffbridge) | fair-weather-cumulus 0.28 @ 1200 m | 2 contrails, cirrus 0.25 | cover 0.16 |
 
 **Cost.** The trace's per-slot cost by repetition and the whole-frame A/B against c959ac4b6 are recorded with the lane's report (the shared probe mutex held the GPU runs back); the mobile tier never creates the layer, so phones keep the baked decks unchanged.
 

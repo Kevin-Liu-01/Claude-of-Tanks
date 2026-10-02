@@ -206,7 +206,15 @@ const skyOf = (id, time = 'day') => {
   for (const [name, row] of Object.entries(CLOUDSCAPE_REGIMES)) {
     assert.ok(CLOUD_MID_KINDS.includes(row.mid) && row.storms >= 0 && row.storms <= CLOUD_STORM_MAX && row.rain >= 0 && row.rain <= 1 && row.virga >= 0 && row.virga <= 1, name);
   }
-  assert.ok(CLOUDSCAPE_REGIMES['cumulonimbus-front'].storms > 0 && CLOUDSCAPE_REGIMES['cumulonimbus-front'].rain > 0.5, 'a front brings storm cells and rain');
+  assert.ok(CLOUDSCAPE_REGIMES['cumulonimbus-front'].rain > 0.5, 'a front brings rain');
+  // (2026-10-02, the second lab: the distant cells read as mushroom clouds — a narrow stem under a round flat cap — on
+  // the open horizons of Redrock, the Delta, Mangrove and the Steppe, and lit by a night strike as an explosion; no
+  // regime or map raises them until the tower and the anvil are rebuilt; the mid layer likewise, from the first lab)
+  for (const [name, row] of Object.entries(CLOUDSCAPE_REGIMES)) assert.ok(row.storms === 0 && row.mid === 'none', `${name}: no storm cells, no mid layer`);
+  for (const id of MAP_IDS) {
+    const c = getMapConfig(id).clouds ?? {};
+    assert.ok(!c.storms && !c.mid && !c.sunset?.mid && !c.night?.mid, `${id}: no storm cells, no mid layer`);
+  }
   assert.ok(CLOUDSCAPE_REGIMES['cumulus-humilis'].virga > 0.5, 'dry-air cumulus hangs virga');
   const mid = deriveCloudLayerPreset({ ...skyOf('verdant'), cloudscape: { regime: 'fair-weather-cumulus', mid: 'altocumulus' } });
   assert.ok(mid.midAltM >= mid.baseM + mid.thicknessM + 300, 'the mid layer stands clear over the slab');
