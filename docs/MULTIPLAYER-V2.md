@@ -904,7 +904,9 @@ one map fetched per hosted match, nothing on the boot path.
 
 **Bundle.** `vite build` at the base (a2b660786) and this tip: `main-*.js` 763,135 → 764,155 B raw (+1,020),
 228,927 → 229,059 B brotli (+132). The host Worker chunk `matchHostWorker-*.js` is 10.4 MB raw / 2.1 MB brotli
-(the actor, the simulation, the fleet builders) and loads only when a seat hosts.
+(the actor, the simulation, the fleet builders) and loads only when a seat hosts. (2026-10-01: 1.33 MB raw / 0.29 MB
+brotli from 11.55 / 1.78 — the actor reads the spec-only `src/vehicles/authorityFleet.ts` and the host loads its
+roster's combat-anatomy chunks at boot: 0.49 MB raw / 77 KB brotli more for a 3-hull roster.)
 
 **Receipts and proofs.** `roomClientSignals`, `webRtcTransport` (on the scripted WebRTC world
 `rtcDouble.test-support.ts`), `rtcClientLink`, `matchActorResume`, `seatTokenWeb`, `hostPlan`, `migrationState`
@@ -951,7 +953,9 @@ the client then simply stays.~~ P3: the double now applies P1's rule and `tools/
 client under it on the real actor (the match resumes on the last resort after the 30 s report budget). P1b (2026-09-28):
 the room now elects at once on the decline (§13.2.1) and the same receipt measures 1 ms. (3) Hidden entities resume up to one keyframe interval old; a cheaper sealed *delta*
 stream is the follow-up if the soak shows it matters. (4) The Worker chunk is heavy (10.4 MB raw): the fleet builders
-ride along because the actor imports `tankFactory`; a fleet-family split for the host is the P3 optimisation. (5) The
+ride along because the actor imports `tankFactory`; a fleet-family split for the host is the P3 optimisation. Done
+2026-10-01: the actor reads the spec-only authority fleet (no builders) and the roster's calibration groups load at boot.
+(5) The
 three-browser proof against the real room service needs the Worker to allow a development origin (`ALLOWED_ORIGINS`)
 or a run from the site origin — done from the site origin (`--site`, §13.8). (6) The old host's return in the headless proof is at the mercy of the host's GPU: the
 compile budget (5 s, extended once) is a production constant; a green rejoin needs a quiet host.
@@ -1671,7 +1675,9 @@ the host — closes its tab, p2 is elected and resumes from the sealed keyframe;
 400 ms before a view ends, before its host stops, or before the seat's link resets is not judged (the interpolation delay
 keeps it from presenting; a reset clears the queue by design). Limit: one Node process cannot configure the fleet factory
 twice (the actor's eager `tankFactory` and the presentation's lazy `fleetFactory`), so the presentations have no actors —
-own-shot feedback, wreck poses and ERA are receipted in `battlePresentation.selftest`, not measured here.
+own-shot feedback, wreck poses and ERA are receipted in `battlePresentation.selftest`, not measured here. (2026-10-01: the
+actor no longer loads `tankFactory` — it reads the spec-only authority fleet — so the actor no longer stands in the way;
+the audit itself still stubs the visuals.)
 
 **The state-channel matrix.** How each thing the peer presents is produced, travels and is applied; the verdict per scenario
 after this lane (the audit's rows are in the scratchpad's `world-events-matrix-after.md`).
