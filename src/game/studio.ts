@@ -46,7 +46,9 @@ import {
   createTankState, resetTankVerticalState, updateTank, SIM_DT,
 } from '../sim/movement.ts';
 import { createShell, stepShell } from '../sim/ballistics.ts';
-import { conformStudioActor, resetStudioActorSupport } from './studioActorSupport.ts';
+import { conformStudioActor, resetStudioActorSupport, studioSupportBelly } from './studioActorSupport.ts';
+import { createStructureSupportField, type StructureSupportField } from '../sim/structureSupport.ts';
+import type { CollisionRecord } from '../world/collision.ts';
 import { createBus } from './stateCore.ts';
 import {
   CAMO_CATALOG_PATTERN_IDS, setCamoOverride, applyCamoPatterns,
@@ -287,6 +289,9 @@ interface StudioActor extends MovementEntity, StudioPanelActor {
   filmScrollL?: number;
   filmScrollR?: number;
   timelineTrack: ActorTrack | null;
+  /** The battle hull's ride surface (terrain + standable primitive tops), per actor and world. */
+  support: StructureSupportField | null;
+  supportWorld: WorldRuntime | null;
 }
 
 type ActorRef = StudioActor | StudioPanelActor | string | number | null | undefined;
@@ -892,6 +897,24 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * @param {object} a actor
    * @param {number} [steps]
    */
+  // Studio actors ride what battle hulls ride (round 30 structure support: terrain plus the standable tops of the
+  // collision primitives below the belly), and a tank staged over a bridge starts on the deck, not on the river bed
+  // or gorge floor under it (the height field there is the excavated surface; the deck is collision support).
+  const _deckCandidates: CollisionRecord[] = [], _deckScratch: CollisionRecord[] = [];
+  function actorSupport(a: StudioActor): StructureSupportField | typeof hfProxy {
+    const world = getWorld();
+    if (!world) return hfProxy;
+    if (!a.support || a.supportWorld !== world) {
+      a.support = createStructureSupportField(hfProxy as Parameters<typeof createStructureSupportField>[0], world);
+      a.supportWorld = world;
+    }
+    const x = a.state.pos.x, z = a.state.pos.z;
+    _deckCandidates.length = 0;
+    world.queryObstacles(x - 4, z - 4, x + 4, z + 4, _deckCandidates);
+    a.support.beginHull(x, z, studioSupportBelly(_deckCandidates, x, z, a.state.pos.y + (a.contactGeom?.bottomYM ?? 0), _deckScratch));
+    return a.support;
+  }
+
   function settleActor(a: StudioActor, steps = SETTLE_STEPS): void {
     const p = a.pose;
     const st = a.state;
@@ -899,7 +922,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     actorRootPosition(a, p.x, p.z, yaw, _v3);
     st.pos.x = _v3.x;
     st.pos.z = _v3.z;
-    resetTankVerticalState(st, hfProxy.getHeightAt(p.x, p.z));
+    resetTankVerticalState(st, actorSupport(a).getHeightAt(st.pos.x, st.pos.z));
     st.yaw = yaw;
     st.speed = 0;
     st.yawRate = 0;
@@ -920,7 +943,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const aimLocked = a.input.aimLocked;
     if (a.authoredSuspensionAimPitch !== null) a.input.aimLocked = true;
     try {
-      for (let i = 0; i < steps; i++) updateTank(a, hfProxy, SIM_DT);
+      for (let i = 0; i < steps; i++) updateTank(a, actorSupport(a), SIM_DT);
     } finally { a.input.aimLocked = aimLocked; }
     // pin the authored pose exactly (updateTank slews at spec rates; slope
     // slide may creep pos) — staging is authoritative, sim only shapes
@@ -978,7 +1001,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // Six seconds covers the hydraulic rate limit and the slower chassis
     // attitude/support springs at either end of the authored travel range.
     for (let frame = 0; frame < 360; frame++) {
-      updateTank(a, hfProxy, SIM_DT);
+      updateTank(a, actorSupport(a), SIM_DT);
       // Studio placement remains authoritative while the suspension solver
       // owns vertical seating and attitude.
       st.pos.x = rootX;
@@ -1134,6 +1157,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       timelineYaw: (cfg.facingDeg || 0) * DEG,
       supportStep: 0, supportX: x, supportZ: z, supportYaw: (cfg.facingDeg || 0) * DEG,
       timelineTrack: null,
+      support: null,
+      supportWorld: null,
     };
   }
 
@@ -1165,10 +1190,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // so setActorState('wrecked'/'turret-popped') never pays first-use
     // program compiles mid-beat. (GLB swaps re-hook in the swap pipeline.)
     if (visual.prewarmBurn) visual.prewarmBurn();
+    let owner: StudioActor | null = null;
     if (visual.setGroundSampler) {
-      visual.setGroundSampler((x: number, z: number) => hfProxy.getHeightAt(x, z));
+      // late-bound: the running gear conforms to the same surface the hull rides (a bridge deck, a roof)
+      visual.setGroundSampler((x: number, z: number) => (owner?.support ?? hfProxy).getHeightAt(x, z));
     }
     const a = createActorRecord(cfg, specId, spec, visual, camoSeed);
+    owner = a;
     actors.push(a);
     // Scene JSON load stages a complete batch. Rebuilding the rail bindings
     // and DOM actor list after every intermediate actor created redundant
@@ -2602,7 +2630,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       st.turretYaw = _actorSample.turretDeg * DEG;
       st.gunPitch = clampGunDeg(a.spec, _actorSample.gunDeg, _actorSample.turretDeg) * DEG;
 
-    if (support) conformStudioActor(a, hfProxy, dt, a.visual.isDestroyed());
+    if (support) conformStudioActor(a, actorSupport(a), dt, a.visual.isDestroyed());
   }
 
   function applyStoryboardActors(timeMs: number, dt = 0, settle = false): void {
