@@ -5,7 +5,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { createLayout } from './terrain.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
-import { ROAD_ENDPOINT_INTENTS, completeRoadEndpoints } from './maps/roadEndpoints.ts';
+import { ROAD_ENDPOINT_INTENTS, completeRoadsWithIntents } from './maps/roadEndpoints.ts';
 import { buildRoadStationOrigins, buildPhysicalRoadStationOrigins,
   authoredRoadStationCount, authoredRoadStationIndex } from './maps/roadStations.ts';
 import { planUtilityPoleStation } from './propPlacement.ts';
@@ -82,10 +82,14 @@ for (let road = 0; road < 2; road++) for (let i = 0; i < 30; i++) {
   assert.equal(extended[road][at], original[road][i], 'exact original point ownership, not coordinate snapping');
 }
 
+// Three north-south spines and a crossbar joining the first and third: the synthetic road set these checks complete
+// under explicit intents (Frontier Basin carried exactly these intents until its 2026-10-02 redesign).
+const CROSSBAR_INTENTS = [['boundary', 'boundary'], ['boundary', 'boundary'], ['boundary', 'boundary'],
+  [{ junction: 0 }, { junction: 2 }]];
 const crossingSource = [-100, 0, 100].map(x => [[x, -400], [x, 0], [x, 400]]);
 crossingSource.push([-150, -125, -75, 0, 75, 125, 150].map(x => [x, 0]));
 const frozen = JSON.stringify(crossingSource);
-const crossingRoads = completeRoadEndpoints('frontier', crossingSource);
+const crossingRoads = completeRoadsWithIntents(CROSSBAR_INTENTS, crossingSource);
 const crossing = layout(crossingRoads, buildRoadStationOrigins(crossingSource, crossingRoads));
 assert.equal(JSON.stringify(crossingSource), frozen, 'completion and metadata leave source arrays unchanged');
 assert.deepEqual(crossing.roadStations[3], { count: 7, first: 2, last: 4, offset: -1 });
@@ -95,7 +99,7 @@ assert.equal(authoredRoadStationIndex(crossing, 3, 1), -1, 'trimmed approach is 
 assert.equal(authoredRoadStationIndex(crossing, 3, 2), 1);
 assert.equal(authoredRoadStationIndex(crossing, 3, 4), -1, 'a new intersection cannot supply an original successor');
 const exactJoinSource = [...crossingSource.slice(0, 3), [[-100, 0], [-50, 0], [50, 0], [100, 0]]];
-const exactJoinRoads = completeRoadEndpoints('frontier', exactJoinSource);
+const exactJoinRoads = completeRoadsWithIntents(CROSSBAR_INTENTS, exactJoinSource);
 const exactJoinOrigins = buildRoadStationOrigins(exactJoinSource, exactJoinRoads);
 assert.equal(exactJoinOrigins[3], null, 'an exact authored junction keeps original station identity, not a false trimmed marker');
 assert.equal(exactJoinRoads[3][0], exactJoinSource[3][0]);

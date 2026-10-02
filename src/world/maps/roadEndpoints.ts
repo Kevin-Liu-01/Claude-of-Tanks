@@ -20,7 +20,7 @@ export function originalRoadPlacementConfig(cfg: TerrainMapConfig | null): Terra
 
 export type RoadPoint = readonly [number, number];
 type RoadEndpoint = 'boundary' | 'loop' | 'shore' | { junction: number; at?: RoadPoint };
-type RoadEnds = readonly [RoadEndpoint, RoadEndpoint];
+export type RoadEnds = readonly [RoadEndpoint, RoadEndpoint];
 const through: RoadEnds = ['boundary', 'boundary'];
 const join = (start: number, end: number): RoadEnds => [{ junction: start }, { junction: end }];
 
@@ -57,7 +57,10 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   // Cinder Junction redesign (2026-10-01): the central road, the two crossing roads and the two yard service roads all
   // run edge to edge; each works road leaves a service road and ends on a crossing road.
   railyard: [through, through, through, through, through, join(3, 2), join(4, 1)],
-  frontier: [through, through, through, join(0, 2)],
+  // Frontier Basin redesign (2026-10-02): the main road and the valley road run edge to edge through the crossroads;
+  // each farm lane enters from the edge past a ridge's end and ends on the valley road; each ridge lane leaves the main
+  // road at a saddle and ends on the valley road at a mill.
+  frontier: [through, through, ['boundary', { junction: 1 }], ['boundary', { junction: 1 }], join(0, 1), join(0, 1)],
   fjord: [through, through, through, join(0, 2), join(0, 2)],
   // The two southwest approaches converge before the border: one shared
   // exit avoids intersecting unequal-height parallel cuts in the narrow rim.
@@ -171,7 +174,14 @@ export function completeRoadEndpoints(mapId: string | undefined, roads: [number,
   half = 512): [number, number][][] {
   const intents = ROAD_ENDPOINT_INTENTS[mapId as MapId];
   if (!intents) return roads; // ad-hoc selftest/authoring layouts are unchanged
-  if (roads.length !== intents.length) throw new Error(`${mapId}: road endpoint intent count does not match routes`);
+  return completeRoadsWithIntents(intents, roads, half, mapId);
+}
+
+/** The same completion under explicit intents: receipts that exercise the machinery on synthetic road sets name their
+ * own intents instead of borrowing a battlefield's, whose road net a redesign may change. */
+export function completeRoadsWithIntents(intents: readonly RoadEnds[], roads: [number, number][][],
+  half = 512, label = 'synthetic'): [number, number][][] {
+  if (roads.length !== intents.length) throw new Error(`${label}: road endpoint intent count does not match routes`);
   const portals = roads.map((road, index) => {
     let line = intents[index][0] === 'boundary' ? completeStart(road, 'boundary', roads, half) : road;
     if (intents[index][1] === 'boundary') line = completeStart(line.slice().reverse(), 'boundary', roads, half).reverse();
@@ -180,7 +190,7 @@ export function completeRoadEndpoints(mapId: string | undefined, roads: [number,
   return portals.map((road, index) => {
     let line = completeStart(road, intents[index][0], portals, half);
     line = completeStart(line.slice().reverse(), intents[index][1], portals, half).reverse();
-    if (line.length < 2) throw new Error(`${mapId}: road ${index} has no length after junction completion`);
+    if (line.length < 2) throw new Error(`${label}: road ${index} has no length after junction completion`);
     return line;
   });
 }
@@ -256,6 +266,12 @@ export function alignAddedRoadJunctionGrades(mapId: string | undefined,
   source: readonly (readonly RoadPoint[])[], completed: readonly (readonly RoadPoint[])[], elevations: number[][]): void {
   const intents = ROAD_ENDPOINT_INTENTS[mapId as MapId];
   if (!intents) return;
+  alignAddedRoadJunctionGradesWithIntents(intents, source, completed, elevations);
+}
+
+/** alignAddedRoadJunctionGrades under explicit intents (see completeRoadsWithIntents). */
+export function alignAddedRoadJunctionGradesWithIntents(intents: readonly RoadEnds[],
+  source: readonly (readonly RoadPoint[])[], completed: readonly (readonly RoadPoint[])[], elevations: number[][]): void {
   for (let route = 0; route < completed.length; route++) for (let end = 0; end < 2; end++) {
     const intent = intents[route][end], line = completed[route], at = end ? line.length - 1 : 0;
     if (typeof intent !== 'object' || source[route].includes(line[at])) continue;

@@ -39,7 +39,7 @@ const expected = {
   autumn: [5873, 5727, 5822],
   steppe: [2429, 2141, 1302],
   railyard: [2846, 2848, 1899], // 2026-10-01 Cinder Junction redesign (docs/MAP-LAYOUT-BRIEF.md); was [2825, 2785, 1983]
-  frontier: [7905, 7634, 8284],
+  frontier: [7733, 7597, 8120], // 2026-10-02 Frontier Basin redesign (docs/MAP-LAYOUT-BRIEF.md); was [7905, 7634, 8284]
   fjord: [7357, 7301, 7679],
   delta: [7742, 7430, 9644],
   badlands: [3013, 2917, 1920],

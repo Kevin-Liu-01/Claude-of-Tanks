@@ -77,6 +77,7 @@ const timeouts = resultReasons.filter((reason) => reason === 'time_limit').lengt
 // 104 s, Saltwind Narrows 104 s and Saltmere Bay 113 s. All four predate the maps lane: the PR head 1cc106369,
 // with the old pilot maps, ends the same four matches at the same times. Those four maps lead the maps lane's
 // next layout batch, each rebuilt for a longer opening; remove this allowance once their matches clear 120 s.
+// Frontier Basin's rebuild (2026-10-02) clears its match: seed 29003 now ends at 177 s, and the fleet median is 222.4 s.
 const TARGET_MEDIAN_S = { min: 240, max: 480 };
 const PENDING_RULING_MEDIAN_FLOOR_S = 180;
 assert.ok(medianS >= PENDING_RULING_MEDIAN_FLOOR_S && medianS <= TARGET_MEDIAN_S.max,
