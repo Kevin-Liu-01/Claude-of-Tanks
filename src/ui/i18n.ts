@@ -11,11 +11,15 @@
  * - `formatNumber` / `formatDate` route through `Intl` with the active locale,
  *   so zh-CN no longer shows English commas in the HUD or end overlay.
  *
- * This module is intentionally DOM-free at import time: `getLocale()` only
- * touches `localStorage` and `navigator` when first called, not at module load.
+ * This module never writes the DOM or storage at import time: `getLocale()`
+ * persists and mirrors the locale when first called. Module evaluation only
+ * reads the boot locale (route, storage, navigator) so that a Chinese boot can
+ * await its catalog before any dependent module runs (top-level await below):
+ * English documents never download the zh-CN catalog, Chinese ones never
+ * flash English (FE-P3).
  */
 
-import { CATALOG } from './i18nCatalog.ts';
+import { loadLocaleDictionary, localeDictionary } from './i18nDictionaries.ts';
 import {
   DEFAULT_LOCALE as FALLBACK_LOCALE,
   resolveLocalePath,
@@ -107,14 +111,25 @@ export function getLocale(): SupportedLocale {
   return currentLocale;
 }
 
-/** Switch the active locale and broadcast `cot:locale-changed` on `window`. */
-export function setLocale(locale: SupportedLocale): void {
+/**
+ * Switch the active locale and broadcast `cot:locale-changed` on `window`.
+ * Product switches reload the document right after (screens own translated DOM)
+ * and the next document awaits its catalog. An in-place switch to a catalog that
+ * is not resident yet broadcasts again once it is; the promise settles then.
+ */
+export function setLocale(locale: SupportedLocale): Promise<void> {
   ensureInitialised();
   const previous = currentLocale;
   currentLocale = locale;
   persist(locale);
   syncLocaleCssVariables();
   broadcast(previous, locale);
+  if (localeDictionary(locale)) return Promise.resolve();
+  return loadLocaleDictionary(locale).then(() => {
+    if (currentLocale !== locale) return;
+    syncLocaleCssVariables();
+    broadcast(previous, locale);
+  }, () => { /* offline or removed chunk: English until the next document retries */ });
 }
 
 /**
@@ -171,11 +186,9 @@ function formatTemplate(template: string, vars?: Record<string, string | number>
  */
 export function t(key: string, vars?: Record<string, string | number>): string {
   ensureInitialised();
-  // Lazy require keeps the import graph free of cycles with the catalog.
-  const dict = loadDictionary();
-  const bundle = dict[currentLocale] ?? dict[FALLBACK_LOCALE];
-  const fallback = dict[FALLBACK_LOCALE];
-  const raw = bundle[key] ?? fallback?.[key] ?? key;
+  const fallback = localeDictionary(FALLBACK_LOCALE);
+  const bundle = localeDictionary(currentLocale) ?? fallback;
+  const raw = bundle?.[key] ?? fallback?.[key] ?? key;
   return formatTemplate(raw, vars);
 }
 
@@ -211,9 +224,13 @@ export function formatDate(
   }
 }
 
-type Dictionary = Readonly<Record<string, string>>;
-type Catalog = Readonly<Record<SupportedLocale, Dictionary>>;
-function loadDictionary(): Catalog {
-  return CATALOG;
+// In a browser document the boot locale's dictionary is resident before any module
+// that imports this one evaluates. Workers and servers reach this module through
+// shared code (the map catalog) and never wait on a download while evaluating: a
+// module worker that awaited here could miss messages posted during the gap. A
+// failed catalog chunk (offline, or a removed deployment, which the inline watchdog
+// recovers by reloading) degrades to English, never a stalled boot.
+if (typeof window !== 'undefined') {
+  await loadLocaleDictionary(detectLocale()).catch(() => { /* English fallback */ });
 }
 

@@ -26,7 +26,7 @@ import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Connect } from 'vite';
 import { renderProductStats } from './src/productStats.ts';
-import { localizeHtmlDocument } from './src/presentation/localizedHtml.ts';
+import { LOCALE_CATALOG_META, localizeHtmlDocument } from './src/presentation/localizedHtml.ts';
 import { publicRouteForEntry, resolveLocalePath } from './src/ui/localeRouting.ts';
 import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.ts';
 import { assertPublicBuildEnv } from './tools/publicBuildEnv.ts';
@@ -235,6 +235,33 @@ export default defineConfig({
         if (!route) return html;
         const locale = requestedLocale === 'zh-CN' || localePath.locale === 'zh-CN' ? 'zh-CN' : 'en-US';
         return localizeHtmlDocument(html, route, locale);
+      },
+    },
+    {
+      // FE-P3: zh-CN is a lazy chunk. Every built page names it in an inert meta; localizeHtmlDocument turns
+      // the meta into a modulepreload on Chinese documents (build-time /cn/ pages and the middleware's
+      // request-time ones), so the catalog downloads with the boot graph and English pages never fetch it.
+      name: 'cot-locale-catalog-meta',
+      apply: 'build',
+      transformIndexHtml: {
+        order: 'post',
+        handler(_html, ctx) {
+          const catalog = Object.values(ctx.bundle ?? {}).find((output) => output.type === 'chunk'
+            && output.moduleIds.some((id) => id.split('?', 1)[0].endsWith('/src/ui/i18nCatalog.zh-CN.json')));
+          if (!catalog) throw new Error('cot-locale-catalog-meta: the zh-CN catalog chunk is missing from the bundle');
+          // The loader must name the emitted chunk: an unrewritten specifier would request a file that does not exist.
+          const loaders = Object.values(ctx.bundle ?? {}).filter((output) => output.type === 'chunk'
+            && output.dynamicImports.includes(catalog.fileName));
+          const chunkName = catalog.fileName.split('/').pop() ?? catalog.fileName;
+          if (!loaders.length || loaders.some((output) => output.type === 'chunk' && !output.code.includes(chunkName))) {
+            throw new Error(`cot-locale-catalog-meta: no chunk imports ${catalog.fileName} by its emitted name`);
+          }
+          return [{
+            tag: 'meta',
+            attrs: { name: LOCALE_CATALOG_META, 'data-locale': 'zh-CN', content: `/${catalog.fileName}` },
+            injectTo: 'head',
+          }];
+        },
       },
     },
     {

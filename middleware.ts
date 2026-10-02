@@ -1,4 +1,6 @@
 import { next } from '@vercel/functions';
+// Both catalogs, resident before the metadata helpers below resolve zh-CN text.
+import './src/ui/i18nCatalog.ts';
 import { localizeHtmlDocument } from './src/presentation/localizedHtml.ts';
 import {
   injectSiteMetadata,

@@ -18,7 +18,7 @@ assert.equal(
   soloBattleLoadingModeLabel('capture_the_flag', 'verdant'),
   'Capture the Flag · Selected Battlefield',
 );
-setLocale('zh-CN');
+await setLocale('zh-CN'); // the zh-CN catalog loads on demand (FE-P3)
 assert.equal(
   soloBattleLoadingModeLabel('capture_the_flag', 'verdant'),
   '夺旗战 · 指定战场',
