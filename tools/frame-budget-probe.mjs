@@ -46,7 +46,7 @@ const TOOL = 'frame-budget-probe';
 const DEFAULTS = Object.freeze({
   pattern: 'ABBA', views: ['chase', 'centre-far'], viewports: ['1600x900', '1920x1080'], frames: 240, block: 30,
   sides: '13x14', spec: 't90m_x', preset: 'high', governor: 'pinned', port: 5395, budgetMin: 18, settleMs: 2500,
-  tier: 'desktop', prefixFrames: 330, noFlush: false, segmented: false, scales: null, liveSeconds: 40,
+  tier: 'desktop', profileSeconds: 0, prefixFrames: 330, noFlush: false, segmented: false, scales: null, liveSeconds: 40,
 });
 /** The prefix checkpoints a toggle block rotates through (its last one is the whole frame). */
 const TOGGLE_CHECKPOINTS = Object.freeze(['world', 'clouds', 'shadow', 'scene', 'upscale']);
@@ -104,6 +104,7 @@ export function parseFrameProbeArgs(argv) {
       case 'scales': o.scales = list(need()).map(Number); break;
       case 'live-seconds': o.liveSeconds = Math.max(5, Number(need()) || 40); break;
       case 'tier': o.tier = need(); break;
+      case 'profile': o.profileSeconds = Math.max(1, Number(raw ?? 4) || 4); break;
       case 'out': o.out = path.resolve(need()); break;
       case 'tag': o.tag = need(); break;
       case 'report': o.report = list(need()).map((r) => path.resolve(r)); break;
@@ -333,6 +334,49 @@ function installMover(speed) {
   return { speed, camClear: +camClear.toFixed(2), heading: [+dir.x.toFixed(3), +dir.z.toFixed(3)] };
 }
 
+/** Chunk name of a script URL ('/assets/audioEngine-ab12cd34.js' → 'audioEngine'); V8's pseudo nodes keep their names. */
+export function chunkOfUrl(url, functionName = '') {
+  if (!url) return /^\(.*\)$/.test(functionName) ? functionName : '(native)';
+  const base = url.split(/[?#]/)[0].split('/').pop() || url;
+  return base.replace(/\.m?js$/, '').replace(/-[a-z0-9_]{6,}$/i, '');
+}
+
+/** Self time per chunk from a CDP profile (each sample charged the delta to the next one). */
+export function profileSelfByChunk(profile) {
+  const chunkOf = new Map();
+  for (const node of profile.nodes) chunkOf.set(node.id, chunkOfUrl(node.callFrame?.url, node.callFrame?.functionName));
+  const totals = new Map();
+  const { samples = [], timeDeltas = [] } = profile;
+  for (let i = 0; i < samples.length; i++) {
+    const us = timeDeltas[i + 1] ?? 0;
+    const chunk = chunkOf.get(samples[i]) ?? '(unknown)';
+    totals.set(chunk, (totals.get(chunk) || 0) + us);
+  }
+  return [...totals].map(([chunk, us]) => ({ chunk, ms: +(us / 1000).toFixed(2) })).sort((a, b) => b.ms - a.ms);
+}
+
+async function profileMainThread(page, seconds) {
+  const cdp = await page.target().createCDPSession();
+  try {
+    await cdp.send('Profiler.enable');
+    await cdp.send('Profiler.setSamplingInterval', { interval: 200 });
+    await page.evaluate(() => { window.__FBP_PROFILE_FRAMES = 0; const tick = () => { window.__FBP_PROFILE_FRAMES++; window.__FBP_PROFILE_RAF = requestAnimationFrame(tick); }; window.__FBP_PROFILE_RAF = requestAnimationFrame(tick); });
+    await cdp.send('Profiler.start');
+    await sleep(seconds * 1000);
+    const { profile } = await cdp.send('Profiler.stop');
+    const frames = await page.evaluate(() => { cancelAnimationFrame(window.__FBP_PROFILE_RAF); return window.__FBP_PROFILE_FRAMES; });
+    const byChunk = profileSelfByChunk(profile);
+    const perFrame = (ms) => (frames ? +(ms / frames).toFixed(3) : null);
+    const audio = byChunk.filter((c) => /audio|sound|voice|vehicleRig|weaponAudio|mixer|procedural|ambience|crewRadio|sfx/i.test(c.chunk));
+    const audioMs = audio.reduce((sum, c) => sum + c.ms, 0);
+    return { seconds, frames, byChunk: byChunk.slice(0, 24).map((c) => ({ ...c, perFrameMs: perFrame(c.ms) })),
+      audio: { chunks: audio.map((c) => c.chunk), ms: +audioMs.toFixed(2), perFrameMs: perFrame(audioMs) } };
+  } finally {
+    await cdp.send('Profiler.disable').catch(() => {});
+    await cdp.detach().catch(() => {});
+  }
+}
+
 // ---------------------------------------------------------------------------------------------- host side
 
 function loadAverage() { return os.loadavg().map((v) => +v.toFixed(2)); }
@@ -543,6 +587,14 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }) {
       if (options.scales) await page.evaluate(() => window.__DEBUG.post.pinDynScale(1));
     }
   }
+  // --profile[=s]: a CDP CPU profile of the main thread at the first pose, self time grouped by chunk (the audio
+  // engine, the world, three, the entry...), per presented frame — attribution for what no timer label covers
+  let cpuProfile = null;
+  if (options.profileSeconds) {
+    await poseView(page, options.views[0].split('@')[0]);
+    await sleep(1500);
+    cpuProfile = await profileMainThread(page, options.profileSeconds);
+  }
   const memory = await page.evaluate(() => {
     const R = window.__DEBUG.renderer;
     return { geometries: R.info.memory.geometries, textures: R.info.memory.textures, programs: R.info.programs?.length ?? null,
@@ -552,7 +604,7 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }) {
   return { mapId: slot.mapId, readyMs, entryMs, textures, timer, emulator, frozen: { dynScale: frozen.dynScale, perfTrim: frozen.perfTrim },
     roster: { count: frozen.roster.length, player: frozen.roster.find((r) => r.isPlayer)?.specId ?? null,
       opponents, teams: frozen.roster.reduce((a, r) => { a[r.team] = (a[r.team] || 0) + 1; return a; }, {}) },
-    samples, memory, longTasks: { total: tasks.length, over100: tasks.filter((t) => t.ms >= 100).length, max: tasks.reduce((m, t) => Math.max(m, t.ms), 0) },
+    samples, cpuProfile, memory, longTasks: { total: tasks.length, over100: tasks.filter((t) => t.ms >= 100).length, max: tasks.reduce((m, t) => Math.max(m, t.ms), 0) },
     pageErrors: errors };
 }
 
@@ -714,6 +766,26 @@ export function buildFrameReport(records, labels = null) {
   return out;
 }
 
+/** Per map and label: the median per-frame self time of every chunk across the slots' CPU profiles (--profile). */
+export function buildProfileReport(records) {
+  const out = {};
+  const median = (xs) => { const v = xs.filter(Number.isFinite).sort((p, q) => p - q); return v.length ? +v[Math.floor((v.length - 1) / 2)].toFixed(3) : null; };
+  for (const r of records) {
+    if (!r.cpuProfile?.byChunk) continue;
+    const row = ((out[r.mapId] ||= {})[r.label] ||= { slots: 0, chunks: {}, audio: [] });
+    row.slots++;
+    for (const c of r.cpuProfile.byChunk) (row.chunks[c.chunk] ||= []).push(c.perFrameMs);
+    row.audio.push(r.cpuProfile.audio?.perFrameMs ?? 0);
+  }
+  for (const labels of Object.values(out)) {
+    for (const row of Object.values(labels)) {
+      row.chunks = Object.fromEntries(Object.entries(row.chunks).map(([k, v]) => [k, median(v)]).sort((x, y) => y[1] - x[1]));
+      row.audio = median(row.audio);
+    }
+  }
+  return out;
+}
+
 /** Markdown for a report: one table per map × viewport × view (and toggle). */
 function formatFrameReport(report, { proxy = 'rtx4050-laptop' } = {}) {
   const ratios = proxyRatios(MID_RANGE_PROXIES[proxy]);
@@ -744,10 +816,18 @@ if (isMainModule(import.meta.url)) {
   try { options = parseFrameProbeArgs(process.argv.slice(2)); }
   catch (error) { console.error(error.message); process.exit(1); }
   if (options.report) {
-    const report = buildFrameReport(readSlotRecords(options.report), options.labels);
+    const records = readSlotRecords(options.report);
+    const report = buildFrameReport(records, options.labels);
+    const profiles = buildProfileReport(records);
     const outDir = options.report[0];
-    writeFileSync(path.join(outDir, 'frame-report.json'), JSON.stringify(report, null, 1));
-    const md = formatFrameReport(report);
+    writeFileSync(path.join(outDir, 'frame-report.json'), JSON.stringify({ ...report, cpuProfiles: profiles }, null, 1));
+    let md = formatFrameReport(report);
+    for (const [mapId, labels] of Object.entries(profiles)) {
+      md += `\n### ${mapId} · main-thread CPU by chunk (ms per frame, CDP profile at the first pose)\n\n`;
+      for (const [label, row] of Object.entries(labels)) {
+        md += `- ${label} (${row.slots} slots): audio ${row.audio} · ${Object.entries(row.chunks).slice(0, 10).map(([k, v]) => `${k} ${v}`).join(' · ')}\n`;
+      }
+    }
     writeFileSync(path.join(outDir, 'frame-report.md'), md);
     console.log(md);
   } else {

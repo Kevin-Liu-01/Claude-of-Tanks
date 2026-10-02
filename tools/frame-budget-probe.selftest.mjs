@@ -6,7 +6,9 @@ import {
   FRAME_PASS_ORDER, MID_RANGE_PROXIES, installFramePassTimer, pairDeltas, projectFrameMs, proxyRatios, stats,
   summarizePassFrames,
 } from './frame-pass-timer.mjs';
-import { acquireProbeLocks, buildFrameReport, parseFrameProbeArgs, pinnedOpponents } from './frame-budget-probe.mjs';
+import {
+  acquireProbeLocks, buildFrameReport, buildProfileReport, chunkOfUrl, parseFrameProbeArgs, pinnedOpponents, profileSelfByChunk,
+} from './frame-budget-probe.mjs';
 import { compareCaptureSet, crc32, decodeLum, encodeLum, encodeRgbPng } from './frame-capture-compare.mjs';
 
 // ---------------------------------------------------------------------------------------------- fake page
@@ -243,6 +245,23 @@ assert.equal(stats([]).med, null);
   const png = encodeRgbPng(2, 1, Uint8Array.from([255, 0, 0, 0, 255, 0]));
   assert.deepEqual([...png.subarray(0, 8)], [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
   assert.equal(png.readUInt32BE(16), 2, 'IHDR width');
+}
+
+// CPU profile attribution: self time per chunk, each sample charged the delta to the next
+{
+  assert.equal(chunkOfUrl('http://127.0.0.1:5395/assets/audioEngine-ab12cd34.js'), 'audioEngine');
+  assert.equal(chunkOfUrl('http://127.0.0.1:5395/assets/three.core-k9f8d7s6.js'), 'three.core');
+  assert.equal(chunkOfUrl('', '(garbage collector)'), '(garbage collector)');
+  const byChunk = profileSelfByChunk({ nodes: [{ id: 1, callFrame: { url: '', functionName: '(root)' } },
+    { id: 2, callFrame: { url: '/assets/main-aaaaaaaa.js' } }, { id: 3, callFrame: { url: '/assets/audioEngine-bbbbbbbb.js' } }],
+  samples: [2, 3, 3, 2], timeDeltas: [0, 1000, 2000, 500, 0] });
+  assert.deepEqual(byChunk, [{ chunk: 'audioEngine', ms: 2.5 }, { chunk: 'main', ms: 1 }]);
+  const profiles = buildProfileReport([
+    { mapId: 'verdant', label: 'new', cpuProfile: { byChunk: [{ chunk: 'audioEngine', perFrameMs: 0.2 }], audio: { perFrameMs: 0.2 } } },
+    { mapId: 'verdant', label: 'new', cpuProfile: { byChunk: [{ chunk: 'audioEngine', perFrameMs: 0.4 }], audio: { perFrameMs: 0.4 } } },
+  ]);
+  assert.equal(profiles.verdant.new.slots, 2);
+  assert.equal(profiles.verdant.new.audio, 0.2, 'the lower median of two');
 }
 
 console.log('frame-budget probe: per-pass timer label algebra, whole-frame check, restore, pair deltas, roster pin, lock order, projection PASS');
