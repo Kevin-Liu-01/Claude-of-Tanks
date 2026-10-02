@@ -144,8 +144,11 @@ try {
     assert.match(plainOut, new RegExp(`^${id}: LEAKING — ${b.leakL} L reaches the deep interior \\(\\d+ gaps?\\); track lanes not excluded \\(--no-lanes\\); enclosed`, 'm'));
     litres[id] = { lane: a.trackLaneL, plain: b.leakL };
   }
-  // lane air as regenerated under the lane rule (d0cbb9fcd, 2026-09-21): E100 X 4.53 L, Leclerc classic X 0.80 L
-  assert.ok(Math.abs(litres.jpz_e100_x.lane - 4.53) <= 0.3, `E100 X lane air ${litres.jpz_e100_x.lane} L (pinned 4.53 L)`);
+  // lane air as regenerated under the lane rule (d0cbb9fcd, 2026-09-21): E100 X 4.53 L, Leclerc classic X 0.80 L.
+  // 2026-10-01: the owner's underbody removal (4c34b3e8b, docs/tank-generation/underbody-removal-20260930.md) took out
+  // the E100 X's two hullShadow walls (inner X +-0.9768), the inboard boundary of the lane air under the hull; with
+  // the walls restored in an A/B the same tree reads 4.53 L again, without them 2.97 L (fills regenerated to zero).
+  assert.ok(Math.abs(litres.jpz_e100_x.lane - 2.97) <= 0.3, `E100 X lane air ${litres.jpz_e100_x.lane} L (pinned 2.97 L since the 2026-09-30 wall removal)`);
   assert.ok(Math.abs(litres.leclerc_classic_x.lane - 0.8) <= 0.3, `Leclerc classic X lane air ${litres.leclerc_classic_x.lane} L (pinned 0.80 L)`);
 } finally { rmSync(tmp, { recursive: true, force: true }); }
 console.log(`track-lane-boxes.selftest: generator + check wiring, d0cbb9fcd lane fixture, band/shoe structure, mask == point test (${maskVoxels} lane voxels), synthetic branches, watertight lane exclusion (E100 X ${litres.jpz_e100_x.lane} L, Leclerc classic X ${litres.leclerc_classic_x.lane} L lane air reported, 0 L leak; --no-lanes ${litres.jpz_e100_x.plain} / ${litres.leclerc_classic_x.plain} L) and self-test hole conservation PASS`);

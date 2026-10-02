@@ -1,6 +1,6 @@
 import { markFleetBalanceFinalized } from './fleetBalanceState.ts';
 import { VEHICLE_ROLE_PROFILES, type TacticalDoctrine } from './roleProfiles.ts';
-import type { TankSpecRegistry } from './specContracts.ts';
+import type { FleetTankSpec, TankSpecRegistry } from './specContracts.ts';
 
 // Role tradeoffs layer on authored vehicle mobility and weapon identities. They do
 // not replace calibers, loading mechanisms, armor or damage with class templates.
@@ -18,6 +18,27 @@ const HANDLING: Record<TacticalDoctrine, { hull: number; turret: number; aim: nu
 };
 const applied = new WeakSet<object>();
 const rounded = (value: number, digits = 2): number => Number(value.toFixed(digits));
+type HandledSpec = Pick<FleetTankSpec, 'hullTraverseDegS' | 'turretTraverseDegS' | 'gun'>;
+
+/** One doctrine's layer on authored traverse rates and gun handling (pure). The
+ * fleet pass below applies it once; receipts use it to separate an authored
+ * envelope from its role tuning. */
+export function tacticalRoleHandling(spec: HandledSpec, doctrine: TacticalDoctrine): HandledSpec {
+  const tuning = HANDLING[doctrine];
+  return {
+    hullTraverseDegS: rounded(spec.hullTraverseDegS * tuning.hull, 1),
+    turretTraverseDegS: rounded(spec.turretTraverseDegS * tuning.turret, 1),
+    // Clone nested tuning: replicas may have borrowed the donor's gun record.
+    gun: { ...spec.gun, aimTimeS: rounded(spec.gun.aimTimeS * tuning.aim),
+      baseAccuracy: rounded(spec.gun.baseAccuracy * tuning.accuracy, 3),
+      bloom: { ...spec.gun.bloom,
+        move: rounded(spec.gun.bloom.move * tuning.move, 4),
+        hullRot: rounded(spec.gun.bloom.hullRot * tuning.turn, 4),
+        turret: rounded(spec.gun.bloom.turret * tuning.turn, 4),
+      },
+    },
+  };
+}
 
 /** Run after donor synchronization in BOTH browser and dedicated fleet assembly. */
 export function applyTacticalRoleBalance(registry: TankSpecRegistry): void {
@@ -26,18 +47,7 @@ export function applyTacticalRoleBalance(registry: TankSpecRegistry): void {
   for (const [id, profile] of Object.entries(VEHICLE_ROLE_PROFILES)) {
     const spec = registry[id];
     if (!spec) throw new Error(`Missing tactical role vehicle: ${id}`);
-    const tuning = HANDLING[profile.doctrine];
-    spec.hullTraverseDegS = rounded(spec.hullTraverseDegS * tuning.hull, 1);
-    spec.turretTraverseDegS = rounded(spec.turretTraverseDegS * tuning.turret, 1);
-    // Clone nested tuning: replicas may have borrowed the donor's gun record.
-    spec.gun = { ...spec.gun, aimTimeS: rounded(spec.gun.aimTimeS * tuning.aim),
-      baseAccuracy: rounded(spec.gun.baseAccuracy * tuning.accuracy, 3),
-      bloom: { ...spec.gun.bloom,
-        move: rounded(spec.gun.bloom.move * tuning.move, 4),
-        hullRot: rounded(spec.gun.bloom.hullRot * tuning.turn, 4),
-        turret: rounded(spec.gun.bloom.turret * tuning.turn, 4),
-      },
-    };
+    Object.assign(spec, tacticalRoleHandling(spec, profile.doctrine));
   }
   // Barak keeps advanced tracking and protection, with a longer stationary
   // settle than the lighter precision platforms rather than dominating both.

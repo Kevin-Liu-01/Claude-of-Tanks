@@ -9,6 +9,8 @@ import { tankTier } from './tier.ts';
 import { k2SourceMetadata } from './xk2Specs.ts';
 import { donorSpec } from './donorSpecs.ts';
 import { assertCurrentT90MLampSeats } from './historicalT90MLamps.test-support.mjs';
+import { VEHICLE_ROLE_PROFILES } from './roleProfiles.ts';
+import { tacticalRoleHandling } from './tacticalRoleBalance.ts';
 
 // 2026-09-15 owner rulings: the four T-90 X studies are tier X ("all should be tier 10 and prominent");
 // evening: "make the leopard 2a5m, leopard 2a5, leopard 2a6 tier 10" (the 2A5M and 2A5 studies live here).
@@ -34,6 +36,12 @@ for (const donor of new Set(Object.values(SOURCE_X_DONORS))) {
     donorFingerprints.set(donor, geometryFingerprint(tank.root));
   } finally { tank.dispose(); }
 }
+// 2026-10-01: the role balance (0e5fc79e2, tacticalRoleBalance.ts) layers each vehicle's doctrine onto its aim time,
+// base accuracy and movement/traverse bloom after donor synchronization. A retired donor template (merkava4) or the
+// XK2 source metadata carries no doctrine, so its study must equal that pre-role gun with the study's own doctrine
+// applied (merkava4_x: assault; k2_x: flanker), field for field. A registered donor carries its own doctrine.
+const roleTuned = (id, gun) => VEHICLE_ROLE_PROFILES[id]
+  ? tacticalRoleHandling({ hullTraverseDegS: 0, turretTraverseDegS: 0, gun }, VEHICLE_ROLE_PROFILES[id].doctrine).gun : gun;
 assert.equal(SOURCE_X_IDS.length, 13);
 for (const id of SOURCE_X_IDS) {
   const donor = SOURCE_X_DONORS[id], spec = TANK_SPECS[id], donorRow = donorSpec(TANK_SPECS, donor);
@@ -46,7 +54,8 @@ for (const id of SOURCE_X_IDS) {
   assert.ok(FLEET_GROUP_BY_ID[id].endsWith('X'), `${id}: independently demand-loaded builder`);
   assert.equal(typeof PROCEDURAL_PROFILES[id].build, 'function');
   assert.notEqual(PROCEDURAL_PROFILES[id].build, PROCEDURAL_PROFILES[donor]?.build);
-  assert.deepEqual(spec.gun, donor === 'k2' ? k2SourceMetadata().gun : donorRow.gun,
+  const templateGun = donor === 'k2' ? k2SourceMetadata().gun : RETIRED_DONORS.has(donor) ? donorRow.gun : null;
+  assert.deepEqual(spec.gun, templateGun ? roleTuned(id, templateGun) : donorRow.gun,
     `${id}: production donor combat balance remains independent of the XK2 hybrid`);
   assert.equal(spec.hp, donorRow.hp);
   assert.notEqual(spec.armor, donorRow.armor);
