@@ -64,6 +64,36 @@ async function checkSameMillisecondFifo() {
   }
 }
 
+async function checkLongWaitFifo() {
+  const waitingLockDir = join(root, 'long-wait.lock');
+  const waitingQueueDir = join(root, 'long-wait.queue');
+  mkdirSync(waitingLockDir);
+  const options = { lockDir: waitingLockDir, queueDir: waitingQueueDir,
+    lockStaleMs: 60_000, ticketStaleMs: 2_000 };
+  const first = createCaptureLock(options), later = createCaptureLock(options);
+  const acquired = [], pending = [];
+  try {
+    pending.push(first.acquire(10_000).then(() => { acquired.push('first'); first.release(); }));
+    const [ticket] = readdirSync(waitingQueueDir);
+    const initialMtime = statSync(join(waitingQueueDir, ticket)).mtimeMs;
+    // Keep a real waiter blocked beyond the ticket's stale period, then
+    // introduce a later job. Live waiting must not be mistaken for abandonment.
+    await new Promise(resolve => setTimeout(resolve, 3_100));
+    const waitingMtime = statSync(join(waitingQueueDir, ticket)).mtimeMs;
+    pending.push(later.acquire(10_000).then(() => { acquired.push('later'); later.release(); }));
+    rmSync(waitingLockDir, { recursive: true });
+    const settled = await Promise.allSettled(pending);
+    assert.ok(settled.every(result => result.status === 'fulfilled'), 'both long-wait jobs finish');
+    assert.ok(waitingMtime > initialMtime, 'waiting ticket has a liveness heartbeat');
+    assert.deepEqual(acquired, ['first', 'later'], 'a long wait retains its FIFO position');
+    assert.deepEqual(readdirSync(waitingQueueDir), [], 'long-wait tickets are cleaned up');
+  } finally {
+    rmSync(waitingLockDir, { recursive: true, force: true });
+    await Promise.allSettled(pending);
+    first.release(); later.release();
+  }
+}
+
 try {
   const lock = createCaptureLock({ lockDir, queueDir });
   await lock.acquire(100);
@@ -102,7 +132,8 @@ try {
   assert.deepEqual(readdirSync(queueDir), [], 'timed-out waits remove their queue ticket');
 
   await checkSameMillisecondFifo();
-  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, and same-millisecond FIFO passed');
+  await checkLongWaitFifo();
+  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond and long-wait FIFO passed');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

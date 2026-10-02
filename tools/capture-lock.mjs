@@ -126,6 +126,15 @@ export function createCaptureLock({
     mkdirSync(queueDir, { recursive: true });
     const ownTicket = reserveTicket(queueDir);
     const startedAt = Date.now();
+    // A legitimate capture ahead of us can outlast ticketStaleMs. Keep our
+    // waiting ticket alive without changing its filename or FIFO position.
+    const ticketHeartbeat = setInterval(() => {
+      try {
+        const now = new Date();
+        utimesSync(join(queueDir, ownTicket), now, now);
+      } catch { /* already acquired, timed out, or removed */ }
+    }, Math.max(1, Math.min(30_000, ticketStaleMs / 3)));
+    ticketHeartbeat.unref();
     try {
       for (;;) {
         const head = queueHead(queueDir, readQueue(queueDir, ownTicket), ownTicket, ticketStaleMs);
@@ -138,6 +147,7 @@ export function createCaptureLock({
         await new Promise((resolve) => setTimeout(resolve, head === ownTicket ? 300 : 1000));
       }
     } finally {
+      clearInterval(ticketHeartbeat);
       try { unlinkSync(join(queueDir, ownTicket)); } catch { /* already removed */ }
     }
   }
