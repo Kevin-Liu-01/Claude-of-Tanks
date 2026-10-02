@@ -1257,10 +1257,12 @@ const GRADE_BLACK_POINT = 0.012;
 const GRADE_SATURATION = 1.0;
 // 2026-10-02 (the Garage under AgX): the showroom keeps its authored rig (lighting.ts, an enclosed presentation), tuned
 // under ACES's steep shoulder; AgX's gentler path to white compressed its spot-lit highlights (garage boot p95 182 →
-// 162) while the dark bay held (median 24). A display-space shoulder lift for the enclosed presentation only — luma
-// L + k·L·(1 − L)·smoothstep(0.25, 0.65, L), hue kept — restores the highlight range: nothing below a quarter of
-// display moves, white stays white, nothing clips.
-const GARAGE_HIGHLIGHT_LIFT = 0.35;
+// 161, the showroom's own p90/p95/p99 197/207/215 → 162/179/194) while the dark bay and the midtones held (frame
+// median 24, showroom median 87). A display shoulder for the enclosed presentation only: luma
+// L + k·L·(1 − L)^1.5·smoothstep(0.36, 0.66, L), each pixel's hue kept. The lift peaks where AgX compressed most (a
+// display level of 0.6–0.7) and eases toward white; nothing below the showroom's median moves, white stays white
+// (the boot frame: p95 182, p99 211, the showroom's p90/p95/p99 195/206/216, both medians held).
+const GARAGE_HIGHLIGHT_LIFT = 0.95;
 // r4 LP2 ("vignette stacks to a ~30-35% corner luminance falloff on bright daylight wides"): the shader keys
 // the vignette to the PIXEL's own luma — bright sky/haze corners keep most of their level — and
 // terrain_environment r4 eased it to 0.14; 2026-10-01: 0.10, a lens's natural falloff.
@@ -1419,7 +1421,8 @@ const GradeShader = {
       // the enclosed Garage's highlight shoulder (GARAGE_HIGHLIGHT_LIFT note)
       if ( uHighlightLift > 0.001 ) {
         float hlL = max( dot( col, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
-        float hlLift = hlL + uHighlightLift * hlL * ( 1.0 - hlL ) * smoothstep( 0.25, 0.65, hlL );
+        float hlD = max( 1.0 - hlL, 0.0 );
+        float hlLift = hlL + uHighlightLift * hlL * hlD * sqrt( hlD ) * smoothstep( 0.36, 0.66, hlL );
         col = clamp( col * ( hlLift / hlL ), 0.0, 1.0 );
       }
       // night (2026-10-01): low light reads through the rods — colour drains from the shadows and dim midtones

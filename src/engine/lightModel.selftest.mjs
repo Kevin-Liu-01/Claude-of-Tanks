@@ -162,18 +162,19 @@ assert.match(post, /outputColor\.rgb \*= uExposure \* uWhiteBalance;[\s\S]{0,200
   'exposure, white balance, the scene-referred saturation and contrast are linear, before the tone curve');
 assert.doesNotMatch(post, /GRADE_PIVOT|GRADE_BLACK_LIFT|GRADE_SHADOW_TINT|GRADE_GREEN_DESAT|GRADE_KNEE/, 'the ACES-era grade stack is retired');
 // 2026-10-02: the enclosed Garage keeps its authored rig, tuned under ACES's steep shoulder; under AgX its spot-lit
-// highlights compressed (boot p95 182 → 162, the dark bay's median held at 24). A display shoulder for the enclosed
-// presentation only restores the highlight range and keeps the look below it
+// highlights compressed (the boot frame's p95 182 → 161; the showroom region's p90/p95/p99 197/207/215 → 162/179/194,
+// its median 87 against ACES's 82). A display shoulder for the enclosed presentation only restores the highlight range
+// and keeps the look below it
 assert.match(post, /u\.uHighlightLift\.value = scene\.userData\.lightEnclosed \? lightTune\('GARAGE_HIGHLIGHT_LIFT', GARAGE_HIGHLIGHT_LIFT\) : 0;/,
   'the shoulder belongs to the enclosed presentation (a battle frame never takes it)');
-assert.match(post, /float hlL = max\( dot\( col, vec3\( 0\.2126, 0\.7152, 0\.0722 \) \), 1e-4 \);\s*float hlLift = hlL \+ uHighlightLift \* hlL \* \( 1\.0 - hlL \) \* smoothstep\( 0\.25, 0\.65, hlL \);\s*col = clamp\( col \* \( hlLift \/ hlL \), 0\.0, 1\.0 \);/,
+assert.match(post, /float hlL = max\( dot\( col, vec3\( 0\.2126, 0\.7152, 0\.0722 \) \), 1e-4 \);\s*float hlD = max\( 1\.0 - hlL, 0\.0 \);\s*float hlLift = hlL \+ uHighlightLift \* hlL \* hlD \* sqrt\( hlD \) \* smoothstep\( 0\.36, 0\.66, hlL \);\s*col = clamp\( col \* \( hlLift \/ hlL \), 0\.0, 1\.0 \);/,
   'a luma shoulder that keeps each pixel\'s hue');
 {
   const lift = Number(post.match(/const GARAGE_HIGHLIGHT_LIFT = ([0-9.]+);/)?.[1]);
-  assert.ok(lift > 0 && lift < 0.5, `a gentle shoulder (${lift})`);
+  assert.ok(lift > 0 && lift < 1.2, `a bounded shoulder (${lift})`);
   const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-  const shoulder = (l) => l + lift * l * (1 - l) * ss(0.25, 0.65, l);
-  for (const l of [0, 24 / 255, 0.1, 0.2, 0.25]) near(shoulder(l), l, 1e-12, `the dark bay and the midtones below a quarter of display keep their level (${l.toFixed(3)})`);
+  const shoulder = (l) => l + lift * l * Math.pow(Math.max(1 - l, 0), 1.5) * ss(0.36, 0.66, l);
+  for (const l of [0, 24 / 255, 0.2, 87 / 255, 0.36]) near(shoulder(l), l, 1e-12, `the dark bay and the midtones up to the showroom's median keep their level (${(l * 255).toFixed(0)})`);
   near(shoulder(1), 1, 1e-12, 'white stays white');
   let previous = -1;
   for (let l = 0; l <= 1.0000001; l += 0.001) {
@@ -181,8 +182,11 @@ assert.match(post, /float hlL = max\( dot\( col, vec3\( 0\.2126, 0\.7152, 0\.072
     assert.ok(v > previous && v <= 1, `monotonic and never past white (${l.toFixed(3)})`);
     previous = v;
   }
-  near(shoulder(162 / 255) * 255, 182, 3, 'the AgX boot p95 returns to the ACES showroom\'s');
-  near(shoulder(198 / 255) * 255, 211, 4, 'and its p99');
+  // a monotonic map moves each percentile of the showroom (canvas pixels only) to the mapped value: the AgX boot's
+  // p90/p95/p99 reach the ACES showroom's
+  near(shoulder(162 / 255) * 255, 197, 3, 'the showroom p90 (162 → the ACES 197)');
+  near(shoulder(179 / 255) * 255, 207, 3, 'its p95 (179 → 207)');
+  near(shoulder(194 / 255) * 255, 215, 3, 'its p99 (194 → 215)');
 }
 // the aerial haze is a layer over the ground: a high camera looks down through less of it (the census bird view)
 assert.match(post, /float x = -viewZ \* uDensity \* hzLayer;/, 'the extinction curve takes the layer factor');
