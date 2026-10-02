@@ -343,7 +343,7 @@ SHA-256 is
 from pristine `.bak`
 **5eaa24a25e3c200b80ab7d1f8301d2ca8d6aed87137940**.
 
-Independent §B8 graduation sitting on `shots/critic-challenger3-graduation/`
+Independent §B8 graduation sitting on [`challenger_3-graduation/`](challenger_3-graduation/)
 PASSes all 14 fresh pairs: floor **9.0**, mean **9.04**. The preceding ordered
 corrections—physical wheel spacing, restored wheel scale, compact roof/RWS,
 wider stern course, 0.71 dish radius and the closed attached rear trapezoid—are
