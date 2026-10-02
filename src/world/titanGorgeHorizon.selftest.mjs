@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { getMapConfig, MAP_IDS } from './maps/index.ts';
+import { getMapConfig } from './maps/index.ts';
+import { PRE_LUNAR_MAP_IDS } from './mapRosterHistory.test-support.mjs';
 import { HORIZON_SEGMENTS, sampleHorizonGeometry } from './maps/horizon.ts';
 
 // Pinned dba1c5ce3 decomposition: every other map is unchanged, and the
@@ -12,6 +13,10 @@ const seeds = [1337, 2049, 7719];
 // and interpolated ring row on every map but Redrock, so the digests below were re-pinned once against the relieved geometry.
 // 2026-09-27: reviewed coastal extension/seabed; horizonResources independently
 // preserves all original inland positions at the same three seeds.
+// The aggregate covers an explicit roster: the pre-lunar battlefields but Titan and the restored Verdant (29 maps,
+// Mars included since round 72). Earthrise Basin and Aegis Crossing (0e5fc79e2) postdate these pins; their rings pass
+// horizonResources' all-map gates and their own map receipts, never this historical aggregate.
+const OTHER29_MAP_IDS = Object.freeze(PRE_LUNAR_MAP_IDS.filter(id => id !== 'titan_gorge' && id !== 'verdant'));
 const originalOther28 = [
   '25e1544c163d836666a6bf69f697480d00ad9544d26ba0c066ea599ab1cbb2c6',
   '9f33aea1b48e58cf917e538b631cd1790b6debf3b2f6e85c5ec3ca5ea782e07e',
@@ -107,8 +112,7 @@ function capSurfaces(ring) {
 const receipts = [];
 for (const [index, seed] of seeds.entries()) {
   const other28 = createHash('sha256'), unrelatedMutation = createHash('sha256');
-  for (const id of MAP_IDS) {
-    if (id === 'titan_gorge' || id === 'verdant') continue;
+  for (const id of OTHER29_MAP_IDS) {
     const actual = getMapConfig(id);
     // Preserve this historical aggregate; the current canyon is independently
     // exercised by redrockCanyonHorizon.selftest, including the exact opt-out.

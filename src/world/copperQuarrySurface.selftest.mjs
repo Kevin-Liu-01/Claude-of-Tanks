@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto';
 import { COPPER_QUARRY, copperQuarryRise, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { acquireTerrainChunkIndex, createHeightField, createLayout } from './terrain.ts';
 import { sampleHorizonGeometry, HORIZON_SEGMENTS } from './maps/horizon.ts';
-import { getMapConfig, MAP_IDS } from './maps/index.ts';
+import { getMapConfig } from './maps/index.ts';
+import { PRE_LUNAR_MAP_IDS } from './mapRosterHistory.test-support.mjs';
 import copper from './maps/copperMesa.ts';
 
 const seeds = [1337, 2049, 7719];
@@ -129,6 +130,10 @@ function assertCurrentPolders(ring, index) {
 // (round 72: re-pinned with the relieved geometry, see above)
 // 2026-09-27: reviewed coastal extension/seabed; horizonResources independently
 // preserves all original inland positions at the same three seeds.
+// The baseline covers an explicit roster: the thirty pre-Mars battlefields but the restored Verdant (copper_mesa is
+// checked for its caps inside the same loop and stays out of the aggregate). Olympus Basin (2026-09-18) and Earthrise
+// Basin / Aegis Crossing (0e5fc79e2) postdate these pins; horizonResources gates every registered ring.
+const BASELINE_MAP_IDS = Object.freeze(PRE_LUNAR_MAP_IDS.filter(id => id !== 'verdant' && id !== 'mars'));
 const previous = [
   'd27a2a9e47adf5a88ef8e02d80ad82f6a1684d8ac6cfe57338191c4f049113a5',
   'a5b320eefeae0911aeb64ae4ff3508660c8dbe7df818b9c3f7ff9f9f0a41b41c',
@@ -137,10 +142,7 @@ const previous = [
 for (const [index, seed] of seeds.entries()) {
   const hash = createHash('sha256');
   const unrelatedMutation = createHash('sha256');
-  for (const id of MAP_IDS) {
-    if (id === 'verdant') continue;
-    // Mars mode (2026-09-18): Olympus Basin postdates the other28 baseline; horizonResources gates its ring
-    if (id === 'mars') continue;
+  for (const id of BASELINE_MAP_IDS) {
     const config = getMapConfig(id), ring = sampleHorizonGeometry(config, seed);
     if (id !== 'copper_mesa') {
       const historicalRing = id === 'polders' ? sampleHorizonGeometry({ ...config,

@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createHeightField, mulberry32 } from '../terrain.ts';
 import { MAP_IDS, getMapConfig } from './index.ts';
+import { PRE_LUNAR_MAP_IDS } from '../mapRosterHistory.test-support.mjs';
 import { dressMapExtras } from './mapKits.ts';
 import { historicalBadlandsInput, historicalPlayableReliefInput } from '../shorelineHistoryTestOracle.mjs';
 const { dressMapExtras: historicalDress } = await loadShorelineHistory(new URL('./mapKits.ts', import.meta.url));
@@ -109,6 +110,10 @@ const fragmentBefore = {
 // aggregate hashes; riverReedContact separately isolates the reed geometry edit.
 // Driftwood is unchanged from published1db.
 // Frozen rowboats and the nine Winter-family controls above are unchanged.
+// The aggregate covers an explicit roster: the pre-lunar battlefields (Mars joined it on 2026-09-19) less the three
+// Winter-family maps checked one by one below. Earthrise Basin and Aegis Crossing (0e5fc79e2) postdate these pins and
+// stay out of them; the winterLake consumer census at the top still reads every registered battlefield.
+const KIT_MAP_IDS = PRE_LUNAR_MAP_IDS;
 const otherHashes = {
   1337: '10085652d28e38f3bb6b90d2d4aa0397f24f5de71e4c64c7aed22c3401348789', // 2026-09-24 (round 67): the wrack line's per-station draw budget and Saltwind's shelf-sized piers (the three strand maps' kit bytes move); before that 2026-09-24 (round 61): Amberford's arched bridge on its deck plane (the river kit's body, slab, parapets, cutwaters and wings replace the causeway bridge and the kit's RNG tail moves); before that 2026-09-24 (round 58): the fjord's jetties at the water's edge (planted piles, gangways, moored hulls); was 2026-09-19 Mars joins the non-Winter kits
   2049: 'a4fbc0f7c75405770bb91dfb873d61333f84982da84f125486df40c3108925b0', // 2026-09-24 (round 67): the wrack line's per-station draw budget and Saltwind's shelf-sized piers (the three strand maps' kit bytes move); before that 2026-09-24 (round 61): Amberford's arched bridge on its deck plane (the river kit's body, slab, parapets, cutwaters and wings replace the causeway bridge and the kit's RNG tail moves); before that 2026-09-24 (round 58): the fjord's jetties at the water's edge; before that the round-48 pacing landing
@@ -399,7 +404,7 @@ function auditReeds(geometries, field) {
 let berms = 0, wedges = 0, reducedBytes = 0, finalAttributeBytesSaved = 0;
 for (const seed of [1337, 2049, 7719]) {
   const others = createHash('sha256');
-  for (const mapId of MAP_IDS) {
+  for (const mapId of KIT_MAP_IDS) {
     const built = build(mapId, seed), stats = inventory(built.buckets);
     try {
       if (!winterMaps.includes(mapId)) {

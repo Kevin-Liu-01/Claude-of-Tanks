@@ -10,6 +10,7 @@ import { historicalMaskTexture as makeMaskTexture } from './roadRutHistoryTestOr
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
+import { PRE_MARS_MAP_IDS } from './mapRosterHistory.test-support.mjs';
 import { historicalPaletteConfig, historicalFoundryServiceInput, historicalBadlandsInput, historicalVistaGroundInput,
   historicalPlayableReliefInput } from './shorelineHistoryTestOracle.mjs';
 
@@ -46,6 +47,10 @@ const FROZEN = {
   configs: 'e78a61b43d6eb94d0e8c8794baa38ed74528ecbe57cff47e33ec00bf080e9b15', // 2026-09-25 (round 70): whiteout.ts authors sourcedTint, a snowpack fallback law and postExposure 0.83 — the owner-approved snow re-grade (was 8698d0c7…: round 66, the eleven sea-sheet maps author an `ocean` block; 46963b38…: round 57, steppe.ts terrain block authors railSpurs; 7d872ab3…: round 55, fjord.ts horizon block authors outcrops: 1; 07c47806…: Frosthollow / Amberford / Tarkhan player pads moved, round-48 pacing landing)
 };
 const beforeConfigs = stringify(MAP_IDS.map(getMapConfig));
+// The frozen parent receipts cover an explicit roster: the thirty battlefields registered before Mars. Olympus Basin
+// (2026-09-18), Earthrise Basin and Aegis Crossing (0e5fc79e2) postdate the parent inputs and stay out of these pins;
+// the live activity-map scope and the no-mutation check below still read every registered battlefield.
+const PARENT_MAP_IDS = PRE_MARS_MAP_IDS;
 
 // Authenticated Autumn blobs at 1beb0c780 / published 17d999a92:
 // f05d9e1bd16f4b1ccde15756189c5fc7ee2e3dc5 -> 4aacb9c5f4ab059da2662cde186bcaede19a99f2.
@@ -139,8 +144,8 @@ function checkScope(resolve) {
   assert.equal(foundry.terrain.villageWear, 'activity-patches', 'Foundry drops the broad village apron');
   assert.equal(foundry.splat.townWear, 1.6, 'Foundry authored soil keeps its bounded material strength');
   assert.deepEqual(foundry.terrain.workedGround, foundryPatches, 'the three accepted Foundry footprints remain exact');
-  // Mars mode (2026-09-18): Olympus Basin postdates the frozen parent inputs — the catalog receipts guard it
-  assert.equal(hash(stringify(MAP_IDS.filter(id => id !== 'mars').map(id => historicalAutumnPaletteInput(originalConfig(originalExitConfig(beforeShorelineContinuity(resolve(id)))))))), FROZEN.configs,
+  // Mars mode (2026-09-18): Olympus Basin postdates the frozen parent inputs — the catalog receipts guard it (PARENT_MAP_IDS)
+  assert.equal(hash(stringify(PARENT_MAP_IDS.map(id => historicalAutumnPaletteInput(originalConfig(originalExitConfig(beforeShorelineContinuity(resolve(id)))))))), FROZEN.configs,
     'only the two visual terrain properties differ from the exact parent inputs');
 }
 
@@ -281,9 +286,9 @@ function checkPilot(id, seed) {
 
 function checkOtherMaps(tier) {
   const results = [];
-  for (const id of MAP_IDS) {
-    // Mars mode (2026-09-18): Olympus Basin postdates the all28 parent receipt
-    if (pilots.includes(id) || id === 'mars') continue;
+  for (const id of PARENT_MAP_IDS) {
+    // Mars mode (2026-09-18): Olympus Basin postdates the all28 parent receipt (PARENT_MAP_IDS)
+    if (pilots.includes(id)) continue;
     const built = bake(historicalBadlandsInput(historicalFoundryServiceInput(originalExitConfig(beforeShorelineContinuity(getMapConfig(id))))), 1337, historicalRoadHeightField);
     assert.equal(built.size, tier === 'desktop' ? 512 : 256, 'actual tier-scaled raster, not a relabeled desktop bake');
     results.push([id, hash(built.pixels)]); built.texture.dispose();

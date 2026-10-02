@@ -11,6 +11,7 @@ import { parseArgs } from 'node:util';
 import { NoColorSpace, RepeatWrapping, SRGBColorSpace } from 'three';
 import { createHeightField, makeSeaLayer } from './terrain.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
+import { PRE_MARS_MAP_IDS } from './mapRosterHistory.test-support.mjs';
 import { resolveDeviceTier } from '../engine/quality.ts';
 import { historicalShorelineConfig, historicalPaletteConfig } from './shorelineHistoryTestOracle.mjs';
 import { historicalMapPassDressingInput } from './mapPassDressing.test-support.mjs';
@@ -171,9 +172,10 @@ function verifyHistoricalConfigs(resolve) {
   assert.equal(resolve('foundry').props.sourcedPalette, 'ironworks',
     'current Foundry palette remains the published ironworks selection');
   const unchangedMaps = [];
-  for (const id of MAP_IDS) {
-    // Mars mode (2026-09-18): Olympus Basin postdates the other29 golden — the catalog receipts guard it
-    if (id === 'mars') continue;
+  // The other29 golden covers an explicit roster: the thirty battlefields registered before Mars, less Mangrove (its
+  // non-palette digest follows below). Olympus Basin (2026-09-18; the catalog receipts guard it), Earthrise Basin and
+  // Aegis Crossing (0e5fc79e2) postdate the golden and stay out of it; the unmutated-input check reads every map.
+  for (const id of PRE_MARS_MAP_IDS) {
     const historical = beforeRoadSettlementRedesign(historicalAlpineHorizonInput(historicalCropPaletteInput(historicalAutumnPaletteInput(historicalFoundryPaletteInput(historicalPaletteConfig(originalExitConfig(historicalMapPassDressingInput(beforeShorelineContinuity(resolve(id)), assert))))))));
     if (id !== 'mangrove') unchangedMaps.push([id, stringify(paletteReceiptInput(historical))]);
   }

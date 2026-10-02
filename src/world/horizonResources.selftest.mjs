@@ -5,6 +5,7 @@ import {
   HORIZON_SEGMENTS, HORIZON_TREELINE_MAX_BELTS, HORIZON_TREELINE_MAX_LAYERS,
 } from './maps/horizon.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
+import { PRE_LUNAR_MAP_IDS } from './mapRosterHistory.test-support.mjs';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import {
   disposeObject3DResources,
@@ -346,6 +347,10 @@ const unrelatedMutation = createHash('sha256');
 // retain their exact pre-change positions, independently frozen below.
 // 2026-09-27: reviewed coastal extension/seabed; horizonResources independently
 // preserves original inland positions with the declared Redrock regional redesign.
+// Both aggregates (the restoration receipt and the inland positions) cover an explicit roster: the pre-lunar
+// battlefields. Earthrise Basin and Aegis Crossing (0e5fc79e2) postdate these pins; like Olympus Basin in the
+// restoration aggregate, their rings pass every shared gate in the loop below and stay out of the historical digests.
+const AGGREGATE_MAP_IDS = PRE_LUNAR_MAP_IDS;
 const unchangedReceipts = [
   'b8944462a63ab720454aa8fd07e7427aa55dd26be64a09c1d9fc4b11251dd639',
   'a0646bf18e1030a9d58a1965b39cf97ced3b31dc3379f3fbe36d75b51f23a250',
@@ -354,7 +359,9 @@ const unchangedReceipts = [
 for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   const config = getMapConfig(mapId), ring = sampleHorizonGeometry(config, seed);
   const p = ring.positions, n = HORIZON_SEGMENTS, label = `${mapId}/${seed}`;
-  if (!config.horizon?.seaOpening) inlandGeometry.get(seed).update(mapId).update(new Uint8Array(p.buffer));
+  if (!config.horizon?.seaOpening && AGGREGATE_MAP_IDS.includes(mapId)) {
+    inlandGeometry.get(seed).update(mapId).update(new Uint8Array(p.buffer));
+  }
   assert.equal(ring.rows.length, uploadedRows(config, mapId));
   for (let column = 0; column < n; column++) {
     assert.ok(Math.max(Math.abs(p[column * 3]), Math.abs(p[column * 3 + 2])) < 512,
@@ -372,6 +379,7 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   if (mapId === 'skybridge') assertSkybridgeTableCaps(ring, label);
   else if (mapId === 'copper_mesa') { /* independently covered by copperQuarrySurface.selftest */ }
   else if (mapId === 'mars') { /* Mars mode (2026-09-18): the galaxy basin postdates the restoration aggregate; the shared gates above apply */ }
+  else if (!AGGREGATE_MAP_IDS.includes(mapId)) { /* registered after the pre-lunar roster: the shared gates above apply */ }
   else {
     const historicalRing = mapId === 'polders' ? sampleHorizonGeometry({ ...config,
       horizon: { ...config.horizon, amp: 0.50 } }, seed)

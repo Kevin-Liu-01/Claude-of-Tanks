@@ -120,7 +120,21 @@ const hash = text => createHash('sha256').update(text).digest('hex');
 // Frozen before this cache change: every radiance formula and injected shader byte.
 // round 22 (2026-09-18): configureSkyUniforms gained the uNight uniform (night starfield, galactic band
 // and moon added after the dome intensity multiply); the radiance formulas are otherwise unchanged.
-assert.equal(hash(configuredSource), 'b3c75f3057f7fa73097cf53db90a3048f2a3a437ecae4a6fd60fdbea5554b435');
+// Earthrise Basin (0e5fc79e2, 2026-09-29) added one more uniform here, uEarth (the lunar map's Earth disc, read only by
+// the night term), and changed nothing else: these four exact edits, each present once, project back onto the frozen
+// text, so the round-22 pin keeps covering every other byte while the edits pin the Earth uniform's own wiring.
+const lunarEarthEdits = [
+  ['  u.uEarth ??= { value: 0 };\n  u.uEarth.value = preset.earth;\n', ''],
+  ['    shader.uniforms.uEarth = u.uEarth;\n', ''],
+  ['uPlanetR, uPlanetTint, uEarth ) * uNight;', 'uPlanetR, uPlanetTint ) * uNight;'],
+  ['uniform vec3 uPlanetTint;\nuniform float uEarth;\\n${NIGHT_SKY_GLSL}', 'uniform vec3 uPlanetTint;\\n${NIGHT_SKY_GLSL}'],
+];
+const preLunarConfiguredSource = lunarEarthEdits.reduce((text, [current, frozen]) => {
+  assert.equal(text.split(current).length, 2, `configureSkyUniforms carries the lunar Earth edit exactly once: ${current.trim()}`);
+  return text.replace(current, () => frozen);
+}, configuredSource);
+assert.equal(hash(preLunarConfiguredSource), 'b3c75f3057f7fa73097cf53db90a3048f2a3a437ecae4a6fd60fdbea5554b435',
+  'every radiance formula and injected shader byte outside the lunar Earth uniform stays frozen');
 const keySource = ['horizonColorKey', 'environmentKey', 'withEnvironmentRenderState', 'disposeEnvironmentSky'].map(fn).join('\n');
 let bakeMethod;
 function visit(node) {
