@@ -146,6 +146,12 @@ for (const id of MAP_IDS) {
   assert.equal(d[3], p.patchwork, `${id}: patchwork packed`);
 }
 assert.equal(resolveGroundReduxProfile('moon').exposure, 0, 'airless regolith: nothing follows the sun');
+assert.equal(resolveGroundReduxProfile('moon').windRipple, 0, 'and no wind ripples on it');
+for (const id of MAP_IDS) if (id !== 'moon') assert.equal(resolveGroundReduxProfile(id).windRipple, 1, `${id}: its authored ripples at full`);
+// the sand trains: no global phase over a per-position wind (the round-43 marble), the cell function in its place
+assert.ok(!/float rphase = dot\(uv, wind\)/.test(active(terrain)), 'the global ripple phase over a turned wind is gone');
+assert.ok(/vec2 sandWaves\(vec2 p, vec2 w0, float cellM, float swing, float warp, vec2 k, vec2 amp, out float tone\) \{/.test(terrain), 'the cell-blended wave trains');
+assert.ok(/float d = dot\(p - \(c \+ 0\.5\) \* cellM, w\);/.test(terrain), 'each train measures its phase from its own cell centre');
 assert.equal(resolveGroundReduxProfile('whiteout').climate, 'snow');
 assert.equal(resolveGroundReduxProfile('desert').climate, 'arid');
 assert.equal(resolveGroundReduxProfile('verdant').climate, 'vegetated');
@@ -178,7 +184,7 @@ for (const stage of ['HORIZON_VISTA_LIT_NORMAL_FRAGMENT', 'HORIZON_VISTA_LIT_LIG
 }
 assert.ok(vfrag.includes('gVistaN = n; gVistaSun = sunVis; gVistaAo = ao * cavity * (1.0 - forestW * 0.10);'), 'the lit branch hands three its normal, sun and occlusion');
 assert.ok(/#ifdef HORIZON_VISTA_LIT\s*diffuseColor\.rgb = lit \/ max\(vColor\.rgb, vec3\(0\.02\)\);/.test(vfrag), 'and an albedo (no altitude shade, no night dim)');
-assert.ok(vfrag.includes('gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, vistaHaze);'), 'the haze mixes the radiance toward the live fog colour');
+assert.ok(vfrag.includes('gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, vistaHaze * 0.5);'), 'the haze mixes the radiance toward the live fog colour, at half the unlit share');
 assert.ok(far.includes('const litFar = !!options.lit;') && far.includes("FAR_RANGE_LIT: ''") && far.includes("geo.setAttribute('normal', geo.getAttribute('aFarNormal'));"),
   'the far range is lit with its own normal attribute');
 assert.ok(far.includes("(litFar ? 'horizon-far-range-lit-v2' : 'horizon-far-range-r72c')"), 'the lit far range has its own identity');

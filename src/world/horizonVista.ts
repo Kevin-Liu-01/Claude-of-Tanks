@@ -680,11 +680,14 @@ export const HORIZON_VISTA_LIT_AO_FRAGMENT = /* glsl */`
 reflectedLight.indirectDiffuse *= gVistaAo; reflectedLight.indirectSpecular *= gVistaAo;`;
 export const HORIZON_VISTA_LIT_EMISSIVE_FRAGMENT = /* glsl */`
 totalEmissiveRadiance += gVistaGlint;`;
+// The lit ring's own haze runs at half the unlit share: its radiance is the scene's (sun, sky light, exposure), and the
+// scene's fog and the post aerial pass already carry the atmosphere's extinction and in-scatter over the same metres
+// (round 37's three stacked haze models) — the material keeps only a light layer so the ranges keep their contrast.
 export const HORIZON_VISTA_LIT_HAZE_FRAGMENT = /* glsl */`
 #ifdef USE_FOG
-gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, vistaHaze);
+gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, vistaHaze * 0.5);
 #else
-gl_FragColor.rgb = mix(gl_FragColor.rgb, uVFogTint, vistaHaze);
+gl_FragColor.rgb = mix(gl_FragColor.rgb, uVFogTint, vistaHaze * 0.5);
 #endif`;
 
 // ---------------------------------------------------------------------------

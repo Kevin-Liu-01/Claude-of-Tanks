@@ -155,7 +155,8 @@ assert.equal((material.match(/if \(hK > 0\.001\) \{/g) || []).length, 2, 'the di
 assert.ok(material.includes('(1.0 - smoothstep(14.0, 42.0, camDist))'), 'glints live inside 42 m — no shimmer at range');
 // the wiring: profile from the map id inside the material steps (the call site keeps its shape), the fold
 // attribute on the vertices, the AO hook on Three's own stage, the clock shared with the sheet, the key
-assert.ok(terrain.includes('const redux = groundReduxUniformValues(resolveGroundReduxProfile(mapId));'));
+// terrain v2 (2026-10-01): the profile is resolved once (the ripple amplitude reads its wind share) and packed
+assert.ok(terrain.includes('const groundProfile = resolveGroundReduxProfile(mapId);') && terrain.includes('const redux = groundReduxUniformValues(groundProfile);'));
 assert.ok(terrain.includes("geo.setAttribute('fold', new THREE.BufferAttribute(fold, 1, true));"), 'one normalised byte per vertex');
 assert.ok(terrain.includes('attribute float fold;\\nvarying float vFold;') && terrain.includes('vFold = fold;'), 'the vertex shader forwards the fold');
 // round 73b: the shore byte — inverted, so the ring bands (no attribute) read 32 m; one normalised byte per vertex

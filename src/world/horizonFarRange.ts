@@ -404,7 +404,7 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
         // the live fog colour (the scene's horizon, night included) for the sea and the row haze; no exponential fog
         .replace('#include <fog_fragment>', /* glsl */`#ifdef USE_FOG
 gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor * 0.9, gFarMarine);
-gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor * vec3(0.94, 0.98, 1.06), gFarHaze);
+gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor * vec3(0.94, 0.98, 1.06), gFarHaze * 0.6); // the post aerial pass carries the rest
 #endif`);
     }
   };

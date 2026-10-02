@@ -81,6 +81,9 @@ export interface GroundReduxProfile {
   bedIrregularity: number;
   /** Terrain v2: the cover's own 2–8 m patchwork (paler and darker swards, lag and blown sand, crust and powder), 0..1. */
   patchwork: number;
+  /** Terrain v2: the wind's share of the map's authored sand ripples (splat.rippleAmp): 1 where wind shapes the sand,
+   * 0 where nothing blows (an airless regolith keeps its impact texture, no ripples). */
+  windRipple: number;
   /** The tall-grass biome, or null for a map with no sward (arid, Mars). */
   grass: TallGrassBiome | null;
 }
@@ -148,7 +151,7 @@ const TEMPERATE: Omit<GroundReduxProfile, 'grass'> = {
   heightBlend: 0.6, midDetail: 1.0, scree: 0, glint: 0, snowRipple: 0, snowMacro: 0,
   foldMoist: 0.7, foldAO: 0.5, foldCrest: 0.5, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0, swashLines: 0,
   lip: 0.8, verge: 0.8, rim: 0.7, rimTint: LICHEN, midAlbedo: 1.0, driftEdge: 0,
-  exposure: 0.9, climate: 'vegetated', bedIrregularity: 1, patchwork: 1,
+  exposure: 0.9, climate: 'vegetated', bedIrregularity: 1, patchwork: 1, windRipple: 1,
 };
 // the arid maps' worn-sand patches take a gentler transition (the owner's history with black contours on sand): the
 // hard-edge share on Sirocco's chase view went 8 → 22 % at 0.45 with no grass in the frame; the lip stays low there
@@ -201,7 +204,7 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   saltwind: { ...COAST, swashPeriodS: 7.5, swashReachM: 4.5, swashStrength: 1.6, scree: 0.2, grass: dune(0.6) },
   reservoir: { ...STILL_WATER, scree: 0.3, grass: meadow(0.8, 0.85, { reedMargin: 0.5 }) },
   mars: { ...ARID, foldMoist: 0, exposure: 0.5, grass: null },
-  moon: { ...ARID, foldMoist: 0, exposure: 0, grass: null }, // airless regolith: no weathering follows the sun
+  moon: { ...ARID, foldMoist: 0, exposure: 0, windRipple: 0, grass: null }, // airless regolith: no weathering follows the sun, no wind ripples
   cliffbridge: { ...TEMPERATE, scree: .3, grass: meadow(1.0) },
 });
 

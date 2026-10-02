@@ -3046,6 +3046,40 @@ float bedSignal(float y, float scale, float ph) {
   float b = nz(vec2(y, ph * 23.0 + 11.0), scale * 0.405, vec2(0.57, 0.29)).g;
   return clamp((a * 0.65 + b * 0.35 - 0.5) * 3.4, -1.0, 1.0);
 }
+// Terrain v2 (2026-10-01, grounded realism — the census close-ups of Sirocco, Titan, Sunscar, Olympus and Earthrise:
+// concentric dark contour loops, "marble", on every sand floor): oriented sand waves without the phase explosion.
+// Round 43 turned the wind per position and kept the global phase dot(world, wind); a turn of a tenth of a radian
+// 300 m from the origin moved that phase by 30 m of travel, so the crests ran along the ISOLINES of the turn field —
+// closed contour loops around its every extremum. Each wave train now lives in its own cell (a local origin, a heading
+// within ±swing of the map's wind, its own phase) and the four nearest cells blend smoothly: the heading wanders by
+// region, the crests stay parallel inside a train and meet the next train in a soft interference band (the junctions
+// a real ripple field shows). Two wave numbers share one cell's heading (ripples and megaripples); the result is the
+// surface slope along each train's wind, summed (a normal perturbation), and the first wave's tone.
+vec2 sandWaves(vec2 p, vec2 w0, float cellM, float swing, float warp, vec2 k, vec2 amp, out float tone) {
+  vec2 g = p / cellM - 0.5;
+  vec2 c0 = floor(g);
+  vec2 f = g - c0;
+  vec2 bl = f * f * (3.0 - 2.0 * f);
+  vec2 slopeV = vec2(0.0);
+  tone = 0.0;
+  for (int j = 0; j < 2; j++) {
+    for (int i = 0; i < 2; i++) {
+      vec2 c = c0 + vec2(float(i), float(j));
+      float h1 = fract(sin(dot(c, vec2(127.1, 311.7))) * 43758.5453);
+      float h2 = fract(sin(dot(c, vec2(269.5, 183.3))) * 43758.5453);
+      float ang = (h1 - 0.5) * 2.0 * swing;
+      float ca = cos(ang), sa = sin(ang);
+      vec2 w = vec2(w0.x * ca - w0.y * sa, w0.x * sa + w0.y * ca);
+      float d = dot(p - (c + 0.5) * cellM, w);
+      float wt = (i == 0 ? 1.0 - bl.x : bl.x) * (j == 0 ? 1.0 - bl.y : bl.y);
+      float s1 = sin(d * k.x + h2 * 6.2832 + warp);
+      float s2 = sin(d * k.y + h1 * 6.2832 + warp * 0.4);
+      slopeV += w * (s1 * amp.x + s2 * amp.y) * wt;
+      tone += s1 * wt;
+    }
+  }
+  return slopeV;
+}
 // Round 73 (2026-09-25, the ground redux): height-and-noise transitions. Every layer's local relief is read as its
 // albedo's luminance against the tile's own mean (the painters bake cavity shade into the colour and the sourced sets
 // carry their AO — no packed height channel, no sampler), and the incoming layer wins where its relief stands high
@@ -3774,58 +3808,35 @@ void splatCompute() {
     // field's local wind swings with the dunes themselves: rotate the authored wind per ~400 m cell (±25°) and again
     // per ~90 m cell (±10°), and stretch the wavelength ±25 % per ~250 m cell, so no two trains share a heading or a
     // spacing. The authored direction stays the mean; near-field grain and the shore gate are unchanged.
-    float windSwing = (nz(uv, 0.0025, vec2(0.37, 0.91)).r - 0.5) * 0.87
-                    + (nz(uv, 0.011, vec2(0.71, 0.13)).g - 0.5) * 0.35;
-    float windCs = cos(windSwing), windSn = sin(windSwing);
-    vec2 wind = vec2(uRipple.x * windCs - uRipple.y * windSn, uRipple.x * windSn + uRipple.y * windCs);
-    float waveScale = 0.75 + 0.5 * nz(uv, 0.004, vec2(0.23, 0.61)).b;
-    float rphase = dot(uv, wind) * waveScale;
-    // r8: the ~11 m dune-face wave now fades by 300 m (was 420) and its
-    // amplitude is modulated by a ~150 m noise field — past ~300 m the sin
-    // rows compressed to a few px apart and aliased into uniform horizontal
-    // moire stripe rows across the whole midground (part of the desert
-    // "stipple row" artifact); the modulation stops the surviving band from
-    // printing one continuous corduroy field
+    // terrain v2: the trains (sandWaves above) — the 2.2 m ripples to 150 m and the 11 m dune-face waves to 300 m (the
+    // round-43 field's own two wave numbers and amplitudes) share 36 m cells turned within ±20° of the map's wind, bent
+    // by one bounded sinuosity field; the dune bedforms (26 m) ride 260 m cells within ±26°. Same gates and tilt cap.
+    vec2 wind0 = uRipple.xy;
     float rMod = 0.55 + 0.9 * nz(uv, 0.0064, vec2(0.83, 0.41)).g;
-    float rw = (sin(rphase * 2.9 + nz(uv, 0.019, vec2(0.0)).r * 7.0)
-                  * (1.0 - smoothstep(40.0, 150.0, camDist))
-              + sin(rphase * 0.55 + nz(uv, 0.006, vec2(0.0)).g * 4.0) * 1.1
-                  * (1.0 - smoothstep(110.0, 300.0, camDist)) * rMod)
-              * uRipple.z * (1.0 - fR) * (1.0 - triW * 0.9) * (1.0 - fMs) * sandCoverage;
-    // Round 47 (2026-09-23, owner: Sirocco/Sunscar "the squigglies on the ground are so black and so noticeable"): the
-    // uniform-isolation probe pinned the black contour squiggles on this ripple field alone (zeroing uRipple lifted the
-    // dune-face 5th percentile 80 → 119 on Sunscar, 122 → 180 on Sirocco; nothing else moved it). At full amplitude the
-    // ripple crests tilt the normal past the low sun and go black, and on a dune face the planar phase wraps into
-    // contour lines. The tilt is capped (a ripple, not a wall) and the field fades on dune faces from ~5° to ~15°.
-    rw = clamp(rw, -0.34, 0.34) * (1.0 - 0.8 * smoothstep(0.004, 0.035, slope));
-    n.xy += wind * rw;
-    // r3 terrain_environment: DUNE BEDFORMS that survive the establishing
-    // shot. Both ripple octaves above die by 300 m, so the whole central
-    // bowl rendered as one blown cream sheet from the wide camera. A ~26 m
-    // wind-transverse wave carried in ALBEDO (normals mip away out there):
-    // shadowed slip faces vs lit crests, amplitude wandering on a ~150-300 m
-    // field so the waves read as dune trains, not corduroy. Ramps IN past
-    // 60 m (the fine ripples own the near field) and never fades out.
-    float bedPhase = rphase * 0.24 + nz(uv, 0.0021, vec2(0.19, 0.57)).g * 5.0;
+    float sinuosity = nz(uv, 0.019, vec2(0.0)).r * 1.6;
+    float rw = uRipple.z * (1.0 - fR) * (1.0 - triW * 0.9) * (1.0 - fMs) * sandCoverage;
+    float nearRip = 1.0 - smoothstep(40.0, 150.0, camDist);
+    float megaRip = 1.1 * (1.0 - smoothstep(110.0, 300.0, camDist)) * rMod;
+    if (rw * max(nearRip, megaRip) > 0.0005) {
+      float rTone;
+      vec2 rSlope = sandWaves(uv, wind0, 36.0, 0.35, sinuosity, vec2(2.9, 0.55), vec2(nearRip, megaRip), rTone);
+      rSlope *= rw;
+      float rLen = length(rSlope);
+      if (rLen > 0.34) rSlope *= 0.34 / rLen;
+      n.xy += rSlope * (1.0 - 0.8 * smoothstep(0.004, 0.035, slope));
+    }
     float bedMod = smoothstep(0.30, 0.72, nz(uvW, 0.0035, vec2(0.67, 0.23)).r);
-    float bed = sin(bedPhase);
     float bedW = min(uRipple.z * 2.2, 1.0) * bedMod * (1.0 - fR) * (1.0 - roadCore)
                * (1.0 - triW) * smoothstep(60.0, 170.0, effDist) * (1.0 - fMs) * sandCoverage;
-    // r4: 0.105 -> 0.15 — the dune trains must survive the establishing shot
-    // (the mid-map otherwise reads as one blown "whipped cream" sheet)
-    // Round 43: the albedo band is what survives to the horizon; past ~320 m it eases to half so the far basin reads as
-    // dune trains fading with distance rather than a printed sheet (the normal wave already mips away out there).
-    float bedFar = 1.0 - 0.5 * smoothstep(320.0, 640.0, effDist);
-    a.rgb *= 1.0 + bed * 0.15 * bedW * bedFar;
-    n.xy += wind * bed * 0.55 * bedW;
-    // r6 terrain_environment STEEP-SAND DETAIL: both planar ripple octaves
-    // above are gated OFF steep faces (their planar UVs stretch), and with
-    // the landform rock gate the dunes no longer borrow the sandstone layer
-    // — so steep slip faces would render as bare smooth sand (the critique's
-    // "near-textureless bright faces"). Re-project sand grain + avalanche
-    // flow in the two fixed WALL planes (samples mixed, never coordinates):
-    // fine granular normal, down-slope flow streak, and a gentle slip-face
-    // albedo darkening so lit faces keep surface definition.
+    if (bedW > 0.002) {
+      float bed;
+      vec2 bedSlope = sandWaves(uv, wind0, 260.0, 0.45, nz(uv, 0.0021, vec2(0.19, 0.57)).g * 2.0, vec2(0.24, 0.0), vec2(1.0, 0.0), bed);
+      // Round 43: the albedo band is what survives to the horizon; past ~320 m it eases to half so the far basin reads as
+      // dune trains fading with distance rather than a printed sheet (the normal wave already mips away out there).
+      float bedFar = 1.0 - 0.5 * smoothstep(320.0, 640.0, effDist);
+      a.rgb *= 1.0 + bed * 0.15 * bedW * bedFar;
+      n.xy += bedSlope * 0.55 * bedW;
+    }
     float sandFaceW = triW * (1.0 - fR) * (1.0 - fMs) * sandCoverage;
     if (sandFaceW > 0.01) {
       vec3 wg1 = texture2D(uNrmG, gWallUVx * 0.55).xyz;
@@ -3841,7 +3852,8 @@ void splatCompute() {
       {
         float wRip = mix(sin(gWallUVx.y * 7.3 + nz(gWallUVx, 0.05, vec2(0.0)).r * 4.0),
                          sin(gWallUVz.y * 7.3 + nz(gWallUVz, 0.05, vec2(0.0)).r * 4.0), gWallW);
-        float wRipW = sandFaceW * (1.0 - smoothstep(200.0, 620.0, effDist)) * 0.30;
+        // terrain v2: a slip face carries grain flows, not contour ripples — the contour wave runs at a third
+        float wRipW = sandFaceW * (1.0 - smoothstep(200.0, 620.0, effDist)) * 0.10;
         vec2 hDir = wn.xz / max(length(wn.xz), 1e-4); // fall-line in the map plane
         a.rgb *= 1.0 + wRip * 0.12 * wRipW;
         n.xy += hDir * wRip * wRipW;
@@ -4559,7 +4571,8 @@ function* createSplatMaterialSteps(
   // Round 73 (2026-09-25): the ground redux profile (groundRedux.ts) resolved from the map id here, so the material
   // call keeps its shape (the receipts re-evaluate the build steps in a sandbox); the clock the swash breathes on is
   // shared with the water sheet's own time by terrainBuildSteps
-  const redux = groundReduxUniformValues(resolveGroundReduxProfile(mapId));
+  const groundProfile = resolveGroundReduxProfile(mapId);
+  const redux = groundReduxUniformValues(groundProfile);
   // `?ground=legacy`: every redux term at zero on the same build — the round's before / after captures A/B against it
   if (typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '')) {
     redux.reduxA.fill(0); redux.reduxFold.fill(0); redux.reduxSwash.fill(0); redux.reduxSnow.fill(0);
@@ -4705,7 +4718,8 @@ function* createSplatMaterialSteps(
     const rd = S.rippleDir || [0.8, 0.6];
     const rl = Math.hypot(rd[0], rd[1]) || 1;
     shader.uniforms.uRipple = {
-      value: new THREE.Vector4(rd[0] / rl, rd[1] / rl, S.rippleAmp ?? 0, S.rippleShoreOnly ? 1 : 0),
+      // terrain v2: the wind's share of the authored ripples (groundRedux windRipple: 0 on an airless map)
+      value: new THREE.Vector4(rd[0] / rl, rd[1] / rl, (S.rippleAmp ?? 0) * Math.max(0, groundProfile.windRipple ?? 1), S.rippleShoreOnly ? 1 : 0),
     };
     // round 42: the sun the vista ring shades with, and the sky-light weight for steep faces turned from it
     shader.uniforms.uSunDirW = { value: skySunDirection(sky) };
