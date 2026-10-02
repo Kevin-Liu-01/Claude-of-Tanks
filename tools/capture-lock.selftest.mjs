@@ -102,7 +102,26 @@ try {
   assert.deepEqual(readdirSync(queueDir), [], 'timed-out waits remove their queue ticket');
 
   await checkSameMillisecondFifo();
-  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, and same-millisecond FIFO passed');
+
+  // Gate P5 (2026-10-01): waiting() is a read-only count of live queued acquisitions.
+  const probeQueue = join(root, 'probe.queue');
+  const probe = createCaptureLock({ lockDir: join(root, 'probe.lock'), queueDir: probeQueue });
+  assert.equal(probe.waiting(), 0, 'no queue directory: nobody waits');
+  mkdirSync(probeQueue);
+  assert.equal(probe.waiting(), 0, 'an empty queue: nobody waits');
+  writeFileSync(join(probeQueue, `000000000000001-000000000000-${process.pid}.t`), String(process.pid));
+  const longWaiter = `000000000000002-000000000001-${process.pid}.t`;
+  writeFileSync(join(probeQueue, longWaiter), String(process.pid));
+  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+  utimesSync(join(probeQueue, longWaiter), twoHoursAgo, twoHoursAgo);
+  writeFileSync(join(probeQueue, '000000000000003-99999999.t'), '99999999');
+  writeFileSync(join(probeQueue, 'notes.txt'), 'not a ticket');
+  assert.equal(probe.waiting(), 2, 'live tickets count, a long waiter included; dead tickets and other files do not');
+  assert.equal(readdirSync(probeQueue).length, 4, 'waiting() reaps nothing');
+  writeFileSync(join(root, 'queue-file'), 'not a directory');
+  assert.equal(createCaptureLock({ lockDir: join(root, 'other.lock'), queueDir: join(root, 'queue-file') }).waiting(), 1,
+    'an unreadable queue reports a waiter, so callers keep draining');
+  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond FIFO and waiting() passed');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

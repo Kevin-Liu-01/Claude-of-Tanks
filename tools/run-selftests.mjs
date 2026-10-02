@@ -5,7 +5,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCaptureLock, selftestLockTimeoutMs } from './capture-lock.mjs';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
-import { runSelftestCpuPool } from './selftest-cpu-pool.mjs';
+import { captureQueueHasWaiters, runSelftestCpuPool } from './selftest-cpu-pool.mjs';
 import { createSelftestCache } from './selftest-cache.mjs';
 
 // These real browser regressions own the shared lease inside their processes.
@@ -174,8 +174,12 @@ export async function runSelftestSuite(suiteName, suite, {
       if (cached?.skip) { onTiming({ file, runMs: 0, queueMs: 0, status: 0, error: undefined, skipped: true }); continue; }
       // Complete every child before yielding. Long full-fleet suites must
       // rejoin the FIFO between bounded batches, rather than starving native
-      // geometry/visual verification for the entire npm lifecycle.
-      if (held && now() - acquiredAt >= maxLeaseBatchMs) release();
+      // geometry/visual verification for the entire npm lifecycle. With no
+      // capture queued behind the lease, the batch is renewed in place (gate P5).
+      if (held && now() - acquiredAt >= maxLeaseBatchMs) {
+        if (captureQueueHasWaiters(lock)) release();
+        else { acquiredAt = now(); lock.refresh(); }
+      }
       if (ownedLeaseFiles.includes(file)) release();
       else if (!held) {
         const queuedAt = now();

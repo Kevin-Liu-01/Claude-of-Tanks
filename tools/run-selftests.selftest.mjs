@@ -134,6 +134,26 @@ assert.equal(await runSelftestSuite('fair', ['a', 'b', 'long-child', 'c', 'brows
 assert.deepEqual(fair.events, ['[selftests] fair: 6 files', 'acquire', 'a', 'b',
   'release', 'acquire', 'long-child', 'release', 'acquire', 'c',
   'release', 'browser', 'acquire', 'd', '[selftests] PASS fair', 'release']);
+// Gate P5 (2026-10-01): the serial runner renews an expired batch in place while nobody waits in
+// the capture queue, and drains exactly as before when someone does.
+for (const waiters of [0, 1]) {
+  const serial = fixture();
+  let serialClock = 0;
+  const serialRunFile = serial.options.runFile;
+  serial.options.now = () => serialClock;
+  serial.options.lock.waiting = () => waiters;
+  serial.options.runFile = async (file) => {
+    const result = await serialRunFile(file);
+    serialClock += file === 'long-child' ? 120_000 : 30_000;
+    return result;
+  };
+  assert.equal(await runSelftestSuite('serial-p5', ['a', 'b', 'long-child', 'c', 'browser', 'd'], serial.options), 0);
+  assert.deepEqual(serial.events, waiters ? ['[selftests] serial-p5: 6 files', 'acquire', 'a', 'b',
+    'release', 'acquire', 'long-child', 'release', 'acquire', 'c',
+    'release', 'browser', 'acquire', 'd', '[selftests] PASS serial-p5', 'release'] : ['[selftests] serial-p5: 6 files',
+    'acquire', 'a', 'b', 'long-child', 'c', 'release', 'browser', 'acquire', 'd', '[selftests] PASS serial-p5', 'release'],
+  waiters ? 'a queued waiter: every expired batch drains and re-queues' : 'no waiter: expired batches renew in place');
+}
 const boundaryFail = fixture({ failAt: 'b' });
 let failureClock = 0;
 const failureRunFile = boundaryFail.options.runFile;
