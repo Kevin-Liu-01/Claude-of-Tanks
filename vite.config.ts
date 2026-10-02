@@ -32,6 +32,7 @@ import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.t
 import { assertPublicBuildEnv } from './tools/publicBuildEnv.ts';
 import { isExistingProjectDocument } from './tools/existing-document-route.ts';
 import { sharedWorkerChunks } from './tools/viteSharedWorkers.ts';
+import { glslMinify } from './tools/viteGlslMinify.ts';
 
 const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 
@@ -212,6 +213,10 @@ export default defineConfig({
       'src/world/wreckBakeWorker.ts': {},
       'src/game/garageWorkshopGeometryWorker.ts': { privateCopies: ['src/vehicles/profileBuilderAdapter.ts'] },
     } }),
+    // 2026-10-02 (tools/viteGlslMinify.ts): comments and line-edge whitespace out of the game's own complete shader
+    // programs at build time; lines, directives, in-line text and every library shader stay as written (game boot
+    // -31.3 KB raw / -10.4 KB brotli).
+    glslMinify(),
     { name: 'cot-public-build-env', apply: 'build', configResolved(config) { assertPublicBuildEnv(config.env); } },
     {
       name: 'cot-app-version',

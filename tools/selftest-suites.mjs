@@ -473,6 +473,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/local-import-integrity.selftest.mjs',
     'tools/bundle-budget.selftest.mjs',
     'tools/viteSharedWorkers.selftest.mjs',
+    'tools/viteGlslMinify.selftest.mjs',
     'tools/telemetry-report.selftest.mjs',
     'tools/browser-failure-evidence.selftest.mjs',
     'tools/multiplayer-frame-trace.selftest.mjs',

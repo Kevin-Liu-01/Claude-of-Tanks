@@ -485,6 +485,26 @@ core into the host. The small sky, cloud, schematic, painter and texture workers
 files. Baking wrecks on the main thread instead would cost 36–158 ms per donor (Node, first bake) as single
 long tasks under the loading countdown, which is why the worker stays.
 
+## Shader programs minified at build (2026-10-02)
+
+The game's shader programs ship as JS literals with long explanatory comments. `tools/viteGlslMinify.ts` (a
+build-only transform listed in `vite.config.ts`) removes GLSL comments, line-start indentation, trailing
+whitespace and blank lines from the literals under `src/` that hold a complete stage (`void main() {`). It never
+joins lines (every `#` directive stays on its own line and starts it), never changes text inside a line, never
+touches `${…}` interpolations, tagged templates or a literal's outer edges, and leaves a literal alone when a
+comment could continue past it. Library shaders (three's chunks, postprocessing) and shader fragments are never
+rewritten: game code patches them by verbatim anchors, some indented across lines — the first cut also stripped
+three's chunks and broke `lighting.ts`'s `'\t\t#pragma unroll_loop_end\n\t#elif defined (USE_SHADOWMAP)'`
+anchor ("shadow-density anchors not found", the boot never finished). Every rewrite is checked at build time (the
+GLSL token stream and the directive lines must be unchanged, or the build fails), and
+`tools/viteGlslMinify.selftest.mjs` checks all 66 project programs against the 37 patch anchors the source uses.
+
+Measured: game boot 3,626,263 → 3,594,943 B raw and 871,651 → 861,280 B brotli (the entry chunk 775,316 →
+744,287 B raw); 232 literal pieces, 47 kB of source. In headless Chrome every program linked in both builds
+(Garage 88/88, Studio Desert 159–182), with no console or page error, and the Desert Studio capture differed from
+the unminified build by no more than two captures of one build differ from each other (23,292 px, max Δ 54,
+against 22–27 thousand px, max Δ 29–60).
+
 ## Asset and geometry policy
 
 Playable tanks are assembled from first-party code and cached/generated
