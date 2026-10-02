@@ -6,11 +6,11 @@ import {measureTurretBarrelCircularity} from '../turretBarrelCircularity.ts';
 
 // Fixed independent scalar source witnesses. No profile installation, source
 // loader, candidate-derived target or missing-ID fallback is permitted here.
+// 2026-10-01: the T-62MV-1 source study's witnesses (supplied fused FBX: frames, axles, roof, drums, four
+// fields) left with that build. The owner's rebuild (4c34b3e8b: T-62 obr. 1975 chassis; cdbfe54dc: complete
+// T-72B 1987 upper assembly and 125 mm gun) is covered by fleetRenewal (donor hull and wheels, hit-frame
+// articulation) and nationalModernization (125 mm); the T-72B 1987 frames stay witnessed below.
 const SOURCES={
-  t62mv1_x:{yaw:[0,1.446436,.3041853764],gun:[0,1.6650417561,1.5303753764],
-    muzzle:5.920914939,boreFloor:5.65940,boreRadius:.0575,roof:2.082969,wheelY:.4616149961948395,
-    wheels:[-1.858795,-.805165,.24309,1.14781,2.00987],
-    hull:[[-1,1.423205327],[0,1.423205327],[1,1.423205327]],era:4},
   t72b_1987_x:{yaw:[-.0000548974,1.4040902854,-.0343498434],gun:[-.0000548633,1.6208176016,1.2669569241],
     muzzle:5.766827075,boreFloor:5.59804,boreRadius:.0625,roof:2.105640266,wheelY:.43082499504089355,
     wheels:[-1.835365,-1.024875,-.17634,.599355,1.400955,2.228465],
@@ -100,11 +100,6 @@ function checkKnownSourceFixtures(tank,id){
       const air=new THREE.Raycaster(new THREE.Vector3(x+.06,1.77,-3.653),new THREE.Vector3(0,-1,0),0,.035).intersectObject(straps,false);
       assert.equal(air.length,0,'T72 retaining hoop does not become a broad horizontal disk');
     }
-  }
-  if(id==='t62mv1_x'){
-    for(const x of [-.458286,.464882])near(top(detail,x,-3.268563),1.8302124,.00001,'T62 actual full-size source drum crown');
-    const air=new THREE.Raycaster(new THREE.Vector3(0,1.78,-3.268563),new THREE.Vector3(0,-1,0),0,.30).intersectObject(detail,false);
-    assert.equal(air.length,0,'T62 genuine air between separate drums, not solid rack');
   }
   if(id==='t80u_x'){
     const air=new THREE.Raycaster(new THREE.Vector3(1.36,1.74,-3.31),new THREE.Vector3(0,-1,0),0,.26).intersectObject(detail,false);

@@ -106,7 +106,7 @@ has no secrets and no deploy; a receipts job follows once main is green.
 The deployment owner releases a gated commit with the versioned tool instead of the scratchpad
 `deploy-prod-main.sh`; [DEPLOYS.md](DEPLOYS.md) keeps the policy and the ledger.
 
-    node tools/release.mjs build <sha>       # worktree of <sha>; npm ci; vercel pull; vercel build --prod; immutable routes
+    node tools/release.mjs build <sha>       # worktree of <sha>; npm ci; vercel pull; vercel build --prod; carry-forward; immutable routes
     node tools/release.mjs deploy <sha> --title="deploy N: <title>"   # vercel deploy --prebuilt --prod, then verify
     node tools/release.mjs verify <sha> --sweep   # served stamp names <sha>; every chunk 200; a missing chunk uncacheable
     node tools/release.mjs rollback [--to=<deployment>]   # promote the deployment before the live one
@@ -118,6 +118,22 @@ The deployment owner releases a gated commit with the versioned tool instead of 
   settings" below); secrets are never printed or changed.
 - The build's own install rewrites `package-lock.json`; the tool restores it and refuses a tree with
   other tracked changes, so the stamp is never `.dirty`.
+- **Old tabs keep their chunks (2026-10-02).** A tab opened before a deploy keeps importing the hashed
+  chunks its page named; a deploy used to delete every one the new build did not emit (deploy 163: one
+  tab requested a removed chunk 33,875 times in a day, 6 % of the week's requests). `build` therefore
+  keeps a release cache outside git (`--asset-cache=<dir>`, `COT_RELEASE_ASSET_CACHE`, default
+  `~/.cache/cot-release`): every build records its own hashed `/assets` files there, and copies the files
+  of the last `--carry=<N>` releases (default 3; `--carry=0` turns it off) that it does not emit itself
+  into `.vercel/output/static/assets`, newest release first and at most `--carry-max-mb=<MB>` (default
+  200), before `tools/vercel-output-immutable.mjs` writes the immutable routes — so the carried files are
+  immutable too. Hashed names never collide, so nothing the build emits is replaced; a release records only
+  its own files, so a carried file leaves with the release that emitted it; the cache keeps the newest
+  N + 1 releases and prunes everything else; a rebuild of the same commit replaces its entry (a build that is
+  never deployed still occupies one slot). The output directory is removed before `vercel build`, so a reused
+  worktree cannot record an earlier run's carried files as its own. A missing cache only means nothing is
+  carried that time. `tools/release.selftest.mjs` drives the carry, the cap, the pruning and the lock on
+  temporary directories. Collision manifests (`/mp-collision/`) are not carried: the host reads their index
+  before each fetch.
 - `deploy` attaches the branch-link metadata (`githubCommitSha`, `githubCommitRef=main`, the subject
   or `--title`, the repository ids) and then waits for the served `application-version` to name the
   commit. Append the DEPLOYS.md row by hand: number, time, sha, title, served bundle, deployment id.
@@ -220,6 +236,8 @@ wait is stale by the time the lock arrives — re-read it after `acquire()` and 
 ### Asset caching (2026-09-25)
 
 **Asset caching (2026-09-25).** Vite emits content-hashed files under `/assets/`. Do NOT add a header rule for `/assets/(.*)` in `vercel.json`: a `headers` rule applies to every response on the path including a 404, and Vercel's edge then caches that 404 for the rule's lifetime — under deploy 89's immutable rule one transient miss during a promotion became a permanent "A game file failed to download" for every player on that edge node (`tools/vercel-config.selftest.mjs` and `src/gallery/chunkRecovery.selftest.mjs` refuse the rule). The year-long header comes from the deploy step instead: `node tools/vercel-output-immutable.mjs` runs between `vercel build` and `vercel deploy --prebuilt` and writes immutable, case-sensitive header routes for exactly the hashed files that exist in `.vercel/output/static/assets` (groups of 40 names per route, ahead of the filesystem handle; `--check` verifies coverage; `tools/vercel-output-immutable.selftest.mjs`). A path that is not in the build matches no rule, keeps Vercel's default `public, max-age=0, must-revalidate` answer and heals on the next request; documents keep that default too. Since 2026-10-01 the same per-file routes make the content-addressed collision manifests (`/mp-collision/<map>.<sha12>.json`; the index stays default) immutable and give the existing images, audio and fonts under `/textures`, `/icons`, `/fonts`, `/audio`, `/maps` and `/minimaps` `public, max-age=3600, stale-while-revalidate=86400` (they keep their URL across deploys, so an hour fresh and a day served stale while revalidating); `--check` covers all three families (deploy 163's output: 949 + 33 + 2,480 files, 90 routes, config.json 39 → 119 KB). Deploy 94 also re-encoded every chunk hash as base36 (`build.rollupOptions.output.hashCharacters`), so every `/assets` URL changed once and an edge node that had cached 404s for deploy-93 chunks (a browser's boot-retry loop during the promotion, answered by the old config) never serves them again. Every deploy's verify step then sweeps the served index's chunks (all must answer 200), checks that a missing `/assets` path is not cacheable and boots the alias headless before the DEPLOYS.md row is written.
+
+**Versioned runtime audio (2026-10-02).** A battle session fetches 111 sound files by name (29 combat samples, 82 radio lines); under the one-hour rule above every returning session revalidated all of them. The build now emits a copy of each `public/audio` file under `/assets/audio/` with an eight-character content hash in its name (`tools/viteRuntimeFiles.ts`) and defines the map `src/runtimeFiles.ts` resolves the two fetch sites (`audio.ts`, `voices.ts`) through, so the copies take the immutable `/assets` routes and the release carry-forward; the unhashed originals stay deployed, and development and Node fetch the public paths. Fonts are not versioned: index.html, three stylesheets, `src/ui/fonts.ts`'s injected faces, `public/home.css` and the material painter all name them, and a partial rewrite would download a face twice (`tools/viteRuntimeFiles.selftest.mjs`).
 
 ## Development services
 

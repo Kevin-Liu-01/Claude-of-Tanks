@@ -71,6 +71,11 @@ export function synchronizeFleetRenewalMetadata():void{
   // The T-62 chassis now carries the complete 125 mm T-72B 1987 upper assembly.
   TANK_SPECS.t62mv1_x.armor.turretPivot=[0,1.4804,.676];
   const t62Era=createT62MV1XArmorZones();
+  // The 1975 chassis has an exposed five-wheel course: the donor record's
+  // spaced rubber-skirt planes (x +-1.83, from the superseded MV-era model)
+  // stand in open air beside the wheels, so the rebuild drops them.
+  TANK_SPECS.t62mv1_x.armor.hullPlates=TANK_SPECS.t62mv1_x.armor.hullPlates
+    .filter(p=>!(p.kind==='spaced'&&!p.era&&/^skirt(?:_rubber)?_[LR]$/.test(p.name)));
   TANK_SPECS.t62mv1_x.armor.hullPlates.push(...t62Era.hullPlates);
   // The rebuilt MV-1 adds two independently removable side fields beyond
   // the former four-zone package; gameplay must cover those new cassettes.
