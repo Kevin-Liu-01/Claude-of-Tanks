@@ -2,8 +2,9 @@
 // Rendered proof of the static shadow-caster cache (engine/shadowStaticCache.ts, P20): every scenario renders the
 // same scene state twice inside ONE page task — once through the cache, once with __SHADOW_DEBUG.noStaticCache — and
 // compares the frames pixel for pixel (8-bit luminance). Inside one task no game frame, wind tick or cloud step runs
-// between the two renders, and the temporal AA (its sub-pixel jitter and history) is off for these renders unless
-// --temporal, so a frame is a function of the scene state and any difference is the cache's. The A/A floor (the
+// between the two renders, and the temporal AA (its sub-pixel jitter and history, where the preset enables it) and the
+// volumetric clouds' jittered history accumulation are held for these renders unless --temporal, so a frame is a
+// function of the scene state and any difference is the cache's. The A/A floor (the
 // uncached render twice) is measured first. After every comparison the cache is re-warmed, so each step captures the
 // path its change actually takes: a still frame (the reuse path), a hull moved and turned (the dynamic layer on the
 // reused copy), camera steps across the cascade snaps (pose rebuilds, then the held reuse), the sun moved (a
@@ -80,6 +81,10 @@ function installTruthHelpers(temporal) {
     D.post.taa.resetHistory?.();
   };
   setTemporal(!!temporal);
+  // the volumetric clouds accumulate a jittered history every frame (16 slots, Bayer offsets): hold it (their QA
+  // freeze keeps compositing the last history), so the sky is the same in both renders of a comparison
+  const clouds = D.scene?.userData?.volumetricClouds ?? null;
+  if (clouds && !temporal) clouds.frozen = true;
   /** One complete frame of the current state: the lighting update (it arms the cache), then the post transaction. */
   const frame = (cached) => {
     debug().noStaticCache = !cached;
@@ -133,7 +138,8 @@ function installTruthHelpers(temporal) {
       return cv.toDataURL('image/png');
     },
   };
-  return { width: cv.width, height: cv.height, cacheEnabled: !!telemetry()?.enabled, taa: D.post.taa.enabled };
+  window.__SCT.releaseClouds = () => { if (clouds) clouds.frozen = false; };
+  return { width: cv.width, height: cv.height, cacheEnabled: !!telemetry()?.enabled, taa: D.post.taa.enabled, cloudsFrozen: !!clouds?.frozen };
 }
 
 /** Run one scenario in the page: `body` mutates the state between pairs and returns the pairs to compare. */
@@ -328,6 +334,7 @@ async function flickerPhase(page, options) {
     const S = window.__SHADOW_DEBUG || (window.__SHADOW_DEBUG = {});
     S.forceAll = false; S.noStaticCache = false;
     window.__SCT.setTemporal(true);
+    window.__SCT.releaseClouds();
     window.__DEBUG.rig.release();
   });
   await sleep(1500);
