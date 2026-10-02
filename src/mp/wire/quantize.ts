@@ -82,7 +82,6 @@ export function quantizeReloadS(seconds: number): number {
   return units <= 0 ? 0 : Math.min(65535, units);
 }
 export function dequantizeReloadS(units: number): number { return (units * RELOAD_MS_UNITS) / 1000; }
-export function dequantizeReloadMs(units: number): number { return units * RELOAD_MS_UNITS; }
 
 export function quantizeMultiplier(value: number): number {
   return clampInt(finite(value, 1) * MULTIPLIER_SCALE, 0, 65535);

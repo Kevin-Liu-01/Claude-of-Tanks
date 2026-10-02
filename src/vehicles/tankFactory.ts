@@ -1,16 +1,20 @@
-import { applyTacticalRoleBalance } from './tacticalRoleBalance.ts';
-import { applyVehicleSizePolicy } from './vehicleSizePolicy.ts';
-import { prepareXk2DonorMetadata, synchronizeXk2CombatMetadata } from './xk2Specs.ts';
-// Typed eager fleet factory facade for release tools and headless audits. It
-// evaluates spec packs in donor order, seals the selectable roster, and
-// configures the cycle-free implementation once. Player boot uses the
-// demand-loaded fleetFactory.ts boundary instead.
+// Typed eager fleet factory facade for release tools and headless audits.
+// Every spec here is the spec the browser fleet and the authorities hold: the
+// shared ordered registration (fleetRegistration.ts) runs the registration
+// passes, and fleetParity.selftest.mjs digests every spec per facade. Only
+// the catalog ORDER is the tools' own: the builder packs and the packs listed
+// before fleetRegistration.ts below evaluate first, in the tools' historical
+// order, which the generated receipts list ids in (docs/VEHICLE-ROSTER.md,
+// the manual reference). Every calibration and marking seat then registers,
+// every spec is finalized once and the cycle-free implementation is
+// configured once. Player boot uses the demand-loaded fleetFactory.ts; the
+// authorities use the spec-only authorityFleet.ts.
 
 import { configureTankFactory } from './tankFactoryCore.ts';
 import { MODERN3_BUILDERS } from './modern3.ts';
 import { FRANCE_BUILDERS } from './france.ts';
 import { MODERN2_BUILDERS } from './modern2.ts';
-import { MODERN1_BUILDERS } from './modern1.ts';
+import './modern1.ts';
 import { CHALLENGER_BUILDERS } from './profiles/challenger.ts';
 import { FITTINGS } from './profiles/kit.ts';
 import { PROFILED_BUILDERS } from './profiledProcedurals.ts';
@@ -19,10 +23,6 @@ import { registerVehicleMarkingSeatRecords } from './vehicleMarkingSeatRegistry.
 import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.ts';
 import { registerCombatAnatomyCalibrations } from './combatAnatomyCalibrationRegistry.ts';
 import { finalizeCombatAnatomy } from './combatAnatomy.ts';
-import { applyFleetBalancePass } from './fleetBalancePass.ts';
-
-// These modules register specs at evaluation time. Keep donor waves ahead of
-// their derivatives so every clone observes a complete source record.
 import './combatVariantSpecs.ts';
 import './kf51Specs.ts';
 import './abramsConceptSpecs.ts';
@@ -33,55 +33,14 @@ import './ukraine.ts';
 import './china.ts';
 import './chineseFrontlineSpecs.ts';
 import './russianFrontlineSpecs.ts';
-import './sweden.ts';
-import './poland.ts';
-import './korea.ts';
-import './japan.ts';
-import './germany.ts';
-import './afvFamily.ts';
-import './sheridan.ts';
-import { synchronizeSourceXCombatMetadata } from './sourceXFleetSpecs.ts';
-import { synchronizeSuppliedSourceCombatMetadata } from './suppliedSourceFleetSpecs.ts';
-import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
-import { synchronizeAbramsSourceXCombatMetadata } from './abramsSourceXSpecs.ts';
-import './merkavaModernSpecs.ts';
-import './arieteModernSpecs.ts';
-import './tos1aTagilSpecs.ts';
-import './griffinViperSpecs.ts';
-import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
-import './europePhotoIfvSpecs.ts';
-import './amx10pSpecs.ts';
-import './marder2Specs.ts';
-import {synchronizeFleetRenewalMetadata} from './fleetRenewalSpecs.ts';
-import {synchronizeNationalModernizationMetadata} from './nationalModernizationSpecs.ts';
-
-import {
-  SAVED_TANK_IDS,
-  TANK_SPECS,
-  finalizeFirstPartyRoster,
-} from './specs.ts';
-import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
+import './fleetRegistration.ts';
+import { SAVED_TANK_IDS, TANK_SPECS } from './specs.ts';
 
 registerCombatAnatomyCalibrations(COMBAT_ANATOMY_CALIBRATIONS);
-applyFleetBalancePass(TANK_SPECS);
-prepareXk2DonorMetadata();
-synchronizeSourceXCombatMetadata();
-synchronizeSuppliedSourceCombatMetadata();
-synchronizeSecondWaveXCombatMetadata();
-synchronizeAbramsSourceXCombatMetadata();
-synchronizeXk2CombatMetadata();
-synchronizeIfvReplicaCombatMetadata();
-synchronizeFleetRenewalMetadata();
-synchronizeNationalModernizationMetadata();
-applyTacticalRoleBalance(TANK_SPECS);
-finalizeFirstPartyRoster();
-applyVehicleSizePolicy(TANK_SPECS);
 for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(TANK_SPECS[id]);
 registerVehicleMarkingSeatRecords(VEHICLE_MARKING_SEATS);
-applyNativeFamilyOrderToCatalogs();
 configureTankFactory({
   canonicalBuilderPacks: [
-    ['modern1', MODERN1_BUILDERS],
     ['challenger', CHALLENGER_BUILDERS],
     ['modern2', MODERN2_BUILDERS],
     ['modern3', MODERN3_BUILDERS],

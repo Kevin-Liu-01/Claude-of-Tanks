@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import type { CameraEntity, CameraRigDeps } from './cameraRig.ts';
 
 const FOV = 38;
-const PITCH = Math.PI * 0.31;
+// A shallower tactical angle shows farther across the field while keeping the hull centered.
+const PITCH = Math.PI * 0.27;
 const YAW = Math.PI / 4;
 
 /** Stable tactical framing. Uses the existing perspective camera and world collision query. */

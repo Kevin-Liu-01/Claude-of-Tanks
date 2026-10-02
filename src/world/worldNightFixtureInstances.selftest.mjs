@@ -73,9 +73,9 @@ for (const [id, type] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) for (const
   assert.equal(familyDigest(type, seed), familyDigest(type, seed), `${id}/${seed}: a rebuild reproduces every stream and RNG draw`);
 }
 const propsSource = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-assert.match(propsSource, /rec\.state = 1;\s*setWorldNightFixtureActive\(pool\.imI, rec\.slot, false\)/,
+assert.match(propsSource, /rec\.state = 1;\s*if \(pool\?\.imI\) setWorldNightFixtureActive\(pool\.imI, rec\.slot, false\)/,
   'all authored destruction routes switch off the original instance at the state transition');
-assert.match(propsSource, /rec\.state = 0;\s*const pool = dPools\.get\(rec\.kind\);\s*if \(pool && pool\.imI\) \{\s*setWorldNightFixtureActive\(pool\.imI, rec\.slot, true\)/,
+assert.match(propsSource, /rec\.state = 0;\s*if \(rec\.clutter\) rec\.clutter\.setCrushed\(false\);\s*const pool = dPools\.get\(rec\.kind\);\s*if \(pool && pool\.imI\) \{\s*setWorldNightFixtureActive\(pool\.imI, rec\.slot, true\)/,
   'the existing cached-world rematch owner restores the exact activity slot');
 
 const scene = new THREE.Scene(), root = new THREE.Group(); scene.add(root);

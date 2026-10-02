@@ -223,6 +223,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
 
   const reset = (): void => {
     frameInfo.player = null;
+    frameInfo.rosterTanks = game.rosterTanks ?? game.tanks;
     frameInfo.tanks = game.tanks;
     frameInfo.shells = game.shells;
     frameInfo.matchModeState = game.matchModeState;
@@ -242,7 +243,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     frameInfo.mode = rig.mode === 'SNIPER' ? 'sniper' : 'battle';
     frameInfo.player = focus;
     frameInfo.tanks = game.tanks;
-    frameInfo.rosterTanks = game.tanks;
+    frameInfo.rosterTanks = game.rosterTanks ?? game.tanks;
     frameInfo.shells = game.shells;
     frameInfo.matchModeState = game.matchModeState;
     frameInfo.timeLimitS = clockLimitS();

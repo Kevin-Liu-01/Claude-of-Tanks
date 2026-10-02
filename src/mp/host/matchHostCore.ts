@@ -6,9 +6,11 @@
  * gate that verifies the seat token with the per-match host secret (Web Crypto), reports the match to the room every
  * ROOM_MATCH_POLL_MS and on each phase change, and broadcasts the sealed migration keyframe every
  * ROOM_MATCH_KEYFRAME_INTERVAL_MS (the boot configuration less often), so any elected peer can resume the match. On a
- * migration it boots from the retained state at the tick the main thread computed. DOM-free.
+ * migration it boots from the retained state at the tick the main thread computed. DOM-free. Vehicles are specs only
+ * (src/vehicles/authorityFleet.ts): the boot loads the roster's combat-anatomy groups beside the collision world.
  */
 import { createMatchActor } from '../../../server/match/matchActor.ts';
+import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { hostRulesetFor } from './hostRuleset.ts';
 import type { ActorWorldCollision, MatchActor } from '../../../server/match/matchActor.ts';
 import type { ClientLink } from '../../../server/match/link.ts';
@@ -71,6 +73,11 @@ interface PortLink extends ClientLink {
 const CONFIG_INTERVAL_MS = 10_000;
 const HELLO_TIMEOUT_MS = 5_000;
 const HOUSEKEEPING_MS = 250;
+/** The vehicles the booted match fields (spectators ride none): the calibration groups the host loads. */
+const rosterSpecIds = (config: HostBootConfig): string[] => [
+  ...config.seats.filter((seat) => seat.team !== 'spectator').map((seat) => seat.specId),
+  ...config.bots.map((bot) => bot.specId),
+];
 
 export function createMatchHostCore({
   port,
@@ -312,7 +319,7 @@ export function createMatchHostCore({
     const generation = ++bootGeneration;
     config = next;
     migrationKey = await deriveMigrationKey(next.hostSecret);
-    const world = await buildWorld(next);
+    const [world] = await Promise.all([buildWorld(next), ensureAuthorityFleet(rosterSpecIds(next))]);
     if (bootGeneration !== generation || disposed) return;
     const resume = next.resume;
     const created = createMatchActor({

@@ -96,6 +96,7 @@ function applyOverlayEmphasis(object: THREE.Mesh): void {
 
 const MODULE_COLORS: Readonly<Record<string, number>> = Object.freeze({
   engine: 0xf0a23a, fuelTank: 0xe76f51, ammoRack: 0xff4d5f,
+  roofGun: 0xffc65c,
   missileRack: 0xff6b45, autoloader: 0xff738e, feedSystem: 0xffa75c,
   turretRing: 0xb38cff, gunMount: 0xc2a5ff, radio: 0x78a9ff,
   optics: 0x5ee1d2, gun: 0xe9cf63, transmission: 0xd58a35,

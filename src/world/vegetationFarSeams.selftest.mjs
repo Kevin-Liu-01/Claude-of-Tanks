@@ -46,8 +46,8 @@ for (const fn of functions) {
   }
   visit(fn);
 }
-assert.deepEqual(callOwners, [farNames[0], farNames[1], farNames[1], farNames[2], farNames[2], farNames[3]],
-  'only the six far-shell callsites opt in; near palms cannot silently change');
+assert.deepEqual(callOwners, ['buildPalmGeometry', farNames[0], farNames[1], farNames[1], farNames[2], farNames[2], farNames[3]],
+  'six far shells and the near palm crown use joined corners');
 for (const name of ['canopyJitterNoise', 'canopyCornerKey', 'jitterFarShell']) {
   const fn = functions.find(node => node.name.text === name);
   assert.ok(fn);
@@ -75,14 +75,15 @@ function compile(input = text, mode = 'current') {
     }
     visit(src); assert.ok(value, name); return value;
   };
+  const oldJitterFixture = fns.some(n => n.name.text === 'jitterRadial') ? '' : originalJitter;
   const code = fns.slice(first, last + 1).map(node => {
     const name = node.name.text;
     if (mode === 'tearing' && name === 'jitterRadial') return originalJitter;
     if (mode === 'tearing' && name === 'jitterFarShell') return originalJitter.replace('jitterRadial', 'jitterFarShell');
     let code = node.getText(src).replace(/^export /, '');
     if (mode === 'near-palm' && name === 'buildPalmGeometry') {
-      assert.ok(code.includes('jitterRadial(core, rng, 0.25)'));
-      code = code.replace('jitterRadial(core, rng, 0.25)', 'jitterFarShell(core, rng, 0.25)');
+      assert.ok(code.includes('jitterFarShell(core, rng, 0.25)'));
+      code = code.replace('jitterFarShell(core, rng, 0.25)', 'jitterRadial(core, rng, 0.25)');
     }
     if (mode === 'indexed' && name === 'mergeParts') return 'function mergeParts(parts) { return mergeGeometries(parts, false); }';
     if (mode === 'poisoned' && name === 'jitterFarShell') code = code.replace('  return geo;', "  geo.getAttribute('normal').array.fill(NaN);\n  return geo;");
@@ -100,7 +101,7 @@ function compile(input = text, mode = 'current') {
       const receipt = streams.map(({seed, calls, next}) => ({seed, calls, tail: [next(), next(), next(), next()]}));
       streams.length = 0; return receipt;
     }
-    const BIRCH_VAR = ${variable('BIRCH_VAR')};\n${get('makeBirchFoliageTexture')}\n${code}
+    const BIRCH_VAR = ${variable('BIRCH_VAR')};\n${get('makeBirchFoliageTexture')}\n${oldJitterFixture}\n${code}
     function library(seed, input) {
       const cfg = { vegetation: input }, veg = ${variable('veg')};
       ${input.slice(start, end)}

@@ -10,7 +10,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 type Point = readonly [number, number, number];
 type Add = (bucket: string, geometry: THREE.BufferGeometry, x: number, y: number,
   z: number, rx?: number, ry?: number, rz?: number) => void;
-const { box, cylX, cylY, cylZ, torus } = KIT;
+const { box, cylX, cylY, cylZ } = KIT;
 
 function caseSolid(width: number, height: number, depth: number): THREE.BufferGeometry {
   return sectionSolid([-.5, .5].map(z => ({ z: z * depth,

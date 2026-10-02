@@ -24,9 +24,10 @@ return shadows;}
 import {getSpec} from '../specs.ts';
 import {createTankState} from '../../sim/movement.ts';
 // The frozen gun / non-gun payload digests and gun-triangle counts (pinned per quality and camo pattern) are
-// retired: whole-tank change detection of type96b_x is the fleet geometry ledger's. Kept: the boot is gun-owned
-// and the tube recoil-owned at every legal pitch/yaw, the measured boot envelope and seat, the wrong-parent
-// control, distance-policy survival and the authored shadow-proxy contract (+ its two rejecting controls).
+// retired: whole-tank change detection of type96b_x, including the 2026-10-01 forward smoke correction, is the
+// fleet geometry ledger's. Kept: the boot is gun-owned and the tube recoil-owned at every legal pitch/yaw, the
+// measured boot envelope and seat, the wrong-parent control, distance-policy survival and the authored
+// shadow-proxy contract (+ its two rejecting controls).
 const CASES=[{quality:'high',camoPattern:'factory'},{quality:'high',camoPattern:'winter'},
   {quality:'low',camoPattern:'factory'},{quality:'low',camoPattern:'winter'}];
 

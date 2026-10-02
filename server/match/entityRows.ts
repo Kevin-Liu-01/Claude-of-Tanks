@@ -7,15 +7,13 @@ import { smokeScreenSummary } from '../../src/sim/smokeScreen.ts';
  */
 import { magazineIndicator, type MagazineIndicator } from '../../src/sim/magazineIndicator.ts';
 import type { AuthoritativeEntity } from '../../src/sim/authoritativeMatch.ts';
-import type { DamageShell } from '../../src/sim/damage.ts';
 import {
-  ENTITY_FLAGS, MODULE_STATE_NAMES, PHASE, RELOAD_KIND_NAMES, SHELL_FLAGS, VERDICT, VIEWER_CREW, VIEWER_EQUIPMENT, VIEWER_MODULES,
+  ENTITY_FLAGS, MODULE_STATE_NAMES, PHASE, RELOAD_KIND_NAMES, VERDICT, VIEWER_CREW, VIEWER_EQUIPMENT, VIEWER_MODULES,
 } from '../../src/mp/wire/constants.ts';
-import type { EntityRow, ShellRow, SnapshotMeta, ViewerState } from '../../src/mp/wire/messages.ts';
+import type { EntityRow, SnapshotMeta, ViewerState } from '../../src/mp/wire/messages.ts';
 import {
-  clampU16, clampU8, quantizeAngle, quantizeMultiplier, quantizePosition, quantizeReloadS, quantizeShellVelocity, quantizeVelocity,
+  clampU16, clampU8, quantizeAngle, quantizeMultiplier, quantizePosition, quantizeReloadS, quantizeVelocity,
 } from '../../src/mp/wire/quantize.ts';
-import { shellTypeIndex } from '../../src/mp/wire/codec.ts';
 import { MOVEMENT_CHECKPOINT_VERSION } from '../../src/mp/match/movementCheckpoint.ts';
 import { eraPlateIndices } from '../../src/mp/wire/era.ts';
 
@@ -115,16 +113,6 @@ export function captureEntityRow(entity: AuthoritativeEntity, entityId: number, 
     flags: entityFlags(entity),
     ...(combat.auxiliary ? { auxiliaryJson: JSON.stringify({...combat.auxiliary, smoke:combat.auxiliary.smoke ? smokeScreenSummary(combat.auxiliary.smoke) : null}) } : {}),
     eraSpent: era.indices(entity),
-  };
-}
-
-export function captureShellRow(shell: DamageShell, shooterEntityId: number): ShellRow {
-  return {
-    id: shell.id & 0xffff, shooterEntityId,
-    x: quantizePosition(shell.pos.x), y: quantizePosition(shell.pos.y), z: quantizePosition(shell.pos.z),
-    vx: quantizeShellVelocity(shell.vel.x), vy: quantizeShellVelocity(shell.vel.y), vz: quantizeShellVelocity(shell.vel.z),
-    shellType: shellTypeIndex(String(shell.spec.type)),
-    flags: shell.spec.guided ? SHELL_FLAGS.GUIDED : 0,
   };
 }
 

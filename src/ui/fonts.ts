@@ -34,22 +34,25 @@ export const FONT_COND = "'ABC Monument Grotesk','Arial Narrow','Avenir Next Con
 
 // Weights the UI actually uses (resolved against the face ranges below).
 // Floor is 500: nothing below medium anywhere in the UI.
-const WEIGHTS = [500, 600, 700, 800] as const;
+const WEIGHTS = [500, 700] as const;
 
 const FONT_DIR = '/fonts/abc-monument-grotesk';
 
-const FONT_CSS = `@font-face{
+const FONT_FACE_CSS = `@font-face{
   font-family:'ABC Monument Grotesk';
   src:url('${FONT_DIR}/ABCMonumentGrotesk-Regular.woff2') format('woff2');
-  font-weight:100 400;font-style:normal;font-display:optional;}
+  font-weight:100 400;font-style:normal;font-display:swap;}
 @font-face{
   font-family:'ABC Monument Grotesk';
   src:url('${FONT_DIR}/ABCMonumentGrotesk-Medium.woff2') format('woff2');
-  font-weight:500 600;font-style:normal;font-display:optional;}
+  font-weight:500 600;font-style:normal;font-display:swap;}
 @font-face{
   font-family:'ABC Monument Grotesk';
   src:url('${FONT_DIR}/ABCMonumentGrotesk-Bold.woff2') format('woff2');
-  font-weight:700 900;font-style:normal;font-display:optional;}
+  font-weight:700 900;font-style:normal;font-display:swap;}
+`;
+
+const FONT_CSS = `:root { --cot-font-ui: ${FONT_STACK}; }
 /* stats and timers line up: lining tabular figures across every overlay */
 .cot-garage,.cot-hud,.cot-settings,.cot-dp,.cot-hints,.cot-end{
   font-variant-numeric:lining-nums tabular-nums;}
@@ -63,9 +66,17 @@ let warmed = false;
 
 /**
  * Inject the @font-face rules (idempotent) and pre-warm the hosted weights so
- * overlays never flash fallback glyphs. Safe to call from every UI module.
+ * late downloads replace the readable fallback. Warm each physical file once,
+ * without blocking startup. Safe to call from every UI module.
  */
 export function ensureFonts(): void {
+  // Reuse first-paint declarations rather than registering each face twice.
+  if (!document.getElementById('cot-font-faces')) {
+    const faces = document.createElement('style');
+    faces.id = 'cot-font-faces';
+    faces.textContent = FONT_FACE_CSS;
+    document.head.appendChild(faces);
+  }
   if (!document.getElementById('cot-fonts')) {
     const s = document.createElement('style');
     s.id = 'cot-fonts';

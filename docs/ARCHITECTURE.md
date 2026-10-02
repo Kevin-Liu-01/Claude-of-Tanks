@@ -594,6 +594,19 @@ Exports locked in §2.7. Additional requirements:
   into displacement / slope / foam maps by fragment-shader butterfly passes every frame — that the sheet displaces
   and shades with. The in-square sea colour and the marine ring faces stay the terrain material's; nothing here
   adds a terrain sampler.
+- Small obstacle contact: street rubble, steel hedgehogs, and loose surface rocks
+  (scatter scale 1.25–1.8, at most half embedded) crush immediately under a moving
+  tank, including crawling/reversing, without an impact slowdown or track damage.
+  Large rocks, authored tactical outcrops, and rubble repurposed as Reservoir
+  waterworks remain solid cover. `crushableClutter.ts` keeps debris visible by
+  flattening its existing batched vertices or rock instance; it adds no meshes,
+  draw calls, or steady-frame work. All three hedgehog beams share one appended
+  prop identity. Movement, shell collision, authoritative destruction events, and
+  late-join state use that identity together; cached-world rematches restore exact
+  original geometry and collision. Server shards must be recaptured after changes
+  to this policy. `crushableClutter.selftest.mjs` exercises native collision shapes,
+  light/heavy forward/reverse contact, track health and replication;
+  `tools/crushable-clutter.browser.mjs` verifies live map geometry and resets.
 - Building authoring has two performance contracts. Landmark geometry and its
   connected exterior fixtures merge into existing material buckets before GPU
   upload. Repeated destructible structures keep one intact and one broken

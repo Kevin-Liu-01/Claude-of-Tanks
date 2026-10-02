@@ -292,4 +292,3 @@ export function buildCv90MkivX(P: TankBuilderPort): void {
   P.topY=2.82-py;
   P.hullG.userData.xRebuild={candidate:'cv90_mkiv_x',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
-export const CV90_MKIV_SOURCE_X_PROFILES={cv90_mkiv_x:{build:buildCv90MkivX}} as const;

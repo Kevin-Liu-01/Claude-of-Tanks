@@ -46,7 +46,7 @@ const observed = source.replace(rngSource, rngSource.replace('function mulberry3
     }
     return {SPECIES, palOf, speciesList, materials};
   }
-  export {buildDetailedGarageTree};
+
 `;
 const observedUrl = url.href + '?leaf-sprays';
 const hook = registerHooks({ load(href, context, next) {

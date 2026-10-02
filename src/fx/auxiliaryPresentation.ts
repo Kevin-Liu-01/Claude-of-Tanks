@@ -11,6 +11,7 @@ export interface AuxiliaryVisualEntity {
   visual?: {root?: THREE.Object3D | null} | null;
   combat?: {destroyed?: boolean; auxiliary?: AuxiliaryState} | null;
   networkVisible?: boolean;
+  state?: { roofGunYaw?: number; roofGunPitch?: number } | null;
 }
 interface Ports {
   entities(): Iterable<AuxiliaryVisualEntity>;
@@ -79,6 +80,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     const root=entity.visual?.root;if(!root)return;
     const actor=actors.get(entity.id)?.root===root?actors.get(entity.id)!:prepare(entity,root);
     const state=entity.combat?.auxiliary;
+    if (entity.state) { entity.state.roofGunYaw=state?.gunYaw ?? 0; entity.state.roofGunPitch=state?.gunPitch ?? 0; }
     if(!state){
       if(actor.gun)actor.gun.quaternion.copy(actor.rest);
       if(actor.weapon){actor.weapon.rotation.x=0;actor.weapon.position.copy(actor.restWeapon);}

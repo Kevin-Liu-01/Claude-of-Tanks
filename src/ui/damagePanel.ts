@@ -392,6 +392,7 @@ const MODULE_ICON: Record<string, ModuleIconPainter> = {
     }
   },
 };
+MODULE_ICON.roofGun = MODULE_ICON.gun;
 MODULE_ICON.gunMount = MODULE_ICON.turretRing;
 
 export const DAMAGE_PANEL_MODULE_ICON_IDS = Object.freeze(Object.keys(MODULE_ICON));
@@ -409,6 +410,7 @@ export const DAMAGE_PANEL_MODULE_KIND_BY_ID: Readonly<Record<string, DamagePanel
   autoloader: 'weapon',
   feedSystem: 'weapon',
   missileRack: 'weapon',
+  roofGun: 'weapon',
   ammoRack: 'weapon',
   radio: 'weapon',
   optics: 'weapon',

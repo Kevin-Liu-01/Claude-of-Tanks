@@ -15,6 +15,7 @@ export const MODULE_DEFS = Object.freeze({
   gunMount: Object.freeze({ label: 'Gun Mount', hp: 120, damageChance: 0.45 }),
   autoloader: Object.freeze({ label: 'Autoloader', hp: 125, damageChance: 0.36 }),
   feedSystem: Object.freeze({ label: 'Weapon Feed', hp: 110, damageChance: 0.38 }),
+  roofGun: Object.freeze({ label: 'Roof Gun', hp: 80, damageChance: 0.65 }),
   missileRack: Object.freeze({ label: 'Missile Rack', hp: 120, damageChance: 0.30 }),
   engine: Object.freeze({ label: 'Engine', hp: 160, damageChance: 0.45 }),
   transmission: Object.freeze({ label: 'Transmission', hp: 140, damageChance: 0.45 }),

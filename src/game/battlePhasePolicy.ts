@@ -56,7 +56,8 @@ export function createBattlePhasePolicy(
     isPauseEligible: () => isBattle() && !hasResult() && !isKillcamActive(),
     isBattleStageVisible: () => isBattle() && !isBattleLoadVisible(),
     canRecapturePointer: ({ settingsOpen, spectating }: PointerRecaptureState) => (
-      hasLivePlayer() && !settingsOpen && !isKillcamActive() && !spectating
+      isBattle() && !hasResult() && (hasControllablePlayer() || spectating)
+      && !settingsOpen && !isKillcamActive() && !isBattleLoadVisible()
     ),
     shouldPresentDisconnect: () => isBattle() && !hasResult(),
   });
