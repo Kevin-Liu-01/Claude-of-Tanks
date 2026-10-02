@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
-import { NIGHT_EMISSION_ATTRIBUTE, NIGHT_HEADLIGHT_COLOR, NIGHT_SHTORA_COLOR,
-  setNightEmissionMask, installNightEmissionMask } from './nightEmissionMaterial.ts';
+import { NIGHT_EMISSION_ATTRIBUTE, NIGHT_HEADLIGHT_COLOR, NIGHT_RED_DISPLAY_LEVEL, NIGHT_RED_FLOOR_EXPOSURE, NIGHT_SHTORA_COLOR,
+  setNightEmissionExposure, setNightEmissionMask, installNightEmissionMask } from './nightEmissionMaterial.ts';
+import { EXPOSURE_KEY, EXPOSURE_MIN, EXPOSURE_REFERENCE_ILLUMINANCE, LEGACY_EXPOSURE, NIGHT_EV, exposureFor, whiteBalanceGains } from './lightModel.ts';
 
 const geometry = new THREE.BoxGeometry(1, 2, 3);
 const original = geometry.getAttribute('position').array.slice();
@@ -45,13 +47,13 @@ assert.notEqual(instanced.material.customProgramCacheKey(), regular.material.cus
 assert.throws(() => installNightEmissionMask(instanced.material), /cannot change/);
 assert.throws(() => installNightEmissionMask(new THREE.MeshStandardMaterial(), { instanceActiveAttribute: 'bad; shader' }), /Invalid/);
 
-// Evaluate the installed red tint through the production tone curve, not just the declared red material property:
-// the old radiance passed that property check while the final discs were visibly amber under ACES. Since
-// 2026-10-01 the output pass tone-maps with Three's AgX (renderer.ts) after the light model's exposure (about 1 to
-// 2.8 across day and night). AgX has no per-channel skew toward amber (a saturated light desaturates along its own
-// hue toward white), so the guard is the hue (red, never amber) and the colour the aperture keeps where the
-// previous full-Shtora radiance washes to a pale pink. This CPU oracle supplements (does not replace) the native
-// composed close-up comparison.
+// Evaluate the installed red lens through the production output transform, not just the declared red material
+// property: the old radiance passed that property check while the final discs were visibly amber under ACES, and
+// (2026-10-02) an AgX-only oracle at day exposures passed while the night camera's lens read salmon on screen. The
+// oracle is the whole chain post.ts runs, read from its own source so it follows the grade: the light model's exposure
+// and white balance, the scene-referred saturation and log contrast, three's AgX, the sRGB transfer, the display black
+// point and the night's scotopic shift (the lens sits at the frame's centre: no vignette). The exposures are the light
+// model's own cameras. This CPU oracle supplements (does not replace) the native composed close-up comparison.
 const chunk = THREE.ShaderChunk.tonemapping_pars_fragment;
 assert.match(chunk, /vec3 AgXToneMapping\( vec3 color \)/);
 for (const coefficient of ['0.856627153315983', '0.761241990602591', '0.811302368396859', '1.1271005818144368',
@@ -67,12 +69,66 @@ const agxInset = column([.856627153315983, .137318972929847, .11189821299995, .0
 const agxOutset = column([1.1271005818144368, -.1413297634984383, -.14132976349843826, -.11060664309660323,
   1.157823702216272, -.11060664309660294, -.016493938717834573, -.016493938717834257, 1.2519364065950405]);
 const agxContrast = (x) => { const x2 = x * x, x4 = x2 * x2; return 15.5 * x4 * x2 - 40.14 * x4 * x + 31.96 * x4 - 6.868 * x2 * x + .4298 * x2 + .1191 * x - .00232; };
-function agxDisplay(radiance, exposure) {
-  const v = new THREE.Vector3(...radiance.toArray()).multiplyScalar(exposure).applyMatrix3(toRec2020).applyMatrix3(agxInset);
+function agx(rgb) {
+  const v = new THREE.Vector3(...rgb).applyMatrix3(toRec2020).applyMatrix3(agxInset);
   v.fromArray(v.toArray().map((x) => agxContrast(THREE.MathUtils.clamp((Math.log2(Math.max(x, 1e-10)) + 12.47393) / (4.026069 + 12.47393), 0, 1))));
   v.applyMatrix3(agxOutset).fromArray(v.toArray().map((x) => Math.pow(Math.max(0, x), 2.2))).applyMatrix3(fromRec2020);
-  return new THREE.Color(...v.toArray().map((x) => THREE.MathUtils.clamp(x, 0, 1))).convertLinearToSRGB();
+  return new THREE.Color(...v.toArray().map((x) => THREE.MathUtils.clamp(x, 0, 1))).convertLinearToSRGB().toArray();
 }
+const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
+const gradeConstant = (name) => {
+  const m = post.match(new RegExp(`const ${name} = ([0-9.]+);`));
+  assert.ok(m, `post.ts declares ${name}`);
+  return Number(m[1]);
+};
+const SAT_LINEAR = gradeConstant('GRADE_SAT_LINEAR'), CONTRAST = gradeConstant('GRADE_CONTRAST'), BLACK_POINT = gradeConstant('GRADE_BLACK_POINT');
+const DISPLAY_SAT = gradeConstant('GRADE_SATURATION');
+const inOrder = (source, lines, what) => {
+  let at = -1;
+  for (const line of lines) {
+    const next = source.indexOf(line, at + 1);
+    assert.ok(next > at, `${what}: the oracle models "${line}" in this order`);
+    at = next;
+  }
+};
+inOrder(post, [
+  'outputColor.rgb *= uExposure * uWhiteBalance;',
+  'float sceneLuma = dot( outputColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );',
+  'outputColor.rgb = max( mix( vec3( sceneLuma ), outputColor.rgb, uSatLinear ), vec3( 0.0 ) );',
+  'outputColor.rgb = 0.18 * pow( max( outputColor.rgb, vec3( 1e-6 ) ) * ( 1.0 / 0.18 ), vec3( uContrast ) );',
+  'outputColor.rgb = AgXToneMapping( outputColor.rgb );',
+  'outputColor = sRGBTransferOETF( outputColor );',
+], 'the output pass\'s scene-referred chain');
+inOrder(post, [
+  'col = max( col - vec3( uBlackPoint ), vec3( 0.0 ) ) / ( 1.0 - uBlackPoint );',
+  'float luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );',
+  'col = clamp( mix( vec3( luma ), col, uSaturation ), 0.0, 1.0 );',
+  'if ( uNight > 0.001 ) {',
+], 'the display grade');
+const scotopic = post.match(/float scot = uNight \* ([0-9.]+) \* \( 1\.0 - smoothstep\( ([0-9.]+), ([0-9.]+), luma \) \);\s*col = mix\( col, luma \* vec3\( ([0-9.]+), ([0-9.]+), ([0-9.]+) \), scot \);/);
+assert.ok(scotopic, 'the oracle models the night\'s scotopic shift');
+const [scotAmount, scotLo, scotHi, ...scotTint] = scotopic.slice(1).map(Number);
+assert.match(post, /u\.uSatLinear\.value = satLinear \* model\.saturation;/);
+assert.match(post, /u\.uContrast\.value = contrast \* model\.contrast;/);
+assert.match(post, /setNightEmissionExposure\(u\.uExposure\.value\);/, 'post.ts hands the lens programs the output pass\'s exposure');
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const lumaOf = (c) => .2126 * c[0] + .7152 * c[1] + .0722 * c[2];
+/** What the frame shows for a radiance (shipped maps author no saturation or contrast trims; warmth is the WB). */
+function displayOf(radiance, { exposure, warmth = 0, night = 0 }) {
+  const wb = whiteBalanceGains(warmth);
+  let c = radiance.toArray().map((v, i) => v * exposure * wb[i]);
+  const sceneLuma = lumaOf(c);
+  c = c.map((v) => Math.max(sceneLuma + SAT_LINEAR * (v - sceneLuma), 0));
+  c = c.map((v) => .18 * Math.pow(Math.max(v, 1e-6) / .18, CONTRAST));
+  c = agx(c).map((v) => THREE.MathUtils.clamp(v, 0, 1));
+  c = c.map((v) => Math.max(v - BLACK_POINT, 0) / (1 - BLACK_POINT));
+  const luma = lumaOf(c);
+  c = c.map((v) => THREE.MathUtils.clamp(luma + DISPLAY_SAT * (v - luma), 0, 1));
+  const scot = night * scotAmount * (1 - smooth(scotLo, scotHi, luma));
+  c = c.map((v, i) => v + (luma * scotTint[i] - v) * scot);
+  return new THREE.Color(...c); // display-encoded components (read them raw: getHexString would encode again)
+}
+const hexOf = (c) => c.toArray().map((x) => Math.round(THREE.MathUtils.clamp(x, 0, 1) * 255).toString(16).padStart(2, '0')).join('');
 const hueOf = (c) => { const h = c.getHSL({ h: 0, s: 0, l: 0 }).h * 360; return h > 180 ? h - 360 : h; };
 const chroma = (c) => (Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b)) / Math.max(c.r, c.g, c.b, 1e-6);
 assert.deepEqual(regular.shader.uniforms.nightEmissionWarm.value.toArray(),
@@ -81,15 +137,100 @@ const dayRed = new THREE.Color(0x7c2410); // measured authored T-90A Vladimir le
 const whiteNight = new THREE.Color(3, 3, 3);
 const redTint = regular.shader.uniforms.nightEmissionRed.value;
 const redRadiance = dayRed.clone().add(whiteNight.clone().sub(dayRed).multiply(redTint));
-for (const exposure of [1, 1.6, 2.2, 2.8]) {
-  const display = agxDisplay(redRadiance, exposure);
-  assert.ok(display.r > .8 && Math.abs(hueOf(display)) < 15 && chroma(display) > .45,
-    `night aperture stays red through production AgX at exposure ${exposure}: its hue, never amber, and its colour (${display.getHexString()})`);
-}
+// The light model's cameras: its day key, the bounds of its adaptation (with the authored −0.25 EV of the snow maps
+// and the low sun's −0.5 EV at the dark end), the night camera (its illuminance pins the bound, with the night EV)
+const nightCamera = exposureFor(1e-6, NIGHT_EV);
+const cameras = [EXPOSURE_KEY * EXPOSURE_MIN * 2 ** -.75, exposureFor(EXPOSURE_REFERENCE_ILLUMINANCE), nightCamera, exposureFor(1e-6)];
+assert.ok(nightCamera > 3 && nightCamera < 3.5, `the night camera opens about two stops over the day key (${nightCamera.toFixed(2)})`);
+// the old lens at the night camera: the salmon this fix removes, a pale pink in the whole chain
+const unheldNight = displayOf(redRadiance, { exposure: nightCamera, night: 1 });
+assert.ok(chroma(unheldNight) < .45 && unheldNight.g > unheldNight.r * .6,
+  `the unheld lens at the night camera is the salmon the ceiling removes (${hexOf(unheldNight)})`);
 const oldRadiance = dayRed.clone().add(whiteNight.clone().sub(dayRed).multiply(new THREE.Color(NIGHT_SHTORA_COLOR)));
-assert.ok(chroma(agxDisplay(oldRadiance, 1.6)) < .4,
+assert.ok(chroma(displayOf(oldRadiance, { exposure: EXPOSURE_KEY })) < .4,
   'the regression fixture actually distinguishes the previous full-Shtora radiance (washed to a pale pink)');
+// 2026-10-02: a driven red lens is capped at NIGHT_RED_DISPLAY_LEVEL of the tone curve's input, whatever the camera's
+// exposure. The installed fragment code, modelled exactly here:
+const levelUniform = regular.shader.uniforms.nightEmissionRedLevel;
+const exposureUniform = regular.shader.uniforms.nightEmissionExposure;
+assert.equal(levelUniform.value, NIGHT_RED_DISPLAY_LEVEL);
+assert.strictEqual(exposureUniform, compileMask().shader.uniforms.nightEmissionExposure, 'one exposure uniform shared by every lens program');
+assert.equal(regular.shader.uniforms.nightEmissionFloorExposure.value, NIGHT_RED_FLOOR_EXPOSURE);
+assert.equal(NIGHT_RED_FLOOR_EXPOSURE, EXPOSURE_KEY, 'the floors hold the light model\'s day key');
+assert.equal(NIGHT_RED_FLOOR_EXPOSURE, LEGACY_EXPOSURE, 'and the legacy rig\'s exposure (the Garage, the galaxy skies)');
+for (const line of [
+  'float nightEmissionRedLens = step(1.5, vNightEmissionMask) * nightEmissionOn;',
+  'float nightEmissionLit = step(1e-4, dot(nightEmissionDriven, nightEmissionDriven));',
+  'float nightEmissionRedPeak = max(max(totalEmissiveRadiance.r, totalEmissiveRadiance.g), max(totalEmissiveRadiance.b, 1e-6)) * nightEmissionExposure;',
+  'float nightEmissionRedScale = mix(min(1.0, nightEmissionFloorExposure / nightEmissionExposure), min(1.0, nightEmissionRedLevel / nightEmissionRedPeak), nightEmissionLit);',
+  'totalEmissiveRadiance *= mix(1.0, nightEmissionRedScale, nightEmissionRedLens);',
+]) assert.ok(regular.shader.fragmentShader.includes(line), `the oracle models the installed lens code: ${line}`);
+function lensRadiance(total, base, mask, active, exposure) {
+  const on = (mask >= .5 ? 1 : 0) * Math.min(1, Math.max(0, active));
+  const driven = total.clone().sub(base);
+  const tint = mask >= 1.5 ? redTint : regular.shader.uniforms.nightEmissionWarm.value;
+  const lit = base.clone().add(driven.clone().multiply(tint).multiplyScalar(on));
+  const redLens = (mask >= 1.5 ? 1 : 0) * on;
+  const isLit = driven.r ** 2 + driven.g ** 2 + driven.b ** 2 >= 1e-4 ? 1 : 0;
+  const peak = Math.max(lit.r, lit.g, lit.b, 1e-6) * exposure;
+  const floorScale = Math.min(1, NIGHT_RED_FLOOR_EXPOSURE / exposure), litScale = Math.min(1, NIGHT_RED_DISPLAY_LEVEL / peak);
+  const scale = floorScale + (litScale - floorScale) * isLit;
+  return lit.multiplyScalar(1 + (scale - 1) * redLens);
+}
+// (a player's lights are on by day too, auxiliary lights: the ceiling engages from the camera where the lit lens
+// reaches it, about two thirds of the day key; under a brighter sky the lens reads a deeper red, as a tail lamp in sun)
+const capFrom = NIGHT_RED_DISPLAY_LEVEL / Math.max(redRadiance.r, redRadiance.g, redRadiance.b);
+assert.ok(capFrom < EXPOSURE_KEY * .5, `every night and dusk camera holds the lens at the ceiling (from ${capFrom.toFixed(2)})`);
+const shownAt = new Map();
+for (const night of [0, 1]) for (const warmth of [0, .25]) for (const exposure of cameras) {
+  setNightEmissionExposure(exposure);
+  assert.equal(exposureUniform.value, exposure, 'post.ts drives the shared exposure');
+  const display = displayOf(lensRadiance(whiteNight, dayRed, 2, 1, exposure), { exposure, warmth, night });
+  const unlit = displayOf(lensRadiance(dayRed, dayRed, 2, 1, exposure), { exposure, warmth, night });
+  const at = `exposure ${exposure.toFixed(2)}, warmth ${warmth}, night ${night}`;
+  assert.ok(display.g < display.r * .45 && Math.abs(hueOf(display)) < 10 && chroma(display) > .62,
+    `a lit red lens reads red on screen at ${at}: its hue, never amber, its colour, never salmon (${hexOf(display)})`);
+  assert.ok(display.r > unlit.r + .05, `and reads lit, brighter than its unlit floor (${hexOf(display)} against ${hexOf(unlit)} at ${at})`);
+  if (exposure < capFrom) continue;
+  assert.ok(display.r > .78, `held at the ceiling, a bright red (${hexOf(display)} at ${at})`);
+  const key = `${warmth}/${night}`;
+  shownAt.set(key, [...(shownAt.get(key) ?? []), hexOf(display)]);
+}
+for (const [key, shown] of shownAt) {
+  assert.ok(shown.length >= 3, 'the day key, the night camera and the bound are held');
+  assert.equal(new Set(shown).size, 1, `the same red through every held camera (${key}: ${shown})`);
+}
+// the whole lens floor family: a darker or browner authored base reads the same lit red
+for (const floor of [0x000000, 0x5a1a10, 0x8a3a20, 0x402020]) {
+  const display = displayOf(lensRadiance(whiteNight, new THREE.Color(floor), 2, 1, nightCamera), { exposure: nightCamera, night: 1 });
+  assert.ok(chroma(display) > .62 && Math.abs(hueOf(display)) < 10, `lens floor #${floor.toString(16)} lit at night (${hexOf(display)})`);
+}
+// a dimmer drive (the window material's obstruction bulbs, white × 0.225) stays under the ceiling, untouched
+const dimBulb = lensRadiance(new THREE.Color(.225, .225, .225), new THREE.Color(0, 0, 0), 2, 1, nightCamera);
+assert.deepEqual(dimBulb.toArray(), new THREE.Color(.225, .225, .225).multiply(redTint).toArray(), 'a dim red drive keeps its own radiance');
+for (const exposure of [cameras[0], 1, EXPOSURE_KEY]) {
+  assert.deepEqual(lensRadiance(dayRed, dayRed, 2, 1, exposure).toArray(), dayRed.toArray(),
+    `an unlit lens keeps the exact authored day radiance at the day key and under any brighter sky (${exposure.toFixed(2)})`);
+}
+// under a dimmer camera (an overcast deck, the night) an unlit floor holds its day-key level, where it glowed salmon
+// above its lit neighbours (a wreck's lenses, a tank with its lights off)
+for (const night of [0, 1]) {
+  const atKey = hexOf(displayOf(dayRed, { exposure: EXPOSURE_KEY, night }));
+  for (const exposure of [2.2, nightCamera, exposureFor(1e-6)]) {
+    assert.equal(hexOf(displayOf(lensRadiance(dayRed, dayRed, 2, 1, exposure), { exposure, night })), atKey,
+      `an unlit red floor at ${exposure.toFixed(2)} reads as at the day key`);
+  }
+}
+const unheldFloor = displayOf(dayRed, { exposure: nightCamera, night: 1 });
+assert.ok(unheldFloor.r > displayOf(lensRadiance(whiteNight, dayRed, 2, 1, nightCamera), { exposure: nightCamera, night: 1 }).r,
+  `the regression fixture: unheld, the unlit floor outshone the lit lens at night (${hexOf(unheldFloor)})`);
 assert.deepEqual(dayRed.clone().add(dayRed.clone().sub(dayRed).multiply(redTint)).toArray(), dayRed.toArray(),
   'red-aperture gain cannot alter the exact authored day radiance');
+const warmFloor = lensRadiance(dayRed, dayRed, 1, 1, nightCamera);
+assert.deepEqual(warmFloor.toArray(), dayRed.toArray(), 'warm lamp floors are untouched by the red floor hold');
+const warmLit = lensRadiance(whiteNight, dayRed, 1, 1, nightCamera);
+assert.deepEqual(warmLit.toArray(), dayRed.clone().add(whiteNight.clone().sub(dayRed).multiply(regular.shader.uniforms.nightEmissionWarm.value)).toArray(),
+  'warm lamps are untouched by the red ceiling');
+setNightEmissionExposure(1);
 geometry.dispose(); regular.material.dispose(); instanced.material.dispose();
-console.log('nightEmissionMaterial: exact day baseline, semantic zero mask, AgX-stable red/warm variants, instanced activity, hook/key preservation PASS');
+console.log('nightEmissionMaterial: exact day baseline, semantic zero mask, lit red lenses read red through the whole output chain at every camera, unlit floors hold their day key, dim drives and warm lamps untouched, instanced activity, hook/key preservation PASS');

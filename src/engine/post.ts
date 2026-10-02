@@ -95,6 +95,7 @@ import {
 } from './postLightFxPolicy.ts';
 import { createPostFrameAccounting, type CompletedPostFrame } from './postFrameAccounting.ts';
 import { LEGACY_EXPOSURE, lightTune, type LightModel } from './lightModel.ts';
+import { setNightEmissionExposure } from './nightEmissionMaterial.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 
 interface ReconstructionTelemetry {
@@ -1254,6 +1255,12 @@ const GRADE_SAT_LINEAR = 1.4;
 const GRADE_CONTRAST = 1.28;
 const GRADE_BLACK_POINT = 0.012;
 const GRADE_SATURATION = 1.0;
+// 2026-10-02 (the Garage under AgX): the showroom keeps its authored rig (lighting.ts, an enclosed presentation), tuned
+// under ACES's steep shoulder; AgX's gentler path to white compressed its spot-lit highlights (garage boot p95 182 →
+// 162) while the dark bay held (median 24). A display-space shoulder lift for the enclosed presentation only — luma
+// L + k·L·(1 − L)·smoothstep(0.25, 0.65, L), hue kept — restores the highlight range: nothing below a quarter of
+// display moves, white stays white, nothing clips.
+const GARAGE_HIGHLIGHT_LIFT = 0.35;
 // r4 LP2 ("vignette stacks to a ~30-35% corner luminance falloff on bright daylight wides"): the shader keys
 // the vignette to the PIXEL's own luma — bright sky/haze corners keep most of their level — and
 // terrain_environment r4 eased it to 0.14; 2026-10-01: 0.10, a lens's natural falloff.
@@ -1323,6 +1330,7 @@ const GradeShader = {
     uContrast: { value: GRADE_CONTRAST },
     uBlackPoint: { value: GRADE_BLACK_POINT },
     uSaturation: { value: GRADE_SATURATION },
+    uHighlightLift: { value: 0 },
     uVignette: { value: GRADE_VIGNETTE },
     // 2026-10-01: the light model's linear exposure (lightModel.ts exposureFor, scene.userData.lightModel),
     // applied before the tone curve with its white balance — never a display-space trim again
@@ -1352,6 +1360,7 @@ const GradeShader = {
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
     uniform float uSaturation;
+    uniform float uHighlightLift;
     uniform float uBlackPoint;
     uniform float uVignette;
     uniform float uNight;
@@ -1407,6 +1416,12 @@ const GradeShader = {
       // saturation around the pixel's own luma
       float luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
       col = clamp( mix( vec3( luma ), col, uSaturation ), 0.0, 1.0 );
+      // the enclosed Garage's highlight shoulder (GARAGE_HIGHLIGHT_LIFT note)
+      if ( uHighlightLift > 0.001 ) {
+        float hlL = max( dot( col, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
+        float hlLift = hlL + uHighlightLift * hlL * ( 1.0 - hlL ) * smoothstep( 0.25, 0.65, hlL );
+        col = clamp( col * ( hlLift / hlL ), 0.0, 1.0 );
+      }
       // night (2026-10-01): low light reads through the rods — colour drains from the shadows and dim midtones
       // toward a cool blue (the Purkinje shift); highlights (lamps, the moon, muzzle flashes) keep their colour
       if ( uNight > 0.001 ) {
@@ -2471,6 +2486,7 @@ export function createPost(
     const u = grade.uniforms;
     const contrast = lightTune('GRADE_CONTRAST', GRADE_CONTRAST), satLinear = lightTune('GRADE_SAT_LINEAR', GRADE_SAT_LINEAR);
     u.uSaturation.value = lightTune('GRADE_SATURATION', GRADE_SATURATION);
+    u.uHighlightLift.value = scene.userData.lightEnclosed ? lightTune('GARAGE_HIGHLIGHT_LIFT', GARAGE_HIGHLIGHT_LIFT) : 0;
     u.uBlackPoint.value = lightTune('GRADE_BLACK_POINT', GRADE_BLACK_POINT);
     u.uVignette.value = lightTune('GRADE_VIGNETTE', GRADE_VIGNETTE);
     u.uNight.value = model?.night ?? 0;
@@ -2485,6 +2501,8 @@ export function createPost(
       u.uContrast.value = contrast;
       u.uSatLinear.value = satLinear;
     }
+    // the night lenses hold their display level through the camera's exposure (nightEmissionMaterial.ts)
+    setNightEmissionExposure(u.uExposure.value);
   }
 
   function updateScopeGrade(): void {

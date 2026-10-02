@@ -161,6 +161,29 @@ const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
 assert.match(post, /outputColor\.rgb \*= uExposure \* uWhiteBalance;[\s\S]{0,200}mix\( vec3\( sceneLuma \), outputColor\.rgb, uSatLinear \)[\s\S]{0,80}outputColor\.rgb = 0\.18 \* pow\( max\( outputColor\.rgb, vec3\( 1e-6 \) \) \* \( 1\.0 \/ 0\.18 \), vec3\( uContrast \) \);\s*#ifdef LINEAR_TONE_MAPPING/,
   'exposure, white balance, the scene-referred saturation and contrast are linear, before the tone curve');
 assert.doesNotMatch(post, /GRADE_PIVOT|GRADE_BLACK_LIFT|GRADE_SHADOW_TINT|GRADE_GREEN_DESAT|GRADE_KNEE/, 'the ACES-era grade stack is retired');
+// 2026-10-02: the enclosed Garage keeps its authored rig, tuned under ACES's steep shoulder; under AgX its spot-lit
+// highlights compressed (boot p95 182 → 162, the dark bay's median held at 24). A display shoulder for the enclosed
+// presentation only restores the highlight range and keeps the look below it
+assert.match(post, /u\.uHighlightLift\.value = scene\.userData\.lightEnclosed \? lightTune\('GARAGE_HIGHLIGHT_LIFT', GARAGE_HIGHLIGHT_LIFT\) : 0;/,
+  'the shoulder belongs to the enclosed presentation (a battle frame never takes it)');
+assert.match(post, /float hlL = max\( dot\( col, vec3\( 0\.2126, 0\.7152, 0\.0722 \) \), 1e-4 \);\s*float hlLift = hlL \+ uHighlightLift \* hlL \* \( 1\.0 - hlL \) \* smoothstep\( 0\.25, 0\.65, hlL \);\s*col = clamp\( col \* \( hlLift \/ hlL \), 0\.0, 1\.0 \);/,
+  'a luma shoulder that keeps each pixel\'s hue');
+{
+  const lift = Number(post.match(/const GARAGE_HIGHLIGHT_LIFT = ([0-9.]+);/)?.[1]);
+  assert.ok(lift > 0 && lift < 0.5, `a gentle shoulder (${lift})`);
+  const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const shoulder = (l) => l + lift * l * (1 - l) * ss(0.25, 0.65, l);
+  for (const l of [0, 24 / 255, 0.1, 0.2, 0.25]) near(shoulder(l), l, 1e-12, `the dark bay and the midtones below a quarter of display keep their level (${l.toFixed(3)})`);
+  near(shoulder(1), 1, 1e-12, 'white stays white');
+  let previous = -1;
+  for (let l = 0; l <= 1.0000001; l += 0.001) {
+    const v = shoulder(Math.min(l, 1));
+    assert.ok(v > previous && v <= 1, `monotonic and never past white (${l.toFixed(3)})`);
+    previous = v;
+  }
+  near(shoulder(162 / 255) * 255, 182, 3, 'the AgX boot p95 returns to the ACES showroom\'s');
+  near(shoulder(198 / 255) * 255, 211, 4, 'and its p99');
+}
 // the aerial haze is a layer over the ground: a high camera looks down through less of it (the census bird view)
 assert.match(post, /float x = -viewZ \* uDensity \* hzLayer;/, 'the extinction curve takes the layer factor');
 assert.match(post, /float x2 = hzD \* dHaze \* hzLayer;/, 'and the scatter-in curve');
