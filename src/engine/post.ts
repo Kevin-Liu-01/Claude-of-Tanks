@@ -88,6 +88,9 @@ import { LateFxSceneView } from './lateFxSceneView.ts';
 import {
   CONTACT_SHADOW_GLSL, CONTACT_SHADOW_RANGE_M, createContactShadowUniforms, updateContactShadowUniforms,
 } from './contactShadows.ts';
+import {
+  VEHICLE_ALPHA_MIN, VEHICLE_OCCLUSION_GLSL, VEHICLE_OCCLUSION_RANGE_M, createVehicleOcclusionUniforms,
+} from './vehicleOcclusion.ts';
 import { SunShaftsPass, createLightFxTarget } from './sunShafts.ts';
 import { LensFlarePass } from './lensFlare.ts';
 import {
@@ -926,6 +929,8 @@ const AerialShader = {
     uFirefly: { value: 1 },
     // round 69 (2026-09-24): screen-space contact shadows (contactShadows.ts) — uContact 0 skips the block
     ...createContactShadowUniforms(),
+    // owner 2026-10-02: vehicle-only cavity occlusion (vehicleOcclusion.ts) — uVehOcc 0 skips the block
+    ...createVehicleOcclusionUniforms(),
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -964,6 +969,7 @@ const AerialShader = {
     uniform float uFirefly;
     varying vec2 vUv;
     ${CONTACT_SHADOW_GLSL}
+    ${VEHICLE_OCCLUSION_GLSL}
     // The broad horizontal cloud shadow field keeps its existing 2D noise.
     float vhash( vec2 p ) {
       return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 );
@@ -1064,6 +1070,11 @@ const AerialShader = {
         // the scene target's alpha (lighting.ts); before the haze, which is applied below to the lit colour
         if ( uContact > 0.5 && -viewZ < ${CONTACT_SHADOW_RANGE_M.toFixed(1)} ) {
           texel.rgb *= cotContactShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
+        }
+        // owner 2026-10-02: a vehicle pixel's cavity occlusion (vehicleOcclusion.ts) dims its ambient share, so the
+        // shaded side of a hull keeps its bustle, skirt and wheel-bay depth; nothing else is a receiver
+        if ( uVehOcc > 0.5 && texel.a >= ${VEHICLE_ALPHA_MIN.toFixed(1)} && -viewZ < ${VEHICLE_OCCLUSION_RANGE_M.toFixed(1)} ) {
+          texel.rgb *= cotVehicleOcclusionShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
         }
         // height-aware atmosphere (see AERIAL_HEIGHT_* const block): pixels
         // high above the battlefield datum sit in thinner air — scatter-in
@@ -2217,8 +2228,8 @@ export function createPost(
   const resolveLightFx = (): void => {
     const resolved = resolvePostLightFx(preset, getDeviceTier(), currentPostLightFxQuery());
     const next = lightFxOverrides ? Object.freeze({ ...resolved, ...lightFxOverrides }) : resolved;
-    renderer.domElement.dataset.lightFx = ['contact', 'bounce', 'shafts', 'flare']
-      .filter((_, i) => [next.contactShadows, next.groundBounce, next.sunShafts, next.lensFlare][i]).join('+') || 'off';
+    renderer.domElement.dataset.lightFx = ['contact', 'bounce', 'shafts', 'flare', 'cavity']
+      .filter((_, i) => [next.contactShadows, next.groundBounce, next.sunShafts, next.lensFlare, next.vehicleOcclusion][i]).join('+') || 'off';
     if (samePostLightFx(next, lightFx)) return;
     lightFx = next;
     sunShafts.enabled = next.sunShafts;
@@ -2639,7 +2650,9 @@ export function createPost(
 
   /** Round 69: per-frame state of the light effects (the sun on screen, the rig, the levers). */
   function updatePostLightFx(): void {
-    updateContactShadowUniforms(aerial.uniforms, camera, scene, lightFx.contactShadows);
+    updateContactShadowUniforms(aerial.uniforms, camera, scene, lightFx.contactShadows,
+      lightFx.contactShadows || lightFx.vehicleOcclusion);
+    aerial.uniforms.uVehOcc.value = lightFx.vehicleOcclusion ? 1 : 0;
     sunShafts.update(lightFx.sunShafts);
     lensFlare.update(lightFx.lensFlare);
     lensFlare.clearTarget = !lightFx.sunShafts;

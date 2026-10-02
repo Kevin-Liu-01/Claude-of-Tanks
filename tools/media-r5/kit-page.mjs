@@ -39,7 +39,7 @@ const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta n
 *{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:var(--bg);color:var(--ink);font-family:'Monument',system-ui,sans-serif;font-size:18px;line-height:1.5;-webkit-font-smoothing:antialiased}
 a{color:inherit}img,video{display:block;max-width:100%}
 .shell{width:min(100%,1480px);margin:auto;padding-inline:var(--pad)}
-header.top{display:flex;align-items:center;gap:18px;padding:28px 0;border-bottom:1px solid var(--line)}
+header.top{display:flex;align-items:center;gap:18px;padding-block:28px;border-bottom:1px solid var(--line)}
 header.top img{width:56px;height:56px}header.top .t{font-weight:700;font-size:26px;letter-spacing:.04em}header.top .t b{color:var(--gold);font-weight:500}
 .hero{padding:clamp(40px,6vw,90px) 0 28px}
 .hero h1{margin:0 0 16px;font-size:clamp(44px,7vw,104px);line-height:.9;letter-spacing:-.01em;text-transform:uppercase}
@@ -64,7 +64,7 @@ section>p.lede{margin:0 0 28px;color:var(--muted);max-width:820px;font-size:20px
 .posters{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:16px;align-items:start}.poster{display:block;border:1px solid var(--line)}.poster img{width:100%;height:auto}.poster.land{grid-column:span 2}@media (max-width:820px){.poster.land{grid-column:auto}}
 .logos{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}.logo{border:1px solid var(--line);background:var(--surface);padding:24px;display:flex;flex-direction:column;gap:14px}.logo img{height:120px;object-fit:contain}.logo b{font-size:20px}
 .copy{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px}.copy article{border:1px solid var(--line);background:var(--surface);padding:22px}.copy h3{margin:0 0 10px;font-size:26px;line-height:1.05;text-transform:uppercase;color:var(--gold)}.copy p{margin:0;color:var(--ink)}
-footer{padding:40px 0 64px;border-top:1px solid var(--line);color:var(--muted)}
+footer{padding-block:40px 64px;border-top:1px solid var(--line);color:var(--muted)}
 @media (max-width:820px){.film{grid-template-columns:1fr}}
 </style></head><body>
 <header class="shell top"><img src="assets/logo-mark-metal.svg" alt=""><div class="t">CLAUDE <b>OF TANKS</b></div></header>

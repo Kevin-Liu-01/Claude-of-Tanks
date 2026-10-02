@@ -20,28 +20,39 @@ material.onBeforeCompile = vehicleAmbientFloorHook;
 const before = shaderFor(material);
 const uniform = before.uniforms.uVehicleReadabilityScale;
 assert.equal(uniform.value, 1);
-// Compare the actual callback output with the pre-edit shader fingerprint.
-// Removing only the three deliberate additions must recover EVERY prior
-// floor expression, normal response, texture operation and lighting chunk.
+// Owner 2026-10-02 ("shadows on tanks make them look a lil flat"): the floors keep the shade readable but are aimed by
+// each plate's WORLD orientation as well as the lens, and the indirect light falls toward the ground along the
+// vehicle's own axis. This replaces the frozen shader fingerprint with the invariants that matter: the readability
+// scale still gates both floors, the legacy safeguards (high-albedo rolloff, lit gating, deep-shade hue tint, dark
+// hardware) survive, both floors take the form aim, the ground occlusion and the vehicle pixel tag appear once.
 const additions = [
   'uniform float uVehicleReadabilityScale;\n',
   '\t\tvehFill *= uVehicleReadabilityScale;\n',
   '\t\tvehFloorL *= uVehicleReadabilityScale;\n',
 ];
-// The opt-in wheel branch replaces only painted wheel lighting. Removing its
-// conditional wrapper must recover the historically frozen ordinary shader.
 const wheelBranch = /\t#ifdef COT_WHEEL_PAINT_READABILITY\n[\s\S]*?\t#else\n/;
 assert.ok(wheelBranch.test(before.fragmentShader));
-let daylight = before.fragmentShader.replace(wheelBranch, '')
-  .replace('// <<< gameplay_feel r4\n\t}\n\t#endif', '// <<< gameplay_feel r4\n\t}');
-for (const addition of additions) {
-  assert.equal(daylight.split(addition).length, 2, 'each required uniform application appears exactly once');
-  daylight = daylight.replace(addition, '');
+const frag = before.fragmentShader;
+for (const addition of additions) assert.equal(frag.split(addition).length, 2, 'each required uniform application appears exactly once');
+const once = (needle, label) => assert.equal(frag.split(needle).length, 2, label);
+once('uniform vec4 uVehGround;\n', 'the ground reference is declared once');
+once('uniform vec3 uVehUp;\n', 'the ground axis is declared once');
+once('float vehAim = mix( saturate( vehForm ), vehFacing, ', 'the floors aim by world orientation plus a lens share');
+assert.match(frag, /float vehForm = 0\.\d+ \+ 0\.\d+ \* smoothstep\( -0\.7, 0\.85, vehWN\.y \);/, 'sky-facing plates lift most');
+assert.match(frag, /vehForm \+= 0\.\d+ \* saturate\( dot\( vehWN\.xz \/ vehNH, uCotBounceSun\.xz \/ vehSunH \) \) \* vehNH;/, 'faces turned to the sun bearing lift a little');
+assert.match(frag, /0\.550 \* \( 0\.400 \+ 0\.600 \* vehAim \)/, 'the indirect floor takes the form aim');
+assert.match(frag, /\* \( 0\.40 \+ 0\.60 \* vehAim \+ 0\.45 \* vehRim \* vehShade \);/, 'the deep-shade floor takes the form aim');
+for (const kept of ['vehFill = min( vehFill, 0.30 / vehLuma );', 'vehFill *= mix( 1.0, 0.12, smoothstep( 0.10, 0.55, vehIrrad ) );',
+  'reflectedLight.indirectDiffuse = max( reflectedLight.indirectDiffuse, material.diffuseColor * vehFill );',
+  'vehFloorL *= mix( 0.30, 1.0, smoothstep( 0.025, 0.09, vehLuma ) );', 'vehTint = mix( vec3( 1.0 ), vehTint, 0.92 );']) {
+  assert.ok(frag.includes(kept), `legacy readability safeguard kept: ${kept}`);
 }
-const hash = createHash('sha256');
-hash.update(daylight);
-assert.equal(hash.digest('hex'), '403cad4fb9f972e6bbbbf8a7b940f0074d385438a317d3d86bc4e2bd29cbbef2',
-  'default scale1 preserves all pre-change daylight/Garage shader expressions');
+once('float vehHeight = dot( vehWorldPos - uVehGround.xyz, uVehUp );', 'ground occlusion measures height along the vehicle axis');
+assert.match(frag, /reflectedLight\.indirectDiffuse \*= mix\( 0\.\d+, 1\.0,\s*smoothstep\( 0\.\d+, 1\.\d+, vehHeight \) \);/, 'indirect light falls toward the ground');
+assert.ok(!frag.includes('uVehicleShadeModel'), 'one shade model, no A/B branch');
+const unbound = before.uniforms;
+assert.equal(unbound.uVehGround.value.y, -1e5, 'tooling paths with no vehicle root keep a far-below origin (no darkening)');
+assert.deepEqual(unbound.uVehUp.value.toArray(), [0, 1, 0]);
 
 try {
   const materialVersion = material.version;
@@ -111,6 +122,7 @@ function installCanvasFixture() {
 const restoreCanvas = installCanvasFixture();
 const vehicles = [];
 const bound = [];
+const grounds = new Set(), groundProbe = new Map();
 const roles = new Set();
 const materials = new Set();
 let csmCallbacks = 0;
@@ -157,11 +169,28 @@ try {
           assert.equal(shader.uniforms.csmTestWitness.value, 1, 'readability chains through shadow callback');
         }
         roles.add(entry.userData.appearanceRole);
+        grounds.add(shader.uniforms.uVehGround);
+        if (!groundProbe.has(id)) groundProbe.set(id, { object, root: visual.root, shader });
         bound.push({ material: entry, version: entry.version, key: entry.customProgramCacheKey(), shader });
       }
     });
   }
   assert.ok(bound.length >= 12, 'real vehicle material sets, not a single fake hook');
+  // owner 2026-10-02: every floored material reads the one ground reference; each vehicle mesh points it at its own
+  // root just before it draws and releases it after (tankFactoryCore installVehicleGroundReference)
+  assert.equal(grounds.size, 1, 'every floored vehicle material reads the one ground reference');
+  for (const [id, probe] of groundProbe) {
+    const g = probe.shader.uniforms.uVehGround.value, up = probe.shader.uniforms.uVehUp.value;
+    probe.root.position.set(12, 3, -7);
+    probe.root.rotation.set(0, 0.6, 0.2);
+    probe.root.updateMatrixWorld(true);
+    probe.object.onBeforeRender(null, null, null, probe.object.geometry, probe.object.material, null);
+    assert.deepEqual([g.x, g.y, g.z].map(v => +v.toFixed(6)), [12, 3, -7], `${id}: before a draw the reference is this tank's root origin`);
+    const e = probe.root.matrixWorld.elements, n = Math.hypot(e[4], e[5], e[6]);
+    assert.deepEqual([up.x, up.y, up.z].map(v => +v.toFixed(6)), [e[4] / n, e[5] / n, e[6] / n].map(v => +v.toFixed(6)), `${id}: and its up axis`);
+    probe.object.onAfterRender(null, null, null, probe.object.geometry, probe.object.material, null);
+    assert.equal(g.y, -1e5, `${id}: after the draw the reference idles far below (nothing else darkens)`);
+  }
   assert.ok(csmCallbacks >= 6, 'shadow-hook material path exercised as well as direct tooling path');
   for (const role of ['armorPaint', 'tireRubber', 'wheelPaint', 'trackPad']) {
     assert.ok(roles.has(role), `${role}: real material callback covered`);
@@ -180,4 +209,4 @@ try {
   restoreCanvas();
 }
 assert.equal(getVehicleReadabilityScale(), 1);
-console.log('vehicleReadability.selftest: unchanged daylight expressions, shared current/future/gear uniforms, strict input and exact reset PASS (native shading remains separate)');
+console.log('vehicleReadability.selftest: form-fill floors, ground occlusion, kept safeguards, shared current/future/gear uniforms, per-draw ground reference, strict input and exact reset PASS');
