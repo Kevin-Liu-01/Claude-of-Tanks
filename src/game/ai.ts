@@ -2760,14 +2760,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     let dx = x - st.pos.x, dz = z - st.pos.z;
     let dist = Math.hypot(dx, dz);
-    trackNavProgress(x, z, dist); // r6 wedge watchdog (see update())
     if (dist < ARRIVE_DIST_M) {
+      // an arrival holds the hull on purpose: no drive intent, or the low-speed watchdog read every hold at a
+      // destination as a wedge and reversed the hull off it (a zone holder jiggled on its line every 4-5 s)
       input.throttle = 0;
       input.steer = 0;
       input.brake = Math.abs(st.speed) > 0.5;
       if (crossBridge && combatRouteIndex < combatRoute.length - 1) { combatRouteIndex++; return false; }
       return true;
     }
+    trackNavProgress(x, z, dist); // r6 wedge watchdog (see update())
     // r7 CORNER-HOP ROUTER (see planRoute): re-plan when the goal moved or
     // the recheck timer lapsed; while a solid blocker sits on the straight
     // line, the steering goal becomes the corner around it.

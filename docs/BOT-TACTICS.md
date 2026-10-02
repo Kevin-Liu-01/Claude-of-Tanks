@@ -104,6 +104,11 @@ Right-of-way waits for traffic, not for a hull that never moves:
   will pass beside it keeps the radial guard and the speed cap, so two oncoming
   bots pass side by side instead of stopping on every predicted crossing.
 
+A hull that has reached its destination holds it. The arrival is not drive
+intent, so the low-speed watchdog does not read the hold as a wedge and reverse
+the hull off its hold point; a hull pressing into a wall short of it still backs
+off.
+
 A rack that cannot hurt its target stops pressing it. After 60 seconds in sight
 of the target from inside 90 m, with zones visible but no loaded round opening
 the gate and no burst worth a round, the rack counts as spent against that
@@ -141,8 +146,8 @@ collision remains authoritative, including parapets and piers.
   human across the route, the bounded yield in a walled lane (with a moving-lead
   control), oncoming pairs, a smoke-only rack against an idle M1A2 (ram, retire,
   and an APFSDS control), a zone holder that cannot fight from the zone's centre
-  (shut gate, no sight line), and a mission route that ends short of its
-  objective.
+  (shut gate, no sight line), a mission route that ends short of its
+  objective, and a holder that has arrived (with a wedged-hull control).
 - `src/game/ai.selftest.mjs`: ability requests, fourth-slot independent launcher,
   ground/air edge behavior, continuing missions under contact, route reuse and
   a mobile flanker with an anchor, alongside existing aiming/survival tests.
