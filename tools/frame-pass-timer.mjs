@@ -94,6 +94,9 @@ export function installFramePassTimer() {
     R.info.reset();
     frame = { mode, startedAt: now, pieces: [], cpu: {}, calls: {}, tris: {} };
     label = null;
+    // commit what precedes the frame (the last frame's tail, the HUD canvas) so the frame's first query starts on a
+    // fresh command buffer: the 2026-10-02 pilots' first prefix step read 8 ms for 0.3 ms of simulation work
+    if (ext && mode !== 'cpu') gl.flush();
     if (mode === 'whole') openQuery();
     if (mode === 'prefix') {
       frame.checkpoint = prefixLabels[prefixCursor++ % prefixLabels.length];
@@ -217,7 +220,9 @@ export function installFramePassTimer() {
 
   // --- sampler -----------------------------------------------------------------------------------------------
   function sample({ frames = 240, block = 30, timeoutMs = 60000, modes = ['segmented', 'whole'], flush = true,
-    checkpoints = ['world', 'clouds', 'scene', 'aerial', 'latefx', 'bloom', 'sunshafts', 'lensflare', 'grade', 'smaa', 'upscale'] } = {}) {
+    // 'shadow' returns when the scene pass's shadow-map render does (three renders the maps first inside render()):
+    // its step is the cascades plus the scene pass's setup before them, the 'scene' step the main draw after them
+    checkpoints = ['world', 'clouds', 'shadow', 'scene', 'aerial', 'latefx', 'bloom', 'sunshafts', 'lensflare', 'grade', 'smaa', 'upscale'] } = {}) {
     return new Promise((resolve) => {
       flushPieces = !!flush;
       // a disabled pass never returns: it cannot end a prefix

@@ -110,6 +110,13 @@ function fakePage() {
     const prefixRun = window.__FRAME_PASS_TIMER.sample({ frames: 66, modes: ['prefix'],
       checkpoints: ['world', 'clouds', 'scene', 'aerial', 'bloom', 'sunshafts', 'lensflare', 'grade', 'smaa', 'upscale'] });
     for (let i = 0; i < 90; i++) page.frame();
+    // with the shadow checkpoint (the default list): the nested shadow-map render ends its own step
+    const shadowRun = window.__FRAME_PASS_TIMER.sample({ frames: 72, modes: ['prefix'],
+      checkpoints: ['world', 'clouds', 'shadow', 'scene', 'aerial', 'bloom', 'sunshafts', 'lensflare', 'grade', 'smaa', 'upscale'] });
+    for (let i = 0; i < 96; i++) page.frame();
+    const shadowSplit = summarizePassFrames(await shadowRun);
+    near(shadowSplit.prefixPasses.shadow.med, 4 + 1 + 1.5 + 2 + 2.5, 'prefix step shadow = the scene pass through its shadow maps');
+    near(shadowSplit.prefixPasses.scene.med, 3, 'prefix step scene = the main draw after the maps');
     const prefixResult = await prefixRun;
     assert.equal(page.nestedCount(), 0);
     const ps = summarizePassFrames(prefixResult);
@@ -188,10 +195,30 @@ assert.equal(stats([]).med, null);
   const slot = (label, order, gpu) => ({ mapId: 'verdant', label, key: `verdant-s${order}-${label}`, samples: [{ viewport: '1600x900', view: 'chase',
     summary: { gpuFrame: { med: gpu, p25: gpu - 1 }, cpuFrame: { med: 5 }, calls: { med: 600 }, tris: { med: 1 }, segmentedOverWhole: 1,
       passes: { scene: { gpu: { med: gpu / 2 }, cpu: { med: 1 }, calls: { med: 300 } } } } }] });
-  const report = buildFrameReport([slot('base', 0, 20), slot('new', 1, 17), slot('new', 2, 18), slot('base', 3, 21)], ['base', 'new']);
+  const withPrefix = (record, shadow) => {
+    record.samples[0].prefixSummary = { prefixPasses: { world: { med: 0.3, p25: 0.2 }, shadow: { med: shadow, p25: shadow - 0.5 }, scene: { med: 4, p25: 3.5 } } };
+    record.samples[0].summary.passes['shadow-c0'] = { gpu: { med: null }, cpu: { med: 0.4 }, calls: { med: 90 } };
+    record.samples[0].summary.passes['shadow-c1'] = { gpu: { med: null }, cpu: { med: 0.2 }, calls: { med: shadow * 10 } };
+    return record;
+  };
+  const report = buildFrameReport([withPrefix(slot('base', 0, 20), 5), withPrefix(slot('new', 1, 17), 2), withPrefix(slot('new', 2, 18), 2.5),
+    withPrefix(slot('base', 3, 21), 5.5)], ['base', 'new']);
   const row = report['verdant 1600x900 chase'];
   assert.deepEqual(row.deltas.gpuFrame.deltas, [-3, -3]);
   assert.equal(row.byLabel.base.gpuFrame, 20);
+  assert.deepEqual(row.stepNames, ['world', 'shadow', 'scene'], 'the per-pass GPU rows are the prefix steps');
+  assert.deepEqual(row.deltas.steps.shadow.gpu.deltas, [-3, -3], 'a step pairs A B B A like the frame');
+  assert.equal(row.byLabel.base.steps.shadow.cpu, 0.6, 'a step charges the CPU of every label it covers (the cascades)');
+  assert.equal(row.byLabel.base.steps.shadow.calls, 140);
+  // a toggle's blocks (off, on, on, off) pair inside the slot
+  const block = (side, gpu, shadow) => ({ side, state: {}, summary: { gpuFrame: { med: gpu, p25: gpu }, cpuFrame: { med: 4 }, calls: { med: 500 },
+    tris: { med: 1 }, passes: {}, prefixPasses: { shadow: { med: shadow, p25: shadow } } } });
+  const toggled = buildFrameReport([{ mapId: 'monsoon', label: 'new', key: 'monsoon-s0-new', samples: [{ viewport: '1600x900', view: 'chase',
+    toggle: 'shadow-cache', blocks: [block('off', 20, 6), block('on', 18, 3), block('on', 18.5, 3.2), block('off', 21, 6.4)] }] }]);
+  const t = toggled['monsoon 1600x900 chase toggle:shadow-cache'];
+  assert.deepEqual(t.deltas.gpuFrame.deltas, [-2, -2.5]);
+  assert.deepEqual(t.deltas.steps.shadow.gpu.deltas, [-3, -3.2]);
+  assert.equal(t.byLabel.off.n, 2);
 }
 
 console.log('frame-budget probe: per-pass timer label algebra, whole-frame check, restore, pair deltas, roster pin, lock order, projection PASS');

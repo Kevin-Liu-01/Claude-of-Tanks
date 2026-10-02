@@ -47,6 +47,13 @@ const DEFAULTS = Object.freeze({
   sides: '13x14', spec: 't90m_x', preset: 'high', governor: 'pinned', port: 5395, budgetMin: 18, settleMs: 2500,
   tier: 'desktop', prefixFrames: 330, noFlush: false, segmented: false, scales: null, liveSeconds: 40,
 });
+/** The prefix checkpoints a toggle block rotates through (its last one is the whole frame). */
+const TOGGLE_CHECKPOINTS = Object.freeze(['world', 'clouds', 'shadow', 'scene', 'upscale']);
+/** The CPU / draw labels each prefix step covers (the timer's labels refine world and shadow by render target). */
+const STEP_LABELS = Object.freeze({
+  world: ['world', 'world-water', 'world-grass', 'world-ocean'], clouds: ['clouds'],
+  shadow: ['shadow', 'shadow-c0', 'shadow-c1', 'shadow-c2', 'shadow-c3'], scene: ['scene'],
+});
 /** Runtime A/B switches the probe can flip inside one page (off = the baseline). */
 const FRAME_PROBE_TOGGLES = Object.freeze({
   // the static shadow-caster cache (engine/shadowStaticCache.ts): off forces every caster every frame
@@ -371,8 +378,8 @@ async function sampleView(page, options) {
   // prefix decomposition — one query per frame from its start to a rotating checkpoint
   // a live governor owns the TIME_ELAPSED target (post.ts samples every fourth frame): the probe keeps to the CPU
   const modesOf = () => (options.governor === 'live' ? ['cpu'] : options.segmented ? ['whole', 'segmented'] : ['whole']);
-  const sample = (frames, modes = modesOf()) => page.evaluate((cfg) => window.__FRAME_PASS_TIMER.sample(cfg),
-    { frames, block: options.block, modes, flush: !options.noFlush, timeoutMs: Math.max(60000, frames * 400) });
+  const sample = (frames, modes = modesOf(), checkpoints = undefined) => page.evaluate((cfg) => window.__FRAME_PASS_TIMER.sample(cfg),
+    { frames, block: options.block, modes, flush: !options.noFlush, timeoutMs: Math.max(60000, frames * 400), ...(checkpoints ? { checkpoints } : {}) });
   if (options.governor === 'live') {
     // the governor's own record: the scale it holds, its GPU sample, the presented cadence, every half second
     const series = await page.evaluate(async (seconds) => {
@@ -408,7 +415,9 @@ async function sampleView(page, options) {
       return { pressureSkipped: g?.skippedFrames ?? null, pressureSteps: g?.steps ?? null, rippleAsleep: r?.asleep ?? null,
         cacheReuses: c ? (c.reuses || []).reduce((a, v) => a + (v || 0), 0) : null, cacheRebuilds: c ? (c.rebuilds || []).reduce((a, v) => a + (v || 0), 0) : null };
     });
-    blocks.push({ side, state, result: await sample(half) });
+    // a toggle block's frames rotate through a few prefix checkpoints: the simulations' step, the shadow maps' step,
+    // the scene's and the whole frame (the last checkpoint), each from the same block of one pose
+    blocks.push({ side, state, result: await sample(half, ['prefix'], TOGGLE_CHECKPOINTS) });
     previous = side;
   }
   await page.evaluate(t.on);
@@ -576,81 +585,97 @@ function readSlotRecords(dirs) {
 const slotIndex = (record) => Number(/-s(\d+)-/.exec(record.key)?.[1] ?? 0);
 
 /**
- * One table per map × viewport × view: per pass the median GPU ms of each label (median over that label's slots),
- * and for two labels the A B B A pair deltas of every pass with their spread; frame totals, CPU, draws.
+ * One table per map × viewport × view (and per toggle): per step the median GPU ms of each label (median over that
+ * label's slots or blocks) from the prefix decomposition, the CPU ms and draw calls of the labels the step covers, and
+ * for two labels the A B B A pair deltas with their spread; frame totals (the whole-frame query), CPU, draws.
  */
 export function buildFrameReport(records, labels = null) {
   const out = {};
-  const keyOf = (r, s) => `${r.mapId} ${s.viewport} ${s.view}`;
+  const median = (xs) => { const v = xs.filter((x) => x !== null && x !== undefined && Number.isFinite(x)).sort((a, b) => a - b); return v.length ? +v[Math.floor((v.length - 1) / 2)].toFixed(2) : null; };
+  const sumLabels = (summary, names, field) => {
+    let total = 0, any = false;
+    for (const n of names) { const v = summary?.passes?.[n]?.[field]?.med; if (v !== null && v !== undefined) { total += v; any = true; } }
+    return any ? +total.toFixed(3) : null;
+  };
+  /** One measured unit (a slot's pose, or a toggle block): GPU per step, CPU and draws per step, frame totals. */
+  const unitOf = (summary, prefixSummary) => {
+    const steps = {};
+    const prefix = prefixSummary?.prefixPasses ?? summary?.prefixPasses ?? {};
+    const stepNames = Object.keys(prefix);
+    for (const step of stepNames) {
+      const names = STEP_LABELS[step] ?? [step];
+      steps[step] = { gpu: prefix[step]?.med ?? null, gpuP25: prefix[step]?.p25 ?? null,
+        cpu: sumLabels(summary, names, 'cpu'), calls: sumLabels(summary, names, 'calls') };
+    }
+    return { steps, gpuFrame: summary?.gpuFrame?.med ?? null, gpuFrameP25: summary?.gpuFrame?.p25 ?? null,
+      cpuFrame: summary?.cpuFrame?.med ?? null, calls: summary?.calls?.med ?? null, tris: summary?.tris?.med ?? null };
+  };
   for (const r of records) {
     for (const s of r.samples) {
-      const summary = s.summary ?? null;
-      if (!summary) continue;
-      const k = keyOf(r, s);
-      (out[k] ||= { mapId: r.mapId, viewport: s.viewport, view: s.view, slots: [] }).slots.push({ label: r.label, order: slotIndex(r), summary,
-        load1: r.load1, foreignGpu: r.foreignGpu });
+      if (s.blocks?.length) {
+        const k = `${r.mapId} ${s.viewport} ${s.view} toggle:${s.toggle ?? r.toggle ?? '?'}`;
+        const row = (out[k] ||= { mapId: r.mapId, viewport: s.viewport, view: s.view, toggle: s.toggle ?? null, units: [] });
+        s.blocks.forEach((b, i) => { if (b.summary) row.units.push({ label: b.side, order: slotIndex(r) * 10 + i, unit: unitOf(b.summary, b.summary), state: b.state }); });
+        continue;
+      }
+      if (!s.summary) continue;
+      const k = `${r.mapId} ${s.viewport} ${s.view}`;
+      (out[k] ||= { mapId: r.mapId, viewport: s.viewport, view: s.view, units: [] }).units.push({ label: r.label, order: slotIndex(r),
+        unit: unitOf(s.summary, s.prefixSummary), load1: r.load1, foreignGpu: r.foreignGpu });
     }
   }
   for (const row of Object.values(out)) {
-    row.slots.sort((a, b) => a.order - b.order);
-    const present = labels ?? [...new Set(row.slots.map((s) => s.label))];
-    const passNames = new Set();
-    for (const s of row.slots) for (const p of Object.keys(s.summary.passes)) passNames.add(p);
+    row.units.sort((a, b) => a.order - b.order);
+    const present = row.toggle ? ['off', 'on'] : (labels ?? [...new Set(row.units.map((u) => u.label))]);
+    const stepNames = [...new Set(row.units.flatMap((u) => Object.keys(u.unit.steps)))];
+    row.stepNames = stepNames;
     row.byLabel = {};
-    const median = (xs) => { const v = xs.filter((x) => x !== null && x !== undefined).sort((a, b) => a - b); return v.length ? +v[Math.floor((v.length - 1) / 2)].toFixed(2) : null; };
     for (const label of present) {
-      const slots = row.slots.filter((s) => s.label === label);
+      const units = row.units.filter((u) => u.label === label).map((u) => u.unit);
       row.byLabel[label] = {
-        slots: slots.length,
-        gpuFrame: median(slots.map((s) => s.summary.gpuFrame.med)),
-        gpuFrameP25: median(slots.map((s) => s.summary.gpuFrame.p25)),
-        cpuFrame: median(slots.map((s) => s.summary.cpuFrame.med)),
-        calls: median(slots.map((s) => s.summary.calls.med)),
-        tris: median(slots.map((s) => s.summary.tris.med)),
-        segmentedOverWhole: median(slots.map((s) => s.summary.segmentedOverWhole)),
-        passes: Object.fromEntries([...passNames].map((p) => [p, {
-          gpu: median(slots.map((s) => s.summary.passes[p]?.gpu.med ?? 0)),
-          cpu: median(slots.map((s) => s.summary.passes[p]?.cpu.med ?? 0)),
-          calls: median(slots.map((s) => s.summary.passes[p]?.calls.med ?? 0)),
+        n: units.length,
+        gpuFrame: median(units.map((u) => u.gpuFrame)), gpuFrameP25: median(units.map((u) => u.gpuFrameP25)),
+        cpuFrame: median(units.map((u) => u.cpuFrame)), calls: median(units.map((u) => u.calls)), tris: median(units.map((u) => u.tris)),
+        steps: Object.fromEntries(stepNames.map((p) => [p, {
+          gpu: median(units.map((u) => u.steps[p]?.gpu)), cpu: median(units.map((u) => u.steps[p]?.cpu)), calls: median(units.map((u) => u.steps[p]?.calls)),
         }])),
       };
     }
     if (present.length === 2) {
       const [a, b] = present;
-      const seq = (get) => row.slots.map((s) => ({ label: s.label, value: get(s.summary) }));
+      const seq = (get) => row.units.map((u) => ({ label: u.label, value: get(u.unit) }));
       row.deltas = {
-        gpuFrame: pairDeltas(seq((s) => s.gpuFrame.med), a, b),
-        gpuFrameP25: pairDeltas(seq((s) => s.gpuFrame.p25), a, b),
-        cpuFrame: pairDeltas(seq((s) => s.cpuFrame.med), a, b),
-        calls: pairDeltas(seq((s) => s.calls.med), a, b),
-        passes: Object.fromEntries([...passNames].map((p) => [p, pairDeltas(seq((s) => s.passes[p]?.gpu.med ?? 0), a, b)])),
+        gpuFrame: pairDeltas(seq((u) => u.gpuFrame), a, b), gpuFrameP25: pairDeltas(seq((u) => u.gpuFrameP25), a, b),
+        cpuFrame: pairDeltas(seq((u) => u.cpuFrame), a, b), calls: pairDeltas(seq((u) => u.calls), a, b),
+        steps: Object.fromEntries(stepNames.map((p) => [p, {
+          gpu: pairDeltas(seq((u) => u.steps[p]?.gpu ?? null), a, b), cpu: pairDeltas(seq((u) => u.steps[p]?.cpu ?? null), a, b),
+          calls: pairDeltas(seq((u) => u.steps[p]?.calls ?? null), a, b),
+        }])),
       };
     }
   }
   return out;
 }
 
-/** Markdown for a report: one table per map × viewport × view. */
+/** Markdown for a report: one table per map × viewport × view (and toggle). */
 function formatFrameReport(report, { proxy = 'rtx4050-laptop' } = {}) {
   const ratios = proxyRatios(MID_RANGE_PROXIES[proxy]);
   const lines = [];
+  const delta = (d) => (d && d.pairs ? `${d.med} [${d.min}..${d.max}]` : '');
   for (const row of Object.values(report)) {
     const labels = Object.keys(row.byLabel);
-    lines.push(`### ${row.mapId} · ${row.view} · ${row.viewport}`, '');
-    lines.push(`| pass | ${labels.map((l) => `${l} GPU ms`).join(' | ')}${row.deltas ? ' | Δ (pairs: med [min..max]) |' : ' |'}`);
-    lines.push(`| --- | ${labels.map(() => '---:').join(' | ')}${row.deltas ? ' | ---: |' : ' |'}`);
-    const passNames = Object.keys(row.byLabel[labels[0]].passes);
-    for (const p of passNames) {
-      const cells = labels.map((l) => row.byLabel[l].passes[p]?.gpu ?? '');
-      const d = row.deltas?.passes[p];
-      lines.push(`| ${p} | ${cells.join(' | ')}${d ? ` | ${d.med} [${d.min}..${d.max}] |` : ' |'}`);
+    lines.push(`### ${row.mapId} · ${row.view} · ${row.viewport}${row.toggle ? ` · toggle ${row.toggle}` : ''}`, '');
+    lines.push(`| step | ${labels.map((l) => `${l} GPU ms`).join(' | ')} | Δ GPU (pairs) | ${labels.map((l) => `${l} CPU ms`).join(' | ')} | ${labels.map((l) => `${l} draws`).join(' | ')} |`);
+    lines.push(`| --- | ${labels.map(() => '---:').join(' | ')} | ---: | ${labels.map(() => '---:').join(' | ')} | ${labels.map(() => '---:').join(' | ')} |`);
+    for (const p of row.stepNames) {
+      const cell = (l, f) => row.byLabel[l].steps[p]?.[f] ?? '';
+      lines.push(`| ${p} | ${labels.map((l) => cell(l, 'gpu')).join(' | ')} | ${delta(row.deltas?.steps[p]?.gpu)} | ${labels.map((l) => cell(l, 'cpu')).join(' | ')} | ${labels.map((l) => cell(l, 'calls')).join(' | ')} |`);
     }
     for (const [name, key] of [['frame GPU (whole-frame query)', 'gpuFrame'], ['frame GPU p25', 'gpuFrameP25'], ['main-thread CPU (render path)', 'cpuFrame'], ['draw calls', 'calls']]) {
-      const d = row.deltas?.[key];
-      lines.push(`| **${name}** | ${labels.map((l) => row.byLabel[l][key]).join(' | ')}${d ? ` | ${d.med} [${d.min}..${d.max}] |` : ' |'}`);
+      lines.push(`| **${name}** | ${labels.map((l) => row.byLabel[l][key] ?? '').join(' | ')} | ${delta(row.deltas?.[key])} | | |`);
     }
-    const proj = labels.map((l) => projectFrameMs({ gpuMs: row.byLabel[l].gpuFrame, cpuMs: row.byLabel[l].cpuFrame }, ratios));
-    lines.push(`| **projected ${proxy} frame** | ${proj.map((p) => `${p.frameMs} ms (${p.bound})`).join(' | ')} | |`, '');
+    const proj = labels.map((l) => projectFrameMs({ gpuMs: row.byLabel[l].gpuFrameP25 ?? row.byLabel[l].gpuFrame, cpuMs: row.byLabel[l].cpuFrame }, ratios));
+    lines.push(`| **projected ${proxy} frame (p25 GPU)** | ${proj.map((p) => `${p.frameMs} ms (${p.bound})`).join(' | ')} | | | |`, '');
   }
   return lines.join('\n');
 }
