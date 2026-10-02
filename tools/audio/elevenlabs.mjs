@@ -183,7 +183,7 @@ export async function speech({ voiceId, text, modelId = 'eleven_v4', languageCod
 export async function transcribe({ file, modelId = 'scribe_v2', languageCode = null }) {
   const key = digest({ content: createHash('sha256').update(readFileSync(file)).digest('hex'), modelId, languageCode });
   const out = cached('stt', key, 'json');
-  if (existsSync(out)) return JSON.parse(readFileSync(out, 'utf8'));
+  if (existsSync(out)) return { ...JSON.parse(readFileSync(out, 'utf8')), cost: 0, cached: true };
   const form = new FormData();
   form.append('model_id', modelId);
   if (languageCode) form.append('language_code', languageCode);
