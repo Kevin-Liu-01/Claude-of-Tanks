@@ -98,6 +98,8 @@ export interface VehicleRig {
   readonly lastDistance: number;
   /** Rig-level lowpass (air absorption + occlusion), Hz. */
   readonly lastCutoff: number;
+  /** The air-absorption part of that lowpass alone, Hz. */
+  readonly lastAirHz: number;
   setLod(lod: RigLod): void;
   setBurning(burning: boolean): void;
   startEngine(): void;
@@ -116,6 +118,7 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
   let lastGain = 0;
   let lastDistance = 0;
   let lastCutoff = 20000;
+  let lastAirHz = 20000;
   let surface: SurfaceId | null = null;
   let engineStartAt = 0;
   let burning = false;
@@ -366,7 +369,8 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
       if (panner) panner.pan.setTargetAtTime(0, t, 0.1);
     } else {
       levelDb = distanceAttenuationDb(frame.rel.distance, 10, 1, 5) + frame.atmosphere.transmissionDb - 9 * frame.occluded;
-      cutoff = Math.min(airAbsorptionCutoffHz(frame.rel.distance, frame.atmosphere, 0.8), 20000 * Math.pow(0.06, frame.occluded));
+      lastAirHz = airAbsorptionCutoffHz(frame.rel.distance, frame.atmosphere, 0.8);
+      cutoff = Math.min(lastAirHz, 20000 * Math.pow(0.06, frame.occluded));
       const pan = frame.rel.distance > 0.01 ? clamp(frame.rel.right / frame.rel.distance, -1, 1) * 0.9 : 0;
       if (panner) panner.pan.setTargetAtTime(pan, t, 0.08);
     }
@@ -451,6 +455,7 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
     get lastGain() { return lastGain; },
     get lastDistance() { return lastDistance; },
     get lastCutoff() { return lastCutoff; },
+    get lastAirHz() { return lastAirHz; },
     setLod(next) {
       if (next !== lod && !dead) applyLod(next);
     },

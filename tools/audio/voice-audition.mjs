@@ -6,7 +6,7 @@
 // speech-to-text so a voice that mispronounces or drifts out of the language
 // is rejected on evidence, not on its catalogue description.
 //
-//   ELEVENLABS_API_KEY_FILE=… node tools/audio/voice-audition.mjs [--langs de,ru] [--out report.json]
+//   ELEVENLABS_API_KEY_FILE=… node tools/audio/voice-audition.mjs [--langs de,ru] [--candidates c.json] [--stability 0.6] [--out report.json]
 //
 // The reviewed result is the cast in tools/audio/crew-voices.json.
 
@@ -17,21 +17,21 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-// Test calls: [commander (urgent), crew (crisp)].
+// Test calls in the crew's working register: [commander (firm), crew (crisp)].
 const TEST_LINES = {
-  'en-US': ['Enemy tank, twelve o\'clock! Fire!', 'Up! Ready to fire!'],
-  'en-GB': ['Enemy tank, twelve o\'clock! Fire!', 'Loaded! Ready!'],
-  de: ['Feindpanzer, zwölf Uhr! Feuer!', 'Geladen! Feuerbereit!'],
-  ru: ['Танк противника, на двенадцать часов! Огонь!', 'Заряжено! Готов к выстрелу!'],
-  uk: ['Ворожий танк, на дванадцяту! Вогонь!', 'Заряджено! Готовий до пострілу!'],
-  zh: ['发现敌方坦克，正前方！开火！', '装填完毕！准备射击！'],
-  fr: ['Char ennemi, à midi ! Feu !', 'Chargé ! Prêt à tirer !'],
-  sv: ['Fientlig stridsvagn, klockan tolv! Eld!', 'Laddat! Klar att skjuta!'],
-  ja: ['敵戦車、正面！撃て！', '装填完了！射撃用意よし！'],
-  ko: ['적 전차, 12시 방향! 발사!', '장전 완료! 사격 준비!'],
-  it: ['Carro nemico, ore dodici! Fuoco!', 'Caricato! Pronto al fuoco!'],
-  pl: ['Czołg wroga, na godzinie dwunastej! Ognia!', 'Załadowane! Gotowy do strzału!'],
-  he: ['טנק אויב, שעה שתים עשרה! אש!', 'טעון! מוכן לירי!'],
+  'en-US': ['Contact front. Enemy tank. Fire.', 'Up. Loaded.'],
+  'en-GB': ['Contact front. Enemy tank. Fire.', 'Loaded. Ready.'],
+  de: ['Feindpanzer, vorne. Feuer.', 'Geladen. Bereit.'],
+  ru: ['Танк противника, прямо. Огонь.', 'Заряжено. Готов.'],
+  uk: ['Ворожий танк, прямо. Вогонь.', 'Заряджено. Готовий.'],
+  zh: ['正前方，敌坦克。开火。', '装填完毕。'],
+  fr: ['Char ennemi, devant. Feu.', 'Chargé. Prêt.'],
+  sv: ['Fientlig stridsvagn, rakt fram. Eld.', 'Laddat. Klar.'],
+  ja: ['正面、敵戦車。撃て。', '装填よし。'],
+  ko: ['전방, 적 전차. 발사.', '장전 완료.'],
+  it: ['Carro nemico, davanti. Fuoco.', 'Caricato. Pronto.'],
+  pl: ['Czołg wroga, na wprost. Ognia.', 'Załadowane. Gotowy.'],
+  he: ['טנק אויב, מקדימה. אש.', 'טעון. מוכן.'],
 };
 
 const LANGUAGE_CODE = { 'en-US': 'en', 'en-GB': 'en', de: 'de', ru: 'ru', uk: 'uk', zh: 'zh', fr: 'fr', sv: 'sv', ja: 'ja', ko: 'ko', it: 'it', pl: 'pl', he: 'he' };
@@ -79,10 +79,10 @@ async function audition(lang, [voiceId, name, intent], tmp) {
   const takes = [];
   const lines = TEST_LINES[lang];
   for (let i = 0; i < lines.length; i++) {
-    const tag = i === 0 ? '[shouting, urgent]' : '[crisp, focused]';
+    const tag = i === 0 ? '[firm, controlled]' : '[crisp, steady]';
     const { file, cost } = await speech({
       voiceId, text: `${tag} ${lines[i]}`, modelId: 'eleven_v4',
-      languageCode: LANGUAGE_CODE[lang], stability: 0.45, similarity: 0.8, outputFormat: 'pcm_24000',
+      languageCode: LANGUAGE_CODE[lang], stability, similarity: 0.8, outputFormat: 'pcm_24000',
     });
     const raw = readFileSync(file);
     const samples = s16ToFloat(raw);
@@ -111,12 +111,15 @@ async function audition(lang, [voiceId, name, intent], tmp) {
 }
 
 const args = process.argv.slice(2);
-const langsArg = args.includes('--langs') ? args[args.indexOf('--langs') + 1].split(',') : Object.keys(CANDIDATES);
+// --candidates <file.json>: { lang: [[voice_id, name, intent], ...] } instead of the built-in list.
+const candidates = args.includes('--candidates') ? JSON.parse(readFileSync(args[args.indexOf('--candidates') + 1], 'utf8')) : CANDIDATES;
+const stability = args.includes('--stability') ? Number(args[args.indexOf('--stability') + 1]) : 0.6;
+const langsArg = args.includes('--langs') ? args[args.indexOf('--langs') + 1].split(',') : Object.keys(candidates);
 const out = args.includes('--out') ? args[args.indexOf('--out') + 1] : 'voice-audition.json';
 const tmp = mkdtempSync(join(tmpdir(), 'cot-audition-'));
 const report = [];
 let spent = 0;
-await Promise.all(langsArg.flatMap((lang) => CANDIDATES[lang].map(async (candidate) => {
+await Promise.all(langsArg.flatMap((lang) => candidates[lang].map(async (candidate) => {
   try {
     const result = await audition(lang, candidate, tmp);
     spent += result.takes.reduce((a, t) => a + t.cost + t.sttCost, 0);

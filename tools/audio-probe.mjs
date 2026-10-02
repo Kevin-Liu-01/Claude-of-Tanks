@@ -320,6 +320,8 @@ try {
   await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90m', pos:window.__P.pos(0,0,35), killerId:window.__P.playerId, cause:'shot'}`);
   await sleep(3200);
   capReport('combat-oneshots', await tapStopAndFetch());
+  // The route log is bounded; read it before the live battle below rotates it.
+  const earlyRoutes = await page.evaluate(() => window.__COT_AUDIO.soundLog.map((entry) => entry.type));
 
   // ---- capture 2: alarms + crew voices --------------------------------------
   // Freeze the sim and let earlier combat chatter drain. Without this clean
@@ -433,7 +435,7 @@ try {
   capReport('battle-mix', await tapStopAndFetch());
 
   // ---- canonical gameplay event route assertions ---------------------------
-  const soundLog = await page.evaluate(() => window.__COT_AUDIO.soundLog.map((entry) => entry.type));
+  const soundLog = [...earlyRoutes, ...await page.evaluate(() => window.__COT_AUDIO.soundLog.map((entry) => entry.type))];
   const mustRoute = ['shell:fired', 'shell:hit', 'shell:expired', 'tank:impact',
     'tank:ram', 'prop:crushed', 'tank:destroyed', 'tank:fire'];
   const missingRoutes = mustRoute.filter((type) => !soundLog.includes(type));

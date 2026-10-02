@@ -872,6 +872,7 @@ export function createPlayMenu({
         <label data-arrange-wave><span>${t('playMenu.arrange.waveSize')}</span><select data-arrange="waveSize"></select></label>
         <label><span>${t('playMenu.arrange.nation')}</span><select data-arrange="enemyNation"></select></label>
         <label data-arrange-field="marsGravity" hidden><span>${t('playMenu.arrange.marsGravity')}</span><select data-arrange="marsGravity"></select></label>
+        <label data-arrange-field="juggernautRole" hidden><span>${t('playMenu.arrange.juggernautRole')}</span><select data-arrange="juggernautRole"></select></label>
         <label data-arrange-field="marsCaches" hidden><span>${t('playMenu.arrange.marsCaches')}</span><select data-arrange="marsCaches"></select></label>
         <button class="action alt" type="button" data-arrange-reset>${t('playMenu.arrange.reset')}</button>
       </div>
@@ -1072,13 +1073,19 @@ export function createPlayMenu({
   let sidesCustomOpen = false;
   function renderArrangement(mode: GameModeId, fromLobby: boolean): void {
     // a room keeps its own team size for the symmetric modes (the room's teamSize); the wave modes arrange here
-    if (!acceptsTeamArrangement(mode) || (fromLobby && !isWaveMode(mode))) { arrangeSection.hidden = true; arrangementDropdowns.forEach(dropdown => dropdown.close()); return; }
+    if (!acceptsTeamArrangement(mode) || (fromLobby && !isWaveMode(mode) && mode !== 'juggernaut')) { arrangeSection.hidden = true; arrangementDropdowns.forEach(dropdown => dropdown.close()); return; }
     arrangeSection.hidden = false;
     const wave = isWaveMode(mode);
-    const defaults = matchRulesetFor(mode);
     const arranged = currentArrangement(mode);
-    sidesGroup.hidden = wave;
-    capNote.hidden = wave;
+    const defaults = matchRulesetFor(mode, null, arranged);
+    const asymmetric = mode === 'juggernaut' || mode === 'infected' || mode === 'ac130';
+    const roleField = arrangeField('juggernautRole'); roleField.hidden = mode !== 'juggernaut';
+    if (mode === 'juggernaut') {
+      arrangeSelect('juggernautRole').replaceChildren(new Option(t('playMenu.arrange.boss'), 'boss'), new Option(t('playMenu.arrange.hunter'), 'hunter'));
+      arrangeSelect('juggernautRole').value = arranged?.juggernautRole || 'boss';
+    }
+    sidesGroup.hidden = wave || asymmetric;
+    capNote.hidden = wave || asymmetric;
     arrangeField('allies').hidden = !wave;
     arrangeField('enemies').hidden = !wave;
     if (wave) {
@@ -1093,12 +1100,13 @@ export function createPlayMenu({
       const preset = sidesPresetOf(sides);
       const custom = sidesCustomOpen || preset === 'custom';
       for (const button of sidesButtons) button.setAttribute('aria-pressed', String(button.dataset.sides === (custom ? 'custom' : preset)));
-      arrangeField('alliesCount').hidden = !custom;
-      arrangeField('enemiesCount').hidden = !custom;
+      arrangeField('alliesCount').hidden = asymmetric ? defaults.allies === 0 : !custom;
+      arrangeField('enemiesCount').hidden = asymmetric ? defaults.enemies === 1 : !custom;
       const allies = arrangeInput('alliesCount'), enemies = arrangeInput('enemiesCount');
       allies.min = String(TEAM_ARRANGEMENT_LIMITS.allies[mode][0]); allies.max = String(TEAM_ARRANGEMENT_LIMITS.allies[mode][1]);
       enemies.min = String(TEAM_ARRANGEMENT_LIMITS.enemies[mode][0]); enemies.max = String(TEAM_ARRANGEMENT_LIMITS.enemies[mode][1]);
-      allies.value = String(sides.allies); enemies.value = String(sides.enemies);
+      allies.value = String(asymmetric ? defaults.allies ?? sides.allies : sides.allies);
+      enemies.value = String(asymmetric ? defaults.enemies ?? sides.enemies : sides.enemies);
       sidesReadout.textContent = t('playMenu.arrange.readout', { allies: String(sides.allies + 1), enemies: String(sides.enemies) });
     }
     const waveLabel = arrangeSection.querySelector<HTMLElement>('[data-arrange-wave]')!;
@@ -1141,6 +1149,7 @@ export function createPlayMenu({
       allies: number('allies'), enemies: number('enemies'),
       waveSize: Number.isFinite(waveSize) ? waveSize : null,
       enemyNation: arrangeSelect('enemyNation').value || null,
+      juggernautRole: mode === 'juggernaut' ? arrangeSelect('juggernautRole').value as TeamArrangement['juggernautRole'] : null,
       marsGravity: mode === 'mars' ? arrangeSelect('marsGravity').value as TeamArrangement['marsGravity'] : null,
       marsCaches: mode === 'mars' ? arrangeSelect('marsCaches').value as TeamArrangement['marsCaches'] : null,
     });

@@ -101,12 +101,13 @@ export function createAmbienceDirector({ mixer, library, pool, random }: Ambienc
       const id = pickSpot();
       if (!id) return;
       const bearing = random() * Math.PI * 2;
-      const range = 40 + random() * 340;
-      const height = id.includes('gulls') || id.includes('hawk') || id.includes('eagle') || id.includes('geese') || id.includes('lark')
-        ? 25 + random() * 60 : random() * 6;
+      const range = scene.indoor ? 3 + random() * 11 : 40 + random() * 340;
+      const height = scene.indoor ? 1 + random() * 4
+        : id.includes('gulls') || id.includes('hawk') || id.includes('eagle') || id.includes('geese') || id.includes('lark')
+          ? 25 + random() * 60 : random() * 6;
       const voice = pool.play(id, {
         x: x + Math.cos(bearing) * range, y: y + height, z: z + Math.sin(bearing) * range,
-        gainDb: clamp(-2 - range / 160, -6, 0), propagate: false,
+        gainDb: scene.indoor ? 0 : clamp(-2 - range / 160, -6, 0), propagate: false,
       });
       if (voice) { lastSpot = id; spotsPlayed++; }
     },

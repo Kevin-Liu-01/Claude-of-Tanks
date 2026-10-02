@@ -1,3 +1,5 @@
+import type { AerialView } from '../../sim/aerialCombat.ts';
+import { setModeWeapon } from '../../sim/modeLoadout.ts';
 /**
  * The battle presentation: MatchClient frames and events into the existing
  * renderer, HUD, FX and audio through the surfaces the game already owns —
@@ -73,6 +75,8 @@ export interface MatchActorInput {
 
 /** One roster entity as the game-side modules see it (the shape of a solo TankEntity). */
 export interface MatchActor {
+  aerial?: AerialView;
+  _modeWeapon?: number | string;
   id: string;
   entityId: number;
   specId: string;
@@ -317,6 +321,7 @@ export function createBattlePresentation({
       _networkPoseReady: false, _networkDestroyed: false, _networkDestroyPop: false, _networkEraSpent: new Set(),
       _lastX: 0, _lastZ: 0,
     };
+    if (game.gameMode === 'ac130' && entry.team === TEAM.ALPHA && !entry.bot) actor.aerial = { kind:'gunship',active:true,launching:false,x:0,y:0,z:0,yaw:0,pitch:-1,batteryS:0,cooldownS:0 };
     actors.set(actor.id, actor);
     actorsByEntity.set(actor.entityId, actor);
     roster.push(actor);
@@ -652,6 +657,31 @@ export function createBattlePresentation({
     if (disposed) return;
     snapshotPhase = frame.meta.phase;
     const own = ownActor();
+    if (frame.modeStateJson !== lastModeStateJson) {
+      lastModeStateJson = frame.modeStateJson;
+      try { game.matchModeState = frame.modeStateJson ? JSON.parse(frame.modeStateJson) as RuntimeValue : null; }
+      catch { game.matchModeState = null; }
+    }
+    const modeView = game.matchModeState as { aerial?: AerialView; weaponStage?: { index: number }; weaponStages?: { id: string; index: number }[]; factions?: { id: string; team: string }[] } | null;
+    if (own) {
+      own.aerial = modeView?.aerial;
+      const stage = own.aerial?.kind === 'gunship' ? 'gunship' : modeView?.weaponStage?.index;
+      if (stage !== undefined && stage !== own._modeWeapon) {
+        setModeWeapon(own, stage); own._modeWeapon = stage;
+      }
+    }
+    for (const entry of modeView?.weaponStages ?? []) {
+      const actor = actors.get(entry.id);
+      if (actor && actor._modeWeapon !== entry.index) { setModeWeapon(actor, entry.index); actor._modeWeapon = entry.index; }
+    }
+    if (modeView?.factions) {
+      for (const faction of modeView.factions) {
+        const actor = actors.get(faction.id); if (!actor) continue;
+        actor.networkTeam = faction.team === 'alpha' ? TEAM.ALPHA : TEAM.BRAVO;
+      }
+      if (own) viewerTeam = own.networkTeam;
+      for (const actor of actors.values()) classify(actor);
+    }
     for (const actor of actors.values()) actor.networkVisible = false;
     for (const sample of frame.entities) {
       const actor = actorsByEntity.get(sample.entityId);
@@ -671,11 +701,6 @@ export function createBattlePresentation({
       bus.emit('auxiliary:smokeScreens', { screens: lastSmokeJson ? JSON.parse(lastSmokeJson) : [] });
     }
     game.preBattleS = frame.meta.phase === PHASE.COUNTDOWN ? frame.meta.countdownMs / 1000 : 0;
-    if (frame.modeStateJson !== lastModeStateJson) {
-      lastModeStateJson = frame.modeStateJson;
-      try { game.matchModeState = frame.modeStateJson ? JSON.parse(frame.modeStateJson) as RuntimeValue : null; }
-      catch { game.matchModeState = null; }
-    }
     applyShells(frame.shells);
     applyDestroyed(frame.destroyed, frame.destructibleRevision, typeof frame.destroyedPending === 'function' ? frame.destroyedPending : null);
     const predicted = frame.viewer.predictedShot;
@@ -931,7 +956,8 @@ export function createBattlePresentation({
 
   function predictionWorld(): PredictionWorld | null {
     const own = ownActor();
-    if (!own || !worldCollision) return null;
+    // Aerial movement belongs to the shared flight simulation, never the ground predictor.
+    if (!own || !worldCollision || game.gameMode === 'ac130' || game.gameMode === 'drone') return null;
     if (predictionWorldCache && predictionWorldSpec === own.spec) return predictionWorldCache;
     predictionWorldSpec = own.spec;
     predictionWorldCache = createPredictionWorld({

@@ -127,13 +127,15 @@ export const topics: Record<string, TopicDefinition> = {
     lede: t('docs.topic.simulation.lede'),
     hero: '/media/hero-rails-r2/01_desert-ground-rush.webm',
     icon: 'combat',
-    sectionIcons: ['simulation', 'aiming', 'armor', 'weapons', 'modes', 'verification'],
+    sectionIcons: ['simulation', 'aiming', 'armor', 'weapons', 'modes', 'modes', 'aiming', 'verification'],
     sections: [
       [t('docs.topic.simulation.s1.t'), t('docs.topic.simulation.s1.p1'), t('docs.topic.simulation.s1.p2')],
       [t('docs.topic.simulation.s2.t'), t('docs.topic.simulation.s2.p1'), t('docs.topic.simulation.s2.p2')],
       [t('docs.topic.simulation.s3.t'), t('docs.topic.simulation.s3.p1'), t('docs.topic.simulation.s3.p2')],
       [t('docs.topic.simulation.s4.t'), t('docs.topic.simulation.s4.p1'), t('docs.topic.simulation.s4.p2')],
       [t('docs.topic.simulation.s5.t'), t('docs.topic.simulation.s5.p1'), t('docs.topic.simulation.s5.p2')],
+      [t('docs.topic.simulation.roles.t'), t('docs.topic.simulation.roles.p1'), t('docs.topic.simulation.roles.p2')],
+      [t('docs.topic.simulation.flight.t'), t('docs.topic.simulation.flight.p1'), t('docs.topic.simulation.flight.p2')],
       [t('docs.topic.simulation.s6.t'), t('docs.topic.simulation.s6.p1'), t('docs.topic.simulation.s6.p2')],
     ],
     media: [

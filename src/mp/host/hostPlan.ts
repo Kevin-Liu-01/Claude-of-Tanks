@@ -1,3 +1,4 @@
+import { arrangeModeRoster } from './modeRoster.ts';
 /**
  * The boot plan of a peer-to-peer match as the hosting seat derives it (P2 client lane): the room's `match_start`
  * names the match, the map, the mode and the seed but not the roster it planned, so the host reads the room snapshot
@@ -65,6 +66,7 @@ export function planFromRoom(room: RoomSnapshot, { botSpecFallback = DEFAULT_BOT
       }
     }
   }
+  arrangeModeRoster(room.settings.gameMode, room.settings.arrangement, seats, bots);
   return { seats, bots };
 }
 

@@ -2,7 +2,7 @@
  * The mix graph.
  *
  *   world buses (weapons, impacts, environment, vehicles) + reverb return
- *        → worldSum → snapshot lowpass → snapshot level → HDR window ─┐
+ *        → worldSum → snapshot lowpass → snapshot level → voice duck ─┐
  *   own hull → snapshot lowpass → level ─────────────────────────────┤
  *   interior, cinematic, ambience (voice-ducked) ────────────────────┼→ body
  *   body → concussion lowpass → level ─┐
@@ -10,9 +10,10 @@
  *
  * Snapshots (battle, scoped interior, paused, kill-cam, spectating, garage)
  * crossfade the filter/level targets; a concussion overlays a muffle that
- * recovers; the HDR window ducks the world under the loudest recent event
- * and culls what falls out of the bottom of the window; crew speech ducks
- * the beds. Settings channels scale the buses they own.
+ * recovers; the HDR window (see admit) trims new voices that fall well
+ * below the loudest recent event and culls what drops out of the bottom of
+ * the window; crew speech ducks the beds. Settings channels scale the buses
+ * they own; gunfire, impacts and the hull's gun carry a low shelf.
  */
 
 import { dbToGain, clamp, mulberry32 } from './audioMath.ts';
@@ -43,8 +44,12 @@ export interface Mixer {
   setMuted(muted: boolean): void;
   setSnapshot(id: SnapshotId, fadeS?: number): void;
   setReverb(id: ReverbId): void;
-  /** Report a started world event's logical loudness; true if it survives the window. */
-  admit(loudDb: number, priority: number, drivesWindow?: boolean): boolean;
+  /**
+   * Report a starting voice's logical loudness: the HDR trim to apply to it
+   * (dB, ≤ 0; the loudest sound is never trimmed), or null when it falls out
+   * of the window and should not start.
+   */
+  admit(loudDb: number, priority: number, drivesWindow?: boolean): number | null;
   /** Muffle the mix and recover over CONCUSSION.recoverS; false while cooling down. */
   concussion(strength: number): boolean;
   duckForVoice(active: boolean): void;
@@ -127,11 +132,13 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
   master.gain.value = isMuted ? 0 : masterLevel;
   const clip = makeSoftClip(ctx);
   const glue = ctx.createDynamicsCompressor();
-  glue.threshold.value = -10;
+  // Glue, not a limiter: a 12 ms attack lets cannon transients through to
+  // the soft clip, which catches the peaks.
+  glue.threshold.value = -8;
   glue.knee.value = 8;
-  glue.ratio.value = 3.5;
-  glue.attack.value = 0.004;
-  glue.release.value = 0.24;
+  glue.ratio.value = 2.5;
+  glue.attack.value = 0.012;
+  glue.release.value = 0.2;
   const preMaster = ctx.createGain();
   preMaster.connect(glue);
   glue.connect(clip);
@@ -156,12 +163,10 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
   worldLp.frequency.value = 20000;
   worldLp.Q.value = 0.6;
   const worldSnap = ctx.createGain();
-  const hdrGain = ctx.createGain();
   const worldDuck = ctx.createGain();
   worldSum.connect(worldLp);
   worldLp.connect(worldSnap);
-  worldSnap.connect(hdrGain);
-  hdrGain.connect(worldDuck);
+  worldSnap.connect(worldDuck);
   worldDuck.connect(body);
 
   // ---- own hull.
@@ -182,13 +187,30 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
 
   const destinations: Record<BusId, AudioNode> = {
     weapons: worldSum, impacts: worldSum, environment: worldSum, vehicles: worldSum,
-    own: ownLp, interior: interiorSnap, cinematic: body, ambience: ambienceSnap,
+    own: ownLp, ownCombat: ownLp, interior: interiorSnap, cinematic: body, ambience: ambienceSnap,
     ui: preMaster, music: preMaster, voice: preMaster, alarm: preMaster,
   };
+  // Weight: gunfire, impacts and the hull's own gun get a low shelf (the
+  // generated reports are lean below 100 Hz), the interface a gentle top cut.
+  const SHELVES: Partial<Record<BusId, readonly [BiquadFilterType, number, number]>> = {
+    weapons: ['lowshelf', 110, 5], impacts: ['lowshelf', 110, 4], ownCombat: ['lowshelf', 110, 5], ui: ['highshelf', 5200, -6],
+  };
+  const busFilters: BiquadFilterNode[] = [];
   for (const id of Object.keys(destinations) as BusId[]) {
     const g = ctx.createGain();
     g.gain.value = BUS_LEVELS[id] * chan[BUS_CHANNEL[id]];
-    g.connect(destinations[id]);
+    const shelf = SHELVES[id];
+    if (shelf) {
+      const f = ctx.createBiquadFilter();
+      f.type = shelf[0];
+      f.frequency.value = shelf[1];
+      f.gain.value = shelf[2];
+      g.connect(f);
+      f.connect(destinations[id]);
+      busFilters.push(f);
+    } else {
+      g.connect(destinations[id]);
+    }
     bus[id] = g;
   }
 
@@ -270,9 +292,10 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
       glide(reverbReturn.gain, dbToGain(SNAPSHOTS[snapshot].reverbDb) * REVERB_PRESETS[id].wet, 0.2);
     },
     admit(loudDb, priority, drivesWindow = true) {
-      if (loudDb < hdrTop - HDR.windowDb && priority < HDR.protectPriority) return false;
       if (drivesWindow && loudDb > hdrTop) hdrTop = loudDb;
-      return true;
+      const below = hdrTop - loudDb;
+      if (below > HDR.windowDb && priority < HDR.protectPriority) return null;
+      return below > HDR.kneeDb ? -Math.min(HDR.maxTrimDb, (below - HDR.kneeDb) * HDR.slope) : 0;
     },
     concussion(strength) {
       if (concussionCooldown > 0) return false;
@@ -290,8 +313,6 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
     update(dtS) {
       const dt = clamp(dtS, 0, 0.25);
       hdrTop = Math.max(HDR.floorDb, hdrTop - HDR.releaseDbPerS * dt);
-      const duckDb = -clamp(hdrTop - HDR.refDb, 0, HDR.maxDuckDb);
-      hdrGain.gain.setTargetAtTime(dbToGain(duckDb), now(), 0.03);
       concussionCooldown = Math.max(0, concussionCooldown - dt);
       if (concussionK > 0.001) {
         const target = SNAPSHOTS.concussion;
@@ -317,8 +338,8 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
     },
     dispose() {
       for (const node of [master, clip, glue, preMaster, body, concussionLp, concussionGain, worldSum, worldLp, worldSnap,
-        hdrGain, worldDuck, ownLp, ownSnap, interiorSnap, ambienceSnap, ambienceDuck, reverbInput, reverbReturn,
-        ...(convolver ? [convolver] : []), ...Object.values(bus)]) {
+        worldDuck, ownLp, ownSnap, interiorSnap, ambienceSnap, ambienceDuck, reverbInput, reverbReturn,
+        ...(convolver ? [convolver] : []), ...busFilters, ...Object.values(bus)]) {
         try { node.disconnect(); } catch { /* detached */ }
       }
     },
