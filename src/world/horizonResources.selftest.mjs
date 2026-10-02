@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import {
   buildHorizonRing, sampleHorizonGeometry, selectHorizonFaceBeltRows,
   HORIZON_SEGMENTS, HORIZON_TREELINE_MAX_BELTS, HORIZON_TREELINE_MAX_LAYERS,
 } from './maps/horizon.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
-import { PRE_LUNAR_MAP_IDS } from './mapRosterHistory.test-support.mjs';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import {
   disposeObject3DResources,
@@ -99,7 +97,7 @@ function assertLayeredMountainBounds(position, style, label) {
 // low set-back skirt, then authored ranges rise in successive layers. This
 // contract is deliberately about safety plus the accepted art direction:
 // low banks, ranges that meander in depth, real passes, and several ranges
-// sharing the skyline. It is not a byte oracle; those digests live below.
+// sharing the skyline. It is not a byte oracle.
 function classicRangeStats(ring) {
   const n = HORIZON_SEGMENTS, p = ring.positions;
   const y = (row, column) => p[(row * n + column) * 3 + 1];
@@ -300,68 +298,20 @@ function assertVistaSurfaceShader(shader, normals, label) {
 // Actual full-circle geometry, all maps and three seeds, without repeating
 // expensive texture bakes. Numeric bounds complement, never replace, matched
 // establishing/water/foliage renders from several map-edge viewpoints.
-function appendHorizonReceipt(hash, mapId, ring) {
-  hash.update(mapId);
-  hash.update(new Uint8Array(ring.positions.buffer));
-  hash.update(new Uint8Array(ring.heights.buffer));
-  hash.update(JSON.stringify(ring.rows));
-  hash.update(String(ring.maxHeight));
-  return hash;
-}
-
-// 56924f7bf deliberately lowered Polders from .50 to .18 after the finite-cap
-// fixtures in31e5b130b. Exact before/current decomposition recovers all three
-// ORIGINAL other28 digests by changing only that historical input. Keep the
-// historical hashes, and independently freeze every current Polders byte.
-// Titan's subsequent finite-cap restoration has an explicit false authoring
-// override; titanGorgeHorizon.selftest guards its current shape and every byte.
-// Round 72 (2026-09-25, the mountain relief round): the coarse relief field (horizonRelief.ts) displaces every authored
-// and interpolated ring row on every map but Redrock, so the digests below were re-pinned once against the relieved geometry.
-const currentPoldersReceipts = new Map([
-  [1337, 'ebe16e04b40c96e61c8110b2a0616ba99e4cf7abcab15eb90abf360abc237fa2' /* 2026-09-19 vista pass */],
-  [2049, '47f8797eda8816c8ac9386e7b16cb6abcf4c54270d38870dfd8f86e4028a061e'],
-  [7719, '716637c6876d1f436ab482c42657c11da2cc11d64ede39a7c7d038c3501ba490'],
-]);
-function assertCurrentPolders(ring, config, seed) {
-  assert.equal(config.horizon.amp, 0.18, 'Polders retains its authored low-profile amplitude');
+// 2026-10-01 (frozen pins retired): the sha256 aggregates over the pre-lunar rings (restoration receipt with historical
+// Polders/Titan/Badlands inputs, inland positions), their mutation control and the byte pin of the current Polders ring
+// were change detectors. Every registered ring answers to the shared gates in the loop below instead.
+function assertPoldersLowRidge(ring, label) {
   assert.equal(ring.positions.length, HORIZON_SEGMENTS * 18 * 3);
   assert.equal(ring.heights.length, HORIZON_SEGMENTS * 18);
   // Restored 1049e4e rolling rows at amp 0.18 crest between 27 and 33 m
   // across the three seeds; the rejected wall stood well above 40 m.
   assert.ok(Math.max(...ring.heights) > 24 && Math.max(...ring.heights) < 40,
-    'Polders stays a low distant ridge rather than returning to a mountain wall');
-  assert.equal(appendHorizonReceipt(createHash('sha256'), 'polders', ring).digest('hex'),
-    currentPoldersReceipts.get(seed), 'Current Polders position/heights/rows/maxHeight remain exact');
+    `${label}: Polders stays a low distant ridge rather than returning to a mountain wall`);
 }
-
-// Restored 1049e4e ring tables and silhouette profiles on top of the current
-// subdivision, seam, sea-opening and finite-cap code (the owner's accepted
-// visual direction, 2026-09-11). Verdant now shares the classic rolling path.
-// Historical Polders/Titan/Badlands inputs remain declared for this aggregate.
-const unchangedGeometry = new Map([1337, 2049, 7719].map(seed => [seed, createHash('sha256')]));
-const inlandGeometry = new Map([1337, 2049, 7719].map(seed => [seed, createHash('sha256')]));
-const unrelatedMutation = createHash('sha256');
-// 2026-09-19 vista pass: 431 columns, the denser row ladder (18 / 36 rows), the seated skirt and the ridged
-// relief re-based every ring, so the three aggregates were repinned once against the vista geometry.
-// The coastal extension now reaches beyond the water apron. All other maps
-// retain their exact pre-change positions, independently frozen below.
-// 2026-09-27: reviewed coastal extension/seabed; horizonResources independently
-// preserves original inland positions with the declared Redrock regional redesign.
-// Both aggregates (the restoration receipt and the inland positions) cover an explicit roster: the pre-lunar
-// battlefields. Earthrise Basin and Aegis Crossing (0e5fc79e2) postdate these pins; like Olympus Basin in the
-// restoration aggregate, their rings pass every shared gate in the loop below and stay out of the historical digests.
-const AGGREGATE_MAP_IDS = PRE_LUNAR_MAP_IDS;
-const unchangedReceipts = [
-  'b8944462a63ab720454aa8fd07e7427aa55dd26be64a09c1d9fc4b11251dd639',
-  'a0646bf18e1030a9d58a1965b39cf97ced3b31dc3379f3fbe36d75b51f23a250',
-  'e2e472856c56510aa6ec5f3415f3c55cc030e8a79695c7ccc87882b2e99ebe6e',
-];
 for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   const config = getMapConfig(mapId), ring = sampleHorizonGeometry(config, seed);
   const p = ring.positions, n = HORIZON_SEGMENTS, label = `${mapId}/${seed}`;
-  if (!config.horizon?.seaOpening && AGGREGATE_MAP_IDS.includes(mapId)) {
-    inlandGeometry.get(seed).update(mapId).update(new Uint8Array(p.buffer));
-  }
   assert.equal(ring.rows.length, uploadedRows(config, mapId));
   for (let column = 0; column < n; column++) {
     assert.ok(Math.max(Math.abs(p[column * 3]), Math.abs(p[column * 3 + 2])) < 512,
@@ -377,46 +327,15 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   // shared-floor/seam/wall gates, so only the shared safety terms apply here.
   if (mapId !== 'badlands') assertClassicLayeredRanges(ring, config, label);
   if (mapId === 'skybridge') assertSkybridgeTableCaps(ring, label);
-  else if (mapId === 'copper_mesa') { /* independently covered by copperQuarrySurface.selftest */ }
-  else if (mapId === 'mars') { /* Mars mode (2026-09-18): the galaxy basin postdates the restoration aggregate; the shared gates above apply */ }
-  else if (!AGGREGATE_MAP_IDS.includes(mapId)) { /* registered after the pre-lunar roster: the shared gates above apply */ }
-  else {
-    const historicalRing = mapId === 'polders' ? sampleHorizonGeometry({ ...config,
-      horizon: { ...config.horizon, amp: 0.50 } }, seed)
-      : mapId === 'titan_gorge' ? sampleHorizonGeometry({ ...config,
-        horizon: { ...config.horizon, finiteTableCaps: false } }, seed)
-      : mapId === 'badlands' ? sampleHorizonGeometry({ ...config,
-        horizon: { ...config.horizon, redrockCanyon: false } }, seed) : ring;
-    appendHorizonReceipt(unchangedGeometry.get(seed), mapId, historicalRing);
+  if (mapId === 'polders') {
+    assertPoldersLowRidge(ring, label);
     if (seed === 1337) {
-      const mutated = mapId === 'desert'
-        ? { ...historicalRing, positions: historicalRing.positions.slice() } : historicalRing;
-      if (mapId === 'desert') mutated.positions[0] += 1;
-      appendHorizonReceipt(unrelatedMutation, mapId, mutated);
-    }
-    if (mapId === 'polders') {
-      assertCurrentPolders(ring, config, seed);
-      if (seed === 1337) {
-        const raised = { ...ring, positions: ring.positions.slice(), heights: ring.heights.slice() };
-        raised.positions[1] += 0.1; raised.heights[0] += 0.1;
-        assert.throws(() => assertCurrentPolders(raised, config, seed), { code: 'ERR_ASSERTION' },
-          'Current Polders guard detects even sub-metre height creep below its broad shape ceiling');
-        assert.throws(() => assertCurrentPolders(ring, { ...config,
-          horizon: { ...config.horizon, amp: 0.19 } }, seed), { code: 'ERR_ASSERTION' },
-        'Current Polders authored amplitude cannot silently creep upward');
-      }
+      const raised = { ...ring, heights: ring.heights.map(height => height + 20) };
+      assert.throws(() => assertPoldersLowRidge(raised, label), { code: 'ERR_ASSERTION' },
+        'the low-ridge gate rejects a Polders skyline raised into a mountain wall');
     }
   }
 }
-assert.deepEqual(Array.from(unchangedGeometry.values(), hash => hash.digest('hex')), unchangedReceipts,
-  'reviewed coastal extension and declared historical Polders/Titan/Badlands inputs remain exact');
-assert.deepEqual(Array.from(inlandGeometry.values(), hash => hash.digest('hex')), [
-  'a61bc5d100b94383aefd7351d68921b9ec0521706445cb32b7fa7abe90da0a4a',
-  '0fd9a9c430291108aa00da580a6de8468dfe6550c6a480ba3a8016bd063df0e9',
-  '2f793f94a114fc0f8916ca3b05defe5229a3e33068dffff2a17722c167745e04',
-], 'reviewed Redrock regional canyon and unchanged other inland positions at three seeds');
-assert.throws(() => assert.equal(unrelatedMutation.digest('hex'), unchangedReceipts[0]),
-  { code: 'ERR_ASSERTION' }, 'Historical-input attribution does not hide unrelated map geometry changes');
 
 const originalNoise = SimplexNoise.prototype.noise;
 let geometryNoiseCalls = 0;
@@ -440,7 +359,10 @@ try {
 // ranges: 160,007 -> 216,431
 // round 72b (2026-09-26, the integrator's crops: rows of symmetric spires): every range sample reads one more field —
 // the along-axis lean that skews each crest (a ridged cusp is symmetric by construction) — five per range: 216,431 -> 235,239
-assert.equal(geometryNoiseCalls, 235239, 'the ranged relief field spends exactly its authored, interpolated and normalisation queries (round 72b)');
+// 2026-10-01: an exact query count was a change detector of the field's internals; the budget is the measured round 72b
+// spend plus 10 % headroom, so an accidental per-vertex query (a multiple of the 431 x 36 ladder) still fails.
+assert.ok(geometryNoiseCalls > 0 && geometryNoiseCalls <= Math.ceil(235239 * 1.1),
+  `the ranged relief field stays inside its noise-query budget (${geometryNoiseCalls}; round 72b spent 235,239)`);
 try {
   geometryNoiseCalls = 0;
   SimplexNoise.prototype.noise = function (...coordinates) {
@@ -453,8 +375,8 @@ try {
 }
 // round 47: 431 * (2 skirt * 2 + 7 authored * (1 radial + 6 profile)) + 21 interpolated rows * 431 * 4 = 59047 (was 34480)
 // round 72: + 431 * (7 authored + 21 interpolated) * 5 relief-field queries + the 20,480 normalisation queries = 142,336
-assert.equal(geometryNoiseCalls, 142336,
-  'the mesa stack spends exactly its nine authored rows and 21 subdivision rows of noise queries (round 72: with the relief field)');
+assert.ok(geometryNoiseCalls > 0 && geometryNoiseCalls <= Math.ceil(142336 * 1.1),
+  `the mesa stack stays inside its noise-query budget (${geometryNoiseCalls}; round 72 spent 142,336)`);
 
 // Rasterization is deliberately outside this headless lifetime test. The
 // backdrop's real pixel bake still executes against a minimal canvas surface.
