@@ -183,7 +183,7 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
     const chosen = line ? bufferFor(id) : null;
     if (!line || !chosen) return false;
     const now = ctx.currentTime;
-    const keyS = radioSquelch(ctx, voiceBus, noise, now + 0.005, false, damage === 2 ? 0.55 : 0.4, random);
+    const keyS = radioSquelch(ctx, speaker, noise, now + 0.005, false, damage === 2 ? 0.55 : 0.4, random);
     const startAt = now + 0.005 + keyS * 0.7;
     const src = ctx.createBufferSource();
     src.buffer = chosen.buffer;
@@ -209,7 +209,7 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
     const bedLevel = damage === 2 ? 0.07 : damage === 1 ? 0.045 : 0.028;
     bedGain.gain.setTargetAtTime(bedLevel, startAt - 0.02, 0.02);
     bedGain.gain.setTargetAtTime(0, startAt + dur + 0.05, 0.04);
-    radioSquelch(ctx, voiceBus, noise, startAt + dur + 0.02, true, damage === 2 ? 0.6 : 0.45, random);
+    radioSquelch(ctx, speaker, noise, startAt + dur + 0.02, true, damage === 2 ? 0.6 : 0.45, random);
     if (damage >= 1 && library.has('radio_interference') && random() < 0.6) {
       const crackle = library.pick('radio_interference', random);
       if (crackle) {

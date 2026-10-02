@@ -25,6 +25,7 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { bandEnergy } from './audio/pcm.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
@@ -46,28 +47,25 @@ function writeWav(path, i16, sampleRate) {
   writeFileSync(path, buf);
 }
 
-/** Peak, RMS and the share of energy below 150 Hz (two cascaded one-pole lowpasses). */
+/** Peak, RMS and the spectral share of energy below 150 Hz (averaged FFT). */
 function analyze(i16, sampleRate) {
-  const a = 1 - Math.exp((-2 * Math.PI * 150) / sampleRate);
-  let peak = 0, sum2 = 0, low2 = 0;
-  let l1 = 0, l2 = 0;
-  for (let i = 0; i < i16.length; i += 2) {
-    const x = (i16[i] + i16[i + 1]) / 65536;
-    const ax = Math.max(Math.abs(i16[i]), Math.abs(i16[i + 1])) / 32768;
+  const mono = new Float32Array(i16.length / 2);
+  let peak = 0, sum2 = 0;
+  for (let i = 0; i < mono.length; i++) {
+    const x = (i16[2 * i] + i16[2 * i + 1]) / 65536;
+    const ax = Math.max(Math.abs(i16[2 * i]), Math.abs(i16[2 * i + 1])) / 32768;
     if (ax > peak) peak = ax;
+    mono[i] = x;
     sum2 += x * x;
-    l1 += a * (x - l1);
-    l2 += a * (l1 - l2);
-    low2 += l2 * l2;
   }
-  const n = Math.max(1, i16.length / 2);
-  const rms = Math.sqrt(sum2 / n);
+  const rms = Math.sqrt(sum2 / Math.max(1, mono.length));
+  const [lowShare] = mono.length >= 4096 ? bandEnergy(mono, sampleRate, [[0, 150]]) : [0];
   return {
     peak,
     peakDb: peak > 0 ? 20 * Math.log10(peak) : -Infinity,
     rms,
     rmsDb: rms > 0 ? 20 * Math.log10(rms) : -Infinity,
-    lowShare: sum2 > 0 ? low2 / sum2 : 0,
+    lowShare,
   };
 }
 
