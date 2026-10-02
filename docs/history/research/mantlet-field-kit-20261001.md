@@ -263,3 +263,21 @@ including shared vehicle/roof-weapon handling and regenerated fleet assets.
 The older-base full suite and queued AMX release rerun were deliberately stopped
 for rebase; these interrupted runs are not qualification. Their logs and failure
 comparisons remain retained. Validation must continue on the combined tree.
+
+
+## Rebased integration — 2026-10-02
+
+The four local commits were rebased onto `5140ba9ca36ca4b13eea05569245c9113552ad18`. The candidate is `fd6254bdea95ee4accb55d5949146ff0ceceff06` before this regenerated-receipt commit. Upstream smoke socket registration and damageable roof-weapon behavior were preserved. Conflicted generated maps were merged per owned vehicle, then regenerated from the combined tree.
+
+Fresh combined-tree results are in `.qa-dev/mantlet-final/rebased/results.json` and `regeneration-and-physical.log`. The regeneration/physical chain completed with exit 0 at 2026-10-02T10:38:32.164Z:
+
+- All 14 HIGH/LOW roof sweeps, 33 remote-weapon rigs/firing origins, national geometry and both legacy registrations passed.
+- Leopard openings passed 810 air, 54 articulation and 1,242 rear-clearance witnesses. AMX 56 HIGH/LOW physical checks passed.
+- Updated upstream seven-vehicle armor preservation fixture passed 15,975 full-result controls. Main-gun ammunition/reload checks passed.
+- Controls, anatomy, marking seats, all 657 technical diagrams, 18 centering records and the 18 complete image sets were regenerated.
+- Anatomy/marking freshness and assets passed for all 219 vehicles. Module probe: 1,976 modules, 438 track sides, zero failures/out-of-envelope modules; 111 dimension-envelope warnings remain recorded.
+- Targeted module alignment, muzzle bore, barrel circularity, asset freshness, duplicate-track and sealing checks passed.
+- Type checking and both public/private production builds passed.
+- Generated control inventories outside the owned set remain exact to main.
+
+The stricter source/standard release chain and broader regression run remain pending at this checkpoint. AMX 56 still requires the requested owner exception for its intentionally widened stock-source comparison; no approval has been received and no publication is claimed. Pre-rebase pictures remain available, and fresh combined-build quarter views of all fourteen national tanks are queued.
