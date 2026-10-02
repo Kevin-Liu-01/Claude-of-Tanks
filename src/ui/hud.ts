@@ -1756,6 +1756,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-con.deny{animation:cotConDeny .3s;}
 @keyframes cotConDeny{0%,100%{border-color:rgba(146,164,180,.28);}50%{border-color:rgba(240,90,90,.9);}}
 .aerial-drone .cot-shells{visibility:hidden}
+.cot-shell[hidden]{display:none!important}
 .cot-aerial-readout{position:absolute;top:calc(50% + 64px);left:50%;transform:translateX(-50%);max-width:80vw;color:#dbffef;font:700 11px monospace;letter-spacing:.08em;text-align:center;pointer-events:none;text-shadow:0 1px 3px #000}
 .cot-aerial-readout[hidden]{display:none}
 .realistic-mode .hprow,.realistic-mode .hptrack,.realistic-mode .hpm,.realistic-mode .cot-hpb .tr,.realistic-mode .cot-tgt .hp,.realistic-mode .cot-tgt .bar{display:none!important}
@@ -4359,6 +4360,8 @@ export function initHud(bus: EventBus): HudRuntime {
   // ---------- shell selector ----------
   function renderShells(shells: HudShellCard[] | null | undefined, slot: number, pending = false): void {
     for (let i = 0; i < 3; i++) {
+      const unavailable = !!shells?.length && !shells[i];
+      if (slotEls[i].hidden !== unavailable) slotEls[i].hidden = unavailable;
       slotPresentations[i].render(shells?.[i] || DEFAULT_SHELLS[i], i === slot, pending);
     }
     if (ammoSwitchingStatus.hidden === pending) {
