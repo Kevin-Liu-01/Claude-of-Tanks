@@ -14,7 +14,8 @@ import { markSmokeTube, alignSmokeBanks, transferSmokeSockets } from './vehicleA
 // independent (see docs/SYSTEMS.md).
 
 import * as THREE from 'three';
-import { shareBattleGeometry } from './battleGeometrySharing.ts';
+import { isBattleShareableMesh, shareBattleGeometry } from './battleGeometrySharing.ts';
+import { mergeContiguousStaticRuns, type CoplanarLayerRecord } from './staticDrawMerge.ts';
 import { combatVisibleObjects, retainCombatLods } from './combatVisibility.ts';
 import { detachEmptyLodSentinels } from '../engine/lodEmptySentinels.ts';
 import {fitLoadedTrackContact,loadedContactScratch} from './loadedTrackContact.ts';
@@ -87,7 +88,7 @@ import { attachTankDecorations, attachTankDecorationsSteps, type DecorationAttac
 import { fxNow, emitPopTrail } from '../fx/clock.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 import {
-  markVehicleShadowDetail, NEAR_SHADOW_DETAIL_MAX_MESHES, NEAR_SHADOW_DETAIL_NAMES,
+  markVehicleShadowDetail, NEAR_SHADOW_DETAIL_MAX_MESHES, NEAR_SHADOW_DETAIL_NAMES, vehicleShadowDetailOf,
 } from '../engine/nearVehicleShadowDetail.ts';
 import { installArticulatedShadowBatch } from '../engine/articulatedShadowBatch.ts';
 import type { FleetGunSpec, FleetTankSpec, FleetVisualSpec } from './specContracts.ts';
@@ -1035,6 +1036,10 @@ interface TankFactoryOptions {
   battleDetailLod?: boolean;
   staticPreview?: boolean;
   decor?: boolean;
+  /** P21 static draw merges on batchStatic builds (staticDrawMerge.ts): contiguous
+   * same-material runs per articulation owner. 'identity' merges only parts at their
+   * owner's frame; 'off' keeps the separate draws (A/B receipts and probes). */
+  staticDrawMerge?: 'off' | 'identity' | 'translations';
   /** FSP-06 material-role census (tools/material-roles-audit.mjs): observes every authored part with the
    * bucket it merges into, before the merge erases part identity. Diagnostic only; builds are byte-identical
    * when absent. */
@@ -1501,7 +1506,7 @@ function installBattleDetailGroups(records: readonly StaticDetailRecord[]): {
 // object-local even though materials are shared: Three invokes it immediately
 // before applying the material's raster state for that draw. Shadow materials
 // are deliberately ignored, so the arbitration cannot introduce shadow acne.
-function installCoplanarDepthLayers(root: THREE.Object3D): void {
+function collectCoplanarDepthLayers(root: THREE.Object3D): CoplanarLayerRecord[] {
   interface DepthRecord {
     object: VehicleMesh;
     materials: THREE.Material[];
@@ -1540,9 +1545,11 @@ function installCoplanarDepthLayers(root: THREE.Object3D): void {
   });
   records.sort((lhs, rhs) => lhs.priority - rhs.priority
     || lhs.traversalIndex - rhs.traversalIndex);
-  records.forEach((record, index) => {
-    const layer = index + 1;
-    const { object, materials } = record;
+  return records.map(({ object, materials }, index) => ({ object, materials, layer: index + 1 }));
+}
+
+function applyCoplanarDepthLayers(root: THREE.Object3D, records: readonly CoplanarLayerRecord[]): void {
+  for (const { object, materials, layer } of records) {
     object.userData.coplanarDepthLayer = layer;
     const previous = object.onBeforeRender;
     object.onBeforeRender = function applyCoplanarDepthLayer(
@@ -1559,7 +1566,7 @@ function installCoplanarDepthLayers(root: THREE.Object3D): void {
       renderedMaterial.polygonOffsetFactor = 0;
       renderedMaterial.polygonOffsetUnits = -layer;
     };
-  });
+  }
   root.userData.coplanarDepthLayerCount = records.length;
 }
 
@@ -6747,6 +6754,14 @@ function* prepareTankDecorationSteps(
   }
 }
 
+/** Battle/Garage default for the P21 static draw merge; `?staticmerge=off|identity`
+ * selects a probe A/B on one build (the same-build pairs in the perf audit). */
+function defaultStaticDrawMerge(): NonNullable<TankFactoryOptions['staticDrawMerge']> {
+  const requested = typeof location !== 'undefined'
+    ? new URLSearchParams(location.search).get('staticmerge') : null;
+  return requested === 'off' || requested === 'identity' ? requested : 'translations';
+}
+
 function* createTankOwnedSteps(
   specId: string,
   engineContext: RuntimeValue,
@@ -6769,6 +6784,7 @@ function* createTankOwnedSteps(
     batchStatic = false,
     deferStaticBatch = false,
     battleDetailLod = false,
+    staticDrawMerge = defaultStaticDrawMerge(),
     partCensus = null,
   } = opts;
   if (materialMode !== 'rendered' && materialMode !== 'geometry-only') {
@@ -9627,10 +9643,69 @@ function* createTankOwnedSteps(
 
     const tailBatchFinishedAt = performance.now();
 
+    // P21 (staticDrawMerge.ts): fold contiguous same-material runs of the final
+    // layer order into one draw per articulation owner, then move every
+    // per-mesh reference a runtime owner holds onto the merged draw.
+    const mergeBattleStaticRuns = (
+      records: CoplanarLayerRecord[], bakeTranslations: boolean,
+    ): CoplanarLayerRecord[] => {
+      const pinnedPositions = new Set<THREE.BufferAttribute | THREE.InterleavedBufferAttribute>();
+      for (const cluster of destructibleClusters.values()) {
+        for (const range of cluster.ranges) pinnedPositions.add(range.position);
+      }
+      const shadowDetail = vehicleShadowDetailOf(root);
+      const replaced = new Map<THREE.Object3D, VehicleMesh>();
+      const result = mergeContiguousStaticRuns(records, disposables, {
+        bakeTranslations,
+        isPinned: (mesh) => equipmentDamage.ownsGeometry(mesh.geometry)
+          || weaponDamage.ownsGeometry(mesh.geometry)
+          || pinnedPositions.has(mesh.geometry.getAttribute('position'))
+          || decalMeshes.includes(mesh),
+        isShareable: isBattleShareableMesh,
+        staticGearName: BATTLE_STATIC_BATCH_NAME,
+        nearShadow: new Set(shadowDetail?.detail ?? []),
+        detail: new Set(mobileDetailObjects.map((record) => record.object)),
+        onMerge: (sources, merged) => {
+          transferVehicleNightLenses(sources, merged);
+          transferSmokeSockets(sources, merged);
+          for (const source of sources) replaced.set(source, merged);
+        },
+      });
+      if (result.merges) {
+        const swap = <T extends { object: THREE.Object3D }>(entries: readonly T[], make: (entry: T, object: VehicleMesh) => T): T[] => {
+          const seen = new Set<THREE.Object3D>();
+          const next: T[] = [];
+          for (const entry of entries) {
+            const merged = replaced.get(entry.object);
+            if (!merged) { next.push(entry); continue; }
+            if (seen.has(merged)) continue;
+            seen.add(merged);
+            next.push(make(entry, merged));
+          }
+          return next;
+        };
+        if (shadowDetail) {
+          markVehicleShadowDetail(root, {
+            detail: swap(shadowDetail.detail.map((object) => ({ object })), (_entry, object) => ({ object }))
+              .map(({ object }) => object),
+            proxies: shadowDetail.proxies,
+          });
+        }
+        mobileDetailObjects = swap(mobileDetailObjects, (entry, object) => ({ object, baseVisible: entry.baseVisible }));
+      }
+      root.userData.staticMergeSavedDraws = result.savedDraws;
+      root.userData.staticMergeCount = result.merges;
+      return result.records;
+    };
+
     // Run after decoration, static batching and battle-detail regrouping so
     // every final color-pass mesh receives exactly one stable layer.
-    installCoplanarDepthLayers(root);
+    let depthLayers = collectCoplanarDepthLayers(root);
     finalizeVehicleNightLighting(root);
+    if (batchStatic && staticDrawMerge !== 'off') {
+      depthLayers = mergeBattleStaticRuns(depthLayers, staticDrawMerge === 'translations');
+    }
+    applyCoplanarDepthLayers(root, depthLayers);
     const tailFinalizeFinishedAt = performance.now();
     // Retain each authored hull/turret/gun proxy and its articulation owner.
     // Only battle builds combine their submissions; no silhouette, cascade

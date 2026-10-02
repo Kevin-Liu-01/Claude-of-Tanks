@@ -23,6 +23,10 @@ export class WeaponDamageVisuals {
       start += count;
     }
   }
+  /** Static draw merges must leave every buffer a scorch range edits in place. */
+  ownsGeometry(geometry: BufferGeometry): boolean {
+    return this.ranges.some((range) => range.geometry === geometry);
+  }
   set(module: string, state: ModuleStateName): void {
     if ((this.states.get(module) ?? 'ok') === state) return;
     this.states.set(module, state);
