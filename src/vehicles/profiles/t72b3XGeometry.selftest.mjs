@@ -3,13 +3,13 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {getSpec} from '../specs.ts';
 import {measureTurretBarrelCircularity} from '../turretBarrelCircularity.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Independent source scalars, not imported candidate dimensions or a donor
 // fallback. The source's 15.6mm-proud marker and conical hole are not targets.
 const SOURCE={yaw:[.0000002374,1.457100315,.065591405],gun:[.006050285,1.758750301,1.096549988],
   muzzle:5.798749804,floor:4.505949855,roof:2.274000205,
   wheels:[-1.70205,-.91970,-.12865,.67990,1.47690,2.28460]};
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: actual${a}, source${b} ±${t}`);
 function visibleMeshes(root){
   const meshes=[];
   root.traverseVisible(object=>{

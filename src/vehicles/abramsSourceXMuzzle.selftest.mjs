@@ -5,12 +5,12 @@ import {profiledTube} from './profiles/abramsSourceXGeometry.ts';
 import {createTank} from './tankFactory.ts';
 import {ABRAMS_SOURCE_X_IDS} from './abramsSourceXSpecs.ts';
 import {buildAbramsSourceXEquipment} from './profiles/abramsSourceXEquipment.ts';
+import { nearStrict as near } from '../../tools/receipt-kit.test-support.mjs';
 
 const pieces=sourceMuzzleAssembly(),material=new T.MeshBasicMaterial({side:T.FrontSide});
 assert.equal(new Set(pieces.map(p=>p.name)).size,pieces.length);
 const meshes=pieces.map(p=>{const m=new T.Mesh(p.geometry,material);m.name=p.name;m.updateMatrixWorld(true);return m;});
 const cast=(list,p,d,far)=>new T.Raycaster(new T.Vector3(...p),new T.Vector3(...d),0,far).intersectObjects(list,false);
-const near=(n,expected,tolerance,label)=>assert.ok(Number.isFinite(n)&&Math.abs(n-expected)<tolerance,`${label}: ${n} expected${expected} ±${tolerance}`);
 for(const segments of[40,64]){
  const source=profiledTube([{z:5.60,r:.08434},{z:5.605275,r:.07724},{z:5.809425,r:.07724}],.06064,segments);
  const before=source.toNonIndexed(),after=hardenSourceMuzzleRim(source),p=after.attributes.position;

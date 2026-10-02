@@ -30,21 +30,17 @@ assert.equal(packageJson.scripts.posttest, undefined, 'npm --all must apply to e
 // These independent whole-fleet CPU scans are long enough to exhaust the
 // runner's 45-second admission window. Keep them together, within their
 // existing lifecycle, so four workers do useful work before draining.
+// 2026-10-02: one fleet pass per build hosts the former whole-fleet receipts' audits (fleetPass.test-support.mjs).
 assert.deepEqual(SELFTEST_SUITES.pre.slice(0,4),[
   'src/vehicles/fleetLazy.selftest.mjs',
-  'src/vehicles/wheelQuality.selftest.mjs',
+  'src/vehicles/fleetPassHigh.selftest.mjs',
   'tools/wheel-axial-extents.selftest.mjs',
-  'src/vehicles/eraGameplayRegistration.selftest.mjs',
+  'src/vehicles/fleetPassLow.selftest.mjs',
 ]);
-assert.deepEqual(SELFTEST_SUITES.core.slice(0,6),[
-  'src/gallery/surfaceMarkupFleet.selftest.mjs',
+assert.deepEqual(SELFTEST_SUITES.core.slice(0,2),[
+  'src/vehicles/fleetPassDefault.selftest.mjs',
   'src/vehicles/fleetFloorClearance.selftest.mjs',
-  'src/vehicles/vehicleMarkings.selftest.mjs',
-  'src/vehicles/tankAssets.selftest.mjs',
-  'src/vehicles/combatAnatomy.selftest.mjs',
-  'src/vehicles/gunArticulation.selftest.mjs',
 ]);
-assert.equal(SELFTEST_SUITES.post[0],'src/vehicles/mudguardFenderSeating.selftest.mjs');
 
 let total = 0;
 const listed = [];

@@ -3,8 +3,8 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {KIT} from '../tankFactoryCore.ts';
 import {trackPatternFor} from '../trackPatterns.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-const near=(v,w,e,label)=>assert.ok(Number.isFinite(v)&&Math.abs(v-w)<=e,`${label}: ${v} vs ${w}`);
 // The frozen legacy shoe-primitive digests, shoe instance-matrix digest and wheel/carrier position digests are
 // retired: whole-tank change detection of leclerc_x is the fleet geometry ledger's.
 const material=new THREE.MeshBasicMaterial();

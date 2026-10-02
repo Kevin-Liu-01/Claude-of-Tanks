@@ -6,6 +6,7 @@ import { createTank as createPlayableTank } from '../tankFactory.ts';
 import { KIT, registerProfiledBuilders } from '../tankFactoryCore.ts';
 import {buildChallenger1X as photoDraft} from './challenger1XPhotoDraft.ts';
 import {buildChallenger1X as supplied} from './challenger1X.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Historical photo-primitive regression only. The current supplied-file model
 // is accepted exclusively by its separate actual-ID tests and raw source gates.
@@ -17,9 +18,6 @@ function createTank(...args) {
 
 // Fixed public-handbook values, printed xiii, not measurements from AI input.
 const HANDBOOK = { width: 3.510, overall: 11.560, hood: 2.950, clearance: .500, links: 92 };
-const near = (got, expected, tolerance, label) => assert.ok(
-  Number.isFinite(got) && Math.abs(got - expected) <= tolerance,
-  `${label}: ${got}, expected ${expected} ± ${tolerance}`);
 const ray = (meshes, from, direction, far = 20) => new THREE.Raycaster(
   new THREE.Vector3(...from), new THREE.Vector3(...direction), 0, far,
 ).intersectObjects(meshes, false)[0];
