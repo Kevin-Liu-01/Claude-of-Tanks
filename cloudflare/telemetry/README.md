@@ -64,7 +64,7 @@ plan is a D1 table with a 30-day cleanup cron — not this Worker today.
 3. `npx wrangler login` once on the machine, then `npx wrangler deploy`
    (from the repository root: `npm run deploy:telemetry:cloudflare`). The
    deploy creates the Worker `cot-telemetry`, its rate-limit namespace
-   (`2609055512`; the signaling Worker owns `2609055511`) and the Analytics
+   (`2609055512`; the rooms Worker owns `2609055513`) and the Analytics
    Engine binding `COT_TELEMETRY` → dataset `cot_telemetry`. The dataset
    itself appears on the first accepted record. After a change to
    `wrangler.jsonc`, run `npm run types` and commit the regenerated

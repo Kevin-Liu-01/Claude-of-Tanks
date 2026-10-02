@@ -104,6 +104,21 @@ for (const [url, dir] of [[policy.OFFICIAL_ROOMS_URL, 'rooms'], [policy.OFFICIAL
   assert.equal(new URL(url).hostname.split('.')[0], config.name, `${dir}: the policy URL names the Worker in cloudflare/${dir}/wrangler.jsonc`);
 }
 
+// 4b. INFRA-P2 (2026-10-01): each Worker counts its own rate limits. Bindings that share a namespace_id share their
+// counters per key (Cloudflare), and rooms reused telemetry's 2609055512, so room upgrades and telemetry posts from one
+// address (a household, a LAN party) spent each other's budget. 2609055511 stays the retired signaling Worker's
+// (cot-private-rooms is still deployed). A namespace change goes live with that Worker's next deploy.
+const namespacesOf = (config) => (config.ratelimits || []).map((limit) => String(limit.namespace_id));
+const roomsNamespaces = namespacesOf(parseJsonc(read('cloudflare/rooms/wrangler.jsonc')));
+const telemetryNamespaces = namespacesOf(parseJsonc(read('cloudflare/telemetry/wrangler.jsonc')));
+assert.deepEqual(roomsNamespaces, ['2609055513'], 'the rooms limiter has its own namespace');
+assert.deepEqual(telemetryNamespaces, ['2609055512'], 'the telemetry limiter keeps its namespace');
+assert.deepEqual(namespacesOf(parseJsonc(read('cloudflare/rooms/wrangler.test.jsonc'))), roomsNamespaces,
+  'the rooms test configuration mirrors the deployed binding');
+const allNamespaces = [...roomsNamespaces, ...telemetryNamespaces];
+assert.equal(new Set(allNamespaces).size, allNamespaces.length, 'no two Workers share a rate-limit namespace');
+assert.ok(!allNamespaces.includes('2609055511'), 'the retired signaling Worker\'s namespace stays unused');
+
 // 5. No API function keeps its own copy of the allow-list.
 const apiFiles = readdirSync(new URL('../api/', import.meta.url)).filter((file) => file.endsWith('.ts'));
 assert.ok(apiFiles.length >= 4, 'the API functions are found');
