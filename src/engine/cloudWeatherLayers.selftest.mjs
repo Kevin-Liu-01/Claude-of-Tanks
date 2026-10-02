@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
-  CLOUD_CONTRAIL_MAX, CLOUD_STORM_MAX, applyCloudWeatherPreset, cloudContrails, cloudStormCells, cloudWeatherGlsl, createCloudWeatherUniforms,
+  CLOUD_CONTRAIL_MAX, CLOUD_STORM_MAX, applyCloudWeatherPreset, cloudContrails, cloudStormCells, createCloudWeatherUniforms,
 } from './cloudWeatherLayers.ts';
 import {
   CLOUD_DIURNAL, CLOUD_MID_DEFAULTS, CLOUD_WEATHER_RULES, cloudLayerKey, cloudNightAmount, cloudTimeOfDay, deriveCloudLayerPreset,
@@ -70,7 +70,11 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
 
 // ---- the GLSL: every layer gated by its own uniform, no pow on a signed base, the mipmapped fields at level zero in loops
 {
-  const glsl = cloudWeatherGlsl(12000, 1500);
+  // (the layers' GLSL is written in the trace program, so the build's minifier strips its comments with the program's)
+  const src = here('./volumetricClouds.ts');
+  const trace = src.slice(src.indexOf('const TRACE_FRAGMENT'), src.indexOf('const RESOLVE_FRAGMENT'));
+  const glsl = trace.slice(trace.indexOf('// ---- the weather layers'), trace.indexOf('// ---- the far band'));
+  assert.ok(glsl.length > 4000, 'the trace program carries the weather layers ahead of the far band');
   for (const name of ['midLayer', 'midThickness', 'contrailDepth', 'stormCells', 'stormDensity', 'slabRain', 'cloudPrecip', 'seaFogBank', 'cloudOver', 'cloudCylinderSpan', 'cloudCylinderExit']) {
     assert.ok(new RegExp(`\\b${name}\\(`).test(glsl), `the weather GLSL defines ${name}`);
   }
@@ -90,7 +94,7 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
 // ---- the trace: the layered composite, the halo without pow, placement once per preset, the sky light dimmed once
 {
   const layer = here('./volumetricClouds.ts');
-  assert.ok(layer.includes('${cloudWeatherGlsl(CLOUD_WEATHER_TILE_M, CLOUD_AERIAL.cirrusHazeScaleM)}'), 'the trace includes the weather GLSL');
+  assert.ok(/const TRACE_FRAGMENT[\s\S]*\/\/ ---- the weather layers[\s\S]*void main\(\)[\s\S]*const RESOLVE_FRAGMENT/.test(layer), 'the weather GLSL is part of the trace program, ahead of its main');
   assert.ok(layer.includes('acc = cloudOver( cloudOver( fogL, rainL ), acc );'), 'the fog bank and the rain stand in front of the slab');
   assert.ok(layer.includes('acc = cloudOver( cloudOver( cloudOver( acc, a ), b ), c );'), 'storms, far band and mid layer composite behind it, sorted');
   assert.ok(layer.includes('acc = cloudOver( acc, cirrusLayer( dir, cosT, rayDx, rayDy ) );'), 'the cirrus (with the trails) last');
@@ -203,8 +207,6 @@ const skyOf = (id, time = 'day') => {
   // a sky block alone (the Garage) has no weather beyond its slab
   const legacy = deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...getMapConfig('verdant').sky });
   assert.deepEqual([legacy.midKind, legacy.contrails, legacy.storms, legacy.rain, legacy.fogBank, ...legacy.groundGlow], [0, 0, 0, 0, 0, 0, 0, 0]);
-  assert.equal(CLOUD_WEATHER_RULES.contrailMax, CLOUD_CONTRAIL_MAX);
-  assert.equal(CLOUD_WEATHER_RULES.stormMax, CLOUD_STORM_MAX);
 }
 {
   // every shipped map resolves at all three times with finite numbers

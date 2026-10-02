@@ -16,6 +16,7 @@
  */
 import type { AtmosphereSkyPresetInput } from './atmosphere.ts';
 import { CLOUDSCAPE_REGIMES, CLOUD_MID_KINDS, type CloudMidKind, type CloudscapeConfig, type CloudscapeRegime } from './cloudscapes.ts';
+import { CLOUD_CONTRAIL_MAX, CLOUD_STORM_MAX } from './cloudWeatherLayers.ts';
 
 export type CloudLayerRegime = 'scattered' | 'broken' | 'overcast' | 'storm' | CloudscapeRegime;
 
@@ -234,7 +235,7 @@ export const CLOUD_MID_DEFAULTS: Readonly<Record<CloudMidKind, { altM: number; t
 
 /** 2026-10-01: the weather beyond the slab's defaults (contrails, storm cells, the fog bank, the night glow). */
 export const CLOUD_WEATHER_RULES = Object.freeze({
-  contrailMax: 6, stormMax: 3, stormDistM: 38000, stormTopM: 11000, fogBankTopM: 120,
+  stormDistM: 38000, stormTopM: 11000, fogBankTopM: 120,
   /** the sodium-orange glow of a lit town on the cloud bases (a map authors its own hue) */
   nightGlowHex: 0xff9a52,
   /** the night albedo: a moonlit cloud is a grey-white diffuser — the night preset's dark blue deck tint is a dome colour */
@@ -370,6 +371,7 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
   const typeRange = scape.type ?? row?.type ?? legacy.typeRange;
   const shadowDay = sky.skyIntensity >= R.shadowMinSkyIntensity;
   const shadow = scape.shadow ?? ((row ? row.shadow : legacy.shadow) && shadowDay);
+  const time = scapeTime(sky, scape);
   return {
     regime: scape.regime ?? legacy.regime,
     coverage, baseM, thicknessM,
@@ -382,8 +384,7 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     // sun's transmittance is already warm) and turned the night's clouds into black occluders. The layer keeps a
     // grey-white diffuser at those times and lets the light bring the hue; a map's authored tint is kept.)
     tint: scape.tintHex != null ? tintOf(scape.tintHex, sheet)
-      : tintOf(scapeTime(sky, scape) === 'night' ? CLOUD_WEATHER_RULES.nightTintHex
-        : scapeTime(sky, scape) === 'sunset' ? CLOUD_WEATHER_RULES.sunsetTintHex : sky.cloudTintHex, sheet),
+      : tintOf(time === 'night' ? CLOUD_WEATHER_RULES.nightTintHex : time === 'sunset' ? CLOUD_WEATHER_RULES.sunsetTintHex : sky.cloudTintHex, sheet),
     windDirRad,
     windSpeed: Math.max(0, pick('windSpeed')),
     offset: legacy.offset,
@@ -409,13 +410,13 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     deckLight: clamp(pick('deckLight'), 0, 1),
     undulatus: clamp(pick('undulatus'), 0, 1),
     interior: clamp(pick('interior'), 0, 1),
-    ...resolveWeather(sky, scape, row, baseM + thicknessM, windDirRad, sheet),
+    ...resolveWeather(sky, scape, row, baseM + thicknessM),
   };
 }
 
 /** 2026-10-01: the weather beyond the slab and the time's light from the regime's row and the map's block. */
 function resolveWeather(sky: CloudLayerSkyInput, scape: CloudscapeConfig, row: (typeof CLOUDSCAPE_REGIMES)[CloudscapeRegime] | null,
-  slabTopM: number, windDirRad: number, sheet: boolean): ReturnType<typeof neutralWeather> {
+  slabTopM: number): ReturnType<typeof neutralWeather> {
   const W = CLOUD_WEATHER_RULES;
   const timeOfDay = scapeTime(sky, scape);
   const out = neutralWeather(slabTopM, timeOfDay);
@@ -430,9 +431,9 @@ function resolveWeather(sky: CloudLayerSkyInput, scape: CloudscapeConfig, row: (
   out.midCellM = Math.max(30, scape.midCellM ?? mid.cellM);
   out.midBands = clamp(scape.midBands ?? mid.bands, 0, 1);
   out.midDensity = mid.density;
-  out.contrails = Math.round(clamp(scape.contrails ?? 0, 0, 1) * W.contrailMax);
+  out.contrails = Math.round(clamp(scape.contrails ?? 0, 0, 1) * CLOUD_CONTRAIL_MAX);
   out.contrailAge = clamp(scape.contrailAge ?? 0.5, 0, 1);
-  out.storms = Math.round(clamp(scape.storms ?? row?.storms ?? 0, 0, W.stormMax));
+  out.storms = Math.round(clamp(scape.storms ?? row?.storms ?? 0, 0, CLOUD_STORM_MAX));
   // a storm stands by default in the sector opposite the sun: front-lit towers over a shaded base (the sun's XZ angle
   // in the wind convention is 90° − azimuth: sky.ts places the sun with setFromSphericalCoords)
   out.stormAzRad = degToRad(scape.stormAzDeg ?? (270 - sky.sunAzimuthDeg));
@@ -451,7 +452,6 @@ function resolveWeather(sky: CloudLayerSkyInput, scape: CloudscapeConfig, row: (
     const l = Math.max(1e-4, 0.2126 * k[0] + 0.7152 * k[1] + 0.0722 * k[2]);
     out.keyTint = k.map((c) => 1 + (c / l - 1) * night) as [number, number, number];
   }
-  void windDirRad; void sheet;
   return out;
 }
 
