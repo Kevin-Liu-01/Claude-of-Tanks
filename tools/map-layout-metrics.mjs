@@ -11,7 +11,8 @@
 //
 // What it measures (the brief explains why each one matters):
 //   spawns    the authored player pad and the enemy arc centroid (the anchors every objective derives from), their
-//             straight separation and the driven route between them over a 5 m passability raster
+//             straight separation, the driven route between them over a 5 m passability raster, and whether each
+//             anchor is screened from the other
 //   lanes     approach lanes across three slices of the spawn axis (35 / 50 / 65 %): drivable points every 20 m that
 //             lie on an alpha → bravo route at most 1.6x the shortest, grouped while neighbours see each other and the
 //             foliage between them stays thin — a lane is a group at least 40 m wide; the count is the median slice
@@ -25,8 +26,8 @@
 //             (1.1–2.3 m: the hull masked, the gun clear), and the exposure — the share of rays from the opposing half
 //             that see the cell
 //   relief    standard deviation of the drivable height and the flat share (30 m windows with < 1 m relief)
-//   dressing  buildings farther than 60 m from any road, solid props whose footprint enters a road core (4 m), and
-//             solid props standing in water, each by kind
+//   dressing  buildings farther than 60 m from any road, solid props whose footprint enters the carriageway (3.5 m;
+//             hedgehog and barrier roadblocks are reported apart), and solid props standing in water, each by kind
 //   objectives the zone-control, capture-the-flag and turbo-ball placements through the real match placement
 //             (src/sim/matchPlacement.ts) with each team's driven distance to every objective and the worst
 //             alpha/bravo distance ratio (symmetry)
@@ -51,7 +52,10 @@ export const COVER_RANGE_M = 40;
 export const THIN_COLLIDER_M = 2.5;
 export const COVER_FULL_M = 2.3;
 export const COVER_HULL_M = 1.1;
-export const ROAD_CORE_M = 4;
+/** The carriageway half-width a solid prop must stay out of (the road mask's edge sits at ~3.85 m). */
+export const ROAD_CORE_M = 3.5;
+/** Deliberate roadblocks: reported, but not counted as dressing that wandered into a road. */
+export const ROADBLOCK_KINDS = new Set(['hedgehog', 'barrier']);
 export const ORPHAN_ROAD_M = 60;
 /** Lane points sit this far apart along each slice across the spawn axis. */
 export const LANE_POINT_M = 20;
@@ -68,6 +72,7 @@ export const LAYOUT_DRIVETRAIN = Object.freeze({ enginePowerHp: 900, weightTons:
  */
 export const TARGETS = Object.freeze({
   spawnSeparationM: [600, 860],
+  spawnScreened: [1, null],
   routeStretch: [null, 1.45],
   lanes: [3, null],
   chokeMinM: [120, null],
@@ -510,6 +515,38 @@ export function buildLayoutRasters({ heightField, world, footprintContains, mobi
   return { sight, ground, surface, sightSolid, pass, passable, cellCost, height5, wet, edgeOk, gradeLimit };
 }
 
+/** Distance from a point to the nearest road polyline, through a 32 m bucket grid of segments. */
+export function roadPolylineDistance(roads, bucketM = 32) {
+  const buckets = new Map();
+  const key = (i, j) => `${i},${j}`;
+  for (const road of roads) for (let k = 1; k < road.length; k++) {
+    const [ax, az] = road[k - 1], [bx, bz] = road[k];
+    const i0 = Math.floor((Math.min(ax, bx) - 8) / bucketM), i1 = Math.floor((Math.max(ax, bx) + 8) / bucketM);
+    const j0 = Math.floor((Math.min(az, bz) - 8) / bucketM), j1 = Math.floor((Math.max(az, bz) + 8) / bucketM);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      if (!buckets.has(key(i, j))) buckets.set(key(i, j), []);
+      buckets.get(key(i, j)).push([ax, az, bx, bz]);
+    }
+  }
+  const segment = (px, pz, [ax, az, bx, bz]) => {
+    const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
+    const t = l2 > 0 ? clamp(((px - ax) * dx + (pz - az) * dz) / l2, 0, 1) : 0;
+    return Math.hypot(ax + dx * t - px, az + dz * t - pz);
+  };
+  return (x, z) => {
+    const ci = Math.floor(x / bucketM), cj = Math.floor(z / bucketM);
+    let best = Infinity;
+    for (let ring = 0; ring <= 40; ring++) {
+      for (let j = cj - ring; j <= cj + ring; j++) for (let i = ci - ring; i <= ci + ring; i++) {
+        if (Math.max(Math.abs(i - ci), Math.abs(j - cj)) !== ring) continue;
+        for (const seg of buckets.get(key(i, j)) ?? []) best = Math.min(best, segment(x, z, seg));
+      }
+      if (best <= ring * bucketM) break;
+    }
+    return best;
+  };
+}
+
 /** Snap a world point to the nearest passable raster cell within `radiusM`. */
 export function nearestPassable(spec, passable, x, z, radiusM = 60) {
   const base = spec.index(x, z);
@@ -689,17 +726,18 @@ export async function computeLayoutMetrics(mapId, { objectives = true } = {}) {
   const meanH = heights.reduce((a, b) => a + b, 0) / Math.max(1, heights.length);
   const reliefStdM = Math.sqrt(heights.reduce((a, b) => a + (b - meanH) ** 2, 0) / Math.max(1, heights.length));
 
-  // dressing logic
+  // dressing logic — distances to the authored road polylines (hardstand aprons are paved squares, not roads)
+  const roadDistance = roadPolylineDistance(layout.roads);
   const buildingKinds = new Set(['structure', 'bunker', ...((config.props?.destructibleBuildings) ?? [])]);
   let buildings = 0, orphans = 0;
-  const inRoad = {}, inWater = {};
+  const inRoad = {}, inWater = {}, roadblocks = {};
   for (const record of world.getObstacles()) {
     if (record.treeIdx != null) continue;
     const cx = (record.min[0] + record.max[0]) / 2, cz = (record.min[2] + record.max[2]) / 2;
     const kind = record.kind ?? 'rock-or-wall';
     if (buildingKinds.has(record.kind)) {
       buildings++;
-      if (heightField._roadDist(cx, cz) > ORPHAN_ROAD_M) orphans++;
+      if (roadDistance(cx, cz) > ORPHAN_ROAD_M) orphans++;
     }
     if (!isSolidRecord(record)) continue;
     let road = false, water = false;
@@ -707,11 +745,14 @@ export async function computeLayoutMetrics(mapId, { objectives = true } = {}) {
     for (let z = record.min[2]; z <= record.max[2] && !(road && water); z += step) {
       for (let x = record.min[0]; x <= record.max[0]; x += step) {
         if (!footprintContains(record, x, z, 0)) continue;
-        if (!road && heightField._roadDist(x, z) < ROAD_CORE_M) road = true;
+        if (!road && roadDistance(x, z) < ROAD_CORE_M) road = true;
         if (!water && (heightField.getWaterMaskAt?.(x, z) ?? 0) > 0.5) water = true;
       }
     }
-    if (road && kind !== 'bridge') inRoad[kind] = (inRoad[kind] ?? 0) + 1;
+    if (road && kind !== 'bridge') {
+      if (ROADBLOCK_KINDS.has(kind)) roadblocks[kind] = (roadblocks[kind] ?? 0) + 1;
+      else inRoad[kind] = (inRoad[kind] ?? 0) + 1;
+    }
     if (water && !MARINE_KINDS.has(kind)) inWater[kind] = (inWater[kind] ?? 0) + 1;
   }
   const solidPropsInRoad = Object.values(inRoad).reduce((a, b) => a + b, 0);
@@ -756,6 +797,9 @@ export async function computeLayoutMetrics(mapId, { objectives = true } = {}) {
       separationM: round(frame.length, 0),
       routeM: round(routeM, 0),
       routeStretch: routeM ? round(routeM / frame.length, 3) : null,
+      // neither anchor sees the other (eye 2.4 m, target 1.9 m) over terrain and structures
+      screened: !seesPoint(sight, R.ground, R.surface, frame.alpha.x, frame.alpha.z, frame.bravo.x, frame.bravo.z)
+        && !seesPoint(sight, R.ground, R.surface, frame.bravo.x, frame.bravo.z, frame.alpha.x, frame.alpha.z),
     },
     lanes: {
       count: laneCounts[1] ?? 0,
@@ -789,7 +833,7 @@ export async function computeLayoutMetrics(mapId, { objectives = true } = {}) {
     dressing: {
       buildings, orphanBuildings: orphans,
       orphanBuildingShare: buildings ? round(orphans / buildings, 3) : 0,
-      solidPropsInRoad, inRoad, solidPropsInWater, inWater,
+      solidPropsInRoad, inRoad, roadblocks, solidPropsInWater, inWater,
     },
     objectives: objectiveRows,
     objectiveSymmetry,
@@ -820,6 +864,7 @@ export function objectiveBalance(rows, floorM = 60) {
 export function targetValues(m) {
   return {
     spawnSeparationM: m.spawns.separationM,
+    spawnScreened: m.spawns.screened ? 1 : 0,
     routeStretch: m.spawns.routeStretch,
     lanes: m.lanes.count,
     chokeMinM: m.chokes.minM,

@@ -16,15 +16,25 @@
  *   node tools/capture-world-collision-manifests.mjs --headless --maps autumn
  * Hold the shared probe mutex around it and run it under nice -n 19 like the other probes; a partial capture keeps
  * every other shard byte-identical (assertUnchangedCollisionShards) and republishes the complete index.
+ *
+ * 2026-10-01 (maps-and-layouts lane): the rendered world's records come from three deterministic builders that also
+ * run in Node (tools/headlessWorldCollision.mjs), and the Node build encodes byte-identically to the browser capture.
+ * `--node` regenerates shards without a browser or a dev server; `--check` builds and compares without writing and
+ * exits 1 when a committed shard has drifted from the tree:
+ *   node tools/capture-world-collision-manifests.mjs --node --maps desert
+ *   node tools/capture-world-collision-manifests.mjs --check
  */
 
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import {
   assertUnchangedCollisionShards, collisionCaptureOptions, readCollisionCaptureEntries,
   collisionManifestDirectory, writeCollisionManifestIndex, writeCollisionManifestShard,
 } from './worldCollisionManifestFiles.mjs';
+import { packCollisionRecord } from './headlessWorldCollision.mjs';
 
 const options = collisionCaptureOptions(process.argv.slice(2));
 const { session } = options;
@@ -39,37 +49,7 @@ export function collisionCaptureScript(mapId) {
   return `(async () => {
     const world = await window.__DEBUG.switchMap(${JSON.stringify(mapId)});
     const n = (value) => Math.round(value * 10000) / 10000;
-    const pack = (record) => {
-      const out = { b: [
-        n(record.min[0]), n(record.min[1]), n(record.min[2]),
-        n(record.max[0]), n(record.max[1]), n(record.max[2]),
-      ] };
-      const shape = record.shape2;
-      // per-part vertical extents (2026-09-19) ride as trailing numbers; a ranged polygon is tagged 'w'
-      // a part whose extent is the record's own range packs without it, so plain wall bands still dedupe in the
-      // primitive dictionary; only roof strips, porches and other parts with their own heights carry numbers
-      const packExtent = (value) => (value.y0 !== undefined && value.y1 !== undefined
-        && (Math.abs(value.y0 - record.min[1]) > 0.001 || Math.abs(value.y1 - record.max[1]) > 0.001)
-        ? [n(value.y0), n(value.y1)] : []);
-      const packShape = (value) => value.kind === 'obb'
-        ? ['o', n(value.cx), n(value.cz), n(value.hw), n(value.hl), n(value.yaw), ...packExtent(value)]
-        : value.kind === 'circle'
-          ? ['c', n(value.cx), n(value.cz), n(value.r), ...packExtent(value)]
-          : packExtent(value).length
-            ? ['w', ...packExtent(value), ...value.points.map(n)]
-            : ['v', ...value.points.map(n)];
-      if (shape?.kind === 'compound') out.s = ['m', ...shape.parts.map(packShape)];
-      else if (shape) out.s = packShape(shape);
-      if (record.crushable) out.q = 1;
-      // Tree contact policy is a shared runtime invariant; avoid repeating
-      // its two constant values thousands of times in the server manifest.
-      if (record.treeIdx == null && record.crushMin != null) out.m = n(record.crushMin);
-      if (record.treeIdx == null && record.crushKeep != null) out.e = n(record.crushKeep);
-      if (record.kind != null) out.k = record.kind;
-      if (record.treeIdx != null) out.t = record.treeIdx;
-      if (record.propIdx != null) out.p = record.propIdx;
-      return out;
-    };
+    const pack = ${packCollisionRecord.toString()};
     return {
       obstacles: world.getObstacles().map(pack),
       // Tree trunks are the exact same logical record for movement and shell
@@ -102,7 +82,28 @@ function publish(mapId, data) {
     `${data.colliders.length} colliders, ${data.concealers.length} concealers`);
 }
 
-if (options.headless) {
+if (options.node) {
+  const { buildWorldCollisionData } = await import('./headlessWorldCollision.mjs');
+  const { readCollisionManifest } = await import('../server/collisionManifestFormat.ts');
+  const { encodeCollisionManifest } = await import('../server/collisionManifestCodec.ts');
+  const index = JSON.parse(readFileSync(new URL('index.json', collisionManifestDirectory), 'utf8'));
+  let drifted = 0;
+  for (const mapId of options.mapIds) {
+    const data = await buildWorldCollisionData(mapId);
+    if (!options.check) { publish(mapId, data); continue; }
+    const text = JSON.stringify(encodeCollisionManifest(readCollisionManifest(data)));
+    const sha256 = createHash('sha256').update(text).digest('hex');
+    const committed = index.maps[mapId];
+    const current = committed?.sha256 === sha256 && committed?.bytes === Buffer.byteLength(text);
+    if (!current) drifted++;
+    console.log(`${mapId}: ${current ? 'current' : `DRIFTED (committed ${committed?.sha256?.slice(0, 12)} ${committed?.bytes} B, tree ${sha256.slice(0, 12)} ${Buffer.byteLength(text)} B)`}`);
+  }
+  if (options.check) {
+    console.log(`${options.mapIds.length - drifted}/${options.mapIds.length} collision shards match the tree`);
+    if (drifted) process.exit(1);
+    process.exit(0);
+  }
+} else if (options.headless) {
   const { openGamePage, withMapProbeSession } = await import('./map-probe-runtime.mjs');
   const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
   await withMapProbeSession({ root, cacheDir: options.cacheDir, launch: { width: 1280, height: 720 } }, async ({ browser, port }) => {

@@ -26,6 +26,9 @@ const coalCensus = { railyard: 6, caldera: 7, foundry: 7, skybridge: 5 };
 // independent of the generated index; no historical subtraction or tolerance.
 // Verdant retains every placement: only two fleet wreck bounds
 // differ from its old shard; its complete census is unchanged.
+// 2026-10-01 maps-and-layouts lane: the drifted shards are rebuilt in Node (tools/headlessWorldCollision.mjs,
+// `capture-world-collision-manifests.mjs --node`) and server/collisionManifestDrift.selftest.mjs keeps every shard
+// equal to the tree.
 const expected = {
   verdant: [6977, 6678, 7507],
   desert: [2673, 2605, 3139],
@@ -39,9 +42,9 @@ const expected = {
   fjord: [7357, 7301, 7679],
   delta: [7742, 7430, 9644],
   badlands: [3013, 2917, 1920],
-  monsoon: [9472, 9214, 12022],
+  monsoon: [9473, 9215, 12022], // 2026-10-01 recapture after the fleet rebuild: the M2A2 wreck now seats at (287, -17); was [9472, 9214, 12022]
   alpine: [9118, 9045, 8009],
-  caldera: [5002, 5109, 3810],
+  caldera: [5003, 5110, 3810], // 2026-10-01 recapture after the fleet rebuild: the M60A3 wreck now seats at (271, 34); was [5002, 5109, 3810]
   foundry: [4277, 4385, 3119],
   ruinspires: [2823, 9284, 1050],
   blackglass: [3661, 5894, 2333],

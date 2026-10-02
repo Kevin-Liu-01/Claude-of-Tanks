@@ -76,6 +76,7 @@ failure.
 | Key | What it measures | Band |
 | --- | --- | --- |
 | `spawnSeparationM` | Player pad to the enemy arc centroid (the anchors every objective derives from) | 600–860 m |
+| `spawnScreened` | Neither anchor has line of sight to the other (eye 2.4 m, target 1.9 m) over terrain and structures | 1 (screened) |
 | `routeStretch` | Driven route between the anchors over a 5 m passability raster (slopes from the shared mobility law, solid obstacles, deep water) ÷ straight line | ≤ 1.45 |
 | `lanes` | Median over slices at 35 / 50 / 65 % of the axis of the drivable runs ≥ 40 m wide on a route ≤ 1.6 × the shortest, split where neighbours lose sight of each other or foliage between them adds ≥ 0.6 concealment | ≥ 3 |
 | `chokeMinM` | Narrowest total passable width of any slice across the axis between 20 and 80 % | ≥ 120 m |
@@ -87,7 +88,7 @@ failure.
 | `hullDownTeamShare` | The poorer team half's share of hull-down cells | ≥ 0.10 |
 | `reliefStdM` | Standard deviation of drivable ground height | ≥ 3 m |
 | `orphanBuildingShare` | Buildings farther than 60 m from any road | ≤ 0.15 |
-| `solidPropsInRoad` | Solid props whose footprint enters a 4 m road core (bridges excepted) | 0 |
+| `solidPropsInRoad` | Solid props whose footprint enters the 3.5 m carriageway (bridges excepted; hedgehog and barrier roadblocks are reported apart) | 0 |
 | `solidPropsInWater` | Solid props standing in water (marine works excepted) | 0 |
 | `objectiveSymmetry` | Zone-control zones and the turbo-ball kickoff: each team's driven distances, sorted and compared pair by pair (floor 60 m); the worst ratio | ≤ 1.25 |
 
@@ -95,6 +96,15 @@ Invariants that receipts already own stay with them: spawn-pad flatness and obje
 reachability (`src/sim/matchPlacement.selftest.mjs`, `server/botModes.selftest.mjs`); collision parity between
 the client world and the manifest (`server/dedicatedWorldCollision.selftest.mjs`, plus a byte-identical recapture
 after any layout change); and bot pacing (`server/battlePacing.selftest.mjs`).
+
+A map rebuilt to this brief joins `src/world/maps/layoutBriefMaps.ts`. Its receipts are then:
+`src/world/mapLayoutBrief.selftest.mjs` (every band above holds or carries a written exception; the zone-control
+discs and the turbo-ball kickoff seat within 1 m of their hints and both teams reach them; no landform or
+strongpoint on Verdant's skeleton), `src/world/maps/roadGradeSmoothing.selftest.mjs` (one connected road network
+whose sampled grade stays at or under 18 % at three terrain seeds) and `src/world/mapQuality.selftest.mjs` (at
+least three strongpoints, every role present, each at least 180 m from the others).
+`server/collisionManifestDrift.selftest.mjs` rebuilds every shard in Node and fails on any that no longer matches
+the tree.
 
 ## Procedure for one map
 
@@ -104,12 +114,47 @@ after any layout change); and bot pacing (`server/battlePacing.selftest.mjs`).
    `src/sim/matchRuleset.ts`.
 3. Iterate with `tools/map-layout-metrics.mjs` and a plan-view plot until every band passes or carries a written
    exception.
-4. Recapture the collision shard (`node tools/capture-world-collision-manifests.mjs --headless --maps <id>`) and
-   re-bake the tactical plate (`node tools/bake-minimap-assets.mjs --maps <id>`), each under the probe mutex.
+4. Rebuild the collision shard in Node (`node tools/capture-world-collision-manifests.mjs --node --maps <id>`;
+   `--check` compares shards with the tree without writing). Confirm once that the browser capture
+   (`--headless`) encodes the same bytes, and re-bake the tactical plate
+   (`node tools/bake-minimap-assets.mjs --maps <id>`), each under the probe mutex.
 5. Run the map's receipts. Re-pin the receipts it moves, with before/after evidence in the commit.
 6. Bots: run seeded matches on every supported mode. The map's median standard match must fall inside 240–480 s,
    with no stalemate and no stuck bot.
-7. Multiplayer: the host loads the new shard, and a headless peer-to-peer run plays the map.
+7. Multiplayer: the host loads the new shard, and a headless peer-to-peer run plays the map
+   (`node tools/mp-p2p-headless.mjs --map=<id> --world=dedicated`).
 8. Capture chase, bird and tactical-overhead views before and after; measure draw calls, triangles and frame time
    in alternating A/B pairs.
 9. Commit one map per commit.
+
+## Authoring notes from the pilot
+
+Sirocco Wadi, Steinburg and Cinder Junction were rebuilt first (October 1, 2026). These laws of the shared terrain and
+props code shaped every layout, and the next maps should start from them:
+
+- **Road ends.** Authored paths stop inside the square (about ±448 m). The endpoint completion
+  (`src/world/maps/roadEndpoints.ts`, one intent per road) then adds the exit and grades it through the rim. A path
+  drawn to ±512 is not graded and climbs the rim at the rim's slope.
+- **Aprons are planes.** A hardstand is a flat plane (its grade clamped to ±1 %) feathered into the road grids over
+  14 m beyond a one-cell guard. On a road steeper than about 5 %, a 60 m apron makes its approaches ramp past
+  18 %. Put aprons on level ground (inside a settlement's grading), shorten them along the road, or let the zone
+  seat on the road's natural floor and record the validated seat as the hint.
+- **Junctions.** The legacy grading blends each pair of roads at one junction only, so a lane that leaves and
+  rejoins the same road is graded at one end. Split such a lane where it meets a cross street, or use physical
+  road stations (`src/world/maps/roadStations.ts`), which grade every real crossing. Junction plateaus need room:
+  two crossings 50 m apart compress the grade between them.
+- **Physical stations.** On a physical-station map, poles and roadside lots stand at road vertices at least 24 m
+  apart, so road 0 needs a vertex every 24–25 m to carry a complete utility line.
+- **Streets and the bot planner.** The planner's 25 m grid blocks any cell with a solid within 3.5 m of its centre.
+  Inside a dense town, run the streets on the grid's lines (coordinates ≡ 0 mod 25 from −500) so the street-front
+  rows leave chains of open cells.
+- **Street rows.** Rows check their distance to other roads, not to other legs of the same road; chamfer a lane's
+  corners so one leg's strip cannot reach into the next.
+- **Lanes.** A lane boundary needs a feature that hides one run from the next or cannot be driven: buildings,
+  works, steep banks, woods. A smooth ridge, however tall, does not separate lanes. Put such features on the
+  slices at 35 % and 65 % of the axis.
+- **Planned sites.** A planned site is skipped when its centre is within 7.5 m of a road or on a rail berth, and
+  rejected when the ground under its footprint varies by more than the map's `maxSpread`; check that every landmark
+  actually stands.
+- **Worked ground.** A `workedGround` patch takes at most 24 vertices; split larger ones.
+

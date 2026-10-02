@@ -989,6 +989,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/map-probe-runtime.selftest.mjs',
     'tools/map-metrics.selftest.mjs',
     'tools/map-layout-metrics.selftest.mjs',
+    'server/collisionManifestDrift.selftest.mjs',
     'tools/environment-motion-probe.selftest.mjs',
     'tools/horizon-construction-bench.selftest.mjs',
     'tools/map-art-guards.selftest.mjs',

@@ -88,7 +88,7 @@ import {
     'alpha nearer every zone: the nearest pair ratio is 300 / 100');
   assert.equal(objectiveBalance([{ fromAlpha: 10, fromBravo: 30 }]), 1, 'distances inside the 60 m floor tie');
   assert.equal(objectiveBalance([{ fromAlpha: null, fromBravo: 30 }]), Infinity, 'an unreachable objective is unbalanced');
-  const row = { spawns: { separationM: 400, routeStretch: 1.1 }, lanes: { count: 3 }, chokes: { minM: 200, runsMin: 1 },
+  const row = { spawns: { separationM: 400, routeStretch: 1.1, screened: true }, lanes: { count: 3 }, chokes: { minM: 200, runsMin: 1 },
     sight: { medianM: 120, longShare: 0.1, closeShare: 0.4 }, cover: { midShare: 0.3, sectorMin: 0.2, hullDownTeamShare: 0.1 },
     relief: { stdM: 4 }, dressing: { orphanBuildingShare: 0, solidPropsInRoad: 0, solidPropsInWater: 0 }, objectiveSymmetry: 1.05 };
   const checks = evaluateTargets(row);
