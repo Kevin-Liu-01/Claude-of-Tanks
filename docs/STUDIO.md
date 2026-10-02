@@ -140,7 +140,11 @@ await __STUDIO.setLight(patch)      // {sunAzimuthDeg?, sunElevationDeg?} merge 
 __STUDIO.getLight()                 // {time, requestedTime, sunAzimuthDeg, sunElevationDeg, override, band, times, space}
 __STUDIO.timeOfDay                  // the time as rendered (a space map renders day)
 __STUDIO.STUDIO_TIMES / .STUDIO_TIME_BANDS
+__STUDIO.setFxQuality('battle' | 'cinematic') / .fxQuality // scene FX quality (see Cinematic FX)
+__STUDIO.setTrackDust(on) / .trackDust                // dust + prints behind driven actors
+__STUDIO.cinematicStats()                             // cinematic layer emitters / pool high-water
 __STUDIO.TANK_IDS / .MAP_IDS / .ACTOR_STATES / .EFFECT_TYPES / .CAMO_PATTERN_IDS
+__STUDIO.FX_QUALITIES / .FX_PARAMS                    // fx qualities, cinematic parameter schema
 __STUDIO.getMapInfo(id)             // {id, name}
 __STUDIO.getSpecInfo(id)            // {name, gunElevationDeg, gunDepressionDeg, shells}
 __STUDIO.performance()              // rendered/skipped frame + pool-sweep counters
@@ -320,6 +324,10 @@ live preview at the native aspect, progress, time left and **Cancel**.
     "sunElevationDeg": 9        //   clamped into the time's band (see Light); the moon at night
   },
   "seed": 5000,                 // fx rng seed (default 5000)
+  "fx": {                       // optional; omitted = the game's exact battle look
+    "quality": "cinematic",     // battle (default) | cinematic
+    "trackDust": true           // default: true for cinematic, false for battle
+  },
 
   "actors": [
     {
@@ -440,6 +448,80 @@ neither, the panel marker (or the ground ahead of the camera) is used.
 | `barrage` | point/actor | `count` (default 5), `radiusM` (default 10), `size`: `small`/`medium`/`mixed` (default), `seedDeg` | Deterministic ring of artillery ground bursts around the anchor. |
 | `armor_scar` | actor | `count` (default 4), `caliberMm` (default 100), `seedDeg` | Persistent impact decals placed around the hull at fixed bearings and heights. |
 | `exhaust` | actor | `count` (default 14), `intensity` (default 0.95), `sooty` (default true) | Exhaust burst from the engine deck at the continuous emitter anchor. |
+| `smoke_screen` | actor | `durationS` (6–60, default 24), `density` (0.3–1.6, default 1), `count` (2–12, default 6; vehicles without a launcher kit) | The actor's own smoke-grenade salvo: the game's launcher sockets and smoke ballistics, ripple pops, canisters in flight with trails, white landing bursts, then a wall that blooms, rolls and drifts with the battle smoke wind. |
+| `flare` | point/actor | `heightM` (20–220, default 90), `burnS` (6–60, default 26), `intensity` (0.2–3, default 1), `driftMps` (0–6, default 1.4), `fallMps` (0.5–8, default 2.6), `color` (white/red/green/amber), `launch` (default true) | Illumination flare: launch streak, burst, then a magnesium core drifting down under its parachute with a lit smoke trail and dripping sparks. Lights the scene through one borrowed pooled light. |
+| `embers` | point/actor | `radiusM` (0.5–20, default 3), `rate` (4–160 per s, default 30), `durationS` (1–60, default 10), `rise` (0.5–8 m/s, default 3) | Ember storm rising and swirling downwind off a fire. |
+| `debris` | point/actor | `count` (4–80, default 24), `speedMps` (4–45, default 16), `hot` (0–1, default 0.5), `scale` (0.4–3, default 1) | Fragments thrown out of a blast: hot pieces trail smoke and flame, every piece kicks soil where it lands. |
+| `shockwave` | point | `radiusM` (4–60, default 18), `strength` (0.2–2, default 1) | A ground dust ring racing outward and decelerating to its radius, with the pressure-ring decal and an inner soil billow. |
+| `fire_field` | point | `radiusM` (1–20, default 5), `durationS` (2–60, default 20), `intensity` (0.2–2, default 1), `smoke` (default true) | Burning ground: low flames over the area, lit smoke, embers, a ground fire glow and firelight. |
+
+`explosion` also takes `size: "huge"` (fuel / ammunition cook-off column: a
+rising double fireball, 48 m leaning smoke column, base fire, ember storm,
+cook-off pops, a 34 m shockwave). `huge` always renders through the
+cinematic layer. Any effect accepts `params.quality: "battle" | "cinematic"`
+to override the scene `fx.quality` for that layer only. `barrage` takes
+`durationS` (0–12, default 2.4) in cinematic quality: the rounds arrive as a
+staggered walking salvo instead of one simultaneous flash.
+
+### Cinematic FX (`fx.quality: "cinematic"`)
+
+Battle effects are tuned for gameplay readability at gameplay distances.
+Cinematic quality layers production pyrotechnics over the same battle
+recipes (`src/fx/cinematicFx.ts`, recipes in `src/fx/cinematicRecipes.ts`);
+the battle runtime itself is unchanged and battle sessions never create it.
+
+| type | cinematic layer |
+|---|---|
+| `fire`, `muzzle_flash` | incandescent muzzle fireball, overpressure flash disc, expanding propellant ring, forward gas cone, unburnt-propellant sparks; within ~4 m of the ground a blast fan of dust and grit thrown off the terrain (tone follows the map/surface: earth, sand, snow, road) and a haze that hangs for seconds |
+| `fire` shells | exact terrain crossing (independent of the step) and an impact burst where the round lands |
+| `impact` / `sparks` | white-hot pop, flame jet and molten spall out of a penetration; spark showers that bounce off the ground; embers |
+| `explosion` small/medium/large | HE burst with ejecta fountain, skirt, shockwave, clods and a lingering cloud (small); rolling fireballs with debris, embers and cook-off pops (medium/large) |
+| `tank_kill` | flash → rolling fireball and dark smoke roll → turret-ring blowtorch (ammo rack) → secondary cook-off pops with light pulses (6 / 2 / 1 for ammorack / shot / fire) → burning debris → a burning wreck with licking flames, embers, fire-lit smoke and a 26 m leaning column |
+| `burning` | the same burning-wreck emitter (18 m column); `burning` with `off` extinguishes the actor's cinematic fires |
+| `dust`, `mg_burst`, `barrage` | billowing dust packets; per-round MG flashes and sparks; staggered walking salvo |
+| `tracer`, `fire`, `mg_burst` shells | a hot glare sprite rides every projectile head (larger and brighter at night) |
+| `flare` | parachute canopy above the candle, lit from below by the flare light |
+
+Night shots: smoke and dust follow the scene light (white in daylight, the
+exact battle look; warm at sunset; dim moonlit blue at night) and puffs born
+near fire carry their own fading emission, so plumes glow orange at the base
+and fade to dark upward. Studio-only shader define `FX_LIGHT_TINT` provides
+this; battle materials never compile it. At night the pooled muzzle light and
+muzzle cards are reduced (to 40 % / 58 % at full night) so a front-on shot
+no longer clips the frame.
+
+Light budget: the two pooled FX lights are unchanged. Cook-off pops pulse
+the pooled explosion light at their exact times; between blasts the light
+director drives that light with the strongest sustained fire. Flares (and,
+when no flare burns, the second-strongest fire) drive one borrowed light:
+the sniper fill light main.ts always creates, idle in Studio. Scene light
+counts and material programs never change; the borrowed light is restored
+on exit.
+
+Ground interaction: fires and burning wrecks lay an additive fire-glow
+decal on the terrain (stronger at night); driven actors (storyboard tracks)
+throw distance-keyed dust and stamp track prints when `trackDust` is on.
+
+Step-size independence: cinematic emitters tick on an absolute grid
+(`startS + k × period`, track dust on the 60 Hz grid from 0) in global time
+order, each with a private stream seeded by the scene seed and the effect
+id; one-shot sub-events (cook-offs, staggered barrage rounds, debris trails)
+are emitted at fire time with scheduled births. Stepping a scene at
+1/60 s, 4 ms or jittered 2–8 ms produces the same particles in the same
+order (`src/fx/cinematicFx.selftest.mjs`). Battle-recipe particles in the
+same shot are rate- and birth-stable but share the battle stream, so their
+random draws may interleave differently at another step size. In cinematic
+quality, engine smoke (`engine_smoke`, `engine-smoking`) pulses once per
+1/60 s timeline grid line and each birth is scheduled at its grid time, so
+2–8 ms export steps neither multiply nor shift it; battle quality keeps the
+live one-pulse-per-step look.
+
+Parameters and panel: **Effects → Cinematic pyro** toggles CINEMATIC FX and
+TRACK DUST and fires the new types (smoke screen on the selected tank;
+flare and embers on the selected tank or the marker; fire field, shockwave,
+debris and the huge explosion at the marker). Selecting a layer of a type
+with parameters shows its sliders (`__STUDIO.FX_PARAMS`); a change replays
+the stack once on release.
 
 ### Determinism contract
 
@@ -665,6 +747,14 @@ first dusk or night of a session compiles the lamp-lit material variants once (s
 `light.sunAzimuthDeg` to it for a backlit hero, +32° for rim light, +180° for front light.
 
 ## Known limitations
+
+- Cinematic quality changes only Studio output. The frozen composers
+  (`firing_moment`, `explosion_moment`) add the cinematic one-shot layer
+  backdated by `ageS` (no burning-wreck emitter; author a `tank_kill` on
+  the timeline for that).
+- One borrowed light serves flares: several simultaneous flares share it
+  (the brightest wins), and the explosion light lights one sustained fire at
+  a time; other fires glow through their decals and self-lit smoke.
 
 - **Camo is per-spec**: two actors of the same tank id share one paint bake
   (`camo`/`camoSeed` of the most recent application wins). Different specs are
