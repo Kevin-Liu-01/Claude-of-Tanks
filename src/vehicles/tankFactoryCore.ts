@@ -1,6 +1,9 @@
+import { WeaponDamageVisuals } from './weaponDamageVisuals.ts';
+import type { ModuleStateName } from '../sim/damage.ts';
+import { DetachedGear } from './detachedGear.ts';
 import { vehicleAuthoringSpec, VEHICLE_SIZE_FACTORS } from './vehicleSizePolicy.ts';
 import { resizeAuthoredVehicle } from './profiles/vehicleSize.ts';
-import { markSmokeTube, alignSmokeBanks } from './vehicleAuxiliaryGeometry.ts';
+import { markSmokeTube, alignSmokeBanks, transferSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
 // src/vehicles/tankFactoryCore.ts — cycle-free procedural factory implementation.
 // Recognizable replicas composed from BufferGeometries (ARCHITECTURE §3.3.2).
 // No top-level side effects; all randomness seeded; time arrives via
@@ -616,7 +619,7 @@ interface TankPoseState {
   _swayEst?: number;
 }
 
-type GroundSampler = (x: number, z: number) => number;
+type GroundSampler = (x: number, z: number, ceiling?: number) => number;
 
 interface WheelConformFrame {
   cb: number;
@@ -741,6 +744,7 @@ interface RunningGearUnit {
   };
   update(left: number, right: number, dt?: number): void;
   updateSurface?(left: number, right: number): void;
+  updateDebris?(dt: number, sampler?: GroundSampler | null): void;
   resetPose?(): void;
   conform(
     state: TankPoseState,
@@ -1108,6 +1112,7 @@ interface TankVisual {
   hitFlinch(nx: number, nz: number, magnitude: number, stateYaw?: number): void;
   applyEquipmentDamage(event: EquipmentDamageEvent): boolean;
   setTrackState(module: 'trackL' | 'trackR', broken: boolean): void;
+  setWeaponModuleState(module: string, state: ModuleStateName): void;
   stripEra(plateName: string): boolean;
   resetEra(): boolean;
   setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
@@ -1259,7 +1264,6 @@ const _q = new THREE.Quaternion();
 const _v = new THREE.Vector3();
 const _s = new THREE.Vector3();
 const _X = new THREE.Vector3(1, 0, 0);
-const _E = new THREE.Euler(); // fallen road-wheel pose (de-track scatter)
 // Gun-stabilizer solve: convert the canonical authority-owned bore direction
 // into the final visibility-amplified rendered hull frame. Dedicated scratch
 // keeps the per-tank render loop allocation-free.
@@ -4636,29 +4640,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     for(const mesh of linkMeshes) mesh.instanceMatrix.needsUpdate=true;
   };
 
-  // ---- thrown-track ribbon (de-track destruction visual) --------------------
-  // A crumpled OPEN run of link pads draped off the rear of the running gear
-  // and trailing flat behind the last road wheel, with growing lateral wiggle
-  // so it reads as a violently shed band, not a straight plank. Hidden until
-  // setBroken(side, true) — and, since the INVISIBLE-LOD ENVELOPE law,
-  // not even BUILT until then: the kit used to be constructed eagerly and
-  // parked visible=false in rig_hull at its THROWN pose — 22+12 pads per
-  // side trailing ~2.4 m behind the rear wheel and whipping ~0.55 m
-  // outboard of the track guard. Invisible meshes still carry world AABBs,
-  // so every consumer that cannot skip them (THREE.Box3.setFromObject —
-  // icon framing, mesh probes, geometry hashers; killcam.fitXrayFrame
-  // already works around exactly this class) read a phantom envelope
-  // ~1.4 m longer and ~1.1 m wider than the visible tank, and headless
-  // AABB probes flagged out-of-envelope running-gear geometry fleet-wide.
-  // Building on the first actual throw keeps the rest scene graph inside
-  // the hull envelope; the thrown visual is byte-identical (same pad
-  // math, same seeds, same transforms). Only ribMat stays eager:
-  // material ids are a renderer draw-sort key — deferring the clone
-  // would renumber every material created after this point and reorder
-  // rest-pose draws (the LOD0 pixel-identity guarantee).
-  // r5 (critic: "lit-tan link slabs"): the thrown band renders in a DARKER
-  // rubber-steel derivative of the track material so the shed run reads as
-  // greased track iron on dirt, never lit lumber.
+  // Loose shoes and wheels are created only after a break, preserving the
+  // undamaged fleet's geometry envelope and sharing its material ownership.
   const ribMat = (mats.trackLink || mats.dark).clone();
   // r7 (critic: the thrown band "reads as detached tan fence panels, not a
   // dark steel track ribbon"): FIXED dark tread-iron color — never derived
@@ -4674,147 +4657,28 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     buildRunningGearAssemblyStage17();
   };
   buildRunningGearRunningGearStage32();
-  const thrownRibbons: Partial<Record<Side, THREE.Mesh>> = {};
-  const slumpBands: Partial<Record<Side, THREE.Mesh>> = {};
-  let thrownKitBuilt = false;
-  function buildThrownKit(): void {
-    if (thrownKitBuilt) return;
-    thrownKitBuilt = true;
-    const rearIsSprocket = sprocket.z < idler.z;
-    const rearZ = Math.min(sprocket.z, idler.z);
-    const rearR = rearIsSprocket ? sprocket.r : idler.r;
-    const rearY = rearIsSprocket ? sprocket.y : idler.y;
-    const RIB_N = 16;
-    const ribPads: THREE.BufferGeometry[] = [];
-    // low drape start: the shed band slips off the LOWER rear wheel rim and
-    // lies nearly flat — the r4 probe showed a chest-high curl reading as a
-    // giant pale drum parked against the hull
-    // r5: +0.14 -> +0.06 — the ribbon lies FLATTER off the rim (r4: the curl
-    // still read as raised dominoes from the judged framing)
-    const dropY = Math.min(rearY, wheelY) + 0.06;
-    // r7 "laid dominoes": the run was a straight evenly-spaced row of flat
-    // plates floating behind the sprocket. Now: positions along a BENT spline
-    // (tail whips outboard in a decaying S), uneven clumped spacing, yaw
-    // following the curve tangent + jitter, random roll with the odd pad
-    // folded up on edge, and a 3-pad pile right at the breakpoint.
-    const rr = (k: number): number => {
-      const x = Math.sin(k * 127.1 + 311.7) * 43758.5453;
-      return x - Math.floor(x);
-    };
-    // r5 (critic: "chain of oversized flat lit-tan link slabs curling like
-    // dominoes"): pad plates HALVED in thickness (0.05 -> 0.026) with a slim
-    // center GUIDE HORN so each link carries the double-pin track silhouette
-    // instead of reading as a bare wooden plank.
-    const ribPad = (): THREE.BufferGeometry => mergeAll([
-      box(trackW * 0.96, 0.026, 0.17),
-      xform(box(trackW * 0.88, 0.022, 0.05), 0, 0.024, 0), // grouser bar
-      xform(box(0.045, 0.055, 0.05), 0, 0.04, 0.02),       // guide horn
+  const detached: Partial<Record<Side, DetachedGear>> = {};
+  let brokenL = 0, brokenR = 0, throwCount = 0;
+  const debrisLastPosition = new THREE.Vector3();
+  const debrisVelocity = new THREE.Vector3();
+  const debrisPosition = new THREE.Vector3();
+  let debrisPositionKnown = false;
+  function buildDetached(side: Side, pick: WheelEntry): DetachedGear {
+    if (detached[side]) return detached[side];
+    const geometry = mergeAll([
+      box(trackW * .96, .026, .17),
+      xform(box(trackW * .88, .022, .05), 0, .024, 0),
+      xform(box(.045, .055, .05), 0, .04, .02),
     ]);
-    // spline points first, so each pad's yaw can follow the local tangent
-    const ribPts: Array<[number, number, number, number, number]> = [];
-    for (let i = 0; i < RIB_N; i++) {
-      const t = i / (RIB_N - 1);
-      const drape = Math.exp(-t * 4.6);
-      const py = 0.045 + Math.max(0, dropY - 0.045) * drape + (rr(i + 41) - 0.5) * 0.025;
-      // r2 "die-straight row of planks" fix: the S-curve amplitude doubled
-      // (0.15 -> 0.34 with a second lower-frequency bend) and the along-run
-      // spacing is CLUMPED — pads bunch into overlapping runs of 2-3 with
-      // ragged gaps, the way a whipping band actually piles as it unspools.
-      const px = Math.pow(t, 1.5) * 0.72
-        + Math.sin(t * 8.4) * 0.34 * Math.min(1, t * 2.2)
-        + Math.sin(t * 3.1 + 1.2) * 0.18 * t;
-      const clump = Math.sin(t * 19.7 + rr(i) * 2.4) * 0.09;
-      const pz = rearZ + 0.1 - (t * 2.15 + clump + (rr(i * 3 + 7) - 0.5) * 0.16);
-      ribPts.push([px, py, pz, t, drape]);
+    disposables.push(geometry);
+    const kit = new DetachedGear(hullG, geometry, ribMat, Math.max(8, Math.min(28, Math.ceil(Math.abs(sprocket.z - idler.z) / .18))));
+    for (const { im, list } of made) for (const e of list) {
+      if ((e.suspensionSource || e) !== pick) continue;
+      kit.addWheelLayer(im.geometry, im.material, e.x - pick.x, e.y - pick.y, e.z - pick.z);
     }
-    // r1 continuous-ribbon rework (critique: "scattered rigid rectangle links
-    // plus two unexplained upright black stubs"): pads follow the spline as a
-    // CONNECTED band — tight tangent-following yaw, small roll, no on-edge
-    // pads, no vertical breakpoint pile. The unspooled band reads as one
-    // crumpled ribbon lying behind the bare wheel run.
-    for (let i = 0; i < RIB_N; i++) {
-      const [px, py, pz, _t, drape] = ribPts[i];
-      const nb = ribPts[Math.min(i + 1, RIB_N - 1)];
-      const pb = ribPts[Math.max(i - 1, 0)];
-      const tanYaw = Math.atan2(nb[0] - pb[0], -(nb[2] - pb[2])) * -1;
-      const yaw = tanYaw + (rr(i * 7 + 3) - 0.5) * 0.14;
-      const pitch = Math.min(0.5, Math.atan2(Math.max(0, dropY - 0.045) * 4.6 * drape, 2.15))
-        + (rr(i * 11 + 5) - 0.5) * 0.10;
-      const roll = (rr(i * 17 + 1) - 0.5) * 0.22;
-      ribPads.push(xform(ribPad(), px, py, pz, pitch, yaw, roll));
-    }
-    // breakpoint: a FLAT overlapping pile of links right under the sprocket
-    // where the band tore off (r2: 3 -> 6 pads — the shed point must read as
-    // a heaped pile, not a continuation of the row), lies flat, never on end
-    for (let i = 0; i < 6; i++) {
-      ribPads.push(xform(ribPad(),
-        (rr(i + 21) - 0.5) * 0.30,
-        0.04 + i * 0.034,
-        rearZ + 0.16 - rr(i + 33) * 0.38,
-        (rr(i + 47) - 0.5) * 0.26,
-        (rr(i + 52) - 0.5) * 0.9,
-        (rr(i + 66) - 0.5) * 0.24));
-    }
-    const ribbonGeo = mergeAll(ribPads);
-    disposables.push(ribbonGeo);
-    // r4 SLUMPED PARTIAL BAND (critic detrack minor): the broken side is not
-    // just bare wheels + a ground ribbon — a torn stub of the band stays
-    // HUNG off the rear sprocket/idler, draping down its back face and
-    // piling on the ground in a catenary sag. Built once from the same pad
-    // kit; toggled with the ribbon in setBroken.
-    const slumpPads: THREE.BufferGeometry[] = [];
-    {
-      const cx = rearY, cz = rearZ; // rear wheel center (hull-local y/z)
-      const R = rearR + 0.055;
-      // over-the-wheel arc: from just past top-dead-center down the back face
-      for (let i = 0; i < 7; i++) {
-        const a = 1.35 - (i / 6) * 2.45; // rad, 1.35 (up-front) -> -1.1 (low-rear)
-        const py = cx + Math.sin(a) * R;
-        const pz = cz - Math.cos(a) * R;
-        slumpPads.push(xform(ribPad(), (rr(i + 81) - 0.5) * 0.05, py, pz,
-          -a + Math.PI / 2 + (rr(i + 91) - 0.5) * 0.12, (rr(i + 97) - 0.5) * 0.10, (rr(i + 87) - 0.5) * 0.12));
-      }
-      // catenary drop from the low-rear rim to the ground behind the wheel
-      const y0 = cx + Math.sin(-1.1) * R, z0 = cz - Math.cos(-1.1) * R;
-      for (let i = 0; i < 5; i++) {
-        const t = (i + 1) / 5;
-        const sag = 1 - (1 - t) * (1 - t);
-        const py = Math.max(0.05, y0 * (1 - sag) + 0.05 * sag);
-        const pz = z0 - t * 0.55 - (rr(i + 71) - 0.5) * 0.06;
-        slumpPads.push(xform(ribPad(), (rr(i + 61) - 0.5) * 0.07, py, pz,
-          0.9 * (1 - t) + (rr(i + 51) - 0.5) * 0.14, (rr(i + 55) - 0.5) * 0.16, (rr(i + 57) - 0.5) * 0.18));
-      }
-    }
-    const slumpGeo = mergeAll(slumpPads);
-    disposables.push(slumpGeo);
-    for (const side of [-1, 1] as const) {
-      const rm = new THREE.Mesh(ribbonGeo, ribMat);
-      rm.name = 'gearThrownRibbon';
-      rm.position.x = side * xcForSide(side);
-      // mirror + slight per-side yaw so L/R throws never read identical
-      rm.scale.x = side;
-      rm.rotation.y = side * 0.07;
-      rm.castShadow = false;
-      rm.receiveShadow = true;
-      rm.visible = false;
-      hullG.add(rm);
-      thrownRibbons[side] = rm;
-      const sm = new THREE.Mesh(slumpGeo, ribMat);
-      sm.name = 'gearSlumpBand';
-      sm.position.x = side * xcForSide(side);
-      sm.scale.x = side;
-      sm.castShadow = false;
-      sm.receiveShadow = true;
-      sm.visible = false;
-      hullG.add(sm);
-      slumpBands[side] = sm;
-    }
+    detached[side] = kit;
+    return kit;
   }
-
-  // de-track state: 0 = healthy, 1 = thrown (band slumps, links sag)
-  let brokenL = 0;
-  let brokenR = 0;
-  let throwCount = 0; // r4: seeds per-throw ribbon pose scatter
   const tlY0 = tl.position.y, trY0 = tr.position.y;
 
   // ---- movement-solve contact metadata (RUNTIME DATA ONLY — no geometry) ----
@@ -5366,6 +5230,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     /** Restore the authored flat-ground running-gear pose for showroom use. */
     resetPose() {
       groundConformanceInitialized = false;
+      this.setBroken?.('trackL', false); this.setBroken?.('trackR', false);
+      debrisPositionKnown = false; debrisVelocity.set(0, 0, 0);
       for (const { list } of made) {
         for (const e of list) {
           const source = e.suspensionSource || e;
@@ -5381,17 +5247,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           const e = list[i];
           const suspensionEntry = e.suspensionSource || e;
           if (suspensionEntry.thrown) {
-            // de-track scatter: this road wheel tore off. r5 (critic: "no
-            // scattered road wheel readable"): it used to land 0.9 m out —
-            // hidden in the hull's own shadow line. It now rolls a few
-            // meters CLEAR of the hull and lies nearly flat, unmistakably a
-            // shed wheel from the judged 11 m framing.
-            const side = e.x < 0 ? -1 : 1;
-            _E.set(0.10, side * 0.9, side * 1.42);
-            _q.setFromEuler(_E);
-            _v.set(e.x + side * 2.3, e.r * 0.30, e.z - 2.1);
-            _s.set(1, 1, 1);
-            _m.compose(_v, _q, _s);
+            // The original slot is hidden; its real layers now travel as one
+            // detached wheel in world coordinates.
+            _m.makeScale(0, 0, 0);
             im.setMatrixAt(i, _m);
             continue;
           }
@@ -5516,52 +5374,39 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     },
 
     /**
-     * De-track visual (r6 rubric item): the band SLUMPS hard off the wheels
-     * (0.16 m drop + pitch, link pads riding it down via placeLinks), a
-     * crumpled thrown-track ribbon appears draped off the rear wheel and
-     * trailing on the ground, and the rearmost proud road wheel tears off
-     * and lies leaning beside the hull. Fully restored on repair.
+     * Hide the broken band and launch independent shoes and a road wheel.
+     * Debris retains world-space motion and settles against the surface.
+     * Repair restores the original assembly and retires its debris.
      * @param {'trackL'|'trackR'} module @param {boolean} broken
      */
     setBroken(module, broken) {
-      const side = module === 'trackL' ? -1 : 1;
-      // r1: a thrown track REMOVES the band from that side (bare road wheels
-      // + the continuous ground ribbon carry the read) — the old 0.16 m slump
-      // left the wheel run visibly still wearing a track (detrack.png).
-      const showBand = !broken;
-      if (side < 0) { brokenL = broken ? 1 : 0; tl.visible = showBand; tl.position.y = tlY0; tl.rotation.x = 0; }
-      else { brokenR = broken ? 1 : 0; tr.visible = showBand; tr.position.y = trY0; tr.rotation.x = 0; }
-      // INVISIBLE-LOD ENVELOPE law: the thrown kit exists only once a
-      // track has actually been thrown — repair calls before any throw
-      // have nothing to hide, and rest-state builds never carry the
-      // out-of-envelope ribbon AABBs.
-      if (broken) buildThrownKit();
-      if (thrownRibbons[side]) {
-        const rm = thrownRibbons[side];
-        rm.visible = !!broken;
-        // r4: per-throw pose scatter — repeated de-tracks never drop an
-        // identical zigzag; a small roll partially buries the tail run.
-        if (broken) {
-          throwCount++;
-          const j = Math.abs(Math.sin(throwCount * 12.9898 + side * 3.7)) % 1;
-          rm.rotation.y = side * 0.07 + (j - 0.5) * 0.5;
-          rm.rotation.z = (j * 7.13 % 1 - 0.5) * 0.12;
-          rm.position.y = -0.02 - (j * 3.71 % 1) * 0.03; // pads bite into soil
-        } else {
-          rm.rotation.y = side * 0.07; rm.rotation.z = 0; rm.position.y = 0;
-        }
-      }
-      // r4: the torn stub of the band stays HUNG off the rear wheel on the
-      // broken side (catenary drape built at construction)
-      if (slumpBands[side]) slumpBands[side].visible = !!broken;
-      // rearmost PROUD road wheel on that side scatters (interleaved recessed
-      // rows stay seated — the outer wheel is the one that visibly lets go)
-      let pick = null;
+      const side: Side = module === 'trackL' ? -1 : 1;
+      if (!!(side < 0 ? brokenL : brokenR) === broken) return;
+      if (side < 0) { brokenL = broken ? 1 : 0; tl.visible = !broken; tl.position.y = tlY0; }
+      else { brokenR = broken ? 1 : 0; tr.visible = !broken; tr.position.y = trY0; }
+      let pick: WheelEntry | null = null;
       for (const e of entries) {
         if (!e.road || e.rec || (e.x < 0) !== (side < 0)) continue;
         if (!pick || e.z < pick.z) pick = e;
       }
-      if (pick) pick.thrown = !!broken;
+      if (pick) {
+        pick.thrown = broken;
+        if (broken) buildDetached(side, pick).launch(side * xcForSide(side),
+          Math.max(.12, pick.y - pick.r), Math.min(sprocket.z, idler.z),
+          new THREE.Vector3(pick.x, pick.y + (pick.off || 0), pick.z), side, ++throwCount, debrisVelocity);
+      }
+      if (!broken) detached[side]?.reset();
+    },
+    updateDebris(dt, sampler) {
+      hullG.updateWorldMatrix(true, false);
+      debrisPosition.setFromMatrixPosition(hullG.matrixWorld);
+      if (debrisPositionKnown && dt > 0) {
+        debrisVelocity.copy(debrisPosition).sub(debrisLastPosition).divideScalar(dt);
+        debrisVelocity.clampLength(0, 25);
+      }
+      debrisLastPosition.copy(debrisPosition); debrisPositionKnown = true;
+      detached[-1]?.update(dt, sampler || undefined);
+      detached[1]?.update(dt, sampler || undefined);
     },
   };
   // TRACK-HITBOX metadata (RUNTIME DATA ONLY — no geometry, same channel as
@@ -5633,6 +5478,7 @@ function registerGearUnit(P: RunningGearBuilderPort, unit: RunningGearUnit): voi
       return result;
     },
     update(l, r, dt) { for (const u of units) u.update(l, r, dt); },
+    updateDebris(dt, sampler) { for (const u of units) u.updateDebris?.(dt, sampler); },
     resetPose() { for (const u of units) u.resetPose?.(); },
     conform(state, sampler, pitchEff, rollEff, dt) {
       let settling = false;
@@ -7002,6 +6848,7 @@ function* createTankOwnedSteps(
   const decals: VehicleDecal[] = [];
   const disposables: DisposableVehicleResource[] = [];
   const equipmentDamage = new EquipmentDamage();
+  const weaponDamage = new WeaponDamageVisuals();
 
   const P: TankBuilderPort = {
     // PERF r3: `quality` remains the texture tier. Mobile battle bots can
@@ -7711,6 +7558,7 @@ function* createTankOwnedSteps(
         !!spec.visual.bakeDirtDeckEq);
     }
     recordAuthoredRanges(merged, authoredRanges);
+    weaponDamage.bind(list, merged);
     const station=list[0]?.userData.auxiliaryStation as {name:string;stage:string}|undefined;
     equipmentDamage.bindMerged(list, merged, parentKey === 'hullG' ? 'hull' : parentKey === 'turretG' ? 'turret' : '',
       station ? 'equipment' : combatHitboxRoleForBucket(bucket));
@@ -8606,6 +8454,7 @@ function* createTankOwnedSteps(
   let groundSampler: GroundSampler | null = null; // terrain height, set by integration
   let gearAccumDt = 0;               // elapsed time across distance-cadence skips
   let gearForceUpdate = true;
+  let visualTrackLBroken = false, visualTrackRBroken = false;
   let gearSettling = true;
   let gearWasVisible = true;
   let gearLastL = NaN, gearLastR = NaN;
@@ -9133,6 +8982,7 @@ function* createTankOwnedSteps(
         }
       };
       syncFromStateAssemblyStage6();
+      P.gear?.updateDebris?.(adv, groundSampler);
       const gearPitch = renderState.visualPitch + suspP - flinchP;
       const gearRoll = renderState.visualRoll + suspR + sway + flinchR;
       const gearPoseDirty = gearForceUpdate || gearSettling
@@ -9383,7 +9233,10 @@ function* createTankOwnedSteps(
      * De-track / repair visual per side.
      * @param {'trackL'|'trackR'} module @param {boolean} broken
      */
+    setWeaponModuleState(module, state) { weaponDamage.set(module, state); },
     setTrackState(module, broken) {
+      if ((module === 'trackL' ? visualTrackLBroken : visualTrackRBroken) === broken) return;
+      if (module === 'trackL') visualTrackLBroken = broken; else visualTrackRBroken = broken;
       if (P.gear && P.gear.setBroken) P.gear.setBroken(module, broken);
       gearForceUpdate = true;
     },
@@ -9558,6 +9411,7 @@ function* createTankOwnedSteps(
      */
     resetDestroyed() {
       equipmentDamage.reset();
+      weaponDamage.reset();
       if (destroyed) {
         destroyed = false;
         // restore the EXACT captured visibility (never a blanket `true` —
@@ -9603,6 +9457,8 @@ function* createTankOwnedSteps(
         P.gear.setBroken('trackL', false);
         P.gear.setBroken('trackR', false);
       }
+      visualTrackLBroken = visualTrackRBroken = false;
+      gearForceUpdate = true;
       this.resetEra();
     },
 
@@ -9724,6 +9580,8 @@ function* createTankOwnedSteps(
     normalizeTankAppearance(root, { wheelPaint: mats.wheels, wheelPaintShade: mats.wheelsRecessed ?? null });
     const tailNormalizeFinishedAt = performance.now();
 
+    // Align complete banks before static batching can flatten their socket owners.
+    alignSmokeBanks(root);
     retainCombatLods(root);
 
     if ((geometryQuality === 'low' && !deferStaticBatch) || batchStatic) {
@@ -9740,6 +9598,7 @@ function* createTankOwnedSteps(
       const batchStats = batchMobileStaticChildren(mobileBatchParents, disposables,
         (sources, batch) => {
           transferVehicleNightLenses(sources, batch);
+          transferSmokeSockets(sources, batch);
           // Markings hide as a unit on destruction. Replace retained source
           // references with the exact merged draw so the existing wreck/reset
           // lifecycle remains byte-for-byte equivalent.
@@ -9771,7 +9630,6 @@ function* createTankOwnedSteps(
     // Run after decoration, static batching and battle-detail regrouping so
     // every final color-pass mesh receives exactly one stable layer.
     installCoplanarDepthLayers(root);
-    alignSmokeBanks(root);
     finalizeVehicleNightLighting(root);
     const tailFinalizeFinishedAt = performance.now();
     // Retain each authored hull/turret/gun proxy and its articulation owner.

@@ -157,12 +157,24 @@ function checkFarAttachment(legacy, actual, canopy) {
 }
 
 function checkFarStems(before, after) {
+  // The attachment pass appends physical crown supports after the original
+  // stem. Keep the exact cap/ground-ring law on that unchanged prefix.
+  const stem = geometry => {
+    const count = geometry.userData.originalTrunkVertices;
+    assert.equal(count, 72, 'the original closed six-sided stem is retained');
+    const result = new THREE.BufferGeometry();
+    for (const [name, attribute] of Object.entries(geometry.attributes)) {
+      if (attribute.isInstancedBufferAttribute) continue;
+      result.setAttribute(name, new THREE.BufferAttribute(attribute.array.slice(0, count * attribute.itemSize), attribute.itemSize, attribute.normalized));
+    }
+    return result;
+  };
   for (let variant = 0; variant < 2; variant++) {
     const a = before.treeGeoFar.willow[variant], b = after.treeGeoFar.willow[variant];
     assert.equal(hash(b.canopy), hash(a.canopy), 'all distant crown bytes/RNG exact');
-    const legacy = legacyFarStem(a.trunk.clone(), variant);
-    checkFarAttachment(legacy, b.trunk, b.canopy);
-    legacy.dispose();
+    const legacy = legacyFarStem(stem(a.trunk), variant), actual = stem(b.trunk);
+    checkFarAttachment(legacy, actual, b.canopy);
+    legacy.dispose(); actual.dispose();
   }
 }
 

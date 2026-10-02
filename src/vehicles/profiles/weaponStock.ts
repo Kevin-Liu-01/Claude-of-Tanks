@@ -18,10 +18,10 @@ const WEAPON_BUCKETS = ['turret', 'turretEquipment', 'turretDetail', 'turretDark
   'gun', 'gunDark', 'gunMount', 'gunMountDark', 'hull', 'hullDetail', 'hullEquipment'];
 
 /** Scope the damage registration to a real authored assembly. Runtime builds
- * do no extra work; only offline receipts inspect the original stock parts. */
+ * retain semantic stock ranges for localized damage paint; offline receipts
+ * additionally measure their faces. */
 export function weaponAssembly(P: object, build: () => void,
   module: 'missileRack' | 'gun' = 'missileRack', armorMm = 10): void {
-  if (!('geometryReceipt' in P) || !P.geometryReceipt) { build(); return; }
   if (!('forEachBucketPart' in P) || typeof P.forEachBucketPart !== 'function') {
     throw new Error('Weapon receipt requires the native bucket visitor');
   }

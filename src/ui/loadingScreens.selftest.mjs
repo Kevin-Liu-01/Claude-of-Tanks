@@ -107,8 +107,8 @@ assert.match(bootHtml, /#cot-boot\.cot-boot-enter \.cot-boot-load[\s\S]*?cot-boo
 assert.match(bootSource,
   /classList\.remove\('cot-boot-enter'\);[\s\S]{0,100}entranceState = 'complete'/,
   'the boot controller must permanently retire the entrance class after one play');
-assert.equal((bootHtml.match(/font-display:\s*optional/g) || []).length, 3,
-  'all inline game fonts must avoid a late fallback-to-brand layout swap');
+assert.equal((bootHtml.match(/font-display:\s*swap/g) || []).length, 3,
+  'late inline game fonts must replace the fallback instead of abandoning the brand face');
 assert.match(bootHtml, /\.cot-boot-pct \{ width: 64px; flex: 0 0 64px;/,
   'boot percentage updates must keep a stable reserved width');
 assert.match(bootHtml, /\.cot-boot-ticks \{[\s\S]*?min-height: 2px;/,

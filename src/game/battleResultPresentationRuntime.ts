@@ -269,10 +269,8 @@ export function createBattleResultPresentationRuntime({
     // the camera follows it.
     if (!result && destroyed && !deathCamShown && !revives) {
       deathCamShown = true;
-      // Destruction hands pointer ownership to the post-death UI immediately.
-      // Keeping the lock through the cinematic forced players to press Esc
-      // before they could use spectator and battle controls.
-      exitPointerLock();
+      // Keep capture through the death beat and spectator handoff. Esc remains
+      // the player's explicit release; a final result still releases above.
       rig.startDeathCam?.();
       const afterDeath = (): void => {
         veilHud(false);

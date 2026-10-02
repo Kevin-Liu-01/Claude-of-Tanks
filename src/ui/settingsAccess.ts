@@ -124,7 +124,8 @@ export function createSettingsAccess(
   };
 
   gear.addEventListener('click', open);
-  options.input.onAction('settingsMenu', () => {
+  options.input.onAction('settingsMenu', (code) => {
+    if (code === 'Escape' && options.isSpectating?.()) { options.input.releaseLock(); return; }
     if (!access.isOpen()) open();
   });
   options.bus?.on('phase:change', updateTrigger);

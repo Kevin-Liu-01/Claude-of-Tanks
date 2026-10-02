@@ -22,6 +22,8 @@ type PresentedTankState = TankState;
 interface TankVisual {
   root: Object3D;
   setVisible(visible: boolean): void;
+  setTrackState?(module: 'trackL' | 'trackR', broken: boolean): void;
+  setWeaponModuleState?(module: string, state: 'ok' | 'yellow' | 'red'): void;
   syncFromState(
     state: TankState,
     dtFrame?: number,
@@ -36,7 +38,7 @@ interface TankEntity {
   team: string;
   isPlayer?: boolean;
   state: TankState | null;
-  combat: { destroyed?: boolean } | null;
+  combat: { destroyed?: boolean; modules?: Partial<Record<string, {state: 'ok' | 'yellow' | 'red'}>> } | null;
   visual: TankVisual | null;
   spec: {
     era: string;
@@ -244,6 +246,14 @@ export function createBattlePresentationRuntime({
       entity._offscreenPresentationS = 0;
     }
     if (shouldSync && (game.phase !== 'garage' || visual !== pedestalVisual)) {
+      // Snapshots and newly streamed visuals also receive damage state;
+      // reliable hit events alone miss late joins or pooled actor creation.
+      const modules = entity.combat?.modules;
+      if (modules) for (const module in modules) {
+        const damage = modules[module]; if (!damage) continue;
+        if (module === 'trackL' || module === 'trackR') visual.setTrackState?.(module, damage.state === 'red');
+        else visual.setWeaponModuleState?.(module, damage.state);
+      }
       visual.syncFromState(
         state,
         presentationDt,

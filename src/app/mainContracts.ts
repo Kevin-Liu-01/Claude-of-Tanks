@@ -54,9 +54,10 @@ interface MainSpottingRuntime {
 
 export type MainGameState = Omit<
   GameState,
-  'tanks' | 'allTanks' | 'tankById' | 'player' | 'spotting' | 'matchModeState'
+  'tanks' | 'rosterTanks' | 'allTanks' | 'tankById' | 'player' | 'spotting' | 'matchModeState'
 > & Omit<RosterGameState, 'tanks' | 'allTanks' | 'tankById'> & {
   tanks: MainEntity[];
+  rosterTanks?: MainEntity[];
   allTanks: MainEntity[];
   tankById: Map<string, MainEntity>;
   player: MainEntity | null;

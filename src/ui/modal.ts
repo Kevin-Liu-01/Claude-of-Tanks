@@ -133,6 +133,7 @@ body[data-cot-width='phone'] .cot-modal__footer{padding:11px 16px;flex-wrap:wrap
 body[data-cot-width='phone'] .cot-modal__title{font-size:22px}
 body[data-cot-width='phone'] .cot-modal__subtitle{font-size:12px}
 body[data-cot-width='phone'] .cot-modal__close{width:38px;height:38px}
+body[data-cot-input='coarse'] :is(.cot-modal__close,.cot-modal__button){min-width:44px;min-height:44px}
 @media(hover:hover){.cot-modal__button:hover,.cot-modal__close:hover{transform:translateY(-1px)}}
 @media(prefers-reduced-motion:reduce){.cot-modal-root,.cot-modal,.cot-modal__button,.cot-modal__close{transition:none!important}}
 `;

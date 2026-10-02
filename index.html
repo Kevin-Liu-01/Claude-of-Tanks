@@ -162,17 +162,21 @@
        owner-directed swap replacing Inter; see docs/ATTRIBUTION.md). Three
        static faces with weight RANGES so the existing hierarchy maps: 100-400
        Regular, 500-600 Medium, 700-900 Bold (usage weight floor: 500). Keep
-       these three blocks in sync with src/ui/fonts.js FONT_CSS. */
+       these three blocks in sync with src/ui/fonts.ts FONT_FACE_CSS. */
+  </style>
+  <style id="cot-font-faces">
     @font-face { font-family: 'ABC Monument Grotesk';
       src: url('/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Regular.woff2') format('woff2');
-      font-weight: 100 400; font-style: normal; font-display: optional; }
+      font-weight: 100 400; font-style: normal; font-display: swap; }
     @font-face { font-family: 'ABC Monument Grotesk';
       src: url('/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Medium.woff2') format('woff2');
-      font-weight: 500 600; font-style: normal; font-display: optional; }
+      font-weight: 500 600; font-style: normal; font-display: swap; }
     @font-face { font-family: 'ABC Monument Grotesk';
       src: url('/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2') format('woff2');
-      font-weight: 700 900; font-style: normal; font-display: optional; }
+      font-weight: 700 900; font-style: normal; font-display: swap; }
 
+  </style>
+  <style>
     #cot-boot {
       position: fixed; inset: 0; width: var(--cot-viewport-width, 100dvw);
       height: var(--cot-viewport-height, 100dvh); z-index: 200; overflow: hidden;

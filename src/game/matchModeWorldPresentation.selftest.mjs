@@ -107,7 +107,7 @@ for (const [marker, color] of [[alphaFlag, ALLY], [bravoFlag, ENEMY]]) {
   close(ring.position.y, 0.08, 'flag ring terrain offset');
   assertBasicMaterial(ring.material, color, 0.38, 'flag ring material');
 }
-assert.equal(alphaFlag.children[2].visible, true);
+assert.equal(alphaFlag.children[2].visible, false, 'only the stationary terrain-fitted home halo marks the ground');
 assert.equal(bravoFlag.children[2].visible, false);
 // the home bases stay at the base while the carried flag travels
 const alphaBase = view.root.getObjectByName('alpha-flag-base');
@@ -175,8 +175,8 @@ for (let index = 0; index < zoneMarkers.length; index += 1) {
   const [ring, core, disc, arc, icon] = marker.children;
   assert.equal(marker.visible, true);
   assert.equal(marker.children.length, 5, 'ring, core, area disc, progress arc, letter badge');
-  assert.equal(disc.geometry.type, 'CircleGeometry');
-  assert.equal(disc.geometry.parameters.radius, 26.5, 'the disc fills the ring');
+  assert.equal(disc.geometry.type, 'RingGeometry');
+  assert.equal(disc.geometry.parameters.outerRadius, 26.5, 'the disc fills the ring');
   assert.equal(disc.material.color.getHex(), zoneExpected[index].color, `zone ${index + 1} disc follows the owner`);
   assert.equal(arc.geometry.type, 'RingGeometry');
   assert.equal(icon.isSprite, true);

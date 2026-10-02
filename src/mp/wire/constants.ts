@@ -8,15 +8,15 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
  */
 
 // Vehicle controls widen action words and add auxiliary state plus smoke envelopes.
-export const WIRE_VERSION = 2;
+export const WIRE_VERSION = 3;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the
  * client interpolates it at its own cadence; the client sends RESUME_HINT after a migration. The frame layout is
  * otherwise unchanged (WIRE_VERSION stays 1: the handshake is where a mismatch is caught, cleanly, as PROTOCOL_VERSION).
  */
-// 3: auxiliary controls require both peers to use wire layout 2.
-export const PROTOCOL_VERSION = 3;
+// 4: complete module health uses a 32-bit word (wire layout 3).
+export const PROTOCOL_VERSION = 4;
 
 export const TICK_HZ = 60;
 /**
@@ -219,7 +219,7 @@ export const MAX_TILT_REL_UNITS = 127;
 export const INPUT_MARGIN_UNKNOWN = 127;
 
 /** Module and crew order of the viewer prediction section. */
-export const VIEWER_MODULES = Object.freeze(['engine', 'transmission', 'trackL', 'trackR', 'turretRing', 'gunMount', 'gun'] as const);
+export const VIEWER_MODULES = Object.freeze(['engine', 'transmission', 'trackL', 'trackR', 'turretRing', 'gunMount', 'gun', 'missileRack', 'feedSystem', 'roofGun', 'autoloader', 'ammoRack', 'fuelTank', 'radio', 'optics'] as const);
 export const VIEWER_CREW = Object.freeze(['driver', 'gunner'] as const);
 export const VIEWER_EQUIPMENT = Object.freeze(['traverse', 'turret', 'aimTime', 'bloom'] as const);
 export const MODULE_STATE_NAMES = Object.freeze(['ok', 'yellow', 'red'] as const);

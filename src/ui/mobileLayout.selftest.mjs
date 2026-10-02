@@ -110,7 +110,7 @@ assert.match(garage,
   /function openBattleMenu\(\) \{[\s\S]*closeMobileNavigation\(\);[\s\S]*setGaragePanel\(''\);/,
   'battle selection must close garage disclosures instead of stacking over them');
 assert.match(garage,
-  /if \(!openGaragePanel\(\) \|\| event\.code !== 'Escape'\) return;[\s\S]*event\.stopImmediatePropagation\(\);[\s\S]*setGaragePanel\('', \{ restoreFocus: true \}\);/,
+  /if \(!openGaragePanel\(\) \|\| event\.code !== 'Escape' \|\| isAnyModalOpen\(\) \|\| eqOpenSlot >= 0\) return;[\s\S]*event\.stopImmediatePropagation\(\);[\s\S]*setGaragePanel\('', \{ restoreFocus: true \}\);/,
   'Escape must close one garage drawer without leaking into the global Settings shortcut');
 assert.match(garage,
   /if \(!battleMenu\.classList\.contains\('open'\) \|\| event\.code !== 'Escape'\) return;[\s\S]*event\.stopImmediatePropagation\(\);[\s\S]*closeBattleMenu\(\{ restoreFocus: true \}\);/,

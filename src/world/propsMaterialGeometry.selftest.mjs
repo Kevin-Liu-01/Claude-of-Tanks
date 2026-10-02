@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { bindClutterBatch } from './crushableClutter.ts';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
@@ -141,13 +142,13 @@ function materialFixture(buckets, events = []) {
   const group = new THREE.Group(), material = new THREE.MeshBasicMaterial();
   const mats = Object.fromEntries(Object.keys(buckets).map(key => [key, material]));
   const prepare = new Function('buckets', 'mats', 'group', 'THREE', 'ensureWorldNightEmissionMask',
-    'prepareWorldStaticNightFixture', 'mergePropsMaterialGeometrySteps', 'bucketShadowProfile', 'setShadowCasterProfile',
+    'prepareWorldStaticNightFixture', 'mergePropsMaterialGeometrySteps', 'bucketShadowProfile', 'setShadowCasterProfile', 'bindClutterBatch',
     `${mergeCode}\nreturn mergeMaterialBuckets;`)(
     buckets, mats, group, THREE,
     geometry => { events.push(['curtain', geometry]); },
     geometries => { events.push(['glass', geometries]); },
     (sources, key) => mergePropsMaterialGeometrySteps(sources, key, () => 0),
-    bucketShadowProfile, setShadowCasterProfile);
+    bucketShadowProfile, setShadowCasterProfile, bindClutterBatch);
   return { group, material, prepare };
 }
 const wrapperStart = propsSource.indexOf('export async function createPropsAsync(');

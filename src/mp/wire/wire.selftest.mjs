@@ -297,7 +297,7 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
       destroyed: [12, 77, 401], entities,
       shells: [],
       viewer: {
-        entityId: 7, modules: [0, 0, 0, 0, 0, 0, 0], crewBits: 3, equipment: [1000, 1000, 1000, 1000], modeSpeedMultiplier: 1000, modeGravityScale: 1000,
+        entityId: 7, modules: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], crewBits: 3, equipment: [1000, 1000, 1000, 1000], modeSpeedMultiplier: 1000, modeGravityScale: 1000,
         movementVersion: 1, movementFlags: 3, movementValues: Array.from({ length: 44 }, (_, i) => Math.fround(i * 0.37)),
       },
       modeStateJson: null,

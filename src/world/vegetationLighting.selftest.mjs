@@ -218,7 +218,10 @@ try {
     // cone-era pedestal at 1356 trunk vertices. Round 77 (2026-09-26): six
     // branch whorls of three open three-sided limbs (18 vertices each) under
     // the needle tiers add 324 — 1680.
-    assert.equal(kit.trunk.getAttribute('position').count, 1680);
+    assert.equal(kit.trunk.userData.originalTrunkVertices, 1680, 'authored trunk is preserved');
+    assert.ok(kit.trunk.getAttribute('position').count > 1680, 'needle clusters receive real branches');
+    assert.ok(kit.trunk.getAttribute('position').count <= 1680 + kit.trunk.userData.crownAttachments.length * 18,
+      'six-triangle attachment budget per cluster');
     assert.equal(kit.foliage.getAttribute('position').count, 300,
       'the lighting repair does not add foliage cards or vertices');
     kit.dispose();

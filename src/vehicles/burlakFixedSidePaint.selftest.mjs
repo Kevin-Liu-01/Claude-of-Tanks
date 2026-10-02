@@ -41,6 +41,12 @@ function independent(root){root.updateMatrixWorld(true);const rows=[];root.trave
  rows.push([o.name,hash(o.geometry),o.matrixWorld.elements,o.material.name,o.userData.combatHitboxRole,
   o.count??null,o.instanceMatrix?Array.from(o.instanceMatrix.array):null]);
  });return rows;}
+// Paint changes FrontSide/DoubleSide ray admission on the same skirt stock.
+// With forward smoke reserved first, a rejected cable candidate can report a
+// different first blocked yaw. Preserve every admitted piece, rejection kind,
+// count and complete rendered payload; the diagnostic yaw is not placement.
+function decorationAdmission(summary){return {...summary,skipped:summary.skipped.map(([kit,reason])=>
+ [kit,/^gun@-?\d+$/.test(reason)?'gun@blocked':reason])};}
 function guards(tank){const rig=tank.root.getObjectByName('rig_hull'),hull=tank.root.getObjectByName('hull');
  return [-1,1].map(side=>{const mesh=tank.root.getObjectByName(side<0?'hullTrackGuardL':'hullTrackGuardR');
   assert.ok(mesh?.isMesh);assert.equal(mesh.parent,rig,'unchanged always-visible hull-side stock');
@@ -62,7 +68,7 @@ try{for(const quality of['high','low'])for(const camo of['factory','winter']){
   const oldSheet=before.tank.root.getObjectByName('hullRubber');
   assert.ok(oldSheet?.isMesh);assert.equal(oldSheet.material.name,'cot:tire-rubber');assert.equal(oldSheet.material.map,null);
   const rig=after.tank.root.getObjectByName('rig_hull'),sheets=guards(after.tank);
-  assert.deepEqual(after.tank.root.userData.__decorSummary,before.tank.root.userData.__decorSummary,'no decoration admission/skip change');
+  assert.deepEqual(decorationAdmission(after.tank.root.userData.__decorSummary),decorationAdmission(before.tank.root.userData.__decorSummary),'no decoration admission or rejection-kind change');
   for(const tank of[before.tank,after.tank])for(const era of tank.root.userData.eraClusterNames??[])tank.stripEra(era);
   for(const yaw of[0,.73,-1.21]){
    for(const tank of[before.tank,after.tank]){tank.root.position.set(.3,.07,-.4);tank.root.rotation.set(.03,yaw,-.02);
