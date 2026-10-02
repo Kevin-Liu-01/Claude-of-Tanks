@@ -36,8 +36,8 @@ import { createTreeImpostorLibrary, type TreeImpostorLibrary, type TreeImpostorR
 // p2 trees lane (2026-10-01): the grown near trees — skeleton, wood, spray cards and crown shadow hull — and their
 // branch-spray atlases
 import {
-  canopySkyOcclusion, emitBranchGeometry, emitCrownShadowHull, emitLeafCards, growthCrownAttachments, growTreeSkeleton,
-  GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type GrowthSpecies,
+  canopySkyOcclusion, emitBranchGeometry, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCrownAttachments,
+  growTreeSkeleton, GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type GrowthSpecies,
 } from './treeGrowth.ts';
 import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
@@ -323,6 +323,8 @@ interface GarageTreeGeometryBuild {
   readonly trunk: THREE.BufferGeometry;
   readonly foliage: THREE.BufferGeometry;
   readonly foliageTexture: THREE.Texture | null;
+  /** The grown trunk's bark sheet (its styled UVs read the four styles); the round-8 garage trunks paint none. */
+  readonly bark?: { readonly albedo: THREE.Texture; readonly normal: THREE.Texture };
 }
 
 function context2d(
@@ -2178,6 +2180,59 @@ export function grownSprayKind(species: Species, palette: VegetationPalette = {}
  * side shoots as tubes, the legacy fluted root flare and root tongues at the foot, a winter palette's snow lobes on the
  * limbs), the spray cards and the crown's own shadow hull. Deterministic from the seed; the desktop tiers' builder.
  */
+/** The grown crowns' card tint law per family: the legacy HSL multiplier's hue and saturation, and its gain. */
+function grownTintLaw(family: string): readonly [number, number, number] {
+  if (family === 'conifer') return [0.30, 0.18, 1.95];
+  if (family === 'birch') return [0.08, 0.06, 1.8];
+  if (family === 'dead') return [0.08, 0.05, 1.7];
+  if (family === 'palm') return [0.215, 0.28, 1.75];
+  return [0.228, 0.19, 1.85];
+}
+
+/**
+ * p2 trees lane: a grown shrub (the desktop field bush and understorey; treeGrowth.ts growShrubSkeleton) — the bush
+ * species' sprays on its own spray atlas tiles (the round-8 bush cards spanned the whole texture: on the 2 × 2 spray
+ * atlas they drew four sprays each), the trees' tint law (the understorey a touch younger and yellower), a snowy
+ * palette's laden tiles on the sky-facing sprays. Cards only, welded: the shrub's stems stand inside its foliage.
+ */
+function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: VegetationPalette, species: Species): THREE.BufferGeometry {
+  const growth = species as GrowthSpecies;
+  const profile = TREE_GROWTH_PROFILES[growth];
+  const skeleton = growShrubSkeleton(growth, kind, rng);
+  // a snowy palette's load lies on the sprays facing the sky highest on the mound: a fixed share of the shrub's sprays
+  // (by the load) takes the atlas' laden tiles in that order, every other one a bare tile — every shrub of a map
+  // carries the same load, not a draw's
+  const snow = pal.snow ?? 0;
+  if (snow > 0.05) {
+    const order = skeleton.leaves.filter(site => site.ny > 0.35)
+      .sort((a, b) => (b.ny + 0.5 * b.y / skeleton.height) - (a.ny + 0.5 * a.y / skeleton.height));
+    const laden = new Set(order.slice(0, Math.round(skeleton.leaves.length * 0.12 * Math.min(1, snow * 1.1))));
+    for (const site of skeleton.leaves) site.tile = (laden.has(site) ? 0 : SPRAY_ATLAS_TILES) + (site.tile % SPRAY_ATLAS_TILES);
+  }
+  const [hueBase, satBase, gain] = grownTintLaw(profile.family);
+  const hue0 = (pal.cardHue ?? hueBase) + (kind === 'understorey' ? 0.015 : 0), sat0 = pal.cardSat ?? satBase;
+  const shrubValue = GROWTH_SHRUB_VALUE[growth] ?? 1;
+  const cards = emitLeafCards(skeleton, {
+    tiles: SPRAY_ATLAS_TILES, rng, rows: 2,
+    tint(shade, site, r) {
+      const jitter = r();
+      const sk = snow > 0.05 && site.tile < SPRAY_ATLAS_TILES ? 0.85 + jitter * 0.15 : 0;
+      _c.setHSL(hue0 + (r() - 0.5) * 0.06 + (0.585 - hue0) * sk, (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5,
+        THREE.SRGBColorSpace);
+      const value = (0.55 + 0.45 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1) * (sk > 0 ? 1 : shrubValue);
+      return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
+    },
+  });
+  // the shrubs' normals keep the round-8 bush's positive-up floor: a skirt spray lights as the mound's side, never
+  // as a downward pole gone black
+  const normal = cards.getAttribute('normal') as THREE.BufferAttribute;
+  for (let i = 0; i < normal.count; i++) {
+    const nx = normal.getX(i), ny = Math.max(0.2, normal.getY(i)), nz = normal.getZ(i), l = Math.hypot(nx, ny, nz);
+    normal.setXYZ(i, nx / l, ny / l, nz / l);
+  }
+  return weldGrownGeometry(cards);
+}
+
 function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, pal: VegetationPalette = {}): TreeGeometryPair {
   const profile = TREE_GROWTH_PROFILES[species];
   const rng = mulberry32(seed);
@@ -2259,21 +2314,21 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   // a snow-laden spray takes the snow's neutral, lifted tint (its painted snow stays white, its needles frosted) and a
   // bare one none. The gain sits a little over the legacy 1.7: the spray atlases paint a touch darker than the round-8
   // ones.
-  const tintLaw: Record<string, readonly [number, number, number]> = {
-    broadleaf: [0.228, 0.19, 1.85], conifer: [0.30, 0.18, 1.95], birch: [0.08, 0.06, 1.8], dead: [0.08, 0.05, 1.7],
-  };
-  const [hueBase, satBase, gain] = tintLaw[profile.family];
+  const [hueBase, satBase, gain] = grownTintLaw(profile.family);
   const hue0 = pal.cardHue ?? hueBase, sat0 = pal.cardSat ?? satBase;
+  // a palm's frond atlas holds one frond (makePalmFrondAtlas); its dead fronds (shade 0) are straw-brown
+  const palm = profile.family === 'palm';
   const cards = weldGrownGeometry(emitLeafCards(skeleton, {
-    tiles: SPRAY_ATLAS_TILES, rng: mulberry32((seed ^ 0x5eed) >>> 0),
+    tiles: palm ? 1 : SPRAY_ATLAS_TILES, rng: mulberry32((seed ^ 0x5eed) >>> 0),
     tint(shade, site, r) {
       const jitter = r();
       const sk = snow > 0.05 && site.tile < SPRAY_ATLAS_TILES ? 0.85 + jitter * 0.15 : 0;
-      _c.setHSL(hue0 + (r() - 0.5) * 0.06 + (0.585 - hue0) * sk, (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5,
-        THREE.SRGBColorSpace);
+      const dead = palm && shade <= 0;
+      _c.setHSL(dead ? 0.085 + (r() - 0.5) * 0.02 : hue0 + (r() - 0.5) * 0.06 + (0.585 - hue0) * sk,
+        dead ? 0.34 + r() * 0.06 : (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5, THREE.SRGBColorSpace);
       // a laden spray's lift brightens its painted snow far more than its dark needles (the tint multiplies the
       // texel): the snow reads as snow beside the snowfield, the needles under it stay dark
-      const value = (0.52 + 0.48 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6);
+      const value = (0.52 + 0.48 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1);
       return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
     },
   }));
@@ -2329,9 +2384,9 @@ export function buildTreeTrunkAuditGeometry(
   seed = 0x71ee,
   palette: VegetationPalette = {},
 ): THREE.BufferGeometry {
-  // p2 trees lane: the desktop tiers' near trunk is the grown one (every species but the palm); the mobile tier's
+  // p2 trees lane: the desktop tiers' near trunk is the grown one (every species, the palm included); the mobile tier's
   // the legacy builder below
-  if (species !== 'palm' && vegetationGrowsTrees()) return buildGrownTree(species, seed, 1, palette).trunk;
+  if (vegetationGrowsTrees()) return buildGrownTree(species, seed, 1, palette).trunk;
   const rng = mulberry32(seed);
   const archetype = TREE_ARCHETYPES[species];
   if (archetype.family === 'conifer') {
@@ -2931,6 +2986,29 @@ export function buildDetailedGarageTree(
   return { trunk: pair.trunk, foliage: pair.cards, foliageTexture };
 }
 
+/**
+ * p2 trees lane (2026-10-02): the desktop Garage's groves grow their trees as the battle's near tier does
+ * (buildGrownTree, treeGrowth.ts) — the species' spray atlas (the pinnate frond atlas for the palm) and the four-style
+ * bark sheet its styled UVs read (prepareTreeBarkSurface). The phones' Garage keeps the round-8 trees
+ * (buildDetailedGarageTree, whose crown-attachment contract main's treeAttachments receipt holds).
+ */
+function buildGrownGarageTree(
+  species: Species,
+  seed: number,
+  variantIndex: number,
+  palette: VegetationPalette,
+): GarageTreeGeometryBuild {
+  const pair = buildGrownTree(species as GrowthSpecies, seed + 65 + variantIndex * 101, variantIndex, palette);
+  const bark = makeBarkTexture(seed + 97, TREE_BARK_STYLES);
+  prepareTreeBarkSurface(pair.trunk, bark.meanReflectance);
+  const snow = palette.snow ?? 0;
+  const foliageTexture = species === 'palm'
+    ? makePalmFrondAtlas(mulberry32(seed + 53), texSize(512), palette.texTone || null)
+    : makeSprayAtlas(grownSprayKind(species, palette), mulberry32(seed + 51), texSize(512),
+      snow > 0.05 ? null : palette.texTone || null, snow);
+  return { trunk: pair.trunk, foliage: pair.cards, foliageTexture, bark: { albedo: bark.albedo, normal: bark.normal } };
+}
+
 /** Native far-stem inspection only: calls the same four constructors used by
  * battlefield far LODs. Species scaling and placement are audited separately. */
 export function buildFarTreeTrunkAuditGeometry(family: 'oak'|'pine'|'palm'|'birch', seed=2001): THREE.BufferGeometry {
@@ -2999,13 +3077,14 @@ export function createGarageTreeKit(
   const k = ((variant % 3) + 3) % 3;
   const palette = garageTreePalette(cfg, species);
   const detailed = typeof document !== 'undefined';
-  const build = detailed
-    ? buildDetailedGarageTree(species, seed, k, palette)
-    : buildFallbackGarageTree(species, seed, k, palette);
-  const { trunk, foliage, foliageTexture } = build;
+  const build = !detailed ? buildFallbackGarageTree(species, seed, k, palette)
+    : vegetationGrowsTrees() ? buildGrownGarageTree(species, seed, k, palette)
+      : buildDetailedGarageTree(species, seed, k, palette);
+  const { trunk, foliage, foliageTexture, bark } = build;
   const trunkMaterial = new THREE.MeshStandardMaterial({
-    vertexColors: true, roughness: 0.92, metalness: 0,
+    map: bark?.albedo ?? null, normalMap: bark?.normal ?? null, vertexColors: true, roughness: 0.92, metalness: 0,
   });
+  if (bark) trunkMaterial.normalScale.set(0.85, 0.85);
   const foliageMaterial = new THREE.MeshStandardMaterial({
     map: foliageTexture,
     alphaTest: detailed ? 0.38 : 0,
@@ -3029,6 +3108,8 @@ export function createGarageTreeKit(
       trunk.dispose();
       foliage.dispose();
       foliageTexture?.dispose();
+      bark?.albedo.dispose();
+      bark?.normal.dispose();
       trunkMaterial.dispose();
       foliageMaterial.dispose();
     },
@@ -4376,8 +4457,12 @@ function* vegetationBuildSteps(
   // tidal-mangrove willow form (its reviewed stilt-rooted trunk). Seeds, variants and the far builders are the
   // legacy definition's, so a species' placement and its lobe stand-ins never move.
   const grownTrees = vegetationGrowsTrees() && !veg.legacyTrees;
-  function grownDefinition(species: Exclude<GrowthSpecies, 'snag'>, legacy: SpeciesDefinition): SpeciesDefinition {
+  // the species whose foliage material paints a spray atlas (the grown crowns' 2 × 2 tiles): the shrubs of such a
+  // species grow from its sprays too (buildGrownShrub); any other bush species keeps the round-8 bush cards
+  const sprayAtlasSpecies = new Set<Species>();
+  function grownDefinition(species: Exclude<GrowthSpecies, 'snag' | 'palm'>, legacy: SpeciesDefinition): SpeciesDefinition {
     if (!grownTrees) return legacy;
+    sprayAtlasSpecies.add(species);
     return {
       texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed,
       // a snowy palette's texTone is the round-8 cards' hoar-frost wash (their snow); the spray atlas paints its snow
@@ -4404,7 +4489,9 @@ function* vegetationBuildSteps(
       // p2 trees lane: the desktop palms keep their reviewed geometry and take a pinnate frond (the round-8 painter's
       // solid blade read as a banana leaf); the phones keep the round-8 frond
       tex: (r, pal) => (grownTrees ? makePalmFrondAtlas(r, texSize(512), pal.texTone || null) : makePalmFrondTexture(r, pal.texTone || null)),
-      near: (k, pal) => buildPalmGeometry(mulberry32(seed + 81 + k * 7), pal, PALM_VAR[k % 3]),
+      // p2 trees lane: the desktop palms grow (treeGrowth.ts growPalm: an arching stem and a fan of pinnate fronds);
+      // the phones keep the round-8 palm
+      near: (k, pal) => (grownTrees ? buildGrownTree('palm', seed + 81 + k * 7, k, pal) : buildPalmGeometry(mulberry32(seed + 81 + k * 7), pal, PALM_VAR[k % 3])),
       far: (r, pal, k) => buildPalmFarGeometry(r, pal, k),
     },
     birch: grownDefinition('birch', {
@@ -5416,7 +5503,10 @@ function* vegetationBuildSteps(
   // ---- bushes (hedgerow / field-edge cover, purely visual) ----
   function createBushes(): void {
     const bushPal = palOf(bushSpecies);
-    const bushGeos = [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
+    // p2 trees lane: the desktop shrubs grow from the bush species' sprays (buildGrownShrub); the phones keep the cards
+    const bushGeos = sprayAtlasSpecies.has(bushSpecies)
+      ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, bushSpecies), buildGrownShrub('bush', mulberry32(seed + 32), bushPal, bushSpecies)]
+      : [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
     const bushPlacements: [THREE.Matrix4[], THREE.Matrix4[]] = [[], []];
     const bushKeep: [boolean[],boolean[]]=[[],[]];
     function addBush(x: number, z: number): void {
@@ -5574,7 +5664,8 @@ function* vegetationBuildSteps(
     function createUnderstoreyMesh(): void {
       const n = understoreyPlacements.length;
       if (n === 0) return;
-      const geometry = buildUnderstoreyCards(mulberry32(seed + 33), bushPal);
+      const geometry = sprayAtlasSpecies.has(bushSpecies) ? buildGrownShrub('understorey', mulberry32(seed + 33), bushPal, bushSpecies)
+        : buildUnderstoreyCards(mulberry32(seed + 33), bushPal);
       geometry.userData.understorey = true;
       geometry.setAttribute('aFadeI', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
       geometry.setAttribute('aLodF', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));

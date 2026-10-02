@@ -17,11 +17,11 @@
 import * as THREE from 'three';
 
 export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus'
-  | 'pine' | 'spruce' | 'fir' | 'cedar' | 'cypress' | 'birch' | 'aspen' | 'snag';
+  | 'pine' | 'spruce' | 'fir' | 'cedar' | 'cypress' | 'birch' | 'aspen' | 'palm' | 'snag';
 type Rng = () => number;
 
 export const GROWTH_SPECIES: readonly GrowthSpecies[] = Object.freeze([
-  'oak', 'poplar', 'willow', 'acacia', 'eucalyptus', 'pine', 'spruce', 'fir', 'cedar', 'cypress', 'birch', 'aspen', 'snag',
+  'oak', 'poplar', 'willow', 'acacia', 'eucalyptus', 'pine', 'spruce', 'fir', 'cedar', 'cypress', 'birch', 'aspen', 'palm', 'snag',
 ]);
 
 /** How a crown envelope narrows from its base (t = 0) to its top (t = 1): the radius fraction at t. */
@@ -31,7 +31,7 @@ type EnvelopeShape = 'cone' | 'ellipsoid' | 'dome' | 'column' | 'umbrella' | 'fl
 type SprayHabit = 'spray' | 'hanging' | 'flat' | 'upright' | 'tuft';
 
 interface GrowthProfile {
-  family: 'broadleaf' | 'conifer' | 'birch' | 'dead';
+  family: 'broadleaf' | 'conifer' | 'birch' | 'palm' | 'dead';
   /** Nominal height (m) at variant 1 and instance scale 1; the variants span ±heightSpread. */
   height: number;
   heightSpread: number;
@@ -87,6 +87,13 @@ interface GrowthProfile {
   /** Bark tint (linear-ish multiplier around the neutral sheet) and its upper-stem shift (pine's orange top). */
   barkTint: readonly [number, number, number];
   barkTopTint: readonly [number, number, number] | null;
+  /**
+   * The crown's value in light: a multiplier on the card tint, set per species so a grown crown keeps the effective
+   * albedo (card tint × atlas reflectance) the legacy crown of its species had — the conifers' spray atlases paint
+   * darker than the old needle sheets (.qa-dev card-albedo: spruce 0.87, fir 0.90, pine 0.96, cedar 0.79, cypress 0.65
+   * of the legacy albedo before it). 1 when unset.
+   */
+  foliageValue?: number;
 }
 
 const P = (p: GrowthProfile): Readonly<GrowthProfile> => Object.freeze(p);
@@ -146,7 +153,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'flame', whorled: true, perWhorl: [3, 5], spacing: 0.62, angleLow: 1.45, angleHigh: 0.85,
     droop: 0.25, upturn: 0.45, sidePerM: 1.2, sideAngle: 0.7, sideRatio: 0.45, sideDroop: 0.1, twigPerM: 0,
     leafOrder: 1, leafPerM: 1.5, leafFrom: 0.55, spray: [0.95, 1.35], aspect: 0.9, habit: 'tuft', tipSprays: 3,
-    cardBend: 0.06, flatRoll: 0.6, flatDroop: 0.0, bark: 1, barkTint: [0.44, 0.33, 0.27], barkTopTint: [0.80, 0.52, 0.34],
+    cardBend: 0.06, flatRoll: 0.6, flatDroop: 0.0, bark: 1, barkTint: [0.44, 0.33, 0.27], barkTopTint: [0.80, 0.52, 0.34], foliageValue: 1.04,
   }),
   spruce: P({
     family: 'conifer', height: 8.2, heightSpread: 0.10, trunkR: 0.19, form: 'excurrent',
@@ -154,7 +161,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'cone', whorled: true, perWhorl: [3, 5], spacing: 0.55, angleLow: 1.95, angleHigh: 1.05,
     droop: 0.30, upturn: 0.50, sidePerM: 2.4, sideAngle: 0.95, sideRatio: 0.42, sideDroop: 0.55, twigPerM: 0,
     leafOrder: 1, leafPerM: 3.2, leafFrom: 0.0, spray: [0.85, 1.25], aspect: 0.66, habit: 'flat', tipSprays: 1,
-    cardBend: 0.18, flatRoll: 1.15, flatDroop: 0.35, bark: 1, barkTint: [0.36, 0.30, 0.27], barkTopTint: null,
+    cardBend: 0.18, flatRoll: 1.15, flatDroop: 0.35, bark: 1, barkTint: [0.36, 0.30, 0.27], barkTopTint: null, foliageValue: 1.15,
   }),
   fir: P({
     family: 'conifer', height: 7.3, heightSpread: 0.10, trunkR: 0.27, form: 'excurrent',
@@ -162,7 +169,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'tiered', whorled: true, perWhorl: [3, 5], spacing: 0.6, angleLow: 1.75, angleHigh: 1.05,
     droop: 0.12, upturn: 0.30, sidePerM: 2.4, sideAngle: 1.05, sideRatio: 0.45, sideDroop: 0.05, twigPerM: 0,
     leafOrder: 1, leafPerM: 3.2, leafFrom: 0.0, spray: [0.9, 1.3], aspect: 0.72, habit: 'flat', tipSprays: 1,
-    cardBend: 0.06, flatRoll: 0.55, flatDroop: 0.12, bark: 2, barkTint: [0.42, 0.40, 0.38], barkTopTint: null,
+    cardBend: 0.06, flatRoll: 0.55, flatDroop: 0.12, bark: 2, barkTint: [0.42, 0.40, 0.38], barkTopTint: null, foliageValue: 1.11,
   }),
   cedar: P({
     family: 'conifer', height: 6.6, heightSpread: 0.10, trunkR: 0.32, form: 'excurrent',
@@ -170,7 +177,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'tiered', whorled: true, perWhorl: [4, 5], spacing: 0.8, angleLow: 1.62, angleHigh: 1.15,
     droop: 0.0, upturn: 0.08, sidePerM: 2.8, sideAngle: 1.1, sideRatio: 0.5, sideDroop: 0.0, twigPerM: 0,
     leafOrder: 1, leafPerM: 3.4, leafFrom: 0.1, spray: [1.0, 1.5], aspect: 0.9, habit: 'flat', tipSprays: 1,
-    cardBend: 0.03, flatRoll: 0.38, flatDroop: 0.04, bark: 0, barkTint: [0.40, 0.34, 0.30], barkTopTint: null,
+    cardBend: 0.03, flatRoll: 0.38, flatDroop: 0.04, bark: 0, barkTint: [0.40, 0.34, 0.30], barkTopTint: null, foliageValue: 1.27,
   }),
   cypress: P({
     family: 'conifer', height: 7.8, heightSpread: 0.10, trunkR: 0.14, form: 'excurrent',
@@ -178,7 +185,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'flame', whorled: false, perWhorl: [1, 1], spacing: 0.22, angleLow: 0.38, angleHigh: 0.2,
     droop: 0.0, upturn: 0.2, sidePerM: 0, sideAngle: 0.4, sideRatio: 0.5, sideDroop: 0, twigPerM: 0,
     leafOrder: 1, leafPerM: 4.2, leafFrom: 0.0, spray: [1.15, 1.6], aspect: 0.55, habit: 'upright', tipSprays: 1,
-    cardBend: 0.04, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.40, 0.34, 0.30], barkTopTint: null,
+    cardBend: 0.04, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.40, 0.34, 0.30], barkTopTint: null, foliageValue: 1.5,
   }),
   birch: P({
     family: 'birch', height: 7.0, heightSpread: 0.14, trunkR: 0.16, form: 'excurrent',
@@ -195,6 +202,16 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     droop: 0.15, upturn: 0.15, sidePerM: 2.2, sideAngle: 0.6, sideRatio: 0.55, sideDroop: 0.25, twigPerM: 0,
     leafOrder: 1, leafPerM: 2.8, leafFrom: 0.2, spray: [0.85, 1.25], aspect: 0.78, habit: 'spray', tipSprays: 1,
     cardBend: 0.10, flatRoll: 0.6, flatDroop: 0.0, bark: 3, barkTint: [0.84, 0.84, 0.80], barkTopTint: null,
+  }),
+  // the palm: one leaning, arching stem swollen at its foot and a fan of pinnate fronds from its top (growPalm; the
+  // branch fields are unused) — spray is the frond's length, aspect its width, cardBend its arch
+  palm: P({
+    family: 'palm', height: 6.3, heightSpread: 0.14, trunkR: 0.25, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.85, crownR: 3.1,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 1, angleLow: 1, angleHigh: 1,
+    droop: 0, upturn: 0, sidePerM: 0, sideAngle: 0, sideRatio: 0, sideDroop: 0, twigPerM: 0,
+    leafOrder: 0, leafPerM: 0, leafFrom: 0, spray: [3.0, 3.9], aspect: 0.36, habit: 'upright', tipSprays: 0,
+    cardBend: 0.5, flatRoll: 0, flatDroop: 0, bark: 2, barkTint: [0.46, 0.41, 0.35], barkTopTint: [0.40, 0.35, 0.29],
   }),
   snag: P({
     family: 'dead', height: 5.6, heightSpread: 0.22, trunkR: 0.27, form: 'excurrent',
@@ -665,6 +682,49 @@ function growSnag(ctx: GrowContext): void {
   }
 }
 
+/**
+ * A palm: one leaning stem that arches back toward the vertical near its top, swollen at its foot, and a crown of
+ * fronds fanning from its head on the golden angle — the youngest upright at the heart, the mature ones arching
+ * out, the oldest hanging, the last two dead (shade 0: vegetation.ts tints them brown). Every frond is seated inside
+ * the stem's head (its crown support).
+ */
+function growPalm(ctx: GrowContext, leaves: LeafSite[], variant: number): void {
+  const { rng, profile } = ctx;
+  const leanA = rng() * Math.PI * 2, lean = 0.35 + rng() * 0.5 + variant * 0.15;
+  const segments = 9;
+  const nodes: GrowthNode[] = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const off = lean * (t * t - 0.45 * Math.max(0, t - 0.66) ** 2);
+    const swell = 1 + 0.3 * Math.max(0, 1 - t * 5);
+    const r = lerp(profile.trunkR, profile.trunkR * 0.62, Math.pow(t, 0.9)) * swell;
+    nodes.push({ x: Math.cos(leanA) * off, y: -0.04 + (ctx.height + 0.04) * t, z: Math.sin(leanA) * off, r,
+      flex: t < 0.4 ? 0 : (t - 0.4) / 0.6 * 0.22 });
+  }
+  ctx.branches.push({ order: 0, parent: -1, nodes, mesh: true, broken: false });
+  const count = ctx.mobile ? 10 : 16;
+  const golden = Math.PI * (3 - Math.sqrt(5)), az0 = rng() * Math.PI * 2;
+  for (let k = 0; k < count; k++) {
+    const age = k / (count - 1), dead = k >= count - 2;
+    const elev = age < 0.2 ? 1.0 - age * 1.6 : age < 0.75 ? 0.45 - (age - 0.2) * 0.8 : -0.05 - (age - 0.75) * 2.6;
+    const az = az0 + k * golden + (rng() - 0.5) * 0.25;
+    const ce = Math.cos(elev), se = Math.sin(elev);
+    const axis = norm(v3(Math.cos(az) * ce, se, Math.sin(az) * ce));
+    const across = norm(cross(axis, v3(0, 1, 0)));
+    let face = norm(cross(across, axis));
+    if (face.y < 0) face = v3(-face.x, -face.y, -face.z);
+    const length = range(rng, profile.spray) * (age < 0.2 ? 0.62 + age * 1.9 : 1) * (dead ? 0.85 : 1);
+    // the frond's base sits on the stem's axis just under the head (older fronds lower down the crownshaft)
+    const at = sampleAlong(nodes, 1 - (0.06 + age * 0.3) / Math.max(1, ctx.height));
+    leaves.push({
+      x: at.p.x + axis.x * 0.03, y: at.p.y, z: at.p.z + axis.z * 0.03,
+      ax: axis.x, ay: axis.y, az: axis.z, nx: face.x, ny: face.y, nz: face.z,
+      length, width: length * profile.aspect * (0.9 + rng() * 0.2), shade: dead ? 0 : clamp01(0.55 + 0.45 * (1 - age)),
+      flex: clamp01(0.55 + 0.35 * rng()), tile: 0, bend: dead ? 0.2 : profile.cardBend * (0.7 + 0.6 * age), branch: 0,
+    });
+  }
+}
+
 /** Closest point to p on the segment a→b (the parameter and the point). */
 function onSegment(p: V3, a: V3, b: V3): { t: number; q: V3 } {
   const abx = b.x - a.x, aby = b.y - a.y, abz = b.z - a.z, l2 = abx * abx + aby * aby + abz * abz;
@@ -682,7 +742,7 @@ function onSegment(p: V3, a: V3, b: V3): { t: number; q: V3 } {
  * limb reaching into the stem's collision band (below GROWTH_LOWEST_WOOD_M) stays hidden in its own sprays, as it
  * always was (the band keeps no wood), and so does what it carries.
  */
-function supportSprays(ctx: GrowContext, leaves: LeafSite[]): void {
+function supportSprays(ctx: GrowContext, leaves: LeafSite[]): boolean[] {
   const branches = ctx.branches;
   const emitted = (b: GrowthBranch): boolean => b.mesh && b.order <= 2;
   const need = new Array<boolean>(branches.length).fill(false);
@@ -735,6 +795,100 @@ function supportSprays(ctx: GrowContext, leaves: LeafSite[]): void {
     branch.mesh = true;
     branch.support = true;
   }
+  return hidden;
+}
+
+/**
+ * The grown shrubs (bushes and understorey): sprays per shrub, each a two-triangle card (emitLeafCards rows 2) — the
+ * round-8 cards' triangle budget (the bush's 64, the understorey's 40) at a spray per card. A species of narrow sprays
+ * (aspect under 0.8: birch, willow) carries more of them, up to a third more.
+ */
+export const GROWTH_SHRUB_SPRAYS: Readonly<Record<'bush' | 'understorey', number>> = Object.freeze({ bush: 32, understorey: 20 });
+
+/**
+ * The grown shrub's value in light per bush species, on top of the crown's foliageValue: the round-8 bush cards carried
+ * their own tint law (hue 0.24, a 1.7 gain, a radial shade) over the legacy sheets, so a shrub keeps the effective
+ * albedo (card tint × atlas reflectance) the round-8 bush of its map had — .qa-dev shrub-stats, grown / legacy before
+ * this: oak 0.86, poplar 0.92, willow 0.85, acacia 0.78, birch 0.78, spruce 1.02, pine 0.94, cedar 1.05. 1 when unset.
+ */
+export const GROWTH_SHRUB_VALUE: Readonly<Partial<Record<GrowthSpecies, number>>> = Object.freeze({
+  oak: 1.16, poplar: 1.09, willow: 1.17, acacia: 1.29, birch: 1.27, spruce: 0.98, pine: 1.07, cedar: 0.95,
+});
+
+/**
+ * A shrub grown from its species' sprays (the desktop field bush and the stands' understorey): no drawn wood — a
+ * shrub's stems stand inside its foliage — but a mound of shingled sprays. Each spray's centre sits on the mound's
+ * envelope, the spray climbing the envelope along its up-slope tangent (swung either way about its normal) and lifting
+ * out of it a little, its face turned outward: the faces make the lit shell from any side and the tips its ragged
+ * edge (a spray reaching straight out from the heart shows a viewer on its side only its edge). A broadleaf shrub is
+ * a dome widest a third of the way up, lobed around its azimuth, its skirt standing on the ground; a conifer's is a
+ * low cone, its sprays near level and drooping. Equal-area steps up the envelope (the sides carry more sprays than
+ * the top). The understorey is the smaller stand-edge growth. Unit scale (the pools scale it; the bush stays inside
+ * its cover disc's reach), grounded at y = 0, deterministic in `rng`.
+ */
+export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'understorey', rng: Rng): TreeSkeleton {
+  const profile = TREE_GROWTH_PROFILES[species];
+  const under = kind === 'understorey';
+  const conifer = profile.family === 'conifer';
+  // narrow sprays (birch, willow) come more to a shrub and a little wider, so its shell closes as a broad spray's does
+  const narrow = Math.min(1, profile.aspect / 0.8);
+  const count = Math.round(GROWTH_SHRUB_SPRAYS[kind] * Math.min(4 / 3, 1 / narrow));
+  const widen = Math.sqrt(1 / Math.max(0.75, narrow));
+  // the envelope: radius and height, its widest level; a conifer's top runs to a point (the superellipse exponent)
+  const R = (under ? 0.64 : 0.9) * (conifer ? 0.9 : 1), H = (under ? 0.98 : 1.36) * (conifer ? 1.1 : 1);
+  const c0 = conifer ? H * 0.22 : H * 0.32, Hc = H - c0, pow = conifer ? 1.25 : 2;
+  const lobe1 = rng() * Math.PI * 2, lobe2 = rng() * Math.PI * 2;
+  const golden = Math.PI * (3 - Math.sqrt(5)), az0 = rng() * Math.PI * 2;
+  const s0 = Math.sin(-0.4), s1 = Math.sin(1.5);
+  const leaves: LeafSite[] = [];
+  const up = v3(0, 1, 0);
+  for (let k = 0; k < count; k++) {
+    const t = (k + 0.5) / count;                     // 0 the skirt .. 1 the top
+    const az = az0 + k * golden + (rng() - 0.5) * 0.3;
+    const lobe = (1 + 0.11 * Math.sin(3 * az + lobe1) + 0.07 * Math.sin(5 * az + lobe2)) * (0.92 + rng() * 0.16);
+    const cx = Math.cos(az), cz = Math.sin(az);
+    // the envelope point at the spray's elevation from the heart (c0 up the axis): a (super)ellipse over c0, a wall
+    // under it down to the ground; its outward normal (the gradient)
+    const elev = Math.asin(Math.max(-1, Math.min(1, s0 + t * (s1 - s0) + (rng() - 0.5) * 0.05)));
+    const ce = Math.cos(elev), se = Math.sin(elev), Rl = R * lobe;
+    const reach = elev >= 0
+      ? Math.pow(Math.pow(ce / Rl, pow) + Math.pow(se / Hc, pow), -1 / pow)
+      : Math.min(Rl / Math.max(ce, 1e-3), c0 / Math.max(-se, 1e-3));
+    const P = v3(cx * ce * reach, c0 + se * reach, cz * ce * reach);
+    const rho = Math.hypot(P.x, P.z) / Rl, hy = (P.y - c0) / Hc;
+    const nOut = elev >= 0
+      ? norm(v3(cx * Math.pow(Math.max(rho, 1e-4), pow - 1) / Rl, Math.pow(Math.max(hy, 0), pow - 1) / Hc, cz * Math.pow(Math.max(rho, 1e-4), pow - 1) / Rl))
+      : norm(v3(cx, 0.12, cz));
+    let tUp = v3(up.x - nOut.x * nOut.y, up.y - nOut.y * nOut.y, up.z - nOut.z * nOut.y);
+    tUp = Math.hypot(tUp.x, tUp.y, tUp.z) < 0.2 ? v3(-cz, 0, cx) : norm(tUp);
+    tUp = norm(rotate(tUp, nOut, (rng() - 0.5) * (conifer ? 2.2 : 1.5)));
+    // the lift out of the shell: a broadleaf spray climbs, a conifer's reaches out near level and droops
+    const beta = conifer ? 0.62 + rng() * 0.3 : 0.32 + rng() * 0.32;
+    let axis = v3(tUp.x * Math.cos(beta) + nOut.x * Math.sin(beta), tUp.y * Math.cos(beta) + nOut.y * Math.sin(beta),
+      tUp.z * Math.cos(beta) + nOut.z * Math.sin(beta));
+    if (conifer) axis = v3(axis.x, axis.y * 0.45 - 0.12, axis.z);
+    axis = norm(axis);
+    const length = (under ? 0.55 : 0.72) * (0.85 + rng() * 0.3) * (elev > 1.1 ? 0.86 : 1);
+    const seat = v3(P.x - axis.x * length * 0.42 - nOut.x * 0.04, Math.max(-0.02, P.y - axis.y * length * 0.42 - nOut.y * 0.04),
+      P.z - axis.z * length * 0.42 - nOut.z * 0.04);
+    let face = v3(nOut.x - axis.x * dot(nOut, axis), nOut.y - axis.y * dot(nOut, axis), nOut.z - axis.z * dot(nOut, axis));
+    face = Math.hypot(face.x, face.y, face.z) < 1e-3 ? norm(cross(cross(axis, up), axis)) : norm(face);
+    face = norm(rotate(face, axis, (rng() - 0.5) * 0.7));
+    const width = length * profile.aspect * widen * (0.9 + rng() * 0.2);
+    const bend = profile.cardBend * (0.5 + rng() * 0.7);
+    // the card stands on the ground, not in it: its lowest corner (the two-row card's stem and tip rows, the tip's
+    // sag) at most a few centimetres under the base
+    const rightY = norm(cross(axis, face)).y * width * 0.5;
+    const low = Math.min(seat.y - 0.06 * length * axis.y - Math.abs(rightY) * 0.92,
+      seat.y + 0.94 * length * axis.y - bend * length - Math.abs(rightY));
+    if (low < -0.06) seat.y += -0.06 - low;
+    leaves.push({
+      x: seat.x, y: seat.y, z: seat.z, ax: axis.x, ay: axis.y, az: axis.z, nx: face.x, ny: face.y, nz: face.z,
+      length, width, shade: clamp01(0.3 + 0.62 * t + (rng() - 0.5) * 0.16),
+      flex: clamp01(0.2 + 0.1 * rng()), tile: (rng() * 4) | 0, bend, branch: -1,
+    });
+  }
+  return { species, height: H, branches: [], leaves, crown: { x: 0, y: c0 + Hc * 0.25, z: 0, r: R } };
 }
 
 /**
@@ -755,7 +909,9 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
     crownR: profile.crownR * ageW * (0.94 + rng() * 0.12),
   };
   const leaves: LeafSite[] = [];
-  if (profile.family === 'dead') {
+  if (profile.family === 'palm') {
+    growPalm(ctx, leaves, variant);
+  } else if (profile.family === 'dead') {
     growSnag(ctx);
     seatLeaves(ctx, leaves);
   } else if (profile.form === 'decurrent') {
@@ -791,7 +947,36 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
   const woodBudget = GROWTH_SIDE_TUBE_BUDGET[mobile ? 'mobile' : 'desktop'];
   const sides = ctx.branches.filter((b) => b.mesh && b.order >= 2).sort((a, b) => b.nodes[0].r - a.nodes[0].r);
   for (let i = woodBudget; i < sides.length; i++) sides[i].mesh = false;
-  supportSprays(ctx, leaves);
+  // a limb kept out of the stem's collision band is not drawn, so no spray may hang from it: a spray it carried near
+  // the stem grows from the stem itself (moved onto it at the same height — the short twigs a conifer's lower stem
+  // carries), one farther out is cut, and the sprays of the lowest drawn level hang a little further to keep the skirt
+  const hidden = supportSprays(ctx, leaves);
+  const stemNodes = ctx.branches[0].nodes;
+  const carried: LeafSite[] = [];
+  for (const l of leaves) {
+    if (!hidden[l.branch]) { carried.push(l); continue; }
+    let best: V3 | null = null, bestD = Infinity;
+    for (let i = 1; i < stemNodes.length; i++) {
+      const a = stemNodes[i - 1], b = stemNodes[i];
+      const { q } = onSegment(v3(l.x, l.y, l.z), v3(a.x, a.y, a.z), v3(b.x, b.y, b.z));
+      const d = Math.hypot(q.x - l.x, q.y - l.y, q.z - l.z);
+      if (d < bestD) { bestD = d; best = q; }
+    }
+    if (!best || bestD > GROWTH_RESEAT_M) continue;
+    l.x = best.x; l.y = best.y; l.z = best.z; l.branch = 0;
+    carried.push(l);
+  }
+  if (carried.length < leaves.length) {
+    const lowest = Math.min(...carried.map((l) => l.y));
+    for (const l of carried) {
+      if (l.y > lowest + GROWTH_SKIRT_BAND_M) continue;
+      const fall = Math.max(0, -l.ay) + l.bend;
+      const g = fall > 1e-3 ? Math.min(GROWTH_SKIRT_REACH, Math.max(1, (l.y - GROWTH_SPRAY_CLEARANCE_M) / (fall * l.length))) : GROWTH_SKIRT_REACH;
+      l.length *= g; l.width *= 1 + (g - 1) * 0.5;
+    }
+    leaves.length = 0;
+    leaves.push(...carried);
+  }
   // the crown's centre and radius from the foliage (the wood's for a snag)
   let cx = 0, cy = 0, cz = 0, n = 0;
   if (leaves.length) {
@@ -810,6 +995,12 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
 
 /** The lowest a spray card's tip may reach over the ground (m). */
 export const GROWTH_SPRAY_CLEARANCE_M = 0.15;
+/** The lowest drawn level's sprays (within this height of the lowest seat) hang up to GROWTH_SKIRT_REACH × longer, keeping the
+ * skirt the cut sprays of the undrawn limbs leave open. */
+const GROWTH_SKIRT_BAND_M = 0.7;
+const GROWTH_SKIRT_REACH = 1.35;
+/** A spray of an undrawn collision-band limb within this distance of the stem moves onto the stem; farther ones are cut. */
+const GROWTH_RESEAT_M = 0.6;
 /** Below this height a primary limb carries its sprays but is not emitted as wood (it is hidden in them, and the
  * lower stem's girth stays the stem's for the collision fit). */
 export const GROWTH_LOWEST_WOOD_M = 1.7;
@@ -1021,6 +1212,11 @@ interface CardEmitOptions {
   /** Volume normal share (0 = the card's own face, 1 = the crown sphere) and the up bias. */
   volume?: number;
   upBias?: number;
+  /**
+   * Rows along the card: 3 (stem, middle, tip — the crowns' bent, tapered card, 4 triangles) or 2 (one near-square
+   * quad, 2 triangles — the shrubs' card, where a spray's bend reads at no distance and the triangles are the budget).
+   */
+  rows?: 2 | 3;
 }
 
 /**
@@ -1033,10 +1229,11 @@ interface CardEmitOptions {
 export function emitLeafCards(skeleton: TreeSkeleton, options: CardEmitOptions): THREE.BufferGeometry {
   const tiles = Math.max(1, options.tiles | 0);
   const volume = options.volume ?? 0.62, upBias = options.upBias ?? 0.32;
+  const rowCount = options.rows ?? 3, perCard = (rowCount - 1) * 6;
   const { crown } = skeleton;
   const count = skeleton.leaves.length;
-  const pos = new Float32Array(count * 12 * 3), nrm = new Float32Array(count * 12 * 3), uv = new Float32Array(count * 12 * 2);
-  const col = new Float32Array(count * 12 * 3), flex = new Float32Array(count * 12), card = new Float32Array(count * 12 * 4);
+  const pos = new Float32Array(count * perCard * 3), nrm = new Float32Array(count * perCard * 3), uv = new Float32Array(count * perCard * 2);
+  const col = new Float32Array(count * perCard * 3), flex = new Float32Array(count * perCard), card = new Float32Array(count * perCard * 4);
   let o = 0;
   for (const site of skeleton.leaves) {
     const axis = v3(site.ax, site.ay, site.az), face = v3(site.nx, site.ny, site.nz);
@@ -1045,14 +1242,15 @@ export function emitLeafCards(skeleton: TreeSkeleton, options: CardEmitOptions):
     const u0 = tileX / tiles, v0 = 1 - (tileY + 1) / tiles;
     const du = 1 / tiles, dv = 1 / tiles;
     const [cr, cg, cb] = options.tint(site.shade, site, options.rng);
-    // three rows along the card (stem, middle, tip); the bend droops the outer rows under gravity
+    // three rows along the card (stem, middle, tip); the bend droops the outer rows under gravity. A two-row card is
+    // the stem and tip rows only, near full width at both (the tile's spray undistorted)
     const rows: V3[][] = [];
-    for (let r = 0; r < 3; r++) {
-      const t = r / 2;
+    for (let r = 0; r < rowCount; r++) {
+      const t = r / (rowCount - 1);
       const along = -0.06 * site.length + t * site.length;
       const sag = site.bend * site.length * t * t;
       const cx = site.x + axis.x * along, cy = site.y + axis.y * along - sag, cz = site.z + axis.z * along;
-      const half = site.width * 0.5 * (r === 0 ? 0.55 : r === 1 ? 1 : 0.9);
+      const half = site.width * 0.5 * (rowCount === 2 ? (r === 0 ? 0.92 : 1) : r === 0 ? 0.55 : r === 1 ? 1 : 0.9);
       rows.push([v3(cx - right.x * half, cy - right.y * half, cz - right.z * half), v3(cx + right.x * half, cy + right.y * half, cz + right.z * half)]);
     }
     const centre = v3(site.x + axis.x * site.length * 0.45, site.y + axis.y * site.length * 0.45, site.z + axis.z * site.length * 0.45);
@@ -1073,9 +1271,9 @@ export function emitLeafCards(skeleton: TreeSkeleton, options: CardEmitOptions):
       card[o * 4] = centre.x; card[o * 4 + 1] = centre.y; card[o * 4 + 2] = centre.z; card[o * 4 + 3] = crown.r;
       o++;
     };
-    for (let r = 0; r < 2; r++) {
+    for (let r = 0; r < rowCount - 1; r++) {
       const a = rows[r], b = rows[r + 1];
-      const va = r / 2, vb = (r + 1) / 2;
+      const va = r / (rowCount - 1), vb = (r + 1) / (rowCount - 1);
       writeVertex(a[0], 0, va); writeVertex(a[1], 1, va); writeVertex(b[1], 1, vb);
       writeVertex(a[0], 0, va); writeVertex(b[1], 1, vb); writeVertex(b[0], 0, vb);
     }
