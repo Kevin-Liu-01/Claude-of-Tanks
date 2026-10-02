@@ -86,3 +86,63 @@ The repaired standalone audit passes Ultra, High, Medium and Low: every preset
 has real shadow coverage, zero frozen-frame changes and no GL errors. Its live
 drive sampled 417 frames with 16.7 ms median and 17.5 ms 95th-percentile frame
 time on the test machine. These are local measurements, not device-wide claims.
+
+## Cloud silhouettes — October 2, 2026
+
+The repeated cylindrical clouds came from broad, circular plateau footprints
+combined with upright lower columns. Fine erosion softened their edges without
+changing the underlying outline. The weather bake now varies each lobe's
+orientation, aspect ratio, radius, shoulder and position, then warps the field
+with periodic noise. The same mesoscale grouping and histogram equalization
+preserve the authored weather-coverage setting and mesoscale clearings. This
+stays deterministic and is baked in the existing worker, with no new texture
+or render target. Cached cell attributes avoid repeating hashes and rotations
+for every pixel of that bake. Wind-aligned rows retain their prevailing
+direction but use different cloud populations and spacing instead of a
+repeated fourteen-cell cadence.
+
+Wind shear now starts above the condensation base rather than only in the top
+third. Cumulus tapers earlier, while storm towers retain their deeper profile.
+The existing curl sample also distorts the larger billows. Their density and
+height vary through the body so they remain distinct within a weather mass;
+the edge noise is stretched along the wind to form trailing wisps. The base remains relatively
+flat, and stratiform clouds receive less distortion. The march limits, temporal
+history, texture dimensions and lighting passes remain unchanged. Moving the
+curl lookup earlier can sample it at points previously rejected before edge
+erosion, so unchanged maximum sample counts do not imply zero GPU cost.
+
+Research references:
+
+- [WMO Cumulus humilis](https://cloudatlas.wmo.int/en/clouds-species-humilis.html):
+  shallow vertical development; flattened shapes are plausible.
+- [WMO Fractus](https://cloudatlas.wmo.int/en/clouds-species-fractus.html):
+  irregular, ragged fragments in cumulus and stratus.
+- [NOAA cloud development](https://www.weather.gov/source/zhu/ZHU_Training_Page/clouds/cloud_development/clouds.htm):
+  condensation bases and the different development of shallow and tall cumulus.
+- [Guerrilla's real-time volumetric cloudscapes](https://www.guerrilla-games.com/read/the-real-time-volumetric-cloudscapes-of-horizon-zero-dawn):
+  broad weather coverage, volumetric shape and finer erosion are separate controls.
+
+Noise regression checks cover reproducibility, wrapped seams, coverage
+histograms, wind-aligned streets, the map preset table and history behavior.
+The baked-cloud fallback remains unchanged. Native visual evidence is acquired
+separately from these numerical checks.
+
+
+Final native comparison: eight 1440 × 900 captures cover Verdant Fields and
+Steinburg, with matched horizon and underside cameras before/after, seed 2
+(day), source-default High quality and fixed cloud drift. The final images
+show narrower, unequal cumulus lobes, broken/ragged edges and less repetitive
+spacing; Steinburg retains its broader stratiform deck. All eight captures
+reported no browser errors. Local evidence is in
+`.qa-dev/cloud-shape-audit-r2/` (`report.json`, source hashes and PNGs).
+The first visual pass was rejected because its larger cumulus still looked too
+solid and its urban camera was obstructed; the final pass fixes both.
+
+Median cloud GPU times (before → after): Verdant horizon 1.658 → 1.809 ms,
+Verdant underside 1.496 → 2.146 ms; Steinburg horizon 1.533 → 1.504 ms,
+Steinburg underside 1.148 → 1.281 ms. Frame medians remained 16.55–16.8 ms.
+These are local diagnostic samples, not a performance certification: adaptive
+resolution and independently generated bot rosters were not held constant.
+The cloud selftest, baked-sky fallback selftest, typecheck and private build
+passed. No assertion thresholds were relaxed; deterministic texture hashes
+were refreshed for the intentionally changed fields.
