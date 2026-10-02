@@ -1,0 +1,215 @@
+{
+ "title": "The Lineup — 24 s teaser",
+ "bpm": 96,
+ "durationSec": 24.5,
+ "lufs": -14,
+ "musicDb": -3,
+ "sfxDb": -1,
+ "fadeOutSec": 1,
+ "progression": [
+  "Dm",
+  "Dm",
+  "Bb",
+  "Bb",
+  "F",
+  "F",
+  "C",
+  "C",
+  "Dm",
+  "Dm"
+ ],
+ "motif": [
+  "A4",
+  "D5",
+  "C5",
+  "A4"
+ ],
+ "sections": [
+  {
+   "name": "intro",
+   "fromBar": 0,
+   "toBar": 1,
+   "layers": [
+    "drone",
+    "ticks"
+   ],
+   "gainDb": -8
+  },
+  {
+   "name": "reveals-a",
+   "fromBar": 2,
+   "toBar": 4,
+   "layers": [
+    "pulse16",
+    "open",
+    "taiko2",
+    "hats",
+    "drone"
+   ],
+   "gainDb": -3
+  },
+  {
+   "name": "reveals-b",
+   "fromBar": 5,
+   "toBar": 7,
+   "layers": [
+    "pulse16",
+    "open",
+    "taiko2",
+    "hats16",
+    "toms",
+    "rim",
+    "pad"
+   ],
+   "gainDb": -1
+  },
+  {
+   "name": "end",
+   "fromBar": 8,
+   "toBar": 9,
+   "layers": [
+    "drone",
+    "ticks"
+   ],
+   "gainDb": -4
+  }
+ ],
+ "hits": [
+  {
+   "kind": "swell",
+   "t": 0.625,
+   "sec": 1.6
+  },
+  {
+   "kind": "riser",
+   "t": 5,
+   "sec": 3.5
+  },
+  {
+   "kind": "braam",
+   "t": 5,
+   "chord": "Dm",
+   "sec": 4.5
+  },
+  {
+   "kind": "boom",
+   "t": 5,
+   "sec": 3
+  },
+  {
+   "kind": "taiko",
+   "t": 6.25,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 7.5,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 7.5,
+   "chord": "Bb",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 8.75,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 10,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 10,
+   "chord": "F",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 11.25,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 12.5,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 12.5,
+   "chord": "C",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 13.75,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 15,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 15,
+   "chord": "Gm",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 16.25,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 17.5,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 17.5,
+   "chord": "A",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 18.75,
+   "f": 64
+  },
+  {
+   "kind": "riser",
+   "t": 20,
+   "sec": 2.5
+  },
+  {
+   "kind": "braam",
+   "t": 20,
+   "chord": "Dm",
+   "sec": 5
+  },
+  {
+   "kind": "boom",
+   "t": 20,
+   "sec": 4,
+   "f0": 90,
+   "f1": 26,
+   "tau": 0.5
+  },
+  {
+   "kind": "stop",
+   "t": 24.1
+  }
+ ],
+ "ducks": [],
+ "sfx": []
+}

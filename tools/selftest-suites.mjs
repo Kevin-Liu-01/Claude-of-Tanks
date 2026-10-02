@@ -474,6 +474,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/combatAnatomy.selftest.mjs',
     'src/vehicles/gunArticulation.selftest.mjs',
     'tools/media-production/pipeline.selftest.mjs',
+    'tools/media-r5/motion-type.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'server/processShutdown.selftest.mjs',
     'tools/local-import-integrity.selftest.mjs',
