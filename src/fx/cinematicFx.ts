@@ -249,6 +249,8 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
   let quality: CinematicQuality = 'battle';
   let trackDustOn = false;
   let battleTinted = false;
+  let muzzleExposure = 1;
+  let muzzleCards = 1;
 
   // --- sink: recipes -> companion pools (scratch copies, no allocation) ----
   const sink: CineSink = {
@@ -602,6 +604,22 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
     if (n) canisters.instanceMatrix.needsUpdate = true;
   }
 
+  /** Scene light -> media tint, night factor and the muzzle exposure discipline. */
+  function refreshEnvironment(): void {
+    lightTintFromRig(scene, tint);
+    particles.sharing.uLightTint.value.copy(tint);
+    const lum = 0.2126 * tint.r + 0.7152 * tint.g + 0.0722 * tint.b;
+    env.night = cineClamp((0.85 - lum) / 0.6, 0, 1);
+    // night discipline: the battle muzzle flash is tuned against daylight;
+    // against a moonlit frame it clipped the whole front of the tank
+    const exposure = quality === 'cinematic' ? 1 - 0.6 * env.night : 1;
+    const cards = quality === 'cinematic' ? 1 - 0.42 * env.night : 1;
+    if (exposure !== muzzleExposure || cards !== muzzleCards) {
+      muzzleExposure = exposure; muzzleCards = cards;
+      port.setMuzzleExposure(exposure, cards);
+    }
+  }
+
   function liveActivity(): boolean {
     return particles.softParticles.isActive() || spriteGeo.instanceCount > 0;
   }
@@ -646,6 +664,7 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
         battleTinted = tintBattle;
       }
       port.setColumnCap(quality === 'cinematic' ? 12 : null);
+      refreshEnvironment();
     },
     get trackDust() { return trackDustOn; },
     setTrackDust(on) { trackDustOn = on; },
@@ -661,13 +680,13 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       if (borrowed) borrowed.intensity = 0;
       if (explosionDriven) { explosionLight.distance = explosionSaved.distance; explosionDriven = false; }
     },
-    beginEffect(atS) { env.nowS = atS; },
+    beginEffect(atS) {
+      env.nowS = atS;
+      refreshEnvironment();
+    },
     update(_dtS, nowS, shells, tracks) {
       env.nowS = nowS;
-      lightTintFromRig(scene, tint);
-      particles.sharing.uLightTint.value.copy(tint);
-      const lum = 0.2126 * tint.r + 0.7152 * tint.g + 0.0722 * tint.b;
-      env.night = cineClamp((0.85 - lum) / 0.6, 0, 1);
+      refreshEnvironment();
       if (trackDustOn && tracks.length) registerTracks(tracks);
       tickEmitters(nowS);
       firePulses(nowS);
@@ -836,6 +855,8 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       api.reset();
       if (battleTinted) { port.setLightTintShading(false); battleTinted = false; }
       port.setColumnCap(null);
+      port.setMuzzleExposure(1, 1);
+      muzzleExposure = 1; muzzleCards = 1;
       port.setLateFxActive(null);
       if (borrowed && borrowedSaved) {
         borrowed.color.setHex(borrowedSaved.color);

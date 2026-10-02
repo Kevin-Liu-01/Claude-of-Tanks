@@ -359,6 +359,11 @@ export interface FxCinematicPort {
   setColumnCap(cap: number | null): void;
   /** Ambient-tinted shading of the battle pools' normal-blended media. */
   setLightTintShading(on: boolean): void;
+  /**
+   * Night exposure discipline for Studio cinematic shots: scales the pooled
+   * muzzle light and the additive muzzle/flash card intensity (1 = battle).
+   */
+  setMuzzleExposure(light: number, cards: number): void;
   stampTrackPrint(pos: THREE.Vector3, dir: THREE.Vector3, water: boolean, surface: TrackSurface): void;
   spawnScorch(x: number, z: number, radius: number): void;
   spawnShockRing(x: number, z: number, ageS: number, scaleK: number, alphaK: number): void;
@@ -1265,6 +1270,8 @@ function* createFxSteps(
   // Studio cinematic companion activity (FxCinematicPort.setLateFxActive);
   // always null in battle.
   let extraLateFxActive: (() => boolean) | null = null;
+  // Studio night exposure scale for the pooled muzzle light (always 1 in battle).
+  let muzzleLightScale = 1;
   group.userData.softParticles = {
     ...particles.softParticles,
     isActive: () => particles.softParticles.isActive()
@@ -4501,6 +4508,7 @@ function* createFxSteps(
   }) : null;
 
   let cinematicPortState: FxCinematicPort | null = null;
+  const muzzleCardBase = new Map<THREE.ShaderMaterial, number>();
   const fx: FxRuntime = {
     group,
 
@@ -4851,7 +4859,7 @@ function* createFxSteps(
       // the brightest lit surface is the muzzle itself.
       _sv.copy(pos).addScaledVector(dir, -0.15);
       _sv.y += 0.10;
-      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * lightK, 0);
+      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * lightK * muzzleLightScale, 0);
     },
 
     /** Tank-on-tank metal contact: lateral sparks, track debris and a low
@@ -5490,6 +5498,14 @@ function* createFxSteps(
           capColumns();
         },
         setLightTintShading: (on) => particles.setLightTintShading(on),
+        setMuzzleExposure: (light, cards) => {
+          muzzleLightScale = light;
+          for (const pool of ['flash', 'jet'] as const) {
+            const material = particles.pools[pool].mesh.material as THREE.ShaderMaterial;
+            if (!muzzleCardBase.has(material)) muzzleCardBase.set(material, material.uniforms.uIntensity.value);
+            material.uniforms.uIntensity.value = (muzzleCardBase.get(material) ?? 1) * cards;
+          }
+        },
         stampTrackPrint,
         spawnScorch,
         spawnShockRing,
@@ -5548,7 +5564,7 @@ function* createFxSteps(
       // onto the mantlet/hull front, but the hottest lit metal is the muzzle.
       _sv.copy(muzzlePos).addScaledVector(dir, -0.18);
       _sv.y += 0.10;
-      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (rocket ? 0.3 : 1), ageS);
+      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (rocket ? 0.3 : 1) * muzzleLightScale, ageS);
     },
 
     /**

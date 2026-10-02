@@ -24,6 +24,7 @@ function fakePort() {
     setLateFxActive: (fn) => { log.lateFx = fn; },
     setColumnCap: (cap) => { log.columnCap = cap; },
     setLightTintShading: (on) => { log.tinted = on; },
+    setMuzzleExposure: (light, cards) => { log.muzzle = [light, cards]; },
     stampTrackPrint: () => { log.prints++; },
     spawnScorch: () => { log.scorches++; },
     spawnShockRing: () => { log.rings++; },
@@ -168,6 +169,7 @@ assert.equal(a.log.tinted, false, 'battle quality restores the untinted battle s
 assert.equal(a.log.columnCap, null, 'battle quality restores the battle column budget');
 a.cin.dispose();
 assert.equal(a.log.lateFx, null, 'dispose releases the late-pass hook');
+assert.deepEqual(a.log.muzzle, [1, 1], 'dispose restores the battle muzzle exposure');
 
 // 6. stable effect seeds
 assert.equal(cineSeed(5000, 'fx1'), cineSeed(5000, 'fx1'));

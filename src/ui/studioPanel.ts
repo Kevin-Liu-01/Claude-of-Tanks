@@ -22,6 +22,7 @@ import { PRODUCT_STATS } from '../productStats.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import { createInfoButton, type InfoButton } from './contextInfo.ts';
 import { getLocale, t } from './i18n.ts';
+import { STUDIO_FX_PARAMS } from '../game/studioFxSettings.ts';
 import { hrefForLocale } from './localeRouting.ts';
 
 const STUDIO_GUIDES = {
@@ -86,6 +87,7 @@ interface StudioEffect {
   readonly id: string;
   readonly type: string;
   readonly tMs: number;
+  readonly params?: object;
   readonly selected?: boolean;
   readonly actor?: string | number | null;
   readonly from?: readonly number[];
@@ -183,6 +185,10 @@ export interface StudioPanelApi {
   selectActor(uid: string): RuntimeValue;
   effect(recipe: StudioEffectRecipe): RuntimeValue;
   clearEffects(): RuntimeValue;
+  setFxQuality(quality: 'battle' | 'cinematic'): RuntimeValue;
+  readonly fxQuality: string;
+  setTrackDust(on: boolean): RuntimeValue;
+  readonly trackDust: boolean;
   advanceFx(milliseconds: number): RuntimeValue;
   setStoryboardDuration(milliseconds: number): RuntimeValue;
   setTimeScale(scale: number): RuntimeValue;
@@ -976,6 +982,87 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       S.effect({ type: 'engine_smoke', actor: a.uid, params: { off: true } });
     })],
   ]);
+  // media r5 cinematic pyrotechnics: quality toggles + the new effect types
+  const cineGroup = el('div', 'fxg');
+  cineGroup.appendChild(el('div', 'gh', t('studioPanel.fxGroup.cinematic')));
+  const cineToggles = el('div', 'grid');
+  const cineBtn = el('button', null, t('studioPanel.fx.cinematicOff'));
+  cineBtn.addEventListener('click', () => S.setFxQuality(S.fxQuality === 'cinematic' ? 'battle' : 'cinematic'));
+  const dustBtn = el('button', null, t('studioPanel.fx.trackDustOff'));
+  dustBtn.addEventListener('click', () => S.setTrackDust(!S.trackDust));
+  cineToggles.append(cineBtn, dustBtn);
+  cineGroup.appendChild(cineToggles);
+  secFx.appendChild(cineGroup);
+  function refreshCinematicToggles(): void {
+    const on = S.fxQuality === 'cinematic';
+    cineBtn.classList.toggle('on', on);
+    cineBtn.textContent = t(on ? 'studioPanel.fx.cinematicOn' : 'studioPanel.fx.cinematicOff');
+    dustBtn.classList.toggle('on', S.trackDust);
+    dustBtn.textContent = t(S.trackDust ? 'studioPanel.fx.trackDustOn' : 'studioPanel.fx.trackDustOff');
+  }
+  fxGroup(t('studioPanel.fxGroup.cinematic'), [
+    [t('studioPanel.fx.smokeScreen'), () => withSelected((a) => S.effect({ type: 'smoke_screen', actor: a.uid }))],
+    [t('studioPanel.fx.flare'), () => selOr((a) => (a
+      ? S.effect({ type: 'flare', actor: a.uid })
+      : atMarker(() => S.effect({ type: 'flare' }))))],
+    [t('studioPanel.fx.embers'), () => selOr((a) => (a
+      ? S.effect({ type: 'embers', actor: a.uid })
+      : atMarker(() => S.effect({ type: 'embers' }))))],
+    [t('studioPanel.fx.fireField'), () => atMarker(() => S.effect({ type: 'fire_field' }))],
+    [t('studioPanel.fx.shockwave'), () => atMarker(() => S.effect({ type: 'shockwave' }))],
+    [t('studioPanel.fx.debris'), () => atMarker(() => S.effect({ type: 'debris' }))],
+    [t('studioPanel.fx.explHuge'), () => atMarker(() => S.effect({ type: 'explosion', params: { size: 'huge' } })), true],
+  ]);
+  // parameters of the selected layer (cinematic types): applied on release,
+  // replaying the stack once per change
+  const fxParamsBox = el('div', 'fxg');
+  fxParamsBox.hidden = true;
+  secFx.insertBefore(fxParamsBox, fxStack.nextSibling);
+  let fxParamsKey = '';
+  const fxParamRows = new Map<string, { input: HTMLInputElement; val: HTMLElement }>();
+  function rebuildFxParams(effects: readonly StudioEffect[]): void {
+    const effect = effects.find((item) => item.selected) ?? null;
+    const defs = effect ? STUDIO_FX_PARAMS[effect.type] : undefined;
+    if (!effect || !defs) {
+      fxParamsBox.hidden = true;
+      fxParamsKey = '';
+      return;
+    }
+    fxParamsBox.hidden = false;
+    const key = `${effect.id}:${effect.type}`;
+    if (key !== fxParamsKey) {
+      fxParamsKey = key;
+      fxParamsBox.textContent = '';
+      fxParamRows.clear();
+      fxParamsBox.appendChild(el('div', 'gh', t('studioPanel.fxParams.title')));
+      for (const def of defs) {
+        const row = el('div', 'row');
+        row.appendChild(el('label', 'k', t(def.label)));
+        const input = document.createElement('input');
+        input.type = 'range';
+        input.min = String(def.min);
+        input.max = String(def.max);
+        input.step = String(def.step);
+        input.setAttribute('aria-label', t(def.label));
+        const val = el('div', 'val', '');
+        input.addEventListener('input', () => { val.textContent = input.value; });
+        input.addEventListener('change', () => {
+          S.updateEffect(effect.id, { params: { [def.key]: Number(input.value) } });
+        });
+        row.append(input, val);
+        fxParamsBox.appendChild(row);
+        fxParamRows.set(def.key, { input, val });
+      }
+    }
+    for (const def of defs) {
+      const row = fxParamRows.get(def.key);
+      if (!row) continue;
+      const raw = (effect.params as Readonly<Record<string, unknown>> | undefined)?.[def.key];
+      const value = typeof raw === 'number' && Number.isFinite(raw) ? raw : def.value;
+      row.input.value = String(value);
+      row.val.textContent = String(Math.round(value * 100) / 100);
+    }
+  }
   effectsGroup.body.appendChild(secFx);
 
   // === GLOBAL group ===
@@ -1365,6 +1452,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   function rebuildEffectList() {
     fxStack.textContent = '';
     const effects = S.listEffects();
+    rebuildFxParams(effects);
+    refreshCinematicToggles();
     if (!effects.length) {
       fxStack.appendChild(el('div', 'fxempty', t('studioPanel.fx.empty')));
       return;
