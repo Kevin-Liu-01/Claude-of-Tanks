@@ -1,6 +1,7 @@
 import { createCustomSelect } from './customSelect.ts';
 import { guidedMissileSlot, specialActionKind, SPECIAL_ACTION_KINDS } from '../sim/specialActionPolicy.ts';
-import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
+// Counts only (4.8 kB): the 217 kB mount-geometry inventory stays on the battle path (FE-P2).
+import { GARAGE_AUXILIARY_SUMMARY } from './garageAuxiliarySummary.generated.ts';
 import { movementDispersionFactor } from '../sim/movementDispersion.ts';
 import { createBattleArrangementPanel } from './battleArrangementPanel.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -2489,13 +2490,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   function specialSystemSection(spec: GarageTankSpec, reloadS: number): string {
     const special = garageSpecialSystem(spec, reloadS);
-    const kit = auxiliaryCapabilities(spec);
+    const [smokeLaunchers = 0, drivingLights = 0, roofGuns = 0] = GARAGE_AUXILIARY_SUMMARY[spec.id] ?? [];
     const controls: {label:string;icon:string;detail:string}[] = [];
     if(special) controls.push({label:special.shortLabel,icon:special.icon,detail:special.detail});
     if(guidedMissileSlot(spec)>=0&&specialActionKind(spec)!==SPECIAL_ACTION_KINDS.GUIDED_MISSILE&&spec.gun.shells.some(shell=>!shell.guided))controls.push({label:'ATGM',icon:'missileRack',detail:t('systems.atgm.help')});
-    if(kit?.smoke.length) controls.push({label:t('systems.smoke'),icon:'smoke',detail:t('systems.smoke.help')});
-    if(kit?.lights) controls.push({label:t('systems.lights'),icon:'lightbulb',detail:t('systems.lights.help')});
-    if(kit?.guns.length) controls.push({label:t('systems.roofGun'),icon:'roofGun',detail:t('systems.roofGun.help')});
+    if(smokeLaunchers) controls.push({label:t('systems.smoke'),icon:'smoke',detail:t('systems.smoke.help')});
+    if(drivingLights) controls.push({label:t('systems.lights'),icon:'lightbulb',detail:t('systems.lights.help')});
+    if(roofGuns) controls.push({label:t('systems.roofGun'),icon:'roofGun',detail:t('systems.roofGun.help')});
     if(!controls.length)return '';
     return `<section class="cot-stat-section cot-special-section">` +
       statSectionTitle('missileRack', t('systems.title'), '', 'Special system') +

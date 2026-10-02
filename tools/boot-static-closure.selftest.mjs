@@ -57,6 +57,8 @@ const FORBIDDEN = Object.freeze({
   'src/game/state.ts': 'the solo battle authority loads behind game/soloBattleAccess.ts',
   'src/game/ai.ts': 'bot brains are battle-only',
   'src/sim/damage.ts': 'combat resolution is battle-only',
+  'src/vehicles/auxiliaryInventory.generated.ts':
+    '217 kB of mount geometry; the garage reads src/ui/garageAuxiliarySummary.generated.ts',
 });
 const boot = staticImportClosure('src/main.ts', { root: ROOT });
 assert.ok(boot.size > 200, `the walker reached only ${boot.size} modules from src/main.ts`);
