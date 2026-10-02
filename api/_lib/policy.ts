@@ -9,7 +9,7 @@
  * - Copies that cannot import it are pinned to it by `tools/deployment-policy.selftest.mjs`: the Workers'
  *   `ALLOWED_ORIGINS` (`cloudflare/rooms/wrangler*.jsonc`, `cloudflare/telemetry/wrangler.jsonc`) and the dependency-free
  *   entry telemetry module (`src/entry/telemetry.ts`); the inline boot watchdog's two literals in `index.html` by
- *   `src/entry/inlineWatchdogSink.selftest.mjs`.
+ *   `src/entry/inlineWatchdogSink.selftest.mjs`; vercel.json's alias-host redirects by `tools/vercel-routes.selftest.mjs`.
  *
  * A Worker's `ALLOWED_ORIGINS` reaches production only with that Worker's next deploy (`wrangler deploy`).
  */
@@ -18,7 +18,8 @@
 export const OFFICIAL_SITE_HOST = 'cot.kevinliu.studio';
 /** The canonical origin: canonical links, Open Graph URLs, the only origin the rooms Worker admits. */
 export const CANONICAL_ORIGIN = `https://${OFFICIAL_SITE_HOST}`;
-/** Production domains that serve the same deployment under another name. */
+/** Production domains that serve the same deployment under another name; vercel.json answers them 308 to the canonical
+ * origin (INFRA-P5). */
 export const ALIAS_HOSTS: readonly string[] = Object.freeze([
   'claudeoftanks.kevinliu.studio',
   'claude-of-tanks.vercel.app',

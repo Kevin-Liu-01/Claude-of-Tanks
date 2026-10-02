@@ -9,6 +9,7 @@
 // global rule would redirect a canonical URL; `true` would redirect every other one.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { ALIAS_HOSTS, CANONICAL_ORIGIN, OFFICIAL_SITE_HOST, PROTECTED_PRODUCTION_HOST } from '../api/_lib/policy.ts';
 import { PUBLIC_ROUTE_RECORDS } from '../src/ui/localeRouting.ts';
 import { resolveVercelRequest, vercelJsonRoutes } from './vercelRoutes.test-support.mjs';
 
@@ -136,6 +137,41 @@ assert.deepEqual(securityHeadersOf(resolve('/api/ice').headers), SECURITY_HEADER
 assert.ok(!config.headers.some((rule) => rule.headers.some(({ key }) => /^content-security-policy$/i.test(key))),
   'no enforced Content-Security-Policy in this wave (it needs build-time inline-script hashes)');
 
+// INFRA-P5 (2026-10-01): the alias domains answer 308 to the canonical origin with path and query — 18 % of document
+// loads arrived there, where multiplayer is unavailable (the rooms Worker admits cot.kevinliu.studio alone). The
+// condition is host equality, so deployment URLs (the release step verifies those), the protected production
+// domain and look-alike hosts are untouched and resolve exactly as the canonical host does.
+const hostRules = config.redirects.filter((rule) => rule.has?.some((item) => item.type === 'host'));
+assert.deepEqual(hostRules.map((rule) => rule.has[0].value.eq).sort(), [...ALIAS_HOSTS].sort(),
+  'one redirect per alias host of api/_lib/policy.ts, by exact host equality');
+for (const rule of hostRules) {
+  assert.equal(rule.source, '/:path(.*)', 'the root and every path (strict /:path* would miss "/")');
+  assert.equal(rule.destination, `${CANONICAL_ORIGIN}/:path`);
+  assert.equal(rule.permanent, true, '308 keeps the method and body');
+}
+const hostSamples = [['/', ''], ['/', '?room=HKP5XW&host=Commander%2009HY&mode=lan'], ['/docs/build', ''], ['/cn/', '?x=1'],
+  ['/studio/', ''], ['/assets/main-hc1qihnq.js', ''], ['/api/ice', ''], ['/surface-studio', '?y=2'], ['/nope', '']];
+let aliasRedirects = 0;
+for (const host of ALIAS_HOSTS) {
+  for (const [path, query] of hostSamples) {
+    const moved = resolveVercelRequest(after, { host, path, query }, files);
+    assert.deepEqual([moved.status, moved.location], [308, `${CANONICAL_ORIGIN}${path}${query}`], `${host}${path}${query} → the canonical origin`);
+    const old = resolveVercelRequest(before, { host, path, query }, files);
+    assert.ok(!(old.location ?? '').startsWith(CANONICAL_ORIGIN), `${host}${path} was not sent to the canonical origin before`);
+    aliasRedirects++;
+  }
+  assert.equal(resolveVercelRequest(after, { host: host.toUpperCase(), path: '/' }, files).status, 308, 'host case does not matter');
+}
+const untouchedHosts = [OFFICIAL_SITE_HOST, PROTECTED_PRODUCTION_HOST, 'claude-of-tanks-abc123def-kl01s-projects.vercel.app',
+  'claude-of-tanks-git-main-kl01s-projects.vercel.app', 'claude-of-tanks-1a2b3c4d5.vercel.app', 'claudeoftanks.kevinliu.studio.evil.test',
+  'xclaudeoftanks.kevinliu.studio', 'evil-claude-of-tanks.vercel.app', 'claude-of-tanks.vercel.app.evil.test', 'localhost'];
+for (const host of untouchedHosts) {
+  for (const [path, query] of hostSamples) {
+    assert.deepEqual(resolveVercelRequest(after, { host, path, query }, files), resolveVercelRequest(after, { path, query }, files),
+      `${host}${path}${query} resolves as the canonical host does`);
+  }
+}
+
 // The pattern rules name exactly the public docs topics (src/ui/localeRouting.ts PUBLIC_ROUTE_RECORDS).
 const topicAlternation = (source) => /:topic\(([^)]+)\)/.exec(source)?.[1].split('|') ?? null;
 const topicRules = [...config.rewrites, ...config.redirects].filter((rule) => rule.source.includes(':topic('));
@@ -145,4 +181,5 @@ assert.ok(config.rewrites.length <= 6 && config.rewrites.length < BEFORE.rewrite
 
 console.log(`vercel-routes.selftest: ${compared} requests resolve as on deploy 163 (${BEFORE.rewrites.length} literal rewrites → `
   + `${config.rewrites.length} patterns); ${slashRedirects.size} slash forms now 308 to their canonical page; every `
-  + 'non-redirect answer carries the five security headers');
+  + `non-redirect answer carries the five security headers; ${aliasRedirects} alias requests 308 to ${CANONICAL_ORIGIN}, `
+  + `${untouchedHosts.length} other hosts untouched`);

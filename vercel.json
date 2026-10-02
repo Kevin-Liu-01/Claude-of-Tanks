@@ -6,6 +6,8 @@
     "api/*.ts": { "maxDuration": 10 }
   },
   "redirects": [
+    { "source": "/:path(.*)", "has": [{ "type": "host", "value": { "eq": "claudeoftanks.kevinliu.studio" } }], "destination": "https://cot.kevinliu.studio/:path", "permanent": true },
+    { "source": "/:path(.*)", "has": [{ "type": "host", "value": { "eq": "claude-of-tanks.vercel.app" } }], "destination": "https://cot.kevinliu.studio/:path", "permanent": true },
     { "source": "/surface-studio", "destination": "/gallery?layer=markup", "permanent": true },
     { "source": "/cn/surface-studio", "destination": "/cn/gallery?layer=markup", "permanent": true },
     { "source": "/:page(home|docs|gallery|studio)/", "destination": "/:page", "permanent": true },

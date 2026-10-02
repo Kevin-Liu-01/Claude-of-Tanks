@@ -101,6 +101,12 @@ canonical URL, which is why there is no global `trailingSlash` setting.
 `tools/vercel-routes.selftest.mjs` resolves every route through the conversion
 `vercel build` runs (`@vercel/routing-utils`) against the frozen deploy-163 table.
 
+The alias domains `claudeoftanks.kevinliu.studio` and `claude-of-tanks.vercel.app`
+answer 308 to `https://cot.kevinliu.studio` with path and query (host-equality
+redirects, the hosts from `api/_lib/policy.ts`); deployment URLs and the protected
+production domain are untouched, so the release step still verifies a deployment
+on its own URL.
+
 Every response also carries `X-Content-Type-Options: nosniff`,
 `Referrer-Policy: strict-origin-when-cross-origin`, a `Permissions-Policy` that
 denies camera, microphone, geolocation, payment, USB, serial, HID and Bluetooth,
