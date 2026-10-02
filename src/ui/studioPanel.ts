@@ -2,6 +2,7 @@ import { BATTLE_TIMES, type BattleTimeOfDay } from '../engine/battleWeatherPolic
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { ProductionFormat, ProductionRigId } from '../game/studioProduction.ts';
 import { mountStudioProductionPanel, STUDIO_PRODUCTION_CSS } from './studioProductionPanel.ts';
+import { mountStudioPicturePanel, type StudioPicturePanelApi } from './studioPicturePanel.ts';
 /**
  * studioPanel.ts — SCENE STUDIO control panel (src/game/studio.ts's UI).
  *
@@ -27,7 +28,7 @@ import { hrefForLocale } from './localeRouting.ts';
 const STUDIO_GUIDES = {
   battlefield: 'environment', map: 'environment', tanks: 'actors', addTanks: 'actors',
   selectedTank: 'actors', effects: 'effects', layersEvents: 'effects', cinematics: 'timeline',
-  storyboard: 'timeline', camera: 'camera', output: 'output', productionArchive: 'recipe',
+  storyboard: 'timeline', camera: 'camera', picture: 'camera', output: 'output', productionArchive: 'recipe',
 } as const;
 
 const STUDIO_GROUP_INFO_KEYS = Object.freeze({
@@ -45,6 +46,7 @@ const STUDIO_SECTION_INFO_KEYS = Object.freeze({
   layersEvents: 'studioPanel.info.section.layersEvents',
   storyboard: 'studioPanel.info.section.storyboard',
   camera: 'studioPanel.info.section.camera',
+  picture: 'studioPanel.info.section.picture',
   output: 'studioPanel.info.section.output',
   productionArchive: 'studioPanel.info.section.productionArchive',
 } as const);
@@ -145,7 +147,7 @@ interface StudioEffectRecipe {
   readonly params?: Readonly<Record<string, RuntimeValue>>;
 }
 
-export interface StudioPanelApi {
+export interface StudioPanelApi extends StudioPicturePanelApi {
   readonly MAP_IDS: readonly string[];
   readonly TANK_IDS: readonly string[];
   readonly CAMO_PATTERN_IDS: readonly string[];
@@ -252,6 +254,7 @@ interface StudioPanelRuntime {
   refreshTime(): void;
   refreshStoryboard(): void;
   refreshMap(): void;
+  refreshPicture(): void;
   refreshAll(): void;
   tick(dt: number): void;
 }
@@ -1100,6 +1103,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const spd = sliderRow('Speed', 2, 60, 1, (v) => { S._internal.cam.speed = v; });
   secCam.append(fov.row, roll.row, spd.row);
   globalGroup.body.appendChild(secCam);
+  const secPicture = section('picture', t('studioPanel.section.picture'), t('studioPanel.section.pictureSub'));
+  const picturePanel = mountStudioPicturePanel(S, secPicture, {
+    sliderRow, selectedActor: () => S._internal.selected, flash: (text) => flashBusy(text),
+  });
+  globalGroup.body.appendChild(secPicture);
 
   // === OUTPUT group ===
   const outputGroup = panelGroup('05', 'output', t('studioPanel.panel.output.title'), t('studioPanel.panel.output.sub'));
@@ -1665,8 +1673,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         card.setAttribute('aria-selected', String(cardId === id));
       }
     },
+    refreshPicture() { picturePanel.refresh(); },
     refreshAll() {
       api.refreshMap();
+      api.refreshPicture();
       api.refreshActors();
       api.refreshEffects();
       api.refreshCamera();
