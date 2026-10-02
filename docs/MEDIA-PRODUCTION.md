@@ -24,8 +24,17 @@ For another production, save Scene Studio JSON, including `timeOfDay` and a stor
 ```sh
 npm run media:capture -- --task=video --scene=shots/my-scene.json --times=sunset --formats=landscape,portrait,square --fps=60 --frames=360 --out=shots/my-film
 npm run media:capture -- --task=maps --maps=coastal,fjord --times=day,sunset,night --out=shots/light-study
+npm run media:capture -- --task=maps --maps=alpine,fjord,desert --times=dawn,golden,dusk --sun=back --out=shots/backlit-study
 npm run media:capture -- --task=shore --maps=coastal --out=shots/coast-review
 ```
+
+`--times` accepts every Scene Studio time: `dawn`, `morning`, `day`, `golden`, `sunset`, `dusk` (blue hour) and
+`night` ([Studio light](STUDIO.md#light-times-of-day-and-sun-direction)); Mars and the Moon render their authored day
+for every time. For the map overviews, `--sun=back|rim|side|front` turns each map's sun against its own overview camera
+(`back` = the camera looks into the sun: backlit relief and rim-lit edges; `rim` = 32° off that axis, keeping the
+disc out of frame; `side` = across the frame; `front` = behind the camera) and adds the mode to the file names;
+`map` (the default) keeps the authored bearing. A film or a `--scene` carries its own `light` block instead.
+`--port` serves the capture on another port (default 5378).
 
 Every batch retains its source fingerprint (including uncommitted rendering code), settings, camera/actor recipes, pixel dimensions, renderer, file hashes and video frame-count verification. `--resume=true` reuses only unchanged, complete results from the same sources and settings. A failed or changed capture cannot be published. Keep runtime code unchanged during a capture. The shared capture lock serializes GPU work; the private server and browser are released when the run ends. Studio settles cloud history at the requested capture viewport without advancing actors or FX, so a still or first encoded frame does not inherit the previous camera's cloud history.
 

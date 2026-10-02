@@ -3282,6 +3282,8 @@
   "studioPanel.light.frontHint": "Sun behind the camera: evenly lit subjects",
   "studioPanel.light.map": "Map",
   "studioPanel.light.mapHint": "Return the sun to the battlefield's own bearing",
+  "studioPanel.light.headlights": "Headlights",
+  "studioPanel.light.headlightsHint": "At dusk and night, light the tanks' headlights (off for a blacked-out column)",
   "studioPanel.light.spaceNote": "Space battlefields keep their authored light; only the sun direction can change.",
   "garage.battle.setupDescription": "Choose how you play",
   "garage.battle.galaxySky": "Galaxy sky",

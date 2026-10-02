@@ -3180,6 +3180,9 @@ const studioAccess = createStudioAccess({
         });
         studioLightLive = runtime;
         return runtime;
+      }).catch((error: unknown) => {
+        studioLightRuntime = null; // a failed chunk fetch stays retryable
+        throw error;
       });
       return (await studioLightRuntime).apply(time, light);
     },

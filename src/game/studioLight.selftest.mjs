@@ -11,6 +11,8 @@ import {
 import { createStudioLightRuntime, studioAuthoredSky } from './studioLightRuntime.ts';
 import { getVehicleReadabilityScale, setVehicleReadabilityScale } from '../vehicles/vehicleReadability.ts';
 import { MARS_SKY_PRESET } from '../engine/marsAtmosphere.ts';
+import { HORIZON_SEGMENTS } from '../world/maps/horizon.ts';
+import { createHorizonReliefField, resolveHorizonRelief } from '../world/horizonRelief.ts';
 
 // --- the time list: a superset of the battle times, battles untouched -------------------------------------
 assert.deepEqual([...STUDIO_TIMES], ['dawn', 'morning', 'day', 'golden', 'sunset', 'dusk', 'night']);
@@ -44,6 +46,9 @@ assert.throws(() => normalizeStudioLight({ sunAzimuthDeg: Number.NaN }), /finite
 assert.throws(() => normalizeStudioLight({ sunAzimuthDeg: '90' }), /finite number/);
 assert.throws(() => normalizeStudioLight({ sunAzimuth: 90 }), /Unknown Studio light field/);
 assert.throws(() => normalizeStudioLight([90]), /object/);
+assert.equal(normalizeStudioLight({ headlights: true }), null, 'headlights on is the default and is not stored');
+assert.deepEqual(normalizeStudioLight({ headlights: false, sunAzimuthDeg: 10 }), { sunAzimuthDeg: 10, headlights: false });
+assert.throws(() => normalizeStudioLight({ headlights: 'off' }), /boolean/);
 assert.throws(() => normalizeStudioLight(5), /object/);
 
 // --- sun direction convention (sky.ts setFromSphericalCoords(1, 90° - el, az)) ---------------------------
@@ -237,4 +242,55 @@ runtime.restore();
 assert.equal(active.snapshot(), secondPristine, 'Studio exit restores the battlefield it relit');
 assert.equal(getVehicleReadabilityScale(), 1, 'Studio exit restores readability');
 assert.equal(runtime.plan, null);
-console.log(`studioLight.selftest: ${STUDIO_TIMES.length} times, bands, light block, distinct relative recipes, space-map rule and exact relight restore pass`);
+// --- the ring's cast-shadow re-bake: a synthetic ridge ring with its relief field and atlas --------------------
+{
+  const n = HORIZON_SEGMENTS, rows = 8, stride = n + 1;
+  const positions = new Float32Array(stride * rows * 3), uvs = new Float32Array(stride * rows * 2);
+  for (let row = 0; row < rows; row++) {
+    const r = 420 + row * 150;
+    for (let k = 0; k <= n; k++) {
+      const a = (k % n) / n * Math.PI * 2, i = row * stride + k;
+      // a ridge at the third row: a tall face that shadows the rows behind it under a low sun
+      const h = row === 2 ? 180 + 40 * Math.sin(a * 7) : row > 2 ? 30 : 10;
+      positions.set([Math.cos(a) * r, h, Math.sin(a) * r], i * 3);
+      uvs.set([k / n * 10, h / 220], i * 2);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  const W = 256, Hh = 32;
+  const data = new Uint8Array(W * Hh * 4);
+  for (let i = 0; i < data.length; i += 4) data.set([128, 128, 200, 255], i); // fully sunlit as built
+  const atlas = new THREE.DataTexture(data, W, Hh);
+  const ring = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: new THREE.Color(1.61, 1.61, 1.61) }));
+  ring.name = 'horizon-ring';
+  ring.material.userData.horizonSunDir = { value: new THREE.Vector3(...studioSunDirection(32, 115)) };
+  ring.material.userData.horizonVista = { uniforms: { uVRelief: { value: atlas }, uVReliefAmp: { value: 1 },
+    uVAmbient: { value: 0.5 }, uVSunGain: { value: 1.3 }, uVSkyTint: { value: new THREE.Vector3(1, 1, 1) }, uVFogTint: { value: new THREE.Vector3() } } };
+  Object.defineProperty(ring.userData, 'horizonReliefSource', {
+    value: { field: createHorizonReliefField(7, resolveHorizonRelief('alpine')), maxHeight: 220 }, enumerable: false });
+  const group = new THREE.Group(); group.add(ring);
+  const world = { mapId: 'alpine', group, config: { sky: { ...authored } } };
+  const ringScene = new THREE.Scene();
+  ringScene.userData.sunDirWorld = new THREE.Vector3(...studioSunDirection(32, 115));
+  const ringRuntime = createStudioLightRuntime({ scene: ringScene, getWorld: () => world,
+    applySky: (preset, key) => { const dir = key ?? new THREE.Vector3(...studioSunDirection(preset.sunElevationDeg, preset.sunAzimuthDeg)); ringScene.userData.sunDirWorld.copy(dir); } });
+  const before = data.slice();
+  ringRuntime.apply('golden', { sunAzimuthDeg: 300 });
+  let shadowed = 0, rgbChanged = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < 200) shadowed++;
+    if (data[i] !== before[i] || data[i + 1] !== before[i + 1] || data[i + 2] !== before[i + 2]) rgbChanged++;
+  }
+  assert.ok(shadowed > 0, 'a low, moved sun lays the ridge shadow over the rows behind it');
+  assert.equal(rgbChanged, 0, 'only the sun-visibility channel is re-baked');
+  assert.ok(atlas.version > 0, 'the atlas re-uploads');
+  ringRuntime.apply('day', null);
+  assert.deepEqual(data, before, 'the authored day restores the built atlas byte for byte');
+  ringRuntime.apply('dawn', null);
+  assert.notDeepEqual(data, before, 'a dawn sun at the authored bearing still re-bakes (a lower sun, longer shadows)');
+  ringRuntime.restore();
+  assert.deepEqual(data, before, 'Studio exit restores the atlas');
+}
+console.log(`studioLight.selftest: ${STUDIO_TIMES.length} times, bands, light block, distinct relative recipes, space-map rule, exact relight restore and ring shadow re-bake pass`);

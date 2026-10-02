@@ -3282,6 +3282,8 @@
   "studioPanel.light.frontHint": "太阳位于镜头后方：主体受光均匀",
   "studioPanel.light.map": "地图",
   "studioPanel.light.mapHint": "让太阳回到该战场的原始方位",
+  "studioPanel.light.headlights": "车灯",
+  "studioPanel.light.headlightsHint": "黄昏和夜晚点亮坦克车灯（关闭则为灯火管制车队）",
   "studioPanel.light.spaceNote": "太空战场保留原有光照，只能调整太阳方向。",
   "garage.battle.setupDescription": "选择你的战斗方式",
   "garage.battle.galaxySky": "星河天空",

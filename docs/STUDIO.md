@@ -311,6 +311,63 @@ the visible state), resets the FX pools, and deterministically replays the
 remaining stack to the same `fxTime`. This is why deleting engine smoke,
 burning, a tracer, a detrack, or a kill leaves no orphaned visual state.
 
+## Light: times of day and sun direction
+
+Scene Studio renders seven times of day. They are a Studio-only superset of the battle times: battles keep
+`BATTLE_TIMES` (`day`, `sunset`, `night`), their seeded weights and their presets byte-for-byte. Each Studio time is
+authored relative to the map's own sky (`src/game/studioLight.ts`: multipliers and hue blends over the authored key,
+ambient, haze, fog and clouds), so an overcast map stays overcast at golden hour, a desert keeps its hard key and the
+authored day is exact. Moonlight and the blue-hour glow are absolute keys.
+
+| `timeOfDay` | Sun elevation: default (band) | Look |
+|---|---|---|
+| `dawn` | 4° (1–9°) | sun just clear of the horizon: rose key, lavender haze, soft low-contrast light |
+| `morning` | 17° (12–30°) | clean deep-blue air, crisp shadows, near-white key |
+| `day` | the map's authored sun (10–80° when moved) | the battlefield as authored |
+| `golden` | 11° (6–18°) | rich warm gold, long shadows, a strong key over cool shade |
+| `sunset` | 4.5° (1–8°) | a deep orange key on the horizon, glowing sky, darker land |
+| `dusk` | −4° (−9 to −1°), the set sun | blue hour: deep blue dome over the warm glow band, a faint warm key from the glow (5° up its bearing), windows, street lamps and headlights lit |
+| `night` | 20° (8–70°), the moon | silver moonlight, stars and the moon disc, lamps and headlights lit |
+
+The scene JSON `light` block overrides the sun (the moon at night). `sunAzimuthDeg` is the bearing in the map sky
+convention (0 = +Z, 90 = +X; wraps into [0, 360)); `sunElevationDeg` is clamped into the time's band (at dusk it is
+the set sun's depression). An omitted field keeps the time's own sun: the map's authored bearing and the time's
+default elevation. `setTimeOfDay(time)` keeps a bearing override and drops an elevation override (each time has its
+own band); `setTimeOfDay(time, light)` and `load()` set both. `state()` writes `light` only while an override exists
+and reports the clamped values, so `load(state())` is identity. `getLight()` reports the rendered sun and the band.
+
+Mars and the Moon keep their authored space lighting: every requested time renders `day` (`state()` and
+`timeOfDay` report `day`; the requested time returns on the next terrestrial map). The `light` block still steers
+their sun (elevation 8–60°). The volumetric cloud field keeps the weather offset and wind of the map's authored sun at
+every time and under a moved sun, so a series of times or bearings shares one sky.
+
+Changing the light re-keys or rebuilds everything derived from it, and a direct load matches a switch:
+
+- the atmosphere's sky-view LUT and summary, the PMREM environment (`SkyEnvironmentCache` keys the sun, the preset
+  and the atmosphere key), the horizon/fog colour cache, the baked cloud decks' sun rotation;
+- the CSM key (direction, colour, intensity; every cascade re-renders), hemisphere, anti-sun fill and ground bounce;
+- the horizon ring and far range (unlit, baked at build): their sun direction, key/ambient gains, sky and haze tints
+  and an overall dim follow the time; the ring atlas's sun visibility (the ridges' cast shadows, also read by the
+  terrain's ring bands) is re-baked from the ring geometry for a lower or moved sun; the terrain's wall sky light
+  turns with the key;
+- the volumetric cloud history and TAA restart, so a still or a film's first frame never blends the previous light;
+- the vehicle readability floors scale with the light; dusk and night add a Studio-owned lamp pool (the world's
+  authored windows, lamps and the actors' headlights; budget 4 spot / 2 point lights on desktop).
+
+Aerial perspective, sun shafts, the lens flare and water read the live sun every frame. A return to the authored day,
+a battlefield switch and Studio exit restore every mutated value exactly (the battlefield stays cached for battles).
+
+**Panel.** The Battlefield section's **Time of day** select lists the seven times (a space map enables only Day).
+The **Sun** compass is north-up like the tactical map (world +Z up, −X right): the orange dot is the sun (pale at
+night), the blue wedge is the camera's bearing; drag around it or use the arrow keys (Shift = 15°). **Back** puts the
+sun ahead of the camera (backlit subjects, bright rims), **Rim** 32° off that axis (rim light with the disc out of
+frame), **Side** across the frame, **Front** behind the camera; **Map** returns to the authored bearing. **Height**
+moves the sun inside the time's band; **Auto** returns to the time's default. Slider-rate changes coalesce to one
+apply; time changes run behind the loading cover.
+
+**Scripting a backlit shot.** The camera bearing is `atan2(lookAt.x − pos.x, lookAt.z − pos.z)` in degrees; set
+`light.sunAzimuthDeg` to it for a backlit hero, +32° for rim light, +180° for front light.
+
 ## Known limitations
 
 - **Camo is per-spec**: two actors of the same tank id share one paint bake

@@ -71,7 +71,13 @@ skip), `battleEndingCamera.ts` poses its camera beats through the rig, and
 `killcamAccess.ts` owns retryable replay acquisition and its stable inactive
 facade; `killcam.ts` owns replay presentation, while `studio.ts` renders the
 Scene Studio and `studioTimeline.ts` owns its strict JSON-safe storyboard and
-allocation-free camera/actor sampling contract.
+allocation-free camera/actor sampling contract. `studioLight.ts` owns the pure
+Studio times of day (a superset of the battle times, authored relative to each
+map's sky) and the scene `light` block; `studioLightRuntime.ts`, demand-loaded
+only by main.ts's Studio port, applies a plan over the battle owner's authored
+day (sky, key, readability, the baked horizon light, the ring's shadow re-bake,
+blue-hour/night lamps) and restores every value on a return to day, a world
+switch or Studio exit. Battles never import either file.
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
 residency, switch convergence, and battle visual handoff; it composes
 `garagePedestalPreloader.ts` for exact card-intent and quiet neighbor warming.

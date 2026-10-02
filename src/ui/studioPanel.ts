@@ -129,6 +129,7 @@ interface StudioSpecInfo {
 
 interface StudioLightState {
   readonly time: StudioTimeOfDay;
+  readonly headlights: boolean;
   readonly sunAzimuthDeg: number | null;
   readonly sunElevationDeg: number | null;
   readonly override: StudioLight | null;
@@ -736,6 +737,12 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const sunNote = el('div', 'sunNote', '');
   sunSide.append(sunRead, sunPresets);
   sunBlock.append(dial, sunSide);
+  const lampRow = el('div', 'row');
+  const lampBtn = el('button', null, t('studioPanel.light.headlights'));
+  lampBtn.type = 'button';
+  lampBtn.title = t('studioPanel.light.headlightsHint');
+  lampBtn.addEventListener('click', () => queueLight({ headlights: !S.getLight().headlights }));
+  lampRow.append(lampBtn, sunNote);
   const elevation = sliderRow(t('studioPanel.light.elevation'), 1, 80, 0.5, (value) => {
     queueLight({ sunElevationDeg: value });
   });
@@ -745,12 +752,12 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   elevationReset.title = t('studioPanel.light.autoHint');
   elevationReset.addEventListener('click', () => queueLight({ sunElevationDeg: null }));
   elevation.row.appendChild(elevationReset);
-  secScene.append(sunBlock, elevation.row, sunNote);
+  secScene.append(sunBlock, elevation.row, lampRow);
 
   // one apply in flight; the latest request waits behind it (a dragged dial never queues a backlog)
   let lightInFlight: Promise<void> | null = null;
-  let lightPending: Record<string, number | null> | null = null;
-  function queueLight(patch: Record<string, number | null>): void {
+  let lightPending: Record<string, number | boolean | null> | null = null;
+  function queueLight(patch: Record<string, number | boolean | null>): void {
     lightPending = { ...(lightPending ?? {}), ...patch };
     if (lightInFlight) return;
     const pump = async (): Promise<void> => {
@@ -815,6 +822,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     elevationReset.classList.toggle('on', light.override?.sunElevationDeg === undefined);
     presetButtons[4].classList.toggle('on', light.override?.sunAzimuthDeg === undefined);
     sunNote.textContent = light.space ? t('studioPanel.light.spaceNote') : '';
+    lampBtn.classList.toggle('on', light.headlights);
+    lampBtn.setAttribute('aria-pressed', String(light.headlights));
     for (const [time, option] of timeOptions) option.disabled = !light.times.includes(time);
   }
   battlefieldGroup.body.appendChild(secScene);

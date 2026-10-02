@@ -1075,7 +1075,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     a.visual.dispose();
     const rootIndex = actorRoots.indexOf(a.visual.root);
     if (rootIndex >= 0) actorRoots.splice(rootIndex, 1);
-    ctx.getStudioLight?.()?.setActorRoots(actorRoots);
+    if (!loading) ctx.getStudioLight?.()?.setActorRoots(actorRoots); // load() re-syncs once after its batch
     actors.splice(actors.indexOf(a), 1);
     storyboard = clearStoryboardActorTrack(storyboard, actorKey);
     bindStoryboardTracks();
@@ -3086,7 +3086,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   const sameLight = (a: StudioLight | null, b: StudioLight | null): boolean =>
-    (a?.sunAzimuthDeg ?? null) === (b?.sunAzimuthDeg ?? null) && (a?.sunElevationDeg ?? null) === (b?.sunElevationDeg ?? null);
+    (a?.sunAzimuthDeg ?? null) === (b?.sunAzimuthDeg ?? null) && (a?.sunElevationDeg ?? null) === (b?.sunElevationDeg ?? null)
+    && (a?.headlights ?? true) === (b?.headlights ?? true);
 
   /** Re-light the active world (a covered transition for time changes; slider-rate sun moves stay uncovered). */
   async function applyStudioLight(time: StudioTimeOfDay, light: StudioLight | null, covered: boolean): Promise<void> {
@@ -3110,9 +3111,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   async function setTimeOfDay(time: StudioTimeOfDay, light?: StudioLight | null): Promise<StudioTimeOfDay> {
     if (!isStudioTime(time)) throw new RangeError('Unknown time of day');
     if (recording) throw new Error('Stop recording before changing the light');
-    const nextLight = light !== undefined ? normalizeStudioLight(light)
-      : time === timeOfDay ? studioLight
-        : studioLight?.sunAzimuthDeg !== undefined ? { sunAzimuthDeg: studioLight.sunAzimuthDeg } : null;
+    // a new time keeps the bearing and the headlights choice; its elevation band is its own
+    const kept = studioLight ? normalizeStudioLight({ sunAzimuthDeg: studioLight.sunAzimuthDeg, headlights: studioLight.headlights }) : null;
+    const nextLight = light !== undefined ? normalizeStudioLight(light) : time === timeOfDay ? studioLight : kept;
     if (time !== timeOfDay || !sameLight(nextLight, studioLight)) await applyStudioLight(time, nextLight, true);
     return studioTimeFor(getWorld()?.mapId ?? 'verdant', time);
   }
@@ -3147,6 +3148,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       sunAzimuthDeg: plan?.sunAzimuthDeg ?? null,
       sunElevationDeg: plan?.sunElevationDeg ?? null,
       override: studioLight ? { ...studioLight } : null,
+      headlights: studioLight?.headlights !== false,
       band: { min: band.min, max: band.max },
       times: [...studioTimesFor(mapId)],
       space: plan?.space ?? false,

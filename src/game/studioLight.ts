@@ -34,6 +34,8 @@ export interface StudioLight {
   sunAzimuthDeg?: number;
   /** Sun elevation in degrees, clamped into the time's band (STUDIO_TIME_BANDS). Dusk: the set sun, below 0. */
   sunElevationDeg?: number;
+  /** Dusk and night light the actors' headlights (default true); false keeps a blacked-out column. */
+  headlights?: boolean;
 }
 
 interface ElevationBand { readonly min: number; readonly max: number }
@@ -44,7 +46,7 @@ export const STUDIO_TIME_BANDS: Readonly<Record<StudioTimeOfDay, Readonly<Elevat
   morning: Object.freeze({ min: 12, max: 30, default: 17 }),
   day: Object.freeze({ min: 10, max: 80, default: null }),
   golden: Object.freeze({ min: 6, max: 18, default: 11 }),
-  sunset: Object.freeze({ min: 1, max: 8, default: 4.5 }),
+  sunset: Object.freeze({ min: 1, max: 8, default: 3.5 }),
   dusk: Object.freeze({ min: -9, max: -1, default: -4 }),
   night: Object.freeze({ min: 8, max: 70, default: 20 }),
 });
@@ -114,7 +116,7 @@ export function normalizeStudioLight(input: unknown): StudioLight | null {
   if (typeof input !== 'object' || Array.isArray(input)) throw new TypeError('Studio light must be an object');
   const source = input as Record<string, unknown>;
   for (const key of Object.keys(source)) {
-    if (key !== 'sunAzimuthDeg' && key !== 'sunElevationDeg') throw new RangeError(`Unknown Studio light field: ${key}`);
+    if (key !== 'sunAzimuthDeg' && key !== 'sunElevationDeg' && key !== 'headlights') throw new RangeError(`Unknown Studio light field: ${key}`);
   }
   const out: StudioLight = {};
   if (source.sunAzimuthDeg != null) {
@@ -127,7 +129,12 @@ export function normalizeStudioLight(input: unknown): StudioLight | null {
     if (typeof source.sunElevationDeg !== 'number' || !Number.isFinite(elevation)) throw new RangeError('Studio light sunElevationDeg must be a finite number');
     out.sunElevationDeg = round(clamp(elevation, -90, 90), 2);
   }
-  return out.sunAzimuthDeg === undefined && out.sunElevationDeg === undefined ? null : out;
+  if (source.headlights != null) {
+    if (typeof source.headlights !== 'boolean') throw new RangeError('Studio light headlights must be a boolean');
+    // the default (on) is not stored, so a scene without the field round-trips without it
+    if (!source.headlights) out.headlights = false;
+  }
+  return out.sunAzimuthDeg === undefined && out.sunElevationDeg === undefined && out.headlights === undefined ? null : out;
 }
 
 // ---------------------------------------------------------------------------
@@ -169,6 +176,8 @@ interface TimeRecipe {
   readonly skyIntensity: number;
   readonly turbidity: number;
   readonly mie: number;
+  /** Multiplier on the authored Rayleigh (the blue hour's bluer dome); 1 when omitted. */
+  readonly rayleigh?: number;
   readonly fogDensity: number;
   readonly fogHex: number;
   readonly fogBlend: number;
@@ -200,15 +209,19 @@ const SUN_DEFAULT = 4.5; // lighting.ts SUN_INTENSITY
 const SUN_HEX_DEFAULT = 0xfff1dc; // lighting.ts SUN_COLOR
 const HEMI_DEFAULT = 0.36; // lighting.ts HEMI_INTENSITY
 
+// Calibrated on the light lane's lab sheets (verdant, desert, alpine; toward-sun, anti-sun, hero and overview cameras).
+// The low suns lift the ambient and lower the vehicle readability floors (a camera-facing fill that reads as clay under
+// a weak key); their fog tints stay darker than the bright low-sun horizon so the far field never washes out.
 const RECIPES: Readonly<Record<Exclude<StudioTimeOfDay, 'day'>, TimeRecipe>> = Object.freeze({
-  // Sun just clear of the horizon: rose key, lavender haze, low contrast (the ambient carries the frame).
+  // Sun just clear of the horizon: rose key, a lavender sky (the ozone's violet cast), soft low-contrast light, haze.
   dawn: {
-    key: 0.40, keyHex: 0xffb7a0, keyBlend: 0.85,
-    hemi: 1.30, hemiRange: [0.30, 0.62], fill: 0.85, env: 1.25,
-    skyIntensity: 0.95, turbidity: 0.85, mie: 1.0,
-    fogDensity: 1.45, fogHex: 0xa597b8, fogBlend: 0.85, fogMix: 0.52,
-    cloudHex: 0xf6d6d6, cloudBlend: 0.7,
-    exposure: 1.06, readability: 0.82, horizonDim: 0.78,
+    key: 0.5, keyHex: 0xffb8a8, keyBlend: 0.85,
+    hemi: 1.35, hemiRange: [0.30, 0.62], fill: 0.9, env: 1.3,
+    skyIntensity: 0.95, turbidity: 0.85, mie: 1.3,
+    fogDensity: 1.15, fogHex: 0x7a7096, fogBlend: 0.85, fogMix: 0.58,
+    cloudHex: 0xf6d6d6, cloudBlend: 0.55,
+    exposure: 1.08, readability: 0.55, horizonDim: 0.6,
+    atmosphere: { ozoneScale: 2.2, mieTintHex: 0xfff0f6 },
   },
   // A clean mid-morning: deep blue air, crisp shadows, near-white key.
   morning: {
@@ -219,45 +232,51 @@ const RECIPES: Readonly<Record<Exclude<StudioTimeOfDay, 'day'>, TimeRecipe>> = O
     cloudHex: 0xfffbf4, cloudBlend: 0.5,
     exposure: 1.0, readability: 1, horizonDim: 0.96,
   },
-  // Rich warm gold with long shadows: a strong, contrasty key over a cooler ambient.
+  // Rich warm gold with long shadows: a strong key over a cooler, open shade.
   golden: {
-    key: 0.84, keyHex: 0xffc07c, keyBlend: 0.88,
-    hemi: 0.78, hemiRange: [0.2, 0.7], fill: 0.62, env: 0.9,
-    skyIntensity: 0.92, turbidity: 1.15, mie: 1.15,
-    fogDensity: 1.1, fogHex: 0xc6a688, fogBlend: 0.75, fogMix: 0.46,
-    cloudHex: 0xffdcb4, cloudBlend: 0.75,
-    exposure: 1.0, readability: 0.94, horizonDim: 0.86,
+    key: 0.9, keyHex: 0xffc07c, keyBlend: 0.88,
+    hemi: 0.95, hemiRange: [0.2, 0.7], fill: 0.75, env: 1.05,
+    skyIntensity: 0.92, turbidity: 1.15, mie: 1.2,
+    fogDensity: 1.0, fogHex: 0x9a8268, fogBlend: 0.8, fogMix: 0.5,
+    cloudHex: 0xffdcb4, cloudBlend: 0.45,
+    exposure: 1.04, readability: 0.65, horizonDim: 0.72,
   },
-  // The sun on the horizon: deep orange key, glowing sky, darker land.
+  // The sun on the horizon: a deep orange key, a glowing band under a deepening blue, darker land.
   sunset: {
-    key: 0.6, keyHex: 0xff9a58, keyBlend: 0.92,
-    hemi: 0.95, hemiRange: [0.26, 0.66], fill: 0.6, env: 0.95,
+    key: 0.68, keyHex: 0xff8f4c, keyBlend: 0.92,
+    hemi: 1.15, hemiRange: [0.26, 0.6], fill: 0.7, env: 1.15,
     skyIntensity: 0.78, turbidity: 1.3, mie: 1.25,
-    fogDensity: 1.2, fogHex: 0xbc8680, fogBlend: 0.85, fogMix: 0.42,
-    cloudHex: 0xf2b28c, cloudBlend: 0.8,
-    exposure: 1.02, readability: 0.84, horizonDim: 0.66,
+    fogDensity: 1.1, fogHex: 0x8c6a6e, fogBlend: 0.85, fogMix: 0.5,
+    cloudHex: 0xf2b28c, cloudBlend: 0.35,
+    exposure: 1.06, readability: 0.55, horizonDim: 0.5,
+    atmosphere: { ozoneScale: 1.4 },
   },
-  // Blue hour: the sun below the horizon, a deep blue dome over a warm glow band, a faint key from the glow.
+  // Blue hour: the sun set, a deep dome over the warm glow band and the Belt of Venus, first stars, dark land under a
+  // faint warm key from the glow. The twilight is lifted through the atmosphere's illuminance (the dome's dither is
+  // added before skyIntensity, so a large skyIntensity would amplify it into grain); the environment probe is told
+  // the dome is dim on purpose (envValidityScale) instead of mistaking it for a poisoned bake.
   dusk: {
-    key: 0.62, keyAbsolute: true, keyHex: 0xffa884, keyBlend: 0.9,
-    hemi: 1.35, hemiRange: [0.36, 0.7], fill: 0.5, env: 1.4,
-    skyIntensity: 2.6, turbidity: 1.0, mie: 1.0,
-    fogDensity: 1.1, fogHex: 0x45567d, fogBlend: 0.9, fogMix: 0.6,
-    cloudHex: 0x9aa0b8, cloudBlend: 0.8,
-    exposure: 1.1, readability: 0.58, horizonDim: 0.36,
-    atmosphere: { ozoneScale: 1.6 },
+    key: 0.5, keyAbsolute: true, keyHex: 0xffa884, keyBlend: 0.9,
+    hemi: 0.8, hemiRange: [0.15, 0.4], fill: 0.45, env: 1.2,
+    skyIntensity: 1.5, turbidity: 1.0, mie: 0.7, rayleigh: 1.3,
+    fogDensity: 1.1, fogHex: 0x2e3d5e, fogBlend: 0.9, fogMix: 0.62,
+    cloudHex: 0x9aa0b8, cloudBlend: 0.6,
+    exposure: 1.1, readability: 0.4, horizonDim: 0.36,
+    atmosphere: { ozoneScale: 0.8, sunIlluminance: 64 },
+    extra: { nightSky: 0.15, envValidityScale: 0.1 },
     cloudLayer: { shadow: false },
     keyElevationDeg: STUDIO_DUSK_KEY_ELEVATION_DEG,
   },
-  // Moonlight: a silver key, readable shapes, deep blue shade; stars and the moon disc on the dimmed dome.
+  // Moonlight: a silver key, readable shapes, deep blue shade, stars and the moon; the clouds moonlit silver (their
+  // daylight albedo, a stronger moon term), not black holes in the starfield.
   night: {
-    key: 0.72, keyAbsolute: true, keyHex: 0xa9c0ef, keyBlend: 1,
-    hemi: 1.25, hemiRange: [0.38, 0.6], fill: 0.4, env: 1.0,
+    key: 0.9, keyAbsolute: true, keyHex: 0xa9c0ef, keyBlend: 1,
+    hemi: 0.9, hemiRange: [0.25, 0.45], fill: 0.4, env: 1.0,
     skyIntensity: 0.08, turbidity: 1.0, mie: 1.0,
     fogDensity: 1.0, fogHex: 0x34445e, fogBlend: 1, fogMix: 0.66,
-    cloudHex: 0x3a4d68, cloudBlend: 1,
-    exposure: 1.0, readability: 0.4, horizonDim: 0.2,
-    cloudLayer: { shadow: false },
+    cloudHex: 0xb4c0d8, cloudBlend: 1,
+    exposure: 1.1, readability: 0.3, horizonDim: 0.2,
+    cloudLayer: { shadow: false, sunGain: 3, ambientScale: 2 },
   },
 });
 
@@ -319,6 +338,7 @@ export function planStudioLight(
     fillIntensity: round((authored.fillIntensity ?? FILL_DEFAULT) * recipe.fill, 3),
     envIntensity: round((authored.envIntensity ?? 0.2) * recipe.env, 3),
     turbidity: round((authored.turbidity ?? 4) * recipe.turbidity, 3),
+    rayleigh: round((authored.rayleigh ?? 1.2) * (recipe.rayleigh ?? 1), 3),
     mieCoefficient: round((authored.mieCoefficient ?? 0.006) * recipe.mie, 6),
     fogDensity: round((authored.fogDensity ?? 0.00074) * recipe.fogDensity, 8),
     fogTintHex: mixHex(authored.fogTintHex ?? 0x7e97b8, recipe.fogHex, recipe.fogBlend),

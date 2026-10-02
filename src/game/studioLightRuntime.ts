@@ -140,6 +140,7 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
   let night: NightLightingRuntime | null = null;
   let nightRoot: THREE.Object3D | null = null;
   let actorRoots: THREE.Object3D[] = [];
+  let headlights = true;
 
   function saveColor(color: THREE.Color): void {
     if (!savedColors.has(color)) savedColors.set(color, color.clone());
@@ -265,7 +266,7 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
       return;
     }
     night ??= createNightLightingRuntime(options.scene, options.nightLightBudget?.() ?? { spotLights: 4, pointLights: 2 });
-    night.prepare([{ root: world.group }, ...actorRoots.map((root) => ({ root }))], true);
+    night.prepare([{ root: world.group }, ...(headlights ? actorRoots.map((root) => ({ root })) : [])], true);
     nightRoot = world.group;
   }
 
@@ -306,6 +307,7 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
       options.resetTemporalHistory?.();
     }
     current = plan;
+    headlights = light?.headlights !== false;
     syncNight(); // every application re-prepares the lamp pool: a frame never inherits a previous slot assignment
     return plan;
   }
