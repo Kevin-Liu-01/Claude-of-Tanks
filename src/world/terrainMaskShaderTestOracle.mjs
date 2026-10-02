@@ -24,14 +24,17 @@ function compileConsumer(source) {
   const expression = unique(code, /float\s+fD\s*=\s*([^;]+);/g, 'worked-soil coverage')[1];
   // map pass 2026-09-12: the shoulder term carries an authored scale (uShoulderDirt, default 1).
   const coverage = new Function('mk', 'uTownWear', 'n1', 'worn', 'shoulder', 'uWornDirtStrength', 'uShoulderDirt', 'clamp', 'max', `return ${expression};`);
-  const albedo = unique(code, /\ba\s*=\s*mix\(a,\s*groundSamp\(uAlbD,[^;]+,\s*fD\s*\);/g, 'D albedo consumer')[0];
+  // terrain v2 (2026-10-01, the cost pass): the soil sample is taken once inside its coverage branch (vec4 aD = …) and
+  // the albedo consumer mixes it by the same coverage; the normal consumer is unchanged (behind the far-band switch)
+  const sample = unique(code, /\bvec4\s+aD\s*=\s*(groundSamp\(uAlbD,[^;]+\));/g, 'D albedo sample')[1];
+  const albedo = unique(code, /\ba\s*=\s*mix\(a,\s*aD,\s*fD\s*\);/g, 'D albedo consumer')[0];
   const normal = unique(code, /\bn\s*=\s*mix\(n,\s*groundNrm\(uNrmD,[^;]+,\s*fD\s*\);/g, 'D normal consumer')[0];
-  const output = new Function('a', 'n', 'uv', 'df', 'mipB', 'uAlbD', 'uNrmD', 'fD', 'groundSamp', 'groundNrm', 'mix',
-    `${albedo}\n${normal}\nreturn [a,n];`);
+  const output = new Function('a', 'n', 'uv', 'df', 'mipB', 'uAlbD', 'uNrmD', 'uMeanD', 'fD', 'groundSamp', 'groundNrm', 'mix',
+    `const aD = ${sample};\n${albedo}\n${normal}\nreturn [a,n];`);
   return {
     coverage: (mk, town, noise) => coverage(mk, town, noise, 0, 0, .84, 1, clamp, Math.max),
-    output: weight => output(.2, .4, 3, .5, 1, 'albedo-D', 'normal-D', weight,
-      layer => { assert.equal(layer, 'albedo-D'); return .8; },
+    output: weight => output(.2, .4, 3, .5, 1, 'albedo-D', 'normal-D', 'mean-D', weight,
+      (layer, mean) => { assert.equal(layer, 'albedo-D'); assert.equal(mean, 'mean-D'); return .8; },
       layer => { assert.equal(layer, 'normal-D'); return .9; }, mix),
   };
 }
@@ -89,6 +92,12 @@ export function assertTerrainFetchExpressionCensus(source) {
   // round 73b (2026-09-26, the second pass): +6 — the road verge's grit (two rock luminance taps inside the shoulder
   // band, inside 160 m), the mid albedo octave (two ground taps, the 26–150 m band only) and the strand's pebbles (two
   // rock taps on the wet band and the wrack line, inside 90 m); no new sampler.
-  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3 + 4 + 2 + 7 + 6, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
-    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps plus four jointed-strata taps plus two crag phase taps plus seven ground-redux taps plus six round-73b taps; lexical census only');
+  // terrain v2 (2026-10-01, the cost pass): −61 — 52 noise-texture reads moved to the explicit-LOD helper nz() /
+  // textureLod (40 low-frequency field reads, the six mid-relief gradient taps, the two strata block tones, the two
+  // varnish streaks and the two field-plot cells), ten deep-mip "tile mean" reads became the measured uMean* uniforms
+  // (the far variant's, the base / soil / rock transition means, the soil sample the transition re-read, the five
+  // zero-mean octaves' means), and the near tap is written in both of splatSamp's exits (+1); the four wall-normal
+  // expressions above stay exactly once each. Lexical census only.
+  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3 + 4 + 2 + 7 + 6 - 61, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
+    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps plus four jointed-strata taps plus two crag phase taps plus seven ground-redux taps plus six round-73b taps, minus the terrain-v2 cost pass; lexical census only');
 }

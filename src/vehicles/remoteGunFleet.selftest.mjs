@@ -3,9 +3,10 @@ import * as THREE from 'three';
 import {createTank} from './tankFactory.ts';
 import {TANK_SPECS} from './specs.ts';
 import {AUXILIARY_INVENTORY} from './auxiliaryInventory.generated.ts';
+import {NATIONAL_ROOF_LOADOUTS} from './nationalRoofConfig.ts';
 import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
 import {requestAuxiliary,stepRoofGun,auxiliaryShot} from '../sim/auxiliarySystems.ts';
-const requested={t14_x:7.62,t90a_vladimir_x:12.7,t90a_x:12.7,t90ms:12.7,
+const requested={...Object.fromEntries(Object.entries(NATIONAL_ROOF_LOADOUTS).map(([id,l])=>[id,l.caliber])),t14_x:7.62,t90a_vladimir_x:12.7,t90a_x:12.7,t90ms:12.7,
  t90m_proryv:12.7,t90:12.7,t14:30,challenger_3x:12.7,challenger_3:12.7,
  challenger2e:7.62,ztz100_x:12.7,type10_x:12.7,k2_x:12.7,k1a1_x:12.7,
  strv122_x:7.62,merkava4_trophy:7.62,merkava4_x:7.62,leo2a6_ua:7.62,ua_challenger2:7.62};
@@ -57,4 +58,4 @@ assert.ok(auxiliaryWeaponProfile(12.7).shell.pen100Mm<auxiliaryWeaponProfile(30)
 assert.notEqual(auxiliaryWeaponProfile(7.62).burstRounds,auxiliaryWeaponProfile(30).burstRounds);
 // User's decorative C2 roof cannon must remain unarmed.
 assert.equal(AUXILIARY_INVENTORY.ariete_c2_x?.guns.length??0,0);
-console.log('remoteGunFleet: all 19 requested mounts, muzzle metal, articulation, range and independent firing PASS');
+console.log(`remoteGunFleet: all ${Object.keys(requested).length} requested mounts, muzzle metal, articulation, range and independent firing PASS`);

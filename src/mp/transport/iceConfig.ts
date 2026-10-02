@@ -1,41 +1,52 @@
+/**
+ * ICE for one peer connection (2026-10-02, docs/MULTIPLAYER-V2.md §13.14). A LAN room uses host candidates and asks
+ * nothing. A private room's ICE comes from the room this seat holds: `room_relay`, the relay credentials the room mints
+ * for its own seated players (the public `/api/ice` minted them for any page until this lane). One resolver per room
+ * session: the transports resolve per connection — each connect attempt of a peer's link, every offer its host accepts —
+ * resolutions in flight share one request, and a grant younger than RELAY_GRANT_REUSE_MS is reused, so a host answering
+ * an election's 27 offers asks once (the room's per-seat window assumes it). A refusal, a timeout or a room that
+ * predates the request falls back to the newest grant still valid, else to host candidates: a credential never blocks a
+ * connection, and nothing contacts a STUN or TURN server the room did not name. Credentials stay in memory, never logged.
+ */
 import type { RuntimeValue } from '../../runtimeTypes.ts';
+import type { RtcIceServerLike } from './webRtcTransport.ts';
 
-type IceServerConfig = RTCIceServer;
+/** A grant this young is handed to the next connection as is (a burst of connections shares one request). */
+export const RELAY_GRANT_REUSE_MS = 30_000;
+/** A grant this close to its expiry is no longer handed to a new connection, as a reuse or as a fallback. */
+const GRANT_MIN_REMAINING_MS = 60_000;
 
-interface IceConfiguration {
-  iceServers: RTCIceServer[];
+export interface IceConfiguration {
+  iceServers: RtcIceServerLike[];
   relayOnly: boolean;
   relayAvailable: boolean;
-  source: 'lan' | 'service' | 'host-fallback';
+  source: 'lan' | 'room' | 'host-fallback';
+  /** Why this configuration is not a fresh answer of the room (the room's refusal code, a timeout, a malformed answer). */
   degradedReason?: string;
   expiresInSeconds?: number;
 }
 
-interface IceServiceBody {
-  iceServers?: RuntimeValue;
-  relayOnly?: RuntimeValue;
-  expiresInSeconds?: RuntimeValue;
-  error?: RuntimeValue;
+/** The room this seat holds, as the resolver reads it (structural: `RoomClient.requestRelay`). */
+interface RoomRelaySource {
+  requestRelay(): Promise<RuntimeValue>;
 }
 
-interface IceConfigurationOptions {
+interface RoomIceResolverOptions {
   mode: string;
-  endpoint?: string;
-  fetchImpl?: typeof fetch;
-  timeoutMs?: number;
-  retryDelaysMs?: readonly number[];
-  wait?: (delayMs: number) => Promise<void>;
-}
-
-function serverUrls(server: IceServerConfig): string[] {
-  return typeof server.urls === 'string' ? [server.urls] : [...server.urls];
+  room: RoomRelaySource | null;
+  reuseMs?: number;
+  clock?: () => number;
 }
 
 function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function readServer(value: RuntimeValue): IceServerConfig | null {
+function serverUrls(server: RtcIceServerLike): string[] {
+  return typeof server.urls === 'string' ? [server.urls] : [...server.urls];
+}
+
+function readServer(value: RuntimeValue): RtcIceServerLike | null {
   if (!isRecord(value)) return null;
   const urls = typeof value.urls === 'string' ? [value.urls]
     : Array.isArray(value.urls) && value.urls.every((url) => typeof url === 'string')
@@ -48,136 +59,70 @@ function readServer(value: RuntimeValue): IceServerConfig | null {
   };
 }
 
-function hasTurn(servers: IceServerConfig[]): boolean {
+function hasTurn(servers: RtcIceServerLike[]): boolean {
   return servers.some((server) => serverUrls(server).some((url) => /^turns?:/i.test(url)));
 }
 
 function hostFallback(reason: string): IceConfiguration {
-  return {
-    iceServers: [],
-    relayOnly: false,
-    relayAvailable: false,
-    source: 'host-fallback',
-    degradedReason: reason,
-  };
+  return { iceServers: [], relayOnly: false, relayAvailable: false, source: 'host-fallback', degradedReason: reason };
 }
 
-const RETRYABLE_ICE_STATUS = new Set([429, 500, 502, 504]);
-const RETRYABLE_ICE_ERROR = new Set(['turn_service_unavailable']);
-
-function waitFor(delayMs: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, delayMs));
-}
-
-async function responseBody(response: Response): Promise<IceServiceBody> {
-  try {
-    const value: RuntimeValue = await response.json();
-    if (!isRecord(value)) return {};
-    return {
-      iceServers: value.iceServers,
-      relayOnly: value.relayOnly,
-      expiresInSeconds: value.expiresInSeconds,
-      error: value.error,
-    };
-  } catch {
-    return {};
-  }
-}
-
-function serviceError(body: IceServiceBody, status: number): string {
-  return typeof body.error === 'string' && body.error
-    ? body.error : `turn_service_http_${status}`;
-}
-
-function shouldRetryService(status: number, reason: string): boolean {
-  return RETRYABLE_ICE_STATUS.has(status) || RETRYABLE_ICE_ERROR.has(reason);
-}
-
-function validateIceOptions(
-  timeoutMs: number,
-  retryDelaysMs: readonly number[],
-  wait: (delayMs: number) => Promise<void>,
-): void {
-  const invalidDelay = retryDelaysMs.some((delayMs) => !Number.isFinite(delayMs) || delayMs < 0);
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || invalidDelay || typeof wait !== 'function') {
-    throw new TypeError('ICE acquisition options are invalid');
-  }
-}
-
-function serviceConfiguration(body: IceServiceBody): IceConfiguration {
-  if (!Array.isArray(body.iceServers)) return hostFallback('turn_service_invalid');
+/** A room's answer as a configuration; null when it is malformed (the room validated it already: defence in depth). */
+function roomConfiguration(body: RuntimeValue): IceConfiguration | null {
+  if (!isRecord(body) || !Array.isArray(body.iceServers)) return null;
   const servers = body.iceServers.map(readServer);
-  if (servers.some((server) => server === null)) return hostFallback('turn_service_invalid');
-  const validServers = servers.filter((server): server is IceServerConfig => server !== null);
-  const relayAvailable = hasTurn(validServers);
-  const relayOnly = body.relayOnly === true;
-  if (relayOnly && !relayAvailable) return hostFallback('turn_service_missing_relay');
+  if (servers.some((server) => server === null)) return null;
+  const iceServers = servers.filter((server): server is RtcIceServerLike => server !== null);
+  const expires = body.expiresInSeconds;
   return {
-    iceServers: validServers,
-    relayOnly,
-    relayAvailable,
-    source: 'service',
-    ...(Number.isFinite(body.expiresInSeconds)
-      ? { expiresInSeconds: Number(body.expiresInSeconds) }
-      : {}),
+    iceServers, relayOnly: false, relayAvailable: hasTurn(iceServers), source: 'room',
+    ...(typeof expires === 'number' && Number.isFinite(expires) && expires > 0 ? { expiresInSeconds: expires } : {}),
   };
 }
 
-function retryDelayFor(
-  response: Response,
-  body: IceServiceBody,
-  retryDelaysMs: readonly number[],
-  attempt: number,
-  deadline: number,
-): { delayMs: number; reason: string } | { delayMs: null; reason: string } {
-  const reason = serviceError(body, response.status);
-  const delayMs = retryDelaysMs[attempt];
-  const unavailable = delayMs === undefined
-    || !shouldRetryService(response.status, reason)
-    || Date.now() + delayMs >= deadline;
-  return { delayMs: unavailable ? null : delayMs, reason };
+/** The room's refusal code (`relay_phase`, `rate_limit`, `unknown_message`, …) or the failure's kind. */
+function refusalReason(error: unknown): string {
+  const code = error && typeof error === 'object' ? (error as { code?: unknown }).code : undefined;
+  return typeof code === 'string' && /^[a-z_]{1,48}$/.test(code) ? code : 'relay_unavailable';
 }
 
-/** Resolve deployment ICE without ever making private-room creation depend on
- * the optional credential service. A failed service falls back to browser
- * host candidates only; no hidden public STUN request leaves a self-hosted
- * deployment. Production TURN credentials remain short-lived and server-side. */
-export async function loadIceConfiguration({
-  mode,
-  endpoint = '',
-  fetchImpl = globalThis.fetch,
-  timeoutMs = 5_000,
-  retryDelaysMs = [200, 600],
-  wait = waitFor,
-}: IceConfigurationOptions): Promise<IceConfiguration> {
-  if (mode === 'lan') {
-    return { iceServers: [], relayOnly: false, relayAvailable: false, source: 'lan' };
-  }
-  if (!endpoint || typeof fetchImpl !== 'function') return hostFallback('turn_service_unconfigured');
-  validateIceOptions(timeoutMs, retryDelaysMs, wait);
+const copy = (config: IceConfiguration, extra: Partial<IceConfiguration> = {}): IceConfiguration => ({
+  ...config, iceServers: config.iceServers.map((server) => ({ ...server, urls: typeof server.urls === 'string' ? server.urls : [...server.urls] })), ...extra,
+});
 
-  const deadline = Date.now() + timeoutMs;
-  try {
-    for (let attempt = 0; ; attempt++) {
-      const remainingMs = Math.max(1, deadline - Date.now());
-      const response = await fetchImpl(endpoint, {
-        credentials: 'include',
-        cache: 'no-store',
-        signal: AbortSignal.timeout(remainingMs),
-      });
-      const body = await responseBody(response);
-      if (!response.ok) {
-        const retry = retryDelayFor(response, body, retryDelaysMs, attempt, deadline);
-        if (retry.delayMs === null) return hostFallback(retry.reason);
-        await wait(retry.delayMs);
-        continue;
+/** The ICE resolver of one room session (see the module comment); it never rejects. */
+export function createRoomIceResolver({ mode, room, reuseMs = RELAY_GRANT_REUSE_MS, clock = () => Date.now() }: RoomIceResolverOptions): () => Promise<IceConfiguration> {
+  if (!Number.isFinite(reuseMs) || reuseMs < 0 || typeof clock !== 'function') throw new TypeError('ICE resolver options are invalid');
+  let latest: { config: IceConfiguration; receivedAt: number; expiresAt: number | null } | null = null;
+  let inFlight: Promise<IceConfiguration> | null = null;
+  /** The newest grant while it can still carry a connection (`fresh`: also inside the reuse window). */
+  const usable = (nowMs: number, fresh: boolean): IceConfiguration | null => {
+    if (!latest || (latest.expiresAt !== null && latest.expiresAt - nowMs < GRANT_MIN_REMAINING_MS)) return null;
+    if (fresh && nowMs - latest.receivedAt >= reuseMs) return null;
+    return latest.config;
+  };
+  const ask = async (source: RoomRelaySource): Promise<IceConfiguration> => {
+    let reason: string;
+    try {
+      const answered = roomConfiguration(await source.requestRelay());
+      if (answered) {
+        const receivedAt = clock();
+        latest = { config: answered, receivedAt, expiresAt: answered.expiresInSeconds !== undefined ? receivedAt + answered.expiresInSeconds * 1_000 : null };
+        return copy(answered);
       }
-      return serviceConfiguration(body);
+      reason = 'relay_invalid';
+    } catch (error) {
+      reason = refusalReason(error);
     }
-  } catch (error) {
-    const reason = error instanceof Error && error.name === 'TimeoutError'
-      ? 'turn_service_timeout'
-      : 'turn_service_unavailable';
-    return hostFallback(reason);
-  }
+    const fallback = usable(clock(), false);
+    return fallback ? copy(fallback, { degradedReason: reason }) : hostFallback(reason);
+  };
+  return async () => {
+    if (mode === 'lan') return { iceServers: [], relayOnly: false, relayAvailable: false, source: 'lan' };
+    if (!room || typeof room.requestRelay !== 'function') return hostFallback('relay_unconfigured');
+    const reused = usable(clock(), true);
+    if (reused) return copy(reused);
+    inFlight ??= ask(room).finally(() => { inFlight = null; });
+    return inFlight.then((config) => copy(config));
+  };
 }

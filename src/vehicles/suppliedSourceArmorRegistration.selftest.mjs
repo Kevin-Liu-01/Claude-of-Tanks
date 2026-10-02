@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { createTank } from './tankFactory.ts';
-import { getSpec } from './specs.ts';
-import { SUPPLIED_SOURCE_IDS, synchronizeSuppliedSourceCombatMetadata } from './suppliedSourceFleetSpecs.ts';
-import { ensureInteriorFills } from './interiorFills.ts';
-import { stripActivatedEra } from '../game/eraActivation.ts';
-import { combatAnatomyCalibration } from './combatAnatomy.ts';
+await import('./suppliedSourceArmorInitialization.test-support.mjs');
+const {createTank}=await import('./tankFactory.ts');
+const {getSpec}=await import('./specs.ts');
+const {SUPPLIED_SOURCE_IDS,synchronizeSuppliedSourceCombatMetadata}=await import('./suppliedSourceFleetSpecs.ts');
+const {ensureInteriorFills}=await import('./interiorFills.ts');
+const {stripActivatedEra}=await import('../game/eraActivation.ts');
 
 const owners = ['hull', 'turret'];
 const rows = armor => owners.flatMap(owner => armor[`${owner}Plates`]
@@ -23,54 +23,27 @@ const cases = [
   return {id, spec, donor, donorReactive, donorBefore: JSON.stringify(donor.armor),
     initialArmor: structuredClone(spec.armor)};
 });
-// Each vehicle's own combat-anatomy calibration appends its measured roof structures (hatches, cupolas) as permanent
-// plates during finalization (combatAnatomy.ts appendStructurePlates: `${owner}_${kind}_NN_${face}`), which runs
-// after donor synchronization. 2026-10-01: since 0e5fc79e2 made donor synchronization initialization-only, the loop
-// below no longer re-clones the finalized donor (whose m551_sheridan hatch/cupola plates the AFT-10 never had in
-// production: aft10_x read 10 hull plates on 581cd5119 too) and instead checks the production armor, so each
-// side's own calibrated structures are told apart by name. Every excluded name must exist on its own vehicle.
-const calibratedStructureNames = (id, owner) => {
-  const names = [];
-  (combatAnatomyCalibration(id)?.[`${owner}Structures`] || []).forEach((structure, index) => {
-    const [x0, y0, z0] = structure.min, [x1, y1, z1] = structure.max;
-    if (!(x1 > x0 && y1 > y0 && z1 > z0)) return;
-    const prefix = `${owner}_${structure.kind || 'roof_structure'}_${String(index + 1).padStart(2, '0')}`;
-    for (const face of ['front', 'rear', 'right', 'left', 'top']) names.push(`${prefix}_${face}`);
-  });
-  return names;
-};
-const withoutOwnStructures = (id, owner, plates) => {
-  const own = calibratedStructureNames(id, owner);
-  for (const name of own) assert.equal(plates.filter(p => p.name === name && p.kind === 'main' && !p.era).length, 1,
-    `${id}/${owner}: calibrated structure plate ${name} is installed once`);
-  return plates.filter(p => !own.includes(p.name));
-};
-const originalArmor = new Map(SUPPLIED_SOURCE_IDS.map(id => [id, structuredClone(getSpec(id).armor)]));
-
-// Re-run the actual post-balance path, which clones the donor armor afresh.
-// A one-time startup patch would reintroduce the phantom zones here.
-for (let pass = 0; pass < 2; pass++) {
-  synchronizeSuppliedSourceCombatMetadata();
-  for (const {id, spec, donor, donorBefore, initialArmor} of cases) {
-    assert.deepEqual(rows(spec.armor), [], `${id}: synchronization cannot resurrect phantom ERA`);
-    for (const owner of owners) {
-      const permanent = withoutOwnStructures(donor.id, owner, donor.armor[`${owner}Plates`]).filter(p => p.kind !== 'era');
-      const current = withoutOwnStructures(id, owner, spec.armor[`${owner}Plates`]);
-      assert.equal(current.length, permanent.length, `${id}/${owner}: all permanent donor plates retained`);
-      assert.deepEqual(current.map(p => [p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]),
-        permanent.map(p => [p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]),
-        `${id}/${owner}: permanent protection identity/classification/strength unchanged`);
-    }
-    assert.deepEqual(spec.armor.turretPivot, initialArmor.turretPivot, `${id}: measured turret frame retained`);
-    assert.deepEqual(spec.armor.gunPivot, initialArmor.gunPivot, `${id}: measured gun frame retained`);
-    assert.deepEqual(spec.armor.gunBarrel, initialArmor.gunBarrel, `${id}: measured barrel metadata retained`);
-    assert.equal(JSON.stringify(donor.armor), donorBefore, `${id}: real donor armor never changed`);
+// Once role tuning and anatomy are finalized, synchronization is deliberately
+// immutable. Changing donors here must not replace any finalized recipient.
+const finalized = new Map(SUPPLIED_SOURCE_IDS.map(id => [id, JSON.stringify(getSpec(id))]));
+const donorSnapshots = new Map(cases.map(({donor}) => [donor, structuredClone(donor)]));
+try {
+  for (const {donor} of cases) {
+    donor.hp += 211;
+    donor.armor.hullPlates.push({...structuredClone(donor.armor.hullPlates[0]),name:'after_finalization_sentinel'});
+  }
+  const mutatedDonors = new Map(cases.map(({donor}) => [donor, JSON.stringify(donor)]));
+  for (let pass=0;pass<2;pass++) {
+    synchronizeSuppliedSourceCombatMetadata();
+    for (const [id,before] of finalized) assert.equal(JSON.stringify(getSpec(id)),before,`${id}: finalized recipient stays immutable`);
+    for (const [donor,before] of mutatedDonors) assert.equal(JSON.stringify(donor),before,'no reverse mutation of donor');
+  }
+} finally {
+  for (const [donor,snapshot] of donorSnapshots) {
+    for (const key of Object.keys(donor)) delete donor[key];
+    Object.assign(donor,snapshot);
   }
 }
-// Production synchronizes before one-shot anatomy finalization. Restore every
-// affected finalized armor snapshot after this deliberately repeated sync;
-// its sealed spec marker cannot pretend to rerun anatomy finalization.
-for (const [id, armor] of originalArmor) getSpec(id).armor = armor;
 
 function stockHash(root) {
   const hash = createHash('sha256');

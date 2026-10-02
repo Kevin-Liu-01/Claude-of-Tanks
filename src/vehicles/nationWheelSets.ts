@@ -1,3 +1,4 @@
+import {NATIONAL_LEGACY_IDS} from './nationalLegacyConfig.ts';
 import {NATIONAL_MODERNIZATION_CONFIG} from './nationalModernizationConfig.ts';
 // Nation road-wheel sets — the one table that says which road-wheel construction every playable hull draws.
 //
@@ -269,7 +270,7 @@ export function resolveNationWheel(spec: NationWheelSpec | null | undefined): Na
   const id = String(spec?.id || '').toLowerCase();
   if (!id) return Object.freeze({ kind: 'keep', reason: 'no vehicle id' });
   const concept=NATIONAL_MODERNIZATION_CONFIG.find(c=>c.id===id);
-  if(concept)return resolved('standard','t90','Owner-selected Russian donor chassis retains its pressed running gear');
+  if(concept||NATIONAL_LEGACY_IDS.some(legacyId=>legacyId===id))return resolved('standard','t90','Owner-selected Russian donor chassis retains its pressed running gear');
   const self = DONOR_OF_SELF.get(id);
   if (self) return resolved('donor', self, `${id} draws the ${self} construction natively`);
   const era = String(spec?.era || '').toLowerCase();

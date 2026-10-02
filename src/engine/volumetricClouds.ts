@@ -348,9 +348,9 @@ Weather cloudWeather( vec2 pxz ) {
 // and its noise are read in the column's own frame so the lean is rigid — displacing only the noise slid the
 // billows through an upright outline and read as stacked layers
 vec2 cloudColumnXZ( vec3 p ) {
-	// the lean is a shear of the top third (the anvil level): the body stands upright, the head trails downwind
+	// Wind shear bends the body above its condensation base, not just its cap.
 	float hRel = clamp( ( p.y - uBase ) / uThick, 0.0, 1.0 );
-	return p.xz - uWindDir * ( uShearM * smoothstep( 0.6, 1.0, hRel ) );
+	return p.xz - uWindDir * ( uShearM * smoothstep( 0.08, 1.0, hRel ) );
 }
 // coverage only (the empty-space test before the march)
 float cloudCoverageAt( vec2 pxz ) {
@@ -398,13 +398,20 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 	if ( hN >= 1.25 ) return 0.0;
 	float t = w.type;
 	float riseEnd = mix( 0.05, 0.14, t );
-	float fallStart = t < 0.5 ? mix( 0.5, 0.64, t * 2.0 ) : mix( 0.64, 0.86, ( t - 0.5 ) * 2.0 );
+	float fallStart = t < 0.5 ? mix( 0.5, 0.48, t * 2.0 ) : mix( 0.48, 0.86, ( t - 0.5 ) * 2.0 );
 	// the anvil: over the top quarter the mass widens instead of narrowing, flattened under a flat top and
 	// spread downwind
 	float anv = w.anvil * smoothstep( 0.7, 0.92, hN );
 	fallStart = mix( fallStart, 0.95, w.anvil );
 	// the column's own frame (the lean: cloudColumnXZ)
 	vec3 ps = vec3( cloudColumnXZ( p ), p.y ).xzy;
+	// Reuse the erosion curl for coherent silhouette-scale turbulence: fine
+	// erosion alone left a fuzzy but perfectly cylindrical envelope.
+	vec3 curl = vec3( 0.0 );
+	if ( detail && uDebug != 6.0 ) {
+		curl = texture( tCurl, ( ps + uNoiseShift * 0.57 ) / ${f(CLOUD_CURL_TILE_M)} ).rgb * 2.0 - 1.0;
+		ps += curl * ( 110.0 * ( 1.0 - uStratiform ) * smoothstep( 0.0, 0.35, hN ) );
+	}
 	// a thin slab against a kilometre-wide shape period is sampled with its vertical axis compressed so the
 	// billows read as tall as they are wide; a tall storm slab is not (compressed cells stack into layers); an
 	// anvil is flattened
@@ -417,11 +424,11 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 	vec4 s2 = vec4( 0.5 );
 	if ( detail && uDebug != 6.0 ) s2 = texture( tShape, sp * 2.7 + vec3( 0.31, 0.17, 0.53 ) );
 	float bulge = detail ? s.g * 0.6 + s2.g * 0.4 : s.g;
-	float lift = mix( 1.0, 0.7 + 0.5 * bulge, ( 1.0 - uStratiform ) * 0.9 );
+	float lift = mix( 1.0, 0.3 + 1.3 * bulge, ( 1.0 - uStratiform ) * 0.9 );
 	hN /= lift;
 	if ( hN >= 1.0 ) return 0.0;
 	// the type's height profile (Nubis): a stratus rises fast and fades from half height, a cumulus keeps a flat
-	// base under a top that narrows from two thirds up, a cumulonimbus keeps its width almost to its top
+	// base under a top that narrows from mid-height, a cumulonimbus keeps its width almost to its top
 	float hg = smoothstep( 0.0, riseEnd, hN ) * ( 1.0 - smoothstep( fallStart, 1.0, hN ) );
 	float lowFreq = s.g * 0.625 + s.b * 0.25 + s.a * 0.125;
 	float base = ( uDebug == 6.0 ? 0.8 : remap( s.r, lowFreq - 1.0, 1.0, 0.0, 1.0 ) ) * hg;
@@ -444,12 +451,17 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 	// round 76: the cell cores are the dense columns, the borders a little thinner (their height carries most of the
 	// optical depth the underside is lit through; a thin border at half density took twenty lit steps to go opaque)
 	d *= mix( 0.8, 1.0, cellK );
+	// Keep the three-dimensional billows visible through the body. Saturating
+	// every admitted weather column erased them into a smooth solid cylinder.
+	d *= mix( 1.0, mix( 0.4, 1.25, smoothstep( 0.25, 0.75, s.g ) ), uDebug == 6.0 ? 0.0 : 1.0 - uStratiform );
 	if ( detail && d > 0.0 && d < 0.95 && uDebug != 2.0 ) {
 		// two Worley-fbm fetches on a lattice the curl field advects (more with height: turbulent tops, calm
 		// bases): the coarse one (lumps of 25 - 100 m) everywhere, a fine one (7 - 27 m) where the pixel
 		// footprint resolves it; the octaves lean to the high frequencies so the silhouette crinkles
-		vec3 curl = texture( tCurl, ( ps + uNoiseShift * 0.57 ) / ${f(CLOUD_CURL_TILE_M)} ).rgb * 2.0 - 1.0;
-		vec3 dp = ( ps + uNoiseShift * 1.31 + curl * ( ${f(CLOUD_CURL_M)} * ( 0.35 + 0.65 * hN ) ) ) * vec3( 1.0, uVertScale * 1.07, 1.0 ) / ${f(CLOUD_DETAIL_TILE_M)};
+		// Stretch the erosion along the wind to pull out trailing filaments.
+		vec3 wispyPos = ps;
+		wispyPos.xz -= uWindDir * dot( ps.xz, uWindDir ) * ( 0.5 * uWispiness );
+		vec3 dp = ( wispyPos + uNoiseShift * 1.31 + curl * ( ${f(CLOUD_CURL_M)} * ( 0.35 + 0.65 * hN ) ) ) * vec3( 1.0, uVertScale * 1.07, 1.0 ) / ${f(CLOUD_DETAIL_TILE_M)};
 		vec3 dn = texture( tDetail, dp ).rgb;
 		float hf = dn.r * 0.5 + dn.g * 0.3 + dn.b * 0.2;
 		float hfCoarse = hf;
@@ -463,7 +475,7 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 		// too (a crisp dense base, wispy tops), a front's base is ragged, a stratus erodes little
 		float wispy = clamp( mix( hN * 1.4 - 0.15, 1.0, uWispiness ), 0.0, 1.0 );
 		float erode = mix( hf, 1.0 - hf, wispy );
-		float amount = ( mix( 0.3, 0.72, smoothstep( 0.05, 0.6, hN ) ) + uTowers * 0.35 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) )
+		float amount = ( mix( 0.3, 0.85, smoothstep( 0.05, 0.6, hN ) ) + uTowers * 0.35 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) )
 			* ( 1.0 - uStratiform * 0.8 ) * mix( 0.8, 1.25, uWispiness ) * mix( 0.35, 1.0, smoothstep( 0.0, 0.2, uWispiness ) )
 			* mix( 1.0, 1.25, uCells );
 		d = remap( d, erode * amount, 1.0, 0.0, 1.0 );

@@ -362,6 +362,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   bmp3: anchor('turret', 'right', 0.44, 0.47, 0.20, -1),
   upior: anchor('hull', 'right', 0.42, 0.60, 0.22, -1),
   // Concept bustle side faces, clear of the forward SM cheek and roof station.
+  ua_t72b3m_hetman_ii: anchor('turret', 'left', .14, .65, .24, 1),
+  pl_t72b3_zubr_ii: anchor('turret', 'left', .14, .65, .24, 1),
   ua_t80u_modern: anchor('turret', 'left', .14, .65, .24, 1),
   ua_t72b3m_modern: anchor('turret', 'left', .14, .65, .24, 1),
   ua_t72b3_modern: anchor('turret', 'left', .14, .65, .24, 1),
