@@ -1,9 +1,9 @@
 {
   "artifact": "wasm/world-kernel/pkg/cot_world_kernel.wasm",
-  "bytes": 6946,
-  "sha256": "e6aabcbb211052362a7d458b9c413c403dc958ca4e7ab363ae1efd5d8e9bcaac",
+  "bytes": 6242,
+  "sha256": "4d547519dc956e3c52d782ce2166f0d715147f9b34ae2be8e602dd040bed32e9",
   "abi": 1,
-  "sourceSha256": "a2844cfb4ca785165cee989eaf234cda1fbcd3abc0c19deb0573a30220ffa479",
+  "sourceSha256": "4950ff0f8f9086bfc8183091910ffe488e8a6654d26959e981980da9dcb7827a",
   "toolchain": "rustc 1.98.1 (48a229cea 2026-09-01)",
   "target": "wasm32-unknown-unknown",
   "profile": "release"

@@ -5,7 +5,7 @@
  *   npm run wasm:world-kernel            # cargo build → wasm/world-kernel/pkg/cot_world_kernel.wasm + .json
  *   npm run wasm:world-kernel:check      # rebuild in a temporary target dir; the bytes must equal the committed ones
  *
- * The binary is committed (≈ 7 KB, ≈ 1.8 KB brotli) because neither `npm test` nor the deploy build may require a
+ * The binary is committed (≈ 6 KB, ≈ 1.6 KB brotli) because neither `npm test` nor the deploy build may require a
  * Rust toolchain: src/wasm/worldKernel.selftest.mjs proves the committed bytes against the JavaScript noise and
  * checks that the manifest's source digest still matches the crate, so an edited crate without a rebuild fails
  * the receipt. This script needs cargo with the wasm32-unknown-unknown target (rustup target add …).

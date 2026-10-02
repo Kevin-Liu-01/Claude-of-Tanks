@@ -1,7 +1,7 @@
 // src/engine/worldKernel.ts — the opt-in Rust/WebAssembly world kernel (`?wasm=world`).
 //
 // What it does: compiles wasm/world-kernel/pkg/cot_world_kernel.wasm (a bit-exact Rust port of simplexFast.ts,
-// ≈ 7 KB, ≈ 1.8 KB brotli) and installs it as SimplexNoise's accelerator, so every noise table constructed
+// ≈ 6 KB, ≈ 1.6 KB brotli) and installs it as SimplexNoise's accelerator, so every noise table constructed
 // afterwards — the height field's, the props', the horizon's — evaluates in WebAssembly. A battlefield build spends
 // about half of each exact height sample in noise; the kernel returns the identical doubles
 // (src/engine/worldKernel.selftest.mjs proves it on random, edge-case and whole-battlefield samples), so collision,

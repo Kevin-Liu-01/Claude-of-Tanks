@@ -10,7 +10,7 @@
 //! arithmetic is IEEE-754 binary64 with round-to-nearest, no fused multiply-add and no extended precision, and
 //! `f64.floor` is exact, so this port reproduces the JavaScript bits on every machine.
 //!
-//! Exactness rules this file keeps (the self-test in `src/wasm/worldKernel.selftest.mjs` is the oracle):
+//! Exactness rules this file keeps (the self-test in `src/engine/worldKernel.selftest.mjs` is the oracle):
 //! - every expression keeps the TypeScript evaluation order (left to right, no reassociation, no FMA);
 //! - `x & 255` on a double is ECMAScript `ToInt32` ([`to_int32`]), exact for every input including NaN, ±∞ and
 //!   magnitudes beyond 2^31;
@@ -21,14 +21,6 @@
 //! ABI (raw C ABI, no wasm-bindgen: no JavaScript object crosses the boundary): `cot_abi()`, `cot_tables()` (base
 //! of the 3 × 512 `i32` tables: perm, perm % 12, perm % 32), `cot_noise2(x, y)`, `cot_noise3(x, y, z)`,
 //! `cot_noise4(x, y, z, w)`. One instance holds one table, the loader creates one instance per `SimplexNoise`.
-
-#![cfg_attr(not(test), no_std)]
-
-#[cfg(all(not(test), target_arch = "wasm32"))]
-#[panic_handler]
-fn panic(_: &core::panic::PanicInfo) -> ! {
-    core::arch::wasm32::unreachable()
-}
 
 /// Bumped whenever an export or the table layout changes; the loader refuses any other value.
 pub const ABI: u32 = 1;
@@ -81,19 +73,12 @@ const G3: f64 = 1.0 / 6.0;
 const F4: f64 = (SQRT5 - 1.0) / 4.0;
 const G4: f64 = (5.0 - SQRT5) / 20.0;
 
-/// `Math.floor`, exactly: IEEE-754 roundTowardNegative including the sign of zero (`core` has no `f64::floor`
-/// and the `f64.floor` intrinsic is unstable, so the integral part comes from an exact truncation through `i64`).
+/// `Math.floor`: std's `f64::floor` lowers to the single `f64.floor` instruction on wasm32 (exact IEEE-754
+/// roundTowardNegative, the sign of zero kept). The crate links std only for this; with no allocation, no formatting
+/// and panic = "abort" nothing else of std reaches the binary, which still imports nothing.
 #[inline(always)]
 fn floor(x: f64) -> f64 {
-    if x.abs() < 4_503_599_627_370_496.0 {
-        // |x| < 2^52: the truncation is exact, and stepping down by one is exact.
-        let t = x as i64 as f64;
-        let r = if t > x { t - 1.0 } else { t };
-        // r is zero only for x in [+0, 1) or x = -0; `x * 0.0` keeps that zero's sign (floor(-0) = -0).
-        if r == 0.0 { x * 0.0 } else { r }
-    } else {
-        x // already integral (|x| >= 2^52), ±∞ or NaN
-    }
+    x.floor()
 }
 
 /// ECMAScript `ToInt32` for an integral double (a floor result), NaN or ±∞ — what `value & 255` applies.
@@ -392,25 +377,6 @@ mod tests {
         assert_eq!(to_int32(f64::NAN), 0);
         assert_eq!(to_int32(f64::INFINITY), 0);
         assert_eq!(to_int32(f64::NEG_INFINITY), 0);
-    }
-
-    #[test]
-    fn floor_is_ieee_round_toward_negative() {
-        let mut cases = vec![0.0, -0.0, 0.5, -0.5, 1.0, -1.0, 2.5, -2.5, 1e-300, -1e-300, 0.9999999999999999,
-            -0.9999999999999999, 4503599627370495.5, -4503599627370495.5, 4503599627370496.0, -4503599627370497.0,
-            1e300, -1e300, f64::INFINITY, f64::NEG_INFINITY, f64::MIN_POSITIVE, -f64::MIN_POSITIVE];
-        let mut state: u64 = 0x9e37_79b9_7f4a_7c15;
-        for _ in 0..200_000 {
-            state ^= state << 13; state ^= state >> 7; state ^= state << 17;
-            let mag = ((state >> 11) as f64) / ((1u64 << 53) as f64);
-            let exp = ((state & 63) as i32) - 20;
-            let v = mag * 2f64.powi(exp);
-            cases.push(if state & (1 << 10) != 0 { -v } else { v });
-        }
-        for x in cases {
-            assert_eq!(floor(x).to_bits(), x.floor().to_bits(), "floor({x:e})");
-        }
-        assert!(floor(f64::NAN).is_nan());
     }
 
     #[test]
