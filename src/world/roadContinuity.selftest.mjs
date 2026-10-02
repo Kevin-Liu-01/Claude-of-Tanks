@@ -61,13 +61,9 @@ export function assertRoadNetwork(mapId, roads) {
   roads.forEach((road, index) => {
     for (let i = 1; i < road.length; i++) {
       const length = Math.hypot(road[i][0] - road[i - 1][0], road[i][1] - road[i - 1][1]);
-      // Desert keeps its33 authored Z stations while the mesa bypass moves
-      // sideways between them. Bound its diagonal without resampling props;
-      // all other country/grid and authored routes retain the34m ceiling.
-      if (mapId === 'desert' && index === 0) {
-        assert.equal(road[i][1] - road[i - 1][1], 32, 'Desert keeps32m longitudinal stations');
-        assert.ok(length > 1e-7 && length <= 75, 'Desert lateral bypass has bounded nondegenerate stations');
-      } else assert.ok(length > 1e-7 && length <= 34, `${mapId}/${index}: finite nondegenerate bounded sampling`);
+      // Every country/grid and authored route keeps the 34 m station ceiling (2026-10-01: Sirocco Wadi's 75 m
+      // mesa-bypass stations left with its old roads).
+      assert.ok(length > 1e-7 && length <= 34, `${mapId}/${index}: finite nondegenerate bounded sampling`);
     }
     intents[index].forEach((intent, end) => {
       const p = end ? road.at(-1) : road[0];
