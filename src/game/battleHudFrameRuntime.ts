@@ -40,7 +40,7 @@ interface KillcamView {
 
 interface InputView {
   getSettings(): { armorAimOverlay?: boolean };
-  getBinding(actionId: 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'shell1' | 'shell2' | 'shell3',slot?:0|1): string | null;
+  getBinding(actionId: 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'drone' | 'shell1' | 'shell2' | 'shell3',slot?:0|1): string | null;
   labelFor(code: string | null): string;
 }
 
@@ -251,6 +251,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     const keys = frameInfo.auxiliaryKeyLabels!;
     for (const action of ['smoke','lights','roofGun'] as const) keys[action] = input.labelFor(input.getBinding(action,0) ?? input.getBinding(action,1));
     const missileSlot = focus.spec?.gun?.shells.findIndex(shell => shell.guided) ?? -1;
+    keys.drone = input.labelFor(input.getBinding('drone', 0) ?? input.getBinding('drone', 1));
     keys.missile = missileSlot >= 0 && missileSlot < 3 ? input.labelFor(input.getBinding((['shell1','shell2','shell3'] as const)[missileSlot]!,0) ?? input.getBinding((['shell1','shell2','shell3'] as const)[missileSlot]!,1)) : '—';
     updateSpotting(focus);
   };

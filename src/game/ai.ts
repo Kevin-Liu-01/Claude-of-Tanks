@@ -869,7 +869,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // Ensure the shared input record exists (integration normally creates it).
   ensureAiInput(entity);
 
-  const spec = entity.spec;
+  let spec = entity.spec;
   const liquidSafe = createNavigationLiquidSafety(hf, spec);
   const terrainSafety = createBotTerrainSafety(hf);
   let terrainCheckAtS = -Infinity, terrainBlocked = false;
@@ -883,7 +883,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // r7: the spec's REAL HE-class slot (not a blind index 2 — the sturmtiger
   // carries [HE, HEAT] and `shells[2]` crashed tryFire; probed by class so
   // splash fallbacks and the no-pen fire gate work on every magazine).
-  const heSlot = findHeShellSlot(spec);
+  let heSlot = findHeShellSlot(spec);
   const slotHasAmmo = (slot: number): boolean =>
     !Array.isArray(entity.combat?.ammo) || (entity.combat!.ammo[slot] || 0) > 0;
   const slotReloadS = (slot: number): number =>
@@ -4826,6 +4826,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // ---- main update ----------------------------------------------------------
 
   function update(dt: number, timeS: number): void {
+    if (spec !== entity.spec) { spec = entity.spec; heSlot = findHeShellSlot(spec); chosenSlot = 0; }
     nowS = timeS;
     const input = entity.input;
     const cb = entity.combat;

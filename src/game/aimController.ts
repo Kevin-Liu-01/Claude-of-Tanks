@@ -1,3 +1,4 @@
+import type { AerialView } from '../sim/aerialCombat.ts';
 import { usesLauncherMuzzles, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
 import { magazineIndicator } from '../sim/magazineIndicator.ts';
 import type { MagazineIndicator } from '../sim/magazineIndicator.ts';
@@ -66,6 +67,7 @@ interface AimVisual {
 }
 
 interface AimTank {
+  aerial?: AerialView;
   id: string;
   team?: string;
   isPlayer?: boolean;
@@ -272,6 +274,11 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     outDir: THREE.Vector3,
     outTarget: THREE.Vector3,
   ): number {
+    if (player.aerial?.active) {
+      outOrigin.set(player.aerial.x, player.aerial.y, player.aerial.z);
+      outDir.copy(aimPoint).sub(outOrigin).normalize(); outTarget.copy(aimPoint);
+      return outOrigin.distanceTo(aimPoint);
+    }
     if (!player.visual) {
       throw new Error('gun-center ray requires an active tank visual');
     }
@@ -303,11 +310,11 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     // round 32 (owner 2026-09-21: "the double reticles is really annoying"): every fixed-mount gun — casemate
     // or hydraulic — draws ONE sight at the point the gun can actually reach; only a turret earns the separate
     // camera cross.
-    frame.singleReticle = !!player.spec.armor.turretless;
+    frame.singleReticle = !!player.aerial?.active || !!player.spec.armor.turretless;
     frame.point.copy(rig.aimPoint);
     frame.distM = rig.aimDist;
     frame.dispersionRadM = deps.computeDispersion(player.spec, state, rig.aimDist);
-    frame.atGunLimit = state.atGunLimit;
+    frame.atGunLimit = !player.aerial?.active && state.atGunLimit;
     frame.gunLimitSpec = !!state.gunLimitSpec;
     frame.reload.t = combat.reload.t;
     frame.reload.totalS = combat.reload.totalS;

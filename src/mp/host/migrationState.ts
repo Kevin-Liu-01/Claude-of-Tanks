@@ -1,3 +1,4 @@
+import type { NewModeCheckpoint } from '../../sim/authoritativeMatch.ts';
 /**
  * Host migration state (P2 client lane, 2026-09-28; docs/MULTIPLAYER-V2.md §13.2 "Keyframes"): the browser host
  * broadcasts, every ROOM_MATCH_KEYFRAME_INTERVAL_MS, a keyframe of EVERY entity — sealed with AES-GCM under a key
@@ -74,6 +75,7 @@ export async function openMigrationBlob(key: unknown, blob: Uint8Array, crypto?:
 // ------------------------------------------------------------ the keyframe payload: [u32 packet bytes][wire keyframe packet][json extras]
 
 export interface MigrationKeyframe {
+  modeCheckpoint?: NewModeCheckpoint | null;
   tick: number;
   battleTimeMs: number;
   phase: 'countdown' | 'playing' | 'ended';
@@ -83,7 +85,7 @@ export interface MigrationKeyframe {
 
 export function encodeMigrationKeyframe(keyframe: MigrationKeyframe): Uint8Array {
   const packet = encodeMessage(buildSnapshotPacket(keyframe.frame, null));
-  const extras = encoder.encode(JSON.stringify({ tick: keyframe.tick, battleTimeMs: keyframe.battleTimeMs, phase: keyframe.phase, entities: keyframe.entities }));
+  const extras = encoder.encode(JSON.stringify({ tick: keyframe.tick, battleTimeMs: keyframe.battleTimeMs, phase: keyframe.phase, entities: keyframe.entities, modeCheckpoint: keyframe.modeCheckpoint }));
   const out = new Uint8Array(4 + packet.byteLength + extras.byteLength);
   new DataView(out.buffer).setUint32(0, packet.byteLength, true);
   out.set(packet, 4);
@@ -110,7 +112,7 @@ export function decodeMigrationKeyframe(bytes: Uint8Array): MigrationKeyframe {
   const phase = extras.phase === 'countdown' || extras.phase === 'ended' ? extras.phase : 'playing';
   const entities = Array.isArray(extras.entities) ? extras.entities.filter(isExtras) : [];
   if (!Number.isInteger(extras.tick) || typeof extras.battleTimeMs !== 'number') throw new Error('migration keyframe extras invalid');
-  return { tick: extras.tick as number, battleTimeMs: extras.battleTimeMs, phase, frame, entities };
+  return { tick: extras.tick as number, battleTimeMs: extras.battleTimeMs, phase, frame, entities, ...(extras.modeCheckpoint ? { modeCheckpoint: extras.modeCheckpoint as NewModeCheckpoint } : {}) };
 }
 
 // ------------------------------------------------------------ chunking over wire events
@@ -171,6 +173,7 @@ const RELOAD_KINDS = ['ready', 'shell', 'intraClip', 'magazine'] as const;
  * until the new revision climbed past the old.
  */
 export function applyResumeState(actor: MatchActor, state: HostResumeState): { restored: number; skipped: number; destroyedRestored: number; destroyedUnknown: number } {
+  if (state.modeCheckpoint) actor.authority.restoreModeCheckpoint(state.modeCheckpoint);
   let restored = 0;
   let skipped = 0;
   const extrasById = new Map(state.entities.map((entry) => [entry.entityId, entry]));

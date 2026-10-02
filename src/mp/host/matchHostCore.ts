@@ -253,7 +253,7 @@ export function createMatchHostCore({
       modeStateJson: meta.modeState ? JSON.stringify(meta.modeState) : null,
     };
     const phase = live.ended || live.authority.result ? 'ended' : live.authority.phase === 'countdown' ? 'countdown' : 'playing';
-    return { tick, battleTimeMs, phase, frame, entities: captureEntityExtras(live) };
+    return { tick, battleTimeMs, phase, frame, entities: captureEntityExtras(live), modeCheckpoint: live.authority.captureModeCheckpoint() };
   }
 
   async function broadcastSealed(kind: typeof MIGRATION_EVENT_KIND[keyof typeof MIGRATION_EVENT_KIND], id: number, tick: number, plain: Uint8Array): Promise<void> {

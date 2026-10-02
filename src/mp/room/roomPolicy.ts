@@ -1,3 +1,4 @@
+import { arrangeModeRoster } from '../host/modeRoster.ts';
 /**
  * Room policy: the pure state machine every room host runs (charter §5).
  * It encodes the first multiplayer's lobby rules (auto-balanced teams,
@@ -123,6 +124,7 @@ function readArrangement(value: unknown): TeamArrangement | null {
     scoreTarget: pick('scoreTarget') as number | null, respawnS: pick('respawnS') as number | null,
     waveStep: pick('waveStep') as number | null, holdS: pick('holdS') as number | null,
     waveSize: pick('waveSize') as number | null, enemyNation: pick('enemyNation') as string | null,
+    juggernautRole: pick('juggernautRole') as TeamArrangement['juggernautRole'],
     marsGravity: pick('marsGravity') as TeamArrangement['marsGravity'], marsCaches: pick('marsCaches') as TeamArrangement['marsCaches'],
   };
 }
@@ -556,6 +558,7 @@ export function planStart(room: RoomSnapshot, { seed, now, botSpecFallback = 'm1
       }
     }
   }
+  arrangeModeRoster(room.settings.gameMode, room.settings.arrangement, seats, bots);
   room.round += 1;
   room.phase = 'starting';
   room.settings.locked = true;
