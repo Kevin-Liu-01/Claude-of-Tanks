@@ -149,6 +149,12 @@ export const NIGHT_SKY_GLOW = 0.22;
  * for a night a little more visible, not darker; the shade keeps the glow's light).
  */
 export const NIGHT_EV = -0.25;
+/**
+ * The camera's low-sun offset (EV with the sun near the horizon, full below 6°, none above 18°): a golden-hour scene is
+ * exposed for its sky rather than opened toward the day's key, so the long light keeps its depth and the sky its blue
+ * (the adapting camera alone lifted the 7° sunset to a pale, flat near-day).
+ */
+export const LOW_SUN_EV = -0.5;
 /** Its colour: the blue of a moonlit sky (linear, luminance ≈ 1). */
 export const NIGHT_GLOW_COLOR: Rgb = Object.freeze([0.72, 0.95, 1.38]) as Rgb;
 /** The sunlit share of the ground the environment shows below the horizon (groundBounce.ts adds the rest). */
@@ -397,7 +403,10 @@ export function resolveLightModel(
   // the deck's light from below is its reflection off the ground: the hemisphere's ground pole is the albedo itself
   const hemiGround: Rgb = [ground[0], ground[1], ground[2]];
   const illuminance = sunIrradiance * sinEl + skyLightH + hemiIntensity;
-  const exposure = exposureFor(illuminance, (L.exposureEV ?? 0) + night * lightTune('NIGHT_EV', NIGHT_EV));
+  const sunElevationDeg = Math.asin(clamp(params.sunDir[1], -1, 1)) * 180 / Math.PI;
+  const lowSun = (1 - night) * (1 - smoothstep(6, 18, sunElevationDeg));
+  const exposure = exposureFor(illuminance, (L.exposureEV ?? 0) + night * lightTune('NIGHT_EV', NIGHT_EV)
+    + lowSun * lightTune('LOW_SUN_EV', LOW_SUN_EV));
   // the readability lift's floor holds its on-screen level as the camera adapts (Verdant's key keeps it whole), and
   // fades with the deck that lights the shade itself
   const vehicleReadability = clamp(Math.min(1, lightTune('EXPOSURE_KEY', EXPOSURE_KEY) / exposure)

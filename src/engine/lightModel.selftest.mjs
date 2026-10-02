@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  DEFAULT_GROUND_ALBEDO, EXPOSURE_ADAPTATION, EXPOSURE_KEY, EXPOSURE_MAX, EXPOSURE_MIN, GROUND_SUNLIT_SHARE, LIGHT_SOLAR_IRRADIANCE, NIGHT_SKY_GLOW, OVERCAST_SKY_CUT,
+  DEFAULT_GROUND_ALBEDO, EXPOSURE_ADAPTATION, EXPOSURE_KEY, EXPOSURE_MAX, EXPOSURE_MIN, GROUND_SUNLIT_SHARE, LIGHT_SOLAR_IRRADIANCE, LOW_SUN_EV, NIGHT_SKY_GLOW, OVERCAST_SKY_CUT,
   SKY_DIFFUSE_GAIN, atmosphereTransmittance, deriveSun, exposureFor, hexToLinear, isGalaxySky, linearToHex,
   luminance, resolveLightModel, resolveOvercast, whiteBalanceGains,
 } from './lightModel.ts';
@@ -117,6 +117,14 @@ assert.ok(clear.vehicleReadability > 0.85, `Verdant keeps its calibrated lift ($
 assert.ok(overcastModel.vehicleReadability < 0.35, `a closed deck lights every face: the lift fades (${overcastModel.vehicleReadability.toFixed(2)})`);
 assert.ok(nightModel.vehicleReadability < clear.vehicleReadability, 'the opened night camera needs less of the scene-linear floor');
 assert.equal(galaxy.vehicleReadability, 1, 'the authored rig keeps its calibration');
+
+// the golden hour: a 7° sun is exposed for its sky (the low-sun offset), the day's key is untouched
+const sunsetSky = { ...verdantSky, sunElevationDeg: 7, skyIntensity: 0.72 };
+const sunsetModel = resolveLightModel(sunsetSky, skyPresetToAtmosphere(sunsetSky), { irradianceRaw: irr.map((v) => v * 0.72) }, { intensity: 2.8, colorHex: 0xffbf80 });
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+near(sunsetModel.exposure, exposureFor(sunsetModel.illuminance, LOW_SUN_EV * (1 - smooth(6, 18, 7))), 1e-9, 'the low sun takes its offset');
+near(clear.exposure, exposureFor(clear.illuminance), 1e-12, 'a 32° sun takes none');
+assert.ok(sunsetModel.sunColor[2] < clear.sunColor[2] * 0.8, 'and its light is the long path\'s warm');
 
 // ---- 5. the exposure law
 near(exposureFor(3), EXPOSURE_KEY, 1e-12, 'Verdant\'s key at the reference illuminance');
