@@ -67,7 +67,7 @@ assert.deepEqual(optIns.sort(), ['autumn/aspen', 'autumn/birch'], 'exact map/spe
 const originalInput = {...autumn.vegetation, palettes: Object.fromEntries(Object.entries(autumn.vegetation.palettes)
   .map(([species, palette]) => [species, {...palette, birchLeaves: false}]))};
 // p2 trees lane (2026-10-01): the desktop tiers grow their trees and paint branch-spray atlases (treeSprayAtlas.ts —
-// the autumn birch/aspen leaf opt-in is growthTrees.selftest's subject there); this receipt pins the legacy card
+// the autumn birch/aspen leaf opt-in is treeGrowth.selftest's subject there); this receipt pins the legacy card
 // trees' painter routing, which the mobile tier keeps, so its registries take vegetation.legacyTrees
 const legacy = input => ({ ...input, legacyTrees: true });
 const libraries = [api.leafLibrary(legacy(originalInput)), api.leafLibrary(legacy(autumn.vegetation))];
