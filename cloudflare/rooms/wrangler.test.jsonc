@@ -9,7 +9,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "ratelimits": [{
     "name": "ROOM_CONNECT_LIMITER",
-    "namespace_id": "2609055512",
+    "namespace_id": "2609055513",
     "simple": { "limit": 120, "period": 60 }
   }],
   "vars": {

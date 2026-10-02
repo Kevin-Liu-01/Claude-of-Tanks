@@ -483,8 +483,8 @@
     // connectivity probe before the document is replaced, and the terminal
     // message says which it was: a file that failed to download (named), a
     // graphics driver that refused, or a connection that is merely slow. The
-    // terminal outcomes are beaconed to /api/telemetry with the same anonymous
-    // session id the module client reuses.
+    // terminal outcomes are beaconed to the telemetry sink (telemetryErrorEndpoint
+    // below) with the same anonymous session id the module client reuses.
     (() => {
       const KEY = 'cot.bootRecovery.v1';
       const MAX_AUTO_RELOADS = 2;
@@ -581,16 +581,25 @@
       function bounded(value) {
         return String(value || '').replace(/[^A-Za-z0-9_.:-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 48) || 'unknown';
       }
-      // One v2 `error` record (server/telemetryRecord.ts) per terminal verdict, to the
-      // Cloudflare sink named by the meta's data-url (VITE_TELEMETRY_URL) or the Vercel fallback.
+      // Where a terminal verdict goes: the build's sink (the meta's data-url, VITE_TELEMETRY_URL), else the
+      // official site's telemetry Worker on the official host — the deploy strips the sensitive
+      // VITE_TELEMETRY_URL, so the live data-url is empty — else the Vercel fallback. The same rule as
+      // telemetryEndpoints() in src/entry/telemetry.ts (INFRA-P3; src/entry/inlineWatchdogSink.selftest.mjs).
+      const OFFICIAL_SITE_HOST = 'cot.kevinliu.studio';
+      const OFFICIAL_TELEMETRY_URL = 'https://cot-telemetry.kk23907751.workers.dev';
+      function telemetryErrorEndpoint(dataUrl, hostname) {
+        let base = String(dataUrl || '').trim().replace(/\/+$/, '');
+        if (!/^https?:\/\//.test(base)) base = String(hostname || '').trim().toLowerCase() === OFFICIAL_SITE_HOST ? OFFICIAL_TELEMETRY_URL : '';
+        return base ? base + '/v1/error' : '/api/telemetry';
+      }
+      // One v2 `error` record (server/telemetryRecord.ts) per terminal verdict.
       function beacon(event) {
         if (!telemetryAllowed()) return;
         try {
           const meta = document.querySelector && document.querySelector('meta[name="application-version"]');
           const build = String(meta && meta.getAttribute('content') || 'unknown').replace(/[^A-Za-z0-9+._-]+/g, '_').slice(0, 64) || 'unknown';
           const sink = document.querySelector && document.querySelector('meta[name="cot-telemetry"]');
-          const base = String(sink && sink.getAttribute('data-url') || '').replace(/\/+$/, '');
-          const endpoint = /^https?:\/\//.test(base) ? base + '/v1/error' : '/api/telemetry';
+          const endpoint = telemetryErrorEndpoint(sink && sink.getAttribute('data-url'), location.hostname);
           const body = JSON.stringify({ v: 2, sid: window.__COT_TELEMETRY_SID, build, kind: 'error', stage: event.stage,
             code: event.code, outcome: event.outcome, ready: !!window.__GAME_READY, ms: Date.now() - loadedAt,
             error: { message: event.message, frames: event.frames, code: event.reason } });

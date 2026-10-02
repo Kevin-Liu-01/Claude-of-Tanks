@@ -93,6 +93,29 @@ The default local URL is usually http://localhost:5173.
 The home and docs routes are separate Vite entries. They must remain able to
 load without preloading the game module graph.
 
+`vercel.json` publishes them with pattern rewrites (`/docs/:topic(...)` →
+`/docs-:topic.html` and the `/cn` twins; the topic list matches
+`PUBLIC_ROUTE_RECORDS`). A trailing-slash form of a slashless page answers 308
+to the canonical path; `/cn/` keeps its slash because it is the zh-CN game's
+canonical URL, which is why there is no global `trailingSlash` setting.
+`tools/vercel-routes.selftest.mjs` resolves every route through the conversion
+`vercel build` runs (`@vercel/routing-utils`) against the frozen deploy-163 table.
+
+The alias domains `claudeoftanks.kevinliu.studio` and `claude-of-tanks.vercel.app`
+answer 308 to `https://cot.kevinliu.studio` with path and query (host-equality
+redirects, the hosts from `api/_lib/policy.ts`); deployment URLs and the protected
+production domain are untouched, so the release step still verifies a deployment
+on its own URL.
+
+Every response also carries `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin`, a `Permissions-Policy` that
+denies camera, microphone, geolocation, payment, USB, serial, HID and Bluetooth,
+`X-Frame-Options: SAMEORIGIN` and `Cross-Origin-Opener-Policy: same-origin`
+(one `/:path(.*)` header rule; 2026-10-01). The site opens no popup it talks to
+(external links are `noopener`) and nothing embeds it from another origin; a
+future portal or app embed needs `frame-ancestors`/XFO revisited first. There is
+no enforced CSP yet: the inline scripts would need build-time hashes.
+
 ### Capture-lock wait (2026-09-25)
 
 The selftest runners wait for the shared capture lock (`/tmp/cot-shots.lock`, FIFO tickets in `/tmp/cot-shots.queue`) before their browser receipts; `COT_SHOTS_LOCK_TIMEOUT_MS` sets that wait (default 45 min — chain 94 died at 1/413 behind another session's browser audit, so landing chains export three hours).
@@ -121,7 +144,7 @@ wait is stale by the time the lock arrives — re-read it after `acquire()` and 
 
 ### Asset caching (2026-09-25)
 
-**Asset caching (2026-09-25).** Vite emits content-hashed files under `/assets/`. Do NOT add a header rule for `/assets/(.*)` in `vercel.json`: a `headers` rule applies to every response on the path including a 404, and Vercel's edge then caches that 404 for the rule's lifetime — under deploy 89's immutable rule one transient miss during a promotion became a permanent "A game file failed to download" for every player on that edge node (`tools/vercel-config.selftest.mjs` and `src/gallery/chunkRecovery.selftest.mjs` refuse the rule). The year-long header comes from the deploy step instead: `node tools/vercel-output-immutable.mjs` runs between `vercel build` and `vercel deploy --prebuilt` and writes immutable, case-sensitive header routes for exactly the hashed files that exist in `.vercel/output/static/assets` (groups of 40 names per route, ahead of the filesystem handle; `--check` verifies coverage; `tools/vercel-output-immutable.selftest.mjs`). A path that is not in the build matches no rule, keeps Vercel's default `public, max-age=0, must-revalidate` answer and heals on the next request; documents, `/maps` and `/minimaps` keep that default too. Deploy 94 also re-encoded every chunk hash as base36 (`build.rollupOptions.output.hashCharacters`), so every `/assets` URL changed once and an edge node that had cached 404s for deploy-93 chunks (a browser's boot-retry loop during the promotion, answered by the old config) never serves them again. Every deploy's verify step then sweeps the served index's chunks (all must answer 200), checks that a missing `/assets` path is not cacheable and boots the alias headless before the DEPLOYS.md row is written.
+**Asset caching (2026-09-25).** Vite emits content-hashed files under `/assets/`. Do NOT add a header rule for `/assets/(.*)` in `vercel.json`: a `headers` rule applies to every response on the path including a 404, and Vercel's edge then caches that 404 for the rule's lifetime — under deploy 89's immutable rule one transient miss during a promotion became a permanent "A game file failed to download" for every player on that edge node (`tools/vercel-config.selftest.mjs` and `src/gallery/chunkRecovery.selftest.mjs` refuse the rule). The year-long header comes from the deploy step instead: `node tools/vercel-output-immutable.mjs` runs between `vercel build` and `vercel deploy --prebuilt` and writes immutable, case-sensitive header routes for exactly the hashed files that exist in `.vercel/output/static/assets` (groups of 40 names per route, ahead of the filesystem handle; `--check` verifies coverage; `tools/vercel-output-immutable.selftest.mjs`). A path that is not in the build matches no rule, keeps Vercel's default `public, max-age=0, must-revalidate` answer and heals on the next request; documents keep that default too. Since 2026-10-01 the same per-file routes make the content-addressed collision manifests (`/mp-collision/<map>.<sha12>.json`; the index stays default) immutable and give the existing images, audio and fonts under `/textures`, `/icons`, `/fonts`, `/audio`, `/maps` and `/minimaps` `public, max-age=3600, stale-while-revalidate=86400` (they keep their URL across deploys, so an hour fresh and a day served stale while revalidating); `--check` covers all three families (deploy 163's output: 949 + 33 + 2,480 files, 90 routes, config.json 39 → 119 KB). Deploy 94 also re-encoded every chunk hash as base36 (`build.rollupOptions.output.hashCharacters`), so every `/assets` URL changed once and an edge node that had cached 404s for deploy-93 chunks (a browser's boot-retry loop during the promotion, answered by the old config) never serves them again. Every deploy's verify step then sweeps the served index's chunks (all must answer 200), checks that a missing `/assets` path is not cacheable and boots the alias headless before the DEPLOYS.md row is written.
 
 ## Development services
 
@@ -173,8 +196,11 @@ For fixed credentials or another provider, use a JSON array of ICE servers:
 
     COT_TURN_ICE_SERVERS_JSON
 
-`COT_TURN_TTL_SECONDS` controls the self-hosted or Cloudflare credential
-lifetime (clamped to one hour through one day; default eight hours).
+Credentials last one hour (2026-10-01; eight hours before): the client fetches
+them per peer connection and a connection lives one match. `COT_TURN_TTL_SECONDS`
+may shorten the self-hosted or Cloudflare lifetime to twenty minutes and can no
+longer lengthen it. `/api/ice` answers only a same-origin page
+(`Sec-Fetch-Site: same-origin`) or an allow-listed `Origin`; a bare `curl` gets 403.
 `VITE_ICE_CONFIG_URL` is only needed when credentials are served from
 a different endpoint. Long-lived provider secrets must never use the `VITE_`
 prefix or enter the browser bundle.
@@ -182,7 +208,7 @@ prefix or enter the browser bundle.
 Before certifying private rooms in production, check the room Worker and the ICE endpoint:
 
     curl -fsS https://cot-rooms.kk23907751.workers.dev/healthz
-    curl -fsS https://cot.kevinliu.studio/api/ice
+    curl -fsS -H 'Origin: https://cot.kevinliu.studio' https://cot.kevinliu.studio/api/ice
 
 Then run the three-browser proof against the deployed site, the only origin the Worker admits:
 

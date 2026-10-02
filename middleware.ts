@@ -1,13 +1,4 @@
 import { next } from '@vercel/functions';
-// Both catalogs, resident before the metadata helpers below resolve zh-CN text.
-import './src/ui/i18nCatalog.ts';
-import { localizeHtmlDocument } from './src/presentation/localizedHtml.ts';
-import {
-  injectSiteMetadata,
-  localizedStudioMetadata,
-  privateRoomMetadata,
-} from './src/presentation/siteMetadata.ts';
-import { PUBLIC_ROUTE_RECORDS, resolveLocalePath } from './src/ui/localeRouting.ts';
 
 const DEPLOYMENT_COOKIE = '__vdpl';
 const DEPLOYMENT_RESET_PARAM = '_dplreset';
@@ -70,6 +61,19 @@ export const config = {
   ],
 };
 
+/**
+ * The requests that may need the metadata and localization modules (INFRA-P13 / FE-P26, 2026-10-01): a room link on the
+ * game document, the studio, and every `/cn` document (its metadata and the localized 404). Everything else the
+ * matcher sends here — the plain game document, the gallery — only needs the deployment pin, so those modules (and the
+ * i18n catalogs they import) are never loaded for it: a cold instance answering `/` skips them entirely.
+ */
+export function needsDocumentRewrite(url: URL): boolean {
+  const path = url.pathname;
+  if (path === '/cn' || path.startsWith('/cn/')) return true;
+  if (path === '/studio' || path === '/studio/') return true;
+  return (path === '/' || path === '/index.html') && url.searchParams.has('room');
+}
+
 /** @param {Request} request */
 export default async function middleware(request: Request): Promise<Response> {
   const resetLocation = deploymentResetLocation(request.url);
@@ -92,75 +96,93 @@ export default async function middleware(request: Request): Promise<Response> {
   );
 
   const requestUrl = new URL(request.url);
-  const localePath = resolveLocalePath(requestUrl.pathname);
-  const locale = localePath.locale ?? 'en-US';
-  if (!requestUrl.searchParams.has(METADATA_SHELL_PARAM)) {
-    const isPlayableDocument = localePath.pathname === '/' || localePath.pathname === '/index.html';
-    const roomMetadata = isPlayableDocument ? privateRoomMetadata(requestUrl, locale) : null;
-    const metadata = roomMetadata || (localePath.pathname === '/studio'
-      ? localizedStudioMetadata(locale)
-      : null);
-    if (metadata) {
-      const shellUrl = new URL('/index.html', requestUrl.origin);
-      shellUrl.searchParams.set(METADATA_SHELL_PARAM, '1');
-      const shellResponse = await fetch(shellUrl, {
-        headers: {
-          accept: 'text/html',
-          cookie: request.headers.get('cookie') || '',
-          'user-agent': request.headers.get('user-agent') || 'Claude-of-Tanks metadata shell',
-        },
-      });
-      if (shellResponse.ok) {
-        const route = PUBLIC_ROUTE_RECORDS.find(({ id }) =>
-          id === (localePath.pathname === '/studio' ? 'studio' : 'game'))!;
-        const headers = new Headers(shellResponse.headers);
-        headers.delete('content-encoding');
-        headers.delete('content-length');
-        headers.delete('etag');
-        headers.delete('last-modified');
-        headers.set('content-type', 'text/html; charset=utf-8');
-        headers.set('cache-control', roomMetadata ? 'private, no-store' : 'public, max-age=0, must-revalidate');
-        if (roomMetadata) headers.set('x-robots-tag', 'noindex, nofollow, noarchive');
-        if (cookie && !headers.get('set-cookie')?.includes(`${DEPLOYMENT_COOKIE}=`)) {
-          headers.append('set-cookie', cookie);
-        }
-        const localizedShell = localizeHtmlDocument(await shellResponse.text(), route, locale);
-        return new Response(injectSiteMetadata(localizedShell, metadata), {
-          status: shellResponse.status,
-          headers,
-        });
-      }
-    }
-
-    // Vercel's generic static fallback cannot select a locale-specific 404.
-    // Intercept unknown `/cn/...` documents so both the status and copy remain
-    // truthful without a catch-all rewrite that would accidentally return 200.
-    if (localePath.locale === 'zh-CN' && !localePath.route &&
-        request.headers.get('accept')?.includes('text/html')) {
-      const shellUrl = new URL('/404.html', requestUrl.origin);
-      shellUrl.searchParams.set(METADATA_SHELL_PARAM, '1');
-      const shellResponse = await fetch(shellUrl, {
-        headers: { accept: 'text/html', cookie: request.headers.get('cookie') || '' },
-      });
-      if (shellResponse.ok) {
-        const route = PUBLIC_ROUTE_RECORDS.find(({ id }) => id === 'notFound')!;
-        const headers = new Headers(shellResponse.headers);
-        headers.delete('content-encoding');
-        headers.delete('content-length');
-        headers.delete('etag');
-        headers.delete('last-modified');
-        headers.set('content-type', 'text/html; charset=utf-8');
-        headers.set('cache-control', 'public, max-age=0, must-revalidate');
-        headers.set('x-robots-tag', 'noindex, nofollow');
-        if (cookie && !headers.get('set-cookie')?.includes(`${DEPLOYMENT_COOKIE}=`)) {
-          headers.append('set-cookie', cookie);
-        }
-        return new Response(localizeHtmlDocument(await shellResponse.text(), route, locale), {
-          status: 404,
-          headers,
-        });
-      }
-    }
+  if (!requestUrl.searchParams.has(METADATA_SHELL_PARAM) && needsDocumentRewrite(requestUrl)) {
+    const response = await documentResponse(request, requestUrl, cookie);
+    if (response) return response;
   }
   return next(cookie ? { headers: { 'set-cookie': cookie } } : {});
+}
+
+/** Room-link and studio metadata, and the localized `/cn` 404; null when the request passes through unchanged. */
+async function documentResponse(request: Request, requestUrl: URL, cookie: string | null): Promise<Response | null> {
+  // Both catalogs, resident before the metadata helpers resolve zh-CN text (perf/boot-weight made zh-CN a lazy chunk).
+  await import('./src/ui/i18nCatalog.ts');
+  const [
+    { localizeHtmlDocument },
+    { injectSiteMetadata, localizedStudioMetadata, privateRoomMetadata },
+    { PUBLIC_ROUTE_RECORDS, resolveLocalePath },
+  ] = await Promise.all([
+    import('./src/presentation/localizedHtml.ts'),
+    import('./src/presentation/siteMetadata.ts'),
+    import('./src/ui/localeRouting.ts'),
+  ]);
+  const localePath = resolveLocalePath(requestUrl.pathname);
+  const locale = localePath.locale ?? 'en-US';
+  const isPlayableDocument = localePath.pathname === '/' || localePath.pathname === '/index.html';
+  const roomMetadata = isPlayableDocument ? privateRoomMetadata(requestUrl, locale) : null;
+  const metadata = roomMetadata || (localePath.pathname === '/studio'
+    ? localizedStudioMetadata(locale)
+    : null);
+  if (metadata) {
+    const shellUrl = new URL('/index.html', requestUrl.origin);
+    shellUrl.searchParams.set(METADATA_SHELL_PARAM, '1');
+    const shellResponse = await fetch(shellUrl, {
+      headers: {
+        accept: 'text/html',
+        cookie: request.headers.get('cookie') || '',
+        'user-agent': request.headers.get('user-agent') || 'Claude-of-Tanks metadata shell',
+      },
+    });
+    if (shellResponse.ok) {
+      const route = PUBLIC_ROUTE_RECORDS.find(({ id }) =>
+        id === (localePath.pathname === '/studio' ? 'studio' : 'game'))!;
+      const headers = new Headers(shellResponse.headers);
+      headers.delete('content-encoding');
+      headers.delete('content-length');
+      headers.delete('etag');
+      headers.delete('last-modified');
+      headers.set('content-type', 'text/html; charset=utf-8');
+      headers.set('cache-control', roomMetadata ? 'private, no-store' : 'public, max-age=0, must-revalidate');
+      if (roomMetadata) headers.set('x-robots-tag', 'noindex, nofollow, noarchive');
+      if (cookie && !headers.get('set-cookie')?.includes(`${DEPLOYMENT_COOKIE}=`)) {
+        headers.append('set-cookie', cookie);
+      }
+      const localizedShell = localizeHtmlDocument(await shellResponse.text(), route, locale);
+      return new Response(injectSiteMetadata(localizedShell, metadata), {
+        status: shellResponse.status,
+        headers,
+      });
+    }
+  }
+
+  // Vercel's generic static fallback cannot select a locale-specific 404.
+  // Intercept unknown `/cn/...` documents so both the status and copy remain
+  // truthful without a catch-all rewrite that would accidentally return 200.
+  if (localePath.locale === 'zh-CN' && !localePath.route &&
+      request.headers.get('accept')?.includes('text/html')) {
+    const shellUrl = new URL('/404.html', requestUrl.origin);
+    shellUrl.searchParams.set(METADATA_SHELL_PARAM, '1');
+    const shellResponse = await fetch(shellUrl, {
+      headers: { accept: 'text/html', cookie: request.headers.get('cookie') || '' },
+    });
+    if (shellResponse.ok) {
+      const route = PUBLIC_ROUTE_RECORDS.find(({ id }) => id === 'notFound')!;
+      const headers = new Headers(shellResponse.headers);
+      headers.delete('content-encoding');
+      headers.delete('content-length');
+      headers.delete('etag');
+      headers.delete('last-modified');
+      headers.set('content-type', 'text/html; charset=utf-8');
+      headers.set('cache-control', 'public, max-age=0, must-revalidate');
+      headers.set('x-robots-tag', 'noindex, nofollow');
+      if (cookie && !headers.get('set-cookie')?.includes(`${DEPLOYMENT_COOKIE}=`)) {
+        headers.append('set-cookie', cookie);
+      }
+      return new Response(localizeHtmlDocument(await shellResponse.text(), route, locale), {
+        status: 404,
+        headers,
+      });
+    }
+  }
+  return null;
 }

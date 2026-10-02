@@ -10,6 +10,3 @@ shots
 .env.*
 !.env.example
 !.env.*.example
-
-# Independently deployed Worker; never upload its local tooling to Vercel.
-cloudflare/signaling
