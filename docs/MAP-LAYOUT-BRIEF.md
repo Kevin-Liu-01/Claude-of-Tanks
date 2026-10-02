@@ -159,6 +159,12 @@ props code shaped every layout, and the next maps should start from them:
   rejected when the ground under its footprint varies by more than the map's `maxSpread`; check that every landmark
   actually stands.
 - **Worked ground.** A `workedGround` patch takes at most 24 vertices; split larger ones.
+- **Bot hit rates.** The bots' moving-battle hit rate follows the ground between the hulls, so clearer sightlines raise
+  it. The authoritativeBots calibration (four bots from fixed seats 250 m apart, eight seeds) runs on Verdant. Run on
+  each batch-1 map with the aim model unchanged, it rose 67.0 → 71.7 % on Verdant Fields, whose even village square
+  replaced the old roll. It fell 69.6 → 65.4 %, 65.8 → 61.5 % and 60.0 → 57.6 % on Frontier Basin, Saltwind Narrows
+  and Saltmere Bay, where banks and hedges now stand between the seats. Re-pin that receipt's ceiling from
+  before/after rates (Verdant's moved 0.70 → 0.76).
 - **Budget.** All three pilots exceed point 10's 10 % triangle budget. The coordinator approved this for PR #9 on
   October 2, 2026, pending the owner. The extra triangles are content the brief wants. Trimming goes to frame-time
   work, such as shadow caching and LOD for parapets and wire, rather than to removing content. Whole-map prop
