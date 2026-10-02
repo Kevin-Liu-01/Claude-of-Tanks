@@ -325,7 +325,7 @@ const shrubRows = [];
   assert.equal(tris(emitLeafCards(skeleton, { tint: () => [1, 1, 1], tiles: 2, rng: mulberry32(1) })), skeleton.leaves.length * 4);
   // the shrub value calibrates the bush species only, near one
   for (const [species, value] of Object.entries(GROWTH_SHRUB_VALUE)) {
-    assert.ok(bushSpecies.includes(species) && value > 0.9 && value < 1.35, `${species}: a shrub value near one (${value})`);
+    assert.ok(bushSpecies.includes(species) && value > 0.75 && value < 1.35, `${species}: a shrub value near one (${value})`);
   }
 }
 

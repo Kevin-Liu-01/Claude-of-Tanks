@@ -89,11 +89,13 @@ interface GrowthProfile {
   barkTint: readonly [number, number, number];
   barkTopTint: readonly [number, number, number] | null;
   /**
-   * The crown's value in light: a multiplier on the card tint, set per species so a grown crown keeps the effective
-   * albedo (card tint × atlas reflectance) the legacy crown of its species had — the conifers' spray atlases paint
-   * darker than the old needle sheets (.qa-dev card-albedo: spruce 0.87, fir 0.90, pine 0.96, cedar 0.79, cypress 0.65
-   * of the legacy albedo before it); the grown palm's fronds paint brighter than the round-8 palm's dark cards (1.74)
-   * and the mangrove's leathery sprays darker than the round-8 willow-form crown (0.67). 1 when unset.
+   * The crown's value in light: a multiplier on the card tint, set per species so a grown crown keeps the look in light
+   * the legacy crown of its species had. First the effective albedo (card tint × atlas reflectance, .qa-dev
+   * card-albedo, grown / legacy before: spruce 0.87, fir 0.90, pine 0.96, cedar 0.79, cypress 0.65, oak 0.76, acacia
+   * 0.54–0.65, eucalyptus 0.61–0.77, palm 1.74, mangrove 0.67), then each species' crown in light (2026-10-02,
+   * .qa-dev species-luma: one lone tree per species front- and side-lit, grown vs `?legacyTrees=1` in the same build;
+   * the geometric means oak 0.79, acacia 0.51, eucalyptus 0.78, spruce 0.89, palm 1.32, mangrove 1.33 after the albedo
+   * step, the rest within ±10 % or too few samples), applied part way. 1 when unset.
    */
   foliageValue?: number;
 }
@@ -116,6 +118,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     droop: 0.42, upturn: 0.38, sidePerM: 2.3, sideAngle: 0.75, sideRatio: 0.62, sideDroop: 0.35, twigPerM: 1.8,
     leafOrder: 1, leafPerM: 2.4, leafFrom: 0.3, spray: [0.95, 1.45], aspect: 0.82, habit: 'spray', tipSprays: 1,
     cardBend: 0.16, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.46, 0.41, 0.36], barkTopTint: null,
+    foliageValue: 1.25,
   }),
   poplar: P({
     family: 'broadleaf', height: 8.2, heightSpread: 0.10, trunkR: 0.24, form: 'excurrent',
@@ -140,6 +143,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     droop: 0.12, upturn: 0.55, sidePerM: 1.8, sideAngle: 1.0, sideRatio: 0.6, sideDroop: 0.0, twigPerM: 2.2,
     leafOrder: 2, leafPerM: 3.2, leafFrom: 0.3, spray: [1.1, 1.6], aspect: 0.95, habit: 'flat', tipSprays: 1,
     cardBend: 0.04, flatRoll: 0.45, flatDroop: 0.0, bark: 0, barkTint: [0.42, 0.36, 0.30], barkTopTint: null,
+    foliageValue: 1.55,
   }),
   eucalyptus: P({
     family: 'broadleaf', height: 9.0, heightSpread: 0.12, trunkR: 0.25, form: 'excurrent',
@@ -148,6 +152,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     droop: 0.35, upturn: 0.2, sidePerM: 1.9, sideAngle: 0.7, sideRatio: 0.55, sideDroop: 0.45, twigPerM: 0,
     leafOrder: 1, leafPerM: 2.8, leafFrom: 0.3, spray: [1.0, 1.5], aspect: 0.55, habit: 'hanging', tipSprays: 2,
     cardBend: 0.10, flatRoll: 0.6, flatDroop: 0.0, bark: 2, barkTint: [0.64, 0.60, 0.54], barkTopTint: [0.74, 0.72, 0.66],
+    foliageValue: 1.3,
   }),
   pine: P({
     family: 'conifer', height: 7.2, heightSpread: 0.12, trunkR: 0.25, form: 'excurrent',
@@ -163,7 +168,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'cone', whorled: true, perWhorl: [3, 5], spacing: 0.55, angleLow: 1.95, angleHigh: 1.05,
     droop: 0.30, upturn: 0.50, sidePerM: 2.4, sideAngle: 0.95, sideRatio: 0.42, sideDroop: 0.55, twigPerM: 0,
     leafOrder: 1, leafPerM: 3.2, leafFrom: 0.0, spray: [0.85, 1.25], aspect: 0.66, habit: 'flat', tipSprays: 1,
-    cardBend: 0.18, flatRoll: 1.15, flatDroop: 0.35, bark: 1, barkTint: [0.36, 0.30, 0.27], barkTopTint: null, foliageValue: 1.15,
+    cardBend: 0.18, flatRoll: 1.15, flatDroop: 0.35, bark: 1, barkTint: [0.36, 0.30, 0.27], barkTopTint: null, foliageValue: 1.24,
   }),
   fir: P({
     family: 'conifer', height: 7.3, heightSpread: 0.10, trunkR: 0.27, form: 'excurrent',
@@ -214,7 +219,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     droop: 0, upturn: 0, sidePerM: 0, sideAngle: 0, sideRatio: 0, sideDroop: 0, twigPerM: 0,
     leafOrder: 0, leafPerM: 0, leafFrom: 0, spray: [3.0, 3.9], aspect: 0.36, habit: 'upright', tipSprays: 0,
     cardBend: 0.5, flatRoll: 0, flatDroop: 0, bark: 2, barkTint: [0.46, 0.41, 0.35], barkTopTint: [0.40, 0.35, 0.29],
-    foliageValue: 0.58,
+    foliageValue: 0.45,
   }),
   snag: P({
     family: 'dead', height: 5.6, heightSpread: 0.22, trunkR: 0.27, form: 'excurrent',
@@ -234,7 +239,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     droop: 0.32, upturn: 0.3, sidePerM: 2.4, sideAngle: 0.8, sideRatio: 0.66, sideDroop: 0.3, twigPerM: 1.6,
     leafOrder: 1, leafPerM: 2.6, leafFrom: 0.3, spray: [0.9, 1.35], aspect: 0.8, habit: 'spray', tipSprays: 1,
     cardBend: 0.12, flatRoll: 0.6, flatDroop: 0.0, bark: 2, barkTint: [0.42, 0.39, 0.34], barkTopTint: null,
-    foliageValue: 1.49,
+    foliageValue: 1.35,
   }),
 });
 
@@ -825,10 +830,11 @@ export const GROWTH_SHRUB_SPRAYS: Readonly<Record<'bush' | 'understorey', number
  * their own tint law (hue 0.24, a 1.7 gain, a radial shade) over the legacy sheets, so a shrub keeps the effective
  * albedo (card tint × atlas reflectance) the round-8 bush of its map had — .qa-dev shrub-stats, grown / legacy before
  * this: oak 0.86, poplar 0.92, willow 0.85, acacia 0.78, birch 0.78, spruce 1.02, pine 0.94, cedar 1.05, mangrove 1.10
- * (its foliageValue in). 1 when unset.
+ * (with the crown's foliageValue in, which the shrub value divides back out where the crowns' value in light moved
+ * it: the shrubs' own views read at parity). 1 when unset.
  */
 export const GROWTH_SHRUB_VALUE: Readonly<Partial<Record<GrowthSpecies, number>>> = Object.freeze({
-  oak: 1.16, poplar: 1.09, willow: 1.17, acacia: 1.29, birch: 1.27, spruce: 0.98, pine: 1.07, cedar: 0.95, mangrove: 0.91,
+  oak: 0.93, poplar: 1.09, willow: 1.17, acacia: 0.83, birch: 1.27, spruce: 0.91, pine: 1.07, cedar: 0.95, mangrove: 1.0,
 });
 
 /**
