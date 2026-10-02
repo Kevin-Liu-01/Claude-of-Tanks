@@ -18,9 +18,11 @@
 //   layout, raster flags, near-shadow-detail membership, distance-detail
 //   membership and battle-sharing class. A finite LOD switch is kept on the
 //   merged draw; a combat-retained (Infinity) wrapper is equivalent to none.
-// - Vertex data is copied byte-for-byte: a part either sits at its owner's
-//   identity or (when translations are baked) moves by a pure translation
-//   added to its positions; normals, tangents, UVs and colours are untouched.
+// - Vertex data is copied byte-for-byte: by default a part must sit at its
+//   owner's identity frame. The opt-in translation bake adds a pure
+//   translation to positions (normals, tangents, UVs and colours untouched),
+//   which saves more draws but rounds positions differently from the GPU's
+//   own model-matrix product: up to 1,615 px moved in the P21 captures.
 // - Running gear, ERA/equipment/weapon damage buffers, proxies, markings,
 //   transparent or multi-material draws, instanced and batched meshes and
 //   anything with its own render hooks never merge.

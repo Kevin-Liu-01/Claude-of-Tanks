@@ -23,8 +23,8 @@ const GARAGE = { camoSeed: 4200, quality: 'ai', staticPreview: true, batchStatic
 // Draws saved per articulation owner. A different count means the merged set changed: review the
 // equivalence below and the census (.qa-dev f3-census / f3-equivalence in the P21 records), then re-pin.
 const PINNED = {
-  ua_m1a1_x: { saved: 106, owners: { rig_hull: 1, rig_turret: 1, abramsSourceX_A1StationCommanderM2: 17, abramsSourceX_LoaderM240: 87 } },
-  leo2a7v_x: { saved: 33, owners: { rig_hull: 1, leo2a7v_xFrontalRack: 32 } },
+  ua_m1a1_x: { saved: 88, owners: { rig_hull: 1, rig_turret: 1, abramsSourceX_LoaderM240: 86 } },
+  leo2a7v_x: { saved: 1, owners: { rig_hull: 1 } },
   challenger_3x: { saved: 2, owners: { rig_turret: 1, auxiliaryWeaponPitch: 1 } },
   m1a2: { saved: 1, owners: { 'fitting_abramsM2HB_m1a2-split-loader': 1 } },
   t90m: { saved: 0, owners: {} },
@@ -214,13 +214,15 @@ try {
   assert.equal(disposed.size, new Set(parts.map((part) => part.geometry)).size, 'every folded source buffer is released with the visual');
 } catch (error) { tank.dispose(); throw error; }
 
-// Modes: 'identity' folds only parts already at their owner frame; non-battle builds never merge.
-const identity = createTank('ua_m1a1_x', null, { ...BOT, staticDrawMerge: 'identity' });
+// Modes: the default folds only parts already at their owner frame (every vertex byte unchanged); the opt-in
+// translation bake folds more, and is held to the same layer-by-layer equivalence; non-battle builds never merge.
+const translations = equivalent('ua_m1a1_x', { ...BOT, staticDrawMerge: 'translations' }, 'translations');
+assert.ok(translations.saved > PINNED.ua_m1a1_x.saved, 'the translation bake is a strict superset of the default merge');
+results.push(translations);
+const identity = createTank('ua_m1a1_x', null, BOT);
 const authoring = createTank('ua_m1a1_x', null, { ...BOT, batchStatic: false, battleDetailLod: false });
 try {
-  assert.ok(identity.root.userData.staticMergeSavedDraws > 0 && identity.root.userData.staticMergeSavedDraws < PINNED.ua_m1a1_x.saved,
-    'identity mode is a strict subset of the translated merge');
-  identity.root.traverse((o) => { for (const part of staticMergePartsOf(o)) assert.ok(part.matrix.equals(IDENTITY), 'identity mode never bakes a translation'); });
+  identity.root.traverse((o) => { for (const part of staticMergePartsOf(o)) assert.ok(part.matrix.equals(IDENTITY), 'the default never bakes a translation'); });
   let folded = 0; authoring.root.traverse((o) => { folded += staticMergePartsOf(o).length; });
   assert.equal(folded, 0, 'authoring (non-batchStatic) builds keep every separate mesh');
   assert.equal(authoring.root.userData.staticMergeSavedDraws, undefined);

@@ -1038,8 +1038,11 @@ interface TankFactoryOptions {
   staticPreview?: boolean;
   decor?: boolean;
   /** P21 static draw merges on batchStatic builds (staticDrawMerge.ts): contiguous
-   * same-material runs per articulation owner. 'identity' merges only parts at their
-   * owner's frame; 'off' keeps the separate draws (A/B receipts and probes). */
+   * same-material runs per articulation owner. 'identity' (the default) folds only
+   * parts at their owner's frame, so every vertex byte is unchanged; 'translations'
+   * also bakes pure translations (more draws saved, but float rounding of the baked
+   * positions moved up to 1,615 px in the P21 captures); 'off' keeps the separate
+   * draws (A/B receipts and probes). */
   staticDrawMerge?: 'off' | 'identity' | 'translations';
   /** FSP-06 material-role census (tools/material-roles-audit.mjs): observes every authored part with the
    * bucket it merges into, before the merge erases part identity. Diagnostic only; builds are byte-identical
@@ -6755,12 +6758,12 @@ function* prepareTankDecorationSteps(
   }
 }
 
-/** Battle/Garage default for the P21 static draw merge; `?staticmerge=off|identity`
+/** Battle/Garage default for the P21 static draw merge; `?staticmerge=off|translations`
  * selects a probe A/B on one build (the same-build pairs in the perf audit). */
 function defaultStaticDrawMerge(): NonNullable<TankFactoryOptions['staticDrawMerge']> {
   const requested = typeof location !== 'undefined'
     ? new URLSearchParams(location.search).get('staticmerge') : null;
-  return requested === 'off' || requested === 'identity' ? requested : 'translations';
+  return requested === 'off' || requested === 'translations' ? requested : 'identity';
 }
 
 function* createTankOwnedSteps(
