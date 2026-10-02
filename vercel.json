@@ -14,6 +14,16 @@
     { "source": "/cn/docs/:topic(build|models|simulation|vehicles|rendering|performance|worlds|ai|multiplayer|audio|interface|studio)/", "destination": "/cn/docs/:topic", "permanent": true }
   ],
   "headers": [
+    {
+      "source": "/:path(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=()" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" }
+      ]
+    },
     { "source": "/gallery", "headers": [{ "key": "Cache-Control", "value": "private, no-store, max-age=0" }] },
     { "source": "/gallery.html", "headers": [{ "key": "Cache-Control", "value": "private, no-store, max-age=0" }] },
     { "source": "/cn/gallery", "headers": [{ "key": "Cache-Control", "value": "private, no-store, max-age=0" }] },

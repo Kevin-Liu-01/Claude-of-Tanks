@@ -101,6 +101,15 @@ canonical URL, which is why there is no global `trailingSlash` setting.
 `tools/vercel-routes.selftest.mjs` resolves every route through the conversion
 `vercel build` runs (`@vercel/routing-utils`) against the frozen deploy-163 table.
 
+Every response also carries `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin`, a `Permissions-Policy` that
+denies camera, microphone, geolocation, payment, USB, serial, HID and Bluetooth,
+`X-Frame-Options: SAMEORIGIN` and `Cross-Origin-Opener-Policy: same-origin`
+(one `/:path(.*)` header rule; 2026-10-01). The site opens no popup it talks to
+(external links are `noopener`) and nothing embeds it from another origin; a
+future portal or app embed needs `frame-ancestors`/XFO revisited first. There is
+no enforced CSP yet: the inline scripts would need build-time hashes.
+
 ### Capture-lock wait (2026-09-25)
 
 The selftest runners wait for the shared capture lock (`/tmp/cot-shots.lock`, FIFO tickets in `/tmp/cot-shots.queue`) before their browser receipts; `COT_SHOTS_LOCK_TIMEOUT_MS` sets that wait (default 45 min — chain 94 died at 1/413 behind another session's browser audit, so landing chains export three hours).

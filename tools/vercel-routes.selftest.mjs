@@ -15,6 +15,20 @@ import { resolveVercelRequest, vercelJsonRoutes } from './vercelRoutes.test-supp
 const config = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
 const GALLERY_CACHE = 'private, no-store, max-age=0';
 
+// INFRA-P6 (2026-10-01): security headers on every response — deploy 163 sent none beyond Vercel's HSTS. COOP
+// same-origin and X-Frame-Options SAMEORIGIN were checked against the code first: no window.open or opener use (every
+// external link is target=_blank rel="noopener noreferrer"), no OAuth or payment popup, no iframe, player card or
+// portal that embeds the site from another origin (same-origin framing stays allowed). The Permissions-Policy denies
+// devices the game never asks for (it uses pointer lock, gamepads and the clipboard, none listed). No enforced CSP yet.
+const SECURITY_HEADERS = {
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'strict-origin-when-cross-origin',
+  'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=()',
+  'x-frame-options': 'SAMEORIGIN',
+  'cross-origin-opener-policy': 'same-origin',
+};
+const securityHeadersOf = (headers) => Object.fromEntries(Object.keys(SECURITY_HEADERS).map((name) => [name, headers[name]]));
+
 // The table deploy 163 served (24c5c5b03's vercel.json), frozen: redirects, header rules and the 34 rewrites in order.
 const BEFORE = {
   redirects: [
@@ -88,6 +102,10 @@ for (const path of paths) {
       { status: old.status, location: old.location, file: old.file, cache: old.headers['cache-control'] },
       `${path}${query} resolves as it did on deploy 163`,
     );
+    if (now.status !== 308) {
+      assert.deepEqual(securityHeadersOf(now.headers), SECURITY_HEADERS, `${path}${query} (${now.status}) carries the security headers`);
+      assert.equal(old.headers['x-frame-options'], undefined, 'deploy 163 sent none of them');
+    }
     compared++;
   }
 }
@@ -107,6 +125,17 @@ assert.equal(resolve('/gallery').headers['cache-control'], GALLERY_CACHE);
 assert.equal(resolve('/cn/gallery.html').headers['cache-control'], GALLERY_CACHE);
 assert.equal(resolve('/docs/build').headers['cache-control'], undefined, 'only the gallery documents are private');
 
+// The security rule matches the root and any depth, adds no caching semantics (a header rule also answers 404s,
+// tools/vercel-config.selftest.mjs) and is the only rule that sets those names.
+const securityRules = config.headers.filter((rule) => rule.headers.some(({ key }) => key.toLowerCase() in SECURITY_HEADERS));
+assert.equal(securityRules.length, 1, 'one rule owns the security headers');
+assert.deepEqual(Object.fromEntries(securityRules[0].headers.map(({ key, value }) => [key.toLowerCase(), value])), SECURITY_HEADERS);
+assert.deepEqual(securityHeadersOf(resolve('/').headers), SECURITY_HEADERS, 'the root document');
+assert.deepEqual(securityHeadersOf(resolve('/assets/missing-abcdefgh.js').headers), SECURITY_HEADERS, 'a 404');
+assert.deepEqual(securityHeadersOf(resolve('/api/ice').headers), SECURITY_HEADERS, 'an API path');
+assert.ok(!config.headers.some((rule) => rule.headers.some(({ key }) => /^content-security-policy$/i.test(key))),
+  'no enforced Content-Security-Policy in this wave (it needs build-time inline-script hashes)');
+
 // The pattern rules name exactly the public docs topics (src/ui/localeRouting.ts PUBLIC_ROUTE_RECORDS).
 const topicAlternation = (source) => /:topic\(([^)]+)\)/.exec(source)?.[1].split('|') ?? null;
 const topicRules = [...config.rewrites, ...config.redirects].filter((rule) => rule.source.includes(':topic('));
@@ -115,4 +144,5 @@ for (const rule of topicRules) assert.deepEqual(topicAlternation(rule.source), d
 assert.ok(config.rewrites.length <= 6 && config.rewrites.length < BEFORE.rewrites.length, 'pattern rewrites replace the literal list');
 
 console.log(`vercel-routes.selftest: ${compared} requests resolve as on deploy 163 (${BEFORE.rewrites.length} literal rewrites → `
-  + `${config.rewrites.length} patterns); ${slashRedirects.size} slash forms now 308 to their canonical page`);
+  + `${config.rewrites.length} patterns); ${slashRedirects.size} slash forms now 308 to their canonical page; every `
+  + 'non-redirect answer carries the five security headers');
