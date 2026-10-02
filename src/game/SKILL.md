@@ -71,7 +71,14 @@ skip), `battleEndingCamera.ts` poses its camera beats through the rig, and
 `killcamAccess.ts` owns retryable replay acquisition and its stable inactive
 facade; `killcam.ts` owns replay presentation, while `studio.ts` renders the
 Scene Studio and `studioTimeline.ts` owns its strict JSON-safe storyboard and
-allocation-free camera/actor sampling contract.
+allocation-free camera/actor sampling contract. The Studio film renderer is
+`studioFilmPlan.ts` (pure film block, speed ramps, monotone cut-aware shutter
+schedules, adaptive counts, Halton jitter), `studioFilm.ts` (accumulation
+session: TAA bypass, per-sample cascades, cloud settle, flare film clock),
+`studioFilmExport.ts` (lazy WebCodecs encoder) and `studioFilmMux.ts` (pure
+MP4/WebM containers); while a film is open the live tick and Studio input stand
+still, the timeline advances unrounded, smoke emitters pulse on the 60 Hz grid
+and track phase follows the exact sample instant.
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
 residency, switch convergence, and battle visual handoff; it composes
 `garagePedestalPreloader.ts` for exact card-intent and quiet neighbor warming.

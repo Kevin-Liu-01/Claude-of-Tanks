@@ -32,6 +32,7 @@ interface FilmLighting {
 }
 
 interface FilmClouds {
+  beforeSceneRender(renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera, dt: number, width: number, height: number): void;
   settleForCapture(camera: THREE.PerspectiveCamera): boolean;
 }
 
@@ -142,7 +143,35 @@ export function createStudioFilm(ports: StudioFilmPorts) {
 
   function clouds(): FilmClouds | null {
     const candidate = scene.userData.volumetricClouds as FilmClouds | undefined;
-    return candidate && typeof candidate.settleForCapture === 'function' ? candidate : null;
+    return candidate && typeof candidate.settleForCapture === 'function'
+      && typeof candidate.beforeSceneRender === 'function' ? candidate : null;
+  }
+
+  /** Size the renderer and the whole chain to the exact output at pixel ratio 1. */
+  function applyFilmSize(width: number, height: number): void {
+    renderer.setPixelRatio(1);
+    renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    post.setSize(width, height);
+    lighting.updateFrustums();
+  }
+
+  /**
+   * An in-browser export yields between frames: a window resize may have
+   * re-sized the live canvas meanwhile. Adopt that size as the one to restore
+   * and put the film size back before the next frame.
+   */
+  function ensureFilmSize(width: number, height: number): void {
+    renderer.getSize(size);
+    if (size.x === width && size.y === height && renderer.getPixelRatio() === 1) return;
+    if (saved) {
+      saved.width = size.x;
+      saved.height = size.y;
+      saved.pixelRatio = renderer.getPixelRatio();
+      saved.aspect = camera.aspect;
+    }
+    applyFilmSize(width, height);
   }
 
   /** Resize the renderer and the whole chain to the exact output, then own the frame. */
@@ -161,15 +190,10 @@ export function createStudioFilm(ports: StudioFilmPorts) {
     };
     ports.setFilmMode(true);
     try {
-      renderer.setPixelRatio(1);
-      renderer.setSize(width, height, false);
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
       post.setAdaptiveSuspended(true);
       post.pinDynScale(1);
       post.resetPerfTrims();
-      post.setSize(width, height);
-      lighting.updateFrustums();
+      applyFilmSize(width, height);
       // The jittered accumulation replaces temporal AA (and its wall-clock history).
       post.taa.enabled = false;
       // Spatial RCAS only. The 0.5 temporal floor (TAA's box-filter softness)
@@ -295,10 +319,17 @@ export function createStudioFilm(ports: StudioFilmPorts) {
     jitter = set;
   }
 
-  /** Bring temporal clouds to a converged state for the current camera. */
+  /**
+   * Bring temporal clouds to a converged state for the current camera. One
+   * trace first lets the layer see a storyboard cut (it compares against the
+   * previous camera), so the frame after a cut settles completely instead of
+   * rebuilding its interleaved history across the frame's first samples.
+   */
   function settleClouds(): void {
     const layer = clouds();
     if (!layer) return;
+    const target = post.sceneAA.sceneTarget;
+    layer.beforeSceneRender(renderer, camera, 0, target.width, target.height);
     layer.settleForCapture(camera);
   }
 
@@ -364,6 +395,7 @@ export function createStudioFilm(ports: StudioFilmPorts) {
       if (nextFrame >= plan.frames) throw new RangeError('The film has no frames left');
       const frame = nextFrame++;
       const settings = plan.settings;
+      ensureFilmSize(info.width, info.height);
       // Motion-adaptive count: probe the image travel over the base shutter,
       // then sample densely enough that no copy steps more than ~1.5 px.
       plan.sampleTimes(frame, times, settings.samples);

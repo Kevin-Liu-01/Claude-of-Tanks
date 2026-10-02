@@ -120,9 +120,17 @@ function abortError(): Error {
   return error;
 }
 
-/** Yield to the event loop (input, progress paint, encoder callbacks). */
+/**
+ * Yield to the event loop (input, progress paint, encoder callbacks). A
+ * message-channel task, not a timer: a backgrounded tab clamps timers to one
+ * per second, which would stretch a long export into hours.
+ */
 function nextTask(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = () => { channel.port1.close(); resolve(); };
+    channel.port2.postMessage(0);
+  });
 }
 
 const COLOR_PRIMARIES: Record<string, number> = { bt709: 1, bt470bg: 5, smpte170m: 6, bt2020: 9, smpte432: 12 };

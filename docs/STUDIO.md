@@ -10,10 +10,15 @@ and timings. The frame format is saved in scene JSON and restored without
 reframing it a second time. Scene, Tanks, Effects, Timeline and Export tabs retain the detailed
 authoring controls. Guides stay out of exported images.
 
-PNG exports use the selected native frame dimensions. Browser video recording
-uses the current canvas ratio and is silent. For deterministic HD films, native
-portrait/square artwork, synchronized original sound design and reviewed public
-campaigns, follow [Campaign production](MEDIA-PRODUCTION-CAMPAIGNS.md).
+PNG exports use the selected native frame dimensions. **Export film** (Output)
+renders the storyboard offline at a native 1080p, 1440p or 2160p production
+format with real motion blur and anti-aliasing, encodes every frame in the
+browser and downloads an MP4 (see [Film renderer](#film-renderer)). The live
+recorder below it uses the current canvas ratio, records in real time and is
+silent. For ProRes trailer masters from Node, see
+[Cinema masters](MEDIA-PRODUCTION.md#cinema-masters). For synchronized original
+sound design and reviewed public campaigns, follow
+[Campaign production](MEDIA-PRODUCTION-CAMPAIGNS.md).
 
 Scene Studio is a game mode for composing and recording scenes with the current
 renderer. It loads the selected battlefield, including terrain, vegetation,
@@ -26,6 +31,11 @@ Implementation: `src/game/studioAccess.ts` (retryable chunk/FX acquisition,
 stable frame proxy, and temporary F8 ownership), `src/game/studio.ts` (runtime
 and `window.__STUDIO`), `src/game/studioTimeline.ts` (pure storyboard
 normalization and sampling), and `src/ui/studioPanel.ts` (panel interface).
+The film renderer is `src/game/studioFilmPlan.ts` (pure film settings, speed
+ramps, shutter schedules, jitter), `src/game/studioFilm.ts` (accumulation
+session), `src/engine/filmAccumulation.ts` (the float accumulation pass),
+`src/game/studioFilmExport.ts` (WebCodecs encoder, loaded on first export) and
+`src/game/studioFilmMux.ts` (dependency-free MP4/WebM containers).
 `main.ts` supplies integration ports and retains only the Studio `tick()`
 composition branch.
 
@@ -114,6 +124,10 @@ await __STUDIO.directProduction({presetId, tankId, format}) // authored eight-se
 __STUDIO.applyProductionCamera(rig) // hero, track, rear, overhead, detail
 __STUDIO.setProductionFormat(format) / .productionFormat // landscape, portrait, square
 __STUDIO.recordVideo(opts) / .stopRecording() / .recordingStatus()
+__STUDIO.beginFilm(opts) / .renderFilmFrame(opts?) / .endFilm()  // offline film frames
+await __STUDIO.exportFilm(opts)     // WebCodecs film → {blob, container, codec, frames, …}
+__STUDIO.cancelFilmExport() / .filmExportStatus()
+__STUDIO.getFilm() / .setFilm(patch | null) / .FILM_DEFAULTS / .filming / .filmInfo
 __STUDIO.setCamera(cfg) / .getCamera()
 __STUDIO.TANK_IDS / .MAP_IDS / .ACTOR_STATES / .EFFECT_TYPES / .CAMO_PATTERN_IDS
 __STUDIO.getMapInfo(id)             // {id, name}
@@ -133,14 +147,23 @@ effect object.
 
 ### capture(opts)
 
-`{ width?, height?, scale?, download?, name?, type?, quality? }` → renders the
-current frame once at the requested resolution (renderer + full post chain
-temporarily resized at pixelRatio 1, all shadow cascades forced, `dt = 0`) and
-returns `{ dataURL, width, height }`. Default width =
-`max(2560, 2 × viewport)` at the live aspect; height defaults to the aspect.
-Clamped to the GPU max texture size (≤ 6144). `download: true` also saves the
-PNG from the browser. Headless drivers read `dataURL` and write the file
-themselves (see `tools/studio-selftest.mjs`).
+`{ width?, height?, scale?, download?, name?, type?, quality?, samples?, filter?,
+supersample? }` → renders the current frame once at the requested resolution
+(renderer + full post chain temporarily resized at pixelRatio 1, all shadow
+cascades forced, `dt = 0`) and returns `{ dataURL, width, height }`. Default
+width = `max(2560, 2 × viewport)` at the live aspect; height defaults to the
+aspect. Clamped to the GPU max texture size (≤ 6144). `download: true` also
+saves the PNG from the browser. Headless drivers read `dataURL` and write the
+file themselves (see `tools/studio-selftest.mjs`).
+
+`samples > 1` makes a **film still**: that many sub-pixel-jittered renders of
+the same instant (time does not move) are averaged in linear HDR before bloom,
+grade and reconstruction, which removes geometric aliasing and shimmer from
+key art. `filter` is `gaussian` (default, σ 0.42 px) or `box` (crisper).
+`supersample` (1–2) renders that many times larger and downsamples with the
+browser's high-quality filter, for texture and sub-pixel detail; the larger
+size is still clamped to the GPU maximum. `samples: 1` (the default) is the
+original single render.
 
 ### recordVideo(opts)
 
@@ -151,6 +174,92 @@ bounded duration. Defaults: 60 fps, 12 Mbps, best supported WebM codec,
 seconds. The result is `{ blob, size, mimeType, durationMs }`. Recording hides
 the camera rail and pauses on the final frame. The video contains the rendered
 picture only; Studio does not currently mix game audio into the capture stream.
+It records in real time and can drop frames on a busy machine; use the film
+renderer below for deliverables.
+
+### Film renderer
+
+The film renderer turns a storyboard into frames that behave like a film
+camera, independent of render speed:
+
+- **Shutter.** Output frame *k* at `fps` integrates `samples` stratified
+  instants across a shutter of `shutterDeg / 360` frames centred on its frame
+  time (`180°` is the cinema standard: at 30 fps the shutter is open 16.7 ms).
+  Every sample is a complete scene render: actors, wheels and track links,
+  shells and tracers, particles, lights, water, foliage wind and camera rail
+  all move between samples, and every shadow cascade re-renders. The centred
+  shutter puts the blur centroid exactly on the frame clock; for any shutter
+  up to 360° the timeline only advances, so effects fire once at their `tMs`.
+  A storyboard **cut** never falls inside a shutter: the frame before the cut
+  closes just before it, the next one opens on it (no double exposures).
+- **Motion-adaptive samples.** Before each frame the renderer projects probe
+  points (four depths across the view and every tracked actor) through the
+  storyboard camera across the shutter. When the image moves fast (whip pans,
+  camera-shake cues, close passes) it adds samples until consecutive samples
+  are at most 1.5 px apart, up to `maxSamples`; static frames keep `samples`.
+  `samples: 1` means instantaneous frames (no blur) regardless of `maxSamples`.
+- **Anti-aliasing.** Each sample's projection is offset by a re-centred Halton
+  (2, 3) sub-pixel jitter (`gaussian` reconstruction by default, `box` for
+  crisper edges); the jittered average replaces TAA, which is bypassed (as is
+  its wall-clock history) while a film renders.
+- **Linear HDR accumulation.** Samples sum in a 32-bit float target inserted
+  after the late-FX pass. Bloom, sun shafts, lens flare, the display grade,
+  the picture finish, SMAA and reconstruction then run **once** per output frame
+  on the average, so motion-blurred highlights (tracers, muzzle flashes, fire)
+  stay hot through the tone curve and per-frame finishing (grain, letterbox) is
+  applied once, not averaged away.
+- **Determinism.** Frames depend only on the scene JSON and the film settings:
+  the timeline advances unrounded through each sample instant in ≤ 1/60 s
+  steps, continuous emitters pulse on the 60 Hz timeline grid (sub-samples
+  never thicken engine smoke), track/wheel phase follows the exact sample
+  instant, the lens-flare easing follows the film clock and snaps on cuts,
+  volumetric clouds settle every frame, terrain lookahead for the frame camera
+  completes before it renders, and the adaptive governor is suspended. The
+  live tick and Studio input are suspended while a film is open.
+- **Speed ramps.** `film.speed` keys are authored on the timeline:
+  `{tMs, speed, ease}` with speed 0.05–8 (1 = real time) and `ease`
+  `smooth` (default), `linear` or `step` describing the ramp **into** that
+  key. Before the first key and after the last the end speeds hold. Film time
+  is the integral of 1 / speed, so a 0.2× hold lengthens the film fivefold and
+  the shutter (fixed in film time) shortens in timeline time exactly like a
+  high-speed camera. Camera rails and shakes slow with the action.
+
+Scripted use:
+
+```js
+const info = __STUDIO.beginFilm({ width: 3840, height: 2160, fps: 24, samples: 16,
+  maxSamples: 64, shutterDeg: 180, filter: 'gaussian', startMs: 0, endMs: 8000 });
+for (let i = 0; i < info.frames; i++) {
+  const frame = __STUDIO.renderFilmFrame({ dataURL: true });  // {frame, samples, motionPx, timelineMs, openMs, closeMs, dataURL}
+}
+__STUDIO.endFilm();
+```
+
+`beginFilm` options default to the scene's `film` block, then `FILM_DEFAULTS`
+(30 fps, 180°, 8 samples, 64 adaptive, gaussian). Width and height must be even
+and ≤ 6144 (default: 1080p in the production format). Frames render strictly in
+order; `endFilm()` restores the live viewport, TAA and governor. Without an open
+film, `renderFilmFrame(opts)` renders a film still of the current instant (the
+`capture()` options above).
+
+`exportFilm({ resolution, fps, samples, maxSamples, shutterDeg, filter,
+startMs, endMs, bitrate, container, download, name, onProgress, onFrame })`
+renders the same frames at the production format's native size (`resolution`
+1080, 1440 or 2160; or explicit `width`/`height`) and encodes them offline with
+WebCodecs: H.264 High in a fast-start MP4 where the browser can encode it,
+otherwise VP9 in WebM. Frames carry exact timestamps and the encoder is
+drained with back-pressure, so the file holds exactly `frames` frames at a
+constant rate. Default bitrate ≈ 0.2 bits per pixel per frame (8–100 Mbit/s).
+The playhead returns to where it was; `cancelFilmExport()` aborts (the promise
+rejects with an `AbortError`). The containers are written by
+`studioFilmMux.ts`; there is no third-party dependency.
+
+In the panel, **Output → Film** offers Size (1080p / 1440p / 2160p in the
+current production format), Rate (24 / 30 / 60 fps) and Blur (Off · 1, Draft · 4,
+Good · 8, Best · 16, Master · 32 samples; adaptive up to 64 on fast motion),
+shows the frame count and length (including speed ramps), and records the
+chosen rate and blur in the scene's `film` block. Export opens a veil with a
+live preview at the native aspect, progress, time left and **Cancel**.
 
 ## Scene JSON schema
 
@@ -227,9 +336,27 @@ picture only; Studio does not currently mix game audio into the capture stream.
 
   "fxTime": 600,                // ms: advance the fx timeline exactly this far
                                 //   after firing the effects, then FREEZE
-  "timeScale": 0                // post-load time scale (default 0 = stay frozen)
+  "timeScale": 0,               // post-load time scale (default 0 = stay frozen)
+
+  "film": {                     // optional; absent = no film settings authored
+    "fps": 24,                  // 24 | 30 | 60
+    "shutterDeg": 180,          // 0–360, centred on each frame
+    "samples": 16,              // 1–64 per frame (1 = no motion blur)
+    "maxSamples": 64,           // adaptive ceiling for fast frames (≤ 128)
+    "filter": "gaussian",       // gaussian | box (sub-pixel reconstruction)
+    "speed": [                  // speed ramp keys on the TIMELINE (sorted)
+      { "tMs": 5600, "speed": 1 },
+      { "tMs": 6000, "speed": 0.2, "ease": "smooth" },  // ramp INTO this key
+      { "tMs": 7000, "speed": 0.2 },
+      { "tMs": 7600, "speed": 1 }
+    ]
+  }
 }
 ```
+
+`state()` includes `film` only when the scene authored one (`setFilm(patch)`,
+the Output panel's Rate/Blur, or a loaded scene), so older scenes round-trip
+unchanged.
 
 ### Effect types
 
@@ -316,6 +443,16 @@ burning, a tracer, a detrack, or a kill leaves no orphaned visual state.
   cadence. The frozen composition path (`load`/`advanceFx`) remains deterministic.
 - Video capture does not include audio and uses the browser's available MediaRecorder
   codec. Encoded bytes are not expected to be identical across browsers.
+- Film exports are silent. Their frames are reproducible for the same scene,
+  settings, browser and GPU; encoded bytes depend on the browser's encoder.
+- Film motion blur is sampled, not analytic: very fast motion beyond the
+  adaptive ceiling (shell flights, the strongest shake cues) can still show
+  faint stepping; raise `maxSamples` (≤ 128) for those shots.
+- Volumetric clouds hold their drift during a film (as in stills); clouds,
+  foliage and water still render per sample. Ambient occlusion is off on every
+  quality tier; a tier that enables GTAO keeps its temporal history per sample.
+- Supersampling (`supersample`) applies to stills only. A film's export size is
+  rendered directly; 2160p films need a desktop-class GPU (about 1 GB of render targets).
 
 ## Self-test
 

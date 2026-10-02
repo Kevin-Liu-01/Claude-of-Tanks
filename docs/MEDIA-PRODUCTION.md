@@ -53,6 +53,50 @@ Map-only or subset publications preserve existing films, posters, untouched maps
 
 The PNG masters and sampled video review frames stay in the ignored output directory (`shots/` or `.qa-dev/`). After successful encoding and frame-count verification, redundant video PNGs are removed to bound disk usage. Public files are optimized derivatives, MP4 clips, posters and a portable provenance/review manifest. Films are staged and silent; they are not recordings of live match performance.
 
+## Cinema masters
+
+`tools/media-production/cinema.mjs` renders a Scene Studio scene through the film renderer
+([STUDIO.md → Film renderer](STUDIO.md#film-renderer)): every output frame integrates shutter
+samples in linear HDR (real motion blur on tanks, wheels and tracks, tracers, debris and camera
+moves), jittered sub-pixel samples replace TAA, speed ramps from the scene's `film.speed` keys
+slow the action, and storyboard cuts never fall inside a shutter. It writes the lossless PNG
+sequence, a ProRes 422 HQ master (`prores_ks -profile:v 3`, 10-bit 4:2:2, BT.709 tags) and an
+H.264 High proxy (CRF 14, 4:2:0, fast start), a one-frame-per-second motion sheet, and optional
+supersampled stills.
+
+```sh
+# 4K trailer master of a scene's whole storyboard, landscape plus native portrait/square
+npm run media:cinema -- --scene=shots/my-scene.json --resolution=2160 --fps=24 \
+  --samples=16 --max-samples=64 --shutter=180 --formats=landscape,portrait,square --out=shots/cinema-my-scene
+# a slow-motion beat (speed keys in the scene's film block), 1080p preview proxy only
+npm run media:cinema -- --scene=shots/my-scene.json --start-ms=8000 --end-ms=12000 --master=none --out=shots/cinema-preview
+# supersampled key art at two instants, no film
+npm run media:cinema -- --scene=shots/my-scene.json --resolution=2160 --film=false --stills=4200,9700 \
+  --still-samples=32 --supersample=1.5 --out=shots/cinema-stills
+```
+
+Options: `--formats` (default: the scene's production format; other formats use the Studio's
+reviewed reframing), `--resolution` 1080/1440/2160 (short side), `--fps` 24/30/60,
+`--samples` 1–64 per frame (1 = no motion blur), `--max-samples` adaptive ceiling (≤ 128),
+`--shutter` 0–360°, `--filter` gaussian/box, `--start-ms`/`--end-ms` (timeline range),
+`--frames` (limit, for benchmarks), `--stills` (timeline ms list), `--still-samples`,
+`--supersample` 1–2 (stills), `--film=false` (stills only), `--master=prores|none`,
+`--proxy=true|false`, `--keep-frames=true` (keep every PNG; by default only the sheet frames
+remain after the encodes verify), `--resume=true`, `--port`, `--cache-dir`. Settings default
+to the scene's `film` block, then 30 fps, 180°, 8 samples (adaptive to 64), gaussian.
+
+Frames stream from the page to the private dev server as PNG blobs (encoded off the page's main
+thread), so a 4K frame never crosses the DevTools protocol as base64. The receipt
+(`cinema-receipt.json`) records the source digest and revision, the GPU, every film's framed
+scene, per-frame timeline/shutter instants, sample counts, image motion and render time,
+per-frame PNG digests plus a sequence digest, the ffprobe results (frame count, size, codec,
+colour tags) and SHA-256 of every master, proxy, still and review frame. `--resume=true` reuses
+complete films and stills only when the sources and settings are unchanged; a partial film
+renders again from its first frame (frames depend on the whole shutter history, so a film is
+never stitched from two runs). The shared capture lock serializes GPU work.
+
+FILM_TIMINGS_PLACEHOLDER
+
 ## September 27, 2026 production
 
 The final shoreline/landscape batch is retained locally at `.qa-dev/shoreline-r2/release-review-4/review.html`, with matching-camera comparisons at `.qa-dev/shoreline-r2/comparison/index.html`. Its source fingerprint, per-map inspection notes, reviewed hashes, recipes and asset hashes are in `review.json` beside the batch and the local `public/media/production-r1/manifest.json`. The capture files, generated media manifest, refreshed map photos and social cards were initially excluded from the code release, then committed separately in `8dfa4448d` at the owner’s request. Functional minimaps and dedicated collision manifests for changed maps are included. The local review pages and PNG masters are ignored by Git.

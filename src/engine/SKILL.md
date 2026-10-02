@@ -21,7 +21,10 @@ presentation invalidation, then forces a complete refresh before motion;
 `shadowStability.ts` owns texel snapping and cascade-scaled receiver bias;
 `simplexFast.ts` owns allocation-free, reference-identical terrain noise;
 `post.ts` and `sky.ts` build the frame, while `temporalAoPolicy.ts` owns the
-asymmetric stale-dark release used by temporal GTAO; `renderLayers.ts` owns
+asymmetric stale-dark release used by temporal GTAO; `filmAccumulation.ts` is
+the Studio-only float accumulation pass the film renderer inserts after
+late FX for the length of a film (never constructed in battle or Garage), and
+`LensFlarePass.fixedDt` lets it ease the flare on the film clock; `renderLayers.ts` owns
 presentation/shadow-only routing for authored proxy casters;
 `phaseSceneResidency.ts` detaches mutually exclusive Garage and battlefield
 roots while retaining their exact reusable objects;

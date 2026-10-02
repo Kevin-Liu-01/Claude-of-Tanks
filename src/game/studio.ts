@@ -3010,10 +3010,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   const _motionActor: ActorTrackSample & Required<Pick<ActorTrackSample, 'x' | 'z' | 'facingDeg' | 'turretDeg' | 'gunDeg'>> = {
     x: 0, z: 0, facingDeg: 0, turretDeg: 0, gunDeg: 0, keyId: undefined,
   };
-  const MOTION_DEPTHS_M = [3, 12, 50, 400] as const;
-  const MOTION_GRID = [-0.8, 0, 0.8] as const;
+  const MOTION_GRID: readonly number[] = [-0.85, -0.3, 0.3, 0.85];
+  const MOTION_MARCH_M: readonly number[] = [1.5, 3, 6, 12, 24, 48, 96, 192, 384];
+  const MOTION_FAR_M = 600;
   const MOTION_PROBES = 9;
-  const _motionAnchors = Array.from({ length: MOTION_DEPTHS_M.length * 9 }, () => new THREE.Vector3());
+  // one terrain-depth anchor per grid ray, plus the shot's look target
+  const _motionAnchors = Array.from({ length: MOTION_GRID.length * MOTION_GRID.length + 1 }, () => new THREE.Vector3());
   let _motionLength = new Float64Array(64), _motionPrev = new Float64Array(128);
   const _motionV = new THREE.Vector3(), _motionF = new THREE.Vector3();
   const _motionR = new THREE.Vector3(), _motionU = new THREE.Vector3();
@@ -3056,19 +3058,42 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return true;
   }
 
+  /** First terrain crossing along a ray (coarse march + bisection), or the far field. */
+  function motionRayDepth(origin: THREE.Vector3, dir: THREE.Vector3): number {
+    let previous = 0;
+    for (const t of MOTION_MARCH_M) {
+      const x = origin.x + dir.x * t, z = origin.z + dir.z * t;
+      if (origin.y + dir.y * t <= hfProxy.getHeightAt(x, z)) {
+        let lo = previous, hi = t;
+        for (let i = 0; i < 6; i++) {
+          const mid = (lo + hi) / 2;
+          if (origin.y + dir.y * mid <= hfProxy.getHeightAt(origin.x + dir.x * mid, origin.z + dir.z * mid)) hi = mid;
+          else lo = mid;
+        }
+        return hi;
+      }
+      previous = t;
+    }
+    return MOTION_FAR_M;
+  }
+
   function filmMotionPathPx(times: Float64Array, count: number, width: number, height: number): number {
     const open = times[0], close = times[count - 1];
     if (!(close > open)) return 0;
     const aspect = width / height;
     poseMotionCamera((open + close) / 2, aspect);
+    // Anchors at the scene's real depth: where each grid ray meets the terrain
+    // (the nearest geometry in almost every shot), the far field otherwise,
+    // and the look target. Fixed-depth probes overstate shake on open ground.
     let n = 0;
-    for (const depth of MOTION_DEPTHS_M) {
-      for (const v of MOTION_GRID) {
-        for (const u of MOTION_GRID) {
-          _motionF.set(u, v, 0.5).unproject(_motionCam).sub(_motionCam.position).normalize();
-          _motionAnchors[n++].copy(_motionCam.position).addScaledVector(_motionF, depth);
-        }
+    for (const v of MOTION_GRID) {
+      for (const u of MOTION_GRID) {
+        _motionF.set(u, v, 0.5).unproject(_motionCam).sub(_motionCam.position).normalize();
+        _motionAnchors[n++].copy(_motionCam.position).addScaledVector(_motionF, motionRayDepth(_motionCam.position, _motionF));
       }
+    }
+    if (storyboard.shots.length && sampleCameraRail(storyboard.shots, (open + close) / 2, _motionRail)) {
+      _motionAnchors[n++].set(_motionRail.lookX, _motionRail.lookY, _motionRail.lookZ);
     }
     const points = n + actors.length;
     if (_motionLength.length < points) { _motionLength = new Float64Array(points); _motionPrev = new Float64Array(points * 2); }
@@ -3139,6 +3164,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       fps: opts.fps ?? base.fps,
       shutterDeg: opts.shutterDeg ?? base.shutterDeg,
       samples: opts.samples ?? base.samples,
+      maxSamples: opts.maxSamples ?? base.maxSamples,
       filter: opts.filter ?? base.filter,
       speed: opts.speed ?? base.speed,
     });
