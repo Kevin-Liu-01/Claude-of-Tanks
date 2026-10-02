@@ -15,6 +15,29 @@ interface SimplexRandomSource {
   random(): number;
 }
 
+/** The three noise methods, as an exact accelerator provides them. */
+export interface SimplexNoiseMethods {
+  noise(xin: number, yin: number): number;
+  noise3d(xin: number, yin: number, zin: number): number;
+  noise4d(x: number, y: number, z: number, w: number): number;
+}
+
+/**
+ * An optional exact accelerator (src/wasm/worldKernel.ts installs the Rust/WebAssembly port behind `?wasm=world`).
+ * `bind` receives each new instance's tables and returns replacement methods, or null to keep the JavaScript ones.
+ * An accelerator must return the identical doubles: world heights are authoritative.
+ */
+export interface SimplexKernel {
+  bind(perm: Int32Array, permMod12: Int32Array, permMod32: Int32Array): SimplexNoiseMethods | null;
+}
+
+let installedKernel: SimplexKernel | null = null;
+
+/** Install (or, with null, remove) the accelerator for every SimplexNoise constructed afterwards. */
+export function installSimplexKernel(kernel: SimplexKernel | null): void {
+  installedKernel = kernel;
+}
+
 const F2 = 0.5 * (Math.sqrt(3.0) - 1.0);
 const G2 = (3.0 - Math.sqrt(3.0)) / 6.0;
 const F3 = 1.0 / 3.0;
@@ -99,6 +122,12 @@ export class SimplexNoise {
     this._perm = perm;
     this._pm12 = permMod12;
     this._pm32 = permMod32;
+    const accelerated = installedKernel ? installedKernel.bind(perm, permMod12, permMod32) : null;
+    if (accelerated) {
+      this.noise = accelerated.noise;
+      this.noise3d = accelerated.noise3d;
+      this.noise4d = accelerated.noise4d;
+    }
   }
 
   noise(xin: number, yin: number): number {

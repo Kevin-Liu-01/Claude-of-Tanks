@@ -40,3 +40,6 @@ docs/qa-evidence-manifest.json
 docs/critique/*
 .quality-reports/
 coverage/
+
+# Rust build output of the standalone WebAssembly crates (the committed binaries live in wasm/*/pkg/)
+wasm/*/target/

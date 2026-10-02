@@ -8,6 +8,8 @@
     "fx:textures:bake": "node tools/bake-fx-textures.mjs",
     "minimap:assets": "node tools/bake-minimap-assets.mjs",
     "perf:terrain-stream": "node tools/terrain-stream-benchmark.mjs",
+    "wasm:world-kernel": "node tools/build-world-kernel.mjs",
+    "wasm:world-kernel:check": "node tools/build-world-kernel.mjs --check",
     "qa:maps": "node tools/map-environment-audit.mjs",
     "qa:structures": "node tools/structure-certification-audit.mjs",
     "qa:tree-trunks": "node tools/tree-trunk-certification-audit.mjs",

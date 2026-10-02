@@ -1,0 +1,4 @@
+# Read when cargo runs from this directory (tools/build-world-kernel.mjs does). One 64 KiB page per instance:
+# the kernel has no heap and needs only a small stack, and the loader creates one instance per noise table.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "link-arg=-zstack-size=16384"]

@@ -1,0 +1,28 @@
+# cot-world-kernel — the opt-in Rust/WebAssembly world kernel (src/wasm/worldKernel.ts loads it behind
+# `?wasm=world`). A standalone crate: it is not a member of any Cargo workspace, has no dependencies, and is
+# never compiled by Vite. `npm run wasm:world-kernel` rebuilds pkg/cot_world_kernel.wasm and its manifest;
+# src/wasm/worldKernel.selftest.mjs holds the committed binary to the JavaScript noise bit for bit.
+[package]
+name = "cot-world-kernel"
+version = "0.1.0"
+edition = "2024"
+authors = ["Kevin B. Liu"]
+license = "MIT"
+publish = false
+rust-version = "1.90"
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+# An empty workspace table keeps this crate standalone wherever it sits.
+[workspace]
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+debug = false
+incremental = false

@@ -518,7 +518,12 @@ worldRuntime = createWorldActivationRuntime<
       transitionActive: transition.active,
       lastActivityAt: garageDressingScheduler.getLastActivityAt(),
     }),
-    loadModule: () => import('./world/map.ts'),
+    // `?wasm=world` (opt-in): the exact Rust/WebAssembly noise kernel (engine/worldKernel.ts) installs before the
+    // world module so its noise tables bind to it; JavaScript stays the default and every failure's fallback.
+    loadModule: () => (/[?&]wasm=world(?:&|$)/.test(location.search)
+      ? import('./engine/worldKernel.ts').then((kernel) => kernel.installWorldKernel(), () => null)
+        .then(() => import('./world/map.ts'))
+      : import('./world/map.ts')),
     releaseShadowMaterial: (resource) => lighting.releaseShadowMaterial(resource),
     acquireBackgroundWork: (kind, stillValid) =>
       garageIdleWorkCoordinator.acquire(kind, stillValid),
