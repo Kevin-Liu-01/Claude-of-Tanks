@@ -3967,8 +3967,9 @@ function* vegetationBuildSteps(
           if (dit > fadeKeep) discard;
         }
       }`);
-    if (thin > 0) {
-      // the canopy hooks (cards, far lobes, impostors): the gust lift on the albedo, ±4 % around the still crown
+    if (thin > 0 && !mobileTier) {
+      // the canopy hooks (cards, far lobes, impostors): the gust lift on the albedo, ±4 % around the still crown — the
+      // desktop tiers' far forests; the phones keep their foliage fragment exactly (the unread varying links away)
       shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <color_fragment>',
         `#include <color_fragment>\n\tdiffuseColor.rgb *= 1.0 + vWindLift * ${TREE_WIND_LEAF_FLASH.toFixed(3)};`);
     }

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { WebGLPrograms } from 'three/src/renderers/webgl/WebGLPrograms.js';
 import { createLighting, releaseCsmShaderMaterial } from '../engine/lighting.ts';
+import { resolveDeviceTier } from '../engine/quality.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
 import { createHeightField } from './terrain.ts';
 import { createVegetation } from './vegetation.ts';
@@ -193,6 +194,35 @@ function checkRound77Mechanisms(parameters) {
   assert.doesNotMatch(vertex, /amp \* \(sin\(uWindTime \* 1\.15 \+ ph\)/, 'the pre-round sway is gone');
 }
 
+// p2 trees lane (2026-10-01): the gust read as the crown's tone — the wind law hands its gust to the fragment and the
+// canopy albedo lifts ±4 % around the still crown, on the near cards and the impostors; the phones' foliage fragment
+// keeps no such term (their varying links away).
+function checkGustLift(cards, impostor) {
+  for (const [name, parameters] of [['cards', cards], ['impostor', impostor]]) {
+    assert.match(parameters.vertexShader, /vWindLift = gust - 0\.62;/, `${name}: the gust reaches the fragment`);
+    assert.match(parameters.fragmentShader, /diffuseColor\.rgb \*= 1\.0 \+ vWindLift \* 0\.110;/, `${name}: the crown's tone lifts with the gust`);
+  }
+}
+function checkMobileFoliage(species, environment) {
+  globalThis.window = { location: { search: '?tier=mobile' }, localStorage: { getItem: () => null } };
+  try {
+    assert.equal(resolveDeviceTier(), 'mobile');
+    const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(55, 1.6, .5, 4000);
+    const lighting = createLighting(scene, camera, new THREE.Vector3(1, 1, 1).normalize());
+    const registered = [];
+    const engine = { setupShadowMaterial(material, hook) { registered.push(material); return lighting.setupShadowMaterial(material, hook); } };
+    const cfg = { vegetation: { species, clusterCount: 0, loneCount: 0, rimCount: 0, grassDensity: 0, bushCount: 0, belts: [], authoredTrees: [] } };
+    const vegetation = createVegetation(createHeightField(1337), engine, 1337, cfg);
+    const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v18'));
+    assert.equal(foliage.length, species.length, 'the mobile species library exists');
+    const fragment = environment.expand(foliage[0]).parameters.fragmentShader;
+    assert.doesNotMatch(fragment, /vWindLift \*/, 'the phones keep their foliage fragment: no gust lift');
+    vegetation.dispose(); disposeObject3DResources(vegetation.group);
+    for (const material of registered) releaseCsmShaderMaterial(lighting.csm, material);
+    lighting.csm.remove(); lighting.csm.dispose();
+  } finally { delete globalThis.window; }
+}
+
 // Round 77b (2026-09-26): the second pass's mechanisms — the leaf-scale detail on the near-card program (the class
 // tile as the normal map, its sample shared by the mean-neutral alpha break and leaf-gap shade before the alpha
 // test, the tangent frame rebuilt on the authored normal after useAttributeNormal, three's double-sided frame
@@ -305,8 +335,11 @@ try {
     checkNegativeControls(world, rows, environment, species);
     checkRound77Mechanisms(rows[0].parameters);
     checkRound77bMechanisms(rows[0].parameters, world, environment);
+    checkGustLift(rows[0].parameters, environment.expand(world.impostor).parameters);
     checkIndependentEviction(world, other, species);
   }
+  // the mobile tier, resolved once and last (the device tier is process state)
+  checkMobileFoliage(species, environment);
 } finally {
   environment.dispose();
   restoreCanvas();
