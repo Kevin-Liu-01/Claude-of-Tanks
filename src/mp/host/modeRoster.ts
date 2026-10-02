@@ -1,4 +1,4 @@
-import { matchRulesetFor, type TeamArrangement } from '../../sim/matchRuleset.ts';
+import { matchRulesetFor, type MatchRuleset, type TeamArrangement } from '../../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../../sim/matchModes.ts';
 interface Seat { playerId: string; team: 'alpha' | 'bravo' | 'spectator'; specId: string }
 interface Bot { playerId: string; name: string; team: 'alpha' | 'bravo'; specId: string }
@@ -11,15 +11,21 @@ export function arrangeModeRoster<S extends Seat>(mode: string, arrangement: Tea
   bots.length = 0;
   const bossPlayer = rules.juggernaut?.team === 'alpha' ? players[0] : null;
   for (const seat of players) seat.team = bossPlayer ? (seat === bossPlayer ? 'alpha' : 'bravo') : 'alpha';
-  const count = rules.juggernaut ? (bossPlayer ? Math.max(1, (rules.enemies ?? 12) - players.length + 1) : 1)
-    : rules.infection ? 1 : rules.enemies ?? 12;
+  const { hostile: count, friendly: friendlyCount } = modeBotCounts(rules, !!bossPlayer, players.length);
   for (let i = 0; i < Math.min(42 - players.length, count); i++) bots.push({
     playerId: `mode-bravo-${i}`, name: rules.juggernaut && !bossPlayer ? 'Juggernaut' : rules.infection ? 'Patient Zero' : `Hostile ${i + 1}`,
     team: 'bravo', specId: players[i % players.length]!.specId,
   });
-  const friendlyCount = bossPlayer || rules.aerial === 'gunship' ? 0 : Math.max(0, (rules.allies ?? 0) + 1 - players.length);
   const friendlySlots = Math.min(42 - players.length - bots.length, friendlyCount);
   for (let i = 0; i < friendlySlots; i++) bots.push({
     playerId: `mode-alpha-${i}`, name: `Ally ${i + 1}`, team: 'alpha', specId: players[i % players.length]!.specId,
   });
+}
+
+function modeBotCounts(rules: MatchRuleset, bossPlayer: boolean, players: number): { hostile: number; friendly: number } {
+  let hostile = rules.enemies ?? 12;
+  if (rules.juggernaut) hostile = bossPlayer ? Math.max(1, hostile - players + 1) : 1;
+  else if (rules.infection) hostile = 1;
+  const friendly = bossPlayer || rules.aerial === 'gunship' ? 0 : Math.max(0, (rules.allies ?? 0) + 1 - players);
+  return { hostile, friendly };
 }

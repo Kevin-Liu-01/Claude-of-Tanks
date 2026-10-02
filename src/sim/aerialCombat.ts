@@ -34,6 +34,27 @@ export function initializeAerial(entity: AerialEntity, ruleset: MatchRuleset): v
   entity.aerial = view;
   flights.set(entity, { view, shell: null, shellId: -1, readyAt: 0, born: 0, center: new Vector3(0, entity.state.pos.y, 0), launch: new Vector3() });
 }
+function steerDrone(entity: AerialEntity, v: AerialView, shell: ShellEntity<ShellSpec>, dt: number): void {
+  const rules = AERIAL_RULES.drone;
+  direction.copy(entity.input.aimPoint).sub(shell.pos).normalize();
+  const wantedYaw = Math.atan2(direction.x, direction.z), wantedPitch = Math.asin(Math.max(-1, Math.min(1, direction.y)));
+  const delta = Math.atan2(Math.sin(wantedYaw - v.yaw), Math.cos(wantedYaw - v.yaw));
+  v.yaw += Math.max(-rules.turnRadS * dt, Math.min(rules.turnRadS * dt, delta));
+  v.pitch += Math.max(-rules.turnRadS * dt, Math.min(rules.turnRadS * dt, wantedPitch - v.pitch));
+  const speed = rules.speedMps * (entity.bot ? 1 : Math.max(-.5, Math.min(1, entity.input.throttle)));
+  direction.set(Math.sin(v.yaw) * Math.cos(v.pitch), Math.sin(v.pitch), Math.cos(v.yaw) * Math.cos(v.pitch)).multiplyScalar(speed);
+  const strafe = entity.bot ? 0 : Math.max(-1, Math.min(1, entity.input.steer)) * rules.speedMps * .6;
+  direction.x += Math.cos(v.yaw) * strafe; direction.z -= Math.sin(v.yaw) * strafe;
+  if (!entity.bot && entity.input.brake) direction.y += rules.climbMps;
+}
+
+function flightExpired(flight: Flight, timeS: number, toggle: boolean): boolean {
+  const shell = flight.shell;
+  const rules = AERIAL_RULES.drone;
+  return !!shell && (shell.id !== flight.shellId || shell.dead || timeS - flight.born >= rules.batteryS ||
+    shell.pos.distanceToSquared(flight.launch) > rules.rangeM ** 2 || toggle);
+}
+
 export function stepAerial(entity: AerialEntity, timeS: number, dt: number, nextId: () => number, launchShell: (shell: ShellEntity<ShellSpec>) => void): void {
   const flight = flights.get(entity); if (!flight) return;
   const v = flight.view;
@@ -56,8 +77,7 @@ export function stepAerial(entity: AerialEntity, timeS: number, dt: number, next
   const toggle = !!((entity.input.auxiliaryBits ?? 0) & PLAYER_ACTION_BITS.DRONE) ||
     (!!entity.bot && !flight.shell && entity.input.fire && timeS > 8 && timeS >= flight.readyAt);
   entity.input.auxiliaryBits = (entity.input.auxiliaryBits ?? 0) & ~PLAYER_ACTION_BITS.DRONE;
-  if (flight.shell && (flight.shell.id !== flight.shellId || flight.shell.dead || timeS - flight.born >= rules.batteryS ||
-      flight.shell.pos.distanceToSquared(flight.launch) > rules.rangeM ** 2 || toggle)) {
+  if (flight.shell && flightExpired(flight, timeS, toggle)) {
     if (flight.shell.id === flight.shellId) flight.shell.dead = true;
     flight.shell = null; v.active = false; v.launching = false; flight.readyAt = timeS + rules.cooldownS;
   } else if (toggle && !flight.shell && timeS >= flight.readyAt) {
@@ -76,16 +96,7 @@ export function stepAerial(entity: AerialEntity, timeS: number, dt: number, next
   v.launching = age < rules.launchS;
   if (v.launching) direction.set(Math.sin(v.yaw) * 5, rules.launchHeightM / rules.launchS, Math.cos(v.yaw) * 5);
   else {
-    direction.copy(entity.input.aimPoint).sub(shell.pos).normalize();
-    const wantedYaw = Math.atan2(direction.x, direction.z), wantedPitch = Math.asin(Math.max(-1, Math.min(1, direction.y)));
-    const delta = Math.atan2(Math.sin(wantedYaw - v.yaw), Math.cos(wantedYaw - v.yaw));
-    v.yaw += Math.max(-rules.turnRadS * dt, Math.min(rules.turnRadS * dt, delta));
-    v.pitch += Math.max(-rules.turnRadS * dt, Math.min(rules.turnRadS * dt, wantedPitch - v.pitch));
-    const speed = rules.speedMps * (entity.bot ? 1 : Math.max(-.5, Math.min(1, entity.input.throttle)));
-    direction.set(Math.sin(v.yaw) * Math.cos(v.pitch), Math.sin(v.pitch), Math.cos(v.yaw) * Math.cos(v.pitch)).multiplyScalar(speed);
-    const strafe = entity.bot ? 0 : Math.max(-1, Math.min(1, entity.input.steer)) * rules.speedMps * .6;
-    direction.x += Math.cos(v.yaw) * strafe; direction.z -= Math.sin(v.yaw) * strafe;
-    if (!entity.bot && entity.input.brake) direction.y += rules.climbMps;
+    steerDrone(entity, v, shell, dt);
   }
   shell.vel.copy(direction);
   v.x = shell.pos.x; v.y = shell.pos.y; v.z = shell.pos.z;
