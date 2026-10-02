@@ -169,5 +169,5 @@ layout), `server/telemetry.selftest.mjs` (the fallback), `src/entry/telemetry.se
 harness), `src/gallery/chunkRecovery.selftest.mjs` (no cacheable-404 header rule),
 `src/game/battleEntryLifecycle.selftest.mjs`, `src/engine/frameScheduler.selftest.mjs`,
 `src/game/soloBattleEntryRuntime.selftest.mjs`, `src/ui/garageReturnFailure.selftest.mjs`,
-`src/ui/privateRoomFailurePresentation.selftest.mjs`, `src/ui/playMenu.selftest.mjs`,
+`src/ui/roomFailurePresentation.selftest.mjs`, `src/ui/playMenu.selftest.mjs`,
 `src/engine/bootLifecycle.selftest.mjs`; all registered in `tools/selftest-suites.mjs`.

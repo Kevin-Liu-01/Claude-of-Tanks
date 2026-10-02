@@ -529,9 +529,15 @@ host is competing for CPU/GPU is reported as `REFUSED`, not as a valid pass or
 failure. Use `npm run perf:loading` for the exhaustive boot/map/Studio/tank
 selection matrix.
 
-Use the network render probe:
+For multiplayer presentation and performance use the peer-to-peer rigs (the
+v1 network render probe left with the cutover, MULTIPLAYER-V2.md §13.10):
 
-    npm run test:net:render
+    npm run test:net:v2:p2p
+    npm run test:net:v2:p2p:soak
+
+The first drives three real browsers through a hosted match and a host
+migration; the soak reports host tick cost, uplink, migrations and desync
+against the §13.8 budgets. DEVELOPMENT.md lists the rest of `test:net:v2:*`.
 
 See DEV-PERF-TRACE.md for trace fields.
 
