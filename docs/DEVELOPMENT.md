@@ -252,46 +252,43 @@ Internet rooms use the rooms Worker (`cloudflare/rooms/README.md` deploys it on 
 on a build, the official site resolves it from `src/officialHost.ts`). There is no self-hosted compose stack any more:
 a self-host needs the static site, the rooms Worker (or the LAN helper on a reachable host) and a TURN relay.
 
-Production private rooms automatically request short-lived credentials from
-`/api/ice`. For a fully self-hosted deployment, configure coturn with
-`use-auth-secret` and supply the same shared secret to the application:
+Relay (TURN) credentials come from the room a player is seated in (2026-10-02, `docs/MULTIPLAYER-V2.md` §13.14): a
+seat of a running peer-to-peer match asks its room (`room_relay`) once per peer connection, and the room mints one
+grant per request — never cached, never logged, at most six a minute per seat and 96 per room. The production rooms
+Worker mints Cloudflare Realtime TURN credentials from two secrets (names only; `wrangler secret put` in
+`cloudflare/rooms`):
+
+    COT_CLOUDFLARE_TURN_KEY_ID
+    COT_CLOUDFLARE_TURN_API_TOKEN
+
+Without them a seat receives the Worker's STUN servers alone (`COT_STUN_URLS` in `cloudflare/rooms/wrangler.jsonc`,
+the policy's `OFFICIAL_STUN_URLS`): joining works, a strict NAT cannot relay. A self-host runs the same Worker with its
+own secrets, or the LAN helper on a reachable host with the same names in its environment — there also coturn
+(`use-auth-secret`, credentials made in-process, no provider call):
 
     COT_TURN_URLS=turn:turn.example.test:3478,turns:turn.example.test:5349
     COT_TURN_SHARED_SECRET=replace-with-coturn-static-auth-secret
     COT_TURN_USERNAME=cot
 
-The endpoint generates expiring HMAC credentials locally and makes no hosted
-provider request. As an optional managed alternative, configure Cloudflare
-Realtime TURN:
+or a fixed JSON array of ICE servers (another provider): `COT_TURN_ICE_SERVERS_JSON`. Credentials last one hour
+(2026-10-01; eight hours before): a connection lives one match. `COT_TURN_TTL_SECONDS` may shorten the lease to twenty
+minutes and can no longer lengthen it. `COT_STUN_URLS` names the STUN servers a grant carries when no relay can be
+minted (unset on the LAN helper: a LAN needs host candidates only). Long-lived provider secrets must never use the
+`VITE_` prefix or enter the browser bundle. `/api/ice` mints nothing any more: for one release it answers the official
+STUN servers to tabs loaded before the move, then it goes.
 
-    COT_CLOUDFLARE_TURN_KEY_ID
-    COT_CLOUDFLARE_TURN_API_TOKEN
-
-For fixed credentials or another provider, use a JSON array of ICE servers:
-
-    COT_TURN_ICE_SERVERS_JSON
-
-Credentials last one hour (2026-10-01; eight hours before): the client fetches
-them per peer connection and a connection lives one match. `COT_TURN_TTL_SECONDS`
-may shorten the self-hosted or Cloudflare lifetime to twenty minutes and can no
-longer lengthen it. `/api/ice` answers only a same-origin page
-(`Sec-Fetch-Site: same-origin`) or an allow-listed `Origin`; a bare `curl` gets 403.
-`VITE_ICE_CONFIG_URL` is only needed when credentials are served from
-a different endpoint. Long-lived provider secrets must never use the `VITE_`
-prefix or enter the browser bundle.
-
-Before certifying private rooms in production, check the room Worker and the ICE endpoint:
+Before certifying private rooms in production, check the room Worker:
 
     curl -fsS https://cot-rooms.kk23907751.workers.dev/healthz
-    curl -fsS -H 'Origin: https://cot.kevinliu.studio' https://cot.kevinliu.studio/api/ice
 
 Then run the three-browser proof against the deployed site, the only origin the Worker admits:
 
     node tools/mp-p2p-e2e.mjs --site=https://cot.kevinliu.studio
 
-The health must answer `{ ok, backend: durable-object, matchHost: p2p }`. The ICE response
-must be HTTP 200 and include at least one `turn:` or `turns:` URL, and the
-browser must obtain a relay candidate from those credentials.  
+The health must answer `{ ok, backend: durable-object, matchHost: p2p }`. A seat's relay grant (the
+`ice:resolved` facts of `tools/mp-p2p-soak.mjs --ice=all`, or a seated room client's `room_relay`) must include at
+least one `turn:` or `turns:` URL, and the browser must obtain a relay candidate from those credentials.
+
 ## Fast validation
 
 Run the complete Node self-test suite:

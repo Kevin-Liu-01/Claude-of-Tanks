@@ -14,6 +14,9 @@
  *      the migration (within one tick of motion); the room's reports now come from p2;
  *   4. p1 opens the room again (a resume with its stored capability): match_start names p2 as host, p1 joins the
  *      running match as a peer and is welcomed by p2's actor.
+ *   5. (2026-10-02, §13.14) every seat resolves its ICE through the room it holds — the browser's resolver
+ *      (src/mp/transport/iceConfig.ts) over `room_relay` — and every peer connection of the run, on the peers' links
+ *      and the hosts' acceptors alike, was built with the room's grant, from fewer requests than connections.
  *
  *   node tools/mp-p2p-headless.mjs            ~25 s wall (the core receipt)
  *   node tools/mp-p2p-headless.mjs --json
@@ -22,6 +25,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
 import { createP2pRoomDouble } from './mp-p2p-room-double.ts';
 import { createHeadlessSession, memoryStorage, scriptedControls } from '../src/mp/session/headlessSession.ts';
+import { createRoomIceResolver } from '../src/mp/transport/iceConfig.ts';
 import { createInProcessHostPort } from '../src/mp/host/inProcessHost.ts';
 import { RtcWorld } from '../src/mp/transport/rtcDouble.test-support.ts';
 import { PHASE } from '../src/mp/wire/constants.ts';
@@ -39,7 +43,9 @@ const until = async (predicate, label, timeoutMs) => {
 export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs = 4000, world = 'terrain', log = () => {} } = {}) {
   const SECRET = 'mp-p2p-headless-seat-secret-0123456789abcdef';
   const events = [];
-  const rooms = await createP2pRoomDouble({ seatSecret: SECRET, hostGraceMs, onEvent: (event) => events.push(event) });
+  // the room's relay grant (§13.14): test values the scripted links carry in their configuration, never a real credential
+  const relayGrant = { iceServers: [{ urls: 'stun:stun.headless.test:3478' }, { urls: ['turn:turn.headless.test:3478?transport=udp', 'turns:turn.headless.test:443?transport=tcp'], username: 'headless-user', credential: 'headless-grant' }], relay: true, expiresInSeconds: 3600 };
+  const rooms = await createP2pRoomDouble({ seatSecret: SECRET, hostGraceMs, onEvent: (event) => events.push(event), relayGrant });
   const rtc = new RtcWorld();
   const cores = [];
   const failures = [];
@@ -62,10 +68,14 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
   const spawn = (id, name, storage, index, { canHost = true } = {}) => {
     const p2pEvents = [];
     const entry = { id, headless: null, storage, disposed: false, p2pEvents, hostLiveTick: null };
+    // the browser's resolver over this seat's own room client (made with the session, so resolved lazily); the room is a
+    // LAN room for the double, a private one for the resolver, which asks the room in every mode but `lan`
+    let resolveIce = null;
     const headless = createHeadlessSession({
       endpoint: rooms.url, player: { id, name }, createSocket: (url) => new WebSocket(url), controls: scriptedControls(index), storage,
       session: {
         p2p: {
+          ice: () => resolveIce(),
           createPeerConnection: rtc.createPeerConnection,
           ...(canHost ? { createHostPort: createInProcessHostPort({ world, onCore: (core) => cores.push({ id, core }), keyframeIntervalMs: 500, reportIntervalMs: 1000 }) } : {}),
           manifestBase: null, tier: 'desktop', countdownS: 1,
@@ -76,6 +86,7 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
         },
       },
     });
+    resolveIce = createRoomIceResolver({ mode: 'private', room: headless.room });
     headless.session.onP2p((event) => p2pEvents.push(event));
     entry.headless = headless;
     sessions.push(entry);
@@ -221,6 +232,17 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     for (const entry of sessions) if (!entry.disposed && entry.headless.session.stats().phase === 'lost') failures.push(`${entry.id} ended in lost`);
     const refused = events.filter((event) => event.kind === 'signal_refused');
     report.steps.relay = { relayed: events.filter((event) => event.kind === 'signal').length, refused: refused.length, refusedCodes: [...new Set(refused.map((event) => event.code))] };
+
+    // ---- 5. ICE from the room: every peer connection built with the room's grant, fewer requests than connections
+    const connections = [...rtc.connections.values()];
+    const expectedServers = JSON.stringify([{ urls: 'stun:stun.headless.test:3478' }, { urls: relayGrant.iceServers[1].urls, username: 'headless-user', credential: 'headless-grant' }]);
+    const granted = connections.filter((pc) => JSON.stringify(pc.config.iceServers) === expectedServers && pc.config.relayOnly === false).length;
+    const requests = events.filter((event) => event.kind === 'relay');
+    report.steps.ice = { connections: connections.length, granted, requests: requests.length, bySeat: Object.fromEntries([...new Set(requests.map((event) => event.playerId))].map((id) => [id, requests.filter((event) => event.playerId === id).length])) };
+    log(`ice: ${granted} of ${connections.length} peer connections built with the room's grant from ${requests.length} relay requests ${JSON.stringify(report.steps.ice.bySeat)}`);
+    if (connections.length < 6) failures.push(`${connections.length} peer connections (start, migration and rejoin build at least six)`);
+    if (granted !== connections.length) failures.push(`${connections.length - granted} peer connections were built without the room's grant`);
+    if (requests.length < 1 || requests.length >= connections.length) failures.push(`${requests.length} relay requests for ${connections.length} connections (one per burst, a grant reused)`);
   } catch (error) {
     failures.push(error instanceof Error ? error.stack ?? error.message : String(error));
   } finally {

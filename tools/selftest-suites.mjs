@@ -840,6 +840,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/localWeaponPresentation.selftest.mjs',
     'server/githubStars.selftest.mjs',
     'server/ice.selftest.mjs',
+    'server/relayCredentials.selftest.mjs',
     'server/telemetryRecord.selftest.mjs',
     'server/telemetry.selftest.mjs',
     'server/jev.selftest.mjs',

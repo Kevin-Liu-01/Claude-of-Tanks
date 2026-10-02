@@ -61,7 +61,7 @@ worktree and never stage generated tank work wholesale.
 <!-- agent-docs:auto:dirmap start -->
 | Directory | Skill | Purpose |
 |---|---|---|
-| `api/` | [`api/SKILL.md`](api/SKILL.md) | Maintain the deployed ICE credential, telemetry, Jev proxy and public GitHub-count HTTP entrypoints. |
+| `api/` | [`api/SKILL.md`](api/SKILL.md) | Maintain the deprecated STUN-only ICE answer, telemetry, Jev proxy and public GitHub-count HTTP entrypoints. |
 | `server/` | [`server/SKILL.md`](server/SKILL.md) | Implement and operate the match actor, the LAN room helper, collision manifests, ICE and telemetry services. |
 | `src/` | [`src/SKILL.md`](src/SKILL.md) | Navigate browser boot and shared source contracts while preserving subsystem and bundle boundaries. |
 | `src/app/` | [`src/app/SKILL.md`](src/app/SKILL.md) | Maintain typed application composition, lazy owner access, frame wiring, and combat warm lifecycle. |

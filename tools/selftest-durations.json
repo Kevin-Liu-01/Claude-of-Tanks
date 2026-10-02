@@ -17,6 +17,7 @@
     "server/match/seatToken.selftest.mjs": 100,
     "server/match/service.selftest.mjs": 7500,
     "server/processShutdown.selftest.mjs": 100,
+    "server/relayCredentials.selftest.mjs": 100,
     "server/telemetryRecord.selftest.mjs": 100,
     "src/app/checkedIntegrationPort.selftest.mjs": 100,
     "src/app/combatWarmComposition.selftest.mjs": 100,
