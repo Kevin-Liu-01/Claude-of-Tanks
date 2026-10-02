@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
-import { ensureInteriorFills, hasInteriorFills } from '../interiorFills.ts';
+import { ensureInteriorFills, hasInteriorFills, interiorFillRecord } from '../interiorFills.ts';
 
 await ensureInteriorFills(['k21_x']);
 assert.ok(hasInteriorFills('k21_x'), 'test requires the real generated K21 fills loaded');
+// 2026-10-02: the K21 fills on its primary hull/turret shells (interior-fill-body-policy.mjs), which hold water as
+// built, so its record carries no solids; whatever the record carries must be installed, and none may cap a bore.
+const fillComponents=['hull','turret','gun'].filter(component=>interiorFillRecord('k21_x')[component]).length;
 const F=.90; // explicit owner size, no fitted registration
 const angle=Math.PI/9, sin=Math.sin(angle), cos=Math.cos(angle);
 const axis=new THREE.Vector3(0,sin,cos);
@@ -18,7 +21,7 @@ for(const quality of ['high','low']) {
     assert.ok(turret&&gun,'actual turret and gun rigs are required');
     let fillMeshes=0;
     tank.root.traverse(mesh=>{if(mesh.isMesh&&mesh.userData.interiorFill)fillMeshes++});
-    assert.ok(fillMeshes>0,'registered fill data must actually be installed in the tested scene');
+    assert.equal(fillMeshes,fillComponents,'registered fill data must actually be installed in the tested scene');
     const restPivot=turret.position.clone();
     function ray(x,v,n,direction,far) {
       tank.root.updateMatrixWorld(true);const surfaces=[];
