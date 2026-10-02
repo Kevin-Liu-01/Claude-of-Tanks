@@ -310,3 +310,14 @@ China 3 and Russia 3 and describes each vehicle's weapon mount, observation
 package, roof equipment and paired mantlet lamps. The 175 previously reviewed
 pictures remain available while the fourteen combined-build quarter views wait.
 The AMX stock-comparison publication exception remains unanswered.
+
+
+## Publication instruction — 2026-10-02
+
+After the AMX 56 stock-comparison failure, visual evidence, successful physical
+checks and pending queued release checks were disclosed, the owner instructed
+“commit and push origin main and deploy”. This renews publication and explicitly
+authorizes deployment of the requested field kit in that disclosed state.
+The failed AMX geometry/fidelity measurements remain failed; no oracle,
+threshold or recorded outcome is changed. The remaining combined-tree checks
+are being completed before publication.
