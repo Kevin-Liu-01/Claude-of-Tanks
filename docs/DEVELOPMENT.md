@@ -410,7 +410,7 @@ This is a dependency count, not a claim about elapsed time on a busy host.
 **One fleet pass per build (2026-10-02).** Ten receipts used to rebuild all 217 tanks each, and the build is
 nearly all of their cost (the audits themselves take under 5 s per fleet). Three fleet passes now build each tank once
 per build and run every audit that reads that build on it (`src/vehicles/fleetPass.test-support.mjs`; the audits are
-the former receipts' checks, moved verbatim into `*Audit.test-support.mjs` modules beside them):
+the former receipts' checks, with their assertions unchanged, in `*Audit.test-support.mjs` modules beside them):
 
 - `fleetPassHigh` — the unbatched seed-4242 HIGH build: the geometry ledger's HIGH rows, machine-gun mounts (with the
   detached-mount negative control), track end wraps (with the broken-station controls and 3/5 mm limits), wheel
@@ -429,7 +429,8 @@ one microtask turn. An audit that poses the model restores it or is declared las
 compares each node's parent, visibility and transform and every mesh's bytes, instances and materials with what the
 audit received, and fails the audit that left a difference. A failing audit stops receiving tanks while the others go
 on, its build is discarded, and the pass names every failed audit and tank. Measured on this host (CPU-seconds, load
-about 25): the ten receipts 1,961 s, the five that replace them 1,025 s (the three passes 602 s).
+about 25): the ten receipts 1,961 s, the five that replace them 1,025 s (the three passes 602 s); a whole cold suite
+91 CPU-min instead of 106.
 
 Receipts share `tools/receipt-kit.test-support.mjs` (`near`, `nearStrict`, `geometryHash`) instead of defining their
 own copies. Source-shape guards, functional simulation tests and real visual checks still make different claims:
