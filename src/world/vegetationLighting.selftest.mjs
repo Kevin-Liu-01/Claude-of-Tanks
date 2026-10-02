@@ -219,6 +219,10 @@ Object.defineProperty(globalThis, 'document', {
     },
   },
 });
+// p2 trees lane (2026-10-02): the desktop Garage grows its trees (vegetation.ts buildGrownGarageTree, treeGrowth's
+// receipt); this receipt's subject is the round-8 garage pine — the phones' and `?legacyTrees=1` kit
+const locationDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'location');
+Object.defineProperty(globalThis, 'location', { configurable: true, value: { search: '?legacyTrees=1' } });
 try {
   for (let variant = 0; variant < 3; variant++) {
     const kit = createGarageTreeKit({}, null, 'pine', 2001, variant);
@@ -242,6 +246,8 @@ try {
 } finally {
   if (documentDescriptor) Object.defineProperty(globalThis, 'document', documentDescriptor);
   else delete globalThis.document;
+  if (locationDescriptor) Object.defineProperty(globalThis, 'location', locationDescriptor);
+  else delete globalThis.location;
 }
 assert.equal(strokes.length, 95 * 3, 'each unchanged needle atlas retains 95 seeded sprays');
 const colors = strokes.map((style) => new Color(style));

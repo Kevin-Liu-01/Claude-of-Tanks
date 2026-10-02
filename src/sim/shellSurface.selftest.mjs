@@ -28,7 +28,8 @@ assert.match(fx, /if \(e\.hitTerrain\) \{\s*if \(e\.hitWater \|\| shellPointOnWa
   'expired shells on water splash instead of throwing dirt');
 assert.match(fx, /case 'terrain':\s*if \(shellPointOnWater\(pos\)\) waterSplash\(pos, caliberMm, caliberMm >= 105\);\s*else dirtPlume\(pos, caliberMm, caliberMm >= 105\);/,
   'direct terrain impacts respect the water mask');
-const audio = readFileSync(new URL('../audio/audio.ts', import.meta.url), 'utf8');
+const audio = readFileSync(new URL('../audio/audioEngine.ts', import.meta.url), 'utf8');
 assert.match(audio, /event\.surfaceKind === 'water'/, 'audio plays a splash for water expiries');
-assert.match(audio, /function synthWaterImpact\(/);
+assert.match(audio, /water \? 'bullet_water' : 'bullet_dirt'/, 'small-arms splashes keep the water mask');
+assert.match(audio, /caliber >= 61 \? 'water_big' : 'water_small'/, 'shells splash by size in open water');
 console.log('shellSurface.selftest: water classification, shore feather, prop/record precedence and the three consumers pass');

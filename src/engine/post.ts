@@ -94,7 +94,9 @@ import {
   POST_LIGHT_FX_OFF, currentPostLightFxQuery, resolvePostLightFx, samePostLightFx, type PostLightFxFlags,
 } from './postLightFxPolicy.ts';
 import { createPostFrameAccounting, type CompletedPostFrame } from './postFrameAccounting.ts';
-import { LEGACY_EXPOSURE, lightTune, type LightModel } from './lightModel.ts';
+import { LEGACY_EXPOSURE, lightTune, type LightModel } from './lightModelCore.ts';
+import { FOG_LAYER, FOG_LAYER_MIN_M } from './fogLayer.ts';
+import { setNightEmissionExposure } from './nightEmissionMaterial.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 
 interface ReconstructionTelemetry {
@@ -345,8 +347,13 @@ const AERIAL_HAZE_DENSITY = 0.00092; // 1/m, slower second curve for scatter-in
 // 1 km and the far ranges dissolved into one veil; capped, a range keeps >= 40 % of its own colour (extinction) and
 // >= 45 % of its own light (scatter-in) at any distance. Both ceilings sit past ~650 m, so the midfield law
 // (r6 de-milk, r2 black-point guard) is untouched.
-const AERIAL_EXT_CEILING = 0.60;
-const AERIAL_SCATTER_CEILING = 0.55;
+// 2026-10-02 (the clouds lane, handed the square's law by the lighting lane, whose ring ceilings came down a third): the
+// square's far half still read hazed at ground level on the census bird and centre-far views, so the square's ceilings
+// come down a third too (0.60 / 0.55 -> 0.42 / 0.38) — a range across the square keeps most of its own colour, the
+// ring's law still continuous at the seam (it eases from these to AERIAL_RING_*); volumetricClouds.ts CLOUD_AERIAL
+// mirrors them so a cloud bank and the ground under it haze alike.
+const AERIAL_EXT_CEILING = 0.42;
+const AERIAL_SCATTER_CEILING = 0.38;
 // Round 72b (integrator: "the boosted outer rows are washed toward the sky by the post aerial ceilings ... give the
 // ring its own distance law"): beyond the playable square the two ceilings ease with the distance past the square's
 // edge — continuous with the square's law at the seam (round 29 / 35), lower across the ring's ranges (edgeOut 260 m
@@ -1254,6 +1261,14 @@ const GRADE_SAT_LINEAR = 1.4;
 const GRADE_CONTRAST = 1.28;
 const GRADE_BLACK_POINT = 0.012;
 const GRADE_SATURATION = 1.0;
+// 2026-10-02 (the Garage under AgX): the showroom keeps its authored rig (lighting.ts, an enclosed presentation), tuned
+// under ACES's steep shoulder; AgX's gentler path to white compressed its spot-lit highlights (garage boot p95 182 →
+// 161, the showroom's own p90/p95/p99 197/207/215 → 162/179/194) while the dark bay and the midtones held (frame
+// median 24, showroom median 87). A display shoulder for the enclosed presentation only: luma
+// L + k·L·(1 − L)^1.5·smoothstep(0.36, 0.66, L), each pixel's hue kept. The lift peaks where AgX compressed most (a
+// display level of 0.6–0.7) and eases toward white; nothing below the showroom's median moves, white stays white
+// (the boot frame: p95 182, p99 211, the showroom's p90/p95/p99 195/206/216, both medians held).
+const GARAGE_HIGHLIGHT_LIFT = 0.95;
 // r4 LP2 ("vignette stacks to a ~30-35% corner luminance falloff on bright daylight wides"): the shader keys
 // the vignette to the PIXEL's own luma — bright sky/haze corners keep most of their level — and
 // terrain_environment r4 eased it to 0.14; 2026-10-01: 0.10, a lens's natural falloff.
@@ -1323,6 +1338,7 @@ const GradeShader = {
     uContrast: { value: GRADE_CONTRAST },
     uBlackPoint: { value: GRADE_BLACK_POINT },
     uSaturation: { value: GRADE_SATURATION },
+    uHighlightLift: { value: 0 },
     uVignette: { value: GRADE_VIGNETTE },
     // 2026-10-01: the light model's linear exposure (lightModel.ts exposureFor, scene.userData.lightModel),
     // applied before the tone curve with its white balance — never a display-space trim again
@@ -1352,6 +1368,7 @@ const GradeShader = {
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
     uniform float uSaturation;
+    uniform float uHighlightLift;
     uniform float uBlackPoint;
     uniform float uVignette;
     uniform float uNight;
@@ -1407,6 +1424,13 @@ const GradeShader = {
       // saturation around the pixel's own luma
       float luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
       col = clamp( mix( vec3( luma ), col, uSaturation ), 0.0, 1.0 );
+      // the enclosed Garage's highlight shoulder (GARAGE_HIGHLIGHT_LIFT note)
+      if ( uHighlightLift > 0.001 ) {
+        float hlL = max( dot( col, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
+        float hlD = max( 1.0 - hlL, 0.0 );
+        float hlLift = hlL + uHighlightLift * hlL * hlD * sqrt( hlD ) * smoothstep( 0.36, 0.66, hlL );
+        col = clamp( col * ( hlLift / hlL ), 0.0, 1.0 );
+      }
       // night (2026-10-01): low light reads through the rods — colour drains from the shadows and dim midtones
       // toward a cool blue (the Purkinje shift); highlights (lamps, the moon, muzzle flashes) keep their colour
       if ( uNight > 0.001 ) {
@@ -2453,7 +2477,7 @@ export function createPost(
       ? Math.max(AERIAL_ZOOM_FLOOR, Math.pow(camera.fov / AERIAL_ZOOM_FOV, 1.5))
       : 1;
     aerial.uniforms.uDensity.value = AERIAL_DENSITY * fovScale;
-    aerial.uniforms.uHazeDensity.value = AERIAL_HAZE_DENSITY * fovScale;
+    aerial.uniforms.uHazeDensity.value = lightTune('AERIAL_HAZE_DENSITY', AERIAL_HAZE_DENSITY) * fovScale;
     aerial.uniforms.uDetailW.value = THREE.MathUtils.clamp(
       (AERIAL_DETAIL_FOV - camera.fov) / (AERIAL_DETAIL_FOV - 8),
       0,
@@ -2471,6 +2495,7 @@ export function createPost(
     const u = grade.uniforms;
     const contrast = lightTune('GRADE_CONTRAST', GRADE_CONTRAST), satLinear = lightTune('GRADE_SAT_LINEAR', GRADE_SAT_LINEAR);
     u.uSaturation.value = lightTune('GRADE_SATURATION', GRADE_SATURATION);
+    u.uHighlightLift.value = scene.userData.lightEnclosed ? lightTune('GARAGE_HIGHLIGHT_LIFT', GARAGE_HIGHLIGHT_LIFT) : 0;
     u.uBlackPoint.value = lightTune('GRADE_BLACK_POINT', GRADE_BLACK_POINT);
     u.uVignette.value = lightTune('GRADE_VIGNETTE', GRADE_VIGNETTE);
     u.uNight.value = model?.night ?? 0;
@@ -2485,6 +2510,8 @@ export function createPost(
       u.uContrast.value = contrast;
       u.uSatLinear.value = satLinear;
     }
+    // the night lenses hold their display level through the camera's exposure (nightEmissionMaterial.ts)
+    setNightEmissionExposure(u.uExposure.value);
   }
 
   function updateScopeGrade(): void {
@@ -2550,7 +2577,12 @@ export function createPost(
     aerial.uniforms.uCamPos.value.set(elements[12], elements[13], elements[14]);
     // 2026-10-01: the haze layer's base under the camera (the battlefield's ground; 0 before a world supplies it)
     const ground = groundHeightAt ? groundHeightAt(elements[12], elements[14]) : 0;
-    aerial.uniforms.uHazeDatum.value = Number.isFinite(ground) ? ground : 0;
+    const datum = Number.isFinite(ground) ? ground : 0;
+    aerial.uniforms.uHazeDatum.value = datum;
+    // 2026-10-02: the materials' fog on the same layer (fogLayer.ts), off for a camera near the ground (the plain law)
+    FOG_LAYER.x = elements[13] - datum;
+    FOG_LAYER.y = datum;
+    FOG_LAYER.w = FOG_LAYER.x > FOG_LAYER_MIN_M ? lightTune('FOG_LAYER', 1) : 0;
     const halfFovTangent = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
     aerial.uniforms.uTan.value.set(halfFovTangent * camera.aspect, halfFovTangent);
     const sunDirection = scene.userData.sunDirWorld;
@@ -2580,7 +2612,8 @@ export function createPost(
     updatePostLightFx();
     // round 68 (2026-09-24): the volumetric cloud layer marches its slot and resolves its history before the
     // scene draws (src/engine/volumetricClouds.ts; the sky rig publishes it, null on the mobile tier / ?clouds=off)
-    scene.userData.volumetricClouds?.beforeSceneRender(renderer, camera, dt, sceneTarget.width, sceneTarget.height);
+    // (2026-10-02: with the haze layer's datum, so the clouds' aerial law sees the same layer from the camera's height)
+    scene.userData.volumetricClouds?.beforeSceneRender(renderer, camera, dt, sceneTarget.width, sceneTarget.height, aerial.uniforms.uHazeDatum.value);
     // Only this complete frame transaction can bypass LateFX's input copy.
     // Individual warm/debug renders deliberately keep the original path.
     const passes = composer.passes;

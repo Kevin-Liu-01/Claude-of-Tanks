@@ -26,8 +26,9 @@ for (const action of ['smoke', 'lights', 'roofGun']) assert.ok(SETTINGS_ACTION_I
 // multiplayer v2 status surface (2026-09-26): networkPanel (F3) and leaveBattle (F4) join them
 assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 31,
   'every remappable action has a settings icon');
+// sfx engine redesign (2026-10-02): crew-radio language and the concussion toggle join the sound tab
 assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
-  'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay',
+  'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay', 'audioConcussion', 'crewVoice',
   'graphicsQuality', 'hideBattleUi', 'invertY', 'isometricView', 'padSensitivity', 'rmbMode', 'sensitivity',
   'showDebugHud', 'showDirectionalHitValues', 'showPerfMeter', 'sniperSensScale', 'volAmbience',
   'volCombat', 'volEngine', 'volMaster', 'volUi', 'volVoice',
