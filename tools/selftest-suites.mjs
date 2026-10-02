@@ -884,6 +884,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/structureSupport.selftest.mjs',
     'src/sim/rollover.selftest.mjs',
     'src/sim/tankBodyContacts.selftest.mjs',
+    'src/sim/tankBodyRest.selftest.mjs',
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
     'src/sim/spotting.selftest.mjs',
