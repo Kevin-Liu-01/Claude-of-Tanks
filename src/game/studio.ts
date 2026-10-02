@@ -168,6 +168,11 @@ interface StudioContext {
   prepareStudioAtmosphere?(time: StudioTimeOfDay, light?: StudioLight | null): Promise<unknown>;
   /** Restore the world's baked horizon light and the readability before the battlefield leaves the Studio. */
   restoreStudioAtmosphere?(): void;
+  /** The applied light runtime (blue-hour / night lamps follow the actors and the camera). */
+  getStudioLight?(): {
+    setActorRoots(roots: readonly THREE.Object3D[]): void;
+    update(cameraPosition: THREE.Vector3Like): void;
+  } | null;
   setGarageSpots(enabled: boolean): void;
   setGarageSunTrim(enabled: boolean): void;
   enterGarage(): Promise<void> | void;
@@ -1051,6 +1056,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     actorByRoot.set(visual.root, a);
     // Resolve the one visible spec now; never sweep unrelated cached vehicles.
     activateActorPresentation(a);
+    if (!loading) ctx.getStudioLight?.()?.setActorRoots(actorRoots); // headlights at blue hour / night
     return a;
   }
 
@@ -1069,6 +1075,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     a.visual.dispose();
     const rootIndex = actorRoots.indexOf(a.visual.root);
     if (rootIndex >= 0) actorRoots.splice(rootIndex, 1);
+    ctx.getStudioLight?.()?.setActorRoots(actorRoots);
     actors.splice(actors.indexOf(a), 1);
     storyboard = clearStoryboardActorTrack(storyboard, actorKey);
     bindStoryboardTracks();
@@ -1887,6 +1894,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       }
     }
     fx.update(dt, shells, camera, resolveFxSubject);
+    // the held (frozen) frame: blue-hour / night lamps nearest the camera (playback updates in advanceTimeline)
+    if (dt === 0) ctx.getStudioLight?.()?.update(camera.position);
   }
 
   /**
@@ -2033,6 +2042,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     getWorld()?.setWindTime(0.35 + clockMs / 1000);
     applyStoryboardFrame(target, 0);
     if (clockMs >= storyboard.durationMs) timeScale = 0;
+    ctx.getStudioLight?.()?.update(camera.position); // blue-hour / night lamps follow the posed actors and camera
     return Math.round(clockMs);
   }
 
@@ -3017,6 +3027,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function restoreLoadedPresentation(json: StudioSceneInput, fxMs: number): void {
+    ctx.getStudioLight?.()?.setActorRoots(actorRoots); // the loaded batch's headlights join the night lamp pool once
     timeScale = fxMs >= storyboard.durationMs
       ? 0
       : Math.max(0, Math.min(4, json.timeScale != null ? json.timeScale : 0));

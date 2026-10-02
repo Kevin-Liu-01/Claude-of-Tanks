@@ -54,7 +54,7 @@ const SPACE_BAND: ElevationBand = Object.freeze({ min: 8, max: 60 });
 export const STUDIO_DUSK_KEY_ELEVATION_DEG = 5;
 
 /** The far horizon's grade: the ring and its far range are unlit (baked) materials, so the plan carries their light. */
-export interface StudioHorizonGrade {
+interface StudioHorizonGrade {
   /** Scalar on the unlit horizon materials' colour (the battle night uses 0.20). */
   readonly dim: number;
 }
@@ -185,7 +185,15 @@ interface TimeRecipe {
   readonly atmosphere?: NonNullable<MapSkyConfig['atmosphere']>;
   /** Cloud-layer overrides beyond the pinned identity (e.g. no cloud shadows from a set sun). */
   readonly cloudLayer?: Partial<CloudLayerPreset>;
+  /** A key light decoupled from the sky's sun at this elevation along its bearing (the blue hour's glow). */
+  readonly keyElevationDeg?: number;
 }
+
+/**
+ * QA only (the light lane's calibration probes, like atmosphere.ts's __ATMO_CALIBRATION): per-time recipe fields and
+ * raw sky fields merged over the shipped recipes. Never set by the product; a page without it plans the shipped light.
+ */
+export type StudioLightLab = Partial<Record<StudioTimeOfDay, Partial<TimeRecipe> & { readonly sky?: Partial<MapSkyConfig> }>>;
 
 const FILL_DEFAULT = 0.66; // lighting.ts FILL_INTENSITY (a preset without fillIntensity)
 const SUN_DEFAULT = 4.5; // lighting.ts SUN_INTENSITY
@@ -239,6 +247,7 @@ const RECIPES: Readonly<Record<Exclude<StudioTimeOfDay, 'day'>, TimeRecipe>> = O
     exposure: 1.1, readability: 0.58, horizonDim: 0.36,
     atmosphere: { ozoneScale: 1.6 },
     cloudLayer: { shadow: false },
+    keyElevationDeg: STUDIO_DUSK_KEY_ELEVATION_DEG,
   },
   // Moonlight: a silver key, readable shapes, deep blue shade; stars and the moon disc on the dimmed dome.
   night: {
@@ -265,7 +274,7 @@ export interface StudioCloudIdentity {
  */
 export function planStudioLight(
   mapId: string, authored: MapSkyConfig, requested: StudioTimeOfDay, light: StudioLight | null,
-  clouds: StudioCloudIdentity | null = null,
+  clouds: StudioCloudIdentity | null = null, lab: StudioLightLab | null = null,
 ): StudioLightPlan {
   if (!isStudioTime(requested)) throw new RangeError('Unknown Studio time of day');
   const space = isSpaceMap(mapId);
@@ -295,7 +304,7 @@ export function planStudioLight(
     });
   }
 
-  const recipe = RECIPES[time];
+  const recipe: TimeRecipe = lab?.[time] ? { ...RECIPES[time], ...lab[time] } : RECIPES[time];
   const sunI = authored.sunIntensity ?? SUN_DEFAULT;
   const hemiI = authored.hemiIntensity ?? HEMI_DEFAULT;
   const sky: MapSkyConfig = {
@@ -320,9 +329,10 @@ export function planStudioLight(
   if (recipe.atmosphere) sky.atmosphere = { ...(authored.atmosphere ?? {}), ...recipe.atmosphere };
   const cloudLayer = { ...(pinnedClouds ?? authored.cloudLayer ?? {}), ...(recipe.cloudLayer ?? {}) };
   if (Object.keys(cloudLayer).length) sky.cloudLayer = cloudLayer;
+  if (lab?.[time]?.sky) Object.assign(sky, lab[time].sky);
   return Object.freeze({
     time, sunAzimuthDeg: azimuth, sunElevationDeg: elevation, sky: Object.freeze(sky),
-    keyDirection: time === 'dusk' ? studioSunDirection(STUDIO_DUSK_KEY_ELEVATION_DEG, azimuth) : null,
+    keyDirection: recipe.keyElevationDeg !== undefined ? studioSunDirection(recipe.keyElevationDeg, azimuth) : null,
     readability: recipe.readability, horizon: Object.freeze({ dim: recipe.horizonDim }), space,
   });
 }

@@ -3176,6 +3176,7 @@ const studioAccess = createStudioAccess({
             worldRuntime.markEnvironmentPrepared(currentWorld());
           },
           resetTemporalHistory: () => post.taa?.resetHistory(),
+          nightLightBudget: () => getDeviceTier() === 'mobile' ? { spotLights: 2, pointLights: 1 } : { spotLights: 4, pointLights: 2 },
         });
         studioLightLive = runtime;
         return runtime;
@@ -3183,6 +3184,7 @@ const studioAccess = createStudioAccess({
       return (await studioLightRuntime).apply(time, light);
     },
     restoreStudioAtmosphere: () => studioLightLive?.restore(),
+    getStudioLight: () => studioLightLive,
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.

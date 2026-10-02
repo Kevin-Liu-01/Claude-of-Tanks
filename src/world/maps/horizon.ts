@@ -3356,6 +3356,9 @@ export function* buildHorizonRingSteps(
     // round 72: the character and the bake's measurements, for the probes and the receipts
     relief: reliefCharacter, reliefBake: reliefBake ? { width: reliefBake.width, height: reliefBake.height, ...reliefBake.stats } : null,
   };
+  // media r5: the bake's relief field (a small noise object, non-enumerable so userData dumps stay JSON) — Scene Studio
+  // re-bakes the atlas's sun visibility from the ring geometry for a moved or lower sun, then restores the original
+  if (reliefBake) Object.defineProperty(mesh.userData, 'horizonReliefSource', { value: { field: bakeField, maxHeight: maxH }, enumerable: false });
   // Round 72: the far range — the peaks behind the ring (1.9–3.3 km, inside the cloud dome and the camera's far
   // plane), one unlit vertex-shaded draw with its own aerial perspective; capped under a map's low cloud deck
   if (vista && H.farRange !== false && reliefSettings.far) {

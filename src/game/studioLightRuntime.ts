@@ -17,14 +17,16 @@
  */
 import * as THREE from 'three';
 import {
-  planStudioLight, type StudioCloudIdentity, type StudioLight, type StudioLightPlan, type StudioTimeOfDay,
+  planStudioLight, type StudioCloudIdentity, type StudioLight, type StudioLightLab, type StudioLightPlan, type StudioTimeOfDay,
 } from './studioLight.ts';
 import { deriveCloudLayerPreset } from '../engine/cloudPresets.ts';
 import { DEFAULT_SKY_PRESET } from '../engine/sky.ts';
 import { MARS_SKY_PRESET } from '../engine/marsAtmosphere.ts';
 import { setVehicleReadabilityScale } from '../vehicles/vehicleReadability.ts';
-import { horizonSkyTint, type MapSkyConfig } from '../world/maps/horizon.ts';
+import { HORIZON_SEGMENTS, horizonSkyTint, type MapSkyConfig } from '../world/maps/horizon.ts';
+import { bakeHorizonRelief, type HorizonReliefField } from '../world/horizonRelief.ts';
 import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
+import { createNightLightingRuntime, type NightLightingBudget, type NightLightingRuntime } from '../engine/nightLightingRuntime.ts';
 
 interface StudioLightWorld {
   readonly mapId: string;
@@ -32,25 +34,33 @@ interface StudioLightWorld {
   readonly config: { readonly sky?: MapSkyConfig; readonly clouds?: CloudscapeConfig };
 }
 
-export interface StudioLightRuntimeOptions {
+interface StudioLightRuntimeOptions {
   getWorld(): StudioLightWorld | null;
   /** The composition root's sky + key transaction (sky.applyPreset, lighting.setSun, fog baseline, IBL receipt). */
   applySky(preset: MapSkyConfig, keyDirection: THREE.Vector3 | null): void;
   /** Restart light-integrating temporal histories (TAA); the cloud history restarts through the scene's layer. */
   resetTemporalHistory?(): void;
+  /** The tier's pooled lamp budget for the blue-hour and night emitters (the battle night's own budget). */
+  nightLightBudget?(): NightLightingBudget;
   scene: THREE.Scene;
 }
 
 export interface StudioLightRuntime {
   /** Apply the plan for the active world. Returns the plan as rendered. */
   apply(time: StudioTimeOfDay, light: StudioLight | null): StudioLightPlan;
-  /** Put every mutated world value and the readability back (the sky belongs to the battle atmosphere owner). */
+  /** The Studio actors whose authored lamps (headlights) join the blue-hour and night emitters. */
+  setActorRoots(roots: readonly THREE.Object3D[]): void;
+  /** Per rendered Studio frame (and before a capture): place the pooled lamps nearest the camera. */
+  update(cameraPosition: THREE.Vector3Like): void;
+  /** Put every mutated world value, the lamps and the readability back (the sky belongs to the battle atmosphere owner). */
   restore(): void;
   readonly plan: StudioLightPlan | null;
 }
 
 type Uniform<T> = { value: T };
 interface VistaUniforms {
+  uVRelief?: Uniform<THREE.DataTexture | null>;
+  uVReliefAmp?: Uniform<number>;
   uVAmbient?: Uniform<number>;
   uVSunGain?: Uniform<number>;
   uVSkyTint?: Uniform<THREE.Vector3>;
@@ -65,6 +75,38 @@ interface FarShading {
 }
 
 const HORIZON_MESHES = new Set(['horizon-ring', 'horizon-treeline', 'horizon-detail', 'horizon-far-range']);
+/** A key this close to the authored sun keeps the ring's original cast-shadow bake (cos 0.25°). */
+const SAME_SUN_COS = Math.cos(0.25 * Math.PI / 180);
+
+/**
+ * Re-bake the ring atlas's sun visibility (its A channel: the ridges' cast shadows over the ranges, also read by the
+ * terrain's ring bands) for a new key direction. The bake input is rebuilt from the ring geometry (the seam column
+ * dropped, the sea apron from the UV's negative V) with the ring's own relief field, so a lower or moved sun lays
+ * longer or turned shadows; the gradient and occlusion channels keep the build's bytes.
+ */
+function rebakeRingSun(ring: THREE.Mesh, texture: THREE.DataTexture, sun: THREE.Vector3): boolean {
+  const source = ring.userData.horizonReliefSource as { field: HorizonReliefField; maxHeight: number } | undefined;
+  const image = texture.image as { data?: Uint8Array; width?: number; height?: number } | undefined;
+  const position = ring.geometry.getAttribute('position'), uv = ring.geometry.getAttribute('uv');
+  if (!source || !image?.data || !image.width || !image.height || !position || !uv) return false;
+  const n = HORIZON_SEGMENTS, stride = n + 1, rowCount = Math.floor(position.count / stride);
+  if (rowCount * stride !== position.count) return false;
+  const positions = new Float32Array(n * rowCount * 3), heights = new Float32Array(n * rowCount), marine = new Float32Array(n * rowCount);
+  for (let row = 0; row < rowCount; row++) {
+    for (let k = 0; k < n; k++) {
+      const src = row * stride + k, dst = row * n + k;
+      positions[dst * 3] = position.getX(src); positions[dst * 3 + 1] = position.getY(src); positions[dst * 3 + 2] = position.getZ(src);
+      heights[dst] = position.getY(src);
+      marine[dst] = Math.max(0, -uv.getY(src));
+    }
+  }
+  const bake = bakeHorizonRelief({ columns: n, rowCount, positions, heights, maxHeight: source.maxHeight, marine },
+    source.field, [sun.x, sun.y, sun.z], { width: image.width, height: image.height });
+  const data = image.data;
+  for (let i = 3; i < data.length; i += 4) data[i] = bake.data[i];
+  texture.needsUpdate = true;
+  return true;
+}
 const AUTHORED_DAY = 'authored-day';
 
 /** The map's authored sky as the battle atmosphere starts from it (main.ts getAuthoredPreset; Mars's shared preset). */
@@ -86,11 +128,18 @@ function linearHex(hex: number): THREE.Color {
 
 export function createStudioLightRuntime(options: StudioLightRuntimeOptions): StudioLightRuntime {
   const savedColors = new Map<THREE.Color, THREE.Color>();
+  const savedSunVisibility = new Map<THREE.DataTexture, Uint8Array>();
   const savedValues = new Map<Uniform<unknown>, unknown>();
   let appliedRoot: THREE.Object3D | null = null;
   let appliedKey = AUTHORED_DAY;
   let current: StudioLightPlan | null = null;
   const keyScratch = new THREE.Vector3();
+  // blue hour and night: the world's authored window / lamp emitters and the actors' headlights (the battle night's
+  // pooled lights, a separate Studio-owned pool); re-prepared from scratch on every change so a frame never depends on
+  // the previous slot assignment
+  let night: NightLightingRuntime | null = null;
+  let nightRoot: THREE.Object3D | null = null;
+  let actorRoots: THREE.Object3D[] = [];
 
   function saveColor(color: THREE.Color): void {
     if (!savedColors.has(color)) savedColors.set(color, color.clone());
@@ -116,6 +165,12 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
     }
     savedColors.clear();
     savedValues.clear();
+    for (const [texture, alpha] of savedSunVisibility) {
+      const data = (texture.image as { data: Uint8Array }).data;
+      for (let i = 3, j = 0; i < data.length; i += 4, j++) data[i] = alpha[j];
+      texture.needsUpdate = true;
+    }
+    savedSunVisibility.clear();
   }
 
   /** Unlit horizon materials used only by the named horizon meshes (an alias shared with any other mesh is left alone). */
@@ -182,6 +237,36 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
     for (const uniform of terrainSunUniforms(root)) {
       if (saveUniform(uniform)) uniform.value.copy(key);
     }
+    // the ridges' cast shadows for this key (a lower sun lays them longer, a moved one turns them)
+    root.traverse((object) => {
+      const ring = object as THREE.Mesh;
+      if (!ring.isMesh || ring.name !== 'horizon-ring' || Array.isArray(ring.material)) return;
+      const material = ring.material as THREE.MeshBasicMaterial;
+      const vista = (material.userData.horizonVista as { uniforms?: VistaUniforms } | undefined)?.uniforms;
+      const texture = vista?.uVRelief?.value;
+      const sun = material.userData.horizonSunDir as Uniform<THREE.Vector3> | undefined;
+      if (!texture || !(vista?.uVReliefAmp?.value) || !sun || savedSunVisibility.has(texture)) return;
+      if (original(sun).dot(key) >= SAME_SUN_COS) return;
+      const data = (texture.image as { data?: Uint8Array } | undefined)?.data;
+      if (!data) return;
+      const alpha = new Uint8Array(data.length / 4);
+      for (let i = 3, j = 0; i < data.length; i += 4, j++) alpha[j] = data[i];
+      savedSunVisibility.set(texture, alpha);
+      if (!rebakeRingSun(ring, texture, key)) savedSunVisibility.delete(texture);
+    });
+  }
+
+  function syncNight(): void {
+    const world = options.getWorld();
+    const on = !!world && !!current && (current.time === 'dusk' || current.time === 'night');
+    if (!on) {
+      if (nightRoot) night?.reset();
+      nightRoot = null;
+      return;
+    }
+    night ??= createNightLightingRuntime(options.scene, options.nightLightBudget?.() ?? { spotLights: 4, pointLights: 2 });
+    night.prepare([{ root: world.group }, ...actorRoots.map((root) => ({ root }))], true);
+    nightRoot = world.group;
   }
 
   function planKey(plan: StudioLightPlan, exactDay: boolean): string {
@@ -192,7 +277,9 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
     const world = options.getWorld();
     if (!world) throw new Error('Studio light requires an active battlefield');
     const authored = studioAuthoredSky(world);
-    const plan = planStudioLight(world.mapId, authored, time, light, cloudIdentity(authored));
+    // QA calibration probes may set window.__STUDIO_LIGHT_LAB before applying a light (never set by the product)
+    const lab = (globalThis as { __STUDIO_LIGHT_LAB?: StudioLightLab }).__STUDIO_LIGHT_LAB ?? null;
+    const plan = planStudioLight(world.mapId, authored, time, light, cloudIdentity(authored), lab);
     const exactDay = plan.time === 'day' && plan.sunAzimuthDeg === (authored.sunAzimuthDeg ?? 115)
       && plan.sunElevationDeg === (authored.sunElevationDeg ?? 32);
     if (appliedRoot !== world.group) {
@@ -219,16 +306,28 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
       options.resetTemporalHistory?.();
     }
     current = plan;
+    syncNight(); // every application re-prepares the lamp pool: a frame never inherits a previous slot assignment
     return plan;
+  }
+
+  function setActorRoots(roots: readonly THREE.Object3D[]): void {
+    actorRoots = [...roots];
+    if (nightRoot) syncNight();
+  }
+
+  function update(cameraPosition: THREE.Vector3Like): void {
+    if (nightRoot) night?.update(cameraPosition);
   }
 
   function restore(): void {
     restoreWorld();
+    if (nightRoot) night?.reset();
+    nightRoot = null;
     setVehicleReadabilityScale(1);
     appliedRoot = null;
     appliedKey = AUTHORED_DAY;
     current = null;
   }
 
-  return { apply, restore, get plan() { return current; } };
+  return { apply, setActorRoots, update, restore, get plan() { return current; } };
 }

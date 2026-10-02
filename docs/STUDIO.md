@@ -29,9 +29,11 @@ normalization and sampling), and `src/ui/studioPanel.ts` (panel interface).
 `main.ts` supplies integration ports and retains only the Studio `tick()`
 composition branch.
 
-The **Time of day** control switches between Day, Sunset and Night and is saved
-with scene JSON. For repeatable 4K map masters, fixed-frame MP4s, vertical/square
-promos and a shoreline review workflow, see [Media production](MEDIA-PRODUCTION.md).
+The **Time of day** control offers Dawn, Morning, Day, Golden hour, Sunset, Dusk
+(blue hour) and Night, and the **Sun** compass sets the sun's bearing and height
+(see [Light](#light-times-of-day-and-sun-direction)); both are saved with scene JSON.
+For repeatable 4K map masters, fixed-frame MP4s, vertical/square promos and a
+shoreline review workflow, see [Media production](MEDIA-PRODUCTION.md).
 
 ## Entering / leaving
 
@@ -115,6 +117,11 @@ __STUDIO.applyProductionCamera(rig) // hero, track, rear, overhead, detail
 __STUDIO.setProductionFormat(format) / .productionFormat // landscape, portrait, square
 __STUDIO.recordVideo(opts) / .stopRecording() / .recordingStatus()
 __STUDIO.setCamera(cfg) / .getCamera()
+await __STUDIO.setTimeOfDay(time, light?)  // a Studio time; `light` (object or null) sets the sun with it
+await __STUDIO.setLight(patch)      // {sunAzimuthDeg?, sunElevationDeg?} merge (a null field clears it); null clears all
+__STUDIO.getLight()                 // {time, requestedTime, sunAzimuthDeg, sunElevationDeg, override, band, times, space}
+__STUDIO.timeOfDay                  // the time as rendered (a space map renders day)
+__STUDIO.STUDIO_TIMES / .STUDIO_TIME_BANDS
 __STUDIO.TANK_IDS / .MAP_IDS / .ACTOR_STATES / .EFFECT_TYPES / .CAMO_PATTERN_IDS
 __STUDIO.getMapInfo(id)             // {id, name}
 __STUDIO.getSpecInfo(id)            // {name, gunElevationDeg, gunDepressionDeg, shells}
@@ -157,6 +164,11 @@ picture only; Studio does not currently mix game audio into the capture stream.
 ```jsonc
 {
   "map": "desert",              // verdant | desert | winter | urban (default verdant)
+  "timeOfDay": "golden",        // dawn | morning | day | golden | sunset | dusk | night (default day)
+  "light": {                    // optional sun override (omit = the time's own sun)
+    "sunAzimuthDeg": 210,       //   bearing, 0 = +Z, 90 = +X (the map sky convention); wraps into [0, 360)
+    "sunElevationDeg": 9        //   clamped into the time's band (see Light); the moon at night
+  },
   "seed": 5000,                 // fx rng seed (default 5000)
 
   "actors": [
@@ -306,8 +318,9 @@ burning, a tracer, a detrack, or a kill leaves no orphaned visual state.
   fully independent.
 - Wrecked and burning states do not run the combat simulation. They do not
   calculate damage or module state.
-- `timeOfDayish` is accepted but ignored (sun/sky presets are authored per
-  map; re-lighting would need a sky re-bake).
+- The horizon treeline's thin skyline belts keep the shading baked under the
+  map's authored sun; the ring itself, its far range, the ridge shadows and the
+  terrain's wall sky light follow the Studio sun (see Light).
 - The garage bay set-dressing physically exists at the map edge (−1500,−1500)
   and can be framed if you fly there.
 - Studio `fire` shells collide with terrain only (props/tanks don't stop
