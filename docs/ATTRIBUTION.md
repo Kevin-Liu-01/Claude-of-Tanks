@@ -786,9 +786,9 @@ personal-use only. They are acceptable in this private project but MUST be
 deleted (files + icons + any derivative renders) before the game is ever
 distributed publicly or commercialized.
 
-NOTE: `npm run build` and `npm run build:public` exclude this entire block
-automatically — they set `VITE_PUBLIC_BUILD=1` (quarantine-path model sources are never
-registered; recovered gameplay rows remain on procedural family fallbacks) and then run
+NOTE: `npm run build` excludes this entire block
+automatically — it sets `VITE_PUBLIC_BUILD=1` (quarantine-path model sources are never
+registered; recovered gameplay rows remain on procedural family fallbacks) and then runs
 `tools/strip-nc-assets.mjs`, which deletes
 `dist/models/tanks/community/{quarantine,recovered}/**`, the local-only
 Tejas/AbramsX GLBs and derivative icons, plus the candidates trees, and

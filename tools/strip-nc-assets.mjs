@@ -13,7 +13,7 @@
 // 3. Prints the docs/ATTRIBUTION.md sections that must be dropped for a
 //    public build (the PERSONAL-USE / NC QUARANTINE block).
 //
-// Usage: node tools/strip-nc-assets.mjs   (see package.json "build:public")
+// Usage: node tools/strip-nc-assets.mjs   (see package.json "build")
 
 import { rm, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
