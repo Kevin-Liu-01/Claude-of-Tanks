@@ -1,4 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
@@ -31,11 +32,16 @@ try {
   }));
   const outDir = join(process.cwd(), 'public', 'fx');
   await mkdir(outDir, { recursive: true });
+  // The committed atlases' checksums live in a generated ledger, checked by src/fx/particleTextureAssets.selftest.mjs.
+  const ledgerPath = join(process.cwd(), 'src', 'fx', 'particleAtlases.ledger.json');
+  const ledger = JSON.parse(await readFile(ledgerPath, 'utf8'));
   for (const [name, atlas] of Object.entries(atlases)) {
     const bytes = Buffer.from(atlas.png.slice(atlas.png.indexOf(',') + 1), 'base64');
     await writeFile(join(outDir, `particles-${name}.png`), bytes);
+    ledger.atlases[name] = [bytes.readUInt32BE(16), bytes.readUInt32BE(20), createHash('sha256').update(bytes).digest('hex')];
     console.log(`${name.padEnd(5)} ${atlas.width}x${atlas.height} ${bytes.length} bytes`);
   }
+  await writeFile(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
   console.log(JSON.stringify(metrics, null, 2));
 } finally {
   await browser.close();

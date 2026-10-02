@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
 import * as THREE from 'three';
 import {createTank} from './tankFactory.ts';
 import {getSpec} from './specs.ts';
@@ -8,96 +7,27 @@ import {assertConvexArmorOutline} from '../sim/armorOutline.test-support.mjs';
 import {tankPoseFromState,traceTank} from '../sim/armor.ts';
 import {createShell} from '../sim/ballistics.ts';
 import {createCombatState,resolveShellHit} from '../sim/damage.ts';
-import {withHistoricalFixedGuardPaint} from './historicalFixedGuardPaint.test-support.mjs';
-import {withHistoricalClosedWheelFaces} from './sourceXWheelFaceHistory.test-support.mjs';
-import {historicalLeclercShoe,withHistoricalLeclercGear} from './leclercGearHistory.test-support.mjs';
-import {KIT} from './tankFactoryCore.ts';
-import {withHistoricalType10Supports} from './type10SkirtHistory.test-support.mjs';
 const DONORS={k1a1_x:'k1a1',amx30_x:'amx30',leclerc_x:'leclerc',leclerc_classic_x:'leclerc',type10_x:'type10',type90_x:'type90',amx40_x:'amx40'};
-// 2026-09-12 fleet visual standard: k1a1_x's rubber tire runs in to .2700
-// (was the source opening .2971) so the dish's rolled rim no longer shows as
-// a pale groove; its complete native fingerprints are repinned from that build.
-const BEFORE={
-// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
-// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
-// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
-// values below are repinned from the current build.
-// 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS"): amx30_x draws the France AMX-40
-// pressed face and leclerc_classic_x the Leclerc XLR stepped plate (nationWheelConstructions.ts); repinned from the
-// current build (amx30_x now compares the plain model under the tint inverse, leclerc_classic_x after its gear inverse).
- // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: 30aa82a9…, eca09834…, ce25b11c…, 5cf7c632…, e7726256…, a0fb4201…, 27509e55…, 97ce7d68…, 69197b36…, 495de4a8…, 3a9f7bca…, 9388e4c4…, 015d5a86…, 45a022cf….
- // 2026-09-25 round 96 (FSP-03 + FSP-05 combined tree on the FSP-06 base): the k1a1_x fingerprints read 56d10896… / 09c4cf22…
- // on the base tree 3db7849c1 itself (FSP-06 c6f306294 made the K1A1 X antenna base insulator dark and e69803182 its folded
- // whip rods, without re-pinning this receipt) — re-pinned once from the current build; neither fleet lane touches k1a1_x.
- 'k1a1_x/high':'56d1089692dbf53c20a99f90d9425246ecfc285f8f57282ce796a7ef824d722c',
- 'k1a1_x/low':'09c4cf226e7cf9e306eaa3ff33f20969f72a7bc95ae794a4dd4a057d057ff269',
- // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
- // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
- 'amx30_x/high':'f8e4252eebac1df91cbbbbfd057cddf4ff8530c886b5d071818a1eecda9c7d1e',
- 'amx30_x/low':'501cba67637c0bb7af907146a8f91112ed6d49fa789ef38e2819087303ff8673',
- 'leclerc_x/high':'c106a60485a54871b935564f0bdbc6f44b93a0774c5ad21d8c9ffee066b560e9' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,
- 'leclerc_x/low':'31e260ab2fbd2826507803f76872a8fb50b5bc98af17487ba8c33a983bfc6d52',
- 'leclerc_classic_x/high':'2fcfa0d688f1ef903e0bc0b19ce5753999058d013a3feb456799fc84b28917e4',
- 'leclerc_classic_x/low':'4334c748e0a3cb8363ed6d6e8eeb5c0736c467cbb37440e92139e67ca44766fa',
- 'type10_x/high':'4bce8096d5f075a1c3c2b730e37fed588eb12d8d46a6f337b30c977967910bdb',
- 'type10_x/low':'27bce6ac7d0a8488ee5a7151a68c1f175e757f81dda5b9b67010ee85bf732bf9',
- 'type90_x/high':'49d70dd6a258dc01f799136010b64fc356ed0e2679077b06ca94ebe9ff1f0bd4',
- 'type90_x/low':'14cb55951f5f5d3bf6917dc1e946412c8afe7ada12d513dcfa101cb04f30411d',
- // 2026-09-12 (evening): AMX-40 X .024 band + botY .050 contact fix; native fingerprints repinned.
- 'amx40_x/high':'aeacabece1cf8cc9ab96c90e923e37b23950de9fc7d9ff5dd52810fff9265b11',
- 'amx40_x/low':'863ca7c722b7f9f52bbbdf4d890633cdb1f5de712709c90f3a79e043f8229110',
-};
+// 2026-10-01 (owner: retire frozen pins): the fourteen pinned whole-model digests, the historical
+// finish/gear/tint inverses that reached them and their oracle-only negative controls are gone; the
+// fleet geometry ledger owns whole-tank change detection. Every check below runs on the actual model.
 const pose=tankPoseFromState({pos:new THREE.Vector3(),yaw:0,visualPitch:0,visualRoll:0,turretYaw:0,gunPitch:0});
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b} ±${t}`);
 const vec=p=>new THREE.Vector3(...p);
-function shapeHash(root){
-  const h=crypto.createHash('sha256');root.traverse(m=>{if(!m.isMesh)return;
-    h.update(m.name).update(m.parent?.name??'').update(JSON.stringify(m.matrixWorld.elements));
-    for(const key of Object.keys(m.geometry.attributes).sort()){
-      const a=m.geometry.attributes[key];
-      // Lighting adds a semantic channel, not shape. Keep every original
-      // fingerprint unchanged while validating this one new channel separately.
-      if(key==='nightEmissionMask'){
-        assert.ok(a.array instanceof Uint8Array,'night mask keeps its byte-sized semantic representation');
-        assert.equal(a.itemSize,1);assert.equal(a.normalized,false);
-        assert.equal(a.count,m.geometry.getAttribute('position').count,'one mask value per original vertex');
-        assert.ok(a.array.every(value=>value===0||value===1||value===2),'only unlit/warm/red aperture values');
-        continue;
-      }
-      h.update(key).update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
-    }
-    if(m.geometry.index){const a=m.geometry.index.array;h.update(Buffer.from(a.buffer,a.byteOffset,a.byteLength));}
-    if(m.isInstancedMesh){const a=m.instanceMatrix.array;h.update(Buffer.from(a.buffer,a.byteOffset,a.byteLength));}
-    h.update(JSON.stringify((Array.isArray(m.material)?m.material:[m.material]).map(a=>[a.name,a.color?.getHex(),a.side])));
-  });return h.digest('hex');
+// Lighting adds a semantic byte channel; a malformed mask must still fail.
+function assertNightMasks(root){
+  root.traverse(m=>{if(!m.isMesh)return;const a=m.geometry.getAttribute('nightEmissionMask');if(!a)return;
+    assert.ok(a.array instanceof Uint8Array,'night mask keeps its byte-sized semantic representation');
+    assert.equal(a.itemSize,1);assert.equal(a.normalized,false);
+    assert.equal(a.count,m.geometry.getAttribute('position').count,'one mask value per original vertex');
+    assert.ok(a.array.every(value=>value===0||value===1||value===2),'only unlit/warm/red aperture values');
+  });
 }
-// Only a valid new lighting channel is decomposed out of the legacy hash.
-{
-  const geometry=new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute([0,0,0,1,0,0,0,1,0],3));
-  const mesh=new THREE.Mesh(geometry),legacy=shapeHash(mesh);
-  geometry.setAttribute('nightEmissionMask',new THREE.Uint8BufferAttribute([0,1,2],1));
-  assert.equal(shapeHash(mesh),legacy);
-  for(const invalid of [new THREE.Float32BufferAttribute([0,1,2],1),
-    new THREE.Uint8BufferAttribute([0,1,2],3),new THREE.Uint8BufferAttribute([0,1],1),
-    new THREE.Uint8BufferAttribute([0,1,2],1,true),new THREE.Uint8BufferAttribute([0,1,3],1)]){
-    geometry.setAttribute('nightEmissionMask',invalid);assert.throws(()=>shapeHash(mesh));
-  }
-  geometry.setAttribute('nightEmissionMask',new THREE.Uint8BufferAttribute([0,1,2],1));
-  geometry.setAttribute('unrecognizedSemanticChannel',new THREE.Uint8BufferAttribute([0,1,2],1));
-  assert.notEqual(shapeHash(mesh),legacy,'unknown attributes are never silently ignored');
-  geometry.deleteAttribute('unrecognizedSemanticChannel');geometry.getAttribute('position').setX(0,.001);
-  assert.notEqual(shapeHash(mesh),legacy,'physical vertex bytes remain guarded');
-  geometry.dispose();mesh.material.dispose();
-}
-// The shoe-shader repair removes the old second dark multiplier. All fourteen
-// historical builds below recover their existing complete digest by restoring
-// only this one material tint; geometry, ownership and instance bytes remain
-// covered. Actual surface/ballistics tests always use the restored white base.
-const TRACK_TINT_IDS=new Set(['k1a1_x','amx30_x','leclerc_x','leclerc_classic_x',
-  'type10_x','type90_x','amx40_x']);
+// Canonical shoes take their colour from the instance palette over an exactly
+// white base; a second dark multiplier or a missing vertex-colour request would
+// blacken them. Actual surface/ballistics tests always use this white base.
 const SHOE_NAMES=['gearTrackPads','gearTrackPadsSimplified'];
-function trackPaletteMaterial(id,root){
-  assert.ok(TRACK_TINT_IDS.has(id),'historical track tint requires an independently verified tank');
+function trackShoeMaterial(root){
   const shoes=[];
   root.traverse(mesh=>{
     if(!mesh.isMesh)return;
@@ -125,19 +55,9 @@ function trackPaletteMaterial(id,root){
   root.traverse(mesh=>{
     if(!mesh.isMesh)return;
     if((Array.isArray(mesh.material)?mesh.material:[mesh.material]).includes(material))
-      assert.ok(shoes.includes(mesh),'only canonical shoes may share the historical tint material');
+      assert.ok(shoes.includes(mesh),'only canonical shoes may share the track-pad material');
   });
   return material;
-}
-function withHistoricalTrackTint(id,root,compare){
-  const material=trackPaletteMaterial(id,root),actual=shapeHash(root),color=material.color.clone();
-  try{
-    material.color.setHex(0x30312f);
-    return compare(shapeHash(root));
-  }finally{
-    material.color.copy(color);
-    assert.equal(shapeHash(root),actual,'historical comparison restores the complete actual candidate fingerprint');
-  }
 }
 function plateHits(armor,point,side,reach=.05){
   const from=point.clone().add(new THREE.Vector3(side*reach,0,0));
@@ -276,107 +196,41 @@ function type10HeldOut(spec,meshes){
   console.log(`Type10 independent held-outs: ${count} actual native rays, maximum error ${maximum}m; fascia/depth single billing and source air PASS`);
 }
 const selected=process.argv.find(a=>a.startsWith('--ids='))?.slice(6).split(',');
-{
-  const parameters={trackW:.636079,pitch:.15,pinCapOuter:.3180395,radialScale:1,widthScale:1,
-    pattern:{surface:'rubber-block',padHeight:.027,grouserHeight:.013,padCoverage:.8,
-      shoulderHeight:.01,webHeight:.026,webDepth:.8,hornHeight:.081,
-      pinStyle:'end-caps',pinRadius:.0222443,pinCentreY:-.0051314},
-    section:{padWidthM:.5253277,pinCapLengthM:.0404054,pinHalfSpacingM:.0388075,
-      connectorInnerM:.2577995,connectorOuterM:.3099674,connectorHeightM:.035629,
-      connectorDepthM:.0985811,connectorCentreYDeltaM:-.0005601}};
-  const dispose=THREE.BufferGeometry.prototype.dispose,farShoe=KIT.simplifiedTrackShoeGeometry;
-  const events=new Map();
-  THREE.BufferGeometry.prototype.dispose=function(){events.set(this,(events.get(this)??0)+1);return dispose.call(this);};
-  try{
-    for(const far of[false,true]){
-      const restored=historicalLeclercShoe({...parameters,far});
-      assert.equal(events.has(restored),false,'returned geometry stays caller-owned');restored.dispose();
-    }
-    KIT.simplifiedTrackShoeGeometry=(...args)=>{
-      const geometry=farShoe(...args),position=geometry.getAttribute('position');
-      position.setX(position.count-1,position.getX(position.count-1)+.001);return geometry;
-    };
-    assert.throws(()=>historicalLeclercShoe({...parameters,far:true}),/exact four eight-sided pin buffers/,
-      'unrelated pin changes cannot be silently replaced with historical stock');
-    assert.ok(events.size>20,'success and rejected native streams exercise real ownership');
-    for(const count of events.values())assert.equal(count,1,'one disposal event per owned intermediate');
-  }finally{THREE.BufferGeometry.prototype.dispose=dispose;KIT.simplifiedTrackShoeGeometry=farShoe;}
-}
-// Fail closed on an undeclared caller, opt-in, custom primitive or missing
-// native call. Throwing comparisons must restore the shared factory hook.
-{
-  const original=KIT.buildRunningGear;
-  assert.throws(()=>withHistoricalClosedWheelFaces('not-a-repaired-tank',()=>{}));
-  assert.throws(()=>withHistoricalLeclercGear('amx30_x',()=>{}));
-  // 2026-09-22: the T-90SM X is the only hull still declaring an annular opening (nation wheel standard).
-  assert.throws(()=>withHistoricalClosedWheelFaces('t90sm_x',()=>KIT.buildRunningGear(
-    {spec:{id:'t90sm_x'}},{wheelTireInnerRadiusM:.343})),/exact declared annular repair/);
-  assert.throws(()=>withHistoricalLeclercGear('leclerc_x',()=>KIT.buildRunningGear(
-    {spec:{id:'amx30_x'}},{})),/cannot affect another tank/);
-  assert.throws(()=>withHistoricalLeclercGear('leclerc_x',()=>KIT.buildRunningGear(
-    {spec:{id:'leclerc_x'}},{trackShoeBuilder:()=>{}})),/custom shoe/);
-  let disposed=0;
-  assert.throws(()=>withHistoricalLeclercGear('leclerc_x',()=>({dispose(){disposed++;}})));
-  assert.equal(disposed,1,'failed native-call ownership witness disposes its returned tank');
-  assert.equal(KIT.buildRunningGear,original,'every negative case restores the native factory');
-}
 for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.includes(id))){
   preservation(id,donor);
   for(const quality of['high','low']){
     const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
     try{
       tank.root.updateMatrixWorld(true);
-      const shoeMaterial=trackPaletteMaterial(id,tank.root);
+      const shoeMaterial=trackShoeMaterial(tank.root);
+      assertNightMasks(tank.root);
       if(id==='k1a1_x'&&quality==='high'){
-        const actual=shapeHash(tank.root),color=shoeMaterial.color.clone();
+        // Negative controls: the shoe-material gate rejects a dark base and an unrelated material user.
+        const color=shoeMaterial.color.clone();
         try{
           shoeMaterial.color.setHex(0x30312f);
-          assert.throws(()=>withHistoricalTrackTint(id,tank.root,()=>assert.fail('must reject before comparison')),
-            /actual shoe base must remain exactly white/,'an unexpected tint cannot be waived by the historical inverse');
+          assert.throws(()=>trackShoeMaterial(tank.root),/actual shoe base must remain exactly white/,
+            'a tinted shoe base fails the white-base contract');
         }finally{shoeMaterial.color.copy(color);}
         const unrelated=new THREE.Mesh(tank.root.getObjectByName('gearTrackPads').geometry,shoeMaterial);
         unrelated.name='unrelated-shared-material';tank.root.add(unrelated);
-        try{
-          assert.throws(()=>withHistoricalTrackTint(id,tank.root,()=>assert.fail('must reject unrelated material users')),
-            /only canonical shoes/);
-        }finally{tank.root.remove(unrelated);}
-        const failure=new Error('comparison rejected');
-        assert.throws(()=>withHistoricalTrackTint(id,tank.root,()=>{throw failure;}),error=>error===failure);
-        assert.equal(shapeHash(tank.root),actual,'negative and throwing comparisons leave the actual tank unchanged');
+        try{assert.throws(()=>trackShoeMaterial(tank.root),/only canonical shoes/);}
+        finally{tank.root.remove(unrelated);}
+        assert.equal(trackShoeMaterial(tank.root),shoeMaterial,'negative controls leave the actual shoe material intact');
       }
-      const paintedId=['leclerc_x','amx40_x','type10_x'].includes(id);
-      // 2026-09-22 nation wheel standard: amx30_x draws the France AMX-40 pressed face (no annular inverse any more).
-      const repairedGear=['leclerc_x','leclerc_classic_x'].includes(id);
-      if(paintedId||repairedGear){
-        const native=()=>createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
-        const finish=()=>paintedId?withHistoricalFixedGuardPaint(id,native):native();
-        const original=id.startsWith('leclerc')?withHistoricalLeclercGear(id,finish)
-          :id==='type10_x'?withHistoricalType10Supports(finish):finish();
-        try{
-          original.root.updateMatrixWorld(true);
-          withHistoricalTrackTint(id,original.root,hash=>assert.equal(hash,BEFORE[`${id}/${quality}`],
-            `${id}/${quality}: original full native fingerprint after only exact declared finish/primitive/tint inverses`));
-        }finally{original.dispose();}
-        withHistoricalTrackTint(id,tank.root,hash=>assert.notEqual(hash,BEFORE[`${id}/${quality}`],
-          'real repaired geometry must still differ after only the historical tint is restored'));
-        if(paintedId){
+      if(['leclerc_x','amx40_x','type10_x'].includes(id)){
         const painted=tank.root.getObjectByName('hullPaintedDetail');
-        // This legacy fingerprint uses geometry-only receipt materials. The
-        // rendered texture/name/UV contract is checked by registeredGuardPaint.
+        // The rendered texture/name/UV contract is checked by registeredGuardPaint.
         assert.equal(painted?.material,tank.root.getObjectByName('hull').material);
         assert.equal(painted?.userData.combatHitboxRole,'nonArmor');
         assert.equal(painted?.userData.materialOnlyPaintSourceBucket,'hullDetail');
-        }
-      }else withHistoricalTrackTint(id,tank.root,hash=>assert.equal(hash,BEFORE[`${id}/${quality}`],
-        'complete native geometry/material/instance/owner fingerprint unchanged except verified track base tint'));
-      // All surface, air, seam and projectile checks below still use the
-      // actual painted model, never the historical comparison construction.
+      }
       const meshes=[];tank.root.traverse(m=>{if(m.isMesh&&!m.userData.shadowOnly&&!m.userData.vehicleMarking)meshes.push(m);});
       const spec=getSpec(id);facets(id,spec,meshes);air(id,spec);const count=seams(id,spec);
       const halfOpen=openBoundaries(id,spec);
       if(id==='type10_x')type10HeldOut(spec,meshes);
       actualProtection(spec);
-      console.log(`sourceXOtherAuxArmor: ${id}/${quality} physical panels, air, donor values, ${count} seams/${halfOpen} owned edges and authenticated native mesh PASS`);
+      console.log(`sourceXOtherAuxArmor: ${id}/${quality} physical panels, air, donor values, ${count} seams/${halfOpen} owned edges, shoe material and night masks PASS`);
     }finally{tank.dispose();}
   }
 }

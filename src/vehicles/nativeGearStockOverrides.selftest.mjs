@@ -3,26 +3,10 @@ import {createHash} from 'node:crypto';
 import * as T from 'three';
 import {KIT} from './tankFactoryCore.ts';
 
-// Authenticated against published 5b3224204: twelve exact default native
-// assemblies and 96 motion snapshots. The original core was independently
-// loaded for recovery qualification; this immutable fingerprint is not a
-// refreshed source-shape or current-vs-current golden.
-// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
-// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
-// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
-// values below are repinned from the current build.
-// 2026-09-18 end-wheel re-lay: under terrain conformance the wrap arcs and ramps beyond the outer road wheels now pivot
-// with the wheel about the fixed end wheel (deformBand relayEnds), so every motion snapshot of the band moves; the
-// authored rest geometry is unchanged (trackEndRamp.selftest pins the law and the byte-identical garage reset).
-// 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we
-// dont use anymore"): the default fixture hull draws its nation road wheel (nationWheelSets.ts /
-// nationWheelConstructions.ts) and the fleet arm seated against it, so the default digest is repinned from the current build.
-// 2026-09-23 (owner: "no hidden tanks"): the tiger1 record retired with the hidden fleet, taking its interleaved wheel and
-// track pattern rows with it, so jpz_e100_x — the live hull that keeps the interleaved dish and cleat the retired donor
-// authored — names the interleaved fixture. Every one of its 32 snapshot rows hashes identically to the tiger1 rows
-// measured on the pre-retirement tree (a10d0a30b) and the m1a2 / t90sm rows are unchanged, so the same twelve assemblies
-// and 96 motion snapshots stay frozen; only the folded digest moves because each row carries the fixture id.
-const DEFAULT_FINGERPRINT='074dbb3967e23e74bc253daf094cd86a1c9ca8e9fafab805149d30a8026aad07';
+// 2026-10-01 (owner: retire frozen pins): the pinned fingerprint of the twelve default fixture assemblies
+// and their 96 motion snapshots (authenticated against 5b3224204) is gone. Live contract: two independent
+// default assemblies stay identical (geometry, materials, ownership, motion) through the same conformance
+// and spin, and every pose stays finite; the override API keeps its ownership and rejection contracts.
 const bytes=a=>Buffer.from(a.buffer,a.byteOffset,a.byteLength);
 const hash=value=>createHash('sha256').update(value).digest('hex');
 function geom(g){const h=createHash('sha256');for(const name of Object.keys(g.attributes).sort()){
@@ -49,16 +33,22 @@ function snapshot(c){c.P.hullG.updateMatrixWorld(true);const rows=[];c.P.hullG.t
  batch:o.isBatchedMesh?Array.from({length:o.instanceCount},(_,i)=>{const x=new T.Matrix4();o.getMatrixAt(i,x);return[o.getGeometryIdAt(i),x.toArray()];}):null,
  count:o.count,visible:o.visible,role:o.userData.appearanceRole,material:Array.isArray(m)?m.map(v=>v.color?.getHex()):m.color?.getHex()});
  });return{rows,receipt:c.P.hullG.userData.runningGearReceipts};}
+function assertFinitePose(c){c.P.hullG.traverse(o=>{if(!o.geometry)return;
+ assert.ok(o.matrix.elements.every(Number.isFinite),`${o.name}: finite pose`);
+ if(o.instanceMatrix)assert.ok(o.instanceMatrix.array.every(Number.isFinite),`${o.name}: finite instance poses`);
+ if(o.isBatchedMesh)for(let i=0;i<o.instanceCount;i++){const x=new T.Matrix4();o.getMatrixAt(i,x);
+  assert.ok(x.elements.every(Number.isFinite),`${o.name}: finite batched pose`);}
+});}
 let defaults=0,poses=0,negativeControls=0;
-const baselineRows=[];
 for(const id of['m1a2','t90sm','jpz_e100_x'])for(const high of[true,false])for(const batch of[false,true]){
- const b=fixture(KIT,id,high,batch);
+ const a=fixture(KIT,id,high,batch),b=fixture(KIT,id,high,batch);
  try{for(let phase=0;phase<8;phase++){
-  for(const c of[b]){c.gear.conform({pos:new T.Vector3(),yaw:.2,visualPitch:0,visualRoll:0},(_x,z)=>.02*Math.sin(z),0,0,1/60);
+  for(const c of[a,b]){c.gear.conform({pos:new T.Vector3(),yaw:.2,visualPitch:0,visualRoll:0},(_x,z)=>.02*Math.sin(z),0,0,1/60);
    c.gear.update(.073*phase,-.117*phase,1/60);}
-  const old=snapshot(b);
-  baselineRows.push([id,high,batch,phase,hash(JSON.stringify(old))]);poses++;
- }defaults++;}finally{b.dispose();}
+  assertFinitePose(a);
+  assert.deepEqual(snapshot(b),snapshot(a),`${id}/${high?'high':'low'}/${batch?'batched':'unbatched'}/${phase}: deterministic default geometry, materials, ownership and motion`);
+  poses++;
+ }defaults++;}finally{a.dispose();b.dispose();}
 }
 for(const high of[true,false])for(const batch of[false,true]){
  const road={tire:KIT.cylX(.4,.2,12),disc:KIT.cylX(.2,.25,12),dark:null};
@@ -91,7 +81,5 @@ for(const options of[{roadWheelGeometry:{}},{idlerGeometry:{}},{sprocketStockGeo
  {returnRollerStockGeometry:{}},{trackShoeBuilder:42},{trackOutsoleDimensions:{padHeight:.06,grouserHeight:.02}}]){
  assert.throws(()=>fixture(KIT,'m1a2',false,false,options));negativeControls++;
 }
-assert.equal(hash(JSON.stringify(baselineRows)),DEFAULT_FINGERPRINT,'Published default geometry, materials, ownership and motion remain exact');
-console.log(JSON.stringify({pass:true,baseline:'5b3224204',defaultCases:defaults,defaultPoses:poses,
- defaultFingerprint:hash(JSON.stringify(baselineRows)),overrideCases:4,negativeControls}));
+console.log(JSON.stringify({pass:true,defaultCases:defaults,defaultPoses:poses,overrideCases:4,negativeControls}));
 

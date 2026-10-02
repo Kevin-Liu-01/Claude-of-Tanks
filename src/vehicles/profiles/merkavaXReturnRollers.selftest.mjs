@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import {KIT,registerProfiledBuilders} from '../tankFactoryCore.ts';
@@ -13,45 +11,32 @@ import {auditVisibleReturnRollerContact} from '../returnRollerContactTest.mjs';
 import {rollerSuspensionFixtures,finiteClearance as completeStockClearance} from '../returnRollerPhysicsTest.mjs';
 
 const cases=[['merkava3d_x',buildMerkava3DX],['merkava4_x',buildMerkava4X]];
-// The old-config witness predates the new lining call. Remove exactly that
-// call in a test-only module; a runtime no-op must not mask absent stations.
-const profileUrl=new URL('./merkavaX.ts',import.meta.url),source=readFileSync(profileUrl,'utf8');
-const liningCall='  lineMerkavaXUpperBand(P,[-1.6645,-.733,.27,2.017],.0038);\n';
-assert.equal(source.split(liningCall).length-1,1,'One exact separately tested lining seam');
-const oldCallSource=source.replace(liningCall,'').replace(/from (['"])([^'"]+)\1/g,
- (_all,quote,path)=>`from ${quote}${path.startsWith('.')?new URL(path,profileUrl).href:import.meta.resolve(path)}${quote}`);
-const oldCallModule=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(oldCallSource)).toString('base64'));
-// Exact pre-roller inputs at b0ed8d90f. Historical witnesses are not rewritten.
-const ORIGINAL={
- merkava3d_x:{style:'rubber',wheelR:.371,wheelW:.38,wheelY:.446,xc:1.532,
-  wheelZs:[-2.5495,-1.6665,-.5365,.3215,1.180,2.033].map(z=>z+.2258175),
-  trackW:.637,trackTh:.068,sprocket:{z:3.040+.2258175,y:.874,r:.350},
-  idler:{z:-3.365+.2258175,y:.844,r:.342},topY:1.230,paintedEnds:true,arms:true,coveredTop:true},
- merkava4_x:{style:'rubber',wheelR:.3467,wheelW:.34,wheelY:.387,xc:1.444,
-  wheelZs:[-2.062,-1.267,-.199,.739,1.617,2.417],trackW:.548,trackTh:.064,
-  sprocket:{z:3.285,y:.761,r:.336},idler:{z:-3.020,y:.722,r:.314},
-  topY:1.105,paintedEnds:true,arms:true,coveredTop:true},
-};
+// The pre-roller witness (a source replay of merkavaX.ts without the lining call and the literal pre-roller gear
+// inputs of b0ed8d90f) is retired: whole-tank change detection of merkava3d_x / merkava4_x is the fleet geometry
+// ledger's. The rollers, spindles, lining, clearances, contact, suspension, broken-track and battle-LOD proofs run
+// on the current build and its live unlined twin. A live roller-free twin of the current builder still proves the
+// rollers are additive where it builds without a source replay (merkava3d_x); merkava4_x lines its upper band at
+// the roller stations, so its roller-free twin cannot be built from current source and is not attempted.
 const stats={builds:0,rollers:0,poses:0,negativeControls:0,rows:[],physicalFailures:[],contactFailures:[],wheelQualityFailures:[],visibleContact:[]};
 const hash=g=>{const h=createHash('sha256');for(const key of Object.keys(g.attributes).sort()){
  const a=g.attributes[key];h.update(key);h.update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
  }if(g.index)h.update(Buffer.from(g.index.array.buffer,g.index.array.byteOffset,g.index.array.byteLength));return h.digest('hex');};
-function capture(id,build,quality,old,unlined=false,settings={}){
+function capture(id,build,quality,unlined=false,settings={}){
  let port,cfg,gear;const emissions=[],bandBefore=new Map(),original=KIT.buildRunningGear;
  KIT.buildRunningGear=(p,input)=>{
-  const {rollers,rollerR,returnRollerWidthM,returnRollerInsetM,returnRollerGeometry,trackCarrierFromOuterFace,loopPoints,botY,rigidLinkChords,...retained}=input; // rigidLinkChords: helper-added (2026-09-17)
-  assert.ok(Math.abs(botY-KIT.groundSeatBotY(p.spec,input))<1e-9,'botY is the ground-datum seat (2026-09-17)');
-  assert.deepEqual(retained,ORIGINAL[id],'Every pre-existing gear input remains exact');
-  cfg=old?retained:{...input,...(settings.oldCarrier?{trackCarrierFromOuterFace:false}:{}),...(settings.chords?{rigidLinkChords:true}:{})};
-  if(old)returnRollerGeometry.dispose();gear=original(p,cfg);
+  assert.ok(Math.abs(input.botY-KIT.groundSeatBotY(p.spec,input))<1e-9,'botY is the ground-datum seat (2026-09-17)');
+  if(settings.omitRollers){
+   const {rollers,rollerR,returnRollerWidthM,returnRollerInsetM,returnRollerGeometry,trackCarrierFromOuterFace,loopPoints,botY,rigidLinkChords,...retained}=input;
+   returnRollerGeometry.dispose();cfg=retained;
+  }else cfg={...input,...(settings.oldCarrier?{trackCarrierFromOuterFace:false}:{}),...(settings.chords?{rigidLinkChords:true}:{})};
+  gear=original(p,cfg);
   for(const name of['gearTrackBandL','gearTrackBandR']){
    const g=p.hullG.getObjectByName(name).geometry;
    bandBefore.set(name,{position:g.attributes.position.array.slice(),normal:g.attributes.normal.array.slice()});
   }
   return gear;
  };
- const runBuild=old?oldCallModule[build.name]:build;assert.equal(typeof runBuild,'function');
- registerProfiledBuilders({[id]:P=>{port=P;runBuild(new Proxy(P,{get(target,key){
+ registerProfiledBuilders({[id]:P=>{port=P;build(new Proxy(P,{get(target,key){
   if(!['add','addEquipment','addMudguard'].includes(key))return Reflect.get(target,key);
   return(...args)=>{
    const at=key==='addMudguard'?1:0,g=args[at+1],transform=args.slice(at+2);
@@ -59,7 +44,7 @@ function capture(id,build,quality,old,unlined=false,settings={}){
    return target[key](...args);
   };
  }}));
- if(old){const mounts=P.hullG.getObjectByName('gearMerkavaReturnSpindles');assert.equal(mounts.count,8);mounts.removeFromParent();mounts.dispose();}
+ if(settings.omitRollers){const mounts=P.hullG.getObjectByName('gearMerkavaReturnSpindles');assert.equal(mounts.count,8);mounts.removeFromParent();mounts.dispose();}
  }});
  try{
   const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
@@ -429,20 +414,24 @@ function moving(c,bounds,spindles,rollers,unlined,lining){
  return {minimum,minimumWheelClearanceM,maximumFarCarrierContactM,strokes,wheelStockNames:wheelStock.map(mesh=>mesh.name)};
 }
 for(const [id,build]of cases)for(const quality of['high','low']){
- const old=capture(id,build,quality,true),current=capture(id,build,quality,false),unlined=capture(id,build,quality,false,true);
+ const current=capture(id,build,quality),unlined=capture(id,build,quality,true);
+ const omitted=id==='merkava4_x'?null:capture(id,build,quality,false,{omitRollers:true});
  try{
-  assert.equal(old.port.hullG.getObjectByName('gearReturnRollerRotors'),undefined,'Original missing-roller witness');
-  assert.deepEqual(current.emissions,old.emissions,'Every pre-existing authored emission is byte-identical');
-  assert.deepEqual(body(current.tank.root),body(old.tank.root),'Actual hull/turret/gun armor, finish and rig stay exact');
-  for(const name of['rig_hull','rig_turret','rig_gun'])assert.deepEqual(current.tank.root.getObjectByName(name).matrixWorld.elements,
-   old.tank.root.getObjectByName(name).matrixWorld.elements,'Original normalized hull/turret/gun datums');
-  for(const key of['wheelZs','wheelR','wheelY','sprocket','idler','botY','trackW','trackTh'])assert.deepEqual(current.receipt[key],old.receipt[key]);
-  for(const name of['gearRoadWheelTires','gearRoadWheelDiscs','gearRoadWheelInsets','gearSuspensionLinks','gearSuspensionJointBosses']){
-   const a=current.port.hullG.getObjectByName(name),b=old.port.hullG.getObjectByName(name);
-   assert.equal(hash(a.geometry),hash(b.geometry));assert.deepEqual(a.instanceMatrix.array,b.instanceMatrix.array);
+  if(omitted){
+   assert.equal(omitted.port.hullG.getObjectByName('gearReturnRollerRotors'),undefined,'Roller-free twin has no rotors');
+   assert.deepEqual(current.emissions,omitted.emissions,'Rollers add or change no authored emission (live roller-free twin)');
+   assert.deepEqual(body(current.tank.root),body(omitted.tank.root),'Hull/turret/gun armor, finish and rig unchanged by the rollers');
+   for(const name of['rig_hull','rig_turret','rig_gun'])assert.deepEqual(current.tank.root.getObjectByName(name).matrixWorld.elements,
+    omitted.tank.root.getObjectByName(name).matrixWorld.elements,'Normalized hull/turret/gun datums unchanged by the rollers');
+   for(const key of['wheelZs','wheelR','wheelY','sprocket','idler','botY','trackW','trackTh'])assert.deepEqual(current.receipt[key],omitted.receipt[key]);
+   for(const name of['gearRoadWheelTires','gearRoadWheelDiscs','gearRoadWheelInsets','gearSuspensionLinks','gearSuspensionJointBosses']){
+    const a=current.port.hullG.getObjectByName(name),b=omitted.port.hullG.getObjectByName(name);
+    if(!a&&!b)continue;
+    assert.equal(hash(a.geometry),hash(b.geometry));assert.deepEqual(a.instanceMatrix.array,b.instanceMatrix.array);
+   }
+   const lower=c=>c.receipt.loopPoints.slice(c.receipt.loopPoints.findIndex(([z])=>z>c.cfg.sprocket.z+1e-7));
+   assert.deepEqual(lower(current),lower(omitted),'Lower contact/run and lower end arcs unchanged by the rollers');
   }
-  const lower=c=>c.receipt.loopPoints.slice(c.receipt.loopPoints.findIndex(([z])=>z>c.cfg.sprocket.z+1e-7));
-  assert.deepEqual(lower(current),lower(old),'Existing lower contact/run and lower end arcs retained');
   for(let i=0;i<current.receipt.loopPoints.length;i++){
    const a=current.receipt.loopPoints[i],b=current.receipt.loopPoints[(i+1)%current.receipt.loopPoints.length];
    assert.ok(Math.hypot(a[0]-b[0],a[1]-b[1])>1e-7,'No zero-length carrier cell');
@@ -488,7 +477,7 @@ for(const [id,build]of cases)for(const quality of['high','low']){
    suspensionStrokes:posed.strokes,
    maximumFarCarrierContactM:posed.maximumFarCarrierContactM,
    lining:{changedVertices:lining.changedVertices,maximumDepthM:lining.maximumDepthM,addedVolumeM3:lining.addedVolumeM3},
-   before:cost(old.tank.root),after,completeRollerTriangles:after.rollerTriangles/8,
+   before:omitted?cost(omitted.tank.root):null,after,completeRollerTriangles:after.rollerTriangles/8,
    completeRollerTriangleBudget:budget,performanceBudgetPassed:after.rollerTriangles/8<=budget});
   console.log(JSON.stringify(stats.rows.at(-1)));
   assert.ok(after.rollerTriangles/8<=budget,'Frozen complete roller budget includes every finite spindle');
@@ -500,7 +489,7 @@ for(const [id,build]of cases)for(const quality of['high','low']){
   const band=current.port.hullG.getObjectByName('gearTrackBandL');
   assert.ok(finiteClearance(band,matrix(band,0,current.port.hullG),bad)<-.025,'Raised-roller negative control intersects real carrier');stats.negativeControls++;
   brokenPreservation(current,unlined);
- }finally{old.dispose();current.dispose();unlined.dispose();}
+ }finally{current.dispose();unlined.dispose();omitted?.dispose();}
  // Real batched battle presentation, not just calling the distance API on
  // an inspection build which has no installed far-detail groups.
  let battleGear;const nativeBuild=KIT.buildRunningGear;KIT.buildRunningGear=(...args)=>battleGear=nativeBuild(...args);
@@ -534,7 +523,7 @@ for(const [id,build]of cases)for(const quality of['high','low']){
  assert.equal(disposedRotorInstances,1,'Native rotor instance buffer disposed exactly once');
 }
 for(const quality of['high','low']){
- const legacy=capture('merkava4_x',buildMerkava4X,quality,false,false,{oldCarrier:true});
+ const legacy=capture('merkava4_x',buildMerkava4X,quality,false,{oldCarrier:true});
  try{
   const bounds=axialRollerStock(legacy,rollerBounds(legacy)),shoe=legacy.port.hullG.getObjectByName('gearTrackPads');let worst=Infinity;
   for(let phase=0;phase<16;phase++){
@@ -546,8 +535,8 @@ for(const quality of['high','low']){
   assert.ok(worst<.002,'Original averaging leaves the near-shoe stock inside the 2 mm contact gate: '+worst);stats.negativeControls++;
   console.log(JSON.stringify({id:'merkava4_x',quality,oldMidpointRejectedClearanceM:worst}));
  }finally{legacy.dispose();}
- const chord=capture('merkava4_x',buildMerkava4X,quality,false,false,{chords:true});
- const control=capture('merkava4_x',buildMerkava4X,quality,false,true,{chords:true});
+ const chord=capture('merkava4_x',buildMerkava4X,quality,false,{chords:true});
+ const control=capture('merkava4_x',buildMerkava4X,quality,true,{chords:true});
  try{
   const rest=restAxles(chord),controlRest=restAxles(control),controlFixtures=rollerSuspensionFixtures(control);
   for(const [index,fixture]of rollerSuspensionFixtures(chord).entries()){

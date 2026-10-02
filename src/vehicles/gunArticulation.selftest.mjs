@@ -4,6 +4,7 @@ import { createTank } from './tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.ts';
 import { verifyGunCradleSeats } from './gunCradleSeats.test-support.mjs';
 import { hasExplicitFixedLauncher, verifyFixedLauncherSeats, verifyFixedLauncherNoRecoil, fixedLauncherNegatives } from './fixedLauncherArticulation.test-support.mjs';
+import { createFleetGeometryLedgerAudit } from '../../tools/fleet-geometry-digest.mjs';
 
 const DEG = Math.PI / 180;
 const MAX_SEAT_GAP_M = 0.125;
@@ -48,16 +49,16 @@ let articulated = 0;
 let hullAimed = 0;
 let fixedBatteries = 0;
 
+// The fleet geometry ledger's LOW rows are verified on these same builds (no second fleet sweep): each model is
+// digested before it is articulated. Re-pin moved rows with npm run tank:geometry:update after review.
+const BUILD = { proceduralOnly: true, quality: 'low', camoSeed: 4242, geometryReceipt: true, batchStatic: false };
+const geometryLedger = createFleetGeometryLedgerAudit(BUILD);
+
 for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id);
-  const tank = createTank(id, null, {
-    proceduralOnly: true,
-    quality: 'low',
-    camoSeed: 4242,
-    geometryReceipt: true,
-    batchStatic: false,
-  });
+  const tank = createTank(id, null, BUILD);
   try {
+    geometryLedger.record(id, tank);
     const root = tank.root;
     const hull = root.getObjectByName('rig_hull');
     const turret = root.getObjectByName('rig_turret');
@@ -139,6 +140,9 @@ for (const id of ALL_TANK_IDS) {
 
 assert.equal(articulated + hullAimed, ALL_TANK_IDS.length,
   'every selectable procedural vehicle is classified by the gun articulation gate');
+const ledgerResult = geometryLedger.finish();
+assert.deepEqual(ledgerResult.problems, [],
+  `fleet geometry ledger (LOW): review the moved rows, then re-pin with npm run tank:geometry:update\n  ${ledgerResult.problems.join('\n  ')}`);
 // 2026-09-24 (round 46c, owner: no hidden tanks): the 36 hidden records retired; four of the eight hull-aimed hulls
 // were among them (the unregistered WW2 / casemate donors), so the floor follows the playable fleet: 188 articulated,
 // 4 hull-aimed (the Strv 103 family and the other fixed-gun casemates) out of 192.
@@ -150,3 +154,4 @@ assert.equal(getSpec('aft10_x').gun.launcherMuzzles.length, 8, 'AFT-10 uses all 
 assert.equal(getSpec('tos1a_tagil').gun.launcherMuzzles.length, 24, 'TOS has all 24 physical tubes');
 assert.equal(getSpec('griffin_viper').gun.launcherMuzzles.length, 16, 'Viper has all 16 physical tubes');
 console.log(`gunArticulation.selftest: ${articulated} turreted weapons pitch with seated housings (${fixedBatteries} physical fixed battery); ${hullAimed} hull-aimed guns retain fixed-mount contracts`);
+console.log(`gunArticulation.selftest: ${ledgerResult.checked} LOW rows match the fleet geometry ledger`);
