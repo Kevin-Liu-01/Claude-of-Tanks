@@ -16,13 +16,24 @@
 //   B. a hull falling to its death beside a crushable tree: the death names its position (the hull's at the death tick);
 //      the presentation puts the explosion and wreck smoke there although its frame shows the hull mid-air; the host
 //      crushed nothing it did not announce and the presentation crunched nothing but announced falls.
+//   C. the real ghost falls the trace turned up: a world laid out otherwise than the authority's manifest. The mobile
+//      tier counts fewer props and trees (verdant: 6,641 records against the manifest's 6,977, 57 at the same index,
+//      half the trees elsewhere) and Frontline Assault's trench works add 144 records ahead of the trees; there the
+//      record at the authority's index is another prop, and every fall felled it — a tree nobody touched, with its
+//      crunch. Built here from the manifest (a lighter world with records left out, a variant world with records ahead,
+//      one that claims the base layout): every fall the authority sends fells the viewer's own record of that prop or
+//      nothing, never another; the persistent list is not read by index on such a world, and through the authority's
+//      identities it lays down exactly the props that fell.
 // No network, no wall clock: fixed seed, fixed inputs, fixed frames.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
 import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.ts';
 import { SIM_DT } from '../src/sim/movement.ts';
 import { createDedicatedWorldCollision } from '../server/dedicatedWorldCollision.ts';
+import { decodeCollisionManifest } from '../server/collisionManifestCodec.ts';
+import { createHeadlessCollisionWorld } from '../src/world/headlessCollisionWorld.ts';
 import { createBattlePresentation } from '../src/mp/presentation/battlePresentation.ts';
 import { createEntitySample } from '../src/mp/match/interpolation.ts';
 import { ENTITY_FLAGS, PHASE, TEAM, VERDICT } from '../src/mp/wire/index.ts';
@@ -47,9 +58,8 @@ function stepAndCollect(match, inputs, events, ticks, until = () => false) {
   return ticks;
 }
 
-/** The real battle presentation over a client copy of the shard, logging the crushes it applies and the bus events it emits. */
-function clientPresentation() {
-  const world = createDedicatedWorldCollision(MAP_ID);
+/** The real battle presentation over a client copy of the shard (or `world`), logging the crushes it applies and the bus events it emits. */
+function clientPresentation(world = createDedicatedWorldCollision(MAP_ID)) {
   const crushes = [];
   const bus = [];
   const worldCollision = {
@@ -58,6 +68,7 @@ function clientPresentation() {
     queryObstacles: (...args) => world.queryObstacles(...args),
     // the headless seam fells the record's siblings (a hedgehog's beams) as the browser's clutter does
     crushObstacle(obstacle, dx, dz, speed, cause, options) { crushes.push({ index: world.getObstacles().indexOf(obstacle), dx, dz, speed, cause, settled: !!options?.settled }); return world.crushObstacle(obstacle); },
+    layoutTier: world.layoutTier ?? null, terrainVariant: world.terrainVariant ?? null,
   };
   const fakeVisual = () => ({
     root: { position: new Vector3(), userData: {} }, setVisible() {}, syncFromState() {}, dispose() {}, recoilKick() { return -1; },
@@ -67,7 +78,8 @@ function clientPresentation() {
   const game = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: MAP_ID };
   const presentation = createBattlePresentation({
     engineCtx: { scene: { add() {} }, anisotropy: 1 }, game, worldCollision,
-    bus: { emit(type, payload) { bus.push({ type, payload }); } },
+    // a crunch is emitted right after the crush it belongs to: pair it with the record this world felled
+    bus: { emit(type, payload) { bus.push({ type, payload, felled: type === 'prop:crushed' ? crushes.at(-1)?.index ?? null : null }); } },
     createTankVisual: fakeVisual, prepareVisualTextures: async () => {},
   });
   return { world, presentation, crushes, bus };
@@ -224,6 +236,120 @@ assert.ok(client.crushes.every(({ index }) => announced.has(index)), 'and felled
 client.presentation.dispose();
 hostWorld.release?.();
 
+// ------------------------------------------------------------ C. worlds laid out otherwise
+// The authority: three hulls ploughing north through verdant's densest stand for 30 s on the manifest world; every fall
+// it sends, and its final list.
+const stands = new Map();
+reference.forEach((o) => {
+  if (o.treeIdx == null || !o.crushable) return;
+  const [x, , z] = anchorOf(o);
+  if (Math.abs(x) > 300 || Math.abs(z) > 300) return;
+  const key = `${Math.floor(x / 40)},${Math.floor(z / 40)}`;
+  stands.set(key, (stands.get(key) ?? 0) + 1);
+});
+const [standKey] = [...stands.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0];
+const [standX, standZ] = standKey.split(',').map((v) => Number(v) * 40);
+const ploughWorld = createDedicatedWorldCollision(MAP_ID, { retain: true });
+const plough = createAuthoritativeMatch({
+  mapId: MAP_ID, seed: 23, countdownS: 0, worldCollision: ploughWorld,
+  players: [
+    { id: 'p1', specId: 'm1a2', team: 'alpha', spawn: { x: standX + 8, z: standZ - 12, yaw: 0 } },
+    { id: 'p2', specId: 't90m', team: 'alpha', spawn: { x: standX + 20, z: standZ - 12, yaw: 0 } },
+    { id: 'p3', specId: 'm1a2', team: 'bravo', spawn: { x: standX + 32, z: standZ - 12, yaw: 0 } },
+  ],
+});
+plough.onMatchReady();
+const drive = (tick, phase) => ({ throttle: 1, steer: Math.sin((tick + phase) / 150) * 0.35, brake: false, fire: false, aimYaw: 0, aimPitch: 0, aimDistance: 300, shellSlot: 0, aimLocked: false, actionBits: 0 });
+const falls = [];
+for (let tick = 1; tick <= 1800; tick++) {
+  plough.step({ dt: SIM_DT, inputs: new Map([['p1', drive(tick, 0)], ['p2', drive(tick, 300)], ['p3', drive(tick, 600)]]) });
+  for (const event of plough.eventsForViewer('__audit__')) if (event.type === 'world_prop_destroyed') falls.push(event);
+  plough.afterEventBroadcast();
+}
+const finalList = plough.snapshot({ tick: 0, serverTimeMs: 0, viewerId: '__audit__', ackInputSeq: null }).meta.destroyedObstacleIndices;
+assert.ok(falls.length >= 10, `the authority fells enough props to judge (${falls.length})`);
+const authorityRecords = ploughWorld.getObstacles();
+/** Whether a record of some world is the prop the authority's `index` names (box centre within 1 cm, same kind). */
+const isAuthorityProp = (record, index) => {
+  const o = authorityRecords[index];
+  if (!record || !o) return false;
+  return Math.abs((record.min[0] + record.max[0]) * 0.5 - (o.min[0] + o.max[0]) * 0.5) <= 0.01
+    && Math.abs((record.min[2] + record.max[2]) * 0.5 - (o.min[2] + o.max[2]) * 0.5) <= 0.01
+    && (!o.kind || !record.kind || record.kind === o.kind);
+};
+const authorityIdentity = (index) => { const o = authorityRecords[index]; return o ? { x: (o.min[0] + o.max[0]) * 0.5, z: (o.min[2] + o.max[2]) * 0.5, kind: o.kind ?? null } : null; };
+
+const manifest = decodeCollisionManifest(JSON.parse(readFileSync(new URL(`../server/world-collision-manifests/${MAP_ID}.json`, import.meta.url), 'utf8')));
+const heightField = createDedicatedWorldCollision(MAP_ID).heightField;
+const firstTree = manifest.obstacles.findIndex((record) => record.t != null);
+const felledTrees = new Set(falls.map((event) => authorityRecords[event.obstacleIndex]?.treeIdx).filter((treeIdx) => treeIdx != null));
+/** Records moved 3 m east and stripped of their prop: trench works the authority's manifest never had. */
+const works = manifest.obstacles.slice(0, 144).map((record) => ({ ...record, b: [record.b[0] + 3, record.b[1], record.b[2], record.b[3] + 3, record.b[4], record.b[5]], p: undefined, s: undefined }));
+const build = (obstacles, extra = {}) => Object.assign(createHeadlessCollisionWorld({ mapId: MAP_ID, heightField, manifest: { obstacles, colliders: [], concealers: [] } }), extra);
+const layouts = {
+  // the mobile tier's shape: a fifth of the props ahead of the trees missing (every later index shifts down) and half
+  // of the trees this match fells never planted
+  lighter: () => build(manifest.obstacles.filter((record, index) => (index >= firstTree || index % 5 !== 1)
+    && !(record.t != null && felledTrees.has(record.t) && record.t % 2 === 0)), { layoutTier: 'mobile' }),
+  // Frontline Assault's shape: trench works ahead of everything (every index shifts up)
+  variant: () => build([...works, ...manifest.obstacles], { terrainVariant: 'assault-trenches' }),
+  // laid out otherwise but claiming the base layout: the first fall's identity gives it away
+  unannounced: () => build([...works, ...manifest.obstacles]),
+  // the desktop tier's base map: the manifest itself
+  base: () => createDedicatedWorldCollision(MAP_ID),
+};
+const layoutReport = [];
+for (const [name, layout] of Object.entries(layouts)) {
+  const probe = layout();
+  const records = probe.getObstacles();
+  const ghostsByIndex = falls.filter((event) => records[event.obstacleIndex] && !isAuthorityProp(records[event.obstacleIndex], event.obstacleIndex)).length;
+  const held = falls.filter((event) => records.some((record) => isAuthorityProp(record, event.obstacleIndex)));
+  if (name === 'base') assert.equal(ghostsByIndex, 0, 'base: the manifest world shares every index');
+  else assert.ok(ghostsByIndex > falls.length / 2, `${name}: the record at the authority's index is another prop for ${ghostsByIndex} of ${falls.length} falls — the ghosts an index-only presentation played`);
+
+  // live: every fall as the wire delivers it
+  const live = clientPresentation(probe);
+  assert.equal(live.presentation.sharesAuthorityIndices, name === 'base' || name === 'unannounced', `${name}: its layout says whether it shares the authority's indices`);
+  for (const event of falls) live.presentation.applyEvent(wire(event), OTHER);
+  const crunches = live.bus.filter(({ type }) => type === 'prop:crushed');
+  const strangers = crunches.filter(({ payload, felled }) => !isAuthorityProp(records[felled], payload.obstacleIndex));
+  assert.deepEqual(strangers.map(({ felled }) => felled), [], `${name}: every record felled is the prop the authority felled — never another in its stead`);
+  assert.equal(live.crushes.length, crunches.length, `${name}: every fall crunches once, with the record it felled`);
+  assert.equal(new Set(crunches.map(({ payload }) => payload.obstacleIndex)).size, crunches.length, `${name}: one crunch per fall`);
+  const unfelled = held.filter((event) => !records.some((record) => isAuthorityProp(record, event.obstacleIndex) && record.crushed));
+  assert.deepEqual(unfelled.map((event) => event.obstacleIndex), [], `${name}: every fall whose prop this world has fells it`);
+  if (name === 'unannounced') assert.equal(live.presentation.sharesAuthorityIndices, false, 'unannounced: a fall whose record at its index is another prop proves the layout differs');
+  live.presentation.dispose();
+
+  // a late joiner on a fresh world: the persistent list alone, then with the authority's identities (a layout that does
+  // not announce itself is only known by them: they come first there)
+  const late = clientPresentation(layout());
+  if (name === 'unannounced') late.presentation.setAuthorityObstacles(authorityIdentity);
+  const listFrame = {
+    tick: 900, renderTimeMs: 15_000, entities: [], shells: [],
+    meta: { phase: PHASE.PLAYING, countdownMs: 0, battleTimeMs: 15_000, verdict: VERDICT.NONE, verdictReason: '', destructibleRevision: finalList.length },
+    modeStateJson: null, destroyed: finalList, destructibleRevision: finalList.length, destroyedPending: () => false,
+    viewer: { entityId: 0, playerId: '', state: null, row: null, viewer: null, authorityTick: 900, authorityReceivedAtMs: null, predictedShot: null },
+    events: [], ownShots: [], extrapolatedMs: 0, phase: 'live',
+  };
+  late.presentation.applyFrame(listFrame);
+  const byIndex = late.crushes.length;
+  if (name === 'lighter' || name === 'variant') assert.equal(byIndex, 0, `${name}: the list (indices only) lays nothing down on a world laid out otherwise`);
+  late.presentation.setAuthorityObstacles(authorityIdentity);
+  late.presentation.applyFrame(listFrame);
+  if (name === 'unannounced') assert.equal(late.presentation.sharesAuthorityIndices, false, 'unannounced: the authority\'s identities expose the layout');
+  const laid = late.crushes.map(({ index }) => index);
+  assert.ok(late.crushes.every(({ settled }) => settled), `${name}: the list lays props down settled`);
+  assert.equal(late.bus.filter(({ type }) => type === 'prop:crushed').length, 0, `${name}: and crunches nothing`);
+  const notListed = laid.filter((index) => !finalList.some((listed) => isAuthorityProp(late.world.getObstacles()[index], listed)));
+  assert.deepEqual(notListed, [], `${name}: every prop laid down is one the authority destroyed`);
+  const missed = finalList.filter((listed) => late.world.getObstacles().some((record) => isAuthorityProp(record, listed)) && !late.world.getObstacles().some((record) => isAuthorityProp(record, listed) && record.crushed));
+  assert.deepEqual(missed, [], `${name}: every destroyed prop this world has lies down`);
+  late.presentation.dispose();
+  layoutReport.push(`${name} (${records.length} records): ${ghostsByIndex} of ${falls.length} falls name another prop by index, ${crunches.length} felled as their own prop (${falls.length - held.length} absent here), late list ${byIndex} by index then ${laid.length} by identity`);
+}
+ploughWorld.release?.();
+
 console.log(`mp world events scenarios: ${drives.length} shared-centre props driven through, each felled by one event and crunched once under its own index (${drives.join('; ')}); `
   + `a fall death (tick ${deathTick}) beside tree ${tree.index} presented at the hull's death position though the frame showed it ${distance(presentedPose, died).toFixed(2)} m away mid-air; `
-  + `${announced.size} announced falls, nothing crushed or crunched besides`);
+  + `${announced.size} falls announced there, nothing else crushed or crunched; worlds laid out otherwise — ${layoutReport.join('; ')}`);

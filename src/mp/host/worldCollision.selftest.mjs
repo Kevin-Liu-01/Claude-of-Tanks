@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { createDedicatedWorldCollision } from '../../../server/dedicatedWorldCollision.ts';
-import { COLLISION_MANIFEST_ROUTE, collisionManifestFileName, loadCollisionWorld } from './worldCollision.ts';
+import { COLLISION_MANIFEST_ROUTE, collisionManifestFileName, loadCollisionWorld, loadObstacleIdentities } from './worldCollision.ts';
 
 const directory = new URL('../../../server/world-collision-manifests/', import.meta.url);
 const files = new Map();
@@ -44,6 +44,18 @@ fetched.queryObstacles(-50, -50, 50, 50, out);
 const outB = [];
 container.queryObstacles(-50, -50, 50, 50, outB);
 assert.equal(out.length, outB.length, 'the same obstacles around the origin');
+// ---- the obstacle identities a peer whose world is laid out otherwise reads the destroyed list through (ghost-crunch
+// lane, 2026-10-02): the same verified manifest, every record's box centre and kind, nothing beyond the list
+const identity = await loadObstacleIdentities('verdant', COLLISION_MANIFEST_ROUTE, { fetchImpl });
+const records = container.getObstacles();
+for (const index of [0, 808, 809, 2754, records.length - 1]) {
+  const record = records[index];
+  const named = identity(index);
+  assert.ok(Math.abs(named.x - (record.min[0] + record.max[0]) * 0.5) < 1e-9 && Math.abs(named.z - (record.min[2] + record.max[2]) * 0.5) < 1e-9, `identity ${index}: the record's box centre`);
+  assert.equal(named.kind, record.kind ?? null, `identity ${index}: its kind`);
+}
+assert.equal(identity(records.length), null, 'no identity past the list');
+assert.equal(identity(-1), null);
 container.release();
 
 // ---- refusals: a wrong checksum, a wrong size, a missing map
@@ -66,5 +78,6 @@ const truncated = new Map(files);
 truncated.set(verdantName, bytes.subarray(0, bytes.length - 10));
 await assert.rejects(loadCollisionWorld('verdant', COLLISION_MANIFEST_ROUTE, { fetchImpl: async (url, init) => { const hit = truncated.get(url); return hit ? { ok: true, status: 200, arrayBuffer: async () => hit.buffer.slice(hit.byteOffset, hit.byteOffset + hit.byteLength), json: async () => JSON.parse(hit.toString('utf8')) } : fetchImpl(url, init); } }), /size mismatch/);
 await assert.rejects(loadCollisionWorld('no_such_map', COLLISION_MANIFEST_ROUTE, { fetchImpl }), /manifest|map/i);
+await assert.rejects(loadObstacleIdentities('no_such_map', COLLISION_MANIFEST_ROUTE, { fetchImpl }), /manifest|map/i, 'the identities refuse what the world refuses');
 assert.ok(Object.keys(index.maps).length >= 31, 'the index names every map');
-console.log(`worldCollision.selftest: the fetched world equals the Node loader's for verdant (${fetched.getObstacles().length} obstacles), checksum/size/missing refused`);
+console.log(`worldCollision.selftest: the fetched world equals the Node loader's for verdant (${fetched.getObstacles().length} obstacles), its obstacle identities the records' centres and kinds, checksum/size/missing refused`);

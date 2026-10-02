@@ -41,6 +41,7 @@ import { createInProcessHostPort } from '../src/mp/host/inProcessHost.ts';
 import { RtcWorld } from '../src/mp/transport/rtcDouble.test-support.ts';
 import { createBattlePresentation } from '../src/mp/presentation/battlePresentation.ts';
 import { createDedicatedWorldCollision } from '../server/dedicatedWorldCollision.ts';
+import { createObstacleGrid } from '../src/world/collision.ts';
 import { PHASE, TICK_HZ } from '../src/mp/wire/constants.ts';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -103,8 +104,9 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
   const centerKey = (pos) => pos.map((v) => Number(v).toFixed(3)).join(',');
   referenceObstacles.forEach((_o, index) => { const key = centerKey(obstaclePos(index)); indexByCenter.set(key, indexByCenter.has(key) ? -1 : index); });
   const obstacleIndexAt = (pos) => { const index = Array.isArray(pos) ? indexByCenter.get(centerKey(pos)) ?? null : null; return index === -1 ? null : index; };
-  // The scripted sites: the first crushable prop whose records share a box centre (verdant: a hedgehog's crossed beams),
-  // and the crushable tree nearest the map centre.
+  // The scripted sites: a crushable prop whose records share a box centre (verdant: a hedgehog's crossed beams) — the one
+  // whose southernmost record, the first a hull driving north meets, is of the shared pair, so its one event names a
+  // record its centre cannot — and the crushable tree nearest the map centre.
   const scriptedSites = (() => {
     const byCenter = new Map();
     referenceObstacles.forEach((o, index) => {
@@ -113,7 +115,10 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       if (!byCenter.has(key)) byCenter.set(key, []);
       byCenter.get(key).push(index);
     });
-    const pair = [...byCenter.values()].find((list) => list.length > 1) ?? null;
+    const pairs = [...byCenter.values()].filter((list) => list.length > 1);
+    const southernmost = (pair) => referenceObstacles.map((o, i) => ({ o, i })).filter(({ o }) => o.propIdx === referenceObstacles[pair[0]].propIdx)
+      .sort((a, b) => a.o.min[2] - b.o.min[2])[0].i;
+    const pair = pairs.find((list) => list.includes(southernmost(list))) ?? pairs[0] ?? null;
     const propIdx = pair ? referenceObstacles[pair[0]].propIdx : null;
     const hedgehog = pair ? { propIdx, kind: referenceObstacles[pair[0]].kind, records: referenceObstacles.map((o, i) => (o.propIdx === propIdx ? i : -1)).filter((i) => i >= 0), sharedCenter: pair, center: obstaclePos(pair[0]) } : null;
     let tree = null;
@@ -187,6 +192,8 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     const roundIndex = peer.rounds.length;
     const game = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: MAP_ID };
     const obstacles = cloneObstacles();
+    // the presentation's own records (their `crushed` flags are this view's), queried as the browser world's grid is
+    const queryClones = createObstacleGrid(obstacles);
     const record = { roundIndex, welcomeTick: null, welcomeAtMs: null, endedAtMs: null, welcomes: 0, frames: 0, applied: [], hostIdAtWelcome: null, actors: 0, rosterError: null };
     peer.rounds.push(record);
     let path = 'none';
@@ -196,7 +203,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     const worldCollision = {
       heightField: reference.heightField,
       getObstacles: () => obstacles,
-      queryObstacles: (minX, minZ, maxX, maxZ, target) => reference.queryObstacles(minX, minZ, maxX, maxZ, target),
+      queryObstacles: (minX, minZ, maxX, maxZ, target) => queryClones(minX, minZ, maxX, maxZ, target),
       crushObstacle(obstacle, dx, dz, speed, _cause, options) {
         const index = obstacles.indexOf(obstacle);
         record.applied.push({ kind: 'crush', key: `prop:${index}`, index, dx, dz, speed, settled: !!(options && options.settled), path, presentedTick, frameGap, newestTick: newestTick(), wallMs: now() });

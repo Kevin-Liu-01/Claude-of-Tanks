@@ -31,7 +31,7 @@ import { isMultiplayerV2Session } from './playMenuAdapter.ts';
 import type { V2RoomSession } from './playMenuAdapter.ts';
 import { createBattlePresentation } from '../presentation/battlePresentation.ts';
 import type {
-  BattlePresentation, BattlePresentationOptions, EngineContext, EventBus, MatchActor, PresentationGameState, TankVisual,
+  BattlePresentation, BattlePresentationOptions, EngineContext, EventBus, MatchActor, ObstacleIdentity, PresentationGameState, TankVisual,
 } from '../presentation/battlePresentation.ts';
 import type { WorldCollisionLike } from '../presentation/predictionWorld.ts';
 import type { ControlSample } from '../match/inputStream.ts';
@@ -122,6 +122,11 @@ export interface BrowserLoadPorts {
   /** The battle-only modules a round needs before it presents (HUD, touch controls, FX, killcam, warm owners). */
   loadModules(): MaybePromise<RuntimeValue>;
   loadWorld(mapId: string, onProgress: (fraction: number, label: string) => void, terrainVariant?: TerrainVariant): MaybePromise<RuntimeValue>;
+  /**
+   * The authority's obstacle identities by index (its collision manifest, src/mp/host/worldCollision.ts): loaded only for
+   * a world laid out otherwise than the manifest, so the presentation can read the persistent destroyed list.
+   */
+  loadAuthorityObstacles?(mapId: string, signal: AbortSignal): Promise<(index: number) => ObstacleIdentity | null>;
   nextFrame(): MaybePromise<RuntimeValue>;
   setAdaptiveSuspended(suspended: boolean): void;
   now?(): number;
@@ -981,6 +986,16 @@ export function createBrowserComposition({
         },
       });
       active.presentation = battlePresentation;
+      // A world laid out otherwise than the authority's manifest (the mobile tier, Frontline Assault's trench works) finds
+      // every live fall by the event's own identity, and reads the persistent destroyed list through the manifest's
+      // (ghost-crunch lane, 2026-10-02). Loaded beside the roster and never awaited: until it lands the list waits.
+      if (!battlePresentation.sharesAuthorityIndices && load.loadAuthorityObstacles) {
+        void Promise.resolve().then(() => load.loadAuthorityObstacles!(active.mapId, active.abort.signal)).then((identity) => {
+          if (round === active && !disposed) battlePresentation.setAuthorityObstacles(identity);
+        }).catch((error) => {
+          if (!active.abort.signal.aborted) reportWarning('multiplayer v2 authority obstacles', messageOf(error));
+        });
+      }
       load.battleLoad.progress(0.56, 'Opening match channel');
       const sessionPresentation: SessionPresentation = {
         adapter: battlePresentation,

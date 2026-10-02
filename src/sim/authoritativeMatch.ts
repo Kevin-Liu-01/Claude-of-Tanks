@@ -1253,6 +1253,12 @@ export function createAuthoritativeMatch({
       directionX,
       directionZ,
       speedMps,
+      // What fell in any world (ghost-crunch lane, 2026-10-02): the record's box centre at its base. The index is this
+      // authority's (the map's collision manifest); a peer whose world is laid out otherwise — the mobile tier's lighter
+      // placements, Frontline Assault's trench works — finds its own record of the prop by this, or none.
+      x: (obstacle.min[0] + obstacle.max[0]) * 0.5,
+      y: obstacle.min[1],
+      z: (obstacle.min[2] + obstacle.max[2]) * 0.5,
     });
     return true;
   }
