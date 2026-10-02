@@ -24,6 +24,16 @@ export const GROUND_PRESSURE_CRUSH_S = 45;
 /** Feather past the hull skirt (m) over which the press falls to zero. */
 export const GROUND_PRESSURE_FEATHER_M = 0.45;
 const SLOT_CAP = 8;
+/**
+ * 2026-10-02 (the frame-budget lane): frames per step while the field is settled — every hull's stamp (position,
+ * heading, footprint, strength, moving flag) and the window's anchor unchanged since the last step. Settled, the step
+ * is a pure decay plus stamps that only re-raise what they already hold, and both compose exactly: one step over the
+ * summed time leaves the state a run of single steps would (press and crush are max(decayed, stamp) with exponential
+ * decay). So a settled field steps at 60 / 8 = 7.5 Hz with the summed time (the slow spring-back, 20 s and 45 s time
+ * constants, moves < 1 % between steps) and any change steps first with the time it owes, then every frame again.
+ */
+export const GROUND_PRESSURE_SETTLED_STRIDE = 8;
+const simSleepDisabled = (): boolean => !!(globalThis as { __WORLD_SIM_DEBUG?: { noSleep?: boolean } }).__WORLD_SIM_DEBUG?.noSleep;
 const DEFAULT_HALF_LENGTH_M = 3.4;
 const DEFAULT_HALF_WIDTH_M = 1.8;
 
@@ -112,6 +122,8 @@ export interface GroundPressureField {
   readonly params: THREE.Vector4;
   /** Steps integrated so far. */
   readonly steps: number;
+  /** Frames a settled field skipped (their time went into its next step). */
+  readonly skippedFrames: number;
   setDisturbances(sources: readonly GroundDisturbance[]): void;
   /** One pass toward real time (dt clamped to 0.1 s), the window centred on the anchor. */
   step(dt: number, anchorX: number, anchorZ: number): void;
@@ -143,6 +155,29 @@ function makeTarget(texels: number, name: string): THREE.WebGLRenderTarget {
   });
   target.texture.name = name;
   return target;
+}
+
+/**
+ * A stamp (or the anchor) that moved less than a millimetre — a parked hull's suspension settling — is the same stamp:
+ * the field's texel is 0.375 m, so the uniforms keep the value they hold (exactly what the last step used).
+ */
+const STAMP_TOLERANCE = 1e-3;
+const nearStamp = (a: THREE.Vector4, b: THREE.Vector4): boolean =>
+  Math.abs(a.x - b.x) <= STAMP_TOLERANCE && Math.abs(a.y - b.y) <= STAMP_TOLERANCE
+  && Math.abs(a.z - b.z) <= STAMP_TOLERANCE && Math.abs(a.w - b.w) <= STAMP_TOLERANCE;
+const _packA = new THREE.Vector4();
+const _packB = new THREE.Vector4();
+/** One hull's two uniform slots (A: position and unit heading; B: half extents, strength, moving flag); scratch-backed. */
+function packHull(s: GroundDisturbance): { a: THREE.Vector4; b: THREE.Vector4 } {
+  let fx = s.dirX ?? 0, fz = s.dirZ ?? 1;
+  const len = Math.hypot(fx, fz);
+  if (Number.isFinite(len) && len > 1e-6) { fx /= len; fz /= len; } else { fx = 0; fz = 1; }
+  const strength = Number.isFinite(s.strength ?? 1) ? Math.min(1, Math.max(0, s.strength ?? 1)) : 0;
+  const speed = Math.abs(s.speed ?? 0);
+  _packA.set(s.x, s.z, fx, fz);
+  _packB.set(Math.max(0.5, s.halfLength ?? DEFAULT_HALF_LENGTH_M), Math.max(0.3, s.halfWidth ?? DEFAULT_HALF_WIDTH_M),
+    strength, Number.isFinite(speed) && speed >= GROUND_PRESSURE_MOVING_MPS ? 1 : 0);
+  return { a: _packA, b: _packB };
 }
 
 export function createGroundPressureField(
@@ -185,6 +220,12 @@ export function createGroundPressureField(
   let primed = false;
   let disposed = false;
   let steps = 0;
+  // the settled cadence: time owed to the next step, frames since it, and whether a stamp changed since
+  let owedS = 0;
+  let settledFrames = 0;
+  let skippedFrames = 0;
+  let stampsChanged = true;
+  const anchor = { x: Number.NaN, z: Number.NaN };
 
   function resetTargets(): void {
     gl.setRenderTarget(read);
@@ -194,45 +235,75 @@ export function createGroundPressureField(
     primed = true;
   }
 
+  /** One pass of `dtS` seconds at the current stamps and the anchor the uniforms hold. */
+  function renderStep(dtS: number): void {
+    uniforms.uDt.value = dtS;
+    const previousTarget = gl.getRenderTarget();
+    const previousAutoClear = gl.autoClear;
+    gl.autoClear = false;
+    try {
+      if (!primed) resetTargets();
+      uniforms.tState.value = read.texture;
+      gl.setRenderTarget(write);
+      stepQuad.render(gl);
+      const swap = read; read = write; write = swap;
+      steps++;
+    } finally {
+      gl.setRenderTarget(previousTarget);
+      gl.autoClear = previousAutoClear;
+    }
+    stateUniform.value = read.texture;
+  }
+
+  /** A settled field owes its skipped time to the stamps it held: pay it before anything changes. */
+  function payOwedTime(): void {
+    if (owedS <= 0 || disposed) return;
+    const dtS = owedS;
+    owedS = 0;
+    settledFrames = 0;
+    renderStep(dtS);
+  }
+
   return {
     stateUniform,
     params,
     get steps() { return steps; },
+    get skippedFrames() { return skippedFrames; },
     setDisturbances(sources) {
       const n = Math.min(SLOT_CAP, sources.length);
+      let changed = n !== uniforms.uHullCount.value;
+      for (let i = 0; i < n && !changed; i++) {
+        const next = packHull(sources[i]);
+        changed = !nearStamp(hullA[i], next.a) || !nearStamp(hullB[i], next.b);
+      }
+      if (!changed) return;
+      payOwedTime();
+      stampsChanged = true;
       for (let i = 0; i < n; i++) {
-        const s = sources[i];
-        let fx = s.dirX ?? 0, fz = s.dirZ ?? 1;
-        const len = Math.hypot(fx, fz);
-        if (Number.isFinite(len) && len > 1e-6) { fx /= len; fz /= len; } else { fx = 0; fz = 1; }
-        const strength = Number.isFinite(s.strength ?? 1) ? Math.min(1, Math.max(0, s.strength ?? 1)) : 0;
-        const speed = Math.abs(s.speed ?? 0);
-        hullA[i].set(s.x, s.z, fx, fz);
-        hullB[i].set(Math.max(0.5, s.halfLength ?? DEFAULT_HALF_LENGTH_M), Math.max(0.3, s.halfWidth ?? DEFAULT_HALF_WIDTH_M),
-          strength, Number.isFinite(speed) && speed >= GROUND_PRESSURE_MOVING_MPS ? 1 : 0);
+        const next = packHull(sources[i]);
+        hullA[i].copy(next.a);
+        hullB[i].copy(next.b);
       }
       uniforms.uHullCount.value = n;
     },
     step(dt, anchorX, anchorZ) {
       if (disposed || !Number.isFinite(dt) || dt <= 0 || !Number.isFinite(anchorX) || !Number.isFinite(anchorZ)) return;
-      uniforms.uDt.value = Math.min(dt, 0.1);
+      const frameS = Math.min(dt, 0.1);
+      const anchorSame = Math.abs(anchorX - anchor.x) <= STAMP_TOLERANCE && Math.abs(anchorZ - anchor.z) <= STAMP_TOLERANCE;
+      const settled = primed && anchorSame && !stampsChanged && !simSleepDisabled();
+      stampsChanged = false;
+      if (settled) {
+        owedS += frameS;
+        if (++settledFrames < GROUND_PRESSURE_SETTLED_STRIDE) { skippedFrames++; return; }
+        payOwedTime();
+        return;
+      }
+      // something moved: the time a settled field owes is paid at the window it was owed under, then this frame
+      payOwedTime();
+      anchor.x = anchorX; anchor.z = anchorZ;
       uniforms.uAnchor.value.set(anchorX, anchorZ);
       params.set(windowM, anchorX, anchorZ, 1);
-      const previousTarget = gl.getRenderTarget();
-      const previousAutoClear = gl.autoClear;
-      gl.autoClear = false;
-      try {
-        if (!primed) resetTargets();
-        uniforms.tState.value = read.texture;
-        gl.setRenderTarget(write);
-        stepQuad.render(gl);
-        const swap = read; read = write; write = swap;
-        steps++;
-      } finally {
-        gl.setRenderTarget(previousTarget);
-        gl.autoClear = previousAutoClear;
-      }
-      stateUniform.value = read.texture;
+      renderStep(frameS);
     },
     clear() {
       if (disposed) return;
@@ -240,6 +311,10 @@ export function createGroundPressureField(
       const previousAutoClear = gl.autoClear;
       gl.autoClear = false;
       try { resetTargets(); } finally { gl.setRenderTarget(previousTarget); gl.autoClear = previousAutoClear; }
+      owedS = 0;
+      settledFrames = 0;
+      stampsChanged = true;
+      anchor.x = Number.NaN; anchor.z = Number.NaN;
       params.w = 0;
       stateUniform.value = null;
     },

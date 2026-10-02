@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   createGroundPressureField, groundPressAt, GROUND_PRESSURE_WINDOW_M, GROUND_PRESSURE_TEXELS, GROUND_PRESSURE_RECOVER_S,
-  GROUND_PRESSURE_CRUSH_S, GROUND_PRESSURE_FEATHER_M, GROUND_PRESSURE_MOVING_MPS,
+  GROUND_PRESSURE_CRUSH_S, GROUND_PRESSURE_FEATHER_M, GROUND_PRESSURE_MOVING_MPS, GROUND_PRESSURE_SETTLED_STRIDE,
 } from './groundPressure.ts';
 
 function recordingRenderer() {
@@ -95,7 +95,7 @@ const renders = renderer.log.filter((e) => e[0] === 'render');
 assert.deepEqual(renders.slice(0, 2).map((e) => e[1]), ['groundPressure:reset', 'groundPressure:reset'], 'both targets are primed once');
 assert.deepEqual(renders[2].slice(1, 3), ['groundPressure:step', 'groundPressure.a'], 'the step reads a and writes b');
 assert.equal(renders[2][4], false, 'the pass never clears the target it accumulates into');
-field.step(0.5, 10, -4);
+field.step(0.5, 11, -4); // a moved window: a real step this frame
 assert.equal(field.steps, 2);
 assert.equal(u.uDt.value, 0.1, 'a long frame is clamped to 0.1 s (the decay never overshoots)');
 assert.equal(field.stateUniform.value?.name, 'groundPressure.a', 'ping-pong');
@@ -111,6 +111,55 @@ field.dispose(); field.dispose();
 assert.equal(field.params.w, 0, 'disposed fields are inactive');
 field.step(1 / 60, 0, 0);
 assert.equal(field.steps, 3, 'and never step again');
+
+// 5b. 2026-10-02 (the frame-budget lane): the settled cadence. With every stamp and the anchor unchanged the step is
+//     a pure decay plus stamps that only re-raise what they hold, which composes exactly: the field steps every
+//     GROUND_PRESSURE_SETTLED_STRIDE frames with the summed time, and any change first pays the time it owes under
+//     the stamps it was owed with, then steps every frame again.
+{
+  const r = recordingRenderer();
+  const f = createGroundPressureField(r, { tier: 'desktop' });
+  const hull = { x: 2, z: 3, dirX: 1, dirZ: 0, speed: 0 };
+  f.setDisturbances([hull]);
+  f.step(1 / 60, 2, 3);
+  assert.equal(f.steps, 1, 'the first frame steps (and primes)');
+  assert.equal(GROUND_PRESSURE_SETTLED_STRIDE, 8);
+  for (let i = 1; i < GROUND_PRESSURE_SETTLED_STRIDE; i++) { f.setDisturbances([{ ...hull }]); f.step(1 / 60, 2, 3); }
+  assert.equal(f.steps, 1, 'a parked hull under a still window: the frames only accumulate their time');
+  assert.equal(f.skippedFrames, GROUND_PRESSURE_SETTLED_STRIDE - 1);
+  f.setDisturbances([{ ...hull, x: 2 + 4e-4 }]); // a suspension settling by under a millimetre is the same stamp
+  f.step(1 / 60, 2 + 2e-4, 3);
+  assert.equal(f.steps, 2, `the ${GROUND_PRESSURE_SETTLED_STRIDE}th settled frame steps`);
+  assert.ok(Math.abs(r.uniforms.uDt.value - GROUND_PRESSURE_SETTLED_STRIDE / 60) < 1e-9, 'with the summed time of the frames it stood for');
+  assert.equal(r.uniforms.uHullA.value[0].x, 2, 'the held stamp is the one the steps used');
+  for (let i = 0; i < 3; i++) { f.setDisturbances([{ ...hull }]); f.step(1 / 60, 2, 3); }
+  assert.equal(f.steps, 2);
+  // the hull drives off: the owed three frames are paid at the parked stamp, before the new stamp lands
+  const before = r.log.filter((e) => e[0] === 'render').length;
+  f.setDisturbances([{ ...hull, x: 2.5, speed: 3 }]);
+  const paid = r.log.filter((e) => e[0] === 'render').slice(before);
+  assert.equal(paid.length, 1, 'one catch-up step');
+  assert.ok(Math.abs(paid[0][3] - 3 / 60) < 1e-9, 'of the time owed');
+  assert.equal(f.steps, 3);
+  assert.equal(r.uniforms.uHullA.value[0].x, 2.5, 'then the new stamp');
+  f.step(1 / 60, 2.5, 3);
+  assert.equal(f.steps, 4, 'a moving hull steps every frame');
+  assert.ok(Math.abs(r.uniforms.uDt.value - 1 / 60) < 1e-9);
+  f.setDisturbances([{ ...hull, x: 2.5, speed: 3 }]);
+  f.step(1 / 60, 2.5, 3); // stamps unchanged since the last step: settled again
+  f.step(1 / 60, 9, 3); // the window moves: owed time first, under the old window, then this frame
+  assert.equal(f.steps, 6);
+  assert.deepEqual([f.params.y, f.params.z], [9, 3]);
+  globalThis.__WORLD_SIM_DEBUG = { noSleep: true };
+  const n = f.steps;
+  for (let i = 0; i < 4; i++) f.step(1 / 60, 9, 3);
+  assert.equal(f.steps, n + 4, '__WORLD_SIM_DEBUG.noSleep: every frame steps (the A/B baseline)');
+  delete globalThis.__WORLD_SIM_DEBUG;
+  f.clear();
+  f.step(1 / 60, 9, 3);
+  assert.equal(f.steps, n + 5, 'a cleared field steps on its next frame');
+  f.dispose();
+}
 
 // 6. The CPU twin of the footprint press (the trail metric reads it).
 const hull = { x: 0, z: 0, dirX: 1, dirZ: 0, halfLength: 3.4, halfWidth: 1.8 };
