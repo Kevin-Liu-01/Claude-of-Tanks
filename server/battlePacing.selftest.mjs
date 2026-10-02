@@ -80,6 +80,8 @@ const timeouts = resultReasons.filter((reason) => reason === 'time_limit').lengt
 // Frontier Basin's rebuild (2026-10-02) clears its match: seed 29003 now ends at 177 s, and the fleet median is 222.4 s.
 // Saltwind Narrows' rebuild (2026-10-02) clears its match too: seed 49002 now ends at 161 s; fleet median 218.2 s.
 // Saltmere Bay's rebuild (2026-10-02) clears seed 25001 (140 s); fleet median 217.0 s, Verdant's match the last one.
+// Verdant Fields' rebuild (2026-10-02) clears seed 21002 (182 s): all four matches clear 120 s, and the fleet runs
+// 132 matches with none inside 120 s (median 219.2 s, p10 147.2 s).
 const TARGET_MEDIAN_S = { min: 240, max: 480 };
 const PENDING_RULING_MEDIAN_FLOOR_S = 180;
 assert.ok(medianS >= PENDING_RULING_MEDIAN_FLOOR_S && medianS <= TARGET_MEDIAN_S.max,

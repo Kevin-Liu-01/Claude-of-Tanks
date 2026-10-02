@@ -45,6 +45,9 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // layout is mirrored across — the inland hamlet's green and the bocage crossroads' meadow (level aprons in the map
   // file) and the village's west end (a validated seat on its graded floor, also the turbo-ball kickoff).
   coastal: { kickoff: { x: 60, z: 22 }, zones: [{ x: -290, z: 22 }, { x: -155, z: 22 }, { x: 60, z: 22 }] },
+  // Verdant Fields (redesign 2026-10-02): three level aprons, rotationally symmetric about the village — the southern
+  // field green, the village square (also the turbo-ball kickoff), the northern field green.
+  verdant: { kickoff: { x: 10, z: 20 }, zones: [{ x: -250, z: -150 }, { x: 10, z: 20 }, { x: 270, z: 190 }] },
   skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
   copper_mesa: { zones: [{ x: 95.75601429460295, z: 25.16493186989846 }, { x: 103.52551824388397, z: -48.38643546884091 }, { x: 159.75453586673763, z: -8.089799185507083 }] },
 };
