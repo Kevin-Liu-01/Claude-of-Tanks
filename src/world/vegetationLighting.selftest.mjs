@@ -171,7 +171,10 @@ for (const species of ['pine', 'birch']) {
           'every actual bark face stays inside the padded bark tile of its style');
         const originalLuma = initialColor[index * 3] * 0.2126
           + initialColor[index * 3 + 1] * 0.7152 + initialColor[index * 3 + 2] * 0.0722;
-        if (originalLuma <= 0.065) {
+        if (initialUV[index * 2] >= 2) {
+          // p2 trees lane: a grown trunk's styled wood is authored against the sheet — no compensation
+          assert.equal(color.getX(index), initialColor[index * 3], 'grown wood keeps its authored tint');
+        } else if (originalLuma <= 0.065) {
           assert.ok(Math.abs(color.getX(index) * 0.5 - initialColor[index * 3]) < 1e-7,
             'dark bark restores the authored reflectance lost to the sheet multiplier');
         } else if (originalLuma >= 0.12) {

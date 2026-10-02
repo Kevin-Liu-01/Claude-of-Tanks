@@ -99,6 +99,51 @@ function pointAt(pts: Pt[], t: number): { p: Pt; a: number } {
   return { p: { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k }, a: Math.atan2(b.y - a.y, b.x - a.x) };
 }
 
+/**
+ * The spray's shaded body: a soft dark mass along its twigs, under the leaves or needles (three widening, fading
+ * strokes) — the inside of a leafy spray is leaves in each other's shade, and the mass keeps a minified card's coverage
+ * from thinning to a few needles at range.
+ */
+function paintSprayBody(ctx: CanvasRenderingContext2D, twigs: Pt[][], width: number, base: LeafColor, strength = 1, stemFrom = 0.3): void {
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const [w, a] of [[1.0, 0.30], [0.72, 0.45], [0.45, 0.6]] as const) {
+    ctx.strokeStyle = css(base.hue + 0.015, base.sat * 0.85, base.light * 0.42, a * strength);
+    twigs.forEach((tw, index) => {
+      // the stem's lower part is bare (the leaves begin a third of the way up); a side twig carries leaves from its base
+      const from = index === 0 ? Math.max(1, Math.round(stemFrom * (tw.length - 1))) : 1;
+      if (from >= tw.length) return;
+      ctx.lineWidth = width * w;
+      ctx.beginPath();
+      ctx.moveTo(tw[from - 1].x, tw[from - 1].y);
+      for (let i = from; i < tw.length; i++) ctx.lineTo(tw[i].x, tw[i].y);
+      ctx.stroke();
+    });
+  }
+}
+
+/** A winter palette's snow on a spray: soft white lumps riding the twigs (more, and fuller, with more snow). */
+function paintSpraySnow(ctx: CanvasRenderingContext2D, twigs: Pt[][], reach: number, snow: number, rng: Rng): void {
+  for (const tw of twigs) {
+    let len = 0;
+    for (let i = 1; i < tw.length; i++) len += Math.hypot(tw[i].x - tw[i - 1].x, tw[i].y - tw[i - 1].y);
+    const n = Math.round(len / Math.max(2, reach * 0.55));
+    for (let k = 0; k < n; k++) {
+      if (rng() > snow * 0.85) continue;
+      const at = pointAt(tw, (k + 0.5) / n);
+      const r = reach * (0.35 + rng() * 0.45) * (0.6 + 0.4 * snow);
+      const gr = ctx.createRadialGradient(at.p.x, at.p.y, 0, at.p.x, at.p.y, r);
+      gr.addColorStop(0, css(0.58, 0.05, 0.86, 0.95));
+      gr.addColorStop(0.65, css(0.58, 0.06, 0.78, 0.8));
+      gr.addColorStop(1, css(0.58, 0.06, 0.7, 0));
+      ctx.fillStyle = gr;
+      ctx.beginPath();
+      ctx.ellipse(at.p.x, at.p.y, r * 1.25, r * 0.8, at.a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
 type LeafShape = 'lobed' | 'deltoid' | 'lance' | 'falcate' | 'oval' | 'round' | 'pinnate';
 
 /** The leaf outline in a local frame: base at the origin, tip at (len, 0), half-width wid. */
@@ -201,7 +246,7 @@ const BROADLEAF_RECIPES: Readonly<Record<string, BroadleafRecipe>> = Object.free
 });
 
 /** One broadleaf spray tile: a stem, side twigs, a back layer and a front layer of leaves. */
-function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, kind: SprayKind, recipe: BroadleafRecipe): void {
+function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, kind: SprayKind, recipe: BroadleafRecipe): Pt[][] {
   const base = LEAF_COLOR[kind];
   const stemColor = css(0.075, 0.20, 0.10);
   // the stem rises from the bottom centre (the card's seat) toward the top; a hanging spray arcs over and down
@@ -224,6 +269,8 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
   }
   const leafLen = S * recipe.leafLen;
   const leafW = leafLen * recipe.leafAspect;
+  // the shaded body under the leaves (the pinnate and the lanceolate sprays stay airier)
+  paintSprayBody(ctx, twigs, leafLen * 1.5, base, recipe.shape === 'pinnate' || recipe.shape === 'lance' ? 0.55 : 0.85);
   // two layers: the back leaves (darker, the shaded interior of the spray) then the twigs, then the front leaves
   for (let layer = 0; layer < 2; layer++) {
     if (layer === 1) {
@@ -282,6 +329,7 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
       }
     }
   }
+  return twigs;
 }
 
 /** Needles: short strokes from a twig, both sides (and forward for a bottle-brush). */
@@ -311,7 +359,7 @@ function paintNeedleTwig(
   }
 }
 
-function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, kind: SprayKind): void {
+function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, kind: SprayKind): Pt[][] {
   const base = LEAF_COLOR[kind];
   const wood = css(0.06, 0.25, 0.09);
   const p0 = { x: S * 0.5, y: S * 0.95 };
@@ -320,6 +368,14 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
     const stem = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.3, S * 0.42, (rng() - 0.5) * 0.4, 6);
     taperStroke(ctx, stem, S * 0.016, S * 0.009, wood);
     const tufts = [{ t: 1, r: 1 }, { t: 0.55, r: 0.75 }, { t: 0.78, r: 0.7 }];
+    // each tuft's dense heart: the needles crowd at the shoot's tip
+    for (const tuft of tufts) {
+      const at = pointAt(stem, tuft.t), r = S * 0.17 * tuft.r;
+      const gr = ctx.createRadialGradient(at.p.x, at.p.y - r * 0.4, 0, at.p.x, at.p.y - r * 0.4, r);
+      gr.addColorStop(0, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0.75));
+      gr.addColorStop(1, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0));
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(at.p.x, at.p.y - r * 0.4, r, 0, Math.PI * 2); ctx.fill();
+    }
     for (const tuft of tufts) {
       const at = pointAt(stem, tuft.t);
       const bundles = Math.round(34 * tuft.r);
@@ -339,7 +395,7 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
         }
       }
     }
-    return;
+    return [stem];
   }
   if (kind === 'cypress') {
     // scale-leaf fronds: a flattened spray that forks again and again, thick and dense
@@ -354,8 +410,10 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
         frond(at.p, at.a + (k % 2 ? 0.7 : -0.7) + (rng() - 0.5) * 0.3, len * 0.55, depth - 1);
       }
     };
+    const spine = twigPoints(p0, -Math.PI / 2, S * 0.6, 0, 6);
+    paintSprayBody(ctx, [spine], S * 0.30, base, 0.75, 0.45);
     frond(p0, -Math.PI / 2 + (rng() - 0.5) * 0.2, S * 0.62, 3);
-    return;
+    return [spine];
   }
   // spruce / fir / cedar: a main twig with side twigs, needled
   const stem = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * 0.80, (rng() - 0.5) * 0.35, 10);
@@ -368,6 +426,7 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
     const len = S * (kind === 'fir' ? 0.30 : 0.26) * (1.15 - t * 0.6) * (0.85 + rng() * 0.3);
     twigs.push(twigPoints(at.p, at.a + side * (kind === 'fir' ? 1.0 : 0.85), len, side * 0.15, 5));
   }
+  paintSprayBody(ctx, twigs, S * (kind === 'cedar' ? 0.075 : 0.085), base, 0.9);
   for (const tw of twigs) taperStroke(ctx, tw, S * 0.010, S * 0.005, wood);
   if (kind === 'cedar') {
     // rosettes: little starbursts of short needles on spurs along the twigs
@@ -388,7 +447,7 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
         }
       }
     }
-    return;
+    return twigs;
   }
   const flat = kind === 'fir';
   for (let i = twigs.length - 1; i >= 0; i--) {
@@ -400,13 +459,16 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
     for (const tw of twigs) taperStroke(ctx, tw, S * 0.004, S * 0.003, css(0.42, 0.12, 0.45));
     ctx.globalAlpha = 1;
   }
+  return twigs;
 }
 
 /** Bare winter twigs: a fine forked lattice (birch / aspen crowns without leaves). */
-function paintBareTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): void {
+function paintBareTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[][] {
   const base = LEAF_COLOR['birch-bare'];
+  const limbs: Pt[][] = [];
   const branch = (p: Pt, a: number, len: number, w: number, depth: number): void => {
     const pts = twigPoints(p, a, len, (rng() - 0.5) * 0.4, 4);
+    if (depth >= 4) limbs.push(pts);
     taperStroke(ctx, pts, w, w * 0.6, css(base.hue + rng() * 0.02, base.sat, base.light * (0.8 + rng() * 0.4)));
     if (depth <= 0 || len < S * 0.03) return;
     const forks = 2 + ((rng() * 2) | 0);
@@ -426,28 +488,33 @@ function paintBareTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): void
   for (let k = 0; k < 3; k++) {
     branch({ x: S * (0.5 + (k - 1) * 0.04), y: S * 0.95 }, -Math.PI / 2 + (k - 1) * 0.38 + (rng() - 0.5) * 0.3, S * (0.42 + rng() * 0.1), S * 0.013, 5);
   }
+  return limbs;
 }
 
 /**
  * Paint one species atlas: four tiles (2 × 2) of `size` / 2 px each, straight alpha, toned by the map palette's
  * texTone. Returns the ImageData-backed texture (sRGB, anisotropy 8, mipmapped).
  */
-export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: ToneFunction | null = null): THREE.Texture {
+export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: ToneFunction | null = null, snow = 0): THREE.Texture {
   const s = Math.max(64, size | 0), T = SPRAY_ATLAS_TILES, S = Math.floor(s / T);
   const c = document.createElement('canvas');
   c.width = c.height = s;
   const ctx = c.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D | null;
   if (!ctx) throw new Error('world/treeSprayAtlas: Canvas2D context unavailable');
   ctx.clearRect(0, 0, s, s);
+  let snowSeed = 0x5a0f ^ Math.round(snow * 1000);
+  const snowRng: Rng = () => { snowSeed = (Math.imul(snowSeed ^ (snowSeed >>> 15), 0x2c1b3c6d) + 0x6d2b79f5) | 0; return ((snowSeed ^ (snowSeed >>> 13)) >>> 0) / 4294967296; };
   for (let ty = 0; ty < T; ty++) for (let tx = 0; tx < T; tx++) {
     ctx.save();
     ctx.beginPath();
     ctx.rect(tx * S, ty * S, S, S);
     ctx.clip();
     ctx.translate(tx * S, ty * S);
-    if (kind === 'birch-bare') paintBareTile(ctx, S, rng);
-    else if (BROADLEAF_RECIPES[kind]) paintBroadleafTile(ctx, S, rng, kind, BROADLEAF_RECIPES[kind]);
-    else paintConiferTile(ctx, S, rng, kind);
+    const twigs = kind === 'birch-bare' ? paintBareTile(ctx, S, rng)
+      : BROADLEAF_RECIPES[kind] ? paintBroadleafTile(ctx, S, rng, kind, BROADLEAF_RECIPES[kind])
+        : paintConiferTile(ctx, S, rng, kind);
+    // a winter palette's snow load rides the twigs (its own stream: the leaf painting never moves)
+    if (snow > 0.05) paintSpraySnow(ctx, twigs, S * (kind === 'birch-bare' ? 0.035 : 0.07), snow, snowRng);
     ctx.restore();
   }
   const image = ctx.getImageData(0, 0, s, s);

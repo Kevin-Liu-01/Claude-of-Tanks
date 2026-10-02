@@ -521,12 +521,15 @@ function _nrmFromHeight(h: Float32Array, s: number, strength: number, w = s): TH
   t.anisotropy = 8;
   return t;
 }
-function makeBarkTexture(seed: number): {
+function makeBarkTexture(seed: number, styles = TREE_BARK_STYLES): {
   albedo: THREE.CanvasTexture;
   normal: THREE.CanvasTexture;
   meanReflectance: number;
+  width: number;
 } {
-  const s = TREE_SURFACE_SIZE, W = TREE_BARK_ATLAS_WIDTH;
+  // p2 trees lane: only the grown trees read styles 1–3 — a legacy build (the phones, `?legacyTrees=1`) keeps the
+  // single 256-column sheet it always had
+  const s = TREE_SURFACE_SIZE, W = TREE_SURFACE_SIZE * styles;
   const rng = mulberry32(seed);
   const c = document.createElement('canvas');
   c.width = W; c.height = s;
@@ -606,7 +609,7 @@ function makeBarkTexture(seed: number): {
   ctx.restore();
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(TREE_BARK_COLUMNS, 0, s - TREE_BARK_COLUMNS, s);
-  paintBarkStyles(ctx, mulberry32((seed ^ 0xba4c) >>> 0), s);
+  if (styles > 1) paintBarkStyles(ctx, mulberry32((seed ^ 0xba4c) >>> 0), s);
   const id = ctx.getImageData(0, 0, W, s);
   const hgt = new Float32Array(W * s);
   const linear = new Float32Array(256);
@@ -630,6 +633,7 @@ function makeBarkTexture(seed: number): {
     albedo,
     normal: _nrmFromHeight(hgt, s, 2.2, W),
     meanReflectance: sumReflectance / (TREE_BARK_COLUMNS * s),
+    width: W,
   };
 }
 
@@ -646,22 +650,37 @@ function paintBarkStyles(ctx: CanvasRenderingContext2D, rng: RandomSource, s: nu
     for (const offset of [-B, 0, B]) draw(offset);
     ctx.restore();
   };
-  // 1 — scaly plates: irregular rounded plates on dark furrows (pine, spruce; the vertex tint warms a pine's top)
-  ctx.save(); ctx.translate(s, 0); ctx.fillStyle = '#5a4e46'; ctx.fillRect(0, 0, B, s); ctx.restore();
-  const plates: Array<[number, number, number, number, number]> = [];
-  for (let k = 0; k < 120; k++) plates.push([rng() * B, rng() * s, 10 + rng() * 26, 7 + rng() * 15, 0.52 + rng() * 0.24]);
+  // 1 — scaly plates: tall irregular plates in vertical runs, split by dark fissures (pine, spruce; the vertex tint
+  // warms a pine's upper stem). No inner highlight: the normal map's relief lights the plates' edges
+  ctx.save(); ctx.translate(s, 0); ctx.fillStyle = '#3e3530'; ctx.fillRect(0, 0, B, s); ctx.restore();
+  const plates: Array<[number, number, number, number, number, number, number, number, number]> = [];
+  for (let column = 0; column < 14; column++) {
+    const cx = (column + rng() * 0.6) * (B / 14);
+    let y = rng() * 30;
+    while (y < s + 30) {
+      const h = 18 + rng() * 34, w = 11 + rng() * 9;
+      plates.push([cx + (rng() - 0.5) * 6, y, w, h, 0.50 + rng() * 0.22, (rng() - 0.5) * 0.12, rng(), rng() - 0.5, rng() - 0.5]);
+      y += h + 2 + rng() * 3;
+    }
+  }
   wrapped(1, (offset) => {
-    for (const [x, y, w, h, l] of plates) {
-      _cc.setHSL(0.07 + rng() * 0.02, 0.16 + rng() * 0.08, l * 0.62);
+    for (const [x, y, w, h, l, skew, sat, crackA, crackB] of plates) {
+      _cc.setHSL(0.065 + l * 0.02, 0.15 + sat * 0.06, l * 0.6);
       ctx.fillStyle = _cc.getStyle();
       ctx.beginPath();
-      ctx.ellipse(x + offset, y, w * 0.5, h * 0.5, (rng() - 0.5) * 0.25, 0, Math.PI * 2);
+      ctx.moveTo(x - w * 0.5 + offset, y + h * skew);
+      ctx.lineTo(x + w * 0.45 + offset, y);
+      ctx.lineTo(x + w * 0.5 + offset, y + h * (0.95 - skew));
+      ctx.lineTo(x - w * 0.42 + offset, y + h);
+      ctx.closePath();
       ctx.fill();
-      _cc.setHSL(0.07, 0.14, l * 0.74);
-      ctx.fillStyle = _cc.getStyle();
+      // a hairline crack down the plate
+      ctx.strokeStyle = 'rgba(40,32,28,0.55)';
+      ctx.lineWidth = 0.8;
       ctx.beginPath();
-      ctx.ellipse(x + offset - w * 0.08, y - h * 0.12, w * 0.32, h * 0.28, 0, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(x + offset + crackA * w * 0.4, y + 2);
+      ctx.lineTo(x + offset + crackB * w * 0.4, y + h - 2);
+      ctx.stroke();
     }
   });
   // 2 — smooth: pale grey-buff with soft peeling patches and fine horizontal lenticels (eucalyptus, fir)
@@ -1171,6 +1190,7 @@ function paintFlat(
 export function prepareTreeBarkSurface(
   geometry: THREE.BufferGeometry,
   meanReflectance: number,
+  atlasWidth = TREE_BARK_ATLAS_WIDTH,
 ): THREE.BufferGeometry {
   if (geometry.userData.barkSurfacePrepared) return geometry;
   const uv = attribute(geometry, 'uv');
@@ -1181,14 +1201,16 @@ export function prepareTreeBarkSurface(
     if (u < 0) {
       // Constant UV selects the middle of the smooth white strip, including
       // its flat normal. No snow mask, extra fetch, material or varying.
-      uv.setXY(index, (TREE_BARK_COLUMNS + 8) / TREE_BARK_ATLAS_WIDTH, 0.5);
+      uv.setXY(index, (TREE_BARK_COLUMNS + 8) / atlasWidth, 0.5);
       continue;
     }
     // p2 trees lane: u ≥ 2 = a grown trunk's styled bark (2 + 2 × style + the fraction round the stem); [0, 1] the
     // legacy builders' furrowed sheet (style 0)
-    const style = u >= 2 ? Math.min(TREE_BARK_STYLES - 1, Math.floor((u - 2) / 2)) : 0;
-    const frac = u >= 2 ? clamp(u - 2 - style * 2, 0, 1) : u;
-    uv.setX(index, (style * TREE_SURFACE_SIZE + 2 + frac * (TREE_BARK_COLUMNS - 4)) / TREE_BARK_ATLAS_WIDTH);
+    const style = u >= 2 ? Math.min(atlasWidth / TREE_SURFACE_SIZE - 1, Math.floor((u - 2) / 2)) : 0;
+    const frac = u >= 2 ? clamp(u - 2 - Math.floor((u - 2) / 2) * 2, 0, 1) : u;
+    uv.setX(index, (style * TREE_SURFACE_SIZE + 2 + frac * (TREE_BARK_COLUMNS - 4)) / atlasWidth);
+    // the grown wood's tints are authored against the sheet (its darkest is the crown's shade): no compensation
+    if (u >= 2) continue;
     const r = color.getX(index), g = color.getY(index), b = color.getZ(index);
     const luminance = r * 0.2126 + g * 0.7152 + b * 0.0722;
     // Dark trunk tints predate the bark sheet and were multiplied down twice.
@@ -2165,24 +2187,32 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   parts.push(paintFlat(buildRootFlare(stemR, stemR * 1.36, 0.62, 10, rng() * Math.PI * 2), footColor, 0));
   const roots = profile.family === 'conifer' || profile.family === 'birch' ? 4 : 5;
   addRootButtresses(parts, rng, footColor, stemR * 1.28, roots);
-  // a winter palette's snow load: lobes riding the limbs high in the crown (the bark sheet's snow strip)
+  // a winter palette's snow load: the spray atlas paints the snow on the needles and twigs; a few thin pads lie flush
+  // on the upward-facing sprays high in the crown (the bark sheet's snow strip) for the load's volume
   const snow = pal.snow ?? 0;
   if (snow > 0.25 || (profile.family === 'birch' && snow > 0.01)) {
     let lobes = 0;
-    const sites = profile.family === 'conifer'
-      ? skeleton.branches.filter(b => b.order === 1).map(b => b.nodes[Math.max(1, Math.floor(b.nodes.length * 0.6))])
-      : skeleton.leaves.filter(l => l.ny > 0.45).map(l => ({ x: l.x, y: l.y, z: l.z, r: 0.04, flex: l.flex }));
-    for (const at of sites) {
-      if (lobes >= 10) break;
-      const heightT = clamp(at.y / skeleton.height, 0, 1);
-      if (rng() > snow * (0.30 + 0.70 * heightT)) continue;
-      // thin pads lying along the bough, not boulders on it: the sprays' whitened tint carries most of the load
-      const lr = (profile.family === 'conifer' ? 0.18 : 0.12) + rng() * 0.12;
+    // the highest upward sprays first (a weeping crown's sprays hang: its pads ride the tops of its limbs instead): the
+    // top two always carry a pad, the rest by the load and the height
+    const upward = profile.habit === 'hanging'
+      ? skeleton.branches.filter(b => b.order >= 1 && b.nodes.length > 1).map((b) => {
+        const a = b.nodes[0], z = b.nodes[b.nodes.length - 1], dl = Math.hypot(z.x - a.x, z.y - a.y, z.z - a.z) || 1;
+        const mid = b.nodes[Math.floor(b.nodes.length / 2)];
+        return { x: mid.x, y: mid.y + mid.r, z: mid.z, ax: (z.x - a.x) / dl, ay: 0, az: (z.z - a.z) / dl, nx: 0, ny: 1, nz: 0, length: Math.min(1.2, dl) };
+      }).sort((a, b) => b.y - a.y)
+      : skeleton.leaves.filter(site => site.ny >= 0.6).sort((a, b) => b.y - a.y);
+    for (const site of upward) {
+      if (lobes >= 6) break;
+      const heightT = clamp(site.y / skeleton.height, 0, 1);
+      if (lobes >= 2 && rng() > snow * (0.15 + 0.5 * heightT)) continue;
+      const lr = site.length * (profile.family === 'conifer' ? 0.22 : 0.16) * (0.8 + rng() * 0.4);
       const lobe = new THREE.IcosahedronGeometry(lr, 0);
       shapeTreeSnowLobe(lobe, rng);
-      lobe.scale(1.8 + rng() * 0.5, 0.32, 1.0 + rng() * 0.3);
-      lobe.rotateY(Math.atan2(at.x, at.z) + Math.PI / 2);
-      lobe.translate(at.x, at.y + lr * 0.3 + 0.06, at.z);
+      lobe.scale(1.7, 0.22, 1.0);
+      // along the spray, a little out from its seat, lying on its face
+      lobe.rotateY(Math.atan2(site.ax, site.az) + Math.PI / 2);
+      const along = site.length * 0.45;
+      lobe.translate(site.x + site.ax * along + site.nx * 0.04, site.y + site.ay * along + site.ny * 0.04, site.z + site.az * along + site.nz * 0.04);
       _c.setHSL(0.585, 0.04, 0.62, THREE.SRGBColorSpace).multiplyScalar(1.55);
       parts.push(paintFlat(lobe, _c.clone(), 0.12));
       lobes++;
@@ -4102,7 +4132,7 @@ function* vegetationBuildSteps(
   };
   // Bark and smooth snow occupy the existing atlas. Dark trunk tints are
   // calibrated against its measured linear reflectance during geometry prep.
-  const barkTex = makeBarkTexture(seed + 97);
+  const barkTex = makeBarkTexture(seed + 97, vegetationGrowsTrees() && !veg.legacyTrees ? TREE_BARK_STYLES : 1);
   const barkMat = new THREE.MeshStandardMaterial({
     map: barkTex.albedo, normalMap: barkTex.normal,
     vertexColors: true, roughness: 0.92, metalness: 0.0,
@@ -4330,7 +4360,7 @@ function* vegetationBuildSteps(
     if (!grownTrees) return legacy;
     return {
       texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed,
-      tex: (r, pal) => makeSprayAtlas(grownSprayKind(species, pal), r, texSize(512), pal.texTone || null),
+      tex: (r, pal) => makeSprayAtlas(grownSprayKind(species, pal), r, texSize(512), pal.texTone || null, pal.snow ?? 0),
       near: (k, pal) => buildGrownTree(species, seed + legacy.nearSeed + k * 7, k, pal),
       far: legacy.far,
     };
@@ -4459,7 +4489,7 @@ function* vegetationBuildSteps(
       treeGeo[sp] = [];
       for (let k = 0; k < NEAR_VARIANTS; k++) {
         const geometry = SPECIES[sp].near(k, palOf(sp));
-        prepareTreeBarkSurface(geometry.trunk, barkTex.meanReflectance);
+        prepareTreeBarkSurface(geometry.trunk, barkTex.meanReflectance, barkTex.width);
         treeGeo[sp].push(geometry);
         yield { stage: 'treePrep', fine: true };
       }
@@ -4468,7 +4498,7 @@ function* vegetationBuildSteps(
         const geometry = SPECIES[sp].far(
           mulberry32(seed + SPECIES[sp].farSeed + k * 101), palOf(sp), k,
         );
-        prepareTreeBarkSurface(geometry.trunk, barkTex.meanReflectance);
+        prepareTreeBarkSurface(geometry.trunk, barkTex.meanReflectance, barkTex.width);
         treeGeoFar[sp].push(geometry);
         yield { stage: 'treePrep', fine: true };
       }

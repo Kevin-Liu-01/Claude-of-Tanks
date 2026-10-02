@@ -106,7 +106,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 1.15, angleHigh: 0.6,
     droop: 0.42, upturn: 0.38, sidePerM: 2.3, sideAngle: 0.75, sideRatio: 0.62, sideDroop: 0.35, twigPerM: 1.8,
     leafOrder: 1, leafPerM: 2.4, leafFrom: 0.3, spray: [0.95, 1.45], aspect: 0.82, habit: 'spray', tipSprays: 1,
-    cardBend: 0.16, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.62, 0.56, 0.48], barkTopTint: null,
+    cardBend: 0.16, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.46, 0.41, 0.36], barkTopTint: null,
   }),
   poplar: P({
     family: 'broadleaf', height: 8.2, heightSpread: 0.10, trunkR: 0.24, form: 'excurrent',
@@ -114,7 +114,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'column', whorled: false, perWhorl: [1, 1], spacing: 0.42, angleLow: 0.42, angleHigh: 0.22,
     droop: 0.05, upturn: 0.30, sidePerM: 2.2, sideAngle: 0.45, sideRatio: 0.55, sideDroop: 0.05, twigPerM: 0,
     leafOrder: 1, leafPerM: 2.6, leafFrom: 0.15, spray: [0.85, 1.25], aspect: 0.74, habit: 'upright', tipSprays: 1,
-    cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.66, 0.64, 0.58], barkTopTint: [0.78, 0.76, 0.70],
+    cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.56, 0.54, 0.50], barkTopTint: [0.66, 0.64, 0.60],
   }),
   willow: P({
     family: 'broadleaf', height: 6.4, heightSpread: 0.10, trunkR: 0.38, form: 'decurrent',
@@ -122,7 +122,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.5, angleLow: 1.2, angleHigh: 0.7,
     droop: 0.22, upturn: 0.0, sidePerM: 2.8, sideAngle: 1.15, sideRatio: 0.95, sideDroop: 2.4, twigPerM: 0,
     leafOrder: 2, leafPerM: 3.8, leafFrom: 0.25, spray: [1.6, 2.4], aspect: 0.40, habit: 'hanging', tipSprays: 1,
-    cardBend: 0.05, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.58, 0.54, 0.46], barkTopTint: null,
+    cardBend: 0.05, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.44, 0.40, 0.34], barkTopTint: null,
   }),
   acacia: P({
     family: 'broadleaf', height: 6.2, heightSpread: 0.10, trunkR: 0.28, form: 'decurrent',
@@ -130,7 +130,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'umbrella', whorled: false, perWhorl: [1, 1], spacing: 0.6, angleLow: 1.3, angleHigh: 1.1,
     droop: 0.12, upturn: 0.55, sidePerM: 1.8, sideAngle: 1.0, sideRatio: 0.6, sideDroop: 0.0, twigPerM: 2.2,
     leafOrder: 2, leafPerM: 3.2, leafFrom: 0.3, spray: [1.1, 1.6], aspect: 0.95, habit: 'flat', tipSprays: 1,
-    cardBend: 0.04, flatRoll: 0.45, flatDroop: 0.0, bark: 0, barkTint: [0.50, 0.44, 0.38], barkTopTint: null,
+    cardBend: 0.04, flatRoll: 0.45, flatDroop: 0.0, bark: 0, barkTint: [0.42, 0.36, 0.30], barkTopTint: null,
   }),
   eucalyptus: P({
     family: 'broadleaf', height: 9.0, heightSpread: 0.12, trunkR: 0.25, form: 'excurrent',
@@ -146,23 +146,23 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'flame', whorled: true, perWhorl: [3, 5], spacing: 0.62, angleLow: 1.45, angleHigh: 0.85,
     droop: 0.25, upturn: 0.45, sidePerM: 1.2, sideAngle: 0.7, sideRatio: 0.45, sideDroop: 0.1, twigPerM: 0,
     leafOrder: 1, leafPerM: 1.5, leafFrom: 0.55, spray: [0.95, 1.35], aspect: 0.9, habit: 'tuft', tipSprays: 3,
-    cardBend: 0.06, flatRoll: 0.6, flatDroop: 0.0, bark: 1, barkTint: [0.55, 0.42, 0.34], barkTopTint: [0.80, 0.52, 0.34],
+    cardBend: 0.06, flatRoll: 0.6, flatDroop: 0.0, bark: 1, barkTint: [0.44, 0.33, 0.27], barkTopTint: [0.80, 0.52, 0.34],
   }),
   spruce: P({
     family: 'conifer', height: 8.2, heightSpread: 0.10, trunkR: 0.19, form: 'excurrent',
-    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.07, crownR: 2.05,
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.07, crownR: 1.6,
     envelope: 'cone', whorled: true, perWhorl: [3, 5], spacing: 0.55, angleLow: 1.95, angleHigh: 1.05,
     droop: 0.30, upturn: 0.50, sidePerM: 2.4, sideAngle: 0.95, sideRatio: 0.42, sideDroop: 0.55, twigPerM: 0,
     leafOrder: 1, leafPerM: 3.2, leafFrom: 0.0, spray: [1.05, 1.55], aspect: 0.66, habit: 'flat', tipSprays: 1,
-    cardBend: 0.18, flatRoll: 1.15, flatDroop: 0.35, bark: 1, barkTint: [0.48, 0.40, 0.35], barkTopTint: null,
+    cardBend: 0.18, flatRoll: 1.15, flatDroop: 0.35, bark: 1, barkTint: [0.36, 0.30, 0.27], barkTopTint: null,
   }),
   fir: P({
     family: 'conifer', height: 7.3, heightSpread: 0.10, trunkR: 0.27, form: 'excurrent',
-    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.10, crownR: 2.5,
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.10, crownR: 2.0,
     envelope: 'tiered', whorled: true, perWhorl: [3, 5], spacing: 0.6, angleLow: 1.75, angleHigh: 1.05,
     droop: 0.12, upturn: 0.30, sidePerM: 2.4, sideAngle: 1.05, sideRatio: 0.45, sideDroop: 0.05, twigPerM: 0,
     leafOrder: 1, leafPerM: 3.2, leafFrom: 0.0, spray: [1.1, 1.6], aspect: 0.72, habit: 'flat', tipSprays: 1,
-    cardBend: 0.06, flatRoll: 0.55, flatDroop: 0.12, bark: 2, barkTint: [0.56, 0.54, 0.52], barkTopTint: null,
+    cardBend: 0.06, flatRoll: 0.55, flatDroop: 0.12, bark: 2, barkTint: [0.42, 0.40, 0.38], barkTopTint: null,
   }),
   cedar: P({
     family: 'conifer', height: 6.6, heightSpread: 0.10, trunkR: 0.32, form: 'excurrent',
@@ -170,7 +170,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'tiered', whorled: true, perWhorl: [4, 5], spacing: 0.8, angleLow: 1.62, angleHigh: 1.15,
     droop: 0.0, upturn: 0.08, sidePerM: 2.8, sideAngle: 1.1, sideRatio: 0.5, sideDroop: 0.0, twigPerM: 0,
     leafOrder: 1, leafPerM: 3.4, leafFrom: 0.1, spray: [1.2, 1.8], aspect: 0.9, habit: 'flat', tipSprays: 1,
-    cardBend: 0.03, flatRoll: 0.38, flatDroop: 0.04, bark: 0, barkTint: [0.50, 0.42, 0.36], barkTopTint: null,
+    cardBend: 0.03, flatRoll: 0.38, flatDroop: 0.04, bark: 0, barkTint: [0.40, 0.34, 0.30], barkTopTint: null,
   }),
   cypress: P({
     family: 'conifer', height: 7.8, heightSpread: 0.10, trunkR: 0.14, form: 'excurrent',
@@ -178,7 +178,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'flame', whorled: false, perWhorl: [1, 1], spacing: 0.22, angleLow: 0.38, angleHigh: 0.2,
     droop: 0.0, upturn: 0.2, sidePerM: 0, sideAngle: 0.4, sideRatio: 0.5, sideDroop: 0, twigPerM: 0,
     leafOrder: 1, leafPerM: 4.2, leafFrom: 0.0, spray: [1.15, 1.6], aspect: 0.55, habit: 'upright', tipSprays: 1,
-    cardBend: 0.04, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.50, 0.42, 0.36], barkTopTint: null,
+    cardBend: 0.04, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.40, 0.34, 0.30], barkTopTint: null,
   }),
   birch: P({
     family: 'birch', height: 7.0, heightSpread: 0.14, trunkR: 0.16, form: 'excurrent',
@@ -539,6 +539,22 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
   const crownMid = (ctx.crownBaseY + ctx.crownTopY) * 0.5;
   const crownSpan = Math.max(0.5, ctx.crownTopY - ctx.crownBaseY);
   const perM = profile.leafPerM * (ctx.mobile ? 0.62 : 1);
+  if (profile.family === 'conifer' && profile.form === 'excurrent' && ctx.branches.length) {
+    const stem = ctx.branches[0];
+    const tip = stem.nodes[stem.nodes.length - 1];
+    const leaders = ctx.mobile ? 1 : 3;
+    for (let k = 0; k < leaders; k++) {
+      const t = 0.975 - k * 0.04;
+      const at = sampleAlong(stem.nodes, t);
+      const spin = rng() * Math.PI * 2;
+      const axis = norm(v3(Math.cos(spin) * 0.18 * k, 1, Math.sin(spin) * 0.18 * k));
+      const face = norm(rotate(perpendicular(axis), axis, spin));
+      const size = range(rng, profile.spray) * (0.72 - k * 0.08);
+      leaves.push({ x: at.p.x, y: at.p.y - 0.05, z: at.p.z, ax: axis.x, ay: axis.y, az: axis.z, nx: face.x, ny: face.y, nz: face.z,
+        length: Math.min(size, Math.max(0.35, (tip.y + 0.25 - at.p.y))), width: size * profile.aspect, shade: 1, flex: Math.min(1, at.flex + 0.3),
+        tile: (rng() * 4) | 0, bend: 0 });
+    }
+  }
   for (const branch of ctx.branches) {
     if (branch.broken) continue;
     // a weeping crown's scaffold tips carry curtains too (the limb would otherwise end bare above them)

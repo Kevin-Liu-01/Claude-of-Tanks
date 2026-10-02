@@ -227,9 +227,12 @@ try {
     } finally { restore(); }
   };
   const pools = (world) => world.group.children.filter((m) => m.isInstancedMesh && (m.userData.treeTrunk || m.userData.treeFoliage || m.userData.treeCanopyShadowProxy) && m.userData.treeLod !== 'far');
+  // the bark sheet: four 256-column styles for the grown trees, the legacy single sheet everywhere else
+  const barkWidth = (world) => pools(world).find((m) => m.userData.treeTrunk).material.map.image.width;
   const desktop = build('fjord');
   try {
     assert.equal(V.vegetationGrowsTrees(), true);
+    assert.equal(barkWidth(desktop), 1024, 'the grown trees read the four-style bark sheet');
     const meshes = pools(desktop);
     const trunks = meshes.filter((m) => m.userData.treeTrunk), proxies = meshes.filter((m) => m.userData.treeCanopyShadowProxy);
     assert.equal(proxies.length, trunks.length, 'one shadow proxy per near pool');
@@ -250,6 +253,7 @@ try {
   const legacy = build('fjord', { legacyTrees: true });
   try {
     for (const trunk of pools(legacy).filter((m) => m.userData.treeTrunk)) assert.equal(trunk.geometry.userData.shadowHull, undefined, 'legacy trunks carry no hull');
+    assert.equal(barkWidth(legacy), 256, 'a legacy build keeps its single bark sheet');
   } finally { legacy.dispose(); disposeObject3DResources(legacy.group); }
   // the mobile tier (resolved once, last): the legacy trees
   globalThis.window = { location: { search: '?tier=mobile' }, localStorage: { getItem: () => null } };
@@ -259,6 +263,7 @@ try {
   const mobile = build('fjord');
   try {
     for (const trunk of pools(mobile).filter((m) => m.userData.treeTrunk)) assert.equal(trunk.geometry.userData.shadowHull, undefined, 'the phones keep the legacy trees');
+    assert.equal(barkWidth(mobile), 256, 'the phones pay for no unused bark styles');
   } finally { mobile.dispose(); disposeObject3DResources(mobile.group); delete globalThis.window; }
 }
 

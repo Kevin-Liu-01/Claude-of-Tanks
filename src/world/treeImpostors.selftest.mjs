@@ -27,7 +27,7 @@ import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 // p2 trees lane (2026-10-01): re-pinned for the grown near trees (treeGrowth.ts) and their spray atlases
 // (treeSprayAtlas.ts) — the far tier bakes the new trees; was verdant 33ca4146, fjord a9c982e2, delta a43cefd0. Re-pinned
 // with the crown's occlusion baked into the wood, the oak's dome and the desktop palms' pinnate frond.
-const PINS = { verdant: '289d0f74', fjord: '0c4c1409', delta: 'ac9276b9' };
+const PINS = { verdant: 'e2ad75c1', fjord: 'd5c01887', delta: 'e49114df' };
 // every producer's digest is reported before the pin is asserted (a re-pin reads all three from one run)
 const digestMismatches = [];
 
