@@ -7,10 +7,9 @@
  * block through cloudPresets.ts, so a block can be as short as `{ regime: 'cloud-streets' }`. The resolved
  * numbers are the layer's uniforms (`CloudLayerPreset`); `sky.cloudLayer` still overrides any of them raw.
  *
- * 2026-10-01 (the clouds-and-skyboxes lane): the sky's weather beyond the slab — a mid-level layer (altocumulus,
- * altostratus, cirrocumulus), contrails, distant cumulonimbus cells on the horizon, rain shafts and virga under the
- * precipitating cores, a sea fog bank, the ground's light on the cloud bases at night — and the time of day: the
- * convective clouds follow the diurnal cycle (cloudPresets.ts CLOUD_DIURNAL) and a block may override any knob for
+ * 2026-10-01 (the clouds-and-skyboxes lane): the sky's weather beyond the slab — contrails, rain shafts and virga
+ * under the precipitating cores, a sea fog bank, the ground's light on the cloud bases at night — and the time of day:
+ * the convective clouds follow the diurnal cycle (cloudPresets.ts CLOUD_DIURNAL) and a block may override any knob for
  * its sunset or its night.
  */
 
@@ -129,26 +128,10 @@ export interface CloudscapeConfig {
    */
   interior?: number;
   // ---- 2026-10-01: the weather layers beyond the slab (cloudWeatherLayers.ts) and the time of day
-  /** The mid-level layer's kind: none, altocumulus (lumpy elements in rows), altostratus (a grey veil), cirrocumulus (fine ripples high), lenticular (smooth lenses standing in the lee of the ranges). */
-  mid?: CloudMidKind;
-  /** 0..1 share of the sky's broad patches the mid layer fills. */
-  midCoverage?: number;
-  /** The mid layer's altitude (m) and thickness (m). */
-  midAltM?: number;
-  midThicknessM?: number;
-  /** The mid layer's element size (m). */
-  midCellM?: number;
-  /** 0..1 the mid layer's elements ranked in rows across the wind (undulatus, a mackerel sky). */
-  midBands?: number;
   /** 0..1 contrails (six at 1) over the sky and their spread: 0 fresh lines, 1 old contrail cirrus. */
   contrails?: number;
   contrailAge?: number;
-  /** Distant cumulonimbus cells on the horizon: how many (0..3), the sector they stand in (deg, as windDirDeg), their distance (m) and tops (m). */
-  storms?: number;
-  stormAzDeg?: number;
-  stormDistM?: number;
-  stormTopM?: number;
-  /** 0..1 rain shafts under the slab's precipitating cores (and the storm cells'). */
+  /** 0..1 rain shafts under the slab's precipitating cores. */
   rain?: number;
   /** 0..1 the share of a shaft's fall that evaporates before the ground (virga hangs under a dry-air base). */
   virga?: number;
@@ -165,11 +148,7 @@ export interface CloudscapeConfig {
   night?: CloudscapeTimeOverrides;
 }
 
-/** The mid-level layer's kinds. */
-export type CloudMidKind = 'none' | 'altocumulus' | 'altostratus' | 'cirrocumulus' | 'lenticular';
-export const CLOUD_MID_KINDS: readonly CloudMidKind[] = Object.freeze(['none', 'altocumulus', 'altostratus', 'cirrocumulus', 'lenticular']);
-
-/** The knobs a time of day may override (everything numeric or kind-like; not the regime, the wind or the overrides themselves). */
+/** The knobs a time of day may override (everything numeric; not the regime, the wind or the overrides themselves). */
 type CloudscapeTimeOverrides = Partial<Omit<CloudscapeConfig, 'regime' | 'sunset' | 'night' | 'diurnal' | 'windDirDeg'>>;
 
 /** A regime's row: every knob the map need not author. */
@@ -204,15 +183,12 @@ interface CloudscapeRegimeRow {
   undulatus: number;
   interior: number;
   /** 2026-10-01: the regime's weather beyond the slab (a map authors the rest: contrails, the fog bank, the night glow). */
-  mid: CloudMidKind;
-  midCoverage: number;
-  storms: number;
   rain: number;
   virga: number;
 }
 
 /** A row names the layered sky's weather only where it has some (2026-10-01): the rest is a clear sky's. */
-const CLEAR_WEATHER = Object.freeze({ mid: 'none', midCoverage: 0, storms: 0, rain: 0, virga: 0 } as const);
+const CLEAR_WEATHER = Object.freeze({ rain: 0, virga: 0 } as const);
 type CloudscapeRegimeRowInput = Omit<CloudscapeRegimeRow, keyof typeof CLEAR_WEATHER> & Partial<Pick<CloudscapeRegimeRow, keyof typeof CLEAR_WEATHER>>;
 const row = (r: CloudscapeRegimeRowInput): CloudscapeRegimeRow => Object.freeze({ ...CLEAR_WEATHER, ...r });
 

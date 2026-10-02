@@ -1,17 +1,17 @@
 // 2026-10-01 (the clouds-and-skyboxes lane): the sky's weather beyond the volumetric slab, pinned without a GPU — the
-// deterministic placement of the contrails and the storm cells, the uniform packing, the gating of every layer in the
+// deterministic placement of the contrails, the uniform packing, the gating of every layer in the
 // trace's GLSL, the time of day of cloudPresets.ts (the diurnal law of convective cloud, the per-time knobs, the
 // moonlit albedo, the key light's hue, the ground's glow), and the composite's single dimming of the sky light.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
-  CLOUD_CONTRAIL_MAX, CLOUD_STORM_MAX, applyCloudWeatherPreset, cloudContrails, cloudStormCells, createCloudWeatherUniforms,
+  CLOUD_CONTRAIL_MAX, applyCloudWeatherPreset, cloudContrails, createCloudWeatherUniforms,
 } from './cloudWeatherLayers.ts';
 import {
-  CLOUD_DIURNAL, CLOUD_MID_DEFAULTS, CLOUD_WEATHER_RULES, cloudLayerKey, cloudNightAmount, cloudTimeOfDay, deriveCloudLayerPreset,
+  CLOUD_DIURNAL, cloudLayerKey, cloudNightAmount, cloudTimeOfDay, deriveCloudLayerPreset,
 } from './cloudPresets.ts';
-import { CLOUDSCAPE_REGIMES, CLOUD_MID_KINDS } from './cloudscapes.ts';
+import { CLOUDSCAPE_REGIMES } from './cloudscapes.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { getMapConfig } from '../world/maps/index.ts';
 import { MAP_IDS } from '../world/maps/catalog.ts';
@@ -34,38 +34,20 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   assert.equal(cloudContrails({ ...base, contrails: 0 }).length, 0);
   assert.equal(cloudContrails({ ...base, contrails: 9 }).length, CLOUD_CONTRAIL_MAX, 'never past the uniform arrays');
 }
-{
-  const p = { storms: 3, stormAzRad: 1.2, stormDistM: 26000, stormTopM: 11000, baseM: 1000, rain: 0.8, offset: [0.21, 0.55] };
-  const cells = cloudStormCells(p);
-  assert.deepEqual(cells, cloudStormCells({ ...p }));
-  assert.equal(cells.length, CLOUD_STORM_MAX);
-  for (const c of cells) {
-    const d = Math.hypot(c.x, c.z);
-    assert.ok(d >= 26000 * 0.82 - 1 && d <= 26000 * 1.22 + 1, `a cell stands at its distance (${d.toFixed(0)})`);
-    let da = Math.atan2(c.z, c.x) - p.stormAzRad;
-    da = Math.atan2(Math.sin(da), Math.cos(da));
-    assert.ok(Math.abs(da) <= 0.55 + 0.12 + 1e-9, 'inside its sector');
-    assert.ok(c.anvilM > c.radiusM * 2 && c.topM > c.baseM + 5000 && c.baseM <= 1600 && c.rain >= 0.55 * 0.75);
-  }
-  assert.equal(cloudStormCells({ ...p, storms: 0 }).length, 0);
-}
 
 // ---- uniform packing: a layer the preset turns off is zero in the trace
 {
   const u = createCloudWeatherUniforms();
   const verdant = deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...getMapConfig('verdant').sky, cloudscape: { regime: 'fair-weather-cumulus' } });
   applyCloudWeatherPreset(u, verdant);
-  assert.equal(u.uMid.value.x, 0, 'no mid layer: zero coverage in the trace');
   assert.equal(u.uContrails.value, 0);
-  assert.equal(u.uStorms.value, 0);
   assert.equal(u.uRain.value.x, 0);
   assert.equal(u.uFogBank.value.x, 0);
-  const rich = { ...verdant, midKind: 1, midCoverage: 0.4, contrails: 3, storms: 2, stormAzRad: 0.5, rain: 0.6, fogBank: 0.3 };
+  const rich = { ...verdant, contrails: 3, rain: 0.6, fogBank: 0.3 };
   applyCloudWeatherPreset(u, rich);
-  assert.deepEqual([u.uMid.value.x, u.uMidShape.value.z, u.uContrails.value, u.uStorms.value, u.uRain.value.x, u.uFogBank.value.x], [0.4, 1, 3, 2, 0.6, 0.3]);
-  assert.ok(u.uStormA.value[1].length() > 0 && u.uStormA.value[2].x === 0 && u.uStormA.value[2].y === 0, 'two cells packed, the third left empty');
-  assert.ok(u.uContrailA.value.length === CLOUD_CONTRAIL_MAX && u.uStormA.value.length === CLOUD_STORM_MAX);
-  assert.ok(u.uMid.value instanceof THREE.Vector4);
+  assert.deepEqual([u.uContrails.value, u.uRain.value.x, u.uFogBank.value.x], [3, 0.6, 0.3]);
+  assert.ok(u.uContrailA.value[2].length() > 0 && u.uContrailA.value[3].x === 0 && u.uContrailA.value[3].y === 0, 'three trails packed, the rest left empty');
+  assert.ok(u.uContrailA.value.length === CLOUD_CONTRAIL_MAX && u.uRain.value instanceof THREE.Vector4);
 }
 
 // ---- the GLSL: every layer gated by its own uniform, no pow on a signed base, the mipmapped fields at level zero in loops
@@ -74,18 +56,18 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   const src = here('./volumetricClouds.ts');
   const trace = src.slice(src.indexOf('const TRACE_FRAGMENT'), src.indexOf('const RESOLVE_FRAGMENT'));
   const glsl = trace.slice(trace.indexOf('// ---- the weather layers'), trace.indexOf('// ---- the far band'));
-  assert.ok(glsl.length > 4000, 'the trace program carries the weather layers ahead of the far band');
-  for (const name of ['midLayer', 'midThickness', 'contrailDepth', 'stormCells', 'stormDensity', 'slabRain', 'cloudPrecip', 'seaFogBank', 'cloudOver', 'cloudCylinderSpan', 'cloudCylinderExit']) {
+  assert.ok(glsl.length > 2500, 'the trace program carries the weather layers ahead of the far band');
+  for (const name of ['contrailDepth', 'slabRain', 'cloudPrecip', 'seaFogBank', 'cloudOver']) {
     assert.ok(new RegExp(`\\b${name}\\(`).test(glsl), `the weather GLSL defines ${name}`);
   }
-  assert.match(glsl, /if \( uMid\.x <= 0\.0/, 'the mid layer is gated by its coverage');
+  // (2026-10-02: the mid layer and the distant storm cells were removed after the labs — pancakes and mushroom clouds)
+  for (const gone of ['midLayer', 'midThickness', 'stormCells', 'stormDensity', 'cloudCylinderSpan', 'uMid', 'uStorm']) assert.ok(!src.includes(gone), `${gone} is gone`);
   assert.match(glsl, /float\( i \) >= uContrails/, 'the trails by their count');
-  assert.match(glsl, /if \( uStorms <= 0\.0/, 'the storm cells by their count');
   assert.match(glsl, /if \( uRain\.x <= 0\.0/, 'the rain by its amount');
   assert.match(glsl, /if \( uFogBank\.x <= 0\.0/, 'the fog bank by its amount');
   assert.doesNotMatch(glsl, /pow\( \(/, 'no pow of a signed difference (undefined in GLSL for a negative base)');
   assert.doesNotMatch(glsl, /texture\( tWeather|texture\( tStreets|texture2D\( tWeather/, 'the mipmapped weather fields are read at level zero (divergent loops pick unrelated mips)');
-  for (const u of ['uMid', 'uMidShape', 'uMidShift', 'uMidDir', 'uContrailA', 'uContrailB', 'uContrails', 'uUpperDrift', 'uStormA', 'uStormB', 'uStorms', 'uRain', 'uFogBank']) {
+  for (const u of ['uContrailA', 'uContrailB', 'uContrails', 'uUpperDrift', 'uRain', 'uFogBank']) {
     assert.match(glsl, new RegExp(`uniform [a-z0-9]+ ${u}\\b`), `${u} is declared`);
     assert.ok(u in createCloudWeatherUniforms(), `${u} has a uniform object`);
   }
@@ -96,10 +78,10 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   const layer = here('./volumetricClouds.ts');
   assert.ok(/const TRACE_FRAGMENT[\s\S]*\/\/ ---- the weather layers[\s\S]*void main\(\)[\s\S]*const RESOLVE_FRAGMENT/.test(layer), 'the weather GLSL is part of the trace program, ahead of its main');
   assert.ok(layer.includes('acc = cloudOver( cloudOver( fogL, rainL ), acc );'), 'the fog bank and the rain stand in front of the slab');
-  assert.ok(layer.includes('acc = cloudOver( cloudOver( cloudOver( acc, a ), b ), c );'), 'storms, far band and mid layer composite behind it, sorted');
+  assert.ok(layer.includes('acc = cloudOver( acc, farBandLayer( dir, cosT, rayDx, rayDy, tB ) );'), 'the far band composites behind it');
   assert.ok(layer.includes('acc = cloudOver( acc, cirrusLayer( dir, cosT, rayDx, rayDy ) );'), 'the cirrus (with the trails) last');
   assert.ok(layer.includes('float halo = exp( -hx * hx ) * 0.10;'), 'the 22° halo squares its argument');
-  assert.ok(layer.includes('if (preset) applyCloudWeatherPreset(this.traceMaterial.uniforms, preset);'), 'the storm cells and trails are placed once per preset');
+  assert.ok(layer.includes('if (preset) applyCloudWeatherPreset(this.traceMaterial.uniforms, preset);'), 'the trails are placed once per preset');
   assert.equal(layer.match(/applyCloudWeatherPreset\(/g)?.length, 1, 'never per frame');
   assert.ok(layer.includes('const undim = 1 / Math.max(1e-3, a.skyIntensity);'), 'the summary\'s sky intensity is undone before the composite applies it once');
   assert.ok(layer.includes('...createCloudWeatherUniforms(),'));
@@ -119,11 +101,11 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
     return { lit, peak, dir: flash.clone() };
   };
   const a = run(night, 60);
-  assert.ok(a.lit > 10 && a.lit < 60 * 60 * 0.1, `strikes light the night storm a few times a minute (${a.lit} lit frames)`);
+  assert.ok(a.lit > 10 && a.lit < 60 * 60 * 0.1, `strikes light the night front a few times a minute (${a.lit} lit frames)`);
   assert.ok(a.peak > 0.3 && a.peak <= 1.0, 'a stroke peaks under the composite\'s ceiling');
-  assert.ok(Math.abs(Math.hypot(a.dir.x, a.dir.y, a.dir.z) - 1) < 1e-6 && a.dir.y > -0.2, 'a unit direction toward a cell, over the horizon');
+  assert.ok(Math.abs(Math.hypot(a.dir.x, a.dir.y, a.dir.z) - 1) < 1e-6 && a.dir.y > -0.2, 'a unit direction toward a tower, over the horizon');
   assert.equal(run(day, 60).lit, 0, 'no lightning by day');
-  assert.equal(run({ ...night, storms: 0, anvil: 0 }, 60).lit, 0, 'no lightning without a storm');
+  assert.equal(run({ ...night, anvil: 0 }, 60).lit, 0, 'no lightning without a front');
   layer.dispose();
   const layerSrc = here('./volumetricClouds.ts');
   assert.ok(layerSrc.includes('uniform vec4 uFlash;') && layerSrc.includes('this.updateLightning(preset, step);'), 'the flash is drawn in the composite at the frame rate');
@@ -136,7 +118,7 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   // (2026-10-02: a capture zeroes the drifts; the positive modulo jumped a whole wrap on the next frame — a seam for the
   // boiling noise, whose vertical period follows the slab's thickness — and every captured cloud ghosted)
   assert.ok(!/% (CLOUD_[A-Z_]+_M|wrap) \+ (CLOUD_[A-Z_]+_M|wrap)\)/.test(layerSrc), 'no drift wraps by a positive modulo');
-  assert.equal(layerSrc.match(/= wrapDrift\(/g)?.length, 10, 'the weather, noise (with the boil), cirrus, mid and upper drifts run through zero');
+  assert.equal(layerSrc.match(/= wrapDrift\(/g)?.length, 8, 'the weather, noise (with the boil), cirrus and upper drifts run through zero');
 }
 
 // ---- every path that shows a map's sky carries its cloudscape (the battle's getAuthoredPreset, and the world activation's
@@ -176,8 +158,8 @@ const skyOf = (id, time = 'day') => {
     assert.deepEqual([n.coverage, n.thicknessM, n.towers], [d.coverage, d.thicknessM, d.towers], `${regime} is not diurnal`);
   }
   // a map's own knobs for its time win over the law; an authored constant sky opts out
-  const own = deriveCloudLayerPreset({ ...skyOf('verdant', 'sunset'), cloudscape: { ...scape, sunset: { mid: 'altocumulus', midCoverage: 0.5, coverage: 0.2 } } });
-  assert.deepEqual([own.midKind, own.midCoverage, own.coverage], [CLOUD_MID_KINDS.indexOf('altocumulus'), 0.5, 0.2]);
+  const own = deriveCloudLayerPreset({ ...skyOf('verdant', 'sunset'), cloudscape: { ...scape, sunset: { contrails: 0.5, coverage: 0.2 } } });
+  assert.deepEqual([own.contrails, own.coverage], [3, 0.2]);
   const constant = deriveCloudLayerPreset({ ...skyOf('verdant', 'night'), cloudscape: { ...scape, diurnal: false } });
   assert.equal(constant.coverage, day.coverage, 'diurnal: false keeps the day\'s cloud');
   // the evening keeps the preset's warm deck tint (the captures without it: grey-white front-lit cumulus at sunset)
@@ -198,28 +180,13 @@ const skyOf = (id, time = 'day') => {
   assert.notEqual(cloudLayerKey(day), cloudLayerKey(dusk), 'the time re-keys the history');
 }
 {
-  // the mid layer's kinds and the regime rows' weather defaults
-  assert.deepEqual([...CLOUD_MID_KINDS], ['none', 'altocumulus', 'altostratus', 'cirrocumulus', 'lenticular']);
-  for (const kind of CLOUD_MID_KINDS) assert.ok(CLOUD_MID_DEFAULTS[kind], kind);
-  assert.ok(CLOUD_MID_DEFAULTS.cirrocumulus.altM > CLOUD_MID_DEFAULTS.altocumulus.altM && CLOUD_MID_DEFAULTS.cirrocumulus.cellM < CLOUD_MID_DEFAULTS.altocumulus.cellM, 'cirrocumulus: finer and higher');
-  for (const [name, row] of Object.entries(CLOUDSCAPE_REGIMES)) {
-    assert.ok(CLOUD_MID_KINDS.includes(row.mid) && row.storms >= 0 && row.storms <= CLOUD_STORM_MAX && row.rain >= 0 && row.rain <= 1 && row.virga >= 0 && row.virga <= 1, name);
-  }
+  // the regime rows' weather defaults
+  for (const [name, row] of Object.entries(CLOUDSCAPE_REGIMES)) assert.ok(row.rain >= 0 && row.rain <= 1 && row.virga >= 0 && row.virga <= 1, name);
   assert.ok(CLOUDSCAPE_REGIMES['cumulonimbus-front'].rain > 0.5, 'a front brings rain');
-  // (2026-10-02, the second lab: the distant cells read as mushroom clouds — a narrow stem under a round flat cap — on
-  // the open horizons of Redrock, the Delta, Mangrove and the Steppe, and lit by a night strike as an explosion; no
-  // regime or map raises them until the tower and the anvil are rebuilt; the mid layer likewise, from the first lab)
-  for (const [name, row] of Object.entries(CLOUDSCAPE_REGIMES)) assert.ok(row.storms === 0 && row.mid === 'none', `${name}: no storm cells, no mid layer`);
-  for (const id of MAP_IDS) {
-    const c = getMapConfig(id).clouds ?? {};
-    assert.ok(!c.storms && !c.mid && !c.sunset?.mid && !c.night?.mid, `${id}: no storm cells, no mid layer`);
-  }
   assert.ok(CLOUDSCAPE_REGIMES['cumulus-humilis'].virga > 0.5, 'dry-air cumulus hangs virga');
-  const mid = deriveCloudLayerPreset({ ...skyOf('verdant'), cloudscape: { regime: 'fair-weather-cumulus', mid: 'altocumulus' } });
-  assert.ok(mid.midAltM >= mid.baseM + mid.thicknessM + 300, 'the mid layer stands clear over the slab');
   // a sky block alone (the Garage) has no weather beyond its slab
   const legacy = deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...getMapConfig('verdant').sky });
-  assert.deepEqual([legacy.midKind, legacy.contrails, legacy.storms, legacy.rain, legacy.fogBank, ...legacy.groundGlow], [0, 0, 0, 0, 0, 0, 0, 0]);
+  assert.deepEqual([legacy.contrails, legacy.rain, legacy.fogBank, ...legacy.groundGlow], [0, 0, 0, 0, 0, 0]);
 }
 {
   // every shipped map resolves at all three times with finite numbers
@@ -234,4 +201,4 @@ const skyOf = (id, time = 'day') => {
     }
   }
 }
-console.log('cloudWeatherLayers.selftest: contrail and storm placement, uniform packing, the gated GLSL, the layered composite, the time of day (diurnal law, per-time knobs, moonlit albedo, key hue, ground glow) pinned');
+console.log('cloudWeatherLayers.selftest: contrail placement, uniform packing, the gated GLSL, the layered composite, the time of day (diurnal law, per-time knobs, moonlit albedo, key hue, ground glow) pinned');

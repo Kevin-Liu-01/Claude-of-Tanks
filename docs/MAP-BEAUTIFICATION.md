@@ -6108,26 +6108,16 @@ the moon reached them once, and the night preset's dark blue `cloudTintHex` (a c
 their albedo.
 
 **The layered sky (placed by `src/engine/cloudWeatherLayers.ts`, written in the slab's trace program so the build's GLSL minifier strips its comments with the program's, lit by the same atmosphere).**
-- *Mid-level layer* — altocumulus elements ranked in rows across the upper wind (a mackerel sky), an altostratus veil,
-  cirrocumulus ripples, altocumulus lenticularis standing still over the ranges — as a 2.5D sheet: an element's
-  thickness from the shape volume's billow octaves on a slowly turning slice (the elements form and fade as they
-  drift), patches of the layer gated by the broad field at twice the weather tile, the light reaching an element
-  through its own upper half and the elements toward the sun (a low sun lights one flank of each and leaves the other
-  in its neighbour's shade), the slab's multiple-scattering octaves and dual-lobe phase, the slant haze of the cirrus;
-  the elements fade to their mean where the trace texel's footprint passes them (no moiré at the horizon).
 - *Contrails* — fresh lines of two merging plumes at the head that spread into contrail cirrus toward the tail (the
   width 22 m → 1.5 km with age, the optical depth falling with √width), breaking into fibres when old, drifting with
   the upper wind, deterministic per map (two trails often share an airway).
-- *Distant cumulonimbus* — up to three cells 21–32 km out in a sector (by default opposite the sun: front-lit towers
-  over shaded bases), each a tower with a billowed outline and a head narrowing into an anvil spread downwind under the
-  tropopause; the sun's path out of the cell found analytically (lit flanks and tops, a dark base), the boundary
-  layer's haze on the base and not on the head; a rain shaft under each core, leaning with the wind and streaked.
 - *Rain shafts and virga* under the slab's own precipitating cores (the cumuliform coverage, the vigour and the
   anvil / precipitation field), between the camera and the base along the horizon rays: the columns lean a third of a
   metre per metre of fall, streak with the detail volume, and evaporate partway down under a dry base (virga).
 - *A sea fog bank* lying on the horizon (banks with gaps, a lumpy top, white in the sun), in front of the slab.
-- *Lightning* in a night storm, drawn in the composite at the frame rate (the history refreshes a sixteenth of its
-  texels a frame and would smear a flash): a strike every 4–16 s in a cell, one to three return strokes.
+- *Lightning* in a night front, drawn in the composite at the frame rate (the history refreshes a sixteenth of its
+  texels a frame and would smear a flash): a strike every 4–16 s in a tower off in the wind's sector, one to three
+  return strokes.
 
 **The slab.** The cumulus shape is main's (83b0c0b62, "break up cylindrical cloud silhouettes": the warped unequal
 weather lobes, shear from the base, the silhouette-scale curl, billows kept through the body), verified there on
@@ -6156,7 +6146,7 @@ thickness): the settled history blended two fields and every captured cloud of t
 inside (−w, w), continuous through zero; the boil wraps at 600 km (238 hours at 0.7 m/s).
 
 **The labs (2026-10-02; `$SP/p2/clouds/lab1`, `lab2`: preset variants laid over the live layer, one boot per map).**
-Withdrawn until rebuilt, wired and gated (one branch each): the mid layer — its 2.5D sheet read as white pancakes
+Removed (2026-10-02; the first cut is in 31c46bfa8 for a rebuild): the mid layer — its 2.5D sheet read as white pancakes
 (altostratus; thinner, wider and softer variants smeared), dozens of small discs (lenticular) and dark specks at
 sunset (altocumulus) — and the distant cumulonimbus, whose narrow tower under a round flat anvil read as a mushroom
 cloud on every open horizon (Redrock, the Delta, Mangrove, the Steppe) and, lit by a night strike, as an explosion.
@@ -6171,8 +6161,7 @@ moonlight's hue (the night key light at luminance one) lights the clouds, and a 
 white over the station and the airfield).
 
 **Per map** (`clouds` blocks; the regime row fills the rest — towering cumulus and the fronts bring rain, dry-air
-cumulus its virga). The night column is the diurnal law's cover and the town glow. The mid layer and the distant storm
-cells are wired and gated but raised by no regime or map (the labs of 2026-10-02 below):
+cumulus its virga). The night column is the diurnal law's cover and the town glow:
 
 | map | slab (day) | weather | night |
 |---|---|---|---|

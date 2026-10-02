@@ -35,13 +35,11 @@
  * `scene.userData.volumetricClouds.beforeSceneRender(...)` at the top of its frame transaction.
  *
  * 2026-10-01 (the clouds-and-skyboxes lane): the layered sky. The same trace draws the weather beyond the slab
- * (cloudWeatherLayers.ts) — a fog bank lying on the sea and rain shafts / virga under the base in front of the slab;
- * the distant storm cells, the far band and a mid-level layer (altocumulus, altostratus, cirrocumulus, lenticular)
- * behind it, sorted by distance; the cirrus sheet with contrails last — and the composite adds lightning in a night
- * storm. A deck's underside mottles with its
- * rolls, the noise boils, the cirrus comes in patches; the sky light reaches the clouds dimmed once (the summary's sky
- * intensity undone), the moonlight's hue lights them at night and a town's glow rides on the bases; a camera in or
- * over a low deck sees the cloud in front of the terrain.
+ * (cloudWeatherLayers.ts) — a fog bank lying on the sea and rain shafts / virga under the base in front of the slab,
+ * the far band behind it, the cirrus sheet with contrails last — and the composite adds lightning in a night front.
+ * A deck's underside mottles with its rolls, the noise boils, the cirrus comes in patches; the sky light reaches the
+ * clouds dimmed once (the summary's sky intensity undone), the moonlight's hue lights them at night and a town's glow
+ * rides on the bases; a camera in or over a low deck sees the cloud in front of the terrain.
  */
 import * as THREE from 'three';
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
@@ -52,8 +50,8 @@ import { CLOUD_BLUE_SIZE, CLOUD_CURL_SIZE, CLOUD_DETAIL_SIZE, CLOUD_SHAPE_SIZE, 
 import { cloudLayerKey, type CloudLayerPreset } from './cloudPresets.ts';
 import { resolvePresetName } from './quality.ts';
 import {
-  CLOUD_CONTRAIL_MAX, CLOUD_FOGBANK_RANGE_M, CLOUD_RAIN_EXTINCTION, CLOUD_RAIN_RANGE_M, CLOUD_RAIN_SAMPLES, CLOUD_STORM_MAX,
-  CLOUD_STORM_SHAPE_TILE_M, applyCloudWeatherPreset, createCloudWeatherUniforms,
+  CLOUD_CONTRAIL_MAX, CLOUD_FOGBANK_RANGE_M, CLOUD_RAIN_RANGE_M, CLOUD_RAIN_SAMPLES,
+  applyCloudWeatherPreset, createCloudWeatherUniforms,
 } from './cloudWeatherLayers.ts';
 
 /** History resolution relative to the scene target; the trace target is a quarter of the history each way. */
@@ -108,7 +106,7 @@ const CLOUD_FLASH_STRENGTH = 0.9;
 const CIRRUS_WARP_M = 2600;
 /** 2026-10-01: the convective boil — the shape and detail noise rise through a cumulus at this rate (m/s). */
 const CLOUD_BOIL_M_PER_S = 0.7;
-/** 2026-10-01: the upper drifts (the mid layer, the trails) wrap here (m): whole tiles of every field they read. */
+/** 2026-10-01: the trails' upper drift and the boil wrap here (m): whole tiles of every field they read. */
 const CLOUD_UPPER_WRAP_M = 600000;
 /**
  * A drift kept inside (-w, w) (2026-10-02): continuous through zero and a whole wrap at +-w. The positive modulo it
@@ -117,8 +115,6 @@ const CLOUD_UPPER_WRAP_M = 600000;
  * noise (its vertical period follows the slab's thickness) ghosted every captured cloud.
  */
 const wrapDrift = (v: number, w: number): number => (v >= w ? v - w : v <= -w ? v + w : v);
-/** 2026-10-01: the mid layer's elements evolve on a slice of the shape volume turning this far per second (a cycle in ~14 min). */
-const CLOUD_MID_EVOLVE_PER_S = 0.0012;
 /**
  * 2026-10-01: the ground's light on the cloud bases at night — the preset's glow (linear, already scaled by the night
  * amount) joins the base ambient at this strength in the trace's units (the night bottom ambient is ~0.06 there).
@@ -572,109 +568,16 @@ vec3 cloudHaze( vec3 L, float opacity, float dist, vec3 dir, float hAtt ) {
 	vec3 skyDir = normalize( vec3( dir.x, max( dir.y, 0.02 ), dir.z ) );
 	return mix( L, atmoSkyVisible( skyDir ) * opacity, fs );
 }
-// ---- the weather layers (2026-10-01): the mid layer, the contrails, the distant storm cells, the rain and virga, the
-// sea fog bank — cloudWeatherLayers.ts places the trails and the cells and packs these uniforms
-uniform vec4 uMid;
-uniform vec4 uMidShape;
-uniform vec2 uMidShift;
-uniform vec2 uMidDir;
+// ---- the weather layers (2026-10-01): the contrails, the rain and virga, the sea fog bank — cloudWeatherLayers.ts
+// places the trails and packs these uniforms
 uniform vec4 uContrailA[ ${CLOUD_CONTRAIL_MAX} ];
 uniform vec4 uContrailB[ ${CLOUD_CONTRAIL_MAX} ];
 uniform float uContrails;
 uniform vec2 uUpperDrift;
-uniform vec4 uStormA[ ${CLOUD_STORM_MAX} ];
-uniform vec4 uStormB[ ${CLOUD_STORM_MAX} ];
-uniform float uStorms;
 uniform vec4 uRain;
 uniform vec4 uFogBank;
 // a in front of b (premultiplied radiance, transmittance)
 vec4 cloudOver( vec4 a, vec4 b ) { return vec4( a.rgb + a.a * b.rgb, a.a * b.a ); }
-// ---- the mid layer: the thickness (m) of the sheet at a world xz; foot = the trace texel's footprint on it (m)
-float midThickness( vec2 xz, float foot ) {
-	// (a lenticular stands still over the ranges — a standing wave's crest — the other kinds ride the upper wind)
-	vec2 q = uMidShape.z > 3.5 ? xz : xz + uMidShift;
-	// patches of the layer with clear sky between: the broad stratiform field at twice the weather tile
-	float patchF = textureLod( tWeather, q / ${f(CLOUD_WEATHER_TILE_M * 2)} + vec2( 0.31, 0.67 ), 0.0 ).b;
-	// (2026-10-02: an altostratus veil fades over a wide margin — its 0.2 margin drew hard-rimmed white pancakes)
-	float gsoft = uMidShape.z > 1.5 && uMidShape.z < 2.5 ? 0.5 : 0.2;
-	float gate = smoothstep( 1.0 - uMid.x, 1.0 - uMid.x + gsoft, patchF );
-	if ( gate <= 0.0 ) return 0.0;
-	float cell = uMidShape.x;
-	// the element frame: x along the upper wind, the rows run across it
-	vec2 r = vec2( dot( q, uMidDir ), dot( q, vec2( -uMidDir.y, uMidDir.x ) ) );
-	float period = cell * 4.0;
-	// the shape volume's billow octaves on a slowly evolving slice: the elements form and fade as they drift; an
-	// element is a little longer along its row than across it
-	vec4 s = texture( tShape, vec3( r.x / period, uMidShape.w, r.y / ( period * mix( 1.0, 1.35, uMidShape.y ) ) ) );
-	float fine = 1.0 - smoothstep( cell * 0.3, cell * 1.4, foot );
-	float e;
-	float thr, soft;
-	if ( uMidShape.z > 1.5 && uMidShape.z < 2.5 ) {
-		// altostratus: a grey fibrous veil, mottled by the shape's low octave, thinning at its patches' edges
-		e = mix( 0.7, s.r, 0.5 ) * mix( 1.0, s.g * 0.5 + 0.75, 0.4 );
-		thr = 0.28; soft = 0.42;
-	} else if ( uMidShape.z > 3.5 ) {
-		// lenticular: smooth lenses long across the wind (the standing wave's crests), sharp-rimmed, never crinkled
-		vec4 sl = texture( tShape, vec3( r.x / period, uMidShape.w, r.y / ( period * 2.6 ) ) );
-		e = sl.g * 0.85 + sl.r * 0.15;
-		// a domed lens (thick at its middle, thin at the rim) rather than a plateau
-		return uMid.z * pow( clamp( ( e - 0.6 ) / 0.3, 0.0, 1.0 ), 0.6 ) * gate;
-	} else {
-		e = s.g * 0.62 + s.b * 0.38;
-		// rows: a wandering sinusoid along the wind, the elements strung on it
-		float rows = 0.5 + 0.5 * sin( 6.2831853 * r.x / ( cell * 2.4 ) + ( s.r - 0.5 ) * 2.4 );
-		e *= mix( 1.0, 0.4 + 0.6 * smoothstep( 0.15, 0.85, rows ), uMidShape.y );
-		// the edges crinkle with the detail volume while the footprint resolves them
-		if ( fine > 0.0 ) {
-			// (the slice turns three whole tiles per cycle: seamless when the phase wraps)
-			float dn = texture( tDetail, vec3( r.x / ( cell * 1.3 ), uMidShape.w * 3.0, r.y / ( cell * 1.3 ) ) ).r;
-			e -= ( 1.0 - dn ) * 0.2 * fine;
-		}
-		// a footprint past the elements sees their mean: a thin veil, never a moire
-		e = mix( 0.43, e, fine * 0.85 + 0.15 );
-		thr = 0.46; soft = 0.16 + 0.24 * ( 1.0 - fine );
-	}
-	return uMid.z * smoothstep( thr, thr + soft, e ) * gate;
-}
-// the mid layer along a ray: (premultiplied radiance, transmittance); tLayer = its distance (the ordering)
-vec4 midLayer( vec3 dir, float cosT, vec3 rayDx, vec3 rayDy, out float tLayer ) {
-	tLayer = 1e9;
-	if ( uMid.x <= 0.0 || dir.y < 0.012 ) return vec4( 0.0, 0.0, 0.0, 1.0 );
-	float tm = ( uMid.y - uCamPos.y ) / dir.y;
-	if ( tm <= 0.0 ) return vec4( 0.0, 0.0, 0.0, 1.0 );
-	float horiz = tm * length( dir.xz );
-	if ( horiz > 60000.0 ) return vec4( 0.0, 0.0, 0.0, 1.0 );
-	tLayer = tm;
-	vec3 pm = uCamPos + dir * tm;
-	vec2 gx = cloudSheetGradient( dir, rayDx, uMid.y - uCamPos.y ), gy = cloudSheetGradient( dir, rayDy, uMid.y - uCamPos.y );
-	// (the history pixel's footprint: a trace texel spans four of them, each refreshed by its own jittered sample)
-	float foot = max( length( gx ), length( gy ) ) * 0.4;
-	float h = midThickness( pm.xz, foot );
-	if ( h <= 1.0 ) return vec4( 0.0, 0.0, 0.0, 1.0 );
-	float sig = uMid.w;
-	float tauV = sig * h / max( dir.y, 0.08 );
-	// the light's path: the element's own upper half and the elements standing toward the sun (a low sun lights one
-	// flank of each element and leaves the other in its neighbour's shade)
-	vec2 toSun = uSunDir.xz / max( uSunDir.y, 0.1 );
-	float hs = midThickness( pm.xz + toSun * h * 0.6, foot );
-	// (a low sun enters an element from its side: the path is capped at the element's width, never the slant through
-	// a sheet that is not there — the sunset's lit flanks)
-	float tauS = sig * min( ( 0.5 * h + 0.5 * hs ) / max( uSunDir.y, 0.1 ), uMidShape.x * 1.2 + h );
-	float sunT = phaseDual( cosT, 0.8 ) * exp( -tauS ) + phaseDual( cosT, 0.4 ) * 0.5 * exp( -tauS * 0.5 ) + phaseDual( cosT, 0.2 ) * 0.25 * exp( -tauS * 0.25 );
-	// the diffused light of a lit sheet (a white diffuser's skin decaying into it) and the sky above and below it
-	float diff = 0.55 / ( 1.0 + 0.2 * tauS ) / CL_PI * clamp( uSunDir.y + 0.15, 0.0, 1.0 );
-	vec3 amb = ( uAmbientTop * 0.9 + uAmbientBottom * 0.45 ) * uAmbientScale;
-	vec3 S = ( uSunRadiance * ( sunT + diff ) * uSunGain + amb ) * uTint;
-	float T = exp( -tauV );
-	vec3 L = S * ( 1.0 - T );
-	// aerial: the slant through the boundary layer's haze (a sheet overhead stays clear, one at the horizon melts)
-	float distH = tm * clamp( ${f(CLOUD_AERIAL.cirrusHazeScaleM)} / max( uMid.y - uCamPos.y, 100.0 ), 0.0, 1.0 );
-	// (the slab's altitude rule: a layer kilometres up stands over the boundary layer's haze until the far ramp)
-	float hAttM = exp( -max( uMid.y - uCamPos.y - 30.0, 0.0 ) / 150.0 );
-	L = cloudHaze( L, 1.0 - T, distH, dir, hAttM );
-	float fade = 1.0 - smoothstep( 32000.0, 60000.0, horiz );
-	return vec4( L * fade, mix( 1.0, T, fade ) );
-}
 // ---- contrails: the optical depth of the trails at a world xz on the cirrus sheet (foot = the texel's footprint, m)
 float contrailDepth( vec2 xz, float foot ) {
 	float tau = 0.0;
@@ -705,118 +608,6 @@ float contrailDepth( vec2 xz, float foot ) {
 		tau += prof * peak * ends;
 	}
 	return tau;
-}
-// ---- distant storm cells: a vertical cylinder's span along a ray (tIn > tOut when missed)
-vec2 cloudCylinderSpan( vec3 o, vec3 d, vec2 c, float R, float y0, float y1 ) {
-	vec2 oc = o.xz - c;
-	float a = dot( d.xz, d.xz );
-	float b = dot( oc, d.xz );
-	float k = dot( oc, oc ) - R * R;
-	float disc = b * b - a * k;
-	if ( disc <= 0.0 || a < 1e-8 ) return vec2( 1.0, -1.0 );
-	float sq = sqrt( disc );
-	vec2 tc = vec2( -b - sq, -b + sq ) / a;
-	float dy = abs( d.y ) < 1e-5 ? 1e-5 : d.y;
-	vec2 ty = vec2( ( y0 - o.y ) / dy, ( y1 - o.y ) / dy );
-	return vec2( max( max( tc.x, min( ty.x, ty.y ) ), 0.0 ), min( tc.y, max( ty.x, ty.y ) ) );
-}
-// the distance from p along the sun until it leaves a vertical cylinder (radius R about c) or the cell's top
-float cloudCylinderExit( vec3 p, vec2 c, float R, float top ) {
-	vec2 oc = p.xz - c;
-	vec2 d = uSunDir.xz;
-	float a = dot( d, d );
-	float tTop = uSunDir.y > 0.02 ? max( top - p.y, 0.0 ) / uSunDir.y : 1e6;
-	if ( a < 1e-6 ) return tTop;
-	float b = dot( oc, d );
-	float k = dot( oc, oc ) - R * R;
-	float disc = max( b * b - a * k, 0.0 );
-	return min( max( ( -b + sqrt( disc ) ) / a, 0.0 ), tTop );
-}
-// storm cell density (0..1) at p; rainD = the shaft's density under the base
-float stormDensity( vec3 p, vec4 A, vec4 B, out float rainD ) {
-	rainD = 0.0;
-	float h = ( p.y - A.w ) / max( B.x - A.w, 1.0 );
-	vec2 rel = p.xz - A.xy;
-	if ( h < 0.0 ) {
-		// the shaft under the core leans downwind as it falls; streaked, thinning toward its edge
-		vec2 rs = rel - uWindDir * ( A.w - p.y ) * 0.35;
-		float q = length( rs ) / ( A.z * 0.72 );
-		if ( q > 1.2 ) return 0.0;
-		float streak = texture( tDetail, vec3( rs.x, p.y * 0.02, rs.y ) / 900.0 ).r;
-		rainD = B.z * ( 1.0 - smoothstep( 0.45, 1.05, q + ( 0.5 - streak ) * 0.5 ) ) * ( 0.55 + 0.6 * streak );
-		return 0.0;
-	}
-	if ( h > 1.0 ) return 0.0;
-	vec4 s = texture( tShape, ( p + uNoiseShift ) / ${f(CLOUD_STORM_SHAPE_TILE_M)} );
-	float bill = s.g * 0.55 + s.b * 0.3 + s.a * 0.15;
-	// the tower: a flat base, a cauliflower outline, a head narrowing into the anvil
-	float coreR = A.z * ( 0.8 + 0.2 * smoothstep( 0.0, 0.2, h ) ) * ( 1.0 - 0.3 * smoothstep( 0.72, 1.0, h ) );
-	float qc = length( rel ) / coreR + ( 0.5 - bill ) * 0.6;
-	// (a hard cauliflower outline: the billows draw it, a kilometre-wide soft margin read as smoke at thirty kilometres)
-	float core = ( 1.0 - smoothstep( 0.8, 1.0, qc ) ) * smoothstep( 0.0, 0.035, h ) * ( 1.0 - smoothstep( 0.95, 1.0, h ) );
-	// the anvil: a flat sheet under the tropopause spreading downwind, smoother than the tower, thinning at its rim
-	vec2 ra = rel - uWindDir * ( B.y - A.z ) * 0.45;
-	float qa = length( ra ) / B.y + ( 0.5 - bill ) * 0.35;
-	float anvil = ( 1.0 - smoothstep( 0.62, 1.0, qa ) ) * smoothstep( 0.76, 0.85, h ) * ( 1.0 - smoothstep( 0.93, 1.0, h ) );
-	return max( core, anvil * mix( 0.55, 1.0, 1.0 - qa ) );
-}
-// the storm cells along a ray: (premultiplied radiance, transmittance); tLayer = the nearest cell's distance
-vec4 stormCells( vec3 dir, float cosT, float jitter, out float tLayer ) {
-	tLayer = 1e9;
-	vec4 acc = vec4( 0.0, 0.0, 0.0, 1.0 );
-	if ( uStorms <= 0.0 || dir.y < -0.03 ) return acc;
-	for ( int k = 0; k < ${CLOUD_STORM_MAX}; k++ ) {
-		if ( float( k ) >= uStorms ) break;
-		vec4 A = uStormA[ k ], B = uStormB[ k ];
-		float shift = ( B.y - A.z ) * 0.45;
-		float R = max( A.z * 1.25, shift + B.y );
-		vec2 span = cloudCylinderSpan( uCamPos, dir, A.xy + uWindDir * shift * 0.5, R + shift * 0.5, 0.0, B.x );
-		if ( span.x >= span.y ) continue;
-		tLayer = min( tLayer, span.x );
-		float ds = ( span.y - span.x ) / 18.0;
-		float t = span.x + ds * jitter;
-		vec3 L = vec3( 0.0 );
-		float T = 1.0, tAcc = 0.0, wAcc = 0.0;
-		for ( int i = 0; i < 18; i++ ) {
-			if ( t > span.y || T < 0.02 ) break;
-			vec3 p = uCamPos + dir * t;
-			float rainD;
-			float d = stormDensity( p, A, B, rainD );
-			if ( d > 0.002 ) {
-				float sig = d * B.w;
-				float h = clamp( ( p.y - A.w ) / max( B.x - A.w, 1.0 ), 0.0, 1.0 );
-				// the sun's path out of the cell (through the tower or the anvil sheet), the multiple-scattering octaves
-				float exitD = h > 0.78 ? cloudCylinderExit( p, A.xy + uWindDir * shift, B.y, B.x ) * 0.45 : cloudCylinderExit( p, A.xy, A.z, B.x );
-				float tauS = B.w * 0.55 * exitD;
-				float sunT = phaseDual( cosT, 0.8 ) * exp( -tauS ) + phaseDual( cosT, 0.4 ) * 0.5 * exp( -tauS * 0.5 ) + phaseDual( cosT, 0.2 ) * 0.25 * exp( -tauS * 0.25 );
-				// the sky lights the tops; the base, under ten kilometres of cloud, sees the lower sky and little of it
-				float up = smoothstep( 0.0, 0.7, h );
-				vec3 amb = ( uAmbientTop * up * 1.1 + uAmbientBottom * ( 1.0 - up ) * 0.7 ) * uAmbientScale;
-				vec3 S = ( uSunRadiance * ( sunT + 0.12 / ( 1.0 + 0.05 * tauS ) ) * uSunGain + amb ) * uTint;
-				float Ts = exp( -sig * ds );
-				float dT = T * ( 1.0 - Ts );
-				L += S * dT; tAcc += t * dT; wAcc += dT;
-				T *= Ts;
-			} else if ( rainD > 0.0 ) {
-				float sig = rainD * ${f(CLOUD_RAIN_EXTINCTION)} * 2.0;
-				vec3 S = ( uAmbientBottom * 1.5 * uAmbientScale + uSunRadiance * phaseHG( cosT, 0.7 ) * 0.12 * uSunGain ) * uTint;
-				float Ts = exp( -sig * ds );
-				float dT = T * ( 1.0 - Ts );
-				L += S * dT; tAcc += t * dT; wAcc += dT;
-				T *= Ts;
-			}
-			t += ds;
-		}
-		if ( wAcc > 1e-4 ) {
-			float dist = tAcc / wAcc;
-			// the boundary layer hazes the base, the tower's head stands over it
-			float y = uCamPos.y + dir.y * dist;
-			float distH = dist * clamp( 2500.0 / max( y - uCamPos.y, 100.0 ), 0.12, 1.0 );
-			L = cloudHaze( L, 1.0 - T, distH, dir, exp( -max( y - uCamPos.y - 30.0, 0.0 ) / 150.0 ) );
-			acc = cloudOver( acc, vec4( L, T ) );
-		}
-	}
-	return acc;
 }
 // ---- rain shafts and virga under the slab's precipitating cores, between the camera and the base
 float cloudPrecip( vec2 pxz ) {
@@ -1171,23 +962,16 @@ void main() {
 		}
 	}
 	// ---- 2026-10-01: the layered sky. In front of the slab along the horizon rays: a fog bank lying on the sea, then
-	// the rain shafts and virga hanging under the base; behind it, nearest first, the distant storm cells, the far
-	// band and the mid layer (sorted by their distances along the ray), then the cirrus sheet with its contrails.
+	// the rain shafts and virga hanging under the base; behind it the far band, then the cirrus sheet with its
+	// contrails.
 	vec4 acc = vec4( L, T );
 	float tRain;
 	vec4 fogL = seaFogBank( dir, jitter );
 	vec4 rainL = slabRain( dir, cosT, jitter, tRain );
 	acc = cloudOver( cloudOver( fogL, rainL ), acc );
 	if ( acc.a > 0.01 ) {
-		float tA, tB, tC;
-		vec4 a = stormCells( dir, cosT, jitter, tA );
-		vec4 b = farBandLayer( dir, cosT, rayDx, rayDy, tB );
-		vec4 c = midLayer( dir, cosT, rayDx, rayDy, tC );
-		// a three-element sorting network on the distances
-		if ( tB < tA ) { vec4 x = a; a = b; b = x; float y = tA; tA = tB; tB = y; }
-		if ( tC < tB ) { vec4 x = b; b = c; c = x; float y = tB; tB = tC; tC = y; }
-		if ( tB < tA ) { vec4 x = a; a = b; b = x; float y = tA; tA = tB; tB = y; }
-		acc = cloudOver( cloudOver( cloudOver( acc, a ), b ), c );
+		float tB;
+		acc = cloudOver( acc, farBandLayer( dir, cosT, rayDx, rayDy, tB ) );
 	}
 	if ( acc.a > 0.01 ) acc = cloudOver( acc, cirrusLayer( dir, cosT, rayDx, rayDy ) );
 	L = acc.rgb;
@@ -1521,9 +1305,7 @@ export class VolumetricCloudLayer {
   private readonly weatherShift = new THREE.Vector2();
   private readonly noiseShift = new THREE.Vector3();
   private readonly cirrusShift = new THREE.Vector2();
-  private readonly midShift = new THREE.Vector2();
   private readonly upperDrift = new THREE.Vector2();
-  private midPhase = 0.37;
   private flashSeed = 0x2f6b4a1d;
   private flashClock = 0;
   private flashNext = 3;
@@ -2000,18 +1782,12 @@ export class VolumetricCloudLayer {
     ns.y = wrapDrift(ns.y - CLOUD_BOIL_M_PER_S * (1 - 0.8 * preset.stratiform) * step, CLOUD_UPPER_WRAP_M);
     const cs = this.cirrusShift;
     cs.x = wrapDrift(cs.x - preset.windSpeed * 2 * step, CLOUD_CIRRUS_TILE_M);
-    // 2026-10-01: the mid layer and the contrails ride the upper wind (the cirrus' veered direction, 1.6 and 2 x the
-    // speed), wrapped where their fields tile; the mid layer's elements evolve on a slowly turning slice
+    // 2026-10-01: the contrails ride the upper wind (the cirrus' veered direction, twice the speed), wrapped at 600 km —
+    // a whole number of the fibres' 30 km tiles and far past any match: the analytic trails never jump while a battle runs
     const ux = Math.cos(preset.cirrusAngleRad), uz = Math.sin(preset.cirrusAngleRad);
-    // (wrapped at 600 km: a whole number of the patch field's 24 km tiles and of the fibres' 30 km tiles, and far past
-    // any match — the elements and the analytic trails never jump while a battle runs)
-    const ms = this.midShift, ud = this.upperDrift;
-    const wrap = CLOUD_UPPER_WRAP_M;
-    ms.x = wrapDrift(ms.x - ux * preset.windSpeed * 1.6 * step, wrap);
-    ms.y = wrapDrift(ms.y - uz * preset.windSpeed * 1.6 * step, wrap);
-    ud.x = wrapDrift(ud.x - ux * preset.windSpeed * 2 * step, wrap);
-    ud.y = wrapDrift(ud.y - uz * preset.windSpeed * 2 * step, wrap);
-    this.midPhase = (this.midPhase + step * CLOUD_MID_EVOLVE_PER_S) % 1;
+    const ud = this.upperDrift;
+    ud.x = wrapDrift(ud.x - ux * preset.windSpeed * 2 * step, CLOUD_UPPER_WRAP_M);
+    ud.y = wrapDrift(ud.y - uz * preset.windSpeed * 2 * step, CLOUD_UPPER_WRAP_M);
     const t = this.traceMaterial.uniforms, g = this.goboMaterial.uniforms;
     const offX = preset.offset[0] * CLOUD_WEATHER_TILE_M, offY = preset.offset[1] * CLOUD_WEATHER_TILE_M;
     // the drift in the wind frame: the streets ride along the wind (the shift projected onto it) plus the map's offset
@@ -2024,11 +1800,9 @@ export class VolumetricCloudLayer {
     (t.uNoiseShift.value as THREE.Vector3).copy(ns);
     (t.uCirrusShift.value as THREE.Vector2).set(cs.x + offX * 1.9, offY * 2.3);
     (t.uFarBandShift.value as THREE.Vector2).set(shift.x * 0.5 + offX * 1.37, shift.y * 0.5 + offY * 0.61);
-    (t.uMidShift.value as THREE.Vector2).set(ms.x + offX * 0.53, ms.y + offY * 1.21);
     // (the trails drift by the upper wind in world space; their placement is relative to the map's origin, never wrapped
     // across their own length — the drift wraps at the cirrus tile, far past the ±26 km the trails span)
     (t.uUpperDrift.value as THREE.Vector2).copy(ud);
-    (t.uMidShape.value as THREE.Vector4).w = this.midPhase;
     this.applyPresetUniforms(preset);
     this.applyAtmosphereUniforms();
     // the low quality preset marches coarser (the same slab, fewer steps); the mobile tier never creates the layer
@@ -2102,7 +1876,7 @@ export class VolumetricCloudLayer {
    */
   private updateLightning(preset: CloudLayerPreset, step: number): void {
     const flash = this.domeMaterial.uniforms.uFlash.value as THREE.Vector4;
-    const stormy = preset.timeOfDay === 'night' && (preset.storms > 0 || preset.anvil >= 0.5);
+    const stormy = preset.timeOfDay === 'night' && preset.anvil >= 0.5;
     if (!stormy) { flash.w = 0; return; }
     const rnd = (): number => { this.flashSeed = (Math.imul(this.flashSeed, 1664525) + 1013904223) >>> 0; return this.flashSeed / 4294967296; };
     this.flashClock += step;
@@ -2112,20 +1886,10 @@ export class VolumetricCloudLayer {
       this.flashAge = 0;
       this.flashStrokes = 1 + Math.floor(rnd() * 3);
       this.flashPeak = CLOUD_FLASH_STRENGTH * (0.5 + 0.5 * rnd());
-      // where: one of the storm cells (a point in its upper body) or, for a front, a tower off toward its sector
-      const cells = this.traceMaterial.uniforms.uStormA.value as THREE.Vector4[];
-      const n = Math.min(preset.storms, cells.length);
+      // where: a tower of the front off in the wind's sector, past its clear radius, in the lower half of its body
       const cam = this.cam.pos;
-      let x: number, y: number, z: number;
-      if (n > 0) {
-        const i = Math.floor(rnd() * n) % n;
-        const c = cells[i];
-        const top = (this.traceMaterial.uniforms.uStormB.value as THREE.Vector4[])[i].x;
-        x = c.x + (rnd() - 0.5) * c.z; z = c.y + (rnd() - 0.5) * c.z; y = c.w + (top - c.w) * (0.25 + 0.4 * rnd());
-      } else {
-        const az = preset.stormAzRad + (rnd() - 0.5) * 2.4, d = preset.clearRadiusM * 1.6 + 6000 * rnd();
-        x = cam.x + Math.cos(az) * d; z = cam.z + Math.sin(az) * d; y = preset.baseM + preset.thicknessM * (0.2 + 0.4 * rnd());
-      }
+      const az = preset.windDirRad + (rnd() - 0.5) * 2.4, d = preset.clearRadiusM * 1.6 + 6000 * rnd();
+      const x = cam.x + Math.cos(az) * d, z = cam.z + Math.sin(az) * d, y = preset.baseM + preset.thicknessM * (0.2 + 0.4 * rnd());
       flash.set(x - cam.x, y - cam.y, z - cam.z, 0).normalize();
     }
     this.flashAge += step;

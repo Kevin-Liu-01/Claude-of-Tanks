@@ -15,8 +15,8 @@
  * `sky.cloudLayer` (a partial `CloudLayerPreset`, null = derived), which wins field by field.
  */
 import type { AtmosphereSkyPresetInput } from './atmosphere.ts';
-import { CLOUDSCAPE_REGIMES, CLOUD_MID_KINDS, type CloudMidKind, type CloudscapeConfig, type CloudscapeRegime } from './cloudscapes.ts';
-import { CLOUD_CONTRAIL_MAX, CLOUD_STORM_MAX } from './cloudWeatherLayers.ts';
+import { CLOUDSCAPE_REGIMES, type CloudscapeConfig, type CloudscapeRegime } from './cloudscapes.ts';
+import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
 
 export type CloudLayerRegime = 'scattered' | 'broken' | 'overcast' | 'storm' | CloudscapeRegime;
 
@@ -84,26 +84,9 @@ export interface CloudLayerPreset {
   interior: number;
   /** 2026-10-01: the time of day the layer was resolved for (cloudTimeOfDay: the diurnal law's input). */
   timeOfDay: CloudTimeOfDay;
-  /**
-   * 2026-10-01: the mid-level layer (cloudWeatherLayers.ts) — its kind (0 none, 1 altocumulus, 2 altostratus,
-   * 3 cirrocumulus, 4 lenticular), the share of the sky's broad patches it fills, its altitude and thickness (m), its element size
-   * (m), its rows across the wind (0..1) and its extinction (1/m).
-   */
-  midKind: number;
-  midCoverage: number;
-  midAltM: number;
-  midThicknessM: number;
-  midCellM: number;
-  midBands: number;
-  midDensity: number;
   /** 2026-10-01: contrails — how many (0..6) and their mean spread (0 fresh, 1 old contrail cirrus). */
   contrails: number;
   contrailAge: number;
-  /** 2026-10-01: distant cumulonimbus cells — how many (0..3), their sector (rad, world XZ like windDirRad), distance and tops (m). */
-  storms: number;
-  stormAzRad: number;
-  stormDistM: number;
-  stormTopM: number;
   /** 2026-10-01: 0..1 rain shafts under the precipitating cores, and the share of their fall that evaporates (virga). */
   rain: number;
   virga: number;
@@ -223,23 +206,9 @@ export const CLOUD_DIURNAL = Object.freeze({
   night: Object.freeze({ coverage: 0.58, towers: 0.25, thickness: 0.62, wispiness: 0.18, rain: 0.5 }),
 });
 
-/** 2026-10-01: the mid layer's kinds as the meteorology sizes them (altitude, thickness and element in metres, extinction per metre). */
-export const CLOUD_MID_DEFAULTS: Readonly<Record<CloudMidKind, { altM: number; thicknessM: number; cellM: number; bands: number; density: number }>> = Object.freeze({
-  none: Object.freeze({ altM: 4200, thicknessM: 300, cellM: 260, bands: 0, density: 0 }),
-  // altocumulus stratiformis: elements 200–400 m at 3–5 km, often in rows across the wind; τ ≈ 4 at an element's core
-  altocumulus: Object.freeze({ altM: 4200, thicknessM: 360, cellM: 280, bands: 0.35, density: 0.011 }),
-  // altostratus: a grey fibrous veil 1–2 km thick at 4–6 km, the sun as through ground glass (τ ≈ 1 overhead; 2026-10-02:
-  // the first captures at τ 2.3 showed opaque white patches, foreshortened into pancakes toward the horizon)
-  altostratus: Object.freeze({ altM: 5200, thicknessM: 900, cellM: 1800, bands: 0, density: 0.0012 }),
-  // cirrocumulus: ripples of ice 50–100 m high up (6.5–8 km), thin (τ ≈ 1)
-  cirrocumulus: Object.freeze({ altM: 7400, thicknessM: 160, cellM: 75, bands: 0.55, density: 0.007 }),
-  // altocumulus lenticularis: smooth stationary lenses a few kilometres long in the lee of the ranges (τ ≈ 3 at the core)
-  lenticular: Object.freeze({ altM: 5400, thicknessM: 520, cellM: 1500, bands: 0, density: 0.0065 }),
-});
-
-/** 2026-10-01: the weather beyond the slab's defaults (contrails, storm cells, the fog bank, the night glow). */
-export const CLOUD_WEATHER_RULES = Object.freeze({
-  stormDistM: 38000, stormTopM: 11000, fogBankTopM: 120,
+/** 2026-10-01: the weather beyond the slab's defaults (the fog bank, the night glow and albedo). */
+const CLOUD_WEATHER_RULES = Object.freeze({
+  fogBankTopM: 120,
   /** the sodium-orange glow of a lit town on the cloud bases (a map authors its own hue) */
   nightGlowHex: 0xff9a52,
   /** the night albedo: a moonlit cloud is a grey-white diffuser — the night preset's dark blue deck tint is a dome colour */
@@ -310,19 +279,15 @@ function deriveLegacy(sky: CloudLayerSkyInput): CloudLayerPreset {
     // round 76 fields at their neutral values: no deck cells, the round-71 floor lighting, no undulatus, no interior octave
     cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0,
     // 2026-10-01 fields at their neutral values: no weather beyond the slab, a white key light, no ground glow
-    ...neutralWeather(baseM + thicknessM, cloudTimeOfDay(sky)),
+    ...neutralWeather(cloudTimeOfDay(sky)),
   };
 }
 
 /** The 2026-10-01 fields at their neutral values (a sky block alone, the Garage). */
-function neutralWeather(slabTopM: number, timeOfDay: CloudTimeOfDay): Pick<CloudLayerPreset,
-  'timeOfDay' | 'midKind' | 'midCoverage' | 'midAltM' | 'midThicknessM' | 'midCellM' | 'midBands' | 'midDensity' | 'contrails' | 'contrailAge'
-  | 'storms' | 'stormAzRad' | 'stormDistM' | 'stormTopM' | 'rain' | 'virga' | 'fogBank' | 'fogBankTopM' | 'groundGlow' | 'keyTint'> {
-  const mid = CLOUD_MID_DEFAULTS.none;
+function neutralWeather(timeOfDay: CloudTimeOfDay): Pick<CloudLayerPreset,
+  'timeOfDay' | 'contrails' | 'contrailAge' | 'rain' | 'virga' | 'fogBank' | 'fogBankTopM' | 'groundGlow' | 'keyTint'> {
   return {
-    timeOfDay, midKind: 0, midCoverage: 0, midAltM: Math.max(mid.altM, slabTopM + 300), midThicknessM: mid.thicknessM, midCellM: mid.cellM,
-    midBands: 0, midDensity: 0, contrails: 0, contrailAge: 0.5, storms: 0, stormAzRad: 0, stormDistM: CLOUD_WEATHER_RULES.stormDistM,
-    stormTopM: CLOUD_WEATHER_RULES.stormTopM, rain: 0, virga: 0, fogBank: 0, fogBankTopM: CLOUD_WEATHER_RULES.fogBankTopM,
+    timeOfDay, contrails: 0, contrailAge: 0.5, rain: 0, virga: 0, fogBank: 0, fogBankTopM: CLOUD_WEATHER_RULES.fogBankTopM,
     groundGlow: [0, 0, 0], keyTint: [1, 1, 1],
   };
 }
@@ -413,35 +378,17 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     deckLight: clamp(pick('deckLight'), 0, 1),
     undulatus: clamp(pick('undulatus'), 0, 1),
     interior: clamp(pick('interior'), 0, 1),
-    ...resolveWeather(sky, scape, row, baseM + thicknessM),
+    ...resolveWeather(sky, scape, row),
   };
 }
 
 /** 2026-10-01: the weather beyond the slab and the time's light from the regime's row and the map's block. */
-function resolveWeather(sky: CloudLayerSkyInput, scape: CloudscapeConfig, row: (typeof CLOUDSCAPE_REGIMES)[CloudscapeRegime] | null,
-  slabTopM: number): ReturnType<typeof neutralWeather> {
+function resolveWeather(sky: CloudLayerSkyInput, scape: CloudscapeConfig, row: (typeof CLOUDSCAPE_REGIMES)[CloudscapeRegime] | null): ReturnType<typeof neutralWeather> {
   const W = CLOUD_WEATHER_RULES;
   const timeOfDay = scapeTime(sky, scape);
-  const out = neutralWeather(slabTopM, timeOfDay);
-  const kindName: CloudMidKind = scape.mid ?? row?.mid ?? 'none';
-  const kind = Math.max(0, CLOUD_MID_KINDS.indexOf(kindName));
-  const mid = CLOUD_MID_DEFAULTS[CLOUD_MID_KINDS[kind]];
-  out.midKind = kind;
-  out.midCoverage = kind ? clamp(scape.midCoverage ?? row?.midCoverage ?? 0.4, 0, 1) : 0;
-  // the layer stands clear over the slab's tops (a front's anvils excepted: they reach the cirrus)
-  out.midAltM = Math.max(scape.midAltM ?? mid.altM, slabTopM + 300 + (scape.midThicknessM ?? mid.thicknessM) * 0.5);
-  out.midThicknessM = Math.max(40, scape.midThicknessM ?? mid.thicknessM);
-  out.midCellM = Math.max(30, scape.midCellM ?? mid.cellM);
-  out.midBands = clamp(scape.midBands ?? mid.bands, 0, 1);
-  out.midDensity = mid.density;
+  const out = neutralWeather(timeOfDay);
   out.contrails = Math.round(clamp(scape.contrails ?? 0, 0, 1) * CLOUD_CONTRAIL_MAX);
   out.contrailAge = clamp(scape.contrailAge ?? 0.5, 0, 1);
-  out.storms = Math.round(clamp(scape.storms ?? row?.storms ?? 0, 0, CLOUD_STORM_MAX));
-  // a storm stands by default in the sector opposite the sun: front-lit towers over a shaded base (the sun's XZ angle
-  // in the wind convention is 90° − azimuth: sky.ts places the sun with setFromSphericalCoords)
-  out.stormAzRad = degToRad(scape.stormAzDeg ?? (270 - sky.sunAzimuthDeg));
-  out.stormDistM = Math.max(9000, scape.stormDistM ?? W.stormDistM);
-  out.stormTopM = Math.max(slabTopM + 1500, scape.stormTopM ?? W.stormTopM);
   out.rain = clamp(scape.rain ?? row?.rain ?? 0, 0, 1);
   out.virga = clamp(scape.virga ?? row?.virga ?? 0, 0, 1);
   out.fogBank = clamp(scape.fogBank ?? 0, 0, 1);
@@ -501,7 +448,6 @@ export function cloudLayerKey(p: CloudLayerPreset): string {
     p.windDirRad, p.windSpeed, ...p.offset, p.clearRadiusM, p.shadow ? 1 : 0, p.shadowThreshold,
     ...p.typeRange, p.anvil, p.wispiness, p.shearM, p.streets, p.cirrus, p.cirrusAngleRad, p.cirrusAltM, p.cirrusDensity,
     p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud, p.cells, p.cellM, p.deckLight, p.undulatus, p.interior,
-    p.timeOfDay, p.midKind, p.midCoverage, p.midAltM, p.midThicknessM, p.midCellM, p.midBands, p.midDensity, p.contrails, p.contrailAge,
-    p.storms, p.stormAzRad, p.stormDistM, p.stormTopM, p.rain, p.virga, p.fogBank, p.fogBankTopM, ...p.groundGlow, ...p.keyTint,
+    p.timeOfDay, p.contrails, p.contrailAge, p.rain, p.virga, p.fogBank, p.fogBankTopM, ...p.groundGlow, ...p.keyTint,
   ].map((v) => (typeof v === 'number' ? v.toFixed(5) : v)).join(',');
 }
