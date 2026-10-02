@@ -304,6 +304,8 @@ export default {
     cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0xa39f98,
     cloudAltM: 300, cloudHazeK: 0.00013, cloudUvM: 2200,
     sunIntensity: 1.35, sunColorHex: 0xd9dad6, hemiIntensity: 0.85,
+    // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
+    lighting: { groundAlbedoHex: 0x736f69 },
   },
 
   minimap: {

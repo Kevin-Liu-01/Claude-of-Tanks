@@ -116,6 +116,14 @@ assert.match(lighting, /csm\.setupMaterial\(mat\);\s*\{[^}]*const csmHook = mat\
 assert.equal((lighting.match(/csm\.setupMaterial\(/g) || []).length, 1, 'setupShadowMaterial is the only registration path');
 assert.match(lighting, /lightRig\.fillDir\.copy\(fill\.position\)\.normalize\(\);\s*applyGroundBounce\(\);/, 'applied once the rig exists');
 assert.match(lighting, /lightRig\.sunIntensity = intensity;\s*lightRig\.sunColor\.setHex\(colorHex\);[\s\S]{0,400}applyGroundBounce\(\);\s*shadowFitCache\.invalidate\(\);/, 'and again in setSun, before the cascades refit');
-assert.match(lighting, /groundTone: hemi\.groundColor, hemiGround: hemi\.groundColor,/, 'the ground tone is the rig\'s own ground pole (no terrain sampler)');
+// 2026-10-01 (the grounded light model, lightModel.ts): on the physically based sky the ground tone is the model's
+// albedo and the pole the bounce subtracts is what the sky light already gives a face turned down (the environment's
+// shaded ground + the deck's reflection), applied at full gain; the legacy rig keeps its own ground pole. Neither
+// samples the terrain.
+assert.match(lighting, /groundTone: model \? groundTone : hemi\.groundColor,\s*hemiGround: model \? groundPole : hemi\.groundColor, hemiIntensity: model \? 1 : hemi\.intensity,/,
+  'the ground tone is the model\'s albedo on the grounded rig, the rig\'s own ground pole on the legacy one (no terrain sampler)');
+assert.match(lighting, /groundBounceUniforms\.uCotSkyDiffuse\.value = model\.envDiffuseGain;/, 'the sky\'s diffuse gain rides the same uniforms');
+assert.ok(GROUND_BOUNCE_GLSL_TERM.startsWith('\n\tiblIrradiance *= uCotSkyDiffuse;\n'), 'the diffuse gain scales the environment before the bounce adds the ground');
+assert.ok(GROUND_BOUNCE_GLSL_PARS.includes('uniform float uCotSkyDiffuse;'));
 
 console.log('groundBounce.selftest: view-factor conservation, ground-lit and receiver laws, energy bounds, rig mapping, GLSL literals and the lighting hook pinned');

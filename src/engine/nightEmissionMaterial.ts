@@ -6,8 +6,10 @@ export const NIGHT_EMISSION_ATTRIBUTE = 'nightEmissionMask';
 export const NIGHT_HEADLIGHT_COLOR = 0xffe2ad;
 export const NIGHT_SHTORA_COLOR = 0xff3020;
 // Saturated red driven at the shared white-lamp radiance (3) turns amber
-// through ACES' channel mixing. Keep only the added red-aperture radiance
-// below that shoulder; authored day emission and warm lamps stay unchanged.
+// through ACES' channel mixing and washes to a pale pink along AgX's path to
+// white (the production curve since 2026-10-01). Keep only the added
+// red-aperture radiance below that shoulder; authored day emission and warm
+// lamps stay unchanged.
 const RED_EMISSION_GAIN = .2;
 const BASE_EMISSION = new WeakMap<THREE.MeshStandardMaterial, THREE.Color>();
 
