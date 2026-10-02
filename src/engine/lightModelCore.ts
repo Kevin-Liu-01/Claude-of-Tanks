@@ -2,9 +2,10 @@
  * lightModelCore.ts — the boot half of the light model (2026-10-02, the boot-weight pass): its types, the authored
  * (legacy) rig that the Garage's enclosed bay, the Preetham tier and a galaxy sky keep, the QA tuning hook, and the
  * hand-off to the grounded model (lightModel.ts). The grounded model (the atmosphere integral, the derived sun, the
- * exposure law) lights only an open sky, so it loads behind the battle entry: the battle atmosphere runtime and the
- * capture staging import it, and it installs itself here. Until it is installed every resolve is the authored rig, which
- * is exactly the light of every presentation that never loads it. No DOM, no WebGL.
+ * exposure law) lights only an open sky, so it loads behind the battle entry (loadGroundedLightModel: the battle
+ * atmosphere's covered acquisition and the capture staging await it), and the core hands it the atmosphere it integrates,
+ * so its chunk imports nothing at runtime. Until it is loaded every resolve is the authored rig, which is exactly the
+ * light of every presentation that never loads it. No DOM, no WebGL.
  */
 import { CLOUDSCAPE_REGIMES, type CloudscapeConfig } from './cloudscapes.ts';
 import { ATMO_GROUND_KM, ATMO_MEDIUM, ATMO_STEPS, ATMO_TOP_KM, type AtmosphereParams } from './atmosphere.ts';
