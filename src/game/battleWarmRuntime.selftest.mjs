@@ -556,6 +556,34 @@ try {
   fx.armorScar(scarVisual, new Vector3(12, 4, -24), new Vector3(0, 1, 0), 120);
   assert.equal(scarRoot.getObjectByName('fx_impactDecals'), submittedScarMesh,
     'the first real impact reuses the exact submitted mesh, geometry and shared atlas');
+  {
+    // Live scars cull with their own quads (P21): only the covered warm draw above lifts
+    // culling, so this off-camera hull stops submitting its decal draw.
+    assert.equal(submittedScarMesh.frustumCulled, true, 'a live scar culls with its hull');
+    scarRoot.updateMatrixWorld(true);
+    const sees = (eye, target) => {
+      const view = new PerspectiveCamera(55, 1.6, 0.5, 2000);
+      view.position.copy(eye);
+      view.lookAt(target);
+      view.updateMatrixWorld(true);
+      return new Frustum().setFromProjectionMatrix(
+        new Matrix4().multiplyMatrices(view.projectionMatrix, view.matrixWorldInverse),
+      ).intersectsObject(submittedScarMesh);
+    };
+    assert.equal(sees(camera.position, new Vector3(150, 32, -190)), false,
+      'the warm camera does not see the hull, so its live scar is culled');
+    assert.equal(sees(new Vector3(12, 8, -6), scarRoot.position), true, 'a camera on the hull keeps the scar');
+    const positions = submittedScarMesh.geometry.getAttribute('position');
+    const sphere = submittedScarMesh.geometry.boundingSphere;
+    const corner = new Vector3();
+    let written = 0;
+    for (let i = 0; i < positions.count; i += 1) {
+      if (corner.fromBufferAttribute(positions, i).lengthSq() === 0) continue;
+      written += 1;
+      assert.ok(sphere.distanceToPoint(corner) <= 1e-6, 'the scar bounds cover every written corner');
+    }
+    assert.ok(written >= 4, 'the live scar wrote at least one quad');
+  }
   fx.clearVehicleDecals(scarVisual);
   submissionValidated = false;
   await warmNetworkOpeningEffects(options);
