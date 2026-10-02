@@ -129,9 +129,9 @@ function paintSpraySnow(ctx: CanvasRenderingContext2D, twigs: Pt[][], reach: num
     for (let i = 1; i < tw.length; i++) len += Math.hypot(tw[i].x - tw[i - 1].x, tw[i].y - tw[i - 1].y);
     const n = Math.round(len / Math.max(2, reach * 0.55));
     for (let k = 0; k < n; k++) {
-      if (rng() > snow * 0.85) continue;
+      if (rng() > Math.min(0.95, snow)) continue;
       const at = pointAt(tw, (k + 0.5) / n);
-      const r = reach * (0.35 + rng() * 0.45) * (0.6 + 0.4 * snow);
+      const r = reach * (0.45 + rng() * 0.5) * (0.6 + 0.4 * snow);
       const gr = ctx.createRadialGradient(at.p.x, at.p.y, 0, at.p.x, at.p.y, r);
       gr.addColorStop(0, css(0.58, 0.05, 0.86, 0.95));
       gr.addColorStop(0.65, css(0.58, 0.06, 0.78, 0.8));

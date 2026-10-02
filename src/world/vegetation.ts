@@ -2262,7 +2262,9 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
       const sk = snow > 0.05 && site.tile < SPRAY_ATLAS_TILES ? 0.85 + jitter * 0.15 : 0;
       _c.setHSL(hue0 + (r() - 0.5) * 0.06 + (0.585 - hue0) * sk, (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5,
         THREE.SRGBColorSpace);
-      const value = (0.52 + 0.48 * shade) * (0.92 + r() * 0.16) * (1 + sk * 0.75);
+      // a laden spray's lift brightens its painted snow far more than its dark needles (the tint multiplies the
+      // texel): the snow reads as snow beside the snowfield, the needles under it stay dark
+      const value = (0.52 + 0.48 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6);
       return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
     },
   }));
