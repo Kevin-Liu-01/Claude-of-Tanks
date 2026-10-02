@@ -12,14 +12,14 @@ import type { WebSocketTransportOptions } from '../transport/webSocketTransport.
 import { Listeners } from '../transport/transport.ts';
 import type { Transport, TransportStateChange, Unsubscribe } from '../transport/transport.ts';
 import {
-  ROOM_CLIENT_MESSAGE, ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, ROOM_MAX_PAYLOAD_BYTES, ROOM_MAX_PLAYERS, ROOM_MAX_REGION_CHARS, ROOM_RESUME_TOKEN_RE,
-  ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES, RoomError, isRecord,
+  ROOM_CLIENT_MESSAGE, ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, ROOM_MAX_PAYLOAD_BYTES, ROOM_MAX_PLAYERS, ROOM_MAX_REGION_CHARS,
+  ROOM_RELAY_REQUEST_TIMEOUT_MS, ROOM_RESUME_TOKEN_RE, ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES, RoomError, isRecord,
   isRelayedRoomSignal, isRoomChatEntry, isRoomErrorCode, isRoomHostChangedPayload, isRoomMatchStartPayload, isRoomMatchStatusPayload, normalizeRoomCode,
-  parseP2pMatchUrl, parseRoomEnvelope, randomRoomCode, readRoomSignalPayload, readRoomSnapshot, roomSocketPath, utf8ByteLength,
+  parseP2pMatchUrl, parseRoomEnvelope, randomRoomCode, readRoomRelayPayload, readRoomSignalPayload, readRoomSnapshot, roomSocketPath, utf8ByteLength,
 } from './protocol.ts';
 import type {
   RoomChatEntry, RoomCreateSettings, RoomEnvelope, RoomHostChangedPayload, RoomHostDeclineCommand, RoomHostInfo, RoomMatchReportCommand,
-  RoomMatchStartPayload, RoomMatchStatusPayload, RoomMode, RoomPlayer, RoomSelection, RoomSignalPayload, RoomSnapshot, RoomTeam,
+  RoomMatchStartPayload, RoomMatchStatusPayload, RoomMode, RoomPlayer, RoomRelayPayload, RoomSelection, RoomSignalPayload, RoomSnapshot, RoomTeam,
 } from './protocol.ts';
 
 /** A relayed `room_signal` as this seat receives it (P1's validated fields plus `from`). */
@@ -322,6 +322,18 @@ export class RoomClient {
     return this.command({ ...command });
   }
 
+  /**
+   * The ICE servers for one peer connection, from the room this seat holds (2026-10-02, docs/MULTIPLAYER-V2.md §13.14):
+   * `room_relay`, answered `{ iceServers, relay, expiresInSeconds? }` (validated here) — or refused with the room's code:
+   * `relay_phase` outside a running match of this seat, `rate_limit`, `not_in_room`, `unknown_message` from a room that
+   * predates the request; `internal` for a timeout or a closed socket. One request: the ICE source
+   * (`src/mp/transport/iceConfig.ts`) shares and reuses the grants.
+   */
+  async requestRelay({ timeoutMs = ROOM_RELAY_REQUEST_TIMEOUT_MS }: { timeoutMs?: number } = {}): Promise<RoomRelayPayload> {
+    this.requireJoined();
+    return readRoomRelayPayload(await this.request(ROOM_CLIENT_MESSAGE.RELAY, {}, timeoutMs));
+  }
+
   /** Absolute URL for a host-relative match path. */
   resolveUrl(url: string): string { return resolveRoomRelativeUrl(this.endpoint, url); }
 
@@ -480,14 +492,14 @@ export class RoomClient {
     return this.transport.send(this.encoder.encode(JSON.stringify(envelope)));
   }
 
-  private request(type: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  private request(type: string, payload: Record<string, unknown>, budgetMs?: number): Promise<Record<string, unknown>> {
     const requestId = `r${++this.requestSeq}`;
     // A `start` command waits for the room to elect the host and hand out `match_start` (its budget
-    // keeps the first design's 30 s cold container start), so it gets the longer budget; every other
-    // request keeps the ordinary timeout (2026-09-25).
+    // keeps the first design's 30 s cold container start), so it gets the longer budget; a relay request its own
+    // (a peer connection waits on it); every other request keeps the ordinary timeout (2026-09-25).
     const command = (payload as { command?: { type?: unknown } }).command;
-    const timeoutMs = type === ROOM_CLIENT_MESSAGE.COMMAND && command?.type === 'start'
-      ? Math.max(this.requestTimeoutMs, START_REQUEST_TIMEOUT_MS) : this.requestTimeoutMs;
+    const timeoutMs = budgetMs ?? (type === ROOM_CLIENT_MESSAGE.COMMAND && command?.type === 'start'
+      ? Math.max(this.requestTimeoutMs, START_REQUEST_TIMEOUT_MS) : this.requestTimeoutMs);
     return new Promise((resolve, reject) => {
       const timer = this.setTimer(() => {
         this.pending.delete(requestId);

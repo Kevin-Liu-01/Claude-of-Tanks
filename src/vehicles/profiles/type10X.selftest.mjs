@@ -2,10 +2,9 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {TYPE10_X_DATUMS} from './type10X.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const v=(x,y,z)=>new THREE.Vector3(x,y,z);
-const near=(actual,expected,tolerance,label)=>assert.ok(Number.isFinite(actual)&&
-  Math.abs(actual-expected)<=tolerance,`${label}: ${actual} vs ${expected} ±${tolerance}`);
 const hit=(root,origin,direction,far=20)=>new THREE.Raycaster(origin,direction,0,far).intersectObject(root,true)[0];
 
 function envelopeAndOwnership(tank,quality) {

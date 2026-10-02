@@ -61,9 +61,11 @@ for (const host of [...policy.ALIAS_HOSTS, policy.PROTECTED_PRODUCTION_HOST]) {
 assert.ok(!policy.ALIAS_HOSTS.includes(policy.OFFICIAL_SITE_HOST), 'the canonical host is not its own alias');
 assert.deepEqual(policy.ROOMS_ALLOWED_ORIGINS, [policy.CANONICAL_ORIGIN], 'rooms admit the canonical origin alone');
 assert.deepEqual(policy.TELEMETRY_ALLOWED_ORIGINS, policy.ALLOWED_ORIGINS, 'telemetry admits the API origins');
-for (const list of [policy.ALIAS_HOSTS, policy.ALLOWED_ORIGINS, policy.ROOMS_ALLOWED_ORIGINS]) {
+for (const list of [policy.ALIAS_HOSTS, policy.ALLOWED_ORIGINS, policy.ROOMS_ALLOWED_ORIGINS, policy.OFFICIAL_STUN_URLS]) {
   assert.ok(Object.isFrozen(list), 'policy lists are frozen');
 }
+assert.ok(policy.OFFICIAL_STUN_URLS.length > 0 && policy.OFFICIAL_STUN_URLS.every((url) => /^stun:[a-z0-9.-]+:\d+$/.test(url)),
+  'the official STUN servers are plain stun: URLs (no credential, no TURN)');
 assert.equal(new URL(policy.OFFICIAL_ROOMS_URL).protocol, 'wss:');
 assert.equal(new URL(policy.OFFICIAL_TELEMETRY_URL).protocol, 'https:');
 assert.ok(policy.isOfficialSiteHost(' COT.kevinliu.studio ') && !policy.isOfficialSiteHost('claudeoftanks.kevinliu.studio')
@@ -93,12 +95,28 @@ const allowedOriginsOf = (config) => String(config.vars?.ALLOWED_ORIGINS ?? '').
 for (const [path, expected] of [
   ['cloudflare/rooms/wrangler.jsonc', policy.ROOMS_ALLOWED_ORIGINS],
   ['cloudflare/rooms/wrangler.test.jsonc', policy.ROOMS_ALLOWED_ORIGINS],
+  ['cloudflare/rooms/wrangler.relay.test.jsonc', policy.ROOMS_ALLOWED_ORIGINS],
   ['cloudflare/telemetry/wrangler.jsonc', policy.TELEMETRY_ALLOWED_ORIGINS],
 ]) {
   const config = parseJsonc(read(path));
   assert.deepEqual(allowedOriginsOf(config), [...expected],
     `${path}: ALLOWED_ORIGINS must equal api/_lib/policy.ts (a change goes live with that Worker's next deploy)`);
 }
+// 4a. 2026-10-02 (docs/MULTIPLAYER-V2.md §13.14): the STUN servers a seat's relay grant carries without a TURN credential are the
+// policy's in the deployed Worker and both test Workers; the relay test Worker's TURN key and token are fake test values, and
+// no Worker configuration commits a real relay secret (those are `wrangler secret put`, names only).
+for (const path of ['cloudflare/rooms/wrangler.jsonc', 'cloudflare/rooms/wrangler.test.jsonc', 'cloudflare/rooms/wrangler.relay.test.jsonc']) {
+  const vars = parseJsonc(read(path)).vars ?? {};
+  assert.equal(vars.COT_STUN_URLS, policy.OFFICIAL_STUN_URLS.join(','), `${path}: COT_STUN_URLS must equal OFFICIAL_STUN_URLS of api/_lib/policy.ts`);
+  for (const name of ['COT_TURN_SHARED_SECRET', 'COT_TURN_ICE_SERVERS_JSON']) assert.equal(vars[name], undefined, `${path} commits no ${name}`);
+  if (path === 'cloudflare/rooms/wrangler.relay.test.jsonc') {
+    assert.match(String(vars.COT_CLOUDFLARE_TURN_KEY_ID), /^relay-test-/, 'the relay test Worker\'s key id is a test value');
+    assert.match(String(vars.COT_CLOUDFLARE_TURN_API_TOKEN), /^relay-test-/, 'the relay test Worker\'s token is a test value');
+  } else {
+    for (const name of ['COT_CLOUDFLARE_TURN_KEY_ID', 'COT_CLOUDFLARE_TURN_API_TOKEN']) assert.equal(vars[name], undefined, `${path} commits no ${name} (a secret)`);
+  }
+}
+
 for (const [url, dir] of [[policy.OFFICIAL_ROOMS_URL, 'rooms'], [policy.OFFICIAL_TELEMETRY_URL, 'telemetry']]) {
   const config = parseJsonc(read(`cloudflare/${dir}/wrangler.jsonc`));
   assert.equal(new URL(url).hostname.split('.')[0], config.name, `${dir}: the policy URL names the Worker in cloudflare/${dir}/wrangler.jsonc`);
@@ -115,6 +133,8 @@ assert.deepEqual(roomsNamespaces, ['2609055513'], 'the rooms limiter has its own
 assert.deepEqual(telemetryNamespaces, ['2609055512'], 'the telemetry limiter keeps its namespace');
 assert.deepEqual(namespacesOf(parseJsonc(read('cloudflare/rooms/wrangler.test.jsonc'))), roomsNamespaces,
   'the rooms test configuration mirrors the deployed binding');
+assert.deepEqual(namespacesOf(parseJsonc(read('cloudflare/rooms/wrangler.relay.test.jsonc'))), roomsNamespaces,
+  'the relay test configuration mirrors the deployed binding');
 const allNamespaces = [...roomsNamespaces, ...telemetryNamespaces];
 assert.equal(new Set(allNamespaces).size, allNamespaces.length, 'no two Workers share a rate-limit namespace');
 assert.ok(!allNamespaces.includes('2609055511'), 'the retired signaling Worker\'s namespace stays unused');

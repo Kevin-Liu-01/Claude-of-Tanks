@@ -23,6 +23,12 @@
  *      hostId p3, no secret); its report is refused (`host_only`).
  *   7. p3's reports drive the status and the verdict: `match_status ended`
  *      at every seat, the room back to `waiting` with the result.
+ *   Relay credentials (2026-10-02, §13.14), minted by the LAN helper's issuer
+ *   (server/relayCredentials.ts, self-hosted coturn: made here, no provider):
+ *   the host, a peer and a spectator of the running match each receive a
+ *   grant of their own whose credential is the coturn HMAC of its username; a
+ *   socket that never joined is refused `not_in_room`; nobody else sees a
+ *   grant; after the verdict the seat is refused `relay_phase`.
  *
  *   node tools/mp-rooms-p2p-e2e.mjs            ~12 s wall (the 8 s grace is real time)
  *   node tools/mp-rooms-p2p-e2e.mjs --json
@@ -30,10 +36,11 @@
  * Gates (exit 1 on any): every step above, and the migration within the grace
  * plus two seconds.
  */
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
 import { createRoomsServer } from '../server/rooms/serve.ts';
+import { createRelayIssuer } from '../server/relayCredentials.ts';
 import { verifySeatToken } from '../server/match/seatToken.ts';
 import { ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_SIGNAL_MAX_BYTES } from '../src/mp/room/protocol.ts';
 
@@ -94,10 +101,13 @@ class RawSeat {
 export async function runP2pRoomsE2E({ mapId = 'verdant', log = () => {} } = {}) {
   const SECRET = 'mp-rooms-p2p-e2e-seat-secret-0123456789abcdef';
   const hostSecretOf = (matchId) => createHash('sha256').update(`${SECRET}:${matchId}`).digest('hex');
-  const server = await createRoomsServer({ seatSecret: SECRET, world: 'terrain', matchTransport: 'p2p', maxActors: 1 });
+  // the LAN helper's relay issuer in its self-hosted coturn form: credentials made in-process from a test secret
+  const RELAY_SECRET = 'mp-rooms-p2p-e2e-coturn-secret';
+  const relayIssuer = createRelayIssuer({ env: { COT_TURN_URLS: 'turn:turn.p2p-e2e.test:3478', COT_TURN_SHARED_SECRET: RELAY_SECRET, COT_TURN_USERNAME: 'e2e' }, fetchImpl: async () => { throw new Error('coturn calls no provider'); } });
+  const server = await createRoomsServer({ seatSecret: SECRET, world: 'terrain', matchTransport: 'p2p', maxActors: 1, relayCredentials: () => relayIssuer.issue() });
   const failures = [];
   const check = (condition, label) => { if (!condition) failures.push(label); return !!condition; };
-  const report = { endpoint: 'in-process (p2p)', seats: 5, mapId, host: [], relay: {}, migration: null, verdict: null, wallMs: 0 };
+  const report = { endpoint: 'in-process (p2p)', seats: 5, mapId, host: [], relay: {}, relayCredentials: null, migration: null, verdict: null, wallMs: 0 };
   const startedAt = performance.now();
   const seats = [];
   const seat = async (id) => {
@@ -173,6 +183,24 @@ export async function runP2pRoomsE2E({ mapId = 'verdant', log = () => {} } = {})
     check(p2.all('room_signal').length === 2 && p3.all('room_signal').length === 1 && s2.all('room_signal').length === 0, 'refused signals reach nobody');
     log(`relay: offer from ${relayedOffer.from}, answer from ${relayedAnswer.from}; refused ${wrongGeneration.payload.code} / ${spectators.payload.code} / ${oversize.payload.code} / ${notHost.payload.code}`);
 
+    // ---- 3b. relay credentials from the room (§13.14): a grant of its own for the host, a peer and a spectator
+    const grants = new Map();
+    for (const entry of [p2, p3, s1]) {
+      const answer = await entry.request('room_relay');
+      const turn = answer.payload.iceServers?.find((server) => server.credential);
+      const valid = answer.type === 'room_relay' && answer.payload.relay === true && answer.payload.expiresInSeconds === 3600 && turn?.urls === 'turn:turn.p2p-e2e.test:3478'
+        && /^\d+:e2e$/.test(turn.username) && turn.credential === createHmac('sha1', RELAY_SECRET).update(turn.username).digest('base64');
+      check(valid, `${entry.id} receives a coturn grant whose credential is the HMAC of its username (${answer.type})`);
+      if (turn) grants.set(entry.id, turn.credential);
+    }
+    const unseated = await seat('stranger');
+    const strangerAnswer = await unseated.request('room_relay');
+    check(strangerAnswer.payload.code === 'not_in_room', `a socket that never joined → not_in_room (${strangerAnswer.payload.code ?? strangerAnswer.type})`);
+    check([p1, p2, p3, s1, s2].every((entry) => entry.messages.filter((m) => m.type !== 'room_relay').every((m) => ![...grants.values()].some((credential) => JSON.stringify(m).includes(credential)))), 'no grant rides another message');
+    check(p1.all('room_relay').length === 0 && s2.all('room_relay').length === 0, 'a grant reaches the requesting seat alone');
+    report.relayCredentials = { granted: grants.size, unseated: strangerAnswer.payload.code ?? null, afterVerdict: null };
+    log(`relay credentials: ${grants.size} coturn grants (host, peer, spectator), the stranger refused ${strangerAnswer.payload.code}`);
+
     // ---- 4. the host's reports
     check((await p1.command({ type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 1 })).payload.code === 'host_only', 'a peer\'s report → host_only');
     check((await p2.command({ type: 'match_report', matchId, generation: 1, phase: 'loading', tick: 0 })).type === 'room_ack', 'the host reports loading');
@@ -222,6 +250,9 @@ export async function runP2pRoomsE2E({ mapId = 'verdant', log = () => {} } = {})
     check(finished.lastResult?.result === 'alpha' && finished.lastResult?.round === 1, `lastResult ${JSON.stringify(finished.lastResult)}`);
     check(finished.host.hostId === null && finished.host.generation === 2, `the election cleared: ${JSON.stringify(finished.host)}`);
     log(`verdict ${JSON.stringify(finished.lastResult)}; room waiting, election cleared at generation 2`);
+    const ended = await p3.request('room_relay');
+    report.relayCredentials.afterVerdict = ended.payload.code ?? ended.type;
+    check(ended.payload.code === 'relay_phase', `after the verdict a seat's relay → relay_phase (${report.relayCredentials.afterVerdict})`);
   } catch (error) {
     failures.push(error instanceof Error ? error.message : String(error));
   } finally {
@@ -238,6 +269,7 @@ export function formatP2pReport(report) {
   const lines = [`mp rooms p2p e2e: ${report.seats} seats against ${report.endpoint}, map=${report.mapId} (${report.wallMs} ms wall)`];
   for (const host of report.host) lines.push(`  host generation ${host.generation}: ${host.hostId} (${host.reason}${host.resumeTick !== undefined ? `, resume tick ${host.resumeTick}` : ''})`);
   if (report.relay.offer) lines.push(`  relay: offer from ${report.relay.offer}, answer from ${report.relay.answer}; refused: ${report.relay.wrongGeneration}, ${report.relay.spectators}, ${report.relay.oversize}, ${report.relay.notHost}`);
+  if (report.relayCredentials) lines.push(`  relay credentials: ${report.relayCredentials.granted} grants from the room; unseated ${report.relayCredentials.unseated}, after the verdict ${report.relayCredentials.afterVerdict}`);
   if (report.migration) lines.push(`  migration: ${report.migration.ms} ms after the drop, secret ${report.migration.hostSecret} on the new host`);
   if (report.verdict) lines.push(`  verdict: ${JSON.stringify(report.verdict)}`);
   for (const failure of report.failures) lines.push(`  FAIL: ${failure}`);

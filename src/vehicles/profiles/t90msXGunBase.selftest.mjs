@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs source ${b} ±${t}`);
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 function visibleMeshes(root){const list=[];root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)list.push(m);});return list;}
 function sourceTops(meshes){
   for(const[x,z,y]of [[-.35,1.05,2.1257962708],[-.35,1.2,2.0773627771],[-.35,1.4,2.0130354594],[-.35,1.6,1.9432642610],

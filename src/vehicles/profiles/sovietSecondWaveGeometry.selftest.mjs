@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {getSpec} from '../specs.ts';
 import {measureTurretBarrelCircularity} from '../turretBarrelCircularity.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Fixed independent scalar source witnesses. No profile installation, source
 // loader, candidate-derived target or missing-ID fallback is permitted here.
@@ -20,7 +21,6 @@ const SOURCES={
     wheels:[-1.96246,-1.107005,-.274385,.47443,1.317665,2.088745],
     hull:[[-1.5,1.563],[0,1.544],[1.5,1.522]],era:4},
 };
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: actual${a}, source${b} ±${t}`);
 function top(mesh,x,z){
   return new THREE.Raycaster(new THREE.Vector3(x,5,z),new THREE.Vector3(0,-1,0),0,6).intersectObject(mesh,false)[0]?.point.y;
 }

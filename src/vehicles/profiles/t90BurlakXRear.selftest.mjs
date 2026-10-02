@@ -7,7 +7,7 @@ import {tankPoseFromState,traceTank} from '../../sim/armor.ts';
 import {createCombatState,resolveShellHit} from '../../sim/damage.ts';
 import {createShell} from '../../sim/ballistics.ts';
 import {stripActivatedEra} from '../../game/eraActivation.ts';
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs source ${b} ±${t}`);
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 function hit(ms,p,d,far=1){return new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(ms,false)[0];}
 function visible(t){const a=[];t.root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)a.push(m);});return a;}
 function cradles(m){

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // The replayed pre-repair hull (literal legacy section rows) and the comparisons against it (untouched meshes,
 // forward triangles, lower keel, track contact) are retired: whole-tank change detection of merkava4_x is the
@@ -21,10 +22,6 @@ const SOURCE=[
   [1.5,-3.100,1.577793],[-1.5,-2.750,1.606141],
   [1.5,-2.750,1.606141],
 ];
-const near=(actual,expected,tolerance,label)=>assert.ok(
-  Number.isFinite(actual)&&Math.abs(actual-expected)<=tolerance,
-  `${label}: ${actual} vs ${expected} ± ${tolerance}`,
-);
 const hit=(object,x,z,y=1.79,up=false)=>new THREE.Raycaster(
   new THREE.Vector3(x,y,z),new THREE.Vector3(0,up?1:-1,0),0,3,
 ).intersectObject(object,false)[0];

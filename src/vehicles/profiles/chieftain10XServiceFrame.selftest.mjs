@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { addChieftain10XServiceFrame } from './chieftain10XServiceFrame.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // The published-foundation source-byte contract and the frozen successor / non-track vertex multisets
 // (docs/references/tanks/chieftain_mk10_x.published-foundation-preservation.json) are retired: whole-tank
@@ -10,8 +11,6 @@ import { addChieftain10XServiceFrame } from './chieftain10XServiceFrame.ts';
 
 const ray = (meshes, p, d, far = 8) => new THREE.Raycaster(new THREE.Vector3(...p),
   new THREE.Vector3(...d), 0, far).intersectObjects(meshes, false)[0];
-const near = (a, b, tolerance, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b) <= tolerance,
-  `${label}: ${a} versus independent source ${b}`);
 
 function fixtures() {
   const group = new THREE.Group(), material = new THREE.MeshBasicMaterial();

@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **217 saved vehicle records**: **217 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **219 saved vehicle records**: **219 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -215,16 +215,18 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 205 | PROD | `marder2` | Marder 2 | Germany | X | Modern | Production |
 | 206 | PROD | `ua_t80u_modern` | T-80U Zoria (Concept) | Ukraine | X | Next Generation | Production |
 | 207 | PROD | `ua_t72b3m_modern` | T-72B3M Hetman (Concept) | Ukraine | X | Next Generation | Production |
-| 208 | PROD | `ua_t72b3_modern` | T-72B3 Sich (Concept) | Ukraine | X | Next Generation | Production |
-| 209 | PROD | `pl_t80u_modern` | T-80U Husarz (Concept) | Poland | X | Next Generation | Production |
-| 210 | PROD | `pl_t72b3m_modern` | T-72B3M Wilk (Concept) | Poland | X | Next Generation | Production |
-| 211 | PROD | `pl_t72b3_modern` | T-72B3 Zubr (Concept) | Poland | X | Next Generation | Production |
-| 212 | PROD | `cn_t80u_modern` | T-80U Yun (Concept) | China | X | Next Generation | Production |
-| 213 | PROD | `cn_t72b3m_modern` | T-72B3M Kunlun (Concept) | China | X | Next Generation | Production |
-| 214 | PROD | `cn_t72b3_modern` | T-72B3 Qilin (Concept) | China | X | Next Generation | Production |
-| 215 | PROD | `ru_t80u_modern` | T-80U Bars-M (Concept) | Russia | X | Next Generation | Production |
-| 216 | PROD | `ru_t72b3m_modern` | T-72B3M Bulat-M (Concept) | Russia | X | Next Generation | Production |
-| 217 | PROD | `ru_t72b3_modern` | T-72B3 Bastion-M (Concept) | Russia | X | Next Generation | Production |
+| 208 | PROD | `ua_t72b3m_hetman_ii` | T-72B3M Hetman II (Concept) | Ukraine | X | Next Generation | Production |
+| 209 | PROD | `ua_t72b3_modern` | T-72B3 Sich (Concept) | Ukraine | X | Next Generation | Production |
+| 210 | PROD | `pl_t80u_modern` | T-80U Husarz (Concept) | Poland | X | Next Generation | Production |
+| 211 | PROD | `pl_t72b3m_modern` | T-72B3M Wilk (Concept) | Poland | X | Next Generation | Production |
+| 212 | PROD | `pl_t72b3_modern` | T-72B3 Zubr (Concept) | Poland | X | Next Generation | Production |
+| 213 | PROD | `pl_t72b3_zubr_ii` | T-72B3 Zubr II (Concept) | Poland | X | Next Generation | Production |
+| 214 | PROD | `cn_t80u_modern` | T-80U Yun (Concept) | China | X | Next Generation | Production |
+| 215 | PROD | `cn_t72b3m_modern` | T-72B3M Kunlun (Concept) | China | X | Next Generation | Production |
+| 216 | PROD | `cn_t72b3_modern` | T-72B3 Qilin (Concept) | China | X | Next Generation | Production |
+| 217 | PROD | `ru_t80u_modern` | T-80U Bars-M (Concept) | Russia | X | Next Generation | Production |
+| 218 | PROD | `ru_t72b3m_modern` | T-72B3M Bulat-M (Concept) | Russia | X | Next Generation | Production |
+| 219 | PROD | `ru_t72b3_modern` | T-72B3 Bastion-M (Concept) | Russia | X | Next Generation | Production |
 
 ## Policy ownership
 

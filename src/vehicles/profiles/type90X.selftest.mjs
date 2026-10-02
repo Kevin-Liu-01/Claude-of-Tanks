@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {TYPE90_X_DATUMS} from './type90X.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 const v=(x,y,z)=>new THREE.Vector3(x,y,z);
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b} ±${t}`);
 const hit=(root,o,d,far=20)=>new THREE.Raycaster(o,d,0,far).intersectObject(root,true)[0];
 
 function actualShoeFloor(mesh) {

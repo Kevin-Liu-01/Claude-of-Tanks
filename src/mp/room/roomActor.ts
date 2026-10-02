@@ -22,19 +22,24 @@
  * without its socket, at once when it leaves or declines, and when its reports
  * stop for `ROOM_MATCH_REPORT_STALE_AFTER_MS` — with `host_changed`. With a
  * `service` host (the in-process match service the receipts run) the match is polled by alarm.
+ *
+ * Relay credentials (2026-10-02, §13.14): a seat of the running p2p match asks `room_relay` for the ICE servers of
+ * one peer connection; the actor admits it (the seat, the match, the rate windows) and the host's `relayCredentials`
+ * port mints — the room is the only place a TURN credential comes from.
  */
 import type { SeatClaims } from '../../../server/match/seatToken.ts';
 import {
   ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_CHAT_HISTORY, ROOM_CLIENT_MESSAGE, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS,
-  ROOM_MATCH_LOST_AFTER_POLLS, ROOM_MATCH_POLL_MS, ROOM_MATCH_REPORT_STALE_AFTER_MS, ROOM_MAX_REGION_CHARS, ROOM_RATE_MAX_MESSAGES,
-  ROOM_RATE_WINDOW_MS, ROOM_RESUME_TOKEN_RE, ROOM_SEAT_DISCONNECT_TTL_MS, ROOM_SEAT_TOKEN_TTL_MS, ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES,
+  ROOM_MATCH_LOST_AFTER_POLLS, ROOM_MATCH_POLL_MS, ROOM_MATCH_REPORT_STALE_AFTER_MS, ROOM_MAX_REGION_CHARS, ROOM_MAX_SEATS, ROOM_RATE_MAX_MESSAGES,
+  ROOM_RATE_WINDOW_MS, ROOM_RELAY_ROOM_LIMIT, ROOM_RELAY_SEAT_LIMIT, ROOM_RELAY_WINDOW_MS, ROOM_RESUME_TOKEN_RE, ROOM_SEAT_DISCONNECT_TTL_MS,
+  ROOM_SEAT_TOKEN_TTL_MS, ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES,
   ROOM_STATE_COALESCE_MS,
   ROOM_UNAUTHENTICATED_TIMEOUT_MS, RoomError, cleanId, isRecord, isRoomTeam, noElection, normalizeRoomChat, p2pMatchUrl,
-  parseRoomEnvelope, publicRoomError, readRoomMatchReport, readRoomSignalPayload, utf8ByteLength,
+  parseRoomEnvelope, publicRoomError, readRoomMatchReport, readRoomRelayPayload, readRoomSignalPayload, utf8ByteLength,
 } from './protocol.ts';
 import type {
   RoomChatEntry, RoomCreateSettings, RoomEnvelope, RoomHostChangedPayload, RoomMatchStartPayload, RoomMatchStatusPayload, RoomMode,
-  RoomResult, RoomSelection, RoomSnapshot, RoomTeam,
+  RoomRelayPayload, RoomResult, RoomSelection, RoomSnapshot, RoomTeam,
 } from './protocol.ts';
 import { electHost } from './p2pMatchHost.ts';
 import type { P2pHostReport, P2pMatchHost } from './p2pMatchHost.ts';
@@ -117,6 +122,13 @@ export interface RoomActorPorts {
    * once. A pending callback keeps a Durable Object awake, so a coalesced change cannot be lost to hibernation.
    */
   defer?(callback: () => void, delayMs: number): void;
+  /**
+   * 2026-10-02 (§13.14): the ICE servers for one peer connection of an admitted seat — the rooms Worker mints them from
+   * its secrets, the LAN helper from its environment (`server/relayCredentials.ts`). Called once per admitted
+   * `room_relay`, never cached across seats or requests; the actor never logs what it returns. Absent (the receipts,
+   * an unconfigured host), or rejecting, the seat is answered with no server: its link uses host candidates.
+   */
+  relayCredentials?(request: { roomCode: string; playerId: string }): Promise<RoomRelayPayload>;
   guards?: Partial<RoomPolicyGuards>;
   /** Named in every admission reply (`region`) when the host knows where it runs. */
   region?: string;
@@ -182,6 +194,8 @@ function matchIdFrom(random: () => number, round: number): string {
 }
 
 const RUNNING: ReadonlySet<string> = new Set(['starting', 'playing']);
+/** A relay request the room cannot mint for (no port, or the port failed): no server, the link uses host candidates. */
+const NO_RELAY: Readonly<RoomRelayPayload> = Object.freeze({ iceServers: [], relay: false });
 
 export class RoomActor {
   readonly roomCode: string;
@@ -209,6 +223,9 @@ export class RoomActor {
   private stateBroadcastAt = Number.NEGATIVE_INFINITY;
   private stateFlushPending = false;
   private stateFlushArmed = false;
+  // 2026-10-02: the relay grants' fixed windows, per seat and for the room (runtime-only: a woken object starts fresh ones).
+  private readonly relaySeatWindows = new Map<string, { start: number; count: number }>();
+  private readonly relayRoomWindow = { start: Number.NEGATIVE_INFINITY, count: 0 };
 
   constructor(roomCode: string, ports: RoomActorPorts) {
     this.roomCode = roomCode;
@@ -554,6 +571,7 @@ export class RoomActor {
         case ROOM_CLIENT_MESSAGE.CHAT: this.chatMessage(socket, message); break;
         case ROOM_CLIENT_MESSAGE.LEAVE: this.leave(socket, message); break;
         case ROOM_CLIENT_MESSAGE.SIGNAL: this.signal(socket, message); break;
+        case ROOM_CLIENT_MESSAGE.RELAY: await this.relay(socket, message); break;
         case ROOM_CLIENT_MESSAGE.PING:
           this.requirePlayer(socket);
           this.touch(now);
@@ -767,6 +785,58 @@ export class RoomActor {
     this.touch(this.ports.now());
     this.send(target, { type: ROOM_SERVER_MESSAGE.SIGNAL, payload: relayed });
     if (message.requestId) this.send(socket.id, { type: ROOM_SERVER_MESSAGE.ACK, requestId: message.requestId, payload: { relayed: true } });
+  }
+
+  // ------------------------------------------------------------ relay credentials (2026-10-02, §13.14)
+
+  /**
+   * `room_relay`: the ICE servers for one peer connection of this seat. Admitted, each refusal with its code, for a
+   * request with a requestId (`invalid_payload`) from a seated socket (`not_in_room`) whose player holds a seat token
+   * of the running peer-to-peer match (`relay_phase` — before a start, after the end, a service match, a seat without one),
+   * within the seat's and the room's windows (`rate_limit`, counted at admission). The port mints once per admitted
+   * request; its grant goes to the requesting socket alone, and only while it still holds the seat (a kick or a leave
+   * during the provider call drops it). Neither the request nor the grant is persisted or logged.
+   */
+  private async relay(socket: RoomSocketRecord, message: RoomEnvelope): Promise<void> {
+    const playerId = this.requirePlayer(socket);
+    if (!message.requestId) throw new RoomError('invalid_payload', 'room_relay needs a requestId');
+    const room = this.room!;
+    const issued = this.matchTokens.get(playerId);
+    if (!this.runningP2pHostId() || !room.match || !issued || issued.matchId !== room.match.id) throw new RoomError('relay_phase');
+    const now = this.ports.now();
+    if (!this.admitRelay(playerId, now)) throw new RoomError('rate_limit');
+    this.touch(now);
+    let grant: RoomRelayPayload = NO_RELAY;
+    const mint = this.ports.relayCredentials;
+    if (mint) {
+      try {
+        grant = readRoomRelayPayload(await mint({ roomCode: this.roomCode, playerId }));
+      } catch (error) {
+        // the cause by name only: a provider message could carry what must never reach a log
+        this.log('warn', 'relay credentials unavailable', { player: playerId, error: error instanceof Error ? error.name : 'unknown' });
+        grant = NO_RELAY;
+      }
+    }
+    if (this.sockets.get(socket.id)?.playerId !== playerId) return;
+    this.send(socket.id, { type: ROOM_SERVER_MESSAGE.RELAY, requestId: message.requestId, payload: { ...grant } });
+  }
+
+  /** One grant from the seat's window and the room's (fixed windows of ROOM_RELAY_WINDOW_MS); false when either is spent. */
+  private admitRelay(playerId: string, now: number): boolean {
+    const roomWindow = this.relayRoomWindow;
+    if (now - roomWindow.start >= ROOM_RELAY_WINDOW_MS) { roomWindow.start = now; roomWindow.count = 0; }
+    let seatWindow = this.relaySeatWindows.get(playerId);
+    if (!seatWindow || now - seatWindow.start >= ROOM_RELAY_WINDOW_MS) {
+      if (this.relaySeatWindows.size >= ROOM_MAX_SEATS) {
+        for (const [id, entry] of this.relaySeatWindows) if (now - entry.start >= ROOM_RELAY_WINDOW_MS) this.relaySeatWindows.delete(id);
+      }
+      seatWindow = { start: now, count: 0 };
+      this.relaySeatWindows.set(playerId, seatWindow);
+    }
+    if (seatWindow.count >= ROOM_RELAY_SEAT_LIMIT || roomWindow.count >= ROOM_RELAY_ROOM_LIMIT) return false;
+    seatWindow.count++;
+    roomWindow.count++;
+    return true;
   }
 
   // ------------------------------------------------------------ match lifecycle

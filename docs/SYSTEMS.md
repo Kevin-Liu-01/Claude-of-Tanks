@@ -837,7 +837,8 @@ seated commander as host (`src/mp/room/p2pMatchHost.ts`), the host runs the
 unchanged match actor in a Worker (`src/mp/host/`), and every other seat reaches
 it through `src/mp/transport/webRtcTransport.ts` — one reliable ordered
 `RTCDataChannel`, negotiated through the room's signaling relay, ICE from
-`src/mp/transport/iceConfig.ts` over `api/ice.ts`; the host's own seat rides the
+`src/mp/transport/iceConfig.ts` over the room's own relay credentials
+(`room_relay`, minted for seated players only); the host's own seat rides the
 loopback pair. `migratingTransport.ts` swaps a running client's link across a
 host migration, and the sealed keyframes a client keeps
 (`src/mp/match/migrationStore.ts`) let the next host resume the match.
@@ -942,8 +943,9 @@ server:mp`) for local play and the receipts; `server/match` is the match actor
 the host's browser runs in its Worker and the receipts run in-process
 (`service.ts`, `localRoomService.ts`); `server/world-collision-manifests/`
 holds the per-map collision shards the host inflates
-(`src/mp/host/worldCollision.ts`). `api/ice.ts` mints the TURN credential
-lease.
+(`src/mp/host/worldCollision.ts`). `server/relayCredentials.ts` mints the TURN
+credential lease inside the room — the rooms Worker from its secrets, the LAN
+helper from its environment (`docs/MULTIPLAYER-V2.md` §13.14).
 
 The room, not a client, decides who hosts; the hosting browser is trusted for
 the match it runs, and a seat token (`server/match/seatToken.ts`) binds every

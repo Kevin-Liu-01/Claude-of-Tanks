@@ -645,7 +645,7 @@ exit flow and presentation of v2 carry over unchanged: they speak the same wire 
 | Host authority (`server/match/matchActor.ts`) | the host commander's browser, in a Worker thread | the v2 authority unchanged: 60 Hz sim, viewer-specific snapshots, seat tokens verified with the room's secret handed to the host at `match_start` |
 | Host's own client | the host browser | `loopbackTransport` into the actor (the host plays on its own authority, as in v1) |
 | Peers | every other browser | `webRtcTransport` (RTCDataChannel) into the host's actor through an `rtcClientLink` |
-| ICE | `api/ice.ts` (Vercel) | STUN + TURN credentials as v1 uses them; a strict NAT relays through TURN |
+| ICE | `api/ice.ts` (Vercel) — since 2026-10-02 the room (§13.14) | STUN + TURN credentials as v1 uses them; a strict NAT relays through TURN |
 | Match container (`cloudflare/rooms/src/matchContainer.ts`, `server/match/main.ts`) | parked | an optional `MatchHost` implementation for a paid account; not deployed |
 
 The Room DO never carries game traffic: on the Free plan every WebSocket message is billed as a request and 28 clients
@@ -1426,7 +1426,7 @@ the v1 tools and their receipts, the dedicated/container match pieces).
 - *Environment names that are now dead for the owner to delete* (never deleted by this lane): `VITE_SIGNAL_URL`,
   `COT_SIGNAL_BACKEND`, `COT_SIGNAL_REDIS_REDIS_URL`, `COT_SIGNAL_REDIS_KV_URL`, `COT_SIGNAL_REDIS_KV_REST_API_URL`,
   `COT_SIGNAL_REDIS_KV_REST_API_TOKEN`, `COT_ALLOWED_ORIGINS` (if only `api/signal` read it — `api/ice.ts` keeps its own
-  origin list), `VITE_MATCH_SERVICE`; `VITE_ICE_CONFIG_URL` and every `COT_TURN_*` / `COT_CLOUDFLARE_TURN_*` stay.
+  origin list), `VITE_MATCH_SERVICE`; `VITE_ICE_CONFIG_URL` and every `COT_TURN_*` / `COT_CLOUDFLARE_TURN_*` stay (until §13.14 moved the relay into the room).
 - *Worker*: `cloudflare/rooms` needs no migration (the class chain is unchanged: v1 created `Room` and the container
   class, v2 deleted the container class); the `@cloudflare/containers` dependency stays in `package.json` until the
   integrator can run `npm uninstall @cloudflare/containers` in `cloudflare/rooms` (this lane installs nothing).
@@ -1438,10 +1438,11 @@ the v1 tools and their receipts, the dedicated/container match pieces).
   `src/mp/session/endpoint.ts`; there is no connection-settings field.
 - LAN and offline: `npm run server:mp` (`server/rooms/main.ts`, port 8792: rooms plus the match in-process, or the
   browser-hosted match with `COT_ROOMS_MATCH_TRANSPORT=p2p`); browsers on the network choose LAN in the Play menu.
-- ICE: `api/ice.ts` issues short-lived TURN credentials from server secrets (`COT_TURN_*`, `COT_CLOUDFLARE_TURN_*`,
-  `COT_TURN_ICE_SERVERS_JSON`); the client asks `/api/ice` on https pages (`VITE_ICE_CONFIG_URL` names another
-  endpoint) and uses host candidates on LAN. A strict NAT relays through TURN; nothing contacts a public STUN service
-  implicitly.
+- ICE (since 2026-10-02, §13.14): the room mints short-lived TURN credentials for its seated players (`room_relay`)
+  from the rooms Worker's secrets (`COT_CLOUDFLARE_TURN_*`; the LAN helper reads the same names and `COT_TURN_*`,
+  `COT_TURN_ICE_SERVERS_JSON` from its environment); without them a seat gets the Worker's `COT_STUN_URLS` alone. LAN
+  rooms use host candidates. A strict NAT relays through TURN; nothing contacts a STUN or TURN server the room did not
+  name. `/api/ice` answers the official STUN servers for one release (tabs loaded before the move), then goes.
 - Verification: `npm test` (the room actor, the p2p host, the client, the composition, the headless p2p flow),
   `npm run test:net:v2:rooms` (the Worker under the Workers runtime), `npm run test:net:v2:p2p` (three real browsers),
   `npm run test:net:v2:p2p:soak`, and `tools/mp-p2p-e2e.mjs --site=https://cot.kevinliu.studio` against production.
@@ -1733,6 +1734,79 @@ a link reset (the last ~150 ms before a reconnect or a migration) are not replay
 one-shot effect is gone (1 impact and 1 hit in the final run's reconnect and host-close windows). (4) The harness's
 presentations carry no actors (the fleet factory configures once per process), so own-shot feedback is receipted, not
 measured, here.
+
+### 13.14 Relay credentials from the room (lane `mp/room-relay-credentials`, 2026-10-02)
+
+**Why.** `/api/ice` (a Vercel function) minted one-hour Cloudflare TURN credentials for any request that passed its origin
+check (INFRA-P7: a same-origin page or an allow-listed `Origin`) — a header any script can send, so anyone could mint relay
+time billed to the account. Since this lane the room mints them, for its own seated players only.
+
+**The contract** (`src/mp/room/protocol.ts`, the block `// ---- Relay credentials from the room`):
+
+- `room_relay` (client → room, with a requestId, no payload) asks for the ICE servers of ONE peer connection — a peer's
+  connect attempt (each reconnect and migration) or an offer its host accepts. The room answers `room_relay
+  { iceServers, relay, expiresInSeconds? }` to the requesting socket alone (`readRoomRelayPayload` validates it; `relay`
+  is recomputed from the servers).
+- Admission, each refusal with its code: a requestId (`invalid_payload`); a seated socket (`not_in_room`); a seat token of
+  the running peer-to-peer match (`relay_phase`, a new code — a waiting room, a match that ended, a service-hosted match,
+  a seat without a token); the windows (`rate_limit`): `ROOM_RELAY_SEAT_LIMIT` = 6 grants per seat and
+  `ROOM_RELAY_ROOM_LIMIT` = 96 per room in each `ROOM_RELAY_WINDOW_MS` (60 s), fixed windows counted at admission and
+  kept in memory (a room object that hibernated starts fresh ones: no storage write per request).
+- Minting: once per admitted request through the host's `relayCredentials` port (`RoomActorPorts`), never cached across
+  seats or requests, never persisted, never logged; a seat that leaves or is kicked while its grant is minted receives
+  nothing. A room without the port, an unset secret or a failed provider answers the STUN servers alone (`relay: false`,
+  possibly no server) — never an error: a joiner's link degrades to direct paths and joining never depends on a relay.
+
+**The issuer** (`server/relayCredentials.ts`, runtime-neutral: fetch, `AbortSignal.timeout`, WebCrypto HMAC-SHA1) keeps the
+retired function's three sources under its names — `COT_TURN_ICE_SERVERS_JSON` (fixed servers), `COT_TURN_URLS` +
+`COT_TURN_SHARED_SECRET` (+ `COT_TURN_USERNAME`; self-hosted coturn, credentials made locally) and
+`COT_CLOUDFLARE_TURN_KEY_ID` + `COT_CLOUDFLARE_TURN_API_TOKEN` (production: the same `generate-ice-servers` call, one per
+grant) — and its lease: one hour, `COT_TURN_TTL_SECONDS` may shorten it to twenty minutes and never lengthen it. The
+provider call is bounded at 4 s (inside the client's 6 s `ROOM_RELAY_REQUEST_TIMEOUT_MS`); each failure leaves one
+`cot-relay` line (status, cause, latency), never a token, key id or credential. `COT_STUN_URLS` names the STUN fallback:
+`OFFICIAL_STUN_URLS` of `api/_lib/policy.ts` in `cloudflare/rooms/wrangler.jsonc` (pinned by
+`tools/deployment-policy.selftest.mjs`), unset on the LAN helper (a LAN needs host candidates only).
+
+**Where it runs.** The rooms Worker (`cloudflare/rooms/src/room.ts`: the issuer from the object's secrets on the first
+admitted request) and the LAN helper (`server/rooms/main.ts`, the same names from its environment, all unset by default).
+
+**The client.** `RoomClient.requestRelay()` is one request; `createRoomIceResolver({ mode, room })`
+(`src/mp/transport/iceConfig.ts`) is one per room session (`BrowserP2pPorts.createIceResolver(mode, room)`, built over the
+room client the seat holds; `src/main.ts` wires it). A LAN room asks nothing; a private room's resolutions in flight share
+one request and a grant younger than `RELAY_GRANT_REUSE_MS` (30 s) is reused — a host answering a 14v14 election's 27
+offers asks once, which is what the seat window assumes; a refusal, a timeout or a room that predates the request falls
+back to the newest grant with at least a minute left, else to host candidates; it never rejects. The transports still
+resolve per connection (`WebRtcTransport.connect`, `createRtcHostAcceptor`), from the room now. `resolveIceConfigUrl` and
+`VITE_ICE_CONFIG_URL` are gone.
+
+**`/api/ice`: retired, kept one release as a credential-free STUN answer.** Deleting it outright would leave every tab
+loaded before the site deploy with host candidates only — its `loadIceConfiguration` falls back to an empty server list
+on any error, a 404 included — so old tabs would lose STUN, not just TURN. For one release the route answers
+`OFFICIAL_STUN_URLS` with no TURN server, no credential, no environment read and no provider call; the new client never
+calls it. Delete `api/ice.ts` and `server/ice.selftest.mjs` with the next release; the Vercel TURN variables
+(`COT_CLOUDFLARE_TURN_KEY_ID`, `COT_CLOUDFLARE_TURN_API_TOKEN`, `COT_TURN_*`) are read by nothing on Vercel once the site
+of this lane is live, and the owner deletes them then.
+
+**Rollout** (the Worker before the site: an old room answers `room_relay` with `unknown_message`, which a new client turns
+into host candidates): `wrangler secret put COT_CLOUDFLARE_TURN_KEY_ID` and `wrangler secret put
+COT_CLOUDFLARE_TURN_API_TOKEN` in `cloudflare/rooms` (the values the Vercel project holds today), then the Worker
+(`node tools/release.mjs workers <sha> --only=rooms`), then a seated probe (a grant with TURN URLs), then the site
+deploy, then the Vercel TURN variables removed. Old tabs never send `room_relay`, so the Worker deploy changes nothing
+for them; a Worker without the secrets answers STUN alone.
+
+**Receipts.** `server/relayCredentials.selftest.mjs` (the sources, the lease table, one call per grant, the failures and
+their lines), `src/mp/room/roomActor.selftest.mjs` (admission, both windows — the room's needs a room of 17 seats — a
+seat kicked or leaving mid-mint, a failing port), `src/mp/room/roomClientSignals.selftest.mjs` (the request, the
+validation, the codes, the budget), `src/mp/transport/iceConfig.selftest.mjs` (the resolver), `browserComposition`
+(one resolver per room session over its client), `tools/mp-rooms-p2p-e2e.mjs` (the LAN helper's coturn grants over real
+sockets), `tools/mp-p2p-headless.mjs` (every peer connection of the run built with the room's grant: 10 of 10 from 4
+requests), `server/ice.selftest.mjs` (the deprecated answer), and the Workers-runtime suites: `cloudflare/rooms`
+`test/relay.test.ts` (a fake TURN key under `wrangler.relay.test.jsonc`: seated grants per request, the refusals with no
+provider call, the seat window, the eight-hour ask clamped to the hour, a failing provider) and `test/p2p.test.ts` (no
+secret: STUN alone, no provider call, no error).
+
+**Cost.** One `room_relay` is one handled room message (billed at the conservative one-request rule) and one provider
+subrequest: about one per seat at a start and one per migration window, ≈ 30–40 per 14v14 match.
 
 ## 10. Decisions for the owner
 

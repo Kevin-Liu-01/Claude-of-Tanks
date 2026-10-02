@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Full-source held-out forward rays, recorded independently before reseating
 // the buried draft lights/eyes. Source files are never needed by this test.
-const near=(a,b,e,name)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=e,`${name}: ${a} vs ${b}`);
 for(const quality of ['high','low']){
  const t=createTank('strv122_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
  try{

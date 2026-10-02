@@ -64,7 +64,8 @@ const dimensions: Readonly<Record<string, FleetDimensions>> = {
   t72b_1987_x: { hullLengthM: 6.737070506, overallLengthM: 9.703027867, widthM: 3.59, heightM: 2.105640266, silhouetteHeightM: 2.531, silhouetteHullLengthM: 7.243 },
   t80u_x: { hullLengthM: 6.720291335, overallLengthM: 9.534282731, widthM: 3.6, heightM: 2.172451481, silhouetteHeightM: 2.484, silhouetteHullLengthM: 6.652 },
   leclerc_x: { hullLengthM: 7.1303053, overallLengthM: 9.8043880, widthM: 3.6, heightM: 2.36494, silhouetteHeightM: 2.75059, silhouetteHullLengthM: 6.840284 },
-  leclerc_classic_x: { ...LECLERC_CLASSIC_X_DATUMS.dims },
+  leclerc_classic_x: { ...LECLERC_CLASSIC_X_DATUMS.dims,
+    widthM: LECLERC_CLASSIC_X_DATUMS.fieldKitWidthM },
   chieftain_mk10_x: { hullLengthM: 7.38869, overallLengthM: 10.803698, widthM: 3.678103, heightM: 2.453337,
     silhouetteHeightM:2.8486312905980586,silhouetteWidthM:3.6348535268031235,silhouetteHullLengthM:7.657120909127583 },
   t72b3_x: { ...T72B3_X_SOURCE_DATUMS.dims, silhouetteHeightM:4.107454637245056,
@@ -182,6 +183,13 @@ function applyAuthoredFrame(spec: FleetTankSpec, id: string): void {
   }
 }
 
+function armorFitDimensions(id: string, dims: FleetDimensions): FleetDimensions {
+  // The AMX 56 field kit widens the installed silhouette, not its retained
+  // hull or running gear. Fit donor armor in the original structural frame.
+  return id === 'leclerc_classic_x'
+    ? { ...dims, widthM: LECLERC_CLASSIC_X_DATUMS.dims.widthM } : dims;
+}
+
 const specs: Record<string, FleetTankSpec> = {};
 for (const [id, donorId, name] of entries) {
   // Registered donors first, then the unregistered templates (t72b_1987, t72b3,
@@ -197,7 +205,7 @@ for (const [id, donorId, name] of entries) {
   stripSilhouetteDimensions(spec.dims);
   const previous = { ...spec.dims };
   Object.assign(spec.dims, dimensions[id]);
-  fitArmorToDims(spec.armor, previous, spec.dims);
+  fitArmorToDims(spec.armor, previous, armorFitDimensions(id, spec.dims));
   applyAuthoredFrame(spec, id);
   specs[id] = spec;
 }
@@ -215,7 +223,7 @@ export function synchronizeSecondWaveXCombatMetadata(): void {
     const target = registries.tankSpecs[id], donor = donorSpec(registries.tankSpecs, donorId);
     for (const key of fields) Object.assign(target, { [key]: structuredClone(donor[key]) });
     target.armor = structuredClone(donor.armor);
-    fitArmorToDims(target.armor, donor.dims, target.dims);
+    fitArmorToDims(target.armor, donor.dims, armorFitDimensions(id, target.dims));
     applyAuthoredFrame(target, id);
     restoreInstalledVehicleFrame(target);
   }

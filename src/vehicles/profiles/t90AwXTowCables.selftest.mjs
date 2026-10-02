@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT90AWTowCables} from './t90AwXTowCables.ts';
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs source ${b} ±${t}`);
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 function hit(ms,p,d,far=1){return new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(ms,false)[0];}
 function interior(mesh,p,axis){const a=hit([mesh],p,axis,.15),b=hit([mesh],p,axis.map(n=>-n),.15);return Boolean(a&&b&&a.distance>0&&b.distance>0);}
 function sourceRays(ms){

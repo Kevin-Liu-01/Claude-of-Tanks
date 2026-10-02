@@ -3,9 +3,9 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {registerProfiledBuilders} from '../tankFactoryCore.ts';
 import {K1A1_X_PROFILES} from './k1a1X.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 registerProfiledBuilders({k1a1_x:K1A1_X_PROFILES.k1a1_x.build});
-const near=(a,b,e,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=e,`${label}: ${a} vs ${b} ±${e}`);
 const v=(x,y,z)=>new THREE.Vector3(x,y,z);
 const hit=(object,origin,direction,far=15)=>new THREE.Raycaster(origin,direction,0,far).intersectObject(object,true)[0];
 const top=(object,x,z)=>hit(object,v(x,7,z),v(0,-1,0))?.point.y;

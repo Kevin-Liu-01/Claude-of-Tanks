@@ -11,6 +11,7 @@ import { createMatchService, type MatchService } from '../match/service.ts';
 import { createLogger, silentLogger, type Logger } from '../match/log.ts';
 import { createLocalRoomService, type LocalRoomService } from './localRoomService.ts';
 import type { RoomPolicyGuards } from '../../src/mp/room/roomPolicy.ts';
+import type { RoomActorPorts } from '../../src/mp/room/roomActor.ts';
 
 export interface RoomsServerOptions {
   host?: string;
@@ -28,6 +29,8 @@ export interface RoomsServerOptions {
   log?: Logger;
   wallClock?: () => number;
   random?: () => number;
+  /** A seat's relay credentials (§13.14; `server/relayCredentials.ts`); absent, `room_relay` answers no server. */
+  relayCredentials?: RoomActorPorts['relayCredentials'];
 }
 
 export interface RoomsServer {
@@ -54,11 +57,13 @@ export async function createRoomsServer({
   log = silentLogger,
   wallClock,
   random,
+  relayCredentials,
 }: RoomsServerOptions): Promise<RoomsServer> {
   const server = http.createServer();
   const matchService = await createMatchService({ server, host, port, allowedOrigins, seatSecret, controlSecret, maxActors, log, wallClock });
   const roomService = createLocalRoomService({
     matchService, seatSecret, allowedOrigins, matchUrl: '/match', world, matchTransport, countdownS, battleLimitS, guards, log, wallClock, random,
+    ...(relayCredentials ? { relayCredentials } : {}),
   });
   server.on('request', (request, response) => {
     if (matchService.handleRequest(request, response) || roomService.handleRequest(request, response)) return;

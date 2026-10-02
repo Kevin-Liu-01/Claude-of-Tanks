@@ -314,6 +314,8 @@ export default {
     buildingFill: '#c9c2b2',
   },
 
-  // elevated south-west of the yard: the main line on its embankment, the siding fan and the water towers mid-frame
-  shot: { pos: [-190, 42, -230], look: [40, 2, 20] },
+  // from the south-east, over the open field and its fire-trench parapet and across the south service road to the yard:
+  // the siding fan with its wagons, the goods sheds and the station building, with the water tower and the western
+  // works' stack beyond, framed by the two spoil banks
+  shot: { pos: [150, 44, -240], look: [-20, 4, 10] },
 } satisfies import('./contracts.ts').MapCompositionConfig;

@@ -725,10 +725,10 @@ const MODERN3_SPECS = {
       mantlet: [300, 360, 450], loader: true,
     }),
     visual: {
-      // solid NATO green + low-contrast dark olive mottle (§26.5)
-      scheme: 'stripes', base: '#42503a', weather: '#4c5a44',
-      patches: ['#37432f', '#2c352a'],
-      marking: 'number', number: '118', trackWidthM: 0.60, camoScale: 0.6,
+      // The Preserie shares the C1 family woodland finish.
+      scheme: 'nato', base: '#4b563b', weather: '#5a6348',
+      patches: ['#252b25', '#69513c'],
+      marking: 'number', number: '118', trackWidthM: 0.60, camoScale: 0.4, patchK: 1.15,
     },
   },
 
@@ -767,9 +767,9 @@ const MODERN3_SPECS = {
       mantlet: [420, 500, 680], loader: true, bustleAmmo: true,
     }), ARIETE_C1_C2_SCALE),
     visual: {
-      scheme: 'stripes', base: '#48533e', weather: '#53604a',
-      patches: ['#384431', '#2c3529'], marking: 'number', number: 'C1 32',
-      trackWidthM: 0.66, camoScale: 0.56,
+      scheme: 'nato', base: '#4b563b', weather: '#5a6348',
+      patches: ['#252b25', '#69513c'], marking: 'number', number: 'C1 32',
+      trackWidthM: 0.66, camoScale: 0.4, patchK: 1.15,
     },
   },
 
@@ -818,9 +818,9 @@ const MODERN3_SPECS = {
       return armor;
     })(),
     visual: {
-      scheme: 'stripes', base: '#3f4d3b', weather: '#4b5945',
-      patches: ['#2e3b2d', '#5b5140'], marking: 'number', number: 'C2 01',
-      trackWidthM: 0.66, camoScale: 0.50,
+      scheme: 'nato', base: '#424f39', weather: '#546047',
+      patches: ['#222a24', '#66503b'], marking: 'number', number: 'C2 01',
+      trackWidthM: 0.66, camoScale: 0.46, patchK: 1.2,
     },
   },
 
