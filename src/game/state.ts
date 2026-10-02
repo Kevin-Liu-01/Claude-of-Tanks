@@ -2875,9 +2875,10 @@ function settleBattleResult(
     if (entity.team === 'enemy') enemiesLeft++;
     else if (entity.id !== game.player.id) alliesLeft++;
   }
+  const playerTeam = game.player.team === 'enemy' ? 'bravo' : 'alpha';
   if (modeOutcome) {
     game.result = modeOutcome.result === 'draw' ? 'draw'
-      : modeOutcome.result === (game.player.team === 'enemy' ? 'bravo' : 'alpha') ? 'victory' : 'defeat';
+      : modeOutcome.result === playerTeam ? 'victory' : 'defeat';
     game.resultReason = modeOutcome.reason;
   } else if (!game.matchModeController || game.matchModeController.usesElimination) {
     applyEliminationResult(game, enemiesLeft, alliesLeft);

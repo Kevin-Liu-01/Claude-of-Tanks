@@ -3072,15 +3072,21 @@ export function initHud(bus: EventBus): HudRuntime {
     return limitS == null ? t('hud.timer.survive') : t('hud.team.time');
   }
 
-  function modeStatusCopy(
-    modeState: HudMatchModeState,
-    ownScore: string | number,
-  ): string {
+  function additionalModeStatusCopy(modeState: HudMatchModeState, ownScore: string | number): string | null {
     if (modeState.id === 'juggernaut') return t(modeState.boss?.id === playerRef?.id ? 'hud.modeStatus.juggernautBoss' : 'hud.modeStatus.juggernaut', { hp: Math.ceil(modeState.boss?.hp ?? 0), max: Math.ceil(modeState.boss?.maxHp ?? 0) });
     if (modeState.id === 'infected') return t('hud.modeStatus.infected', { survivors: modeState.infection?.survivors ?? 0, infected: modeState.infection?.infected ?? 0 });
     if (modeState.id === 'realistic' || modeState.id === 'ac130') return t(`hud.modeStatus.${modeState.id}`);
     if (modeState.id === 'drone') return t('hud.modeStatus.drone', { own: ownScore, target: modeState.target ?? 20 });
     if (modeState.id === 'gun_game') { const stage = modeState.weaponStage; return t('hud.modeStatus.gun_game', { stage: (stage?.index ?? 0) + 1, total: stage?.total ?? 5, name: stage?.name ?? '', kills: stage?.kills ?? 0, required: stage?.required ?? 2 }); }
+    return null;
+  }
+
+  function modeStatusCopy(
+    modeState: HudMatchModeState,
+    ownScore: string | number,
+  ): string {
+    const special = additionalModeStatusCopy(modeState, ownScore);
+    if (special !== null) return special;
     if (modeState.id === 'standard') return t('hud.modeStatus.eliminate', {own:String(ownScore), target:String(modeState.target || 0)});
     if (modeState.id === 'capture_the_flag') {
       return t('hud.modeStatus.flags', { own: String(ownScore), target: String(modeState.target || 3) });
