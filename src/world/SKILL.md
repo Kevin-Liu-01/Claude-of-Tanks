@@ -66,15 +66,19 @@ law section pin the seam.
 p2 trees lane (2026-10-01): the desktop tiers GROW their near trees — `treeGrowth.ts` (a THREE-free skeleton per
 species profile: stem or leader, scaffolds or whorls, side shoots and twigs bent by gravity and clipped by the crown
 envelope; spray seats on the outer branches) and its emitters (tapered tubes with styled bark UVs — u = 2 + 2 × style
-+ the fraction round the stem, mapped by `prepareTreeBarkSurface` onto the four-style bark sheet; spray cards with
-volume normals, aFlex and aCard; a position-only crown shadow hull the pool's proxy casts instead of the far lobe
-hull) — and `treeSprayAtlas.ts` paints one 2 × 2 branch-spray atlas per species (leaf shapes per species, bare winter
-twigs where no palette opts birches into leaves). `vegetation.ts buildGrownTree` adds the legacy root flare, root
-tongues and winter snow pads; the species registry routes every species but the palm and the tidal-mangrove willow
-through it when `vegetationGrowsTrees()` (desktop, not `?legacyTrees=1`) and the config has no `legacyTrees`. The
-mobile tier keeps the legacy card trees, atlases and lobe tier exactly. Placements, RNG streams, records, pools and
-draws are unchanged; the impostor bake takes the grown trees. `treeGrowth.selftest.mjs` pins the budgets, structure,
-silhouettes, atlases and routing.
++ the fraction round the stem, mapped by `prepareTreeBarkSurface` onto the four-style bark sheet, built only when the
+grown trees are; spray cards with volume normals, aFlex and aCard; a position-only crown shadow hull the pool's proxy
+casts instead of the far lobe hull; `weldGrownGeometry` indexes all three, the same triangles from ~40 % of the
+vertices) — and `treeSprayAtlas.ts` paints one 2 × 2 branch-spray atlas per species (leaf shapes and a soft spray
+body per species, snow painted in on winter palettes, bare twigs where no palette opts birches into leaves; the
+desktop palms take its pinnate frond atlas). `vegetation.ts buildGrownTree` adds the legacy root flare, root tongues
+and a few flush snow pads; the registry routes every species but the palm and the tidal-mangrove willow through it
+when `vegetationGrowsTrees()` (desktop, not `?legacyTrees=1`) and the config has no `legacyTrees`. Battle snags: on
+those builds a share of a cratered map's trees (`battleSnagShare`, ≤ 7 %) converts after placement to the `snag`
+species — its own pools, a charred twig atlas, a legacy-style far stand-in outside the impostor atlas. The mobile tier
+keeps the legacy card trees, atlases, bark sheet and lobe tier exactly; placements and RNG streams are unchanged; the
+impostor bake takes the grown trees. `treeGrowth.selftest.mjs` pins the budgets, structure, silhouettes, atlases, the
+weld and routing.
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.
 `propPlacement.ts` owns typed terrain-support, rigid-footprint, utility-pole,
