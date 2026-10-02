@@ -66,5 +66,7 @@ export const SETTINGS_OPTION_ICONS = Object.freeze({
   volUi: { id: 'music', tone: 'amber' },
   volVoice: { id: 'radio', tone: 'cyan' },
   alarmHeartbeat: { id: 'heartbeat', tone: 'red' },
+  crewVoice: { id: 'radio', tone: 'amber' },
+  audioConcussion: { id: 'sound', tone: 'red' },
   graphicsQuality: { id: 'graphics', tone: 'cyan' },
 } satisfies Readonly<Record<SettingsOptionIconKey, SettingsIconSpec>>);
