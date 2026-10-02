@@ -33,6 +33,8 @@ import {
   type AtmosphereSummary,
 } from './atmosphere.ts';
 import { SkyEnvironmentCache } from './skyEnvironmentCache.ts';
+import { resolveLightModel, type LightingConfig } from './lightModel.ts';
+import type { AtmosphereParams } from './atmosphere.ts';
 import {
   bakeCirrusPixels,
   bakeCumulusPixels,
@@ -95,6 +97,11 @@ export interface SkyPreset {
    * carried here by main.ts's authored-preset getter; null = the layer derived from the deck fields alone.
    */
   cloudscape: CloudscapeConfig | null;
+  /**
+   * 2026-10-01 (the grounded light model, lightModel.ts): the map's lighting block — overcast, exposure EV, the sky's
+   * diffuse light, the ground's albedo and the subtle grade; null = every value from the model.
+   */
+  lighting: LightingConfig | null;
 }
 
 interface CloudBakePixels {
@@ -493,6 +500,7 @@ const DEFAULT_PRESET: Readonly<SkyPreset> = Object.freeze({
   atmosphere: null,
   cloudLayer: null,
   cloudscape: null,
+  lighting: null,
 });
 
 /** Round 68: the complete default preset (the receipts merge a map's sky block over it as the rig does). */
@@ -638,6 +646,8 @@ const ATMOSPHERE_DOME_FRAGMENT = /* glsl */`
 uniform vec3 uSunDirection;
 uniform vec3 uSunTransmittance;
 uniform float uSunDiscRadiance;
+uniform float uEnvBake;
+uniform vec3 uEnvGround;
 uniform float uSkyIntensity;
 uniform float uNight;
 uniform float uGalaxy;
@@ -652,6 +662,14 @@ void main() {
 	vec3 direction = normalize( vWorldPosition - cameraPosition );
 	vec3 skyDir = normalize( vec3( direction.x, max( direction.y, 0.0 ), direction.z ) );
 	vec3 skyCol = atmoSky( skyDir );
+	if ( uEnvBake > 0.5 ) {
+		// 2026-10-01, the environment bake (lightModel.ts): the raw sky — no display knee, no sun disc or glow (the sun
+		// lights only through the cascades, never as a shadowless fill folded into the diffuse mip) — and below the
+		// horizon the shaded ground the sky lights, eased in over two degrees so reflections keep no seam
+		float below = 1.0 - smoothstep( -0.035, 0.0, direction.y );
+		gl_FragColor = vec4( mix( max( skyCol, vec3( 0.0 ) ) * uSkyIntensity, uEnvGround, below ), 1.0 );
+		return;
+	}
 	float cosSun = dot( direction, uSunDirection );
 	// the legacy knee exemption spot around the sun keeps the disc and its immediate aureole HDR
 	float sunSpot = smoothstep( 0.99988, 0.99996, cosSun );
@@ -715,6 +733,9 @@ export interface AtmospherePublishedState {
   irradiance: THREE.Color;
   /** The live summary readback (diagnostics; the aerial pass reads only the scalars above). */
   summary: AtmosphereSummary | null;
+  /** 2026-10-01: the atmosphere the summary describes and its raw sky light (lightModel.ts, lighting.ts setSun). */
+  params: AtmosphereParams | null;
+  irradianceRaw: THREE.Color;
 }
 
 /** Apply the shared atmosphere parameters to a Sky instance. @param {Sky} sky @param {THREE.Vector3} sunDir @param {object} [preset] */
@@ -1149,6 +1170,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       uSunDirection: { value: new THREE.Vector3(0, 1, 0) },
       uSunTransmittance: { value: new THREE.Color(1, 1, 1) },
       uSunDiscRadiance: { value: legacySunDiscRadiance(sunDir.y) },
+      uEnvBake: { value: 0 },
+      uEnvGround: { value: new THREE.Color(0, 0, 0) },
       // shared by reference with the Preetham dome: configureSkyUniforms refreshes both at once
       uSkyIntensity: skyUniforms.uSkyIntensity, uNight: skyUniforms.uNight, uGalaxy: skyUniforms.uGalaxy,
       uNebula: skyUniforms.uNebula, uEarth: skyUniforms.uEarth, uPlanetR: skyUniforms.uPlanetR, uPlanetTint: skyUniforms.uPlanetTint,
@@ -1168,6 +1191,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     knee: new THREE.Vector3(SKY_KNEE, SKY_KNEE_RANGE, SKY_KNEE_FALLOFF), skyIntensity: 1, horizonLum: 0.45,
     horizonCap: HORIZON_LUM_CAP, fogTint: new THREE.Color(preset.fogTintHex), fogMix: preset.fogMix, irradiance: new THREE.Color(0.3, 0.4, 0.6),
     summary: atmosphereLuts?.summary ?? null,
+    params: null, irradianceRaw: new THREE.Color(0, 0, 0),
   };
   scene.userData.atmosphere = atmosphereState;
   // Round 68 (2026-09-24): the volumetric cloud layer (volumetricClouds.ts) — created with the atmosphere, fed
@@ -1178,6 +1202,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   scene.userData.volumetricClouds = volumetricClouds;
   /** Round 37's elevation falloff for the current sky (the atmosphere summary's, or the legacy probe's). */
   let atmosphereFalloff = 1;
+  /** 2026-10-01: the grounded model's environment intensity while the atmosphere shows (null on the legacy dome). */
+  let physicalEnvIntensity: number | null = null;
   let atmosphereKeySuffixLive = '';
   /**
    * Rebuild whatever LUT the preset invalidated, read the summary, and point the dome, the fog and the post
@@ -1194,6 +1220,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     sky.visible = !active;
     if (!active) {
       atmosphereKeySuffixLive = '';
+      physicalEnvIntensity = null;
+      atmosphereState.params = null;
       delete scene.userData.skyIrradiance;
       return false;
     }
@@ -1213,7 +1241,14 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     atmosphereState.irradiance.copy(summary.irradiance);
     scene.userData.skyIrradiance = atmosphereState.irradiance; // lighting.ts: the hemisphere light's hue
     atmosphereFalloff = summary.elevationFalloff;
-    atmosphereKeySuffixLive = atmosphereKey(params, preset.skyIntensity);
+    atmosphereState.params = params;
+    atmosphereState.irradianceRaw.copy(summary.irradianceRaw);
+    // 2026-10-01: the grounded light model's environment — the sky at its own radiance (an overcast deck dims the clear
+    // sky's share) over the shaded ground below the horizon
+    const model = resolveLightModel(preset, params, { irradianceRaw: [summary.irradianceRaw.r, summary.irradianceRaw.g, summary.irradianceRaw.b] });
+    physicalEnvIntensity = model.envIntensity;
+    (u.uEnvGround.value as THREE.Color).setRGB(model.groundRadiance[0], model.groundRadiance[1], model.groundRadiance[2]);
+    atmosphereKeySuffixLive = `${atmosphereKey(params, preset.skyIntensity)}|g:${model.groundRadiance.map((v) => v.toPrecision(6)).join(',')}`;
     return true;
   };
 
@@ -1606,6 +1641,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   updateCloudDecks();
 
   let pmrem: THREE.PMREMGenerator | null = null;
+  /** 2026-10-01: the environment's intensity — the grounded model's on the physically based dome, the authored floor elsewhere. */
+  const environmentIntensityFor = (): number => physicalEnvIntensity ?? Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR);
   let pmremContext: ReturnType<THREE.WebGLRenderer['getContext']> | null = null;
   let pmremInfo: THREE.WebGLRenderer['info'] | null = null;
   // Round 65: when the physically based dome is showing, the environment bakes from it (installed below,
@@ -1682,6 +1719,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       const envDome = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), atmosphereMaterial);
       envDome.scale.setScalar(ENV_SKY_SCALE);
       envScene.add(envDome);
+      // 2026-10-01: the dome's environment mode (raw sky, no disc, the ground below) for this synchronous bake only
+      atmosphereMaterial.uniforms.uEnvBake.value = 1;
       try {
         return environmentGenerator().fromScene(envScene);
       } catch (error) {
@@ -1689,6 +1728,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         pmrem = null;
         throw error;
       } finally {
+        atmosphereMaterial.uniforms.uEnvBake.value = 0;
         envDome.geometry.dispose();
       }
     };
@@ -1746,7 +1786,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // to compensated ambient when invalid (deviceDiag.ts).
       withEnvironmentRenderState(renderer, () => environments.install(
         environmentKey(renderer, sunDir, preset, atmosphereKeySuffix), bakeProceduralEnvironment,
-        Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR),
+        environmentIntensityFor(),
         () => enforceEnvValidity(renderer, scene, preset.skyIntensity),
       ));
     },
@@ -1811,7 +1851,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // environment for every selector hover/rapid click caused visible frame
       // stalls even though the authored key lights already own tank shading.
       // Matching its strength still preserves the source map's ambient level.
-      scene.environmentIntensity = Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR);
+      scene.environmentIntensity = environmentIntensityFor();
       rig.applyFog(targetScene);
     },
 

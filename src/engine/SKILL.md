@@ -20,7 +20,13 @@ cadence; `lighting.ts` reuses proven static Garage depth maps until explicit
 presentation invalidation, then forces a complete refresh before motion;
 `shadowStability.ts` owns texel snapping and cascade-scaled receiver bias;
 `simplexFast.ts` owns allocation-free, reference-identical terrain noise;
-`post.ts` and `sky.ts` build the frame, while `temporalAoPolicy.ts` owns the
+`post.ts` and `sky.ts` build the frame; `lightModel.ts` (2026-10-01) turns a
+map's sky preset and the atmosphere's summary into the light — the sun through
+the atmosphere, the sky's own image-based light (the environment baked without
+the sun disc, the shaded ground below the horizon), the overcast deck, the
+exposure law and the per-map grade — and `lighting.ts` applies it (the Garage,
+an enclosed presentation, and the Preetham tier keep the authored rig); the
+output pass tone-maps with AgX. `temporalAoPolicy.ts` owns the
 asymmetric stale-dark release used by temporal GTAO; `renderLayers.ts` owns
 presentation/shadow-only routing for authored proxy casters;
 `phaseSceneResidency.ts` detaches mutually exclusive Garage and battlefield
