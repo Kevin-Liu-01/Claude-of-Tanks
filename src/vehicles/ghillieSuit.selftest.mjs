@@ -60,8 +60,20 @@ for (const id of ids) {
   const hullNet = tank.root.getObjectByName(`${id}_ghillie_hull_net`);
   const hullBounds = new THREE.Box3().setFromObject(hullNet);
   assert.ok(hullBounds.min.y > 0.52, `${id} ghillie stays above the live track corridor`);
-  assert.ok(hullBounds.max.z - hullBounds.min.z > 5.5,
-    `${id} hull blanket spans the vehicle instead of one selected panel`);
+  if (id === 'ua_t64bv') {
+    // 2026-10-01: the owner's Donbas rebuild (cdbfe54dc, "ua_t64bv with supported foliage, net and cages";
+    // profiles/donbasFieldCover.ts) replaced the deck-wide blanket with supported flank drapes over the five side
+    // ERA cassettes (z -1.9..1.7 on the t72b3_x hull) and a bustle cover behind the open sights and hatches.
+    const cover = turretRig.userData.fieldCover;
+    assert.deepEqual(cover, { supported: true, sightsOpen: true, hatchesOpen: true, revision: 1 },
+      `${id} field cover is carried on real rails with sights and hatches open`);
+    assert.ok(hullBounds.min.x < -1.7 && hullBounds.max.x > 1.7, `${id} drapes hang on both flanks`);
+    assert.ok(hullBounds.min.z <= -1.9 && hullBounds.max.z >= 1.7,
+      `${id} flank drapes run past every side cassette instead of one selected panel`);
+  } else {
+    assert.ok(hullBounds.max.z - hullBounds.min.z > 5.5,
+      `${id} hull blanket spans the vehicle instead of one selected panel`);
+  }
 
   if (cfg.turret) {
     const turretNet = tank.root.getObjectByName(`${id}_ghillie_turret_net`);

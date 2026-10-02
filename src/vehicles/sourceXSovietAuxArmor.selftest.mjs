@@ -13,7 +13,7 @@ import {createCombatState,resolveShellHit} from '../sim/damage.ts';
 // tire-opening, skirt-finish, T-90 fittings and Burlak side-finish inverses that reached them are gone;
 // the fleet geometry ledger owns whole-tank change detection. Recipe, seating, grid, gap, seam and
 // projectile contracts below run on the actual registered specs and native models.
-const EXPECTED_STATS={t62mv1_x:[8,9,9],t72b_1987_x:[8,8,8],t80u_x:[8,8,8],
+const EXPECTED_STATS={t72b_1987_x:[8,8,8],t80u_x:[8,8,8],
   t72b3_x:[8,8,8],t72b3m_x:[8,8,8],t72bu_x:[8,6,6],t90_x:[8,7,7],
   t90a_burlak_x:[8,6,6],t90ms_x:[8,6,6]};
 const EMPTY={pos:new THREE.Vector3(),yaw:0,pitch:0,roll:0,turretYaw:0,gunPitch:0};
@@ -105,7 +105,7 @@ function bilateralGrid(t,spec){
   return{positive,negative};
 }
 
-const GAP={t62mv1_x:[.9,-1.24192,1.53],t72b_1987_x:[.68,-2,1.70],t80u_x:[.70,0,1.66],
+const GAP={t72b_1987_x:[.68,-2,1.70],t80u_x:[.70,0,1.66],
   t72b3_x:[1.185,0,1.64],t72b3m_x:[1.1,-2.38,1.90],t72bu_x:[1,-1.895,1.70],
   t90_x:[1,.16675,1.65],t90a_burlak_x:[1,-1.0835,1.70],t90ms_x:[1.36,-2.5,1.80]};
 function gaps(spec){
@@ -152,6 +152,21 @@ function liveProtection(spec){
   }
 }
 
+
+// 2026-10-01: the owner's rebuild puts the T-62MV-1 on the T-62 obr. 1975 chassis (4c34b3e8b, cdbfe54dc), whose
+// five-wheel course is exposed: no spaced skirt exists, so the source-study skirt recipe left SOVIET_AUX_IDS and the
+// donor record's skirt planes (x +-1.83, superseded MV-era model) are dropped. Prove the rebuild registers no spaced
+// skirt and that the former ghost plane, outside the side ERA fields, receives no protection from any plate.
+{
+  const t62=getSpec('t62mv1_x');
+  assert.ok(!SOVIET_AUX_IDS.includes('t62mv1_x'),'t62mv1_x: no source-study skirt recipe on the rebuilt chassis');
+  assert.deepEqual(fields(t62),[],'t62mv1_x: no spaced skirt plate without native skirt stock');
+  for(const side of [-1,1])for(const z of [-2.75,-1.5,0,1.3,2.7])for(const y of [.55,.70,.85]){
+    const hits=traceTank(vector([side*2.3,y,z]),vector([side*1.75,y,z]),EMPTY,{...t62.armor,turretPlates:[],
+      collisionShells:{hull:[],turret:[]},modules:[],crew:[],trackShapes:[],gunBarrel:null});
+    assert.equal(hits.length,0,`t62mv1_x/${side}/${z}/${y}: open air beside the wheels is not armour`);
+  }
+}
 
 const arg=process.argv.find(a=>a.startsWith('--ids='));
 const ids=arg?arg.slice(6).split(','):SOVIET_AUX_IDS;

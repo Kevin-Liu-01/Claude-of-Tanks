@@ -17,6 +17,9 @@ const DEFAULT_LOCK_DIR = '/tmp/cot-shots.lock';
 const DEFAULT_QUEUE_DIR = '/tmp/cot-shots.queue';
 const DEFAULT_LOCK_STALE_MS = 5 * 60 * 1000;
 const DEFAULT_TICKET_STALE_MS = 60 * 60 * 1000;
+// A waiter renews its own ticket this often, so the reaping age only removes tickets whose process died or stopped
+// renewing (a reused PID); before 2026-10-02 a live waiter past the reaping age was reaped and silently lost its place.
+const DEFAULT_TICKET_REFRESH_MS = 30 * 1000;
 
 function ticketPid(name) {
   const match = name.match(/-(\d+)\.t$/);
@@ -93,6 +96,17 @@ function reapStaleLock(lockDir, staleMs) {
   }
 }
 
+/** Renew a waiting ticket; restore it under the same name (so the same place) when another process reaped it. */
+function keepTicket(path) {
+  const now = new Date();
+  try {
+    utimesSync(path, now, now);
+  } catch (error) {
+    if (error.code !== 'ENOENT') return;
+    try { writeFileSync(path, String(process.pid), { flag: 'wx' }); } catch { /* raced */ }
+  }
+}
+
 // Distinguish acquisitions launched by concurrent workers in one process.
 // Keep the PID last for legacy ticket liveness checks and use exclusive creation.
 let nextTicketSequence = 0;
@@ -114,6 +128,7 @@ export function createCaptureLock({
   queueDir = DEFAULT_QUEUE_DIR,
   lockStaleMs = DEFAULT_LOCK_STALE_MS,
   ticketStaleMs = DEFAULT_TICKET_STALE_MS,
+  ticketRefreshMs = DEFAULT_TICKET_REFRESH_MS,
 } = {}) {
   let held = false;
 
@@ -125,9 +140,15 @@ export function createCaptureLock({
     if (Number.isFinite(chainWait) && chainWait > timeoutMs) timeoutMs = chainWait;
     mkdirSync(queueDir, { recursive: true });
     const ownTicket = reserveTicket(queueDir);
+    const ownPath = join(queueDir, ownTicket);
     const startedAt = Date.now();
+    let renewedAt = startedAt;
     try {
       for (;;) {
+        if (Date.now() - renewedAt >= ticketRefreshMs) {
+          renewedAt = Date.now();
+          keepTicket(ownPath);
+        }
         const head = queueHead(queueDir, readQueue(queueDir, ownTicket), ownTicket, ticketStaleMs);
         if (head === ownTicket && claimLock(lockDir)) {
           held = true;
@@ -135,7 +156,7 @@ export function createCaptureLock({
         }
         if (head === ownTicket && reapStaleLock(lockDir, lockStaleMs)) continue;
         if (Date.now() - startedAt > timeoutMs) throw new Error('cot-shots lock timeout');
-        await new Promise((resolve) => setTimeout(resolve, head === ownTicket ? 300 : 1000));
+        await new Promise((resolve) => setTimeout(resolve, Math.min(head === ownTicket ? 300 : 1000, ticketRefreshMs)));
       }
     } finally {
       try { unlinkSync(join(queueDir, ownTicket)); } catch { /* already removed */ }
@@ -158,8 +179,8 @@ export function createCaptureLock({
 
   // Read-only count of acquisitions queued behind the owner (2026-10-01, gate P5). An owner's own
   // ticket is removed once it holds the lock, so every ticket of a live process is someone waiting.
-  // A ticket is counted while its process lives, even past the reaping age (waiters never refresh
-  // their tickets): a long batch must yield to a long waiter. Nothing is reaped here. An unreadable
+  // A ticket is counted while its process lives, even past the reaping age (a waiter on an older copy of this
+  // module does not renew its ticket): a long batch must yield to a long waiter. Nothing is reaped here. An unreadable
   // queue reports one waiter, so a caller that yields to waiters keeps the draining behaviour.
   function waiting() {
     let names;

@@ -2,9 +2,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { addT90SMRightLauncherBracket } from './t90SMXRightLauncherBracket.ts';
+import { nearStrict as near } from '../../../tools/receipt-kit.test-support.mjs';
 
-const near = (a, b, epsilon, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b) < epsilon,
-  `${label}: ${a} versus source ${b}`);
 const FRONT = [
   [1.12, 2.21, -.377327106, [.373737651, .281486001, .883790586]],
   [1.16, 2.21, -.395112137, [.388041658, .305828207, .869420945]],

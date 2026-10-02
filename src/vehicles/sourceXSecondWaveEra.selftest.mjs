@@ -26,15 +26,18 @@ const ids=arg?arg.slice(6).split(','):SECOND_WAVE_X_IDS;
 assert.equal(SECOND_WAVE_X_IDS.length,23,'complete requested fleet census');
 for(const id of ids)assert.ok(SECOND_WAVE_X_IDS.includes(id),`known second-wave ID ${id}`);
 
+// 2026-10-01: the owner's rebuild of the T-62MV-1 (4c34b3e8b: T-62 obr. 1975 chassis with "two independently
+// removable side fields beyond the former four-zone package"; cdbfe54dc: complete T-72B 1987 upper assembly) gives it
+// six zones: its first-generation hull glacis and side fields, and the transplanted turret's own 1987 modules.
 function expectedZones(id){
   if(!ERA_IDS.includes(id))return[];
   const names=['hull/glacis_era_L','hull/glacis_era_R','turret/turret_era_L','turret/turret_era_R'];
-  if(!['t62mv1_x','t80u_x'].includes(id))names.push('hull/skirt_era_L','hull/skirt_era_R');
+  if(id!=='t80u_x')names.push('hull/skirt_era_L','hull/skirt_era_R');
   if(id==='t90ms_x')names.push('turret/side_era_L','turret/side_era_R');
   return names.sort();
 }
 function expectedStats(id,name){
-  if(id==='t62mv1_x')return[15,15,15,.05,280];
+  if(id==='t62mv1_x')return name.startsWith('turret_')?[15,15,15,.2,450]:[15,15,15,.05,280];
   if(name.startsWith('skirt_'))return[12,12,12,.05,280];
   return[15,15,15,.2,id==='t80u_x'?400:450];
 }
@@ -199,5 +202,6 @@ for(const id of ids){
   assert.equal(JSON.stringify(donor.armor),donorSnapshot,`${id}: original donor protection untouched`);
   console.log(`sourceXSecondWaveEra: ${id} ${expectedZones(id).length} named zones pass`);
 }
-if(!arg){assert.equal(ERA_IDS.length,9);assert.equal(zoneFlows,208,'52 modules × high/low × neutral/posed');}
+// 2026-10-01: 52 -> 54 modules: the rebuilt T-62MV-1's two removable side fields (4c34b3e8b).
+if(!arg){assert.equal(ERA_IDS.length,9);assert.equal(zoneFlows,216,'54 modules × high/low × neutral/posed');}
 console.log(`sourceXSecondWaveEra: ${ids.length} IDs, ${zoneFlows} live/strip/spent/reset flows, ${skinSamples} corner/center skin samples, ${liveFaces} finite high/low facets pass`);

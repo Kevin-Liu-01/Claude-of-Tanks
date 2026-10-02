@@ -6,7 +6,8 @@
 //
 // - build runs `npm run build`, whose prebuild is `npm run i18n:validate`; the i18n step adds the
 //   other half of `npm run i18n:check` (`tools/i18n-scan.mjs --check`), so nothing runs twice.
-// - budget runs `tools/bundle-budget.mjs` when that file exists and is skipped otherwise.
+// - budget runs `tools/bundle-budget.mjs --check` (a page over tools/bundle-budget.json fails the gate) when that
+//   file exists and is skipped otherwise.
 // - workers runs the typecheck and test scripts of every `cloudflare/*/package.json` (rooms,
 //   telemetry); `--install` runs `npm ci` for a Worker whose node_modules is missing.
 // - receipts runs `tools/run-selftests.mjs all` (with --only/--shard/--all/--order passed through)
@@ -94,7 +95,7 @@ export function planGate(options, { root, out, exists = (path) => existsSync(joi
     if (step === 'build') return { step, commands: [[npm, 'run', 'build']], note: 'prebuild runs npm run i18n:validate' };
     if (step === 'i18n') return { step, commands: [['node', 'tools/i18n-scan.mjs', '--check']], note: 'the build prebuild ran i18n:validate' };
     if (step === 'budget') {
-      return exists('tools/bundle-budget.mjs') ? { step, commands: [['node', 'tools/bundle-budget.mjs']] }
+      return exists('tools/bundle-budget.mjs') ? { step, commands: [['node', 'tools/bundle-budget.mjs', '--check']] }
         : { step, commands: [], skip: 'tools/bundle-budget.mjs is not in this tree' };
     }
     if (step === 'workers') {

@@ -1,61 +1,142 @@
-// src/world/maps/railyard.ts — maps r1: flat brownfield rail depot under an
-// overcast sky (Ensk's industrial quarter, minus the town). Warehouse rows,
-// container ranks and gantry cranes along a fan of sidings (maps/mapKits.ts
-// lays the physical track geometry), smokestack verticals, concrete/gravel
-// splats, lamppost-lined paved roads and heavy battle scarring.
+// src/world/maps/railyard.ts — Cinder Junction, redesigned 2026-10-01 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
+// The palette, sky, vegetation, building tones, name and id are the map's identity and stay; the battlefield under
+// them is new. The old layout was a 3 × 3 street lattice drawn edge to edge across the flattest ground in the
+// rotation (relief σ 2.4 m), with seven hard-coded north–south sidings that no road served, under Verdant's landform
+// skeleton and its three beat sites; 12.7 % of all sightlines ran 300 m or more down the straight streets.
+//
+// Reference: a Central European junction on the coalfield (Ruhr, Upper Silesia). A double-track main line crosses the
+// graded valley floor on a low embankment. At the junction it opens into a flat yard of parallel sidings between the
+// throats, with water towers and engine sheds at the throats, goods sheds on their loading stubs, a coal stage, a
+// container terminal and the station. Service roads run along the yard, the main roads cross it at level crossings,
+// and the spoil tips, spoil banks and works of the pits stand out on the valley floor.
+//
+// The story on the ground: the main line comes in on its embankment from the west-south-west, runs through the yard
+// past the station square and leaves on its embankment to the east-north-east, through a cutting in each rim into a
+// tunnel. Its two tracks close onto one before each cutting. Three sidings fan out each side between the throats; a
+// loading stub runs into each goods side, a goods shed on one side of it and a coal stage on the other. The central
+// road crosses the yard at the station square between the two station buildings, the crossing roads cross the line
+// at the graded throat ends, and a service road runs along each side of the yard. Out on the valley floor stand two
+// conical spoil tips, two flat-topped spoil banks run out from the washeries, and two works with their stacks.
+//
+// The layout is rotationally symmetric about the station square (0, 0). The main line is a straight chord through
+// it, and every shed, stack, tip and bank in one half has its counterpart turned through 180°. Alpha comes in from
+// the south, bravo from the north; the two station buildings screen the deployments from each other. The three
+// zone-control objectives stand on the line and are equally far from both teams: the station square and the two
+// level crossings. Three lanes cross the midfield: past the western washery and spoil bank, through the yard, and
+// past the eastern works; the embankment and the banks give both sides hull-down ground.
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
-// Yard plan: industry-heavy with a couple of worker rowhouses and ruins so
-// the depot reads lived-in and fought-over. 'warehouse'/'containerRow'/
-// 'gantry'/'watertower'/'stack'/'shed' come from maps/railKit.ts; 'factory'
-// from maps/urbanKit.ts.
+// The main line's centre: a straight chord through the station square, rising 6.6 m per 100 m of easting.
+const MAIN_SLOPE = 0.066;
+const lineZ = (x: number): number => Math.round(x * MAIN_SLOPE * 10) / 10;
+// The double main line (centres 2.3 m either side of the chord) runs out to 352 m each side of the square, where the
+// two roads close onto one: the through road eases onto the chord and leaves the square through a cutting into the
+// tunnel beyond the rim; the other ends at the junction with it. Three through sidings fan out each side between the
+// throats, and a loading stub runs into each goods side with a coal stage beside it (buffer stop at the shed end).
+const PORTAL_X = 440;
+function mainLine(offsetM: number, side: 1 | -1, through: boolean): [number, number][] {
+  const out: [number, number][] = [];
+  for (let x = 0; x <= 352; x += 32) out.push([side * x, lineZ(side * x) + offsetM]);
+  out.push([side * 384, lineZ(side * 384) + offsetM * 0.5], [side * 416, lineZ(side * 416)]);
+  if (through) out.push([side * PORTAL_X, lineZ(side * PORTAL_X)], [side * 512, lineZ(side * 512)]);
+  return out;
+}
+function siding(offsetM: number): [number, number][] {
+  return [[-236, lineZ(-236) + Math.sign(offsetM) * 2.3], [-204, lineZ(-204) + offsetM * 0.45], [-172, lineZ(-172) + offsetM],
+    [172, lineZ(172) + offsetM], [204, lineZ(204) + offsetM * 0.45], [236, lineZ(236) + Math.sign(offsetM) * 2.3]];
+}
+const RAIL_SPURS = [
+  { path: mainLine(2.3, 1, true), cutting: { from: [PORTAL_X, lineZ(PORTAL_X)] as [number, number] } },
+  { path: mainLine(-2.3, 1, false) },
+  { path: mainLine(-2.3, -1, true), cutting: { from: [-PORTAL_X, lineZ(-PORTAL_X)] as [number, number] } },
+  { path: mainLine(2.3, -1, false) },
+  { path: siding(9) }, { path: siding(15) }, { path: siding(21) },
+  { path: siding(-9) }, { path: siding(-15) }, { path: siding(-21) },
+  { path: [[64, lineZ(64) - 30], [180, lineZ(180) - 34]] as [number, number][], bufferStop: 'end' as const,
+    coalStage: { side: -1 as const, fromM: 4, toM: 40 } },
+  { path: [[-64, lineZ(-64) + 30], [-180, lineZ(-180) + 34]] as [number, number][], bufferStop: 'end' as const,
+    coalStage: { side: -1 as const, fromM: 4, toM: 40 } },
+];
+
+// Yard plan: the road frontages inside the yard take the sheds, rowhouses and ruins; the authored lots below take
+// the landmarks (engine shed, goods shed, water towers, station hall, gantries, stacks).
 const PLAN = [
-  // world-dressing r1: 'depot' (canopied platform hall, maps/villageKit.ts)
-  // anchors the passenger side of the yard
-  'warehouse', 'containerRow', 'factory', 'depot', 'foundryoffice', 'watertower',
-  'containerRow', 'ruin', 'warehouse', 'gantry', 'stack', 'shed',
-  'containerRow', 'depot', 'ruin', 'rowhouse', 'shed', 'containerRow',
-  'warehouse', 'stack', 'rowhouse', 'containerRow',
-  // r3 tail — consumed by blockFill for the BLOCK INTERIORS (the road
-  // frontage takes ~20 slots; everything after lands between the sidings)
-  'containerRow', 'shed', 'containerRow', 'warehouse', 'containerRow',
-  'shed', 'containerRow', 'ruin', 'containerRow', 'shed', 'containerRow',
-  'warehouse',
+  'warehouse', 'shed', 'containerRow', 'ruin', 'shed', 'rowhouse', 'containerRow', 'shed',
+  'warehouse', 'ruin', 'rowhouse', 'shed', 'containerRow', 'shed', 'ruin', 'containerRow',
+  'shed', 'warehouse', 'rowhouse', 'containerRow', 'shed', 'ruin',
 ];
 
 export default {
   id: 'railyard',
   name: 'Cinder Junction',
-  blurb: 'Brownfield rail depot — warehouses, container ranks, gravel flats',
+  blurb: 'A coalfield rail junction — a yard of sidings on the main line, level crossings, spoil tips and works',
 
   terrain: {
-    hillScale: 0.45,  // graded-flat brownfield...
-    microScale: 0.5,  // ...with just enough settle to break the pancake
+    hillScale: 0.6,   // the valley floor's broad drainage grades (was 0.45: the flattest map in the rotation)
+    microScale: 0.8,
     rimH: 22,
     marshes: [],
-    // the yard: one big graded rect with a whisper of elevation drift
-    village: { x0: -200, x1: 200, z0: -170, z1: 190, cx: -10, cz: 10, feather: 55, flatten: 0.93, relief: 0.25 },
-    roads: { grid: { xs: [-120, 0, 130], zs: [-110, 30, 150], jitter: 0.6 } },
+    // The yard: one graded rect around the station square, out past the throats to the level crossings.
+    village: { x0: -270, x1: 270, z0: -96, z1: 96, cx: 0, cz: 0, feather: 46, flatten: 0.93, relief: 0.2 },
+    railSpurs: RAIL_SPURS,
+    roads: { paths: [
+      // 0 — the central road: south edge, across the yard at the station square, north edge. Road 0 carries the
+      // utility-pole line (mapQuality).
+      // It enters the square past the south-west corner of the station building and leaves past the north-east
+      // corner of its twin, so no street runs from one deployment to the other.
+      [[-28, -448], [-30, -420], [-34, -320], [-38, -220], [-40, -130], [-36, -66], [-24, -34], [0, 0], [24, 34],
+        [36, 66], [40, 130], [38, 220], [34, 320], [30, 420], [28, 448]],
+      // 1 / 2 — the crossing roads: over the line at a level crossing at each graded throat end.
+      [[-288, -448], [-286, -400], [-276, -280], [-266, -150], [-262, -40], [-266, 80], [-282, 220],
+        [-300, 360], [-304, 448]],
+      [[288, 448], [286, 400], [276, 280], [266, 150], [262, 40], [266, -80], [282, -220], [300, -360],
+        [304, -448]],
+      // 3 / 4 — the yard service roads, edge to edge along each side of the yard.
+      [[-448, -96], [-400, -96], [-300, -88], [-200, -76], [-100, -70], [0, -66], [100, -60], [200, -50],
+        [300, -40], [400, -30], [448, -27]],
+      [[448, 96], [400, 96], [300, 88], [200, 76], [100, 70], [0, 66], [-100, 60], [-200, 50],
+        [-300, 40], [-400, 30], [-448, 27]],
+      // 5 / 6 — the works roads: off the service road, through the works gate, out to the crossing road.
+      [[150, -55], [158, -90], [172, -118], [204, -150], [244, -184], [281, -210]],
+      [[-150, 55], [-158, 90], [-172, 118], [-204, 150], [-244, 184], [-281, 210]],
+    ] },
+    // The station square and the two level-crossing aprons: level paved ground the zone-control placement seats
+    // its 30 m discs on (the crossings lie inside the yard's grading, so their roads reach them at a road grade).
+    hardstands: [
+      { x: 0, z: 0, width: 62, length: 62, yawDeg: 0, grade: 0 },
+      { x: -262, z: lineZ(-262) - 4, width: 60, length: 60, yawDeg: 4, grade: 0 },
+      { x: 262, z: lineZ(262) + 4, width: 60, length: 60, yawDeg: 4, grade: 0 },
+    ],
     landforms: [
-      { kind: 'ridge', x: -286, z: -8, length: 348, width: 76, height: 5.2, yawDeg: 2, settlementScale: 0.86 },
-      { kind: 'ridge', x: 286, z: 12, length: 344, width: 76, height: 5.0, yawDeg: -2, settlementScale: 0.86 },
-      { kind: 'ridge', x: -8, z: 286, length: 270, width: 66, height: 4.8, yawDeg: 88, settlementScale: 0.86 },
-      { kind: 'knoll', x: 226, z: -248, rx: 82, rz: 62, height: 5.6, yawDeg: 18 },
-      { kind: 'basin', x: -224, z: -244, rx: 92, rz: 68, height: -2.0, yawDeg: -16 },
+      // The main-line embankment outside the yard, each half from the throat to the cutting.
+      { kind: 'ridge', x: -372, z: lineZ(-372), length: 300, width: 44, height: 2.8, yawDeg: 3.8, settlementScale: 0.6 },
+      { kind: 'ridge', x: 372, z: lineZ(372), length: 300, width: 44, height: 2.8, yawDeg: 3.8, settlementScale: 0.6 },
+      // The spoil tips: tall black cones out on the valley floor, one in each half.
+      { kind: 'knoll', x: -322, z: -238, rx: 70, rz: 62, height: 15, yawDeg: 20 },
+      { kind: 'knoll', x: 322, z: 238, rx: 70, rz: 62, height: 15, yawDeg: 20 },
+      // The spoil banks: long flat-topped tips run out from the washeries across the valley floor, their flanks at
+      // the spoil's angle of repose — south-west of the yard and, turned through 180°, north-east of it.
+      { kind: 'ridge', x: -176, z: -160, length: 150, width: 40, height: 11, yawDeg: 84 },
+      { kind: 'ridge', x: 176, z: 160, length: 150, width: 40, height: 11, yawDeg: 84 },
+      // The drainage grades: a shallow trough in the open fields in front of each deployment's works.
+      { kind: 'basin', x: 60, z: -230, rx: 150, rz: 60, height: -2.4, yawDeg: 6 },
+      { kind: 'basin', x: -60, z: 230, rx: 150, rz: 60, height: -2.4, yawDeg: 6 },
     ],
   },
 
+  layoutBrief: { exceptions: {
+    solidPropsInRoad: 'a roadside wreck and a field-work pillbox from the shared props passes (centre clearances of 6 m '
+      + 'against footprint radii up to 5.8 m) reach the carriageway edge; the shared laws are fixed fleet-wide in '
+      + 'roll-out batch 1',
+  } },
+
   spawns: {
-    player: { x: 0, z: -330 },
-    // BATTLE-AI r7 TEAM SPAWNS: one enemy spawn arc north of the yard (the
-    // old list scattered to ±330 x with two points at z<=30 — beside the
-    // player's own half). Flat-scanned via tools/tmp-ai-r7-spawnscan.mjs —
-    // minNy>=0.86, relief<=5 m, outside the yard rect by 40 m, >=38 m apart,
-    // >=380 m from the player pad.
+    // Alpha deploys south of the yard between the spoil bank and the eastern works; bravo's pads are the rotation.
+    player: { x: -40, z: -400 },
     enemies: [
-      { x: -9, z: 350 }, { x: -64, z: 360 }, { x: 46, z: 360 }, { x: -119, z: 376 },
-      { x: 85, z: 392 }, { x: -164, z: 397 }, { x: 146, z: 396 },
+      { x: 40, z: 400 }, { x: -12, z: 388 }, { x: 92, z: 388 }, { x: -58, z: 368 },
+      { x: 138, z: 368 }, { x: 14, z: 430 }, { x: 66, z: 430 },
     ],
   },
 
@@ -103,14 +184,59 @@ export default {
   props: {
     plan: PLAN,
     destructibleBuildings: ['quonsethut', 'transformershed', 'motorpool', 'guardpost'],
+    // Rotational pairs about the station square, each at least 180 m from every other: a post covering each level
+    // crossing from the open field beyond it, a gate at each works, a camp at the outer foot of each spoil bank.
     tacticalBeats: [
-      { id: 'western-freight-gate', role: 'brawl', x: -250, z: -68, yawDeg: 0,
-        structure: 'motorpool', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: -15 },
-      { id: 'eastern-switch-post', role: 'scout', x: 245, z: -70, yawDeg: 0,
-        structure: 'guardpost', outcrop: { count: 4, radius: 8, scaleMax: 2.5 } },
-      { id: 'northern-power-yard', role: 'support', x: -8, z: 260, yawDeg: 0,
-        structure: 'transformershed', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
+      { id: 'west-crossing-post', role: 'brawl', x: -310, z: -66, yawDeg: 40,
+        structure: 'guardpost', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: -15 },
+      { id: 'east-crossing-post', role: 'brawl', x: 310, z: 66, yawDeg: 220,
+        structure: 'guardpost', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: 15 },
+      { id: 'south-works-gate', role: 'support', x: 198, z: -112, yawDeg: 135,
+        structure: 'transformershed', redoubt: true, outcrop: { count: 5, radius: 9 } },
+      { id: 'north-works-gate', role: 'support', x: -198, z: 112, yawDeg: 315,
+        structure: 'transformershed', redoubt: true, outcrop: { count: 5, radius: 9 } },
+      { id: 'south-bank-camp', role: 'scout', x: -200, z: -260, yawDeg: 20,
+        structure: 'quonsethut', outcrop: { count: 4, radius: 8, scaleMax: 2.5 } },
+      { id: 'north-bank-camp', role: 'scout', x: 200, z: 260, yawDeg: 200,
+        structure: 'quonsethut', outcrop: { count: 4, radius: 8, scaleMax: 2.5 } },
     ],
+    // The yard's buildings and the works, every lot with its 180° twin. A building's long side follows the tracks
+    // (yaw 86.2: its local +Z along the line's bearing).
+    plannedSites: [
+      // the station buildings, on the square's south and north sides
+      { structure: 'depot', x: -4, z: -44, yawDeg: 86.2 },
+      { structure: 'depot', x: 4, z: 44, yawDeg: 266.2 },
+      // the goods sheds beside their loading tracks
+      { structure: 'warehouse', x: -120, z: 38, yawDeg: 86.2 },
+      { structure: 'warehouse', x: 120, z: -38, yawDeg: 266.2 },
+      // the water towers at the throats, and an engine shed across the line from each
+      { structure: 'watertower', x: -196, z: 24, yawDeg: 0 },
+      { structure: 'watertower', x: 196, z: -24, yawDeg: 180 },
+      { structure: 'warehouse', x: -200, z: -50, yawDeg: 86.2 },
+      { structure: 'warehouse', x: 200, z: 50, yawDeg: 266.2 },
+      // the container terminal east of the station on the north side, and its twin
+      { structure: 'containerRow', x: 70, z: 40, yawDeg: -3.8 },
+      { structure: 'containerRow', x: 110, z: 42, yawDeg: -3.8 },
+      { structure: 'containerRow', x: 150, z: 45, yawDeg: -3.8 },
+      { structure: 'containerRow', x: -70, z: -40, yawDeg: 176.2 },
+      { structure: 'containerRow', x: -110, z: -42, yawDeg: 176.2 },
+      { structure: 'containerRow', x: -150, z: -45, yawDeg: 176.2 },
+      // the coal washeries at the foot of the spoil banks, between the service road and the bank
+      { structure: 'warehouse', x: -130, z: -104, yawDeg: 0 },
+      { structure: 'warehouse', x: 130, z: 104, yawDeg: 180 },
+      // the works: the shop along the works road, its stack and shed behind, the manager's house past the gate
+      { structure: 'factory', x: 178, z: -144, yawDeg: 135 },
+      { structure: 'factory', x: -178, z: 144, yawDeg: 315 },
+      { structure: 'stack', x: 196, z: -166, yawDeg: 0 },
+      { structure: 'stack', x: -196, z: 166, yawDeg: 180 },
+      { structure: 'shed', x: 158, z: -132, yawDeg: 135 },
+      { structure: 'shed', x: -158, z: 132, yawDeg: 315 },
+      { structure: 'rowhouse', x: 240, z: -165, yawDeg: 130.4 },
+      { structure: 'rowhouse', x: -240, z: 165, yawDeg: 310.4 },
+    ],
+    // 2026-10-01: the hard-coded north-south siding fan (maps/mapKits.ts dressRailYard) gives way to the authored
+    // main line and sidings above (terrain.railSpurs): no legacy rail kit.
+    extraKits: [],
     blockFill: true, // r3: leftover plan slots fill the block interiors
     sideSkip: 0.08, spacingPad: 6,
     buildingLat: [12, 5], maxSpread: 2.4,
@@ -125,20 +251,16 @@ export default {
     },
     rockTone: (h: number, s: number, l: number) => [0.085, 0.07, clamp01(l * 0.82)], // concrete rubble
     wallStoneChance: 0.75,
+    // Brick walls: the yard's outer boundary behind each service road, the works compounds and field walls on the
+    // approaches, each run with its 180° twin.
     wallRuns: [
-      // yard perimeter + interior dividing walls
-      [-190, -150, -120, -150, 2], [-190, -150, -190, -84, 1],
-      [150, -150, 192, -150, 3], [192, -150, 192, -90, 1],
-      [-190, 170, -120, 170, 2], [120, 176, 190, 176, 3],
-      [-96, -60, -40, -60, 2], [96, 62, 152, 62, 1],
-      [-160, 60, -104, 60, 3], [30, -150, 86, -150, 2],
-      // approach-field boundaries (the establishing camera's foreground)
-      [-90, -230, -26, -230, 2], [40, -210, 100, -210, 3],
-      [-150, -200, -150, -252, 1],
+      [-228, -90, -120, -86, 2], [228, 90, 120, 86, 2],
+      [-130, -300, -70, -304, 3], [130, 300, 70, 304, 3], [60, -332, 124, -322, 1], [-60, 332, -124, 322, 1],
+      [-420, -150, -360, -140, 2], [420, 150, 360, 140, 2],
     ],
     well: false, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
-    haystacks: 0, rocks: 60, outcrops: 4, craters: 62, rubblePiles: 90,
-    lampposts: true, hedgehogs: 10,
+    haystacks: 0, rocks: 60, outcrops: 4, craters: 62, rubblePiles: 60,
+    lampposts: true, hedgehogs: 8,
     // Legacy-map quality backport: modern hulks on the yard aprons (baked roster tanks) —
     // the armor that fought over the railhead
     tankWrecks: {
@@ -161,6 +283,7 @@ export default {
     },
     townCraters: true, // shell pocks on the hardstand
   },
+
 
   horizon: {
     // industrial hinterland: low escarpment under smoke-grey haze
@@ -191,6 +314,8 @@ export default {
     buildingFill: '#c9c2b2',
   },
 
-  // elevated SW: siding fan + container ranks mid-frame, stacks on the sky
-  shot: { pos: [-170, 40, -240], look: [60, 0, 60] },
+  // from the south-east, over the open field and its fire-trench parapet and across the south service road to the yard:
+  // the siding fan with its wagons, the goods sheds and the station building, with the water tower and the western
+  // works' stack beyond, framed by the two spoil banks
+  shot: { pos: [150, 44, -240], look: [-20, 4, 10] },
 } satisfies import('./contracts.ts').MapCompositionConfig;

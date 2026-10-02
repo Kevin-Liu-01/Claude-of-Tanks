@@ -2,11 +2,10 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { addChieftain10XFenderCases } from './chieftain10XFenderCases.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const ray = (meshes, p, d, far = 8) => new THREE.Raycaster(new THREE.Vector3(...p),
   new THREE.Vector3(...d), 0, far).intersectObjects(meshes, false)[0];
-const near = (a, b, e, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b) <= e,
-  `${label}: ${a} versus fixed source ${b}`);
 
 function fixtureParts() {
   const material = new THREE.MeshBasicMaterial(), parts = [];

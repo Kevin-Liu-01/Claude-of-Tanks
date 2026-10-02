@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { addT90SMTowCable } from './t90SMXTowCable.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 function meshes(root) {
   const found=[];root.traverse(o=>{if(o.isMesh)found.push(o);});return found;
@@ -27,11 +28,6 @@ function section(mesh,z) {
     }
   }
   return result;
-}
-
-function near(value,target,tolerance,label) {
-  assert.ok(Number.isFinite(value)&&Math.abs(value-target)<=tolerance,
-    `${label}: ${value} versus independent source ${target} ± ${tolerance}`);
 }
 
 function inside(mesh,point,label) {

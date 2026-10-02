@@ -8,17 +8,14 @@ import {createTankState} from '../sim/movement.ts';
 import {efficientReturnRoller} from './efficientReturnRoller.ts';
 import {normalizeTankAppearance,tagVehicleMaterial} from './appearanceAudit.ts';
 import {auditTankWheelQuality} from './wheelQuality.ts';
+import { geometryHash as kitGeometryHash } from '../../tools/receipt-kit.test-support.mjs';
 
 const BASE={wheelR:.4,wheelW:.3,wheelZs:[-1,0,1],wheelY:.5,xc:1.3,
  sprocket:{z:-2,y:.7,r:.3},idler:{z:2,y:.7,r:.3},trackW:.5,topY:1,
  rollerR:.095,returnRollerWidthM:.16,returnRollerInsetM:.18,
  rollers:[{z:-.8,y:.86,r:.095},{z:.8,y:.86,r:.095}]};
 const bytes=a=>Buffer.from(a.buffer,a.byteOffset,a.byteLength);
-function geometryHash(g){
- const h=createHash('sha256');
- for(const name of Object.keys(g.attributes).sort()){h.update(name);h.update(bytes(g.attributes[name].array));}
- if(g.index)h.update(bytes(g.index.array));h.update(JSON.stringify(g.groups));return h.digest('hex');
-}
+const geometryHash=g=>kitGeometryHash(g,{groups:true});
 function snapshot(root,accept=()=>true){
  root.updateMatrixWorld(true);const rows=[];
  root.traverse(o=>{if(!o.geometry||!accept(o))return;

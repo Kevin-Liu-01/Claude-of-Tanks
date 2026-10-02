@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const TARGETS = Object.freeze({
   m1a2_sepv3: Object.freeze({
@@ -47,11 +48,6 @@ const TARGETS = Object.freeze({
     workLightCount: 5,
   }),
 });
-
-const near = (actual, expected, tolerance, message) => {
-  assert.ok(Math.abs(actual - expected) <= tolerance,
-    `${message}: expected ${expected}, received ${actual}`);
-};
 
 function assertContinuousCamoProjection(mesh, id) {
   assert.ok(mesh?.isMesh, `${id}: exposes one merged tank-painted tower shell`);

@@ -4,6 +4,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { ensureInteriorFills, hasInteriorFills } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Existing source-measured receiving stock, before its ownership correction.
 // Bounds distinguish a real cradle from an invented stub or renamed barrel.
@@ -18,7 +19,6 @@ await ensureInteriorFills(cases.map(([id]) => id));
 const DEG = Math.PI / 180;
 const point = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
 const normal = new THREE.Vector3(), edge = new THREE.Vector3();
-function near(a,b,eps,label) { assert.ok(Number.isFinite(a) && Math.abs(a-b)<=eps, `${label}: ${a} vs ${b}`); }
 function onGun(mesh,gun) {
   point.fromBufferAttribute(mesh.geometry.attributes.position,0);
   return gun.worldToLocal(mesh.localToWorld(point)).clone();

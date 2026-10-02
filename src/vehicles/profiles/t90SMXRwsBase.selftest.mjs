@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 function visible(hit) {
   for (let object=hit.object; object; object=object.parent) if (!object.visible) return false;
@@ -10,11 +11,6 @@ function visible(hit) {
 function first(root, origin, direction) {
   return new THREE.Raycaster(new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, 5)
     .intersectObject(root, true).find(visible)?.point;
-}
-
-function near(actual, expected, tolerance, label) {
-  assert.ok(Number.isFinite(actual) && Math.abs(actual-expected)<=tolerance,
-    `${label}: ${actual} vs source ${expected} ±${tolerance}`);
 }
 
 for (const quality of ['high', 'low']) {

@@ -45,7 +45,8 @@ import { REPO_ROOT } from './selftest-cache.mjs';
   assert.deepEqual(commands.receipts, ['node tools/run-selftests.mjs all --only=tools/** --report=/out/receipts.json --logs=/out/receipts']);
   assert.deepEqual(commands.preflight, [], 'the preflight resolves its base and location at run time');
   const budget = planGate(options, { root: '/repo', out: '/out', exists: (path) => path === 'tools/bundle-budget.mjs', workers });
-  assert.deepEqual(budget.find((row) => row.step === 'budget').commands, [['node', 'tools/bundle-budget.mjs']], 'the budget runs once it exists');
+  assert.deepEqual(budget.find((row) => row.step === 'budget').commands, [['node', 'tools/bundle-budget.mjs', '--check']],
+  'the budget runs once it exists, and fails the gate when a page is over (--check; without it the tool only reports)');
   assert.match(budget.find((row) => row.step === 'workers').error, /npm ci --prefix cloudflare\/telemetry/, 'a missing Worker install fails with the command to run');
   const real = workerPackages(REPO_ROOT);
   assert.deepEqual(real.map((worker) => [worker.dir, worker.scripts]), [['cloudflare/rooms', ['typecheck', 'test']],

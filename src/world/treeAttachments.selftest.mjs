@@ -10,10 +10,13 @@ import { TREE_SPECIES } from './treeSpecies.ts';
 const previous = globalThis.document;
 globalThis.document = {createElement: () => createCanvas(1, 1)};
 const triangle = new THREE.Triangle(), closest = new THREE.Vector3();
-function surfaceGap(geometry, point, start=0, end=geometry.attributes.position.count) {
-  const p=geometry.attributes.position; let min=Infinity;
+// p2 trees lane (2026-10-02): a grown battle trunk is welded (indexed, treeGrowth.ts weldGrownGeometry): its faces
+// are read through the index; the flat legacy and garage trunks keep the consecutive-corner reading
+function surfaceGap(geometry, point, start=0, end=geometry.index ? geometry.index.count : geometry.attributes.position.count) {
+  const p=geometry.attributes.position, idx=geometry.index?.array; let min=Infinity;
+  const corner=(i)=>idx?idx[i]:i;
   for(let i=start;i<end;i+=3){
-    triangle.a.fromBufferAttribute(p,i);triangle.b.fromBufferAttribute(p,i+1);triangle.c.fromBufferAttribute(p,i+2);
+    triangle.a.fromBufferAttribute(p,corner(i));triangle.b.fromBufferAttribute(p,corner(i+1));triangle.c.fromBufferAttribute(p,corner(i+2));
     triangle.closestPointToPoint(point,closest); min=Math.min(min,closest.distanceTo(point));
   }
   return min;
@@ -31,7 +34,7 @@ const hook=registerHooks({load(url,context,next){
  const result=next(url,context);if(url!==auditURL)return result;
  assert.equal(String(result.source),source);
  return {...result,source:source+`
-export function battleTree(seed,veg,sp,k){
+export function battleTree(seed,veg,sp,k,cfg={vegetation:veg}){
 ${source.slice(registryStart,registryEnd)}
 ${source.slice(nearStart,nearEnd)}
 return geometry;

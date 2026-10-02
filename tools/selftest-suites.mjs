@@ -2,17 +2,20 @@
 export const SELFTEST_SUITES = Object.freeze({
   pre: Object.freeze([
     // Group independent full-fleet builders to fill the four CPU slots before
-    // the 45-second FIFO drain. Every check stays in its original lifecycle.
+    // the 45-second FIFO drain. 2026-10-02: one fleet pass per build (fleetPass.test-support.mjs) hosts the
+    // ten former whole-fleet receipts' audits: HIGH (wheelQuality, surfaceMarkupFleet) and LOW (gunArticulation,
+    // eraGameplayRegistration) here, the default build in core; fleetLazy and fleetFloorClearance keep their own.
     'src/vehicles/fleetLazy.selftest.mjs',
-    'src/vehicles/wheelQuality.selftest.mjs',
+    'src/vehicles/fleetPassHigh.selftest.mjs',
     'tools/wheel-axial-extents.selftest.mjs',
-    'src/vehicles/eraGameplayRegistration.selftest.mjs',
+    'src/vehicles/fleetPassLow.selftest.mjs',
     // 2026-09-29: the three receipts of 0e5fc79e2 sit after the four whole-fleet CPU scans the receipt pins first (runner admission).
     'src/sim/modeConfiguration.selftest.mjs',
     'src/vehicles/tacticalRoles.selftest.mjs',
     'src/world/maps/earthriseCrossing.selftest.mjs',
     'src/sim/auxiliarySystems.selftest.mjs',
     'src/vehicles/remoteGunFleet.selftest.mjs',
+    'src/vehicles/profiles/challenger3MachineGunAssembly.selftest.mjs',
     'src/vehicles/profiles/amx30B2Roof.selftest.mjs',
     'src/vehicles/fleetRenewal.selftest.mjs',
     'src/vehicles/nationalModernization.selftest.mjs',
@@ -120,6 +123,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/sealed-ledger-policy.selftest.mjs',
     'tools/muzzle-seat-policy.selftest.mjs',
     'tools/receipt-repin.selftest.mjs',
+    // the shared receipt kit (near, nearStrict, geometryHash) about 110 receipts import
+    'tools/receipt-kit.selftest.mjs',
     'tools/muzzle-bore-inventory.selftest.mjs',
     'tools/source-x-oracle.selftest.mjs',
     'src/vehicles/eraAuthoredFaces.selftest.mjs',
@@ -229,7 +234,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/sovietChevronEraFleet.selftest.mjs',
     'src/vehicles/profiles/t84OplotTurret.selftest.mjs',
     'src/vehicles/profiles/t64RunningGearTurretCenter.selftest.mjs',
-    'src/vehicles/profiles/t80UTurretGlacis.selftest.mjs',
     'src/vehicles/profiles/t80CastTurretFamily.selftest.mjs',
     'src/vehicles/profiles/t80MachineGunSeat.selftest.mjs',
     'src/vehicles/profiles/turretEraSurfaceSeating.selftest.mjs',
@@ -436,7 +440,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t72CamoCoverage.selftest.mjs',
     'src/vehicles/profiles/t72TrackFinish.selftest.mjs',
     'src/vehicles/profiles/t72MaterialLifetime.selftest.mjs',
-    'src/vehicles/profiles/t72B3MFrontAttachment.selftest.mjs',
     'src/vehicles/profiles/t72TurretCleanup.selftest.mjs',
     'src/vehicles/profiles/ztz99a2RearService.selftest.mjs',
     'src/vehicles/profiles/type99AAngularTurret.selftest.mjs',
@@ -455,13 +458,12 @@ export const SELFTEST_SUITES = Object.freeze({
   ]),
   core: Object.freeze([
     // Group independent full-fleet builders to fill the four CPU slots before
-    // the 45-second FIFO drain. Every check stays in its original lifecycle.
-    'src/gallery/surfaceMarkupFleet.selftest.mjs',
+    // the 45-second FIFO drain. The default-build pass hosts combatAnatomy, mudguardFenderSeating,
+    // vehicleMarkings and tankAssets (2026-10-02).
+    'src/vehicles/fleetPassDefault.selftest.mjs',
     'src/vehicles/fleetFloorClearance.selftest.mjs',
-    'src/vehicles/vehicleMarkings.selftest.mjs',
-    'src/vehicles/tankAssets.selftest.mjs',
-    'src/vehicles/combatAnatomy.selftest.mjs',
-    'src/vehicles/gunArticulation.selftest.mjs',
+    // the fleet pass harness itself, on a scripted factory (no fleet build)
+    'src/vehicles/fleetPass.selftest.mjs',
     // 2026-10-01: the fleet geometry ledger (one full-fleet HIGH+LOW sweep) replaces the frozen per-receipt geometry pins.
     'src/vehicles/fleetGeometryLedger.selftest.mjs',
     // 2026-10-01: one fleet on every path (each facade alone, every saved spec digested).
@@ -472,6 +474,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/processShutdown.selftest.mjs',
     'tools/local-import-integrity.selftest.mjs',
     'tools/bundle-budget.selftest.mjs',
+    'tools/viteSharedWorkers.selftest.mjs',
+    'tools/viteGlslMinify.selftest.mjs',
+    'tools/viteRuntimeFiles.selftest.mjs',
     'tools/telemetry-report.selftest.mjs',
     'tools/browser-failure-evidence.selftest.mjs',
     'tools/multiplayer-frame-trace.selftest.mjs',
@@ -658,6 +663,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/deploymentUploadPrograms.selftest.mjs',
     'src/engine/bootLifecycle.selftest.mjs',
     'src/engine/capabilityGate.selftest.mjs',
+    'src/engine/capabilityGateCache.selftest.mjs',
     'src/engine/garageGpuWarmRuntime.selftest.mjs',
     'src/game/battleEntryAcquisition.selftest.mjs',
     'src/game/battleEntryLifecycle.selftest.mjs',
@@ -999,6 +1005,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/water-shore-camera.selftest.mjs',
     'tools/map-probe-runtime.selftest.mjs',
     'tools/map-metrics.selftest.mjs',
+    'tools/map-layout-metrics.selftest.mjs',
+    'src/world/mapLayoutBrief.selftest.mjs',
+    'server/collisionManifestDrift.selftest.mjs',
+    'tools/visual-census.selftest.mjs', // 2026-10-01: the redesign baseline census (camera set, site selection, metrics, reports)
     'tools/environment-motion-probe.selftest.mjs',
     'tools/horizon-construction-bench.selftest.mjs',
     'tools/map-art-guards.selftest.mjs',
@@ -1119,6 +1129,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/leafDetail.selftest.mjs',
     // round 77c (2026-09-26): the horizon ring's forest drawn from the far tier's impostor atlas
     'src/world/horizonForestImpostors.selftest.mjs',
+    // p2 trees lane (2026-10-01): the grown near trees, their branch-spray atlases and the build's routing
+    'src/world/treeGrowth.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
@@ -1220,6 +1232,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageVariantPicker.selftest.mjs',
     'src/ui/garageOrder.selftest.mjs',
     'src/ui/garageAuxiliarySummary.selftest.mjs',
+    'src/vehicles/auxiliaryRoofGuns.selftest.mjs',
     'src/ui/randomPreviews.selftest.mjs',
     'src/ui/touchControls.selftest.mjs',
     'src/ui/mobileLayout.selftest.mjs',
@@ -1234,9 +1247,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/marketing-shots/showcase-r2.selftest.mjs',
   ]),
   post: Object.freeze([
-    // Group independent full-fleet builders to fill the four CPU slots before
-    // the 45-second FIFO drain. Every check stays in its original lifecycle.
-    'src/vehicles/mudguardFenderSeating.selftest.mjs',
     'src/audio/lazyAudio.selftest.mjs',
     'src/vehicles/profiles/strv81TurretClosure.selftest.mjs',
     'src/vehicles/profiles/pt91mPendekarFidelity.selftest.mjs',

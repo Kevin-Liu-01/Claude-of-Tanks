@@ -591,8 +591,12 @@ for (const tone of [mangrove.vegetation.grassTexTone, mangrove.vegetation.tuftTo
 
 for (const seed of [1337, 2025, 7719]) {
   const field = createHeightField(seed, mangrove);
-  const control = { ...mangrove, vegetation: { ...mangrove.vegetation, willowForm: undefined, tidalTrees: undefined } };
-  const before = build(field, control), after = build(field, mangrove);
+  // p2 trees lane (2026-10-01): the desktop tiers grow their near trees (treeGrowth.ts); this receipt's reviewed
+  // comparison is the tidal stilt willow against the legacy swept-root willow, so both builds keep the legacy trees
+  // (vegetation.legacyTrees) — the grown species are treeTrunkQuality / treeGrowth / vegetationFarSeams' subject
+  const legacy = { ...mangrove, vegetation: { ...mangrove.vegetation, legacyTrees: true } };
+  const control = { ...legacy, vegetation: { ...legacy.vegetation, willowForm: undefined, tidalTrees: undefined } };
+  const before = build(field, control), after = build(field, legacy);
   console.log(seed, JSON.stringify(after.group.userData.tidalMangroves.map(({ treeIndices, ...r }) => r)));
   assert.equal(after.trees.length, before.trees.length);
   assert.equal(after.preRoad.trees, before.preRoad.trees, 'tidal composition keeps the control admission before road clearance');

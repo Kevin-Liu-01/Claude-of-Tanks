@@ -7,7 +7,8 @@
 // corridor byte-identical to the same map without the cutting, the outland continuing the bed and the fan across the
 // red line without a step, the horizon ring's near rows seated in the notch while every authored ridge row keeps its
 // height to the bit, the exclusion covering the floor, the cess and the faces up to the daylight line, and the laid
-// track's spans in the cutting at the rail grade; every other map resolves no cutting.
+// track's spans in the cutting at the rail grade; Cinder Junction (2026-10-01) — the redesigned junction's two
+// cuttings at the rail grade and their two portals; every other map resolves no cutting.
 // Round 67 (2026-09-24): the tunnel portal that ends the valley — resolved from the cutting (the headwall
 // RAIL_TUNNEL_RUN_M past the path's end on the radial, the approach curving from the line's heading onto the radial
 // and running into the bore), the ring's seated rows lying exactly on the bed to its first authored ridge (which
@@ -28,8 +29,7 @@ import {
   RAIL_CUTTING_SEED_NORMAL_Y, railCuttingBedY, railCuttingExcludes, railCuttingFaceSeedAt, railCuttingHeight,
   railCuttingSeedAdmits, railCuttingTunnel, resolveRailCuttings,
 } from './railSpurs.ts';
-
-const near = (a, b, tolerance, message) => assert.ok(Math.abs(a - b) <= tolerance, `${message}: ${a} vs ${b}`);
+import { near } from '../../tools/receipt-kit.test-support.mjs';
 
 // ------------------------------------------------------------------ resolution
 assert.equal(resolveRailCuttings(undefined), null); assert.equal(resolveRailCuttings([]), null);
@@ -273,9 +273,49 @@ assert.equal(records.length, 1); assert.equal(colliders.filter((r) => r.kind ===
   assert.ok(record.min[0] > 512, 'the record lies past the red line'); }
 for (const list of Object.values(buckets)) for (const g of list) g.dispose();
 
+// ------------------------------------------------------------------ Cinder Junction (2026-10-01): the main line's two cuttings
+// The redesigned junction's through line leaves the square at each end through a cutting into a tunnel beyond the rim
+// (rotationally symmetric about the station square): each bed at the rail grade from its portal's own ground to the
+// edge, a real notch through the rim, no step onto the outland, and one tunnel-portal record past the red line each.
+let junctionPortals = 0;
+{
+  const ry = getMapConfig('railyard');
+  const cuts = resolveRailCuttings(ry.terrain.railSpurs);
+  assert.equal(cuts?.length, 2, 'Cinder Junction: the through line leaves the square through a cutting at each end');
+  const rf = createHeightField(1337, ry);
+  const plain = createHeightField(1337, { ...ry, terrain: { ...ry.terrain,
+    railSpurs: ry.terrain.railSpurs.map(({ cutting: _cutting, ...rest }) => rest) } });
+  assert.deepEqual(cuts.map((cut) => Math.sign(cut.ex)).sort(), [-1, 1], 'one cutting through each of the west and east rims');
+  for (const cut of cuts) {
+    near(Math.abs(cut.ex), 512, 1e-9, 'each cutting runs out through the edge');
+    const portalY = rf.getHeightAt(cut.px, cut.pz);
+    near(portalY, plain.getHeightAt(cut.px, cut.pz), 1e-9, 'each portal stands at the ground it had');
+    for (let along = 0; along <= cut.endAlong - 0.5; along += 2) {
+      const x = cut.px + cut.ux * along, z = cut.pz + cut.uz * along;
+      near(rf.getHeightAt(x, z), portalY + RAIL_CUTTING_GRADE * along, 1e-9, `Cinder Junction: the bed at the rail grade (${along} m past the portal)`);
+    }
+    const ex = cut.ex - cut.ux * 0.1, ez = cut.ez - cut.uz * 0.1;
+    assert.ok(plain.getHeightAt(ex, ez) - rf.getHeightAt(ex, ez) > 8, 'a real notch through the rim at the edge');
+    near(rf.getOutlandHeightAt(cut.ex, cut.ez), rf.getHeightAt(cut.ex, cut.ez), 1e-9, 'no step across the red line on the axis');
+  }
+  const names = ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked'];
+  const buckets = Object.fromEntries(names.map((name) => [name, []])), obstacles = [], colliders = [];
+  dressMapExtras({ mapId: 'railyard', extraKits: ry.props?.extraKits, riverLandings: ry.props?.riverLandings, L: rf._layout,
+    heightField: rf, rng: mulberry32(1337), buckets, obstacles, colliders });
+  const portals = obstacles.filter((record) => record.kind === 'tunnel-portal');
+  junctionPortals = portals.length;
+  assert.equal(portals.length, 2, 'Cinder Junction: a tunnel portal ends each cutting\'s valley');
+  assert.equal(colliders.filter((record) => record.kind === 'tunnel-portal').length, 2, 'with its shell record');
+  for (const portal of portals) {
+    assert.ok(Math.min(Math.abs(portal.min[0]), Math.abs(portal.max[0])) > 512, 'each portal stands past the red line');
+    assert.equal(portal.shape2.kind, 'compound'); assert.equal(portal.shape2.parts.length, 3, 'the gallery block and two flank walls');
+  }
+  for (const list of Object.values(buckets)) for (const geometry of list) geometry.dispose();
+}
+
 // ------------------------------------------------------------------ every other map resolves no cutting
 for (const mapId of MAP_IDS) {
-  if (mapId === 'steppe') continue;
+  if (mapId === 'steppe' || mapId === 'railyard') continue;
   assert.equal(resolveRailCuttings(getMapConfig(mapId).terrain?.railSpurs), null, `${mapId}: no cutting`);
 }
-console.log(`railCutting.selftest: resolution and the synthetic rim rule; Tarkhan's cutting — bed at 2.4 % from ${portalY.toFixed(2)} m to the edge, ${(uncut.getHeightAt(511.9, -181) - field.getHeightAt(511.9, -181)).toFixed(1)} m deep, ${moved} corridor samples moved and none outside, roads/water/ground types to the bit, the outland bed and fan continuous across the red line, ${ringMoved} ring vertices seated in the notch and no ridge row moved, exclusion on floor/cess/faces with the faces' upper two thirds seeded up to ${RAIL_CUTTING_SEED_MAX}, ${sleepers.length} sleepers in the cutting at ≤ ${(worstGrade * 100).toFixed(2)} %; the tunnel portal ${RAIL_TUNNEL_RUN_M} m down the valley with ${outlandSleepers.length} approach sleepers on the bed (worst ${worstOutland.toFixed(3)} m), ${RAIL_TUNNEL_HEADWALL_HALF_M * 2} m headwall, a ${RAIL_TUNNEL_GALLERY_M} m gallery and a 3-part record; 30 other maps resolve none`);
+console.log(`railCutting.selftest: resolution and the synthetic rim rule; Tarkhan's cutting — bed at 2.4 % from ${portalY.toFixed(2)} m to the edge, ${(uncut.getHeightAt(511.9, -181) - field.getHeightAt(511.9, -181)).toFixed(1)} m deep, ${moved} corridor samples moved and none outside, roads/water/ground types to the bit, the outland bed and fan continuous across the red line, ${ringMoved} ring vertices seated in the notch and no ridge row moved, exclusion on floor/cess/faces with the faces' upper two thirds seeded up to ${RAIL_CUTTING_SEED_MAX}, ${sleepers.length} sleepers in the cutting at ≤ ${(worstGrade * 100).toFixed(2)} %; the tunnel portal ${RAIL_TUNNEL_RUN_M} m down the valley with ${outlandSleepers.length} approach sleepers on the bed (worst ${worstOutland.toFixed(3)} m), ${RAIL_TUNNEL_HEADWALL_HALF_M * 2} m headwall, a ${RAIL_TUNNEL_GALLERY_M} m gallery and a 3-part record; Cinder Junction's two cuttings at the rail grade with ${junctionPortals} portals; ${MAP_IDS.length - 2} other maps resolve none`);

@@ -7,6 +7,7 @@
 //
 // Texture pixels are deliberately outside the digest (canvas rasterisers differ across platforms); generated interior
 // fills are outside it as well (they load on demand). Everything else a build emits is inside.
+import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -22,8 +23,8 @@ const short = hash => hash.digest('hex').slice(0, 16);
 const bytesOf = array => new Uint8Array(array.buffer, array.byteOffset, array.byteLength);
 
 /**
- * The build every ledger row digests: the unbatched HIGH model wheelQuality.selftest reads and the LOW model
- * gunArticulation.selftest reads (both verify their rows in npm test without a second fleet build).
+ * The build every ledger row digests: the unbatched HIGH and LOW models fleetPassHigh.selftest and fleetPassLow.selftest
+ * build for their other fleet audits (both verify their rows in npm test without a second fleet build).
  */
 export function ledgerBuildOptions(quality) {
   if (!LEDGER_QUALITIES.includes(quality)) throw new TypeError(`fleet geometry ledger: unknown quality '${quality}'`);
@@ -162,6 +163,24 @@ export function createFleetGeometryLedgerAudit(options) {
       const problems = compareFleetGeometry(ledger, rows, { roster, qualities: [options.quality] });
       for (const id of roster) if (!rows[id]) problems.push(`${id}/${options.quality}: not built by this sweep`);
       return { problems, checked: roster.filter(id => rows[id]).length };
+    },
+  };
+}
+
+/**
+ * The ledger audit as a fleet-pass audit (src/vehicles/fleetPass.test-support.mjs, declared first so it digests each
+ * fresh build before any other audit reads it): finish() fails on every moved row, unbuilt roster tank and roster drift.
+ */
+export function createFleetGeometryLedgerPassAudit(options) {
+  const geometryLedger = createFleetGeometryLedgerAudit(options);
+  const label = options.quality.toUpperCase();
+  return {
+    check(id, tank) { geometryLedger.record(id, tank); },
+    finish() {
+      const ledgerResult = geometryLedger.finish();
+      assert.deepEqual(ledgerResult.problems, [],
+        `fleet geometry ledger (${label}): review the moved rows, then re-pin with npm run tank:geometry:update\n  ${ledgerResult.problems.join('\n  ')}`);
+      console.log(`fleet geometry ledger: ${ledgerResult.checked} ${label} rows match`);
     },
   };
 }

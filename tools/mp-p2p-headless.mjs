@@ -20,6 +20,8 @@
  *
  *   node tools/mp-p2p-headless.mjs            ~25 s wall (the core receipt)
  *   node tools/mp-p2p-headless.mjs --json
+ *   node tools/mp-p2p-headless.mjs --map=desert --world=dedicated   a battlefield on the host's manifest world
+ *     (the hosts build server/dedicatedWorldCollision.ts from the committed collision shard, as a browser host does)
  */
 import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
@@ -40,7 +42,7 @@ const until = async (predicate, label, timeoutMs) => {
   }
 };
 
-export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs = 4000, world = 'terrain', log = () => {} } = {}) {
+export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs = 4000, world = 'terrain', mapId = 'verdant', log = () => {} } = {}) {
   const SECRET = 'mp-p2p-headless-seat-secret-0123456789abcdef';
   const events = [];
   // the room's relay grant (§13.14): test values the scripted links carry in their configuration, never a real credential
@@ -49,7 +51,7 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
   const rtc = new RtcWorld();
   const cores = [];
   const failures = [];
-  const report = { world, hostGraceMs, steps: {}, wallMs: 0 };
+  const report = { world, mapId, hostGraceMs, steps: {}, wallMs: 0 };
   const startedAt = performance.now();
   const sessions = [];
   let ticking = true;
@@ -99,7 +101,7 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
   try {
     // ---- 1. create, join, ready, start → rtc:// with p1 as host; channels open; welcomes
     const p1 = spawn('p1', 'Creator', memoryStorage(), 0);
-    const room = await p1.headless.room.create({ mode: 'lan', selection: { specId: 'm1a2' }, settings: { teamSize: 2, mapId: 'verdant', botsFill: true } });
+    const room = await p1.headless.room.create({ mode: 'lan', selection: { specId: 'm1a2' }, settings: { teamSize: 2, mapId, botsFill: true } });
     code = room.roomCode;
     const p2 = spawn('p2', 'Two', memoryStorage(), 1);
     const p3 = spawn('p3', 'Three', memoryStorage(), 2);
@@ -259,7 +261,7 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
 }
 
 export function formatReport(report) {
-  const lines = [`mp p2p headless: world=${report.world}, host grace ${report.hostGraceMs} ms (${report.wallMs} ms wall)`];
+  const lines = [`mp p2p headless: map=${report.mapId}, world=${report.world}, host grace ${report.hostGraceMs} ms (${report.wallMs} ms wall)`];
   for (const [step, detail] of Object.entries(report.steps)) lines.push(`  ${step}: ${JSON.stringify(detail)}`);
   for (const failure of report.failures) lines.push(`  FAIL: ${failure}`);
   lines.push(report.pass ? 'mp p2p headless: PASS' : 'mp p2p headless: FAIL');
@@ -268,7 +270,9 @@ export function formatReport(report) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const json = process.argv.includes('--json');
-  const report = await runP2pHeadless({ log: json ? () => {} : (line) => process.stderr.write(`[p2p-headless] ${line}\n`) });
+  const flag = (name) => process.argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
+  const report = await runP2pHeadless({ mapId: flag('map') ?? 'verdant', world: flag('world') ?? 'terrain',
+    log: json ? () => {} : (line) => process.stderr.write(`[p2p-headless] ${line}\n`) });
   console.log(json ? JSON.stringify(report, null, 2) : formatReport(report));
   process.exitCode = report.pass ? 0 : 1;
 }

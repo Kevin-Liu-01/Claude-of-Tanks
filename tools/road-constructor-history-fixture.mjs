@@ -7,14 +7,7 @@ const deltas = [
   // New dry-viaduct support is absent from the authenticated pre-road constructor.
   ["    const detailed = applyRoadShoulderDetail(x, z, h, rd, settlementWeight, marshWeight, lakeWetness, padWetness);\n    // Dry viaduct abutments cut any sub-metre shoulder noise flush with the\n    // supported deck. The gorge below remains the original excavated surface.\n    const dryDeck = T.bridges?.length ? bridgeDeckOver(x, z) : null;\n    return dryDeck ? Math.min(detailed, dryDeck.deckY) : detailed;", "    return applyRoadShoulderDetail(x, z, h, rd, settlementWeight, marshWeight, lakeWetness, padWetness);"],
   ["  if (T.bridges?.length) {\n    const authored = T.bridges.map(bridge => {\n      const a = bridge.yawDeg * Math.PI / 180, ux = Math.cos(a), uz = Math.sin(a);\n      const halfLength = bridge.spanM / 2;\n      const bedY = heightAt(bridge.x, bridge.z, false, false);\n      // A curved/noisy bank can stand higher than its road centre. Fit the\n      // whole deck footprint so neither tracks nor bots meet buried rock.\n      let deckY = -Infinity;\n      for (let along = -halfLength; along <= halfLength; along += 2) {\n        for (const across of [-bridge.widthM / 2, 0, bridge.widthM / 2]) {\n          deckY = Math.max(deckY, heightAt(bridge.x + ux * along - uz * across,\n            bridge.z + uz * along + ux * across, true, false));\n        }\n      }\n      deckY += .08;\n      return { ...bridge, ux, uz, halfLength, halfWidth: bridge.widthM / 2, deckY, bedY, waterY: bedY };\n    });\n    bridgeDecks = Object.freeze([...bridgeDecks, ...authored]);\n  }\n", ""],
-  ["    blendDesertRoadBanks(cfg?.id, roads, nodeElev, gRoadDist, gRoadElev, GN, MAP_SIZE, _VILLAGE.cx, _VILLAGE.cz);\n", ""],
-  ["      let roadBlendWeight = 1 - smoothstep(3.8, 14, rd);\n      if (roadBankWidth > 14) {\n        const approach = smoothstep(48 * 48, 128 * 128, (x - _VILLAGE.cx) ** 2 + (z - _VILLAGE.cz) ** 2);\n        roadBlendWeight += (1 - smoothstep(3.8, roadBankWidth, rd) - roadBlendWeight) * approach;\n      }\n", ""],
-  ["  // Desert's surveyed ramps need a finite earthwork bank, not a narrow berm.\n  const roadBankWidth = cfg?.id === 'desert' ? 104 : 14;\n\n", ""],
-  ["    if (rd < roadBankWidth) {", "    if (rd < 14) {"],
-  ["        h += (roadElevation - h) * roadBlendWeight * (1 - bridge.span);", "        h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd)) * (1 - bridge.span);"],
-  ["      } else h += (roadElevation - h) * roadBlendWeight;", "      } else h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd));"],
 
-  ["    gradeDesertRoads(cfg?.id, authoringRoads, nodeElev);\n", ""],
   ["      alignPoldersNorthernRoadGrades(cfg?.id, roads, nodeElev);\n", ""],
   // 2026-09-29: rounded roads use physical-distance smoothing and every real
   // crossing. Remove only these two exact dispatches from HISTORICAL source;
