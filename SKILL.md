@@ -34,7 +34,7 @@ and the nearest directory `SKILL.md`.
 - Runtime flow: trace `src/main.ts` plus `src/game/state.ts` exports.
 - Physics/combat: read `src/sim/SKILL.md`, then its existing selftests.
 - UI: read `src/ui/SKILL.md` and inspect the rendered browser surface.
-- Multiplayer: read `docs/MULTIPLAYER-V2.md` and `src/mp/SKILL.md`.
+- Multiplayer: read `docs/MULTIPLAYER-V2.md` and `src/mp/README.md`.
 - Tank creation/rebuild/markup repair: read `docs/tank-generation/SKILL.md`,
   `src/vehicles/SKILL.md` and the latest per-tank/batch packet; use the handbook's
   source-freeze, gate, prompt and handoff templates.

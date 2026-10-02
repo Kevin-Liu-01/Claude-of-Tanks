@@ -77,8 +77,8 @@ plan is a D1 table with a 30-day cleanup cron — not this Worker today.
 5. Point the site at it: Vercel → `claude-of-tanks` → Settings →
    Environment Variables → `VITE_TELEMETRY_URL` =
    `https://cot-telemetry.<subdomain>.workers.dev` (the Worker origin, no
-   path; the account's subdomain is the one the signaling Worker already uses,
-   `kk23907751`), production environment. Optional
+   path; the account's workers.dev subdomain, `kk23907751`, which the rooms
+   Worker also uses), production environment. Optional
    `VITE_TELEMETRY_SAMPLE` = a share in `(0, 1]` of clean sessions to keep
    (default `1`; failures always send). Then the next prebuilt production
    deploy (`docs/DEPLOYS.md`) bakes both into the bundle and the document
@@ -102,8 +102,7 @@ with the SQL API after a real deploy.
 ## Cost
 
 Analytics Engine pricing (developers.cloudflare.com/analytics/analytics-engine/pricing,
-2026-04): on **Workers Paid** — the plan the signaling Worker already runs
-on — 10 million data points written and 1 million SQL read queries a month
+2026-04): on **Workers Paid**, 10 million data points written and 1 million SQL read queries a month
 are included (then $0.25 and $1.00 per extra million); Cloudflare states it
 is not yet billing for Analytics Engine at all. The Worker's own requests
 count against the plan's included Workers requests. The traffic is small by

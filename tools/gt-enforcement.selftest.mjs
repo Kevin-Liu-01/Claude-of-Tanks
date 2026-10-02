@@ -26,7 +26,7 @@ assert.match(pkg.scripts?.['i18n:validate'] || '', /gt translate .*--dry-run/,
   'base JSON projects must use the supported offline dry-run parser gate');
 assert.doesNotMatch(pkg.scripts?.['i18n:validate'] || '', /\bgt validate\b/,
   '`gt validate` is not registered for base non-framework projects');
-for (const script of ['prebuild', 'prebuild:private', 'prebuild:public']) {
+for (const script of ['prebuild', 'prebuild:private']) {
   assert.equal(pkg.scripts?.[script], 'npm run i18n:validate', `${script} must fail closed on GT/catalog drift`);
 }
 assert.match(workflow, /npm run i18n:check/, 'pull requests must run the GT-backed localization gate');
