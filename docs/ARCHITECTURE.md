@@ -1430,9 +1430,10 @@ events (zones, flags, waves, goals, respawns, pickups).
 voices per nation), or English or the interface language by setting. Radio
 discipline: priority 0–4 with interrupts for survival calls, per-line and
 per-group cooldowns, stale drops, a 0.26 s gap and a two-line queue. Every
-line goes through an intercom chain (320 Hz high-pass, 3.4 kHz low-pass,
-2 kHz presence, drive, static bed and squelch); a damaged radio module
-narrows the band and adds dropouts and interference.
+line goes through an intercom chain (a 24 dB/oct 320 Hz–3.4 kHz band, a
+1.9 kHz presence peak, compression, drive, a headset speaker roll-off, a
+static bed and squelch); a damaged radio module narrows the band and adds
+drive, dropouts and interference.
 
 **Budgets.** Desktop 48 voices and 140 MB decoded with reverb; mobile 24
 voices and 60 MB, no convolution reverb, assets decoded at 24 kHz.

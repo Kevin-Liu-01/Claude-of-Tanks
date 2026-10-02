@@ -8,7 +8,7 @@
  *
  * Every transmission is keyed: squelch chirp in, the take through a
  * band-limited (24 dB/oct, 320 Hz–3.4 kHz), compressed and driven intercom
- * chain over a static bed, squelch tail out.
+ * chain into a headset speaker roll-off, over a static bed, squelch tail out.
  * A damaged radio narrows the band, adds drive, drops syllables and crackles.
  * The beds duck under speech.
  */
@@ -103,6 +103,8 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
   const drive = ctx.createWaveShaper();
   drive.curve = driveCurve(0.25);
   drive.oversample = '2x';
+  // The headset speaker: rolls off the drive's harmonics above the band.
+  const speaker = filter('lowpass', 4600, 0.6);
   const level = ctx.createGain();
   level.gain.value = 1.15;
   input.connect(hp[0]);
@@ -112,7 +114,8 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
   lp[1].connect(presence);
   presence.connect(squash);
   squash.connect(drive);
-  drive.connect(level);
+  drive.connect(speaker);
+  speaker.connect(level);
   level.connect(voiceBus);
 
   // Static bed under an open channel (gated with the transmission).
@@ -127,7 +130,7 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
   bedGain.gain.value = 0;
   bed.connect(bedFilter);
   bedFilter.connect(bedGain);
-  bedGain.connect(voiceBus);
+  bedGain.connect(speaker);
   bed.start(ctx.currentTime, random() * 1.5);
 
   const lastPlay = new Map<string, number>();
