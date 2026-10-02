@@ -995,13 +995,19 @@ function isValidNavigationGrid(navigation: BotNavigationGrid): boolean {
 }
 
 /** Objective-only dry view: share immutable terrain values; never change the
- * bot owner's blocked bytes or authored navigation policy. */
+ * bot owner's blocked bytes or authored navigation policy. It keeps the grid's
+ * hull clearance and edge steepness (bots lane, 2026-10-02), so an objective is
+ * placed only where the route search itself can drive a hull. */
 export function createDryNavigationView(navigation: BotNavigationGrid, field: NavigationHeightField,
   connectorClear: (x: number, z: number) => boolean): Readonly<BotNavigationGrid> {
   if (!isValidNavigationGrid(navigation)) throw new TypeError('valid navigation grid required');
   if (navigation.navigationWaterPolicy === 'avoid-liquid') return navigation;
-  return addDryNavigationPolicy(field, navigation.heights, navigation.blocked.slice(),
+  const dry = addDryNavigationPolicy(field, navigation.heights, navigation.blocked.slice(),
     navigation.groundTypes, connectorClear, navigation.cellPositions);
+  if (!navigation.hullBlockedEdges && !navigation.edgeSteepness) return dry;
+  return Object.freeze({ ...dry,
+    ...(navigation.hullBlockedEdges ? { hullBlockedEdges: navigation.hullBlockedEdges } : {}),
+    ...(navigation.edgeSteepness ? { edgeSteepness: navigation.edgeSteepness } : {}) });
 }
 
 function connectedNavigationCells(navigation: BotNavigationGrid, point: Position2,
@@ -1027,13 +1033,25 @@ function reachableNeighbor(node: HeapNode, direction: number, navigation: BotNav
   if (navigation.blocked[index] || diagonalCornerIsBlocked(node, dx, dz, navigation.blocked)) return -1;
   if (navigation.waterBlockedEdges && navigation.waterBlockedEdges[node.index] & (1 << direction)) return -1;
   if (navigation.bridgeBlockedEdges && navigation.bridgeBlockedEdges[node.index] & (1 << direction)) return -1;
+  // the route search's hull clearance (an edge no hull fits through closes it for objective access too)
+  if (navigation.hullBlockedEdges && navigation.hullBlockedEdges[node.index] & (1 << direction)) return -1;
   const grade = (navigation.heights[index] - navigation.heights[node.index]) / (CELL_M * scale);
   const ground = routeGroundType(spec, navigation.groundTypes, node.index, index);
   // Objective access must permit carrying the flag/ball back out as well as
   // descending into a clearing. Route searches use the same two-way slope
   // constraint so the outward route cannot become a one-way cliff shortcut.
-  return terrainSlopeMargin(spec, ground, grade) > TERRAIN_MARGIN_EPS
-    && terrainSlopeMargin(spec, ground, -grade) > TERRAIN_MARGIN_EPS ? index : -1;
+  if (terrainSlopeMargin(spec, ground, grade) <= TERRAIN_MARGIN_EPS
+    || terrainSlopeMargin(spec, ground, -grade) <= TERRAIN_MARGIN_EPS) return -1;
+  // and the edge's steepest stretch, both ways, as the route search holds it (a cliff the cell heights do not show)
+  const steep = navigation.edgeSteepness;
+  if (steep) {
+    const up = steep[node.index * 8 + direction] * 0.01, down = steep[index * 8 + OPPOSITE_STEP[direction]] * 0.01;
+    if ((up > 0 && (terrainSlopeMargin(spec, ground, up) <= TERRAIN_MARGIN_EPS
+        || terrainSlopeMargin(spec, ground, -up) <= TERRAIN_MARGIN_EPS))
+      || (down > 0 && (terrainSlopeMargin(spec, ground, down) <= TERRAIN_MARGIN_EPS
+        || terrainSlopeMargin(spec, ground, -down) <= TERRAIN_MARGIN_EPS))) return -1;
+  }
+  return index;
 }
 
 /** Flood once from physically connected authored pads. No nearest-open-cell

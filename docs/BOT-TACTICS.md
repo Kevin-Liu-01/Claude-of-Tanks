@@ -177,6 +177,10 @@ detour point round the goal, or not at all. A goal beyond the reachable cells
 ends the route at the cell nearest it. Wrecks narrow streets after the grid is
 built: a few times a second both authorities re-test the edges round the
 battle's wrecks, closing the ones they plug and laning the ones they narrow.
+Objective placement floods the same edges (`src/sim/matchPlacementAccess.ts`):
+an edge closed for the hull or over a cliff between two cell centres closes the
+objective flood too, so no flag, zone, goal or pickup is placed where the route
+search cannot drive a hull.
 
 ## Verification
 
