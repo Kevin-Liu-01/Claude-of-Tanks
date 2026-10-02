@@ -76,6 +76,7 @@ Update these when behavior changes. Paths are relative to `docs/`.
 | --- | --- |
 | [MAP-RENDER-FOUNDATIONS.md](MAP-RENDER-FOUNDATIONS.md) | Map rendering foundations and their verification checkpoint |
 | [REGIONAL-MAP-IDENTITIES.md](REGIONAL-MAP-IDENTITIES.md) | Regional environment direction: horizon families and per-map identity targets |
+| [MAP-LAYOUT-BRIEF.md](MAP-LAYOUT-BRIEF.md) | What a battlefield must be as a place: geology, roads and settlements, sightlines, lanes, cover, spawns and objective balance, with the measurable checks of `tools/map-layout-metrics.mjs` |
 | [GARAGE-ENVIRONMENTS.md](GARAGE-ENVIRONMENTS.md) | Garage locations, visual contract, scene packs, workshop exhibits, collision, resource ownership and quality gates |
 | [MAP-BEAUTIFICATION.md](MAP-BEAUTIFICATION.md) | Battlefield visual goal, priorities and acceptance; the opening sections are the contract, the dated checkpoint log after them is history |
 

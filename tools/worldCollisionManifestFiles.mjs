@@ -19,7 +19,7 @@ function assertCollisionCaptureArgs(args) {
 /** Resolve CLI intent before opening a browser or touching any shard. */
 export function collisionCaptureOptions(args) {
   assertCollisionCaptureArgs(args);
-  let session = null, selected = null, headless = false, cacheDir = null;
+  let session = null, selected = null, headless = false, cacheDir = null, node = false, check = false;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--maps' || arg.startsWith('--maps=')) {
@@ -33,6 +33,14 @@ export function collisionCaptureOptions(args) {
       // round 61: a private vite server + headless Chrome on this checkout instead of an agent-browser session
       if (headless) throw new Error('--headless may be supplied only once');
       headless = true;
+    } else if (arg === '--node') {
+      // 2026-10-01: build the world in Node (tools/headlessWorldCollision.mjs) instead of capturing a rendered page
+      if (node) throw new Error('--node may be supplied only once');
+      node = true;
+    } else if (arg === '--check') {
+      // 2026-10-01: compare a fresh Node build with the committed shards and write nothing (exit 1 on drift)
+      if (check) throw new Error('--check may be supplied only once');
+      check = true;
     } else if (arg.startsWith('--cache-dir=')) {
       // a warm vite optimizer cache of the caller's own (headless mode; default: a fresh temporary directory)
       if (cacheDir !== null) throw new Error('--cache-dir may be supplied only once');
@@ -44,7 +52,9 @@ export function collisionCaptureOptions(args) {
   }
   if (headless && session !== null) throw new Error('--headless takes no agent-browser session');
   if (!headless && cacheDir !== null) throw new Error('--cache-dir applies to --headless captures only');
-  return { session: session || 'cot-manifest', partial: selected !== null, headless, cacheDir,
+  if (check) node = true;
+  if (node && (headless || session !== null)) throw new Error('--node builds without a browser session');
+  return { session: session || 'cot-manifest', partial: selected !== null, headless, cacheDir, node, check,
     mapIds: selected === null ? MAP_IDS : MAP_IDS.filter((id) => selected.includes(id)) };
 }
 
