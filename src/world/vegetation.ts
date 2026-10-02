@@ -368,6 +368,8 @@ const RIM_UNDERSTOREY_BOUND_M = 506;
 // the bushes (1.5–2.5 m) into the three near cascades (to ~300 m on the desktop presets, where a bush is six pixels
 // tall), the understorey (young growth under 1.6 m, pure dressing) into the two nearest (to ~180 m). Every other
 // cascade pass skips them entirely (renderLayers.setShadowCasterCascades); the field trees are unchanged.
+/** p2 trees lane: the gust's share of a crown's albedo (the leaves a gust turns over catch more sky). */
+const TREE_WIND_LEAF_FLASH = 0.11;
 const BUSH_SHADOW_CASCADES = 0b0111;
 const UNDERSTOREY_SHADOW_CASCADES = 0b0011;
 
@@ -3746,7 +3748,7 @@ function* vegetationBuildSteps(
     shader.uniforms.uScopeDist = uScopeDist; // r5: corridor length = aim dist
     shader.uniforms.uFocusPos = uFocusPos;   // r2: occlusion-fade sight capsule
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nuniform float uWindTime;\nuniform vec2 uWindDir;\nuniform vec3 uWind;\nuniform vec3 uCamPos;\nuniform vec3 uCamFwd;\nuniform float uSniperFade;\nuniform float uScopeDist;\nuniform vec3 uFocusPos;\nattribute float aFlex;\nattribute float aFadeI;\nattribute float aLodF;\nvarying float vLodF;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;');
+      '#include <common>\nuniform float uWindTime;\nuniform vec2 uWindDir;\nuniform vec3 uWind;\nuniform vec3 uCamPos;\nuniform vec3 uCamFwd;\nuniform float uSniperFade;\nuniform float uScopeDist;\nuniform vec3 uFocusPos;\nattribute float aFlex;\nattribute float aFadeI;\nattribute float aLodF;\nvarying float vLodF;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;\nvarying float vWindLift;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`
       #include <begin_vertex>
       {
@@ -3761,6 +3763,9 @@ function* vegetationBuildSteps(
         float ph = fract(sin(tiw.x * 12.9898 + tiw.z * 78.233) * 43758.5453) * 6.2831853;
         float front = 0.5 + 0.5 * sin(uWindTime * 0.42 - dot(tiw.xz, uWindDir) * 0.018);
         float gust = 0.30 + 0.70 * front * (0.55 + 0.45 * sin(uWindTime * 1.31 + ph));
+        // p2 trees lane (2026-10-01): the gust as the crown's tone — a crown in a gust turns its leaves and catches more
+        // sky, so the gust fronts read as waves of light across a far forest where the lean itself is sub-pixel
+        vWindLift = gust - 0.62;
         float lean = uWind.x * gust * (0.70 + 0.30 * sin(uWindTime * 1.15 + ph) + 0.12 * sin(uWindTime * 2.63 + ph * 1.7));
         float hn = clamp(transformed.y * uWind.y, 0.0, 1.0);
         vec2 leanDir = uWindDir + vec2(-uWindDir.y, uWindDir.x) * (0.22 * sin(uWindTime * 0.97 + ph * 1.3));
@@ -3828,7 +3833,7 @@ function* vegetationBuildSteps(
         // <<< gameplay_feel r4 / controls_gunnery r5
       }`);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nuniform float uScopeHard;\nuniform float uSniperFade;\nuniform float uScopeDist;\nvarying float vLodF;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;');
+      '#include <common>\nuniform float uScopeHard;\nuniform float uSniperFade;\nuniform float uScopeDist;\nvarying float vLodF;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;\nvarying float vWindLift;');
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
       #include <alphatest_fragment>
       {
@@ -3884,6 +3889,11 @@ function* vegetationBuildSteps(
           if (dit > fadeKeep) discard;
         }
       }`);
+    if (thin > 0) {
+      // the canopy hooks (cards, far lobes, impostors): the gust lift on the albedo, ±4 % around the still crown
+      shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <color_fragment>',
+        `#include <color_fragment>\n\tdiffuseColor.rgb *= 1.0 + vWindLift * ${TREE_WIND_LEAF_FLASH.toFixed(3)};`);
+    }
     applyCanopyDiffuseWrap(shader, wrap, matteCanopy, thin);
   };
   const treeWindHook = makeTreeWindHook(1.5, 4.2, 0.30);          // trunks/bark
@@ -4145,7 +4155,7 @@ function* vegetationBuildSteps(
       }`);
   };
   engineCtx.setupShadowMaterial(canopyFarMat, farCanopyHook);
-  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v16'; // round 77: the wind law, translucency
+  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v17'; // round 77: the wind law, translucency
   yield { stage: 'treePrep', fine: true };
 
   // Round 77b (2026-09-26): the leaf-scale detail tiles (one per foliage class, built on first use; none on the
@@ -4354,7 +4364,7 @@ function* vegetationBuildSteps(
       // Species vary textures/uniforms, not this shared shader hook. Three
       // already keys material/geometry defines; a species suffix needlessly
       // recompiles identical programs when the last world using it is evicted.
-      fm.customProgramCacheKey = () => 'world-tree-foliage-v17'; // round 77b: the leaf-scale detail (round 77: wind, cluster shadows, translucency)
+      fm.customProgramCacheKey = () => 'world-tree-foliage-v18'; // round 77b: the leaf-scale detail (round 77: wind, cluster shadows, translucency)
       foliageMats[sp] = fm;
       // alpha-tested shadow casting: without this every card shadows as a quad.
       // r6: palm gets a HIGHER shadow alphaTest — its frond texture covers most

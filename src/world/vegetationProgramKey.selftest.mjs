@@ -77,9 +77,9 @@ function library(species, fade, environment) {
   const { group } = vegetation;
   // round 77b (2026-09-26): v17 — the leaf-scale detail tile as the cards' normal map (round 77: v16 — the wind
   // law, the per-cluster cascade sample and the leaf translucency); and the far tier's one impostor material
-  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v17'));
+  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v18'));
   assert.equal(foliage.length, species.length, 'the complete production species material library exists');
-  const impostor = registered.filter(material => material.customProgramCacheKey() === 'world-tree-impostor-v2'); // round 77c: the elevated ring
+  const impostor = registered.filter(material => material.customProgramCacheKey() === 'world-tree-impostor-v3'); // round 77c: the elevated ring; p2 trees lane: the gust lift
   assert.equal(impostor.length, 1, 'one impostor material per world, registered with the cascades');
   assert.strictEqual(vegetation._treeImpostors?.material, impostor[0]);
   const foliageMats = Object.fromEntries(species.map((sp, index) => [sp, foliage[index]]));
