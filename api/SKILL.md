@@ -34,6 +34,11 @@ multiplayer (`api/signal.ts`) left the tree with the cutover of 2026-09-29
 <!-- agent-docs:fill:patterns -->
 
 - Preserve allowed-origin checks, method/status contracts, and upstream timeouts.
+- Origins, the canonical host and the Worker URLs come from the deployment policy
+  module `api/_lib/policy.ts` (`allowedApiOrigins(env)`); never repeat them in a
+  function. `_`-prefixed paths are shared code, not routes. The Workers'
+  `ALLOWED_ORIGINS` and the entry telemetry literals are pinned to it by
+  `node tools/deployment-policy.selftest.mjs`.
 - Keep ICE responses private/no-store and credentials server-side. Document
   environment variable names only; never commit secret values or log credentials.
 - Handler factories accept injected fetch, clock, and environment dependencies

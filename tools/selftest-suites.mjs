@@ -823,6 +823,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/telemetryRecord.selftest.mjs',
     'server/telemetry.selftest.mjs',
     'server/jev.selftest.mjs',
+    'tools/deployment-policy.selftest.mjs',
     'server/dedicatedWorldCollision.selftest.mjs',
     'server/mapResourceCache.selftest.mjs',
     'server/collisionManifestLoader.selftest.mjs',

@@ -1,3 +1,4 @@
+import { CANONICAL_ORIGIN } from '../../api/_lib/policy.ts';
 import { PRODUCT_STATS } from '../productStats.ts';
 import { catalogText } from '../ui/i18nCatalog.ts';
 import {
@@ -6,7 +7,8 @@ import {
   type SupportedLocale,
 } from '../ui/localeRouting.ts';
 
-export const SITE_ORIGIN = 'https://cot.kevinliu.studio';
+/** The canonical origin, from the deployment policy module (api/_lib/policy.ts). */
+export const SITE_ORIGIN = CANONICAL_ORIGIN;
 
 type SiteMetadata = {
   title: string;

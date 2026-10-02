@@ -1,12 +1,7 @@
 import { createHmac } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { RuntimeValue } from '../src/runtimeTypes.ts';
-const OFFICIAL_ORIGINS = new Set([
-  'https://cot.kevinliu.studio',
-  'https://claudeoftanks.kevinliu.studio',
-  'https://claude-of-tanks.vercel.app',
-  'https://claude-of-tanks-kl01s-projects.vercel.app',
-]);
+import { allowedApiOrigins } from './_lib/policy.ts';
 const DEFAULT_TTL_SECONDS = 8 * 60 * 60;
 
 interface IceConfigHandlerOptions {
@@ -22,12 +17,6 @@ export type IceConfigHandler = (
 
 function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null;
-}
-
-function configuredOrigins(env: NodeJS.ProcessEnv): Set<string> {
-  const extra = String(env.COT_ALLOWED_ORIGINS || '')
-    .split(',').map((value) => value.trim()).filter(Boolean);
-  return new Set([...OFFICIAL_ORIGINS, ...extra]);
 }
 
 function send(response: ServerResponse, status: number, body: RuntimeValue): void {
@@ -94,7 +83,7 @@ export function createIceConfigHandler({
       return;
     }
     const origin = String(request.headers?.origin || '');
-    if (origin && !configuredOrigins(env).has(origin)) {
+    if (origin && !allowedApiOrigins(env).has(origin)) {
       send(response, 403, { error: 'origin_forbidden' });
       return;
     }

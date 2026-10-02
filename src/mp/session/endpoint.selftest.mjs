@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { LAN_ROOMS_PORT, configuredRoomsUrl, resolveIceConfigUrl, resolveRoomsUrl } from './endpoint.ts';
 import { OFFICIAL_ROOMS_URL, OFFICIAL_SITE_HOST, OFFICIAL_TELEMETRY_URL, isOfficialSiteHost } from '../../officialHost.ts';
+import { SITE_ORIGIN } from '../../presentation/siteMetadata.ts';
 
 const official = { protocol: 'https:', hostname: OFFICIAL_SITE_HOST };
 assert.equal(resolveRoomsUrl({ configured: 'wss://rooms.example.test/', ...official }), 'wss://rooms.example.test', 'a configured wss origin wins');
@@ -20,8 +21,7 @@ assert.equal(configuredRoomsUrl('[SENSITIVE]'), null); assert.equal(configuredRo
 assert.equal(configuredRoomsUrl('wss://a.b')?.host, 'a.b');
 assert.ok(isOfficialSiteHost(' Cot.Kevinliu.Studio ') && !isOfficialSiteHost('cot.kevinliu.studio:443') && !isOfficialSiteHost(undefined));
 // The constants agree with the site's canonical origin and the Workers' names in the repo (docs/DEPLOYS.md rows name the URLs).
-const siteOrigin = /SITE_ORIGIN = '([^']+)'/.exec(readFileSync(new URL('../../presentation/siteMetadata.ts', import.meta.url), 'utf8'))?.[1];
-assert.equal(new URL(siteOrigin).host, OFFICIAL_SITE_HOST, 'OFFICIAL_SITE_HOST is the canonical site host');
+assert.equal(new URL(SITE_ORIGIN).host, OFFICIAL_SITE_HOST, 'OFFICIAL_SITE_HOST is the canonical site host');
 for (const [url, dir] of [[OFFICIAL_ROOMS_URL, 'rooms'], [OFFICIAL_TELEMETRY_URL, 'telemetry']]) {
   const name = /"name":\s*"([^"]+)"/.exec(readFileSync(new URL(`../../../cloudflare/${dir}/wrangler.jsonc`, import.meta.url), 'utf8'))?.[1];
   assert.equal(new URL(url).hostname.split('.')[0], name, `${dir}: the official URL names the Worker in cloudflare/${dir}/wrangler.jsonc`);
