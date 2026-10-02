@@ -1,46 +1,35 @@
 #!/usr/bin/env node
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
-// sfx-smoke.mjs — end-to-end verification for COMBAT-SFX r4.
+// sfx-smoke.mjs — end-to-end gate for the generated SFX banks
+// (src/audio/audioEngine.ts, assets in public/audio/sfx/).
 //
-// Boots the game headless (own vite on a 7xxx port — NEVER 5001/5002), enters
-// a battle, then drives REAL bus events (window.__DEBUG.bus — the same object
-// audio.ts bound via bindBus) and records the master output via the
-// __COT_AUDIO PCM tap. Two modes:
+// Boots the game headless on its OWN vite (7xxx port — never 5001/5002),
+// enters a battle, drives REAL bus events (window.__DEBUG.bus — the object the
+// engine bound via bindBus) and records the master output through the
+// __COT_AUDIO PCM tap. Asserts:
+//   - every scene plays its intended assets (sfxLog names), audibly, unclipped
+//   - calibre ladder: rifle MG → heavy MG → 30 mm → 90 → 120 → 152 mm; the low
+//     band (<150 Hz) share of the capture rises from MG to the 152 mm and the
+//     cannon tail pitch falls with bore
+//   - distance model: a 15 m cannon plays its close report only, a ~210 m one
+//     both layers, a ~420 m one its distant report only, and the distant report
+//     arrives at the speed of sound
+//   - the occupied gun plays hotter than an enemy gun at 15 m
+//   - repeats never repeat exactly (playback-rate jitter)
+//   - an 8-gun volley with two ammo-rack kills does not clip the master
+//   - zero console errors
+// Writes WAVs + report.json under shots/sfx-smoke/. Shares the FIFO capture
+// lock with tools/screenshot.mjs. Exit 0 = green.
 //
-//   node tools/sfx-smoke.mjs                # assert mode (default)
-//       - waits for the baked sample set (sfxLoaded) to decode
-//       - per scene: emits the event, asserts the RIGHT samples played
-//         (sfxLog names + layer-gain ratios: distant fire must be
-//         tail-dominant, the player's own gun must mix more sub)
-//       - asserts audible output per scene and ZERO console errors
-//       - volley stress: 8 rapid heavies + 2 ammo-rack kills must not clip
-//       - writes new_*.wav A/B copies into shots/sfx-r4/ab/ and, when
-//         old-metrics.json exists there (from --capture-old), the README.md
-//         table comparing bass energy (<120 Hz, % of total) old vs new.
-//
-//   node tools/sfx-smoke.mjs --capture-old  # run BEFORE the audio.ts swap
-//       - same scenes, no sample assertions (old code has no sfxLog)
-//       - writes old_*.wav + old-metrics.json into shots/sfx-r4/ab/
-//
-// Exit 0 = green. Shares the FIFO capture lock with tools/screenshot.mjs.
+// Usage: node tools/sfx-smoke.mjs
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
-const FFMPEG = process.env.FFMPEG || '/opt/homebrew/bin/ffmpeg';
-
-// --- FIFO capture lock (same protocol/dirs as tools/screenshot.mjs) ---------
-
-// --- args / output -----------------------------------------------------------
-const args = process.argv.slice(2);
-const CAPTURE_OLD = args.includes('--capture-old');
-const outDir = resolve('shots/sfx-r4');
-const abDir = join(outDir, 'ab');
-mkdirSync(abDir, { recursive: true });
-const prefix = CAPTURE_OLD ? 'old' : 'new';
+const outDir = resolve('shots/sfx-smoke');
+mkdirSync(outDir, { recursive: true });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -57,36 +46,29 @@ function writeWav(path, i16, sampleRate) {
   writeFileSync(path, buf);
 }
 
-function analyze(i16) {
-  let peak = 0, sum2 = 0;
-  for (let i = 0; i < i16.length; i++) {
-    const a = Math.abs(i16[i]) / 32768;
-    if (a > peak) peak = a;
-    sum2 += (i16[i] / 32768) * (i16[i] / 32768);
+/** Peak, RMS and the share of energy below 150 Hz (two cascaded one-pole lowpasses). */
+function analyze(i16, sampleRate) {
+  const a = 1 - Math.exp((-2 * Math.PI * 150) / sampleRate);
+  let peak = 0, sum2 = 0, low2 = 0;
+  let l1 = 0, l2 = 0;
+  for (let i = 0; i < i16.length; i += 2) {
+    const x = (i16[i] + i16[i + 1]) / 65536;
+    const ax = Math.max(Math.abs(i16[i]), Math.abs(i16[i + 1])) / 32768;
+    if (ax > peak) peak = ax;
+    sum2 += x * x;
+    l1 += a * (x - l1);
+    l2 += a * (l1 - l2);
+    low2 += l2 * l2;
   }
-  const rms = Math.sqrt(sum2 / Math.max(1, i16.length));
+  const n = Math.max(1, i16.length / 2);
+  const rms = Math.sqrt(sum2 / n);
   return {
     peak,
     peakDb: peak > 0 ? 20 * Math.log10(peak) : -Infinity,
     rms,
     rmsDb: rms > 0 ? 20 * Math.log10(rms) : -Infinity,
+    lowShare: sum2 > 0 ? low2 / sum2 : 0,
   };
-}
-
-/** Energy below `hz` as % of total energy, measured with ffmpeg (24 dB/oct). */
-function bassEnergyPct(file, hz = 120) {
-  const rmsOf = (af) => {
-    const out = spawnSync(FFMPEG, ['-hide_banner', '-i', file, '-af',
-      `${af}astats=metadata=0:measure_overall=RMS_level:measure_perchannel=none`,
-      '-f', 'null', '-'], { encoding: 'utf8' });
-    const m = /RMS level dB:\s*(-?[\d.]+|-inf)/.exec(out.stderr);
-    if (!m) throw new Error(`astats failed for ${file}`);
-    return m[1] === '-inf' ? -Infinity : parseFloat(m[1]);
-  };
-  const full = rmsOf('');
-  const low = rmsOf(`lowpass=f=${hz},lowpass=f=${hz},`);
-  if (!isFinite(full) || !isFinite(low)) return 0;
-  return Math.pow(10, (low - full) / 10) * 100;
 }
 
 await acquireLock(15 * 60 * 1000);
@@ -94,10 +76,13 @@ process.on('exit', releaseLock);
 const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
 lockRefresher.unref();
 
-// --- server (own 7xxx port per the COMBAT-SFX agent mandate) -----------------
 const port = 7600 + Math.floor(Math.random() * 300);
+// A private dep cache: node_modules (and its .vite) can be shared between checkouts.
+const viteCacheDir = resolve('/tmp', `cot-sfx-smoke-vite-${process.pid}`);
+process.on('exit', () => rmSync(viteCacheDir, { recursive: true, force: true }));
 const server = await createServer({
   root: process.cwd(),
+  cacheDir: viteCacheDir,
   logLevel: 'error',
   server: { port, strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
   optimizeDeps: {
@@ -113,7 +98,7 @@ const server = await createServer({
 });
 await server.listen();
 const url = `http://localhost:${server.config.server.port}/`;
-console.log(`[sfx-smoke] vite up at ${url} (${CAPTURE_OLD ? 'CAPTURE-OLD' : 'assert'} mode)`);
+console.log(`[sfx-smoke] vite up at ${url}`);
 
 const LAUNCH_ARGS = [
   '--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage',
@@ -154,13 +139,13 @@ async function bootIntoBattle() {
 await openPage();
 
 let failed = false;
-const report = { mode: prefix, scenes: {}, errors: [] };
+const report = { scenes: {}, ladder: {}, distance: {}, errors: [] };
 const fail = (msg) => { failed = true; report.errors.push(msg); console.error('[sfx-smoke] FAIL: ' + msg); };
 
 try {
   await bootIntoBattle();
   // Headless Chrome occasionally has no audio backend — headful fallback.
-  let clockOk = await page.evaluate(async () => {
+  const clockOk = await page.evaluate(async () => {
     const A = window.__COT_AUDIO;
     if (!A || !A.ctx) return false;
     const t0 = A.ctx.currentTime;
@@ -180,31 +165,37 @@ try {
   }
   const sampleRate = await page.evaluate(() => window.__COT_AUDIO.sampleRate);
 
-  if (!CAPTURE_OLD) {
-    // Baked combat samples must fully decode (they load lazily at resume()).
-    await page.waitForFunction('window.__COT_AUDIO.sfxLoaded === true', { timeout: 20000 });
-    const nSfx = await page.evaluate(() => window.__COT_AUDIO.sfxCount);
-    console.log(`[sfx-smoke] context up (sr=${sampleRate}), baked sfx decoded: ${nSfx}`);
-  } else {
-    console.log(`[sfx-smoke] context up (sr=${sampleRate})`);
-  }
+  // Decode every bank the scenes use before the first capture.
+  const PRELOAD = [
+    'mg_rifle_close', 'mg_heavy_close', 'mg_far', 'ac_30_close', 'ac_feed', 'ac_far_light',
+    'gun_90_close', 'gun_120_close', 'gun_152_close', 'gun_far_light', 'gun_far_medium', 'gun_far_heavy',
+    'atgm_launch', 'tail_open', 'tail_forest', 'tail_urban', 'tail_mountain',
+    'pen_heavy', 'pen_interior', 'ricochet_heavy', 'nonpen_heavy', 'nonpen_interior', 'era_det', 'he_armor',
+    'expl_he_medium', 'ground_sand', 'ground_dirt', 'ground_rock', 'bullet_dirt', 'tank_explode', 'tank_explode_ammo',
+    'debris_metal', 'turret_land', 'cookoff_loop', 'burnout_blast', 'tree_snap', 'tree_fall', 'ram_heavy',
+    'smoke_launcher', 'smoke_burst',
+  ];
+  await page.evaluate((ids) => window.__COT_AUDIO.preload(ids), PRELOAD);
+  const lib = await page.evaluate(() => window.__COT_AUDIO.library());
+  console.log(`[sfx-smoke] context up (sr=${sampleRate}), decoded ${lib.assets} assets (${lib.decodedMb} MB, ${lib.failed} failed)`);
+  if (lib.failed) fail(`${lib.failed} SFX assets failed to decode`);
   // Quiet the beds so scene captures isolate combat one-shots.
   await page.evaluate(() => window.__DEBUG.bus.emit('ui:volumes',
     { master: 0.8, engine: 0, combat: 1, ambience: 0, ui: 0, voice: 0 }));
   await sleep(500);
 
-  // In-page helpers.
+  // In-page helpers. Positions are relative to the occupied tank (the listener).
   await page.evaluate(() => {
     const D = window.__DEBUG;
     window.__P = {
-      pos(dx, dy, dz) { const c = D.camera.position; return [c.x + dx, c.y + dy, c.z + dz]; },
+      pos(dx, dy, dz) { const p = D.game.player.state.pos; return [p.x + dx, p.y + 1.5 + dy, p.z + dz]; },
       playerId: D.game.player ? D.game.player.id : null,
       enemyId: (D.game.tanks.find((t) => t.team === 'enemy' && t.state) || {}).id || null,
       emit(ev, p) { D.bus.emit(ev, p); },
-      // The runtime trail is capped. A length cursor becomes stuck at 200
-      // during sustained bot fire, so use the monotonic sample sequence.
-      sfxMark() { const A = window.__COT_AUDIO; return A.sfxLog && A.sfxLog.length ? A.sfxLog.at(-1).seq : 0; },
-      sfxSince(n) { const A = window.__COT_AUDIO; return A.sfxLog ? A.sfxLog.filter((x) => x.seq > n) : []; },
+      now() { return window.__COT_AUDIO.ctx.currentTime; },
+      // The runtime trail is capped; the sample sequence is monotonic.
+      sfxMark() { const A = window.__COT_AUDIO; return A.sfxLog.length ? A.sfxLog.at(-1).seq : 0; },
+      sfxSince(n) { return window.__COT_AUDIO.sfxLog.filter((x) => x.seq > n); },
     };
   });
 
@@ -225,144 +216,160 @@ try {
   async function emit(ev, payloadJs) { await page.evaluate(`window.__P.emit('${ev}', ${payloadJs})`); }
 
   // ---- scene table -----------------------------------------------------------
-  // fire(cal,dx,dz): enemy gun at that camera offset. expect = sample names
-  // that MUST appear in sfxLog for the scene (subset match, prefix ok for
-  // variant picks like ricochet_[abc]).
-  const fire = (cal, dx, dz, player = false) =>
-    `{shellId:9001, shooterId:${player ? 'window.__P.playerId' : 'window.__P.enemyId'}, isPlayer:${player}, ` +
-    `shellType:'AP', shellName:'p', caliberMm:${cal}, muzzlePos:window.__P.pos(${dx},0,${dz}), dir:[0,0.02,1]}`;
-  const hit = (kind, target, dmg, extra = '') =>
-    `{kind:'${kind}', pos:window.__P.pos(10,0,12), targetId:window.__P.${target}, ` +
-    `attackerId:window.__P.${target === 'playerId' ? 'enemyId' : 'playerId'}, damage:${dmg}, caliberMm:100, ` +
-    `normal:[0,1,0], shellType:'AP', shellName:'p', shellId:9200${extra}}`;
+  let shellId = 9000;
+  const fire = (cal, dx, dz, { player = false, sound = null } = {}) =>
+    `{shellId:${++shellId}, shooterId:${player ? 'window.__P.playerId' : 'window.__P.enemyId'}, isPlayer:${player}, ` +
+    `shellType:'APFSDS', shellName:'p', caliberMm:${cal}, weaponSound:${sound ? `'${sound}'` : 'null'}, ` +
+    `muzzlePos:window.__P.pos(${dx},0,${dz}), dir:[0,0,1]}`;
+  const hit = (kind, own, dmg, cal = 105) =>
+    `{kind:'${kind}', pos:window.__P.pos(${own ? '0,0,1.5' : '10,0,12'}), targetId:window.__P.${own ? 'playerId' : 'enemyId'}, ` +
+    `attackerId:window.__P.${own ? 'enemyId' : 'playerId'}, damage:${dmg}, caliberMm:${cal}, ` +
+    `normal:[0,1,0], shellType:'APFSDS', shellName:'p', shellId:${++shellId}, targetMaxHp:1000, targetHpAfter:800}`;
 
   const SCENES = [
-    { name: 'fire_small', ev: 'shell:fired', p: fire(57, 10, 11), holdMs: 1800,
-      expect: ['fire_small_sub', 'fire_small_crack', 'fire_small_tail'] },
-    { name: 'fire_large', ev: 'shell:fired', p: fire(122, 10, 11), holdMs: 2600, ab: true,
-      expect: ['fire_large_sub', 'fire_large_crack', 'fire_large_tail'] },
-    { name: 'fire_large_player', ev: 'shell:fired', p: fire(120, 0, 3, true), holdMs: 2800, ab: true,
-      expect: ['fire_large_sub', 'fire_large_crack', 'fire_large_tail'] },
-    { name: 'fire_huge', ev: 'shell:fired', p: fire(152, -12, 10), holdMs: 3400, ab: true,
-      expect: ['fire_huge_sub', 'fire_huge_crack', 'fire_huge_tail'] },
-    // ~180 m out: intentionally faint under the world-distance rolloff — the
-    // real assertions are the sample names
-    // + the tail-dominance ratio below, so the silence floor is just "not
-    // literally zero".
-    { name: 'fire_distant', ev: 'shell:fired', p: fire(122, 127, 127), holdMs: 3600,
-      minRms: 5e-5, expect: ['fire_large_tail'] },
-    { name: 'impact_pen', ev: 'shell:hit', p: hit('pen', 'enemyId', 180), holdMs: 1600, ab: true,
-      expect: ['impact_pen_'] },
-    { name: 'hit_received_pen', ev: 'shell:hit', p: hit('pen', 'playerId', 150), holdMs: 1800,
-      expect: ['impact_pen_', 'hit_whump'] },
-    { name: 'ricochet', ev: 'shell:hit', p: hit('ricochet', 'enemyId', 0), holdMs: 1600, ab: true,
-      expect: ['ricochet_'] },
-    { name: 'impact_absorb', ev: 'shell:hit', p: hit('nonpen', 'enemyId', 0), holdMs: 1400, ab: true,
-      expect: ['impact_absorb_'] },
-    { name: 'era_pop', ev: 'shell:hit', p: hit('era', 'enemyId', 0), holdMs: 1200,
-      expect: ['era_pop'] },
-    { name: 'he_splash', ev: 'shell:hit', p: hit('he_splash', 'enemyId', 120), holdMs: 2400,
-      expect: ['expl_he_'] },
-    { name: 'shell_dirt', ev: 'shell:expired', p: `{shellId:9007, pos:window.__P.pos(8,-2,20), hitTerrain:true}`, holdMs: 1400,
-      expect: ['impact_dirt'] },
-    { name: 'tank_explosion', ev: 'tank:destroyed', holdMs: 5200, ab: true,
-      p: `{id:window.__P.enemyId, specId:'t90m', pos:window.__P.pos(0,0,30), killerId:window.__P.playerId, cause:'ammorack'}`,
-      expect: ['expl_tank_core_', 'expl_tank_debris', 'expl_turret_pop'] },
-    { name: 'tank_burnout', ev: 'tank:destroyed', holdMs: 4200,
-      p: `{id:window.__P.enemyId, specId:'t90m', pos:window.__P.pos(14,0,26), killerId:null, cause:'fire'}`,
-      expect: ['expl_burnout'] },
+    // calibre ladder at 15 m
+    { name: 'mg_rifle', ev: 'shell:fired', p: fire(7.62, 12, 9), holdMs: 900, expect: ['mg_rifle_close'], ladder: true },
+    { name: 'mg_heavy', ev: 'shell:fired', p: fire(12.7, 12, 9, { sound: 'heavy-machine-gun' }), holdMs: 1000, expect: ['mg_heavy_close'], ladder: true },
+    { name: 'ac_30', ev: 'shell:fired', p: fire(30, 12, 9, { sound: '2a42' }), holdMs: 1400, expect: ['ac_30_close', 'ac_feed'], ladder: true },
+    { name: 'gun_90', ev: 'shell:fired', p: fire(90, 12, 9), holdMs: 2600, expect: ['gun_90_close', 'tail_'], ladder: true },
+    { name: 'gun_120', ev: 'shell:fired', p: fire(120, 12, 9), holdMs: 2800, expect: ['gun_120_close', 'tail_'], ladder: true },
+    { name: 'gun_152', ev: 'shell:fired', p: fire(152, 12, 9), holdMs: 3200, expect: ['gun_152_close', 'tail_'], ladder: true },
+    // the occupied gun and the distance model
+    { name: 'gun_120_own', ev: 'shell:fired', p: fire(120, 0, 3, { player: true }), holdMs: 2800, expect: ['gun_120_close', 'gun_far_medium'] },
+    { name: 'gun_120_mid', ev: 'shell:fired', p: fire(120, 150, 150), holdMs: 3400, minRms: 1e-4, expect: ['gun_120_close', 'gun_far_medium'] },
+    { name: 'gun_120_distant', ev: 'shell:fired', p: fire(120, 300, 300), holdMs: 4400, minRms: 3e-5, expect: ['gun_far_medium'], forbid: ['gun_120_close'] },
+    { name: 'atgm', ev: 'shell:fired', p: fire(130, 14, 9, { sound: 'konkurs-launch' }), holdMs: 2400, expect: ['atgm_launch'] },
+    // impacts
+    { name: 'impact_pen', ev: 'shell:hit', p: hit('pen', false, 180), holdMs: 1600, expect: ['pen_heavy'] },
+    { name: 'hit_received_pen', ev: 'shell:hit', p: hit('pen', true, 150), holdMs: 1800, expect: ['pen_heavy', 'pen_interior'] },
+    { name: 'ricochet', ev: 'shell:hit', p: hit('ricochet', false, 0), holdMs: 1500, expect: ['ricochet_heavy'] },
+    { name: 'nonpen', ev: 'shell:hit', p: hit('nonpen', false, 0), holdMs: 1400, expect: ['nonpen_heavy'] },
+    { name: 'era', ev: 'shell:hit', p: hit('era', false, 0), holdMs: 1300, expect: ['era_det'] },
+    { name: 'he_splash', ev: 'shell:hit', p: hit('he_splash', false, 120), holdMs: 2400, expect: ['he_armor', 'expl_he_medium'] },
+    { name: 'shell_ground', ev: 'shell:expired', p: `{shellId:${++shellId}, pos:window.__P.pos(8,-1.5,20), hitTerrain:true, caliberMm:105}`, holdMs: 1500, expect: ['ground_'] },
+    { name: 'bullet_ground', ev: 'shell:expired', p: `{shellId:${++shellId}, pos:window.__P.pos(4,-1.5,9), hitTerrain:true, caliberMm:7.62}`, holdMs: 900, minRms: 1e-4, expect: ['bullet_dirt'] },
+    // destruction and contact
+    { name: 'tank_explosion', ev: 'tank:destroyed', holdMs: 5200,
+      p: `{id:window.__P.enemyId, specId:'t90m', pos:window.__P.pos(0,-1.5,30), killerId:window.__P.playerId, cause:'ammorack'}`,
+      expect: ['tank_explode_ammo', 'debris_metal', 'turret_land', 'cookoff_loop'] },
+    { name: 'tank_burnout', ev: 'tank:destroyed', holdMs: 3600,
+      p: `{id:window.__P.enemyId, specId:'t90m', pos:window.__P.pos(14,-1.5,26), killerId:null, cause:'fire'}`,
+      expect: ['burnout_blast'] },
+    { name: 'tree_crush', ev: 'prop:crushed', holdMs: 2200,
+      p: `{id:window.__P.playerId, isPlayer:true, speedMps:6, kind:'tree', h:7, pos:window.__P.pos(3,-1.5,5), dir:[0,0,1]}`,
+      expect: ['tree_snap', 'tree_fall'] },
+    { name: 'ram', ev: 'tank:ram', holdMs: 1600,
+      p: `{aId:window.__P.playerId, bId:window.__P.enemyId, aIsPlayer:true, bIsPlayer:false, closingMps:8.5, dmgA:42, dmgB:75, pos:window.__P.pos(-2,-0.8,5)}`,
+      expect: ['ram_heavy'] },
+    { name: 'smoke', ev: 'auxiliary:smokeScreens', holdMs: 2200,
+      p: `{screens:[{born:window.__DEBUG.game.timeS + 1000, x:window.__P.pos(6,0,14)[0], y:window.__P.pos(6,0,14)[1], z:window.__P.pos(6,0,14)[2], source:['m1a2', ...window.__P.pos(0,0,0)]}]}`,
+      expect: ['smoke_launcher', 'smoke_burst'] },
   ];
 
-  const gainOf = (log, needle) => {
-    const e = log.find((x) => x.n.startsWith(needle));
-    return e ? e.g : null;
-  };
   const sceneLogs = {};
-
+  const sceneAudio = {};
   for (const sc of SCENES) {
-    const mark = CAPTURE_OLD ? 0 : await page.evaluate(() => window.__P.sfxMark());
+    const mark = await page.evaluate(() => window.__P.sfxMark());
     await tapStart();
     await sleep(250);
+    const emittedAt = await page.evaluate(() => window.__P.now());
     await emit(sc.ev, sc.p);
     await sleep(sc.holdMs);
     const i16 = await tapStopAndFetch();
-    const a = analyze(i16);
-    const wavName = `${prefix}_${sc.name}.wav`;
-    const wavPath = sc.ab ? join(abDir, wavName) : join(outDir, wavName);
+    const a = analyze(i16, sampleRate);
+    const wavPath = join(outDir, `${sc.name}.wav`);
     writeWav(wavPath, i16, sampleRate);
-    const entry = { peakDb: +a.peakDb.toFixed(2), rmsDb: +a.rmsDb.toFixed(2), wav: wavPath };
-    report.scenes[sc.name] = entry;
-    console.log(`[sfx-smoke] ${sc.name.padEnd(20)} peak ${a.peakDb.toFixed(1).padStart(6)} dBFS  rms ${a.rmsDb.toFixed(1).padStart(6)} dBFS`);
+    const log = await page.evaluate((n) => window.__P.sfxSince(n), mark);
+    sceneLogs[sc.name] = log;
+    sceneAudio[sc.name] = { ...a, emittedAt };
+    report.scenes[sc.name] = {
+      peakDb: +a.peakDb.toFixed(2), rmsDb: +a.rmsDb.toFixed(2), lowShare: +a.lowShare.toFixed(3), wav: wavPath,
+      samples: log.map((x) => `${x.n}@${x.g.toFixed(3)}x${x.r.toFixed(3)}:${x.b}`),
+    };
+    console.log(`[sfx-smoke] ${sc.name.padEnd(18)} peak ${a.peakDb.toFixed(1).padStart(6)} dBFS  rms ${a.rmsDb.toFixed(1).padStart(6)} dBFS  low ${(a.lowShare * 100).toFixed(0).padStart(3)}%  ${log.map((x) => x.n).join(' ')}`);
     if (a.peak >= 0.999) fail(`${sc.name}: CLIPPING (peak ${a.peakDb.toFixed(2)} dBFS)`);
-    if (!CAPTURE_OLD && a.rms < (sc.minRms || 0.0008)) fail(`${sc.name}: captured audio is silent (rms ${a.rmsDb.toFixed(1)} dBFS)`);
-    if (!CAPTURE_OLD) {
-      const log = await page.evaluate((n) => window.__P.sfxSince(n), mark);
-      sceneLogs[sc.name] = log;
-      entry.samples = log.map((x) => `${x.n}@${x.g.toFixed(3)}x${x.r.toFixed(3)}`);
-      for (const want of sc.expect) {
-        if (!log.some((x) => x.n.startsWith(want))) {
-          fail(`${sc.name}: expected sample '${want}*' did not play (got: ${log.map((x) => x.n).join(', ') || 'none'})`);
-        }
+    if (a.rms < (sc.minRms || 0.0008)) fail(`${sc.name}: captured audio is silent (rms ${a.rmsDb.toFixed(1)} dBFS)`);
+    for (const want of sc.expect) {
+      if (!log.some((x) => x.n.startsWith(want))) {
+        fail(`${sc.name}: expected sample '${want}*' did not play (got: ${log.map((x) => x.n).join(', ') || 'none'})`);
       }
+    }
+    for (const banned of sc.forbid || []) {
+      if (log.some((x) => x.n.startsWith(banned))) fail(`${sc.name}: '${banned}' should not play at this range`);
     }
     await sleep(250);
   }
 
-  if (!CAPTURE_OLD) {
-    // --- layer-model assertions ------------------------------------------------
-    // 1) distant fire is tail-dominant: crack/tail gain ratio collapses.
-    const near = sceneLogs.fire_large, far = sceneLogs.fire_distant;
-    const nearRatio = gainOf(near, 'fire_large_crack') / gainOf(near, 'fire_large_tail');
-    const farCrack = gainOf(far, 'fire_large_crack');
-    const farRatio = farCrack == null ? 0 : farCrack / gainOf(far, 'fire_large_tail');
-    report.layerModel = { nearCrackTail: +nearRatio.toFixed(3), farCrackTail: +farRatio.toFixed(3) };
-    if (!(nearRatio > 0.6)) fail(`near fire crack/tail ratio ${nearRatio.toFixed(2)} — crack should be full up close`);
-    if (!(farRatio < 0.45 * nearRatio)) fail(`distant fire not tail-dominant (crack/tail ${farRatio.toFixed(2)} vs near ${nearRatio.toFixed(2)})`);
-    // 2) player's own gun mixes hotter sub than an enemy gun.
-    const pl = sceneLogs.fire_large_player;
-    const plSub = gainOf(pl, 'fire_large_sub') / gainOf(pl, 'fire_large_tail');
-    const enSub = gainOf(near, 'fire_large_sub') / gainOf(near, 'fire_large_tail');
-    report.layerModel.playerSubTail = +plSub.toFixed(3);
-    report.layerModel.enemySubTail = +enSub.toFixed(3);
-    if (!(plSub > enSub * 1.1)) fail(`player gun sub not hotter (sub/tail ${plSub.toFixed(2)} vs enemy ${enSub.toFixed(2)})`);
-    // 3) repeats never identical: two same-caliber shots differ in rate.
-    const m0 = await page.evaluate(() => window.__P.sfxMark());
-    await emit('shell:fired', fire(122, 10, 11));
-    await sleep(500);
-    await emit('shell:fired', fire(122, 10, 11));
-    await sleep(2200);
-    const jl = await page.evaluate((n) => window.__P.sfxSince(n), m0);
-    const subs = jl.filter((x) => x.n === 'fire_large_sub');
-    if (subs.length >= 2) {
-      const rates = subs.map((x) => x.r);
-      report.layerModel.jitterRates = rates.map((r) => +r.toFixed(4));
-      if (Math.abs(rates[0] - rates[1]) < 1e-4) fail('repeat shots have identical playbackRate — jitter missing');
-      for (const r of rates) if (r < 0.955 || r > 1.045) fail(`playbackRate jitter ${r} outside ±4.5%`);
-    } else fail('jitter check: fire_large_sub did not log twice');
+  const entry = (scene, name) => (sceneLogs[scene] || []).find((x) => x.n.startsWith(name)) || null;
 
-    // --- volley stress: 14-tank fight moment must not clip into crackle --------
-    await tapStart();
-    await sleep(200);
-    for (let i = 0; i < 8; i++) {
-      await emit('shell:fired', fire(i % 2 ? 122 : 125, -14 + i * 4, 9 + (i % 3) * 3));
-      await sleep(35);
-    }
-    await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90m', pos:window.__P.pos(-6,0,24), killerId:window.__P.playerId, cause:'ammorack'}`);
-    await sleep(120);
-    await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90m', pos:window.__P.pos(9,0,21), killerId:window.__P.playerId, cause:'ammorack'}`);
-    await sleep(4500);
-    const vI16 = await tapStopAndFetch();
-    const va = analyze(vI16);
-    writeWav(join(outDir, `${prefix}_volley.wav`), vI16, sampleRate);
-    report.scenes.volley = { peakDb: +va.peakDb.toFixed(2), rmsDb: +va.rmsDb.toFixed(2) };
-    console.log(`[sfx-smoke] volley               peak ${va.peakDb.toFixed(1).padStart(6)} dBFS  rms ${va.rmsDb.toFixed(1).padStart(6)} dBFS`);
-    if (va.peak >= 0.999) fail(`volley: CLIPPING (peak ${va.peakDb.toFixed(2)} dBFS) — master limiter not holding`);
-    if (va.rms < 0.01) fail('volley: suspiciously quiet');
+  // ---- calibre ladder ---------------------------------------------------------
+  const ladder = SCENES.filter((s) => s.ladder).map((s) => s.name);
+  for (const name of ladder) report.ladder[name] = +sceneAudio[name].lowShare.toFixed(3);
+  if (!(sceneAudio.gun_152.lowShare > sceneAudio.mg_rifle.lowShare * 1.5)) {
+    fail(`152 mm is not bassier than the rifle MG (low share ${sceneAudio.gun_152.lowShare.toFixed(3)} vs ${sceneAudio.mg_rifle.lowShare.toFixed(3)})`);
   }
+  if (!(sceneAudio.gun_120.lowShare > sceneAudio.ac_30.lowShare)) {
+    fail(`120 mm is not bassier than the 30 mm (low share ${sceneAudio.gun_120.lowShare.toFixed(3)} vs ${sceneAudio.ac_30.lowShare.toFixed(3)})`);
+  }
+  const tail90 = entry('gun_90', 'tail_');
+  const tail152 = entry('gun_152', 'tail_');
+  if (tail90 && tail152 && !(tail152.r < tail90.r)) fail(`cannon tail pitch does not fall with bore (90 mm ${tail90.r}, 152 mm ${tail152.r})`);
 
-  // --- console gate (same known-unrelated quarantine as tools/audio-probe.mjs:
-  // in-flight tank-model agents throw in tankFactory.ts wheel sync during any
-  // battle — visual, not audio; everything else fails the smoke) --------------
+  // ---- distance model ---------------------------------------------------------
+  const near = entry('gun_120', 'gun_120_close');
+  const mid = entry('gun_120_mid', 'gun_120_close');
+  const midFar = entry('gun_120_mid', 'gun_far_medium');
+  const distant = entry('gun_120_distant', 'gun_far_medium');
+  report.distance = { near, mid, midFar, distant };
+  if (near && mid && !(mid.g < near.g * 0.5)) fail(`close report not attenuated at ~210 m (${mid.g} vs ${near.g})`);
+  if (distant) {
+    const delay = distant.t - sceneAudio.gun_120_distant.emittedAt;
+    const expected = distant.d / 343;
+    report.distance.delayS = +delay.toFixed(3);
+    report.distance.expectedDelayS = +expected.toFixed(3);
+    if (Math.abs(delay - expected) > 0.25) fail(`distant report delay ${delay.toFixed(2)} s, expected ~${expected.toFixed(2)} s at ${distant.d} m`);
+  }
+  const own = entry('gun_120_own', 'gun_120_close');
+  if (own && near && !(own.g > near.g)) fail(`occupied gun not hotter than an enemy gun at 15 m (${own.g} vs ${near.g})`);
+  if (own && own.b !== 'own') fail(`occupied gun routed to ${own.b}, expected the own-hull bus`);
+
+  // ---- repeats never identical ---------------------------------------------------
+  const m0 = await page.evaluate(() => window.__P.sfxMark());
+  await emit('shell:fired', fire(120, 12, 9));
+  await sleep(600);
+  await emit('shell:fired', fire(120, 12, 9));
+  await sleep(2200);
+  const jl = await page.evaluate((n) => window.__P.sfxSince(n), m0);
+  const reports = jl.filter((x) => x.n === 'gun_120_close');
+  if (reports.length >= 2) {
+    const rates = reports.map((x) => x.r);
+    report.jitterRates = rates;
+    if (Math.abs(rates[0] - rates[1]) < 1e-4) fail('repeat shots have identical playbackRate — jitter missing');
+    for (const r of rates) if (r < 0.9 || r > 1.1) fail(`playbackRate jitter ${r} outside ±10%`);
+  } else fail('jitter check: gun_120_close did not log twice');
+
+  // ---- volley stress: a 14-tank fight moment must not clip ------------------------
+  await tapStart();
+  await sleep(200);
+  for (let i = 0; i < 8; i++) {
+    await emit('shell:fired', fire(i % 2 ? 120 : 125, -14 + i * 4, 9 + (i % 3) * 3));
+    await sleep(35);
+  }
+  await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90m', pos:window.__P.pos(-6,-1.5,24), killerId:window.__P.playerId, cause:'ammorack'}`);
+  await sleep(120);
+  await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90m', pos:window.__P.pos(9,-1.5,21), killerId:window.__P.playerId, cause:'ammorack'}`);
+  await sleep(4500);
+  const vI16 = await tapStopAndFetch();
+  const va = analyze(vI16, sampleRate);
+  writeWav(join(outDir, 'volley.wav'), vI16, sampleRate);
+  report.scenes.volley = { peakDb: +va.peakDb.toFixed(2), rmsDb: +va.rmsDb.toFixed(2) };
+  console.log(`[sfx-smoke] volley             peak ${va.peakDb.toFixed(1).padStart(6)} dBFS  rms ${va.rmsDb.toFixed(1).padStart(6)} dBFS`);
+  if (va.peak >= 0.999) fail(`volley: CLIPPING (peak ${va.peakDb.toFixed(2)} dBFS) — master limiter not holding`);
+  if (va.rms < 0.01) fail('volley: suspiciously quiet');
+
+  // ---- console gate ------------------------------------------------------------
+  // Known-unrelated: in-flight tank-model work can throw in tankFactory.ts
+  // wheel sync during any battle (visual, not audio).
   const KNOWN_UNRELATED = /syncFromState|multiplyQuaternions|tankFactory\.ts/;
   const sfxErrors = consoleErrors.filter((e) => !KNOWN_UNRELATED.test(e));
   const quarantined = consoleErrors.filter((e) => KNOWN_UNRELATED.test(e));
@@ -370,7 +377,7 @@ try {
     report.quarantinedErrors = [...new Set(quarantined)].slice(0, 3);
     console.warn(`[sfx-smoke] ${quarantined.length} known-unrelated console error(s) quarantined (tankFactory wheel sync)`);
   }
-  if (sfxErrors.length) for (const e of sfxErrors) fail(`console: ${e}`);
+  for (const e of sfxErrors) fail(`console: ${e}`);
 } catch (err) {
   fail(String(err && err.stack || err));
 } finally {
@@ -380,46 +387,7 @@ try {
   releaseLock();
 }
 
-// --- A/B bass-energy bookkeeping ----------------------------------------------
-try {
-  const metrics = {};
-  for (const f of readdirSync(abDir)) {
-    if (f.startsWith(`${prefix}_`) && f.endsWith('.wav')) {
-      metrics[f.replace(`${prefix}_`, '').replace('.wav', '')] = +bassEnergyPct(join(abDir, f)).toFixed(1);
-    }
-  }
-  writeFileSync(join(abDir, `${prefix}-metrics.json`), JSON.stringify(metrics, null, 2));
-  console.log(`[sfx-smoke] ${prefix} bass-energy (<120 Hz, % of total):`, JSON.stringify(metrics));
-  if (!CAPTURE_OLD && existsSync(join(abDir, 'old-metrics.json'))) {
-    const oldM = JSON.parse(readFileSync(join(abDir, 'old-metrics.json'), 'utf8'));
-    let oldScenes = {};
-    try { oldScenes = JSON.parse(readFileSync(join(outDir, 'report-old.json'), 'utf8')).scenes || {}; } catch (_) { /* fine */ }
-    const fmt = (v, unit = '') => (v == null ? 'n/a' : `${v}${unit}`);
-    const rows = Object.keys(metrics).sort().map((k) => {
-      const o = oldScenes[k] || {};
-      const n = report.scenes[k] || {};
-      return `| ${k} | ${fmt(oldM[k], '%')} | **${metrics[k]}%** | ${fmt(o.peakDb)} | **${fmt(n.peakDb)}** | ${fmt(o.rmsDb)} | **${fmt(n.rmsDb)}** |`;
-    });
-    writeFileSync(join(abDir, 'README.md'),
-      `# COMBAT-SFX r4 — A/B listening copies\n\n` +
-      `Captured from the live game master bus by \`tools/sfx-smoke.mjs\` — the same\n` +
-      `bus events, before (\`old_*\`, pre-redesign runtime synthesis) and after\n` +
-      `(\`new_*\`, baked layered samples from \`tools/make-sfx.mjs\`).\n\n` +
-      `Bass energy = energy below 120 Hz as % of total (ffmpeg, 24 dB/oct lowpass).\n` +
-      `Peak/RMS in dBFS on the identical event at the identical distance — the\n` +
-      `new set is not just deeper, it actually shows up (the old ammo-rack kill\n` +
-      `peaked ~11 dB quieter than the new one).\n\n` +
-      `| sound | old bass | new bass | old peak | new peak | old rms | new rms |\n` +
-      `|---|---|---|---|---|---|---|\n` +
-      rows.join('\n') + '\n',
-    );
-    console.log(`[sfx-smoke] wrote ${join(abDir, 'README.md')}`);
-  }
-} catch (err) {
-  console.warn('[sfx-smoke] A/B metrics step failed: ' + err.message);
-}
-
-writeFileSync(join(outDir, `report-${prefix}.json`), JSON.stringify(report, null, 2));
+writeFileSync(join(outDir, 'report.json'), JSON.stringify(report, null, 2));
 if (report.errors.length) {
   console.error('[sfx-smoke] ISSUES:');
   for (const e of report.errors) console.error('  - ' + e);
