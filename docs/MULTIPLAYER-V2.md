@@ -1694,7 +1694,7 @@ after this lane (the audit's rows are in the scratchpad's `world-events-matrix-a
 | Destroyed props — the fall | `destroyObstacle` → `world_prop_destroyed` | EVENT (never tiered, never skipped) | `applyEvent` → `crushObstacle(dir, speed)` + `prop:crushed` | **FIXED**: 419/419 through the event, Δ p50 2 ticks, max 6, 0 early, the authority's direction (before: 0) | PASS | **FIXED**: 0 re-destroyed, 0 ghost crunches (from 5 and 5) | PASS |
 | Shell impacts (terrain, props) | `emitWorldShellImpact` (x, y, z, normal) | EVENT, observable-shooter rule | `shell:expired` with the payload position | PASS: 83/83, pos err 0.000 m; **FIXED** lateness: Δ max 7 ticks (one slow frame) from 11–18 | PASS | PASS | PASS |
 | Shell hits | `emitShellHitEvent` (`...hit` with pos / normal) | EVENT, observable pair | `shell:hit` + killcam feed | PASS: 235/235, 0 duplicate; **FIXED** lateness: Δ max 6 from 13–16 | PASS | PASS | PASS |
-| Destruction, ram, crash | the authority | EVENT | `tank:destroyed` (pos: the presented actor), `tank:ram`, `tank:impact` (payload pos) | PASS: 71/71, Δ max 6 | PASS (wreck from the row; the explosion is not replayed) | PASS | PASS |
+| Destruction, ram, crash | the authority | EVENT | `tank:destroyed` (pos: the presented actor; the hull's death position since §13.15), `tank:ram`, `tank:impact` (payload pos) | PASS: 71/71, Δ max 6 | PASS (wreck from the row; the explosion is not replayed) | PASS | PASS |
 | Module state, fire (events) | `module_state`, `tank_fire` | EVENT | `module:state`, `tank:fire` | PASS | open: an FX column for a tank already burning needs a `lastKnownPos` the joiner lacks | PASS | PASS |
 | Spotted / visibility | the spotting system filters the viewer snapshot | presence in the frame | `setVisible` / `networkVisible` | PASS (§13.9 invariant) | PASS | PASS | PASS |
 | Clock, phase, countdown, verdict | meta | every snapshot (+ `match_ended`) | `applyFrame`, `applyVerdict` (grace) | PASS (§13.12) | PASS | PASS | PASS |
@@ -1841,9 +1841,9 @@ stacks on every presentation crush and effect, the host world's crushed flags an
    trees (every tree shifted). Measured with the real Node-built worlds against 274 authority falls (four hull trios
    ploughing four stands): an index-only presentation felled **237 other props** on the mobile tier and **215** on the
    trench build — a tree nobody touched, with its crunch, while the one the hull crossed stood on. **Fix:** the event
-   carries its record's identity (box centre `x, y, z`; `kind` was there); the presentation fells the record at the
-   index when it is that prop, else its own record of that prop found by identity (`queryObstacles` around the centre,
-   1 cm, same kind), else nothing — never another prop (identity: 212 felled, 0 wrong on the mobile tier; 270, 0 wrong
+   carries its record's identity (box centre `x, y, z`; `kind` was there); the presentation
+   (`src/mp/presentation/authorityObstacles.ts`) fells the record at the index when it is that prop, else its own record
+   of that prop found by identity (`queryObstacles` around the centre, 1 cm, same kind), else nothing — never another prop (identity: 212 felled, 0 wrong on the mobile tier; 270, 0 wrong
    on the trench build). A world announces its layout (`map.ts layoutTier`, `terrainVariant`); one laid out otherwise
    does not read the persistent destroyed list by index (it would lay random props down settled) — the round loads the
    manifest's obstacle identities beside the roster (`worldCollision.ts loadObstacleIdentities`, the same verified

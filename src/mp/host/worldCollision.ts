@@ -11,7 +11,7 @@ import { createHeightField } from '../../world/terrain.ts';
 import { collisionManifestEntry, readCollisionManifestIndex, validateCollisionManifestCounts } from '../../../server/collisionManifestFormat.ts';
 import { decodeCollisionManifest } from '../../../server/collisionManifestCodec.ts';
 import type { ActorWorldCollision } from '../../../server/match/matchActor.ts';
-import type { ObstacleIdentity } from '../presentation/battlePresentation.ts';
+import type { ObstacleIdentity } from '../presentation/authorityObstacles.ts';
 
 /**
  * The static route the build serves the manifests under (vite.config.ts emits `server/world-collision-manifests` there:

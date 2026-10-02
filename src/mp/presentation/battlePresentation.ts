@@ -39,7 +39,9 @@ import type { MatchFrame } from '../match/matchClient.ts';
 import type { PredictionWorld } from '../match/prediction.ts';
 import type { EventContext, PresentationAdapter, RosterContext } from './adapter.ts';
 import { createPredictionWorld } from './predictionWorld.ts';
-import type { PredictionObstacle, WorldCollisionLike } from './predictionWorld.ts';
+import type { WorldCollisionLike } from './predictionWorld.ts';
+import { createAuthorityObstacles } from './authorityObstacles.ts';
+import type { ObstacleIdentity } from './authorityObstacles.ts';
 
 type RuntimeValue = {} | null | undefined;
 
@@ -213,22 +215,6 @@ export interface BattlePresentation extends PresentationAdapter {
 const POS_SCALE = 1;
 /** The persistent destroyed list lays props down as settled state: final pose, no fall, no debris, no sound. */
 const SETTLED_CRUSH: Readonly<{ settled: true }> = Object.freeze({ settled: true as const });
-
-/** What names an authority obstacle in any world: its box centre on the ground plane and its kind. */
-export interface ObstacleIdentity {
-  x: number;
-  z: number;
-  kind: string | null;
-}
-/** Two records of one world never share a centre within this unless they are one prop (the manifest packs 0.1 mm). */
-const IDENTITY_TOLERANCE_M = 0.01;
-
-/** The identity a `world_prop_destroyed` carries (null from an older host, which sent the index alone). */
-function eventIdentity(payload: Record<string, RuntimeValue>): ObstacleIdentity | null {
-  const { x, z, kind } = payload;
-  return typeof x === 'number' && typeof z === 'number' && Number.isFinite(x) && Number.isFinite(z)
-    ? { x, z, kind: typeof kind === 'string' ? kind : null } : null;
-}
 const scratchSample = createEntitySample();
 const muzzleTip = new Vector3();
 const shotDirection = new Vector3();
@@ -284,10 +270,8 @@ export function createBattlePresentation({
   let snapshotPhase: number | null = null;
   let appliedDestructibleRevision = -1;
   let appliedDestroyedLength = -1;
-  // the authority's obstacle index space (see authorityObstacle): shared unless this world was laid out otherwise
-  let sharesIndices = !!worldCollision && worldCollision.layoutTier !== 'mobile' && !worldCollision.terrainVariant;
-  let authorityIdentity: ((index: number) => ObstacleIdentity | null) | null = null;
-  const identityCandidates: PredictionObstacle[] = [];
+  // which record of this world is the authority's obstacle: its index where this world shares them, else its identity
+  const authorityObstacles = createAuthorityObstacles(worldCollision);
   let lastModeStateJson: string | null = null;
   let lastSmokeJson: string | null = null;
   const lastAuxiliaryJson = new WeakMap<object,string>();
@@ -598,57 +582,6 @@ export function createBattlePresentation({
     game.shells = liveShells;
   }
 
-  // ------------------------------------------------------------ the authority's obstacles in this world
-
-  /**
-   * The authority names an obstacle by its index in the map's collision manifest, captured from the desktop tier's
-   * build of the base map (tools/headlessWorldCollision.mjs). This world shares those indices unless it was laid out
-   * otherwise: the mobile tier counts fewer props and trees (verdant: 6,641 records, 57 at the manifest's index) and
-   * Frontline Assault's trench works add records ahead of the trees (verdant: +144, every tree shifted). There record N
-   * is another prop, and until the ghost-crunch lane (2026-10-02) every fall the authority sent felled it — a tree
-   * nobody touched, with its crunch — while the prop that fell stood on. A fall now finds its own record by the identity
-   * the event carries (box centre, kind), or none; the persistent list, indices only, is read through the authority's
-   * identities (`setAuthorityObstacles`) or not at all. An event whose record at its index is another prop proves the
-   * world does not share the indices, whatever its layout claimed.
-   */
-  function hasIdentity(obstacle: PredictionObstacle, identity: ObstacleIdentity): boolean {
-    return Math.abs((obstacle.min[0] + obstacle.max[0]) * 0.5 - identity.x) <= IDENTITY_TOLERANCE_M
-      && Math.abs((obstacle.min[2] + obstacle.max[2]) * 0.5 - identity.z) <= IDENTITY_TOLERANCE_M
-      && (!identity.kind || !obstacle.kind || obstacle.kind === identity.kind);
-  }
-
-  /** This world's record with the identity, a standing one first (a hedgehog's crossed beams share one: any fells it). */
-  function obstacleByIdentity(identity: ObstacleIdentity): PredictionObstacle | null {
-    if (!worldCollision) return null;
-    const { x, z } = identity;
-    const candidates = typeof worldCollision.queryObstacles === 'function'
-      ? worldCollision.queryObstacles(x - IDENTITY_TOLERANCE_M, z - IDENTITY_TOLERANCE_M, x + IDENTITY_TOLERANCE_M, z + IDENTITY_TOLERANCE_M, identityCandidates)
-      : (typeof worldCollision.getObstacles === 'function' ? worldCollision.getObstacles() : []);
-    let fallen: PredictionObstacle | null = null;
-    for (const candidate of candidates) {
-      if (!hasIdentity(candidate, identity)) continue;
-      if (!candidate.crushed) return candidate;
-      fallen ??= candidate;
-    }
-    return fallen;
-  }
-
-  /** This world's record of the authority's obstacle `index`, which `identity` names when the event carried one. */
-  function authorityObstacle(index: number, identity: ObstacleIdentity | null): PredictionObstacle | null {
-    if (!worldCollision || typeof worldCollision.getObstacles !== 'function') return null;
-    const atIndex = Number.isSafeInteger(index) && index >= 0 ? worldCollision.getObstacles()[index] ?? null : null;
-    // an older host's event names the index alone: trusted only where this world shares the authority's indices
-    if (!identity) return sharesIndices ? atIndex : null;
-    if (atIndex && hasIdentity(atIndex, identity)) return atIndex;
-    sharesIndices = false;
-    return obstacleByIdentity(identity);
-  }
-
-  /** This world's record of a listed (destroyed) authority index: a fall's rule, with the authority's identity once known. */
-  function listedObstacle(index: number): PredictionObstacle | null {
-    return authorityObstacle(index, authorityIdentity?.(index) ?? null);
-  }
-
   /**
    * The persistent destroyed list (every snapshot carries it) is settled state: what it names and this seat has not
    * seen fall is laid down at its final pose — no fall, no debris, no sound — because its fall happened before this
@@ -665,9 +598,9 @@ export function createBattlePresentation({
     appliedDestroyedLength = indices.length;
     if (!worldCollision || typeof worldCollision.getObstacles !== 'function') return;
     // the list carries indices only: a world laid out otherwise reads it through the authority's identities, or not at all
-    if (!sharesIndices && !authorityIdentity) return;
+    if (!authorityObstacles.listReadable) return;
     for (const index of indices) {
-      const obstacle = listedObstacle(index);
+      const obstacle = authorityObstacles.listed(index);
       if (!obstacle || obstacle.crushed) continue;
       // its event is owed to this presentation: it falls then, live
       if (pending && pending(index)) { appliedDestroyedLength = -1; continue; }
@@ -883,11 +816,11 @@ export function createBattlePresentation({
       }
       case 'world_prop_destroyed': {
         const index = Number(payload.obstacleIndex);
-        // This world's record of the prop that fell — never another prop in its stead (see authorityObstacle). A prop this
+        // This world's record of the prop that fell — never another prop in its stead (authorityObstacles.ts). A prop this
         // viewer's world does not have (the mobile tier's lighter world, a world without the manifest) has no position for
         // the effect: nothing to crush here, nothing to emit (2026-09-30, lane mp/ui-sync-check: a `pos: null` event threw
         // inside the frame pump on every such crush — combatFeedbackRuntime reads pos[0]).
-        const obstacle = authorityObstacle(index, eventIdentity(payload));
+        const obstacle = authorityObstacles.fallen(index, payload);
         if (!obstacle) return;
         // A prop that already fell on this seat — laid down as settled state, or felled by this event's first delivery
         // before a host migration re-sent it — falls once: no second fall, no second crunch (world state audit, 2026-10-01).
@@ -1046,9 +979,9 @@ export function createBattlePresentation({
     endDisconnected,
     setPerspective,
     get ownActor() { return ownActor(); },
-    get sharesAuthorityIndices() { return sharesIndices; },
+    get sharesAuthorityIndices() { return authorityObstacles.shared; },
     setAuthorityObstacles(identity: (index: number) => ObstacleIdentity | null): void {
-      authorityIdentity = identity;
+      authorityObstacles.setIdentities(identity);
       appliedDestructibleRevision = -1;
     },
     dispose,

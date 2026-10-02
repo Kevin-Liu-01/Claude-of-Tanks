@@ -31,8 +31,9 @@ import { isMultiplayerV2Session } from './playMenuAdapter.ts';
 import type { V2RoomSession } from './playMenuAdapter.ts';
 import { createBattlePresentation } from '../presentation/battlePresentation.ts';
 import type {
-  BattlePresentation, BattlePresentationOptions, EngineContext, EventBus, MatchActor, ObstacleIdentity, PresentationGameState, TankVisual,
+  BattlePresentation, BattlePresentationOptions, EngineContext, EventBus, MatchActor, PresentationGameState, TankVisual,
 } from '../presentation/battlePresentation.ts';
+import type { ObstacleIdentity } from '../presentation/authorityObstacles.ts';
 import type { WorldCollisionLike } from '../presentation/predictionWorld.ts';
 import type { ControlSample } from '../match/inputStream.ts';
 import type { MatchFrame } from '../match/matchClient.ts';
