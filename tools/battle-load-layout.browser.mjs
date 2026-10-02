@@ -60,8 +60,9 @@ try {
       if(allies===41||enemies===41)await page.screenshot({path:resolve(out,`${name}-${allies}v${enemies}.png`)});
       reports.push({name,allies,enemies,...m});
     }
-    assert.ok(sizes.get(7)>=Math.min(64,sizes.get(14)*1.7,Math.max(15,(await page.locator('.teams').evaluate(el=>el.clientHeight)-30)/7-3))-1,`${name}: seven rows must expand into the available space`);
-    assert.ok(sizes.get(2)>=sizes.get(7)-1,`${name}: smaller rosters retain larger rows`);
+    for (const [count,rowHeight] of sizes) {
+      assert.ok(Math.abs(rowHeight-sizes.get(7))<0.1,`${name}: ${count} players must keep the same row height as seven`);
+    }
     const before=await page.evaluate(measure);
     release(); await page.waitForLoadState('networkidle');
     assert.deepEqual(await page.evaluate(measure),before,`${name}: late silhouettes must not shift layout`);
@@ -73,5 +74,5 @@ try {
   }
   assert.deepEqual(errors,[],'browser errors');
   await writeFile(resolve(out,'report.json'),JSON.stringify(reports,null,2));
-  console.log(`PASS: ${reports.length} roster layouts; density, independent centering, bounds, late silhouettes and countdown stability.`);
+  console.log(`PASS: ${reports.length} roster layouts; constant row heights, independent centering, bounds, late silhouettes and countdown stability.`);
 } finally { await browser.close(); }

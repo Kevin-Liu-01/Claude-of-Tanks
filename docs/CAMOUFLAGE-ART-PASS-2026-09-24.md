@@ -107,3 +107,28 @@ Coverage extends the existing policy, Factory, artist and Ariete tests rather
 than adding another full-fleet generation pass. Painter checks cover every
 shared recipe, all 47 generic art identities, opaque/deterministic output,
 worker parity, periodic edges, exact Factory swatches, and official-logo isolation.
+
+## Italian and Chinese factory finishes — 2026-10-02
+
+The C1 Ariete family now wears a connected olive, brown and charcoal woodland
+finish. The C2 uses its own darker variant instead of inheriting the C1 recipe.
+LRMV Lynx now has a visible three-color woodland pattern; its former near-equal
+olive tones made the patterned coat look solid. The English and Chinese picker
+labels describe the new finishes.
+
+ZTZ-100 (including the Prototype) and Type 100 IFV retain digital woodland, with
+subdued sage/earth accents and dark green instead of the pale grey fields. Their
+digital cells span roughly six centimetres on the unchanged two-metre texture
+tile. The shared painter, texture sizes and gameplay camouflage bonuses are
+unchanged. Saved paint IDs remain valid, and explicitly selected alternative
+finishes still take precedence over Factory.
+
+The authored specs and reusable presets carry the same palettes. The catalog
+regression checks Factory routing, distinct pigment coverage at 128 and 512
+pixels, worker parity, deterministic rebakes and swatch identity.
+The nine affected models have regenerated angle, side, top and Garage-thumbnail
+assets. Native model renders were reviewed for the five requested vehicles; all
+90 asset records on the nine affected rows pass their hash and byte-size checks.
+Type checking and the private production build pass. An additional live Garage
+comparison was cancelled while waiting for the shared capture queue; this pass
+does not claim that browser check.

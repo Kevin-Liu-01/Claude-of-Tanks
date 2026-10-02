@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "revision": 1,
+  "ownerDecision": {
+    "date": "2026-10-01",
+    "request": "Keep all our new designs and make these new tanks. Yes—the earlier T-90SM-based designs.",
+    "scope": "Preserve all twelve current national modernization models. Add separate Hetman II and Zubr II concepts carrying the earlier broad welded turret and long bustle lineage, with independently authored national turret shapes, surrounding armor, roof equipment and thick fitted skirts that visibly differ from the T-90SM.",
+    "roofRevision": "Owner requested 14 national variants including Hetman II and Zubr II, with different roof weapons, paired mantlet lamps, optics, eye/monocle housings and roof equipment. Measurements below include the new stations; primary hulls, fenders and turrets are retained."
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "dimensionToleranceFraction": 0.03,
+  "designs": {
+    "ua_t72b3m_hetman_ii": {
+      "id": "ua_t72b3m_hetman_ii",
+      "ring": [
+        0.008,
+        1.545,
+        0.114315
+      ],
+      "gunLocal": [
+        0,
+        0.43,
+        0.9
+      ],
+      "barrelLengthM": 5.2,
+      "barrelRadiusM": 0.105,
+      "pitchDeg": [
+        -6,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 1,
+      "hullLengthM": 7.509,
+      "hullWidthM": 4.60824,
+      "widthM": 4.6082,
+      "overallLengthM": 9.8892,
+      "tallestM": 3.41,
+      "specDimensions": {
+        "hullLengthM": 7.509,
+        "overallLengthM": 9.968815,
+        "widthM": 4.60824,
+        "heightM": 3.41
+      },
+      "test": "src/vehicles/nationalModernization.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "silhouette": "A Ukrainian command modernization retaining the original Hetman’s broad welded turret and long clipped bustle lineage. Its custom split-arrowhead cheeks, separate command roof, open service channels, fitted heavy skirts, rear field screens and supported camouflage distinguish it from the T-90SM and the compact cast-turret Hetman. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
+    },
+    "pl_t72b3_zubr_ii": {
+      "id": "pl_t72b3_zubr_ii",
+      "ring": [
+        0.008,
+        1.475,
+        0.065591
+      ],
+      "gunLocal": [
+        0,
+        0.43,
+        0.9
+      ],
+      "barrelLengthM": 5.2,
+      "barrelRadiusM": 0.105,
+      "pitchDeg": [
+        -6,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.94035,
+      "hullWidthM": 4.327,
+      "widthM": 4.327,
+      "overallLengthM": 9.5268,
+      "tallestM": 3.37,
+      "specDimensions": {
+        "hullLengthM": 6.94035,
+        "overallLengthM": 9.635766,
+        "widthM": 4.327,
+        "heightM": 3.37
+      },
+      "test": "src/vehicles/nationalModernization.selftest.mjs",
+      "weaponSystem": "conventional-cannon",
+      "silhouette": "Polish T-72B3 Zubr II modernization concept retaining the native T-72 hull and running gear beneath a new broad welded turret. Squared side armor cabinets, clipped rear shoulders, a long bustle basket, stepped ERAWA cassette fields and independent optics distinguish its architecture from the T-90SM. Thick segmented skirts fold around both track ends and meet the native curved fenders through continuous fitted shoulders; guarded lamps, engine service fittings, tool rails, strapped stores and rear communications equipment remain physically seated. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
+    }
+  }
+}
