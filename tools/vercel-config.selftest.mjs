@@ -17,5 +17,8 @@ for (const rule of config.headers || []) {
   assert.ok(!/immutable|max-age=\d{5,}/.test(value),
     `long-lived Cache-Control on ${rule.source} would cache error responses at the edge (${value})`);
 }
-assert.equal(config.git?.deploymentEnabled?.main, false, 'git auto-deploys stay off for main (docs/DEPLOYS.md)');
-console.log('vercel-config.selftest: no immutable asset rule, git auto-deploys off');
+// 2026-10-01 (INFRA-P1): a per-branch map left every other branch building — 13 paid `mp/*` preview builds in two
+// days. The boolean turns git deployments off for every branch; production ships only through the prebuilt CLI deploy.
+assert.equal(config.git?.deploymentEnabled, false,
+  'git auto-deploys stay off for every branch, not a per-branch map (docs/DEPLOYS.md)');
+console.log('vercel-config.selftest: no immutable asset rule, git auto-deploys off for every branch');

@@ -19,12 +19,13 @@ the commit sha and subject, and the linked repository's name and ids — so the 
 `main · deploy N: <title>` and the production branch owns the deployment. `title` and
 `gateHead` ride along as before; the script appends the row below.
 
-**Git auto-deploys are off.** `vercel.json` carries
-`"git": { "deploymentEnabled": { "main": false, "codex/*": false } }` (2026-09-15, owner: the
+**Git auto-deploys are off.** `vercel.json` carries `"git": { "deploymentEnabled": false }` (2026-09-15, owner: the
 Aug 26 – Sep 10 commit storm built 1,220 times — one Vercel build per pushed commit, ~1,400 billed
-build minutes). A push never builds; production changes only through the prebuilt CLI deploy
-above, once per round after the gate, which uploads a local build and consumes no Vercel build
-minutes. Preview deployments for `codex/*` branches are off for the same reason. The Ignored Build
+build minutes). The first form listed only `main` and `codex/*`, so every other branch still
+built a preview (13 paid `mp/*` builds on 09-30/10-01); since 2026-10-01 the boolean turns git
+deployments off for every branch (`tools/vercel-config.selftest.mjs`). A push never builds;
+production changes only through the prebuilt CLI deploy above, once per round after the gate,
+which uploads a local build and consumes no Vercel build minutes. The Ignored Build
 Step is deliberately not used — one gate, not two. To check: `vercel ls claude-of-tanks --scope
 kl01s-projects` must list only the intentional deployments in this table.
 

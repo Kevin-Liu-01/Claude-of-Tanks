@@ -144,7 +144,7 @@ worktree and never stage generated tank work wholesale.
 - Do not import full fleet builders into a new boot-critical module.
 - Do not add multicrew roles or multiple player seats inside one vehicle.
 - Never deploy per commit. Git auto-deploys are disabled in `vercel.json`
-  (`git.deploymentEnabled` off for `main` and `codex/*`); production changes
+  (`git.deploymentEnabled: false`, every branch); production changes
   only through the once-per-round prebuilt CLI deploy in `docs/DEPLOYS.md`
   (`vercel pull --yes --environment=production && vercel build --prod &&
   node tools/vercel-output-immutable.mjs && vercel deploy --prebuilt --prod`,
