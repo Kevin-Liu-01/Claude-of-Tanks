@@ -813,7 +813,7 @@ function buildType90A(P: JapaneseBuilderPort): void {
 }
 
 function addType10BPackage(P: JapaneseBuilderPort): void {
-  const { box, cylY, cylZ } = KIT;
+  const { box, cylZ } = KIT;
   const eraEmbed = 0.012;
   let turretEraCount = 0;
   // §5.336 re-seat: every station and size below is the ratified B-variant

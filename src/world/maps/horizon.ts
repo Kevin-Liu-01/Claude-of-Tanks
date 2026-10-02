@@ -2523,10 +2523,6 @@ function* buildHorizonMaterialSteps({
     // horizonVista.ts. Tints are ratios to the base tone; amplitudes follow the style's landform language.
     const tiles = vista ? createVistaTiles() : null;
     if (tiles) retainedTextures.push(tiles.meadow, tiles.sand, tiles.canopy, tiles.rock, tiles.scree, tiles.snow);
-    const ratio = (colour: THREE.Color, lo: number, hi: number): THREE.Vector3 => new THREE.Vector3(
-      THREE.MathUtils.clamp(colour.r / Math.max(base.r, 1e-3), lo, hi),
-      THREE.MathUtils.clamp(colour.g / Math.max(base.g, 1e-3), lo, hi),
-      THREE.MathUtils.clamp(colour.b / Math.max(base.b, 1e-3), lo, hi));
     // Round 29: the vista tints are absolute linear colours (the fragment divides the base-hued bake back out)
     const rockTint = new THREE.Vector3(rock.r, rock.g, rock.b);
     // Round 72: the baked surface atlas and the sky's chroma for the faces turned from the sun (the fog tint is the

@@ -1,7 +1,6 @@
 // Independent native running gear from the complete owner-selected Strv file.
 // Fused, partly buried source wheels supply visible section scalars, not rig
 // nodes. Hidden axle backs/return supports are explicit mechanical inferences.
-import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';

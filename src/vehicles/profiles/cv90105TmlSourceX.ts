@@ -202,4 +202,3 @@ export function buildCv90105TmlX(P: TankBuilderPort): void {
   P.topY=2.73-py;
   P.hullG.userData.xRebuild={candidate:'cv90105_tml_x',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
-export const CV90105_TML_SOURCE_X_PROFILES={cv90105_tml_x:{build:buildCv90105TmlX}} as const;

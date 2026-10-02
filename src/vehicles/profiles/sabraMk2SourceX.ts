@@ -7,7 +7,7 @@ import { KIT, FITTINGS } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { armorLoft, turretEquipment, openTube, optic, antenna, smokeBank, deckGrille, mirrorX } from './europeSourcePrimitives.ts';
-const {box,cylY,cylZ,cylX}=KIT;
+const {box,cylY,cylZ}=KIT;
 
 /** Source Object_4 has a thin curved crown, folded side edges and a short
  * sloping terminal sheet. These sparse stations are measured dimensions;
@@ -313,4 +313,3 @@ export function buildSabraMk2X(P: TankBuilderPort): void {
   P.topY=3.11-py;
   P.hullG.userData.xRebuild={candidate:'sabra_mk2_x',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
-export const SABRA_MK2_SOURCE_X_PROFILES={sabra_mk2_x:{build:buildSabraMk2X}} as const;

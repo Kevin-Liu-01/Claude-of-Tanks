@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { KIT, FITTINGS } from './kit.ts';
 import { ARIETE_SUPPLIED_X_DATUMS as D, arieteSourceTurret as add } from './arieteXSuppliedFrame.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-const { box, cylX, cylY, cylZ, torus } = KIT;
+const { box, cylX, cylY, torus } = KIT;
 
 function tube(radius: number, inner: number, height: number, segments = 32): THREE.BufferGeometry {
   return new THREE.LatheGeometry([[inner, -height / 2], [radius, -height / 2],

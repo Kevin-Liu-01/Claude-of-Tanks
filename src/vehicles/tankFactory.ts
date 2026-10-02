@@ -10,7 +10,7 @@ import { configureTankFactory } from './tankFactoryCore.ts';
 import { MODERN3_BUILDERS } from './modern3.ts';
 import { FRANCE_BUILDERS } from './france.ts';
 import { MODERN2_BUILDERS } from './modern2.ts';
-import { MODERN1_BUILDERS } from './modern1.ts';
+import './modern1.ts';
 import { CHALLENGER_BUILDERS } from './profiles/challenger.ts';
 import { FITTINGS } from './profiles/kit.ts';
 import { PROFILED_BUILDERS } from './profiledProcedurals.ts';
@@ -81,7 +81,6 @@ registerVehicleMarkingSeatRecords(VEHICLE_MARKING_SEATS);
 applyNativeFamilyOrderToCatalogs();
 configureTankFactory({
   canonicalBuilderPacks: [
-    ['modern1', MODERN1_BUILDERS],
     ['challenger', CHALLENGER_BUILDERS],
     ['modern2', MODERN2_BUILDERS],
     ['modern3', MODERN3_BUILDERS],

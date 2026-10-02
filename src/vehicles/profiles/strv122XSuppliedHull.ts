@@ -1,6 +1,5 @@
 // First-party planes, folded skirts and native open wheel wells. Source
 // sections establish scalar dimensions, not a copied boundary/vertex mesh.
-import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -51,7 +50,7 @@ function frontShoulder(P:TankBuilderPort,side:-1|1):void {
     [3.45,1.115],[3.47,1.092142857],[3.52,1.035],
     [3.58,1.0287],[3.70,1.0161]];
   const sections=relief.map(([z,ceiling])=>{
-    const i=Math.max(0,skin.findIndex((s,j)=>j<skin.length-1&&z<=skin[j+1][0]));
+    const i=Math.max(0,skin.findIndex((_s,j)=>j<skin.length-1&&z<=skin[j+1][0]));
     const a=skin[i],b=skin[i+1],t=(z-a[0])/(b[0]-a[0]);
     const originalFloor=a[1]+(b[1]-a[1])*t,roof=a[2]+(b[2]-a[2])*t;
     const upturn=side>0?Math.max(0,Math.min((z-3.47)/.05,(3.58-z)/.06,1))*.042:0;

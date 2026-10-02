@@ -77,7 +77,6 @@ export const MESSAGE_TYPE = Object.freeze({
   CLOSE: 20,
   ERROR: 21,
 } as const);
-export type MessageTypeId = typeof MESSAGE_TYPE[keyof typeof MESSAGE_TYPE];
 
 /** Finite reasons for CLOSE, ERROR and LEAVE. */
 export const CLOSE_REASON = Object.freeze({
@@ -117,11 +116,9 @@ export const TEAM_NAMES = Object.freeze(['alpha', 'bravo', 'spectator'] as const
 
 export const PHASE = Object.freeze({ LOADING: 0, COUNTDOWN: 1, PLAYING: 2, ENDED: 3 } as const);
 export type PhaseId = typeof PHASE[keyof typeof PHASE];
-export const PHASE_NAMES = Object.freeze(['loading', 'countdown', 'playing', 'ended'] as const);
 
 export const VERDICT = Object.freeze({ NONE: 0, ALPHA: 1, BRAVO: 2, DRAW: 3 } as const);
 export type VerdictId = typeof VERDICT[keyof typeof VERDICT];
-export const VERDICT_NAMES = Object.freeze([null, 'alpha', 'bravo', 'draw'] as const);
 
 export const HELLO_CAPABILITY = Object.freeze({
   /** The client presents immediate own-shot feedback (v1 shotFeedbackVersion 1). */

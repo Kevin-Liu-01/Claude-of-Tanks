@@ -8,9 +8,6 @@
 
 import * as THREE from 'three';
 import { stockCamoPatternIdFor,
-  CAMO_PATTERN_IDS,
-  CAMO_CATALOG_PATTERN_IDS,
-  CAMO_PATTERN_LABEL,
   CUSTOM_CAMO_ID,
   customCamoPatternId,
   defaultCamoPatternId,
@@ -157,8 +154,7 @@ function makeCanvas(w: number, h: number): HTMLCanvasElement {
 
 // Instantiation allocates no canvases; the existing DOM factory remains lazy.
 const materialPainter = createMaterialPainter(makeCanvas);
-const { mulberry32, hexToRgb, rgb, mix, scale3, luma,
-  paintCamo, paintRoughness, paintPatchRoughness, exposureTrim } = materialPainter;
+const { mulberry32, hexToRgb, mix, scale3, paintCamo, paintRoughness, paintPatchRoughness, exposureTrim } = materialPainter;
 
 // One track texture: 4 link rows per repeat, chevron/waffle grousers.
 function paintTrack(rng: Rng): HTMLCanvasElement {
@@ -2431,7 +2427,7 @@ function supportsShadowHook(engineCtx: ShadowEngineContext | null | undefined): 
 export function createTankMaterials(
   spec: MaterialTankSpec,
   engineCtx: ShadowEngineContext | null | undefined,
-  camoSeed: number,
+  _camoSeed: number,
   quality: string = 'high',
   camoPattern: string | null = null,
 ) {
