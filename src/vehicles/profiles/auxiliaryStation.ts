@@ -21,6 +21,12 @@ export function beginAuxiliaryStation(P:AuxiliaryStockPort & {turretG: THREE.Gro
   P.forEachBucketPart(BUCKETS,part=>seen.add(part));
   return {root,weapon, attachPitch(stock:THREE.Object3D){
     stock.position.set(-datum.pivot[0],-datum.pivot[1],-datum.pivot[2]);weapon.add(stock);
+    // One physical gun is one weapon fitting. When the pitching stock is
+    // already an exact gun fitting (sourceMachineGun without a datum), this
+    // root is that gun's mount; marking both double-counted the weapon.
+    let exactGun=false;
+    stock.traverse(o=>{if(o.userData.fittingRoot&&o.userData.fittingExact&&o.userData.fitting==='pintleMG')exactGun=true;});
+    if(exactGun)root.userData.fitting='weaponStationMount';
   }, mark(stage:'yaw'|'pitch'){
     P.forEachBucketPart(BUCKETS,part=>{
       if(seen.has(part))return;seen.add(part);

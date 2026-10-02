@@ -1,8 +1,7 @@
-// 2026-09-22 round 35 (camoWorldScale.ts): every hull projects its camo at the fleet constant 0.5 repeats/m, so the uv attributes
-// inside these frozen native buffers moved; the digests below are re-based on the round-35 staged tree (positions, order and frames unchanged).
+// The frozen retained-hull source digest and the native hull/gear buffer digests are retired: whole-tank change
+// detection of ztz100_prototype is the fleet geometry ledger's. Combat metadata, the 8-cell launcher, seats,
+// articulation, optics, fill air and the physical negatives stay.
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
@@ -11,16 +10,9 @@ import { ensureInteriorFills, hasInteriorFills, interiorFillRecord } from '../in
 import { createTankState } from '../../sim/movement.ts';
 import { ZTZ100_PROTOTYPE_PROFILES, ZTZ100_PROTOTYPE_DATUMS as D,
   ZTZ100_PROTOTYPE_LAUNCHER as L } from './ztz100Prototype.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const id = 'ztz100_prototype', spec = TANK_SPECS[id];
-const digest = value => createHash('sha256').update(value).digest('hex');
-const source = readFileSync(new URL('./ztz100Prototype.ts', import.meta.url), 'utf8');
-const retainedHull = source.slice(source.indexOf('// ------------------------------------------------------------------------------------------------------- hull'),
-  source.indexOf('// ----------------------------------------------------------------------------------------------------- turret'));
-// Authenticated pre-redesign recipe. Only the former MBT turret is superseded.
-// 2026-09-22 nation wheel standard: the running-gear block lost its redundant wheelPattern override and the dead
-// dish ratio (the hull draws the ZTZ-100 X wheel through nationWheelSets.ts); repinned from the current source.
-assert.equal(digest(retainedHull), '26fc9e2f1e17a1bdc74c900c5ff7e1b8e3479ec617c13a385699f260d589df83');
 assert.deepEqual(spec.armor.turretPivot, [0, 1.41, -.55]);
 assert.deepEqual(spec.armor.gunPivot, [0, .64, .80]);
 assert.deepEqual([spec.gunDepressionDeg, spec.gunElevationDeg], [6, 20]);
@@ -49,29 +41,6 @@ registerProfiledBuilders({ [id]: port => ZTZ100_PROTOTYPE_PROFILES[id].build(new
     return typeof value === 'function' ? value.bind(target) : value;
   },
 })) });
-function near(actual, expected, tolerance, message) {
-  assert.ok(Number.isFinite(actual) && Math.abs(actual - expected) <= tolerance,
-    `${message}: ${actual} versus ${expected}`);
-}
-function geometryHash(g) {
-  const buffers = Object.entries(g.attributes).sort().map(([key, a]) =>
-    Buffer.concat([Buffer.from(key), Buffer.from(a.array.buffer, a.array.byteOffset, a.array.byteLength)]));
-  if (g.index) buffers.push(Buffer.from(g.index.array.buffer));
-  return digest(Buffer.concat(buffers));
-}
-function hullFingerprint(root) {
-  const rows = [];
-  root.traverseVisible(o => {
-    if (!o.isMesh || o.userData.shadowOnly || o.userData.vehicleMarking || o.userData.interiorFill === true) return;
-    const ms = Array.isArray(o.material) ? o.material : [o.material];
-    if (ms.every(m => m.colorWrite === false || m.visible === false)) return;
-    let p = o; while (p && p.name !== 'rig_hull') p = p.parent;
-    if (!p) return;
-    rows.push({ name: o.name, position: o.position.toArray(), matrix: o.matrix.toArray(),
-      geometry: geometryHash(o.geometry), instance: o.isInstancedMesh ? digest(Buffer.from(o.instanceMatrix.array.buffer)) : null });
-  });
-  return digest(JSON.stringify(rows));
-}
 function selectNear(root) {
   root.traverse(o => { if (o.isLOD) {
     o.autoUpdate = false; o.levels.forEach((level, i) => level.object.visible = i === 0);
@@ -205,9 +174,6 @@ function negatives(tank, gun) {
   assert.throws(() => checkLaunchMouths(tank.root, gun), assert.AssertionError, 'painted missile mouth cap fails true air');
   gun.remove(cap); cap.geometry.dispose();
 }
-// 2026-09-22 nation wheel standard: the prototype draws the ZTZ-100 X wheel (nationWheelSets.ts); hull/gear digests repinned.
-const expectedHull = { high: 'f6afc015b25e2ec07c6c6d1d19e9cf996e16d67f7a92996c91d2fc8c59eeafd0',
-  low: '0aeaa655cd6ae78c4726312c649f54ca0dccd6c5426626b924d566a5587db071' };
 await ensureInteriorFills([id]);
 assert.ok(hasInteriorFills(id), 'actual generated prototype fill record is loaded');
 const fillRecord = interiorFillRecord(id);
@@ -247,7 +213,6 @@ try {
     const materials = new Map();
     try {
       selectNear(tank.root); tank.root.updateMatrixWorld(true);
-      assert.equal(hullFingerprint(tank.root), expectedHull[quality], 'complete native hull/gear buffers, order, transforms and instance matrices preserved');
       assert.equal(stock('missile-canister').length, 8); assert.equal(stock('missile-backplate').length, 8);
       const launchParts = tank.root.userData.combatGeometryParts.filter(p => p.module === 'missileRack');
       assert.equal(launchParts.length, 8, 'all physical cell shells publish the missile module');
@@ -307,7 +272,7 @@ try {
       // 2026-09-22 nation wheel standard: the prototype draws the ZTZ-100 X recessed web with its hub hardware at fourteen
       // stations (+40k triangles at HIGH, 107k total, 45 objects), so the ceiling carries that owner-ruled wheel.
       assert.ok(cost.triangles < 120000 && cost.objects <= 65, 'MBT HIGH/object ceilings with the ZTZ-100 nation wheel');
-      results.push({ quality, ...cost, interiorFillRecordLoaded: true, fillBoxes, hullHash: expectedHull[quality], poses, minimumLateralDeckClearanceM: gap,
+      results.push({ quality, ...cost, interiorFillRecordLoaded: true, fillBoxes, poses, minimumLateralDeckClearanceM: gap,
         physicalBore: tank.root.userData.physicalMuzzleBoreVerification, negatives: 7 });
     } finally {
       for (const [mesh, material] of materials) mesh.material = material;
@@ -316,4 +281,4 @@ try {
   }
 } finally { registerProfiledBuilders({ [id]: ZTZ100_PROTOTYPE_PROFILES[id].build }); front.dispose(); double.dispose(); }
 assert.ok(results[1].triangles < results[0].triangles, 'LOW reduces the new turret stock while retaining all hull/gear');
-console.log('ztz100Prototype: native hull/gear parity, actual 8-cell concept, finite seats, HIGH/LOW articulation and physical negatives PASS', JSON.stringify(results));
+console.log('ztz100Prototype: actual 8-cell concept, finite seats, HIGH/LOW articulation and physical negatives PASS', JSON.stringify(results));

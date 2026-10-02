@@ -9,11 +9,10 @@ import {COMBAT_ANATOMY_CALIBRATIONS} from './combatAnatomyCalibrations.ts';
 // These scalar bounds pin seven metadata-only repairs against the original
 // physical geometry, plus T62's newly measured low periscope. They are not
 // supplied vertex arrays. Count: 54 preserved parts plus 2 new T62 parts.
+// 2026-10-01: the T-62MV-1 source-study sight (and its newly measured low periscope) left with that build: the
+// owner's rebuild carries the T-62 obr. 1975 chassis and the complete T-72B 1987 upper assembly (4c34b3e8b,
+// cdbfe54dc). Its optics are proved to be exactly those donors' own below, plus the rebuild's thermal sensor.
 const EXACT_SCOPES = {
-  t62mv1_x: [
-    ['turretDetail',[.22312516,2.05292368,.41564566],[.41870609,2.15799975,.53319901]],
-    ['turretDark',[.24541563,2.093,.53241901],[.39641563,2.141,.53321901]],
-  ],
   t72b_1987_x: [
     ['turretDetail',[.3125,1.923176,.324152],[.5755,2.148824,.789848]],
     ['turretDark',[.3405,2.016,.78],[.5475,2.102,.8]],
@@ -78,11 +77,10 @@ function jpzSightScopes() {
   return out;
 }
 EXACT_SCOPES.jpz_e100_x=jpzSightScopes();
-assert.equal(Object.values(EXACT_SCOPES).reduce((sum,parts)=>sum+parts.length,0),56,
-  '54 existing optical primitives plus the two source-backed T62 additions');
+assert.equal(Object.values(EXACT_SCOPES).reduce((sum,parts)=>sum+parts.length,0),54,
+  '54 existing optical primitives (the two T62 source additions left with the source build)');
 
 const NON_OPTIC_CENTERS = {
-  t62mv1_x:[-.432,2.283,1.439], // Large IR searchlight, not island8180's sight.
   t72b_1987_x:[.947,2.200,-.14],
   t80u_x:[.5355,1.756,1.439],
   t72b3_x:[-.61355,2.411,-.363], // Commander lid, not its optical head.
@@ -192,6 +190,25 @@ function negativeControls(id,root,raw,world) {
   }
 }
 
+// The rebuild's optics are its donors' own: the T-62 obr. 1975 chassis (t62mv1) hull periscopes, the T-72B 1987 X
+// turret sight, and one added turret thermal-sensor window (modernizationFittings.supportedSensor).
+function opticalRows(id,quality) {
+  const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+  try{return tank.root.userData.combatGeometryParts.filter(p=>p.module==='optics');}finally{tank.dispose();}
+}
+function assertRebuiltT62Optics(raw,quality) {
+  const key=p=>[p.parent,p.bucket,...p.min,...p.max].map(v=>typeof v==='number'?v.toFixed(6):v).join('|');
+  const rows=raw.filter(p=>p.module==='optics').map(key);
+  const hull=opticalRows('t62mv1',quality).filter(p=>p.parent==='hullG').map(key);
+  const turret=opticalRows('t72b_1987_x',quality).filter(p=>p.parent==='turretG').map(key);
+  assert.ok(hull.length>0&&turret.length>0,'t62mv1_x: both optical donors register sights');
+  for(const row of [...hull,...turret]){
+    const index=rows.indexOf(row);assert.ok(index>=0,`t62mv1_x/${quality}: donor optic ${row} retained`);rows.splice(index,1);
+  }
+  assert.equal(rows.length,1,`t62mv1_x/${quality}: only the rebuild's thermal sensor is added`);
+  assert.match(rows[0],/^turretG\|turretGlass\|/,`t62mv1_x/${quality}: the added optic is the turret sensor window`);
+}
+
 const failures=[];
 for(const id of IDS)for(const quality of ['high','low']) {
   let tank;
@@ -211,6 +228,7 @@ for(const id of IDS)for(const quality of ['high','low']) {
       exactScope(id,world);
       negativeControls(id,tank.root,raw,world);
     }
+    if(id==='t62mv1_x')assertRebuiltT62Optics(raw,quality);
     assert.throws(()=>canonicalModule(id,[...modules,{...module}]),{name:'AssertionError'},'duplicate optics state rejected');
     assert.throws(()=>canonicalModule(id,modules.map(m=>m===module?{...m,turretLocal:!m.turretLocal}:m)),
       {name:'AssertionError'},'wrong-owner optical state rejected');

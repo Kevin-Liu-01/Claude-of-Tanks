@@ -1,48 +1,26 @@
 // Source-space regression: undo only the owner-directed 1.10 uniform size.
 // Installed metre bounds/unit rigs are checked by vehicleSize.selftest.
-// 2026-09-22 round 35 (camoWorldScale.ts): every hull projects its camo at the fleet constant 0.5 repeats/m, so the uv attributes
-// inside these frozen native buffers moved; the digests below are re-based on the round-35 staged tree (positions, order and frames unchanged).
+// The frozen pre-change buffers of the photo-draft hull/gun/turret/track meshes are retired; the folded-cap,
+// rooted-hook, overlap and ownership proofs below stay.
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
 import * as THREE from 'three';
 import {createTank as createPlayableTank} from '../tankFactory.ts';
 import {registerProfiledBuilders} from '../tankFactoryCore.ts';
 import {buildChallenger1X as photoDraft} from './challenger1XPhotoDraft.ts';
 import {buildChallenger1X as supplied} from './challenger1X.ts';
 import {TANK_SPECS} from '../specs.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 // Historical photo fittings only; never current supplied-file acceptance.
 function createTank(...args) {
  const armor=TANK_SPECS.challenger1_x.armor;
  const saved={turret:armor.turretPivot,gun:armor.gunPivot};
- // Exact historical dirt-UV frame is part of the immutable buffer receipt;
- // the new supplied model's source joints must not rewrite that old fixture.
+ // The photo draft was authored in its own rig frame; build it there, not in the supplied model's joints.
  armor.turretPivot=[0,1.70,.54];armor.gunPivot=[0,.40,1.15];
  registerProfiledBuilders({challenger1_x:photoDraft});
  try{return createPlayableTank(...args);}
  finally{armor.turretPivot=saved.turret;armor.gunPivot=saved.gun;registerProfiledBuilders({challenger1_x:supplied});}
 }
 
-// These are pre-change native buffers, not a source metrology claim. They
-// protect the load-bearing armor, gun and exact populated track courses.
-// Owner resize 2026-09-29: merged buffers below include the explicit 1.10 bake.
-// Original source geometry and native ray tolerances are unchanged.
-const UNCHANGED = {
- gearTrackPads:'a3c255814c82fe731d4e324df713202c052d1ec0f9042488200444ea5aadb5d8',
- gearTrackPadsSimplified:'4a3cb577950ef7b5908387712819b2e31563121c635a02a3391197443bc984f9',
- hull:'59f7d87fc631c42140bdf3657149f595492135a38ab679ae513c88b3a01f91f4',
- gun:'39719e2fd51ae58f2dfc42a209a8b4589ba0e11562e4be11e631350378cb0b37',
- gunDark:'f9ddcab95ba2e0fedbad48f76e67c51c3ee85189294c0577b959cc757ac02f69',
- gunMount:'05b8b0274d057e3002dd206415a20295a41fce8c664c7d05cd08c765b5c770fa',
- turret:'2ab99f2cc6f4ce8468ead60652af8da447bfb39104e14562d460e2bdaace2cdb',
-};
-function fingerprint(m) {
- const h=crypto.createHash('sha256');
- for(const key of Object.keys(m.geometry.attributes).sort())h.update(new Uint8Array(m.geometry.attributes[key].array.buffer));
- if(m.geometry.index)h.update(new Uint8Array(m.geometry.index.array.buffer));
- if(m.instanceMatrix)h.update(new Uint8Array(m.instanceMatrix.array.buffer));
- return h.update(JSON.stringify(m.matrixWorld.elements)).digest('hex');
-}
-const near=(a,b,e,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=e,`${label}: ${a} vs ${b}`);
 for(const quality of ['high','low']) {
  const tank=createTank('challenger1_x',null,{quality,geometryReceipt:true,batchStatic:false,proceduralOnly:true});
  try {
@@ -51,10 +29,8 @@ for(const quality of ['high','low']) {
   const cast=(p,d,far=10,parts=meshes)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(parts,false)[0];
   const hull=meshes.filter(m=>m.name==='hull');
   const detail=meshes.filter(m=>m.name==='hullDetail'),rubber=meshes.filter(m=>m.name==='hullDark');
-  for(const [name,hash]of Object.entries(UNCHANGED)) {
-   const mesh=meshes.find(m=>m.name===name);assert.ok(mesh,`${quality}: real ${name} exists`);
-   assert.equal(fingerprint(mesh),hash,`${quality}: ${name} buffers and world frame are unchanged`);
-  }
+  for(const name of ['gearTrackPads','gearTrackPadsSimplified','hull','gun','gunDark','gunMount','turret'])
+   assert.ok(meshes.find(m=>m.name===name),`${quality}: real ${name} exists`);
   for(const side of [-1,1]) {
    const x=side*1.382;
    // Drawing-led crown values verify a physically folded thin sheet. They
@@ -93,4 +69,4 @@ for(const quality of ['high','low']) {
   for(const [m,matrix]of fixed)assert.ok(m.matrixWorld.equals(matrix),'permanent front fittings do not follow turret/pitch');
  }finally{tank.dispose();}
 }
-console.log('challenger1XFrontFittings.selftest: actual high/low folded caps, open rooted hooks, protected armor/gun/gear buffers passed');
+console.log('challenger1XFrontFittings.selftest: actual high/low folded caps, open rooted hooks, armor/gun/gear present and fixed hull ownership passed');

@@ -5,74 +5,14 @@ import { createTank } from './tankFactory.ts';
 import { TANK_SPECS } from './specs.ts';
 import { donorSpec } from './donorSpecs.ts'; // 2026-09-24: retired donor records resolve through the unregistered templates (owner: no hidden tanks)
 import { SECOND_WAVE_X_DONORS, synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
-import { geometryFingerprint } from './tankAssets.ts';
 import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 
-// Round 32 (2026-09-21): goldens re-based — each side's end wraps now pivot about its own outer road wheels on staggered rigs (t90ms_x, tos1a_tagil, cv90105_tml_x, cv90_mkiv_x, ztz100_x) and the Jagdpanzer E100 X reuses the dished wheel primitive.
+// 2026-10-01 (owner: retire frozen pins): the pinned donor-spec, hull-plate, collision-cell,
+// module/crew and whole-model geometry digests are gone; the fleet geometry ledger owns
+// whole-tank change detection. Every check below is a live gameplay, seating or same-run contract.
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const donorRows = () => [...new Set(Object.values(SECOND_WAVE_X_DONORS))].sort()
   .map(id => [id, donorSpec(TANK_SPECS, id)]); // 2026-09-24: retired donors come back verbatim from donorSpecs.ts
-// Captured before this metadata correction. No source meshes or generated
-// armor vertices are embedded in the regression.
-// Repinned 2026-09-15: the owner roster pass renamed donor display names (AMX-30B -> AMX-30,
-// AMX-40 -> AMX-40 Prototype, C1 Ariete -> Serie 1, Challenger 1 Mk 3 -> Mk 2 ...); no armor row moved.
-// 2026-09-24 (round 46c, owner: no hidden tanks): the jpz_e100 / t72b3 / t72b_1987 donor records retired; their rows now
-// come from the donorSpecs.ts templates, which carry the authored spec without the registry's generated anatomy enrichment
-// (bodyContactPoints, collisionShells, crew layout metadata) — the hash moves for that reason alone. All 192 playable specs
-// are byte-identical between shared main and this tree (.qa-dev spec dump, 0 differing).
-// 2026-09-25 FSP-03: donor-spec digest re-pinned once — the regenerated combat anatomy of the roller hulls moved the
-// registry's generated enrichment (contact points / shells) on the T-72/T-90 donor rows; the authored specs are unchanged.
-// 2026-09-29: only ariete_c1 armor differs from f88172442; the owner's
-// attachment repair moves its fittings to the turret and regenerates anatomy.
-// Main's 0e5fc79e2 role pass changes only traverse, aim/accuracy and movement
-// bloom across these donors (124 scalar differences; geometry/ammunition unchanged).
-const donorHash = '2a739f7b0e4f0f8cd586775a874ee6e9064d8a15e603b8f9455495d432653b8e';
-function historicalDonors(rows = donorRows()) {
-  const restored = structuredClone(rows);
-  const ariete = restored.find(([id]) => id === 'ariete_c1')[1];
-  // The 2026-09-21 owner renames are the only permitted donor deltas. Authenticate
-  // the complete current label before reversing it for the original digest.
-  assert.equal(ariete.name, 'C1 Ariete Prototype (Serie 1)');
-  assert.deepEqual(ariete.label, {
-    id: 'ariete_c1', displayName: 'C1 Ariete Prototype (Serie 1)', shortName: 'C1 Prototype S1',
-    searchAliases: ['C1 Ariete Prototype (Serie 1)', 'C1 Prototype S1', 'ariete_c1', 'ariete c1'],
-  });
-  ariete.name = 'C1 Ariete (Serie 1)';
-  ariete.label = {
-    id: 'ariete_c1', displayName: 'C1 Ariete (Serie 1)', shortName: 'Ariete C1 S1',
-    searchAliases: ['C1 Ariete (Serie 1)', 'Ariete C1 S1', 'ariete_c1', 'ariete c1'],
-  };
-  const swedish = restored.find(([id]) => id === 'strv122')[1];
-  assert.equal(swedish.name, 'Stridsvagn 121');
-  assert.deepEqual(swedish.label, {
-    id: 'strv122', displayName: 'Stridsvagn 121', shortName: 'Strv 121',
-    searchAliases: ['Stridsvagn 121', 'Strv 121', 'strv122', 'Swedish Leopard 2', 'Strv 122A', 'Stridsvagn 122A'],
-  });
-  swedish.name = 'Stridsvagn 122A';
-  swedish.label = {
-    id: 'strv122', displayName: 'Stridsvagn 122A', shortName: 'Strv 122A',
-    searchAliases: ['Stridsvagn 122A', 'Strv 122A', 'Strv 122', 'strv122', 'Swedish Leopard 2'],
-  };
-  return restored;
-}
-const hullHash = '60571a41bc152a5aae624f029db842df453b49d8b826dc153db541aa0834f833';
-const hullCellsHash = 'e546ccd22261d60cd24fd5eae85fc268d12a432437f0becce61bc67219cf3ce7';
-const moduleCrewHash = 'd5651996036b6549b60468dc22d78670b0a4780980458fa09bd26cfe60d7a55f';
-// 2026-09-22 (owner: "the point of adding holes instead of carving them into the barrel is that we
-// save on triangles"): the fleet fallback mouth became a flat ring + disc (terminal-surface-fit-r3),
-// which moves both fingerprints; the armor and module geometry they guard is otherwise unchanged.
-// Superseded: jpz_e100_x da7ace42/ff39b2bd, jpz_e100 85585980/a39385a7.
-// 2026-09-22 (evening, same owner rule): the X tube is closed at its source tip — the 170 mm bore
-// (radius .085 down to the blind floor at 5.705, 1.3419 m) that sat entirely behind the fallback
-// disc is gone, moving the jpz_e100_x fingerprint again. Superseded: jpz_e100_x a7efaea0/91c58501.
-// 2026-09-22 LOW road-wheel tier (roadWheelGeometry.ts WheelDetail): the dished period wheel draws no bolt ring at LOW,
-// so both LOW geometry digests moved; the HIGH digests are byte-identical to the closed-tube values. Repinned from the
-// combined round-40 build (closed tube + LOW wheel tier together).
-const geometryHashes = {
-  // 2026-09-30 owner removal of both hullShadow backdrops. Exact geometry
-  // snapshots retain primary bodies, gun and every real running-gear mesh.
-  jpz_e100_x: { high: 'a3fce71f', low: '391912f3' },
-};
 const pose = (turretYaw = 0, gunPitch = 0) => tankPoseFromState({
   pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw, gunPitch,
 });
@@ -86,12 +26,8 @@ const close = (actual, expected, tolerance, label) => assert.ok(
 
 function checkArmor(armor) {
   assert.equal(armor.turretPlates.length, 0, 'no second floating casemate or inherited gun-follow rectangle');
-  assert.equal(hash(armor.hullPlates.filter(plate => plate.name !== 'mantlet')), hullHash,
-    'all original calibrated hull plates remain byte-identical');
-  assert.equal(hash(armor.collisionShells.hull), hullCellsHash, 'all eleven actual hull collision cells remain identical');
-  assert.equal(armor.collisionShells.hull.length, 11);
+  assert.equal(armor.collisionShells.hull.length, 11, 'eleven actual hull collision cells');
   assert.equal(armor.collisionShells.turret.length, 0, 'fixed casemate must not gain a rotating collision shell');
-  assert.equal(hash([armor.modules, armor.crew]), moduleCrewHash, 'all module and crew shapes remain identical');
   assert.deepEqual(armor.gunBarrel, { lengthM: 6.846872139999999, radiusM: .11 });
   assert.equal(capFaces(armor).length, 1, 'one complete native cap, not a stack of coincident triangles');
   for (const plate of capFaces(armor)) {
@@ -120,15 +56,6 @@ function checkArmor(armor) {
     .some(hit => hit.kind === 'module' && hit.module === 'gun'), 'unchanged physical barrel remains hittable');
 }
 
-assert.equal(hash(historicalDonors()), donorHash,
-  'donor specs retain the approved Ariete attachment repair and authenticated C1/Strv display renames');
-const wrongLabel = structuredClone(donorRows());
-wrongLabel.find(([id]) => id === 'ariete_c1')[1].label.shortName = 'unapproved';
-assert.throws(() => historicalDonors(wrongLabel), assert.AssertionError);
-const wrongArmor = structuredClone(donorRows());
-wrongArmor.find(([id]) => id === 'ariete_c1')[1].armor.hullPlates[0].physicalMm += 1;
-assert.notEqual(hash(historicalDonors(wrongArmor)), donorHash,
-  'the display-only reversal cannot conceal a donor armor mutation');
 checkArmor(TANK_SPECS.jpz_e100_x.armor);
 const armor = TANK_SPECS.jpz_e100_x.armor;
 
@@ -146,7 +73,6 @@ for (const quality of ['high', 'low']) {
   const options = { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 };
   const tank = createTank('jpz_e100_x', null, options);
   try {
-    assert.equal(geometryFingerprint(tank.root), geometryHashes.jpz_e100_x[quality], 'actual X model geometry unchanged');
     const mount = tank.root.getObjectByName('gunMount');
     const yaw = tank.root.getObjectByName('rig_turret');
     const gun = tank.root.getObjectByName('rig_gun');
@@ -211,4 +137,4 @@ assert.equal(hash(capFaces(TANK_SPECS.jpz_e100_x.armor)), capBefore,
   'combat synchronization reapplies the exact authored cap');
 assert.equal(TANK_SPECS.jpz_e100_x.armor.turretPlates.length, 0);
 assert.equal(hash(donorRows()), donorsBeforeSync, 'synchronization cannot mutate original donors');
-console.log('jagdpanzerE100XArmor: no ghost armor; fixed casemate/barrel preserved; one native 48-edge 420mm moving cap; high/low geometry and all original donor specs unchanged');
+console.log('jagdpanzerE100XArmor: no ghost armor; fixed casemate/barrel preserved; one native 48-edge 420mm moving cap seated at high/low; synchronization idempotent and donor-safe');

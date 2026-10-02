@@ -3,12 +3,12 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {getSpec} from '../specs.ts';
 import {measureTurretBarrelCircularity} from '../turretBarrelCircularity.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Independent source-only circle/axis measurements, not candidate bounds.
 const SOURCE={yaw:[.0000072471277,1.52948397398,.1143146502203],
   gun:[.0014311877863,1.82199396492,1.334185526985],muzzle:6.587516409117,floor:5.890883855316,
   physicalRoof:2.35125696659,wheels:[-1.822412,-.953673,-.089323,.858392,1.722743,2.591482]};
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: actual ${a}, source ${b} ±${t}`);
 function actualOpaque(root){
   const rows=[];root.traverseVisible(o=>{
     if(!o.isMesh||o.userData.shadowOnly)return;

@@ -4,13 +4,11 @@ import { createTank } from '../tankFactory.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildChieftain5XPhotoDraft } from './chieftain5XPhotoDraft.ts';
 import { buildStrv122X } from './strv122XPhotoDraft.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Keep the original photo construction contract independent of the newly
 // source-authored actual Mk5. Its source model has separate acceptance tests.
 registerProfiledBuilders({ chieftain5_x: buildChieftain5XPhotoDraft, strv122_x: buildStrv122X });
-
-const near = (a, b, tolerance, label) => assert.ok(Number.isFinite(a)
-  && Math.abs(a - b) <= tolerance, `${label}: ${a} versus ${b}`);
 
 function cast(meshes, frame, point, axis, far = 5) {
   return new THREE.Raycaster(new THREE.Vector3(...point).applyMatrix4(frame),

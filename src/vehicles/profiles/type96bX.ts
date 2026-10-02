@@ -305,4 +305,3 @@ export function buildType96bX(P: TankBuilderPort): void {
     P.topY = 3.016 - frame.turret[1];
     P.hullG.userData.xRebuild = { candidate: 'type96b_x', independent: true, sourceLocalOnly: true };
 }
-export const TYPE96B_X_PROFILE = { type96b_x: { build: buildType96bX } };

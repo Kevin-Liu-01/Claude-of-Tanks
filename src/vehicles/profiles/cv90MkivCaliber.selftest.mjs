@@ -4,16 +4,13 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { ensureInteriorFills, hasInteriorFills } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // AW's supplied manned-turret configuration is explicitly 50 mm, not the 35 mm
 // real-world option. The measured outer brake and firing plane are unchanged.
 const id = 'cv90_mkiv_x', mouth = 2.80621, boreRadius = .025, depth = .065;
 const front = new THREE.MeshBasicMaterial({ side: THREE.FrontSide });
 const ray = new THREE.Raycaster();
-function near(actual, expected, epsilon, label) {
-  assert.ok(Number.isFinite(actual) && Math.abs(actual - expected) <= epsilon,
-    `${label}: ${actual} versus ${expected}`);
-}
 function cast(root, frame, origin, direction, far = 2) {
   ray.set(frame.localToWorld(new THREE.Vector3(...origin)),
     new THREE.Vector3(...direction).transformDirection(frame.matrixWorld));

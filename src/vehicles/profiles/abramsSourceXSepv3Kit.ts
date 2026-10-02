@@ -15,11 +15,10 @@ import { KIT } from './kit.ts';
 import { roundMember, type XYZ } from './abramsSourceXGeometry.ts';
 import {
   LEFT_CHEEK, LEFT_SIDE, RIGHT_CHEEK, RIGHT_SIDE, type KitOwner as Owner, type Plane,
-  onPlaneX, onPlaneZ, planeFrame, putKit, seatKit, turretRoofY, turretSideX,
+  onPlaneX, onPlaneZ, planeFrame, putKit, turretRoofY, turretSideX,
 } from './abramsSourceXKitBase.ts';
 
 const { box, cylY, cylX, cylZ } = KIT;
-const seat = (owner: Owner, p: XYZ): XYZ => seatKit(owner, p);
 function put(P: TankBuilderPort, owner: Owner, bucket: string, part: string,
   geometry: THREE.BufferGeometry, center: XYZ, equipment = true): void {
   putKit(P, owner, bucket, 'sepv3Kit', part, geometry, center, equipment);

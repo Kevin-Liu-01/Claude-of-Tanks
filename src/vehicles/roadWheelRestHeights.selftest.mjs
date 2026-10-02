@@ -11,8 +11,8 @@ function hashArray(hash, values) {
 }
 function originalGearAttributeNames(geometry) {
   // M1A2 gear can share a masked lamp material, requiring an all-zero vertex
-  // channel even though these parts contain no lamp. Preserve all eight
-  // original shape snapshots; validate that new metadata independently.
+  // channel even though these parts contain no lamp. Validate that metadata
+  // independently; every shape byte stays in the same-run gear comparisons.
   const mask = geometry.getAttribute('nightEmissionMask');
   if (mask) {
     assert.ok(mask.array instanceof Uint8Array, 'night mask is byte-sized');
@@ -60,46 +60,21 @@ function gearFingerprint(root) {
   assert.equal(measure(), original); geometry.dispose(); mesh.material.dispose();
 }
 
-// Captured before introducing either optional road-station API. These cover
-// real wheel, suspension, drum, band and shoe buffers AND instance matrices.
-// 2026-09-12 fleet visual standard: the shared pressed-disc road wheel (rib
-// motif, pressed-six/pressed-eight) keeps its former rib envelope with the
-// holes, hub well and drum inside it (tankFactoryCore 'rib'), so every rib-
-// wheel scene digest below moved together; repinned from the current build.
-const ORIGINALS = {
-// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
-// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
-// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
-// values below are repinned from the current build.
-// 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS"): t90sm and t90m draw the T-90M X
-// source-pressed face and leo2a5 the Leopard 2A6 X paired dish through nationWheelConstructions.ts; their gear digests
-// are repinned from the current build. m1a2 is a donor (hollow paired wheel) and did not move. Later the same day the
-// consumer constructions took quality-aware tessellation (LOW draws fewer segments than the donor) and standardized
-// hulls took the fleet suspension arm seated against the nation wheel, so the LOW digests moved again; repinned.
-// 2026-09-22 LOW road-wheel tier (roadWheelGeometry.ts WheelDetail, owner: the LOW tier must cost less): no bolt rings,
-// ribs, lightening holes or face hardware at LOW, source lathes at 12 segments, the hollow paired tire without its inner
-// bevel — the four LOW gear digests moved; HIGH digests are byte-identical. Repinned from the current build.
-  // 2026-09-25 FSP-03: T-90SM / T-90M fleet digests re-pinned once — their upper runs ride three fitted return rollers
-  // again (the rest heights and donor construction are unchanged; the course re-samples).
-  t90sm: ['6ca34c4de4e1ba3c586f9fc7d6dc52c1c0adc9b81c775fe4945fec06d9f82b07',
-    '3341701304b97cb2c2dbd0ddbb2cc0b90532f31182b1d8e0368a108f588ab3aa'],
-  t90m: ['e09079788bb7dcf4d31cf3c6d2a7c4d959a8733042e9c8df0950296d0a0ec947',
-    '2b58ae070f483f60f1a344b38727e91a719233da685230a56d17604c5f844f5b'],
-  // 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel (hollowRoadWheelStock.ts) and lost
-  // the gear_wheelBayVoidDress blocks; high/low gear digests repinned from the current build.
-  m1a2: ['f47719f80c839456827c6c2fd417bb6796333fb5ad123a27087bfe2c43f7d253',
-    '08e417b03e8090cd6a4ba591bbe44d64f1480d24cf304b868c54b2c97a746c09'],
-  // 2026-09-22 round 40 axial fit: the Leopard 2A6 face on leo2a5 keeps its donor proportion under the track-width cap
-  // (fit 0.83 -> 1.0), so both leo2a5 digests moved; t90sm/t90m/m1a2 did not. Repinned from the current build.
-  leo2a5: ['ab00046e4763c592a8b36687503909190a8120ce826c5947fc391f8133e46c4e',
-    '76972d775591dd7fbea18b534e58341109ab4c7df09a8558e1e7ebc07dc3829c'],
-};
-for (const [id, hashes] of Object.entries(ORIGINALS)) {
-  for (const [index, quality] of ['high', 'low'].entries()) {
+// 2026-10-01 (owner: retire frozen pins): the eight pinned donor gear digests (captured before the
+// optional road-station APIs) are gone; the fleet geometry ledger owns whole-tank change detection. These
+// real hulls, including M1A2 gear that shares a masked lamp material, still prove gear never emits light.
+for (const id of ['t90sm', 't90m', 'm1a2', 'leo2a5']) {
+  for (const quality of ['high', 'low']) {
     const tank = createTank(id, null, { proceduralOnly: true, quality,
       geometryReceipt: true, batchStatic: false });
-    try { assert.equal(gearFingerprint(tank.root), hashes[index], `${id}/${quality}: no donor change`); }
-    finally { tank.dispose(); }
+    try {
+      let gear = 0;
+      tank.root.traverse(object => {
+        if (!object.name.startsWith('gear') || !object.geometry) return;
+        originalGearAttributeNames(object.geometry); gear++;
+      });
+      assert.ok(gear > 0, `${id}/${quality}: native running gear present`);
+    } finally { tank.dispose(); }
   }
 }
 
@@ -429,4 +404,4 @@ for(const high of [true,false]) {
     for(let i=0;i<reset.length;i++)close(reset[i].distanceTo(bosses[i]),0,'source arm datum survives reset');
   } finally { model.dispose(); }
 }
-console.log('roadWheelRestHeights.selftest: measured axles/supports and independent moving suspension dimensions, fixed drum lanes, immutable inputs and eight original buffer snapshots pass');
+console.log('roadWheelRestHeights.selftest: measured axles/supports and independent moving suspension dimensions, fixed drum lanes, immutable inputs and unlit fleet gear pass');

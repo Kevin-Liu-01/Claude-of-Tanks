@@ -17,7 +17,7 @@ import { buildChallenger3RearTurretClosure } from './challenger3RearTurret.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Shared geometry and exact-equipment fittings come from the cycle-free
 // profile kit; builders destructure the geometry they use at call time.
-import { KIT, FITTINGS, MUDGUARDS, muzzleBore } from './kit.ts';
+import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import '../challengerSpecs.ts';
 // ch1-base tone port (uk round 2026-08-07): materials.js is cycle-free — the
 // ambient-floor hook re-attach is the same import uk.ts carries.
@@ -28,7 +28,7 @@ import { vehicleAmbientFloorHook } from '../materials.ts';
 import {
   ukHull, segBoxZ, towCableUK, ukToneKit, ukGearAirBackers,
   box, cylY, cylZ, torus, slab, xform, buildRunningGear, buildGun,
-  liftEye, periscope, headlight, pintleMG, smokeCluster, stowage,
+  liftEye, periscope, smokeCluster, stowage,
 } from './uk.ts';
 import type { UKBuilderPort } from './uk.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -36,7 +36,6 @@ import { buildHollowPairedRoadWheel } from '../hollowRoadWheelStock.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
-type ProfileCurve = readonly Vec2Tuple[];
 type EraPlacer = (...transform: number[]) => void;
 type EquipmentOwner = 'hull' | 'turret';
 
@@ -2791,7 +2790,7 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
 }
 
 function buildChallenger2(P: ChallengerBuilderPort): void {
-  const { cylX, cupola, tarpRoll, jerryCan, ammoCan } = KIT;
+  const { cylX, tarpRoll, ammoCan } = KIT;
   const { rng } = P;
   const variant = P.spec.id;
   const isBaseChallenger2 = variant === 'challenger2';
@@ -4377,9 +4376,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
 // ---------------------------------------------------------------------------
 function buildChallenger3(P: ChallengerBuilderPort): void {
   const { box, cylY, cylZ, slab, frustum, headlight, liftEye,
-    periscope, smokeCluster, stowage, jerryCan, tarpRoll,
-    ammoCan, buildGun, buildRunningGear, openRackGrid, torus } = KIT;
-  const { rng } = P;
+    periscope, smokeCluster, buildGun, buildRunningGear, openRackGrid, torus } = KIT;
 
   // ---- running gear (§B6 trapezoid; print seats): 6 Hydrogas wheels on
   // the print's longitudinal run, HIGH-TUCKED idler/sprocket (approach
@@ -4701,7 +4698,7 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
   // left a second turret stacked above the low forward brow.  The connected
   // crown now peaks at 0.68 m and every C3H-relative fitting follows that
   // real roof instead of the deleted superstructure datum.
-  const C3W = 1.41, C3H = 0.68;
+  const C3H = 0.68;
   // Capture the authored Protector body around the existing M2 rig. Roof
   // foundations and independent sights remain fixed; rails follow elevation.
   const rwsStock = (stage: 'yaw' | 'pitch' = 'yaw'): (() => void) =>

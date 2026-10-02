@@ -1,5 +1,5 @@
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
-import { drainTankBuild, type TankProfileBuild } from '../tankBuildCooperation.ts';
+import { type TankProfileBuild } from '../tankBuildCooperation.ts';
 // Independent SEP v2 source-study hull. Sparse scalar dimensions below are in
 // the approved metre frame [-rawX, rawY + .203945, .357965 - rawZ].
 // This first construction checkpoint is not a source-qualified receipt.
@@ -391,10 +391,6 @@ function bowEquipment(P: TankBuilderPort): void {
       P.addEquipment('hullDetail', box(.075, .042, .173), side * .92, 1.302 + k * .027, 3.10 - k * .21);
     }
   }
-}
-
-function buildAbramsSourceXHull(P: TankBuilderPort, options: AbramsSourceXHullOptions): void {
-  drainTankBuild(buildAbramsSourceXHullCooperativeSteps(P, options, false));
 }
 
 export function* buildAbramsSourceXHullCooperativeSteps(P: TankBuilderPort, options: AbramsSourceXHullOptions, cooperative = true): TankProfileBuild {

@@ -6,11 +6,10 @@ import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildT90AWX } from './t90AwX.ts';
 import { addT90AWSmallOptics } from './t90AwXSmallOptics.ts';
 import { T90_AW_X_SOURCE_DATUMS } from '../t90AwXArmor.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const ray = (meshes, p, d, far = 8) => new THREE.Raycaster(new THREE.Vector3(...p),
   new THREE.Vector3(...d), 0, far).intersectObjects(meshes, false)[0];
-const near = (actual, expected, tolerance, label) => assert.ok(Number.isFinite(actual)
-  && Math.abs(actual - expected) <= tolerance, `${label}: ${actual} versus source ${expected}`);
 const physical = root => { const list = []; root.traverse(m => {
   if (m.isMesh && !m.userData.vehicleMarking && !m.userData.shadowOnly && !m.name.startsWith('procShadow_')) list.push(m);
 }); return list; };

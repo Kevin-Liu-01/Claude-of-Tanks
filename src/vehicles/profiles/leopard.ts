@@ -1277,7 +1277,7 @@ function leopardA6MantletRoofBridge(
 // station slice windows — merkava packet mechanics), heavy front skirt
 // blocks at EXACTLY the committed half-width, inset rear skirt run.
 function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
-  const { box, cylY, cylZ, torus, headlight, liftEye, towCable, periscope } = KIT;
+  const { box, cylY, torus, headlight, towCable } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const hw = H.bodyHW;
   const deck = H.deck;                     // [[z,y] ...] crease -> tail
@@ -2163,7 +2163,7 @@ const LEO_A6_UNDERBODY_PLAN = [
 ];
 
 function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
-  const { box, frustum, polyMultiLoft, cylY, cylZ, torus, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll } = KIT;
+  const { box, frustum, polyMultiLoft, cylY, torus, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const h = T.h;
   const wedgeTurretV3TurretStage1 = (): void => {
@@ -3132,8 +3132,7 @@ function buildLeo2A6(P: TankBuilderPort) {
       //     3.77 plan face and the front-view y-band survive on every column
       //     (front cols 1.01..1.53 are band-lit to ~1.29 regardless);
       //   - the rubber nose band keeps its exact certified footprint.
-      const wx0 = 0.90, wx1 = 0.94, sx1 = 0.94, zn = 3.752;
-      const topAt = (z: number): number => 1.145 + (1.1249 - 1.145) * (z - 3.675) / (3.758 - 3.675);
+      const wx0 = 0.90, sx1 = 0.94;
       for (const s of [-1, 1] as const) {
         const ord = (ring: FourPointRing): FourPointRing => (
           s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
@@ -6463,7 +6462,7 @@ function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
 // ---------------------------------------------------------------------------
 function leo2A4FullGhillie(P: TankBuilderPort) {
   if (P.spec.id !== 'leo2a4') return;
-  const { box, xform, mergeAll, slab } = KIT;
+  const { xform, mergeAll, slab } = KIT;
   const hullNet: THREE.BufferGeometry[] = [];
   const turretNet: THREE.BufferGeometry[] = [];
   const hullLight: THREE.BufferGeometry[] = [];
@@ -6475,7 +6474,7 @@ function leo2A4FullGhillie(P: TankBuilderPort) {
     return v - Math.floor(v);
   };
 
-  const makeCloth = (hex: number, key: string): VehicleMaterial => {
+  const makeCloth = (hex: number, _key: string): VehicleMaterial => {
     const mat = P.mats.canvasCloth.clone();
     mat.color.setHex(hex);
     mat.roughness = 1;
@@ -7457,7 +7456,7 @@ export function buildLeo2A4(builder: object) {
         for (let k = 0; k < 4; k++) {
           const f = k - 1.5;
           const a = s * yaw + f * (0.85 / 4);
-          const dx = Math.cos(s * yaw) * f * 0.095, dz = -Math.sin(s * yaw) * f * 0.095;
+          const dx = Math.cos(s * yaw) * f * 0.095;
           // collar sits at the tube's outer mouth (tube len 0.24, raked
           // rx -0.5): offset ~0.11 along the tube axis from center
           P.add('turretDark', cylZ(0.047, 0.045, 10), s * bx + dx + Math.sin(a) * 0.11 * 0.88, by + 0.11 * 0.48, bz + Math.cos(a) * 0.11 * 0.88, -0.5, a, 0);
@@ -7727,7 +7726,7 @@ function addLeo2A7VFrontalProtection(P: TankBuilderPort) {
 function buildLeo2A7V(P: TankBuilderPort) {
   // Hull coordinates below retain the original authoring frame; the final
   // hull-only X transform reduces its nominal 4.00 m width to 3.60 m.
-  const { box, cylY, cylZ } = KIT;
+  const { box, cylY } = KIT;
   const buildLeo2A7VMarkingsStage1 = (): void => {
     leoHullV3(P, {
       bodyHW: 1.76, sponsonY: 1.24, trackW: 0.66, xc: 1.53,
@@ -8157,7 +8156,7 @@ function buildLeo2A7V(P: TankBuilderPort) {
 }
 
 function addLeo2PrototypeRunningGearFinish(P: TankBuilderPort): void {
-  const { box, cylX } = KIT;
+  const { box } = KIT;
   for (const side of [-1, 1] as const) {
     // Close the exposed sponson bay inside the inner track face.
     P.add('hullShadow', box(0.02, 0.78, 6.90), side * 1.01, 0.93, -0.25);
@@ -8531,7 +8530,7 @@ function buildLeo2Proto(P: TankBuilderPort) {
 // Revolution: compact welded core, shorter modular cheeks and simpler optics.
 // ---------------------------------------------------------------------------
 function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
-  const { box, cylY, cylZ, torus, periscope, liftEye } = KIT;
+  const { box, cylY, torus, periscope, liftEye } = KIT;
   const slab = orientedSlab;                                  // outward winding on every authored wedge
   // r9 F1/F2 accumulators: jacket flank pieces leave the 'hull' bucket and
   // merge into ONE camo mesh re-using P.mats.hull with a -8-luma vertex
@@ -11779,7 +11778,7 @@ function buildKF51(P: TankBuilderPort) {
 // ---------------------------------------------------------------------------
 function buildKF51OwnerExact(P: TankBuilderPort) {
   const { box, cylX, cylY, cylZ, torus, frustum, polyMultiLoft, buildGun, periscope,
-    liftEye, headlight, jerryCan } = KIT;
+    liftEye, jerryCan } = KIT;
   const slab = orientedSlab;
   const uniformScale = 1.05;
   const roadWheelRadiusM = 0.355;
@@ -12427,7 +12426,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
 // long low cast turret, compact saddle and rear basket set the base shape;
 // A5-only B&V appliqué, EMES-18 and German equipment are then surface-seated.
 function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
-  const { box, cylX, cylY, cylZ, torus, sph, buildGun, buildRunningGear,
+  const { box, cylY, cylZ, torus, sph, buildGun, buildRunningGear,
     headlight, liftEye, towCable, stowage, jerryCan, tarpRoll, ammoCan,
     shovelTool, xform } = KIT;
   const slab = orientedSlab;
@@ -14950,7 +14949,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
         for (let k = 0; k < 4; k++) {
           const f = k - 1.5;
           const a = s * yaw + f * (0.85 / 4);
-          const dx = Math.cos(s * yaw) * f * 0.095, dz = -Math.sin(s * yaw) * f * 0.095;
+          const dx = Math.cos(s * yaw) * f * 0.095;
           P.add('turretDark', cylZ(0.047, 0.045, 10), s * bx + dx + Math.sin(a) * 0.11 * 0.88, by + 0.11 * 0.48, bz + Math.cos(a) * 0.11 * 0.88, -0.5, a, 0);
         }
       }

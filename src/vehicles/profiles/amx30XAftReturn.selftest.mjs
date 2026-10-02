@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
@@ -51,22 +50,10 @@ function air(objects) {
   ]) assert.equal(cast(objects, o, d, far), undefined, `complete-source real air ${o}`);
   close(cast(objects, [1.5, 1.4, -3.3], [0, -1, 0])?.point.y, 1.044423074458011, 'different right terminal remains solid');
 }
-function hashGeometry(h, g) {
-  for (const key of Object.keys(g.attributes).sort()) {
-    const a = g.attributes[key].array; h.update(key).update(Buffer.from(a.buffer, a.byteOffset, a.byteLength));
-  }
-  if (g.index) { const a = g.index.array; h.update(Buffer.from(a.buffer, a.byteOffset, a.byteLength)); }
-}
-// 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is
-// that we save on triangles"): the jacket lathe is closed at the source tip (amx30X.ts, the .0525 bore
-// down to 5.680 is gone); every other primitive is the same. Superseded: high 92884447477fe05db22c8f592303976ed6e47e29ead4315fc62a6d67e90c3850,
-// low 5a0c52e7405efca965f4f377091b9a89da25a015a7ebb8cdb5bca180e97905cc.
-const BEFORE = {
-  high: '5a68d820d835a64ebed4ef167b5885fdaa2d35c0922d90f3ae90f6962f4581b7',
-  low: '9aa53729bc19c00cee0d830c5da01ebb4e355a410baced758061a26907b93b68',
-};
+// The frozen pre-edit digest of every other primitive is retired: whole-tank change detection of amx30_x is the
+// fleet geometry ledger's.
 for (const quality of ['high', 'low']) {
-  const helper = [], guards = [], h = createHash('sha256'); let targets = 0;
+  const helper = [], guards = []; let targets = 0;
   for (const side of [-1, 1]) addAmx30XAftReturn({ addMudguard: (label, bucket, g) => {
     assert.equal(label, 'amx30-x-aft-return'); assert.equal(bucket, 'hull');
     helper.push(new THREE.Mesh(g, new THREE.MeshBasicMaterial()));
@@ -76,12 +63,10 @@ for (const quality of ['high', 'low']) {
   surfaces(helper, TOP, false); surfaces(helper, BOTTOM, true); air(helper);
   registerProfiledBuilders({ amx30_x: p => buildAmx30X(new Proxy(p, { get(o, key) {
     if (['add', 'addEquipment', 'addCupola', 'addMudguard'].includes(key)) return (...args) => {
-      const guard = key === 'addMudguard', gi = guard ? 2 : 1;
+      const guard = key === 'addMudguard';
       if (guard && ['amx30-x-side-fender', 'amx30-x-aft-flap', 'amx30-x-aft-return'].includes(args[0])) {
         targets++;
         if (args[0] === 'amx30-x-side-fender') guards.push(new THREE.Mesh(args[2].clone(), new THREE.MeshBasicMaterial()));
-      } else {
-        h.update(key).update(JSON.stringify(args.slice(0, gi))).update(JSON.stringify(args.slice(gi + 1))); hashGeometry(h, args[gi]);
       }
       return o[key](...args);
     };
@@ -89,8 +74,7 @@ for (const quality of ['high', 'low']) {
   } })) });
   const tank = createTank('amx30_x', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
   try {
-    assert.equal(targets, 4, 'only the two exact side-fender and two aft-return primitives differ');
-    assert.equal(h.digest('hex'), BEFORE[quality], 'all other primitive buffers, transforms and ownership byte-identical to pre-edit');
+    assert.equal(targets, 4, 'exactly the two side-fender and two aft-return primitives');
     tank.root.updateMatrixWorld(true);
     const meshes = []; tank.root.traverse(m => { if (m.isMesh && !m.userData.vehicleMarking && !m.name.includes('ShadowProxy')) meshes.push(m); });
     surfaces(meshes, TOP, false); air(meshes);
@@ -117,4 +101,4 @@ for (const quality of ['high', 'low']) {
     for (const m of [...helper, ...guards]) { m.geometry.dispose(); m.material.dispose(); }
   }
 }
-console.log('amx30XAftReturn: high/low source crown/underside planes, asymmetric true air, positive receiving lap, unchanged forward fenders and exact non-target primitives pass');
+console.log('amx30XAftReturn: high/low source crown/underside planes, asymmetric true air, positive receiving lap, unchanged forward fenders pass');

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT90MSHullCages} from './t90msXHullCages.ts';
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs independent source ${b} ±${t}`);
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 function meshes(t){const out=[];t.root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)out.push(m);});return out;}
 function hit(m,p,d,far=1){return new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(m,false)[0];}
 const top=(m,x,z)=>hit(m,[x,1.8,z],[0,-1,0]);

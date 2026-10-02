@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { traceTank, tankPoseFromState } from '../sim/armor.ts';
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import './fleetFactory.ts';
 import { ALL_TANK_IDS, PRODUCTION_TANK_IDS, TANK_SPECS, MODEL_SOURCE } from './specs.ts';
@@ -17,20 +16,9 @@ import { getCamoSelection, setCamoSelection, resolveCamoVisual } from './materia
 import { compareCountryThenTierThenName } from '../ui/garageOrder.ts';
 import { auditFleetBalance, sustainedPrimaryDpm } from './balanceAudit.ts';
 
-// Browser metadata after the 2026-09-29 role balance. Geometry, weapons and
-// anatomy remain exact; the approved handling changes are included here.
-const prior = {
-  ariete: '41f91e4acb1c97ab75d75f5b6dc30005b532fff7ba924c5eb0315e2decec9d98',
-  ariete_c1: 'b96920fb28cb8275ba4e68ebcb2d888a1cc5c21d33a7f65fa33de713508daba4',
-  ariete_c2: 'd701b51efd7497ba06f5e9254aa7b996b02a8d5dcf10a9c2c8e51c4b8c2feca3',
-  carro45t: '5e2cb002d87dbad66d6216974d0552e774c848d6ff193c0a58d77656307347bf',
-};
-for (const [id, hash] of Object.entries(prior)) {
-  const preserved = structuredClone(TANK_SPECS[id]);
-  delete preserved.name; delete preserved.label;
-  assert.equal(createHash('sha256').update(JSON.stringify(preserved)).digest('hex'), hash,
-    `${id}: all non-label saved metadata remains exact`);
-}
+// 2026-10-01 (owner: retire frozen pins): the pinned sha256 of the four legacy Italian specs' non-label
+// metadata (ariete, ariete_c1, ariete_c2, carro45t) is gone; identity, tier, datum, armor, balance,
+// order, paint and lazy-registration contracts below are live.
 assert.equal(TANK_SPECS.ariete_c1.name, 'C1 Ariete Prototype (Serie 1)');
 assert.equal(TANK_SPECS.ariete_c2.name, 'C2 Ariete Prototype');
 assert.equal(tankTier('ariete_c1'), 9);
@@ -219,11 +207,15 @@ try {
   if (priorStorage === undefined) delete globalThis.localStorage;
   else globalThis.localStorage = priorStorage;
 }
-for (const facade of ['tankFactory.ts', 'fleetFactory.ts']) {
-  assert.match(readFileSync(new URL(facade, import.meta.url), 'utf8'), /import '\.\/arieteModernSpecs\.ts'/);
+// 2026-10-02: every facade registers the fleet through the one ordered registration (83f2c6992, fleet parity):
+// the Ariete metadata must be part of it and every facade, including the authorities', must load it.
+assert.match(readFileSync(new URL('fleetRegistration.ts', import.meta.url), 'utf8'), /import '\.\/arieteModernSpecs\.ts'/);
+for (const facade of ['tankFactory.ts', 'fleetFactory.ts', 'authorityFleet.ts']) {
+  assert.match(readFileSync(new URL(facade, import.meta.url), 'utf8'), /import '\.\/fleetRegistration\.ts'/,
+    `${facade} loads the shared ordered fleet registration`);
 }
 const browser = readFileSync(new URL('fleetFactory.ts', import.meta.url), 'utf8');
 assert.match(browser, /arieteX: \(\) => import\('\.\/profiles\/arieteX\.ts'\)/);
 assert.doesNotMatch(readFileSync(new URL('arieteModernSpecs.ts', import.meta.url), 'utf8'), /from ['"](?:three|.*arieteX\.ts|.*tankFactory)/,
   'new eager metadata must not import visual builders or renderer');
-console.log(`arieteModernSpecs: PASS — stable legacy metadata, enlarged C1, finite C2 armor, ${runtimeTraceCount} actual runtime traces, balance, order, paint and lazy registration`);
+console.log(`arieteModernSpecs: PASS — legacy names/tiers, enlarged C1, finite C2 armor, ${runtimeTraceCount} actual runtime traces, balance, order, paint and lazy registration`);

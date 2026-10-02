@@ -15,7 +15,6 @@ import {
   tubeGun,
   ruSaddle,
   ruBoot,
-  nsvt,
   mast,
   rehookClone,
   ruGlacisKit,
@@ -908,7 +907,7 @@ interface T90ALegacyTurretReceiptContext {
 }
 
 function addT90ALegacyHull(P: T90BuilderPort): void {
-  const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret } = KIT;
+  const { box } = KIT;
   // VERTEX ROUND r2 (batch-12 oracle normalized to published dims): re-anchor
   // to docs/references/vertex/t90a.json — hull mask +-3.43 (6.865), deck
   // plateau 1.29-1.37 with the rear stack bumps 1.44-1.49 @ -3.16..-3.32,
@@ -1187,7 +1186,7 @@ function addT90ALegacyTurret(P: T90BuilderPort, {
   adoptT90MFamilyGun,
   recordSeatReceipt,
 }: ResolvedT90ALegacyOptions): T90ALegacyTurretReceiptContext {
-  const { box, cylY, cylZ, polyTurret } = KIT;
+  const { box, cylY, cylZ } = KIT;
   // ---- turret: measured T-90A cast shell ----
   // Primary mass follows the source silhouette; every K-5/optic/weapon
   // fitting below is seated into that mass rather than a shared family box.
@@ -3389,7 +3388,7 @@ function buildPT91M(P: T90BuilderPort): void {
 
 
 function addT90MProryvHull(P: T90BuilderPort): void {
-  const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret, slab } = KIT;
+  const { box, cylX, stowage } = KIT;
   loftHull(P, {
     // r26a render re-read: plan bow center is 3.05 (extract corners said
     // 3.20 — REF-RENDER OUTRANKS ROW ANALYSIS), corners 3.27, lower tub
@@ -3851,7 +3850,7 @@ interface T90MProryvLegacyContext {
 }
 
 function addT90MProryvTurret(P: T90BuilderPort): T90MProryvLegacyContext {
-  const { box, cylY, cylZ, polyTurret } = KIT;
+  const { box, cylZ, polyTurret } = KIT;
   // ---- WELDED turret (identity delta vs the t90a cast dome): flat cheek
   // planform w/ chamfered corners, broad flat roof, separated furniture ----
   P.turretG.position.set(0, 1.40, 0.13);
@@ -4263,7 +4262,7 @@ function buildT90MProryv(P: T90BuilderPort): void {
 
 
 function addT90SMLegacyHullFront(P: T90BuilderPort): void {
-  const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret, slab } = KIT;
+  const { box } = KIT;
   // VERTEX ROUND r2 (batch-12 normalized oracle): re-anchored to
   // docs/references/vertex/t90sm.json — hull mask +-3.43 (6.857 = published,
   // the r5 span-matching lips are DELETED), deck plateau 1.40-1.46, welded
@@ -4558,7 +4557,7 @@ function addT90SMLegacyTurretShell(P: T90BuilderPort): T90SMLegacyTurretContext 
   // band lives on flank roof boxes at |x| 0.65..1.05 (ref front cols +-0.1..
   // 0.61 read 1.99); tower bodies low (1.94) with THIN 2.24-2.25 spikes at
   // world -1.39/-1.94 (ref side 1-col spikes); heightM p95 -> 2.24 (pub 2.23)
-  const { tw, f, b, h } = addT90SMTurretFoundation(P);
+  const { tw, f, h } = addT90SMTurretFoundation(P);
   // Owner fit pass (2026-08-25): a tapered structural collar spans the
   // hull-deck/turret seam.  Its lower edge is buried 40 mm below the turret
   // datum and its upper edge overlaps the first 80 mm cheek course, so the
@@ -4722,9 +4721,9 @@ function addT90SMLegacyTurretShell(P: T90BuilderPort): T90SMLegacyTurretContext 
 
 function addT90SMLegacyRoof(
   P: T90BuilderPort,
-  { tw, h }: T90SMLegacyTurretContext,
+  _context: T90SMLegacyTurretContext,
 ): void {
-  const { box, cylY, cylZ } = KIT;
+  const { box, cylY } = KIT;
   // T3R ROOF EQUIPMENT ENSEMBLE (owner punch list 3: "no attachments or
   // decorations or the machine gun turret"). Today's side digest: the ref's
   // tall 2.239 band spans z world -0.44..-1.32 (my old towers sat aft+low —
@@ -4822,9 +4821,9 @@ function addT90SMLegacyRoof(
 
 function addT90SMLegacyBustleStructure(
   P: T90BuilderPort,
-  { tw, h }: T90SMLegacyTurretContext,
+  _context: T90SMLegacyTurretContext,
 ): void {
-  const { box, cylZ } = KIT;
+  const { box } = KIT;
   // squared removable bustle: full depth only to |x| 0.91 (ref plan rear
   // staircase -2.43 center / -1.99 @1.0 / -1.31 @1.15 / -1.0 @1.23).
   // r9: the ref bustle UNDERSIDE rises rearward (1.654@-2.16 ->
@@ -6941,7 +6940,7 @@ function addT90MSCrownFacetSeams(P: T90BuilderPort): void {
 }
 
 function rebuildT90MSTurretExact(P: T90BuilderPort): void {
-  const { box, cylY, cylZ, polyTurret, torus } = KIT;
+  const { box, cylY, cylZ, torus } = KIT;
 
   // T-90MS SOURCE REBUILD (2026-08-10).  The recovered print measures a
   // low welded primary body (x +/-1.82, z -2.39..+1.45, broad roof near

@@ -8,47 +8,22 @@ import { geometryFingerprint } from './tankAssets.ts';
 import { tankTier } from './tier.ts';
 import { donorSpec } from './donorSpecs.ts';
 
-// Independent pre-work geometry receipts from origin/main c26b3194200f52be,
-// measured before any second-wave authored builder or registry change.
-// Includes all 22 requested originals, not merely the completed draft subset.
-// 2026-09-12 fleet visual standard: the shared pressed-disc road wheel (rib
-// motif, pressed-six/pressed-eight) keeps its former rib envelope with the
-// holes, hub well and drum inside it (tankFactoryCore 'rib'), so every rib-
-// wheel scene digest below moved together; repinned from the current build.
-const original = {
-// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
-// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
-// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
-// values below are repinned from the current build.
-// 2026-09-13 watertight bodies (owner's pour-water test): buildLeclerc gained buried
-// solids (sponson band to the tub, bow/glacis underfill, turret cores) inside its
-// existing surfaces; the leclerc digest is repinned from the current build.
-// 2026-09-13 wheel review: challenger1's fixed wheel dressing (face disc / hub) re-seated from
-// 7 cm outboard of the tire to the tire plane; repinned from the current build.
-// 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we
-// dont use anymore"): every second-wave hull below except the period jpz_e100 draws its nation construction
-// (nationWheelSets.ts / nationWheelConstructions.ts) at its own radius, so the digests are repinned from the current build.
-// 2026-09-23 (owner: "no hidden tanks"): the t72b_1987 (e7d8bce1), t72b3 (a6d86dc3) and jpz_e100 (9c2fc966) donor
-// records retired with the hidden fleet, so their original pins left with them; the three studies' combat donors now
-// resolve through the unregistered donorSpecs.ts templates.
-// 2026-09-25 round 96 (FSP-03 + FSP-05 combined tree on the FSP-06 base): ariete_c1 (e9c14604 → e9af928b), leclerc
-// (900d83c3 → 0d0ed003) and k1a1 (febc57cf → d75c7a71) already read their new fingerprints on the base tree 3db7849c1
-// (FSP-06 0e63f54d6 Italian cable loops, 2afd13e62 Leclerc canvas boot / jerricans, e69803182 K1A1 whip rods — landed
-// without re-pinning this receipt); amx30 (af643005 → c37d8ffd) is FSP-05's closed outer bow nose (misc.ts). All four
-// re-pinned once from the current build.
-  // 2026-09-29 owner attachment repair: turret-owned fittings replace hull-owned stock.
-  ariete_c1:'5c6cceec', challenger1:'aa084d4d', leclerc:'0d0ed003',
-  // 2026-09-30 owner-marked underbody removal: only auxiliary bay walls and
-  // inner-track filler changed; primary hull/turret/gun and real gear match.
-  chieftain5:'cbb7431d', chieftain_mk10:'8ff22a97', leo2a6:'1f08700c',
-  k1a1:'d75c7a71', strv122:'8bc6e141', t62mv1:'35f1a225',
-  // 2026-09-25 FSP-03: the fleet T-72/T-90 pre-X goldens (t72b3m, t72bu, t90, Burlak, T-90MS) re-pinned once — three fitted return rollers per side again.
-  t72b3m:'dbbc46ad',
-  t72bu:'404a5f01', t80u:'2b1a556f', type10:'51be775e', type90:'de3a7d14',
-  amx30:'c37d8ffd', amx40:'b94b2314',
-  t90:'accad0d5', t90a_burlak:'8a91a11d', t90ms:'f03c2eb8',
-};
+// 2026-10-01 (owner: retire frozen pins): the nineteen pinned pre-work donor fingerprints are gone; the
+// fleet geometry ledger owns whole-tank change detection. Each draft is compared with its donor built
+// live at the same quality in this run, so original geometry still cannot masquerade as new.
+// 2026-09-23 (owner: "no hidden tanks"): these donor records retired; no buildable original remains.
+const RETIRED_DONORS = new Set(['t72b_1987', 't72b3', 'jpz_e100']);
 const options = {proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4242};
+const donorFingerprints = new Map();
+function donorFingerprint(donor, quality) {
+  const key = `${donor}/${quality}`;
+  if (!donorFingerprints.has(key)) {
+    assert.ok(ALL_TANK_IDS.includes(donor), `${donor}: registered donor`);
+    const tank = createTank(donor, null, {...options,quality});
+    try { donorFingerprints.set(key, geometryFingerprint(tank.root)); } finally { tank.dispose(); }
+  }
+  return donorFingerprints.get(key);
+}
 // Main's tactical roles intentionally give replicas and retired donor templates
 // different handling. Preserve the complete weapon payload and firing bloom;
 // the tactical-role regression owns aiming and movement/traverse dispersion.
@@ -56,11 +31,15 @@ function armament({aimTimeS, baseAccuracy, bloom, ...weapon}) {
   const {move, hullRot, turret, ...firingBloom} = bloom;
   return {...weapon, bloom: firingBloom};
 }
-for (const [id, expected] of Object.entries(original)) {
-  const tank = createTank(id, null, options);
-  try { assert.equal(geometryFingerprint(tank.root), expected, `${id}: original model must remain untouched`); }
-  finally { tank.dispose(); }
-}
+// 2026-10-01: two weapon relations moved with the owner's September rebuilds (fleetRenewalSpecs.ts, cdbfe54dc,
+// national-modernization-20261001.md). t62mv1_x carries the complete T-72B 1987 upper assembly "and matching 125 mm
+// weapon" (transplanted from t72b_1987_x). The t72b3m slot became the obr. 2022 on the T-90SM upper assembly, while
+// t72b3m_x, now the obr. 2016, keeps the payload it synchronized from that slot before the transplant: the t72b3
+// donor template's gun at the slot's authored 6.5 s reload (additionalFleetSpecs.ts make('t72b3', 't72b3m', ...)).
+assert.deepEqual(armament(TANK_SPECS.t72b3m.gun), armament(TANK_SPECS.t90sm_x.gun),
+  't72b3m: the obr. 2022 carries the T-90SM upper assembly gun');
+const weaponReference = (id, donorRow) => id === 't62mv1_x' ? TANK_SPECS.t72b_1987_x.gun
+  : id === 't72b3m_x' ? { ...donorSpec(TANK_SPECS, 't72b3').gun, reloadS: 6.5 } : donorRow.gun;
 for (const id of SECOND_WAVE_X_IDS) {
   const donor = SECOND_WAVE_X_DONORS[id], spec = TANK_SPECS[id], donorRow = donorSpec(TANK_SPECS, donor);
   assert.equal(ALL_TANK_IDS.filter(x=>x===id).length, 1, `${id}: distinct selectable identity`);
@@ -78,15 +57,15 @@ for (const id of SECOND_WAVE_X_IDS) {
   assert.ok(FLEET_GROUP_BY_ID[id].endsWith('X'));
   assert.equal(typeof PROCEDURAL_PROFILES[id].build, 'function');
   assert.notEqual(PROCEDURAL_PROFILES[id].build, PROCEDURAL_PROFILES[donor]?.build);
-  assert.deepEqual(armament(spec.gun), armament(donorRow.gun), `${id}: donor weapon payload retained`);
+  assert.deepEqual(armament(spec.gun), armament(weaponReference(id, donorRow)), `${id}: donor weapon payload retained`);
   assert.equal(spec.hp, donorRow.hp);
   assert.notEqual(spec.armor, donorRow.armor);
   for (const quality of ['high','low']) {
     const tank = createTank(id, null, {...options,quality});
     try {
       assert.ok(tank.root.getObjectByName('hull')?.geometry);
-      // A retired donor (t72b_1987, t72b3, jpz_e100) has no buildable original left to differ from.
-      if (original[donor]) assert.notEqual(geometryFingerprint(tank.root), original[donor], `${id}: original geometry cannot masquerade as new`);
+      if (!RETIRED_DONORS.has(donor)) assert.notEqual(geometryFingerprint(tank.root), donorFingerprint(donor, quality),
+        `${id}/${quality}: original geometry cannot masquerade as new`);
       const gear = tank.root.getObjectByName('rig_hull').userData.runningGearReceipts;
       assert.equal(gear.length, 1, `${id}/${quality}: one native closed track course`);
       tank.root.traverse(object => {
@@ -98,22 +77,22 @@ for (const id of SECOND_WAVE_X_IDS) {
 }
 assert.equal(TANK_SPECS.t62mv1.armor.hullPlates.some(p=>p.era), false,
   'original owner-renamed T-62 remains non-reactive');
-for(const owner of ['hullPlates','turretPlates']) {
-  const era = TANK_SPECS.t62mv1_x.armor[owner].filter(p=>p.era);
-  const prefix=owner==='hullPlates'?'glacis':'turret';
-  const expectedNames=[`${prefix}_era_L`,`${prefix}_era_R`];
-  assert.deepEqual([...new Set(era.map(p=>p.name))].sort(),expectedNames,
-    'exact two X-only reactive modules per owner, independent of generated skin tessellation');
-  // The measured native cover stock generates 54 hull / 36 turret triangles
-  // per named side. These are facets of two modules, not 108/72 new zones.
-  const facesPerSide=owner==='hullPlates'?54:36;
-  for(const name of expectedNames){
-    const faces=era.filter(p=>p.name===name);
-    assert.equal(faces.length,facesPerSide,`${name}: complete generated native cover faces`);
-    for(const p of faces){
-      assert.equal(p.kind,'era');assert.equal(p.physicalMm,15);
-      assert.deepEqual(p.era,{keReduction:.05,ceFlatMm:280},'explicit X-only first-generation gameplay convention');
-    }
+// 2026-10-01: the rebuilt T-62MV-1 (owner, 4c34b3e8b + cdbfe54dc) keeps its first-generation Kontakt glacis pair,
+// adds the two removable side fields of the rebuild and carries the transplanted T-72B 1987 turret's own reactive
+// modules. Zones are counted independently of the generated skin tessellation.
+{
+  const era = owner => TANK_SPECS.t62mv1_x.armor[owner].filter(p=>p.era);
+  const names = rows => [...new Set(rows.map(p=>p.name))].sort();
+  const hull = era('hullPlates');
+  assert.deepEqual(names(hull),['glacis_era_L','glacis_era_R','skirt_era_L','skirt_era_R'],
+    't62mv1_x: Kontakt glacis pair plus the two rebuilt side fields, no other hull ERA');
+  for(const name of names(hull)) assert.ok(hull.some(p=>p.name===name),`${name}: generated native cover faces`);
+  for(const p of hull){
+    assert.equal(p.kind,'era');assert.equal(p.physicalMm,15);
+    assert.deepEqual(p.era,{keReduction:.05,ceFlatMm:280},'explicit X-only first-generation gameplay convention');
   }
+  const signature = rows => rows.map(p=>[p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]);
+  assert.deepEqual(signature(era('turretPlates')),signature(TANK_SPECS.t72b_1987_x.armor.turretPlates.filter(p=>p.era)),
+    't62mv1_x: the transplanted T-72B 1987 upper assembly brings exactly its own reactive modules');
 }
-console.log(`sourceXSecondWave: ${Object.keys(original).length} originals preserved; ${SECOND_WAVE_X_IDS.length} independent draft IDs, native gear and combat metadata pass (not visual qualification)`);
+console.log(`sourceXSecondWave: ${donorFingerprints.size} live donor builds; ${SECOND_WAVE_X_IDS.length} independent draft IDs differ from their donors; native gear and combat metadata pass (not visual qualification)`);

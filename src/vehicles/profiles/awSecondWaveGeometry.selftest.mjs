@@ -4,6 +4,7 @@ import {censusEquipment,roofEquipmentVerdict} from '../../../tools/source-equipm
 import {createTank} from '../tankFactory.ts';import {getSpec} from '../specs.ts';
 import {measureTurretBarrelCircularity} from '../turretBarrelCircularity.ts';
 import {createTankState} from '../../sim/movement.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 // Independent source scalar witnesses; never import builder datums as targets.
 const SOURCES={
   t90_x:{yaw:[-.00094997882843,1.408079981803894,.115670447585103],gun:[-.0007899813354,1.726339995861054,1.271363670175725],
@@ -18,7 +19,6 @@ const SOURCES={
     left:[-1.81590002775,-.97714999318,-.12659997866,.72445000755,1.57635003328,2.42254996300],
     right:[-1.74285000563,-.90240001678,-.05049999041,.80055001006,1.65250003338,2.49795007706],era:8},
 };
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: actual ${a}, source ${b} ±${t}`);
 // Exercise the actual standard census and its unchanged MG rejection policy
 // without starting a renderer. Passing this source-construction test must not
 // turn the genuinely unarmed historical T90 carrier into a production pass.
@@ -139,7 +139,11 @@ function roofWeapon(t,id){
   }
   assert.ok(mg?.isMesh,`${id}: complete source weapon remains a real mesh`);
   // Compare identity without asking assert to inspect the entire cyclic scene on failure.
-  assert.ok(mg.parent.parent === t.root.getObjectByName('rig_turret'),`${id}: source weapon mount belongs to the turret`);
+  // 2026-09-30 (4c34b3e8b, owner's remote roof weapons): a converted roof gun pitches inside its remote station
+  // (rig_turret > station > auxiliaryWeaponPitch > weapon group); a manned mount still hangs on rig_turret directly.
+  const turretRig=t.root.getObjectByName('rig_turret'),station=mg.parent.parent?.parent;
+  const remoteMount=mg.parent.parent?.name==='auxiliaryWeaponPitch'&&station?.userData.remoteControlled&&station.parent===turretRig;
+  assert.ok(remoteMount||mg.parent.parent===turretRig,`${id}: source weapon mount belongs to the turret`);
   assert.equal(census.mg,1,`${id}: actual complete source weapon earns one census entry`);
   assert.equal(standardWeaponPass({census},id),true,`${id}: true weapon satisfies unchanged standard MG rule`);
   return mg;

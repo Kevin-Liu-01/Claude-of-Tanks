@@ -9,7 +9,9 @@ type Course = readonly [z: number, low: number, top: number];
 type Hem = readonly [z: number, low: number, outer: number];
 type Rail = readonly [low: number, high: number];
 type Emit = (points: readonly Point[], group: string) => void;
-export const SOVIET_AUX_IDS = ['t62mv1_x', 't72b_1987_x', 't80u_x', 't72b3_x',
+// 2026-10-01: t62mv1_x left with its source build (owner's rebuild on the
+// skirtless T-62 obr. 1975 chassis, 4c34b3e8b/cdbfe54dc).
+export const SOVIET_AUX_IDS = ['t72b_1987_x', 't80u_x', 't72b3_x',
   't72b3m_x', 't72bu_x', 't90_x', 't90a_burlak_x', 't90ms_x'] as const;
 
 function sub(a: Point, b: Point): Point { return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
@@ -50,14 +52,6 @@ function straightCourse(emit: Emit, side: number, x: number,
   for(let i=1;i<rows.length;i++) {
     const [a,al,at]=rows[i-1],[b,bl,bt]=rows[i];
     sideQuad(emit,side,[x,al,a],[x,at,a],[x,bl,b],[x,bt,b],group);
-  }
-}
-
-function t62(emit: Emit, side: number): void {
-  for(let i=0;i<10;i++) {
-    const a=-1.52442+i*.284,b=a+.281;
-    sideQuad(emit,side,[side*1.650,.492,a],[side*1.548,1.25229,a],
-      [side*1.650,.492,b],[side*1.548,1.25229,b],`t62-skirt-${side}-${i}`);
   }
 }
 
@@ -193,7 +187,7 @@ function msRearRails(emit: Emit, side: number): void {
 }
 
 const authors: Readonly<Record<string,(emit: Emit,side: number)=>void>>={
-  t62mv1_x:t62,t72b_1987_x:t72b1987,t80u_x:t80,t72b3_x:t72b3,t72b3m_x:t72b3m,
+  t72b_1987_x:t72b1987,t80u_x:t80,t72b3_x:t72b3,t72b3m_x:t72b3m,
   t72bu_x:t72bu,t90_x:t90aw,t90a_burlak_x:burlak,t90ms_x:msCurtains,
 };
 

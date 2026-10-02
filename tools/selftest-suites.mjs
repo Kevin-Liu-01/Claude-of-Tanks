@@ -2,11 +2,13 @@
 export const SELFTEST_SUITES = Object.freeze({
   pre: Object.freeze([
     // Group independent full-fleet builders to fill the four CPU slots before
-    // the 45-second FIFO drain. Every check stays in its original lifecycle.
+    // the 45-second FIFO drain. 2026-10-02: one fleet pass per build (fleetPass.test-support.mjs) hosts the
+    // ten former whole-fleet receipts' audits: HIGH (wheelQuality, surfaceMarkupFleet) and LOW (gunArticulation,
+    // eraGameplayRegistration) here, the default build in core; fleetLazy and fleetFloorClearance keep their own.
     'src/vehicles/fleetLazy.selftest.mjs',
-    'src/vehicles/wheelQuality.selftest.mjs',
+    'src/vehicles/fleetPassHigh.selftest.mjs',
     'tools/wheel-axial-extents.selftest.mjs',
-    'src/vehicles/eraGameplayRegistration.selftest.mjs',
+    'src/vehicles/fleetPassLow.selftest.mjs',
     // 2026-09-29: the three receipts of 0e5fc79e2 sit after the four whole-fleet CPU scans the receipt pins first (runner admission).
     'src/sim/modeConfiguration.selftest.mjs',
     'src/sim/sixModes.selftest.mjs',
@@ -134,6 +136,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/sealed-ledger-policy.selftest.mjs',
     'tools/muzzle-seat-policy.selftest.mjs',
     'tools/receipt-repin.selftest.mjs',
+    // the shared receipt kit (near, nearStrict, geometryHash) about 110 receipts import
+    'tools/receipt-kit.selftest.mjs',
     'tools/muzzle-bore-inventory.selftest.mjs',
     'tools/source-x-oracle.selftest.mjs',
     'src/vehicles/eraAuthoredFaces.selftest.mjs',
@@ -244,7 +248,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/sovietChevronEraFleet.selftest.mjs',
     'src/vehicles/profiles/t84OplotTurret.selftest.mjs',
     'src/vehicles/profiles/t64RunningGearTurretCenter.selftest.mjs',
-    'src/vehicles/profiles/t80UTurretGlacis.selftest.mjs',
     'src/vehicles/profiles/t80CastTurretFamily.selftest.mjs',
     'src/vehicles/profiles/t80MachineGunSeat.selftest.mjs',
     'src/vehicles/profiles/turretEraSurfaceSeating.selftest.mjs',
@@ -429,7 +432,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/merkavaAttachmentSeats.selftest.mjs',
     'src/vehicles/profiles/merkava4XRearHull.selftest.mjs',
     'src/vehicles/profiles/merkava4XEndReturns.selftest.mjs',
-    'src/vehicles/profiles/merkavaXEndReturnHistory.selftest.mjs',
     'src/vehicles/profiles/merkavaXShoulderReturns.selftest.mjs',
     'src/vehicles/profiles/merkava3dXFrontReturn.selftest.mjs',
     'src/vehicles/profiles/leopardSmokeFrame.selftest.mjs',
@@ -452,7 +454,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t72CamoCoverage.selftest.mjs',
     'src/vehicles/profiles/t72TrackFinish.selftest.mjs',
     'src/vehicles/profiles/t72MaterialLifetime.selftest.mjs',
-    'src/vehicles/profiles/t72B3MFrontAttachment.selftest.mjs',
     'src/vehicles/profiles/t72TurretCleanup.selftest.mjs',
     'src/vehicles/profiles/ztz99a2RearService.selftest.mjs',
     'src/vehicles/profiles/type99AAngularTurret.selftest.mjs',
@@ -470,14 +471,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/udes03Fidelity.selftest.mjs',
   ]),
   core: Object.freeze([
-    // Group independent full-fleet builders to fill the four CPU slots before
-    // the 45-second FIFO drain. Every check stays in its original lifecycle.
-    'src/gallery/surfaceMarkupFleet.selftest.mjs',
+    // Audits sharing identical default builds run once per tank; each keeps its assertions.
+    'src/vehicles/fleetPassDefault.selftest.mjs',
     'src/vehicles/fleetFloorClearance.selftest.mjs',
-    'src/vehicles/vehicleMarkings.selftest.mjs',
-    'src/vehicles/tankAssets.selftest.mjs',
-    'src/vehicles/combatAnatomy.selftest.mjs',
-    'src/vehicles/gunArticulation.selftest.mjs',
+    'src/vehicles/fleetPass.selftest.mjs',
+    'src/vehicles/fleetGeometryLedger.selftest.mjs',
+    'src/vehicles/auxiliaryRoofGuns.selftest.mjs',
+    // 2026-10-01: one fleet on every path (each facade alone, every saved spec digested).
+    'src/vehicles/fleetParity.selftest.mjs',
     'tools/media-production/pipeline.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'server/processShutdown.selftest.mjs',
@@ -804,6 +805,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/matchHost.selftest.mjs',
     'src/mp/host/worldCollision.selftest.mjs',
     'src/mp/host/hostRuleset.selftest.mjs',
+    // 2026-10-01: the host Worker carries specs, not vehicles; the roster's anatomy loads at boot.
+    'src/mp/host/hostFleet.selftest.mjs',
     'src/mp/presentation/battlePresentation.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
@@ -1233,9 +1236,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/marketing-shots/showcase-r2.selftest.mjs',
   ]),
   post: Object.freeze([
-    // Group independent full-fleet builders to fill the four CPU slots before
-    // the 45-second FIFO drain. Every check stays in its original lifecycle.
-    'src/vehicles/mudguardFenderSeating.selftest.mjs',
     'src/audio/lazyAudio.selftest.mjs',
     'src/vehicles/profiles/strv81TurretClosure.selftest.mjs',
     'src/vehicles/profiles/pt91mPendekarFidelity.selftest.mjs',

@@ -270,4 +270,3 @@ export function buildAft10X(P: TankBuilderPort): void {
     P.topY = 3.50 - frame.turret[1];
     P.hullG.userData.xRebuild = { candidate: 'aft10_x', independent: true, sourceLocalOnly: true };
 }
-export const AFT10_X_PROFILE = { aft10_x: { build: buildAft10X } };

@@ -288,14 +288,33 @@ exercise each case. The impact plan reduces deployment-note invalidation from
 roughly 500 checks to 161 on this revision; fresh environmental checks are additional.
 This is a dependency count, not a claim about elapsed time on a busy host.
 
-The wheel-quality, machine-gun attachment and track end-wrap inspections share one
-unbatched HIGH tank build per roster member: 594 constructions become 198 on this
-fleet. Their 41 original assertions remain, with a detached-mount negative control
-and the end-wrap audit's original broken-station controls and 3/5 mm limits. Both
-rosters are retained; the mount inspection keeps its authored camo seed, which
-does not move the running gear. The ERA depletion test
-keeps its independent LOW build because it mutates geometry. Source-shape guards,
-functional simulation tests and real visual checks still make different claims:
+**One fleet pass per build (2026-10-02).** The previous receipts repeatedly rebuilt the whole fleet. The integrated roster has 219 playable tanks. Three fleet passes now build each tank once
+per build and run every audit that reads that build on it (`src/vehicles/fleetPass.test-support.mjs`; the audits are
+the former receipts' checks, moved verbatim into `*Audit.test-support.mjs` modules beside them):
+
+- `fleetPassHigh` — the unbatched seed-4242 HIGH build: the geometry ledger's HIGH rows, machine-gun mounts (with the
+  detached-mount negative control), track end wraps (with the broken-station controls and 3/5 mm limits), wheel
+  quality and the Gallery surface markup (formerly `wheelQuality` and `surfaceMarkupFleet`).
+- `fleetPassLow` — the same build at LOW: the ledger's LOW rows, ERA registration and gun articulation (formerly
+  `gunArticulation` and `eraGameplayRegistration`).
+- `fleetPassDefault` — the factory default (seed 4000), the build the marking-seat and combat-anatomy generators
+  measure: combat anatomy, mudguard seating, vehicle markings and tank assets (formerly four receipts).
+
+The builds stay separate where the checks read different models: camo seeds move seeded stowage, the generated seats
+and calibrations are solved on the default seed, the ledger pins seed 4242, and `fleetFloorClearance` needs the static
+preview. `fleetLazy` keeps its own sweep through the demand-loaded facade in a child process. Every audit keeps all of
+its assertions and negative controls and reads the build as its receipt did: synchronous checks run back to back
+before the build's microtasks (kf51, kf51b and the PT-91M rewrite UVs or vertex colours in one), async checks after
+one microtask turn. An audit that poses the model restores it or is declared last; after every other audit the pass
+compares each node's parent, visibility and transform and every mesh's bytes, instances and materials with what the
+audit received, and fails the audit that left a difference. A failing audit stops receiving tanks while the others go
+on, its build is discarded, and the pass names every failed audit and tank. The integration strengthens the guard
+to include material colors, physical parameters, shader hooks, texture bindings/transforms and semantic metadata
+on every node and geometry, with cyclic-reference handling and negative controls. PR #9 reported lower fleet
+construction cost on its earlier roster; those timings are not a measurement of this 219-vehicle integration.
+
+Receipts share `tools/receipt-kit.test-support.mjs` (`near`, `nearStrict`, `geometryHash`) instead of defining their
+own copies. Source-shape guards, functional simulation tests and real visual checks still make different claims:
 a source regex does not prove a rendered result. The full gate inventory is not a
 substitute for the map/contact, shadow-motion and real Garage/battle review.
 
@@ -319,7 +338,36 @@ Build the private artifact:
 The private build retains local authoring and comparison resources required by
 internal workflows.
 
+### Frozen pins retired; generated ledgers (2026-10-01)
+
+The owner retired frozen-history receipts: a receipt no longer asserts that a past state stays byte-identical
+("original … remains", "the other N maps unchanged", a pinned digest of an old version) or replays historical source
+to reproduce one. Each such receipt was converted to the invariants it protected (contact, seating, closure, budgets,
+registration, determinism checked by a same-run rebuild, A/B against a live opt-out) or retired; the history-replay
+support went with it. Visual change detection lives in generated ledgers that one command re-pins:
+
+- `npm run tank:geometry:check` / `npm run tank:geometry:update` — `docs/references/fleet-geometry-ledger.json`, every
+  playable tank at HIGH and LOW (camo seed 4242, unbatched), digested per rig group (hull, turret, gun, running gear,
+  other). `npm test` verifies every row without a second fleet build: `fleetPassHigh.selftest` (HIGH) and
+  `fleetPassLow.selftest` (LOW) digest the models they already build for their other fleet audits, and
+  `fleetGeometryLedger.selftest` guards the roster, the wiring and the negative controls (digest and comparison live in
+  `tools/fleet-geometry-digest.mjs`).
+  After an intended geometry or material change, re-pin the moved rows
+  (`npm run tank:geometry:update -- --ids=<ids>`, or the whole fleet without `--ids`), review which tanks and groups
+  moved, and commit the ledger with the change.
+- `npm run fx:textures:bake` rewrites the committed particle atlases and `src/fx/particleAtlases.ledger.json`
+  (`COT_UPDATE_LEDGER=1 node src/fx/particleTextureAssets.selftest.mjs` rewrites the ledger from the committed PNGs).
+- `npm run tank:anatomy:update` and `tank:anatomy:check` keep the combat anatomy ledger as before.
+
+A new receipt asserts properties of the current build. When a change needs a reviewed before/after record, capture it
+(screenshots or a ledger diff) in the change itself rather than pinning bytes in a receipt.
+
 ### Re-basing frozen digests after an intended fleet-wide change (2026-09-22)
+
+2026-10-01: the whole-model digests this section was written for are retired (see "Frozen pins retired; generated
+ledgers" above); whole-tank change detection is the fleet geometry ledger's, re-pinned with
+`npm run tank:geometry:update`. The procedure below still applies to the literal pins that remain (committed asset
+checksums, pixel digests such as `src/world/leafDetail.selftest.mjs`).
 
 Many receipts freeze whole-model or material-inclusive digests of hulls (`tankFactoryStaging`, `sourceXFleet`,
 `sourceX*AuxArmor`, `equipmentDamage`, `wrecks`, the preservation ledgers…). They are change detectors: after an
@@ -395,9 +443,16 @@ Verify fleet ordering:
 
     npm run tank:family:check
 
-Verify the recorded geometry freeze:
+Verify the fleet geometry ledger (Node; `npm test` verifies the same rows inside the wheel-quality and
+gun-articulation sweeps):
 
-    npm run tank:freeze:check
+    npm run tank:geometry:check
+
+Re-pin it after an intended geometry change and review the diff:
+
+    npm run tank:geometry:update -- --ids=<ids>
+
+The browser-era `npm run tank:freeze:check` ledger (`docs/FLEET-FREEZE-CURRENT.json`) is no longer maintained.
 
 Run a targeted release check:
 

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Use the normal eager fleet entry point; a missing registration or fallback
 // cannot be papered over by installing the tested builders within this test.
@@ -28,11 +29,6 @@ const SOURCE = {
     wheels:[-1.93988,-.98038,-.02818,.87757,1.77558,2.70061],
     wheelYs:[.48649001121520996,.46959999203681946,.46959999203681946,.46959999203681946,.46959999203681946,.5290799736976624], rear:-4.0973 },
 };
-
-function near(value,target,tolerance,label) {
-  assert.ok(Number.isFinite(value)&&Math.abs(value-target)<=tolerance,
-    `${label}: actual ${value}, source ${target} ± ${tolerance}`);
-}
 
 function vertices(mesh) {
   const attribute=mesh.geometry.getAttribute('position');
@@ -139,20 +135,27 @@ function assertSourceEquipmentSections(tank,id) {
       near(lower?.point.y??NaN,low,.008,'SM: genuine curved empty-drum cradle lower web');
       near(ray(casing,.374,z),high,.008,'SM: separately curved bearing rail, not horizontal box');
     }
-    near(ray(mesh('turretDetail'),.425,-1.55),3.031,.045,'SM: folded rear hood slope, not full-height extrusion');
+    // 2026-09-30 (884384729, 4c34b3e8b): the owner's remote roof weapons made the SM RWS a yawing station.
+    // Its base, housing and folded hood moved out of the shared turretDetail bucket into the station's own
+    // yaw stock under rig_turret/modernSmRws; the measured surfaces themselves are unchanged (sub-mm), so the
+    // rays below read that stock and also prove it traverses with the station, not with the fixed roof.
+    const rws=mesh('modernSmRws'),rwsStock=mesh('modernSmRws_yaw_turretDetail');
+    assert.ok(rws&&rws.parent===mesh('rig_turret')&&rwsStock?.isMesh&&rwsStock.parent===rws,
+      'SM: RWS base, housing and hood are the remote station\'s own yaw stock on the turret');
+    near(ray(rwsStock,.425,-1.55),3.031,.045,'SM: folded rear hood slope, not full-height extrusion');
     near(ray(mesh('turretExternalArmor'),.52,2.03),1.957,.025,'SM: independent forward-facing cheek closure');
     near(ray(mesh('hull'),1.40,3.83),1.13420,.014,'SM: measured rounded guard crown station');
     assert.ok(!Number.isFinite(ray(mesh('hull'),1.60,3.90)),'SM: source taper leaves air outside the rounded mudguard tip');
     near(ray(mesh('hullOpenLattice'),-1.88,-2.218),1.01608,.012,'SM: outboard cage extremum belongs to short bracket foot only');
-    near(ray(mesh('turretDetail'),.554,-.80265),2.53193,.012,'SM: rounded RWS base, not full-height box end');
+    near(ray(rwsStock,.554,-.80265),2.53193,.012,'SM: rounded RWS base, not full-height box end');
     near(ray(mesh('turretCupola'),.70,.30),2.37103,.012,'SM: commander hatch uses measured forward-shifted seat');
     near(ray(mesh('turretDetail'),-.55403,.60),2.46374,.012,'SM: genuine narrow forward optic retainer');
     near(ray(mesh('turretDetail'),-1.69,.60),2.03170,.016,'SM: folded outer left body remains substantive armor support');
     near(ray(mesh('turretDetail'),1.69,.60),2.03885,.016,'SM: independent asymmetric right support crossfall');
     near(ray(mesh('gunMount'),0,1.9),2.20677,.006,'SM: genuine raised narrow cradle sight, not a flattened boot');
     near(ray(mesh('turretDetail'),-.9516,-.20),2.60081,.006,'SM: measured capped warning pedestal');
-    near(ray(mesh('turretDetail'),.33,-1.40),2.89323,.008,'SM: left RWS hood outer facet is independent from lower edge');
-    near(ray(mesh('turretDetail'),.35,-1.40),2.94025,.008,'SM: held-out supported hood lateral crossfall');
+    near(ray(rwsStock,.33,-1.40),2.89323,.008,'SM: left RWS hood outer facet is independent from lower edge');
+    near(ray(rwsStock,.35,-1.40),2.94025,.008,'SM: held-out supported hood lateral crossfall');
   }
 }
 

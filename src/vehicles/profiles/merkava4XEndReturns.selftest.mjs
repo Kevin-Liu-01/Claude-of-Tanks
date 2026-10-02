@@ -1,31 +1,22 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import {authenticateMerkavaEndReturnHistory} from './merkavaXEndReturnHistory.test-support.mjs';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import {registerProfiledBuilders,KIT} from '../tankFactoryCore.ts';
 import {buildMerkava4X} from './merkavaX.ts';
 import {createTankState} from '../../sim/movement.ts';
 import {getSpec} from '../specs.ts';
+import { geometryHash } from '../../../tools/receipt-kit.test-support.mjs';
 
 const ID='merkava4_x';
 const labels=new Set(['merkava4-x-front-side-return','merkava4-x-front-corner-return','merkava4-x-rear-side-return']);
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
-authenticateMerkavaEndReturnHistory(ID);
 const material=new T.MeshBasicMaterial({side:T.DoubleSide});
 const v=a=>new T.Vector3(...a);
 const hits=(meshes,p,d,far)=>new T.Raycaster(v(p),v(d),0,far).intersectObjects(meshes,false);
 const stats={builds:0,contacts:0,oldGapWitnesses:0,phases:0,instances:0,triangleTests:0,
   rejectedAabbs:0,containmentExclusions:0,capPlanePairs:0,gearMeshes:new Set(),stockTypes:new Set(),negativeControls:0};
 
-function geometryHash(g){
-  const h=crypto.createHash('sha256');
-  for(const name of Object.keys(g.attributes).sort()){
-    const a=g.attributes[name];h.update(name);h.update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
-  }
-  if(g.index)h.update(Buffer.from(g.index.array.buffer,g.index.array.byteOffset,g.index.array.byteLength));
-  return h.digest('hex');
-}
 function capture(quality,omit=false){
   const old=[],added=[],retained=[];
   registerProfiledBuilders({[ID]:P=>buildMerkava4X(new Proxy(P,{get(target,key){
@@ -297,4 +288,4 @@ assert.ok(stats.gearMeshes.has('gearTrackPadsSimplified'),'Actual far shoes incl
 assert.equal(stats.stockTypes.size,2,'Merged and instanced physical stock both included');
 material.dispose();
 console.log(JSON.stringify({pass:true,...stats,gearMeshes:[...stats.gearMeshes],stockTypes:[...stats.stockTypes],
-  limits:'Finite triangle/occupied-fold intersections at sampled actual poses, including compression/droop requests. Not an all-terrain or continuous-time certificate; source comparison is separately hash-pinned.'}));
+  limits:'Finite triangle/occupied-fold intersections at sampled actual poses, including compression/droop requests. Not an all-terrain or continuous-time certificate; pre-existing emits and native gear are compared live against the omit-build.'}));
