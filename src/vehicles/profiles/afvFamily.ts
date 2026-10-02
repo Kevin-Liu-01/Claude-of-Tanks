@@ -19,7 +19,6 @@ import {
   buildPuma,
   bradleyFlankDressing,
 } from '../modern3.ts';
-import { T72_PROFILES } from './t72.ts';
 import { T90_PROFILES } from './t90.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount } from './fittingMount.ts';
@@ -551,7 +550,7 @@ function buildBWP1Variant(P: AfvBuilderPort): void {
 // top 1.905: the collar's local -0.02..0.08 band buries 0.03 into the roof,
 // §B2 no-air at the ring seam). Seat rides the spec armor turretPivot.
 function addMarderCastTurret(P: AfvBuilderPort): void {
-  const { box, cylY, cylZ, lathe, xform, buildGun } = KIT;
+  const { box, cylY, cylZ, lathe, buildGun } = KIT;
   clearUpperStructure(P);
   // ---- LOW CAST ROUND-FRONTED turret (§5.269 rebuild: the tall two-tier
   // box is dead — one smooth casting, longer than wide, rounded front,
@@ -986,7 +985,7 @@ function addBmp3WaveBreakerRibs(P: AfvBuilderPort): void {
 }
 
 function buildBMP3(P: AfvBuilderPort): void {
-  const { box, cylX, cylY, cylZ, frustum, slab, lathe, sph, xform, torus,
+  const { box, cylX, cylY, cylZ, frustum, lathe, sph, xform, torus,
     buildGun, buildRunningGear, periscope, shovelTool, stowage } = KIT;
   const { rng } = P;
   // ---- hull core (print lines x0.9684): tub floor 0.29, deck 1.80-1.84,

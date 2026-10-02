@@ -91,21 +91,6 @@ function annularZ(outer: number, inner: number, depth: number, segments = 32): T
   return tubeY(outer, inner, depth, segments).rotateX(Math.PI / 2);
 }
 
-function curvedWallY(outer: number, inner: number, height: number,
-  start: number, end: number, segments: number): THREE.BufferGeometry {
-  const points: THREE.Vector2[] = [];
-  for (let i = 0; i <= segments; i++) {
-    const a = start + (end - start) * i / segments;
-    points.push(new THREE.Vector2(outer * Math.sin(a), -outer * Math.cos(a)));
-  }
-  for (let i = segments; i >= 0; i--) {
-    const a = start + (end - start) * i / segments;
-    points.push(new THREE.Vector2(inner * Math.sin(a), -inner * Math.cos(a)));
-  }
-  return new THREE.ExtrudeGeometry(new THREE.Shape(points), { depth: height, bevelEnabled: false,
-    steps: 1 }).rotateX(-Math.PI / 2).translate(0, -height / 2, 0);
-}
-
 /** Five separate walls and inset glazing: the mouth has actual empty depth. */
 function opticalHood(C: EquipmentContext, name: string, center: XYZ, size: XYZ,
   yaw = 0, owner: Owner = 'turret'): void {

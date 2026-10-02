@@ -1802,7 +1802,7 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- jerrycan rack (fuel tan / water green) ---------------------------------------
-  jerry({ rng, n = 2, water = true }) {
+  jerry({ n = 2, water = true }) {
     const parts: DecorPartList = [];
     const pairedCount = Math.max(2, Math.ceil(n / 2) * 2);
     for (let i = 0; i < pairedCount; i++) {
@@ -2729,7 +2729,7 @@ function expandTransformedBounds(
 }
 
 function collectSurfaceRecords(
-  group: THREE.Group,
+  _group: THREE.Group,
   targets: SurfaceMesh[],
   groupInverse: THREE.Matrix4,
 ): SurfaceIndexPreparation | null {
@@ -3561,7 +3561,7 @@ export function* attachTankDecorationsSteps(
     const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
     const E = (rx = 0, ry = 0, rz = 0) => new THREE.Euler(rx, ry, rz);
 
-    const placeHullRearDeck: SlotPlacer = (args, parts, name) => {
+    const placeHullRearDeck: SlotPlacer = (_args, parts, name) => {
       const bounds = partsBBox(parts);
       const depth = bounds.max.z - bounds.min.z;
       const centerX = parts.metaCx || 0.35;
@@ -3701,7 +3701,7 @@ export function* attachTankDecorationsSteps(
         disposePartList(parts);
         return false;
       },
-      glacisLow(args, parts, name) {
+      glacisLow(_args, parts, name) {
         for (const zf of [0.44, 0.48, 0.4]) {
           const z = L * zf;
           const h = deckProbe(0, z);
@@ -3825,14 +3825,14 @@ export function* attachTankDecorationsSteps(
         return commit(name, parts, 'hull', V(0, axisY - cY, h.p.z - (meta.clearY || 0.28) - 0.04), E(), placedHull,
           { seatY: axisY - cY, zExtra: 0.4 });
       },
-      hullRearLow(args, parts, name) {
+      hullRearLow(_args, parts, name) {
         const y = Math.max(H * 0.33, rearDeckY * 0.62);
         const h = hullP.zface(0, y, 1, sternZ - 1.4);
         if (!h) { disposePartList(parts); return false; }
         return commit(name, parts, 'hull', V(0, y, h.p.z - 0.16), E(0, 0, (rng() - 0.5) * 0.04), placedHull,
           { seatY: y, zExtra: 0.35 });
       },
-      hullRearHang(args, parts, name) {
+      hullRearHang(_args, parts, name) {
         const y = rearDeckY * 0.82;
         const h = hullP.zface(W * 0.26, y, 1, sternZ - 1.4);
         if (!h) { disposePartList(parts); return false; }
@@ -3840,14 +3840,14 @@ export function* attachTankDecorationsSteps(
         return commit(name, parts, 'hull', V(W * 0.26, y - (bb.max.y - bb.min.y), h.p.z - 0.09), E(), placedHull,
           { zExtra: 0.3 });
       },
-      hullRearCage(args, parts, name) {
+      hullRearCage(_args, parts, name) {
         const y = rearDeckY * 0.72;
         const h = hullP.zface(0, y, 1, sternZ - 1.4);
         if (!h) { disposePartList(parts); return false; }
         return commit(name, parts, 'hull', V(0, y, h.p.z - 0.28), E(0, Math.PI, 0), placedHull,
           { seatY: y - 0.25, zExtra: 0.45 });
       },
-      bowPair(args, parts, name) {
+      bowPair(_args, parts, name) {
         let ok = false;
         for (const s of [-1, 1]) {
           const cl = clonePartList(parts);
@@ -3865,7 +3865,7 @@ export function* attachTankDecorationsSteps(
         disposePartList(parts);
         return ok;
       },
-      bowChain(args, parts, name) {
+      bowChain(_args, parts, name) {
         const y = H * 0.3;
         const h = hullP.zface(-W * 0.28, y, -1, L / 2 + 1.6);
         if (!h) { disposePartList(parts); return false; }
@@ -3934,7 +3934,7 @@ export function* attachTankDecorationsSteps(
         disposePartList(parts);
         return false;
       },
-      turretRearFrame(args, parts, name) {
+      turretRearFrame(_args, parts, name) {
         // basket bolts to the bustle rear face (open face +Z toward the turret)
         const meta = parts.meta || {};
         for (const yf of [0.3, 0.45, 0.2]) {
@@ -3986,7 +3986,7 @@ export function* attachTankDecorationsSteps(
         disposePartList(parts);
         return false;
       },
-      turretCheekPair(args, parts, name) {
+      turretCheekPair(_args, parts, name) {
         let ok = false;
         for (const s of [-1, 1]) {
           const cl = clonePartList(parts);

@@ -441,7 +441,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
     _grainTiles.set(key, cnv);
     return cnv;
   }
-  function applyGrain(ctx: MaterialCanvasContext, S: number, seed: number, amp: number): void {
+  function applyGrain(ctx: MaterialCanvasContext, S: number, _seed: number, amp: number): void {
     // `seed` is intentionally unused now — see grainTile note above.
     const prevOp = ctx.globalCompositeOperation;
     ctx.globalCompositeOperation = 'hard-light';

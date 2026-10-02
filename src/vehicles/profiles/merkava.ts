@@ -99,109 +99,6 @@ interface GearEndpoint {
   readonly r: number;
 }
 
-interface MerkavaKeel {
-  readonly toeZ: number;
-  readonly toeY: number;
-  readonly toeHW: number;
-  readonly midZ: number;
-  readonly midY: number;
-  readonly groundZ: number;
-  readonly bellyY: number;
-  readonly tailLowZ: number;
-  readonly hwClamp?: number;
-  readonly bellySideY?: number;
-  readonly bellyMidY?: number;
-  readonly bellyMidX?: number;
-}
-
-interface RectSpan {
-  readonly x?: number;
-  readonly y?: number;
-  readonly z?: number;
-  readonly x0?: number;
-  readonly x1?: number;
-  readonly z0: number;
-  readonly z1: number;
-  readonly top?: number;
-  readonly bot?: number;
-  readonly base?: number;
-  readonly hw?: number;
-  readonly w?: number;
-  readonly h?: number;
-  readonly d?: number;
-}
-
-interface FenderDrops {
-  readonly x?: number | readonly [number, number];
-  readonly z: readonly number[];
-  readonly bot: number;
-  readonly mat?: string;
-}
-
-interface FenderPlank {
-  readonly x0: number;
-  readonly x1: number;
-  readonly z0: number | readonly [number, number];
-  readonly z1: number | readonly [number, number];
-  readonly y: number;
-  readonly drops?: FenderDrops;
-}
-
-interface FenderLip {
-  readonly x: number;
-  readonly w: number;
-  readonly z0: number;
-  readonly z1: number;
-  readonly y: number;
-}
-
-interface FenderHorn {
-  readonly x0: number;
-  readonly x1: number;
-  readonly z0: number;
-  readonly z1: number;
-  readonly top: number;
-  readonly bot: number;
-}
-
-interface MerkavaSkirt extends RectSpan {
-  readonly top: number;
-  readonly bot: number;
-  readonly x?: number;
-  readonly scallop?: boolean;
-  readonly flaps?: boolean;
-  readonly idlerFlapY?: number;
-  readonly plain?: boolean;
-  readonly backH?: number;
-  readonly backZ0?: number;
-  readonly lipFill?: boolean;
-  readonly cutHem?: boolean;
-  readonly archH?: number;
-  readonly archW?: number;
-  readonly flatW?: number;
-  readonly lobeBot?: number;
-  readonly lobeIn?: number;
-  readonly lintelBot?: number;
-  readonly lintelJit?: readonly number[];
-  readonly round?: boolean;
-  readonly soft?: boolean;
-  readonly wallClamp?: readonly [number, number];
-  readonly fillerClamp?: readonly [number, number];
-  readonly runFiller?: boolean;
-  readonly fillerTop?: number;
-  readonly lowCurtain?: number;
-  readonly wavy?: boolean;
-  readonly flush?: number;
-}
-
-interface MerkavaTailRack extends RectSpan {
-  readonly top: number;
-  readonly bot: number;
-  readonly hw: number;
-  readonly x0: number;
-  readonly wings?: readonly RectSpan[];
-}
-
 interface MerkavaTailRackWing {
   readonly x0: number;
   readonly x1: number;
@@ -251,17 +148,6 @@ function isMerkavaTailRackConfig(value: object): value is MerkavaTailRackConfig 
 function requireMerkavaTailRackConfig(value: object): MerkavaTailRackConfig {
   if (!isMerkavaTailRackConfig(value)) throw new TypeError('Merkava tail-rack profile is incomplete');
   return value;
-}
-
-interface MerkavaGlacisClosure {
-  readonly z0: number;
-  readonly z1: number;
-  readonly lower0: number;
-  readonly lower1: number;
-  readonly upper0: number;
-  readonly upper1: number;
-  readonly hw0: number;
-  readonly hw1: number;
 }
 
 type MerkavaChassisConfig = MerkavaProfileData;
@@ -5613,7 +5499,7 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
 function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
   const { box, cylY, polyTurret, frustum, xform } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
-  const hwM = t.hwMax, gy = t.apexY;
+  const hwM = t.hwMax;
   const rf = t.roof; // [[z,y]] roof DECK line front->rear (local)
   const roofF = rf[0][0], h = rf[0][1];
   const rw = t.rearWide ?? 0.94;
@@ -6280,7 +6166,6 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
               // APERTURES (background prints through the taper corner). Excess-
               // coverage reduction only — every certified extreme keeps a carrier.
               const merkavaModularTurretTurretCourse13 = (): void => {
-                const bT = tv.bot + 0.285; // frame line ~2.185 (ref chain-mat class)
                 // LOW SILL ONLY (second cut: the solid 0.285 band still walled the
                 // through-view — the ref ortho shows AIR from ~1.99 up to its rim
                 // with only chain lines between): a thin hem sill carries every
@@ -6425,7 +6310,6 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
               // certified falling line + side-face X members; the upper wedge is
               // REAL AIR (rays exit the taper into background over the hull rack).
               const merkavaModularTurretTurretCourse14 = (): void => {
-                const bT = tv.bot + 0.285;
                 P.add(vaneMat, slab( // low hem sill zM -> zW (bots + plan fill only)
                   [vx - hwM2, tv.bot + 0.01, zM], [vx + hwM2, tv.bot + 0.01, zM], [vx + hwW, tv.bot + 0.018, zW], [vx - hwW, tv.bot + 0.018, zW],
                   [vx - hwM2, tv.bot + 0.085, zM], [vx + hwM2, tv.bot + 0.085, zM], [vx + hwW, tv.bot + 0.078, zW], [vx - hwW, tv.bot + 0.078, zW]));
@@ -6474,7 +6358,6 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
               // the least-dipped lobe holds the line) and the corner air runs
               // clean under them.
               const merkavaModularTurretAssemblyCourse4 = (): void => {
-                const bT2 = tv.bot + 0.285;
                 P.add(vaneMat, slab( // low hem sill zW -> tail
                   [vx - hwW, tv.bot + 0.018, zW], [vx + hwW, tv.bot + 0.018, zW], [vx + hwR, tv.bot + 0.02, tv.z1], [vx - hwR, tv.bot + 0.02, tv.z1],
                   [vx - hwW, tv.bot + 0.078, zW], [vx + hwW, tv.bot + 0.078, zW], [vx + hwR, tv.bot + 0.072, tv.z1], [vx - hwR, tv.bot + 0.072, tv.z1]));
@@ -8112,11 +7995,6 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
           };
           buildMerkavaMarkAssemblyCourse4();
         }
-        const rehook = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
-          m.onBeforeCompile = vehicleAmbientFloorHook;
-          m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-          return m;
-        };
         // (owner 2026-09-22 running-gear finish: road-wheel faces and end-wheel bodies keep the hull's one scheme wheel
         // paint; the darkDish/darkDrum clones left.)
         // r4 "mute the track teeth tone": the near-black band/teeth pixels read
@@ -8312,7 +8190,7 @@ function merkavaCheekPoint(t: MerkavaTurretConfig, f: number, spread = 0.78): Ve
 // ON the sloped shell walls with seam strips + launcher wedge + radar face.
 function merkavaSidePanels(
   P: TankBuilderPort,
-  p: MerkavaProfileData,
+  _p: MerkavaProfileData,
   t: MerkavaTurretConfig,
   opts: { readonly radar?: boolean } = {},
 ): void {
@@ -9672,7 +9550,7 @@ function merkavaSourceGunCradle(
 function merkavaSourceFinish(
   P: TankBuilderPort,
   p: MerkavaProfileData,
-  t: MerkavaTurretConfig,
+  _t: MerkavaTurretConfig,
 ): void {
   const id = P.spec.id;
   if (!['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b'].includes(id)) return;
@@ -10750,7 +10628,7 @@ function merkava4Kit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurret
   KIT.tarpRoll(P, 'turretCloth', -0.28, t.roof.at(-1)![1] - 0.07, t.roof.at(-1)![0] + 0.25, 0.85, 0.105);
 }
 
-function merkava4bKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurretConfig): void {
+function merkava4bKit(P: TankBuilderPort, p: MerkavaProfileData, _t: MerkavaTurretConfig): void {
   // Mk.4B-specific structure only. Roof weapons, smoke and optics are owned
   // by `addFourthGenRoof`/the source-finish pass below; keeping duplicates in
   // both places produced five MGs and three overlapping smoke banks.
@@ -10758,7 +10636,7 @@ function merkava4bKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurre
 }
 
 // Mk.2D cheek appliqué wedges riding the cast beak planes.
-function merkava2dKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurretConfig): void {
+function merkava2dKit(P: TankBuilderPort, _p: MerkavaProfileData, t: MerkavaTurretConfig): void {
   const { box } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const sf = t.shoulderZ;
@@ -11012,7 +10890,7 @@ function merkava1bKit(P: TankBuilderPort, p: MerkavaProfileData, t: MerkavaTurre
 // the dims heightM read.
 function merkava3Kit(
   P: TankBuilderPort,
-  p: MerkavaProfileData,
+  _p: MerkavaProfileData,
   t: MerkavaTurretConfig,
   opts: Merkava3KitOptions = {},
 ): void {
