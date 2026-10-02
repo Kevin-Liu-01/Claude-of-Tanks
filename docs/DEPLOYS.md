@@ -3,8 +3,9 @@
 Production is `https://cot.kevinliu.studio` (Vercel project `kl01s-projects/claude-of-tanks`).
 Deploys are manual, from the detached gate checkout after its gate is green, with the Vercel
 CLI: `vercel pull --yes --environment=production` → `vercel build --prod` →
-`node tools/vercel-output-immutable.mjs` (per-file immutable cache routes for the hashed files
-that exist in the build output — a prefix rule cached 404s, deploys 89–92) → `vercel deploy --prebuilt --prod`. There is no CI deploy: the GitHub deploy workflow was
+`node tools/vercel-output-immutable.mjs` (per-file cache routes for the files that exist in the
+build output: immutable for hashed assets and collision manifests, one hour for runtime media —
+a prefix rule cached 404s, deploys 89–92) → `vercel deploy --prebuilt --prod`. There is no CI deploy: the GitHub deploy workflow was
 removed on 2026-09-14 (its last run had failed on an invalid `VERCEL_TOKEN` secret), and the
 owner's standing rule is that nothing deploys without a green gate and a person running it.
 
