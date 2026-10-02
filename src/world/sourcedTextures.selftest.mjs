@@ -192,6 +192,11 @@ const newMapPalettes = {
   saltwind: ['coastal', 'coastal'],
   reservoir: ['frontier', 'frontier'],
   mars: ['badlands', 'badlands'], // 2026-09-19: Olympus Basin — rust regolith and dust-toned station huts
+  // 2026-10-01 (terrain lane, the gate's map-policy cluster): the two maps registered after Mars route deliberately too —
+  // Earthrise Basin's grey regolith is its own TERRAIN_PLAN row with frost-toned station huts, Aegis Crossing is
+  // pastoral Verdant ground with its own-id (legacy) building route
+  moon: ['moon', 'winter'],
+  cliffbridge: ['verdant', null],
 };
 assert.deepEqual(Object.keys(newMapPalettes), MAP_IDS.slice(16),
   'every battlefield after the legacy sixteen explicitly routes its sourced palettes');

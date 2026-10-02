@@ -10,8 +10,8 @@ import {getSpec} from '../specs.ts';
 import {createTankState} from '../../sim/movement.ts';
 import {enlargeArieteXFamily} from './arieteXFamilyScale.ts';
 import {capturePrimaryHull,assertC2PrimaryHullDelta,assertC2ReceivingClearance} from './arieteC2Receiving.test-support.mjs';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-const near=(a,b,e,label)=>assert(Number.isFinite(a)&&Math.abs(a-b)<=e,`${label}: ${a} != ${b} ±${e}`);
 const hash=a=>createHash('sha256').update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength)).digest('hex');
 function stock(root){
   const list=[];

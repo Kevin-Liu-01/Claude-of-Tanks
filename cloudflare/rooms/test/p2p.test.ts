@@ -4,7 +4,9 @@
  * the rtc:// URL, the per-match host secret (only on the host's own copies),
  * the signaling relay and its refusals, the host's reports, host migration on
  * a dropped socket (across an eviction), a leave and a decline, silence past
- * the report budget, the old host back as a peer, and the lost end.
+ * the report budget, the old host back as a peer, and the lost end. With no
+ * relay secret (this configuration, 2026-10-02 §13.14) a seat's relay request
+ * is answered with STUN alone — no provider call, no error to the joiner.
  */
 import { env, exports } from 'cloudflare:workers';
 import { evictDurableObject, reset, runDurableObjectAlarm, runInDurableObject } from 'cloudflare:test';
@@ -18,7 +20,7 @@ import {
 } from '../../../src/mp/room/protocol.ts';
 import type { RoomHostChangedPayload, RoomMatchStartPayload, RoomSnapshot } from '../../../src/mp/room/protocol.ts';
 import { verifySeatToken } from '../../../server/match/seatToken.ts';
-import { Client, closeClients, connect, create, identity, origin, token } from './client.ts';
+import { Client, closeClients, connect, create, identity, origin, startedRoom, token } from './client.ts';
 
 const derivedSecret = (matchId: string): string => createHash('sha256').update(`${env.MATCH_SEAT_SECRET}:${matchId}`).digest('hex');
 const room = (client: Client): RoomSnapshot => client.last('room_state')!.payload.room as RoomSnapshot;
@@ -43,27 +45,6 @@ async function alarmAfter(code: string, ms: number): Promise<boolean> {
   vi.setSystemTime(Date.now() + ms + 1);
   try { return await runDurableObjectAlarm(env.ROOMS.getByName(code)); }
   finally { vi.useRealTimers(); }
-}
-
-/**
- * Admin + guest (commanders, plus a third commander on request) + a spectator, everyone ready, the admin starts;
- * returns the sockets and the match id.
- */
-async function startedRoom(code: string, { adminDeclines = false, third = false } = {}): Promise<{ admin: Client; guest: Client; third: Client | null; watcher: Client; matchId: string }> {
-  const admin = await create(code);
-  const guest = await connect(code, `${code}-guest`);
-  expect((await guest.request('room_join', identity('guest', token('c'), token('d')))).type).toBe('room_joined');
-  const thirdClient = third ? await connect(code, `${code}-third`) : null;
-  if (thirdClient) expect((await thirdClient.request('room_join', identity('third', token('1'), token('2')))).type).toBe('room_joined');
-  const watcher = await connect(code, `${code}-watcher`);
-  expect((await watcher.request('room_join', identity('watcher', token('e'), token('f'), { team: 'spectator' }))).type).toBe('room_joined');
-  if (adminDeclines) expect((await admin.command({ type: 'host_decline', declined: true })).type).toBe('room_ack');
-  for (const client of [admin, guest, thirdClient]) if (client) expect((await client.command({ type: 'set_ready', ready: true })).type).toBe('room_ack');
-  const ack = await admin.command({ type: 'start' });
-  expect(ack.type).toBe('room_ack');
-  const matchId = ack.payload.matchId as string;
-  for (const client of [admin, guest, thirdClient, watcher]) if (client) await client.next((message) => message.type === 'match_start');
-  return { admin, guest, third: thirdClient, watcher, matchId };
 }
 
 afterEach(async () => {
@@ -510,5 +491,23 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
     expect(stored.steppedDown).toEqual([]);
     // the admin's seat, disconnected, is kept for its lease from the match's end
     expect(stored.seatLeases!.admin).toBe(stored.room!.match!.endedAt! + ROOM_SEAT_DISCONNECT_TTL_MS);
+  });
+
+  it('answers a seat\'s relay request with STUN alone while no relay secret is set: no provider call, no error, the link and the room carry on (§13.14)', async () => {
+    const fetches: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => { fetches.push(String(input)); throw new Error('no provider call without a secret'); });
+    const warnings: string[] = [];
+    vi.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => { warnings.push(args.map(String).join(' ')); });
+    const { admin, guest, watcher } = await startedRoom('ROOM24');
+    for (const client of [guest, admin, watcher]) {
+      const answer = await client.request('room_relay');
+      expect(answer.type).toBe('room_relay');
+      expect(answer.payload).toEqual({ iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }], relay: false });
+    }
+    expect(fetches).toEqual([]);
+    expect(warnings.filter((line) => line.includes('cot-relay')), 'an unset secret is the configured STUN-only room, not a fault').toEqual([]);
+    // the signaling relay is untouched: the peer's offer still reaches the host
+    expect((await guest.request('room_signal', { to: 'admin', generation: 1, kind: 'offer', sdp: 'v=0 stun-only' })).payload).toEqual({ relayed: true });
+    expect((await admin.next((message) => message.type === 'room_signal')).payload.sdp).toBe('v=0 stun-only');
   });
 });

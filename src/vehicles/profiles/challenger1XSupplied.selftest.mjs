@@ -7,6 +7,7 @@ import {addChallenger1SuppliedHull} from './challenger1XSuppliedHull.ts';
 import {addChallenger1SuppliedTurret} from './challenger1XSuppliedTurret.ts';
 import {addChallenger1SuppliedGun} from './challenger1XSuppliedGun.ts';
 import {auditTankWheelQuality} from '../wheelQuality.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Independent source-registration scalars. Do not derive these assertions
 // from the current builder or a generated candidate calibration.
@@ -16,7 +17,6 @@ const source={yaw:point(-.059055,61.2204705,-26.7519695),gun:point(-.669291,73.4
  muzzle:point(0,0,216.220474)[2],floor:point(0,0,211.141739)[2],
  roadZ:[-128.602360,-88.897641,-55.334647,-15.393701,17.972440,53.405514].map(z=>point(0,0,z)[2]),
  rollerZ:[-108.622044,-35.039370,37.637797].map(z=>point(0,0,z)[2])};
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b} ±${t}`);
 function hit(meshes,p,d,far=10){return new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(meshes,false)[0];}
 function signedVolume(g){
  const p=g.attributes.position,idx=g.index;let volume=0;

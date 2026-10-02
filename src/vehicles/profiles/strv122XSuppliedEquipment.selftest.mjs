@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-const near=(a,b,e,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=e,
-  `${label}: ${a} vs independently measured ${b} ±${e}`);
 const hit=(meshes,p,d,far=10)=>new T.Raycaster(new T.Vector3(...p),
   new T.Vector3(...d),0,far).intersectObjects(meshes,false)[0];
 

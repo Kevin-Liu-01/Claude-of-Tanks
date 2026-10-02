@@ -7,14 +7,13 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildChieftainMk10X, CHIEFTAIN10_X_DATUMS } from './chieftain10X.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const hash = x => createHash('sha256').update(x).digest('hex');
 const stable = v => Array.isArray(v) ? v.map(stable) : v && typeof v === 'object'
   ? Object.fromEntries(Object.keys(v).sort().map(k => [k, stable(v[k])])) : v;
 const semantic = v => hash(JSON.stringify(stable(v)));
 const point = xyz => new THREE.Vector3(...xyz);
-const near = (a, b, e, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b) <= e,
-  `${label}: ${a} vs ${b} ±${e}`);
 
 // Frozen pre-foundation scene/emission/metadata digests are retired: whole-tank change detection of chieftain5_x and
 // chieftain_mk10_x is the fleet geometry ledger's. This receipt keeps the live contracts: the geometry-only consumer

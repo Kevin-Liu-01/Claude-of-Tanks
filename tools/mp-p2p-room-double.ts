@@ -22,6 +22,9 @@
  *     Durable Object's hibernation auto-response does (P1b); `room_ping` envelopes stay answered;
  *   - `room_state` broadcasts are throttled to one per ROOM_STATE_COALESCE_MS with a trailing broadcast carrying the
  *     newest revision (P1b), joins, leaves, disconnects, phase changes and elections at once — the actor's rule;
+ *   - `room_relay` (2026-10-02, §13.14): a seated player holding a seat token of the running match receives the double's
+ *     `relayGrant` (no server unless a proof names one) — the room's own windows and its provider are the actor's and
+ *     the Worker's receipts; anything else is refused with the actor's codes (`not_in_room`, `relay_phase`);
  *   - the lifecycle rules of 2026-09-30 (docs/MULTIPLAYER-V2.md §13.11): a running host's decline with `unable` and
  *     nobody left ends the match at once; a disconnected seat is reaped after `seatTtlMs` (ROOM_SEAT_DISCONNECT_TTL_MS)
  *     while no match runs, its lease restarting at a match's end; an admin absent past the grace with nobody to migrate
@@ -39,7 +42,7 @@ import {
   RoomError, cleanId, isRecord, isRoomTeam, normalizeRoomChat, p2pMatchUrl, parseRoomEnvelope, parseRoomRoute, publicRoomError,
   readRoomMatchReport, readRoomSignalPayload, utf8ByteLength,
 } from '../src/mp/room/protocol.ts';
-import type { RoomChatEntry, RoomCreateSettings, RoomEnvelope, RoomHostInfo, RoomMatchStartPayload, RoomSnapshot, RoomTeam } from '../src/mp/room/protocol.ts';
+import type { RoomChatEntry, RoomCreateSettings, RoomEnvelope, RoomHostInfo, RoomMatchStartPayload, RoomRelayPayload, RoomSnapshot, RoomTeam } from '../src/mp/room/protocol.ts';
 import {
   abortStart, applyRoomCommand, createRoom, finishMatch, joinRoom, markMatchPlaying, migrateAdminIfAbsent, planStart, recordMatch, removePlayer,
   serializeRoom, setPlayerConnected,
@@ -99,6 +102,8 @@ export interface P2pRoomDoubleOptions {
   /** A hook the proofs observe (elections, relays, reports). */
   onEvent?: (event: { kind: string; room: string; [key: string]: unknown }) => void;
   now?: () => number;
+  /** What a seat's `room_relay` is answered with (§13.14); no server by default (the scripted link needs none). */
+  relayGrant?: RoomRelayPayload;
 }
 
 export interface P2pRoomDouble {
@@ -109,7 +114,7 @@ export interface P2pRoomDouble {
   close(): Promise<void>;
 }
 
-export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSecret, hostGraceMs = ROOM_HOST_DISCONNECT_GRACE_MS, reportStaleMs = ROOM_MATCH_REPORT_STALE_AFTER_MS, seatTtlMs = ROOM_SEAT_DISCONNECT_TTL_MS, onEvent = () => {}, now = () => Date.now() }: P2pRoomDoubleOptions): Promise<P2pRoomDouble> {
+export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSecret, hostGraceMs = ROOM_HOST_DISCONNECT_GRACE_MS, reportStaleMs = ROOM_MATCH_REPORT_STALE_AFTER_MS, seatTtlMs = ROOM_SEAT_DISCONNECT_TTL_MS, onEvent = () => {}, now = () => Date.now(), relayGrant = { iceServers: [], relay: false } }: P2pRoomDoubleOptions): Promise<P2pRoomDouble> {
   if (typeof seatSecret !== 'string' || seatSecret.length < 16) throw new TypeError('seatSecret must be at least 16 characters');
   const rooms = new Map<string, RoomState>();
   const sockets = new Map<string, { socket: WebSocket; code: string; playerId: string | null }>();
@@ -490,6 +495,16 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
           reply('room_ack', { revision: room.room!.revision });
           // a kick is a leave (instant); every other command's change is coalescable (P1b)
           broadcastState(room, kicked !== null);
+          return;
+        }
+        case 'room_relay': {
+          // §13.14's admission, as the actor runs it: a seat (not_in_room) holding a token of the running match (relay_phase)
+          const playerId = requirePlayer(entry, room);
+          if (!requestId) throw new RoomError('invalid_payload');
+          const token = room.seats.get(playerId)?.token;
+          if (!matchLive(room) || !room.host.hostId || !token || token.matchId !== room.room!.match!.id) throw new RoomError('relay_phase');
+          emit('relay', room.code, { playerId });
+          reply('room_relay', { ...relayGrant, iceServers: relayGrant.iceServers.map((server) => ({ ...server })) });
           return;
         }
         default:

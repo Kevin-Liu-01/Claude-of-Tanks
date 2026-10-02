@@ -9,6 +9,7 @@ import {registerProfiledBuilders} from '../tankFactoryCore.ts';
 import {buildChallenger1X as photoDraft} from './challenger1XPhotoDraft.ts';
 import {buildChallenger1X as supplied} from './challenger1X.ts';
 import {TANK_SPECS} from '../specs.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 // Historical photo fittings only; never current supplied-file acceptance.
 function createTank(...args) {
  const armor=TANK_SPECS.challenger1_x.armor;
@@ -20,7 +21,6 @@ function createTank(...args) {
  finally{armor.turretPivot=saved.turret;armor.gunPivot=saved.gun;registerProfiledBuilders({challenger1_x:supplied});}
 }
 
-const near=(a,b,e,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=e,`${label}: ${a} vs ${b}`);
 for(const quality of ['high','low']) {
  const tank=createTank('challenger1_x',null,{quality,geometryReceipt:true,batchStatic:false,proceduralOnly:true});
  try {

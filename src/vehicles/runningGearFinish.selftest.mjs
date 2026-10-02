@@ -2,7 +2,7 @@
 // bright or just dont look good and make a better wheel system"). Pins the one finish table
 // (runningGearFinish.ts), the normaliser that re-seats every painted running-gear face onto the hull's one
 // scheme wheel paint (appearanceAudit.ts) and the release audit that enforces the table (wheelQuality.ts) on a
-// sample of hulls at HIGH and LOW — the fleet-wide run is wheelQuality.selftest.mjs.
+// sample of hulls at HIGH and LOW — the fleet-wide run is the wheel-quality audit of fleetPassHigh.selftest.mjs.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {

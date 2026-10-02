@@ -2,11 +2,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { addT90SMFrontEra } from './t90SMXFrontEra.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-function near(actual, expected, tolerance, label) {
-  assert.ok(Number.isFinite(actual) && Math.abs(actual - expected) <= tolerance,
-    `${label}: ${actual} vs source ${expected} ±${tolerance}`);
-}
 function ray(root, origin, direction, far = 12) {
   return new THREE.Raycaster(new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, far)
     .intersectObject(root, true).find(hit => {

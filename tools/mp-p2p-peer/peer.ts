@@ -2,8 +2,8 @@
  * The peer harness (P3 certification lane, 2026-09-28; docs/MULTIPLAYER-V2.md §13.8): one seat of a peer-to-peer
  * match with no renderer, in a real Chrome tab — the real RoomClient, MatchSession and MatchClient
  * (`createHeadlessSession`), the browser host runtime with the actor's Worker chunk and the collision manifest under
- * /mp-collision when the room elects this seat, the browser's own RTCPeerConnection (real WebRTC; ICE from the runner:
- * host candidates only, STUN + TURN, or relay only), scripted driving, prediction against the manifest world, and every
+ * /mp-collision when the room elects this seat, the browser's own RTCPeerConnection (real WebRTC; ICE: host candidates
+ * only, or the room's own relay grant — STUN + TURN, or relay only), scripted driving, prediction against the manifest world, and every
  * fact the soak reads on `window.__peer`: status, the own pose, the last snapshot tick, the clock offset, bytes in and
  * out per data channel (getStats), channel state, the room socket's message counts by type, the migration timeline.
  * Served by the dev-only middleware of vite.config.ts at /mp-p2p-peer/ (tools/mp-p2p-soak.mjs opens one tab per seat);
@@ -11,9 +11,11 @@
  *
  *   /mp-p2p-peer/?rooms=ws://127.0.0.1:8791&id=p3&name=Three&index=2&host=1&ice=relay&predict=1&countdown=3
  *
- * The runner injects the ICE servers before the page runs (`window.__peerIce = { iceServers, relayOnly }`): the
- * credential never rides the URL, the log or the report. Every seat resolves ICE per connection (the transport's rule),
- * so the runner may replace `window.__peerIce` mid-run to model a credential renewal.
+ * ICE (2026-10-02, docs/MULTIPLAYER-V2.md §13.14): `ice=all|relay` resolves every connection through the room this seat
+ * holds, as the game does (`createRoomIceResolver` over `room_relay`: the room mints the relay credentials for its seated
+ * players), so the room service under test must hold the relay secrets (`wrangler dev` with them in its `.dev.vars`, or
+ * the LAN helper with them in its environment); `relay` additionally restricts the connection to TURN. The credential
+ * never rides the URL, the log, the status or the report — only counts do.
  */
 import { createHeadlessSession, scriptedControls } from '../../src/mp/session/headlessSession.ts';
 import type { HeadlessSession } from '../../src/mp/session/headlessSession.ts';
@@ -25,7 +27,9 @@ import { getSpec } from '../../src/vehicles/specs.ts';
 import { dequantizePosition } from '../../src/mp/wire/quantize.ts';
 import type { MatchFrame, PredictionProvider } from '../../src/mp/match/matchClient.ts';
 import type { MatchClient } from '../../src/mp/match/matchClient.ts';
-import type { RtcIceConfig, RtcIceServerLike, RtcPeerConnectionLike } from '../../src/mp/transport/webRtcTransport.ts';
+import type { RtcIceConfig, RtcPeerConnectionLike } from '../../src/mp/transport/webRtcTransport.ts';
+import { createRoomIceResolver } from '../../src/mp/transport/iceConfig.ts';
+import type { IceConfiguration } from '../../src/mp/transport/iceConfig.ts';
 import type { SocketLike } from '../../src/mp/transport/webSocketTransport.ts';
 import { ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE } from '../../src/mp/room/protocol.ts';
 import type { RoomCreateSettings, RoomTeam } from '../../src/mp/room/protocol.ts';
@@ -63,23 +67,24 @@ const record = (kind: string, fields: Record<string, unknown> = {}): void => {
 window.addEventListener('error', (event) => { errors.push({ atMs: now(), text: `${event.message} (${event.filename}:${event.lineno})` }); });
 window.addEventListener('unhandledrejection', (event) => { errors.push({ atMs: now(), text: `unhandled rejection: ${event.reason instanceof Error ? event.reason.stack ?? event.reason.message : String(event.reason)}` }); });
 
-// ------------------------------------------------------------ ICE (injected by the runner; resolved per connection)
+// ------------------------------------------------------------ ICE (from the room this seat holds; resolved per connection)
 
-type InjectedIce = { iceServers?: RtcIceServerLike[]; relayOnly?: boolean } | null | undefined;
 let iceResolves = 0;
-function currentIce(): RtcIceConfig {
-  const injected = (window as unknown as { __peerIce?: InjectedIce }).__peerIce;
-  const servers = Array.isArray(injected?.iceServers) ? injected!.iceServers! : [];
-  if (iceMode === 'none') return { iceServers: [], relayOnly: false };
-  if (iceMode === 'relay') {
-    if (!servers.some((server) => (Array.isArray(server.urls) ? server.urls : [server.urls]).some((url) => /^turns?:/i.test(url)))) {
-      throw new Error('ice=relay needs injected TURN servers (window.__peerIce)');
-    }
-    return { iceServers: servers, relayOnly: true };
-  }
-  return { iceServers: servers, relayOnly: false };
+/** The game's resolver over this seat's room client (made with the session); null for ice=none. */
+let roomIce: (() => Promise<IceConfiguration>) | null = null;
+/** The newest resolution as counts (never a credential): what the soak reports. */
+let lastIce: { servers: number; turnUrls: number; relayAvailable: boolean; source: string; degradedReason: string | null; expiresInSeconds: number | null } | null = null;
+async function resolveIce(): Promise<RtcIceConfig> {
+  iceResolves++;
+  if (iceMode === 'none' || !roomIce) { record('ice:resolved', { servers: 0, relayOnly: false, source: 'none' }); return { iceServers: [], relayOnly: false }; }
+  const config = await roomIce();
+  const turnUrls = config.iceServers.flatMap((server) => (Array.isArray(server.urls) ? server.urls : [server.urls])).filter((url) => /^turns?:/i.test(url)).length;
+  lastIce = { servers: config.iceServers.length, turnUrls, relayAvailable: config.relayAvailable, source: config.source, degradedReason: config.degradedReason ?? null, expiresInSeconds: config.expiresInSeconds ?? null };
+  record('ice:resolved', { ...lastIce, relayOnly: iceMode === 'relay' });
+  // relay only without a relay would gather nothing: say so (the transport then offers with host candidates)
+  if (iceMode === 'relay' && !config.relayAvailable) throw new Error('ice=relay needs TURN servers from the room (its relay secrets)');
+  return { iceServers: config.iceServers, relayOnly: iceMode === 'relay' };
 }
-const resolveIce = (): RtcIceConfig => { iceResolves++; const config = currentIce(); record('ice:resolved', { servers: config.iceServers.length, relayOnly: config.relayOnly }); return config; };
 
 // ------------------------------------------------------------ peer connections (kept for getStats)
 
@@ -302,6 +307,7 @@ function boot(): void {
     },
   });
   const { room, session } = headless;
+  if (iceMode !== 'none') roomIce = createRoomIceResolver({ mode: 'private', room });
   room.onPhase(({ phase, detail }) => record(`room:${phase}`, { detail }));
   room.onMatchStart((payload) => { lastMapId = payload.mapId; record('match_start', { matchId: payload.matchId, matchUrl: payload.matchUrl, hostId: payload.hostId ?? null, secret: typeof (payload as { hostSecret?: unknown }).hostSecret === 'string', team: payload.team }); });
   room.onMatchStatus((payload) => record('match_status', { status: payload.status, verdict: payload.verdict ?? null }));
@@ -409,7 +415,7 @@ function status(): Record<string, unknown> {
       prediction: stats.prediction ? { lastPositionErrorM: stats.prediction.lastPositionErrorM, maxPositionErrorM: stats.prediction.maxPositionErrorM, maxFreePositionErrorM: stats.prediction.maxFreePositionErrorM, maxContactPositionErrorM: stats.prediction.maxContactPositionErrorM, hardSnaps: stats.prediction.hardSnaps, reconciliations: stats.prediction.reconciliations, maxCorrectionStepM: stats.prediction.maxCorrectionStepM } : null,
       ownShotsPredicted: stats.ownShotsPredicted, ownShotsConfirmed: stats.ownShotsConfirmed, resumeHintsSent: stats.resumeHintsSent,
     } : null,
-    own: lastOwn, lastSnapshotTick, framesSeen, welcomes, predictionReady, predictionError, mapId: lastMapId, iceResolves,
+    own: lastOwn, lastSnapshotTick, framesSeen, welcomes, predictionReady, predictionError, mapId: lastMapId, iceResolves, ice: lastIce ? { ...lastIce } : null,
     rtc: { ...rtc, totals: { bytesSent, bytesReceived, messagesSent, messagesReceived } },
     roomMessages: { ...roomMessages, out: { ...roomMessages.out }, in: { ...roomMessages.in } },
     memory: memory(),
@@ -442,7 +448,6 @@ const peer = {
   leaveMatch: () => headless!.session.leaveMatch('harness leave'),
   leaveRoom: () => headless!.room.leave(),
   disconnectRoom: (reason = 'harness disconnect') => headless!.room.disconnect(reason),
-  setIce: (config: { iceServers: RtcIceServerLike[]; relayOnly?: boolean } | null) => { (window as unknown as { __peerIce?: InjectedIce }).__peerIce = config; record('ice:replaced', { servers: config?.iceServers.length ?? 0 }); },
   roster: () => client?.welcome?.roster.map((entry) => ({ entityId: entry.entityId, playerId: entry.playerId, team: entry.team, bot: entry.bot, specId: entry.specId })) ?? null,
   poses: () => { const presentation = headless?.presentation; return presentation ? [...presentation.poses.values()].map((pose) => ({ entityId: pose.entityId, x: pose.x, z: pose.z, yaw: pose.yaw, destroyed: pose.destroyed })) : null; },
   retainedTicks: () => { const retained = client?.retainedMigration(); return retained ? { keyframe: retained.keyframe?.tick ?? null, config: retained.config?.tick ?? null, latest: retained.latestFrame?.tick ?? null } : null; },

@@ -3,7 +3,7 @@
 // playable tank at HIGH and LOW quality, digest and rig-group rollups defined in tools/fleet-geometry-digest.mjs.
 //
 // The ledger replaces the frozen per-receipt geometry pins (2026-10-01, owner: "Retire frozen pins"). npm test
-// verifies every row without a second fleet build: wheelQuality.selftest (HIGH) and gunArticulation.selftest (LOW)
+// verifies every row without a second fleet build: fleetPassHigh.selftest (HIGH) and fleetPassLow.selftest (LOW)
 // digest the models they already build. A geometry change is expected to move rows: review the named tanks and
 // groups, then re-pin in one command.
 //

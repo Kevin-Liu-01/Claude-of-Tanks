@@ -8,6 +8,7 @@ import { tankTier } from '../tier.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { internalLayoutFor } from '../internalLayoutRegistry.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const spec = TANK_SPECS.type100;
 // Preserve native physical witnesses under the owner's explicit 0.90 resize.
@@ -70,7 +71,6 @@ registerProfiledBuilders({ type100: p => TYPE100_PROFILES.type100.build(new Prox
     return typeof value === 'function' ? value.bind(target) : value;
   },
 })) });
-function near(a,b,tol,label) { assert.ok(Number.isFinite(a) && Math.abs(a-b)<=tol, `${label}: ${a} vs ${b}`); }
 function stock(name) { const a=pieces.filter(p=>p.name===name);assert.ok(a.length,`missing actual ${name}`);return a; }
 function inside(mesh,p) {
   const ray=new T.Raycaster(new T.Vector3(...p),new T.Vector3(.376,.619,.690).normalize(),0,20);
