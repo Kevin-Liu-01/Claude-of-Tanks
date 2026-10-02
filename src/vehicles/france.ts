@@ -143,8 +143,8 @@ function muzzleBore(
 // muzzle), roof 7.62 FORWARD on a LOW mount (type10 published-line
 // precedent: a roof-standing MG owns heightM p95).
 function buildAMX40(P: FranceBuilderPort): void {
-  const { box, cylX, cylY, cylZ, frustum, polyMultiLoft, buildGun, buildRunningGear,
-    liftEye, periscope, torus, xform } = KIT;
+  const { box, cylY, cylZ, frustum, polyMultiLoft, buildGun, buildRunningGear,
+    liftEye, periscope, torus } = KIT;
   const slab = orientedSlab;                                                    // §C winding guard on every mirrored slab
   // ---- hull core (receipt side_hull / bellyCorners lines) ------------------
   // tub between the tracks: band inner faces ±1.03 (xc 1.29 - pad half

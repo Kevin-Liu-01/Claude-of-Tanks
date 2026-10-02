@@ -104,7 +104,6 @@ body[data-cot-width='phone'] .cot-spec .cycle{padding-inline:3px;gap:2px}
 body[data-cot-width='phone'] .cot-spec .cycle kbd{width:20px;height:20px;font-size:9px}
 body[data-cot-width='phone'] .cot-spec .gar{width:40px;height:40px;padding:0;margin-right:2px}
 body[data-cot-width='phone'] .cot-spec .gar>span:last-child{display:none}
-body[data-cot-height='short'] .cot-killfeed .cot-kf:nth-child(n+3){display:none}
 body[data-cot-height='short'] .cot-prebattle{top:16%;transform:translateX(-50%) scale(.82)}
 /* Keep the initial countdown clear of the portrait minimap/chat stack. */
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-prebattle{
@@ -176,7 +175,6 @@ body.cot-touch-layout .cot-si-toasthost{
   top:calc(max(8px,env(safe-area-inset-top)) + 108px);
   width:min(200px,48vw);min-height:26px;
 }
-body.cot-touch-layout .cot-si-toast:nth-last-of-type(n+2){display:none}
 
 /* SETTINGS --------------------------------------------------------------- */
 body[data-cot-width='tablet'] .cot-set-panel{width:min(744px,calc(100vw - 32px));max-height:calc(var(--cot-viewport-height,100dvh) - 32px)}

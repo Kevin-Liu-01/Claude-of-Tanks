@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {BoxGeometry,Float32BufferAttribute,BufferGeometry} from 'three';
+import {WeaponDamageVisuals} from './weaponDamageVisuals.ts';
+const weapon=new BoxGeometry().toNonIndexed(),armor=new BoxGeometry().toNonIndexed();
+weapon.userData.weaponStock={module:'missileRack'};
+const merged=new BufferGeometry(),colors=new Float32Array((weapon.attributes.position.count+armor.attributes.position.count)*3).fill(.7);
+merged.setAttribute('color',new Float32BufferAttribute(colors,3));
+const paint=new WeaponDamageVisuals();paint.bind([weapon,armor],merged);
+const attr=merged.attributes.color,original=attr.array.slice(),split=weapon.attributes.position.count*3;
+paint.set('missileRack','red');
+assert(attr.array.slice(0,split).every(v=>v<.2),'weapon stock scorches');
+assert.deepEqual(attr.array.slice(split),original.slice(split),'adjacent armor retains its exact paint');
+const version=attr.version;paint.set('missileRack','red');assert.equal(attr.version,version,'duplicate snapshots do not re-upload');
+paint.set('missileRack','yellow');assert(attr.array[0]>.3,'repair removes severe damage');
+paint.reset();assert.deepEqual(attr.array,original,'reset restores exact original colors');
+for(const g of [weapon,armor,merged])g.dispose();
+console.log('weaponDamageVisuals: localized damage, idempotent updates and exact repair passed');

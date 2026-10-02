@@ -38,6 +38,7 @@ import {
   estimatePenRatio,
   isHeClass,
   mainWeaponModuleState,
+  selectedWeaponModuleState,
   ramDamage,
 } from '../sim/damage.ts';
 import { driveGroundTypeAt, terrainTravelCostFactor } from '../sim/terrainMobility.ts';
@@ -125,7 +126,7 @@ interface AiController {
   setWaypoints(points: Array<[number, number]>, options?: { loop?: boolean }): void;
   notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'> & Partial<Pick<HitEvent, 'shellName'>>): void;
   notifyUnderFire(shooter: AiEntity, info?: HitReactionInfo): void;
-  notifyPlayerFired(shooter: AiEntity, rank?: number): void;
+  notifyEnemyFired(shooter: AiEntity): void;
   notifyFriendlyBlocked(risk: FriendlyFireRisk): void;
   /** Take (or clear) a commander's standing order; see AiOrder. */
   setOrder(order: AiOrder | null): void;
@@ -457,7 +458,7 @@ const BURST_RETREAT_WINDOW_S = 4;
 
 // ---- bot philosophy r1 (owner 2026-09-17: "think through the whole enemy bot philosophy") ----
 // TARGET HIERARCHY: enemies on the mission objective first, then the closest (in
-// TARGET_BAND_M distance bands, threat-scaled for the player and fire-team focus),
+// TARGET_BAND_M distance bands, weighted by fire-team focus),
 // and inside a band the weakest — kills finish, threats come first, the mission
 // decides where the fight is.
 const TARGET_BAND_M = 60;
@@ -514,45 +515,9 @@ const GUN_LIMIT_NUDGE_S = 1.5;    // gun pinned this long → back up for depres
 const EYE_FRAC          = 0.85;   // eye/turret-top height as fraction of heightM
 const ARRIVE_DIST_M     = 6.0;
 const MAX_FIRE_RANGE_M  = 620;
-// UNDER-FIRE REACTION + PLAYER THREAT (controls_gunnery r2): being shot
-// reveals the shooter for a chase window, and the PLAYER's distance is
-// weighted down during target selection so enemy aggression doesn't all
-// drain onto the allied bots pushing ahead of the player (r2 critic: enemies
-// fired 21-34 shells across three battles, zero directed at the player).
 const UNDER_FIRE_WINDOW_S = 15;       // chase/engage window after a team hit
 const UNDER_FIRE_RANGE_BONUS_M = 180; // engage-envelope extension toward the shooter
-const PLAYER_THREAT_DIST_MULT = 0.35; // player counts as 35% of its true d² when ranking targets
-// PLAYER ATTACKER-OF-RECORD (controls_gunnery r4): the single underFire slot
-// was overwritten within a second or two by whichever ALLIED bot landed the
-// next teammate hit, so the player's aggro claim evaporated before the next
-// LOS tick — measured live: 3 player hits, underFire pointing at an allied
-// Leo 2A7 on every snapshot, zero shells returned at the player across 90 s.
-// A PLAYER shooter now also claims a dedicated sticky slot with a longer
-// window (muzzle flash + tracer are intel). camo_spotting r2: the slot no
-// longer bypasses the spotting gate — the firing-player reveal itself now
-// lives in the sim (spotting.ts muzzle-flash branch resolves it through the
-// camo formula); the slot keeps the position intel + priority sticky.
-const PLAYER_AGGRO_WINDOW_S = 25;
-// PLAYER MUZZLE-FLASH INTEL (controls_gunnery r5): r4's playerAggro only
-// armed on a LANDED player hit (shell:hit) — a player sniping from outside
-// the bots' 350-380 m view range was revealed for one aggro window and then
-// went dark again while the aggro'd bot stalled in a losBlockedT>5 chase.
-// Decisive r5 probe: 3 penetrating player hits, 29+ enemy shells over two
-// 60 s runs, ZERO aimed within 4° of the player — functionally invulnerable.
-// Now every player SHOT (state.ts fans out shell:fired to notifyPlayerFired)
-// re-reveals the player to all enemies within earshot for this window, the
-// aggro'd bots hard-commit (2 s vantage threshold, unconditional engage-range
-// bonus), and a stalemate breaker forces silent bots with a known contact to
-// push a firing position instead of idling in patrol/seekCover.
-const MUZZLE_INTEL_WINDOW_S = 18;
-// REPEAT-OFFENDER MEMORY (controls_gunnery r4): a player who fires 2+ times
-// from one position is a FIXED KNOWN position, and converting a blocked-LOS
-// commit at 300-400 m into a firing position is a 30-60 s drive — the 18 s
-// base window died mid-reposition and every committed bot reverted to
-// patrol (unstaged probe: 3 player shots, all 4 bots back in patrol with
-// zero shells returned). Repeat shots escalate the window so the chase
-// survives the drive.
-const MUZZLE_INTEL_REPEAT_WINDOW_S = 45;
+
 const STALEMATE_SILENT_S = 12;   // no shot fired this long w/ contact → push
 const STALEMATE_PUSH_S = 8;      // duration of one forced push window
 // Round 48 pacing (2026-09-24): seconds of a closed penetration gate (no zone at or above the 0.9 ratio, no HE
@@ -616,33 +581,6 @@ const SEARCH_ORDER: ReadonlyArray<readonly string[]> = Object.freeze([
   Object.freeze(['sweep', 'wide', 'sector', 'seen']),
 ]);
 const searchScratch = { x: 0, z: 0 };      // beginSearchLeg's candidate goal (controllers run sequentially)
-// RETURN-FIRE LOCK (controls_gunnery r4): three rounds of aggro plumbing
-// (r4 sticky slot, r5 muzzle intel + hard-commit) still measured 76 enemy
-// shells / 2 aimed at the player / 0 hits across 5 battles. Two remaining
-// holes closed here: (1) notifyUnderFire CLOBBERED lastSeen — the shared
-// chase point — with the latest ALLIED shooter's position, so every
-// "player-committed" bot was actually driving at the player's escorts; and
-// (2) nothing ever forced a bot that could ALREADY see the player to convert
-// commitment into trigger time ranked above the closer allied brawl. Now
-// state.ts distance-ranks the shell:fired fan-out, and the nearest ranked
-// bots (rank <= PLAYER_LOCK_RANK) with a clear personal ray LOCK the player
-// as target outright for PLAYER_LOCK_S — no d² ally bias, no cover roll, no
-// memory expiry — refreshed on every subsequent player shot.
-const PLAYER_LOCK_S = 9;
-const PLAYER_LOCK_RANK = 2;      // the three nearest earshot enemies qualify
-// PLAYER PRIORITY BUMP + FIRST-AIMED-SHOT BUDGET (controls_gunnery r6): with
-// the player parked FULLY BROADSIDE in the open at 196 m, botPressure showed
-// aimedAtPlayer stuck at 0 for 30+ s while the bots put 11 shells into the
-// allied brawl — a 100 m bot still out-ranked a 200 m player on d² even with
-// playerDistMult. Inside PLAYER_NEAR_BONUS range the player's weighted d² is
-// halved again (threat x2), and a per-controller budget guarantees that a
-// team-spotted player inside PLAYER_BUDGET range with a clear personal ray is
-// CLAIMED as target within PLAYER_ENGAGE_BUDGET_S — WoT bots punish a
-// stationary flank at 200 m in seconds, not minutes.
-const PLAYER_NEAR_BONUS_D2 = 300 * 300; // priority x2 (d² x0.5) inside 300 m
-const PLAYER_ENGAGE_BUDGET_S = 8;       // max s a visible near player goes unclaimed
-const PLAYER_BUDGET_D2 = 250 * 250;     // budget applies inside 250 m
-
 // HEADING COMMITMENT (controls_gunnery r3): approach/chase legs used to steer
 // at the LIVE target position every tick, so bots wove continuously (speed
 // oscillating 1-14 m/s) and a constant-velocity lead solution NEVER converged
@@ -922,7 +860,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // foliage cover even beyond the camo-formula spot range) — so a revealed
   // shooter arrives through isSpotted like any other contact, while a deep
   // double-bush ambusher the formula still hides STAYS hidden (WoT
-  // bush-sniper play). The underFire/playerAggro slots keep only their
+  // bush-sniper play). The underFire slot keep only their
   // POSITIONAL roles: lastSeen chase intel, target priority, and the
   // engage-envelope extension.
   const isVisibleToTeam = (e: AiEntity): boolean =>
@@ -1043,7 +981,6 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let lastEngagedS = 0;
   // r6: last sim time this controller HELD the player as target (stamped per
   // update tick) — arms the FIRST-AIMED-SHOT BUDGET claim in acquireTarget.
-  let lastPlayerEngageS = 0;
   const coverPoint = { x: 0, z: 0 };
   let hasCoverPoint = false;
   let coverRollPassed = false;               // coverIQ roll for the current reload cycle
@@ -1152,19 +1089,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let lastFriendlyRisk: FriendlyFireRisk | null = null;
   let underFire: AiEntity | null = null; // shooter revealed by hitting us/a teammate
   let underFireUntilS = -Infinity; // reaction window end (sim seconds)
-  let playerAggro: AiEntity | null = null; // sticky PLAYER attacker-of-record (r4)
-  let playerAggroUntilS = -Infinity;
-  let playerShotsInWindow = 0;     // player shots inside the live intel window (r2)
-  let playerLockUntilS = -Infinity; // RETURN-FIRE LOCK window (r4, see tuning)
-  // PLAYER-HUNTER BIAS (controls_gunnery r4): r3's flat 0.35 d² weighting
-  // still let every bot farm the closer allied escorts while the player
-  // plinked from 350 m (probe: 26 enemy shells, zero at the player). A
-  // persistent fraction of controllers (~40%) now treats a SPOTTED player
-  // as a priority mark — 0.12 d² ranks a 350 m player like a 121 m bot —
-  // so somebody always turns on the human without the whole team tunneling.
-  const playerHunter = rng() < 0.4;
-  const playerDistMult = playerHunter ? 0.12 : PLAYER_THREAT_DIST_MULT;
-
+  let directlyUnderFire = false;
   // Aim solution (updated by probes at PROBE_INTERVAL_S).
   let aimHFrac = 0.48;
   let aimLatFrac = 0;
@@ -1310,6 +1235,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!getAllies) return;
     const friends = getAllies();
     for (let i = 0; i < friends.length; i++) {
+      if (friends[i] === entity || friends[i]?.combat?.destroyed) continue;
       const ctl = (friends[i] as ControllerOwnedEntity | undefined)?.aiCtl;
       const id = ctl && ctl.targetId;
       if (id) focusCounts.set(id, (focusCounts.get(id) || 0) + 1);
@@ -1323,11 +1249,6 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function focusWeight(e: AiEntity | null | undefined): number {
     if (!e) return 1;
     const focus = focusCounts.get(e.id) || 0;
-    // The player remains a high-priority threat, but ordinary visibility may
-    // assign only one default attacker. Extra bots join when the player fires
-    // or damages the team through the return-fire paths above.
-    if (e.isPlayer && focus === 1) return 4.5;
-    if (e.isPlayer && focus >= 2) return 8;
     if (focus === 1) return 1.35;
     if (focus === 2) return 1.7;
     if (focus === 3) return 2.05;
@@ -1380,66 +1301,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (remember) rememberPosition(candidate, timeS);
   }
 
-  function tryLockedPlayer(
-    timeS: number,
-    eyeX: number,
-    eyeYPosition: number,
-    eyeZ: number,
-  ): boolean {
-    if (!playerAggro || !enemyAlive(playerAggro)) return false;
-    const lockActive = timeS < playerLockUntilS;
-    const repeatedShooter = playerShotsInWindow >= 2 && timeS < playerAggroUntilS;
-    if (!lockActive && !repeatedShooter) return false;
-    // bot philosophy r1: retaliation needs a SPOTTED shooter — an unseen player stays a suspect
-    if (!isVisibleToTeam(playerAggro)) {
-      noteSuspect(playerAggro, timeS, false);
-      return false;
-    }
-    const position = playerAggro.state.pos;
-    const clearLine = hasLos(
-      eyeX, eyeYPosition, eyeZ,
-      position.x, eyeY(playerAggro), position.z,
-    );
-    claimTarget(playerAggro, timeS, clearLine, true);
-    return true;
-  }
-
-  function tryPlayerEngagementBudget(
-    enemies: AiEntity[],
-    timeS: number,
-    eyeX: number,
-    eyeYPosition: number,
-    eyeZ: number,
-  ): boolean {
-    if (target?.isPlayer || timeS - lastPlayerEngageS <= PLAYER_ENGAGE_BUDGET_S) {
-      return false;
-    }
-    for (let index = 0; index < enemies.length; index++) {
-      const player = enemies[index];
-      if (!player?.isPlayer) continue;
-      if (!enemyAlive(player) || !isVisibleToTeam(player)) return false;
-      if ((focusCounts.get(player.id) || 0) >= 1) return false;
-      const position = player.state.pos;
-      const dx = position.x - eyeX;
-      const dz = position.z - eyeZ;
-      const deploymentRangeSq = deploymentEngageM * deploymentEngageM;
-      const budgetDistanceSq = timeS < deploymentUntilS
-        ? Math.min(PLAYER_BUDGET_D2, deploymentRangeSq)
-        : PLAYER_BUDGET_D2;
-      if (dx * dx + dz * dz > budgetDistanceSq) return false;
-      if (!hasLos(eyeX, eyeYPosition, eyeZ, position.x, eyeY(player), position.z)) {
-        return false;
-      }
-      claimTarget(player, timeS, true, true);
-      return true;
-    }
-    return false;
-  }
-
   function activeAggressor(timeS: number): AiEntity | null {
-    if (playerAggro && timeS < playerAggroUntilS && enemyAlive(playerAggro)) {
-      return playerAggro;
-    }
     if (underFire && timeS < underFireUntilS && enemyAlive(underFire)) return underFire;
     return null;
   }
@@ -1452,6 +1314,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   ): boolean {
     const aggressor = activeAggressor(timeS);
     if (!aggressor || aggressor === target) return false;
+    if (target && enemyAlive(target) && isVisibleToTeam(target)) {
+      const current = target.state.pos;
+      const currentClear = hasLos(eyeX, eyeYPosition, eyeZ, current.x, eyeY(target), current.z);
+      if (currentClear && (!directlyUnderFire ||
+          entity.state.pos.distanceToSquared(aggressor.state.pos) >
+          Math.max(25 * 25, entity.state.pos.distanceToSquared(current) * 1.3))) return false;
+    }
     const position = aggressor.state.pos;
     const seen = isVisibleToTeam(aggressor)
       && hasLos(eyeX, eyeYPosition, eyeZ, position.x, eyeY(aggressor), position.z);
@@ -1466,37 +1335,27 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return true;
   }
 
-  function tryPrioritizePlayer(
-    enemies: AiEntity[],
-    timeS: number,
-    eyeX: number,
-    eyeYPosition: number,
-    eyeZ: number,
-  ): boolean {
-    if (!target || target.isPlayer || !losClear) return false;
-    const currentPosition = target.state.pos;
-    const currentDx = currentPosition.x - eyeX;
-    const currentDz = currentPosition.z - eyeZ;
-    const currentDistanceSq = currentDx * currentDx + currentDz * currentDz;
-    for (let index = 0; index < enemies.length; index++) {
-      const player = enemies[index];
-      if (!player?.isPlayer) continue;
-      if (!enemyAlive(player) || !isVisibleToTeam(player)) return false;
-      if ((focusCounts.get(player.id) || 0) >= 1) return false;
-      const position = player.state.pos;
-      const dx = position.x - eyeX;
-      const dz = position.z - eyeZ;
-      const distanceSq = dx * dx + dz * dz;
-      const effectiveDistanceSq = distanceSq * playerDistMult
-        * (distanceSq < PLAYER_NEAR_BONUS_D2 ? 0.5 : 1);
-      if (effectiveDistanceSq >= currentDistanceSq) return false;
-      if (!hasLos(eyeX, eyeYPosition, eyeZ, position.x, eyeY(player), position.z)) {
-        return false;
-      }
-      claimTarget(player, timeS, true, true);
-      return true;
+  /** Keep a fight stable, but do not tunnel past a much closer visible hull. */
+  function tryPrioritizeLocalThreat(enemies: AiEntity[], timeS: number,
+    eyeX: number, eyeYPosition: number, eyeZ: number): boolean {
+    if (!target) return false;
+    const currentDistanceSq = entity.state.pos.distanceToSquared(target.state.pos);
+    const localRange = timeS < deploymentUntilS ? Math.min(120, deploymentEngageM) : 120;
+    let best: AiEntity | null = null;
+    let bestPriority = Infinity;
+    for (const candidate of enemies) {
+      if (candidate === target || !enemyAlive(candidate) || !isVisibleToTeam(candidate)) continue;
+      const distanceSq = entity.state.pos.distanceToSquared(candidate.state.pos);
+      if (distanceSq > localRange * localRange || distanceSq >= currentDistanceSq * .36) continue;
+      if (onObjective(target) && !onObjective(candidate) && distanceSq > 25 * 25) continue;
+      const p = candidate.state.pos;
+      const priority = targetPriority(candidate, distanceSq);
+      if (priority >= bestPriority || !hasLos(eyeX, eyeYPosition, eyeZ, p.x, eyeY(candidate), p.z)) continue;
+      best = candidate; bestPriority = priority;
     }
-    return false;
+    if (!best) return false;
+    claimTarget(best, timeS, true, true);
+    return true;
   }
 
   function targetHealthFraction(candidate: AiEntity): number | null {
@@ -1511,7 +1370,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     eyeYPosition: number,
     eyeZ: number,
   ): boolean {
-    if (!target || target.isPlayer || !losClear) return false;
+    if (!target || !losClear) return false;
     const currentHealth = targetHealthFraction(target);
     if (currentHealth == null || currentHealth <= 0.4) return false;
     const currentPosition = target.state.pos;
@@ -1520,7 +1379,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const currentDistanceSq = currentDx * currentDx + currentDz * currentDz;
     for (let index = 0; index < enemies.length; index++) {
       const candidate = enemies[index];
-      if (!candidate || candidate === target || candidate.isPlayer || !enemyAlive(candidate)) {
+      if (!candidate || candidate === target || !enemyAlive(candidate)) {
         continue;
       }
       const health = targetHealthFraction(candidate);
@@ -1561,11 +1420,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     losClear = visible
       && hasLos(eyeX, eyeYPosition, eyeZ, position.x, eyeY(target), position.z);
     if (visible) rememberPosition(target, timeS);
-    if (tryPrioritizePlayer(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return true;
+    if (tryPrioritizeLocalThreat(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return true;
     if (tryPrioritizeWeakTarget(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return true;
     const memoryActive = timeS - lastSeenAtS <= TARGET_MEMORY_S;
-    const aggressorMemory = target === playerAggro && timeS < playerAggroUntilS;
-    if (memoryActive || aggressorMemory) return true;
+    if (memoryActive) return true;
     target = null;
     return false;
   }
@@ -1582,17 +1440,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   /**
    * Bot philosophy r1 target hierarchy (lower = better): mission objective →
-   * closest → weakest. Distance is threat-scaled first (the player reads
-   * closer; a lane an ally already covers reads farther — fire-team
-   * allocation), then bucketed into TARGET_BAND_M bands so that inside one band
+   * closest → weakest. A lane an ally already covers reads farther — fire-team
+   * allocation, then bucketed into TARGET_BAND_M bands so that inside one band
    * the weakest hull leads; the raw threat distance is the final tiebreak.
    */
   function targetPriority(candidate: AiEntity, distanceSq: number): number {
     const health = targetHealthFraction(candidate);
-    const threatDistanceSq = candidate.isPlayer
-      ? distanceSq * playerDistMult * (distanceSq < PLAYER_NEAR_BONUS_D2 ? 0.5 : 1)
-      : distanceSq;
-    const threatDistance = Math.sqrt(threatDistanceSq) * focusWeight(candidate);
+    const threatDistance = Math.sqrt(distanceSq) * focusWeight(candidate);
     const band = Math.floor(threatDistance / TARGET_BAND_M);
     return (onObjective(candidate) ? 0 : 1e9) + band * 1e6
       + (health == null ? 1 : Math.max(0, Math.min(1, health))) * 1e5 + threatDistance;
@@ -1691,12 +1545,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const eyeYPosition = position.y + selfEyeM;
     const eyeZ = position.z;
 
-    if (tryLockedPlayer(timeS, eyeX, eyeYPosition, eyeZ)) return;
     if (tryOrderedTarget(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return;
-    if (tryPlayerEngagementBudget(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return;
-    if (tryAggressor(timeS, eyeX, eyeYPosition, eyeZ)) return;
+    if (directlyUnderFire && tryAggressor(timeS, eyeX, eyeYPosition, eyeZ)) return;
     if (refreshCurrentTarget(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return;
     if (scanVisibleTarget(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return;
+    if (tryAggressor(timeS, eyeX, eyeYPosition, eyeZ)) return;
     losClear = false;
     tryEngagementWatchdog(enemies, timeS, eyeX, eyeZ);
   }
@@ -2959,14 +2812,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (driveToXZ(input, vantage.x, vantage.z, 1.0)) hasVantage = false;
       return;
     }
-    const vantageAfterS = target && (target.isPlayer || timeS < pressUntilS) ? 2 : 5;
+    const vantageAfterS = timeS < pressUntilS ? 2 : 5;
     if (losBlockedT > vantageAfterS && findVantage()) {
       hasVantage = true;
       driveToXZ(input, vantage.x, vantage.z, 1.0);
       return;
     }
     if (!target) return;
-    if (chaseToXZ(input, lastSeen.x, lastSeen.z, target.isPlayer ? 1.0 : 0.9)) {
+    if (chaseToXZ(input, lastSeen.x, lastSeen.z, 0.9)) {
       setVantageTowardEnemySector();
     }
   }
@@ -2987,7 +2840,6 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function effectiveEngageRange(timeS: number): number {
     const pressure = timeS < underFireUntilS ||
-      (target && target.isPlayer && timeS < playerAggroUntilS) ||
       timeS < pressUntilS;
     return roleEngageR() + (pressure ? UNDER_FIRE_RANGE_BONUS_M : 0);
   }
@@ -3617,7 +3469,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function updateBasicFireGates(distance: number, timeS: number): void {
     const combat = entity.combat;
-    const gunDisabled = mainWeaponModuleState(combat) === 'red';
+    const round = spec.gun.shells[chosenSlot];
+    const gunDisabled = combat && round ? selectedWeaponModuleState(combat, spec.gun, round) === 'red' : false;
     fireGate.distance = distance;
     fireGate.reactionReady = timeS - acquiredAtS >= tier.reactionS;
     fireGate.reloadReady = !combat || (
@@ -4037,7 +3890,6 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       losTimer = LOS_INTERVAL_S * (0.8 + rng() * 0.4);
     }
     if (target) lastEngagedS = timeS;
-    if (target?.isPlayer) lastPlayerEngageS = timeS;
     if (probeTimer <= 0 && target) {
       runProbes();
       probeTimer = PROBE_INTERVAL_S * (0.8 + rng() * 0.4);
@@ -5086,152 +4938,39 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     resampleAimError();
   }
 
-  /**
-   * Reaction to this tank (or a nearby teammate) taking an enemy hit: acquire
-   * the shooter past the spotting gate, remember its position, and extend the
-   * engage envelope toward it for UNDER_FIRE_WINDOW_S. A PLAYER shooter always
-   * steals the target slot — return fire at the protagonist is the point.
-   * @param {object} shooterEnt TankEntity that fired the shell
-   */
-  function notifyUnderFire(shooterEnt: AiEntity, info: HitReactionInfo = {}): void {
-    if (!shooterEnt || !shooterEnt.state || !shooterEnt.combat ||
-        shooterEnt.combat.destroyed || shooterEnt.team === entity.team) return;
-    if (shooterEnt.isPlayer) {
-      // sticky attacker-of-record slot (r4) — teammate hits can't erase it
-      playerAggro = shooterEnt;
-      playerAggroUntilS = nowS + PLAYER_AGGRO_WINDOW_S;
+  /** Direct hits provoke retaliation; nearby team reports provide awareness.
+   * Neither event overrides a closer fight merely because its shooter is human. */
+  function notifyUnderFire(shooter: AiEntity, info: HitReactionInfo = {}): void {
+    if (!shooter?.state || !shooter.combat || shooter.combat.destroyed || shooter.team === entity.team) return;
+    // A teammate's report must not overwrite the attacker hitting this hull.
+    if (info.selfHit || nowS >= underFireUntilS || !directlyUnderFire) {
+      underFire = shooter;
+      underFireUntilS = nowS + UNDER_FIRE_WINDOW_S;
+      directlyUnderFire = !!info.selfHit;
     }
     if (info.selfHit) {
       abilityContext.hitAtS = nowS;
-      abilityContext.hitBearing = Math.atan2(shooterEnt.state.pos.x - entity.state.pos.x, shooterEnt.state.pos.z - entity.state.pos.z);
+      abilityContext.hitBearing = Math.atan2(shooter.state.pos.x - entity.state.pos.x, shooter.state.pos.z - entity.state.pos.z);
+      reactToHit(shooter, isVisibleToTeam(shooter), info);
     }
-    underFire = shooterEnt;
-    underFireUntilS = nowS + UNDER_FIRE_WINDOW_S;
-    // bot philosophy r1: a gun the team has NOT spotted is a suspect. The hull
-    // reacts (cover / jink, bow onto the shot) but claims no target — retaliation
-    // waits for the spotting sim; acquireTarget's aggressor path takes over the
-    // moment the shooter is seen.
-    if (!isVisibleToTeam(shooterEnt)) {
-      noteSuspect(shooterEnt, nowS, true);
-      if (info.selfHit) reactToHit(shooterEnt, false, info);
+    if (!isVisibleToTeam(shooter)) {
+      if (!target || !enemyAlive(target)) noteSuspect(shooter, nowS, true);
       return;
     }
-    if (info.selfHit) reactToHit(shooterEnt, true, info);
-    // RETURN-FIRE LOCK (controls_gunnery r4) ROOT-CAUSE FIX: lastSeen is the
-    // CHASE POINT for the CURRENT target, but this unconditional write
-    // teleported it onto whichever ALLIED bot landed the latest teammate hit
-    // — so every bot "committed" to the player was measurably driving at the
-    // player's escorts instead (r5 probe: aggro'd bots stalled mid-chase,
-    // 76 enemy shells / 2 aimed at the player). The intel position now only
-    // updates when the shooter IS — or here BECOMES — the target.
-    const takesSlot = !target || !enemyAlive(target) ||
-        shooterEnt === target ||
-        (shooterEnt.isPlayer && target !== shooterEnt);
-    if (takesSlot) {
-      lastSeen.x = shooterEnt.state.pos.x;
-      lastSeen.z = shooterEnt.state.pos.z;
-      lastSeenAtS = nowS;
-    }
-    if (!target || !enemyAlive(target) ||
-        (shooterEnt.isPlayer && target !== shooterEnt)) {
-      target = shooterEnt;
-      acquiredAtS = nowS;
-      nonPenCount = 0;
-      probeTimer = 0;
-      if (mode === 'patrol') mode = 'engage';
-    }
+    // Use the common selection path, including personal LOS and fire-team allocation.
+    acquireTarget(nowS);
   }
 
-  /**
-   * PLAYER MUZZLE-FLASH INTEL (controls_gunnery r5): the player FIRED within
-   * earshot (state.ts fans this out to enemies within 420 m on every player
-   * shell:fired). Muzzle flash + tracer reveal the shooter — the player
-   * claims the sticky attacker-of-record slot and idle bots commit to the
-   * contact immediately. camo_spotting r2: actual VISIBILITY of the shooter
-   * resolves through the spotting sim (notifyFired forces a bloom-hot check;
-   * canSpot's flash branch covers beyond-view-range open-ground shots), so
-   * this slot carries position intel and priority, never gate immunity.
-   * Unlike notifyUnderFire this never steals an ENGAGED bot's living target
-   * outright — acquireTarget's aggro path (clear personal ray) and the
-   * threat-weighted re-rank handle that on the next LOS tick.
-   * @param {object} shooterEnt the player TankEntity that fired
-   * @param {number} [rank=99] distance rank among this shot's earshot
-   *   receivers (0 = nearest enemy to the player; state.ts sorts the fan-out)
-   */
-  function recordPlayerShotIntel(shooter: AiEntity): void {
-    if (nowS > playerAggroUntilS) playerShotsInWindow = 0;
-    playerShotsInWindow++;
-    playerAggro = shooter;
-    playerAggroUntilS = Math.max(playerAggroUntilS, nowS +
-      (playerShotsInWindow >= 2 ? MUZZLE_INTEL_REPEAT_WINDOW_S : MUZZLE_INTEL_WINDOW_S));
-  }
-
-  function rememberShooterPosition(shooter: AiEntity): void {
-    const position = shooter.state.pos;
-    lastSeen.x = position.x;
-    lastSeen.z = position.z;
-    lastSeenAtS = nowS;
-  }
-
-  function assignShooterTarget(shooter: AiEntity): void {
-    if (target !== shooter) {
-      target = shooter;
-      acquiredAtS = nowS;
-      nonPenCount = 0;
-      probeTimer = 0;
-    }
-    rememberShooterPosition(shooter);
-  }
-
-  function tryLockFiringPlayer(shooter: AiEntity, rank: number): boolean {
-    // bot philosophy r1: the muzzle flash of an UNSEEN player never locks a target
-    if (rank > PLAYER_LOCK_RANK || !isVisibleToTeam(shooter)) return false;
-    const st = entity.state;
-    const position = shooter.state.pos;
-    if (!hasLos(
-      st.pos.x, st.pos.y + selfEyeM, st.pos.z,
-      position.x, eyeY(shooter), position.z,
-    )) return false;
-    playerLockUntilS = nowS + PLAYER_LOCK_S;
-    assignShooterTarget(shooter);
-    losClear = true;
-    hasMoveTarget = false;
-    hasCoverPoint = false;
-    hasVantage = false;
-    if (mode !== 'engage' && mode !== 'flank') mode = 'engage';
-    return true;
-  }
-
-  function claimIdleFiringPlayer(shooter: AiEntity): boolean {
-    if (target && enemyAlive(target)) return false;
-    if (!isVisibleToTeam(shooter)) {
-      noteSuspect(shooter, nowS, true); // bot philosophy r1: move onto the flash, no target
-      return true;
-    }
-    assignShooterTarget(shooter);
-    if (mode === 'patrol') mode = 'engage';
-    return true;
-  }
-
-  function claimRepeatFiringPlayer(shooter: AiEntity): void {
-    if (playerShotsInWindow < 2 || target === shooter || target?.isPlayer) return;
-    if (!isVisibleToTeam(shooter)) {
-      noteSuspect(shooter, nowS, true); // bot philosophy r1: the hull moves on intel, the gun waits for a spot
+  /** An audible gunshot is a contact hint, not an order to abandon a fight.
+   * Both teams and human/bot shooters use this same policy. */
+  function notifyEnemyFired(shooter: AiEntity): void {
+    if (!shooter?.state || !shooter.combat || shooter.combat.destroyed || shooter.team === entity.team) return;
+    if (target && enemyAlive(target)) {
+      if (target === shooter && isVisibleToTeam(shooter)) rememberPosition(shooter, nowS);
       return;
     }
-    assignShooterTarget(shooter);
-    losClear = false;
-    if (mode === 'patrol' || mode === 'seekCover') mode = 'engage';
-  }
-
-  function notifyPlayerFired(shooterEnt: AiEntity, rank = 99): void {
-    if (!shooterEnt || !shooterEnt.state || !shooterEnt.combat ||
-        shooterEnt.combat.destroyed || shooterEnt.team === entity.team) return;
-    recordPlayerShotIntel(shooterEnt);
-    if (tryLockFiringPlayer(shooterEnt, rank)) return;
-    if (target === shooterEnt) rememberShooterPosition(shooterEnt);
-    if (claimIdleFiringPlayer(shooterEnt)) return;
-    claimRepeatFiringPlayer(shooterEnt);
+    if (!isVisibleToTeam(shooter)) { noteSuspect(shooter, nowS, true); return; }
+    acquireTarget(nowS);
   }
 
   /** Authoritative fire path callback when a same-tick friendly crossing was
@@ -5308,7 +5047,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     setWaypoints,
     notifyShellResult,
     notifyUnderFire,
-    notifyPlayerFired,
+    notifyEnemyFired,
     notifyFriendlyBlocked,
     setOrder,
     get terrainBlocked() { return terrainBlocked; },
@@ -5354,14 +5093,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       wpIndex, wpCount: waypoints.length,
       waypointX: waypoints[wpIndex]?.x ?? null, waypointZ: waypoints[wpIndex]?.z ?? null,
       conserveHolds, emptyRack, ramming, ramRuns,
-      playerBudgetT: +(nowS - lastPlayerEngageS).toFixed(1),   // r6 budget arm
       pressing: nowS < pressUntilS,
       pressPointX: passivePressing ? pressPoint.x : NaN, // round 67: the chosen press point (NaN while not pressing)
       pressPointZ: passivePressing ? pressPoint.z : NaN,
-      playerShotsInWindow, // r2: repeat-offender aggro count (intel window)
-      playerLocked: nowS < playerLockUntilS, // r4 RETURN-FIRE LOCK live
       // camo_spotting r7: chase-intel snapshot for the acquisition selftest —
-      // asserts a hardClaim keeps the MUZZLE stamp, never the live position,
+      // asserts a suspect keeps the MUZZLE stamp, never the live position,
       // while the spotting sim hides the shooter.
       lastSeenX: lastSeen.x, lastSeenZ: lastSeen.z, lastSeenAtS,
       // commander orders (game/jevCommander.ts): the live order and how many were taken

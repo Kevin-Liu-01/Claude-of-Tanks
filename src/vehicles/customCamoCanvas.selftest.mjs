@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { paintCustomCamoStrokes } from './customCamoCanvas.ts';
+import { CUSTOM_CAMO_BRUSHES, paintCustomCamoStrokes } from './customCamoCanvas.ts';
 
 function createRecordingContext() {
   const operations = [];
@@ -22,8 +21,13 @@ function createRecordingContext() {
   return context;
 }
 
-function operationDigest(context) {
-  return createHash('sha256').update(JSON.stringify(context.operations)).digest('hex');
+// 2026-10-01 (owner: retire frozen pins): the two pinned sha256 digests of the recorded operation streams
+// are gone (texture canvases sit outside the fleet geometry ledger). Live contracts: determinism, brush and
+// fallback routing, and the size clamps.
+function paintOne(stroke) {
+  const context = createRecordingContext();
+  paintCustomCamoStrokes(context, [stroke], options);
+  return context.operations;
 }
 
 const options = {
@@ -61,8 +65,10 @@ assert(first.operations.some(([operation]) => operation === 'arc'), 'round and s
 assert(first.operations.some(([operation]) => operation === 'bezierCurveTo'), 'leaf stamp emits its curved outline');
 assert(first.operations.some(([operation, value]) => operation === 'fillStyle' && value === options.eraseColor),
   'eraser brush uses the configured erase color');
-assert.equal(operationDigest(first), '6ed4f52ebfda843c0ead8afdcdce7e9f2fea4f14b56e440546d372a5eb3185cb',
-  'brush output remains pixel-contract stable');
+assert.deepEqual(paintOne({ brush: 'stamp', asset: 'invalid', points: [[80, 80]] }),
+  paintOne({ brush: 'stamp', asset: 'star', points: [[80, 80]] }), 'unknown stamp assets fall back to the star');
+assert.deepEqual(paintOne({ brush: 'invalid', points: [[5, 5], [6, 6]] }),
+  paintOne({ brush: CUSTOM_CAMO_BRUSHES[0], points: [[5, 5], [6, 6]] }), 'unknown brushes fall back to the first brush');
 
 const limits = createRecordingContext();
 paintCustomCamoStrokes(limits, [
@@ -70,11 +76,23 @@ paintCustomCamoStrokes(limits, [
   { brush: 'spray', size: 15, points: [[20, 40]] },
   { brush: 'round', size: 0.1, points: [[1, 99]] },
 ], options);
-assert.equal(operationDigest(limits), '6e1a86e5199fb60be663cf16396a3d14fc098d68e7d1b28b1e9db49d60b1711c',
-  'brush sizing clamps remain stable at both limits');
+const perStroke = [];
+for (const operation of limits.operations) {
+  if (operation[0] === 'save') perStroke.push([]);
+  perStroke.at(-1).push(operation);
+}
+assert.equal(perStroke.length, 3, 'one painter state per stroke');
+const arcs = operations => operations.filter(([operation]) => operation === 'arc');
+assert.equal(arcs(perStroke[0]).length, 24, 'a full-size spray caps its dot count');
+assert.ok(arcs(perStroke[1]).length >= 7, 'a small spray keeps at least its minimum dot count');
+for (const operations of perStroke.slice(0, 2)) {
+  for (const [, , , radius] of arcs(operations)) assert.ok(radius >= .65, 'spray dots keep their minimum radius');
+}
+assert.deepEqual(perStroke[2].find(([operation]) => operation === 'lineWidth'), ['lineWidth', 1],
+  'a sub-pixel brush clamps to one pixel');
 
 const empty = createRecordingContext();
 paintCustomCamoStrokes(empty, null, options);
 assert.deepEqual(empty.operations, [], 'null stroke collections are accepted as empty input');
 
-console.log('customCamoCanvas.selftest: deterministic brush strategies and empty input pass');
+console.log('customCamoCanvas.selftest: deterministic brush strategies, fallbacks, size clamps and empty input pass');

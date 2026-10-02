@@ -6,7 +6,6 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
-import { CHIEFTAIN5_X_DATUMS } from './chieftain5X.ts';
 import { buildChieftainMk10X, CHIEFTAIN10_X_DATUMS } from './chieftain10X.ts';
 
 const hash = x => createHash('sha256').update(x).digest('hex');
@@ -17,61 +16,11 @@ const point = xyz => new THREE.Vector3(...xyz);
 const near = (a, b, e, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b) <= e,
   `${label}: ${a} vs ${b} ±${e}`);
 
-// Actual factory snapshots captured BEFORE the shared foundation edit. Full
-// scene attributes, indices, instances, hierarchy and local/world transforms;
-// no marking, batch, gear, material-bucket or spatial-envelope exclusion.
-// 2026-09-21 round 35 (camoWorldScale.ts): every hull projects camo at the fleet density, so the Mk5's rendered UV
-// channel no longer carries its authored 0.55 repeats/m; UV-only repin of both qualities, geometry unchanged.
-// 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is
-// that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3),
-// so the Mk5 scene lost its separate fallback Annulus mesh (one row, one geometry row) and its Rim
-// geometry changed. Superseded: high aec0172a… 77/44, low 9ec11861… 75/42.
-// 2026-09-22 combined round-38 tree (nation wheels + flat-ring mouth together): both rows re-pinned once more;
-// superseded high ee2aceaa… 76/43, low ab1380a9… 75/42 (each branch re-pinned alone).
-const MK5_BEFORE = {
-  // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
-  // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
-  high: ['725d3a317b0795bc528a75cb6d747f769c28be0ce9331e2324e5ca44d0299326', 74, 41],
-  low: ['2990075845fae8a913a0c181405a76094753687e3fced08ebc835f368ded4538', 72, 39],
-};
-// 2026-09-15 owner roster pass: the study is named 'Chieftain Mk 5' (no ' X' suffix); name-only repin.
-const MK5_SPEC = '56e6727221553aa2eda63da2ab9e13c3be0fe971487830059bf10d9d436e311e';
-const MK5_DATUMS = '0faf866441b38be84cc3b9fa9065a11cce13ac3999c71445b840d5179d471a30';
-// Separate pre-edit actual Mk10 evidence pins EVERY emission except the exact
-// hull/cast/horn/Stillbrew foundation scope. Thus copying the Mk5 projector,
-// 16 launcher mouths, other equipment, gun or gear cannot silently pass.
-// 2026-09-22 (owner: holes are added, not carved, to save triangles): the Mk10 emission list lost the
-// carved bore wall, ring and floor disc and gained the flat cap (superseded 9718ffa9…).
-const MK10_EMISSIONS = 'fe0dde177d0efd53e22aff75b4b8ffa58fb1954d529ef5d4f1376a6b2c55f95c';
-// 2026-09-11: the detail buckets now carry camouflage, so one more merged
-// mesh per quality is a paint-transformed bucket (36/34 -> 37/35).
-// 2026-09-21 round 35 (camoWorldScale.ts): the Mk10's painted meshes project camo at the fleet density instead of
-// the authored 0.55 repeats/m; UV-channel-only repin of both qualities, mesh count and geometry unchanged.
-const MK10_OTHER = {
-  // 2026-09-22 (owner: holes are added, not carved, to save triangles): one fewer complete mesh per
-  // quality — the separate fallback Annulus is gone and the Rim geometry changed (superseded high
-  // 5969a67c…/37, low 1f3f4350…/35).
-  high: ['05291a8c4fc2ee2b680691ea6314b1badf3a2e0ecd81700c9e0549849f10af7a', 35],
-  low: ['be486854557701a24080a004267ba61cf7ca3a64788628d8632e1a9b528915c6', 33],
-};
-// Immutable pre-edit paint matrices from the same capture as MK10_OTHER.
-// A live marking solve follows the new casting. Reconstruct only authenticated
-// paint contributions for the old hash; never restore these seats in the scene.
-const PAINT_QUAD = 'edfd6b3948ad3ad7a4572aca934c934ab1d67b2e91ce0c7150de6e6ee512782b';
-const PAINT_BATCH = '31d7bac70e605ca08ddd9e646fa5b14972dbc36cf6b5e8bb381cf4b9787451af';
-const PAINT_BEFORE = [
-  { name: 'vehicleMarking_insignia', matrix: [
-    -.1343674196995562, .0016374193547829452, -.1988535023104695, 0,
-    .0029244549764982372, .23998218176166836, 0, 0,
-    .1988387388975643, -.0024230754767748178, -.1343773962348583, 0,
-    1.1769229527521756, .16487706324145637, -.689108177724704, 1],
-  positionWorld: [1.1769229527521756, 1.6778330632414564, -.09386717772470399] },
-  { name: 'vehicleMarking_designation', matrix: [
-    -.025919530880102373, 0, -.23859626551762164, 0, 0, .24, 0, 0,
-    .23859626551762164, 0, -.025919530880102373, 0,
-    1.3516680104637502, .238242814240905, -.27524027819662417, 1],
-  positionWorld: [1.3516680104637502, 1.751198814240905, .32000072180337585] },
-];
+// Frozen pre-foundation scene/emission/metadata digests are retired: whole-tank change detection of chieftain5_x and
+// chieftain_mk10_x is the fleet geometry ledger's. This receipt keeps the live contracts: the geometry-only consumer
+// differs from the rendered build only in paint, the Mk10 build cannot mutate Mk5 metadata, the markings are unit
+// quads seated on physical stock, and the Mk10 foundation follows its independent source rays and datums.
+const MARKING_NAMES = ['vehicleMarking_insignia', 'vehicleMarking_designation'];
 
 function attribute(a) {
   if (!a) return null;
@@ -82,8 +31,8 @@ function attribute(a) {
 }
 
 function legacyAttributeNames(g) {
-  // Keep all immutable pre-foundation fingerprints. Only the independently
-  // validated, later-added lighting channel is separate from physical shape.
+  // The same-run fingerprints below keep every physical channel. Only the
+  // independently validated lighting channel is separate from physical shape.
   const a = g.getAttribute('nightEmissionMask');
   if (a) {
     assert.ok(a.array instanceof Uint8Array, 'night mask is byte-sized');
@@ -154,9 +103,9 @@ function geometryHash(g) {
 }
 
 // Published deaf6bf11 (parent 7b91b838b) stopped boxUV/bakeDirt in
-// geometry-only consumers. The immutable old scene includes both channels;
-// keep measuring it through the unchanged full-attribute path below, then
-// separately prove that the optimized consumer differs ONLY in those paints.
+// geometry-only consumers. The rendered scene includes both channels;
+// measure it through the full-attribute path below, then prove in the same
+// run that the optimized consumer differs ONLY in those paints.
 // This is the exact published CAMO_BUCKETS set, not a spatial/mesh exclusion.
 // 2026-09-11 fleet paint standard: painted fittings, lattices, fixed bodywork
 // and the detail buckets carry camouflage too, so they omit the same bakes.
@@ -226,13 +175,10 @@ function paintOmissionControls(renderedRows, optimizedRows) {
 }
 
 function checkMk5(quality, coldSpec) {
-  assert.equal(semantic(CHIEFTAIN5_X_DATUMS.chieftain5_x), MK5_DATUMS, 'Mk5 physical datum record is unchanged');
   const tank = createTank('chieftain5_x', null, { quality, proceduralOnly: true,
     camoSeed: 4242, materialMode: 'rendered', geometryReceipt: true });
   try {
     const rows = sceneRows(tank.root);
-    assert.deepEqual([hash(JSON.stringify(rows)), rows.length, rows.filter(r => r.geometry).length],
-      MK5_BEFORE[quality], `Mk5/${quality}: immutable complete pre-foundation scene`);
     const optimized = createTank('chieftain5_x', null, { quality, proceduralOnly: true,
       camoSeed: 4242, materialMode: 'geometry-only', geometryReceipt: true });
     try {
@@ -241,10 +187,10 @@ function checkMk5(quality, coldSpec) {
       paintOmissionControls(rows, optimizedRows);
       console.log(`Mk5/${quality}: exact geometry-only paint omission [${painted.join(', ')}], 13 rejecting controls PASS`);
     } finally { optimized.dispose(); }
-    // The original capture pinned cold metadata once, before either build.
-    // Its own native gear then attaches the longstanding derived trackShapes.
-    // Admit exactly that lifecycle addition, and pin the complete warmed
-    // record so the following Mk10 build cannot mutate ANY Mk5 metadata.
+    // Cold metadata is read once, before either build. Its own native gear
+    // then attaches the longstanding derived trackShapes. Admit exactly that
+    // lifecycle addition, and fingerprint the complete warmed record (same
+    // run) so the following Mk10 build cannot mutate ANY Mk5 metadata.
     const warmed = stable(getSpec('chieftain5_x'));
     assert.deepEqual(warmed.armor.trackShapes.map(s => s.module), ['trackL', 'trackR']);
     assert.deepEqual(warmed, { ...coldSpec, armor: { ...coldSpec.armor,
@@ -281,47 +227,27 @@ function paintBatchHash(matrices) {
 function verifiedPaint(root, quality, currentHighMatrices) {
   const paint = [];
   root.traverse(m => { if (m.isMesh && m.userData.vehicleMarking) paint.push(m); });
-  const normalized = new Map();
   assert.equal(paint.length, quality === 'high' ? 2 : 1, 'exactly the existing paint pair, with no extra mesh');
   for (const m of paint) assert.equal(m.parent.name, 'rig_turret', 'same actual owning rig');
   if (quality === 'high') {
-    for (const [i, m] of paint.entries()) {
-      paintGeometryShape(m, 4); assert.equal(m.name, PAINT_BEFORE[i].name);
-      assert.equal(geometryHash(m.geometry), PAINT_QUAD, 'unchanged complete unit marking quad');
-      for (const scale of m.scale.toArray()) near(scale, .24, 1e-12, 'unchanged full-size paint footprint');
-      assert.equal(m.userData.surfaceSupported, true, 'live solve seats the actual paint on physical stock');
-      currentHighMatrices.push(m.matrix.toArray());
-      const before = PAINT_BEFORE[i], world = [...before.matrix];
-      world.splice(12, 3, ...before.positionWorld);
-      normalized.set(m, { matrix: before.matrix, world });
-    }
+    const unit = new THREE.PlaneGeometry(1, 1);
+    try {
+      for (const [i, m] of paint.entries()) {
+        paintGeometryShape(m, 4); assert.equal(m.name, MARKING_NAMES[i]);
+        assert.equal(geometryHash(m.geometry), geometryHash(unit), 'complete unit marking quad (live PlaneGeometry(1, 1))');
+        for (const scale of m.scale.toArray()) near(scale, .24, 1e-12, 'unchanged full-size paint footprint');
+        assert.equal(m.userData.surfaceSupported, true, 'live solve seats the actual paint on physical stock');
+        currentHighMatrices.push(m.matrix.toArray());
+      }
+    } finally { unit.dispose(); }
   } else {
     const m = paint[0]; paintGeometryShape(m, 8);
     assert.equal(m.name, 'mobileStaticBatch_0'); assert.equal(m.userData.mobileStaticBatch, true);
     assert.equal(currentHighMatrices.length, 2);
     assert.equal(geometryHash(m.geometry), paintBatchHash(currentHighMatrices),
       'every low batch byte is exactly the two actual high-detail paint contributions, with no physical stock');
-    const reconstructed = paintBatchHash(PAINT_BEFORE.map(p => p.matrix));
-    assert.equal(reconstructed, PAINT_BATCH, 'old merged paint hash is authenticated, not refreshed');
-    normalized.set(m, { geometry: reconstructed });
   }
-  return normalized;
-}
-
-function unaffectedMeshes(root, paint) {
-  const rows = [];
-  root.traverse(m => {
-    if (!m.geometry || m.userData.shadowOnly || m.name.startsWith('procShadow_')
-      || ['hull', 'turret', 'turretExternalArmor'].includes(m.name)) return;
-    const row = { name: m.name, matrix: m.matrix.toArray(), world: m.matrixWorld.toArray(),
-      geometry: geometryHash(m.geometry) };
-    for (const key of ['instanceMatrix', 'instanceColor']) if (m[key]) {
-      const a = m[key].array; row[key] = hash(Buffer.from(a.buffer, a.byteOffset, a.byteLength));
-    }
-    Object.assign(row, paint.get(m));
-    rows.push(row);
-  });
-  return [hash(JSON.stringify(rows)), rows.length];
+  return new Set(paint);
 }
 
 function preservationNegativeControls(root, paint) {
@@ -334,15 +260,10 @@ function preservationNegativeControls(root, paint) {
   for (const m of physical) {
     assert.throws(() => paintGeometryShape(m, 8), assert.AssertionError,
       'an actual physical batch cannot pass the two-quad paint authentication');
-    const g = m.geometry.clone();
-    try {
-      const p = g.attributes.position; p.setX(0, p.getX(0) + .001);
-      assert.notEqual(geometryHash(g), geometryHash(m.geometry), 'a 1 mm physical change still breaks preservation');
-    } finally { g.dispose(); }
   }
 }
 
-function collectEmission(emissions, stillbrew, casting, key, args) {
+function collectEmission(stillbrew, casting, key, args) {
   const index = args.findIndex(a => a?.isBufferGeometry);
   if (index < 0) return;
   const g = args[index], tag = g.userData.chieftain10Stillbrew;
@@ -355,23 +276,20 @@ function collectEmission(emissions, stillbrew, casting, key, args) {
     assert.equal(args.length, 2, 'shared casting is already in the measured turret-local frame');
     casting.push(g.clone());
   }
-  if ((key === 'add' && ['hull', 'turret'].includes(args[0]))
-    || (key === 'addExternalArmor' && args[0] === 'turret')) return;
-  emissions.push({ key, args: args.map((a, i) => i === index ? { geometry: geometryHash(a) } : a) });
 }
 
 function measuredMk10(quality) {
-  const emissions = [], stillbrew = [], casting = [];
+  const stillbrew = [], casting = [];
   registerProfiledBuilders({ chieftain_mk10_x: p => buildChieftainMk10X(new Proxy(p, {
     get(target, key) {
       if (typeof target[key] !== 'function') return Reflect.get(target, key);
-      return (...args) => { collectEmission(emissions, stillbrew, casting, key, args); return target[key](...args); };
+      return (...args) => { collectEmission(stillbrew, casting, key, args); return target[key](...args); };
     },
   })) });
   try {
     const tank = createTank('chieftain_mk10_x', null, { quality, proceduralOnly: true,
       geometryReceipt: true, batchStatic: false, camoSeed: 4242 });
-    tank.root.updateMatrixWorld(true); return { tank, emissions, stillbrew, casting };
+    tank.root.updateMatrixWorld(true); return { tank, stillbrew, casting };
   } catch (error) {
     stillbrew.forEach(s => s.geometry.dispose()); casting.forEach(g => g.dispose()); throw error;
   } finally { registerProfiledBuilders({ chieftain_mk10_x: buildChieftainMk10X }); }
@@ -475,29 +393,20 @@ function posedEquipment(root) {
 
 sharedWiring();
 const coldMk5Spec = stable(getSpec('chieftain5_x'));
-  // 2026-09-12 fleet track standard: the shared Mk5 gear foundation carries a
-  // .024 band, .030 pad and a .054 course datum; the cold metadata is repinned.
-assert.equal(semantic(coldMk5Spec), MK5_SPEC, 'complete immutable cold Mk5 metadata, before any factory runs');
 const currentPaintMatrices = [];
 let warmedMk5Hash;
 for (const quality of ['high', 'low']) {
   const afterOwnBuild = checkMk5(quality, coldMk5Spec);
   if (warmedMk5Hash) assert.equal(afterOwnBuild, warmedMk5Hash, 'complete warmed Mk5 metadata is quality-independent');
   warmedMk5Hash = afterOwnBuild;
-  const { tank, emissions, stillbrew, casting } = measuredMk10(quality);
+  const { tank, stillbrew, casting } = measuredMk10(quality);
   try {
-    // 2026-09-22 (owner: holes are added, not carved, to save triangles): chieftain10XGun.ts replaced its
-    // carved bore wall, ring and floor disc (three emits) with one flat cap at the source mouth: 668 -> 666.
-    assert.equal(emissions.length, 666);
-    assert.equal(hash(JSON.stringify(emissions)), MK10_EMISSIONS, 'every non-foundation emission preserved exactly');
     const paint = verifiedPaint(tank.root, quality, currentPaintMatrices);
-    assert.deepEqual(unaffectedMeshes(tank.root, paint), MK10_OTHER[quality],
-      'all unaffected complete meshes exact after authenticating only the changed paint transforms');
     if (quality === 'low') preservationNegativeControls(tank.root, paint);
     assert.deepEqual(stillbrew.map(s => s.tag).sort(), ['port', 'spine', 'starboard']);
     checkDatums(tank.root); sourceCasting(tank.root, casting); posedEquipment(tank.root);
     assert.equal(semantic(getSpec('chieftain5_x')), warmedMk5Hash,
       'Mk10 construction and articulation cannot mutate any complete warmed Mk5 metadata');
-    console.log(`chieftain10XMk5Foundation ${quality}: immutable Mk5, 666 unchanged Mk10 emissions, source datums/variant air/ownership PASS`);
+    console.log(`chieftain10XMk5Foundation ${quality}: Mk5 paint-only geometry parity and unmutated metadata, Mk10 markings, source datums/variant air/ownership PASS`);
   } finally { tank.dispose(); stillbrew.forEach(s => s.geometry.dispose()); casting.forEach(g => g.dispose()); }
 }

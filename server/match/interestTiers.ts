@@ -34,7 +34,6 @@ export const INTEREST_ENGAGED_TICKS = INTEREST_ENGAGED_S * TICK_HZ;
 export const INTEREST_NEAR_MISS_M = 15;
 
 export type InterestTier = 0 | 1 | 2;
-export const INTEREST_TIER_NAMES: readonly ['near', 'mid', 'far'] = Object.freeze(['near', 'mid', 'far']) as unknown as readonly ['near', 'mid', 'far'];
 
 const NEAR_SQ = INTEREST_NEAR_M * INTEREST_NEAR_M;
 const MID_SQ = INTEREST_MID_M * INTEREST_MID_M;

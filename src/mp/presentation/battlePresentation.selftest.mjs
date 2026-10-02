@@ -96,7 +96,7 @@ function ownRow(overrides = {}) {
   return { ...zeroEntityRow(1), x: quantizePosition(142), y: 1200, z: quantizePosition(-73), hp: 1800, maxHp: 2000, reload: 0, reloadTotal: 3000,
     magazineRounds: 0, magazineCapacity: 0, ammo0: 12, ammo1: 6, ammo2: 0, flags: 0, ...overrides };
 }
-const viewerState = { entityId: 1, modules: [0, 0, 2, 0, 1, 0, 0], crewBits: 2, equipment: [1100, 1150, 900, 900], modeSpeedMultiplier: 1850, modeGravityScale: 1000, movementVersion: 0, movementFlags: 0, movementValues: [] };
+const viewerState = { entityId: 1, modules: [0, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], crewBits: 2, equipment: [1100, 1150, 900, 900], modeSpeedMultiplier: 1850, modeGravityScale: 1000, movementVersion: 0, movementFlags: 0, movementValues: [] };
 function frame(overrides = {}) {
   return {
     tick: 120, renderTimeMs: 2000, entities: [sample(2, -91, 64), sample(3, 10, 10)], shells: [],
@@ -112,6 +112,8 @@ assert.equal(game.player, presentation.ownActor, 'the first frame mounts the pre
 assert.equal(game.player.state, ownState, 'the viewer renders the client\'s predicted state object');
 assert.equal(game.tankById, presentation.actors);
 assert.deepEqual(game.tanks.map((actor) => actor.id), ['me', 'foe', 'bot-3']);
+const completeRoster = game.rosterTanks;
+assert.deepEqual(completeRoster.map(actor => actor.id), ['me', 'foe', 'bot-3']);
 assert.deepEqual(game.tanks.map((actor) => actor.team), ['player', 'enemy', 'player'], 'teams classify against the viewer');
 assert.equal(visuals.some((visual) => visual.revealedBeforePose), false, 'nobody is visible before a pose');
 assert.deepEqual(visuals.map((visual) => visual.syncs), [1, 1, 1], 'one hidden initialization sync each; the render loop owns the rest');
@@ -144,6 +146,9 @@ presentation.applyFrame(frame({ tick: 122, entities: [sample(3, 10.5, 10)] }));
 assert.equal(game.spotting.isSpotted('foe'), false);
 assert.equal(visuals[1].visible, false, 'an entity absent from the frame is hidden');
 assert.deepEqual(game.tanks.map((actor) => actor.id), ['me', 'bot-3']);
+assert.equal(game.rosterTanks, completeRoster, 'unspotting retains the announced roster object');
+assert.deepEqual(game.rosterTanks.map(actor => actor.id), ['me', 'foe', 'bot-3'], 'an unseen opponent stays listed');
+assert.equal(game.rosterTanks[1], foe, 'identity and last observed state are retained without revealing the actor');
 const bot = presentation.actors.get('bot-3');
 assert.ok(Math.abs(bot.state.trackScroll.l - 0.5 * Math.sin(0.4)) < 1e-9, 'track scroll integrates the observed travel');
 presentation.setVisibility(2, true);
@@ -249,6 +254,24 @@ presentation.dispose();
 assert.ok(visuals.every((visual) => visual.disposed));
 assert.equal(game.player, null, 'dispose restores the game state');
 assert.deepEqual(game.tanks, []);
+assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fallback');
+
+// Announced opponents are listed even before their first spotted snapshot.
+{
+  const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null };
+  const p = createBattlePresentation({
+    engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit() {} },
+    createTankVisual: fakeVisual, prepareVisualTextures: async () => {}, clock: () => nowMs,
+  });
+  await p.applyRoster(roster, context);
+  p.applyFrame(frame({ entities: [sample(3, 10, 10)] }));
+  assert.deepEqual(state.rosterTanks.map(actor => [actor.displayName, actor.team]),
+    [['Me', 'player'], ['Foe', 'enemy'], ['Bot 3', 'player']]);
+  assert.deepEqual(state.tanks.map(actor => actor.id), ['me', 'bot-3']);
+  assert.equal(state.spotting.isSpotted('foe'), false);
+  assert.equal(p.actors.get('foe').visual.visible, false);
+  p.dispose();
+}
 
 // ------------------------------------------------------------ the event path, a disconnect and a spectator
 {
@@ -314,6 +337,22 @@ assert.deepEqual(game.tanks, []);
   assert.ok(push.z < 0);
   assert.equal(world.collide(new Vector3(20, 0, 14), 4, push), true, 'a disclosed hull pushes');
   assert.ok(Math.hypot(push.x, push.z) > 0);
+  // A rewind to an authority pose inside the presented hull (one interpolation delay old; the authority resolved that
+  // contact) seats the hull against the pose: the pose is clear, the hull stays solid one step further in, and a rewind
+  // that is clear presents it where it is again. A penetration within the wire's quantization is left as presented.
+  const depth = Math.hypot(push.x, push.z);
+  const nx = push.x / depth, nz = push.z / depth;
+  world.anchor({ pos: new Vector3(20, 0, 14), yaw: ownState.yaw });
+  assert.equal(world.collide(new Vector3(20, 0, 14), 4, push), false, 'the authority pose is clear of the seated hull');
+  assert.equal(world.collide(new Vector3(20 - nx * 0.3, 0, 14 - nz * 0.3), 4, push), true, 'the seated hull is still solid');
+  assert.ok(Math.abs(Math.hypot(push.x, push.z) - 0.3) < 0.01, `pushed back by the 0.3 m it was driven in (${Math.hypot(push.x, push.z)})`);
+  world.anchor({ pos: new Vector3(20, 0, -20), yaw: ownState.yaw });
+  assert.equal(world.collide(new Vector3(20, 0, 14), 4, push), true, 'a clear rewind presents the hull where it is');
+  assert.ok(Math.abs(Math.hypot(push.x, push.z) - depth) < 1e-9);
+  const graze = new Vector3(20 + nx * (depth - 0.02), 0, 14 + nz * (depth - 0.02));
+  world.anchor({ pos: graze, yaw: ownState.yaw });
+  assert.equal(world.collide(graze, 4, push), true, 'a 2 cm overlap at the rewind is contact, not a stale hull');
+  assert.ok(Math.abs(Math.hypot(push.x, push.z) - 0.02) < 0.005);
   p.applyFrame(frame({ entities: [sample(3, -50, -50)] }));
   assert.equal(world.collide(new Vector3(20, 0, 14), 4, push), false, 'a hidden hull never pushes (its coordinates are stale)');
   p.dispose();

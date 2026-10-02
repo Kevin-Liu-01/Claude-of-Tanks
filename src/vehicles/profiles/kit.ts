@@ -624,7 +624,7 @@ function addHullRunningGear(P: ProfileBuilderPort, p: ProfileConfig, d: HullBuil
 function buildHull(P: ProfileBuilderPort, p: ProfileConfig): HullBuildResult {
   const { box,fenders }=KIT;
   const d=resolveHullDimensions(P,p);
-  const {width,length,halfL,roofY,trackTop,trackW,innerW,lowerH}=d;
+  const {width,length,halfL,roofY,trackTop,innerW,lowerH}=d;
 
   P.add('hull',box(innerW,lowerH,length*0.91),0,0.22+lowerH/2,0);
   fenders(P,innerW/2,width/2+0.02,Math.min(roofY-0.16,trackTop+0.25),-halfL*0.96,halfL*0.94,0.025);
@@ -2057,7 +2057,7 @@ function addAmericanRwsSensorHead(context: AmericanRwsBuildContext): void {
 
 function addAmericanRwsWeaponSystem(context: AmericanRwsBuildContext): void {
   const { box, cylZ } = KIT;
-  const { body, headH, headY, parts, recY, s } = context;
+  const { body, headY, parts, recY, s } = context;
   // M2 receiver is nested into the head roof; side coffin and feed are one
   // connected protected assembly rather than a floating generic gun.
   parts.add('dark', box(0.235 * s, 0.145 * s, 0.46 * s), 0, recY, 0.16 * s);
@@ -2801,7 +2801,7 @@ function fittingTowCable(opts: FittingOptions = {}): THREE.Group {
  * Envelope: x ±(count*(0.16+gap))/2, y 0..0.50, z ±0.17.
  */
 function fittingJerryCans(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylY, cylZ } = KIT;
+  const { box, cylY } = KIT;
   const requestedCount = Math.max(2, Math.floor(opts.count ?? 2));
   const count = requestedCount % 2 === 0 ? requestedCount : requestedCount + 1;
   const gap = opts.gap ?? 0.05;

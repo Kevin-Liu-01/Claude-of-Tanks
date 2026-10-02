@@ -1,22 +1,17 @@
-import { beforeRoadSettlementRedesign } from '../../tools/road-settlement-history-fixture.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { assertTerrainMaskShaderContract } from './terrainMaskShaderTestOracle.mjs';
 import { stampWorkedGroundMask } from './workedGroundMask.ts';
-import { createHeightField, createLayout, makeMaskTexture, mulberry32 } from './terrain.ts';
-import { historicalMaskTexture } from './roadRutHistoryTestOracle.mjs';
+import { createHeightField, makeMaskTexture, mulberry32 } from './terrain.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { resolveDeviceTier } from '../engine/quality.ts';
 import longleaf from './maps/longleaf.ts';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
-// road pass 2026-09-12: the mask G byte is now the road centreline distance
-// field (terrain.ts paintRoadMask), so every full-RGBA golden below was
-// re-pinned to the new bytes. R/B/A are produced by unchanged code; the
-// channel-masked comparison against the previous painter is recorded in
-// docs/history/research/map-pass-20260912.md (road pass section).
-const originalLongleaf = '35eb308242df93c194fe2fa2764054e5880f581893de7eecf451b5b92670e699';
+// 2026-10-01 (frozen pins retired): the pre-change full-RGBA digest of Longleaf's mask (baked on the historical road
+// coordinates through a historical mask module) was a change detector; the production bake is held to the live
+// worked-ground contracts against the same map with its patches removed.
 const zeroNoise = { noise: () => 0 };
 const rectangle = { boundary: [[-24, -24], [24, -24], [24, 24], [-24, 24]], feather: 8, strength: 1 };
 function pixel(size, mapSize, x, z) {
@@ -102,11 +97,6 @@ function checkProduction(seed, size) {
     for (const key of ['format','type','colorSpace','flipY','wrapS','wrapT','minFilter','magFilter','generateMipmaps','anisotropy']) {
       assert.equal(after[key], before[key], `no texture policy change: ${key}`);
     }
-    if (seed === 1337 && size === 512) {
-      const historical = historicalMaskTexture(noise(), createLayout({ ...beforeRoadSettlementRedesign(control), id: undefined }));
-      try { assert.equal(hash(historical.image.data), originalLongleaf, 'independently preserved pre-change full RGBA'); }
-      finally { historical.dispose(); }
-    }
     const changed = invariantChannels(before.image.data, after.image.data), area = changed * (1024 / size) ** 2;
     assert.ok(area > 4000 && area < 45000, 'meaningful localized harvest, not blanket biome recoloring');
     for (let z = -496; z <= 496; z += 32) for (let x = -496; x <= 496; x += 32) {
@@ -140,8 +130,6 @@ try {
   if (savedWindow === undefined) delete globalThis.window; else globalThis.window = savedWindow;
 }
 const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
-// Historical full shader: d470ffa221c1ed9617c7794f0734932fb904beb1e204e1af6a10d1f415e14713.
-// Projection/sand/worn-blend gates own later shader improvements independently;
-// the historical mask controls above still feed the current A-channel path.
+// Projection/sand/worn-blend gates own later shader improvements independently; this checks the current A-channel consumer.
 assertTerrainMaskShaderContract(source);
 console.log(JSON.stringify({ test: 'workedGroundMask', scope: 'CPU production masks; no native/performance acceptance', receipts }));

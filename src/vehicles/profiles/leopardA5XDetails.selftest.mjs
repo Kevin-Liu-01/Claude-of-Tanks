@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
-import { withA5ReturnRollerHistory } from './leopardReturnRollersHistory.mjs';
 
 const near = (actual, expected, tolerance, label) => assert.ok(Number.isFinite(actual)
   && Math.abs(actual - expected) <= tolerance, `${label}: ${actual} vs ${expected} ±${tolerance}`);
@@ -21,39 +19,8 @@ const coverWitnesses = [
   ['Left',-1.035,-1.40,1.78940116],
 ];
 
-// Captured before the A5-only repair at seed4242. The sole original merged
-// turretDetail bucket contains the deliberately reshaped basket and is
-// checked by independent floor/band/wall witnesses below. Every other old
-// rendered mesh, including hull, shell, barrel and all instanced gear, stays
-// pinned; newly named local fittings are the only additional meshes.
-// 2026-09-11 fleet wheel standard: the Leopard 2 family draws plain dished
-// twelve-fastener discs, so the retained gear rows carry that stock.
-// 2026-09-13 fender-to-skirt closure: the rear skirt skin continues up to the
-// sponson shelf (1.308 -> 1.480) and the 1.50..1.672 slot closes; repinned.
-// 2026-09-22 nation wheel standard: leo2a5_x draws the Leopard 2A6 X paired dish (nationWheelSets.ts); repinned from the current build.
-const retained = {
-  high: [227118,'d77e3db9e871e09538c94749583b3d5ced75468c5820b4a54e27b34570d4e8ad'],
-  // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: 44e6b2eb…, 236890.
-  low: [215430,'1a46b5b48f8ee6cfe11fd6422b57f4857efffc8a739d0f7c1f0ad17bafc4b00e'],
-};
-function retainedFingerprint(root) {
-  const rows=[];
-  root.traverse(o=>{
-    if (!o.isMesh || o.name==='turretDetail' || o.userData.sourceA5FinalFitting
-      || o.userData.vehicleMarking || o.userData.shadowOnly || o.userData.geometryAuditIgnore
-      || /shadow/i.test(o.name)) return;
-    for (let p=o; p; p=p.parent) if (!p.visible) return;
-    const positions=o.geometry.attributes.position;
-    for (let instance=0; instance<(o.isInstancedMesh ? o.count : 1); instance++) {
-      const matrix=o.matrixWorld.clone();
-      if (o.isInstancedMesh) { const local=new THREE.Matrix4(); o.getMatrixAt(instance,local); matrix.multiply(local); }
-      for (let i=0; i<positions.count; i++) rows.push(new THREE.Vector3()
-        .fromBufferAttribute(positions,i).applyMatrix4(matrix).toArray().map(v=>Math.round(v*1e6)).join(','));
-    }
-  });
-  rows.sort();
-  return [rows.length,crypto.createHash('sha256').update(rows.join('\n')).digest('hex')];
-}
+// The frozen pre-repair world-vertex fingerprint (replayed through the A5 return-roller history) is retired:
+// whole-tank change detection of leo2a5_x is the fleet geometry ledger's.
 
 function basketChecks(mesh, quality) {
   const points=[],positions=mesh.geometry.attributes.position;
@@ -176,15 +143,6 @@ for (const quality of ['high','low']) {
     tank.root.updateMatrixWorld(true);
     const get=name=>tank.root.getObjectByName(name);
     const fixture=name=>get(`leo2a5_xSourceFixture_${name}`);
-    withA5ReturnRollerHistory(tank,quality,history=>{
-      assert.deepEqual(retainedFingerprint(history),retained[quality],`${quality}: original literal survives the exact return-gear inverse`);
-      const p=get('hull').geometry.attributes.position,old=p.getX(0);
-      try {
-        p.setX(0,old+.125);
-        assert.notDeepEqual(retainedFingerprint(history),retained[quality],
-          'Negative control: actual current armor remains in the fingerprint, not a whole-old-tank substitution');
-      } finally { p.setX(0,old); }
-    });
     basketChecks(get('turretDetail'),quality);
     roofChecks(tank,quality);
     for (const name of [...roofNames,'ServiceCoverRight','ServiceCoverLeft']) {
@@ -208,4 +166,4 @@ for (const quality of ['high','low']) {
   } finally { tank.dispose(); }
   assert.ok([...disposed.values()].every(count=>count===1),'every additional geometry is disposed once');
 }
-console.log('leopardA5XDetails: high/low source covers/basket/roof, real air, support, yaw, preservation and disposal pass');
+console.log('leopardA5XDetails: high/low source covers/basket/roof, real air, support, yaw and disposal pass');

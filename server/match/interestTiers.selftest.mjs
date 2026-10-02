@@ -15,6 +15,10 @@ import {
   INTEREST_CADENCE, INTEREST_ENGAGED_TICKS, INTEREST_MID_M, INTEREST_NEAR_M, createViewerInterest, engageEntity, interestTierFor, needsFreshRow,
   recordRow, refreshDue, viewerTierFor,
 } from './interestTiers.ts';
+import { ensureAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
+
+// The actor reads finalized combat anatomy; production hosts load their roster's groups first (Node: all).
+await ensureAuthorityFleet();
 
 // ------------------------------------------------------------ the rules
 assert.equal(interestTierFor(0), 0);

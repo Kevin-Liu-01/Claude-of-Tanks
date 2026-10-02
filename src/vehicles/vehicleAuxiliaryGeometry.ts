@@ -67,6 +67,22 @@ export function registerSmokeSockets(mesh: THREE.Object3D, parts: readonly THREE
 export function smokeSocketsFor(mesh: THREE.Object3D): readonly SmokeSocket[] {
   return (mesh.userData.smokeSockets as SmokeSocket[] | undefined) ?? [];
 }
+/** Static batches bake sibling transforms into an identity mesh. Keep the same
+ * launcher mouths on that mesh so both quality paths retain functional equipment. */
+export function transferSmokeSockets(sources: readonly THREE.Object3D[], batch: THREE.Object3D): void {
+  const sockets: SmokeSocket[] = [];
+  const position = new THREE.Vector3(), direction = new THREE.Vector3();
+  for (const source of sources) {
+    source.updateMatrix();
+    for (const socket of smokeSocketsFor(source)) {
+      position.fromArray(socket.position).applyMatrix4(source.matrix);
+      direction.fromArray(socket.direction).transformDirection(source.matrix);
+      sockets.push({ position: position.toArray(), direction: direction.toArray() });
+    }
+  }
+  if (sockets.length) batch.userData.smokeSockets = sockets;
+}
+
 /** Correct the complete mounted bank, including its caps and support, in the
  * turret/hull frame. Parent mount yaw must not turn the outside tubes aft. */
 export function alignSmokeBanks(root: THREE.Object3D): void {

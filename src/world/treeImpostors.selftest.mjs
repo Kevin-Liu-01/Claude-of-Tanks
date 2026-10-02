@@ -21,20 +21,8 @@ import { TREE_ARCHETYPES } from './treeSpecies.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
 import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 
-// The pinned bake-input digests (seed 2001, the real leaf atlases): a changed builder or atlas moves them — re-pin deliberately.
-// Round 77c (2026-09-26): re-pinned for the elevated ring — the layout text carries the ring's elevation ('flat' where the
-// atlas has none) and every row its capture elevation; Nordhavn's atlas gains its three 45° rows.
-// p2 trees lane (2026-10-01): re-pinned for the grown near trees (treeGrowth.ts) and their spray atlases
-// (treeSprayAtlas.ts) — the far tier bakes the new trees; was verdant 33ca4146, fjord a9c982e2, delta a43cefd0. Re-pinned
-// with the crown's occlusion baked into the wood, the oak's dome and the desktop palms' pinnate frond; then for the
-// first all-map review's fixes (fuller sprays, narrower spruce and fir, darker bark, snow in the needles: verdant
-// e2ad75c1, fjord d5c01887, delta e49114df) and for the welded (indexed) grown geometry and the eucalyptus' tint;
-// Nordhavn again for the slender spruce and fir crowns (fjord 3a94851f); the Delta for the furrowed sheet painted
-// exactly as the single sheet (its palms' compensated trunks; delta 4f0633f2); all three for the canopy's sky
-// occlusion baked into the grown wood (verdant 54fd12bc, fjord 003ab1a7, delta a661c8e6).
-const PINS = { verdant: '6fa2a092', fjord: '7f0550c6', delta: 'e3faa808' };
-// every producer's digest is reported before the pin is asserted (a re-pin reads all three from one run)
-const digestMismatches = [];
+// 2026-10-01 (frozen pins retired): the per-map bake-input digests (verdant/fjord/delta) were change detectors of the
+// tree builders and leaf atlases; the bake inputs stay deterministic (two seeded builds digest identically, below).
 
 // --- the layout law -------------------------------------------------------------------------------------------
 assert.equal(resolveTreeImpostorTile(6), 128, 'two species fit 128 px tiles');
@@ -248,7 +236,6 @@ try {
     receipts.push({ id, tile: library.tile, rows: library.rows.length, elevated: library.elevated, atlas: `${library.width}x${library.height}`, mb: +(library.bytes / 1048576).toFixed(2),
       farDraws: impostorMeshes.length, lobeDraws: species.length * 4, trees: world._trees.length,
       farTrianglesAllTrees: { impostor: world._trees.length * 2, lobes: farTrianglesLobes }, digest });
-    if (digest !== PINS[id]) digestMismatches.push(`${id}: the pinned bake-input digest (${digest}, pinned ${PINS[id]})`);
     world.dispose(); disposeObject3DResources(world.group);
   }
   // no renderer: the lobe tier, as the receipts build it
@@ -273,5 +260,4 @@ try {
   if (savedWindow === undefined) delete globalThis.window; else globalThis.window = savedWindow;
 }
 console.log(JSON.stringify({ receipts, lobeTriangles, budget: budgetRows }));
-assert.deepEqual(digestMismatches, [], digestMismatches.join('; '));
-console.log('treeImpostors.selftest: the layout law and budget on 31 maps, the row measure, impostor pools (2 draws / species, 2 tris / far tree) on three producers, the bake from the first update with the render state restored and after a suspension, far slots carrying their variants through the partition, pinned deterministic bake inputs, lobes without a renderer and on mobile PASS');
+console.log('treeImpostors.selftest: the layout law and budget on 31 maps, the row measure, impostor pools (2 draws / species, 2 tris / far tree) on three producers, the bake from the first update with the render state restored and after a suspension, far slots carrying their variants through the partition, deterministic bake inputs, lobes without a renderer and on mobile PASS');

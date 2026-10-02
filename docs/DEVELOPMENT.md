@@ -26,6 +26,8 @@ Before publishing:
    commit — at minimum `npm run typecheck` and the core receipt suite
    (`npm test`), on every push, however small the change (owner 2026-09-23,
    after a push that turned `balanceMatchups` red on shared main for a night).
+   `node tools/gate.mjs --baseline=<starting-base>` runs all of it in one
+   versioned command (below).
    Record the validated commit. An earlier branch's green result does
    not certify conflict resolution or later source edits. For geometry, use
    the complete anatomy and targeted release procedure in `AGENTS.md`.
@@ -52,6 +54,79 @@ or deploy. Both agents must invoke it; it cannot establish that a test was run
 or that an overlap was reviewed honestly. Its regression test uses two local
 clones to exercise stale remote data, stale validation and an accidental
 whole-file rollback that Git would otherwise allow.
+
+### The versioned gate: `tools/gate.mjs` (2026-10-01)
+
+Codex, Claude and CI run the same gate from the checkout under test. It replaces the gate half of
+the generated landing chain (`.qa-dev/landing/gen-chain.py` writing `release-then-deploy-*.sh` into
+a session scratchpad), which was not versioned and was lost once with a scratchpad.
+
+    node tools/gate.mjs                                # typecheck, build, i18n, budget, workers, receipts, preflight
+    node tools/gate.mjs --baseline=<starting-base>     # stop the line (below)
+    node tools/gate.mjs --steps=typecheck,build,workers   # a subset, in the canonical order; --skip=<steps> removes some
+    node tools/gate.mjs --only='src/vehicles/**'       # receipt selection passes through: --shard=i/n, --all, --order=registry
+    node tools/gate.mjs --dry-run                      # print the plan, run nothing
+
+- **build** is `npm run build`; its prebuild runs `npm run i18n:validate`, so **i18n** adds only
+  `tools/i18n-scan.mjs --check`, the other half of `npm run i18n:check`.
+- **budget** runs `tools/bundle-budget.mjs` once that file exists and is skipped until then.
+- **workers** runs the `typecheck` and `test` scripts of every `cloudflare/*/package.json` (rooms and
+  telemetry). They were in no gate before: the rooms typecheck was red on main for days unseen.
+  A missing Worker install fails with the `npm ci --prefix cloudflare/<name>` to run; `--install`
+  runs it.
+- **receipts** is `tools/run-selftests.mjs all` with one log per receipt (`--logs`).
+- **preflight** runs `tools/shared-main-preflight.mjs` for the validated HEAD with `--base`
+  (default: the merge-base with `origin/main`) and `--reviewed-main` passed through; in place when
+  the checkout is clean, otherwise in a reusable detached worktree of HEAD. HEAD moving or a tracked
+  change during the gate fails it. The gate never fetches: fetch and integrate first (step 1).
+
+The gate stops at the first red step (`--keep-going` runs the rest) and writes `gate.json` and
+`gate.md` to `--out` (default `<tmp>/cot-gate/<time>-<sha>`). Like the landing chains, it waits up to
+three hours for the capture lock unless `COT_SHOTS_LOCK_TIMEOUT_MS` is set. It never pushes, deploys,
+fetches or changes a setting; publishing and deploying stay separate steps.
+
+**Stop the line (`--baseline=<ref>`, gate audit P2).** Every receipt red here runs again alone, on this
+tree and on a temporary worktree of `<ref>` at the same time (holding the capture lease like any
+receipt run). It counts as **inherited** only when both fail with the same first error: the process's
+own uncaught error after Node's source caret, its message lines and the asserted `actual`/`expected`,
+with checkout paths, temporary directories and millisecond timings normalised. A differing pair runs
+once more to tell an **unstable** baseline message from a **changed** one. A receipt that passes on
+`<ref>` (or does not exist there) is a **regression**; regression and changed stop the gate and
+`gate.md` shows both messages. A receipt that passes alone here is **flaky** under the suite's load.
+Flaky and unstable are reported and block only with `--strict`. This replaces the exit-status
+comparison of 2026-09-30 (below), which let a new defect inside an old red pass.
+
+`.github/workflows/ci.yml` runs the static steps (`typecheck`, `build`, `i18n`, `budget`, `workers`)
+through this gate on every pull request and push to main, on a blobless sparse checkout without
+`public/media`, `public/icons`, `public/maps` and `docs/references` (the build reads none of them). It
+has no secrets and no deploy; a receipts job follows once main is green.
+
+### Releasing: `tools/release.mjs` (2026-10-01)
+
+The deployment owner releases a gated commit with the versioned tool instead of the scratchpad
+`deploy-prod-main.sh`; [DEPLOYS.md](DEPLOYS.md) keeps the policy and the ledger.
+
+    node tools/release.mjs build <sha>       # worktree of <sha>; npm ci; vercel pull; vercel build --prod; immutable routes
+    node tools/release.mjs deploy <sha> --title="deploy N: <title>"   # vercel deploy --prebuilt --prod, then verify
+    node tools/release.mjs verify <sha> --sweep   # served stamp names <sha>; every chunk 200; a missing chunk uncacheable
+    node tools/release.mjs rollback [--to=<deployment>]   # promote the deployment before the live one
+    node tools/release.mjs workers <sha> [--only=rooms]   # npm ci, typecheck, test, wrangler deploy --tag/--message <sha>
+    node tools/release.mjs <command> ... --dry-run   # print every command; run nothing (no Vercel, wrangler or network)
+
+- `build` deletes the pulled `.vercel/.env*.local` files in a `finally` block, whatever happens. The
+  only edit to them is dropping the redacted `VITE_*="[SENSITIVE]"` lines (see "Redacted public
+  settings" below); secrets are never printed or changed.
+- The build's own install rewrites `package-lock.json`; the tool restores it and refuses a tree with
+  other tracked changes, so the stamp is never `.dirty`.
+- `deploy` attaches the branch-link metadata (`githubCommitSha`, `githubCommitRef=main`, the subject
+  or `--title`, the repository ids) and then waits for the served `application-version` to name the
+  commit. Append the DEPLOYS.md row by hand: number, time, sha, title, served bundle, deployment id.
+- `rollback` uses `vercel promote`, which also turns production-domain auto-assignment back on; a
+  plain `vercel rollback` leaves it off, so the next prebuilt deploy would not go live.
+- Scope: `--scope` or `COT_VERCEL_SCOPE` (default `kl01s-projects`). The `vercel` on PATH (or
+  `COT_VERCEL_BIN`) must be the pinned major version (`VERCEL_CLI_MAJOR`).
+- Worker rollbacks are `npx wrangler rollback` in the Worker's directory; never across a Durable
+  Object migration tag.
 
 Publication and deployment are separate. Agree on one deployment owner for a
 round, follow [DEPLOYS.md](DEPLOYS.md), and record the actual served build version.
@@ -325,6 +400,31 @@ functional simulation tests and real visual checks still make different claims:
 a source regex does not prove a rendered result. The full gate inventory is not a
 substitute for the map/contact, shadow-motion and real Garage/battle review.
 
+**Scheduling, selection and cache identity (2026-10-01).** Only the order and the batching of the
+work changed; every selected receipt still runs every assertion in a fresh process.
+
+- A lease batch older than 45 s yields (drains, releases, re-queues) only while another acquisition
+  waits in the capture queue; with nobody queued the batch window restarts and the lease is
+  refreshed, never released (gate P5). The pool logs how often it renewed and yielded.
+- The pool admits the barrier receipts (exclusive CPU and self-leasing browser checks) first, then the
+  rest longest-first by the last observed run time (gate P7). Receipts with no observation take the
+  90th percentile; `--order=registry` restores registry admission. The registry order stays the
+  reporting order: the earliest registry failure supplies the exit status. Run times live in
+  `runtimes.json` beside the proofs (built once from the newest PASS record per receipt, then updated
+  by every ordinary PASS or FAIL). A replay of the real pool on the audit's medians: cold 24.2 min ->
+  18.1 (P5) -> 15.4 (P5+P7).
+- `--only=<glob>[,<glob>]` selects registry entries (`**`, `*`, `?`, `{a,b}`, a trailing `/` for a tree;
+  matching nothing exits 2). `--shard=i/n` runs one of n deterministic shards balanced by the
+  committed snapshot `tools/selftest-durations.json`, so separate CI jobs derive the same partition
+  (the report records its fingerprint). Regenerate the snapshot with
+  `node tools/run-selftests.mjs --write-durations` after a full run; a stale entry only unbalances.
+- `--logs=<dir>` writes each receipt's output to `<dir>/<receipt>.log` (a file descriptor, never a
+  pipe); `tools/gate.mjs` uses it to quote each red receipt's first error.
+- The proof store is keyed on the repository's root commit instead of the origin URL, so a renamed
+  remote no longer cold-starts every proof. The first run links the new directory to the URL-keyed
+  one, so existing proofs keep counting (`tools/selftest-cache-dir.mjs`; a shallow clone keeps the URL
+  key). These live outside `tools/selftest-cache.mjs` on purpose: that file salts every proof key.
+
 The runner retains bounded CPU workers, fresh child processes, fair capture-queue
 batches and exclusive browser/timing checks. It reports every ordinary failure in
 one run; `COT_SELFTEST_FAIL_FAST=1` opts into stopping early. No assertion threshold
@@ -345,7 +445,35 @@ Build the private artifact:
 The private build retains local authoring and comparison resources required by
 internal workflows.
 
+### Frozen pins retired; generated ledgers (2026-10-01)
+
+The owner retired frozen-history receipts: a receipt no longer asserts that a past state stays byte-identical
+("original … remains", "the other N maps unchanged", a pinned digest of an old version) or replays historical source
+to reproduce one. Each such receipt was converted to the invariants it protected (contact, seating, closure, budgets,
+registration, determinism checked by a same-run rebuild, A/B against a live opt-out) or retired; the history-replay
+support went with it. Visual change detection lives in generated ledgers that one command re-pins:
+
+- `npm run tank:geometry:check` / `npm run tank:geometry:update` — `docs/references/fleet-geometry-ledger.json`, every
+  playable tank at HIGH and LOW (camo seed 4242, unbatched), digested per rig group (hull, turret, gun, running gear,
+  other). `npm test` verifies every row without a second fleet build: `wheelQuality.selftest` (HIGH) and
+  `gunArticulation.selftest` (LOW) digest the models they already build, and `fleetGeometryLedger.selftest` guards the
+  roster, the wiring and the negative controls (digest and comparison live in `tools/fleet-geometry-digest.mjs`).
+  After an intended geometry or material change, re-pin the moved rows
+  (`npm run tank:geometry:update -- --ids=<ids>`, or the whole fleet without `--ids`), review which tanks and groups
+  moved, and commit the ledger with the change.
+- `npm run fx:textures:bake` rewrites the committed particle atlases and `src/fx/particleAtlases.ledger.json`
+  (`COT_UPDATE_LEDGER=1 node src/fx/particleTextureAssets.selftest.mjs` rewrites the ledger from the committed PNGs).
+- `npm run tank:anatomy:update` and `tank:anatomy:check` keep the combat anatomy ledger as before.
+
+A new receipt asserts properties of the current build. When a change needs a reviewed before/after record, capture it
+(screenshots or a ledger diff) in the change itself rather than pinning bytes in a receipt.
+
 ### Re-basing frozen digests after an intended fleet-wide change (2026-09-22)
+
+2026-10-01: the whole-model digests this section was written for are retired (see "Frozen pins retired; generated
+ledgers" above); whole-tank change detection is the fleet geometry ledger's, re-pinned with
+`npm run tank:geometry:update`. The procedure below still applies to the literal pins that remain (committed asset
+checksums, pixel digests such as `src/world/leafDetail.selftest.mjs`).
 
 Many receipts freeze whole-model or material-inclusive digests of hulls (`tankFactoryStaging`, `sourceXFleet`,
 `sourceX*AuxArmor`, `equipmentDamage`, `wrecks`, the preservation ledgers…). They are change detectors: after an
@@ -421,9 +549,16 @@ Verify fleet ordering:
 
     npm run tank:family:check
 
-Verify the recorded geometry freeze:
+Verify the fleet geometry ledger (Node; `npm test` verifies the same rows inside the wheel-quality and
+gun-articulation sweeps):
 
-    npm run tank:freeze:check
+    npm run tank:geometry:check
+
+Re-pin it after an intended geometry change and review the diff:
+
+    npm run tank:geometry:update -- --ids=<ids>
+
+The browser-era `npm run tank:freeze:check` ledger (`docs/FLEET-FREEZE-CURRENT.json`) is no longer maintained.
 
 Run a targeted release check:
 
@@ -585,7 +720,7 @@ Run a path and link audit:
 Before a production release:
 
 1. Confirm the worktree contains only intended changes.
-2. Run npm test.
+2. Run `node tools/gate.mjs --baseline=<starting-base>` (typecheck, build, Workers, receipts, preflight).
 3. Run the targeted subsystem checks from the matrix.
 4. Run npm run tank:native:check when fleet or build boundaries changed.
 5. Run npm run test:net:v2:p2p when networking or room behavior changed.
@@ -633,3 +768,5 @@ landing's, and the chain continues with the receipt named in the deploy row ("la
 that passes on the base and fails on the landing stops the chain as before. The rule exists because a session that deploys
 without gating on the suite can leave main red for a day; it never lets a landing make main worse, and the named receipts stay
 the repair debt of whoever broke them.
+2026-10-01: an identical exit status is not an identical failure (a census drifting from 456 to 470 inside an already-red
+receipt would have passed). The versioned rule compares the first error message and is `node tools/gate.mjs --baseline=<base>` (above).

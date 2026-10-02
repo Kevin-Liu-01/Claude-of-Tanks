@@ -215,6 +215,8 @@ interface GrowthBranch {
   mesh: boolean;
   /** A broken stub (snags): its tip ends blunt, not tapered to a twig. */
   broken: boolean;
+  /** Emitted as a straight supporting twig whatever its order (supportSprays: it carries sprays the tube budget left). */
+  support?: boolean;
 }
 interface LeafSite {
   /** Seat of the spray on its branch (tree space). */
@@ -229,6 +231,8 @@ interface LeafSite {
   flex: number;
   tile: number;
   bend: number;
+  /** The branch (index into the skeleton's branches) the spray is seated on. */
+  branch: number;
 }
 interface TreeSkeleton {
   species: GrowthSpecies;
@@ -552,10 +556,11 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
       const size = range(rng, profile.spray) * (0.72 - k * 0.08);
       leaves.push({ x: at.p.x, y: at.p.y - 0.05, z: at.p.z, ax: axis.x, ay: axis.y, az: axis.z, nx: face.x, ny: face.y, nz: face.z,
         length: Math.min(size, Math.max(0.35, (tip.y + 0.25 - at.p.y))), width: size * profile.aspect, shade: 1, flex: Math.min(1, at.flex + 0.3),
-        tile: (rng() * 4) | 0, bend: 0 });
+        tile: (rng() * 4) | 0, bend: 0, branch: 0 });
     }
   }
-  for (const branch of ctx.branches) {
+  for (let branchIndex = 0; branchIndex < ctx.branches.length; branchIndex++) {
+    const branch = ctx.branches[branchIndex];
     if (branch.broken) continue;
     // a weeping crown's scaffold tips carry curtains too (the limb would otherwise end bare above them)
     const tipOnly = branch.order < profile.leafOrder;
@@ -629,7 +634,7 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
       leaves.push({
         x: at.p.x, y: at.p.y, z: at.p.z, ax: axis.x, ay: axis.y, az: axis.z, nx: face.x, ny: face.y, nz: face.z,
         length: size, width: size * profile.aspect * (0.9 + rng() * 0.2), shade, flex: Math.min(1, at.flex + 0.25 + rng() * 0.15),
-        tile: (rng() * 4) | 0, bend: profile.cardBend * (0.6 + rng() * 0.8),
+        tile: (rng() * 4) | 0, bend: profile.cardBend * (0.6 + rng() * 0.8), branch: branchIndex,
       });
       void crownMid;
     }
@@ -657,6 +662,78 @@ function growSnag(ctx: GrowContext): void {
     if (!snapped && rng() < 0.6) {
       growSides(ctx, ctx.branches.length - 1, 2, 1.2, 0.8, 0.5, 0.1, 0.3, true);
     }
+  }
+}
+
+/** Closest point to p on the segment a→b (the parameter and the point). */
+function onSegment(p: V3, a: V3, b: V3): { t: number; q: V3 } {
+  const abx = b.x - a.x, aby = b.y - a.y, abz = b.z - a.z, l2 = abx * abx + aby * aby + abz * abz;
+  const t = l2 > 1e-12 ? clamp01(((p.x - a.x) * abx + (p.y - a.y) * aby + (p.z - a.z) * abz) / l2) : 0;
+  return { t, q: v3(a.x + abx * t, a.y + aby * t, a.z + abz * t) };
+}
+
+/**
+ * The crown supports (treeAttachments.ts's contract: no foliage without wood under it). A branch the emitter skips —
+ * a side shoot past the tube budget, a twig past the wood's order — that carries sprays, or carries a branch that
+ * does, becomes one straight three-sided twig from its base to its farthest need (a seat or a carried branch's base),
+ * and what it carries moves onto that chord: a spray's seat by its projection, a carried branch with its base (a
+ * short twig's chord lies within centimetres of its curve; a straightened branch carries its whole load with it).
+ * Parents come before their children in the skeleton, so a parent has moved before its children attach to it. A
+ * limb reaching into the stem's collision band (below GROWTH_LOWEST_WOOD_M) stays hidden in its own sprays, as it
+ * always was (the band keeps no wood), and so does what it carries.
+ */
+function supportSprays(ctx: GrowContext, leaves: LeafSite[]): void {
+  const branches = ctx.branches;
+  const emitted = (b: GrowthBranch): boolean => b.mesh && b.order <= 2;
+  const need = new Array<boolean>(branches.length).fill(false);
+  const seatsOf = new Map<number, LeafSite[]>();
+  for (const l of leaves) {
+    let list = seatsOf.get(l.branch);
+    if (!list) { list = []; seatsOf.set(l.branch, list); }
+    list.push(l);
+    for (let b = l.branch; b >= 0 && !emitted(branches[b]); b = branches[b].parent) need[b] = true;
+  }
+  const childrenOf = new Map<number, number[]>();
+  for (let i = 1; i < branches.length; i++) {
+    const parent = branches[i].parent;
+    let list = childrenOf.get(parent);
+    if (!list) { list = []; childrenOf.set(parent, list); }
+    list.push(i);
+  }
+  // a rigid move of a branch, everything it carries and every spray seated on them
+  const translate = (root: number, dx: number, dy: number, dz: number): void => {
+    const stack = [root];
+    while (stack.length) {
+      const b = stack.pop()!;
+      for (const n of branches[b].nodes) { n.x += dx; n.y += dy; n.z += dz; }
+      for (const l of seatsOf.get(b) ?? []) { l.x += dx; l.y += dy; l.z += dz; }
+      stack.push(...(childrenOf.get(b) ?? []));
+    }
+  };
+  const hidden = new Array<boolean>(branches.length).fill(false);
+  for (let i = 0; i < branches.length; i++) {
+    if (!need[i]) continue;
+    const branch = branches[i], base = branch.nodes[0];
+    // a limb reaching into the stem's collision band stays hidden in its sprays, and so does all it carries
+    const parent = branch.parent;
+    if (Math.min(...branch.nodes.map((n) => n.y)) < GROWTH_LOWEST_WOOD_M || (parent >= 0 && hidden[parent])) { hidden[i] = true; continue; }
+    const seats = seatsOf.get(i) ?? [], kids = (childrenOf.get(i) ?? []).filter((k) => need[k]);
+    // the farthest need from the base: a seat, or a carried branch's base
+    let far: V3 | null = null, farD = -1;
+    for (const l of seats) { const d = Math.hypot(l.x - base.x, l.y - base.y, l.z - base.z); if (d > farD) { farD = d; far = v3(l.x, l.y, l.z); } }
+    for (const k of kids) { const n = branches[k].nodes[0], d = Math.hypot(n.x - base.x, n.y - base.y, n.z - base.z); if (d > farD) { farD = d; far = v3(n.x, n.y, n.z); } }
+    if (!far || farD < 0.05) continue;
+    const a = v3(base.x, base.y, base.z), tipR = Math.max(0.006, branch.nodes[branch.nodes.length - 1].r);
+    const flexEnd = branch.nodes[branch.nodes.length - 1].flex;
+    // what it carries moves onto the chord first (each child with its own load), then the branch becomes the chord
+    for (const k of childrenOf.get(i) ?? []) {
+      const n0 = branches[k].nodes[0], { q } = onSegment(v3(n0.x, n0.y, n0.z), a, far);
+      translate(k, q.x - n0.x, q.y - n0.y, q.z - n0.z);
+    }
+    for (const l of seats) { const { q } = onSegment(v3(l.x, l.y, l.z), a, far); l.x = q.x; l.y = q.y; l.z = q.z; }
+    branch.nodes = [base, { x: far.x, y: far.y, z: far.z, r: tipR, flex: flexEnd }];
+    branch.mesh = true;
+    branch.support = true;
   }
 }
 
@@ -714,6 +791,7 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
   const woodBudget = GROWTH_SIDE_TUBE_BUDGET[mobile ? 'mobile' : 'desktop'];
   const sides = ctx.branches.filter((b) => b.mesh && b.order >= 2).sort((a, b) => b.nodes[0].r - a.nodes[0].r);
   for (let i = woodBudget; i < sides.length; i++) sides[i].mesh = false;
+  supportSprays(ctx, leaves);
   // the crown's centre and radius from the foliage (the wood's for a snag)
   let cx = 0, cy = 0, cz = 0, n = 0;
   if (leaves.length) {
@@ -794,8 +872,11 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
   const pos: number[] = [], nrm: number[] = [], uv: number[] = [], col: number[] = [], flex: number[] = [];
   const top = options.topTint ?? options.tint;
   const { rng } = options;
-  for (const branch of skeleton.branches) {
-    if (!branch.mesh || branch.order > maxOrder) continue;
+  const branchRanges: Array<readonly [number, number] | undefined> = [];
+  for (let branchIndex = 0; branchIndex < skeleton.branches.length; branchIndex++) {
+    const branch = skeleton.branches[branchIndex];
+    if (!branch.mesh || (branch.order > maxOrder && !branch.support)) continue;
+    const firstVertex = pos.length / 3;
     // the stem keeps its round section; limbs take sides by their girth (a thick scaffold six, a twig three)
     const r0 = branch.nodes[0].r;
     const s = branch.order === 0 ? sides[0] : r0 > 0.12 ? sides[1] : r0 > 0.05 ? sides[2] : sides[3];
@@ -884,6 +965,7 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
         }
       }
     }
+    branchRanges[branchIndex] = [firstVertex, pos.length / 3];
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
@@ -891,7 +973,43 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
   geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
   geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 3));
   geometry.setAttribute('aFlex', new THREE.BufferAttribute(new Float32Array(flex), 1));
+  // each emitted branch's flat vertex range (growthCrownAttachments finds a spray's bark among its own branch's faces)
+  geometry.userData.branchRanges = branchRanges;
   return geometry;
+}
+
+/** One crown support record (treeAttachments.ts's form): the bark point a spray grows from. */
+interface GrowthCrownAttachment { root: number[]; tip: number[]; gap: number }
+
+/**
+ * The crown supports of a grown tree (treeAttachments.ts's contract — no foliage without wood under it): every spray
+ * is seated on its branch, its card starting inside the wood at the seat, so its support is the bark point over the
+ * seat — the nearest point on its own branch's faces (or on its nearest emitted ancestor's, where the finest twigs
+ * live only in the spray tile). `wood` is the flat wood emitBranchGeometry returned (its branchRanges), or a flat
+ * merge that keeps it first. Root and tip are that bark point; the gap is the seat's depth under the bark.
+ */
+export function growthCrownAttachments(skeleton: TreeSkeleton, wood: THREE.BufferGeometry,
+  branchRanges: ReadonlyArray<readonly [number, number] | undefined>): GrowthCrownAttachment[] {
+  const p = wood.getAttribute('position');
+  const triangle = new THREE.Triangle(), seat = new THREE.Vector3(), candidate = new THREE.Vector3(), best = new THREE.Vector3();
+  const out: GrowthCrownAttachment[] = [];
+  for (const site of skeleton.leaves) {
+    let b = site.branch;
+    while (b > 0 && !branchRanges[b]) b = skeleton.branches[b].parent;
+    const range = branchRanges[b] ?? branchRanges[0];
+    if (!range) continue;
+    seat.set(site.x, site.y, site.z);
+    let bestD = Infinity;
+    for (let i = range[0]; i + 2 < range[1]; i += 3) {
+      triangle.a.fromBufferAttribute(p, i); triangle.b.fromBufferAttribute(p, i + 1); triangle.c.fromBufferAttribute(p, i + 2);
+      triangle.closestPointToPoint(seat, candidate);
+      const d = candidate.distanceToSquared(seat);
+      if (d < bestD) { bestD = d; best.copy(candidate); }
+    }
+    if (!(bestD < Infinity)) continue;
+    out.push({ root: best.toArray(), tip: best.toArray(), gap: Math.sqrt(bestD) });
+  }
+  return out;
 }
 
 interface CardEmitOptions {

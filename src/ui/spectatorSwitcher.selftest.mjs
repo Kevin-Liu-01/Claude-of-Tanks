@@ -11,6 +11,7 @@ assert.equal(spectatorCardModel({ count: 3, index: 8 }).position, '3 / 3', 'posi
 
 const markup = spectatorSwitcherMarkup();
 assert.match(markup, /class="portrait"/);
+assert.match(markup, /class="cursor-hint" hidden>Press Esc to release cursor/);
 assert.match(markup, /class="spec-status"/);
 assert.match(markup, /class="idx" hidden/);
 assert.match(markup, /class="cycle prev"[^>]*>[\s\S]*?<kbd aria-hidden="true">A<\/kbd>/);

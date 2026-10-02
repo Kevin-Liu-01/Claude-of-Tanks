@@ -163,8 +163,12 @@ assert.deepEqual(plan(drySoft, { x: 501, z: 0 }, { x: 0, z: 0 }), []);
 assert.deepEqual(plan(drySoft, { x: 500, z: 0 }, { x: 700, z: 0 }), [[500, 0]],
   'out-of-grid goal projects to reachable grid boundary, never unsafe requested goal');
 
-// Vehicle-specific directed reachability: the nearest dry lip is too steep
-// uphill for the low-powered tank, but that tank can descend with enough grip.
+// Vehicle-specific reachability: the nearest dry lip is too steep uphill for
+// the low-powered tank. Route edges are drivable both ways (40eeec147,
+// docs/BOT-TACTICS.md "Terrain and bridges": two-way slope checks prevent
+// one-way downhill shortcuts), so the weak tank on the lip keeps its reachable
+// singleton instead of dropping off an edge it could never climb back, and the
+// strong tank, which climbs the lip, still descends it.
 const lip = dryGrid({
   getHeightAt: x => x >= 0 ? 18 : 0,
   getWaterMaskAt: x => x > 0 ? 1 : 0,
@@ -173,7 +177,8 @@ const weak = { ...spec, enginePowerHp: 180 };
 const strong = { ...spec, enginePowerHp: 950 };
 assert.deepEqual(plan(lip, { x: -75, z: 0 }, { x: 12, z: 0 }, { spec: weak }).at(-1), [-25, 0]);
 assert.deepEqual(plan(lip, { x: -75, z: 0 }, { x: 12, z: 0 }, { spec: strong }).at(-1), [0, 0]);
-assert.deepEqual(plan(lip, { x: 0, z: 0 }, { x: -75, z: 0 }, { spec: weak }).at(-1), [-75, 0]);
+assert.deepEqual(plan(lip, { x: 0, z: 0 }, { x: -75, z: 0 }, { spec: weak }), [[0, 0]]);
+assert.deepEqual(plan(lip, { x: 0, z: 0 }, { x: -75, z: 0 }, { spec: strong }).at(-1), [-75, 0]);
 
 // Diagonal corner rules remain authoritative even if the diagonal water
 // samples themselves are clear.

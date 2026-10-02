@@ -1,8 +1,7 @@
 // Pure family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
-import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import {
   loftHull,
@@ -11,7 +10,6 @@ import {
   domeBoxPlanSeat,
   tubeGun,
   ruSaddle,
-  nsvt,
   ruGlacisKit,
   ruDeck,
   ruSkirtBand,
@@ -783,7 +781,7 @@ function buildT80BV(P: T80BuilderPort): void { buildT80Line(P, 2); }
 
 
 function buildT84(P: T80BuilderPort): void {
-  const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
+  const { box, cylX, cylY, slab, buildRunningGear } = KIT;
   // ---- hull loft: ends at the V-bow face 1.99 (plan center truth); the
   // stern boxes own −4.30..−4.86 because the overhang is NOT full width
   // (plan rear −4.71 center / −4.55 notch / −4.86 corners-only).

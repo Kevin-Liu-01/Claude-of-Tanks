@@ -15,7 +15,7 @@ import * as THREE from 'three';
 import {
   emitBranchGeometry, emitCrownShadowHull, emitLeafCards, envelopeFraction, growTreeSkeleton, GROWTH_LEAF_BUDGET,
   GROWTH_LOWEST_WOOD_M, GROWTH_SIDE_TUBE_BUDGET, GROWTH_SPECIES, GROWTH_SPRAY_CLEARANCE_M, TREE_GROWTH_PROFILES,
-  weldGrownGeometry, canopySkyOcclusion, GROWTH_CANOPY_AO,
+  weldGrownGeometry, canopySkyOcclusion, GROWTH_CANOPY_AO, growthCrownAttachments,
 } from './treeGrowth.ts';
 import { finishSprayTiles, makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
 
@@ -59,9 +59,12 @@ for (const species of GROWTH_SPECIES) {
     const leafBudget = Math.round(GROWTH_LEAF_BUDGET.desktop * (profile.family === 'conifer' ? 1.3 : 1));
     assert.ok(skeleton.leaves.length <= leafBudget, `${species}/${variant}: ${skeleton.leaves.length} sprays within ${leafBudget}`);
     assert.equal(tris(cards), skeleton.leaves.length * 4, 'four triangles per spray card');
-    const sideTubes = skeleton.branches.filter((br) => br.mesh && br.order >= 2).length;
+    const sideTubes = skeleton.branches.filter((br) => br.mesh && br.order >= 2 && !br.support).length;
     assert.ok(sideTubes <= GROWTH_SIDE_TUBE_BUDGET.desktop, `${species}/${variant}: ${sideTubes} side tubes`);
-    assert.ok(tris(wood) <= 1400, `${species}/${variant}: wood ${tris(wood)} triangles`);
+    // the supporting twigs (supportSprays): one straight three-sided segment each — six triangles
+    const supports = skeleton.branches.filter((br) => br.support);
+    for (const br of supports) assert.equal(br.nodes.length, 2, `${species}: a supporting twig is one straight segment`);
+    assert.ok(tris(wood) <= 1800, `${species}/${variant}: wood ${tris(wood)} triangles (${supports.length} supporting twigs)`);
     assert.ok(hull.length / 9 <= 700, `${species}/${variant}: shadow hull ${hull.length / 9} triangles`);
     if (profile.family !== 'dead') assert.ok(skeleton.leaves.length >= 40, `${species}/${variant}: a crown of ${skeleton.leaves.length} sprays`);
     else assert.ok(skeleton.leaves.length <= 40, `${species}/${variant}: a snag keeps a few dead twig sprays (${skeleton.leaves.length})`);
@@ -109,7 +112,26 @@ for (const species of GROWTH_SPECIES) {
     for (let i = 0; i < hull.length; i += 3) hb.expandByPoint(new THREE.Vector3(hull[i], hull[i + 1], hull[i + 2]));
     const inside = skeleton.leaves.filter((l) => hb.containsPoint(new THREE.Vector3(l.x + l.ax * l.length * 0.45, l.y + l.ay * l.length * 0.45, l.z + l.az * l.length * 0.45))).length;
     if (skeleton.leaves.length) assert.ok(inside / skeleton.leaves.length >= 0.85, `${species}/${variant}: the hull covers ${inside}/${skeleton.leaves.length} sprays`);
+    // the crown supports: every spray grows from wood the emitter draws — its seat inside its own branch (or that
+    // branch's emitted ancestor), the bark over it within the branch's girth — except on the limbs from below the
+    // stem's collision band, which stay hidden in their own sprays
+    const emittedBranch = (br) => br.mesh && (br.order <= 2 || br.support);
+    const attachments = growthCrownAttachments(skeleton, wood, wood.userData.branchRanges);
+    assert.equal(attachments.length, skeleton.leaves.length, `${species}: every spray certified`);
+    let hiddenSprays = 0;
+    skeleton.leaves.forEach((site, k) => {
+      let b = site.branch, hidden = false;
+      for (; b > 0 && !emittedBranch(skeleton.branches[b]); b = skeleton.branches[b].parent) {
+        if (Math.min(...skeleton.branches[b].nodes.map((n) => n.y)) < GROWTH_LOWEST_WOOD_M) hidden = true;
+      }
+      if (hidden) { hiddenSprays++; return; }
+      assert.equal(b, site.branch, `${species}/${variant}: spray ${k} grows from drawn wood (branch ${site.branch})`);
+      const girth = Math.max(...skeleton.branches[b].nodes.map((n) => n.r));
+      assert.ok(attachments[k].gap <= girth + 0.01, `${species}/${variant}: spray ${k} inside its branch (${attachments[k].gap.toFixed(3)} m under the bark, girth ${girth.toFixed(3)})`);
+    });
+    if (profile.form !== 'excurrent' && profile.family !== 'conifer') assert.ok(hiddenSprays <= skeleton.leaves.length * 0.12, `${species}/${variant}: ${hiddenSprays} sprays on hidden low limbs`);
     rows.push({ species, variant, height: +skeleton.height.toFixed(2), sprays: skeleton.leaves.length, branches: skeleton.branches.length,
+      supports: supports.length, hiddenSprays,
       woodTris: tris(wood), cardTris: tris(cards), hullTris: hull.length / 9, crownR: +cardMaxR.toFixed(2), wood: sha(wp.array) });
     // the mobile budgets
     const m = grow(species, variant, 'mobile');

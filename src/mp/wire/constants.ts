@@ -8,15 +8,15 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
  */
 
 // Vehicle controls widen action words and add auxiliary state plus smoke envelopes.
-export const WIRE_VERSION = 2;
+export const WIRE_VERSION = 3;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the
  * client interpolates it at its own cadence; the client sends RESUME_HINT after a migration. The frame layout is
  * otherwise unchanged (WIRE_VERSION stays 1: the handshake is where a mismatch is caught, cleanly, as PROTOCOL_VERSION).
  */
-// 3: auxiliary controls require both peers to use wire layout 2.
-export const PROTOCOL_VERSION = 3;
+// 4: complete module health uses a 32-bit word (wire layout 3).
+export const PROTOCOL_VERSION = 4;
 
 export const TICK_HZ = 60;
 /**
@@ -77,7 +77,6 @@ export const MESSAGE_TYPE = Object.freeze({
   CLOSE: 20,
   ERROR: 21,
 } as const);
-export type MessageTypeId = typeof MESSAGE_TYPE[keyof typeof MESSAGE_TYPE];
 
 /** Finite reasons for CLOSE, ERROR and LEAVE. */
 export const CLOSE_REASON = Object.freeze({
@@ -117,11 +116,9 @@ export const TEAM_NAMES = Object.freeze(['alpha', 'bravo', 'spectator'] as const
 
 export const PHASE = Object.freeze({ LOADING: 0, COUNTDOWN: 1, PLAYING: 2, ENDED: 3 } as const);
 export type PhaseId = typeof PHASE[keyof typeof PHASE];
-export const PHASE_NAMES = Object.freeze(['loading', 'countdown', 'playing', 'ended'] as const);
 
 export const VERDICT = Object.freeze({ NONE: 0, ALPHA: 1, BRAVO: 2, DRAW: 3 } as const);
 export type VerdictId = typeof VERDICT[keyof typeof VERDICT];
-export const VERDICT_NAMES = Object.freeze([null, 'alpha', 'bravo', 'draw'] as const);
 
 export const HELLO_CAPABILITY = Object.freeze({
   /** The client presents immediate own-shot feedback (v1 shotFeedbackVersion 1). */
@@ -222,7 +219,7 @@ export const MAX_TILT_REL_UNITS = 127;
 export const INPUT_MARGIN_UNKNOWN = 127;
 
 /** Module and crew order of the viewer prediction section. */
-export const VIEWER_MODULES = Object.freeze(['engine', 'transmission', 'trackL', 'trackR', 'turretRing', 'gunMount', 'gun'] as const);
+export const VIEWER_MODULES = Object.freeze(['engine', 'transmission', 'trackL', 'trackR', 'turretRing', 'gunMount', 'gun', 'missileRack', 'feedSystem', 'roofGun', 'autoloader', 'ammoRack', 'fuelTank', 'radio', 'optics'] as const);
 export const VIEWER_CREW = Object.freeze(['driver', 'gunner'] as const);
 export const VIEWER_EQUIPMENT = Object.freeze(['traverse', 'turret', 'aimTime', 'bloom'] as const);
 export const MODULE_STATE_NAMES = Object.freeze(['ok', 'yellow', 'red'] as const);

@@ -7,6 +7,18 @@
  * becoming a correction loop; fast overruns of crushable dressing are left
  * to the authority so the local hull does not stop at a fence the next
  * snapshot is about to destroy.
+ *
+ * Disclosed hulls are presented one interpolation delay in the past. The
+ * authority resolved every contact at the tick a reconciliation rewinds to, so
+ * a presented hull its own pose penetrates is stale (a turning or reversing
+ * hull's old pose): `anchor` seats that hull against the authority's pose —
+ * shifted out by the penetration until the next rewind — so the replay meets
+ * it where it can be, not where it used to be. Before, the replay started
+ * inside it and ground its speed away every tick (client soak, 2026-10-01:
+ * 2.2 m of misprediction beside an ally bot backing out of a human's way).
+ * Dropping the hull instead loses a contact that is one tick away (a hull
+ * pivoting in place as the viewer drives into it). A parked or wrecked hull is
+ * presented where it is and pushes unchanged.
  */
 import type { Vector3 } from 'three';
 import type { MovementCollisionResolver, MovementHeightField, TankState } from '../../sim/movement.ts';
@@ -38,9 +50,15 @@ export interface WorldCollisionLike {
 /** A disclosed tank the prediction may collide with. */
 export interface CollidableTank {
   spec: Parameters<typeof tankContactRect>[0];
+  /** `state.pos` is the same object for the same tank from call to call: the world remembers stale hulls by it. */
   state: TankState;
   collidable: boolean;
 }
+
+/** A presented hull the authority's own pose penetrates deeper than this is stale (wire quantization is ~1 mm). */
+const STALE_HULL_PENETRATION_M = 0.05;
+/** A seated hull clears the authority's pose by this much, not by a rounding error that would still read as contact. */
+const SEAT_CLEARANCE_M = 0.001;
 
 export interface PredictionWorldOptions {
   worldCollision: WorldCollisionLike;
@@ -94,6 +112,48 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
   const otherFrame: ContactFrame = { ...frame };
   const nearby: PredictionObstacle[] = [];
   const center = { x: 0, y: 0, z: 0 };
+  // The hulls the last anchor found stale, by their `state.pos`, and the shift that seats each one against the
+  // authority's own pose (slot lists reused every reconciliation).
+  const staleHulls: unknown[] = [];
+  const staleShift: number[] = [];
+  let staleCount = 0;
+  const anchorPush = { x: 0, z: 0 };
+  const staleSlot = (key: unknown): number => {
+    for (let index = 0; index < staleCount; index++) if (staleHulls[index] === key) return index;
+    return -1;
+  };
+
+  /** Overlap of the own hull at `frame` with `other`'s hull shifted by (shiftX, shiftZ), into `out`; false when apart. */
+  const hullOverlap = (other: CollidableTank, shiftX: number, shiftZ: number, out: { x: number; z: number }): boolean => {
+    contactFrame(other.spec, other.state.pos.x + shiftX, other.state.pos.z + shiftZ, other.state.yaw, otherFrame);
+    const dx = frame.centerX - otherFrame.centerX;
+    const dz = frame.centerZ - otherFrame.centerZ;
+    const outer = frame.broadRadius + otherFrame.broadRadius - 0.02;
+    if (dx * dx + dz * dz > outer * outer) return false;
+    return pushHullFromHull(
+      frame.centerX, frame.centerZ, frame.forwardX, frame.forwardZ, frame.rightX, frame.rightZ, frame.halfLength, frame.halfWidth,
+      otherFrame.centerX, otherFrame.centerZ, otherFrame.forwardX, otherFrame.forwardZ, otherFrame.rightX, otherFrame.rightZ,
+      otherFrame.halfLength, otherFrame.halfWidth, out,
+    );
+  };
+
+  const anchor = (state: TankState): void => {
+    staleCount = 0;
+    contactFrame(ownSpec, state.pos.x, state.pos.z, state.yaw, frame);
+    for (const other of others()) {
+      if (!other.collidable) continue;
+      anchorPush.x = 0;
+      anchorPush.z = 0;
+      if (!hullOverlap(other, 0, 0, anchorPush)) continue;
+      const depth = Math.hypot(anchorPush.x, anchorPush.z);
+      if (depth <= STALE_HULL_PENETRATION_M) continue;
+      const seat = (depth + SEAT_CLEARANCE_M) / depth;
+      staleHulls[staleCount] = other.state.pos;
+      staleShift[staleCount * 2] = -anchorPush.x * seat;
+      staleShift[staleCount * 2 + 1] = -anchorPush.z * seat;
+      staleCount++;
+    }
+  };
 
   const collide: MovementCollisionResolver = (position: Vector3, _radius: number, outPush: Vector3): boolean => {
     outPush.set(0, 0, 0);
@@ -126,19 +186,12 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
     }
     for (const other of others()) {
       if (!other.collidable) continue;
-      contactFrame(other.spec, other.state.pos.x, other.state.pos.z, other.state.yaw, otherFrame);
-      const dx = frame.centerX - otherFrame.centerX;
-      const dz = frame.centerZ - otherFrame.centerZ;
-      const outer = frame.broadRadius + otherFrame.broadRadius - 0.02;
-      if (dx * dx + dz * dz > outer * outer) continue;
-      pushHullFromHull(
-        frame.centerX, frame.centerZ, frame.forwardX, frame.forwardZ, frame.rightX, frame.rightZ, frame.halfLength, frame.halfWidth,
-        otherFrame.centerX, otherFrame.centerZ, otherFrame.forwardX, otherFrame.forwardZ, otherFrame.rightX, otherFrame.rightZ,
-        otherFrame.halfLength, otherFrame.halfWidth, outPush,
-      );
+      const slot = staleCount > 0 ? staleSlot(other.state.pos) : -1;
+      if (slot < 0) hullOverlap(other, 0, 0, outPush);
+      else hullOverlap(other, staleShift[slot * 2]!, staleShift[slot * 2 + 1]!, outPush);
     }
     return outPush.x !== 0 || outPush.z !== 0;
   };
 
-  return { heightField, collide, contactGeom: null, physics };
+  return { heightField, collide, contactGeom: null, physics, anchor };
 }

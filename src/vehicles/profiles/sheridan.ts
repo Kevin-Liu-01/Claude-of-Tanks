@@ -462,7 +462,7 @@ function sheridanTtsAutocannon(P: SheridanBuilderPort): THREE.Group {
   const dark: THREE.BufferGeometry[] = [];
   const detail: THREE.BufferGeometry[] = [];
   const glass: THREE.BufferGeometry[] = [];
-  const { box, cylX, cylY, cylZ, frustum, torus, xform, mergeAll } = KIT;
+  const { box, cylX, cylY, cylZ, frustum, torus, xform } = KIT;
 
   // Foundation is buried through the commander's roof ring so the station
   // has a visible load path instead of hovering over the old manned mount.
@@ -522,7 +522,7 @@ function sheridanTtsAutocannon(P: SheridanBuilderPort): THREE.Group {
 }
 
 function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
-  const { box, cylY, cylZ, torus, xform } = KIT;
+  const { box, cylY, xform } = KIT;
   const skirtPanelZ = [2.35, 1.39, 0.43, -0.53, -1.49, -2.45];
   const skirtPanelHeights = [0.66, 0.76, 0.82, 0.82, 0.76, 0.68];
   const skirtCageStations = [2.75, 1.86, 0.97, 0.08, -0.81, -1.70, -2.59, -3.03];
@@ -758,20 +758,6 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   };
 }
 
-const hullSection = (
-  bottomHalf: number,
-  bottomY: number,
-  beltHalf: number,
-  beltY: number,
-  sideHalf: number,
-  sideY: number,
-  roofHalf: number,
-  roofY: number,
-): Vec2Tuple[] => [
-  [-roofHalf, roofY], [-sideHalf, sideY], [-beltHalf, beltY], [-bottomHalf, bottomY],
-  [bottomHalf, bottomY], [beltHalf, beltY], [sideHalf, sideY], [roofHalf, roofY],
-];
-
 function addSheridanHull(P: SheridanBuilderPort): void {
   const {
     box, cylZ, sph, torus, fenders, periscope,
@@ -900,7 +886,7 @@ function addSheridanHull(P: SheridanBuilderPort): void {
 }
 
 function addSheridanRunningGear(P: SheridanBuilderPort): void {
-  const { cylX, torus, xform, buildRunningGear } = KIT;
+  const { buildRunningGear } = KIT;
   // Five road wheels and one continuous closed course.  These stations are
   // the averaged left/right centers measured from the comparison print (the
   // real torsion-bar rows are staggered by roughly 100 mm).  Author-space Y

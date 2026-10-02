@@ -8,9 +8,6 @@
 
 import * as THREE from 'three';
 import { stockCamoPatternIdFor,
-  CAMO_PATTERN_IDS,
-  CAMO_CATALOG_PATTERN_IDS,
-  CAMO_PATTERN_LABEL,
   CUSTOM_CAMO_ID,
   customCamoPatternId,
   defaultCamoPatternId,
@@ -157,8 +154,7 @@ function makeCanvas(w: number, h: number): HTMLCanvasElement {
 
 // Instantiation allocates no canvases; the existing DOM factory remains lazy.
 const materialPainter = createMaterialPainter(makeCanvas);
-const { mulberry32, hexToRgb, rgb, mix, scale3, luma,
-  paintCamo, paintRoughness, paintPatchRoughness, exposureTrim } = materialPainter;
+const { mulberry32, hexToRgb, mix, scale3, paintCamo, paintRoughness, paintPatchRoughness, exposureTrim } = materialPainter;
 
 // One track texture: 4 link rows per repeat, chevron/waffle grousers.
 function paintTrack(rng: Rng): HTMLCanvasElement {
@@ -221,7 +217,7 @@ function paintTrack(rng: Rng): HTMLCanvasElement {
 
 function redrawWhenMarkingFontReady(draw: () => void): void {
   if (document.fonts && !document.fonts.check("bold 16px 'ABC Monument Grotesk'")) {
-    document.fonts.ready.then(draw).catch(() => {});
+    document.fonts.load("bold 16px 'ABC Monument Grotesk'").then(faces => { if (faces.length) draw(); }).catch(() => {});
   }
 }
 
@@ -2431,7 +2427,7 @@ function supportsShadowHook(engineCtx: ShadowEngineContext | null | undefined): 
 export function createTankMaterials(
   spec: MaterialTankSpec,
   engineCtx: ShadowEngineContext | null | undefined,
-  camoSeed: number,
+  _camoSeed: number,
   quality: string = 'high',
   camoPattern: string | null = null,
 ) {
@@ -2779,10 +2775,10 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
         : null;
       if (lease) decalTextureLeases.push(lease);
       const t = lease?.texture ?? track(canvasTex(paintDecal(kind, text, marking), { aniso }));
-      // number decals re-bake on fonts.ready (paintDecal registered first, so
+      // number decals re-bake when their font loads (paintDecal registered first, so
       // its redraw runs before this) — push the fresh canvas to the GPU.
       if (document.fonts && !document.fonts.check("bold 16px 'ABC Monument Grotesk'")) {
-        document.fonts.ready.then(() => { t.needsUpdate = true; }).catch(() => {});
+        document.fonts.load("bold 16px 'ABC Monument Grotesk'").then(faces => { if (faces.length) t.needsUpdate = true; }).catch(() => {});
       }
       const m = track(setup(new THREE.MeshStandardMaterial({
         map: t, transparent: true, roughness: 0.8, metalness: 0.1,

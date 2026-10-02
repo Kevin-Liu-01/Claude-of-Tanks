@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import {createHash} from 'node:crypto';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
-import {registerProfiledBuilders} from '../tankFactoryCore.ts';
-import {buildMerkava4X} from './merkavaX.ts';
-import {sectionSolid} from './sectionSolid.ts';
+
+// The replayed pre-repair hull (literal legacy section rows) and the comparisons against it (untouched meshes,
+// forward triangles, lower keel, track contact) are retired: whole-tank change detection of merkava4_x is the
+// fleet geometry ledger's. The held-out source rays, folded air and seating proofs stay.
 
 // Held-out canonical-source rays, not evaluated from builder stations. The
 // source hull was never turret-unposed: only turret/equipment used the -25°
@@ -28,54 +28,6 @@ const near=(actual,expected,tolerance,label)=>assert.ok(
 const hit=(object,x,z,y=1.79,up=false)=>new THREE.Raycaster(
   new THREE.Vector3(x,y,z),new THREE.Vector3(0,up?1:-1,0),0,3,
 ).intersectObject(object,false)[0];
-
-function legacyHull() {
-  const rows=[[-3.80,1.77,1.54,.73,.97,.19],[-3.36,1.77,1.665,.419,.97,.19],
-    [-2,1.77,1.604,.419,.97,.19],[1.963,1.77,1.604,.419,.97,.19],
-    [2.8,1.77,1.347,.48,.97,.03],[3.15,1.04,1.284,.59,.97,.03],
-    [3.31,1.04,1.255,.64,.97,.03],[3.8,1.025,1.034,.96,.96,.02]];
-  return sectionSolid(rows.map(([z,half,roof,floor,inner,shoulderDepth])=>{
-    const bevel=Math.min(.06,(roof-floor)*.2),shoulder=roof-Math.min(shoulderDepth,(roof-floor)*.32);
-    return {z,ring:[[-inner,floor],[inner,floor],[inner+.015,shoulder],
-      [half,roof-bevel],[half-.025,roof],[-half+.025,roof],
-      [-half,roof-bevel],[-inner-.015,shoulder]]};
-  }));
-}
-
-function buildLegacy(P) {
-  const add=P.add;let first=true;
-  P.add=(slot,g,...rest)=>{
-    if(slot==='hull'&&first){first=false;g.dispose();g=legacyHull();}
-    return add(slot,g,...rest);
-  };
-  try{buildMerkava4X(P);}finally{P.add=add;}
-}
-
-function untouchedMeshes(root) {
-  const rows=[];
-  root.traverse(mesh=>{
-    if(!mesh.isMesh||mesh.name==='hull'||mesh.userData.shadowOnly||mesh.userData.vehicleMarking)return;
-    const hash=createHash('sha256');
-    for(const [name,a]of Object.entries(mesh.geometry.attributes).sort()){
-      hash.update(name);hash.update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
-    }
-    if(mesh.geometry.index)hash.update(Buffer.from(mesh.geometry.index.array.buffer));
-    if(mesh.isInstancedMesh)hash.update(Buffer.from(mesh.instanceMatrix.array.buffer));
-    hash.update(JSON.stringify(mesh.matrixWorld.elements));
-    rows.push(`${mesh.name}:${hash.digest('hex')}`);
-  });
-  return rows.sort();
-}
-
-function forwardTriangles(mesh) {
-  const p=mesh.geometry.attributes.position,index=mesh.geometry.index,rows=[],v=new THREE.Vector3();
-  for(let i=0;i<(index?.count??p.count);i+=3){
-    const corners=[0,1,2].map(j=>v.fromBufferAttribute(p,index?index.getX(i+j):i+j)
-      .applyMatrix4(mesh.matrixWorld).toArray());
-    if(corners.every(p=>p[2]>=-2.000001))rows.push(corners.map(p=>p.map(n=>n.toFixed(7)).join(',')).sort().join('|'));
-  }
-  return rows.sort();
-}
 
 function sourceAndAir(tank,quality) {
   const hull=tank.root.getObjectByName('hull');
@@ -109,23 +61,10 @@ function sourceAndAir(tank,quality) {
 }
 
 for(const quality of['high','low']){
-  registerProfiledBuilders({merkava4_x:buildLegacy});
-  const baseline=createTank('merkava4_x',null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
-  registerProfiledBuilders({merkava4_x:buildMerkava4X});
   const tank=createTank('merkava4_x',null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
   try{
-    tank.root.updateMatrixWorld(true);baseline.root.updateMatrixWorld(true);
+    tank.root.updateMatrixWorld(true);
     sourceAndAir(tank,quality);
-    assert.deepEqual(untouchedMeshes(tank.root),untouchedMeshes(baseline.root),
-      `${quality}: basket/turret/equipment/gun/running-gear exact buffers and transforms remain unchanged`);
-    const hull=tank.root.getObjectByName('hull'),oldHull=baseline.root.getObjectByName('hull');
-    assert.deepEqual(forwardTriangles(hull),forwardTriangles(oldHull),
-      `${quality}: all hull triangles forward of unchanged Z -2.0 station remain exact`);
-    for(const z of[-3.78,-3.7,-3.55,-3.4,-3.0,-2.7])near(
-      hit(hull,0,z,0,true)?.point.y,hit(oldHull,0,z,0,true)?.point.y,.000001,
-      `${quality}: original closed lower keel is unchanged at ${z}`);
-    near(tank.contactGeom.bottomYM,baseline.contactGeom.bottomYM,.000001,
-      `${quality}: physical native track contact unchanged`);
-    console.log(`merkava4XRearHull ${quality}: ${SOURCE.length} source rays, folded air/contact and non-target exact preservation PASS`);
-  }finally{tank.dispose();baseline.dispose();}
+    console.log(`merkava4XRearHull ${quality}: ${SOURCE.length} source rays, folded air and seating PASS`);
+  }finally{tank.dispose();}
 }

@@ -1,0 +1,20 @@
+<!doctype html><html><head><meta charset="UTF-8"><title>Tree crown attachment audit</title>
+<style>body{margin:0;background:#91bad1}canvas{display:block}output{position:absolute;top:16px;left:20px;font:18px sans-serif;color:#fff;background:#132229d9;padding:10px}</style></head>
+<body><output id="label"></output><script type="module">
+import * as THREE from 'three';
+import { buildDetailedGarageTree, buildFallbackGarageTree } from '/src/world/vegetation.ts';
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;document.body.append(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#91bad1');scene.add(new THREE.HemisphereLight(0xdfefff,0x514631,2));const sun=new THREE.DirectionalLight(0xffe9c8,3);sun.position.set(-8,14,9);scene.add(sun);
+const camera=new THREE.PerspectiveCamera(46,innerWidth/innerHeight,.1,100);
+let group,resources=[];
+window.audit={set(species,variant=0,angle=0,before=false,far=false,snow=0){
+ if(group)scene.remove(group);for(const r of resources)r?.dispose();resources=[];group=new THREE.Group();scene.add(group);
+ const tree=(far?buildFallbackGarageTree:buildDetailedGarageTree)(species,2001,variant,{snow});const bark=new THREE.MeshStandardMaterial({vertexColors:true,roughness:1});const leaves=new THREE.MeshStandardMaterial({map:tree.foliageTexture,vertexColors:true,alphaTest:.38,side:THREE.DoubleSide,roughness:1});
+ if(before&&tree.trunk.userData.originalTrunkVertices)tree.trunk.setDrawRange(0,tree.trunk.userData.originalTrunkVertices);
+ group.add(new THREE.Mesh(tree.trunk,bark),new THREE.Mesh(tree.foliage,leaves));resources=[tree.trunk,tree.foliage,tree.foliageTexture,bark,leaves];
+ const box=new THREE.Box3().setFromObject(group),size=box.getSize(new THREE.Vector3()),centre=box.getCenter(new THREE.Vector3());
+ const distance=Math.max(size.y*1.65,size.x*1.6);camera.position.set(Math.sin(angle)*distance,centre.y-1.2,Math.cos(angle)*distance);camera.lookAt(centre);
+ document.querySelector('#label').textContent=`${species}${far?' · distant model':''} · variant ${variant+1} · ${before?'original supporting branches':'connected foliage'}`;renderer.render(scene,camera);
+ return{species,variant,branches:tree.trunk.userData.crownAttachments?.length??0,triangles:renderer.info.render.triangles};
+}};
+</script></body></html>

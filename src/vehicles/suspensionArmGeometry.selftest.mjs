@@ -1,26 +1,25 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { dimensionedSuspensionArm } from './suspensionArmGeometry.ts';
 import { resolveSuspensionDimensions, resolveSuspensionShape } from './suspensionDimensions.ts';
 
-const hash = geometry => {
-  const result = createHash('sha256');
-  for (const [name, attribute] of Object.entries(geometry.attributes)) {
-    result.update(name).update(Buffer.from(attribute.array.buffer));
+// 2026-10-01 (owner: retire frozen pins): the three pinned buffer digests of the no-opt-in arm (captured
+// from c26b31942) are gone. Its live shape contract: every vertex lies on one of the two flat axial faces at
+// +/- width/2, the rounded endpoint forgings span z = +/-(0.5 + 0.12), and each end keeps its measured height.
+for (const [width, pivotHeight, axleHeight] of [[.16559, .192, .21828], [.10, .20, .15], [.07, .12, .24]]) {
+  const geometry = dimensionedSuspensionArm(width, pivotHeight, axleHeight);
+  const position = geometry.getAttribute('position');
+  let minZ = Infinity, maxZ = -Infinity, pivot = 0, axle = 0;
+  for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
+    assert.ok(Math.abs(Math.abs(x) - width / 2) < 1e-6, 'no-opt-in arm keeps its flat measured axial faces');
+    minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
+    if (z <= -.5 + 1e-6) pivot = Math.max(pivot, Math.abs(y));
+    if (z >= .5 - 1e-6) axle = Math.max(axle, Math.abs(y));
   }
-  if (geometry.index) result.update(Buffer.from(geometry.index.array.buffer));
-  return result.digest('hex');
-};
-// Independently captured from the unchanged c26b31942 implementation, before
-// invoking the new optional shear branch. Positions/normals/UV/index included.
-for (const [dimensions, expected] of [
-  [[.16559, .192, .21828], 'e6ec191cfbbf71148dc99f9d7008fd513f9103500df7d851b76e5215f079b01c'],
-  [[.10, .20, .15], '3521d67d58bb4ff4648a6810c65913794bdf56f8e24ca0d934ead069c11b555c'],
-  [[.07, .12, .24], '6744c220ae26d4511c0d81e7ce3772c3802aea925232aaabb0bbec5516d7a478'],
-]) {
-  const geometry = dimensionedSuspensionArm(...dimensions);
-  assert.equal(hash(geometry), expected, 'no opt-in preserves every original geometry buffer');
+  assert.ok(Math.abs(minZ + .62) < 1e-6 && Math.abs(maxZ - .62) < 1e-6, 'rounded endpoint forgings bound the arm');
+  assert.ok(Math.abs(pivot - pivotHeight / 2) < 1e-6, 'pivot forging keeps its measured height');
+  assert.ok(Math.abs(axle - axleHeight / 2) < 1e-6, 'axle forging keeps its measured height');
   geometry.dispose();
 }
 
@@ -73,4 +72,4 @@ assert.throws(() => resolveSuspensionDimensions({ ...source, armHeightM: undefin
   armAxleHeightM: undefined }), /axial shear/);
 geometry.dispose();
 material.dispose();
-console.log('suspensionArmGeometry.selftest: three legacy buffers, true source axial shear and complete receipt bounds passed');
+console.log('suspensionArmGeometry.selftest: three no-opt-in arm shapes, true source axial shear and complete receipt bounds passed');

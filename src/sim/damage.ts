@@ -1,5 +1,5 @@
 import type { AuxiliaryState } from './auxiliarySystems.ts';
-import { isUnguidedRocket, launcherMuzzleIndex, type LauncherMuzzle } from './launcherPolicy.ts';
+import { isUnguidedRocket, usesLauncherMuzzles, launcherMuzzleIndex, type LauncherMuzzle } from './launcherPolicy.ts';
 import type { MagazineIndicator } from './magazineIndicator.ts';
 /**
  * damage.ts — complete hit resolution per docs/history/research/armor-penetration.md
@@ -181,6 +181,18 @@ export function mainWeaponModuleState(
     }
   }
   return state;
+}
+
+/** Damage follows the selected physical weapon. An independent launcher is
+ * usable while the main barrel is broken, and vice versa. */
+export function selectedWeaponModuleState(combat: Pick<CombatState, 'modules'>,
+  gun: DamageTankSpec['gun'], shell: DamageShellSpec): ModuleStateName {
+  if (usesLauncherMuzzles(gun, shell) || isUnguidedRocket(gun, shell)) {
+    return combat.modules?.missileRack?.state ?? 'ok';
+  }
+  const main = mainWeaponModuleState(combat);
+  const feed = combat.modules?.feedSystem?.state ?? 'ok';
+  return MODULE_STATE_RANK[feed] > MODULE_STATE_RANK[main] ? feed : main;
 }
 
 type DamageTankState = ArmorPoseState;
@@ -658,7 +670,7 @@ function rollModuleDamage(
   // RULESETS: a mode without consumables (Turbo Ball) never breaks a module or starts a fire; the
   // chance draw above is still consumed so replay RNG order matches every other mode.
   if (ctx.combat.modeCriticalDamage === false) return res;
-  const chance = MODULE_DEFS[moduleName].damageChance * ctx.chanceScale;
+  const chance = (weaponHousing ? Math.max(.85, MODULE_DEFS[moduleName].damageChance) : MODULE_DEFS[moduleName].damageChance) * ctx.chanceScale;
   if (damageRoll >= Math.min(1, chance) || m.hp <= 0) return res;
 
   const moduleDmg =
@@ -983,7 +995,7 @@ function processModuleTraceHit(
 ): TraceAction {
   const external = hit.external === true || hit.module === 'gun';
   if (external || resolution.hullPen) {
-    const weapon = resolution.target.spec.armor?.externalWeapons?.some(part => part.module === hit.module);
+    const weapon = hit.module === 'roofGun' || resolution.target.spec.armor?.externalWeapons?.some(part => part.module === hit.module);
     mergeModuleOutcome(resolution.event, rollModuleDamage(resolution, hit.module, weapon));
   } else {
     resolution.straddlers.push(hit);

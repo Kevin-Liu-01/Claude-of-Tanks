@@ -585,7 +585,7 @@ export class ScriptedMatchServer {
     const checkpoint = captureMovementCheckpoint(entity.state);
     return {
       entityId: entity.entityId,
-      modules: [0, 0, 0, 0, 0, 0, 0],
+      modules: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       crewBits: 3,
       equipment: [1000, 1000, 1000, 1000],
       modeSpeedMultiplier: 1000,

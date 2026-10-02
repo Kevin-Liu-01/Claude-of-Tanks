@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { vehicleAmbientFloorHook } from './materials.ts';
 import {
@@ -20,16 +19,15 @@ material.onBeforeCompile = vehicleAmbientFloorHook;
 const before = shaderFor(material);
 const uniform = before.uniforms.uVehicleReadabilityScale;
 assert.equal(uniform.value, 1);
-// Compare the actual callback output with the pre-edit shader fingerprint.
-// Removing only the three deliberate additions must recover EVERY prior
-// floor expression, normal response, texture operation and lighting chunk.
+// 2026-10-01 (owner: retire frozen pins): the pinned sha256 of the pre-change daylight shader (recovered
+// by removing the three additions and the wheel branch) is gone. The live contract: the opt-in wheel
+// branch is present and each readability uniform application appears exactly once.
 const additions = [
   'uniform float uVehicleReadabilityScale;\n',
   '\t\tvehFill *= uVehicleReadabilityScale;\n',
   '\t\tvehFloorL *= uVehicleReadabilityScale;\n',
 ];
-// The opt-in wheel branch replaces only painted wheel lighting. Removing its
-// conditional wrapper must recover the historically frozen ordinary shader.
+// The opt-in wheel branch replaces only painted wheel lighting.
 const wheelBranch = /\t#ifdef COT_WHEEL_PAINT_READABILITY\n[\s\S]*?\t#else\n/;
 assert.ok(wheelBranch.test(before.fragmentShader));
 let daylight = before.fragmentShader.replace(wheelBranch, '')
@@ -38,10 +36,6 @@ for (const addition of additions) {
   assert.equal(daylight.split(addition).length, 2, 'each required uniform application appears exactly once');
   daylight = daylight.replace(addition, '');
 }
-const hash = createHash('sha256');
-hash.update(daylight);
-assert.equal(hash.digest('hex'), '403cad4fb9f972e6bbbbf8a7b940f0074d385438a317d3d86bc4e2bd29cbbef2',
-  'default scale1 preserves all pre-change daylight/Garage shader expressions');
 
 try {
   const materialVersion = material.version;
@@ -180,4 +174,4 @@ try {
   restoreCanvas();
 }
 assert.equal(getVehicleReadabilityScale(), 1);
-console.log('vehicleReadability.selftest: unchanged daylight expressions, shared current/future/gear uniforms, strict input and exact reset PASS (native shading remains separate)');
+console.log('vehicleReadability.selftest: single uniform applications, shared current/future/gear uniforms, strict input and exact reset PASS (native shading remains separate)');

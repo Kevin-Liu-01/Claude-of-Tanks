@@ -511,10 +511,6 @@ export function roomSocketPath(roomCode: string): string {
   return `/rooms/${roomCode}`;
 }
 
-export function matchSocketPath(roomCode: string): string {
-  return `/rooms/${roomCode}/match`;
-}
-
 /** `/rooms/CODE` → CODE; `/rooms/CODE/match` → { code, match: true }; anything else null. */
 export function parseRoomRoute(pathname: string): { code: string; match: boolean } | null {
   const parsed = /^\/rooms\/([A-Z0-9]{6})(\/match)?$/.exec(pathname);

@@ -158,6 +158,86 @@ assert.equal(fair.acquisitions, 2, 'drained batch rejoins normal FIFO');
 assert.deepEqual(fair.starts, ['a', 'b', 'c']); fair.finish('c'); assert.equal(await fairRun, 0);
 assert.equal(fair.held, false);
 
+// Gate P5 (2026-10-01): an expired batch drains only for a queued waiter. With an empty capture
+// queue the lease is refreshed in place and admission continues; the renewed window is a fresh
+// 45 s, and a waiter that arrives during it is served at that window's expiry.
+{
+  const queued = fixture();
+  queued.options.lock.waiting = () => 1;
+  const run = runSelftestSuite('p5-waiter', ['a', 'b', 'c'], queued.options);
+  await tick(); queued.time(46_000); queued.finish('a'); await tick();
+  assert.deepEqual(queued.starts, ['a', 'b'], 'a queued waiter: the expired batch admits nothing while draining');
+  assert.equal(queued.held, true);
+  queued.finish('b'); await tick();
+  assert.equal(queued.acquisitions, 2, 'a queued waiter: the drained batch rejoins the FIFO');
+  assert.deepEqual(queued.starts, ['a', 'b', 'c']);
+  queued.finish('c'); assert.equal(await run, 0); assert.equal(queued.held, false);
+}
+{
+  const idle = fixture();
+  let waiters = 0;
+  idle.options.lock.waiting = () => waiters;
+  idle.options.refreshMs = 1_000_000; // only the renewal refreshes during this case
+  const run = runSelftestSuite('p5-idle', ['a', 'b', 'c', 'd', 'e'], idle.options);
+  await tick(); assert.deepEqual(idle.starts, ['a', 'b']);
+  assert.equal(idle.refreshes, 0);
+  idle.time(46_000); idle.finish('a'); await tick();
+  assert.deepEqual(idle.starts, ['a', 'b', 'c'], 'no waiter: the expired batch keeps admitting');
+  assert.equal(idle.acquisitions, 1, 'no waiter: the lease is never released');
+  assert.equal(idle.held, true);
+  assert.equal(idle.refreshes, 1, 'no waiter: the renewed batch refreshes the lock once');
+  waiters = 1; idle.time(60_000); idle.finish('b'); await tick();
+  assert.deepEqual(idle.starts, ['a', 'b', 'c', 'd'], 'the renewed window admits until it expires');
+  idle.time(92_000); idle.finish('c'); await tick();
+  assert.deepEqual(idle.starts, ['a', 'b', 'c', 'd'], 'a waiter at the renewed window expiry: drain');
+  idle.finish('d'); await tick();
+  assert.equal(idle.acquisitions, 2, 'the drained batch re-queues behind the waiter');
+  assert.deepEqual(idle.starts, ['a', 'b', 'c', 'd', 'e']);
+  idle.finish('e'); assert.equal(await run, 0); assert.equal(idle.held, false);
+}
+{
+  // an exclusive child that outlives the window: no waiter, so the later work keeps the lease
+  const file = SELFTEST_EXCLUSIVE_CPU_FILES[0];
+  const renewed = fixture();
+  renewed.options.lock.waiting = () => 0;
+  const run = runSelftestSuite('p5-exclusive', [file, 'after'], renewed.options);
+  await tick(); assert.deepEqual(renewed.starts, [file]);
+  renewed.time(160_000); renewed.finish(file); await tick();
+  assert.deepEqual(renewed.starts, [file, 'after']);
+  assert.equal(renewed.acquisitions, 1, 'no waiter: an exclusive child does not re-queue the later work');
+  renewed.finish('after'); assert.equal(await run, 0); assert.equal(renewed.held, false);
+}
+
+// Gate P7 (2026-10-01): the admission order is a permutation of registry indices. Work starts in
+// that order; the earliest REGISTRY failure still supplies the status and failures are named in
+// registry order, so reporting does not depend on what ran first.
+{
+  const ordered = fixture(2);
+  const run = runSelftestSuite('p7-order', ['a', 'b', 'c', 'd'], { ...ordered.options, order: [3, 1, 0, 2] });
+  await tick(); assert.deepEqual(ordered.starts, ['d', 'b'], 'admission follows the order, not the registry');
+  ordered.finish('d', { status: 9 }); await tick();
+  assert.deepEqual(ordered.starts, ['d', 'b', 'a']);
+  ordered.finish('a', { status: 7 }); await tick();
+  assert.deepEqual(ordered.starts, ['d', 'b', 'a', 'c']);
+  ordered.finish('b'); ordered.finish('c');
+  assert.equal(await run, 7, 'the earliest registry failure supplies the status, whatever finished first');
+  assert.deepEqual(ordered.errors, ['[selftests] FAIL a', '[selftests] FAIL d'], 'failures are named in registry order');
+  assert.equal(ordered.held, false);
+  for (const order of [[0, 1, 2], [0, 0, 1, 2], [0, 1, 1, 3], [0, 1, 2, 4], [0.5, 1, 2, 3], 'nope']) {
+    const invalid = fixture(2);
+    await assert.rejects(runSelftestSuite('p7-invalid', ['a', 'b', 'c', 'd'], { ...invalid.options, order }), /permutation/);
+    assert.deepEqual(invalid.starts, []); assert.equal(invalid.acquisitions, 0);
+  }
+  // a barrier admitted first runs alone before the pool fills
+  const barrierFirst = fixture(2);
+  const barrierRun = runSelftestSuite('p7-barrier', ['a', 'b', 'browser'], { ...barrierFirst.options, order: [2, 0, 1] });
+  await tick(); assert.deepEqual(barrierFirst.starts, ['browser']); assert.equal(barrierFirst.held, false);
+  barrierFirst.finish('browser'); await tick();
+  assert.deepEqual(barrierFirst.starts, ['browser', 'a', 'b']);
+  barrierFirst.finish('a'); barrierFirst.finish('b');
+  assert.equal(await barrierRun, 0); assert.equal(barrierFirst.acquisitions, 1, 'no drain was needed for the barrier');
+}
+
 const browserFailure = fixture();
 const browserRun = runSelftestSuite('browser-failure', ['browser', 'never'], browserFailure.options);
 await tick(); browserFailure.finish('browser', { status: 4 }); await tick();
