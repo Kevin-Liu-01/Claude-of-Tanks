@@ -458,6 +458,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/tankAssets.selftest.mjs',
     'src/vehicles/combatAnatomy.selftest.mjs',
     'src/vehicles/gunArticulation.selftest.mjs',
+    // 2026-10-01: one fleet on every path (each facade alone, every saved spec digested).
+    'src/vehicles/fleetParity.selftest.mjs',
     'tools/media-production/pipeline.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'server/processShutdown.selftest.mjs',

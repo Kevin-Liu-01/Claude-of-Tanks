@@ -8,16 +8,15 @@
 // imports the spec-table helpers exported below.
 //
 // Registration pattern: tankFactory.ts passes MODERN1_BUILDERS through the
-// checked factory-configuration gate. Specs and
-// model-source rows register HERE by mutating the exported tables from
-// specs.ts — specs.ts itself is untouched (it is concurrently edited by the
-// sourcing workflows). Builders draw on the shared geometry/greeble kit
+// checked factory-configuration gate. MODERN1_SPECS below is the source
+// tools/gen-legacy-fleet-specs.mjs serializes; the registry holds the
+// generated metadata (modern1Specs.generated.ts, imported below), never these
+// live rows, on every path. Builders draw on the shared geometry/greeble kit
 // exported by tankFactoryCore.ts (KIT).
 
 import * as THREE from 'three';
 import { KIT } from './tankFactoryCore.ts';
 import { muzzleBore } from './profiles/kit.ts';
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
   plate as par,
   frontPlate as fr,
@@ -32,8 +31,11 @@ import {
   shell,
   apfsdsPenetration as apfsdsPens,
 } from './specHelpers.ts';
+// Spec rows register from their generated metadata whichever facade
+// evaluates this file (fleetRegistration.ts: live rows may share vertices).
+import './modern1Specs.generated.ts';
 import type { ArmorEnvelope } from './specHelpers.ts';
-import type { FleetTankSpec, ModelSourceRecord } from './specContracts.ts';
+import type { FleetTankSpec } from './specContracts.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -145,9 +147,10 @@ function armorLeo2A6(): ArmorEnvelope {
 }
 
 // ---------------------------------------------------------------------------
-// Specs (stats per roster §14.3-4 / §18.3-4 / §21.3-4 / §8.3-4)
+// Specs (stats per roster §14.3-4 / §18.3-4 / §21.3-4 / §8.3-4); the
+// generator's source, the registry holds modern1Specs.generated.ts.
 // ---------------------------------------------------------------------------
-const MODERN1_SPECS = {
+export const MODERN1_SPECS = {
   leo2a6: {
     id: 'leo2a6', name: 'Leopard 2A4', nation: 'Germany', era: 'modern', role: 'mbt',
     hp: 2400,
@@ -174,19 +177,6 @@ const MODERN1_SPECS = {
     },
   },
 } satisfies Record<string, FleetTankSpec>;
-
-// Register specs + model-source rows + garage roster ids (idempotent —
-// vite HMR can re-evaluate this module).
-type Modern1SpecId = keyof typeof MODERN1_SPECS;
-const tankSpecs: typeof TANK_SPECS & Partial<Record<Modern1SpecId, FleetTankSpec>> = TANK_SPECS;
-const modelSources: typeof MODEL_SOURCE & Partial<Record<Modern1SpecId, ModelSourceRecord>> = MODEL_SOURCE;
-const allTankIds: string[] = ALL_TANK_IDS;
-for (const [id, spec] of Object.entries(MODERN1_SPECS)) {
-  const specId = id as Modern1SpecId;
-  tankSpecs[specId] ||= spec;
-  modelSources[specId] ||= { source: 'procedural' };
-  if (!allTankIds.includes(specId)) allTankIds.push(specId);
-}
 
 // ===========================================================================
 // Builders
