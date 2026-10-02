@@ -257,7 +257,9 @@ vec4 midLayer( vec3 dir, float cosT, vec3 rayDx, vec3 rayDy, out float tLayer ) 
 	vec3 L = S * ( 1.0 - T );
 	// aerial: the slant through the boundary layer's haze (a sheet overhead stays clear, one at the horizon melts)
 	float distH = tm * clamp( ${f(cirrusHazeScaleM)} / max( uMid.y - uCamPos.y, 100.0 ), 0.0, 1.0 );
-	L = cloudHaze( L, 1.0 - T, distH, dir, 1.0 );
+	// (the slab's altitude rule: a layer kilometres up stands over the boundary layer's haze until the far ramp)
+	float hAttM = exp( -max( uMid.y - uCamPos.y - 30.0, 0.0 ) / 150.0 );
+	L = cloudHaze( L, 1.0 - T, distH, dir, hAttM );
 	float fade = 1.0 - smoothstep( 32000.0, 60000.0, horiz );
 	return vec4( L * fade, mix( 1.0, T, fade ) );
 }
@@ -398,7 +400,7 @@ vec4 stormCells( vec3 dir, float cosT, float jitter, out float tLayer ) {
 			// the boundary layer hazes the base, the tower's head stands over it
 			float y = uCamPos.y + dir.y * dist;
 			float distH = dist * clamp( 2500.0 / max( y - uCamPos.y, 100.0 ), 0.12, 1.0 );
-			L = cloudHaze( L, 1.0 - T, distH, dir, 1.0 );
+			L = cloudHaze( L, 1.0 - T, distH, dir, exp( -max( y - uCamPos.y - 30.0, 0.0 ) / 150.0 ) );
 			acc = cloudOver( acc, vec4( L, T ) );
 		}
 	}

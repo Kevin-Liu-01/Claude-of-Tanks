@@ -132,6 +132,14 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   assert.ok(layerSrc.includes('ns.y = ((ns.y - CLOUD_BOIL_M_PER_S'), 'the billows boil');
 }
 
+// ---- every path that shows a map's sky carries its cloudscape (the battle's getAuthoredPreset, and the world activation's
+// restore for the shots, the Studio staging and the census — which showed the legacy layer of the sky block alone)
+{
+  const activation = here('../world/worldActivationRuntime.ts');
+  assert.match(activation, /world\.config\.clouds\s*\?\s*\{ \.\.\.\(world\.config\.sky \?\? \{\}\), cloudscape: world\.config\.clouds \}/, 'restoreAtmosphere carries config.clouds');
+  assert.match(here('../main.ts'), /return config\.clouds \? \{ \.\.\.sky, cloudscape: config\.clouds \} : sky;/, 'the battle path carries it');
+}
+
 // ---- the time of day
 assert.equal(cloudTimeOfDay({ skyIntensity: 1, sunElevationDeg: 32 }), 'day');
 assert.equal(cloudTimeOfDay({ skyIntensity: 0.72, sunElevationDeg: 7 }), 'sunset', 'the battle runtime\'s sunset preset');
