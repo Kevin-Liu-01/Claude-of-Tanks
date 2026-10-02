@@ -1,57 +1,175 @@
-// src/world/maps/desert.ts — El Halluf vibes: ridged dunes, flat-topped mesas,
-// an adobe village on the crossroads, palm clusters, warm sand haze.
+// src/world/maps/desert.ts — Sirocco Wadi, redesigned 2026-10-01 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
+// The palette, sky, vegetation, prop tones, name and id are the map's identity and stay; the battlefield under them
+// is new. The old layout was Verdant's: its five landforms, its default country cross for roads, its three beat
+// sites and spawns 470 m apart with the player pad beside the village.
+//
+// Reference: the eroded edge of the Dahar sandstone plateau in southern Tunisia, where wadis leave the escarpment
+// between mesa outliers and braid across a sand basin toward the coast. The sirocco drives sand across that basin
+// and piles linear draa and tall star dunes against the rock. The ksour, the fortified granary villages, stand at
+// the wadi crossings, where the water table is shallow and the caravan routes meet.
+//
+// The story on the ground: two sandstone mesas stand on the west of the basin, the North Mesa in the north-west
+// corner and the Gara south-west of centre. (They are the map's own mesa noise at threshold 0.80; that field broke
+// into these two outliers and nothing else.) The Wadi Sirocco comes in from the west edge between them, passes the
+// Gara's northern tip, crosses the basin through the centre and braids out to the east edge. Its bed is a shallow
+// gravel floor with takyr crusts, 5–7 m below the basin, with bankside rims that give hull-down ground on both sides.
+// The ksar village straddles the wadi where the caravan road fords it; the dry bed between its banks is the souk
+// ground, kept clear. Two star dunes answer the two mesas across the centre: the Erg Dune north-east of the village
+// and the Gara Dune in the south-east corner. They are tall, steep sand masses that block sight like the mesas do.
+// Lower draa ridges, aligned with the wind, roll across the open basin.
+//
+// The layout is rotationally symmetric about the ford (0, 0): every feature in one team's half has a counterpart
+// of the same kind and value in the other half, turned through 180°. Alpha starts south of the Gara with the Gara
+// Dune on its east flank. Bravo starts north of the Erg Dune with the North Mesa on its west flank. The caravan road
+// runs south to north through the ford; the wadi track runs west to east along the banks. The three zone-control
+// objectives sit on gravel bars in the bed (the gap between the mesas, the ford, the eastern fan) and are equally
+// far from both teams.
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
+
+// The wadi centreline, symmetric through the ford: (x, z) and (-x, -z) are both on it.
+const WADI = [
+  [-512, 140], [-420, 132], [-330, 120], [-250, 100], [-180, 66], [-115, 34], [-55, 16], [0, 0],
+  [55, -16], [115, -34], [180, -66], [250, -100], [330, -120], [420, -132], [512, -140],
+] as const;
+
+// Takyr crusts: shallow pale dips along the bed every ~45 m (the M layer, the cracked dry clay tone below), kept
+// out of the souk ground at the ford and short of the border rim.
+function takyrCrusts(): { x: number; z: number; r: number; dip: number }[] {
+  const out: { x: number; z: number; r: number; dip: number }[] = [];
+  for (let i = 1; i < WADI.length; i++) {
+    const [ax, az] = WADI[i - 1], [bx, bz] = WADI[i];
+    const steps = Math.max(1, Math.round(Math.hypot(bx - ax, bz - az) / 45));
+    for (let s = 0; s < steps; s++) {
+      const t = s / steps, x = Math.round(ax + (bx - ax) * t), z = Math.round(az + (bz - az) * t);
+      if (Math.abs(x) > 456 || Math.hypot(x, z) < 70) continue;
+      out.push({ x, z, r: 22, dip: 0.7 });
+    }
+  }
+  return out;
+}
+
+// The wadi bed: a chain of gorge segments along WADI, each with a flat gravel floor (65 % of its width) between
+// graded banks. A segment spans its leg of the centreline plus half its neighbours' end tapers (length = leg / 0.86),
+// so the depth stays even across every joint (the tapers are complementary smoothsteps). The bed is wider where a
+// zone-control gravel bar sits (the gap between the mesas and the eastern fan). Through the ksar the settlement
+// grading keeps 45 % of the depth: a shallow ford under the souk ground. The outer legs run on past the red line so
+// the bed continues into the outland.
+const WADI_WIDTH = [80, 80, 112, 76, 72, 70, 84, 84, 70, 72, 76, 112, 80, 80];
+const WADI_DEPTH = 7.5;
+function wadiGorges(): { kind: string; x: number; z: number; length: number; width: number; height: number;
+  yawDeg: number; wetScale: number }[] {
+  const out = [];
+  for (let i = 1; i < WADI.length; i++) {
+    const width = WADI_WIDTH[i - 1];
+    const [ax, az] = WADI[i - 1], [bx, bz] = WADI[i];
+    const leg = Math.hypot(bx - ax, bz - az);
+    out.push({
+      kind: 'gorge', x: (ax + bx) / 2, z: (az + bz) / 2, length: Math.round(leg / 0.86), width,
+      height: -WADI_DEPTH, yawDeg: Math.round(Math.atan2(bz - az, bx - ax) * 1800 / Math.PI) / 10,
+      wetScale: 1, // the takyr crusts lie IN the bed: the marsh weight must not lift it back up
+    });
+  }
+  return out;
+}
 
 export default {
   id: 'desert',
   name: 'Sirocco Wadi',
-  blurb: 'Sun-baked dunes, red mesas and an adobe crossroads village',
+  blurb: 'A dry wadi between sandstone mesas and star dunes, forded by a walled ksar village',
 
   terrain: {
-    hillScale: 0.85,
-    microScale: 0.7,
+    hillScale: 0.5,   // the basin floor's swell: the wadi, mesas and dunes carry the structure (was 0.85)
+    microScale: 0.9,  // the sand-sheet folds and scrapes are the open basin's hull-down ground (was 0.7)
     rimH: 30,
-    dunes: { amp: 7.5 },
-    // Broad tablelands with a graded talus shoulder. The former tight
-    // threshold crossed the full mesa rise in roughly one terrain cell and
-    // produced triangular "spike hills" beside the village.
+    // Sand sheet over the whole basin: lower than the old erg so the authored draa and the wadi read through it.
+    dunes: { amp: 4.5 },
+    // The map's own mesa noise at threshold 0.80: exactly two outliers, the North Mesa in the north-west corner and
+    // the Gara south-west of centre (at 0.70 the same field was one S-shaped massif across the west half).
     mesas: {
-      amp: 36, thr0: 0.70, thr1: 0.755,
+      amp: 36, thr0: 0.80, thr1: 0.855,
       wallWidth: 2.2, tierWidth: 0.16, tierScale: 0.22,
       corridorFloor: 1,
     },
-    marshes: [], // no marshes — dry wadi
-    // r2 (content_breadth): village footprint widened (-70..74 -> -92..92,
-    // -34..112 -> -46..132) — the crossroads settlement read as "a handful of
-    // isolated boxes along the road"; more road frontage inside the box means
-    // more placement slots for the longer adobe/bazaar plan below
-    village: { x0: -92, x1: 92, z0: -46, z1: 132, cx: 4, cz: 40, feather: 40, flatten: 0.9 },
+    marshes: takyrCrusts(),
+    clearMarshVeg: true,
+    // The ksar: one graded rect straddling the ford, the souk ground in the bed at its centre.
+    village: { x0: -112, x1: 112, z0: -92, z1: 92, cx: 0, cz: 0, feather: 38, flatten: 0.86, relief: 0.14 },
+    // Authored paths stop inside the square; the endpoint completion adds each exit and grades it through the rim
+    // (maps/roadEndpoints.ts, maps/roadBorderCorridor.ts).
+    roads: { paths: [
+      // 0 — the caravan road: south edge, east of the Gara, through the ford, west of the Erg Dune, north edge.
+      // Road 0 also carries the utility-pole line (mapQuality).
+      [[72, -448], [70, -400], [64, -330], [44, -240], [24, -150], [10, -70], [0, 0],
+        [-10, 70], [-24, 150], [-44, 240], [-64, 330], [-70, 400], [-72, 448]],
+      // 1 — the wadi track: west edge along the north bank between the mesas, through the ksar, then along the
+      // south bank out over the eastern fan to the east edge.
+      [[-448, 184], [-420, 182], [-330, 174], [-250, 154], [-180, 108], [-112, 58], [-48, 26], [0, 0],
+        [48, -26], [112, -58], [180, -108], [250, -154], [330, -174], [420, -182], [448, -184]],
+      // 2 / 3 — the ksar's ring lanes: each leaves the caravan road and curls round a quarter to the wadi track.
+      [[-7.4, 52], [40, 76], [104, 44], [118, -62.4]],
+      [[7.4, -52], [-40, -76], [-104, -44], [-118, 62.4]],
+    ] },
+    // The souk ground (the dry bed at the ford, a gravel floor graded flat for the weekly market) and a gravel bar
+    // in the bed on each flank: level aprons the zone-control placement seats its 30 m discs on.
+    hardstands: [
+      // levels: the bed under each apron (a hardstand otherwise takes the nearest road's grade, the bank's)
+      // each strip's length runs along its leg of the bed (a strip's local +Z is (sin yaw, cos yaw))
+      { x: 0, z: 0, width: 64, length: 72, yawDeg: 106, level: -2.4, grade: 0 },
+      { x: -292, z: 112, width: 60, length: 64, yawDeg: 104, level: -7.4, grade: 0 },
+      { x: 292, z: -112, width: 60, length: 64, yawDeg: 104, level: -0.3, grade: 0 },
+    ],
+    // The gravel bed between the banks is bare worked ground (the D layer's dusty dirt): one band per half of the
+    // wadi (a worked-ground patch takes at most 24 vertices).
+    workedGround: [
+      { feather: 18, strength: 0.85, boundary: [
+        [-512, 168], [-420, 160], [-330, 148], [-250, 128], [-180, 94], [-115, 62], [-55, 42], [0, 28],
+        [0, -28], [-55, -12], [-115, 6], [-180, 38], [-250, 72], [-330, 92], [-420, 104], [-512, 112],
+      ] },
+      { feather: 18, strength: 0.85, boundary: [
+        [512, -168], [420, -160], [330, -148], [250, -128], [180, -94], [115, -62], [55, -42], [0, -28],
+        [0, 28], [55, 12], [115, -6], [180, -38], [250, -72], [330, -92], [420, -104], [512, -112],
+      ] },
+    ],
     landforms: [
-      { kind: 'ridge', x: -250, z: 26, length: 300, width: 82, height: 5.4, yawDeg: 8 },
-      { kind: 'ridge', x: 246, z: 60, length: 284, width: 78, height: 5.0, yawDeg: -12 },
-      { kind: 'ridge', x: -40, z: 246, length: 208, width: 66, height: 4.2, yawDeg: 78 },
-      { kind: 'knoll', x: 178, z: -226, rx: 92, rz: 70, height: 5.8, yawDeg: 22 },
-      { kind: 'basin', x: -154, z: -184, rx: 118, rz: 78, height: -3.0, yawDeg: -18 },
+      ...wadiGorges(),
+      // Braided gravel bars in the bed: low tamarisk islands between the channels, cover for a crossing hull, each with
+      // its rotated twin (none on the zone bars or in the souk ground).
+      ...[[-412, 132, -7], [-210, 76, -26], [-160, 48, -26], [-112, 30, -16]].flatMap(([x, z, yaw]) => [
+        { kind: 'knoll', x, z, rx: 26, rz: 12, height: 2.6, yawDeg: yaw, wetScale: 1 },
+        { kind: 'knoll', x: -x, z: -z, rx: 26, rz: 12, height: 2.6, yawDeg: yaw, wetScale: 1 },
+      ]),
+      // The Erg Dune: a steep star dune north-east of the ksar, the Gara's counterpart across the ford. A tall
+      // knoll whose sand flanks (rock stays gated to the mesa weight on this map) a hull cannot climb, with two
+      // lower arms reaching south-west and north-east.
+      { kind: 'knoll', x: 128, z: 148, rx: 96, rz: 82, height: 27, yawDeg: 34 },
+      { kind: 'ridge', x: 70, z: 96, length: 150, width: 64, height: 7.5, yawDeg: 34 },
+      { kind: 'ridge', x: 196, z: 214, length: 160, width: 66, height: 8.0, yawDeg: 38 },
+      // The Gara Dune: the south-east star dune, the North Mesa's counterpart.
+      { kind: 'knoll', x: 300, z: -356, rx: 100, rz: 78, height: 24, yawDeg: 30 },
+      // Draa ridges across the open basin, aligned with the wind (the dune field's rippleDir 0.8 / 0.6, about 37°):
+      // hull-down crests and sight breaks, each with its rotated twin.
+      { kind: 'ridge', x: 150, z: 22, length: 170, width: 62, height: 5.5, yawDeg: 37 },
+      { kind: 'ridge', x: -150, z: -22, length: 170, width: 62, height: 5.5, yawDeg: 37 },
+      { kind: 'ridge', x: 330, z: 300, length: 200, width: 70, height: 6.0, yawDeg: 37 },
+      { kind: 'ridge', x: -330, z: -300, length: 200, width: 70, height: 6.0, yawDeg: 37 },
+      { kind: 'ridge', x: 140, z: -230, length: 180, width: 64, height: 5.5, yawDeg: 37 },
+      { kind: 'ridge', x: -140, z: 230, length: 180, width: 64, height: 5.5, yawDeg: 37 },
+      { kind: 'ridge', x: 372, z: -46, length: 160, width: 58, height: 5.0, yawDeg: 37 },
+      { kind: 'ridge', x: -372, z: 46, length: 160, width: 58, height: 5.0, yawDeg: 37 },
+      { kind: 'ridge', x: 318, z: -196, length: 150, width: 56, height: 4.5, yawDeg: 37 },
+      { kind: 'ridge', x: -318, z: 196, length: 150, width: 56, height: 4.5, yawDeg: 37 },
     ],
   },
 
   spawns: {
-    // r1 (content_breadth): player spawn moved off the mesa flank (14,-86 sat
-    // on a 0.60-normal slope and the ally lateral offsets ±22/44 m landed ON
-    // the striated cliff wall — the establishing shot framed a tank fused
-    // into the mesa). (68,-82) scans flat (min normal.y 0.98 over the whole
-    // ±55 m ally arc, max Δh 2.4 m — tools: scan over createHeightField).
-    player: { x: 68, z: -82 },
-    // BATTLE-AI r7 TEAM SPAWNS: one enemy spawn arc on the base side (was a
-    // mid-map scatter with points abreast of the village at ±325 x). Cells
-    // flat-scanned via tools/tmp-ai-r7-spawnscan.mjs (raw terrain minNy>=0.86,
-    // relief<=5 m over the pad radius, mesa faces rejected, >=38 m apart,
-    // >=380 m from the player pad; the r9 spawnClear fade keeps macro dunes
-    // out of every pad).
+    // Alpha deploys directly south of the Gara, which screens the pad from the ford and the north; bravo's seven
+    // pads are the rotation of that ground, an arc north of the Erg Dune (its screen), clear of the North Mesa by
+    // more than the 90 m spawn-clear fade. 848 m between the anchors.
+    player: { x: -118, z: -408 },
     enemies: [
-      { x: -10, z: 378 }, { x: -114, z: 389 }, { x: 59, z: 410 }, { x: -179, z: 365 },
-      { x: 96, z: 313 }, { x: -218, z: 364 }, { x: 146, z: 419 },
+      { x: 118, z: 408 }, { x: 68, z: 398 }, { x: 170, z: 398 }, { x: 22, z: 380 },
+      { x: 216, z: 380 }, { x: 94, z: 440 }, { x: 146, z: 440 },
     ],
   },
 
@@ -223,27 +341,54 @@ export default {
     // courtyard clutter) cluster the loose adobes into real family blocks.
     // world-dressing r1: + a minaret over the bazaar skyline (the settlement
     // read as all one-story flat roofs from the establishing camera)
-    plan: ['caravanserai', 'adobe', 'market', 'minaret', 'compoundSouk', 'tower',
-      'adobe', 'ruin', 'compound', 'bathhouse', 'marketRow', 'adobe', 'adobe',
-      'compoundSouk', 'adobe', 'market', 'ruin', 'adobe'],
+    // 2026-10-01: the ksar's landmarks stand on authored lots (plannedSites below), one walled compound in each
+    // quarter between the caravan road and the wadi track, set back from both; the road frontages take the houses,
+    // the souk rows, the bathhouse and the watchtower.
+    plan: ['adobe', 'market', 'adobe', 'ruin', 'tower', 'adobe', 'bathhouse', 'marketRow', 'adobe', 'adobe',
+      'ruin', 'adobe', 'market', 'adobe', 'adobe', 'ruin', 'adobe', 'tower', 'adobe', 'marketRow', 'adobe',
+      'ruin', 'adobe', 'adobe'],
+    plannedSites: [
+      { structure: 'caravanserai', x: 52, z: -70, yawDeg: -16 },
+      { structure: 'compoundSouk', x: -52, z: 70, yawDeg: 164 },
+      { structure: 'compound', x: 62, z: 44, yawDeg: 74 },
+      { structure: 'compound', x: -62, z: -44, yawDeg: -106 },
+      { structure: 'minaret', x: -24, z: 52, yawDeg: 0 },
+      // back-lot houses in the four quarters, each with its 180° twin
+      { structure: 'adobe', x: 90, z: 74, yawDeg: 74 }, { structure: 'adobe', x: -90, z: -74, yawDeg: 254 },
+      { structure: 'adobe', x: 24, z: 84, yawDeg: 164 }, { structure: 'adobe', x: -24, z: -84, yawDeg: 344 },
+      { structure: 'adobe', x: 96, z: -20, yawDeg: 74 }, { structure: 'adobe', x: -96, z: 20, yawDeg: 254 },
+    ],
     destructibleBuildings: ['deserttent', 'commandtent', 'checkpointhut', 'guardpost'],
+    // Two pairs, each turned through 180° about the ford: a ruined bordj (desert fort) on each flank, on the far side
+    // of the wadi from the team whose flank zone it watches, and a checkpoint where the caravan road enters the ksar.
     tacticalBeats: [
-      { id: 'western-wadi-camp', role: 'brawl', x: -254, z: 64, yawDeg: 10,
-        structure: 'deserttent', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: -15 },
-      { id: 'eastern-mesa-watch', role: 'scout', x: 254, z: 70, yawDeg: -10,
-        structure: 'guardpost', outcrop: { count: 5, radius: 9, scaleMax: 3.0 } },
-      { id: 'northern-relay-camp', role: 'support', x: 28, z: 270, yawDeg: 2,
-        structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
+      { id: 'west-bordj', role: 'brawl', x: -250, z: 236, yawDeg: 192,
+        structure: 'guardpost', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: -15 },
+      { id: 'east-bordj', role: 'brawl', x: 250, z: -236, yawDeg: 12,
+        structure: 'guardpost', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: 15 },
+      { id: 'south-gate-checkpoint', role: 'scout', x: 34, z: -128, yawDeg: 8,
+        structure: 'checkpointhut', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },
+      { id: 'north-gate-checkpoint', role: 'scout', x: -34, z: 128, yawDeg: 188,
+        structure: 'checkpointhut', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },
+      // a nomad camp at a well on each side of the basin, between the ksar and the flank zones
+      { id: 'west-well-camp', role: 'support', x: -170, z: 10, yawDeg: 20,
+        structure: 'deserttent', redoubt: true, outcrop: { count: 6, radius: 11, scaleMax: 2.8 }, wreck: true, wreckOffsetZ: -14 },
+      { id: 'east-well-camp', role: 'support', x: 170, z: -10, yawDeg: 200,
+        structure: 'deserttent', redoubt: true, outcrop: { count: 6, radius: 11, scaleMax: 2.8 }, wreck: true, wreckOffsetZ: 14 },
     ],
     // denser packing: fill both road sides more often and let neighbouring
     // adobes huddle (flat-roof villages cluster tight around their souk)
-    sideSkip: 0.12, spacingPad: 7,
+    // 2026-10-01: a ksar is a dense block of mud-brick houses on narrow lanes — tighter packing than the old
+    // crossroads village (sideSkip 0.12, spacingPad 7) so the ford's quarter is close-quarters ground
+    sideSkip: 0.05, spacingPad: 4.5,
     // r5: 14 m-deep compound footprints need one extra lateral step so their
     // street wall clears the carriageway (front face >= ~4.5 m off the road
     // centerline at the closest roll), and a wider ground-fit tolerance so a
     // 24 m footprint still finds slots on the feathered village apron
     // (flatten 0.9 keeps the actual spread well under this inside the core)
-    buildingLat: [11.5, 4.5], maxSpread: 2.2,
+    // 2026-10-01: one more setback step — the wadi track runs diagonally through the ksar, and a 24 m compound turned
+    // to a diagonal frontage reached the carriageway at the old [11.5, 4.5]
+    buildingLat: [14, 4], maxSpread: 2.2,
     tones: {
       plaster: (h: number, s: number, l: number) => [0.068, 0.52, clamp01(l * 0.98 + 0.02)], // warm sand-plaster adobe
       roof: (h: number, s: number, l: number) => [0.065, clamp01(s * 0.8), clamp01(l * 1.1)],
@@ -255,14 +400,17 @@ export default {
     // read as fleshy-pink blobs on the open sand (establishing shot)
     rockTone: (h: number, s: number, l: number) => [0.055, 0.20, clamp01(l * 1.06 + 0.03)], // dusty red-rock boulders
     wallStoneChance: 1.0,
+    // Adobe garden walls on the wadi terraces beside the ksar (the palm gardens above the bed) and the ksar's own
+    // enclosure, every run with its 180° twin; low walls that mask a hull's tracks.
     wallRuns: [
-      [-58, 4, -58, 58, 2], [70, 26, 70, 92, 3], [-6, 104, 48, 104, 1],
-      [-170, -70, -110, -70, 2], [150, -180, 150, -120, 1], [-70, 210, 0, 210, 3],
-      // r2: courtyard walls hugging the crossroads (junction ~[4,40]) — low
-      // sandstone compounds that knit the bazaar blocks together
-      [-30, 16, -30, 52, 2], [-30, 16, -2, 16, 1],
-      [34, 58, 34, 92, 3], [34, 92, 66, 92, 2],
-      [-46, 76, -12, 76, 1],
+      [-240, 58, -190, 30, 2], [-190, 30, -190, -4, 1], [240, -58, 190, -30, 2], [190, -30, 190, 4, 1],
+      [-200, 118, -150, 96, 3], [-150, 96, -150, 130, 0], [200, -118, 150, -96, 3], [150, -96, 150, -130, 0],
+      [-100, 84, -42, 94, 2], [100, -84, 42, -94, 2],
+      [-110, -18, -110, 42, 3], [110, 18, 110, -42, 3],
+      // courtyard walls in the four quarters of the ksar, each with its twin
+      [-86, -12, -46, -24, 1], [86, 12, 46, 24, 1], [-30, -70, -30, -38, 2], [30, 70, 30, 38, 2],
+      [40, 96, 84, 82, 3], [-40, -96, -84, -82, 3], [-94, 22, -74, 50, 0], [94, -22, 74, -50, 0],
+      [300, 84, 356, 46, 1], [-300, -84, -356, -46, 1],
     ],
     well: true, hayCrates: true, fences: false, telegraph: true, carts: true, logs: false,
     // r3: craters 18 -> 30, +1 wreck — more battle scarring/track marks to
@@ -377,5 +525,6 @@ export default {
     buildingFill: '#e0cba4',
   },
 
-  shot: { pos: [-85, 46, -162], look: [60, 10, 172] },
+  // south-east of the ford over the eastern fan: the ksar on the wadi, the Gara behind it, the Erg Dune to the right
+  shot: { pos: [196, 44, -150], look: [-40, 6, 40] },
 } satisfies import('./contracts.ts').MapCompositionConfig;
