@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { AERIAL_RULES } from '../sim/matchRuleset.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 
 /** The gunship gimbal tracks a ground point while its aircraft continues to orbit.
@@ -36,7 +37,7 @@ export function createAerialCamera(camera: THREE.PerspectiveCamera) {
       }
       if(owner!==entity||previousKind!==view.kind){
         owner=entity;previousKind=view.kind;yaw=view.yaw;pitch=-.12;zoom=1;launchBlend=view.launching?1:0;
-        focus.set(0,view.kind==='gunship'?view.y-240:0,0);
+        focus.set(0,view.kind==='gunship'?view.y-AERIAL_RULES.gunship.altitudeM:0,0);
       }
       const dx=input.mouseDX+(input.cursorAim?(input.cursorX??0)*dt*350:0);
       const dy=input.mouseDY-(input.cursorAim?(input.cursorY??0)*dt*250:0);

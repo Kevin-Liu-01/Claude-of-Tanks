@@ -23,6 +23,7 @@ for(const mode of modes){
  }
  if(mode==='gun_game')assert.equal(pilot.spec.gun.caliberMm,30);
  if(mode==='drone'){
+  assert.equal(snap.meta.modeState.missionPayloads.find(row=>row.id==='pilot').ready,false,'network dock empties on launch');
   assert.equal(pilot.aerial.active,true,'network action launches FPV');assert.ok(snap.meta.modeState.aerial.launching);
   inputs.get('pilot').throttle=1;
   for(let i=0;i<120;i++)match.step({dt:1/60,inputs});
