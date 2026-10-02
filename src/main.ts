@@ -69,6 +69,8 @@ import {
 } from './engine/quality.ts';
 import { createSky } from './engine/sky.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
+import { loadGroundedLightModel } from './engine/lightModelCore.ts';
+import { loadCloudscapeLayers } from './engine/cloudPresets.ts';
 import { battlePreferences } from './game/battlePreferences.ts';
 import { createFrontlineAtmosphereAccess } from './world/frontlineAtmosphereAccess.ts';
 import { createNightLightingAccess } from './engine/nightLightingAccess.ts';
@@ -3026,7 +3028,8 @@ window.__SHOTS = {
     if (!isShotViewName(name)) {
       throw new Error(`Unknown screenshot view: ${name}`);
     }
-    const { setShotView } = await import('./dev/shotRuntime.ts');
+    const [{ setShotView }] = await Promise.all([import('./dev/shotRuntime.ts'), loadGroundedLightModel(), loadCloudscapeLayers()]);
+    // (the staged map's open sky takes the grounded light model and its cloudscape, as a battle's does: the boot weight)
     type ShotRuntimeContext = Parameters<typeof setShotView>[1];
     return setShotView(name, checkedIntegrationPort<ShotRuntimeContext>({
       preloadSoloBattleRuntime,

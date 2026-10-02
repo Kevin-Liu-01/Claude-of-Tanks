@@ -20,6 +20,13 @@ const text = formatMatrix(report);
 if (!report.pass) { console.log(text); assert.fail(`the audit did not complete: ${report.failures.join('; ')}`); }
 const failures = [];
 const check = (condition, message) => { if (!condition) failures.push(message); };
+// Timing judgments (a beat presented late, a slow re-welcome) need a harness that kept its frame cadence: the host, the
+// seats and the transport share one process, so on a starved machine (event-loop delay p99 over 50 ms) a late beat is
+// the harness's own. They are reported, not failed, then; every correctness judgment below always applies.
+// (2026-10-02: one late finding in 1 of 3 runs under machine load; clean when run alone.)
+const starved = (report.loopDelay?.p99Ms ?? 0) > 50;
+const timingSkipped = [];
+const timing = (condition, message) => { if (!condition) (starved ? timingSkipped : failures).push(message); };
 
 check(report.steps.live.hostCrushes >= 3, `the live window produced ${report.steps.live.hostCrushes} crushes on the host (needs a few to judge)`);
 for (const row of report.matrix) {
@@ -29,7 +36,7 @@ for (const row of report.matrix) {
   check(row.duplicate === 0, `${view}: ${row.duplicate} presented twice`);
   check(row.wrongPlace === 0, `${view}: ${row.wrongPlace} presented > 0.5 m from the authority's position`);
   // the budget's deadline bounds a beat to four ticks past its tick; a slow frame of the single-process presenter can add two
-  check(row.late <= 2, `${view}: ${row.late} presented more than two snapshot intervals after their tick`);
+  timing(row.late <= 2, `${view}: ${row.late} presented more than two snapshot intervals after their tick`);
   if (row.kind === 'world_prop_destroyed') {
     // a fall whose event a link reset swallowed lands settled from the list: never animated, never early, never a crunch
     check(row.viaFrame === row.settled, `${view}: ${row.viaFrame - row.settled} props felled by the destroyed list with an animation`);
@@ -53,11 +60,15 @@ check(migration.inventedOnMigration === 0, `migration: ${migration.inventedOnMig
 check(migration.recrushEvents === 0, `migration: ${migration.recrushEvents} props re-destroyed on the new host`);
 check(migration.ghostFxP2 === 0 && migration.ghostFxP3 === 0, `migration: ghost crunches p2 ${migration.ghostFxP2}, p3 ${migration.ghostFxP3}`);
 check(returned.replayedAnimated === 0, `return: ${returned.replayedAnimated} of ${returned.replayedOnJoin} earlier falls animated for the returning seat`);
-check(report.steps.reconnect.outageMs < 5000, `reconnect: ${report.steps.reconnect.outageMs} ms to be welcomed again`);
+timing(report.steps.reconnect.outageMs < 5000, `reconnect: ${report.steps.reconnect.outageMs} ms to be welcomed again`);
+if (timingSkipped.length) {
+  console.log(`world events audit: harness starved (event-loop delay p99 ${report.loopDelay.p99Ms} ms, max ${report.loopDelay.maxMs} ms); `
+    + `timing findings reported, not judged:\n  ${timingSkipped.join('\n  ')}`);
+}
 
 if (failures.length) {
   console.log(text);
   assert.fail(`world events audit: ${failures.length} finding(s)\n  ${failures.join('\n  ')}`);
 }
 const crushRows = report.matrix.filter((row) => row.kind === 'world_prop_destroyed' && row.sent > 0);
-console.log(`mp world events audit: ${report.steps.live.hostCrushes} live crushes, ${crushRows.reduce((sum, row) => sum + row.viaEvent, 0)} prop falls over ${crushRows.length} views all through their events (Δticks p50 ${crushRows.map((row) => row.dTicks.p50).join('/')}), rejoin ${rejoin.replayedSettled}/${rejoin.replayedOnJoin} earlier falls settled, migration ${migration.restored}/${migration.destroyedOld} destroyed props restored at revision ${migration.revisionNewAtBoot} with ${migration.recrushEvents} re-destroyed, return ${returned.replayedSettled}/${returned.replayedOnJoin} settled, ${report.hostEvents} deliveries judged in ${report.wallMs} ms`);
+console.log(`mp world events audit: ${report.steps.live.hostCrushes} live crushes, ${crushRows.reduce((sum, row) => sum + row.viaEvent, 0)} prop falls over ${crushRows.length} views all through their events (Δticks p50 ${crushRows.map((row) => row.dTicks.p50).join('/')}), rejoin ${rejoin.replayedSettled}/${rejoin.replayedOnJoin} earlier falls settled, migration ${migration.restored}/${migration.destroyedOld} destroyed props restored at revision ${migration.revisionNewAtBoot} with ${migration.recrushEvents} re-destroyed, return ${returned.replayedSettled}/${returned.replayedOnJoin} settled, ${report.hostEvents} deliveries judged in ${report.wallMs} ms (harness event-loop delay p99 ${report.loopDelay?.p99Ms ?? '?'} ms)`);
