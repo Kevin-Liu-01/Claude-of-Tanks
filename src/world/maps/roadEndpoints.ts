@@ -40,7 +40,12 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   // lateral links the valley road to the moraine track, the back lane joins the valley road to the pass road and the
   // yard loop rejoins the valley road at both ends.
   winter: [through, ['boundary', { junction: 0 }], [{ junction: 0 }, 'boundary'], through, join(0, 3), join(0, 1), join(0, 0)],
-  urban: Array.from({ length: 8 }, () => through),
+  // Steinburg redesign (2026-10-01): the Hauptstrasse, the trade road and the bypass run edge to edge; each valley
+  // road enters from the west edge and ends on the bypass; the farm road links the two valley roads; each wall lane
+  // leaves the Hauptstrasse west of the square for the trade road, and its second leg leaves the trade road for the
+  // Hauptstrasse east of the square.
+  urban: [through, through, through, ['boundary', { junction: 2 }], ['boundary', { junction: 2 }],
+    join(3, 4), join(0, 1), join(1, 0), join(0, 1), join(1, 0)],
   coastal: [through, through, ['boundary', 'shore'], ['boundary', 'shore']],
   // Amberford redesign (owner 2026-09-23): the coach road runs edge to edge; the manor lane leaves the cross lanes
   // and exits north-east; the mill lane leaves the market square west; the sunken lane enters from the west edge and

@@ -24,6 +24,11 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // gap between the mesas, the souk ground at the ford (also the turbo-ball kickoff), the eastern fan. Each is a graded
   // apron in the map file, so the discs seat where they are authored and both teams drive the same distances.
   desert: { kickoff: { x: 0, z: 0 }, zones: [{ x: -292, z: 112 }, { x: 0, z: 0 }, { x: 292, z: -112 }] },
+  // Steinburg (redesign 2026-10-01): three discs on the spur's crest, mirror-symmetric across it — the farm road's
+  // crossing in the western orchards and the market square (also the turbo-ball kickoff), each a paved apron in the
+  // map file, and the bypass in the gap beyond the castle rock, the validated seat of the bounded search on the
+  // road's natural floor (an apron there would ramp the bypass past a road grade).
+  urban: { kickoff: { x: -50, z: 0 }, zones: [{ x: -330, z: 24 }, { x: -50, z: 0 }, { x: 247.2, z: 0 }] },
   skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
   copper_mesa: { zones: [{ x: 95.75601429460295, z: 25.16493186989846 }, { x: 103.52551824388397, z: -48.38643546884091 }, { x: 159.75453586673763, z: -8.089799185507083 }] },
 };
