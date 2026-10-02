@@ -972,6 +972,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/water-shore-camera.selftest.mjs',
     'tools/map-probe-runtime.selftest.mjs',
     'tools/map-metrics.selftest.mjs',
+    'tools/visual-census.selftest.mjs', // 2026-10-01: the redesign baseline census (camera set, site selection, metrics, reports)
     'tools/environment-motion-probe.selftest.mjs',
     'tools/horizon-construction-bench.selftest.mjs',
     'tools/map-art-guards.selftest.mjs',
