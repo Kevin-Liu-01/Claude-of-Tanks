@@ -81,8 +81,9 @@ a session scratchpad), which was not versioned and was lost once with a scratchp
   change during the gate fails it. The gate never fetches: fetch and integrate first (step 1).
 
 The gate stops at the first red step (`--keep-going` runs the rest) and writes `gate.json` and
-`gate.md` to `--out` (default `<tmp>/cot-gate/<time>-<sha>`). It never pushes, deploys, fetches or
-changes a setting; publishing and deploying stay separate steps.
+`gate.md` to `--out` (default `<tmp>/cot-gate/<time>-<sha>`). Like the landing chains, it waits up to
+three hours for the capture lock unless `COT_SHOTS_LOCK_TIMEOUT_MS` is set. It never pushes, deploys,
+fetches or changes a setting; publishing and deploying stay separate steps.
 
 **Stop the line (`--baseline=<ref>`, gate audit P2).** Every receipt red here runs again alone, on this
 tree and on a temporary worktree of `<ref>` at the same time (holding the capture lease like any

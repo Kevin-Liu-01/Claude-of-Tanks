@@ -3,8 +3,8 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { compareRedReceipt, failureSignature, GATE_STEPS, normalizeMessage, parseGateArgs, planGate, renderGateMarkdown,
-  runGate, verdictBlocks, workerPackages } from './gate.mjs';
+import { compareRedReceipt, failureSignature, GATE_LOCK_TIMEOUT_MS, GATE_STEPS, normalizeMessage, parseGateArgs, planGate,
+  renderGateMarkdown, runGate, verdictBlocks, workerPackages } from './gate.mjs';
 import { REPO_ROOT } from './selftest-cache.mjs';
 
 // Gate P13/P14/P2 (2026-10-01): tools/gate.mjs is the one versioned landing gate. These cases pin its
@@ -184,6 +184,9 @@ const nodeFailure = (root, message, extra = '') => [
   assert.match(dry.stdout, /inherited only with the same first error/);
   const outPath = /output would go to (\S+)/.exec(dry.stdout)?.[1];
   assert.ok(outPath && !existsSync(outPath), 'a dry run writes nothing');
+  assert.equal(GATE_LOCK_TIMEOUT_MS, 3 * 60 * 60 * 1000, 'the gate waits for the capture lock as long as the landing chains did');
+  assert.match(readFileSync(new URL('./gate.mjs', import.meta.url), 'utf8'), /process\.env\.COT_SHOTS_LOCK_TIMEOUT_MS \|\|= String\(GATE_LOCK_TIMEOUT_MS\)/,
+    'the CLI sets the wait for its children only when the caller did not choose one');
   const misuse = spawnSync(process.execPath, ['tools/gate.mjs', '--deploy'], { cwd: REPO_ROOT, encoding: 'utf8' });
   assert.equal(misuse.status, 2);
   assert.match(misuse.stderr, /Unknown gate option: --deploy/);

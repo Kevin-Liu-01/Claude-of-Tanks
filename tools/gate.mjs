@@ -451,11 +451,16 @@ export async function runGate(options, { root, planner = planGate }) {
   return summary.ok ? 0 : 1;
 }
 
+// Like the landing chains it replaces, a gate on a shared host waits up to three hours for the capture
+// lock (its receipt runner, its browser receipts and its baseline pairs) instead of the 45 min default.
+export const GATE_LOCK_TIMEOUT_MS = 3 * 60 * 60 * 1000;
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   let options;
   try { options = parseGateArgs(process.argv.slice(2)); }
   catch (error) { console.error(error.message); process.exitCode = 2; }
   if (options) {
+    process.env.COT_SHOTS_LOCK_TIMEOUT_MS ||= String(GATE_LOCK_TIMEOUT_MS);
     const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
     process.exitCode = await runGate(options, { root });
   }
