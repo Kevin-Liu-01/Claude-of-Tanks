@@ -107,6 +107,13 @@ const galaxy = resolveLightModel(galaxySky, verdant, { irradianceRaw: irr }, { i
 assert.equal(galaxy.mode, 'legacy'); assert.equal(galaxy.night, 0, 'a galaxy sky\'s key is daylight');
 assert.equal(galaxy.sunIntensity, 3.2); assert.equal(galaxy.fillIntensity, 0.36);
 
+// the vehicles' readability lift: whole at Verdant's key under an open sky, faded as the camera opens and under a deck
+near(clear.vehicleReadability, Math.min(1, EXPOSURE_KEY / clear.exposure), 1e-12, 'an open sky keeps the lift (bounded by the camera)');
+assert.ok(clear.vehicleReadability > 0.85, `Verdant keeps its calibrated lift (${clear.vehicleReadability.toFixed(2)})`);
+assert.ok(overcastModel.vehicleReadability < 0.35, `a closed deck lights every face: the lift fades (${overcastModel.vehicleReadability.toFixed(2)})`);
+assert.ok(nightModel.vehicleReadability < clear.vehicleReadability, 'the opened night camera needs less of the scene-linear floor');
+assert.equal(galaxy.vehicleReadability, 1, 'the authored rig keeps its calibration');
+
 // ---- 5. the exposure law
 near(exposureFor(3), EXPOSURE_KEY, 1e-12, 'Verdant\'s key at the reference illuminance');
 near(exposureFor(3, 1), 2 * EXPOSURE_KEY, 1e-12, 'an EV offset doubles');
@@ -148,5 +155,7 @@ assert.match(renderer, /renderer\.toneMappingExposure = 1\.0;/, 'the exposure is
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 assert.match(main, /setSun: \(skyConfig\) => lighting\.setSun\(sky\.sunDir, withWorldCloudscape\(skyConfig\)\),/, 'the world activation sets the light with the deck');
 assert.match(main, /getBattleSkyConfig: \(\) => withWorldCloudscape\(currentWorld\(\)\?\.config\.sky \?\? null\),/, 'and so does the Garage trim\'s restore');
+assert.match(main, /getLightReadability: \(\) => \(scene\.userData\.lightModel as \{ vehicleReadability\?: number \} \| undefined\)\?\.vehicleReadability \?\? 1,/,
+  'the battle atmosphere reads the light\'s readability share');
 
 console.log(`lightModel.selftest: CPU transmittance = the LUT twin, Verdant key ${(day.intensity * luminance(day.color)).toFixed(2)}, sun/shade ${(sunH / shadeH).toFixed(2)}:1, overcast, exposure law, legacy rig and wiring PASS`);

@@ -112,6 +112,13 @@ export interface LightModel {
   contrast: number;
   /** 0..1 night (the dome dimmed to a moonlit sky): the grade's scotopic shift (low light loses colour toward blue). */
   night: number;
+  /**
+   * 0..1 share of the vehicles' shade readability lift (materials.ts vehicleAmbientFloorHook: a view fill and an
+   * absolute luminance floor for faces the sun leaves dark) this light still needs: the floor is scene-linear, so as
+   * the camera opens up it would land brighter on screen, and under an overcast deck no face is in the deep shade the
+   * lift was built for — it flattened every hull to pastel clay there. 1 on the legacy rig (its calibration).
+   */
+  vehicleReadability: number;
 }
 
 /**
@@ -148,6 +155,8 @@ export const EXPOSURE_ADAPTATION = 0.6;
 /** The camera's adaptation bounds around its key (a night scene stays a night scene, a snowfield never goes grey). */
 export const EXPOSURE_MIN = 0.45;
 export const EXPOSURE_MAX = 2.6;
+/** How much of the vehicle readability lift an overcast deck of 1 removes (the deck lights every face). */
+export const READABILITY_OVERCAST_FADE = 0.7;
 /** The legacy rig's exposure in the new curve's terms (mobile tier, a failed summary). */
 export const LEGACY_EXPOSURE = 1.5;
 /** The engine defaults the legacy rig falls back to (lighting.ts). */
@@ -326,6 +335,7 @@ function legacyModel(preset: LightModelPreset): LightModel {
     saturation: 1,
     contrast: 1,
     night: nightOf(preset),
+    vehicleReadability: 1,
   };
 }
 
@@ -374,6 +384,11 @@ export function resolveLightModel(
   // the deck's light from below is its reflection off the ground: the hemisphere's ground pole is the albedo itself
   const hemiGround: Rgb = [ground[0], ground[1], ground[2]];
   const illuminance = sunIrradiance * sinEl + skyLightH + hemiIntensity;
+  const exposure = exposureFor(illuminance, (L.exposureEV ?? 0) + night * lightTune('NIGHT_EV', NIGHT_EV));
+  // the readability lift's floor holds its on-screen level as the camera adapts (Verdant's key keeps it whole), and
+  // fades with the deck that lights the shade itself
+  const vehicleReadability = clamp(Math.min(1, lightTune('EXPOSURE_KEY', EXPOSURE_KEY) / exposure)
+    * (1 - lightTune('READABILITY_OVERCAST_FADE', READABILITY_OVERCAST_FADE) * overcast), 0.1, 1);
   return {
     mode: 'physical',
     sunIntensity,
@@ -388,10 +403,11 @@ export function resolveLightModel(
     groundRadiance: [ground[0] * irr[0], ground[1] * irr[1], ground[2] * irr[2]],
     overcast,
     illuminance,
-    exposure: exposureFor(illuminance, (L.exposureEV ?? 0) + night * lightTune('NIGHT_EV', NIGHT_EV)),
+    exposure,
     whiteBalance: whiteBalanceGains(L.warmth ?? 0),
     saturation: L.saturation ?? 1,
     contrast: L.contrast ?? 1,
     night,
+    vehicleReadability,
   };
 }

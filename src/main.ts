@@ -1452,6 +1452,8 @@ let battleWatchdogRadianceScale = 1;
 const battleAtmosphere = createBattleAtmosphereAccess(() => ({
   getGameMode: () => game.phase === 'studio' ? 'standard' : game.gameMode,
   getWorldRoot: () => currentWorld()?.group ?? null,
+  // 2026-10-01 (engine/lightModel.ts): the vehicles' readability lift follows the applied light
+  getLightReadability: () => (scene.userData.lightModel as { vehicleReadability?: number } | undefined)?.vehicleReadability ?? 1,
   getAuthoredPreset: () => {
     const config: MapCompositionConfig | undefined = currentWorld()?.config;
     if (!config) return {};
