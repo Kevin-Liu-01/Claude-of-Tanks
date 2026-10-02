@@ -356,20 +356,22 @@ enum values throw (`load()` rejects before replacing the scene).
 `dof`: `enabled`, `focusActor` (actor name, uid or index; follows the actor every frame at
 0.55 × its height, measured along the optical axis), `focusDistance` (0.5…5000 m, used when no
 actor), `focusOffset` (−50…50 m), `fStop` (0.7…32), `sensor` (`super35` 24.89 mm,
-`fullframe` 36 mm, `alexa65` 54.12 mm, `imax` 70.41 mm — the long side, mapped to the frame's
-longer axis), `anamorphic` (0…1: oval bokeh up to 2:1), `bokehScale` (0…8, default 1).
+`fullframe` 36 mm, `alexa65` 54.12 mm, `imax` 70.41 mm — the width, used with a 16:9
+extraction, so Super 35 is 14.0 mm tall), `anamorphic` (0…1: oval bokeh up to 2:1),
+`bokehScale` (0…8, default 1).
 
-Lens physics: focal length `f = (sensorLong / 2) / tan(longFov / 2)` from the live camera FOV;
-signed circle of confusion `c(d) = f² / (N (s − f)) · (d − s) / d`, as a fraction of the frame's
-long side so 4K and 1080p defocus identically. Studio renders it × `PICTURE_DEFOCUS_GAIN` (16):
+Lens physics: focal length `f = (sensorHeight / 2) / tan(fov / 2)` from the camera's vertical
+FOV; signed circle of confusion `c(d) = f² / (N (s − f)) · (d − s) / d` as a fraction of the frame
+height, so the live viewport (narrower than 16:9 beside the dock), 4K captures and the
+portrait/square formats defocus identically. Studio renders it × `PICTURE_DEFOCUS_GAIN` (16):
 on Studio's wide lenses a strict thin lens is near hyperfocal (f/2.8 on a 40° Super 35 frame
 focused at 12 m blurs the horizon by < 1 px); with the gain that frame gives a ~6 px-radius
 background at 1080p while f/11 stays near-sharp. `bokehScale: 0.0625` is strictly physical.
 The gather runs at half resolution with near/far separation (far samples never wider than the
 centre's CoC, so focused edges neither bleed into nor get smeared by the blur behind them; the
 near field is dilated through a tile max so a blurred foreground spreads over the subject), a
-bilateral full-resolution composite, and the sky at infinity. The radius is capped at 1.6 % of
-the long side. Live preview gathers 81 taps; `capture()` uses 225. Smoke, fire and flashes are
+bilateral full-resolution composite, and the sky at infinity. The radius is capped at 2.8 % of
+the frame height. Live preview gathers 81 taps; `capture()` uses 225. Smoke, fire and flashes are
 placed in depth by quarter-resolution coverage slices (see Known limitations).
 
 ### Looks (`__STUDIO.PICTURE_PRESETS`)

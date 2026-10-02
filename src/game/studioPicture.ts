@@ -14,8 +14,9 @@ import type { CinemaSettings } from '../engine/cinemaPost.ts';
  *
  * Units: exposure in photographic stops (EV) applied to linear scene light before the
  * tonemap; temperature/tint in the conventional -100..100 white-balance scale; hues in
- * degrees; distances in meters; the circle of confusion as a fraction of the frame's long
- * side so a 4K capture and a 1080p preview defocus identically.
+ * degrees; distances in meters; the circle of confusion as a fraction of the frame HEIGHT,
+ * from the camera's vertical field of view, so the live viewport, a 4K capture and the
+ * portrait/square formats all defocus identically.
  */
 
 type PictureRgb = readonly [number, number, number];
@@ -545,14 +546,17 @@ export function isNeutralPicture(p: StudioPicture): boolean {
 // --- camera physics -------------------------------------------------------------------------
 
 /**
- * Sensor long side in millimetres, mapped to the frame's LONGER axis (a portrait frame is the
- * same camera turned on its side). Super 35 is the cinema standard (ARRI/Kodak 4-perf full
- * aperture width 24.89 mm); larger formats give a longer lens for the same field of view and
- * therefore a shallower depth of field at the same f-stop.
+ * Sensor width in millimetres, used with a 16:9 extraction (height = width × 9 / 16). Super 35
+ * is the cinema standard (ARRI/Kodak 4-perf full aperture width 24.89 mm → 14.0 mm tall);
+ * larger formats give a longer lens for the same field of view and therefore a shallower depth
+ * of field at the same f-stop. The lens comes from the VERTICAL field of view (three.js `fov`),
+ * so the defocus does not change with the output aspect.
  */
 export const PICTURE_SENSOR_MM: Readonly<Record<PictureSensor, number>> = Object.freeze({
   super35: 24.89, fullframe: 36.0, alexa65: 54.12, imax: 70.41,
 });
+
+const sensorHeightMm = (sensor: PictureSensor): number => PICTURE_SENSOR_MM[sensor] * 9 / 16;
 
 /**
  * Cinematic defocus gain. On the wide lenses Studio frames with (32–50° vertical), a thin lens is
@@ -564,11 +568,10 @@ export const PICTURE_SENSOR_MM: Readonly<Record<PictureSensor, number>> = Object
  */
 export const PICTURE_DEFOCUS_GAIN = 16;
 
-/** Lens focal length (mm) that frames the camera's field of view on the sensor. */
-export function pictureFocalLengthMm(fovDeg: number, aspect: number, sensor: PictureSensor): number {
+/** Lens focal length (mm) that frames the camera's vertical field of view on the sensor height. */
+export function pictureFocalLengthMm(fovDeg: number, sensor: PictureSensor): number {
   const tanV = Math.tan((Math.max(1, Math.min(170, fovDeg)) * Math.PI) / 360);
-  const tanLong = aspect >= 1 ? tanV * aspect : tanV;
-  return (PICTURE_SENSOR_MM[sensor] * 0.5) / Math.max(1e-6, tanLong);
+  return (sensorHeightMm(sensor) * 0.5) / Math.max(1e-6, tanV);
 }
 
 interface PictureLensState {
@@ -576,28 +579,23 @@ interface PictureLensState {
   readonly focusM: number;
   readonly focalMm: number;
   /**
-   * Signed CoC diameter as a fraction of the frame's long side is `coc(d) = k · (d − s) / d`
-   * (negative = near field). k = f² / (N · (s − f)) / sensorLong × PICTURE_DEFOCUS_GAIN × bokehScale.
+   * Signed CoC diameter as a fraction of the frame height is `coc(d) = k · (d − s) / d`
+   * (negative = near field). k = f² / (N · (s − f)) / sensorHeight × PICTURE_DEFOCUS_GAIN × bokehScale.
    */
   readonly cocScale: number;
 }
 
 /** Thin-lens constants for the lens pass. */
-export function pictureLensState(
-  dof: PictureDof,
-  fovDeg: number,
-  aspect: number,
-  focusM: number,
-): PictureLensState {
-  const focalMm = pictureFocalLengthMm(fovDeg, aspect, dof.sensor);
+export function pictureLensState(dof: PictureDof, fovDeg: number, focusM: number): PictureLensState {
+  const focalMm = pictureFocalLengthMm(fovDeg, dof.sensor);
   const f = focalMm / 1000;
   const s = Math.max(f * 1.05, focusM);
-  const sensorLong = PICTURE_SENSOR_MM[dof.sensor] / 1000;
-  const cocScale = (f * f) / (dof.fStop * (s - f)) / sensorLong * PICTURE_DEFOCUS_GAIN * dof.bokehScale;
+  const sensorHeight = sensorHeightMm(dof.sensor) / 1000;
+  const cocScale = (f * f) / (dof.fStop * (s - f)) / sensorHeight * PICTURE_DEFOCUS_GAIN * dof.bokehScale;
   return { focusM: s, focalMm, cocScale };
 }
 
-/** Signed CoC (fraction of the long side) at view depth `depthM` — the shader's formula. */
+/** Signed CoC (fraction of the frame height) at view depth `depthM` — the shader's formula. */
 export function pictureCocAt(lens: PictureLensState, depthM: number): number {
   const d = Math.max(1e-3, depthM);
   return (lens.cocScale * (d - lens.focusM)) / d;
@@ -694,8 +692,8 @@ const SPLIT_SHADOW_GAIN = 0.12;
 const SPLIT_HIGHLIGHT_GAIN = 0.1;
 /** Streak buffers are energy-normalized long blurs; amount 1 needs this gain to read. */
 const STREAK_GAIN = 4;
-/** Largest CoC radius (fraction of the frame's long side) the lens pass will gather. */
-const DOF_MAX_RADIUS = 0.016;
+/** Largest CoC radius (fraction of the frame height) the lens pass will gather. */
+const DOF_MAX_RADIUS = 0.028;
 
 /** Resolved picture → the per-stage engine settings `createCinemaPost().apply()` takes. */
 export function pictureCinemaSettings(p: StudioPicture): CinemaSettings {

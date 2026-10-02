@@ -125,33 +125,34 @@ for (const tint of [split.shadowTint, split.highlightTint]) {
 }
 
 // Camera physics.
-assert.ok(Math.abs(pictureFocalLengthMm(10, 16 / 9, 'super35') - 80.0) < 0.1);
-assert.ok(Math.abs(pictureFocalLengthMm(45, 16 / 9, 'super35') - 16.9) < 0.1);
-assert.ok(Math.abs(pictureFocalLengthMm(20, 9 / 16, 'super35') - (24.89 / 2) / Math.tan(10 * Math.PI / 180)) < 1e-9,
-  'portrait frames map the sensor long side to the vertical axis');
-assert.ok(pictureFocalLengthMm(30, 16 / 9, 'alexa65') > pictureFocalLengthMm(30, 16 / 9, 'super35'));
+// vertical FOV on the 16:9 extraction height: the 16:9 numbers equal the classic Super 35 width law
+assert.ok(Math.abs(pictureFocalLengthMm(10, 'super35') - 80.0) < 0.1);
+assert.ok(Math.abs(pictureFocalLengthMm(45, 'super35') - 16.9) < 0.1);
+assert.ok(Math.abs(pictureFocalLengthMm(40, 'super35') - (24.89 * 9 / 16 / 2) / Math.tan(20 * Math.PI / 180)) < 1e-9);
+assert.ok(pictureFocalLengthMm(30, 'alexa65') > pictureFocalLengthMm(30, 'super35'));
 assert.equal(PICTURE_SENSOR_MM.super35, 24.89);
 const dof = resolvePicture({ dof: { enabled: true, fStop: 2.8 } }).dof;
-const lens = pictureLensState(dof, 12, 16 / 9, 25);
+const lens = pictureLensState(dof, 12, 25);
 assert.equal(lens.focusM, 25);
 assert.ok(Math.abs(pictureCocAt(lens, 25)) < 1e-12, 'the focal plane is sharp');
 assert.ok(pictureCocAt(lens, 100) > 0 && pictureCocAt(lens, 10) < 0, 'far positive, near negative');
 assert.ok(Math.abs(pictureCocAt(lens, 1e9) / lens.cocScale - 1) < 1e-6, 'infinity converges on the scale');
-const wide = pictureLensState({ ...dof, fStop: 5.6 }, 12, 16 / 9, 25);
+const wide = pictureLensState({ ...dof, fStop: 5.6 }, 12, 25);
 assert.ok(Math.abs(wide.cocScale * 2 - lens.cocScale) < 1e-12, 'one f-stop doubling halves the blur');
-const large = pictureLensState({ ...dof, sensor: 'alexa65' }, 12, 16 / 9, 25);
+const large = pictureLensState({ ...dof, sensor: 'alexa65' }, 12, 25);
 assert.ok(large.cocScale > lens.cocScale, 'a larger format defocuses more at the same field of view');
 const thinLens = (f, N, s, d, sensor) => (f * f) / (N * (s - f)) * Math.abs(d - s) / d / sensor;
-assert.ok(Math.abs(pictureCocAt(lens, 100) - PICTURE_DEFOCUS_GAIN * thinLens(lens.focalMm / 1000, 2.8, 25, 100, 0.02489)) < 1e-12,
-  'thin-lens CoC × the documented cinematic gain');
-const physical = pictureLensState({ ...dof, bokehScale: 1 / PICTURE_DEFOCUS_GAIN }, 12, 16 / 9, 25);
-assert.ok(Math.abs(pictureCocAt(physical, 100) - thinLens(physical.focalMm / 1000, 2.8, 25, 100, 0.02489)) < 1e-12,
+const sensorH = 0.02489 * 9 / 16;
+assert.ok(Math.abs(pictureCocAt(lens, 100) - PICTURE_DEFOCUS_GAIN * thinLens(lens.focalMm / 1000, 2.8, 25, 100, sensorH)) < 1e-12,
+  'thin-lens CoC (fraction of the frame height) × the documented cinematic gain');
+const physical = pictureLensState({ ...dof, bokehScale: 1 / PICTURE_DEFOCUS_GAIN }, 12, 25);
+assert.ok(Math.abs(pictureCocAt(physical, 100) - thinLens(physical.focalMm / 1000, 2.8, 25, 100, sensorH)) < 1e-12,
   'bokehScale 1/gain is strictly physical Super 35');
-// The owner's calibration frame: f/2.8, 40° vertical, hero 12 m — background visibly soft (radius ≥ 4 px at 1080p).
-const brief = pictureLensState(dof, 40, 16 / 9, 12);
-assert.ok(pictureCocAt(brief, 80) * 1920 / 2 >= 4, 'f/2.8 on a 40° frame softens an 80 m background');
-assert.ok(pictureCocAt(pictureLensState({ ...dof, fStop: 11 }, 40, 16 / 9, 12), 80) * 1920 / 2 < 2, 'f/11 stays near-sharp');
-assert.ok(pictureLensState(dof, 12, 16 / 9, 0.001).focusM > lens.focalMm / 1000, 'focus never inside the focal length');
+// The owner's calibration frame: f/2.8, 40° vertical, hero 12 m — background visibly soft (radius ≥ 4 px at 1080 lines).
+const brief = pictureLensState(dof, 40, 12);
+assert.ok(pictureCocAt(brief, 80) * 1080 / 2 >= 4, 'f/2.8 on a 40° frame softens an 80 m background');
+assert.ok(pictureCocAt(pictureLensState({ ...dof, fStop: 11 }, 40, 12), 80) * 1080 / 2 < 2, 'f/11 stays near-sharp');
+assert.ok(pictureLensState(dof, 12, 0.001).focusM > lens.focalMm / 1000, 'focus never inside the focal length');
 
 // Letterbox mattes in whole pixels, shared with the engine.
 assert.deepEqual(pictureLetterboxBars('2.39', 1920, 1080), { x: 0, y: 138 });

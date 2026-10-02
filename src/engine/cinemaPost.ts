@@ -55,14 +55,14 @@ import { LATE_FX_LAYER } from '../fx/layers.ts';
 interface CinemaLensFrame {
   /** Focus distance along the optical axis (m). */
   readonly focusM: number;
-  /** Signed CoC diameter per unit of (1 − s/d), as a fraction of the frame's long side. */
+  /** Signed CoC diameter per unit of (1 − s/d), as a fraction of the frame height. */
   readonly cocScale: number;
 }
 
 export interface CinemaSettings {
   readonly lens: null | {
     readonly anamorphic: number;
-    /** Max CoC radius as a fraction of the frame's long side. */
+    /** Max CoC radius as a fraction of the frame height. */
     readonly maxRadius: number;
   };
   readonly hdr: null | {
@@ -490,7 +490,7 @@ class CinemaLensPass extends Pass {
   private fullH = 1;
   quality: CinemaQuality = 'preview';
   anamorphic = 0;
-  maxRadius = 0.016;
+  maxRadius = 0.028;
   lastFrame: CinemaLensFrame = { focusM: 20, cocScale: 0 };
   private readonly camera: THREE.PerspectiveCamera;
   private readonly provider: () => CinemaLensFrame;
@@ -545,13 +545,12 @@ class CinemaLensPass extends Pass {
     const halfW = this.pre.width, halfH = this.pre.height;
     const frame = this.provider();
     this.lastFrame = frame;
-    const longPx = Math.max(fullW, fullH);
     const d = this.depthUniforms;
     d.uNear.value = this.camera.near;
     d.uFar.value = this.camera.far;
     d.uFocusM.value = frame.focusM;
-    d.uCocPx.value = 0.5 * frame.cocScale * longPx;
-    const maxR = Math.max(1, this.maxRadius * longPx);
+    d.uCocPx.value = 0.5 * frame.cocScale * fullH;
+    const maxR = Math.max(1, this.maxRadius * fullH);
     d.uMaxCocPx.value = maxR;
     // tiles cover at least the largest near radius so a 3×3 neighbourhood reaches every source
     const tileHalf = THREE.MathUtils.clamp(Math.ceil(maxR / 2), 4, 64);

@@ -2706,7 +2706,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function ensureCinema(): CinemaRuntime {
     cinema ??= createCinemaPost(post, renderer, camera, {
-      lens: () => pictureLensState(picture.dof, camera.fov, camera.aspect || 16 / 9, pictureFocusDistance()),
+      lens: () => pictureLensState(picture.dof, camera.fov, pictureFocusDistance()),
       grainSeed: () => pictureGrainSeed(sceneMeta.seed || 5000, clockMs),
     });
     return cinema;
@@ -2745,7 +2745,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function pictureInfo(size: { width?: number; height?: number } = {}) {
     renderer.getSize(_size);
     const width = Math.round(size.width || _size.x), height = Math.round(size.height || (size.width ? size.width * _size.y / _size.x : _size.y));
-    const lens = pictureLensState(picture.dof, camera.fov, width / Math.max(1, height), pictureFocusDistance());
+    const lens = pictureLensState(picture.dof, camera.fov, pictureFocusDistance());
     const bars = pictureLetterboxBars(picture.letterbox, width, height);
     return {
       neutral: isNeutralPicture(picture),
