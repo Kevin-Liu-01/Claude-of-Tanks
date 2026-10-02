@@ -141,6 +141,25 @@ since = mark();
 bus.emit('tank:ram', { aId: 'me', bId: 'ally', pos: [10, 1, 20], closingMps: 7, dmgA: 50, dmgB: 50 });
 assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'ram_heavy'));
 
+// Hull clunks: one per real stop, never one per frame a lay flickers or a servo hunts.
+since = mark();
+for (let i = 0; i < 180; i++) {
+  me.state.atGunLimit = i % 2 === 0;
+  me.state.turretYawRate = i % 2 === 0 ? 0.15 : 0.01;
+  ctx.advance(1 / 60);
+  audio.update(1 / 60, listener, tanks);
+}
+names = probe.sfxLog.slice(since).map((e) => e.n);
+assert.ok(names.filter((n) => n === 'gun_limit').length <= 2, `a flickering gun stop clunks at most twice in 3 s (${names.filter((n) => n === 'gun_limit').length})`);
+assert.equal(names.filter((n) => n === 'turret_stop').length, 0, 'a hunting servo never clunks');
+since = mark();
+for (let i = 0; i < 30; i++) { me.state.turretYawRate = 0.4; ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks); }
+me.state.turretYawRate = 0;
+ctx.advance(1 / 60);
+audio.update(1 / 60, listener, tanks);
+assert.equal(probe.sfxLog.slice(since).filter((e) => e.n === 'turret_stop').length, 1, 'a half-second slew ends in one stop clunk');
+me.state.atGunLimit = false;
+
 // Destruction: an ammo-rack kill by us → blast, turret, cook-off, kill confirm.
 since = mark();
 ctx.advance(10);

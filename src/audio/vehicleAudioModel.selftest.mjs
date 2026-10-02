@@ -42,6 +42,14 @@ function run(family, frames, make) {
   assert.ok(state.trackMps > 17, 'track speed follows the hull');
 }
 
+// Crawling at the 1st/2nd shift point (a bot nosing forward, ±0.2 m/s): no gear hunting.
+{
+  let t = 0;
+  const { seen } = run('diesel_v12_soviet', 600, () => { t += 1 / 60; return input({ speedMps: 1.85 + 0.2 * Math.sin(t * 6.3), throttle: 1 }); });
+  const shifts = seen.filter((e) => e.type === 'shiftUp' || e.type === 'shiftDown').length;
+  assert.ok(shifts <= 2, `a crawl at a shift point shifted ${shifts} times in 10 s`);
+}
+
 // Gas turbine: no gears, slow spool, high RPM on throttle even at a standstill.
 {
   const { state, seen, profile } = run('turbine_agt', 30, () => input({ throttle: 1 }));
@@ -96,4 +104,4 @@ function run(family, frames, make) {
   assert.equal(state.trackMps, 0);
 }
 
-console.log('vehicleAudioModel.selftest: idle, manual gearbox, turbine spool, braking, pivot scrub, landings, stalls and immobilisation passed');
+console.log('vehicleAudioModel.selftest: idle, manual gearbox, no gear hunting, turbine spool, braking, pivot scrub, landings, stalls and immobilisation passed');

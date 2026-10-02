@@ -103,8 +103,10 @@ export const CONCUSSION = Object.freeze({ recoverS: 4.5, cooldownS: 6, radiusPer
 export type DeviceTier = 'desktop' | 'mobile';
 
 export const BUDGETS = Object.freeze({
-  desktop: Object.freeze({ voices: 48, nearVehicles: 5, farVehicles: 8, reverb: true, maxDecodedMb: 140 }),
-  mobile: Object.freeze({ voices: 24, nearVehicles: 3, farVehicles: 4, reverb: false, maxDecodedMb: 60 }),
+  // maxDecodedMb is a soft cap above the pinned battle set (desktop ~120–140 MB,
+  // mobile ~65–80 MB at 24 kHz with one variant per asset).
+  desktop: Object.freeze({ voices: 48, nearVehicles: 5, farVehicles: 8, reverb: true, maxDecodedMb: 200, maxVariants: 4 }),
+  mobile: Object.freeze({ voices: 24, nearVehicles: 3, farVehicles: 4, reverb: false, maxDecodedMb: 96, maxVariants: 1 }),
 });
 
 /** Vehicle rig level of detail by distance (m), with hysteresis. */

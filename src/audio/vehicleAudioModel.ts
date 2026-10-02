@@ -72,6 +72,8 @@ export interface VehicleAudioState {
   gear: number;
   /** Seconds left in the current shift dip. */
   shiftS: number;
+  /** Seconds before the gearbox may shift again (no hunting between two gears). */
+  gearHoldS: number;
   /** Mean track surface speed, m/s (absolute). */
   trackMps: number;
   /** Pivot / turning scrub 0..1. */
@@ -93,7 +95,7 @@ export interface VehicleAudioState {
 
 export function createVehicleAudioState(profile: EngineFamilyProfile): VehicleAudioState {
   return {
-    rpm: profile.idleRpm, load: 0.1, gear: 0, shiftS: 0, trackMps: 0, scrub: 0,
+    rpm: profile.idleRpm, load: 0.1, gear: 0, shiftS: 0, gearHoldS: 0, trackMps: 0, scrub: 0,
     brake: 0, skid: 0, running: true, rough: 0, airborne: false,
     lastVerticalMps: 0, lastSpeedMps: 0, brakeCooldownS: 0, bumpCooldownS: 0, skidActive: false,
   };
@@ -133,6 +135,7 @@ export function stepVehicleAudio(
   const demand = clamp(Math.abs(input.throttle), 0, 1);
   state.brakeCooldownS = Math.max(0, state.brakeCooldownS - dt);
   state.bumpCooldownS = Math.max(0, state.bumpCooldownS - dt);
+  state.gearHoldS = Math.max(0, state.gearHoldS - dt);
 
   // ---- engine running state: a red engine stalls, a repair restarts it.
   const shouldRun = input.engine !== 'red';
@@ -163,15 +166,23 @@ export function stepVehicleAudio(
       state.gear = absSpeed > 0.4 || demand > 0.05 ? 1 : 0;
     }
     if (state.gear >= 1) {
+      const manual = profile.shift === 'manual';
       const rpmNow = gearRpm(speedFrac, state.gear, gears, profile.idleRpm);
-      if (state.gear < gears && rpmNow > 0.95 && demand > 0.15 && state.shiftS <= 0) {
+      // Upshift near the governor; downshift well below the lower gear's top
+      // (a wide band plus a hold time, so a tank crawling at a shift point
+      // never hunts), except a kick-down when the hull nearly stops.
+      const lowerTop = state.gear > 1 ? gearTop(state.gear - 1, gears) : 0;
+      if (state.gear < gears && rpmNow > 0.95 && demand > 0.15 && state.shiftS <= 0 && state.gearHoldS <= 0) {
         state.gear++;
-        state.shiftS = profile.shift === 'manual' ? 0.24 : 0.13;
-        pushEvent(events, 'shiftUp', profile.shift === 'manual' ? 0.9 : 0.45);
-      } else if (state.gear > 1 && speedFrac < gearTop(state.gear - 1, gears) * 0.8 && state.shiftS <= 0) {
+        state.shiftS = manual ? 0.24 : 0.13;
+        state.gearHoldS = manual ? 1.1 : 0.8;
+        pushEvent(events, 'shiftUp', manual ? 0.9 : 0.45);
+      } else if (state.gear > 1 && speedFrac < lowerTop * 0.72 && state.shiftS <= 0
+        && (state.gearHoldS <= 0 || speedFrac < lowerTop * 0.4)) {
         state.gear--;
-        state.shiftS = profile.shift === 'manual' ? 0.2 : 0.11;
-        pushEvent(events, 'shiftDown', profile.shift === 'manual' ? 0.7 : 0.3);
+        state.shiftS = manual ? 0.2 : 0.11;
+        state.gearHoldS = manual ? 0.8 : 0.6;
+        pushEvent(events, 'shiftDown', manual ? 0.7 : 0.3);
       }
     }
     if (state.gear === 0) {

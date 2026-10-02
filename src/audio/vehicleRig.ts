@@ -159,6 +159,8 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
   const whines: { gear?: WhineRig; turbo?: WhineRig; electric?: WhineRig; turbine?: WhineRig } = {};
 
   function makeLayer(asset: string, dest: AudioNode): Layer {
+    // A live loop's buffer must outlive the library's idle eviction.
+    library.pin([asset]);
     const gain = ctx.createGain();
     gain.gain.value = 0;
     gain.connect(dest);

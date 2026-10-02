@@ -355,7 +355,9 @@ export function createAudio({
   let wasDeep = false;
   let stuckS = 0;
   let wasAtLimit = false;
-  let lastTraverse = 0;
+  let lastGunLimitAt = -99;
+  let slewS = 0;
+  let lastTurretStopAt = -99;
   let lastPitch: number | null = null;
   let lastSmokeBorn = -1;
   const reload: { active: boolean; total: number; kind: string; caliber: number; lastT: number; next: number; plan: ReloadCuePlan | null } = {
@@ -1061,18 +1063,28 @@ export function createAudio({
       }
     } else if (stuckS > 0) stuckS = 0;
     else stuckS = Math.min(0, stuckS + dt);
-    // Gun at its mechanical limit while the crew keeps laying.
+    // Gun at its mechanical limit while the crew keeps laying: one clunk per
+    // stop, not per frame the lay flickers against the stop.
+    const now = ctx.currentTime;
     const limit = !!state.atGunLimit;
     const slewing = Math.abs(state.turretYawRate ?? 0) > 0.05;
-    if (limit && !wasAtLimit) {
+    if (limit && !wasAtLimit && now - lastGunLimitAt > 1.5) {
+      lastGunLimitAt = now;
       play('gun_limit', hullOptions({ gainDb: -4 }));
       if (slewing || random() < 0.3) say('gun_limit', { prob: 0.35, delayS: 0.2 });
     }
     wasAtLimit = limit;
-    // Turret drive stop clunk and a damaged ring's grind.
+    // The turret drive's stop clunk ends a real slew (a quarter second or
+    // more), not the servo settling; and a damaged ring's grind.
     const traverse = Math.abs(state.turretYawRate ?? 0);
-    if (lastTraverse > 0.12 && traverse < 0.02) play('turret_stop', hullOptions({ gainDb: -6 }));
-    lastTraverse = traverse;
+    if (traverse > 0.12) slewS += dt;
+    else if (traverse < 0.02) {
+      if (slewS > 0.25 && now - lastTurretStopAt > 0.6) {
+        lastTurretStopAt = now;
+        play('turret_stop', hullOptions({ gainDb: -6 }));
+      }
+      slewS = 0;
+    }
     if (moduleHealth(entity, 'turretRing') !== 'ok' && traverse > 0.08) play('traverse_grind_loop', hullOptions({ maxDurS: 0.6, gainDb: -6 }));
     // Ammunition stock.
     const ammo = combat?.ammo;
@@ -1315,12 +1327,13 @@ export function createAudio({
     if (mixer) return;
     mixer = createMixer({ context: ctx, reverb: budget.reverb, channelVolumes: chan, masterVolume, muted });
     const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || '/';
-    library = createAssetLibrary({ context: ctx, base, lowMemory: tier === 'mobile', maxDecodedMb: budget.maxDecodedMb });
+    library = createAssetLibrary({ context: ctx, base, lowMemory: tier === 'mobile', maxDecodedMb: budget.maxDecodedMb, maxVariants: budget.maxVariants });
     noise = createNoiseBank(ctx, random);
     pool = createVoicePool({ mixer, library, random, budget: budget.voices, reverb: budget.reverb });
     pool.setOcclusionProbe((x, y, z) => occlusionAt(x, y, z));
     radio = createCrewRadio({ mixer, library, noise, random });
     ambience = createAmbienceDirector({ mixer, library, pool, random });
+    library.pin([...UI_SET, 'radio_interference']);
     void library.load([...UI_SET, 'radio_interference']);
     // A battle hull may already be indexed (late adoption mid-battle).
     if (playerId) applyCrewLanguage();
@@ -1771,6 +1784,7 @@ export function createAudio({
     warmBattleEvents(roster) {
       if (!library) return;
       const ids = new Set<string>(CORE_BATTLE);
+      for (const id of UI_SET) ids.add(id);
       for (const id of PLAYER_HULL) ids.add(id);
       for (const id of MODE_SET) ids.add(id);
       // Every report bank: any calibre may appear (roof guns, mixed rosters, network joins).
@@ -1784,6 +1798,8 @@ export function createAudio({
       // A battle always has some running gear on the ground under it.
       for (const cls of ['light', 'heavy']) for (const s of ['earth', 'hard']) for (const v of ['slow', 'fast']) ids.add(`tracks_${cls}_${s}_${v}`);
       if (!roster?.length) for (const family of ENGINE_FAMILY_IDS) ids.add(`engine_${family}_mid`);
+      // The battle set stays decoded for the whole battle (rigs and scenes pin their own loops).
+      library.pin(ids, true);
       // Battle entry waits for the decode, but never longer than the loader's patience.
       const load = library.load(ids);
       return Promise.race([load, new Promise<void>((resolve) => setTimeout(resolve, 3500))]);

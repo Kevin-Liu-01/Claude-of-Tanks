@@ -27,7 +27,10 @@ interface AssetLibraryOptions {
   base?: string;
   /** Mobile tier: decode everything at 24 kHz and keep a smaller budget. */
   lowMemory?: boolean;
+  /** Soft cap for decoded sound effects: only unpinned, idle assets are evicted past it. */
   maxDecodedMb?: number;
+  /** Variants decoded per asset (mobile keeps one; pitch jitter supplies the variety). */
+  maxVariants?: number;
   fetchImpl?: typeof fetch;
   createDecoder?: (sampleRate: number) => DecodeContext | null;
 }
@@ -43,13 +46,19 @@ export interface AssetLibrary {
   pick(id: string, random: () => number): AudioBuffer | null;
   variant(id: string, index: number): AudioBuffer | null;
   load(ids: Iterable<string>): Promise<void>;
+  /**
+   * Keep assets decoded for the current context (the battle set, the garage
+   * set, live loops): eviction never drops a pinned asset, so a sound that
+   * waited minutes for its moment still plays. `replace` starts a new set.
+   */
+  pin(ids: Iterable<string>, replace?: boolean): void;
   /** Mark assets as in use (LRU eviction never drops what played recently). */
   touch(id: string): void;
   loadVoice(language: string): Promise<void>;
   voiceReady(language: string): boolean;
   voice(language: string, line: string, random: () => number): AudioBuffer | null;
   voiceTakes(language: string, line: string): number;
-  stats(): { assets: number; decodedMb: number; pending: number; failed: number; voices: string[] };
+  stats(): { assets: number; decodedMb: number; sfxMb: number; voiceMb: number; pinned: number; pending: number; failed: number; voices: string[] };
 }
 
 interface Entry {
@@ -82,7 +91,8 @@ export function createAssetLibrary({
   context,
   base = '/',
   lowMemory = false,
-  maxDecodedMb = lowMemory ? 60 : 140,
+  maxDecodedMb = lowMemory ? 96 : 200,
+  maxVariants = lowMemory ? 1 : Infinity,
   fetchImpl = (...args) => fetch(...args),
   createDecoder = defaultDecoder,
 }: AssetLibraryOptions): AssetLibrary {
@@ -93,8 +103,11 @@ export function createAssetLibrary({
   const decoders = new Map<number, DecodeContext | null>();
   let supported: boolean | null = null;
   let active = 0;
+  /** Decoded sound-effect bytes (the evictable pool); crew packs count separately. */
   let decodedBytes = 0;
+  let voiceBytes = 0;
   let failed = 0;
+  const pinned = new Set<string>();
   const waiting: (() => void)[] = [];
   const CONCURRENCY = 6;
   const root = base.endsWith('/') ? base : `${base}/`;
@@ -154,7 +167,7 @@ export function createAssetLibrary({
     if (decodedBytes <= budget) return;
     const now = performance.now();
     const candidates = [...entries.entries()]
-      .filter(([, e]) => e.state === 'ready' && now - e.last > 45000)
+      .filter(([id, e]) => e.state === 'ready' && !pinned.has(id) && now - e.last > 45000)
       .sort((a, b) => a[1].last - b[1].last);
     for (const [, entry] of candidates) {
       if (decodedBytes <= budget * 0.85) break;
@@ -179,7 +192,7 @@ export function createAssetLibrary({
     target.state = 'loading';
     target.promise = (async () => {
       if (!(await ready)) { target.state = 'failed'; return; }
-      const files = Array.from({ length: rec.n }, (_, i) => `${root}audio/sfx/${rec.g}/${id}_${i}.webm`);
+      const files = Array.from({ length: Math.max(1, Math.min(rec.n, maxVariants)) }, (_, i) => `${root}audio/sfx/${rec.g}/${id}_${i}.webm`);
       const buffers = await Promise.all(files.map((url) => slot(async () => {
         try {
           const res = await fetchImpl(url);
@@ -244,6 +257,10 @@ export function createAssetLibrary({
     async load(ids) {
       await Promise.all([...new Set(ids)].map(loadOne));
     },
+    pin(ids, replace = false) {
+      if (replace) pinned.clear();
+      for (const id of ids) pinned.add(id);
+    },
     touch(id) {
       const entry = entries.get(id);
       if (entry) entry.last = performance.now();
@@ -270,7 +287,7 @@ export function createAssetLibrary({
             }
           })));
           entry.bytes = entry.buffers.reduce((sum, b) => sum + (b ? bufferBytes(b) : 0), 0);
-          decodedBytes += entry.bytes;
+          voiceBytes += entry.bytes;
           entry.state = entry.buffers.some(Boolean) ? 'ready' : 'failed';
         }));
         readyVoices.add(language);
@@ -292,7 +309,10 @@ export function createAssetLibrary({
       for (const e of entries.values()) if (e.state === 'loading') pending++;
       return {
         assets: [...entries.values()].filter((e) => e.state === 'ready').length,
-        decodedMb: +(decodedBytes / 1048576).toFixed(1),
+        decodedMb: +((decodedBytes + voiceBytes) / 1048576).toFixed(1),
+        sfxMb: +(decodedBytes / 1048576).toFixed(1),
+        voiceMb: +(voiceBytes / 1048576).toFixed(1),
+        pinned: pinned.size,
         pending,
         failed,
         voices: [...readyVoices],

@@ -1435,8 +1435,12 @@ line goes through an intercom chain (a 24 dB/oct 320 Hz–3.4 kHz band, a
 static bed and squelch); a damaged radio module narrows the band and adds
 drive, dropouts and interference.
 
-**Budgets.** Desktop 48 voices and 140 MB decoded with reverb; mobile 24
-voices and 60 MB, no convolution reverb, assets decoded at 24 kHz.
+**Budgets.** Desktop 48 voices with reverb; mobile 24 voices, no convolution
+reverb, assets decoded at 24 kHz with one variant each. The battle set (about
+120–140 MB decoded on desktop, 65–80 MB on mobile) is pinned for the whole
+battle, as are live loops, so a rare sound never meets an evicted buffer;
+200 MB (desktop) and 96 MB (mobile) cap the unpinned extras, and crew packs
+count apart.
 
 **Debug.** `window.__COT_AUDIO` (after resume) exposes the context, master
 PCM tap, listener and engine state, snapshot, library stats, the sound-route

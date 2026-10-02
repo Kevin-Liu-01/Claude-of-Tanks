@@ -4,9 +4,9 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 // (src/audio/audioEngine.ts, assets in public/audio/sfx/).
 //
 // Boots the game headless on its OWN vite (7xxx port — never 5001/5002),
-// enters a battle, drives REAL bus events (window.__DEBUG.bus — the object the
-// engine bound via bindBus) and records the master output through the
-// __COT_AUDIO PCM tap. Asserts:
+// enters a battle, holds it frozen (no bot fire in the captures), drives REAL
+// bus events (window.__DEBUG.bus — the object the engine bound via bindBus)
+// and records the master output through the __COT_AUDIO PCM tap. Asserts:
 //   - every scene plays its intended assets (sfxLog names), audibly, unclipped
 //   - calibre ladder: rifle MG → heavy MG → 30 mm → 90 → 120 → 152 mm; the low
 //     band (<150 Hz) share of the capture rises from MG to the 152 mm and the
@@ -179,10 +179,13 @@ try {
   const lib = await page.evaluate(() => window.__COT_AUDIO.library());
   console.log(`[sfx-smoke] context up (sr=${sampleRate}), decoded ${lib.assets} assets (${lib.decodedMb} MB, ${lib.failed} failed)`);
   if (lib.failed) fail(`${lib.failed} SFX assets failed to decode`);
-  // Quiet the beds so scene captures isolate combat one-shots.
-  await page.evaluate(() => window.__DEBUG.bus.emit('ui:volumes',
-    { master: 0.8, engine: 0, combat: 1, ambience: 0, ui: 0, voice: 0 }));
-  await sleep(500);
+  // Freeze the battle (the pre-battle hold) so bots neither drive nor fire into
+  // the captures, quiet the beds, and let earlier chatter drain.
+  await page.evaluate(() => {
+    window.__DEBUG.game.preBattleS = 999;
+    window.__DEBUG.bus.emit('ui:volumes', { master: 0.8, engine: 0, combat: 1, ambience: 0, ui: 0, voice: 0 });
+  });
+  await sleep(2500);
 
   // In-page helpers. Positions are relative to the occupied tank (the listener).
   await page.evaluate(() => {
@@ -237,7 +240,7 @@ try {
     // the occupied gun and the distance model
     { name: 'gun_120_own', ev: 'shell:fired', p: fire(120, 0, 3, { player: true }), holdMs: 2800, expect: ['gun_120_close', 'gun_far_medium'] },
     { name: 'gun_120_mid', ev: 'shell:fired', p: fire(120, 150, 150), holdMs: 3400, minRms: 1e-4, expect: ['gun_120_close', 'gun_far_medium'] },
-    { name: 'gun_120_distant', ev: 'shell:fired', p: fire(120, 300, 300), holdMs: 4400, minRms: 3e-5, expect: ['gun_far_medium'], forbid: ['gun_120_close'] },
+    { name: 'gun_120_distant', ev: 'shell:fired', p: fire(120, 300, 300), holdMs: 4400, minRms: 3e-5, expect: ['gun_far_medium'], forbid: ['gun_120_close'], forbidBeyondM: 300 },
     { name: 'atgm', ev: 'shell:fired', p: fire(130, 14, 9, { sound: 'konkurs-launch' }), holdMs: 2400, expect: ['atgm_launch'] },
     // impacts
     { name: 'impact_pen', ev: 'shell:hit', p: hit('pen', false, 180), holdMs: 1600, expect: ['pen_heavy'] },
@@ -295,7 +298,7 @@ try {
       }
     }
     for (const banned of sc.forbid || []) {
-      if (log.some((x) => x.n.startsWith(banned))) fail(`${sc.name}: '${banned}' should not play at this range`);
+      if (log.some((x) => x.n.startsWith(banned) && x.d >= (sc.forbidBeyondM ?? 0))) fail(`${sc.name}: '${banned}' should not play at this range`);
     }
     await sleep(250);
   }

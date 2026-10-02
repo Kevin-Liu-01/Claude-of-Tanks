@@ -79,7 +79,9 @@ export function createAmbienceDirector({ mixer, library, pool, random }: Ambienc
       stopLoops(1.2);
       scene = next;
       battleMode = battle;
-      void library.load(sceneAssets(next, battle));
+      const ids = sceneAssets(next, battle);
+      library.pin(ids);
+      void library.load(ids);
       startLoop(next.bed, next.bedDb);
       if (next.layer) startLoop(next.layer.asset, next.layer.db);
       if (battle && next.war > 0) startLoop('amb_distant_battle', 20 * Math.log10(next.war) - 2);
