@@ -93,6 +93,18 @@ function reapStaleLock(lockDir, staleMs) {
   }
 }
 
+/** Renew a waiting ticket; restore it under the same name (so the same place) when a process on an older copy of
+ *  this module reaped it while we were still waiting. */
+function keepTicket(path) {
+  const now = new Date();
+  try {
+    utimesSync(path, now, now);
+  } catch (error) {
+    if (error.code !== 'ENOENT') return;
+    try { writeFileSync(path, String(process.pid), { flag: 'wx' }); } catch { /* raced */ }
+  }
+}
+
 // Distinguish acquisitions launched by concurrent workers in one process.
 // Keep the PID last for legacy ticket liveness checks and use exclusive creation.
 let nextTicketSequence = 0;
@@ -114,6 +126,7 @@ export function createCaptureLock({
   queueDir = DEFAULT_QUEUE_DIR,
   lockStaleMs = DEFAULT_LOCK_STALE_MS,
   ticketStaleMs = DEFAULT_TICKET_STALE_MS,
+  ticketRefreshMs = Math.max(1, Math.min(30_000, ticketStaleMs / 3)),
 } = {}) {
   let held = false;
 
@@ -125,7 +138,12 @@ export function createCaptureLock({
     if (Number.isFinite(chainWait) && chainWait > timeoutMs) timeoutMs = chainWait;
     mkdirSync(queueDir, { recursive: true });
     const ownTicket = reserveTicket(queueDir);
+    const ownPath = join(queueDir, ownTicket);
     const startedAt = Date.now();
+    // A legitimate capture ahead of us can outlast ticketStaleMs. Keep our waiting ticket alive without changing its
+    // filename or FIFO position, and restore it if an older copy of this module reaped it anyway.
+    const ticketHeartbeat = setInterval(() => keepTicket(ownPath), ticketRefreshMs);
+    ticketHeartbeat.unref();
     try {
       for (;;) {
         const head = queueHead(queueDir, readQueue(queueDir, ownTicket), ownTicket, ticketStaleMs);
@@ -138,6 +156,7 @@ export function createCaptureLock({
         await new Promise((resolve) => setTimeout(resolve, head === ownTicket ? 300 : 1000));
       }
     } finally {
+      clearInterval(ticketHeartbeat);
       try { unlinkSync(join(queueDir, ownTicket)); } catch { /* already removed */ }
     }
   }
@@ -158,8 +177,8 @@ export function createCaptureLock({
 
   // Read-only count of acquisitions queued behind the owner (2026-10-01, gate P5). An owner's own
   // ticket is removed once it holds the lock, so every ticket of a live process is someone waiting.
-  // A ticket is counted while its process lives, even past the reaping age (waiters never refresh
-  // their tickets): a long batch must yield to a long waiter. Nothing is reaped here. An unreadable
+  // A ticket is counted while its process lives, even past the reaping age (a waiter on an older copy of this
+  // module does not renew its ticket): a long batch must yield to a long waiter. Nothing is reaped here. An unreadable
   // queue reports one waiter, so a caller that yields to waiters keeps the draining behaviour.
   function waiting() {
     let names;

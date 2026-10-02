@@ -15,9 +15,9 @@ import {
   medium, miePhase, rayleighPhase, transmittanceDirect, transmittanceTexelToRMu, transmittanceUV,
 } from './atmosphere.test-support.mjs';
 import { getMapConfig } from '../world/maps/index.ts';
+import { near } from '../../tools/receipt-kit.test-support.mjs';
 
 const source = readFileSync(new URL('./atmosphere.ts', import.meta.url), 'utf8');
-const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b} (tol ${tol})`);
 
 // ---- the GLSL carries the paper's medium, the LUT sizes and the steps
 assert.deepEqual([ATMO_GROUND_KM, ATMO_TOP_KM], [6360, 6460], 'the paper\'s Earth radii');

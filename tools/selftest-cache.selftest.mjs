@@ -173,7 +173,9 @@ rmSync(root, { recursive: true, force: true });
     'the real Puppeteer comment does not make input handling depend on deployment notes');
   assert.ok(has('src/ui/minimapObjectives.selftest.mjs', 'src/ui/hud.ts'), 'the minimap receipt observes hud.ts');
   assert.ok(has('src/vehicles/tankFactoryStaging.selftest.mjs', 'src/vehicles/tankFactory.ts'), 'staging observes the factory');
-  assert.ok([...cache.closureOf(join(REPO_ROOT, 'src/vehicles/tankAssets.selftest.mjs'))].some((p) => p === join(REPO_ROOT, 'public/icons')),
+  // 2026-10-02: the icon audit is a fleet audit (tankAssetsAudit.test-support.mjs) of the default-build fleet pass; its
+  // file reads stay in the receipt's closure through the support module.
+  assert.ok([...cache.closureOf(join(REPO_ROOT, 'src/vehicles/fleetPassDefault.selftest.mjs'))].some((p) => p === join(REPO_ROOT, 'public/icons')),
     'the icon audit observes its templated icon files without pulling in unrelated maps');
   assert.ok(!cache.lookup('tools/selftest-cache.selftest.mjs').skip || cache.lookup('tools/selftest-cache.selftest.mjs').key,
     'lookup returns a key for the running receipt');

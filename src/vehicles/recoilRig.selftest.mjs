@@ -24,11 +24,7 @@ import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { getSpec, TANK_SPECS } from './specs.ts';
 import { createTankState } from '../sim/movement.ts';
-
-const near = (a, b, eps, label) => assert.ok(
-  Number.isFinite(a) && Math.abs(a - b) <= eps,
-  `${label}: expected ${b} ±${eps}, got ${a}`,
-);
+import { near } from '../../tools/receipt-kit.test-support.mjs';
 
 function rig(id, options = {}) {
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, ...options });

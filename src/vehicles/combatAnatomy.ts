@@ -1,4 +1,6 @@
-import { auxiliaryCapabilities, type AuxiliaryInventory } from './auxiliaryInventory.ts';
+// The roof-gun table, not the 217 kB mount-geometry inventory: fleetFactory.ts (garage boot) imports this module.
+import { AUXILIARY_ROOF_GUNS } from './auxiliaryRoofGuns.generated.ts';
+import type { AuxiliaryInventory } from './auxiliaryInventory.ts';
 // Fleet-wide combat-anatomy finalizer. It reconciles authored armor/module/
 // crew coordinates with measured first-party geometry receipts, then adds
 // only the extra internal systems that have real simulation behavior.
@@ -1513,7 +1515,7 @@ export function finalizeCombatAnatomy(
   applyModuleLayoutMetadata(spec, layout, calibration);
   addDerivedModules(spec, layout, calibration);
   assignCollisionOutputs(armor, calibration);
-  const roofGun = auxiliaryCapabilities(spec)?.guns[0];
+  const roofGun = AUXILIARY_ROOF_GUNS[spec.id];
   if (roofGun?.collisionParts?.length) {
     armor.roofGun = roofGun;
     const parts = roofGun.collisionParts.map(part => ({min: [...part.min] as Vec3, max: [...part.max] as Vec3}));

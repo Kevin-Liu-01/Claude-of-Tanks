@@ -4827,6 +4827,7 @@ different `--root` (the baseline checkout, e.g. a clean clone of `origin/main`) 
 | `tools/map-metrics.mjs skyline` | check 5: median ground/sky display-luma ratio at the detected skyline (> 1 = range paler than the sky) | 37, 39, 47 | `skyline <dir> <tag> <maps> [sky-w,sky-s,centre-far]` |
 | `tools/map-metrics.mjs stripe` | check 8: windowed 2-D FFT of a region's detrended luminance — peak share, wavelength, heading, top-1 % share, anisotropy, std | 43 | `stripe <image> x0,y0,x1,y1 …` (round 43 regions: desert w-wall-mid 900,480,1500,700; bird-w 200,560,1300,700; Oasis w-wall-mid 200,520,1300,800) |
 | `tools/map-metrics.mjs boxes` | checks 3, 4, 11: shaded / lit box means, ground 5th percentile and mean, wall rgb / hue / sat / luma, A → B with % deltas | 42, 45, 47 | `boxes <capdir> boxes.json <maps> a b [views]` with the round-47a boxes below |
+| `tools/visual-census.mjs` | the visual-redesign baseline (2026-10-01): every registered map at its authored time of day, desktop High, 1600 × 900, staged by `__SHOTS.set` and shot after the capture readiness gates (sourced textures, terrain lookahead, grass work, impostor bake, the cloud history settled with its drift zeroed) — the game's establishing shot, chase, bird, `sky-w` / `sky-s` (the round-35 poses above), a terrain and a tree close-up (`tools/visual-census-views.mjs`); per-frame luma percentiles, saturation, colourfulness, the sky / ground split and contrast, check 5, ring height, skyline relief and detail energy (`tools/visual-census-metrics.mjs`) in one census.json; contact sheets per view and per map, an index and an A/B compare (`tools/visual-census-report.mjs`) | redesign | `npm run build`; `capture --out=<dir> [--batch=8 --budget-min=14]` (resumes; takes the cot-shots lock, the probe mutex stays the caller's); `report --out=<dir>`; `compare --a=<dir> --b=<dir> --out=<dir>` |
 
 How each acceptance of the fifteen checks is re-run: checks 1, 2, 10, 12 and 13 (continuity across the red line,
 roads and tree lines, props, water at the edge) with `map-view-probe` views `out-*`, `edge-*-low`, `bird-*-edge`,
@@ -6082,6 +6083,84 @@ neither confirmed nor refuted, and the g1 reading stands as written: +1.8 ms med
 quiet, against −129 draws and −0.83 M triangles. Ready to run in the next quiet window without changes:
 `zsh $SP/r79/winter-quiet.sh w1 $SP/r79/snap-base $SP/r79/snap-d` (the six pairs), then `zsh $SP/r79/winter-chain.sh`
 (the attribution, only if ≥ 4 of 6 stay positive).
+
+### Terrain v2/v3 — 2026-10-01/02: the ground at a fraction of the cost, grounded terms, sand in trains, the ring as the battlefield's own material
+
+The Opus 5.5 redesign's terrain-and-horizon lane (branch `visual/terrain-horizon`; owner direction: grounded realism,
+natural light, photographic materials, the desktop high tier inside 60 fps on a mid-range laptop GPU, phones never
+slower). The architecture audit measured the terrain material at about 60 % of Whiteout's GPU frame.
+
+**Why it cost that much.** The splat fragment sampled all four layers (base, soil, wet, rock), albedo and normal,
+through `groundSamp` (two samplings of a rotation blend) over `splatSamp` (a near tap plus a far variant plus a deep-mip
+"tile mean" tap) at every fragment, and multiplied most of them by a zero coverage; the packed-road palette and the
+mid-band rock relief ran under every fragment too, and the 256 px shared noise texture — read some forty times per
+fragment — went through the x16 anisotropic sampler, up to sixteen trilinear probes per read on the grazing far ground
+that fills every skyline view. A static model of the executed fetches: open grass at 15 m about 59 fetches before,
+about 33 after (23 of them isotropic explicit-LOD reads); open grass at 400 m about 94 before (all anisotropic), about
+27–33 after.
+
+**The cost pass (program key v53; v54 with terrain v3).** Every coverage weight is known before any layer is fetched (the height
+transitions keep 0 at 0 and 1 at 1), so each layer is fetched inside its own coverage branch and the base tile only
+where the layers above it leave any of it (`covG`, executed on scalar ports by `terrainMaterialV2.selftest`); the
+rotation blend and the wall projections fetch their second sampling only inside the crossover band; past the far
+band (`farM > 0.98`) no layer detail normal is fetched (sub-pixel there — the geometric normal and the coarse relief
+terms carry the shading); the far variant is one fetch and its tile mean, like every deep-mip mean of the transitions
+and the zero-mean octaves, is the layer's measured mean (`uMeanG/D/R/M`, measured from the layer image at build and
+again after the sourced swap); the noise reads take an explicit isotropic level of detail from one footprint per
+fragment (`nz`, `textureLod`) — the near, high-frequency reads keep the anisotropic path. Same ten samplers.
+
+**Grounded terms (one per-map table, `groundRedux.ts`: `exposure`, `climate`, `bedIrregularity`, `patchwork`; packed in
+`uReduxD`, no sampler).** Slope exposure: a slope turned to the map's sun dries and pales (straw, bleached rock, crusted
+snow), one turned away holds moisture (darker, greener, mossier; desert varnish; powder) — the largest colour pattern of
+a real landscape follows its relief, on the battlefield and on the ranges (`uVExposure`). The cover's 2–8 m patchwork
+(one non-repeating field below the macro tints, inside the gameplay band). Non-periodic cliff beds (`bedSignal`: two
+noise lines along the world height replace the world-height sines of the marker beds, laminae and far ledges; the vista
+does the same with its detail noise) and buttresses and alcoves on the ring walls (a tall arc-frame lookup feeding the
+vista's bump height).
+
+**Sand in trains.** The census's contour "marble" on every dune map (Sirocco Wadi, Titan Gorge, Skybridge, Sunscar
+Oasis, Olympus Basin, the moon) was round 43's own fix: one global phase `dot(world, wind)` under a per-position wind
+rotation, so the phase jumped wherever the rotation changed and its isolines closed into loops. Ripples come in trains:
+the waves now run in 36 m cells (the bedforms in 260 m cells), each cell with its own heading within ±20° (±26°) of the
+map's wind and its own phase, blended bilinearly between the four nearest cells (`sandWaves`) — straight or sinuous,
+never looping — at round 43's two wave numbers, amplitudes, gates and tilt cap. Airless ground has no wind ripples
+(`windRipple: 0` on the moon).
+
+**The ring is the battlefield's own material.** Since d20f64198 (continuous map horizons) every face of the horizon
+ring and of its far range draws with the live terrain program past the square (`bindAutumnHorizonGround` with
+`continuousGround`); the vista material is no longer drawn and only carries the relief atlas the terrain program reads
+on the ring draw (`uRingDraw`). The ring lab proved it: runtime edits of every vista uniform left the frame unchanged,
+while the post pass's aerial curves and the terrain program's uniforms move it. So the mountains' look and cost are
+the terrain material's — the cost pass, the exposure law and the non-periodic beds above reach them directly (the
+census's de-banded walls on Highland Reservoir and Glacier Pass) — and a first lit-vista attempt in this lane was
+withdrawn as dead code.
+
+**Terrain v3 (2026-10-02): what the ring shows.** The census sheets of the desert ranges (Sirocco Wadi, Olympus Basin,
+Titan Gorge, Skybridge) showed a corrugated chevron sheet over every mountain at 1–2 km: the dune bedforms (26 m
+trains) ran on the ring's 15–28° faces below the wall band, and the slip faces' unmipped 0.9 m contour wave and 3.7 m
+flow sine — faded by the footprint distance, which a face-on wall reads as near — aliased at a kilometre. Bedforms now
+stay on gentle sand (gone by 24°), and both sines fade by the true camera distance. The ring lab (runtime edits of the
+program's uniforms through `userData.splatUniforms`, no rebuild) then isolated the rest: zeroing the ring's surface
+atlas removed both the chevrons left on Sirocco Wadi's far ranges and the dimples on Copper Mesa's walls, while the
+far-wall rescue's knobs (rock masses, coarse normals, their vertical stretch, ledges) and an occlusion-driven couloir
+fill changed nothing visible at ring distance and were dropped. The atlas's fine relief is a slope's detail: on the
+tablelands' and the martian scarps' flanks and walls (relief characters `mesa` and `martian`) its gradient now fades
+over the face's own slope from 20° to 41° (`uRingReliefWall`, set at the ring's bind); the caps keep it, the occlusion
+and the cast shadows keep their weight everywhere, and the snow, alpine, rolling and coastal ranges keep it in full —
+their ridges are its relief. Earthrise Basin's regolith palette is a dark, faintly warm grey (the census: "the
+regolith reads as snow"), its slopes the same regolith rather than pale rock.
+
+**Measured (2026-10-02, Apple M5 Max through ANGLE Metal, headless Chrome, 1600×900, desktop High with the dynamic
+scale pinned at 1, every bot frozen; `.qa-dev/terrain-perf-probe.mjs` in the lane, untracked).** Frame GPU time from
+EXT_disjoint_timer_query_webgl2 (one query per frame, p25 of 180 frames per pose), the PR base (c959ac4b6) against
+terrain v2 (3c1c33490) from frozen production builds, alternated A B B A per map in two runs on different hours (four
+pairs per map and pose), each pair the delta of adjacent slots; median [min..max]: Whiteout chase −2.9 ms [−7.3..−2.3],
+sky-w −2.5 [−3.7..−1.2]; Sirocco Wadi chase −3.5 [−5.3..−2.1], sky-w −1.3 [−3.7..+0.4]; Monsoon Ridge chase −2.0
+[−2.8..−1.5], sky-w −1.2 [−4.0..+1.3]; Verdant chase −0.7 [−3.9..+1.6], sky-w −1.0 [−1.5..0.0] (whole frames of
+16–22 ms; main-thread CPU unchanged within ±1 ms). The mobile tier (A B B A, two pairs): Whiteout chase −2.5 ms
+[−2.9..−2.0], Verdant +0.2 [−0.5..+0.8], i.e. not slower. The machine carried other sessions' GPU work through most
+pairs (load 7–109, foreign GPU-process CPU up to 12 cores), which is why single pairs spread; the interleaved
+hide/show attribution was too noisy under that load to split terrain from ring and is not quoted.
 
 ## Acceptance is visual and measured
 

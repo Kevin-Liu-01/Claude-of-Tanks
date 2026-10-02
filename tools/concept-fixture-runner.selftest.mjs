@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {createConceptFixtureRunner,createConceptInputGuard} from './concept-fixture-runner.mjs';
+let input='initial', calls=[];
+const run=createConceptFixtureRunner(path=>{
+  calls.push(path);
+  if(path==='throws')throw Error('child could not start');
+  if(path==='mutates')input='changed during fixture';
+  return {status:path==='fails'?1:0,stdout:'complete family log',stderr:''};
+},()=>input);
+const first=run('family-a',input),shared=run('family-a',input);
+assert.equal(first.reused,false);assert.equal(shared.reused,true);
+assert.equal(first.invocation,shared.invocation);
+assert.equal(shared.stdout,'complete family log');assert.equal(calls.length,1);
+run('family-b',input);assert.equal(calls.length,2,'different fixture still runs');
+input='new inputs';run('family-a',input);assert.equal(calls.length,3,'changed inputs run afresh');
+assert.equal(run('fails',input).status,1);assert.equal(run('fails',input).status,1,'shared failure never becomes a pass');
+const bad=run('mutates',input);assert.equal(bad.inputsStable,false);
+input='new inputs';const retried=run('mutates',input);
+assert.equal(retried.reused,false,'a fixture that changes inputs cannot be reused');
+assert.throws(()=>run('throws',input),/could not start/);
+assert.throws(()=>run('throws',input),/could not start/);
+assert.equal(calls.filter(p=>p==='throws').length,2,'spawn errors are not cached');
+console.log('concept-fixture-runner: identical invocations share evidence; changed inputs, paths, failures and mutations remain checked');
+
+let revision='revision A';
+const frozen=createConceptInputGuard(()=>revision);
+assert.equal(frozen.assertCurrent(),'revision A','first vehicle uses the startup revision');
+revision='revision B';
+assert.throws(()=>frozen.assertCurrent(),/startup revision/,'second vehicle cannot use cached A modules with B evidence');
+assert.equal(createConceptInputGuard(()=>revision).assertCurrent(),'revision B','a new process may establish its own revision');

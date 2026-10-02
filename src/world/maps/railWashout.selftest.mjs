@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { createHeightField, mulberry32 } from '../terrain.ts';
 import { dressMapExtras, railSegmentIsDry } from './mapKits.ts';
 import skybridge from './skybridge.ts';
+import { geometryHash as hashGeometry } from '../../../tools/receipt-kit.test-support.mjs';
 
 const bucketNames = ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'wood',
   'dark', 'glass', 'curtain', 'straw', 'baked'];
@@ -25,17 +25,6 @@ function build(heightField, seed, mapId = 'skybridge') {
   dressMapExtras({ mapId, extraKits: ['rail'], L: heightField._layout,
     heightField, rng, buckets });
   return { buckets, calls, next: random() };
-}
-
-function hashGeometry(geometry) {
-  const hash = createHash('sha256');
-  for (const name of Object.keys(geometry.attributes).sort()) {
-    hash.update(name);
-    const values = geometry.attributes[name].array;
-    hash.update(new Uint8Array(values.buffer, values.byteOffset, values.byteLength));
-  }
-  if (geometry.index) hash.update(new Uint8Array(geometry.index.array.buffer));
-  return hash.digest('hex');
 }
 
 function isBallast(geometry) {

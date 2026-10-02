@@ -840,4 +840,21 @@ assert.ok(calls.includes('client.leave'), 'disposing the composition leaves the 
   hosted.composition.dispose();
 }
 
+// ------------------------------------------------------------ the ICE of a room session (2026-10-02, §13.14): the resolver is
+// built once per room session from the room's mode and the room client the seat holds, and is the session's own `ice`
+{
+  const built = [];
+  const resolver = async () => ({ iceServers: [], relayOnly: false });
+  const iced = createHarness({ p2p: { createHostPort: () => { throw new Error('the receipt never boots a host'); }, manifestBase: null, tier: 'desktop',
+    createIceResolver: (mode, room) => { built.push({ mode, room }); return resolver; } } });
+  const room = makeRoomSession(iced.calls);
+  iced.composition.beginRoom({ role: 'host', session: room, lobbyState: room.lobby });
+  assert.equal(built.length, 1, 'one resolver per room session');
+  assert.equal(built[0].room, room.client, 'built over the room client this seat holds');
+  assert.equal(built[0].mode, room.roomInfo.mode === 'lan' ? 'lan' : 'private', 'with the room\'s mode');
+  assert.equal(iced.sessions[0]?.options?.p2p?.ice, resolver, 'the session resolves every connection through it');
+  assert.equal('loadIce' in (iced.sessions[0]?.options?.p2p ?? {}), false, 'no credential endpoint port remains');
+  iced.composition.dispose();
+}
+
 console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, and runs a shader preparation past its budget once more before failing');

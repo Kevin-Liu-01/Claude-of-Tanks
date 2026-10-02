@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank, KIT } from '../tankFactory.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Independent fixed canonical-source witnesses. These are not imported from
 // builder datums or generated anatomy. Original metre-scale GLB: b98d8199…4477.
@@ -12,9 +13,6 @@ const SOURCE = Object.freeze({
   roof: [[.8, 2.4, 2.2076524725], [-1.2, 2.4, 2.0637851194]],
   glass: [-.72, 2.42, 1.822243], rim: [-.72, 2.50, 1.869834],
 });
-const near = (got, expected, tolerance, label) => assert.ok(
-  Number.isFinite(got) && Math.abs(got - expected) <= tolerance,
-  `${label}: ${got}; expected ${expected} ± ${tolerance}`);
 const physicalMeshes = root => {
   const result = [];
   root.traverse(o => {

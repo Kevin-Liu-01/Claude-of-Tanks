@@ -17,8 +17,8 @@
  *   node tools/mp-p2p-soak.mjs --seats=14 --rooms=ws://127.0.0.1:8791 --port=5340 --play=5 --migrate-every=2
  *   node tools/mp-p2p-soak.mjs --seats=28 --rooms=ws://127.0.0.1:8791 --port=5340 --play=6 --migrate-every=3
  *   node tools/mp-p2p-soak.mjs --seats=4  --rooms=… --ice=relay --play=65      # every peer through the TURN servers
- *                                                                              # /api/ice hands out (fetched with the site
- *                                                                              # Origin; the credential never leaves memory)
+ *                                                                              # the room hands its seats (§13.14: the room
+ *                                                                              # service must hold the relay secrets)
  *
  * --migrate-mode=stepdown replaces the tab close with a room-socket blip past the grace: the host keeps its actor, the
  * room elects a successor, the old host re-joins and its next report is refused `host_only` — the step-down to a peer
@@ -28,8 +28,10 @@
  * the room service must allow that origin —
  * `wrangler dev --var ALLOWED_ORIGINS:http://127.0.0.1:<port>`). --hosts=K marks the first K seats as able to host (the
  * creator and its successors); the rest decline on join like the mobile tier. --ice=none (host candidates, the LAN
- * case) | all (STUN + TURN, whichever ICE picks) | relay (TURN only, both ends). --ice-renew-at=<minutes> re-fetches the
- * credentials and hands them to every tab (the per-connection resolution the transport applies). --strict exits 1 when
+ * case) | all (STUN + TURN, whichever ICE picks) | relay (TURN only, both ends): every connection of every tab asks the
+ * room it is seated in, as the game does (2026-10-02, docs/MULTIPLAYER-V2.md §13.14 — `/api/ice` mints nothing any more),
+ * so `wrangler dev` needs the relay secrets in its `.dev.vars` (COT_CLOUDFLARE_TURN_KEY_ID, COT_CLOUDFLARE_TURN_API_TOKEN)
+ * or the LAN helper the same names in its environment; a renewal is every new connection. --strict exits 1 when
  * a budget fails; otherwise the exit code reflects only whether the run completed. Chrome runs under whatever the caller
  * wraps it in (the probe mutex, nice 19): the runner takes no lock itself.
  */
@@ -56,9 +58,6 @@ const playMin = Number(argValue('play', 2));
 const migrateEveryMin = Number(argValue('migrate-every', 0));
 const migrateLimit = Number(argValue('migrations', 99));
 const iceMode = argValue('ice', 'none');
-const iceUrl = argValue('ice-url', 'https://cot.kevinliu.studio/api/ice');
-const iceOrigin = argValue('ice-origin', 'https://cot.kevinliu.studio');
-const iceRenewAtMin = Number(argValue('ice-renew-at', 0));
 const hosts = Math.max(1, Math.min(seats, Number(argValue('hosts', 3)) | 0));
 const mapId = argValue('map', 'verdant');
 const mode = argValue('mode', 'lan');
@@ -119,24 +118,13 @@ function freePort() {
 }
 
 const report = {
-  label, seats, teamSize, hosts, pass: false, failures: [], verdicts: [], parameters: { roomsUrl, playMin, migrateEveryMin, iceMode, iceUrl: iceMode === 'none' ? null : iceUrl, hosts, mapId, mode, gameMode, predict, countdownS, sampleS, rejoin, graceMs, snapshotHz: snapshotHz || null },
+  label, seats, teamSize, hosts, pass: false, failures: [], verdicts: [], parameters: { roomsUrl, playMin, migrateEveryMin, iceMode, hosts, mapId, mode, gameMode, predict, countdownS, sampleS, rejoin, graceMs, snapshotHz: snapshotHz || null },
   machine: { loadStart: loadAverage(), loadEnd: null, node: process.version },
   room: null, entry: null, steady: null, migrations: [], memory: null, roomMessages: null, errors: [], peers: [], series: [], wallMs: 0,
 };
 const failures = report.failures;
 const step = (name, detail = {}) => { log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
 
-// ------------------------------------------------------------ ICE (never logged, never written)
-
-let iceConfig = null;
-async function fetchIce() {
-  const response = await fetch(iceUrl, { headers: { origin: iceOrigin }, signal: AbortSignal.timeout(15_000) });
-  if (!response.ok) throw new Error(`ICE endpoint ${iceUrl}: HTTP ${response.status}`);
-  const body = await response.json();
-  if (!Array.isArray(body.iceServers) || !body.iceServers.length) throw new Error('ICE endpoint returned no servers');
-  const urls = body.iceServers.flatMap((server) => (Array.isArray(server.urls) ? server.urls : [server.urls]));
-  return { config: { iceServers: body.iceServers, relayOnly: iceMode === 'relay' }, facts: { urls, expiresInSeconds: body.expiresInSeconds ?? null, turn: urls.filter((url) => /^turns?:/i.test(url)).length, fetchedAt: new Date().toISOString() } };
-}
 
 // ------------------------------------------------------------ the browser and the seats
 
@@ -177,7 +165,6 @@ async function openPage(origin, peer) {
   if (peer.game) return openGamePage(origin, peer);
   const page = await peer.context.newPage();
   await page.setViewport({ width: 320, height: 200, deviceScaleFactor: 1 });
-  if (iceConfig) await page.evaluateOnNewDocument((config) => { window.__peerIce = config; }, iceConfig);
   observe(page, peer.id);
   await page.goto(peerUrl(origin, peer), { waitUntil: 'domcontentloaded', timeout: 120_000 });
   await page.waitForFunction(() => !!window.__peer && window.__peer.status().room !== null, { timeout: 120_000, polling: 100 });
@@ -268,12 +255,6 @@ const finalStatus = new Map();
 try {
   if (!/^wss?:\/\//.test(roomsUrl)) throw new Error('--rooms=ws(s)://… is required (the room service that admits http://127.0.0.1:<port>)');
   await mkdir(outputDir, { recursive: true });
-  if (iceMode !== 'none') {
-    const fetched = await fetchIce();
-    iceConfig = fetched.config;
-    report.parameters.ice = fetched.facts;
-    step('ice', fetched.facts);
-  }
   const vitePort = requestedVitePort > 0 ? requestedVitePort : await freePort();
   // The harness pages take the room service from their URL; the real game page (--host=game) resolves it from the build's
   // VITE_ROOMS_URL, inlined by the dev server from the environment (the e2e's way).
@@ -378,14 +359,24 @@ try {
     roomMessagesStartBurst: startBurst, roomSocketCloses: entryTimelines.flatMap((timeline, index) => timeline.filter((entry) => entry.kind === 'room-socket:close').map((entry) => `${peers[index].id}@${Math.round(entry.wall - startWall)}ms:${entry.code}:${entry.reason}`)),
     predictionReady: entryStatuses.filter((status) => status.predictionReady).length, predictionErrors: entryStatuses.map((status) => status.predictionError).filter(Boolean),
   };
+  if (iceMode !== 'none') {
+    // what the room handed the seats (counts only: the credentials never leave the tabs)
+    const resolved = entryStatuses.map((status) => status.ice).filter(Boolean);
+    report.parameters.ice = {
+      seatsResolved: resolved.length, fromRoom: resolved.filter((ice) => ice.source === 'room').length,
+      turn: max(resolved.map((ice) => ice.turnUrls)) ?? 0, relayAvailable: resolved.filter((ice) => ice.relayAvailable).length,
+      expiresInSeconds: max(resolved.map((ice) => ice.expiresInSeconds)), degraded: [...new Set(resolved.map((ice) => ice.degradedReason).filter(Boolean))],
+    };
+    step('ice', report.parameters.ice);
+    if (iceMode === 'relay' && report.parameters.ice.relayAvailable < resolved.length) failures.push(`ice=relay: ${resolved.length - report.parameters.ice.relayAvailable} seats got no TURN server from the room (is the room service holding the relay secrets?)`);
+  }
   step('entered', { host: hostPeer.id, joinMs: report.entry.joinMs, burst: startBurst, gather: report.entry.iceGather, candidates: [...new Set(report.entry.candidateTypes)] });
 
-  // ---- play: sample every seat; migrate on schedule; renew ICE on schedule
+  // ---- play: sample every seat; migrate on schedule
   const playMs = playMin * 60_000;
   const playStartedAt = performance.now();
   const migrateEveryMs = migrateEveryMin > 0 ? migrateEveryMin * 60_000 : Infinity;
   let nextMigrationAt = migrateEveryMs;
-  let nextRenewAt = iceRenewAtMin > 0 && iceMode !== 'none' ? iceRenewAtMin * 60_000 : Infinity;
   let lastMemoryAt = -Infinity;
   const compact = (peer, status) => ({
     id: peer.id, role: status.session?.role ?? null, gen: status.session?.p2p?.generation ?? null, phase: status.match?.phase ?? null, ts: status.match?.transportState ?? null,
@@ -421,14 +412,6 @@ try {
     if (performance.now() - lastMemoryAt >= 10_000) { lastMemoryAt = performance.now(); const memory = rendererMemory(); if (memory) memorySeries.push({ atMs: row.atMs, ...memory, all: undefined }); }
     if (series.length % Math.max(1, Math.round(30 / sampleS)) === 0) log(`t+${Math.round(row.atMs / 1000)} s: host ${hostRow?.id ?? '-'} gen ${hostRow?.gen ?? '-'} peers ${hostRow?.peers ?? '-'} up ${round((hostRow?.hostUp ?? 0) * 8 / 1000, 0)} kbit/s tick p95 ${round(hostRow?.tickP95, 2)} ms; seats ${row.peers.length}, rtt median ${round(median(row.peers.map((entry) => entry.rtt)), 1)} ms, load ${loadAverage()}`);
     const elapsed = performance.now() - playStartedAt;
-    if (elapsed >= nextRenewAt) {
-      nextRenewAt = Infinity;
-      const fetched = await fetchIce();
-      iceConfig = fetched.config;
-      for (const peer of live()) await peer.page.evaluate((config) => window.__peer.setIce(config), iceConfig).catch(() => {});
-      report.parameters.iceRenewed = { atMs: Math.round(elapsed), ...fetched.facts };
-      step('ice-renewed', report.parameters.iceRenewed);
-    }
     if (elapsed >= nextMigrationAt && report.migrations.length < migrateLimit && playMs - elapsed > 20_000) {
       nextMigrationAt = elapsed + migrateEveryMs;
       await migrate();
@@ -725,7 +708,7 @@ function markdown() {
   const lines = [];
   const p = report.parameters;
   lines.push(`# Peer-to-peer soak — ${label} (${seats} seats)`, '');
-  lines.push(`Run ${new Date().toISOString()} · rooms \`${roomsUrl}\` · ${p.playMin} min of play · migrate every ${p.migrateEveryMin || '–'} min · ice=${p.iceMode}${p.ice ? ` (${p.ice.turn} TURN urls, TTL ${p.ice.expiresInSeconds} s)` : ''} · map ${p.mapId} · ${hosts} seats able to host · firing ${fire !== '0' ? 'on' : 'off'} · load ${report.machine.loadStart} → ${report.machine.loadEnd} · ${Math.round(report.wallMs / 1000)} s wall · ${report.completed ? 'completed' : 'INCOMPLETE'}${report.matchEnded ? ` · the match ended on its own at t+${Math.round(report.matchEnded.atMs / 1000)} s (${report.matchEnded.phases.map((entry) => `${entry[0]} ${entry[1]}/${entry[2] ?? '–'}`).join(', ')})` : ''}`, '');
+  lines.push(`Run ${new Date().toISOString()} · rooms \`${roomsUrl}\` · ${p.playMin} min of play · migrate every ${p.migrateEveryMin || '–'} min · ice=${p.iceMode}${p.ice ? ` (from the room: ${p.ice.fromRoom}/${p.ice.seatsResolved} seats, ${p.ice.turn} TURN urls, TTL ${p.ice.expiresInSeconds ?? '–'} s)` : ''} · map ${p.mapId} · ${hosts} seats able to host · firing ${fire !== '0' ? 'on' : 'off'} · load ${report.machine.loadStart} → ${report.machine.loadEnd} · ${Math.round(report.wallMs / 1000)} s wall · ${report.completed ? 'completed' : 'INCOMPLETE'}${report.matchEnded ? ` · the match ended on its own at t+${Math.round(report.matchEnded.atMs / 1000)} s (${report.matchEnded.phases.map((entry) => `${entry[0]} ${entry[1]}/${entry[2] ?? '–'}`).join(', ')})` : ''}`, '');
   if (report.failures.length) { lines.push('## Failures', '', ...report.failures.map((failure) => `- ${failure.split('\n')[0]}`), ''); }
   lines.push('## Verdicts', '', '| Check | Value | Budget | Verdict | Note |', '|---|---|---|---|---|');
   for (const verdict of report.verdicts) lines.push(`| ${verdict.name} | ${verdict.value ?? '–'} | ${verdict.budget} | ${verdict.pass === null ? 'n/a' : verdict.pass ? 'PASS' : 'FAIL'} | ${verdict.note} |`);

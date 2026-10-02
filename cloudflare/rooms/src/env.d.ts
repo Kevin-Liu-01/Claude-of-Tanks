@@ -2,6 +2,14 @@
  * Bindings Wrangler cannot generate: the secret (`wrangler secret put`).
  * `worker-configuration.d.ts` (generated) declares the rest; both merge into the
  * global `Env`.
+ *
+ * The relay secrets (2026-10-02, docs/MULTIPLAYER-V2.md §13.14) are optional and read by name only
+ * (`pickRelayEnv` in server/relayCredentials.ts), so they are deliberately not declared here — `wrangler types`
+ * types a secret a local `.dev.vars` holds as a required string, and an optional declaration of the same name would
+ * not merge with it: `COT_CLOUDFLARE_TURN_KEY_ID`, `COT_CLOUDFLARE_TURN_API_TOKEN` (production, Cloudflare Realtime
+ * TURN), `COT_TURN_SHARED_SECRET` with the var `COT_TURN_URLS` (self-hosted coturn), `COT_TURN_ICE_SERVERS_JSON`
+ * (fixed servers); the vars `COT_TURN_TTL_SECONDS` and `COT_TURN_USERNAME` are optional, `COT_STUN_URLS` is in
+ * wrangler.jsonc.
  */
 export {};
 

@@ -1,3 +1,4 @@
+import {NATIONAL_LEGACY_IDS} from './nationalLegacyConfig.ts';
 import {NATIONAL_MODERNIZATION_CONFIG} from './nationalModernizationConfig.ts';
 // Published/internal-layout metadata for every playable vehicle. This is the
 // presentation and topology source of truth shared by combat anatomy, Gallery
@@ -516,7 +517,7 @@ const IDS_BY_LAYOUT = Object.freeze({
     'merkava4_x', 'merkava3d_x', 'merkava4_trophy', 'merkava4_barak',
   ],
   sovietManual: ['t62mv1'],
-  nationalSmDiesel: NATIONAL_MODERNIZATION_CONFIG.filter(c=>c.model!==0).map(c=>c.id),
+  nationalSmDiesel: [...NATIONAL_MODERNIZATION_CONFIG.filter(c=>c.model!==0).map(c=>c.id),...NATIONAL_LEGACY_IDS],
   nationalSmTurbine: NATIONAL_MODERNIZATION_CONFIG.filter(c=>c.model===0).map(c=>c.id),
   conceptAzHybrid: ['type96_72_long','type96_72m_lei','t62mv1_x','ua_t64bv'],
   conceptMzHybrid: ['type96_80_feng','t72_rys'],

@@ -8,6 +8,7 @@ import { createTankState } from '../../sim/movement.ts';
 import { isTrackShoeMesh } from '../../../tools/track-clip-classification.mjs';
 import { buildFv510MilanX } from './fv510MilanX.ts';
 import { KIT } from './kit.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Source-only Object_21 calipers, canonical SHA e568badc436980b9f2b718db9786120f
 // cc7527b7fe6465c3efa66889fa208c04. The supplied model is never loaded by this
@@ -22,10 +23,6 @@ assert.ok(hasInteriorFills(id), 'actual generated interior is loaded');
 const material = new THREE.MeshBasicMaterial({ side: THREE.FrontSide });
 const ray = new THREE.Raycaster();
 const summaries = [];
-function near(actual, expected, tolerance, label) {
-  assert.ok(Number.isFinite(actual) && Math.abs(actual-expected)<=tolerance,
-    `${label}: ${actual} vs ${expected}`);
-}
 function firstVisible(root, origin, direction, far = 1) {
   ray.set(new THREE.Vector3(...origin),new THREE.Vector3(...direction));
   ray.near=0;ray.far=far;

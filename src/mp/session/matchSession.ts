@@ -67,7 +67,7 @@ export interface SessionPresentation {
 
 /** The peer-to-peer surfaces a session needs (absent: rtc:// matches cannot be entered). */
 export interface MatchSessionP2pOptions {
-  /** ICE servers for the peer transport and the host acceptor (v1's loadIceConfiguration result, or a resolver). */
+  /** ICE servers for the peer transport and the host acceptor: fixed, or a resolver per connection (the room's relay grant, `createRoomIceResolver`). */
   ice?: RtcIceConfig | (() => Promise<RtcIceConfig> | RtcIceConfig);
   createPeerConnection?: RtcPeerConnectionFactory;
   /** The host actor's thread (a Worker in the browser, the in-process core in Node); absent: this seat cannot host. */

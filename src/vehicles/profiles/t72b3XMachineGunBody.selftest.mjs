@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b} ±${t}`);
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 function visible(root){const meshes=[];root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)meshes.push(m);});return meshes;}
 function stockAndReceiver(meshes){
   for(const[z,y]of [[-2.185,2.6085741621],[-2.15,2.6037455071],[-2.05,2.5990075655],

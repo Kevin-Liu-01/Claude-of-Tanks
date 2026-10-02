@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 const v=a=>new THREE.Vector3(...a),X=-.3867,Y=2.765;
 const ray=(object,p,d,far=2)=>new THREE.Raycaster(v(p),v(d),0,far).intersectObject(object,true)[0];
-const near=(a,b,e,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=e,`${label}: ${a} vs ${b}`);
 function closedAt(object,p,axis){
   const saved=[];object.traverse(m=>{if(m.isMesh){saved.push([m,m.material.side]);m.material.side=THREE.DoubleSide;}});
   const a=ray(object,p,axis,.15),b=ray(object,p,axis.map(n=>-n),.15);

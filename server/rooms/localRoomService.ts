@@ -49,6 +49,11 @@ export interface LocalRoomServiceOptions {
   random?: () => number;
   /** Named in admission replies; the LAN helper and the receipts run on `lan`. */
   region?: string;
+  /**
+   * Relay credentials for a seat's `room_relay` (2026-10-02, docs/MULTIPLAYER-V2.md §13.14): the LAN helper mints them
+   * from its environment (`server/relayCredentials.ts`, `server/rooms/main.ts`); absent, a seat gets no server.
+   */
+  relayCredentials?: RoomActorPorts['relayCredentials'];
 }
 
 export interface LocalRoomService {
@@ -139,6 +144,7 @@ export function createLocalRoomService({
   wallClock = () => Date.now(),
   random = Math.random,
   region = 'lan',
+  relayCredentials,
 }: LocalRoomServiceOptions): LocalRoomService {
   if (typeof seatSecret !== 'string' || seatSecret.length < 16) throw new TypeError('seatSecret must be at least 16 characters');
   const origins = allowedOrigins && allowedOrigins.length ? new Set(allowedOrigins.map((origin) => origin.trim())) : null;
@@ -197,6 +203,7 @@ export function createLocalRoomService({
       // P1b: what the Worker reads from the runtime (getWebSocketAutoResponseTimestamp), this service records itself.
       keepaliveAt: (socketId) => keepalives.get(socketId) ?? null,
       defer: (callback, delayMs) => { if (!closed) setTimeout(callback, delayMs).unref?.(); },
+      ...(relayCredentials ? { relayCredentials } : {}),
       guards,
       log: (level, message, fields) => roomLog[level](message, fields as Record<string, string | number | boolean | null | undefined> | undefined),
     };

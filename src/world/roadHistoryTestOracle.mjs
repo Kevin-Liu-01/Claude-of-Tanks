@@ -40,15 +40,29 @@ for (const declaration of [historicalSmoothing, historicalJunctionBlend]) {
 }
 const historicalLayoutReturn = '  return {\n    village,\n';
 assert.equal(referenceSource.split(historicalLayoutReturn).length, 2, 'one historical layout return');
-// The authentic constructor indentation is retained by its fixture.
-const desertGradeAnchor = referenceSource.match(/([ \t]*)blendRoadJunctions\(nodeElev\);/);
-assert.ok(desertGradeAnchor, 'one historical junction bake to extend for current Desert placement');
-const historicalBankBake = '      gRoadElev[i] = e[s] + (e[s + 1] - e[s]) * gSegT[i];\n    }\n';
-assert.equal(referenceSource.split(historicalBankBake).length, 2, 'one historical bank bake');
+// 2026-09-29 (Cliffbridge's viaduct): authored dry bridge decks (terrain.bridges) and the abutment clamp that cuts
+// shoulder noise flush with the deck are construction laws of the same kind. The constructor fixture strips both from
+// the historical text (its first two deltas); the relief-law constructor restores the CURRENT deck block and applies the
+// clamp at both exits of the historical road-detail tail, so the placement sampler is compared against the field it
+// actually reproduces.
+const historicalDeckResolve = '  if (liquidWater && liquidSurfaces) bridgeDecks = resolveBridgeDecks();\n';
+assert.equal(referenceSource.split(historicalDeckResolve).length, 2, 'one historical bridge-deck resolution');
+const deckBlockStart = '  if (T.bridges?.length) {\n    const authored = T.bridges.map(';
+const deckBlockEnd = '    bridgeDecks = Object.freeze([...bridgeDecks, ...authored]);\n  }\n';
+assert.equal(source.split(deckBlockStart).length, 2, 'one current authored-deck block');
+const authoredDecks = source.slice(source.indexOf(deckBlockStart), source.indexOf(deckBlockEnd) + deckBlockEnd.length);
+const historicalDetailExit = '      if (liquidDetail === 0 || marshWeight === 1) return h;\n';
+const historicalDetailReturn = '      h += (berm + ditch) * (1 - settlementWeight) * (1 - marshWeight) * liquidDetail;\n    }\n    return h;\n  }\n';
+for (const text of [historicalDetailExit, historicalDetailReturn]) {
+  assert.equal(referenceSource.split(text).length, 2, 'one historical road-detail exit');
+}
+const dryDeckClamp = '(T.bridges?.length ? Math.min(h, bridgeDeckOver(x, z)?.deckY ?? Infinity) : h)';
+// 2026-10-01: Sirocco Wadi's bank bake, mesa routing and crossing grades left with its old country roads
+// (docs/MAP-LAYOUT-BRIEF.md), so the relief-law constructor no longer restores them.
 const reliefLawSource = referenceSource
-  .replace(historicalBankBake, historicalBankBake + '    blendDesertRoadBanks(cfg?.id, roads, nodeElev, gRoadDist, gRoadElev, GN, MAP_SIZE, _VILLAGE.cx, _VILLAGE.cz);\n')
-  .replace(historicalLayoutReturn, '  routeDesertRoads(cfg?.id, roads);\n' + historicalLayoutReturn)
-  .replace(desertGradeAnchor[0], desertGradeAnchor[0] + '\n' + desertGradeAnchor[1] + 'gradeDesertRoads(cfg?.id, roads, nodeElev);')
+  .replace(historicalDeckResolve, historicalDeckResolve + authoredDecks)
+  .replace(historicalDetailExit, historicalDetailExit.replace('return h;', `return ${dryDeckClamp};`))
+  .replace(historicalDetailReturn, historicalDetailReturn.replace('    return h;\n', `    return ${dryDeckClamp};\n`))
   .replace(historicalSmoothing, historicalSmoothing +
     '    if (usesPhysicalRoadStations(cfg?.id)) { smoothRoadGradesByDistance(roads, nodeElev); return; }\n')
   .replace(historicalJunctionBlend, historicalJunctionBlend +
@@ -56,19 +70,13 @@ const reliefLawSource = referenceSource
   .replace(historicalRim,
   '    const rim = smoothstep(430, HALF, Math.max(Math.abs(x), Math.abs(z)));\n    h += rim * rim * T.rimH * (1 - waterWeight) * (rim > 0 ? coastRimKeep(x, z) : 1);\n')
   .replace(historicalRoadBlend, `    const rd = gridSample(gRoadDist, x, z);
-    const roadBankWidth = cfg?.id === 'desert' ? 104 : 14;
-    if (rd < roadBankWidth) {
-      let roadBlendWeight = 1 - smoothstep(3.8, 14, rd);
-      if (roadBankWidth > 14) {
-        const approach = smoothstep(48 * 48, 128 * 128, (x - _VILLAGE.cx) ** 2 + (z - _VILLAGE.cz) ** 2);
-        roadBlendWeight += (1 - smoothstep(3.8, roadBankWidth, rd) - roadBlendWeight) * approach;
-      }
+    if (rd < 14) {
       let roadElevation = gridSample(gRoadElev, x, z);
       if (bridgeDecks.length) {
         const bridge = bridgeTermsAt(x, z);
         roadElevation += (bridge.deckY - roadElevation) * bridge.approach;
-        h += (roadElevation - h) * roadBlendWeight * (1 - bridge.span);
-      } else h += (roadElevation - h) * roadBlendWeight;
+        h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd)) * (1 - bridge.span);
+      } else h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd));
     }
 `);
 const reliefLawUrl = new URL('./terrain.ts?original-road-placement-relief-laws', import.meta.url).href;

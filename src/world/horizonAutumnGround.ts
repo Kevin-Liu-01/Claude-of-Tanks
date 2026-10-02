@@ -113,6 +113,15 @@ function bindRingReliefAtlas(mesh: Mesh, vistaMaterial: Material, terrainMateria
   // shadows. Full vista relief double-counted those slopes and turned the
   // exterior into dark, inflated folds. Keep it as subordinate fine relief.
   ring.uRingReliefAmp.value = amp * 0.18;
+  // terrain v3 (2026-10-02, the ring lab: zeroing the atlas removed the chevrons on Sirocco Wadi's far ranges and the
+  // dimples on Copper Mesa's walls): the atlas's fine relief is a slope's detail; on the tablelands' and the martian
+  // scarps' flanks and walls its gradient printed those patterns, so there it fades over the face's own slope from 20°
+  // to 41° (the caps and floors keep it, and the occlusion and the cast shadows keep their weight everywhere). The
+  // snow, alpine, rolling and coastal ranges keep it in full: their ridges are its relief.
+  const character = (mesh.userData.horizonRing as { relief?: string } | undefined)?.relief;
+  const wallBand = character ? RING_RELIEF_WALL_BAND[character] : undefined;
+  const wall = ring.uRingReliefWall?.value as { set(x: number, y: number): void } | undefined;
+  if (wall) wall.set(...(wallBand ?? RING_RELIEF_WALL_NONE));
   const swap = ring.uNrmM, draw = ring.uRingDraw, marshNormal = swap.value;
   const before = mesh.onBeforeRender;
   mesh.onBeforeRender = function (this: Mesh, renderer, scene, camera, geometry, material, group) {
@@ -129,6 +138,10 @@ function bindRingReliefAtlas(mesh: Mesh, vistaMaterial: Material, terrainMateria
 }
 
 interface VistaMaterialData { uniforms: Record<string, { value: unknown }>; base: Color }
+
+/** Terrain v3: the slope band (1 - n.y of the ring face) over which the atlas gradient fades, per relief character. */
+export const RING_RELIEF_WALL_BAND: Readonly<Record<string, readonly [number, number]>> = { mesa: [0.06, 0.25], martian: [0.06, 0.25] };
+const RING_RELIEF_WALL_NONE: readonly [number, number] = [2, 3];
 
 /** Mean linear colour of a canvas-backed albedo texture (a 2x2 downsample), or null when unavailable. */
 function meanAlbedo(texture: Texture | undefined): Color | null {
