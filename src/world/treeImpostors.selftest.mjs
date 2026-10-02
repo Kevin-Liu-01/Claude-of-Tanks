@@ -29,8 +29,9 @@ import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 // with the crown's occlusion baked into the wood, the oak's dome and the desktop palms' pinnate frond; then for the
 // first all-map review's fixes (fuller sprays, narrower spruce and fir, darker bark, snow in the needles: verdant
 // e2ad75c1, fjord d5c01887, delta e49114df) and for the welded (indexed) grown geometry and the eucalyptus' tint;
-// Nordhavn again for the slender spruce and fir crowns (fjord 3a94851f).
-const PINS = { verdant: '54fd12bc', fjord: '003ab1a7', delta: '4f0633f2' };
+// Nordhavn again for the slender spruce and fir crowns (fjord 3a94851f); the Delta for the furrowed sheet painted
+// exactly as the single sheet (its palms' compensated trunks; delta 4f0633f2).
+const PINS = { verdant: '54fd12bc', fjord: '003ab1a7', delta: 'a661c8e6' };
 // every producer's digest is reported before the pin is asserted (a re-pin reads all three from one run)
 const digestMismatches = [];
 

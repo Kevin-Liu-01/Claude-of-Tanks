@@ -535,8 +535,11 @@ function makeBarkTexture(seed: number, styles = TREE_BARK_STYLES): {
   c.width = W; c.height = s;
   const ctx = context2d(c, { willReadFrequently: true });
   ctx.save();
+  // the furrowed sheet paints into its own 256 columns exactly as on the single sheet (whose canvas edge clipped it
+  // there): its pixels, its mean reflectance and the legacy trunks' compensation stay byte-identical, and no stroke
+  // reaches the next style's block
   ctx.beginPath();
-  ctx.rect(0, 0, TREE_BARK_COLUMNS, s);
+  ctx.rect(0, 0, s, s);
   ctx.clip();
   ctx.scale(TREE_BARK_COLUMNS / s, 1);
   ctx.fillStyle = '#aea89f'; // near-neutral: species vertex tints own the hue (birch stays pale)
