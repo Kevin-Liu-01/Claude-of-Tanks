@@ -19,8 +19,13 @@
  * layer. A cascade re-renders its layer when its snapped light pose (position, target, box, near/far, map size)
  * differs from the one its copy was rendered with — so the sun and the cascade snaps are covered by the pose —
  * or when its map was reallocated. The copy is a depth blit (`renderer.copyTextureToTexture` of the two depth
- * textures); the dynamic pass renders into the live map with `renderer.clear` suppressed. A cascade whose
- * dynamic pass drew nothing still holds the exact static layer, so the next frame skips even the copy.
+ * textures); the dynamic pass renders into the live map with `renderer.clear` suppressed.
+ *
+ * Only a cascade whose snapped pose has held for STATIC_SHADOW_SETTLE_FRAMES frames goes through the cache. A camera
+ * on the move re-snaps nearly every cascade every frame (the 2026-10-02 flicker runs, driving and turning: 315 of
+ * 315 cascade renders were re-renders, none a reuse), and a re-render costs the ordinary render plus the copy and a
+ * second pass, so a moving cascade renders the ordinary way and the cache takes over once it holds still: a parked
+ * or aiming hull, the overview, a held sniper view.
  *
  * The cache is armed per frame by `lighting.update()` (`beginFrame`) and each cascade is consumed once: a second
  * render in the same frame, the deployment warm, the covered shadow prime and every path that does not run the
@@ -36,6 +41,8 @@ type ShadowRender = (lights: THREE.Object3D[], scene: THREE.Scene, camera: THREE
 export const STATIC_SHADOW_DEMOTE_FRAMES = 60;
 /** Consecutive changed frames that make a world caster dynamic (one change is a single re-render). */
 export const STATIC_SHADOW_PROMOTE_FRAMES = 2;
+/** Frames a cascade's snapped pose must hold before the cache renders it (a moving cascade renders the ordinary way). */
+export const STATIC_SHADOW_SETTLE_FRAMES = 2;
 const POSE_FIELDS = 13;
 
 // ------------------------------------------------------------------------------------------------- pure parts
@@ -62,13 +69,14 @@ export function samePose(a: Float64Array, b: Float64Array): boolean {
 type CascadePlan = 'full' | 'rebuild' | 'reuse';
 
 /**
- * One cascade's decision. `full`: render the ordinary way (cache off for this render). `rebuild`: render the static
- * layer, copy it, then the dynamic pass. `reuse`: the copy (unless the live map still holds it) and the dynamic pass.
+ * One cascade's decision. `full`: render the ordinary way (cache off for this render; also while the cascade's pose
+ * is still moving). `rebuild`: render the static layer, copy it, then the dynamic pass. `reuse`: the copy and the
+ * dynamic pass.
  */
 export function planCascade(input: {
-  armed: boolean; hasTarget: boolean; slotValid: boolean; poseSame: boolean; contentSame: boolean; forced: boolean;
+  armed: boolean; hasTarget: boolean; settled: boolean; slotValid: boolean; poseSame: boolean; contentSame: boolean; forced: boolean;
 }): CascadePlan {
-  if (!input.armed || !input.hasTarget) return 'full';
+  if (!input.armed || !input.hasTarget || !input.settled) return 'full';
   if (input.forced || !input.slotValid || !input.poseSame || !input.contentSame) return 'rebuild';
   return 'reuse';
 }
@@ -166,8 +174,9 @@ interface CascadeSlot {
   /** The static copy exists for `pose` and `contentStamp`. */
   valid: boolean;
   contentStamp: number;
-  /** The live map holds exactly the static copy (the last dynamic pass drew nothing). */
-  liveClean: boolean;
+  /** The cascade's pose at the last lighting update, and the updates it has held since. */
+  lastPose: Float64Array;
+  steady: number;
   /** Armed for one render this frame. */
   armed: boolean;
 }
@@ -178,7 +187,8 @@ interface ShadowStaticCacheTelemetry {
   rebuilds: number[];
   reuses: number[];
   copies: number;
-  skippedCopies: number;
+  /** Ordinary renders of an armed cascade whose pose had not held STATIC_SHADOW_SETTLE_FRAMES yet. */
+  unsettled: number;
   fullRenders: number;
   contentChanges: number;
   promoted: number;
@@ -208,7 +218,6 @@ export interface ShadowStaticCache {
 
 /** The renderer surface the cache uses (the router hands the live WebGLRenderer; receipts a recording stub). */
 interface CacheRenderer {
-  info: { render: { calls: number } };
   clear: (color?: boolean, depth?: boolean, stencil?: boolean) => void;
   copyTextureToTexture(src: THREE.Texture, dst: THREE.Texture): void;
   initRenderTarget?: (target: THREE.WebGLRenderTarget) => void;
@@ -241,7 +250,7 @@ export function createShadowStaticCache(): ShadowStaticCache {
   const hidden: THREE.Object3D[] = [];
   const muted: THREE.Object3D[] = [];
   const stats: ShadowStaticCacheTelemetry = {
-    enabled: false, frames: 0, rebuilds: [], reuses: [], copies: 0, skippedCopies: 0, fullRenders: 0, contentChanges: 0,
+    enabled: false, frames: 0, rebuilds: [], reuses: [], copies: 0, unsettled: 0, fullRenders: 0, contentChanges: 0,
     promoted: 0, promotions: 0, demotions: 0, staticCasters: 0, hashMs: 0, lastRebuildReason: '', failed: null, targetBytes: 0,
   };
   let rebuildReason = 'cold';
@@ -249,7 +258,8 @@ export function createShadowStaticCache(): ShadowStaticCache {
   function slotFor(index: number): CascadeSlot {
     let slot = slots[index];
     if (!slot) {
-      slot = { target: null, pose: new Float64Array(POSE_FIELDS), valid: false, contentStamp: -1, liveClean: false, armed: false };
+      slot = { target: null, pose: new Float64Array(POSE_FIELDS), valid: false, contentStamp: -1,
+        lastPose: new Float64Array(POSE_FIELDS).fill(Number.NaN), steady: 0, armed: false };
       slots[index] = slot;
     }
     return slot;
@@ -259,7 +269,6 @@ export function createShadowStaticCache(): ShadowStaticCache {
     slot.target?.dispose();
     slot.target = null;
     slot.valid = false;
-    slot.liveClean = false;
   }
 
   /** A depth target the live map's depth can be blitted to and from: same size, same 24-bit depth format. */
@@ -388,7 +397,14 @@ export function createShadowStaticCache(): ShadowStaticCache {
     frame++;
     const on = enabled && !failed;
     stats.enabled = on;
-    for (let i = 0; i < lights.length; i++) slotFor(i).armed = false;
+    for (let i = 0; i < lights.length; i++) {
+      // how long each cascade's snapped pose has held (the poses are final when the lighting update calls this)
+      const slot = slotFor(i);
+      slot.armed = false;
+      writeCascadePose(lights[i], scratchPose);
+      if (samePose(scratchPose, slot.lastPose)) slot.steady++;
+      else { slot.lastPose.set(scratchPose); slot.steady = 0; }
+    }
     if (!on) {
       if (contentStamp >= 0) { contentStamp++; rebuildReason = 'disabled'; }
       return;
@@ -449,11 +465,12 @@ export function createShadowStaticCache(): ShadowStaticCache {
     }
     const target = ensureTarget(renderer, slot, live);
     writeCascadePose(light, scratchPose);
+    const settled = slot.steady >= STATIC_SHADOW_SETTLE_FRAMES;
     const plan = planCascade({
-      armed: true, hasTarget: !!target, slotValid: slot.valid, poseSame: samePose(scratchPose, slot.pose),
+      armed: true, hasTarget: !!target, settled, slotValid: slot.valid, poseSame: samePose(scratchPose, slot.pose),
       contentSame: slot.contentStamp === contentStamp, forced: false,
     });
-    if (plan === 'full') { stats.fullRenders++; return false; }
+    if (plan === 'full') { stats.fullRenders++; if (!settled) stats.unsettled++; return false; }
     if (plan === 'rebuild') {
       const reason = !slot.valid ? 'cold' : !samePose(scratchPose, slot.pose) ? 'pose' : rebuildReason;
       // the static layer: every dynamic caster hidden; three clears and renders the live map
@@ -470,19 +487,15 @@ export function createShadowStaticCache(): ShadowStaticCache {
       slot.pose.set(scratchPose);
       slot.contentStamp = contentStamp;
       slot.valid = true;
-      slot.liveClean = true;
       stats.rebuilds[cascadeIndex] = (stats.rebuilds[cascadeIndex] || 0) + 1;
       stats.lastRebuildReason = reason;
       shadow.needsUpdate = true; // three clears it after every render; the dynamic pass renders the same light
     } else {
-      if (!slot.liveClean) {
-        if (!copyDepth(renderer, target, live)) { slot.valid = false; return false; }
-      } else stats.skippedCopies++;
-      (stats.reuses[cascadeIndex] = (stats.reuses[cascadeIndex] || 0) + 1);
+      if (!copyDepth(renderer, target, live)) { slot.valid = false; return false; }
+      stats.reuses[cascadeIndex] = (stats.reuses[cascadeIndex] || 0) + 1;
     }
     // the dynamic layer on top of the static depth: the static subtrees hidden, the live map not cleared
     if (coverDirty) rebuildCover();
-    const callsBefore = renderer.info.render.calls;
     hideAll(cover);
     muteAll(coverCasters);
     const clear = renderer.clear;
@@ -491,7 +504,6 @@ export function createShadowStaticCache(): ShadowStaticCache {
       renderer.clear = clear;
       restore();
     }
-    slot.liveClean = renderer.info.render.calls === callsBefore;
     return true;
   }
 
@@ -502,7 +514,7 @@ export function createShadowStaticCache(): ShadowStaticCache {
   function invalidate(reason: string): void {
     contentStamp++;
     rebuildReason = reason;
-    for (const slot of slots) if (slot) { slot.valid = false; slot.liveClean = false; }
+    for (const slot of slots) if (slot) slot.valid = false;
   }
 
   function dispose(): void {

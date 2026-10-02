@@ -2,12 +2,14 @@
 // pose, static content, forced frames, arming once per frame, the debug switch, map reallocation, a failed copy),
 // the two-pass render (the static layer with every dynamic caster hidden, the dynamic layer on the copied depth with
 // the static subtrees hidden and the clear suppressed), the promotion of world casters that move on consecutive
-// frames and their return once still, the clean-map copy skip, and the router's use of the cache (renderLayers.ts).
+// frames and their return once still, the settle rule (a cascade whose pose is still moving renders the ordinary way),
+// and the router's use of the cache (renderLayers.ts).
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import {
-  STATIC_SHADOW_DEMOTE_FRAMES, STATIC_SHADOW_PROMOTE_FRAMES, casterSignature, createShadowStaticCache, isStaticShadowRoot,
+  STATIC_SHADOW_DEMOTE_FRAMES, STATIC_SHADOW_PROMOTE_FRAMES, STATIC_SHADOW_SETTLE_FRAMES, casterSignature, createShadowStaticCache,
+  isStaticShadowRoot,
   planCascade, samePose, stepCasterMotion, writeCascadePose,
 } from './shadowStaticCache.ts';
 import {
@@ -17,7 +19,7 @@ import {
 // ---------------------------------------------------------------------------------------------- pure rules
 
 {
-  const base = { armed: true, hasTarget: true, slotValid: true, poseSame: true, contentSame: true, forced: false };
+  const base = { armed: true, hasTarget: true, settled: true, slotValid: true, poseSame: true, contentSame: true, forced: false };
   assert.equal(planCascade(base), 'reuse', 'a still pose over still content reuses the static copy');
   assert.equal(planCascade({ ...base, poseSame: false }), 'rebuild', 'a cascade snap (or a sun move) re-renders the static layer');
   assert.equal(planCascade({ ...base, contentSame: false }), 'rebuild', 'a static content change re-renders');
@@ -25,6 +27,8 @@ import {
   assert.equal(planCascade({ ...base, slotValid: false }), 'rebuild', 'no copy yet');
   assert.equal(planCascade({ ...base, armed: false }), 'full', 'an unarmed render is the ordinary render');
   assert.equal(planCascade({ ...base, hasTarget: false }), 'full');
+  assert.equal(planCascade({ ...base, settled: false }), 'full', 'a cascade still moving renders the ordinary way');
+  assert.equal(planCascade({ ...base, settled: false, poseSame: false }), 'full', 'no re-render while it moves');
 }
 {
   const light = new THREE.DirectionalLight();
@@ -150,6 +154,11 @@ function frame(f, cache, { forced = false, enabled = true, mutate = null } = {})
   return { handled, log: f.log.slice() };
 }
 
+/** The frames a new pose must hold before the cache takes the cascade (ordinary renders). */
+function settle(f, cache) {
+  for (let i = 0; i < STATIC_SHADOW_SETTLE_FRAMES; i++) assert.equal(frame(f, cache).handled, false, 'settling: the ordinary render');
+}
+
 const renders = (log) => log.filter((e) => e.kind === 'render');
 const copies = (log) => log.filter((e) => e.kind === 'copy').map((e) => `${e.from}>${e.to}`);
 
@@ -157,6 +166,8 @@ const copies = (log) => log.filter((e) => e.kind === 'copy').map((e) => `${e.fro
   const f = fixture();
   assert.ok(isStaticShadowRoot(f.world) && !isStaticShadowRoot(f.tank));
   const cache = createShadowStaticCache();
+  assert.equal(STATIC_SHADOW_SETTLE_FRAMES, 2);
+  settle(f, cache);
   let r = frame(f, cache);
   assert.equal(r.handled, true);
   let [staticPass, dynamicPass] = renders(r.log);
@@ -174,9 +185,28 @@ const copies = (log) => log.filter((e) => e.kind === 'copy').map((e) => `${e.fro
   assert.deepEqual(copies(r.log), ['cache>live'], 'after the copy of the static depth back into the live map');
   assert.equal(cache.telemetry().reuses[0], 1);
 
+  // a snapped pose change: the ordinary render while it moves, then one re-render once it holds
   r = frame(f, cache, { mutate: () => { f.light.position.x += 0.4; } });
-  assert.equal(renders(r.log).length, 2, 'a snapped pose change re-renders the static layer');
+  assert.equal(r.handled, false, 'the frame of the snap renders the ordinary way');
+  assert.deepEqual(renders(r.log)[0].drawn, ['terrain', 'trees', 'moored-hull', 'crate', 'tank-proxy']);
+  for (let i = 1; i < STATIC_SHADOW_SETTLE_FRAMES; i++) assert.equal(frame(f, cache).handled, false, 'and while it settles');
+  r = frame(f, cache);
+  assert.equal(renders(r.log).length, 2, 'held: the static layer is re-rendered at the new pose');
   assert.equal(cache.telemetry().lastRebuildReason, 'pose');
+  // a camera on the move (a new snap every frame) never pays the two passes and the copy
+  const before = cache.telemetry();
+  for (let i = 0; i < 6; i++) {
+    r = frame(f, cache, { mutate: () => { f.light.position.x += 0.4; } });
+    assert.equal(r.handled, false, 'moving: the ordinary render');
+    assert.deepEqual(copies(r.log), [], 'no copy while moving');
+  }
+  const after = cache.telemetry();
+  assert.equal(after.unsettled - before.unsettled, 6);
+  assert.equal(after.rebuilds[0], before.rebuilds[0], 'no re-render while moving');
+  f.light.position.x -= 2.4;
+  settle(f, cache);
+  r = frame(f, cache);
+  assert.equal(renders(r.log).length, 2, 'back at a held pose: one re-render');
 
   r = frame(f, cache, { mutate: () => { f.trees.instanceMatrix.needsUpdate = true; } });
   assert.equal(renders(r.log).length, 2, 'a destroyed instance re-renders the static layer');
@@ -208,12 +238,12 @@ const copies = (log) => log.filter((e) => e.kind === 'copy').map((e) => `${e.fro
   assert.deepEqual(renders(r.log)[0].drawn, ['terrain', 'trees', 'moored-hull', 'crate']);
   assert.equal(cache.telemetry().demotions, 1);
 
-  // a frame whose dynamic pass draws nothing leaves the exact static layer in the live map: the next copy is skipped
+  // a reuse always copies the static layer back (the live map may hold a render the cache did not make: the
+  // deployment warm, the covered prime, a second render in a frame)
   f.tank.visible = false;
-  r = frame(f, cache, { mutate: () => { f.trees.instanceMatrix.needsUpdate = true; } }); // the tank leaving is not static content; force a fresh copy
+  frame(f, cache);
   r = frame(f, cache);
-  assert.deepEqual(copies(r.log), [], 'nothing dynamic drew last frame: the live map still holds the static copy');
-  assert.ok(cache.telemetry().skippedCopies >= 1);
+  assert.deepEqual(copies(r.log), ['cache>live'], 'even after a dynamic pass that drew nothing');
   f.tank.visible = true;
 
   // arming: one render per cascade per lighting update
@@ -224,14 +254,17 @@ const copies = (log) => log.filter((e) => e.kind === 'copy').map((e) => `${e.fro
   r = frame(f, cache, { enabled: false });
   assert.equal(r.handled, false, '__SHADOW_DEBUG.noStaticCache: the ordinary render');
   r = frame(f, cache);
-  assert.equal(renders(r.log).length, 2, 're-enabled: the static layer is rebuilt before it is trusted');
+  assert.equal(renders(r.log).length, 2, 're-enabled: the static layer is rebuilt before it is trusted (the pose held throughout)');
 
   // a reallocated map (preset change): a new copy target of the new size
   const resized = new THREE.WebGLRenderTarget(128, 128, { depthTexture: new THREE.DepthTexture(128, 128) });
   f.light.shadow.map = resized;
   f.light.shadow.mapSize.set(128, 128);
-  r = frame(f, cache);
+  r = frame(f, cache); // the map size is part of the pose: this frame and the next settle
+  assert.equal(r.handled, false);
   assert.ok(r.log.some((e) => e.kind === 'init' && e.width === 128), 'the copy target follows the live map size');
+  for (let i = 1; i < STATIC_SHADOW_SETTLE_FRAMES; i++) assert.equal(frame(f, cache).handled, false);
+  r = frame(f, cache);
   assert.equal(renders(r.log).length, 2);
   f.light.shadow.map = null;
   r = frame(f, cache);
@@ -240,6 +273,7 @@ const copies = (log) => log.filter((e) => e.kind === 'copy').map((e) => `${e.fro
   // a refused blit fails open for the session
   f.light.shadow.map = f.live;
   f.light.shadow.mapSize.set(256, 256);
+  settle(f, cache);
   f.failCopies();
   r = frame(f, cache);
   assert.equal(r.handled, true);
@@ -301,4 +335,4 @@ const copies = (log) => log.filter((e) => e.kind === 'copy').map((e) => `${e.fro
   assert.match(lighting, /invalidateShadowMaps\(\): void \{[\s\S]{0,140}staticShadowCache\?\.dispose\(\)/);
 }
 
-console.log('shadow static cache: pose/content/forced invalidation, two-pass render, promotion and demotion, copy skip, arming, fail-open, router PASS');
+console.log('shadow static cache: pose/content/forced invalidation, two-pass render, promotion and demotion, the settle rule, arming, fail-open, router PASS');
