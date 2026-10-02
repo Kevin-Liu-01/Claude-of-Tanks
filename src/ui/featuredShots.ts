@@ -12,7 +12,7 @@
  * stay browsable without returning to the player-facing loading rotation.
  */
 import { getLocalizedMapName, isMapId } from '../world/maps/catalog.ts';
-import { MAP_HEROES } from './mapThumbs.ts';
+import { mapBackdropFor, type ViewportSample } from './mapBackdrop.ts';
 
 interface FeaturedShot {
   readonly img: string;
@@ -151,15 +151,16 @@ export function randomFeaturedShot(): FeaturedShot {
 /**
  * Current overview for a battlefield. The first match is intentional and
  * stable so a loading screen does not change art when network setup restages
- * the same operation.
+ * the same operation. With a viewport the image tier follows it (mapBackdrop.ts);
+ * without one it is the native 4K hero.
  * @param {string} mapId
  */
-export function featuredShotForMap(mapId: string): FeaturedShot {
+export function featuredShotForMap(mapId: string, viewport: ViewportSample | null = null): FeaturedShot {
   const key = String(mapId || '').trim().toLowerCase();
   // Reuse the packaged map art; publishing a new capture updates every surface.
   if (isMapId(key)) {
     return {
-      img: MAP_HEROES[key], capKey: 'garage.featuredShot.battlefieldOverview',
+      img: mapBackdropFor(key, viewport), capKey: 'garage.featuredShot.battlefieldOverview',
       capVars: { name: getLocalizedMapName(key) },
       maps: [key], focal: '50% 50%',
     };

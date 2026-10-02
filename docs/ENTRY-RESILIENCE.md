@@ -36,10 +36,14 @@ stores it in Workers Analytics Engine.
 Sink: the Cloudflare Worker `cloudflare/telemetry` (`README.md` there has
 the deploy steps), reached through `VITE_TELEMETRY_URL` = its origin, baked
 into the bundle and into the `cot-telemetry` meta's `data-url` for the
-inline watchdog. Unset, both post to the Vercel fallback `POST
-/api/telemetry` (same origin; the ICE endpoint's origin allowlist,
-`COT_ALLOWED_ORIGINS` extends it), which validates and logs one JSON line
-per record and stores nothing. Bodies are JSON as `text/plain` — a simple
+inline watchdog. Unset (the deploy strips the sensitive value, so the live
+`data-url` is empty), both recover the Worker by the official-host rule — the
+module client in `telemetryEndpoints()`, the inline watchdog in
+`telemetryErrorEndpoint()` since 2026-10-01
+(`src/entry/inlineWatchdogSink.selftest.mjs`); every other host posts to the
+Vercel fallback `POST /api/telemetry` (same origin; the API origin allowlist
+of `api/_lib/policy.ts`, `COT_ALLOWED_ORIGINS` extends it), which validates
+and logs one JSON line per record and stores nothing. Bodies are JSON as `text/plain` — a simple
 cross-origin request, no preflight — capped at 2 KB by both sinks (the
 client trims to 1.5 KB). Three routes on the Worker:
 

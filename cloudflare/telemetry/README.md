@@ -64,12 +64,12 @@ plan is a D1 table with a 30-day cleanup cron — not this Worker today.
 3. `npx wrangler login` once on the machine, then `npx wrangler deploy`
    (from the repository root: `npm run deploy:telemetry:cloudflare`). The
    deploy creates the Worker `cot-telemetry`, its rate-limit namespace
-   (`2609055512`; the signaling Worker owns `2609055511`) and the Analytics
+   (`2609055512`; the rooms Worker owns `2609055513`) and the Analytics
    Engine binding `COT_TELEMETRY` → dataset `cot_telemetry`. The dataset
-   itself appears on the first accepted record. After a change to
-   `wrangler.jsonc`, run `npm run types` and commit the regenerated
-   `worker-configuration.d.ts` (it carries Cloudflare's Apache-2.0 notice;
-   `docs/ATTRIBUTION.md` lists it).
+   itself appears on the first accepted record. `npm test` and
+   `npm run typecheck` regenerate `worker-configuration.d.ts` with
+   `wrangler types` first; the file is gitignored, never committed
+   (it carries Cloudflare's Apache-2.0 notice; `docs/ATTRIBUTION.md` lists it).
 4. Verify: `curl -s https://cot-telemetry.<subdomain>.workers.dev/healthz`
    answers `{"ok":true,…}`, and
    `curl -si -X POST -H 'Origin: https://cot.kevinliu.studio' -H 'content-type: text/plain' --data '{"v":2,"sid":"probe0000000000","build":"probe","kind":"session","outcome":"ready"}' https://cot-telemetry.<subdomain>.workers.dev/v1/session`

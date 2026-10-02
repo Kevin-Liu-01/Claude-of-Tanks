@@ -129,6 +129,36 @@ function localizeStructuredData(
   );
 }
 
+/** Meta naming a locale's lazy catalog chunk; the Vite build adds one to every page (vite.config.ts). */
+export const LOCALE_CATALOG_META = 'cot-locale-catalog';
+
+/**
+ * A Chinese document preloads its catalog beside the module entry: the i18n
+ * runtime awaits it before the page's UI evaluates, so fetching it with the
+ * boot graph keeps that await off the critical path. English documents keep
+ * the meta inert and never download the chunk.
+ */
+function addLocaleCatalogPreload(html: string, locale: SupportedLocale): string {
+  if (locale === DEFAULT_LOCALE) return html;
+  let href = '';
+  for (const [tag] of html.matchAll(/<meta\b[^>]*>/gi)) {
+    if (new RegExp(`\\bname=["']${LOCALE_CATALOG_META}["']`, 'i').test(tag)
+      && new RegExp(`\\bdata-locale=["']${locale}["']`, 'i').test(tag)) {
+      href = /\bcontent=["']([^"']+)["']/i.exec(tag)?.[1] ?? '';
+      break;
+    }
+  }
+  if (!/^\/assets\/[^"'<>\s]+\.js$/.test(href)) return html;
+  const link = `<link rel="modulepreload" crossorigin href="${escapeAttribute(href)}">`;
+  if (html.includes(link)) return html;
+  const entry = /<script\b[^>]*\btype=["']module["'][^>]*\bsrc=["'][^"']+["'][^>]*>\s*<\/script>/i.exec(html);
+  if (entry) {
+    const at = entry.index + entry[0].length;
+    return `${html.slice(0, at)}\n${link}${html.slice(at)}`;
+  }
+  return html.replace(/<\/head>/i, `${link}\n</head>`);
+}
+
 /**
  * Produce a crawl-time locale document. Visible body copy is still owned by
  * the runtime data-i18n pass; this owner localizes discovery metadata before
@@ -164,5 +194,6 @@ export function localizeHtmlDocument(
   output = replaceMeta(output, 'property', 'og:url', canonical);
   output = replaceMeta(output, 'property', 'og:locale', locale.replace('-', '_'));
   output = addLocaleLinks(output, route);
+  output = addLocaleCatalogPreload(output, locale);
   return localizeStructuredData(output, route, locale);
 }

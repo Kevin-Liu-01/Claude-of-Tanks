@@ -334,17 +334,24 @@ export function sourcedTerrainLayerPlanned(
   return TERRAIN_PLAN[resolveSourcedTerrainPalette(mapId, settings)][key] != null;
 }
 
+// ARCH-P8: decoded source photos only feed the bounded composite caches below
+// (8 albedo + 4 normal canvases). Keep the most recently used photos up to one
+// battlefield's working set — three terrain sets plus the four building sets,
+// four maps each — so a map's own loads never evict each other, while earlier
+// battlefields' photos are released (the cache used to keep all 48 forever).
+// src/world/sourcedImageCache.selftest.mjs proves the bound covers every map.
+const IMAGE_CACHE_MAX = 28;
 const _imgCache = new Map<string, Promise<HTMLImageElement>>();
 function loadImage(url: string): Promise<HTMLImageElement> {
-  if (!_imgCache.has(url)) {
-    _imgCache.set(url, new Promise<HTMLImageElement>((resolve, reject) => {
-      const im = new Image();
-      im.onload = () => resolve(im);
-      im.onerror = () => reject(new Error(`sourced texture missing: ${url}`));
-      im.src = url;
-    }));
-  }
-  return _imgCache.get(url)!;
+  const cached = _imgCache.get(url);
+  if (cached) return touchLru(_imgCache, url, cached, IMAGE_CACHE_MAX);
+  const request = new Promise<HTMLImageElement>((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error(`sourced texture missing: ${url}`));
+    im.src = url;
+  });
+  return touchLru(_imgCache, url, request, IMAGE_CACHE_MAX);
 }
 
 // Readback-heavy AO and roughness decoding shares one opted-in scratch

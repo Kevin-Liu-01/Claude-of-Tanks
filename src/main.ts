@@ -111,6 +111,7 @@ import { waterContactMaskAt } from './world/waterContactMask.ts';
 import type { GroundDisturbance } from './world/groundPressure.ts';
 import { tankContactRect } from './sim/tankContactShape.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
+import { currentViewport, mapBackdropFor } from './ui/mapBackdrop.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
@@ -136,6 +137,7 @@ import {
 } from './ui/garageStage.ts';
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
+import { classifyChunkFailure } from './app/lazyImportRetry.ts';
 import {
   GARAGE_VARIANTS, getGarageVariant, loadGarageVariantId, saveGarageVariantId,
 } from './game/garageVariants.ts';
@@ -219,7 +221,8 @@ import {
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState } from './game/stateCore.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
-import { soloRosterPlan } from './game/state.ts';
+// Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
+import { soloRosterPlan } from './game/soloRosterPlan.ts';
 import { matchRulesetFor } from './sim/matchRuleset.ts';
 import { normalizeGameMode } from './sim/matchModes.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
@@ -270,8 +273,8 @@ const SIM_DT = 1 / 60;
 const VERDANT_GARAGE_POS = Object.freeze({ x: -1500, z: -1500 });
 const GARAGE_POS = new THREE.Vector3(VERDANT_GARAGE_POS.x, 0, VERDANT_GARAGE_POS.z);
 const pendingRoomInvitePromise = startupIntent.pendingRoomInvite;
-const mapHeroes: Readonly<Record<string, string>> = MAP_HEROES;
-const mapThumbs: Readonly<Record<string, string>> = MAP_THUMBS;
+// FE-P13: battle loading art follows the viewport (a 1280 card on small and medium screens, else the 4K hero).
+const battleBackdrop = (mapId: string): string => mapBackdropFor(mapId, currentViewport());
 const minimapAssetUrl = (mapId: string): string => (
   getMinimapAssetUrl(mapId, import.meta.env.BASE_URL || '/')
 );
@@ -855,6 +858,10 @@ const garageDressingScheduler = createGarageDressingScheduler({
   acquireBackgroundWork: (kind, stillValid) =>
     garageIdleWorkCoordinator.acquire(kind, stillValid),
   onVisualChange: () => invalidateGaragePresentation(),
+  // INFRA-P11: failures back off and stop; a removed hashed chunk (this tab outlived its deployment)
+  // surfaces the inline watchdog's reload action instead of retrying.
+  classifyFailure: (error) => classifyChunkFailure(error),
+  onChunkMissing: () => window.__COT_BOOT_RECOVERY?.showRetry?.('module'),
 });
 const scheduleGarageDressingBuild = garageDressingScheduler.schedule;
 
@@ -1948,7 +1955,7 @@ const networkBattleIntentCover = createIntentCover({
   rosterRows: rosterPresentation.lobbyRows,
   getMapPresentation: (mapId, fallback) => ({
     name: mapId ? getMapName(mapId) : fallback,
-    thumb: mapId ? mapHeroes[mapId] || mapThumbs[mapId] || '' : '',
+    thumb: mapId ? battleBackdrop(mapId) : '',
     biome: mapId || 'none',
   }),
   coverRendering: battleEntryLifecycle.coverRendering,
@@ -2054,7 +2061,7 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     getMapName,
     loadMapConfig: (mapId: string) => import('./world/maps/index.ts')
       .then(({ getMapConfig }) => getMapConfig(mapId)),
-    getMapThumb: (mapId: string) => mapHeroes[mapId] || mapThumbs[mapId] || '',
+    getMapThumb: (mapId: string) => battleBackdrop(mapId),
     hasCachedWorld: (mapId: string) => !!worldCache.get(mapId),
     getWorld: () => {
       const world = currentWorld();
@@ -2298,7 +2305,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           getMap: (mapId: string) => {
             return {
               name: getMapName(mapId),
-              thumb: mapHeroes[mapId] || mapThumbs[mapId] || '',
+              thumb: battleBackdrop(mapId),
               biome: mapId,
             };
           },

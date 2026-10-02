@@ -13,8 +13,12 @@ adapters thin; room policy belongs to `src/mp/room` and `server/`, not browser c
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
 `ice.ts` provides validated static, coturn, or Cloudflare TURN configuration:
-the client (`src/mp/transport/iceConfig.ts`) asks `/api/ice` on https pages and
-uses host candidates on LAN. `github-stars.ts` proxies the public repository
+the client (`src/mp/transport/iceConfig.ts`) asks `/api/ice` on https pages, once
+per peer connection, and uses host candidates on LAN. It admits a same-origin page
+(`Sec-Fetch-Site: same-origin`) or an allow-listed `Origin`, leases credentials
+for one hour (`COT_TURN_TTL_SECONDS` may only shorten it) and logs one structured
+`cot-ice` line per upstream failure; `github-stars.ts` logs `cot-github-stars`
+lines the same way. `github-stars.ts` proxies the public repository
 count with bounded upstream requests and cache headers. `telemetry.ts` is the
 entry-telemetry fallback sink (`docs/ENTRY-RESILIENCE.md`), used only while
 `VITE_TELEMETRY_URL` is unset: one v2 record per request validated through the
@@ -34,6 +38,11 @@ multiplayer (`api/signal.ts`) left the tree with the cutover of 2026-09-29
 <!-- agent-docs:fill:patterns -->
 
 - Preserve allowed-origin checks, method/status contracts, and upstream timeouts.
+- Origins, the canonical host and the Worker URLs come from the deployment policy
+  module `api/_lib/policy.ts` (`allowedApiOrigins(env)`); never repeat them in a
+  function. `_`-prefixed paths are shared code, not routes. The Workers'
+  `ALLOWED_ORIGINS` and the entry telemetry literals are pinned to it by
+  `node tools/deployment-policy.selftest.mjs`.
 - Keep ICE responses private/no-store and credentials server-side. Document
   environment variable names only; never commit secret values or log credentials.
 - Handler factories accept injected fetch, clock, and environment dependencies

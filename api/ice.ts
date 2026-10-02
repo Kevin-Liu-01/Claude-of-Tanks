@@ -1,18 +1,26 @@
 import { createHmac } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { RuntimeValue } from '../src/runtimeTypes.ts';
-const OFFICIAL_ORIGINS = new Set([
-  'https://cot.kevinliu.studio',
-  'https://claudeoftanks.kevinliu.studio',
-  'https://claude-of-tanks.vercel.app',
-  'https://claude-of-tanks-kl01s-projects.vercel.app',
-]);
-const DEFAULT_TTL_SECONDS = 8 * 60 * 60;
+import { allowedApiOrigins } from './_lib/policy.ts';
+
+/**
+ * TURN credential lifetime (INFRA-P7, 2026-10-01; eight hours before). The client fetches `/api/ice` once per peer
+ * connection — every connect attempt of the player's link (`WebRtcTransport.connect`: each reconnect and each host
+ * migration builds a new connection) and every offer the host accepts (`createRtcHostAcceptor`) — and a connection
+ * lives at most one match: the longest clock is 900 s, plus the 5 s countdown and the 8 s ending hold. Cloudflare
+ * disconnects a relay shortly after its credential expires and the transport reconnects with a fresh one, so one hour
+ * covers every clocked match about four times over and costs an Endless Horde run (no clock) one reconnect per hour on
+ * relayed links only. `COT_TURN_TTL_SECONDS` may shorten it to twenty minutes, never lengthen it.
+ */
+export const ICE_CREDENTIAL_TTL_SECONDS = 60 * 60;
+export const ICE_CREDENTIAL_MIN_TTL_SECONDS = 20 * 60;
 
 interface IceConfigHandlerOptions {
   env?: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
   now?: () => number;
+  /** One structured line per upstream failure or configuration fault (never a token, key id or credential). */
+  warn?: (line: string) => void;
 }
 
 export type IceConfigHandler = (
@@ -22,12 +30,6 @@ export type IceConfigHandler = (
 
 function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null;
-}
-
-function configuredOrigins(env: NodeJS.ProcessEnv): Set<string> {
-  const extra = String(env.COT_ALLOWED_ORIGINS || '')
-    .split(',').map((value) => value.trim()).filter(Boolean);
-  return new Set([...OFFICIAL_ORIGINS, ...extra]);
 }
 
 function send(response: ServerResponse, status: number, body: RuntimeValue): void {
@@ -49,9 +51,21 @@ function validIceServers(value: RuntimeValue): value is RTCIceServer[] {
 }
 
 function credentialTtl(env: NodeJS.ProcessEnv): number {
-  const requestedTtl = Number(env.COT_TURN_TTL_SECONDS || DEFAULT_TTL_SECONDS);
-  return Math.max(3_600, Math.min(86_400,
-    Number.isFinite(requestedTtl) ? Math.round(requestedTtl) : DEFAULT_TTL_SECONDS));
+  const requestedTtl = Number(env.COT_TURN_TTL_SECONDS || ICE_CREDENTIAL_TTL_SECONDS);
+  return Math.max(ICE_CREDENTIAL_MIN_TTL_SECONDS, Math.min(ICE_CREDENTIAL_TTL_SECONDS,
+    Number.isFinite(requestedTtl) ? Math.round(requestedTtl) : ICE_CREDENTIAL_TTL_SECONDS));
+}
+
+/**
+ * Who may mint relay credentials (INFRA-P7): a page on this site — a same-origin GET carries
+ * `Sec-Fetch-Site: same-origin` and no Origin — or an allow-listed cross-origin frontend, by its Origin. A request with
+ * neither (curl, a script) is refused: every credential bills relay egress to the deployment, and the endpoint used to
+ * answer an anonymous `curl` with eight hours of TURN access.
+ */
+function iceRequestAdmitted(request: IncomingMessage, env: NodeJS.ProcessEnv): boolean {
+  const origin = String(request.headers?.origin || '');
+  if (origin) return allowedApiOrigins(env).has(origin);
+  return String(request.headers?.['sec-fetch-site'] || '').toLowerCase() === 'same-origin';
 }
 
 interface CoturnCredentialConfiguration {
@@ -86,18 +100,25 @@ export function createIceConfigHandler({
   env = process.env,
   fetchImpl = globalThis.fetch,
   now = Date.now,
+  warn = (line) => console.warn(line),
 }: IceConfigHandlerOptions = {}): IceConfigHandler {
+  const configurationWarned = new Set<string>();
+  const warnConfiguration = (error: string): void => {
+    if (configurationWarned.has(error)) return;
+    configurationWarned.add(error);
+    warn(JSON.stringify({ tag: 'cot-ice', event: 'configuration', error }));
+  };
   return async function iceConfig(request: IncomingMessage, response: ServerResponse): Promise<void> {
     if (request.method !== 'GET') {
       response.setHeader('allow', 'GET');
       send(response, 405, { error: 'method_not_allowed' });
       return;
     }
-    const origin = String(request.headers?.origin || '');
-    if (origin && !configuredOrigins(env).has(origin)) {
+    if (!iceRequestAdmitted(request, env)) {
       send(response, 403, { error: 'origin_forbidden' });
       return;
     }
+    const origin = String(request.headers?.origin || '');
     if (origin) {
       // Explicit external ICE configuration uses credentialed GET. Reflect
       // only an admitted origin; a wildcard would be both incorrect for
@@ -113,6 +134,7 @@ export function createIceConfigHandler({
         if (!validIceServers(iceServers)) throw new Error('invalid ICE server list');
         send(response, 200, { iceServers, relayOnly: false });
       } catch (_) {
+        warnConfiguration('turn_configuration_invalid');
         send(response, 503, { error: 'turn_configuration_invalid' });
       }
       return;
@@ -120,6 +142,7 @@ export function createIceConfigHandler({
 
     const coturn = coturnCredentials(env, now);
     if (coturn === 'invalid') {
+      warnConfiguration('turn_configuration_invalid');
       send(response, 503, { error: 'turn_configuration_invalid' });
       return;
     }
@@ -131,10 +154,18 @@ export function createIceConfigHandler({
     const keyId = String(env.COT_CLOUDFLARE_TURN_KEY_ID || '').trim();
     const token = String(env.COT_CLOUDFLARE_TURN_API_TOKEN || '').trim();
     if (!keyId || !token) {
+      warnConfiguration('turn_service_unconfigured');
       send(response, 503, { error: 'turn_service_unconfigured' });
       return;
     }
     const ttl = credentialTtl(env);
+    const startedAt = now();
+    // One line per failed upstream call: status, the cause and the latency — a TURN outage used to leave no trace.
+    const upstreamFailure = (error: string, upstreamStatus: number | null, reason: string): void => {
+      warn(JSON.stringify({
+        tag: 'cot-ice', event: 'upstream_failure', error, upstreamStatus, reason, latencyMs: Math.max(0, now() - startedAt),
+      }));
+    };
     try {
       const upstream = await fetchImpl(
         `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(keyId)}` +
@@ -150,12 +181,22 @@ export function createIceConfigHandler({
         },
       );
       if (!upstream.ok) {
+        upstreamFailure('turn_service_unavailable', upstream.status, 'http');
         send(response, 503, { error: 'turn_service_unavailable' });
         return;
       }
-      const body: RuntimeValue = await upstream.json();
+      let body: RuntimeValue;
+      try {
+        body = await upstream.json();
+      } catch (_) {
+        // the client retries this code, as it did when the parse failure fell through to the catch below
+        upstreamFailure('turn_service_unavailable', upstream.status, 'invalid_json');
+        send(response, 503, { error: 'turn_service_unavailable' });
+        return;
+      }
       const iceServers = isRecord(body) ? body.iceServers : null;
       if (!validIceServers(iceServers)) {
+        upstreamFailure('turn_service_invalid', upstream.status, 'invalid_body');
         send(response, 503, { error: 'turn_service_invalid' });
         return;
       }
@@ -164,7 +205,9 @@ export function createIceConfigHandler({
         relayOnly: false,
         expiresInSeconds: ttl,
       });
-    } catch (_) {
+    } catch (error) {
+      const name = error && typeof error === 'object' && 'name' in error ? String(error.name) : '';
+      upstreamFailure('turn_service_unavailable', null, name === 'TimeoutError' || name === 'AbortError' ? 'timeout' : 'network');
       send(response, 503, { error: 'turn_service_unavailable' });
     }
   };

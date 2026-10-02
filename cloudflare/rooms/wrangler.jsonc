@@ -10,7 +10,7 @@
   "observability": { "enabled": true, "head_sampling_rate": 0.1 },
   "ratelimits": [{
     "name": "ROOM_CONNECT_LIMITER",
-    "namespace_id": "2609055512",
+    "namespace_id": "2609055513",
     "simple": { "limit": 120, "period": 60 }
   }],
   "vars": {

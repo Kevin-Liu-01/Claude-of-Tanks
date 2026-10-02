@@ -29,17 +29,49 @@ const forbiddenMethod = await invoke(createGitHubStarsHandler(), 'POST');
 assert.equal(forbiddenMethod.status, 405);
 assert.equal(forbiddenMethod.headers.get('allow'), 'GET');
 
+// INFRA-P7 (2026-10-01): every failed upstream call leaves one structured warning — GitHub's status, its rate-limit
+// budget (unauthenticated calls share Vercel's egress addresses), the cause and the latency.
+const warnings = [];
+const warn = (line) => warnings.push(JSON.parse(line));
+let clock = 1_000;
+const now = () => (clock += 25);
+
 const rateLimited = await invoke(createGitHubStarsHandler({
-  fetchImpl: async () => new Response('{}', { status: 403 }),
+  fetchImpl: async () => new Response('{}', { status: 403, headers: { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': '1790000000' } }),
+  warn, now,
 }));
 assert.equal(rateLimited.status, 503);
 assert.equal(rateLimited.body.error, 'github_unavailable');
 assert.equal(rateLimited.headers.get('cache-control'), 'private, no-store, max-age=0');
+assert.deepEqual(warnings.at(-1), {
+  tag: 'cot-github-stars', event: 'upstream_failure', error: 'github_unavailable', upstreamStatus: 403, reason: 'http',
+  rateLimitRemaining: '0', rateLimitReset: '1790000000', latencyMs: 25,
+}, 'a refused budget is visible as such');
 
 const invalid = await invoke(createGitHubStarsHandler({
   fetchImpl: async () => new Response(JSON.stringify({ stargazers_count: '321' }), { status: 200 }),
+  warn, now,
 }));
 assert.equal(invalid.status, 503);
 assert.equal(invalid.body.error, 'github_response_invalid');
+assert.equal(warnings.at(-1).reason, 'invalid_body');
+assert.equal(warnings.at(-1).upstreamStatus, 200);
 
-console.log('github stars endpoint selftest: live count, edge cache, and failure fallback passed');
+for (const [label, fetchImpl, reason, upstreamStatus] of [
+  ['a timeout', async () => { throw new DOMException('timed out', 'TimeoutError'); }, 'timeout', null],
+  ['a network failure', async () => { throw new TypeError('fetch failed'); }, 'network', null],
+  ['a body that is not JSON', async () => new Response('<html>', { status: 200 }), 'invalid_json', 200],
+]) {
+  const failed = await invoke(createGitHubStarsHandler({ fetchImpl, warn, now }));
+  assert.equal(failed.status, 503, label);
+  assert.equal(failed.body.error, 'github_unavailable', label);
+  assert.equal(warnings.at(-1).reason, reason, label);
+  assert.equal(warnings.at(-1).upstreamStatus, upstreamStatus, label);
+}
+const before = warnings.length;
+await invoke(createGitHubStarsHandler({
+  fetchImpl: async () => new Response(JSON.stringify({ stargazers_count: 7 }), { status: 200 }), warn, now,
+}));
+assert.equal(warnings.length, before, 'a healthy answer logs nothing');
+
+console.log('github stars endpoint selftest: live count, edge cache, failure fallback and structured upstream warnings passed');
