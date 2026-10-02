@@ -19,6 +19,9 @@ import { deinterleave } from './pcm.mjs';
 import { measure, onsets } from './sfx-qa.mjs';
 import { masterTake } from './master.mjs';
 
+/** Exactly one asset's take files (`<id>_<n>.webm|m4a`): never a longer id sharing the prefix. */
+const takeFileOf = (id) => new RegExp(`^${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_\\d+\\.(webm|m4a)$`);
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
 const OUT = join(ROOT, 'public', 'audio', 'sfx');
@@ -46,6 +49,9 @@ function clippedRun(file) {
 }
 
 const PUNCHY = new Set(['weapon-close', 'impact', 'foley', 'ui', 'radio']);
+// Takes judged on low-end weight, and groups judged on staying dark (no bright, jingly takes).
+const WEIGHTY = new Set(['weapon-close', 'weapon-far', 'impact']);
+const DARK_GROUPS = new Set(['ui', 'stingers', 'mechanism', 'equipment', 'edge']);
 
 /** Assets played once per round fired/struck: one report each, never a burst. */
 const SINGLE_SHOT = /^(mg_|ac_\d+_close|ac_far_|bullet_|ricochet_light|radio_key_in)/;
@@ -80,6 +86,11 @@ function score(m, entry, clip) {
   }
   // Dead air: a "4 s" take whose energy is over in 0.2 s is usually a misfire.
   if (!entry.loop && m.decayS < 0.08) s -= 1;
+  // Weight: a serious war game wants the low end in its guns and blasts, and
+  // nothing bright or jingly in its interface, stings and mechanisms.
+  const [low, lowMid, , high] = m.bands || [0, 0, 0, 0];
+  if (WEIGHTY.has(entry.proc)) s += 4 * low - 1.5 * high;
+  else if (DARK_GROUPS.has(entry.group)) s += 1.5 * (low + lowMid) - 3 * high;
   return s;
 }
 
@@ -103,7 +114,7 @@ for (const entry of SFX_CATALOG) {
   const chosen = pinned ? pinned.map((t) => ranked.find((r) => r.take === t)).filter(Boolean) : ranked.slice(0, entry.variants);
   const dir = join(OUT, entry.group);
   mkdirSync(dir, { recursive: true });
-  for (const name of readdirSync(dir)) if (name.startsWith(`${entry.id}_`)) rmSync(join(dir, name));
+  for (const name of readdirSync(dir)) if (takeFileOf(entry.id).test(name)) rmSync(join(dir, name));
   const files = [];
   chosen.forEach((pick, i) => {
     const channels = firstShotOnly(deinterleave(readFileSync(pick.file), 2), SR, entry);

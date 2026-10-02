@@ -98,7 +98,7 @@ const launchers = [
 const mechanisms = [
   sfx('breech_open', 'mechanism', `One-shot of a heavy tank gun breech block opening: steel sliding, solid metallic clack, close-mic inside the turret. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'foley' }),
   sfx('breech_close', 'mechanism', `One-shot of a heavy tank gun breech slamming shut: loud satisfying steel clack, close-mic inside the turret. ${NO_MUSIC}.`, 1, { variants: 3, takes: 4, proc: 'foley' }),
-  sfx('case_eject_brass', 'mechanism', `One-shot of a large brass artillery cartridge case ejected and clanging onto a steel floor, rolling. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 3, proc: 'foley' }),
+  sfx('case_eject_brass', 'mechanism', `One-shot of a huge spent brass tank gun cartridge case dropped onto a steel turret floor: a heavy dull clang and a low rolling rumble, not tinkly. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 3, proc: 'foley' }),
   sfx('case_eject_stub', 'mechanism', `One-shot of a spent tank round stub base ejected: dull metallic clunk and short rattle on steel. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 3, proc: 'foley' }),
   sfx('shell_grab', 'mechanism', `One-shot of a loader pulling a heavy tank shell out of a steel ready rack: metal scrape and clunk. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 3, proc: 'foley' }),
   sfx('shell_ram', 'mechanism', `One-shot of a heavy tank shell rammed into a gun breech: sliding metal and a solid thunk. ${NO_MUSIC}.`, 1, { variants: 3, takes: 4, proc: 'foley' }),
@@ -109,7 +109,7 @@ const mechanisms = [
   sfx('ac_feed', 'mechanism', `One-shot of an autocannon ammunition belt feeding and the bolt cycling: crisp mechanical clatter. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'foley' }),
   sfx('magazine_swap', 'mechanism', `One-shot of a heavy ammunition box latched into an autocannon feed: metallic clatter and a firm latch. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 2, proc: 'foley' }),
   sfx('missile_tube_load', 'mechanism', `One-shot of a missile canister sliding into a launcher tube: hollow metal scrape and a locking latch. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 2, proc: 'foley' }),
-  sfx('latch_ready', 'mechanism', `One-shot of a heavy mechanical safety latch clicking into place: crisp metal click. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'foley' }),
+  sfx('latch_ready', 'mechanism', `One-shot of a heavy tank breech safety latch locking into place: a solid low metal clack with no ring. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'foley' }),
 ];
 
 // --------------------------------------------------------------- flybys ---
@@ -127,13 +127,13 @@ const impacts = [
   sfx('pen_light', 'impacts', `One-shot of an autocannon round punching through vehicle armour: sharp metallic crack and tearing. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 4, proc: 'impact' }),
   sfx('pen_interior', 'impacts', `One-shot heard inside a tank as an enemy shell penetrates the hull: deafening bang, ringing steel, metal fragments ricocheting around the crew compartment. ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 3, proc: 'impact' }),
   sfx('ricochet_heavy', 'impacts', `One-shot of a tank shell ricocheting off sloped armour: loud metallic clang and a high whining ricochet flying away. ${NO_MUSIC}.`, 2, { variants: 4, takes: 5, proc: 'impact' }),
-  sfx('ricochet_light', 'impacts', `One-shot of a bullet ricocheting off a steel plate: sharp ping and whizz. ${NO_MUSIC}.`, 1, { variants: 4, takes: 5, proc: 'impact' }),
+  sfx('ricochet_light', 'impacts', `Sound effect: a machine-gun round glancing off thick tank armour: a short hard dull whack and a brief low whir. ${NO_MUSIC}. Very loud, with an immediate hard attack.`, 1, { variants: 4, takes: 5, proc: 'impact' }),
   sfx('nonpen_heavy', 'impacts', `One-shot of a tank shell striking thick armour without penetrating: deep heavy metallic thud, dampened bell-like clang. ${NO_MUSIC}.`, 1.8, { variants: 3, takes: 4, proc: 'impact' }),
   sfx('nonpen_interior', 'impacts', `One-shot heard from inside a tank as a heavy shell slams into the armour outside without penetrating: loud dull bong, hull rattling. ${NO_MUSIC}.`, 2, { variants: 2, takes: 3, proc: 'impact' }),
   sfx('heat_impact', 'impacts', `One-shot of a shaped-charge warhead detonating on tank armour: sharp explosive crack and a hissing jet of molten metal. ${NO_MUSIC}.`, 2, { variants: 2, takes: 3, proc: 'impact' }),
   sfx('he_armor', 'impacts', `One-shot of a high-explosive shell exploding against a tank hull: loud blast with shrapnel peppering steel. ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 3, proc: 'impact' }),
   sfx('era_det', 'impacts', `One-shot of an explosive reactive armour tile detonating: very sharp powerful bang and a metal plate flung away. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('bullet_armor', 'impacts', `One-shot of one single bullet hitting thick steel armour plate: sharp tick and ping. ${NO_MUSIC}.`, 1, { inf: 0.7, variants: 4, takes: 5, proc: 'impact' }),
+  sfx('bullet_armor', 'impacts', `Sound effect: one single heavy machine-gun bullet hitting thick tank armour: a short hard dull thwack with a brief spark, not a high ping. ${NO_MUSIC}. Very loud, with an immediate hard attack.`, 1, { inf: 0.7, variants: 4, takes: 5, proc: 'impact' }),
   sfx('bullet_dirt', 'impacts', `One-shot of one single bullet impact in dirt: short dull thud and puff. ${NO_MUSIC}.`, 1, { inf: 0.7, variants: 3, takes: 4, proc: 'impact' }),
   sfx('bullet_water', 'impacts', `One-shot of one single bullet hitting water: small sharp splash. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'impact' }),
   sfx('ground_dirt', 'impacts', `One-shot of a solid tank shell slamming into earth: heavy thump, clods of dirt raining down. ${NO_MUSIC}.`, 2, { variants: 3, takes: 4, proc: 'impact' }),
@@ -330,7 +330,7 @@ const equipment = [
   sfx('first_aid', 'equipment', `One-shot of a medical kit opened in a hurry: zipper, plastic wrapper torn, bandage ripped. ${NO_MUSIC}.`, 2.5, { variants: 1, takes: 2, proc: 'foley' }),
   sfx('extinguisher', 'equipment', `One-shot of an automatic fire suppression system discharging in an engine compartment: sudden powerful pressurised gas blast and hiss. ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 3, proc: 'foley' }),
   sfx('ammo_select', 'equipment', `One-shot of a loader sliding a tank shell back into a steel rack and grabbing another: clunks and a scrape. ${NO_MUSIC}.`, 1.5, { variants: 1, takes: 2, proc: 'foley' }),
-  sfx('missile_mode', 'equipment', `One-shot of a fire-control system switching to missile mode: electronic chirp and a servo whir. ${NO_MUSIC}.`, 1.2, { variants: 1, takes: 2, proc: 'ui' }),
+  sfx('missile_mode', 'equipment', `One-shot of a tank fire-control system switched to missile mode: a heavy relay clack and a low servo whir. ${NO_MUSIC}.`, 1.2, { variants: 1, takes: 2, proc: 'ui' }),
 ];
 
 // ------------------------------------------------------------- ambience ---
@@ -451,17 +451,17 @@ const edgeCases = [
   sfx('engine_flood', 'edge', `One-shot of a diesel engine choking as water floods the intake: gurgling bubbles, sputtering, dying. ${NO_MUSIC}.`, 3, { variants: 1, takes: 2, proc: 'foley' }),
   sfx('bubbles_loop', 'edge', `Seamless loop of heavy bubbling as a vehicle sits submerged in deep water. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 1, proc: 'loop' }),
   sfx('hull_debris_patter', 'edge', `One-shot of dirt clods and small stones raining down onto a steel tank hull after a near miss. ${NO_MUSIC}.`, 2, { variants: 2, takes: 3, proc: 'foley' }),
-  sfx('scope_in', 'edge', `One-shot of a tank gunner's sight being engaged: brow pad contact, a soft optical shutter click and a short servo whir. ${NO_MUSIC}.`, 1, { variants: 1, takes: 2, proc: 'foley' }),
-  sfx('scope_out', 'edge', `One-shot of leaving a tank gunner's sight: soft optical click and a fabric rustle. ${NO_MUSIC}.`, 0.8, { variants: 1, takes: 2, proc: 'foley' }),
+  sfx('scope_in', 'edge', `One-shot of a tank gunner pressing his face into the sight's rubber brow pad: soft leather contact and a low mechanical shutter clunk. ${NO_MUSIC}.`, 1, { variants: 1, takes: 2, proc: 'foley' }),
+  sfx('scope_out', 'edge', `One-shot of a tank gunner pulling back from the sight: a soft leather creak and a low mechanical clunk. ${NO_MUSIC}.`, 0.8, { variants: 1, takes: 2, proc: 'foley' }),
   sfx('zoom_step', 'edge', `One-shot of a gun sight zoom lens changing magnification: quick mechanical ratchet click with a tiny motor. ${NO_MUSIC}.`, 0.8, { variants: 2, takes: 3, proc: 'foley' }),
-  sfx('lock_on', 'edge', `One-shot of a tank fire-control computer locking onto a target: a short rising electronic tone and a confirming beep. ${NO_MUSIC}.`, 1, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('lock_off', 'edge', `One-shot of a fire-control lock releasing: a short falling electronic blip. ${NO_MUSIC}.`, 0.8, { variants: 1, takes: 2, proc: 'ui' }),
+  sfx('lock_on', 'edge', `One-shot of a tank fire-control system locking a target, heard through a crew headset: one short low muffled tone. ${NO_MUSIC}.`, 1, { variants: 1, takes: 2, proc: 'ui' }),
+  sfx('lock_off', 'edge', `One-shot of a tank fire-control lock released, heard through a crew headset: one short low muffled falling tone. ${NO_MUSIC}.`, 0.8, { variants: 1, takes: 2, proc: 'ui' }),
   sfx('missile_warning', 'edge', `One-shot of a vehicle missile approach warning: rapid urgent electronic beeping. ${NO_MUSIC}.`, 2, { variants: 1, takes: 2, proc: 'ui' }),
   sfx('roof_gun_servo', 'edge', `One-shot of a remote weapon station powering up: servo whir and a bolt charging clack. ${NO_MUSIC}.`, 1.4, { variants: 1, takes: 2, proc: 'foley' }),
   sfx('lights_on', 'edge', `One-shot of armoured vehicle headlights switched on: heavy switch click and a relay clunk with a faint electrical hum. ${NO_MUSIC}.`, 1, { variants: 1, takes: 2, proc: 'foley' }),
   sfx('killcam_in', 'edge', `One-shot cinematic slow-motion transition: deep reversed whoosh dropping in pitch into a heavy low thud. ${NO_MUSIC}.`, 2, { variants: 1, takes: 2, proc: 'ui', ch: 'stereo' }),
   sfx('killcam_out', 'edge', `One-shot cinematic time-speed-up transition: rising whoosh snapping back to normal speed. ${NO_MUSIC}.`, 1.5, { variants: 1, takes: 2, proc: 'ui', ch: 'stereo' }),
-  sfx('spectate_switch', 'edge', `One-shot of a camera feed switching: quick electronic swoosh with a soft static tick. ${NO_MUSIC}.`, 1, { variants: 1, takes: 2, proc: 'ui' }),
+  sfx('spectate_switch', 'edge', `One-shot of a military camera feed switching: a short low static thump. ${NO_MUSIC}.`, 1, { variants: 1, takes: 2, proc: 'ui' }),
   sfx('interior_hum_loop', 'edge', `Seamless loop of the inside of a running tank: electrical hum, ventilation fans, muffled engine throb through the hull. ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('interior_rattle_loop', 'edge', `Seamless loop inside a moving tank: equipment rattling, steel creaking and vibrating as it drives over rough ground. ${NO_MUSIC}.`, 5, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('tinnitus', 'edge', `One-shot of ears ringing after a close explosion: a thin high-pitched ringing tone fading slowly, everything else muffled. ${NO_MUSIC}.`, 6, { variants: 1, takes: 2, proc: 'foley' }),
@@ -478,52 +478,56 @@ const radio = [
 ];
 
 // ------------------------------------------------------------ interface ---
-const UI = 'military game interface sound, clean, short';
+// A serious war game's interface is heavy hardware, not a jingle: steel
+// latches, console switches, low brass. Nothing bright, chiming or beeping.
+const UI = 'heavy military hardware sound for a serious war game interface, low and dull, short, no beeps, no chimes, no electronic tones';
+const UI_BRASS = 'short grave military brass and drum accent for a serious war game, low register, no fanfare, no vocals';
 const ui = [
-  sfx('ui_click', 'ui', `One-shot ${UI}: firm metallic click of a heavy console button.`, 0.5, { inf: 0.6, variants: 2, takes: 3, proc: 'ui' }),
-  sfx('ui_hover', 'ui', `One-shot ${UI}: very soft subtle tick, quiet.`, 0.5, { inf: 0.6, variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_toggle', 'ui', `One-shot ${UI}: chunky toggle switch flick.`, 0.5, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_back', 'ui', `One-shot ${UI}: soft low descending click.`, 0.5, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_confirm', 'ui', `One-shot ${UI}: positive confirm, two-tone mechanical chirp.`, 0.8, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_error', 'ui', `One-shot ${UI}: short low denied buzz.`, 0.7, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_tab', 'ui', `One-shot ${UI}: light paper-and-metal slide for switching tabs.`, 0.5, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_tank_select', 'ui', `One-shot ${UI}: heavy mechanical clunk with a hydraulic hiss, selecting a tank.`, 1.5, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_deploy', 'ui', `One-shot ${UI}: dramatic deploy, deep impact boom with a rising metallic sweep.`, 2, { variants: 1, takes: 2, proc: 'ui', ch: 'stereo' }),
-  sfx('ui_countdown_tick', 'ui', `One-shot ${UI}: tense countdown tick.`, 0.6, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_countdown_go', 'ui', `One-shot ${UI}: battle start, powerful deep hit with a short horn blast.`, 1.6, { variants: 1, takes: 2, proc: 'ui', ch: 'stereo' }),
-  sfx('ui_hit_pen', 'ui', `One-shot ${UI}: satisfying bright metallic hit-confirm ding.`, 0.6, { variants: 2, takes: 3, proc: 'ui' }),
-  sfx('ui_hit_ricochet', 'ui', `One-shot ${UI}: thin rising metallic skid ping, a shot that glanced off.`, 0.6, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_hit_nonpen', 'ui', `One-shot ${UI}: dull low muted knock, a shot that did no damage.`, 0.6, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_kill', 'ui', `One-shot ${UI}: kill confirmed, deep satisfying boom with a bright metallic accent.`, 1.2, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_crit', 'ui', `One-shot ${UI}: critical hit, sharp crunchy electronic accent.`, 0.8, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_capture_tick', 'ui', `One-shot ${UI}: soft rising radar blip.`, 0.5, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_objective_gain', 'ui', `One-shot ${UI}: objective secured, triumphant rising electronic chord with a metallic hit.`, 1.6, { variants: 1, takes: 2, proc: 'ui', ch: 'stereo' }),
-  sfx('ui_objective_loss', 'ui', `One-shot ${UI}: objective lost, ominous falling electronic tone.`, 1.6, { variants: 1, takes: 2, proc: 'ui', ch: 'stereo' }),
-  sfx('ui_alert', 'ui', `One-shot ${UI}: urgent alert, two quick warning beeps.`, 0.9, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_pickup', 'ui', `One-shot ${UI}: supply crate collected, bright mechanical chime.`, 1, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_goal', 'ui', `One-shot ${UI}: goal scored, big crowd-free stadium horn blast with an impact.`, 2, { variants: 1, takes: 2, proc: 'ui', ch: 'stereo' }),
+  sfx('ui_click', 'ui', `One-shot ${UI}: a heavy armoured-vehicle console push button pressed, a short dull mechanical clunk with no ring.`, 0.5, { inf: 0.6, variants: 2, takes: 4, proc: 'ui' }),
+  sfx('ui_hover', 'ui', `One-shot ${UI}: a very quiet soft cloth-muffled tap on steel.`, 0.5, { inf: 0.6, variants: 1, takes: 2, proc: 'ui' }),
+  sfx('ui_toggle', 'ui', `One-shot ${UI}: a heavy military toggle switch thrown, a solid low mechanical clack.`, 0.5, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_back', 'ui', `One-shot ${UI}: a heavy steel latch released, a short low clunk.`, 0.5, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_confirm', 'ui', `One-shot ${UI}: a heavy steel bolt sliding home and locking, a firm low clunk.`, 0.8, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_error', 'ui', `One-shot ${UI}: a heavy lever hitting its mechanical stop, a short dull knock with a slight rattle.`, 0.7, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_tab', 'ui', `One-shot ${UI}: a heavy steel map drawer sliding shut, a short low scrape and thud.`, 0.5, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_tank_select', 'ui', `One-shot ${UI}: a heavy mechanical clunk with a low hydraulic hiss, a tank lifted into place.`, 1.5, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_deploy', 'ui', `One-shot ${UI}: a heavy steel tank hatch slammed shut, a deep booming clang in a large space.`, 2, { variants: 1, takes: 3, proc: 'ui', ch: 'stereo' }),
+  sfx('ui_countdown_tick', 'ui', `One-shot ${UI}: a single heavy mechanical clock escapement tick, low and dull.`, 0.6, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_countdown_go', 'ui', `One-shot ${UI_BRASS}: battle begins, a deep distant artillery thud and one short low horn blast.`, 1.6, { variants: 1, takes: 3, proc: 'ui', ch: 'stereo' }),
+  sfx('ui_hit_pen', 'ui', `One-shot ${UI}: armour penetration confirmed, a deep heavy crunching steel thud, short, no ring.`, 0.6, { variants: 2, takes: 4, proc: 'ui' }),
+  sfx('ui_hit_ricochet', 'ui', `One-shot ${UI}: a heavy shell glancing off thick armour heard from inside a tank, a short low metallic scrape.`, 0.6, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_hit_nonpen', 'ui', `One-shot ${UI}: a heavy shell stopped by thick armour, a dull low muted knock.`, 0.6, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_kill', 'ui', `One-shot ${UI}: target destroyed, a deep distant heavy explosion thump, dark and low.`, 1.2, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_crit', 'ui', `One-shot ${UI}: a heavy internal component of a tank breaking, a short low crunching metallic crack.`, 0.8, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_capture_tick', 'ui', `One-shot ${UI}: a single low muffled relay click of an old field telephone.`, 0.5, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_objective_gain', 'ui', `One-shot ${UI_BRASS}: objective secured, one low solemn brass note over a deep timpani hit.`, 1.6, { variants: 1, takes: 3, proc: 'ui', ch: 'stereo' }),
+  sfx('ui_objective_loss', 'ui', `One-shot ${UI_BRASS}: objective lost, a low ominous brass swell with a muffled drum.`, 1.6, { variants: 1, takes: 3, proc: 'ui', ch: 'stereo' }),
+  sfx('ui_alert', 'ui', `One-shot ${UI}: two short heavy klaxon blasts inside a tank, low and muffled.`, 0.9, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_pickup', 'ui', `One-shot ${UI}: a heavy steel ammunition crate set down and latched, a dull clunk and a latch.`, 1, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_goal', 'ui', `One-shot ${UI_BRASS}: goal scored, a deep low horn blast with a heavy impact.`, 2, { variants: 1, takes: 3, proc: 'ui', ch: 'stereo' }),
   sfx('ui_ball_hit', 'ui', `One-shot of a huge heavy ball struck by a tank: deep hollow boom.`, 0.8, { variants: 2, takes: 2, proc: 'impact' }),
-  sfx('ui_respawn', 'ui', `One-shot ${UI}: respawn, rising whoosh into a solid mechanical lock.`, 1.5, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_flag_taken', 'ui', `One-shot ${UI}: flag picked up, tense rising two-note brass stab.`, 1.2, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_flag_captured', 'ui', `One-shot ${UI}: flag captured, bold triumphant brass hit with a drum.`, 1.8, { variants: 1, takes: 2, proc: 'ui', ch: 'stereo' }),
-  sfx('ui_flag_returned', 'ui', `One-shot ${UI}: flag returned, reassuring warm chime.`, 1.2, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_flag_dropped', 'ui', `One-shot ${UI}: flag dropped, short falling metallic tone.`, 1, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_wave_clear', 'ui', `One-shot ${UI}: wave cleared, relieved resolving brass chord.`, 1.6, { variants: 1, takes: 2, proc: 'ui', ch: 'stereo' }),
-  sfx('ui_line_advance', 'ui', `One-shot ${UI}: front line advanced, marching snare roll into a firm hit.`, 1.5, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_score', 'ui', `One-shot ${UI}: points scored, punchy mechanical counter tick with a chime.`, 1, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_ready', 'ui', `One-shot ${UI}: equipment ready again, soft double confirmation chirp.`, 0.8, { variants: 1, takes: 2, proc: 'ui' }),
-  sfx('ui_slider', 'ui', `One-shot ${UI}: tiny precise detent tick of a slider.`, 0.5, { variants: 1, takes: 2, proc: 'ui' }),
+  sfx('ui_respawn', 'ui', `One-shot ${UI}: a heavy steel bolt locking and a diesel engine catching, low and solid.`, 1.5, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_flag_taken', 'ui', `One-shot ${UI_BRASS}: flag taken, a tense low two-note brass stab.`, 1.2, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_flag_captured', 'ui', `One-shot ${UI_BRASS}: flag captured, a bold low brass hit with a deep drum.`, 1.8, { variants: 1, takes: 3, proc: 'ui', ch: 'stereo' }),
+  sfx('ui_flag_returned', 'ui', `One-shot ${UI_BRASS}: flag returned, one warm low brass note.`, 1.2, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_flag_dropped', 'ui', `One-shot ${UI_BRASS}: flag dropped, a short falling low brass note.`, 1, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_wave_clear', 'ui', `One-shot ${UI_BRASS}: wave cleared, a quiet low resolving brass chord.`, 1.6, { variants: 1, takes: 3, proc: 'ui', ch: 'stereo' }),
+  sfx('ui_line_advance', 'ui', `One-shot ${UI_BRASS}: front line advanced, a deep marching snare roll into a heavy low drum hit.`, 1.5, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_score', 'ui', `One-shot ${UI}: a heavy mechanical tally counter clunking over once, low.`, 1, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_ready', 'ui', `One-shot ${UI}: a heavy breech lever locking, a firm low double clunk.`, 0.8, { variants: 1, takes: 3, proc: 'ui' }),
+  sfx('ui_slider', 'ui', `One-shot ${UI}: one small heavy detent click of a steel dial, low and dull.`, 0.5, { variants: 1, takes: 3, proc: 'ui' }),
 ];
 
 // -------------------------------------------------------------- stingers ---
-const STING = 'short cinematic orchestral military sting, brass and timpani, no vocals';
+// Grave war-film stings: low brass, timpani, restraint. No fanfares.
+const STING = 'short grave cinematic war film sting, low brass and timpani, dark and serious, no fanfare, no vocals';
 const stingers = [
-  sfx('sting_garage', 'stingers', `One-shot ${STING}: proud heroic opening hit.`, 5, { variants: 1, takes: 2, proc: 'sting', ch: 'stereo' }),
-  sfx('sting_battle', 'stingers', `One-shot ${STING}: battle begins, war horn call over a thunderous drum hit.`, 4, { variants: 1, takes: 2, proc: 'sting', ch: 'stereo' }),
-  sfx('sting_victory', 'stingers', `One-shot ${STING}: triumphant victory fanfare.`, 6, { variants: 1, takes: 2, proc: 'sting', ch: 'stereo' }),
-  sfx('sting_defeat', 'stingers', `One-shot ${STING}: somber defeat, low falling brass and a muffled drum.`, 6, { variants: 1, takes: 2, proc: 'sting', ch: 'stereo' }),
-  sfx('sting_draw', 'stingers', `One-shot ${STING}: unresolved tense ending, two flat horn calls.`, 4, { variants: 1, takes: 2, proc: 'sting', ch: 'stereo' }),
-  sfx('sting_wave', 'stingers', `One-shot ${STING}: incoming enemy wave, urgent rising drums.`, 3, { variants: 1, takes: 2, proc: 'sting', ch: 'stereo' }),
+  sfx('sting_garage', 'stingers', `One-shot ${STING}: a single low brass chord over a deep timpani hit, then silence.`, 5, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
+  sfx('sting_battle', 'stingers', `One-shot ${STING}: battle begins, a distant low war horn over one thunderous timpani hit.`, 4, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
+  sfx('sting_victory', 'stingers', `One-shot ${STING}: victory, a solemn low brass chord resolving over a soft timpani roll.`, 6, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
+  sfx('sting_defeat', 'stingers', `One-shot ${STING}: defeat, very low falling brass and a muffled drum, mournful.`, 6, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
+  sfx('sting_draw', 'stingers', `One-shot ${STING}: an unresolved ending, two flat low horn calls.`, 4, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
+  sfx('sting_wave', 'stingers', `One-shot ${STING}: an enemy wave approaching, low war drums building, no melody.`, 3, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
 ];
 
 export const SFX_CATALOG = Object.freeze([
