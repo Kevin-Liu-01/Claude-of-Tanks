@@ -10,27 +10,29 @@ tactical-map plates those produce.
 
 ## What the current maps get wrong
 
-Census of all 33 maps at `c959ac4b6` (`tools/map-layout-metrics.mjs`, raw rows in the lane's scratch output):
+Census of all 33 maps on the PR branch before the pilot (`67824820d`, `tools/map-layout-metrics.mjs`; raw rows in the
+lane's scratch output):
 
 - **One skeleton under many maps.** Verdant's five landforms are two flank ridges near x = ±250, a north ridge, a
-  south-east knoll and a south-west basin. Thirteen maps keep at least three of them within 75 m, and twelve keep
-  Verdant's western, eastern and northern beat sites as well. Sirocco Wadi and Olympus Basin also keep Verdant's
-  default country cross for their roads. The owner's clone verdict of September 23 named three maps; this census
-  finds the same skeleton under ten more.
+  south-east knoll and a south-west basin. Twelve maps keep at least three of them within 75 m. Twenty-five keep at
+  least one of Verdant's three strongpoint sites within 60 m, and Sirocco Wadi, Saltwind and Olympus Basin keep all
+  three. Sirocco Wadi and Olympus Basin also keep Verdant's default country cross for their roads. The owner's clone
+  verdict of September 23 named three maps; this census finds the skeleton under nine more.
 - **Lattice roads.** Steinburg (4 × 4), Cinder Junction (3 × 3), Ironworks (3 × 3 plus three diagonals) and
   Ruinspires (6 × 6) run straight streets from edge to edge. Roads should link places, not tile the square.
 - **Unbalanced objectives.** Zone control and turbo-ball objectives derive from the spawns. Where a derived point
-  lands in a building or on a slope, the placement search moves it toward whichever team is nearer. On eight maps
-  the worst team-to-objective distance ratio is 2.3–5.9. Steinburg's centre zone lands 31 m from the bravo pad and
+  lands in a building or on a slope, the placement search moves it toward whichever team is nearer. On seven maps
+  the worst team-to-objective distance ratio is 2.5–5.9. Steinburg's centre zone lands 31 m from the bravo pad and
   655 m from alpha.
 - **Close spawns.** Verdant, Sirocco and Olympus put the teams 457–470 m apart; the rest of the rotation uses
   650–870 m.
 - **Maze or field.** Steinburg's town core is 88 % cover with 20 m sightlines, and its outskirts are open lawn.
   Nothing grades between them.
-- **Flat brownfields.** Cinder Junction (relief σ 2.4 m) has the rotation's largest share of long open lines,
-  12.7 % of rays at 300 m or more, down its straight streets.
-- **Dressing logic.** Thirty-one maps have solid props intruding into road cores (Ruinspires 79, Steinburg 42,
-  Blackglass 38), and four have solid props standing in water.
+- **Flat brownfields.** On Cinder Junction (relief σ 2.4 m), 12.7 % of rays run 300 m or more down its straight
+  streets. Only Mangrove's open water and the Badlands canyon floor let more rays run that far.
+- **Dressing logic.** Twenty-seven maps have solid props in the 3.5 m carriageway (Ruinspires 33, Blackglass 19,
+  Steinburg 12), and four have solid props standing in water. Most come from the shared rubble, boulder, field-work
+  and wreck passes, which clear a prop's centre rather than its footprint.
 - **Pacing.** The bot pacing receipt's median is 217.8 s against its 240–480 s band. Short or open maps finish
   first: Saltwind 149 s, Verdant 160 s, Ironworks 161 s.
 
