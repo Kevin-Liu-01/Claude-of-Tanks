@@ -78,7 +78,7 @@ function library(species, fade, environment) {
   const { group } = vegetation;
   // round 77b (2026-09-26): v17 — the leaf-scale detail tile as the cards' normal map (round 77: v16 — the wind
   // law, the per-cluster cascade sample and the leaf translucency); and the far tier's one impostor material
-  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v18'));
+  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v19'));
   assert.equal(foliage.length, species.length, 'the complete production species material library exists');
   const impostor = registered.filter(material => material.customProgramCacheKey() === 'world-tree-impostor-v3'); // round 77c: the elevated ring; p2 trees lane: the gust lift
   assert.equal(impostor.length, 1, 'one impostor material per world, registered with the cascades');
@@ -197,6 +197,15 @@ function checkRound77Mechanisms(parameters) {
 // p2 trees lane (2026-10-01): the gust read as the crown's tone — the wind law hands its gust to the fragment and the
 // canopy albedo lifts ±4 % around the still crown, on the near cards and the impostors; the phones' foliage fragment
 // keeps no such term (their varying links away).
+// p2 trees lane (2026-10-02): the grown crowns' edge-on fade — the desktop cards carry COT_CARD_EDGE_FADE, their
+// coverage falls with the card's derivative face against the view after the mip give-back and before the alpha test
+function checkEdgeFade(material, parameters) {
+  assert.ok('COT_CARD_EDGE_FADE' in (material.defines ?? {}), 'the desktop grown cards fade edge-on');
+  const fragment = parameters.fragmentShader;
+  assert.match(fragment, /#ifdef COT_CARD_EDGE_FADE\s*\{\s*vec3 cotFace = normalize\( cross\( dFdx\( vViewPosition \), dFdy\( vViewPosition \) \) \);/);
+  const fade = fragment.indexOf('#ifdef COT_CARD_EDGE_FADE');
+  assert.ok(fragment.indexOf('aaMip') < fade && fade < fragment.indexOf('#include <alphatest_fragment>'), 'after the mip give-back, before the alpha test');
+}
 function checkGustLift(cards, impostor) {
   for (const [name, parameters] of [['cards', cards], ['impostor', impostor]]) {
     assert.match(parameters.vertexShader, /vWindLift = gust - 0\.62;/, `${name}: the gust reaches the fragment`);
@@ -213,10 +222,11 @@ function checkMobileFoliage(species, environment) {
     const engine = { setupShadowMaterial(material, hook) { registered.push(material); return lighting.setupShadowMaterial(material, hook); } };
     const cfg = { vegetation: { species, clusterCount: 0, loneCount: 0, rimCount: 0, grassDensity: 0, bushCount: 0, belts: [], authoredTrees: [] } };
     const vegetation = createVegetation(createHeightField(1337), engine, 1337, cfg);
-    const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v18'));
+    const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v19'));
     assert.equal(foliage.length, species.length, 'the mobile species library exists');
     const fragment = environment.expand(foliage[0]).parameters.fragmentShader;
     assert.doesNotMatch(fragment, /vWindLift \*/, 'the phones keep their foliage fragment: no gust lift');
+    assert.ok(!('COT_CARD_EDGE_FADE' in (foliage[0].defines ?? {})), 'the phones keep their cards: no edge-on fade');
     vegetation.dispose(); disposeObject3DResources(vegetation.group);
     for (const material of registered) releaseCsmShaderMaterial(lighting.csm, material);
     lighting.csm.remove(); lighting.csm.dispose();
@@ -336,6 +346,7 @@ try {
     checkRound77Mechanisms(rows[0].parameters);
     checkRound77bMechanisms(rows[0].parameters, world, environment);
     checkGustLift(rows[0].parameters, environment.expand(world.impostor).parameters);
+    checkEdgeFade(world.foliageMats[species[0]], rows[0].parameters);
     checkIndependentEviction(world, other, species);
   }
   // the mobile tier, resolved once and last (the device tier is process state)

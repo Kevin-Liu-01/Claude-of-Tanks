@@ -2270,11 +2270,14 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
       parts[i].translate(ax, 0, az);
     }
   }
-  // a winter palette's snow load: the spray atlas paints the snow on the needles and twigs; a few thin pads lie flush
-  // on the upward-facing sprays high in the crown (the bark sheet's snow strip) for the load's volume
+  // a winter palette's snow load: the spray atlas paints the snow on the needles and twigs, and pads of snow lie on the
+  // upward-facing sprays down the crown (the bark sheet's snow strip) — a conifer's boughs carry the load the round-8
+  // snow caps showed (six or seven pads a tree at Frosthollow's 0.75–0.9, each a bough wide, spread down the crown,
+  // the leader capped), a broadleaf's or a birch's a lighter load riding its limbs
   const snow = pal.snow ?? 0;
   if (snow > 0.25 || (profile.family === 'birch' && snow > 0.01)) {
-    let lobes = 0;
+    const conifer = profile.family === 'conifer';
+    const maxPads = Math.round(2 + (conifer ? 6 : 3) * snow);
     // the highest upward sprays first (a weeping crown's sprays hang: its pads ride the tops of its limbs instead): the
     // top two always carry a pad, the rest by the load and the height
     const upward = profile.habit === 'hanging'
@@ -2284,21 +2287,47 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
         return { x: mid.x, y: mid.y + mid.r, z: mid.z, ax: (z.x - a.x) / dl, ay: 0, az: (z.z - a.z) / dl, nx: 0, ny: 1, nz: 0, length: Math.min(1.2, dl) };
       }).sort((a, b) => b.y - a.y)
       : skeleton.leaves.filter(site => site.ny >= 0.6).sort((a, b) => b.y - a.y);
-    for (const site of upward) {
-      if (lobes >= 4) break;
+    // one pad a height band down the crown (the bands split the upward sprays' span), each on the band's spray turned
+    // farthest round the stem from the pad above it; the top two bands always load, the lower ones by the load
+    const yHi = upward.length ? upward[0].y : 0, yLo = upward.length ? upward[upward.length - 1].y : 0;
+    const band = Math.max(1e-3, yHi - yLo) / maxPads;
+    let lastAz: number | null = null;
+    for (let k = 0; k < maxPads && upward.length; k++) {
+      const top = yHi - k * band, bottom = top - band;
+      let site: (typeof upward)[number] | null = null, best = -1;
+      for (const candidate of upward) {
+        if (candidate.y > top + 1e-6 || candidate.y <= bottom - (k === maxPads - 1 ? 1e-6 : 0)) continue;
+        const az = Math.atan2(candidate.z, candidate.x);
+        const turn = lastAz === null ? candidate.ny : Math.abs(Math.atan2(Math.sin(az - lastAz), Math.cos(az - lastAz)));
+        if (turn > best) { best = turn; site = candidate; }
+      }
+      if (!site) continue;
       const heightT = clamp(site.y / skeleton.height, 0, 1);
-      if (lobes >= 2 && rng() > snow * (0.15 + 0.5 * heightT)) continue;
-      const lr = site.length * (profile.family === 'conifer' ? 0.16 : 0.12) * (0.8 + rng() * 0.4);
+      if (k >= 2 && rng() > snow * (0.6 + 0.4 * heightT)) continue;
+      // out along the bough, where the load shows past the sprays above it
+      const along = site.length * (conifer ? 0.58 : 0.45);
+      const cx = site.x + site.ax * along, cy = site.y + site.ay * along, cz = site.z + site.az * along;
+      // a conifer's pad is a bough's load, wider low in the crown; a limb's load follows its spray
+      const lr = conifer ? (0.28 + rng() * 0.16) * (0.8 + 0.5 * (1 - heightT)) : site.length * 0.15 * (0.8 + rng() * 0.4);
       const lobe = new THREE.IcosahedronGeometry(lr, 0);
       shapeTreeSnowLobe(lobe, rng);
-      lobe.scale(1.7, 0.22, 1.0);
+      lobe.scale(conifer ? 1.5 + rng() * 0.4 : 1.7, conifer ? 0.45 : 0.26, conifer ? 0.95 + rng() * 0.3 : 1.0);
       // along the spray, a little out from its seat, lying on its face
       lobe.rotateY(Math.atan2(site.ax, site.az) + Math.PI / 2);
-      const along = site.length * 0.45;
-      lobe.translate(site.x + site.ax * along + site.nx * 0.04, site.y + site.ay * along + site.ny * 0.04, site.z + site.az * along + site.nz * 0.04);
+      lobe.translate(cx + site.nx * 0.05, cy + site.ny * 0.05, cz + site.nz * 0.05);
       _c.setHSL(0.585, 0.04, 0.62, THREE.SRGBColorSpace).multiplyScalar(1.55);
       parts.push(paintFlat(lobe, _c.clone(), 0.12));
-      lobes++;
+      lastAz = Math.atan2(site.z, site.x);
+    }
+    if (conifer) {
+      // the leader's cap: the topmost load every snowbound conifer carries
+      const top = stem.nodes[stem.nodes.length - 1];
+      const cap = new THREE.IcosahedronGeometry(0.2 + 0.12 * snow, 0);
+      shapeTreeSnowLobe(cap, rng);
+      cap.scale(1.1, 0.7, 1.1);
+      cap.translate(top.x, top.y - 0.32, top.z);
+      _c.setHSL(0.585, 0.04, 0.62, THREE.SRGBColorSpace).multiplyScalar(1.55);
+      parts.push(paintFlat(cap, _c.clone(), 0.18));
     }
   }
   // the grown wood and cards are emitted as flat triangle lists; welded (identical vertices shared, an index) they draw
@@ -4153,6 +4182,19 @@ function* vegetationBuildSteps(
     // (the canopyWindHook dissolve above keeps the <alphatest_fragment>
     // anchor, so this composes as: mip boost -> alpha test -> dissolve).
     mipAlphaGuard(shader);
+    // p2 trees lane (2026-10-02): a grown crown's cards fade as they turn edge-on to the view (COT_CARD_EDGE_FADE, the
+    // desktop grown builds). A spray seen along its own plane squeezes its leaves into a sliver that the mip give-back
+    // above closes into a solid dark blade — the look up from under a broadleaf. Its coverage falls with the card's
+    // facing (its geometric face, from the view position's derivatives: a bent card fades row by row) before the
+    // alpha test, which alpha-to-coverage feathers. The phones and `?legacyTrees=1` keep their cards as they were.
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
+      #ifdef COT_CARD_EDGE_FADE
+      {
+        vec3 cotFace = normalize( cross( dFdx( vViewPosition ), dFdy( vViewPosition ) ) );
+        diffuseColor.a *= smoothstep( 0.05, 0.28, abs( dot( cotFace, normalize( vViewPosition ) ) ) );
+      }
+      #endif
+      #include <alphatest_fragment>`);
     // SNIPER FOLIAGE FADE (controls_gunnery r2): WoT fades the bush the
     // player is scoped inside — screen-door-dither leaf fragments within
     // ~10 m of the camera while uSniperFade > 0 (same eased uniforms as the
@@ -4435,6 +4477,8 @@ function* vegetationBuildSteps(
     tex(rng: RandomSource, palette: VegetationPalette): THREE.Texture;
     near(index: number, palette: VegetationPalette): TreeGeometryPair;
     far(rng: RandomSource, palette: VegetationPalette, index: number): FarTreeGeometryPair;
+    /** p2 trees lane: the near trees grow (treeGrowth.ts): their cards take the grown crowns' edge-on fade. */
+    grown?: boolean;
   }
   function scaleNear(
     pair: TreeGeometryPair,
@@ -4512,7 +4556,7 @@ function* vegetationBuildSteps(
     if (!grownTrees) return legacy;
     sprayAtlasSpecies.add(species);
     return {
-      texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed,
+      texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed, grown: true,
       // a snowy palette's texTone is the round-8 cards' hoar-frost wash (their snow); the spray atlas paints its snow
       tex: (r, pal) => makeSprayAtlas(grownSprayKind(species, pal), r, texSize(512), (pal.snow ?? 0) > 0.05 ? null : pal.texTone || null, pal.snow ?? 0),
       near: (k, pal) => buildGrownTree(species, seed + legacy.nearSeed + k * 7, k, pal),
@@ -4526,7 +4570,7 @@ function* vegetationBuildSteps(
     if (!grownTrees) return legacy;
     sprayAtlasSpecies.add('willow');
     return {
-      texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed,
+      texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed, grown: true,
       tex: (r, pal) => makeSprayAtlas('mangrove', r, texSize(512), (pal.snow ?? 0) > 0.05 ? null : pal.texTone || null, pal.snow ?? 0),
       near: (k, pal) => buildGrownTree('mangrove', seed + legacy.nearSeed + k * 7, k, pal),
       far: legacy.far,
@@ -4546,7 +4590,7 @@ function* vegetationBuildSteps(
     acacia: grownDefinition('acacia', broadleafDefinition(62, 271, 291, ACACIA_SHAPES, [1.48, 0.78, 1.42])),
     eucalyptus: grownDefinition('eucalyptus', broadleafDefinition(63, 301, 321, EUCALYPTUS_SHAPES, [0.68, 1.35, 0.72])),
     palm: {
-      texSeed: 53, nearSeed: 81, farSeed: 75,
+      texSeed: 53, nearSeed: 81, farSeed: 75, grown: grownTrees,
       // p2 trees lane: the desktop palms keep their reviewed geometry and take a pinnate frond (the round-8 painter's
       // solid blade read as a banana leaf); the phones keep the round-8 frond
       tex: (r, pal) => (grownTrees ? makePalmFrondAtlas(r, texSize(512), pal.texTone || null) : makePalmFrondTexture(r, pal.texTone || null)),
@@ -4580,7 +4624,7 @@ function* vegetationBuildSteps(
   const snagShare = grownTrees ? battleSnagShare(cfg) : 0;
   if (snagShare > 0) {
     (SPECIES as Record<string, SpeciesDefinition>).snag = {
-      texSeed: 65, nearSeed: 361, farSeed: 381,
+      texSeed: 65, nearSeed: 361, farSeed: 381, grown: true,
       tex: (r) => makeSprayAtlas('birch-bare', r, texSize(256), (_h, sat, l) => [0.07, sat * 0.35, l * 0.42]),
       near: (k) => buildGrownTree('snag', seed + 361 + k * 7, k, {}),
       far: (r, _pal, k) => buildSnagFarGeometry(r, k),
@@ -4615,11 +4659,13 @@ function* vegetationBuildSteps(
       // phones keep the flat card program). The tile is a material property, so every species shares one program.
       const leafTile = leafDetail.texture(leafDetail.classOf(sp, palOf(sp)));
       if (leafTile) { fm.normalMap = leafTile; fm.normalScale.set(LEAF_DETAIL_NORMAL_SCALE, LEAF_DETAIL_NORMAL_SCALE); }
+      // p2 trees lane: the grown crowns' edge-on fade (foliageWindHook)
+      if (SPECIES[sp].grown) fm.defines = { ...(fm.defines ?? {}), COT_CARD_EDGE_FADE: '' };
       engineCtx.setupShadowMaterial(fm, foliageWindHook);
       // Species vary textures/uniforms, not this shared shader hook. Three
       // already keys material/geometry defines; a species suffix needlessly
       // recompiles identical programs when the last world using it is evicted.
-      fm.customProgramCacheKey = () => 'world-tree-foliage-v18'; // round 77b: the leaf-scale detail (round 77: wind, cluster shadows, translucency)
+      fm.customProgramCacheKey = () => 'world-tree-foliage-v19'; // p2: the edge-on fade (round 77b: the leaf-scale detail; round 77: wind, cluster shadows, translucency)
       foliageMats[sp] = fm;
       // alpha-tested shadow casting: without this every card shadows as a quad.
       // r6: palm gets a HIGHER shadow alphaTest — its frond texture covers most

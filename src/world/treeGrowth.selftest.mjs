@@ -396,6 +396,7 @@ const shrubRows = [];
     for (const cards of meshes.filter((m) => m.userData.treeFoliage)) {
       assert.ok(cards.geometry.getAttribute('aCard'), 'grown cards carry the cascade sample');
       assert.equal(cards.castShadow, false);
+      assert.ok('COT_CARD_EDGE_FADE' in (cards.material.defines ?? {}), 'grown cards fade edge-on');
     }
     // the shrubs grow from the bush species' sprays: welded two-triangle cards with the cascade sample
     const shrubs = desktop.group.children.filter((m) => m.userData.bush || m.userData.understorey);
@@ -439,6 +440,19 @@ const shrubRows = [];
       }
     }
     assert.ok(laden > 0.08 * (laden + bare) && bare > 0.2 * (laden + bare), `the snow load splits the sprays (laden ${laden}, bare ${bare})`);
+    // the boughs' pads (2026-10-02): a conifer trunk carries the round-8 snow caps' load — its bright neutral pad
+    // vertices (the snow tint, before the bark sheet) span the crown's height, not only its top
+    for (const trunk of pools(winter).filter((m) => m.userData.treeTrunk && m.geometry.userData.trunkQuality?.family === 'conifer')) {
+      const p = trunk.geometry.attributes.position, col = trunk.geometry.attributes.color;
+      let n = 0, lo = Infinity, hi = -Infinity, top = 0;
+      for (let i = 0; i < p.count; i++) {
+        top = Math.max(top, p.getY(i));
+        const r = col.getX(i), g = col.getY(i), b = col.getZ(i);
+        if (Math.min(r, g, b) > 0.45 && Math.max(r, g, b) - Math.min(r, g, b) < 0.08) { n++; lo = Math.min(lo, p.getY(i)); hi = Math.max(hi, p.getY(i)); }
+      }
+      assert.ok(n >= 60, `a snowbound conifer's boughs carry their pads (${n} pad vertices)`);
+      assert.ok(hi - lo > 0.35 * top, `the pads spread down the crown (${(hi - lo).toFixed(2)} of ${top.toFixed(2)} m)`);
+    }
     assert.ok(ladenY / laden > 1.3 * (bareY / bare), 'a laden spray is lifted');
     assert.ok(ladenSat / laden < bareSat / bare, 'a laden spray is neutral, a bare one keeps its green');
   } finally { winter.dispose(); disposeObject3DResources(winter.group); }
@@ -521,6 +535,9 @@ const shrubRows = [];
     for (const m of legacy.group.children.filter((c) => c.userData.bush || c.userData.understorey)) {
       assert.ok(!m.geometry.index && !m.geometry.getAttribute('aCard'), 'a legacy build keeps the round-8 shrub cards');
     }
+    for (const m of pools(legacy).filter((c) => c.userData.treeFoliage)) {
+      assert.ok(!('COT_CARD_EDGE_FADE' in (m.material.defines ?? {})), 'a legacy build keeps its cards unfaded');
+    }
   } finally { legacy.dispose(); disposeObject3DResources(legacy.group); }
   // the mobile tier (resolved once, last): the legacy trees
   globalThis.window = { location: { search: '?tier=mobile' }, localStorage: { getItem: () => null } };
@@ -531,6 +548,9 @@ const shrubRows = [];
   try {
     for (const trunk of pools(mobile).filter((m) => m.userData.treeTrunk)) assert.equal(trunk.geometry.userData.shadowHull, undefined, 'the phones keep the legacy trees');
     assert.equal(barkWidth(mobile), 256, 'the phones pay for no unused bark styles');
+    for (const m of pools(mobile).filter((c) => c.userData.treeFoliage)) {
+      assert.ok(!('COT_CARD_EDGE_FADE' in (m.material.defines ?? {})), 'the phones keep their cards unfaded');
+    }
     const bushes = mobile.group.children.filter((c) => c.userData.bush);
     assert.ok(bushes.length === 2 && bushes.every((m) => !m.geometry.index && m.geometry.getAttribute('position').count === 192), 'the phones keep the round-8 bushes');
     const restore = canvas();
