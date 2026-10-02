@@ -30,6 +30,12 @@ export function applyCanopyDiffuseWrap(
   // shadowed light than the round-8 lobe proxies let through; the gain gives that light back where the view looks
   // toward the sun and nowhere else.
   thin = 0,
+  // p2 trees lane (2026-10-02): leaf transmission. The grounded light (engine/lightModel.ts) retired the anti-sun
+  // fill that lit every backlit face; a leaf passes light through instead — on its far side a Lambert lobe of the
+  // (shadowed) direct light, T × max(0, −N·L), the light through the leaf when the sun is behind it. T is the
+  // uniform the vegetation drives from the light model (0 under the legacy rig, whose fill still lights the backs);
+  // null leaves the expression as it was (the horizon ring's crowns, the phones).
+  transmission: { value: number } | null = null,
 ): void {
   if (wrap <= 0) return;
   const reciprocal = (1 / (1 + wrap)).toFixed(6);
@@ -48,8 +54,14 @@ export function applyCanopyDiffuseWrap(
     `float canopyDiffuseNL = saturate( ( canopyRawNL + ${wrap.toFixed(2)} ) * ${reciprocal} ) * ${reciprocal};\n\t${matteCanopy ? 'canopyDiffuseNL = canopyDiffuseNL * 0.70 + 0.075;\n\t' : ''}reflectedLight.directDiffuse += canopyDiffuseNL * directLight.color * BRDF_Lambert( material.diffuseContribution );${
       thin > 0
         ? `\n\tfloat canopyBack = pow( saturate( dot( -geometryViewDir, directLight.direction ) ), 3.0 );\n\t#ifdef COT_GROWN_CROWN\n\tcanopyBack *= COT_GROWN_CROWN;\n\t#endif\n\treflectedLight.directDiffuse += canopyBack * ${thin.toFixed(2)} * directLight.color * BRDF_Lambert( material.diffuseContribution );`
+        : ''}${transmission
+        ? '\n\treflectedLight.directDiffuse += saturate( -canopyRawNL ) * uCotLeafTransmission * directLight.color * BRDF_Lambert( material.diffuseContribution );'
         : ''}`,
   );
+  if (transmission) {
+    shader.uniforms.uCotLeafTransmission = transmission;
+    wrappedPhysical = `uniform float uCotLeafTransmission;\n${wrappedPhysical}`;
+  }
   if (matteCanopy) {
     // A spray represents many differently oriented leaves. Mix 30% of an
     // isotropic volume lobe into its directional wrap so entire reverse-facing

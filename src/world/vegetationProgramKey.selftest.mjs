@@ -68,7 +68,7 @@ function library(species, fade, environment) {
   csm.fade = fade;
   csm.updateFrustums();
   const registered = [];
-  const engine = { renderer: stubRenderer(), setupShadowMaterial(material, hook) {
+  const engine = { renderer: stubRenderer(), scene, setupShadowMaterial(material, hook) {
     registered.push(material);
     return lighting.setupShadowMaterial(material, hook);
   } };
@@ -95,7 +95,7 @@ function library(species, fade, environment) {
     return [sp, depth];
   }));
   const first = environment.expand(foliage[0]).parameters.uniforms;
-  return { group, csm, foliageMats, foliageTex, foliageDepthMats, impostor: impostor[0], impostors: vegetation._treeImpostors,
+  return { group, csm, foliageMats, foliageTex, foliageDepthMats, impostor: impostor[0], impostors: vegetation._treeImpostors, vegetation, scene,
     leafTiles: [...new Set(Object.values(foliageMats).map(material => material.normalMap))],
     detail: first.uCanopyDet.value, uWindTime: first.uWindTime, uScopeHard: first.uScopeHard };
 }
@@ -205,6 +205,12 @@ function checkEdgeFade(material, parameters) {
   assert.equal(material.defines.COT_GROWN_CROWN, '1.60', 'and pass more of the back light');
   assert.match(parameters.fragmentShader, /float canopyBack = pow\( saturate\( dot\( -geometryViewDir, directLight\.direction \) \), 3\.0 \);\s*#ifdef COT_GROWN_CROWN\s*canopyBack \*= COT_GROWN_CROWN;\s*#endif/,
     'the transmission gain sits on the back-light term only');
+  // the leaf transmission (2026-10-02): a Lambert lobe on the leaf's far side, its strength a uniform the vegetation
+  // drives from the light model
+  assert.match(parameters.fragmentShader, /uniform float uCotLeafTransmission;/);
+  assert.match(parameters.fragmentShader, /reflectedLight\.directDiffuse \+= saturate\( -canopyRawNL \) \* uCotLeafTransmission \* directLight\.color \* BRDF_Lambert\( material\.diffuseContribution \);/,
+    'light through the leaf when the sun is behind it');
+  assert.ok(parameters.uniforms.uCotLeafTransmission && typeof parameters.uniforms.uCotLeafTransmission.value === 'number', 'the transmission uniform is bound');
   const fragment = parameters.fragmentShader;
   assert.match(fragment, /vec3 cotDx = dFdx\( vViewPosition \), cotDy = dFdy\( vViewPosition \);/, 'the derivatives in uniform control flow');
   assert.match(fragment, /vec3 cotFace = normalize\( cross\( cotDx, cotDy \) \);/);
@@ -234,6 +240,7 @@ function checkMobileFoliage(species, environment) {
     assert.doesNotMatch(fragment, /vWindLift \*/, 'the phones keep their foliage fragment: no gust lift');
     assert.ok(!('COT_CARD_EDGE_FADE' in (foliage[0].defines ?? {})), 'the phones keep their cards: no edge-on fade');
     assert.ok(!('COT_GROWN_CROWN' in (foliage[0].defines ?? {})), 'and no transmission gain');
+    assert.doesNotMatch(fragment, /uCotLeafTransmission/, 'and no leaf transmission: their fragment is the one they had');
     vegetation.dispose(); disposeObject3DResources(vegetation.group);
     for (const material of registered) releaseCsmShaderMaterial(lighting.csm, material);
     lighting.csm.remove(); lighting.csm.dispose();
@@ -354,6 +361,17 @@ try {
     checkRound77bMechanisms(rows[0].parameters, world, environment);
     checkGustLift(rows[0].parameters, environment.expand(world.impostor).parameters);
     checkEdgeFade(world.foliageMats[species[0]], rows[0].parameters);
+    // the transmission follows the scene's light model each frame: the grounded light's strength, nothing under the
+    // legacy rig or before a model resolves
+    {
+      const u = rows[0].parameters.uniforms.uCotLeafTransmission;
+      const camera = new THREE.Vector3();
+      delete world.scene.userData.lightModel; world.vegetation.update(1 / 60, camera); assert.equal(u.value, 0, 'no model, no transmission');
+      world.scene.userData.lightModel = { mode: 'physical' }; world.vegetation.update(1 / 60, camera);
+      assert.ok(u.value > 0.2 && u.value < 0.8, `the grounded light's transmission (${u.value})`);
+      world.scene.userData.lightModel = { mode: 'legacy' }; world.vegetation.update(1 / 60, camera); assert.equal(u.value, 0, 'the legacy rig keeps its fill instead');
+      delete world.scene.userData.lightModel;
+    }
     checkIndependentEviction(world, other, species);
   }
   // the mobile tier, resolved once and last (the device tier is process state)

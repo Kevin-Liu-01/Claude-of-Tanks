@@ -68,6 +68,8 @@ type TreeMesh = THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>;
 
 interface EngineContext {
   setupShadowMaterial(material: THREE.Material, hook?: MaterialShaderHook | null): void;
+  /** p2 trees lane: the scene, whose userData.lightModel (engine/lightModel.ts) drives the leaf transmission. */
+  scene?: THREE.Scene | null;
   /** Round 77b: the renderer the far-tier impostor atlas bakes with (production); absent in the receipts. */
   renderer?: TreeImpostorRenderer | null;
 }
@@ -2187,6 +2189,13 @@ export function grownSprayKind(species: Species, palette: VegetationPalette = {}
  */
 const GROWN_CROWN_TRANSMISSION = 1.6;
 
+/**
+ * p2 trees lane (2026-10-02): the leaves' transmission under the grounded light (canopyLighting.ts): the share of the
+ * (shadowed) direct light a leaf passes to its far side, Lambert on that side. The lighting lane's handover: under the
+ * grounded light, which retired the anti-sun fill, Saltmere's crowns read 23–36 % under the base.
+ */
+const LEAF_TRANSMISSION = 0.45;
+
 /** The grown crowns' card tint law per family: the legacy HSL multiplier's hue and saturation, and its gain. */
 function grownTintLaw(family: string): readonly [number, number, number] {
   if (family === 'conifer') return [0.30, 0.18, 1.95];
@@ -3387,6 +3396,10 @@ function* vegetationBuildSteps(
     * (mobileTier ? 0.72 : 1));
 
   const uWindTime = { value: 0 };
+  // p2 trees lane (2026-10-02): the leaf transmission's strength (canopyLighting.ts), driven each frame from the
+  // scene's light model: LEAF_TRANSMISSION under the grounded light, 0 under the legacy rig (its anti-sun fill still
+  // lights the backs) and before a light model resolves
+  const uLeafTransmission = { value: 0 };
   // Round 77 (2026-09-26): the map's wind (treeClimate.ts) — the direction it blows toward, and (the lean of a
   // nominal-height crown top, 1 / the nominal height, the canopy flutter amplitude); the mobile tier keeps a third
   // of the lean and half the flutter. And the moss its shaded trunk bases grow (0 on the arid and frozen maps).
@@ -4159,7 +4172,8 @@ function* vegetationBuildSteps(
       shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <color_fragment>',
         `#include <color_fragment>\n\tdiffuseColor.rgb *= 1.0 + vWindLift * ${TREE_WIND_LEAF_FLASH.toFixed(3)};`);
     }
-    applyCanopyDiffuseWrap(shader, wrap, matteCanopy, thin);
+    // p2 trees lane: the canopy hooks transmit light through the leaves under the grounded light (desktop tiers)
+    applyCanopyDiffuseWrap(shader, wrap, matteCanopy, thin, thin > 0 && !mobileTier ? uLeafTransmission : null);
   };
   const treeWindHook = makeTreeWindHook(1.5, 4.2, 0.30);          // trunks/bark
   // Leaves 2026-09-12: 0.50 -> 0.38 wrap so lit and shaded crown sides separate again.
@@ -6433,6 +6447,8 @@ function* vegetationBuildSteps(
     // frame, and again after a GPU suspension disposed it); a no-op once baked and without a renderer.
     treeImpostors?.ensureBaked();
     uWindTime.value += dt;
+    uLeafTransmission.value = (engineCtx.scene?.userData.lightModel as { mode?: string } | undefined)?.mode === 'physical'
+      ? LEAF_TRANSMISSION : 0;
     if (treeCrushAnims.length) updateTreeCrush(dt); // gameplay_feel r6 topples
     uCamPos.value.copy(camPos);
     if (camFwd) uCamFwd.value.copy(camFwd);
