@@ -85,7 +85,7 @@ export default {
     forestHex: 0x58402f, rockHex: 0x96533b, haze: 0.92, grain: 0.58,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'cumulus-humilis', coverage: 0.18, cirrus: 0.35 },
+  clouds: { regime: 'cumulus-humilis', coverage: 0.18, cirrus: 0.35, storms: 1, stormDistM: 32000, virga: 0.9 },
   sky: {
     sunElevationDeg: 30, sunAzimuthDeg: 116, turbidity: 7.2, rayleigh: 1.05,
     mieCoefficient: 0.0095, mieDirectionalG: 0.86, fogDensity: 0.00058,

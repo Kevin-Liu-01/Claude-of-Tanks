@@ -98,7 +98,7 @@ export default {
   },
   horizon: { baseHex: 0x62766a, amp: 1.25, style: 'alpine', treeline: 0.80, snowline: 2, forestHex: 0x304e40, rockHex: 0x828d87, haze: 0.90, grain: 0.52 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'fair-weather-cumulus', coverage: 0.26, streets: 0.3 },
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.26, streets: 0.3, mid: 'altocumulus', midCoverage: 0.3, contrails: 0.3 },
   sky: { ...frontier.sky, sunElevationDeg: 26, sunAzimuthDeg: 142, turbidity: 4.2, fogDensity: 0.00058, fogTintHex: 0x91a8b5, fogMix: 0.5, cloudOpacity: 1.0, cloudOpacity2: 0.66, sunIntensity: 3.8, hemiIntensity: 0.43 },
   minimap: { ...frontier.minimap, base: [78, 105, 77], hard: [111, 114, 98], soft: [47, 75, 71], water: 'rgba(43,89,111,.86)', waterStroke: 'rgba(23,55,73,.94)' },
   shot: { pos: [-248, 57, -248], look: [108, -1, 74] },

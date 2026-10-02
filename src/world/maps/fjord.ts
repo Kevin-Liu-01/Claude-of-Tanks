@@ -122,7 +122,7 @@ export default {
     outcrops: 1,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'broken-stratocumulus', windDirDeg: 250, scud: 0.35, farBand: 0.6 },
+  clouds: { regime: 'broken-stratocumulus', windDirDeg: 250, scud: 0.35, farBand: 0.6, fogBank: 0.4, fogBankTopM: 90, rain: 0.3, virga: 0.15, nightGlow: 0.2, nightGlowHex: 0xffd2a0 },
   sky: {
     sunElevationDeg: 20, sunAzimuthDeg: 146, turbidity: 5.4, rayleigh: 1.55,
     mieCoefficient: 0.0072, mieDirectionalG: 0.84, fogDensity: 0.00072,

@@ -249,7 +249,9 @@ for (const id of MAP_IDS) {
   if (id !== 'mars') assert.ok(config.clouds && isCloudscapeRegime(config.clouds.regime), `${id} authors a cloudscape regime`);
   else assert.ok(!config.clouds && MARS_SKY_PRESET.cloudscape?.regime === 'thin-ice-clouds', 'Mars carries its cloudscape on the shared preset (the ruleset applies it directly)');
   const p = deriveCloudLayerPreset(skyOf(id));
-  table[id] = { regime: p.regime, coverage: +p.coverage.toFixed(3), baseM: p.baseM, thicknessM: Math.round(p.thicknessM), shadow: p.shadow, streets: p.streets, cirrus: p.cirrus, farBand: p.farBand };
+  table[id] = { regime: p.regime, coverage: +p.coverage.toFixed(3), baseM: p.baseM, thicknessM: Math.round(p.thicknessM), shadow: p.shadow, streets: p.streets, cirrus: p.cirrus, farBand: p.farBand,
+    // 2026-10-01: the weather beyond the slab (cloudWeatherLayers.ts) — the mid layer's kind, contrails, storm cells, rain, virga, the fog bank
+    mid: p.midKind, contrails: p.contrails, storms: p.storms, rain: p.rain, virga: p.virga, fogBank: p.fogBank };
   assert.ok(p.coverage >= 0 && p.coverage <= CLOUD_LAYER_RULES.coverageMax);
   assert.ok(p.baseM > 0 && p.thicknessM > 0 && p.density > 0);
   assert.ok(p.shadowThreshold >= 0 && p.shadowThreshold <= 1);
@@ -262,39 +264,39 @@ for (const id of MAP_IDS) {
   if (p.shearM > 0) assert.ok(p.shearM <= p.thicknessM * 2, `${id}: the lean is bounded by the slab`);
 }
 assert.deepEqual(table, {
-  verdant: { regime: 'fair-weather-cumulus', coverage: 0.36, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.45, cirrus: 0.12, farBand: 0.25 },
-  desert: { regime: 'cumulus-humilis', coverage: 0.14, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.5, farBand: 0.15 },
-  winter: { regime: 'stratocumulus-deck', coverage: 0.86, baseM: 700, thicknessM: 420, shadow: false, streets: 0.2, cirrus: 0, farBand: 0.6 },
-  urban: { regime: 'altocumulus', coverage: 0.55, baseM: 2800, thicknessM: 380, shadow: false, streets: 0.1, cirrus: 0.3, farBand: 0.35 },
-  coastal: { regime: 'sea-streets', coverage: 0.32, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.65 },
-  autumn: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
-  steppe: { regime: 'cloud-streets', coverage: 0.34, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.9, cirrus: 0.2, farBand: 0.35 },
-  railyard: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55 },
-  frontier: { regime: 'cloud-streets', coverage: 0.4, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.85, cirrus: 0.15, farBand: 0.35 },
-  fjord: { regime: 'broken-stratocumulus', coverage: 0.62, baseM: 900, thicknessM: 500, shadow: true, streets: 0.3, cirrus: 0.1, farBand: 0.6 },
-  delta: { regime: 'towering-cumulus', coverage: 0.38, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3 },
-  badlands: { regime: 'cumulus-humilis', coverage: 0.18, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.35, farBand: 0.15 },
-  monsoon: { regime: 'cumulonimbus-front', coverage: 0.4, baseM: 1000, thicknessM: 3000, shadow: true, streets: 0.1, cirrus: 0.25, farBand: 0.4 },
-  alpine: { regime: 'towering-cumulus', coverage: 0.26, baseM: 1900, thicknessM: 900, shadow: true, streets: 0, cirrus: 0.3, farBand: 0.5 },
-  caldera: { regime: 'cumulus-humilis', coverage: 0.22, baseM: 1500, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.45, farBand: 0.15 },
-  foundry: { regime: 'industrial-stratocumulus', coverage: 0.88, baseM: 850, thicknessM: 520, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55 },
-  ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
-  blackglass: { regime: 'ash-veil', coverage: 0.55, baseM: 800, thicknessM: 450, shadow: false, streets: 0.2, cirrus: 0.5, farBand: 0.4 },
-  titan_gorge: { regime: 'dense-overcast', coverage: 0.96, baseM: 450, thicknessM: 500, shadow: false, streets: 0, cirrus: 0, farBand: 0.6 },
-  skybridge: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 700, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.5 },
-  polders: { regime: 'broken-stratocumulus', coverage: 0.68, baseM: 600, thicknessM: 500, shadow: true, streets: 0.4, cirrus: 0.1, farBand: 0.5 },
-  copper_mesa: { regime: 'cumulus-humilis', coverage: 0.2, baseM: 1900, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15 },
-  airfield: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25 },
-  oasis: { regime: 'cumulus-humilis', coverage: 0.17, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15 },
-  whiteout: { regime: 'low-stratus', coverage: 0.97, baseM: 300, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5 },
-  orchard: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.4, cirrus: 0.12, farBand: 0.25 },
-  longleaf: { regime: 'fair-weather-cumulus', coverage: 0.32, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.5, cirrus: 0.12, farBand: 0.25 },
-  mangrove: { regime: 'towering-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3 },
-  saltwind: { regime: 'sea-streets', coverage: 0.3, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.55 },
-  reservoir: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
-  cliffbridge: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1200, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25 },
-  mars: { regime: 'thin-ice-clouds', coverage: 0.06, baseM: 2500, thicknessM: 400, shadow: false, streets: 0.2, cirrus: 0.45, farBand: 0 },
-}, 'the cloudscape of every map (round 71 identity table; round 76: foundry and railyard on the industrial stratocumulus, urban on the altocumulus)');
+  verdant: { regime: 'fair-weather-cumulus', coverage: 0.36, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.45, cirrus: 0.12, farBand: 0.25, mid: 0, contrails: 2, storms: 0, rain: 0, virga: 0, fogBank: 0 },
+  desert: { regime: 'cumulus-humilis', coverage: 0.14, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.5, farBand: 0.15, mid: 0, contrails: 2, storms: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
+  winter: { regime: 'stratocumulus-deck', coverage: 0.86, baseM: 700, thicknessM: 420, shadow: false, streets: 0.2, cirrus: 0, farBand: 0.6, mid: 0, contrails: 0, storms: 0, rain: 0, virga: 0, fogBank: 0 },
+  urban: { regime: 'altocumulus', coverage: 0.55, baseM: 2800, thicknessM: 380, shadow: false, streets: 0.1, cirrus: 0.3, farBand: 0.35, mid: 0, contrails: 4, storms: 0, rain: 0, virga: 0, fogBank: 0 },
+  coastal: { regime: 'sea-streets', coverage: 0.32, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.65, mid: 0, contrails: 0, storms: 0, rain: 0, virga: 0, fogBank: 0.45 },
+  autumn: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, mid: 1, contrails: 2, storms: 0, rain: 0, virga: 0, fogBank: 0 },
+  steppe: { regime: 'cloud-streets', coverage: 0.34, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.9, cirrus: 0.2, farBand: 0.35, mid: 0, contrails: 0, storms: 1, rain: 0.2, virga: 0, fogBank: 0 },
+  railyard: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55, mid: 0, contrails: 0, storms: 0, rain: 0, virga: 0, fogBank: 0 },
+  frontier: { regime: 'cloud-streets', coverage: 0.4, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.85, cirrus: 0.15, farBand: 0.35, mid: 0, contrails: 2, storms: 0, rain: 0, virga: 0, fogBank: 0 },
+  fjord: { regime: 'broken-stratocumulus', coverage: 0.62, baseM: 900, thicknessM: 500, shadow: true, streets: 0.3, cirrus: 0.1, farBand: 0.6, mid: 0, contrails: 0, storms: 0, rain: 0.3, virga: 0.15, fogBank: 0.4 },
+  delta: { regime: 'towering-cumulus', coverage: 0.38, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3, mid: 0, contrails: 0, storms: 2, rain: 0.45, virga: 0.1, fogBank: 0 },
+  badlands: { regime: 'cumulus-humilis', coverage: 0.18, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.35, farBand: 0.15, mid: 0, contrails: 0, storms: 1, rain: 0.3, virga: 0.9, fogBank: 0 },
+  monsoon: { regime: 'cumulonimbus-front', coverage: 0.4, baseM: 1000, thicknessM: 3000, shadow: true, streets: 0.1, cirrus: 0.25, farBand: 0.4, mid: 2, contrails: 0, storms: 2, rain: 0.85, virga: 0, fogBank: 0 },
+  alpine: { regime: 'towering-cumulus', coverage: 0.26, baseM: 1900, thicknessM: 900, shadow: true, streets: 0, cirrus: 0.3, farBand: 0.5, mid: 4, contrails: 0, storms: 0, rain: 0.15, virga: 0.1, fogBank: 0 },
+  caldera: { regime: 'cumulus-humilis', coverage: 0.22, baseM: 1500, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.45, farBand: 0.15, mid: 2, contrails: 0, storms: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
+  foundry: { regime: 'industrial-stratocumulus', coverage: 0.88, baseM: 850, thicknessM: 520, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55, mid: 0, contrails: 0, storms: 0, rain: 0, virga: 0, fogBank: 0 },
+  ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, mid: 0, contrails: 0, storms: 0, rain: 0.25, virga: 0.6, fogBank: 0 },
+  blackglass: { regime: 'ash-veil', coverage: 0.55, baseM: 800, thicknessM: 450, shadow: false, streets: 0.2, cirrus: 0.5, farBand: 0.4, mid: 0, contrails: 0, storms: 0, rain: 0, virga: 0, fogBank: 0 },
+  titan_gorge: { regime: 'dense-overcast', coverage: 0.96, baseM: 450, thicknessM: 500, shadow: false, streets: 0, cirrus: 0, farBand: 0.6, mid: 0, contrails: 0, storms: 0, rain: 0.25, virga: 0.55, fogBank: 0 },
+  skybridge: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 700, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.5, mid: 0, contrails: 0, storms: 0, rain: 0.2, virga: 0.5, fogBank: 0 },
+  polders: { regime: 'broken-stratocumulus', coverage: 0.68, baseM: 600, thicknessM: 500, shadow: true, streets: 0.4, cirrus: 0.1, farBand: 0.5, mid: 0, contrails: 3, storms: 0, rain: 0.2, virga: 0.2, fogBank: 0.35 },
+  copper_mesa: { regime: 'cumulus-humilis', coverage: 0.2, baseM: 1900, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15, mid: 0, contrails: 0, storms: 1, rain: 0.3, virga: 0.85, fogBank: 0 },
+  airfield: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, mid: 0, contrails: 6, storms: 0, rain: 0, virga: 0, fogBank: 0 },
+  oasis: { regime: 'cumulus-humilis', coverage: 0.17, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15, mid: 3, contrails: 0, storms: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
+  whiteout: { regime: 'low-stratus', coverage: 0.97, baseM: 300, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5, mid: 0, contrails: 0, storms: 0, rain: 0, virga: 0, fogBank: 0 },
+  orchard: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.4, cirrus: 0.12, farBand: 0.25, mid: 3, contrails: 2, storms: 0, rain: 0, virga: 0, fogBank: 0 },
+  longleaf: { regime: 'fair-weather-cumulus', coverage: 0.32, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.5, cirrus: 0.12, farBand: 0.25, mid: 0, contrails: 0, storms: 1, rain: 0.3, virga: 0, fogBank: 0 },
+  mangrove: { regime: 'towering-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3, mid: 0, contrails: 0, storms: 2, rain: 0.45, virga: 0.1, fogBank: 0 },
+  saltwind: { regime: 'sea-streets', coverage: 0.3, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.55, mid: 0, contrails: 0, storms: 0, rain: 0, virga: 0, fogBank: 0.35 },
+  reservoir: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, mid: 1, contrails: 2, storms: 0, rain: 0, virga: 0, fogBank: 0 },
+  mars: { regime: 'thin-ice-clouds', coverage: 0.06, baseM: 2500, thicknessM: 400, shadow: false, streets: 0.2, cirrus: 0.45, farBand: 0, mid: 0, contrails: 0, storms: 0, rain: 0, virga: 0, fogBank: 0 },
+  cliffbridge: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1200, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.25, farBand: 0.25, mid: 0, contrails: 2, storms: 0, rain: 0, virga: 0, fogBank: 0 },
+}, 'the cloudscape of every map (round 71 identity table; round 76: foundry and railyard on the industrial stratocumulus, urban on the altocumulus; 2026-10-01: the layered sky — mid layers, contrails, storm cells, rain and virga, fog banks)');
 {
   // the regime rows are complete and sane; every regime name resolves
   assert.equal(CLOUDSCAPE_REGIME_NAMES.length, 20, 'eighteen round-71 regimes and the two of round 76 (industrial-stratocumulus, altocumulus)');
@@ -311,8 +313,14 @@ assert.deepEqual(table, {
   // low stratus — keep the round-71 numbers byte for byte; the deck rows carry cells and the transmitted lighting
   for (const name of ['fair-weather-cumulus', 'cloud-streets', 'sea-streets', 'towering-cumulus', 'cumulonimbus-front', 'storm-front', 'cumulus-humilis', 'lenticular', 'low-stratus', 'high-cirrus', 'thin-ice-clouds']) {
     const row = CLOUDSCAPE_REGIMES[name];
-    assert.deepEqual([row.cells, row.deckLight, row.undulatus, row.interior], [0, 0, 0, 0], `${name}: the round-71 layer untouched by the deck pass`);
+    assert.deepEqual([row.cells, row.deckLight, row.undulatus], [0, 0, 0], `${name}: the round-71 layer untouched by the deck pass`);
   }
+  // 2026-10-01: the cumuliform rows take the interior octave (a lit face shades bulge by bulge — the open "cauliflower
+  // only at the outline"); low stratus, the high sheets and the lenticular stay smooth
+  for (const name of ['fair-weather-cumulus', 'cloud-streets', 'sea-streets', 'towering-cumulus', 'cumulonimbus-front', 'storm-front', 'cumulus-humilis']) {
+    assert.ok(CLOUDSCAPE_REGIMES[name].interior >= 0.3 && CLOUDSCAPE_REGIMES[name].interior <= 0.4, `${name}: the interior octave`);
+  }
+  for (const name of ['lenticular', 'low-stratus', 'high-cirrus', 'thin-ice-clouds']) assert.equal(CLOUDSCAPE_REGIMES[name].interior, 0, `${name}: smooth`);
   for (const name of ['stratocumulus-deck', 'industrial-stratocumulus', 'dense-overcast', 'overcast-stratus', 'hazy-altostratus', 'ice-fog-stratus']) {
     const row = CLOUDSCAPE_REGIMES[name];
     assert.ok(row.cells > 0 && row.deckLight === 1 && row.undulatus > 0, `${name}: a cellular deck lit by what its columns transmit`);

@@ -740,6 +740,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/skyEnvironmentCache.selftest.mjs',
     'src/engine/atmosphere.selftest.mjs',
     'src/engine/volumetricClouds.selftest.mjs',
+    // 2026-10-01 (the clouds-and-skyboxes lane): the layered sky — mid layers, contrails, storm cells, rain, fog banks, lightning, the time of day
+    'src/engine/cloudWeatherLayers.selftest.mjs',
     'src/engine/rendererContextRecovery.selftest.mjs',
     'src/engine/contextResourceLifetime.selftest.mjs',
     'src/engine/aerialDetail.selftest.mjs',

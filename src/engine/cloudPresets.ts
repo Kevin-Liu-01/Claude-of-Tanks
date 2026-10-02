@@ -15,7 +15,7 @@
  * `sky.cloudLayer` (a partial `CloudLayerPreset`, null = derived), which wins field by field.
  */
 import type { AtmosphereSkyPresetInput } from './atmosphere.ts';
-import { CLOUDSCAPE_REGIMES, type CloudscapeConfig, type CloudscapeRegime } from './cloudscapes.ts';
+import { CLOUDSCAPE_REGIMES, CLOUD_MID_KINDS, type CloudMidKind, type CloudscapeConfig, type CloudscapeRegime } from './cloudscapes.ts';
 
 export type CloudLayerRegime = 'scattered' | 'broken' | 'overcast' | 'storm' | CloudscapeRegime;
 
@@ -81,7 +81,42 @@ export interface CloudLayerPreset {
   undulatus: number;
   /** Round 76: 0..1 the interior density octave inside cumuliform masses (a detailed first light tap). */
   interior: number;
+  /** 2026-10-01: the time of day the layer was resolved for (cloudTimeOfDay: the diurnal law's input). */
+  timeOfDay: CloudTimeOfDay;
+  /**
+   * 2026-10-01: the mid-level layer (cloudWeatherLayers.ts) — its kind (0 none, 1 altocumulus, 2 altostratus,
+   * 3 cirrocumulus, 4 lenticular), the share of the sky's broad patches it fills, its altitude and thickness (m), its element size
+   * (m), its rows across the wind (0..1) and its extinction (1/m).
+   */
+  midKind: number;
+  midCoverage: number;
+  midAltM: number;
+  midThicknessM: number;
+  midCellM: number;
+  midBands: number;
+  midDensity: number;
+  /** 2026-10-01: contrails — how many (0..6) and their mean spread (0 fresh, 1 old contrail cirrus). */
+  contrails: number;
+  contrailAge: number;
+  /** 2026-10-01: distant cumulonimbus cells — how many (0..3), their sector (rad, world XZ like windDirRad), distance and tops (m). */
+  storms: number;
+  stormAzRad: number;
+  stormDistM: number;
+  stormTopM: number;
+  /** 2026-10-01: 0..1 rain shafts under the precipitating cores, and the share of their fall that evaporates (virga). */
+  rain: number;
+  virga: number;
+  /** 2026-10-01: 0..1 a fog bank on the sea at the horizon and its top (m over the camera's ground). */
+  fogBank: number;
+  fogBankTopM: number;
+  /** 2026-10-01: the ground's light on the cloud bases (linear rgb, already scaled by the night amount: 0 by day). */
+  groundGlow: readonly [number, number, number];
+  /** 2026-10-01: the key light's colour on the clouds (luminance 1): white by day (the atmosphere colours the sun), the moonlight's at night. */
+  keyTint: readonly [number, number, number];
 }
+
+/** 2026-10-01: the three skies a battle can open under (battleWeatherPolicy.ts BATTLE_TIMES). */
+type CloudTimeOfDay = 'day' | 'sunset' | 'night';
 
 /** The sky preset fields the derivation reads (a subset of sky.ts's SkyPreset). */
 export interface CloudLayerSkyInput extends AtmosphereSkyPresetInput {
@@ -92,6 +127,8 @@ export interface CloudLayerSkyInput extends AtmosphereSkyPresetInput {
   cloudAltM: number | null;
   cloudShadowAmp: number | null;
   fogDensity: number;
+  /** The key light's colour (the moon's at night: battleAtmosphereRuntime's night preset). */
+  sunColorHex?: number;
   cloudLayer?: Partial<CloudLayerPreset> | null;
   /** Round 71: the map's authored cloudscape (its `clouds` block, carried on the preset by main.ts). */
   cloudscape?: CloudscapeConfig | null;
@@ -147,6 +184,63 @@ export const CLOUD_LAYER_RULES = Object.freeze({
   farBandMaxAltM: 2200,
   /** round 71: the cirrus streak direction sits a third of a quarter turn off the wind (the upper wind veers) */
   cirrusVeerRad: Math.PI / 6,
+});
+
+/**
+ * 2026-10-01: the time of day from the sky preset the battle applies — the night preset dims the dome to .08 (the
+ * night amount of sky.ts: full at .08, none from .30), the sunset preset lowers the sun to 7°.
+ */
+const CLOUD_TIME_RULES = Object.freeze({ nightTop: 0.30, nightFull: 0.08, sunsetMaxElevationDeg: 10 });
+
+export function cloudNightAmount(skyIntensity: number): number {
+  const R = CLOUD_TIME_RULES;
+  return clamp((R.nightTop - skyIntensity) / (R.nightTop - R.nightFull), 0, 1);
+}
+
+export function cloudTimeOfDay(sky: { skyIntensity: number; sunElevationDeg: number }): CloudTimeOfDay {
+  if (cloudNightAmount(sky.skyIntensity) >= 0.5) return 'night';
+  return sky.sunElevationDeg <= CLOUD_TIME_RULES.sunsetMaxElevationDeg ? 'sunset' : 'day';
+}
+
+/** The time a cloudscape is resolved for: an authored constant sky (`diurnal: false`, Mars' dimmed galaxy dome) is always day. */
+function scapeTime(sky: CloudLayerSkyInput, scape: CloudscapeConfig): CloudTimeOfDay {
+  return scape.diurnal === false ? 'day' : cloudTimeOfDay(sky);
+}
+
+/**
+ * 2026-10-01: the diurnal cycle of convective cloud. Fair-weather cumulus is a daytime cloud — it grows with the
+ * morning's heating, flattens and thins as the surface cools toward sunset (cumulus fractus, stratocumulus
+ * vesperalis) and has mostly gone by night, when only the decks, the high cloud and the organised storms remain
+ * (a front's towers live through the night: nocturnal convection). Multipliers on the resolved numbers of every
+ * cumuliform regime (not a deck, a sheet or a front); a map's `sunset` / `night` knobs win over them.
+ */
+export const CLOUD_DIURNAL = Object.freeze({
+  sunset: Object.freeze({ coverage: 0.8, towers: 0.45, thickness: 0.78, wispiness: 0.12, rain: 0.6 }),
+  night: Object.freeze({ coverage: 0.58, towers: 0.25, thickness: 0.62, wispiness: 0.18, rain: 0.5 }),
+});
+
+/** 2026-10-01: the mid layer's kinds as the meteorology sizes them (altitude, thickness and element in metres, extinction per metre). */
+export const CLOUD_MID_DEFAULTS: Readonly<Record<CloudMidKind, { altM: number; thicknessM: number; cellM: number; bands: number; density: number }>> = Object.freeze({
+  none: Object.freeze({ altM: 4200, thicknessM: 300, cellM: 260, bands: 0, density: 0 }),
+  // altocumulus stratiformis: elements 200–400 m at 3–5 km, often in rows across the wind; τ ≈ 4 at an element's core
+  altocumulus: Object.freeze({ altM: 4200, thicknessM: 360, cellM: 280, bands: 0.35, density: 0.011 }),
+  // altostratus: a grey fibrous veil 1–2 km thick at 4–6 km, the sun as through ground glass (τ 1.5–3)
+  altostratus: Object.freeze({ altM: 5200, thicknessM: 900, cellM: 1800, bands: 0, density: 0.0026 }),
+  // cirrocumulus: ripples of ice 50–100 m high up (6.5–8 km), thin (τ ≈ 1)
+  cirrocumulus: Object.freeze({ altM: 7400, thicknessM: 160, cellM: 75, bands: 0.55, density: 0.007 }),
+  // altocumulus lenticularis: smooth stationary lenses a few kilometres long in the lee of the ranges (τ ≈ 3 at the core)
+  lenticular: Object.freeze({ altM: 5400, thicknessM: 520, cellM: 1500, bands: 0, density: 0.0065 }),
+});
+
+/** 2026-10-01: the weather beyond the slab's defaults (contrails, storm cells, the fog bank, the night glow). */
+export const CLOUD_WEATHER_RULES = Object.freeze({
+  contrailMax: 6, stormMax: 3, stormDistM: 38000, stormTopM: 11000, fogBankTopM: 120,
+  /** the sodium-orange glow of a lit town on the cloud bases (a map authors its own hue) */
+  nightGlowHex: 0xff9a52,
+  /** the night albedo: a moonlit cloud is a grey-white diffuser — the night preset's dark blue deck tint is a dome colour */
+  nightTintHex: 0xe9edf2,
+  /** the sunset albedo: near white — the low sun's transmittance colours the light, not the cloud */
+  sunsetTintHex: 0xf3f1ed,
 });
 
 function hexToLinear(hex: number): [number, number, number] {
@@ -212,6 +306,21 @@ function deriveLegacy(sky: CloudLayerSkyInput): CloudLayerPreset {
     sunGain: 1, ambientScale: 1, farBand: 0, farBandAltM: Math.min(R.farBandMaxAltM, baseM + thicknessM * 0.5), scud: 0,
     // round 76 fields at their neutral values: no deck cells, the round-71 floor lighting, no undulatus, no interior octave
     cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0,
+    // 2026-10-01 fields at their neutral values: no weather beyond the slab, a white key light, no ground glow
+    ...neutralWeather(baseM + thicknessM, cloudTimeOfDay(sky)),
+  };
+}
+
+/** The 2026-10-01 fields at their neutral values (a sky block alone, the Garage). */
+function neutralWeather(slabTopM: number, timeOfDay: CloudTimeOfDay): Pick<CloudLayerPreset,
+  'timeOfDay' | 'midKind' | 'midCoverage' | 'midAltM' | 'midThicknessM' | 'midCellM' | 'midBands' | 'midDensity' | 'contrails' | 'contrailAge'
+  | 'storms' | 'stormAzRad' | 'stormDistM' | 'stormTopM' | 'rain' | 'virga' | 'fogBank' | 'fogBankTopM' | 'groundGlow' | 'keyTint'> {
+  const mid = CLOUD_MID_DEFAULTS.none;
+  return {
+    timeOfDay, midKind: 0, midCoverage: 0, midAltM: Math.max(mid.altM, slabTopM + 300), midThicknessM: mid.thicknessM, midCellM: mid.cellM,
+    midBands: 0, midDensity: 0, contrails: 0, contrailAge: 0.5, storms: 0, stormAzRad: 0, stormDistM: CLOUD_WEATHER_RULES.stormDistM,
+    stormTopM: CLOUD_WEATHER_RULES.stormTopM, rain: 0, virga: 0, fogBank: 0, fogBankTopM: CLOUD_WEATHER_RULES.fogBankTopM,
+    groundGlow: [0, 0, 0], keyTint: [1, 1, 1],
   };
 }
 
@@ -268,7 +377,13 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     stratiform,
     fieldMix: clamp(scape.fieldMix ?? (row ? row.fieldMix : legacy.fieldMix), 0, 1),
     density: Math.max(1e-4, pick('density')),
-    tint: scape.tintHex != null ? tintOf(scape.tintHex, sheet) : tintOf(sky.cloudTintHex, sheet),
+    // (2026-10-01: the battle's sunset and night presets repaint cloudTintHex for the baked decks — a warm 0xeab492, a
+    // dark blue 0x3a4d68 — as the colour of the light on a painted deck; as an albedo they warmed the sunset twice (the
+    // sun's transmittance is already warm) and turned the night's clouds into black occluders. The layer keeps a
+    // grey-white diffuser at those times and lets the light bring the hue; a map's authored tint is kept.)
+    tint: scape.tintHex != null ? tintOf(scape.tintHex, sheet)
+      : tintOf(scapeTime(sky, scape) === 'night' ? CLOUD_WEATHER_RULES.nightTintHex
+        : scapeTime(sky, scape) === 'sunset' ? CLOUD_WEATHER_RULES.sunsetTintHex : sky.cloudTintHex, sheet),
     windDirRad,
     windSpeed: Math.max(0, pick('windSpeed')),
     offset: legacy.offset,
@@ -294,13 +409,79 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     deckLight: clamp(pick('deckLight'), 0, 1),
     undulatus: clamp(pick('undulatus'), 0, 1),
     interior: clamp(pick('interior'), 0, 1),
+    ...resolveWeather(sky, scape, row, baseM + thicknessM, windDirRad, sheet),
   };
+}
+
+/** 2026-10-01: the weather beyond the slab and the time's light from the regime's row and the map's block. */
+function resolveWeather(sky: CloudLayerSkyInput, scape: CloudscapeConfig, row: (typeof CLOUDSCAPE_REGIMES)[CloudscapeRegime] | null,
+  slabTopM: number, windDirRad: number, sheet: boolean): ReturnType<typeof neutralWeather> {
+  const W = CLOUD_WEATHER_RULES;
+  const timeOfDay = scapeTime(sky, scape);
+  const out = neutralWeather(slabTopM, timeOfDay);
+  const kindName: CloudMidKind = scape.mid ?? row?.mid ?? 'none';
+  const kind = Math.max(0, CLOUD_MID_KINDS.indexOf(kindName));
+  const mid = CLOUD_MID_DEFAULTS[CLOUD_MID_KINDS[kind]];
+  out.midKind = kind;
+  out.midCoverage = kind ? clamp(scape.midCoverage ?? row?.midCoverage ?? 0.4, 0, 1) : 0;
+  // the layer stands clear over the slab's tops (a front's anvils excepted: they reach the cirrus)
+  out.midAltM = Math.max(scape.midAltM ?? mid.altM, slabTopM + 300 + (scape.midThicknessM ?? mid.thicknessM) * 0.5);
+  out.midThicknessM = Math.max(40, scape.midThicknessM ?? mid.thicknessM);
+  out.midCellM = Math.max(30, scape.midCellM ?? mid.cellM);
+  out.midBands = clamp(scape.midBands ?? mid.bands, 0, 1);
+  out.midDensity = mid.density;
+  out.contrails = Math.round(clamp(scape.contrails ?? 0, 0, 1) * W.contrailMax);
+  out.contrailAge = clamp(scape.contrailAge ?? 0.5, 0, 1);
+  out.storms = Math.round(clamp(scape.storms ?? row?.storms ?? 0, 0, W.stormMax));
+  // a storm stands by default in the sector opposite the sun: front-lit towers over a shaded base (the sun's XZ angle
+  // in the wind convention is 90° − azimuth: sky.ts places the sun with setFromSphericalCoords)
+  out.stormAzRad = degToRad(scape.stormAzDeg ?? (270 - sky.sunAzimuthDeg));
+  out.stormDistM = Math.max(9000, scape.stormDistM ?? W.stormDistM);
+  out.stormTopM = Math.max(slabTopM + 1500, scape.stormTopM ?? W.stormTopM);
+  out.rain = clamp(scape.rain ?? row?.rain ?? 0, 0, 1);
+  out.virga = clamp(scape.virga ?? row?.virga ?? 0, 0, 1);
+  out.fogBank = clamp(scape.fogBank ?? 0, 0, 1);
+  out.fogBankTopM = Math.max(20, scape.fogBankTopM ?? W.fogBankTopM);
+  const night = scape.diurnal === false ? 0 : cloudNightAmount(sky.skyIntensity);
+  const glow = clamp(scape.nightGlow ?? 0, 0, 1) * night;
+  out.groundGlow = glow > 0 ? hexToLinear(scape.nightGlowHex ?? W.nightGlowHex).map((c) => c * glow) as [number, number, number] : [0, 0, 0];
+  if (night > 0 && sky.sunColorHex != null) {
+    // the moonlight's hue at its own luminance 1, toward white as the night fades
+    const k = hexToLinear(sky.sunColorHex);
+    const l = Math.max(1e-4, 0.2126 * k[0] + 0.7152 * k[1] + 0.0722 * k[2]);
+    out.keyTint = k.map((c) => 1 + (c / l - 1) * night) as [number, number, number];
+  }
+  void windDirRad; void sheet;
+  return out;
+}
+
+/**
+ * 2026-10-01: the block as this time of day takes it — the diurnal law (CLOUD_DIURNAL) on a cumuliform regime's resolved
+ * numbers, then the map's own knobs for the time (`sunset` / `night`). A day sky is the block itself.
+ */
+function timeScape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scape: CloudscapeConfig): CloudscapeConfig {
+  const time = scapeTime(sky, scape);
+  if (time === 'day') return scape;
+  const override = time === 'sunset' ? scape.sunset : scape.night;
+  let out: CloudscapeConfig = scape;
+  if (scape.diurnal !== false) {
+    const base = applyCloudscape(legacy, sky, scape);
+    // a cumuliform sky (not a deck, a sheet or a front's anvils) follows the surface heating
+    if (base.stratiform < 0.5 && base.cells < 0.3 && base.anvil < 0.5) {
+      const k = CLOUD_DIURNAL[time];
+      out = {
+        ...scape, coverage: base.coverage * k.coverage, towers: base.towers * k.towers, thicknessM: base.thicknessM * k.thickness,
+        wispiness: Math.min(1, base.wispiness + k.wispiness), rain: base.rain * k.rain,
+      };
+    }
+  }
+  return override ? { ...out, ...override } : out;
 }
 
 /** Derive the layer from a sky preset; the cloudscape refines it, an authored `cloudLayer` override wins field by field. */
 export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPreset {
   const legacy = deriveLegacy(sky);
-  const derived = sky.cloudscape ? applyCloudscape(legacy, sky, sky.cloudscape) : legacy;
+  const derived = sky.cloudscape ? applyCloudscape(legacy, sky, timeScape(legacy, sky, sky.cloudscape)) : legacy;
   const authored = sky.cloudLayer;
   if (!authored) return derived;
   const merged = { ...derived };
@@ -316,5 +497,8 @@ export function cloudLayerKey(p: CloudLayerPreset): string {
   return [p.regime, p.coverage, p.baseM, p.thicknessM, p.towers, p.stratiform, p.fieldMix, p.density, ...p.tint,
     p.windDirRad, p.windSpeed, ...p.offset, p.clearRadiusM, p.shadow ? 1 : 0, p.shadowThreshold,
     ...p.typeRange, p.anvil, p.wispiness, p.shearM, p.streets, p.cirrus, p.cirrusAngleRad, p.cirrusAltM, p.cirrusDensity,
-    p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud, p.cells, p.cellM, p.deckLight, p.undulatus, p.interior].map((v) => (typeof v === 'number' ? v.toFixed(5) : v)).join(',');
+    p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud, p.cells, p.cellM, p.deckLight, p.undulatus, p.interior,
+    p.timeOfDay, p.midKind, p.midCoverage, p.midAltM, p.midThicknessM, p.midCellM, p.midBands, p.midDensity, p.contrails, p.contrailAge,
+    p.storms, p.stormAzRad, p.stormDistM, p.stormTopM, p.rain, p.virga, p.fogBank, p.fogBankTopM, ...p.groundGlow, ...p.keyTint,
+  ].map((v) => (typeof v === 'number' ? v.toFixed(5) : v)).join(',');
 }
