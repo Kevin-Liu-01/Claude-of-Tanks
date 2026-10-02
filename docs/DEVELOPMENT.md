@@ -407,14 +407,31 @@ exercise each case. The impact plan reduces deployment-note invalidation from
 roughly 500 checks to 161 on this revision; fresh environmental checks are additional.
 This is a dependency count, not a claim about elapsed time on a busy host.
 
-The wheel-quality, machine-gun attachment and track end-wrap inspections share one
-unbatched HIGH tank build per roster member: 594 constructions become 198 on this
-fleet. Their 41 original assertions remain, with a detached-mount negative control
-and the end-wrap audit's original broken-station controls and 3/5 mm limits. Both
-rosters are retained; the mount inspection keeps its authored camo seed, which
-does not move the running gear. The ERA depletion test
-keeps its independent LOW build because it mutates geometry. Source-shape guards,
-functional simulation tests and real visual checks still make different claims:
+**One fleet pass per build (2026-10-02).** Ten receipts used to rebuild all 217 tanks each, and the build is
+nearly all of their cost (the audits themselves take under 5 s per fleet). Three fleet passes now build each tank once
+per build and run every audit that reads that build on it (`src/vehicles/fleetPass.test-support.mjs`; the audits are
+the former receipts' checks, moved verbatim into `*Audit.test-support.mjs` modules beside them):
+
+- `fleetPassHigh` — the unbatched seed-4242 HIGH build: the geometry ledger's HIGH rows, machine-gun mounts (with the
+  detached-mount negative control), track end wraps (with the broken-station controls and 3/5 mm limits), wheel
+  quality and the Gallery surface markup (formerly `wheelQuality` and `surfaceMarkupFleet`).
+- `fleetPassLow` — the same build at LOW: the ledger's LOW rows, ERA registration and gun articulation (formerly
+  `gunArticulation` and `eraGameplayRegistration`).
+- `fleetPassDefault` — the factory default (seed 4000), the build the marking-seat and combat-anatomy generators
+  measure: combat anatomy, mudguard seating, vehicle markings and tank assets (formerly four receipts).
+
+The builds stay separate where the checks read different models: camo seeds move seeded stowage, the generated seats
+and calibrations are solved on the default seed, the ledger pins seed 4242, and `fleetFloorClearance` needs the static
+preview. `fleetLazy` keeps its own sweep through the demand-loaded facade in a child process. Every audit keeps all of
+its assertions and negative controls and reads the build as its receipt did: synchronous checks run back to back
+before the build's microtasks (kf51, kf51b and the PT-91M rewrite UVs or vertex colours in one), async checks after
+one microtask turn. An audit that poses the model restores it or is declared last; after every other audit the pass
+compares each node's parent, visibility and transform and every mesh's bytes, instances and materials with what the
+audit received, and fails the audit that left a difference. A failing audit stops receiving tanks while the others go
+on, its build is discarded, and the pass names every failed audit and tank. Measured on this host (CPU-seconds, load
+about 25): the ten receipts 1,961 s, the five that replace them 1,025 s (the three passes 602 s).
+
+Source-shape guards, functional simulation tests and real visual checks still make different claims:
 a source regex does not prove a rendered result. The full gate inventory is not a
 substitute for the map/contact, shadow-motion and real Garage/battle review.
 
@@ -473,9 +490,10 @@ support went with it. Visual change detection lives in generated ledgers that on
 
 - `npm run tank:geometry:check` / `npm run tank:geometry:update` — `docs/references/fleet-geometry-ledger.json`, every
   playable tank at HIGH and LOW (camo seed 4242, unbatched), digested per rig group (hull, turret, gun, running gear,
-  other). `npm test` verifies every row without a second fleet build: `wheelQuality.selftest` (HIGH) and
-  `gunArticulation.selftest` (LOW) digest the models they already build, and `fleetGeometryLedger.selftest` guards the
-  roster, the wiring and the negative controls (digest and comparison live in `tools/fleet-geometry-digest.mjs`).
+  other). `npm test` verifies every row without a second fleet build: `fleetPassHigh.selftest` (HIGH) and
+  `fleetPassLow.selftest` (LOW) digest the models they already build for their other fleet audits, and
+  `fleetGeometryLedger.selftest` guards the roster, the wiring and the negative controls (digest and comparison live in
+  `tools/fleet-geometry-digest.mjs`).
   After an intended geometry or material change, re-pin the moved rows
   (`npm run tank:geometry:update -- --ids=<ids>`, or the whole fleet without `--ids`), review which tanks and groups
   moved, and commit the ledger with the change.

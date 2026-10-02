@@ -122,9 +122,11 @@ as a damaged gun and a red gun mount prevents its casemate weapon from firing.
 
 ## Probes / gates
 
-- `node src/vehicles/combatAnatomy.selftest.mjs` — fleet-wide generated-data
-  gate: all 123 playable tanks, exact roof structures, supported smooth shapes,
-  internal-shape containment, and deterministic front/side/top seam rays.
+- `node src/vehicles/fleetPassDefault.selftest.mjs` — fleet-wide generated-data
+  gate (the combat-anatomy audit, `combatAnatomyAudit.test-support.mjs`, beside the
+  marking, asset and mudguard audits on the same default build): every playable
+  tank, exact roof structures, supported smooth shapes, internal-shape
+  containment, and deterministic front/side/top seam rays.
 - `node tools/module-hit-probe.mjs` — legacy targeted pure-sim probe (all roster
   ~2 s). Structural containment, scripted mega-pen shots through every
   internal module volume from its own side / long axis / top (the right module
