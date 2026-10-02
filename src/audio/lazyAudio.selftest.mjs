@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createLazyAudio, startFallbackLoadingTone } from './lazyAudio.ts';
-import { createAudio } from './audio.ts';
+import { createAudio } from './audioEngine.ts';
 import { createBus } from '../game/stateCore.ts';
 
 const flushMicrotasks = async () => { for (let tick = 0; tick < 8; tick++) await Promise.resolve(); };
@@ -539,14 +539,17 @@ for (const silence of ['mute', 'master', 'bus']) {
         nodes.push(node); return node;
       };
       for (const [method, kind] of [['createGain', 'gain'], ['createOscillator', 'oscillator'],
-        ['createBufferSource', 'buffer'], ['createBiquadFilter', 'filter'],
+        ['createBufferSource', 'buffer'], ['createBiquadFilter', 'filter'], ['createConvolver', 'convolver'],
         ['createDynamicsCompressor', 'compressor'], ['createWaveShaper', 'shaper'], ['createStereoPanner', 'panner']]) {
         context[method] = () => makeNode(kind);
       }
-      const buffer = { duration: 4 };
-      const mixer = createAudio({ context, preparedBuffers: { context, sampleRate: 1000,
-        white: buffer, wind: buffer, crackle: buffer,
-        guns: { light: buffer, medium: buffer, heavy: buffer, huge: buffer }, random: () => 0.5 } });
+      context.createBuffer = (channels, length, sampleRate) => {
+        const data = Array.from({ length: channels }, () => new Float32Array(length));
+        return { numberOfChannels: channels, length, sampleRate, duration: length / sampleRate, getChannelData: (c) => data[c] };
+      };
+      // The format probe fails in this fake: every cue stays on its procedural path.
+      context.decodeAudioData = () => Promise.reject(new Error('no codec in the fake context'));
+      const mixer = createAudio({ context, tier: 'desktop' });
       if (muteFirst) { mixer.mute(true); mixer.setMasterVolume(0.45); }
       else mixer.setMasterVolume(0);
       assert.equal(nodes.length, 0, 'pre-resume setters only latch, even with an adopted context');

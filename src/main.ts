@@ -1308,7 +1308,9 @@ const transition = createTransition();
 // --- audio --------------------------------------------------------------------
 const audio = await bootStage('audio', () => {
   const a = createLazyAudio({ getMapId: () => game.phase === 'battle'
-    ? game.mapId : currentWorld()?.mapId ?? game.mapId });
+    ? game.mapId : currentWorld()?.mapId ?? game.mapId,
+  // Surface under each hull (track sounds), water depth and terrain occlusion.
+  getTerrain: () => (currentWorld() ? hfProxy : null) });
   a.bindBus(bus);
   return a;
 });

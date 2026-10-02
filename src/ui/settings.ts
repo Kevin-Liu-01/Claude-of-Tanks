@@ -11,8 +11,9 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // hard segmented picker — consumed by game/state.ts via getStoredDifficulty at
 // battle setup), controller aim sensitivity — each slider is paired with a
 // numeric entry field. SOUND tab: master/engine/gunfire/ambience/UI volume
-// sliders (persisted with the gameplay settings; broadcast live over the bus
-// as 'ui:volumes' for src/audio/audio.ts). All state persists via the input
+// sliders, the crew-radio language (national / English / interface) and the
+// concussion toggle (persisted with the gameplay settings; broadcast live over
+// the bus as 'ui:volumes' for src/audio/audioEngine.ts). All state persists via the input
 // layer's localStorage stores. Also owns the fading controls-hint strip
 // shown on battle start and the garage gear button, and broadcasts
 // 'ui:bindingsChanged' so the HUD's shell/consumable hotkey labels stay honest.
@@ -97,7 +98,8 @@ type BooleanSettingKey =
   | 'showDebugHud'
   | 'showDirectionalHitValues'
   | 'armorAimOverlay'
-  | 'alarmHeartbeat';
+  | 'alarmHeartbeat'
+  | 'audioConcussion';
 type ActionDefinition = InputLayer['actionDefs'][number];
 type TimerHandle = ReturnType<typeof setTimeout>;
 
@@ -1090,6 +1092,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       ui: s.volUi,
       voice: s.volVoice,
       alarmHeartbeat: !!s.alarmHeartbeat,
+      crewVoice: s.crewVoice,
+      concussion: !!s.audioConcussion,
     });
   }
 
@@ -1103,8 +1107,36 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         onChange: emitVolumes, blipOnCommit: true,
       });
     }
+    // National crews: each nation's tanks speak its own language over the
+    // intercom; English or the interface language on request.
+    const crew = groupCard(body, t('settings.crew.title'));
+    const crewRow = el('div', 'cot-set-row', crew);
+    settingLabel(crewRow, t('settings.crew.voice'), SETTINGS_OPTION_ICONS.crewVoice);
+    const crewSeg = el('div', 'cot-set-seg', crewRow);
+    const crewBtns: HTMLButtonElement[] = [];
+    for (const [value, label] of [
+      ['national', t('settings.crew.national')],
+      ['english', t('settings.crew.english')],
+      ['interface', t('settings.crew.interface')],
+    ] as const) {
+      const b = el('button', '', crewSeg);
+      b.type = 'button';
+      b.textContent = label;
+      b.dataset.mode = value;
+      b.addEventListener('click', () => {
+        input.setSetting('crewVoice', value);
+        for (const x of crewBtns) x.classList.toggle('sel', x.dataset.mode === value);
+        emitVolumes();
+        emit('ui:click', {});
+      });
+      crewBtns.push(b);
+    }
+    for (const x of crewBtns) x.classList.toggle('sel', x.dataset.mode === input.getSettings().crewVoice);
+    const crewNote = el('div', 'cot-set-note', crew);
+    crewNote.textContent = t('settings.crew.note');
     const alarms = groupCard(body, t('settings.alarms.title'));
     onOffRow(alarms, t('settings.alarms.heartbeat'), 'alarmHeartbeat', emitVolumes);
+    onOffRow(alarms, t('settings.alarms.concussion'), 'audioConcussion', emitVolumes);
 
     const note = el('div', 'cot-set-note', body);
     note.textContent = t('settings.sound.note');
@@ -1522,6 +1554,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         input.setSetting(key, 1);
       }
       input.setSetting('alarmHeartbeat', true);
+      input.setSetting('audioConcussion', true);
+      input.setSetting('crewVoice', 'national');
       emitVolumes();
       renderTab();
       emit('ui:click', {});
