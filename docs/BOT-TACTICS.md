@@ -125,6 +125,23 @@ the gate and no burst worth a round, the rack counts as spent against that
 target for 90 seconds. The bot rams when the ram law allows it and otherwise
 retires past 240 m, and any other spotted enemy outranks the target.
 
+A passive target is finished, not plinked. When a target has held its hull
+still and its gun silent for 15 seconds and this bot's rounds have not
+penetrated it for 15 seconds, the bot presses to a side aspect from which its
+gun reaches the hull, not only the turret top. Standing on the target's flank at
+point-blank range spares the press only when the gun reaches the hull from
+there as well (a crest can mask it while the eye still sees the turret). Three
+main-gun rounds in a row from one spot (within 10 m) that do not reach the
+target, judged 1.5 seconds after the last one, give that spot up: the press
+starts from it, or the press point is given up for another, as a masked probe
+gives one up. A rack that is empty finishes a passive hull by ramming when the
+ram law says the rammer survives. The run that finishes it is judged and driven
+no faster than the slowest closing speed whose share deals 1.8 times the
+target's remaining health (6 m/s at least). Inside 60 m a clear line drives
+straight at the hull. Its own contact does not count as the target moving, and
+the empty rack's probe does not scoot the run away. Runs that cannot finish the
+target alone keep the full-speed judgement.
+
 The traffic regressions run actual movement for both teams: parked hulls,
 oncoming pairs, and a three-bot queue. The pacing target is 4–8 minutes with
 no default match under two minutes; prolonged idle deployment is not a tactic.
@@ -177,6 +194,12 @@ battle's wrecks, closing the ones they plug and laning the ones they narrow.
   and an APFSDS control), a zone holder that cannot fight from the zone's centre
   (shut gate, no sight line), and a mission route that ends short of its
   objective.
+- `src/game/ai.passiveTarget.selftest.mjs`: an idle M1A2 behind a crest that
+  masks its hull from a flank spot (the press goes round to a point the gun
+  reaches the hull from, with an open-flank control), three rounds in a row
+  that miss from the flank spot (the spot is given up, with a control whose
+  rounds land), and an empty rack against a 320 hp idle host (a capped
+  finishing ram, with full-health and moving-host controls).
 - `src/game/ai.levels.selftest.mjs`: a synthetic deck over a floor, with and
   without a ramp: the deck bot leaves the floor target for one on its own level,
   the floor bot drives the ramp to the deck, gives the deck target up when no

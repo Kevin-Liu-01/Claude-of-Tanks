@@ -555,6 +555,19 @@ const PASSIVE_PRESS_REPICK_S = 3;
 const PASSIVE_PRESS_LANE_HULL_FRAC = 0.4; // the press point must reach the HULL with the gun, not only the turret top
 const PASSIVE_PRESS_DENIED_S = 6;          // closed penetration gate held at the press point before it is given up
 const PASSIVE_PRESS_ARC_S = 3;             // gun pinned at a pitch stop at the press point before it is given up
+// Missing an idle target (bots lane, 2026-10-02; Winter pacing seed 23000 on the maps lane's tree): a T-90M stood
+// 57-66 m off the idle host's flank for five minutes while its HEAT rounds dug into a crest 16 m short of the hull or
+// passed over the turret. The press held off because the hull stood "already on its flank at point-blank", and the
+// shoot-and-scoot is off against a passive target, so nothing moved it. PASSIVE_PRESS_MISSES main-gun rounds in a row
+// that leave the gun without a hit on the target (judged MISS_SETTLE_S after the last one, once its shell has landed)
+// are a verdict on the spot: the press starts from it, or the press point it stands on is given up, exactly as a
+// masked probe gives one up. The rounds count from one spot (within MISS_SPOT_M), so fire on the move never adds up to a
+// verdict on the point the hull arrives at. The flank exemption also takes the press point's own test: from where the
+// hull stands the gun must reach the hull (PASSIVE_PRESS_LANE_HULL_FRAC), re-tested every FLANK_LANE_RECHECK_S.
+const PASSIVE_PRESS_MISSES = 3;
+const MISS_SETTLE_S = 1.5;
+const MISS_SPOT_M = 10;                    // rounds fired farther apart than this are from different spots
+const FLANK_LANE_RECHECK_S = 1;
 const GUN_ARC_MARGIN_RAD = 0.026;          // 1.5° inside the mechanical elevation / depression stops
 // Round 60: a flank whose side aspect leaves the gate closed carries on round toward the rear.
 const FLANK_REAR_ASPECT_RAD = 2.35;        // 135° off the nose
@@ -586,6 +599,25 @@ const RAM_MAX_CLOSING_MPS = 14;
 const RAM_SELF_BUDGET_FRAC = 0.8;          // the rams a kill needs may cost at most this share of own hull
 const RAM_RUN_UP_M = 45;                   // a stalled ram backs off to this range before the next run
 const EMPTY_RETIRE_M = 240;                // an empty bot that cannot ram keeps at least this far from its enemies
+// The finishing run (bots lane, 2026-10-02; Ruinspires pacing seed 37001 on the maps lane's tree): the last bravo M1A2
+// emptied its rack with the idle host at 320 hp and retired for the last 325 s, to the 900 s cap. The ram law splits a
+// run's pool by mass and discounts the rammer, so what the rammer pays per point it deals is fixed, and a full-speed
+// run spends the overkill on both hulls: one 14 m/s run would deal 1516 to the host and 985 to the 803 hp rammer.
+// Against a passive target the run that finishes it is driven no faster than the slowest closing speed whose share
+// still deals RAM_FINISH_MARGIN times the target's hp (the margin covers a blow on the glacis, which takes 0.7 of the
+// pool's share), never under RAM_CAP_MIN_MPS, and the exchange is judged at that speed. Runs that cannot finish the
+// target alone are judged, and driven, at full speed, as before. Three more things kept the runs from landing: the
+// run aimed 20 m past the hull, so the corner router rounded whatever stood beyond it and the hull swerved off (inside
+// RAM_STRAIGHT_M a clear line to the hull is now driven straight at it); the empty rack's probe finds no zone with no
+// round aboard, and that probe miss scooted the hull off the run every few seconds (it no longer does); and the run's
+// own contact moved the host, which restarted its still clock, so the plan lapsed to the full-speed judgement and the
+// hull retired for 15 s (the bump of a run in contact no longer counts as the target moving).
+const RAM_FINISH_MARGIN = 1.8;
+const RAM_CAP_MIN_MPS = 6;
+const RAM_CAP_BRAKE_MPS = 0.75;            // over the run's cap the hull coasts; this far over it brakes
+const RAM_STRAIGHT_M = 60;
+const RAM_LINE_RECHECK_S = 0.5;
+const RAM_CONTACT_HOLD_S = 4;              // after a contact the target's motion is the run's own push
 // The spent rack (bots lane, 2026-10-02, Frontier Basin 7v7 seed 88677): the last bravo Challenger 2 had only its
 // L34 WP smoke rounds left against the idle M1A2 — no zone opened the gate, no burst was worth a round — and the
 // press, the closed-gate flank and the press repicks cycled for six minutes without a shot until the 900 s cap.
@@ -1103,6 +1135,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let passivePressCandidate = -1;            // probe-visible: ring * 16 + bearing index of the chosen press point
   let passivePressArcT = 0;                  // gun pinned at a pitch stop while standing on the press point
   const pressVeto = { x: 0, z: 0, untilS: -1 }; // a press point whose probe found the hull masked
+  // missing an idle target (see PASSIVE_PRESS_MISSES)
+  let missStreak = 0;                        // main-gun rounds in a row at missStreakTargetId without a hit on it…
+  let missStreakTargetId: string | null = null;
+  const missSpot = { x: 0, z: 0 };           // …all fired from within MISS_SPOT_M of this spot
+  let missLastShotS = -Infinity;
+  let missVerdicts = 0;                      // probe-visible count of spots given up for their misses
+  let flankLaneCheckS = -Infinity;
+  let flankLaneClear = false;                // the flank exemption's gun-to-hull lane at the last check
   // round 62 pacing: the search for a lost enemy (beginSearchLeg / updateSearchLeg)
   let searching = false;                     // a search leg's route is in the waypoints
   let searchKind = '';                       // probe-visible: sector | seen | objective | sweep | wide | direct
@@ -1153,6 +1193,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let ramRuns = 0;                           // probe-visible count of ram runs begun
   let ramCommitUntilS = -1;
   let ramBackoffUntilS = -1;                 // a stalled run backs off for the next run-up
+  let ramCapMps = Infinity;                  // the run's closing-speed cap (see RAM_FINISH_MARGIN)
+  let ramLineCheckS = -Infinity;
+  let ramLineClear = false;                  // the straight line to the rammed hull at the last check
+  let ramContactUntilS = -1;                 // the run touched the hull: its motion until then is our push
   const ramPoint = { x: 0, z: 0 };
   // geometry-hard blocked commit → follow the authored lane a while
   let laneFallbackUntilS = -1;
@@ -3143,11 +3187,29 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         reverseFacing(input, bearing, -0.8);
         return;
       }
-      // straight through the target: the arrive test must not stop the hull short of contact
-      ramPoint.x = navX + (dx / dist) * 20;
-      ramPoint.z = navZ + (dz / dist) * 20;
-      driveToXZ(input, ramPoint.x, ramPoint.z, 1.0);
+      // in contact with the hull: what it moves now is the run's own push (see RAM_CONTACT_HOLD_S)
+      if (dist < (spec.dims.hullLengthM + target.spec.dims.hullLengthM) * 0.5 + 1.5) ramContactUntilS = timeS + RAM_CONTACT_HOLD_S;
+      if (timeS - ramLineCheckS >= RAM_LINE_RECHECK_S) {
+        ramLineCheckS = timeS;
+        ramLineClear = dist <= RAM_STRAIGHT_M && !findBlockingObstacle(st.pos.x, st.pos.z, dx / dist, dz / dist,
+          Math.max(0, dist - target.spec.dims.hullLengthM * 0.5), spec.dims.widthM * 0.5 + 0.3);
+      }
+      if (ramLineClear) {
+        // a clear line: straight at the hull (the router would round whatever stands beyond it)
+        const err = wrapAngle(bearing - st.yaw);
+        input.steer = clamp(err * 2.2, -1, 1);
+        input.throttle = Math.abs(err) > 1.2 ? 0.3 : 1;
+        trackNavProgress(navX, navZ, dist); // the wedge and orbit watchdogs judge the run against the hull itself
+      } else {
+        // straight through the target: the arrive test must not stop the hull short of contact
+        ramPoint.x = navX + (dx / dist) * 20;
+        ramPoint.z = navZ + (dz / dist) * 20;
+        driveToXZ(input, ramPoint.x, ramPoint.z, 1.0);
+      }
       input.brake = false;
+      // a finishing run against a passive hull closes no faster than the speed it was judged at
+      if (st.speed > ramCapMps) input.throttle = 0;
+      if (st.speed > ramCapMps + RAM_CAP_BRAKE_MPS) input.brake = true;
       return;
     }
     const enemy = nearestLivingEnemy();
@@ -4319,6 +4381,17 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         shotsFromSpot = 0;
       }
       shotsFromSpot++;
+      if (target) { // a round left the gun at the target: it counts against this spot until a hit reports back
+        if (target.id !== missStreakTargetId
+            || Math.hypot(position.x - missSpot.x, position.z - missSpot.z) > MISS_SPOT_M) {
+          missStreakTargetId = target.id;
+          missStreak = 0;
+          missSpot.x = position.x;
+          missSpot.z = position.z;
+        }
+        missStreak++;
+        missLastShotS = timeS;
+      }
       const shouldScoot = tune.scootAfter > 0
         && shotsFromSpot >= tune.scootAfter
         && timeS >= scootUntilS
@@ -4329,7 +4402,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   function updateProbeRelocation(dt: number, timeS: number): void {
-    probeMissT = probeMiss && target && losClear ? probeMissT + dt : 0;
+    // an empty rack's probe finds no zone because no round is aboard, not because the hull is masked: its scoots cut
+    // every ram run short (see RAM_FINISH_MARGIN)
+    probeMissT = probeMiss && target && losClear && !emptyRack ? probeMissT + dt : 0;
     if (probeMissT <= 6 || timeS < scootUntilS) return;
     if (pickScoot()) beginScoot(10);
     probeMissT = 0;
@@ -4426,9 +4501,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * the kinetic ram law both authorities apply to enemy contacts (damage.ts ramDamage), or retiring. It rams
    * only when the law says the exchange is survivable: the rams a kill needs, at the closing speed a straight
    * run reaches, cost at most RAM_SELF_BUDGET_FRAC of its own hull. Otherwise it keeps EMPTY_RETIRE_M from
-   * every enemy and leaves the finish to its team.
+   * every enemy and leaves the finish to its team. Against a passive target the run that finishes it is judged,
+   * and capped (ramCapMps), at the slowest closing speed that still finishes it (see RAM_FINISH_MARGIN).
    */
   function ramWorthAgainst(opponent: AiEntity): boolean {
+    ramCapMps = Infinity;
     const mine = entity.combat;
     const theirs = opponent.combat;
     if (!mine || !theirs || theirs.destroyed) return false;
@@ -4436,7 +4513,25 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       ((spec.topSpeedKmh || 0) / 3.6) * RAM_APPROACH_EFFICIENCY);
     const split = ramDamage(spec.weightTons, opponent.spec.weightTons, closing);
     if (!(split.toB > 0)) return false;
-    const ramsNeeded = Math.ceil(Math.max(1, theirs.hp) / split.toB);
+    const hp = Math.max(1, theirs.hp);
+    const ramsNeeded = Math.ceil(hp / split.toB);
+    if (ramsNeeded === 1 && opponent === target && targetPassive(nowS)) {
+      const need = hp * RAM_FINISH_MARGIN;
+      if (need < split.toB) {
+        // the pool grows monotonically with the closing speed: bisect for the slowest run whose share reaches `need`
+        let lo = 0, hi = closing;
+        for (let i = 0; i < 16; i++) {
+          const mid = (lo + hi) * 0.5;
+          if (ramDamage(spec.weightTons, opponent.spec.weightTons, mid).toB >= need) hi = mid;
+          else lo = mid;
+        }
+        const cap = Math.min(closing, Math.max(hi, RAM_CAP_MIN_MPS));
+        const run = ramDamage(spec.weightTons, opponent.spec.weightTons, cap);
+        if (!(run.toA < mine.hp * RAM_SELF_BUDGET_FRAC)) return false;
+        ramCapMps = cap;
+        return true;
+      }
+    }
     return ramsNeeded * split.toA < mine.hp * RAM_SELF_BUDGET_FRAC;
   }
 
@@ -4464,6 +4559,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     emptyRack = firstAvailableSlot() < 0 || (!!target && target.id === rackSpentId);
     if (!emptyRack) {
       ramming = false;
+      ramCapMps = Infinity;
       return;
     }
     if (ramming && timeS < ramCommitUntilS && target && enemyAlive(target)) return; // a run is committed
@@ -4657,7 +4753,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       lastPenAtS = timeS;
       prevTargetReloadT = target.combat?.reload?.t ?? 0;
     }
-    const still = Math.abs(target.state.speed ?? 0) < 0.5 && Math.abs(target.state.yawRate ?? 0) < 0.05;
+    // a hull this bot's ram run is pushing has not moved itself (see RAM_CONTACT_HOLD_S)
+    const still = (Math.abs(target.state.speed ?? 0) < 0.5 && Math.abs(target.state.yawRate ?? 0) < 0.05)
+      || (ramming && timeS < ramContactUntilS);
     targetStillS = still ? targetStillS + dt : 0;
     const reloadT = target.combat?.reload?.t ?? 0;
     if (reloadT > prevTargetReloadT + 1) targetLastShotS = timeS; // a shell left its gun
@@ -4667,6 +4765,40 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function targetPassive(timeS: number): boolean {
     return !!target && targetStillS >= PASSIVE_TARGET_STILL_S
       && timeS - targetLastShotS >= PASSIVE_TARGET_SILENT_S;
+  }
+
+  /** The press point's lane: the gun, standing at (x, z) `distance` m from the target, reaches its hull. */
+  function pressLaneClear(x: number, z: number, distance: number): boolean {
+    if (!target) return false;
+    const tp = target.state.pos;
+    const gunY = hf.getHeightAt(x, z) + selfGunM;
+    const hullY = tp.y + target.spec.dims.heightM * PASSIVE_PRESS_LANE_HULL_FRAC;
+    return withinGunArc(Math.atan2(hullY - gunY, distance)) && hasLos(x, gunY, z, tp.x, hullY, tp.z);
+  }
+
+  /** The flank exemption's lane from where the hull stands (see PASSIVE_PRESS_MISSES), re-tested at a fixed cadence. */
+  function flankLaneHolds(timeS: number, distance: number): boolean {
+    if (timeS - flankLaneCheckS >= FLANK_LANE_RECHECK_S) {
+      flankLaneCheckS = timeS;
+      flankLaneClear = pressLaneClear(entity.state.pos.x, entity.state.pos.z, distance);
+    }
+    return flankLaneClear;
+  }
+
+  /** Main-gun rounds in a row have left the gun without reaching the target (see PASSIVE_PRESS_MISSES). */
+  function missedOut(timeS: number): boolean {
+    const st = entity.state;
+    return !!target && missStreakTargetId === target.id && missStreak >= PASSIVE_PRESS_MISSES
+      && timeS - missLastShotS >= MISS_SETTLE_S && Math.hypot(st.pos.x - missSpot.x, st.pos.z - missSpot.z) <= MISS_SPOT_M;
+  }
+
+  /** Give up the spot the misses were fired from: no press point near it for a while, and a fresh count. */
+  function giveUpMissedSpot(x: number, z: number, timeS: number): void {
+    pressVeto.x = x;
+    pressVeto.z = z;
+    pressVeto.untilS = timeS + 120;
+    missStreak = 0;
+    missVerdicts++;
   }
 
   /** The side-aspect point nearer to where this hull already stands; the far side, then (round 67) land-only
@@ -4698,10 +4830,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         if (liquidSafe && !liquidSafe(x, z, Math.atan2(tp.x - x, tp.z - z), 0)) continue;
         // Copper Mesa seeds 0/1/3 after the first press: the point at the foot of the host's plateau masked the
         // hull behind the rim — the gun, not the eye, must reach the hull from the press point.
-        const gunY = hf.getHeightAt(x, z) + selfGunM;
-        const hullY = tp.y + target.spec.dims.heightM * PASSIVE_PRESS_LANE_HULL_FRAC;
-        if (!withinGunArc(Math.atan2(hullY - gunY, radius))) continue;
-        if (!hasLos(x, gunY, z, tp.x, hullY, tp.z)) continue;
+        if (!pressLaneClear(x, z, radius)) continue;
         pressPoint.x = x;
         pressPoint.z = z;
         passivePressCandidate = ring * 16 + k; // round 67: 0/1 the sides, 2–9 the fallbacks, 10 straight in
@@ -4718,10 +4847,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       passivePressing = false;
       return;
     }
+    const missed = missedOut(timeS);
     if (!passivePressing) {
       if (timeS - lastPenAtS < PASSIVE_PRESS_NO_PEN_S) return;
-      if (distance <= PASSIVE_PRESS_STANDOFF_M + ARRIVE_DIST_M
-          && aspectAngle() >= PASSIVE_PRESS_ASPECT_RAD * 0.7) return; // already on its flank at point-blank
+      // already on its flank at point-blank, with the gun on the hull and its rounds arriving
+      if (!missed && distance <= PASSIVE_PRESS_STANDOFF_M + ARRIVE_DIST_M
+          && aspectAngle() >= PASSIVE_PRESS_ASPECT_RAD * 0.7 && flankLaneHolds(timeS, distance)) return;
+      if (missed) giveUpMissedSpot(missSpot.x, missSpot.z, timeS);
       if (outnumberedSolo() || !pickPressPoint()) return;
       passivePressing = true;
       passivePressRepickS = timeS + PASSIVE_PRESS_REPICK_S;
@@ -4744,9 +4876,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // Saltwind seed 0: both side points failed and the straight-in point left the gate closed (ratio 0.7 on the
       // glacis) with the hull in plain view — a closed gate held at the press point is the same verdict, and so
       // is a gun pinned at its pitch stop there (Coastal seed 3).
-      if (atPoint && (probeMiss || penDeniedT >= PASSIVE_PRESS_DENIED_S || passivePressArcT >= PASSIVE_PRESS_ARC_S)
-          && firstAvailableSlot() >= 0) {
+      // A press point its rounds do not reach from (missedOut) is given up the same way.
+      if (atPoint && (probeMiss || penDeniedT >= PASSIVE_PRESS_DENIED_S || passivePressArcT >= PASSIVE_PRESS_ARC_S
+          || missed) && firstAvailableSlot() >= 0) {
         passivePressArcT = 0;
+        if (missed) giveUpMissedSpot(missSpot.x, missSpot.z, timeS);
         pressVeto.x = pressPoint.x;
         pressVeto.z = pressPoint.z;
         pressVeto.untilS = timeS + 120;
@@ -5350,6 +5484,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!hitEvent) return;
     if (hitEvent.shellName && !spec.gun.shells.some(shell => shell.name === hitEvent.shellName)) return;
     if (target && hitEvent.targetId === target.id) {
+      missStreak = 0; // the round reached the target: the spot's lay holds (see PASSIVE_PRESS_MISSES)
       const k = hitEvent.kind;
       if (k === 'nonpen' || k === 'ricochet' || k === 'spaced_absorb' || k === 'era') {
         nonPenCount++;
@@ -5518,7 +5653,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       searchGoalX: Math.round(searchGoal.x), searchGoalZ: Math.round(searchGoal.z),
       wpIndex, wpCount: waypoints.length,
       waypointX: waypoints[wpIndex]?.x ?? null, waypointZ: waypoints[wpIndex]?.z ?? null,
-      conserveHolds, emptyRack, ramming, ramRuns,
+      conserveHolds, emptyRack, ramming, ramRuns, ramCapMps: Number.isFinite(ramCapMps) ? +ramCapMps.toFixed(2) : null,
+      missStreak, missVerdicts,
       rackSpent: !!target && target.id === rackSpentId, rackSpentT: +rackSpentT.toFixed(1), rackSpentVerdicts,
       objectiveShifts, objectiveShifting,
       missionReleases, missionReleased: nowS < missionReleaseUntilS,
