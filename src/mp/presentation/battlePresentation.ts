@@ -791,9 +791,14 @@ export function createBattlePresentation({
         const id = String(payload.id ?? '');
         if (typeof payload.cause === 'string') destructionCause.set(id, payload.cause);
         const actor = actors.get(id);
+        // The authority's death position (ghost-crunch lane, 2026-10-02): the explosion, the wreck's smoke column
+        // (effects.ts lastKnownPos) and the killcam sit where the hull died, not where this frame's interpolated or
+        // predicted pose happens to be — up to one snapshot interval of a fall or a slide away. An older host's event
+        // carries no position: the presented pose stands in.
+        const died = typeof payload.x === 'number' && typeof payload.y === 'number' && typeof payload.z === 'number';
         bus.emit('tank:destroyed', {
           id, specId: actor?.specId, killerId: payload.killerId, cause: payload.cause === 'ammo_rack' ? 'ammorack' : payload.cause,
-          pos: actor ? [actor.state.pos.x, actor.state.pos.y, actor.state.pos.z] : null,
+          pos: died ? [payload.x, payload.y, payload.z] : actor ? [actor.state.pos.x, actor.state.pos.y, actor.state.pos.z] : null,
         });
         return;
       }
@@ -813,7 +818,13 @@ export function createBattlePresentation({
         );
         obstacle.crushed = true;
         bus.emit('prop:crushed', {
+          // what fell, by the authority's index (ghost-crunch lane, 2026-10-02): a position cannot name it — a hedgehog's
+          // crossed beams share one box centre, and an audit that read the effect back from `pos` called the sibling's
+          // crunch a ghost
+          obstacleIndex: index,
           kind: payload.kind, speedMps: payload.speedMps, cause: payload.cause,
+          // the prop's height sizes the splinters and picks the sound, as the solo step's crush event does
+          h: obstacle.max[1] - obstacle.min[1],
           pos: [(obstacle.min[0] + obstacle.max[0]) * 0.5, obstacle.min[1], (obstacle.min[2] + obstacle.max[2]) * 0.5],
           dir: [Number(payload.directionX) || 0, 0, Number(payload.directionZ) || 0],
         });

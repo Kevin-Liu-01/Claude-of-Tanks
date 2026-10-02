@@ -824,6 +824,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-exit-e2e.selftest.mjs',
     'tools/mp-p2p-headless.selftest.mjs',
     'tools/mp-world-events-audit.selftest.mjs',
+    // 2026-10-02 (ghost-crunch lane): the audit's ghost findings as deterministic authority → presentation scenarios.
+    'tools/mp-world-events-scenarios.selftest.mjs',
     'tools/sim-determinism-audit.selftest.mjs',
     'tools/mp-p2p-peer.selftest.mjs',
     'tools/mp-p2p-decline.selftest.mjs',
