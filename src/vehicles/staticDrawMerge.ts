@@ -41,7 +41,7 @@ export interface CoplanarLayerRecord {
   layer: number;
 }
 
-export interface StaticMergeOptions {
+interface StaticMergeOptions {
   /** Allow parts that sit at a pure translation from their owner. */
   readonly bakeTranslations: boolean;
   /** Geometry that a runtime system edits in place (damage, ERA ranges). */
@@ -58,7 +58,7 @@ export interface StaticMergeOptions {
   onMerge(sources: readonly VehicleMesh[], merged: VehicleMesh): void;
 }
 
-export interface StaticMergeResult {
+interface StaticMergeResult {
   records: CoplanarLayerRecord[];
   sourceMeshes: number;
   merges: number;
