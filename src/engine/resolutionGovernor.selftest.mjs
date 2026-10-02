@@ -6,7 +6,7 @@
 // and leave a main-thread-bound frame at full resolution.
 import assert from 'node:assert/strict';
 import {
-  AdaptiveQualityPolicy, GPU_BOUND_SHARE, GPU_DOWN_TARGET, GPU_UP_HEADROOM, MAX_RESOLUTION_STEPS_PER_CUT,
+  AdaptiveQualityPolicy, GPU_BOUND_SHARE, GPU_DOWN_TARGET, GPU_TRUST_SHARE, GPU_UP_HEADROOM, MAX_RESOLUTION_STEPS_PER_CUT,
 } from './adaptiveQualityPolicy.ts';
 import { RETINA_PIXEL_RATIO, dynamicScaleFloor, internalPixelRatio, reconstructionMode } from './renderScalePolicy.ts';
 import { createGpuFrameTimer } from './gpuFrameTimer.ts';
@@ -42,7 +42,8 @@ const overload = (overrides = {}) => windowOf({ frameEmaMs: 24, missedFrameRatio
 }
 {
   const p = new AdaptiveQualityPolicy(1);
-  assert.equal(p.evaluate(overload({ gpuFrameMs: 30 })), 'resolution-down');
+  // 30 ms of GPU presents every other vsync slot (33.3 ms)
+  assert.equal(p.evaluate(overload({ frameEmaMs: 33.3, gpuFrameMs: 30 })), 'resolution-down');
   assert.ok(Math.abs(p.dynamicScale - (1 - 0.09 * MAX_RESOLUTION_STEPS_PER_CUT)) < 1e-12,
     'a GPU twice over budget cuts two steps at once (the target is under the budget, the cut is bounded)');
   const q = new AdaptiveQualityPolicy(1);
@@ -67,6 +68,19 @@ const overload = (overrides = {}) => windowOf({ frameEmaMs: 24, missedFrameRatio
   assert.equal(p.evaluate(windowOf({ clockSeconds: 32, gpuFrameMs: 10 })), 'resolution-up',
     `10 ms predicts ${(10 * (0.82 / 0.73) ** 2).toFixed(1)} ms at the next step: inside ${GPU_UP_HEADROOM} of the budget`);
   assert.ok(Math.abs(p.dynamicScale - 0.82) < 1e-12);
+}
+{
+  // a sample longer than the presented frames is not occupancy (a span with other work in it): the cadence decides
+  assert.ok(GPU_TRUST_SHARE >= 1 && GPU_TRUST_SHARE < 1.5);
+  const p = new AdaptiveQualityPolicy(1);
+  assert.equal(p.evaluate(overload({ gpuFrameMs: 24 * GPU_TRUST_SHARE + 5 })), 'resolution-down');
+  assert.ok(Math.abs(p.dynamicScale - 0.91) < 1e-12, 'an untrusted sample cuts one cadence step, not the proportional two');
+  const q = new AdaptiveQualityPolicy(0.73);
+  assert.equal(q.evaluate(windowOf({ clockSeconds: 30, gpuFrameMs: 45 })), 'resolution-up',
+    'a 45 ms sample at a clean 16.6 ms cadence (the Metal-backend reading) cannot block the up-step');
+  const r = new AdaptiveQualityPolicy(1);
+  assert.equal(r.evaluate(overload({ clockSeconds: 9, gpuFrameMs: BUDGET * GPU_BOUND_SHARE * 0.9 })), 'none',
+    'a trusted short sample still identifies the main-thread overload');
 }
 
 // ---------------------------------------------------------------------------------------------- the sampled timer

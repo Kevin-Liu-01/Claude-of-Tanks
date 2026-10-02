@@ -67,8 +67,19 @@ export const GPU_UP_HEADROOM = 0.85;
 export const GPU_BOUND_SHARE = 0.75;
 export const GPU_DOWN_TARGET = 0.9;
 export const MAX_RESOLUTION_STEPS_PER_CUT = 2;
-const knownGpu = (window: AdaptiveQualityWindow): number | null =>
-  typeof window.gpuFrameMs === 'number' && Number.isFinite(window.gpuFrameMs) && window.gpuFrameMs > 0 ? window.gpuFrameMs : null;
+/**
+ * A sample longer than the frames it was taken in is not the frame's GPU occupancy: a timer may report the span from
+ * the frame's first command to its last including other work (ANGLE's Metal backend on a shared GPU read 20–55 ms
+ * against a 16.7 ms cadence in the 2026-10-02 probes), and in steady state a frame's GPU work cannot outlast the
+ * interval between presented frames. A sample beyond GPU_TRUST_SHARE of the frame cadence is set aside: that window
+ * decides on the cadence alone, so a pessimistic timer can never hold the scale down.
+ */
+export const GPU_TRUST_SHARE = 1.2;
+const knownGpu = (window: AdaptiveQualityWindow): number | null => {
+  const gpu = window.gpuFrameMs;
+  if (typeof gpu !== 'number' || !Number.isFinite(gpu) || gpu <= 0) return null;
+  return gpu <= window.frameEmaMs * GPU_TRUST_SHARE ? gpu : null;
+};
 
 interface LoadClassification {
   readonly overloaded: boolean;
