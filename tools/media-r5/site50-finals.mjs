@@ -7,7 +7,7 @@
 // other sessions' captures get the GPU between them.
 // <resolvedDir> is a lab run over shots/media-r5/site50/scenes (its *.resolved.json); the source scenes supply the
 // still moments. Outputs: shots/media-r5/site50/renders/{films,stills}/<id>/, shots/media-r5/site50/deliver/<id>/.
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { SHOTS, TOOL } from './paths.mjs';
@@ -40,14 +40,22 @@ const films = 'skip-films' in flags ? [] : JSON.parse(readFileSync(filmJobs, 'ut
 const stills = 'skip-stills' in flags ? [] : JSON.parse(readFileSync(stillJobs, 'utf8'));
 const idOf = job => job.out.split('/').pop();
 const ids = [...new Set([...films, ...stills].map(idOf))].sort();
-// one lease per chunk: its films and stills together, then its loops, so finished shots land every cycle
+// one lease per chunk: its films and stills together; its loops encode on the CPU while the next chunk waits for the GPU
+const encoders = [];
+const encodeLoops = part => encoders.push(new Promise((done, fail) => {
+  console.log(`[finals] loops for ${[...part][0]}… (background)`);
+  const child = spawn('node', [join(TOOL, 'site-loops.mjs'), renders, join(SHOTS, 'site50/deliver'), [...part].join(',')], { stdio: 'inherit' });
+  child.on('exit', code => (code === 0 ? done() : fail(new Error(`loops exited ${code}`))));
+}));
 for (let i = 0; i < ids.length; i += chunk) {
   const part = new Set(ids.slice(i, i + chunk));
-  const jobs = [...films.filter(j => part.has(idOf(j))), ...stills.filter(j => part.has(idOf(j)))];
+  // cinema.mjs reads resume per job: a re-run keeps every finished film and still
+  const jobs = [...films.filter(j => part.has(idOf(j))), ...stills.filter(j => part.has(idOf(j)))].map(j => ({ ...j, resume: 'true' }));
   const file = join(renders, `jobs-chunk-${String(i / chunk).padStart(2, '0')}.json`);
   writeFileSync(file, JSON.stringify(jobs, null, 1));
   run(`chunk ${i / chunk + 1} (${[...part][0]}…, ${jobs.length} jobs)`, 'node',
     ['tools/media-production/cinema.mjs', `--jobs=${file}`, `--cache-dir=${cacheDir}`, '--resume=true']);
-  if (!('skip-loops' in flags)) run('loops', 'node', [join(TOOL, 'site-loops.mjs'), renders, join(SHOTS, 'site50/deliver'), [...part].join(',')]);
+  if (!('skip-loops' in flags)) encodeLoops(part);
 }
+await Promise.all(encoders);
 console.log('[finals] done');

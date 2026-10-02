@@ -2,7 +2,7 @@
 // Assemble the r5 media kit from final renders: films (motion projects), the fifty frames,
 // key art, posters, logos, copy -> kit/manifest.json (+ kit-page.mjs renders index.html).
 //   node tools/media-r5/kit-assemble.mjs [finalRoot=shots/media-r5/final] [kit=shots/media-r5/kit]
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, copyFileSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, copyFileSync, statSync, linkSync, rmSync } from 'node:fs';
 import { join, resolve, basename } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { FINAL as DEFAULT_FINAL, KIT as DEFAULT_KIT, MOTION, TOOL, REPO } from './paths.mjs';
@@ -108,7 +108,11 @@ if (delivered.length) {
     for (const [key, f] of Object.entries(d.files)) {
       if (key === 'still4k') continue; // the 4K master stays in the deliver folder
       const dst = join(KIT, 'site', f.split('/').pop());
-      if (!existsSync(dst) || statSync(dst).size !== statSync(join(SITE, 'deliver', f)).size) copyFileSync(join(SITE, 'deliver', f), dst);
+      const src = join(SITE, 'deliver', f);
+      if (!existsSync(dst) || statSync(dst).size !== statSync(src).size) {
+        rmSync(dst, { force: true });
+        try { linkSync(src, dst); } catch { copyFileSync(src, dst); } // the loops are large: share the deliver copy
+      }
       files[{ webm: 'webm', mp4: 'loop', mobile: 'mobile', poster: 'poster', still: 'still' }[key] ?? key] = rel(dst);
     }
     files.preview = files.still ?? files.poster;

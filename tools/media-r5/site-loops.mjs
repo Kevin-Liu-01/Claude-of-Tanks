@@ -54,8 +54,13 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   rows.push({ id, loopS: L, files, bytes: Object.fromEntries(Object.entries(files).map(([k, f]) => [k, size(f)])) });
   console.log(`${id}: loop ${L}s; webm ${(size(files.webm) / 1e6).toFixed(1)} MB, mp4 ${(size(files.mp4) / 1e6).toFixed(1)} MB, mobile ${(size(files.mobile) / 1e3).toFixed(0)} KB${still ? ', still' : ', no still yet'}`);
 }
+// the index is rebuilt from the deliver folder itself, so overlapping runs (one per render chunk) never drop a shot
 const index = join(deliver, 'deliver-index.json');
-const prior = existsSync(index) ? JSON.parse(readFileSync(index, 'utf8')) : [];
-const merged = [...prior.filter(p => !rows.some(r => r.id === p.id)), ...rows].sort((a, b) => a.id.localeCompare(b.id));
+const KEYS = { webm: '.webm', mp4: '.mp4', mobile: '-mobile.mp4', poster: '.jpg', still4k: '-4k.png', still: '.webp' };
+const merged = readdirSync(deliver).filter(d => /^s\d\d-/.test(d) && existsSync(join(deliver, d, `${d}.mp4`))).sort().map(id => {
+  const files = Object.fromEntries(Object.entries(KEYS).filter(([, ext]) => existsSync(join(deliver, id, `${id}${ext}`))).map(([k, ext]) => [k, `${id}/${id}${ext}`]));
+  const loopS = rows.find(r => r.id === id)?.loopS ?? +probe(join(deliver, id, `${id}.mp4`)).toFixed(3);
+  return { id, loopS, files, bytes: Object.fromEntries(Object.entries(files).map(([k, f]) => [k, statSync(join(deliver, f)).size])) };
+});
 writeFileSync(index, JSON.stringify(merged, null, 1));
 console.log(`${rows.length} shots delivered -> ${deliver} (${merged.length} in the index)`);
