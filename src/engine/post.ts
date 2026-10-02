@@ -94,7 +94,8 @@ import {
   POST_LIGHT_FX_OFF, currentPostLightFxQuery, resolvePostLightFx, samePostLightFx, type PostLightFxFlags,
 } from './postLightFxPolicy.ts';
 import { createPostFrameAccounting, type CompletedPostFrame } from './postFrameAccounting.ts';
-import { LEGACY_EXPOSURE, lightTune, type LightModel } from './lightModel.ts';
+import { LEGACY_EXPOSURE, lightTune, type LightModel } from './lightModelCore.ts';
+import { FOG_LAYER, FOG_LAYER_MIN_M } from './fogLayer.ts';
 import { setNightEmissionExposure } from './nightEmissionMaterial.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 
@@ -2476,7 +2477,7 @@ export function createPost(
       ? Math.max(AERIAL_ZOOM_FLOOR, Math.pow(camera.fov / AERIAL_ZOOM_FOV, 1.5))
       : 1;
     aerial.uniforms.uDensity.value = AERIAL_DENSITY * fovScale;
-    aerial.uniforms.uHazeDensity.value = AERIAL_HAZE_DENSITY * fovScale;
+    aerial.uniforms.uHazeDensity.value = lightTune('AERIAL_HAZE_DENSITY', AERIAL_HAZE_DENSITY) * fovScale;
     aerial.uniforms.uDetailW.value = THREE.MathUtils.clamp(
       (AERIAL_DETAIL_FOV - camera.fov) / (AERIAL_DETAIL_FOV - 8),
       0,
@@ -2576,7 +2577,12 @@ export function createPost(
     aerial.uniforms.uCamPos.value.set(elements[12], elements[13], elements[14]);
     // 2026-10-01: the haze layer's base under the camera (the battlefield's ground; 0 before a world supplies it)
     const ground = groundHeightAt ? groundHeightAt(elements[12], elements[14]) : 0;
-    aerial.uniforms.uHazeDatum.value = Number.isFinite(ground) ? ground : 0;
+    const datum = Number.isFinite(ground) ? ground : 0;
+    aerial.uniforms.uHazeDatum.value = datum;
+    // 2026-10-02: the materials' fog on the same layer (fogLayer.ts), off for a camera near the ground (the plain law)
+    FOG_LAYER.x = elements[13] - datum;
+    FOG_LAYER.y = datum;
+    FOG_LAYER.w = FOG_LAYER.x > FOG_LAYER_MIN_M ? lightTune('FOG_LAYER', 1) : 0;
     const halfFovTangent = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
     aerial.uniforms.uTan.value.set(halfFovTangent * camera.aspect, halfFovTangent);
     const sunDirection = scene.userData.sunDirWorld;

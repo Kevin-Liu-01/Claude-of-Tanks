@@ -34,7 +34,7 @@ import {
 } from './groundBounce.ts';
 import { currentPostLightFxQuery, resolvePostLightFx } from './postLightFxPolicy.ts';
 import type { PublishedLightRig } from './contactShadows.ts';
-import { authoredSunOf, resolveLightModel, type LightModel, type LightModelPreset } from './lightModel.ts';
+import { authoredSunOf, resolveLightModel, type LightModel, type LightModelPreset } from './lightModelCore.ts';
 import type { AtmosphereParams } from './atmosphere.ts';
 
 /** What sky.ts publishes on scene.userData.atmosphere that the grounded light model reads (sky.ts AtmospherePublishedState). */

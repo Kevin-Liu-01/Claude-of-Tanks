@@ -761,6 +761,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/atmosphere.selftest.mjs',
     // 2026-10-01: the grounded light model (lighting lane): sun through the atmosphere, the sky's own light, the deck, the exposure law
     'src/engine/lightModel.selftest.mjs',
+    // 2026-10-02 (lighting lane): the materials' scene fog on the battlefield's haze layer
+    'src/engine/fogLayer.selftest.mjs',
     'src/engine/volumetricClouds.selftest.mjs',
     // 2026-10-01 (the clouds-and-skyboxes lane): the layered sky — mid layers, contrails, storm cells, rain, fog banks, lightning, the time of day
     'src/engine/cloudWeatherLayers.selftest.mjs',

@@ -8,16 +8,28 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  DEFAULT_GROUND_ALBEDO, EXPOSURE_ADAPTATION, EXPOSURE_KEY, EXPOSURE_MAX, EXPOSURE_MIN, GROUND_SUNLIT_SHARE, LIGHT_SOLAR_IRRADIANCE, LOW_SUN_EV, NIGHT_SKY_GLOW, OVERCAST_SKY_CUT,
-  SKY_DIFFUSE_GAIN, atmosphereTransmittance, deriveSun, exposureFor, hexToLinear, isGalaxySky, linearToHex,
-  luminance, resolveLightModel, resolveOvercast, whiteBalanceGains,
+  EXPOSURE_ADAPTATION, EXPOSURE_KEY, EXPOSURE_MAX, EXPOSURE_MIN, GROUND_SUNLIT_SHARE, LIGHT_SOLAR_IRRADIANCE, LOW_SUN_EV, NIGHT_SKY_GLOW, OVERCAST_SKY_CUT,
+  SKY_DIFFUSE_GAIN, atmosphereTransmittance, deriveSun, exposureFor, linearToHex, whiteBalanceGains,
 } from './lightModel.ts';
+import {
+  DEFAULT_GROUND_ALBEDO, EXPOSURE_REFERENCE_ILLUMINANCE, hexToLinear, isGalaxySky, lightTune, loadGroundedLightModel, luminance,
+  resolveLightModel, resolveOvercast,
+} from './lightModelCore.ts';
 import { ATMO_GROUND_KM, skyPresetToAtmosphere } from './atmosphere.ts';
 import { transmittanceDirect } from './atmosphere.test-support.mjs';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { getMapConfig } from '../world/maps/index.ts';
 
 const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b} (tol ${tol})`);
+// 2026-10-02 (the boot weight): the grounded model loads behind the battle entry; until it is installed an open sky
+// keeps the authored rig (lightModelCore.ts)
+{
+  const preset = { ...DEFAULT_SKY_PRESET, ...getMapConfig('verdant').sky };
+  const args = [preset, skyPresetToAtmosphere(preset), { irradianceRaw: [0.05, 0.08, 0.14] }];
+  assert.equal(resolveLightModel(...args).mode, 'legacy', 'before the grounded model loads, an open sky keeps the authored rig');
+  await loadGroundedLightModel();
+  assert.equal(resolveLightModel(...args).mode, 'physical', 'loaded, the grounded model lights it');
+}
 const verdantSky = { ...DEFAULT_SKY_PRESET, ...getMapConfig('verdant').sky };
 const verdant = skyPresetToAtmosphere(verdantSky);
 
@@ -191,7 +203,7 @@ assert.match(post, /float hlL = max\( dot\( col, vec3\( 0\.2126, 0\.7152, 0\.072
 // the aerial haze is a layer over the ground: a high camera looks down through less of it (the census bird view)
 assert.match(post, /float x = -viewZ \* uDensity \* hzLayer;/, 'the extinction curve takes the layer factor');
 assert.match(post, /float x2 = hzD \* dHaze \* hzLayer;/, 'and the scatter-in curve');
-assert.match(post, /aerial\.uniforms\.uHazeDatum\.value = Number\.isFinite\(ground\) \? ground : 0;/, 'the datum is the ground under the camera');
+assert.match(post, /const datum = Number\.isFinite\(ground\) \? ground : 0;\s*aerial\.uniforms\.uHazeDatum\.value = datum;/, 'the datum is the ground under the camera');
 {
   const H = 300;
   const fromCam = (y0, y1) => Math.abs(y0 - y1) < 1 ? Math.exp(-0.5 * (y0 + y1) / H) : H * (Math.exp(-y1 / H) - Math.exp(-y0 / H)) / (y0 - y1);
@@ -212,5 +224,34 @@ assert.match(main, /getBattleSkyConfig: \(\) => withWorldCloudscape\(currentWorl
 assert.match(main, /post\.setGroundHeightSource\(\(x, z\) => hfProxy\.getHeightAt\(x, z\)\);/, 'the battlefield ground feeds the haze layer');
 assert.match(main, /getLightReadability: \(\) => \(scene\.userData\.lightModel as \{ vehicleReadability\?: number \} \| undefined\)\?\.vehicleReadability \?\? 1,/,
   'the battle atmosphere reads the light\'s readability share');
+
+// ---- the boot weight (2026-10-02): the grounded model loads behind the battle entry. The boot chunk's importers take
+// the core (types, the authored rig, the dispatcher); the battle atmosphere's acquisition and the capture staging load
+// the grounded model before they light an open sky; until then every resolve is the authored rig
+const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
+const core = read('./lightModelCore.ts');
+assert.doesNotMatch(core, /from '\.\/lightModel\.ts'/, 'the core never imports the grounded model statically');
+for (const [file, src] of [['lighting.ts', lighting], ['sky.ts', sky], ['post.ts', post]]) {
+  assert.match(src, /from '\.\/lightModelCore\.ts';/, `${file} takes the core`);
+  assert.doesNotMatch(src, /from '\.\/lightModel\.ts'/, `${file} stays off the grounded model (the boot chunk)`);
+}
+// the grounded chunk imports nothing at runtime (its chunk shares no module with the boot closure): the core hands it
+// the atmosphere; its local helpers match the core's
+const grounded = read('./lightModel.ts');
+assert.doesNotMatch(grounded.replace(/^import type [^;]+;$/gm, ''), /^import /m, 'the grounded model has no runtime import');
+assert.match(core, /import\('\.\/lightModel\.ts'\)/, 'the core loads it on demand');
+assert.match(read('./battleAtmosphereAccess.ts'), /Promise\.all\(\[loadRuntime\(\), loadGroundedLightModel\(\), loadCloudscapeLayers\(\)\]\)/, 'with the battle atmosphere\'s covered acquisition');
+assert.match(read('../main.ts'), /await Promise\.all\(\[import\('\.\/dev\/shotRuntime\.ts'\), loadGroundedLightModel\(\), loadCloudscapeLayers\(\)\]\)/,
+  'and the capture staging (the census and the map probes stage maps without the battle atmosphere)');
+assert.equal(EXPOSURE_REFERENCE_ILLUMINANCE, 3.0);
+near(exposureFor(EXPOSURE_REFERENCE_ILLUMINANCE), EXPOSURE_KEY, 1e-12, 'the handed-over meter reference');
+for (const hex of [0x000000, 0x7c2410, 0xe5e7ec, 0xffffff]) {
+  const a = hexToLinear(hex), b = resolveLightModel({ ...verdantSky, lighting: { groundAlbedoHex: hex } }, skyPresetToAtmosphere(verdantSky), { irradianceRaw: [0, 0, 0] }).groundAlbedo;
+  a.forEach((v, c) => near(b[c], v, 1e-15, `the grounded model's own hex conversion matches the core's (#${hex.toString(16)} ch${c})`));
+}
+globalThis.__LIGHT_TUNE = { EXPOSURE_KEY: 2 };
+near(exposureFor(EXPOSURE_REFERENCE_ILLUMINANCE), 2, 1e-12, 'its tuning hook reads the same page tune as the core\'s');
+near(lightTune('EXPOSURE_KEY', 1), 2, 1e-12);
+delete globalThis.__LIGHT_TUNE;
 
 console.log(`lightModel.selftest: CPU transmittance = the LUT twin, Verdant key ${(day.intensity * luminance(day.color)).toFixed(2)}, sun/shade ${(sunH / shadeH).toFixed(2)}:1, overcast, exposure law, legacy rig and wiring PASS`);
