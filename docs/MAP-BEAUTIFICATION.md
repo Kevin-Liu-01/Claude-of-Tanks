@@ -6117,6 +6117,14 @@ noise lines along the world height replace the world-height sines of the marker 
 does the same with its detail noise) and buttresses and alcoves on the ring walls (a tall arc-frame lookup feeding the
 vista's bump height).
 
+**Sand in trains.** The census's contour "marble" on every dune map (Sirocco Wadi, Titan Gorge, Skybridge, Sunscar
+Oasis, Olympus Basin, the moon) was round 43's own fix: one global phase `dot(world, wind)` under a per-position wind
+rotation, so the phase jumped wherever the rotation changed and its isolines closed into loops. Ripples come in trains:
+the waves now run in 36 m cells (the bedforms in 260 m cells), each cell with its own heading within ±20° (±26°) of the
+map's wind and its own phase, blended bilinearly between the four nearest cells (`sandWaves`) — straight or sinuous,
+never looping — at round 43's two wave numbers, amplitudes, gates and tilt cap. Airless ground has no wind ripples
+(`windRipple: 0` on the moon).
+
 **The lit ring.** The desktop vista ring and the far range are lit standard materials registered with the cascades
 (`engineCtx.setupShadowMaterial`): the ranges take the battlefield's own sun, sky light, overcast dome and exposure,
 whatever light model the engine runs, instead of the gains `resolveHorizonLightingGains` fitted to the presets'
