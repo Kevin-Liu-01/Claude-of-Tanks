@@ -75,9 +75,9 @@ assert.equal(hash.digest('hex'), 'bbc405ab06e49351bc1018b8e8834107cbd79d0b192137
   'all 26 intact/debris families × 3 seeds retain exact original positions, normals, UVs, colors, RNG and topology');
 assert.deepEqual({ vertices, indices, totalCalls }, { vertices: 140976 /* round 75: the quonset hut's new parts */, indices: 0, totalCalls: 87495 } /* 2026-09-19: +6 orbital families */);
 const propsSource = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-assert.match(propsSource, /rec\.state = 1;\s*setWorldNightFixtureActive\(pool\.imI, rec\.slot, false\)/,
+assert.match(propsSource, /rec\.state = 1;\s*if \(pool\?\.imI\) setWorldNightFixtureActive\(pool\.imI, rec\.slot, false\)/,
   'all authored destruction routes switch off the original instance at the state transition');
-assert.match(propsSource, /rec\.state = 0;\s*const pool = dPools\.get\(rec\.kind\);\s*if \(pool && pool\.imI\) \{\s*setWorldNightFixtureActive\(pool\.imI, rec\.slot, true\)/,
+assert.match(propsSource, /rec\.state = 0;\s*if \(rec\.clutter\) rec\.clutter\.setCrushed\(false\);\s*const pool = dPools\.get\(rec\.kind\);\s*if \(pool && pool\.imI\) \{\s*setWorldNightFixtureActive\(pool\.imI, rec\.slot, true\)/,
   'the existing cached-world rematch owner restores the exact activity slot');
 
 const scene = new THREE.Scene(), root = new THREE.Group(); scene.add(root);
