@@ -1,12 +1,14 @@
-// One fleet on every path (ARCH-P2, 2026-10-01). Each facade loads alone in a fresh process and finalizes the
+// One fleet on every path (ARCH-P2/P3, 2026-10-01). Each facade loads alone in a fresh process and finalizes the
 // registry its own way: the browser fleet (fleetFactory.ts: the whole fleet, and a battle roster through
-// ensureTankBuilders) and the eager tool fleet (tankFactory.ts). Every saved spec — armor plates, modules, crew
-// boxes, hit shells, contact points, gun, mobility, dims, labels, visual — must digest identically on all of them.
-// Before this receipt the eager facade (then also the host Worker's and the Node match service's fleet) gave the
-// Type 96B X and the three Type 96 concepts other turret plates, modules, crew boxes and hit shells than the
-// player's: it registered modern2.ts's live type99a, whose plates share vertex arrays, and in-place armor fitting
-// moved a shared vertex of the clone twice. Every facade now registers the generated metadata (asserted below with
-// the legacy builder files imported first).
+// ensureTankBuilders), the authorities' spec-only fleet (authorityFleet.ts, the host Worker's and the Node match
+// service's: the whole fleet, and the same roster) and the eager tool fleet (tankFactory.ts). Every saved spec —
+// armor plates, modules, crew boxes, hit shells, contact points, gun, mobility, dims, labels, visual — must digest
+// identically on all of them, and the authority must hold the player's catalogs in the player's order. Before this
+// receipt the eager facade (then the host Worker's and the Node service's fleet) gave the Type 96B X and the three
+// Type 96 concepts other turret plates, modules, crew boxes and hit shells than the player's: it registered
+// modern2.ts's live type99a, whose plates share vertex arrays, and in-place armor fitting moved a shared vertex of
+// the clone twice. Every facade now registers the generated metadata (asserted below with the legacy builder files
+// imported first).
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { dirname, join } from 'node:path';
@@ -20,6 +22,8 @@ const ROSTER = ['type96b_x', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei
 const LOADS = {
   player: `const fleet = await import('./src/vehicles/fleetFactory.ts'); await fleet.ensureFullFleet();`,
   playerRoster: `const fleet = await import('./src/vehicles/fleetFactory.ts'); await fleet.ensureTankBuilders(${JSON.stringify(ROSTER)});`,
+  authority: `const fleet = await import('./src/vehicles/authorityFleet.ts'); await fleet.ensureAuthorityFleet();`,
+  authorityRoster: `const fleet = await import('./src/vehicles/authorityFleet.ts'); await fleet.ensureAuthorityFleet(${JSON.stringify(ROSTER)});`,
   tools: `await import('./src/vehicles/tankFactory.ts');`,
 };
 const node = (script) => run(process.execPath, ['--input-type=module', '-e', script], {
@@ -59,7 +63,7 @@ const legacyFirst = () => node(`
 const names = Object.keys(LOADS);
 const [rows, legacy] = await Promise.all([Promise.all(names.map(digestOf)), legacyFirst()]);
 const digests = Object.fromEntries(names.map((name, index) => [name, rows[index]]));
-const { player, tools } = digests;
+const { player, authority, tools } = digests;
 const ids = Object.keys(player.specs);
 assert.equal(ids.length, 217, 'the saved fleet');
 
@@ -82,15 +86,23 @@ function differences(reference, candidate, only = null) {
   return out;
 }
 
-for (const [name, digest] of Object.entries({ player, tools })) {
+for (const [name, digest] of Object.entries({ player, authority, tools })) {
   assert.deepEqual(Object.keys(digest.specs).sort(), ids.slice().sort(), `${name}: the same saved ids`);
   const open = Object.entries(digest.specs).filter(([, spec]) => !spec.finalized).map(([id]) => id);
   assert.deepEqual(open, [], `${name}: every spec's combat anatomy is finalized`);
 }
+assert.deepEqual(differences(player, authority), [], 'the authority fleet finalizes every spec exactly as the player\'s');
 assert.deepEqual(differences(player, tools), [], 'the tool fleet finalizes every spec exactly as the player\'s');
-assert.deepEqual(differences(player, digests.playerRoster, ROSTER), [], 'a battle roster finalizes as in the whole fleet');
-assert.equal(Object.values(digests.playerRoster.specs).filter((spec) => spec.finalized).length, ROSTER.length,
-  'ensuring a roster finalizes exactly the roster');
+for (const name of ['playerRoster', 'authorityRoster']) {
+  assert.deepEqual(differences(player, digests[name], ROSTER), [], `${name}: a battle roster finalizes as in the whole fleet`);
+  assert.equal(Object.values(digests[name].specs).filter((spec) => spec.finalized).length, ROSTER.length,
+    `${name}: ensuring a roster finalizes exactly the roster`);
+}
+
+// The authority registers exactly as the player does: the same catalogs in the same order.
+assert.deepEqual(authority.catalogs, player.catalogs, 'the authority\'s catalogs are the player\'s, in order');
+assert.deepEqual(authority.tankIds, player.tankIds);
+assert.equal(authority.modelSource, player.modelSource);
 
 // The tool facade keeps its historical release order (its builder packs and its listed packs evaluate first;
 // generated receipts list ids in that order) over the same ids, model sources and core roster.
@@ -100,5 +112,6 @@ for (const [name, list] of Object.entries(player.catalogs)) {
 assert.deepEqual(tools.tankIds, player.tankIds);
 assert.equal(tools.modelSource, player.modelSource);
 
-console.log(`fleetParity.selftest: ${ids.length} specs digest identically on the browser and tool facades `
-  + `(whole fleet and a ${ROSTER.length}-tank roster); the legacy builder files register no live rows`);
+console.log(`fleetParity.selftest: ${ids.length} specs digest identically on the browser, authority and tool facades `
+  + `(whole fleet and a ${ROSTER.length}-tank roster); the authority holds the player's catalogs; `
+  + 'the legacy builder files register no live rows');

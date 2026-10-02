@@ -110,11 +110,14 @@ async function createFixtureServer({ clock, clientCount, seats }) {
 
 /** The real MatchActor on the virtual clock; seats admitted through signed tokens like the service does. */
 async function createActorServer({ clock, clientCount, seats, mapId, seed, snapshotHz }) {
-  const [{ createMatchActor }, { signSeatToken, verifySeatToken }, { getSpec }] = await Promise.all([
+  const [{ createMatchActor }, { signSeatToken, verifySeatToken }, { getSpec }, { ensureAuthorityFleet }] = await Promise.all([
     import('../server/match/matchActor.ts'),
     import('../server/match/seatToken.ts'),
     import('../src/vehicles/specs.ts'),
+    import('../src/vehicles/authorityFleet.ts'),
   ]);
+  // The actor reads finalized combat anatomy (the Node service loads the whole fleet's at start).
+  await ensureAuthorityFleet();
   const wallClock = () => 1_700_000_000_000 + clock();
   const actorSeats = seats.map((seat) => ({ seat: seat.seat, playerId: seat.playerId, name: seat.name, team: seat.team, specId: seat.specId }));
   for (const seat of seats) {
