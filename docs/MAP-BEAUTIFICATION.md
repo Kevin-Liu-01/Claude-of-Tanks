@@ -6125,13 +6125,22 @@ map's wind and its own phase, blended bilinearly between the four nearest cells 
 never looping — at round 43's two wave numbers, amplitudes, gates and tilt cap. Airless ground has no wind ripples
 (`windRipple: 0` on the moon).
 
-**The lit ring.** The desktop vista ring and the far range are lit standard materials registered with the cascades
-(`engineCtx.setupShadowMaterial`): the ranges take the battlefield's own sun, sky light, overcast dome and exposure,
-whatever light model the engine runs, instead of the gains `resolveHorizonLightingGains` fitted to the presets'
-legacy sun and hemisphere (the lighting lane's physical model would otherwise have left them on the old key). The
-relief bake's sun visibility (with the cloud shade) gates three's direct light, its occlusion the indirect light, the
-glints are emission, and the vista's own haze mixes the radiance toward the live fog colour; the atmosphere runtime's
-night dim (unlit horizons only) leaves them to the night light. The mobile tier keeps its unlit per-vertex bake.
+**The ring is the battlefield's own material.** Since d20f64198 (continuous map horizons) every face of the horizon
+ring and of its far range draws with the live terrain program past the square (`bindAutumnHorizonGround` with
+`continuousGround`); the vista material is no longer drawn and only carries the relief atlas the terrain program reads
+on the ring draw (`uRingDraw`). The ring lab proved it: runtime edits of every vista uniform left the frame unchanged,
+while the post pass's aerial curves and the terrain program's uniforms move it. So the mountains' look and cost are
+the terrain material's — the cost pass, the exposure law and the non-periodic beds above reach them directly (the
+census's de-banded walls on Highland Reservoir and Glacier Pass) — and a first lit-vista attempt in this lane was
+withdrawn as dead code.
+
+**Terrain v3 (2026-10-02): what the ring shows.** The census sheets of the desert ranges (Sirocco Wadi, Olympus Basin,
+Titan Gorge, Skybridge) showed a corrugated chevron sheet over every mountain at 1–2 km: the dune bedforms (26 m
+trains) ran on the ring's 15–28° faces below the wall band, and the slip faces' unmipped 0.9 m contour wave and 3.7 m
+flow sine — faded by the footprint distance, which a face-on wall reads as near — aliased at a kilometre. Bedforms now
+stay on gentle sand (gone by 24°), and both sines fade by the true camera distance. The far walls' coarse structure
+(`uFarWall`: rock-mass amplitude, coarse wall-normal amplitude, their vertical stretch, ledge amplitude) is one vector,
+which the ring lab varies at runtime through the program's uniforms (`userData.splatUniforms`).
 
 ## Acceptance is visual and measured
 

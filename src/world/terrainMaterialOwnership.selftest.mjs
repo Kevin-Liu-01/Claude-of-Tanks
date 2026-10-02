@@ -126,6 +126,8 @@ function checkSourceContract(text) {
     // terrain v2 (2026-10-01, the Opus 5.5 redesign): the four layers' measured tile means (the far variant's and the
     // octaves' deep-mip mean fetches) and the exposure / bedding vector — uniforms, no sampler
     'uMeanG', 'uMeanD', 'uMeanR', 'uMeanM', 'uReduxD',
+    // terrain v3 (2026-10-02): the far walls' coarse structure (vec4) and the ring's couloir fill (scalar) — no sampler
+    'uFarWall', 'uRingFold',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
@@ -142,7 +144,7 @@ function checkSourceContract(text) {
   // round 73 (2026-09-26 rebase over 72b): v42 — the ground redux (height transitions, scree, snow drifts, folds, the wet strand, glint, the mid octave)
   // round 73b (2026-09-26): v43 — the borders (lip, rim, verge), the mid albedo octave, the strand in metres with its foam and wrack lines
   // terrain v2 (2026-10-01): v53 — the coverage-gated cost pass, the measured means, exposure and the non-periodic beds
-  assert.ok(text.includes("world-terrain-splat-v53-${seaOpenings.length ? 'coast' : 'land'}"), 'coast and land shader variants have distinct keys');
+  assert.ok(text.includes("world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}"), 'coast and land shader variants have distinct keys');
   // the sampler budget: every sampler2D the fragment declares, no more than the ten layer samplers (four cascades, the environment
   // map and the DFG LUT fill the other six units)
   const samplers = [...text.matchAll(/uniform sampler2D ([^;]+);/g)].flatMap((m) => m[1].split(',').map((n) => n.trim()));
@@ -173,6 +175,6 @@ await rejects(replaceOnce(source, nearAlbedo(source), nearAlbedo(source).replace
 await rejects(replaceOnce(source, normalTerm(source, 'gnF'), 'gnF.xy * farM * 0.24'), 'far normal bypass');
 await rejects(replaceOnce(source, farAlbedo(source), farAlbedo(source).replace('farG *', 'farM *')), 'far albedo bypass');
 assert.throws(() => checkSourceContract(source.replace('uniform float uSea;', 'uniform float uNewDetail; uniform float uSea;')));
-assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v53', 'world-terrain-splat-v52')));
+assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v54', 'world-terrain-splat-v53')));
 assert.throws(() => checkSourceContract(source.replace('uniform sampler2D uMask, uNoise;', 'uniform sampler2D uMask, uNoise, uRingRelief;')), 'a seventeenth sampler is refused');
 console.log('terrainMaterialOwnership: actual scalar/consumer endpoints, pure-G legacy response, 2048 fractional cases, continuity and nine mutation controls PASS; no GPU/art/performance claim');

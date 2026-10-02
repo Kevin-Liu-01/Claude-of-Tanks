@@ -9,8 +9,12 @@
 //      uniform (uMeanG/D/R/M, refreshed when the sourced sets replace the procedural layers);
 //   3. the noise texture's low-frequency reads go through the explicit isotropic level of detail (nz), never the
 //      implicit anisotropic path;
-//   4. slope exposure and the non-periodic bedding exist on the battlefield AND the horizon ring, driven by one
-//      per-map table (groundRedux.ts) and packed into an existing-sized uniform (no sampler).
+//   4. slope exposure and the non-periodic bedding, driven by one per-map table (groundRedux.ts) and packed into an
+//      existing-sized uniform (no sampler);
+//   5. terrain v3 (2026-10-02): the horizon ring IS this material past the square (d20f64198's continuous horizons bind
+//      every ring and far-range face to the live terrain program), so the mountains' look is pinned here: dune bedforms
+//      on gentle sand only, the slip-face sines faded by the true camera distance, the far walls' coarse structure
+//      (uFarWall) and the probes' handle on the program uniforms.
 // Source and scalar checks; the GPU cost and the look are measured by the lane's ABBA probe and capture sheets.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -18,8 +22,6 @@ import { groundReduxProfileIds, groundReduxUniformValues, resolveGroundReduxProf
 import { MAP_IDS } from './maps/catalog.ts';
 
 const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
-const vista = readFileSync(new URL('./horizonVista.ts', import.meta.url), 'utf8');
-const horizon = readFileSync(new URL('./maps/horizon.ts', import.meta.url), 'utf8');
 const active = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 function shaderOf(text) {
   const start = text.indexOf('const SPLAT_COMMON_FRAG');
@@ -156,38 +158,42 @@ assert.equal(resolveGroundReduxProfile('whiteout').climate, 'snow');
 assert.equal(resolveGroundReduxProfile('desert').climate, 'arid');
 assert.equal(resolveGroundReduxProfile('verdant').climate, 'vegetated');
 
-// the horizon ring answers the same law
-const vfrag = active(vista);
-assert.ok(vfrag.includes('uniform vec2 uVExposure; uniform float uVBedIrregular;'), 'the vista declares the exposure law');
-assert.ok(blockAfter(vfrag, 'uVExposure.x > 0.001', 'vista exposure').includes('normalize(uSunDirW.xz'), 'the ranges read the map sun');
-assert.ok(blockAfter(vfrag, 'uVBedIrregular > 0.001', 'vista beds').includes('texture2D(uDetail2, vec2(P.y'), 'the ranges\' beds read the height line');
-assert.ok(/uVExposure: \{ value: new THREE\.Vector2\(\s*Math\.min\(1\.3, Math\.max\(0, resolveGroundReduxProfile\(mapId\)\.exposure/.test(horizon),
-  'the ring binds the battlefield profile\'s exposure');
-assert.ok(horizon.includes('uVBedIrregular: { value: Math.min(1, Math.max(0, resolveGroundReduxProfile(mapId).bedIrregularity ?? 0)) },'),
-  'the ring binds the profile\'s bed irregularity');
-
-// the lit ring (terrain v2): the desktop vista and the far range are lit standard materials registered with the cascades
-// when the engine offers its registration, so the ranges take the battlefield's own light under any light model; the
-// atmosphere runtime's night dim (unlit horizons only) then leaves them to the night light
-const far = readFileSync(new URL('./horizonFarRange.ts', import.meta.url), 'utf8');
-const runtime = readFileSync(new URL('../engine/battleAtmosphereRuntime.ts', import.meta.url), 'utf8');
-assert.ok(horizon.includes('const litRing = vista && !!lit;'), 'the vista is lit only on the desktop vista tier with an engine');
-assert.ok(/litRing\s*\?\s*new THREE\.MeshStandardMaterial\(\{ vertexColors: true, side: THREE\.DoubleSide, map: detailTex, roughness: 1, metalness: 0 \}\)/.test(horizon),
-  'a rough dielectric standard material');
-assert.ok(horizon.includes("if (litRing) mat.defines = { ...(mat.defines ?? {}), HORIZON_VISTA_LIT: '' };"), 'the lit branch is a define');
-assert.ok(horizon.includes('if (litRing) lit!(mat, vistaHook);'), 'registered through the cascades (its hook rides as the second argument)');
-assert.ok(horizon.includes("(litRing ? 'horizon-ring-vista-lit-r5-' : 'horizon-ring-vista-r4-') + style"), 'its own program identity');
-assert.equal((horizon.match(/lit: litSetupOf\(_engineCtx\)/g) ?? []).length, 2, 'the ring and its far range take the engine registration');
-for (const stage of ['HORIZON_VISTA_LIT_NORMAL_FRAGMENT', 'HORIZON_VISTA_LIT_LIGHT_FRAGMENT', 'HORIZON_VISTA_LIT_AO_FRAGMENT',
-  'HORIZON_VISTA_LIT_EMISSIVE_FRAGMENT', 'HORIZON_VISTA_LIT_HAZE_FRAGMENT']) {
-  assert.ok(vista.includes(`export const ${stage} =`) && horizon.includes(stage), `${stage} exists and is wired`);
+// terrain v3: the ring is this material — every face of the bound ring and its far range draws with the terrain program
+const ground = readFileSync(new URL('./horizonAutumnGround.ts', import.meta.url), 'utf8');
+assert.ok(/bindAutumnHorizonGround\(horizonMesh, mat, splatTextures, \{[\s\S]{0,200}continuousGround: true/.test(terrain), 'the ring binds as continuous ground');
+assert.ok(ground.includes('if (continuousGround || i < nearCount) terrainFaces.push(a, c, b);'), 'so every ring face takes the terrain group');
+assert.ok(ground.includes('far.material = [far.material, terrain];') && ground.includes('geometry.addGroup(0, index.count, 1);'), 'and the far range too');
+const sandLaws = (source) => {
+  const frag = shaderOf(source);
+  const bed = /float bedW = ([^;]+);/.exec(frag);
+  assert.ok(bed, 'the bedform weight exists');
+  assert.ok(bed[1].includes('(1.0 - smoothstep(0.035, 0.09, slope))'), 'dune bedforms stay on gentle sand (gone by 24 degrees)');
+  assert.ok(/\* sandCoverage\s*$/.test(bed[1]), 'the shore gate stays the last factor');
+  assert.ok(/float wRipW = [^;]*\(1\.0 - smoothstep\(150\.0, 450\.0, camDist\)\)[^;]*;/.test(frag), 'the slip-face contour wave fades by the true camera distance');
+  const flowAt = frag.indexOf('flow *= 1.0 - smoothstep(250.0, 600.0, camDist);');
+  assert.ok(flowAt > 0 && flowAt < frag.indexOf('a.rgb *= (1.0 + flow * 0.05 * sandFaceW)'), 'the flow sine fades before it is applied');
+  assert.ok(frag.includes('uniform vec4 uFarWall;'), 'the far walls\' structure vector is declared');
+  assert.ok(frag.includes('a.rgb *= 1.0 + (rrM - 0.5) * 0.36 * uFarWall.x * wallFar;') && frag.includes('* wallFar * uFarWall.w;')
+    && frag.includes('mix(1.0, uFarWall.y, steepW);') && frag.includes('vec2 farS = vec2(1.0, 1.0 / max(uFarWall.z, 1.0));'), 'and read by the far-wall rescue');
+};
+sandLaws(terrain);
+for (const [from, to, label] of [
+  [' * (1.0 - smoothstep(0.035, 0.09, slope))', '', 'bedforms on every slope'],
+  [' * (1.0 - smoothstep(150.0, 450.0, camDist))', '', 'contour wave by footprint alone'],
+  ['flow *= 1.0 - smoothstep(250.0, 600.0, camDist);', '', 'unfaded flow sine'],
+]) {
+  assert.equal(terrain.split(from).length, 2, `v3 mutation seam exists: ${label}`);
+  assert.throws(() => sandLaws(terrain.replace(from, to)), `v3 mutant refused: ${label}`);
 }
-assert.ok(vfrag.includes('gVistaN = n; gVistaSun = sunVis; gVistaAo = ao * cavity * (1.0 - forestW * 0.10);'), 'the lit branch hands three its normal, sun and occlusion');
-assert.ok(/#ifdef HORIZON_VISTA_LIT\s*diffuseColor\.rgb = lit \/ max\(vColor\.rgb, vec3\(0\.02\)\);/.test(vfrag), 'and an albedo (no altitude shade, no night dim)');
-assert.ok(vfrag.includes('gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, vistaHaze * 0.5);'), 'the haze mixes the radiance toward the live fog colour, at half the unlit share');
-assert.ok(far.includes('const litFar = !!options.lit;') && far.includes("FAR_RANGE_LIT: ''") && far.includes("geo.setAttribute('normal', geo.getAttribute('aFarNormal'));"),
-  'the far range is lit with its own normal attribute');
-assert.ok(far.includes("(litFar ? 'horizon-far-range-lit-v2' : 'horizon-far-range-r72c')"), 'the lit far range has its own identity');
-assert.ok(runtime.includes('if (basic.isMeshBasicMaterial) (selected ? eligible : blocked).add(basic);'), 'the night dim reaches unlit horizons only');
+// the slope gate on scalar ports: full below 15 degrees, none above 24.5 degrees
+const smooth = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+const bedGate = (deg) => 1 - smooth(0.035, 0.09, 1 - Math.cos(deg * Math.PI / 180));
+assert.ok(bedGate(10) > 0.99 && bedGate(15) > 0.98 && bedGate(25) < 0.01 && bedGate(40) === 0, 'bedform gate: dunes yes, flanks no');
+assert.ok(terrain.includes('shader.uniforms.uFarWall = farWallUniform;') && terrain.includes('mat.userData.splatUniforms = shader.uniforms;'),
+  'the far-wall vector is bound and the probes can reach every program uniform');
+const farWall = /const farWallUniform: THREE\.IUniform = \{ value: new THREE\.Vector4\(([^)]*)\) \};/.exec(terrain);
+assert.ok(farWall, 'the far-wall vector has its authored value');
+const [massAmp, nrmAmp, stretch, ledgeAmp] = farWall[1].split(',').map(Number);
+assert.ok(massAmp >= 0 && massAmp <= 2 && nrmAmp >= 0 && nrmAmp <= 1.5 && stretch >= 1 && stretch <= 6 && ledgeAmp >= 0 && ledgeAmp <= 3, 'far-wall terms in band');
 
-console.log(`terrainMaterialV2: coverage-gated layers (7 gates, 512 executed coverage cases), far band without detail normals, one-fetch far variant on measured means, explicit-LOD noise, exposure and non-periodic beds on ${MAP_IDS.length} maps and the ring, the lit ring and far range, ${mutants.length} mutation controls PASS; no GPU/art claim`);
+console.log(`terrainMaterialV2: coverage-gated layers (7 gates, 512 executed coverage cases), far band without detail normals, one-fetch far variant on measured means, explicit-LOD noise, exposure and non-periodic beds on ${MAP_IDS.length} maps, the ring as this material (bedforms on gentle sand, distance-faded slip-face sines, the far walls' structure), ${mutants.length + 3} mutation controls PASS; no GPU/art claim`);

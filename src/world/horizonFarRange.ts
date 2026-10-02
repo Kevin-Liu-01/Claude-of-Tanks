@@ -52,9 +52,6 @@ interface HorizonFarRangeOptions {
   /** Actual outer edge of the near landscape. The distant apron starts here
    * instead of leaving a sky-visible annular gap before its old 1860 m foot. */
   nearEdge?: { columns: number; positions: Float32Array; heights: Float32Array };
-  /** Terrain v2 (2026-10-01): the engine's cascade registration; given, the far range is lit by the scene's own light
-   * like the ring in front of it (horizon.ts litSetupOf). */
-  lit?: ((material: THREE.Material, hook: (shader: Parameters<THREE.Material['onBeforeCompile']>[0]) => void) => void) | null;
 }
 
 interface HorizonFarRangeGeometry {
@@ -307,18 +304,7 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
   geo.setAttribute('aFarNormal', new THREE.BufferAttribute(closedNrm, 3));
   geo.setAttribute('aFarParam', new THREE.BufferAttribute(closedPar, 4));
   geo.setIndex(indices);
-  // Terrain v2 (2026-10-01, grounded realism): lit by the scene's own light when the engine offers its registration
-  // (the near ring is lit the same way); the fog uniforms then exist only for the live fog colour the row haze mixes
-  // toward — the exponential scene fog itself stays off, as before, at 2–3 km
-  const litFar = !!options.lit;
-  const material: THREE.MeshBasicMaterial | THREE.MeshStandardMaterial = litFar
-    ? new THREE.MeshStandardMaterial({ vertexColors: true, fog: true, side: THREE.DoubleSide, roughness: 1, metalness: 0 })
-    : new THREE.MeshBasicMaterial({ vertexColors: true, fog: false, side: THREE.DoubleSide });
-  if (litFar) {
-    material.defines = { ...(material.defines ?? {}), FAR_RANGE_LIT: '' };
-    // a lit program reads the standard normal attribute (its view normal, the cascades' normal bias): the far normal
-    geo.setAttribute('normal', geo.getAttribute('aFarNormal'));
-  }
+  const material = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false, side: THREE.DoubleSide });
   const detail = options.detailTexture ?? null;
   const [lx, ly, lz] = options.sun;
   // round 72c (integrator: "the smooth white domes behind Alpine / Whiteout ... meringue"): the far annulus takes the
@@ -333,12 +319,12 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
     uFRock: { value: options.rock.clone() }, uFSnow: { value: options.snow.clone() }, uFFog: { value: fog.clone() },
     uFSnowline: { value: s.snowline <= 1 ? s.snowline : 2 }, uFDetailOn: { value: detail ? 1 : 0 },
   };
-  const farHook = (shader: Parameters<THREE.Material['onBeforeCompile']>[0]): void => {
+  material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, shading);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec3 aFarNormal; attribute vec4 aFarParam;\nvarying vec3 vFPos; varying vec3 vFNrm; varying vec4 vFPar;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFPos = position; vFNrm = aFarNormal; vFPar = aFarParam;');
-    shader.fragmentShader = 'uniform sampler2D uFDetail; uniform vec3 uFSun; uniform vec2 uFGains; uniform vec3 uFRock; uniform vec3 uFSnow; uniform vec3 uFFog; uniform float uFSnowline; uniform float uFDetailOn;\nvarying vec3 vFPos; varying vec3 vFNrm; varying vec4 vFPar;\nvec3 gFarN = vec3(0.0, 1.0, 0.0); float gFarHaze = 0.0; float gFarMarine = 0.0;\n' + shader.fragmentShader
+    shader.fragmentShader = 'uniform sampler2D uFDetail; uniform vec3 uFSun; uniform vec2 uFGains; uniform vec3 uFRock; uniform vec3 uFSnow; uniform vec3 uFFog; uniform float uFSnowline; uniform float uFDetailOn;\nvarying vec3 vFPos; varying vec3 vFNrm; varying vec4 vFPar;\n' + shader.fragmentShader
       .replace('#include <color_fragment>', /* glsl */`#include <color_fragment>
       {
         float hT = vFPar.x, haze = vFPar.y, rib = vFPar.z, marine = vFPar.w;
@@ -378,12 +364,6 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
           col = mix(col, snowCol, snowW * (1.0 - rockW)); // the ribs stay bare rock through the snow
         }
         col *= 1.0 + fA * 0.10 + fB * 0.06;
-#ifdef FAR_RANGE_LIT
-        // terrain v2, the lit far range: an albedo (the rib cavity kept) and the tilted normal for three's own light;
-        // the sea and the row haze mix the final radiance (the fog stage below)
-        col *= 1.0 + rib * 0.14;
-        gFarN = n; gFarHaze = haze; gFarMarine = marine;
-#else
         // the vista program's own lighting law: a hemispherical sky term and a Lambert sun on the tilted normal, the
         // rib / couloir cavity, the cool tint on the faces turned from the sun
         float ndl = dot(n, uFSun);
@@ -395,22 +375,10 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
         col = mix(col, uFFog * 0.9, marine);
         // aerial perspective by row: bluer and lighter with distance, never gone
         col = mix(col, uFFog * vec3(0.94, 0.98, 1.06), haze);
-#endif
         diffuseColor.rgb = col;
       }`);
-    if (litFar) {
-      shader.fragmentShader = shader.fragmentShader
-        .replace('#include <normal_fragment_maps>', 'normal = normalize((viewMatrix * vec4(gFarN, 0.0)).xyz);')
-        // the live fog colour (the scene's horizon, night included) for the sea and the row haze; no exponential fog
-        .replace('#include <fog_fragment>', /* glsl */`#ifdef USE_FOG
-gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor * 0.9, gFarMarine);
-gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor * vec3(0.94, 0.98, 1.06), gFarHaze * 0.6); // the post aerial pass carries the rest
-#endif`);
-    }
   };
-  if (litFar) options.lit!(material, farHook);
-  else material.onBeforeCompile = farHook;
-  material.customProgramCacheKey = () => (litFar ? 'horizon-far-range-lit-v2' : 'horizon-far-range-r72c');
+  material.customProgramCacheKey = () => 'horizon-far-range-r72c';
   const mesh = new THREE.Mesh(geo, material);
   mesh.name = 'horizon-far-range';
   mesh.castShadow = false;

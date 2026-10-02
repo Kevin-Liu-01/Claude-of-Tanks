@@ -247,10 +247,8 @@ function assertVistaSurfaceShader(shader, normals, label) {
   // round 72c (2026-09-26, perf): the projection macro became the far-LOD function vTile — five fetch sites (the
   // horizontal plane, the two vertical planes of the near triplanar, the cylindrical plane of the far pair, and the
   // same pair inside the 120 m blend); the relief atlas and the two cloud-shade fetches stay: 6 -> 8
-  // terrain v2 (2026-10-01): +3 — the non-periodic bedding's two height lines through the detail noise (inside the
-  // uVBedIrregular branch) and the walls' buttress lookup (inside the wall branch): 8 -> 11
-  assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 11,
-    `${label}: the far-LOD tile function's five fetch sites, the relief atlas fetch, the two cloud-shade fetches, the bedding's two height lines and the buttress lookup are the only fetch sites (round 72c; terrain v2)`);
+  assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 8,
+    `${label}: the far-LOD tile function's five fetch sites, the relief atlas fetch and the two cloud-shade fetches are the only fetch sites (round 72c)`);
   assert.match(fragment, /gLodFar = smoothstep\(880\.0, 1000\.0, vHDist\);/, `${label}: the tiles' far LOD keys on the camera distance past the first ridge (round 72c)`);
   assert.match(fragment, /if \(gLodFar > 0\.999\) return flatTap \* gAw\.y \+ texture2D\(tex, vec2\(gCylU \* cyl, gP\.y \* s\)/, `${label}: past 1 km a tile is two fetches — the horizontal plane and one cylindrical plane (round 72c)`);
   assert.match(fragment, /if \(uVCShade > 0\.001\) \{/, `${label}: the cloud-shade fetches are skipped while the layer is off (round 72)`);
