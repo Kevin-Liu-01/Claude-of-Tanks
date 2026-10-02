@@ -366,3 +366,38 @@ repair cleanup and every capture-ring/disc vertex against the live terrain.
 The probe owns the shared capture queue and writes evidence beneath
 `.qa-dev/running-gear-damage/`. Objective rings and discs have independent
 surface-fitted geometry; capture progress reuses that fit.
+
+## Integration verification — 2026-10-02
+
+The combined battle changes were integrated with `origin/main` at
+`24c5c5b03`. The regenerated manual describes 217 vehicles, 33 battlefields
+and seven modes. The camouflage catalog includes the four national paint
+recipes needed by the twelve modernization variants. Public and private
+builds and type checking passed; the public build was repeated after the
+reference/catalog refresh.
+
+The merged fleet passed anatomy and marking-seat generation/checks, technical
+diagram validation, and 1,956 module plus 434 track-side hit probes. The full
+smoke audit covered all 207 smoke-equipped models: 414 decorated HIGH/LOW
+builds and 22,398 launches from actual tube mouths across yaw and tilt.
+The notification matrix passed 889 checks across 22 viewport/locale cases.
+These results supplement the mobile, bot, font, spectator and running-gear
+receipts above; they do not claim physical-device coverage.
+
+The broader suite is not a green baseline. Existing source-geometry,
+archival-reference and balance failures remain visible. Fresh comparisons
+against the unmodified main snapshot reproduced the TOS donor fingerprint,
+T-90 equipment/source-gun expectations, T-62 marking-count expectation and
+Challenger 3X/T-62 fire-control outliers. Missing local source GLBs and existing
+geometry score failures also prevent claiming a clean source-reference
+release gate. No geometry threshold or historical anchor hash was lowered to
+make these failures pass.
+
+Local integration evidence is retained in `.qa-dev/integration-tests-final.json`
+and `.qa-dev/integration-supplemental-results.json`; the latter records focused
+reruns after generated-catalog and test-contract repairs. The physical map
+checks preserve exact collision records while resolving runtime destruction
+indices to their authored owners. They additionally verify that every clutter
+binding addresses the original position/normal bytes or instance transform,
+so material batching and waterworks donor replacement cannot conceal a bad
+destruction target.
