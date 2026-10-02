@@ -31,6 +31,9 @@ import { publicRouteForEntry, resolveLocalePath } from './src/ui/localeRouting.t
 import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.ts';
 import { assertPublicBuildEnv } from './tools/publicBuildEnv.ts';
 import { isExistingProjectDocument } from './tools/existing-document-route.ts';
+import { sharedWorkerChunks } from './tools/viteSharedWorkers.ts';
+import { glslMinify } from './tools/viteGlslMinify.ts';
+import { runtimeFileVersions } from './tools/viteRuntimeFiles.ts';
 
 const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 
@@ -197,11 +200,28 @@ function forceNotFoundStatus(res: ServerResponse): void {
 }
 
 export default defineConfig({
-  // Static wreck workers retain the same on-demand fleet-family imports.
-  // The worker build is a separate bundle: its chunks (the fleet family modules the wreck workers import) take the
-  // same base36 hash alphabet so every /assets URL moved together (2026-09-25, docs/DEVELOPMENT.md "Asset caching").
+  // Workers Vite still bundles on their own (the match host, the material painter, the sky/cloud/schematic/texture
+  // workers) keep ES modules so their donor families stay on-demand imports, and their chunks take the same base36
+  // hash alphabet so every /assets URL moved together (2026-09-25, docs/DEVELOPMENT.md "Asset caching").
   worker: { format: 'es', rollupOptions: { output: { hashCharacters: 'base36' } } },
   plugins: [
+    // 2026-10-02 (tools/viteSharedWorkers.ts): the wreck bake and Garage workshop workers are entries of the page
+    // build and import the page's own chunks (dist/assets 954 files / 34.9 MB -> 682 / 27.7 MB; a worker never
+    // downloads again a module the page already holds). The match host stays separate: its spec-only graph would
+    // split four boot chunks (+5 game / +4 gallery requests) or drag the builder core into the host. The small
+    // workers are single self-contained files.
+    ...sharedWorkerChunks({ workers: {
+      'src/world/wreckBakeWorker.ts': {},
+      'src/game/garageWorkshopGeometryWorker.ts': { privateCopies: ['src/vehicles/profileBuilderAdapter.ts'] },
+    } }),
+    // 2026-10-02 (tools/viteGlslMinify.ts): comments and line-edge whitespace out of the game's own complete shader
+    // programs at build time; lines, directives, in-line text and every library shader stay as written (game boot
+    // -31.3 KB raw / -10.4 KB brotli).
+    glslMinify(),
+    // 2026-10-02 (tools/viteRuntimeFiles.ts): content-hashed /assets copies of the runtime audio (111 files a battle
+    // session fetches), so they take the immutable route and the release carry-forward instead of an hour's cache and
+    // a revalidation; src/runtimeFiles.ts resolves the two fetch sites to the copies, the originals stay deployed.
+    runtimeFileVersions(),
     { name: 'cot-public-build-env', apply: 'build', configResolved(config) { assertPublicBuildEnv(config.env); } },
     {
       name: 'cot-app-version',

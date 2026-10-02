@@ -1,11 +1,8 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { getSpec } from '../specs.ts';
 
 const EPSILON = 1e-6;
-const approximately = (actual, expected, message) => {
-  assert.ok(Math.abs(actual - expected) <= EPSILON,
-    `${message}: expected ${expected}, received ${actual}`);
-};
 const triangleCount = (object) => {
   const geometry = object?.geometry;
   if (!geometry) return 0;
@@ -19,51 +16,38 @@ const build = (id) => createTank(id, null, {
   camoSeed: 4242,
   geometryReceipt: true,
 });
-const namesBelow = (root) => {
+const meshNames = (root) => {
   const names = [];
-  root.traverse((object) => names.push(object.name));
+  root.traverse((object) => { if (object.isMesh) names.push(object.name); });
   return names;
 };
 
-{
-  const tank = build('t72b3m');
+// 2026-10-01: the owner's September renewal rebuilt all three vehicles on detailed source studies (4c34b3e8b,
+// cdbfe54dc, fleet-renewal-publication-20260930.md): t72b3m is the obr. 2022 on t72b3m_x with the T-90SM X turret,
+// t72bu the T-72BU 1989 on t72bu_x, bmpt_terminator2 the T-80U X hull with its reshaped station. The legacy builders'
+// cleanup receipts (single-crown skin, raised casting, centered turntable) left with them; the cleanups themselves
+// remain the law and are checked on the actual rebuilds: a seated articulated turret at the combat datum, reactive
+// armour owned by the turret it protects, and no near-black synthetic panels between the road wheels.
+const REBUILDS = Object.freeze({
+  t72b3m: { donor: 't72b3m_x', turretEra: true },
+  t72bu: { donor: 't72bu_x', turretEra: true },
+  bmpt_terminator2: { donor: 't80u_x', turretEra: false },
+});
+for (const [id, expected] of Object.entries(REBUILDS)) {
+  const tank = build(id);
   try {
     const hullRig = tank.root.getObjectByName('rig_hull');
     const turretRig = tank.root.getObjectByName('rig_turret');
-    assert.ok(hullRig && turretRig, 'T-72B3M retains separate hull and turret rigs');
-    approximately(turretRig.position.y, 1.46, 'T-72B3M turret is lifted clear of the hull');
-    assert.deepEqual(turretRig.userData.t72B3MTurretCleanupReceipt, {
-      revision: 'single-crown-skin-r1',
-      turretLiftM: 0.04,
-      reliktStandOffM: 0.018,
-      retiredCoplanarCrownLayers: 3,
-    }, 'T-72B3M publishes its simplified crown and ERA seating contract');
-    assert.deepEqual(hullRig.userData.t72B3MRunningGearCleanupReceipt, {
-      revision: 'native-open-wheel-bays-r1',
-      syntheticGapPanels: 0,
-      terminalScraperShoes: 0,
-    }, 'T-72B3M publishes the removal of synthetic wheel-bay shadow panels');
-    assert.equal(namesBelow(tank.root).includes('t72b3mWheelBayShadow'), false,
-      'T-72B3M no longer uses near-black rectangles between its road wheels');
-  } finally {
-    tank.dispose();
-  }
-}
-
-{
-  const tank = build('t72bu');
-  try {
-    const turretRig = tank.root.getObjectByName('rig_turret');
-    assert.ok(turretRig, 'T-72BU retains its articulated turret rig');
-    approximately(turretRig.position.y, 1.42, 'T-72BU casting is lifted clear of the hull');
-    assert.deepEqual(turretRig.userData.t72BUTurretSeatingReceipt, {
-      revision: 'raised-casting-conformal-k5-r1',
-      turretLiftM: 0.06,
-      k5StandOffM: 0.022,
-      gunWorldAxisPreserved: true,
-    }, 'T-72BU publishes its raised casting and conformal Kontakt-5 contract');
-    assert.ok(turretRig.getObjectByName('turretExternalArmor'),
-      'T-72BU Kontakt-5 remains turret-owned after reseating');
+    const gunRig = tank.root.getObjectByName('rig_gun');
+    assert.ok(hullRig && turretRig && gunRig?.parent === turretRig, `${id} retains separate hull, turret and gun rigs`);
+    assert.equal(hullRig.userData.familyRebuild?.donor, expected.donor, `${id}: the renewal rebuild on ${expected.donor}`);
+    turretRig.position.toArray().forEach((value, axis) => assert.ok(Math.abs(value - getSpec(id).armor.turretPivot[axis]) < EPSILON,
+      `${id}: turret seats at the combat/anatomy ring datum (${axis})`));
+    assert.equal(meshNames(tank.root).some((name) => /WheelBayShadow|hullShadow/i.test(name)), false,
+      `${id} has no near-black rectangles between its road wheels`);
+    const turretEra = turretRig.getObjectByName('turretExternalArmor');
+    if (expected.turretEra) assert.ok(turretEra?.isMesh, `${id}: turret ERA stays turret-owned`);
+    else assert.equal(turretEra, undefined, `${id}: the reshaped station cannot keep ghost donor turret ERA`);
   } finally {
     tank.dispose();
   }
@@ -72,35 +56,10 @@ const namesBelow = (root) => {
 {
   const tank = build('bmpt_terminator2');
   try {
-    const hullRig = tank.root.getObjectByName('rig_hull');
-    const turretRig = tank.root.getObjectByName('rig_turret');
-    const turntable = turretRig?.getObjectByName('turretTrack');
-    assert.ok(hullRig && turretRig && turntable,
-      'BMPT Terminator 2 retains a hull, articulated turret, and dedicated turntable');
-    approximately(turretRig.position.y, 1.46, 'BMPT station remains seated on the hull roof');
-    approximately(turretRig.position.z, -0.97, 'BMPT station is shifted aft toward hull center');
-    assert.deepEqual(turretRig.userData.bmptTerminator2TurretSeatingReceipt, {
-      revision: 'centered-dedicated-turntable-r1',
-      stationShiftZM: -0.32,
-      inheritedDonorTurretTrack: false,
-      dedicatedTurntable: true,
-    }, 'BMPT publishes the centered station and dedicated turntable contract');
-    assert.equal(turretRig.userData.t72B3MTurretCleanupReceipt, undefined,
-      'BMPT does not retain the donor T-72B3M turret cleanup receipt');
+    const turntable = tank.root.getObjectByName('rig_turret')?.getObjectByName('turretTrack');
+    assert.ok(turntable?.isMesh, 'BMPT Terminator 2 keeps a dedicated turntable');
     assert.ok(triangleCount(turntable) <= 200,
-      'BMPT turntable stays compact instead of inheriting the donor turretTrack assembly');
-    assert.deepEqual(hullRig.userData.t72B3MRunningGearCleanupReceipt, {
-      revision: 'native-open-wheel-bays-r1',
-      syntheticGapPanels: 0,
-      terminalScraperShoes: 0,
-    }, 'BMPT inherits the cleaned native running gear without shadow inserts');
-    assert.deepEqual(hullRig.userData.bmptTerminator2HullClosureReceipt, {
-      revision: 'front-fender-notch-bridges-r1',
-      bridgeCount: 2,
-      syntheticWheelBayShadows: 0,
-    }, 'BMPT closes the newly exposed front fender notches without fake shadows');
-    assert.equal(namesBelow(tank.root).includes('t72b3mWheelBayShadow'), false,
-      'BMPT no longer has near-black rectangles between its road wheels');
+      'BMPT turntable stays compact instead of inheriting a donor turretTrack assembly');
   } finally {
     tank.dispose();
   }

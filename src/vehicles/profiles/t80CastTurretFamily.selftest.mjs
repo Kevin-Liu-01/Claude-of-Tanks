@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { FLEET_RENEWAL_DONORS } from '../fleetRenewalSpecs.ts';
 
 function receiptFor(id) {
   const tank = createTank(id, null, {
@@ -14,8 +15,22 @@ function receiptFor(id) {
   return { tank, turret, receipt };
 }
 
+// 2026-10-01: the owner's September renewal (4c34b3e8b, fleet-renewal-publication-20260930.md: "T-80UK uses
+// t80u_x") rebuilt the t80u slot as the T-80UK command tank on the complete t80u_x source study, whose casting is
+// that study's own; the shared dome receipt and the T-80U reseat below left with the retired builder.
+{
+  assert.equal(FLEET_RENEWAL_DONORS.t80u, 't80u_x', 't80u: the renewal builds the T-80UK on the T-80U study');
+  const tank = createTank('t80u', null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
+  try {
+    assert.deepEqual(tank.root.getObjectByName('rig_hull').userData.familyRebuild,
+      { donor: 't80u_x', revision: 1, variant: 'command' }, 't80u: the T-80UK command rebuild');
+    assert.equal(tank.root.getObjectByName('rig_turret').userData.t80CastTurretReceipt, undefined,
+      't80u: no half-retired shared dome under the study casting');
+  } finally { tank.dispose(); }
+}
+
 const built = Object.fromEntries(
-  ['t80', 't80b', 't80bv', 'ua_t80bv', 't80u', 'ua_t80u_kursk']
+  ['t80', 't80b', 't80bv', 'ua_t80bv', 'ua_t80u_kursk']
     .map((id) => [id, receiptFor(id)]),
 );
 
@@ -49,13 +64,6 @@ try {
   assert.equal(russianBV.curvedNormals, true);
   assert.equal(ukrainianBV.curvedNormals, true);
 
-  const t80u = built.t80u;
-  assert.equal(t80u.receipt.scaleY, built.t80.receipt.scaleY,
-    'T-80U base shell exactly matches the accepted T-80 vertical profile');
-  assert.equal(t80u.receipt.crownY, built.t80.receipt.crownY);
-  assert.equal(t80u.receipt.equipmentSeatRevision, 't80u-family-reseat-r2');
-  assert.ok(Math.abs(t80u.turret.position.y + t80u.receipt.ringBaseY - 1.56) < 1e-6,
-    'T-80U canonical casting is lowered onto its lifted hull shoulder');
 } finally {
   for (const { tank } of Object.values(built)) tank.dispose();
 }

@@ -386,6 +386,8 @@ const renderer = await (async () => {
     });
   }
 })();
+// The real context confirms (and records) the verdict; a cached one that no longer matches re-runs the gate on it.
+await bootCapability.confirm(renderer.getContext());
 let graphicsContextLost = false;
 let rearmRafAfterContext = () => {}; // installed when the main loop is ready
 // MOBILE r2: GPU self-test + rescue ladder. The owner's iPhone renders every

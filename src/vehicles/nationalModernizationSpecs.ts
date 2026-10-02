@@ -7,6 +7,9 @@ const entries:Record<string,FleetTankSpec>={};
 for(const c of NATIONAL_MODERNIZATION_CONFIG){
   const s=cloneFleetVariant(TANK_SPECS,c.id,'t90sm_x',{name:c.name,nation:c.nation,era:'next-generation'});
   delete s.label;delete s.roster;delete s.publicVisualFallback;delete s.balancePeerOf;
+  // The twelve concepts share the T-90SM X turret's handling. As one balance cohort their identical fire control
+  // never outvotes the rest of the next-generation Tier X median (fleetBalance; Challenger 3 X read 1.68x).
+  s.balanceCohort='national-modernization';
   s.variantOf=c.donor;entries[c.id]=s;
 }
 registerFleetSpecs(bindFleetRegistries(TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS),NATIONAL_MODERNIZATION_IDS,entries);

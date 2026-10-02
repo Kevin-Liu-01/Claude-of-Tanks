@@ -2,228 +2,87 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { FLEET_RENEWAL_DONORS } from '../fleetRenewalSpecs.ts';
+import { censusEquipment } from '../../../tools/source-equipment-policy.mjs';
 
-const tank = createTank('t72m1_jaguar', null, {
-  proceduralOnly: true,
-  geometryReceipt: true,
-});
-const twardy = createTank('pt91_twardy', null, {
-  proceduralOnly: true,
-  geometryReceipt: true,
-});
-const spec = getSpec('t72m1_jaguar');
-const hull = tank.root.getObjectByName('rig_hull');
-const turret = tank.root.getObjectByName('rig_turret');
-const gun = tank.root.getObjectByName('rig_gun');
-const mantlet = gun?.getObjectByName('gunMount');
-const recoil = gun?.getObjectByName('rig_recoil');
-const roadWheelTires = hull.getObjectByName('gearRoadWheelTires');
-const twardyHull = twardy.root.getObjectByName('rig_hull');
-const twardyGun = twardy.root.getObjectByName('rig_gun');
+// 2026-10-01: the owner's September renewal (4c34b3e8b, docs/tank-generation/fleet-renewal-publication-20260930.md:
+// "Rebuild T-72M1 Jaguar around the new T-72B3") replaced the former Jaguar builder, its PT-91A stance, ERAWA glacis,
+// WKM-B, lockers and fuel barrels, with the complete t72b3_x donor plus a Polish fit (profiles/t72ModernVariants.ts
+// buildJaguarModern: cheek receivers, panoramic sight, rear rack, enclosed stowage). The receipts of the retired
+// builder left with it; this receipt holds the rebuild to its own contract and the owner's standing rulings.
+const options = { proceduralOnly: true, geometryReceipt: true };
+const tank = createTank('t72m1_jaguar', null, options);
+const donor = createTank('t72b3_x', null, options);
+try {
+  const spec = getSpec('t72m1_jaguar');
+  const hull = tank.root.getObjectByName('rig_hull');
+  const turret = tank.root.getObjectByName('rig_turret');
+  const gun = tank.root.getObjectByName('rig_gun');
+  assert.equal(FLEET_RENEWAL_DONORS.t72m1_jaguar, 't72b3_x', 'the renewal builds the Jaguar on the T-72B3 study');
+  assert.deepEqual(hull.userData.familyRebuild, { donor: 't72b3_x', revision: 1, variant: 'jaguar' },
+    'Jaguar is the owner-directed T-72B3 family rebuild, not a half-retired builder');
 
-assert.equal(hull.userData.t72FamilyFoundation, 'measured-current-t72-family',
-  'Jaguar keeps its measured Polish envelope while using current T-72 family grammar');
-assert.equal(hull.userData.nativeRoadWheelStations, 6,
-  'Jaguar keeps the native six-station T-72 suspension');
-// 2026-09-22 owner ("poland uses the pl-01 or bwp-1 wheels"): the Polish T-72 hull draws the PL-01 nation wheel.
-assert.deepEqual(hull.userData.nativeWheelPatterns, ['plain-dish-twelve'],
-  'Jaguar records the one Poland nation wheel pattern (PL-01 donor)');
-assert.equal(turret.userData.polishModernization, 't72m1-jaguar-erawa-refit',
-  'Jaguar owns its Polish modernization overlay');
-assert.equal(spec.visual.scheme, 'nato',
-  'Jaguar uses a flowing Polish three-colour woodland pattern');
-assert.equal(spec.visual.base, '#46533a',
-  'Jaguar body color is olive green rather than the former blue-gray tone');
-assert.deepEqual(spec.visual.patches, ['#5a4534', '#1c211c'],
-  'Jaguar carries distinct earth-brown and charcoal disruption bands');
+  // Running gear: the donor's six T-72 stations, three return rollers per side (FSP-03 ruling), one band per side.
+  const [gear] = hull.userData.runningGearReceipts || [];
+  const [donorGear] = donor.root.getObjectByName('rig_hull').userData.runningGearReceipts || [];
+  assert.ok(gear && donorGear, 'both hulls publish their running-gear receipt');
+  for (const key of ['wheelZs', 'wheelY', 'wheelR', 'idler', 'sprocket', 'topY', 'botY', 'trackTh']) {
+    assert.deepEqual(gear[key], donorGear[key], `Jaguar ${key} is the t72b3_x donor's`);
+  }
+  assert.equal(gear.wheelZs.length, 6, 'Jaguar keeps the native six-station T-72 suspension');
+  assert.equal(hull.getObjectByName('gearReturnRollerTires')?.count, 6,
+    'three return rollers per side: the T-72 family carries its upper run on rollers');
+  const bandNames = [];
+  tank.root.traverse((node) => {
+    if (node.name === 'gearTrackBandL' || node.name === 'gearTrackBandR') bandNames.push(node.name);
+  });
+  assert.deepEqual(bandNames.sort(), ['gearTrackBandL', 'gearTrackBandR'],
+    'Jaguar has exactly one linked track course on each side');
+  const clear = (end, z) => Math.hypot(end.z - z, end.y - gear.wheelY) - (end.r + gear.wheelR);
+  const zs = [...gear.wheelZs].sort((a, b) => a - b);
+  assert.ok(clear(gear.sprocket, zs[0]) > 0.02, 'rear sprocket clears the first road wheel');
+  assert.ok(clear(gear.idler, zs.at(-1)) > 0.02, 'front idler clears the last road wheel');
+  assert.ok(Math.abs(gear.botY + gear.trackTh / 2 - (gear.wheelY - gear.wheelR)) < 1e-9,
+    'Jaguar loaded track run carries the tire feet (ground-datum seat, 2026-09-17)');
+  // 2026-09-22 owner ("poland uses the pl-01 or bwp-1 wheels"): the Polish T-72 hull draws the PL-01 nation wheel.
+  const pattern = hull.userData.wheelPatternReceipts?.[0];
+  assert.equal(pattern?.construction, 'nation:pl01-plain-dish', 'Jaguar draws the Poland nation wheel construction');
+  assert.equal(pattern?.nationStandard?.donor, 'pl01', 'Jaguar wheel donor is the PL-01');
 
-const bandNames = [];
-tank.root.traverse((node) => {
-  if (node.name === 'gearTrackBandL' || node.name === 'gearTrackBandR') bandNames.push(node.name);
-});
-assert.deepEqual(bandNames.sort(), ['gearTrackBandL', 'gearTrackBandR'],
-  'Jaguar has exactly one linked track course on each side');
-const [runningGear] = hull.userData.runningGearReceipts || [];
-assert.ok(runningGear, 'Jaguar publishes its linked running-gear receipt');
-assert.equal(runningGear.idler.z, 2.83,
-  'front idler reaches forward beneath the bow instead of crowding the sixth road wheel');
-assert.ok(runningGear.idler.z - runningGear.wheelZs.at(-1) >= 0.73,
-  'front idler has a natural full-wheel center spacing from the last road wheel');
-assert.ok(Math.max(...runningGear.loopPoints.map(([z]) => z)) > runningGear.idler.z + runningGear.idler.r,
-  'linked track course wraps around the relocated front idler');
-assert.ok(runningGear.sprocket.z <= -2.41,
-  'rear sprocket moves aft instead of crowding the first road wheel');
-assert.ok(Math.min(...runningGear.loopPoints.map(([z]) => z)) < -2.72,
-  'linked track course wraps naturally around the relocated rear sprocket');
-assert.equal(hull.userData.jaguarRunningGearReceipt?.revision,
-  'road-wheel-size-and-rollerless-return-run-r6',
-  'Jaguar records the 750 mm road-wheel, rollerless-return-run running-gear revision (owner 2026-09-22)');
-// owner 2026-09-22: six 750 mm T-72 wheels that read as separate road wheels, and end wheels clear of them.
-assert.equal(runningGear.wheelR, 0.375, 'Jaguar road wheels are the T-72 750 mm size');
-{
-  const zs = [...runningGear.wheelZs].sort((a, b) => a - b);
-  const pitch = Math.min(...zs.slice(1).map((z, i) => z - zs[i]));
-  assert.ok(2 * runningGear.wheelR <= pitch - 0.05, `road wheels keep a visible gap (2R ${2 * runningGear.wheelR} vs pitch ${pitch})`);
-  const clear = (end, z) => Math.hypot(end.z - z, end.y - runningGear.wheelY) - (end.r + runningGear.wheelR);
-  assert.ok(clear(runningGear.sprocket, zs[0]) > 0.02, 'rear sprocket clears the first road wheel');
-  assert.ok(clear(runningGear.idler, zs.at(-1)) > 0.02, 'front idler clears the last road wheel');
+  // Articulation and combat datum.
+  assert.deepEqual(turret.position.toArray(), spec.armor.turretPivot,
+    'rendered turret ring matches the combat/anatomy datum');
+  assert.deepEqual(gun.position.toArray(), spec.armor.gunPivot,
+    'rendered gun root matches the combat/anatomy datum');
+  assert.equal(gun.getObjectByName('gunMount')?.parent, gun, 'Jaguar mantlet remains attached to the weapon root');
+  assert.equal(gun.getObjectByName('rig_recoil')?.parent, gun, 'Jaguar recoiling barrel remains attached to the weapon root');
+
+  // The Polish fit: the Jaguar's own paint, three attached cheek receivers per side over the donor's cheek ERA,
+  // the donor's single roof machine gun.
+  assert.equal(spec.visual.scheme, 'nato', 'Jaguar uses a flowing Polish three-colour woodland pattern');
+  assert.equal(spec.visual.base, '#46533a', 'Jaguar body color is olive green rather than the former blue-gray tone');
+  assert.deepEqual(spec.visual.patches, ['#5a4534', '#1c211c'],
+    'Jaguar carries distinct earth-brown and charcoal disruption bands');
+  const parts = (t) => t.root.userData.eraFinishReceipt?.partsBySector ?? {};
+  const own = parts(tank), base = parts(donor);
+  assert.deepEqual(Object.keys(own).sort(), Object.keys(base).sort(), 'Jaguar ERA keeps the donor zones, no invented field');
+  for (const side of ['L', 'R']) {
+    assert.equal(own[`turret_era_${side}`] - base[`turret_era_${side}`], 6,
+      `Jaguar adds three attached cheek receivers (cassette and lid) on the ${side} cheek`);
+  }
+  for (const zone of Object.keys(base).filter((name) => !name.startsWith('turret_era_'))) {
+    assert.equal(own[zone], base[zone], `${zone}: the donor hull ERA is unchanged`);
+  }
+  assert.ok(turret.getObjectByName('turretExternalArmor')?.isMesh, 'Jaguar cheek ERA is turret-owned external armor');
+  assert.equal(censusEquipment(tank.root).mg, censusEquipment(donor.root).mg, 'Jaguar keeps the donor roof machine gun');
+
+  tank.root.updateMatrixWorld(true); donor.root.updateMatrixWorld(true);
+  const size = new THREE.Box3().setFromObject(tank.root).getSize(new THREE.Vector3());
+  const donorSize = new THREE.Box3().setFromObject(donor.root).getSize(new THREE.Vector3());
+  assert.ok(Math.abs(size.z - donorSize.z) < 0.05 && Math.abs(size.x - donorSize.x) < 0.05,
+    `Jaguar length and width stay the T-72B3 envelope (got ${size.z.toFixed(3)} x ${size.x.toFixed(3)} m)`);
+} finally {
+  tank.dispose();
+  donor.dispose();
 }
-// FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72 family carries three return
-// rollers per side (FAS T-72 entry; the T-90A X source `support wheels` node), so the Jaguar's upper run rides
-// three fitted rollers again; the 2026-09-23 rollerless assertion is reversed.
-const jaguarRollers = hull.getObjectByName('gearReturnRollerTires');
-assert.ok(jaguarRollers && jaguarRollers.count === 6,
-  'three return rollers per side: the T-72 family carries its upper run on rollers, not the road-wheel tops');
-assert.ok(Math.abs(runningGear.botY + runningGear.trackTh / 2 - (runningGear.wheelY - runningGear.wheelR)) < 1e-9,
-  'Jaguar loaded track run carries the tire feet (ground-datum seat, 2026-09-17) while the upper course rises');
-assert.equal(runningGear.wheelY, twardyHull.userData.runningGearReceipts[0].wheelY,
-  'Jaguar and PT-91A share the same road-wheel center height');
-assert.equal(runningGear.topY, twardyHull.userData.runningGearReceipts[0].topY + 0.04,
-  'Jaguar upper track course rises 40 mm above the PT-91A datum');
-assert.equal(runningGear.idler.y,
-  twardyHull.userData.runningGearReceipts[0].idler.y + 0.04,
-  'Jaguar idler rises with the taller upper track course');
-assert.equal(runningGear.sprocket.y,
-  twardyHull.userData.runningGearReceipts[0].sprocket.y + 0.04,
-  'Jaguar rear sprocket rises with the taller upper track course');
-assert.ok(Math.max(...runningGear.loopPoints.map(([, y]) => y)) >= 1.05,
-  'reseated Jaguar track loop reaches the raised endpoint crowns');
-assert.ok(Math.abs(tank.presentationTrackFloorYM - twardy.presentationTrackFloorYM) < 0.012,
-  'Jaguar and Twardy shoes both stand on the y = 0 ground datum (2026-09-17); the raised hull shows in the sprocket and crown pins above');
-assert.equal(hull.userData.jaguarRunningGearReceipt?.pt91aWheelCenterMatched, true,
-  'Jaguar publishes the PT-91A wheel-center stance match');
-assert.equal(hull.userData.jaguarRunningGearReceipt?.roadWheelCentersPreserved, true,
-  'Jaguar explicitly preserves all six road-wheel center stations');
-const firstRoadWheelMatrix = new THREE.Matrix4();
-const firstRoadWheelPosition = new THREE.Vector3();
-roadWheelTires.getMatrixAt(0, firstRoadWheelMatrix);
-firstRoadWheelPosition.setFromMatrixPosition(firstRoadWheelMatrix);
-assert.ok(Math.abs(firstRoadWheelPosition.y - runningGear.wheelY) <= 1e-6,
-  'rendered road-wheel instances sit on the seated axle (ground-datum seat, 2026-09-17)');
-assert.equal(hull.userData.jaguarRunningGearReceipt?.hullDeckLiftM, 0.02,
-  'Jaguar connected hull body rises 20 mm above the former low silhouette');
-assert.equal(turret.position.y, 1.40,
-  'Jaguar turret remains on its established world datum while the hull rises to meet it');
-assert.equal(turret.position.z, 0.10,
-  'Jaguar turret ring moves 120 mm forward behind the shortened upper glacis');
-assert.ok(Math.abs(turret.position.z + gun.position.z
-  + spec.armor.gunBarrel.lengthM - 6.24) <= 1e-9,
-  'deeper tube seat preserves the certified muzzle endpoint after the turret move');
-const jaguarHullBounds = new THREE.Box3().setFromObject(hull);
-const twardyHullBounds = new THREE.Box3().setFromObject(twardyHull);
-assert.ok(jaguarHullBounds.max.y >= twardyHullBounds.max.y - 0.10,
-  'Jaguar structural hull roof now sits within 100 mm of the PT-91A package');
-assert.equal(hull.userData.jaguarRunningGearReceipt?.frontContactZ, 2.53,
-  'loaded track run extends forward to meet the relocated idler naturally');
-assert.equal(hull.userData.jaguarRunningGearReceipt?.bowSlotClearedForWrap, true,
-  'bow slot floors are trimmed clear of the longer idler wrap');
-assert.equal(hull.userData.jaguarRunningGearReceipt?.rearContactZ, -2.14,
-  'loaded track run reaches the relocated rear sprocket naturally');
-assert.equal(hull.userData.jaguarRunningGearReceipt?.rearPlateClearedForWrap, true,
-  'rear track wrap remains clear of the hull plate');
-assert.equal(tank.root.getObjectByName('hullTrack'), undefined,
-  'Jaguar ERAWA inherits hull camouflage rather than generic gray track steel');
-assert.equal(tank.root.getObjectByName('turretTrack'), undefined,
-  'Jaguar cheek ERAWA inherits turret camouflage rather than Russian Kontakt material');
-
-assert.deepEqual(turret.position.toArray(), spec.armor.turretPivot,
-  'rendered turret ring matches the combat/anatomy datum');
-assert.deepEqual(gun.position.toArray(), spec.armor.gunPivot,
-  'rendered gun root matches the combat/anatomy datum');
-assert.equal(spec.armor.gunPivot[1], 0.28,
-  'Jaguar complete weapon root is lifted another 10 mm inside the casting');
-assert.ok(gun.getWorldPosition(new THREE.Vector3()).y >=
-  twardyGun.getWorldPosition(new THREE.Vector3()).y - 0.02,
-  'Jaguar cannon axis sits within 20 mm of the PT-91A datum');
-assert.ok(mantlet && mantlet.parent === gun,
-  'Jaguar mantlet remains attached directly to the lifted weapon root');
-assert.ok(recoil && recoil.parent === gun,
-  'Jaguar recoiling barrel assembly remains attached to the lifted weapon root');
-const glacis = hull.userData.jaguarGlacisReceipt;
-assert.equal(glacis?.revision, 'forward-fold-track-clear-glacis-erawa-r5');
-assert.equal(glacis?.upperRear?.z, 1.65,
-  'upper-glacis rear fold moves 350 mm forward instead of running beneath the turret');
-assert.ok(Math.abs(glacis?.rearFoldForwardM - 0.35) <= 1e-9,
-  'Jaguar publishes the forward rear-fold correction');
-assert.equal(glacis?.joinedUpperAndLowerGlacis, true,
-  'upper and lower glacis terminate in one closed bow');
-assert.equal(glacis?.bowClosure?.rearZ, 3.58,
-  'bow closure starts inside the upper/lower glacis join');
-assert.equal(glacis?.bowClosure?.frontZ, 3.66,
-  'bow closure overlaps the complete outer nose station');
-assert.ok(glacis?.bowClosure?.upperY > glacis?.bowClosure?.lowerY,
-  'bow closure has a positive structural height');
-assert.equal(glacis?.shoulderBridge?.frontZ, 3.60,
-  'glacis shoulder bridge overlaps the bow closure');
-assert.ok(glacis?.shoulderBridge?.rearHalfWidthM >= 1.28,
-  'glacis shoulder bridge reaches both full-width fender roots');
-assert.equal(glacis?.erawaCassettes, 22,
-  'all 22 upper-glacis ERAWA cassettes remain in the conformal course');
-assert.equal(glacis?.erawaCenterZ, 2.43,
-  'upper-glacis ERAWA moves forward with the shortened plate');
-assert.equal(glacis?.driverHatchZ, 1.92,
-  'driver hatch and periscopes are reseated on the new plate start');
-const solvedEraCenterY = glacis.upperRear.y
-  - glacis.upperGlacisPitch * (glacis.erawaCenterZ - glacis.upperRear.z);
-assert.ok(Math.abs(glacis.erawaCenterY - solvedEraCenterY) <= 1e-9,
-  'ERAWA center remains solved directly on the steeper upper-glacis plane');
-assert.equal(glacis?.erawaCenterSurfaceGapM, 0,
-  'upper-glacis ERAWA centers lie exactly on the solved plate plane');
-const wkm = tank.root.getObjectByName('jaguar_wkm_b');
-assert.ok(wkm && wkm.parent === turret,
-  'Polish WKM-B is attached to the traversing turret');
-const turretModernization = turret.userData.jaguarModernizationReceipt;
-const hullModernization = hull.userData.jaguarModernizationReceipt;
-assert.ok(turretModernization?.eraTiles >= 17,
-  'Jaguar carries a complete cheek, roof, side-bin and rear ERAWA package');
-assert.ok(turretModernization?.turretEquipmentPieces >= 22,
-  'Jaguar turret carries substantial seated service and observation equipment');
-assert.equal(turretModernization?.panoramicSight, true,
-  'Jaguar commander receives a compact panoramic sight');
-assert.equal(turretModernization?.sideBaskets, 2,
-  'Jaguar has bilateral turret-side stowage baskets');
-assert.ok(turretModernization?.bustleRearZ <= -1.90,
-  'Jaguar receives a materially larger connected rear bustle');
-assert.equal(turretModernization?.bustleConnectedToCastRear, true,
-  'Jaguar bustle overlaps the cast rear instead of floating behind it');
-assert.equal(turretModernization?.machineGunClass, 'm2',
-  'Jaguar receives a visible heavy roof machine gun');
-assert.ok(turretModernization?.machineGunScale >= 0.58,
-  'Jaguar roof machine gun remains legible without exceeding its height envelope');
-assert.equal(turretModernization?.roofMachineGun, true,
-  'Jaguar WKM-B is explicitly mounted on the turret roof');
-assert.ok(wkm.position.y >= 0.58,
-  'Jaguar WKM-B receiver remains seated in its compact turret-roof pintle');
-const surfaceEquipment = turret.userData.jaguarSurfaceEquipmentReceipt;
-assert.equal(surfaceEquipment?.revision, 'surface-seated-systems-r2');
-assert.ok(surfaceEquipment?.equipmentSeats >= 2,
-  'Jaguar side baskets publish surface-seating receipts');
-assert.ok(surfaceEquipment?.maximumSurfaceGapM <= -0.018,
-  'Jaguar side equipment overlaps its armor shoes instead of floating');
-assert.equal(surfaceEquipment?.asteriaArmorShoe, true,
-  'Asteria sight is carried on a visible armor shoe');
-assert.equal(surfaceEquipment?.searchlightArmorShoe, true,
-  'cheek searchlight is carried on a visible armor shoe');
-assert.ok(hullModernization?.hullEquipmentPieces >= 32,
-  'Jaguar hull carries fender lockers, rolls, spare links and rear fittings');
-assert.equal(hullModernization?.fenderLockers, 6,
-  'Jaguar has three lidded fender lockers on each side');
-assert.equal(hullModernization?.fuelBarrels, 2,
-  'Jaguar carries two large transverse rear fuel barrels');
-assert.ok(hullModernization?.fuelBarrelDiameterM >= 0.47,
-  'Jaguar rear fuel barrels have a substantial visible diameter');
-assert.equal(hullModernization?.fuelBarrelMount, 'twin-transverse-rear-cradles-r3',
-  'Jaguar fuel barrels are retained by the dedicated rear cradle revision');
-assert.ok(hullModernization?.fuelBarrelRearZ <= -3.20,
-  'Jaguar fuel barrels reach the rear silhouette instead of hiding on the deck');
-
-const bounds = new THREE.Box3().setFromObject(tank.root);
-const size = bounds.getSize(new THREE.Vector3());
-assert.ok(size.z > 9.35 && size.z < 9.60,
-  `Jaguar overall length stays source-scaled (got ${size.z.toFixed(3)} m)`);
-assert.ok(size.x > 3.55 && size.x < 3.75,
-  `Jaguar hull/ERAWA width stays in the T-72 envelope (got ${size.x.toFixed(3)} m)`);
-
-tank.dispose();
-twardy.dispose();
-console.log('t72JaguarRedesign.selftest: PT-91A stance, joined glacis, seated ERAWA and rear kit verified');
+console.log('t72JaguarRedesign.selftest: T-72B3 donor gear, PL-01 wheels, datum articulation and the Polish cheek fit verified');

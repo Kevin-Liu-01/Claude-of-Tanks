@@ -55,6 +55,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 
 import { createVoiceRadio } from './voices.ts';
+import { runtimeFileUrl } from '../runtimeFiles.ts';
 import { buildAudioBuffers, type PreparedAudioBuffers } from './audioBuffers.ts';
 export { prepareAudioBuffers } from './audioBuffers.ts';
 import type { AudioListenerPose } from './listenerPoseRuntime.ts';
@@ -825,7 +826,7 @@ export function createAudio({
     const names = Object.keys(SFX_FILES);
     let failures = 0;
     Promise.all(names.map((name) =>
-      fetch(`${base}audio/sfx/${SFX_FILES[name]}`)
+      fetch(runtimeFileUrl(`audio/sfx/${SFX_FILES[name]}`, base))
         .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); })
         .then((ab) => ctx!.decodeAudioData(ab))
         .then((buf) => { sfxBufs.set(name, buf); })
