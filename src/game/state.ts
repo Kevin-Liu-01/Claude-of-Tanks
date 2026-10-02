@@ -1050,9 +1050,10 @@ function createBattleBot(
     rng: mulberry32(7000 + entityIndex),
     deps: {
       ...context.aiDependencies,
-      planRoute: (start: { x: number; z: number }, goal: { x: number; z: number }) => planBotRoute({
+      planRoute: (start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
+        options?: { requireGoalLevel?: boolean }) => planBotRoute({
         start, goal, navigation: context.botNavigation, rng: searchRng, role: roleOf(entity.spec),
-        spec: entity.spec, useRoleDetour: false,
+        spec: entity.spec, useRoleDetour: false, requireGoalLevel: options?.requireGoalLevel === true,
       }),
       getEnemies: () => {
         enemyScratch.length = 0;

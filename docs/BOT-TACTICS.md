@@ -25,6 +25,19 @@ it back. When the grid has no way to the destination at all for the widest hull
 (two wrecks plug the approach, the zone's centre stands against a wall), the
 destination itself stays the waypoint and the local router approaches it.
 
+A target on another level is a verdict, not a fight to keep. One more than 8 m
+above or below whose bearing lies outside the gun's elevation or depression arc
+from where the hull stands (a deck over a gorge floor, a cliff top over its
+foot) for six seconds makes a free hull change level: the navigation grid plans
+a route to the target's own level (the goal cell on that level, the route empty
+when it cannot arrive there) and the hull drives it, the gun firing whenever it
+bears, until it stands on that level with the target in sight. With no such
+route within 900 m, a mission objective holding the hull, or the route spent
+(its time, four stuck strikes, its end) short of the level, the target is left
+alone for 75 seconds: another spotted enemy takes the slot, or the mission and
+the no-contact search take the hull, and the search looks for the other enemies
+first.
+
 | Mode | Coordination |
 | --- | --- |
 | Capture the Flag | Runner brings the flag home. Up to two nearest responders recover the home flag. Two escorts cover opposite sides of a carrier. Larger teams retain home defense; extra raiders approach separate lanes. |
@@ -137,14 +150,16 @@ or shift its whole lane up to 4.5 m sideways, inside the two cells' squares, and
 the route carries that way's points; otherwise it is closed. A part high over
 the route (a deck above the gorge) is no wall, and on and beside a deck the
 parts a hull rides onto or over (the slab, the piers under it) follow the same
-rule as the hull's collision. Legs off the grid are cleared too: a route starts
-at the nearest cell on the hull's own level that it reaches straight (or round a
-detour point), on the goal's side of the closed edges first, and it reaches the
-exact goal only by a clear leg, a detour point round the goal, or not at all. A
-goal beyond the reachable cells ends the route at the cell nearest it. Wrecks
-narrow streets after the grid is built: a few times a second both authorities
-re-test the edges round the battle's wrecks, closing the ones they plug and
-laning the ones they narrow.
+rule as the hull's collision. Each edge's steepest stretch (three terrain
+samples between the cells) is held to the same two-way slope rule as the
+cell-to-cell grade, so a cliff between two cell centres is no climb. Legs off
+the grid are cleared too: a route starts at the nearest cell on the hull's own
+level that it reaches straight (or round a detour point), on the goal's side of
+the closed edges first, and it reaches the exact goal only by a clear leg, a
+detour point round the goal, or not at all. A goal beyond the reachable cells
+ends the route at the cell nearest it. Wrecks narrow streets after the grid is
+built: a few times a second both authorities re-test the edges round the
+battle's wrecks, closing the ones they plug and laning the ones they narrow.
 
 ## Verification
 
@@ -162,6 +177,10 @@ laning the ones they narrow.
   and an APFSDS control), a zone holder that cannot fight from the zone's centre
   (shut gate, no sight line), and a mission route that ends short of its
   objective.
+- `src/game/ai.levels.selftest.mjs`: a synthetic deck over a floor, with and
+  without a ramp: the deck bot leaves the floor target for one on its own level,
+  the floor bot drives the ramp to the deck, gives the deck target up when no
+  route reaches it, and keeps a target in its arc (control).
 - `src/sim/botRouteClearance.selftest.mjs`: the grid's hull bound against the
   fleet, a diagonal through a 0.6 m gap, a boulder bent round, a channel left by
   its open end, Steinburg's two pockets and a sweep of the town with no leg

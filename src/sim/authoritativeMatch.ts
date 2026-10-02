@@ -917,9 +917,10 @@ export function createAuthoritativeMatch({
         // bot philosophy r1: the mode's live objective ranks targets (objective → closest → weakest)
         getObjective: () => modeController.botObjective(entity),
         ...(navigation ? {
-          planRoute: (start: { x: number; z: number }, goal: { x: number; z: number }) => planBotRoute({
+          planRoute: (start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
+            options?: { requireGoalLevel?: boolean }) => planBotRoute({
             start, goal, navigation, rng: searchRng, role: roleOf(entity.spec), spec: entity.spec,
-            useRoleDetour: false,
+            useRoleDetour: false, requireGoalLevel: options?.requireGoalLevel === true,
           }),
         } : {}),
       },

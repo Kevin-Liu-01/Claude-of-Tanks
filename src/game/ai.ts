@@ -325,8 +325,8 @@ interface AiDependencies {
    * grid, no role detour). Empty when the goal lies in another connected component. Absent in headless
    * fixtures, where the search falls back to the local corner-hop router.
    */
-  planRoute?(start: { x: number; z: number }, goal: { x: number; z: number }):
-    ReadonlyArray<readonly [number, number]>;
+  planRoute?(start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
+    options?: { requireGoalLevel?: boolean }): ReadonlyArray<readonly [number, number]>;
 }
 
 interface CreateAiOptions {
@@ -612,6 +612,23 @@ const OBJECTIVE_SHIFT_RINGS = Object.freeze([0.6, 0.8]);
 // long before the mission plans again (Cinder Junction frontline seed 72839: a Challenger 2 stood 494 s at its route
 // end, 192 m short of the line, its target in sight, the gate shut).
 const MISSION_RELEASE_S = 20;
+// Another level (bots lane, 2026-10-02; Cliffbridge pacing seed 53003: a T-90M on the gorge floor under the bridge
+// and one on its deck, 40 m apart vertically and 17-45 m on the map, stood engaged 570 s, neither gun able to lay
+// on the other, until the 900 s cap). A target on another level the gun cannot be laid on from here — more than
+// ELEVATION_LEVEL_M above or below, outside the elevation/depression arc at this distance — for ELEVATION_LOCK_S
+// is a verdict: a free hull changes level by a route to the target's own level when the grid has one within
+// LEVEL_ROUTE_MAX_M (driven until the hull stands on that level with the target in sight, for at most the route's
+// length at LEVEL_ROUTE_SPEED_MPS plus LEVEL_ROUTE_SLACK_S or LEVEL_ROUTE_STRIKES stuck strikes), and otherwise (no
+// route, a mission holding the hull, or the route spent short of the level) leaves that target alone for
+// UNBEARABLE_S: another spotted enemy takes the slot, or the mission and the no-contact search take the hull.
+const ELEVATION_LEVEL_M = 8;
+const ELEVATION_LOCK_S = 6;
+const LEVEL_ROUTE_MAX_M = 900;
+const LEVEL_ROUTE_SPEED_MPS = 5;
+const LEVEL_ROUTE_SLACK_S = 25;
+const LEVEL_ROUTE_STRIKES = 4;
+const UNBEARABLE_S = 75;
+const LEVEL_ROUTE_OPTIONS = Object.freeze({ requireGoalLevel: true });
 // Search goal order by how many legs have ended without contact: straight at the enemy first, then the last
 // sighting and the ring round the sector, then the ring from other sides.
 const SEARCH_ORDER: ReadonlyArray<readonly string[]> = Object.freeze([
@@ -1120,6 +1137,18 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let objectiveShifts = 0;                   // probe-visible count
   let missionReleaseUntilS = -1;             // a blocked mission route has released the hull until then
   let missionReleases = 0;                   // probe-visible count
+  // another level (see ELEVATION_LOCK_S)
+  let elevationLockT = 0;
+  let levelRouting = false;
+  let levelRouteTargetId: string | null = null;
+  let levelRouteUntilS = -1;
+  let levelRouteStrikes = 0;
+  let levelRoutes = 0;                       // probe-visible count
+  let unbearableId: string | null = null;    // the target no gun angle or route reaches…
+  let unbearableUntilS = -1;                 // …until this sim second
+  let unbearableVerdicts = 0;                // probe-visible count
+  const levelGoal = { x: 0, z: 0, y: 0 };
+  const enemyScratch: AiEntity[] = [];
   let ramming = false;
   let ramRuns = 0;                           // probe-visible count of ram runs begun
   let ramCommitUntilS = -1;
@@ -1279,7 +1308,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function aliveEnemies(): AiEntity[] {
     const list = deps.getEnemies();
-    return list; // filtered inline at use sites to avoid allocation
+    if (unbearableId === null) return list; // filtered inline at use sites to avoid allocation
+    // a target on a level no gun angle or route reaches is out of the ranking while the verdict lasts
+    enemyScratch.length = 0;
+    for (let i = 0; i < list.length; i++) if (list[i].id !== unbearableId) enemyScratch.push(list[i]);
+    return enemyScratch;
   }
 
   function enemyAlive(e: AiEntity | null | undefined): e is AiEntity {
@@ -1370,7 +1403,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     eyeZ: number,
   ): boolean {
     const aggressor = activeAggressor(timeS);
-    if (!aggressor || aggressor === target) return false;
+    if (!aggressor || aggressor === target || aggressor.id === unbearableId) return false;
     if (target && enemyAlive(target) && isVisibleToTeam(target)) {
       const current = target.state.pos;
       const currentClear = hasLos(eyeX, eyeYPosition, eyeZ, current.x, eyeY(target), current.z);
@@ -1463,6 +1496,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     eyeZ: number,
   ): boolean {
     if (!target) return false;
+    if (target.id === unbearableId) {
+      // left alone (see ELEVATION_LOCK_S): its sighting is no chase point, so the search can begin at once
+      target = null;
+      losClear = false;
+      lastSeenAtS = -Infinity;
+      return false;
+    }
     if (!enemyAlive(target)) {
       target = null;
       losClear = false;
@@ -4066,9 +4106,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const position = entity.state.pos;
     let nearest: AiEntity | null = null;
     let nearestDistanceSq = Infinity;
+    // a target left alone for its level is searched for only when no other enemy lives
+    let others = false;
+    for (let index = 0; index < enemies.length && !others; index++) {
+      others = enemyAlive(enemies[index]) && enemies[index].id !== unbearableId;
+    }
     for (let index = 0; index < enemies.length; index++) {
       const candidate = enemies[index];
-      if (!enemyAlive(candidate)) continue;
+      if (!enemyAlive(candidate) || (others && candidate.id === unbearableId)) continue;
       const dx = candidate.state.pos.x - position.x;
       const dz = candidate.state.pos.z - position.z;
       const distanceSq = dx * dx + dz * dz;
@@ -4464,12 +4509,99 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     startFlank(timeS);
   }
 
+  /** Is the target on another level the gun cannot be laid on from here (see ELEVATION_LOCK_S)? */
+  function targetOffLevel(candidate: AiEntity): boolean {
+    const position = entity.state.pos, other = candidate.state.pos;
+    const rise = other.y - position.y;
+    if (Math.abs(rise) < ELEVATION_LEVEL_M) return false;
+    return !withinGunArc(Math.atan2(rise, Math.max(1, Math.hypot(other.x - position.x, other.z - position.z))));
+  }
+
+  function endLevelRoute(): void {
+    levelRouting = false;
+    levelRouteTargetId = null;
+    waypoints.length = 0;
+    wpIndex = 0;
+  }
+
+  function markUnbearable(candidate: AiEntity, timeS: number): void {
+    unbearableId = candidate.id;
+    unbearableUntilS = timeS + UNBEARABLE_S;
+    unbearableVerdicts++;
+  }
+
+  /** A route to the target's own level, when the grid has one short enough: the hull drives it (driveCurrentMode). */
+  function beginLevelRoute(candidate: AiEntity, timeS: number): boolean {
+    if (!deps.planRoute) return false;
+    const position = entity.state.pos;
+    levelGoal.x = candidate.state.pos.x;
+    levelGoal.z = candidate.state.pos.z;
+    levelGoal.y = candidate.state.pos.y;
+    const route = deps.planRoute(position, levelGoal, LEVEL_ROUTE_OPTIONS);
+    if (!route.length) return false;
+    let length = 0, previousX = position.x, previousZ = position.z;
+    for (let i = 0; i < route.length; i++) {
+      length += Math.hypot(route[i][0] - previousX, route[i][1] - previousZ);
+      previousX = route[i][0];
+      previousZ = route[i][1];
+    }
+    if (length > LEVEL_ROUTE_MAX_M) return false;
+    setSearchWaypoints(route);
+    levelRouting = true;
+    levelRouteTargetId = candidate.id;
+    levelRouteUntilS = timeS + length / LEVEL_ROUTE_SPEED_MPS + LEVEL_ROUTE_SLACK_S;
+    levelRouteStrikes = strikeEvents;
+    levelRoutes++;
+    hasMoveTarget = false;
+    hasCoverPoint = false;
+    hasVantage = false;
+    scootUntilS = -1;
+    settleUntilS = -1;
+    passivePressing = false;
+    return true;
+  }
+
+  /** The other-level verdict and the route that changes level (see ELEVATION_LOCK_S). */
+  function updateElevationLock(dt: number, timeS: number): void {
+    if (unbearableId !== null && timeS >= unbearableUntilS) unbearableId = null;
+    if (levelRouting) {
+      const lost = !target || !enemyAlive(target) || target.id !== levelRouteTargetId;
+      // the route ends on the target's level with the target in sight (the gun fires on the way whenever it bears;
+      // walking away from a cliff brings the angle into the arc long before the deck comes into view, and the top
+      // of a ramp is no place to stop)
+      const onLevel = !lost && Math.abs(target!.state.pos.y - entity.state.pos.y) < ELEVATION_LEVEL_M;
+      if (lost || (onLevel && losClear)) {
+        endLevelRoute();
+        return;
+      }
+      const last = waypoints[waypoints.length - 1];
+      const usedUp = !last || (wpIndex >= waypoints.length - 1
+        && Math.hypot(last.x - entity.state.pos.x, last.z - entity.state.pos.z) < ARRIVE_DIST_M * 2);
+      if (usedUp || timeS >= levelRouteUntilS || strikeEvents - levelRouteStrikes >= LEVEL_ROUTE_STRIKES) {
+        endLevelRoute();
+        // arrived on its level, the ordinary engagement takes over; short of it, the target is left alone
+        if (!onLevel) markUnbearable(target!, timeS);
+      }
+      return;
+    }
+    if (!target || !enemyAlive(target) || !targetOffLevel(target)) {
+      elevationLockT = 0;
+      return;
+    }
+    elevationLockT += dt;
+    if (elevationLockT < ELEVATION_LOCK_S) return;
+    elevationLockT = 0;
+    // a mission objective keeps the hull; only a free hull takes the long way to another level
+    if (getObjective?.()?.mission || !beginLevelRoute(target, timeS)) markUnbearable(target, timeS);
+  }
+
   function updateDoctrine(
     combat: CombatState | undefined,
     dt: number,
     timeS: number,
     targetDistance: number,
   ): void {
+    updateElevationLock(dt, timeS);
     updateEmptyRack(dt, timeS);
     updateObjectiveShift(dt);
     updatePassivePress(dt, timeS, targetDistance);
@@ -4881,6 +5013,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     driveIntent = false;
     if (driveMission(input)) return;
     if (driveReaction(input, timeS)) return;
+    // the route to the target's level owns the hull while it runs (see ELEVATION_LOCK_S)
+    if (levelRouting) {
+      drivePatrol(input);
+      return;
+    }
     if (passivePressing && target && losClear) {
       drivePassivePress(input);
       return;
@@ -5385,6 +5522,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       rackSpent: !!target && target.id === rackSpentId, rackSpentT: +rackSpentT.toFixed(1), rackSpentVerdicts,
       objectiveShifts, objectiveShifting,
       missionReleases, missionReleased: nowS < missionReleaseUntilS,
+      levelRouting, levelRoutes, unbearableVerdicts, unbearable: unbearableId, elevationLockT: +elevationLockT.toFixed(1),
       pressing: nowS < pressUntilS,
       pressPointX: passivePressing ? pressPoint.x : NaN, // round 67: the chosen press point (NaN while not pressing)
       pressPointZ: passivePressing ? pressPoint.z : NaN,

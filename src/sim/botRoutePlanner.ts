@@ -63,6 +63,9 @@ const NAV_LANE_SHIFTS_M = [1, 2, 3, 4.5] as const;
  * NaN when unused. */
 const WAY_FLOATS = 4;
 const WAY_STRIDE = FORWARD_STEPS_COUNT * WAY_FLOATS;
+/** Interior terrain samples along each edge for its steepest stretch (a cliff between two cell centres whose heights
+ * alone read as a climb: a gorge wall, a deck's cliff edge). One every quarter: a rise of CLIFF_GRADE over 6.25 m. */
+const EDGE_STEEP_SAMPLES = 3;
 /** Detour points tried round a leg's blocked end: rings of twelve bearings. */
 const NAV_VIA_RINGS_M = [8, 14, 20] as const;
 const NAV_VIA_BEARINGS = 12;
@@ -75,7 +78,8 @@ export type NavigationWaterPolicy = 'avoid-liquid';
 interface Position2 {
   x: number;
   z: number;
-  /** A hull's own height: a start under a bridge deck routes from the gorge floor, not from the deck above it. */
+  /** A hull's own height: a start under a bridge deck routes from the gorge floor, not from the deck above it, and a
+   * goal on a deck ends on the deck (a goal without one ends at the nearest open cell, whatever its level). */
   y?: number;
 }
 
@@ -132,6 +136,9 @@ export interface BotNavigationGrid {
   readonly hullClearance?: NavigationClearance;
   /** Wrecks narrow streets after the grid is built (navigationWrecks below): the edges they close or bend. */
   readonly wreckOverlay?: WreckOverlay;
+  /** Per cell and NEIGHBOR_STEPS direction, the steepest uphill stretch of that edge (percent grade, capped at 255):
+   * the route search holds every edge to it both ways, as it holds the cell-to-cell grade. */
+  readonly edgeSteepness?: Uint8Array;
 }
 
 /** A wreck's footprint for the grid: its contact rectangle and the vertical span it fills. */
@@ -172,6 +179,8 @@ interface BotRouteOptions extends BotNavigationGridOptions {
   role?: string;
   spec?: TerrainMobilitySpec;
   useRoleDetour?: boolean;
+  /** Only a route that arrives on the goal's own level (goal.y) is wanted: none ([]) when it cannot get there. */
+  requireGoalLevel?: boolean;
 }
 
 interface HeapNode {
@@ -188,6 +197,8 @@ interface RouteSolution {
   cost: number;
   /** False when the goal cell lies beyond the reachable cells and the route ends at the one nearest it. */
   reached: boolean;
+  /** False when a goal given its level (goal.y) has no open cell on that level near it. */
+  levelGoal?: boolean;
 }
 
 interface RouteSearchState {
@@ -850,6 +861,53 @@ export function syncNavigationWrecks(navigation: BotNavigationGrid | null | unde
   return !!navigation?.wreckOverlay && navigation.wreckOverlay.sync(wrecks, count);
 }
 
+/** The ground a route rides at (x, z): a bridge deck's own height over the span, else the terrain. */
+function routeHeightAt(field: NavigationHeightField, decks: readonly NavigationBridgeDeck[] | null, x: number,
+  z: number): number {
+  if (decks) {
+    for (let i = 0; i < decks.length; i++) {
+      const deck = decks[i], dx = x - deck.x, dz = z - deck.z;
+      if (Math.abs(dx * deck.ux + dz * deck.uz) <= deck.halfLength
+        && Math.abs(dx * deck.uz - dz * deck.ux) <= deck.halfWidth) return deck.deckY;
+    }
+  }
+  return field.getHeightAt(x, z);
+}
+
+/** The steepest uphill stretch of every edge between open cells, both ways (see BotNavigationGrid.edgeSteepness). */
+function edgeSteepnessPass(field: NavigationHeightField, decks: readonly NavigationBridgeDeck[] | null,
+  blocked: Uint8Array, heights: Float32Array, positions: Float32Array | undefined): Uint8Array {
+  const steep = new Uint8Array(GRID_N * GRID_N * 8);
+  const samples = new Float64Array(EDGE_STEEP_SAMPLES + 2);
+  for (let index = 0; index < blocked.length; index++) {
+    if (blocked[index]) continue;
+    const ix = index % GRID_N, iz = Math.floor(index / GRID_N);
+    const ax = cellX(positions, index), az = cellZ(positions, index);
+    for (const direction of FORWARD_STEPS) {
+      const [dx, dz] = NEIGHBOR_STEPS[direction];
+      if (isOutsideGrid(ix + dx, iz + dz)) continue;
+      const next = cellIndex(ix + dx, iz + dz);
+      if (blocked[next]) continue;
+      const bx = cellX(positions, next), bz = cellZ(positions, next);
+      const intervals = EDGE_STEEP_SAMPLES + 1, span = Math.hypot(bx - ax, bz - az) / intervals;
+      samples[0] = heights[index];
+      samples[intervals] = heights[next];
+      for (let k = 1; k < intervals; k++) {
+        samples[k] = routeHeightAt(field, decks, ax + (bx - ax) * k / intervals, az + (bz - az) * k / intervals);
+      }
+      let up = 0, down = 0;
+      for (let k = 0; k < intervals; k++) {
+        const grade = (samples[k + 1] - samples[k]) / span;
+        if (grade > up) up = grade;
+        if (-grade > down) down = -grade;
+      }
+      steep[index * 8 + direction] = Math.min(255, Math.round(up * 100));
+      steep[next * 8 + OPPOSITE_STEP[direction]] = Math.min(255, Math.round(down * 100));
+    }
+  }
+  return steep;
+}
+
 /** Build the immutable terrain/cover grid once for every bot in a match. */
 export function createBotNavigationGrid<T extends NavigationObstacle>({
   heightField,
@@ -872,6 +930,7 @@ export function createBotNavigationGrid<T extends NavigationObstacle>({
   }
   const bridgeBlockedEdges = cellPositions ? bridgeSideEdges(heightField.bridgeDecks!, cellPositions) : undefined;
   const decks = heightField.bridgeDecks?.length ? heightField.bridgeDecks : null;
+  const edgeSteepness = edgeSteepnessPass(heightField, decks, blocked, heights, cellPositions);
   const liquidField = heightField.navigationWaterPolicy === 'avoid-liquid'
     && typeof heightField.getWaterMaskAt === 'function' ? heightField : null;
   const { blockedEdges: hullBlockedEdges, bends: hullBends } = hullEdgePass(decks, queryObstacles, obstacles,
@@ -900,14 +959,14 @@ export function createBotNavigationGrid<T extends NavigationObstacle>({
     const hullComponents = hullComponentLabels(grid.blocked, grid.waterBlockedEdges, bridgeBlockedEdges,
       hullBlockedEdges);
     return Object.freeze({ ...grid, ...(bridgeBlockedEdges ? { bridgeBlockedEdges } : {}), hullBlockedEdges,
-      ...(hullBends ? { hullBends } : {}), hullComponents, hullClearance, wreckOverlay });
+      ...(hullBends ? { hullBends } : {}), hullComponents, hullClearance, wreckOverlay, edgeSteepness });
   }
   if (heightField.navigationWaterPolicy !== undefined) {
     throw new TypeError('unknown navigation water policy');
   }
   const hullComponents = hullComponentLabels(blocked, undefined, bridgeBlockedEdges, hullBlockedEdges);
   return Object.freeze({ heights, blocked, groundTypes, ...(cellPositions ? { cellPositions, bridgeBlockedEdges } : {}),
-    hullBlockedEdges, ...(hullBends ? { hullBends } : {}), hullComponents, hullClearance, wreckOverlay });
+    hullBlockedEdges, ...(hullBends ? { hullBends } : {}), hullComponents, hullClearance, wreckOverlay, edgeSteepness });
 }
 
 function isValidNavigationGrid(navigation: BotNavigationGrid): boolean {
@@ -926,6 +985,8 @@ function isValidNavigationGrid(navigation: BotNavigationGrid): boolean {
       || (navigation.hullBends instanceof Float32Array && navigation.hullBends.length === count * WAY_STRIDE))
     && (navigation.hullComponents === undefined
       || (navigation.hullComponents instanceof Int32Array && navigation.hullComponents.length === count))
+    && (navigation.edgeSteepness === undefined
+      || (navigation.edgeSteepness instanceof Uint8Array && navigation.edgeSteepness.length === count * 8))
     && (navigation.navigationWaterPolicy === undefined
       ? navigation.waterBlockedEdges === undefined
       : navigation.navigationWaterPolicy === 'avoid-liquid'
@@ -1054,6 +1115,7 @@ function relaxNeighbor(
   step: readonly [number, number, number],
   search: RouteSearchState,
   edgeBit = 0,
+  direction = -1,
 ): void {
   const [dx, dz, distanceScale] = step;
   const nx = node.ix + dx;
@@ -1073,6 +1135,15 @@ function relaxNeighbor(
   const ground = routeGroundType(spec, navigation.groundTypes, node.index, nextIndex);
   if (terrainSlopeMargin(spec, ground, signedGrade) <= TERRAIN_MARGIN_EPS
       || terrainSlopeMargin(spec, ground, -signedGrade) <= TERRAIN_MARGIN_EPS) return;
+  // the edge's steepest stretch is held to the same two-way rule (a cliff the cell heights do not show)
+  const steep = navigation.edgeSteepness;
+  if (steep && direction >= 0) {
+    const up = steep[node.index * 8 + direction] * 0.01, down = steep[nextIndex * 8 + OPPOSITE_STEP[direction]] * 0.01;
+    if ((up > 0 && (terrainSlopeMargin(spec, ground, up) <= TERRAIN_MARGIN_EPS
+        || terrainSlopeMargin(spec, ground, -up) <= TERRAIN_MARGIN_EPS))
+      || (down > 0 && (terrainSlopeMargin(spec, ground, down) <= TERRAIN_MARGIN_EPS
+        || terrainSlopeMargin(spec, ground, -down) <= TERRAIN_MARGIN_EPS))) return;
+  }
   const terrainCost = terrainTravelCostFactor(spec, ground, signedGrade);
   const variability = 1 + hashNoise(search.seed, nx, nz) * 0.22;
   const nextCost = costs[node.index] + distance * terrainCost * variability;
@@ -1207,7 +1278,7 @@ function routeGoalCell(navigation: BotNavigationGrid, to: Position2, startIndex:
   const components = navigation.hullComponents, clearance = navigation.hullClearance;
   if (!components || !clearance || components[openIndex] === components[startIndex]) return openIndex;
   const side = components[startIndex];
-  const count = nearbyOpenCells(navigation, { x: to.x, z: to.z });
+  const count = nearbyOpenCells(navigation, to);
   for (let i = 0; i < count; i++) {
     const index = _startCells[i], h = navigation.heights[index];
     if (components[index] === side && clearance.legClear(cellX(navigation.cellPositions, index),
@@ -1224,8 +1295,14 @@ function solveRoute(
   seed: number,
 ): RouteSolution {
   const [openX, openZ] = nearestOpen(navigation.blocked, worldCell(to.x), worldCell(to.z));
-  const startIndex = routeStartCell(navigation, from, cellIndex(openX, openZ));
-  const goalIndex = routeGoalCell(navigation, to, startIndex, cellIndex(openX, openZ));
+  // a goal with its own level ends on that level: the nearest open cell to it there (a deck, not the gorge under it)
+  let openIndex = cellIndex(openX, openZ), levelGoal = true;
+  if (to.y !== undefined && navigation.hullClearance) {
+    if (nearbyOpenCells(navigation, to)) openIndex = _startCells[0];
+    else levelGoal = false;
+  }
+  const startIndex = routeStartCell(navigation, from, openIndex);
+  const goalIndex = routeGoalCell(navigation, to, startIndex, openIndex);
   const sx = startIndex % GRID_N, sz = Math.floor(startIndex / GRID_N);
   const goalX = goalIndex % GRID_N, goalZ = Math.floor(goalIndex / GRID_N);
   const costs = new Float64Array(GRID_N * GRID_N);
@@ -1251,13 +1328,14 @@ function solveRoute(
     const gx = node.ix - goalX, gz = node.iz - goalZ, goalSq = gx * gx + gz * gz;
     if (goalSq < nearestSq) { nearestSq = goalSq; nearestIndex = node.index; }
     for (let direction = 0; direction < NEIGHBOR_STEPS.length; direction++) {
-      relaxNeighbor(node, NEIGHBOR_STEPS[direction], search, 1 << direction);
+      relaxNeighbor(node, NEIGHBOR_STEPS[direction], search, 1 << direction, direction);
     }
   }
-  if (closed[goalIndex] || !navigation.hullClearance) {
-    return reconstructRoute(parents, costs, startIndex, goalIndex, navigation);
-  }
-  return reconstructRoute(parents, costs, startIndex, nearestIndex, navigation, false);
+  const solution = closed[goalIndex] || !navigation.hullClearance
+    ? reconstructRoute(parents, costs, startIndex, goalIndex, navigation)
+    : reconstructRoute(parents, costs, startIndex, nearestIndex, navigation, false);
+  solution.levelGoal = levelGoal;
+  return solution;
 }
 
 /**
@@ -1307,7 +1385,7 @@ function solveDryRoute(
       bestDistanceSq = distanceSq;
     }
     for (let direction = 0; direction < NEIGHBOR_STEPS.length; direction++) {
-      relaxNeighbor(node, NEIGHBOR_STEPS[direction], search, 1 << direction);
+      relaxNeighbor(node, NEIGHBOR_STEPS[direction], search, 1 << direction, direction);
     }
   }
   return reconstructRoute(parents, costs, startIndex, bestIndex, navigation,
@@ -1537,6 +1615,7 @@ export function planBotRoute({
   role = 'flanker',
   spec,
   useRoleDetour = true,
+  requireGoalLevel = false,
 }: BotRouteOptions = {}): BotRoutePoint[] {
   if (!start || !goal) {
     throw new TypeError('start and goal are required');
@@ -1555,7 +1634,12 @@ export function planBotRoute({
     throw new TypeError('navigation must be a bot navigation grid');
   }
   if (grid.navigationWaterPolicy === 'avoid-liquid') {
-    return planDryRoute(start, goal, grid, spec, seed, rng, role, useRoleDetour);
+    const dry = planDryRoute(start, goal, grid, spec, seed, rng, role, useRoleDetour);
+    if (!requireGoalLevel || !dry.length || goal.y === undefined) return dry;
+    // the dry route ends at the reachable cell nearest the goal: wanted only when that cell is on the goal's level
+    const end = dry[dry.length - 1], endCell = cellIndex(worldCell(end[0]), worldCell(end[1]));
+    return Math.hypot(end[0] - goal.x, end[1] - goal.z) <= 2 * CELL_M
+      && Math.abs(grid.heights[endCell] - goal.y) <= NAV_LEVEL_M ? dry : [];
   }
   const direct = solveRoute(start, goal, grid, spec, seed);
   const startVia = { x: _legVia.x, z: _legVia.z };
@@ -1577,5 +1661,6 @@ export function planBotRoute({
     }
   }
   if (!grid.hullClearance) return simplifyRoute(solution.points, goal);
+  if (requireGoalLevel && (!solution.reached || direct.levelGoal === false)) return [];
   return clearRoute(solution, start, goal, grid, startVia, false);
 }
