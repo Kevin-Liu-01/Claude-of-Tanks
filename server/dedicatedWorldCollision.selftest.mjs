@@ -18,7 +18,8 @@ const authoredWorlds = new Map();
 // of Foundry and Skybridge; movement/shell pairs and contact tests below remain.
 // 2026-09-19 hitbox pass: full recapture of every shard; a capture of pristine origin/main placed the same heaps,
 // so the committed rail shards had already drifted from the current planting order (railyard 7 → 6, foundry 5 → 7).
-const coalCensus = { railyard: 6, caldera: 7, foundry: 7, skybridge: 5 };
+// 2026-10-01: Cinder Junction's heaps stand on the coal stages beside its two loading stubs (railSpurs.ts coalStage).
+const coalCensus = { railyard: 10, caldera: 7, foundry: 7, skybridge: 5 };
 
 // 2026-09-29 roads/settlements: native all31-map recapture, terrain1337,
 // props2002, vegetation2001. Counts include shared tree colliders (the capture
@@ -37,7 +38,7 @@ const expected = {
   coastal: [4161, 3964, 4249],
   autumn: [5873, 5727, 5822],
   steppe: [2429, 2141, 1302],
-  railyard: [2825, 2785, 1983],
+  railyard: [2846, 2848, 1899], // 2026-10-01 Cinder Junction redesign (docs/MAP-LAYOUT-BRIEF.md); was [2825, 2785, 1983]
   frontier: [7905, 7634, 8284],
   fjord: [7357, 7301, 7679],
   delta: [7742, 7430, 9644],
@@ -330,6 +331,23 @@ function assertLoggingYard(mapWorld, independentWorld) {
   }
 }
 
+// The track a heap must leave drivable: the legacy yards' five north-south sidings at the heap's z; on Cinder Junction
+// (2026-10-01) the loading stub its coal stage stands beside — the stub's nearest centreline point.
+function coalTrackPoints(mapId, x, z) {
+  const stages = (getMapConfig(mapId).terrain.railSpurs ?? []).filter((spur) => spur.coalStage);
+  if (!stages.length) return [40, 49, 58, 67, 76].map((railX) => [railX, z]);
+  return stages.map((spur) => {
+    let best = null, bestD = Infinity;
+    for (let i = 1; i < spur.path.length; i++) {
+      const [ax, az] = spur.path[i - 1], [bx, bz] = spur.path[i], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
+      const t = l2 ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l2)) : 0;
+      const px = ax + dx * t, pz = az + dz * t, d = Math.hypot(px - x, pz - z);
+      if (d < bestD) { bestD = d; best = [px, pz]; }
+    }
+    return best;
+  });
+}
+
 function assertCoalStockpiles(mapId, mapWorld) {
   const obstacles = mapWorld.getObstacles().filter(record => record.kind === 'coal-heap');
   const colliders = mapWorld.getColliders().filter(record => record.kind === 'coal-heap');
@@ -347,8 +365,8 @@ function assertCoalStockpiles(mapId, mapWorld) {
       'captured piles remain sub-metre above their terrain support');
     assert.equal(shellPassesThroughCollisionRecord(collider), false);
     assertAuthoredContact(mapWorld, obstacle, collider, x, z, `${mapId} coal ${index}`);
-    for (const railX of [40, 49, 58, 67, 76]) {
-      assert.equal(pushHullFromObstacle({ x: railX, z }, 0, 1, 1, 0, 2, 1.5, obstacle, { x: 0, z: 0 }), false,
+    for (const [railX, railZ] of coalTrackPoints(mapId, x, z)) {
+      assert.equal(pushHullFromObstacle({ x: railX, z: railZ }, 0, 1, 1, 0, 2, 1.5, obstacle, { x: 0, z: 0 }), false,
         'new solid coal leaves every adjacent rail lane driveable');
     }
     assert.equal(rayCollisionRecord(new Vector3(x - 10, collider.max[1] + 0.01, z),

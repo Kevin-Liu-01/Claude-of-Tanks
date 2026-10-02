@@ -41,8 +41,8 @@ import {
 import {
   RAIL_SPUR_BALLAST_M, RAIL_SPUR_GAUGE_M, RAIL_SPUR_LAY_M, RAIL_TUNNEL_BORE_DEPTH_M, RAIL_TUNNEL_BORE_HALF_M,
   RAIL_TUNNEL_GALLERY_M, RAIL_TUNNEL_HEADWALL_HALF_M, RAIL_TUNNEL_HEADWALL_HEIGHT_M, RAIL_TUNNEL_RISE_M,
-  RAIL_TUNNEL_SPRING_M, RAIL_TUNNEL_WALL_M, railCuttingTunnel, railRunLength, resampleRailPath, resolveRailCuttings,
-  type RailCutting, type RailSpurConfig,
+  RAIL_TUNNEL_SPRING_M, RAIL_TUNNEL_WALL_M, railCoalStageStations, railCuttingTunnel, railRunLength, resampleRailPath,
+  resolveRailCuttings, type RailCutting, type RailSpurConfig,
 } from '../railSpurs.ts';
 
 type Rng = () => number;
@@ -2227,17 +2227,22 @@ function dressRailSpurs(ctx: FocusedDressingContext, spurs: readonly RailSpurCon
     };
     const spans = resampleRailPath(spur.path, RAIL_SPUR_LAY_M, true);
     for (const span of spans) layRailSpan(buckets, rng, heightField, span.ax, span.az, span.bx, span.bz, lay);
-    if (!spur.bufferStop || spans.length === 0) continue;
-    const closeEnd = (from: { ax: number; az: number }, to: { bx: number; bz: number }): void => {
-      const dx = to.bx - from.ax, dz = to.bz - from.az, run = railRunLength(dx, dz);
-      const ux = dx / run, uz = dz / run;
-      bufferStop(buckets, rng, heightField, to.bx + ux * 0.8, to.bz + uz * 0.8, Math.atan2(ux, uz), lay.gauge);
-    };
-    const last = spans[spans.length - 1], first = spans[0];
-    if (spur.bufferStop !== 'start') closeEnd(last, last);
-    if (spur.bufferStop !== 'end') closeEnd({ ax: first.bx, az: first.bz }, { bx: first.ax, bz: first.az });
+    if (spans.length === 0) continue;
+    if (spur.bufferStop) {
+      const closeEnd = (from: { ax: number; az: number }, to: { bx: number; bz: number }): void => {
+        const dx = to.bx - from.ax, dz = to.bz - from.az, run = railRunLength(dx, dz);
+        const ux = dx / run, uz = dz / run;
+        bufferStop(buckets, rng, heightField, to.bx + ux * 0.8, to.bz + uz * 0.8, Math.atan2(ux, uz), lay.gauge);
+      };
+      const last = spans[spans.length - 1], first = spans[0];
+      if (spur.bufferStop !== 'start') closeEnd(last, last);
+      if (spur.bufferStop !== 'end') closeEnd({ ax: first.bx, az: first.bz }, { bx: first.ax, bz: first.az });
+    }
+    // 2026-10-01: a coal stage beside the stub (after its stops, so a spur without one keeps its draws)
+    if (spur.coalStage) addSpurCoalStage(ctx, spur);
     // Round 67 (2026-09-24): a spur that leaves the square through a cutting runs on down the valley to the tunnel
-    // portal that ends it (after the stops, so the square's dressing keeps its draws)
+    // portal that ends it (after the stops, so the square's dressing keeps its draws). 2026-10-01: an open-ended
+    // through line (Cinder Junction's main line) reaches its portal too; before, only a spur with a stop did.
     const cuttings = resolveRailCuttings([spur]);
     if (cuttings && heightField.getOutlandHeightAt) dressRailTunnelPortal(ctx, cuttings[0], lay);
   }
@@ -2516,4 +2521,18 @@ function dressRailYard(
   addRailYardLines(heightField, rng, buckets, washoutLiquid);
   addRailYardCoalHeaps(heightField, rng, buckets, ctx);
   addRailYardSupplies(L.village, heightField, rng, buckets);
+}
+
+// 2026-10-01 (Cinder Junction): the stockpiles of a spur's coal stage (railSpurs.ts railCoalStageStations): the yards'
+// faceted heap at each admitted station, its long axis along the track, with the same convex record and clear-site law.
+function addSpurCoalStage(ctx: FocusedDressingContext, spur: RailSpurConfig): void {
+  const { heightField, rng, buckets } = ctx;
+  for (const station of railCoalStageStations(spur)) {
+    const size = rng(), stretch = rng(), phase = rng() * Math.PI;
+    const radius = 1.1 + size * 0.5, length = radius * (1.15 + stretch * 0.2);
+    if (!buckets.baked || !coalSiteIsClear(heightField, station.x, station.z, length, ctx.obstacles ?? [])) continue;
+    const heap = makeCoalStockpile(heightField, station.x, station.z, radius, length, phase);
+    buckets.baked.push(heap);
+    registerCoalStockpile(heap, ctx);
+  }
 }

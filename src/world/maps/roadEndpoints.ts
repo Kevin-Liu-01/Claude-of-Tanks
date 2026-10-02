@@ -54,7 +54,9 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   // Tarkhan Steppe (round 48, owner 2026-09-23 redesign): highway, station road, east track and plateau road
   // all leave the square; the sor track starts on the station road and ends at the salt pan's shore.
   steppe: [through, through, through, through, [{ junction: 1 }, 'shore']],
-  railyard: Array.from({ length: 6 }, () => through),
+  // Cinder Junction redesign (2026-10-01): the central road, the two crossing roads and the two yard service roads all
+  // run edge to edge; each works road leaves a service road and ends on a crossing road.
+  railyard: [through, through, through, through, through, join(3, 2), join(4, 1)],
   frontier: [through, through, through, join(0, 2)],
   fjord: [through, through, through, join(0, 2), join(0, 2)],
   // The two southwest approaches converge before the border: one shared
