@@ -1,4 +1,3 @@
-import { routeDesertRoads, gradeDesertRoads, blendDesertRoadBanks } from './maps/desertRoads.ts';
 import { smoothRoadGradesByDistance, blendRoadNetworkGrades } from './maps/roadGradeSmoothing.ts';
 import { fadeDistantCoastShadows } from './coastShadow.ts';
 import { bindAutumnHorizonGround, refreshHorizonGroundTone } from './horizonAutumnGround.ts';
@@ -687,7 +686,6 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
     if (t.roads.paths) roads.push(...buildPathRoads(t.roads.paths));
   }
   if (roads.length === 0) roads = buildCountryRoads();
-  routeDesertRoads(cfg?.id, roads);
   const completed = completeRoads ? completeRoadEndpoints(cfg?.id, roads) : roads;
   const roadStations = buildPhysicalRoadStationOrigins(cfg?.id, roads, completed,
     buildRoadStationOrigins(roads, completed, originalCounts));
@@ -1172,9 +1170,6 @@ function* heightFieldBuildSteps(
     return h;
   }
 
-  // Desert's surveyed ramps need a finite earthwork bank, not a narrow berm.
-  const roadBankWidth = cfg?.id === 'desert' ? 104 : 14;
-
   function applyHeightConstraints(
     x: number,
     z: number,
@@ -1218,19 +1213,14 @@ function* heightFieldBuildSteps(
       }
     }
     if (!roadsOn) return h;
-    if (rd < roadBankWidth) {
-      let roadBlendWeight = 1 - smoothstep(3.8, 14, rd);
-      if (roadBankWidth > 14) {
-        const approach = smoothstep(48 * 48, 128 * 128, (x - _VILLAGE.cx) ** 2 + (z - _VILLAGE.cz) ** 2);
-        roadBlendWeight += (1 - smoothstep(3.8, roadBankWidth, rd) - roadBlendWeight) * approach;
-      }
+    if (rd < 14) {
       if (!elevationSampled) roadElevation = sampleHeightGridCell(gRoadElev, GN, gridIndex, gridFx, gridFz);
       if (bridgeDecks.length) {
         // round 61: under a bridge deck the road plane yields to the river bed; over each approach it grades to the deck
         const bridge = bridgeTermsAt(x, z);
         roadElevation += (bridge.deckY - roadElevation) * bridge.approach;
-        h += (roadElevation - h) * roadBlendWeight * (1 - bridge.span);
-      } else h += (roadElevation - h) * roadBlendWeight;
+        h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd)) * (1 - bridge.span);
+      } else h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd));
     }
     const detailed = applyRoadShoulderDetail(x, z, h, rd, settlementWeight, marshWeight, lakeWetness, padWetness);
     // Dry viaduct abutments cut any sub-metre shoulder noise flush with the
@@ -1525,7 +1515,6 @@ function* heightFieldBuildSteps(
     }
     smoothRoadElevations(nodeElev);
     blendRoadJunctions(nodeElev, authoringRoads);
-    gradeDesertRoads(cfg?.id, authoringRoads, nodeElev);
     if (inheritedRoads) {
       borderCorridorStart = buildRoadBorderCorridors();
       boundedRoadCorridor = borderCorridorStart !== null && usesBoundedRoadShoulders(cfg?.id);
@@ -1546,7 +1535,6 @@ function* heightFieldBuildSteps(
       const s = gSegIdx![i];
       gRoadElev[i] = e[s] + (e[s + 1] - e[s]) * gSegT![i];
     }
-    blendDesertRoadBanks(cfg?.id, roads, nodeElev, gRoadDist, gRoadElev, GN, MAP_SIZE, _VILLAGE.cx, _VILLAGE.cz);
   }
   // --- road node elevations: pre-road height sampled + smoothed + junction blend ---
   buildRoadElevationGrid();

@@ -70,7 +70,7 @@ export function authoredRoadStationIndex(layout: StationLayout, road: number, or
  * four curve chords are geometry, not four utility poles or house parcels. */
 export function usesPhysicalRoadStations(mapId: string | undefined): boolean {
   return mapId === 'saltwind' || mapId === 'whiteout' || mapId === 'polders'
-    || mapId === 'copper_mesa' || mapId === 'orchard' || mapId === 'longleaf' || mapId === 'oasis';
+    || mapId === 'copper_mesa' || mapId === 'orchard' || mapId === 'longleaf' || mapId === 'oasis' || mapId === 'urban';
 }
 
 const MIN_DRESSING_STATION_M = 24;

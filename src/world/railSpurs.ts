@@ -33,6 +33,48 @@ export interface RailSpurConfig {
   bufferStop?: 'start' | 'end' | 'both';
   /** Round 63: the cutting the spur leaves the square through (terrain work: terrain.ts carves it, the kit lays on it). */
   cutting?: RailCuttingConfig;
+  /**
+   * 2026-10-01 (Cinder Junction): a coal stage beside the spur — stockpiles every RAIL_COAL_STAGE_PITCH_M along the
+   * path between `fromM` and `toM` (metres from its first point), `offsetM` to one side of the centreline (`side` 1
+   * is the left of the path's direction). The kit lays them after the track; each one is admitted by the same
+   * clear-site law as the yards' heaps (roads, water, flat ground, no existing solid) and carries its convex record.
+   */
+  coalStage?: RailCoalStageConfig;
+}
+
+export interface RailCoalStageConfig {
+  side: 1 | -1;
+  fromM: number;
+  toM: number;
+  /** Lateral distance of the stockpiles' centres from the centreline; omitted = RAIL_COAL_STAGE_OFFSET_M. */
+  offsetM?: number;
+}
+
+/** Spacing of a coal stage's stockpiles along the spur. */
+export const RAIL_COAL_STAGE_PITCH_M = 7;
+/** A coal stage's default lateral offset: the berth plus a stockpile's half-length and a metre of standing. */
+export const RAIL_COAL_STAGE_OFFSET_M = 6.4;
+
+/** The coal stage's stockpile stations: centre points `offsetM` to the stage's side, every pitch from `fromM` to `toM`. */
+export function railCoalStageStations(spur: RailSpurConfig): { x: number; z: number; ux: number; uz: number }[] {
+  const stage = spur.coalStage;
+  if (!stage) return [];
+  const offset = stage.offsetM ?? RAIL_COAL_STAGE_OFFSET_M, out: { x: number; z: number; ux: number; uz: number }[] = [];
+  let walked = 0;
+  for (let i = 1; i < spur.path.length; i++) {
+    const [ax, az] = spur.path[i - 1], [bx, bz] = spur.path[i];
+    const run = railRunLength(bx - ax, bz - az);
+    if (!(run > 0)) continue;
+    const ux = (bx - ax) / run, uz = (bz - az) / run;
+    for (let at = Math.ceil(Math.max(0, stage.fromM - walked) / RAIL_COAL_STAGE_PITCH_M) * RAIL_COAL_STAGE_PITCH_M;
+      at <= run && walked + at <= stage.toM; at += RAIL_COAL_STAGE_PITCH_M) {
+      if (walked + at < stage.fromM) continue;
+      // the left of the direction (ux, uz) in the x–z plane is (-uz, ux)
+      out.push({ x: ax + ux * at - uz * offset * stage.side, z: az + uz * at + ux * offset * stage.side, ux, uz });
+    }
+    walked += run;
+  }
+  return out;
 }
 
 export interface RailCuttingConfig {
