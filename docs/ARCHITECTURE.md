@@ -24,7 +24,7 @@ Module ownership (file paths are FIXED):
 | ai       | `src/game/ai.ts` |
 | hud      | `src/ui/hud.ts`, `src/ui/garage.ts`, `src/ui/damagePanel.ts` |
 | fx       | `src/fx/effects.ts`, `src/fx/particles.ts` |
-| audio    | `src/audio/audio.ts` |
+| audio    | `src/audio/audioEngine.ts` |
 | integration | `src/main.ts`, `src/game/state.ts` |
 
 Research docs each builder MUST read: `docs/history/research/graphics-aaa.md` (engine, world,
@@ -1319,100 +1319,141 @@ the menu import and construction retryable, bypasses it for solo entry,
 prioritizes an already-active room, selects mode-specific preload ports, and
 hides the menu for battle without terminating the retained session.
 
-### 3.9 audio — `src/audio/audio.ts` (+ `src/audio/voices.ts`)
+### 3.9 audio — `src/audio/audioEngine.ts` (+ the `src/audio/` modules)
 ```js
-export function createAudio() => Audio
+export function createAudio({ context?, getMapId?, getTerrain?, initialPhase?, tier? }) => Audio
 Audio = {
-  resume(),            // MUST be called from a user gesture; creates AudioContext lazily.
-                       // Before resume(): every method is a silent no-op (no errors,
-                       // no context creation — headless screenshot safety). resume()
-                       // also lazily fetch+decodes the crew radio lines (tolerant:
-                       // a missing file mutes that line only).
-  bindBus(bus),        // shell:fired → gunshot by caliber class (≤76 crack / ≤105 boom /
-                       // ≤130 heavy / >130 siege; pre-rendered PCM bed + per-shot ±6%
-                       // pitch jitter; player shots add breech clank + brass tinkle) +
-                       // 'Firing!' radio (prob-gated); shell:hit → clang w/ interior
-                       // echo+spall (pen) / 3-variant metallic zing (ricochet) / blunt
-                       // shatter (nonpen) / explosion (he_*) + crew reactions
-                       // ("We're hit!", "They bounced us!", "Ricochet!");
-                       // shell:expired(hitTerrain) → dirt splash; tank:destroyed → big
-                       // explosion + debris, kill sting + "Target destroyed" on player
-                       // kills; tank:impact / tank:ram / prop:crushed → spatial hull,
-                       // plate, gear, and foliage collision layers; module:state →
-                       // track snap (world), ammo-rack beep +
-                       // damage/repair radio calls (player); tank:fire → burning loop +
-                       // fire klaxon + "Fire! Put it out!" (player); tank:spotted →
-                       // "Enemy spotted"; player:reload(done) → breech latch +
-                       // "Reloaded"; phase:change → battle horn / garage room tone;
-                       // battle:ended → victory/defeat/draw fanfare; killcam:begin/done
-                       // → duck live combat/engine/ambience ×0.35; killcam:impact →
-                       // dedicated cinematic blast with slowed debris/turret-pop
-                       // playback matching the replay time scale; ui:click → click;
-                       // ui:volumes → live 5-channel mix {master, engine, combat,
-                       // ambience, ui, voice, alarmHeartbeat}
+  resume(),            // MUST be called from a user gesture; creates the AudioContext,
+                       // mixer and asset library lazily. Before resume() every method is
+                       // a silent no-op (headless screenshot safety).
+  bindBus(bus),        // every gameplay event → sound (table below)
   update(dt, listener /* {pos, forward, kind, ownerId, scoped} */, tanks: TankEntity[]),
-                       // engine loops: occupied tank plus nearest audible tanks
-                       // (10-voice cap, 900 m enter / 1000 m exit hysteresis),
-                       // profile-driven pulse+intake loop, RPM pitch =
-                       //   0.8 + 0.6×max(speed/load spool), with turbine,
-                       //   modern/legacy diesel, and light-diesel families;
-                       //   broad low-mid tread/link texture above 1.5 m/s;
-                       //   shell whizz for player-passing shells (dist<15 m, speed>300);
-                       //   player turret-traverse whir + gun-elevation servo (from
-                       //   state.turretYawRate / gunPitch delta); suspension landing
-                       //   thumps (listener-side vy tracking); critical-HP heartbeat
-                       //   pulse windows (optional, settings.alarmHeartbeat); radio
-                       //   queue drain
-  setMasterVolume(v /* 0..1 */), mute(m: boolean),
-  playGarageSting(), ambientOn(on),      // wind + sparse birds, seeded noise
+                       // listener frame, vehicle rigs, wrecks, ambience, alarms, radio
+  warmBattleEvents(roster?),             // decode the battle set before rollout (≤3.5 s)
+  setMasterVolume(v), mute(m), playGarageSting(), loadingOn(on), ambientOn(on),
   hitConfirm(kind, damage),              // non-spatial player shot-result blip
 }
 ```
-Bus graph: `{combat, cinematic combat} → broad body/presence EQ`,
-`engine → presence/ceiling EQ`, `voice → presence EQ`, then all channels
-`→ 3:1 transient-preserving compressor → high-knee soft limiter → master`.
-Channel gains follow the settings SOUND tab (`cot.settings.v1`, live via
-'ui:volumes'); crew radio + alarms sit on the voice bus. Distance model:
-gain = `clamp(22/dist, 0, 1)`^1.5, equal-power stereo pan from listener-relative
-azimuth, air-absorption lowpass + speed-of-sound delay for far events. Engines
-have no close-range hard cutoff: the occupied tank is always retained and up
-to the nine nearest remote engines remain eligible to 900 m (1000 m exit hysteresis),
-with distance steadily lowering and darkening them. During live play distance
-is measured from the occupied/spectated tank while azimuth follows the camera;
-cinematic/garage distance follows the camera. This hybrid listener prevents
-third-person camera pullback from muting nearby vehicles. Scoped view is an
-interior/headset perspective, not a mute: the occupied engine and cannon retain
-level while their exposed high-frequency energy and stereo width are reduced.
-Max ~24 simultaneous one-shot voices; steal oldest. Cannon fire, armor impacts,
-HE/terrain bursts, ERA, and vehicle destruction use 29 deterministic procedural
-assets baked by `tools/make-sfx.mjs` under `public/audio/sfx/`, with equivalent
-live synthesis fallbacks until the complete set decodes. Engines, traverse,
-ambience, UI, alarms, and fanfares remain live Web Audio synthesis. Crew radio
-uses locally synthesized/processed Opus under `public/audio/voice/`
-(`tools/make-voices.mjs`, docs/ATTRIBUTION.md).
-Radio discipline lives in `src/audio/voices.ts`: one line at a time, priority
-ladder (survival calls interrupt flavor), per-line cooldowns, ±3% rate jitter.
-Leaving battle stops all engine, burning, traverse, landing, and alarm loops so
-no world sound can leak into the garage. Debug: `window.__COT_AUDIO` (after
-resume) exposes the context, master PCM tap, listener/engine state, canonical
-sound-route log, baked-SFX log, and voice log for the audio probes.
+`src/audio/lazyAudio.ts` keeps the engine out of the boot bundle and plays a
+synthesized loading tone until it arrives.
 
-Focused verification: `node tools/audio-spatial-killcam-probe.mjs` captures
-the occupied cannon and engine in arcade/sniper views; measures remote cannon
-reports at 12/80/250/600/900 m and engines at 40/160/420/850 m; exercises ram
-audio; then drives a real lethal shell through replay and asserts listener
-ownership, PCM audibility, monotonic distance falloff/filtering, mix ducking,
-headroom, 0.55x cinematic debris, and garage loop cleanup.
-`node tools/audio-probe.mjs` records the full event/voice/bus matrix and asserts
-every canonical combat event entered its intended audio route.
-`node tools/sfx-smoke.mjs` retains the baked-layer and volley/no-clipping gate;
-`node tools/make-sfx.mjs --verify` additionally rejects sub-only or tin-can
-assets through bass, body, harsh-presence, and air energy bounds. Relative
-family gates enforce increasing cannon pressure/decay by caliber and distinct
-spectral/envelope signatures for penetration, ricochet, non-penetration, HE,
-dirt, ERA, burn-out, and full vehicle destruction.
-`node tools/make-voices.mjs --verify` enforces voice duration, loudness, peak,
-and payload budgets.
+**Modules.** `audioMath.ts` (distance law, ISO 9613 air absorption, speed of
+sound and Doppler per atmosphere — Earth 343 m/s, Mars 240 m/s and −14 dB,
+vacuum on the Moon — listener frame and pan); `mixer.ts` (bus graph,
+snapshots, HDR window, concussion, procedural reverb IRs); `assetLibrary.ts`
+(manifest-driven fetch/decode, WebM/Opus probe, LRU byte budget, a separate
+voice-pack lane); `voicePool.ts` (one-shots and loops: instance caps,
+cooldowns, priority stealing, propagation delay, terrain occlusion, sfx log);
+`vehicleAudioProfiles.ts` + `vehicleAudioModel.ts` + `vehicleRig.ts`
+(powertrain identity per spec, RPM/load/virtual gearbox model, and the
+per-vehicle layer rig); `weaponAudio.ts` (report class by bore and sound
+profile, reload choreography by loader); `soundCues.ts` (per-asset bus,
+space, level, pitch jitter, caps); `environmentScenes.ts` +
+`ambienceDirector.ts` (per-map beds, layers, positioned spot sounds, gun
+tails, reverb); `voiceLines.ts` + `crewRadio.ts` (crew radio); `procedural.ts`
+(synthesized fallbacks and alarms); `mixPolicy.ts` (every level, snapshot,
+HDR, budget and LOD constant).
+
+**Assets.** 347 sound assets (554 variant files, 16 MB WebM/Opus) under
+`public/audio/sfx/<group>/`, described by `sfxManifest.generated.ts`
+(duration, channels, rate, loop points, size). Crew radio: 13 language packs
+× 98 lines (one to four takes each, mostly two; ~1.5 MB per pack) under
+`public/audio/voice/<lang>/`, described by `voiceManifest.generated.ts`. Both
+are generated offline with ElevenLabs (sound generation `eleven_text_to_sound_v2`;
+speech `eleven_v4` with Voice Library voices), verified (speech-to-text
+round trip for every voice take), mastered and selected by `tools/audio/`
+(see docs/ATTRIBUTION.md). Loops are wrap-padded with exact loop points so
+they never click. Browsers without WebM/Opus decode (Safari < 17.4) fall back
+to the procedural synthesis.
+
+**Mix graph.** `weapons, impacts, environment, vehicles → world sum →
+snapshot lowpass/level → HDR window → voice duck`; `own hull → snapshot
+lowpass/level`; `interior`, `cinematic`, `ambience (ducked under radio)`;
+`ui, music, voice, alarm → pre-master`; then `glue compressor → tanh soft
+clip → master`. Settings channels (`cot.settings.v1`, live via 'ui:volumes':
+master, engine, combat, ambience, ui, voice, alarmHeartbeat, crewVoice,
+concussion) scale the buses. Snapshots: battle, scoped (the occupied gun and
+engine move to the interior/headset spectrum, world sound dulls), paused,
+killcam (live world ducked, cinematic bus up), spectating, garage. A
+DICE-style HDR window rides the world buses: the loudest recent event sets the
+window top and quieter world sounds below the floor are trimmed or culled, so
+a 152 mm report masks rifle fire the way it does in life. A close blast on
+the occupied hull triggers a concussion (muffle and recovery, optional
+tinnitus; settings toggle).
+
+**Spatial model.** Distance is measured from the occupied/spectated tank in
+live play (camera pullback must not change range) and from the camera in
+cinematic and garage views; azimuth follows the camera (screen-right is
+`forward × up`). Inverse-distance law with excess attenuation, ISO 9613 air
+absorption lowpass, speed-of-sound delay beyond 18 m, Doppler on passing
+sources, terrain occlusion from seven height samples along the path.
+
+**Vehicles.** Eight engine families (`turbine_agt`, `turbine_gtd`,
+`diesel_v12_soviet`, `diesel_two_stroke`, `diesel_v12_modern`,
+`diesel_aircooled`, `diesel_ifv`, `gasoline_v12`) resolved per spec, with
+turbo whistle, turbine auxiliaries and hybrid-electric drive as identity
+modifiers. The model derives RPM, load and gear (manual, automatic or turbine
+spool) from speed, throttle and slope, plus track speed with yaw scrub, brake
+and skid, landings, bumps, stalls and restarts. Each rig crossfades
+idle/low/mid/high engine bands, light/heavy track sets per surface (earth,
+hard, mud, sand, snow; water runs the mud set under a wading loop) at
+slow/fast speed, squeal, skid, wading and
+damaged-engine knock loops, and fires shift, brake, suspension and stall
+one-shots. The occupied hull adds turret-drive and elevation servo loops,
+interior hum and rattle; remote rigs use LOD (own / near ≤140–165 m / far
+≤900–1000 m, desktop 5 near + 8 far, mobile 3 + 4).
+
+**Weapons.** Fifteen report classes (rifle and heavy MG; 20–50 mm
+autocannon; 90–152 mm cannon; ATGM; heavy rocket) with close and distant
+banks crossfaded by range, per-map gun tails (open, forest, urban,
+mountain), the interior report when scoped, twin-weapon stagger, autocannon
+feed, supersonic flyby and near-miss crack, missile warning. Reloads play the
+loader's choreography (manual, carousel, bustle, autocannon, missile,
+magazine, intra-clip) timed to `player:reload` progress.
+
+**Event table.** shell:fired / weapon:predicted / auxiliary:fired →
+reports; shell:hit → impact by kind and calibre (pen, ricochet, nonpen,
+spaced, ERA cassettes, HE) with interior response, concussion and crew
+calls; shell:expired → ground, water or prop impact by surface; tank:destroyed →
+blast, debris, turret, cook-off and wreck fire loops, kill confirm;
+tank:impact / tank:ram / prop:crushed / prop:destroyed → collision and prop
+assets; tank:fire, module:state, tank:spotted, player:spotted → loops and
+crew calls; consumables, shell selection, magazine reloads, dry fire,
+auto-aim lock, armor overlay, minimap zoom, spectate, jump, self-right,
+smoke screens, artillery/flak/AA/flyover atmosphere, killcam:begin / done /
+impact / shot / collision (the replay's debris stretches to its 0.55×
+rate), ui:pause, battle phase edges and results, and thirteen match-mode
+events (zones, flags, waves, goals, respawns, pickups).
+
+**Crew radio.** National crews: a hull speaks its nation's language
+(en-US, en-GB, de, ru, uk, zh, fr, sv, ja, ko, it, pl, he; commander and crew
+voices per nation), or English or the interface language by setting. Radio
+discipline: priority 0–4 with interrupts for survival calls, per-line and
+per-group cooldowns, stale drops, a 0.26 s gap and a two-line queue. Every
+line goes through an intercom chain (320 Hz high-pass, 3.4 kHz low-pass,
+2 kHz presence, drive, static bed and squelch); a damaged radio module
+narrows the band and adds dropouts and interference.
+
+**Budgets.** Desktop 48 voices and 140 MB decoded with reverb; mobile 24
+voices and 60 MB, no convolution reverb, assets decoded at 24 kHz.
+
+**Debug.** `window.__COT_AUDIO` (after resume) exposes the context, master
+PCM tap, listener and engine state, snapshot, library stats, the sound-route
+log, the sfx log (asset, start, gain, rate, distance, bus) and the voice log,
+plus `play`, `preload`, `sayVoice`, `setEngineProbeSolo` and
+`forceCrewLanguage` for the probes.
+
+Focused verification: `node src/audio/audioEngine.selftest.mjs` and the other
+`src/audio/*.selftest.mjs` run the engine headless against the shipped
+manifests (in `npm test`). Browser gates:
+`node tools/audio-probe.mjs` records the full event/voice/bus matrix;
+`node tools/sfx-smoke.mjs` checks every scene's assets, the calibre ladder,
+the distance crossfade and propagation delay, jitter and volley headroom;
+`node tools/voice-smoke.mjs` checks the national crew, live language
+switching and all 13 packs through the radio chain;
+`node tools/audio-spatial-killcam-probe.mjs` covers arcade/sniper
+perspective, cannon and engine distance falloff, rams and the kill-cam
+replay; `node tools/pause-probe.mjs` covers the pause duck.
 
 ---
 
