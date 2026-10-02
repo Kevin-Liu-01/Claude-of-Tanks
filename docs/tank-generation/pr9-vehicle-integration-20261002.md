@@ -50,8 +50,24 @@ Typecheck (including vehicle unused-declaration enforcement), suite discovery
 negative controls, and ledger negative controls pass. The roof table matches
 all 60 roof guns in the current inventory.
 
-Full fleet parity, the consolidated fleet audits, controls/anatomy generation,
-the complete suite, build, and targeted release checks are still pending.
+Full fleet parity passes for all 219 vehicles (whole fleet and an eight-tank
+roster, including both restored national variants). Comparing the finalized
+player specs before/after shows exactly one changed vehicle and field:
+`t62mv1_x.armor.hullPlates`, with only the obsolete `skirt_L` and `skirt_R`
+removed. All other player specs and roster orders match.
+
+Controls and anatomy generation both pass. Control values match all previous
+219 records / 60 roof guns (only serialization order changes); all 219 anatomy
+and marking-seat rows regenerate without a data change. The 657 regenerated
+technical diagrams change 46 images across 16 reviewed IDs. Before/after boards
+are retained locally. The changes refresh stale Italian/Type-100 paint imagery,
+reflect E100 interior fill and the T-62 skirt correction, and align four Type-96
+technical records with the player's already-correct metadata. No national
+modernization diagram changes. Import integrity (3,144 modules), attribution
+(219 models), and typecheck pass.
+
+The consolidated fleet audits, complete suite, build, and targeted release
+checks are still pending.
 No new publication waiver is inferred from the earlier `a8eacf16c` waiver.
 The previous complete `a8eacf16c` suite finished 1,242 checks with 72 failures;
 balance and unrelated world/multiplayer failures remain separate from this
