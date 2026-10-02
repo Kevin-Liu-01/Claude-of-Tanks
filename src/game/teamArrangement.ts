@@ -92,6 +92,7 @@ export function writeSides(
       allies: sides?.allies ?? null, enemies: sides?.enemies ?? null, enemyNation: current?.enemyNation ?? null,
       // the Mars settings ride on the mars arrangement; a sides change must not drop them
       marsGravity: current?.marsGravity ?? null, marsCaches: current?.marsCaches ?? null,
+      juggernautRole: current?.juggernautRole ?? null,
     }, storage);
   }
   return readSides(storage);

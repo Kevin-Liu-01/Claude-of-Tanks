@@ -8,6 +8,26 @@
 // controller, setupBattle, movement (gravity, speed), ballistics (shell gravity), damage (hit
 // points lost), ammunition and equipment at spawn, and the play-menu rule cards.
 import type { GameModeId } from './matchModes.ts';
+import { shell } from '../vehicles/specHelpers.ts';
+
+/** Mode weapons are fictional gameplay loadouts; they never mutate the fleet catalog. */
+export const GUN_GAME_WEAPONS = Object.freeze([
+  shell('30 mm Autocannon', 'AP', 30, 210, 165, 120, 1150, { reloadS: .18 }),
+  shell('105 mm Cannon', 'APFSDS', 105, 570, 520, 440, 1450, { reloadS: 3.5 }),
+  shell('120 mm Cannon', 'APFSDS', 120, 800, 750, 650, 1700, { reloadS: 4 }),
+  shell('152 mm Howitzer', 'HE', 152, 100, 100, 1250, 650, { reloadS: 5 }),
+  shell('Guided Missile', 'HEAT', 152, 1100, 1100, 1000, 350, { guided: true, reloadS: 5 }),
+]);
+export const AERIAL_RULES = Object.freeze({
+  drone: Object.freeze({ launchS: 1.4, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: 12 }),
+  gunship: Object.freeze({ altitudeM: 240, radiusM: 180, orbitRadS: .065 }),
+});
+export const GUNSHIP_WEAPONS = Object.freeze([
+  shell('30 mm Autocannon', 'AP', 30, 220, 180, 160, 1300, { reloadS: .14, reloadGroup: 'gunship-cannon' }),
+  shell('152 mm Howitzer', 'HE', 152, 110, 110, 1500, 800, { reloadS: 3.5, reloadGroup: 'gunship-howitzer' }),
+  shell('Guided Missile', 'HEAT', 180, 1300, 1300, 1600, 400, { guided: true, reloadS: 7, reloadGroup: 'gunship-missile' }),
+]);
+export const DRONE_WARHEAD = shell('FPV warhead', 'HE', 152, 95, 95, 1400, 42, { tracer: 'DRONE', gravityScale: 0, maxLifetimeS: AERIAL_RULES.drone.batteryS });
 
 type RulesetAmmo = 'spec' | 'he_only' | 'unlimited';
 type RulesetTimeout = 'draw' | 'defeat';
@@ -83,6 +103,8 @@ function marsRulesFor(gravity: MarsGravityId, caches: MarsCachesId): MarsRules {
 export const MARS_DEFAULT_RULES: MarsRules = marsRulesFor('mars', 'standard');
 
 export interface TeamArrangement {
+  /** Juggernaut side, from the local player/host perspective. */
+  readonly juggernautRole?: 'boss' | 'hunter' | null;
   /** Free-sortie objective controls; irrelevant fields are discarded at the boundary. */
   readonly scoreTarget?: number | null;
   readonly respawnS?: number | null;
@@ -126,10 +148,12 @@ export const TEAM_ARRANGEMENT_LIMITS: {
   allies: Object.freeze({
     standard: SYMMETRIC_ALLIES, capture_the_flag: SYMMETRIC_ALLIES, zone_control: SYMMETRIC_ALLIES, turbo_ball: SYMMETRIC_ALLIES,
     endless_horde: COOP_ALLIES, frontline_assault: COOP_ALLIES, mars: SYMMETRIC_ALLIES,
+    juggernaut: SYMMETRIC_ALLIES, infected: SYMMETRIC_ALLIES, realistic: SYMMETRIC_ALLIES, gun_game: SYMMETRIC_ALLIES, drone: SYMMETRIC_ALLIES, ac130: range(0, 0),
   }),
   enemies: Object.freeze({
     standard: SYMMETRIC_ENEMIES, capture_the_flag: SYMMETRIC_ENEMIES, zone_control: SYMMETRIC_ENEMIES, turbo_ball: SYMMETRIC_ENEMIES,
     endless_horde: range(6, 20), frontline_assault: range(4, 14), mars: SYMMETRIC_ENEMIES,
+    juggernaut: SYMMETRIC_ENEMIES, infected: SYMMETRIC_ENEMIES, realistic: SYMMETRIC_ENEMIES, gun_game: SYMMETRIC_ENEMIES, drone: SYMMETRIC_ENEMIES, ac130: range(4, 24),
   }),
   waveSize: range(2, 12),
 });
@@ -185,6 +209,12 @@ const MARS_PHYSICS: RulesetPhysics = Object.freeze({
 });
 
 export interface MatchRuleset {
+  readonly alwaysVisible?: boolean;
+  readonly moduleOnlyDamage?: boolean;
+  readonly juggernaut?: { readonly team: 'alpha' | 'bravo'; readonly hpScale: number; readonly reloadScale: number; readonly speedScale: number };
+  readonly infection?: { readonly infectedSpeed: number; readonly infectedRespawnS: number };
+  readonly gunGame?: { readonly killsPerWeapon: number };
+  readonly aerial?: 'drone' | 'gunship';
   readonly scoreTarget?: number | null;
   readonly mode: GameModeId;
   /** Multiplies 9.81 m/s² for hulls in the air, shells in flight and the ball. */
@@ -299,11 +329,21 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     ...STANDARD, mode: 'mars', mars: MARS_DEFAULT_RULES, gravityScale: 0.38, physics: MARS_PHYSICS, speedMultiplier: 1.25, hpScale: 1.2, damageScale: 0.9,
     reloadScale: 0.9, jumpMps: 9.5, recoilLaunchScale: 3, shellKnockScale: 0.9, respawnS: 6, timeLimitS: 720,
   }),
+  juggernaut: Object.freeze({ ...STANDARD, mode: 'juggernaut', allies: 0, enemies: 12, respawnS: 6, timeLimitS: 600,
+    juggernaut: Object.freeze({ team: 'alpha', hpScale: 8, reloadScale: .5, speedScale: .9 }) }),
+  infected: Object.freeze({ ...STANDARD, mode: 'infected', allies: 12, enemies: 1, respawnS: 4, timeLimitS: 420,
+    infection: Object.freeze({ infectedSpeed: 1.3, infectedRespawnS: 4 }) }),
+  realistic: Object.freeze({ ...STANDARD, mode: 'realistic', alwaysVisible: true, moduleOnlyDamage: true, consumables: false }),
+  gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
+    gunGame: Object.freeze({ killsPerWeapon: 2 }) }),
+  drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
+  ac130: Object.freeze({ ...STANDARD, mode: 'ac130', aerial: 'gunship', allies: 0, enemies: 12, alwaysVisible: true,
+    ammo: 'unlimited', consumables: false, timeLimitS: 480 }),
 });
 
 /** Score targets the modes play to (kept here so rule cards and controller agree). */
 export const RULESET_SCORE_TARGETS: Readonly<Record<string, number>> = Object.freeze({
-  capture_the_flag: 3, zone_control: 750, turbo_ball: 5, mars: 750,
+  capture_the_flag: 3, zone_control: 750, turbo_ball: 5, mars: 750, drone: 20,
 });
 /** A flag carrier drives at this share of the mode speed (Capture the Flag). */
 export const FLAG_CARRIER_SPEED_SCALE = 0.85;
@@ -365,9 +405,10 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
   const enemyNation = typeof input.enemyNation === 'string' && /^[a-z_]{2,24}$/.test(input.enemyNation) ? input.enemyNation : null;
   const marsGravity = mode === 'mars' && isMarsGravityId(input.marsGravity) ? input.marsGravity : null;
   const marsCaches = mode === 'mars' && isMarsCachesId(input.marsCaches) ? input.marsCaches : null;
+  const juggernautRole = mode === 'juggernaut' && (input.juggernautRole === 'hunter' || input.juggernautRole === 'boss') ? input.juggernautRole : null;
   const hasScore = Object.prototype.hasOwnProperty.call(RULESET_SCORE_TARGETS, mode);
   const scoreTarget = hasScore && Number.isFinite(input.scoreTarget) ? clampInt(input.scoreTarget!,
-    mode === 'capture_the_flag' ? [1, 9] : mode === 'turbo_ball' ? [1, 15] : [100, 2000]) : null;
+    mode === 'capture_the_flag' ? [1, 9] : mode === 'turbo_ball' ? [1, 15] : mode === 'drone' ? [5, 100] : [100, 2000]) : null;
   const respawnS = hasScore && Number.isFinite(input.respawnS) ? clampInt(input.respawnS!, [2, 15]) : null;
   const waveStep = mode === 'endless_horde' && Number.isFinite(input.waveStep) ? clampInt(input.waveStep!, [0, 3]) : null;
   const holdS = mode === 'frontline_assault' && Number.isFinite(input.holdS) ? clampInt(input.holdS!, [10, 60]) : null;
@@ -377,9 +418,10 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
     const sides = rulesetSides({ allies, enemies });
     if (sides.allies + sides.enemies + 1 > BATTLE_FIELD_LIMIT) allies = Math.max(0, BATTLE_FIELD_LIMIT - 1 - sides.enemies);
   }
-  if (allies == null && enemies == null && waveSize == null && enemyNation == null && marsGravity == null && marsCaches == null && scoreTarget == null && respawnS == null && waveStep == null && holdS == null) return null;
+  if (allies == null && enemies == null && waveSize == null && enemyNation == null && marsGravity == null && marsCaches == null && scoreTarget == null && respawnS == null && waveStep == null && holdS == null && juggernautRole == null) return null;
   return Object.freeze({
     allies, enemies, waveSize, enemyNation,
+    ...(juggernautRole ? { juggernautRole } : {}),
     ...(scoreTarget != null ? { scoreTarget } : {}), ...(respawnS != null ? { respawnS } : {}),
     ...(waveStep != null ? { waveStep } : {}), ...(holdS != null ? { holdS } : {}),
     ...(marsGravity ? { marsGravity } : {}), ...(marsCaches ? { marsCaches } : {}),
@@ -434,6 +476,13 @@ export function matchRulesetFor(
       mars: marsRulesFor(gravity, caches),
     };
   }
+  if (ruleset.juggernaut) {
+    const hunter = arrangement?.juggernautRole === 'hunter';
+    ruleset = { ...ruleset, allies: hunter ? (arranged?.allies ?? 5) : 0,
+      enemies: hunter ? 1 : (arranged?.enemies ?? 12),
+      juggernaut: { ...ruleset.juggernaut, team: hunter ? 'bravo' : 'alpha' } };
+  }
+  if (ruleset.infection) ruleset = { ...ruleset, enemies: 1 };
   return ruleset === base ? base : Object.freeze(ruleset);
 }
 
@@ -462,6 +511,11 @@ interface RulesetLine {
 export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
   const lines: RulesetLine[] = [];
   const line = (key: string, values: Record<string, string> = {}): void => { lines.push({ key, values }); };
+  if (ruleset.moduleOnlyDamage) line('modulesOnly');
+  if (ruleset.alwaysVisible) line('alwaysVisible');
+  if (ruleset.juggernaut) line('boss', { hp: String(ruleset.juggernaut.hpScale), reload: String(ruleset.juggernaut.reloadScale) });
+  if (ruleset.infection) line('infection');
+  if (ruleset.gunGame) line('gunGame', { kills: String(ruleset.gunGame.killsPerWeapon) });
   if (ruleset.gravityScale !== 1) line('gravity', { value: `${Math.round(ruleset.gravityScale * 100) / 100} g` });
   if (ruleset.speedMultiplier !== 1) line('speed', { value: percent(ruleset.speedMultiplier) });
   if (ruleset.hpScale !== 1) line('hp', { value: percent(ruleset.hpScale) });
@@ -540,6 +594,7 @@ interface RulesetCombatState {
   modeDamageTakenScale?: number;
   /** False keeps modules, crew and fires intact (damage.ts rollModuleDamage / rollCrewHit). */
   modeCriticalDamage?: boolean;
+  modeModuleOnlyDamage?: boolean;
 }
 
 interface RulesetShellSpec { readonly type?: string }
@@ -564,6 +619,7 @@ export function applyRulesetToCombat(
   }
   combat.modeDamageTakenScale = ruleset.damageScale;
   combat.modeCriticalDamage = ruleset.criticalDamage;
+  combat.modeModuleOnlyDamage = !!ruleset.moduleOnlyDamage;
   if (ruleset.reloadScale !== 1) {
     const mults = combat.equipMults || (combat.equipMults = {});
     const current = mults.reload;

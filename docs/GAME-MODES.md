@@ -2,7 +2,7 @@
 
 Claude of Tanks composes multiple battle rules over the same fixed-step tank,
 gunnery, armor, damage, spotting, bot, terrain, and network authority. A mode
-does not replace combat: every objective keeps the complete vehicle simulation.
+shares the armor, damage, projectile and authority pipeline. Aerial modes add flight controls; the AC-130 replaces ground movement with an orbit.
 
 Since 2026-09-14 every mode is described by a **ruleset** (`src/sim/matchRuleset.ts`):
 one pure, frozen record per mode of how the simulation bends — gravity, speed, hull
@@ -12,7 +12,7 @@ Frontline Assault escalation. The browser sim, the network authority, the HUD an
 the play-menu rule cards all read that one table, so a card can never promise a
 rule the battle does not keep.
 
-## Shipped rules
+## Mode rules
 
 | Mode | Objective | Ruleset (deviations from Standard) | Respawn | End condition |
 | --- | --- | --- | --- | --- |
@@ -23,6 +23,75 @@ rule the battle does not keep.
 | Endless Horde | Survive waves that grow without a cap and never repeat their line-up | +25 % hull, two allied bots (co-op humans join alpha), a fourteen-strong hostile pool drawn afresh every wave (five on wave one), 30 % repair for every survivor when a wave is cleared, no clock; the player arranges both sides | No | The final human-controlled tank is destroyed |
 | Frontline Assault | Take three trench sectors in turn, then hold the last one | three allied bots, a ten-strong same-nation formation (the operation's, or the arranged nation), 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock |
 | Mars Mode | Hold the three station sectors of Olympus Basin | 0.38 g, +25 % speed, +20 % hull, −10 % damage, +11 % reload rate, rocket jump 9.5 m/s (F, boosts again in the air), ×3 recoil launch, ×0.9 impact knock; boost caches every 22 s | 6 s | First team to 750 points, or the 12:00 clock (score) |
+
+| Juggernaut | Defeat the boss, or survive as the boss | Choose the boss or hunter role; boss has 8× hull, half reload time and 90% speed | Hunters: 6 s; boss: none | Boss destroyed, or boss survives 10:00 |
+| Infected | Survive the outbreak, or convert every survivor | One initial infected; destroyed survivors join the infected, who move 30% faster | 4 s | No survivors remain, or survivors reach 7:00 |
+| Realistic | Destroy the opposing force through critical damage | Always-visible vehicles; no hull HP attrition, automatic module repair or consumables | No | Crew eliminated or ammunition destruction eliminates a team; 15:00 draw |
+| Gun Game | Complete a five-weapon ladder | Two confirmed kills per stage; unlimited ammunition | 4 s | First player to complete the ladder; 15:00 score decision |
+| Drone | Destroy opponents with tanks and directly piloted drones | Launch a physical FPV quadcopter from the tank; contact uses normal explosive collision and damage | 6 s | First team to 20 kills (configurable), or 10:00 score decision |
+| AC-130 | Clear the ground force from an orbiting gunship | Overhead scope, three independent weapon channels, unlimited ammunition and always-visible targets | No | Ground force eliminated, aircraft destroyed, or 8:00 draw |
+
+## Flying a drone
+
+Select **Drone**, enter a battle in your tank, then press **V** or the drone control.
+The quadcopter rises from the vehicle before the camera switches to first-person
+flight with a monochrome thermal-style treatment. You directly fly it: **W/S**
+move forward or backward, **A/D** strafe, **Space** climbs, and mouse look steers.
+Pitch down and fly forward to descend or dive into a target. Releasing movement
+holds position. Touch look and the movement controls use the same flight inputs.
+
+The drone has a 40-second battery and an 850 m operating radius. Its impact is a
+real explosive projectile: terrain, structures and vehicle armor matter. It does
+not award a kill merely for reaching an enemy. **V** returns to the tank, ending
+that flight. Impact, cancellation or battery/range exhaustion starts a 25-second
+cooldown. The parked tank remains vulnerable; destroying it ends its drone flight.
+Other players see the quadcopter and its spinning rotors. Bots can fly drones too.
+
+## AC-130 controls and weapons
+
+The gunship automatically circles at 240 m above its starting ground height on a
+180 m orbit. Aim with mouse or touch look; use the wheel to zoom the downward scope.
+Fire with the normal fire control and select weapons with **1–3** or the ammunition
+buttons: a rapid 30 mm cannon, a 152 mm explosive howitzer, and guided missiles.
+The weapon channels reload independently. Missiles follow the sight; cannon and
+howitzer rounds travel through the normal ballistic and armor simulation.
+
+## Asymmetric teams and progression
+
+**Juggernaut** offers a role setting. As boss, you face the hunting team; as a
+hunter, you join allies against one bot boss. In hosted rooms the boss role belongs
+to the first participating human when that role is selected; other humans hunt it.
+The boss never respawns. Its survival clock and health are shown in the objective.
+
+**Infected** begins with one infected opponent. A survivor's destruction changes
+that player's team before their next spawn, including their allied/enemy roster
+and bot targeting. The remaining survivors win by lasting seven minutes; infected
+win when nobody remains unconverted.
+
+**Gun Game** keeps the selected chassis, armor and crew, but replaces its main
+weapon. The ladder is 30 mm AP, 105 mm APFSDS, 120 mm APFSDS, 152 mm HE, then a
+152 mm guided HEAT missile. Each stage takes two kills credited to that player.
+Respawning preserves progress. Completing the final stage wins for that player's
+team. The shared vehicle catalog is never modified by a player's progression.
+
+**Realistic** removes HP attrition and spotting concealment. Armor penetration,
+module damage, crew casualties, fire and ammunition destruction still apply.
+Losing all crew or detonating the ammunition destroys the vehicle. Destroyed
+modules remain damaged; this mode disables automatic module repair and consumables.
+
+## Shared implementation and checks
+
+The canonical rules remain in `src/sim/matchRuleset.ts`; `matchModes.ts` owns
+victory, conversion, progression and respawn. `aerialCombat.ts` advances flight at
+the fixed simulation rate in both solo and hosted authority. Clients send controls,
+not hit decisions. `modeLoadout.ts` isolates per-vehicle weapon changes. Protocol 5
+adds the drone action and presentation type; older clients must reload to join.
+Encrypted host checkpoints retain the new modes’ scores, infection teams, weapon
+progression, respawn timers and drone/orbit state across a host change.
+
+`src/sim/sixModes.selftest.mjs` and `sixModesAuthority.selftest.mjs` cover rules,
+rosters, progression, shared flight and authority. `tools/six-modes.browser.mjs`
+exercises garage entry, real flight input, the orbit and narrow-screen HUDs.
 
 Horde (owner 2026-09-15: "the horde is not endless, there's only 3 tanks every time and
 they're the same tanks each round") fields `waveSize + (wave − 1) × waveStep +

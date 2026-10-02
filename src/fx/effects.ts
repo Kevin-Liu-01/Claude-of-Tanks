@@ -15,6 +15,7 @@ import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
  */
 import * as THREE from 'three';
 import type { TrackSurface } from '../world/trackSurface.ts';
+import { createDronePresentation } from './dronePresentation.ts';
 import { waterContactMaskAt } from '../world/waterContactMask.ts';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.ts';
 import { LATE_FX_LAYER } from './layers.ts';
@@ -34,7 +35,7 @@ type Rng = () => number;
 type MutableVec3 = [number, number, number];
 type WireVec3 = readonly [number, number, number];
 type ShellId = string | number;
-type TracerType = 'ATGM' | 'AP' | 'APCR' | 'HEAT' | 'HE' | 'HESH' | 'APFSDS';
+type TracerType = 'DRONE' | 'ATGM' | 'AP' | 'APCR' | 'HEAT' | 'HE' | 'HESH' | 'APFSDS';
 type DestructionCause = 'ammorack' | 'shot' | 'fire';
 
 interface FxEngineContext {
@@ -896,6 +897,7 @@ function* createFxSteps(
   });
   const group = new THREE.Group();
   group.name = 'fx';
+  const drones = createDronePresentation(group);
   group.matrixAutoUpdate = false;
   group.add(particles.group);
 
@@ -3666,6 +3668,7 @@ function* createFxSteps(
   }
 
   function writeLiveShellTracers(shells: LiveShell[], camera: THREE.Camera): number {
+    drones.begin(particles.getTime());
     let tracerCount = 0;
     liveAtgmCount = 0;
     renderedAtgmTrailSegments = 0;
@@ -3673,6 +3676,11 @@ function* createFxSteps(
     for (let index = 0; index < shells.length && tracerCount < MAX_TRACERS; index++) {
       const shell = shells[index];
       if (shell.dead) continue;
+      if (shell.spec?.tracer === 'DRONE') {
+        // The FPV camera sits inside its airframe; retain the launch/remote silhouette.
+        if (shell.pos.distanceToSquared(camera.position) > 4) drones.write(shell.pos, shell.vel);
+        continue;
+      }
       const guided = !!shell.spec?.guided || shell.rocket === true;
       const tracerId = guided ? 'ATGM' : shell.spec?.tracer;
       const preset = TRACER_PRESETS[tracerId ?? 'AP'];
@@ -3689,6 +3697,7 @@ function* createFxSteps(
       }
       tracerCount = writeShellBolt(shell, camera, preset, guided, tracerCount);
     }
+    drones.end();
     return tracerCount;
   }
 
@@ -5404,7 +5413,7 @@ function* createFxSteps(
     /** Kill all particles, tracers, decals, timers, emitters and lights. */
     resetAll() {
       replaySuppressed = false;
-      auxiliary?.reset();
+      auxiliary?.reset(); drones.reset();
       particles.resetAll();
       lastTickS = particles.getTime();
       battleFreshS = 0; // fresh battle — arm the flyby exhaust start-up burst
@@ -5446,8 +5455,8 @@ function* createFxSteps(
      *           tracerType: string, ageS: number }} o
      */
     composeFiringMoment({ muzzlePos, dir, caliberMm, tracerType, ageS, rocket = false, velocityMps }: FiringMoment): void {
-      const preset = rocket ? TRACER_PRESETS.ATGM : TRACER_PRESETS[tracerType] || TRACER_PRESETS.AP;
-      const vel = rocket ? velocityMps || 300 : COMPOSE_VELOCITY[tracerType] || 800;
+      const preset = rocket ? TRACER_PRESETS.ATGM : TRACER_PRESETS[tracerType === 'DRONE' ? 'AP' : tracerType] || TRACER_PRESETS.AP;
+      const vel = rocket ? velocityMps || 300 : COMPOSE_VELOCITY[tracerType === 'DRONE' ? 'AP' : tracerType] || 800;
       // NOTE (r5): the recipe samples gunMuzzleWorld AFTER advancing the
       // recoil, and the rendered barrel is equally recoiled — the anchor
       // always matches the visible tip, so the flash spawns exactly on it.

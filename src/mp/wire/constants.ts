@@ -16,7 +16,7 @@ export const WIRE_VERSION = 3;
  * otherwise unchanged (WIRE_VERSION stays 1: the handshake is where a mismatch is caught, cleanly, as PROTOCOL_VERSION).
  */
 // 4: complete module health uses a 32-bit word (wire layout 3).
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5; // six mode rules, FPV action and viewer flight state
 
 export const TICK_HZ = 60;
 /**
@@ -156,10 +156,10 @@ export const CONTROL_FLAGS = Object.freeze({
 /** Edge-triggered actions (identical to v1 PLAYER_ACTION_BITS). */
 /** The simulation's action bits (src/sim/playerActions.ts): one table for the solo step and the wire. */
 export const ACTION_BITS = PLAYER_ACTION_BITS;
-export const ACTION_BIT_MASK = 0x3ff; // ten action bits (auxiliary systems: smoke, lights, roof gun, lights off)
+export const ACTION_BIT_MASK = 0x7ff; // eleven action bits, including FPV launch/return
 
 /** Shell types the fleet authors; unknown types encode as OTHER. */
-export const SHELL_TYPE_NAMES = Object.freeze(['AP', 'APCR', 'APFSDS', 'HEAT', 'HE'] as const);
+export const SHELL_TYPE_NAMES = Object.freeze(['AP', 'APCR', 'APFSDS', 'HEAT', 'HE', 'DRONE'] as const);
 export const SHELL_TYPE_OTHER = 255;
 export const SHELL_FLAGS = Object.freeze({ GUIDED: 1 << 0 } as const);
 

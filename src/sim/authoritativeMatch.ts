@@ -1,3 +1,6 @@
+import type { ModeCheckpoint } from './matchModes.ts';
+import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, type AerialCheckpoint, type AerialView } from './aerialCombat.ts';
+import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen } from './smokeReceipt.ts';
 import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from './auxiliarySystems.ts';
 import { bridgeBallFloor } from './bridgeBallSupport.ts';
@@ -157,9 +160,11 @@ export interface AuthoritativePlayerInput extends AimIntentInput {
   aimLocked?: boolean;
   shellSlot: number;
   actionBits: number;
+  auxiliaryBits?: number;
 }
 
 interface AuthoritativeInput {
+  auxiliaryBits?: number;
   throttle: number;
   steer: number;
   brake: boolean;
@@ -209,6 +214,7 @@ export interface AuthoritativeEntity {
   consumableReadyAt: number[];
   specialAction: SpecialActionState;
   aiCtl?: AuthoritativeAIController;
+  aerial?: AerialView;
   modeActive?: boolean;
   modeSpeedMultiplier?: number;
   modeGravityScale?: number;
@@ -276,6 +282,11 @@ export interface ShellRewindHook {
 /** Roster limit: 14v14 plus bots and headroom, bounded by the wire's 64 entity ids. */
 export const MAX_AUTHORITATIVE_PLAYERS = 64;
 
+export interface NewModeCheckpoint {
+  mode: ModeCheckpoint;
+  flights: { id: string; flight: AerialCheckpoint }[];
+}
+
 export interface AuthoritativeMatchOptions {
   players?: AuthoritativePlayerRecord[];
   mapId?: string;
@@ -339,6 +350,8 @@ export interface AuthoritativeMatch {
    * destructible revision continues past the previous host's so every client's persistent-state check stays
    * monotonic. Indices this world does not have are counted, never applied.
    */
+  captureModeCheckpoint(): NewModeCheckpoint | null;
+  restoreModeCheckpoint(checkpoint: NewModeCheckpoint): void;
   restoreDestroyedObstacles(indices: readonly number[], revision: number): { restored: number; unknown: number };
 }
 
@@ -749,7 +762,10 @@ export function createAuthoritativeMatch({
   const shells: DamageShell[] = [];
   const destroyedBeforeBurst = new Map<string, boolean>();
   let nextShellId = 1;
+  const nextAerialShellId = () => nextShellId++;
+  const launchAerialShell = (shell: DamageShell) => { shells.push(shell); };
   let timeS = 0;
+  let modeTimeOffsetS = 0;
   let fireTickAcc = 0;
   let result: MatchResult | null = null;
   let resultReason: string | null = null;
@@ -873,6 +889,7 @@ export function createAuthoritativeMatch({
   const auxiliarySmokeScreens: SmokeScreen[] = [];
   const spotting = createSpottingSystem({
     getTanks: () => entities,
+    alwaysVisible: !!ruleset.alwaysVisible,
     raycast: spottingRaycast,
     opticalBlocked: (a,b) => smokeBlocks(auxiliarySmokeScreens,a,b,timeS,heightField.getHeightAt),
     concealers: worldCollision && typeof worldCollision.getConcealment === 'function'
@@ -904,8 +921,16 @@ export function createAuthoritativeMatch({
       deps: {
         heightField,
         raycast: spottingRaycast,
-        getEnemies: () => opponents,
-        getAllies: () => allies,
+        getEnemies: () => {
+          opponents.length = 0;
+          for (const candidate of entities) if (candidate.team !== entity.team) opponents.push(candidate);
+          return opponents;
+        },
+        getAllies: () => {
+          allies.length = 0;
+          for (const candidate of entities) if (candidate !== entity && candidate.team === entity.team) allies.push(candidate);
+          return allies;
+        },
         getObstacles: () => staticObstacles,
         queryObstacles: worldCollision?.queryObstacles || null,
         spotting: {
@@ -969,23 +994,29 @@ export function createAuthoritativeMatch({
     // the wave's health scale folds into the ruleset stamp (hull, damage-taken, reload, ammunition)
     applyRulesetToCombat(tank.combat, tank.spec.gun.shells, ruleset, healthScale);
     tank.consumableReadyAt = [0, 0, 0];
+    initializeAerial(tank, ruleset);
     tank.specialAction = createSpecialActionState(tank.spec);
     bindSpecialActionState(tank);
     for (let n = 0; n < 30; n++) updateTank(tank, heightField, SIM_DT);
   }
 
-  const modeController = createMatchModeController({
+  const modeController = createMatchModeController<AuthoritativeEntity>({
     mode: normalizedGameMode,
     entities,
     seed,
     placement,
     ruleset,
     revive: reviveForMode,
+    setWeaponStage: setModeWeapon,
     setActive(entity, active) { entity.modeActive = active; },
     terrainHeight: (x, z) => heightField.getHeightAt(x, z),
     ballFloorHeight: (x, z, previousBottomY) => bridgeBallFloor(heightField, x, z, previousBottomY),
     emit,
   });
+  for (const entity of entities) {
+    initializeAerial(entity, ruleset);
+    if (isGunship(entity)) setModeWeapon(entity, 'gunship');
+  }
   let nextModeRouteS = 0;
 
   function applyNetworkInput(
@@ -1032,7 +1063,7 @@ export function createAuthoritativeMatch({
       }
     }
     entity.input.shellSlot = entity.combat.shellSlot;
-    decodeAimIntent(input, entity.state.pos, _aim);
+    decodeAimIntent(input, entity.aerial?.active ? entity.aerial : entity.state.pos, _aim);
     entity.input.aimPoint.copy(_aim);
   }
 
@@ -1455,6 +1486,7 @@ export function createAuthoritativeMatch({
         auxiliarySmokeScreens.push(entity.combat.auxiliary!.smoke!);
         if(auxiliarySmokeScreens.length>84)auxiliarySmokeScreens.shift();
       }
+      if (bits & PLAYER_ACTION_BITS.DRONE) entity.input.auxiliaryBits = (entity.input.auxiliaryBits ?? 0) | PLAYER_ACTION_BITS.DRONE;
       if (bits & PLAYER_ACTION_BITS.LIGHTS_OFF) requestAuxiliary(entity, 'lightsOff', timeS);
       if (bits & PLAYER_ACTION_BITS.LIGHTS) requestAuxiliary(entity, 'lights', timeS);
       if (bits & PLAYER_ACTION_BITS.ROOF_GUN) requestAuxiliary(entity, 'roofGun', timeS);
@@ -1473,6 +1505,7 @@ export function createAuthoritativeMatch({
   function selectedShellForFire(
     entity: AuthoritativeEntity,
   ): AuthoritativeSpec['gun']['shells'][number] | null {
+    if (entity.aerial?.kind === 'drone' && entity.aerial.active) return null;
     const combat = entity.combat;
     if (!entity.input.fire || combat.destroyed || combat.reload.t > 0) return null;
       const shellSpec = entity.spec.gun.shells[combat.shellSlot];
@@ -1551,6 +1584,7 @@ export function createAuthoritativeMatch({
     if (!shellSpec || !botShotIsClear(entity, shellSpec)) return;
     const combat = entity.combat;
     const gun = gunWorldPose(entity, shellSpec);
+    if (isGunship(entity)) { gun.muzzle.copy(entity.state.pos); gun.direction.copy(entity.input.aimPoint).sub(gun.muzzle).normalize(); }
     _gunDir.copy(gun.direction);
     const sigma = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
     applyDispersion(_gunDir, sigma, rng);
@@ -1795,7 +1829,7 @@ export function createAuthoritativeMatch({
     for (const shell of shells) {
       if (shell.dead) continue;
       const shooter = entityById.get(shell.shooterId);
-      if (shooter && specialActionGuidesShell(shooter, shell)) {
+      if (shooter && (specialActionGuidesShell(shooter, shell) || (isGunship(shooter) && shell.spec.guided))) {
         guideShellToward(shell, shooter.input?.aimPoint, dt);
       }
       stepShell(shell, dt);
@@ -2036,10 +2070,17 @@ export function createAuthoritativeMatch({
     for (const entity of entities) {
       // wrecks keep moving (2026-09-19): applyNetworkInput already zeroes their input; readDebuffs skids them
       if (entity.modeActive === false) continue;
+      if (isGunship(entity)) continue;
       movingEntity = entity;
       // the authority has no rendered contact geometry: the hull origin is its belly line (movement's default)
       structureSupport.beginHull(entity.state.pos.x, entity.state.pos.z, entity.state.pos.y);
-      updateTank(entity, structureSupport, dt, collideMovingEntity);
+      // Park the carrier only during ground integration; preserve held flight controls
+      // for additional fixed steps when rendering slower than the simulation.
+      const parking = entity.aerial?.kind === 'drone' && entity.aerial.active;
+      const { throttle, steer, brake, aimLocked } = entity.input;
+      if (parking) { entity.input.throttle = 0; entity.input.steer = 0; entity.input.brake = true; entity.input.aimLocked = true; }
+      try { updateTank(entity, structureSupport, dt, collideMovingEntity); }
+      finally { if (parking) { entity.input.throttle = throttle; entity.input.steer = steer; entity.input.brake = brake; entity.input.aimLocked = aimLocked; } }
       resolveEntityImpacts(entity);
     }
     movingEntity = null;
@@ -2130,6 +2171,7 @@ export function createAuthoritativeMatch({
     timeS += dt;
     refreshModeBotRoutes();
     updateEntityControls(dt, inputs);
+    for (const entity of entities) stepAerial(entity, timeS + modeTimeOffsetS, dt, nextAerialShellId, launchAerialShell);
     advanceTankMovement(dt);
     advanceTankContacts(dt);
     advanceRollover(dt);
@@ -2137,7 +2179,7 @@ export function createAuthoritativeMatch({
     advanceFires(dt);
     advanceRepairs(dt);
     updateVisibility();
-    determineResult(modeController.step(dt, timeS));
+    determineResult(modeController.step(dt, timeS + modeTimeOffsetS));
   }
 
   function canObserveEntity(viewer: AuthoritativeEntity | undefined, entityId: string): boolean {
@@ -2272,6 +2314,17 @@ export function createAuthoritativeMatch({
       pendingEvents.length = 0;
     },
 
+    captureModeCheckpoint() {
+      if (!['juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'ac130'].includes(normalizedGameMode)) return null;
+      const flightStates: NewModeCheckpoint['flights'] = [];
+      for (const entity of entities) { const flight = captureAerial(entity); if (flight) flightStates.push({ id: entity.id, flight }); }
+      return { mode: modeController.captureCheckpoint(timeS + modeTimeOffsetS), flights: flightStates };
+    },
+    restoreModeCheckpoint(checkpoint) {
+      modeTimeOffsetS = Math.max(0, checkpoint.mode.elapsedS);
+      modeController.restoreCheckpoint(checkpoint.mode);
+      for (const entry of checkpoint.flights) { const entity = entityById.get(entry.id); if (entity) restoreAerial(entity, entry.flight, nextAerialShellId, launchAerialShell); }
+    },
     restoreDestroyedObstacles,
   };
   updateVisibility();

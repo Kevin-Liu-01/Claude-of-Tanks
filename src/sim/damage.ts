@@ -155,6 +155,8 @@ export interface CombatState {
   modeDamageTakenScale?: number;
   /** Ruleset critical-damage switch (matchRuleset.ts); false keeps modules, crew and fires intact. Absent = true. */
   modeCriticalDamage?: boolean;
+  /** Realistic battles resolve destruction through crew and modules, never hull attrition. */
+  modeModuleOnlyDamage?: boolean;
 }
 
 const MODULE_STATE_RANK: Readonly<Record<ModuleStateName, number>> = Object.freeze({
@@ -474,9 +476,10 @@ function equipMult(combat: CombatState | null | undefined, key: string): number 
  * changes how long a hull lasts, not how the vehicle breaks.
  */
 export function hullDamageTaken(
-  combat: Pick<CombatState, 'modeDamageTakenScale'> | null | undefined,
+  combat: Pick<CombatState, 'modeDamageTakenScale' | 'modeModuleOnlyDamage'> | null | undefined,
   raw: number,
 ): number {
+  if (combat?.modeModuleOnlyDamage) return 0;
   const scale = combat?.modeDamageTakenScale;
   return Number.isFinite(scale) && scale! > 0 && scale !== 1 ? raw * scale! : raw;
 }
@@ -738,7 +741,7 @@ function rollCrewHit(ctx: ResolutionContext, crewName: string, isHe: boolean): v
  */
 function finalizeTarget(combat: CombatState, ammoRacked: boolean): boolean {
   if (ammoRacked) combat.hp = 0;
-  if (combat.hp <= 0) {
+  if (combat.hp <= 0 && (!combat.modeModuleOnlyDamage || ammoRacked)) {
     combat.hp = 0;
     combat.destroyed = true;
   }
@@ -2058,7 +2061,7 @@ export function tickFire(
   if (!combat || !combat.fire.burning || combat.destroyed) {
     return { damage: 0, extinguished: false, destroyed: combat ? combat.destroyed : false };
   }
-  const damage = combat.maxHp * FIRE_TICK_HP_FRAC;
+  const damage = combat.modeModuleOnlyDamage ? 0 : combat.maxHp * FIRE_TICK_HP_FRAC;
   combat.hp = Math.max(0, combat.hp - damage);
 
   let ammoRacked = false;
@@ -2107,7 +2110,7 @@ export function tickModuleRepairs(
   repaired: string[] = [],
 ): string[] {
   repaired.length = 0;
-  if (!combat || combat.destroyed || !combat.modules) return repaired;
+  if (!combat || combat.destroyed || !combat.modules || combat.modeModuleOnlyDamage) return repaired;
   const rate = equipMult(combat, 'repair');
   for (const name in combat.modules) {
     if (!Object.prototype.hasOwnProperty.call(combat.modules, name)) continue;
