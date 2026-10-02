@@ -111,6 +111,7 @@ import { waterContactMaskAt } from './world/waterContactMask.ts';
 import type { GroundDisturbance } from './world/groundPressure.ts';
 import { tankContactRect } from './sim/tankContactShape.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
+import { currentViewport, mapBackdropFor } from './ui/mapBackdrop.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
@@ -272,8 +273,8 @@ const SIM_DT = 1 / 60;
 const VERDANT_GARAGE_POS = Object.freeze({ x: -1500, z: -1500 });
 const GARAGE_POS = new THREE.Vector3(VERDANT_GARAGE_POS.x, 0, VERDANT_GARAGE_POS.z);
 const pendingRoomInvitePromise = startupIntent.pendingRoomInvite;
-const mapHeroes: Readonly<Record<string, string>> = MAP_HEROES;
-const mapThumbs: Readonly<Record<string, string>> = MAP_THUMBS;
+// FE-P13: battle loading art follows the viewport (a 1280 card on small and medium screens, else the 4K hero).
+const battleBackdrop = (mapId: string): string => mapBackdropFor(mapId, currentViewport());
 const minimapAssetUrl = (mapId: string): string => (
   getMinimapAssetUrl(mapId, import.meta.env.BASE_URL || '/')
 );
@@ -1954,7 +1955,7 @@ const networkBattleIntentCover = createIntentCover({
   rosterRows: rosterPresentation.lobbyRows,
   getMapPresentation: (mapId, fallback) => ({
     name: mapId ? getMapName(mapId) : fallback,
-    thumb: mapId ? mapHeroes[mapId] || mapThumbs[mapId] || '' : '',
+    thumb: mapId ? battleBackdrop(mapId) : '',
     biome: mapId || 'none',
   }),
   coverRendering: battleEntryLifecycle.coverRendering,
@@ -2060,7 +2061,7 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     getMapName,
     loadMapConfig: (mapId: string) => import('./world/maps/index.ts')
       .then(({ getMapConfig }) => getMapConfig(mapId)),
-    getMapThumb: (mapId: string) => mapHeroes[mapId] || mapThumbs[mapId] || '',
+    getMapThumb: (mapId: string) => battleBackdrop(mapId),
     hasCachedWorld: (mapId: string) => !!worldCache.get(mapId),
     getWorld: () => {
       const world = currentWorld();
@@ -2304,7 +2305,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           getMap: (mapId: string) => {
             return {
               name: getMapName(mapId),
-              thumb: mapHeroes[mapId] || mapThumbs[mapId] || '',
+              thumb: battleBackdrop(mapId),
               biome: mapId,
             };
           },
