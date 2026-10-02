@@ -95,7 +95,8 @@ near(nightModel.night, 1, 1e-9, 'the night preset\'s dimmed dome is a full night
 near(nightModel.hemiIntensity, NIGHT_SKY_GLOW, 1e-9, 'the night sky\'s own glow rides the hemisphere');
 assert.ok(nightModel.hemiSky[2] > nightModel.hemiSky[0] * 1.5, 'in the moonlit sky\'s blue');
 assert.ok(nightModel.exposure > clear.exposure, 'the camera opens for the night');
-assert.ok(nightModel.illuminance * nightModel.exposure < 0.3 * clear.illuminance * clear.exposure, 'and the night still reads as night');
+const nightKey = (nightModel.illuminance * nightModel.exposure) / (clear.illuminance * clear.exposure);
+assert.ok(nightKey > 0.2 && nightKey < 0.35, `and the night reads as night, a little more visible than the old rig's (${nightKey.toFixed(2)} of the day's key)`);
 near(nightModel.sunIntensity, 0.6, 1e-9, 'the night\'s direct light is the authored moon');
 hexToLinear(0xafc3ec).forEach((v, c) => near(nightModel.sunColor[c], v, 1e-12, `the moon's colour ch${c}`));
 assert.ok(luminance(nightModel.groundRadiance) < 0.2 * luminance(clear.groundRadiance), 'the night\'s ground is moonlit, not the day\'s');

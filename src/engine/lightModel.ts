@@ -142,9 +142,13 @@ export const OVERCAST_LIGHT_COLOR: Rgb = Object.freeze([0.96, 1.0, 1.04]) as Rgb
  * scattered light of a populated horizon that keep a moonlit field readable — the dome's 8 % moonlit sky alone
  * lights the shade about a tenth as strongly as the moon lights open ground, which reads as a black void on a screen.
  */
-export const NIGHT_SKY_GLOW = 0.16;
-/** The camera's night offset (EV at full night): a moonlit scene sits a little over two stops under the day. */
-export const NIGHT_EV = -0.5;
+export const NIGHT_SKY_GLOW = 0.22;
+/**
+ * The camera's night offset (EV at full night): a moonlit scene sits under two stops below the day (its displayed key
+ * about 30 % of Verdant's noon — the old rig's night sat at about a third of its day, and the owner asked on 2026-09-14
+ * for a night a little more visible, not darker; the shade keeps the glow's light).
+ */
+export const NIGHT_EV = -0.25;
 /** Its colour: the blue of a moonlit sky (linear, luminance ≈ 1). */
 export const NIGHT_GLOW_COLOR: Rgb = Object.freeze([0.72, 0.95, 1.38]) as Rgb;
 /** The sunlit share of the ground the environment shows below the horizon (groundBounce.ts adds the rest). */
