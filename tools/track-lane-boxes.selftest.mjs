@@ -30,8 +30,13 @@ assert.match(generator, /trackLaneBoxesForVoxel\(tank\.root, VOXEL\)/, 'the gene
 assert.match(generator, /insideTrackLane\(laneBoxes, grid, x, y, z\)/, 'the generator skips lane voxels with the shared point test');
 assert.doesNotMatch(generator, /function trackLaneBoxes|function insideTrackLane|isTrackShoeMesh/, 'the generator keeps no private lane copy');
 const check = readFileSync('tools/tank-watertight-check.mjs', 'utf8');
-assert.match(check, /^import \{ trackLaneBoxesForVoxel, trackLaneVoxelMask \} from '\.\/track-lane-boxes\.mjs';$/m, 'the watertight check imports the shared lanes');
+assert.match(check, /^import \{ trackLaneBoxesForVoxel \} from '\.\/track-lane-boxes\.mjs';$/m, 'the watertight check imports the shared lanes');
 assert.match(check, /trackLaneBoxesForVoxel\(tank\.root, VOXEL\)/, 'the check reads the same lanes as the generator');
+// 2026-10-02: the check and the fleet watertight gate measure through one shared module, which masks the lanes
+const measure = readFileSync('tools/tank-watertight-measure.mjs', 'utf8');
+assert.match(measure, /^import \{ trackLaneVoxelMask \} from '\.\/track-lane-boxes\.mjs';$/m, 'the shared measurement imports the lane mask');
+assert.match(check, /measureWatertight\(tris, meshes, laneBoxes,/, 'the check measures through the shared module');
+assert.doesNotMatch(check, /function clusterLeaks|voxelise\(/, 'the check keeps no private measurement copy');
 
 // (2) fixture: lanes per hull sorted left to right, [minX, minY, minZ, maxX, maxY, maxZ], captured 2026-09-21 from the
 // d0cbb9fcd inline function at 0.025 m voxels (band pad 0.05, shoe pad 0.025), rounded to 0.1 mm.

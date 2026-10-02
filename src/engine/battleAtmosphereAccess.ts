@@ -1,5 +1,7 @@
 import { BATTLE_TIMES, type BattleTimeOfDay } from './battleWeatherPolicy.ts';
 import { createLazyRuntimeOwner } from '../app/lazyRuntimeOwner.ts';
+import { loadGroundedLightModel } from './lightModelCore.ts';
+import { loadCloudscapeLayers } from './cloudPresets.ts';
 import type { BattleAtmosphereRuntime, BattleAtmosphereRuntimeOptions } from './battleAtmosphereRuntime.ts';
 
 type AtmosphereModule = Pick<typeof import('./battleAtmosphereRuntime.ts'), 'createBattleAtmosphereRuntime'>;
@@ -11,6 +13,10 @@ export function createBattleAtmosphereAccess(
   options: () => BattleAtmosphereRuntimeOptions,
   load: () => Promise<AtmosphereModule> = () => import('./battleAtmosphereRuntime.ts'),
 ) {
+  // 2026-10-02 (the boot weight): the grounded light model (lightModelCore.ts) and the maps' cloudscapes (cloudPresets.ts)
+  // ride the same covered acquisition, so every open sky this runtime applies is lit and clouded by them
+  const loadRuntime = load;
+  load = () => Promise.all([loadRuntime(), loadGroundedLightModel(), loadCloudscapeLayers()]).then(([module]) => module);
   const owner = createLazyRuntimeOwner(load, (module) => module.createBattleAtmosphereRuntime(options()));
   let generation = 0;
   return {

@@ -415,7 +415,12 @@ the former receipts' checks, with their assertions unchanged, in `*Audit.test-su
 - `fleetPassLow` — the same build at LOW: the ledger's LOW rows, ERA registration and gun articulation (formerly
   `gunArticulation` and `eraGameplayRegistration`).
 - `fleetPassDefault` — the factory default (seed 4000), the build the marking-seat and combat-anatomy generators
-  measure: combat anatomy, mudguard seating, vehicle markings and tank assets (formerly four receipts).
+  measure: combat anatomy, mudguard seating, vehicle markings and tank assets (formerly four receipts), and the
+  fleet watertight gate (2026-10-02, `watertightAudit.test-support.mjs`): every hull holds water with its shipped
+  fills, measured exactly as `tools/tank-watertight-check.mjs` does (the body each tank's fills bound, track-lane and
+  retained air reported apart). The pass builds without the fill registry, so the audit attaches each tank's fills
+  through `applyInteriorFills` and removes them again; it costs about 1 s of CPU a hull (209 s for the fleet) and no
+  extra build. A stale fill record fails by name with its regeneration command.
 
 The builds stay separate where the checks read different models: camo seeds move seeded stowage, the generated seats
 and calibrations are solved on the default seed, the ledger pins seed 4242, and `fleetFloorClearance` needs the static
