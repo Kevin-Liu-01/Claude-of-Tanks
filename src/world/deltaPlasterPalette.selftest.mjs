@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { registerHooks, stripTypeScriptTypes } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { physicalPropRecords } from '../../tools/fixtures/physical-prop-records.mjs';
 
 const propsUrl = new URL('./props.ts', import.meta.url);
 const source = readFileSync(propsUrl, 'utf8');
@@ -72,7 +73,7 @@ function recordProps(props) {
       [slot, new Set(facades.map(mesh => mesh.material[slot])).size])),
     facadeAttributes, facadeVertexColors: facades.map(mesh => mesh.material.vertexColors),
     otherMeshes: meshes.filter(mesh => !facades.includes(mesh)).map(recordGeometry),
-    physical: Object.fromEntries(physicalKeys.map(key => [key, hash(JSON.stringify(props[key]))])),
+    physical: Object.fromEntries(physicalKeys.map(key => [key, hash(JSON.stringify(physicalPropRecords(props[key], props)))])),
     rng: globalThis.__paletteRng.map(row => ({ seed: row.seed, count: row.count, last: row.last,
       next: [row.next(), row.next(), row.next()] })),
   };
