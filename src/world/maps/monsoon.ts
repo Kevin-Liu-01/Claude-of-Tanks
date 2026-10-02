@@ -107,6 +107,8 @@ export default {
     fogTintHex: 0x708c86, fogMix: 0.66, envIntensity: 0.27,
     cloudOpacity: 1.35, cloudOpacity2: 1.18, cloudTintHex: 0xbecac8,
     sunIntensity: 3.6, sunColorHex: 0xfae8d0, hemiIntensity: 0.46, postExposure: 0.96, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 2.9 / 0xffdfc0 / 0.54); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
+    // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
+    lighting: { groundAlbedoHex: 0x61694b },
   },
   minimap: {
     base: [51, 84, 59], hard: [82, 82, 70], soft: [37, 65, 55],

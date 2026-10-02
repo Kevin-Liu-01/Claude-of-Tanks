@@ -36,6 +36,7 @@ const instantiate = new Function('ports', stripTypeScriptTypes(`
   const updateAerialZoom = () => {}, updateScopeGrade = () => {};
   const updateAerialFogColors = () => {}, updateAerialCameraBasis = () => {};
   const updatePostLightFx = () => {}; // round 69: the light effects' per-frame state (stubbed like the aerial helpers)
+  const updateOutputGrade = () => {}; // 2026-10-01: the light model's exposure and grade (lightModel.ts), stubbed like the rest
   const CLOUD_SHADE_DEFAULT = 0, lateTarget = null;
   // temporal AA (2026-09-12): the frame boundary jitters the projection when the pass is on; this
   // WebGL-I/O receipt keeps it off and stubs the camera/target ports it would touch

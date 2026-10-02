@@ -440,7 +440,9 @@ void main() {
 //   1 transmittance from the viewer toward the sun (the sun disc's colour)
 //   2 anti-solar horizon average, elevation 1.25° over ±20° of azimuth (the fog colour, the legacy probe's row 8)
 //   3 the same band at 16.25° (row 14: the elevation falloff of round 37 is texel 3 over texel 2)
-//   4 zenith   5 sun-side horizon average   6 mean upper-hemisphere luminance   7 unused
+//   4 zenith   5 sun-side horizon average   6 mean upper-hemisphere luminance
+//   7 the cosine-weighted irradiance / π of the raw sky — no display knee, × the dome intensity — the light the
+//     environment bake integrates (2026-10-01, the grounded light model: lightModel.ts reads it)
 const SUMMARY_FRAGMENT = /* glsl */`
 ${ATMOSPHERE_CORE_GLSL}
 ${ATMOSPHERE_SKY_GLSL}
@@ -490,6 +492,16 @@ void main() {
 			lum += dot( atmoSkyVisible( vec3( rr * cos( phi ), y, rr * sin( phi ) ) ), vec3( 0.2126, 0.7152, 0.0722 ) );
 		}
 		outv = vec3( lum / 64.0 );
+	} else {
+		for ( int i = 0; i < 256; i++ ) {
+			float a = ( float( i - ( i / 16 ) * 16 ) + 0.5 ) / 16.0;
+			float b = ( float( i / 16 ) + 0.5 ) / 16.0;
+			float rr = sqrt( b );
+			float phi = a * 2.0 * ATMO_PI;
+			vec3 d = vec3( rr * cos( phi ), sqrt( max( 1.0 - b, 0.0 ) ), rr * sin( phi ) );
+			outv += atmoSky( d );
+		}
+		outv *= uAtmoIntensity / 256.0;
 	}
 	gl_FragColor = vec4( outv, 1.0 );
 }`;
@@ -504,6 +516,8 @@ export interface AtmosphereSummary {
   meanLuminance: number;
   /** Luminance of the +16.25° band over the horizon band (round 37's falloff), 1 when degenerate. */
   elevationFalloff: number;
+  /** 2026-10-01: the raw sky's cosine-weighted irradiance / π (no knee, × the dome intensity): the environment's light. */
+  irradianceRaw: THREE.Color;
 }
 
 function makeLut(width: number, height: number, type: THREE.TextureDataType): THREE.WebGLRenderTarget {
@@ -597,7 +611,7 @@ export class AtmosphereLuts {
       irradiance: new THREE.Color(0.3, 0.4, 0.6), sunTransmittance: new THREE.Color(1, 1, 1),
       horizon: new THREE.Color(0.45, 0.5, 0.55), horizonElevated: new THREE.Color(0.2, 0.3, 0.5),
       zenith: new THREE.Color(0.1, 0.2, 0.45), sunHorizon: new THREE.Color(0.5, 0.5, 0.5),
-      meanLuminance: 0.3, elevationFalloff: 1,
+      meanLuminance: 0.3, elevationFalloff: 1, irradianceRaw: new THREE.Color(0.11, 0.125, 0.16),
     };
   }
 
@@ -702,6 +716,7 @@ export class AtmosphereLuts {
     s.zenith.setRGB(px[16], px[17], px[18]);
     s.sunHorizon.setRGB(px[20], px[21], px[22]);
     s.meanLuminance = px[24];
+    s.irradianceRaw.setRGB(px[28], px[29], px[30]);
     const elevatedLum = 0.2126 * px[12] + 0.7152 * px[13] + 0.0722 * px[14];
     s.elevationFalloff = horizonLum > 1e-6 ? Math.min(1, Math.max(0.05, elevatedLum / horizonLum)) : 1;
     this.summaryValid = true;

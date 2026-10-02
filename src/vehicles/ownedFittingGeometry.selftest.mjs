@@ -6,6 +6,7 @@ import { registerHooks, stripTypeScriptTypes } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 import { ownFittingGeometry, disposeOwnedFittingGeometry } from './ownedFittingGeometry.ts';
+import { staticMergePartsOf } from './staticMergeParts.ts';
 
 const files = new Map([
   [new URL('./profiles/kit.ts', import.meta.url).href, [
@@ -81,13 +82,19 @@ function digest(root) {
 
 function fittingRecords(root) {
   const records = new Map();
+  const add = (mesh, geometry) => {
+    if (records.has(geometry)) return;
+    const record = { mesh, disposals: 0 };
+    geometry.addEventListener('dispose', () => record.disposals++);
+    records.set(geometry, record);
+  };
   root.traverse(object => {
-    if (!object.isMesh || typeof object.userData.fittingSlot !== 'string') return;
-    if (!records.has(object.geometry)) {
-      const record = { mesh: object, disposals: 0 };
-      object.geometry.addEventListener('dispose', () => record.disposals++);
-      records.set(object.geometry, record);
-    }
+    if (!object.isMesh) return;
+    // Battle builds fold contiguous same-material runs into one draw (staticDrawMerge.ts); its side table
+    // keeps each source buffer, which the visual still releases exactly once.
+    const parts = staticMergePartsOf(object);
+    for (const part of parts) if (typeof part.userData.fittingSlot === 'string') add(object, part.geometry);
+    if (!parts.length && typeof object.userData.fittingSlot === 'string') add(object, object.geometry);
   });
   assert.equal(records.size, root.getObjectByName('fitting_americanRws_standard') ? 16 : 14, 'all actual shared-kit mount and articulated weapon buffers');
   return records;
