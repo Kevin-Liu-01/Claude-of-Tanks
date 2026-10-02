@@ -2,9 +2,10 @@
 // A merged battle/Garage draw keeps one row per folded source mesh: its name,
 // userData, depth layer, own geometry and frame chain. Consumers that measure
 // per mesh (rest contact, presentation floor, showroom framing) replay the
-// sources through this leaf module, which depends on three only, so engine
-// owners can read it without loading the merge builder.
+// sources through this leaf module (three and the fitting ownership registry
+// only), so engine owners can read it without loading the merge builder.
 import * as THREE from 'three';
+import { disposeOwnedFittingGeometry } from './ownedFittingGeometry.ts';
 
 export const STATIC_MERGE_PARTS_KEY = 'staticMergeParts';
 
@@ -51,6 +52,23 @@ export function staticMergePartMatrixWorld(
     return out.multiplyMatrices(_wrapperWorld, part.matrix);
   }
   return out.multiplyMatrices(ownerWorld, part.matrix);
+}
+
+/** The visual's disposal walk releases each folded source's owned fitting buffer
+ * exactly once (ownedFittingGeometry.ts), as it did while the source was a mesh. */
+export function releaseStaticMergeParts(mesh: THREE.Object3D): void {
+  for (const part of staticMergePartsOf(mesh)) disposeOwnedFittingGeometry(part.geometry);
+}
+
+/** The folded source a raycast face of a merged draw belongs to (null for a live mesh). */
+export function staticMergePartForFace(mesh: THREE.Object3D, faceIndex: number | null | undefined): StaticMergePart | null {
+  if (faceIndex == null) return null;
+  const corner = faceIndex * 3;
+  for (const part of staticMergePartsOf(mesh)) {
+    if (part.indexStart >= 0 ? corner >= part.indexStart && corner < part.indexStart + part.indexCount
+      : corner >= part.vertexStart && corner < part.vertexStart + part.vertexCount) return part;
+  }
+  return null;
 }
 
 /** Find a source mesh by its authored name, live or folded into a merged draw. */

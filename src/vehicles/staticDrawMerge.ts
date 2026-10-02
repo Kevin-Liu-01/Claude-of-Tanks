@@ -248,7 +248,9 @@ function mergeRun(run: readonly Candidate[], index: number, disposables: Geometr
     vertexStart += vertexCount;
     indexStart += indexCount;
   }
-  mesh.userData[STATIC_MERGE_PARTS_KEY] = Object.freeze(parts);
+  // Non-enumerable: userData copies (Object3D.copy's JSON round trip) and
+  // metadata digests never walk the source geometries; staticMergePartsOf reads it.
+  Object.defineProperty(mesh.userData, STATIC_MERGE_PARTS_KEY, { value: Object.freeze(parts), enumerable: false });
   return mesh;
 }
 

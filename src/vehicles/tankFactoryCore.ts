@@ -16,6 +16,7 @@ import { markSmokeTube, alignSmokeBanks, transferSmokeSockets } from './vehicleA
 import * as THREE from 'three';
 import { isBattleShareableMesh, shareBattleGeometry } from './battleGeometrySharing.ts';
 import { mergeContiguousStaticRuns, type CoplanarLayerRecord } from './staticDrawMerge.ts';
+import { releaseStaticMergeParts } from './staticMergeParts.ts';
 import { combatVisibleObjects, retainCombatLods } from './combatVisibility.ts';
 import { detachEmptyLodSentinels } from '../engine/lodEmptySentinels.ts';
 import {fitLoadedTrackContact,loadedContactScratch} from './loadedTrackContact.ts';
@@ -1548,7 +1549,7 @@ function collectCoplanarDepthLayers(root: THREE.Object3D): CoplanarLayerRecord[]
   return records.map(({ object, materials }, index) => ({ object, materials, layer: index + 1 }));
 }
 
-function applyCoplanarDepthLayers(root: THREE.Object3D, records: readonly CoplanarLayerRecord[]): void {
+function installCoplanarDepthLayers(root: THREE.Object3D, records: readonly CoplanarLayerRecord[]): void {
   for (const { object, materials, layer } of records) {
     object.userData.coplanarDepthLayer = layer;
     const previous = object.onBeforeRender;
@@ -9519,6 +9520,7 @@ function* createTankOwnedSteps(
         if (isVehicleBatchedMesh(o)) o.dispose();
         if (isVehicleInstancedMesh(o)) o.dispose();
         if (isVehicleMesh(o)) disposeOwnedFittingGeometry(o.geometry);
+        if (isVehicleMesh(o)) releaseStaticMergeParts(o);
         // PERF (performance_budget r3): kit-merged GLB geometry is baked
         // per instance (modelLoader mergeStaticKit) — unlike the shared
         // cache geometry it must die with the visual or eviction leaks it.
@@ -9705,7 +9707,7 @@ function* createTankOwnedSteps(
     if (batchStatic && staticDrawMerge !== 'off') {
       depthLayers = mergeBattleStaticRuns(depthLayers, staticDrawMerge === 'translations');
     }
-    applyCoplanarDepthLayers(root, depthLayers);
+    installCoplanarDepthLayers(root, depthLayers);
     const tailFinalizeFinishedAt = performance.now();
     // Retain each authored hull/turret/gun proxy and its articulation owner.
     // Only battle builds combine their submissions; no silhouette, cascade
