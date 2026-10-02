@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { KIT, registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildStrv122X } from './strv122XPhotoDraft.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Historical photo contract only; actual supplied-ID tests are separate.
 registerProfiledBuilders({ strv122_x: buildStrv122X });
@@ -10,9 +11,6 @@ registerProfiledBuilders({ strv122_x: buildStrv122X });
 // Independent FMV envelope values. Individual fittings below are explicit
 // photo-led construction contracts, never assertions against the AI source.
 const FMV = { width: 3.78, gunForwardLength: 9.97 };
-const near = (actual, expected, tolerance, label) => assert.ok(
-  Number.isFinite(actual) && Math.abs(actual - expected) <= tolerance,
-  `${label}: ${actual} versus ${expected} ± ${tolerance}`);
 const ray = (meshes, origin, direction, far = 20) => new THREE.Raycaster(
   new THREE.Vector3(...origin), new THREE.Vector3(...direction), 0, far,
 ).intersectObjects(meshes, false)[0];

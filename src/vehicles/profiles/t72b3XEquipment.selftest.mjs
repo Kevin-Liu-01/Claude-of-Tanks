@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} versus independent source ${b} ±${t}`);
 function opaqueMeshes(root){
   const meshes=[];
   root.traverseVisible(m=>{

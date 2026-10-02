@@ -87,6 +87,9 @@ one oversized builder contract or an eager fleet dependency.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
+A new whole-fleet check is a fleet audit (`{ check(id, tank), finish() }`) added to the fleet pass whose build it
+reads (`fleetPassDefault`, `fleetPassHigh`, `fleetPassLow`; rules in `fleetPass.test-support.mjs`), not another
+receipt that rebuilds all 217 tanks: the build is nearly all of a sweep's cost.
 All playables use first-party runtime geometry; source GLBs are comparison-only.
 Every first-party procedural vehicle is created by Kevin B. Liu and must keep
 the canonical named authorship record from `src/authorship.ts`; AI systems are
@@ -151,7 +154,7 @@ scheme `wheelPaint` material, hardware dark steel. `normalizeTankAppearance`
 re-seats any clone or fitting paint onto the hull paint and undoes in-place
 retints; `wheelQuality.ts` audits the table on every hull. Never author a
 per-hull wheel hex, clone the wheel paint, or retint it in a profile. Run the three focused
-pattern checks, `nationWheelSets.selftest.mjs`, `wheelQuality.selftest.mjs` and
+pattern checks, `nationWheelSets.selftest.mjs`, `fleetPassHigh.selftest.mjs` (the wheel-quality audit) and
 `node tools/wheel-review.mjs --all --gate` after any wheel or running-gear
 change; `node tools/wheel-inventory.mjs --all` lists every hull's wheel.
 Material roles (owner 2026-09-25, FSP-06): camouflage belongs to painted bodywork — hull, turret, guards,

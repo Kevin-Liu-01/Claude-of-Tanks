@@ -4,12 +4,9 @@ import { createTank } from '../tankFactory.ts';
 import '../sourceXFleetSpecs.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { K2_X_PROFILES } from './k2X.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 registerProfiledBuilders({ k2_x: K2_X_PROFILES.k2_x.build });
-const near=(actual,expected,tolerance,label)=>assert.ok(
-  Number.isFinite(actual)&&Math.abs(actual-expected)<=tolerance,
-  `${label}: ${actual} vs source ${expected} ± ${tolerance}`,
-);
 const top=(root,x,z)=>new THREE.Raycaster(new THREE.Vector3(x,5,z),
   new THREE.Vector3(0,-1,0),0,6).intersectObject(root,true)[0]?.point.y;
 

@@ -3,14 +3,10 @@ import fs from 'node:fs';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { addT90SMSmoke } from './t90SMXSmoke.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const receipt=JSON.parse(fs.readFileSync(new URL('../../../docs/references/tanks/t90sm_x.smoke-source.json',import.meta.url),'utf8'));
 assert.equal(receipt.measurements.length,12,'twelve independently identified source launchers');
-
-function near(value,target,tolerance,label) {
-  assert.ok(Number.isFinite(value)&&Math.abs(value-target)<=tolerance,
-    `${label}: ${value} versus independent source ${target} ± ${tolerance}`);
-}
 
 function ray(root,origin,direction,far=.5) {
   return new THREE.Raycaster(origin,direction,0,far).intersectObject(root,true).find(hit=>{

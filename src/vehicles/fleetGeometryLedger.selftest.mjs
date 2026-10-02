@@ -1,10 +1,10 @@
 // The fleet geometry ledger (docs/references/fleet-geometry-ledger.json) replaces the frozen per-receipt geometry pins
-// retired on 2026-10-01 (owner: "Retire frozen pins"). Its rows are verified in npm test by the two sweeps that already
-// build the whole fleet with the ledger's options, wheelQuality.selftest (HIGH) and gunArticulation.selftest (LOW), so
-// the ledger costs no second fleet build. An intended geometry change re-pins in one command
-// (npm run tank:geometry:update) and the reviewed diff names the tanks and rig groups that moved.
+// retired on 2026-10-01 (owner: "Retire frozen pins"). Its rows are verified in npm test by the two fleet passes that
+// already build the whole fleet with the ledger's options for their other audits, fleetPassHigh.selftest (HIGH) and
+// fleetPassLow.selftest (LOW), so the ledger costs no second fleet build. An intended geometry change re-pins in one
+// command (npm run tank:geometry:update) and the reviewed diff names the tanks and rig groups that moved.
 //
-// This receipt guards the ledger itself: it covers exactly the playable roster at both qualities, both sweeps run in
+// This receipt guards the ledger itself: it covers exactly the playable roster at both qualities, both passes run in
 // npm test and feed it, a probe build reproduces its row, and the comparison bites (a moved row, one moved vertex,
 // a missing or extra tank, a foreign camo seed or build option, a tank the sweep never built).
 import assert from 'node:assert/strict';
@@ -31,18 +31,23 @@ for (const id of roster) for (const quality of LEDGER_QUALITIES) {
   assert.deepEqual(Object.keys(row.groups).sort(), GROUP_KEYS, `${id}/${quality}: every rig group rolled up`);
 }
 
-// Both fleet sweeps run in npm test and feed the ledger from the builds they already make.
+// Both fleet passes run in npm test and feed the ledger from the builds they already make: the ledger audit is the
+// first audit of each pass (so it digests each fresh build before anything reads it), built with the pass's own options.
 const registered = Object.values(SELFTEST_SUITES).flat();
 for (const [file, source, quality] of [
-  ['src/vehicles/wheelQuality.selftest.mjs', readFileSync(new URL('./wheelQuality.selftest.mjs', import.meta.url), 'utf8'), 'high'],
-  ['src/vehicles/gunArticulation.selftest.mjs', readFileSync(new URL('./gunArticulation.selftest.mjs', import.meta.url), 'utf8'), 'low'],
+  ['src/vehicles/fleetPassHigh.selftest.mjs', readFileSync(new URL('./fleetPassHigh.selftest.mjs', import.meta.url), 'utf8'), 'high'],
+  ['src/vehicles/fleetPassLow.selftest.mjs', readFileSync(new URL('./fleetPassLow.selftest.mjs', import.meta.url), 'utf8'), 'low'],
 ]) {
   assert.ok(registered.includes(file), `${file} runs in npm test`);
   assert.match(source, new RegExp(`const BUILD = \\{[^}]*quality: '${quality}'`), `${file} builds the ${quality} ledger model`);
-  assert.match(source, /createFleetGeometryLedgerAudit\(BUILD\)/, `${file} audits the ledger with its own build options`);
-  assert.match(source, /geometryLedger\.record\(id, tank\)/, `${file} records every fresh build`);
-  assert.match(source, /geometryLedger\.finish\(\)/, `${file} fails on moved rows`);
+  assert.match(source, /build: BUILD,/, `${file} hands its BUILD to the fleet pass`);
+  assert.match(source, /audits: \[\n\s*\{ name: 'fleetGeometryLedger', create: \(\) => createFleetGeometryLedgerPassAudit\(BUILD\) \},/,
+    `${file} audits the ledger first, with its own build options`);
 }
+const passAudit = readFileSync(new URL('../../tools/fleet-geometry-digest.mjs', import.meta.url), 'utf8');
+assert.match(passAudit, /check\(id, tank\) \{ geometryLedger\.record\(id, tank\); \}/, 'the pass audit records every fresh build');
+assert.match(passAudit, /const ledgerResult = geometryLedger\.finish\(\);\n\s*assert\.deepEqual\(ledgerResult\.problems, \[\]/,
+  'the pass audit fails on moved rows');
 
 // A probe build through the audit reproduces its row; every other tank is reported as not built by that sweep.
 const PROBE = 'm551_sheridan';
@@ -88,4 +93,4 @@ assert.throws(() => createFleetGeometryLedgerAudit({ ...ledgerBuildOptions('high
   /build option batchStatic=true differs/, 'a sweep with other build options cannot verify the ledger');
 assert.throws(() => createFleetGeometryLedgerAudit({ ...ledgerBuildOptions('high'), camoSeed: 4000 }), /build option camoSeed/);
 assert.throws(() => ledgerBuildOptions('ai'), /unknown quality 'ai'/);
-console.log(`fleetGeometryLedger.selftest: ${roster.length} tanks x ${LEDGER_QUALITIES.join('/')} recorded; both sweeps wired; probe ${PROBE} reproduces its row; negative controls bite`);
+console.log(`fleetGeometryLedger.selftest: ${roster.length} tanks x ${LEDGER_QUALITIES.join('/')} recorded; both fleet passes wired; probe ${PROBE} reproduces its row; negative controls bite`);

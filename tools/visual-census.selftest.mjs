@@ -24,10 +24,10 @@ import {
 } from './visual-census-report.mjs';
 import { CENSUS_HELP, parseCensusArgs, pickCaptureMaps } from './visual-census.mjs';
 import { createPoliteCaptureLock, stepBehindStamp } from './visual-census-lock.mjs';
+import { near } from './receipt-kit.test-support.mjs';
 
 const ROOT = path.resolve(new URL('..', import.meta.url).pathname);
 const dir = mkdtempSync(path.join(tmpdir(), 'cot-visual-census-selftest-'));
-const near = (a, b, tol, label) => assert.ok(Math.abs(a - b) <= tol, `${label}: ${a} vs ${b} (tol ${tol})`);
 
 /** Paint a frame from a per-pixel rgb callback, write it as a real PNG and decode it back. */
 async function frame(file, width, height, rgbAt) {

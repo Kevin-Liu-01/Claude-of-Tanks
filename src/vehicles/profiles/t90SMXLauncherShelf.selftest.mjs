@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT90SMLeftLauncherShelf} from './t90SMXLauncherShelf.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 function first(root,x,z) {
   return new THREE.Raycaster(new THREE.Vector3(x,3,z),new THREE.Vector3(0,-1,0),0,2)
@@ -9,10 +10,6 @@ function first(root,x,z) {
       for(let o=hit.object;o;o=o.parent)if(!o.visible)return false;
       return !/shadow/.test(hit.object.name);
     });
-}
-function near(actual,expected,tolerance,label) {
-  assert.ok(Number.isFinite(actual)&&Math.abs(actual-expected)<=tolerance,
-    `${label}: ${actual} versus independent source ${expected} ± ${tolerance}`);
 }
 for(const quality of ['high','low']) {
   const tank=createTank('t90sm_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});

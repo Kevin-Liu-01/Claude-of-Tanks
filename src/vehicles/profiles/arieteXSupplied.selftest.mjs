@@ -3,12 +3,11 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { arietePlaneStock } from './arieteXSuppliedArmor.ts';
 import { ARIETE_X_FAMILY_SCALE as S } from './arieteXFamilyFrame.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Independently frozen SOURCE ray/frame witnesses, not candidate calibrations.
 const yawDatum = [0, 1.306227824, .328028885], gunDatum = [0, 1.651499209, 1.3415539];
 const muzzleZ = 5.028094113;
-const near = (actual, expected, tolerance, label) => assert.ok(Number.isFinite(actual)
-  && Math.abs(actual - expected) <= tolerance, `${label}: ${actual} vs ${expected} ±${tolerance}`);
 // Keep the independent historical source samples; apply only the owner's
 // frozen uniform enlargement and return intersections in that source frame.
 const cast = (meshes, from, direction, far = 20) => {

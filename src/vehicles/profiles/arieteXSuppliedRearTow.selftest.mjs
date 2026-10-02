@@ -2,9 +2,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ARIETE_X_FAMILY_SCALE as S } from './arieteXFamilyFrame.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-const near = (actual, expected, tolerance, label) => assert.ok(Number.isFinite(actual)
-  && Math.abs(actual - expected) <= tolerance, `${label}: ${actual} vs source${expected} ±${tolerance}`);
 const cast = (meshes, from, direction, far = 10) => {
   const hit = new THREE.Raycaster(new THREE.Vector3(...from).multiplyScalar(S),
     new THREE.Vector3(...direction), 0, far*S).intersectObjects(meshes, false)[0];

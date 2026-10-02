@@ -2,9 +2,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {TYPE10_X_DATUMS} from './type10X.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-const near=(a,b,e,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=e,
-  `${label}: ${a} versus ${b} ±${e}`);
 const identity=new THREE.Matrix4();
 function hit(root,position,direction,far=5,pose=identity) {
   return new THREE.Raycaster(new THREE.Vector3(...position).applyMatrix4(pose),

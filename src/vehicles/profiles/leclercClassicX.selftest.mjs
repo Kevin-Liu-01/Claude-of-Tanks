@@ -2,9 +2,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank, KIT } from '../tankFactory.ts';
 import { LECLERC_CLASSIC_X_DATUMS as D } from './leclercClassicXFrame.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-const near = (actual, expected, tolerance, label) => assert.ok(Number.isFinite(actual)
-  && Math.abs(actual - expected) <= tolerance, `${label}: ${actual}, source ${expected} ±${tolerance}`);
 const ray = (objects, p, d, far = 20) => new THREE.Raycaster(
   new THREE.Vector3(...p), new THREE.Vector3(...d), 0, far).intersectObjects(objects, false)[0];
 

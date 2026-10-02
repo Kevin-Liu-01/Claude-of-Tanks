@@ -3,11 +3,9 @@ import fs from 'node:fs';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT90SMLeftSmokeMounts} from './t90SMXLeftSmokeMounts.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const source=JSON.parse(fs.readFileSync(new URL('../../../docs/references/tanks/t90sm_x.smoke-source.json',import.meta.url),'utf8'));
-function near(value,target,tolerance,label) {
-  assert.ok(Number.isFinite(value)&&Math.abs(value-target)<=tolerance,`${label}: ${value} versus source ${target} ± ${tolerance}`);
-}
 function helperGeometry() {
   const root=new THREE.Group(),material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});root.position.set(.008,1.532,.359);
   addT90SMLeftSmokeMounts({addEquipment(bucket,geometry,x,y,z){
