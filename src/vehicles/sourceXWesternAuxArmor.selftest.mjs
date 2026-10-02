@@ -3,39 +3,23 @@ import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { TANK_SPECS } from './specs.ts';
-import { geometryFingerprint } from './tankAssets.ts';
 import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import { assertConvexArmorOutline } from '../sim/armorOutline.test-support.mjs';
 import { ARIETE_X_FAMILY_SCALE as ARIETE_SCALE } from './profiles/arieteXFamilyFrame.ts';
 import { c1Point } from './profiles/challenger1XSuppliedFrame.ts';
 import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
-import { withHistoricalFixedGuardPaint } from './historicalFixedGuardPaint.test-support.mjs';
-import { historicalStrv122WheelConfig, withHistoricalStrv122Wheels } from './strv122WheelHistory.test-support.mjs';
-import { strv122SuppliedWheelSolids } from './profiles/strv122XSuppliedGear.ts';
-import { buildFleetTrackShoe } from './profiles/abramsSourceXTrackShoe.ts';
-import { KIT } from './tankFactoryCore.ts';
 
+// 2026-10-01 (owner: retire frozen pins): the pinned permanent-armor/module/crew/collision digests, the
+// whole-model geometry fingerprints and the historical guard-paint and Strv 122 wheel/link inverses that
+// reached them are gone; the fleet geometry ledger owns whole-tank change detection. The auxiliary face
+// counts, seating, posed traces, air and repeated-synchronization contracts below are live.
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+// [hull, turret] auxiliary face counts per X study.
 const cases = {
-// 2026-09-12 fleet visual standard (owner decision): the fleet .024 track band on
-// AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated), the scheme-painted
-// pressed dish, the Chieftain 5 X commander GPMG and the Ariete loader GPMG move
-// the western native digests; values below are repinned from the current build.
-  // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
-  // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
-  leo2a6_x: { main: 'e584febc104149d49e22b2c282253b337dbfa710d5d4591669c0fe3e02d6bf00', geometry: ['fc7495d1', '6a8ca65c'], counts: [20, 0] },
-  strv122_x: { main: '3a1b5c2e572d3d800c6a4ec71fcaa19e4913294182c0af33f6b1a1f375db954b', geometry: ['61be007d', '4f0cd9c3'], counts: [676, 66] },
-  // 2026-09-21 owner-selected definitive C1: complete1.232-scale frame,
-  // corrected120mm physical bore and fresh anatomy. Previous main hash:
-  // 5ec104dd88541f1526221ab452fabe2ba9b63bb9a1825e73dc7165b918465b59
-  // Previous HIGH33372a11/LOW27af5e0c; finite-face/ray controls remain below.
-  // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we dont use anymore"): the Ariete C1 X is the Italy donor and its
-  // outboard hub cap was trimmed .2083 → .1993 so the ×1.232 family rig keeps the cap inside the tire face (wheel-review
-  // PROUD gate); the Challenger 1 X draws the UK Challenger 2E hollow paired wheel and the fleet arm. Geometry repinned.
-  ariete_c1_x: { main: 'a0b922dbe5da579937f27f8420ec41167ebe2c6d9634698b25ce0cfacfdd23fc', geometry: ['37c49f98', '33a43691'], counts: [210, 0] },
-  // 2026-09-29 approved complete 1.10 resize; physical witnesses below use
-  // the same fixed transform, and the independent native receipt is retained.
-  challenger1_x: { main: '97d76a2b2d23ae7b408beb43ae2ad16c83206014e0bdc6a4c3fa779208f78a28', geometry: ['beb0854e', 'ba128570'], counts: [156, 0] },
+  leo2a6_x: { counts: [20, 0] },
+  strv122_x: { counts: [676, 66] },
+  ariete_c1_x: { counts: [210, 0] },
+  challenger1_x: { counts: [156, 0] },
 };
 const pose = yaw => tankPoseFromState({ pos: new THREE.Vector3(), yaw: 0, visualPitch: 0,
   visualRoll: 0, turretYaw: yaw, gunPitch: 0 });
@@ -61,45 +45,8 @@ function distance(point, faces) {
   return Math.min(...faces.map(face => face.closestPointToPoint(point, closest).distanceTo(point)));
 }
 
-// Reject unintended recipes and preserve geometry ownership on both branches.
-{
-  const hook = KIT.buildRunningGear;
-  let disposed = 0;
-  assert.throws(() => withHistoricalStrv122Wheels(() => ({ dispose() { disposed++; } })));
-  assert.equal(disposed, 1); assert.equal(KIT.buildRunningGear, hook);
-  assert.throws(() => withHistoricalStrv122Wheels(() => KIT.buildRunningGear({ spec: { id: 'strv122' } }, {})));
-  assert.equal(KIT.buildRunningGear, hook);
-  for (const corrupt of [false, true]) {
-    const solids = strv122SuppliedWheelSolids(48), counts = new Map();
-    for (const g of Object.values(solids)) g.addEventListener('dispose', () => counts.set(g, (counts.get(g) ?? 0) + 1));
-    const config = { trackShoeBuilder: buildFleetTrackShoe, wheelCoreGeometry: { disc: solids.core }, wheelZs: [1, 2],
-      wheelFaceLayers: [{ side: -1, geometry: solids.left }, { side: 1, geometry: solids.right }] };
-    if (corrupt) {
-      solids.left.attributes.position.array[0] += .001;
-      assert.throws(() => historicalStrv122WheelConfig(config));
-      assert.equal(counts.size, 0, 'failed authentication keeps caller-owned inputs');
-      Object.values(solids).forEach(g => g.dispose());
-    } else {
-      assert.throws(() => historicalStrv122WheelConfig({...config,trackShoeBuilder:()=>{}}),
-        'an unrecognized link recipe cannot be hidden by the historical inverse');
-      assert.equal(counts.size,0,'failed link authentication keeps input ownership');
-      const restored = historicalStrv122WheelConfig(config);
-      assert.equal(restored.trackShoeBuilder,undefined,'historical links use the unchanged original native builder');
-      assert.equal(restored.wheelCoreGeometry, config.wheelCoreGeometry);
-      assert.equal(restored.wheelZs, config.wheelZs, 'all non-target configuration stays owned and unchanged');
-      assert.equal(counts.get(solids.core), undefined);
-      assert.equal(counts.get(solids.left), 1); assert.equal(counts.get(solids.right), 1);
-      solids.core.dispose(); restored.wheelFaceLayers.forEach(layer => layer.geometry.dispose());
-    }
-    for (const g of Object.values(solids)) assert.equal(counts.get(g), 1);
-  }
-}
-
 for (const [id, expected] of Object.entries(cases)) {
   const armor = TANK_SPECS[id].armor;
-  assert.equal(hash([armor.hullPlates.filter(p => p.kind !== 'spaced'), armor.turretPlates.filter(p => p.kind !== 'spaced'),
-    armor.modules, armor.crew, armor.collisionShells]), expected.main,
-  `${id}: ${id === 'ariete_c1_x' || id === 'challenger1_x' ? 'approved enlarged vehicle' : 'pre-edit'} permanent armor, ERA, collision cells, modules and crew stay byte-identical`);
   assert.deepEqual([armor.hullPlates.filter(p => p.surfaceGroup).length, armor.turretPlates.filter(p => p.surfaceGroup).length], expected.counts);
   const donor = TANK_SPECS[{ leo2a6_x: 'leo2a6', strv122_x: 'strv122', ariete_c1_x: 'ariete_c1', challenger1_x: 'challenger1' }[id]].armor;
   for (const plate of auxiliary(armor)) {
@@ -108,23 +55,9 @@ for (const [id, expected] of Object.entries(cases)) {
     assert.ok(original, `${id}: each replacement uses its actual donor protection family`);
     assert.deepEqual([plate.physicalMm, plate.keMm, plate.ceMm], [original.physicalMm, original.keMm, original.ceMm]);
   }
-  for (const [lod, quality] of ['high', 'low'].entries()) {
+  for (const quality of ['high', 'low']) {
     const tank = createTank(id, null, { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 });
     try {
-      if(id==='leo2a6_x'){
-        const original=withHistoricalFixedGuardPaint(id,()=>createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242}));
-        try{assert.equal(geometryFingerprint(original.root),expected.geometry[lod],
-          `${id}/${quality}: original complete mesh partition after eight authenticated finish inverses`);}
-        finally{original.dispose();}
-        assert.notEqual(geometryFingerprint(tank.root),expected.geometry[lod],
-          'actual painted bucket partition is distinct from its historical grouping');
-      }else if(id==='strv122_x'){
-        const original=withHistoricalStrv122Wheels(()=>createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242}));
-        try{assert.equal(geometryFingerprint(original.root),expected.geometry[lod],
-          `${id}/${quality}: original whole model after authenticated wheel/link inverses`);}
-        finally{original.dispose();}
-        assert.notEqual(geometryFingerprint(tank.root),expected.geometry[lod]);
-      }else assert.equal(geometryFingerprint(tank.root), expected.geometry[lod], `${id}/${quality}: every physical buffer unchanged`);
       // Physical stock/posed protection below always uses the real painted tank.
       const hull = tank.root.getObjectByName('hullExternalArmor');
       const turret = tank.root.getObjectByName('turret');
@@ -195,4 +128,4 @@ for (let repeat = 0; repeat < 2; repeat++) {
   for (const id of Object.keys(cases)) assert.equal(hash(auxiliary(TANK_SPECS[id].armor)), finalAuxiliary[id],
     `${id}: repeated synchronization before finalization retains one exact auxiliary field`);
 }
-console.log('sourceXWesternAuxArmor: four actual high/low surfaces, panel gaps, nested-sheet single billing, posed cheeks, unchanged meshes/main anatomy and donor protection pass');
+console.log('sourceXWesternAuxArmor: four actual high/low surfaces, panel gaps, nested-sheet single billing, posed cheeks, repeated synchronization and donor protection pass');

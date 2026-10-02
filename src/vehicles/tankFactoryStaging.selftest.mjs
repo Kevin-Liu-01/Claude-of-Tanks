@@ -1,10 +1,10 @@
-// Round 32 (2026-09-21): fingerprints re-based — Factory is the nation's service pattern again (the material hash carries the camo), and the fixed-mount hulls' end wraps pivot about each side's own outer road wheels.
-// Exact geometry/material/order goldens captured from the pre-staging core.
-// This does not certify native pixels or wall-time improvements. Original
-// fingerprints stay immutable. The exact 2963f43c2 shadow-submission call is
-// disabled only for a historical receipt. That copied receipt also reconstructs
-// the two authenticated old shoe-material fields; current sync/staged outputs
-// retain their actual materials and full shadow batches without normalization.
+// Staged (createTankSteps) construction must publish exactly the synchronous createTank result, own and
+// release every private resource on cancellation or failure, and keep its timing receipts honest. This
+// does not certify native pixels or wall-time improvements.
+// 2026-10-01 (owner: retire frozen pins): the six pinned material-inclusive original-output goldens, the
+// historical shadow-submission and shoe-material projections that reached them and their oracle-only
+// negative controls are gone; the fleet geometry ledger owns whole-tank change detection. Live staged ==
+// sync equality, lifetime/ownership, shoe-material and shadow-batch contracts remain.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -22,109 +22,6 @@ const facadeUrl = pathToFileURL(root + '/src/vehicles/fleetFactory.ts').href;
 const facadeCoreUrl = coreUrl + '?factory-staging-facade-test';
 const candidateFacadeUrl = facadeUrl + '?factory-staging-test';
 const candidateCore = readFileSync(new URL(coreUrl), 'utf8');
-const shadowBatchCall = '    if (batchStatic) installArticulatedShadowBatch(root, proceduralShadowSources);';
-const sentinelCall = '    if (batchStatic) detachEmptyLodSentinels(root);';
-assert.equal(candidateCore.split(sentinelCall).length, 2, 'one runtime-only empty sentinel finalizer');
-assert.equal(candidateCore.split(shadowBatchCall).length, 2,
-  'historical projection requires exactly the published shadow finalizer call');
-// 2026-09-12 fleet visual standard batch: the six original-output goldens were
-// refreshed against the current core (camouflaged detail buckets, pressed-disc
-// wheel motif, terminal-surface-fit-r2 muzzle seat); the staged-vs-sync exact
-// equality below is the staging claim and is unchanged.
-const goldenSourceSha256 = 'b7a453af76ae13a972526c38a46c6beee44bdfc90f042ab1eddf80eb781740a3';
-// 2026-09-23: the owner-requested M1A1 50 mm turret lift, circular bearing,
-// lower-edge relief and refreshed fills version the four M1A1 receipts.
-// Strv 103 and Merkava controls and all sync/staged, material and disposal checks
-// remain unchanged. This is an authored model revision, not a staging waiver.
-const goldenReceipts = [
-  {
-    "id": "m1a1",
-    "options": {
-      "proceduralOnly": true,
-      "geometryReceipt": true,
-      "quality": "ai",
-      "camoSeed": 4242,
-      "decor": true
-    },
-    // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: cfde27ad…, 7c92dda3…, bc10f342…, c011c167…, 422f024c…, 546b2eb7….
-    "sha256": "373a36f1a3cdbd9892cdd2e5bf03462bde7e2cf492e317534d09a28b8ea2fbdc",
-    "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel (hollowRoadWheelStock.ts), lost the gear_wheelBayVoidDress blocks and carries generated interior fills; material-inclusive digest repinned from the current build"
-  },
-  {
-    "id": "strv103",
-    "_repin_2026_09_13": "sealed-hull pass: canvasCloth is DoubleSide now (tarps/aprons seen from both sides), which moves this material-inclusive digest; geometry untouched",
-    "options": {
-      "proceduralOnly": true,
-      "geometryReceipt": true,
-      "quality": "ai",
-      "camoSeed": 4242,
-      "decor": true
-    },
-    "_repin_2026_09_22": "round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — the material-inclusive digest moves; geometry unchanged",
-    "_repin_2026_09_22_wheels": "nation wheel standard (owner 2026-09-22): strv103 draws the Sweden Strv 122 pressed-recess construction and the fleet arm seated against it; digest repinned from the current build",
-    "_repin_2026_09_22_regen": "combined round-38 tree after the fleet presentation regen (2026-09-22): the strv103 rendered anchor moved with the nation wheel (zM -0.3006 -> -0.3013), so the anchor-seated staging digest moved; repinned from staged main",
-    "_repin_2026_09_25_rollers": "FSP-03 (owner 2026-09-25): strv103 carries two fitted return rollers per side (the Strv 103A layout); golden re-pinned once from the current build",
-    "sha256": "64e08a5bf68c81cbbfb0f042db5bc33c0369991f1429453f516bd4130f57381a"
-  },
-  {
-    "id": "m1a1",
-    "options": {
-      "proceduralOnly": true,
-      "geometryReceipt": true,
-      "quality": "ai",
-      "camoSeed": 4242,
-      "decor": true,
-      "geometryQuality": "low"
-    },
-    "sha256": "1e792765fe37580b7f6ad0ddd908871d78da1013cf9add1f6a003ca0eb08c3df",
-    "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
-  },
-  {
-    "id": "m1a1",
-    "options": {
-      "proceduralOnly": true,
-      "geometryReceipt": true,
-      "quality": "ai",
-      "camoSeed": 4242,
-      "decor": true,
-      "batchStatic": true,
-      "battleDetailLod": true
-    },
-    "sha256": "dc3024885db80f3f08a59833f58fd1f5934f07827737fec00a95e32759bfc83a",
-    "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
-  },
-  {
-    "id": "merkava1b",
-    "options": {
-      "proceduralOnly": true,
-      "geometryReceipt": true,
-      "quality": "ai",
-      "camoSeed": 4242,
-      "decor": true,
-      "geometryQuality": "low",
-      "batchStatic": true,
-      "battleDetailLod": true
-    },
-    "_repin_2026_09_22": "round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — the material-inclusive digest moves; geometry unchanged",
-    "_repin_2026_09_22_wheels": "nation wheel standard (owner 2026-09-22): merkava1b draws the Israel Merkava Mk 4B dished-face construction; digest repinned from the current build",
-    "_repin_2026_09_22_regen": "combined round-38 tree after the fleet presentation regen (2026-09-22): the merkava1b rendered anchor moved (zM -0.7139 -> -0.714, envelope 5.4299 -> 5.43); repinned from staged main",
-    "_repin_2026_09_25_fsp06": "FSP-06 material roles (owner 2026-09-25): merkava1b's pale-kit soft goods ride the new canvasPale material and its jerry cans the fitting paint (merkava.ts, materials.ts) — the material-inclusive digest moves; vertex geometry and order unchanged (presentation-centering --check 0.00 px), the anatomy groups regenerated because the pale kit left the armor buckets; repinned from the current build",
-    "_repin_2026_09_25_r96_fsp05": "round 96 combined tree (FSP-05 chassis closure landed over FSP-06's pale kit, 2026-09-25): merkava1b's Mk.1B loft rings close through closedSlab and its clearance wedges clamp to the floor (merkava.ts), so the material-inclusive digest moved once more — repinned from the current build (d5c9cd25 -> 0b7f5e39)",
-    "sha256": "0b7f5e39973c5ddacf22144e71ac43730c9569c5cdeaecb6969b757cec41452c"
-  },
-  {
-    "id": "m1a1",
-    "options": {
-      "proceduralOnly": true,
-      "geometryReceipt": true,
-      "quality": "ai",
-      "camoSeed": 4242,
-      "decor": false
-    },
-    "sha256": "0b5521f00dd675a362e80ba9dffde36f67e1b4439ee005e81893bd3ab54f1939",
-    "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
-  }
-];
 let capture, decorStage;
 const hook = registerHooks({
   resolve(specifier, context, next) {
@@ -140,10 +37,6 @@ const hook = registerHooks({
       '      globalThis.__factoryStagingSlice(result.value);\n      const pausedAt = performance.now();');
     source = source.replace('    finalizeVehicleNightLighting(root);',
       "    if (globalThis.__factoryStagingFailFinalize) throw new Error('injected finalizer failure');\n    finalizeVehicleNightLighting(root);");
-    source = source.replace(shadowBatchCall,
-      '    if (batchStatic && !globalThis.__factoryStagingHistoricalShadow) installArticulatedShadowBatch(root, proceduralShadowSources);');
-    source = source.replace(sentinelCall,
-      '    if (batchStatic && !globalThis.__factoryStagingHistoricalShadow) detachEmptyLodSentinels(root);');
     return { ...result, source };
   },
 });
@@ -199,15 +92,10 @@ function receipt(visual) {
     detailGroups: visual.root.userData.battleDetailGroupCount, detailCount: visual.root.userData.battleDetailObjectCount,
   };
 }
-// An isolated replay of approved main 29c9ecefd reproduced all six goldens.
-// Its only differences from current receipts are each canonical shoe's RGB
-// (the old second dark multiplier) and vertexColors (the old missing attribute).
-// Preserve those original digests without modifying a live material or pose.
-const TRACK_HISTORY_IDS = new Set(['m1a1', 'strv103', 'merkava1b']);
+// Canonical shoes take their colour from the instance palette over an exactly white base; a dark
+// multiplier or a missing vertex-colour request would blacken them in every staged/sync build.
 const TRACK_SHOE_NAMES = ['gearTrackPads', 'gearTrackPadsSimplified'];
-const HISTORICAL_TRACK_RGB = [0.02955683443236377, 0.030713443727452196, 0.028426039499072558];
-function historicalTrackMaterialReceipt(id, visual) {
-  assert.ok(TRACK_HISTORY_IDS.has(id), 'historical shoe projection requires a verified fixture ID');
+function assertShoeMaterial(visual) {
   const shoes = [];
   visual.root.traverse(mesh => {
     if (!mesh.isMesh) return;
@@ -236,77 +124,34 @@ function historicalTrackMaterialReceipt(id, visual) {
   visual.root.traverse(mesh => {
     if (!mesh.isMesh) return;
     if ((Array.isArray(mesh.material) ? mesh.material : [mesh.material]).includes(material)) {
-      assert.ok(TRACK_SHOE_NAMES.includes(mesh.name), 'only canonical shoes may share the projected material');
+      assert.ok(TRACK_SHOE_NAMES.includes(mesh.name), 'only canonical shoes may share the track-pad material');
     }
   });
-  const copied = receipt(visual);
-  const actualHash = digest(JSON.stringify(copied));
-  for (const row of copied.rows.filter(row => TRACK_SHOE_NAMES.includes(row.name))) {
-    row.material[0].color = [...HISTORICAL_TRACK_RGB];
-    row.material[0].vertexColors = true;
-  }
-  assert.equal(digest(JSON.stringify(receipt(visual))), actualHash,
-    'historical material projection must leave the complete actual receipt unchanged');
-  return copied;
 }
-function historicalShadowReceipt(id, options, synchronous) {
-  if (!options.batchStatic) return historicalTrackMaterialReceipt(id, synchronous);
-  let historical;
-  globalThis.__factoryStagingHistoricalShadow = true;
-  try {
-    historical = candidate.createTank(id, null, options);
-    assert.equal(historical.root.getObjectByName('articulatedShadowBatch'), undefined,
-      'historical comparison alone retains the original proxy submissions');
-    assert.ok(synchronous.root.getObjectByName('articulatedShadowBatch')?.isBatchedMesh,
-      'current comparison must retain the actual published shadow batch');
-    return historicalTrackMaterialReceipt(id, historical);
-  } finally {
-    globalThis.__factoryStagingHistoricalShadow = false;
-    historical?.dispose();
-  }
-}
-function verifyHistoricalTrackProjectionGuards(visual, approvedHash) {
+// Negative controls: the shoe-material gate bites, and rejected controls leave the candidate unchanged.
+function verifyShoeMaterialGuards(visual) {
   const actualHash = digest(JSON.stringify(receipt(visual)));
   const shoe = visual.root.getObjectByName('gearTrackPads');
   const material = shoe.material, color = material.color.clone();
-  assert.throws(() => historicalTrackMaterialReceipt('unverified-id', visual), /verified fixture ID/);
   try {
     material.color.setHex(0x30312f);
-    assert.throws(() => historicalTrackMaterialReceipt('m1a1', visual), /actual shoe base must remain exactly white/);
+    assert.throws(() => assertShoeMaterial(visual), /actual shoe base must remain exactly white/);
   } finally { material.color.copy(color); }
   try {
     material.vertexColors = true;
-    assert.throws(() => historicalTrackMaterialReceipt('m1a1', visual), /must not request missing vertex colors/);
+    assert.throws(() => assertShoeMaterial(visual), /must not request missing vertex colors/);
   } finally { material.vertexColors = false; }
   const unrelated = new THREE.Mesh(shoe.geometry, material);
   unrelated.name = 'unrelated-material-user';
   visual.root.add(unrelated);
   try {
-    assert.throws(() => historicalTrackMaterialReceipt('m1a1', visual), /only canonical shoes/);
+    assert.throws(() => assertShoeMaterial(visual), /only canonical shoes/);
   } finally { visual.root.remove(unrelated); }
-  const position = shoe.geometry.getAttribute('position'), x = position.getX(0);
-  try {
-    position.setX(0, x + .001);
-    assert.notEqual(digest(JSON.stringify(historicalTrackMaterialReceipt('m1a1', visual))), approvedHash,
-      'an unrelated geometry change cannot disappear through material projection');
-  } finally { position.setX(0, x); }
-  const instanceX = shoe.instanceMatrix.array[12];
-  try {
-    shoe.instanceMatrix.array[12] = instanceX + .001;
-    assert.notEqual(digest(JSON.stringify(historicalTrackMaterialReceipt('m1a1', visual))), approvedHash,
-      'a changed shoe seat remains covered by the immutable golden');
-  } finally { shoe.instanceMatrix.array[12] = instanceX; }
-  const armor = visual.root.getObjectByName('hull').material, armorColor = armor.color.clone();
-  try {
-    armor.color.setRGB(.17, .23, .29);
-    assert.notEqual(digest(JSON.stringify(historicalTrackMaterialReceipt('m1a1', visual))), approvedHash,
-      'unrelated material fields remain covered by the immutable golden');
-  } finally { armor.color.copy(armorColor); }
   assert.equal(digest(JSON.stringify(receipt(visual))), actualHash,
     'all rejected controls leave the actual candidate unchanged');
 }
 let checks = 0;
-let goldenIndex = 0;
+let fixtures = 0;
 function check(value, message) { assert.ok(value, message); checks++; }
 function equal(a, b, message) { assert.deepEqual(a, b, message); checks++; }
 function drain(steps, visit = () => {}) {
@@ -348,11 +193,10 @@ for (const [id, options] of [
       if (first) equal(capture.visual.root.userData.__decorApplied, undefined, 'first checkpoint precedes decoration');
       first = false;
     });
-    const golden = goldenReceipts[goldenIndex++];
-    equal({ id, options }, { id: golden.id, options: golden.options }, "fixture order matches independent original receipt");
-    if (goldenIndex === 1) verifyHistoricalTrackProjectionGuards(synchronous, golden.sha256);
-    equal(digest(JSON.stringify(historicalShadowReceipt(id, options, synchronous))), golden.sha256,
-      `${id}: original geometry/material/order retained across the explicit shadow and shoe-material changes`);
+    if (fixtures++ === 0) verifyShoeMaterialGuards(synchronous);
+    assertShoeMaterial(synchronous); checks++;
+    if (options.batchStatic) check(synchronous.root.getObjectByName('articulatedShadowBatch')?.isBatchedMesh,
+      `${id}: batched construction retains the actual published articulated shadow batch`);
     equal(receipt(staged), receipt(synchronous), `${id}: stepped output preserves exact original geometry/material/order/pose`);
     check(Number.isFinite(staged.root.userData.decorBuildMs), 'decoration active time is retained');
     check(staged.root.userData.decorYieldMs >= 0, 'decoration wait is separately retained');
@@ -453,4 +297,4 @@ for (const id of ['m1a1', 'challenger_3x', 'ariete_c2_x']) {
   } finally { staged.dispose(); synchronous.dispose(); }
 }
 hook.deregister();
-console.log(JSON.stringify({ checks, goldenSourceSha256, fixtures: goldenIndex, scope: "headless original-output and lifetime proof; not native performance acceptance" }));
+console.log(JSON.stringify({ checks, fixtures, scope: "headless staged == sync equality and lifetime proof; not native performance acceptance" }));

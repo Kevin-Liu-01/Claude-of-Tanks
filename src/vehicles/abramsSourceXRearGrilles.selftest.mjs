@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import {createHash} from 'node:crypto';
 import * as T from 'three';
 import {createTank} from './tankFactory.ts';
 import {registerProfiledBuilders} from './tankFactoryCore.ts';
@@ -8,10 +7,6 @@ import {KIT} from './profiles/kit.ts';
 const material=new T.MeshBasicMaterial({side:T.FrontSide});
 const rearRay=(meshes,x,y,far=.6)=>new T.Raycaster(new T.Vector3(x,y,-4.1),new T.Vector3(0,0,1),0,far).intersectObjects(meshes,false);
 const ray=(meshes,p,d,far)=>new T.Raycaster(new T.Vector3(...p),new T.Vector3(...d),0,far).intersectObjects(meshes,false);
-function geometryHash(g,args){const h=createHash('sha256');for(const[name,a]of Object.entries(g.attributes)){
- h.update(name);h.update(new Uint8Array(a.array.buffer,a.array.byteOffset,a.array.byteLength));}
- if(g.index)h.update(new Uint8Array(g.index.array.buffer,g.index.array.byteOffset,g.index.array.byteLength));
- h.update(JSON.stringify(args));return h.digest('hex');}
 const near=(a,b,label,tolerance=.000003)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<tolerance,`${label}: ${a}, source ${b}`);
 function closedLeaf(g){const p=g.attributes.position,edges=new Map();let volume=0;
  assert.equal(p.count,96,'32 independently closed triangles, including concealed receiving cap');
@@ -42,7 +37,7 @@ for(const quality of ['high','low']){
  registerProfiledBuilders({m1a2_sepv2_x:P=>buildAbramsX(new Proxy(P,{get(target,key){
   if(key==='addEquipment'||key==='add')return(bucket,g,...args)=>{
    const list=g.userData.abramsSourceRearGrille?stock:key==='add'&&bucket==='hull'?hull:null;
-   if(g.userData.abramsSourceRearGrille)beforeRows.push({index:beforeRows.length,bucket,tag:g.userData.abramsSourceRearGrille,hash:geometryHash(g,args)});
+   if(g.userData.abramsSourceRearGrille)beforeRows.push({index:beforeRows.length,bucket,tag:g.userData.abramsSourceRearGrille});
    if(list){const m=new T.Mesh(KIT.xform(g.clone(),...args),material);m.name=g.userData.abramsSourceRearGrille??'hull';m.updateMatrixWorld(true);list.push(m);
     if(g.userData.abramsSourceRearGrille)assert.equal(bucket,'hullDetail','permanent hull equipment');}
    return target[key](bucket,g,...args);
@@ -53,10 +48,9 @@ for(const quality of ['high','low']){
   tank=createTank('m1a2_sepv2_x',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
   tank.root.updateMatrixWorld(true);const physical=[];tank.root.traverse(m=>{if(m.isMesh&&!m.userData.shadowOnly&&!/marking|shadow/i.test(m.name))physical.push(m);});
   const nonLeaves=beforeRows.filter(p=>p.tag!=='hinge-leaf');
+  // 2026-10-01 (owner: retire frozen pins): the pinned sha256 of these 127 pre-edit primitives is gone; the
+  // fleet geometry ledger owns whole-tank change detection. Their census and every source witness below stay.
   assert.equal(nonLeaves.length,127,'all grids/blades/frames retained');
-  assert.equal(createHash('sha256').update(JSON.stringify(nonLeaves)).digest('hex'),
-   '209513aaca7ac54cb1e84e6ec0f817dea5ef114210fbe38986fc372cc3c9c407',
-   'immutable pre-edit127 primitive attributes/index/emission order/bucket/transform');
   const leaves=stock.filter(m=>m.name==='hinge-leaf'),walls=stock.filter(m=>m.name==='receiving-sidewall');
   assert.equal(leaves.length,8);
   for(let i=0;i<leaves.length;i++){
@@ -115,4 +109,4 @@ for(const quality of ['high','low']){
    assert.ok(b.min.z> -4.011&&b.max.z< -3.60&&b.min.y>.94&&b.max.y<1.63,'grille-only source bounded extent');}
  }finally{tank?.dispose();for(const m of [...stock,...hull])m.geometry.dispose();registerProfiledBuilders({m1a2_sepv2_x:buildAbramsX});}
 }
-material.dispose();console.log('Abrams rear grilles PASS:high/low6poses,8closed asymmetric source leaves,0.51mm wall laps,127 immutable non-leaf primitives,3unequal screens/15blades/source held-outs and real air');
+material.dispose();console.log('Abrams rear grilles PASS:high/low6poses,8closed asymmetric source leaves,0.51mm wall laps,127 non-leaf primitives,3unequal screens/15blades/source held-outs and real air');

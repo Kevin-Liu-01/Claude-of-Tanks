@@ -1,8 +1,8 @@
-// 2026-09-22 round 35 (camoWorldScale.ts): every hull projects its camo at the fleet constant 0.5 repeats/m, so the uv attributes
-// inside these frozen native buffers moved; the digests below are re-based on the round-35 staged tree (positions, order and frames unchanged).
+// The frozen HIGH/LOW chassis payload digests (and their 26-row count) are retired: whole-tank change detection of
+// object695_x is the fleet geometry ledger's. Identity, combat metadata, measured datums, part census, launcher,
+// optics, cannon, articulation, budgets and every physical negative stay.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
 import * as T from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
@@ -13,15 +13,7 @@ import { TANK_SPECS, MODEL_SOURCE } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 import { verifyGunCradleSeats } from '../gunCradleSeats.test-support.mjs';
 
-// Original concept, not a supplied-source or historical turret claim. The
-// 2026-09-19 pre-redesign HIGH/LOW chassis payloads authenticate unchanged stock.
-// 2026-09-22 nation wheel standard: object695_x draws the BMP-3M Dragun wheel (no dark inset layer, so 24 payload
-// rows) and the fleet arm re-seats against that wheel's back; the payload diff against origin/main 14a3262ec is
-// exactly the two road-wheel geometries, the dropped inset layer and the arm/boss instance matrices. Repinned.
-const hullHashes = {
-  high: '043bf6933e2cc6a3744a406294a395fa8b7d160e8db315db96f3c8367878a521',
-  low: 'b38d7f9866782dc09c793252663956108368f4e1e9b3f9d3331904bec2738e20',
-};
+// Original concept, not a supplied-source or historical turret claim.
 const profileSource = readFileSync(new URL('./object695X.ts', import.meta.url), 'utf8');
 assert.ok(!profileSource.includes('epokhaTurret'), 'the counterpart turret is not assembled');
 assert.deepEqual([...profileSource.matchAll(/^import .* from '([^']+)';$/gm)].map(m => m[1]).sort(),
@@ -45,8 +37,6 @@ assert.deepEqual(D.turretPivot, record.turretPivotM);
 assert.equal(D.wheelR, record.roadWheels.radiusM);
 assert.equal(D.muzzleZ, .45); assert.equal(D.launcherTopM, 3.719); assert.equal(D.mastTopM, 3.90);
 
-const sha = bytes => createHash('sha256').update(bytes).digest('hex');
-const bufferHash = a => sha(Buffer.from(a.array.buffer, a.array.byteOffset, a.array.byteLength));
 function checkRadioVolume(armor) {
   const radios = armor.modules.filter(module => module.module === 'radio');
   assert.equal(radios.length, 1, 'the hull-operated radio remains a real damage module');
@@ -86,24 +76,6 @@ for (const corruption of ['missing', 'thin', 'wrong-frame', 'outside-hull']) {
   assert.throws(() => checkRadioVolume(armor), assert.AssertionError, `${corruption}: bad radio placement fails`);
 }
 console.log('Object radio depth/owner/hull enclosure and four negatives PASS', JSON.stringify(radioReceipt));
-function hullPayload(tank) {
-  const meshes = [];
-  tank.root.traverseVisible(m => {
-    if (!m.isMesh || m.userData.shadowOnly || m.userData.authoredShadowProxy || m.userData.vehicleMarking || m.name.includes('InteriorFill')) return;
-    const mats = Array.isArray(m.material) ? m.material : [m.material];
-    if (mats.every(a => a.visible === false || a.colorWrite === false)) return;
-    let owner = ''; for (let p = m; p; p = p.parent) if (['rig_hull', 'rig_turret'].includes(p.name)) owner = p.name;
-    if (owner !== 'rig_hull') return;
-    const g = m.geometry;
-    meshes.push({name:m.name,owner,attrs:Object.fromEntries(Object.entries(g.attributes).map(([k,a])=>[k,{itemSize:a.itemSize,normalized:a.normalized,hash:bufferHash(a)}])),
-      index:g.index?bufferHash(g.index):null,groups:g.groups,matrix:m.matrixWorld.toArray(),count:m.count,
-      instances:m.instanceMatrix?sha(Buffer.from(m.instanceMatrix.array.buffer)):null,
-      colors:m.instanceColor?sha(Buffer.from(m.instanceColor.array.buffer)):null,
-      mats:mats.map(a=>({name:a.name,color:a.color?.getHex(),roughness:a.roughness,metalness:a.metalness,side:a.side,userData:a.userData}))});
-  });
-  return meshes;
-}
-
 function cast(tank, frame, start, direction, far = 2) {
   tank.root.updateMatrixWorld(true);
   const ray = new T.Raycaster(frame.localToWorld(new T.Vector3(...start)), new T.Vector3(...direction).transformDirection(frame.matrixWorld), 0, far);
@@ -294,9 +266,6 @@ for(const quality of ['high','low']){
     assert.ok(sternBoxAft <= -3.55 && sternBoxAft >= -3.575, `stern boxes end at the source's stern silhouette (${sternBoxAft.toFixed(3)})`);
     assert.equal(count('driver-hatch'), 1); assert.equal(count('lamp-box'), 2); assert.equal(count('tow-eye'), 4); assert.equal(count('intake-drum'), 1);
     assert.equal(count('smoke-tube'), 10); assert.equal(count('deck-louvre'), 1); assert.equal(count('nose-lip'), 1);
-    const payload=hullPayload(tank);
-    assert.equal(payload.length,26); // 2026-09-25 FSP-03: +2 instanced return-roller layers (tires, discs) — four rollers per side fitted
-    assert.equal(sha(JSON.stringify(payload)),hullHashes[quality],'every retained native hull/gear attribute, material, instance and transform is exact');
     console.log('Checking source-independent stock',quality);
     checkLaunchStock(tank);console.log('Launcher stock PASS');checkFixedStock(tank);console.log('Fixed stock PASS');checkCannon(tank);console.log('Cannon PASS');checkNegativeControls(tank);console.log('Negatives PASS');checkArticulation(tank);
     const rig=tank.root.getObjectByName('rig_hull').userData.object695Receipt;
@@ -326,4 +295,4 @@ for (const quality of ['high', 'low']) for (const fault of ['missing-foot', 'mis
   } finally { tank.dispose(); supportFault = null; }
 }
 assert(costs[1].turretTriangles<=costs[0].turretTriangles*.68,'LOW retains complete mechanical design with meaningful turret reduction');
-console.log('object695X missile concept PASS: retained native chassis; 12 real terminals, 3 optics, physical30mm bore; air/stock negatives;144 legal poses and backup recoil',JSON.stringify(costs));
+console.log('object695X missile concept PASS: 12 real terminals, 3 optics, physical30mm bore; air/stock negatives;144 legal poses and backup recoil',JSON.stringify(costs));

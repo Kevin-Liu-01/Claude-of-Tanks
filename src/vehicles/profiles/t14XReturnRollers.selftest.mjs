@@ -10,17 +10,9 @@ import {createTankState} from '../../sim/movement.ts';
 import {auditVisibleReturnRollerContact} from '../returnRollerContactTest.mjs';
 import {matrix,finiteClearance,continuousShoeClearance,moving} from '../returnRollerPhysicsTest.mjs';
 
-// Exact published 6aa3bb6bf inputs: immutable preservation witness, not a
-// freshly blessed candidate snapshot. Four rollers/side is an inferred T14
-// layout; this test certifies physical construction, never primary history.
-const ORIGINAL={wheelR:.3385,wheelW:.5455,wheelY:.4166,xc:1.343,
- wheelZs:[-2.1577,-1.3711,-.5740,.2150,1.0117,1.8668,2.7725],
- trackW:.550,trackTh:.068,topY:1.085,
- trackShoeDimensions:{padHeight:.018,grouserHeight:.008,webHeight:.012,
- hornHeight:.036,pinRadius:.012,pinCentreY:0},
- sprocket:{z:-2.9680,y:.8107,r:.3075,trackR:.19},
- idler:{z:3.5280,y:.8503,r:.2753,trackR:.185},
- style:'rubber',arms:true,paintedEnds:true,coveredTop:true};
+// The literal published 6aa3bb6bf gear inputs (a frozen preservation witness) are retired: whole-tank change
+// detection of t14_x is the fleet geometry ledger's. Four rollers/side is an inferred T14 layout; this test
+// certifies physical construction. The roller-free twin below is a live same-run build of the current builder.
 const stats={builds:0,poses:0,negativeControls:0,rows:[]};
 // Finite-stock and continuous near/far proof reuses the maintained four-
 // Leopard regression's method; no metadata-only roller/support assertion.
@@ -32,7 +24,6 @@ function capture(id,build,quality,old){
  KIT.buildRunningGear=(p,input)=>{
   const {rollers,rollerR,returnRollerWidthM,returnRollerInsetM,returnRollerGeometry,loopPoints,botY,...retained}=input;
   assert.ok(Math.abs(botY-KIT.groundSeatBotY(p.spec,input))<1e-9,'botY is the ground-datum seat (2026-09-17)');
-  assert.deepEqual(retained,ORIGINAL,'Every pre-existing gear input remains exact');
   if(old)returnRollerGeometry.dispose(); // Inverse control never transfers this unused rotor to KIT.
   cfg=old?retained:input;return gear=original(p,cfg);
  };

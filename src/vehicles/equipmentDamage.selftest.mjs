@@ -3,7 +3,6 @@ import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { box, mergeAll, xform } from './factoryGeometry.ts';
 import { createTank } from './tankFactory.ts';
-import { getSpec } from './specs.ts';
 import { createFx } from '../fx/effects.ts';
 import { registerFxClock, registerPopTrail } from '../fx/clock.ts';
 import { setBreakFxProvider } from '../world/destructibles.ts';
@@ -214,8 +213,8 @@ for (const kind of ['pen', 'he_pen', 'nonpen', 'ricochet', 'spaced_absorb', 'he_
 }
 
 function legacyAttributeNames(geometry) {
-  // Night-lens metadata was added after these immutable rest captures. Validate
-  // that single channel separately; retain every original shape/instance byte.
+  // Validate the semantic night-lens byte channel separately; every shape,
+  // index, instance and pose byte stays in the same-run rest comparison.
   const a = geometry.getAttribute('nightEmissionMask');
   if (a) {
     assert.ok(a.array instanceof Uint8Array, 'night mask is byte-sized');
@@ -275,66 +274,13 @@ function restHash(visual) {
   assert.equal(measure(), legacy); geometry.dispose(); mesh.material.dispose();
 }
 
-// 37de0b6aa deliberately turned and seated four existing T-90M lamp discs.
-// Exact pre-source/current decomposition: all 109 nodes / 63 meshes agree;
-// only hullGlass position/normal vertices [108,588) changed (four x 120).
-// All UV/color/index/instance bytes, owners and daytime material properties
-// remain exact. Keep the historical fixture, but hash the COMPLETE current
-// model for damage/reset: never omit the corrected lamps from preservation.
-const T90M_REST_REVISIONS = Object.freeze({
-// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
-// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
-// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
-// values below are repinned from the current build.
-// 2026-09-17 track law (28 mm X-standard band, ground datum, seated wheels): every rest/armor digest below moves again.
-// 2026-09-22 round 35 (camoWorldScale.ts): camo UVs at the fleet constant 0.5 rep/m and the first bake on the pattern stream move
-// the intact/damaged draw-content digests below again; draw order and geometry positions are unchanged.
-// 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we dont use anymore"): the T-90M draws the Russia construction (T-90M X pressed face,
-// nationWheelSets.ts / nationWheelConstructions.ts) instead of its rim/hub/bolt dressing; the forward-lamp-seat rest
-// digest is repinned from the current build (beforeForwardLampSeat stays the historical value it must never equal).
-  beforeForwardLampSeat: 'b5948e28d385c5b49fbb18bfe2057ba8f6903b9957a9c5311856526133bc7530',
-  // 2026-09-22 (owner: holes are added, not carved, to save triangles): the fleet fallback mouth is a
-  // flat ring + disc (terminal-surface-fit-r3), which moves the intact draw content once more; the
-  // forwardLampSeat row below stays as the superseded revision, never as an active claim. On the combined
-  // round-38 tree (nation wheels, then the flat-ring mouth) that superseded revision is the nation-wheel
-  // repin 004121cb…; c711ef48… was the pre-round-38 value.
-  // FSP-03 (2026-09-25, round 96 combined tree; owner: rollers wherever the real vehicle has them): the
-  // T-90M carries three fitted return rollers per side again, so the intact rest digest moved once
-  // (bec57df3… → f09dc473…) and the roller-carried run lifts the calibrated track band 1.3 mm
-  // (combat anatomy tracks.max.y 1.1986 → 1.1999), which moves the t90m armor digest below once
-  // (052be10e… → 1e0c31fe…); getSpec('t90m').armor before calibration is byte-identical on the base tree.
-  flatRingMouth: 'f09dc473d73c3b77cf48560fe8836c7507bb5aff67ed195270a29c2f519c7d33',
-  forwardLampSeat: '004121cb269d4d160c8715176b1473a9a40ceadcbd7c1a69b3fce797013888e0',
-});
-
-// Recorded before the equipment-damage opt-in/hook; only the independently
-// verified intentional lamp-seat revision above versions a physical rest row.
-// 2026-09-22 (owner: "the point of adding holes instead of carving them into the barrel is that we
-// save on triangles"): the fleet fallback mouth became a flat ring + disc (terminal-surface-fit-r3;
-// the separate Annulus mesh is gone and the Rim geometry changed), so every intact rest digest moved.
-// Superseded: leo2a6 b90250a4…, m1a2 82ade7b7…, t90m c711ef48… (the t90m row is versioned in
-// T90M_REST_REVISIONS.flatRingMouth). Armor digests are unchanged.
-for (const [id, rest, armor] of [
-  // 2026-09-22 nation wheel standard: leo2a6 draws the Germany construction (Leopard 2A6 X paired dish); rest repinned.
-  ['leo2a6', 'a52d1cd60dc6b84c093cb70779e182d08aafcd2713c711ceb8a91f16ecd29499',
-    '6d541732a941a35f75175fedb623632b2f73ebf3cc5484dcd76c3bd049367854'],
-  ['t90m', T90M_REST_REVISIONS.flatRingMouth,
-    '1e0c31fe3b1ab45ff0f313593cb9e6264b0133ef913fec7f270e702f66702256'],
-  // 2026-09-13 wheel review + interior fills: m1a2 draws the hollow paired road wheel, lost the
-  // inter-wheel void blocks and carries generated interior fills; intact digest repinned.
-  // 2026-09-23 owner-directed 50 mm M1A1 HC turret lift and circular bearing:
-  // keep the complete new rest geometry and regenerated combat anatomy
-  // guarded through damage and reuse.
-  ['m1a2', '20b911a2c1f54fae009db15ba4059ac395f6f8a85179325f142e3e89cdc5ad9f',
-    'b272b30073c4e1bd2e849e94cfdd20453d96e03e216719f5b5d15ea660c3ddc6'],
-]) {
+// 2026-10-01 (owner: retire frozen pins): the pinned intact-rest and authoritative-armor digests and
+// the T-90M lamp-seat revision rows are gone; the fleet geometry ledger owns whole-tank change detection
+// and historicalT90MLamps.selftest.mjs owns the reseated T-90M lamps. Damage, wreck, rematch and Garage
+// reuse are compared with each vehicle's own intact rest captured in this run.
+for (const id of ['leo2a6', 't90m', 'm1a2']) {
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
-  assert.equal(restHash(visual), rest, `${id}: exact approved intact draw content`);
-  if (id === 't90m') assert.notEqual(restHash(visual), T90M_REST_REVISIONS.beforeForwardLampSeat,
-    'the intentionally corrected forward lamp geometry must not revert to upward discs');
-  const armorHash = createHash('sha256');
-  armorHash.update(JSON.stringify(getSpec(id).armor));
-  assert.equal(armorHash.digest('hex'), armor, `${id}: approved authoritative armor`);
+  const rest = restHash(visual);
   const contact = hit([0.26, 0.405, -2.485]);
   assert.equal(visual.applyEquipmentDamage(contact), id === 'leo2a6');
   if (id === 'leo2a6') {
@@ -350,11 +296,11 @@ for (const [id, rest, armor] of [
     visual.resetDestroyed();
     assert.equal(restHash(visual), rest, 'wreck reset restores normals, pose and geometry');
   } else {
-    assert.equal(restHash(visual), rest, 'unsupported equipment hit cannot alter the approved rest');
+    assert.equal(restHash(visual), rest, 'unsupported equipment hit cannot alter the intact rest');
     visual.setDestroyed(); visual.resetDestroyed();
-    assert.equal(restHash(visual), rest, 'wreck repair retains the complete approved model, including lamp seats');
+    assert.equal(restHash(visual), rest, 'wreck repair retains the complete intact model, including lamp seats');
     visual.resetForGaragePresentation();
-    assert.equal(restHash(visual), rest, 'garage reset retains the complete approved model');
+    assert.equal(restHash(visual), rest, 'garage reset retains the complete intact model');
   }
   visual.dispose();
 }
@@ -425,4 +371,4 @@ assert.equal(equipmentDamageStats().activeVehicles, 0);
     else delete globalThis.document;
   }
 }
-console.log('equipmentDamage.selftest: ownership, locality, duplicate, bounded pool, restoration and exact fleet rest passed');
+console.log('equipmentDamage.selftest: ownership, locality, duplicate, bounded pool, restoration and same-run fleet rest passed');

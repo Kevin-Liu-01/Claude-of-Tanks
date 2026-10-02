@@ -1,13 +1,11 @@
-// 2026-09-22 round 35 (camoWorldScale.ts): every hull projects its camo at the fleet constant 0.5 repeats/m, so the uv attributes
-// inside these frozen native buffers moved; the digests below are re-based on the round-35 staged tree (positions, order and frames unchanged).
+// Frozen pre-cupola digests (non-target meshes of a historical wheel replay, 173 equipment emissions) are retired:
+// whole-tank change detection of strv122_x is the fleet geometry ledger's. The physical source/air/contact/wiring proofs stay.
 import assert from 'node:assert/strict';
-import {createHash} from 'node:crypto';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addStrv122XSuppliedCupola} from './strv122XSuppliedCupola.ts';
 import {addStrv122XSuppliedEquipment} from './strv122XSuppliedEquipment.ts';
 import {STRV122_SUPPLIED_DATUMS as D} from './strv122XSuppliedFrame.ts';
-import {withHistoricalStrv122Wheels} from '../strv122WheelHistory.test-support.mjs';
 
 const near=(a,b,e,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=e,
   `${label}: ${a} versus complete-source ${b} ±${e}`);
@@ -120,105 +118,25 @@ function actualWiring(parts,all){
       `actual factory contains ${m.name} vertex ${i}, not merely an isolated helper`);
   }
 }
-function preservedMeshHash(m){
-  const g=m.geometry,mask=g.getAttribute('nightEmissionMask');
-  // Keep the immutable pre-cupola geometry hash, separating only the validated
-  // later-added lighting channel. No physical attribute or owner is omitted.
-  if(mask){
+function nightMasks(root){
+  // Lighting metadata shape on the live build: byte-sized, one value per vertex, only supported lens values.
+  root.traverse(m=>{
+    if(!m.isMesh)return;const g=m.geometry,mask=g.getAttribute('nightEmissionMask');if(!mask)return;
     assert.ok(mask.array instanceof Uint8Array,'night mask is byte-sized');
     assert.equal(mask.itemSize,1);assert.equal(mask.normalized,false);
     assert.equal(mask.count,g.getAttribute('position').count,'one mask value per original vertex');
     assert.ok(mask.array.every(v=>v===0||v===1||v===2),'only supported semantic lens values');
-  }
-  const h=createHash('sha256');for(const[k,a]of Object.entries(g.attributes)){
-    if(k==='nightEmissionMask')continue;
-    h.update(k);h.update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));}
-  const ix=g.index;if(ix)h.update(Buffer.from(ix.array.buffer,ix.array.byteOffset,ix.array.byteLength));
-  h.update(JSON.stringify(m.matrixWorld.elements));
-  if(m.isInstancedMesh)h.update(Buffer.from(m.instanceMatrix.array.buffer));
-  return h.digest('hex');
-}
-{
-  const g=new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute([0,0,0,1,0,0,0,1,0],3));
-  g.setAttribute('normal',new T.Float32BufferAttribute([0,0,1,0,0,1,0,0,1],3));
-  g.setAttribute('uv',new T.Float32BufferAttribute([0,0,1,0,0,1],2));g.setIndex([0,1,2]);
-  const m=new T.InstancedMesh(g,new T.MeshBasicMaterial(),1),measure=()=>preservedMeshHash(m),legacy=measure();
-  g.setAttribute('nightEmissionMask',new T.Uint8BufferAttribute([0,1,2],1));assert.equal(measure(),legacy);
-  for(const invalid of [new T.Float32BufferAttribute([0,1,2],1),new T.Uint8BufferAttribute([0,1,2],3),
-    new T.Uint8BufferAttribute([0,1],1),new T.Uint8BufferAttribute([0,1,2],1,true),new T.Uint8BufferAttribute([0,1,3],1)]){
-    g.setAttribute('nightEmissionMask',invalid);assert.throws(measure);
-  }
-  g.setAttribute('nightEmissionMask',new T.Uint8BufferAttribute([0,1,2],1));
-  g.setAttribute('unrecognizedSemanticChannel',new T.Uint8BufferAttribute([0,1,2],1));
-  assert.notEqual(measure(),legacy,'unknown channels remain hashed');g.deleteAttribute('unrecognizedSemanticChannel');
-  for(const a of [g.attributes.position,g.attributes.normal,g.attributes.uv,g.index,m.instanceMatrix]){
-    const old=a.array[0];a.array[0]=old+1;assert.notEqual(measure(),legacy,'all original geometry/index/instance bytes remain guarded');a.array[0]=old;
-  }
-  m.matrixWorld.elements[12]=1;assert.notEqual(measure(),legacy,'ownership frame remains guarded');m.matrixWorld.elements[12]=0;
-  assert.equal(measure(),legacy);g.dispose();m.material.dispose();
-}
-function nonTarget(t,quality){
-  // Immutable pre-edit capture .qa-dev/reports/strv-cupola-before-GuXMa5.
-  // Root concurrently corrected ONLY the named inferred suspension outputs;
-  // their separate focused test owns that change. Every axle/face/course stays
-  // in this exact before/after multiset. No post-change baseline is accepted.
-  const omitted=new Set(['turretDetail#0','turretGlass#0',
-    'gearSuspensionLinks#0','gearSuspensionJointBosses#0']);
-  const seen={},rows=[];
-  t.root.traverse(m=>{if(!m.isMesh||m.userData.vehicleMarking===true)return;
-    const n=seen[m.name]??0;seen[m.name]=n+1;
-    const name=`${m.name}#${n}`;if(omitted.has(name))return;
-    rows.push([name,preservedMeshHash(m)]);
   });
-  rows.sort(([a],[b])=>a.localeCompare(b));
-  // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is
-  // that we save on triangles"): the fleet fallback mouth became a flat ring + disc (the separate
-  // Annulus mesh is gone, terminal-surface-fit-r3) and the supplied gun is closed at its source tip
-  // (its gunDark bucket held only the 5.141 blind seat disc, so that merged mesh is gone too).
-  // HIGH 37 -> 35 meshes, LOW 36 -> 35 (the low fallback is one batched mesh); every other row is the
-  // same immutable non-target geometry. Superseded: high fb6fcb5b…, low f8da41a7….
-  const expected=quality==='high'?'c8086d64dfab6965e8a7d66f50c424e33d3ad62018a39805a2a35e62b8de79ab'
-    :'1e60c537407b16e4ec9317bb23da306c8d28d3b3fa3c56b2b5c2f66ede6fc80b';
-  assert.equal(rows.length,35);
-  assert.equal(createHash('sha256').update(JSON.stringify(rows)).digest('hex'),expected,
-    'immutable non-target runtime geometry, world matrices, MG, antenna-independent armor and all wheels/course');
-}
-function unchangedEquipmentEmissions(){
-  // The immutable pre-edit module was evaluated with ONLY the old non-weapon
-  // cupola call removed. All173 other emissions (including antenna feet and
-  // old optical bodies) must remain byte-identical, even inside changed buckets.
-  const rows=[],disposables=[],group=new T.Group();
-  addStrv122XSuppliedEquipment({addEquipment(bucket,g,...args){
-    if(!g.userData.strvSuppliedCupolaPiece){
-      const h=createHash('sha256');h.update(bucket);h.update(JSON.stringify(args));
-      for(const[k,a]of Object.entries(g.attributes)){
-        h.update(k);h.update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));}
-      if(g.index)h.update(Buffer.from(g.index.array.buffer,g.index.array.byteOffset,g.index.array.byteLength));
-      rows.push(h.digest('hex'));
-    }g.dispose();
-  },mats:{dark:material,detail:material},turretG:group,disposables});
-  for(const g of disposables)g.dispose();
-  assert.equal(rows.length,173);
-  assert.equal(createHash('sha256').update(JSON.stringify(rows)).digest('hex'),
-    'b35c236b13219fb34ff487a63f7731b0f4ac28349b3084d739c3dfe24cd8c785',
-    'every non-target equipment emission inside shared detail/glass buckets is unchanged');
 }
 const parts=capturedParts();
-try{unchangedEquipmentEmissions();for(const quality of ['high','low']){
+try{for(const quality of ['high','low']){
   const t=createTank('strv122_x',null,{quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false,camoSeed:4242});
   try{
     t.root.updateMatrixWorld(true);const all=[],probes=[];
     t.root.traverse(m=>{if(!m.isMesh||m.userData.shadowOnly||m.userData.vehicleMarking||/Proxy|procShadow/.test(m.name))return;
       const p=new T.Mesh(m.geometry,material);p.name=m.name;p.matrixWorld.copy(m.matrixWorld);all.push(p);probes.push(p);});
     sourceSurfaces(all);sourceAir(all);contacts(parts,all.find(m=>m.name==='turret'));
-    actualWiring(parts,all);
-    // Keep every immutable pre-cupola byte, inverting only the independently
-    // authenticated later wheel tessellation/link substitution. Physical
-    // checks above use the actual current t, not the historical reconstruction.
-    const historical=withHistoricalStrv122Wheels(()=>createTank('strv122_x',null,
-      {quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false,camoSeed:4242}));
-    try{historical.root.updateMatrixWorld(true);nonTarget(historical,quality);}
-    finally{historical.dispose();}
+    actualWiring(parts,all);nightMasks(t.root);
   }finally{t.dispose();}
 }}finally{for(const m of parts)m.geometry.dispose();material.dispose();}
-console.log('strv122XSuppliedCupola: actual high/low source heads, nine radial feet, open band/hatch/sight, positive support and immutable non-target geometry PASS');
+console.log('strv122XSuppliedCupola: actual high/low source heads, nine radial feet, open band/hatch/sight, positive support and factory wiring PASS');
