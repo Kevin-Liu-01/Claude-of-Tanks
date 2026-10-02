@@ -18,8 +18,9 @@
 // --serve=dev) on 127.0.0.1, the first free port of --port..--port+19, drives one headless Chrome, takes the
 // repository's cot-shots capture lock (tools/capture-lock.mjs) for the whole session and merges each map into
 // <out>/census.json as soon as it is done, so batches resume: --batch=<n> captures at most n maps not yet captured,
-// --budget-min stops starting maps after that many minutes. Agents also hold the shared probe mutex around every
-// capture process and run it at nice 19 (tools/map-probe-runtime.mjs header); the tool never takes that mutex itself.
+// --budget-min stops starting maps after that many minutes. A session mutex (an agent scratchpad's probe.lock) is
+// either the caller's, or with --probe-lock=<dir> the tool's own, taken only at the head of the FIFO so it is never
+// held while waiting in that queue (tools/visual-census-lock.mjs). Run it at nice 19.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
@@ -29,6 +30,7 @@ import { pathToFileURL } from 'node:url';
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { createCaptureLock } from './capture-lock.mjs';
+import { createPoliteCaptureLock } from './visual-census-lock.mjs';
 import { MAP_PROBE_BROWSER_ARGS, isMainModule, mapProbeServerOptions, resolveGroundPose } from './map-probe-runtime.mjs';
 import { settleMapTextures } from './map-environment-acquisition.mjs';
 import { settleResidencyTerrain } from './world-residency-acquisition.mjs';
@@ -45,7 +47,7 @@ const PORT_SPAN = 20;
 const GAME_QUERY = 'nosplash=1&tier=desktop';
 const COMMANDS = Object.freeze(['capture', 'metrics', 'sheets', 'index', 'report', 'compare']);
 const FLAGS = Object.freeze({
-  capture: ['root', 'out', 'maps', 'views', 'serve', 'port', 'batch', 'budget-min', 'lock-timeout-min', 'settle-ms'],
+  capture: ['root', 'out', 'maps', 'views', 'serve', 'port', 'batch', 'budget-min', 'lock-timeout-min', 'settle-ms', 'probe-lock'],
   metrics: ['out', 'force'], sheets: ['out'], index: ['out'], report: ['out', 'force'], compare: ['a', 'b', 'out'],
 });
 const NUMERIC = new Set(['port', 'batch', 'budget-min', 'lock-timeout-min', 'settle-ms']);
@@ -55,17 +57,19 @@ const BOOLEANS = new Set(['force']);
 export const CENSUS_HELP = `node tools/${TOOL}.mjs <command> [--flag=value ...]
 
   capture  --out=<dir> [--root=<checkout>] [--maps=a,b] [--views=a,b] [--serve=dist|dev] [--port=5421]
-           [--batch=<n>] [--budget-min=<m>] [--lock-timeout-min=30] [--settle-ms=1200]
+           [--batch=<n>] [--budget-min=<m>] [--lock-timeout-min=30] [--settle-ms=1200] [--probe-lock=<dir>]
            Shoot ${CENSUS_VIEWS.map((v) => v.name).join(', ')} of every registered map (or --maps) into <out>/frames
            and merge each map into <out>/census.json. --serve=dist (default) previews <root>/dist: run npm run build
-           first. --batch / --budget-min bound one run so batches resume where the last stopped.
+           first. --batch / --budget-min bound one run so batches resume where the last stopped. --probe-lock waits
+           in the cot-shots FIFO without that session mutex and takes it only at the FIFO head
+           (tools/visual-census-lock.mjs); without it the caller holds any session mutex.
   metrics  --out=<dir> [--force]      per-frame metrics into census.json (only frames without them unless --force)
   sheets   --out=<dir>                contact sheets: one per view (every map), one per map (every view)
   index    --out=<dir>                <out>/index.md (keeps the hand-written visual read between its markers)
   report   --out=<dir> [--force]      metrics + sheets + index
   compare  --a=<dir> --b=<dir> --out=<dir>   A | B sheets per map and compare.json (pixel and metric deltas)
 
-Hold the probe mutex and run capture under nice -n 19; it takes the cot-shots capture lock itself.`;
+Run capture under nice -n 19; it takes the cot-shots capture lock itself (with --probe-lock, the session mutex too).`;
 
 // ---------------------------------------------------------------------------------------------- arguments
 
@@ -111,6 +115,7 @@ export function parseCensusArgs(argv) {
       root: path.resolve(values.root ?? process.cwd()), maps: values.maps ?? null, views: selectCensusViews(values.views),
       serve, port, batch: values.batch ?? null, budgetMin: values['budget-min'] ?? null,
       lockTimeoutMin: values['lock-timeout-min'] ?? 30, settleMs: values['settle-ms'] ?? 1200,
+      probeLock: values['probe-lock'] ? path.resolve(values['probe-lock']) : null,
       argv: [...argv],
     });
   }
@@ -418,7 +423,9 @@ async function runCapture(options) {
   if (!maps.length) { console.log(`[${TOOL}] nothing to capture (remaining 0)`); session.endedAt = new Date().toISOString(); saveCensus(options.out, census); return { ok: true, remaining: 0 }; }
   console.log(`[${TOOL}] ${stamp()} session ${session.index}: ${maps.length} map(s) ${maps.join(',')} → ${options.out}`);
 
-  const lock = createCaptureLock();
+  const lock = options.probeLock
+    ? createPoliteCaptureLock({ probeDir: options.probeLock, log: (message) => console.log(`[${TOOL}] ${stamp()} ${message}`) })
+    : createCaptureLock();
   let server = null, browser = null, refresher = null, booted = null;
   const cleanup = async () => {
     clearInterval(refresher);

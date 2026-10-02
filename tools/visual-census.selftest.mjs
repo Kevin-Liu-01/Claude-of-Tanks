@@ -23,6 +23,7 @@ import {
   buildSheets, compareCensus, horizonOfState, loadCensus, measureCensus, openCensus, pixelDiff, renderIndex, saveCensus, writeIndex,
 } from './visual-census-report.mjs';
 import { CENSUS_HELP, parseCensusArgs, pickCaptureMaps } from './visual-census.mjs';
+import { createPoliteCaptureLock, stepBehindStamp } from './visual-census-lock.mjs';
 
 const ROOT = path.resolve(new URL('..', import.meta.url).pathname);
 const dir = mkdtempSync(path.join(tmpdir(), 'cot-visual-census-selftest-'));
@@ -294,6 +295,30 @@ try {
     assert.ok((run.stdout + run.stderr).includes('node tools/visual-census.mjs <command>'));
   }
   assert.ok(CENSUS_HELP.includes('establishing, chase, bird, sky-w, sky-s, terrain, tree'));
+  assert.equal(parseCensusArgs(['capture', '--out=o', '--probe-lock=rel/probe.lock']).options.probeLock, path.resolve('rel/probe.lock'));
+  assert.equal(parseCensusArgs(['capture', '--out=o']).options.probeLock, null);
+
+  // ------------------------------------------------------------------ polite lock (FIFO first, session mutex at the head)
+  const t = (stamp, pid) => `${String(stamp).padStart(15, '0')}-000000000000-${pid}.t`;
+  const alive = new Set([t(200, 2), t(300, 3)]);
+  assert.equal(stepBehindStamp([t(300, 3), t(100, 1), t(200, 2)], t(100, 1), (n) => alive.has(n)), 201, 'one live waiter passes');
+  assert.equal(stepBehindStamp([t(100, 1), t(150, 9)], t(100, 1), (n) => alive.has(n)), null, 'a dead waiter does not count');
+  const lockRoot = mkdtempSync(path.join(tmpdir(), 'cot-census-lock-'));
+  const dirs = { queueDir: path.join(lockRoot, 'queue'), lockDir: path.join(lockRoot, 'lock'), probeDir: path.join(lockRoot, 'probe.lock') };
+  const fast = { requeuePauseMs: 20, headPollMs: 20, maxHolderWaitMs: 80 };
+  const polite = createPoliteCaptureLock({ ...dirs, ...fast });
+  await polite.acquire(2000);
+  assert.ok(existsSync(dirs.lockDir) && existsSync(path.join(dirs.probeDir, 'pid')), 'both locks held at the head');
+  polite.refresh(); polite.release();
+  assert.ok(!existsSync(dirs.lockDir) && !existsSync(dirs.probeDir), 'release frees both');
+  mkdirSync(dirs.probeDir);
+  await assert.rejects(createPoliteCaptureLock({ ...dirs, ...fast }).acquire(150), /cot-shots lock timeout/, 'a busy session mutex never blocks the FIFO lock');
+  assert.ok(!existsSync(dirs.lockDir), 'the FIFO lock was never taken while the session mutex was busy');
+  rmSync(dirs.probeDir, { recursive: true });
+  mkdirSync(dirs.lockDir);
+  await assert.rejects(createPoliteCaptureLock({ ...dirs, ...fast }).acquire(300), /cot-shots lock timeout/);
+  assert.ok(!existsSync(dirs.probeDir), 'a FIFO holder outlasting the wait gets the session mutex handed back');
+  rmSync(lockRoot, { recursive: true, force: true });
   console.log('visual-census.selftest: camera set pinned, site selection, metrics, store, sheets, index, compare and CLI verified');
 } finally {
   rmSync(dir, { recursive: true, force: true });
