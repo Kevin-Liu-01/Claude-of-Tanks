@@ -8,6 +8,7 @@ import { createCanvas, ImageData } from '@napi-rs/canvas';
 import * as THREE from 'three';
 import ts from 'typescript-compiler-api';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
+import { PRE_LUNAR_MAP_IDS } from './mapRosterHistory.test-support.mjs';
 
 const { values } = parseArgs({ options: { out: { type: 'string' } } });
 const url = new URL('./vegetation.ts', import.meta.url), source = readFileSync(url, 'utf8');
@@ -331,7 +332,9 @@ function mapTones() {
       result.push([id + '-' + speciesId, palette.texTone ?? null]);
     }
   }
-  assert.equal(affected.length, 25, 'actual broadleaf map scope'); // 2026-09-19: Mars lists oak (count 0)
+  // 2026-09-19: Mars lists oak (count 0). The pinned count names the pre-lunar roster; a battlefield registered later
+  // (moon, cliffbridge with 0e5fc79e2) joins the scope through its own species list and every tone below is painted.
+  assert.equal(affected.filter(id => PRE_LUNAR_MAP_IDS.includes(id)).length, 25, 'actual broadleaf map scope');
   return { affected, tones: result };
 }
 const priorDocument = globalThis.document, priorWindow = globalThis.window;

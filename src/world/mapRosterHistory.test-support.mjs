@@ -21,9 +21,6 @@ export const PRE_LUNAR_MAP_IDS = Object.freeze([
 /** The thirty battlefields registered before Mars (2026-09-18), in registry order. */
 export const PRE_MARS_MAP_IDS = Object.freeze(PRE_LUNAR_MAP_IDS.filter(id => id !== 'mars'));
 
-/** Battlefields registered after the pre-lunar roster, in registry order (moon and cliffbridge as of 2026-10-01). */
-export const POST_LUNAR_MAP_IDS = Object.freeze(MAP_IDS.filter(id => !PRE_LUNAR_MAP_IDS.includes(id)));
-
 // A frozen roster names only registered battlefields, in registry order: retiring or reordering one must surface in
 // every receipt that pins it, never fall back silently to Verdant's config (getMapConfig's default for an unknown id).
 assert.deepEqual(MAP_IDS.filter(id => PRE_LUNAR_MAP_IDS.includes(id)), [...PRE_LUNAR_MAP_IDS],

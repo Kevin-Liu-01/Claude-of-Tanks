@@ -11,6 +11,7 @@ import { historicalMaskTexture as makeMaskTexture } from './roadRutHistoryTestOr
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { resolveDeviceTier } from '../engine/quality.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
+import { PRE_LUNAR_MAP_IDS } from './mapRosterHistory.test-support.mjs';
 import { planRiverLanding } from './maps/riverLandings.ts';
 import { historicalShorelineConfig, historicalReservoirConfig, historicalBadlandsInput } from './shorelineHistoryTestOracle.mjs';
 import { assertTerrainMaskShaderContract } from './terrainMaskShaderTestOracle.mjs';
@@ -327,7 +328,7 @@ function checkCurrentUnrequestedShore(id, size) {
   try {
     checkTexture(current, size); checkTexture(disabled, size);
     assert.deepEqual(bytes(current), bytes(disabled), `${id}: current terrain receives no unrequested bank soil`);
-    if (size === 512) assert.notEqual(hash(bytes(current)), ORIGINAL[id],
+    if (size === 512 && Object.hasOwn(ORIGINAL, id)) assert.notEqual(hash(bytes(current)), ORIGINAL[id],
       `${id}: current authored roads remain distinct from historical input`);
   } finally { current.dispose(); disabled.dispose(); }
 }
@@ -343,8 +344,12 @@ for (const step of [2, 4]) {
   checkMetric(step);
   for (let angle = 0; angle < 180; angle += 15) checkContinuousBorder(step, angle * Math.PI / 180);
 }
-assert.deepEqual(Object.keys(ORIGINAL).sort(), [...MAP_IDS].sort());
-for (const id of MAP_IDS) {
+// The immutable controls cover an explicit roster: every pre-lunar battlefield (Mars joined 2026-09-19 as a dry-mask
+// digest). A battlefield registered later (moon, cliffbridge with 0e5fc79e2) has no pre-shore-pass capture; it is held
+// to the same opt-in rule live below instead: no bank-soil opt-in, and the shore pass byte-inert on its current terrain.
+assert.deepEqual(Object.keys(ORIGINAL).sort(), [...PRE_LUNAR_MAP_IDS].sort(), 'the immutable controls cover every pre-lunar battlefield');
+const laterMaps = MAP_IDS.filter(id => !Object.hasOwn(ORIGINAL, id));
+for (const id of PRE_LUNAR_MAP_IDS) {
   if (id === 'mangrove') continue;
   const cfg = beforeShorelineContinuity(getMapConfig(id));
   assert.equal(!!cfg.splat?.shoreDirt, id === 'polders', `${id}: only the published Polders opt-in joins Mangrove`);
@@ -370,7 +375,7 @@ for (const id of MAP_IDS) {
 // Keep current Reservoir covered too: without an opt-in, the shore pass must
 // be byte-inert even on its new hardstand/road layout. Historical and current
 // layouts must not accidentally collapse back into the same fixture.
-for (const id of ['reservoir', 'badlands']) checkCurrentUnrequestedShore(id, 512);
+for (const id of ['reservoir', 'badlands', ...laterMaps]) checkCurrentUnrequestedShore(id, 512);
 checkOasis();
 for (const id of ['mangrove', 'polders']) for (const seed of [1337, 2049, 4093]) checkShoreMap(id, seed, 512);
 const savedWindow = globalThis.window;
@@ -389,4 +394,4 @@ const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 assertTerrainMaskShaderContract(source);
 assert.match(source, /S\.shoreDirt \? \(S\.seaRamp\?\.\[0\] \?\? 0\.40\) : null/);
 assert.match(source, /stampShoreDirtMask\(px, dist, s, MAP_SIZE, shoreDirtStart\)/, 'production passes the original road scratch, not a new buffer');
-console.log('shoreDirtMask.selftest: 29 immutable historical map controls, twelve current Mangrove/Polders masks, RGB/physics/roads/landings and metric budget checks passed');
+console.log(`shoreDirtMask.selftest: ${PRE_LUNAR_MAP_IDS.length - 1} immutable historical map controls, ${laterMaps.length} later battlefields byte-inert without an opt-in, twelve current Mangrove/Polders masks, RGB/physics/roads/landings and metric budget checks passed`);

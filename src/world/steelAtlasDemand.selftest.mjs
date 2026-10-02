@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
+import { PRE_LUNAR_MAP_IDS } from './mapRosterHistory.test-support.mjs';
 import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, STEEL_STRIP_V, makeSteelAtlas, steelAtlasNeeded } from './propsSteelAtlas.ts';
 import { yardStructureKinds } from './yardDressing.ts';
 
@@ -22,7 +23,10 @@ for (const id of MAP_IDS) {
   assert.equal(steelAtlasNeeded(plan, props.industrialCladding), expected, `${id}: the predicate follows the plan`);
   if (!expected) without.push(id);
 }
-assert.deepEqual(without, ['verdant', 'desert', 'coastal', 'autumn', 'oasis', 'orchard'], 'six battlefields draw no steel (2026-09-26 plans)');
+// The snapshot is dated: it names the steel-free battlefields among those registered for the 2026-09-26 plans (the
+// pre-lunar roster). A battlefield registered later (moon, cliffbridge with 0e5fc79e2) answers to the predicate above.
+assert.deepEqual(without.filter(id => PRE_LUNAR_MAP_IDS.includes(id)), ['verdant', 'desert', 'coastal', 'autumn', 'oasis', 'orchard'],
+  'six battlefields draw no steel (2026-09-26 plans)');
 assert.equal(steelAtlasNeeded(['cottage', 'barn'], undefined), false);
 assert.equal(steelAtlasNeeded(['cottage', 'containerRow'], undefined), true, 'a container row');
 assert.equal(steelAtlasNeeded(['cottage', 'shed'], undefined), true, 'a yard kind (its profile places drums)');
