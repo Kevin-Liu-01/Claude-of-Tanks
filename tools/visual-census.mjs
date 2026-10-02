@@ -530,10 +530,12 @@ async function shootWithRetry(page, options, mapId, view, plan) {
 /** The reproduce block of the index: the build, every capture session's exact command, the report. */
 function reproduceLines(census, out) {
   const quote = (a) => (/^[\w@%+=:,./-]+$/.test(a) ? a : `'${a.replace(/'/g, "'\\''")}'`);
+  const tool = git(census.root, ['rev-parse', '--short=9', 'HEAD']);
   return [
     `cd ${census.root}`,
+    ...(tool ? [`git checkout ${tool}   # the tool revision that rendered this index (game tree: census.sourceTree)`] : []),
     ...(census.serve === 'dist' ? ['npm run build'] : []),
-    '# every capture run under the probe mutex at nice 19; the tool takes the cot-shots capture lock itself',
+    '# capture runs at nice 19; with --probe-lock the tool takes that session mutex at the cot-shots FIFO head, without it hold your session mutex around the run',
     ...census.sessions.filter((s) => s.maps?.length).map((s) => `nice -n 19 node tools/${TOOL}.mjs ${s.argv.map(quote).join(' ')}`),
     `node tools/${TOOL}.mjs report --out=${out}`,
   ];
