@@ -313,4 +313,3 @@ export function buildSabraMk2X(P: TankBuilderPort): void {
   P.topY=3.11-py;
   P.hullG.userData.xRebuild={candidate:'sabra_mk2_x',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
-export const SABRA_MK2_SOURCE_X_PROFILES={sabra_mk2_x:{build:buildSabraMk2X}} as const;

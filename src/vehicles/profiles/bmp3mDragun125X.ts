@@ -708,4 +708,3 @@ export function buildBmp3mDragun125X(P: TankBuilderPort): void {
     preserveSourceStudyGunMountAppearance(P);
     P.hullG.userData.xRebuild = { candidate: 'bmp3m_dragun125_x', independent: true, sourceLocalOnly: true };
 }
-export const BMP3M_DRAGUN125_X_PROFILE = { bmp3m_dragun125_x: { build: buildBmp3mDragun125X } };

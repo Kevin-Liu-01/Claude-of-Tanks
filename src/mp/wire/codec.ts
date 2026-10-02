@@ -3,13 +3,13 @@
  * `decodeMessage` never throws: every malformed, truncated, oversized or
  * out-of-range frame comes back as a typed rejection.
  */
-import { ByteReader, ByteWriter, WireError, toUint8Array, utf8ByteLength } from './bytes.ts';
+import { ByteReader, ByteWriter, WireError, toUint8Array } from './bytes.ts';
 import {
-  CLOSE_REASON, EVENT_KIND_NAMES, EVENT_KIND_OTHER, INPUT_MARGIN_UNKNOWN, MAX_BUILD_BYTES, MAX_CHAT_BYTES,
+  CLOSE_REASON, EVENT_KIND_NAMES, EVENT_KIND_OTHER, MAX_BUILD_BYTES, MAX_CHAT_BYTES,
   MAX_CONTROLS_PER_INPUT, MAX_DESTROYED_PER_SNAPSHOT, MAX_DETAIL_BYTES, MAX_ENTITIES, MAX_EVENTS_PER_MESSAGE,
   MAX_EVENT_JSON_BYTES, MAX_ID_BYTES, MAX_MESSAGE_BYTES, MAX_MODE_STATE_JSON_BYTES, MAX_MOVEMENT_VALUES,
   MAX_NAME_BYTES, MAX_REASON_BYTES, MAX_RULESET_JSON_BYTES, MAX_SEATS, MAX_SHELLS, MAX_TOKEN_BYTES,
-  MESSAGE_TYPE, NO_ENTITY, NO_SEAT, NO_TICK, SHELL_TYPE_OTHER, SHELL_TYPE_NAMES, SNAPSHOT_FLAGS,
+  MESSAGE_TYPE, NO_SEAT, NO_TICK, SHELL_TYPE_OTHER, SHELL_TYPE_NAMES, SNAPSHOT_FLAGS,
   VIEWER_EQUIPMENT, VIEWER_MODULES, WIRE_VERSION,
 } from './constants.ts';
 import type { CloseReasonId, PhaseId, TeamId, VerdictId } from './constants.ts';
@@ -651,11 +651,3 @@ export function shellTypeIndex(name: string): number {
   return SHELL_TYPE_INDEX.get(name) ?? SHELL_TYPE_OTHER;
 }
 
-/** Sanity helper for producers: the encoded byte length of a string field. */
-export function encodedStringBytes(text: string): number {
-  return utf8ByteLength(text);
-}
-
-export function noEntity(): number { return NO_ENTITY; }
-
-export function unknownInputMargin(): number { return INPUT_MARGIN_UNKNOWN; }

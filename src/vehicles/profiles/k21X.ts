@@ -497,4 +497,3 @@ export function buildK21X(P: TankBuilderPort): void {
     preserveSourceStudyGunMountAppearance(P);
     P.hullG.userData.xRebuild = { candidate: 'k21_x', independent: true, sourceLocalOnly: true };
 }
-export const K21_X_PROFILE = { k21_x: { build: buildK21X } };
