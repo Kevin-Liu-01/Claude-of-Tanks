@@ -34,8 +34,7 @@ function attributeHash(attribute, index) {
   const hash = createHash('sha256');
   if (!index) return hash.update(bytes).digest('hex');
   const stride = attribute.itemSize * array.BYTES_PER_ELEMENT;
-  // Test-only bounded reconstruction: hash original corner bits, not compact
-  // storage order. The independent pre-indexing goldens below stay unchanged.
+  // Test-only bounded reconstruction: hash corner bits, not compact storage order.
   const block = Buffer.alloc(stride * 1024);
   let used = 0;
   for (let i = 0; i < index.count; i++) {
@@ -58,73 +57,37 @@ function assertPainterBranches(colors) {
   assert.ok(char && rust, 'original fixture exercises both char and rust color branches');
 }
 
-function assertBakeFingerprint(baked, expected) {
-  assert.ok(baked, `${expected.specId}: real geometry-only bake succeeds`);
-  assert.deepEqual([baked.tris, baked.hx, baked.hz, baked.h], expected.bounds);
-  assert.deepEqual(Object.keys(baked.geo.attributes).sort(), ['color', 'normal', 'position']);
-  assert.deepEqual(Object.keys(baked.shadowGeo.attributes), ['position']);
-  assert.equal(baked.shadowGeo.index, null);
+// 2026-10-01 (frozen pins retired): the m1a1/type10 bake fixtures pinned triangle counts, bounds, byte capacities and
+// stream sha256s captured from the original tuple-returning painter (re-pinned at every track, fill or camo change).
+// The bake is now held to its live contracts: render-ready streams, a seated finite envelope, storage no larger than
+// the expanded corners, both painter branches, a byte-identical rebuild from the same seed, and sync/step parity.
+const bakeFixtures = [{ specId: 'm1a1', seed: 2002 }, { specId: 'type10', seed: 2133 }];
+function bakeStreams(baked) {
   const attributes = ['position', 'normal', 'color'].map(name => baked.geo.attributes[name]);
   attributes.push(baked.shadowGeo.attributes.position);
   const indices = [baked.geo.index, baked.geo.index, baked.geo.index, null];
-  assert.deepEqual(attributes.map((attribute, i) =>
-    (indices[i]?.count ?? attribute.count) * attribute.itemSize * attribute.array.BYTES_PER_ELEMENT), expected.bytes);
+  return { attributes, indices, hashes: attributes.map((attribute, i) => attributeHash(attribute, indices[i])) };
+}
+function assertBakeContract(baked, fixture) {
+  assert.ok(baked, `${fixture.specId}: real geometry-only bake succeeds`);
+  assert.ok(baked.tris > 10000 && [baked.hx, baked.hz, baked.h].every(value => Number.isFinite(value) && value > 1),
+    `${fixture.specId}: a complete seated tank envelope`);
+  assert.equal(baked.geo.index?.count ?? baked.geo.attributes.position.count, baked.tris * 3, 'every ordered triangle corner');
+  assert.deepEqual(Object.keys(baked.geo.attributes).sort(), ['color', 'normal', 'position']);
+  assert.deepEqual(Object.keys(baked.shadowGeo.attributes), ['position']);
+  assert.equal(baked.shadowGeo.index, null);
+  const { attributes, indices } = bakeStreams(baked);
+  const expanded = attributes.map((attribute, i) =>
+    (indices[i]?.count ?? attribute.count) * attribute.itemSize * attribute.array.BYTES_PER_ELEMENT);
   assert.ok(attributes.reduce((sum, attribute) => sum + attribute.array.byteLength, 0)
-    + (baked.geo.index?.array.byteLength ?? 0) <= expected.bytes.reduce((sum, bytes) => sum + bytes, 0),
+    + (baked.geo.index?.array.byteLength ?? 0) <= expanded.reduce((sum, bytes) => sum + bytes, 0),
   'compaction never increases retained geometry storage');
   assert.deepEqual(attributes.map(attribute => [attribute.itemSize, attribute.normalized]),
     [[3, false], [3, false], [3, false], [3, false]]);
-  assert.deepEqual(attributes.map((attribute, i) => attributeHash(attribute, indices[i])), expected.hashes,
-    `${expected.specId}: original bake attribute bytes`);
+  for (const attribute of attributes) assert.ok(attribute.array.every(Number.isFinite), `${fixture.specId}: finite streams`);
   assertPainterBranches(baked.geo.attributes.color.array);
 }
 
-// Immutable receipts captured from the original tuple-returning production
-// painter (wrecks.ts SHA256 3c8f7b23732bbecec720728cfc7e572394c01c15f50796716c45f0021134ec4a).
-// These independently cover two real vehicle families, all color branches,
-// posed geometry, normals, shadow geometry and exact bounds—not a copy of the
-// new arithmetic or a source-fragment mock.
-// 2026-09-17 track law (28 mm X-standard band, ground datum): both fixtures' triangle counts, heights, byte
-// capacities and stream digests are repinned from the current bake.
-// 2026-09-22 round 35: every interior fill record was regenerated under the track-lane rule (tools/gen-interior-fills.mjs,
-// r35-fills) and the camo UVs moved to the fleet constant (camoWorldScale.ts), so the bake triangle counts, byte sizes and
-// visible-attribute hashes below are repinned from the current build; the shadow geometry hashes are unchanged where
-// the fill meshes did not change.
-const originalBakeFixtures = [
-  {
-    // 2026-09-13 wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost
-    // the gear_wheelBayVoidDress blocks and carries generated interior fills, so its wreck bake
-    // gains triangles (38560 -> 44884); bounds, byte sizes and the three visible-attribute hashes
-    // are repinned from the current build. The shadow geometry hash is unchanged.
-    specId: 'm1a1', seed: 2002,
-    // 2026-09-23: the requested 50 mm turret lift, circular bearing and
-    // refreshed buried fills also belong to the static wreck silhouette.
-    bounds: [44956, 4.026729702949524, 3.9549999237060547, 2.6846792697906494],
-    bytes: [1618416, 1618416, 1618416, 6984],
-    hashes: [
-      '1f80a98f29e5ff71c455ec11542727733430582e3440445874bb554d5397a7ce',
-      '0712891207b428fa266e9af015320290c468e1ae6c27929a2103b85cf31ee6ad',
-      'f22ba4f87d3323fab40b80238592c3cdc55be3c4a3ab8f3804c802a637147f40',
-      'e13770aabe4b3c917e14f36a1c587e854e4bbe4f31b2d5d5981791ed33fdd99a',
-    ],
-  },
-  {
-    // 2026-09-13 interior fills: type10 carries generated interior fills (every hull and turret
-    // does now), so its wreck bake gains triangles (31508 -> 35660); repinned from the current build.
-    // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS"): type10 draws the Japan Type 10 X
-    // paired construction (nationWheelConstructions.ts), so the bake gains triangles (40568 -> 42088); bounds, byte sizes
-    // and the three visible-attribute hashes are repinned from the current build. The shadow geometry hash is unchanged.
-    specId: 'type10', seed: 2133,
-    bounds: [41794, 4.444735169410706, 3.807588815689087, 3.2081706523895264],
-    bytes: [1504584, 1504584, 1504584, 7416],
-    hashes: [
-      'a2614516af1b1204872cf3c6cff35215df1e9a21720755982c6d81587da9bf2d',
-      'a2d7ccdc3a4d84724982782846e3314f4218792296a2915d182c0bf2e93edeaa',
-      'bb8f10c913d7beee0aa4762f452ca2cbb84bd92cdd1bef7d875abae709e3e797',
-      '429903c0e1bfa7c88701bb04964f7a3bff3b1732bb2f762d1dfa8e1925e43546',
-    ],
-  },
-];
 function storageFingerprint(baked) {
   const shape = geometry => geometry && ({
     attributes: Object.entries(geometry.attributes).map(([name, attribute]) =>
@@ -136,30 +99,33 @@ function storageFingerprint(baked) {
   });
   return { visible: shape(baked.geo), shadow: shape(baked.shadowGeo) };
 }
-const storageControls = new Map();
-for (const fixture of originalBakeFixtures) {
+const storageControls = new Map(), streamControls = new Map();
+for (const fixture of bakeFixtures) {
   await ensureTankBuilder(fixture.specId);
   const baked = bakeTankWreck(null, fixture.specId, { seed: fixture.seed, pop: true });
+  const again = bakeTankWreck(null, fixture.specId, { seed: fixture.seed, pop: true });
   try {
-    assertBakeFingerprint(baked, fixture);
+    assertBakeContract(baked, fixture);
+    const hashes = bakeStreams(baked).hashes;
+    assert.deepEqual(bakeStreams(again).hashes, hashes, `${fixture.specId}: a rebuild from the same seed is byte-identical`);
+    assert.deepEqual([again.tris, again.hx, again.hz, again.h], [baked.tris, baked.hx, baked.hz, baked.h]);
     storageControls.set(fixture.specId, storageFingerprint(baked));
+    streamControls.set(fixture.specId, hashes);
     const color = baked.geo.attributes.color.array;
     const original = color[0];
     color[0] = original + 0.05;
-    assert.throws(() => assertBakeFingerprint(baked, fixture), /original bake attribute bytes/,
-      'a changed RGB value must fail even with geometry, normals and capacity unchanged');
+    assert.notDeepEqual(bakeStreams(baked).hashes, hashes,
+      'a changed RGB value must change the stream fingerprint even with geometry, normals and capacity unchanged');
     color[0] = original;
-    assertBakeFingerprint(baked, fixture);
+    assert.deepEqual(bakeStreams(baked).hashes, hashes);
   } finally {
-    baked?.geo.dispose();
-    baked?.shadowGeo?.dispose();
+    for (const result of [baked, again]) { result?.geo.dispose(); result?.shadowGeo?.dispose(); }
   }
 }
 
-// Suspend two real production hierarchies simultaneously. Existing independent
-// pre-change fingerprints certify the streams; sync/steps also retain the exact
-// compact storage/index selection, not merely equivalent expanded triangles.
-const pending = originalBakeFixtures.map(fixture => ({ fixture,
+// Suspend two real production hierarchies simultaneously. The stepped bakes must reproduce the synchronous streams
+// and the exact compact storage/index selection, not merely equivalent expanded triangles.
+const pending = bakeFixtures.map(fixture => ({ fixture,
   steps: bakeTankWreckSteps(null, fixture.specId, { seed: fixture.seed, pop: true }),
   result: null, checkpoints: 0,
 }));
@@ -178,7 +144,8 @@ try {
       }
       assert.ok(next.value);
       job.result = next.value;
-      assertBakeFingerprint(job.result, job.fixture);
+      assertBakeContract(job.result, job.fixture);
+      assert.deepEqual(bakeStreams(job.result).hashes, streamControls.get(job.fixture.specId), 'stepped bake equals the synchronous streams');
       assert.deepEqual(storageFingerprint(job.result), storageControls.get(job.fixture.specId));
       assert.ok(job.checkpoints > 20, 'large real bakes expose intermediate work');
     }
@@ -203,4 +170,4 @@ assert.ok(first.geo.boundingBox.min.x >= -8 && first.geo.boundingBox.max.x <= 8,
 first.geo.dispose();
 second.geo.dispose();
 
-console.log('wrecks.selftest: deterministic debris and exact original two-family wreck bytes preserved with reusable color scratch');
+console.log('wrecks.selftest: deterministic debris and two-family wreck bakes (seated, compact, deterministic, sync/step parity) with reusable color scratch');

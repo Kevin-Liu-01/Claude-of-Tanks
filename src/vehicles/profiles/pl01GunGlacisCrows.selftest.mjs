@@ -1,30 +1,11 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { Box3 } from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 
 const near = (actual, expected, epsilon = 1e-6) => Math.abs(actual - expected) <= epsilon;
-// 2026-09-25 FSP-03: hull digests re-pinned once — three fitted return rollers (CV90120-T chassis) joined the hull rig.
-const driverSeatHullHashes = Object.freeze({
-  pl01: '4ee9a578fc9a02380a4e65a7ba19f7127e3cced4a432648df601961e1edf8c27',
-  pl01_105: '6c78b79fc0c612acd4055b22c4bc247d102761bc9515869cd25b4dafa75f82e0',
-});
-
-function geometryHash(group) {
-  const hash = createHash('sha256');
-  group.traverse((node) => {
-    if (!node.isMesh) return;
-    const positions = node.geometry.getAttribute('position');
-    if (positions) {
-      hash.update(Buffer.from(positions.array.buffer,
-        positions.array.byteOffset, positions.array.byteLength));
-    }
-    node.updateMatrix();
-    hash.update(node.matrix.toArray().join(','));
-  });
-  return hash.digest('hex');
-}
+// The frozen hull-rig geometry digests of the approved driver-roof revision are retired: whole-tank change
+// detection of pl01 / pl01_105 is the fleet geometry ledger's. The envelope, seat receipts and datums stay.
 
 for (const id of ['pl01', 'pl01_105']) {
   const spec = getSpec(id);
@@ -60,8 +41,6 @@ for (const id of ['pl01', 'pl01_105']) {
     [-1.922, 0, -3.565, 1.922, 2.203312, 3.44],
     `${id} driver-roof seating must not change the hull envelope`,
   );
-  assert.equal(geometryHash(hull), driverSeatHullHashes[id],
-    `${id} hull geometry must stay fixed at the approved driver-roof attachment revision`);
   const driverSeat = hull.userData.pl01DriverRoofSeat;
   assert.equal(driverSeat?.revision, 'flush-r1',
     `${id} must expose the driver roof attachment receipt`);

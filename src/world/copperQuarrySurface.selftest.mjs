@@ -1,16 +1,13 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { COPPER_QUARRY, copperQuarryRise, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { acquireTerrainChunkIndex, createHeightField, createLayout } from './terrain.ts';
 import { sampleHorizonGeometry, HORIZON_SEGMENTS } from './maps/horizon.ts';
 import { getMapConfig } from './maps/index.ts';
-import { PRE_LUNAR_MAP_IDS } from './mapRosterHistory.test-support.mjs';
 import copper from './maps/copperMesa.ts';
 
 const seeds = [1337, 2049, 7719];
 const legacy = { ...copper, terrain: { ...copper.terrain, quarryBenches: false } };
 const layout = createLayout(copper);
-assert.equal(layout.terrain.landforms.length, 6, 'No added landform or geometry family');
 assert.deepEqual(layout.roads, createLayout(legacy).roads, 'All authored road vertices retained');
 assert.deepEqual(layout.spawns, createLayout(legacy).spawns, 'All authored spawn records retained');
 assert.deepEqual(copper.terrain.landforms[0], { kind: 'basin', x: COPPER_QUARRY.x,
@@ -96,120 +93,51 @@ for (let z = -180; z < 220; z += 16) for (let x = -240; x < 40; x += 16) {
   equalSurface(gated, uncut, x, z, 'Other map IDs ignore quarry opt-in');
 }
 
-function appendHorizonReceipt(hash, id, ring) {
-  hash.update(id); hash.update(new Uint8Array(ring.positions.buffer));
-  hash.update(new Uint8Array(ring.heights.buffer)); hash.update(JSON.stringify(ring.rows));
-  hash.update(String(ring.maxHeight));
-  return hash;
-}
-
-// 56924f7bf intentionally lowered Polders from .50 to .18 after these
-// 31e5b130b fixtures. Restoring ONLY its historical amplitude reproduces all
-// three original other29 digests. Freeze the current Polders bytes separately;
-// neither this attribution nor the new distant detail may hide terrain drift.
-// Titan's later finite-cap restoration likewise uses its explicit authoring
-// opt-out here; titanGorgeHorizon.selftest owns current Titan byte/shape guards.
-// Round 72 (2026-09-25, the mountain relief round): the coarse relief field (horizonRelief.ts) displaces every authored
-// and interpolated ring row on every map but Redrock, so the digests below were re-pinned once against the relieved geometry.
-const currentPolders = [
-  'ebe16e04b40c96e61c8110b2a0616ba99e4cf7abcab15eb90abf360abc237fa2' /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */,
-  '47f8797eda8816c8ac9386e7b16cb6abcf4c54270d38870dfd8f86e4028a061e',
-  '716637c6876d1f436ab482c42657c11da2cc11d64ede39a7c7d038c3501ba490',
-];
-function assertCurrentPolders(ring, index) {
-  // Restored 1049e4e rolling rows at amp 0.18 crest between 27 and 33 m.
-  assert.ok(Math.max(...ring.heights) > 24 && Math.max(...ring.heights) < 40,
-    'Current Polders keeps its authored low skyline');
-  assert.equal(appendHorizonReceipt(createHash('sha256'), 'polders', ring).digest('hex'),
-    currentPolders[index], 'Current Polders buffers and metadata remain byte-identical');
-}
-
-// Pre-restoration 28d5fd378 executable, excluding Copper and restored Verdant.
-// Verdant uses the shared classic rolling horizon; horizonResources.selftest guards it.
-// Keep the same historical Polders/Titan inputs and already-capped Skybridge.
-// (round 72: re-pinned with the relieved geometry, see above)
-// 2026-09-27: reviewed coastal extension/seabed; horizonResources independently
-// preserves all original inland positions at the same three seeds.
-// The baseline covers an explicit roster: the thirty pre-Mars battlefields but the restored Verdant (copper_mesa is
-// checked for its caps inside the same loop and stays out of the aggregate). Olympus Basin (2026-09-18) and Earthrise
-// Basin / Aegis Crossing (0e5fc79e2) postdate these pins; horizonResources gates every registered ring.
-const BASELINE_MAP_IDS = Object.freeze(PRE_LUNAR_MAP_IDS.filter(id => id !== 'verdant' && id !== 'mars'));
-const previous = [
-  'd27a2a9e47adf5a88ef8e02d80ad82f6a1684d8ac6cfe57338191c4f049113a5',
-  'a5b320eefeae0911aeb64ae4ff3508660c8dbe7df818b9c3f7ff9f9f0a41b41c',
-  'ee2cda0b99a3d683edf0693b945b80c7c182f2757ac10e39371e8c8f6af41832',
-];
-for (const [index, seed] of seeds.entries()) {
-  const hash = createHash('sha256');
-  const unrelatedMutation = createHash('sha256');
-  for (const id of BASELINE_MAP_IDS) {
-    const config = getMapConfig(id), ring = sampleHorizonGeometry(config, seed);
-    if (id !== 'copper_mesa') {
-      const historicalRing = id === 'polders' ? sampleHorizonGeometry({ ...config,
-        horizon: { ...config.horizon, amp: 0.50 } }, seed)
-        : id === 'titan_gorge' ? sampleHorizonGeometry({ ...config,
-          horizon: { ...config.horizon, finiteTableCaps: false } }, seed)
-        : id === 'badlands' ? sampleHorizonGeometry({ ...config,
-          horizon: { ...config.horizon, redrockCanyon: false } }, seed) : ring;
-      appendHorizonReceipt(hash, id, historicalRing);
-      const mutated = id === 'desert'
-        ? { ...historicalRing, positions: historicalRing.positions.slice() } : historicalRing;
-      if (id === 'desert') mutated.positions[0] += 1;
-      appendHorizonReceipt(unrelatedMutation, id, mutated);
-      if (id === 'polders') {
-        assert.equal(config.horizon.amp, 0.18, 'Current Polders amplitude cannot revert to its old mountain profile');
-        assertCurrentPolders(ring, index);
-        const raised = { ...ring, positions: ring.positions.slice(), heights: ring.heights.slice() };
-        raised.positions[1] += 0.1; raised.heights[0] += 0.1;
-        assert.throws(() => assertCurrentPolders(raised, index), { code: 'ERR_ASSERTION' },
-          'The current Polders receipt rejects sub-metre height drift');
-      }
-      continue;
-    }
-    // Vista pass (2026-09-19, owner: 'consider this a triple AAA pass'): the ring ladder is 431 columns and 18 / 36 rows with
-    // ridged relief, the first ridge stands 700-720 m out and the skirt seats on the terrain; every geometry receipt below is
-    // re-established at this commit (the 1049e4e byte identity it guarded is superseded by that owner direction).
-    const n = HORIZON_SEGMENTS;
-    // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the mesa stack uploads 30 rows (was 18)
-    assert.equal(ring.rows.length, 30); assert.equal(ring.positions.length, n * 30 * 3);
-    assert.equal(ring.heights.length, n * 30);
-    const p = ring.positions, h = ring.heights;
-    const radius = (row, c) => Math.hypot(p[(row * n + c) * 3], p[(row * n + c) * 3 + 2]);
-    for (let c = 0; c < n; c++) for (let row = 1; row < 30; row++) {
-      assert.ok(radius(row, c) > radius(row - 1, c) + 1, 'No folded horizon faces');
-      // The restored 1049e4e mesa profile keeps its terraced cliff steps (up to
-      // about 4:1 between adjacent rows); a genuinely vertical sheet is steeper.
-      assert.ok((h[row * n + c] - h[(row - 1) * n + c])
-        / (radius(row, c) - radius(row - 1, c)) < 4.5, 'No new vertical skyline sheets');
-    }
-    for (const top of [9, 17]) {
-      let capQuads = 0, area = 0;
-      for (let c = 0; c < n; c++) {
-        const next = (c + 1) % n;
-        const ids = [(top - 1) * n + c, top * n + c, top * n + next, (top - 1) * n + next];
-        const levels = ids.map(i => h[i]);
-        if (Math.max(...levels) - Math.min(...levels) >= 2) continue;
-        // Restored 1049e4e rows: the near table's cap depth follows the closer
-        // 585-760 m row spacing (about 58 m), the outer table keeps 90 m.
-        assert.ok(radius(top, c) - radius(top - 1, c) >= (top === 9 ? 40 : 90) - 0.001);
-        let doubleArea = 0;
-        for (let j = 0; j < 4; j++) {
-          const a = ids[j] * 3, b = ids[(j + 1) % 4] * 3;
-          doubleArea += p[a] * p[b + 2] - p[b] * p[a + 2];
-        }
-        area += Math.abs(doubleArea) * 0.5; capQuads++;
-      }
-      assert.ok(capQuads >= 35 && area > (top === 9 ? 40000 : 120000), // vista pass: narrower 431-column quads
-        `Both ranges have finite attached cap surfaces (range ${top}: ${capQuads} quads, ${Math.round(area)} m2)`);
-    }
+// Copper Mesa's own horizon caps. 2026-10-01 (frozen pins retired): the sha256 aggregate of the other 28 rings (with
+// historical Polders/Titan/Badlands inputs), its mutation control and the byte pin of the current Polders ring were
+// change detectors; horizonResources gates every registered ring (finite rows, closed rim, no folds, layered ranges,
+// Polders' low ridge) and titanGorgeHorizon owns Titan's caps.
+for (const seed of seeds) {
+  const ring = sampleHorizonGeometry(getMapConfig('copper_mesa'), seed);
+  // Vista pass (2026-09-19, owner: 'consider this a triple AAA pass'): the ring ladder is 431 columns and 18 / 36 rows with
+  // ridged relief, the first ridge stands 700-720 m out and the skirt seats on the terrain.
+  const n = HORIZON_SEGMENTS;
+  // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the mesa stack uploads 30 rows (was 18)
+  assert.equal(ring.rows.length, 30); assert.equal(ring.positions.length, n * 30 * 3);
+  assert.equal(ring.heights.length, n * 30);
+  const p = ring.positions, h = ring.heights;
+  const radius = (row, c) => Math.hypot(p[(row * n + c) * 3], p[(row * n + c) * 3 + 2]);
+  for (let c = 0; c < n; c++) for (let row = 1; row < 30; row++) {
+    assert.ok(radius(row, c) > radius(row - 1, c) + 1, 'No folded horizon faces');
+    // The restored 1049e4e mesa profile keeps its terraced cliff steps (up to
+    // about 4:1 between adjacent rows); a genuinely vertical sheet is steeper.
+    assert.ok((h[row * n + c] - h[(row - 1) * n + c])
+      / (radius(row, c) - radius(row - 1, c)) < 4.5, 'No new vertical skyline sheets');
   }
-  assert.equal(hash.digest('hex'), previous[index], 'Baseline other28 receipt remains exact with historical Polders/Titan inputs');
-  assert.throws(() => assert.equal(unrelatedMutation.digest('hex'), previous[index]),
-    { code: 'ERR_ASSERTION' }, 'Historical Polders attribution never hides unrelated geometry drift');
+  for (const top of [9, 17]) {
+    let capQuads = 0, area = 0;
+    for (let c = 0; c < n; c++) {
+      const next = (c + 1) % n;
+      const ids = [(top - 1) * n + c, top * n + c, top * n + next, (top - 1) * n + next];
+      const levels = ids.map(i => h[i]);
+      if (Math.max(...levels) - Math.min(...levels) >= 2) continue;
+      // Restored 1049e4e rows: the near table's cap depth follows the closer
+      // 585-760 m row spacing (about 58 m), the outer table keeps 90 m.
+      assert.ok(radius(top, c) - radius(top - 1, c) >= (top === 9 ? 40 : 90) - 0.001);
+      let doubleArea = 0;
+      for (let j = 0; j < 4; j++) {
+        const a = ids[j] * 3, b = ids[(j + 1) % 4] * 3;
+        doubleArea += p[a] * p[b + 2] - p[b] * p[a + 2];
+      }
+      area += Math.abs(doubleArea) * 0.5; capQuads++;
+    }
+    assert.ok(capQuads >= 35 && area > (top === 9 ? 40000 : 120000), // vista pass: narrower 431-column quads
+      `Both ranges have finite attached cap surfaces (range ${top}: ${capQuads} quads, ${Math.round(area)} m2)`);
+  }
 }
 for (const segments of [96, 48, 24]) {
   const index = acquireTerrainChunkIndex(new Map(), segments);
   assert.equal(index.count, segments * segments * 6 + 4 * segments * 6,
     'All terrain LODs retain their original surface/skirt topology');
 }
-console.log('copperQuarrySurface: protected exact terrain, bounded2D treads, collision cache, finite mesa caps and other29 geometry PASS', receipts);
+console.log('copperQuarrySurface: protected exact terrain, bounded2D treads, collision cache and finite mesa caps PASS', receipts);

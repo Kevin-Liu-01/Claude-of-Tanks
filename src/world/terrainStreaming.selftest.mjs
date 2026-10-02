@@ -1,18 +1,13 @@
-import { beforeShorelineContinuity } from './shorelineContinuity.test-support.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
-import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import {
   chooseTerrainLodBuild, initialTerrainLods, terrainLodForDistance, warmTerrainLodBuilds,
 } from './terrainLodPolicy.ts';
 import { registerRetainedObject3DResources, releaseObject3DGpuResources,
   disposeObject3DResources } from '../engine/resourceLifetime.ts';
-import { historicalBadlandsInput, historicalPlayableReliefInput } from './shorelineHistoryTestOracle.mjs';
 
-import { historicalRoadHeightField } from './roadHistoryTestOracle.mjs';
-import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
 
 // Execute the actual chunk generators, startup and live scheduler. Only the
 // unrelated canvas material/horizon builders are stubbed; real Three buffers,
@@ -142,63 +137,12 @@ for (const test of [f, timed, moving]) {
 
 console.log('terrainStreaming.selftest: cadence, bounded partial work, warm, camera fairness and lifetime passed');
 
-// Geometry expectations include the authored 30-map environment. Before this
-// refresh, the eager emitter from 12cbcc7607efa6a6990b4f051e9709dc7432b508
-// was independently executed against the SAME current heightfields as both
-// current startup/live emitters: all 30 maps × 4 chunks × 4 geometry paths
-// matched bit-for-bit, including bounds/skirts and all nine east-seam LOD pairs.
-// Proof receipt SHA256: 100012b3ea4ab5edb8cb53b3c9783267f106b2de8e7d31eeb5a2b7009fb52df8.
-// The original 9afc1d5f51 fingerprints remain unchanged for 13 maps. Seven
-// prior fingerprints needed refresh (verdant, winter, coastal, autumn, fjord,
-// delta, monsoon); parity rules out the sliced emitter for these samples,
-// without attributing the historical change to a specific edit. Ten authored
-// maps are newly covered. This test has no git
-// or external receipt dependency: the reviewed expected bytes are pinned below.
-// Per map: seed 1337, the spawn chunk and its eastern neighbor, both opposite
-// map corners; padded Float64 fine grids; all three LOD position/normal/Uint16
-// index streams and Float64 bounds; plus the direct-sampled far-only path.
-// Changes to authored heights/topology require an explicit reviewed refresh.
-const GEOMETRY_GOLDENS = {
-  verdant: '86532d696a6ab164c64b79ea866a91cc93283bf50f4fc4af7c856119e52ae0b4',
-  desert: '242cc58db7003e9ed59cd69e2cd337ef988cf229296132aaf03d3923f926ea4b',
-  winter: 'e46f1032ff2d7d9dfdc4ada3063f29f6f8614fc7cfd40b45fc5b1191b0547387', // 2026-09-23: Frosthollow redesign (owner ruling) — new valley heightfield; 2026-09-24: player pad moved to (−145, −342) (round-48 pacing), spawn-relative window re-pinned
-  urban: 'dc86077914e20440ae7cdcfb044343da6c1386495e2023981261725b8dbd0bd9',
-  coastal: '972f0fe7bb785e12ad8ec4ea53b85690b230e3154a0667296b2771d7eff257ba',
-  autumn: 'dda358b09025e32ee7569aa8716b1a9392ef8ac8886a922c0d22e739c58b3633', // 2026-09-24: Amberford player pad moved to (303, −327) (round-48 pacing), spawn-relative window re-pinned
-  // round 48 (2026-09-23): Tarkhan Steppe redesigned by owner ruling (wadi, escarpment, kurgans, grain station);
-  // geometry/bounds digest re-pinned on the new authored relief; 2026-09-24: player pad moved to (−160, −310)
-  // (round-48 pacing), spawn-relative window re-pinned
-  steppe: '54f282c3c188f068e53f41de31eeeae84b42c77d81c59a6e1c4fb700630b7f39',
-  railyard: '3d7a7820ec57287383057592bf0385b7fc0bbb541605e012274319363ff2559e',
-  frontier: '7923000c873765c228c7639f8b061c6c14902777bb0ca8c3865ba4e953e0a809',
-  fjord: '28d5248b4252d0efb826de8161d5ef450cf4179f1b284363993d9f8baffe45ab',
-  delta: '597a1d1fc40c2c9385102b7f3c027eddd1f788a023516d4045fe581084370dfa',
-  badlands: 'c2706acb41b314d8429a01a9a3d3edc40213347776952e091468234d3fca6aec',
-  monsoon: '3de3731955a71bdc7feed06875992d7343ec02733146db7984df5f36290cb803',
-  alpine: '61438df867319f1946416ed226c61f2c6f04cabe5a1094fe0a3c166faa30a718',
-  caldera: 'f0ce3fc2d566e9fcfca70d0bd4ae01387d1978607e61376b9e67ac7f43b223cd',
-  foundry: '50f8b4f2f103d1be9ab38be99768be59aa6ed3bb23a0e315ad0345ebcb252e86',
-  ruinspires: '3034b3fb807d8108a814b497aa92cb9acc6eaa80b736aec77aa0bbbdeeec3d13',
-  blackglass: '31ea78388d0b10ba7914d9902ac21c9f49136fe2f5f5ef4c8713e42897554277',
-  titan_gorge: '13abde544a10ceb96f05e20b767fdd6df15121e4c91857ce594bc66db47887e4',
-  skybridge: '13f67e43c27dc650573a9ea5cf92b95a10032eb1f1fd3be3c9d64d5bc9c87731',
-  // Published 37271a90b authored basin contours, then 56924f7bf revised
-  // drainage/composition. Authenticated history replay preserves emitter and
-  // eager/live parity: docs/history/environment-2026-09/POLDERS-STREAMING-GOLDEN.md.
-  polders: 'b933cb9c4bd67070e904ffe66696ec235014bb53398886534f920f1345bc5f51',
-  copper_mesa: 'ae0d5b90fb81ac1f36efa7e3c2e73b9a7259f3564aca6b461ab6f4d698544f46',
-  airfield: '55490ff86d039a9015d19034937ae5b4e6ed4f5b85eb8b2f6f70d05830a2e254',
-  oasis: '17a01efc7ebc768078e8a829038c1e5dbebc601d5fa9e409bebfb743755ee01f',
-  whiteout: '78fbeb41aea88985263132f39fdaf99832cb4cc790a6e784d2b0db2d460c3615',
-  orchard: 'e084ffa305d7847a26bc81dab51d5fc6fcb57bd32052888c7885dd54bb388136',
-  longleaf: '597146dfdb29062a529e77c8d47beaae5feed9436ec68d78b0230783d5676203',
-  mangrove: '4ec02e0d658d3200ab167cb16ca25f4d8f2c4f7dd24d0f4adef1fab2586be9d2',
-  // round 40 (2026-09-22): Saltwind's bay is one authored hooked contour open to the west edge; geometry/bounds digest re-pinned
-  saltwind: '0a1d0cad56487a03c62ce3d2849a56787a3ea575978149e2d90437834e35481a',
-  reservoir: '40c628b2578a24456afd9fe3fa9c5f676905ad8cb2c06bc77f71f8f3f8f7ef1f',
-  // 2026-09-19: Mars (Olympus Basin) — first reviewed authored geometry golden.
-  mars: 'd40c02657abe7adca44775e9a80051efec7c75af2a49391e1ea056a9a6b21b12',
-};
+// 2026-10-01 (frozen pins retired): per-map sha256 goldens of four chunks (built on historical road, shoreline, exit,
+// Badlands and relief inputs through a historical terrain module), the roster literals and the history comparisons
+// were change detectors of authored heights. Every registered battlefield's CURRENT field now runs the same checks
+// live: startup/live emitter byte parity on four chunks (a spawn or relief pair and both opposite corners), every LOD's
+// topology, finite streams, sphere bounds and downward skirts, exact east seams across LODs including the direct-far
+// path, and a one-metre crack negative control.
 
 function drainWithCount(generator) {
   let checkpoints = 0;
@@ -328,9 +272,7 @@ function validateShorelineCrossing(hf, geometry, segs) {
 }
 
 function testOasisShorelineChunks(hf) {
-  // Separate from the historical four-chunk digest: these inspect the real
-  // spring, not the spawn and opposite map corners. Shape approval/golden
-  // updates remain independent of exact emitter, topology and seam parity.
+  // These inspect the real spring, not the spawn and opposite map corners.
   const pool = new Map();
   for (const z of [-128, 0]) {
     const west = buildCheckedChunk(hf, -256, z, pool, 'oasis shoreline west');
@@ -353,42 +295,25 @@ function testOasisShorelineChunks(hf) {
   console.log('terrainStreaming.selftest: Oasis spring four chunks, wet/dry borders, all LOD paths and east seams passed');
 }
 
-function testCurrentAuthoredChunks(hf, config, historicalField) {
-  // Original digests remain historical. Exercise every current map, including
-  // completed roads and published relief, through the SAME startup/live emitters,
-  // including direct-far borders, rather than replacing that old fingerprint.
-  // Alpine's historical spawn/corner chunks are outside the changed trough.
-  // Seat its CURRENT adjacent pair on an actual authored relief midpoint;
-  // leave every original historical sampling coordinate below untouched.
+function testAuthoredChunks(hf, config) {
+  // Alpine's spawn/corner chunks sit outside its authored trough: seat its adjacent pair on an actual relief midpoint.
   const relief = config.id === 'alpine' ? config.terrain.landforms[0].relief : null;
   const probe = relief ? { x: (relief.startX + relief.endX) / 2, z: (relief.startZ + relief.endZ) / 2 }
     : config.spawns.player;
   const nearX = Math.min(256, Math.max(-512, Math.floor((probe.x + 512) / 128) * 128 - 512));
   const nearZ = Math.min(384, Math.max(-512, Math.floor((probe.z + 512) / 128) * 128 - 512));
-  const pool = new Map(), historicalPool = new Map(), chunks = [];
-  const hash = createHash('sha256'), historicalHash = createHash('sha256');
+  const pool = new Map(), chunks = [];
   try {
     for (const [x, z] of [[nearX, nearZ], [nearX + 128, nearZ], [-512, -512], [384, 384]]) {
-      chunks.push(buildCheckedChunk(hf, x, z, pool, `current ${config.id} relief`, hash));
-      const before = buildCheckedChunk(historicalField, x, z, historicalPool,
-        `historical ${config.id} at current coordinates`, historicalHash);
-      for (const geometry of before) geometry.dispose();
+      chunks.push(buildCheckedChunk(hf, x, z, pool, `${config.id} authored`));
     }
     validateEastSeams(chunks[0], chunks[1], [96, 48, 24, 24]);
-    const digest = hash.digest('hex'), historicalDigest = historicalHash.digest('hex');
-    if (['frontier', 'alpine', 'badlands'].includes(config.id)) {
-      assert.notEqual(digest, historicalDigest,
-        'current authored relief differs from the historical field at the SAME sampling coordinates');
-    }
     const positions = chunks[1][3].attributes.position.array, originalY = positions[1];
     try {
       positions[1] = originalY + 1;
       assert.throws(() => validateEastSeams(chunks[0], chunks[1], [96, 48, 24, 24]),
-        /shared border vertices/, 'current authored relief rejects a cracked direct-far border');
+        /shared border vertices/, 'authored relief rejects a cracked direct-far border');
     } finally { positions[1] = originalY; }
-    console.log(JSON.stringify({ test: 'terrainStreaming current relief', id: config.id, seed: 1337, chunks: 4,
-      pairedChunk: [nearX, nearZ], hash: digest, historicalAtSameCoordinates: historicalDigest,
-      scope: 'actual LOD emission/seams/bounds, not a replacement geometry golden or art approval' }));
   } finally {
     for (const geometries of chunks) for (const geometry of geometries) geometry.dispose();
   }
@@ -397,50 +322,12 @@ function testCurrentAuthoredChunks(hf, config, historicalField) {
 async function testAllMapBytes() {
   const { createHeightField } = await import('./terrain.ts');
   const { getMapConfig, MAP_IDS } = await import('./maps/index.ts');
-  // Mars mode (2026-09-18): Olympus Basin joins the catalog
-  assert.equal(MAP_IDS.length, 33);
-  assert.deepEqual([...Object.keys(GEOMETRY_GOLDENS), 'moon', 'cliffbridge'], [...MAP_IDS]);
   for (const mapId of MAP_IDS) {
-    const config = historicalPlayableReliefInput(historicalBadlandsInput(originalExitConfig(beforeShorelineContinuity(getMapConfig(mapId)))));
-    const hf = ['moon','cliffbridge'].includes(mapId) ? createHeightField(1337, getMapConfig(mapId)) : historicalRoadHeightField(1337, config);
-    const hash = createHash('sha256');
-    const corrupt = mapId === 'polders' ? createHash('sha256') : null;
-    let streams = 0;
-    const checkedHash = { update(data) {
-      hash.update(data);
-      if (!corrupt) return;
-      // Stream 1 is the padded fine grid; stream 2 is the actual first
-      // LOD's position bytes. Flip one bit of its first height on a copy.
-      const payload = ++streams === 2 ? data.slice() : data;
-      if (streams === 2) payload[4] ^= 1;
-      corrupt.update(payload);
-    } };
-    const nearX = Math.min(256, Math.max(-512, Math.floor((config.spawns.player.x + 512) / 128) * 128 - 512));
-    const nearZ = Math.min(384, Math.max(-512, Math.floor((config.spawns.player.z + 512) / 128) * 128 - 512));
-    const chunks = [];
-    const pool = new Map();
-    for (const [x, z] of [[nearX, nearZ], [nearX + 128, nearZ], [-512, -512], [384, 384]]) {
-      chunks.push(buildCheckedChunk(hf, x, z, pool, mapId, checkedHash));
-    }
-    validateEastSeams(chunks[0], chunks[1]);
-    if (GEOMETRY_GOLDENS[mapId]) assert.equal(hash.digest('hex'), GEOMETRY_GOLDENS[mapId], `${mapId}: reviewed authored geometry and bounds`);
-    // New maps exercise all current LOD/edge/bounds invariants above; they did not exist in the historical byte fixture.
-    if (corrupt) {
-      assert.equal(streams, 4 * (1 + 4 * 4), 'all fine-grid and geometry streams enter both hashes');
-      assert.throws(() => assert.equal(corrupt.digest('hex'), GEOMETRY_GOLDENS.polders),
-        { code: 'ERR_ASSERTION' }, 'one-bit corruption in current Polders height bytes must fail');
-      for (const stale of [
-        '701d4611153e67baea6505fa125c0a185bfdd1dbe2fad6df5ab98791554f722b',
-        '96956e342ce22d4aebc4a43168fc47ea1698d81c3712169cf2c5484e1b6cf49f',
-      ]) assert.throws(() => assert.equal(GEOMETRY_GOLDENS.polders, stale),
-        { code: 'ERR_ASSERTION' }, 'neither superseded published landform may replace the current golden');
-    }
-    for (const geometries of chunks) for (const geometry of geometries) geometry.dispose();
-    if (mapId === 'oasis') testOasisShorelineChunks(createHeightField(1337, getMapConfig(mapId)));
-    const current = getMapConfig(mapId);
-    testCurrentAuthoredChunks(createHeightField(1337, current), current, hf);
+    const config = getMapConfig(mapId), hf = createHeightField(1337, config);
+    testAuthoredChunks(hf, config);
+    if (mapId === 'oasis') testOasisShorelineChunks(hf);
   }
-  console.log('terrainStreaming.selftest: 33 maps × 4 chunks, all LOD bytes/bounds/skirts/seams and direct-far parity passed');
+  console.log(`terrainStreaming.selftest: ${MAP_IDS.length} maps × 4 chunks, all LOD bytes/bounds/skirts/seams and direct-far parity passed`);
 }
 
 if (process.argv.includes('--oasis-shoreline-only')) {

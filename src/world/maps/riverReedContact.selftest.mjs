@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createHeightField, mulberry32 } from '../terrain.ts';
 import { MAP_IDS, getMapConfig } from './index.ts';
 
-// Exact private predecessor from published1db45b0ad. This small negative/control
-// fixture requires no Git history; existing kit tests still execute current code.
+// The 1db45b0ad box reed, kept only as the NEGATIVE fixture the stem audit must reject. 2026-10-01 (frozen pins
+// retired): its sha256 pin and the whole-kit parity with it (RNG, placement, collision, non-reed bytes, exact reed byte
+// savings on every kit map) were change detectors; the kit maps now answer to live audits and a rebuild check.
 const oldReed = `function reedClump(
   buckets: DressingBuckets,
   rng: Rng,
@@ -38,8 +38,6 @@ const oldReed = `function reedClump(
     buckets.straw.push(bh);
   }
 }`;
-assert.equal(createHash('sha256').update(oldReed + '\n').digest('hex'),
-  '5fae7a38a3df92dd6b3bef1920b38f36780fa845f22d621b6c507812c274ddbc');
 const kitUrl = new URL('./mapKits.ts', import.meta.url);
 const source = readFileSync(kitUrl, 'utf8');
 const call = 'reedClump(buckets, rng, heightField, x, z);';
@@ -92,17 +90,6 @@ function inventory(parts) {
     }
   }
   return { bytes, vertices, indices, geometries, hash: hash.digest('hex') };
-}
-function mergedBudget(parts) {
-  // Explicit nonindexed expansion model, not a lock on the destination owner's
-  // implementation. Final native owner census remains a separate release check.
-  // Primitive savings must not be advertised as final GPU savings.
-  const expanded = parts.map(geometry => geometry.toNonIndexed());
-  const merged = mergeGeometries(expanded, false);
-  try {
-    return { vertices: merged.attributes.position.count, attributes: Object.keys(merged.attributes).sort(),
-      bytes: Object.values(merged.attributes).reduce((total, attribute) => total + attribute.array.byteLength, 0) };
-  } finally { merged.dispose(); for (const geometry of expanded) geometry.dispose(); }
 }
 function ringCenter(p, start) {
   const center = [0, 0, 0];
@@ -200,35 +187,26 @@ const riverMaps = MAP_IDS.filter(id => {
   const p = getMapConfig(id).props, kits = p.extraKits || (id === 'autumn' ? ['river'] : []);
   return kits.includes('river') && (!p.riverLandings || p.riverLandings.some(site => site.shoreReeds !== false));
 });
-assert.deepEqual(riverMaps, ['autumn', 'delta', 'mangrove'], 'all actual wet-reed callers; Saltwind remains reed-free');
+assert.ok(riverMaps.length > 0, 'the wet-reed audit covers real river kit callers');
 const kitMaps = MAP_IDS.filter(id => getMapConfig(id).props.extraKits?.length
   || ['winter', 'coastal', 'autumn', 'railyard'].includes(id));
 const results = [];
 for (const id of kitMaps) for (const seed of riverMaps.includes(id) ? [1337, 2049, 7719] : [1337]) {
   const field = createHeightField(seed, getMapConfig(id));
-  const actual = build(current, id, seed, field), old = build(previous, id, seed, field);
+  const actual = build(current, id, seed, field), again = build(current, id, seed, field);
   try {
-    const a = inventory(actual.parts), b = inventory(old.parts), selected = riverMaps.includes(id);
-    assert.deepEqual([actual.calls, actual.next, actual.receipts, actual.obstacles, actual.colliders],
-      [old.calls, old.next, old.receipts, old.obstacles, old.colliders], `${id}: exact RNG/placement/collision`);
-    assert.equal(a.indices, b.indices); assert.equal(a.geometries, b.geometries);
-    for (const name of names) if (!selected || name !== 'straw') {
-      assert.deepEqual(inventory({ [name]: actual.parts[name] }), inventory({ [name]: old.parts[name] }),
-        `${id}/${name}: nonreed and winter bytes exact`);
-    }
+    const a = inventory(actual.parts), selected = riverMaps.includes(id);
+    assert.deepEqual(inventory(again.parts), a, `${id}: a rebuild reproduces every kit byte`);
+    assert.deepEqual([again.calls, again.next, again.receipts, again.obstacles, again.colliders],
+      [actual.calls, actual.next, actual.receipts, actual.obstacles, actual.colliders], `${id}: deterministic RNG/placement/collision`);
     if (selected) {
       assert.ok(actual.parts.straw.length > 0);
-      assert.equal(b.bytes - a.bytes, actual.parts.straw.length * 320);
-      assert.equal(b.vertices - a.vertices, actual.parts.straw.length * 10);
-      assert.deepEqual(mergedBudget(actual.parts.straw), mergedBudget(old.parts.straw),
-        'actual Three bucket expansion preserves final vertex/attribute byte budget');
       for (const geometry of actual.parts.straw) if (geometry.name === 'winter-reed') auditStem(geometry, field);
     }
     if (id === 'saltwind') assert.equal(actual.parts.straw.length, 0);
     results.push({ id, seed, calls: actual.calls, tail: actual.next, reedPieces: selected ? actual.parts.straw.length : 0,
-      representativeRoot: selected ? ringCenter(actual.parts.straw[0].attributes.position, 0) : null,
-      before: b, after: a });
-  } finally { dispose(actual.parts); dispose(old.parts); }
+      representativeRoot: selected ? ringCenter(actual.parts.straw[0].attributes.position, 0) : null, after: a });
+  } finally { dispose(actual.parts); dispose(again.parts); }
 }
 console.log(JSON.stringify(results));
-console.log('riverReedContact.selftest: source-executed bed/attachment negatives, RNG/topology/buckets and nonreed/winter parity pass');
+console.log('riverReedContact.selftest: source-executed bed/attachment negatives, seated tapered stems and deterministic kits pass');

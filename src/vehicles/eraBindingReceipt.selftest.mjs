@@ -91,10 +91,8 @@ for (const quality of ['high', 'low']) {
 // with two opposing authored plate normals has two different PCA results.
 // Removing annotations is a test-only legacy/mixed builder fixture, restored
 // in finally; no playable profile or generated calibration is modified.
-const legacyHashes = [
-  '0fadb493c1331a25da16b52624b4c9dc9c0fa857ac82dfbb30b20ef22f1c0174',
-  '92c6204196ab00db5e1322d4df9e55ca5490e179f3923f808abf70943250ce1f',
-];
+// 2026-10-01 (owner: retire frozen pins): the two pinned legacy PCA surface digests are gone. The live
+// contract: both opposing frames survive undeduplicated, each keeps its own finite, non-empty fit.
 // Pin the legacy frame independently of the generated calibration, which is
 // intentionally regenerated after this test. These are fitting-test inputs,
 // not a substitute source-geometry oracle or runtime plate override.
@@ -120,7 +118,8 @@ for (const quality of ['high', 'low']) for (const mode of ['legacy', 'mixed']) {
     assert.equal(rows.length, 2, `${mode}: do not deduplicate authored legacy fitting frames`);
     const hashes = rows.map(row => digest(row.fittedSurfaces));
     assert.notEqual(hashes[0], hashes[1], `${mode}: each input normal must retain its own fitting result`);
-    if (mode === 'legacy') assert.deepEqual(hashes, legacyHashes, 'legacy PCA surfaces remain byte-for-byte unchanged');
+    for (const row of rows) assert.ok(row.fittedSurfaces.length > 0 && row.fittedSurfaces.flat(2).every(Number.isFinite),
+      `${mode}: each authored frame yields real finite fitted surfaces`);
   } finally {
     spec.armor = original;
     registerProfiledBuilders({ leo2a7v_x: buildLeopard2A7VX });

@@ -11,151 +11,10 @@ import winter from './maps/winter.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } from './proceduralTexture.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 
-// Independent synchronous control copied before this scheduling change from
-// c5ca781e2, props.ts SHA256:
-// 1ce878e165b68178209f4b3ef665ab9b8b350beb9d1f25e9f101d7b6e71078e6.
-// Keep its painter, course RNG, height and packed-surface formulas independent
-// of production. The unchanged shared normal/tone helpers remain actual code.
-const prechange = String.raw`
-export function mulberry32(a: number): Rng {return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
-  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-
-function clamp(x: number, a: number, b: number): number { return x < a ? a : x > b ? b : x; }
-function smoothstep(a: number, b: number, x: number): number {
-  const t = clamp((x - a) / (b - a), 0, 1);
-  return t * t * (3 - 2 * t);
-}
-
-// ---------------------------------------------------------------------------
-// Canvas textures
-// ---------------------------------------------------------------------------
-
-// One linear ORM-style texture feeds both material slots: AO reads red and
-// roughness reads green. Packing them together adds real PBR response without
-// doubling the building texture/upload budget.
-function surfaceFromHeight(h: Float32Array, s: number, anisotropy: number, {
-  roughMin = 0.72, roughMax = 0.98, aoMin = 0.76,
-}: SurfaceTextureOptions = {}): THREE.CanvasTexture {
-  const px = new Uint8ClampedArray(s * s * 4);
-  for (let i = 0; i < h.length; i++) {
-    const height = clamp(h[i], 0, 1);
-    const j = i * 4;
-    px[j] = (aoMin + height * (1 - aoMin)) * 255;
-    px[j + 1] = (roughMin + (1 - height) * (roughMax - roughMin)) * 255;
-    px[j + 2] = 0;
-    px[j + 3] = 255;
-  }
-  return toTexture(px, s, { anisotropy });
-}
-
-const _col = new THREE.Color();
-function buildStoneCourseEdges(size: number, rng: () => number): number[] {
-  const rowE = [0];
-  while (rowE[rowE.length - 1] < size) {
-    let nxt = rowE[rowE.length - 1] + 88 + ((rng() * 72) | 0);
-    if (size - nxt < 70) nxt = size;
-    rowE.push(nxt);
-  }
-  return rowE;
-}
-
-function buildStoneColumnEdges(size: number, rowCount: number, rng: () => number): number[][] {
-  const stoneE: number[][] = [];
-  for (let row = 0; row < rowCount; row++) {
-    const e = [0];
-    while (e[e.length - 1] < size) {
-      let nxt = e[e.length - 1] + 105 + ((rng() * 125) | 0);
-      if (size - nxt < 88) nxt = size;
-      e.push(nxt);
-    }
-    stoneE.push(e);
-  }
-  return stoneE;
-}
-
-function intervalAt(edges: readonly number[], value: number): number {
-  let index = 0;
-  while (edges[index + 1] <= value) index++;
-  return index;
-}
-
-function paintStoneRow(
-  noi: SimplexNoise,
-  pixels: Uint8ClampedArray,
-  heights: Float32Array,
-  size: number,
-  y: number,
-  rowEdges: readonly number[],
-  columnEdges: readonly (readonly number[])[],
-): void {
-  const row = intervalAt(rowEdges, y);
-  const columns = columnEdges[row];
-  for (let x = 0; x < size; x++) {
-    const i = y * size + x, j = i * 4;
-    const wob = noi.noise(x * 0.085 + row * 31, y * 0.085 - 17) * 3.4;
-    const dRow = Math.min(y - rowEdges[row], rowEdges[row + 1] - y) + wob * 0.6;
-    const column = intervalAt(columns, x);
-    const dCol = Math.min(x - columns[column], columns[column + 1] - x) + wob;
-    const edgeD = Math.min(dRow, dCol * 0.9);
-    const mortar = edgeD < 3.6 ? 1 : 0;
-    const tone = noi.noise(row * 13.3 + column * 29.7 + 3.1,
-      row * 7.7 - column * 11.9) * 0.5 + 0.5;
-    const grain = noi.noise(x * 0.11 + 8, y * 0.11 - 77) * 0.5 + 0.5;
-    const grime = smoothstep(0.5, 0.95,
-      noi.noise(x * 0.016 + 130, y * 0.028 + 71) * 0.5 + 0.5);
-    const bevel = clamp((edgeD - 3.6) / 15, 0, 1);
-    _col.setHSL(
-      0.081 + tone * 0.014,
-      0.06 + tone * 0.055 - grime * 0.02,
-      (mortar ? 0.25 + grain * 0.04
-        : (0.305 + tone * 0.14 + grain * 0.05) * (0.82 + bevel * 0.18)) - grime * 0.07,
-    );
-    pixels[j] = _col.r * 255;
-    pixels[j + 1] = _col.g * 255;
-    pixels[j + 2] = _col.b * 255;
-    pixels[j + 3] = 255;
-    heights[i] = mortar ? 0.12
-      : (0.48 + tone * 0.26 + grain * 0.16) * (0.55 + 0.45 * bevel);
-  }
-}
-
-function makeStone(
-  noi: SimplexNoise,
-  anisotropy: number,
-  tone: ToneFunction | null = null,
-): GeneratedSurfaceTextures {
-  // Irregular fieldstone coursing (512 px, ~0.35-0.9 m blocks at uvScale 0.5).
-  const s = 512, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
-  const srng = mulberry32(0x51a7);
-  const rowEdges = buildStoneCourseEdges(s, srng);
-  const columnEdges = buildStoneColumnEdges(s, rowEdges.length - 1, srng);
-  for (let y = 0; y < s; y++) {
-    paintStoneRow(noi, px, hgt, s, y, rowEdges, columnEdges);
-  }
-  applyTone(px, tone);
-  return {
-    albedo: toTexture(px, s, { srgb: true, anisotropy }),
-    normal: normalFromHeight(hgt, s, 3.0, anisotropy),
-    surface: surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.78, roughMax: 0.98, aoMin: 0.68 }),
-  };
-}
-function makeGrimeTexture(noi: SimplexNoise, anisotropy: number): THREE.CanvasTexture {
-  const s = 256, px = new Uint8ClampedArray(s * s * 4);
-  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
-    const u = x / s, v = y / s, j = (y * s + x) * 4;
-    const a = torusN(noi, u, v, 3, 3, 5) * 0.6 + torusN(noi, u, v, 7, 7, 19) * 0.4;
-    const b = torusN(noi, u, v, 5, 5, 47) * 0.55 + torusN(noi, u, v, 13, 13, 91) * 0.45;
-    // r3: blue carries a smooth 1-2 cycle field — sampled at very low world
-    // frequency it drives the per-neighbourhood facade tint drift below
-    const c2 = torusN(noi, u, v, 2, 2, 133) * 0.7 + torusN(noi, u, v, 5, 5, 171) * 0.3;
-    px[j] = (a * 0.5 + 0.5) * 255;
-    px[j + 1] = (b * 0.5 + 0.5) * 255;
-    px[j + 2] = (c2 * 0.5 + 0.5) * 255; px[j + 3] = 255;
-  }
-  return toTexture(px, s, { anisotropy });
-}
-`;
-
+// 2026-10-01 (frozen pins retired): the control used to be a copy of the c5ca781e2 synchronous stone/grime painters,
+// so any intended repaint of either texture failed here. The control is now the CURRENT row-checkpointed painter
+// drained in one synchronous loop; every scheduled path (the public owner, interleaved async ticks) must reproduce it
+// byte for byte, so row checkpoints and interleaving never change pixels, maps, settings or the RNG stream.
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 function section(text, start, end) {
@@ -372,15 +231,17 @@ function checkCancellation(api, kind, method) {
 }
 
 try {
-  const baseline = compile(prechange), candidate = compile(current);
+  const candidate = compile(current);
   const samples = [
     { seed: 2002, anisotropy: 4, tone: winter.props.tones.stone },
     { seed: 7719, anisotropy: 1, tone: null },
   ];
   const cases = samples.flatMap(sample => ['stone', 'grime'].map(kind => ({ kind, sample })));
   const controls = cases.map(({ kind, sample }) => {
-    const control = job(baseline, kind, sample);
-    return finish(control, control.value);
+    const control = job(candidate, kind, sample);
+    let step = control.value.next();
+    while (!step.done) step = control.value.next();
+    return finish(control, step.value);
   });
   const height = {}, engine = {}, vegetation = {};
   for (let index = 0; index < cases.length; index++) {
@@ -390,7 +251,7 @@ try {
     const args = [height, engine, sample.seed, sample, vegetation];
     assertPublicOwner(owner, owner.api.createProps(...args), args);
     assert.deepEqual(pending.result, controls[index],
-      kind + ': synchronous drain must match the independent prechange algorithm byte for byte');
+      kind + ': the checkpointed public owner must match the plain synchronous drain byte for byte');
   }
   const interleaved = cases.map(({ kind, sample }) => job(candidate, kind, sample));
   await Promise.all(interleaved.map(async pending => {
@@ -436,9 +297,7 @@ try {
   }));
   console.log(JSON.stringify({
     proof: 'Exact native Canvas2D CPU payload parity; no GPU or frame-time certification.',
-    controlRevision: 'c5ca781e2',
-    controlPropsSha256: '1ce878e165b68178209f4b3ef665ab9b8b350beb9d1f25e9f101d7b6e71078e6',
-    controlAlgorithmSha256: hash(prechange), candidatePropsSha256: hash(source),
+    candidatePropsSha256: hash(source),
     rasterizer: { name: rasterizer.name, version: rasterizer.version, module: modulePath }, rows,
   }, null, 2));
   console.log('propsTextureRows self-test passed: exact stone/grime output, sixteen-row progress, interleaving and cancellation ownership');

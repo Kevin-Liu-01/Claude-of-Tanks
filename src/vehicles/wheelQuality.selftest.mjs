@@ -10,16 +10,21 @@ import {
   wheelPatternFor,
 } from './wheelPatterns.ts';
 import { auditTankWheelQuality } from './wheelQuality.ts';
+import { createFleetGeometryLedgerAudit } from '../../tools/fleet-geometry-digest.mjs';
 
 const patternUse = new Map();
 const geometrySignatures = new Map();
 
-// All three contracts read the same unbatched HIGH model without changing it.
+// All four contracts read the same unbatched HIGH model without changing it.
 // Keep both rosters when they diverge, and retain the mount audit's authored
 // seed. Camo seeds do not move the running gear (tankFactoryCore's invariant).
+// The fourth is the fleet geometry ledger's HIGH rows (no second fleet sweep):
+// re-pin moved rows with npm run tank:geometry:update after review.
+const BUILD = { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true, batchStatic: false };
 const wheelIds = new Set(ALL_TANK_IDS), mountIds = new Set(DEVELOPMENT_TANK_IDS);
 const mounts = createMachineGunAttachmentAudit();
 const wraps = createTrackEndWrapAudit();
+const geometryLedger = createFleetGeometryLedgerAudit(BUILD);
 const ids = [...new Set([...wheelIds, ...mountIds])];
 {
   const root = new Group(), fitting = new Group();
@@ -29,8 +34,9 @@ const ids = [...new Set([...wheelIds, ...mountIds])];
     'the shared inspection still rejects a mounted weapon outside every tank rig');
 }
 for (const id of ids) {
-  const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true, batchStatic: false });
+  const tank = createTank(id, null, BUILD);
   try {
+    geometryLedger.record(id, tank);
     if (mountIds.has(id)) mounts.check(id, tank);
     if (!wheelIds.has(id)) continue;
     wraps.check(id, tank);
@@ -63,6 +69,10 @@ for (const id of ids) {
 }
 const mountCounts = mounts.finish();
 const wrapCounts = wraps.finish();
+const ledgerResult = geometryLedger.finish();
+assert.deepEqual(ledgerResult.problems, [],
+  `fleet geometry ledger (HIGH): review the moved rows, then re-pin with npm run tank:geometry:update\n  ${ledgerResult.problems.join('\n  ')}`);
+console.log(`fleet geometry ledger: ${ledgerResult.checked} HIGH rows match`);
 console.log(`fleet mounts: ${mountCounts.fittingCount} fittings on ${mountCounts.tankCount} tanks; ${ids.length} shared builds`);
 console.log(`fleet track wraps: ${JSON.stringify(wrapCounts)}`);
 

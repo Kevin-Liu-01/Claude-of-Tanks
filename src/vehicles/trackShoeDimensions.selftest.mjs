@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
@@ -33,69 +32,27 @@ for(const invalid of [{padHeight:0},{hornHeight:-.1},{pinRadius:NaN},
   assert.throws(()=>trackPatternWithDimensions(family,invalid),/native track-shoe|Native track-shoe/);
 }
 
-function fingerprint(geometry) {
-  const hash=createHash('sha256');
-  for(const key of Object.keys(geometry.attributes).sort()) {
-    hash.update(key);
-    const values=geometry.attributes[key].array;
-    hash.update(Buffer.from(values.buffer,values.byteOffset,values.byteLength));
-  }
-  if(geometry.index) {
-    const values=geometry.index.array;
-    hash.update(Buffer.from(values.buffer,values.byteOffset,values.byteLength));
-  }
-  return hash.digest('hex');
-}
-
-// Frozen immediately before the optional core API was introduced. These
-// compare actual native geometry buffers, including normals/UVs/indices.
-const DEFAULT_SHOE_HASHES={
-// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
-// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
-// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
-// values below are repinned from the current build.
-// 2026-09-25 FSP-03: t90m / t90a shoe digests re-pinned once — their upper runs ride three fitted return rollers
-// again (the course re-samples its shoes); m1a2 and leo2a5 are untouched.
-  t90m:'dbaf072016ba3a5817d34a6ec66439150a3f1c6b8831a7dc7bdae7c65427dfce',
-  t90a:'1188aa853e99482e0a6c8779f898b358012af8220ca606da8fa9446646c95a2d',
-  m1a2:'f3560a314db1253320a3bcba4f30583941afb8173bc631fbcb397ed6ecf56d04',
-  leo2a5:'2eaee5604c73145eff5acd5b874b990151cbc3a4970b62ea39d810066e5eae87',
-};
-const DEFAULT_WHEEL_HASHES={
-// 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we dont use anymore"): t90m and t90a draw the Russia T-90M X pressed face over the
-// fleet pressed disc (tires unchanged, discs/insets repinned) and leo2a5 the Germany Leopard 2A6 X paired dish
-// (tires/discs repinned; the construction emits no gearRoadWheelInsets). m1a2 is a donor and did not move.
-  t90m:['ee1267357b9821551acdc43bb28b13bb0552b074fd41564b086002ac19713c05','1c097b71ade6ffbe0e876c438766b19f46cc59cde2f2498c8e4ab7b76280a5ec','c7f4628483d7f6c3db60cd57f383ce9bf6011d24249c9cc7329acab8e5d74d50'],
-  t90a:['8f3493bf9c592f0f519f567e09fdeeac88cc37f2e34af0f5afdcfa3a7d9b1e43','8b1be60aa0da4d158d34bcc0fe7e4ea1a7811931c38fb133f05ab1122f8f254e','89a0db99a3fdaa7fd63e239ea3b479bb21560d91c33431f747f99e09409bf08c'],
-// 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel (hollowRoadWheelStock.ts — two
-// turned halves on a narrow axle, no separate inset ring), so tires/discs are repinned from the
-// current build and the inset entry is null (the construction emits no gearRoadWheelInsets).
-  m1a2:['c37665c53d90b9b8cdaa198bb2c710de51fae568191c9dfc57a74b044d81009f','8eca4e85ac692ef6d4544a395d15191ed33e2a31e72f79c0448cce5d713ce934',null],
-  leo2a5:['c39380f0bd89539ac34aa3a771fceb189a37fe9d2f7e1cb871a2f44a61a40a89','791d4ae6cbc71a41244123637871b778b63d930d1bc8cfc32a8b32fb70cbd453',null],
-};
-for(const [id,expected] of Object.entries(DEFAULT_SHOE_HASHES)) {
+// 2026-10-01 (owner: retire frozen pins): the pinned shoe, road-wheel and m60a1 return-roller buffer
+// digests (frozen before the optional core APIs) are gone; the fleet geometry ledger owns whole-tank
+// change detection. Each default construction still emits exactly its own native stock.
+const WHEEL_INSETS={t90m:true,t90a:true,m1a2:false,leo2a5:false};
+for(const [id,insets] of Object.entries(WHEEL_INSETS)) {
   const tank=createTank(id,null,{proceduralOnly:true,quality:'high',geometryReceipt:true});
   try {
-    assert.equal(fingerprint(tank.root.getObjectByName('gearTrackPads').geometry),expected,id);
-    for(const [i,name] of ['gearRoadWheelTires','gearRoadWheelDiscs','gearRoadWheelInsets'].entries()) {
-      const mesh=tank.root.getObjectByName(name);
-      if(DEFAULT_WHEEL_HASHES[id][i]===null) { assert.equal(mesh,undefined,`${id}/${name}: this wheel construction emits no such stock`); continue; }
-      assert.equal(fingerprint(mesh.geometry),DEFAULT_WHEEL_HASHES[id][i],`${id}/${name}`);
-    }
+    assert.ok(tank.root.getObjectByName('gearTrackPads')?.geometry,`${id}: native track shoes`);
+    for(const name of ['gearRoadWheelTires','gearRoadWheelDiscs'])assert.ok(tank.root.getObjectByName(name)?.geometry,`${id}/${name}`);
+    assert.equal(Boolean(tank.root.getObjectByName('gearRoadWheelInsets')),insets,
+      `${id}/gearRoadWheelInsets: this wheel construction ${insets?'emits':'emits no'} such stock`);
   }
   finally {tank.dispose();}
 }
-
-// Frozen before return-roller options were introduced: both actual default
-// surfaces and all native instance transforms remain bit-identical.
 {
   const visual=createTank('m60a1',null,{proceduralOnly:true,quality:'high',geometryReceipt:true});
   try {
     const tire=visual.root.getObjectByName('gearReturnRollerTires');
     const disc=visual.root.getObjectByName('gearReturnRollerDiscs');
-    assert.equal(fingerprint(tire.geometry),'5d861b5efdce2f1e41d783aaf6c0063e04c3b67504ebfed2ecd314ab7942b3ba');
-    assert.equal(fingerprint(disc.geometry),'a5560ea880426c7c1d40b8b9c4a21478a63bd582aefd409576d7f123750790bc');
-    assert.equal(fingerprint({attributes:{instanceMatrix:tire.instanceMatrix}}),'776c27d8b0ced218eebf7b6008e2513582b46399a87223e895c1bf2ddf81d8f8');
+    assert.ok(tire?.isInstancedMesh&&tire.count>0,'m60a1: default native return-roller tires');
+    assert.ok(disc?.geometry,'m60a1: default native return-roller discs');
   } finally {visual.dispose();}
 }
 for(const invalid of [{returnRollerWidthM:0},{returnRollerWidthM:NaN},{returnRollerWidthM:1.1},
@@ -216,4 +173,4 @@ for(const id of ['t90a_x','t90a_vladimir_x']) {
     assert.ok(discs?.isInstancedMesh&&discs.count===6,`${id}: three source-measured return rollers per side on a T-90 hull`);
   } finally {visual.dispose();}
 }
-console.log('trackShoeDimensions.selftest: pinned original geometry, four measured shoes/faces and native moving-wheel ownership pass');
+console.log('trackShoeDimensions.selftest: default native stock, four measured shoes/faces and native moving-wheel ownership pass');

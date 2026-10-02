@@ -72,6 +72,8 @@
     "tank:track:turning": "node tools/track-system-audit.mjs --turning --maps=badlands,verdant,steppe,railyard",
     "tank:freeze": "node tools/fleet-freeze-snapshot.mjs",
     "tank:freeze:check": "node tools/fleet-freeze-snapshot.mjs --check",
+    "tank:geometry:check": "node tools/fleet-geometry-ledger.mjs --check --jobs=4",
+    "tank:geometry:update": "node tools/fleet-geometry-ledger.mjs --update --jobs=4",
     "tank:bore:probe": "node tools/muzzle-bore-probe.mjs",
     "tank:barrel:check": "node tools/turret-barrel-circularity.mjs",
     "tank:gallery": "vite --host 127.0.0.1 --open /gallery?layer=markup",

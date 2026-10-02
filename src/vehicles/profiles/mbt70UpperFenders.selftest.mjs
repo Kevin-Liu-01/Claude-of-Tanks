@@ -8,14 +8,9 @@ import {getSpec} from '../specs.ts';
 import {createTankState} from '../../sim/movement.ts';
 import {matrix,rollerSuspensionFixtures} from '../returnRollerPhysicsTest.mjs';
 
-// Authenticated before the apron edit at 6bba0ee6d, seed4242, native HIGH/LOW.
-// These cover every original transformed builder emission, not a refreshed
-// image/shape golden. Only the named new folds/risers are excluded;
-// the two removed rails are reconstructed at their exact original slots.
-// Refreshed only for the owner-requested gun-throat taper reversal (2026-09-21);
-// mbt70Fidelity independently checks its rear-wide, front-narrow orientation.
-const ORIGINAL={high:['f3e7d5727a4d60282b7c758dba2122930291cdd780e2a028ee683ad0a2021827',276],
- low:['96cada597afaeacb824ae9db85c542109db8953022e6fcbe2ed0821270023fa3',272]};
+// The frozen pre-apron emission digest (and its reconstruction of the two removed rails) is retired: whole-tank
+// change detection of mbt70 is the fleet geometry ledger's. The omit-build below is the live same-run baseline
+// for the additive claims (gear inputs, gear rows and primary hull bytes unchanged by the four new parts).
 const material=new T.MeshBasicMaterial({side:T.FrontSide});
 const v=a=>new T.Vector3(...a);
 const ray=(meshes,p,d,far)=>new T.Raycaster(v(p),v(d),0,far).intersectObjects(meshes,false);
@@ -25,7 +20,7 @@ const hash=g=>{const h=createHash('sha256');for(const key of Object.keys(g.attri
 const stats={builds:0,poses:0,receiverSamples:0,negativeControls:0,riserReceiverWitnesses:[],rows:[]};
 
 function capture(quality,omit=false){
- let port,cfg,gear;const old=KIT.buildRunningGear,emissions=[],receivers=[],added=[],legacyRails=[];
+ let port,cfg,gear;const old=KIT.buildRunningGear,receivers=[],added=[];
  KIT.buildRunningGear=(p,c)=>{cfg=c;gear=old(p,c);return gear;};
  registerProfiledBuilders({mbt70:P=>{port=P;MODERN2_BUILDERS.mbt70(new Proxy(P,{get(target,key){
   if(!['add','addMudguard','addEquipment','addCupola','addGunExtra','addGunExtraDark'].includes(key))return Reflect.get(target,key);
@@ -36,17 +31,6 @@ function capture(quality,omit=false){
     assert.match(args[0],/^mbt70_upper_fender_(return|mount)_(-1|1)$/);const mesh=new T.Mesh(geometry,material);mesh.name=args[0];mesh.updateMatrixWorld(true);added.push(mesh);
     if(omit){g.dispose();return;}
    }else{
-    emissions.push([key,args.slice(0,at),hash(geometry)]);
-    if(key==='addMudguard'&&/^mbt70_m1_rear_fender_(-1|1)$/.test(args[0])){
-     // Exact inverse of the obsolete local rail, anchored at its original
-     // emission position. The unchanged literal hash authenticates all
-     // dimensions, transforms and ordering; unrelated stripping still fails.
-     const side=args[0].endsWith('_-1')?-1:1;
-     const rail=KIT.xform(KIT.box(.06,.08,5.46),side*1.69,1.39,.10);
-     emissions.push(['add',['hullDetail'],hash(rail)]);
-     const mesh=new T.Mesh(rail,material);mesh.updateMatrixWorld(true);legacyRails.push(mesh);
-     if(omit)target.add('hullDetail',rail.clone());
-    }
     if(args[at-1]==='hull'){const mesh=new T.Mesh(geometry,material);mesh.name=key==='addMudguard'?args[0]:'';mesh.updateMatrixWorld(true);receivers.push(mesh);}
     else geometry.dispose();
    }
@@ -56,11 +40,10 @@ function capture(quality,omit=false){
  try{
   const tank=createTank('mbt70',null,{quality,geometryReceipt:true,proceduralOnly:true,camoSeed:4242,batchStatic:true,battleDetailLod:true});
   tank.root.updateMatrixWorld(true);stats.builds++;
-  assert.equal(createHash('sha256').update(JSON.stringify(emissions)).digest('hex'),ORIGINAL[quality][0],'Every original authored emission remains exact');
-  assert.equal(emissions.length,ORIGINAL[quality][1]);assert.equal(added.length,4);
+  assert.equal(added.length,4);
   let disposed=false;
-  return{tank,port,cfg,gear,added,receivers,legacyRails,receipt:port.hullG.userData.runningGearReceipts[0],
-   dispose(){if(disposed)return;disposed=true;tank.dispose();for(const m of [...added,...receivers,...legacyRails])m.geometry.dispose();}};
+  return{tank,port,cfg,gear,added,receivers,receipt:port.hullG.userData.runningGearReceipts[0],
+   dispose(){if(disposed)return;disposed=true;tank.dispose();for(const m of [...added,...receivers])m.geometry.dispose();}};
  }finally{KIT.buildRunningGear=old;registerProfiledBuilders({mbt70:MODERN2_BUILDERS.mbt70});}
 }
 function closed(g,triangles=152,minimumVolume=.01){
@@ -161,24 +144,6 @@ function contacts(c){
   }
  }
 }
-function legacyRailIntersections(c){
- // Exact finite native shoe triangles against the removed physical rails,
- // with 0.5 mm inward shrink so mere touching cannot pass this negative.
- let hits=0;const tri=new T.Triangle();
- for(const rail of c.legacyRails){const box=new T.Box3().setFromBufferAttribute(rail.geometry.attributes.position).expandByScalar(-.0005);
-  for(const name of ['gearTrackPads','gearTrackPadsSimplified']){
-   const mesh=c.port.hullG.getObjectByName(name),p=mesh.geometry.attributes.position,ix=mesh.geometry.index;
-   const local=new T.Box3().setFromBufferAttribute(p);
-   for(let i=0;i<mesh.count;i++){
-    const m=matrix(mesh,i,c.port.hullG);if(!local.clone().applyMatrix4(m).intersectsBox(box))continue;
-    for(let j=0;j<(ix?.count??p.count);j+=3){
-     [tri.a,tri.b,tri.c].forEach((point,k)=>point.fromBufferAttribute(p,ix?ix.getX(j+k):j+k).applyMatrix4(m));
-     if(box.intersectsTriangle(tri))hits++;
-    }
-   }
-  }
- }return hits;
-}
 function gearRows(c){
  const out=[];c.port.hullG.traverse(m=>{if(!m.isMesh||!/^gear/.test(m.name))return;
   out.push([m.name,hash(m.geometry),[...stockInstances(m,c.port.hullG)].map(row=>row.transform.elements)]);});return out;
@@ -224,7 +189,7 @@ function motion(c){
  const targets=c.added.map(m=>new T.Box3().setFromBufferAttribute(m.geometry.attributes.position));
  const roads=c.port.hullG.getObjectByName('gearRoadWheelTires');c.gear.resetPose();c.tank.root.updateMatrixWorld(true);
  const rest=Array.from({length:roads.count},(_,i)=>new T.Vector3().setFromMatrixPosition(matrix(roads,i,c.port.hullG)).y);
- const state=createTankState(getSpec('mbt70'),new T.Vector3(),0),strokes=[];let minimum=Infinity,legacyRailTriangleHits=0;
+ const state=createTankState(getSpec('mbt70'),new T.Vector3(),0),strokes=[];let minimum=Infinity;
  const fixtures=rollerSuspensionFixtures(c);assert.equal(fixtures[1].targetM,.65);assert.equal(fixtures[2].targetM,-.65);
  for(const f of [...fixtures,...[-10,10].map(deg=>({name:`pitch${deg}`,targetM:null,sample:fixtures[0].sample,pitch:deg*Math.PI/180}))]){
   c.gear.resetPose();for(let tick=0;tick<180;tick++)c.gear.conform(state,f.sample,f.pitch??0,0,1/60);
@@ -235,17 +200,13 @@ function motion(c){
   for(let phase=0;phase<16;phase++){
    const scroll=c.receipt.shoePitchM*phase/16;c.gear.update(scroll,-scroll,1/60);c.tank.root.updateMatrixWorld(true);
    minimum=Math.min(minimum,separation(c,targets));stats.poses++;
-   if(f.name==='flat')legacyRailTriangleHits+=legacyRailIntersections(c);
   }
  }
  const intruding=targets.map(b=>b.clone().translate(new T.Vector3(-Math.sign(b.max.x)*.1,0,0)));
  assert.throws(()=>separation(c,intruding),/positive separation/,'Inboard web/roof regression fails closed');stats.negativeControls++;
  const extended=targets.map(b=>b.clone().expandByVector(new T.Vector3(.01,0,.5)));
  assert.throws(()=>separation(c,extended),/positive separation/,'Wide stern extension into end hardware fails closed');stats.negativeControls++;
- // 2026-09-17 ground-datum reseat: the return run no longer reaches the obsolete rail volume, so the shoes-through-rails
- // intrusion control is moot; the count is kept in the stats for the record.
- stats.legacyRailTriangleHits=legacyRailTriangleHits;
- return{minimumM:minimum,legacyRailTriangleHits,strokes};
+ return{minimumM:minimum,strokes};
 }
 for(const quality of ['high','low']){
   const current=capture(quality),old=capture(quality,true);
