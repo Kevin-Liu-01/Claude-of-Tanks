@@ -82,7 +82,10 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   orchard: [through, through, through, join(1, 2), join(1, 2)],
   longleaf: [join(1, 3), through, through, through, join(1, 3)],
   mangrove: [through, through, through, join(0, 2), join(0, 2)],
-  saltwind: [through, through, through, join(0, 2), join(0, 2)],
+  // Saltwind Narrows redesign (2026-10-02): the harbour road, the central road and the east road run edge to edge; the
+  // market street and the northern hairpin road leave the harbour road for the east road, and the southern hairpin
+  // road (the northern one's reflection across the bay's axis) does the same.
+  saltwind: [through, through, through, join(0, 2), join(0, 2), join(0, 2)],
   reservoir: [['boundary', { junction: 4 }], join(0, 4), join(0, 1), join(0, 1), through],
   // Mars (round 23): the default two-road grid, both routes leaving the basin
   mars: [through, through],

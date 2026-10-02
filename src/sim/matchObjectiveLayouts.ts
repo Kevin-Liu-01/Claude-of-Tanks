@@ -37,6 +37,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // village crossroads — the west river meadow below the mill, the village square (also the turbo-ball kickoff), the
   // east river meadow.
   frontier: { kickoff: { x: 0, z: 0 }, zones: [{ x: -290, z: -30 }, { x: 0, z: 0 }, { x: 290, z: 30 }] },
+  // Saltwind Narrows (redesign 2026-10-02): three discs on the bay's axis (z = 10), the line the layout is mirrored
+  // across — the village square and the upper village, validated seats on the village's graded floor, and the karst
+  // spine's saddle, a level apron in the map file; the turbo-ball kickoff seats at the market crossroads.
+  saltwind: { kickoff: { x: 40, z: 4 }, zones: [{ x: -122, z: 8 }, { x: -44, z: 14 }, { x: 230, z: 10 }] },
   skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
   copper_mesa: { zones: [{ x: 95.75601429460295, z: 25.16493186989846 }, { x: 103.52551824388397, z: -48.38643546884091 }, { x: 159.75453586673763, z: -8.089799185507083 }] },
 };

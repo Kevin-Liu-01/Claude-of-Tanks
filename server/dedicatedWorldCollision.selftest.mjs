@@ -61,7 +61,7 @@ const expected = {
   orchard: [4925, 4693, 5160],
   longleaf: [6219, 6022, 7183],
   mangrove: [5282, 5127, 6502],
-  saltwind: [3629, 3392, 4048],
+  saltwind: [3811, 3614, 4260], // 2026-10-02 Saltwind Narrows redesign (docs/MAP-LAYOUT-BRIEF.md); was [3629, 3392, 4048]
   reservoir: [6426, 6301, 7206],
   mars: [772, 718, 0],
   moon: [475, 381, 0],
