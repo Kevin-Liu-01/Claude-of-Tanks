@@ -19,6 +19,7 @@ import {
   createGarageArchitectureController,
   type GarageArchitectureStats,
 } from './garageArchitecture.ts';
+import { getDeviceTier } from '../engine/quality.ts';
 
 type RandomSource = () => number;
 type SignWear = [boolean, number, number, number, number];
@@ -558,6 +559,13 @@ export function createGarageStage(
     roughness: 1,
     metalness: 0,
   }), { instanced: true });
+  // p2 trees lane (2026-10-02): the desktop groves grow their trees (vegetation.ts buildGrownGarageTree), whose wood
+  // reads the four-style bark sheet and its normals — one more instanced program, seeded under the same cover
+  if (getDeviceTier() !== 'mobile') {
+    addOutdoorSeed('tree-bark-instance', seedStandard({
+      color: 0xffffff, map: outdoorSeedColor, normalMap: outdoorSeedNormal, vertexColors: true, roughness: 0.92, metalness: 0,
+    }), { instanced: true });
+  }
   addOutdoorSeed('ground-instance-color', seedStandard({
     color: 0xffffff,
     vertexColors: true,
