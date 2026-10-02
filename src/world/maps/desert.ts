@@ -515,6 +515,8 @@ export default {
     // content_breadth sun/fog/albedo retune above already pulls sand
     // midtones down — together they land dune relief in the readable band.
     postExposure: 0.90, // lighting_post r4: keep the raised sun from re-blowing the sand top end
+    // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
+    lighting: { groundAlbedoHex: 0xad9b7c },
   },
 
   minimap: {

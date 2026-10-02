@@ -336,6 +336,8 @@ export default {
     // 0.94 -> 0.86 with the snowpack L step above — the lit snow leaves the
     // tonemap shoulder so the skyline against the capped sky can exist
     sunIntensity: 1.35, sunColorHex: 0xdfe7f2, hemiIntensity: 0.74, postExposure: 0.86,
+    // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
+    lighting: { groundAlbedoHex: 0xe5e7ec, warmth: 0.25, exposureEV: -0.25 },
   },
 
   minimap: {

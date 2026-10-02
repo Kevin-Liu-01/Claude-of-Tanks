@@ -20,6 +20,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     cloudAltM: 900, cloudHazeK: 0.00012, cloudUvM: 2600, cloudShadowAmp: 0.26,
     sunIntensity: 4.15, sunColorHex: 0xffe9c2, hemiIntensity: 0.28, /* round 47 (2026-09-23): the shaded side lifted, follows desert.ts */
     postExposure: 0.90,
+    lighting: { groundAlbedoHex: 0xad9b7c }, // 2026-10-01: mirrors desert.sky (the grounded light model's levers)
   }),
   winter: Object.freeze({
     sunElevationDeg: 33, sunAzimuthDeg: 115,
@@ -29,6 +30,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     cloudAltM: 320, cloudHazeK: 0.00013, cloudUvM: 2200,
     sunIntensity: 1.35, sunColorHex: 0xdfe7f2, hemiIntensity: 0.74,
     postExposure: 0.86, // round 48: mirrors winter.ts (owner-approved round-44 snow re-grade)
+    lighting: { groundAlbedoHex: 0xe5e7ec, warmth: 0.25, exposureEV: -0.25 }, // 2026-10-01: mirrors winter.sky (the grounded light model's levers)
   }),
   urban: Object.freeze({
     sunElevationDeg: 36, sunAzimuthDeg: 115,
@@ -36,6 +38,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     fogDensity: 0.00062, fogTintHex: 0x8d99a8, fogMix: 0.62, envIntensity: 0.2,
     cloudOpacity: 0.85, cloudOpacity2: 0.5, cloudTintHex: 0xe8e4dc,
     sunIntensity: 4.2, sunColorHex: 0xffedd6, hemiIntensity: 0.36,
+    lighting: { groundAlbedoHex: 0x736f69 }, // 2026-10-01: mirrors urban.sky (the grounded light model's levers)
   }),
   coastal: Object.freeze({
     sunElevationDeg: 38, sunAzimuthDeg: 115,
@@ -51,6 +54,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0xa39f98,
     cloudAltM: 300, cloudHazeK: 0.00013, cloudUvM: 2200,
     sunIntensity: 1.35, sunColorHex: 0xd9dad6, hemiIntensity: 0.85,
+    lighting: { groundAlbedoHex: 0x736f69 }, // 2026-10-01: mirrors railyard.sky (the grounded light model's levers)
   }),
   monsoon: Object.freeze({
     sunElevationDeg: 24, sunAzimuthDeg: 124,
@@ -59,6 +63,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     cloudOpacity: 1.35, cloudOpacity2: 1.18, cloudTintHex: 0xbecac8,
     sunIntensity: 3.6, sunColorHex: 0xfae8d0, hemiIntensity: 0.46, // lighting 2026-09-13: mirrors monsoon.sky
     postExposure: 0.96,
+    lighting: { groundAlbedoHex: 0x61694b }, // 2026-10-01: mirrors monsoon.sky (the grounded light model's levers)
   }),
   alpine: Object.freeze({
     sunElevationDeg: 16, sunAzimuthDeg: 132,
@@ -67,6 +72,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     cloudOpacity: 1.12, cloudOpacity2: 0.82, cloudTintHex: 0xe8eef3,
     sunIntensity: 4.2, sunColorHex: 0xf8eedb, hemiIntensity: 0.34, // lighting 2026-09-13: mirrors alpine.sky
     postExposure: 0.95,
+    lighting: { groundAlbedoHex: 0x9ea0a2, exposureEV: -0.25 }, // 2026-10-01: mirrors alpine.sky (the grounded light model's levers)
   }),
   badlands: Object.freeze({
     sunElevationDeg: 30, sunAzimuthDeg: 116,
@@ -75,6 +81,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     cloudOpacity: 0.62, cloudOpacity2: 0.26, cloudTintHex: 0xffe4cb,
     sunIntensity: 4.25, sunColorHex: 0xffd4ad, hemiIntensity: 0.25,
     postExposure: 0.92,
+    lighting: { groundAlbedoHex: 0xaa8161 }, // 2026-10-01: mirrors badlands.sky (the grounded light model's levers)
   }),
   foundry: Object.freeze({
     sunElevationDeg: 25, sunAzimuthDeg: 128,
@@ -84,6 +91,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     cloudOpacity: 1.24, cloudOpacity2: 1.05, cloudTintHex: 0xc8ccca,
     sunIntensity: 4.2, sunColorHex: 0xfde3c4, hemiIntensity: 0.36, // lighting 2026-09-13: mirrors foundry.sky
     postExposure: 0.96,
+    lighting: { groundAlbedoHex: 0x736f69 }, // 2026-10-01: mirrors foundry.sky (the grounded light model's levers)
   }),
 });
 

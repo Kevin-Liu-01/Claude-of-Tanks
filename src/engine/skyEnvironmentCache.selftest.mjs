@@ -180,6 +180,9 @@ function skyFixture() {
   }
   const code = `const { renderer, scene, preset, sunDir } = input;
     const atmosphereKeySuffixLive = '';
+    // 2026-10-01 (the grounded light model): the owner's environment intensity reads the model's value, null on the
+    // legacy dome this fixture bakes — the authored floor applies exactly as before
+    const physicalEnvIntensity = null;
     const refreshAtmosphere = () => { input.refreshAtmosphere(); return false; };
     const DEFAULT_PRESET = preset, ENV_SKY_SCALE = 50, ENV_INTENSITY_FLOOR = 0.21, HDRI_ENV_URL = null;
     const loadHdriEnvironment = () => { throw new Error('unexpected HDRI'); };
