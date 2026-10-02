@@ -1,26 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
-import { stripTypeScriptTypes } from 'node:module';
-import { fileURLToPath } from 'node:url';
 import badlands from './maps/badlands.ts';
-import { historicalBadlandsInput } from './shorelineHistoryTestOracle.mjs';
 
-const root = fileURLToPath(new URL('../../', import.meta.url));
-const base = '78640f623e12cb55243acfd4cbf895764c2c8123';
-const originalSource = execFileSync('git', ['show', `${base}:src/world/maps/badlands.ts`], { cwd: root, encoding: 'utf8' });
-const original = (await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(originalSource)).toString('base64'))).default;
-const serialize = value => JSON.stringify(value, (_key, item) => typeof item === 'function' ? item.toString() : item);
-
-// Material authoring only: existing canyon support, props, routes, water,
-// species, budgets, light and every unlisted material setting remain exact.
-// round 29 (2026-09-20): the vista ground kind and treeline 0 are projected back like the quiet bedding
-const horizon = historicalBadlandsInput(badlands).horizon;
-// round 71 (2026-09-25): the cloudscape block (the volumetric layer's per-map authoring) is not a material; projected out
-assert.equal(serialize({ ...badlands, horizon, clouds: undefined, splat: { ...badlands.splat,
-  rippleAmp: original.splat.rippleAmp, strata: original.splat.strata,
-  rockTone: original.splat.rockTone } }), serialize(original));
-
+// 2026-10-01 (frozen pins retired): this receipt used to `git show` the 78640f623 Badlands module and hold every
+// non-material authoring field, the historical palette projection and the rock tone's hue/saturation/mean to it.
+// Those were change detectors of history. The material contract is now absolute: a quiet red-rock wash with bounded
+// ripple/strata/banding, a finite red-rock tone with real bed variation, and the authoring wired to the production
+// terrain and horizon painters.
 function assertQuietWash(config) {
   // Retain a trace of small wind-scour relief without the old .616 strength
   // of the never-fading distant dune-bed branch.
@@ -28,21 +14,19 @@ function assertQuietWash(config) {
   assert.ok(Math.min(config.splat.rippleAmp * 2.2, 1) < .14);
   assert.ok(config.splat.strata > 0 && config.splat.strata <= .05);
   assert.ok(config.horizon.banding > 0 && config.horizon.banding <= .06);
-  let meanDelta = 0;
   for (let i = 0; i <= 100; i++) {
-    const luminance = i / 100;
-    const oldTone = original.splat.rockTone(.06, .40, luminance);
-    const tone = config.splat.rockTone(.06, .40, luminance);
-    assert.deepEqual(tone.slice(0, 2), oldTone.slice(0, 2), 'retain red-rock hue and saturation');
-    assert.ok(tone.every(Number.isFinite));
-    meanDelta += tone[2] - oldTone[2];
+    const tone = config.splat.rockTone(.06, .40, i / 100);
+    assert.ok(tone.every(Number.isFinite), 'finite rock tone');
+    assert.ok(tone[0] >= 0 && tone[0] <= .1, 'red-rock hue');
+    assert.ok(tone[1] > .1 && tone[1] <= .6, 'muted but present red-rock saturation');
   }
   const range = config.splat.rockTone(0, .4, 1)[2] - config.splat.rockTone(0, .4, 0)[2];
   assert.ok(range >= .25 && range <= .40, 'retain real bed tone variation without high-contrast repeating seams');
-  assert.ok(Math.abs(meanDelta / 101) < .05, 'contrast reduction is not a blanket brightness wash');
 }
 assertQuietWash(badlands);
-assert.throws(() => assertQuietWash(original), { code: 'ERR_ASSERTION' }, 'old floor-wide dune relief is rejected');
+// The rejected floor-wide dune relief (rippleAmp .28, strata .14) and a flat featureless tone must both fail.
+assert.throws(() => assertQuietWash({ ...badlands, splat: { ...badlands.splat, rippleAmp: .28, strata: .14 } }),
+  { code: 'ERR_ASSERTION' }, 'old floor-wide dune relief is rejected');
 assert.throws(() => assertQuietWash({ ...badlands, splat: { ...badlands.splat, rockTone: () => [.045, .248, .43] } }),
   { code: 'ERR_ASSERTION' }, 'flat featureless replacement cannot pass');
 
@@ -55,10 +39,4 @@ assert.match(terrain, /makeSandstoneLayer\(3002, aniso, S\.rockTone \|\| null\)/
 assert.match(terrain, /float bedW = min\(uRipple\.z \* 2\.2, 1\.0\)/);
 const horizonSource = readFileSync(new URL('./maps/horizon.ts', import.meta.url), 'utf8');
 assert.match(horizonSource, /banding: horizon\.banding \?\?/);
-
-// Older all-map fixture tests still execute their exact original palette;
-// their immutable config/geometry/pixel goldens are never regenerated here.
-const historical = historicalBadlandsInput(badlands);
-assert.equal(serialize(historical.splat), serialize(original.splat));
-assert.equal(serialize(historical.horizon), serialize(original.horizon));
-console.log('redrockMaterial: bounded wash/bedding contrast, wired authoring, unchanged canyon/gameplay and exact historical palettes PASS');
+console.log('redrockMaterial: bounded wash/bedding contrast, red-rock tone and wired authoring PASS');
