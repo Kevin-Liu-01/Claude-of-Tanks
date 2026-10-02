@@ -353,7 +353,8 @@ Changing the light re-keys or rebuilds everything derived from it, and a direct 
   turns with the key;
 - the volumetric cloud history and TAA restart, so a still or a film's first frame never blends the previous light;
 - the vehicle readability floors scale with the light; dusk and night add a Studio-owned lamp pool (the world's
-  authored windows, lamps and the actors' headlights; budget 4 spot / 2 point lights on desktop).
+  authored windows, lamps and the actors' headlights; budget 4 spot / 2 point lights on desktop; the pooled lights
+  run at 0.45 of their battle intensity at dusk and 0.7 at night, so pale snow and sand do not blow out).
 
 Aerial perspective, sun shafts, the lens flare and water read the live sun every frame. A return to the authored day,
 a battlefield switch and Studio exit restore every mutated value exactly (the battlefield stays cached for battles).

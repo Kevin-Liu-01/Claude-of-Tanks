@@ -75,6 +75,11 @@ interface FarShading {
 }
 
 const HORIZON_MESHES = new Set(['horizon-ring', 'horizon-treeline', 'horizon-detail', 'horizon-far-range']);
+/**
+ * The pooled lamps' light (not their glowing lenses and windows) under the Studio sky: the battle night's headlight
+ * spots were tuned for a dark playable night and blew out pale snow and sand under the brighter blue hour.
+ */
+const LAMP_LIGHT_SCALE: Readonly<Partial<Record<StudioTimeOfDay, number>>> = Object.freeze({ dusk: 0.45, night: 0.7 });
 /** A key this close to the authored sun keeps the ring's original cast-shadow bake (cos 0.25°). */
 const SAME_SUN_COS = Math.cos(0.25 * Math.PI / 180);
 
@@ -319,7 +324,11 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
   }
 
   function update(cameraPosition: THREE.Vector3Like): void {
-    if (nightRoot) night?.update(cameraPosition);
+    if (!nightRoot || !night) return;
+    night.update(cameraPosition);
+    // update() re-assigns each pooled light's emitter intensity; scale it for this time (deterministic, per frame)
+    const scale = (current && LAMP_LIGHT_SCALE[current.time]) ?? 1;
+    if (scale !== 1) for (const light of night.lights) light.intensity *= scale;
   }
 
   function restore(): void {
