@@ -549,6 +549,16 @@ in the page (decal meshes unculled) as an ABBA (draw counts, so the pairs are ex
 carrying a scar. The hulls that submit any draw fall from 13 to 3, 11 to 2 and 13 to 3. The overview, with
 every scarred hull in view, is unchanged.
 
+Those ten scars were the rare combat warm's own. It stamps one armour scar per fielded hull so its hidden-variant
+compile prepares the impact-decal program inside every hull, and their only cleanup was the destruction warm's
+`resetAll`, which a cached destruction warm skips; the covered deployment always warms destruction first. With
+every bot frozen from the first battle frame (no shell fired), ten of the 28 hulls carried a scar at rollout on a
+fresh profile and again on a second battle entry, on Verdant Fields and Sirocco Wadi: all on the player's side
+(the enemies' countdown-built roots are detached, so the decal sweep drops theirs). The rare warm now clears exactly
+the scars it stamped once that compile is done, or when it fails or is closed (`createCombatRareWarmSteps`): no
+scarred hull in any of the four entries. The overview loses those ten draws (966 → 956 and 953 → 943 forward
+calls); the rollout chase pose, with the scarred allies off screen and already culled, is unchanged (293 and 287).
+
 ## Asset and geometry policy
 
 Playable tanks are assembled from first-party code and cached/generated
