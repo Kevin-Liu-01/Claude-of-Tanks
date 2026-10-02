@@ -1217,8 +1217,10 @@ const AerialShader = {
 //  - display: a small black point (the camera's flare floor, so shadow cores reach a real dark), a display
 //    saturation trim, the corner vignette (luma-keyed, a lens's falloff, not a filter), the scope treatment,
 //    the display-space dither.
-const GRADE_SAT_LINEAR = 1.3;
-const GRADE_CONTRAST = 1.25;
+// (the values: a nine-map A/B of four looks — 1.4 / 1.28 keeps a daylight photograph's colour and depth where 1.3 / 1.25
+// read flat, without the forest-floor crush a 1.3 slope with a 0.015 black point gave Caldera)
+const GRADE_SAT_LINEAR = 1.4;
+const GRADE_CONTRAST = 1.28;
 const GRADE_BLACK_POINT = 0.012;
 const GRADE_SATURATION = 1.0;
 // r4 LP2 ("vignette stacks to a ~30-35% corner luminance falloff on bright daylight wides"): the shader keys

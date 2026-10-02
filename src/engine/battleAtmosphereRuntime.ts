@@ -4,11 +4,6 @@ import { isMapId, type MapId } from '../world/maps/catalog.ts';
 import type { MapSkyConfig } from '../world/maps/horizon.ts';
 import { selectBattleWeather, type BattleWeather, type BattleWeatherBiome, type BattleTimeOfDay, BATTLE_TIMES } from './battleWeatherPolicy.ts';
 import { setVehicleReadabilityScale } from '../vehicles/vehicleReadability.ts';
-import { DEFAULT_SKY_PRESET } from './sky.ts';
-import { deriveSunForPreset } from './lightModel.ts';
-
-/** The sunset's sun elevation (degrees): the golden hour every map's weather can draw. */
-export const SUNSET_SUN_ELEVATION_DEG = 7;
 
 export const BATTLE_WEATHER_BIOMES = Object.freeze({
   verdant: 'temperate', desert: 'arid', winter: 'cold', urban: 'temperate',
@@ -40,14 +35,9 @@ function weatherPreset(authored: MapSkyConfig, weather: BattleWeather | null): M
   const preset = { ...authored };
   if (!weather) return preset;
   if (weather.timeOfDay === 'sunset') {
-    // 2026-10-01 (the grounded light model): the low sun is the map's own atmosphere at 7° — its transmittance
-    // gives the colour and the strength (Verdant 3.31 × 0xffcb8c, a turbid monsoon redder and weaker), where the
-    // legacy preset painted one fixed 2.8 × 0xffbf80 over every map. The legacy rig's fill values stay for the
-    // Preetham tier, which keeps its authored rig.
-    const sun = deriveSunForPreset({ ...DEFAULT_SKY_PRESET, ...authored, sunElevationDeg: SUNSET_SUN_ELEVATION_DEG });
     Object.assign(preset, {
-      sunElevationDeg: SUNSET_SUN_ELEVATION_DEG, skyIntensity: .72, sunIntensity: +sun.intensity.toFixed(3),
-      sunColorHex: sun.colorHex, hemiIntensity: .58, fillIntensity: .38, envIntensity: .8,
+      sunElevationDeg: 7, skyIntensity: .72, sunIntensity: 2.8,
+      sunColorHex: 0xffbf80, hemiIntensity: .58, fillIntensity: .38, envIntensity: .8,
       cloudTintHex: 0xeab492, fogTintHex: 0xba8c83, fogMix: .38,
     });
   }

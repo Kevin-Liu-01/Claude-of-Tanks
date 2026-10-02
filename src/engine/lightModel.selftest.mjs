@@ -1,14 +1,15 @@
 // The grounded light model (2026-10-01, lighting lane): lightModel.ts pinned without a GPU. The transmittance the
 // model integrates on the CPU agrees with the round-65 CPU twin of the atmosphere's LUT; the derived sun lands
 // Verdant's authored key and warms and weakens toward the horizon; overcast greys and dims the sun and moves the
-// light into the deck; the physical rig retires the anti-sun fill and the disc-folded environment fill; the
-// exposure law adapts part of the way and stays bounded; the legacy rig survives unchanged without a summary; and
-// the wiring in sky.ts / lighting.ts / post.ts / renderer.ts carries the model where the renderer applies it.
+// light into the deck; the physical rig derives its sun (an authored day key never reaches it; the night's moon
+// does), retires the anti-sun fill and the disc-folded environment fill; the exposure law adapts part of the way and
+// stays bounded; the legacy rig survives unchanged without a summary and under a galaxy sky; and the wiring in
+// sky.ts / lighting.ts / post.ts / renderer.ts / main.ts carries the model where the renderer applies it.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  DEFAULT_GROUND_ALBEDO, EXPOSURE_ADAPTATION, EXPOSURE_KEY, EXPOSURE_MAX, EXPOSURE_MIN, LIGHT_SOLAR_IRRADIANCE, OVERCAST_SKY_CUT,
-  SKY_DIFFUSE_GAIN, atmosphereTransmittance, deriveSun, deriveSunForPreset, exposureFor, hexToLinear, linearToHex,
+  DEFAULT_GROUND_ALBEDO, EXPOSURE_ADAPTATION, EXPOSURE_KEY, EXPOSURE_MAX, EXPOSURE_MIN, LIGHT_SOLAR_IRRADIANCE, NIGHT_SKY_GLOW, OVERCAST_SKY_CUT,
+  SKY_DIFFUSE_GAIN, atmosphereTransmittance, deriveSun, exposureFor, hexToLinear, isGalaxySky, linearToHex,
   luminance, resolveLightModel, resolveOvercast, whiteBalanceGains,
 } from './lightModel.ts';
 import { ATMO_GROUND_KM, skyPresetToAtmosphere } from './atmosphere.ts';
@@ -46,8 +47,6 @@ for (const el of [44, 32, 20, 12, 7, 3]) {
 const grey = deriveSun(verdant, 1);
 assert.ok(grey.intensity * luminance(grey.color) < 0.15 * day.intensity * luminance(day.color), 'a closed deck leaves a tenth of the direct sun');
 assert.ok(grey.color[2] > day.color[2], 'and greys its colour toward the cool deck light');
-const winterSky = { ...DEFAULT_SKY_PRESET, ...getMapConfig('winter').sky, cloudscape: getMapConfig('winter').clouds };
-assert.deepEqual(deriveSunForPreset(winterSky), (() => { const d = deriveSun(skyPresetToAtmosphere(winterSky), resolveOvercast(winterSky)); return { intensity: d.intensity, colorHex: d.colorHex }; })());
 
 // ---- 3. the overcast fraction: authored, then the cloudscape, then the legacy deck rule
 assert.equal(resolveOvercast({ lighting: { overcast: 0.4 }, cloudscape: { regime: 'overcast-stratus' } }), 0.4, 'the authored value wins');
@@ -61,12 +60,17 @@ assert.equal(resolveOvercast({ cloudOpacity: 1, cloudOpacity2: 0.6, turbidity: 4
 const irr = [0.11, 0.125, 0.16];
 const clear = resolveLightModel(verdantSky, verdant, { irradianceRaw: irr }, { intensity: 4.5, colorHex: 0xfff1dc });
 assert.equal(clear.mode, 'physical');
+assert.equal(clear.sunIntensity, day.intensity, 'by day the model\'s own sun lights the scene');
+assert.deepEqual(clear.sunColor, day.color);
+const stale = resolveLightModel(verdantSky, verdant, { irradianceRaw: irr }, { intensity: 1.2, colorHex: 0xff8040 });
+assert.equal(stale.sunIntensity, day.intensity, 'an authored day key (a stale preset, the legacy rig\'s) never reaches the physical sun');
+assert.deepEqual(stale.sunColor, day.color);
 assert.equal(clear.fillIntensity, 0, 'the anti-sun rescue fill is retired');
 assert.equal(clear.hemiIntensity, 0, 'an open sky has no deck glow');
 assert.equal(clear.envIntensity, 1, 'the environment shows the dome at its own radiance (a mirror reflects the sky the eye sees)');
 near(clear.envDiffuseGain, SKY_DIFFUSE_GAIN, 1e-12, 'the sky\'s diffuse share takes the aerosol / cloud gain');
 assert.deepEqual(clear.groundRadiance, DEFAULT_GROUND_ALBEDO.map((a, i) => a * irr[i]), 'below the horizon: the shaded ground the sky lights');
-const sunH = 4.5 * luminance(hexToLinear(0xfff1dc)) * verdant.sunDir[1];
+const sunH = day.intensity * luminance(day.color) * verdant.sunDir[1];
 const shadeH = Math.PI * luminance(irr) * SKY_DIFFUSE_GAIN;
 assert.ok(sunH / shadeH > 3 && sunH / shadeH < 6, `open-ground sun over shade ${(sunH / shadeH).toFixed(2)}: a clear day's 3–6 : 1`);
 near(clear.illuminance, sunH + shadeH, 1e-9, 'the metered illuminance is sun + sky on a level surface');
@@ -82,6 +86,26 @@ assert.ok(authoredGround.groundAlbedo[1] > 0.6, 'snow\'s albedo from the lightin
 near(authoredGround.envDiffuseGain, SKY_DIFFUSE_GAIN * 1.2, 1e-12);
 assert.equal(authoredGround.saturation, 0.9); assert.equal(authoredGround.contrast, 1.05);
 assert.ok(authoredGround.whiteBalance[0] > authoredGround.whiteBalance[2], 'a warm climate shift');
+
+const nightModel = resolveLightModel({ ...verdantSky, skyIntensity: 0.08, sunElevationDeg: 24 }, skyPresetToAtmosphere({ ...verdantSky, sunElevationDeg: 24 }),
+  { irradianceRaw: irr.map((v) => v * 0.08) }, { intensity: 0.6, colorHex: 0xafc3ec });
+near(nightModel.night, 1, 1e-9, 'the night preset\'s dimmed dome is a full night');
+near(nightModel.hemiIntensity, NIGHT_SKY_GLOW, 1e-9, 'the night sky\'s own glow rides the hemisphere');
+assert.ok(nightModel.hemiSky[2] > nightModel.hemiSky[0] * 1.5, 'in the moonlit sky\'s blue');
+assert.ok(nightModel.exposure > clear.exposure, 'the camera opens for the night');
+assert.ok(nightModel.illuminance * nightModel.exposure < 0.3 * clear.illuminance * clear.exposure, 'and the night still reads as night');
+near(nightModel.sunIntensity, 0.6, 1e-9, 'the night\'s direct light is the authored moon');
+hexToLinear(0xafc3ec).forEach((v, c) => near(nightModel.sunColor[c], v, 1e-12, `the moon's colour ch${c}`));
+const overcastNight = resolveLightModel({ ...verdantSky, skyIntensity: 0.08, sunElevationDeg: 24, lighting: { overcast: 1 } },
+  skyPresetToAtmosphere({ ...verdantSky, sunElevationDeg: 24 }), { irradianceRaw: irr.map((v) => v * 0.08) }, { intensity: 0.6, colorHex: 0xafc3ec });
+assert.ok(overcastNight.hemiIntensity < NIGHT_SKY_GLOW + 0.15, `a deck at night passes the moon, not the day's sun (${overcastNight.hemiIntensity.toFixed(3)})`);
+
+// a galaxy sky (the space maps: the dome forced to the stars over a daylight key) keeps the authored rig, never the night
+const galaxySky = { ...verdantSky, nightSky: 1, skyIntensity: 0.06, sunIntensity: 3.2, sunColorHex: 0xe4ebff, hemiIntensity: 0.56, fillIntensity: 0.36 };
+assert.ok(isGalaxySky(galaxySky) && !isGalaxySky(verdantSky) && !isGalaxySky({ ...verdantSky, skyIntensity: 0.08 }));
+const galaxy = resolveLightModel(galaxySky, verdant, { irradianceRaw: irr }, { intensity: 3.2, colorHex: 0xe4ebff });
+assert.equal(galaxy.mode, 'legacy'); assert.equal(galaxy.night, 0, 'a galaxy sky\'s key is daylight');
+assert.equal(galaxy.sunIntensity, 3.2); assert.equal(galaxy.fillIntensity, 0.36);
 
 // ---- 5. the exposure law
 near(exposureFor(3), EXPOSURE_KEY, 1e-12, 'Verdant\'s key at the reference illuminance');
@@ -101,12 +125,19 @@ near(legacy.hemiIntensity, 0.46 + 0.15, 1e-12, 'the authored hemisphere and its 
 const sky = readFileSync(new URL('./sky.ts', import.meta.url), 'utf8');
 assert.match(sky, /if \( uEnvBake > 0\.5 \) \{[\s\S]{0,700}gl_FragColor = vec4\( mix\( max\( skyCol, vec3\( 0\.0 \) \) \* uSkyIntensity, uEnvGround, below \), 1\.0 \);\s*return;/,
   'the environment bakes the raw sky (no knee, no disc) over the shaded ground');
-assert.match(sky, /atmosphereMaterial\.uniforms\.uEnvBake\.value = 1;[\s\S]{0,300}fromScene\(envScene\)[\s\S]{0,300}uEnvBake\.value = 0;/, 'only for the synchronous bake');
-assert.match(sky, /physicalEnvIntensity \?\? Math\.max\(preset\.envIntensity, ENV_INTENSITY_FLOOR\)/, 'the model\'s environment intensity on the physically based dome');
+assert.match(sky, /atmosphereMaterial\.uniforms\.uEnvBake\.value = physicalEnvBake\(\) \? 1 : 0;[\s\S]{0,300}fromScene\(envScene\)[\s\S]{0,300}uEnvBake\.value = 0;/, 'only for the synchronous bake');
+assert.match(sky, /const physicalEnvBake = \(\): boolean => physicalEnvIntensity != null && !scene\.userData\.lightEnclosed;/,
+  'only where the grounded model lights the scene (the Garage and a galaxy sky keep the full dome\'s bake)');
+assert.match(sky, /physicalEnvIntensity = model\.mode === 'physical' \? model\.envIntensity : null;/);
+assert.equal(sky.match(/atmosphereKeySuffix = environmentKeySuffix\(\);/g)?.length, 3, 'every bake keys the environment by its mode');
+assert.match(sky, /\(scene\.userData\.lightEnclosed \? null : physicalEnvIntensity\)\s*\?\? Math\.max\(preset\.envIntensity, ENV_INTENSITY_FLOOR\)/,
+  'the model\'s environment intensity on the physically based dome, the authored floor in an enclosed presentation');
 const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
 assert.match(lighting, /fill\.intensity = model\.mode === 'physical' \? 0 : \(opts\.fillIntensity \?\? FILL_INTENSITY\);/, 'the grounded rig drives the fill to zero');
 assert.doesNotMatch(lighting, /fill\.visible = false/, 'without leaving the light signature (no program recompiles between rigs)');
 assert.match(lighting, /scene\.userData\.lightModel = model;/, 'the rig publishes the model the output pass reads');
+assert.match(lighting, /scene\.userData\.lightEnclosed = farCascadeDormant;/, 'the rig publishes the enclosed presentation');
+assert.match(lighting, /const physical = physicalRig && !farCascadeDormant/, 'the Garage keeps the authored rig');
 const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
 assert.match(post, /outputColor\.rgb \*= uExposure \* uWhiteBalance;[\s\S]{0,200}mix\( vec3\( sceneLuma \), outputColor\.rgb, uSatLinear \)[\s\S]{0,80}outputColor\.rgb = 0\.18 \* pow\( max\( outputColor\.rgb, vec3\( 1e-6 \) \) \* \( 1\.0 \/ 0\.18 \), vec3\( uContrast \) \);\s*#ifdef LINEAR_TONE_MAPPING/,
   'exposure, white balance, the scene-referred saturation and contrast are linear, before the tone curve');
@@ -114,5 +145,8 @@ assert.doesNotMatch(post, /GRADE_PIVOT|GRADE_BLACK_LIFT|GRADE_SHADOW_TINT|GRADE_
 const renderer = readFileSync(new URL('./renderer.ts', import.meta.url), 'utf8');
 assert.match(renderer, /renderer\.toneMapping = THREE\.AgXToneMapping;/, 'AgX');
 assert.match(renderer, /renderer\.toneMappingExposure = 1\.0;/, 'the exposure is the light model\'s');
+const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+assert.match(main, /setSun: \(skyConfig\) => lighting\.setSun\(sky\.sunDir, withWorldCloudscape\(skyConfig\)\),/, 'the world activation sets the light with the deck');
+assert.match(main, /getBattleSkyConfig: \(\) => withWorldCloudscape\(currentWorld\(\)\?\.config\.sky \?\? null\),/, 'and so does the Garage trim\'s restore');
 
 console.log(`lightModel.selftest: CPU transmittance = the LUT twin, Verdant key ${(day.intensity * luminance(day.color)).toFixed(2)}, sun/shade ${(sunH / shadeH).toFixed(2)}:1, overcast, exposure law, legacy rig and wiring PASS`);

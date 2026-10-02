@@ -12,7 +12,11 @@
  *                                                    and march as the transmittance LUT, integrated here on the CPU), E0
  *                                                    LIGHT_SOLAR_IRRADIANCE: the solar constant in light units, fixed so
  *                                                    Verdant's 32° sun keeps the key every material was authored under;
- *                                                    the colour is T, through an overcast deck greyed toward cloud light
+ *                                                    the colour is T, through an overcast deck greyed toward cloud light.
+ *                                                    Derived on every preset, never read from it: a map's sun follows its
+ *                                                    own elevation, atmosphere and cloudscape whoever edits them, and the
+ *                                                    authored sunIntensity / sunColorHex light only the night (the moon)
+ *                                                    and the legacy rig
  *   sky        the PMREM of the sky dome itself, baked without the sun disc and without the display knee (sky.ts), at
  *              environment intensity 1 so a mirror reflects the sky the dome shows; its diffuse share takes
  *              SKY_DIFFUSE_GAIN on top (the aerosol and fair-weather cloud light the round-65 visual calibration
@@ -28,11 +32,10 @@
  * The retired terms: the anti-sun "rescue" fill (a second, unshadowed sun on every backlit face), the legacy disc
  * folded into the environment's diffuse mip (a shadowless sun-direction fill), the constant-hue hemisphere floor and
  * the environment floor. The mobile tier, whose dome is the Preetham fallback with no summary readback, keeps its
- * authored rig (`mode: 'legacy'`).
+ * authored rig (`mode: 'legacy'`), and so do a galaxy sky (the space maps: a dome dimmed to the stars over an authored
+ * daylight key, not a sky that lights the ground) and the Garage's enclosed bay (lighting.ts).
  */
-import {
-  ATMO_GROUND_KM, ATMO_MEDIUM, ATMO_STEPS, ATMO_TOP_KM, skyPresetToAtmosphere, type AtmosphereParams, type AtmosphereSkyPresetInput,
-} from './atmosphere.ts';
+import { ATMO_GROUND_KM, ATMO_MEDIUM, ATMO_STEPS, ATMO_TOP_KM, type AtmosphereParams } from './atmosphere.ts';
 import { CLOUDSCAPE_REGIMES, type CloudscapeConfig } from './cloudscapes.ts';
 
 export type Rgb = readonly [number, number, number];
@@ -62,7 +65,9 @@ export interface LightModelPreset {
   cloudOpacity?: number;
   cloudOpacity2?: number;
   turbidity?: number;
-  /** The legacy rig's authored values (mobile tier / the summary failed). */
+  /** A forced night sky (sky.ts): with a daylight key it is a galaxy dome — the space maps — not the night. */
+  nightSky?: number | null;
+  /** The legacy rig's authored values (the mobile tier, a galaxy sky, the night's moon). */
   sunIntensity?: number;
   sunColorHex?: number;
   hemiIntensity?: number;
@@ -124,6 +129,16 @@ export const OVERCAST_SKY_CUT = 0.85;
 export const OVERCAST_TRANSMISSION = 0.42;
 /** The deck's light: a neutral grey, a touch cool (linear, luminance ≈ 1; overcast daylight ≈ 6500–7000 K). */
 export const OVERCAST_LIGHT_COLOR: Rgb = Object.freeze([0.96, 1.0, 1.04]) as Rgb;
+/**
+ * The night's own sky light (horizontal irradiance at full night, light units): the moonlit sky, airglow and the
+ * scattered light of a populated horizon that keep a moonlit field readable — the dome's 8 % moonlit sky alone
+ * lights the shade about a tenth as strongly as the moon lights open ground, which reads as a black void on a screen.
+ */
+export const NIGHT_SKY_GLOW = 0.16;
+/** The camera's night offset (EV at full night): a moonlit scene sits a little over two stops under the day. */
+export const NIGHT_EV = -0.5;
+/** Its colour: the blue of a moonlit sky (linear, luminance ≈ 1). */
+export const NIGHT_GLOW_COLOR: Rgb = Object.freeze([0.72, 0.95, 1.38]) as Rgb;
 /** Temperate ground (dry grass and soil), linear. */
 export const DEFAULT_GROUND_ALBEDO: Rgb = Object.freeze([0.21, 0.18, 0.11]) as Rgb;
 /** Exposure law: the key that lands Verdant's lit midtones, its reference illuminance and the adaptation share. */
@@ -257,16 +272,6 @@ export function deriveSun(
   return { intensity: irradiance / luminance(quantized), color: quantized, colorHex };
 }
 
-/** The sky-preset fields deriveSunForPreset reads (the atmosphere's inputs plus the deck). */
-export type SunPresetInput = AtmosphereSkyPresetInput & Pick<LightModelPreset, 'lighting' | 'cloudscape' | 'cloudOpacity' | 'cloudOpacity2'>;
-
-/** The physical sun of a whole sky preset (its atmosphere mapping and its deck): what a map's day block and a weather
- * preset's low sun write as `sunIntensity` / `sunColorHex`. */
-export function deriveSunForPreset(preset: SunPresetInput): { intensity: number; colorHex: number } {
-  const derived = deriveSun(skyPresetToAtmosphere(preset), resolveOvercast(preset));
-  return { intensity: derived.intensity, colorHex: derived.colorHex };
-}
-
 /** The white-balance gains of a warmth value (luminance-preserving; +1 ≈ a 1500 K warmer grade). */
 export function whiteBalanceGains(warmth: number): Rgb {
   const w = clamp(warmth, -1, 1);
@@ -278,6 +283,16 @@ export function whiteBalanceGains(warmth: number): Rgb {
 /** How much of the night a dome intensity means: full at the night preset's .08, none from .30 (sky.ts nightAmount). */
 export function nightFor(skyIntensity: number): number {
   return clamp((0.30 - skyIntensity) / 0.22, 0, 1);
+}
+
+/** A galaxy sky: the dome forced to the stars under an authored daylight key (Olympus Basin, Earthrise Basin). */
+export function isGalaxySky(preset: LightModelPreset): boolean {
+  return (preset.nightSky ?? 0) > 0.5;
+}
+
+/** The night amount of a preset: the dome's, never a galaxy sky's (its key is daylight). */
+function nightOf(preset: LightModelPreset): number {
+  return isGalaxySky(preset) ? 0 : nightFor(preset.skyIntensity ?? 1);
 }
 
 /** The exposure the law gives a horizontal illuminance (and an authored EV offset). */
@@ -310,14 +325,15 @@ function legacyModel(preset: LightModelPreset): LightModel {
     whiteBalance: [1, 1, 1],
     saturation: 1,
     contrast: 1,
-    night: nightFor(preset.skyIntensity ?? 1),
+    night: nightOf(preset),
   };
 }
 
 /**
- * Resolve the light. `sun` is the caller's direct sun when it has one (the authored map values, the Garage trim, a
- * weather preset's derived low sun); otherwise the model derives it. `sky` is the atmosphere's summary; without it
- * (the Preetham tier, a failed readback) the authored legacy rig is returned unchanged.
+ * Resolve the light. `sky` is the atmosphere's summary; without it (the Preetham tier, a failed readback), and for a
+ * galaxy sky, the authored legacy rig is returned unchanged. `sun` is the preset's authored key (a map's values, a
+ * weather preset's): the legacy rig's sun and, under the physical model, the night's moon — by day and at the low sun
+ * the model's own derivation lights the scene.
  */
 export function resolveLightModel(
   preset: LightModelPreset,
@@ -325,12 +341,16 @@ export function resolveLightModel(
   sky: LightModelSky | null,
   sun: { intensity: number; colorHex: number } | null = null,
 ): LightModel {
-  if (!params || !sky) return legacyModel(preset);
+  if (!params || !sky || isGalaxySky(preset)) return legacyModel(preset);
   const L = preset.lighting ?? {};
   const overcast = resolveOvercast(preset);
   const derived = deriveSun(params, overcast);
-  const sunIntensity = sun ? sun.intensity : derived.intensity;
-  const sunColor = sun ? hexToLinear(sun.colorHex) : derived.color;
+  // the night: the dome dimmed to a moonlit sky. The direct light is the authored moon there, the derived sun by day,
+  // blended by the night amount (the presets sit at its ends: day and sunset 0, the night preset 1)
+  const night = nightOf(preset);
+  const moon = sun ? { intensity: sun.intensity, color: hexToLinear(sun.colorHex) } : { intensity: derived.intensity, color: derived.color };
+  const sunIntensity = derived.intensity + (moon.intensity - derived.intensity) * night;
+  const sunColor: Rgb = [0, 1, 2].map((c) => derived.color[c] + (moon.color[c] - derived.color[c]) * night) as unknown as Rgb;
   const sunIrradiance = sunIntensity * luminance(sunColor);
   const sinEl = Math.max(0, params.sunDir[1]);
   // the clear sky (the env bake's dome, in its own units, × skyIntensity already) and its light
@@ -340,9 +360,16 @@ export function resolveLightModel(
   const envDiffuseGain = lightTune('SKY_DIFFUSE_GAIN', SKY_DIFFUSE_GAIN) * (L.skyLight ?? 1);
   const skyLightH = Math.PI * luminance(irr) * envIntensity * envDiffuseGain;
   // the deck's glow: the clear-sky horizontal light it transmits (sun + sky as if the deck were absent)
-  const clearSunH = derived.intensity * luminance(derived.color) / Math.max(1 - OVERCAST_DIRECT_CUT * overcast, 1e-3) * sinEl;
+  // (by night the moon the deck would pass: the authored key is the moonlight as seen, never cut)
+  const clearSun = derived.intensity * luminance(derived.color) / Math.max(1 - OVERCAST_DIRECT_CUT * overcast, 1e-3);
+  const clearSunH = (clearSun + (moon.intensity * luminance(moon.color) - clearSun) * night) * sinEl;
   const clearSkyH = Math.PI * luminance(irr) * envDiffuseGain;
-  const hemiIntensity = overcast * lightTune('OVERCAST_TRANSMISSION', OVERCAST_TRANSMISSION) * (clearSunH + clearSkyH);
+  const deckGlow = overcast * lightTune('OVERCAST_TRANSMISSION', OVERCAST_TRANSMISSION) * (clearSunH + clearSkyH);
+  // at night the hemisphere also carries the night sky's own glow (NIGHT_SKY_GLOW), blended into its colour by share
+  const nightGlow = night * lightTune('NIGHT_SKY_GLOW', NIGHT_SKY_GLOW);
+  const hemiIntensity = deckGlow + nightGlow;
+  const glowShare = hemiIntensity > 1e-6 ? nightGlow / hemiIntensity : 0;
+  const hemiSky: Rgb = [0, 1, 2].map((c) => OVERCAST_LIGHT_COLOR[c] + (NIGHT_GLOW_COLOR[c] - OVERCAST_LIGHT_COLOR[c]) * glowShare) as unknown as Rgb;
   const ground = L.groundAlbedoHex != null ? hexToLinear(L.groundAlbedoHex) : DEFAULT_GROUND_ALBEDO;
   // the deck's light from below is its reflection off the ground: the hemisphere's ground pole is the albedo itself
   const hemiGround: Rgb = [ground[0], ground[1], ground[2]];
@@ -354,17 +381,17 @@ export function resolveLightModel(
     envIntensity,
     envDiffuseGain,
     hemiIntensity,
-    hemiSky: OVERCAST_LIGHT_COLOR,
+    hemiSky,
     hemiGround,
     fillIntensity: 0,
     groundAlbedo: ground,
     groundRadiance: [ground[0] * irr[0], ground[1] * irr[1], ground[2] * irr[2]],
     overcast,
     illuminance,
-    exposure: exposureFor(illuminance, L.exposureEV ?? 0),
+    exposure: exposureFor(illuminance, (L.exposureEV ?? 0) + night * lightTune('NIGHT_EV', NIGHT_EV)),
     whiteBalance: whiteBalanceGains(L.warmth ?? 0),
     saturation: L.saturation ?? 1,
     contrast: L.contrast ?? 1,
-    night: nightFor(preset.skyIntensity ?? 1),
+    night,
   };
 }

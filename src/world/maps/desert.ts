@@ -361,12 +361,14 @@ export default {
     // (canyon-in darkest 1 % / 5 % of the ground +10.7 % / +8.1 %), lit sand +0.1..0.6 % (the sun stays 4.15 and
     // postExposure 0.90, so nothing re-blows). It does NOT touch the dark contour bands on the sunlit dune faces
     // (+2..4 %): those are the sand branch's own bands, not fill starvation — see docs/MAP-BEAUTIFICATION.md round 47.
-    sunIntensity: 4.65, sunColorHex: 0xfff6ec, hemiIntensity: 0.28, // lighting_post r4: sun 3.30 -> 4.15, hemi 0.30 -> 0.20 (lee faces ~30% darker)
+    sunIntensity: 4.15, sunColorHex: 0xffe9c2, hemiIntensity: 0.28, // lighting_post r4: sun 3.30 -> 4.15, hemi 0.30 -> 0.20 (lee faces ~30% darker)
     // lighting_post r3 (round 3): per-map display exposure trim (post.ts
     // uExposure). 0.93 (not the 0.88 the LP probe used) because the r3
     // content_breadth sun/fog/albedo retune above already pulls sand
     // midtones down — together they land dune relief in the readable band.
     postExposure: 0.90, // lighting_post r4: keep the raised sun from re-blowing the sand top end
+    // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
+    lighting: { groundAlbedoHex: 0xad9b7c },
   },
 
   minimap: {

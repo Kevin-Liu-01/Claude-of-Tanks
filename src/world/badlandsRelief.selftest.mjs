@@ -8,7 +8,7 @@ import { historicalRound71CloudsSource } from './round71Clouds.test-support.mjs'
 import { historicalRound72ReliefSource } from './round72Relief.test-support.mjs';
 import { historicalRound75PropsSource } from './round75Props.test-support.mjs';
 import { historicalRound76DeckRegradeSource } from './round76DeckRegrade.test-support.mjs';
-import { historicalLightModelSkySource, previousSunSky } from './lightModelSun.test-support.mjs';
+import { historicalLightModelSkySource, withoutLightingSky } from './lightModelSky.test-support.mjs';
 import { originalExitConfig, historicalAuthoredExitSource } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -278,8 +278,8 @@ for (const index of [0, 2]) {
 }
 // Later material-only refinement is independently bounded by redrockMaterial.
 // round 71 (2026-09-25): the cloudscape block (the volumetric layer's per-map authoring) never feeds relief; projected out
-// 2026-10-01 (the grounded light model): the sky's two sun leaves are the model's derivation; projected back like the rest
-assert.equal(serialize({ ...config, sky: previousSunSky(config, 'badlands'), blurb: original.blurb, terrain: original.terrain,
+// 2026-10-01 (the grounded light model): so does the sky's lighting block (lightModelSky.test-support.mjs)
+assert.equal(serialize({ ...config, sky: withoutLightingSky(config.sky), blurb: original.blurb, terrain: original.terrain,
   splat: original.splat, horizon: original.horizon, clouds: undefined,
   props: { ...config.props, tacticalBeats: original.props.tacticalBeats, wallRuns: original.props.wallRuns } }),
 serialize(original), 'only scoped terrain, blurb, materials and floor-reseated tactical/wall records change');

@@ -1,6 +1,6 @@
 import { historicalRound47PresentationSource } from './round47MapPresentation.test-support.mjs';
 import { historicalRound71CloudsSource } from './round71Clouds.test-support.mjs';
-import { historicalLightModelSkySource, previousSunSky } from './lightModelSun.test-support.mjs';
+import { historicalLightModelSkySource, withoutLightingSky } from './lightModelSky.test-support.mjs';
 import { historicalRoadTerrainSource } from './roadHistoryTestOracle.mjs';
 import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
@@ -65,8 +65,8 @@ for(const [id,file]of selected){
   ports.set(url,stripTypeScriptTypes(oldSource(`src/world/maps/${file}.ts`)));
   const old=(await import(url)).default,cfg=historicalMapPassDressingInput(originalExitConfig(getMapConfig(id)),assert);
   const normalized={...cfg,terrain:{...cfg.terrain,landforms:cfg.terrain.landforms.map(stripRelief)}};
-  // 2026-10-01 (the grounded light model): the sky's two sun leaves are the model's derivation, projected back first
-  normalized.sky=previousSunSky(cfg,id);
+  // 2026-10-01 (the grounded light model): the sky's lighting block never feeds relief; projected out first
+  normalized.sky=withoutLightingSky(cfg.sky);
   if(id==='alpine'){
     // 2026-09-11 restored the 1049e4e Alpine horizon bands (owner direction).
     // Horizon bands never feed relief; guard the live values, then project
@@ -78,7 +78,7 @@ for(const [id,file]of selected){
     // 2026-09-13 lighting: the alpine key/fill moved toward the 1049e4e ratio (sun 2.85 -> 4.2,
     // colour 0xffddbe -> 0xf8eedb, hemisphere 0.54 -> 0.34). Sky presets never feed relief; guard
     // the live leaves, then project only them back so every other authoring field stays exact.
-    assert.equal(normalized.sky.sunIntensity,4.2,'alpine: 2026-09-13 key');assert.equal(normalized.sky.sunColorHex,0xf8eedb);assert.equal(cfg.sky.hemiIntensity,0.34);
+    assert.equal(cfg.sky.sunIntensity,4.2,'alpine: 2026-09-13 key');assert.equal(cfg.sky.sunColorHex,0xf8eedb);assert.equal(cfg.sky.hemiIntensity,0.34);
     assert.equal(old.sky.sunIntensity,2.85);assert.equal(old.sky.sunColorHex,0xffddbe);assert.equal(old.sky.hemiIntensity,0.54);
     normalized.sky={...normalized.sky,sunIntensity:2.85,sunColorHex:0xffddbe,hemiIntensity:0.54};
   }

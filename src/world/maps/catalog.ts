@@ -23,7 +23,7 @@ export const DEFAULT_GARAGE_SKY: NonNullable<MapCompositionConfig['sky']> = {
   cloudOpacity2: 0.6,
   cloudTintHex: 0xffffff,
   sunIntensity: 4.5,
-  sunColorHex: 0xfff1dd,
+  sunColorHex: 0xfff1dc,
   hemiIntensity: 0.32,
 };
 

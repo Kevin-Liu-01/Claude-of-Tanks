@@ -1244,11 +1244,14 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     atmosphereState.params = params;
     atmosphereState.irradianceRaw.copy(summary.irradianceRaw);
     // 2026-10-01: the grounded light model's environment — the sky at its own radiance (an overcast deck dims the clear
-    // sky's share) over the shaded ground below the horizon
+    // sky's share) over the shaded ground below the horizon; a galaxy sky keeps the authored rig and the full dome's
+    // bake, as before
     const model = resolveLightModel(preset, params, { irradianceRaw: [summary.irradianceRaw.r, summary.irradianceRaw.g, summary.irradianceRaw.b] });
-    physicalEnvIntensity = model.envIntensity;
+    physicalEnvIntensity = model.mode === 'physical' ? model.envIntensity : null;
     (u.uEnvGround.value as THREE.Color).setRGB(model.groundRadiance[0], model.groundRadiance[1], model.groundRadiance[2]);
-    atmosphereKeySuffixLive = `${atmosphereKey(params, preset.skyIntensity)}|g:${model.groundRadiance.map((v) => v.toPrecision(6)).join(',')}`;
+    atmosphereKeySuffixLive = model.mode === 'physical'
+      ? `${atmosphereKey(params, preset.skyIntensity)}|g:${model.groundRadiance.map((v) => v.toPrecision(6)).join(',')}`
+      : atmosphereKey(params, preset.skyIntensity);
     return true;
   };
 
@@ -1641,8 +1644,18 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   updateCloudDecks();
 
   let pmrem: THREE.PMREMGenerator | null = null;
-  /** 2026-10-01: the environment's intensity — the grounded model's on the physically based dome, the authored floor elsewhere. */
-  const environmentIntensityFor = (): number => physicalEnvIntensity ?? Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR);
+  /**
+   * 2026-10-01: the environment's intensity — the grounded model's on the physically based dome, the authored floor on
+   * the legacy dome and inside an enclosed presentation (lighting.ts publishes scene.userData.lightEnclosed: the Garage
+   * keeps its authored rig, so a Garage variant's sky re-key must not hand it the open sky's light).
+   */
+  const environmentIntensityFor = (): number => (scene.userData.lightEnclosed ? null : physicalEnvIntensity)
+    ?? Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR);
+  /** 2026-10-01: the dome bakes the grounded model's environment (the raw sky over the ground) only where that model
+   * lights the scene; the enclosed Garage keeps the full dome's bake its rig was tuned under, keyed apart. */
+  const physicalEnvBake = (): boolean => physicalEnvIntensity != null && !scene.userData.lightEnclosed;
+  const environmentKeySuffix = (): string => physicalEnvIntensity != null && scene.userData.lightEnclosed
+    ? `${atmosphereKeySuffixLive}|enclosed` : atmosphereKeySuffixLive;
   let pmremContext: ReturnType<THREE.WebGLRenderer['getContext']> | null = null;
   let pmremInfo: THREE.WebGLRenderer['info'] | null = null;
   // Round 65: when the physically based dome is showing, the environment bakes from it (installed below,
@@ -1720,7 +1733,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       envDome.scale.setScalar(ENV_SKY_SCALE);
       envScene.add(envDome);
       // 2026-10-01: the dome's environment mode (raw sky, no disc, the ground below) for this synchronous bake only
-      atmosphereMaterial.uniforms.uEnvBake.value = 1;
+      atmosphereMaterial.uniforms.uEnvBake.value = physicalEnvBake() ? 1 : 0;
       try {
         return environmentGenerator().fromScene(envScene);
       } catch (error) {
@@ -1732,7 +1745,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         envDome.geometry.dispose();
       }
     };
-    atmosphereKeySuffix = atmosphereKeySuffixLive; // the boot bake keys the atmosphere the first refresh built
+    atmosphereKeySuffix = environmentKeySuffix(); // the boot bake keys the atmosphere the first refresh built
   }
   /** The Preetham bake for a preset the atmosphere demoted (a failed readback). */
   const bakeLegacyEnvironmentFromPreetham = (): THREE.WebGLRenderTarget => {
@@ -1768,7 +1781,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // A device restore preserves parameters but clears every GPU-only LUT.
       // Refresh their renderer lifetime before baking reflections from the dome.
       refreshAtmosphere();
-      atmosphereKeySuffix = atmosphereKeySuffixLive;
+      atmosphereKeySuffix = environmentKeySuffix();
       // Deep-hunt IBL experiment (2026-07): sourced Poly Haven HDRI as
       // scene.environment instead of the procedural-sky bake. Judged worse —
       // the HDRI's baked-in sun cannot track the per-map sun azimuth /
@@ -1844,7 +1857,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       configureSkyUniforms(sky, sunDir, preset);
       if (refreshAtmosphere()) horizonColor.copy(capColorLuminance(atmosphereLuts!.summary.horizon.clone(), HORIZON_LUM_CAP));
       else horizonColor.copy(sampleHorizonColor(renderer, sunDir, preset));
-      atmosphereKeySuffix = atmosphereKeySuffixLive;
+      atmosphereKeySuffix = environmentKeySuffix();
       updateCloudDecks(); // tint/opacity/sun-rotation/haze follow the preset
       scene.userData.postExposure = preset.postExposure; // post.ts grade trim
       // Garage variants keep the one boot PMREM resident. Rebuilding a cube

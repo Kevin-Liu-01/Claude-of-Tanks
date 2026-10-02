@@ -1409,6 +1409,7 @@ export function createLighting(
       physical ? { irradianceRaw: [irr!.r, irr!.g, irr!.b] } : null, authoredSun);
     rigModel = model;
     scene.userData.lightModel = model;
+    scene.userData.lightEnclosed = farCascadeDormant;
     scene.environmentIntensity = model.envIntensity;
     const intensity = model.mode === 'physical' ? model.sunIntensity : (opts.sunIntensity ?? SUN_INTENSITY);
     const colorHex = opts.sunColorHex ?? SUN_COLOR;

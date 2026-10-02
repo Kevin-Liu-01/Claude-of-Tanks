@@ -114,7 +114,9 @@ export default {
     fogTintHex: 0xb3a698, fogMix: 0.49, envIntensity: 0.18,
     cloudOpacity: 0.82, cloudOpacity2: 0.52, cloudTintHex: 0xffe0c7,
     cloudAltM: 860, cloudHazeK: 0.00013, cloudUvM: 2800, cloudShadowAmp: 0.30,
-    sunIntensity: 0.43, sunColorHex: 0xf6fbff, hemiIntensity: 0.28, postExposure: 0.93,
+    sunIntensity: 4.15, sunColorHex: 0xffc89b, hemiIntensity: 0.28, postExposure: 0.93,
+    // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
+    lighting: { groundAlbedoHex: 0xaa8161 },
   },
   minimap: {
     base: [132, 70, 47], hard: [137, 91, 65], soft: [102, 57, 43],

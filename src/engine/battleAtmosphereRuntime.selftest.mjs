@@ -5,8 +5,6 @@ import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
 import { MAP_IDS } from '../world/maps/catalog.ts';
 import { createBattleAtmosphereRuntime, BATTLE_WEATHER_BIOMES } from './battleAtmosphereRuntime.ts';
 import { getVehicleReadabilityScale } from '../vehicles/vehicleReadability.ts';
-import { deriveSunForPreset } from './lightModel.ts';
-import { DEFAULT_SKY_PRESET } from './sky.ts';
 
 assert.deepEqual(Object.keys(BATTLE_WEATHER_BIOMES).sort(), [...MAP_IDS].sort(), 'every catalog map is covered without loading full configs');
 assert.equal(Object.isFrozen(BATTLE_WEATHER_BIOMES), true);
@@ -78,18 +76,7 @@ try {
   runtime.prepare(5, 'winter', ['sunset']);
   assert.equal(runtime.weather.timeOfDay, 'sunset');
   assert.equal(applied.at(-1).sunElevationDeg, 7);
-  // 2026-10-01 (the grounded light model): the low sun is the map's own atmosphere at 7° (lightModel.ts
-  // deriveSunForPreset) where the legacy preset painted 2.8 × 0xffbf80 over every map — warmer and weaker than the day
-  // sun the same atmosphere gives at the authored elevation
-  const sunsetSun = deriveSunForPreset({ ...DEFAULT_SKY_PRESET, ...base, sunElevationDeg: 7 });
-  const daySun = deriveSunForPreset({ ...DEFAULT_SKY_PRESET, ...base });
-  assert.equal(applied.at(-1).sunColorHex, sunsetSun.colorHex);
-  assert.equal(applied.at(-1).sunIntensity, +sunsetSun.intensity.toFixed(3));
-  assert.ok((sunsetSun.colorHex & 0xff) < (daySun.colorHex & 0xff) && ((sunsetSun.colorHex >> 8) & 0xff) < ((daySun.colorHex >> 8) & 0xff),
-    'the 7° sun is warmer than the day sun (less blue, less green over the red channel)');
-  const lin = (hex) => new THREE.Color(hex);
-  const irr = (sun) => { const c = lin(sun.colorHex); return sun.intensity * (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b); };
-  assert.ok(irr(sunsetSun) < irr(daySun) * 0.8, 'and weaker: the long path through the air takes its blue and a share of its light');
+  assert.equal(applied.at(-1).sunColorHex, 0xffbf80);
   assert.equal(applied.at(-1).fogDensity, base.fogDensity);
   assert.equal(getVehicleReadabilityScale(), 1);
   runtime.prepare(0, 'verdant');
