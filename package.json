@@ -123,6 +123,7 @@
     "typecheck:telemetry:cloudflare": "npm --prefix cloudflare/telemetry run typecheck",
     "deploy:telemetry:cloudflare": "npm --prefix cloudflare/telemetry run deploy",
     "shadow:truth": "node tools/shadow-render-truth.mjs --gate",
+    "check:bundle": "node tools/bundle-budget.mjs --check",
     "typecheck": "node node_modules/@typescript/native/bin/tsc -p tsconfig.json --noEmit && node tools/core-unused-check.mjs",
     "media:campaign": "node tools/media-production/campaign.mjs",
     "media:capture": "node tools/media-production/produce.mjs",

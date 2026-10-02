@@ -3,6 +3,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PRODUCT_STATS, renderProductStats } from '../productStats.ts';
+// The server-side catalog (as middleware.ts loads it): both locales resident for the metadata helpers.
+import '../ui/i18nCatalog.ts';
 import { privateRoomMetadata, STUDIO_METADATA } from './siteMetadata.ts';
 import { hrefForLocale, PUBLIC_ROUTE_RECORDS } from '../ui/localeRouting.ts';
 

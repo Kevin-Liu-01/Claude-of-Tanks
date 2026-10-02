@@ -1,16 +1,21 @@
 /**
- * i18nCatalog.ts — assembles the runtime dictionary from per-locale files.
+ * i18nCatalog.ts — both locale catalogs, synchronously, for server and build-time code.
  *
  * Each locale lives in a General Translation-compatible JSON file under
- * `src/ui/i18nCatalog.<locale>.json`. This dependency-free module can be
- * imported synchronously by the i18n runtime without an initialization cycle.
+ * `src/ui/i18nCatalog.<locale>.json`. The middleware, the Vite config,
+ * localizedHtml.ts, tools and selftests import this module. Browser code must
+ * not (tools/boot-static-closure.selftest.mjs): the runtime keeps English
+ * resident and loads zh-CN on demand through i18nDictionaries.ts. Importing
+ * this module registers zh-CN with that registry, so shared helpers
+ * (siteMetadata.ts) resolve both locales on the server.
  */
 import enUS from './i18nCatalog.en-US.json' with { type: 'json' };
 import zhCN from './i18nCatalog.zh-CN.json' with { type: 'json' };
+import { registerLocaleDictionary, type CatalogLocale } from './i18nDictionaries.ts';
+
+registerLocaleDictionary('zh-CN', zhCN);
 
 export { enUS, zhCN };
-
-type CatalogLocale = 'en-US' | 'zh-CN';
 
 export const CATALOG: Readonly<Record<CatalogLocale, Readonly<Record<string, string>>>> = {
   'en-US': enUS,

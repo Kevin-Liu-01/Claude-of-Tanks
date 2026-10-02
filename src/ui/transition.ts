@@ -28,6 +28,7 @@ import {
   randomFeaturedShot,
 } from './featuredShots.ts';
 import { isImagePreloaded, preloadImage } from './imagePreload.ts';
+import { currentViewport } from './mapBackdrop.ts';
 import { t } from './i18n.ts';
 import { waitForOpaqueTransition } from './transitionCover.ts';
 
@@ -200,7 +201,7 @@ export function createTransition(): TransitionScreen {
       api.progress(0, t('transition.stage.loading'));
       const shot = o.hero
         ? FEATURED_SHOTS.find((entry) => entry.img === o.hero) || { img: o.hero, focal: 'center' }
-        : o.mapId ? featuredShotForMap(o.mapId) : randomFeaturedShot();
+        : o.mapId ? featuredShotForMap(o.mapId, currentViewport()) : randomFeaturedShot();
       const hero = shot.img;
       const warmHero = isImagePreloaded(hero) || !isImagePreloaded(FEATURED_IMAGES[0])
         ? hero : FEATURED_IMAGES[0];

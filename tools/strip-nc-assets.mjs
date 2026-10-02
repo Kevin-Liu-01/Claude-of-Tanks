@@ -12,12 +12,16 @@
 //    gates must leave them on legal procedural family fallbacks.
 // 3. Prints the docs/ATTRIBUTION.md sections that must be dropped for a
 //    public build (the PERSONAL-USE / NC QUARANTINE block).
+// Step 1b deletes the tool-only public files (tools/tool-only-public-files.mjs):
+// the 33.5 MB tank asset manifest and the marking sheets stay in public/ for
+// the tools that write and read them, but no page requests them.
 //
 // Usage: node tools/strip-nc-assets.mjs   (see package.json "build")
 
 import { rm, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
+import { toolOnlyPublicFiles } from './tool-only-public-files.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -50,6 +54,12 @@ async function main() {
       console.log(`[strip-nc] (already absent) ${path.relative(ROOT, dir)}`);
     }
   }
+  // 1b. tool-only public files never ship (FE-P15)
+  const toolOnly = toolOnlyPublicFiles(DIST);
+  for (const { path: file } of toolOnly) await rm(path.join(DIST, file), { force: true });
+  const toolOnlyBytes = toolOnly.reduce((sum, entry) => sum + entry.bytes, 0);
+  console.log(`[strip-nc] removed ${toolOnly.length} tool-only public files (${(toolOnlyBytes / 1048576).toFixed(1)} MB)`);
+
   // 2. cross-check: registered playables must not point at deleted paths.
   // The browser's boot-light fleet facade is imported in a subprocess. This
   // exercises the exact registry order without loading every visual builder,

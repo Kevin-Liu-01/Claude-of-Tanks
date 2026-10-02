@@ -1,5 +1,7 @@
 import { PRODUCT_STATS } from '../productStats.ts';
-import { catalogText } from '../ui/i18nCatalog.ts';
+// Resident dictionaries: the browser's runtime locale (playMenu, studio) or both on the server, where
+// middleware.ts imports the full catalog (src/ui/i18nCatalog.ts registers zh-CN).
+import { catalogText } from '../ui/i18nDictionaries.ts';
 import {
   hrefForLocale,
   resolveLocalePath,
