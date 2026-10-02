@@ -177,6 +177,41 @@ assert.deepEqual(Array.from(rec.counts), [1, 2], 'cascade 0 (±50 m) sees x=0; c
   assert.equal(shadows.proxyOf.has(rec.proxies[0] ?? {}), false);
 }
 
+// --- 2026-10-02 (the frame-budget lane): a per-frame update skips a compaction it already holds ---
+{
+  const owner = makeMesh(makeGeometry());
+  const root = new THREE.Group();
+  root.add(owner);
+  owner.updateMatrixWorld(true);
+  const record = shadows.build(owner);
+  const frame = () => { for (const light of lights) light.shadow.needsUpdate = true; shadows.update(lights, root, false); };
+  frame();
+  const versions = () => record.proxies.map((proxy) => proxy.instanceMatrix.version);
+  const first = versions();
+  assert.deepEqual(Array.from(record.counts), [1, 2], 'the first frame compacts');
+  frame();
+  assert.deepEqual(versions(), first, 'a still cascade over an unchanged owner is not copied again');
+  owner.setMatrixAt(2, new THREE.Matrix4().makeTranslation(10, 0, 0));
+  owner.instanceMatrix.needsUpdate = true;
+  frame();
+  assert.deepEqual(Array.from(record.counts), [2, 3], 'an instance write recompacts');
+  assert.ok(versions().every((v, i) => v > first[i]));
+  const afterWrite = versions();
+  owner.geometry.attributes.instanceWeight.needsUpdate = true;
+  frame();
+  assert.ok(versions().every((v, i) => v > afterWrite[i]), 'so does a write to another instanced stream (a fade)');
+  const settled = versions();
+  lights[0].position.x += 200; lights[0].target.position.x += 200; // cascade 0 snaps away from its instances
+  frame();
+  assert.equal(record.counts[0], 0, 'a moved cascade recompacts');
+  assert.ok(versions()[1] === settled[1], 'the cascades that did not move keep their compaction');
+  lights[0].position.x -= 200; lights[0].target.position.x -= 200;
+  frame();
+  assert.equal(record.counts[0], 2);
+  shadows.update(lights, root, true);
+  assert.ok(versions().every((v, i) => v > settled[i] || i === 1), 'priming always recompacts');
+}
+
 // --- memory: a discarded world is collected while its shared library geometry lives on ---
 const nextTask = () => new Promise(resolve => setImmediate(resolve));
 async function requireCollected(refs, label) {

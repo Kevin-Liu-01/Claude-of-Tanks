@@ -774,6 +774,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/shadowStability.selftest.mjs',
     'src/engine/shadowFitCache.selftest.mjs',
     'src/engine/shadowRefresh.selftest.mjs',
+    'src/engine/shadowStaticCache.selftest.mjs', // 2026-10-02: the static shadow-caster cache (P20)
     'src/engine/shadowPrime.selftest.mjs',
     'src/engine/networkShadowPrimeAdapter.selftest.mjs',
     'src/engine/coveredComposerWarm.selftest.mjs',

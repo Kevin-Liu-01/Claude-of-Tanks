@@ -22,7 +22,8 @@ import {
   snapShadowCoordinate,
 } from './shadowStability.ts';
 import { createShadowFitCache } from './shadowFitCache.ts';
-import { markShadowOnly, registerShadowCascadeCamera, setShadowCascadePolicy } from './renderLayers.ts';
+import { markShadowOnly, registerShadowCascadeCamera, setShadowCascadeCache, setShadowCascadePolicy } from './renderLayers.ts';
+import { createShadowStaticCache } from './shadowStaticCache.ts';
 import { csmSampledFromM, evaluateShadowCasterProfiles, type ShadowCascadeSample } from './shadowCasterProfiles.ts';
 import {
   cascadeRangesFromBreaks, createNearVehicleShadowPolicy, type CascadeRange, type NearVehicleShadowPolicy,
@@ -54,6 +55,8 @@ interface ShadowDebugOptions {
   freezeMask?: number;
   /** Round 28: keep every hull on its convex proxies (A/B probes for the near-hull detail casters). */
   noVehicleDetail?: boolean;
+  /** 2026-10-02: render every caster into every cascade every frame (the static-caster cache off; A/B probes). */
+  noStaticCache?: boolean;
 }
 
 declare global {
@@ -496,6 +499,15 @@ interface CasterProxyRecord {
   ready: boolean;
   /** Owner count saved across one cascade draw by the before/after hooks. */
   savedCount: number;
+  /**
+   * 2026-10-02 (the frame-budget lane): what each near cascade's compaction was made from — the cascade's frustum epoch
+   * and the owner's instance state (instance-matrix version, the other instanced streams' summed versions, count). A
+   * per-frame update whose cascade and owner both still match skips the copy: the proxy already holds it.
+   */
+  readonly compactedEpoch: Float64Array;
+  readonly compactedMatrix: Float64Array;
+  readonly compactedStreams: Float64Array;
+  readonly compactedN: Float64Array;
 }
 
 const _casterRecords = new WeakMap<THREE.InstancedMesh, CasterProxyRecord | null>();
@@ -509,6 +521,19 @@ const _cullSphere = new THREE.Sphere();
 const _cullVec = new THREE.Vector3();
 const _cullMat = new THREE.Matrix4();
 const _cullFrusta: (THREE.Frustum | null)[] = [];
+/** Per near cascade: the shadow matrix of the last update and an epoch that moves whenever it changes. */
+const _cullFrustumKeys: Float64Array[] = [];
+const _cullFrustumEpochs: number[] = [];
+const _cullEpochs: number[] = [];
+function cascadeFrustumEpoch(index: number, matrix: THREE.Matrix4): number {
+  let key = _cullFrustumKeys[index];
+  if (!key) { key = new Float64Array(16).fill(Number.NaN); _cullFrustumKeys[index] = key; _cullFrustumEpochs[index] = 0; }
+  const e = matrix.elements;
+  let changed = false;
+  for (let k = 0; k < 16; k++) if (key[k] !== e[k]) { key[k] = e[k]; changed = true; }
+  if (changed) _cullFrustumEpochs[index]++;
+  return _cullFrustumEpochs[index];
+}
 const noopRaycast = (): void => {};
 
 function geometryTris(geo: THREE.BufferGeometry): number {
@@ -583,6 +608,10 @@ function buildCasterRecord(owner: THREE.InstancedMesh): CasterProxyRecord | null
     centers: new Float32Array(capacity * 3),
     radii: new Float32Array(capacity),
     n: 0, matrixVersion: -1, ready: false, savedCount: owner.count,
+    compactedEpoch: new Float64Array(_casterProxyCascades).fill(-1),
+    compactedMatrix: new Float64Array(_casterProxyCascades).fill(-1),
+    compactedStreams: new Float64Array(_casterProxyCascades).fill(-1),
+    compactedN: new Float64Array(_casterProxyCascades).fill(-1),
   };
   for (let i = 0; i < _casterProxyCascades; i++) {
     const proxyGeometry = new THREE.BufferGeometry();
@@ -715,6 +744,7 @@ function updateCasterProxies(
     light.target.updateMatrixWorld();
     light.shadow.updateMatrices(light);
     _cullFrusta[i] = light.shadow.getFrustum();
+    _cullEpochs[i] = cascadeFrustumEpoch(i, light.shadow.matrix);
     scheduled |= 1 << i;
   }
   if (!scheduled) return;
@@ -732,6 +762,8 @@ function updateCasterProxies(
       continue;
     }
     refreshCasterSpheres(rec);
+    let streams = 0;
+    for (let a = 1; a < rec.ownerAttrs.length; a++) streams += rec.ownerAttrs[a].version;
     for (let i = 0; i < rec.proxies.length; i++) {
       const proxy = rec.proxies[i];
       proxy.matrixWorld.copy(owner.matrixWorld);
@@ -739,7 +771,15 @@ function updateCasterProxies(
       if (proxy.material !== owner.material) proxy.material = owner.material;
       if (proxy.customDepthMaterial !== owner.customDepthMaterial) proxy.customDepthMaterial = owner.customDepthMaterial;
       const frustum = _cullFrusta[i];
-      if (frustum) compactCasterProxy(rec, i, frustum);
+      if (!frustum) continue;
+      // a still cascade over an unchanged owner already holds this compaction (priming always recompacts)
+      if (!all && rec.compactedEpoch[i] === _cullEpochs[i] && rec.compactedMatrix[i] === owner.instanceMatrix.version
+        && rec.compactedStreams[i] === streams && rec.compactedN[i] === rec.n) continue;
+      compactCasterProxy(rec, i, frustum);
+      rec.compactedEpoch[i] = _cullEpochs[i];
+      rec.compactedMatrix[i] = owner.instanceMatrix.version;
+      rec.compactedStreams[i] = streams;
+      rec.compactedN[i] = rec.n;
     }
     rec.ready = true;
   }
@@ -1028,6 +1068,13 @@ export function createLighting(
     enabled: () => nearVehicleDetailAllowed && !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noVehicleDetail),
   });
   setShadowCascadePolicy(nearVehiclePolicy);
+  // 2026-10-02 (the frame-budget lane, P20): each desktop cascade keeps its static casters' depth and redraws only the
+  // dynamic ones while its snapped pose and the static content hold (shadowStaticCache.ts). Phones keep the plain
+  // render: the copies would cost them graphics memory.
+  const staticShadowCache = mobileTier ? null : createShadowStaticCache();
+  setShadowCascadeCache(staticShadowCache);
+  const staticShadowCacheEnabled = (): boolean =>
+    !!staticShadowCache && !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noStaticCache);
   const shadowFitCache = createShadowFitCache();
   const fitLightDirection = [0, 0, 0];
   /** Per-cascade shadow box size held across small fov lerps (see updateFov). */
@@ -1176,6 +1223,7 @@ export function createLighting(
   /** Mark every cascade for complete redraw on the next two frames. */
   function forceAllCascades(): void {
     forceFrames = 2;
+    staticShadowCache?.invalidate('force');
     shadowScheduler.reset();
     for (let i = FAR_CASCADE_START; i < csm.lights.length; i++) {
       csm.lights[i].shadow.needsUpdate = true;
@@ -1378,17 +1426,20 @@ export function createLighting(
 
   function updateLighting(force = false, dt = 1 / 60): void {
     lastFitChangedMask = 0;
-    if (consumeDormantOrPrimedFrame(force)) return;
+    if (consumeDormantOrPrimedFrame(force)) { staticShadowCache?.disarm(); return; }
     preservePrimedFrame = false;
     const transitionCascade = consumePendingShadowResize();
     lastFitChangedMask = prepareCurrentCascadeFits(force);
     shFrame++;
     const step = Math.max(0, Math.min(0.05, Number(dt) || 0));
+    const forcedFrame = force || forceFrames > 0;
     scheduleCascadeFrame(force, step, transitionCascade);
     applyFarCascadeDormancy();
     updateCasterProxies(csm.lights, scene, false);
     nearVehiclePolicy.update();
     evaluateCasterProfiles(false);
+    // last: the static content the cascades' copies are checked against includes this frame's caster masks
+    staticShadowCache?.beginFrame({ scene, lights: csm.lights, forced: forcedFrame || transitionCascade >= 0, enabled: staticShadowCacheEnabled() });
   }
 
   /**
@@ -1492,6 +1543,7 @@ export function createLighting(
     invalidateShadowMaps(): void {
       staticPresentationDormant = false;
       preservePrimedFrame = false;
+      staticShadowCache?.dispose();
       for (const light of csm.lights) {
         light.shadow.dispose();
         light.shadow.map = null;
@@ -1756,6 +1808,7 @@ export function createLighting(
         farCascadeDormancyRequested: farCascadeDormant,
         staticPresentationDormant,
         farCascadeDepthReady: canDormantShadowCascades(csm.lights, FAR_CASCADE_START),
+        staticCache: staticShadowCache?.telemetry() ?? null,
         cascades: csm.lights.map((light) => {
           const shadow = light.shadow;
           return {
