@@ -203,6 +203,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioPicture.selftest.mjs',
     'src/game/studioProduction.selftest.mjs',
     'src/game/studioProductionPersistence.selftest.mjs',
+    'src/game/studioLight.selftest.mjs',
     'src/ui/studioProductionPanel.selftest.mjs',
     'tools/media-production/campaign.selftest.mjs',
     'tools/media-production/campaignPublication.selftest.mjs',

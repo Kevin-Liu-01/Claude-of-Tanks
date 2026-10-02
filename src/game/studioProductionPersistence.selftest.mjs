@@ -5,6 +5,7 @@ import ts from 'typescript-compiler-api';
 import { createProductionScene, productionPreset, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
 import { normalizeFilm } from './studioFilmPlan.ts';
 import { NEUTRAL_PICTURE, pictureStateJson, resolvePicture } from './studioPicture.ts';
+import { isStudioTime, normalizeStudioLight, studioTimeFor } from './studioLight.ts';
 
 // Execute the real serialization, loading and reframing callers, retaining
 // authored camera positions. A recipe-only round trip misses private format state.
@@ -26,7 +27,9 @@ const create = new Function('ports', `
   let productionFormat='landscape', productionLoading=false, loading=false, recording=false;
   let storyboard={shots:[],durationMs:8000}, clockMs=0, timeScale=0, timeOfDay='day', selectedShotId=null;
   let camera={pos:[0,4,-10],lookAt:[0,1.7,0],fov:40,rollDeg:0}, map='verdant', replacements=0, refreshed=[];
-  const actors=[], effectLog=[], sceneMeta={seed:5000}, BATTLE_TIMES=['day','sunset','night'];
+  const actors=[], effectLog=[], sceneMeta={seed:5000};
+  const {isStudioTime, normalizeStudioLight, studioTimeFor} = ports;
+  let studioLight=null;
   const hfProxy={getHeightAt:()=>0}, getWorld=()=>({mapId:map});
   const getCamera=()=>structuredClone(camera), getStoryboard=()=>structuredClone(storyboard);
   const applyCamera=next=>{camera={...camera,...structuredClone(next)};};
@@ -46,7 +49,7 @@ const create = new Function('ports', `
   return {load,stateJson,setProductionFormat,directProduction,stats:()=>({replacements,format:productionFormat,refreshed,pictureApplied})};
 `);
 const runtime = create({ createProductionScene, productionPreset, productionAspect, reframeProductionPoint, reframeProductionFov,
-  NEUTRAL_PICTURE, pictureStateJson, resolvePicture, normalizeFilm });
+  NEUTRAL_PICTURE, pictureStateJson, resolvePicture, normalizeFilm, isStudioTime, normalizeStudioLight, studioTimeFor });
 for (const format of ['portrait', 'square', 'landscape']) {
   const recipe = createProductionScene({ presetId:'steel-pursuit', format }, () => 0);
   assert.equal(recipe.productionFormat, format, 'CLI recipes carry their actual framing');

@@ -1,4 +1,4 @@
-import { BATTLE_TIMES, type BattleTimeOfDay } from '../engine/battleWeatherPolicy.ts';
+import { STUDIO_TIMES, type StudioLight, type StudioTimeOfDay } from '../game/studioLight.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { ProductionFormat, ProductionRigId } from '../game/studioProduction.ts';
 import { mountStudioProductionPanel, STUDIO_PRODUCTION_CSS } from './studioProductionPanel.ts';
@@ -130,6 +130,17 @@ interface StudioSpecInfo {
   readonly rosterTag?: string;
 }
 
+interface StudioLightState {
+  readonly time: StudioTimeOfDay;
+  readonly headlights: boolean;
+  readonly sunAzimuthDeg: number | null;
+  readonly sunElevationDeg: number | null;
+  readonly override: StudioLight | null;
+  readonly band: { readonly min: number; readonly max: number };
+  readonly times: readonly StudioTimeOfDay[];
+  readonly space: boolean;
+}
+
 interface StudioRecordingStatus {
   readonly active: boolean;
   readonly supported: boolean;
@@ -180,8 +191,10 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   readonly CAMO_PATTERN_IDS: readonly string[];
   readonly ACTOR_STATES: readonly string[];
   readonly mapId: string | null;
-  readonly timeOfDay: BattleTimeOfDay;
-  setTimeOfDay(time: BattleTimeOfDay): Promise<RuntimeValue>;
+  readonly timeOfDay: StudioTimeOfDay;
+  setTimeOfDay(time: StudioTimeOfDay): Promise<RuntimeValue>;
+  setLight(patch: StudioLight | null): Promise<RuntimeValue>;
+  getLight(): StudioLightState;
   readonly timeScale: number;
   readonly fxTimeMs: number;
   readonly durationMs: number;
@@ -558,6 +571,20 @@ const CSS = `
   text-shadow:0 1px 4px rgba(0,0,0,.9);line-height:1.7;}
 .cot-studio .foot .cam{color:#ffd27a;font-weight:700;}
 .cot-studio .val{font-size:10px;font-weight:800;color:#ffd27a;min-width:34px;text-align:right;}
+/* --- sun (media r5): compass dial, lighting presets, elevation --------------- */
+.cot-studio .sun{display:grid;grid-template-columns:78px minmax(0,1fr);gap:8px;align-items:center;margin-bottom:6px;}
+.cot-studio .sunDial{width:78px;height:78px;display:block;touch-action:none;cursor:grab;
+  background:radial-gradient(circle at 50% 50%,rgba(16,23,30,.95) 0 58%,rgba(8,12,16,.95) 59% 100%);
+  border:1px solid rgba(190,204,216,.28);border-radius:50%;}
+.cot-studio .sunDial:focus-visible{outline:2px solid #ffd27a;outline-offset:2px;}
+.cot-studio .sunDial.drag{cursor:grabbing;}
+.cot-studio .sunSide{display:grid;gap:5px;min-width:0;}
+.cot-studio .sunRead{display:flex;justify-content:space-between;gap:6px;font-size:9px;font-weight:800;
+  letter-spacing:.12em;color:#8a97a3;text-transform:uppercase;}
+.cot-studio .sunRead b{color:#ffd27a;font-weight:900;letter-spacing:.06em;}
+.cot-studio .sunPresets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;}
+.cot-studio .sunPresets button{padding:5px 2px;font-size:8px;letter-spacing:.06em;min-height:26px;}
+.cot-studio .sunNote{font-size:8.5px;font-weight:700;letter-spacing:.08em;color:#6f7d88;}
 .cot-studio-archive{width:min(94vw,1560px);max-width:none;padding:0;border:1px solid rgba(190,204,216,.32);
   background:#05080b;color:#e6edf3;box-shadow:0 36px 140px rgba(0,0,0,.82);font-family:${FONT_STACK};}
 .cot-studio-archive::backdrop{background:rgba(1,3,5,.9);backdrop-filter:blur(10px);}
@@ -690,19 +717,166 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   timeLabel.appendChild(el('span', '', t('studioPanel.timeOfDay')));
   const timeSelect = el('select');
   timeSelect.setAttribute('aria-label', t('studioPanel.timeOfDay'));
-  for (const time of BATTLE_TIMES) {
+  const timeOptions = new Map<StudioTimeOfDay, HTMLOptionElement>();
+  for (const time of STUDIO_TIMES) {
     const option = el('option', '', t(`atmosphere.${time}`));
     option.value = time;
+    timeOptions.set(time, option);
     timeSelect.appendChild(option);
   }
   timeSelect.addEventListener('change', () => {
     timeSelect.disabled = true;
-    S.setTimeOfDay(timeSelect.value as BattleTimeOfDay)
+    S.setTimeOfDay(timeSelect.value as StudioTimeOfDay)
       .catch((error: RuntimeValue) => flashBusy(errorMessage(error)))
       .finally(() => { timeSelect.disabled = false; api.refreshMap(); });
   });
   timeLabel.appendChild(timeSelect);
   secScene.appendChild(timeLabel);
+
+  // --- sun (media r5): bearing on a north-up compass (world +Z up, -X right, as the tactical map), lighting
+  // presets relative to the camera, elevation inside the time's band. Slider-rate changes coalesce to one apply.
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const svg = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] => {
+    const node = document.createElementNS(SVG_NS, tag);
+    for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
+    return node;
+  };
+  const sunBlock = el('div', 'sun');
+  const dial = svg('svg', { viewBox: '-50 -50 100 100', class: 'sunDial', role: 'slider', tabindex: 0,
+    'aria-label': t('studioPanel.light.bearingAria'), 'aria-valuemin': 0, 'aria-valuemax': 359 });
+  dial.append(
+    svg('circle', { r: 44, fill: 'none', stroke: 'rgba(190,204,216,.22)', 'stroke-width': 1 }),
+    svg('circle', { r: 30, fill: 'none', stroke: 'rgba(190,204,216,.10)', 'stroke-width': 1 }),
+  );
+  for (let tick = 0; tick < 360; tick += 30) {
+    const a = tick * Math.PI / 180, r0 = tick % 90 ? 40 : 36;
+    dial.appendChild(svg('line', { x1: -Math.sin(a) * r0, y1: -Math.cos(a) * r0, x2: -Math.sin(a) * 44, y2: -Math.cos(a) * 44,
+      stroke: tick % 90 ? 'rgba(190,204,216,.25)' : 'rgba(190,204,216,.5)', 'stroke-width': 1 }));
+  }
+  const north = svg('text', { x: 0, y: -27, 'text-anchor': 'middle', 'font-size': 9, 'font-weight': 900,
+    fill: '#8a97a3', 'font-family': 'sans-serif' });
+  north.textContent = t('studioPanel.light.north');
+  const camWedge = svg('path', { d: 'M0 0 L-9 -30 A31 31 0 0 1 9 -30 Z', fill: 'rgba(143,208,255,.20)',
+    stroke: 'rgba(143,208,255,.55)', 'stroke-width': 1 });
+  const sunRay = svg('line', { x1: 0, y1: 0, x2: 0, y2: -38, stroke: 'rgba(255,193,105,.55)', 'stroke-width': 1.5 });
+  const sunDot = svg('circle', { cx: 0, cy: -38, r: 6.5, fill: '#ffb84d', stroke: '#0b0f12', 'stroke-width': 1.5 });
+  dial.append(north, camWedge, sunRay, sunDot);
+  const sunSide = el('div', 'sunSide');
+  const sunRead = el('div', 'sunRead');
+  const bearingRead = el('span');
+  const elevationRead = el('span');
+  sunRead.append(bearingRead, elevationRead);
+  const sunPresets = el('div', 'sunPresets');
+  const presetButtons: HTMLButtonElement[] = [];
+  const cameraBearing = (): number => {
+    const c = S.getCamera();
+    const dx = c.lookAt[0] - c.pos[0], dz = c.lookAt[2] - c.pos[2];
+    return ((Math.atan2(dx, dz) * 180 / Math.PI) % 360 + 360) % 360;
+  };
+  // relative to the camera's bearing: the sun ahead (backlight), just off-axis ahead (rim), across (side), behind (front)
+  for (const [key, offset] of [['back', 0], ['rim', 32], ['side', 90], ['front', 180], ['map', null]] as const) {
+    const button = el('button', null, t(`studioPanel.light.${key}`));
+    button.type = 'button';
+    button.title = t(`studioPanel.light.${key}Hint`);
+    button.addEventListener('click', () => {
+      const bearing = offset === null ? null : Math.round(((cameraBearing() + offset) % 360 + 360) % 360);
+      queueLight({ sunAzimuthDeg: bearing });
+    });
+    presetButtons.push(button);
+    sunPresets.appendChild(button);
+  }
+  const sunNote = el('div', 'sunNote', '');
+  sunSide.append(sunRead, sunPresets);
+  sunBlock.append(dial, sunSide);
+  const lampRow = el('div', 'row');
+  const lampBtn = el('button', null, t('studioPanel.light.headlights'));
+  lampBtn.type = 'button';
+  lampBtn.title = t('studioPanel.light.headlightsHint');
+  lampBtn.addEventListener('click', () => queueLight({ headlights: !S.getLight().headlights }));
+  lampRow.append(lampBtn, sunNote);
+  const elevation = sliderRow(t('studioPanel.light.elevation'), 1, 80, 0.5, (value) => {
+    queueLight({ sunElevationDeg: value });
+  });
+  elevation.input.setAttribute('aria-label', t('studioPanel.light.elevationAria'));
+  const elevationReset = el('button', null, t('studioPanel.light.auto'));
+  elevationReset.type = 'button';
+  elevationReset.title = t('studioPanel.light.autoHint');
+  elevationReset.addEventListener('click', () => queueLight({ sunElevationDeg: null }));
+  elevation.row.appendChild(elevationReset);
+  secScene.append(sunBlock, elevation.row, lampRow);
+
+  // one apply in flight; the latest request waits behind it (a dragged dial never queues a backlog)
+  let lightInFlight: Promise<void> | null = null;
+  let lightPending: Record<string, number | boolean | null> | null = null;
+  function queueLight(patch: Record<string, number | boolean | null>): void {
+    lightPending = { ...(lightPending ?? {}), ...patch };
+    if (lightInFlight) return;
+    const pump = async (): Promise<void> => {
+      while (lightPending) {
+        const next = lightPending;
+        lightPending = null;
+        try { await S.setLight(next as StudioLight); } catch (error) { flashBusy(errorMessage(error as RuntimeValue)); }
+      }
+    };
+    lightInFlight = pump().finally(() => { lightInFlight = null; refreshSun(); });
+  }
+  const bearingFromPointer = (event: PointerEvent): number => {
+    const box = dial.getBoundingClientRect();
+    const x = event.clientX - (box.left + box.width / 2), y = event.clientY - (box.top + box.height / 2);
+    // dial right = world -X, dial up = world +Z
+    return Math.round(((Math.atan2(-x, -y) * 180 / Math.PI) % 360 + 360) % 360);
+  };
+  let dialDrag = false;
+  dial.addEventListener('pointerdown', (event) => {
+    dialDrag = true;
+    dial.classList.add('drag');
+    dial.setPointerCapture(event.pointerId);
+    queueLight({ sunAzimuthDeg: bearingFromPointer(event) });
+  });
+  dial.addEventListener('pointermove', (event) => {
+    if (dialDrag) queueLight({ sunAzimuthDeg: bearingFromPointer(event) });
+  });
+  const endDrag = (): void => { dialDrag = false; dial.classList.remove('drag'); };
+  dial.addEventListener('pointerup', endDrag);
+  dial.addEventListener('pointercancel', endDrag);
+  dial.addEventListener('keydown', (event) => {
+    const step = event.shiftKey ? 15 : 5;
+    const current = S.getLight().sunAzimuthDeg ?? 0;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') queueLight({ sunAzimuthDeg: (current + 360 - step) % 360 });
+    else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') queueLight({ sunAzimuthDeg: (current + step) % 360 });
+    else return;
+    event.preventDefault();
+  });
+  function refreshSunCamera(): void {
+    // the wedge points along the camera's bearing (dial up = world +Z, so a bearing turns it counter-clockwise)
+    camWedge.setAttribute('transform', `rotate(${(-cameraBearing()).toFixed(1)})`);
+  }
+  function refreshSun(): void {
+    const light = S.getLight();
+    const az = light.sunAzimuthDeg ?? 0, elev = light.sunElevationDeg ?? 0;
+    const a = az * Math.PI / 180;
+    const radius = 38 - Math.max(0, Math.min(1, elev / 80)) * 18; // a high sun stands nearer the centre
+    sunDot.setAttribute('cx', String(-Math.sin(a) * radius));
+    sunDot.setAttribute('cy', String(-Math.cos(a) * radius));
+    sunRay.setAttribute('x2', String(-Math.sin(a) * radius));
+    sunRay.setAttribute('y2', String(-Math.cos(a) * radius));
+    sunDot.setAttribute('fill', light.time === 'night' ? '#dfe8ff' : light.time === 'dusk' ? '#ff9c6b' : '#ffb84d');
+    refreshSunCamera();
+    dial.setAttribute('aria-valuenow', String(Math.round(az)));
+    dial.setAttribute('aria-valuetext', t('studioPanel.light.bearingValue', { deg: Math.round(az) }));
+    bearingRead.innerHTML = '';
+    bearingRead.append(t('studioPanel.light.bearing') + ' ', el('b', null, `${Math.round(az)}°`));
+    elevationRead.innerHTML = '';
+    elevationRead.append(t(light.time === 'night' ? 'studioPanel.light.moon' : 'studioPanel.light.sun') + ' ', el('b', null, `${elev.toFixed(1)}°`));
+    elevation.setRange(light.band.min, light.band.max);
+    elevation.set(elev);
+    elevationReset.classList.toggle('on', light.override?.sunElevationDeg === undefined);
+    presetButtons[4].classList.toggle('on', light.override?.sunAzimuthDeg === undefined);
+    sunNote.textContent = light.space ? t('studioPanel.light.spaceNote') : '';
+    lampBtn.classList.toggle('on', light.headlights);
+    lampBtn.setAttribute('aria-pressed', String(light.headlights));
+    for (const [time, option] of timeOptions) option.disabled = !light.times.includes(time);
+  }
   battlefieldGroup.body.appendChild(secScene);
 
   let mapPreviewsHydrated = false;
@@ -1853,6 +2027,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     },
     refreshMap() {
       timeSelect.value = S.timeOfDay;
+      refreshSun();
       const id = S.mapId;
       badgeMap.textContent = id ? id.toUpperCase() : '';
       if (!id) return;
@@ -1883,6 +2058,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       footCam.textContent =
         `CAM ${c.pos.map((v) => v.toFixed(1)).join(', ')}  ·  yaw ${c.yawDeg.toFixed(1)}°  ` +
         `pitch ${c.pitchDeg.toFixed(1)}°  ·  fov ${c.fov.toFixed(0)}  ·  T ${(S.fxTimeMs / 1000).toFixed(2)}s`;
+      refreshSunCamera();
       api.refreshTime();
     },
   };

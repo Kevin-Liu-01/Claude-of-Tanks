@@ -40,9 +40,11 @@ session), `src/engine/filmAccumulation.ts` (the float accumulation pass),
 `main.ts` supplies integration ports and retains only the Studio `tick()`
 composition branch.
 
-The **Time of day** control switches between Day, Sunset and Night and is saved
-with scene JSON. For repeatable 4K map masters, fixed-frame MP4s, vertical/square
-promos and a shoreline review workflow, see [Media production](MEDIA-PRODUCTION.md).
+The **Time of day** control offers Dawn, Morning, Day, Golden hour, Sunset, Dusk
+(blue hour) and Night, and the **Sun** compass sets the sun's bearing and height
+(see [Light](#light-times-of-day-and-sun-direction)); both are saved with scene JSON.
+For repeatable 4K map masters, fixed-frame MP4s, vertical/square promos and a
+shoreline review workflow, see [Media production](MEDIA-PRODUCTION.md).
 
 ## Entering / leaving
 
@@ -133,6 +135,11 @@ __STUDIO.setCamera(cfg) / .getCamera()
 __STUDIO.setPicture(patch) / .getPicture()          // film-grade picture (see "Picture")
 __STUDIO.pictureInfo({width, height}?)              // focal length, focus, mattes, stages
 __STUDIO.PICTURE_PRESETS                            // [{id, label}] named looks
+await __STUDIO.setTimeOfDay(time, light?)  // a Studio time; `light` (object or null) sets the sun with it
+await __STUDIO.setLight(patch)      // {sunAzimuthDeg?, sunElevationDeg?} merge (a null field clears it); null clears all
+__STUDIO.getLight()                 // {time, requestedTime, sunAzimuthDeg, sunElevationDeg, override, band, times, space}
+__STUDIO.timeOfDay                  // the time as rendered (a space map renders day)
+__STUDIO.STUDIO_TIMES / .STUDIO_TIME_BANDS
 __STUDIO.TANK_IDS / .MAP_IDS / .ACTOR_STATES / .EFFECT_TYPES / .CAMO_PATTERN_IDS
 __STUDIO.getMapInfo(id)             // {id, name}
 __STUDIO.getSpecInfo(id)            // {name, gunElevationDeg, gunDepressionDeg, shells}
@@ -307,6 +314,11 @@ live preview at the native aspect, progress, time left and **Cancel**.
 ```jsonc
 {
   "map": "desert",              // verdant | desert | winter | urban (default verdant)
+  "timeOfDay": "golden",        // dawn | morning | day | golden | sunset | dusk | night (default day)
+  "light": {                    // optional sun override (omit = the time's own sun)
+    "sunAzimuthDeg": 210,       //   bearing, 0 = +Z, 90 = +X (the map sky convention); wraps into [0, 360)
+    "sunElevationDeg": 9        //   clamped into the time's band (see Light); the moon at night
+  },
   "seed": 5000,                 // fx rng seed (default 5000)
 
   "actors": [
@@ -592,6 +604,66 @@ on a shared, loaded machine: the full stack (blockbuster look + depth of field +
 about 4 ms per frame; the grade, HDR and finish stages are each about 1–3 ms, the lens with three
 FX coverage slices about 1–3 ms. Studio renders on demand while frozen.
 
+## Light: times of day and sun direction
+
+Scene Studio renders seven times of day. They are a Studio-only superset of the battle times: battles keep
+`BATTLE_TIMES` (`day`, `sunset`, `night`), their seeded weights and their presets byte-for-byte. Each Studio time is
+authored relative to the map's own sky (`src/game/studioLight.ts`: multipliers and hue blends over the authored key,
+ambient, haze, fog and clouds), so an overcast map stays overcast at golden hour, a desert keeps its hard key and the
+authored day is exact. Moonlight and the blue-hour glow are absolute keys.
+
+| `timeOfDay` | Sun elevation: default (band) | Look |
+|---|---|---|
+| `dawn` | 4° (1–9°) | sun just clear of the horizon: rose key, a lavender sky (an ozone violet cast), soft low-contrast light, gentle haze |
+| `morning` | 17° (12–30°) | clean deep-blue air, crisp shadows, near-white key |
+| `day` | the map's authored sun (10–80° when moved) | the battlefield as authored |
+| `golden` | 11° (6–18°) | rich warm gold, long shadows, a strong key over cool shade |
+| `sunset` | 3.5° (1–8°) | a deep orange key on the horizon, a glowing band under a deepening blue, darker land |
+| `dusk` | −4° (−9 to −1°), the set sun | blue hour: a deep twilight dome over the warm glow band and the Belt of Venus, first stars, dark land under a faint warm key from the glow (5° up its bearing); windows, street lamps and headlights lit |
+| `night` | 20° (8–70°), the moon | silver moonlight, stars, the moon disc and moonlit clouds; windows, lamps and headlights lit |
+
+The scene JSON `light` block overrides the sun (the moon at night). `sunAzimuthDeg` is the bearing in the map sky
+convention (0 = +Z, 90 = +X; wraps into [0, 360)); `sunElevationDeg` is clamped into the time's band (at dusk it is
+the set sun's depression); `headlights: false` keeps the actors' lamps dark at dusk and night (a blacked-out column;
+the default `true` is not written). An omitted field keeps the time's own sun: the map's authored bearing and the time's
+default elevation. `setTimeOfDay(time)` keeps a bearing override and the headlights choice and drops an elevation override (each time
+has its own band); `setTimeOfDay(time, light)` and `load()` set both. `state()` writes `light` only while an override exists
+and reports the clamped values, so `load(state())` is identity. `getLight()` reports the rendered sun and the band.
+
+Mars and the Moon keep their authored space lighting: every requested time renders `day` (`state()` and
+`timeOfDay` report `day`; the requested time returns on the next terrestrial map). The `light` block still steers
+their sun (elevation 8–60°). The volumetric cloud field keeps the weather offset and wind of the map's authored sun at
+every time and under a moved sun, so a series of times or bearings shares one sky.
+
+Changing the light re-keys or rebuilds everything derived from it, and a direct load matches a switch:
+
+- the atmosphere's sky-view LUT and summary, the PMREM environment (`SkyEnvironmentCache` keys the sun, the preset
+  and the atmosphere key), the horizon/fog colour cache, the baked cloud decks' sun rotation;
+- the CSM key (direction, colour, intensity; every cascade re-renders), hemisphere, anti-sun fill and ground bounce;
+- the horizon ring and far range (unlit, baked at build): their sun direction, key/ambient gains, sky and haze tints
+  and an overall dim follow the time; the ring atlas's sun visibility (the ridges' cast shadows, also read by the
+  terrain's ring bands) is re-baked from the ring geometry for a lower or moved sun; the terrain's wall sky light
+  turns with the key;
+- the volumetric cloud history and TAA restart, so a still or a film's first frame never blends the previous light;
+- the vehicle readability floors scale with the light; dusk and night add a Studio-owned lamp pool (the world's
+  authored windows, lamps and the actors' headlights; budget 4 spot / 2 point lights on desktop; the pooled lights
+  run at 0.45 of their battle intensity at dusk and 0.7 at night, so pale snow and sand do not blow out).
+
+Aerial perspective, sun shafts, the lens flare and water read the live sun every frame. A return to the authored day,
+a battlefield switch and Studio exit restore every mutated value exactly (the battlefield stays cached for battles).
+
+**Panel.** The Battlefield section's **Time of day** select lists the seven times (a space map enables only Day).
+The **Sun** compass is north-up like the tactical map (world +Z up, −X right): the orange dot is the sun (pale at
+night), the blue wedge is the camera's bearing; drag around it or use the arrow keys (Shift = 15°). **Back** puts the
+sun ahead of the camera (backlit subjects, bright rims), **Rim** 32° off that axis (rim light with the disc out of
+frame), **Side** across the frame, **Front** behind the camera; **Map** returns to the authored bearing. **Height**
+moves the sun inside the time's band; **Auto** returns to the time's default; **Headlights** toggles the actors'
+lamps for dusk and night. Slider-rate changes coalesce to one apply; time changes run behind the loading cover. The
+first dusk or night of a session compiles the lamp-lit material variants once (several seconds behind the cover).
+
+**Scripting a backlit shot.** The camera bearing is `atan2(lookAt.x − pos.x, lookAt.z − pos.z)` in degrees; set
+`light.sunAzimuthDeg` to it for a backlit hero, +32° for rim light, +180° for front light.
+
 ## Known limitations
 
 - **Camo is per-spec**: two actors of the same tank id share one paint bake
@@ -599,8 +671,9 @@ FX coverage slices about 1–3 ms. Studio renders on demand while frozen.
   fully independent.
 - Wrecked and burning states do not run the combat simulation. They do not
   calculate damage or module state.
-- `timeOfDayish` is accepted but ignored (sun/sky presets are authored per
-  map; re-lighting would need a sky re-bake).
+- The horizon treeline's thin skyline belts keep the shading baked under the
+  map's authored sun; the ring itself, its far range, the ridge shadows and the
+  terrain's wall sky light follow the Studio sun (see Light).
 - The garage bay set-dressing physically exists at the map edge (−1500,−1500)
   and can be framed if you fly there.
 - Studio `fire` shells collide with terrain only (props/tanks don't stop

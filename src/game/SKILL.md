@@ -82,6 +82,13 @@ and track phase follows the exact sample instant. `studioPicture.ts` owns the
 pure Studio picture schema (neutral default, clamps, named looks, minimal
 `state()` diff, thin-lens/letterbox/grain-seed physics) that
 `engine/cinemaPost.ts` renders; a neutral stage must never insert a pass.
+`studioLight.ts` owns the pure
+Studio times of day (a superset of the battle times, authored relative to each
+map's sky) and the scene `light` block; `studioLightRuntime.ts`, demand-loaded
+only by main.ts's Studio port, applies a plan over the battle owner's authored
+day (sky, key, readability, the baked horizon light, the ring's shadow re-bake,
+blue-hour/night lamps) and restores every value on a return to day, a world
+switch or Studio exit. Battles never import either file.
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
 residency, switch convergence, and battle visual handoff; it composes
 `garagePedestalPreloader.ts` for exact card-intent and quiet neighbor warming.
