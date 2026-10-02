@@ -931,13 +931,11 @@ export const WALL_SEG = 3.0; // wall-kit module pitch, meters
 // review; military paint under this sun needs to start near-charcoal
 const OLIVE: Palette = [0.19, 0.20, 0.185];
 const OLIVE_D: Palette = [0.20, 0.22, 0.145];
-const FIELDGREY: Palette = [0.58, 0.07, 0.28];
 const TENTCANVAS: Palette = [0.10, 0.16, 0.295];
 const TENTCANVAS_D: Palette = [0.095, 0.14, 0.225];
 const CHAR: Palette = [0.07, 0.10, 0.055];
 const CHAR_RUST: Palette = [0.05, 0.42, 0.16];
 const REDDRUM: Palette = [0.015, 0.62, 0.34];
-const GLASS_D: Palette = [0.58, 0.10, 0.16];
 const TIRE: Palette = [0.60, 0.03, 0.075];
 
 /** char-paint with rust bloom — burnt-hulk vertex palette (truck/jeep wrecks) */

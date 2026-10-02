@@ -6,7 +6,7 @@ import { KIT } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
-import { barrel, equipment, hatch, panel, openGunTube, hullStation, optic, smokeBank, towEye, turretStation } from './easternSourceKit.ts';
+import { barrel, equipment, hatch, panel, openGunTube, hullStation, optic, smokeBank, turretStation } from './easternSourceKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 const { box, cylX, cylY, cylZ } = KIT;
 /** Rear ramp rests on the measured raked wall, including its existing fittings. */

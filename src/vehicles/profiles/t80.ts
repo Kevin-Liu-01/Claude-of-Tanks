@@ -1,8 +1,7 @@
 // Pure family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
-import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import {
   loftHull,
@@ -11,7 +10,6 @@ import {
   domeBoxPlanSeat,
   tubeGun,
   ruSaddle,
-  nsvt,
   ruGlacisKit,
   ruDeck,
   ruSkirtBand,

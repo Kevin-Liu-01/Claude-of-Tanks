@@ -17,7 +17,7 @@ import { buildChallenger3RearTurretClosure } from './challenger3RearTurret.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Shared geometry and exact-equipment fittings come from the cycle-free
 // profile kit; builders destructure the geometry they use at call time.
-import { KIT, FITTINGS, MUDGUARDS, muzzleBore } from './kit.ts';
+import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import '../challengerSpecs.ts';
 // ch1-base tone port (uk round 2026-08-07): materials.js is cycle-free — the
 // ambient-floor hook re-attach is the same import uk.ts carries.
@@ -28,7 +28,7 @@ import { vehicleAmbientFloorHook } from '../materials.ts';
 import {
   ukHull, segBoxZ, towCableUK, ukToneKit, ukGearAirBackers,
   box, cylY, cylZ, torus, slab, xform, buildRunningGear, buildGun,
-  liftEye, periscope, headlight, pintleMG, smokeCluster, stowage,
+  liftEye, periscope, smokeCluster, stowage,
 } from './uk.ts';
 import type { UKBuilderPort } from './uk.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -36,7 +36,6 @@ import { buildHollowPairedRoadWheel } from '../hollowRoadWheelStock.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
-type ProfileCurve = readonly Vec2Tuple[];
 type EraPlacer = (...transform: number[]) => void;
 type EquipmentOwner = 'hull' | 'turret';
 

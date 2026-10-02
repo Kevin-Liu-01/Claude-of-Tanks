@@ -153,17 +153,6 @@ const scaledGeometryTransform = KIT.xform as (
   scale?: GeometryScale,
 ) => THREE.BufferGeometry;
 
-type LoftCoordinate = number | readonly number[] | (
-  (point: readonly [number, number], index: number) => number
-);
-
-const variablePolyLoft = KIT.polyLoft as (
-  plan: readonly (readonly [number, number])[],
-  bottom: LoftCoordinate,
-  top: LoftCoordinate,
-  inset?: LoftCoordinate,
-) => THREE.BufferGeometry;
-
 // type99a RE-LISTED 2026-08-08 (§5.38 owner priority wave: "fully model a
 // custom type99a based on this model" — the Type 99A2 print drop VOIDS the
 // 2026-08-06 "no GLB" delist reason). The print is a LOCAL-ONLY measurement

@@ -758,20 +758,6 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   };
 }
 
-const hullSection = (
-  bottomHalf: number,
-  bottomY: number,
-  beltHalf: number,
-  beltY: number,
-  sideHalf: number,
-  sideY: number,
-  roofHalf: number,
-  roofY: number,
-): Vec2Tuple[] => [
-  [-roofHalf, roofY], [-sideHalf, sideY], [-beltHalf, beltY], [-bottomHalf, bottomY],
-  [bottomHalf, bottomY], [beltHalf, beltY], [sideHalf, sideY], [roofHalf, roofY],
-];
-
 function addSheridanHull(P: SheridanBuilderPort): void {
   const {
     box, cylZ, sph, torus, fenders, periscope,

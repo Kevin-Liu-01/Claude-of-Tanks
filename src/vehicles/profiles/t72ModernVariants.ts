@@ -1,5 +1,5 @@
 // Owner-directed family rebuilds on the detailed T-72 foundations (2026-09-30).
-import {KIT, FITTINGS} from './kit.ts';
+import {KIT} from './kit.ts';
 import {buildT72B3MXHull} from './t72b3mX.ts';
 import {buildT72B3X} from './t72b3X.ts';
 import {buildT90SMXTurret} from './t90X.ts';

@@ -17,14 +17,13 @@ import { KIT } from './kit.ts';
 import { roundMember, type XYZ } from './abramsSourceXGeometry.ts';
 import {
   GLACIS, LEFT_CHEEK, LEFT_SIDE, RIGHT_CHEEK, RIGHT_SIDE, ROOF_Y, type KitOwner as Owner, type Plane,
-  onPlaneX, onPlaneY, onPlaneZ, planeFrame, putKit, seatKit, turretRoofY, turretSideX,
+  onPlaneX, onPlaneY, onPlaneZ, planeFrame, putKit, turretRoofY, turretSideX,
 } from './abramsSourceXKitBase.ts';
 
 const { box, cylY, cylX } = KIT;
 /** Kontakt-1 4S20 cassette: 251.9 x 131.9 x 70 mm. */
 const BRICK = Object.freeze({ w: .252, h: .132, t: .070 });
 
-const seat = (owner: Owner, p: XYZ): XYZ => seatKit(owner, p);
 function put(P: TankBuilderPort, owner: Owner, bucket: string, part: string,
   geometry: THREE.BufferGeometry, center: XYZ, equipment = true): void {
   putKit(P, owner, bucket, 'uaKit', part, geometry, center, equipment);

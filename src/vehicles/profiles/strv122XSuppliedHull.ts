@@ -1,6 +1,5 @@
 // First-party planes, folded skirts and native open wheel wells. Source
 // sections establish scalar dimensions, not a copied boundary/vertex mesh.
-import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';

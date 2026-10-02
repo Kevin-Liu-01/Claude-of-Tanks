@@ -4,7 +4,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Source assets are quarantined comparison inputs only. Every runtime surface
 // below is an original solid primitive, not a source contour or mesh buffer.
 import * as THREE from 'three';
-import { KIT, orientedSlab } from './kit.ts';
+import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { t90SourcePressedFaceLayers } from '../nationWheelConstructions.ts';
 import { markEraHitFaces, markEraFurniture as eraFurniture } from './eraHitFaces.ts';
@@ -478,18 +478,6 @@ function vGlacis(P:TankBuilderPort):void {
   inclinedHullPlate(P,0,1.7336,2.873,3.308,.399,.811,.026);
   P.addEquipment('hullDetail',box(1.682,.014,.036),0,1.132,2.917);
   for(let i=0;i<9;i++)P.addEquipment('hullDetail',cylZ(.013,.017,6),-.778+i*.1945,.828,3.324);
-}
-
-function glacisEra(P: TankBuilderPort,front: number,back: number,low: number,high: number,columns: number): void {
-  const angle=Math.atan2(high-low,front-back);
-  const length=Math.hypot(front-back,high-low);
-  for(let row=0;row<2;row++)for(let c=0;c<columns;c++) {
-    const x=-.85+(c+.5)*1.7/columns;
-    const z=back+(row+.5)*(front-back)/2;
-    const y=high-(row+.5)*(high-low)/2+.031;
-    P.addExternalArmor('hull',box(1.7/columns-.012,.063,length/2-.012),x,y,z,angle);
-    P.addEquipment('hullDetail',box(.04,.024,.04),x,y+.05,z);
-  }
 }
 
 type EraModule = { w:number; depth:number; low:number; high:number; nose:number; backLow?:number; noseLow?:number };

@@ -6,7 +6,7 @@ import { mergeAll, xform } from '../factoryGeometry.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
-import { barrel, equipment, hatch, panel, hullSolid, hullStation, optic, smokeBank, towEye, turretStation } from './easternSourceKit.ts';
+import { barrel, equipment, hatch, panel, hullStation, optic, smokeBank, towEye, turretStation } from './easternSourceKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { DRAGUN_TIRE_BANDS, dragunRoadWheelCore } from '../nationWheelConstructions.ts';
 const { box, cylX, cylY, cylZ, torus } = KIT;

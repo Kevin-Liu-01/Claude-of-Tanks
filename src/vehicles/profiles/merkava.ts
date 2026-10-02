@@ -99,109 +99,6 @@ interface GearEndpoint {
   readonly r: number;
 }
 
-interface MerkavaKeel {
-  readonly toeZ: number;
-  readonly toeY: number;
-  readonly toeHW: number;
-  readonly midZ: number;
-  readonly midY: number;
-  readonly groundZ: number;
-  readonly bellyY: number;
-  readonly tailLowZ: number;
-  readonly hwClamp?: number;
-  readonly bellySideY?: number;
-  readonly bellyMidY?: number;
-  readonly bellyMidX?: number;
-}
-
-interface RectSpan {
-  readonly x?: number;
-  readonly y?: number;
-  readonly z?: number;
-  readonly x0?: number;
-  readonly x1?: number;
-  readonly z0: number;
-  readonly z1: number;
-  readonly top?: number;
-  readonly bot?: number;
-  readonly base?: number;
-  readonly hw?: number;
-  readonly w?: number;
-  readonly h?: number;
-  readonly d?: number;
-}
-
-interface FenderDrops {
-  readonly x?: number | readonly [number, number];
-  readonly z: readonly number[];
-  readonly bot: number;
-  readonly mat?: string;
-}
-
-interface FenderPlank {
-  readonly x0: number;
-  readonly x1: number;
-  readonly z0: number | readonly [number, number];
-  readonly z1: number | readonly [number, number];
-  readonly y: number;
-  readonly drops?: FenderDrops;
-}
-
-interface FenderLip {
-  readonly x: number;
-  readonly w: number;
-  readonly z0: number;
-  readonly z1: number;
-  readonly y: number;
-}
-
-interface FenderHorn {
-  readonly x0: number;
-  readonly x1: number;
-  readonly z0: number;
-  readonly z1: number;
-  readonly top: number;
-  readonly bot: number;
-}
-
-interface MerkavaSkirt extends RectSpan {
-  readonly top: number;
-  readonly bot: number;
-  readonly x?: number;
-  readonly scallop?: boolean;
-  readonly flaps?: boolean;
-  readonly idlerFlapY?: number;
-  readonly plain?: boolean;
-  readonly backH?: number;
-  readonly backZ0?: number;
-  readonly lipFill?: boolean;
-  readonly cutHem?: boolean;
-  readonly archH?: number;
-  readonly archW?: number;
-  readonly flatW?: number;
-  readonly lobeBot?: number;
-  readonly lobeIn?: number;
-  readonly lintelBot?: number;
-  readonly lintelJit?: readonly number[];
-  readonly round?: boolean;
-  readonly soft?: boolean;
-  readonly wallClamp?: readonly [number, number];
-  readonly fillerClamp?: readonly [number, number];
-  readonly runFiller?: boolean;
-  readonly fillerTop?: number;
-  readonly lowCurtain?: number;
-  readonly wavy?: boolean;
-  readonly flush?: number;
-}
-
-interface MerkavaTailRack extends RectSpan {
-  readonly top: number;
-  readonly bot: number;
-  readonly hw: number;
-  readonly x0: number;
-  readonly wings?: readonly RectSpan[];
-}
-
 interface MerkavaTailRackWing {
   readonly x0: number;
   readonly x1: number;
@@ -251,17 +148,6 @@ function isMerkavaTailRackConfig(value: object): value is MerkavaTailRackConfig 
 function requireMerkavaTailRackConfig(value: object): MerkavaTailRackConfig {
   if (!isMerkavaTailRackConfig(value)) throw new TypeError('Merkava tail-rack profile is incomplete');
   return value;
-}
-
-interface MerkavaGlacisClosure {
-  readonly z0: number;
-  readonly z1: number;
-  readonly lower0: number;
-  readonly lower1: number;
-  readonly upper0: number;
-  readonly upper1: number;
-  readonly hw0: number;
-  readonly hw1: number;
 }
 
 type MerkavaChassisConfig = MerkavaProfileData;

@@ -8,9 +8,6 @@
 
 import * as THREE from 'three';
 import { stockCamoPatternIdFor,
-  CAMO_PATTERN_IDS,
-  CAMO_CATALOG_PATTERN_IDS,
-  CAMO_PATTERN_LABEL,
   CUSTOM_CAMO_ID,
   customCamoPatternId,
   defaultCamoPatternId,

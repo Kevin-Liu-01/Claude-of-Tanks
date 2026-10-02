@@ -19,7 +19,6 @@ import {
   buildPuma,
   bradleyFlankDressing,
 } from '../modern3.ts';
-import { T72_PROFILES } from './t72.ts';
 import { T90_PROFILES } from './t90.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount } from './fittingMount.ts';
