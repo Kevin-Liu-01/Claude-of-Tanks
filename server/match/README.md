@@ -27,6 +27,13 @@ with the cutover of 2026-09-29. Clients speak `src/mp/wire`.
 `src/sim/**` is untouched except one additive seam (`shellRewind`, see below)
 and the roster cap (14 → 64); `src/sim/poseHistory.ts` is new.
 
+Vehicles (2026-10-01): the actor reads the spec-only authority fleet
+(`src/vehicles/authorityFleet.ts`: the player's specs in the player's order,
+no geometry). Its caller loads the roster's combat anatomy first —
+`await ensureAuthorityFleet(specIds)`: the browser host core at boot,
+`createMatchService` for every vehicle at start — and `createMatchActor`
+refuses a roster whose calibration groups never loaded.
+
 ## Tick pipeline
 
 Every tick: collect each seated client's control for this tick from its jitter

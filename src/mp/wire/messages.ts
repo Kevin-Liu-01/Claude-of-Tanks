@@ -3,7 +3,7 @@
  * quantized integer that travels on the wire (see constants.ts and
  * quantize.ts); the simulation-unit conversions are the caller's.
  */
-import type { CloseReasonId, MESSAGE_TYPE, MessageTypeId, PhaseId, TeamId, VerdictId } from './constants.ts';
+import type { CloseReasonId, MESSAGE_TYPE, PhaseId, TeamId, VerdictId } from './constants.ts';
 
 export interface HelloMessage {
   type: typeof MESSAGE_TYPE.HELLO;
@@ -310,4 +310,3 @@ export type ServerMessage =
   | WelcomeMessage | SnapshotPacket | EventMessage | PongMessage | CloseMessage | ErrorMessage;
 export type WireMessage = ClientMessage | ServerMessage;
 
-export type MessageOfType<T extends MessageTypeId> = Extract<WireMessage, { type: T }>;

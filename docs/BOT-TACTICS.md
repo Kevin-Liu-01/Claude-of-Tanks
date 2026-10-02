@@ -22,6 +22,36 @@ terrain-aware navigation grid.
 | Regular / combat | A mobile teammate is elected to flank a shared visible contact while an anchor keeps it engaged. Election uses mobility, health and stable IDs; existing flanks prevent duplicate commitments. |
 | Horde | Existing wave pursuit, repair, reload and survival rules continue, with the new shared abilities and terrain safety. |
 
+## Target selection and return fire
+
+Human and bot opponents have the same target priority. Bots rank spotted,
+locally visible contacts by mission relevance, distance bands, health and
+teammates already covering that opponent. They keep a viable current fight
+instead of abandoning it because a distant human fired. Gunshots from either
+team provide idle bots with contact hints; they do not create forced locks,
+extra player distance bonuses or an engagement deadline aimed at the human.
+
+A direct hit can provoke retaliation against a nearby visible attacker. A
+teammate's damage report does not overwrite that direct attacker or steal an
+existing local engagement. Bots reconsider a substantially closer visible
+threat within 120 m instead of tunneling indefinitely; a contested objective
+retains priority except for immediate close defense. Reports reach nearby allies within 200 m; audible
+main-gun shots reach opposing bots within 500 m in both solo and multiplayer.
+Hidden shooters provide last-shot position hints, never permission to fire at
+unspotted live coordinates. If only one opponent remains, multiple bots can
+still attack it. This is target selection, not an artificial immunity cap.
+
+Jev's target instructions explicitly give human and bot opponents equal
+priority, preserve useful local fights and distribute uncovered threats. Its
+explicit tactical orders still precede ordinary local ranking. The proxy tests
+verify those instructions; they do not certify live model decision quality.
+
+The deterministic targeting regression covers 3v3, 7v7, 15v15 and 21v21 on Normal
+and Hard. In its local-fight fixture, two distant player shots previously
+redirected every enemy at every size; they now redirect none. Re-labeling the
+same opponent as a bot produces the same choices. Separate checks retain direct
+retaliation, hidden-contact safety and engagement of a sole survivor.
+
 ## Shared controls
 
 - Smoke is defensive: recent incoming fire plus low hull or a reloading retreat,
@@ -67,6 +97,13 @@ collision remains authoritative, including parapets and piers.
 
 ## Verification
 
+- `src/game/ai.targeting.selftest.mjs`: target identity parity and local-fight
+  continuity across four team sizes, plus retaliation and survivor cases.
+- `tools/bot-targeting.browser.mjs`: live map observation with both teams
+  moving and fighting, player gunfire, per-bot targets and screenshot receipts
+  in `.qa-dev/bot-targeting/`. Fixed-step time is accelerated; this is behavior
+  evidence, not a rendering-performance benchmark.
+
 - `src/game/ai.selftest.mjs`: ability requests, fourth-slot independent launcher,
   ground/air edge behavior, continuing missions under contact, route reuse and
   a mobile flanker with an anchor, alongside existing aiming/survival tests.
@@ -93,3 +130,38 @@ collision remains authoritative, including parapets and piers.
 
 These are regression scenarios, not a guarantee that every map, roster and
 combat state has an optimal route or that a team always wins its objective.
+
+
+## Targeting observation — 2026-10-01
+
+Two browser observation passes each ran five ordinary solo map battles for
+90 accelerated simulation seconds, with a short player advance followed by
+repeated real gunfire. They retained target timelines, opposing visible-contact
+distances, hit/shot events and three overhead screenshots per battle. Rosters
+were the game's random selections, so these are observations, not matched-seed
+before/after performance measurements. The deterministic regression above
+isolates the old forced-lock defect.
+
+Final-pass receipts: `.qa-dev/bot-targeting-r2/report.json`.
+
+| Battle | Player shots | Enemy / allied-bot shots | Peak simultaneous attackers targeting player |
+| --- | ---: | ---: | ---: |
+| 3v3 Verdant | 12 | 27 / 22 | 1 |
+| 7v7 Tarkhan Steppe | 12 | 20 / 26 | 0 |
+| 15v15 Verdant | 2 | 111 / 113 | 7 |
+| 15v15 Frosthollow | 12 | 65 / 89 | 1 |
+| 21v21 Aegis Crossing | 13 | 51 / 15 | 0 |
+
+The seven-attacker Verdant moment followed the player's advance into the enemy
+line: all seven had the player closer than their next visible alternative
+(42–93 m to the player). This remains valid exposure, not a capped attacker count.
+The first Frosthollow pass exposed target stickiness after a much nearer hull
+appeared; the local-threat reconsideration rule and regression address that.
+The final pass records no player-target samples with another visible opponent
+less than half as far away. There were no browser errors. This does not promise
+optimal choices in every battle, and it does not evaluate the live Jev model.
+
+Type checking, the public build, shared AI/aim/spotting guards, authoritative
+match integration, all-map bot movement/aim tests, and Jev controller/proxy
+regressions pass. Source complexity comparison finds no newly violating
+functions; pre-existing violations remain. These changes are local.

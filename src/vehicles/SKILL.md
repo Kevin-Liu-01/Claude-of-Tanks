@@ -254,7 +254,9 @@ silhouette cleanup, armor scaling, and idempotent registration through
 `fleetSpecRegistry.ts`; nation modules own only their explicit deltas.
 Keep `modern1Specs.generated.ts` and `modern2Specs.generated.ts` generator-owned;
 they expose boot-safe metadata while their authored visual builders remain
-demand-loaded.
+demand-loaded. The registry holds that generated metadata on every path
+(`modern1.ts`/`modern2.ts` import it); their live `MODERN1_SPECS` /
+`MODERN2_SPECS` tables are only the generator's source, never registered.
 Keep the Type 10 / Type 10B trunnion, muzzle, throat, and mantlet-fit receipts
 in the pure `profiles/type10GunSeat.ts` boundary; geometry builders consume the
 datums but do not redefine them.
@@ -262,6 +264,13 @@ Do not add regional fleet bundle modules. Browser acquisition maps exact IDs to
 typed family loaders through `fleetManifest.ts` and `fleetFactory.ts`; full
 fleet tools use `tankFactory.ts`. Both paths must convert family profiles with
 `profileBuilderAdapter.ts`; do not duplicate custom/donor/generic dispatch.
+Every facade registers specs through the one ordered `fleetRegistration.ts`
+(spec packs in donor order, then the registration passes): `fleetFactory.ts`,
+the spec-only `authorityFleet.ts` (the host Worker and the Node match service;
+`ensureAuthorityFleet(roster)` loads only the roster's calibration groups) and
+`tankFactory.ts` (whose builder packs keep the tools' historical catalog
+order). Add a spec pack to `fleetRegistration.ts`, never to one facade;
+`fleetParity.selftest.mjs` digests every spec as each facade finalizes it.
 After this sequence passes, commit each tank edit atomically, integrate it from
 an isolated clean worktree onto the current `origin/main`, push `HEAD:main`,
 and report the resulting main hash. Never push a failing or partially verified

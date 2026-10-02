@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import { captureMinimapScene, requireSceneMinimap, type MinimapCaptureReceipt } from './minimapCapturePolicy.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
 import { isAnyModalOpen } from './modal.ts';
-import { installBattleHudLayout, SCORE_BOTTOM_INSET } from './battleHudLayout.ts';
+import { installBattleHudLayout, SCORE_BOTTOM_INSET, MAX_BATTLE_NOTIFICATIONS } from './battleHudLayout.ts';
 import { createPreBattleOverlay } from './preBattleOverlay.ts';
 import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.ts';
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
@@ -397,7 +397,7 @@ interface EarRow {
   ally: boolean;
   lastFrac: number;
   wasDead: boolean | null;
-  wasSpotted: boolean;
+  wasSpotted: boolean | null;
 }
 interface TeamTally {
   allyAlive: number;
@@ -989,7 +989,7 @@ const _fwd = new THREE.Vector3();
 const _reticleAnchor: ReticleAnchorState = { x: 0, y: 0, single: false };
 const aimWarningScratch: AimWarningState = { visible: false, kind: '', text: '' };
 const MODULE_ALERT_ICON_IDS = new Set([
-  'gun', 'turretRing', 'gunMount', 'autoloader', 'feedSystem', 'missileRack',
+  'gun', 'turretRing', 'gunMount', 'autoloader', 'feedSystem', 'missileRack', 'roofGun',
   'engine', 'transmission', 'fuelTank', 'ammoRack', 'radio', 'optics',
 ]);
 
@@ -1410,7 +1410,7 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-er .hpm i{display:block;width:100%;height:100%;}
 .cot-ear.l .cot-er .hpm i{background:rgba(126,232,126,.75);}
 .cot-ear.r .cot-er .hpm i{background:rgba(240,120,110,.75);}
-.cot-er.unlit{opacity:.45;filter:saturate(.5);}
+.cot-er.unlit{opacity:.8;filter:saturate(.65);}
 /* battle_hud r1: clearer dead-row read — the strike runs through BOTH name
    lines (nick + vehicle) and the row keeps enough alpha (.38 -> .45) for the
    red strike itself to stay legible; the side accent bar desaturates so
@@ -1483,6 +1483,8 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-spec .portrait img{display:block;width:80px;height:66px;object-fit:contain;
   filter:drop-shadow(0 6px 7px rgba(0,0,0,.68));}
 .cot-spec .identity{display:flex;min-width:0;flex-direction:column;justify-content:center;padding:7px 15px;}
+.cot-spec .cursor-hint{margin-top:5px;font-size:10px;line-height:1.3;color:#bac8d2;letter-spacing:0;text-transform:none;}
+.cot-spec .cursor-hint[hidden]{display:none;}
 .cot-spec .spec-status{display:flex;align-items:center;gap:6px;margin-bottom:7px;font-family:${FONT_COND};
   font-size:8px;font-weight:800;line-height:1;letter-spacing:.18em;text-transform:uppercase;color:#f0b04a;}
 .cot-spec .spec-status svg{width:13px;height:13px;display:block;flex:0 0 auto;}
@@ -2117,6 +2119,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // built it (.cot-end) or where the end screen reparented it (.cot-es-btn).
   const specBar = el('div', 'cot-spec', root);
   specBar.innerHTML = spectatorSwitcherMarkup();
+  const specCursorHint = requireElement<HTMLElement>(specBar, '.cursor-hint');
   const specWho = requireElement<HTMLElement>(specBar, '.who');
   const specNick = requireElement<HTMLElement>(specBar, '.nick');
   const specVeh = requireElement<HTMLElement>(specBar, '.veh');
@@ -2398,7 +2401,7 @@ export function initHud(bus: EventBus): HudRuntime {
       const active=action==='roofGun'?!!state?.gunOn:action==='lights'?(state?.lights===1 || (state?.lights!==0 && defaultLightsOn)):false;
       button.classList.toggle('active',active);
       if(action!=='smoke')button.setAttribute('aria-pressed',String(active));
-      button.disabled=!canControl||(action==='smoke'&&(cooldown>0||state?.smokeCharges===0));
+      button.disabled=!canControl||(action==='roofGun'&&player?.combat?.modules?.roofGun?.state==='red')||(action==='smoke'&&(cooldown>0||state?.smokeCharges===0));
       label.textContent=action==='smoke' && state?.smokeCharges===0 ? '0/3'
         : action==='smoke' && cooldown ? t('systems.cooldown',{seconds:cooldown}) : t(`systems.${action}`);
       status.textContent=action==='smoke'?`${state?.smokeCharges??3}/3`:'';
@@ -2954,7 +2957,7 @@ export function initHud(bus: EventBus): HudRuntime {
       ally,
       lastFrac: -1,
       wasDead: null,
-      wasSpotted: ally,
+      wasSpotted: null,
     };
     earRows.set(tank.id, row);
     return row;
@@ -5653,7 +5656,7 @@ export function initHud(bus: EventBus): HudRuntime {
     requireElement<HTMLElement>(item, '.k').textContent = killer;
     requireElement<HTMLElement>(item, '.v').textContent = victim;
     lane.prepend(item);
-    while (lane.children.length > 3) lane.lastChild?.remove();
+    while (lane.children.length > MAX_BATTLE_NOTIFICATIONS) lane.lastChild?.remove();
     setTimeout(() => item.classList.add('out'), 5200);
     setTimeout(() => { if (item.parentNode) item.remove(); }, 6200);
   }
@@ -6500,6 +6503,8 @@ export function initHud(bus: EventBus): HudRuntime {
       // forceAimDisplay state, or the staged over-target plate hides (the
       // frozen spotting sim never saw the teleported target). Live battles
       // always advance timeS, so real frames still supersede immediately.
+      const cursorReleased = !document.pointerLockElement;
+      if (specCursorHint.hidden !== cursorReleased) specCursorHint.hidden = cursorReleased;
       const state = prepareHudFrame(frame);
       if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); return; }
       updateHudWorldPanels(frame, state.camera);

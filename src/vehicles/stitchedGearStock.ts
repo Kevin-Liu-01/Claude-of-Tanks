@@ -45,7 +45,7 @@ function angularFractions(r:number,x:number,n:number,source:GearAngularStations)
  * The axial function expresses a physical pressing, not a camera/LOD offset. */
 export function stitchedGearStock(
   stations:readonly StitchedGearStation[],
-  axial:(radius:number,axle:number,angle:number)=>number=(r,x)=>x,
+  axial:(radius:number,axle:number,angle:number)=>number=(_r,x)=>x,
   side:1|-1=1,
   angularStations?:GearAngularStations,
 ):THREE.BufferGeometry {
@@ -62,7 +62,7 @@ export function stitchedGearAnnulus(stations:readonly StitchedGearStation[],side
   if(stations.length<3||stations.some(([r,x,n])=>!Number.isFinite(r)||!Number.isFinite(x)||r<=0
     ||!Number.isInteger(n)||n<4||n>128)||Math.abs(side)!==1)
     throw new RangeError('Stitched gear annulus requires finite positive cyclic sections');
-  return stitchedSurface(stations,(r,x)=>x,side,true);
+  return stitchedSurface(stations,(_r,x)=>x,side,true);
 }
 
 function stitchedSurface(stations:readonly StitchedGearStation[],

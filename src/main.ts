@@ -1,3 +1,5 @@
+import { structureTopAt, SUPPORT_STEP_UP_M } from './sim/structureSupport.ts';
+import type { CollisionRecord } from './world/collision.ts';
 import './ui/battleUiVisibility.css';
 import type { RuntimeValue } from './runtimeTypes.ts';
 /**
@@ -684,7 +686,13 @@ function requireFxRuntime() {
 // Movement and wheels read the same cached triangles as the near terrain.
 // An analytic/bilinear approximation can sit above the visible ground at a
 // ridge or rut, leaving daylight below otherwise correctly conformed tracks.
-const groundSampler = (x: number, z: number) => hfProxy.getContactHeightAt(x, z);
+const debrisSupportCandidates: CollisionRecord[] = [];
+const groundSampler = (x: number, z: number, ceiling?: number) => {
+  const terrain = hfProxy.getContactHeightAt(x, z);
+  if (ceiling === undefined) return terrain;
+  const candidates = currentWorld()?.queryObstacles?.(x - .01, z - .01, x + .01, z + .01, debrisSupportCandidates);
+  return candidates ? Math.max(terrain, structureTopAt(candidates, candidates.length, x, z, ceiling - SUPPORT_STEP_UP_M)) : terrain;
+};
 // PERF (performance_budget r4): pool visuals are lazy — remember the sampler
 // on the game state so ensureTankVisual applies it to visuals built later.
 game._groundSampler = groundSampler;
@@ -698,9 +706,10 @@ bus.on('module:state', (payload) => {
   const moduleId = Reflect.get(payload, 'module');
   const entityId = Reflect.get(payload, 'id');
   const state = Reflect.get(payload, 'state');
-  if ((moduleId !== 'trackL' && moduleId !== 'trackR') || typeof entityId !== 'string') return;
+  if (typeof moduleId !== 'string' || typeof entityId !== 'string' || (state !== 'ok' && state !== 'yellow' && state !== 'red')) return;
   const tank = game.tankById.get(entityId);
-  if (tank?.visual?.setTrackState) tank.visual.setTrackState(moduleId, state === 'red');
+  if (moduleId === 'trackL' || moduleId === 'trackR') tank?.visual?.setTrackState?.(moduleId, state === 'red');
+  else tank?.visual?.setWeaponModuleState?.(moduleId, state);
 });
 
 // --- garage stage (12 m disc pad + 2 integration-owned spotlights) -----------
@@ -1711,6 +1720,7 @@ const settings = createSettingsAccess({
   // A dead player is spectating even though the team battle continues. This
   // keeps pointer-unlock from opening settings over the death camera.
   isBattleActive: battlePhase.canOpenBattleSettings,
+  isSpectating: () => !!killcam.spectate?.active,
   canLeaveBattle: battlePhase.canLeaveBattle,
   onLeaveBattle: () => leaveBattleToGarage(),
   gearVisible: battlePhase.isGarage,

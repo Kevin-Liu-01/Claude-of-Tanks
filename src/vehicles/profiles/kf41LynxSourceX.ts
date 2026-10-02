@@ -259,4 +259,3 @@ export function buildKf41LynxX(P: TankBuilderPort): void {
   P.topY=3.49-py;
   P.hullG.userData.xRebuild={candidate:'kf41_lynx_x',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
-export const KF41_LYNX_SOURCE_X_PROFILES={kf41_lynx_x:{build:buildKf41LynxX}} as const;

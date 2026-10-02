@@ -38,7 +38,7 @@ const valid = [
       magazineRounds: 0, magazineCapacity: 0, shellSlot: 0, ammo0: 30, ammo1: 300, ammo2: 0, flags: 4, eraSpent: [1, 5, 9],
     }],
     shells: [{ id: 1, shooterEntityId: 1, x: 0, y: 0, z: 0, vx: 10000, vy: 0, vz: 0, shellType: 2, flags: 0 }],
-    viewer: { entityId: 1, modules: [0, 0, 0, 0, 0, 0, 0], crewBits: 3, equipment: [1000, 1000, 1000, 1000], modeSpeedMultiplier: 1000, modeGravityScale: 1000, movementVersion: 1, movementFlags: 1, movementValues: [1, 2, 3] },
+    viewer: { entityId: 1, modules: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], crewBits: 3, equipment: [1000, 1000, 1000, 1000], modeSpeedMultiplier: 1000, modeGravityScale: 1000, movementVersion: 1, movementFlags: 1, movementValues: [1, 2, 3] },
     modeStateJson: '{"id":"turbo_ball"}',
   }, null)),
   encodeMessage({ type: MESSAGE_TYPE.EVENT, tick: 2, events: [{ kind: 'shell_hit', payload: { damage: 3 } }] }),

@@ -1,6 +1,5 @@
 // Original closed station solids in the supplied-file frame. The permanent
 // forward cheeks are real stock, not floating damage-only ERA over empty air.
-import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { strvSourceTurret as add } from './strv122XSuppliedFrame.ts';

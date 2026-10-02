@@ -58,7 +58,7 @@ import {
   resolveShellHit,
   selectFirstAvailableShell,
   selectShell,
-  mainWeaponModuleState,
+  selectedWeaponModuleState,
   magazineReloadDenialReason,
   startMagazineReload,
   startPostShotReload,
@@ -187,7 +187,7 @@ interface AuthoritativeAIController {
   setWaypoints(points: readonly BotRoutePoint[], options?: { loop?: boolean }): void;
   notifyShellResult(event: HitEvent): void;
   notifyUnderFire(entity: AuthoritativeEntity, info?: { selfHit?: boolean; damaging?: boolean; kind?: string }): void;
-  notifyPlayerFired(entity: AuthoritativeEntity, rank?: number): void;
+  notifyEnemyFired(entity: AuthoritativeEntity): void;
   notifyFriendlyBlocked(risk: AIFriendlyRisk): void;
 }
 
@@ -1475,9 +1475,9 @@ export function createAuthoritativeMatch({
   ): AuthoritativeSpec['gun']['shells'][number] | null {
     const combat = entity.combat;
     if (!entity.input.fire || combat.destroyed || combat.reload.t > 0) return null;
-    if (mainWeaponModuleState(combat) === 'red') return null;
-    const shellSpec = entity.spec.gun.shells[combat.shellSlot];
+      const shellSpec = entity.spec.gun.shells[combat.shellSlot];
     if (!shellSpec) return null;
+    if (selectedWeaponModuleState(combat, entity.spec.gun, shellSpec) === 'red') return null;
     if (shellSpec.guided !== true && !shellSpec.reloadGroup && combat.magazine && combat.magazine.rounds <= 0) return null;
     if (!hasAmmunition(combat, combat.shellSlot)) {
       if (!entity.bot) emit('ammo_empty', { id: entity.id, slot: combat.shellSlot });
@@ -1510,14 +1510,10 @@ export function createAuthoritativeMatch({
     if (!entity.bot) emit('ammo_depleted', { id: entity.id, slot: firedSlot, fallbackSlot });
   }
 
-  function notifyEnemyBotsOfPlayerShot(entity: AuthoritativeEntity): void {
-    if (entity.bot) return;
-    const respondingBots = entities
-      .filter((entry) => entry.bot && entry.team !== entity.team && entry.aiCtl)
-      .sort((a, b) => a.state.pos.distanceToSquared(entity.state.pos) -
-        b.state.pos.distanceToSquared(entity.state.pos));
-    for (let index = 0; index < respondingBots.length; index++) {
-      respondingBots[index]?.aiCtl?.notifyPlayerFired(entity, index);
+  function notifyEnemyBotsOfShot(entity: AuthoritativeEntity): void {
+    for (const other of entities) {
+      if (!other.bot || other.team === entity.team || other.combat.destroyed || !other.aiCtl) continue;
+      if (other.state.pos.distanceToSquared(entity.state.pos) <= 500 * 500) other.aiCtl.notifyEnemyFired(entity);
     }
   }
 
@@ -1574,7 +1570,7 @@ export function createAuthoritativeMatch({
     const launchScale = entity.bot ? 1 : (entity.modeRecoilLaunchScale ?? 1); // crews only, as in the solo sim
     fireRecoil(entity.state, entity.spec, shellSpec, launchScale > 1 ? { scale: launchScale, dirX: _gunDir.x, dirY: _gunDir.y, dirZ: _gunDir.z } : null);
     spotting.notifyFired(entity.id, timeS, shellSpec.caliberMm);
-    notifyEnemyBotsOfPlayerShot(entity);
+    notifyEnemyBotsOfShot(entity);
     emitShellFired(entity, shell, shellSpec, gun.muzzle, _gunDir, firedSlot);
   }
 
@@ -1591,7 +1587,8 @@ export function createAuthoritativeMatch({
     // bot philosophy r1: a bounce is still a shot at the team — the struck hull reacts, teammates gain intel
     if (!shooter || !target) return;
     for (const ally of entities) {
-      if (ally.team === target.team && ally.aiCtl) ally.aiCtl.notifyUnderFire(shooter, {
+      if (ally.team === target.team && ally.aiCtl && !ally.combat.destroyed &&
+          (ally === target || ally.state.pos.distanceToSquared(target.state.pos) <= 200 * 200)) ally.aiCtl.notifyUnderFire(shooter, {
         selfHit: ally === target, damaging: hit.damage > 0, kind: hit.kind,
       });
     }

@@ -14,7 +14,6 @@
 // the core. Nothing is hand-placed: an azimuth's contour either admits a jetty of the kit's length or it does not,
 // and a headland face or rock flank that admits none keeps its shore.
 
-import { shorelineRadiusAt } from '../shoreline.ts';
 import { strandBandAt, wrackBand, type StrandHeightField, type StrandLake } from './strandWrack.ts';
 
 export interface ShoreJettyField extends StrandHeightField {
@@ -190,11 +189,6 @@ export function planShoreJetty(
     shoreR, edge: band.edge, core, tipR,
     gangway, boat,
   };
-}
-
-/** The local radius of the authored contour at the plan's azimuth (for callers that reason in units of it). */
-export function shoreJettyLocalRadius(lake: StrandLake, plan: ShoreJettyPlan): number {
-  return shorelineRadiusAt(lake, plan.azimuth);
 }
 
 /** The landing's own seeded stream for the pieces that key on the jetty (gangway, bollards, lines, the moored boat),

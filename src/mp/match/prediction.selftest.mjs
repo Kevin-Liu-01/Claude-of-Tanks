@@ -52,7 +52,7 @@ function rowOf(entity, flags = 0) {
 function viewerOf(entity) {
   const checkpoint = captureMovementCheckpoint(entity.state);
   return {
-    entityId: 1, modules: [0, 0, 0, 0, 0, 0, 0], crewBits: 3, equipment: [1000, 1000, 1000, 1000],
+    entityId: 1, modules: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], crewBits: 3, equipment: [1000, 1000, 1000, 1000],
     modeSpeedMultiplier: 1000, modeGravityScale: 1000,
     movementVersion: checkpoint.version, movementFlags: checkpoint.flags, movementValues: checkpoint.values.map(Math.fround),
   };
@@ -254,6 +254,42 @@ function maxStep(presented, from = 1) {
   assert.equal(p.holdsRestingHull, false, 'drive intent releases the hold at once');
 }
 
+// ------------------------------------------------------------ a disclosed hull presented where it used to be (client soak, 2026-10-01)
+// Remote hulls are presented one interpolation delay old, while the authority row a reconciliation rewinds to has
+// already resolved every contact of its tick. Here the authority drives up its lane alone and a hull is presented
+// inside that lane (it has since pulled away). Without the world's anchor every replay starts inside the presented
+// hull: a parallel one shoves the prediction sideways on every rewind, an angled one grinds the replay's speed away
+// (2.2 m of misprediction in the client soak beside an ally bot backing out of a human's way). The anchor seats the
+// stale hull against the authority's pose instead, so the prediction drives the authority's lane.
+{
+  const { createPredictionWorld } = await import('../presentation/predictionWorld.ts');
+  const staleHullRun = (hull, anchored) => {
+    let predictor = null;
+    const other = { spec: SPEC, state: { pos: new Vector3(hull.x, 0, hull.z), yaw: hull.yaw }, collidable: true };
+    const world = createPredictionWorld({
+      worldCollision: { heightField: FIELD, getObstacles: () => [] }, ownSpec: SPEC,
+      ownState: () => predictor?.simulationState ?? null, others: () => [other],
+    });
+    predictor = new LocalPredictor(SPEC, anchored ? world : { ...world, anchor: null });
+    const { server } = simulate({ ticks: 240, script: (tick) => ({ throttle: tick > 10 ? 1 : 0 }), lagTicks: 6, predictor });
+    return { stats: predictor.getStats(), lateralM: Math.abs(predictor.simulationState.pos.x - server.state.pos.x) };
+  };
+  const alongside = { x: 3.4, z: 0, yaw: 0 }; // parallel, 0.3 m into the lane for the whole run
+  const plainAlongside = staleHullRun(alongside, false);
+  const seatedAlongside = staleHullRun(alongside, true);
+  assert.ok(plainAlongside.stats.contactReconciliations > 50 && plainAlongside.stats.maxPositionErrorM > 0.3,
+    `control: without the anchor every replay starts inside the presented hull (${plainAlongside.stats.contactReconciliations} contact reconciliations, ${plainAlongside.stats.maxPositionErrorM.toFixed(3)} m)`);
+  assert.equal(seatedAlongside.stats.contactReconciliations, 0, 'the seated hull never touches the lane the authority drives');
+  assert.ok(seatedAlongside.stats.maxPositionErrorM < 0.01, `seated: ${seatedAlongside.stats.maxPositionErrorM.toFixed(4)} m`);
+  assert.ok(seatedAlongside.lateralM < 0.01, 'the prediction keeps the authority\'s lane');
+  const angled = { x: 3.3, z: 8, yaw: 0.12 }; // its rear corner reaches into the lane ahead
+  const plainAngled = staleHullRun(angled, false);
+  const seatedAngled = staleHullRun(angled, true);
+  assert.ok(plainAngled.stats.maxPositionErrorM > 1.2, `control: the plain replay grinds its speed away (${plainAngled.stats.maxPositionErrorM.toFixed(3)} m)`);
+  assert.ok(seatedAngled.stats.maxPositionErrorM < 0.6 && seatedAngled.stats.maxPositionErrorM < plainAngled.stats.maxPositionErrorM / 2,
+    `seated: ${seatedAngled.stats.maxPositionErrorM.toFixed(3)} m against ${plainAngled.stats.maxPositionErrorM.toFixed(3)} m`);
+}
+
 // ------------------------------------------------------------ missing checkpoint, contact smoothing hook, reset
 {
   let contacts = 0;
@@ -276,4 +312,4 @@ function maxStep(presented, from = 1) {
   assert.throws(() => new LocalPredictor(SPEC, { heightField: null }));
 }
 
-console.log('mp prediction: exact replay with matching controls, divergence corrected inside the 110/160/75 ms envelopes with ≤ 0.2 m releases, hard snap at 7 m, death/respawn, resting hold, collision adapter pass');
+console.log('mp prediction: exact replay with matching controls, divergence corrected inside the 110/160/75 ms envelopes with ≤ 0.2 m releases, hard snap at 7 m, death/respawn, resting hold, stale presented hulls seated at the rewind, collision adapter pass');

@@ -1,6 +1,9 @@
+import { WeaponDamageVisuals } from './weaponDamageVisuals.ts';
+import type { ModuleStateName } from '../sim/damage.ts';
+import { DetachedGear } from './detachedGear.ts';
 import { vehicleAuthoringSpec, VEHICLE_SIZE_FACTORS } from './vehicleSizePolicy.ts';
 import { resizeAuthoredVehicle } from './profiles/vehicleSize.ts';
-import { markSmokeTube, alignSmokeBanks } from './vehicleAuxiliaryGeometry.ts';
+import { markSmokeTube, alignSmokeBanks, transferSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
 // src/vehicles/tankFactoryCore.ts — cycle-free procedural factory implementation.
 // Recognizable replicas composed from BufferGeometries (ARCHITECTURE §3.3.2).
 // No top-level side effects; all randomness seeded; time arrives via
@@ -138,13 +141,6 @@ interface TankMaterials {
   prepareBurnt?: () => void;
   decal(kind: string, text: string | null): THREE.Material;
   dispose(): void;
-}
-
-interface TankFittings {
-  spareTrackLinks: (options: object) => THREE.Object3D;
-  antennaWhip: (options: object) => THREE.Object3D;
-  pintleMG: (options: object) => THREE.Object3D;
-  [name: string]: (options: object) => THREE.Object3D;
 }
 
 interface FactoryConfiguration {
@@ -623,7 +619,7 @@ interface TankPoseState {
   _swayEst?: number;
 }
 
-type GroundSampler = (x: number, z: number) => number;
+type GroundSampler = (x: number, z: number, ceiling?: number) => number;
 
 interface WheelConformFrame {
   cb: number;
@@ -748,6 +744,7 @@ interface RunningGearUnit {
   };
   update(left: number, right: number, dt?: number): void;
   updateSurface?(left: number, right: number): void;
+  updateDebris?(dt: number, sampler?: GroundSampler | null): void;
   resetPose?(): void;
   conform(
     state: TankPoseState,
@@ -1115,6 +1112,7 @@ interface TankVisual {
   hitFlinch(nx: number, nz: number, magnitude: number, stateYaw?: number): void;
   applyEquipmentDamage(event: EquipmentDamageEvent): boolean;
   setTrackState(module: 'trackL' | 'trackR', broken: boolean): void;
+  setWeaponModuleState(module: string, state: ModuleStateName): void;
   stripEra(plateName: string): boolean;
   resetEra(): boolean;
   setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
@@ -1248,7 +1246,6 @@ function isVehicleMaterial(resource: DisposableVehicleResource): resource is THR
   return resource instanceof THREE.Material;
 }
 
-let KIT_FITTINGS: TankFittings | null = null;
 const PROFILED_BUILDER_IDS = new Set<string>();
 
 // PERF (120 Hz): track-link placement and suspension conformance are close-
@@ -1267,7 +1264,6 @@ const _q = new THREE.Quaternion();
 const _v = new THREE.Vector3();
 const _s = new THREE.Vector3();
 const _X = new THREE.Vector3(1, 0, 0);
-const _E = new THREE.Euler(); // fallen road-wheel pose (de-track scatter)
 // Gun-stabilizer solve: convert the canonical authority-owned bore direction
 // into the final visibility-amplified rendered hull frame. Dedicated scratch
 // keeps the per-tank render loop allocation-free.
@@ -2643,7 +2639,7 @@ function sprocketGeo(
   r: number,
   w: number,
   seg: number,
-  teeth = 12,
+  _teeth = 12,
   toothOuter: number | null = null,
   linkM = 0.165,
   ringSpan: number | null = null,
@@ -2913,7 +2909,7 @@ function trackCourseSupports(
   const maxOffset = layers ? Math.max(...layers.flat()) : 0;
   return wheelZs
     .map((z, index) => ({ z, y: (wheelYs?.[index] ?? wheelY) + wheelR + trackTh / 2 - 0.02 }))
-    .filter((point, index) => !layers || layers[index % layers.length].includes(maxOffset));
+    .filter((_point, index) => !layers || layers[index % layers.length].includes(maxOffset));
 }
 
 function orderedTrackEndpoints(
@@ -2977,7 +2973,7 @@ function loadedRunStations(
  * piece into ≤ 0.1 m stations lets the loaded-run fit bend the ramp around the tire. Straight pieces keep the
  * loop length, so shoe counts do not move.
  */
-function subdivideLoadedRamps(points: TrackPoint[], botY: number, ceilingY: number, maxPieceM = 0.1): void {
+function subdivideLoadedRamps(points: TrackPoint[], _botY: number, ceilingY: number, maxPieceM = 0.1): void {
   for (let index = 0; index < points.length; index++) {
     const point = points[index];
     const next = points[(index + 1) % points.length];
@@ -4086,7 +4082,6 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   const sprocketWrap = endpointWrap(sprocket, trackWrapClearanceM(trackTh));
   const idlerWrap = endpointWrap(idler, trackWrapClearanceM(trackTh));
   const bandOuterR = sprocketWrap + trackTh / 2;
-  const idlerBandOuterR = idlerWrap + trackTh / 2;
   // r5 track gate: end drums widened toward the band width — the old 0.7/0.62
   // drums left the outermost interleave row standing PROUD of the sprocket
   // face (the "non-concentric flat camo disc inside the wrap" read) and a
@@ -4645,29 +4640,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     for(const mesh of linkMeshes) mesh.instanceMatrix.needsUpdate=true;
   };
 
-  // ---- thrown-track ribbon (de-track destruction visual) --------------------
-  // A crumpled OPEN run of link pads draped off the rear of the running gear
-  // and trailing flat behind the last road wheel, with growing lateral wiggle
-  // so it reads as a violently shed band, not a straight plank. Hidden until
-  // setBroken(side, true) — and, since the INVISIBLE-LOD ENVELOPE law,
-  // not even BUILT until then: the kit used to be constructed eagerly and
-  // parked visible=false in rig_hull at its THROWN pose — 22+12 pads per
-  // side trailing ~2.4 m behind the rear wheel and whipping ~0.55 m
-  // outboard of the track guard. Invisible meshes still carry world AABBs,
-  // so every consumer that cannot skip them (THREE.Box3.setFromObject —
-  // icon framing, mesh probes, geometry hashers; killcam.fitXrayFrame
-  // already works around exactly this class) read a phantom envelope
-  // ~1.4 m longer and ~1.1 m wider than the visible tank, and headless
-  // AABB probes flagged out-of-envelope running-gear geometry fleet-wide.
-  // Building on the first actual throw keeps the rest scene graph inside
-  // the hull envelope; the thrown visual is byte-identical (same pad
-  // math, same seeds, same transforms). Only ribMat stays eager:
-  // material ids are a renderer draw-sort key — deferring the clone
-  // would renumber every material created after this point and reorder
-  // rest-pose draws (the LOD0 pixel-identity guarantee).
-  // r5 (critic: "lit-tan link slabs"): the thrown band renders in a DARKER
-  // rubber-steel derivative of the track material so the shed run reads as
-  // greased track iron on dirt, never lit lumber.
+  // Loose shoes and wheels are created only after a break, preserving the
+  // undamaged fleet's geometry envelope and sharing its material ownership.
   const ribMat = (mats.trackLink || mats.dark).clone();
   // r7 (critic: the thrown band "reads as detached tan fence panels, not a
   // dark steel track ribbon"): FIXED dark tread-iron color — never derived
@@ -4683,147 +4657,28 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     buildRunningGearAssemblyStage17();
   };
   buildRunningGearRunningGearStage32();
-  const thrownRibbons: Partial<Record<Side, THREE.Mesh>> = {};
-  const slumpBands: Partial<Record<Side, THREE.Mesh>> = {};
-  let thrownKitBuilt = false;
-  function buildThrownKit(): void {
-    if (thrownKitBuilt) return;
-    thrownKitBuilt = true;
-    const rearIsSprocket = sprocket.z < idler.z;
-    const rearZ = Math.min(sprocket.z, idler.z);
-    const rearR = rearIsSprocket ? sprocket.r : idler.r;
-    const rearY = rearIsSprocket ? sprocket.y : idler.y;
-    const RIB_N = 16;
-    const ribPads: THREE.BufferGeometry[] = [];
-    // low drape start: the shed band slips off the LOWER rear wheel rim and
-    // lies nearly flat — the r4 probe showed a chest-high curl reading as a
-    // giant pale drum parked against the hull
-    // r5: +0.14 -> +0.06 — the ribbon lies FLATTER off the rim (r4: the curl
-    // still read as raised dominoes from the judged framing)
-    const dropY = Math.min(rearY, wheelY) + 0.06;
-    // r7 "laid dominoes": the run was a straight evenly-spaced row of flat
-    // plates floating behind the sprocket. Now: positions along a BENT spline
-    // (tail whips outboard in a decaying S), uneven clumped spacing, yaw
-    // following the curve tangent + jitter, random roll with the odd pad
-    // folded up on edge, and a 3-pad pile right at the breakpoint.
-    const rr = (k: number): number => {
-      const x = Math.sin(k * 127.1 + 311.7) * 43758.5453;
-      return x - Math.floor(x);
-    };
-    // r5 (critic: "chain of oversized flat lit-tan link slabs curling like
-    // dominoes"): pad plates HALVED in thickness (0.05 -> 0.026) with a slim
-    // center GUIDE HORN so each link carries the double-pin track silhouette
-    // instead of reading as a bare wooden plank.
-    const ribPad = (): THREE.BufferGeometry => mergeAll([
-      box(trackW * 0.96, 0.026, 0.17),
-      xform(box(trackW * 0.88, 0.022, 0.05), 0, 0.024, 0), // grouser bar
-      xform(box(0.045, 0.055, 0.05), 0, 0.04, 0.02),       // guide horn
+  const detached: Partial<Record<Side, DetachedGear>> = {};
+  let brokenL = 0, brokenR = 0, throwCount = 0;
+  const debrisLastPosition = new THREE.Vector3();
+  const debrisVelocity = new THREE.Vector3();
+  const debrisPosition = new THREE.Vector3();
+  let debrisPositionKnown = false;
+  function buildDetached(side: Side, pick: WheelEntry): DetachedGear {
+    if (detached[side]) return detached[side];
+    const geometry = mergeAll([
+      box(trackW * .96, .026, .17),
+      xform(box(trackW * .88, .022, .05), 0, .024, 0),
+      xform(box(.045, .055, .05), 0, .04, .02),
     ]);
-    // spline points first, so each pad's yaw can follow the local tangent
-    const ribPts: Array<[number, number, number, number, number]> = [];
-    for (let i = 0; i < RIB_N; i++) {
-      const t = i / (RIB_N - 1);
-      const drape = Math.exp(-t * 4.6);
-      const py = 0.045 + Math.max(0, dropY - 0.045) * drape + (rr(i + 41) - 0.5) * 0.025;
-      // r2 "die-straight row of planks" fix: the S-curve amplitude doubled
-      // (0.15 -> 0.34 with a second lower-frequency bend) and the along-run
-      // spacing is CLUMPED — pads bunch into overlapping runs of 2-3 with
-      // ragged gaps, the way a whipping band actually piles as it unspools.
-      const px = Math.pow(t, 1.5) * 0.72
-        + Math.sin(t * 8.4) * 0.34 * Math.min(1, t * 2.2)
-        + Math.sin(t * 3.1 + 1.2) * 0.18 * t;
-      const clump = Math.sin(t * 19.7 + rr(i) * 2.4) * 0.09;
-      const pz = rearZ + 0.1 - (t * 2.15 + clump + (rr(i * 3 + 7) - 0.5) * 0.16);
-      ribPts.push([px, py, pz, t, drape]);
+    disposables.push(geometry);
+    const kit = new DetachedGear(hullG, geometry, ribMat, Math.max(8, Math.min(28, Math.ceil(Math.abs(sprocket.z - idler.z) / .18))));
+    for (const { im, list } of made) for (const e of list) {
+      if ((e.suspensionSource || e) !== pick) continue;
+      kit.addWheelLayer(im.geometry, im.material, e.x - pick.x, e.y - pick.y, e.z - pick.z);
     }
-    // r1 continuous-ribbon rework (critique: "scattered rigid rectangle links
-    // plus two unexplained upright black stubs"): pads follow the spline as a
-    // CONNECTED band — tight tangent-following yaw, small roll, no on-edge
-    // pads, no vertical breakpoint pile. The unspooled band reads as one
-    // crumpled ribbon lying behind the bare wheel run.
-    for (let i = 0; i < RIB_N; i++) {
-      const [px, py, pz, t, drape] = ribPts[i];
-      const nb = ribPts[Math.min(i + 1, RIB_N - 1)];
-      const pb = ribPts[Math.max(i - 1, 0)];
-      const tanYaw = Math.atan2(nb[0] - pb[0], -(nb[2] - pb[2])) * -1;
-      const yaw = tanYaw + (rr(i * 7 + 3) - 0.5) * 0.14;
-      const pitch = Math.min(0.5, Math.atan2(Math.max(0, dropY - 0.045) * 4.6 * drape, 2.15))
-        + (rr(i * 11 + 5) - 0.5) * 0.10;
-      const roll = (rr(i * 17 + 1) - 0.5) * 0.22;
-      ribPads.push(xform(ribPad(), px, py, pz, pitch, yaw, roll));
-    }
-    // breakpoint: a FLAT overlapping pile of links right under the sprocket
-    // where the band tore off (r2: 3 -> 6 pads — the shed point must read as
-    // a heaped pile, not a continuation of the row), lies flat, never on end
-    for (let i = 0; i < 6; i++) {
-      ribPads.push(xform(ribPad(),
-        (rr(i + 21) - 0.5) * 0.30,
-        0.04 + i * 0.034,
-        rearZ + 0.16 - rr(i + 33) * 0.38,
-        (rr(i + 47) - 0.5) * 0.26,
-        (rr(i + 52) - 0.5) * 0.9,
-        (rr(i + 66) - 0.5) * 0.24));
-    }
-    const ribbonGeo = mergeAll(ribPads);
-    disposables.push(ribbonGeo);
-    // r4 SLUMPED PARTIAL BAND (critic detrack minor): the broken side is not
-    // just bare wheels + a ground ribbon — a torn stub of the band stays
-    // HUNG off the rear sprocket/idler, draping down its back face and
-    // piling on the ground in a catenary sag. Built once from the same pad
-    // kit; toggled with the ribbon in setBroken.
-    const slumpPads: THREE.BufferGeometry[] = [];
-    {
-      const cx = rearY, cz = rearZ; // rear wheel center (hull-local y/z)
-      const R = rearR + 0.055;
-      // over-the-wheel arc: from just past top-dead-center down the back face
-      for (let i = 0; i < 7; i++) {
-        const a = 1.35 - (i / 6) * 2.45; // rad, 1.35 (up-front) -> -1.1 (low-rear)
-        const py = cx + Math.sin(a) * R;
-        const pz = cz - Math.cos(a) * R;
-        slumpPads.push(xform(ribPad(), (rr(i + 81) - 0.5) * 0.05, py, pz,
-          -a + Math.PI / 2 + (rr(i + 91) - 0.5) * 0.12, (rr(i + 97) - 0.5) * 0.10, (rr(i + 87) - 0.5) * 0.12));
-      }
-      // catenary drop from the low-rear rim to the ground behind the wheel
-      const y0 = cx + Math.sin(-1.1) * R, z0 = cz - Math.cos(-1.1) * R;
-      for (let i = 0; i < 5; i++) {
-        const t = (i + 1) / 5;
-        const sag = 1 - (1 - t) * (1 - t);
-        const py = Math.max(0.05, y0 * (1 - sag) + 0.05 * sag);
-        const pz = z0 - t * 0.55 - (rr(i + 71) - 0.5) * 0.06;
-        slumpPads.push(xform(ribPad(), (rr(i + 61) - 0.5) * 0.07, py, pz,
-          0.9 * (1 - t) + (rr(i + 51) - 0.5) * 0.14, (rr(i + 55) - 0.5) * 0.16, (rr(i + 57) - 0.5) * 0.18));
-      }
-    }
-    const slumpGeo = mergeAll(slumpPads);
-    disposables.push(slumpGeo);
-    for (const side of [-1, 1] as const) {
-      const rm = new THREE.Mesh(ribbonGeo, ribMat);
-      rm.name = 'gearThrownRibbon';
-      rm.position.x = side * xcForSide(side);
-      // mirror + slight per-side yaw so L/R throws never read identical
-      rm.scale.x = side;
-      rm.rotation.y = side * 0.07;
-      rm.castShadow = false;
-      rm.receiveShadow = true;
-      rm.visible = false;
-      hullG.add(rm);
-      thrownRibbons[side] = rm;
-      const sm = new THREE.Mesh(slumpGeo, ribMat);
-      sm.name = 'gearSlumpBand';
-      sm.position.x = side * xcForSide(side);
-      sm.scale.x = side;
-      sm.castShadow = false;
-      sm.receiveShadow = true;
-      sm.visible = false;
-      hullG.add(sm);
-      slumpBands[side] = sm;
-    }
+    detached[side] = kit;
+    return kit;
   }
-
-  // de-track state: 0 = healthy, 1 = thrown (band slumps, links sag)
-  let brokenL = 0;
-  let brokenR = 0;
-  let throwCount = 0; // r4: seeds per-throw ribbon pose scatter
   const tlY0 = tl.position.y, trY0 = tr.position.y;
 
   // ---- movement-solve contact metadata (RUNTIME DATA ONLY — no geometry) ----
@@ -5375,6 +5230,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     /** Restore the authored flat-ground running-gear pose for showroom use. */
     resetPose() {
       groundConformanceInitialized = false;
+      this.setBroken?.('trackL', false); this.setBroken?.('trackR', false);
+      debrisPositionKnown = false; debrisVelocity.set(0, 0, 0);
       for (const { list } of made) {
         for (const e of list) {
           const source = e.suspensionSource || e;
@@ -5390,17 +5247,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           const e = list[i];
           const suspensionEntry = e.suspensionSource || e;
           if (suspensionEntry.thrown) {
-            // de-track scatter: this road wheel tore off. r5 (critic: "no
-            // scattered road wheel readable"): it used to land 0.9 m out —
-            // hidden in the hull's own shadow line. It now rolls a few
-            // meters CLEAR of the hull and lies nearly flat, unmistakably a
-            // shed wheel from the judged 11 m framing.
-            const side = e.x < 0 ? -1 : 1;
-            _E.set(0.10, side * 0.9, side * 1.42);
-            _q.setFromEuler(_E);
-            _v.set(e.x + side * 2.3, e.r * 0.30, e.z - 2.1);
-            _s.set(1, 1, 1);
-            _m.compose(_v, _q, _s);
+            // The original slot is hidden; its real layers now travel as one
+            // detached wheel in world coordinates.
+            _m.makeScale(0, 0, 0);
             im.setMatrixAt(i, _m);
             continue;
           }
@@ -5525,52 +5374,39 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     },
 
     /**
-     * De-track visual (r6 rubric item): the band SLUMPS hard off the wheels
-     * (0.16 m drop + pitch, link pads riding it down via placeLinks), a
-     * crumpled thrown-track ribbon appears draped off the rear wheel and
-     * trailing on the ground, and the rearmost proud road wheel tears off
-     * and lies leaning beside the hull. Fully restored on repair.
+     * Hide the broken band and launch independent shoes and a road wheel.
+     * Debris retains world-space motion and settles against the surface.
+     * Repair restores the original assembly and retires its debris.
      * @param {'trackL'|'trackR'} module @param {boolean} broken
      */
     setBroken(module, broken) {
-      const side = module === 'trackL' ? -1 : 1;
-      // r1: a thrown track REMOVES the band from that side (bare road wheels
-      // + the continuous ground ribbon carry the read) — the old 0.16 m slump
-      // left the wheel run visibly still wearing a track (detrack.png).
-      const showBand = !broken;
-      if (side < 0) { brokenL = broken ? 1 : 0; tl.visible = showBand; tl.position.y = tlY0; tl.rotation.x = 0; }
-      else { brokenR = broken ? 1 : 0; tr.visible = showBand; tr.position.y = trY0; tr.rotation.x = 0; }
-      // INVISIBLE-LOD ENVELOPE law: the thrown kit exists only once a
-      // track has actually been thrown — repair calls before any throw
-      // have nothing to hide, and rest-state builds never carry the
-      // out-of-envelope ribbon AABBs.
-      if (broken) buildThrownKit();
-      if (thrownRibbons[side]) {
-        const rm = thrownRibbons[side];
-        rm.visible = !!broken;
-        // r4: per-throw pose scatter — repeated de-tracks never drop an
-        // identical zigzag; a small roll partially buries the tail run.
-        if (broken) {
-          throwCount++;
-          const j = Math.abs(Math.sin(throwCount * 12.9898 + side * 3.7)) % 1;
-          rm.rotation.y = side * 0.07 + (j - 0.5) * 0.5;
-          rm.rotation.z = (j * 7.13 % 1 - 0.5) * 0.12;
-          rm.position.y = -0.02 - (j * 3.71 % 1) * 0.03; // pads bite into soil
-        } else {
-          rm.rotation.y = side * 0.07; rm.rotation.z = 0; rm.position.y = 0;
-        }
-      }
-      // r4: the torn stub of the band stays HUNG off the rear wheel on the
-      // broken side (catenary drape built at construction)
-      if (slumpBands[side]) slumpBands[side].visible = !!broken;
-      // rearmost PROUD road wheel on that side scatters (interleaved recessed
-      // rows stay seated — the outer wheel is the one that visibly lets go)
-      let pick = null;
+      const side: Side = module === 'trackL' ? -1 : 1;
+      if (!!(side < 0 ? brokenL : brokenR) === broken) return;
+      if (side < 0) { brokenL = broken ? 1 : 0; tl.visible = !broken; tl.position.y = tlY0; }
+      else { brokenR = broken ? 1 : 0; tr.visible = !broken; tr.position.y = trY0; }
+      let pick: WheelEntry | null = null;
       for (const e of entries) {
         if (!e.road || e.rec || (e.x < 0) !== (side < 0)) continue;
         if (!pick || e.z < pick.z) pick = e;
       }
-      if (pick) pick.thrown = !!broken;
+      if (pick) {
+        pick.thrown = broken;
+        if (broken) buildDetached(side, pick).launch(side * xcForSide(side),
+          Math.max(.12, pick.y - pick.r), Math.min(sprocket.z, idler.z),
+          new THREE.Vector3(pick.x, pick.y + (pick.off || 0), pick.z), side, ++throwCount, debrisVelocity);
+      }
+      if (!broken) detached[side]?.reset();
+    },
+    updateDebris(dt, sampler) {
+      hullG.updateWorldMatrix(true, false);
+      debrisPosition.setFromMatrixPosition(hullG.matrixWorld);
+      if (debrisPositionKnown && dt > 0) {
+        debrisVelocity.copy(debrisPosition).sub(debrisLastPosition).divideScalar(dt);
+        debrisVelocity.clampLength(0, 25);
+      }
+      debrisLastPosition.copy(debrisPosition); debrisPositionKnown = true;
+      detached[-1]?.update(dt, sampler || undefined);
+      detached[1]?.update(dt, sampler || undefined);
     },
   };
   // TRACK-HITBOX metadata (RUNTIME DATA ONLY — no geometry, same channel as
@@ -5642,6 +5478,7 @@ function registerGearUnit(P: RunningGearBuilderPort, unit: RunningGearUnit): voi
       return result;
     },
     update(l, r, dt) { for (const u of units) u.update(l, r, dt); },
+    updateDebris(dt, sampler) { for (const u of units) u.updateDebris?.(dt, sampler); },
     resetPose() { for (const u of units) u.resetPose?.(); },
     conform(state, sampler, pitchEff, rollEff, dt) {
       let settling = false;
@@ -6324,409 +6161,13 @@ export const KIT = {
 // Per-tank builders
 // ===========================================================================
 
-function buildLeo2A7HullShell(P: TankBuilderPort): void {
-  // r7 hull rework (barge critique): the full-width 0.64-tall sponson slab
-  // and its long rear overhang are gone — the upper hull is a shallow band
-  // whose rear face sits flush over the tracks, the heavy skirts climb to
-  // the fender line, and the deck carries the fan/grille furniture.
-  P.add('hull', box(2.16, 0.58, 7.5), 0, 0.79, 0);                              // lower hull between native courses
-  // r4 BOW IDENTITY REBUILD (critic major — the front read as a fictional
-  // REAR: "long bare downward-sloping engine deck with a huge stern
-  // overhang"). Root cause: the beak sat at y 1.0, stretching the glacis
-  // into a 2.8 m 14-deg ramp over a dropped fender shelf. Real Leo 2: HIGH
-  // prow (~1.45 m), big steeply-raked lower plate, SHORT near-horizontal
-  // glacis (81 deg) meeting the flat FULL-WIDTH deck at a crease ~1.8 m
-  // behind the nose. Deck band widened back to hull width and extended to
-  // the crease; the low fender shelf is gone (the real deck spans the
-  // sponsons in one plane with a thin edge lip).
-  P.add('hull', box(3.66, 0.42, 5.75), 0, 1.51, -0.845);                        // full-width deck band (1.30-1.72)
-  fenders(P, 1.70, 1.88, 1.705, -3.72, 2.0, 0.035);                             // deck-edge lip strip
-  // glacis spans the FULL deck width at the crease (a narrower plate left the
-  // band corners overhanging as bare ledges) and tapers to the beak
-  P.add('hull', frustum(1.72, 3.83, 2.03, 1.83, 2.13, 2.03, 1.45, 1.72));       // short 81-deg glacis
-  // Keep the complete lower bow, but form real terminal-wheel pockets below
-  // the shoulder flare.  The former single full-width frustum occupied both
-  // native track lanes from y=.50-.84; visually the end shoes passed through
-  // solid glacis.  A narrow load-bearing chin now stays between the courses
-  // until y=1.08, then the original full-width shoulder returns above them.
-  P.add('hull', frustum(1.08, 3.42, 3.55, 1.08, 3.67, 3.55, 0.5, 1.08));         // lower chin between tracks
-  P.add('hull', frustum(1.08, 3.67, 3.55, 1.72, 3.83, 3.55, 1.08, 1.45));       // preserved full shoulder flare
-  P.add('hull', box(3.44, 0.38, 1.62), 0, 1.27, 2.80);                          // nose interior fill above pockets
-  // front mud flaps hang off the heavy-skirt leading edge (grounds the nose)
-  for (const s of [-1, 1]) {
-    P.add('hullRubber', box(0.34, 0.42, 0.035), s * 1.68, 0.78, 4.08);
-  }
-  // vertical rear plate flush with the hull end — no overhang box.
-  // tank_models r2 (critic major: "rear hull reads as a bare sloped slab —
-  // real Leo 2 rear plate is near-vertical with two cooling-fan circles and
-  // exhaust grilles"): the plate now runs deck-to-track-line as one visibly
-  // VERTICAL face (upper full-width band + lower between-the-tracks plate),
-  // and carries the Leopard's signature pair of big circular cooling-fan
-  // grilles in relief — dark disc, proud rim ring, radial slat bars.
-  P.add('hull', box(3.1, 0.64, 0.12), 0, 1.40, -3.70);
-  P.add('hull', box(2.12, 0.62, 0.10), 0, 0.80, -3.72);
-  for (const s of [-1, 1]) {
-    const fseg = P.q ? 26 : 14;
-    P.add('hullDark', xform(cylZ(0.335, 0.03, fseg), 0, 0, 0), s * 0.86, 1.26, -3.775);   // fan disc
-    P.add('hullDetail', xform(torus(0.335, 0.032, fseg), 0, 0, 0, Math.PI / 2, 0, 0), s * 0.86, 1.26, -3.79); // proud rim
-    P.add('hullDetail', xform(cylZ(0.07, 0.05, 10), 0, 0, 0), s * 0.86, 1.26, -3.80);     // hub
-    for (let k = 0; k < 4; k++) {                                               // radial slat bars
-      const a = (k / 4) * Math.PI;
-      P.add('hullDetail', box(0.62, 0.052, 0.04),
-        s * 0.86, 1.26, -3.792, 0, 0, a + s * 0.2);
-    }
-    P.add('hullDetail', xform(torus(0.19, 0.02, 12), 0, 0, 0, Math.PI / 2, 0, 0), s * 0.86, 1.26, -3.788); // inner ring
-  }
-}
-
-function buildLeo2A7Deck(P: TankBuilderPort): void {
-  // rear DECK (r10 rework — critic: "completely flat engine deck with zero
-  // grilles, blank rear plate, unrecognizable from behind"): twin circular
-  // cooling fans with ALWAYS-ON radial slat bars, a full-width transverse
-  // radiator louver inset across the rearmost deck, torsion-bar access caps
-  // along the side strips, and a rear plate carrying exhaust louvres, tow
-  // shackles, taillights and a convoy-light cluster.
-  for (const s of [-1, 1]) {
-    P.add('hullDark', cylY(0.40, 0.40, 0.025, P.q ? 28 : 14), s * 0.80, 1.725, -2.55);
-    P.add('hullDetail', torus(0.40, 0.035, P.q ? 26 : 14), s * 0.80, 1.735, -2.55);
-    P.add('hullDetail', torus(0.24, 0.02, P.q ? 22 : 12), s * 0.80, 1.732, -2.55); // inner ring
-    P.add('hullDetail', cylY(0.07, 0.08, 0.05, 10), s * 0.80, 1.74, -2.55);        // hub cap
-    P.add('hullDetail', box(0.76, 0.02, 0.05), s * 0.80, 1.74, -2.55);          // fan cross brace
-    P.add('hullDetail', box(0.05, 0.02, 0.76), s * 0.80, 1.74, -2.55);
-    for (let k = 0; k < 5; k++) {                                               // fan slat bars
-      P.add('hullDetail', box(0.66 - Math.abs(k - 2) * 0.14, 0.018, 0.05),
-        s * 0.80, 1.737, -2.75 + k * 0.10);
-    }
-    // r2: rectangular grille replaced by the circular fan pair on the rear
-    // plate (added above) + a low horizontal exhaust louvre strip under it
-    P.add('hullDark', box(0.66, 0.16, 0.04), s * 0.86, 0.80, -3.775);
-    for (let k = 0; k < 3; k++) {
-      P.add('hullDetail', box(0.62, 0.035, 0.05), s * 0.86, 0.735 + k * 0.065, -3.79);
-    }
-    // torsion-bar / fuel access caps along the exposed side deck strips
-    // (r5: rearmost cap dropped — the longitudinal radiator grilles own
-    // that stretch of the strip now)
-    for (const zc of [-1.15, -0.35]) {
-      P.add('hullDetail', cylY(0.10, 0.10, 0.028, 12), s * 1.44, 1.728, zc);
-      P.add('hullDark', torus(0.10, 0.012, 12), s * 1.44, 1.733, zc);
-    }
-    // rear tow shackle brackets + clevis bows on the lower plate
-    for (const off of [-0.08, 0.08]) {
-      P.add('hullDetail', box(0.05, 0.24, 0.14), s * 1.12 + off, 0.98, -3.82);
-    }
-    P.add('hullDetail', cylX(0.034, 0.26, 8), s * 1.12, 1.0, -3.87);
-    P.add('hullDetail', box(0.24, 0.06, 0.06), s * 1.12, 0.86, -3.84);
-    P.add('hullDark', box(0.16, 0.09, 0.05), s * 1.38, 1.32, -3.775);           // taillight clusters
-    P.add('hullRubber', box(0.56, 0.34, 0.03), s * 1.5, 0.52, -4.08, 0.12, 0, 0); // rear mud flaps beyond terminal wrap
-  }
-  // full-width transverse radiator louver inset across the rearmost deck
-  P.add('hullDark', box(2.9, 0.022, 0.56), 0, 1.717, -3.32);
-  for (let k = 0; k < 5; k++) {
-    P.add('hullDetail', box(2.74, 0.032, 0.07), 0, 1.732, -3.52 + k * 0.10);
-  }
-  // r5 ("rear two-thirds of the hull roof is a featureless flat tabletop"):
-  // the power-pack deck gets its LONGITUDINAL rectangular radiator grilles —
-  // deep dark wells with proud crossbar louvres and frame rails — running
-  // along both deck-side strips beside the fan pair (the real 2A7 layout),
-  // plus bolted anti-slip panel plates on the exposed forward deck zone.
-  for (const s of [-1, 1]) {
-    P.add('hullDark', box(0.42, 0.024, 0.95), s * 1.44, 1.718, -2.27);         // radiator well
-    for (let k = 0; k < 5; k++) {
-      P.add('hullDetail', box(0.36, 0.034, 0.07), s * 1.44, 1.732, -1.92 - k * 0.17);
-    }
-    P.add('hull', box(0.05, 0.038, 1.0), s * (1.44 - 0.22), 1.734, -2.27);     // frame rails
-    P.add('hull', box(0.05, 0.038, 1.0), s * (1.44 + 0.22), 1.734, -2.27);
-  }
-}
-
-function buildLeo2A7DeckFixtures(P: TankBuilderPort): void {
-  // anti-slip deck panels (2A7 signature texture zones): the r5 first pass
-  // used the scheme-tinted detail tone and vanished into the paint — real
-  // Leo 2A7 anti-slip sheeting is DARK grey-brown matte, clearly offset from
-  // the CARC green. Rubber-dark plates with a slim painted border frame.
-  for (const [ax, az, aw, ad] of [
-    [-1.05, 1.35, 0.95, 1.05], [-0.2, 1.55, 0.6, 0.7], [1.25, 0.9, 0.75, 1.3],
-    [-1.45, -0.5, 0.55, 1.5], [1.45, -0.5, 0.55, 1.5],
-  ]) {
-    P.add('hullRubber', box(aw, 0.014, ad), ax, 1.727, az);
-    P.add('hullDetail', box(aw + 0.05, 0.008, ad + 0.05), ax, 1.723, az);      // border frame
-  }
-  // GLACIS anti-slip walkway patches — the tank_closeup framing stares at
-  // the bare glacis slope ("featureless flat tabletop"); the real 2A7 bow
-  // carries two large dark tread zones flanking the driver centreline.
-  for (const s of [-1, 1]) {
-    P.add('hullRubber', box(0.98, 0.014, 1.35), s * 0.95, 1.607, 2.85, -0.15, 0, 0);
-  }
-  // glacis-top LED light clusters in brush-guard frames (2A7 bow identity,
-  // visible from above unlike the beak headlights)
-  for (const s of [-1, 1]) {
-    P.add('hull', box(0.30, 0.10, 0.18), s * 1.45, 1.72, 2.28, -0.15, 0, 0);
-    P.add('hullDark', box(0.24, 0.05, 0.06), s * 1.45, 1.735, 2.36, -0.15, 0, 0);
-    P.add('hullGlass', markVehicleNightLens(box(0.07, 0.035, 0.02), 'headlight'), s * 1.52, 1.74, 2.40, -0.15, 0, 0);
-    P.add('hullDetail', box(0.02, 0.10, 0.20), s * (1.45 - 0.17), 1.75, 2.30, -0.15, 0, 0); // guard rib
-    P.add('hullDetail', box(0.02, 0.10, 0.20), s * (1.45 + 0.17), 1.75, 2.30, -0.15, 0, 0);
-  }
-  // hull ammo-hatch ring (left, mirrors the driver hatch) + NBC intake box
-  // (r7: hatches ride forward with the turret-ring shift — the ring now owns
-  // the old hatch spot)
-  P.add('hull', cylY(0.26, 0.26, 0.035, P.q ? 22 : 12), -0.62, 1.74, 1.15);
-  P.add('hullDark', torus(0.26, 0.014, P.q ? 22 : 12), -0.62, 1.745, 1.15);
-  P.add('hull', box(0.34, 0.10, 0.5), -1.35, 1.77, 1.6);
-  P.add('hullDark', box(0.28, 0.05, 0.42), -1.35, 1.83, 1.6);
-  P.add('hullDark', box(0.16, 0.10, 0.05), 0, 1.55, -3.77);                     // convoy light
-  P.add('hullDetail', box(0.20, 0.03, 0.07), 0, 1.62, -3.79);                   // convoy light hood
-  // r2: jack block tucked low between the fan grilles (it perched on the
-  // fender edge as a floating orange cube after the rear-plate rebuild)
-  P.add('hullWood', box(0.26, 0.12, 0.10), 0, 0.92, -3.79);
-}
-
-function buildLeo2A7SideArmor(P: TankBuilderPort): void {
-  // deck-underside AO pocket over the running gear — r5: narrowed + tucked
-  // inboard, and a scheme-painted sponson chamfer strip closes the outboard
-  // slot between the deck-band side and the skirt top (the "continuous black
-  // void band between skirt top and sponson" critique).
-  for (const s of [-1, 1]) {
-    P.add('hullShadow', new THREE.BoxGeometry(0.34, 0.026, 7.0), s * 1.48, 1.26, -0.2);
-    P.add('hull', box(0.10, 0.17, 7.35), s * 1.862, 1.335, -0.18);             // sponson chamfer strip
-  }
-  // skirts (r7): the heavy sculpted front skirt now runs fender-deep
-  // (0.68-1.30) like the real 2A7 armor modules — hull side above it is a
-  // shallow band, not a wall; thinner recessed rubber skirt aft.
-  // r3 (critic critical: the garage pedestal leo2a7 read as an "unskirted
-  // ~9-wheel hull" — the skirt bottoms sat at ~0.65 m with wheel tops at
-  // 0.80 m, so from the raised garage camera the wheel band dominated the
-  // whole flank): both skirt runs now drop to ~0.50 m — just above the wheel
-  // axle line like the real 2A7 armor modules — and the wheels read as
-  // half-hidden running gear under one continuous flat-skirt line.
-  for (const s of [-1, 1]) {
-    P.add('hull', box(0.10, 0.80, 3.25), s * 1.945, 0.90, 2.18);                // heavy front skirt (0.50-1.30), outside pins
-    P.add('hull', box(0.10, 0.14, 3.2), s * 1.945, 0.50, 2.18, 0, 0, -s * 0.28); // chamfered lower lip
-    if (P.q) for (let k = 0; k < 4; k++) {                                      // panel split seams
-      P.add('hullDark', box(0.104, 0.74, 0.016), s * 1.945, 0.90, 3.6 - k * 0.8);
-    }
-    // r8: rear rubber skirt pushed OUTBOARD of the track run (the old x1.80
-    // panel hid behind the 1.87 track edge, leaving the rear wheels bare) and
-    // deepened so the flat-skirt line runs the full hull like the real 2A7
-    P.add('hull', box(0.035, 0.72, 3.42), s * 1.91, 0.86, -1.28);               // rear rubber skirt (0.50-1.22), outside pins
-    P.add('hullRubber', box(0.028, 0.12, 3.4), s * 1.91, 0.49, -1.28);          // dangling rubber lip
-    for (let k = 0; k < 4; k++) {
-      P.add('hullDark', box(0.042, 0.66, 0.02), s * 1.91, 0.86, -0.3 - k * 0.7);
-    }
-  }
-  // tank_models r2 (critic: "huge empty rear deck with a floating wire-thin
-  // tow cable"): proper tow rope — fat tube LYING ON the deck plane, seated
-  // in scheme-painted clamp blocks, with cast eye loops at both ends.
-  towCable(P, [[-1.35, 1.755, -2.85], [-0.6, 1.775, -3.15], [0.55, 1.775, -3.15], [1.35, 1.755, -2.85]], 0.042);
-  for (const [cx, cz, cy] of [[-1.0, -3.0, 1.75], [0, -3.15, 1.77], [1.0, -3.0, 1.75]]) {
-    P.add('hullDetail', box(0.10, 0.09, 0.14), cx, cy, cz);                     // cable clamps
-  }
-  for (const s of [-1, 1]) {
-    P.add('hullDark', xform(torus(0.075, 0.028, 12), 0, 0, 0, Math.PI / 2, 0, 0), s * 1.42, 1.75, -2.85); // eye loops
-  }
-  headlight(P, -1.3, 1.02, 3.62, -0.5);
-  headlight(P, 1.3, 1.02, 3.62, -0.5);
-  liftEye(P, 'hullDetail', -1.4, 1.75, -0.5);
-  liftEye(P, 'hullDetail', 1.4, 1.75, -0.5);
-  // r8 glacis furniture: the bare 2.6 m deck between nose and turret read as
-  // a featureless Tiger II plate. V splash board, driver hatch + periscopes
-  // (front-right station), weld crease seam, tow cable and filler caps give
-  // the shallow glacis its Leopard read.
-  for (const s of [-1, 1]) {
-    P.add('hullDetail', box(1.05, 0.045, 0.07), s * 0.45, 1.70, 2.35, -0.15, s * 0.42, 0);
-  }
-  P.add('hullDark', box(0.02, 0.012, 1.85), -1.66, 1.615, 2.9, -0.15, 0, 0);    // glacis edge weld L
-  P.add('hullDark', box(0.02, 0.012, 1.85), 1.66, 1.615, 2.9, -0.15, 0, 0);     // glacis edge weld R
-  // crease seam where the glacis meets the deck (the Leo 2 "center step")
-  P.add('hullDark', box(3.30, 0.014, 0.025), 0, 1.725, 2.05);
-  P.add('hull', cylY(0.30, 0.30, 0.035, P.q ? 22 : 12), 0.62, 1.74, 1.15);      // driver hatch ring
-  P.add('hullDark', torus(0.30, 0.015, P.q ? 22 : 12), 0.62, 1.745, 1.15);      // hatch seam
-  periscope(P, 'hullDetail', 0.40, 1.76, 1.48);
-  periscope(P, 'hullDetail', 0.62, 1.76, 1.51);
-  periscope(P, 'hullDetail', 0.84, 1.76, 1.48, 0.3);
-  // glacis tow cable LYING on the plate with clamp blocks at both ends
-  // (r4: the old cable ends floated in mid-air over the fender shelf;
-  // r5: lifted onto the new anti-slip tread plates)
-  towCable(P, [[-1.15, 1.62, 2.85], [0, 1.70, 2.15], [1.15, 1.62, 2.85]], 0.03);
-  for (const s of [-1, 1]) {
-    P.add('hullDetail', box(0.10, 0.075, 0.13), s * 1.15, 1.63, 2.86, -0.15, 0, 0);
-  }
-  for (const s of [-1, 1]) P.add('hullDetail', cylY(0.085, 0.085, 0.03, 12), s * 1.28, 1.735, 1.42); // filler caps
-}
-
-function buildLeo2A7Turret(P: TankBuilderPort): void {
-  const { rng } = P;
-  // turret (r5 FULL REBUILD — critic critical: "towering slab-sided casemate
-  // ~1.5x correct height, floating inverted-pyramid beside the gun, no
-  // spaced-armor wedge pair, no EMES cutout, not recognizable as a Leopard
-  // 2A7"). Per roster §8.5: a FLAT-ROOFED BOX turret ~0.9 m above the ring,
-  // fronted by TWO thin spaced-armor wedge SHELLS standing proud of the base
-  // with a visible shadow gap, meeting in a plan-view arrow ahead of a flat
-  // plate mantlet. The old build fused body and wedges into one 3.2 m-wide
-  // full-height monolith whose center notch read as a hanging pyramid.
-  // r5 ("turret reads ~55% hull width pushed far forward"): base box widened
-  // 2.44 -> 2.60 m (~70% of the 3.75 m hull, the real 2A7 plan ratio) with
-  // the wedge shells following outboard — the turret now owns the deck.
-  // tank_models r7b FULL TURRET REBUILD (contract-shot critical): the r5
-  // turret failed two ways. (1) PROPORTION — the base box ended at z -2.05,
-  // leaving a 2.67 m turret on a 7.6 m hull (35%); with the ring at z 0.12
-  // the bow deck read as an enormous bare "engine deck" and the whole
-  // vehicle as rear-engined. (2) FORM — the base box FRONT FACE (z 0.62)
-  // poked laterally PAST the thin wedge shells (the wedge front line crosses
-  // z 0.62 at |x|~0.92), so from any 3/4 view the front corners showed as
-  // vertical slab walls with a small wedge appliqué by the gun. Now: the
-  // base box front pulls back to z 0.10 (fully behind the wedge planes), the
-  // box runs aft to -2.50 (turret 3.2 m ≈ 42% of hull, ~46% with the rack),
-  // and the wedge pair spans the WHOLE front — apex sweep under the gun,
-  // full-height outer shells reaching x ±1.46 and cresting the roofline —
-  // so the front 3/4 silhouette is nothing but the two big wedge planes,
-  // exactly the 2A5/A7 arrow. specs.ts moves the ring forward (0.12 ->
-  // 0.30) so the bow deck drops to ~25% of hull length.
-  const LTW = 1.34;                    // base turret half-width (2.68 m box)
-  const LTH = 0.88;                    // roofline: 1.72 + 0.88 = 2.60 m ≈ spec 2.64
-  P.add('turret', frustum(LTW, 0.10, -2.50, LTW * 0.95, 0.06, -2.46, 0.0, LTH));
-  P.add('turret', slab(                                                          // R wedge, apex tier
-    [0.03, 0.04, 1.58], [1.46, 0.04, 0.10], [1.46, 0.04, -0.06], [0.03, 0.04, 1.42],
-    [0.03, 0.20, 1.50], [1.46, 0.20, 0.02], [1.46, 0.20, -0.14], [0.03, 0.20, 1.34]));
-  P.add('turret', slab(                                                          // R wedge, upper tier
-    [0.34, 0.20, 1.18], [1.46, 0.20, 0.02], [1.46, 0.20, -0.14], [0.34, 0.20, 1.02],
-    [0.34, 0.94, 0.72], [1.46, 0.94, -0.44], [1.46, 0.94, -0.60], [0.34, 0.94, 0.56]));
-  P.add('turret', slab(                                                          // L wedge, apex tier
-    [-1.46, 0.04, 0.10], [-0.03, 0.04, 1.58], [-0.03, 0.04, 1.42], [-1.46, 0.04, -0.06],
-    [-1.46, 0.20, 0.02], [-0.03, 0.20, 1.50], [-0.03, 0.20, 1.34], [-1.46, 0.20, -0.14]));
-  P.add('turret', slab(                                                          // L wedge, upper tier
-    [-1.46, 0.20, 0.02], [-0.34, 0.20, 1.18], [-0.34, 0.20, 1.02], [-1.46, 0.20, -0.14],
-    [-1.46, 0.94, -0.44], [-0.34, 0.94, 0.72], [-0.34, 0.94, 0.56], [-1.46, 0.94, -0.60]));
-  // spaced-armor GAP: near-black filler wall behind the upper shells so the
-  // standoff from the base turret reads as real shadow depth
-  P.add('turretDark', slab(
-    [0.32, 0.30, 0.92], [1.40, 0.30, -0.18], [1.40, 0.30, -0.26], [0.32, 0.30, 0.84],
-    [0.32, 0.90, 0.62], [1.40, 0.90, -0.48], [1.40, 0.90, -0.56], [0.32, 0.90, 0.54]));
-  P.add('turretDark', slab(
-    [-1.40, 0.30, -0.18], [-0.32, 0.30, 0.92], [-0.32, 0.30, 0.84], [-1.40, 0.30, -0.26],
-    [-1.40, 0.90, -0.48], [-0.32, 0.90, 0.62], [-0.32, 0.90, 0.54], [-1.40, 0.90, -0.56]));
-  // mantlet slot: painted back wall + dark cheek walls so the gun emerges
-  // from a real rectangular slot between the wedge inner ends
-  P.add('turret', box(0.76, 0.66, 0.06), 0, 0.42, 0.50);
-  for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.05, 0.64, 0.80), s * 0.37, 0.42, 0.85);
-  }
-  // side armor modules: proud slabs continuing the wedge mass around the
-  // corner along the front half of the side walls (the r5 bare box side made
-  // the wedge read as a pasted-on appliqué from 3/4 views)
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.10, 0.56, 1.35), s * (LTW + 0.05), 0.40, -0.85);
-    P.add('turretDark', box(0.02, 0.50, 0.025), s * (LTW + 0.105), 0.40, -0.85);// module seam
-  }
-  // EMES 15 gunner's sight: rectangular CUTOUT recessed into the right wedge
-  // roof edge (§8.5 weak spot): dark well sunk below the wedge top line, the
-  // armored head inside it, shutter face + brow
-  P.add('turretDark', box(0.62, 0.22, 0.52), 0.74, 0.82, 0.28);                 // recess well
-  P.addEquipment('turret', box(0.50, 0.26, 0.40), 0.74, 0.86, 0.26);                     // sight head
-  P.add('turretDetail', box(0.54, 0.05, 0.44), 0.74, 1.005, 0.24);              // brow lid
-  P.add('turretDark', box(0.38, 0.18, 0.04), 0.74, 0.86, 0.475);                // shutter plate
-  P.add('turretGlass', box(0.30, 0.11, 0.02), 0.74, 0.86, 0.50);                // EMES lens
-  // PERI R17 panoramic periscope on its stalk — tallest point, CENTER-RIGHT
-  // roof behind the commander's hatch (§8.5; the old build had it left).
-  P.add('turretDetail', cylY(0.055, 0.065, 0.30, 12), 0.38, LTH + 0.15, -1.18);
-  P.add('turretDetail', cylY(0.08, 0.08, 0.07, 12), 0.38, LTH + 0.33, -1.18);   // rotary collar
-  P.add('turretDark', box(0.18, 0.20, 0.20), 0.38, LTH + 0.46, -1.18);          // PERI head
-  P.add('turretGlass', box(0.12, 0.11, 0.02), 0.38, LTH + 0.48, -1.075);        // PERI window
-  // commander (right, ahead of PERI) + loader (left) hatch rings
-  P.add('turret', cylY(0.24, 0.24, 0.045, 14), 0.62, LTH + 0.02, -0.72);
-  P.add('turret', cylY(0.22, 0.22, 0.045, 14), -0.68, LTH + 0.02, -0.55);
-  periscope(P, 'turretDetail', 0.62, LTH + 0.06, -0.38);                        // cdr periscope
-  liftEye(P, 'turretDetail', -1.08, LTH + 0.03, 0.05);
-  liftEye(P, 'turretDetail', 1.08, LTH + 0.03, -0.6);
-  // FLW 200 RWS on the roof centerline behind the gun
-  P.add('turretDetail', cylY(0.09, 0.11, 0.09, 10), -0.22, LTH + 0.045, -1.28);
-  P.add('turretDark', box(0.16, 0.18, 0.26), -0.22, LTH + 0.18, -1.28);
-  P.add('turretDark', cylZ(0.022, 0.5, 8), -0.16, LTH + 0.21, -0.98);
-  // full-width slatted bustle stowage rack across the rear (2A7 signature)
-  const lrkT = 0.78, lrkB = 0.14, lrkZ = -2.72;
-  P.add('turretDetail', box(2 * LTW + 0.3, 0.05, 0.05), 0, lrkT, lrkZ);
-  P.add('turretDetail', box(2 * LTW + 0.3, 0.05, 0.05), 0, lrkB, lrkZ);
-  for (let k = 0; k < 14; k++) {
-    P.add('turretDetail', box(0.035, lrkT - lrkB, 0.035), -LTW - 0.07 + k * 0.2, (lrkT + lrkB) / 2, lrkZ);
-  }
-  for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.05, 0.05, 0.55), s * (LTW + 0.1), lrkT, -2.42);
-    P.add('turretDetail', box(0.05, 0.05, 0.55), s * (LTW + 0.1), lrkB, -2.42);
-  }
-  P.add('turretDark', openRackGrid(2 * LTW + 0.16, 0.5, 0.020, 5, 10),
-    0, lrkB + 0.03, -2.45);                                                     // open rack floor lattice
-  stowage(P, 'turretCloth', rng, [
-    [-0.8, 0.42, -2.45, 0.75, 0.44, 0.4], [0.2, 0.38, -2.47, 0.65, 0.38, 0.38],
-    [0.95, 0.40, -2.44, 0.55, 0.42, 0.36],
-  ]);
-  jerryCan(P, 'turretCloth', -1.22, 0.38, -2.47, 0.15);
-  tarpRoll(P, 'turretCloth', 0.62, 0.60, -2.44, 1.15, 0.10, true);
-  ammoCan(P, 'turretDark', 1.18, 0.34, -2.47, 0.22);
-  spareTrackStrip(P, 'turret', -0.42, 0.62, -2.46, 2, 0, 0);
-  // mesh stowage baskets wrapping the turret rear sides (§8.5)
-  for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.05, 0.05, 1.35), s * (LTW + 0.12), 0.62, -1.32);
-    P.add('turretDetail', box(0.05, 0.05, 1.35), s * (LTW + 0.12), 0.20, -1.32);
-    for (let k = 0; k < 6; k++) {
-      P.add('turretDetail', box(0.03, 0.42, 0.03), s * (LTW + 0.12), 0.41, -0.72 - k * 0.24);
-    }
-    stowage(P, 'turretCloth', rng, [[s * (LTW + 0.05), 0.40, -1.3, 0.16, 0.3, 1.05]]);
-  }
-  // 2x8 smoke dischargers: two CURVED rows on each rear side (§8.5 — more
-  // tubes than anything else in the roster)
-  // tank_models r1 (critic: "missing the 2x8 smoke-discharger rows"): the
-  // banks sat buried inside the side-basket stowage zone. Two curved rows of
-  // four per side now ride a visible mount plate on the upper rear wall,
-  // above the basket rail (§8.5 — "more tubes than any other tank here").
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.06, 0.30, 0.72), s * (LTW + 0.05), 0.62, -1.42, 0, s * 0.28, 0); // mount plate
-    smokeCluster(P, s * (LTW + 0.10), 0.74, -1.24, 4, s * 1.05, 0.9);
-    smokeCluster(P, s * (LTW + 0.12), 0.56, -1.44, 4, s * 1.2, 0.9);
-  }
-  P.add('turretDetail', box(0.03, 0.45, 0.03), -1.02, LTH + 0.3, -1.9);         // crosswind mast
-  P.add('turretDetail', box(0.03, 0.55, 0.03), 1.02, LTH + 0.32, -1.95, 0, 0, 0.1); // whip antenna
-  // flat plate mantlet in the arrow notch (§8.5): plate + yoke collar
-  P.addGunExtra(box(0.56, 0.46, 0.30), 0, 0.02, 0.52);
-  P.addGunExtra(box(0.84, 0.34, 0.16), 0, 0, 0.32);
-  P.addGunExtra(cylZ(0.13, 0.3, 12, 0.155), 0, 0, 0.72);                        // gun root collar
-  // r9: tube up to a credible Rh-120 L/55-with-sleeve diameter — the 0.068
-  // tube read as a bare thin pipe ("no thermal-sleeve steps" critique); the
-  // sleeve/evac/MRS steps in buildGun scale off r so they thicken with it.
-  buildGun(P, { len: 6.6, r: 0.079, sleeve: true, evac: 0.62, collar: true, baseR: 0.16 });
-  buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.35, wheelW: 0.22, xc: 1.55,
-    wheelZs: [2.95, 2.0, 1.25, 0.28, -0.69, -1.66, -2.63],
-    sprocket: { z: -3.5, y: 0.46, r: 0.34 }, idler: { z: 3.45, y: 0.44, r: 0.32 },
-    // r3: skirts cover the real 2A7's return run — no horn comb above the
-    // fender line (same fix as the T-90M).
-    trackW: 0.635, topY: 0.92, paintedEnds: true, coveredTop: true,
-  });
-  // r5: crosses re-seated on the rebuilt (narrower) turret side wall, ahead
-  // of the stowage baskets — at the old ±1.61 they floated in mid-air.
-  P.decal('turret', 'crossgrey', null, 0.38, [1.23, 0.44, -0.22], Math.PI / 2);
-  P.decal('turret', 'crossgrey', null, 0.38, [-1.23, 0.44, -0.22], -Math.PI / 2);
-  // r1: Y-plate moved off the engine deck onto the vertical hull rear plate
-  // (roster: "black Y- registration plate on hull front/rear")
-  P.decal('hull', 'number', 'Y-124', 0.30, [0.62, 1.44, -3.775], Math.PI, 0);
-  P.decal('hull', 'number', 'Y-124', 0.26, [-1.0, 0.90, 3.63], 0, -0.41);
-  P.topY = 1.08;
-}
-
-function buildLeo2A7(P: TankBuilderPort): void {
-  buildLeo2A7HullShell(P);
-  buildLeo2A7Deck(P);
-  buildLeo2A7DeckFixtures(P);
-  buildLeo2A7SideArmor(P);
-  buildLeo2A7Turret(P);
-}
-
 // Round 46 (docs/CLEANUP-2026-09-22.md §4.2) removed the five shadowed core
 // builders (m4a3e8, tiger1, t34_85, m1a2_legacy, t90m); their archived hulls
 // and the profiles/ww2.ts pack left on 2026-09-25 with is2 and panther_g
 // (owner: delete the archived WWII / casemate tanks that are not in
-// production). leo2a7 keeps its only builder here.
-const BUILDERS: TankBuilderRecord = {
-  leo2a7: buildLeo2A7,
-};
+// production). The last one, leo2a7 (a donor row, never playable), left on
+// 2026-10-01: every builder now arrives through a canonical pack or a profile.
+const BUILDERS: TankBuilderRecord = {};
 const CANONICAL_BUILDERS: TankBuilderRecord = { ...BUILDERS };
 
 function collectCanonicalBuilderEntries(
@@ -6804,19 +6245,6 @@ export function configureTankFactory({
   const profileEntries = collectProfileBuilderEntries(profiledBuilders);
   requireFactoryFittings(fittings);
   registerConfiguredBuilders(canonicalEntries, profileEntries);
-  const fitting = (name: 'spareTrackLinks' | 'antennaWhip' | 'pintleMG') =>
-    (options: object): THREE.Object3D => {
-      const result = Reflect.apply(fittings[name], undefined, [options]);
-      if (!(result instanceof THREE.Object3D)) {
-        throw new TypeError(`Tank fitting ${name} did not return an Object3D`);
-      }
-      return result;
-    };
-  KIT_FITTINGS = {
-    spareTrackLinks: fitting('spareTrackLinks'),
-    antennaWhip: fitting('antennaWhip'),
-    pintleMG: fitting('pintleMG'),
-  };
   factoryConfigured = true;
 }
 
@@ -7420,6 +6848,7 @@ function* createTankOwnedSteps(
   const decals: VehicleDecal[] = [];
   const disposables: DisposableVehicleResource[] = [];
   const equipmentDamage = new EquipmentDamage();
+  const weaponDamage = new WeaponDamageVisuals();
 
   const P: TankBuilderPort = {
     // PERF r3: `quality` remains the texture tier. Mobile battle bots can
@@ -8129,6 +7558,7 @@ function* createTankOwnedSteps(
         !!spec.visual.bakeDirtDeckEq);
     }
     recordAuthoredRanges(merged, authoredRanges);
+    weaponDamage.bind(list, merged);
     const station=list[0]?.userData.auxiliaryStation as {name:string;stage:string}|undefined;
     equipmentDamage.bindMerged(list, merged, parentKey === 'hullG' ? 'hull' : parentKey === 'turretG' ? 'turret' : '',
       station ? 'equipment' : combatHitboxRoleForBucket(bucket));
@@ -9024,6 +8454,7 @@ function* createTankOwnedSteps(
   let groundSampler: GroundSampler | null = null; // terrain height, set by integration
   let gearAccumDt = 0;               // elapsed time across distance-cadence skips
   let gearForceUpdate = true;
+  let visualTrackLBroken = false, visualTrackRBroken = false;
   let gearSettling = true;
   let gearWasVisible = true;
   let gearLastL = NaN, gearLastR = NaN;
@@ -9046,9 +8477,7 @@ function* createTankOwnedSteps(
   // stiff 4-corner attitude — squat on accel, dive on braking, settle over ruts.
   // Works in visualPitch/visualRoll space (nose-up positive / right-down
   // positive) and is ADDED to the sim attitude before the root rotation.
-  let suspP = 0, suspR = 0, suspPV = 0, suspRV = 0;
-  let prevSpeed = 0;
-  const SUSP_W = 7.2, SUSP_Z = 0.65;
+  let suspP = 0, suspR = 0;
   // r6 VISIBLE hull dynamics: the sim spring (movement.ts state._susp) is
   // tuned for terrain-contact correctness, but its rock is sub-pixel at
   // gameplay camera distance — no readable squat/dive/roll (r5 critique).
@@ -9467,7 +8896,6 @@ function* createTankOwnedSteps(
           // attitude — the old half-lift hack floated the whole contact patch
           // 12-17 cm during full-speed turns (r1 drive gate evidence).
         }
-        prevSpeed = renderState.speed;
         root.rotation.set(-(renderState.visualPitch + suspP) + flinchP, renderState.yaw,
           renderState.visualRoll + suspR + sway + flinchR, 'YXZ');
       };
@@ -9554,6 +8982,7 @@ function* createTankOwnedSteps(
         }
       };
       syncFromStateAssemblyStage6();
+      P.gear?.updateDebris?.(adv, groundSampler);
       const gearPitch = renderState.visualPitch + suspP - flinchP;
       const gearRoll = renderState.visualRoll + suspR + sway + flinchR;
       const gearPoseDirty = gearForceUpdate || gearSettling
@@ -9804,7 +9233,10 @@ function* createTankOwnedSteps(
      * De-track / repair visual per side.
      * @param {'trackL'|'trackR'} module @param {boolean} broken
      */
+    setWeaponModuleState(module, state) { weaponDamage.set(module, state); },
     setTrackState(module, broken) {
+      if ((module === 'trackL' ? visualTrackLBroken : visualTrackRBroken) === broken) return;
+      if (module === 'trackL') visualTrackLBroken = broken; else visualTrackRBroken = broken;
       if (P.gear && P.gear.setBroken) P.gear.setBroken(module, broken);
       gearForceUpdate = true;
     },
@@ -9979,6 +9411,7 @@ function* createTankOwnedSteps(
      */
     resetDestroyed() {
       equipmentDamage.reset();
+      weaponDamage.reset();
       if (destroyed) {
         destroyed = false;
         // restore the EXACT captured visibility (never a blanket `true` —
@@ -10019,12 +9452,13 @@ function* createTankOwnedSteps(
       mats.burnt.emissiveIntensity = 0.018;
       flinchP = flinchR = flinchPV = flinchRV = 0;
       pendFlinchPV = pendFlinchRV = 0;
-      suspP = suspR = suspPV = suspRV = 0;
-      prevSpeed = 0;
+      suspP = suspR = 0;
       if (P.gear && P.gear.setBroken) {
         P.gear.setBroken('trackL', false);
         P.gear.setBroken('trackR', false);
       }
+      visualTrackLBroken = visualTrackRBroken = false;
+      gearForceUpdate = true;
       this.resetEra();
     },
 
@@ -10146,6 +9580,8 @@ function* createTankOwnedSteps(
     normalizeTankAppearance(root, { wheelPaint: mats.wheels, wheelPaintShade: mats.wheelsRecessed ?? null });
     const tailNormalizeFinishedAt = performance.now();
 
+    // Align complete banks before static batching can flatten their socket owners.
+    alignSmokeBanks(root);
     retainCombatLods(root);
 
     if ((geometryQuality === 'low' && !deferStaticBatch) || batchStatic) {
@@ -10162,6 +9598,7 @@ function* createTankOwnedSteps(
       const batchStats = batchMobileStaticChildren(mobileBatchParents, disposables,
         (sources, batch) => {
           transferVehicleNightLenses(sources, batch);
+          transferSmokeSockets(sources, batch);
           // Markings hide as a unit on destruction. Replace retained source
           // references with the exact merged draw so the existing wreck/reset
           // lifecycle remains byte-for-byte equivalent.
@@ -10193,7 +9630,6 @@ function* createTankOwnedSteps(
     // Run after decoration, static batching and battle-detail regrouping so
     // every final color-pass mesh receives exactly one stable layer.
     installCoplanarDepthLayers(root);
-    alignSmokeBanks(root);
     finalizeVehicleNightLighting(root);
     const tailFinalizeFinishedAt = performance.now();
     // Retain each authored hull/turret/gun proxy and its articulation owner.

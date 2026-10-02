@@ -322,12 +322,6 @@ function sightHousing(P: TankBuilderPort, d: Datum, x: number, bottom: number,
   equip(P,d,'turretDetail',box(width+.035,.026,.38),x,bottom+height+.009,z+.015);
 }
 
-function mast(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, top: number,
-  rake = 0, topR = .009, bottomR = .014): void {
-  equip(P, d, 'turretDetail', cylY(.053, .068, .13, 12), x, y + .062, z);
-  equip(P, d, 'turretDark', cylY(topR, bottomR, top-y-.11, 8), x, (top+y+.11)/2, z - rake/2, -Math.atan2(rake, top-y));
-}
-
 function mg(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, remote = false,
   lengthScale = 1, heightScale = 1): void {
   equip(P, d, 'turretDetail', cylY(.12, .15, remote ? .23 : .105, 20), x, y + (remote ? .11 : .05), z);

@@ -514,7 +514,7 @@ function addWindow(
 // Heavy structures — merged into the established building material buckets.
 // -------------------------------------------------------------------------
 
-export function makeTavern(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster'): StructureDimensions {
+export function makeTavern(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster'): StructureDimensions {
   const out = parts(), w = 9.2, d = 12.4, wallH = 4.7, roofH = 2.7;
   out.stone.push(box(w + 0.5, 1.0, d + 0.5).translate(0, 0.05, 0));
   out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
@@ -538,7 +538,7 @@ export function makeTavern(rng: Rng, buckets: GeometryBuckets, wallBucket = 'pla
   return { w: w + 0.5, d: d + 2.5, h: wallH + roofH + 1.0 };
 }
 
-export function makeSchoolhouse(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster2'): StructureDimensions {
+export function makeSchoolhouse(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster2'): StructureDimensions {
   const out = parts(), w = 8.6, d = 13.6, wallH = 4.3, roofH = 3.0;
   out.stone.push(box(w + 0.45, 1.1, d + 0.45).translate(0, 0, 0));
   out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
@@ -560,7 +560,7 @@ export function makeSchoolhouse(rng: Rng, buckets: GeometryBuckets, wallBucket =
   return { w: w + 0.5, d: d + 2.5, h: wallH + roofH + 4.0 };
 }
 
-export function makeFireStation(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
+export function makeFireStation(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
   const out = parts(), w = 11.4, d = 15.0, wallH = 5.4;
   cladIndustrialWalls(buckets, out, [box(w, wallH, d).translate(0, wallH / 2, 0)], wallBucket, w, d, wallH);
   out.roof.push(slab(w + 0.5, 0.28, d + 0.5).translate(0, wallH + 0.12, 0));
@@ -580,7 +580,7 @@ export function makeFireStation(rng: Rng, buckets: GeometryBuckets, wallBucket =
   return { w: w + 0.4, d: d + 0.4, h: towerH + 2.3 };
 }
 
-export function makeFishery(rng: Rng, buckets: GeometryBuckets): StructureDimensions {
+export function makeFishery(_rng: Rng, buckets: GeometryBuckets): StructureDimensions {
   const out = parts(), w = 10.2, d = 15.5, wallH = 4.4, roofH = 1.8;
   out.wood.push(box(w, wallH, d).translate(0, wallH / 2 + 0.35, 0));
   out.wood.push(gable(w, roofH, 0.3).translate(0, wallH + 0.35, d / 2 - 0.15));
@@ -663,7 +663,7 @@ function addTimberBathhouseRoof(out: StructureParts, w: number, d: number, wallH
 }
 
 export function makeBathhouse(
-  rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3', style: 'domed' | 'timber' = 'domed',
+  _rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3', style: 'domed' | 'timber' = 'domed',
 ): StructureDimensions {
   const out = parts(), w = 12.4, d = 11.0, wallH = 4.5;
   const walls = style === 'timber' ? 'plaster' : wallBucket;
@@ -696,7 +696,7 @@ export function makeTimberBathhouse(rng: Rng, buckets: GeometryBuckets, wallBuck
   return makeBathhouse(rng, buckets, wallBucket, 'timber');
 }
 
-export function makeCaravanserai(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster'): StructureDimensions {
+export function makeCaravanserai(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster'): StructureDimensions {
   const out = parts(), w = 21.0, d = 19.0, wallH = 5.2;
   // Courtyard plan: four occupied perimeter wings, fortified gate towers.
   out[wallBucket].push(box(w, wallH, 4.0).translate(0, wallH / 2, -d / 2 + 2.0));
@@ -725,7 +725,7 @@ export function makeCaravanserai(rng: Rng, buckets: GeometryBuckets, wallBucket 
   return { w: w + 0.4, d: d + 0.4, h: 7.4 };
 }
 
-export function makeFoundryOffice(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
+export function makeFoundryOffice(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
   const out = parts(), w = 13.0, d = 14.0, wallH = 5.8, roofRise = 1.65;
   const walls: THREE.BufferGeometry[] = [box(w, wallH, d).translate(0, wallH / 2, 0)];
   // Three connected one-way bays replace the former gable/no-op rotation and
@@ -762,7 +762,7 @@ export function makeFoundryOffice(rng: Rng, buckets: GeometryBuckets, wallBucket
   return { w: w + 0.5, d: d + 0.4, h: wallH + 4.0 };
 }
 
-export function makeRangerLodge(rng: Rng, buckets: GeometryBuckets, wallBucket = 'wood'): StructureDimensions {
+export function makeRangerLodge(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'wood'): StructureDimensions {
   const out = parts(), w = 10.8, d = 13.4, wallH = 4.0, roofH = 3.5;
   out.stone.push(box(w + 0.5, 1.2, d + 0.5).translate(0, 0, 0));
   out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
@@ -929,7 +929,7 @@ function addConnectedCrown(out: StructureParts, {
 }
 
 /** Bombed 55 m office tower with an asymmetrical collapsed crown. */
-export function makeMegatower(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3'): StructureDimensions {
+export function makeMegatower(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3'): StructureDimensions {
   const out = parts(), w = 18.5, d = 20.5, podiumH = 6.0;
   out.stone.push(box(w + 5.0, podiumH, d + 4.0).translate(0, podiumH / 2, 0));
   out.dark.push(box(w * 0.55, 3.5, 0.16).translate(0, 1.75, d / 2 + 2.08));
@@ -985,7 +985,7 @@ export function makeMegatower(rng: Rng, buckets: GeometryBuckets, wallBucket = '
 }
 
 /** Twin stepped arcology slabs joined by a damaged high skybridge. */
-function makeArcology(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
+function makeArcology(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
   const out = parts(), towerW = 12.0, d = 22.0, hA = 39.0, hB = 33.0;
   const towers: Array<readonly [number, number, string]> = [
     [-9.0, hA, wallBucket],
@@ -1145,7 +1145,7 @@ function makeTerraceTower(rng: Rng, buckets: GeometryBuckets, wallBucket = 'ston
 }
 
 /** Open-sided concrete parking deck: a broad, tank-scale urban landmark. */
-export function makeParkingDeck(rng: Rng, buckets: GeometryBuckets): StructureDimensions {
+export function makeParkingDeck(_rng: Rng, buckets: GeometryBuckets): StructureDimensions {
   const out = parts(), w = 27.0, d = 22.0, floors = 5, floorH = 2.65;
   for (let i = 0; i <= floors; i++) {
     out.stone.push(slab(w, 0.32, d).translate(0, i * floorH + 0.16, 0));
@@ -1177,7 +1177,7 @@ export function makeParkingDeck(rng: Rng, buckets: GeometryBuckets): StructureDi
 }
 
 /** Monumental civic hall with bombed rotunda and deep colonnade. */
-export function makeCivicHall(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster2'): StructureDimensions {
+export function makeCivicHall(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster2'): StructureDimensions {
   const out = parts(), w = 31.0, d = 18.0, h = 10.5;
   out[wallBucket].push(box(w, h, d).translate(0, h / 2, 0));
   out.stone.push(slab(w + 2.0, 0.55, d + 2.0).translate(0, 0.28, 0));

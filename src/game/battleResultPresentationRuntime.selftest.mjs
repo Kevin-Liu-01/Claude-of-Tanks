@@ -127,11 +127,11 @@ assert.deepEqual(delayed.runtime.snapshot(), {
   pendingDeadlineMs: 2700,
   beat: null,
 });
-assert.deepEqual(delayed.calls, [['unlock'], ['deathCam']],
-  'local destruction releases pointer ownership before the death beat');
+assert.deepEqual(delayed.calls, [['deathCam']],
+  'local destruction keeps mouse capture through the death beat and spectator handoff');
 delayed.runtime.update();
-assert.equal(delayed.calls.filter(([name]) => name === 'unlock').length, 1,
-  'the destroyed-state edge does not repeatedly request pointer unlock');
+assert.equal(delayed.calls.filter(([name]) => name === 'unlock').length, 0,
+  'a live match never forces the spectator cursor free');
 delayed.game.result = 'defeat';
 delayed.game.resultReason = 'elimination';
 delayed.now = 500;
@@ -182,7 +182,7 @@ const revivingNull = createHarness();
 revivingNull.game.ruleset = { respawnS: null };
 revivingNull.game.player.combat.destroyed = true;
 revivingNull.runtime.update();
-assert.deepEqual(revivingNull.calls, [['unlock'], ['deathCam']], 'a null respawn timer keeps the death beat');
+assert.deepEqual(revivingNull.calls, [['deathCam']], 'a null respawn timer keeps the death beat');
 
 // owner 2026-09-21 ("in respawn modes youre registered as dead even if you respawned at end ... if u die before
 // end it shows a kill cam of that end"): a revived player alive at the verdict gets no replay of an earlier

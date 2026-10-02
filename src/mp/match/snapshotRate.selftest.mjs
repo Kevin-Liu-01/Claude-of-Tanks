@@ -14,6 +14,10 @@ import { MatchClient } from './matchClient.ts';
 import { NetworkStatusModel } from '../session/networkStatus.ts';
 import { createPredictionWorld } from '../presentation/predictionWorld.ts';
 import { getSpec } from '../../vehicles/specs.ts';
+import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
+
+// The actor reads finalized combat anatomy; production hosts load their roster's groups first (Node: all).
+await ensureAuthorityFleet();
 
 const TICK_MS = 1000 / TICK_HZ;
 let nowMs = 30_000;

@@ -18,9 +18,11 @@
  * every other shard byte-identical (assertUnchangedCollisionShards) and republishes the complete index.
  *
  * 2026-10-01 (maps-and-layouts lane): the rendered world's records come from three deterministic builders that also
- * run in Node (tools/headlessWorldCollision.mjs), and the Node build encodes byte-identically to the browser capture.
- * `--node` regenerates shards without a browser or a dev server; `--check` builds and compares without writing and
- * exits 1 when a committed shard has drifted from the tree:
+ * run in Node (tools/headlessWorldCollision.mjs). `--node` regenerates shards without a browser or a dev server.
+ * `--check` builds and compares without writing, and exits 1 when a committed shard has drifted from the tree. A
+ * browser capture and the Node build can disagree in the last packed digit of a rare record (the two engines' Math
+ * functions round apart), so a record counts as drifted only when a number moves by more than CHECK_ROUNDING_M or
+ * anything else differs:
  *   node tools/capture-world-collision-manifests.mjs --node --maps desert
  *   node tools/capture-world-collision-manifests.mjs --check
  */
@@ -37,6 +39,35 @@ import {
 import { packCollisionRecord } from './headlessWorldCollision.mjs';
 
 const options = collisionCaptureOptions(process.argv.slice(2));
+/** Two packed decimals of 4 places that round apart differ by one unit in the last place; anything more is drift. */
+const CHECK_ROUNDING_M = 2e-4;
+/** The first difference beyond rounding between two decoded manifests (null when none), and the records within it. */
+function compareDecoded(committed, tree) {
+  let rounded = 0;
+  const same = (a, b) => {
+    if (typeof a === 'number' && typeof b === 'number') {
+      if (a === b) return true;
+      if (Math.abs(a - b) <= CHECK_ROUNDING_M) { rounded++; return true; }
+      return false;
+    }
+    if (Array.isArray(a) || Array.isArray(b)) {
+      return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((value, i) => same(value, b[i]));
+    }
+    if (a && b && typeof a === 'object' && typeof b === 'object') {
+      const keys = Object.keys(a);
+      return keys.length === Object.keys(b).length && keys.every((key) => key in b && same(a[key], b[key]));
+    }
+    return a === b;
+  };
+  for (const list of ['obstacles', 'colliders', 'concealers']) {
+    const a = committed[list] ?? [], b = tree[list] ?? [];
+    if (a.length !== b.length) return { difference: `${list} ${a.length} committed, ${b.length} in the tree`, rounded };
+    for (let i = 0; i < a.length; i++) {
+      if (!same(a[i], b[i])) return { difference: `${list}[${i}] ${JSON.stringify(a[i]).slice(0, 120)} -> ${JSON.stringify(b[i]).slice(0, 120)}`, rounded };
+    }
+  }
+  return { difference: null, rounded };
+}
 const { session } = options;
 const maps = options.partial ? readCollisionCaptureEntries(options.mapIds) : {};
 const CAPTURE_TIMEOUT_MS = 60_000;
@@ -88,15 +119,26 @@ if (options.node) {
   const { encodeCollisionManifest } = await import('../server/collisionManifestCodec.ts');
   const index = JSON.parse(readFileSync(new URL('index.json', collisionManifestDirectory), 'utf8'));
   let drifted = 0;
+  const { decodeCollisionManifest } = await import('../server/collisionManifestCodec.ts');
   for (const mapId of options.mapIds) {
     const data = await buildWorldCollisionData(mapId);
     if (!options.check) { publish(mapId, data); continue; }
-    const text = JSON.stringify(encodeCollisionManifest(readCollisionManifest(data)));
+    const encoded = encodeCollisionManifest(readCollisionManifest(data));
+    const text = JSON.stringify(encoded);
     const sha256 = createHash('sha256').update(text).digest('hex');
     const committed = index.maps[mapId];
-    const current = committed?.sha256 === sha256 && committed?.bytes === Buffer.byteLength(text);
-    if (!current) drifted++;
-    console.log(`${mapId}: ${current ? 'current' : `DRIFTED (committed ${committed?.sha256?.slice(0, 12)} ${committed?.bytes} B, tree ${sha256.slice(0, 12)} ${Buffer.byteLength(text)} B)`}`);
+    if (committed?.sha256 === sha256 && committed?.bytes === Buffer.byteLength(text)) {
+      console.log(`${mapId}: current`);
+      continue;
+    }
+    const committedShard = JSON.parse(readFileSync(new URL(`${mapId}.json`, collisionManifestDirectory), 'utf8'));
+    const { difference, rounded } = compareDecoded(decodeCollisionManifest(committedShard), decodeCollisionManifest(encoded));
+    if (difference) {
+      drifted++;
+      console.log(`${mapId}: DRIFTED (${difference})`);
+    } else {
+      console.log(`${mapId}: current (${rounded} packed numbers differ in the last digit)`);
+    }
   }
   if (options.check) {
     console.log(`${options.mapIds.length - drifted}/${options.mapIds.length} collision shards match the tree`);

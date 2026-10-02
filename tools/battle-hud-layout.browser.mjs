@@ -18,7 +18,7 @@ const cases = [
   ['chinese-landscape',667,375,true,'zh-CN'],
   ['chinese-laptop',1280,720,false,'zh-CN'],['chinese-phone',390,844,true,'zh-CN'],
 ];
-const states = ['idle','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','ended'];
+const states = ['idle','feed-burst','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','ended'];
 const reports=[];const errors=[];
 function measure(state){
   // Kept inside the serialized page callback so browser execution needs no
@@ -107,7 +107,7 @@ try {
         for(const el of document.querySelectorAll('.cot-si-toasthost,.cot-kill-lane')){
           if(!el.checkVisibility({checkVisibilityCSS:true}))continue;
           const r=el.getBoundingClientRect();
-          if(r.width>240.5)failures.push('notification feed exceeds its compact width');
+          if(r.width>(el.classList.contains('cot-kill-lane')?400.5:240.5))failures.push('notification feed exceeds its maximum width');
           if(el.classList.contains('r')?Math.abs(r.right-innerWidth)>.5:Math.abs(r.left)>.5)
             failures.push('notification feed is indented from the screen edge');
         }
@@ -124,6 +124,25 @@ try {
         return failures;
       });
       result.failures.push(...feedChecks);
+      if(state==='feed-burst'){
+        const feedIssues=await page.evaluate(()=>{
+          const failures=[];
+          for(const host of document.querySelectorAll('.cot-kill-lane,.cot-si-toasthost')){
+            if(host.children.length!==8)failures.push('burst must retain eight recent notifications');
+            const h=host.getBoundingClientRect();
+            const shown=[...host.children].filter(row=>!row.hidden);
+            for(const row of shown){
+              const r=row.getBoundingClientRect();
+              if(r.top<h.top-.5||r.bottom>h.bottom+.5)failures.push('notification is partially clipped');
+            }
+            if(innerWidth>=1366&&innerHeight>=768&&host.classList.contains('cot-kill-lane')&&host.classList.contains('l')&&shown.length<=3)
+              failures.push('spacious display did not show more than three kills');
+          }
+          return failures;
+        });
+        result.failures.push(...feedIssues);
+      }
+
       if(state.startsWith('mode-')) {
         if(await page.locator('.cot-mode-status button').count())result.failures.push('objective must not contain a Brief button');
         const detected=result.rects.find(r=>r.name==='cot-sixth on');
@@ -145,7 +164,7 @@ try {
         if(state.startsWith('mode-')&&decoration.mode!==state.slice(5))
           result.failures.push(`expected objective ${state.slice(5)}, saw ${decoration.mode}`);
       }
-      if(state==='notifications'||state==='combined'||state==='spectator'||result.failures.length)
+      if(state==='notifications'||state==='combined'||state==='spectator'||state==='feed-burst'||result.failures.length)
         await page.screenshot({path:resolve(out,`${name}-${state}.png`)});
       reports.push({name,...page.viewportSize(),touch,locale,state,...result});
       if(result.failures.length)console.log(`${name}/${state}: ${result.failures.join('; ')}`);
@@ -222,6 +241,48 @@ try {
         }
       }
     }
+    // Same-density count changes used to leave a stale tall container and stretch rows.
+    if(!touch && width>=820 && height>=600){
+      for(const count of [7,3,2,1,7]){
+        await page.evaluate(count=>{const f=window.__HUD_LAYOUT;f.state('reports');f.roster(count,count);},count);
+        await page.waitForTimeout(120);
+        for(const expanded of [false,true]){
+          if(expanded){await page.keyboard.down('Tab');await page.waitForTimeout(120);}
+          const rowIssues=await page.evaluate(({count,expanded})=>{
+            const failures=[];
+            for(const ear of document.querySelectorAll('.cot-ear')){
+              if(!ear.checkVisibility())continue;
+              const rows=[...ear.querySelectorAll('.cot-er')];
+              const cap=expanded?30:24;
+              for(const row of rows)if(row.getBoundingClientRect().height>cap+.5)failures.push(`${count} players inflated row beyond ${cap}px`);
+              const last=rows.at(-1)?.getBoundingClientRect();
+              const list=ear.querySelector('.cot-ear-rows').getBoundingClientRect();
+              if(last&&list.bottom-last.bottom>1)failures.push('roster kept empty stretched space after count change');
+            }
+            return failures;
+          },{count,expanded});
+          errors.push(...rowIssues.map(issue=>`${name}: ${issue}`));
+          await check(`row-size-${count}-${expanded?'tab':'normal'}`);
+          if(expanded){await page.keyboard.up('Tab');await page.waitForTimeout(120);}
+        }
+      }
+      // Full participant identity survives visibility changes without rebuilding rows.
+      const visibilityIssues=await page.evaluate(()=>{
+        const f=window.__HUD_LAYOUT;f.roster(7,7);
+        const before=[...document.querySelectorAll('.cot-ear.r .cot-er')];
+        const names=before.map(row=>row.textContent);
+        const full=f.frame.rosterTanks,spotted=f.frame.spotting.isSpotted;
+        f.frame.tanks=full.filter(tank=>tank.team==='player');
+        f.frame.spotting.isSpotted=()=>false;f.hud.update(f.frame);
+        const after=[...document.querySelectorAll('.cot-ear.r .cot-er')];
+        const failures=[];
+        if(after.length!==7||after.some((row,i)=>row!==before[i]||row.textContent!==names[i]))failures.push('unspotted participants disappeared or changed identity');
+        if(after.some(row=>!row.checkVisibility({checkOpacity:true})))failures.push('unspotted participant hidden');
+        f.frame.tanks=full;f.frame.spotting.isSpotted=spotted;f.hud.update(f.frame);
+        return failures;
+      });
+      errors.push(...visibilityIssues.map(issue=>`${name}: ${issue}`));
+    }
     for(const [allies,enemies] of [[1,41],[41,1],[10,10],[14,14],[21,21],[64,64],[7,7]]) {
       await page.evaluate(([a,e])=>{const f=window.__HUD_LAYOUT;f.state('reports');f.frame.matchModeState={id:'standard'};f.roster(a,e);},[allies,enemies]);
       await page.waitForTimeout(120);
@@ -243,6 +304,14 @@ try {
         const root=document.querySelector('.cot-hud');
         if(root.classList.contains('compact-shot-report')!==(Math.max(allies,enemies)>=14))failures.push('wrong penetration report density');
         const shotHost=document.querySelector('.cot-si-cardhost');
+        if(shotHost?.checkVisibility()){
+          const style=getComputedStyle(shotHost);
+          if(style.overflowX!=='visible'||style.overflowY!=='visible')failures.push('combat card shadow clipped by lane');
+          for(const card of shotHost.children){
+            const c=card.getBoundingClientRect(),h=shotHost.getBoundingClientRect();
+            if(c.top<h.top-1||c.bottom>h.bottom+1)failures.push('combat card exceeds lane height');
+          }
+        }
         const detail=document.querySelector('.cot-si-rows');
         if(shotHost?.checkVisibility()&&detail&&Math.max(allies,enemies)>=14&&detail.checkVisibility())failures.push('large roster still shows detail rows');
         for(const diagram of document.querySelectorAll('.cot-si-diag')){
