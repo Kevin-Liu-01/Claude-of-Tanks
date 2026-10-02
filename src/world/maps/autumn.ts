@@ -357,7 +357,7 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'fair-weather-cumulus', coverage: 0.26, streets: 0.3, windDirDeg: 100 },
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.26, streets: 0.3, windDirDeg: 100, contrails: 0.3 },
   sky: {
     // low golden-afternoon sun — the light that sells the season
     sunElevationDeg: 24, sunAzimuthDeg: 115,

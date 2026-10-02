@@ -23,5 +23,6 @@ export const MARS_SKY_PRESET = Object.freeze({
   atmosphere: { rayleighScale: 0.03, mieScale: 60, mieG: 0.76, ozoneScale: 0, mieTintHex: 0xe8895a, groundAlbedoHex: 0x9b6a48 },
   // round 71 (2026-09-25): thin high water-ice clouds under the dust veil — the opt-in volumetric layer's cloudscape
   // (the Mars ruleset applies this shared preset directly, so the block lives here, not on the map config)
-  cloudscape: { regime: 'thin-ice-clouds', windDirDeg: 212, tintHex: 0x8a6a62 },
+  // (2026-10-01: an authored constant sky — the dimmed galaxy dome is Mars' day, not a terrestrial night: no diurnal law)
+  cloudscape: { regime: 'thin-ice-clouds', windDirDeg: 212, tintHex: 0x8a6a62, diurnal: false },
 } satisfies MapSkyConfig);

@@ -20,6 +20,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import { ImprovedNoise } from 'three/examples/jsm/math/ImprovedNoise.js';
 import { createIsometricCamera } from './isometricCamera.ts';
+import { staticMergePartMatrixWorld, staticMergePartsOf } from '../vehicles/staticMergeParts.ts';
 
 const ORBIT_STEPS = [24, 18, 13, 9, 6, 4]; // meters, wheel-in moves toward the end
 const SNIPER_ZOOMS_BASE = [2, 4, 8];
@@ -1483,6 +1484,7 @@ function wrapPi(a: number): number {
 const _sbMin = new THREE.Vector3();
 const _sbMax = new THREE.Vector3();
 const _sbInv = new THREE.Matrix4();
+const _sbPartWorld = new THREE.Matrix4();
 const _sbV = new THREE.Vector3();
 const _sbC = new THREE.Vector3();      // target → camera unit vector
 const _sbR = new THREE.Vector3();      // camera right
@@ -1518,19 +1520,25 @@ function measureLocalBox(
   outMin.set(Infinity, Infinity, Infinity);
   outMax.set(-Infinity, -Infinity, -Infinity);
   let any = false;
-  root.traverse((o: THREE.Object3D) => {
-    if (!(o instanceof THREE.Mesh) || !o.geometry) return;
-    const g = o.geometry;
+  const addBox = (g: THREE.BufferGeometry, matrixWorld: THREE.Matrix4): void => {
     if (!g.boundingBox) g.computeBoundingBox();
     const bb = g.boundingBox;
     if (!bb || bb.isEmpty()) return;
     for (let i = 0; i < 8; i++) {
       _sbV.set(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z);
-      _sbV.applyMatrix4(o.matrixWorld).applyMatrix4(_sbInv);
+      _sbV.applyMatrix4(matrixWorld).applyMatrix4(_sbInv);
       outMin.min(_sbV);
       outMax.max(_sbV);
       any = true;
     }
+  };
+  root.traverse((o: THREE.Object3D) => {
+    if (!(o instanceof THREE.Mesh) || !o.geometry) return;
+    // A static draw merge (vehicles/staticDrawMerge.ts) frames exactly as the
+    // separate source meshes it folded did.
+    const parts = o instanceof THREE.InstancedMesh ? [] : staticMergePartsOf(o);
+    for (const part of parts) addBox(part.geometry, staticMergePartMatrixWorld(o, part, _sbPartWorld));
+    if (!parts.length) addBox(o.geometry, o.matrixWorld);
   });
   return any;
 }

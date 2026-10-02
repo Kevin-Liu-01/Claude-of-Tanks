@@ -314,7 +314,7 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'altocumulus', coverage: 0.55, cirrus: 0.3 },
+  clouds: { regime: 'altocumulus', coverage: 0.55, cirrus: 0.3, contrails: 0.6, contrailAge: 0.6, nightGlow: 0.8, nightGlowHex: 0xffb46a },
   sky: {
     sunElevationDeg: 36, sunAzimuthDeg: 115,
     // lighting_post r5: turbidity 5.5->4.0, mie 0.007->0.005, fog 0.00092->

@@ -117,7 +117,7 @@ export default {
     forestHex: 0x39413a, rockHex: 0x666360, haze: 0.97, grain: 0.48,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'industrial-stratocumulus', coverage: 0.88, tintHex: 0xd8cec0 },
+  clouds: { regime: 'industrial-stratocumulus', coverage: 0.88, tintHex: 0xd8cec0, nightGlow: 0.9, nightGlowHex: 0xff8a40 },
   sky: {
     sunElevationDeg: 25, sunAzimuthDeg: 128, turbidity: 7.8, rayleigh: 1.35,
     // round 76 (2026-09-26, the deck pass): the industrial haze comes off the whole frame and onto the deck's base and

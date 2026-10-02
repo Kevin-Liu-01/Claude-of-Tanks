@@ -316,7 +316,7 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'stratocumulus-deck' },
+  clouds: { regime: 'stratocumulus-deck', nightGlow: 0.3, nightGlowHex: 0xffc080 },
   sky: {
     // FLAT OVERCAST: higher-but-weak sun (no warm horizon glow), heavy grey
     // cloud deck, raised ambient/env fill so light reads diffuse

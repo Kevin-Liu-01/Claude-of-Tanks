@@ -763,6 +763,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-01: the grounded light model (lighting lane): sun through the atmosphere, the sky's own light, the deck, the exposure law
     'src/engine/lightModel.selftest.mjs',
     'src/engine/volumetricClouds.selftest.mjs',
+    // 2026-10-01 (the clouds-and-skyboxes lane): the layered sky — mid layers, contrails, storm cells, rain, fog banks, lightning, the time of day
+    'src/engine/cloudWeatherLayers.selftest.mjs',
     'src/engine/rendererContextRecovery.selftest.mjs',
     'src/engine/contextResourceLifetime.selftest.mjs',
     'src/engine/aerialDetail.selftest.mjs',
@@ -907,6 +909,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/botGunLane.selftest.mjs',
     'src/game/ai.selftest.mjs',
     'src/game/ai.targeting.selftest.mjs',
+    'src/game/ai.stalls.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',
@@ -988,6 +991,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/combatVisibility.selftest.mjs',
     'src/vehicles/articulatedShadowBatchIntegration.selftest.mjs',
     'src/vehicles/battleGeometrySharing.selftest.mjs',
+    'src/vehicles/staticDrawMerge.selftest.mjs',
     'src/vehicles/recoilRig.selftest.mjs',
     'src/fx/fxRuntimeAccess.selftest.mjs',
     'src/game/garageDressingAccess.selftest.mjs',
