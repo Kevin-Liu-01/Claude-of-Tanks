@@ -75,6 +75,12 @@ u16 shellCount, shells: u16 id, u8 shooterEntityId, 3 × i32 pos mm, 3 × i16 ve
 An *index list* is `varint count`, then the first index and the gaps
 (`index − previous − 1`) as varints: sorted, strictly increasing.
 
+The destroyed list is settled state, not a stream of falls (world state audit, 2026-10-01): a client lays a listed
+prop it has not seen fall at its final pose, silently, and leaves a prop whose `world_prop_destroyed` it still owes
+the presentation to that event. A host that resumes a match from a migration keyframe restores the keyframe's list
+into its own world and continues `destructibleRevision` from the keyframe's value; the revision never restarts at
+zero inside a match.
+
 **Entity row** = `u8 entityId`, `varint mask` (`ROW_GROUP` bits), then the
 present groups in bit order:
 

@@ -86,7 +86,13 @@ for (const [id, source] of Object.entries(sources)) {
     const shellBox=new THREE.Box3().setFromObject(shell);
     near(shellBox.max.y,source.roof,.082,`${id}: actual turret roof height`);
     near(shellBox.min.z,source.rear,.065,`${id}: rear shell station`);
-    near(shellBox.max.z,source.front,.065,`${id}: front cheek station`);
+
+    // Owner 2026-10-01: remove the central fixed nose through the gun sweep.
+    // These are the remaining outboard cheek ends, not revised source data.
+    // The original complete-source envelope stays in sources above.
+    const openedCheekFront={leo2a7v_x:3.04354,leo2a6m_x:3.1764,leo2a4m_x:2.94327};
+    near(shellBox.max.z,openedCheekFront[id]??source.front,
+      openedCheekFront[id]!==undefined?.01:.065,`${id}: front cheek station after scoped gun opening`);
     near(shellBox.max.x-shellBox.min.x,source.width,.085,`${id}: shell width`);
     for(const [z,y] of source.roofProbes) {
       near(ray(shell,[.8,6,z],[0,-1,0])?.y??NaN,y,.11,`${id}: source roof triangle x=.8 z=${z}`);
@@ -188,9 +194,14 @@ for (const [id, source] of Object.entries(sources)) {
       near(ray(get('hullDetail'),[.47230,4,3.694037],[0,-1,0])?.y??NaN,
         1.20681,.003,`${id}: actual fourth lower shoe is separate from the three upper links`);
       for(const [x,z,y] of [[.3,2.1,2.56965],[1.1,2.1,2.39868],
-        [.3,2.3,2.52886],[1.1,2.3,2.31405]])
-        near(ray(shell,[x,4,z],[0,-1,0])?.y??NaN,y,.010,
+        [.3,2.3,2.52886],[1.1,2.3,2.31405]]) {
+        const hit=ray(shell,[x,4,z],[0,-1,0]);
+        // The owner's new throat intentionally replaces these two inboard
+        // fixed-armor witnesses with air; outboard source crossfall is held.
+        if(x===.3) assert.equal(hit,undefined,`${id}: removed fixed stock inside gun throat z=${z}`);
+        else near(hit?.y??NaN,y,.010,
           `${id}: actual source positive cheek crossfall at x=${x}, z=${z}`);
+      }
       const rack=get('leo2a7v_xFrontalRack');
       assert.equal(rack.parent,turret,`${id}: two-row frontal rack yaws with the physical turret`);
       const tubes=rack.children.filter(o=>o.name.startsWith('leo2a7v_xFrontalTube_'));

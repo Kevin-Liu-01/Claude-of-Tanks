@@ -162,8 +162,15 @@ function restoreReload(target: ReloadLike | undefined, remainingS: number, total
 
 const RELOAD_KINDS = ['ready', 'shell', 'intraClip', 'magazine'] as const;
 
-/** Write a keyframe's rows and extras onto the actor's entities (before the loop starts). Returns how many entities matched. */
-export function applyResumeState(actor: MatchActor, state: HostResumeState): { restored: number; skipped: number } {
+/**
+ * Write a keyframe's rows and extras onto the actor's entities, and its persistent destroyed list onto the actor's world
+ * (before the loop starts). Returns how many entities matched, and how many destroyed props this world restored or
+ * does not have. Without the list (world state audit, 2026-10-01) the elected host stood every felled tree back up
+ * in its collision world and at revision 0: hulls were pushed by trunks every seat saw lying, the next drive through
+ * one re-destroyed it (a second crunch on every seat), and the persistent-state convergence of every peer stalled
+ * until the new revision climbed past the old.
+ */
+export function applyResumeState(actor: MatchActor, state: HostResumeState): { restored: number; skipped: number; destroyedRestored: number; destroyedUnknown: number } {
   let restored = 0;
   let skipped = 0;
   const extrasById = new Map(state.entities.map((entry) => [entry.entityId, entry]));
@@ -216,7 +223,8 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     }
     restored++;
   }
-  return { restored, skipped };
+  const destroyed = actor.authority.restoreDestroyedObstacles(state.frame.destroyed, state.frame.meta.destructibleRevision);
+  return { restored, skipped, destroyedRestored: destroyed.restored, destroyedUnknown: destroyed.unknown };
 }
 
 /** The extras beside a keyframe row: what the wire row does not carry. */

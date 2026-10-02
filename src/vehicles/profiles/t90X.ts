@@ -1583,13 +1583,23 @@ function buildT90SMX(P: TankBuilderPort): void {
   sourceWheelFaces(P,.3981,.179,1.05575);
   smFendersAndSkirts(P);
   addT90SMEngineDeck(P);bowGear(P,1.068,3.46,true,1.54,1.81,false,false);addT90SMFrontEra(P);
+  buildT90SMXTurret(P);
+}
+
+/** Complete SM upper assembly in its native frame; chassis remains untouched. */
+export function buildT90SMXTurret(P: TankBuilderPort, customBustle=false): void {
+  P.turretG.position.set(...S.yaw);
+  P.gunG.position.set(S.gun[0]-S.yaw[0],S.gun[1]-S.yaw[1],S.gun[2]-S.yaw[2]);
+  P.muzzleZ=S.muzzle-S.gun[2];P.topY=S.height-S.yaw[1];
   P.add('turret',turretSolid(S,[
     [-1.477,.728,2.2195,1.711],[-1.02,.868,2.22,1.711],[-.73,.957,2.252,1.565],
     [-.47,1.019,2.2893,1.532],[.04,1.184,2.278,1.532],[.56,1.337,2.226,1.532],
     [.954,1.439,2.193,1.532],[1.34,1.061,2.145,1.532],[1.54,.863,2.098,1.610],
     [1.734,.408,2.051,1.781],
   ]));
-  ring(P,S,1.045);modernCheeks(P,S,true);modernBins(P,S,true);modernRoof(P,S,true);smoke(P,S,true);sourceRoofArmor(P,S);
+  ring(P,S,1.045);modernCheeks(P,S,true);
+  if(!customBustle)modernBins(P,S,true);
+  modernRoof(P,S,true);smoke(P,S,true);sourceRoofArmor(P,S);
   mantlet(P,S,.682,2.20,1.328);barrel(P,S,.096,4.90,.90);
   addT90SMGunSaddles(P);
 }

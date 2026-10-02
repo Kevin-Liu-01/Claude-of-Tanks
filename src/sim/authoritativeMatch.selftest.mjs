@@ -335,6 +335,37 @@ assert.equal(crushSnapshot.meta.destructibleRevision, 1,
 assert.deepEqual(crushSnapshot.meta.destroyedObstacleIndices, [0],
   'keyframes can reconstruct destroyed collision state after reconnect');
 
+// A resumed match (a host migration, world state audit 2026-10-01) restores the previous authority's destroyed props
+// silently — crushed in this world, no event — and continues its revision, so every client's persistent-state check
+// stays monotonic and no seat hears a second crunch for a tree it already saw fall.
+const restoreWall = { ...wall, min: wall.min.slice(), max: wall.max.slice(), shape2: { ...wall.shape2 }, crushable: true, kind: 'fence' };
+let restoreCrushes = 0;
+const restoreWorld = {
+  mapId: 'verdant',
+  getObstacles: () => [restoreWall],
+  queryObstacles: (_minX, _minZ, _maxX, _maxZ, out) => { out.length = 0; out.push(restoreWall); return out; },
+  raycast: () => null,
+  crushObstacle(obstacle) { restoreCrushes++; obstacle.crushed = true; return true; },
+};
+const restoreMatch = createAuthoritativeMatch({
+  mapId: 'verdant', countdownS: 0, worldCollision: restoreWorld,
+  players: [
+    { id: 'crush-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+    { id: 'crush-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+  ],
+});
+assert.deepEqual(restoreMatch.restoreDestroyedObstacles([0, 7, -1], 12), { restored: 1, unknown: 2 },
+  'the known prop is restored; indices this world lacks are counted, never applied');
+assert.equal(restoreWall.crushed, true, 'the restored prop is crushed in the collision world');
+assert.equal(restoreCrushes, 1, 'through the world\'s own crush seam');
+assert.deepEqual(restoreMatch.restoreDestroyedObstacles([0], 3), { restored: 1, unknown: 0 }, 'restoring it again is idempotent');
+assert.equal(restoreCrushes, 1);
+restoreMatch.onMatchReady();
+const restoreSnapshot = restoreMatch.snapshot({ tick: 1, serverTimeMs: 16, viewerId: 'crush-a', ackInputSeq: 1 });
+assert.deepEqual(restoreSnapshot.meta.destroyedObstacleIndices, [0]);
+assert.equal(restoreSnapshot.meta.destructibleRevision, 12, 'the revision continues from the previous host, never below it');
+assert.ok(!restoreSnapshot.events.some((event) => event.type === 'world_prop_destroyed'), 'a restore emits no destruction event');
+
 const botMatch = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0, seed: 123,
   players: [

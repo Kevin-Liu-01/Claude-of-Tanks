@@ -613,6 +613,8 @@ export interface PropsRuntime {
     dz: number,
     speed?: number,
     cause?: LoosePropKickCause,
+    /** Lay the record at its final pose at once — no fall, no debris, no sound (state older than this viewer's view). */
+    settled?: boolean,
   ): boolean;
   destructibles: DestructibleRecord[];
   looseRecords: DestructibleRecord[];
@@ -7348,12 +7350,15 @@ ${snowCap ? `
     dz: number,
     speed: number,
     directionLength: number,
+    settled = false,
   ): void {
+    // settled (multiplayer world state, 2026-10-01): the animation starts at its end — the runner writes the final
+    // pose once on the next tick and retires it — for destruction that predates this viewer's view
     if (rec.cls === 'topple') {
       setToppleAxis(_cax, dx, dz);
       pushCrushAnim({
         im: pool.imI!, index: rec.slot, x: rec.x, y: rec.y, z: rec.z,
-        ax: _cax.x, az: _cax.z, t: 0, placement: null,
+        ax: _cax.x, az: _cax.z, t: settled ? 1.1 : 0, placement: null,
         maxAng: settledToppleAngle(heightField, rec.x, rec.y, rec.z, dx, dz,
           rec.h, Math.max(0.05, Math.min(0.22, rec.r * 0.18))),
       });
@@ -7372,7 +7377,7 @@ ${snowCap ? `
         vz: (dz / directionLength) * th + (drng() - 0.5) * 1.2,
         vy: 2.6 + Math.min(speed, 12) * 0.30,
         ax: _cax.x, az: _cax.z,
-        t: 0, placement: null, dur: 1.5,
+        t: settled ? 1.5 : 0, placement: null, dur: 1.5,
       });
       return;
     }
@@ -7413,6 +7418,7 @@ ${snowCap ? `
     dz: number,
     speed = 0,
     cause: LoosePropKickCause = 'shell',
+    settled = false,
   ): boolean {
     const rec = destructibles[idx];
     if (!rec || rec.state) return false;
@@ -7428,7 +7434,9 @@ ${snowCap ? `
     if (rec.loopRef) rec.loopRef.toppled = true; // stop the main.ts loop
     const l = Math.hypot(dx, dz) || 1;
     if (rec.clutter) rec.clutter.setCrushed(true);
-    else if (pool) animateBrokenRecord(rec, pool, dx, dz, speed, l);
+    else if (pool) animateBrokenRecord(rec, pool, dx, dz, speed, l, settled);
+    // Late joiners restore persistent destruction without replaying its blast.
+    if (settled) return true;
     // Explosive decoration chains next tick through the cosmetic-only impact
     // path. Collidable cover still requires an authoritative direct hit/ram.
     if (pool?.meta.explosive) {
@@ -7478,8 +7486,9 @@ ${snowCap ? `
     dz: number,
     speed = 0,
     cause: LoosePropKickCause = 'ram',
+    settled = false,
   ): boolean {
-    return breakRecord(propIdx, dx, dz, speed, cause);
+    return breakRecord(propIdx, dx, dz, speed, cause, settled);
   }
 
   // Cosmetic shell paths (effects.ts forwards flight/impact presentation).

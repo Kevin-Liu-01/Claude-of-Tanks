@@ -13,7 +13,7 @@ import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 const YAW:Point3=[-.0000548974,1.4040902854,-.0343498434];
 const GUN:Point3=[-.0000548633,1.6208176016,1.2669569241];
-const T72B1987_X_DATUMS={
+export const T72B1987_X_DATUMS={
   dims:{hullLengthM:6.737070506,overallLengthM:9.703027867,widthM:3.59,heightM:2.105640266},
   turretPivot:YAW,trunnion:GUN,muzzleZ:5.766827075,highestFittingM:2.880735150,
   structuralRoofM:2.105640266,sourceHullBoundsZ:[-3.368535253,3.368535253],
@@ -231,6 +231,13 @@ function buildT72B1987X(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.muzzleZ=T72B1987_X_DATUMS.muzzleZ-GUN[2];P.topY=T72B1987_X_DATUMS.highestFittingM-YAW[1];
-  hull(P);runningGear(P);engineDeck(P);glacisEra(P);skirtEra(P);casting(P);turretEra(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P);
+  hull(P);runningGear(P);engineDeck(P);glacisEra(P);skirtEra(P);buildT72B1987XTurret(P);
 }
+export function buildT72B1987XTurret(P:TankBuilderPort):void {
+  P.turretG.position.set(...YAW);
+  P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
+  P.topY=T72B1987_X_DATUMS.highestFittingM-YAW[1];
+  casting(P);turretEra(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P);
+}
+
 export const T72B1987_X_PROFILES={t72b_1987_x:{build:buildT72B1987X}} as const;

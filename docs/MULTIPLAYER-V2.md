@@ -1649,6 +1649,85 @@ six page errors per lost-host run on the mobile-tier peers; the presentation emi
 listener never throws (`battlePresentation.selftest`, `combatFeedbackRuntime.selftest`). Open: a malformed invite link (`?room=AB`) is dropped silently by `parseRoomInvite` — the "Check the room
 code" dialog exists but no product path reaches it.
 
+### 13.13 World state audited (lane `mp/world-state-audit`, 2026-10-01)
+
+**The owner's report**: "I can randomly see trees falling at the wrong time, randomly, like ghost impacts and stuff" — and
+every aspect of game state to be checked. Every channel between the host and its peers was audited with a harness that
+measures instead of watching, the fixed-step simulation was checked for determinism, and the defects found were fixed with
+receipts.
+
+**The harness** (`tools/mp-world-events-audit.mjs`; its receipt `tools/mp-world-events-audit.selftest.mjs`, core group, ≈ 45 s).
+Three headless seats and a bot fill (4v4) on verdant's collision shard (6,977 obstacles, 6,707 crushable), the REAL battle
+presentation on every seat with the renderer stubbed (visuals, textures, the FX bus) — the code path a browser peer runs
+minus three's draw calls — the room signaling double and the scripted WebRTC world. The host authority's `eventsForViewer`
+is hooked, so every reliable event is logged exactly as it was sent to each viewer (tick, kind, key, the authority's
+position); every seat's presentation logs every crush it applies (through the per-frame destroyed list or the
+`world_prop_destroyed` event; direction, speed, settled or animated) and every FX bus event it emits, with the presented tick.
+The diff per seat, view and kind: missing, duplicate, late (presented tick − host tick beyond two snapshot intervals),
+early (negative: applied before the presented world reached the event), wrong place (> 0.5 m from the authority's position),
+replays on a rejoin, re-destruction on a migration. Scenarios in one run: 30 s of live play; p3 leaves to the Garage and
+rejoins (a fresh presentation on the running match); p2's link reconnects (a fresh offer, the actor replaces the seat); p1 —
+the host — closes its tab, p2 is elected and resumes from the sealed keyframe; p1 returns as a peer. A send inside the last
+400 ms before a view ends, before its host stops, or before the seat's link resets is not judged (the interpolation delay
+keeps it from presenting; a reset clears the queue by design). Limit: one Node process cannot configure the fleet factory
+twice (the actor's eager `tankFactory` and the presentation's lazy `fleetFactory`), so the presentations have no actors —
+own-shot feedback, wreck poses and ERA are receipted in `battlePresentation.selftest`, not measured here.
+
+**The state-channel matrix.** How each thing the peer presents is produced, travels and is applied; the verdict per scenario
+after this lane (the audit's rows are in the scratchpad's `world-events-matrix-after.md`).
+
+| Channel | Produced | Travels | Applied | Live | Late join / rejoin | Migration | Reconnect |
+|---|---|---|---|---|---|---|---|
+| Hull poses, turret, speed | the authority's entities | entity rows, keyframe / delta, interest tiers | `RemoteInterpolator` → `applySamplePose`; own hull: the predictor | PASS (§13.9) | PASS (keyframe) | PASS (§13.8: continuous) | PASS (keyframe) |
+| hp / maxHp, reload channels, magazine, ammo, flags (destroyed, burning, firing, airborne, overturned) | the authority's combat state | entity rows | `updateCombat`, `updateDestruction` (wreck from the DESTROYED flag) | PASS | PASS (row state) | PASS (rows + `MigrationEntityExtras`) | PASS |
+| Modules, crew, equipment (own) | `capturePredictionAuthorityState` | the viewer section | `updateOwn` | PASS | PASS | PASS (extras) | PASS |
+| ERA cassettes | `combat.eraSpent` | row ERA groups | `updateEra` (strip / reset) | PASS | PASS | PASS | PASS |
+| Shells in flight | the authority's shells (observable shooter) | shell rows | `applyShells` (hermite between samples; a vanished shell retires, no FX) | PASS | PASS | PASS | PASS |
+| Destroyed props — the persistent list | `destroyedObstacleIndices` + `destructibleRevision` in meta | every snapshot (keyframe whole, delta additions) | `applyDestroyed` | **FIXED**: settled state only for props whose event is not owed (0 of 419 live falls through the list, from 115/115) | **FIXED**: 78/78 and 142/142 laid down settled, 0 animated, 0 crunches (from 73/73 and 26/26 animated) | **FIXED**: the keyframe's list restored on the new host, 120/120 at revision 120 (from 0/115 at revision 0) | PASS: lost events settle from the keyframe (1 in the runs) |
+| Destroyed props — the fall | `destroyObstacle` → `world_prop_destroyed` | EVENT (never tiered, never skipped) | `applyEvent` → `crushObstacle(dir, speed)` + `prop:crushed` | **FIXED**: 419/419 through the event, Δ p50 2 ticks, max 6, 0 early, the authority's direction (before: 0) | PASS | **FIXED**: 0 re-destroyed, 0 ghost crunches (from 5 and 5) | PASS |
+| Shell impacts (terrain, props) | `emitWorldShellImpact` (x, y, z, normal) | EVENT, observable-shooter rule | `shell:expired` with the payload position | PASS: 83/83, pos err 0.000 m; **FIXED** lateness: Δ max 7 ticks (one slow frame) from 11–18 | PASS | PASS | PASS |
+| Shell hits | `emitShellHitEvent` (`...hit` with pos / normal) | EVENT, observable pair | `shell:hit` + killcam feed | PASS: 235/235, 0 duplicate; **FIXED** lateness: Δ max 6 from 13–16 | PASS | PASS | PASS |
+| Destruction, ram, crash | the authority | EVENT | `tank:destroyed` (pos: the presented actor), `tank:ram`, `tank:impact` (payload pos) | PASS: 71/71, Δ max 6 | PASS (wreck from the row; the explosion is not replayed) | PASS | PASS |
+| Module state, fire (events) | `module_state`, `tank_fire` | EVENT | `module:state`, `tank:fire` | PASS | open: an FX column for a tank already burning needs a `lastKnownPos` the joiner lacks | PASS | PASS |
+| Spotted / visibility | the spotting system filters the viewer snapshot | presence in the frame | `setVisible` / `networkVisible` | PASS (§13.9 invariant) | PASS | PASS | PASS |
+| Clock, phase, countdown, verdict | meta | every snapshot (+ `match_ended`) | `applyFrame`, `applyVerdict` (grace) | PASS (§13.12) | PASS | PASS | PASS |
+| Scores, zones, waves | the mode controller | `modeStateJson` | `game.matchModeState` | PASS (§13.12) | PASS | PASS | PASS |
+| Smoke screens | `auxiliarySmokeScreens` | meta `smokeJson` | `auxiliary:smokeScreens` | PASS | PASS | PASS | PASS |
+| Own-shot feedback | `OwnShotPredictor` (fresh authority says ready) + `shell_fired` carrying `fireIntentSeq` | own shots bypass the budget | `weapon:predicted`, then `shell:fired` with `feedbackPredicted` (no second flash) | PASS (receipt) | – | – | – |
+
+**Found and fixed** (each receipted; the audit's numbers before → after, verdant 4v4, 30 s live, 12 s per scenario):
+
+| # | Where | What the audit measured | Fix |
+|---|---|---|---|
+| 1 | `battlePresentation.applyDestroyed` | the persistent destroyed list reaches the presentation with the NEWEST snapshot — one interpolation delay ahead of the presented world — and felled every listed prop on arrival with the canned call `crushObstacle(ob, 0, 1, 0)`: toward +Z, at speed 0, 3–8 ticks before the presented tick (p50 −4 on the peers, −1 on the host's own seat); the `world_prop_destroyed` released at the right tick found the prop already down and only played the crunch. 115 of 115 live falls on p1, 72/72 on p3 went this way; 0 through their events | the list is settled state: a listed prop this seat has not seen fall is laid at its final pose (`{ settled: true }`), no fall, no sound; a prop whose event the client still owes the presentation — `MatchFrame.destroyedPending(index)` over `ReliableEventQueue.isObstaclePending` (queued, staged, or in the frame's events until `release`) — is left to that event, which fells it live with the authority's direction and speed. After: 419/419 live falls through their events, Δ p50 2 ticks, max 6, 0 early, 0 via the list |
+| 2 | the same, on a fresh presentation | a seat whose view begins on a running match (Rejoin battle; the old host back as a peer) animated every earlier fall at once — 73/73 and 26/26 trees falling toward +Z in the first frame | settled application (above) through the world's seam: `map.ts crushObstacle(…, options.settled)` → `vegetation.crushTree(…, settled)` (the animation starts at its end: one final pose on the next update) and `props.crushDestructible(…, settled)` → `breakRecord` (topple and toss at their final pose, no debris burst, no explosive chain, no audio report). After: 78/78 and 142/142 settled, 0 animated, 0 crunches at join |
+| 3 | `migrationState.applyResumeState` | the keyframe carried the old host's destroyed list and revision, and the elected host applied neither: it booted with 0 of 115 destroyed props and revision 0 — every felled trunk stood again in its collision world (hulls pushed by trees every seat saw lying), the next drive through one re-destroyed it (5 in 12 s, a second crunch on every peer: the "ghost impacts"), and the peers' persistent-state check (`revision <= applied`) stalled until the new revision climbed past the old | `AuthoritativeMatch.restoreDestroyedObstacles(indices, revision)`: crushed through the world's seam without an event, the revision continued (`max(keyframe revision, count)`); `applyResumeState` applies the frame's list; the presentation compares the list by content (revision and length), not by a monotonic revision alone. After: 120/120 restored at revision 120, 0 re-destroyed, 0 ghost crunches |
+| 4 | `battlePresentation.applyEvent('world_prop_destroyed')` | a prop already down on this seat still played the crunch on a second send | a prop falls once: no crush, no FX when `obstacle.crushed` |
+| 5 | `ReliableEventQueue.flush` | the presentation budget (≤ 3 per frame, a heavy beat ends the flush) serialized a volley or a tree line one heavy beat per display frame: hits and impacts presented 13–20 ticks (220–330 ms) behind their tick in bursts on the 30 Hz presenter (9–10 late hits per view) | a deadline: a beat held 4 ticks past its tick (one snapshot interval) is released with everything else due. After: 0 late hits, ≤ 1 impact at 7 ticks per view (a slow frame of the single-process harness) |
+
+**Measured, no defect**: every shell impact, hit, destruction, ram and crash a seat received was presented once, at the
+authority's position (0 missing, 0 duplicate, 0 wrong place over 981 judged deliveries in the final run); the own hull and
+the allies' hulls continuous across the migration (§13.8's gates in `tools/mp-p2p-headless.mjs`: discontinuity 0.01 m);
+the interest tiers never touch events; the migration keyframe's entities, extras and now its destroyed list restore within
+1 mm (`migrationState.selftest`).
+
+**Solo and shared simulation determinism** (`tools/sim-determinism-audit.mjs`, its receipt in the core group): the shared
+authority (`src/sim/authoritativeMatch.ts`, the step the solo integration and the host both run at `SIM_DT`) run twice from
+one seed with the same scripted inputs on the collision shard — two humans, four bots, driving, firing, crushing trees —
+hashes identically every 60 ticks: verdant 3,600 ticks (96 crushes, 165 hits, 354 events) and alpine 1,800 ticks. Every RNG
+in the authoritative step is seeded (`mulberry32(seed + …)` for combat, spotting, each bot and its route search); the only
+`Math.random` defaults in `src/sim` (`spotting.ts`, `botRoutePlanner.ts`) are fallbacks the authority never takes, and no
+`Date.now` / `performance.now` is read in `src/sim` or `src/game/state.ts`.
+
+**Open.** (1) The own hull's prediction passes through crushable cover at speed (by design, so the local hull never stops at
+a fence the next snapshot destroys); the fall arrives with the authority's event, RTT + lead after the predicted hull met
+the trunk — authority-driven, bounded, not random. (2) FX state that lives outside the snapshot (a burning tank's smoke
+column, impact decals on a vehicle) is not reconstructed for a late joiner. (3) Effects whose events were in flight during
+a link reset (the last ~150 ms before a reconnect or a migration) are not replayed — the persistent state converges, the
+one-shot effect is gone (1 impact and 1 hit in the final run's reconnect and host-close windows). (4) The harness's
+presentations carry no actors (the fleet factory configures once per process), so own-shot feedback is receipted, not
+measured, here.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers

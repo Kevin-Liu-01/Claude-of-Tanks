@@ -38,8 +38,22 @@ let nowMs = 1000;
 const now = () => nowMs;
 const schedule = () => () => {};
 const TICK_MS = 1000 / 60;
-const a = createMatchActor({ roomId: 'mig', mapId: 'verdant', seed: 99, seats, bots, world: 'terrain', countdownS: 0, now, schedule });
+// a world of thirty crushable props far outside the battlefield (nobody drives into them): the destroyed list under test
+const makeWorld = () => {
+  const obstacles = Array.from({ length: 30 }, (_, index) => ({ min: [900 + index * 3, 0, 900], max: [901 + index * 3, 2, 901], crushable: true, kind: 'fence', crushed: false, shape2: null }));
+  return {
+    mapId: 'verdant', obstacles, crushes: 0,
+    getObstacles: () => obstacles,
+    queryObstacles(minX, minZ, maxX, maxZ, out) { out.length = 0; for (const o of obstacles) if (o.max[0] >= minX && o.min[0] <= maxX && o.max[2] >= minZ && o.min[2] <= maxZ) out.push(o); return out; },
+    raycast: () => null,
+    crushObstacle(obstacle) { if (obstacle.crushed) return false; obstacle.crushed = true; this.crushes++; return true; },
+  };
+};
+const worldA = makeWorld();
+const a = createMatchActor({ roomId: 'mig', mapId: 'verdant', seed: 99, seats, bots, world: worldA, countdownS: 0, now, schedule });
 for (let tick = 0; tick < 240; tick++) { nowMs += TICK_MS; a.advance(nowMs); }
+// the old host had destroyed three props (its revision ran ahead of the count: one of them twice through a re-send)
+assert.deepEqual(a.authority.restoreDestroyedObstacles([3, 9, 27], 7), { restored: 3, unknown: 0 });
 // scripted damage on p1 so the restore has something to carry
 const p1 = a.entityForWireId(1);
 p1.combat.hp = Math.round(p1.combat.maxHp * 0.4);
@@ -65,7 +79,7 @@ const keyframe = {
   tick: a.tick, battleTimeMs: Math.round(a.authority.timeS * 1000), phase: 'playing',
   frame: {
     tick: a.tick, serverTimeMs: Math.round(a.tick * TICK_MS), ackedInputTick: 0xffffffff, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 127,
-    meta: captureMeta({ ...snapshot.meta, battleTimeMs: Math.round(a.authority.timeS * 1000) }, false), destroyed: [3, 9, 27], entities: rows, shells: [], viewer: null, modeStateJson: null,
+    meta: captureMeta({ ...snapshot.meta, battleTimeMs: Math.round(a.authority.timeS * 1000) }, false), destroyed: snapshot.meta.destroyedObstacleIndices, entities: rows, shells: [], viewer: null, modeStateJson: null,
   },
   entities: captureEntityExtras(a),
 };
@@ -75,6 +89,7 @@ assert.equal(decoded.tick, keyframe.tick);
 assert.equal(decoded.battleTimeMs, keyframe.battleTimeMs);
 assert.equal(decoded.phase, 'playing');
 assert.deepEqual(decoded.frame.destroyed, [3, 9, 27]);
+assert.equal(decoded.frame.meta.destructibleRevision, 7, 'the keyframe carries the old host\'s revision');
 assert.deepEqual(decoded.frame.entities.map((row) => [row.entityId, row.x, row.hp, row.flags, row.eraSpent]), rows.map((row) => [row.entityId, row.x, row.hp, row.flags, row.eraSpent]));
 assert.equal(decoded.entities.find((entry) => entry.entityId === 1).kills, 2);
 assert.equal(decoded.entities.find((entry) => entry.entityId === 1).modules[moduleId], 'red');
@@ -85,9 +100,18 @@ const roundTripped = await openMigrationBlob(key, await sealMigrationBlob(key, e
 assert.deepEqual([...roundTripped], [...encoded]);
 
 // ---- restore B from the keyframe (a resumed actor at A's tick)
-const b = createMatchActor({ roomId: 'mig', mapId: 'verdant', seed: 99, seats, bots, world: 'terrain', now, schedule, autoStart: false, resume: { tick: decoded.tick, battleTimeMs: decoded.battleTimeMs } });
+const worldB = makeWorld();
+const b = createMatchActor({ roomId: 'mig', mapId: 'verdant', seed: 99, seats, bots, world: worldB, now, schedule, autoStart: false, resume: { tick: decoded.tick, battleTimeMs: decoded.battleTimeMs } });
 const applied = applyResumeState(b, decoded);
-assert.deepEqual(applied, { restored: 4, skipped: 0 });
+assert.deepEqual(applied, { restored: 4, skipped: 0, destroyedRestored: 3, destroyedUnknown: 0 });
+// the destroyed props (world state audit, 2026-10-01): crushed in the new host's world, no event, the revision continued
+assert.deepEqual(worldB.obstacles.map((o, index) => (o.crushed ? index : -1)).filter((index) => index >= 0), [3, 9, 27], 'the old host\'s felled props lie felled in the new host\'s collision world');
+assert.equal(worldB.crushes, 3, 'through the world\'s crush seam');
+const restoredMeta = b.authority.snapshot({ tick: decoded.tick, serverTimeMs: Math.round(decoded.tick * TICK_MS), viewerId: 'migration', ackInputSeq: null }).meta;
+assert.deepEqual(restoredMeta.destroyedObstacleIndices, [3, 9, 27], 'the persistent list every snapshot carries continues');
+assert.equal(restoredMeta.destructibleRevision, 7, 'the revision continues from the old host: every peer\'s persistent-state check stays monotonic');
+assert.ok(!b.authority.eventsForViewer('p1').some((event) => event.type === 'world_prop_destroyed'), 'a restore emits no destruction event: nobody hears a second crunch');
+assert.deepEqual(b.authority.restoreDestroyedObstacles([1000], 0), { restored: 0, unknown: 1 }, 'a prop this world lacks is counted, never applied');
 for (const entityA of a.authority.entities) {
   const entityB = b.authority.entityById.get(entityA.id);
   assert.ok(Math.abs(entityA.state.pos.x - entityB.state.pos.x) <= 0.001 && Math.abs(entityA.state.pos.z - entityB.state.pos.z) <= 0.001, `${entityA.id} pose within 1 mm`);
@@ -161,4 +185,4 @@ const configBack = decodeBootConfig(configBytes);
 assert.deepEqual(configBack.seats, seats);
 assert.equal(configBack.generation, 2);
 assert.throws(() => decodeBootConfig(new TextEncoder().encode('{"roomId":1}')), /invalid/);
-console.log('migrationState.selftest: seal/open, keyframe codec, actor restore, chunk store and config blob verified');
+console.log('migrationState.selftest: seal/open, keyframe codec, actor restore (entities and the destroyed list with its revision), chunk store and config blob verified');

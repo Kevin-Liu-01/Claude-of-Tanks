@@ -333,6 +333,13 @@ export interface AuthoritativeMatch {
   eventsForViewer(viewerId: string): AuthoritativeEvent[];
   afterEventBroadcast(): void;
   afterSnapshotBroadcast(): void;
+  /**
+   * A resumed match (a host migration, 2026-10-01): the props the previous authority had destroyed — its persistent
+   * destroyed list — are crushed in this world without an event (every seat already saw them fall), and the
+   * destructible revision continues past the previous host's so every client's persistent-state check stays
+   * monotonic. Indices this world does not have are counted, never applied.
+   */
+  restoreDestroyedObstacles(indices: readonly number[], revision: number): { restored: number; unknown: number };
 }
 
 interface SharedTerrain {
@@ -1248,6 +1255,23 @@ export function createAuthoritativeMatch({
     }
     pendingCrush.length = 0;
     pendingCrushSet.clear();
+  }
+
+  function restoreDestroyedObstacles(indices: readonly number[], revision: number): { restored: number; unknown: number } {
+    let restored = 0;
+    let unknown = 0;
+    for (const index of indices) {
+      const obstacle = Number.isSafeInteger(index) && index >= 0 ? staticObstacles[index] : undefined;
+      if (!obstacle) { unknown++; continue; }
+      if (!obstacle.crushed) {
+        if (worldCollision && typeof worldCollision.crushObstacle === 'function') worldCollision.crushObstacle(obstacle, 0, 1, 0);
+        obstacle.crushed = true;
+      }
+      if (!destroyedObstacleIndices.includes(index)) destroyedObstacleIndices.push(index);
+      restored++;
+    }
+    destructibleRevision = Math.max(destructibleRevision, Math.floor(finite(revision, 0)), destroyedObstacleIndices.length);
+    return { restored, unknown };
   }
 
   function ramPairKey(contact: PendingRam): string {
@@ -2247,6 +2271,8 @@ export function createAuthoritativeMatch({
     afterSnapshotBroadcast(): void {
       pendingEvents.length = 0;
     },
+
+    restoreDestroyedObstacles,
   };
   updateVisibility();
   return simulation;

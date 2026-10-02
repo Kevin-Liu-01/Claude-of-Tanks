@@ -1,7 +1,9 @@
 // Owner-directed family rebuilds on the detailed T-72 foundations (2026-09-30).
 import {KIT, FITTINGS} from './kit.ts';
-import {buildT72B3MX,buildT72B3MXHull} from './t72b3mX.ts';
+import {buildT72B3MXHull} from './t72b3mX.ts';
 import {buildT72B3X} from './t72b3X.ts';
+import {buildT90SMXTurret} from './t90X.ts';
+import {addDonbasFieldCover} from './donbasFieldCover.ts';
 import {buildT72BUX} from './t72buX.ts';
 import {attachedCage,eraCassette,supportedSensor,strappedPack} from './modernizationFittings.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -39,7 +41,11 @@ export function addB3M2022Protection(P:TankBuilderPort):void {
   P.hullG.userData.familyRebuild={donor:'t72b3m_x',revision:1,features:['relikt-side','lower-soft-cases','cheek-infill','thermal-channel','rear-cage','field-kit']};
 }
 export function buildT72B3M2022(P:TankBuilderPort):void {
-  buildT72B3MX(P);addB3M2022Protection(P);
+  buildT72B3M2022Hull(P);
+  buildT90SMXTurret(P);
+  P.turretG.position.set(.008,1.545,.114315);
+  P.hullG.userData.familyRebuild={donor:'t72b3m_x',turret:'t90sm_x',revision:2,
+    features:['welded-sm-turret','modular-cheeks','panoramic-sight','remote-weapon','bustle-stowage','relikt-side','lower-soft-cases']};
 }
 export function buildT72BU1989(P:TankBuilderPort):void {
   buildT72BUX(P);
@@ -77,7 +83,8 @@ export function buildT64Modern(P:TankBuilderPort,ukrainian=false):void {
       P.addEquipment('turretDark',cylY(.009,.013,.62,10),side*.74,.80,-1.39);
     }
   }
-  P.hullG.userData.familyRebuild={donor:'t72b3_x',revision:1,variant:ukrainian?'donbas':'bv1'};
+  if(ukrainian)addDonbasFieldCover(P);
+  P.hullG.userData.familyRebuild={donor:'t72b3_x',revision:ukrainian?2:1,variant:ukrainian?'donbas':'bv1'};
 }
 export function buildJaguarModern(P:TankBuilderPort):void {
   buildT72B3X(P);

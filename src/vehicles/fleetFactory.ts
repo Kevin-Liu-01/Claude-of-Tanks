@@ -63,6 +63,7 @@ import './europePhotoIfvSpecs.ts';
 import './amx10pSpecs.ts';
 import './marder2Specs.ts';
 import {synchronizeFleetRenewalMetadata} from './fleetRenewalSpecs.ts';
+import {synchronizeNationalModernizationMetadata} from './nationalModernizationSpecs.ts';
 
 import {
   SAVED_TANK_IDS,
@@ -106,6 +107,7 @@ synchronizeAbramsSourceXCombatMetadata();
 synchronizeXk2CombatMetadata();
 synchronizeIfvReplicaCombatMetadata();
 synchronizeFleetRenewalMetadata();
+synchronizeNationalModernizationMetadata();
 applyTacticalRoleBalance(TANK_SPECS);
 finalizeFirstPartyRoster();
 applyVehicleSizePolicy(TANK_SPECS);
@@ -140,6 +142,7 @@ function registerProfiles(profiles: VehicleProfileRecord): void {
 }
 
 const GROUP_LOADERS = Object.freeze({
+  nationalModernization: () => import('./profiles/nationalModernization.ts').then(mod => registerProfiles(mod.NATIONAL_MODERNIZATION_PROFILES)),
   sinoSovietConcepts: () => import('./profiles/sinoSovietConcepts.ts').then(mod => registerProfiles(mod.SINO_SOVIET_CONCEPT_PROFILES)),
   t72Rys: () => import('./profiles/t72Rys.ts').then(mod => registerProfiles({t72_rys:{build:mod.buildT72Rys}})),
   aresApcX: () => import('./profiles/aresApcX.ts').then((mod) => registerProfiles(mod.ARES_APC_X_PROFILES)),

@@ -166,6 +166,8 @@ export interface WorldRuntime {
     dz: number,
     speedMetersPerSecond?: number,
     cause?: 'ram' | 'shell',
+    /** `settled`: lay the prop at its final pose at once, no fall, no debris, no sound (state older than this viewer's view). */
+    options?: { settled?: boolean },
   ): boolean;
   resetDestructibles(): void;
   spawnPoints: {
@@ -589,16 +591,21 @@ function assembleWorld(
     // hinge-topple; world-dressing r1 destructible props (propIdx, props.ts
     // — fences, carts, stalls, bales, lamps...) topple or swap to debris via
     // the same seam.
+    // `options.settled` (multiplayer world state, 2026-10-01): destruction that happened before this viewer looked —
+    // a late joiner's or a reconnected seat's persistent destroyed list — lands at its final pose with no fall, no
+    // debris and no sound; only an event the seat witnesses live animates.
     crushObstacle: (
       ob: CollisionRecord | null | undefined,
       dx: number,
       dz: number,
       speedMps = 0,
       cause: 'ram' | 'shell' = 'ram',
+      options?: { settled?: boolean },
     ) => {
       if (!ob) return false;
+      const settled = options?.settled === true;
       if (isTreeObstacle(ob)) {
-        const toppled = vegetation.crushTree(ob, dx, dz);
+        const toppled = vegetation.crushTree(ob, dx, dz, settled);
         if (toppled) {
           ob.crushed = true;
           ob.dead = true;
@@ -608,7 +615,7 @@ function assembleWorld(
       // DESTRUCTIBLES r1: the overrun speed rides through so debris inherits
       // the hull's velocity (props.ts breakRecord scales the throw).
       if (ob.propIdx != null && props.crushDestructible) {
-        return props.crushDestructible(ob.propIdx, dx, dz, speedMps, cause);
+        return props.crushDestructible(ob.propIdx, dx, dz, speedMps, cause, settled);
       }
       return false;
     },

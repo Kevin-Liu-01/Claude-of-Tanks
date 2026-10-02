@@ -53,6 +53,7 @@ export const VEHICLE_MARKING_SEAT_GROUP_LOADERS: Readonly<Record<string, () => P
   "misc": () => import('./vehicleMarkingSeatGroups/misc.generated.ts'),
   "modern2": () => import('./vehicleMarkingSeatGroups/modern2.generated.ts'),
   "modern3Core": () => import('./vehicleMarkingSeatGroups/modern3Core.generated.ts'),
+  "nationalModernization": () => import('./vehicleMarkingSeatGroups/nationalModernization.generated.ts'),
   "patton": () => import('./vehicleMarkingSeatGroups/patton.generated.ts'),
   "poland": () => import('./vehicleMarkingSeatGroups/poland.generated.ts'),
   "pumaS1SourceX": () => import('./vehicleMarkingSeatGroups/pumaS1SourceX.generated.ts'),

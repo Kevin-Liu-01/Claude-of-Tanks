@@ -57,7 +57,7 @@ interface GhilliePanels {
   face?: readonly FacePanel[];
 }
 
-interface GhillieConfig {
+export interface GhillieConfig {
   id: string;
   seed: number;
   style: GhillieStyle;
@@ -1014,8 +1014,8 @@ function addGhillieOwner(
   );
 }
 
-export function addVehicleGhillieSuit(P: GhillieBuilderPort): boolean {
-  const cfg = GHILLIE_CONFIG_INDEX[P.spec.id];
+export function addVehicleGhillieSuit(P: GhillieBuilderPort, config?: GhillieConfig): boolean {
+  const cfg = config ?? GHILLIE_CONFIG_INDEX[P.spec.id];
   if (!cfg || cfg.disabled) return false;
 
   const owners: readonly [GhillieOwner, THREE.Group][] = [

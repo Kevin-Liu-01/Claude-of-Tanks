@@ -53,6 +53,7 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "misc": () => import('./interiorFillGroups/misc.generated.ts'),
   "modern2": () => import('./interiorFillGroups/modern2.generated.ts'),
   "modern3Core": () => import('./interiorFillGroups/modern3Core.generated.ts'),
+  "nationalModernization": () => import('./interiorFillGroups/nationalModernization.generated.ts'),
   "patton": () => import('./interiorFillGroups/patton.generated.ts'),
   "poland": () => import('./interiorFillGroups/poland.generated.ts'),
   "pumaS1SourceX": () => import('./interiorFillGroups/pumaS1SourceX.generated.ts'),

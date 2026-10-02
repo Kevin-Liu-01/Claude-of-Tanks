@@ -53,6 +53,7 @@ import './europePhotoIfvSpecs.ts';
 import './amx10pSpecs.ts';
 import './marder2Specs.ts';
 import {synchronizeFleetRenewalMetadata} from './fleetRenewalSpecs.ts';
+import {synchronizeNationalModernizationMetadata} from './nationalModernizationSpecs.ts';
 
 import {
   SAVED_TANK_IDS,
@@ -71,6 +72,7 @@ synchronizeAbramsSourceXCombatMetadata();
 synchronizeXk2CombatMetadata();
 synchronizeIfvReplicaCombatMetadata();
 synchronizeFleetRenewalMetadata();
+synchronizeNationalModernizationMetadata();
 applyTacticalRoleBalance(TANK_SPECS);
 finalizeFirstPartyRoster();
 applyVehicleSizePolicy(TANK_SPECS);
