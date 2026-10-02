@@ -23,7 +23,7 @@ import { existsSync, realpathSync } from 'node:fs';
 import { basename, dirname, extname, posix, relative, resolve } from 'node:path';
 import type { Plugin } from 'vite';
 
-export interface SharedWorkerOptions {
+interface SharedWorkerOptions {
   /** Project-relative worker module → options. */
   workers: Record<string, { privateCopies?: readonly string[] }>;
 }
