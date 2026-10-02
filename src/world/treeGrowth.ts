@@ -824,7 +824,6 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
         row.push([node.x + dx * rr, node.y + dy * rr, node.z + dz * rr, dx, dy, dz, j / s]);
       }
       ring.push(row);
-      for (let j = 0; j <= s; j++) void j;
       (row as unknown as { meta: number[] }).meta = [along, tr * shade, tg * shade, tb * shade, node.flex];
     }
     for (let i = 0; i < ring.length - 1; i++) {
