@@ -4380,7 +4380,7 @@ function* vegetationBuildSteps(
   if (snagShare > 0) {
     (SPECIES as Record<string, SpeciesDefinition>).snag = {
       texSeed: 65, nearSeed: 361, farSeed: 381,
-      tex: (r) => makeSprayAtlas('birch-bare', r, texSize(512), (_h, sat, l) => [0.07, sat * 0.35, l * 0.42]),
+      tex: (r) => makeSprayAtlas('birch-bare', r, texSize(256), (_h, sat, l) => [0.07, sat * 0.35, l * 0.42]),
       near: (k) => buildGrownTree('snag', seed + 361 + k * 7, k, {}),
       far: (r, _pal, k) => buildSnagFarGeometry(r, k),
     };
