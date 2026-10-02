@@ -14,7 +14,12 @@ export class WeaponDamageVisuals {
     for (const part of parts) {
       const count = part.index?.count ?? part.getAttribute('position').count;
       const module = part.userData.auxiliaryStation?.stage === 'pitch' ? 'roofGun' : part.userData.weaponStock?.module;
-      if (module) this.ranges.push({module, geometry: merged, start, count, original: null});
+      if (module) {
+        // Damage keeps references to these color buffers. The rigid-stock pool
+        // must not replace them with shared clones after construction.
+        merged.userData.weaponDamageMutable = true;
+        this.ranges.push({module, geometry: merged, start, count, original: null});
+      }
       start += count;
     }
   }
