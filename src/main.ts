@@ -136,6 +136,7 @@ import {
 } from './ui/garageStage.ts';
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
+import { classifyChunkFailure } from './app/lazyImportRetry.ts';
 import {
   GARAGE_VARIANTS, getGarageVariant, loadGarageVariantId, saveGarageVariantId,
 } from './game/garageVariants.ts';
@@ -856,6 +857,10 @@ const garageDressingScheduler = createGarageDressingScheduler({
   acquireBackgroundWork: (kind, stillValid) =>
     garageIdleWorkCoordinator.acquire(kind, stillValid),
   onVisualChange: () => invalidateGaragePresentation(),
+  // INFRA-P11: failures back off and stop; a removed hashed chunk (this tab outlived its deployment)
+  // surfaces the inline watchdog's reload action instead of retrying.
+  classifyFailure: (error) => classifyChunkFailure(error),
+  onChunkMissing: () => window.__COT_BOOT_RECOVERY?.showRetry?.('module'),
 });
 const scheduleGarageDressingBuild = garageDressingScheduler.schedule;
 
