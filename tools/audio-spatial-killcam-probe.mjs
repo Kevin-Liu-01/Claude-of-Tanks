@@ -294,7 +294,8 @@ try {
     if (i > 0) {
       const prev = engineDistance[i - 1];
       if (!(cur.state.gain < prev.state.gain)) fail(`engine gain is not distance-ordered at ${cur.distanceM} m`);
-      if (!(cur.state.cutoffHz < prev.state.cutoffHz)) fail(`engine air absorption is not distance-ordered at ${cur.distanceM} m`);
+      // Air absorption alone: terrain between the tanks (occlusion) is position-dependent, not distance-ordered.
+      if (!(cur.state.airHz < prev.state.airHz)) fail(`engine air absorption is not distance-ordered at ${cur.distanceM} m`);
       if (!(cur.audio.rmsDb < prev.audio.rmsDb + 1)) fail(`engine PCM is not distance-ordered at ${cur.distanceM} m`);
     }
   }

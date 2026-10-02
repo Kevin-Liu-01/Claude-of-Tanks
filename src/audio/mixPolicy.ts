@@ -17,6 +17,8 @@ export const BUS_CHANNEL: Readonly<Record<BusId, SettingsChannel>> = Object.free
   cinematic: 'combat',
   vehicles: 'engine',
   own: 'engine',
+  // The occupied hull's own gun, its interior report and hits on it are gunfire, not engine noise.
+  ownCombat: 'combat',
   interior: 'engine',
   ambience: 'ambience',
   ui: 'ui',
@@ -25,20 +27,25 @@ export const BUS_CHANNEL: Readonly<Record<BusId, SettingsChannel>> = Object.free
   alarm: 'voice',
 });
 
-/** Nominal linear bus levels before settings and snapshots. */
+/**
+ * Nominal linear bus levels before settings and snapshots. Gunfire and
+ * impacts lead the mix; the constant layers (engines, ambience, radio, the
+ * interface) sit under them so a cannon is never masked by an idling engine.
+ */
 export const BUS_LEVELS: Readonly<Record<BusId, number>> = Object.freeze({
   weapons: 1,
-  impacts: 0.95,
-  environment: 0.8,
+  impacts: 1,
+  environment: 0.75,
   cinematic: 1,
-  vehicles: 0.62,
-  own: 0.72,
-  interior: 0.8,
-  ambience: 0.55,
-  ui: 0.8,
-  music: 0.75,
-  voice: 1,
-  alarm: 0.7,
+  vehicles: 0.5,
+  own: 0.5,
+  ownCombat: 1,
+  interior: 0.6,
+  ambience: 0.45,
+  ui: 0.5,
+  music: 0.6,
+  voice: 0.72,
+  alarm: 0.55,
 });
 
 /** Buses whose level the HDR window rides (world sound, not the hull or the HUD). */
@@ -46,21 +53,24 @@ export const HDR_BUSES: readonly BusId[] = Object.freeze(['weapons', 'impacts', 
 
 /**
  * DICE-style HDR window on logical loudness. The loudest recent event sets
- * the window top (instant attack, slow release); world buses duck by how far
- * the top sits above `refDb`; anything below `top − windowDb` is not started.
+ * the window top (instant attack, steady release). A new voice is trimmed by
+ * how far it falls below the top beyond the knee, so small sounds give way
+ * to a cannon while the cannon itself plays at full level; anything below
+ * `top − windowDb` is not started.
  */
 export const HDR = Object.freeze({
-  refDb: 116,
   floorDb: 100,
-  windowDb: 55,
-  maxDuckDb: 11,
-  releaseDbPerS: 9,
+  windowDb: 50,
+  kneeDb: 18,
+  slope: 0.5,
+  maxTrimDb: 12,
+  releaseDbPerS: 12,
   /** Priority at or above which a cue is never culled by the window. */
   protectPriority: 88,
 });
 
-/** Crew speech ducks the beds a little so it stays intelligible. */
-export const VOICE_DUCK = Object.freeze({ ambienceDb: -7, worldDb: -2.5, attackS: 0.04, releaseS: 0.45 });
+/** Crew speech ducks the beds so it stays intelligible; gunfire barely moves. */
+export const VOICE_DUCK = Object.freeze({ ambienceDb: -6, worldDb: -1, attackS: 0.04, releaseS: 0.45 });
 
 export interface MixSnapshot {
   /** World (HDR buses) lowpass and level. */
@@ -105,8 +115,8 @@ export type DeviceTier = 'desktop' | 'mobile';
 export const BUDGETS = Object.freeze({
   // maxDecodedMb is a soft cap above the pinned battle set (desktop ~120–140 MB,
   // mobile ~65–80 MB at 24 kHz with one variant per asset).
-  desktop: Object.freeze({ voices: 48, nearVehicles: 5, farVehicles: 8, reverb: true, maxDecodedMb: 200, maxVariants: 4 }),
-  mobile: Object.freeze({ voices: 24, nearVehicles: 3, farVehicles: 4, reverb: false, maxDecodedMb: 96, maxVariants: 1 }),
+  desktop: Object.freeze({ voices: 32, nearVehicles: 5, farVehicles: 8, reverb: true, maxDecodedMb: 200, maxVariants: 4 }),
+  mobile: Object.freeze({ voices: 16, nearVehicles: 3, farVehicles: 4, reverb: false, maxDecodedMb: 96, maxVariants: 1 }),
 });
 
 /** Vehicle rig level of detail by distance (m), with hysteresis. */

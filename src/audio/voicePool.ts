@@ -175,14 +175,20 @@ export function createVoicePool({ mixer, library, random, budget, reverb }: Voic
       }
       if (levelDb < -72) { culled++; return null; }
       const loud = (options.loudDb ?? base.loudDb) + (options.gainDb ?? 0) + attenuation - 9 * occluded;
-      const drives = options.drivesWindow ?? (WORLD_BUSES.has(bus) || bus === 'own');
-      if ((WORLD_BUSES.has(bus) || bus === 'own') && !mixer.admit(loud, priority, drives)) { culled++; return null; }
+      const hdrBus = WORLD_BUSES.has(bus) || bus === 'own' || bus === 'ownCombat';
+      if (hdrBus) {
+        // The HDR window trims what falls well below the loudest recent event; the loudest plays in full.
+        const trim = mixer.admit(loud, priority, options.drivesWindow ?? true);
+        if (trim == null) { culled++; return null; }
+        levelDb += trim;
+      }
       if (options.propagate !== false) delay += propagationDelayS(distance, atmosphere);
       cutoff = Math.min(cutoff, airAbsorptionCutoffHz(distance, atmosphere, base.absorb));
       pan = panFromRelative(rel, 0.92);
       send = clamp(send * (1 + distance / 180), 0, 0.95);
-    } else if (bus === 'own') {
-      mixer.admit((options.loudDb ?? base.loudDb) + (options.gainDb ?? 0), priority, options.drivesWindow ?? true);
+    } else if (bus === 'own' || bus === 'ownCombat') {
+      const trim = mixer.admit((options.loudDb ?? base.loudDb) + (options.gainDb ?? 0), priority, options.drivesWindow ?? true);
+      if (trim != null) levelDb += trim;
     }
     if (!makeRoom(id, base, priority, now)) { culled++; return null; }
 

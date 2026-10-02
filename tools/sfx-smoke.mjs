@@ -332,7 +332,7 @@ try {
   }
   const own = entry('gun_120_own', 'gun_120_close');
   if (own && near && !(own.g > near.g)) fail(`occupied gun not hotter than an enemy gun at 15 m (${own.g} vs ${near.g})`);
-  if (own && own.b !== 'own') fail(`occupied gun routed to ${own.b}, expected the own-hull bus`);
+  if (own && own.b !== 'ownCombat') fail(`occupied gun routed to ${own.b}, expected the hull's gunfire bus`);
 
   // ---- repeats never identical ---------------------------------------------------
   const m0 = await page.evaluate(() => window.__P.sfxMark());

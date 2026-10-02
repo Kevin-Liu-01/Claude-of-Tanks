@@ -27,7 +27,7 @@ import type { AudioListenerPose } from './listenerPoseRuntime.ts';
 import { getLocale } from '../ui/i18n.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
 import {
-  atmosphereForMap, clamp, dbToGain, dopplerRatio, gainToDb, mulberry32, rampBetween,
+  atmosphereForMap, clamp, dbToGain, dopplerRatio, gainToDb, mulberry32, propagationDelayS, rampBetween,
   toListenerFrame, distanceAttenuationDb, panFromRelative,
   type AtmosphereProfile, type ListenerFrame, type RelativePosition,
 } from './audioMath.ts';
@@ -39,7 +39,7 @@ import { createAmbienceDirector, sceneAssets, type AmbienceDirector } from './am
 import { GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
 import { BUDGETS, BUS_LEVELS, CONCUSSION, SNAPSHOTS, VEHICLE_LOD, type DeviceTier, type SettingsChannel } from './mixPolicy.ts';
 import {
-  ammoRackBeep, createNoiseBank, fireKlaxon, heartbeat, loadingBed, synthBoom, synthClick,
+  ammoRackBeep, createNoiseBank, fireKlaxon, heartbeat, loadingBed, subThump, synthBoom, synthClick,
   synthImpact, synthShot, type NoiseBank, type Rig,
 } from './procedural.ts';
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
@@ -252,7 +252,7 @@ const PLAYER_HULL = [
 ];
 
 const UI_SET = [
-  'ui_click', 'ui_hover', 'ui_toggle', 'ui_back', 'ui_confirm', 'ui_error', 'ui_tab', 'ui_tank_select', 'ui_deploy',
+  'ui_click', 'ui_toggle', 'ui_back', 'ui_confirm', 'ui_error', 'ui_tab', 'ui_tank_select', 'ui_deploy',
   'ui_slider', 'ui_ready', 'sting_garage',
 ];
 
@@ -347,6 +347,7 @@ export function createAudio({
   let lastStanding = { mine: false, theirs: false, outnumbered: false };
   let lastKillAt = -99;
   let lastSpots: number[] = [];
+  let lastSpotCallAt = -99;
   let fireAlarm: Rig | null = null;
   let heartbeatRig: Rig | null = null;
   let heartbeatBelow = 0;
@@ -478,7 +479,7 @@ export function createAudio({
     const far = WEAPON_FAR[cls.id];
     const closeK = own ? 1 : 1 - rampBetween(distance, cls.closeFadeM[0], cls.closeFadeM[1]);
     const farK = own ? 0.35 : rampBetween(distance, cls.farFadeM[0], cls.farFadeM[1]);
-    const bus = cinematic ? 'cinematic' as const : own ? 'own' as const : undefined;
+    const bus = cinematic ? 'cinematic' as const : own ? 'ownCombat' as const : undefined;
     const base: PlayOptions = { x, y, z, rate: report.rate, gainDb: report.gainDb, ...(bus ? { bus } : {}) };
     if (own) { base.propagate = false; base.priority = 95; }
     const closePlayed = closeK > 0.03 && play(close, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(closeK) + (own ? 1.5 : 0) });
@@ -491,7 +492,14 @@ export function createAudio({
     }
     if (own && listenerScoped && cls.family === 'cannon') {
       const size = caliberMm >= 128 ? 'heavy' : caliberMm >= 111 ? 'large' : 'medium';
-      play(`gun_interior_${size}`, hullOptions({ bus: 'own', gainDb: 0 }));
+      play(`gun_interior_${size}`, hullOptions({ bus: 'ownCombat', gainDb: 0 }));
+    }
+    // Weight: the pressure wave under a cannon (the generated reports are lean below 80 Hz).
+    if (noise && mixer && (cls.family === 'cannon' || cls.id === 'rocket_heavy') && (own || distance < 700)) {
+      const bore = clamp((caliberMm - 75) / 80, 0, 1);
+      const level = own ? 0.9 : 0.75 * dbToGain(distanceAttenuationDb(distance, 25, 0.75)) * Math.max(closeK, 0.35);
+      const when = mixer.ctx.currentTime + 0.004 + (own ? 0 : propagationDelayS(distance, atmosphere));
+      subThump(mixer.ctx, mixer.input(bus ?? 'weapons'), noise, when, 78 - 18 * bore, 34 - 8 * bore, 0.45 + 0.35 * bore, level, random);
     }
     if ((own || distance < 45) && cls.family === 'autocannon') {
       play('ac_feed', own ? hullOptions({ delayS: cls.actionDelayS, gainDb: -8 }) : { x, y, z, delayS: cls.actionDelayS, gainDb: -10 });
@@ -533,7 +541,7 @@ export function createAudio({
       : event.shellType === 'HE' || event.shellType === 'HEAT' ? 'shell_flyby_he' : 'shell_flyby_sabot';
     const lead = asset === 'bullet_crack' ? 0.01 : 0.12;
     play(asset, { x: cx, y: cy, z: cz, propagate: false, delayS: Math.max(0, passIn - lead), gainDb: -3 * (miss / reach), priority: 82 });
-    if (!small && !launcher && miss < 9 && !sameTeam(event.shooterId, playerId)) say('near_miss', { prob: 0.35, delayS: passIn + 0.25 });
+    if (!small && !launcher && miss < 9 && !sameTeam(event.shooterId, playerId)) say('near_miss', { prob: 0.25, delayS: passIn + 0.25 });
   }
 
   function onShellFired(event: ShellFiredEvent): void {
@@ -541,8 +549,8 @@ export function createAudio({
     if (!event.feedbackPredicted) fireWeapon(event.muzzlePos, event.caliberMm, event.weaponSound, ownShot, event.muzzleIndex);
     if (!ownShot) shellFlyby(event);
     if (event.isPlayer) {
-      if (/launch/.test(String(event.weaponSound || ''))) say('missile_away', { prob: 0.7, delayS: 0.1 });
-      else say('firing', { prob: 0.16, delayS: 0.08 });
+      if (/launch/.test(String(event.weaponSound || ''))) say('missile_away', { prob: 0.5, delayS: 0.1 });
+      else say('firing', { prob: 0.1, delayS: 0.08 });
     }
     const [mx, my, mz] = event.muzzlePos;
     const dist = ownShot || !listenerValid ? 0 : distanceTo(mx, my, mz);
@@ -577,6 +585,11 @@ export function createAudio({
   function explosion(x: number, y: number, z: number, caliberMm: number, bus?: 'cinematic'): void {
     const id = caliberMm >= 140 ? 'expl_he_large' : caliberMm >= 61 ? 'expl_he_medium' : 'expl_he_small';
     const distance = distanceTo(x, y, z);
+    if (noise && mixer && caliberMm >= 61 && distance < 600) {
+      const size = clamp((caliberMm - 61) / 90, 0, 1);
+      subThump(mixer.ctx, mixer.input(bus ?? 'impacts'), noise, mixer.ctx.currentTime + 0.004 + propagationDelayS(distance, atmosphere),
+        70 - 16 * size, 30 - 6 * size, 0.6 + 0.4 * size, 0.85 * dbToGain(distanceAttenuationDb(distance, 22, 0.7)), random);
+    }
     if (!bus) blastNearHull(distance, caliberMm);
     const rate = clamp(1.08 - (caliberMm - 100) / 600, 0.86, 1.12);
     if (!play(id, { x, y, z, rate, ...(bus ? { bus } : {}) }) && noise && mixer) {
@@ -621,17 +634,20 @@ export function createAudio({
       case 'pen':
         play(small ? 'bullet_armor' : medium ? 'pen_light' : 'pen_heavy', { x, y, z });
         if (heat) play('heat_impact', { x, y, z, gainDb: -3 });
-        if (ownHull && (event.damage || 0) > 0) play('pen_interior', hullOptions({ bus: 'own', gainDb: small ? -14 : medium ? -6 : 0 }));
+        if (ownHull && (event.damage || 0) > 0) {
+          play('pen_interior', hullOptions({ bus: 'ownCombat', gainDb: small ? -14 : medium ? -6 : 0 }));
+          if (!small && noise && mixer) subThump(mixer.ctx, mixer.input('ownCombat'), noise, mixer.ctx.currentTime + 0.004, 96, 46, 0.3, medium ? 0.45 : 0.8, random);
+        }
         break;
       case 'ricochet':
         play(small || medium ? 'ricochet_light' : 'ricochet_heavy', { x, y, z });
-        if (ownHull && !small) play('nonpen_interior', hullOptions({ bus: 'own', gainDb: medium ? -10 : -5 }));
+        if (ownHull && !small) play('nonpen_interior', hullOptions({ bus: 'ownCombat', gainDb: medium ? -10 : -5 }));
         break;
       case 'nonpen':
       case 'spaced_absorb':
         play(small ? 'bullet_armor' : 'nonpen_heavy', { x, y, z, rate: medium ? 1.18 : 1 });
         if (heat) play('heat_impact', { x, y, z, gainDb: -5 });
-        if (ownHull && !small) play('nonpen_interior', hullOptions({ bus: 'own', gainDb: medium ? -8 : 0 }));
+        if (ownHull && !small) play('nonpen_interior', hullOptions({ bus: 'ownCombat', gainDb: medium ? -8 : 0 }));
         break;
       case 'era':
         if (!(event.eraActivations || []).length) play('era_det', { x, y, z });
@@ -640,7 +656,7 @@ export function createAudio({
       case 'he_splash':
         play('he_armor', { x, y, z });
         explosion(x, y, z, caliber);
-        if (ownHull) play('nonpen_interior', hullOptions({ bus: 'own', gainDb: -2 }));
+        if (ownHull) play('nonpen_interior', hullOptions({ bus: 'ownCombat', gainDb: -2 }));
         break;
       case 'terrain': {
         explosion(x, y, z, caliber);
@@ -657,7 +673,7 @@ export function createAudio({
     }
     // Hull-borne debris from a close blast.
     if (!ownHull && (event.kind === 'he_splash' || event.kind === 'terrain') && listenerValid && distanceTo(x, y, z) < 14 && playerEntityInfo()?.alive) {
-      play('hull_debris_patter', hullOptions({ bus: 'own', delayS: 0.3 }));
+      play('hull_debris_patter', hullOptions({ bus: 'ownCombat', delayS: 0.3 }));
     }
   }
 
@@ -709,14 +725,14 @@ export function createAudio({
     const damaged = (event.damage || 0) > 0;
     if (event.fireStarted) { say('enemy_fire', { delayS: 0.2 }); return; }
     if (modules.has('ammoRack')) { say('enemy_ammo_rack', { delayS: 0.18 }); return; }
-    if ((modules.get('trackL') === 'red' || modules.get('trackR') === 'red')) { say('enemy_immobilized', { prob: 0.8, delayS: 0.18 }); return; }
-    if (modules.has('gun') || modules.has('gunMount')) { say('enemy_gun_damaged', { prob: 0.8, delayS: 0.18 }); return; }
-    if (modules.has('engine')) { say('enemy_engine_hit', { prob: 0.75, delayS: 0.18 }); return; }
-    if ((event.crewHit?.length || 0) > 0 && damaged) { say('enemy_crew_hit', { prob: 0.7, delayS: 0.18 }); return; }
-    if (modules.size > 0 && damaged) { say('enemy_crit', { prob: 0.7, delayS: 0.18 }); return; }
-    if ((event.kind === 'pen' || event.kind === 'he_pen') && damaged) { say('penetration', { prob: 0.8, delayS: 0.18 }); return; }
-    if (event.kind === 'ricochet') say('ricochet', { prob: 0.8, delayS: 0.16 });
-    else if (event.kind === 'nonpen' || event.kind === 'spaced_absorb') say('nonpen', { prob: 0.8, delayS: 0.16 });
+    if ((modules.get('trackL') === 'red' || modules.get('trackR') === 'red')) { say('enemy_immobilized', { prob: 0.6, delayS: 0.18 }); return; }
+    if (modules.has('gun') || modules.has('gunMount')) { say('enemy_gun_damaged', { prob: 0.6, delayS: 0.18 }); return; }
+    if (modules.has('engine')) { say('enemy_engine_hit', { prob: 0.55, delayS: 0.18 }); return; }
+    if ((event.crewHit?.length || 0) > 0 && damaged) { say('enemy_crew_hit', { prob: 0.5, delayS: 0.18 }); return; }
+    if (modules.size > 0 && damaged) { say('enemy_crit', { prob: 0.45, delayS: 0.18 }); return; }
+    if ((event.kind === 'pen' || event.kind === 'he_pen') && damaged) { say('penetration', { prob: 0.55, delayS: 0.18 }); return; }
+    if (event.kind === 'ricochet') say('ricochet', { prob: 0.45, delayS: 0.16 });
+    else if (event.kind === 'nonpen' || event.kind === 'spaced_absorb') say('nonpen', { prob: 0.45, delayS: 0.16 });
   }
 
   function onShellHit(event: ShellHitEvent): void {
@@ -748,7 +764,7 @@ export function createAudio({
       play(groundImpactAsset(surfaceAt(x, z).surface, x, z), { x, y, z, rate: clamp(1.1 - caliber / 900, 0.9, 1.08) });
     }
     if (!small && listenerValid && playerEntityInfo()?.alive && distanceTo(x, y, z) < 10) {
-      play('hull_debris_patter', hullOptions({ bus: 'own', delayS: 0.25, gainDb: -3 }));
+      play('hull_debris_patter', hullOptions({ bus: 'ownCombat', delayS: 0.25, gainDb: -3 }));
     }
     logSound('shell:expired', { id: event.shellId, hitKind: water ? 'water' : (event.hitKind || 'terrain') });
   }
@@ -770,6 +786,11 @@ export function createAudio({
       play('burnout_blast', { x, y, z, ...bus });
     } else {
       const ok = play(cause === 'ammorack' ? 'tank_explode_ammo' : 'tank_explode', { x, y, z, ...bus });
+      const blastM = distanceTo(x, y, z);
+      if (noise && mixer && blastM < 900) {
+        subThump(mixer.ctx, mixer.input(cinematic ? 'cinematic' : 'impacts'), noise, mixer.ctx.currentTime + 0.004 + (cinematic ? 0 : propagationDelayS(blastM, atmosphere)),
+          cause === 'ammorack' ? 58 : 64, cause === 'ammorack' ? 22 : 26, cause === 'ammorack' ? 1.3 : 1.0, 0.95 * dbToGain(distanceAttenuationDb(blastM, 30, 0.6)), random);
+      }
       if (!ok && noise && mixer) synthBoom(mixer.ctx, mixer.input(cinematic ? 'cinematic' : 'impacts'), noise, mixer.ctx.currentTime, 1.8, 0.8 * dbToGain(distanceAttenuationDb(distanceTo(x, y, z), 18, 0.95)), random);
       play('debris_metal', { x, y, z, delayS: 0.25 * stretch, ...slow });
       if (cause === 'ammorack') play('turret_land', { x: x + (random() - 0.5) * 8, y, z: z + (random() - 0.5) * 8, delayS: (1.5 + random() * 1.1) * stretch, ...slow });
@@ -798,8 +819,8 @@ export function createAudio({
       lastKillAt = now;
     } else if (playerId != null && info) {
       const near = listenerValid && distanceTo(x, y, z) < 300;
-      if (sameTeam(event.id, playerId)) { if (near) say('ally_destroyed', { prob: 0.7, delayS: 0.3 }); }
-      else if (event.killerId && sameTeam(event.killerId, playerId)) say('ally_kill', { prob: 0.45, delayS: 0.35 });
+      if (sameTeam(event.id, playerId)) { if (near) say('ally_destroyed', { prob: 0.5, delayS: 0.3 }); }
+      else if (event.killerId && sameTeam(event.killerId, playerId)) say('ally_kill', { prob: 0.3, delayS: 0.35 });
     }
     logSound('tank:destroyed', { id: event.id, killerId: event.killerId, cause, occupied: event.id === listenerOwnerId });
   }
@@ -853,7 +874,7 @@ export function createAudio({
     const k = clamp(event.speedMps / 12, 0, 1);
     if (k < 0.05) return;
     play(random() < 0.5 ? 'hit_rock' : 'hit_wall', { ...at(event.pos), gainDb: -10 + 10 * k });
-    if (isOwn(event.id) && k > 0.4) play('nonpen_interior', hullOptions({ bus: 'own', gainDb: -16 + 8 * k }));
+    if (isOwn(event.id) && k > 0.4) play('nonpen_interior', hullOptions({ bus: 'ownCombat', gainDb: -16 + 8 * k }));
     logSound('tank:impact', { id: event.id, speedMps: event.speedMps });
   }
 
@@ -864,10 +885,10 @@ export function createAudio({
     play(heavy ? 'ram_heavy' : 'ram_light', { ...at(event.pos), gainDb: -6 + clamp(closing / 11, 0, 1) * 6, ...(cinematic ? { bus: 'cinematic' as const } : {}) });
     const occupied = !cinematic && (event.aIsPlayer || event.bIsPlayer || isOwn(event.aId) || isOwn(event.bId));
     if (occupied) {
-      play('nonpen_interior', hullOptions({ bus: 'own', gainDb: -8 + clamp(closing / 11, 0, 1) * 6 }));
+      play('nonpen_interior', hullOptions({ bus: 'ownCombat', gainDb: -8 + clamp(closing / 11, 0, 1) * 6 }));
       const other = isOwn(event.aId) || event.aIsPlayer ? event.bId : event.aId;
-      if (other && sameTeam(other, playerId)) say('friendly_ram', { prob: 0.7, delayS: 0.2 });
-      else if (closing > 3) say('rammed', { prob: 0.55, delayS: 0.2 });
+      if (other && sameTeam(other, playerId)) say('friendly_ram', { prob: 0.5, delayS: 0.2 });
+      else if (closing > 3) say('rammed', { prob: 0.45, delayS: 0.2 });
     }
     logSound('tank:ram', { aId: event.aId, bId: event.bId, occupied, closingMps: closing });
   }
@@ -947,10 +968,10 @@ export function createAudio({
       if (reload.plan?.ready) play('latch_ready', hullOptions({ gainDb: -6 }));
       reload.active = false;
       reloadCalled = false;
-      if (total >= 1.25) say('reloaded', { prob: 0.8, delayS: 0.08 });
+      if (total >= 1.25) say('reloaded', { prob: 0.35, delayS: 0.08 });
     } else if (!reloadCalled && total >= 2.2) {
       reloadCalled = true;
-      say('reloading', { prob: 0.45, delayS: 0.1 });
+      say('reloading', { prob: 0.15, delayS: 0.1 });
     }
   }
 
@@ -989,7 +1010,7 @@ export function createAudio({
         break;
       case 'line_advanced':
         play('ui_line_advance');
-        say('line_advanced', { prob: 0.7, delayS: 0.4 });
+        say('line_advanced', { prob: 0.5, delayS: 0.4 });
         break;
       case 'goal_scored':
         if (team === ours) { play('ui_goal'); say('goal_scored', { delayS: 0.2 }); } else play('ui_objective_loss');
@@ -998,13 +1019,13 @@ export function createAudio({
         if (byMe) play('ui_ball_hit', { space: 'flat', gainDb: -6 });
         break;
       case 'pickup_collected':
-        if (byMe) { play('ui_pickup'); say('pickup_collected', { prob: 0.6, delayS: 0.2 }); }
+        if (byMe) { play('ui_pickup'); say('pickup_collected', { prob: 0.35, delayS: 0.2 }); }
         break;
       case 'destruction_scored':
         if (team === ours) play('ui_score');
         break;
       case 'respawn':
-        if (payload.id === playerId) { play('ui_respawn'); say('respawn', { prob: 0.8, delayS: 0.5 }); }
+        if (payload.id === playerId) { play('ui_respawn'); say('respawn', { prob: 0.6, delayS: 0.5 }); }
         break;
       default:
         break;
@@ -1033,7 +1054,7 @@ export function createAudio({
     // First move after rollout.
     if (rolledOut && !movedOnce && Math.abs(state.speed) > 2.5) {
       movedOnce = true;
-      say('on_the_move', { prob: 0.85, delayS: 0.1 });
+      say('on_the_move', { prob: 0.5, delayS: 0.1 });
     }
     // Rolled over / back on tracks.
     const over = !!state.overturned;
@@ -1071,7 +1092,7 @@ export function createAudio({
     if (limit && !wasAtLimit && now - lastGunLimitAt > 1.5) {
       lastGunLimitAt = now;
       play('gun_limit', hullOptions({ gainDb: -4 }));
-      if (slewing || random() < 0.3) say('gun_limit', { prob: 0.35, delayS: 0.2 });
+      if (slewing || random() < 0.3) say('gun_limit', { prob: 0.25, delayS: 0.2 });
     }
     wasAtLimit = limit;
     // The turret drive's stop clunk ends a real slew (a quarter second or
@@ -1337,26 +1358,9 @@ export function createAudio({
     void library.load([...UI_SET, 'radio_interference']);
     // A battle hull may already be indexed (late adoption mid-battle).
     if (playerId) applyCrewLanguage();
-    installHoverTicks();
     installDebugSurface();
     applyScene();
     chooseSnapshot();
-  }
-
-  let hoverEl: Element | null = null;
-  let hoverAt = 0;
-  function installHoverTicks(): void {
-    if (typeof document === 'undefined') return;
-    document.addEventListener('mouseover', (ev) => {
-      if (!ctx || muted || document.pointerLockElement) return;
-      const target = ev.target instanceof Element ? ev.target.closest('button, .cot-set-toggle, .cot-set-tab') : null;
-      if (!target || target === hoverEl) return;
-      hoverEl = target;
-      const now = ctx.currentTime;
-      if (now - hoverAt < 0.07) return;
-      hoverAt = now;
-      if (!play('ui_hover') && mixer) synthClick(mixer.ctx, mixer.input('ui'), now, 0.05, 1.6);
-    }, { capture: true, passive: true });
   }
 
   function uiClick(): void {
@@ -1407,7 +1411,9 @@ export function createAudio({
       const now = ctx?.currentTime ?? 0;
       lastSpots = lastSpots.filter((t) => now - t < 2.5);
       lastSpots.push(now);
-      if (lastSpots.length >= 3) { say('spotted_multiple', { delayS: 0.1 }); return; }
+      if (lastSpots.length >= 3) { say('spotted_multiple', { delayS: 0.1 }); lastSpotCallAt = now; return; }
+      if (now - lastSpotCallAt < 5) return;
+      lastSpotCallAt = now;
       const me = playerId ? tanks.get(playerId) : null;
       if (me && random() < 0.65) {
         const dx = info.pos.x - me.pos.x;
@@ -1435,7 +1441,7 @@ export function createAudio({
     on<undefined>('ui:consumableDenied', () => play('ui_error'));
     on<undefined>('ui:click', uiClick);
     on<{ slot?: number }>('ui:shellSelectionChanged', (e) => onShellSelect(e?.slot));
-    on<undefined>('ui:magazineReload', () => { play('magazine_swap', hullOptions()); say('reloading', { prob: 0.6, delayS: 0.15 }); });
+    on<undefined>('ui:magazineReload', () => { play('magazine_swap', hullOptions()); say('reloading', { prob: 0.3, delayS: 0.15 }); });
     on<undefined>('ui:magazineReloadStarted', () => play('magazine_swap', hullOptions()));
     on<{ kind?: string; active?: boolean }>('ui:specialActionResult', (e) => {
       const kind = String(e?.kind || '');
@@ -1456,8 +1462,8 @@ export function createAudio({
       say(empty ? 'ammo_out_all' : 'ammo_empty', { delayS: 0.15 });
     });
     on<{ on?: boolean; reason?: string }>('ui:autoAimState', (e) => {
-      if (e?.on) { play('lock_on'); say('target_locked', { prob: 0.6, delayS: 0.1 }); }
-      else { play('lock_off'); if (e?.reason && !/off/i.test(e.reason)) say('target_lost', { prob: 0.7, delayS: 0.1 }); }
+      if (e?.on) { play('lock_on'); say('target_locked', { prob: 0.35, delayS: 0.1 }); }
+      else { play('lock_off'); if (e?.reason && !/off/i.test(e.reason)) say('target_lost', { prob: 0.4, delayS: 0.1 }); }
     });
     on<undefined>('ui:armorOverlayState', () => play('ui_toggle'));
     on<undefined>('ui:minimapZoom', () => play('ui_tab', { gainDb: -6 }));
@@ -1503,6 +1509,7 @@ export function createAudio({
       reload.active = false;
       reload.plan = null;
       if (next === 'battle' && prev !== 'battle') {
+        void warmBattle();
         stopWorld('battle-reset');
         tanks.clear();
         moduleStates.clear();
@@ -1518,6 +1525,9 @@ export function createAudio({
         applyScene();
         startEngineSoon = true;
       } else if (next !== 'battle' && prev === 'battle') {
+        // Leaving from the pause menu or a kill-cam must not carry their mix into the next battle.
+        paused = false;
+        killcam = false;
         loadingOn(false);
         stopWorld(`phase:${next}`);
         fireAlarm?.stop(); fireAlarm = null;
@@ -1646,6 +1656,36 @@ export function createAudio({
     ambience?.update(now, frame.x, frame.y, frame.z);
   }
 
+  /**
+   * Decode and pin a battle's sound set: every report bank, the combat,
+   * hull, interface and mode sets, the map's scene, running gear and the
+   * roster's powertrains (or one band of every family when the roster is
+   * unknown). Runs at every battle phase edge whatever the entry path (solo
+   * loader, multiplayer, debug start), so no first shot falls back to the
+   * synthesized report; the solo loader also awaits it before the reveal.
+   */
+  function warmBattle(roster?: readonly string[]): Promise<void> {
+    if (!library) return Promise.resolve();
+    const ids = new Set<string>(CORE_BATTLE);
+    for (const id of UI_SET) ids.add(id);
+    for (const id of PLAYER_HULL) ids.add(id);
+    for (const id of MODE_SET) ids.add(id);
+    // Every report bank: any calibre may appear (roof guns, mixed rosters, network joins).
+    for (const id of Object.values(WEAPON_CLOSE)) ids.add(id);
+    const mapId = getMapId?.() || 'verdant';
+    for (const id of sceneAssets(sceneForMap(mapId), true)) ids.add(id);
+    for (const specId of roster || []) {
+      const identity = resolveVehicleAudioIdentity({ id: specId });
+      for (const band of ['idle', 'low', 'mid', 'high', 'start']) ids.add(`engine_${identity.engine}_${band}`);
+    }
+    // A battle always has some running gear on the ground under it.
+    for (const cls of ['light', 'heavy']) for (const s of ['earth', 'hard']) for (const v of ['slow', 'fast']) ids.add(`tracks_${cls}_${s}_${v}`);
+    if (!roster?.length) for (const family of ENGINE_FAMILY_IDS) ids.add(`engine_${family}_mid`);
+    // The battle set stays decoded for the whole battle (rigs and scenes pin their own loops).
+    library.pin(ids, true);
+    return library.load(ids);
+  }
+
   function loadingOn(on: boolean): void {
     if (!mixer || !noise) return;
     if (on && !loading) {
@@ -1687,6 +1727,7 @@ export function createAudio({
       },
       engineState: () => [...rigs.values()].map((rig) => ({
         id: rig.id, lod: rig.lod, own: rig.lod === 'own', scoped: listenerScoped, dist: rig.lastDistance, gain: rig.lastGain, family: rig.identity.engine,
+        airHz: Math.round(rig.lastAirHz),
         // Effective lowpass: the rig's air absorption under the snapshot's world/hull filter.
         cutoffHz: Math.min(rig.lastCutoff, mixer ? SNAPSHOTS[mixer.snapshot][rig.lod === 'own' ? 'ownHz' : 'worldHz'] : 20000),
         rpm: +rig.state.rpm.toFixed(3), gear: rig.state.gear, load: +rig.state.load.toFixed(2), scrub: +rig.state.scrub.toFixed(2),
@@ -1783,26 +1824,8 @@ export function createAudio({
     loadingOn,
     warmBattleEvents(roster) {
       if (!library) return;
-      const ids = new Set<string>(CORE_BATTLE);
-      for (const id of UI_SET) ids.add(id);
-      for (const id of PLAYER_HULL) ids.add(id);
-      for (const id of MODE_SET) ids.add(id);
-      // Every report bank: any calibre may appear (roof guns, mixed rosters, network joins).
-      for (const id of Object.values(WEAPON_CLOSE)) ids.add(id);
-      const mapId = getMapId?.() || 'verdant';
-      for (const id of sceneAssets(sceneForMap(mapId), true)) ids.add(id);
-      for (const specId of roster || []) {
-        const identity = resolveVehicleAudioIdentity({ id: specId });
-        for (const band of ['idle', 'low', 'mid', 'high', 'start']) ids.add(`engine_${identity.engine}_${band}`);
-      }
-      // A battle always has some running gear on the ground under it.
-      for (const cls of ['light', 'heavy']) for (const s of ['earth', 'hard']) for (const v of ['slow', 'fast']) ids.add(`tracks_${cls}_${s}_${v}`);
-      if (!roster?.length) for (const family of ENGINE_FAMILY_IDS) ids.add(`engine_${family}_mid`);
-      // The battle set stays decoded for the whole battle (rigs and scenes pin their own loops).
-      library.pin(ids, true);
       // Battle entry waits for the decode, but never longer than the loader's patience.
-      const load = library.load(ids);
-      return Promise.race([load, new Promise<void>((resolve) => setTimeout(resolve, 3500))]);
+      return Promise.race([warmBattle(roster), new Promise<void>((resolve) => setTimeout(resolve, 3500))]);
     },
     ambientOn(on) {
       ambientWanted = !!on;

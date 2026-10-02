@@ -132,7 +132,8 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
 });
 
 /** One radio net: a dead-air gap between transmissions and a short queue. */
-export const RADIO_DISCIPLINE = Object.freeze({ gapS: 0.26, queueMax: 2, defaultStaleS: 1.2 });
+/** A disciplined net: one transmission at a time with a breath between calls, two waiting at most. */
+export const RADIO_DISCIPLINE = Object.freeze({ gapS: 0.8, queueMax: 2, defaultStaleS: 1.2 });
 
 /**
  * Which language the crew speaks: the operating nation by default; English

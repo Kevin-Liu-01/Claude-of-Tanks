@@ -69,16 +69,30 @@ assert.equal(probe.crewLanguage, 'ru', 'a Russian hull carries a Russian crew');
 assert.ok(fetched.some((p) => p.startsWith('audio/voice/ru/')), 'the national pack loads');
 assert.equal(probe.ambientState().bed, 'amb_urban', 'Steinburg plays its ruined-town scene');
 
+// HDR baseline: a rifle round into the dirt ten metres away, before any gun has fired.
+let since = probe.sfxLog.length ? probe.sfxLog.at(-1).seq : 0;
+bus.emit('shell:expired', { shellId: 90, pos: [6, 0, 8], hitTerrain: true, caliberMm: 7.62 });
+const quietAlone = probe.sfxLog.filter((e) => e.seq > since).find((e) => e.n === 'bullet_dirt');
+assert.ok(quietAlone, 'the rifle round lands');
+
 // Weapons: close report + urban tail near; distant report far; supersonic flyby on a near miss.
 const mark = () => probe.sfxLog.length;
-let since = mark();
+since = mark();
+const oscillatorsBefore = ctx.nodes.filter((n) => n.kind === 'oscillator').length;
 bus.emit('shell:fired', { shellId: 1, shooterId: 'foe', muzzlePos: [-40, 2, 120], dir: [0.316, 0, -0.949], caliberMm: 120, shellType: 'APFSDS', velocityMps: 1650 });
+const oscillatorsAfter = ctx.nodes.filter((n) => n.kind === 'oscillator').length;
 let names = probe.sfxLog.slice(since).map((e) => e.n);
 assert.ok(names.includes('gun_120_close'), `near 120 mm report (${names})`);
 assert.ok(names.includes('tail_urban'), 'the shot rings into the urban tail');
 assert.ok(names.includes('shell_flyby_sabot'), 'the sabot cracks past the listener');
 const close = probe.sfxLog.slice(since).find((e) => e.n === 'gun_120_close');
 assert.ok(close.t > ctx.currentTime + 0.3, 'the report arrives at the speed of sound (126 m ≈ 0.37 s)');
+assert.ok(oscillatorsAfter > oscillatorsBefore, 'a sub-bass thump rides under the cannon');
+const quietSince = probe.sfxLog.at(-1).seq;
+ctx.advance(0.05);
+bus.emit('shell:expired', { shellId: 91, pos: [6, 0, 8], hitTerrain: true, caliberMm: 7.62 });
+const quietAfter = probe.sfxLog.filter((e) => e.seq > quietSince).find((e) => e.n === 'bullet_dirt');
+assert.ok(quietAfter && quietAfter.g < quietAlone.g * 0.5, `small sounds give way to the cannon (${quietAlone.g} → ${quietAfter?.g})`);
 since = mark();
 bus.emit('shell:fired', { shellId: 2, shooterId: 'far', muzzlePos: [0, 2, 700], dir: [1, 0, 0], caliberMm: 30, shellType: 'APFSDS', weaponSound: '2a42' });
 names = probe.sfxLog.slice(since).map((e) => e.n);
@@ -102,7 +116,7 @@ audio.update(1 / 60, listener, tanks);
 // Our own gun, then the reload choreography of a carousel autoloader.
 since = mark();
 bus.emit('shell:fired', { shellId: 3, shooterId: 'me', isPlayer: true, muzzlePos: [0, 2, 3], dir: [0, 0, 1], caliberMm: 125, shellType: 'APFSDS' });
-assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'gun_125_close'));
+assert.equal(probe.sfxLog.slice(since).find((e) => e.n === 'gun_125_close')?.b, 'ownCombat', 'our own gun is gunfire, not engine noise');
 assert.equal(probe.busGains().concussion, 0, 'our own gun never concusses its crew');
 since = mark();
 for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 7 * (1 - progress), progress });
@@ -212,11 +226,23 @@ assert.equal(probe.snapshot, 'scoped');
 assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'scope_in'));
 listener.scoped = false;
 
-// Leaving battle tears every world loop down.
+// Leaving battle tears every world loop down — here from the pause menu.
+bus.emit('ui:pause', { on: true });
+audio.update(1 / 60, listener, tanks);
+assert.equal(probe.snapshot, 'paused');
 bus.emit('phase:change', { phase: 'garage' });
 audio.update(1 / 60, listener, tanks);
 assert.equal(probe.engineState().length, 0, 'no rig survives the garage edge');
 assert.equal(probe.snapshot, 'garage');
 assert.equal(probe.ambientState().bed, 'amb_garage');
+// The hangar is indoors: its workshop sounds come from a few metres away.
+const garageFrom = probe.sfxLog.length ? probe.sfxLog.at(-1).seq : 0;
+for (let t = 0; t < 14; t += 0.25) { ctx.advance(0.25); audio.update(0.25, listener, []); }
+const workshop = probe.sfxLog.filter((e) => e.seq > garageFrom && /garage_clank|spot_crane_chain|spot_radio_far/.test(e.n));
+assert.ok(workshop.length > 0 && workshop.every((e) => e.d < 16), `garage spots nearby (${workshop.map((e) => `${e.n}@${e.d}m`)})`);
+// The next battle does not start under the pause it was left from.
+bus.emit('phase:change', { phase: 'battle' });
+audio.update(1 / 60, listener, tanks);
+assert.equal(probe.snapshot, 'battle', 'a battle left from the pause menu leaves no pause behind');
 
 console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, kill-cam, panning, scope and teardown passed (${probe.sfxLog.length} voices logged)`);
