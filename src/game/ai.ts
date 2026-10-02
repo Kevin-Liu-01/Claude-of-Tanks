@@ -489,6 +489,11 @@ const FRIENDLY_CORRIDOR_PAD_M = 1.25;
 const FRIENDLY_HE_PAD_M = 1.5;
 const FRIENDLY_PREDICT_MAX_S = 1.5;
 const FRIENDLY_LANE_RELOCATE_S = 1.2;
+// The lane search (bots lane, 2026-10-02; Steinburg 7v7 seed 88677, profiled: 18.8 s of the authority's 77.8 s of
+// step CPU over 300 s). A blocked trigger with no lateral lane in sight re-ran the whole search (six candidate points,
+// a terrain sight line each) on every tick for as long as the block lasted. A search that finds no lane now waits
+// FRIENDLY_LANE_RETRY_S before the next one; the block, the trigger hold and every other use of the dwell are unchanged.
+const FRIENDLY_LANE_RETRY_S = 1.2;
 const FRIENDLY_SEPARATION_LOOK_M = 26;
 const FRIENDLY_SEPARATION_PREDICT_S = 1.8;
 const FRIENDLY_STOP_DECEL_MPS2 = 4.0;
@@ -1210,6 +1215,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let friendlyBlockT = 0;
   let friendlyBlockCount = 0;
   let friendlyLaneMoves = 0;
+  let friendlyLaneRetryS = -Infinity;        // a lane search that found nothing waits until then (FRIENDLY_LANE_RETRY_S)
+  let friendlyLaneSearches = 0;              // probe-visible count of lane searches run
   let lastFriendlyRisk: FriendlyFireRisk | null = null;
   let underFire: AiEntity | null = null; // shooter revealed by hitting us/a teammate
   let underFireUntilS = -Infinity; // reaction window end (sim seconds)
@@ -4905,8 +4912,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function updateFriendlyLaneRelocation(timeS: number): void {
     const shouldRelocate = friendlyBlockT >= FRIENDLY_LANE_RELOCATE_S
-      && target && losClear && timeS >= scootUntilS;
-    if (!shouldRelocate || !pickFriendlyFireLane()) return;
+      && target && losClear && timeS >= scootUntilS && timeS >= friendlyLaneRetryS;
+    if (!shouldRelocate) return;
+    friendlyLaneSearches++;
+    if (!pickFriendlyFireLane()) {
+      friendlyLaneRetryS = timeS + FRIENDLY_LANE_RETRY_S;
+      return;
+    }
     beginScoot(7);
     friendlyBlockT = 0;
     friendlyLaneMoves++;
@@ -5630,7 +5642,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       burstDamage: Math.round(burstDamage),
       friendlyBlockT: +friendlyBlockT.toFixed(2),
       friendlyBlockCount,
-      friendlyLaneMoves,
+      friendlyLaneMoves, friendlyLaneSearches,
       friendlyBlockKind: lastFriendlyRisk ? lastFriendlyRisk.kind : null,
       friendlyBlockId: lastFriendlyRisk ? lastFriendlyRisk.allyId : null,
       allyYielding, allyAvoidingId,
