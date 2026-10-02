@@ -166,7 +166,9 @@ export function cloudCameraCut(movedM: number, turnedRad: number, previousTan: n
  * far deck a band darker than the sky around it (winter / whiteout skylines rose a tenth).
  */
 export const CLOUD_AERIAL = Object.freeze({
-  density: 0.00145, hazeDensity: 0.00092, hazeStart: 85, extCeiling: 0.60, scatterCeiling: 0.55,
+  density: 0.00145, hazeDensity: 0.00092, hazeStart: 85, extCeiling: 0.42, scatterCeiling: 0.38,
+  /** 2026-10-02: the pass's haze layer (AERIAL_LAYER_H): its scale height over the ground under the camera (m) */
+  layerH: 300,
   desat: 0.62, cool: [0.90, 0.97, 1.08] as const,
   /** the pass's height-aware atmosphere: the falloff's start over the camera (m), its e-fold height, the shares */
   heightRef: 30, heightScale: 150, heightScatterK: 0.75, heightExtK: 0.35,
@@ -551,15 +553,29 @@ float cloudColumnDepthAbove( vec3 p, Weather w, float cellK ) {
 float cloudDepthAbove( vec3 p, Weather w ) {
 	return cloudDensity( p + vec3( 0.0, 70.0, 0.0 ), w, false, 0.0 ) * 110.0 * uDensity;
 }
+// 2026-10-02: the battlefield haze is a layer over the ground (post.ts AERIAL_LAYER_H): the path-averaged density
+// between the camera's height and the point's over the same path from the ground — 1 for a camera on the ground (the
+// chase, the sights), 0.63 for the census bird at 300 m — so a cloud bank and the ground under it haze alike
+uniform float uHazeDatum;
+float cloudHazeLayer( float dist, vec3 dir ) {
+	float y0 = max( uCamPos.y - uHazeDatum, 0.0 );
+	if ( y0 <= 1.0 ) return 1.0;
+	float y1 = max( uCamPos.y + dir.y * dist - uHazeDatum, 0.0 );
+	float H = ${f(CLOUD_AERIAL.layerH)};
+	float fromCam = abs( y0 - y1 ) < 1.0 ? exp( -0.5 * ( y0 + y1 ) / H ) : H * ( exp( -y1 / H ) - exp( -y0 / H ) ) / ( y0 - y1 );
+	float fromGround = y1 < 1.0 ? exp( -0.5 * y1 / H ) : H * ( 1.0 - exp( -y1 / H ) ) / y1;
+	return clamp( fromCam / max( fromGround, 1e-3 ), 0.0, 1.0 );
+}
 // the aerial pass's law on a layer at its distance: desaturation and a cool shift, then the scatter-in toward
 // the sky-view LUT along the ray under the same ceilings (uncapped: a bank fades into the sky it stands
 // against), both decaying with the layer's altitude over the camera as the pass's height-aware atmosphere does
 vec3 cloudHaze( vec3 L, float opacity, float dist, vec3 dir, float hAtt ) {
-	float x = dist * ${f(CLOUD_AERIAL.density)};
+	float layer = cloudHazeLayer( dist, dir );
+	float x = dist * ${f(CLOUD_AERIAL.density)} * layer;
 	float fe = min( 1.0 - exp( -x * x ), ${f(CLOUD_AERIAL.extCeiling)} ) * mix( 1.0, hAtt, ${f(CLOUD_AERIAL.heightExtK)} );
 	vec3 hazy = mix( L, vec3( luma( L ) ), ${f(CLOUD_AERIAL.desat)} ) * vec3( ${CLOUD_AERIAL.cool.map(f).join(', ')} );
 	L = mix( L, hazy, fe );
-	float hz = max( dist - ${f(CLOUD_AERIAL.hazeStart)}, 0.0 ) * ${f(CLOUD_AERIAL.hazeDensity)};
+	float hz = max( dist - ${f(CLOUD_AERIAL.hazeStart)}, 0.0 ) * ${f(CLOUD_AERIAL.hazeDensity)} * layer;
 	// beyond the ring's range the pass's ceiling and altitude rule no longer apply (they hold a lit mountain
 	// against the haze): a bank far out converges on the sky it stands against
 	float farW = smoothstep( ${f(CLOUD_AERIAL.farStartM)}, ${f(CLOUD_AERIAL.farEndM)}, dist );
@@ -1306,6 +1322,8 @@ export class VolumetricCloudLayer {
   private readonly noiseShift = new THREE.Vector3();
   private readonly cirrusShift = new THREE.Vector2();
   private readonly upperDrift = new THREE.Vector2();
+  /** 2026-10-02: the aerial pass's haze-layer datum (the ground under the camera, post.ts uHazeDatum); NaN until a frame passes it. */
+  private hazeDatum = Number.NaN;
   private flashSeed = 0x2f6b4a1d;
   private flashClock = 0;
   private flashNext = 3;
@@ -1371,7 +1389,7 @@ export class VolumetricCloudLayer {
         tAtmoSky: { value: null }, uAtmoSun: { value: new THREE.Vector3(0, 1, 0) }, uAtmoViewH: { value: ATMO_GROUND_KM + 0.05 },
         uAtmoKnee: { value: knee }, uAtmoIntensity: { value: 1 },
         tShape: { value: null }, tDetail: { value: null }, tCurl: { value: null }, tBlue: { value: null },
-        uSlot: { value: new THREE.Vector2() }, uSubPixel: { value: new THREE.Vector2() }, uFrameNoise: { value: 0 },
+        uSlot: { value: new THREE.Vector2() }, uSubPixel: { value: new THREE.Vector2() }, uFrameNoise: { value: 0 }, uHazeDatum: { value: 0 },
         uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uSunRadiance: { value: new THREE.Vector3(8, 8, 8) },
         uAmbientTop: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uAmbientBottom: { value: new THREE.Vector3(0.2, 0.25, 0.3) },
         uSkyMean: { value: new THREE.Vector3(0.3, 0.35, 0.45) },
@@ -1753,7 +1771,12 @@ export class VolumetricCloudLayer {
    * post.ts's hook, before the scene draws: advance the wind, detect a camera cut, trace this frame's slot(s)
    * and resolve the history the dome composites. `width` × `height` is the scene target.
    */
-  beforeSceneRender(renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera, dt: number, width: number, height: number): void {
+  /**
+   * @param hazeDatum the aerial pass's haze-layer datum (post.ts uHazeDatum: the ground under the camera); a call
+   * without it (the Studio's and the captures' settle) keeps the last one the frame passed
+   */
+  beforeSceneRender(renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera, dt: number, width: number, height: number, hazeDatum?: number): void {
+    if (hazeDatum !== undefined && Number.isFinite(hazeDatum)) this.hazeDatum = hazeDatum;
     const preset = this.preset;
     if (!preset || !this.active || renderer !== this.renderer) {
       this.dome.visible = false;
@@ -1803,6 +1826,8 @@ export class VolumetricCloudLayer {
     // (the trails drift by the upper wind in world space; their placement is relative to the map's origin, never wrapped
     // across their own length — the drift wraps at the cirrus tile, far past the ±26 km the trails span)
     (t.uUpperDrift.value as THREE.Vector2).copy(ud);
+    // (no datum yet: the camera stands on the layer's base, the haze law of a camera on the ground)
+    t.uHazeDatum.value = Number.isFinite(this.hazeDatum) ? this.hazeDatum : camera.position.y;
     this.applyPresetUniforms(preset);
     this.applyAtmosphereUniforms();
     // the low quality preset marches coarser (the same slab, fewer steps); the mobile tier never creates the layer

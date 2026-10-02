@@ -407,6 +407,12 @@ assert.equal(CLOUD_AERIAL.heightScale, postConst('AERIAL_HEIGHT_SCALE'));
 assert.equal(CLOUD_AERIAL.heightScatterK, postConst('AERIAL_HEIGHT_SCATTER_K'));
 assert.equal(CLOUD_AERIAL.heightExtK, postConst('AERIAL_HEIGHT_EXT_K'));
 assert.deepEqual([...CLOUD_AERIAL.cool], JSON.parse(postSource.match(/const AERIAL_COOL = (\[[^\]]+\]);/)[1]));
+// 2026-10-02: the pass's haze layer (a camera high over the ground looks through less of it) on the clouds too, from the
+// datum the pass computes for the frame (the ground under the camera), and the square's ceilings a third lower
+assert.equal(CLOUD_AERIAL.layerH, postConst('AERIAL_LAYER_H'));
+assert.ok(layerSource.includes('float layer = cloudHazeLayer( dist, dir );') && layerSource.includes('* ${f(CLOUD_AERIAL.hazeDensity)} * layer;'), 'the layer factor scales both haze curves');
+assert.ok(postSource.includes('beforeSceneRender(renderer, camera, dt, sceneTarget.width, sceneTarget.height, aerial.uniforms.uHazeDatum.value)'), 'the pass hands the clouds its datum');
+assert.ok(CLOUD_AERIAL.extCeiling <= 0.45 && CLOUD_AERIAL.scatterCeiling <= 0.4, 'the square keeps most of a far range\'s colour');
 // round 71: the far ramp moved out so a deck stays readable at the horizon
 assert.ok(CLOUD_AERIAL.farStartM >= 5000 && CLOUD_AERIAL.farEndM >= 20000 && CLOUD_AERIAL.farScatterCeiling <= 0.85, 'the far scatter ramp keeps a far deck readable');
 const renderFrame = postSource.slice(postSource.indexOf('  function renderFrame('), postSource.indexOf('\n  // Live preset switching'));
