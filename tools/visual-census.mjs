@@ -147,6 +147,7 @@ function censusHeader(root, serve) {
     views: CENSUS_VIEWS, viewsDigest: createHash('sha256').update(JSON.stringify(CENSUS_VIEWS)).digest('hex'),
     revision: git(root, ['rev-parse', 'HEAD']), revisionShort: git(root, ['rev-parse', '--short=9', 'HEAD']),
     branch: git(root, ['rev-parse', '--abbrev-ref', 'HEAD']),
+    gameRevision: git(root, ['log', '-1', '--format=%H %s', '--', 'src', 'public', 'index.html', 'vite.config.ts']),
     sourceTree: Object.fromEntries([['src', 'src'], ['public', 'public'], ['index', 'index.html'], ['viteConfig', 'vite.config.ts']]
       .map(([key, p]) => [key, git(root, ['rev-parse', `HEAD:${p}`])])),
     dirtyGamePaths: (git(root, ['status', '--porcelain', '--', 'src', 'public', 'index.html', 'vite.config.ts']) || '').split('\n').filter(Boolean),

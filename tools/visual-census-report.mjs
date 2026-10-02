@@ -45,7 +45,7 @@ export function openCensus(existing, header) {
   if (JSON.stringify(existing.dirtyGamePaths ?? []) !== JSON.stringify(header.dirtyGamePaths ?? [])) problems.push('uncommitted game paths');
   if (existing.serve !== header.serve) problems.push(`serve ${existing.serve} vs ${header.serve}`);
   if (problems.length) throw new Error(`census.json in this --out belongs to another capture (${problems.join('; ')}); use a new --out`);
-  return { ...existing, revision: header.revision, revisionShort: header.revisionShort, branch: header.branch };
+  return { ...existing, revision: header.revision, revisionShort: header.revisionShort, branch: header.branch, gameRevision: existing.gameRevision ?? header.gameRevision };
 }
 
 // ---------------------------------------------------------------------------------------------- metrics
@@ -208,7 +208,7 @@ export function renderIndex(census, { mapIds = Object.keys(census.maps), sheets 
     `# Visual census — ${census.revisionShort} (${String(last || '').slice(0, 10)})`, '',
     `Baseline of every registered battlefield before the visual redesign: the same ${CENSUS_VIEWS.length} views of each map, captured`,
     'the same way, with numbers, so later changes compare frame for frame (`node tools/visual-census.mjs compare`).', '',
-    `- **Commit:** \`${census.revision}\` (${census.branch || 'detached'}); source trees src \`${census.sourceTree?.src?.slice(0, 12)}\`, public \`${census.sourceTree?.public?.slice(0, 12)}\`, index.html \`${census.sourceTree?.index?.slice(0, 12)}\`${census.dirtyGamePaths?.length ? `; uncommitted game paths: ${census.dirtyGamePaths.join(', ')}` : '; no uncommitted game paths'}`,
+    `- **Commit:** \`${census.revision}\` (${census.branch || 'detached'})${census.gameRevision ? `; game tree last changed in \`${census.gameRevision.slice(0, 9)}\` (${census.gameRevision.slice(41)})` : ''}; source trees src \`${census.sourceTree?.src?.slice(0, 12)}\`, public \`${census.sourceTree?.public?.slice(0, 12)}\`, index.html \`${census.sourceTree?.index?.slice(0, 12)}\`${census.dirtyGamePaths?.length ? `; uncommitted game paths: ${census.dirtyGamePaths.join(', ')}` : '; no uncommitted game paths'}`,
     `- **Captured:** ${first} → ${last} in ${sessions.length} session(s); ${okFrames} frames over ${mapIds.length} maps`,
     `- **Served:** ${census.serve === 'dist' ? '`npm run build` output through `vite preview`' : 'vite dev server (private optimizer cache)'}${census.distIndexSha256 ? `, dist/index.html sha256 \`${census.distIndexSha256.slice(0, 16)}\`` : ''}`,
     `- **Browser:** ${sessions.at(-1)?.browserVersion || '?'}; GPU ${sessions.at(-1)?.gpu || '?'}`,
