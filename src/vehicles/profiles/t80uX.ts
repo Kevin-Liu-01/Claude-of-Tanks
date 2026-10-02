@@ -27,7 +27,7 @@ function sight(P:TankBuilderPort,bucket:string,g:THREE.BufferGeometry,x:number,y
   P.addModuleVisual('optics',bucket,g,x-YAW[0],y-YAW[1],z-YAW[2],rx,0,0);
 }
 
-function hull(P:TankBuilderPort):void {
+export function buildT80UXHullCore(P:TankBuilderPort):void {
   P.add('hull',boxSections([
     [-3.36,.533,1.347,1.126],[-3.13,1.038,1.547,1.119],[-2.99,1.038,1.558,.950],
     [-2.65,1.038,1.559,.623],[-2.41,1.038,1.560,.478],[-1.50,1.038,1.563,.478],
@@ -35,20 +35,32 @@ function hull(P:TankBuilderPort):void {
     [2.10,1.038,1.387,.478],[2.40,1.038,1.252,.548],[2.70,1.038,1.150,.728],
     [3.015,1.038,1.010,.916],
   ]));
+}
+
+function hull(P:TankBuilderPort):void {
+  buildT80UXHullCore(P);
   for(const side of [-1,1]) {
-    const a=Math.min(side*1.030,side*1.722),b=Math.max(side*1.030,side*1.722);
-    P.addMudguard('t80u-x-fender','hull',roofSheet([
-      [-3.36,a,b,1.180,1.180],[-2.86,a,b,1.411,1.411],[-2.40,a,b,1.451,1.451],
-      [-1.20,a,b,1.497,1.497],[.60,a,b,1.467,1.467],[2.40,a,b,1.430,1.430],
-      [2.90,a,b,1.414,1.414],[3.07,a,b,1.363,1.363],[3.20,a,b,1.226,1.226],
-      [3.36,a,b,.939,.939],
-    ],.024));
+    fenderShell(P,side);
     skirt(P,side);
-    for(const z of [-1.834,-1.270,-.705,-.141,.424,.988,1.552])P.addEquipment('hullDetail',box(.028,.045,.561),side*1.709,1.484,z);
+    fenderReinforcements(P,side);
   }
   // The broad low apron is a separate thin hanging sheet, not a filled hull.
   P.addMudguard('t80u-x-bow-apron','hullRubber',box(2.04451,.68890,.00902),0,.566517,3.011124);
   for(const x of [-.72,-.591,-.463,-.067,.067,.463,.591,.72])P.addEquipment('hullDetail',beamBetween([x,.925,3.025],[x,.976,3.129],.018));
+}
+
+function fenderShell(P:TankBuilderPort,side:number):void {
+  const a=Math.min(side*1.030,side*1.722),b=Math.max(side*1.030,side*1.722);
+  P.addMudguard('t80u-x-fender','hull',roofSheet([
+    [-3.36,a,b,1.180,1.180],[-2.86,a,b,1.411,1.411],[-2.40,a,b,1.451,1.451],
+    [-1.20,a,b,1.497,1.497],[.60,a,b,1.467,1.467],[2.40,a,b,1.430,1.430],
+    [2.90,a,b,1.414,1.414],[3.07,a,b,1.363,1.363],[3.20,a,b,1.226,1.226],
+    [3.36,a,b,.939,.939],
+  ],.024));
+}
+
+function fenderReinforcements(P:TankBuilderPort,side:number):void {
+  for(const z of [-1.834,-1.270,-.705,-.141,.424,.988,1.552])P.addEquipment('hullDetail',box(.028,.045,.561),side*1.709,1.484,z);
 }
 
 function skirt(P:TankBuilderPort,side:number):void {
@@ -237,3 +249,12 @@ export function buildT80UX(P:TankBuilderPort):void {
   buildT80UXHull(P);casting(P);turretEra(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P);
 }
 export const T80U_X_PROFILES={t80u_x:{build:buildT80UX}} as const;
+
+/** Native mechanical foundation for owner-authorized complete hull rebuilds. */
+export function buildT80UXRunningGear(P:TankBuilderPort):void { runningGear(P); }
+
+/** Native thin track guards and their stiffeners for an independently rebuilt
+ * hull. Excludes the main tub, broad side aprons, central bow apron and ERA. */
+export function buildT80UXFenders(P:TankBuilderPort):void {
+  for(const side of [-1,1]) { fenderShell(P,side); fenderReinforcements(P,side); }
+}

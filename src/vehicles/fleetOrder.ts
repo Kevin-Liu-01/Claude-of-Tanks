@@ -53,8 +53,8 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   japan_mbt: Object.freeze([
     'stb1', 'type74', 'type90', 'type90a', 'type10', 'type10b',
   ]),
-  national_ua: Object.freeze(["ua_t80u_modern", "ua_t72b3m_modern", "ua_t72b3_modern"]),
-  national_pl: Object.freeze(["pl_t80u_modern", "pl_t72b3m_modern", "pl_t72b3_modern"]),
+  national_ua: Object.freeze(["ua_t80u_modern", "ua_t72b3m_modern", "ua_t72b3m_hetman_ii", "ua_t72b3_modern"]),
+  national_pl: Object.freeze(["pl_t80u_modern", "pl_t72b3m_modern", "pl_t72b3_modern", "pl_t72b3_zubr_ii"]),
   national_cn: Object.freeze(["cn_t80u_modern", "cn_t72b3m_modern", "cn_t72b3_modern"]),
   national_ru: Object.freeze(["ru_t80u_modern", "ru_t72b3m_modern", "ru_t72b3_modern"]),
   french_ifv: Object.freeze(['amx10p', 'amx10p_25']),

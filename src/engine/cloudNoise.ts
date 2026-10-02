@@ -138,36 +138,67 @@ function perlin2(N: number, cells: number, seed: number, out: Float32Array, amp:
   }
 }
 
+/** Immutable cell attributes, cached once per worker bake rather than per pixel. */
+function cumulusCellAttributes(cells: number, seed: number): Float64Array {
+  const attributes = new Float64Array(cells * cells * 8);
+  for (let y = 0; y < cells; y++) for (let x = 0; x < cells; x++) {
+    const i = (y * cells + x) * 8;
+    const angle = hash3(x, y, 5, seed) * Math.PI * 2;
+    attributes[i] = hash3(x, y, 1, seed);
+    attributes[i + 1] = hash3(x, y, 2, seed);
+    attributes[i + 2] = hash3(x, y, 3, seed);
+    attributes[i + 3] = hash3(x, y, 4, seed);
+    attributes[i + 4] = Math.cos(angle);
+    attributes[i + 5] = Math.sin(angle);
+    attributes[i + 6] = 0.78 + hash3(x, y, 6, seed) * 0.42;
+    attributes[i + 7] = 0.58 + hash3(x, y, 7, seed) * 0.22;
+  }
+  return attributes;
+}
+
 /**
- * Tileable 2D cumulus cell field: the maximum over nearby lattice cells of a radial blob at a jittered centre
+ * Tileable 2D cumulus cell field: the maximum over nearby lattice cells of a warped, rotated lobe at a jittered centre
  * with a hashed radius; the cell is present only where `gate` (a smooth mesoscale field) admits it, so cells
  * cluster into streets and clearings instead of a uniform pepper.
  */
 function cellField2(N: number, cells: number, seed: number, gate: Float32Array, gateBias: number, out: Float32Array, plateau = false): void {
   const s = cells / N;
+  const attributes = cumulusCellAttributes(cells, seed);
+  // Periodic domain distortion breaks the circular footprints and lattice without
+  // adding any runtime texture lookup. Each mass still belongs to its weather group.
+  const warpX = new Float32Array(N * N), warpY = new Float32Array(N * N);
+  perlin2(N, cells, seed + 211, warpX, 0.7);
+  perlin2(N, cells * 2, seed + 212, warpX, 0.3);
+  perlin2(N, cells, seed + 213, warpY, 0.7);
+  perlin2(N, cells * 2, seed + 214, warpY, 0.3);
   for (let y = 0; y < N; y++) {
-    const py = (y + 0.5) * s, cy = Math.floor(py);
     for (let x = 0; x < N; x++) {
-      const px = (x + 0.5) * s, cx = Math.floor(px);
+      const px = (x + 0.5) * s + warpX[y * N + x] * 0.8;
+      const py = (y + 0.5) * s + warpY[y * N + x] * 0.8;
+      const cx = Math.floor(px), cy = Math.floor(py);
       const meso = gate[y * N + x] + gateBias;
       let best = 0, union = 1;
       for (let oy = -1; oy <= 1; oy++) {
         const gy = cy + oy, wy = ((gy % cells) + cells) % cells;
         for (let ox = -1; ox <= 1; ox++) {
           const gx = cx + ox, wx = ((gx % cells) + cells) % cells;
-          const jx = hash3(wx, wy, 1, seed), jy = hash3(wx, wy, 2, seed), hr = hash3(wx, wy, 3, seed), hp = hash3(wx, wy, 4, seed);
-          const dx = gx + 0.2 + jx * 0.6 - px, dy = gy + 0.2 + jy * 0.6 - py;
-          const d = Math.sqrt(dx * dx + dy * dy);
+          const i = (wy * cells + wx) * 8;
+          const jx = attributes[i], jy = attributes[i + 1], hr = attributes[i + 2], hp = attributes[i + 3];
+          const dx = gx + 0.05 + jx * 0.9 - px, dy = gy + 0.05 + jy * 0.9 - py;
+          const cos = attributes[i + 4], sin = attributes[i + 5], aspect = attributes[i + 6];
+          const along = (dx * cos + dy * sin) / aspect;
+          const across = (-dx * sin + dy * cos) * aspect;
+          const d = Math.sqrt(along * along + across * across);
           // a cell switches on where the mesoscale field exceeds its own hashed threshold — 5 % of the cells
           // at a field value of 0.4, 30 % at 0.5, 80 % at 0.7 — so the cells cluster into groups with clear
           // regions between them (a soft edge on the threshold)
           const on = Math.min(1, Math.max(0, (Math.min(1, Math.max(0, (meso - 0.38) * 2.5)) - hp + 0.08) / 0.16));
           if (plateau) {
-            // round 71c: a minimum radius (0.45–0.8 of a cell: 540–960 m on a 600 m lattice) with a plateau profile
-            // (full to 55 % of the radius, then a smooth shoulder), so a coverage threshold admits most of a cell
-            // or none of it — never the tiny cap of a cone — and neighbouring cells soft-union into one mass
-            const radius = 0.45 + hr * 0.35;
-            const t = Math.min(1, Math.max(0, (radius - d) / (radius * 0.45)));
+            // Unequal overlapping lobes, with a small, variable core instead of
+            // an identical flat-topped disc extruded through the whole cloud slab.
+            const radius = 0.3 + hr * 0.5;
+            const shoulder = attributes[i + 7];
+            const t = Math.min(1, Math.max(0, (radius - d) / (radius * shoulder)));
             const v = t * t * (3 - 2 * t) * on;
             union *= 1 - v;
           } else {
@@ -262,9 +293,8 @@ function streetRolls(N: number, rows: number, seed: number, out: Float32Array): 
   // the roll's width varies along its length (71c: a constant width read as a tube)
   const widthN = new Float32Array(N * N);
   perlin2(N, 3, seed + 5, widthN, 0.7, 5); perlin2(N, 6, seed + 6, widthN, 0.3, 10);
-  // lumps along the roll: a chain of rounded cumulus 860 m apart (14 per 12 km tile) with jittered spacing and
-  // radius, each row's chain phased so the lumps never align across rolls; the roll between lumps keeps 15 %
-  const lumps = 14;
+  // Each wind street has its own population and spacing, rather than repeating
+  // the same fourteen-bead cadence across the sky. The roll between lumps keeps 15 %.
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
     const i = y * N + x;
     const v = (y + 0.5) / N * rows + wobble[i] * 0.8;
@@ -274,6 +304,7 @@ function streetRolls(N: number, rows: number, seed: number, out: Float32Array): 
     const strength = 0.7 + 0.3 * hash3(wr, 0, 7, seed + 4);
     const width = 0.13 + 0.12 * clamp01(0.5 + widthN[i]);
     const ridge = Math.exp(-(d * d) / (2 * width * width));
+    const lumps = 9 + Math.floor(hash3(wr, 0, 15, seed + 12) * 10);
     const u = (x + 0.5) / N * lumps + hash3(wr, 1, 9, seed + 8) * lumps;
     const k0 = Math.floor(u);
     let best = 0;
@@ -281,7 +312,7 @@ function streetRolls(N: number, rows: number, seed: number, out: Float32Array): 
       const wk = ((k % lumps) + lumps) % lumps;
       // a fifth of the lumps are missing and the rest vary in size and spacing (a regular chain read as a grid)
       if (hash3(wk, wr, 13, seed + 11) < 0.2) continue;
-      const centre = k + 0.5 + (hash3(wk, wr, 11, seed + 9) - 0.5) * 0.7;
+      const centre = k + 0.5 + (hash3(wk, wr, 11, seed + 9) - 0.5) * 1.0;
       const radius = 0.25 + 0.45 * hash3(wk, wr, 12, seed + 10);
       const dx = (u - centre) / radius;
       const lump = Math.max(0, 1 - dx * dx);
@@ -293,7 +324,7 @@ function streetRolls(N: number, rows: number, seed: number, out: Float32Array): 
 
 /**
  * The weather field: RGBA8, `size`², tileable over one weather tile (CLOUD_WEATHER_TILE_M in the layer).
- *   R  cumuliform coverage 0..1 — multi-scale: plateau cells 540–960 m across (and a few of 1 km) on a 12 km
+ *   R  cumuliform coverage 0..1 — multi-scale: warped lobes of unequal size and aspect ratio on a 12 km
  *      tile, neighbours soft-unioned into masses, admitted by a mesoscale group field (1–3 km) that a synoptic
  *      band field (4–6 km: the fronts and clearings) modulates, equalised so the per-map coverage threshold
  *      admits exactly that fraction (1 − c on the stored value)
@@ -313,8 +344,8 @@ export function bakeCloudWeatherMap(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOIS
   const gate = new Float32Array(count);
   for (let i = 0; i < count; i++) gate[i] = clamp01(meso[i] * 0.72 + syn[i] * 0.55 + 0.5);
   const cells = new Float32Array(count);
-  // cells on a 1/20 lattice (600 m on a 12 km tile), each 540–960 m across with a plateau profile, neighbours
-  // soft-unioned into mid-size masses (71c: the cone cells' tiny caps were the far field's identical puffs)
+  // Jittered, warped lobes on a 600 m lattice overlap into irregular masses.
+  // Unequal shoulders keep the admitted cores from becoming identical discs.
   cellField2(N, 20, seed + 91, gate, 0.0, cells, true);
   const bigCells = new Float32Array(count);
   // a few 1 km cells at a stricter gate
@@ -330,7 +361,7 @@ export function bakeCloudWeatherMap(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOIS
   for (let i = 0; i < count; i++) {
     const m = gate[i];
     const cell = Math.max(cells[i], bigCells[i] * 0.9);
-    cumuliform[i] = cell * 0.72 + m * 0.23 + fine[i] * 0.05;
+    cumuliform[i] = cell * 0.65 + m * 0.23 + fine[i] * 0.12;
     stratiform[i] = m * 0.8 + cell * 0.15 + fine[i] * 0.05;
     // vigour leans toward the deep coverage (the convective groups) but keeps its own field
     vig[i] = vigour[i] * 0.6 + (m - 0.5) * 0.5;

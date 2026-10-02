@@ -2,8 +2,9 @@
   "schemaVersion": 1,
   "ownerDecision": {
     "date": "2026-10-01",
-    "request": "Yes\u201412 new concept tanks: three T-80U, T-72B3M and T-72B3 derivatives per country for Ukraine, Poland, China and Russia, with Russia receiving the strongest package.",
-    "scope": "Twelve original game concepts; preserves the three donor hulls and SM gun, mantlet and remote weapon."
+    "request": "Yes—12 new concept tanks: three T-80U, T-72B3M and T-72B3 derivatives per country for Ukraine, Poland, China and Russia, with Russia receiving the strongest package.",
+    "scope": "Retain unmistakable T-72/T-80 ancestry: original primary donor hull cores, running gear and curved/folded fenders, compact rounded cast turret cores, country-specific bolted armor and bustle additions. Preserve functioning remote machine guns, distinct ERA patterns, lights, sights and equipment. Owner supplied T-72/Moderna visual examples on 2026-10-01, then approved these bases and requested complete structural cheek/flank/rear assemblies plus thick modern skirts wrapping around both track shoulders. Preserve the approved primary cast cores. Revision 5 closes lateral fender/skirt gaps with continuous fitted covers, fits a full-width elevating mantlet, and adds seated national roof/bustle equipment.",
+    "roofRevision": "Owner requested 14 national variants including Hetman II and Zubr II, with different roof weapons, paired mantlet lamps, optics, eye/monocle housings and roof equipment. Measurements below include the new stations; primary hulls, fenders and turrets are retained."
   },
   "comparisonPurpose": "owner-authored-concept",
   "comparisonApplicable": false,
@@ -18,11 +19,11 @@
         0.07187
       ],
       "gunLocal": [
-        -0.007,
-        0.3710899999999999,
-        1.201
+        0,
+        0.43,
+        0.9
       ],
-      "barrelLengthM": 5.479900000000001,
+      "barrelLengthM": 5.2,
       "barrelRadiusM": 0.105,
       "pitchDeg": [
         -6,
@@ -30,20 +31,20 @@
       ],
       "mainCaliberMm": 125,
       "roofMachineGuns": 1,
-      "hullLengthM": 6.720291335,
-      "hullWidthM": 4.06,
-      "widthM": 4.118,
-      "overallLengthM": 10.278,
-      "tallestM": 3.183,
+      "hullLengthM": 6.72,
+      "hullWidthM": 4.331,
+      "widthM": 4.331,
+      "overallLengthM": 9.5328,
+      "tallestM": 3.17,
       "specDimensions": {
-        "hullLengthM": 6.720291335,
-        "overallLengthM": 10.112915667500001,
-        "widthM": 4.06,
-        "heightM": 2.3223
+        "hullLengthM": 6.72,
+        "overallLengthM": 9.531870000000001,
+        "widthM": 4.331,
+        "heightM": 3.17
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Retained detailed t80u chassis, SM-derived front turret and open gun aperture, with spaced side screens, rear cage and supported leaf camouflage"
+      "silhouette": "Ukrainian T-80U assault modernization: the native low turbine hull and curved fenders carry a compact rounded turret, connected split-chevron cheek and flank housings, a short joined rear return, mounted ERA, assault utility cases, guarded lamps and thick chamfered skirt assemblies joined to the native fenders by fitted shoulder panels. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "ua_t72b3m_modern": {
       "id": "ua_t72b3m_modern",
@@ -53,11 +54,11 @@
         0.114315
       ],
       "gunLocal": [
-        -0.007,
-        0.3710899999999999,
-        1.201
+        0,
+        0.43,
+        0.9
       ],
-      "barrelLengthM": 5.479900000000001,
+      "barrelLengthM": 5.2,
       "barrelRadiusM": 0.105,
       "pitchDeg": [
         -6,
@@ -65,20 +66,20 @@
       ],
       "mainCaliberMm": 125,
       "roofMachineGuns": 1,
-      "hullLengthM": 6.68398928642,
-      "hullWidthM": 4.06,
-      "widthM": 4.118,
-      "overallLengthM": 10.47,
-      "tallestM": 3.163,
+      "hullLengthM": 7.31,
+      "hullWidthM": 4.391,
+      "widthM": 4.391,
+      "overallLengthM": 9.6902,
+      "tallestM": 3.33,
       "specDimensions": {
-        "hullLengthM": 6.68398928642,
-        "overallLengthM": 10.137209643210001,
-        "widthM": 4.06,
-        "heightM": 2.3023
+        "hullLengthM": 7.31,
+        "overallLengthM": 9.869315,
+        "widthM": 4.391,
+        "heightM": 3.33
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Retained detailed t72b3m chassis, SM-derived front turret and open gun aperture, with spaced side screens, rear cage and supported leaf camouflage"
+      "silhouette": "Ukrainian T-72B3M command modernization: a retained low native hull, rounded turret core, connected angular cheek housings joined into a command electronics bustle, compact panoramic sight, ventilated communications cases and cable reel, and layered skirt assemblies connected to the native fenders by fitted shoulder panels. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "ua_t72b3_modern": {
       "id": "ua_t72b3_modern",
@@ -88,11 +89,11 @@
         0.065591
       ],
       "gunLocal": [
-        -0.007,
-        0.3710899999999999,
-        1.201
+        0,
+        0.43,
+        0.9
       ],
-      "barrelLengthM": 5.479900000000001,
+      "barrelLengthM": 5.2,
       "barrelRadiusM": 0.105,
       "pitchDeg": [
         -6,
@@ -100,20 +101,20 @@
       ],
       "mainCaliberMm": 125,
       "roofMachineGuns": 1,
-      "hullLengthM": 6.356300116,
-      "hullWidthM": 4.06,
-      "widthM": 4.118,
-      "overallLengthM": 10.619,
-      "tallestM": 3.093,
+      "hullLengthM": 6.8784,
+      "hullWidthM": 4.53417,
+      "widthM": 4.5342,
+      "overallLengthM": 9.5268,
+      "tallestM": 3.05,
       "specDimensions": {
-        "hullLengthM": 6.356300116,
-        "overallLengthM": 9.924641058,
-        "widthM": 4.06,
-        "heightM": 2.2323
+        "hullLengthM": 6.8784,
+        "overallLengthM": 9.604791,
+        "widthM": 4.53417,
+        "heightM": 3.05
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Retained detailed t72b3 chassis, SM-derived front turret and open gun aperture, with spaced side screens, rear cage and supported leaf camouflage"
+      "silhouette": "Ukrainian T-72B3 field modernization: the original low glacis and folded fenders remain exposed beneath a compact rounded turret, structural cheek banks joined to lower flank armor and open upper screens, leafy camouflage, field tools, strapped utility cans and a rear tarpaulin roll, and thick removable skirt modules over a permanent wraparound carrier with fitted fender connections. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "pl_t80u_modern": {
       "id": "pl_t80u_modern",
@@ -123,11 +124,11 @@
         0.07187
       ],
       "gunLocal": [
-        -0.007,
-        0.3710899999999999,
-        1.201
+        0,
+        0.43,
+        0.9
       ],
-      "barrelLengthM": 5.479900000000001,
+      "barrelLengthM": 5.2,
       "barrelRadiusM": 0.105,
       "pitchDeg": [
         -6,
@@ -135,20 +136,20 @@
       ],
       "mainCaliberMm": 125,
       "roofMachineGuns": 1,
-      "hullLengthM": 6.720291335,
-      "hullWidthM": 4.06,
-      "widthM": 4.05,
-      "overallLengthM": 10.278,
-      "tallestM": 3.183,
+      "hullLengthM": 6.82,
+      "hullWidthM": 4.303,
+      "widthM": 4.303,
+      "overallLengthM": 9.5628,
+      "tallestM": 3.24,
       "specDimensions": {
-        "hullLengthM": 6.720291335,
-        "overallLengthM": 10.112915667500001,
-        "widthM": 4.06,
-        "heightM": 2.3223
+        "hullLengthM": 6.82,
+        "overallLengthM": 9.58187,
+        "widthM": 4.303,
+        "heightM": 3.24
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Retained detailed t80u chassis, SM-derived front turret and open gun aperture, with compact bustle, upright modular tile stacks and roof stowage"
+      "silhouette": "Polish T-80U modernization concept retaining its native low hull and rounded turret ancestry, with a connected ERAWA cheek-and-pannier armor frame, a broad rear basket carrying field stores and a strapped canvas roll, guarded sensors, pannier tool racks, turbine service fittings and thick wraparound skirts joined to the native fenders by continuous fitted shoulders. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "pl_t72b3m_modern": {
       "id": "pl_t72b3m_modern",
@@ -158,11 +159,11 @@
         0.114315
       ],
       "gunLocal": [
-        -0.007,
-        0.3710899999999999,
-        1.201
+        0,
+        0.43,
+        0.9
       ],
-      "barrelLengthM": 5.479900000000001,
+      "barrelLengthM": 5.2,
       "barrelRadiusM": 0.105,
       "pitchDeg": [
         -6,
@@ -170,20 +171,20 @@
       ],
       "mainCaliberMm": 125,
       "roofMachineGuns": 1,
-      "hullLengthM": 6.68398928642,
-      "hullWidthM": 4.06,
-      "widthM": 4.05,
-      "overallLengthM": 10.47,
-      "tallestM": 3.163,
+      "hullLengthM": 7.31,
+      "hullWidthM": 4.463,
+      "widthM": 4.463,
+      "overallLengthM": 9.6902,
+      "tallestM": 3.39,
       "specDimensions": {
-        "hullLengthM": 6.68398928642,
-        "overallLengthM": 10.137209643210001,
-        "widthM": 4.06,
-        "heightM": 2.3023
+        "hullLengthM": 7.31,
+        "overallLengthM": 9.869315,
+        "widthM": 4.463,
+        "heightM": 3.39
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Retained detailed t72b3m chassis, SM-derived front turret and open gun aperture, with compact bustle, upright modular tile stacks and roof stowage"
+      "silhouette": "Polish T-72B3M heavy modernization concept retaining the native glacis and compact cast turret, with a deep connected cheek-and-bustle armor assembly, three-course ERAWA protection, armored communications cabinets and spare-track stores, guarded sensors and heavy layered skirts with continuous fitted shoulders and front and rear returns. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "pl_t72b3_modern": {
       "id": "pl_t72b3_modern",
@@ -193,11 +194,11 @@
         0.065591
       ],
       "gunLocal": [
-        -0.007,
-        0.3710899999999999,
-        1.201
+        0,
+        0.43,
+        0.9
       ],
-      "barrelLengthM": 5.479900000000001,
+      "barrelLengthM": 5.2,
       "barrelRadiusM": 0.105,
       "pitchDeg": [
         -6,
@@ -205,20 +206,20 @@
       ],
       "mainCaliberMm": 125,
       "roofMachineGuns": 1,
-      "hullLengthM": 6.356300116,
-      "hullWidthM": 4.06,
-      "widthM": 4.05,
-      "overallLengthM": 10.619,
-      "tallestM": 3.093,
+      "hullLengthM": 6.95035,
+      "hullWidthM": 4.283,
+      "widthM": 4.283,
+      "overallLengthM": 9.5268,
+      "tallestM": 3.05,
       "specDimensions": {
-        "hullLengthM": 6.356300116,
-        "overallLengthM": 9.924641058,
-        "widthM": 4.06,
-        "heightM": 2.2323
+        "hullLengthM": 6.95035,
+        "overallLengthM": 9.640766,
+        "widthM": 4.283,
+        "heightM": 3.05
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Retained detailed t72b3 chassis, SM-derived front turret and open gun aperture, with compact bustle, upright modular tile stacks and roof stowage"
+      "silhouette": "Polish T-72B3 compact modernization concept retaining its low native hull and small rounded cast turret, with a compact connected ERAWA armor frame, fine cheek tile fields, asymmetric service cabinets, clamped tools, a compact camouflage-roll basket and beveled wraparound skirts joined to the native fenders by continuous fitted shoulders. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "cn_t80u_modern": {
       "id": "cn_t80u_modern",
@@ -228,11 +229,11 @@
         0.07187
       ],
       "gunLocal": [
-        -0.007,
-        0.3710899999999999,
-        1.201
+        0,
+        0.43,
+        0.9
       ],
-      "barrelLengthM": 5.479900000000001,
+      "barrelLengthM": 5.2,
       "barrelRadiusM": 0.105,
       "pitchDeg": [
         -6,
@@ -240,20 +241,20 @@
       ],
       "mainCaliberMm": 125,
       "roofMachineGuns": 1,
-      "hullLengthM": 6.720291335,
-      "hullWidthM": 4.06,
-      "widthM": 4.05,
-      "overallLengthM": 10.278,
-      "tallestM": 3.183,
+      "hullLengthM": 6.72,
+      "hullWidthM": 4.34,
+      "widthM": 4.34,
+      "overallLengthM": 9.5328,
+      "tallestM": 3.19,
       "specDimensions": {
-        "hullLengthM": 6.720291335,
-        "overallLengthM": 10.112915667500001,
-        "widthM": 4.06,
-        "heightM": 2.3223
+        "hullLengthM": 6.72,
+        "overallLengthM": 9.531870000000001,
+        "widthM": 4.34,
+        "heightM": 3.19
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Retained detailed t80u chassis, SM-derived front turret and open gun aperture, with wide swept shoulder wedges and twin optical housings"
+      "silhouette": "Yun T-80U retrofit concept: original turbine hull and compact casting, swept arrowhead armor housing, linked low electronics and service cases, six thick layered skirt modules with fitted continuous shoulders and chamfered wrap returns. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "cn_t72b3m_modern": {
       "id": "cn_t72b3m_modern",
@@ -263,11 +264,11 @@
         0.114315
       ],
       "gunLocal": [
-        -0.007,
-        0.3710899999999999,
-        1.201
+        0,
+        0.43,
+        0.9
       ],
-      "barrelLengthM": 5.479900000000001,
+      "barrelLengthM": 5.2,
       "barrelRadiusM": 0.105,
       "pitchDeg": [
         -6,
@@ -275,20 +276,20 @@
       ],
       "mainCaliberMm": 125,
       "roofMachineGuns": 1,
-      "hullLengthM": 6.68398928642,
-      "hullWidthM": 4.06,
-      "widthM": 4.05,
-      "overallLengthM": 10.47,
-      "tallestM": 3.163,
+      "hullLengthM": 7.31,
+      "hullWidthM": 4.54,
+      "widthM": 4.54,
+      "overallLengthM": 9.6902,
+      "tallestM": 3.36,
       "specDimensions": {
-        "hullLengthM": 6.68398928642,
-        "overallLengthM": 10.137209643210001,
-        "widthM": 4.06,
-        "heightM": 2.3023
+        "hullLengthM": 7.31,
+        "overallLengthM": 9.869315,
+        "widthM": 4.54,
+        "heightM": 3.36
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Retained detailed t72b3m chassis, SM-derived front turret and open gun aperture, with wide swept shoulder wedges and twin optical housings"
+      "silhouette": "Kunlun T-72B3M retrofit concept: low T-72 hull and rounded casting, deep Chinese wedge housings with paired guarded sensors and wing service cases, open rear maintenance frame and seven thick staggered skirt modules with fitted shoulders and armored returns. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "cn_t72b3_modern": {
       "id": "cn_t72b3_modern",
@@ -298,11 +299,11 @@
         0.065591
       ],
       "gunLocal": [
-        -0.007,
-        0.3710899999999999,
-        1.201
+        0,
+        0.43,
+        0.9
       ],
-      "barrelLengthM": 5.479900000000001,
+      "barrelLengthM": 5.2,
       "barrelRadiusM": 0.105,
       "pitchDeg": [
         -6,
@@ -310,20 +311,20 @@
       ],
       "mainCaliberMm": 125,
       "roofMachineGuns": 1,
-      "hullLengthM": 6.356300116,
-      "hullWidthM": 4.06,
-      "widthM": 4.05,
-      "overallLengthM": 10.619,
-      "tallestM": 3.093,
+      "hullLengthM": 6.8784,
+      "hullWidthM": 4.363,
+      "widthM": 4.363,
+      "overallLengthM": 9.5268,
+      "tallestM": 3.05,
       "specDimensions": {
-        "hullLengthM": 6.356300116,
-        "overallLengthM": 9.924641058,
-        "widthM": 4.06,
-        "heightM": 2.2323
+        "hullLengthM": 6.8784,
+        "overallLengthM": 9.604791,
+        "widthM": 4.363,
+        "heightM": 3.05
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Retained detailed t72b3 chassis, SM-derived front turret and open gun aperture, with wide swept shoulder wedges and twin optical housings"
+      "silhouette": "Qilin T-72B3 retrofit concept: exposed cast crown and lower shoulders within enclosing chevron armor, compact roof camera, field-tool roll and rear rack, original low hull and five ribbed layered skirt modules joined by fitted shoulders and tapered returns. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "ru_t80u_modern": {
       "id": "ru_t80u_modern",
@@ -333,11 +334,11 @@
         0.07187
       ],
       "gunLocal": [
-        -0.007,
-        0.3710899999999999,
-        1.201
+        0,
+        0.43,
+        0.9
       ],
-      "barrelLengthM": 5.479900000000001,
+      "barrelLengthM": 5.2,
       "barrelRadiusM": 0.105,
       "pitchDeg": [
         -6,
@@ -345,20 +346,20 @@
       ],
       "mainCaliberMm": 125,
       "roofMachineGuns": 1,
-      "hullLengthM": 6.720291335,
-      "hullWidthM": 4.18,
-      "widthM": 4.15,
-      "overallLengthM": 10.278,
-      "tallestM": 3.183,
+      "hullLengthM": 6.84,
+      "hullWidthM": 4.47,
+      "widthM": 4.47,
+      "overallLengthM": 9.5328,
+      "tallestM": 3.25,
       "specDimensions": {
-        "hullLengthM": 6.720291335,
-        "overallLengthM": 10.112915667500001,
-        "widthM": 4.18,
-        "heightM": 2.3223
+        "hullLengthM": 6.84,
+        "overallLengthM": 9.59187,
+        "widthM": 4.47,
+        "heightM": 3.25
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Retained detailed t80u chassis, SM-derived front turret and open gun aperture, with deep armored side pods, additional ERA and lower skirt cases"
+      "silhouette": "Bars-M: T-80U turbine hull and compact cast turret with a connected heavy cheek/flank/rear armor housing beneath two-course ERA, round protection sensors, broad rear cage and deep chamfered side skirts wrapping around both track ends. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "ru_t72b3m_modern": {
       "id": "ru_t72b3m_modern",
@@ -368,11 +369,11 @@
         0.114315
       ],
       "gunLocal": [
-        -0.007,
-        0.3710899999999999,
-        1.201
+        0,
+        0.43,
+        0.9
       ],
-      "barrelLengthM": 5.479900000000001,
+      "barrelLengthM": 5.2,
       "barrelRadiusM": 0.105,
       "pitchDeg": [
         -6,
@@ -380,20 +381,20 @@
       ],
       "mainCaliberMm": 125,
       "roofMachineGuns": 1,
-      "hullLengthM": 6.68398928642,
-      "hullWidthM": 4.18,
-      "widthM": 4.15,
-      "overallLengthM": 10.47,
-      "tallestM": 3.163,
+      "hullLengthM": 7.31,
+      "hullWidthM": 4.61,
+      "widthM": 4.61,
+      "overallLengthM": 9.6902,
+      "tallestM": 3.41,
       "specDimensions": {
-        "hullLengthM": 6.68398928642,
-        "overallLengthM": 10.137209643210001,
-        "widthM": 4.18,
-        "heightM": 2.3023
+        "hullLengthM": 7.31,
+        "overallLengthM": 9.869315,
+        "widthM": 4.61,
+        "heightM": 3.41
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Retained detailed t72b3m chassis, SM-derived front turret and open gun aperture, with deep armored side pods, additional ERA and lower skirt cases"
+      "silhouette": "Bulat-M: T-72B3M low hull and cast-core turret with a deep continuous armored cheek-and-command-bustle enclosure, layered ERA, thick wraparound side armor with soft lower packets and protected panoramic sensors. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     },
     "ru_t72b3_modern": {
       "id": "ru_t72b3_modern",
@@ -403,11 +404,11 @@
         0.065591
       ],
       "gunLocal": [
-        -0.007,
-        0.3710899999999999,
-        1.201
+        0,
+        0.43,
+        0.9
       ],
-      "barrelLengthM": 5.479900000000001,
+      "barrelLengthM": 5.2,
       "barrelRadiusM": 0.105,
       "pitchDeg": [
         -6,
@@ -415,20 +416,53 @@
       ],
       "mainCaliberMm": 125,
       "roofMachineGuns": 1,
-      "hullLengthM": 6.356300116,
-      "hullWidthM": 4.18,
-      "widthM": 4.15,
-      "overallLengthM": 10.619,
-      "tallestM": 3.093,
+      "hullLengthM": 6.92035,
+      "hullWidthM": 4.45,
+      "widthM": 4.45,
+      "overallLengthM": 9.5268,
+      "tallestM": 3.08,
       "specDimensions": {
-        "hullLengthM": 6.356300116,
-        "overallLengthM": 9.924641058,
-        "widthM": 4.18,
-        "heightM": 2.2323
+        "hullLengthM": 6.92035,
+        "overallLengthM": 9.625766,
+        "widthM": 4.45,
+        "heightM": 3.08
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Retained detailed t72b3 chassis, SM-derived front turret and open gun aperture, with deep armored side pods, additional ERA and lower skirt cases"
+      "silhouette": "Bastion-M: compact T-72B3 hull and rounded turret with a compact connected cheek-and-pannier armor frame, broad cheek banks, fine side cassettes, thick returned skirt modules, a short open basket and rectangular sight guards. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     }
-  }
+  },
+  "revision": 5,
+  "previousDesign": {
+    "revision": 4,
+    "status": "Owner retained the native bases and full surrounding armor; requested closure of fender/skirt gaps, closer mantlet fit, and substantially more roof/bustle equipment. Revision 4 superseded before publication."
+  },
+  "designInfluences": [
+    {
+      "nation": "Ukraine",
+      "url": "https://ukroboronprom.com.ua/storage/documents/report_eng.pdf",
+      "use": "Oplot/Bulat modernization vocabulary; compact cast-core assault, command and field-kit concepts."
+    },
+    {
+      "nation": "Poland",
+      "url": "https://www.bumar.gliwice.pl/strefa-militarna/o/MBT%20PT-91M2",
+      "use": "PT-91M2 modernization and ERAWA-style modular tile language; cast-core turrets with bolted ERAWA armor and native hulls."
+    },
+    {
+      "nation": "China",
+      "url": "https://eng.mod.gov.cn/xb/News_213114/Photos/16300465_2.html",
+      "use": "Type-99A swept armor vocabulary; limited wedge armor over visible rounded core and original low hulls."
+    },
+    {
+      "nation": "Russia",
+      "url": "https://www.rostec.ru/media/news/tank-t-90m-proryvnaya-mashina/",
+      "use": "T-90M modernization vocabulary; heavy layered cheek banks, protected sensors and compact rear packages over cast cores."
+    }
+  ],
+  "ownerImageReferences": [
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRTM5-qRsAjv2Uta9N8jSM0BRYKr0QFfONagMXCUzTuRJFWijjk2YUr9pW_&s=10",
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSRmTK9_XGXpddCEI5gDDdnlg4JU-AEXMb1UVKBJyd1mA&s",
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSraApuOBhrnnfkHeOg61v8lO9NMRwpNOwFYx9QqLktQ&s=10",
+    "https://static.encyclopedia.warthunder.com/images/ussr_t_72m2_moderna.png"
+  ]
 }
