@@ -458,7 +458,7 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'cumulus-humilis', coverage: 0.14, cirrus: 0.5 },
+  clouds: { regime: 'cumulus-humilis', coverage: 0.14, cirrus: 0.5, contrails: 0.3, contrailAge: 0.2 },
   sky: {
     sunElevationDeg: 44, sunAzimuthDeg: 115,
     // round 37 (AAA program check 5, 2026-09-22): rayleigh 0.55 → 0.85 — at 0.55 the anti-solar sky was an inky

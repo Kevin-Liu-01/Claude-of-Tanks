@@ -192,6 +192,8 @@ interface NodeMesh {
   pos: THREE.Float32BufferAttribute;
   uv: THREE.Float32BufferAttribute;
   col: THREE.Float32BufferAttribute;
+  /** Node-local box of every quad written since the mesh left the pool. */
+  bounds: THREE.Box3;
   used: number;
   free: number[];
 }
@@ -596,6 +598,7 @@ const _c0 = new THREE.Vector3();
 const _pt = new THREE.Vector3();
 // skin-clamp scratch (see clampToSkin)
 const _raycaster = new THREE.Raycaster();
+const _quadCorner = new THREE.Vector3();
 const _wp = new THREE.Vector3();
 const _wn = new THREE.Vector3();
 const _wq = new THREE.Quaternion();
@@ -762,8 +765,10 @@ export function* createImpactDecalsSteps(
     mesh.userData.surfaceMarkingLayer = 'impact';
     mesh.renderOrder = 3;
     mesh.castShadow = mesh.receiveShadow = false;
-    mesh.frustumCulled = false; // rides its parent node; quads are hull-sized
-    return { mesh, geo, pos, uv, col, used: 0, free: [] };
+    // Culled with its own written quads (writeQuad keeps the sphere): an
+    // off-screen scarred hull used to submit this draw every frame (P21).
+    geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 0);
+    return { mesh, geo, pos, uv, col, bounds: new THREE.Box3(), used: 0, free: [] };
   }
   const meshPool: NodeMesh[] = [];
   function obtainNodeMesh(): NodeMesh {
@@ -773,6 +778,9 @@ export function* createImpactDecalsSteps(
     nm.free.length = 0;
     nm.pos.array.fill(0);
     nm.pos.needsUpdate = true;
+    nm.bounds.makeEmpty();
+    const sphere = nm.geo.boundingSphere;
+    if (sphere) { sphere.center.set(0, 0, 0); sphere.radius = 0; }
     return nm;
   }
   function releaseNodeMesh(nm: NodeMesh): void {
@@ -918,6 +926,10 @@ export function* createImpactDecalsSteps(
     nm.pos.needsUpdate = true;
     nm.uv.needsUpdate = true;
     nm.col.needsUpdate = true;
+    for (let corner = slot * 12; corner < slot * 12 + 12; corner += 3) {
+      nm.bounds.expandByPoint(_quadCorner.set(pa[corner], pa[corner + 1], pa[corner + 2]));
+    }
+    nm.bounds.getBoundingSphere(nm.geo.boundingSphere ??= new THREE.Sphere());
   }
 
   function zeroQuad(nm: NodeMesh, slot: number): void {

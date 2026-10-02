@@ -25,7 +25,8 @@ interface ActiveWorld<SkyConfig extends object = object> {
   mapId: string;
   terrainVariant?: 'assault-trenches' | null;
   group: THREE.Object3D;
-  config: { sky?: SkyConfig };
+  /** 2026-10-01: `clouds` is the map's cloudscape (engine/cloudscapes.ts), carried on the sky preset like the battle's. */
+  config: { sky?: SkyConfig; clouds?: object };
   /** Round 77c: bakes the vegetation's impostor atlas under cover (map.ts). */
   warmImpostors?(): boolean;
   raycast(
@@ -228,7 +229,12 @@ export function createWorldActivationRuntime<
   };
 
   const restoreAtmosphere = (world: World, atmosphere?: 'covered-battle'): void => {
-    const skyConfig = world.config.sky ?? {} as SkyConfig;
+    // 2026-10-01: the map's cloudscape rides with its sky block here too (main.ts getAuthoredPreset does it for the
+    // battle) — the shots, the Studio staging and the census frames showed the legacy cloud layer derived from the sky
+    // block alone (Titan Gorge's dense overcast as scattered cumulus, every authored regime lost)
+    const skyConfig = (world.config.clouds
+      ? { ...(world.config.sky ?? {}), cloudscape: world.config.clouds }
+      : world.config.sky ?? {}) as SkyConfig;
     if (atmosphere === 'covered-battle') {
       // This authored daytime presentation is only intermediate. The covered
       // deployment/authority owner bakes the selected day/night IBL once.

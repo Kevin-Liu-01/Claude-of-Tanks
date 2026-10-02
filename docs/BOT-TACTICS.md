@@ -13,6 +13,16 @@ on the objective. Critical non-carriers may briefly fall back. Route cursors
 survive repeated unchanged assignments, and single destinations go through the
 terrain-aware navigation grid.
 
+The mission never parks a hull that cannot fight. A zone holder (zone control,
+frontline) that has not been able to fight its target for four seconds, because
+it has no sight of it or no loaded round opens the gate, shifts inside the zone:
+to a point on the 0.6 or 0.8 × radius ring in sight of the target and as far
+round its side as the zone allows. It holds that point while it can fight from
+it. A mission bot whose route is used up short of its objective (the planner's
+best ends in another connected component, or a search leg took the waypoints)
+hands the hull to the classic drivers for 20 seconds before the mission takes
+it back.
+
 | Mode | Coordination |
 | --- | --- |
 | Capture the Flag | Runner brings the flag home. Up to two nearest responders recover the home flag. Two escorts cover opposite sides of a carrier. Larger teams retain home defense; extra raiders approach separate lanes. |
@@ -78,6 +88,28 @@ No-contact bots begin seeking a new approach after 25 seconds, independently
 of the opening long-range fire restriction. Combat destinations crossing a
 bridge use the same navigation grid and abutments as mission destinations.
 
+Right-of-way waits for traffic, not for a hull that never moves:
+
+- The passing path round a stopped ally starts after 1.25 s of yielding, or
+  after half a second stopped in the gap behind it when there is room to turn.
+  Its legs lie on the line from the bot to the ally. While it runs, it owns the
+  steering (no evasive nudge) and no reverse escape interrupts it, but the speed
+  cap and the emergency stop still apply. Its pivot is not drive intent, so the
+  low-speed watchdog does not read it as a wedge.
+- The yield is bounded. Eight seconds held behind a parked ally give way: first
+  a passing path on a wider lane, then the shared stuck escalation (a reverse
+  burst, a detour side flip, a waypoint skip and, on repeats, the pocket
+  escape). A moving lead is traffic and never triggers it.
+- The nose-to-nose gap stop applies to a hull in this bot's lane. A hull that
+  will pass beside it keeps the radial guard and the speed cap, so two oncoming
+  bots pass side by side instead of stopping on every predicted crossing.
+
+A rack that cannot hurt its target stops pressing it. After 60 seconds in sight
+of the target from inside 90 m, with zones visible but no loaded round opening
+the gate and no burst worth a round, the rack counts as spent against that
+target for 90 seconds. The bot rams when the ram law allows it and otherwise
+retires past 240 m, and any other spotted enemy outranks the target.
+
 The traffic regressions run actual movement for both teams: parked hulls,
 oncoming pairs, and a three-bot queue. The pacing target is 4–8 minutes with
 no default match under two minutes; prolonged idle deployment is not a tactic.
@@ -104,6 +136,13 @@ collision remains authoritative, including parapets and piers.
   in `.qa-dev/bot-targeting/`. Fixed-step time is accelerated; this is behavior
   evidence, not a rendering-performance benchmark.
 
+- `src/game/ai.stalls.selftest.mjs`: the stalls the 2026-10-02 pilot-map battles
+  found, each in a deterministic fixture that fails without its fix: a parked
+  human across the route, the bounded yield in a walled lane (with a moving-lead
+  control), oncoming pairs, a smoke-only rack against an idle M1A2 (ram, retire,
+  and an APFSDS control), a zone holder that cannot fight from the zone's centre
+  (shut gate, no sight line), and a mission route that ends short of its
+  objective.
 - `src/game/ai.selftest.mjs`: ability requests, fourth-slot independent launcher,
   ground/air edge behavior, continuing missions under contact, route reuse and
   a mobile flanker with an anchor, alongside existing aiming/survival tests.

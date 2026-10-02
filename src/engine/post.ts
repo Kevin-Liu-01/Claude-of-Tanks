@@ -346,8 +346,13 @@ const AERIAL_HAZE_DENSITY = 0.00092; // 1/m, slower second curve for scatter-in
 // 1 km and the far ranges dissolved into one veil; capped, a range keeps >= 40 % of its own colour (extinction) and
 // >= 45 % of its own light (scatter-in) at any distance. Both ceilings sit past ~650 m, so the midfield law
 // (r6 de-milk, r2 black-point guard) is untouched.
-const AERIAL_EXT_CEILING = 0.60;
-const AERIAL_SCATTER_CEILING = 0.55;
+// 2026-10-02 (the clouds lane, handed the square's law by the lighting lane, whose ring ceilings came down a third): the
+// square's far half still read hazed at ground level on the census bird and centre-far views, so the square's ceilings
+// come down a third too (0.60 / 0.55 -> 0.42 / 0.38) — a range across the square keeps most of its own colour, the
+// ring's law still continuous at the seam (it eases from these to AERIAL_RING_*); volumetricClouds.ts CLOUD_AERIAL
+// mirrors them so a cloud bank and the ground under it haze alike.
+const AERIAL_EXT_CEILING = 0.42;
+const AERIAL_SCATTER_CEILING = 0.38;
 // Round 72b (integrator: "the boosted outer rows are washed toward the sky by the post aerial ceilings ... give the
 // ring its own distance law"): beyond the playable square the two ceilings ease with the distance past the square's
 // edge — continuous with the square's law at the seam (round 29 / 35), lower across the ring's ranges (edgeOut 260 m
@@ -2601,7 +2606,8 @@ export function createPost(
     updatePostLightFx();
     // round 68 (2026-09-24): the volumetric cloud layer marches its slot and resolves its history before the
     // scene draws (src/engine/volumetricClouds.ts; the sky rig publishes it, null on the mobile tier / ?clouds=off)
-    scene.userData.volumetricClouds?.beforeSceneRender(renderer, camera, dt, sceneTarget.width, sceneTarget.height);
+    // (2026-10-02: with the haze layer's datum, so the clouds' aerial law sees the same layer from the camera's height)
+    scene.userData.volumetricClouds?.beforeSceneRender(renderer, camera, dt, sceneTarget.width, sceneTarget.height, aerial.uniforms.uHazeDatum.value);
     // Only this complete frame transaction can bypass LateFX's input copy.
     // Individual warm/debug renders deliberately keep the original path.
     const passes = composer.passes;

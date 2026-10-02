@@ -103,7 +103,7 @@ export default {
     forestHex: 0x4d3829, rockHex: 0xa74f32, haze: 0.82, grain: 0.68,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'dense-overcast' },
+  clouds: { regime: 'dense-overcast', rain: 0.25, virga: 0.55 },
   sky: {
     sunElevationDeg: 34, sunAzimuthDeg: 126, turbidity: 6.2, rayleigh: 1.15,
     mieCoefficient: 0.008, mieDirectionalG: 0.84, fogDensity: 0.00046,
