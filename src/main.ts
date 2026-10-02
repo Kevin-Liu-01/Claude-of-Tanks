@@ -3139,6 +3139,8 @@ await bootStage('post', async () => {
 // window.__STUDIO (schema in docs/STUDIO.md). main.ts only hands it these
 // integration seams plus the one tick() branch above — entry keys, panel,
 // actors, effects, capture all live in the studio module.
+let studioLightRuntime: Promise<import('./game/studioLightRuntime.ts').StudioLightRuntime> | null = null;
+let studioLightLive: import('./game/studioLightRuntime.ts').StudioLightRuntime | null = null;
 const studioAccess = createStudioAccess({
   loadModule: () => import('./game/studio.ts'),
   preloadFxModule,
@@ -3154,9 +3156,33 @@ const studioAccess = createStudioAccess({
     }),
     setWorldDormant,
     setGarageSpots, setGarageSunTrim, enterGarage,
-    prepareStudioAtmosphere: async (time: import('./engine/battleWeatherPolicy.ts').BattleTimeOfDay) => {
-      await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, [time]);
+    // media r5: Studio times of day and sun direction. The battle owner keeps the authored day (its Garage-return
+    // reset restores the sky); the demand-loaded Studio light runtime applies the plan over it and restores the
+    // world's baked horizon light on exit.
+    prepareStudioAtmosphere: async (
+      time: import('./game/studioLight.ts').StudioTimeOfDay,
+      light: import('./game/studioLight.ts').StudioLight | null = null,
+    ) => {
+      await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, ['day']);
+      studioLightRuntime ??= import('./game/studioLightRuntime.ts').then(({ createStudioLightRuntime }) => {
+        const runtime = createStudioLightRuntime({
+          scene,
+          getWorld: currentWorld,
+          applySky: (preset, keyDirection) => {
+            sky.applyPreset(preset, scene);
+            lighting.setSun(keyDirection ?? sky.sunDir, preset);
+            battleWatchdogRadianceScale = preset.skyIntensity ?? 1;
+            baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
+            worldRuntime.markEnvironmentPrepared(currentWorld());
+          },
+          resetTemporalHistory: () => post.taa?.resetHistory(),
+        });
+        studioLightLive = runtime;
+        return runtime;
+      });
+      return (await studioLightRuntime).apply(time, light);
     },
+    restoreStudioAtmosphere: () => studioLightLive?.restore(),
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.

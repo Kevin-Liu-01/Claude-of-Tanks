@@ -47,6 +47,7 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   const camera = new THREE.PerspectiveCamera();
   const ports = {
     timeOfDay: time,
+    studioLight: null, // media r5: the scene's sun override, forwarded with the time
     ctx: { prepareStudioAtmosphere: async (selected) => calls.push(['atmosphere', selected]) },
     window: { __GAME_READY: !directBoot }, game, camera,
     resolveMapId: (id) => id, urlParam: () => null, getMapConfig: (id) => ({ name: id }),

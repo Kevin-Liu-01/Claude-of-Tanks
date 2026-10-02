@@ -4555,6 +4555,9 @@ function* createSplatMaterialSteps(
     };
     // round 42: the sun the vista ring shades with, and the sky-light weight for steep faces turned from it
     shader.uniforms.uSunDirW = { value: skySunDirection(sky) };
+    // media r5: every compiled program's sun uniform, so Scene Studio can turn the wall sky light with a moved sun
+    // (and restore it); battles never touch the list
+    (mat.userData.sunDirUniforms ??= []).push(shader.uniforms.uSunDirW);
     shader.uniforms.uWallSkyLift = { value: S.wallSkyLift ?? WALL_SKY_LIFT };
     // round 72b: the ring's surface atlas — neutral until horizonAutumnGround.bindAutumnHorizonGround points these at the
     // ring's own bake (the same uniform objects, so a bind after the compile still reaches the program)

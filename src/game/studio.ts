@@ -3,7 +3,11 @@ import { tankContactRect } from '../sim/tankContactShape.ts';
 import type { WaterDisturbance } from '../world/shallowWater.ts';
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
-import { BATTLE_TIMES, type BattleTimeOfDay } from '../engine/battleWeatherPolicy.ts';
+import {
+  STUDIO_TIMES, STUDIO_TIME_BANDS, isStudioTime, normalizeStudioLight, planStudioLight, studioElevationBand,
+  studioTimeFor, studioTimesFor, type StudioLight, type StudioTimeOfDay,
+} from './studioLight.ts';
+import { studioAuthoredSky } from './studioLightRuntime.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * studio.ts — SCENE STUDIO: an in-game staging rig for composing shots.
@@ -160,7 +164,10 @@ interface StudioContext {
   getWorld(): WorldRuntime | null;
   ensureWorld(mapId: string, onProgress?: ProgressListener): Promise<WorldRuntime>;
   setWorldDormant(dormant: boolean): void;
-  prepareStudioAtmosphere?(time: BattleTimeOfDay): Promise<void>;
+  /** Apply a Studio time of day and sun override over the active world (main.ts → studioLightRuntime). */
+  prepareStudioAtmosphere?(time: StudioTimeOfDay, light?: StudioLight | null): Promise<unknown>;
+  /** Restore the world's baked horizon light and the readability before the battlefield leaves the Studio. */
+  restoreStudioAtmosphere?(): void;
   setGarageSpots(enabled: boolean): void;
   setGarageSunTrim(enabled: boolean): void;
   enterGarage(): Promise<void> | void;
@@ -376,7 +383,8 @@ interface RecordingSession {
 interface StudioSceneInput {
   map?: string;
   productionFormat?: ProductionFormat;
-  timeOfDay?: BattleTimeOfDay;
+  timeOfDay?: StudioTimeOfDay;
+  light?: StudioLight | null;
   seed?: number;
   actors?: readonly StudioActorInput[];
   effects?: readonly StudioEffectInput[];
@@ -492,7 +500,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let entering: Promise<void> | null = null; // in-flight enter() promise (shared latch)
   let loading = false;         // load() in flight (blocks re-entrant loads)
   let mapChange: Promise<string> | null = null; // serialized map switch
-  let timeOfDay: BattleTimeOfDay = 'day';
+  let timeOfDay: StudioTimeOfDay = 'day';
+  let studioLight: StudioLight | null = null; // scene JSON `light`: the sun override (absolute bearing / elevation)
   let timeScale = 1;           // fx time multiplier; 0 = frozen
   let clockMs = 0;             // studio fx timeline (ms since last fx reset)
   let uidSeq = 1;
@@ -2922,7 +2931,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const w = getWorld();
     return {
       map: w ? w.mapId : 'verdant',
-      timeOfDay,
+      // the time as rendered (a space map keeps its authored day)
+      timeOfDay: studioTimeFor(w ? w.mapId : 'verdant', timeOfDay),
+      ...(studioLight ? { light: { ...studioLight } } : {}),
       productionFormat,
       seed: sceneMeta.seed || 5000,
       actors: actors.map((a) => ({
@@ -3033,14 +3044,15 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   ): Promise<ReturnType<typeof stateJson>> {
     const loadedFormat = json.productionFormat ?? 'landscape';
     productionAspect(loadedFormat); // Validate before replacing any scene state.
-    if (json.timeOfDay !== undefined && !BATTLE_TIMES.includes(json.timeOfDay)) throw new RangeError('Unknown time of day');
+    if (json.timeOfDay !== undefined && !isStudioTime(json.timeOfDay)) throw new RangeError('Unknown time of day');
+    const loadedLight = normalizeStudioLight(json.light); // throws on a malformed block before any state changes
     if (recording) throw new Error('Stop recording before loading a scene');
     if (loading) throw new Error('studio.load already in flight');
     loading = true;
     try {
       const yieldForFrameBudget = createFrameBudgetYielder(10);
       await ensureLoadMap(json);
-      await setTimeOfDay(json.timeOfDay ?? 'day');
+      await setTimeOfDay(json.timeOfDay ?? 'day', loadedLight);
       await replaceLoadActors(json, yieldForFrameBudget);
       storyboard = loadedStoryboard(json);
       bindStoryboardTracks();
@@ -3062,19 +3074,72 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
   }
 
-  async function setTimeOfDay(time: BattleTimeOfDay): Promise<BattleTimeOfDay> {
-    if (!BATTLE_TIMES.includes(time)) throw new RangeError('Unknown time of day');
-    if (recording) throw new Error('Stop recording before changing the light');
-    if (time === timeOfDay) return time;
-    await transition.run(async () => {
-      await ctx.prepareStudioAtmosphere?.(time);
+  const sameLight = (a: StudioLight | null, b: StudioLight | null): boolean =>
+    (a?.sunAzimuthDeg ?? null) === (b?.sunAzimuthDeg ?? null) && (a?.sunElevationDeg ?? null) === (b?.sunElevationDeg ?? null);
+
+  /** Re-light the active world (a covered transition for time changes; slider-rate sun moves stay uncovered). */
+  async function applyStudioLight(time: StudioTimeOfDay, light: StudioLight | null, covered: boolean): Promise<void> {
+    const work = async (): Promise<void> => {
+      await ctx.prepareStudioAtmosphere?.(time, light);
       timeOfDay = time;
+      studioLight = light;
       lighting.updateFrustums();
       lighting.update(true);
       panel.refreshMap();
       invalidate();
-    }, { title: t('studio.settingLight') });
-    return time;
+    };
+    if (covered) await transition.run(work, { title: t('studio.settingLight') });
+    else await work();
+  }
+
+  /**
+   * Select a Studio time of day. A new time keeps the sun's bearing override and takes its own elevation; pass
+   * `light` (an object, or null to clear) to set the override with it. Space maps render their authored day.
+   */
+  async function setTimeOfDay(time: StudioTimeOfDay, light?: StudioLight | null): Promise<StudioTimeOfDay> {
+    if (!isStudioTime(time)) throw new RangeError('Unknown time of day');
+    if (recording) throw new Error('Stop recording before changing the light');
+    const nextLight = light !== undefined ? normalizeStudioLight(light)
+      : time === timeOfDay ? studioLight
+        : studioLight?.sunAzimuthDeg !== undefined ? { sunAzimuthDeg: studioLight.sunAzimuthDeg } : null;
+    if (time !== timeOfDay || !sameLight(nextLight, studioLight)) await applyStudioLight(time, nextLight, true);
+    return studioTimeFor(getWorld()?.mapId ?? 'verdant', time);
+  }
+
+  /**
+   * Merge a sun override: `{sunAzimuthDeg?, sunElevationDeg?}` (a null field removes it), or null to clear. The
+   * elevation is clamped into the current time's band (getLight().band).
+   */
+  async function setLight(patch: StudioLight | null): Promise<ReturnType<typeof getLight>> {
+    if (recording) throw new Error('Stop recording before changing the light');
+    if (patch !== null && (typeof patch !== 'object' || Array.isArray(patch))) throw new TypeError('Studio light must be an object or null');
+    const next = patch === null ? null : normalizeStudioLight({ ...(studioLight ?? {}), ...patch });
+    const mapId = getWorld()?.mapId ?? 'verdant';
+    // keep the stored elevation inside the band so state() reports what renders
+    if (next?.sunElevationDeg !== undefined) {
+      const band = studioElevationBand(mapId, timeOfDay);
+      next.sunElevationDeg = Math.min(band.max, Math.max(band.min, next.sunElevationDeg));
+    }
+    if (!sameLight(next, studioLight)) await applyStudioLight(timeOfDay, next, false);
+    return getLight();
+  }
+
+  /** The light as rendered: the time, the sun (moon at night) and the override band for the active map. */
+  function getLight() {
+    const world = getWorld();
+    const mapId = world?.mapId ?? 'verdant';
+    const plan = world ? planStudioLight(mapId, studioAuthoredSky(world), timeOfDay, studioLight) : null;
+    const band = studioElevationBand(mapId, timeOfDay);
+    return {
+      time: studioTimeFor(mapId, timeOfDay),
+      requestedTime: timeOfDay,
+      sunAzimuthDeg: plan?.sunAzimuthDeg ?? null,
+      sunElevationDeg: plan?.sunElevationDeg ?? null,
+      override: studioLight ? { ...studioLight } : null,
+      band: { min: band.min, max: band.max },
+      times: [...studioTimesFor(mapId)],
+      space: plan?.space ?? false,
+    };
   }
 
   async function setMap(mapId: string): Promise<string> {
@@ -3094,7 +3159,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         progress(0.03 + f * 0.86, label);
       });
       setWorldDormant(false);
-      await ctx.prepareStudioAtmosphere?.(timeOfDay);
+      // a space map renders its authored day; the requested time returns on the next terrestrial map
+      await ctx.prepareStudioAtmosphere?.(timeOfDay, studioLight);
       setCamoBiome(id);
       // Only Studio actors can be seen. Repainting every cached garage/battle
       // texture on a biome change turned a map pick into seconds of unrelated
@@ -3204,7 +3270,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       ]);
       mark('worldAndFx');
       setWorldDormant(false);
-      await ctx.prepareStudioAtmosphere?.(timeOfDay);
+      await ctx.prepareStudioAtmosphere?.(timeOfDay, studioLight);
       // Cold /studio and first-use F8 have no battlefield preset until the
       // awaited acquisition has activated its world. Never borrow the Garage
       // (or previous map's) sun while the requested map is still loading.
@@ -3317,6 +3383,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     rail.rebuild();
     rail.updateVisibility();
     unsweepPool();
+    ctx.restoreStudioAtmosphere?.(); // the cached battlefield gets its baked horizon light back before it can host a battle
     await enterGarage(); // restores camo overrides, sun trim, spots, showroom
     syncRoute(false);
     docBrand('garage');
@@ -3476,8 +3543,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       lighting.updateFrustums(); lighting.update(true);
       return clockMs;
     },
-    get timeOfDay() { return timeOfDay; },
+    get timeOfDay() { return studioTimeFor(getWorld()?.mapId ?? 'verdant', timeOfDay); },
     setTimeOfDay,
+    setLight,
+    getLight,
+    STUDIO_TIMES,
+    STUDIO_TIME_BANDS,
     setMap: (id: string) => recording
       ? Promise.reject(new Error('Stop recording before changing battlefield'))
       : setMap(id),
