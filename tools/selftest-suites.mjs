@@ -618,6 +618,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/ztz85iiiAttachment.selftest.mjs',
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/world/sourcedTextures.selftest.mjs',
+    'src/world/sourcedImageCache.selftest.mjs',
     'src/world/sourcedBuildingDataSource.selftest.mjs',
     'src/world/sourcedTextureComposer.selftest.mjs',
     'src/world/sourcedTextureCompositionWorker.selftest.mjs',
