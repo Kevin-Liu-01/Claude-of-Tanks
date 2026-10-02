@@ -559,6 +559,95 @@ the scars it stamped once that compile is done, or when it fails or is closed (`
 scarred hull in any of the four entries. The overview loses those ten draws (966 → 956 and 953 → 943 forward
 calls); the rollout chase pose, with the scarred allies off screen and already culled, is unchanged (293 and 287).
 
+## Frame budget (2026-10-02)
+
+Owner target: desktop High holds 60 fps (16.7 ms) on a mid-range laptop GPU; phones keep their cheaper path.
+
+### Method
+
+`tools/frame-budget-probe.mjs` measures production builds (`vite preview`, one headless Chrome on hardware ANGLE,
+the repo's capture flags) in A B B A slots. Each slot is a fresh page: the High preset pinned before boot, a solo
+battle with the 14 v 14 sides switch and a pinned roster (`t90m_x` for the player, 27 opponents taken from the
+sorted catalog, so every build of one catalog fields the same hulls), the sourced textures awaited, every bot frozen
+and the governor pinned at full scale. Per viewport (1600×900 and 1920×1080 at device pixel ratio 1) and view
+(`chase`, the hull-relative chase pose; `centre-far`, the battle overview) it settles, then samples whole frames and
+the prefix decomposition through `tools/frame-pass-timer.mjs`:
+
+- GPU per pass: one `EXT_disjoint_timer_query_webgl2` query per frame, from the frame's start to a checkpoint that
+  rotates over the frame (world simulations, clouds, shadow maps, main scene draw, aerial, late FX, bloom, sun
+  shafts, lens flare, grade, SMAA, upscale); a pass is the difference of consecutive checkpoint medians. Split
+  queries (one per pass) over-count on ANGLE's Metal backend — their pieces summed to 4–5.5× the whole frame in the
+  pilots, flushed or not — so they are a diagnostic only (`--segmented`).
+- CPU per pass: `performance.now()` around the same boundaries (the main thread's render path), draw calls and
+  triangles from `renderer.info`; `--profile` adds a CDP CPU profile at the first pose, self time per emitted chunk
+  per frame, which attributes the work no label covers (the audio engine's per-frame update among it).
+- Pairs: a delta is the median of the A B B A pair deltas, both shown. The machine is shared with other sessions'
+  headless browsers; the probe records the load and the foreign GPU processes' CPU per slot. Under that load the
+  whole-frame query reads high — in the pilots 20–55 ms against a presented interval of 16.5–16.7 ms, a span that
+  includes other work rather than the frame's occupancy — so the tables lead with p25 and the paired deltas.
+- Toggles (`--toggle=shadow-cache|sim-sleep`): A B B A blocks of a runtime switch inside one page and pose, with
+  moving views (`chase@7`, the pose gliding over the ground at 7 m/s) where the cascades' snapped poses change.
+- Unchanged pictures: `tools/shadow-cache-truth.mjs` renders every scenario through the cache and without it inside
+  one page task (temporal AA and the cloud history held, so a frame is a function of the scene state) and runs the
+  2026-09-12 consecutive-frame flicker meter on live frames; `tools/frame-capture-compare.mjs` compares the probe's
+  `--shots` captures across builds on the pixels each build reproduces across its own two loads.
+
+### The mid-range proxy
+
+Measuring machine: Apple M5 Max, 40-core GPU. Proxy: GeForce RTX 4050 Laptop with a Ryzen 7 7840HS, the volume
+gaming-laptop pairing. Throughput ratios from published results (notebookcheck):
+
+| | RTX 4050 Laptop | M5 Max 40-core | ratio |
+| --- | ---: | ---: | ---: |
+| 3DMark Wild Life Extreme | 13,488 | 39,389 | 0.342 |
+| 3DMark Steel Nomad Light | 7,254 | 16,191 | 0.448 |
+| 3DMark Steel Nomad | 1,669 | 3,924 | 0.425 |
+| Geekbench 6 single-core (7840HS / M5 Max) | 2,664 | 4,268 | 0.624 |
+
+The projection takes the most conservative GPU ratio (Wild Life Extreme) and the single-core CPU ratio for the main
+thread: `projected = max(GPU here / 0.342, main thread here / 0.624)`. For 16.7 ms on the proxy the frame must
+take at most 5.7 ms of GPU here (7.5 ms at the Steel Nomad Light ratio) and 10.4 ms of main thread. The Radeon 780M
+(the same CPU's iGPU) is 0.126 (Wild Life Extreme 4,945) to 0.171 (Steel Nomad Light 2,775) of this GPU — a third
+of the 4050 — and would need 2.1–2.9 ms here.
+
+### The changes
+
+- Static shadow-caster cache (P20, `src/engine/shadowStaticCache.ts`). Each desktop cascade keeps a depth copy of
+  the battle world's casters (the world root `map.ts` freezes after its build) rendered from the cascade's snapped
+  light pose; a frame that keeps the pose and the static content copies it into the live map and draws only the
+  dynamic casters on top (hulls, wrecks, effects, the cloud gobos, and any world caster seen changing on
+  consecutive frames — a moored hull's bob, a falling tree, a toppling pole — until it has been still for a
+  second). The static content is hashed every frame from what three's shadow traversal reads (visibility, layers,
+  cast flag, geometry and draw range, materials and versions, world matrix, instance count and every instanced
+  stream's version, the router's cascade masks); a change, a pose change (cascade snap, sun) or a map reallocation
+  re-renders that layer. Phones keep the plain render. Cost: one depth copy per cascade (5 bytes a texel): 68 MB on
+  High (2048² ×3 + 1024²), 52 MB on Medium, 273 MB on Ultra.
+- The governor (`src/engine/post.ts`, `adaptiveQualityPolicy.ts`, `gpuFrameTimer.ts`): High may now lower its
+  raster on a native-density display (device pixel ratio below 1.75) down to `nativeDynMin` 0.67 per axis, FSR1's
+  quality ratio, reconstructed by EASU + RCAS to the native canvas (retina keeps 0.9). Every fourth frame's GPU time
+  is sampled; a window's median lets the policy predict an up-step's cost (taken only if
+  `gpu × (next / now)² ≤ 0.85 × budget`), cut proportionally (at most two 0.09 steps) and leave a main-thread
+  overload to the tier lever. A sample longer than 1.2 × the presented frame interval is not occupancy and is set
+  aside, so a pessimistic timer can never hold the scale down. Without the extension (Firefox, Safari) the cadence
+  rules decide as before.
+- Default tiers (`quality.ts` `heuristicAutoCap`): discrete GPUs (RTX 4050 class and up) start on High with the
+  governor; the RDNA iGPUs that name their model (Radeon 680M / 760M / 780M / 880M / 890M) and Intel's Arc iGPUs
+  (Meteor Lake "Arc Graphics", Lunar Lake 130V / 140V) now start on Medium like the generic iGPUs; Strix Halo's
+  8050S / 8060S and the RX / Pro / Arc A / B dGPUs stay uncapped.
+- Idle simulations: the water-ripple field (512², up to three steps a frame) sleeps after 20 s without a hull in
+  the water or a splash, set to rest (its largest wake is then ~1e-7 m) until the next disturbance; the tall-grass
+  pressure field (256²) steps every eighth frame with the summed time while every stamp and the window hold (its
+  max/decay step composes exactly), and steps every frame again the moment anything moves.
+- The horizon ring bound to the terrain material builds no vista program: its own material only carries the
+  relief atlas, the canopy tile and the haze the terrain bands and the ring forest read, and the empty face group
+  that made three link and bind the vista program every frame is gone.
+- Boot entry: the cache (`shadowStaticCache.ts`, loaded with the first battle world), the GPU timer (loaded at the
+  governor's first decision over a battle world) and the r8 cascade caster proxies (`shadowCasterProxies.ts`, moved
+  out of `lighting.ts` and imported when the first lighting rig is created) live outside the entry chunk: 766,653 →
+  764,176 bytes raw and 228,897 → 228,338 brotli against the PR head. Until a module arrives the ordinary path
+  renders — every caster into every cascade (a proxy only drops instances outside its cascade, so the maps are the
+  same), the cadence rules.
+
 ## Asset and geometry policy
 
 Playable tanks are assembled from first-party code and cached/generated
