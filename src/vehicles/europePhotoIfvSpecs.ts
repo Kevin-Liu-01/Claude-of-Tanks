@@ -50,9 +50,10 @@ for(const [id,donor,name,nation,caliber,hp,weight,power,speed,reload,damage,pene
       tw:d?.91:1.12,tFrontZ:d?1.16:1.42,tRearZ:d?-1.1:-1.32,tH:d?.70:.91,
       cheek:[70,210,285],tSide:[45,120,185],tRear:35,tRoof:40,mantlet:[90,230,310],loader:false});
   }
-  s.visual={...s.visual,scheme:'nato',base:id==='lrmv_lynx'?'#535d42':id==='borsuk'?'#4b553b':'#4d5538',
-    weather:'#797762',patches:id==='lrmv_lynx'?['#555f46','#505940']:['#494235','#252c26'],
+  s.visual={...s.visual,scheme:'nato',base:id==='lrmv_lynx'?'#515d40':id==='borsuk'?'#4b553b':'#4d5538',
+    weather:id==='lrmv_lynx'?'#636c4e':'#797762',patches:id==='lrmv_lynx'?['#283029','#756047']:['#494235','#252c26'],
     number:id==='dardo'?'119097':id==='lrmv_lynx'?'201':'101',trackWidthM:id==='dardo'?.45:id==='borsuk'?.51:s.visual.trackWidthM};
+  if(id==='lrmv_lynx') Object.assign(s.visual,{camoScale:.42,patchK:1.1});
   applyFleetLauncherMuzzles(s);created[id]=s;
 }
 registerFleetSpecs(registry,EUROPE_PHOTO_IFV_IDS,created);

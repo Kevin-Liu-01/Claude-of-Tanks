@@ -278,6 +278,14 @@ assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('national_usa') - 1], 'si
 assert.equal(defaultCamoPatternId('tos1a_tagil'), 'factory');
 assert.equal(stockCamoPatternIdFor('tos1a_tagil'), 'sig_tos1a_tagil');
 assert.equal(CAMO_PATTERN_LABEL.sig_tos1a_tagil, 'TOS-1A Steppe Bands');
+// Italian defaults must reach their distinct field finishes; aliases and the
+// Chinese prototype retain the same saved/network paint IDs.
+for (const [tank, paint] of Object.entries({
+  ariete_c1_x: 'service_ariete_c1', ariete_c2_x: 'sig_ariete_c2',
+  ariete_c1: 'service_ariete_c1', ariete_c2: 'sig_ariete_c2',
+  lrmv_lynx: 'sig_lrmv_lynx', type100: 'sig_type100',
+  ztz100_x: 'sig_ztz100_x', ztz100_prototype: 'sig_ztz100_x',
+})) assert.equal(stockCamoPatternIdFor(tank, tank.startsWith('ariete') ? 'Italy' : undefined), paint);
 const precedingCatalog = structuredClone(catalogContract);
 // The photographic fleet appends five stock finishes. Removing precisely
 // those additions must reproduce both historical catalog hashes unchanged.
@@ -349,13 +357,15 @@ assert.equal(createHash('sha256').update(JSON.stringify(historicalCatalog)).dige
 // round 46 (2026-09-23): digest re-based — the hidden fleet retired: sig_merkava4 (unregistered Mk 4 donor) and the
 // six generated paints whose lead hulls left (paint_tiger1, paint_panther_g, paint_sturmtiger, paint_t95,
 // paint_isu122s, paint_m26_pershing) are no longer catalog entries
-  'b0c1da0b18bdbfc65a9a240b9f023d4559884ed73792dafc0a9d2b1740044ab0',
+// 2026-10-02: intentional Italian woodland and Type 100 digital recipe refresh.
+  '1244cc2e8ac8bf3649a56fe3c0924e3f36c9956496cddcae57291f95bb16b1bf',
   'all other catalog fields, order, recipes, tags and national routing remain exact');
 assert.equal(
   createHash('sha256').update(JSON.stringify(precedingCatalog)).digest('hex'),
   // round 32 (2026-09-21): digest re-based — Factory = national service pattern again, deduplicated authored paints
   // round 46 (2026-09-23): digest re-based — hidden fleet retired (see the historical digest note above)
-  'ff60bcb3ca8e0e53c767ad0de9b0061a74b3e33462157f7d3b308c56b007af3c', // September 20 official marks, independent prints, Sabra default.
+  // 2026-10-02: Italian woodland and Type 100 digital recipes, stable saved IDs.
+  'a67f3d9468ee638862ecae679840ef89c7bbeef0ea1baf04a3535d59b9fd7cd6',
   'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
 );
 

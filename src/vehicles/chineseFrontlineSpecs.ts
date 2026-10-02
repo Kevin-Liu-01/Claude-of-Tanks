@@ -97,9 +97,9 @@ const CHINESE_FRONTLINE_SPECS = {
       return a;
     })(),
     visual: {
-      scheme: 'digital', base: '#59654a', weather: '#65704f',
-      patches: ['#8a9370', '#3a452f', '#7f8477'],
-      marking: 'number', number: 'LZ83', trackWidthM: 0.58, camoScale: 0.34,
+      scheme: 'digital', base: '#526044', weather: '#626d50',
+      patches: ['#737e5b', '#73624a', '#2e3b2f'],
+      marking: 'number', number: 'LZ83', trackWidthM: 0.58, camoScale: 0.38, digitalCellK: 2.4,
     },
   },
   // ZTZ-100 (owner 2026-09-17): the PLA's next-generation main battle tank, generated from the owner's supplied
@@ -136,9 +136,9 @@ const CHINESE_FRONTLINE_SPECS = {
       mantlet: [170, 560, 740], loader: false, bustleAmmo: true,
     }),
     visual: {
-      scheme: 'digital', base: '#5b6a4d', weather: '#66714f',
-      patches: ['#8f9a72', '#3b4830', '#7d8378'],
-      marking: 'number', number: '100', trackWidthM: 0.515, camoScale: 0.34,
+      scheme: 'digital', base: '#49593f', weather: '#5c684c',
+      patches: ['#707d58', '#695f48', '#29372d'],
+      marking: 'number', number: '100', trackWidthM: 0.515, camoScale: 0.36, digitalCellK: 2.4,
     },
   },
   // Owner-authored missile-support prototype (2026-09-19): retained chassis,
@@ -178,9 +178,9 @@ const CHINESE_FRONTLINE_SPECS = {
       mantlet: [100, 280, 360], loader: false, bustleAmmo: false,
     }),
     visual: {
-      scheme: 'digital', base: '#5b6a4d', weather: '#66714f',
-      patches: ['#8f9a72', '#3b4830', '#7d8378'],
-      marking: 'number', number: '100', trackWidthM: 0.515, camoScale: 0.34,
+      scheme: 'digital', base: '#49593f', weather: '#5c684c',
+      patches: ['#707d58', '#695f48', '#29372d'],
+      marking: 'number', number: '100', trackWidthM: 0.515, camoScale: 0.36, digitalCellK: 2.4,
     },
   },
 } satisfies Readonly<Record<string, FleetTankSpec>>;
