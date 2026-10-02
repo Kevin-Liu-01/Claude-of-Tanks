@@ -8,7 +8,8 @@
  *   it therefore imports nothing and stays DOM-free (the rooms Worker's program reaches it through the session endpoint).
  * - Copies that cannot import it are pinned to it by `tools/deployment-policy.selftest.mjs`: the Workers'
  *   `ALLOWED_ORIGINS` (`cloudflare/rooms/wrangler*.jsonc`, `cloudflare/telemetry/wrangler.jsonc`) and the dependency-free
- *   entry telemetry module (`src/entry/telemetry.ts`).
+ *   entry telemetry module (`src/entry/telemetry.ts`); the inline boot watchdog's two literals in `index.html` by
+ *   `src/entry/inlineWatchdogSink.selftest.mjs`.
  *
  * A Worker's `ALLOWED_ORIGINS` reaches production only with that Worker's next deploy (`wrangler deploy`).
  */
