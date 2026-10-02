@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { createCanvas } from '@napi-rs/canvas';
 import { MeshStandardMaterial, Texture, Group, Mesh, PlaneGeometry, BufferGeometry, BufferAttribute } from 'three';
 import { bindAutumnHorizonGround } from './horizonAutumnGround.ts';
-import { HORIZON_SEGMENTS, buildHorizonRing, sampleHorizonGeometry } from './maps/horizon.ts';
+import { HORIZON_SEGMENTS, buildHorizonRing, buildHorizonRingSteps, sampleHorizonGeometry } from './maps/horizon.ts';
+import { Material } from 'three';
 import { continueHorizonFold, refineHorizonGroundSeam } from './horizonSeam.ts';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
@@ -88,7 +89,9 @@ try {
  {const coast=buildHorizonRing(null,getMapConfig('coastal'),1337),g=coast.geometry;
   bindAutumnHorizonGround(coast,new MeshStandardMaterial(),[],{columns:HORIZON_SEGMENTS,bands:coast.userData.horizonRing.ridgeRow,continuousGround:true});
   assert.equal(g.groups[0].count,g.index.count,'the whole continued coast shares the ground shader');
-  assert.equal(g.groups[1].count,0,'no vista-material strip can cross the beach');
+  // 2026-10-02 (the frame-budget lane): no group at all for the ring's own material once no face is left to it — three
+  // pushed the empty group into the render list and linked and bound the vista program every frame for nothing
+  assert.equal(g.groups.length,1,'no vista-material strip can cross the beach, and no empty vista group remains');
   const distant=coast.getObjectByName('horizon-far-range');
   assert.ok(distant,'the production coast includes the distant apron');
   assert.equal(distant.material[1],coast.material[1],'distant ground shares the live terrain material');
@@ -100,5 +103,26 @@ try {
    assert.ok((p.getZ(b)-p.getZ(a))*(p.getX(c)-p.getX(a))-(p.getX(b)-p.getX(a))*(p.getZ(c)-p.getZ(a))>0,'every continued coast face winds upward');}
   disposeObject3DResources(coast);}
  const steppe=buildHorizonRing(null,getMapConfig('steppe'),1337);assert.equal(steppe.geometry.groups.length,0);assert.ok(!Array.isArray(steppe.material));disposeObject3DResources(steppe);
+ // 2026-10-02 (the frame-budget lane): terrain.ts builds the ring terrain-bound — every face draws with the terrain
+ // material, so the ring's own material carries data only: no vista program, the relief atlas (its window, gradient
+ // and amplitude unchanged), the canopy tile and its mean for the ring forest, the haze; nothing else.
+ {const build=(opts)=>{const steps=buildHorizonRingSteps(null,getMapConfig('autumn'),1337,undefined,opts);let s=steps.next();while(!s.done)s=steps.next();return s.value;};
+  const vista=build({}),bound=build({terrainBound:true});
+  const vu=vista.material.userData.horizonVista.uniforms,bu=bound.material.userData.horizonVista.uniforms;
+  assert.notEqual(vista.material.onBeforeCompile,Material.prototype.onBeforeCompile,'the vista ring still compiles its program (receipts, authoring)');
+  assert.equal(bound.material.onBeforeCompile,Material.prototype.onBeforeCompile,'the terrain-bound ring builds no vista program');
+  assert.equal(bound.material.userData.horizonTerrainBound,true);
+  assert.deepEqual(Object.keys(bu).sort(),['uVCanopy','uVHaze','uVRelief','uVReliefAmp','uVReliefGrad','uVReliefR'],'it carries the relief, the canopy and the haze only');
+  for(const k of ['uVReliefAmp','uVReliefGrad','uVHaze'])assert.equal(bu[k].value,vu[k].value,`${k} carried unchanged`);
+  assert.ok(bu.uVReliefR.value.equals(vu.uVReliefR.value),'the relief window carried unchanged');
+  assert.ok(bu.uVRelief.value&&vu.uVRelief.value&&bu.uVRelief.value.image.width===vu.uVRelief.value.image.width,'the same baked atlas');
+  assert.ok(bound.material.userData.horizonVista.canopyMean.equals(vista.material.userData.horizonVista.canopyMean),'the ring forest\'s crown mottle mean');
+  const forestOf=(ring)=>{let n=0;ring.getObjectByName('horizon-forest')?.traverse((o)=>{if(o.isInstancedMesh)n+=o.count;});return n;};
+  assert.ok(forestOf(bound)>0);assert.equal(forestOf(bound),forestOf(vista),'the ring forest stands where it stood');
+  const textures=(ring)=>{const t=new Set();ring.traverse((o)=>{for(const m of [].concat(o.material||[]))for(const v of Object.values(m))if(v&&v.isTexture)t.add(v);});for(const u of Object.values(ring.material.userData.horizonVista.uniforms))if(u.value?.isTexture)t.add(u.value);return t.size;};
+  assert.ok(textures(bound)<textures(vista),'fewer textures: the five vista-only tiles are never made');
+  bindAutumnHorizonGround(bound,new MeshStandardMaterial(),[new Texture(),new Texture()],{columns:HORIZON_SEGMENTS,bands:bound.userData.horizonRing.ridgeRow,continuousGround:true});
+  assert.deepEqual(bound.geometry.groups.map((gr)=>gr.materialIndex),[1],'bound: the terrain group alone');
+  disposeObject3DResources(vista);disposeObject3DResources(bound);}
 }finally{globalThis.document=previousDocument;}
 console.log('Autumn actual terrain material: exact geometric triangles/outer indices, upward winding, source identity, lifetime and other-map isolation PASS');
