@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-01T22:42:02.644Z",
+ "generatedAt": "2026-10-02T00:52:19.633Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening) and inside-out pixel totals over the 33 census views. Gate: a tank may not exceed its ledger open px by more than max(12, 10%) and a sealed tank must stay sealed.",
@@ -1481,8 +1481,8 @@
    "openPx": 5,
    "openViews": 0,
    "insideOutPx": 147,
-   "seeThroughPx": 804,
-   "tris": 101156
+   "seeThroughPx": 786,
+   "tris": 101436
   },
   "pl_t80u_modern": {
    "sealed": true,
@@ -1561,8 +1561,8 @@
    "openPx": 6,
    "openViews": 0,
    "insideOutPx": 47,
-   "seeThroughPx": 189,
-   "tris": 115034
+   "seeThroughPx": 185,
+   "tris": 115314
   },
   "pl_t72b3_zubr_ii": {
    "sealed": true,

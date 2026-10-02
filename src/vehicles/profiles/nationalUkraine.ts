@@ -181,6 +181,20 @@ function skirtPackage(P:TankBuilderPort,c:NationalModernizationConfig,count:numb
   for(const side of [-1,1]){
     // One longitudinal load rail joins every armor segment and corner return.
     P.addExternalArmor('hull',box(.105,.105,5.13),side*(back+.025),1.36,0);
+    // Sich's field skirt keeps separate removable segments. Short folded
+    // lap caps bridge their upper joints all the way across the ERA carrier,
+    // overlapping the load rail and both adjacent panel tops for support.
+    if(c.model===2)for(let i=1;i<count;i++){
+      const joint=-span/2+i*step;
+      P.addExternalArmor('hull',sectionSolid(([
+        [-.115,1.354,1.388],[-.065,1.398,1.438],
+        [.065,1.398,1.438],[.115,1.354,1.388],
+      ] as const).map(([dz,low,high])=>{
+        const ring:[number,number][]=[[1.95,low],[outer+.075,low],[outer+.075,high],[1.95,high]];
+        if(side<0){for(const p of ring)p[0]*=-1;ring.reverse();}
+        return {z:joint+dz,ring};
+      })));
+    }
     for(let i=0;i<count;i++) {
       const z=-span/2+(i+.5)*step,seat=surfaceY(P,'hull',side*1.67,z);
       P.addEquipment('hullDetail',beamBetween([side*1.62,seat+.021,z],[side*(back+.035),seat+.021,z],.027,10));

@@ -108,7 +108,18 @@ function hullPackage(P:TankBuilderPort):void {
     // Recessed joint stock bridges the service seams between the separate
     // outer panels. The 50 mm face gaps remain readable, but expose 180 mm
     // permanent backing rather than an unprotected slit into the wheel bay.
-    for(let i=1;i<count;i++)P.addExternalArmor('hull',box(.18,.58,.14),side*2.03,1.10,-span/2+i*step);
+    for(let i=1;i<count;i++){
+      const joint=-span/2+i*step;
+      P.addExternalArmor('hull',box(.18,.58,.14),side*2.03,1.10,joint);
+      // Fitted lap cap rests on the backer and neighboring segment shoulders.
+      // It closes the exposed upper seam through the full ERA-carrier depth,
+      // while the recessed vertical joint remains visible below the cap.
+      P.addExternalArmor('hull',sectionSolid(([
+        [-.115,1.425],[-.065,1.465],[.065,1.465],[.115,1.425],
+      ] as const).map(([dz,top])=>({z:joint+dz,ring:mirrorContour(side,[
+        [1.99,1.38],[2.22,1.38],[2.22,top],[1.99,top],
+      ])}))));
+    }
     for(let i=0;i<count;i++){
       const z=-span/2+(i+.5)*step;
       P.addExternalArmor('hull',bank(side,[

@@ -186,6 +186,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-clip-result.selftest.mjs',
     'tools/track-clip-options.selftest.mjs',
     'tools/standard-continuity-policy.selftest.mjs',
+    'tools/concept-fixture-runner.selftest.mjs',
     'tools/source-equipment-policy.selftest.mjs',
     'tools/photo-reference-policy.selftest.mjs',
     'tools/source-configuration-record.selftest.mjs',

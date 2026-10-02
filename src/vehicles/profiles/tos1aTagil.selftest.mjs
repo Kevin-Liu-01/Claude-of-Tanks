@@ -21,7 +21,11 @@ const attribute=a=>sha(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byt
 // round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
 // retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
 // 2026-09-25 FSP-03: T-90MS X chassis digests re-pinned once — its three source-measured return rollers return.
-const donorHashes={high:'bca2c0fd979785974499c9ddceb4020f6ab7cd9a5d397726898635bfcac331ed' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,low:'2f83bb5b67081a48269b19052a3f953686b45016ffa1f2170aa2192889527a9e'};
+// 2026-10-01: replaying the 53864e65b profile reproduces both previous hashes exactly.
+// The 884384729 roof station changes only six RWS/merged rows; native world triangles,
+// normals, UVs, color attributes and materials reconcile. See the dated preservation
+// receipt in docs/history/research/national-legacy-pair-20261001.md. Strict pin retained.
+const donorHashes={high:'52a5f1542223cf26b4ce482b5738017b8de3d2b60d37253b0f5cf282b8cd99ca' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,low:'a14d2e9e283b42319c566f48976d90ad76956fa644365b3644dcb027b1322702'};
 function payload(root,hullOnly=false){
   root.updateMatrixWorld(true);const rows=[];
   root.traverse(m=>{

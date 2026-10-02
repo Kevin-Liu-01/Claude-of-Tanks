@@ -5,19 +5,12 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import * as THREE from 'three';
-import '../src/vehicles/tankFactory.ts';
-import {ALL_TANK_IDS,TANK_SPECS} from '../src/vehicles/specs.ts';
-import {firstPartyConcept,validateSelectedIds,conceptDesignPath} from './first-party-concept-policy.mjs';
-import {readConceptDesign} from './first-party-concept-record.mjs';
-import {assertConceptDatums} from './first-party-concept-datums.mjs';
+import {createConceptFixtureRunner,createConceptInputGuard} from './concept-fixture-runner.mjs';
 const ids=process.argv.find(a=>a.startsWith('--ids='))?.slice(6).split(',')??[];
-validateSelectedIds(ids,ALL_TANK_IDS);
-assert.ok(ids.every(firstPartyConcept),'Only explicitly authored concepts use this gate');
 const output=path.resolve(process.argv.find(a=>a.startsWith('--out='))?.slice(6)??'.qa-dev/reports/first-party-concepts');
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
-const documents=new Map(ids.map(id=>[id,readConceptDesign(id)]));
 function runtimeDigest() {
-  const files=['package.json','package-lock.json',...new Set(ids.map(conceptDesignPath))];
+  const files=['package.json','package-lock.json'];
   function walk(dir) {
     for(const entry of fs.readdirSync(dir,{withFileTypes:true})) {
       const p=path.join(dir,entry.name);
@@ -25,9 +18,21 @@ function runtimeDigest() {
       else if(/\.(?:ts|js|mjs|json|html)$/.test(p))files.push(p);
     }
   }
-  walk('src');walk('tools');
+  walk('src');walk('tools');walk('docs/references/concepts');
   return hash(files.sort().map(p=>`${p}:${hash(fs.readFileSync(p))}`).join('\n'));
 }
+// Freeze before loading any runtime, policy or owner document. Node caches these
+// modules, so a later digest must never qualify an earlier in-memory revision.
+const inputs=createConceptInputGuard(runtimeDigest);
+await import('../src/vehicles/tankFactory.ts');
+const {ALL_TANK_IDS,TANK_SPECS}=await import('../src/vehicles/specs.ts');
+const {firstPartyConcept,validateSelectedIds}=await import('./first-party-concept-policy.mjs');
+const {readConceptDesign}=await import('./first-party-concept-record.mjs');
+const {assertConceptDatums}=await import('./first-party-concept-datums.mjs');
+validateSelectedIds(ids,ALL_TANK_IDS);
+assert.ok(ids.every(firstPartyConcept),'Only explicitly authored concepts use this gate');
+const documents=new Map(ids.map(id=>[id,readConceptDesign(id)]));
+inputs.assertCurrent();
 async function dimensions(id) {
   const {createTank}=await import('../src/vehicles/tankFactory.ts');
   const {ensureInteriorFills,hasInteriorFills}=await import('../src/vehicles/interiorFills.ts');
@@ -48,19 +53,23 @@ async function dimensions(id) {
   });
 }
 fs.mkdirSync(output,{recursive:true});
+const runFixture=createConceptFixtureRunner(
+  test=>spawnSync(process.execPath,[test],{encoding:'utf8'}),runtimeDigest);
 let failed=false;
 for(const id of ids) {
-  const design=firstPartyConcept(id),startedAt=new Date().toISOString(),inputSha256Before=runtimeDigest();
-  const child=spawnSync(process.execPath,[design.test],{encoding:'utf8'});
+  const design=firstPartyConcept(id),startedAt=new Date().toISOString(),inputSha256Before=inputs.assertCurrent();
+  const child=runFixture(design.test,inputSha256Before);
   const log=`${child.stdout??''}${child.stderr??''}`;
   fs.writeFileSync(path.join(output,`${id}.log`),log);
   const report={id,startedAt,comparisonPurpose:'owner-authored-concept',comparisonApplicable:false,score:null,
     ...documents.get(id),inputSha256Before,
-    test:{path:design.test,exitCode:child.status,logSha256:hash(log)},dimensions:[],passed:false};
+    test:{path:design.test,exitCode:child.status,logSha256:hash(log),
+      invocation:child.invocation,reused:child.reused},dimensions:[],passed:false};
   try {
     assert.equal(child.status,0,'Actual profile preservation/stock/attachment fixture must pass');
+    assert.ok(child.inputsStable,'Runtime/tool inputs stayed frozen during fixture execution');
     report.dimensions=await dimensions(id);
-    report.inputSha256After=runtimeDigest();assert.equal(report.inputSha256After,inputSha256Before,'Runtime/tool inputs stayed frozen');
+    report.inputSha256After=inputs.assertCurrent();
     report.passed=true;
   } catch(error) {report.error=String(error);report.inputSha256After=runtimeDigest();failed=true;}
   report.completedAt=new Date().toISOString();

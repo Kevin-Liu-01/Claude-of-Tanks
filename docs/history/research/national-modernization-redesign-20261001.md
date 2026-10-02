@@ -53,3 +53,7 @@ Revision 4 passed the integrated physical regression and both HIGH/LOW strict tr
 ### Additional-pair integration
 
 The owner subsequently confirmed preservation of the earlier T-90SM-based Hetman and Zubr as two additional tanks, without replacing these twelve designs. See `national-legacy-pair-20261001.md`. The 217-vehicle full anatomy check completed successfully at 2026-10-01T21:56:48Z. Its subsequent release attempt was invalidated by new source files arriving during the frozen-input concept test and was stopped; it is not a valid completed release result. Final integration rechecks all fourteen affected IDs and the expanded 219-vehicle fleet.
+
+### Bounded skirt seam follow-up
+
+The fourteen-ID integrated continuity check found sixteen exposed upper-joint cells on Sich. Five short folded permanent lap caps per side now bridge its existing skirt rail and adjacent segment tops; the conditional change applies only to `c.model === 2` in `nationalUkraine.ts`. The other eleven approved designs are unchanged by this repair. No existing design is replaced by either new tank. Fresh full-fleet anatomy, exact LOW track, sealed and seventeen-view visual checks pass for the repair. See `national-legacy-pair-20261001.md` for the failure history, geometry evidence, fixture corrections and final publication requirements.

@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { createTank } from './tankFactory.ts';
-import { getSpec } from './specs.ts';
-import { SUPPLIED_SOURCE_IDS, synchronizeSuppliedSourceCombatMetadata } from './suppliedSourceFleetSpecs.ts';
-import { ensureInteriorFills } from './interiorFills.ts';
-import { stripActivatedEra } from '../game/eraActivation.ts';
+await import('./suppliedSourceArmorInitialization.test-support.mjs');
+const {createTank}=await import('./tankFactory.ts');
+const {getSpec}=await import('./specs.ts');
+const {SUPPLIED_SOURCE_IDS,synchronizeSuppliedSourceCombatMetadata}=await import('./suppliedSourceFleetSpecs.ts');
+const {ensureInteriorFills}=await import('./interiorFills.ts');
+const {stripActivatedEra}=await import('../game/eraActivation.ts');
 
 const owners = ['hull', 'turret'];
 const rows = armor => owners.flatMap(owner => armor[`${owner}Plates`]
@@ -22,32 +23,27 @@ const cases = [
   return {id, spec, donor, donorReactive, donorBefore: JSON.stringify(donor.armor),
     initialArmor: structuredClone(spec.armor)};
 });
-const originalArmor = new Map(SUPPLIED_SOURCE_IDS.map(id => [id, structuredClone(getSpec(id).armor)]));
-
-// Re-run the actual post-balance path, which clones the donor armor afresh.
-// A one-time startup patch would reintroduce the phantom zones here.
-for (let pass = 0; pass < 2; pass++) {
-  synchronizeSuppliedSourceCombatMetadata();
-  for (const {id, spec, donor, donorBefore, initialArmor} of cases) {
-    assert.deepEqual(rows(spec.armor), [], `${id}: synchronization cannot resurrect phantom ERA`);
-    for (const owner of owners) {
-      const permanent = donor.armor[`${owner}Plates`].filter(p => p.kind !== 'era');
-      const current = spec.armor[`${owner}Plates`];
-      assert.equal(current.length, permanent.length, `${id}/${owner}: all permanent donor plates retained`);
-      assert.deepEqual(current.map(p => [p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]),
-        permanent.map(p => [p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]),
-        `${id}/${owner}: permanent protection identity/classification/strength unchanged`);
-    }
-    assert.deepEqual(spec.armor.turretPivot, initialArmor.turretPivot, `${id}: measured turret frame retained`);
-    assert.deepEqual(spec.armor.gunPivot, initialArmor.gunPivot, `${id}: measured gun frame retained`);
-    assert.deepEqual(spec.armor.gunBarrel, initialArmor.gunBarrel, `${id}: measured barrel metadata retained`);
-    assert.equal(JSON.stringify(donor.armor), donorBefore, `${id}: real donor armor never changed`);
+// Once role tuning and anatomy are finalized, synchronization is deliberately
+// immutable. Changing donors here must not replace any finalized recipient.
+const finalized = new Map(SUPPLIED_SOURCE_IDS.map(id => [id, JSON.stringify(getSpec(id))]));
+const donorSnapshots = new Map(cases.map(({donor}) => [donor, structuredClone(donor)]));
+try {
+  for (const {donor} of cases) {
+    donor.hp += 211;
+    donor.armor.hullPlates.push({...structuredClone(donor.armor.hullPlates[0]),name:'after_finalization_sentinel'});
+  }
+  const mutatedDonors = new Map(cases.map(({donor}) => [donor, JSON.stringify(donor)]));
+  for (let pass=0;pass<2;pass++) {
+    synchronizeSuppliedSourceCombatMetadata();
+    for (const [id,before] of finalized) assert.equal(JSON.stringify(getSpec(id)),before,`${id}: finalized recipient stays immutable`);
+    for (const [donor,before] of mutatedDonors) assert.equal(JSON.stringify(donor),before,'no reverse mutation of donor');
+  }
+} finally {
+  for (const [donor,snapshot] of donorSnapshots) {
+    for (const key of Object.keys(donor)) delete donor[key];
+    Object.assign(donor,snapshot);
   }
 }
-// Production synchronizes before one-shot anatomy finalization. Restore every
-// affected finalized armor snapshot after this deliberately repeated sync;
-// its sealed spec marker cannot pretend to rerun anatomy finalization.
-for (const [id, armor] of originalArmor) getSpec(id).armor = armor;
 
 function stockHash(root) {
   const hash = createHash('sha256');
