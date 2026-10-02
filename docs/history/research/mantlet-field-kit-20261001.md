@@ -356,3 +356,29 @@ evidence, not a waiver for a new regression. The two broad candidate runs were
 stopped while queued, without active children, when main advanced. Each had
 completed only its all-219 demand-loading sweep; neither is a complete-suite
 qualification. The full suite restarts on the final combined tree.
+
+
+## Final integration corrections — 2026-10-02
+
+The complete candidate run reached 946 of 1,242 checks before stopping safely
+between CPU batches to fix two newly identified regressions. Its raw results
+remain under `.qa-dev/mantlet-final/5a522/pre-integration-fix/`; it is not recorded
+as a full-suite pass. Current-main baseline replay completed all 81 selected
+checks, preserving their actual exit statuses and assertion output.
+
+Hetman II and Zubr II intentionally retain their predecessor's combat tuning,
+but their missing `balancePeerOf` metadata gave those unchanged metrics extra
+votes in the peer median. Restoring the per-metric relationship fixes the new
+Type 10B outlier without changing any vehicle's stats or audit thresholds.
+Individual vehicles remain audited, and changed metrics still count
+independently. A fleet-level regression verifies that adding the two preserved
+visual designs cannot shift other vehicles' balance results. The remaining
+Challenger 3X and T-62MV-1 X failures now have the exact values, medians and
+ratios reported on main `5a5223b41`.
+
+Regenerated the authored camouflage catalog with the existing generator to
+include both preserved variants in the Polish and Ukrainian paint families.
+The eighteen recipes and localized labels are unchanged; the generator check
+and catalog selftest pass. This correction changes neither vehicle geometry nor
+combat-anatomy inputs. The canonical full suite and clean production package
+are being refreshed on the resulting committed tree.

@@ -17,7 +17,11 @@ export function synchronizeNationalLegacyMetadata():void {
   for(const [index,c]of NATIONAL_LEGACY_CONFIG.entries()){
     const s=TANK_SPECS[c.id],d=c.design;
     Object.assign(s,cloneFleetVariant(TANK_SPECS,c.id,c.predecessor,{name:c.name,nation:c.nation,era:'next-generation'}));
-    delete s.label;delete s.roster;delete s.publicVisualFallback;delete s.balancePeerOf;
+    delete s.label;delete s.roster;delete s.publicVisualFallback;
+    // These preserved designs share their predecessor's combat tuning. Count
+    // identical metrics once; the balance audit still checks both vehicles and
+    // independently counts any metric that later changes.
+    s.balancePeerOf=c.predecessor;
     s.variantOf=c.donor;
     s.dims={...s.dims,hullLengthM:d.hullLength,widthM:d.width,heightM:d.heightM,
       overallLengthM:d.hullLength/2+c.z+NATIONAL_GUN_PIVOT[2]+NATIONAL_BARREL_LENGTH};

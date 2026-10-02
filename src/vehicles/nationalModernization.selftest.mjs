@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {Box3,Vector3,Mesh,MeshBasicMaterial,DoubleSide,Raycaster} from 'three';
 import {createTank} from './tankFactory.ts';
-import {getSpec,ALL_TANK_IDS} from './specs.ts';
+import {getSpec,ALL_TANK_IDS,TANK_SPECS} from './specs.ts';
+import {auditFleetBalance} from './balanceAudit.ts';
 import {NATIONAL_MODERNIZATION_CONFIG} from './nationalModernizationConfig.ts';
 import {NATIONAL_LEGACY_CONFIG} from './nationalLegacyConfig.ts';
 const configs=[...NATIONAL_MODERNIZATION_CONFIG,...NATIONAL_LEGACY_CONFIG.map(c=>({...c,model:c.donor==='t72b3m_x'?1:2}))];
@@ -12,6 +13,13 @@ import {decorManifestFor} from './decorations.ts';
 import {censusEquipment} from '../../tools/source-equipment-policy.mjs';
 import {nationalModernizationDesign} from './nationalModernizationDesign.ts';
 import {tankTier} from './tier.ts';
+const legacyIds=new Set(NATIONAL_LEGACY_CONFIG.map(c=>c.id));
+for(const c of NATIONAL_LEGACY_CONFIG)assert.equal(getSpec(c.id).balancePeerOf,c.predecessor,
+ `${c.id}: preserved design shares its predecessor's unchanged combat weighting`);
+assert.deepEqual(
+ auditFleetBalance(ALL_TANK_IDS,TANK_SPECS,tankTier).filter(issue=>!legacyIds.has(issue.id)),
+ auditFleetBalance(ALL_TANK_IDS.filter(id=>!legacyIds.has(id)),TANK_SPECS,tankTier),
+ 'preserved visual variants do not shift other vehicles\' combat balance medians');
 import {buildT80UXHullCore} from './profiles/t80uX.ts';
 import {buildT72B3MXHullCore} from './profiles/t72b3mX.ts';
 import {buildT72B3XHullCore} from './profiles/t72b3X.ts';
