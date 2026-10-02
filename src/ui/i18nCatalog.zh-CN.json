@@ -3744,7 +3744,7 @@
   "hud.modeStatus.juggernaut": "击毁重装巨兽 · {hp} / {max}",
   "hud.modeStatus.juggernautBoss": "坚持生存 · {hp} / {max}",
   "hud.modeStatus.infected": "{survivors} 名幸存者 · {infected} 名感染者",
-  "hud.modeStatus.realistic": "摧毁模块 · 消灭乘员",
+  "hud.modeStatus.realistic": "消灭乘员或引爆弹药",
   "hud.modeStatus.gun_game": "武器 {stage}/{total} · 击毁 {kills}/{required}",
   "hud.modeStatus.drone": "确认击毁 · {own} / {target}",
   "hud.modeStatus.ac130": "消灭地面部队",

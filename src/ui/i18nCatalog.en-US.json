@@ -3744,7 +3744,7 @@
   "hud.modeStatus.juggernaut": "DESTROY THE JUGGERNAUT · {hp} / {max}",
   "hud.modeStatus.juggernautBoss": "SURVIVE · {hp} / {max}",
   "hud.modeStatus.infected": "{survivors} SURVIVORS · {infected} INFECTED",
-  "hud.modeStatus.realistic": "DESTROY MODULES · ELIMINATE CREW",
+  "hud.modeStatus.realistic": "DESTROY CREW OR AMMO",
   "hud.modeStatus.gun_game": "WEAPON {stage}/{total} · {kills}/{required} KILLS",
   "hud.modeStatus.drone": "CONFIRMED KILLS · {own} / {target}",
   "hud.modeStatus.ac130": "ELIMINATE THE GROUND FORCE",

@@ -18,7 +18,12 @@ try{
   const {page,errors}=await openGamePage(browser,{port,viewport:initialViewport});
   page.on('console',message=>{if(message.type()==='error')console.error('browser:',message.text().slice(0,500));});
   await page.click('.cot-battle-mode');
-  for(const mode of ['juggernaut','infected','realistic','gun_game','drone','ac130'])assert.ok(await page.$(`.cot-battle-menu [data-game-mode="${mode}"]`),`${mode} selectable in garage`);
+  for(const mode of ['juggernaut','infected','realistic','gun_game','drone','ac130']){
+   const choice=await page.waitForSelector(`.cot-battle-menu [data-game-mode="${mode}"]`,{visible:true});
+   await choice.scrollIntoView();
+   if(mobile)await choice.tap();else await choice.click();
+   assert.equal(await choice.evaluate(el=>el.getAttribute('aria-pressed')),'true',`${mode} selected through the garage control`);
+  }
   await page.screenshot({path:resolve(out,`garage-modes-${suffix}.png`)});
   await page.click('[data-battle-close]');
   for(const mode of ['drone','ac130','juggernaut','infected','realistic','gun_game']){
