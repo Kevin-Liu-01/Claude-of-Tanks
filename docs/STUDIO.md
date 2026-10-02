@@ -311,11 +311,13 @@ Film-grade picture settings for stills and films (media r5): a named look plus o
 exposure, white balance, a display grade, hue secondaries, HDR highlights, a thin-lens depth of
 field and a finishing pass. Schema and looks: `src/game/studioPicture.ts`; passes:
 `src/engine/cinemaPost.ts`; panel: `src/ui/studioPicturePanel.ts` (the **Picture** section of
-the Cinematics group).
+the Cinematics group, under the workspace's TIMELINE tab, after Camera).
 
 **Neutral is the house render.** A stage with neutral values inserts no pass, so a scene without
 `"picture"` (or with `{"preset": "natural"}`) renders byte-for-byte as before and `state()` omits
-the key. Everything is removed from the composer on Studio exit; battle never loads the module.
+the key. Passes exist only while the Studio owns the frame (a picture set before entry applies on
+entry) and everything — passes, the bloom/light-FX hooks, light-FX overrides, FSR as the final
+pass — is restored on Studio exit; battle never loads the module.
 
 Where the stages sit in the live post chain (post.ts, extended at runtime only):
 
@@ -344,8 +346,11 @@ enum values throw (`load()` rejects before replacing the scene).
 | `warms` / `greens` / `blues` | `hue` −60…60°, `saturation` 0…2, `lightness` −1…1 | 0, 1, 0 | Hue secondaries around orange 32°, yellow-green 102°, sky blue 212°; +hue rotates toward green→cyan→blue. |
 | `mono`, `monoMix` | 0…1, [r,g,b] | 0, Rec.709 | Black and white with a filter mix (normalized). |
 | `bloom`, `bloomThreshold` | 0…4, 0.25…4 | 1, 1 | Scales on the house bloom strength/threshold. |
-| `streaks` | `amount` 0…3, `threshold` 0.5…32 (linear HDR), `length` 0…1, `tint` | amount 0 | Anamorphic horizontal streaks from hot pixels. |
+| `streaks` | `amount` 0…3, `threshold` 0.5…32 (linear HDR), `length` 0…1, `tint` | amount 0 | Anamorphic horizontal streaks from hot pixels (horizontal mip pyramid: sharp core, long tail). |
 | `halation` | `amount` 0…3, `threshold` 0.1…16, `radius` 0.25…4, `tint` | amount 0 | Red-orange film glow around bright edges (σ = 0.45 % of frame height × radius). |
+
+Streak and halation sources saturate at a per-pixel energy cap, so a muzzle-flash or fireball
+core cannot flood a night frame through its glow.
 | `sunShafts` / `lensFlare` | `mode` auto/on/off, `intensity` 0…4 | auto, 1 | Force or scale the round-69 light effects (works on presets that disable them). |
 | `dof` | see below | `enabled: false` | Thin-lens depth of field. |
 | `chromaticAberration` | 0…1 | 0 | Radial lateral fringe, edge-weighted (r²), spectral taps. |
@@ -385,7 +390,7 @@ placed in depth by quarter-resolution coverage slices (see Known limitations).
 | `steel` | Cold, desaturated war film. |
 | `bleach-bypass` | Silver retained: high contrast, low saturation, heavy grain. |
 | `desert-heat` | Sun-bleached orange/amber with teal shadows. |
-| `night-ops` | Cool moonlight; firelight still burns orange; strong streaks. |
+| `night-ops` | Cool moonlight; firelight still burns orange; restrained blue streaks. |
 | `ember` | Fire-lit combat: molten highlights, halation, warm streaks. |
 | `noir` | Black and white through a red-orange filter: dark skies, hard light, grain. |
 | `vintage-print` | Print-film emulation: milky shoulder, faded blacks, warm highs, cyan lows, grain. |
@@ -413,6 +418,13 @@ canvas then shows the pre-finish frame), and `renderFinish(texture, target | nul
 runs it once on the average (null = the canvas). The grain seed is
 `pictureGrainSeed(scene seed, Studio clock)` — 240 distinct fields per Studio second, never wall
 time. `setQuality('capture' | 'preview')` selects the tap counts.
+
+### Cost
+
+Measured on the M5 Max reference host at 1920×1080 (pixel ratio 1), median of interleaved blocks
+on a shared, loaded machine: the full stack (blockbuster look + depth of field + letterbox) adds
+about 4 ms per frame; the grade, HDR and finish stages are each about 1–3 ms, the lens with three
+FX coverage slices about 1–3 ms. Studio renders on demand while frozen.
 
 ## Known limitations
 

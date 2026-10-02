@@ -384,6 +384,10 @@ interface SoftParticleState {
   isActive(): boolean;
 }
 
+const _savedViewport = new THREE.Vector2();
+const _finishSize = new THREE.Vector2();
+const _savedClear = new THREE.Color();
+
 /**
  * Quarter-resolution coverage of the late-FX layer in front of three depth planes (near slice,
  * far slice, the opaque scene). Re-renders the same pooled FX with their own materials — no
@@ -428,8 +432,8 @@ class FxSlices {
     const oldBackground = scene.background;
     const oldAutoUpdate = scene.matrixWorldAutoUpdate;
     const oldAutoClear = renderer.autoClear;
-    const oldViewport = soft.uSoftViewport.value.clone();
-    const oldClear = renderer.getClearColor(new THREE.Color());
+    const oldViewport = _savedViewport.copy(soft.uSoftViewport.value);
+    const oldClear = renderer.getClearColor(_savedClear);
     const oldAlpha = renderer.getClearAlpha();
     try {
       renderer.autoClear = false;
@@ -1414,7 +1418,7 @@ export function createCinemaPost(
       finish ??= new CinemaFinish();
       finish.quality = quality;
       if (!finish.settings && current?.finish) finish.settings = current.finish;
-      const size = target ? new THREE.Vector2(target.width, target.height) : renderer.getDrawingBufferSize(new THREE.Vector2());
+      const size = target ? _finishSize.set(target.width, target.height) : renderer.getDrawingBufferSize(_finishSize);
       const saved = finish.settings;
       if (!current?.finish) finish.settings = null;
       try {

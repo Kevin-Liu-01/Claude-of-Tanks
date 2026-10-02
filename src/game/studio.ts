@@ -3710,7 +3710,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       findActor,
       /** Film accumulation (picture↔film contract): the finish runs once per output frame. */
       picture: {
-        setFinishBypass: (bypass: boolean) => cinema?.setFinishBypass(bypass),
+        setFinishBypass: (bypass: boolean) => ensureCinema().setFinishBypass(bypass),
         renderFinish: (...args: Parameters<CinemaRuntime['renderFinish']>) => ensureCinema().renderFinish(...args),
         setQuality: (quality: Parameters<CinemaRuntime['setQuality']>[0]) => cinema?.setQuality(quality),
         get runtime() { return cinema; },
