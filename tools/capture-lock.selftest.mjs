@@ -6,6 +6,7 @@ import {
   readdirSync,
   rmSync,
   statSync,
+  unlinkSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
@@ -64,6 +65,67 @@ async function checkSameMillisecondFifo() {
   }
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// 2026-10-02: waiters never refreshed their tickets, so the queue's stale-ticket reaping deleted an honest waiter's
+// ticket after the stale window and it could never reach the head again. A waiter now heartbeats its ticket while it
+// polls and restores it under its original name if another process reaped it anyway, keeping its place in line.
+async function checkLongWaitKeepsItsPlace() {
+  const longLockDir = join(root, 'long-wait.lock');
+  const longQueueDir = join(root, 'long-wait.queue');
+  mkdirSync(longLockDir); // A foreign holder outlasts several stale windows.
+  const staleMs = 600;
+  const first = createCaptureLock({ lockDir: longLockDir, queueDir: longQueueDir, lockStaleMs: 60_000, ticketStaleMs: staleMs });
+  const second = createCaptureLock({ lockDir: longLockDir, queueDir: longQueueDir, lockStaleMs: 60_000, ticketStaleMs: staleMs });
+  const order = [];
+  const pending = [];
+  try {
+    pending.push(first.acquire(15_000).then(() => { order.push('first'); first.release(); }));
+    await sleep(40);
+    pending.push(second.acquire(15_000).then(() => { order.push('second'); second.release(); }));
+    await sleep(staleMs * 4);
+    assert.equal(readdirSync(longQueueDir).length, 2, 'both waiters still hold tickets after four stale windows');
+    rmSync(longLockDir, { recursive: true });
+    const settled = await Promise.allSettled(pending);
+    assert.ok(settled.every(result => result.status === 'fulfilled'), 'both long waiters acquire');
+    assert.deepEqual(order, ['first', 'second'], 'the longest waiter keeps its place');
+    assert.deepEqual(readdirSync(longQueueDir), [], 'long waiters remove their tickets');
+  } finally {
+    rmSync(longLockDir, { recursive: true, force: true });
+    await Promise.allSettled(pending);
+    first.release(); second.release();
+  }
+}
+
+async function checkReapedTicketIsRestored() {
+  const reapLockDir = join(root, 'reaped.lock');
+  const reapQueueDir = join(root, 'reaped.queue');
+  mkdirSync(reapLockDir);
+  const first = createCaptureLock({ lockDir: reapLockDir, queueDir: reapQueueDir, lockStaleMs: 60_000 });
+  const second = createCaptureLock({ lockDir: reapLockDir, queueDir: reapQueueDir, lockStaleMs: 60_000 });
+  const order = [];
+  const pending = [];
+  try {
+    pending.push(first.acquire(15_000).then(() => { order.push('first'); first.release(); }));
+    await sleep(40);
+    pending.push(second.acquire(15_000).then(() => { order.push('second'); second.release(); }));
+    await sleep(40);
+    const [firstTicket] = readdirSync(reapQueueDir).sort();
+    unlinkSync(join(reapQueueDir, firstTicket)); // Another process reaped it while its owner was still waiting.
+    await sleep(1_200);
+    assert.ok(readdirSync(reapQueueDir).includes(firstTicket), 'a reaped ticket is restored under its original name');
+    rmSync(reapLockDir, { recursive: true });
+    const settled = await Promise.allSettled(pending);
+    assert.ok(settled.every(result => result.status === 'fulfilled'), 'both waiters acquire after a reap');
+    assert.deepEqual(order, ['first', 'second'], 'the restored waiter keeps its FIFO place');
+    assert.deepEqual(readdirSync(reapQueueDir), [], 'restored tickets are removed on acquisition');
+  } finally {
+    rmSync(reapLockDir, { recursive: true, force: true });
+    await Promise.allSettled(pending);
+    first.release(); second.release();
+  }
+}
+
 try {
   const lock = createCaptureLock({ lockDir, queueDir });
   await lock.acquire(100);
@@ -102,7 +164,9 @@ try {
   assert.deepEqual(readdirSync(queueDir), [], 'timed-out waits remove their queue ticket');
 
   await checkSameMillisecondFifo();
-  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, and same-millisecond FIFO passed');
+  await checkLongWaitKeepsItsPlace();
+  await checkReapedTicketIsRestored();
+  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond FIFO, long-wait heartbeat and reaped-ticket restore passed');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

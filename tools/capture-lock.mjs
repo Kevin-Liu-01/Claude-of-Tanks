@@ -93,6 +93,30 @@ function reapStaleLock(lockDir, staleMs) {
   }
 }
 
+// A waiter keeps its own ticket fresh: queueHead() reaps tickets older than the stale window (they may belong to a
+// reused PID), so a ticket that is never touched is deleted after an hour of honest waiting and its owner can never
+// reach the head again (2026-10-02: suite runners and cinema jobs starved behind a 20-ticket queue). Heartbeat it,
+// and if another waiter reaped it anyway (an event-loop stall, a suspended process), restore it under its original
+// name so the owner keeps its place in line.
+function keepTicket(queueDir, name) {
+  const path = join(queueDir, name);
+  try {
+    const now = new Date();
+    utimesSync(path, now, now);
+    return;
+  } catch (error) {
+    if (error.code !== 'ENOENT') return;
+  }
+  restoreTicket(queueDir, name);
+}
+
+function restoreTicket(queueDir, name) {
+  try {
+    mkdirSync(queueDir, { recursive: true });
+    writeFileSync(join(queueDir, name), String(process.pid), { flag: 'wx' });
+  } catch { /* raced with another restore, or the queue is unwritable */ }
+}
+
 // Distinguish acquisitions launched by concurrent workers in one process.
 // Keep the PID last for legacy ticket liveness checks and use exclusive creation.
 let nextTicketSequence = 0;
@@ -126,9 +150,18 @@ export function createCaptureLock({
     mkdirSync(queueDir, { recursive: true });
     const ownTicket = reserveTicket(queueDir);
     const startedAt = Date.now();
+    const heartbeatMs = Math.min(60_000, Math.max(100, Math.floor(ticketStaleMs / 4)));
+    let touchedAt = startedAt;
     try {
       for (;;) {
-        const head = queueHead(queueDir, readQueue(queueDir, ownTicket), ownTicket, ticketStaleMs);
+        let names = readQueue(queueDir, ownTicket);
+        if (!names.includes(ownTicket) || Date.now() - touchedAt >= heartbeatMs) {
+          if (names.includes(ownTicket)) keepTicket(queueDir, ownTicket);
+          else restoreTicket(queueDir, ownTicket);
+          touchedAt = Date.now();
+          names = readQueue(queueDir, ownTicket);
+        }
+        const head = queueHead(queueDir, names, ownTicket, ticketStaleMs);
         if (head === ownTicket && claimLock(lockDir)) {
           held = true;
           return;
