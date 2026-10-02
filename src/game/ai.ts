@@ -5179,7 +5179,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const [x, z] = points[0];
       if (!missionRouteNeedsRefresh(x, z)) return;
       missionRouteX = x; missionRouteZ = z; missionRouteAtS = nowS;
-      if (deps.planRoute) points = deps.planRoute(entity.state.pos, { x, z });
+      // the grid has no way the widest hull fits from here (a passage two wrecks narrow, a zone centre against a
+      // wall): the destination itself stays the waypoint, for the local router to approach, never no route at all
+      if (deps.planRoute) {
+        const planned = deps.planRoute(entity.state.pos, { x, z });
+        if (planned.length) points = planned;
+      }
       const end = points[points.length - 1];
       missionRouteEndX = end ? end[0] : NaN;
       missionRouteEndZ = end ? end[1] : NaN;

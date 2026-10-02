@@ -889,6 +889,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/spotting.selftest.mjs',
     'src/sim/shellSurface.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
+    'src/sim/botRouteClearance.selftest.mjs',
     'src/sim/botNavigationWater.selftest.mjs',
     'src/sim/navigationLiquidSafety.selftest.mjs',
     'src/sim/bridgeDeckNavigation.selftest.mjs',

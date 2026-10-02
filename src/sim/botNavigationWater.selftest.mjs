@@ -64,12 +64,14 @@ const legacy = createBotNavigationGrid({
     trace.push(['obstacles', x0 + 4.5, z0 + 4.5]); out.length = 0; return out;
   },
 });
-assert.equal(trace.length, N * N * 3);
 for (let iz = 0; iz < N; iz++) for (let ix = 0; ix < N; ix++) {
   const at = (iz * N + ix) * 3, x = MIN + ix * CELL, z = MIN + iz * CELL;
   assert.deepEqual(trace.slice(at, at + 3),
     [['height', x, z], ['ground', x, z], ['obstacles', x, z]]);
 }
+// the hull-clearance edge pass (2026-10-02) follows the row pass with obstacle queries only: no further terrain samples
+assert.ok(trace.length > N * N * 3);
+assert.ok(trace.slice(N * N * 3).every(([kind]) => kind === 'obstacles'), 'the edge pass samples no terrain');
 assert.equal(legacy.navigationWaterPolicy, undefined);
 assert.equal(legacy.waterBlockedEdges, undefined);
 assert.equal(legacy.blocked.reduce((a, b) => a + b, 0), 0, 'default shallow soft ground remains legal');

@@ -97,7 +97,9 @@ import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.ts'
 import type { EquipmentCombatState } from '../game/equipment.ts';
 import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.ts';
 import type { AiDifficulty } from '../game/ai.ts';
-import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.ts';
+import {
+  collectNavigationWrecks, createBotNavigationGrid, planBotRoute, syncNavigationWrecks, type NavigationWreck,
+} from './botRoutePlanner.ts';
 import type { BotRoutePoint } from './botRoutePlanner.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from '../game/consumables.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
@@ -1925,10 +1927,17 @@ export function createAuthoritativeMatch({
     }
   }
 
+  // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (the solo step too)
+  const navigationWrecks: NavigationWreck[] = [];
+  let navigationWreckTicks = 0;
+
   function updateEntityControls(
     dt: number,
     inputs: ReadonlyMap<string, AuthoritativePlayerInput | null | undefined>,
   ): void {
+    if (botNavigation && navigationWreckTicks++ % 15 === 0) {
+      syncNavigationWrecks(botNavigation, navigationWrecks, collectNavigationWrecks(entities, navigationWrecks));
+    }
     for (const entity of entities) {
       if (entity.modeActive === false) continue;
       if (entity.bot) {

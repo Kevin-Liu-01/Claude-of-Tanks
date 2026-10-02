@@ -21,7 +21,9 @@ round its side as the zone allows. It holds that point while it can fight from
 it. A mission bot whose route is used up short of its objective (the planner's
 best ends in another connected component, or a search leg took the waypoints)
 hands the hull to the classic drivers for 20 seconds before the mission takes
-it back.
+it back. When the grid has no way to the destination at all for the widest hull
+(two wrecks plug the approach, the zone's centre stands against a wall), the
+destination itself stays the waypoint and the local router approaches it.
 
 | Mode | Coordination |
 | --- | --- |
@@ -127,6 +129,23 @@ global grid rejects edges through a bridge's side; ingress goes through the
 abutments. Two-way slope checks prevent one-way downhill shortcuts. Physical
 collision remains authoritative, including parapets and piers.
 
+The grid's edges are cleared for the widest hull in the fleet (the Jagdpanzer
+E100 X, 2.24 m half-width; `NAV_HULL_HALF_WIDTH_M` is 2.25 and the receipt
+measures the fleet against it). An edge is open when its straight line keeps
+2.75 m from every solid footprint; otherwise it may bend once round the cover
+or shift its whole lane up to 4.5 m sideways, inside the two cells' squares, and
+the route carries that way's points; otherwise it is closed. A part high over
+the route (a deck above the gorge) is no wall, and on and beside a deck the
+parts a hull rides onto or over (the slab, the piers under it) follow the same
+rule as the hull's collision. Legs off the grid are cleared too: a route starts
+at the nearest cell on the hull's own level that it reaches straight (or round a
+detour point), on the goal's side of the closed edges first, and it reaches the
+exact goal only by a clear leg, a detour point round the goal, or not at all. A
+goal beyond the reachable cells ends the route at the cell nearest it. Wrecks
+narrow streets after the grid is built: a few times a second both authorities
+re-test the edges round the battle's wrecks, closing the ones they plug and
+laning the ones they narrow.
+
 ## Verification
 
 - `src/game/ai.targeting.selftest.mjs`: target identity parity and local-fight
@@ -143,6 +162,10 @@ collision remains authoritative, including parapets and piers.
   and an APFSDS control), a zone holder that cannot fight from the zone's centre
   (shut gate, no sight line), and a mission route that ends short of its
   objective.
+- `src/sim/botRouteClearance.selftest.mjs`: the grid's hull bound against the
+  fleet, a diagonal through a 0.6 m gap, a boulder bent round, a channel left by
+  its open end, Steinburg's two pockets and a sweep of the town with no leg
+  through cover, and a deck crossing that stays on the deck.
 - `src/game/ai.selftest.mjs`: ability requests, fourth-slot independent launcher,
   ground/air edge behavior, continuing missions under contact, route reuse and
   a mobile flanker with an anchor, alongside existing aiming/survival tests.
