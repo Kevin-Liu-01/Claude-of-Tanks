@@ -620,8 +620,23 @@ of the 4050 — and would need 2.1–2.9 ms here.
   second). The static content is hashed every frame from what three's shadow traversal reads (visibility, layers,
   cast flag, geometry and draw range, materials and versions, world matrix, instance count and every instanced
   stream's version, the router's cascade masks); a change, a pose change (cascade snap, sun) or a map reallocation
-  re-renders that layer. Phones keep the plain render. Cost: one depth copy per cascade (5 bytes a texel): 68 MB on
-  High (2048² ×3 + 1024²), 52 MB on Medium, 273 MB on Ultra.
+  re-renders that layer. A cascade takes the cache only once its snapped pose has held for two lighting updates: a
+  camera on the move re-snaps nearly every cascade every frame — on live frames, driving and turning, 315 of 315
+  cached cascade renders were re-renders, each the ordinary render plus a copy and a second pass — so a moving
+  cascade renders the ordinary way and the saving is the held camera's: a parked or aiming hull, the overview, a
+  held sniper view. A reuse always copies the static layer back (a single-light render — the deployment warm, the
+  covered prime — writes the live map without the cache seeing it). Phones keep the plain render. Cost: one depth
+  copy per cascade (5 bytes a texel): 68 MB on High (2048² ×3 + 1024²), 52 MB on Medium, 273 MB on Ultra.
+  Rendered proof (`tools/shadow-cache-truth.mjs`, Verdant Fields and Monsoon, 1600×900): the uncached render twice
+  differs by 0 px, and every scenario — still, a hull moved and turned and back, camera steps of 0.37 m, 11 cm and
+  1.8 m across the snaps, the sun turned 7° and back, a felled tree and a destroyed prop through 240 frames of their
+  fall (the falling caster promoted to the dynamic layer), a hull driving past a still camera for 25 frames and a
+  25-step camera dolly — renders 0 px apart through the cache and without it. On live frames (temporal AA on, the
+  flicker meter's one-frame blips at 320×180, cache on and off in A B B A segments) driving and turning took no
+  cached path at all (0 re-renders, 0 reuses: the ordinary render) and their blip counts differ by less than the
+  segments of one mode do; parked, the cascades reused 258–315 of 315 renders, the blips stayed level or fell
+  (Verdant 1.7 / 1.2 against 2.9 / 1.5, Monsoon 66 / 53 against 96 / 139) and the presented rate rose from 39 / 40
+  to 47 / 49 fps on Verdant and from 38 / 35 to 48 / 51 fps on Monsoon on this shared machine.
 - The governor (`src/engine/post.ts`, `adaptiveQualityPolicy.ts`, `gpuFrameTimer.ts`): High may now lower its
   raster on a native-density display (device pixel ratio below 1.75) down to `nativeDynMin` 0.67 per axis, FSR1's
   quality ratio, reconstructed by EASU + RCAS to the native canvas (retina keeps 0.9). Every fourth frame's GPU time
