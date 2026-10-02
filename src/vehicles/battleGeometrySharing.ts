@@ -24,6 +24,13 @@ function candidate(geometry: BufferGeometry): { key: string; bytes: Uint8Array[]
   }
   return { key: `${layout.join('|')}|${JSON.stringify([geometry.groups,geometry.boundingBox,geometry.boundingSphere])}|${hash >>> 0}`, bytes };
 }
+/** Final rigid stock by owner contract: the static draw merge keeps a merged
+ * draw in this class only when every folded source was in it. */
+export function isBattleShareableMesh(mesh: Mesh): boolean {
+  return (RIGID_STOCK.test(mesh.name) || mesh.userData.staticMergeShareable === true)
+    && !mesh.userData.__kitMerged && !mesh.userData.__cotTrackRuntimeClone
+    && !mesh.userData.__cotSharedAttributeView;
+}
 function equalBytes(a: readonly Uint8Array[], b: readonly Uint8Array[]): boolean {
   return a.length === b.length && a.every((view,index) => view.length === b[index].length
     && view.every((value,offset) => value === b[index][offset]));
@@ -43,8 +50,7 @@ export function shareBattleGeometry(root: Object3D): () => void {
   const leased: Array<{ source: BufferGeometry; meshes: Mesh[]; entry: Entry; key: string }> = [];
   try {
     for (const [source,meshes] of uses) {
-      if (meshes.some(mesh => !RIGID_STOCK.test(mesh.name) || mesh.userData.__kitMerged
-        || mesh.userData.__cotTrackRuntimeClone || mesh.userData.__cotSharedAttributeView)) continue;
+      if (meshes.some(mesh => !isBattleShareableMesh(mesh))) continue;
       const value=candidate(source); if (!value) continue;
       const bucket=entries.get(value.key) ?? [];
       let entry=bucket.find(existing=>equalBytes(existing.bytes,value.bytes));
