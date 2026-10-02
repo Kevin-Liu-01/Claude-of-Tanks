@@ -87,7 +87,15 @@ const nodeFailure = (root, message, extra = '') => [
     'TypeError: P.forEachBucketPart is not a function', 'ANSI colour and the stack are not identity');
   assert.equal(failureSignature('building\nfleet sweep 3 failed\nexit early\n'), 'building\nfleet sweep 3 failed\nexit early',
     'without an error header: the last three lines');
-  assert.equal(failureSignature('Error: thrown by a receipt that reports and exits\nmore detail\n'), 'Error: thrown by a receipt that reports and exits\nmore detail');
+  assert.equal(failureSignature('step 1\nstep 2\nstep 3\nError: thrown by a receipt that reports and exits\nmore detail\n    at x (file:///a.mjs:1:1)\nlater output\n'),
+    'Error: thrown by a receipt that reports and exits\nmore detail', 'a plain Error header is found without the source caret');
+  const plainThrow = (message) => ['file:///work/tree/tools/capture-command.selftest.mjs:41', "throw new Error('x');", '^', '',
+    `Error: ${message}`, '    at file:///work/tree/tools/capture-command.selftest.mjs:41:7',
+    '    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)', '', 'Node.js v24.13.0'].join('\n');
+  assert.equal(failureSignature(plainThrow('planted regression'), ['/work/tree']), 'Error: planted regression',
+    'Node\'s uncaught plain Error: the header after the caret, not the stack tail');
+  assert.notEqual(failureSignature(plainThrow('first message')), failureSignature(plainThrow('second message')),
+    'two plain Errors thrown from the same line are different failures');
   assert.equal(normalizeMessage("open '/private/var/folders/yl/x/T/cot-abc123/a.json' took 1234.5 ms and 12ms", []),
     "open '<tmp>' took <ms> and <ms>", 'temporary paths and millisecond timings are normalised');
   assert.equal(normalizeMessage('at file:///work/tree/src/x.ts and /work/tree/y', ['/work/tree']), 'at <root>/src/x.ts and <root>/y');

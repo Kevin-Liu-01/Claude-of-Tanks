@@ -117,7 +117,7 @@ export function planGate(options, { root, out, exists = (path) => existsSync(joi
 }
 
 const stripAnsi = (text) => text.replace(/\u001b\[[0-9;?]*[A-Za-z]/g, '');
-const ERROR_HEADER = /^\s*(?:Uncaught\s+)?[A-Za-z_$][\w$.]*(?:Error|Exception)(?:\s\[[A-Z0-9_]+\])?:/;
+const ERROR_HEADER = /^\s*(?:Uncaught\s+)?(?:[A-Za-z_$][\w$.]*)?(?:Error|Exception)(?:\s\[[A-Z0-9_]+\])?:/;
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Paths, temporary directories and millisecond timings are not part of an error's identity. */
@@ -290,9 +290,10 @@ function receiptSummary(out, root) {
     reused: report.reused, failed };
 }
 
-async function compareWithBaseline({ root, ref, failed, out, strict, echo }) {
+async function compareWithBaseline({ root, ref, failed, out, strict, echo, lockFactory }) {
   const { runSelftestFile, runSelftestSuite, SELFTEST_OWNED_LEASE_FILES } = await import('./run-selftests.mjs');
   const { createCaptureLock } = await import('./capture-lock.mjs');
+  lockFactory ??= createCaptureLock;
   const commit = git(root, 'rev-parse', '--verify', `${ref}^{commit}`);
   const dir = join(out, `baseline-${commit.slice(0, 12)}`);
   const result = { ref, commit, dir, rows: [] };
@@ -321,7 +322,7 @@ async function compareWithBaseline({ root, ref, failed, out, strict, echo }) {
     };
     // the pairs hold the capture lease like any receipt run (browser receipts take it themselves)
     await runSelftestSuite('baseline-pairs', failed.map((row) => row.file), {
-      lock: createCaptureLock(), ownedLeaseFiles: SELFTEST_OWNED_LEASE_FILES, concurrency: 1, log: () => {},
+      lock: lockFactory(), ownedLeaseFiles: SELFTEST_OWNED_LEASE_FILES, concurrency: 1, log: () => {},
       runFile: async (file) => {
         const row = await compareRedReceipt(file, { runPair, signatureOf });
         row.blocking = verdictBlocks(row.verdict, strict);
@@ -382,7 +383,8 @@ async function runPreflight({ root, head, options, out, echo }) {
     ...(result.status === 0 ? {} : { error: preflight?.error ?? `shared-main-preflight exited ${result.status}` }) };
 }
 
-export async function runGate(options, { root, planner = planGate }) {
+// planner and lockFactory are seams for verification (injected commands, a private lock).
+export async function runGate(options, { root, planner = planGate, lockFactory }) {
   // A checkout without Git (an export) still runs its steps; the preflight and --baseline need a commit.
   const head = tryGit(root, 'rev-parse', 'HEAD');
   const dirty = head ? Boolean(tryGit(root, 'status', '--porcelain=v1', '--untracked-files=no')) : null;
@@ -426,7 +428,7 @@ export async function runGate(options, { root, planner = planGate }) {
           row.error = `${row.error}; the runner reported no red receipt (an infrastructure failure)`;
         } else if (options.baseline) {
           try {
-            summary.baseline = await compareWithBaseline({ root, ref: options.baseline, failed: summary.receipts.failed, out, strict: options.strict, echo });
+            summary.baseline = await compareWithBaseline({ root, ref: options.baseline, failed: summary.receipts.failed, out, strict: options.strict, echo, lockFactory });
             if (!summary.baseline.blocking.length) {
               row.status = 'pass';
               row.note = `${summary.baseline.rows.length} red receipt(s), none blocking against ${options.baseline}`;
