@@ -5052,15 +5052,14 @@ function* vegetationBuildSteps(
   // p2 trees lane (2026-10-01): the battle zones' snags. After every placement, exclusion and relocation pass (the
   // placement streams, the records' admission and the stand shade never move), a share of the living trees — by a
   // position hash, thickest toward the middle of the field where the lines meet, never within 45 m of a spawn,
-  // never a palm or a tidal mangrove — stands as a shell-killed snag: its species, its archetype-derived crown and
-  // fall measures, a charred grey tint, a slimmer trunk record and almost no concealment. Its pools are its own.
+  // never a palm or a tidal mangrove — stands as a shell-killed snag: its species (its pools are its own), its
+  // crown and fall measures for the camera's occlusion fade and the toppled pose, a charred grey tint and its root
+  // decal. A snag is a look only: the obstacle and concealment records the simulation reads (collision, spotting,
+  // the host's world) are the living tree's, the same on every tier and on `?legacyTrees=1` — the phones grow no
+  // snags, and a mixed lobby must share one world.
   function convertSnags(): number {
     if (!(snagShare > 0)) return 0;
-    const SNAG = { trunkHeightM: 4.2, canopyCenterM: 3.4, canopyRadiusM: 1.4, fallHeightM: 5.4, fallRadiusM: 0.16, rootDecalRadiusM: 1.2, trunkR: 0.27 };
-    const obstacleOf = new Map<number, TreeObstacle>();
-    for (const ob of treeObstacles) obstacleOf.set(ob.treeIdx, ob);
-    const concealerAt = new Map<string, ConcealmentDisc>();
-    for (const disc of concealers) concealerAt.set(`${disc.x},${disc.z}`, disc);
+    const SNAG = { canopyCenterM: 3.4, canopyRadiusM: 1.4, fallHeightM: 5.4, fallRadiusM: 0.16, rootDecalRadiusM: 1.2 };
     let converted = 0;
     for (let i = 0; i < trees.length; i++) {
       const t = trees[i];
@@ -5078,15 +5077,6 @@ function* vegetationBuildSteps(
       t.dr = SNAG.rootDecalRadiusM * sxz;
       const value = 0.62 + treePositionNoise(t.x, t.z, 10) * 0.25;
       t.tint.setRGB(value, value * 0.96, value * 0.92);
-      const ob = obstacleOf.get(i);
-      if (ob) {
-        const radius = SNAG.trunkR * sxz, groundY = ob.min[1];
-        ob.min[0] = t.x - radius; ob.min[2] = t.z - radius;
-        ob.max[0] = t.x + radius; ob.max[1] = groundY + SNAG.trunkHeightM * sy; ob.max[2] = t.z + radius;
-        setCircleShape(ob, t.x, t.z, radius);
-      }
-      const disc = concealerAt.get(`${t.x},${t.z}`);
-      if (disc) { disc.r = SNAG.canopyRadiusM * sxz * 0.6; disc.add = 0.02; }
       converted++;
     }
     return converted;

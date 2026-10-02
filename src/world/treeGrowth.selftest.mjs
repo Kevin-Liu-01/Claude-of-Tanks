@@ -269,8 +269,17 @@ try {
   const barkBlock0 = (world) => { const img = pools(world).find((m) => m.userData.treeTrunk).material.map.image;
     return sha(img.getContext('2d').getImageData(0, 0, 256, 256).data); };
   let desktopBlock0 = null;
+  // the simulation's records — every tree obstacle (collision) and concealment disc (spotting) — are the same on the
+  // grown build (snags included) as on the legacy one: the trees lane changes the look, never the world
+  const records = (world) => createHash('sha256').update(JSON.stringify([
+    world.treeObstacles.map((ob) => [ob.treeIdx, ob.min, ob.max, ob.shape2 ?? null, ob.crushable ?? null, ob.kind ?? null]),
+    world.concealers.map((disc) => [disc.x, disc.z, disc.r, disc.add]),
+  ])).digest('hex').slice(0, 16);
   const desktop = build('fjord');
+  let desktopRecords = null;
   try {
+    desktopRecords = records(desktop);
+    assert.ok(desktop.group.userData.battleSnags?.converted > 0, 'Nordhavn grows battle snags');
     assert.equal(V.vegetationGrowsTrees(), true);
     assert.equal(barkWidth(desktop), 1024, 'the grown trees read the four-style bark sheet');
     desktopBlock0 = barkBlock0(desktop);
@@ -323,6 +332,7 @@ try {
     for (const trunk of pools(legacy).filter((m) => m.userData.treeTrunk)) assert.equal(trunk.geometry.userData.shadowHull, undefined, 'legacy trunks carry no hull');
     assert.equal(barkWidth(legacy), 256, 'a legacy build keeps its single bark sheet');
     assert.equal(barkBlock0(legacy), desktopBlock0, 'the four-style sheet opens with the single sheet, pixel for pixel');
+    assert.equal(records(legacy), desktopRecords, 'collision and concealment records are tier-independent (snags are a look)');
   } finally { legacy.dispose(); disposeObject3DResources(legacy.group); }
   // the mobile tier (resolved once, last): the legacy trees
   globalThis.window = { location: { search: '?tier=mobile' }, localStorage: { getItem: () => null } };
