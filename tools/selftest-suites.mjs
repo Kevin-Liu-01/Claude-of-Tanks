@@ -663,6 +663,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/sniperFillRuntime.selftest.mjs',
     'src/game/soloBattleAccess.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
+    'tools/boot-static-closure.selftest.mjs',
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
     'src/fx/effectAttachments.selftest.mjs',
     'src/fx/trackContact.selftest.mjs',

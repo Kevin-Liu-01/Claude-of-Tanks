@@ -219,7 +219,8 @@ import {
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState } from './game/stateCore.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
-import { soloRosterPlan } from './game/state.ts';
+// Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
+import { soloRosterPlan } from './game/soloRosterPlan.ts';
 import { matchRulesetFor } from './sim/matchRuleset.ts';
 import { normalizeGameMode } from './sim/matchModes.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
