@@ -40,7 +40,7 @@ export const TREE_IMPOSTOR_MARGIN = 0.06;
 export const TREE_IMPOSTOR_BUDGET_BYTES = 6 * 1024 * 1024;
 export const TREE_IMPOSTOR_TILES = Object.freeze([128, 96, 64] as const);
 export const TREE_IMPOSTOR_MAX_ROWS = 16;
-export const TREE_IMPOSTOR_PROGRAM_KEY = 'world-tree-impostor-v2'; // round 77c: the elevated ring
+export const TREE_IMPOSTOR_PROGRAM_KEY = 'world-tree-impostor-v3'; // round 77c: the elevated ring; p2 trees lane: the gust lift
 /** Round 77c: the elevated capture ring — one row per species (its first near variant) from eight azimuths at 45°,
  * added where the atlas keeps its ground tile and the row cap; above ~20° of view elevation the tile dissolves
  * toward it and the card tilts back to face the view, so a bird view no longer sees the side view laid flat. */

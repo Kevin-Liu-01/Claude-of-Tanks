@@ -115,7 +115,8 @@ function auditFarSlots(world, id) {
   const meshes = world.group.children.filter(m => m.userData.treeImpostor === true);
   let far = 0;
   for (const tree of world._trees) {
-    if (tree.fslot < 0) continue;
+    // p2 trees lane: a battle snag keeps its own far stand-in (the atlas holds the living species)
+    if (tree.fslot < 0 || tree.species === 'snag') continue;
     far++;
     const mesh = meshes.find(m => m.name === `treeImpostor_${tree.species}_${tree.fv}`);
     assert.ok(mesh && mesh.count > tree.fslot, `${id}: the far slot is inside the live prefix`);
@@ -150,16 +151,22 @@ try {
     assert.equal(library.normal.width, library.width / 2); assert.equal(library.normal.height, library.height / 2);
     assert.ok(library.bytes <= TREE_IMPOSTOR_BUDGET_BYTES, `${id}: ${library.bytes} bytes`);
     for (const row of library.rows) {
-      assert.ok(row.cellM > 4 && row.cellM < 40 && row.baseV > 0 && row.baseV < 0.3 && row.heightM > 3, `${id}: ${row.species}/${row.variant} measured (${row.cellM}, ${row.baseV}, ${row.heightM})`);
+      // p2 trees lane (2026-10-01): a grown conifer's skirt is wide against its height, so seen from the elevated
+      // ring's 45° more of the crown projects below its base point (the base at up to ~0.33 of the tile)
+      const baseCap = row.elevation > 0.5 ? 0.4 : 0.3;
+      assert.ok(row.cellM > 4 && row.cellM < 40 && row.baseV > 0 && row.baseV < baseCap && row.heightM > 3, `${id}: ${row.species}/${row.variant} measured (${row.cellM}, ${row.baseV}, ${row.heightM})`);
     }
     assert.equal(library.material.customProgramCacheKey(), TREE_IMPOSTOR_PROGRAM_KEY);
     assert.strictEqual(library.material.map, library.albedo.texture);
     // the pools: two impostor quads per species, no lobe pool, the near pools and their shadow proxies untouched
     const impostorMeshes = world.group.children.filter(m => m.userData.treeImpostor === true);
     assert.equal(impostorMeshes.length, species.length * 2, `${id}: two impostor pools per species`);
-    assert.equal(world.group.children.filter(m => m.userData.treeLod === 'far' && !m.userData.treeImpostor).length, 0, `${id}: no lobe pool`);
-    assert.equal(world.group.children.filter(m => m.userData.treeCanopyShadowProxy).length, species.length * 3, `${id}: the near crown shadow proxies stay`);
-    assert.equal(world.group.children.filter(m => m.userData.treeFoliage).length, species.length * 3);
+    // p2 trees lane: the battle snags keep their own far stand-in (two pools per far variant), every living species is an impostor
+    assert.equal(world.group.children.filter(m => m.userData.treeLod === 'far' && !m.userData.treeImpostor && !m.userData.battleSnag).length, 0, `${id}: no lobe pool`);
+    // (+ the battle snags' three near pools where the map has craters — vegetation.ts battleSnagShare)
+    const nearSpecies = species.length + (world.group.userData.battleSnags?.share > 0 ? 1 : 0);
+    assert.equal(world.group.children.filter(m => m.userData.treeCanopyShadowProxy).length, nearSpecies * 3, `${id}: the near crown shadow proxies stay`);
+    assert.equal(world.group.children.filter(m => m.userData.treeFoliage).length, nearSpecies * 3);
     for (const mesh of impostorMeshes) {
       const [, sp, fv] = mesh.name.split('_');
       assert.strictEqual(mesh.material, library.material);
@@ -225,7 +232,7 @@ try {
     assert.equal(again.world._treeImpostors.digest(), digest, `${id}: the same seeded build bakes the same inputs`);
     again.world.dispose(); disposeObject3DResources(again.world.group);
     // the far tier's cost
-    const farTrianglesLobes = world._trees.reduce((n, t) => n + lobeTriangles[TREE_ARCHETYPES[t.species].family], 0);
+    const farTrianglesLobes = world._trees.reduce((n, t) => n + (t.species === 'snag' ? 0 : lobeTriangles[TREE_ARCHETYPES[t.species].family]), 0);
     receipts.push({ id, tile: library.tile, rows: library.rows.length, elevated: library.elevated, atlas: `${library.width}x${library.height}`, mb: +(library.bytes / 1048576).toFixed(2),
       farDraws: impostorMeshes.length, lobeDraws: species.length * 4, trees: world._trees.length,
       farTrianglesAllTrees: { impostor: world._trees.length * 2, lobes: farTrianglesLobes }, digest });
