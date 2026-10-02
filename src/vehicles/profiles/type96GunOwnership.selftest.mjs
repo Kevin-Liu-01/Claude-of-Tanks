@@ -100,6 +100,22 @@ const NATIVE_OTHER_BEFORE = [
  'f03a74ff5447541d2ef8aafa31a18fb8d4e9a08b149050554bf4a9f9c72ead84',
 ];
 
+
+// 2026-10-01 forward smoke correction: reserve functional banks before
+// cosmetic cargo and aim their actual tubes/brackets along +Z. Comparing every
+// complete mesh payload against 24c5c5b03 at HIGH/LOW, factory/winter finds only
+// decor_turret_kit and decor_turret_steel attributes changed, plus decoration
+// traversal order. All other meshes, materials, matrices, instances and the
+// complete gun payload remain exact. Keep the pre-smoke records above and hash
+// the complete corrected stock below; no mesh is removed from preservation.
+// Evidence: .qa-dev/type96-{main,current}.json.
+const NATIVE_OTHER_FORWARD_SMOKE = [
+ '8c78e49a61c64c02c9b28f9c01a3e6a1de15610bedfb71d86704d8dae666bbac',
+ 'a38f332c8f505201a3fa391409e592b46bd83f171f74b8507c2ff1393405c629',
+ 'e01d33b8fff33c07c0ae90ad9388ba2074b57028eefd0849fed8fb30b2d6216b',
+ 'b0f7b4e292b7a985fac02327fbc89763fee97f3c24e9c02f854f6dc03c540e36',
+];
+
 const near=(a,b,label,eps=1e-6)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=eps,`${label}: ${a} vs ${b}`);
 const restore=installCanvasFixture(),rows=[];
 await ensureInteriorFills(['type96b_x']);
@@ -110,7 +126,8 @@ try {for(const [caseIndex,expected] of BEFORE.entries()){
   const neutral=payload(tank.root);
   assert.equal(neutral.gun,expected.gun,'oriented gun stock, attributes/materials and gun shadow must remain exact');
   assert.equal(neutral.gunTriangles,expected.gunTriangles,'gun ownership cannot add or remove stock');
-  assert.equal(neutral.otherNativeStock,NATIVE_OTHER_BEFORE[caseIndex],'all non-gun native stock, instances, transforms, paint/UV/colors must remain exact');
+  assert.notEqual(neutral.otherNativeStock,NATIVE_OTHER_BEFORE[caseIndex],'forward smoke correction must not revert');
+  assert.equal(neutral.otherNativeStock,NATIVE_OTHER_FORWARD_SMOKE[caseIndex],'complete non-gun stock including forward smoke, instances, transforms and paint remains exact');
   const shadow=tank.root.getObjectByName('procShadow_hull');
   shadow.userData.shadowOnly=false;
   try {assert.throws(()=>authoredNonGunShadow(shadow),/must be shadow-only/,'a proxy flag alone cannot exclude ordinary stock');}
