@@ -459,6 +459,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/gunArticulation.selftest.mjs',
     // 2026-10-01: the fleet geometry ledger (one full-fleet HIGH+LOW sweep) replaces the frozen per-receipt geometry pins.
     'src/vehicles/fleetGeometryLedger.selftest.mjs',
+    // 2026-10-01: one fleet on every path (each facade alone, every saved spec digested).
+    'src/vehicles/fleetParity.selftest.mjs',
     'tools/media-production/pipeline.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/tool-only-public-files.selftest.mjs',
@@ -787,6 +789,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/matchHost.selftest.mjs',
     'src/mp/host/worldCollision.selftest.mjs',
     'src/mp/host/hostRuleset.selftest.mjs',
+    // 2026-10-01: the host Worker carries specs, not vehicles; the roster's anatomy loads at boot.
+    'src/mp/host/hostFleet.selftest.mjs',
     'src/mp/presentation/battlePresentation.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',

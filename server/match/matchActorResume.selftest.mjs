@@ -10,6 +10,10 @@ import { quantizeAngle, quantizePosition, quantizeVelocity } from '../../src/mp/
 import { createDedicatedWorldCollision } from '../dedicatedWorldCollision.ts';
 import { createLoopbackLink } from './link.ts';
 import { createMatchActor } from './matchActor.ts';
+import { ensureAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
+
+// The actor reads finalized combat anatomy; production hosts load their roster's groups first (Node: all).
+await ensureAuthorityFleet();
 
 const TICK_MS = 1000 / 60;
 let nowMs = 50_000;

@@ -10,10 +10,11 @@ import { buildObject148Prototype } from './profiles/object148Prototype.ts';
 //
 // Registration pattern (established by modern1.ts): tankFactory.ts passes
 // MODERN2_BUILDERS through the checked factory-configuration gate; builders
-// draw on tankFactoryCore's exported geometry KIT. Specs/model-source rows
-// register here by mutating the exported specs.ts tables (specs.ts itself is
-// a contested file, left untouched). Armor values are open-source RHAe
-// estimates per the roster doc (game-design baselines).
+// draw on tankFactoryCore's exported geometry KIT. MODERN2_SPECS below is the
+// source tools/gen-legacy-fleet-specs.mjs serializes; the registry holds the
+// generated metadata (modern2Specs.generated.ts, imported below), never these
+// live rows, on every path. Armor values are open-source RHAe estimates per
+// the roster doc (game-design baselines).
 
 import * as THREE from 'three';
 import { KIT, type TankBuilderPort } from './tankFactoryCore.ts';
@@ -23,7 +24,6 @@ import { FITTINGS, muzzleBore } from './profiles/kit.ts';
 import { buildM1A1BareHull } from './profiles/abrams.ts';
 import { foldedShoulderReturn } from './profiles/foldedShoulderReturn.ts';
 import { createType99Armor } from './profiles/type99Armor.ts';
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
   plate as par,
   frontPlate as fr,
@@ -38,6 +38,11 @@ import {
   shell,
   apfsdsPenetration as apfsdsPens,
 } from './specHelpers.ts';
+// Spec rows register from their generated metadata, whichever facade
+// evaluates this file: the live rows below share plate vertex arrays, and
+// registering them let in-place armor fitting move a shared vertex of a
+// derived clone twice (fleetRegistration.ts).
+import './modern2Specs.generated.ts';
 import type {
   ArmorEnvelope,
   ArmorPlate,
@@ -151,16 +156,6 @@ const scaledGeometryTransform = KIT.xform as (
   rotationZ?: number,
   scale?: GeometryScale,
 ) => THREE.BufferGeometry;
-
-// type99a RE-LISTED 2026-08-08 (§5.38 owner priority wave: "fully model a
-// custom type99a based on this model" — the Type 99A2 print drop VOIDS the
-// 2026-08-06 "no GLB" delist reason). The print is a LOCAL-ONLY measurement
-// oracle (community-candidates quarantine, registered in the three harness
-// maps + vertex REG); the playable stays procedural (buildType99A below).
-const MODERN2_IDS = [
-  'leo2a4', 't80u', 'leclerc', 'leclerc_xlr', 'amx56',
-  'type99a', 'leo1a5', 'mbt70', 't14',
-];
 
 const apfsds = (
   name: string,
@@ -330,9 +325,14 @@ function mbt70Armor() {
 }
 
 // ---------------------------------------------------------------------------
-// Specs
+// Specs (the generator's source; the registry holds modern2Specs.generated.ts)
 // ---------------------------------------------------------------------------
-const MODERN2_SPECS: TankSpecRegistry = {
+// type99a RE-LISTED 2026-08-08 (§5.38 owner priority wave: "fully model a
+// custom type99a based on this model" — the Type 99A2 print drop VOIDS the
+// 2026-08-06 "no GLB" delist reason). The print is a LOCAL-ONLY measurement
+// oracle (community-candidates quarantine, registered in the three harness
+// maps + vertex REG); the playable stays procedural (buildType99A below).
+export const MODERN2_SPECS: TankSpecRegistry = {
   leo2a4: {
     id: 'leo2a4', name: 'Leopard 2A2', nation: 'Germany', era: 'modern', role: 'mbt',
     hp: 2200,
@@ -783,14 +783,6 @@ const MODERN2_SPECS: TankSpecRegistry = {
       number: '056',
     },
   };
-}
-
-// Register specs + model-source rows + garage roster ids (idempotent —
-// vite HMR can re-evaluate this module).
-for (const id of MODERN2_IDS) {
-  TANK_SPECS[id] = TANK_SPECS[id] || MODERN2_SPECS[id];
-  MODEL_SOURCE[id] = MODEL_SOURCE[id] || { source: 'procedural' };
-  if (!ALL_TANK_IDS.includes(id)) ALL_TANK_IDS.push(id);
 }
 
 // ===========================================================================
