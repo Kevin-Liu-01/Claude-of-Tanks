@@ -3,6 +3,9 @@
 // Fjord that the instances stand in the stands' edge annulus off roads, soft ground, water, the village and the
 // spawns, that they add no cover disc and no trunk record (pure dressing), that the mobile tier plants none, and that
 // the mesh carries the foliage material's instanced attributes. A construction receipt: no GPU, no art claim.
+// p2 trees lane (2026-10-02): on the desktop tiers the understorey grows from its species' sprays (buildGrownShrub —
+// a welded mound of two-triangle spray cards carrying the crowns' cascade sample); `legacyTrees` keeps the round-77
+// cards, held to their own contract.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createHeightField } from './terrain.ts';
@@ -34,7 +37,7 @@ function canvasFixture() {
   } };
 }
 
-function shapeContract(geometry) {
+function legacyShapeContract(geometry) {
   assert.equal(geometry.index, null);
   assert.deepEqual(Object.keys(geometry.attributes).filter(k => k !== 'aFadeI' && k !== 'aLodF').sort(), ['aFlex', 'color', 'normal', 'position', 'uv']);
   const p = geometry.attributes.position;
@@ -54,9 +57,32 @@ function shapeContract(geometry) {
   return { size: size.toArray().map(v => +v.toFixed(3)), minY: +box.min.y.toFixed(3) };
 }
 
-function produce(id) {
+// the grown understorey: twenty two-triangle spray cards (the round-77 shrub's forty triangles; a species of narrow
+// sprays carries up to a third more), welded to four vertices a spray, the six streams of the grown crowns' cards
+function grownShapeContract(geometry) {
+  assert.ok(geometry.index, 'welded: indexed');
+  assert.deepEqual(Object.keys(geometry.attributes).filter(k => k !== 'aFadeI' && k !== 'aLodF').sort(), ['aCard', 'aFlex', 'color', 'normal', 'position', 'uv']);
+  const p = geometry.attributes.position, sprays = geometry.index.count / 6;
+  assert.ok(Number.isInteger(sprays) && sprays >= 20 && sprays <= 27, `twenty to twenty-seven two-triangle sprays (${sprays})`);
+  assert.equal(p.count, sprays * 4, 'four vertices a spray');
+  for (const name of ['position', 'normal', 'uv', 'color', 'aFlex', 'aCard']) {
+    const a = geometry.attributes[name];
+    assert.equal(a.count, p.count); assert.equal(a.array.constructor, Float32Array); assert.ok(a.array.every(Number.isFinite), name);
+  }
+  const box = new THREE.Box3().setFromBufferAttribute(p), size = box.getSize(new THREE.Vector3());
+  assert.ok(box.min.y >= -0.2 && box.min.y <= 0, `grounded (${box.min.y})`);
+  assert.ok(size.y > 0.6 && size.y < 1.8 && size.x > 0.6 && size.z > 0.6, `a young shrub, not a pancake or a bush (${size.toArray()})`);
+  for (let i = 0; i < p.count; i++) {
+    const n = new THREE.Vector3().fromBufferAttribute(geometry.attributes.normal, i);
+    assert.ok(Math.abs(n.length() - 1) < 2e-6 && n.y > 0, 'positive-up unit normals');
+    assert.ok(Math.hypot(p.getX(i), p.getZ(i)) <= 1.4, 'inside the reach the placement keeps off the walls');
+  }
+  return { size: size.toArray().map(v => +v.toFixed(3)), minY: +box.min.y.toFixed(3), sprays };
+}
+
+function produce(id, extra = {}) {
   const cfg = getMapConfig(id), field = createHeightField(1337, cfg);
-  const world = createVegetation(field, { setupShadowMaterial() {} }, 2001, cfg);
+  const world = createVegetation(field, { setupShadowMaterial() {} }, 2001, { ...cfg, vegetation: { ...cfg.vegetation, ...extra } });
   try {
     const mesh = world.group.children.find(m => m.userData.understorey === true);
     const bushes = world.group.children.filter(m => m.userData.bush === true);
@@ -76,7 +102,7 @@ function produce(id) {
       const a = mesh.geometry.attributes[key];
       assert.ok(a?.isInstancedBufferAttribute && a.count === mesh.count && a.array.every(v => v === 0), `${id}: ${key} present and zero`);
     }
-    const shape = shapeContract(mesh.geometry);
+    const shape = extra.legacyTrees ? legacyShapeContract(mesh.geometry) : grownShapeContract(mesh.geometry);
     const matrix = new THREE.Matrix4(), spawns = [field._layout.spawns.player, ...field._layout.spawns.enemies];
     const v = field._layout.village;
     // round 77b (2026-09-26): the rim-forest blocks feather through the same law, at the rim trees' scale (× 1.4)
@@ -127,6 +153,10 @@ try {
   assert.ok(verdant.annulus[0] < 0.95 && verdant.annulus[1] > 1.3, 'the annulus is used from the edge outward');
   const repeat = produce('verdant');
   assert.deepEqual(repeat, verdant, 'deterministic');
+  // legacyTrees: the round-77 cards, the same placements
+  const legacy = produce('verdant', { legacyTrees: true });
+  receipts.push(legacy);
+  assert.deepEqual({ ...legacy, shape: null }, { ...verdant, shape: null }, 'the grown shrub changes the shape, never the placements or the records');
   globalThis.window = { location: { search: '?tier=mobile' }, localStorage: { getItem: () => null } };
   resolveDeviceTier(); assert.equal(getDeviceTier(), 'mobile');
   receipts.push(produce('verdant'));
@@ -135,4 +165,4 @@ try {
   restore();
 }
 console.log(JSON.stringify({ receipts }));
-console.log('understorey.selftest: shape (120 vertices, five streams, grounded), edge-annulus placement off roads / soft ground / slopes / spawns / the village for the stands and (round 77b) the rim blocks, no cover or trunk records, mobile none, deterministic PASS');
+console.log('understorey.selftest: shape (grown: welded two-triangle sprays, six streams; legacyTrees: 120 vertices, five streams; grounded), edge-annulus placement off roads / soft ground / slopes / spawns / the village for the stands and (round 77b) the rim blocks, no cover or trunk records, mobile none, deterministic PASS');

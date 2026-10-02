@@ -12,8 +12,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 
 import type { AudioListenerPose } from './listenerPoseRuntime.ts';
-import type { AudioMixer } from './audio.ts';
-import type { PreparedAudioBuffers } from './audioBuffers.ts';
+import type { AudioMixer, AudioTerrainProbe } from './audioEngine.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { nextPaintFrame } from '../engine/frameScheduler.ts';
 
@@ -24,11 +23,13 @@ interface FallbackLoadingTone {
 }
 
 interface AudioMixerModule {
-  prepareAudioBuffers?(context: AudioContext): Promise<PreparedAudioBuffers>;
+  /** Optional cooperative preparation the mixer may want before adoption. */
+  prepareAudioBuffers?(context: AudioContext): Promise<unknown>;
   createAudio(options: {
     context: AudioContext | null;
-    preparedBuffers?: PreparedAudioBuffers | null;
+    preparedBuffers?: unknown;
     getMapId?: () => string | null;
+    getTerrain?: () => AudioTerrainProbe | null;
     initialPhase?: string;
   }): AudioMixer;
 }
@@ -37,6 +38,7 @@ interface LazyAudioOptions {
   loadMixer?(): Promise<AudioMixerModule | null>;
   createContext?(): AudioContext | null;
   getMapId?(): string | null;
+  getTerrain?(): AudioTerrainProbe | null;
   hasStickyActivation?(): boolean;
 }
 
@@ -53,7 +55,8 @@ export interface LazyAudio {
   mute(muted: boolean): void;
   playGarageSting(): void;
   loadingOn(active: boolean): void;
-  warmBattleEvents(): Promise<RuntimeValue>;
+  /** Load the battle's sound groups (optionally its planned roster) before rollout. */
+  warmBattleEvents(roster?: readonly string[]): Promise<RuntimeValue>;
   ambientOn(active: boolean): void;
   hitConfirm(kind: string, damage?: number): void;
   readonly ready: boolean;
@@ -130,10 +133,11 @@ function storedMasterVolume(): number {
 
 export function createLazyAudio({
   getMapId,
+  getTerrain,
   hasStickyActivation = () => (
     typeof navigator !== 'undefined' && navigator.userActivation?.hasBeenActive === true
   ),
-  loadMixer = () => import('./audio.ts'),
+  loadMixer = () => import('./audioEngine.ts'),
   createContext = () => {
     const scope = globalThis as typeof globalThis & {
       webkitAudioContext?: typeof AudioContext;
@@ -229,7 +233,7 @@ export function createLazyAudio({
         // cue remains active, and phase/intent are read again at handoff.
         const preparedBuffers = context && module.prepareAudioBuffers
           ? await module.prepareAudioBuffers(context) : null;
-        return settleReal(module.createAudio({ context, preparedBuffers, getMapId, initialPhase: latestPhase }));
+        return settleReal(module.createAudio({ context, preparedBuffers, getMapId, getTerrain, initialPhase: latestPhase }));
       }).finally(() => {
         if (!real) realPromise = null;
       });
@@ -328,8 +332,8 @@ export function createLazyAudio({
       else { garageStingPending = true; requestReal(); }
     },
     loadingOn,
-    warmBattleEvents() {
-      return ensureReal().then((mixer) => mixer?.warmBattleEvents?.());
+    warmBattleEvents(roster?: readonly string[]) {
+      return ensureReal().then((mixer) => mixer?.warmBattleEvents?.(roster));
     },
     ambientOn(on: boolean) {
       ambientRequested = !!on;

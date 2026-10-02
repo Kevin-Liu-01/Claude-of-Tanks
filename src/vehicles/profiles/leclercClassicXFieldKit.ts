@@ -3,23 +3,16 @@
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { classicTurret } from './leclercClassicXFrame.ts';
+import { AMX56_KIT_SIDE_STATIONS, amx56KitSideRing } from '../leclercClassicXKitLayout.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX } = KIT;
-const STATIONS = [
-  [-3.24, 1.60, 1.92], [-2.12, 1.54, 2.02],
-  [1.30, 1.50, 2.02], [2.24, 1.46, 2.00], [3.27, 1.29, 1.91],
-] as const;
 
 function armoredSides(P: TankBuilderPort, side: number): void {
-  // Thick folded side modules sit outside the unchanged track course.
-  // The upper bridge overlaps the existing fender; the lower cage stays open.
-  P.addExternalArmor('hull', sectionSolid(STATIONS.map(([z, top, outer]) => {
-    const ring: [number, number][] = [[1.79, .94], [outer - .045, .94],
-      [outer, 1.08], [outer, top - .085], [outer - .065, top],
-      [1.65, top], [1.65, top - .04], [1.79, top - .04]];
-    return { z, ring: side < 0 ? ring.map(([x, y]) => [-x, y] as [number, number]).reverse() : ring };
-  })));
+  // Thick folded side modules sit outside the unchanged track course. Their
+  // spaced combat plates read the same stations (leclercClassicXKitArmor.ts).
+  P.addExternalArmor('hull', sectionSolid(AMX56_KIT_SIDE_STATIONS.map(([z], station) =>
+    ({ z, ring: amx56KitSideRing(side, station) }))));
   for (const [z, top, x] of [[-2.65, 1.57, 1.968], [-1.64, 1.54, 2.02],
     [-.64, 1.525, 2.02], [.38, 1.51, 2.02], [1.42, 1.495, 2.017], [2.58, 1.404, 1.970]]) {
     P.addEquipment('hullDetail', box(.034, top - .955, .055), side * (x + .008), (top + .955) / 2, z);

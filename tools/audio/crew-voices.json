@@ -1,0 +1,292 @@
+{
+  "$comment": "National crew cast: ElevenLabs Voice Library voices chosen by tools/audio/voice-audition.mjs (every candidate read the same urgent and crisp calls in its language through eleven_v4; all passed the speech-to-text round trip; commanders are the deepest/most authoritative read, crew voices contrast them). Library voices are used by voice_id; adding them to the account (voice-casting.mjs --add) uses no voice slot.",
+  "model": "eleven_v4",
+  "cast": {
+    "en-US": {
+      "commander": {
+        "voice_id": "IRHApOXLvnW57QJPQH2P",
+        "name": "Adam - Dark and Tough",
+        "public_owner_id": "7f002cc08b25f133975f64e7400e04182de633b1fc447e277e57871888ffead6",
+        "audition": {
+          "sim": 0.88,
+          "pitchHz": 286,
+          "centroidHz": 2401
+        }
+      },
+      "crew": {
+        "voice_id": "yl2ZDV1MzN4HbQJbMihG",
+        "name": "Alex - Upbeat",
+        "public_owner_id": "a231663267efedf44629d1210c43f7045270e9dc6cf04a23c533dd75a567d5ba",
+        "audition": {
+          "sim": 0.88,
+          "pitchHz": 301,
+          "centroidHz": 2708
+        }
+      }
+    },
+    "en-GB": {
+      "commander": {
+        "voice_id": "NYC9WEgkq1u4jiqBseQ9",
+        "name": "Russell",
+        "public_owner_id": "3d1fa6a5595e0a31fff8d7c1a2f2794b91ca87ddd200066dfbdfcef662a65a1b",
+        "audition": {
+          "sim": 0.88,
+          "pitchHz": 231,
+          "centroidHz": 2354
+        }
+      },
+      "crew": {
+        "voice_id": "B5vjwBxGgp4GLTiUjDxM",
+        "name": "Astro",
+        "public_owner_id": "70f5a5480e10b0bfc6be976e983454dd45959b0912e28c385f7b15fd46e2cdbb",
+        "audition": {
+          "sim": 0.88,
+          "pitchHz": 246,
+          "centroidHz": 2885
+        }
+      }
+    },
+    "de": {
+      "commander": {
+        "voice_id": "Fghah4fztZORbiKfIGAs",
+        "name": "Thomas Schendel",
+        "public_owner_id": "ae9ca4e5f4730fbc0b0ff86638b3ea0eab70f50e349810eeb934c618e4eb0c0e",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 231,
+          "centroidHz": 2741
+        }
+      },
+      "crew": {
+        "voice_id": "lx8LAX2EUAKftVz0Dk5z",
+        "name": "Juan",
+        "public_owner_id": "0bfcc45991e396b1f5d6141d30bcd173dcc837747dae00a56f6f3a9f459be11e",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 254,
+          "centroidHz": 2917
+        }
+      }
+    },
+    "ru": {
+      "commander": {
+        "voice_id": "rQOBu7YxCDxGiFdTm28w",
+        "name": "Artem Lebedev",
+        "public_owner_id": "74f589f9cfb9090408e0218fa1fe0bcb30e746f76c9fe6b100d4b694973075ac",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 222,
+          "centroidHz": 2507
+        }
+      },
+      "crew": {
+        "voice_id": "hU3rD0Yk7DoiYULTX1pD",
+        "name": "Dmitry - Energetic",
+        "public_owner_id": "4a3382843041280834a810ccd42fb579e08695549ee33634a3e67b0be6f0e973",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 258,
+          "centroidHz": 3228
+        }
+      }
+    },
+    "uk": {
+      "commander": {
+        "voice_id": "hWHihsTve3RbzG4PHDBQ",
+        "name": "Andriy Tkachenko",
+        "public_owner_id": "dbbeef33b43029d58291e2a2a7f41160fd1350f1e04807099d9eadd482ec04e4",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 252,
+          "centroidHz": 2341
+        }
+      },
+      "crew": {
+        "voice_id": "WAkiH8uTgFArLLKVWgeS",
+        "name": "Stanislav",
+        "public_owner_id": "e76fde62f4c34787ec6b6dec9911c7791ac7eb671e86be16cdee68583df78035",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 247,
+          "centroidHz": 2507
+        }
+      }
+    },
+    "zh": {
+      "commander": {
+        "voice_id": "WuLq5z7nEcrhppO0ZQJw",
+        "name": "Martin Li",
+        "public_owner_id": "e9a6840c69b79812b77ea81fa11d55aaf80dcf1938fa0137bf7f514f67f75c99",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 222,
+          "centroidHz": 2406
+        }
+      },
+      "crew": {
+        "voice_id": "agczkAUlHLowaNnL72Cc",
+        "name": "Adrian",
+        "public_owner_id": "b2c9ca34784432b033599d179ceb4b64d8f1ce591924b6b92baae31235f48bfc",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 245,
+          "centroidHz": 2679
+        }
+      }
+    },
+    "fr": {
+      "commander": {
+        "voice_id": "Qrl71rx6Yg8RvyPYRGCQ",
+        "name": "Guillaume",
+        "public_owner_id": "cf85fd3407013597c7721531f6fb44212866034556a7b7127a3a41d30d81522b",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 289,
+          "centroidHz": 2850
+        }
+      },
+      "crew": {
+        "voice_id": "DbbNuBL7lf62XwY7arQb",
+        "name": "Hugo",
+        "public_owner_id": "5c2a7a6a05acbffd0a66d06e4380a5fc97d6d46c3bf04dd88465c43e8539f41a",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 297,
+          "centroidHz": 3625
+        }
+      }
+    },
+    "sv": {
+      "commander": {
+        "voice_id": "TIMFVcMCO4bdy7J79GWF",
+        "name": "Andreas",
+        "public_owner_id": "04353e9aec2715b0fb17a04b56318a3d57e6f427fcb6a4d69c0ac9aa767d1c25",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 265,
+          "centroidHz": 2711
+        }
+      },
+      "crew": {
+        "voice_id": "9ambBcBMpHAeeFp1uJUB",
+        "name": "Simon",
+        "public_owner_id": "a58e416ae2c387579de340681fdbb3f53e040246ee8f117d13ad66538d6192ce",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 287,
+          "centroidHz": 2018
+        }
+      }
+    },
+    "ja": {
+      "commander": {
+        "voice_id": "sRYzP8TwEiiqAWebdYPJ",
+        "name": "Hatake Kohei",
+        "public_owner_id": "fd24232e0b62ec80be22d933823439610c9db9c00e81e6a1577de8d043dd72fe",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 297,
+          "centroidHz": 2581
+        }
+      },
+      "crew": {
+        "voice_id": "ss9cJxDAEMXP4wfQ3GPr",
+        "name": "Daisuke",
+        "public_owner_id": "cace9dad59ee249d59bf44b28430538519e8eacd08d9a320fa61614a7cbaa030",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 295,
+          "centroidHz": 3098
+        }
+      }
+    },
+    "ko": {
+      "commander": {
+        "voice_id": "BbsagRO6ohd8MKPS2Ob0",
+        "name": "Jin Geon Song",
+        "public_owner_id": "c5d728223ad32cf62f75290705b4c1da98687535e0a804154aa1eff39c4fe6a6",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 234,
+          "centroidHz": 2347
+        }
+      },
+      "crew": {
+        "voice_id": "PDoCXqBQFGsvfO0hNkEs",
+        "name": "Chris",
+        "public_owner_id": "6b3351c6df75a64f232988ae8b1befc38fb6f8792ff8b5c25b5dbcb6f3f8c0bd",
+        "audition": {
+          "sim": 0.9,
+          "pitchHz": 270,
+          "centroidHz": 2391
+        }
+      }
+    },
+    "it": {
+      "commander": {
+        "voice_id": "UlwxMDtxqMDYmG6pk2q6",
+        "name": "Luca Brasi",
+        "public_owner_id": "e9a6840c69b79812b77ea81fa11d55aaf80dcf1938fa0137bf7f514f67f75c99",
+        "audition": {
+          "sim": 0.88,
+          "pitchHz": 233,
+          "centroidHz": 2135
+        }
+      },
+      "crew": {
+        "voice_id": "fzDFBB4mgvMlL36gPXcz",
+        "name": "Giovanni Rossi",
+        "public_owner_id": "e9a6840c69b79812b77ea81fa11d55aaf80dcf1938fa0137bf7f514f67f75c99",
+        "audition": {
+          "sim": 0.88,
+          "pitchHz": 250,
+          "centroidHz": 2466
+        }
+      }
+    },
+    "pl": {
+      "commander": {
+        "voice_id": "JxVKcxm9wtnCYEs8V00p",
+        "name": "Bruno Siak",
+        "public_owner_id": "f2422e406df90f0b2f4ef59221d77c2a7061a34da8c46364e814b1592bafeaf0",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 238,
+          "centroidHz": 2054
+        }
+      },
+      "crew": {
+        "voice_id": "EmspiS7CSUabPeqBcrAP",
+        "name": "Mikołaj",
+        "public_owner_id": "c7788d73731fda8b8c11f4416169de173b44a4dca7a040806560f0530c4271d9",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 281,
+          "centroidHz": 2720
+        }
+      }
+    },
+    "he": {
+      "commander": {
+        "voice_id": "k77ZRVqAFg9Hd0ltAuON",
+        "name": "Omer",
+        "public_owner_id": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+        "audition": {
+          "sim": 0.97,
+          "pitchHz": 248,
+          "centroidHz": 3973
+        }
+      },
+      "crew": {
+        "voice_id": "JIxTgeeS5w0UQyBxEnrl",
+        "name": "Itai",
+        "public_owner_id": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 277,
+          "centroidHz": 3101
+        }
+      }
+    }
+  }
+}

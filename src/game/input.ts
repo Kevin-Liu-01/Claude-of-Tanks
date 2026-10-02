@@ -117,6 +117,16 @@ export interface InputSettings {
   volUi: number;
   volVoice: number;
   alarmHeartbeat: boolean;
+  /** Which language the crew radio speaks (src/audio/voiceLines.ts). */
+  crewVoice: CrewVoiceChoice;
+  /** Muffle and ear-ringing after a close blast. */
+  audioConcussion: boolean;
+}
+
+type CrewVoiceChoice = 'national' | 'english' | 'interface';
+
+function isCrewVoiceChoice(value: unknown): value is CrewVoiceChoice {
+  return value === 'national' || value === 'english' || value === 'interface';
 }
 
 type BindingMap = Record<ActionId, string | null>;
@@ -289,9 +299,9 @@ const DEFAULT_SETTINGS: InputSettings = {
   // Keep scoped armor highlighting opt-in. Explicit saved preferences and
   // the live keyboard / Interface toggle still control the overlay.
   armorAimOverlay: false,
-  // Sound mix (settings panel SOUND tab). The synth audio stack
-  // (src/audio/audio.ts) reads these at graph build and live-follows the
-  // 'ui:volumes' bus event the panel emits on every slider change.
+  // Sound mix (settings panel SOUND tab). The sound engine
+  // (src/audio/audioEngine.ts) reads these at graph build and live-follows
+  // the 'ui:volumes' bus event the panel emits on every change.
   volMaster: 0.8, // final output gain 0..1
   volEngine: 1, // engine loops
   volCombat: 1, // gunfire / impacts / explosions
@@ -301,6 +311,10 @@ const DEFAULT_SETTINGS: InputSettings = {
   // Critical-HP heartbeat alarm (short pulse window per threshold crossing).
   // Optional per the sound-system spec; some players find HP alarms stressful.
   alarmHeartbeat: true,
+  // National crews speak their operating nation's language by default.
+  crewVoice: 'national',
+  // Close-blast muffle + ringing; optional for players sensitive to tinnitus.
+  audioConcussion: true,
 };
 
 const VOLUME_KEYS: readonly VolumeSettingKey[] = [
@@ -614,6 +628,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     }
     if (typeof storedSettings.armorAimOverlay === 'boolean') settings.armorAimOverlay = storedSettings.armorAimOverlay;
     if (typeof storedSettings.alarmHeartbeat === 'boolean') settings.alarmHeartbeat = storedSettings.alarmHeartbeat;
+    if (isCrewVoiceChoice(storedSettings.crewVoice)) settings.crewVoice = storedSettings.crewVoice;
+    if (typeof storedSettings.audioConcussion === 'boolean') settings.audioConcussion = storedSettings.audioConcussion;
     for (const k of VOLUME_KEYS) {
       if (typeof storedSettings[k] === 'number') settings[k] = clamp(storedSettings[k], 0, 1);
     }
@@ -1212,6 +1228,10 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       else if (key === 'showDirectionalHitValues') settings.showDirectionalHitValues = !!value;
       else if (key === 'armorAimOverlay') settings.armorAimOverlay = !!value;
       else if (key === 'alarmHeartbeat') settings.alarmHeartbeat = !!value;
+      else if (key === 'audioConcussion') settings.audioConcussion = !!value;
+      else if (key === 'crewVoice') {
+        if (isCrewVoiceChoice(value)) settings.crewVoice = value;
+      }
       else if (key === 'sensitivity') settings.sensitivity = num(1, 0.2, 3);
       else if (key === 'sniperSensScale') settings.sniperSensScale = num(1, 0.2, 3);
       else if (key === 'aimSmoothing') settings.aimSmoothing = num(0.5, 0, 1);
