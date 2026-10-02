@@ -496,6 +496,15 @@ const _upNormal = new THREE.Vector3(0, 1, 0);
 let worldRuntime: WorldActivationRuntime<MainWorld, RuntimeValue>;
 let battleHudRuntime: MainBattleHudRuntime | null = null;
 const currentWorld = () => worldRuntime?.current ?? null;
+/**
+ * 2026-10-01 (the grounded light model, engine/lightModel.ts): the light reads a deck's overcast from the cloudscape, so
+ * the live world's cloudscape rides with its sky block wherever the light is set — as in the battle atmosphere's
+ * authored preset below (the sky block itself stays byte-identical to the Garage's copy).
+ */
+const withWorldCloudscape = <T extends MainWorld['config']['sky'] | null>(skyConfig: T): T => {
+  const config: MapCompositionConfig | undefined = currentWorld()?.config;
+  return skyConfig && config?.clouds && config.sky === skyConfig ? { ...skyConfig, cloudscape: config.clouds } as T : skyConfig;
+};
 const currentHud = () => battleHudRuntime?.currentHud() ?? null;
 const currentDamagePanel = () => battleHudRuntime?.currentDamagePanel() ?? null;
 const hfProxy = createLiveHeightFieldProxy({
@@ -539,7 +548,7 @@ worldRuntime = createWorldActivationRuntime<
   awaitInitialCloudWarm: () => bootCloudWarmP,
   applySkyPreset: (skyConfig) => sky.applyPreset(skyConfig, scene),
   applySkyPresentation: (skyConfig) => sky.applyPresentationPreset(skyConfig, scene),
-  setSun: (skyConfig) => lighting.setSun(sky.sunDir, skyConfig),
+  setSun: (skyConfig) => lighting.setSun(sky.sunDir, withWorldCloudscape(skyConfig)),
   getFogDensity: () => scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0,
   onFogDensityChanged: (density) => { baseFogDensity = density; },
   canCreateCollider: () => isSoloBattleRuntimeReady(),
@@ -786,7 +795,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
     const variant = getGarageVariant(selectedGarageVariantId);
     return getGarageSkyPreset(variant.mapId);
   },
-  getBattleSkyConfig: () => currentWorld()?.config.sky ?? null,
+  getBattleSkyConfig: () => withWorldCloudscape(currentWorld()?.config.sky ?? null),
   getGroundHeight: () => 0,
   getPhase: () => game.phase,
   // Desktop releases detached stage/workshop geometry while retaining textures
@@ -1454,6 +1463,8 @@ let battleWatchdogRadianceScale = 1;
 const battleAtmosphere = createBattleAtmosphereAccess(() => ({
   getGameMode: () => game.phase === 'studio' ? 'standard' : game.gameMode,
   getWorldRoot: () => currentWorld()?.group ?? null,
+  // 2026-10-01 (engine/lightModel.ts): the vehicles' readability lift follows the applied light
+  getLightReadability: () => (scene.userData.lightModel as { vehicleReadability?: number } | undefined)?.vehicleReadability ?? 1,
   getAuthoredPreset: () => {
     const config: MapCompositionConfig | undefined = currentWorld()?.config;
     if (!config) return {};
@@ -1502,6 +1513,8 @@ const nightLighting = createNightLightingAccess({
     : entity.team !== 'enemy' || game.spotting?.isSpotted(entity.id, 'player', game.player) === true,
 });
 const post = createPost(renderer, scene, camera);
+// 2026-10-01 (engine/post.ts AERIAL_LAYER_H): the aerial haze is a layer over the battlefield's ground
+post.setGroundHeightSource((x, z) => hfProxy.getHeightAt(x, z));
 const viewport = createViewportRuntime({
   container,
   renderer,
