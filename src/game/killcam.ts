@@ -718,7 +718,7 @@ const KC_MODULE_ICON: Readonly<Record<string, string>> = Object.freeze({
   trackL: 'track', trackR: 'track', engine: 'engine', transmission: 'transmission',
   fuelTank: 'fuelTank', ammoRack: 'ammoRack', gun: 'gun', gunMount: 'gunMount',
   radio: 'radio', optics: 'optics', turretRing: 'turretRing', autoloader: 'autoloader',
-  feedSystem: 'feedSystem', missileRack: 'missileRack',
+  roofGun: 'roofGun', feedSystem: 'feedSystem', missileRack: 'missileRack',
 });
 const KC_CREW_ICON: Readonly<Record<string, string>> = Object.freeze({
   commander: 'crewCommander', gunner: 'crewGunner', driver: 'crewDriver', loader: 'crewLoader',

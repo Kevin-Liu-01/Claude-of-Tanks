@@ -109,7 +109,7 @@ Horizontal velocity is `speed` along `yaw`: `vx = sin(yaw)·speed`,
 channel, the client copies reload → gunReload after applying the row.
 
 **Viewer section** (only for a seated player, about its own tank): `u8 entityId`,
-`u16 modules` (2 bits per `VIEWER_MODULES` entry: 0 ok, 1 yellow, 2 red),
+`u32 modules` (2 bits per each of the fifteen `VIEWER_MODULES` entries: 0 ok, 1 yellow, 2 red),
 `u8 crewBits` (`VIEWER_CREW`), 4 × `u16` equipment multipliers ×1000
 (`VIEWER_EQUIPMENT`), `u16 modeSpeedMultiplier` ×1000, `u16 modeGravityScale`
 ×1000, `u8 movementVersion` (0 = none) and, when present, `u16 movementFlags`,
@@ -190,3 +190,12 @@ future refused, an 18-bit mask rejected), the resume hint, quantization
 resolutions. `node src/mp/wire/wireFuzz.selftest.mjs` — 10,000 random byte
 strings and 10,000 mutated valid frames decode to a typed result, never throw,
 never reach the `internal` code.
+
+### Weapon-module snapshot revision (2026-10-01)
+
+Current `WIRE_VERSION` is 3 and `PROTOCOL_VERSION` is 4. Viewer module health
+uses a 32-bit word, preserving the first seven indices and appending missile
+rack, weapon feed, roof gun, autoloader, ammo rack, fuel, radio and optics.
+This adds two bytes per viewer record. Older peers fail the version check;
+clients and hosts must be updated together. The earlier version descriptions
+above are historical migration notes.

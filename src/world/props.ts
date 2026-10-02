@@ -9,6 +9,7 @@ import { ensureWorldNightEmissionMask, markWorldWindowPane } from './worldNightE
 import { prepareWorldStaticNightFixture, prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { mergePropsMaterialGeometrySteps } from './propsMaterialGeometry.ts';
+import { CrushableClutter, bindClutterBatch, isLooseSurfaceRock } from './crushableClutter.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
@@ -453,6 +454,7 @@ export interface CrushableRecord {
 }
 
 interface DestructibleRecord {
+  clutter?: CrushableClutter;
   kind: string;
   cls: DestructibleClass;
   x: number;
@@ -3115,6 +3117,7 @@ ${snowCap ? `
   // the destructibles.ts seam into fx.propBreak (splinters/staves/hay puff).
   // -------------------------------------------------------------------------
   const drng = mulberry32(seed + 9001); // own stream — never shifts placements
+  const pendingClutter: CrushableClutter[] = [];
   const destructibles: DestructibleRecord[] = []; // records: {kind,cls,x,y,z,yaw,sc,r,h,slot,state,ob}
   const autumnCropRows: AutumnCropRow[] | null = mapId === 'autumn' ? [] : null;
   let autumnFieldContext: FieldScatterContext | null = null;
@@ -3580,6 +3583,7 @@ ${snowCap ? `
   }
   function addRubblePile(x: number, z: number, pr: number, rrng: Rng): void {
     const y = heightField.getHeightAt(x, z);
+    const stoneStart = buckets.stone.length, woodStart = buckets.wood.length;
     const n = 6 + ((rrng() * 5) | 0);
     for (let k = 0; k < n; k++) {
       const a = rrng() * Math.PI * 2, rr = Math.sqrt(rrng()) * pr;
@@ -3614,10 +3618,14 @@ ${snowCap ? `
       beam.translate(x, y + pr * 0.4, z);
       buckets.wood.push(beam);
     }
-    obstacles.push(setCircleShape(
-      { min: [x - pr, y, z - pr], max: [x + pr, y + pr * 0.7, z + pr] }, x, z, pr));
-    colliders.push(setCircleShape(
-      { min: [x - pr, y, z - pr], max: [x + pr, y + pr * 0.7, z + pr] }, x, z, pr));
+    const ob = setCircleShape({ min: [x - pr, y, z - pr],
+      max: [x + pr, y + pr * .7, z + pr], kind: 'rubble' }, x, z, pr);
+    const col = cloneCollisionRecord(ob);
+    obstacles.push(ob); colliders.push(col);
+    const clutter = new CrushableClutter('rubble', x, y, z, pr, pr * .7, [ob], [col]);
+    for (const piece of buckets.stone.slice(stoneStart)) clutter.ownPiece(piece);
+    for (const piece of buckets.wood.slice(woodStart)) clutter.ownPiece(piece);
+    pendingClutter.push(clutter);
   }
 
   yield;
@@ -4914,6 +4922,7 @@ ${snowCap ? `
   // higher subdivision, THREE displacement octaves for real lumpy boulder
   // silhouettes, and a slope/height-keyed albedo blend (pale weathered top
   // vs darker base) so the tops read snow/lichen-capped per map tone.
+  const rockClutter = new Map<THREE.Matrix4, CrushableClutter>();
   const rockGeos: THREE.BufferGeometry[] = [];
   const rockHulls: number[][] = [];
   // r7 terrain_environment: RIDGED FRACTURE displacement + crease shading —
@@ -4993,6 +5002,7 @@ ${snowCap ? `
     scMax: number,
     slopePref: boolean,
     sink = 0.22,
+    tactical = false,
   ): boolean {
     const vv = (rng() * 3) | 0;
     const yawR = rng() * Math.PI * 2;
@@ -5012,7 +5022,8 @@ ${snowCap ? `
     _quat.setFromAxisAngle(_upAxis, yawR);
     _mat4.compose(_posv.set(x, y, z), _quat,
       _scalev.set(sc, sc * (0.8 + rng() * 0.35), sc));
-    rockPlacements[vv].push(_mat4.clone());
+    const placement = _mat4.clone();
+    rockPlacements[vv].push(placement);
     // sink <= 0.5: half-drifted surface rocks keep their cover role; only the
     // deep-embedded ground-clutter class (0.60) is drive-over
     if (sc >= 1.25 && sink <= 0.5) {
@@ -5029,8 +5040,13 @@ ${snowCap ? `
       }
       const rec = setConvexShape(
         { min: [x, y, z], max: [x, y + sc * 1.1, z] }, points);
-      obstacles.push(rec);
-      colliders.push(cloneCollisionRecord(rec));
+      const col = cloneCollisionRecord(rec);
+      obstacles.push(rec); colliders.push(col);
+      if (isLooseSurfaceRock(sc, sink, tactical)) {
+        rec.kind = col.kind = 'small-rock';
+        const clutter = new CrushableClutter('small-rock', x, y + sink * sc, z, sc, sc * 1.1, [rec], [col]);
+        rockClutter.set(placement, clutter); pendingClutter.push(clutter);
+      }
     }
     return true;
   }
@@ -5049,7 +5065,7 @@ ${snowCap ? `
       const a = yaw + Math.PI + arc;
       const rr = radius * (0.72 + 0.28 * Math.abs(Math.sin(i * 2.17 + seed)));
       tryRock(beat.x + Math.cos(a) * rr, beat.z + Math.sin(a) * rr,
-        beat.outcrop.scaleMin ?? 1.55, beat.outcrop.scaleMax ?? 3.1, false, 0.24);
+        beat.outcrop.scaleMin ?? 1.55, beat.outcrop.scaleMax ?? 3.1, false, 0.24, true);
     }
   }
   }
@@ -5107,7 +5123,10 @@ ${snowCap ? `
     }
     rockGeos[vi].setAttribute('aRockGround', new THREE.InstancedBufferAttribute(ground, 1));
     const im = new THREE.InstancedMesh(rockGeos[vi], mats.rock, rockPlacements[vi].length);
-    for (let i = 0; i < rockPlacements[vi].length; i++) im.setMatrixAt(i, rockPlacements[vi][i]);
+    for (let i = 0; i < rockPlacements[vi].length; i++) {
+      const placement = rockPlacements[vi][i];
+      im.setMatrixAt(i, placement); rockClutter.get(placement)?.bindInstance(im, i);
+    }
     im.castShadow = true;
     im.receiveShadow = true;
     im.matrixAutoUpdate = false;
@@ -5118,6 +5137,7 @@ ${snowCap ? `
   }
   }
   instantiateRockVariants();
+  rockClutter.clear();
 
   yield { fine: true, stage: 'rock-instances' };
 
@@ -5559,21 +5579,25 @@ ${snowCap ? `
         (hrng() - 0.5) * 0.3,
       ];
       const beams = hedgehogBeamSpecs(hx, y, hz, yaw, scale, yawOffsets);
+      const clutterObs: CollisionRecord[] = [], clutterCols: CollisionRecord[] = [];
+      const clutter = new CrushableClutter('hedgehog', hx, y, hz, 1.2 * scale, 1.7 * scale, clutterObs, clutterCols);
       for (const beamSpec of beams) {
         const beam = box(0.16 * scale, 0.16 * scale, 2.1 * scale, 1.2);
         beam.rotateX(beamSpec.tilt);
         beam.rotateY(beamSpec.yaw);
         beam.translate(hx, y + 0.62 * scale, hz);
-        buckets.dark.push(beam);
+        buckets.dark.push(beam); clutter.ownPiece(beam);
         const record: PropsCollisionRecord = {
           min: [hx, beamSpec.minY, hz], max: [hx, beamSpec.maxY, hz],
           kind: 'hedgehog', hedgehogId,
         };
         setObbShape(record, hx, hz, beamSpec.halfWidth + 0.025,
           beamSpec.halfLength + 0.025, beamSpec.yaw);
-        obstacles.push(record);
-        colliders.push(cloneCollisionRecord(record));
+        const collider = cloneCollisionRecord(record);
+        obstacles.push(record); colliders.push(collider);
+        clutterObs.push(record); clutterCols.push(collider);
       }
+      pendingClutter.push(clutter);
       return true;
     };
     // 2026-09-14 campaign flavour: desktop tiers field more anti-tank obstacles (authored x1.35).
@@ -6970,6 +6994,7 @@ ${snowCap ? `
       // mergeGeometries requires uniform indexing (ExtrudeGeometry is non-indexed)
       const profile = bucketShadowProfile(buckets[key]); // round 79: the pieces' cells, before the merge owns them
       const merged = yield* mergePropsMaterialGeometrySteps(buckets[key], key);
+      bindClutterBatch(buckets[key], merged);
       const mesh = new THREE.Mesh(merged, mats[key]);
       mesh.name = 'props-bucket-' + key; // round 75: the perf inventories attribute the merged buckets by name
       setShadowCasterProfile(mesh, profile);
@@ -6981,6 +7006,14 @@ ${snowCap ? `
     }
   }
   yield* mergeMaterialBuckets();
+  // Append after every ordinary prop so existing network prop identities stay stable.
+  for (const clutter of pendingClutter) {
+    if (!clutter.activate(destructibles.length)) continue;
+    destructibles.push({kind: clutter.kind, cls: 'break', x: clutter.x, y: clutter.y, z: clutter.z,
+      yaw: 0, sc: 1, r: clutter.r, h: clutter.h, slot: -1, state: 0,
+      ob: clutter.obstacles[0]!, col: clutter.colliders[0], groundSupport: null, clutter});
+  }
+  pendingClutter.length = 0;
 
   // -------------------------------------------------------------------------
   yield;
@@ -7384,20 +7417,21 @@ ${snowCap ? `
     const rec = destructibles[idx];
     if (!rec || rec.state) return false;
     const pool = dPools.get(rec.kind);
-    if (!pool || !pool.imI) return false;
+    if (!rec.clutter && (!pool || !pool.imI)) return false;
     // Loose dressing is displaced, never consumed. Shells/blasts kick it too,
     // and a later tank can push the exact same object again after it settles.
     if (rec.cls === 'physics') return kickLooseRecord(idx, dx, dz, speed, cause);
     rec.state = 1;
-    setWorldNightFixtureActive(pool.imI, rec.slot, false);
+    if (pool?.imI) setWorldNightFixtureActive(pool.imI, rec.slot, false);
     if (rec.ob) rec.ob.crushed = true;          // ghost for collision + AI
     if (rec.col) rec.col.dead = true;           // shells/LOS pass the breach
     if (rec.loopRef) rec.loopRef.toppled = true; // stop the main.ts loop
     const l = Math.hypot(dx, dz) || 1;
-    animateBrokenRecord(rec, pool, dx, dz, speed, l);
+    if (rec.clutter) rec.clutter.setCrushed(true);
+    else if (pool) animateBrokenRecord(rec, pool, dx, dz, speed, l);
     // Explosive decoration chains next tick through the cosmetic-only impact
     // path. Collidable cover still requires an authoritative direct hit/ram.
-    if (pool.meta.explosive) {
+    if (pool?.meta.explosive) {
       pendingBlasts.push({ x: rec.x, y: rec.y + rec.h * 0.4, z: rec.z });
     }
     if (fxBudget > 0) {
@@ -7758,6 +7792,7 @@ ${snowCap ? `
     }
     if (!rec.state) return;
     rec.state = 0;
+    if (rec.clutter) rec.clutter.setCrushed(false);
     const pool = dPools.get(rec.kind);
     if (pool && pool.imI) {
       setWorldNightFixtureActive(pool.imI, rec.slot, true);

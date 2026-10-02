@@ -4072,7 +4072,7 @@ function* createFxSteps(
     if (/fieldhut|leanto|huntingblind|fishershack|saunahut|alpinerefuge|stilthouse|longhouse/.test(kind)) return 'woodbuilding';
     if (/deserttent|commandtent|fieldhospital/.test(kind)) return 'canvasbuilding';
     if (/guardpost|motorpool|quonsethut|transformershed|checkpointhut/.test(kind)) return 'metalbuilding';
-    if (/^wall/.test(kind)) return 'masonry';
+    if (/^wall|rubble|small-rock/.test(kind)) return 'masonry';
     if (/^sandbag/.test(kind)) return 'sandbag';
     if (/truck|jeep/.test(kind)) return 'vehicle';
     if (kind === 'tent') return 'canvas';
@@ -4081,7 +4081,7 @@ function* createFxSteps(
     if (/bale|stook|hay/.test(kind)) return 'hay';
     if (kind === 'barrel') return 'barrel';
     if (kind === 'pot') return 'pot';
-    if (/lamp|drum|churn/.test(kind)) return 'metal';
+    if (/lamp|drum|churn|hedgehog/.test(kind)) return 'metal';
     return 'wood';
   }
 

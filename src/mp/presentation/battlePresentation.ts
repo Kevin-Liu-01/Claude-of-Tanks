@@ -116,6 +116,8 @@ export interface MatchShell {
 
 export interface PresentationGameState {
   tanks: RuntimeValue[];
+  /** Stable match participants, independently of the spotted world actors. */
+  rosterTanks?: RuntimeValue[];
   tankById: Map<string, RuntimeValue>;
   player: RuntimeValue;
   shells: RuntimeValue[];
@@ -253,7 +255,7 @@ export function createBattlePresentation({
   let perspectiveTeam: TeamId | null = null;
   let mounted = false;
   let disposed = false;
-  let legacy: Pick<PresentationGameState, 'tanks' | 'tankById' | 'player' | 'shells' | 'spotting'> | null = null;
+  let legacy: Pick<PresentationGameState, 'tanks' | 'rosterTanks' | 'tankById' | 'player' | 'shells' | 'spotting'> | null = null;
   let snapshotPhase: number | null = null;
   let appliedDestructibleRevision = -1;
   let lastModeStateJson: string | null = null;
@@ -381,6 +383,8 @@ export function createBattlePresentation({
       lastAuxiliaryJson.set(combat,sample.auxiliaryJson||'');
       if (sample.auxiliaryJson) combat.auxiliary = JSON.parse(sample.auxiliaryJson);
       else delete combat.auxiliary;
+      actor.state.roofGunYaw = combat.auxiliary?.gunYaw ?? 0;
+      actor.state.roofGunPitch = combat.auxiliary?.gunPitch ?? 0;
     }
     combat.shellSlot = sample.shellSlot;
     if (combat.reloadChannels?.[sample.shellSlot]) combat.reload = combat.reloadChannels[sample.shellSlot]!;
@@ -526,6 +530,7 @@ export function createBattlePresentation({
     visibleRoster.length = 0;
     for (const actor of actors.values()) if (actor.networkVisible || actor.combat.destroyed) visibleRoster.push(actor);
     game.tanks = visibleRoster;
+    game.rosterTanks = roster;
     game.tankById = actors;
     game.player = ownActor();
   }
@@ -794,9 +799,13 @@ export function createBattlePresentation({
         });
         return;
       }
-      case 'module_state':
+      case 'module_state': {
+        const actor = actors.get(String(payload.id));
+        const module = actor?.combat.modules[String(payload.module) as keyof typeof actor.combat.modules];
+        if (module && (payload.state === 'ok' || payload.state === 'yellow' || payload.state === 'red')) module.state = payload.state;
         bus.emit('module:state', { id: payload.id, module: payload.module, state: payload.state, source: payload.source });
         return;
+      }
       case 'tank_fire':
         bus.emit('tank:fire', { id: payload.id, burning: payload.burning });
         return;
@@ -837,7 +846,7 @@ export function createBattlePresentation({
   function mount(): void {
     if (mounted) return;
     mounted = true;
-    legacy = { tanks: game.tanks, tankById: game.tankById, player: game.player, shells: game.shells, spotting: game.spotting };
+    legacy = { tanks: game.tanks, rosterTanks: game.rosterTanks, tankById: game.tankById, player: game.player, shells: game.shells, spotting: game.spotting };
     for (const entity of game.allTanks || []) entity.visual?.setVisible?.(false);
     publishRoster();
     game.shells = [];
@@ -850,6 +859,7 @@ export function createBattlePresentation({
   function unmount(): void {
     if (!mounted || !legacy) return;
     game.tanks = legacy.tanks;
+    game.rosterTanks = legacy.rosterTanks;
     game.tankById = legacy.tankById;
     game.player = legacy.player;
     game.shells = legacy.shells;

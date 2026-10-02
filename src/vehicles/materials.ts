@@ -221,7 +221,7 @@ function paintTrack(rng: Rng): HTMLCanvasElement {
 
 function redrawWhenMarkingFontReady(draw: () => void): void {
   if (document.fonts && !document.fonts.check("bold 16px 'ABC Monument Grotesk'")) {
-    document.fonts.ready.then(draw).catch(() => {});
+    document.fonts.load("bold 16px 'ABC Monument Grotesk'").then(faces => { if (faces.length) draw(); }).catch(() => {});
   }
 }
 
@@ -2779,10 +2779,10 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
         : null;
       if (lease) decalTextureLeases.push(lease);
       const t = lease?.texture ?? track(canvasTex(paintDecal(kind, text, marking), { aniso }));
-      // number decals re-bake on fonts.ready (paintDecal registered first, so
+      // number decals re-bake when their font loads (paintDecal registered first, so
       // its redraw runs before this) — push the fresh canvas to the GPU.
       if (document.fonts && !document.fonts.check("bold 16px 'ABC Monument Grotesk'")) {
-        document.fonts.ready.then(() => { t.needsUpdate = true; }).catch(() => {});
+        document.fonts.load("bold 16px 'ABC Monument Grotesk'").then(faces => { if (faces.length) t.needsUpdate = true; }).catch(() => {});
       }
       const m = track(setup(new THREE.MeshStandardMaterial({
         map: t, transparent: true, roughness: 0.8, metalness: 0.1,

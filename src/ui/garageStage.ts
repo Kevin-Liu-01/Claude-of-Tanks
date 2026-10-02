@@ -320,7 +320,7 @@ function makeWallTexture(rng: RandomSource): HTMLCanvasElement {
 // Stenciled workshop signage uses real safety categories instead of painting
 // every board yellow: blue identifies bays, red marks hazards, green marks
 // service equipment, and amber remains the general caution accent.
-// Inter has no condensed cut: bake at 44px but shrink-to-fit against the
+// Monument Grotesk has no condensed cut: bake at 44px but shrink-to-fit against the
 // plate's inner width (the old 79%-width face fit 'NO SMOKING' at 44px flat).
 export const SIGN_FONT = "700 44px 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif";
 export function makeSignTexture(rng: RandomSource, text: string): HTMLCanvasElement {
@@ -367,7 +367,7 @@ export function makeSignTexture(rng: RandomSource, text: string): HTMLCanvasElem
     g.restore();
     g.font = SIGN_FONT;
     g.textAlign = 'center';
-    // shrink-to-fit: Inter is wider than the retired condensed cut, and the
+    // shrink-to-fit: Monument Grotesk is wider than the retired condensed cut, and the
     // longest plate ('NO SMOKING') would otherwise run through the keyline.
     const maxW = W - 44;
     const w0 = g.measureText(text).width;
@@ -383,10 +383,10 @@ export function makeSignTexture(rng: RandomSource, text: string): HTMLCanvasElem
     }
   };
   draw();
-  // font mandate: bake in Inter — redraw once if the face lands
+  // font mandate: bake in Monument Grotesk — redraw once if the face lands
   // after the first bake (caller flips needsUpdate on the wrapping texture).
   if (document.fonts && !document.fonts.check(SIGN_FONT)) {
-    document.fonts.ready.then(draw).catch(() => {});
+    document.fonts.load(SIGN_FONT).then(faces => { if (faces.length) draw(); }).catch(() => {});
   }
   return c;
 }
@@ -1042,12 +1042,12 @@ export function createGarageStage(
   const signGeoSmall = track(new THREE.PlaneGeometry(2.2, 1.1));
   const signTex1 = track(canvasTexture(makeSignTexture(rng, 'BAY 01'), { aniso }));
   const signTex2 = track(canvasTexture(makeSignTexture(rng, 'NO SMOKING'), { aniso }));
-  // sign plates re-bake themselves on fonts.ready (see makeSignTexture) —
+  // Sign plates re-bake when their own font loads (see makeSignTexture) —
   // this pushes the refreshed canvases to the GPU.
   function refreshSignsAfterFontLoad(): void {
     if (!document.fonts || document.fonts.check(SIGN_FONT)) return;
-    document.fonts.ready
-      .then(() => { signTex1.needsUpdate = true; signTex2.needsUpdate = true; })
+    document.fonts.load(SIGN_FONT)
+      .then(faces => { if (faces.length) { signTex1.needsUpdate = true; signTex2.needsUpdate = true; } })
       .catch(() => {});
   }
   refreshSignsAfterFontLoad();

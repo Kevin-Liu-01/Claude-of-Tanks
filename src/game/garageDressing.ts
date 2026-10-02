@@ -2963,8 +2963,8 @@ export function createGarageDressing(
   // sign plates bake before the webfont settles — refresh them once it lands
   // (same contract as garageStage's own signs)
   if (document.fonts && !document.fonts.check(SIGN_FONT)) {
-    document.fonts.ready
-      .then(() => { for (const t of signTextures) t.needsUpdate = true; })
+    document.fonts.load(SIGN_FONT)
+      .then(faces => { if (!disposed && faces.length) for (const t of signTextures) t.needsUpdate = true; })
       .catch(() => {});
   }
 

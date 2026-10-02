@@ -114,8 +114,16 @@ regression verifies a real shell kill reaches the score in the snapshot.
 Hold Tab during battle to widen both team lists and use spare vertical room;
 release Tab or switch away from the window to collapse them. Settings, modals
 and text entry keep normal keyboard navigation. Up to fourteen entries remain
-rows; fifteen or more use the icon grid. Row height adapts without scrolling,
+rows; fifteen or more use the icon grid. Normal rows are capped at 24px and
+Tab-expanded rows at 30px; fewer participants shrink the list instead of
+stretching the rows. Short screens can compress rows without scrolling,
 with the vehicle subtitle omitted only where a short row cannot fit it.
+
+Multiplayer names and counts use the complete announced match roster, separate
+from spotted world actors. Unspotted enemies remain listed with legible muted
+names. This does not reveal their positions or add them to targeting/minimap
+visibility. Lobby lists retain every room participant, including spectators
+and disconnected players.
 
 When either side reaches fourteen tanks, the shot card omits Angle, Armor,
 Damage and Pen detail rows. The outcome, damage total, shell and target remain.
@@ -184,7 +192,12 @@ connection.
 Incoming damage shows the attacker's exact side silhouette before its name,
 using the same asset and tint as kill notifications. When a hit lacks a model
 ID, the known event ledger may supply it; entity IDs are never treated as model
-IDs. The feeds share a 240 px maximum width and 26 px rows. Left feeds touch
+IDs. Damage notices keep a 240 px maximum width; kill and chat panels allow up to
+400 px, constrained by the viewport. Kill and damage notices share 26 px rows.
+Each feed retains its newest eight events, displays only complete rows that fit
+the measured free space, and expands again when room becomes available. Open
+chat, damage feedback and the combat readout reserve space before kill feeds
+grow. The browser matrix includes bursts beyond the retained limit. Left feeds touch
 the left edge; enemy kill notices touch the right, with content padding for
 phone display cutouts. Long names truncate before the damage/outcome value.
 
@@ -256,3 +269,100 @@ The geometry gate includes those notices alongside detection and damage alerts.
 Receipts are local ignored artifacts under `.qa-dev/mobile-surfaces`,
 `.qa-dev/mobile-hud-final`, `.qa-dev/mobile-multiplayer`,
 `.qa-dev/battle-load-layout`, and `.qa-dev/mp-p2p-mobile`.
+
+
+### Full mobile garage access — 2026-10-01 follow-up
+
+Camouflage, Battlefield and Vehicle Dossier open as full reading panels on
+compact screens. The stats chart button opens the dossier: equipment, every
+performance metric, ammunition, protection, armament, modules, crew, vehicle
+controls and their illustrated help remain available. Armor/module/crew diagrams
+can be enlarged without losing the underlying dossier. Close and Escape return
+to the originating control; a nested equipment picker keeps its own keyboard
+boundary. The desktop sidebar composition stays persistent.
+
+Camouflage has the complete nation collections and biome filters, with the
+custom painting studio available through the same production access controller.
+Filters scroll with the catalog so they cannot consume all the space on a short
+screen. Color controls, brush settings, painting, stamps, palette, pattern
+transfer and Apply remain reachable. The full map catalog and map help remain
+available; the first tap selects a map and another tap on the selected map
+opens its photograph. Short multiplayer garages keep room readiness between
+the side controls rather than pushing dossier access underneath the tank rail.
+
+Run the deeper garage gate directly; it owns its Vite server, browser, shared
+capture lease, and cleanup (do not wrap it in another capture lease):
+
+```sh
+nice -n 19 node tools/garage-mobile.browser.mjs --out=/absolute/new-evidence-directory
+```
+
+Supply `--playwright-module=/absolute/path/to/playwright/index.mjs` when needed.
+The fixture loads the production tank, camouflage, map and staging catalogs.
+It checks 44px touch targets, names, hit testing, viewport bounds, every nation
+rail, the last catalog cards, navigation and service record, all help sections,
+all technical tabs and Gallery entry controls. It draws and saves camouflage,
+selects equipment, tests nested Escape/Tab focus, exercises private/LAN garage
+status, and rotates with dialogs open. Gallery destination rendering and
+clipboard permissions are outside this gate; its room status is deterministic
+presentation state, not a live connection claim.
+
+Coverage: 320×568 and 390×844 portrait; 844×390, 667×375, 568×320,
+568×256 and 480×240 landscape; Chinese at 568×256; orientation round trips.
+The run passed 1,728 garage checks. The related setup/settings gate passed 396,
+the private/LAN lobby and connection gate passed 1,099, and the ten-case touch
+HUD subset passed 360. No browser errors or layout failures were recorded.
+Type checking, focused garage/mobile/modal/help tests and the public build also
+passed. These are Chromium touch emulations, not physical iOS/Safari tests.
+Receipts: `.qa-dev/garage-mobile-complete` and `.qa-dev/garage-related-*`.
+
+## Font delivery — 2026-10-01
+
+The game uses `font-display: swap`: a slow self-hosted font must replace the
+readable fallback after arrival. `optional` can leave a cold visit permanently
+in the fallback and must not be restored as a loading optimization. The inline
+`cot-font-faces` style owns first-paint declarations; `ensureFonts()` reuses it
+and warms only Medium and Bold once. Regular remains demand-loaded. The battle
+menu and compact Garage controls use the current Monument Grotesk stack.
+Canvas signs and vehicle markings wait for their specific face before repaint
+and texture upload, rather than the document-wide font-ready promise.
+
+Run `node src/ui/fonts.selftest.mjs`, `node src/ui/loadingScreens.selftest.mjs`
+and `nice -n 19 node tools/fonts.browser.mjs`. The browser tool owns its capture
+lease and server. It serves the real entry HTML with simulation boot stubbed,
+uses production typography and sign painting, and checks Chrome's actual
+painted font through its inspection protocol. Desktop (1440×900) and phone
+landscape (568×320) pass delayed delivery, exactly two initial font requests,
+no additional requests on a cacheable warm reload, and correct canvas repaint.
+Failed downloads retain readable text and recover on the next successful visit.
+Cache headers in this fault-injection fixture model a cacheable font response;
+these results are not a deployed-network timing or complete WebGL boot claim.
+Evidence: `.qa-dev/fonts/report.json` and adjacent before/after screenshots.
+Type checking, scoped code-quality checks and the public build pass.
+
+## Spectator cursor ownership
+
+Destruction in a continuing match preserves mouse capture through the death
+beat and spectator handoff. The spectator card shows “Press Esc to release
+cursor” only while captured. Esc releases the cursor without opening Settings;
+a battlefield click captures it again. Final results and returning to Garage
+still release it. The hint stays hidden for ordinary touch-only use.
+
+`tools/spectator-cursor.browser.mjs` verifies the real death transition,
+keyboard target cycling, cursor release, canvas recapture, clickable spectator
+buttons after release, and hint bounds at 568×320. CDP-delivered Escape does
+not exercise Chrome's privileged native Escape default; the test follows it
+with the browser release API. Evidence is in
+`.qa-dev/spectator-cursor/report.json` and adjacent screenshots. Phase policy,
+result presentation, Settings access, pointer recovery, observer input,
+localization, type checking, and the production build also pass.
+
+## Running gear and ground markers
+
+`tools/running-gear-damage.browser.mjs` enters a real Zone Control battle and
+captures intact, falling, settled and left-behind running gear. It checks
+world-space persistence after moving the tank, triangle-surface clearance,
+repair cleanup and every capture-ring/disc vertex against the live terrain.
+The probe owns the shared capture queue and writes evidence beneath
+`.qa-dev/running-gear-damage/`. Objective rings and discs have independent
+surface-fitted geometry; capture progress reuses that fit.

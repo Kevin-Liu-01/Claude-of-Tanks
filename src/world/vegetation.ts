@@ -21,6 +21,7 @@ import {
 import { isClearOfSpawns } from './spawnClearance.ts';
 import { createStructureClearances, excludeStructureVegetation, excludeVegetation, overlapsStructureClearance } from './vegetationClearance.ts';
 import { compactGroundCoverInstances, type GroundCoverBlocked } from './groundCoverClearance.ts';
+import { attachTreeCards, attachTreeLobes } from './treeAttachments.ts';
 import { applyCanopyDiffuseWrap } from './canopyLighting.ts'; // round 55: shared with the horizon ring (leaf module)
 export { applyCanopyDiffuseWrap };
 // Round 77 (2026-09-26): the map's wind and moss (THREE-free), read once per world
@@ -1556,7 +1557,7 @@ function buildBroadleafCards(
   for (let i = 0; i < Math.max(2, nCards >> 4); i++) {
     const a = rng() * Math.PI * 2, rr = 0.9 + rng() * 0.9;
     _e.set(rng() * Math.PI, rng() * Math.PI * 2, rng() * Math.PI, 'YXZ');
-    parts.push(foliageCard(1.3 * sizeMul, 1.0 * sizeMul, Math.cos(a) * rr, 2.9 + rng() * 0.6, Math.sin(a) * rr,
+    parts.push(foliageCard(1.3 * sizeMul, 1.0 * sizeMul, Math.cos(a) * rr, (shape.trunkH ?? 3.1) * 0.90 + rng() * 0.6, Math.sin(a) * rr,
       _e, 0.62, hue0 + 0.005, sat0 + 0.02, 0.35, 0, cy, 0, 1.55, 0, crownR));
   }
   // r3 terrain_environment: inner DARK FILLER cards — with only the shell
@@ -1810,7 +1811,7 @@ function buildPalmGeometry(
     g.computeVertexNormals();
     const rotY = new THREE.Matrix4().makeRotationY(a);
     g.applyMatrix4(rotY);
-    g.translate(px, H + 0.18, pz);
+    g.translate(px, H + 0.12, pz);
     const nv = p.count;
     const col = new Float32Array(nv * 3);
     const fl = new Float32Array(nv);
@@ -1821,13 +1822,13 @@ function buildPalmGeometry(
       const t = uvA.getY(i); // 0..1 along the frond length
       const m = dead ? 1 : 1.38 * shade;
       col[i * 3] = _c.r * m; col[i * 3 + 1] = _c.g * m; col[i * 3 + 2] = _c.b * m;
-      fl[i] = dead ? 0.25 : 0.30 + t * 0.45;
+      fl[i] = 0.20 + t * (dead ? 0.05 : 0.55);
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     g.setAttribute('aFlex', new THREE.BufferAttribute(fl, 1));
     // round 77: the frond's cascade sample stands at the crown's heart, reaching 3.4 m out toward the sun (aCard)
     const card = new Float32Array(nv * 4);
-    for (let i = 0; i < nv; i++) { card[i * 4] = px; card[i * 4 + 1] = H + 0.18; card[i * 4 + 2] = pz; card[i * 4 + 3] = 3.4; }
+    for (let i = 0; i < nv; i++) { card[i * 4] = px; card[i * 4 + 1] = H + 0.12; card[i * 4 + 2] = pz; card[i * 4 + 3] = 3.4; }
     g.setAttribute('aCard', new THREE.BufferAttribute(card, 4));
     // sky-lit normals: outward + up bias, like the other canopies (round 77: the bias at 55 % of the old 1.35 so the
     // fronds on the sun side and the shaded side separate — a real crown's fronds fan out around the light)
@@ -1859,7 +1860,7 @@ function buildPalmGeometry(
   // the crown center was hollow and the fronds read as separate spikes
   {
     const core = new THREE.IcosahedronGeometry(0.44 * rMul, 0);
-    jitterRadial(core, rng, 0.25);
+    jitterFarShell(core, rng, 0.25);
     core.scale(1.35, 0.85, 1.35);
     sphereNormals(core, 0, 0, 0, 1.0);
     core.translate(px, H + 0.30, pz);
@@ -2071,24 +2072,6 @@ export function buildTreeTrunkAuditGeometry(
 // card mips would resolve to solid rectangles; opaque jittered lobes give
 // clean massed silhouettes for ridgelines and the rim forest instead. ---
 
-function jitterRadial(
-  geo: THREE.BufferGeometry,
-  rng: RandomSource,
-  amount: number,
-): THREE.BufferGeometry {
-  const pos = attribute(geo, 'position');
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), z = pos.getZ(i);
-    if (Math.hypot(x, z) > 1e-4) {
-      const f = 1 + (rng() - 0.5) * 2 * amount;
-      pos.setX(i, x * f); pos.setZ(i, z * f);
-      pos.setY(i, pos.getY(i) + (rng() - 0.5) * amount * 0.8);
-    }
-  }
-  geo.computeVertexNormals();
-  return geo;
-}
-
 function canopyJitterNoise(key: number): number {
   key = Math.imul(key ^ key >>> 16, 0x7feb352d);
   key = Math.imul(key ^ key >>> 15, 0x846ca68b);
@@ -2123,8 +2106,8 @@ function jitterFarShell(
       pos.setY(i, y + (canopyJitterNoise(key ^ 0x9e3779b9) - 0.5) * amount * 0.8);
     }
   }
-  // Far callers replace every normal after final scaling; near palms keep
-  // the original jitterRadial path and its complete original output.
+  // Callers replace every normal after final scaling. The near palm core
+  // shares this joined-corner law so its small solid crown cannot split.
   return geo;
 }
 
@@ -2590,7 +2573,7 @@ function garageTreePalette(
     || {};
 }
 
-function buildDetailedGarageTree(
+export function buildDetailedGarageTree(
   species: Species,
   seed: number,
   variantIndex: number,
@@ -2656,6 +2639,7 @@ function buildDetailedGarageTree(
       break;
     }
   }
+  if (archetype.family !== 'palm') attachTreeCards(pair);
   return { trunk: pair.trunk, foliage: pair.cards, foliageTexture };
 }
 
@@ -2670,7 +2654,7 @@ export function buildFarTreeTrunkAuditGeometry(family: 'oak'|'pine'|'palm'|'birc
   return pair.trunk;
 }
 
-function buildFallbackGarageTree(
+export function buildFallbackGarageTree(
   species: Species,
   seed: number,
   variantIndex: number,
@@ -2707,6 +2691,7 @@ function buildFallbackGarageTree(
       break;
     }
   }
+  if (archetype.family !== 'palm') attachTreeLobes(pair);
   return { trunk: pair.trunk, foliage: pair.canopy, foliageTexture: null };
 }
 
@@ -3575,7 +3560,8 @@ function* vegetationBuildSteps(
         float lean = uWind.x * gust * (0.70 + 0.30 * sin(uWindTime * 1.15 + ph) + 0.12 * sin(uWindTime * 2.63 + ph * 1.7));
         float hn = clamp(transformed.y * uWind.y, 0.0, 1.0);
         vec2 leanDir = uWindDir + vec2(-uWindDir.y, uWindDir.x) * (0.22 * sin(uWindTime * 0.97 + ph * 1.3));
-        float fph = fract(aFlex * 53.17 + (position.x * 0.37 + position.z * 0.53) * 0.05) * 6.2831853;
+        // Continuous phase: fract introduced a jump where the 1.9x harmonic crossed a card.
+        float fph = (aFlex * 53.17 + (position.x * 0.37 + position.z * 0.53) * 0.05) * 6.2831853;
         float fl = aFlex * uWind.z * (0.45 + 0.55 * gust);
         transformed.xz += leanDir * (lean * hn * hn);
         transformed.x += fl * (sin(uWindTime * 3.1 + fph) + 0.5 * sin(uWindTime * 5.3 + fph * 1.9));
@@ -4187,6 +4173,7 @@ function* vegetationBuildSteps(
       treeGeo[sp] = [];
       for (let k = 0; k < NEAR_VARIANTS; k++) {
         const geometry = SPECIES[sp].near(k, palOf(sp));
+        if (TREE_ARCHETYPES[sp].family !== 'palm') attachTreeCards(geometry);
         prepareTreeBarkSurface(geometry.trunk, barkTex.meanReflectance);
         treeGeo[sp].push(geometry);
         yield { stage: 'treePrep', fine: true };
@@ -4196,6 +4183,7 @@ function* vegetationBuildSteps(
         const geometry = SPECIES[sp].far(
           mulberry32(seed + SPECIES[sp].farSeed + k * 101), palOf(sp), k,
         );
+        if (TREE_ARCHETYPES[sp].family !== 'palm') attachTreeLobes(geometry);
         prepareTreeBarkSurface(geometry.trunk, barkTex.meanReflectance);
         treeGeoFar[sp].push(geometry);
         yield { stage: 'treePrep', fine: true };

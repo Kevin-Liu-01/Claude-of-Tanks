@@ -77,7 +77,7 @@ import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
   selectFirstAvailableShell, selectShell, startPostShotReload, tickReload, isHeClass,
-  repairAllModules, startMagazineReload, mainWeaponModuleState, hullDamageTaken,
+  repairAllModules, startMagazineReload, selectedWeaponModuleState, mainWeaponModuleState, hullDamageTaken,
 } from '../sim/damage.ts';
 import { magazineIndicator } from '../sim/magazineIndicator.ts';
 import type { MagazineIndicator } from '../sim/magazineIndicator.ts';
@@ -190,7 +190,7 @@ interface SoloAiController {
   setWaypoints(points: Waypoint[], options?: { loop?: boolean }): void;
   notifyShellResult(event: SoloHitEvent): void;
   notifyUnderFire?(shooter: SoloEntity, info?: { selfHit?: boolean; damaging?: boolean; kind?: string }): void;
-  notifyPlayerFired?(shooter: SoloEntity, rank?: number): void;
+  notifyEnemyFired?(shooter: SoloEntity): void;
   /** Jev commander (2026-09-25): the live target and mode the team document reads, and the order it applies. */
   readonly targetId?: string | null;
   readonly state?: string;
@@ -524,18 +524,11 @@ const _worldRayOrigin = new THREE.Vector3();
 const _toC = new THREE.Vector3();
 const _spawnPos = new THREE.Vector3();
 const _contactCenter = new THREE.Vector3();
-const _playerShotOrigin = new THREE.Vector3();
-const _playerShotRecipients: SoloEntity[] = [];
 const _nearestTankTrace: NearestTankTrace = {
   distance: Infinity,
   entity: null,
   intersections: null,
 };
-
-function comparePlayerShotRecipients(a: SoloEntity, b: SoloEntity): number {
-  return a.state.pos.distanceToSquared(_playerShotOrigin) -
-    b.state.pos.distanceToSquared(_playerShotOrigin);
-}
 
 // PERF (steady-churn): shell objects + the shell:fired payload were the last
 // per-shot allocations in the combat hot path (8 tanks firing every 4-8 s for
@@ -1830,7 +1823,6 @@ function readyShellForFire(
 ): DamageShellSpec | null {
   const combat = entity.combat;
   if (!entity.input.fire || combat.destroyed) return null;
-  if (mainWeaponModuleState(combat) === 'red') return null;
   const maximumSlot = entity.spec.gun.shells.length - 1;
   const requestedSlot = Math.max(
     0,
@@ -1843,6 +1835,7 @@ function readyShellForFire(
   // can fire while the cannon reloads, including input-driven bot selections.
   if (combat.reload.t > 0) return null;
   const shell = entity.spec.gun.shells[combat.shellSlot];
+  if (selectedWeaponModuleState(combat, entity.spec.gun, shell) === 'red') return null;
   if (shell.guided !== true && !shell.reloadGroup && combat.magazine && combat.magazine.rounds <= 0) return null;
   if (hasAmmunition(combat, combat.shellSlot)) return shell;
   if (entity.isPlayer) {
@@ -1924,22 +1917,13 @@ function emitShellFired(
   bus.emit('shell:fired', _firedEv);
 }
 
-function notifyPlayerShot(game: SoloGameState, shooter: SoloEntity): void {
-  if (!shooter.isPlayer) return;
-  _playerShotOrigin.copy(shooter.state.pos);
-  _playerShotRecipients.length = 0;
+function notifyEnemyShot(game: SoloGameState, shooter: SoloEntity): void {
   for (const entity of game.tanks) {
-    if (entity === shooter || entity.team === shooter.team || !entity.aiCtl ||
-        entity.combat.destroyed) continue;
+    if (entity.team === shooter.team || !entity.aiCtl || entity.combat.destroyed) continue;
     if (entity.state.pos.distanceToSquared(shooter.state.pos) <= 500 * 500) {
-      _playerShotRecipients.push(entity);
+      entity.aiCtl.notifyEnemyFired?.(shooter);
     }
   }
-  _playerShotRecipients.sort(comparePlayerShotRecipients);
-  for (let index = 0; index < _playerShotRecipients.length; index++) {
-    _playerShotRecipients[index].aiCtl?.notifyPlayerFired?.(shooter, index);
-  }
-  _playerShotRecipients.length = 0;
 }
 
 /** Fire the loaded shell if the trigger is held and the gun is ready. */
@@ -1983,7 +1967,7 @@ function tryFire(
     }
   }
   game.spotting?.notifyFired(entity.id, game.timeS);
-  notifyPlayerShot(game, entity);
+  notifyEnemyShot(game, entity);
 }
 function advanceGuidedShell(game: SoloGameState, shell: DamageShell): boolean {
   const shooter = game.tankById.get(shell.shooterId);

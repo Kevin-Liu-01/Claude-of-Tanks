@@ -1,3 +1,4 @@
+import { markSmokeTube, registerSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
 // src/vehicles/decorations.ts — cosmetic external-stowage / fittings kit for
 // the whole fleet ("decoration system", 2026-07 round).
 //
@@ -19,7 +20,9 @@
 //    auto-skip unless explicitly opted in (see resolveDecorMode), so the
 //    geometry-gate ledger remains bare and byte-stable.
 //  * In-game builds (garage pedestal, battle, studio, icon generator) get
-//    decor ON by default — no call-site changes required.
+//    decor ON by default — no call-site changes required. Smoke dispensers
+//    are functional: aperture receipts feed the generated control inventory.
+//    Inventory generation must explicitly include the shipped decoration layer.
 //  * Per-tank selection is DETERMINISTIC, seeded by stable decoration
 //    identity only (never camoSeed): normally the SPEC ID, with the preserved
 //    Revolution Proto retaining its old ID. Variation lives across the
@@ -1175,7 +1178,7 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
       const x = (k - (per - 1) / 2) * 0.082;
       const y = 0.115 + row * 0.078;
       const cant = (k - (per - 1) / 2) * 6 * D2R;   // fanned tubes
-      const g = cylZ(0.032, 0.21, 8);
+      const g = markSmokeTube(cylZ(0.032, 0.21, 8));
       xform(g, 0, 0, 0.075);                        // tube forward of its pivot
       // dark muzzle cap disc crisps the tube read at gameplay distance
       const cap = xform(cylZ(0.0335, 0.014, 8), 0, 0, 0.185);
@@ -3985,7 +3988,7 @@ export function* attachTankDecorationsSteps(
             const y = Math.max(0.24, pivotTopY() * yf);
             const h = turP.side(y, z, s, W / 2 + 1);
             if (!h) continue;
-            const yaw = s > 0 ? Math.PI / 2 + 0.55 : -Math.PI / 2 - 0.55; // fan forward
+            const yaw = s * 0.55; // forward fan, mirrored about local +Z
             if (commit(name, cl, 'turret', V(h.p.x + s * 0.03, y, z), E(0, yaw, 0), placedTurret)) { done = true; break; }
           }
           if (!done) disposePartList(cl);
@@ -4051,14 +4054,24 @@ export function* attachTankDecorationsSteps(
 
     function* attachManifestRows(): Generator<DecorationWorkSlice, void, void> {
       const manifest = decorManifestFor(spec, rng);
+      // Reserve functional banks before cosmetic cargo can occupy their seat.
+      // A separate stream makes smoke independent of quality-dependent retries
+      // without reordering the existing random stream for other equipment.
+      const smokeRng = mulberry32(fnv1a(`smoke:${decorId}`));
+      for (const row of manifest) {
+        if (row.kit !== 'smoke') continue;
+        // A declared gameplay fitting is always installed; cosmetic dice
+        // must not decide whether a vehicle can use its smoke control.
+        const jitterSeed = (smokeRng() * 0x7fffffff) | 0;
+        const slotFn = SLOTS[row.slot[0]];
+        if (!slotFn) continue;
+        const parts = createManifestParts(row, DECOR_KITS.smoke!, jitterSeed);
+        if (parts) placeManifestParts(row, slotFn, parts);
+      }
       for (let index = 0; index < manifest.length; index++) {
         const row = manifest[index];
-        // Deterministic dice: every row draws its roll and jitter seed before
-        // eligibility checks, so one failed placement cannot reshuffle later
-        // equipment.
-        const roll = rng();
-        const jitterSeed = (rng() * 0x7fffffff) | 0;
-        if (!(roll > (row.p ?? 1))) {
+        const roll = rng(), jitterSeed = (rng() * 0x7fffffff) | 0;
+        if (row.kit !== 'smoke' && !(roll > (row.p ?? 1))) {
           const kitFn = DECOR_KITS[row.kit];
           const slotFn = SLOTS[row.slot[0]];
           if (kitFn && slotFn) {
@@ -4090,6 +4103,8 @@ export function* attachTankDecorationsSteps(
         });
         const merged = mergeGeometries(nonIndexed, false);
         if (merged) resources.ownGeometry(merged);
+        const socketOwner = new THREE.Object3D();
+        registerSmokeSockets(socketOwner, geos);
         for (const geometry of nonIndexed) resources.releaseGeometry(geometry);
         for (const geometry of geos) resources.releaseGeometry(geometry);
         if (!merged) continue;
@@ -4102,6 +4117,7 @@ export function* attachTankDecorationsSteps(
         mesh.castShadow = false;
         mesh.receiveShadow = true;
         mesh.userData.__decor = true;
+        if (socketOwner.userData.smokeSockets) mesh.userData.smokeSockets = socketOwner.userData.smokeSockets;
         mesh.userData.combatHitboxRole = 'equipment';
         // LOD: decor vanishes at the fleet's greeble horizon
         const lod = new THREE.LOD();

@@ -1,3 +1,4 @@
+import { usesLauncherMuzzles } from '../../sim/launcherPolicy.ts';
 /**
  * MatchClient: the browser-side match layer of Multiplayer v2 (charter §3
  * "Client", §4). It owns one transport, runs the HELLO/WELCOME handshake,
@@ -740,7 +741,13 @@ export class MatchClient {
     this.ownAuthorityTick = frame.tick;
     this.ownAuthorityAtMs = nowMs;
     const viewer = this.ownViewer;
-    const gunRed = viewer ? viewer.modules[VIEWER_GUN_INDEX] === 2 || viewer.modules[VIEWER_GUN_MOUNT_INDEX] === 2 : true;
+    const own = this.welcomeMessage?.roster.find(entry => entry.entityId === entityId);
+    const gun = own ? this.predictionProvider?.specFor(own.specId)?.gun : undefined;
+    const round = gun?.shells?.[row.shellSlot];
+    const gunRed = !viewer || (usesLauncherMuzzles(gun, round)
+      ? viewer.modules[VIEWER_MODULES.indexOf('missileRack')] === 2
+      : viewer.modules[VIEWER_GUN_INDEX] === 2 || viewer.modules[VIEWER_GUN_MOUNT_INDEX] === 2
+        || viewer.modules[VIEWER_MODULES.indexOf('feedSystem')] === 2);
     this.ownShots.observe({
       tick: frame.tick,
       alive: row.hp > 0 && (row.flags & ENTITY_FLAGS.DESTROYED) === 0,

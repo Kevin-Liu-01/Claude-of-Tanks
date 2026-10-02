@@ -331,7 +331,8 @@ function mapTones() {
       result.push([id + '-' + speciesId, palette.texTone ?? null]);
     }
   }
-  assert.equal(affected.length, 25, 'actual broadleaf map scope'); // 2026-09-19: Mars lists oak (count 0)
+  assert.equal(affected.length, 27, 'actual broadleaf map scope'); // Includes Moon's zero-count oak registry and Cliffbridge.
+  assert.ok(affected.includes('moon') && affected.includes('cliffbridge'), 'new map palette coverage');
   return { affected, tones: result };
 }
 const priorDocument = globalThis.document, priorWindow = globalThis.window;

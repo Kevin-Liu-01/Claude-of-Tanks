@@ -301,7 +301,7 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
   box-sizing:border-box;display:none;grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden;
   color-scheme:dark;background:#0e141a;border:1px solid #46525d;border-top:2px solid #eea13a;
   box-shadow:0 24px 64px #0009,0 3px 12px #0006;font-size:13px;line-height:1.4;
-  letter-spacing:normal;word-spacing:normal;text-align:left;font-family:Inter,'Segoe UI',Arial,sans-serif;}
+  letter-spacing:normal;word-spacing:normal;text-align:left;font-family:'ABC Monument Grotesk','Segoe UI',Arial,sans-serif;}
 .cot-battle-menu.open{display:grid;}
 .cot-battle-menu-head{display:flex;align-items:center;justify-content:space-between;gap:16px;
   padding:8px 12px 8px 18px;border-bottom:1px solid #a0b4c322;background:#131b23;}
@@ -1661,7 +1661,7 @@ body[data-cot-input='coarse'] .cot-country-chip{min-width:44px}
 .cot-multiplayer-entry{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
   display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;
   white-space:nowrap;border:1px solid #7e929e55;background:#0b131bed;color:#d6e2ea;
-  font:750 11px/1 var(--cot-font-ui,'Inter',sans-serif);letter-spacing:.04em;cursor:pointer;}
+  font:750 11px/1 var(--cot-font-ui,'ABC Monument Grotesk',sans-serif);letter-spacing:.04em;cursor:pointer;}
 .cot-multiplayer-entry:hover{background:#1b2a36;border-color:#e9ab55;color:#ffce8a;}
 .cot-multiplayer-entry:focus-visible{outline:2px solid #ffb452;outline-offset:3px;}
 .cot-battle-control:has(.cot-battle-menu.open) .cot-multiplayer-entry,.has-room .cot-multiplayer-entry{display:none;}
@@ -1723,3 +1723,105 @@ body[data-cot-height-density='tight'][data-cot-orientation='landscape'][data-cot
 body[data-cot-height-density='tight'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-leftcol{
   padding:4px;
 }
+
+/* Touch drawers use the available screen as a reading surface. The compact
+   garage preview is not a substitute for access to the complete dossier. */
+.cot-drawer-heading,.cot-dossier-close{display:none}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel] :is(.cot-leftcol,.stats){
+  --cot-drawer-edge:max(8px,env(safe-area-inset-left),env(safe-area-inset-right));
+}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='maps'] .cot-leftcol,
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='appearance'] .cot-leftcol,
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .stats{
+  position:absolute;z-index:45;left:var(--cot-drawer-edge);right:var(--cot-drawer-edge);
+  top:max(8px,env(safe-area-inset-top));bottom:max(8px,env(safe-area-inset-bottom));
+  width:auto;max-width:760px;margin-inline:auto;max-height:none;
+}
+body[data-cot-panels='overlay'] .cot-drawer-heading{display:flex;flex:0 0 44px;align-items:center;justify-content:space-between;gap:8px;padding-left:8px;color:#dce6ed}
+.cot-drawer-close{width:44px;height:44px;flex:0 0 44px;border:0;background:none;color:#ccd8df;cursor:pointer}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage .cot-compact-equipment-trigger{
+  display:grid;width:44px;height:44px;top:0;right:0;position:absolute;background:#111b23;
+}
+body[data-cot-panels='overlay'] .cot-garage .cot-dossier-head{position:relative;min-height:48px}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage .cot-dossier-title{padding-right:44px}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage .cot-dossier-close{display:none}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .cot-compact-equipment-trigger{display:none}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .cot-dossier-close{display:grid}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats>.cot-stat-section{display:block}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>:not(.cot-dossier-head){display:block}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-performance-grid>.srow:nth-child(n){display:block}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .cot-stat-title{display:flex;min-height:44px;gap:8px}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .cot-stat-title>.cot-info-trigger{display:inline-flex}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .stats h3{font-size:16px}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .stats .sub{font-size:11px;margin:6px 0}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] :is(.cot-stat-title>span,.eqhead>span,.srow .lr){font-size:11px}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow{min-height:44px;padding:8px}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow .lr b{font-size:13px}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-technical-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+body[data-cot-input='coarse'] .cot-garage :is(.cot-info-trigger,.cot-technical-tab,.cot-camo-tag,.cot-camo-collection,.cot-custom-open,.cot-eqpick .chip,.cot-eqpick .ph .x){min-width:44px;min-height:44px}
+body[data-cot-input='coarse'] .cot-eqpick .chips{flex-wrap:nowrap;overflow-x:auto;flex-shrink:0;overscroll-behavior:contain}
+body[data-cot-input='coarse'] .cot-eqpick .chip{flex:0 0 auto;font-size:11px}
+body[data-cot-input='coarse'] .cot-eqpick .ph{flex:0 0 44px;margin-bottom:4px}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-eqpick.open{
+  position:absolute;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
+  top:max(8px,env(safe-area-inset-top));bottom:max(8px,env(safe-area-inset-bottom));width:auto;max-width:760px;margin-inline:auto;
+  background:#0b1117;
+}
+body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-garage{--cot-country-height:48px}
+body[data-cot-input='coarse'][data-cot-panels='overlay'] :is(.cot-country-chip,.cot-country-edge){min-height:44px;min-width:44px}
+body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-country-rail{--country-edge:44px}
+body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-car-arrow{min-width:44px;flex-basis:44px}
+body[data-cot-height-density='tight'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-garage-tools{flex-direction:row;gap:4px}
+body[data-cot-height-density='tight'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-garage-preview-card{width:calc((100% - 4px)/2);height:44px;min-width:44px}
+
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-camos{display:block;overflow-y:auto;overscroll-behavior:contain}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cgrid.camo{max-height:none;overflow:visible;flex:none}
+body[data-cot-input='coarse'] :is(.cot-camo-tag,.cot-camo-collection){font-size:11px}
+body[data-cot-panels='overlay'] .cot-nav:has(.cot-mobile-nav-menu:not([hidden])){z-index:80}
+body[data-cot-panels='overlay'] .cot-record-modal{padding:8px}
+body[data-cot-panels='overlay'] .cot-record-dialog{box-sizing:border-box;max-width:100%;min-width:0}
+body[data-cot-input='coarse'] .cot-record-close{width:44px;height:44px;min-width:44px;flex-shrink:0}
+
+body[data-cot-input='coarse'] :is(.cot-custom-tool,.cot-technical-viewer-tab){min-width:44px;min-height:44px}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-figure img{max-height:min(220px,35dvh)}
+/* A short viewport must scroll a useful diagram, never collapse its image. */
+body[data-cot-input='coarse'] .cot-technical-viewer-figure img{max-height:none}
+
+/* The expanded dossier is a complete reading view, not the compact preview. */
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow{padding-left:32px}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .srow .lr{white-space:normal}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.cot-gallery-link,.cot-layer-link){min-height:44px;height:auto;padding:10px;font-size:11px;white-space:normal}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.cot-technical-tab,.cot-technical-figure figcaption,.cot-module-chip,.cot-crew-chip,.armorline span,.shellhead,.shellrow .ty,.shellrow .nm small,.shellmetric,.magazine-spec,.eqslot .sl){font-size:11px}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellrow .nm,.shellmetric b,.magazine-spec b,.armorline b){font-size:13px}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellhead,.shellrow){grid-template-columns:42px minmax(0,1fr) 54px 48px;gap:5px;padding-inline:5px}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellrow .nm,.shellrow .nm small){white-space:normal;overflow-wrap:anywhere}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-dossier-head>.cot-info-trigger{display:inline-flex;position:static;margin-top:4px}
+body[data-cot-input='coarse'] .cot-custom-color{grid-template-columns:44px 1fr}
+body[data-cot-input='coarse'] .cot-custom-color input{width:44px;height:44px}
+body[data-cot-input='coarse'] .cot-custom-repeat input{min-width:44px;height:44px}
+body[data-cot-input='coarse'] .cot-custom-check{min-height:44px}
+/* Keep the drawing surface usable inside a phone held sideways. */
+body[data-cot-height='short'][data-cot-input='coarse'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-height:64px;height:clamp(64px,28dvh,88px);flex:none}
+body[data-cot-height='short'][data-cot-input='coarse'] .cot-modal__header{padding:8px 12px;gap:8px}
+body[data-cot-height='short'][data-cot-input='coarse'] .cot-modal__subtitle{display:none}
+body[data-cot-height='short'][data-cot-input='coarse'] .cot-modal__footer{padding:4px 12px}
+
+body[data-cot-height='short'][data-cot-input='coarse'] .cot-modal{max-height:calc(var(--cot-viewport-height,100dvh) - 16px)}
+body[data-cot-height='short'][data-cot-input='coarse'] .cot-modal-root{padding:8px}
+body[data-cot-height='short'][data-cot-input='coarse'] .cot-modal__body{padding:8px}
+body[data-cot-height='short'][data-cot-input='coarse'] .cot-modal__title{font-size:18px}
+
+/* Ready status shares the middle of the preview row on the shortest screens;
+   adding another row would push dossier access underneath the vehicle rail. */
+body[data-cot-height-density='tight'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-garage.has-room{--cot-room-row-space:0px}
+body[data-cot-height-density='tight'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-room-controls{
+  width:calc(100vw - var(--cot-compact-left-width) - var(--cot-compact-stats-width) - 40px);max-width:300px;
+}
+body[data-cot-height-density='tight'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-room-reminder{flex:1;overflow:hidden;padding:6px}
+body[data-cot-height-density='tight'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-room-reminder .rr-copy{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+body[data-cot-height-density='tight'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-room-ready{min-width:64px;padding:6px;font-size:9px}
+
+body[data-cot-panels='overlay'] .cot-garage .cot-compact-equipment-trigger svg{width:20px;height:20px}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] :is(.cot-map-card .mname,.cot-camo-card .cl){font-size:12px;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-map-region{font-size:9px}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage[data-garage-panel] :is(.cot-map-card .mthumb,.cot-camo-card .sw){max-height:28dvh}

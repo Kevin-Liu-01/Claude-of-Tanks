@@ -52,7 +52,7 @@ function rowOf(entity, flags = 0) {
 function viewerOf(entity) {
   const checkpoint = captureMovementCheckpoint(entity.state);
   return {
-    entityId: 1, modules: [0, 0, 0, 0, 0, 0, 0], crewBits: 3, equipment: [1000, 1000, 1000, 1000],
+    entityId: 1, modules: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], crewBits: 3, equipment: [1000, 1000, 1000, 1000],
     modeSpeedMultiplier: 1000, modeGravityScale: 1000,
     movementVersion: checkpoint.version, movementFlags: checkpoint.flags, movementValues: checkpoint.values.map(Math.fround),
   };
