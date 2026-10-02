@@ -79,6 +79,8 @@ interface AllyAvoidanceRisk {
   longSafe: number;
   headingDot: number;
   predictedCross: number;
+  /** The ally stands in this hull's lane (not only on a predicted crossing). */
+  inLane: boolean;
   ownRadius: number;
   ownHalfWidth: number;
   speed: number;
@@ -490,6 +492,17 @@ const FRIENDLY_LANE_RELOCATE_S = 1.2;
 const FRIENDLY_SEPARATION_LOOK_M = 26;
 const FRIENDLY_SEPARATION_PREDICT_S = 1.8;
 const FRIENDLY_STOP_DECEL_MPS2 = 4.0;
+// The bounded yield (bots lane, 2026-10-02): right-of-way waits for traffic, not for a hull that never moves. A bot
+// held behind a PARKED ally (an idle human, a teammate holding its band) for ALLY_HOLD_LIMIT_S gives way: a passing
+// path on a wider lane, or the shared stuck escalation (reverse burst, detour side flip, waypoint skip, pocket
+// escape). Cinder Junction 7v7 seed 72839 waited 239 s behind the idle host while the yield disarmed every stuck
+// watchdog.
+const ALLY_HOLD_LIMIT_S = 8;
+const ALLY_HOLD_CLEAR_M = 12;   // a hold ends once the hull has got this far from where it began…
+const ALLY_HOLD_FORGET_S = 3;   // …or once nothing has held it for this long
+const ALLY_PARKED_MPS = 0.5;
+// The give-way's passing path tries these lanes beyond the ordinary one (both sides each).
+const TRAFFIC_DETOUR_WIDE_EXTRA_M = Object.freeze([4, 9]);
 
 const LOS_INTERVAL_S    = 0.14;   // target-acquisition / LOS cadence
 const PROBE_INTERVAL_S  = 0.55;   // weak-spot + shell-slot probe cadence
@@ -573,6 +586,32 @@ const RAM_MAX_CLOSING_MPS = 14;
 const RAM_SELF_BUDGET_FRAC = 0.8;          // the rams a kill needs may cost at most this share of own hull
 const RAM_RUN_UP_M = 45;                   // a stalled ram backs off to this range before the next run
 const EMPTY_RETIRE_M = 240;                // an empty bot that cannot ram keeps at least this far from its enemies
+// The spent rack (bots lane, 2026-10-02, Frontier Basin 7v7 seed 88677): the last bravo Challenger 2 had only its
+// L34 WP smoke rounds left against the idle M1A2 — no zone opened the gate, no burst was worth a round — and the
+// press, the closed-gate flank and the press repicks cycled for six minutes without a shot until the 900 s cap.
+// Seconds in sight of a target, from inside RACK_SPENT_RANGE_M (where range no longer shuts the gate), that no
+// loaded round can hurt (zones visible, gate shut, no worthwhile burst) end the attempt: the rack counts as spent
+// against that target (ram when the ram law allows, otherwise the retirement), any other spotted enemy outranks
+// it, and the verdict lapses after RACK_SPENT_FOR_S.
+const RACK_SPENT_S = 60;
+const RACK_SPENT_RANGE_M = 90;
+const RACK_SPENT_FOR_S = 90;
+// On-objective geometry (bots lane, 2026-10-02, Cinder Junction and Steinburg frontline seed 72839): a zone mission
+// drives the hull to the zone's centre and holds it there, and the mission owns the hull — so with a target the
+// turret could not fight from that spot (no sight of it, or a gate no loaded round opens) the vantage seek, the
+// closed-gate flank and the press never ran. Attackers and defenders held the last line 17 m apart, silent, for
+// 640 s; a defender at 44 % held 119 s without a sight line. A zone holder that has not been able to fight its
+// target for OBJECTIVE_SHIFT_DWELL_S shifts inside the zone instead: to a point on the OBJECTIVE_SHIFT_RINGS ×
+// radius rings in sight of the target, as far round toward its side as the zone allows. It holds that point while it
+// can fight from it and picks another once it has not been able to for the same dwell; leaving the zone or losing
+// the target ends it.
+const OBJECTIVE_SHIFT_DWELL_S = 4;
+const OBJECTIVE_SHIFT_RINGS = Object.freeze([0.6, 0.8]);
+// A route used up short of the objective (the mission's own plan ends in another connected component for this
+// hull or comes back empty, or a search leg took the waypoints) releases the hull to the classic drivers for this
+// long before the mission plans again (Cinder Junction frontline seed 72839: a Challenger 2 stood 494 s at its route
+// end, 192 m short of the line, its target in sight, the gate shut).
+const MISSION_RELEASE_S = 20;
 // Search goal order by how many legs have ended without contact: straight at the enemy first, then the last
 // sighting and the ring round the sector, then the ring from other sides.
 const SEARCH_ORDER: ReadonlyArray<readonly string[]> = Object.freeze([
@@ -1069,6 +1108,18 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let conserving = false;                    // holding fire at a bot / passive target the lay is unlikely to hit
   let conserveHolds = 0;                     // probe-visible count of ticks a loaded gun held fire to conserve
   let emptyRack = false;
+  let rackSpentT = 0;                        // the spent-rack dwell against rackDwellId (see updateSpentRack)
+  let rackDwellId: string | null = null;
+  let rackSpentId: string | null = null;     // the target the rack was last found unable to hurt…
+  let rackSpentUntilS = -1;                  // …until this sim second
+  let rackSpentVerdicts = 0;                 // probe-visible count
+  // the on-objective shift (see OBJECTIVE_SHIFT_DWELL_S)
+  let cannotFightT = 0;
+  const objectiveShiftPoint = { x: 0, z: 0 };
+  let objectiveShifting = false;
+  let objectiveShifts = 0;                   // probe-visible count
+  let missionReleaseUntilS = -1;             // a blocked mission route has released the hull until then
+  let missionReleases = 0;                   // probe-visible count
   let ramming = false;
   let ramRuns = 0;                           // probe-visible count of ram runs begun
   let ramCommitUntilS = -1;
@@ -1129,7 +1180,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let allyEscapeSteer = 0;
   let trafficDetourUntilS = -1;
   let trafficDetourStage = 0;
+  let trafficDetourAllyId: string | null = null; // the parked ally the committed passing path goes round
   const trafficNear = { x: 0, z: 0 }, trafficFar = { x: 0, z: 0 };
+  // the bounded yield (see updateAllyHold): time held behind a parked ally, where the hold began, give-ways
+  let allyHoldT = 0;
+  let allyHoldLastS = -Infinity;
+  const allyHoldAnchor = { x: 0, z: 0 };
+  let allyHoldGiveWays = 0;
 
   // Stuck / gun-limit recovery.
   let lowSpeedT = 0;
@@ -1420,6 +1477,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     losClear = visible
       && hasLos(eyeX, eyeYPosition, eyeZ, position.x, eyeY(target), position.z);
     if (visible) rememberPosition(target, timeS);
+    // the rack is spent on this one: any other spotted enemy in sight takes the slot (the ranking puts it first)
+    if (target.id === rackSpentId && scanVisibleTarget(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return true;
     if (tryPrioritizeLocalThreat(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return true;
     if (tryPrioritizeWeakTarget(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return true;
     const memoryActive = timeS - lastSeenAtS <= TARGET_MEMORY_S;
@@ -1448,7 +1507,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const health = targetHealthFraction(candidate);
     const threatDistance = Math.sqrt(distanceSq) * focusWeight(candidate);
     const band = Math.floor(threatDistance / TARGET_BAND_M);
-    return (onObjective(candidate) ? 0 : 1e9) + band * 1e6
+    // a target this rack has been found unable to hurt ranks after every other (see RACK_SPENT_S)
+    return (candidate.id === rackSpentId ? 2e9 : 0) + (onObjective(candidate) ? 0 : 1e9) + band * 1e6
       + (health == null ? 1 : Math.max(0, Math.min(1, health))) * 1e5 + threatDistance;
   }
 
@@ -1989,6 +2049,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     longSafe: 0,
     headingDot: 1,
     predictedCross: 0,
+    inLane: false,
     ownRadius: 0,
     ownHalfWidth: 0,
     speed: 0,
@@ -2052,6 +2113,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     allyRisk.longSafe = longSafe;
     allyRisk.headingDot = headingDot;
     allyRisk.predictedCross = predictedCross;
+    allyRisk.inLane = aheadRisk;
     return score;
   }
 
@@ -2085,6 +2147,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return allyRisk.ally !== null;
   }
 
+  /** The committed passing path is going round this ally, and the ally is still stopped. */
+  function passingStoppedAlly(best: AiEntity): boolean {
+    return nowS < trafficDetourUntilS && best.id === trafficDetourAllyId && Math.abs(best.state.speed || 0) <= 1;
+  }
+
   function applyAllySteering(input: AiInput): boolean {
     const best = allyRisk.ally;
     if (!best) return false;
@@ -2096,6 +2163,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const hasPriority = !best.isPlayer && String(entity.id) < String(best.id);
     const mustYield = following || !hasPriority;
     allyYielding = mustYield;
+    // The committed passing path already steers round this ally. An evasive nudge on top of it cancelled the
+    // detour's pivot (Cinder Junction 7v7 seed 72839: the detour's -1 plus the head-on +1 left the hull at 0 for
+    // 239 s behind the idle host). The speed cap and the emergency stop still apply to it and to everyone else.
+    if (passingStoppedAlly(best)) return mustYield;
     const side = headOn ? 1 : Math.sign(
       (Math.abs(allyRisk.predictedCross) > 0.2
         ? -allyRisk.predictedCross : -allyRisk.cross) ||
@@ -2126,20 +2197,38 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       (!liquidSafe || liquidSafe(st.pos.x, st.pos.z, st.yaw, -8));
   }
 
+  /**
+   * Too close to turn in place: a pivot sweeps the hull's corners round its centre, so the gap must hold both
+   * hulls' half-diagonals. Inside it the reverse escape, not a pivot onto a passing path, opens the gap.
+   */
+  function allyTooCloseToPivot(best: AiEntity): boolean {
+    const own = spec.dims, other = best.spec.dims;
+    const ownHalfDiagonal = Math.hypot((own.hullLengthM || own.lengthM || 6) * 0.5, (own.widthM || 3) * 0.5);
+    const allyHalfDiagonal = Math.hypot((other.hullLengthM || other.lengthM || 6) * 0.5, (other.widthM || 3) * 0.5);
+    const gap = Math.hypot(best.state.pos.x - entity.state.pos.x, best.state.pos.z - entity.state.pos.z);
+    return gap < ownHalfDiagonal + allyHalfDiagonal + 0.5;
+  }
+
   function resolveAllyEmergency(input: AiInput, dt: number, mustYield: boolean, timeS: number): boolean {
     const best = allyRisk.ally;
     if (!best) return false;
     const longitudinalGap = allyRisk.along - allyRisk.longSafe;
+    // The nose-to-nose gap is a lane rule: a hull that will pass beside this one (a crossing risk outside the
+    // lane) keeps the radial guard and the speed cap, but an along-gap stop on it froze both hulls of a
+    // side-by-side pass in a stop-and-go loop (each stop ends the predicted crossing, each restart re-arms it).
     const emergency = allyRisk.distance < allyRisk.ownRadius +
       tankSafetyRadius(best) * 0.74 + 0.55 ||
-      (allyRisk.along > 0 && longitudinalGap < 0.8);
+      (allyRisk.inLane && allyRisk.along > 0 && longitudinalGap < 0.8);
     if (!emergency) return false;
     if (!allyEmergencyActive) allyEmergencyStops++;
     allyEmergencyActive = true;
     input.throttle = 0;
     input.brake = allyRisk.speed > 0.45;
     allyDeadlockT += allyRisk.speed < 0.7 ? dt : 0;
-    if (mustYield && allyDeadlockT > 0.9 && allyRisk.speed < 0.45 &&
+    // a committed passing path round this ally turns the hull in place here: no reverse escape out of it
+    // while there is room to turn
+    const passing = passingStoppedAlly(best) && !allyTooCloseToPivot(best);
+    if (mustYield && !passing && allyDeadlockT > 0.9 && allyRisk.speed < 0.45 &&
         aftCorridorClear()) {
       // A one-frame reverse impulse was immediately overwritten by the
       // waypoint driver. Commit briefly, but recheck the rear every tick.
@@ -2186,26 +2275,44 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       (!liquidSafe || liquidSafe(x, z, yaw, distance));
   }
 
-  function startTrafficDetour(timeS: number): void {
+  /**
+   * The committed passing path round a stopped ally: a leg sideways off the line to it, then a leg past it, both
+   * checked against solid cover, terrain and water. It starts once the bot has yielded to the ally for 1.25 s or
+   * has stood in the emergency gap behind it, with room to turn, for half the reverse escape's dwell: for a parked
+   * hull the passing path, not a reverse escape that re-approaches the same hull, is the answer. The legs lie on
+   * the line from the bot to the ally, so a hull an escape left angled off that line still passes beside the ally.
+   * `wide` (the bounded yield's give-way, see updateAllyHold) tries the wider lanes of TRAFFIC_DETOUR_WIDE_EXTRA_M.
+   */
+  function startTrafficDetour(timeS: number, wide = false): boolean {
     const best = allyRisk.ally;
-    if (!best || Math.abs(best.state.speed) > 1 || allyYieldT < 1.25 || allyRisk.speed > 3) return;
+    if (!best || Math.abs(best.state.speed) > 1 || allyRisk.speed > 3) return false;
+    if (!wide && allyYieldT < 1.25 &&
+        (!allyYielding || allyDeadlockT < 0.45 || allyTooCloseToPivot(best))) return false;
     const st = entity.state;
-    const fx = Math.sin(st.yaw), fz = Math.cos(st.yaw);
-    const width = (spec.dims.widthM + best.spec.dims.widthM) * .5 + 5;
+    let ux = best.state.pos.x - st.pos.x, uz = best.state.pos.z - st.pos.z;
+    const gap = Math.hypot(ux, uz) || 1;
+    ux /= gap; uz /= gap;
+    const base = (spec.dims.widthM + best.spec.dims.widthM) * .5 + 5;
     const preferred = Math.sign(-allyRisk.cross || 1);
-    for (let i = 0; i < 2; i++) {
-      const side = i === 0 ? preferred : -preferred;
-      const nx = st.pos.x + fz * width * side, nz = st.pos.z - fx * width * side;
-      const advance = Math.max(0, allyRisk.along) + allyRisk.longSafe + 6;
-      const tx = nx + fx * advance, tz = nz + fz * advance;
-      if (!trafficLegSafe(st.pos.x, st.pos.z, nx, nz) || !trafficLegSafe(nx, nz, tx, tz)) continue;
-      trafficNear.x = nx; trafficNear.z = nz;
-      trafficFar.x = tx; trafficFar.z = tz;
-      trafficDetourStage = 0;
-      trafficDetourUntilS = timeS + 24;
-      allyEscapeUntilS = -1;
-      break;
+    const lanes = wide ? TRAFFIC_DETOUR_WIDE_EXTRA_M.length : 1;
+    for (let lane = 0; lane < lanes; lane++) {
+      const width = base + (wide ? TRAFFIC_DETOUR_WIDE_EXTRA_M[lane] : 0);
+      for (let i = 0; i < 2; i++) {
+        const side = i === 0 ? preferred : -preferred;
+        const nx = st.pos.x + uz * width * side, nz = st.pos.z - ux * width * side;
+        const advance = gap + allyRisk.longSafe + 6;
+        const tx = nx + ux * advance, tz = nz + uz * advance;
+        if (!trafficLegSafe(st.pos.x, st.pos.z, nx, nz) || !trafficLegSafe(nx, nz, tx, tz)) continue;
+        trafficNear.x = nx; trafficNear.z = nz;
+        trafficFar.x = tx; trafficFar.z = tz;
+        trafficDetourStage = 0;
+        trafficDetourUntilS = timeS + 24;
+        trafficDetourAllyId = best.id;
+        allyEscapeUntilS = -1;
+        return true;
+      }
     }
+    return false;
   }
 
   function driveTrafficDetour(input: AiInput, timeS: number): void {
@@ -2221,14 +2328,63 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     input.steer = clamp(error * 2.2, -1, 1);
     input.throttle = Math.abs(error) < .45 ? .65 : 0;
     input.brake = Math.abs(error) >= .45 && Math.abs(st.speed) > .5;
-    driveIntent = true;
+    // the pivot onto a leg turns the hull in place like faceYaw: only the legs themselves are drive intent, or the
+    // low-speed watchdog reads a 2-3 s pivot as a wedge and reverses the hull out of its own passing path
+    driveIntent = input.throttle > 0;
+  }
+
+  /**
+   * The bounded yield. A hold begins on a tick the drive wants to move but yields to a parked ally (a reverse
+   * escape from one counts) and its clock runs until the hull is ALLY_HOLD_CLEAR_M from where it began or nothing
+   * has held it for ALLY_HOLD_FORGET_S, so an escape that backs off and re-approaches the same hull stays one
+   * hold. At ALLY_HOLD_LIMIT_S the yield gives way: the passing path and the escape in hand are dropped for a
+   * passing path on a wider lane (backing straight off first when the hulls are too close to turn), and with
+   * none safe the shared stuck escalation takes over, its side flipped away from the parked hull and the reverse
+   * burst swinging the bow that way. Each further hold is another strike, so a lane the parked hull closes ends
+   * in the pocket escape and the search's next goal.
+   */
+  function updateAllyHold(dt: number, timeS: number, held: boolean): void {
+    const st = entity.state;
+    if (allyHoldT > 0 && (timeS - allyHoldLastS > ALLY_HOLD_FORGET_S ||
+        Math.hypot(st.pos.x - allyHoldAnchor.x, st.pos.z - allyHoldAnchor.z) > ALLY_HOLD_CLEAR_M)) allyHoldT = 0;
+    const holding = held && driveIntent;
+    if (holding) {
+      if (allyHoldT === 0) {
+        allyHoldAnchor.x = st.pos.x;
+        allyHoldAnchor.z = st.pos.z;
+      }
+      allyHoldLastS = timeS;
+    } else if (allyHoldT === 0) {
+      return;
+    }
+    allyHoldT += dt;
+    if (allyHoldT < ALLY_HOLD_LIMIT_S || !holding) return;
+    allyHoldT = 0;
+    allyHoldGiveWays++;
+    allyYieldT = 0;
+    trafficDetourUntilS = -1;
+    allyEscapeUntilS = -1;
+    const parked = allyRisk.ally;
+    if (parked && startTrafficDetour(timeS, true)) {
+      if (allyTooCloseToPivot(parked)) {
+        unstickUntilS = timeS + UNSTICK_TIME_S;
+        unstickSteer = 0;
+      }
+      return;
+    }
+    // no wider lane either: escalateStuckRecovery flips detourSide, so leave it on the side away from the hull
+    detourSide = Math.sign(allyRisk.cross) || detourSide;
+    escalateStuckRecovery(timeS, false);
+    unstickUntilS = timeS + UNSTICK_TIME_S;
+    unstickSteer = -detourSide; // reversing flips the steer: the bow swings toward the detour side
   }
 
   function avoidAllies(input: AiInput, dt: number, timeS: number): void {
     if (!entity.state.grounded) return;
     if (timeS < allyEscapeUntilS && getAllies) {
       allyRisk.friends = getAllies();
-      if (aftCorridorClear()) {
+      updateAllyHold(dt, timeS, true);
+      if (timeS < allyEscapeUntilS && aftCorridorClear()) {
         input.throttle = -0.42;
         input.steer = allyEscapeSteer;
         input.brake = false;
@@ -2242,11 +2398,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     if (!scanAllyRisk(input)) {
       decayAllyAvoidance(dt);
+      updateAllyHold(dt, timeS, false);
       return;
     }
     const mustYield = applyAllySteering(input);
     if (mustYield) allyYieldT += dt;
     else allyYieldT = Math.max(0, allyYieldT - dt);
+    updateAllyHold(dt, timeS, mustYield && Math.abs(allyRisk.ally!.state.speed || 0) < ALLY_PARKED_MPS);
     if (timeS >= trafficDetourUntilS) startTrafficDetour(timeS);
     if (resolveAllyEmergency(input, dt, mustYield, timeS)) return;
     allyDeadlockT = Math.max(0, allyDeadlockT - dt * 2);
@@ -4237,8 +4395,28 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return ramsNeeded * split.toA < mine.hp * RAM_SELF_BUDGET_FRAC;
   }
 
-  function updateEmptyRack(timeS: number): void {
-    emptyRack = firstAvailableSlot() < 0;
+  /** The spent-rack dwell and verdict (see RACK_SPENT_S). */
+  function updateSpentRack(dt: number, timeS: number): void {
+    if (rackSpentId !== null && timeS >= rackSpentUntilS) rackSpentId = null;
+    if (!target || !enemyAlive(target)) return;
+    if (target.id !== rackDwellId) {
+      rackDwellId = target.id;
+      rackSpentT = 0;
+    }
+    if (target.id === rackSpentId) return;
+    // a shut gate on visible zones is evidence against the rack; an open one clears it; no sight proves nothing
+    if (penGateOk || heWorth) rackSpentT = 0;
+    else if (losClear && !probeMiss && currentTargetDistance() <= RACK_SPENT_RANGE_M) rackSpentT += dt;
+    if (rackSpentT < RACK_SPENT_S) return;
+    rackSpentT = 0;
+    rackSpentId = target.id;
+    rackSpentUntilS = timeS + RACK_SPENT_FOR_S;
+    rackSpentVerdicts++;
+  }
+
+  function updateEmptyRack(dt: number, timeS: number): void {
+    updateSpentRack(dt, timeS);
+    emptyRack = firstAvailableSlot() < 0 || (!!target && target.id === rackSpentId);
     if (!emptyRack) {
       ramming = false;
       return;
@@ -4263,7 +4441,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function updateSquadManeuver(timeS: number, distance: number): void {
     if (timeS < squadThinkAtS) return;
     squadThinkAtS = timeS + 1;
-    if (!target || !losClear || !getAllies || orderActive() || getObjective?.()?.mission
+    if (!target || !losClear || !getAllies || orderActive() || getObjective?.()?.mission || emptyRack
         || mode !== 'engage' || distance < 70 || distance > 280
         || timeS < squadFlankAtS + 22 || (entity.combat?.hp ?? 1) / (entity.combat?.maxHp ?? 1) < .45) return;
     // The slow/armoured hull pins the target while one faster teammate changes
@@ -4292,7 +4470,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     timeS: number,
     targetDistance: number,
   ): void {
-    updateEmptyRack(timeS);
+    updateEmptyRack(dt, timeS);
+    updateObjectiveShift(dt);
     updatePassivePress(dt, timeS, targetDistance);
     updateShotRelocation(combat, timeS);
     updateProbeRelocation(dt, timeS);
@@ -4314,7 +4493,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function updatePenDeniedManeuver(dt: number, timeS: number): void {
     const canShootHe = chosenSlot === heSlot && slotHasAmmo(heSlot) && heWorth;
     const targetHolds = !!target && Math.abs(target.state.speed ?? 0) < 0.5;
-    const denied = targetHolds && losClear && !penGateOk && !canShootHe && mode !== 'flank';
+    // an empty or spent rack rams or retires (driveEmptyRack): a flank to open the gate has nothing to fire
+    const denied = targetHolds && losClear && !penGateOk && !canShootHe && mode !== 'flank' && !emptyRack;
     penDeniedT = denied ? penDeniedT + dt : 0;
     if (penDeniedT < PEN_DENIED_FLANK_S || timeS < scootUntilS || passivePressing) return;
     penDeniedT = 0;
@@ -4594,6 +4774,72 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return false;
   }
 
+  /** A zone mission's hold point and radius, or null for other missions and modes. */
+  function zoneObjective(): AiObjective | null {
+    const objective = getObjective?.();
+    return objective && (objective.mission === 'capture' || objective.mission === 'assault') ? objective : null;
+  }
+
+  /** Pick the shift point: on the ring round the zone, in sight of the target, as far round its side as possible. */
+  function pickObjectiveShift(objective: AiObjective): boolean {
+    if (!target) return false;
+    const st = entity.state;
+    const tp = target.state.pos;
+    const ty = eyeY(target);
+    let bestScore = -Infinity;
+    for (let k = 0; k < 8 * OBJECTIVE_SHIFT_RINGS.length; k++) {
+      const radius = objective.radiusM * OBJECTIVE_SHIFT_RINGS[k >> 3];
+      const a = (k & 7) * (TAU / 8) + (k >> 3) * (TAU / 16); // the outer ring sits between the inner ring's bearings
+      const x = objective.x + Math.sin(a) * radius;
+      const z = objective.z + Math.cos(a) * radius;
+      if (Math.hypot(x - st.pos.x, z - st.pos.z) < ARRIVE_DIST_M * 1.5) continue; // where it already stands
+      if (!reachableSpot(x, z)) continue;
+      if (liquidSafe && !liquidSafe(x, z, Math.atan2(tp.x - x, tp.z - z), 0)) continue;
+      if (!hasLos(x, hf.getHeightAt(x, z) + selfEyeM, z, tp.x, ty, tp.z)) continue;
+      // 0 at the target's bow, π at its rear: a gate the front shuts is opened from the side
+      // (capped at the beam: a side plate is enough, and the rear would mean driving round the target)
+      const aspect = Math.min(Math.PI / 2, Math.abs(wrapAngle(Math.atan2(x - tp.x, z - tp.z) - target.state.yaw)));
+      const score = aspect * 10 - Math.hypot(x - st.pos.x, z - st.pos.z) * 0.1;
+      if (score <= bestScore) continue;
+      bestScore = score;
+      objectiveShiftPoint.x = x;
+      objectiveShiftPoint.z = z;
+    }
+    return bestScore > -Infinity;
+  }
+
+  function updateObjectiveShift(dt: number): void {
+    const objective = zoneObjective();
+    const onObjective = !!objective && Math.hypot(objective.x - entity.state.pos.x, objective.z - entity.state.pos.z)
+      <= objective.radiusM;
+    if (!onObjective || !target || !enemyAlive(target) || emptyRack) {
+      cannotFightT = 0;
+      objectiveShifting = false;
+      return;
+    }
+    if (losClear && (penGateOk || heWorth) && isVisibleToTeam(target)) {
+      cannotFightT = 0; // fighting: the hull holds where it stands (the shift point, or the zone's centre)
+      return;
+    }
+    cannotFightT += dt;
+    if (cannotFightT < OBJECTIVE_SHIFT_DWELL_S) return;
+    cannotFightT = 0;
+    if (!pickObjectiveShift(objective!)) return;
+    objectiveShifting = true;
+    objectiveShifts++;
+  }
+
+  /** Drive the live shift; true while it owns the hull (the point reached, the hull faces the target there). */
+  function driveObjectiveShift(input: AiInput): boolean {
+    if (!objectiveShifting || !target) return false;
+    if (driveToXZ(input, objectiveShiftPoint.x, objectiveShiftPoint.z, 0.8)) {
+      const st = entity.state;
+      faceYaw(input, Math.atan2(target.state.pos.x - st.pos.x, target.state.pos.z - st.pos.z));
+      driveIntent = false; // holding the firing point is the point: the low-speed watchdog must not back it off
+    }
+    return true;
+  }
+
   function driveMission(input: AiInput): boolean {
     const objective = getObjective?.();
     if (!objective?.mission) return false;
@@ -4610,9 +4856,22 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       driveToXZ(input, destination.x, destination.z, 1);
       return true;
     }
+    if (nowS < missionReleaseUntilS) return false;
+    const offObjective = Math.hypot(destination.x - entity.state.pos.x, destination.z - entity.state.pos.z)
+      > objective.radiusM;
+    missionOffObjective = offObjective;
     if (missionRouteNeedsRefresh(destination.x, destination.z)) {
       setWaypoints([[destination.x, destination.z]], { loop: false });
     }
+    // a route used up short of the objective (the mission's own, or a search leg that took the waypoints) is no
+    // reason to park: the classic drivers take the hull for a while (Sirocco Wadi frontline seed 57001: a defender
+    // stood 254 s at a search leg's end 116 m from the idle host, its gate shut on the host's front)
+    if (offObjective && routeUsedUp()) {
+      missionReleaseUntilS = nowS + MISSION_RELEASE_S;
+      missionReleases++;
+      return false;
+    }
+    if (!offObjective && driveObjectiveShift(input)) return true;
     drivePatrol(input);
     return true;
   }
@@ -4884,9 +5143,29 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * @param {{loop?: boolean}} options route behavior; patrol routes loop by default
    */
   let missionRouteX = Infinity, missionRouteZ = Infinity, missionRouteAtS = -Infinity;
+  let missionRouteEndX = NaN, missionRouteEndZ = NaN; // the planned mission route's last waypoint
+  let missionOffObjective = false;                    // the hull stood off its objective at the last mission step
   function missionRouteNeedsRefresh(x: number, z: number): boolean {
     return Math.hypot(x - missionRouteX, z - missionRouteZ) >= 12
-      || (nowS - missionRouteAtS >= 6 && (waypoints.length === 0 || terrainBlocked || navNoProgressT > 4));
+      || (nowS - missionRouteAtS >= 6 && (waypoints.length === 0 || terrainBlocked || navNoProgressT > 4
+        || (missionOffObjective && missionRouteEnded())));
+  }
+
+  /** The route in the waypoints is used up: none left, or the hull stands at the last one. */
+  function routeUsedUp(): boolean {
+    const last = waypoints[waypoints.length - 1];
+    return !last || (wpIndex >= waypoints.length - 1
+      && Math.hypot(last.x - entity.state.pos.x, last.z - entity.state.pos.z) < ARRIVE_DIST_M * 2);
+  }
+
+  /**
+   * The mission's own route is used up: its plan came back empty, or the hull stands at its last waypoint. A route
+   * that has since taken the waypoints (a search leg) is not the mission's: it keeps them, as it always has.
+   */
+  function missionRouteEnded(): boolean {
+    const last = waypoints[waypoints.length - 1];
+    if (!last) return missionRouteAtS > -Infinity && Number.isNaN(missionRouteEndX);
+    return last.x === missionRouteEndX && last.z === missionRouteEndZ && routeUsedUp();
   }
 
   function setWaypoints(
@@ -4901,8 +5180,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (!missionRouteNeedsRefresh(x, z)) return;
       missionRouteX = x; missionRouteZ = z; missionRouteAtS = nowS;
       if (deps.planRoute) points = deps.planRoute(entity.state.pos, { x, z });
+      const end = points[points.length - 1];
+      missionRouteEndX = end ? end[0] : NaN;
+      missionRouteEndZ = end ? end[1] : NaN;
     } else {
       missionRouteX = missionRouteZ = Infinity;
+      missionRouteEndX = missionRouteEndZ = NaN;
     }
     waypoints.length = 0;
     for (let i = 0; i < points.length; i++) {
@@ -5077,6 +5360,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       allyClosestM: Number.isFinite(allyClosestM) ? +allyClosestM.toFixed(2) : null,
       allyYieldT: +allyYieldT.toFixed(2),
       allyEmergencyStops, allyReverseEscapes,
+      allyHoldT: +allyHoldT.toFixed(2), allyHoldGiveWays,
       losBlockedT: +losBlockedT.toFixed(1), hasVantage,
       navT: +navNoProgressT.toFixed(1), strikes: stuckStrikes, // r6 watchdog
       penDeniedT: +penDeniedT.toFixed(1), // round 48 pacing: closed pen gate dwell
@@ -5093,6 +5377,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       wpIndex, wpCount: waypoints.length,
       waypointX: waypoints[wpIndex]?.x ?? null, waypointZ: waypoints[wpIndex]?.z ?? null,
       conserveHolds, emptyRack, ramming, ramRuns,
+      rackSpent: !!target && target.id === rackSpentId, rackSpentT: +rackSpentT.toFixed(1), rackSpentVerdicts,
+      objectiveShifts, objectiveShifting,
+      missionReleases, missionReleased: nowS < missionReleaseUntilS,
       pressing: nowS < pressUntilS,
       pressPointX: passivePressing ? pressPoint.x : NaN, // round 67: the chosen press point (NaN while not pressing)
       pressPointZ: passivePressing ? pressPoint.z : NaN,
