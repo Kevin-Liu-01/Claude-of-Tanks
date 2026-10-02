@@ -15,7 +15,8 @@ import * as THREE from 'three';
 import {
   emitBranchGeometry, emitCrownShadowHull, emitLeafCards, envelopeFraction, growTreeSkeleton, GROWTH_LEAF_BUDGET,
   GROWTH_LOWEST_WOOD_M, GROWTH_SIDE_TUBE_BUDGET, GROWTH_SPECIES, GROWTH_SPRAY_CLEARANCE_M, TREE_GROWTH_PROFILES,
-  weldGrownGeometry, canopySkyOcclusion, GROWTH_CANOPY_AO, growthCrownAttachments,
+  weldGrownGeometry, canopySkyOcclusion, GROWTH_CANOPY_AO, growthCrownAttachments, growShrubSkeleton, GROWTH_SHRUB_SPRAYS,
+  GROWTH_SHRUB_VALUE, GROWTH_CONIFER_LEAF_SHARE, growthCardRows,
 } from './treeGrowth.ts';
 import { finishSprayTiles, makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
 
@@ -56,7 +57,7 @@ for (const species of GROWTH_SPECIES) {
     assert.equal(sha(a.hull), sha(b.hull), `${species}/${variant}: hull deterministic`);
     const { skeleton, wood, cards, hull, profile } = a;
     // budgets (desktop)
-    const leafBudget = Math.round(GROWTH_LEAF_BUDGET.desktop * (profile.family === 'conifer' ? 1.3 : 1));
+    const leafBudget = Math.round(GROWTH_LEAF_BUDGET.desktop * (profile.family === 'conifer' ? GROWTH_CONIFER_LEAF_SHARE : 1));
     assert.ok(skeleton.leaves.length <= leafBudget, `${species}/${variant}: ${skeleton.leaves.length} sprays within ${leafBudget}`);
     assert.equal(tris(cards), skeleton.leaves.length * 4, 'four triangles per spray card');
     const sideTubes = skeleton.branches.filter((br) => br.mesh && br.order >= 2 && !br.support).length;
@@ -66,7 +67,8 @@ for (const species of GROWTH_SPECIES) {
     for (const br of supports) assert.equal(br.nodes.length, 2, `${species}: a supporting twig is one straight segment`);
     assert.ok(tris(wood) <= 1800, `${species}/${variant}: wood ${tris(wood)} triangles (${supports.length} supporting twigs)`);
     assert.ok(hull.length / 9 <= 700, `${species}/${variant}: shadow hull ${hull.length / 9} triangles`);
-    if (profile.family !== 'dead') assert.ok(skeleton.leaves.length >= 40, `${species}/${variant}: a crown of ${skeleton.leaves.length} sprays`);
+    if (profile.family === 'palm') assert.ok(skeleton.leaves.length >= 12, `${species}/${variant}: a palm head of ${skeleton.leaves.length} fronds`);
+    else if (profile.family !== 'dead') assert.ok(skeleton.leaves.length >= 40, `${species}/${variant}: a crown of ${skeleton.leaves.length} sprays`);
     else assert.ok(skeleton.leaves.length <= 40, `${species}/${variant}: a snag keeps a few dead twig sprays (${skeleton.leaves.length})`);
     // structure: the stem from the ground; every branch rooted in its parent
     const stem = skeleton.branches[0];
@@ -112,9 +114,9 @@ for (const species of GROWTH_SPECIES) {
     for (let i = 0; i < hull.length; i += 3) hb.expandByPoint(new THREE.Vector3(hull[i], hull[i + 1], hull[i + 2]));
     const inside = skeleton.leaves.filter((l) => hb.containsPoint(new THREE.Vector3(l.x + l.ax * l.length * 0.45, l.y + l.ay * l.length * 0.45, l.z + l.az * l.length * 0.45))).length;
     if (skeleton.leaves.length) assert.ok(inside / skeleton.leaves.length >= 0.85, `${species}/${variant}: the hull covers ${inside}/${skeleton.leaves.length} sprays`);
-    // the crown supports: every spray grows from wood the emitter draws — its seat inside its own branch (or that
-    // branch's emitted ancestor), the bark over it within the branch's girth — except on the limbs from below the
-    // stem's collision band, which stay hidden in their own sprays
+    // the crown supports: every spray grows from wood the emitter draws — its seat inside its own branch, the bark
+    // over it within the branch's girth; the undrawn collision-band limbs carry none (their sprays near the stem grow
+    // from the stem, the rest are cut)
     const emittedBranch = (br) => br.mesh && (br.order <= 2 || br.support);
     const attachments = growthCrownAttachments(skeleton, wood, wood.userData.branchRanges);
     assert.equal(attachments.length, skeleton.leaves.length, `${species}: every spray certified`);
@@ -129,13 +131,13 @@ for (const species of GROWTH_SPECIES) {
       const girth = Math.max(...skeleton.branches[b].nodes.map((n) => n.r));
       assert.ok(attachments[k].gap <= girth + 0.01, `${species}/${variant}: spray ${k} inside its branch (${attachments[k].gap.toFixed(3)} m under the bark, girth ${girth.toFixed(3)})`);
     });
-    if (profile.form !== 'excurrent' && profile.family !== 'conifer') assert.ok(hiddenSprays <= skeleton.leaves.length * 0.12, `${species}/${variant}: ${hiddenSprays} sprays on hidden low limbs`);
+    assert.equal(hiddenSprays, 0, `${species}/${variant}: ${hiddenSprays} sprays on undrawn collision-band limbs`);
     rows.push({ species, variant, height: +skeleton.height.toFixed(2), sprays: skeleton.leaves.length, branches: skeleton.branches.length,
       supports: supports.length, hiddenSprays,
       woodTris: tris(wood), cardTris: tris(cards), hullTris: hull.length / 9, crownR: +cardMaxR.toFixed(2), wood: sha(wp.array) });
     // the mobile budgets
     const m = grow(species, variant, 'mobile');
-    assert.ok(m.skeleton.leaves.length <= Math.round(GROWTH_LEAF_BUDGET.mobile * (profile.family === 'conifer' ? 1.3 : 1)), `${species}: mobile sprays`);
+    assert.ok(m.skeleton.leaves.length <= Math.round(GROWTH_LEAF_BUDGET.mobile * (profile.family === 'conifer' ? GROWTH_CONIFER_LEAF_SHARE : 1)), `${species}: mobile sprays`);
     assert.ok(tris(m.wood) <= tris(wood) + 1, `${species}/${variant}: the mobile wood is no heavier`);
   }
 }
@@ -278,6 +280,55 @@ try {
   }
 }
 
+// the grown shrubs (2026-10-02): per bush species and kind, a deterministic mound of shingled sprays — the budget
+// law (a narrow spray comes more, up to a third), no wood, every seat a few centimetres at most under the base and
+// every card's lowest corner too, the axes and faces unit and square, the four tiles; each spray's centre near the
+// mound's envelope (between half and one and a half of its radius from the heart: a shell, not a cloud or a starburst),
+// the faces turned outward; the two-row cards two triangles each, welded to four vertices; inside the cover disc
+const shrubRows = [];
+{
+  const bushSpecies = ['oak', 'poplar', 'willow', 'acacia', 'birch', 'spruce', 'pine', 'cedar', 'mangrove'];
+  for (const species of bushSpecies) for (const kind of ['bush', 'understorey']) {
+    const a = growShrubSkeleton(species, kind, mulberry32(31)), b = growShrubSkeleton(species, kind, mulberry32(31));
+    assert.deepEqual(a, b, `${species} ${kind}: deterministic`);
+    const narrow = Math.min(1, TREE_GROWTH_PROFILES[species].aspect / 0.8);
+    assert.equal(a.leaves.length, Math.round(GROWTH_SHRUB_SPRAYS[kind] * Math.min(4 / 3, 1 / narrow)), `${species} ${kind}: the spray budget`);
+    assert.equal(a.branches.length, 0, 'a shrub draws no wood');
+    let shell = 0, outward = 0;
+    for (const l of a.leaves) {
+      assert.ok(l.y >= -0.06 - 1e-9, `${species} ${kind}: seated on the ground (${l.y})`);
+      assert.ok(Math.abs(Math.hypot(l.ax, l.ay, l.az) - 1) < 1e-9 && Math.abs(Math.hypot(l.nx, l.ny, l.nz) - 1) < 1e-9, 'unit axis and face');
+      assert.ok(Math.abs(l.ax * l.nx + l.ay * l.ny + l.az * l.nz) < 1e-9, 'the face square to the axis');
+      assert.ok(Number.isInteger(l.tile) && l.tile >= 0 && l.tile < SPRAY_ATLAS_TILES * SPRAY_ATLAS_TILES && l.branch === -1);
+      const cx = l.x + l.ax * l.length * 0.45, cy = l.y + l.ay * l.length * 0.45, cz = l.z + l.az * l.length * 0.45;
+      const d = Math.hypot(cx - a.crown.x, (cy - a.crown.y) * a.crown.r / (a.height * 0.6), cz - a.crown.z) / a.crown.r;
+      if (d > 0.5 && d < 1.5) shell++;
+      if ((cx - a.crown.x) * l.nx + (cy - a.crown.y) * l.ny + (cz - a.crown.z) * l.nz > 0) outward++;
+    }
+    assert.ok(shell >= 0.85 * a.leaves.length, `${species} ${kind}: the sprays make a shell (${shell}/${a.leaves.length})`);
+    assert.ok(outward >= 0.8 * a.leaves.length, `${species} ${kind}: the faces turn outward (${outward}/${a.leaves.length})`);
+    const cards = emitLeafCards(a, { tint: () => [0.5, 0.5, 0.5], tiles: SPRAY_ATLAS_TILES, rng: mulberry32(5), rows: 2 });
+    assert.equal(tris(cards), a.leaves.length * 2, 'two triangles a spray');
+    finite(cards, 'position'); finite(cards, 'normal'); finite(cards, 'aCard');
+    const welded = weldGrownGeometry(cards);
+    assert.equal(welded.getAttribute('position').count, a.leaves.length * 4, 'four vertices a spray');
+    const box = new THREE.Box3().setFromBufferAttribute(cards.getAttribute('position')), size = box.getSize(new THREE.Vector3());
+    assert.ok(box.min.y >= -0.0601 && box.min.y <= 0, `${species} ${kind}: grounded (${box.min.y})`);
+    assert.ok(size.x > 0.8 && size.z > 0.8 && size.y > 0.6 && size.y < 2.3, `${species} ${kind}: a mound (${size.toArray()})`);
+    const p = cards.getAttribute('position');
+    let reach = 0; for (let i = 0; i < p.count; i++) reach = Math.max(reach, Math.hypot(p.getX(i), p.getZ(i)));
+    assert.ok(reach <= (kind === 'bush' ? 2 : 1.4), `${species} ${kind}: inside the cover disc / the understorey's reach (${reach})`);
+    shrubRows.push([species, kind, a.leaves.length, +size.x.toFixed(2), +size.y.toFixed(2), +reach.toFixed(2)]);
+  }
+  // the default emitter keeps the crowns' three-row card
+  const { skeleton } = grow('oak', 1);
+  assert.equal(tris(emitLeafCards(skeleton, { tint: () => [1, 1, 1], tiles: 2, rng: mulberry32(1) })), skeleton.leaves.length * 4);
+  // the shrub value calibrates the bush species only, near one
+  for (const [species, value] of Object.entries(GROWTH_SHRUB_VALUE)) {
+    assert.ok(bushSpecies.includes(species) && value > 0.75 && value < 1.35, `${species}: a shrub value near one (${value})`);
+  }
+}
+
 // the integration: the real build on the desktop tier (no renderer), then legacyTrees, then the mobile tier
 {
   const { createHeightField } = await import('./terrain.ts');
@@ -345,8 +396,38 @@ try {
     for (const cards of meshes.filter((m) => m.userData.treeFoliage)) {
       assert.ok(cards.geometry.getAttribute('aCard'), 'grown cards carry the cascade sample');
       assert.equal(cards.castShadow, false);
+      assert.ok('COT_CARD_EDGE_FADE' in (cards.material.defines ?? {}), 'grown cards fade edge-on');
+      assert.ok(Number(cards.material.defines.COT_GROWN_CROWN) > 1, 'and pass more of a low sun behind them');
+      // Nordhavn's spruce, fir and birch take the two-row card (growthCardRows): two triangles to four welded vertices
+      assert.equal(cards.geometry.index.count / 3 * 2, cards.geometry.getAttribute('position').count, 'two-row conifer and birch cards');
+    }
+    assert.deepEqual(['oak', 'spruce', 'birch', 'palm', 'snag'].map((sp) => growthCardRows(TREE_GROWTH_PROFILES[sp].family)), [3, 2, 2, 3, 2]);
+    // the shrubs grow from the bush species' sprays: welded two-triangle cards with the cascade sample
+    const shrubs = desktop.group.children.filter((m) => m.userData.bush || m.userData.understorey);
+    assert.equal(shrubs.length, 3, 'two bush shapes and the understorey');
+    for (const m of shrubs) {
+      assert.ok(m.geometry.index && m.geometry.getAttribute('aCard'), 'a grown shrub');
+      assert.equal(m.geometry.index.count / 3, m.geometry.getAttribute('position').count / 2, 'two triangles to four vertices');
     }
   } finally { desktop.dispose(); disposeObject3DResources(desktop.group); }
+  // the Garage groves (2026-10-02): the desktop kit grows its tree — welded wood on the four-style bark sheet (its
+  // styled UVs prepared into the sheet), the species' spray atlas or the palm's frond atlas
+  {
+    const restore = canvas();
+    try {
+      for (const species of ['oak', 'spruce', 'palm']) {
+        const kit = V.createGarageTreeKit({}, null, species, 2001, 1);
+        try {
+          assert.equal(kit.detailTier, 'battlefield-near');
+          assert.ok(kit.trunk.index && kit.foliage.index, `${species}: a grown garage tree`);
+          assert.equal(kit.trunkMaterial.map?.image.width, 1024, `${species}: the four-style bark sheet`);
+          assert.ok(kit.trunkMaterial.normalMap && kit.foliageMaterial.map, `${species}: bark normals and the foliage atlas`);
+          const uv = kit.trunk.getAttribute('uv');
+          for (let i = 0; i < uv.count; i++) assert.ok(uv.getX(i) >= 0 && uv.getX(i) <= 1, `${species}: bark UVs inside the sheet`);
+        } finally { kit.dispose(); }
+      }
+    } finally { restore(); }
+  }
   // Frosthollow's snow load: the sky-facing sprays take the laden (top) tile row and the snow's lifted neutral tint,
   // the rest the bare row and the palette's green — per card, from its UVs and its tint
   const winter = build('winter');
@@ -363,9 +444,91 @@ try {
       }
     }
     assert.ok(laden > 0.08 * (laden + bare) && bare > 0.2 * (laden + bare), `the snow load splits the sprays (laden ${laden}, bare ${bare})`);
+    // the boughs' pads (2026-10-02): a conifer trunk carries the round-8 snow caps' load — its bright neutral pad
+    // vertices (the snow tint, before the bark sheet) span the crown's height, not only its top
+    for (const trunk of pools(winter).filter((m) => m.userData.treeTrunk && m.geometry.userData.trunkQuality?.family === 'conifer')) {
+      const p = trunk.geometry.attributes.position, col = trunk.geometry.attributes.color;
+      let n = 0, lo = Infinity, hi = -Infinity, top = 0;
+      for (let i = 0; i < p.count; i++) {
+        top = Math.max(top, p.getY(i));
+        const r = col.getX(i), g = col.getY(i), b = col.getZ(i);
+        if (Math.min(r, g, b) > 0.45 && Math.max(r, g, b) - Math.min(r, g, b) < 0.08) { n++; lo = Math.min(lo, p.getY(i)); hi = Math.max(hi, p.getY(i)); }
+      }
+      assert.ok(n >= 60, `a snowbound conifer's boughs carry their pads (${n} pad vertices)`);
+      assert.ok(hi - lo > 0.35 * top, `the pads spread down the crown (${(hi - lo).toFixed(2)} of ${top.toFixed(2)} m)`);
+    }
     assert.ok(ladenY / laden > 1.3 * (bareY / bare), 'a laden spray is lifted');
     assert.ok(ladenSat / laden < bareSat / bare, 'a laden spray is neutral, a bare one keeps its green');
   } finally { winter.dispose(); disposeObject3DResources(winter.group); }
+  // the tidal mangrove (2026-10-02): the Mangrove map's willow form grows on the desktop tiers — the mangrove's crown on
+  // its own spray atlas over the reviewed stilt arches (five a trunk): each arch's toe at the authored -0.75 m and
+  // seated in the ground under every placed willow, each collar inside the grown stem, the arches casting with the
+  // crown hull; the shrubs grow from the mangrove's sprays; the collision and concealment records are the legacy build's
+  {
+    const tidal = build('mangrove');
+    let tidalRecords = null;
+    try {
+      tidalRecords = records(tidal);
+      const { createHeightField: heightField } = await import('./terrain.ts');
+      const ground = heightField(1337, getMapConfig('mangrove'));
+      const trunks = pools(tidal).filter((m) => m.userData.treeTrunk && m.geometry.userData.stiltRoots);
+      assert.equal(trunks.length, 3, 'three grown mangrove trunk pools');
+      const byVariant = new Map(trunks.map((m) => [m.geometry.userData.stiltRoots.variant, m.geometry]));
+      const ray = new THREE.Ray(), hit = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+      const toes = new Map();
+      for (const [variant, g] of byVariant) {
+        const { stemCorners, arches } = g.userData.stiltRoots, p = g.attributes.position, idx = g.index.array;
+        assert.equal(arches.length, 5, 'five stilt arches');
+        const variantToes = [];
+        for (const [lo, hi] of arches) {
+          let toe = lo, collar = new THREE.Vector3(), n = 0;
+          for (let v = lo; v < hi; v++) {
+            if (p.getY(v) < p.getY(toe)) toe = v;
+            if (p.getY(v) > 1) { collar.add(a.fromBufferAttribute(p, v)); n++; }
+          }
+          assert.ok(Math.abs(p.getY(toe) + 0.75) < 1e-5, `the arch ends at its authored toe (${p.getY(toe)})`);
+          assert.ok(n > 0, 'the arch rises to its collar');
+          collar.multiplyScalar(1 / n);
+          // inside the stem: a ray from the collar's centre crosses the stem's surface an odd number of times
+          ray.set(collar, new THREE.Vector3(0.937, 0.173, 0.302).normalize());
+          const distances = [];
+          for (let k = stemCorners[0]; k < stemCorners[1]; k += 3) {
+            if (!ray.intersectTriangle(a.fromBufferAttribute(p, idx[k]), b.fromBufferAttribute(p, idx[k + 1]), c.fromBufferAttribute(p, idx[k + 2]), false, hit)) continue;
+            const d = hit.distanceTo(collar);
+            if (!distances.some((old) => Math.abs(old - d) < 1e-6)) distances.push(d);
+          }
+          assert.equal(distances.length % 2, 1, 'the arch collar is embedded in the grown stem');
+          variantToes.push(new THREE.Vector3().fromBufferAttribute(p, toe));
+        }
+        toes.set(variant, variantToes);
+        // the arches cast with the crown: the trunk's hull carries every toe
+        const hull = g.userData.shadowHull;
+        for (const toe of variantToes) {
+          let found = false;
+          for (let k = 0; k < hull.length && !found; k += 3) found = Math.abs(hull[k] - toe.x) < 1e-6 && Math.abs(hull[k + 1] - toe.y) < 1e-6 && Math.abs(hull[k + 2] - toe.z) < 1e-6;
+          assert.ok(found, 'the stilt arches cast with the crown hull');
+        }
+      }
+      let seated = 0;
+      const point = new THREE.Vector3();
+      for (const tree of tidal._trees) {
+        if (tree.species !== 'willow') continue;
+        for (const toe of toes.get(tree.variant % 3)) {
+          point.copy(toe).applyMatrix4(tree.mat);
+          assert.ok(point.y - ground.getHeightAt(point.x, point.z) <= 1e-5, `a stilt toe seated in the ground (${(point.y - ground.getHeightAt(point.x, point.z)).toFixed(3)} m)`);
+          seated++;
+        }
+      }
+      assert.ok(seated > 500, `every placed mangrove's toes checked (${seated})`);
+      const shrubs = tidal.group.children.filter((m) => m.userData.bush || m.userData.understorey);
+      assert.ok(shrubs.length === 3 && shrubs.every((m) => m.geometry.index && m.geometry.getAttribute('aCard')), 'the Mangrove shrubs grow from the mangrove sprays');
+    } finally { tidal.dispose(); disposeObject3DResources(tidal.group); }
+    const tidalLegacy = build('mangrove', { legacyTrees: true });
+    try {
+      assert.equal(records(tidalLegacy), tidalRecords, 'the grown mangroves change the look, never the records');
+      assert.ok(pools(tidalLegacy).every((m) => !m.geometry.userData.stiltRoots), 'legacyTrees keeps the reviewed legacy mangrove');
+    } finally { tidalLegacy.dispose(); disposeObject3DResources(tidalLegacy.group); }
+  }
   // legacyTrees: the legacy card trees and lobe-hull proxies
   const legacy = build('fjord', { legacyTrees: true });
   try {
@@ -373,6 +536,12 @@ try {
     assert.equal(barkWidth(legacy), 256, 'a legacy build keeps its single bark sheet');
     assert.equal(barkBlock0(legacy), desktopBlock0, 'the four-style sheet opens with the single sheet, pixel for pixel');
     assert.equal(records(legacy), desktopRecords, 'collision and concealment records are tier-independent (snags are a look)');
+    for (const m of legacy.group.children.filter((c) => c.userData.bush || c.userData.understorey)) {
+      assert.ok(!m.geometry.index && !m.geometry.getAttribute('aCard'), 'a legacy build keeps the round-8 shrub cards');
+    }
+    for (const m of pools(legacy).filter((c) => c.userData.treeFoliage)) {
+      assert.ok(!('COT_CARD_EDGE_FADE' in (m.material.defines ?? {})) && !('COT_GROWN_CROWN' in (m.material.defines ?? {})), 'a legacy build keeps its cards unfaded and its transmission');
+    }
   } finally { legacy.dispose(); disposeObject3DResources(legacy.group); }
   // the mobile tier (resolved once, last): the legacy trees
   globalThis.window = { location: { search: '?tier=mobile' }, localStorage: { getItem: () => null } };
@@ -383,8 +552,19 @@ try {
   try {
     for (const trunk of pools(mobile).filter((m) => m.userData.treeTrunk)) assert.equal(trunk.geometry.userData.shadowHull, undefined, 'the phones keep the legacy trees');
     assert.equal(barkWidth(mobile), 256, 'the phones pay for no unused bark styles');
+    for (const m of pools(mobile).filter((c) => c.userData.treeFoliage)) {
+      assert.ok(!('COT_CARD_EDGE_FADE' in (m.material.defines ?? {})), 'the phones keep their cards unfaded');
+    }
+    const bushes = mobile.group.children.filter((c) => c.userData.bush);
+    assert.ok(bushes.length === 2 && bushes.every((m) => !m.geometry.index && m.geometry.getAttribute('position').count === 192), 'the phones keep the round-8 bushes');
+    const restore = canvas();
+    try {
+      const kit = V.createGarageTreeKit({}, null, 'oak', 2001, 1);
+      assert.ok(!kit.trunk.index && kit.trunkMaterial.map === null, 'the phones\' Garage keeps the round-8 trees');
+      kit.dispose();
+    } finally { restore(); }
   } finally { mobile.dispose(); disposeObject3DResources(mobile.group); delete globalThis.window; }
 }
 
-console.log(JSON.stringify({ shape, atlas: atlasRows, budgets: rows.map((r) => [r.species, r.variant, r.sprays, r.woodTris, r.cardTris, r.hullTris]) }));
-console.log(`treeGrowth.selftest: ${GROWTH_SPECIES.length} species × 3 variants grown deterministically within budget, rooted, seated and enveloped; silhouettes apart; ${SPRAY_KINDS.length} spray atlases; desktop / legacyTrees / mobile routing PASS`);
+console.log(JSON.stringify({ shape, atlas: atlasRows, budgets: rows.map((r) => [r.species, r.variant, r.sprays, r.woodTris, r.cardTris, r.hullTris]), shrubs: shrubRows }));
+console.log(`treeGrowth.selftest: ${GROWTH_SPECIES.length} species × 3 variants grown deterministically within budget, rooted, seated and enveloped; silhouettes apart; ${SPRAY_KINDS.length} spray atlases; ${shrubRows.length / 2} shrub species × bush / understorey mounds; desktop / legacyTrees / mobile routing PASS`);
