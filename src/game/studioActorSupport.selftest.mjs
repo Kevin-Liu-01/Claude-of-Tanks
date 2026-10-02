@@ -45,6 +45,7 @@ for(const rigid of [false,true])for(const height of [()=>0,(x,z)=>.1*x+.05*z]) {
   const start=source.indexOf('  function applyStoryboardActorSample('),end=source.indexOf('  function applyStoryboardFrame(',start);
   const make=new Function('actors','sampleActorTrack','conformStudioActor','actorTrackFor','actorRootPosition','_v3','hfProxy',`
     const DEG=Math.PI/180,SIM_DT=1/60,_actorSample={},clampGunDeg=(spec,v)=>v;
+    const filming=false; // the film renderer's latch (live timeline here)
     ${stripTypeScriptTypes(source.slice(start,end))}
     return applyStoryboardActors;
   `);
