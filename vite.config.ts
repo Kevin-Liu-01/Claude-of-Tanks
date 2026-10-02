@@ -33,6 +33,7 @@ import { assertPublicBuildEnv } from './tools/publicBuildEnv.ts';
 import { isExistingProjectDocument } from './tools/existing-document-route.ts';
 import { sharedWorkerChunks } from './tools/viteSharedWorkers.ts';
 import { glslMinify } from './tools/viteGlslMinify.ts';
+import { runtimeFileVersions } from './tools/viteRuntimeFiles.ts';
 
 const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 
@@ -217,6 +218,10 @@ export default defineConfig({
     // programs at build time; lines, directives, in-line text and every library shader stay as written (game boot
     // -31.3 KB raw / -10.4 KB brotli).
     glslMinify(),
+    // 2026-10-02 (tools/viteRuntimeFiles.ts): content-hashed /assets copies of the runtime audio (111 files a battle
+    // session fetches), so they take the immutable route and the release carry-forward instead of an hour's cache and
+    // a revalidation; src/runtimeFiles.ts resolves the two fetch sites to the copies, the originals stay deployed.
+    runtimeFileVersions(),
     { name: 'cot-public-build-env', apply: 'build', configResolved(config) { assertPublicBuildEnv(config.env); } },
     {
       name: 'cot-app-version',
