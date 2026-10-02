@@ -6084,6 +6084,165 @@ quiet, against −129 draws and −0.83 M triangles. Ready to run in the next qu
 `zsh $SP/r79/winter-quiet.sh w1 $SP/r79/snap-base $SP/r79/snap-d` (the six pairs), then `zsh $SP/r79/winter-chain.sh`
 (the attribution, only if ≥ 4 of 6 stay positive).
 
+### 2026-10-01 — the layered sky (the clouds-and-skyboxes lane of the visual redesign)
+
+**Owner (2026-10-01): "redesign map and trees and horizon and skyboxes and clouds and light and literally everything …
+build this and finish it" — grounded realism and natural light; the clouds already "look amazing" and set the bar, so
+take them further and make every map's whole sky (its cloud field, its weather, its haze layers and the sky they sit
+in) believable and specific to its place and its time.** Branch `visual/clouds-skyboxes` on the PR branch (c959ac4b6);
+the lighting lane redesigns the dome, the light model and the tone mapping in parallel — the clouds compute their light
+in the sky's own units from the published atmosphere, so they follow its exposure, and are re-tuned under its light
+when the integrator merges it.
+
+**What the captures of c959ac4b6 showed** (`$SP/p2/clouds/before/`, sky-w / sky-s / chase / bird at day, sky views at
+sunset and night). The fair-weather cumulus hold (Verdant's puffs, the round-71 bar) but read as smooth cotton inside
+their outline and their towers' heads fray into cotton candy — the round-71 erosion put the wispy (inverted-Worley)
+octave on the TOPS and the billows under the bases, the opposite of a growing cumulus (cauliflower head, flat base
+with a few fractus rags): the open "cauliflower only at the outline". The decks (Winter, Fjord, Railyard) read
+airbrushed — a smooth transmitted-light underside with no rolls in it. Sirocco's cirrus is one comb of parallel
+streaks from horizon to horizon. Monsoon's "cumulonimbus front" is fair-weather towers with no storm in it: no dark
+base, no rain, no anvil. Every sky is a single slab and a cirrus sheet — no mid-level cloud, no weather at the horizon.
+At night the clouds were black occluders: the atmosphere's summary is read with the preset's sky intensity applied
+and the composite multiplies the clouds by it again, so the sky light reached them dimmed twice (0.08² at night) while
+the moon reached them once, and the night preset's dark blue `cloudTintHex` (a colour for the painted decks) became
+their albedo.
+
+**The layered sky (placed by `src/engine/cloudWeatherLayers.ts`, written in the slab's trace program so the build's GLSL minifier strips its comments with the program's, lit by the same atmosphere).**
+- *Contrails* — fresh lines of two merging plumes at the head that spread into contrail cirrus toward the tail (the
+  width 22 m → 1.5 km with age, the optical depth falling with √width), breaking into fibres when old, drifting with
+  the upper wind, deterministic per map (two trails often share an airway).
+- *Rain shafts and virga* under the slab's own precipitating cores (the cumuliform coverage, the vigour and the
+  anvil / precipitation field), between the camera and the base along the horizon rays: the columns lean a third of a
+  metre per metre of fall, streak with the detail volume, and evaporate partway down under a dry base (virga).
+- *A sea fog bank* lying on the horizon (banks with gaps, a lumpy top, white in the sun), in front of the slab.
+- *Lightning* in a night front, drawn in the composite at the frame rate (the history refreshes a sixteenth of its
+  texels a frame and would smear a flash): a strike every 4–16 s in a tower off in the wind's sector, one to three
+  return strokes.
+
+**The slab.** The cumulus shape is main's (83b0c0b62, "break up cylindrical cloud silhouettes": the warped unequal
+weather lobes, shear from the base, the silhouette-scale curl, billows kept through the body), verified there on
+Verdant and Steinburg; the lane's own cumulus laws (the wispy share falling with height, a 0.42 outline saturation,
+the interior octave on the cumuliform rows, a 0.42–0.78 fair-weather type range) showed no clear gain in the labs and
+were withdrawn at the merge so that work stands as tested. The lane keeps a slow
+convective boil (the noise rises 0.7 m/s through a cumulus, a deck's cells turn over at a fifth of that), mottled deck
+undersides (the shape volume's mid octaves at half the cell period thicken and thin the column over each point), the
+cirrus in patches and curved by the jet's eddies (the same mean coverage, the streak frame warped by ±1.3 km), the
+22° halo's argument squared (GLSL leaves `pow` undefined for a negative base — inside the ring), and the gobos hold a
+front's clear radius (shadows fell under the sky the front keeps open).
+
+**Time of day (`cloudPresets.ts`).** The diurnal cycle of convective cloud: a cumuliform sky (not a deck, a sheet or a
+front's anvils) flattens a little toward sunset (coverage × 0.88, towers × 0.65, thickness × 0.88 — the first cut at
+0.8 / 0.45 / 0.78 emptied the evening sky) and has mostly gone by night (× 0.58, × 0.25, × 0.62); a front's towers
+live through the night. A map's `sunset` / `night` knobs win over the law (most temperate maps raise an altocumulus
+layer for their sunset). At night the layer keeps a grey-white albedo and lets the moonlight bring the hue (the night
+preset's dark blue deck tint made black cut-outs); the sunset keeps the preset's warm deck tint (without it the
+captures showed the front-lit evening cumulus grey-white — the low sun's back-scattered share is small beside the
+sky's light). `diurnal: false` holds an authored constant sky (Mars).
+
+**Captures and drifts (2026-10-02).** The capture tools zero the cloud drifts for a frame-comparable field. The drifts
+wrapped by a positive modulo, so a zeroed drift jumped a whole wrap on the next frame — a seam for every lookup whose
+period does not divide the wrap, above all the boil (the shape volume's vertical period follows the slab's
+thickness): the settled history blended two fields and every captured cloud of the lane ghosted. The drifts now stay
+inside (−w, w), continuous through zero; the boil wraps at 600 km (238 hours at 0.7 m/s).
+
+**The labs (2026-10-02; `$SP/p2/clouds/lab1`, `lab2`: preset variants laid over the live layer, one boot per map).**
+Removed (2026-10-02; the first cut is in 31c46bfa8 for a rebuild): the mid layer — its 2.5D sheet read as white pancakes
+(altostratus; thinner, wider and softer variants smeared), dozens of small discs (lenticular) and dark specks at
+sunset (altocumulus) — and the distant cumulonimbus, whose narrow tower under a round flat anvil read as a mushroom
+cloud on every open horizon (Redrock, the Delta, Mangrove, the Steppe) and, lit by a night strike, as an explosion.
+Kept: the contrails (crisp paired lines that spread, Verdant, Sirocco, the polders, the airfield), the patchy curved
+cirrus (Sirocco's comb is gone), the moonlit night decks and fronts (grey masses instead of black cut-outs), the
+lightning in Monsoon's night front (the slab's own towers lit from inside), the warm sunset; Whiteout's coverage 1
+closes its ink-blot hole (a dark smudge remains).
+
+**Night.** The ambient is dimmed once (the summary's sky intensity undone before the composite applies it), the
+moonlight's hue (the night key light at luminance one) lights the clouds, and a lit town's glow rides on the bases
+(`nightGlow` / `nightGlowHex`: sodium on the yards and the industrial maps, greenhouse orange on the polders, a warm
+white over the station and the airfield).
+
+**Per map** (`clouds` blocks; the regime row fills the rest — towering cumulus and the fronts bring rain, dry-air
+cumulus its virga). The night column is the diurnal law's cover and the town glow:
+
+| map | slab (day) | weather | night |
+|---|---|---|---|
+| Verdant Fields (verdant) | fair-weather-cumulus 0.36 @ 1400 m | 2 contrails, cirrus 0.12 | cover 0.21 |
+| Sirocco Wadi (desert) | cumulus-humilis 0.14 @ 1700 m | 2 contrails, rain 0.3 / virga 0.85, cirrus 0.5 | cover 0.08 |
+| Frosthollow (winter) | stratocumulus-deck 0.86 @ 700 m | — | cover 0.86, town glow |
+| Steinburg (urban) | altocumulus 0.55 @ 2800 m | 4 contrails, cirrus 0.3 | cover 0.55, town glow |
+| Saltmere Bay (coastal) | sea-streets 0.32 @ 1100 m | fog bank 0.45, cirrus 0.08 | cover 0.19, town glow |
+| Amberford (autumn) | fair-weather-cumulus 0.26 @ 1400 m | 2 contrails, cirrus 0.12 | cover 0.15 |
+| Tarkhan Steppe (steppe) | cloud-streets 0.34 @ 1400 m | rain 0.2, cirrus 0.2 | cover 0.20 |
+| Cinder Junction (railyard) | industrial-stratocumulus 0.92 @ 800 m | — | cover 0.92, town glow |
+| Frontier Basin (frontier) | cloud-streets 0.40 @ 1400 m | 2 contrails, cirrus 0.15 | cover 0.23 |
+| Nordhavn Fjord (fjord) | broken-stratocumulus 0.62 @ 900 m | rain 0.3 / virga 0.15, fog bank 0.4, cirrus 0.1 | cover 0.62, town glow |
+| Jade River Delta (delta) | towering-cumulus 0.38 @ 1200 m | rain 0.45 / virga 0.1, cirrus 0.1 | cover 0.22 |
+| Redrock Divide (badlands) | cumulus-humilis 0.18 @ 1700 m | rain 0.3 / virga 0.9, cirrus 0.35 | cover 0.10 |
+| Monsoon Ridge (monsoon) | cumulonimbus-front 0.40 @ 1000 m | rain 0.85, cirrus 0.25 | cover 0.40 |
+| Glacier Pass (alpine) | towering-cumulus 0.26 @ 1900 m | rain 0.15 / virga 0.1, cirrus 0.3 | cover 0.15 |
+| Obsidian Caldera (caldera) | cumulus-humilis 0.22 @ 1500 m | rain 0.3 / virga 0.85, cirrus 0.45 | cover 0.13 |
+| Ironworks (foundry) | industrial-stratocumulus 0.88 @ 850 m | — | cover 0.88, town glow |
+| Ruinspires (ruinspires) | fair-weather-cumulus 0.42 @ 1100 m | rain 0.25 / virga 0.6, cirrus 0.12 | cover 0.24 |
+| Blackglass District (blackglass) | ash-veil 0.55 @ 800 m | cirrus 0.5 | cover 0.55, town glow |
+| Titan Gorge (titan_gorge) | dense-overcast 0.96 @ 450 m | rain 0.25 / virga 0.55 | cover 0.96 |
+| Skybridge Chasm (skybridge) | fair-weather-cumulus 0.42 @ 700 m | rain 0.2 / virga 0.5, cirrus 0.12 | cover 0.24 |
+| Tidegate Polders (polders) | broken-stratocumulus 0.68 @ 600 m | 3 contrails, rain 0.2 / virga 0.2, fog bank 0.35, cirrus 0.1 | cover 0.68, town glow |
+| Copper Mesa Mine (copper_mesa) | cumulus-humilis 0.20 @ 1900 m | rain 0.3 / virga 0.85, cirrus 0.4 | cover 0.12 |
+| Kestrel Airfield (airfield) | fair-weather-cumulus 0.38 @ 1400 m | 6 contrails, cirrus 0.12 | cover 0.22, town glow |
+| Sunscar Oasis (oasis) | cumulus-humilis 0.17 @ 1700 m | rain 0.3 / virga 0.85, cirrus 0.4 | cover 0.10 |
+| Whiteout Station (whiteout) | low-stratus 1.00 @ 300 m | — | cover 1.00, town glow |
+| Orchard Valley (orchard) | fair-weather-cumulus 0.28 @ 1400 m | 2 contrails, cirrus 0.12 | cover 0.16 |
+| Longleaf Crossing (longleaf) | fair-weather-cumulus 0.32 @ 1400 m | rain 0.3, cirrus 0.12 | cover 0.19 |
+| Mangrove Reach (mangrove) | towering-cumulus 0.34 @ 1200 m | rain 0.45 / virga 0.1, cirrus 0.1 | cover 0.20 |
+| Saltwind Narrows (saltwind) | sea-streets 0.30 @ 1100 m | fog bank 0.35, cirrus 0.08 | cover 0.17 |
+| Highland Reservoir (reservoir) | fair-weather-cumulus 0.26 @ 1400 m | 2 contrails, cirrus 0.12 | cover 0.15 |
+| Olympus Basin (mars) | thin-ice-clouds 0.06 @ 2500 m | cirrus 0.45 | cover 0.06 |
+| Aegis Crossing (cliffbridge) | fair-weather-cumulus 0.28 @ 1200 m | 2 contrails, cirrus 0.25 | cover 0.16 |
+
+**Cost** (`$SP/p2/clouds/bench-a12.json`: the PR with the light lane, ccd3c3703, against the lane on it, 2e21e663a;
+desktop High at 1600 × 900 on an M5 Max 40-core GPU; sky-w; A B B A per map; the cloud pass measured by repetition —
+K = 1 and K = 11 trace slots between one-pixel reads, which Chrome's GPU process answers only after every queued
+command ran (`gl.finish()` does not wait there: the first bench read a slot as 0.01 ms)). The layer traces one slot a
+frame. Per slot, base → lane (ms, mean of two runs each, run spread under 0.01 ms except Sirocco's ±0.1): Verdant
+1.083 → 1.140 (+0.06), Sirocco 0.151 → 0.293 (+0.14, the patchy cirrus and two trails over a nearly clear sky),
+Frosthollow 0.646 → 0.756 (+0.11), Monsoon 0.853 → 0.918 (+0.07), Whiteout 0.666 → 0.647 (−0.02), Nordhavn 1.156 →
+1.282 (+0.13), the polders 1.033 → 1.171 (+0.14), Caldera 0.244 → 0.305 (+0.06), Ironworks 0.519 → 0.554 (+0.04),
+Mangrove 1.327 → 1.471 (+0.14): +0.09 ms a frame on average, +0.14 at most. On the mid-range laptop proxy (a 10-core
+Apple GPU or an RTX 4050/4060 laptop part, about a quarter to a fifth of this GPU) that is +0.35–0.7 ms of a 16.7 ms
+frame. Whole-frame GPU medians (a timer query around post.render) moved −0.03 to +2.4 ms with run spreads of 1–6 ms
+under a machine load of 24–120 from other sessions; the first run of every A B B A set read low (a warm-up the
+pattern does not cancel), so they bound nothing finer than ±2 ms and the per-slot figures stand as the cost. The
+removed mid layer and storm cells took 2,794 of the trace's 10,753 GLSL tokens and 11 KB of the game entry; the lane
+now adds 11,096 B raw / 2,992 B brotli to the entry (765,690 / 228,689 against the 766,616 / 229,050 budget). The
+mobile tier never creates the layer, so phones are unchanged by construction.
+
+**Receipts.** `cloudWeatherLayers.selftest.mjs` (new, core group): the trails' placement, the packing, the gating, the
+composite, the time of day, lightning, the drifts through zero, the removed layers staying out, the cloudscape on
+every sky path. `volumetricClouds.selftest.mjs`: the identity table re-pinned with the weather fields (contrails, rain,
+virga, fog bank) and Whiteout's coverage 1; the aerial mirror with the haze layer, the datum hand-off and the
+square's ceilings.
+
+**The haze layer and the square's ceilings (2026-10-02, handed over by the lighting lane).** The clouds' aerial law
+(CLOUD_AERIAL) now takes the pass's 300 m haze layer — the path-averaged density from the camera's height, from the
+datum the pass computes for the frame — so a cloud bank and the ground under it haze alike from a raised camera, and
+the square's ceilings came down a third with the pass's (0.60 / 0.55 → 0.42 / 0.38). Measured on seven maps (Verdant,
+Sirocco, Frosthollow, Monsoon, the polders, Nordhavn, Glacier Pass; `$SP/p2/clouds/final3`, the lane before and after
+in one FIFO turn): the census bird and centre-far frames moved by a mean of 0.1–0.9 levels, under 2 % of their pixels
+by more than 8 (grass and tree motion) — the ceilings do not bite in those views, so the far half's ground haze is set
+elsewhere (the materials' FogExp2 at the preset's fogDensity × FOG_EXTINCTION_SHARE, and the pass's scatter-in target).
+That stays open with the lighting lane; the clouds composite in the dome and take no material fog.
+
+**The overcast light (the lighting lane's model).** A cloudscape that casts no cloud shadows drives the light as an
+overcast deck by its coverage (lightModel.ts resolveOvercast: smoothstep 0.6–0.97). That holds five maps: Titan Gorge
+(dense overcast 0.96 → 1.0), Cinder Junction (industrial Sc 0.92 → 0.95), Ironworks (0.88 → 0.85), Frosthollow (Sc
+deck 0.86 → 0.79) and Whiteout Station (1 → 1) — each a closed or nearly closed deck, so a shadowless (or nearly
+shadowless) light is what those skies give; the broken decks of Nordhavn (0.62) and the polders (0.68) keep their
+cloud shadows and the sun.
+
+**Every sky path carries the cloudscape.** `worldActivationRuntime.restoreAtmosphere` (the shots, the Studio staging,
+the census frames) applied the sky block alone, so those frames rendered the legacy layer derived from it — Titan
+Gorge's dense overcast as scattered cumulus, Winter's deck as a flat stratus; it now carries `config.clouds` like the
+battle's `getAuthoredPreset`.
+
 ### Terrain v2/v3 — 2026-10-01/02: the ground at a fraction of the cost, grounded terms, sand in trains, the ring as the battlefield's own material
 
 The Opus 5.5 redesign's terrain-and-horizon lane (branch `visual/terrain-horizon`; owner direction: grounded realism,
