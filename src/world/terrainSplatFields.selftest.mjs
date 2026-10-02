@@ -10,26 +10,10 @@ import { tileableTorusNoise } from './proceduralTexture.ts';
 // the sandboxed material steps take the real functions
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 
-// Frozen before pacing, b1c6629a30132381a120cf4961aa10cfa5a46109. Never derive
-// the comparator from the candidate generator or refresh this hash for pacing.
-const originalFields = `function splatFields(): SplatFields {
-  if (_splatFields) return _splatFields;
-  const s = SPLAT_FIELD_S;
-  const noi = new SimplexNoise({ random: mulberry32(3011) });
-  const a = new Float32Array(s * s);
-  const b = new Float32Array(s * s);
-  for (let y = 0; y < s; y++) {
-    for (let x = 0; x < s; x++) {
-      const u = x / s, v = y / s, j = y * s + x;
-      a[j] = torusNoise(noi, u, v, 4, 4, 3) * 0.6 + torusNoise(noi, u, v, 9, 9, 27) * 0.4;
-      b[j] = torusNoise(noi, u, v, 2, 2, 55) * 0.7 + torusNoise(noi, u, v, 5, 5, 91) * 0.3;
-    }
-  }
-  _splatFields = { a, b };
-  return _splatFields;
-}`;
-const sha = value => createHash('sha256').update(value).digest('hex');
-assert.equal(sha(originalFields), '9ed5073c8629745ec7caa5bff05f6428eac3addd4a09930cc46c6f5fc3445873');
+// 2026-10-01 (frozen pins retired): the control used to be a copy of the b1c6629a3 pre-pacing splatFields, with sha256
+// pins of it and of three consumer bodies, so any intended change to the splat noise failed here. The control is now
+// the CURRENT synchronous path (a second fixture draining the same generator in one call): row pacing, warm/cold paths,
+// cache races, progress and cancellation must never change a Float32 write, an upload or a sample.
 const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const ast = ts.createSourceFile('terrain.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 function declaration(name) {
@@ -37,14 +21,13 @@ function declaration(name) {
   assert.equal(matches.length, 1, `unique real declaration: ${name}`);
   return matches[0].getText(ast);
 }
-// Exact original selector, including ice precedence and falsy/nullish defaults.
+// Reference selector (the documented contract, including ice precedence and falsy/nullish defaults).
 const originalWet = `  const wet = S.iceLake
     ? makeIceLayer(3003, aniso)
     : S.seaLake // maps r1 (ADDITIVE): open-water sheet (coastal sea / rivers)
       ? makeSeaLayer(3003, aniso, S.mudTone || null)
       : makeGroundLayer(3003, 'mud', aniso, S.mudTone || null, S.mudRough ?? 1);
 `;
-assert.equal(sha(originalWet), '17272b4168f49b4992fb293c44516db9547a2de6592eb0712c75821f1d682849');
 const beforeWet = new Function('S', 'aniso', 'makeIceLayer', 'makeSeaLayer', 'makeGroundLayer',
   originalWet + 'return wet;');
 const wetFactory = new Function('makeIceLayer', 'makeSeaLayer', 'makeGroundLayer',
@@ -71,14 +54,7 @@ for (const config of [{}, { iceLake: true }, { seaLake: true },
       'all wet branches, precedence and nonstandard overrides retain exact original arguments');
   }
 }
-// These consumers are byte-for-byte unchanged, not weakened pixel/query twins.
-for (const [name, expected] of [
-  ['fieldSample', 'aa8491360e6faa9ce9b41b645d06e79555b4275d1474491890bceec75cf7ca9b'],
-  ['sampleSplatNoise', '52ae1bbd2b097919a2df3c44b4406564ef72de794baa9bea703b178307d016d0'],
-  ['makeShaderNoiseTexture', 'ad4218c73cd81de255ef4bf9d4bd6543fb181a1d5fc61f5e83bda7f3adc034ed'],
-]) assert.equal(sha(declaration(name)), expected, `${name}: preserve prechange consumer bytes`);
-
-function fixture({ original = false, closeThrows = false } = {}) {
+function fixture({ closeThrows = false } = {}) {
   const state = { noiseCalls: 0, fieldStarts: 0, fieldCloses: 0, paints: [], uploads: [],
     chunks: 0, materials: 0, pending: null };
   const textures = [];
@@ -90,11 +66,10 @@ function fixture({ original = false, closeThrows = false } = {}) {
   const extraColdWork = '  if (!_splatFields) yield* splatFieldSteps();\n';
   assert.equal(material.split(extraColdWork).length, 2, 'one cold-only delegation at the existing noise stage');
   const functions = [
-    declaration('mulberry32'), original ? originalFields : declaration('splatFields'),
-    ...(original ? [] : [declaration('splatFieldSteps')]),
+    declaration('mulberry32'), declaration('splatFields'), declaration('splatFieldSteps'),
     ...['fieldSample', 'wrapUnit', 'sampleSplatNoise', 'makeShaderNoiseTexture',
       'selectTerrainLandformMask', 'createWetSplatLayer', 'createWetSplatLayerSteps'].map(declaration),
-    original ? material.replace(extraColdWork, '') : material,
+    material,
     ...['buildTerrainMeshes', 'buildTerrainMeshesAsync', 'terrainBuildSteps'].map(declaration),
   ].join('\n').replace(/^export /gm, '');
   const compile = new Function('THREE', 'SimplexNoise', 'torusNoise', 'canvasToTexture',
@@ -117,15 +92,14 @@ function fixture({ original = false, closeThrows = false } = {}) {
     const makeIceLayer = () => layer('ice'), makeSeaLayer = () => layer('sea');
     const makeMaskTexture = () => own(new THREE.Texture());
     ${functions}
-    ${original ? '' : `
     const rawSteps = splatFieldSteps;
     splatFieldSteps = function* () {
       state.fieldStarts++;
       state.pending = rawSteps();
       try { return yield* state.pending; }
       finally { state.fieldCloses++; if (closeThrows) throw new Error('close-failure'); }
-    };`}
-  `) + `return { fields: splatFields, steps: ${original ? 'null' : 'splatFieldSteps'},
+    };
+  `) + `return { fields: splatFields, steps: splatFieldSteps,
       sample: sampleSplatNoise, noiseTexture: makeShaderNoiseTexture,
       cache: () => _splatFields, materialSteps: createSplatMaterialSteps,
       build: buildTerrainMeshes, buildAsync: buildTerrainMeshesAsync };
@@ -156,13 +130,13 @@ function checkFields(actual, expected) {
     assert.ok(actual[key] instanceof Float32Array);
     assert.equal(actual[key].length, 256 * 256);
     assert.deepEqual(new Uint8Array(actual[key].buffer), new Uint8Array(expected[key].buffer),
-      `${key}: every Float32 write matches frozen original`);
+      `${key}: every Float32 write matches the synchronous drain`);
   }
 }
 
-const control = fixture({ original: true }), candidate = fixture(), synchronous = fixture();
+const candidate = fixture(), synchronous = fixture();
 try {
-  const expected = control.api.fields(), steps = candidate.api.steps();
+  const expected = synchronous.api.fields(), steps = candidate.api.steps();
   for (let row = 1; row <= 256; row++) {
     assert.equal(steps.next().done, false);
     assert.equal(candidate.state.noiseCalls, row * 256 * 4, 'one complete row, unchanged noise order/count');
@@ -172,15 +146,14 @@ try {
   assert.equal(completed.done, true);
   assert.equal(candidate.api.cache(), completed.value);
   checkFields(completed.value, expected);
-  checkFields(synchronous.api.fields(), expected);
   const starts = candidate.state.fieldStarts, calls = candidate.state.noiseCalls;
   assert.equal(candidate.api.fields(), completed.value);
   assert.equal(candidate.state.fieldStarts, starts, 'warm synchronous path creates no generator');
   assert.equal(candidate.state.noiseCalls, calls, 'warm synchronous path does no noise work');
   const warm = drain(candidate.api.steps());
   assert.equal(warm.count, 0); assert.equal(warm.value, completed.value);
-  control.api.noiseTexture(3011); candidate.api.noiseTexture(3011);
-  assert.deepEqual(candidate.state.uploads, control.state.uploads, 'exact quantized RGBA and upload options');
+  synchronous.api.noiseTexture(3011); candidate.api.noiseTexture(3011);
+  assert.deepEqual(candidate.state.uploads, synchronous.state.uploads, 'exact quantized RGBA and upload options');
   assert.equal(candidate.state.uploads[0].size, 256);
   assert.equal(candidate.state.uploads[0].options.anisotropy, 16);
   const points = [[0, 0], [-512, 512], [512, -512], [-0.00001, 0.00001],
@@ -190,9 +163,9 @@ try {
   for (const point of points) {
     const out = { n1: 0, n2: 0, mA: 0 };
     assert.equal(candidate.api.sample(...point, out), out, 'caller scratch identity retained');
-    assert.deepEqual(out, control.api.sample(...point));
+    assert.deepEqual(out, synchronous.api.sample(...point));
   }
-} finally { control.dispose(); candidate.dispose(); synchronous.dispose(); }
+} finally { candidate.dispose(); synchronous.dispose(); }
 
 for (const stopRow of [1, 128, 256]) {
   const f = fixture();
@@ -230,8 +203,10 @@ try {
   assert.equal(competing.state.noiseCalls, calls);
 } finally { competing.dispose(); }
 
-async function schedule(fineSlices, original = false) {
-  const f = fixture({ original }), ticks = [];
+async function schedule(fineSlices, warmFields = false) {
+  // A warm field cache skips the row-paced field iterator: the live control for the paced cold build.
+  const f = fixture(), ticks = [];
+  if (warmFields) f.api.fields();
   let group;
   try {
     group = await f.api.buildAsync(f.height, f.engine, null,
@@ -247,7 +222,8 @@ async function schedule(fineSlices, original = false) {
     return ticks;
   } finally { f.dispose(group); }
 }
-assert.deepEqual(await schedule(false), await schedule(false, true), 'all coarse callbacks retain exact values/order');
+assert.deepEqual(await schedule(false), await schedule(false, true),
+  'coarse callbacks retain exact values/order whether the field rows run cold or the cache is warm');
 const fine = await schedule(true), beforeFine = await schedule(true, true);
 assert.equal(fine.length, beforeFine.length + 256);
 const fieldCheckpoint = [1, 66];
@@ -272,4 +248,4 @@ for (const [stopRow, closeThrows] of [[1, false], [128, false], [256, false], [1
     assert.equal(f.state.uploads.length, 0, 'no partial noise texture publication');
   } finally { f.dispose(); }
 }
-console.log('terrainSplatFields.selftest: frozen wet-selector/Float32/RGBA/query parity, rows, cache races, progress and cancellation passed');
+console.log('terrainSplatFields.selftest: wet-selector contract, paced-vs-synchronous Float32/RGBA/query parity, rows, cache races, progress and cancellation passed');

@@ -25,7 +25,7 @@ import {
   camoCollectionFor,
 } from '../vehicles/camoPolicy.ts';
 import { createInfoButton } from './contextInfo.ts';
-import { createModal } from './modal.ts';
+import { containModalTab, createModal, isAnyModalOpen } from './modal.ts';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.ts), the
 // white-silhouette icon set (equipIcons.ts), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
@@ -731,6 +731,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `${uiIconSVG('chevronRight', 15)}</button>` +
     `</div>` +
     `<div class="cot-leftcol">` +
+    `<div class="cot-drawer-heading"><strong></strong><button type="button" class="cot-drawer-close" aria-label="${t('garage.tools.close')}">${uiIconSVG('close', 20)}</button></div>` +
     `<div class="cot-garage-variant-control">` +
     `<button class="cot-garage-variant-trigger" type="button" aria-label="${t('garage.tools.chooseStaging')}" ` +
     `title="${t('garage.tools.environments')}" aria-haspopup="listbox" aria-expanded="false" ` +
@@ -1102,6 +1103,23 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const next = isOverlayPanelLayout() && panel ? panel : '';
     if (next) root.dataset.garagePanel = next;
     else delete root.dataset.garagePanel;
+    for (const [element, active, label] of [
+      [statsEl, next === 'equipment', t('garage.dossier.vehicleDossier')],
+      [requiredElement<HTMLElement>(root, '.cot-leftcol'), next === 'maps' || next === 'appearance',
+        t(next === 'maps' ? 'garage.tools.battlefields' : 'garage.tools.camos')],
+    ] as const) {
+      if (active) {
+        element.setAttribute('role', 'dialog');
+        element.setAttribute('aria-modal', 'true');
+        element.setAttribute('aria-label', label);
+      } else {
+        element.removeAttribute('role');
+        element.removeAttribute('aria-modal');
+        element.removeAttribute('aria-label');
+      }
+    }
+    const drawerTitle = root.querySelector<HTMLElement>('.cot-drawer-heading strong');
+    if (drawerTitle) drawerTitle.textContent = t(next === 'maps' ? 'garage.tools.battlefields' : 'garage.tools.camos');
     root.querySelectorAll<HTMLButtonElement>('[data-garage-panel]').forEach((button) => {
       const expanded = button.dataset.garagePanel === next;
       button.setAttribute('aria-expanded', String(expanded));
@@ -1112,6 +1130,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     requestAnimationFrame(() => {
       syncSidebarPanelHeight();
       queueCountryRailAffordances();
+      if (next && previous !== next && openGaragePanel() === next) {
+        root.querySelector<HTMLElement>(next === 'equipment' ? '.cot-dossier-close' : '.cot-drawer-close')?.focus({ preventScroll: true });
+      }
     });
   };
   let technicalExpandTrigger: HTMLButtonElement | null = null;
@@ -1170,7 +1191,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     closeGarageVariantMenu();
     closeMobileNavigation();
     closeBattleMenu();
-    setGaragePanel('');
     technicalExpandTrigger?.setAttribute('aria-expanded', 'false');
     technicalExpandTrigger = trigger;
     technicalExpandTrigger.setAttribute('aria-expanded', 'true');
@@ -1204,6 +1224,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setGaragePanel(openGaragePanel() === panel ? '' : panel);
   }));
   garagePanelScrim.addEventListener('click', () => setGaragePanel('', { restoreFocus: true }));
+  root.querySelector('.cot-drawer-close')?.addEventListener('click', () => setGaragePanel('', { restoreFocus: true }));
   window.addEventListener('cot:layoutchange', () => {
     if (!isOverlayPanelLayout()) setGaragePanel('');
     syncSidebarPanelHeight();
@@ -1246,7 +1267,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     closeMobileNavigation({ restoreFocus: true });
   }, true);
   window.addEventListener('keydown', (event) => {
-    if (!openGaragePanel() || event.code !== 'Escape') return;
+    if (!openGaragePanel() || event.code !== 'Escape' || isAnyModalOpen() || eqOpenSlot >= 0) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     setGaragePanel('', { restoreFocus: true });
@@ -1751,6 +1772,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // from statsEl here; the picker is a side panel anchored next to the card.
   const eqpickEl = document.createElement('div');
   eqpickEl.className = 'cot-eqpick';
+  eqpickEl.setAttribute('role', 'dialog');
+  eqpickEl.setAttribute('aria-modal', 'true');
+  eqpickEl.setAttribute('aria-label', t('garage.dossier.equipment.heading'));
+  eqpickEl.tabIndex = -1;
   root.appendChild(eqpickEl);
   const eqTooltipEl = document.createElement('div');
   eqTooltipEl.id = 'cot-equipment-tooltip';
@@ -1915,8 +1940,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const cur = curLoadout();
     const projected = projectEquipmentLoadout(cur, itemId, eqOpenSlot);
     saveEquipment(selectedId, projected, spec);
+    const slot = eqOpenSlot;
     closeEqPicker();
     renderStats(spec); // slots + modified stat bars
+    statsEl.querySelector<HTMLElement>(`.eqslot[data-slot="${slot}"]`)?.focus({ preventScroll: true });
   }
 
   function renderEqPicker() {
@@ -1942,20 +1969,24 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     eqOpenSlot = slot;
     eqpickEl.classList.add('open');
     renderEqPicker();
+    eqpickEl.querySelector<HTMLButtonElement>('.ph .x')?.focus({ preventScroll: true });
     document.addEventListener('keydown', eqKeydown);
     document.addEventListener('mousedown', eqOutside, true);
   }
   function closeEqPicker() {
     if (eqOpenSlot < 0) return;
+    const slot = eqOpenSlot;
     hideEqTooltip(false);
     eqOpenSlot = -1;
     eqpickEl.classList.remove('open');
     for (const el of statsEl.querySelectorAll<HTMLElement>('.eqslot')) el.classList.remove('open');
     document.removeEventListener('keydown', eqKeydown);
     document.removeEventListener('mousedown', eqOutside, true);
+    statsEl.querySelector<HTMLElement>(`.eqslot[data-slot="${slot}"]`)?.focus({ preventScroll: true });
   }
   function eqKeydown(e: KeyboardEvent): void {
-    if (e.code === 'Escape') { e.stopPropagation(); closeEqPicker(); }
+    containModalTab(e, eqpickEl, eqpickEl);
+    if (e.code === 'Escape') { e.preventDefault(); e.stopPropagation(); closeEqPicker(); }
   }
   function eqOutside(e: MouseEvent): void {
     const target = eventElement(e);
@@ -2013,7 +2044,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const equipmentTrigger = target?.closest<HTMLButtonElement>('.cot-compact-equipment-trigger');
     if (equipmentTrigger) {
       emit('ui:click', {});
-      setGaragePanel(openGaragePanel() === 'equipment' ? '' : 'equipment');
+      const closing = openGaragePanel() === 'equipment';
+      setGaragePanel(closing ? '' : 'equipment', { restoreFocus: closing });
       return;
     }
     const technicalExpand = target?.closest<HTMLButtonElement>('[data-technical-expand]');
@@ -2585,9 +2617,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="cot-dossier-title"><span class="cot-tier-plate">${tierNumeral(spec.id) || '&mdash;'}</span><h3></h3></div>` +
       `<div class="sub">${flagIconHTML(spec.nation, 20)}<span>${tNation(spec.nation)} &middot; ${vehicleEraLabelI18n(spec.era, t)}</span></div>` +
       `<button class="cot-compact-equipment-trigger" type="button" data-garage-panel="equipment" ` +
-      `aria-label="${t('garage.dossier.equipment.heading')}" title="${t('garage.dossier.equipment.heading')}" ` +
+      `aria-label="${t('garage.dossier.vehicleDossier')}" title="${t('garage.dossier.vehicleDossier')}" ` +
       `aria-expanded="${openGaragePanel() === 'equipment'}" aria-controls="cot-garage-dossier">` +
-      `${uiIconSVG('repair', 13)}<span>${t('garage.dossier.equipment.heading')}</span></button></div>`;
+      `${uiIconSVG('performance', 20)}<span>${t('garage.dossier.vehicleDossier')}</span></button>` +
+      `<button class="cot-compact-equipment-trigger cot-dossier-close" type="button" aria-label="${t('garage.tools.close')}">${uiIconSVG('close', 20)}</button></div>`;
     const technicalSection =
       `<section class="cot-stat-section cot-technical-section">` +
       dossierHeader +
@@ -3234,9 +3267,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!api.isOpen) return;
     const target = eventElement(e);
     if (target?.closest('.cot-modal')) return;
-    if (e.code === 'Escape' && openGaragePanel()) {
-      setGaragePanel('', { restoreFocus: true });
-      e.preventDefault();
+    if (eqOpenSlot >= 0) return; // The nested equipment picker owns its keyboard boundary.
+    if (openGaragePanel()) {
+      const drawer = openGaragePanel() === 'equipment' ? statsEl : requiredElement<HTMLElement>(root, '.cot-leftcol');
+      containModalTab(e, drawer, drawer);
+      if (e.code === 'Escape') {
+        setGaragePanel('', { restoreFocus: true });
+        e.preventDefault();
+      }
       return;
     }
     if (e.code === 'Escape' && isMobileNavigationOpen()) {

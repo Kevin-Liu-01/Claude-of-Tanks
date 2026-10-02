@@ -1,3 +1,4 @@
+import type { AuxiliaryInventory } from '../vehicles/auxiliaryInventory.ts';
 /**
  * armor.ts — armor zone lookup: traces world-space shell segments through a
  * tank's ArmorModel (closed collision shells, precise module/crew volumes,
@@ -23,7 +24,7 @@
 import { Vector3, Matrix4, Quaternion, Euler } from 'three';
 import type { ModuleId } from './moduleCatalog.ts';
 
-type FrameIndex = 0 | 1 | 2 | 3;
+type FrameIndex = 0 | 1 | 2 | 3 | 4;
 type Vec3Tuple = readonly [number, number, number];
 type TrackModuleId = 'trackL' | 'trackR';
 
@@ -34,6 +35,8 @@ export interface ArmorPoseState {
   visualRoll: number;
   turretYaw: number;
   gunPitch: number;
+  roofGunYaw?: number;
+  roofGunPitch?: number;
 }
 
 export interface TankArmorPose {
@@ -43,6 +46,8 @@ export interface TankArmorPose {
   roll: number;
   turretYaw: number;
   gunPitch: number;
+  roofGunYaw?: number;
+  roofGunPitch?: number;
 }
 
 export interface EraProtection {
@@ -130,6 +135,7 @@ interface ArmorVolumeBase extends AabbPart {
 }
 
 interface ArmorModuleVolume extends ArmorVolumeBase {
+  roofGunFollow?: boolean;
   module: ModuleId;
   /** Turret-rest coordinates, using the same pitching frame as gunFollow plates. */
   gunFollow?: boolean;
@@ -148,6 +154,7 @@ interface TrackPrismShape {
 }
 
 export interface ArmorModel {
+  roofGun?: AuxiliaryInventory['guns'][number];
   turretPivot?: Vec3Tuple | number[];
   gunPivot?: Vec3Tuple | number[];
   hullPlates?: ArmorPlate[];
@@ -299,6 +306,8 @@ const _gunM = new Matrix4();
 const _gunInv = new Matrix4();
 const _barrelM = new Matrix4();
 const _barrelInv = new Matrix4();
+const _roofM = new Matrix4(), _roofInv = new Matrix4();
+const _roofPosition = new Vector3(), _roofScale = new Vector3();
 const _mA = new Matrix4();
 const _mB = new Matrix4();
 const _mC = new Matrix4();
@@ -308,13 +317,14 @@ const FR_HULL = 0;
 const FR_TURRET = 1;
 const FR_GUN = 2;
 const FR_BARREL = 3;
-const FRAME_NAME = ['hull', 'turret', 'gun', 'barrel'] as const;
-const _fromL = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
-const _toL = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
-const _dirL = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
-const _dirN = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
-const _forward = [_hullM, _turretM, _gunM, _barrelM];
-const _inverse = [_hullInv, _turretInv, _gunInv, _barrelInv];
+const FR_ROOF = 4;
+const FRAME_NAME = ['hull', 'turret', 'gun', 'barrel', 'roofGun'] as const;
+const _fromL = [new Vector3(), new Vector3(), new Vector3(), new Vector3(), new Vector3()];
+const _toL = [new Vector3(), new Vector3(), new Vector3(), new Vector3(), new Vector3()];
+const _dirL = [new Vector3(), new Vector3(), new Vector3(), new Vector3(), new Vector3()];
+const _dirN = [new Vector3(), new Vector3(), new Vector3(), new Vector3(), new Vector3()];
+const _forward = [_hullM, _turretM, _gunM, _barrelM, _roofM];
+const _inverse = [_hullInv, _turretInv, _gunInv, _barrelInv, _roofInv];
 
 const _v0 = new Vector3();
 const _v1 = new Vector3();
@@ -357,6 +367,7 @@ export function tankPoseFromState(
   pose.roll = state.visualRoll;
   pose.turretYaw = state.turretYaw;
   pose.gunPitch = state.gunPitch;
+  pose.roofGunYaw = state.roofGunYaw ?? 0; pose.roofGunPitch = state.roofGunPitch ?? 0;
   return pose;
 }
 
@@ -398,6 +409,16 @@ function buildFrames(pose: TankArmorPose, armorModel: ArmorModel): void {
   _mA.multiply(_mB);
   _barrelM.multiplyMatrices(_turretM, _mA);
   _barrelInv.copy(_barrelM).invert();
+  const roof = armorModel.roofGun;
+  if (roof) {
+    _mA.compose(_roofPosition.fromArray(roof.position), _quat.fromArray(roof.rotation), _unitScale);
+    _roofM.multiplyMatrices(roof.owner === 'turret' ? _turretM : _hullM, _mA);
+    _roofM.multiply(_mA.makeRotationY(pose.roofGunYaw ?? 0));
+    _roofM.scale(_roofScale.fromArray(roof.scale));
+    _roofM.multiply(_mA.makeTranslation(roof.pivot[0], roof.pivot[1], roof.pivot[2]));
+    _roofM.multiply(_mA.makeRotationX(-(pose.roofGunPitch ?? 0)));
+    _roofInv.copy(_roofM).invert();
+  } else { _roofM.copy(_hullM); _roofInv.copy(_hullInv); }
 }
 
 /**
@@ -406,7 +427,7 @@ function buildFrames(pose: TankArmorPose, armorModel: ArmorModel): void {
  * @param {Vector3} to world segment end
  */
 function localizeSegment(from: Vector3, to: Vector3): void {
-  for (let f = 0; f < 4; f++) {
+  for (let f = 0; f < 5; f++) {
     _fromL[f].copy(from).applyMatrix4(_inverse[f]);
     _toL[f].copy(to).applyMatrix4(_inverse[f]);
     _dirL[f].subVectors(_toL[f], _fromL[f]);
@@ -1188,7 +1209,7 @@ function traceModuleVolumes(
   if (!volumes) return;
   for (const volume of volumes) {
     if (hasTrackShape(trackShapes, volume.module)) continue;
-    const frame = volume.gunFollow ? FR_GUN : volume.turretLocal ? FR_TURRET : FR_HULL;
+    const frame = volume.roofGunFollow ? FR_ROOF : volume.gunFollow ? FR_GUN : volume.turretLocal ? FR_TURRET : FR_HULL;
     const t = intersectModuleVolume(frame, volume);
     if (t < 0 || !Number.isFinite(t)) continue;
     out.push(finishFrameHit({
@@ -1411,7 +1432,7 @@ function appendBlastModuleTargets(
 ): void {
   if (!modules) return;
   for (const box of modules) {
-    const matrix = box.gunFollow ? _gunM : box.turretLocal ? _turretM : _hullM;
+    const matrix = box.roofGunFollow ? _roofM : box.gunFollow ? _gunM : box.turretLocal ? _turretM : _hullM;
     const external = blastModuleExternal(box);
     for (const shape of blastModuleShapes(box)) {
       const center = volumeCenter(shape);

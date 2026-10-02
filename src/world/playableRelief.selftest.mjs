@@ -1,92 +1,33 @@
-import { historicalRound47PresentationSource } from './round47MapPresentation.test-support.mjs';
-import { historicalRound71CloudsSource } from './round71Clouds.test-support.mjs';
-import { historicalLightModelSkySource, withoutLightingSky } from './lightModelSky.test-support.mjs';
-import { historicalRoadTerrainSource } from './roadHistoryTestOracle.mjs';
-import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {execFileSync} from 'node:child_process';
 import {registerHooks,stripTypeScriptTypes} from 'node:module';
 import {createHash} from 'node:crypto';
-import {fileURLToPath} from 'node:url';
-import {getMapConfig} from './maps/index.ts';
-import {PRE_LUNAR_MAP_IDS} from './mapRosterHistory.test-support.mjs';
-import {createLayout,sampleLandformHeight} from './terrain.ts';
+import {MAP_IDS,getMapConfig} from './maps/index.ts';
+import {sampleLandformHeight} from './terrain.ts';
 import {preparePlayableRelief,samplePlayableRelief} from './playableRelief.ts';
-import {historicalMapPassDressingInput} from './mapPassDressing.test-support.mjs';
 
-const base='6c3aaaf31567b0f6703c0b83c4e67ef04db7390b',root=fileURLToPath(new URL('../../',import.meta.url));
-const oldSource=p=>execFileSync('git',['show',`${base}:${p}`],{cwd:root,encoding:'utf8'});
+// 2026-10-01 (frozen pins retired): the old receipt compared the CURRENT terrain program with the 6c3aaaf31 program
+// (git show), replayed predecessor map modules and a pre-pilot Badlands module, and pinned "bitwise legacy heights" on
+// every other battlefield. Those were change detectors of history. The relief law is now proven live, on today's
+// terrain program: every map that opts into playable relief is built twice, with its relief descriptors and with them
+// stripped, and the relief may only move bounded ground away from roads, water, lakes and deployment pads.
 const hash=a=>createHash('sha256').update(new Uint8Array(a.buffer,a.byteOffset,a.byteLength)).digest('hex');
-const terrainURL=new URL('./terrain.ts',import.meta.url).href,ports=new Map();
+const terrainURL=new URL('./terrain.ts',import.meta.url).href,observedURL=`${terrainURL}?relief-observed`;
 const anchor='  const getHeightAt = (x: number, z: number): number => heightAt(x, z, true, true);';
-for(const side of ['current','baseline']){
-  let source=side==='current'?historicalRoadTerrainSource:oldSource('src/world/terrain.ts');
-  assert.equal(source.split(anchor).length,2,'Exact real height-field support checkpoint');
-  source=source.replace(anchor,anchor+'\n  __supports = {road:gRoadElev,dist:gRoadDist,corridor:gCorridor,pads:padYs,lakes:lakeLevels,liquidSurfaces,liquidLakeBanks};');
-  source+='\nlet __supports; export function constructObserved(seed,cfg){const field=createHeightField(seed,cfg);return {field,supports:__supports};}\n';
-  ports.set(`${terrainURL}?relief-${side}`,stripTypeScriptTypes(source));
-}
-registerHooks({load(url,context,next){return ports.has(url)?{format:'module',source:ports.get(url),shortCircuit:true}:next(url,context);}});
-const current=await import(`${terrainURL}?relief-current`),baseline=await import(`${terrainURL}?relief-baseline`);
-const selected=new Map([['frontier','frontier'],['alpine','alpine']]);
+let source=readFileSync(new URL('./terrain.ts',import.meta.url),'utf8');
+assert.equal(source.split(anchor).length,2,'Exact real height-field support checkpoint');
+source=source.replace(anchor,anchor+'\n  __supports = {road:gRoadElev,dist:gRoadDist,corridor:gCorridor,pads:padYs,lakes:lakeLevels,liquidSurfaces,liquidLakeBanks};');
+source+='\nlet __supports; export function constructObserved(seed,cfg){const field=createHeightField(seed,cfg);return {field,supports:__supports};}\n';
+const observedSource=stripTypeScriptTypes(source);
+const hooks=registerHooks({load(url,context,next){return url===observedURL?{format:'module',source:observedSource,shortCircuit:true}:next(url,context);}});
+let observed;
+try{observed=await import(observedURL);}finally{hooks.deregister();}
 const seeds=[1337,7719],receipts=[];
-// Round 47 (owner map audit) re-authored Titan's presentation blocks (palette route, tints, ring rows, sky decks); relief
-// authoring never feeds heights, so the byte receipt projects those exact blocks back before comparing (badlandsRelief law).
-assert.equal(historicalRound47PresentationSource(historicalRound71CloudsSource(historicalLightModelSkySource(readFileSync(new URL('./maps/titanGorge.ts',import.meta.url),'utf8'),'titanGorge.ts'),'titanGorge.ts'),'titanGorge.ts'),oldSource('src/world/maps/titanGorge.ts'),
-  'Held Titan authoring is byte-exact baseline once round 47\'s presentation blocks are projected; its heights also pass the 28-map legacy loop below');
-// The legacy loop below covers an explicit roster, the pre-lunar battlefields (Mars joined it 2026-09-19). It compares
-// two historical terrain programs, and Aegis Crossing's gorge landform and authored dry viaduct (0e5fc79e2) did not
-// exist in the 6c3aaaf31 baseline, so the battlefields registered later stay out of it (earthriseCrossing.selftest owns
-// their terrain). The pilots are named rather than counted against the registry size.
-const LEGACY_MAP_IDS=PRE_LUNAR_MAP_IDS;
-assert.equal(selected.size,2,'Exactly two playable-relief pilots');
-for(const id of selected.keys())assert.ok(LEGACY_MAP_IDS.includes(id),`${id}: a pilot inside the legacy roster`);
 const stripRelief=form=>{const {relief,_relief,...old}=form;return old;};
 const supportHashes=s=>Object.fromEntries(Object.entries(s).map(([k,v])=>[k,v?hash(v):null]));
+const pilots=MAP_IDS.filter(id=>(getMapConfig(id).terrain.landforms??[]).some(form=>form.relief));
+assert.ok(pilots.length>0,'at least one battlefield authors playable relief, so the live A/B below exercises real data');
 
-// This remains the historical Frontier/Alpine acceptance oracle. The shared
-// authenticated road fixture removes later approaches only; terrainStreaming
-// and roadContinuity independently exercise all live completed-road surfaces. Badlands'
-// later canyon layout is tested against actual current config separately in
-// badlandsRelief.selftest.mjs; it is not part of this older two-map pilot.
-const badlandsBase='d948cb5733ebb41ba471458a6b410e2bbb3568cc';
-const badlandsSource=execFileSync('git',['show',`${badlandsBase}:src/world/maps/badlands.ts`],{cwd:root,encoding:'utf8'});
-assert.equal(createHash('sha256').update(badlandsSource).digest('hex'),
-  'eae9a03e75913e7c1b6ba87fae136115e5a568675d4998923da47492cd7ddada','Exact full pre-Badlands-pilot module');
-const badlandsURL=new URL('./maps/badlands.ts?relief-historical',import.meta.url).href;
-ports.set(badlandsURL,stripTypeScriptTypes(badlandsSource));
-const historicalBadlands=(await import(badlandsURL)).default;
-
-// Literal predecessor map modules certify that no authoring fields besides the
-// selected forms' opt-in descriptors changed; functions retain their own source.
-for(const [id,file]of selected){
-  const url=new URL(`./maps/${file}.ts`,import.meta.url).href+'?relief-original';
-  ports.set(url,stripTypeScriptTypes(oldSource(`src/world/maps/${file}.ts`)));
-  const old=(await import(url)).default,cfg=historicalMapPassDressingInput(originalExitConfig(getMapConfig(id)),assert);
-  const normalized={...cfg,terrain:{...cfg.terrain,landforms:cfg.terrain.landforms.map(stripRelief)}};
-  // 2026-10-01 (the grounded light model): the sky's lighting block never feeds relief; projected out first
-  normalized.sky=withoutLightingSky(cfg.sky);
-  if(id==='alpine'){
-    // 2026-09-11 restored the 1049e4e Alpine horizon bands (owner direction).
-    // Horizon bands never feed relief; guard the live values, then project
-    // only these two leaves back so every other authoring field stays exact.
-    assert.equal(cfg.horizon.treeline,0.80,'alpine: restored 1049e4e treeline band');
-    assert.equal(cfg.horizon.snowline,0.72,'alpine: restored 1049e4e snowline band');
-    assert.equal(old.horizon.treeline,0.64);assert.equal(old.horizon.snowline,0.42);
-    normalized.horizon={...cfg.horizon,treeline:0.64,snowline:0.42};
-    // 2026-09-13 lighting: the alpine key/fill moved toward the 1049e4e ratio (sun 2.85 -> 4.2,
-    // colour 0xffddbe -> 0xf8eedb, hemisphere 0.54 -> 0.34). Sky presets never feed relief; guard
-    // the live leaves, then project only them back so every other authoring field stays exact.
-    assert.equal(cfg.sky.sunIntensity,4.2,'alpine: 2026-09-13 key');assert.equal(cfg.sky.sunColorHex,0xf8eedb);assert.equal(cfg.sky.hemiIntensity,0.34);
-    assert.equal(old.sky.sunIntensity,2.85);assert.equal(old.sky.sunColorHex,0xffddbe);assert.equal(old.sky.hemiIntensity,0.54);
-    normalized.sky={...normalized.sky,sunIntensity:2.85,sunColorHex:0xffddbe,hemiIntensity:0.54};
-  }
-  // round 71 (2026-09-25): the cloudscape block (the volumetric layer's per-map authoring) never feeds relief; projected out
-  delete normalized.clouds;
-  const stringify=value=>JSON.stringify(value,(_k,v)=>typeof v==='function'?v.toString():v);
-  assert.equal(stringify(normalized),stringify(old),`${id}: all non-relief authoring retained`);
-}
 
 function point(form,along,acrossM){
   const lateral=acrossM+form.bendM*4*along*(1-along);
@@ -132,45 +73,35 @@ for(const kind of ['spur','glacial','terrace']){
   receipts.push({profile:kind,asymmetry,maxScalarSlope:maxSlope});
 }
 
-for(const id of LEGACY_MAP_IDS){
-  const cfg=id==='badlands'?historicalBadlands:originalExitConfig(getMapConfig(id)),layout=current.createLayout(cfg);
-  if(!selected.has(id))assert.ok(layout.terrain.landforms.every(f=>!f.relief&&!f._relief));
-  else{
-    assert.equal(layout.terrain.landforms.length,5);
-    assert.equal(layout.terrain.landforms.filter(f=>f._relief).length,5);
-    const oldLayout=baseline.createLayout(cfg);
-    assert.deepEqual(layout.terrain.landforms.map(stripRelief),oldLayout.terrain.landforms.map(stripRelief),'Old axes/trigonometry never mutated');
-  }
+for(const id of pilots){
+  const cfg=getMapConfig(id),flat={...cfg,terrain:{...cfg.terrain,landforms:cfg.terrain.landforms.map(stripRelief)}};
+  const layout=observed.createLayout(cfg),flatLayout=observed.createLayout(flat);
+  assert.ok(layout.terrain.landforms.every(f=>f._relief),`${id}: every landform of a relief map carries a prepared profile`);
+  assert.ok(flatLayout.terrain.landforms.every(f=>!f._relief),`${id}: the stripped control has no relief`);
+  assert.deepEqual(layout.terrain.landforms.map(stripRelief),flatLayout.terrain.landforms.map(stripRelief),'Old axes/trigonometry never mutated');
   for(const seed of seeds){
     // 2026-09-17 field trenches: the relief law is compared on untrenched fields (fieldTrenches:false); the carve has its own receipt.
-    const a=current.constructObserved(seed,{...cfg,fieldTrenches:false}),b=baseline.constructObserved(seed,cfg);
+    const a=observed.constructObserved(seed,{...cfg,fieldTrenches:false}),b=observed.constructObserved(seed,{...flat,fieldTrenches:false});
     assert.deepEqual(supportHashes(a.supports),supportHashes(b.supports),`${id}/${seed}: exact road/junction/corridor/lake/pad/liquid targets`);
-    const currentValues=[],oldValues=[];let changed=0,maxDelta=0,fastPoints=0;
+    let changed=0,maxDelta=0,fastPoints=0;
     for(let z=-480;z<=480;z+=40)for(let x=-480;x<=480;x+=40){
       const h=a.field.getHeightAt(x,z),old=b.field.getHeightAt(x,z);
-      assert.ok(Number.isFinite(h));currentValues.push(h);oldValues.push(old);
+      assert.ok(Number.isFinite(h));
       maxDelta=Math.max(maxDelta,Math.abs(h-old));if(Math.abs(h-old)>.1)changed++;
-      if(!selected.has(id)){
-        assert.deepEqual(a.field.getNormalAt(x,z).toArray(),b.field.getNormalAt(x,z).toArray(),`${id}: unchanged normal`);
-      }else if(Math.abs(h-old)>.1&&x%80===0&&z%80===0){
+      if(Math.abs(h-old)>.1&&x%80===0&&z%80===0){
         assert.ok(Math.abs(a.field.getHeightAtFast(x,z)-Math.fround(h))<1e-7,'Existing exact-grid cache uses final relief');fastPoints++;
       }
       assert.equal(a.field._roadDist(x,z),b.field._roadDist(x,z));
       assert.equal(a.field.getWaterMaskAt(x,z),b.field.getWaterMaskAt(x,z),'Wet footprint unchanged');
     }
-    if(!selected.has(id)){
-      assert.equal(hash(new Float64Array(currentValues)),hash(new Float64Array(oldValues)),`${id}/${seed}: bitwise legacy heights`);
-      assert.equal(a.field.minY,b.field.minY);assert.equal(a.field.maxY,b.field.maxY);
-    }else{
-      assert.ok(changed>20&&fastPoints>0,`${id}: authored relief reaches meaningful final ground`);
-      const budget=cfg.terrain.landforms.reduce((sum,f)=>sum+Math.abs(f.height),0);
-      assert.ok(maxDelta<=budget,'No hidden amplitude beyond existing per-form caps');
-      for(const spawn of [layout.spawns.player,...layout.spawns.enemies])for(const dx of [-8,0,8])for(const dz of [-8,0,8]){
-        assert.equal(a.field.getHeightAt(spawn.x+dx,spawn.z+dz),b.field.getHeightAt(spawn.x+dx,spawn.z+dz),'Protected deployment support exact');
-      }
-      for(const lake of layout.lakes)assert.ok(Math.abs(a.field.getHeightAt(lake.x,lake.z)-b.field.getHeightAt(lake.x,lake.z))<1e-10,'Frozen lake core retains its exact initialized target');
+    assert.ok(changed>20&&fastPoints>0,`${id}: authored relief reaches meaningful final ground`);
+    const budget=cfg.terrain.landforms.reduce((sum,f)=>sum+Math.abs(f.height),0);
+    assert.ok(maxDelta<=budget,'No hidden amplitude beyond existing per-form caps');
+    for(const spawn of [layout.spawns.player,...layout.spawns.enemies])for(const dx of [-8,0,8])for(const dz of [-8,0,8]){
+      assert.equal(a.field.getHeightAt(spawn.x+dx,spawn.z+dz),b.field.getHeightAt(spawn.x+dx,spawn.z+dz),'Protected deployment support exact');
     }
+    for(const lake of layout.lakes)assert.ok(Math.abs(a.field.getHeightAt(lake.x,lake.z)-b.field.getHeightAt(lake.x,lake.z))<1e-10,'Frozen lake core retains its exact initialized target');
     receipts.push({id,seed,changedSamples:changed,maxDelta,fastPoints,profileCount:layout.terrain.landforms.filter(f=>f._relief).length});
   }
 }
-console.log(JSON.stringify({passed:true,receipts,historicalBadlandsBase:badlandsBase,limits:'CPU shape/support/cache proof only. Badlands uses its authenticated pre-pilot config here; badlandsRelief.selftest exercises its actual current config. Actual objective access, native collision/props/vegetation, authoritative height/collision data and minimap regeneration remain required before publication.'},null,2));
+console.log(JSON.stringify({passed:true,receipts,limits:'CPU shape/support/cache proof only. Actual objective access, native collision/props/vegetation, authoritative height/collision data and minimap regeneration remain required before publication.'},null,2));

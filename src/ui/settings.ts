@@ -115,6 +115,7 @@ export interface SettingsOptions {
   readonly input: InputLayer;
   readonly bus?: SettingsBus;
   readonly isBattleActive?: () => boolean;
+  readonly isSpectating?: () => boolean;
   readonly canLeaveBattle?: () => boolean;
   readonly onLeaveBattle?: () => void;
   readonly gearVisible?: () => boolean;
@@ -651,15 +652,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   // --- state ---------------------------------------------------------------------
   let open = false;
-  // KILL-CAM awareness (controls_gunnery r7 MAJOR): every player death while
-  // pointer-locked used to throw this panel open ON TOP of the death replay.
-  // The death branch in main.ts calls document.exitPointerLock() with the
-  // battle still live (allies keep fighting), and the unlock heuristic below
-  // read that as an Esc press. Track the replay via the bus — killcam:begin
-  // is emitted synchronously in the same JS task as that exitPointerLock
-  // call, so the flag is ALWAYS set by the time the (async) pointerlockchange
-  // event lands. While a replay owns the screen, nothing here may auto-open,
-  // veil, or capture keys: the replay's ANY-KEY skip must win.
+  // Replays own skip input; their done grace absorbs the finishing keypress.
+  // A spectator keeps mouse capture until Esc explicitly releases it.
   let kcReplay = false;
   let kcDoneMs = -Infinity; // when the last replay released the screen
   const nowMs = () =>
@@ -1552,7 +1546,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // just another ANY-KEY skip (the replay handles it in capture phase), and
   // the done-grace absorbs the skip keypress itself — see KC_DONE_GRACE_MS.
   if (opts.registerMenuAction !== false) {
-    input.onAction('settingsMenu', () => {
+    input.onAction('settingsMenu', (code) => {
+      if (code === 'Escape' && opts.isSpectating?.()) { input.releaseLock(); return; }
       if (!open && !replayOwnsScreen() && !isAnyModalOpen()) openPanel();
     });
   }
@@ -1565,15 +1560,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // instead (WoT does not open the options menu after an alt-tab). The
   // focus check runs a tick later: on some platforms pointerlockchange
   // fires before the blur that caused it lands.
-  // controls_gunnery r7 (MAJOR — settings menu over the death kill-cam):
-  // the player-death branch in main.ts exits pointer lock with the battle
-  // still live, and this heuristic read that as an Esc press — every
-  // pointer-locked death ended in an options menu nobody opened, with
-  // onPanelKey swallowing the replay's ANY-KEY skip. Bail while a replay
-  // owns the screen (bus-tracked, set synchronously before the unlock event
-  // can land) — and main.ts's isBattleActive callback now also reports false
-  // once the local player is destroyed, so the no-replay death (straight to
-  // the death cam) hands off with a free cursor too, exactly like WoT.
+  // Replays and destroyed-player spectator views do not turn cursor release
+  // into a Settings request. Only a controllable player owns that shortcut.
   const settingsOwnsPointerUnlock = () => shouldOpenSettingsFromPointerUnlock({
     pointerLocked: !!document.pointerLockElement,
     settingsOpen: open,

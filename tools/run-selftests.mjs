@@ -1,12 +1,16 @@
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { closeSync, mkdirSync, openSync, writeFileSync } from 'node:fs';
 import { availableParallelism, constants, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCaptureLock, selftestLockTimeoutMs } from './capture-lock.mjs';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
-import { runSelftestCpuPool } from './selftest-cpu-pool.mjs';
-import { createSelftestCache } from './selftest-cache.mjs';
+import { captureQueueHasWaiters, runSelftestCpuPool } from './selftest-cpu-pool.mjs';
+import { createSelftestCache, REPO_ROOT } from './selftest-cache.mjs';
+import { resolveSelftestCacheDir } from './selftest-cache-dir.mjs';
+import { createHash } from 'node:crypto';
+import { admissionOrder, createRuntimeIndex, DURATION_SNAPSHOT_URL, durationSnapshotText, loadDurationSnapshot,
+  parseShard, partitionShards, selectReceipts, snapshotWeights, splitGlobs } from './selftest-schedule.mjs';
 
 // These real browser regressions own the shared lease inside their processes.
 // Other subprocess tests either remain CPU-only or reject browser CLI input
@@ -77,11 +81,25 @@ export function selftestWorkerCount(env = process.env, availableCpus = available
   return count;
 }
 
-export function runSelftestFile(file, { spawnProcess = spawn, signals = process, env = selftestChildEnv() } = {}) {
+// `logFile` (gate P13, `--logs=<dir>`) sends the child's stdout and stderr to that file through a
+// file descriptor, never a pipe: a grandchild that outlives the receipt cannot hold the runner open.
+// `cwd` lets the gate run a receipt in a baseline worktree. Defaults keep the inherited terminal.
+export function runSelftestFile(file, { spawnProcess = spawn, signals = process, env = selftestChildEnv(),
+  cwd = process.cwd(), logFile = null } = {}) {
   return new Promise((resolveResult) => {
-    const child = spawnProcess(process.execPath, [file], {
-      cwd: process.cwd(), env, stdio: 'inherit',
-    });
+    let output = null;
+    if (logFile) {
+      mkdirSync(dirname(logFile), { recursive: true });
+      output = openSync(logFile, 'w');
+    }
+    let child;
+    try {
+      child = spawnProcess(process.execPath, [file], {
+        cwd, env, stdio: output === null ? 'inherit' : ['inherit', output, output],
+      });
+    } finally {
+      if (output !== null) closeSync(output); // the child holds its own descriptor
+    }
     let error, interruptedBy;
     const interrupt = () => { interruptedBy ??= 'SIGINT'; child.kill('SIGINT'); };
     const terminate = () => { interruptedBy ??= 'SIGTERM'; child.kill('SIGTERM'); };
@@ -147,13 +165,14 @@ export async function runSelftestSuite(suiteName, suite, {
   concurrency = 1,
   failFast = false,
   cache = null,
+  order, // pool admission order (registry indices); the serial path's total is order-independent
 } = {}) {
   validateRunOptions(maxLeaseBatchMs, concurrency);
   const gate = selftestCacheGate(cache, log);
   const lockTimeoutMs = selftestLockTimeoutMs();
   if (concurrency > 1) return runSelftestCpuPool(suiteName, suite, {
     concurrency, runFile, lock, ownedLeaseFiles, exclusiveCpuFiles, refreshMs, maxLeaseBatchMs, now, log, logError, onTiming,
-    failFast, gate, lockTimeoutMs,
+    failFast, gate, lockTimeoutMs, ...(order ? { order } : {}),
   });
   let held = false;
   let acquiredAt = 0;
@@ -174,8 +193,12 @@ export async function runSelftestSuite(suiteName, suite, {
       if (cached?.skip) { onTiming({ file, runMs: 0, queueMs: 0, status: 0, error: undefined, skipped: true }); continue; }
       // Complete every child before yielding. Long full-fleet suites must
       // rejoin the FIFO between bounded batches, rather than starving native
-      // geometry/visual verification for the entire npm lifecycle.
-      if (held && now() - acquiredAt >= maxLeaseBatchMs) release();
+      // geometry/visual verification for the entire npm lifecycle. With no
+      // capture queued behind the lease, the batch is renewed in place (gate P5).
+      if (held && now() - acquiredAt >= maxLeaseBatchMs) {
+        if (captureQueueHasWaiters(lock)) release();
+        else { acquiredAt = now(); lock.refresh(); }
+      }
       if (ownedLeaseFiles.includes(file)) release();
       else if (!held) {
         const queuedAt = now();
@@ -214,20 +237,48 @@ export async function runSelftestSuite(suiteName, suite, {
   }
 }
 
-export function selftestCommand(args) {
+const SELFTEST_BARRIER_FILES = Object.freeze([...new Set([...SELFTEST_EXCLUSIVE_CPU_FILES, ...SELFTEST_OWNED_LEASE_FILES])]);
+
+// Gate P8 (2026-10-01): `--only=<glob>[,<glob>]` selects registry entries (`**`, `*`, `?`, `{a,b}`;
+// matching nothing is an error) and `--shard=i/n` runs one of n deterministic shards balanced by the
+// committed run-time snapshot (tools/selftest-durations.json). Both keep registry order and only
+// narrow what this invocation runs; every receipt of the selection still runs in a fresh process.
+export function selftestCommand(args, { durations = loadDurationSnapshot() } = {}) {
   const name = args[0] && !args[0].startsWith('--') ? args.shift() : 'all';
-  const files = name === 'all' ? Object.values(SELFTEST_SUITES).flat() : SELFTEST_SUITES[name];
-  if (!files) throw new Error(`Unknown self-test suite "${name}". Expected: all, ${Object.keys(SELFTEST_SUITES).join(', ')}`);
-  const options = { name, files, plan: false, report: null, changed: null };
+  const registered = name === 'all' ? Object.values(SELFTEST_SUITES).flat() : SELFTEST_SUITES[name];
+  if (!registered) throw new Error(`Unknown self-test suite "${name}". Expected: all, ${Object.keys(SELFTEST_SUITES).join(', ')}`);
+  const options = { name, files: registered, plan: false, report: null, changed: null, order: 'longest',
+    only: [], shard: null, writeDurations: false, logs: null };
   for (const arg of args) {
     if (arg === '--plan') options.plan = true;
     else if (arg === '--all') continue; // handled by the cache; applies to every selected group
     else if (arg.startsWith('--report=')) options.report = resolve(arg.slice(9));
     else if (arg.startsWith('--changed=')) options.changed = arg.slice(10).split(',').filter(Boolean);
+    else if (arg === '--order=registry' || arg === '--order=longest') options.order = arg.slice(8);
+    else if (arg.startsWith('--only=')) options.only.push(...splitGlobs(arg.slice(7)));
+    else if (arg.startsWith('--shard=') && !options.shard) options.shard = parseShard(arg.slice(8));
+    else if (arg === '--write-durations') options.writeDurations = true;
+    else if (arg.startsWith('--logs=') && arg.length > 7) options.logs = resolve(arg.slice(7));
     else throw new Error(`Unknown self-test option: ${arg}`);
   }
   if (options.changed && !options.plan) throw new Error('--changed explains impact with --plan; it never skips required checks');
+  if (writeDurationsConflict(options)) throw new Error('--write-durations records the whole registry: `node tools/run-selftests.mjs --write-durations`, no other option');
+  const selected = selectReceipts(registered, options.only);
+  options.files = selected;
+  if (options.shard) {
+    const shards = partitionShards(selected, options.shard.count, {
+      weightOf: snapshotWeights(selected, durations), barriers: new Set(SELFTEST_BARRIER_FILES),
+    });
+    const mine = shards[options.shard.index - 1];
+    options.files = mine.indices.map(index => selected[index]);
+    options.shard = { ...options.shard, selected: selected.length, receipts: options.files.length, loadMs: mine.loadMs,
+      partition: createHash('sha1').update(JSON.stringify(shards.map(shard => shard.indices.map(index => selected[index])))).digest('hex').slice(0, 12) };
+  }
   return options;
+}
+function writeDurationsConflict(options) {
+  return options.writeDurations && (options.name !== 'all' || options.plan || options.only.length || options.shard
+    || options.changed || options.report || options.logs || options.order !== 'longest');
 }
 
 export function selftestPlan(files, cache, changed = null, root = process.cwd()) {
@@ -249,8 +300,21 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   catch (error) { console.error(error.message); process.exitCode = 2; }
   if (command) {
     const { name: suiteName, files: suite } = command;
-    const cache = createSelftestCache({ alwaysRun: SELFTEST_FRESH_FILES, env: selftestChildEnv() });
-    if (command.plan) {
+    const childEnv = selftestChildEnv();
+    // Gate P18: proofs are keyed on the root commit; the first run adopts the URL-keyed store.
+    const cacheLocation = resolveSelftestCacheDir(REPO_ROOT, childEnv);
+    if (cacheLocation.adoption === 'linked') console.log(`[selftests] result cache now keyed on the ${cacheLocation.identity}; adopted ${cacheLocation.legacyDir}`);
+    const cache = createSelftestCache({ alwaysRun: SELFTEST_FRESH_FILES, env: childEnv, cacheDir: cacheLocation.dir });
+    const runtimes = createRuntimeIndex(cacheLocation.dir);
+    if (command.shard) console.log(`[selftests] shard ${command.shard.index}/${command.shard.count}: ${command.shard.receipts} of ${command.shard.selected} selected receipts (~${(command.shard.loadMs / 60_000).toFixed(1)} min weighted; partition ${command.shard.partition})`);
+    else if (command.only.length) console.log(`[selftests] --only=${command.only.join(',')}: ${suite.length} receipts`);
+    if (command.writeDurations) {
+      writeFileSync(DURATION_SNAPSHOT_URL, durationSnapshotText(suite, file => runtimes.runMsOf(file)));
+      runtimes.persist();
+      console.log(`[selftests] wrote ${fileURLToPath(DURATION_SNAPSHOT_URL)}: ${suite.filter(file => runtimes.runMsOf(file) !== undefined).length} of ${suite.length} receipts have a recorded run time`);
+    } else if (!suite.length) {
+      console.log(`[selftests] ${suiteName}: this shard has no receipts`);
+    } else if (command.plan) {
       const checks = selftestPlan(suite, cache, command.changed);
       console.log(JSON.stringify({ checks: checks.length,
         run: checks.filter(row => row.action === 'run').length,
@@ -264,27 +328,41 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       const suiteStarted = performance.now();
       const concurrency = selftestWorkerCount();
       const startedAt = new Date().toISOString();
+      // Gate P7: barriers first, then longest-first by the last observed run time (this machine's
+      // index; the committed snapshot covers receipts it has not seen, e.g. on a fresh clone).
+      const snapshot = loadDurationSnapshot();
+      const runMsOf = file => runtimes.runMsOf(file) ?? snapshot.get(file);
+      const order = command.order === 'longest' ? admissionOrder(suite, { runMsOf, barriers: new Set(SELFTEST_BARRIER_FILES) }) : undefined;
+      if (order) console.log(`[selftests] ${suiteName}: admission longest-first (${suite.filter(file => runMsOf(file) !== undefined).length} of ${suite.length} run times known; barriers first); --order=registry admits in registry order`);
+      const logOf = file => join(command.logs, `${file}.log`);
       process.exitCode = await runSelftestSuite(suiteName, suite, {
         concurrency,
         failFast: selftestFailFast(),
         cache,
+        order,
+        ...(command.logs ? { runFile: file => runSelftestFile(file, { logFile: logOf(file) }) } : {}),
         onTiming(row) {
           rows.push({ ...row, error: row.error?.message });
           completed++; executionMs += row.runMs; queueMs += row.queueMs;
           if (row.skipped) { skipped++; return; }
+          // an ordinary verdict (not a spawn error or an interruption) is a scheduling observation
+          if (!row.error && Number.isInteger(row.status) && row.status >= 0 && row.status < 128) runtimes.record(row.file, row.runMs);
           const state = row.status === 0 && !row.error ? 'PASS' : 'FAIL';
           if (state === 'FAIL') failures.push(row.file);
-          console.log(`[selftests] ${suiteName} ${completed}/${suite.length} ${state} ${row.file}: ${row.runMs.toFixed(0)}ms child, ${row.queueMs.toFixed(0)}ms FIFO`);
+          console.log(`[selftests] ${suiteName} ${completed}/${suite.length} ${state} ${row.file}: ${row.runMs.toFixed(0)}ms child, ${row.queueMs.toFixed(0)}ms FIFO${command.logs && state === 'FAIL' ? ` (log: ${logOf(row.file)})` : ''}`);
         },
       });
       cache.persist();
+      runtimes.persist();
       if (skipped) console.log(`[selftests] ${suiteName}: ${skipped} of ${suite.length} receipts skipped (inputs unchanged since their last PASS; --all or COT_SELFTEST_CACHE=0 runs everything)${cache.enabled ? '' : ' [cache disabled]'}`);
       if (failures.length) console.error(`[selftests] ${suiteName}: ${failures.length} FAILED\n  ${failures.join('\n  ')}`);
       console.log(`[selftests] ${suiteName}: ${(performance.now() - suiteStarted).toFixed(0)}ms elapsed, ${executionMs.toFixed(0)}ms summed child across ${concurrency} CPU workers, ${queueMs.toFixed(0)}ms runner FIFO; browser children remain exclusive`);
       const reportPath = command.report ?? resolve('node_modules/.cache/cot-selftests/latest-run.json');
       mkdirSync(dirname(reportPath), { recursive: true });
       writeFileSync(reportPath, JSON.stringify({ startedAt, finishedAt: new Date().toISOString(),
-        status: process.exitCode, selected: suite.length, completed, executed: completed - skipped,
+        status: process.exitCode, admission: command.order, ...(command.only.length ? { only: command.only } : {}),
+        ...(command.shard ? { shard: command.shard } : {}), ...(command.logs ? { logs: command.logs } : {}),
+        selected: suite.length, completed, executed: completed - skipped,
         reused: skipped, elapsedMs: performance.now() - suiteStarted, executionMs, queueMs, rows }, null, 2) + '\n');
       console.log(`[selftests] report: ${reportPath}`);
     }

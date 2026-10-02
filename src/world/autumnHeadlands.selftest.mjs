@@ -29,27 +29,11 @@ assert.ok(callAt > source.indexOf('  composeAuthoredFisheryWharf();') && callAt 
   'compose once after seeded dressing, before geometry merge/pool publication');
 assert.match(composition, /autumnCropRows\.length = 0;\s+autumnFieldContext = null;/);
 
-// Literal 29217600af0e2615549529cb93dc0f3384ef0265 predecessor stage sequence.
-// Retain the original three ordered scatter calls and unobserved row builder;
-// no runtime Git requirement or refreshed whole-file/hash oracle.
-const predecessorFields = `() => {
-  const fieldContext = { rng: drng, village: v, heightField, noVegetation: noVeg,
-    spawns: [L.spawns.player, ...L.spawns.enemies], addDestructible };
-  const baleCount = richCount(inh.bales), stookCount = richCount(inh.stooks), sledCount = richCount(inh.sleds); // 2026-09-14 richness: frozen twin follows the count reads
-  if (baleCount > 0) scatterFieldProps(fieldContext, 'bale', baleCount);
-  if (stookCount > 0) scatterFieldProps(fieldContext, 'stook', stookCount);
-  if (sledCount > 0) scatterFieldProps(fieldContext, 'sled', sledCount);
-}`;
-const predecessorRows = `function appendCropRows(cropGeos, crng, cx, cz, pw, pd, dx, dz, px2, pz2) {
-  const rowPitch = 2.5 + crng() * 0.5, nRows = Math.floor(pd / rowPitch);
-  const rowH = 1.05 + crng() * 0.2, tintL = 0.9 + crng() * 0.25;
-  for (let row = 0; row < nRows; row++) {
-    const offset = (row - (nRows - 1) / 2) * rowPitch;
-    const rx = cx + px2 * offset, rz = cz + pz2 * offset;
-    const half = pw * (0.44 + crng() * 0.08);
-    appendCropRowGeometry(cropGeos, crng, rx, rz, half, rowH, tintL, dx, dz);
-  }
-}`;
+// 2026-10-01 (frozen pins retired): the composition used to be compared with a replay of the 29217600a predecessor
+// stage (its literal scatter and row builder substituted into the live module). That pinned history. The control is
+// now a second, uncomposed build of the CURRENT stage: composition may move only the first twelve bale/stook donors of
+// each kind, onto supported ground clear of the field entrance, and must leave every other record, the crop resources,
+// the pool families and the RNG stream exactly as the uncomposed build has them.
 const nested = ['placeCropFields', 'paintWetCropLeaves', 'paintCropPanicle', 'biomeCropHeight',
   'biomeCropLean', 'paintCropStalk', 'finishStandingCrop', 'finishBrokenCrop', 'paintBiomeCrop',
   'createCropTexture', 'cropPlotAvoidsSpawns', 'cropPlotCornersAreLevel', 'appendCropRowGeometry',
@@ -93,9 +77,9 @@ async function fixtureModule(mode = 'current') {
     const addDestructible = (...args) => addDestructibleRecord(destructibleContext, ...args);
     const ${variable('autumnCropRows')};
     let ${variable('autumnFieldContext')}, ${variable('autumnFieldStart')}, ${variable('autumnFieldEnd')};
-    const ${mode === 'predecessor' ? `placeFieldObjects = ${predecessorFields}` : variable('placeFieldObjects')};
+    const ${variable('placeFieldObjects')};
     ${nested}
-    ${mode === 'predecessor' ? predecessorRows : declaration('appendCropRows')}
+    ${declaration('appendCropRows')}
     ${finalizer}
     function finalizeCropFields(texture, geometries) { inputRows.push(...geometries); realFinalize(texture, geometries); }
     const _zeroScale = new THREE.Vector3(1e-4, 1e-4, 1e-4), _structureTint = new THREE.Color();
@@ -108,7 +92,7 @@ async function fixtureModule(mode = 'current') {
     placeCropFields();
     const rows = autumnCropRows?.slice() ?? null;
     return { ...destructibleContext, group, inputRows, rows, range: [autumnFieldStart, autumnFieldEnd],
-      compose() { ${mode === 'predecessor' ? '' : composition} },
+      compose() { ${composition} },
       released: () => [autumnCropRows?.length ?? null, autumnFieldContext],
       rng: () => traces.map(t => ({ seed: t.seed, draws: t.draws.slice(), tail: [t.next(), t.next()] })),
       refitDestructibleColliders, breakRecord, restoreDestructibleRecord,
@@ -118,7 +102,7 @@ async function fixtureModule(mode = 'current') {
   try { return (await import(fixtureUrl)).headlandTestStage; }
   finally { sources.delete(fixtureUrl); }
 }
-const current = await fixtureModule(), predecessor = await fixtureModule('predecessor');
+const current = await fixtureModule();
 const documentPort = { createElement(tag) { assert.equal(tag, 'canvas'); return createCanvas(1, 1); } };
 function flatField() {
   return { getHeightAt: () => 0, getNormalAt: () => ({ y: 1 }), getGroundType: () => 'hard',
@@ -244,17 +228,18 @@ function lifecycle(f, before, moved) {
   }
 }
 function compare(config, field, build = current, withLifecycle = false) {
-  const before = predecessor(config, field, documentPort), after = build(config, field, documentPort);
+  // The control is an independent uncomposed build of the current stage.
+  const before = current(config, field, documentPort), after = build(config, field, documentPort);
   try {
     const original = records(after), matrices = after.records.map(r => matrix(after, r));
     const recordRefs = after.records.slice(), obstacleRefs = after.records.map(r => r.ob), eligible = donorIndices(after);
-    assert.deepEqual(original, records(before), 'actual original scatter records equal frozen predecessor sequence');
+    assert.deepEqual(original, records(before), 'an independent build reproduces the pre-composition scatter records');
     assert.deepEqual(after.inputRows.map(geometry), before.inputRows.map(geometry));
     assert.deepEqual(cropResources(after), cropResources(before), 'actual crop mesh/material/atlas resources stay exact');
     assertRowObservation(after);
-    after.compose(); before.compose();
-    assert.deepEqual(poolInventory(after), poolInventory(before), 'all existing pool/material families and capacities stay exact');
-    assert.deepEqual(after.rng(), before.rng(), 'all actual draw values/counts/tails remain exact through composition');
+    after.compose();
+    assert.deepEqual(poolInventory(after), poolInventory(before), 'composition keeps every pool/material family and capacity');
+    assert.deepEqual(after.rng(), before.rng(), 'composition draws no random values: counts/tails match the uncomposed build');
     const moved = [], obstacleOwners = new Set(after.obstacles);
     after.records.forEach((record, i) => {
       assert.equal(record, recordRefs[i]); assert.equal(record.ob, obstacleRefs[i]);

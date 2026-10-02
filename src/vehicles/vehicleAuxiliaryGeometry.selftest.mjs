@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {markSmokeTube,markOpenSmokeTube,registerSmokeSockets,smokeSocketsFor,alignSmokeBanks} from './vehicleAuxiliaryGeometry.ts';
+import {markSmokeTube,markOpenSmokeTube,registerSmokeSockets,smokeSocketsFor,alignSmokeBanks,transferSmokeSockets} from './vehicleAuxiliaryGeometry.ts';
 const closed=markSmokeTube(new THREE.CylinderGeometry(.1,.1,.4,12).rotateX(Math.PI/2));
 closed.rotateX(-.4).translate(.6,.2,1);
 const mesh=new THREE.Mesh(closed);registerSmokeSockets(mesh,[closed]);
@@ -16,5 +16,13 @@ alignSmokeBanks(root);root.updateMatrixWorld(true);
 const direction=new THREE.Vector3(...socket.direction).transformDirection(mesh.matrixWorld);
 assert.ok(direction.z>0,'complete bank alignment cannot leave rearward apertures');
 assert.equal(mesh.geometry,closed,'alignment preserves authored geometry');
+// Static batching must preserve the already-aligned rendered launcher frame.
+const batch=new THREE.Mesh();
+mesh.position.set(.4,.2,-.7);mesh.rotation.y=.35;mesh.scale.set(1.2,1.2,1.2);mesh.updateMatrix();
+transferSmokeSockets([mesh],batch);
+const batched=smokeSocketsFor(batch)[0];
+assert.ok(new THREE.Vector3(...batched.position).distanceTo(new THREE.Vector3(...socket.position).applyMatrix4(mesh.matrix))<1e-9);
+assert.ok(new THREE.Vector3(...batched.direction).distanceTo(new THREE.Vector3(...socket.direction).transformDirection(mesh.matrix))<1e-9);
+assert.equal(smokeSocketsFor(batch).length,1,'batch transfer does not invent or drop tubes');
 closed.dispose();open.dispose();
 console.log('vehicleAuxiliaryGeometry: transformed closed/open apertures and complete bank alignment pass');

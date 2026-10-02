@@ -68,7 +68,7 @@ function state(name) {
   // Cross the real 30-frame FPS threshold; single-frame fixtures miss this plate.
   for(let i=0;i<31;i++)hud.update(frame);
   panel.update(player.combat);
-  for(let i=0;i<3;i++){
+  for(let i=0;i<(name==='feed-burst'?14:3);i++){
     bus.emit('tank:destroyed',{id:tanks[8].id,killerId:player.id,cause:'fire'});
     bus.emit('tank:destroyed',{id:tanks[1].id,killerId:tanks[9].id,cause:'fire'});
   }
@@ -78,8 +78,8 @@ function state(name) {
     if(name==='notifications')bus.emit('ui:magazineReloadStarted',{});
   }
   if(name==='countdown') hud.preBattleCountdown(5);
-  if(name==='reports'||name==='log'||name==='chat'||name==='combined') {
-    for(let i=0;i<6;i++){hit();hit(true);}
+  if(name==='reports'||name==='log'||name==='chat'||name==='combined'||name==='feed-burst') {
+    for(let i=0;i<(name==='feed-burst'?14:6);i++){hit();hit(true);}
   }
   if(name==='log'||name==='combined')bus.emit('ui:shotLog',{});
   if(name==='chat'||name==='combined'||name==='spectator'){

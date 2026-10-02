@@ -947,10 +947,9 @@ function buildArieteC2(P: ItalyBuilderPort): void { buildArieteMk(P, 'c2'); }
 // six-wheel gear with raised idler (ramp to +3.5) and rear sprocket.
 // ---------------------------------------------------------------------------
 function buildCarro45T(P: ItalyBuilderPort): void {
-  const { box, cylY, cylZ, torus, frustum, polyMultiLoft, buildGun,
-    buildRunningGear, headlight, periscope, liftEye, towCable, stowage } = KIT;
+  const { box, cylY, cylZ, torus, frustum, buildGun,
+    buildRunningGear, headlight, periscope, liftEye } = KIT;
   const slab = orientedSlab;
-  const { rng } = P;
 
   // ---- hull tub + decks -----------------------------------------------------
   const buildCarro45TMarkingsStage1 = (): void => {

@@ -37,6 +37,7 @@ export function spectatorSwitcherMarkup(): string {
         `<span>${t('spectator.spectating')}</span><b class="idx" hidden></b>` +
       '</span>' +
       '<span class="who"><b class="nick"></b><span class="veh"></span></span>' +
+      `<span class="cursor-hint" hidden>${t('spectator.releaseCursor')}</span>` +
     '</div>' +
     '<div class="switch" role="group" aria-label="' + t('spectator.switchGroupAria') + '">' +
       '<button type="button" class="cycle prev" aria-label="' + t('spectator.cyclePrevAria') + '">' +

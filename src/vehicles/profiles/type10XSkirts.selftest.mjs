@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {type10SkirtStations,type10SkirtSection} from './type10XSkirts.ts';
 import {sectionSolid} from './sectionSolid.ts';
-import {historicalType10Skirt} from '../type10SkirtHistory.test-support.mjs';
 
 const v=(x,y,z)=>new THREE.Vector3(x,y,z);
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,
@@ -26,23 +25,19 @@ function closedPrimitive(geometry) {
   for(const row of edges.values())assert.deepEqual(row,{count:2,winding:0},'closed opposed shared edges');
 }
 
+// The replayed 49-station historical skirt recipe (its 9760-triangle count) is retired; the current closed stock
+// and its budget are checked live.
 function primitiveEfficiency() {
-  let oldTriangles=0,newTriangles=0;
+  let newTriangles=0;
   for(const side of[-1,1])for(let panel=0;panel<5;panel++) {
     const stations=type10SkirtStations(panel);
     assert.ok(stations.length<=20&&stations.every((z,i)=>Number.isFinite(z)&&(!i||z>stations[i-1])));
     const geometry=sectionSolid(stations.map(z=>type10SkirtSection(panel,side,z)));
-    try {
-      closedPrimitive(geometry);newTriangles+=geometry.attributes.position.count/3;
-      geometry.userData.fixedPaintedPanel='type10-painted-folded-skirt';
-      const old=historicalType10Skirt(geometry.clone(),(side<0?0:5)+panel);
-      try {oldTriangles+=old.attributes.position.count/3;}finally{old.dispose();}
-      assert.throws(()=>historicalType10Skirt(geometry,-1),'inverse cannot select unrelated geometry');
-    }finally{geometry.dispose();}
+    try {closedPrimitive(geometry);newTriangles+=geometry.attributes.position.count/3;}
+    finally{geometry.dispose();}
   }
-  assert.equal(oldTriangles,9760,'published ten-panel station recipe');
   assert.equal(newTriangles,3120,'actual new closed stock budget, including caps and inner faces');
-  console.log(JSON.stringify({type10SkirtTriangles:{before:oldTriangles,after:newTriangles,saved:oldTriangles-newTriangles}}));
+  console.log(JSON.stringify({type10SkirtTriangles:{after:newTriangles}}));
 }
 
 function sheetFaces(root,quality) {

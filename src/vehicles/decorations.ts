@@ -1,3 +1,4 @@
+import { markSmokeTube, registerSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
 // src/vehicles/decorations.ts — cosmetic external-stowage / fittings kit for
 // the whole fleet ("decoration system", 2026-07 round).
 //
@@ -19,7 +20,9 @@
 //    auto-skip unless explicitly opted in (see resolveDecorMode), so the
 //    geometry-gate ledger remains bare and byte-stable.
 //  * In-game builds (garage pedestal, battle, studio, icon generator) get
-//    decor ON by default — no call-site changes required.
+//    decor ON by default — no call-site changes required. Smoke dispensers
+//    are functional: aperture receipts feed the generated control inventory.
+//    Inventory generation must explicitly include the shipped decoration layer.
 //  * Per-tank selection is DETERMINISTIC, seeded by stable decoration
 //    identity only (never camoSeed): normally the SPEC ID, with the preserved
 //    Revolution Proto retaining its old ID. Variation lives across the
@@ -1176,7 +1179,7 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
       const x = (k - (per - 1) / 2) * 0.082;
       const y = 0.115 + row * 0.078;
       const cant = (k - (per - 1) / 2) * 6 * D2R;   // fanned tubes
-      const g = cylZ(0.032, 0.21, 8);
+      const g = markSmokeTube(cylZ(0.032, 0.21, 8));
       xform(g, 0, 0, 0.075);                        // tube forward of its pivot
       // dark muzzle cap disc crisps the tube read at gameplay distance
       const cap = xform(cylZ(0.0335, 0.014, 8), 0, 0, 0.185);
@@ -1802,7 +1805,7 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- jerrycan rack (fuel tan / water green) ---------------------------------------
-  jerry({ rng, n = 2, water = true }) {
+  jerry({ n = 2, water = true }) {
     const parts: DecorPartList = [];
     const pairedCount = Math.max(2, Math.ceil(n / 2) * 2);
     for (let i = 0; i < pairedCount; i++) {
@@ -2729,7 +2732,7 @@ function expandTransformedBounds(
 }
 
 function collectSurfaceRecords(
-  group: THREE.Group,
+  _group: THREE.Group,
   targets: SurfaceMesh[],
   groupInverse: THREE.Matrix4,
 ): SurfaceIndexPreparation | null {
@@ -3561,7 +3564,7 @@ export function* attachTankDecorationsSteps(
     const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
     const E = (rx = 0, ry = 0, rz = 0) => new THREE.Euler(rx, ry, rz);
 
-    const placeHullRearDeck: SlotPlacer = (args, parts, name) => {
+    const placeHullRearDeck: SlotPlacer = (_args, parts, name) => {
       const bounds = partsBBox(parts);
       const depth = bounds.max.z - bounds.min.z;
       const centerX = parts.metaCx || 0.35;
@@ -3701,7 +3704,7 @@ export function* attachTankDecorationsSteps(
         disposePartList(parts);
         return false;
       },
-      glacisLow(args, parts, name) {
+      glacisLow(_args, parts, name) {
         for (const zf of [0.44, 0.48, 0.4]) {
           const z = L * zf;
           const h = deckProbe(0, z);
@@ -3825,14 +3828,14 @@ export function* attachTankDecorationsSteps(
         return commit(name, parts, 'hull', V(0, axisY - cY, h.p.z - (meta.clearY || 0.28) - 0.04), E(), placedHull,
           { seatY: axisY - cY, zExtra: 0.4 });
       },
-      hullRearLow(args, parts, name) {
+      hullRearLow(_args, parts, name) {
         const y = Math.max(H * 0.33, rearDeckY * 0.62);
         const h = hullP.zface(0, y, 1, sternZ - 1.4);
         if (!h) { disposePartList(parts); return false; }
         return commit(name, parts, 'hull', V(0, y, h.p.z - 0.16), E(0, 0, (rng() - 0.5) * 0.04), placedHull,
           { seatY: y, zExtra: 0.35 });
       },
-      hullRearHang(args, parts, name) {
+      hullRearHang(_args, parts, name) {
         const y = rearDeckY * 0.82;
         const h = hullP.zface(W * 0.26, y, 1, sternZ - 1.4);
         if (!h) { disposePartList(parts); return false; }
@@ -3840,14 +3843,14 @@ export function* attachTankDecorationsSteps(
         return commit(name, parts, 'hull', V(W * 0.26, y - (bb.max.y - bb.min.y), h.p.z - 0.09), E(), placedHull,
           { zExtra: 0.3 });
       },
-      hullRearCage(args, parts, name) {
+      hullRearCage(_args, parts, name) {
         const y = rearDeckY * 0.72;
         const h = hullP.zface(0, y, 1, sternZ - 1.4);
         if (!h) { disposePartList(parts); return false; }
         return commit(name, parts, 'hull', V(0, y, h.p.z - 0.28), E(0, Math.PI, 0), placedHull,
           { seatY: y - 0.25, zExtra: 0.45 });
       },
-      bowPair(args, parts, name) {
+      bowPair(_args, parts, name) {
         let ok = false;
         for (const s of [-1, 1]) {
           const cl = clonePartList(parts);
@@ -3865,7 +3868,7 @@ export function* attachTankDecorationsSteps(
         disposePartList(parts);
         return ok;
       },
-      bowChain(args, parts, name) {
+      bowChain(_args, parts, name) {
         const y = H * 0.3;
         const h = hullP.zface(-W * 0.28, y, -1, L / 2 + 1.6);
         if (!h) { disposePartList(parts); return false; }
@@ -3934,7 +3937,7 @@ export function* attachTankDecorationsSteps(
         disposePartList(parts);
         return false;
       },
-      turretRearFrame(args, parts, name) {
+      turretRearFrame(_args, parts, name) {
         // basket bolts to the bustle rear face (open face +Z toward the turret)
         const meta = parts.meta || {};
         for (const yf of [0.3, 0.45, 0.2]) {
@@ -3986,7 +3989,7 @@ export function* attachTankDecorationsSteps(
         disposePartList(parts);
         return false;
       },
-      turretCheekPair(args, parts, name) {
+      turretCheekPair(_args, parts, name) {
         let ok = false;
         for (const s of [-1, 1]) {
           const cl = clonePartList(parts);
@@ -3995,7 +3998,7 @@ export function* attachTankDecorationsSteps(
             const y = Math.max(0.24, pivotTopY() * yf);
             const h = turP.side(y, z, s, W / 2 + 1);
             if (!h) continue;
-            const yaw = s > 0 ? Math.PI / 2 + 0.55 : -Math.PI / 2 - 0.55; // fan forward
+            const yaw = s * 0.55; // forward fan, mirrored about local +Z
             if (commit(name, cl, 'turret', V(h.p.x + s * 0.03, y, z), E(0, yaw, 0), placedTurret)) { done = true; break; }
           }
           if (!done) disposePartList(cl);
@@ -4061,14 +4064,24 @@ export function* attachTankDecorationsSteps(
 
     function* attachManifestRows(): Generator<DecorationWorkSlice, void, void> {
       const manifest = decorManifestFor(spec, rng);
+      // Reserve functional banks before cosmetic cargo can occupy their seat.
+      // A separate stream makes smoke independent of quality-dependent retries
+      // without reordering the existing random stream for other equipment.
+      const smokeRng = mulberry32(fnv1a(`smoke:${decorId}`));
+      for (const row of manifest) {
+        if (row.kit !== 'smoke') continue;
+        // A declared gameplay fitting is always installed; cosmetic dice
+        // must not decide whether a vehicle can use its smoke control.
+        const jitterSeed = (smokeRng() * 0x7fffffff) | 0;
+        const slotFn = SLOTS[row.slot[0]];
+        if (!slotFn) continue;
+        const parts = createManifestParts(row, DECOR_KITS.smoke!, jitterSeed);
+        if (parts) placeManifestParts(row, slotFn, parts);
+      }
       for (let index = 0; index < manifest.length; index++) {
         const row = manifest[index];
-        // Deterministic dice: every row draws its roll and jitter seed before
-        // eligibility checks, so one failed placement cannot reshuffle later
-        // equipment.
-        const roll = rng();
-        const jitterSeed = (rng() * 0x7fffffff) | 0;
-        if (!(roll > (row.p ?? 1))) {
+        const roll = rng(), jitterSeed = (rng() * 0x7fffffff) | 0;
+        if (row.kit !== 'smoke' && !(roll > (row.p ?? 1))) {
           const kitFn = DECOR_KITS[row.kit];
           const slotFn = SLOTS[row.slot[0]];
           if (kitFn && slotFn) {
@@ -4100,6 +4113,8 @@ export function* attachTankDecorationsSteps(
         });
         const merged = mergeGeometries(nonIndexed, false);
         if (merged) resources.ownGeometry(merged);
+        const socketOwner = new THREE.Object3D();
+        registerSmokeSockets(socketOwner, geos);
         for (const geometry of nonIndexed) resources.releaseGeometry(geometry);
         for (const geometry of geos) resources.releaseGeometry(geometry);
         if (!merged) continue;
@@ -4112,6 +4127,7 @@ export function* attachTankDecorationsSteps(
         mesh.castShadow = false;
         mesh.receiveShadow = true;
         mesh.userData.__decor = true;
+        if (socketOwner.userData.smokeSockets) mesh.userData.smokeSockets = socketOwner.userData.smokeSockets;
         mesh.userData.combatHitboxRole = 'equipment';
         // LOD: decor vanishes at the fleet's greeble horizon
         const lod = new THREE.LOD();

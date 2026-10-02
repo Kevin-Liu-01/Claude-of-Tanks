@@ -43,10 +43,10 @@ assert.match(garageSource,
   /<button type="button" class="eqslot"[\s\S]*<button type="button" class="eqslot empty"/,
   'equipment slots must remain native keyboard-operable controls');
 assert.match(garageSource,
-  /class="cot-compact-equipment-trigger"[\s\S]*aria-label="\$\{t\('garage\.dossier\.equipment\.heading'\)\}"/,
-  'compact equipment affordance labels its selected-tank loadout action');
+  /class="cot-compact-equipment-trigger"[\s\S]*aria-label="\$\{t\('garage\.dossier\.vehicleDossier'\)\}"/,
+  'compact dossier affordance labels its selected-tank details action');
 assert.match(garageSource,
-  /target\?\.closest<HTMLButtonElement>\('\.cot-compact-equipment-trigger'\)[\s\S]*setGaragePanel\(openGaragePanel\(\) === 'equipment'/,
+  /target\?\.closest<HTMLButtonElement>\('\.cot-compact-equipment-trigger'\)[\s\S]*const closing = openGaragePanel\(\) === 'equipment'[\s\S]*setGaragePanel\(closing/,
   'compact equipment affordance opens the selected tank loadout instead of becoming a dead summary icon');
 assert.match(garageSource,
   /\.cot-card \.nm\{position:absolute;left:10px;right:10px;bottom:8px;/,

@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
 import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript';
 import * as THREE from 'three';
@@ -116,25 +115,13 @@ const source = readFileSync(new URL('./sky.ts', import.meta.url), 'utf8');
 const file = ts.createSourceFile('sky.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 const fn = name => file.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === name).getText(file);
 const configuredSource = fn('configureSkyUniforms');
-const hash = text => createHash('sha256').update(text).digest('hex');
-// Frozen before this cache change: every radiance formula and injected shader byte.
-// round 22 (2026-09-18): configureSkyUniforms gained the uNight uniform (night starfield, galactic band
-// and moon added after the dome intensity multiply); the radiance formulas are otherwise unchanged.
-// Earthrise Basin (0e5fc79e2, 2026-09-29) added one more uniform here, uEarth (the lunar map's Earth disc, read only by
-// the night term), and changed nothing else: these four exact edits, each present once, project back onto the frozen
-// text, so the round-22 pin keeps covering every other byte while the edits pin the Earth uniform's own wiring.
-const lunarEarthEdits = [
-  ['  u.uEarth ??= { value: 0 };\n  u.uEarth.value = preset.earth;\n', ''],
-  ['    shader.uniforms.uEarth = u.uEarth;\n', ''],
-  ['uPlanetR, uPlanetTint, uEarth ) * uNight;', 'uPlanetR, uPlanetTint ) * uNight;'],
-  ['uniform vec3 uPlanetTint;\nuniform float uEarth;\\n${NIGHT_SKY_GLSL}', 'uniform vec3 uPlanetTint;\\n${NIGHT_SKY_GLSL}'],
-];
-const preLunarConfiguredSource = lunarEarthEdits.reduce((text, [current, frozen]) => {
-  assert.equal(text.split(current).length, 2, `configureSkyUniforms carries the lunar Earth edit exactly once: ${current.trim()}`);
-  return text.replace(current, () => frozen);
-}, configuredSource);
-assert.equal(hash(preLunarConfiguredSource), 'b3c75f3057f7fa73097cf53db90a3048f2a3a437ecae4a6fd60fdbea5554b435',
-  'every radiance formula and injected shader byte outside the lunar Earth uniform stays frozen');
+// 2026-10-01 (frozen pins retired): the sha256 pin of configureSkyUniforms projected back onto its round-22 text froze
+// every radiance formula and injected shader byte, so any sky redesign failed here. The lunar Earth uniform's wiring is
+// still checked on the current source, and the bake owner below executes the real configureSkyUniforms.
+for (const wiring of ['  u.uEarth ??= { value: 0 };\n  u.uEarth.value = preset.earth;\n', '    shader.uniforms.uEarth = u.uEarth;\n',
+  'uPlanetR, uPlanetTint, uEarth ) * uNight;']) {
+  assert.equal(configuredSource.split(wiring).length, 2, `configureSkyUniforms wires the lunar Earth uniform exactly once: ${wiring.trim()}`);
+}
 const keySource = ['horizonColorKey', 'environmentKey', 'withEnvironmentRenderState', 'disposeEnvironmentSky'].map(fn).join('\n');
 let bakeMethod;
 function visit(node) {

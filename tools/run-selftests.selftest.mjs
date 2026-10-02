@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
@@ -16,6 +16,46 @@ assert.deepEqual(selftestCommand([]).files, Object.values(SELFTEST_SUITES).flat(
 assert.equal(selftestCommand(['core', '--plan']).plan, true);
 assert.throws(() => selftestCommand(['all', '--typo']), /Unknown self-test option/);
 assert.throws(() => selftestCommand(['all', '--changed=src/main.ts']), /never skips required checks/);
+assert.equal(selftestCommand([]).order, 'longest', 'gate P7: longest-first admission is the default');
+assert.equal(selftestCommand(['all', '--order=registry']).order, 'registry');
+assert.throws(() => selftestCommand(['all', '--order=random']), /Unknown self-test option/);
+// Gate P8 (2026-10-01): --only selects registry entries by glob; --shard=i/n runs one of n
+// deterministic shards that together cover the selection exactly once, each in registry order.
+{
+  const registry = Object.values(SELFTEST_SUITES).flat();
+  assert.deepEqual(selftestCommand(['all', '--only=tools/run-selftests*.mjs']).files, ['tools/run-selftests.selftest.mjs']);
+  const vehicles = selftestCommand(['--only=src/vehicles/**']).files;
+  assert.deepEqual(vehicles, registry.filter(file => file.startsWith('src/vehicles/')), 'a tree glob keeps registry order');
+  assert.ok(vehicles.length > 400);
+  assert.deepEqual(selftestCommand(['core', '--only=tools/{capture-lock,selftest-cpu-pool}.selftest.mjs']).files,
+    SELFTEST_SUITES.core.filter(file => ['tools/capture-lock.selftest.mjs', 'tools/selftest-cpu-pool.selftest.mjs'].includes(file)),
+    'a group narrows first');
+  assert.deepEqual(selftestCommand(['--only=tools/capture-lock.selftest.mjs', '--only=tools/capture-command.selftest.mjs']).files,
+    registry.filter(file => file === 'tools/capture-lock.selftest.mjs' || file === 'tools/capture-command.selftest.mjs'));
+  assert.throws(() => selftestCommand(['--only=nowhere/**']), /matched no registered receipt/);
+  for (const durations of [undefined, new Map()]) {
+    const shards = [1, 2, 3, 4, 5, 6].map(index => selftestCommand(['all', `--shard=${index}/6`], durations ? { durations } : undefined));
+    assert.deepEqual(shards.flatMap(shard => shard.files).sort(), [...registry].sort(), 'six shards cover the registry exactly once');
+    for (const shard of shards) assert.deepEqual(shard.files, registry.filter(file => shard.files.includes(file)), 'registry order inside a shard');
+    assert.equal(new Set(shards.map(shard => shard.shard.partition)).size, 1, 'every shard job derives the same partition');
+    assert.equal(shards[0].shard.selected, registry.length);
+    if (!durations) {
+      const loads = shards.map(shard => shard.shard.loadMs);
+      assert.ok(Math.max(...loads) / Math.min(...loads) < 1.25, `the committed snapshot balances six shards (${loads.join(', ')} ms)`);
+    } else {
+      const counts = shards.map(shard => shard.files.length);
+      assert.ok(Math.max(...counts) - Math.min(...counts) <= 8, 'without a snapshot the shards balance by count');
+    }
+  }
+  const narrowed = selftestCommand(['--only=src/ui/**', '--shard=2/3']);
+  assert.ok(narrowed.files.every(file => file.startsWith('src/ui/')), '--shard partitions the --only selection');
+  assert.throws(() => selftestCommand(['--shard=0/3']), /--shard must be i\/n/);
+  assert.throws(() => selftestCommand(['--shard=1/3', '--shard=2/3']), /Unknown self-test option/, 'one shard per invocation');
+  assert.equal(selftestCommand(['--write-durations']).writeDurations, true);
+  for (const args of [['pre', '--write-durations'], ['--write-durations', '--only=src/**'], ['--write-durations', '--shard=1/2'], ['--write-durations', '--plan']]) {
+    assert.throws(() => selftestCommand(args), /records the whole registry/);
+  }
+}
 assert.ok(SELFTEST_FRESH_FILES.includes('server/match/tickCost.selftest.mjs'));
 assert.ok(SELFTEST_FRESH_FILES.includes('server/match/loop.selftest.mjs'));
 assert.ok(SELFTEST_FRESH_FILES.includes('src/mp/wire/wireFuzz.selftest.mjs'));
@@ -134,6 +174,26 @@ assert.equal(await runSelftestSuite('fair', ['a', 'b', 'long-child', 'c', 'brows
 assert.deepEqual(fair.events, ['[selftests] fair: 6 files', 'acquire', 'a', 'b',
   'release', 'acquire', 'long-child', 'release', 'acquire', 'c',
   'release', 'browser', 'acquire', 'd', '[selftests] PASS fair', 'release']);
+// Gate P5 (2026-10-01): the serial runner renews an expired batch in place while nobody waits in
+// the capture queue, and drains exactly as before when someone does.
+for (const waiters of [0, 1]) {
+  const serial = fixture();
+  let serialClock = 0;
+  const serialRunFile = serial.options.runFile;
+  serial.options.now = () => serialClock;
+  serial.options.lock.waiting = () => waiters;
+  serial.options.runFile = async (file) => {
+    const result = await serialRunFile(file);
+    serialClock += file === 'long-child' ? 120_000 : 30_000;
+    return result;
+  };
+  assert.equal(await runSelftestSuite('serial-p5', ['a', 'b', 'long-child', 'c', 'browser', 'd'], serial.options), 0);
+  assert.deepEqual(serial.events, waiters ? ['[selftests] serial-p5: 6 files', 'acquire', 'a', 'b',
+    'release', 'acquire', 'long-child', 'release', 'acquire', 'c',
+    'release', 'browser', 'acquire', 'd', '[selftests] PASS serial-p5', 'release'] : ['[selftests] serial-p5: 6 files',
+    'acquire', 'a', 'b', 'long-child', 'c', 'release', 'browser', 'acquire', 'd', '[selftests] PASS serial-p5', 'release'],
+  waiters ? 'a queued waiter: every expired batch drains and re-queues' : 'no waiter: expired batches renew in place');
+}
 const boundaryFail = fixture({ failAt: 'b' });
 let failureClock = 0;
 const failureRunFile = boundaryFail.options.runFile;
@@ -293,4 +353,28 @@ try {
   assert.notEqual(changed.status, 0);
   assert.match(changed.stderr, /changed source still executes/);
 } finally { rmSync(cacheFixture, { recursive: true, force: true }); }
+// Gate P13 (2026-10-01): --logs sends each receipt's stdout and stderr to its own file through a
+// descriptor (never a pipe), and the gate can run a receipt in another worktree through cwd.
+const logFixture = mkdtempSync(join(tmpdir(), 'cot-receipt-logs-'));
+try {
+  const signals = new EventEmitter(), child = new EventEmitter();
+  child.kill = () => true;
+  let launched;
+  const logFile = join(logFixture, 'nested', 'src', 'x.selftest.mjs.log');
+  const pending = runSelftestFile('src/x.selftest.mjs', { signals, cwd: logFixture, logFile,
+    spawnProcess: (...args) => { launched = args; return child; } });
+  assert.equal(launched[2].cwd, logFixture);
+  assert.equal(launched[2].stdio[0], 'inherit');
+  assert.equal(typeof launched[2].stdio[1], 'number', 'stdout goes to a file descriptor, not a pipe');
+  assert.equal(launched[2].stdio[1], launched[2].stdio[2], 'stderr shares the receipt log');
+  child.emit('close', 0);
+  assert.deepEqual(await pending, { status: 0, error: undefined });
+  const script = join(logFixture, 'speaks.mjs');
+  writeFileSync(script, "console.log('to stdout'); console.error('to stderr'); process.exitCode = 3;\n");
+  const realLog = join(logFixture, 'speaks.log');
+  assert.deepEqual(await runSelftestFile(script, { logFile: realLog }), { status: 3, error: undefined });
+  assert.equal(readFileSync(realLog, 'utf8'), 'to stdout\nto stderr\n', 'a fresh child writes both streams to its log');
+  assert.equal(selftestCommand(['--logs=/tmp/receipt-logs']).logs, '/tmp/receipt-logs');
+  assert.throws(() => selftestCommand(['--write-durations', '--logs=/tmp/x']), /records the whole registry/);
+} finally { rmSync(logFixture, { recursive: true, force: true }); }
 console.log('run-selftests: separate execution/FIFO timings and source-invalidated fresh-process compile caching pass');

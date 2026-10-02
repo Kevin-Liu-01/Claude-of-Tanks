@@ -1,12 +1,15 @@
 // Generate boot-safe metadata modules from the two legacy files that still
-// combine roster specs with large Three.js builder implementations.
+// combine roster specs with large Three.js builder implementations. The
+// source is each file's own spec table: the registry itself holds the
+// generated rows on every path (the legacy files import them), so reading it
+// here would compare the generated output with itself.
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-await import('../src/vehicles/modern1.ts');
-await import('../src/vehicles/modern2.ts');
-const { TANK_SPECS } = await import('../src/vehicles/specs.ts');
+const { MODERN1_SPECS } = await import('../src/vehicles/modern1.ts');
+const { MODERN2_SPECS } = await import('../src/vehicles/modern2.ts');
+const SOURCES = { modern1: MODERN1_SPECS, modern2: MODERN2_SPECS };
 
 const check = process.argv.includes('--check');
 const waves = [
@@ -42,7 +45,7 @@ function assertSerializable(value, path = 'spec') {
 
 function moduleSource({ name, ids, delisted }) {
   const specs = Object.fromEntries(ids.map((id) => {
-    const spec = TANK_SPECS[id];
+    const spec = SOURCES[name][id];
     if (!spec) throw new Error(`Missing ${name} spec ${id}`);
     assertSerializable(spec, id);
     return [id, spec];

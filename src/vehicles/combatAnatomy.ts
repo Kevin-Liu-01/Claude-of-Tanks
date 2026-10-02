@@ -1,3 +1,4 @@
+import { auxiliaryCapabilities, type AuxiliaryInventory } from './auxiliaryInventory.ts';
 // Fleet-wide combat-anatomy finalizer. It reconciles authored armor/module/
 // crew coordinates with measured first-party geometry receipts, then adds
 // only the extra internal systems that have real simulation behavior.
@@ -48,6 +49,7 @@ interface ArmorPlate {
   era?: EraProtection | null;
   moduleLink?: string | null;
   gunFollow?: boolean;
+  roofGunFollow?: boolean;
 }
 
 interface AnatomyShapeEllipsoid {
@@ -74,6 +76,7 @@ interface AnatomyShapeCylinder {
 type AnatomyShape = AnatomyShapeEllipsoid | AnatomyShapeCapsule | AnatomyShapeCylinder;
 
 interface AnatomyVolume extends Bounds {
+  roofGunFollow?: boolean;
   turretLocal?: boolean;
   gunFollow?: boolean;
   external?: boolean;
@@ -112,6 +115,7 @@ interface CollisionCell extends Bounds {
 
 interface ArmorAnatomy {
   externalWeapons?: ExternalWeaponStock[];
+  roofGun?: AuxiliaryInventory['guns'][number];
   turretPivot: Vec3;
   hullPlates: ArmorPlate[];
   turretPlates: ArmorPlate[];
@@ -1509,6 +1513,14 @@ export function finalizeCombatAnatomy(
   applyModuleLayoutMetadata(spec, layout, calibration);
   addDerivedModules(spec, layout, calibration);
   assignCollisionOutputs(armor, calibration);
+  const roofGun = auxiliaryCapabilities(spec)?.guns[0];
+  if (roofGun?.collisionParts?.length) {
+    armor.roofGun = roofGun;
+    const parts = roofGun.collisionParts.map(part => ({min: [...part.min] as Vec3, max: [...part.max] as Vec3}));
+    const min = [0, 1, 2].map(axis => Math.min(...parts.map(part => part.min[axis]))) as Vec3;
+    const max = [0, 1, 2].map(axis => Math.max(...parts.map(part => part.max[axis]))) as Vec3;
+    (armor.modules ||= []).push({module: 'roofGun', min, max, parts, external: true, roofGunFollow: true});
+  }
   addPreciseInternalShapes(armor);
   Object.defineProperty(spec, FINALIZED, { value: true, enumerable: false });
   return spec;

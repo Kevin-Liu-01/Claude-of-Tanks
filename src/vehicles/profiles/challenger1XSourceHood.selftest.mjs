@@ -1,7 +1,6 @@
 // Source-space regression: undo only the owner-directed 1.10 uniform size.
 // Installed metre bounds/unit rigs are checked by vehicleSize.selftest.
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
@@ -58,10 +57,8 @@ function checkReturns(objects) {
   close(ray(objects, [.5248, 1.85, 1.9], [0, 1, 0])?.point.y, 1.9304913092459688, 'source inboard cap underside', .002);
   close(ray(objects, [.72, 2.05, 2.124], [0, -1, 0])?.point.y, 1.9178771580913694, 'source diagonal cap crown', .003);
 }
-function updateHash(h, g) {
-  for (const key of Object.keys(g.attributes).sort()) { const a = g.attributes[key].array; h.update(key).update(Buffer.from(a.buffer, a.byteOffset, a.byteLength)); }
-  if (g.index) { const a = g.index.array; h.update(Buffer.from(a.buffer, a.byteOffset, a.byteLength)); }
-}
+// The frozen digest of every pre-existing authored primitive is retired: whole-tank change detection of
+// challenger1_x is the fleet geometry ledger's. The omit-build counterfactual stays a live same-run baseline.
 function crosses(a, others) {
   const p = a.geometry.attributes.position, ix = a.geometry.index, count = ix?.count ?? p.count;
   for (let i = 0; i < count; i += 3) for (let j = 0; j < 3; j++) {
@@ -84,12 +81,11 @@ function contacts(parts, base) {
   assert.deepEqual(parts.filter((_, i) => !connected.has(i)).map(p => p.name), [], 'every hood part has an actual surface-crossing attachment path to permanent geometry');
 }
 for (const quality of ['high', 'low']) {
-  const h = createHash('sha256'); let newCount = 0;
+  let newCount = 0;
   registerProfiledBuilders({ challenger1_x: p => buildChallenger1X(new Proxy(p, { get(o, key) {
     if (['add', 'addEquipment', 'addCupola', 'addMudguard'].includes(key)) return (...args) => {
       const gi = key === 'addMudguard' ? 2 : 1;
       if (args[gi].userData.challenger1SourceHood) newCount++;
-      else { h.update(key).update(JSON.stringify(args.slice(0, gi))).update(JSON.stringify(args.slice(gi + 1))); updateHash(h, args[gi]); }
       return o[key](...args);
     }; return Reflect.get(o, key);
   } })) });
@@ -110,11 +106,6 @@ for (const quality of ['high', 'low']) {
   } });
   try {
     assert.equal(newCount, 9); assert.equal(parts.length, 9);
-    // 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is
-    // that we save on triangles"): the supplied gun's sixteen-facet mouth is solid, closed at the source
-    // tip, and its dark stock disc at floor+.025 is gone (challenger1XSuppliedGun); every other
-    // pre-existing primitive is the same. Superseded: e456a8f4009c749032ffbf23adb3f2d5b0a299e2308e0475c4479f7ece7747c8.
-    assert.equal(h.digest('hex'), '777742006e4ac88c1fe348409aeb7353142a5e9a4b2610dc8719c31bb2b89b5e', 'every pre-existing authored primitive buffer, placement and ownership is immutable');
     actual.root.scale.setScalar(1 / 1.10); before.root.scale.setScalar(1 / 1.10);
     actual.root.updateMatrixWorld(true); before.root.updateMatrixWorld(true);
     const all = meshes(actual.root), base = meshes(before.root);
@@ -139,4 +130,4 @@ for (const quality of ['high', 'low']) {
     registerProfiledBuilders({ challenger1_x: buildChallenger1X });
   }
 }
-console.log('challenger1XSourceHood: high/low source surfaces and real air, positive geometric attachment graph, immutable old primitive buffers and moving equipment ownership pass');
+console.log('challenger1XSourceHood: high/low source surfaces and real air, positive geometric attachment graph and moving equipment ownership pass');

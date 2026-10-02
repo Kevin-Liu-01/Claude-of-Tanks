@@ -1,10 +1,11 @@
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Independent, seated source-file fittings. Hollow rims and channels have
 // physical walls; source material names are not treated as mechanical owners.
 import * as THREE from 'three';
 import { KIT, FITTINGS } from './kit.ts';
 import { ARIETE_SUPPLIED_X_DATUMS as D, arieteSourceTurret as add } from './arieteXSuppliedFrame.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-const { box, cylX, cylY, cylZ, torus } = KIT;
+const { box, cylX, cylY, torus } = KIT;
 
 function tube(radius: number, inner: number, height: number, segments = 32): THREE.BufferGeometry {
   return new THREE.LatheGeometry([[inner, -height / 2], [radius, -height / 2],
@@ -110,7 +111,7 @@ function launcher(P: TankBuilderPort, side: -1 | 1, z: number, angle: number): v
   const root = new THREE.Vector3(side * 1.177, 1.799, z);
   const axis = new THREE.Vector3(side * Math.sin(angle), .07, Math.cos(angle)).normalize();
   const rotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis);
-  const stock = tube(.045, .032, .200, 20).applyQuaternion(rotation);
+  const stock = markSmokeTube(tube(.045, .032, .200, 20), [0, 1, 0], true).applyQuaternion(rotation);
   add(P, 'turretDetail', stock, root.x, root.y, root.z);
   const end = root.clone().addScaledVector(axis, -.093);
   add(P, 'turretDark', cylY(.0325, .0325, .010, 20).applyQuaternion(rotation), end.x, end.y, end.z);

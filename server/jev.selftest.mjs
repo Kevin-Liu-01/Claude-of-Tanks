@@ -150,6 +150,7 @@ function fixture(overrides = {}) {
     ['fire_b1', 'focus', 'posture_b1', 'posture_b2', 'target_b1', 'threat_b1', 'threat_b2'].sort(),
     'posture + threat per bot, target + fire only for a bot that sees an enemy, one team focus with objectives');
   assert.deepEqual(Object.keys(questions.posture_b1.criteria), [...JEV_POSTURES]);
+  assert.match(questions.target_b1.instructions, /Human and bot opponents have equal priority/);
   assert.deepEqual(Object.keys(questions.target_b1.criteria), ['e1', 'e2', JEV_TARGET_NONE], 'the target options are exactly the enemies the bot sees plus none');
   assert.deepEqual(Object.keys(questions.focus.criteria), ['zone_a', JEV_FOCUS_NONE]);
   assert.equal(questions.threat_b1.criteria.length, 4);

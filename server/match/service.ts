@@ -4,7 +4,9 @@
  * an HTTP surface (`/healthz` readiness, `/metrics` JSON). Admission: the
  * first frame must be a HELLO carrying a seat token signed by the room
  * service; the token names the room, so the service routes the socket to its
- * actor. Origin allowlist, payload and rate bounds, graceful drain.
+ * actor. Origin allowlist, payload and rate bounds, graceful drain. The
+ * service loads every vehicle's combat anatomy once at start (the spec-only
+ * authority fleet), so any start request's roster is admitted synchronously.
  */
 import http from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
@@ -17,6 +19,7 @@ import { toUint8Array } from '../../src/mp/wire/bytes.ts';
 import type { ClientLink } from './link.ts';
 import { createLogger, type Logger } from './log.ts';
 import { createMatchActor, type MatchActor, type MatchActorOptions, type MatchActorStats } from './matchActor.ts';
+import { ensureAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
 import { createLocalRoomService, type LocalRoomOptions, type LocalRoomService } from './localRoomService.ts';
 import { verifySeatToken } from './seatToken.ts';
 import { createMatchControl } from './control.ts';
@@ -251,6 +254,7 @@ export async function createMatchService({
     throw new TypeError('defaultBattleLimitS must be 10..3600 seconds');
   }
   const origins = parseAllowedOrigins(allowedOrigins);
+  await ensureAuthorityFleet();
   const actors = new Map<string, MatchActor>();
   const startedAt = wallClock();
   const counters = { connections: 0, rejectedUpgrades: 0, rejectedHellos: 0 };

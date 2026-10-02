@@ -39,6 +39,7 @@ type Vec3Tuple = readonly [number, number, number];
 type HeightSampler = (x: number, z: number) => number;
 
 export interface MovementGunSpec {
+  shells?: readonly {name?: string; guided?: boolean; launcherTubes?: number}[];
   fixedLaunchCanisters?: boolean;
   launcherMuzzles?: readonly LauncherMuzzle[];
   aimTimeS: number;
@@ -271,6 +272,9 @@ interface DriveStep {
 }
 
 export interface TankState {
+  /** Independent roof station pose, shared by firing and its damage volume. */
+  roofGunYaw?: number;
+  roofGunPitch?: number;
   pos: Vector3;
   yaw: number;
   speed: number;

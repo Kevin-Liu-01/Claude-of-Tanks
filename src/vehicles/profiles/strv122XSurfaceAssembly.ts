@@ -16,7 +16,7 @@ export const STRV122_CHEEK_SECTIONS:readonly(readonly[number,number,number,numbe
 ];
 function cheek(z:number):readonly[number,number] {
   const rows=STRV122_CHEEK_SECTIONS;
-  const i=Math.max(0,rows.findIndex((row,n)=>n<rows.length-1&&z<=rows[n+1][0]));
+  const i=Math.max(0,rows.findIndex((_row,n)=>n<rows.length-1&&z<=rows[n+1][0]));
   const a=rows[i],b=rows[i+1],t=(z-a[0])/(b[0]-a[0]);
   return [a[1]+(b[1]-a[1])*t,a[3]+(b[3]-a[3])*t];
 }

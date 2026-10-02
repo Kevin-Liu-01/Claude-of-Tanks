@@ -424,7 +424,3 @@ export function auditStructureCollision(
     : auditMovementCollision(buckets, dimensions, structureId);
 }
 
-export const structureCollisionLimits = Object.freeze({
-  maxMovementFootprints: MAX_MOVEMENT_FOOTPRINTS,
-  maxRayFootprints: MAX_RAY_FOOTPRINTS,
-});

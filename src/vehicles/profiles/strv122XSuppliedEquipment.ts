@@ -9,7 +9,7 @@ import { addStrv122XSuppliedCupola } from './strv122XSuppliedCupola.ts';
 import { strvSourceTurret as add,
   type StrvPoint } from './strv122XSuppliedFrame.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-const {box,cylY,cylZ,torus} = KIT;
+const {box,cylY,torus} = KIT;
 
 function bar(a:StrvPoint,b:StrvPoint,r:number):THREE.BufferGeometry {
   const from=new THREE.Vector3(...a),to=new THREE.Vector3(...b);

@@ -633,7 +633,7 @@ console.log('[18] round 62: a bot without contact searches on reachable legs and
     tick(ctl, bot, 200, () => {
       const d = ctl.debugInfo();
       if (d.searching && (!legs.length || legs[legs.length - 1].n !== d.searchLegs)) {
-        legs.push({ n: d.searchLegs, kind: d.searchKind, x: d.searchGoalX, z: d.searchGoalZ, wps: d.wpCount, t: +d.playerBudgetT });
+        legs.push({ n: d.searchLegs, kind: d.searchKind, x: d.searchGoalX, z: d.searchGoalZ, wps: d.wpCount });
       }
       if (d.searching && bot.input.throttle > 0.25) drove = true;
     });

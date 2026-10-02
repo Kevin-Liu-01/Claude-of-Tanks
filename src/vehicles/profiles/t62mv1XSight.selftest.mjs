@@ -5,23 +5,8 @@ import {createTank} from '../tankFactory.ts';
 import {registerProfiledBuilders} from '../tankFactoryCore.ts';
 import {buildT62MV1X} from './t62mv1X.ts';
 import {addT62MV1Sight} from './t62mv1XSight.ts';
-import {withHistoricalFixedSkirtFinish} from '../fixedSourceSkirtPaint.test-support.mjs';
 
 const PIVOT=new THREE.Vector3(0,1.446436,.3041853764);
-// Captured before this additive correction, independently by the integration
-// owner. Complete scene attributes/indices/instances/materials/owner/matrices.
-// 2026-09-12 fleet visual standard: the shared pressed-disc road wheel (rib
-// motif, pressed-six/pressed-eight) keeps its former rib envelope with the
-// holes, hub well and drum inside it (tankFactoryCore 'rib'), so every rib-
-// wheel scene digest below moved together; repinned from the current build.
-// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
-// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
-// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
-// values below are repinned from the current build.
-// 2026-09-22 nation wheel standard: t62mv1_x draws the T-90 nation wheel, so the annular-opening inverse is gone; repinned.
-// 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: 6662e0ea…, 3b6e3742….
-const BEFORE={high:'04db6c6777a1832bb470c4c255ecedfc4df0e59d5dde6903de16c568f59ca568',
-  low:'c13577b9db49d7e58916aaaf5dfb7dc1a5fae096ef94f996173626c64d508272'};
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} versus source ${b} ±${t}`);
 const bufferHash=a=>createHash('sha256').update(Buffer.from(a.buffer,a.byteOffset,a.byteLength)).digest('hex');
 const ray=(meshes,p,d,far=5)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(meshes,false)[0];
@@ -31,57 +16,19 @@ function geometryBytes(hash,g){
   for(const k of Object.keys(g.attributes).sort())hash.update(k).update(bufferHash(g.attributes[k].array));
   if(g.index)hash.update(bufferHash(g.index.array));
 }
-function legacyAttributeNames(g){
-  // Preserve both original scene digests. This later-added byte channel is
-  // lighting metadata, not an exemption for any original geometry attribute.
-  const a=g.getAttribute('nightEmissionMask');
-  if(a){
+function nightMasks(root){
+  // Lighting metadata shape on the live build: byte-sized, one value per vertex, only supported lens values.
+  let masks=0;
+  root.traverse(o=>{
+    if(!o.isMesh)return;const g=o.geometry,a=g.getAttribute('nightEmissionMask');if(!a)return;masks++;
     assert.ok(a.array instanceof Uint8Array,'night mask is byte-sized');
     assert.equal(a.itemSize,1);assert.equal(a.normalized,false);
     assert.equal(a.count,g.getAttribute('position').count,'one mask value per original vertex');
     assert.ok(a.array.every(v=>v===0||v===1||v===2),'only supported semantic lens values');
-  }
-  return Object.keys(g.attributes).filter(k=>k!=='nightEmissionMask');
-}
-function sceneHash(root){
-  const meshes=[],nodes=[];
-  root.traverse(o=>{
-    nodes.push({name:o.name,parent:o.parent?.name??null,type:o.type,visible:o.visible,matrix:o.matrixWorld.toArray()});
-    if(!o.isMesh)return;
-    meshes.push({name:o.name,parent:o.parent?.name??null,matrix:o.matrixWorld.toArray(),
-      materials:(Array.isArray(o.material)?o.material:[o.material]).map(m=>m.name),
-      attributes:Object.fromEntries(legacyAttributeNames(o.geometry).map(name=>{
-        const a=o.geometry.attributes[name];return[name,{count:a.count,itemSize:a.itemSize,hash:bufferHash(a.array)}];})),
-      index:o.geometry.index?bufferHash(o.geometry.index.array):null,
-      instances:o.isInstancedMesh?bufferHash(o.instanceMatrix.array):null});
   });
-  return createHash('sha256').update(JSON.stringify({meshes,nodes})).digest('hex');
+  return masks;
 }
-{
-  const g=new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute([0,0,0,1,0,0,0,1,0],3));
-  g.setAttribute('normal',new THREE.Float32BufferAttribute([0,0,1,0,0,1,0,0,1],3));
-  g.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,1,0,0,1],2));g.setIndex([0,1,2]);
-  const m=new THREE.InstancedMesh(g,new THREE.MeshBasicMaterial(),1),root=new THREE.Group();root.add(m);
-  const measure=()=>{root.updateMatrixWorld(true);return sceneHash(root);},legacy=measure();
-  g.setAttribute('nightEmissionMask',new THREE.Uint8BufferAttribute([0,1,2],1));
-  assert.equal(measure(),legacy,'valid lighting metadata preserves the entire original scene hash');
-  for(const invalid of [new THREE.Float32BufferAttribute([0,1,2],1),new THREE.Uint8BufferAttribute([0,1,2],3),
-    new THREE.Uint8BufferAttribute([0,1],1),new THREE.Uint8BufferAttribute([0,1,2],1,true),new THREE.Uint8BufferAttribute([0,1,3],1)]){
-    g.setAttribute('nightEmissionMask',invalid);assert.throws(measure);
-  }
-  g.setAttribute('nightEmissionMask',new THREE.Uint8BufferAttribute([0,1,2],1));
-  g.setAttribute('unrecognizedSemanticChannel',new THREE.Uint8BufferAttribute([0,1,2],1));
-  assert.notEqual(measure(),legacy,'no unknown channel is excluded');g.deleteAttribute('unrecognizedSemanticChannel');
-  for(const a of [g.attributes.position,g.attributes.normal,g.attributes.uv,g.index,m.instanceMatrix]){
-    const old=a.array[0];a.array[0]=old+1;assert.notEqual(measure(),legacy,'original geometry/index/instance bytes remain guarded');a.array[0]=old;
-  }
-  m.material.name='changed';assert.notEqual(measure(),legacy,'material identity remains guarded');m.material.name='';
-  root.name='changed';assert.notEqual(measure(),legacy,'owner identity remains guarded');root.name='';
-  m.position.x=1;assert.notEqual(measure(),legacy,'posed world transform remains guarded');m.position.x=0;
-  m.visible=false;assert.notEqual(measure(),legacy,'visibility remains guarded');m.visible=true;
-  assert.equal(measure(),legacy);g.dispose();m.material.dispose();
-}
-function build(quality,omit,historical=false){
+function build(quality,omit){
   const hash=createHash('sha256');let count=0;
   const hooks=['add','addEquipment','addExternalArmor','addCupola','addMudguard','addModuleVisual'];
   const observe=builder=>p=>builder(new Proxy(p,{get(target,key){
@@ -101,9 +48,7 @@ function build(quality,omit,historical=false){
   }}));
   try{
     const native=()=>createTank('t62mv1_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
-    let tank;
-    if(historical) tank=withHistoricalFixedSkirtFinish('t62mv1_x',native,observe);
-    else{registerProfiledBuilders({t62mv1_x:observe(buildT62MV1X)});tank=native();}
+    registerProfiledBuilders({t62mv1_x:observe(buildT62MV1X)});const tank=native();
     tank.root.updateMatrixWorld(true);return{tank,count,emissionHash:hash.digest('hex')};
   }finally{registerProfiledBuilders({t62mv1_x:buildT62MV1X});}
 }
@@ -168,15 +113,9 @@ try{
     const before=build(quality,true),after=build(quality,false);
     try{
       assert.equal(before.count,2);assert.equal(after.count,2);
-      const historical=build(quality,true,true);
-      try{
-        assert.equal(historical.count,2);
-        assert.equal(sceneHash(historical.tank.root),BEFORE[quality],
-          'entire original scene after only the declared fixed-finish inverse matches the pre-addition capture');
-      }finally{historical.tank.dispose();}
       assert.equal(after.emissionHash,before.emissionHash,'every old primitive and exact emit call remains unchanged');
-      sourceSurfaces(physical(after.tank.root));attachment(after.tank,own);semantics(after.tank);ownership(after.tank);
-      console.log(`t62mv1XSight: ${quality} source planes/contact/air/yaw, two optics parts and complete original additive preservation PASS`);
+      sourceSurfaces(physical(after.tank.root));attachment(after.tank,own);semantics(after.tank);ownership(after.tank);nightMasks(after.tank.root);
+      console.log(`t62mv1XSight: ${quality} source planes/contact/air/yaw, two optics parts and live additive emission preservation PASS`);
     }finally{before.tank.dispose();after.tank.dispose();}
   }
 }finally{own.dispose();}

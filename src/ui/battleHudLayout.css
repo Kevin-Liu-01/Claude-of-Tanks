@@ -1,6 +1,6 @@
 /* One event-measured lane per side: rosters above, driving controls below.
    These selectors intentionally outrank battle-lazy injected component CSS. */
-body[data-cot-battle-layout][data-cot-width][data-cot-height]{--hud-side-width:min(300px,calc(50vw - 24px));--hud-feed-width:min(240px,calc(50vw - 24px))}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]{--hud-side-width:min(300px,calc(50vw - 24px));--hud-feed-width:min(240px,calc(50vw - 24px));--hud-message-width:min(400px,calc(50vw - 24px))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-drive{left:184px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-minimap{
   max-width:32vh;max-height:32vh;
@@ -25,11 +25,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud .cot-si-t
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-toast{flex:0 0 26px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud[data-toast-rows='0'] .cot-si-toasthost{visibility:hidden}
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud[data-toast-rows='1'] .cot-si-toast:nth-last-child(n+2),
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud[data-toast-rows='2'] .cot-si-toast:nth-last-child(n+3){display:none}
+body[data-cot-battle-layout] :is(.cot-si-toast,.cot-kf)[hidden]{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-room-chat{
   left:12px;top:var(--hud-chat-top);bottom:auto;transform:none;
-  width:var(--hud-side-width);min-width:0;max-height:var(--hud-chat-height);
+  width:var(--hud-message-width);min-width:0;max-height:var(--hud-chat-height);
   grid-template-rows:minmax(0,1fr) auto;gap:4px;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-room-chat-log{
@@ -82,6 +81,11 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 /* Spectating has no driving/weapon actions. Keep just navigation and the
    spectator strip at the floor, leaving chat above it. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-spectating :is(.cot-dp,.cot-drive,.cot-touch .joy,.cot-touch .round){display:none!important}
+/* A short mouse-driven window has no touch controls to clear: keep the
+   spectator identity and its Escape hint below the battlefield. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height='short']:not(.cot-touch-layout)[data-cot-orientation='landscape'] .cot-spec{
+  bottom:max(8px,env(safe-area-inset-bottom));
+}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-spec{
   left:12px;right:auto;bottom:12px;width:calc(100vw - 24px);transform:none;
 }
@@ -155,7 +159,7 @@ body[data-cot-battle-layout] .cot-mode-status .mv{grid-column:2;grid-row:2;white
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-touch .mobile-chrome{top:calc(var(--hud-objective-bottom,64px) + 8px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-killfeed{display:contents}
 body[data-cot-battle-layout] .cot-kill-lane{
-  position:absolute;z-index:var(--hud-layer-status);left:0;top:var(--hud-kill-left-top);width:var(--hud-feed-width);
+  position:absolute;z-index:var(--hud-layer-status);left:0;top:var(--hud-kill-left-top);width:var(--hud-message-width);
   max-height:var(--hud-kill-left-height);display:flex;flex-direction:column;gap:3px;overflow:hidden;
 }
 body[data-cot-battle-layout] .cot-kill-lane.r{left:auto;right:0;top:var(--hud-kill-right-top);max-height:var(--hud-kill-right-height)}
@@ -196,14 +200,15 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.icon-grid
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.l{--roster-height:var(--hud-roster-left-height,28vh)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.r{--roster-height:var(--hud-roster-right-height,28vh)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .cot-ear-rows{
-  display:grid;grid-template-rows:repeat(var(--roster-count,7),minmax(0,1fr));
+  display:grid;grid-template-rows:repeat(var(--roster-count,7),minmax(0,var(--roster-row-height,24px)));align-content:start;
   height:calc(var(--roster-height) - 22px);overflow:hidden;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .cot-er{min-height:0;overflow:hidden;padding-block:0}
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .rosters-expanded .cot-ear{width:min(320px,calc(50vw - 184px))}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .rosters-expanded .cot-ear{--roster-row-height:30px;width:min(320px,calc(50vw - 184px))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .compact-shot-report .cot-si-rows{display:none}
-/* The diagram layers share a contained viewport, including their hit overlays. */
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost{overflow:hidden}
+/* Clip diagrams inside the card, not its outer shadow at the lane edges.
+   Card sizing below still keeps its contents inside the measured HUD budget. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost{overflow:visible}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-card{max-height:100%;min-height:0;display:flex;flex-direction:column;flex-shrink:1}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-body{min-height:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag{
@@ -305,4 +310,18 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-net .ping{display:none}
 @media (max-width:340px) and (orientation:portrait){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .autoaim{width:44px;height:44px}
+}
+
+/* Keep long status copy readable without consuming the control strip below. */
+@media (max-height:550px), (max-width:480px){
+  body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-alert{
+    font-size:9px;line-height:1.2;letter-spacing:.035em;padding:4px 12px;gap:4px;min-height:28px;
+  }
+  body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-alert-icon,
+  body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-alert-icon svg{width:12px;height:12px}
+}
+
+@media (max-height:550px){
+  body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-sixth{min-height:32px;padding-block:4px;font-size:10px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-sixth .sub{display:none}
 }

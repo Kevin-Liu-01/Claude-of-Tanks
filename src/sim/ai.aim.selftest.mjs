@@ -94,7 +94,7 @@ const c = runScenario('flat-control', flat, [0, 0], [0, 150]);
 // cannot silently widen it back into the old wallhack:
 //   D) 0 shots and 1 shot from a concealment-hidden player: NEVER target.
 //   E) 2 shots (hardClaim, personal ray blocked): target claimed, but the
-//      chase intel stays at the notifyPlayerFired MUZZLE stamp while the
+//      chase intel stays at the notifyEnemyFired MUZZLE stamp while the
 //      player moves unspotted — the live position must not leak.
 //   F) control: a sim-SPOTTED player is acquired through the normal scan.
 // ---------------------------------------------------------------------------
@@ -127,7 +127,7 @@ function acquisitionScenario(name, { spotted, shots, blockRay, moveAfter, startT
   step(1.0);                       // settle: no intel yet
   const preShot = ai.debugInfo().targetId;
   for (let s = 0; s < shots; s++) {
-    ai.notifyPlayerFired(player, 0); // rank 0 = nearest earshot enemy
+    ai.notifyEnemyFired(player); // rank 0 = nearest earshot enemy
     step(0.5);
   }
   if (moveAfter) {
@@ -137,7 +137,6 @@ function acquisitionScenario(name, { spotted, shots, blockRay, moveAfter, startT
   }
   const d = ai.debugInfo();
   console.log(`${name}: preShotTarget=${preShot} target=${d.targetId} ` +
-    `locked=${d.playerLocked} shotsInWindow=${d.playerShotsInWindow} ` +
     `lastSeen=(${d.lastSeenX.toFixed(1)},${d.lastSeenZ.toFixed(1)}) muzzle=(${muzzle.x},${muzzle.z})`);
   return { preShot, d, muzzle, player };
 }
@@ -154,7 +153,6 @@ const req = (cond, label) => {
     { spotted: false, shots: 1, blockRay: false, moveAfter: false });
   req(preShot === null, 'hidden + 0 shots: no target');
   req(d.targetId === null, 'hidden + 1 shot: still no target (no first-flash wallhack)');
-  req(d.playerLocked === false, 'hidden + 1 shot: no return-fire lock');
 }
 
 // E) hidden player, 2 shots, personal ray blocked. Bot philosophy r1 (owner
@@ -166,9 +164,8 @@ const req = (cond, label) => {
     { spotted: false, shots: 2, blockRay: true, moveAfter: true });
   req(d.targetId === null, 'suspect rule (2 shots, unspotted): no target claimed');
   req(d.suspectId === 'player', 'the unseen repeat shooter is held as a suspect');
-  req(d.playerLocked === false, 'unspotted shooter: no lock');
   req(Math.hypot(d.lastSeenX - muzzle.x, d.lastSeenZ - muzzle.z) < 1e-6,
-    'suspect move-to-contact intel == notifyPlayerFired muzzle stamp');
+    'suspect move-to-contact intel == notifyEnemyFired muzzle stamp');
   req(Math.hypot(d.lastSeenX - player.state.pos.x, d.lastSeenZ - player.state.pos.z) > 50,
     'suspect intel != live position while hidden');
 }

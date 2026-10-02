@@ -7,7 +7,7 @@ const check=process.argv.includes('--check');
 const rows={}; const bad=[];const missing=[];
 const round=a=>a.map(x=>+x.toFixed(4));
 for(const id of ALL_TANK_IDS){
- const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true});
+ const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,decor:true});
  tank.root.updateMatrixWorld(true);
  const hull=tank.root.getObjectByName('rig_hull'), turret=tank.root.getObjectByName('rig_turret');
  const smoke=[], guns=[];
@@ -15,17 +15,31 @@ for(const id of ALL_TANK_IDS){
   let owner='hull', parent=o; while(parent){if(parent===turret)owner='turret';parent=parent.parent;}
   const rig=owner==='turret'?turret:hull;
   const m=new THREE.Matrix4().copy(rig.matrixWorld).invert().multiply(o.matrixWorld);
+  // Authority articulates an unscaled hull/turret frame. Bake authored rig
+  // scale and fixed offsets into each aperture instead of stripping them out.
+  const smokeFrame=new THREE.Matrix4().copy(tank.root.matrixWorld).invert().multiply(o.matrixWorld);
+  if(owner==='turret')smokeFrame.premultiply(new THREE.Matrix4().makeTranslation(-turret.position.x,-turret.position.y,-turret.position.z));
   for(const socket of smokeSocketsFor(o)){
-   const p=new THREE.Vector3(...socket.position).applyMatrix4(m), d=new THREE.Vector3(...socket.direction).transformDirection(m);
+   const p=new THREE.Vector3(...socket.position).applyMatrix4(smokeFrame), d=new THREE.Vector3(...socket.direction).transformDirection(smokeFrame);
    smoke.push({owner,position:round(p.toArray()),direction:round(d.toArray())});
    if(d.z<-.001||d.y<-.001)bad.push({id,position:round(p.toArray()),direction:round(d.toArray())});
   }
   if(!o.userData.primaryWeapon&&o.userData.remoteControlled&&o.userData.firingAxis==='+Z'&&o.userData.hasWeapon!==false){
    if(!o.userData.auxiliaryPivot || !Number.isFinite(o.userData.muzzleLocalZ)) { missing.push({id,name:o.name}); return; }
-   guns.push({name:o.name,owner,position:round(new THREE.Vector3().setFromMatrixPosition(m).toArray()),caliberMm:o.userData.caliberMm||12.7,muzzle:o.userData.auxiliaryMuzzle??[0,o.userData.barrelAxisLocalY,o.userData.muzzleLocalZ],pivot:o.userData.auxiliaryPivot,scale:new THREE.Vector3().setFromMatrixScale(m).toArray(),rotation:new THREE.Quaternion().setFromRotationMatrix(m.clone().extractRotation(m)).toArray()});
+   const pitch=o.getObjectByName('auxiliaryWeaponPitch'), collisionParts=[];
+   if(pitch){
+    const inv=new THREE.Matrix4().copy(pitch.matrixWorld).invert();
+    pitch.traverse(mesh=>{
+     if(!mesh.isMesh||!mesh.geometry)return;
+     mesh.geometry.computeBoundingBox();
+     const box=mesh.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().copy(inv).multiply(mesh.matrixWorld));
+     if(!box.isEmpty())collisionParts.push({min:round(box.min.toArray()),max:round(box.max.toArray())});
+    });
+   }
+   guns.push({collisionParts,name:o.name,owner,position:round(new THREE.Vector3().setFromMatrixPosition(m).toArray()),caliberMm:o.userData.caliberMm||12.7,muzzle:o.userData.auxiliaryMuzzle??[0,o.userData.barrelAxisLocalY,o.userData.muzzleLocalZ],pivot:o.userData.auxiliaryPivot,scale:new THREE.Vector3().setFromMatrixScale(m).toArray(),rotation:new THREE.Quaternion().setFromRotationMatrix(m.clone().extractRotation(m)).toArray()});
   }
  });
- rows[id]={smoke,guns,lights:!!tank.root.userData.nightLightCoverage?.headlights};
+ rows[id]={turretPivot:round(turret.position.toArray()),smoke,guns,lights:!!tank.root.userData.nightLightCoverage?.headlights};
  if(!rows[id].lights)missing.push({id,name:'driving lights'});
  tank.dispose?.();
 }

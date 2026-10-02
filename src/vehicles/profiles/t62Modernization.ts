@@ -2,7 +2,7 @@ import {buildT62Obr1975Chassis} from './russia.ts';
 import {buildT72B1987XTurret} from './t72b1987X.ts';
 import {beamBetween} from './measuredPrimitives.ts';
 import {KIT} from './kit.ts';
-import {attachedCage,eraCassette,cheekEraCassette,glacisEraCassette,supportedSensor,strappedPack} from './modernizationFittings.ts';
+import {attachedCage,eraCassette,glacisEraCassette,supportedSensor,strappedPack} from './modernizationFittings.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {box}=KIT;
 export function buildT62MV1Modern(P:TankBuilderPort):void {

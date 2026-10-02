@@ -1,6 +1,5 @@
 // Original native equipment solids from independent source scalar measurements.
 // The comparison mesh stays local-only; no source vertices or indices are used.
-import * as THREE from 'three';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
