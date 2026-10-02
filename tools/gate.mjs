@@ -26,7 +26,7 @@
 // pushes, deploys, fetches, or changes any setting.
 import { execFileSync, spawn } from 'node:child_process';
 import { createWriteStream, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, symlinkSync,
-  writeFileSync } from 'node:fs';
+  unlinkSync, writeFileSync } from 'node:fs';
 import { constants, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -332,6 +332,10 @@ async function compareWithBaseline({ root, ref, failed, out, strict, echo, lockF
       },
     });
   } finally {
+    // unlink the shared installs first: removing the worktree must never reach through a link
+    for (const link of [join(dir, 'node_modules'), join(dir, 'public', 'models')]) {
+      try { if (lstatSync(link).isSymbolicLink()) unlinkSync(link); } catch { /* absent */ }
+    }
     try { git(root, 'worktree', 'remove', '--force', dir); } catch { /* reported below */ }
   }
   result.blocking = result.rows.filter((row) => row.blocking).map((row) => row.file);
