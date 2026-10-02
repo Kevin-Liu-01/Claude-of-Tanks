@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { createTank } from './tankFactory.ts';
 import { ALL_TANK_IDS } from './specs.ts';
+import { FLEET_RENEWAL_DONORS } from './fleetRenewalSpecs.ts';
 
 let coveredVehicles = 0;
 let registeredParts = 0;
 let t72buGear = null;
+let t72buXGear = null;
 const proryvGuards = new Map();
 const shoulderReceipts = new Map();
 
@@ -34,6 +36,7 @@ for (const id of ALL_TANK_IDS) {
       assert(hullRig, 't72bu: hull articulation rig');
       [t72buGear] = hullRig.userData.runningGearReceipts || [];
     }
+    if (id === 't72bu_x') [t72buXGear] = hullRig?.userData.runningGearReceipts || [];
     if (id === 't90m' || id === 't90m_proryv') {
       proryvGuards.set(id, (hullRig?.userData.sharedMudguards || [])
         .filter((receipt) => receipt.label.startsWith('t90m-proryv-')));
@@ -57,18 +60,28 @@ assert(coveredVehicles >= 25,
 assert(registeredParts >= 104,
   `fleet mudguard receipt coverage regressed (${registeredParts} parts)`);
 
+// 2026-10-01: the owner's September renewal (4c34b3e8b, docs/tank-generation/fleet-renewal-publication-20260930.md)
+// rebuilt the T-72BU 1989 on the t72bu_x foundation, so its running gear is the source-measured t72bu_x course. The
+// separately authored 2026-08-18 gear (354e8fa97) and its exact 9 cm / 6 cm z-only gaps are gone. A z-only gap
+// ignores the raised idler (0.28 m above the axle line): the source idler reads -0.0099 m in z but stands 0.0516 m
+// clear of the lead wheel circle to circle. Protect the donor law and the T-72 family's side-plane clearance law
+// (pt91mPendekarFidelity, t72JaguarRedesign: centre distance minus both radii above 2 cm).
+assert.equal(FLEET_RENEWAL_DONORS.t72bu, 't72bu_x', 't72bu: the renewal builds the T-72BU 1989 on t72bu_x');
 assert(t72buGear, 't72bu: running-gear receipt');
+assert(t72buXGear, 't72bu_x: running-gear receipt');
+for (const key of ['wheelZs', 'wheelY', 'wheelR', 'idler', 'sprocket']) {
+  assert.deepEqual(t72buGear[key], t72buXGear[key], `t72bu: ${key} is the t72bu_x donor's`);
+}
 assert.equal(t72buGear.wheelZs.length, 6, 't72bu: six native road-wheel stations');
 const frontRoadWheelZ = Math.max(...t72buGear.wheelZs);
 const rearRoadWheelZ = Math.min(...t72buGear.wheelZs);
-const frontTerminalGap = t72buGear.idler.z - frontRoadWheelZ
-  - t72buGear.idler.r - t72buGear.wheelR;
-const rearTerminalGap = rearRoadWheelZ - t72buGear.sprocket.z
-  - t72buGear.sprocket.r - t72buGear.wheelR;
-assert(Math.abs(frontTerminalGap - 0.09) < 1e-6,
-  `t72bu: forward idler clears lead road wheel by 9 cm (${frontTerminalGap})`);
-assert(Math.abs(rearTerminalGap - 0.06) < 1e-6,
-  `t72bu: aft sprocket clears rear road wheel by 6 cm (${rearTerminalGap})`);
+const terminalClearance = (end, z) => Math.hypot(end.z - z, end.y - t72buGear.wheelY) - (end.r + t72buGear.wheelR);
+const frontTerminalGap = terminalClearance(t72buGear.idler, frontRoadWheelZ);
+const rearTerminalGap = terminalClearance(t72buGear.sprocket, rearRoadWheelZ);
+assert(frontTerminalGap > 0.02,
+  `t72bu: forward idler clears lead road wheel in the side plane (${frontTerminalGap})`);
+assert(rearTerminalGap > 0.02,
+  `t72bu: aft sprocket clears rear road wheel in the side plane (${rearTerminalGap})`);
 
 for (const id of ['t90m', 't90m_proryv']) {
   const guards = proryvGuards.get(id) || [];
