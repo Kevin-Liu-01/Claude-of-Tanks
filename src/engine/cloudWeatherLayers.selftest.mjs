@@ -133,7 +133,11 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   assert.ok(layerSrc.includes('float wispy = clamp( mix( 0.55 - hN * 0.9, 1.0, uWispiness ), 0.0, 1.0 );') && layerSrc.includes('wispy = max( wispy, anv );'), 'cauliflower tops, rags at the base, wisps where the map or the anvil asks');
   assert.ok(layerSrc.includes('float patchC = 0.35 + 1.3 * cw.b;'), 'the cirrus comes in patches (the same mean coverage)');
   assert.ok(layerSrc.includes('tauAbove *= mix( 1.0, 0.2 + 1.6 * ( mo.b * 0.6 + mo.a * 0.4 ), 0.75 * uCells );'), 'a deck\'s underside mottles with its rolls');
-  assert.ok(layerSrc.includes('ns.y = ((ns.y - CLOUD_BOIL_M_PER_S'), 'the billows boil');
+  assert.ok(layerSrc.includes('ns.y = wrapDrift(ns.y - CLOUD_BOIL_M_PER_S'), 'the billows boil');
+  // (2026-10-02: a capture zeroes the drifts; the positive modulo jumped a whole wrap on the next frame — a seam for the
+  // boiling noise, whose vertical period follows the slab's thickness — and every captured cloud ghosted)
+  assert.ok(!/% (CLOUD_[A-Z_]+_M|wrap) \+ (CLOUD_[A-Z_]+_M|wrap)\)/.test(layerSrc), 'no drift wraps by a positive modulo');
+  assert.equal(layerSrc.match(/= wrapDrift\(/g)?.length, 10, 'the weather, noise (with the boil), cirrus, mid and upper drifts run through zero');
 }
 
 // ---- every path that shows a map's sky carries its cloudscape (the battle's getAuthoredPreset, and the world activation's
@@ -177,6 +181,8 @@ const skyOf = (id, time = 'day') => {
   assert.deepEqual([own.midKind, own.midCoverage, own.coverage], [CLOUD_MID_KINDS.indexOf('altocumulus'), 0.5, 0.2]);
   const constant = deriveCloudLayerPreset({ ...skyOf('verdant', 'night'), cloudscape: { ...scape, diurnal: false } });
   assert.equal(constant.coverage, day.coverage, 'diurnal: false keeps the day\'s cloud');
+  // the evening keeps the preset's warm deck tint (the captures without it: grey-white front-lit cumulus at sunset)
+  assert.ok(dusk.tint[0] > dusk.tint[2] + 0.2, `a sunset cloud keeps the warm deck tint (${dusk.tint.map((c) => c.toFixed(2))})`);
   // the moonlit albedo: grey-white, not the night preset's dark blue deck colour; an authored tint is kept
   assert.ok(night.tint.every((c) => c > 0.85), `a moonlit cloud is a grey-white diffuser (${night.tint.map((c) => c.toFixed(2))})`);
   const tinted = deriveCloudLayerPreset({ ...skyOf('verdant', 'night'), cloudscape: { ...scape, tintHex: 0x808080 } });

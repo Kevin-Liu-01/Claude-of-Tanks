@@ -216,7 +216,9 @@ function scapeTime(sky: CloudLayerSkyInput, scape: CloudscapeConfig): CloudTimeO
  * cumuliform regime (not a deck, a sheet or a front); a map's `sunset` / `night` knobs win over them.
  */
 export const CLOUD_DIURNAL = Object.freeze({
-  sunset: Object.freeze({ coverage: 0.8, towers: 0.45, thickness: 0.78, wispiness: 0.12, rain: 0.6 }),
+  // (2026-10-02, on the first captures: the sunset at 0.8 / 0.45 / 0.78 emptied the evening sky the owner liked — the
+  // evening cumulus keeps most of its mass and flattens a little)
+  sunset: Object.freeze({ coverage: 0.88, towers: 0.65, thickness: 0.88, wispiness: 0.08, rain: 0.6 }),
   night: Object.freeze({ coverage: 0.58, towers: 0.25, thickness: 0.62, wispiness: 0.18, rain: 0.5 }),
 });
 
@@ -225,8 +227,9 @@ export const CLOUD_MID_DEFAULTS: Readonly<Record<CloudMidKind, { altM: number; t
   none: Object.freeze({ altM: 4200, thicknessM: 300, cellM: 260, bands: 0, density: 0 }),
   // altocumulus stratiformis: elements 200–400 m at 3–5 km, often in rows across the wind; τ ≈ 4 at an element's core
   altocumulus: Object.freeze({ altM: 4200, thicknessM: 360, cellM: 280, bands: 0.35, density: 0.011 }),
-  // altostratus: a grey fibrous veil 1–2 km thick at 4–6 km, the sun as through ground glass (τ 1.5–3)
-  altostratus: Object.freeze({ altM: 5200, thicknessM: 900, cellM: 1800, bands: 0, density: 0.0026 }),
+  // altostratus: a grey fibrous veil 1–2 km thick at 4–6 km, the sun as through ground glass (τ ≈ 1 overhead; 2026-10-02:
+  // the first captures at τ 2.3 showed opaque white patches, foreshortened into pancakes toward the horizon)
+  altostratus: Object.freeze({ altM: 5200, thicknessM: 900, cellM: 1800, bands: 0, density: 0.0012 }),
   // cirrocumulus: ripples of ice 50–100 m high up (6.5–8 km), thin (τ ≈ 1)
   cirrocumulus: Object.freeze({ altM: 7400, thicknessM: 160, cellM: 75, bands: 0.55, density: 0.007 }),
   // altocumulus lenticularis: smooth stationary lenses a few kilometres long in the lee of the ranges (τ ≈ 3 at the core)
@@ -240,8 +243,6 @@ export const CLOUD_WEATHER_RULES = Object.freeze({
   nightGlowHex: 0xff9a52,
   /** the night albedo: a moonlit cloud is a grey-white diffuser — the night preset's dark blue deck tint is a dome colour */
   nightTintHex: 0xe9edf2,
-  /** the sunset albedo: near white — the low sun's transmittance colours the light, not the cloud */
-  sunsetTintHex: 0xf3f1ed,
 });
 
 function hexToLinear(hex: number): [number, number, number] {
@@ -379,12 +380,13 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     stratiform,
     fieldMix: clamp(scape.fieldMix ?? (row ? row.fieldMix : legacy.fieldMix), 0, 1),
     density: Math.max(1e-4, pick('density')),
-    // (2026-10-01: the battle's sunset and night presets repaint cloudTintHex for the baked decks — a warm 0xeab492, a
-    // dark blue 0x3a4d68 — as the colour of the light on a painted deck; as an albedo they warmed the sunset twice (the
-    // sun's transmittance is already warm) and turned the night's clouds into black occluders. The layer keeps a
-    // grey-white diffuser at those times and lets the light bring the hue; a map's authored tint is kept.)
+    // (2026-10-01: the battle's night preset repaints cloudTintHex for the baked decks — a dark blue 0x3a4d68, the colour
+    // of the light on a painted deck; as an albedo it turned the night's clouds into black occluders, so the layer keeps
+    // a grey-white diffuser at night and lets the moonlight bring the hue. 2026-10-02: the sunset keeps the preset's
+    // warm deck tint — the captures without it showed the front-lit evening cumulus grey-white, the low sun's
+    // back-scattered share being small beside the sky's light. A map's authored tint is kept.)
     tint: scape.tintHex != null ? tintOf(scape.tintHex, sheet)
-      : tintOf(time === 'night' ? CLOUD_WEATHER_RULES.nightTintHex : time === 'sunset' ? CLOUD_WEATHER_RULES.sunsetTintHex : sky.cloudTintHex, sheet),
+      : tintOf(time === 'night' ? CLOUD_WEATHER_RULES.nightTintHex : sky.cloudTintHex, sheet),
     windDirRad,
     windSpeed: Math.max(0, pick('windSpeed')),
     offset: legacy.offset,

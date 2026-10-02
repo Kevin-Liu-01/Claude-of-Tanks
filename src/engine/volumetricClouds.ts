@@ -110,6 +110,13 @@ const CIRRUS_WARP_M = 2600;
 const CLOUD_BOIL_M_PER_S = 0.7;
 /** 2026-10-01: the upper drifts (the mid layer, the trails) wrap here (m): whole tiles of every field they read. */
 const CLOUD_UPPER_WRAP_M = 600000;
+/**
+ * A drift kept inside (-w, w) (2026-10-02): continuous through zero and a whole wrap at +-w. The positive modulo it
+ * replaces jumped a whole wrap on the first frame after a capture zeroed the drifts (the census and the shot tools
+ * zero them for a frame-comparable field) — a seam for every lookup whose period does not divide the wrap: the boiling
+ * noise (its vertical period follows the slab's thickness) ghosted every captured cloud.
+ */
+const wrapDrift = (v: number, w: number): number => (v >= w ? v - w : v <= -w ? v + w : v);
 /** 2026-10-01: the mid layer's elements evolve on a slice of the shape volume turning this far per second (a cycle in ~14 min). */
 const CLOUD_MID_EVOLVE_PER_S = 0.0012;
 /**
@@ -581,7 +588,9 @@ float midThickness( vec2 xz, float foot ) {
 	vec2 q = uMidShape.z > 3.5 ? xz : xz + uMidShift;
 	// patches of the layer with clear sky between: the broad stratiform field at twice the weather tile
 	float patchF = textureLod( tWeather, q / ${f(CLOUD_WEATHER_TILE_M * 2)} + vec2( 0.31, 0.67 ), 0.0 ).b;
-	float gate = smoothstep( 1.0 - uMid.x, 1.0 - uMid.x + 0.2, patchF );
+	// (2026-10-02: an altostratus veil fades over a wide margin — its 0.2 margin drew hard-rimmed white pancakes)
+	float gsoft = uMidShape.z > 1.5 && uMidShape.z < 2.5 ? 0.5 : 0.2;
+	float gate = smoothstep( 1.0 - uMid.x, 1.0 - uMid.x + gsoft, patchF );
 	if ( gate <= 0.0 ) return 0.0;
 	float cell = uMidShape.x;
 	// the element frame: x along the upper wind, the rows run across it
@@ -1972,16 +1981,18 @@ export class VolumetricCloudLayer {
     this.windDir.set(wdx, wdz);
     const wx = wdx * preset.windSpeed * step, wz = wdz * preset.windSpeed * step;
     const shift = this.weatherShift;
-    shift.x = ((shift.x - wx) % CLOUD_WEATHER_TILE_M + CLOUD_WEATHER_TILE_M) % CLOUD_WEATHER_TILE_M;
-    shift.y = ((shift.y - wz) % CLOUD_WEATHER_TILE_M + CLOUD_WEATHER_TILE_M) % CLOUD_WEATHER_TILE_M;
+    shift.x = wrapDrift(shift.x - wx, CLOUD_WEATHER_TILE_M);
+    shift.y = wrapDrift(shift.y - wz, CLOUD_WEATHER_TILE_M);
     const ns = this.noiseShift;
-    ns.x = ((ns.x - wx * 0.8) % CLOUD_SHAPE_TILE_STRATUS_M + CLOUD_SHAPE_TILE_STRATUS_M) % CLOUD_SHAPE_TILE_STRATUS_M;
-    ns.z = ((ns.z - wz * 0.8) % CLOUD_SHAPE_TILE_STRATUS_M + CLOUD_SHAPE_TILE_STRATUS_M) % CLOUD_SHAPE_TILE_STRATUS_M;
+    ns.x = wrapDrift(ns.x - wx * 0.8, CLOUD_SHAPE_TILE_STRATUS_M);
+    ns.z = wrapDrift(ns.z - wz * 0.8, CLOUD_SHAPE_TILE_STRATUS_M);
     // 2026-10-01: the billows boil — the noise rises slowly through a convective cloud (a deck's cells turn over
-    // slower), so a cumulus' outline changes over minutes instead of sliding past as a frozen sculpture
-    ns.y = ((ns.y - CLOUD_BOIL_M_PER_S * (1 - 0.8 * preset.stratiform) * step) % CLOUD_SHAPE_TILE_STRATUS_M + CLOUD_SHAPE_TILE_STRATUS_M) % CLOUD_SHAPE_TILE_STRATUS_M;
+    // slower), so a cumulus' outline changes over minutes instead of sliding past as a frozen sculpture (wrapped at the
+    // upper drifts' 600 km: the vertical period of the lookups follows the slab's thickness, so any wrap is a seam —
+    // this one comes after 238 hours)
+    ns.y = wrapDrift(ns.y - CLOUD_BOIL_M_PER_S * (1 - 0.8 * preset.stratiform) * step, CLOUD_UPPER_WRAP_M);
     const cs = this.cirrusShift;
-    cs.x = ((cs.x - preset.windSpeed * 2 * step) % CLOUD_CIRRUS_TILE_M + CLOUD_CIRRUS_TILE_M) % CLOUD_CIRRUS_TILE_M;
+    cs.x = wrapDrift(cs.x - preset.windSpeed * 2 * step, CLOUD_CIRRUS_TILE_M);
     // 2026-10-01: the mid layer and the contrails ride the upper wind (the cirrus' veered direction, 1.6 and 2 x the
     // speed), wrapped where their fields tile; the mid layer's elements evolve on a slowly turning slice
     const ux = Math.cos(preset.cirrusAngleRad), uz = Math.sin(preset.cirrusAngleRad);
@@ -1989,10 +2000,10 @@ export class VolumetricCloudLayer {
     // any match — the elements and the analytic trails never jump while a battle runs)
     const ms = this.midShift, ud = this.upperDrift;
     const wrap = CLOUD_UPPER_WRAP_M;
-    ms.x = ((ms.x - ux * preset.windSpeed * 1.6 * step) % wrap + wrap) % wrap;
-    ms.y = ((ms.y - uz * preset.windSpeed * 1.6 * step) % wrap + wrap) % wrap;
-    ud.x = ((ud.x - ux * preset.windSpeed * 2 * step) % wrap + wrap) % wrap;
-    ud.y = ((ud.y - uz * preset.windSpeed * 2 * step) % wrap + wrap) % wrap;
+    ms.x = wrapDrift(ms.x - ux * preset.windSpeed * 1.6 * step, wrap);
+    ms.y = wrapDrift(ms.y - uz * preset.windSpeed * 1.6 * step, wrap);
+    ud.x = wrapDrift(ud.x - ux * preset.windSpeed * 2 * step, wrap);
+    ud.y = wrapDrift(ud.y - uz * preset.windSpeed * 2 * step, wrap);
     this.midPhase = (this.midPhase + step * CLOUD_MID_EVOLVE_PER_S) % 1;
     const t = this.traceMaterial.uniforms, g = this.goboMaterial.uniforms;
     const offX = preset.offset[0] * CLOUD_WEATHER_TILE_M, offY = preset.offset[1] * CLOUD_WEATHER_TILE_M;
