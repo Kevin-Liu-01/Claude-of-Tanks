@@ -7,16 +7,7 @@
     "sfo1"
   ],
   "functions": {
-    "api/ice.ts": {
-      "maxDuration": 10
-    },
-    "api/github-stars.ts": {
-      "maxDuration": 10
-    },
-    "api/telemetry.ts": {
-      "maxDuration": 10
-    },
-    "api/jev.ts": {
+    "api/*.ts": {
       "maxDuration": 10
     }
   },

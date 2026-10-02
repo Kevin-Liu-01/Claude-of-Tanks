@@ -142,6 +142,9 @@
   "author": "Kevin B. Liu",
   "license": "SEE LICENSE IN LICENSE-POLICY.md",
   "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
     "@vercel/functions": "^3.9.5",
