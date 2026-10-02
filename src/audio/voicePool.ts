@@ -133,7 +133,8 @@ export function createVoicePool({ mixer, library, random, budget, reverb }: Voic
     if (voices.length < budget) return true;
     let victim: ActiveVoice | null = null;
     for (const voice of voices) {
-      if (voice.priority > priority) continue;
+      // Loops (beds, fires) are few and restart audibly: steal one-shots only.
+      if (voice.end === Infinity || voice.priority > priority) continue;
       if (!victim || voice.priority < victim.priority || (voice.priority === victim.priority && voice.start < victim.start)) victim = voice;
     }
     if (!victim) return false;

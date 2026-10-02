@@ -85,6 +85,20 @@ names = probe.sfxLog.slice(since).map((e) => e.n);
 assert.ok(names.includes('ac_far_light'), `700 m autocannon is a distant report (${names})`);
 assert.ok(!names.includes('ac_30_close'), 'no close report at 700 m');
 
+// A volley that overflows the voice budget steals one-shots, never the ambience bed.
+// Every bore at 60 m, so distinct report assets (not per-asset instance caps) fill the pool.
+let volleyId = 100;
+for (const caliberMm of [7.62, 12.7, 20, 25, 30, 40, 57, 90, 105, 120, 125, 130, 152]) {
+  for (let k = 0; k < 4; k++) {
+    bus.emit('shell:fired', { shellId: volleyId++, shooterId: 'foe', muzzlePos: [-30 + k * 20, 2, 60], dir: [0, 0, 1], caliberMm, shellType: 'HE' });
+  }
+}
+assert.ok(probe.sfxLog.length >= 48, 'the volley fills the voice budget');
+const loops = probe.ambientState().loops;
+assert.ok(loops.length > 0 && loops.every((l) => l.playing), `the bed survives the volley (${JSON.stringify(loops)})`);
+ctx.advance(4);
+audio.update(1 / 60, listener, tanks);
+
 // Our own gun, then the reload choreography of a carousel autoloader.
 since = mark();
 bus.emit('shell:fired', { shellId: 3, shooterId: 'me', isPlayer: true, muzzlePos: [0, 2, 3], dir: [0, 0, 1], caliberMm: 125, shellType: 'APFSDS' });
