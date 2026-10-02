@@ -484,3 +484,66 @@ export function finishSprayTiles(d: Uint8ClampedArray, s: number, S: number, T: 
     }
   }
 }
+
+/**
+ * p2 trees lane: the palm's frond for the legacy palm geometry's frond strips (one frond across the whole texture,
+ * its rachis from the bottom centre — the strip's base — to the top): a pinnate frond, not the round-8 solid leaf
+ * blade — a curved yellow-green rachis, sixty-odd narrow leaflets a side swept toward the tip in a shallow V, longest
+ * a little below the middle, darker on the under layer, drying to straw at the tip, a few torn out. Straight alpha,
+ * flooded with the frond's mean tone; deterministic from the RNG.
+ */
+export function makePalmFrondAtlas(rng: Rng, size: number, tone: ToneFunction | null = null): THREE.Texture {
+  const s = Math.max(64, size | 0);
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const ctx = c.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D | null;
+  if (!ctx) throw new Error('world/treeSprayAtlas: Canvas2D context unavailable');
+  ctx.clearRect(0, 0, s, s);
+  const K = s / 256;
+  const bend = (rng() - 0.5) * 0.10;
+  const rachis = (t: number): Pt => ({ x: s * (0.5 + Math.sin(t * Math.PI * 0.9) * bend), y: s * (0.985 - 0.95 * t) });
+  const pairs = 58;
+  for (let layer = 0; layer < 2; layer++) {
+    for (let k = 0; k < pairs; k++) {
+      const t = 0.06 + (k / (pairs - 1)) * 0.92;
+      const at = rachis(t), ahead = rachis(Math.min(1, t + 0.01));
+      const dir = Math.atan2(ahead.y - at.y, ahead.x - at.x);
+      const env = Math.sin(Math.PI * Math.min(1, t * 1.06)) ** 0.8;
+      const dry = t > 0.82 ? (t - 0.82) / 0.18 : 0;
+      for (const side of [-1, 1]) {
+        if (rng() < 0.05 + dry * 0.25) continue; // torn or missing leaflets
+        const len = s * (0.06 + 0.40 * env) * (0.85 + rng() * 0.3) * (layer === 0 ? 1.04 : 1);
+        const sweep = 0.55 + rng() * 0.25 - t * 0.15;       // forward sweep from the rachis
+        const a = dir + side * (Math.PI / 2 - sweep * 1.1);
+        const droop = len * (0.10 + 0.12 * t);
+        const w = Math.max(0.9, (2.6 - t * 1.2) * K * (layer === 0 ? 1.2 : 1));
+        const light = layer === 0 ? 0.12 + rng() * 0.04 : 0.19 + t * 0.06 + rng() * 0.07 + dry * 0.10;
+        const hue = 0.21 - dry * 0.10 + (rng() - 0.5) * 0.02;
+        ctx.strokeStyle = css(hue, layer === 0 ? 0.30 : 0.34 - dry * 0.14, light);
+        ctx.lineWidth = w;
+        ctx.lineCap = 'round';
+        const ex = at.x + Math.cos(a) * len, ey = at.y + Math.sin(a) * len + droop;
+        ctx.beginPath();
+        ctx.moveTo(at.x, at.y);
+        ctx.quadraticCurveTo(at.x + Math.cos(a) * len * 0.55, at.y + Math.sin(a) * len * 0.55 - droop * 0.2, ex, ey);
+        ctx.stroke();
+      }
+    }
+  }
+  const pts: Pt[] = [];
+  for (let i = 0; i <= 16; i++) pts.push(rachis(i / 16));
+  taperStroke(ctx, pts, 5.2 * K, 1.2 * K, css(0.13, 0.30, 0.26));
+  const image = ctx.getImageData(0, 0, s, s);
+  const d = image.data;
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 160) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+  const fr = n ? r / n : 55, fg = n ? g / n : 76, fb = n ? b / n : 38;
+  for (let i = 0; i < d.length; i += 4) if (d[i + 3] < 24) { d[i] = fr; d[i + 1] = fg; d[i + 2] = fb; }
+  applyTone(d, tone);
+  const texture = new THREE.Texture(image as unknown as HTMLImageElement);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  texture.needsUpdate = true;
+  texture.name = 'sprayAtlas:palm';
+  return texture;
+}

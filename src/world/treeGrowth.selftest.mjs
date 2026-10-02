@@ -16,7 +16,7 @@ import {
   emitBranchGeometry, emitCrownShadowHull, emitLeafCards, envelopeFraction, growTreeSkeleton, GROWTH_LEAF_BUDGET,
   GROWTH_LOWEST_WOOD_M, GROWTH_SIDE_TUBE_BUDGET, GROWTH_SPECIES, GROWTH_SPRAY_CLEARANCE_M, TREE_GROWTH_PROFILES,
 } from './treeGrowth.ts';
-import { finishSprayTiles, makeSprayAtlas, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
+import { finishSprayTiles, makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
 
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const sha = (array) => createHash('sha256').update(Buffer.from(array.buffer, array.byteOffset, array.byteLength)).digest('hex').slice(0, 16);
@@ -174,6 +174,22 @@ try {
     const [lo, hi] = kind === 'birch-bare' ? [0.04, 0.3] : [0.08, 0.45];
     assert.ok(coverage >= lo && coverage <= hi, `${kind}: coverage ${coverage.toFixed(3)} in [${lo}, ${hi}]`);
     atlasRows.push({ kind, coverage: +coverage.toFixed(3), pixels: sha(d) });
+    t.dispose(); again.dispose();
+  }
+  // the desktop palm's pinnate frond (one frond across the texture, its rachis rising from the bottom centre)
+  {
+    const t = makePalmFrondAtlas(mulberry32(2053), 256), again = makePalmFrondAtlas(mulberry32(2053), 256);
+    assert.equal(sha(t.image.data), sha(again.image.data), 'palm frond: deterministic pixels');
+    const d = t.image.data, s = t.image.width;
+    let covered = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] >= 97) covered++;
+    assert.ok(covered / (s * s) > 0.2 && covered / (s * s) < 0.7, `palm frond coverage ${(covered / (s * s)).toFixed(3)}: leaflets with gaps, not a solid blade`);
+    assert.ok(d[((s - 3) * s + (s >> 1)) * 4 + 3] > 200, 'the rachis meets the strip base');
+    assert.equal(d[3], 0, 'the frond leaves its corners open');
+    let gaps = 0;
+    for (let x = 0; x < s; x++) if (d[((s >> 1) * s + x) * 4 + 3] < 24) gaps++;
+    assert.ok(gaps > s * 0.08, `a pinnate frond's mid row carries gaps between its leaflets (${gaps})`);
+    atlasRows.push({ kind: 'palm-frond', coverage: +(covered / (s * s)).toFixed(3), pixels: sha(d) });
     t.dispose(); again.dispose();
   }
   // the finishing law on a synthetic tile: a solid tile keeps its centre and loses its border

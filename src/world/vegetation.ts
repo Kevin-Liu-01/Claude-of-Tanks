@@ -38,7 +38,7 @@ import {
   emitBranchGeometry, emitCrownShadowHull, emitLeafCards, growTreeSkeleton, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES,
   type GrowthSpecies,
 } from './treeGrowth.ts';
-import { makeSprayAtlas, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
+import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
@@ -4350,7 +4350,9 @@ function* vegetationBuildSteps(
     eucalyptus: grownDefinition('eucalyptus', broadleafDefinition(63, 301, 321, EUCALYPTUS_SHAPES, [0.68, 1.35, 0.72])),
     palm: {
       texSeed: 53, nearSeed: 81, farSeed: 75,
-      tex: (r, pal) => makePalmFrondTexture(r, pal.texTone || null),
+      // p2 trees lane: the desktop palms keep their reviewed geometry and take a pinnate frond (the round-8 painter's
+      // solid blade read as a banana leaf); the phones keep the round-8 frond
+      tex: (r, pal) => (grownTrees ? makePalmFrondAtlas(r, texSize(512), pal.texTone || null) : makePalmFrondTexture(r, pal.texTone || null)),
       near: (k, pal) => buildPalmGeometry(mulberry32(seed + 81 + k * 7), pal, PALM_VAR[k % 3]),
       far: (r, pal, k) => buildPalmFarGeometry(r, pal, k),
     },

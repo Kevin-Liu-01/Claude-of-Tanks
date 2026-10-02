@@ -102,9 +102,9 @@ const P = (p: GrowthProfile): Readonly<GrowthProfile> => Object.freeze(p);
 export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<GrowthProfile>>> = Object.freeze({
   oak: P({
     family: 'broadleaf', height: 7.0, heightSpread: 0.12, trunkR: 0.30, form: 'decurrent',
-    forkAt: [0.30, 0.38], scaffolds: [4, 6], scaffoldAngle: [0.75, 1.25], crownBase: 0.34, crownR: 2.75,
+    forkAt: [0.30, 0.38], scaffolds: [4, 6], scaffoldAngle: [0.55, 1.08], crownBase: 0.34, crownR: 2.75,
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 1.15, angleHigh: 0.6,
-    droop: 0.42, upturn: 0.25, sidePerM: 2.3, sideAngle: 0.85, sideRatio: 0.62, sideDroop: 0.35, twigPerM: 1.8,
+    droop: 0.42, upturn: 0.38, sidePerM: 2.3, sideAngle: 0.75, sideRatio: 0.62, sideDroop: 0.35, twigPerM: 1.8,
     leafOrder: 1, leafPerM: 2.4, leafFrom: 0.3, spray: [0.95, 1.45], aspect: 0.82, habit: 'spray', tipSprays: 1,
     cardBend: 0.16, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.62, 0.56, 0.48], barkTopTint: null,
   }),
@@ -278,7 +278,7 @@ export function envelopeFraction(shape: EnvelopeShape, t: number): number {
     case 'cone': return Math.max(0, 1 - u) ** 0.92 * (u < 0.05 ? 0.8 + u * 4 : 1);
     case 'tiered': return Math.max(0, 1 - u) ** 0.85;
     case 'ellipsoid': return Math.sqrt(Math.max(0, 1 - (2 * u - 1) ** 2));
-    case 'dome': return Math.sqrt(Math.max(0, 1 - (u * 1.12 - 0.28) ** 2 / 0.72 ** 2)) * (u < 0.15 ? 0.7 + u * 2 : 1);
+    case 'dome': return Math.sqrt(Math.max(0, 1 - ((u - 0.38) / 0.62) ** 2));
     case 'column': return Math.sin(Math.PI * Math.min(1, 0.12 + u * 0.88)) ** 0.45;
     case 'umbrella': return u < 0.55 ? 0.35 + u * 1.1 : Math.sqrt(Math.max(0, 1 - ((u - 0.55) / 0.45) ** 2)) * 0.95 + 0.05;
     case 'flame': return Math.sin(Math.PI * Math.min(1, 0.08 + u * 0.92)) ** 0.7 * (1 - u * 0.35);
@@ -793,7 +793,11 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
       const heightT = clamp01(node.y / Math.max(1, skeleton.height));
       const topMix = branch.order > 0 ? 0.65 : clamp01((heightT - 0.45) / 0.4);
       const tr = lerp(options.tint[0], top[0], topMix), tg = lerp(options.tint[1], top[1], topMix), tb = lerp(options.tint[2], top[2], topMix);
-      const shade = ground * branchTint * (branch.order >= 2 ? 0.92 : 1);
+      // the wood inside the crown stands in the leaves' shade (the near trunks receive no cascade shadow — their
+      // stability rule — so the canopy's occlusion is baked: the deeper in the crown, the darker the limb)
+      const cdx = node.x - skeleton.crown.x, cdy = (node.y - skeleton.crown.y) * 1.2, cdz = node.z - skeleton.crown.z;
+      const inner = skeleton.leaves.length ? clamp01(1 - Math.hypot(cdx, cdy, cdz) / skeleton.crown.r) : 0;
+      const shade = ground * branchTint * (branch.order >= 2 ? 0.92 : 1) * (1 - 0.5 * inner * inner * (3 - 2 * inner));
       const row: Array<[number, number, number, number, number, number, number]> = [];
       for (let j = 0; j <= s; j++) {
         const phi = (j / s) * Math.PI * 2;

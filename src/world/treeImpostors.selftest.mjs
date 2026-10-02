@@ -25,8 +25,9 @@ import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 // Round 77c (2026-09-26): re-pinned for the elevated ring — the layout text carries the ring's elevation ('flat' where the
 // atlas has none) and every row its capture elevation; Nordhavn's atlas gains its three 45° rows.
 // p2 trees lane (2026-10-01): re-pinned for the grown near trees (treeGrowth.ts) and their spray atlases
-// (treeSprayAtlas.ts) — the far tier bakes the new trees; was verdant 33ca4146, fjord a9c982e2, delta a43cefd0.
-const PINS = { verdant: 'f1ad100e', fjord: '4e933f67', delta: 'ffdc4195' };
+// (treeSprayAtlas.ts) — the far tier bakes the new trees; was verdant 33ca4146, fjord a9c982e2, delta a43cefd0. Re-pinned
+// with the crown's occlusion baked into the wood, the oak's dome and the desktop palms' pinnate frond.
+const PINS = { verdant: '289d0f74', fjord: '0c4c1409', delta: 'ac9276b9' };
 // every producer's digest is reported before the pin is asserted (a re-pin reads all three from one run)
 const digestMismatches = [];
 
