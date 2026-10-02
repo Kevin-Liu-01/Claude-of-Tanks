@@ -197,8 +197,12 @@ const laterChannelCounts = {
   type96_72_long: 3, type96_80_feng: 3, type96_72m_lei: 3, t72_rys: 3,
   // 2026-10-01 national modernization (cdbfe54dc, docs/history/research/national-modernization-20261001.md): twelve
   // owner-approved concepts, each carrying the T-90SM X turret's three channels.
-  ua_t80u_modern: 3, ua_t72b3m_modern: 3, ua_t72b3_modern: 3, pl_t80u_modern: 3, pl_t72b3m_modern: 3, pl_t72b3_modern: 3,
-  cn_t80u_modern: 3, cn_t72b3m_modern: 3, cn_t72b3_modern: 3, ru_t80u_modern: 3, ru_t72b3m_modern: 3, ru_t72b3_modern: 3,
+  ua_t80u_modern: 3, ua_t72b3m_modern: 3, ua_t72b3_modern: 3,
+  pl_t80u_modern: 3, pl_t72b3m_modern: 3, pl_t72b3_modern: 3,
+  cn_t80u_modern: 3, cn_t72b3m_modern: 3, cn_t72b3_modern: 3,
+  ru_t80u_modern: 3, ru_t72b3m_modern: 3, ru_t72b3_modern: 3,
+  // 2026-10-02 (main): the two preserved-design national successors carry the same three channels.
+  ua_t72b3m_hetman_ii: 3, pl_t72b3_zubr_ii: 3,
 };
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
 assert.equal(ifvBatchChannels, 16, 'the six 2026-09-25 IFV additions carry sixteen channels');
@@ -215,6 +219,9 @@ for (const id of NATIONAL_MODERNIZATION_IDS) {
   assert.deepEqual(TANK_SPECS[id].gun.shells, TANK_SPECS.t90sm_x.gun.shells,
     `${id}: the concept keeps the T-90SM X turret's ammunition, no invented rounds`);
 }
+const nationalChannels = nationalModernizationChannels
+  + laterChannelCounts.ua_t72b3m_hetman_ii + laterChannelCounts.pl_t72b3_zubr_ii;
+assert.equal(nationalChannels, 42, 'fourteen national concepts add three separately exercised ammunition channels each');
 const laterIds = new Set([...Object.keys(laterChannelCounts), ...SUPPLIED_SOURCE_IDS]);
 for (const [id, count] of Object.entries(laterChannelCounts)) {
   assert.equal(TANK_SPECS[id].gun.shells.length, count,
@@ -241,9 +248,9 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // 2026-09-22 cleanup: 675 -> 666 for the same three retired ww2 study variants; 2026-09-23: 666 -> 560
 // when the remaining 36 hidden records retired (the same 106 channels as the census above).
 // 2026-09-25: the sixteen IFV identity channels are subtracted the same way; the 560 stay covered separately.
-// The French IFVs' four channels, Marder's two, the renewal concepts' twelve and the national modernization concepts'
-// thirty-six are also additions.
-assert.equal(authoredShellChannels - laterChannelCounts.ariete_c2_x - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalModernizationChannels, 560,
+// The French IFVs' four channels, Marder's two, the renewal concepts' twelve and the fourteen national concepts'
+// forty-two are also additions.
+assert.equal(authoredShellChannels - laterChannelCounts.ariete_c2_x - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

@@ -110,8 +110,8 @@ const CSS = `
 /* --- rosters ------------------------------------------------------------- */
 .cot-bl .teams{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr);
   align-items:stretch;gap:clamp(16px,3vw,42px);}
-.cot-bl .team{--bl-count:1;--bl-row-gap:3px;--bl-row-inset:7px;--bl-heading:28px;min-width:0;min-height:0;align-self:center;
-  height:min(100%,calc(var(--bl-count) * (64px + var(--bl-row-gap)) + var(--bl-heading) + var(--bl-row-inset) - var(--bl-row-gap)));
+.cot-bl .team{--bl-count:1;--bl-row-height:30px;--bl-row-gap:3px;--bl-row-inset:7px;--bl-heading:28px;min-width:0;min-height:0;align-self:center;
+  height:min(100%,calc(var(--bl-count) * (var(--bl-row-height) + var(--bl-row-gap)) + var(--bl-heading) + var(--bl-row-inset) - var(--bl-row-gap)));
   display:grid;grid-template-rows:auto minmax(0,1fr);}
 .cot-bl .thead{height:var(--bl-heading);display:flex;align-items:center;gap:9px;padding:0 8px 8px;
   border-bottom:1px solid rgba(146,164,180,.24);font-family:${FONT_COND};
@@ -122,12 +122,11 @@ const CSS = `
 .cot-bl .thead .n{margin-left:auto;font-variant-numeric:tabular-nums;color:#8a97a3;
   letter-spacing:.12em;}
 .cot-bl .team.foe .thead .n{margin-left:0;margin-right:auto;}
-/* Fit the resolved roster, rather than leaving invisible slots for 14 tanks.
+/* Center each roster as a block. Rows never stretch when a team is small.
    Fixed silhouette boxes keep asset loading from moving the rows. */
-.cot-bl .rows{display:grid;grid-template-rows:repeat(var(--bl-count),minmax(20px,1fr));
+.cot-bl .rows{display:grid;grid-template-rows:repeat(var(--bl-count),var(--bl-row-height));align-content:start;
   min-height:0;gap:var(--bl-row-gap);padding-top:var(--bl-row-inset);overflow-y:auto;overscroll-behavior:contain;
   scrollbar-width:none;}
-.cot-bl .team[data-density="large"] .rows{grid-template-rows:repeat(var(--bl-count),minmax(24px,1fr))}
 .cot-bl .rows:focus-visible{outline:1px solid #f0a030;outline-offset:-1px}
 .cot-bl .rows::-webkit-scrollbar{display:none}
 .cot-bl .row{display:flex;align-items:center;gap:10px;min-height:0;padding:0 8px;
@@ -146,9 +145,6 @@ const CSS = `
 .cot-bl .team.foe .row .sil{transform:scaleX(-1);}
 .cot-bl .row .nm{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:600;
   color:#dfe8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cot-bl :where(.team[data-density="roomy"]) .row .tier{font-size:13px;}
-.cot-bl :where(.team[data-density="roomy"]) .row .sil{flex-basis:64px;max-height:32px;}
-.cot-bl :where(.team[data-density="roomy"]) .row .nm{font-size:16px;}
 .cot-bl .team.foe .row .nm{text-align:right;}
 .cot-bl .row.me .nm{color:#ffe4b0;}
 .cot-bl .vs{width:48px;height:48px;display:grid;place-items:center;justify-self:center;align-self:center;
@@ -305,7 +301,6 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     rows: readonly BattleLoadRosterRow[] = [],
   ): void {
     team.style.setProperty('--bl-count', String(Math.max(1, rows.length)));
-    team.dataset.density = rows.length <= 7 ? 'roomy' : rows.length <= 14 ? 'compact' : 'large';
     host.textContent = '';
     for (const r of rows) {
       const el = document.createElement('div');

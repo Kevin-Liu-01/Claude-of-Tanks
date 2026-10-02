@@ -92,6 +92,8 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   type99a: { doctrine: 'assault', viewM: 415, still: 0.175, moving: 0.115 },
   type96b_x: { doctrine: 'assault', viewM: 400, still: 0.175, moving: 0.115 },
   ua_t80u_modern: { doctrine: 'assault', viewM: 420, still: 0.18, moving: 0.12 },
+  ua_t72b3m_hetman_ii: { doctrine: 'assault', viewM: 420, still: 0.18, moving: 0.12 },
+  pl_t72b3_zubr_ii: { doctrine: 'assault', viewM: 420, still: 0.18, moving: 0.12 },
   ua_t72b3m_modern: { doctrine: 'assault', viewM: 420, still: 0.18, moving: 0.12 },
   ua_t72b3_modern: { doctrine: 'assault', viewM: 420, still: 0.18, moving: 0.12 },
   pl_t80u_modern: { doctrine: 'assault', viewM: 420, still: 0.18, moving: 0.12 },

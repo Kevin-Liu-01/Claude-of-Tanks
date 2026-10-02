@@ -190,7 +190,7 @@ const BASE_CAMO_PATTERN_LABEL: Readonly<Record<typeof BASE_CAMO_PATTERN_IDS[numb
   sig_amx10p: 'AMX-10P French Woodland',
   sig_amx10p_25: 'AMX-10P 25 French Woodland',
   sig_dardo: 'Dardo Woodland',
-  sig_lrmv_lynx: 'LRMV Olive',
+  sig_lrmv_lynx: 'LRMV Woodland',
   sig_borsuk: 'Borsuk Woodland',
   sig_type10b: 'Type 10B',
   sig_type90: 'Type 90 Kyū-maru',
@@ -387,8 +387,8 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'nato', base: '#3e4d3a', weather: '#48573f', patches: ['#5b4a38', '#1d1f1c'], camoScale: 0.45 }),
   preset('service_type99a', 'type99a', serviceTags('cn', 'woodland', 'digital'),
     { scheme: 'digital', base: '#4d573f', weather: '#57614a', patches: ['#6f684c', '#39412f', '#23261e'], camoScale: 0.42 }),
-  preset('service_ariete_c1', 'ariete_c1', serviceTags('it', 'woodland', 'stripes'),
-    { scheme: 'stripes', base: '#48533e', weather: '#53604a', patches: ['#384431', '#2c3529'], camoScale: 0.56 }),
+  preset('service_ariete_c1', 'ariete_c1', serviceTags('it', 'woodland', 'organic'),
+    { scheme: 'nato', base: '#4b563b', weather: '#5a6348', patches: ['#252b25', '#69513c'], camoScale: 0.4, patchK: 1.15 }),
   preset('service_type10', 'type10', serviceTags('jp', 'woodland', 'stripes'),
     { scheme: 'stripes', base: '#39463a', weather: '#445144', patches: ['#63523c', '#2e392f'], camoScale: 0.5 }),
   preset('service_pl01', 'pl01', serviceTags('pl', 'woodland', 'digital'),
@@ -451,11 +451,11 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
   preset('sig_dardo', 'dardo', signatureTags('it', 'woodland', 'organic'),
     { scheme: 'nato', base: '#4d5538', weather: '#797762', patches: ['#494235', '#252c26'] }),
   preset('sig_lrmv_lynx', 'lrmv_lynx', signatureTags('it', 'woodland', 'organic'),
-    { scheme: 'nato', base: '#535d42', weather: '#797762', patches: ['#555f46', '#505940'] }),
+    { scheme: 'nato', base: '#515d40', weather: '#636c4e', patches: ['#283029', '#756047'], camoScale: 0.42, patchK: 1.1 }),
   preset('sig_borsuk', 'borsuk', signatureTags('pl', 'woodland', 'organic'),
     { scheme: 'nato', base: '#4b553b', weather: '#797762', patches: ['#494235', '#252c26'] }),
-  preset('sig_ariete_c2', 'ariete_c2', signatureTags('it', 'woodland', 'stripes'),
-    { scheme: 'stripes', base: '#3f4d3b', weather: '#4b5945', patches: ['#2e3b2d', '#5b5140'], camoScale: 0.5 }),
+  preset('sig_ariete_c2', 'ariete_c2', signatureTags('it', 'woodland', 'organic'),
+    { scheme: 'nato', base: '#424f39', weather: '#546047', patches: ['#222a24', '#66503b'], camoScale: 0.46, patchK: 1.2 }),
   preset('sig_type10b', 'type10b', signatureTags('jp', 'woodland', 'stripes'),
     { scheme: 'stripes', base: '#3a4937', weather: '#59604b', patches: ['#243026', '#65583b', '#7a7054'], camoScale: 0.4 }),
   preset('sig_type90', 'type90', signatureTags('jp', 'woodland', 'stripes'),
@@ -472,12 +472,12 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'digital', base: '#35453a', weather: '#4a5847', patches: ['#222f28', '#59634c', '#73694f'], camoScale: 0.43 }),
   preset('sig_ztz99a2', 'ztz99a2', signatureTags('cn', 'woodland', 'digital'),
     { scheme: 'digital', base: '#36463a', weather: '#4c5a49', patches: ['#232f28', '#5e654d', '#766b52'], camoScale: 0.43 }),
-  // Type 100 finish: PLA digital woodland — olive field with pale sage, dark green and grey cells (owner
-  // reference renders 2026-09-16)
+  // Broad olive/sage digital fields with subdued earth and charcoal accents.
+  // Six-centimetre cells stay readable on armor without the fine grey speckle.
   preset('sig_type100', 'type100', signatureTags('cn', 'woodland', 'digital'),
-    { scheme: 'digital', base: '#59654a', weather: '#65704f', patches: ['#8a9370', '#3a452f', '#7f8477'], camoScale: 0.34, digitalCellK: 1.0 }),
+    { scheme: 'digital', base: '#526044', weather: '#626d50', patches: ['#737e5b', '#73624a', '#2e3b2f'], camoScale: 0.38, digitalCellK: 2.4 }),
   preset('sig_ztz100_x', 'ztz100_x', signatureTags('cn', 'woodland', 'digital'),
-    { scheme: 'digital', base: '#5b6a4d', weather: '#66714f', patches: ['#8f9a72', '#3b4830', '#7d8378'], camoScale: 0.34, digitalCellK: 1.0 }),
+    { scheme: 'digital', base: '#49593f', weather: '#5c684c', patches: ['#707d58', '#695f48', '#29372d'], camoScale: 0.36, digitalCellK: 2.4 }),
   preset('sig_object695_x', 'object695_x', signatureTags('ru', 'woodland', 'digital'),
     { scheme: 'digital', base: '#4f5a44', weather: '#5c6647', patches: ['#7d8664', '#33402c', '#6f7570'], camoScale: 0.34, digitalCellK: 1.0 }),
   preset('sig_pt91m', 'pt91m', signatureTags('pl', 'woodland', 'stripes'),
@@ -722,12 +722,12 @@ export function signatureCamoPatternId(specId: string): CamoPatternId | null {
   return SIGNATURE_CAMO_PATTERN_BY_TANK_ID.get(specId) || null;
 }
 
-// These legacy American vehicles keep the national US Desert service coat in
-// the catalog, but initially present in their more appropriate temperate field
-// finish. Explicit player selections still take precedence in materials.ts.
+// Vehicle-specific Factory defaults for variants without their own signature.
+// The national service coats remain selectable, and explicit player selections
+// still take precedence in materials.ts.
 const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> = Object.freeze({
   ariete_c1_x: 'service_ariete_c1',
-  ariete_c2_x: 'service_ariete_c1',
+  ariete_c2_x: 'sig_ariete_c2',
   m46_patton: 'summer',
   m47_patton: 'summer',
   m48: 'summer',

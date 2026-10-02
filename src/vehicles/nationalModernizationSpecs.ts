@@ -2,7 +2,9 @@ import {TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS} from './specs.ts';
 import {bindFleetRegistries,cloneFleetVariant,registerFleetSpecs,stripSilhouetteDimensions} from './fleetSpecRegistry.ts';
 import {NATIONAL_MODERNIZATION_CONFIG,NATIONAL_MODERNIZATION_IDS} from './nationalModernizationConfig.ts';
 import {leftSidePlate,rightSidePlate} from './specHelpers.ts';
+import {nationalModernizationDesign,NATIONAL_GUN_PIVOT,NATIONAL_BARREL_LENGTH,NATIONAL_BARREL_RADIUS} from './nationalModernizationDesign.ts';
 import type {FleetTankSpec} from './specContracts.ts';
+import {synchronizeNationalLegacyMetadata} from './nationalLegacySpecs.ts';
 const entries:Record<string,FleetTankSpec>={};
 for(const c of NATIONAL_MODERNIZATION_CONFIG){
   const s=cloneFleetVariant(TANK_SPECS,c.id,'t90sm_x',{name:c.name,nation:c.nation,era:'next-generation'});
@@ -18,7 +20,7 @@ export function synchronizeNationalModernizationMetadata():void {
   if(synchronized)return;synchronized=true;
   const upper=TANK_SPECS.t90sm_x;
   for(const c of NATIONAL_MODERNIZATION_CONFIG){
-    const s=TANK_SPECS[c.id],hull=TANK_SPECS[c.donor];
+    const s=TANK_SPECS[c.id],hull=TANK_SPECS[c.donor],design=nationalModernizationDesign(c);
     s.armor=structuredClone(upper.armor);
     s.armor.hullPlates=structuredClone(hull.armor.hullPlates);
     // All three chassis receive new side banks, including T-80 donors whose
@@ -26,7 +28,7 @@ export function synchronizeNationalModernizationMetadata():void {
     s.armor.hullPlates=s.armor.hullPlates.filter(p=>!['skirt_era_L','skirt_era_R'].includes(p.name));
     const inheritedEra=upper.armor.turretPlates.find(p=>p.era)?.era;
     if(!inheritedEra)throw new Error('SM turret donor requires ERA definition');
-    const x=c.package==='ru'?2.065:2.015;
+    const x=design.width/2;
     const sideEra={kind:'era',era:structuredClone(inheritedEra)};
     s.armor.hullPlates.push(leftSidePlate('skirt_era_L',15,x,.87,x,1.33,-2.60,2.55,sideEra),
       rightSidePlate('skirt_era_R',15,x,.87,x,1.33,-2.60,2.55,sideEra));
@@ -35,9 +37,15 @@ export function synchronizeNationalModernizationMetadata():void {
     s.armor.modules=structuredClone([...hull.armor.modules.filter(m=>!m.turretLocal&&!moved.has(m.module)),...upperModules]);
     s.armor.crew=structuredClone([...hull.armor.crew.filter(m=>!m.turretLocal),...upper.armor.crew.filter(m=>m.turretLocal)]);
     s.armor.turretPivot=[.008,c.y,c.z];
-    s.dims={...hull.dims,widthM:c.package==='ru'?4.18:4.06,
-      heightM:upper.dims.heightM-upper.armor.turretPivot[1]+c.y,
-      overallLengthM:hull.dims.hullLengthM/2+c.z+upper.armor.gunPivot[2]+upper.armor.gunBarrel.lengthM};
+    for(const module of s.armor.modules)if(module.turretLocal&&(module.gunFollow||module.module==='gun')){
+      module.min=module.min.map((v,i)=>v+NATIONAL_GUN_PIVOT[i]-upper.armor.gunPivot[i]) as [number,number,number];
+      module.max=module.max.map((v,i)=>v+NATIONAL_GUN_PIVOT[i]-upper.armor.gunPivot[i]) as [number,number,number];
+    }
+    s.armor.gunPivot=[...NATIONAL_GUN_PIVOT];
+    s.armor.gunBarrel={...s.armor.gunBarrel,lengthM:NATIONAL_BARREL_LENGTH,radiusM:NATIONAL_BARREL_RADIUS};
+    s.dims={...hull.dims,hullLengthM:design.hullLength,widthM:design.width,
+      heightM:design.heightM,
+      overallLengthM:design.hullLength/2+c.z+NATIONAL_GUN_PIVOT[2]+NATIONAL_BARREL_LENGTH};
     stripSilhouetteDimensions(s.dims);
     s.visual={...s.visual,trackWidthM:hull.visual.trackWidthM,
       scheme:c.package==='cn'?'digital':c.package==='pl'?'nato':'woodland',
@@ -53,6 +61,7 @@ export function synchronizeNationalModernizationMetadata():void {
     s.hp=upper.hp+(c.package==='ru'?100:0);
     s.gun.reloadS=upper.gun.reloadS*(c.package==='ru'?.94:1);
     s.turretTraverseDegS=upper.turretTraverseDegS+3;
-    s.description='Original game concept: '+c.donor+' chassis with a T-90SM-derived turret and a distinct national modernization package.';
+    s.description='Original game concept. '+design.description+' Retains the '+c.donor+' mechanical running gear.';
   }
+  synchronizeNationalLegacyMetadata();
 }

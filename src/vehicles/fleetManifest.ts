@@ -2,7 +2,7 @@
 // It is deliberately plain data so asking which chunk owns a tank never
 // downloads or evaluates that chunk.
 export const FLEET_GROUP_IDS = Object.freeze({
-  nationalModernization: Object.freeze(["ua_t80u_modern", "ua_t72b3m_modern", "ua_t72b3_modern", "pl_t80u_modern", "pl_t72b3m_modern", "pl_t72b3_modern", "cn_t80u_modern", "cn_t72b3m_modern", "cn_t72b3_modern", "ru_t80u_modern", "ru_t72b3m_modern", "ru_t72b3_modern"]),
+  nationalModernization: Object.freeze(["ua_t72b3m_hetman_ii", "pl_t72b3_zubr_ii", "ua_t80u_modern", "ua_t72b3m_modern", "ua_t72b3_modern", "pl_t80u_modern", "pl_t72b3m_modern", "pl_t72b3_modern", "cn_t80u_modern", "cn_t72b3m_modern", "cn_t72b3_modern", "ru_t80u_modern", "ru_t72b3m_modern", "ru_t72b3_modern"]),
   sinoSovietConcepts: Object.freeze(['type96_72_long','type96_80_feng','type96_72m_lei']),
   t72Rys: Object.freeze(['t72_rys']),
   marder2: Object.freeze(['marder2']),
