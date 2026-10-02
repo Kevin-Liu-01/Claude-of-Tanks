@@ -6139,9 +6139,16 @@ withdrawn as dead code.
 Titan Gorge, Skybridge) showed a corrugated chevron sheet over every mountain at 1–2 km: the dune bedforms (26 m
 trains) ran on the ring's 15–28° faces below the wall band, and the slip faces' unmipped 0.9 m contour wave and 3.7 m
 flow sine — faded by the footprint distance, which a face-on wall reads as near — aliased at a kilometre. Bedforms now
-stay on gentle sand (gone by 24°), and both sines fade by the true camera distance. The far walls' coarse structure
-(`uFarWall`: rock-mass amplitude, coarse wall-normal amplitude, their vertical stretch, ledge amplitude) is one vector,
-which the ring lab varies at runtime through the program's uniforms (`userData.splatUniforms`).
+stay on gentle sand (gone by 24°), and both sines fade by the true camera distance. The ring lab (runtime edits of the
+program's uniforms through `userData.splatUniforms`, no rebuild) then isolated the rest: zeroing the ring's surface
+atlas removed both the chevrons left on Sirocco Wadi's far ranges and the dimples on Copper Mesa's walls, while the
+far-wall rescue's knobs (rock masses, coarse normals, their vertical stretch, ledges) and an occlusion-driven couloir
+fill changed nothing visible at ring distance and were dropped. The atlas's fine relief is a slope's detail: on the
+tablelands' and the martian scarps' flanks and walls (relief characters `mesa` and `martian`) its gradient now fades
+over the face's own slope from 20° to 41° (`uRingReliefWall`, set at the ring's bind); the caps keep it, the occlusion
+and the cast shadows keep their weight everywhere, and the snow, alpine, rolling and coastal ranges keep it in full —
+their ridges are its relief. Earthrise Basin's regolith palette is a dark, faintly warm grey (the census: "the
+regolith reads as snow").
 
 ## Acceptance is visual and measured
 

@@ -13,13 +13,14 @@
 //      existing-sized uniform (no sampler);
 //   5. terrain v3 (2026-10-02): the horizon ring IS this material past the square (d20f64198's continuous horizons bind
 //      every ring and far-range face to the live terrain program), so the mountains' look is pinned here: dune bedforms
-//      on gentle sand only, the slip-face sines faded by the true camera distance, the far walls' coarse structure
-//      (uFarWall) and the probes' handle on the program uniforms.
+//      on gentle sand only, the slip-face sines faded by the true camera distance, the ring atlas gradient's wall band
+//      (uRingReliefWall) and the probes' handle on the program uniforms.
 // Source and scalar checks; the GPU cost and the look are measured by the lane's ABBA probe and capture sheets.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { groundReduxProfileIds, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { MAP_IDS } from './maps/catalog.ts';
+import { RING_RELIEF_WALL_BAND } from './horizonAutumnGround.ts';
 
 const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const active = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
@@ -172,9 +173,10 @@ const sandLaws = (source) => {
   assert.ok(/float wRipW = [^;]*\(1\.0 - smoothstep\(150\.0, 450\.0, camDist\)\)[^;]*;/.test(frag), 'the slip-face contour wave fades by the true camera distance');
   const flowAt = frag.indexOf('flow *= 1.0 - smoothstep(250.0, 600.0, camDist);');
   assert.ok(flowAt > 0 && flowAt < frag.indexOf('a.rgb *= (1.0 + flow * 0.05 * sandFaceW)'), 'the flow sine fades before it is applied');
-  assert.ok(frag.includes('uniform vec4 uFarWall;'), 'the far walls\' structure vector is declared');
-  assert.ok(frag.includes('a.rgb *= 1.0 + (rrM - 0.5) * 0.36 * uFarWall.x * wallFar;') && frag.includes('* wallFar * uFarWall.w;')
-    && frag.includes('mix(1.0, uFarWall.y, steepW);') && frag.includes('vec2 farS = vec2(1.0, 1.0 / max(uFarWall.z, 1.0));'), 'and read by the far-wall rescue');
+  assert.ok(frag.includes('uniform vec2 uRingReliefWall;'), 'the ring atlas gradient\'s wall band is declared');
+  assert.ok(/gRingGrad = \(ringRel\.xy \* 2\.0 - 1\.0\) \* uRingReliefGrad \* ringW\s*\* \(1\.0 - smoothstep\(uRingReliefWall\.x, uRingReliefWall\.y, 1\.0 - clamp\(wn\.y, 0\.0, 1\.0\)\)\);/.test(frag),
+    'it fades the gradient alone, by the ring face\'s own geometric slope');
+  assert.ok(/gRingAo = 1\.0 - \(1\.0 - pow\(ringRel\.z, 1\.4\)\) \* 0\.8 \* ringW;/.test(frag), 'the occlusion keeps its full weight');
 };
 sandLaws(terrain);
 for (const [from, to, label] of [
@@ -189,11 +191,15 @@ for (const [from, to, label] of [
 const smooth = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
 const bedGate = (deg) => 1 - smooth(0.035, 0.09, 1 - Math.cos(deg * Math.PI / 180));
 assert.ok(bedGate(10) > 0.99 && bedGate(15) > 0.98 && bedGate(25) < 0.01 && bedGate(40) === 0, 'bedform gate: dunes yes, flanks no');
-assert.ok(terrain.includes('shader.uniforms.uFarWall = farWallUniform;') && terrain.includes('mat.userData.splatUniforms = shader.uniforms;'),
-  'the far-wall vector is bound and the probes can reach every program uniform');
-const farWall = /const farWallUniform: THREE\.IUniform = \{ value: new THREE\.Vector4\(([^)]*)\) \};/.exec(terrain);
-assert.ok(farWall, 'the far-wall vector has its authored value');
-const [massAmp, nrmAmp, stretch, ledgeAmp] = farWall[1].split(',').map(Number);
-assert.ok(massAmp >= 0 && massAmp <= 2 && nrmAmp >= 0 && nrmAmp <= 1.5 && stretch >= 1 && stretch <= 6 && ledgeAmp >= 0 && ledgeAmp <= 3, 'far-wall terms in band');
+assert.ok(terrain.includes('shader.uniforms.uRingReliefWall = ringReliefUniforms.uRingReliefWall;') && terrain.includes('uRingReliefWall: { value: new THREE.Vector2(2, 3) },'),
+  'the wall band rides with the ring relief uniforms, off until the ring binds');
+assert.ok(terrain.includes('mat.userData.splatUniforms = shader.uniforms;'), 'the probes can reach every program uniform');
+// the policy: the tablelands and the martian scarps fade the gradient on their flanks and walls; every other range keeps it
+assert.deepEqual(Object.keys(RING_RELIEF_WALL_BAND).sort(), ['martian', 'mesa'], 'the wall band applies to the mesa and martian characters only');
+for (const [character, [lo, hi]] of Object.entries(RING_RELIEF_WALL_BAND)) {
+  assert.ok(lo > 0 && hi > lo && hi < 0.5, `${character}: a band inside the face slope range (caps keep their relief)`);
+}
+assert.ok(ground.includes("const wallBand = character ? RING_RELIEF_WALL_BAND[character] : undefined;") && ground.includes('wall.set(...(wallBand ?? RING_RELIEF_WALL_NONE));'),
+  'the ring bind sets the band per relief character (none elsewhere)');
 
-console.log(`terrainMaterialV2: coverage-gated layers (7 gates, 512 executed coverage cases), far band without detail normals, one-fetch far variant on measured means, explicit-LOD noise, exposure and non-periodic beds on ${MAP_IDS.length} maps, the ring as this material (bedforms on gentle sand, distance-faded slip-face sines, the far walls' structure), ${mutants.length + 3} mutation controls PASS; no GPU/art claim`);
+console.log(`terrainMaterialV2: coverage-gated layers (7 gates, 512 executed coverage cases), far band without detail normals, one-fetch far variant on measured means, explicit-LOD noise, exposure and non-periodic beds on ${MAP_IDS.length} maps, the ring as this material (bedforms on gentle sand, distance-faded slip-face sines, the atlas gradient's wall band), ${mutants.length + 3} mutation controls PASS; no GPU/art claim`);

@@ -2881,13 +2881,11 @@ float gWallSky = 0.0;     // round 42: steep × turned-from-the-sun weight, read
 // normal's unit instead — the ring bands' draw binds it there (horizonAutumnGround.ts) with uRingDraw = 1, and the
 // marsh normal is off during that draw (past the square its 19 cm tile is sub-pixel at every ring distance).
 uniform float uRingDraw; uniform vec2 uRingReliefR; uniform float uRingReliefGrad; uniform float uRingReliefAmp;
-// terrain v3 (2026-10-02): the far walls' coarse structure past ~300 m — x the rock-mass amplitude, y the coarse wall
-// normal's amplitude, z the vertical stretch of both samples (1 = round 35's isotropic samples), w the ledge amplitude
-uniform vec4 uFarWall;
 float gRingAo = 1.0; float gRingSun = 1.0; vec2 gRingGrad = vec2(0.0);
-// terrain v3: the ring atlas's occluded folds (gullies, chutes, the foot of a crest) and how far they fill with the ground
-// layer on the ring's steep faces (snow, scree soil or sand in the couloirs; the spurs between them stay rock)
-float gRingFold = 0.0; uniform float uRingFold;
+// terrain v3: the slope band (of the ring's own geometric face) over which the atlas's fine-relief GRADIENT fades — the
+// height-field relief is a slope's detail; on a near-vertical wall it printed dimples and chevrons (the occlusion and
+// the sun visibility keep their full weight). (2, 3) = no fade.
+uniform vec2 uRingReliefWall;
 uniform float uRockGate;  // r6: 1 = slope-rock takeover keyed to the mask-B landform weight (desert mesas)
 uniform float uSea;       // maps r1: 1 = M layer is OPEN WATER (sea/river), 0 = legacy mud/ice
 uniform float uSeaFoam;   // maps r1: surf/whitecap strength (0 disables)
@@ -3032,13 +3030,11 @@ vec4 wallSamp(sampler2D t, vec4 mean, float sc, float df, float mb) {
   if (gWallW > 0.997) return splatSamp(t, gWallUVz * sc, df, mb, mean);
   return mix(splatSamp(t, gWallUVx * sc, df, mb, mean), splatSamp(t, gWallUVz * sc, df, mb, mean), gWallW);
 }
-// terrain v3: the wall-plane sample takes a separate scale along the wall (x) and up it (y); wallTex is its square case
-vec3 wallTex2(sampler2D t, vec2 sc) {
+vec3 wallTex(sampler2D t, float sc) {
   if (gWallW < 0.003) return texture2D(t, gWallUVx * sc).xyz;
   if (gWallW > 0.997) return texture2D(t, gWallUVz * sc).xyz;
   return mix(texture2D(t, gWallUVx * sc).xyz, texture2D(t, gWallUVz * sc).xyz, gWallW);
 }
-vec3 wallTex(sampler2D t, float sc) { return wallTex2(t, vec2(sc)); }
 float wallNoiseG(float sc, vec2 off) {
   if (gWallW < 0.003) return nz(gWallUVx, sc, off).g;
   if (gWallW > 0.997) return nz(gWallUVz, sc, off).g;
@@ -3151,12 +3147,12 @@ void splatCompute() {
     float ringW = smoothstep(0.0, 40.0, edgeOut) * (1.0 - smoothstep(0.9, 1.0, ringV)) * uRingReliefAmp;
     if (uSea > 0.5 && uSeaOpeningCount > 0.5) ringW *= 1.0 - smoothstep(0.0, 0.25, outlandSeaWeight(wp.xz, edgeOut));
     vec4 ringRel = textureLod(uNrmM, vec2(atan(wp.z, wp.x) * 0.15915494309, ringV), 0.0);
-    gRingGrad = (ringRel.xy * 2.0 - 1.0) * uRingReliefGrad * ringW;
+    gRingGrad = (ringRel.xy * 2.0 - 1.0) * uRingReliefGrad * ringW
+      * (1.0 - smoothstep(uRingReliefWall.x, uRingReliefWall.y, 1.0 - clamp(wn.y, 0.0, 1.0)));
     vec2 ringG0 = -wn.xz / max(wn.y, 0.05);
     wn = normalize(vec3(-(ringG0.x + gRingGrad.x), 1.0, -(ringG0.y + gRingGrad.y)));
     gRingAo = 1.0 - (1.0 - pow(ringRel.z, 1.4)) * 0.8 * ringW;
     gRingSun = 1.0 - (1.0 - ringRel.w) * 0.85 * ringW;
-    gRingFold = smoothstep(0.85, 0.55, ringRel.z) * ringW;
   }
   // Round 29 (owner 2026-09-20, "see where the texture just stops"): a road that reaches the playable edge runs on
   // into the ring on its clamped edge texels — a straight continuation of the carriageway and its shoulder — and
@@ -3340,8 +3336,6 @@ void splatCompute() {
   // "pink contour marbling on sand" (desert critique). Rock now takes over
   // from ~37 deg; the 30-37 deg band stays sand (ripples own it).
   fR = max(fR, smoothstep(0.20, 0.42, slopeR) * (1.0 - mkB * 0.85) * 0.95 * rockGate);
-  // terrain v3: on the ring, the folds of a steep face fill (couloirs) while its spurs stay bare; sheer walls stay rock
-  if (uRingFold > 0.001) fR *= 1.0 - gRingFold * uRingFold * smoothstep(0.10, 0.25, slope) * (1.0 - smoothstep(0.55, 0.80, slope));
   // triplanar side projection on steep faces: planar XZ UVs smear vertically
   // down cliff walls (the classic heightmap-stretch tell on the mesa cliffs)
   // — resample the rock layer in the wall's own plane and take it over as
@@ -3787,24 +3781,22 @@ void splatCompute() {
       // the per-cliff field so no two faces share a band, carried in albedo where the normals have mipped away
       // (full strength on bedded maps, half on the rest); (c) the coarse normal at wall strength.
       float wallFar = farRock * steepW;
-      // terrain v3: the coarse samples can stretch up the wall (uFarWall.z) — buttresses and flutes instead of blotches
-      vec2 farS = vec2(1.0, 1.0 / max(uFarWall.z, 1.0));
-      float rrM = dot(wallTex2(uAlbR, 0.011 * farS), vec3(0.36, 0.42, 0.22));
-      a.rgb *= 1.0 + (rrM - 0.5) * 0.36 * uFarWall.x * wallFar;
+      float rrM = dot(wallTex(uAlbR, 0.011), vec3(0.36, 0.42, 0.22));
+      a.rgb *= 1.0 + (rrM - 0.5) * 0.36 * wallFar;
       // Round 49: the ladder's along-wall wander 2.6 → 1.0 rad (±5.8 m per 50 m was a third wave system on top of
       // the tile beds and the marker beds; ±2.2 m reads as a gentle fault, not a swell)
       float ledgeWarp = wallNoiseG(0.02, vec2(0.31, 0.77));
       float ledgePhase = wp.y * 0.45 + gCliffJ * 7.0 + ledgeWarp * 1.0;
       float ledge = mix(sin(ledgePhase), bedSignal(wp.y + ledgeWarp * 2.2, 0.016, gCliffJ + 0.53), uReduxD.z); // terrain v2
-      float ledgeAmp = mix(0.5, 1.0, smoothstep(0.02, 0.12, uStrata)) * wallFar * uFarWall.w;
+      float ledgeAmp = mix(0.5, 1.0, smoothstep(0.02, 0.12, uStrata)) * wallFar;
       a.rgb *= 1.0 + (smoothstep(0.35, 0.9, ledge) * 0.10 - smoothstep(0.35, 0.9, -ledge) * 0.16) * ledgeAmp;
       vec3 rnGround = vec3(texture2D(uNrmR, uv * 0.019).xy * 2.0 - 1.0, 0.0);
-      vec3 rnWall = wallNormalDelta(texture2D(uNrmR, gWallUVx * 0.019 * farS).xy,
-                                    texture2D(uNrmR, gWallUVz * 0.019 * farS).xy);
+      vec3 rnWall = wallNormalDelta(texture2D(uNrmR, gWallUVx * 0.019).xy,
+                                    texture2D(uNrmR, gWallUVz * 0.019).xy);
       vec3 rn = mix(rnGround, rnWall, steepW);
       // 0.55 (r5, was 0.9): under a low sun the full-strength coarse normals
       // rendered far flanks as glittery fur instead of crag; round 35 adds back a quarter on genuine walls only
-      n.xyz += rn * farRock * (0.22 + 0.24 * steepW) * mix(1.0, uFarWall.y, steepW);
+      n.xyz += rn * farRock * (0.22 + 0.24 * steepW);
     }
   }
   // wind-aligned sand ripples: anisotropic normal waves instead of dot noise.
@@ -4621,11 +4613,12 @@ function* createSplatMaterialSteps(
   const ringReliefUniforms: Record<string, THREE.IUniform> = {
     uRingDraw: { value: 0 }, uRingReliefR: { value: new THREE.Vector2(0, 1) },
     uRingReliefGrad: { value: 1 }, uRingReliefAmp: { value: 0 },
+    // terrain v3 (2026-10-02): the slope band over which the atlas gradient fades on the ring's walls; (2, 3) = none —
+    // the ring's bind (horizonAutumnGround.ts) sets it per relief character
+    uRingReliefWall: { value: new THREE.Vector2(2, 3) },
     uNrmM: { value: layers.M.normal },
   };
   mat.userData.ringReliefUniforms = ringReliefUniforms;
-  // terrain v3: the far walls' coarse structure (x mass, y wall normal, z vertical stretch, w ledges); 1,1,1,1 = round 35
-  const farWallUniform: THREE.IUniform = { value: new THREE.Vector4(1, 1, 1, 1) };
   // r3: DoubleSide — at chunk borders where LOD levels disagree on a steep
   // cliff edge, the higher chunk's skirt ribbon can face AWAY from a camera
   // looking across the boundary; the culled backface opened a fog-bright
@@ -4761,8 +4754,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uReduxB = reduxUniforms.uReduxB; // round 73b
     shader.uniforms.uReduxC = reduxUniforms.uReduxC; // round 73b
     shader.uniforms.uReduxD = reduxUniforms.uReduxD; // terrain v2
-    shader.uniforms.uFarWall = farWallUniform; // terrain v3: the far walls' coarse structure
-    shader.uniforms.uRingFold = { value: 0 }; // terrain v3: the ring's couloirs (the ring lab sets it)
+    shader.uniforms.uRingReliefWall = ringReliefUniforms.uRingReliefWall; // terrain v3: the atlas gradient's wall fade
     // terrain v3: the probes' runtime handle on the program's uniforms (the ring lab varies terms without a rebuild)
     mat.userData.splatUniforms = shader.uniforms;
     shader.uniforms.uGroundTime = groundClock;

@@ -126,8 +126,8 @@ function checkSourceContract(text) {
     // terrain v2 (2026-10-01, the Opus 5.5 redesign): the four layers' measured tile means (the far variant's and the
     // octaves' deep-mip mean fetches) and the exposure / bedding vector — uniforms, no sampler
     'uMeanG', 'uMeanD', 'uMeanR', 'uMeanM', 'uReduxD',
-    // terrain v3 (2026-10-02): the far walls' coarse structure (vec4) and the ring's couloir fill (scalar) — no sampler
-    'uFarWall', 'uRingFold',
+    // terrain v3 (2026-10-02): the ring atlas gradient's wall fade (vec2, set per relief character at the ring's bind) — no sampler
+    'uRingReliefWall',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
