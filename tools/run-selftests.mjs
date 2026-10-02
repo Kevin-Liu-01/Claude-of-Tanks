@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { createCaptureLock, selftestLockTimeoutMs } from './capture-lock.mjs';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { captureQueueHasWaiters, runSelftestCpuPool } from './selftest-cpu-pool.mjs';
-import { createSelftestCache } from './selftest-cache.mjs';
+import { createSelftestCache, REPO_ROOT } from './selftest-cache.mjs';
+import { resolveSelftestCacheDir } from './selftest-cache-dir.mjs';
 
 // These real browser regressions own the shared lease inside their processes.
 // Other subprocess tests either remain CPU-only or reject browser CLI input
@@ -253,7 +254,11 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   catch (error) { console.error(error.message); process.exitCode = 2; }
   if (command) {
     const { name: suiteName, files: suite } = command;
-    const cache = createSelftestCache({ alwaysRun: SELFTEST_FRESH_FILES, env: selftestChildEnv() });
+    const childEnv = selftestChildEnv();
+    // Gate P18: proofs are keyed on the root commit; the first run adopts the URL-keyed store.
+    const cacheLocation = resolveSelftestCacheDir(REPO_ROOT, childEnv);
+    if (cacheLocation.adoption === 'linked') console.log(`[selftests] result cache now keyed on the ${cacheLocation.identity}; adopted ${cacheLocation.legacyDir}`);
+    const cache = createSelftestCache({ alwaysRun: SELFTEST_FRESH_FILES, env: childEnv, cacheDir: cacheLocation.dir });
     if (command.plan) {
       const checks = selftestPlan(suite, cache, command.changed);
       console.log(JSON.stringify({ checks: checks.length,
