@@ -1,11 +1,31 @@
-// src/world/maps/coastal.ts — maps r1: Fisherman's Bay / Overlord vibes. A
-// turquoise bay fills the east edge (uSea open-water splat mode), fronted by
-// a strand of beach apron + surf line, a dune band, headland bluffs, and a
-// whitewashed fishing village on the coast road. Sea sheets are terrain
-// `lakes` (flattened to sea level, softLakes = wading is bogged-slow) paired
-// with wide `marshes` rings that give the splat mask its beach ramp.
+// src/world/maps/coastal.ts — Saltmere Bay, redesigned 2026-10-02 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
+// The bay, the strand, the fishing village and its four lanes, the palette, sky, sea, vegetation, name and id are the
+// map's identity and stay; the battlefield inland of them is new. The old layout kept three of Verdant's five
+// landforms, put alpha's pad on the open strand (its sector of the field had 3 % cover) and bravo's across the uplands,
+// and the 2v2 pacing receipt's fastest match (seed 25001) ended in 113 s.
+//
+// Reference: a Breton bocage coast (the Pays de Leon): a turquoise bay behind a dune-backed strand, a whitewashed
+// fishing village on the coast road, and inland the bocage: small fields boxed by hedge banks (talus) on rolling granite
+// downs, with sunken lanes between the farms.
+//
+// Sea sheets are terrain `lakes` (flattened to sea level, softLakes = wading is bogged-slow) paired with wide
+// `marshes` rings that give the splat mask its beach ramp.
+//
+// The story on the ground: the bay fills the east edge, fronted by the strand and the dune band. The village stands on
+// the coast road behind the strand, where the two shore lanes come down to the beach. Inland, the granite downs rise in
+// two long swells, one south and one north of the village's latitude, and between them the bocage fields lie on the
+// lower slopes with farmsteads and hedge banks.
+//
+// The layout is mirror-symmetric across the axis between the two shore lanes (z = 22): every swell, hedge bank, farm,
+// strongpoint and objective in the southern half has a counterpart reflected into the northern half (the four lanes
+// already were; only the bay's coves are not). Alpha deploys behind the southern downs, bravo behind the northern
+// downs, so the pads cannot see each other. The three zone-control objectives stand on the axis: the inland hamlet,
+// the bocage crossroads and the village.
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
+// The inland road is grid road 0 (x = -90, the village's west lane): its vertex at z, by the grid's own jitter law
+// (terrain.ts buildGridRoads, jitter 2.2, index 0), so a border stub can start exactly on its end.
+const inlandRoadAt = (z: number): [number, number] => [-90 + Math.sin(z * 0.011 + 0 * 2.3) * 2.2, z];
 
 export default {
   id: 'coastal',
@@ -13,8 +33,8 @@ export default {
   blurb: 'Turquoise bay, dune-backed strand and a whitewashed fishing village',
 
   terrain: {
-    hillScale: 0.95,
-    microScale: 0.9,
+    hillScale: 0.6,   // the granite downs' broad swell (was 0.95: no 60 m disc of level ground inland)
+    microScale: 0.65, // field-scale folds (was 0.9)
     rimH: 26,
     coastRimFadeM: 120, // round 47 follow-up: the bay's headlands climb to the rim over 120 m instead of standing on the strand
     // the bay: three overlapping sheets along the east edge; softLakes =
@@ -53,29 +73,69 @@ export default {
       { feather: 7, strength: 0.82, boundary: [[141, -77], [171, -77], [197, -45], [190, 7], [199, 40], [176, 51], [141, 45], [145, 9], [134, -28]] },
     ],
     landforms: [
-      { kind: 'ridge', x: -252, z: -34, length: 322, width: 78, height: 6.6, yawDeg: 4 },
-      { kind: 'ridge', x: 212, z: 54, length: 266, width: 68, height: 5.2, yawDeg: -10, wetScale: 0.72 },
-      { kind: 'ridge', x: -44, z: 246, length: 226, width: 62, height: 5.0, yawDeg: 80 },
-      { kind: 'knoll', x: -170, z: -224, rx: 92, rz: 68, height: 5.8, yawDeg: -20 },
-      { kind: 'basin', x: 88, z: -250, rx: 112, rz: 72, height: -2.2, yawDeg: 10, wetScale: 0.76 },
+      // The granite downs, south and north: long swells that screen each pad from the axis.
+      ...[[-40, -236, 160, 44, 8.5, 4], [250, -250, 70, 46, 6, -10]].flatMap(([x, z, rx, rz, height, yaw]) => [
+        { kind: 'knoll', x, z, rx, rz, height, yawDeg: yaw },
+        { kind: 'knoll', x, z: 44 - z, rx, rz, height, yawDeg: -yaw },
+      ]),
+      // Hedge banks (talus): low earth banks along the bocage field boundaries, hull-down lines for both teams.
+      ...[[-250, -120, 150, 2], [-40, -110, 120, -4], [-330, -40, 110, 80]].flatMap(([x, z, length, yaw]) => [
+        { kind: 'ridge', x, z, length, width: 22, height: 2.4, yawDeg: yaw },
+        { kind: 'ridge', x, z: 44 - z, length, width: 22, height: 2.4, yawDeg: -yaw },
+      ]),
+      // a granite outcrop on the downs' shoulder, each with its reflection
+      ...[[20, -170]].flatMap(([x, z]) => [
+        { kind: 'knoll', x, z, rx: 30, rz: 24, height: 6 },
+        { kind: 'knoll', x, z: 44 - z, rx: 30, rz: 24, height: 6 },
+      ]),
+      // the granite tor on the axis between the hamlet's green and the crossroads' meadow: it parts the inland lane
+      // from the bocage lane where they meet
+      { kind: 'knoll', x: -222, z: 22, rx: 24, rz: 30, height: 6.5 },
+      // granite tors on the lower slopes, south and north, under the bocage crofts
+      ...[[-260, -101]].flatMap(([x, z]) => [
+        { kind: 'knoll', x, z, rx: 26, rz: 30, height: 6 },
+        { kind: 'knoll', x, z: 44 - z, rx: 26, rz: 30, height: 6 },
+      ]),
+    ],
+    // The inland hamlet's green and the bocage crossroads' meadow on the axis: level aprons (each at its ground's own
+    // level, clear of the lanes) the zone-control placement seats its 30 m discs on. The village disc seats on the
+    // village's graded floor.
+    hardstands: [
+      { x: -290, z: 22, width: 60, length: 60, yawDeg: 0, level: -0.7, grade: 0 },
+      { x: -155, z: 22, width: 60, length: 60, yawDeg: 0, level: 6.6, grade: 0 },
     ],
     // E-W lanes CLIP at the strand (hi: 262) so no road paves into the bay
-    roads: { grid: { xs: [-90, 168], zs: [{ at: -52, hi: 262 }, { at: 96, hi: 262 }], jitter: 2.2 } },
+    // 2026-10-02 redesign: the four village lanes keep their own 32 m lattice inside the village. The inland road (road
+    // 0, the utility line) runs the square's length and leaves it through two border stubs; the coast road now runs
+    // between the two bocage lanes, and the shore lanes leave the inland road for the strand. Every border exit is an
+    // authored path the endpoint completion grades through the rim (grid lanes drawn to the edge climbed it at 33-37 %).
+    roads: { grid: { xs: [{ at: -90, lo: -448, hi: 448 }, { at: 168, lo: -224, hi: 256 }],
+      zs: [{ at: -52, lo: -96, hi: 262 }, { at: 96, lo: -96, hi: 262 }], jitter: 2.2 }, paths: [
+      // 4 / 5 — the bocage lanes: from the west edge past the crofts and farmsteads, across the inland road and over
+      // the downs' eastern shoulder to the coast road; the northern lane is the southern one's reflection across the
+      // axis.
+      [[-448, -130], [-330, -140], [-230, -152], [-150, -162], [-90, -152], [0, -170], [90, -200], [168, -210]],
+      [[-448, 174], [-330, 184], [-230, 196], [-150, 206], [-90, 196], [0, 214], [90, 244], [168, 254]],
+      // 6 / 7 — the inland road's border stubs: each starts exactly on the road's end inside the square, so the
+      // endpoint completion grades the exit through the rim like any authored path's.
+      [inlandRoadAt(448), [inlandRoadAt(448)[0], 449]],
+      [inlandRoadAt(-448), [inlandRoadAt(-448)[0], -449]],
+    ] },
   },
 
+  layoutBrief: { exceptions: {
+    solidPropsInRoad: 'one fishing-village frontage building at the shore lane\'s junction with the coast road, '
+      + 'unchanged from the original map (whose village frontage its shore receipts pin), stands 1.4 m into the coast '
+      + 'road\'s carriageway',
+  } },
+
   spawns: {
-    // flat-scanned strand-side pad (minNy 0.926, Δh 1.9 over the ally arc;
-    // r4: shifted +22 m east — the first pad's exit lane wedged on a rock
-    // cluster ~13 m out, probed live via tools/tmp-coastal-spawn-test)
-    player: { x: 232, z: -352 },
-    // BATTLE-AI r7 TEAM SPAWNS: one enemy spawn arc on the north headland
-    // (the old list scattered to (-350,130)/(180,215) — half the "enemy team"
-    // started mid-map). Flat-scanned via tools/tmp-ai-r7-spawnscan.mjs —
-    // minNy>=0.86, relief<=5 m, bay sheets cleared by 24 m + soft strand
-    // rejected, >=38 m apart, >=380 m from the player pad.
+    // Alpha deploys behind the southern downs; bravo's seven pads (two rows) stand behind the northern downs, their
+    // centroid the reflection of alpha's pad across the axis. 806 m between the anchors.
+    player: { x: -40, z: -381 },
     enemies: [
-      { x: 43, z: 344 }, { x: -52, z: 341 }, { x: 66, z: 390 }, { x: -125, z: 344 },
-      { x: 120, z: 433 }, { x: -174, z: 354 }, { x: 162, z: 412 },
+      { x: -130, z: 410 }, { x: -70, z: 410 }, { x: -10, z: 410 }, { x: 50, z: 410 },
+      { x: -100, z: 446 }, { x: -40, z: 446 }, { x: 20, z: 446 },
     ],
   },
 
@@ -144,12 +204,26 @@ export default {
       'netyard', 'cottage', 'tower', 'cottage'],
     destructibleBuildings: ['fishershack', 'saunahut', 'leanto', 'guardpost'],
     tacticalBeats: [
-      { id: 'western-coast-road-croft', role: 'brawl', x: -250, z: -60, yawDeg: 0,
+      { id: 'south-bocage-croft', role: 'brawl', x: -260, z: -103, yawDeg: 0,
         structure: 'saunahut', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: -15 },
-      { id: 'strand-observation-shack', role: 'scout', x: 245, z: -70, yawDeg: -8,
-        structure: 'fishershack', outcrop: { count: 4, radius: 8, scaleMax: 2.7 } },
-      { id: 'northern-headland-post', role: 'support', x: -48, z: 260, yawDeg: 8,
+      { id: 'north-bocage-croft', role: 'brawl', x: -260, z: 147, yawDeg: 180,
+        structure: 'saunahut', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: -15 },
+      { id: 'south-downs-post', role: 'support', x: 40, z: -103, yawDeg: 8,
         structure: 'guardpost', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
+      { id: 'north-downs-post', role: 'support', x: 40, z: 147, yawDeg: 188,
+        structure: 'guardpost', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: 15 },
+      { id: 'south-strand-shack', role: 'scout', x: 222, z: -170, yawDeg: -8,
+        structure: 'fishershack', outcrop: { count: 4, radius: 8, scaleMax: 2.7 } },
+      { id: 'north-strand-shack', role: 'scout', x: 222, z: 214, yawDeg: 172,
+        structure: 'fishershack', outcrop: { count: 4, radius: 8, scaleMax: 2.7 } },
+    ],
+    // The bocage farmsteads above the lanes, south and north, sited on the slopes' level shelves: they part the
+    // inland lane from the bocage lane.
+    plannedSites: [
+      { structure: 'farmhouse', x: -216, z: -98, yawDeg: 0 }, { structure: 'barn', x: -192, z: -120, yawDeg: 90 },
+      { structure: 'farmhouse', x: -138, z: 154, yawDeg: 180 }, { structure: 'barn', x: -186, z: 166, yawDeg: 270 },
+      // the field barns on the hedge banks between the bocage lane and the coast lane
+      { structure: 'barn', x: -50, z: -102, yawDeg: 90 }, { structure: 'barn', x: -20, z: 146, yawDeg: 270 },
     ],
     sideSkip: 0.12, spacingPad: 7,
     buildingLat: [11, 4.5], maxSpread: 2.2,
@@ -166,11 +240,11 @@ export default {
       // village crofts
       [60, -34, 118, -34, 2], [196, 60, 196, 116, 3], [80, 120, 140, 120, 1],
       [126, -64, 126, -18, 2],
-      // inland field boundaries staging the approach lanes
-      [-200, -80, -140, -80, 3], [-140, -80, -140, -22, 1],
-      [-60, 190, 10, 190, 2], [-260, 120, -196, 120, 1],
-      [-120, -220, -52, -220, 2], [30, -180, 96, -180, 3],
-      [-320, -20, -258, -20, 2],
+      // bocage field walls on the hedge banks, each with its reflection across the axis
+      [-320, -170, -250, -170, 3], [-320, 214, -250, 214, 3],
+      [-120, -60, -60, -60, 2], [-120, 104, -60, 104, 2],
+      [-20, -120, 40, -130, 1], [-20, 164, 40, 174, 1],
+      [-400, -100, -340, -110, 2], [-400, 144, -340, 154, 2],
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     haystacks: 14, rocks: 262, outcrops: 30, craters: 30, rubblePiles: 0,

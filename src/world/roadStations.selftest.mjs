@@ -225,12 +225,9 @@ const metadata = [];
 for (const mapId of MAP_IDS) {
   const config = getMapConfig(mapId), intent = ROAD_ENDPOINT_INTENTS[mapId];
   const completed = createLayout(config);
-  let baselineConfig = config;
-  if (mapId === 'coastal') {
-    const t = config.terrain, grid = t.roads.grid;
-    baselineConfig = { ...config, terrain: { ...t, roads: { ...t.roads,
-      grid: { ...grid, zs: grid.zs.map(row => typeof row === 'number' ? row : { ...row, hi: 256 }) } } } };
-  }
+  // 2026-10-02: Saltmere Bay, rebuilt to the layout brief, keeps physical road stations; its shore lanes' authored
+  // strand limit (262 m) is the same in both layouts, so the round-47 baseline at the old 256 m sample no longer applies.
+  const baselineConfig = config;
   delete ROAD_ENDPOINT_INTENTS[mapId];
   let before;
   try { before = createLayout(baselineConfig); } finally { ROAD_ENDPOINT_INTENTS[mapId] = intent; }

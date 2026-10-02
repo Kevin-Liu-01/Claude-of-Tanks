@@ -46,7 +46,12 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   // Hauptstrasse east of the square.
   urban: [through, through, through, ['boundary', { junction: 2 }], ['boundary', { junction: 2 }],
     join(3, 4), join(0, 1), join(1, 0), join(0, 1), join(1, 0)],
-  coastal: [through, through, ['boundary', 'shore'], ['boundary', 'shore']],
+  // Saltmere Bay redesign (2026-10-02): the inland road runs between its two border stubs, which start exactly on its
+  // ends and leave the square; the coast road runs between the two bocage lanes; each shore lane leaves the inland
+  // road for the strand (the map's two shore termini, as before); the bocage lanes (one the reflection of the other
+  // across the axis) run from the west edge to the coast road.
+  coastal: [join(7, 6), join(4, 5), [{ junction: 0 }, 'shore'], [{ junction: 0 }, 'shore'], ['boundary', { junction: 1 }],
+    ['boundary', { junction: 1 }], [{ junction: 0 }, 'boundary'], [{ junction: 0 }, 'boundary']],
   // Amberford redesign (owner 2026-09-23): the coach road runs edge to edge; the manor lane leaves the cross lanes
   // and exits north-east; the mill lane leaves the market square west; the sunken lane enters from the west edge and
   // ends at the cross lanes; the north lane links the square to the manor lane.

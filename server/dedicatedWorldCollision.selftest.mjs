@@ -35,7 +35,7 @@ const expected = {
   desert: [2857, 2797, 2991], // 2026-10-01 Sirocco Wadi redesign (docs/MAP-LAYOUT-BRIEF.md); was [2673, 2605, 3139]
   winter: [5931, 5786, 4919],
   urban: [3859, 6519, 3510], // 2026-10-01 Steinburg redesign (docs/MAP-LAYOUT-BRIEF.md); was [3898, 9290, 3530]
-  coastal: [4161, 3964, 4249],
+  coastal: [4414, 4254, 4411], // 2026-10-02 Saltmere Bay redesign (docs/MAP-LAYOUT-BRIEF.md); was [4161, 3964, 4249]
   autumn: [5873, 5727, 5822],
   steppe: [2429, 2141, 1302],
   railyard: [2846, 2848, 1899], // 2026-10-01 Cinder Junction redesign (docs/MAP-LAYOUT-BRIEF.md); was [2825, 2785, 1983]
