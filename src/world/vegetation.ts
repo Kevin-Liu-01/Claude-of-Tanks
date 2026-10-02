@@ -2176,12 +2176,13 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
       if (lobes >= 10) break;
       const heightT = clamp(at.y / skeleton.height, 0, 1);
       if (rng() > snow * (0.30 + 0.70 * heightT)) continue;
-      const lr = (profile.family === 'conifer' ? 0.26 : 0.16) + rng() * 0.18;
+      // thin pads lying along the bough, not boulders on it: the sprays' whitened tint carries most of the load
+      const lr = (profile.family === 'conifer' ? 0.18 : 0.12) + rng() * 0.12;
       const lobe = new THREE.IcosahedronGeometry(lr, 0);
       shapeTreeSnowLobe(lobe, rng);
-      lobe.scale(1.6 + rng() * 0.5, 0.5, 1.0 + rng() * 0.4);
+      lobe.scale(1.8 + rng() * 0.5, 0.32, 1.0 + rng() * 0.3);
       lobe.rotateY(Math.atan2(at.x, at.z) + Math.PI / 2);
-      lobe.translate(at.x, at.y + lr * 0.45 + 0.05, at.z);
+      lobe.translate(at.x, at.y + lr * 0.3 + 0.06, at.z);
       _c.setHSL(0.585, 0.04, 0.62, THREE.SRGBColorSpace).multiplyScalar(1.55);
       parts.push(paintFlat(lobe, _c.clone(), 0.12));
       lobes++;
