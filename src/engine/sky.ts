@@ -33,7 +33,8 @@ import {
   type AtmosphereSummary,
 } from './atmosphere.ts';
 import { SkyEnvironmentCache } from './skyEnvironmentCache.ts';
-import { authoredSunOf, resolveLightModel, type LightingConfig, type LightModelPreset } from './lightModel.ts';
+import { authoredSunOf, lightTune, resolveLightModel, type LightingConfig, type LightModelPreset } from './lightModelCore.ts';
+import { installFogLayer } from './fogLayer.ts';
 import type { AtmosphereParams } from './atmosphere.ts';
 import {
   bakeCirrusPixels,
@@ -289,6 +290,9 @@ const FOG_DENSITY = 0.00074;
 // foggiest) while every map's ramp thins enough that saturation survives to
 // ~800 m and horizon ridges keep silhouette detail.
 const FOG_EXTINCTION_SHARE = 0.55;
+// 2026-10-02: the materials' fog follows the battlefield's haze layer, as the aerial pass does (fogLayer.ts); the chunks
+// are patched before any program compiles
+installFogLayer();
 // Aerial perspective: pull the sampled horizon color toward a desaturated
 // blue so distance reads as cool atmosphere, never as white-out.
 const FOG_BLUE_TINT_HEX = 0x7e97b8;
@@ -1830,7 +1834,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // preset.fogDensity is total atmosphere; the exp2 fog takes only its
       // extinction share — post.ts's aerial pass carries the scatter-in hue
       // (see FOG_EXTINCTION_SHARE).
-      targetScene.fog = new THREE.FogExp2(fogColor, preset.fogDensity * FOG_EXTINCTION_SHARE);
+      targetScene.fog = new THREE.FogExp2(fogColor, preset.fogDensity * lightTune('FOG_EXTINCTION_SHARE', FOG_EXTINCTION_SHARE));
       // round 37: the post aerial pass scales its scatter-in target by the sky's elevation falloff (see
       // sampleHorizonElevationFalloff); a cached atmosphere costs no render here. Round 65: the physically
       // based sky reports its own falloff from the summary (the post pass samples the LUT per pixel anyway).

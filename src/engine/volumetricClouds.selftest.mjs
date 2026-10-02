@@ -16,7 +16,7 @@ import {
   CLOUD_BLUE_SIZE, CLOUD_CURL_SIZE, CLOUD_DETAIL_SIZE, CLOUD_NOISE_SEED, CLOUD_SHAPE_SIZE, CLOUD_WEATHER_SIZE,
   bakeCloudBlueNoise, bakeCloudCurlVolume, bakeCloudDetailVolume, bakeCloudNoise, bakeCloudShapeVolume, bakeCloudWeatherMap, bakeCloudWeatherStreets,
 } from './cloudNoise.ts';
-import { CLOUD_LAYER_RULES, cloudLayerKey, deriveCloudLayerPreset } from './cloudPresets.ts';
+import { CLOUD_LAYER_RULES, cloudLayerKey, deriveCloudLayerPreset, loadCloudscapeLayers } from './cloudPresets.ts';
 import { CLOUDSCAPE_REGIMES, CLOUDSCAPE_REGIME_NAMES, isCloudscapeRegime } from './cloudscapes.ts';
 import {
   VolumetricCloudLayer, cloudCameraCut, bindCloudShadowCascade, cloudShadowCellOrigin, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
@@ -25,6 +25,8 @@ import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
 import { MAP_IDS } from '../world/maps/catalog.ts';
 import { getMapConfig } from '../world/maps/index.ts';
+
+await loadCloudscapeLayers(); // a map's cloudscape resolves behind the battle entry (2026-10-02, the boot weight)
 
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
