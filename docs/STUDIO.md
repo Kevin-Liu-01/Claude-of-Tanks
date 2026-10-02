@@ -116,7 +116,7 @@ __STUDIO.setProductionFormat(format) / .productionFormat // landscape, portrait,
 __STUDIO.recordVideo(opts) / .stopRecording() / .recordingStatus()
 __STUDIO.setCamera(cfg) / .getCamera()
 __STUDIO.setPicture(patch) / .getPicture()          // film-grade picture (see "Picture")
-__STUDIO.pictureInfo()                              // focal length, focus, mattes, stages
+__STUDIO.pictureInfo({width, height}?)              // focal length, focus, mattes, stages
 __STUDIO.PICTURE_PRESETS                            // [{id, label}] named looks
 __STUDIO.TANK_IDS / .MAP_IDS / .ACTOR_STATES / .EFFECT_TYPES / .CAMO_PATTERN_IDS
 __STUDIO.getMapInfo(id)             // {id, name}
@@ -369,7 +369,8 @@ The gather runs at half resolution with near/far separation (far samples never w
 centre's CoC, so focused edges neither bleed into nor get smeared by the blur behind them; the
 near field is dilated through a tile max so a blurred foreground spreads over the subject), a
 bilateral full-resolution composite, and the sky at infinity. The radius is capped at 1.6 % of
-the long side. Live preview gathers 81 taps; `capture()` uses 225.
+the long side. Live preview gathers 81 taps; `capture()` uses 225. Smoke, fire and flashes are
+placed in depth by quarter-resolution coverage slices (see Known limitations).
 
 ### Looks (`__STUDIO.PICTURE_PRESETS`)
 
@@ -395,8 +396,10 @@ Looks never set a letterbox or depth of field — framing and focus belong to th
   discarded); other fields override the current values; `setPicture(null)` resets to neutral.
   Ignored while recording.
 - `getPicture()` → the full resolved picture (JSON-safe copy).
-- `pictureInfo()` → `{ neutral, stages, focalLengthMm, focusM, focusActor, cocInfinity,
-  letterboxPx: {x, y} }` for the live viewport.
+- `pictureInfo({ width?, height? })` → `{ neutral, stages, focalLengthMm, focusM, focusActor,
+  cocInfinity, letterboxPx: {x, y} }` for that output size (default: the live viewport), e.g.
+  `pictureInfo({ width: 3840, height: 2160 }).letterboxPx` to crop a 2.39 deliverable from a
+  capture.
 - `state().picture` is `{ preset, ...minimal overrides }`; `load(state())` is identity.
 
 ### Film accumulation contract
@@ -426,8 +429,11 @@ time. `setQuality('capture' | 'preview')` selects the tap counts.
   cadence. The frozen composition path (`load`/`advanceFx`) remains deterministic.
 - Video capture does not include audio and uses the browser's available MediaRecorder
   codec. Encoded bytes are not expected to be identical across browsers.
-- Picture depth of field reads the opaque scene depth: transparent combat media (smoke, fire,
-  flashes) take the depth of the surface behind them.
+- Transparent combat media (smoke, fire, flashes) are not in the depth buffer. The lens
+  re-renders that layer at quarter resolution against depth planes at 0.8, 1.25 and 2 × the
+  focus distance and bins its coverage (near / in focus / mid / far), so an in-focus muzzle
+  flash stays sharp against the sky; within a bin the depth is approximate, and a pixel carries
+  one CoC for the medium and the surface behind it.
 - Volumetric cloud texels can differ by a few levels between consecutive captures of the same
   frame (temporal cloud history); byte comparisons should mask the sky.
 

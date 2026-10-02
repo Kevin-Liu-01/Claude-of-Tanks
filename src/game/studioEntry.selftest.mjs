@@ -68,6 +68,7 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     enterGarage: async () => { calls.push('enter-garage'); game.phase = 'garage'; presentation.setSunTrim(true); },
     stopRecording: noop,
     disposePicture: () => calls.push('picture-disposed'),
+    applyPictureRuntime: () => calls.push('picture-applied'),
   };
   const code = stripTypeScriptTypes(`
     function makeStudioEntry(ports) {
@@ -100,6 +101,8 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   assert.deepEqual(calls[sunIndex - 1], ['atmosphere', time],
     'the selected atmosphere is prepared after world activation and before restoring its sun');
   assert.equal(calls.includes('covered-frame'), directBoot);
+  assert.ok(calls.indexOf('picture-applied') > calls.indexOf('world-activated'),
+    'a picture set before entry applies once the Studio owns the frame');
   await studio.doExit();
   assert.equal(game.phase, 'garage');
   assert.equal(studio.active(), false);

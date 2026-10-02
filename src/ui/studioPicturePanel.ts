@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { PICTURE_LETTERBOXES, PICTURE_SENSOR_MM } from '../game/studioPicture.ts';
 import { t } from './i18n.ts';
 /**
  * studioPicturePanel.ts — the Scene Studio "Picture" section (media r5): look picker, the key
@@ -47,8 +48,7 @@ interface PicturePanelKit {
   flash(text: string): void;
 }
 
-const LETTERBOXES = ['none', '2.39', '2.00', '1.85'] as const;
-const SENSORS = ['super35', 'fullframe', 'alexa65', 'imax'] as const;
+const SENSORS = Object.keys(PICTURE_SENSOR_MM);
 const F_STOPS = [0.95, 1.4, 2, 2.8, 4, 5.6, 8, 11, 16] as const;
 
 function option(select: HTMLSelectElement, value: string, label: string): void {
@@ -101,7 +101,7 @@ export function mountStudioPicturePanel(
   for (const slider of Object.values(sliders)) section.appendChild(slider.row);
 
   const matte = labelledSelect(t('studioPanel.picture.letterbox'));
-  for (const box of LETTERBOXES) {
+  for (const box of PICTURE_LETTERBOXES) {
     option(matte.select, box, box === 'none' ? t('studioPanel.picture.letterboxNone') : `${box} : 1`);
   }
   matte.select.addEventListener('change', () => set({ letterbox: matte.select.value }));

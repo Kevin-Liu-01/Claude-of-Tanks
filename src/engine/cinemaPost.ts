@@ -20,8 +20,11 @@
  * behind it and a blurred background never smears over a focused edge — and the near layer
  * accumulates foreground coverage with area (1/r²) weights for a physically shaped alpha. The
  * full-resolution composite upsamples the far layer bilaterally on CoC so focused silhouettes keep
- * their native pixels. Sky (device depth 1) is infinitely far. Preview uses 4 rings (81 taps),
- * capture 7 rings (225 taps). The anamorphic option squeezes the aperture into a tall oval.
+ * their native pixels. Sky (device depth 1) is infinitely far. Transparent combat media are not
+ * in the depth buffer: the late-FX layer is re-rendered at quarter resolution against depth planes
+ * at 0.8 / 1.25 / 2 × the focus distance and its coverage binned, so an in-focus muzzle flash stays
+ * sharp against the sky. Preview uses 4 rings (81 taps), capture 7 rings (225 taps). The
+ * anamorphic option squeezes the aperture into a tall oval.
  *
  * HDR — after bloom, in linear light: exposure (stops) and an LMS white balance applied to the
  * frame and to the sun shafts / lens flare the house grade would otherwise add unexposed (the
@@ -49,7 +52,7 @@ import { LATE_FX_LAYER } from '../fx/layers.ts';
 
 // --- engine-facing settings (studioPicture.ts derives them) -----------------------------------
 
-export interface CinemaLensFrame {
+interface CinemaLensFrame {
   /** Focus distance along the optical axis (m). */
   readonly focusM: number;
   /** Signed CoC diameter per unit of (1 − s/d), as a fraction of the frame's long side. */
@@ -102,7 +105,7 @@ export interface CinemaSettings {
   };
 }
 
-export type CinemaQuality = 'preview' | 'capture';
+type CinemaQuality = 'preview' | 'capture';
 
 interface CinemaProviders {
   /** Lens state for this frame (camera FOV/aspect and the focus target are read live). */

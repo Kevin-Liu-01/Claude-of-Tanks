@@ -503,6 +503,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/groundBounce.selftest.mjs',
     'src/engine/sunShafts.selftest.mjs',
     'src/engine/lensFlare.selftest.mjs',
+    'src/engine/cinemaPost.selftest.mjs',
     'src/engine/adaptiveQualityPolicy.selftest.mjs',
     'src/engine/postViewportScale.selftest.mjs',
     'src/engine/postFrameAccounting.selftest.mjs',

@@ -18,12 +18,12 @@ import type { CinemaSettings } from '../engine/cinemaPost.ts';
  * side so a 4K capture and a 1080p preview defocus identically.
  */
 
-export type PictureRgb = readonly [number, number, number];
-export type PictureLetterbox = 'none' | '2.39' | '2.00' | '1.85';
-export type PictureSensor = 'super35' | 'fullframe' | 'alexa65' | 'imax';
-export type PictureLightMode = 'auto' | 'on' | 'off';
+type PictureRgb = readonly [number, number, number];
+type PictureLetterbox = 'none' | '2.39' | '2.00' | '1.85';
+type PictureSensor = 'super35' | 'fullframe' | 'alexa65' | 'imax';
+type PictureLightMode = 'auto' | 'on' | 'off';
 
-export interface PictureSplit {
+interface PictureSplit {
   readonly shadowHue: number;
   readonly shadowAmount: number;
   readonly highlightHue: number;
@@ -31,29 +31,29 @@ export interface PictureSplit {
   readonly balance: number;
 }
 /** Hue-selective secondary for one band of the colour wheel (display-referred). */
-export interface PictureBand {
+interface PictureBand {
   /** Hue rotation in degrees for pixels in the band. */
   readonly hue: number;
   readonly saturation: number;
   readonly lightness: number;
 }
-export interface PictureStreaks {
+interface PictureStreaks {
   readonly amount: number;
   readonly threshold: number;
   readonly length: number;
   readonly tint: PictureRgb;
 }
-export interface PictureHalation {
+interface PictureHalation {
   readonly amount: number;
   readonly threshold: number;
   readonly radius: number;
   readonly tint: PictureRgb;
 }
-export interface PictureLightFx {
+interface PictureLightFx {
   readonly mode: PictureLightMode;
   readonly intensity: number;
 }
-export interface PictureDof {
+interface PictureDof {
   readonly enabled: boolean;
   /** Actor ref (name, uid or roster index as a string); null = focus at `focusDistance`. */
   readonly focusActor: string | null;
@@ -64,12 +64,12 @@ export interface PictureDof {
   readonly anamorphic: number;
   readonly bokehScale: number;
 }
-export interface PictureVignette {
+interface PictureVignette {
   readonly amount: number;
   readonly roundness: number;
   readonly softness: number;
 }
-export interface PictureGrain {
+interface PictureGrain {
   readonly amount: number;
   readonly size: number;
   readonly color: number;
@@ -504,28 +504,28 @@ const rgbIs = (value: PictureRgb, x: number): boolean => value[0] === x && value
 const bandNeutral = (b: PictureBand): boolean => b.hue === 0 && b.saturation === 1 && b.lightness === 0;
 
 /** Depth of field runs (the lens pass is inserted). */
-export function pictureLensActive(p: StudioPicture): boolean {
+function pictureLensActive(p: StudioPicture): boolean {
   return p.dof.enabled && p.dof.bokehScale > 0;
 }
 
 /** Scene-referred stage: exposure, white balance, streaks or halation. */
-export function pictureHdrActive(p: StudioPicture): boolean {
+function pictureHdrActive(p: StudioPicture): boolean {
   return p.exposure !== 0 || p.temperature !== 0 || p.tint !== 0 || p.streaks.amount > 0 || p.halation.amount > 0;
 }
 
 /** Bloom strength/threshold override (a hook on the house bloom, no pass). */
-export function pictureBloomActive(p: StudioPicture): boolean {
+function pictureBloomActive(p: StudioPicture): boolean {
   return p.bloom !== 1 || p.bloomThreshold !== 1;
 }
 
 /** Sun shafts / lens flare forced or scaled. */
-export function pictureLightFxActive(p: StudioPicture): boolean {
+function pictureLightFxActive(p: StudioPicture): boolean {
   return p.sunShafts.mode !== 'auto' || p.sunShafts.intensity !== 1
     || p.lensFlare.mode !== 'auto' || p.lensFlare.intensity !== 1;
 }
 
 /** Display-referred grade after the house tonemap/grade. */
-export function pictureGradeActive(p: StudioPicture): boolean {
+function pictureGradeActive(p: StudioPicture): boolean {
   return p.contrast !== 1 || p.toe !== 0 || p.shoulder !== 0 || p.saturation !== 1 || p.vibrance !== 0
     || !rgbIs(p.lift, 0) || !rgbIs(p.gamma, 1) || !rgbIs(p.gain, 1)
     || p.split.shadowAmount > 0 || p.split.highlightAmount > 0 || p.mono > 0
@@ -533,7 +533,7 @@ export function pictureGradeActive(p: StudioPicture): boolean {
 }
 
 /** Per-output-frame finish: chromatic aberration, vignette, grain, letterbox. */
-export function pictureFinishActive(p: StudioPicture): boolean {
+function pictureFinishActive(p: StudioPicture): boolean {
   return p.chromaticAberration > 0 || p.vignette.amount > 0 || p.grain.amount > 0 || p.letterbox !== 'none';
 }
 
@@ -571,7 +571,7 @@ export function pictureFocalLengthMm(fovDeg: number, aspect: number, sensor: Pic
   return (PICTURE_SENSOR_MM[sensor] * 0.5) / Math.max(1e-6, tanLong);
 }
 
-export interface PictureLensState {
+interface PictureLensState {
   /** Focus distance along the optical axis (m). */
   readonly focusM: number;
   readonly focalMm: number;

@@ -2719,8 +2719,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     cinema = null;
   }
 
+  /** Passes exist only while the Studio owns the frame (the Garage/battle composer stays pristine). */
   function applyPictureRuntime(): void {
-    if (isNeutralPicture(picture)) cinema?.apply(null);
+    if (!active || isNeutralPicture(picture)) cinema?.apply(null);
     else ensureCinema().apply(pictureCinemaSettings(picture));
     invalidate();
   }
@@ -2737,11 +2738,15 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return getPicture();
   }
 
-  /** Derived lens/finish facts for tooling (focal length, focus, matte, active stages). */
-  function pictureInfo() {
+  /**
+   * Derived lens/finish facts for tooling (focal length, focus, matte, active stages). `size`
+   * (default: the live viewport) is the output the matte is computed for, e.g. a capture size.
+   */
+  function pictureInfo(size: { width?: number; height?: number } = {}) {
     renderer.getSize(_size);
-    const lens = pictureLensState(picture.dof, camera.fov, camera.aspect || 16 / 9, pictureFocusDistance());
-    const bars = pictureLetterboxBars(picture.letterbox, Math.round(_size.x), Math.round(_size.y));
+    const width = Math.round(size.width || _size.x), height = Math.round(size.height || (size.width ? size.width * _size.y / _size.x : _size.y));
+    const lens = pictureLensState(picture.dof, camera.fov, width / Math.max(1, height), pictureFocusDistance());
+    const bars = pictureLetterboxBars(picture.letterbox, width, height);
     return {
       neutral: isNeutralPicture(picture),
       stages: cinema ? [...cinema.activeStages] : [],
@@ -3343,6 +3348,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       }
       panel.setBusy(null);
       panel.refreshAll();
+      applyPictureRuntime(); // a picture set before entry takes effect with the Studio frame
       invalidate();
       mark('present');
     };
