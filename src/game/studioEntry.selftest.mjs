@@ -64,6 +64,7 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     syncRoute: noop, docBrand: noop, marker: { group: { visible: true } }, keys: new Set(),
     clearActors: () => calls.push('actors-cleared'), shells: [], effectLog: [], activeEffectIds: new Set(),
     fx: { resetAll: noop, setFrozen: noop }, normalizeStoryboard: () => ({}),
+    releaseStudioFx: () => calls.push('studio-fx-released'),
     rail: { rebuild: noop, updateVisibility: noop }, unsweepPool: noop,
     enterGarage: async () => { calls.push('enter-garage'); game.phase = 'garage'; presentation.setSunTrim(true); },
     stopRecording: noop,
@@ -103,6 +104,9 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   assert.equal(game.phase, 'garage');
   assert.equal(studio.active(), false);
   assert.ok(calls.indexOf('actors-cleared') < calls.indexOf('enter-garage'));
+  assert.ok(calls.indexOf('studio-fx-released') > calls.indexOf('actors-cleared')
+    && calls.indexOf('studio-fx-released') < calls.indexOf('enter-garage'),
+  'exit releases the cinematic layer (borrowed light, battle shaders) before the Garage returns');
   assert.equal(calls.at(-1)[1].sunIntensity, garageSky.sunIntensity * 0.55,
     'actual Studio exit restores the Garage trim after its teardown');
 }

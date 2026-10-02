@@ -3162,6 +3162,9 @@ const studioAccess = createStudioAccess({
     // main.ts owns both direct boot and the first lazy F8 handoff.
     autoEnter: false,
     fx: studioFx,
+    // Studio never enters scoped sniper view, so the permanent sniper fill is
+    // idle there: lend it for flares/night firelight (scene light count fixed).
+    borrowLight: () => sniperFill.light,
   }),
   getPhase: () => game.phase,
   keyTarget: window,
