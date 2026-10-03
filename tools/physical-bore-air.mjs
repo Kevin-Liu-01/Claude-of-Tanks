@@ -12,8 +12,9 @@
 // it as a cap.
 // Every voxel that can touch the declared recess (its centre within half a voxel diagonal of the bore cylinder) is
 // therefore never filled and never counted as a leak. The measurement reports it apart as bore air, as it reports
-// track lanes. The margin can only reach the barrel's own wall stock and the open air at its mouth, never the hull or
-// turret.
+// track lanes. On every current physical bore (the last 0.10-0.22 m of a protruding barrel) the margin reaches only the
+// barrel's own wall stock and the open air at its mouth; a future bore seated flush in a hull or turret plate would
+// need its margin reviewed against that body.
 import * as THREE from 'three';
 
 const _point = new THREE.Vector3();
