@@ -115,6 +115,19 @@ A map built at a scale of its own holds its own bands instead of an exception:
 that key and is enforced like it: a miss fails, and the check names the band and the reason. Use one only when the
 scale itself is the design, and derive the band from that scale, not from the value the map happens to reach.
 
+Olympus Basin (`mars`) is the first: the compact arena of the Mars mode (the owner, 2026-09-18), played at 0.38 g, with
+its deployments 470 m apart where the brief's fields stand 600–860 m. Its distance bands take its scale, about 0.64 of
+the brief's:
+
+| Key | Shared band | Olympus Basin | Why |
+| --- | --- | --- | --- |
+| `spawnSeparationM` | 600–860 m | 420–520 m | the arena keeps its 470 m; the band is centred on it |
+| `sightMedianM` | 80–150 m | 55–100 m | the shared band scaled by 0.64 |
+| `sightLongShare` | 0.03–0.15 | 0.01–0.15 | a 300 m line is 64 % of the separation (35–50 % on the brief's fields) |
+| `sightCloseShare` | 0.25–0.62 | 0.25–0.68 | more blocked rays end inside 100 m on a field this size |
+
+Every other band (lanes, chokes, cover, hull-down, relief, dressing, objective symmetry) holds at the shared value.
+
 ### Apron banks
 
 An apron (`terrain.hardstands`) is stamped into the road grids. The ground holds the apron's plane to 3.8 m outside

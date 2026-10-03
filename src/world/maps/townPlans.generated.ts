@@ -36,6 +36,12 @@ export const TOWN_PLANS: Readonly<Record<string, readonly TownPlanEntry[]>> = {
     { structure: 'warehouse', planIndex: 26, wall: 'plaster', rng: 1307560382, x: 94.638365, z: -41.614902, rot: 1.557644671 },
     { structure: 'ruin', planIndex: 27, wall: 'stone', rng: -290969543, x: -127.754263, z: -8.863752, rot: 1.585317415 },
   ],
+  mars: [
+    { structure: 'gantry', planIndex: 0, wall: 'stone', rng: 248190490, x: 30.701713, z: -1.30817, rot: 0.085800645 },
+    { structure: 'containerRow', planIndex: 1, wall: 'stone', rng: -1910657608, x: 32.003231, z: 31.434458, rot: 0.045660626 },
+    { structure: 'containerRow', planIndex: 2, wall: 'stone', rng: 530014975, x: 34.46776, z: 95.6397, rot: 0.06500685 },
+    { structure: 'gantry', planIndex: 3, wall: 'stone', rng: 379403681, x: 97.138988, z: 71.60818, rot: 1.486562361 },
+  ],
   foundry: [
     { structure: 'factory', planIndex: 0, wall: 'stone', rng: 1831567815, x: -74, z: -29, rot: 0.436332313 },
     { structure: 'stack', planIndex: 0, wall: 'plaster2', rng: 281826487, x: -44, z: -36, rot: 0 },
@@ -92,6 +98,18 @@ export const TOWN_LIGHT_PLANS: Readonly<Record<string, readonly TownLightEntry[]
     { kind: 'motorpool', x: -117.942856, z: 117.118367, rot: 0.373030983 },
     { kind: 'commandtent', x: -40.266938, z: -90.995541, rot: 1.737119768 },
     { kind: 'checkpointhut', x: 67.757037, z: -72.732374, rot: 1.300537451 },
+  ],
+  mars: [
+    { kind: 'habdome', x: 65.869615, z: 65.583602, rot: 1.4330408 },
+    { kind: 'habmodule', x: 0.042089, z: -29.960706, rot: 0.125738753 },
+    { kind: 'solararray', x: 0.15651, z: 1.588192, rot: 0.161972645 },
+    { kind: 'commsmast', x: -65.269096, z: 72.068283, rot: 1.389875953 },
+    { kind: 'fueltanks', x: -30.352514, z: 54.217334, rot: 1.50451233 },
+    { kind: 'landingpad', x: 62.260018, z: 93.677151, rot: 1.520798899 },
+    { kind: 'missioncontrol', x: 2.962905, z: 96.431066, rot: -0.049861337 },
+    { kind: 'greenhouse', x: 24.577758, z: -67.859402, rot: 0.198033992 },
+    { kind: 'ascentlander', x: 4.301404, z: 32.63403, rot: 0.045970172 },
+    { kind: 'rovergarage', x: 28.136601, z: -34.425414, rot: 0.151444719 },
   ],
   foundry: [
     { kind: 'quonsethut', x: -268.791336, z: -173.333333, rot: 0.023094931 },

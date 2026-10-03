@@ -88,5 +88,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   caldera: { kickoff: { x: -120, z: 0 }, zones: [{ x: -332, z: 96 }, { x: -120, z: 0 }, { x: 340, z: -200 }] },
   reservoir: { kickoff: { x: 88, z: 8 }, zones: [{ x: -8, z: 154 }, { x: 88, z: 8 }, { x: 12, z: -170 }] },
   skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
+  // Olympus Basin (layout 2026-10-03, turned about the station): three discs on yards of equal driven reach — the
+  // north-west yard (bravo's near zone) and the south-east yard (alpha's near zone), each the other's rotation about the
+  // station and each an apron in the map file, and the station's west yard on the deployments' bisector (a validated seat
+  // on its floor, also the turbo-ball kickoff). Driven reach 392 / 261 m, 253 / 251 m and 259 / 397 m.
+  mars: { kickoff: { x: -40, z: 36 }, zones: [{ x: -170, z: 120 }, { x: -40, z: 36 }, { x: 185, z: -80 }] },
   copper_mesa: { zones: [{ x: 95.75601429460295, z: 25.16493186989846 }, { x: 103.52551824388397, z: -48.38643546884091 }, { x: 159.75453586673763, z: -8.089799185507083 }] },
 };

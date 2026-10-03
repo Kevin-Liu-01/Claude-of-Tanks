@@ -30,6 +30,8 @@ export default {
   },
   vegetation: { ...mars.vegetation },
   props: { ...mars.props, sourcedPalette: 'winter', plan: [], destructibleBuildings: [], tacticalBeats: [],
+    // Olympus Basin's recorded station (props townPlan / townLightPlan) stays on Mars
+    townPlan: undefined, townLightPlan: undefined, roadBuildingClearance: undefined,
     rockTone: grey, rocks: 260, outcrops: 48, craters: 90, rubblePiles: 0, hedgehogs: 0,
     tankWrecks: { era: 'modern', count: 3, debris: true, ids: ['m1a2','type10','m551_sheridan'] },
     orbitalSettlement: [

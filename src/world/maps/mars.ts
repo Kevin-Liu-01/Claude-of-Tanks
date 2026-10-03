@@ -1,10 +1,23 @@
 import { OLYMPUS_SETTLEMENT } from './marsSettlement.ts';
+import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 import { MARS_SKY_PRESET } from '../../engine/marsAtmosphere.ts';
 // src/world/maps/mars.ts — Olympus Basin: a rust-red impact basin under a galaxy sky, its research
 // station scattered across the floor (owner 2026-09-18: "add mars map mode (called mars mode), make it have
 // space bases and make it look like a proper galaxy map"). The sky preset forces the night dome's starfield
 // with a wide galactic band, magenta nebula clouds and a large pale planet; a low cold key light keeps the
 // dunes and mesas readable. No vegetation: the station pieces, boulders, craters and wrecks carry the field.
+//
+// Layout (maps-and-layouts lane, 2026-10-03; docs/MAP-LAYOUT-BRIEF.md, with the map's own distance bands): the arena
+// keeps its compact scale, the deployments 470 m apart. The floor had been laid out on Verdant's swells and strongpoint
+// sites under a seed-random noise mesa field, whose walls stood under the country roads at two of three terrain seeds
+// (30 % grades); alpha deployed at the station's south edge and bravo on the open northern floor, and the south won 34
+// of 40 swap-test games. Now the layout turns about the station (7.5, 20): the teams come in on the north-south road,
+// each block 235 m from the station; four authored mesas (flat-topped buttes of layered rock with talus aprons, every end
+// a nose) stand in pairs north-west and south-east, south-west and north-east of it, off the roads; Arsia Crater west of
+// the station has its twin to the east; the strongpoints pair about it too (the habitat ring and the relay station in
+// the lanes, a fuel depot in front of each deployment); and the zone-control discs stand on paired yards of equal reach
+// with the middle disc on the deployments' bisector at the station's west yard (also the turbo-ball kickoff). The
+// station stands as PR #9's head seated it (props townPlan / townLightPlan).
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
@@ -18,29 +31,51 @@ export default {
     microScale: 0.75,
     rimH: 34,
     dunes: { amp: 5.5 },
-    mesas: {
-      amp: 30, thr0: 0.72, thr1: 0.77,
-      wallWidth: 2.0, tierWidth: 0.18, tierScale: 0.24,
-      corridorFloor: 1,
-    },
+    // the authored mesas and craters replace the noise mesa field (its walls stood wherever the noise crossed its
+    // threshold, under the country roads at two of three terrain seeds), and the rock gate reads them (landformRock)
+    mesas: null, landformRock: true,
     marshes: [],
+    // the two outer zone yards, each the other's rotation about the station (apron bank law: docs/MAP-LAYOUT-BRIEF.md)
+    hardstands: [
+      { x: -170, z: 120, width: 56, length: 56, yawDeg: 0, level: 3.1, grade: 0, bankM: 16 },
+      { x: 185, z: -80, width: 56, length: 56, yawDeg: 119, level: 5.4, grade: 0.08, bankM: 16 },
+    ],
     // the station compound on the basin floor
     village: { x0: -110, x1: 110, z0: -80, z1: 120, cx: 0, cz: 20, feather: 44, flatten: 0.94 },
     landforms: [
-      { kind: 'ridge', x: -262, z: 40, length: 290, width: 84, height: 5.2, yawDeg: 12 },
-      { kind: 'ridge', x: 250, z: 70, length: 270, width: 80, height: 4.8, yawDeg: -10 },
-      { kind: 'basin', x: -150, z: -190, rx: 112, rz: 84, height: -3.6, yawDeg: -16 },
-      { kind: 'basin', x: 170, z: 250, rx: 96, rz: 70, height: -3.0, yawDeg: 24 },
-      { kind: 'knoll', x: 40, z: -250, rx: 88, rz: 66, height: 5.4, yawDeg: 20 },
+      // The layout turns about the station (7.5, 20): every landform below stands paired with its rotation there.
+      // Arsia Crater west of the station and its twin east of it: raised rims round sunken bowls (landformGeology.ts
+      // 'cone' with a wide crater), the basin floor's own impact scars
+      ...[[-300, 130], [315, -90]].map(([x, z]) => ({ kind: 'knoll', x, z, rx: 74, rz: 68, height: 7, yawDeg: 12,
+        geology: { profile: 'cone' as const, crater: { rim: 0.72, depthM: 6 }, outline: 0.12, rough: 0.6,
+          gullies: { count: 14, depthM: 1.2, width: 0.5 } } })),
+      // the mesas: flat-topped buttes of layered rock with talus aprons, a long pair north-west and south-east of the
+      // station and a shorter pair south-west and north-east of it, each off the roads and the deployment corridors,
+      // every end a nose (no taper ramps onto a cap)
+      ...[[-200, 250, 220, 64, 24, -40], [215, -210, 220, 64, 24, -40], [-215, -160, 180, 56, 20, 50], [230, 200, 180, 56, 20, 50]]
+        .map(([x, z, length, width, height, yawDeg]) => ({ kind: 'ridge', x, z, length, width, height, yawDeg,
+          corridorScale: 1, settlementScale: 1,
+          geology: { profile: 'butte' as const, wall: [0.35, 0.6] as const, apron: 0.28, cliffEnd: 'nose' as const,
+            strata: { stepM: 4, riser: 0.35 }, outline: 0.22, rough: 0.8, gullies: { count: 4, depthM: 2, width: 0.5 } } })),
     ],
   },
 
+  // Olympus Basin keeps its scale (the owner's Mars mode, 2026-09-18: a compact arena under the mars ruleset's 0.38 g):
+  // its deployments stand 470 m apart where the brief's fields stand 600-860 m, so the distance bands take the map's
+  // own scale (about 0.64 of the brief's) and stay enforced (docs/MAP-LAYOUT-BRIEF.md "Bands of a map's own").
+  layoutBrief: { bands: {
+    spawnSeparationM: { band: [420, 520], reason: 'the compact low-gravity arena keeps its 470 m between the deployments; the band is centred on that scale' },
+    sightMedianM: { band: [55, 100], reason: 'the brief\'s 80-150 m median scaled to a 470 m field (x 0.64): crater rims, dunes and mesas break lines shorter here' },
+    sightLongShare: { band: [0.01, 0.15], reason: 'a 300 m line is 64 % of the separation here (35-50 % on the brief\'s fields), so fewer rays reach it' },
+    sightCloseShare: { band: [0.25, 0.68], reason: 'on a 470 m field more of the blocked rays end inside 100 m; the ceiling rises with the scale' },
+  } },
+
   spawns: {
-    player: { x: 68, z: -82 },
-    enemies: [
-      { x: -10, z: 378 }, { x: -114, z: 389 }, { x: 59, z: 410 }, { x: -179, z: 365 },
-      { x: 96, z: 313 }, { x: -218, z: 364 }, { x: 146, z: 419 },
-    ],
+    // The teams come in from the basin's two ends on the north-south road, each block 235 m from the station, bravo's
+    // seven pads the rotation of alpha's block about the station (the swap test, 2026-10-03: alpha's block at the
+    // station's south edge won 34 of 40 games against bravo's on the northern floor, the deployments exchanged or not).
+    player: { x: -20.3, z: -210.7 },
+    enemies: [{ x: 47.3, z: 250.7 }, { x: 39.3, z: 250.7 }, { x: 31.3, z: 250.7 }, { x: 23.3, z: 250.7 }, { x: 47.3, z: 260.7 }, { x: 39.3, z: 260.7 }, { x: 31.3, z: 260.7 }],
   },
 
   splat: {
@@ -98,14 +133,24 @@ export default {
     destructibleBuildings: ['habdome', 'habmodule', 'solararray', 'commsmast', 'fueltanks', 'landingpad',
       'missioncontrol', 'greenhouse', 'ascentlander', 'rovergarage'],
     tacticalBeats: [
-      { id: 'west-habitat-ring', role: 'brawl', x: -246, z: 58, yawDeg: 14,
+      // the strongpoints stand in pairs about the station (each 60 m or more from Verdant's old strongpoint sites, which
+      // the brief keeps clear): the habitat ring in the west lane and the relay station in the east lane, and a fuel depot
+      // in front of each deployment
+      { id: 'west-habitat-ring', role: 'brawl', x: -170, z: 0, yawDeg: 14,
         structure: 'habdome', redoubt: true, outcrop: { count: 7, radius: 12, scaleMax: 3.4 }, wreck: true, wreckOffsetX: -16 },
-      { id: 'east-relay-station', role: 'scout', x: 250, z: 66, yawDeg: -12,
+      { id: 'east-relay-station', role: 'scout', x: 185, z: 40, yawDeg: 194,
         structure: 'commsmast', outcrop: { count: 6, radius: 10, scaleMax: 3.0 } },
-      { id: 'north-fuel-depot', role: 'support', x: 26, z: 268, yawDeg: 4,
+      { id: 'north-fuel-depot', role: 'support', x: -10, z: 205, yawDeg: 4,
         structure: 'fueltanks', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetZ: -15 },
+      { id: 'south-fuel-depot', role: 'support', x: 25, z: -165, yawDeg: 184,
+        structure: 'fueltanks', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetZ: 15 },
     ],
     sideSkip: 0.14, spacingPad: 8,
+    // the station's yard plan stands as PR #9's head seated it (the owner's town-plan ruling, 2026-10-03); a piece of it
+    // that stands in a carriageway moves by the least distance that clears it
+    townPlan: TOWN_PLANS.mars,
+    townLightPlan: TOWN_LIGHT_PLANS.mars,
+    roadBuildingClearance: true,
     buildingLat: [12, 5], maxSpread: 2.0,
     tones: {
       plaster: (h: number, s: number, l: number) => [0.58, 0.05, clamp01(l * 0.92 + 0.10)],

@@ -215,10 +215,10 @@
       "concealers": 6054
     },
     "mars": {
-      "bytes": 521845,
-      "sha256": "ffd662f6be6c3f5cf1072bc96e639b1c41a87610aadcf5ce6b16fd0404f1b834",
-      "obstacles": 768,
-      "colliders": 714,
+      "bytes": 421697,
+      "sha256": "48a8b7e1e44facf03f2615fcdb33199a969a541b66928a54d5970252c352bc11",
+      "obstacles": 727,
+      "colliders": 720,
       "concealers": 0
     },
     "moon": {
