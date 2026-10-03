@@ -58,7 +58,7 @@ const expected = {
   skybridge: [3522, 3725, 2079],
   polders: [4232, 3998, 3574], // 2026-10-02 Tidegate Polders redesign (docs/MAP-LAYOUT-BRIEF.md); was [4268, 4025, 3604]
   copper_mesa: [2805, 2705, 1984],
-  airfield: [3671, 3650, 3173],
+  airfield: [3478, 3614, 2950], // 2026-10-02 Kestrel Airfield redesign (docs/MAP-LAYOUT-BRIEF.md); was [3671, 3650, 3173]
   oasis: [2740, 2510, 2031],
   whiteout: [1601, 1467, 875],
   orchard: [4923, 4691, 5160],

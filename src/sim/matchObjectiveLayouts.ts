@@ -71,6 +71,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Ruinspires (redesign 2026-10-02): the boulevard's three squares, level aprons in the map file, rotationally
   // symmetric about the Square of the Republic (also the turbo-ball kickoff).
   ruinspires: { kickoff: { x: 0, z: 0 }, zones: [{ x: -225, z: 0 }, { x: 0, z: 0 }, { x: 225, z: 0 }] },
+  // Kestrel Airfield (redesign 2026-10-02): the cargo apron, the runway's centre (also the turbo-ball kickoff) and the
+  // terminal apron, rotationally symmetric about the runway's centre; the two aprons and the holding apron at the
+  // runway's centre are level aprons in the map file.
+  airfield: { kickoff: { x: 0, z: 0 }, zones: [{ x: -225, z: -150 }, { x: 0, z: 0 }, { x: 225, z: 150 }] },
   skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
   copper_mesa: { zones: [{ x: 95.75601429460295, z: 25.16493186989846 }, { x: 103.52551824388397, z: -48.38643546884091 }, { x: 159.75453586673763, z: -8.089799185507083 }] },
 };

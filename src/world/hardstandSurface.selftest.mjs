@@ -27,30 +27,54 @@ for (let z = -80; z <= 80; z += 2) for (let x = -16; x <= 16; x += 2) {
     'hardstands do not overwrite wetness or village channels');
 }
 
+// Kestrel Airfield (redesigned 2026-10-02, maps lane B): the runway runs east-west across the field's centre (yaw 90,
+// its length along x), and the level holding apron where the taxiways meet it carries the zone-control disc and the
+// kickoff. Outside the apron and its blend the runway is one graded plane over its whole width; the apron is level; the
+// blend between them, the runway's ends and its edges show no kerb.
+const [runway, holding] = airfield.terrain.hardstands;
+const runwayHalfWidth = runway.width / 2, runwayReach = runway.length / 2 - 10, blendEnd = holding.width / 2 + 16;
 for (const seed of [1337, 2049]) {
   const field = createHeightField(seed, airfield);
   const without = createHeightField(seed, {
     ...airfield, terrain: { ...airfield.terrain, hardstands: [] },
   });
-  const centre = field.getHeightAt(0, 0);
-  const grade = (field.getHeightAt(0, 300) - field.getHeightAt(0, -300)) / 600;
+  const east = field.getHeightAt(runwayReach, 0);
+  const grade = (east - field.getHeightAt(-runwayReach, 0)) / (2 * runwayReach);
   assert.ok(Math.abs(grade) <= 0.01001);
-  for (let z = -380; z <= 380; z += 20) {
-    for (const x of [-18, -17.9, -16, -8, 0, 8, 16, 17.9, 18]) {
-      assert.ok(Math.abs(field.getHeightAt(x, z) - (centre + grade * z)) < 2e-6,
-        'the real airfield has continuous graded full-width pavement');
+  for (let x = -runwayReach; x <= runwayReach; x += 20) {
+    const half = runwayHalfWidth;
+    for (const z of [-half, -half + 0.1, -16, -8, 0, 8, 16, half - 0.1, half]) {
+      if (Math.abs(x) > blendEnd) {
+        assert.ok(Math.abs(field.getHeightAt(x, z) - (east + grade * (x - runwayReach))) < 2e-6,
+          'the real airfield has continuous graded full-width pavement');
+      }
       assert.equal(field.getGroundType(x, z), 'hard');
       assert.equal(field._noVeg(x, z), true);
+    }
+  }
+  const apronY = field.getHeightAt(0, 0);
+  for (let x = -holding.width / 2; x <= holding.width / 2; x += 5) {
+    for (const z of [-holding.length / 2, -runwayHalfWidth, 0, runwayHalfWidth, holding.length / 2]) {
+      assert.ok(Math.abs(field.getHeightAt(x, z) - apronY) < 2e-6, 'the holding apron is one level plane');
+    }
+  }
+  for (let x = -runwayReach; x < runwayReach; x += 0.4) {
+    for (const z of [-runwayHalfWidth, 0, runwayHalfWidth]) {
+      assert.ok(Math.abs(field.getHeightAt(x + 0.4, z) - field.getHeightAt(x, z)) < 0.12,
+        'the runway rides from its graded plane onto the level apron without a kerb');
     }
   }
   for (const spawn of [airfield.spawns.player, ...airfield.spawns.enemies]) {
     assert.equal(field.getHeightAt(spawn.x, spawn.z), without.getHeightAt(spawn.x, spawn.z),
       'the bounded runway never changes deployment pad elevations');
   }
-  // Apron roads meet the strip via the same elevation grid. Their immediate
-  // threshold crosses no new raised kerb or disconnected pavement step.
-  for (const z of [-180, -20, 140]) {
-    assert.ok(Math.abs(field.getHeightAt(18.2, z) - field.getHeightAt(17.8, z)) < 0.12);
+  // The taxiways and the field meet the strip via the same elevation grid. Its immediate threshold crosses no new
+  // raised kerb or disconnected pavement step.
+  for (const x of [-200, -60, 120]) {
+    for (const side of [-1, 1]) {
+      assert.ok(Math.abs(field.getHeightAt(x, side * (runwayHalfWidth + 0.2))
+        - field.getHeightAt(x, side * (runwayHalfWidth - 0.2))) < 0.12);
+    }
   }
 }
 console.log('hardstandSurface.selftest: full-width plane, pavement mask, dry drive and connected aprons passed');
@@ -77,12 +101,21 @@ assert.equal(multiple(-100, 0), true);
 assert.equal(multiple(100, 0), true);
 assert.equal(multiple(0, 0), false, 'separate aprons do not bridge their intervening land');
 
+/** Whether (x, z) lies within `margin` of one of the airfield's hardstands (their exclusions and feathers). */
+function insideHardstand(x, z, margin) {
+  return airfield.terrain.hardstands.some((stand) => {
+    const angle = (stand.yawDeg ?? 0) * Math.PI / 180, c = Math.cos(angle), s = Math.sin(angle);
+    const dx = x - stand.x, dz = z - stand.z;
+    return Math.abs(c * dx - s * dz) <= stand.width / 2 + margin
+      && Math.abs(s * dx + c * dz) <= stand.length / 2 + margin;
+  });
+}
 for (const seed of [1337, 2049, 7719]) {
   const field = createHeightField(seed, airfield);
   const noApron = createHeightField(seed, { ...airfield, terrain: { ...airfield.terrain, hardstands: [] } });
   let controls = 0;
   for (let z = -480; z <= 480; z += 8) for (let x = -480; x <= 480; x += 8) {
-    if (Math.abs(x) <= 20 && Math.abs(z) <= 382) continue;
+    if (insideHardstand(x, z, 3)) continue;
     assert.equal(field._noVeg(x, z), noApron._noVeg(x, z), 'remote exclusion is not a road-mask side effect');
     if (field._roadDist(x, z) < 4.3 && !noApron._noVeg(x, z)) controls++;
   }
