@@ -33,6 +33,7 @@ import { createGroundLitter, groundLitterProfile, type GroundLitterConfig } from
 import type { CrushableRecord } from './props.ts';
 import { getMapConfig, type BattlefieldMapConfig } from './maps/index.ts';
 import { createGroundCoverClearance } from './groundCoverClearance.ts';
+import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import {
@@ -388,10 +389,13 @@ function assembleWorld(
   // The narrow phase still uses the authored OBB/circle/convex footprint.
   const queryObstacles = createObstacleGrid(obstacles);
   const queryColliders = createObstacleGrid(colliders);
+  // the scenery lane (2026-10-03): no grass, litter or tall grass grows up through a pavement's clints or a scree fan
+  const groundCoverHoles = (props.group.userData.scenery as { groundCoverHoles?: GroundCoverHole[] } | undefined)?.groundCoverHoles;
+  const groundCoverClearance = () => withGroundCoverHoles(createGroundCoverClearance(queryObstacles), groundCoverHoles);
   // Keep the synchronous seal visible in load diagnostics: it runs after the
   // sliced vegetation builder, so its work is not in that builder's timings.
   const groundCoverSealStarted = performance.now();
-  vegetation.setGroundCoverClearance(createGroundCoverClearance(queryObstacles));
+  vegetation.setGroundCoverClearance(groundCoverClearance());
   group.userData.groundCoverSealMs = performance.now() - groundCoverSealStarted;
   // environment density pass (2026-09-12): the ground litter tier streams
   // stones, clods and splinters under the camera, kept out of the same sealed
@@ -402,7 +406,7 @@ function assembleWorld(
     // `vegetation.litter` (typed per module) overrides it
     config: (config.vegetation as { litter?: GroundLitterConfig | null } | undefined)?.litter
       ?? groundLitterProfile(config.id),
-    blocked: createGroundCoverClearance(queryObstacles),
+    blocked: groundCoverClearance(),
     // every lit world material joins the cascaded-shadow setup (see terrain/vegetation);
     // receipts stub the engine context without the hook, production always has it
     setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
@@ -415,7 +419,7 @@ function assembleWorld(
   const tallGrass = createTallGrass(heightField, {
     seed: 2006,
     mapId: config.id,
-    blocked: createGroundCoverClearance(queryObstacles),
+    blocked: groundCoverClearance(),
     renderer: (engineCtx as { renderer?: THREE.WebGLRenderer }).renderer ?? null,
     splatNoise: sampleSplatNoise,
     setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
