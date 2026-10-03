@@ -5,8 +5,8 @@
     "game": {
       "requests": 110,
       "raw": 3467376,
-      "gzip": 1019724,
-      "brotli": 862067,
+      "gzip": 1051128,
+      "brotli": 888648,
       "entryRaw": 789653,
       "entryBrotli": 235764
     },

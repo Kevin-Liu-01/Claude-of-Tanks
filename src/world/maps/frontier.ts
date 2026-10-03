@@ -77,8 +77,10 @@ export default {
     // (an apron on the road would ramp it past a road grade), at the flats' own level.
     hardstands: [
       { x: 0, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0 },
-      { x: -290, z: -30, width: 60, length: 60, yawDeg: 0, level: -3.5, grade: 0 },
-      { x: 290, z: 30, width: 60, length: 60, yawDeg: 0, level: -2.6, grade: 0 },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): a 24 m bank
+      { x: -290, z: -30, width: 60, length: 60, yawDeg: 0, level: -3.4, grade: 0, bankM: 24 },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): a 16 m bank
+      { x: 290, z: 30, width: 60, length: 60, yawDeg: 0, level: -2.5, grade: 0, bankM: 16 },
     ],
     landforms: [
       ...valleyTrough(),
