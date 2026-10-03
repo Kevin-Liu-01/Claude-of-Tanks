@@ -47,3 +47,25 @@ The earlier three-ID release probe passed E100 X and T90MS X geometry but failed
 T62MV1 X's hybrid reference comparison. Its fidelity step also failed. Retain
 those raw outcomes separately from native closure passes and this new batch.
 These changes have not yet been pushed or deployed.
+
+## Additional PR test cleanup under validation
+
+Adapted `8d57d76ef`, `9b26dfe60`, `80db3827b` and the explicit Moon/cliff-route
+additions from `adc865de4` in 17 world-test files (about 1,300 lines removed).
+This retires historical map/config projections and a Foundry parent fixture;
+it does not delete runtime maps or accept arbitrary current hashes. Remaining
+checks use current registry coverage, native Canvas pigment measurements,
+feature-on/off terrain comparisons, protected roads/water/deployment areas,
+finite skyline caps, resource lifetime, determinism and negative controls.
+The conflicting broadleaf patch was excluded; current map geometry and
+material sources remain unchanged. All sixteen affected world tests passed in the isolated candidate checkout.
+The complete 17-test report, including the sky-cache check, is
+`.qa-dev/pr9-followup/map-receipts.json`; every entry has exit code 0.
+These focused passes do not replace the pending combined full-suite result.
+
+From `125729301`, the sky-cache test now checks the shipped lunar Earth
+uniform wiring and still executes the actual cache/bake state owner, replacing
+its obsolete pre-Earth source hash. The PR's collision-shard uniform size ceiling
+was not imported: replacing every map's individual ceiling with 8.5 MB would
+materially relax several existing storage limits and needs a separate budget
+review. Sky-cache validation also passed in that focused batch.

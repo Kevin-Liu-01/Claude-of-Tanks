@@ -5,7 +5,6 @@ import { createCanvas, ImageData, loadImage } from '@napi-rs/canvas';
 import { CanvasTexture, NoColorSpace, RepeatWrapping, SRGBColorSpace } from 'three';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { resolveDeviceTier, texSize } from '../engine/quality.ts';
-import { parentPalettes, parentRoutes } from './foundryMasonryParent.fixture.mjs';
 
 // Genuine Canvas2D, including JPEG decode/resampling below. No GPU or visual
 // acceptance is inferred from these pigment, routing and ownership checks.
@@ -45,15 +44,19 @@ function oracle(source, policy) {
 }
 const experiment = { tint: [.80, .75, .70], desat: .34 };
 const buckets = ['plaster', 'roof', 'wood', 'stone'];
+// 2026-10-01 (frozen pins retired): every battlefield's routing and tint policy used to be held to a copy of the
+// 9dac657de parent palettes (foundryMasonryParent.fixture.mjs). That was a snapshot of authored data. The live contract:
+// only Foundry routes to the ironworks palette, the masonry experiment is Foundry's stone policy and nobody else's, and
+// the compositor's pixels follow the independent oracle for whatever policy each battlefield resolves.
 function assertPolicies(resolve, lookup) {
-  assert.deepEqual(MAP_IDS, Object.keys(parentRoutes), 'the frozen parent covers all30 maps');
   for (const id of MAP_IDS) {
-    const actualRoute = resolve(id, getMapConfig(id).props);
-    assert.equal(actualRoute, id === 'foundry' ? 'ironworks' : parentRoutes[id], `${id}: explicit routing`);
+    const route = resolve(id, getMapConfig(id).props);
+    if (id === 'foundry') assert.equal(route, 'ironworks', 'foundry: explicit ironworks routing');
+    else assert.notEqual(route, 'ironworks', `${id}: only Foundry routes to the ironworks palette`);
     for (const bucket of buckets) {
-      const prior = parentPalettes[parentRoutes[id]]?.[bucket] ?? null;
-      const expected = id === 'foundry' && bucket === 'stone' ? experiment : prior;
-      assert.deepEqual(lookup(actualRoute, bucket), expected, `${id}/${bucket}: parent policy or sole masonry exception`);
+      const policy = lookup(route, bucket);
+      if (id === 'foundry' && bucket === 'stone') assert.deepEqual(policy, experiment, 'foundry/stone: the masonry experiment');
+      else assert.notDeepEqual(policy, experiment, `${id}/${bucket}: no collateral masonry experiment`);
     }
   }
 }
@@ -110,13 +113,16 @@ try {
     /copper_mesa/, 'the real inherited-palette hazard is an effective negative control');
   assert.throws(() => assertPolicies(resolve, (palette, bucket) => palette === 'ironworks' && bucket === 'roof'
     ? experiment : lookup(palette, bucket)), /foundry\/roof/, 'no collateral roof experiment');
+  for (const other of MAP_IDS.filter(id => id !== 'foundry')) {
+    assert.throws(() => assertPolicies((id, settings) => id === other ? 'ironworks' : resolve(id, settings), lookup),
+      new RegExp(`${other}: only Foundry`), 'the inherited-palette guard bites on every other battlefield');
+  }
 
   const controlCanvas = raster(control);
   for (const id of MAP_IDS) for (const bucket of buckets) {
     const policy = lookup(resolve(id, getMapConfig(id).props), bucket);
     const actual = api.composeAlbedo(controlCanvas, null, raster(inputs.rough), options(policy));
-    const expected = id === 'foundry' && bucket === 'stone' ? experiment : parentPalettes[parentRoutes[id]]?.[bucket];
-    assert.deepEqual(pixels(actual), oracle(control, expected), `${id}/${bucket}: actual Canvas pixels versus independent parent oracle`);
+    assert.deepEqual(pixels(actual), oracle(control, policy), `${id}/${bucket}: actual Canvas pixels versus the independent oracle`);
     assert.equal(pixels(actual).byteLength, control.byteLength);
   }
 
@@ -169,9 +175,9 @@ try {
   assert.deepEqual(actualPixels, oracle(pixels(raw), experiment), 'native JPEG→Canvas composition follows exact existing encoded-RGB arithmetic');
   assert.equal(actualPixels.byteLength, size * size * 4, `${tier}: existing texture-size budget`);
   assert.ok(actualPixels.every((value, index) => index % 4 !== 3 || value === 255), 'opaque alpha coverage unchanged');
-  const priorControl = oracle(control, parentPalettes.foundry.stone), nextControl = oracle(control, experiment);
+  const nextControl = oracle(control, experiment);
   assert.ok(nextControl[0] > nextControl[1] && nextControl[1] > nextControl[2], 'warm brick is retained');
-  assert.ok(nextControl[0] - nextControl[2] < priorControl[0] - priorControl[2], 'the declared chroma contrast actually falls');
+  assert.ok(nextControl[0] - nextControl[2] < control[0] - control[2], 'the experiment lowers the brick chroma contrast');
   assert.ok(nextControl[4] > nextControl[8] * 3, 'light mortar and dark cavities remain distinct');
 
   api._compositeCache.clear();
@@ -183,7 +189,7 @@ try {
   assert.equal(api._compositeCache.size, 8);
   assert.equal(new Set([...api._compositeCache.values()].map(entry => entry.surface)).size, 1, 'pigments still share one immutable surface');
   assert.deepEqual(pixels(after.stone.surface.image), pixels(before.stone.surface.image), 'later pigments never mutate a live surface');
-  console.log(`foundryMasonry: ${tier}, all30/120 policies, real Canvas/JPEG pixels, exact other buckets, texture ownership/cache PASS`);
+  console.log(`foundryMasonry: ${tier}, ${MAP_IDS.length}/${MAP_IDS.length * buckets.length} policies, real Canvas/JPEG pixels, exact other buckets, texture ownership/cache PASS`);
 } finally {
   if (hooksActive) hooks.deregister();
   for (const texture of ownedTextures) texture.dispose();
