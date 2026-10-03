@@ -62,7 +62,9 @@ vegetation builds, the mobile tier and the receipts keep the lobes. The atlas ca
 species where that keeps the row cap and the ground tile (every 3-species map); the view elevation dissolves the
 tile toward it and tilts the card. The bake runs under cover through `world.warmImpostors()` (the solo loading
 runtime, the activation runtime's precompile). `horizonForestImpostors.selftest.mjs` and the `vegetationFarSeams`
-law section pin the seam.
+law section pin the seam. The ring's class shapes draw from their own streams (seed and class, never the placement
+stream), so a change to the ring's heights moves and re-thins trees without re-rolling a shape;
+`horizonForestShapes.selftest.mjs` pins it on Railyard's ring raised 3 %.
 The mountains lane (2026-10-02, "clouds are the bar; mountains, horizons and terrain must match"): `horizonMassif.ts`
 (THREE-free) carves the ranged rings' composition — each row's relief smoothed along the row — by an eroded landform (a
 Clay-John-style dendritic drainage cut into a smooth base, mean one, the summits through a soft knee), and each
