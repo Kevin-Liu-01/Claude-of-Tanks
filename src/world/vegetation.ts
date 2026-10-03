@@ -5443,6 +5443,9 @@ function* vegetationBuildSteps(
       authoredTreeDonors, veg.authoredTrees, heightField, siteOk, structureClearances, cfg?.props?.wallRuns ?? []);
   }
 
+  // ground lane: where the trees stand before the tidal map moves its willows (the field bushes' knot sites)
+  const knotSites = new Float64Array(trees.length * 2);
+  for (let i = 0; i < trees.length; i++) { knotSites[i * 2] = trees[i].x; knotSites[i * 2 + 1] = trees[i].z; }
   // near/far instanced meshes (partition rewritten on camera movement, hysteresis).
   function placeTidalTrees(): void {
     if (veg.willowForm === 'tidalMangrove' && veg.tidalTrees && authoredTreeDonors) {
@@ -5862,16 +5865,18 @@ function* vegetationBuildSteps(
         else if (treePositionNoise(x, z, 71) < 0.6) {
           // ground lane: without a boundary to grow on, a field bush grows at the foot of the nearest tree within
           // 35 m (2–5 m out from its trunk, on its own side) — scrub knots round the lone trees and the stands' edges
-          // instead of peppering the open ground evenly; position-hashed, so every seeded draw is unchanged
+          // instead of peppering the open ground evenly; position-hashed, so every seeded draw is unchanged. The trees
+          // as they stood before the tidal map moved its willows into the water (knotSites): both of that map's
+          // builds deal the same bushes (tidalMangrove.selftest).
           let best = -1, bestD = 35;
-          for (let i = 0; i < trees.length; i++) {
-            const d = Math.hypot(x - trees[i].x, z - trees[i].z);
+          for (let i = 0; i < knotSites.length; i += 2) {
+            const d = Math.hypot(x - knotSites[i], z - knotSites[i + 1]);
             if (d < bestD) { bestD = d; best = i; }
           }
           if (best >= 0) {
-            const t = trees[best], dl = Math.hypot(x - t.x, z - t.z) || 1;
+            const tx = knotSites[best], tz = knotSites[best + 1], dl = Math.hypot(x - tx, z - tz) || 1;
             const out = 2 + 3 * treePositionNoise(x, z, 73);
-            const bx = t.x + (x - t.x) / dl * out, bz = t.z + (z - t.z) / dl * out;
+            const bx = tx + (x - tx) / dl * out, bz = tz + (z - tz) / dl * out;
             if (admission()._roadDist(bx, bz) >= 6 && admission().getGroundType(bx, bz) !== 'soft' && !noVeg(bx, bz)
               && steepSeedOk(admission().getNormalAt(bx, bz).y, bx, bz) && Math.max(Math.abs(bx), Math.abs(bz)) <= 470
               && !inAvoid(bx, bz)) {
