@@ -40,12 +40,12 @@ function sfx(id, group, prompt, dur, { inf = 0.45, loop = false, variants = 1, t
 const REAL = `Realistic documentary field recording, not cinematic, no explosion, no rumble swell, no debris, ${NO_MUSIC}. One isolated shot.`;
 // The report decays more slowly as the bore (and charge) grows.
 const CANNONS = [
-  ['gun_90', '90 mm', 'an extremely sharp, cracking muzzle blast with a lighter body', [10, 90, -20]],
-  ['gun_105', '105 mm', 'an extremely sharp, ear-splitting muzzle-blast crack', [10, 100, -20]],
-  ['gun_120', '120 mm smoothbore', 'a violent, extremely sharp muzzle-blast crack', [12, 115, -19]],
-  ['gun_125', '125 mm smoothbore', 'a violent, very sharp muzzle-blast crack with a deeper report', [12, 120, -19]],
-  ['gun_130', '130 mm', 'a massive, sharp muzzle-blast crack with a deep report', [14, 130, -18]],
-  ['gun_152', '152 mm heavy', 'a colossal, sharp muzzle blast with a deep, heavy report', [15, 150, -17]],
+  ['gun_90', '90 mm', 'an extremely sharp, cracking muzzle blast with a lighter body', [10, 65, -21]],
+  ['gun_105', '105 mm', 'an extremely sharp, ear-splitting muzzle-blast crack', [10, 70, -21]],
+  ['gun_120', '120 mm smoothbore', 'a violent, extremely sharp muzzle-blast crack', [12, 80, -20]],
+  ['gun_125', '125 mm smoothbore', 'a violent, very sharp muzzle-blast crack with a deeper report', [12, 85, -20]],
+  ['gun_130', '130 mm', 'a massive, sharp muzzle-blast crack with a deep report', [14, 90, -19]],
+  ['gun_152', '152 mm heavy', 'a colossal, sharp muzzle blast with a deep, heavy report', [15, 105, -18]],
 ];
 
 const weapons = [
@@ -61,9 +61,9 @@ const weapons = [
   // The crew's own gun, heard from the hatch beside it: the report the player hears on every shot,
   // fuller and more detailed than anyone else's (the interior reports above cover the sight).
   ...[
-    ['gun_own_medium', '105 mm', 'a deafening muzzle-blast crack', [12, 110, -16]],
-    ['gun_own_large', '120 mm smoothbore', 'a violent, deafening muzzle-blast crack', [12, 125, -16]],
-    ['gun_own_heavy', '152 mm', 'a colossal muzzle-blast crack with a deep report', [14, 150, -15]],
+    ['gun_own_medium', '105 mm', 'a deafening muzzle-blast crack', [12, 80, -17]],
+    ['gun_own_large', '120 mm smoothbore', 'a violent, deafening muzzle-blast crack', [12, 90, -17]],
+    ['gun_own_heavy', '152 mm', 'a colossal muzzle-blast crack with a deep report', [14, 105, -16]],
   ].map(([id, bore, crack, shape]) => sfx(id, 'weapons',
     `Gunshot sound effect: one single shot of a ${bore} tank gun heard from the commander's open hatch beside it: instantaneous, ${crack} and a concussive pressure slap, the steel turret ringing briefly, the clank of the recoiling breech, then a short outdoor echo. ${REAL}`,
     4, { inf: 0.6, variants: 3, takes: 6, proc: 'gunshot', shape })),

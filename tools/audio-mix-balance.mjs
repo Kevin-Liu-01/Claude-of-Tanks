@@ -170,11 +170,15 @@ try {
   await page.evaluate(() => window.__DEBUG.bus.emit('ui:volumes', { master: 0.8, engine: 1, combat: 1, ambience: 1, ui: 1, voice: 1 }));
   const sampleRate = await page.evaluate(() => window.__COT_AUDIO.sampleRate);
   let lastI16 = null;
+  let lastGrDb = 0;
   async function capture(name, ms, act) {
     await page.evaluate((s) => window.__COT_AUDIO.startTap(s), Math.ceil(ms / 1000) + 2);
+    // The master limiter's deepest gain reduction over the capture (how hard the loudest moment was held down).
+    await page.evaluate(() => { window.__cotGr = 0; window.__cotGrTimer = setInterval(() => { window.__cotGr = Math.min(window.__cotGr, window.__COT_AUDIO.limiterReduction?.() ?? 0); }, 2); });
     await sleep(120);
     if (act) await page.evaluate(act);
     await sleep(ms);
+    lastGrDb = await page.evaluate(() => { clearInterval(window.__cotGrTimer); return window.__cotGr; });
     const n = await page.evaluate(() => window.__COT_AUDIO.stopTap());
     const parts = [];
     for (let off = 0; off < n; off += 1 << 20) {
@@ -187,8 +191,8 @@ try {
     writeWav(join(outDir, `${name}.wav`), i16, sampleRate);
     lastI16 = i16;
     const m = measure(i16, sampleRate);
-    console.log(`[mix] ${name.padEnd(18)} rms ${m.rmsDb.toFixed(1).padStart(6)} dBFS  loudest 400 ms ${m.shortTermDb.toFixed(1).padStart(6)} dBFS  100 ms ${m.burstDb.toFixed(1).padStart(6)} dBFS  peak ${m.peakDb.toFixed(1).padStart(6)} dBFS`);
-    return m;
+    console.log(`[mix] ${name.padEnd(18)} rms ${m.rmsDb.toFixed(1).padStart(6)} dBFS  loudest 400 ms ${m.shortTermDb.toFixed(1).padStart(6)} dBFS  100 ms ${m.burstDb.toFixed(1).padStart(6)} dBFS  peak ${m.peakDb.toFixed(1).padStart(6)} dBFS  limiter ${lastGrDb.toFixed(1)} dB`);
+    return { ...m, limiterGrDb: +lastGrDb.toFixed(1) };
   }
 
   // 1) The garage room tone (wait for its bed to decode).

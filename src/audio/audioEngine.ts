@@ -2135,6 +2135,7 @@ export function createAudio({
       get snapshot() { return mixer?.snapshot ?? null; },
       get tier() { return tier; },
       library: () => library?.stats() ?? null,
+      limiterReduction: () => mixer?.limiterReduction() ?? 0,
       ambientState: () => ambience?.state() ?? { active: false },
       listenerState: () => ({ x: frame.x, y: frame.y, z: frame.z, fx: frame.fx, fz: frame.fz, kind: listenerKind, ownerId: listenerOwnerId, scoped: listenerScoped }),
       spatialAt(x: number, y: number, z: number) {

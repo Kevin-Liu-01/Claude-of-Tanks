@@ -54,6 +54,8 @@ export interface Mixer {
   concussion(strength: number): boolean;
   duckForVoice(active: boolean): void;
   cabinLevel(): number;
+  /** The master limiter's current gain reduction (dB, ≤ 0): how hard a crack is being held down. */
+  limiterReduction(): number;
   update(dtS: number): void;
   busGains(): Record<string, number>;
   dispose(): void;
@@ -332,6 +334,7 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
       glide(worldDuck.gain, dbToGain(VOICE_DUCK.worldDb * voiceDuck), tau);
     },
     cabinLevel: () => dbToGain(SNAPSHOTS[snapshot].cabinDb),
+    limiterReduction: () => (typeof limiter.reduction === 'number' ? limiter.reduction : 0),
     update(dtS) {
       const dt = clamp(dtS, 0, 0.25);
       hdrTop = Math.max(HDR.floorDb, hdrTop - HDR.releaseDbPerS * dt);
