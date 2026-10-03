@@ -12,10 +12,10 @@
       "concealers": 5935
     },
     "desert": {
-      "bytes": 1078758,
-      "sha256": "fa707d235f517dc0fe8ddf83e9a834375614c26791f755574fcc5e555ee53605",
-      "obstacles": 2634,
-      "colliders": 2477,
+      "bytes": 1310442,
+      "sha256": "cee90458ccd04d7755cca97228c3cfad32fa06ffaf8c5200de9c96eb9a3e1a1e",
+      "obstacles": 2774,
+      "colliders": 2598,
       "concealers": 2810
     },
     "winter": {
