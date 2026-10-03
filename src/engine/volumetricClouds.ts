@@ -166,6 +166,19 @@ export const CLOUD_FAR_THIN = 0;
 export const CLOUD_LUMP_GATE = 1;
 /** The broad field's period for the lump gate (x the weather tile: 18 km, stretches of a few kilometres). */
 export const CLOUD_LUMP_GATE_PERIOD_K = 1.5;
+/**
+ * 2026-10-03 (the gauntlet's wave 17, Opus on the cumulus — still the top sky defect: "soft, low-contrast cotton puffs at
+ * random heights, no shared flat base, undersides barely shaded, hardly flattening toward the horizon"): three cumulus
+ * knobs, 0 = the candidate's cumulus, read per frame (QA: __LIGHT_TUNE) until a capture shows them —
+ *   CLOUD_BASE_SHARP  the condensation level reads as one flat surface: near a flat-based cumulus's base the shape noise
+ *                     and the billows give way to the footprint, so the underside is a crisp plane at the field's base;
+ *   CLOUD_BASE_DARK   a cumulus's underside in the shade of the mass above it: the base's direct and diffused light and
+ *                     its sky floor drop toward the dark grey of a thick cumulus seen from below;
+ *   CLOUD_FAR_FLAT    the distant field flattens: past ~6 km a cumuliform column's top lowers, up to two fifths at 18 km.
+ */
+export const CLOUD_BASE_SHARP = 0;
+export const CLOUD_BASE_DARK = 0;
+export const CLOUD_FAR_FLAT = 0;
 /** The share of the sun a cloud core takes (the map's darkest texel). */
 export const CLOUD_SHADOW_CORE = 0.62;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
@@ -372,6 +385,10 @@ uniform float uBaseFlat;
 uniform float uDeckDetail;
 // 2026-10-03: the far cumuliform field's thinning (CLOUD_FAR_THIN; 0 = off)
 uniform float uFarThin;
+// 2026-10-03: the cumulus knobs (CLOUD_BASE_SHARP, CLOUD_BASE_DARK, CLOUD_FAR_FLAT; 0 = off)
+uniform float uBaseSharp;
+uniform float uBaseDark;
+uniform float uFarFlat;
 uniform vec3 uSkyIrradiance;
 uniform float uHang;
 // QA: 1 = no depth-above term, 2 = no detail erosion, 3 = no light march, 4 = flat white density (structure only),
@@ -446,6 +463,8 @@ Weather cloudWeather( vec2 pxz ) {
 	float cluster = smoothstep( 0.62, 0.92, w.g ) * pow( o.cov, 0.5 );
 	top = mix( top, 1.0, uTowers * cluster * smoothstep( 0.3, 0.8, o.type ) );
 	o.top = mix( top, 0.78 + 0.22 * w.a, uStratiform );
+	// (2026-10-03: the distant cumuliform field flattens — CLOUD_FAR_FLAT)
+	if ( uFarFlat > 0.0 ) o.top *= 1.0 - 0.4 * uFarFlat * ( 1.0 - uStratiform ) * smoothstep( 6000.0, 18000.0, farD );
 	if ( uDebug == 7.0 ) o.top = 1.0;
 	return o;
 }
@@ -583,6 +602,10 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 	// Keep the three-dimensional billows visible through the body. Saturating
 	// every admitted weather column erased them into a smooth solid cylinder.
 	d *= mix( 1.0, mix( 0.4, 1.25, smoothstep( 0.25, 0.75, s.g ) ), uDebug == 6.0 ? 0.0 : 1.0 - uStratiform );
+	// (2026-10-03: a flat-based cumulus's condensation level as one crisp plane — CLOUD_BASE_SHARP: near the base the
+	// footprint's density stands in for the noise and the billows, so the underside is flat and dense to its outline)
+	float bk = uBaseSharp * uBaseFlat * ( 1.0 - uStratiform ) * ( 1.0 - smoothstep( 0.04, 0.22, hN ) );
+	if ( bk > 0.0 ) d = mix( d, max( d, w.cov * hg * 0.9 ), bk );
 	if ( detail && d > 0.0 && d < 0.95 && uDebug != 2.0 ) {
 		// two Worley-fbm fetches on a lattice the curl field advects (more with height: turbulent tops, calm
 		// bases): the coarse one (lumps of 25 - 100 m) everywhere, a fine one (7 - 27 m) where the pixel
@@ -1033,12 +1056,14 @@ void main() {
 					// the diffusion regime of a thick non-absorbing cloud: diffuse light is transmitted about
 					// 1 / (1 + 0.75 (1 - g) tau), so the base of an overcast sheet is bright and the shaded side of a
 					// cumulus stays grey, not black; it builds with height in the cloud (the lower parts are darker)
-					float msV = mix( 0.35, 1.0, smoothstep( 0.0, 0.5, hN ) );
+					// (2026-10-03: a cumulus's underside in the shade of the mass above it — CLOUD_BASE_DARK)
+					float bd = uBaseDark * ( 1.0 - uStratiform );
+					float msV = mix( 0.35 - 0.15 * bd, 1.0, smoothstep( 0.0, 0.5, hN ) );
 					// (71b: 0.2 read as a grey cloud — a lit face is a near-white diffuser under the sun's irradiance,
 					// E · albedo / π at its skin, decaying into the mass with the diffusion law)
 					float diffusion = mix( 0.7, 0.45, uStratiform ) / ( 1.0 + 0.15 * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
 					// darker bases: their direct light is scattered away by the cloud above
-					float baseShadow = mix( 0.35, 1.0, smoothstep( -0.1, 0.45, hN ) );
+					float baseShadow = mix( 0.35 - 0.17 * bd, 1.0, smoothstep( -0.1, 0.45, hN ) );
 					// ambient: the sky's irradiance lights the tops, the bases see the horizon band and the ground; a
 					// stratus sheet is diffuser-lit; the deeper into the mass, the less of either arrives, and the
 					// underside of a thick lump is darker than a thin edge (the depth above it)
@@ -1061,7 +1086,7 @@ void main() {
 					// (the cumulus floor sits at a third of the sky mean — 0.85 lifted every base to the lit level and
 					// flattened the masses to white — and a cumulonimbus base deck takes half of that: its wall is dark)
 					float deckFloor = smoothstep( 0.3, 0.9, uStratiform );
-					float floorK = mix( 0.34, 1.25, deckFloor ) * mix( 1.0, 0.35, cb * ( 1.0 - deckFloor ) );
+					float floorK = mix( 0.34 - 0.14 * bd, 1.25, deckFloor ) * mix( 1.0, 0.35, cb * ( 1.0 - deckFloor ) );
 					float floorDecay = mix( 0.04, 0.08, deckFloor );
 					amb = max( amb, uSkyMean * floorK * ( 0.5 + 0.5 * exp( -tauUp * floorDecay ) ) );
 					amb *= uAmbientScale;
@@ -1522,6 +1547,7 @@ export class VolumetricCloudLayer {
         uFarBand: { value: 0 }, uFarBandAlt: { value: 2000 }, uFarBandShift: { value: new THREE.Vector2() },
         uStepScale: { value: 1 }, uDebug: { value: 0 },
         uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 }, uBaseFlat: { value: 0 }, uDeckDetail: { value: 0 }, uFarThin: { value: 0 },
+        uBaseSharp: { value: 0 }, uBaseDark: { value: 0 }, uFarFlat: { value: 0 },
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
         // 2026-10-03: the deck's far rows on the aerial pass's overcast target (cloudHaze; hazeLaw.ts hazeTargetTerms)
         uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
@@ -1920,6 +1946,10 @@ export class VolumetricCloudLayer {
     (t.uUpperDrift.value as THREE.Vector2).copy(ud);
     // (2026-10-03: the far field's thinning, read per frame so a lab can sweep it: CLOUD_FAR_THIN)
     t.uFarThin.value = lightTune('CLOUD_FAR_THIN', CLOUD_FAR_THIN);
+    // (2026-10-03: the cumulus knobs, read per frame so a lab can sweep them)
+    t.uBaseSharp.value = lightTune('CLOUD_BASE_SHARP', CLOUD_BASE_SHARP);
+    t.uBaseDark.value = lightTune('CLOUD_BASE_DARK', CLOUD_BASE_DARK);
+    t.uFarFlat.value = lightTune('CLOUD_FAR_FLAT', CLOUD_FAR_FLAT);
     // (no datum yet: the camera stands on the layer's base, the haze law of a camera on the ground)
     t.uHazeDatum.value = Number.isFinite(this.hazeDatum) ? this.hazeDatum : camera.position.y;
     this.applyPresetUniforms(preset);

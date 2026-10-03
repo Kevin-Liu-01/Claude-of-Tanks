@@ -6,7 +6,9 @@
 // regimes that take them (a stratiform deck never does).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { CLOUD_CLUSTER_GAP, CLOUD_CLUSTER_PERIOD_K, CLOUD_FAR_THIN, CLOUD_LUMP_GATE, CLOUD_LUMP_GATE_PERIOD_K } from './volumetricClouds.ts';
+import {
+  CLOUD_BASE_DARK, CLOUD_BASE_SHARP, CLOUD_CLUSTER_GAP, CLOUD_CLUSTER_PERIOD_K, CLOUD_FAR_FLAT, CLOUD_FAR_THIN, CLOUD_LUMP_GATE, CLOUD_LUMP_GATE_PERIOD_K,
+} from './volumetricClouds.ts';
 import { CLOUDSCAPE_REGIMES } from './cloudscapes.ts';
 
 const here = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
@@ -43,6 +45,21 @@ assert.match(clouds, /float cloudGate = 1\.0;/); assert.match(clouds, /\tcloudGa
 assert.equal(CLOUD_FAR_THIN, 0, 'off by default');
 assert.match(clouds, /if \( uFarThin > 0\.0 \) field -= uFarThin \* \( 1\.0 - uStratiform \) \* smoothstep\( 9000\.0, 20000\.0, farD \) \* uCoverage \* 0\.5;/, 'the far cut');
 assert.match(clouds, /t\.uFarThin\.value = lightTune\('CLOUD_FAR_THIN', CLOUD_FAR_THIN\);/, 'per frame');
+
+// ---- the cumulus knobs (2026-10-03; the gauntlet's wave 17, Opus: "soft, low-contrast cotton puffs at random heights, no
+// shared flat base, undersides barely shaded, hardly flattening toward the horizon"): off until a capture shows them,
+// read per frame for a sweep
+assert.deepEqual([CLOUD_BASE_SHARP, CLOUD_BASE_DARK, CLOUD_FAR_FLAT], [0, 0, 0], 'the candidate\'s cumulus by default');
+for (const [u, k] of [['uBaseSharp', 'CLOUD_BASE_SHARP'], ['uBaseDark', 'CLOUD_BASE_DARK'], ['uFarFlat', 'CLOUD_FAR_FLAT']]) {
+  assert.match(clouds, new RegExp(`uniform float ${u};`), `${u} is declared`);
+  assert.match(clouds, new RegExp(`t\\.${u}\\.value = lightTune\\('${k}', ${k}\\);`), `${u} per frame`);
+}
+assert.match(clouds, /float bk = uBaseSharp \* uBaseFlat \* \( 1\.0 - uStratiform \) \* \( 1\.0 - smoothstep\( 0\.04, 0\.22, hN \) \);\s*if \( bk > 0\.0 \) d = mix\( d, max\( d, w\.cov \* hg \* 0\.9 \), bk \);/,
+  'a flat-based cumulus: the footprint at its base, a crisp plane');
+assert.match(clouds, /float bd = uBaseDark \* \( 1\.0 - uStratiform \);\s*float msV = mix\( 0\.35 - 0\.15 \* bd, 1\.0,/, 'the base\'s diffused light');
+assert.match(clouds, /float baseShadow = mix\( 0\.35 - 0\.17 \* bd, 1\.0,/, 'its direct light');
+assert.match(clouds, /float floorK = mix\( 0\.34 - 0\.14 \* bd, 1\.25, deckFloor \)/, 'its sky floor (a deck\'s untouched)');
+assert.match(clouds, /if \( uFarFlat > 0\.0 \) o\.top \*= 1\.0 - 0\.4 \* uFarFlat \* \( 1\.0 - uStratiform \) \* smoothstep\( 6000\.0, 18000\.0, farD \);/, 'the far field flattens');
 
 // ---- the far band (2026-10-03; waves 13-14: "a ruler-flat pale band at one constant height"): decks only — a cumuliform
 // sky ends where its traced field does and sinks into the haze; the contrails are off on every map
