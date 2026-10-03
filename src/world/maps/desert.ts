@@ -337,6 +337,8 @@ export default {
   },
 
   props: {
+    // regional-buildings lane: the Tunisian ksar kit (maps/regional/ksar.ts)
+    architecture: 'ksar',
     // r2 (content_breadth): plan 10 -> 18 slots — three more adobe clusters
     // plus a souk ('market'/'marketRow' builders, maps/mapKits.ts via the
     // urbanKit registry) so the crossroads reads as a lived-in bazaar town
