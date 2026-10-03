@@ -129,6 +129,7 @@ function createHarness({
 {
   const hidden = createEntity({ id: 'hidden', team: 'enemy' });
   const harness = createHarness({ tanks: [hidden.entity], spotted: false });
+  harness.game.player = null; // The sole enemy is a target, not the viewing player.
   harness.runtime.update(1 / 60);
   assert.equal(hidden.root.parent, null, 'fully hidden opponents leave scene traversal');
   assert.equal(hidden.root.userData.battleVisibilityDetached, true);
@@ -148,6 +149,7 @@ function createHarness({
 {
   const foreign = createEntity({ id: 'foreign', team: 'enemy' });
   const harness = createHarness({ tanks: [foreign.entity], spotted: true });
+  harness.game.player = null;
   foreign.root.removeFromParent();
   harness.runtime.update(1 / 60);
   assert.equal(foreign.root.parent, null,
