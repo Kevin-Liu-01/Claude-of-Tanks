@@ -432,6 +432,10 @@ export function createTouchControls({
     document.body.classList.toggle('cot-touch-layout', layout);
     root.classList.toggle('on', layout && battle);
     aimLayer.classList.toggle('on', layout && battle);
+    const scope=root.querySelector<HTMLButtonElement>('.scope')!;
+    const aircraft=getFlightKind()==='gunship';
+    scope.innerHTML=`${aircraft?uiIconSVG('zoomIn',34):SCOPE}<span class="lb">${t(aircraft?'gallery.view.modeDockHelpZoom':'touch.scope')}</span>`;
+    scope.setAttribute('aria-label',t(aircraft?'action.zoomIn':'touch.scopeAria'));
     if (!layout || !battle) { resetMove(); cancelFireGesture(); }
   }
 

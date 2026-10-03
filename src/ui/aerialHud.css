@@ -46,6 +46,7 @@ html[data-flight=drone] .cot-touch .fire,html[data-flight=drone] .cot-touch .sco
 html[data-flight=gunship] .cot-touch .joy,html[data-flight=gunship] .cot-touch .autoaim,html[data-flight=gunship] .cot-touch .fire.alt,
 html[data-flight=drone] .cot-touch .jump,html[data-flight=gunship] .cot-touch .jump{display:none!important}
 html[data-flight=gunship] .cot-touch-aim .aimpad{width:100%}
+html[data-flight=gunship] .cot-touch .scope{left:max(16px,env(safe-area-inset-left))!important;right:auto!important}
 html[data-flight=drone] .cot-touch .flight-climb{display:flex}
 .cot-touch .flight-climb{display:none;position:absolute;right:max(16px,env(safe-area-inset-right));bottom:30px;width:64px;height:64px;align-items:center;justify-content:center;border-radius:8px;border:2px solid #d49b45;background:linear-gradient(#403522,#15212a);color:#ffce86;flex-direction:column;gap:3px;pointer-events:auto;touch-action:none;font-size:12px}
 html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.cot-shells,.cot-drive,.cot-dp,.cot-vehicle-controls,.cot-tgt){display:none!important}

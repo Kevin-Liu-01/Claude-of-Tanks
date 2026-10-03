@@ -74,6 +74,16 @@ try{
     const bounds=await page.$eval('.flight-console',el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom};});
     assert.ok(bounds.x>=0&&bounds.y>initialViewport.height/2+12&&bounds.right<=initialViewport.width&&bounds.bottom<=initialViewport.height,'flight controls fit below sight');
     assert.equal(await page.$eval('.cot-drive',el=>getComputedStyle(el).display),'none','no tank speedometer in gunship');
+    if(mobile){
+     const controlsClear=await page.evaluate(()=>{
+      const panel=document.querySelector('.flight-console').getBoundingClientRect();
+      return ['.cot-touch .scope','.cot-touch .fire:not(.alt)'].every(selector=>{
+       const button=document.querySelector(selector).getBoundingClientRect();
+       return button.right<=panel.left||button.left>=panel.right||button.bottom<=panel.top||button.top>=panel.bottom;
+      });
+     });
+     assert.ok(controlsClear,'aircraft zoom and fire buttons stay outside weapon cards');
+    }
    }
    if(mode==='gun_game')assert.equal(await page.$$eval('.cot-shell:not([hidden])',els=>els.length),1,'Gun Game exposes only the current weapon');
    if(mode==='juggernaut')assert.match(await page.$eval('.cot-mode-status',el=>el.textContent),/SURVIVE/,'the boss receives its own survival objective');
