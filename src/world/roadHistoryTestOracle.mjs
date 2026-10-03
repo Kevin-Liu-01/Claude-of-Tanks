@@ -39,6 +39,12 @@ for (const declaration of [historicalSmoothing, historicalJunctionBlend]) {
   assert.equal(referenceSource.split(declaration).length, 2, 'one historical grading declaration');
 }
 const historicalLayoutReturn = '  return {\n    village,\n';
+// the map-borders lane (2026-10-03): anchors for the road plane's rim shift in the relief-law constructor
+const historicalNoise = '  const noi = new SimplexNoise({ random: mulberry32((seed ^ 0x9e3779b9) >>> 0) });\n';
+const historicalHeightHead = '    x = clamp(x, -HALF, HALF); z = clamp(z, -HALF, HALF);\n';
+for (const text of [historicalNoise, historicalHeightHead]) {
+  assert.equal(referenceSource.split(text).length, 2, 'one historical anchor for the road plane shift');
+}
 assert.equal(referenceSource.split(historicalLayoutReturn).length, 2, 'one historical layout return');
 // 2026-09-29 (Cliffbridge's viaduct): authored dry bridge decks (terrain.bridges) and the abutment clamp that cuts
 // shoulder noise flush with the deck are construction laws of the same kind. The constructor fixture strips both from
@@ -67,11 +73,18 @@ const reliefLawSource = referenceSource
     '    if (usesPhysicalRoadStations(cfg?.id)) { smoothRoadGradesByDistance(roads, nodeElev); return; }\n')
   .replace(historicalJunctionBlend, historicalJunctionBlend +
     '    if (usesPhysicalRoadStations(cfg?.id)) { blendRoadNetworkGrades(roads, nodeElev); return; }\n')
+  // the map-borders lane (2026-10-03): the rim's relief law is the border landform's lift (borderLandform.ts) with the
+  // round-47 water gate and coast fade on it, and the foreground clearance past the red line (terrain.ts
+  // clearanceReduction, which the projected constructor keeps) — the placement sampler reproduces that current field
   .replace(historicalRim,
-  '    const rim = smoothstep(430, HALF, Math.max(Math.abs(x), Math.abs(z)));\n    h += rim * rim * T.rimH * (1 - waterWeight) * (rim > 0 ? coastRimKeep(x, z) : 1);\n')
+  '    const rimRadius = Math.max(Math.abs(x), Math.abs(z));\n    const rimLift = roadsOn ? border.liftAt(x, z, rimRadius, gridSample(gRoadDist, x, z)) : border.classicLiftAt(rimRadius);\n    const rimKeep = rimLift > 0 ? coastRimKeep(x, z) : 1;\n    h += rimLift * (1 - waterWeight) * rimKeep;\n    const reliefClearance = roadsOn && rimRadius > 470 ? clearanceReduction(x, z, h, gridSample(gRoadDist, x, z)) * (1 - waterWeight) : 0;\n    h -= reliefClearance;\n    reliefRoadRimShift = roadsOn && rimRadius > 430 ? (rimLift - border.classicLiftAt(rimRadius)) * (1 - waterWeight) * rimKeep - reliefClearance : 0;\n    if (reliefRoadRimShift < 0 && rimRadius > 470) { const over = rimRadius - 470; reliefRoadRimShift = Math.max(reliefRoadRimShift, -0.12 * (over < 20 ? (over * over) / 40 : over - 10)); }\n')
+  // the road plane's shift (terrain.ts roadRimShift) reaches the historical road blend, which lives in the constraints
+  // function, through one closure variable reset at the head of every query (a water core never sets it)
+  .replace(historicalNoise, historicalNoise + '  let reliefRoadRimShift = 0;\n')
+  .replace(historicalHeightHead, historicalHeightHead + '    reliefRoadRimShift = 0;\n')
   .replace(historicalRoadBlend, `    const rd = gridSample(gRoadDist, x, z);
     if (rd < 14) {
-      let roadElevation = gridSample(gRoadElev, x, z);
+      let roadElevation = gridSample(gRoadElev, x, z) + reliefRoadRimShift;
       if (bridgeDecks.length) {
         const bridge = bridgeTermsAt(x, z);
         roadElevation += (bridge.deckY - roadElevation) * bridge.approach;
