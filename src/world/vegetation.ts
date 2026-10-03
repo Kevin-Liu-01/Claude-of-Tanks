@@ -3591,7 +3591,8 @@ function* vegetationBuildSteps(
   const _splatScratch = { n1: 0, n2: 0, mA: 0 };
   // ground lane (2026-10-03): the field the terrain draws under a tuft (the height field's landUse.ts hook; absent on a
   // map without fields and in the sandboxed harnesses) — a reused record, inline so the section needs no import
-  const _landScratch: LandFieldSample = { active: 0, crop: 0, edgeM: 0, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0 };
+  const _landScratch: LandFieldSample = { active: 0, crop: 0, edgeM: 0, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1 };
   const landUseAt = heightField._landUseAt ?? null;
   // ground lane: the canopy's cover (set once the trees are placed; null before — a tuft built earlier ignores it)
   let woodsCoverAt: ((x: number, z: number) => number) | null = null;
@@ -3727,13 +3728,18 @@ function* vegetationBuildSteps(
     let crop = -1;
     if (landUseAt !== null) {
       const f = landUseAt(x, z, _landScratch);
-      if (f.active && (f.track > 0.5 || f.edgeM >= f.marginM)) {
+      if (f.active) {
         const fieldW = (1 - smoothstepJs(0.05, 0.30, heightField._villageMask(x, z)))
           * smoothstepJs(5.0, 8.0, heightField._roadDist(x, z)) * (1 - smoothstepJs(0.02, 0.06, 1 - normalY))
           * (1 - smoothstepJs(0.02, 0.10, heightField.getWaterMaskAt(x, z)));
         if (fieldW > 0.5) {
-          if (f.track > 0.5) { if (clJ < 0.7) return null; }
-          else { crop = f.crop; if (crop === 4) return null; }
+          // a ditch's water and a dry stone wall carry no sward, a bund half of one, a track a few tufts
+          if (f.track > 0.5) { if (f.boundary === 1 || clJ < 0.7) return null; }
+          else if (f.edgeM < f.marginM) {
+            if (f.boundary === 3 && f.edgeM < 0.62) return null;
+            if (f.boundary === 2 && f.edgeM < 0.55 && clJ < 0.5) return null;
+          } else if (!f.sward) return null;
+          else if (f.crop !== 0) crop = f.crop;
         }
       }
     }
@@ -3767,18 +3773,15 @@ function* vegetationBuildSteps(
     if (veg.tuftTone) [th, ts, tl] = veg.tuftTone(th, ts, tl);
     let cropHeight = 1;
     _c.setHSL(((th % 1) + 1) % 1, clamp(ts, 0, 1), clamp(tl, 0, 1));
-    // a crop's tuft: the crop's measured albedo — ripe wheat 0.30/0.22/0.075, barley 0.33/0.28/0.12, a young crop
-    // 0.075/0.19/0.04, stubble 0.30/0.25/0.13, sunflower foliage 0.045/0.10/0.025 — carried NEGATED in the instance
-    // colour: the grass shader then keeps only the card's luminance (its dark roots and lit tips) and lays the crop's
-    // colour over it. A multiplier on the green card turned its dry blades and flower specks pink and lavender (the
-    // round-1 lane frames).
+    // a crop's tuft: the crop's measured albedo (landUse.ts LAND_CROP_ALBEDO, on the sample: ripe wheat
+    // 0.30/0.22/0.075, barley 0.33/0.28/0.12, a young crop 0.075/0.19/0.04, stubble 0.30/0.25/0.13, rice green
+    // 0.10/0.23/0.045 …) carried NEGATED in the instance colour: the grass shader then keeps only the card's luminance
+    // (its dark roots and lit tips) and lays the crop's colour over it. A multiplier on the green card turned its dry
+    // blades and flower specks pink and lavender (the round-1 lane frames).
     if (crop > 0) {
       const lj = -(0.90 + 0.20 * lumJ);
-      if (crop === 1) { _c.setRGB(0.30 * lj, 0.22 * lj, 0.075 * lj); cropHeight = 1.15; }
-      else if (crop === 2) { _c.setRGB(0.33 * lj, 0.28 * lj, 0.12 * lj); }
-      else if (crop === 3) { _c.setRGB(0.075 * lj, 0.19 * lj, 0.04 * lj); cropHeight = 0.8; }
-      else if (crop === 5) { _c.setRGB(0.30 * lj, 0.25 * lj, 0.13 * lj); cropHeight = 0.32; }
-      else if (crop === 6) { _c.setRGB(0.045 * lj, 0.10 * lj, 0.025 * lj); cropHeight = 1.4; }
+      _c.setRGB(_landScratch.tintR * lj, _landScratch.tintG * lj, _landScratch.tintB * lj);
+      cropHeight = Math.max(0.3, Math.min(1.4, _landScratch.cropHeight));
     }
     const t = _tuftScratch;
     // r2: midfield (non-carpet) tufts run ~15% wider — see the cull note
@@ -5114,7 +5117,8 @@ function* vegetationBuildSteps(
   const _hedgeSite = [0, 0, 0, 0]; // x, z, tangent x, tangent z
   // the field system read here from the height field itself (this section runs in the placement harnesses too)
   const hedgeLandAt = heightField._landUseAt ?? null;
-  const _hedgeLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0 };
+  const _hedgeLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1 };
   function hedgeSite(x: number, z: number, salt: number): number[] {
     _hedgeSite[0] = x; _hedgeSite[1] = z; _hedgeSite[2] = 0; _hedgeSite[3] = 0;
     if (hedgeLandAt === null) return _hedgeSite;

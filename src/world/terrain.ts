@@ -3170,6 +3170,7 @@ varying vec4 vBorderTrack;   // the map-borders lane: the ring's farm tracks, pe
 float gScour = 0.0;          // round 73b: the wind-scoured crust (a satin sheen in the roughness stage)
 float gStrandFoam = 0.0;     // round 73b: the foam line the last run-up left (matte in the roughness stage)
 float gRoadPuddle = 0.0;     // ground lane: water standing in a road's ruts (smooth in the roughness stage)
+float gFieldWater = 0.0;     // ground lane: a flooded paddy's or a polder ditch's water (smooth in the roughness stage)
 varying float vFold;         // round 73: the baked fold attribute (−1 crest .. +1 hollow) the chunk vertices carry
 float gFoldAO = 1.0;         // round 73: indirect occlusion in the folds, read by the aomap hook
 vec3 gSplatAlbedo; float gSplatRough; vec3 gSplatNrm; float gSplatFar; float gSplatSteepAtt;
@@ -3892,16 +3893,27 @@ void splatCompute() {
     if (landW > 0.003) {
       float crop, edgeM, track, jit; vec2 rowDir;
       lu_field(wp.xz, crop, edgeM, track, rowDir, jit);
+      // the region's boundary (landUse.ts BOUNDARIES): 0 a grass margin with tracks, 1 a polder's water ditches on the
+      // long lines, 2 a paddy's earth bund, 3 a karst field's dry stone wall
+      float bnd = uLandE.z;
       float marginM = uLandB.y * (0.7 + 0.6 * n1h);
-      float inField = smoothstep(marginM * 0.5, marginM * 1.3, edgeM) * (1.0 - track);
+      float inField = bnd > 1.5 ? smoothstep(bnd > 2.5 ? 0.95 : 0.50, bnd > 2.5 ? 1.45 : 0.85, edgeM)
+                                : smoothstep(marginM * 0.5, marginM * 1.3, edgeM);
+      inField *= 1.0 - track;
       float across = dot(wp.xz, vec2(-rowDir.y, rowDir.x)); // metres across the rows
       float baseL = reduxLuma(a.rgb);
+      float sw = baseL / 0.075; // the local sward against the calibrated one: a crop's albedo keeps the photo's grain
       float bright = 0.90 + 0.20 * jit;
       vec3 cropCol = a.rgb;
       float rows = 0.0; // the crop's row tone, signed
       vec4 soil = vec4(0.0);
-      bool needSoil = (crop > 3.5 && crop < 4.5) || track > 0.01;
-      if (needSoil) soil = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
+      bool soilCrop = (crop > 3.5 && crop < 4.5) || (crop > 6.5 && crop < 8.5) || (crop > 10.5 && crop < 12.5);
+      if (soilCrop || track > 0.01 || bnd > 1.5) soil = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
+      // the soil photo's own mottle (pebbles, clods, dry crust) halved toward its mean and a third of its hue taken out:
+      // a turned field reads as one dark, even soil with its lines, not a sandy blotch (Amberford) or red clay (Frontier)
+      vec3 soilF = mix(soil.rgb, uMeanD.rgb, 0.5);
+      soilF = mix(soilF, vec3(reduxLuma(soilF)), 0.35);
+      float water = 0.0; // a flooded paddy's water (mirrors the sky in the roughness stage)
       if (crop < 0.5) {
         // pasture: half the meadows are hay — mown in stripes up and down the field
         rows = jit > 0.5 ? sin(across * 2.094) * 0.06 * tileVis(3.0) : 0.0;
@@ -3913,17 +3925,53 @@ void splatCompute() {
       } else if (crop < 3.5) {
         cropCol = vec3(0.906, 1.416, 0.362) * baseL * 1.25 * bright; // young green crop
       } else if (crop < 4.5) {
-        // plough: the black earth, turned in furrows across the field, pressed into bands by the tractor's passes
-        cropCol = soil.rgb * vec3(0.62, 0.55, 0.50) * bright;
-        float fur = sin(across * 7.854);
-        rows = fur * 0.16 * tileVis(0.8) + sin(across * 0.483 + jit * 6.0) * 0.05 * tileVis(13.0);
+        // plough: the black earth, turned in furrows across the field, pressed into bands by the tractor's passes; the
+        // plough's lands (3.2 m) and the tractor's passes (13 m) carry the lines to the far field
+        cropCol = soilF * vec3(0.60, 0.56, 0.52) * bright;
+        rows = sin(across * 7.854) * 0.16 * tileVis(0.8) + sin(across * 1.963 + jit * 3.0) * 0.07 * tileVis(3.2)
+          + sin(across * 0.483 + jit * 6.0) * 0.08 * tileVis(13.0);
         if (nrmOn) n.xy += vec2(-rowDir.y, rowDir.x) * cos(across * 7.854) * 0.22 * tileVis(0.8) * inField * landW;
       } else if (crop < 5.5) {
         cropCol = vec3(1.218, 1.010, 0.627) * baseL * 2.8 * bright; // stubble
         rows = sin(across * 1.047 + jit * 6.0) * 0.07 * tileVis(6.0); // the combine's swaths
-      } else {
+      } else if (crop < 6.5) {
         cropCol = vec3(0.942, 1.330, 0.466) * baseL * 0.70 * bright; // sunflower
         rows = sin(across * 8.976) * 0.10 * tileVis(0.7);
+      } else if (crop < 7.5) {
+        // row crop (potato, beet, vegetables): ridges 0.75 m apart, dark foliage on the crowns, soil in the furrows —
+        // their mean (two parts leaf to one of soil) past the footprint that can hold a row
+        vec3 leaf = vec3(0.667, 1.400, 0.400) * baseL * bright;
+        float ridge = smoothstep(-0.35, 0.35, sin(across * 8.378));
+        cropCol = mix(mix(soilF * 0.72, leaf, ridge), mix(soilF * 0.72, leaf, 0.67), 1.0 - tileVis(0.75));
+        rows = sin(across * 0.483 + jit * 6.0) * 0.05 * tileVis(13.0);
+      } else if (crop < 8.5) {
+        // a flooded paddy: muddy water over the soil, the young rice a faint green haze in it (the roughness stage
+        // makes it a mirror of the sky)
+        cropCol = mix(vec3(0.040, 0.046, 0.040), vec3(0.060, 0.095, 0.035), 0.25 + 0.20 * jit);
+        water = 1.0;
+      } else if (crop < 9.5) {
+        cropCol = vec3(1.333, 3.067, 0.600) * baseL * bright; // growing rice: one even, bright green
+        rows = sin(across * 20.94) * 0.05 * tileVis(0.3);
+      } else if (crop < 10.5) {
+        cropCol = vec3(3.467, 2.933, 1.133) * baseL * bright; // ripe rice: gold-green
+      } else if (crop < 11.5) {
+        // terra rossa: the karst's red earth, turned (its grain the soil layer's)
+        cropCol = soilF / max(reduxLuma(soilF), 1e-3) * vec3(1.55, 0.78, 0.55) * 0.12 * bright;
+        rows = sin(across * 7.854) * 0.10 * tileVis(0.8) + sin(across * 0.483 + jit * 6.0) * 0.06 * tileVis(13.0);
+      } else if (crop < 12.5) {
+        // a vineyard: rows 2.2 m apart, the vines' dark canopy 0.9 m wide over the earth between them (red on the
+        // karst, the soil layer elsewhere)
+        vec3 earth = bnd > 2.5 ? soilF / max(reduxLuma(soilF), 1e-3) * vec3(1.55, 0.78, 0.55) * 0.12 : soilF * 0.85;
+        vec3 vine = vec3(0.800, 1.533, 0.467) * baseL * bright;
+        float vrow = 1.0 - smoothstep(0.20, 0.30, abs(fract(across / 2.2 + jit) - 0.5));
+        cropCol = mix(mix(earth, vine, vrow), mix(earth, vine, 0.45), 1.0 - tileVis(2.2));
+      } else if (crop < 13.5) {
+        // hay: a mown meadow, paler and yellower than the standing sward, its windrows every 6 m a greener line
+        cropCol = a.rgb * vec3(1.30, 1.12, 0.80);
+        float wr = 1.0 - smoothstep(0.35, 0.65, abs(mod(across + jit * 11.0, 6.0) - 3.0));
+        rows = -wr * 0.14 * tileVis(6.0) + sin(across * 2.094) * 0.04 * tileVis(3.0);
+      } else {
+        cropCol = vec3(0.600, 1.600, 0.427) * baseL * bright; // jute: tall, dark green
       }
       if (crop > 0.5 && crop < 3.5) {
         // tramlines: the sprayer's wheel tracks, a pair every 18–24 m, a darker crushed line each (a line 0.5 m wide
@@ -3936,14 +3984,37 @@ void splatCompute() {
       }
       cropCol *= 1.0 + rows;
       a.rgb = mix(a.rgb, cropCol, inField * landW);
-      // the margin: an uncultivated strip of rank grass, a shade darker and greener than the fields either side
-      a.rgb = mix(a.rgb, a.rgb * vec3(0.90, 0.98, 0.84), (1.0 - inField) * (1.0 - track) * landW * 0.7);
-      // a track along the boundary line: trodden soil, two wheel ruts 1.7 m apart astride the line, grass on the crown
+      gFieldWater = water * inField * landW;
+      if (water > 0.5 && nrmOn) n = mix(n, NRM_MEAN, gFieldWater);
+      if (bnd < 1.5) {
+        // the margin: an uncultivated strip of rank grass, a shade darker and greener than the fields either side
+        a.rgb = mix(a.rgb, a.rgb * vec3(0.90, 0.98, 0.84), (1.0 - inField) * (1.0 - track) * landW * 0.7);
+      } else if (bnd < 2.5) {
+        // a paddy's bund: a raised earth line half a metre wide, grassed on its top, between the water and the rice
+        float bund = (1.0 - smoothstep(0.30, 0.55, edgeM)) * (1.0 - track);
+        a.rgb = mix(a.rgb, mix(soilF * 0.95, a.rgb * vec3(0.95, 1.0, 0.85), 0.40 + 0.25 * n1h), bund * landW);
+      } else {
+        // a dry stone wall: pale limestone rubble 0.9 m wide, its joints dark, its foot shaded on the field side
+        float wall = (1.0 - smoothstep(0.38, 0.62, edgeM)) * (1.0 - track);
+        vec3 stone = vec3(0.30, 0.29, 0.27) * (0.78 + 0.34 * n1h) * (1.0 - 0.35 * smoothstep(0.55, 0.80, n1));
+        a.rgb = mix(a.rgb, stone, wall * landW);
+        a.rgb *= 1.0 - 0.22 * (smoothstep(0.55, 0.75, edgeM) * (1.0 - smoothstep(0.85, 1.35, edgeM))) * landW;
+      }
       if (track > 0.01) {
-        float rq = (edgeM - 0.85) / 0.30;
-        float ruts = exp(-rq * rq);
-        vec3 trackCol = soil.rgb * vec3(0.92, 0.88, 0.80) * (1.0 - 0.28 * ruts);
-        a.rgb = mix(a.rgb, trackCol, track * landW * clamp(ruts * 1.3 + 0.35, 0.0, 1.0));
+        if (bnd > 0.5 && bnd < 1.5) {
+          // a polder's ditch along the long boundary: a metre and a half of still water between wet, rank banks
+          float ditch = 1.0 - smoothstep(0.55, 0.85, edgeM);
+          float bank = (1.0 - smoothstep(0.85, 1.9, edgeM)) * (1.0 - ditch);
+          a.rgb = mix(a.rgb, a.rgb * vec3(0.72, 0.82, 0.70), bank * track * landW);
+          a.rgb = mix(a.rgb, vec3(0.030, 0.036, 0.032), ditch * track * landW);
+          gFieldWater = max(gFieldWater, ditch * track * landW);
+        } else {
+          // a track along the boundary line: trodden soil, two wheel ruts 1.7 m apart astride the line, grass on the crown
+          float rq = (edgeM - 0.85) / 0.30;
+          float ruts = exp(-rq * rq);
+          vec3 trackCol = soil.rgb * vec3(0.92, 0.88, 0.80) * (1.0 - 0.28 * ruts);
+          a.rgb = mix(a.rgb, trackCol, track * landW * clamp(ruts * 1.3 + 0.35, 0.0, 1.0));
+        }
       }
     }
   }
@@ -4938,6 +5009,7 @@ void splatCompute() {
   // their authored response through iceW; every dry texel is >= 0.92.
   gSplatRough = max(rough0, 0.92 * (1.0 - iceW) + shoreW * -0.04);
   gSplatRough = mix(gSplatRough, 0.12, gRoadPuddle); // ground lane: a puddle is still water — it mirrors the sky
+  gSplatRough = mix(gSplatRough, 0.08, gFieldWater); // ... and so is a paddy's or a ditch's
   // Round 73: micro-roughness. Wet sand glosses (the swash band above), a hollow's damp ground a step less matte, and
   // snow sparkles — sparse near texels of a high-frequency noise drop to a tight lobe, so under a grazing sun a few
   // glints light per square metre and move with the camera; gone by 42 m, where a glint would be a shimmer.
@@ -5272,6 +5344,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uLandB = { value: new THREE.Vector4(...landUse.landB) };
     shader.uniforms.uLandC = { value: new THREE.Vector4(...landUse.landC) };
     shader.uniforms.uLandD = { value: new THREE.Vector4(...landUse.landD) };
+    shader.uniforms.uLandE = { value: new THREE.Vector4(...landUse.landE) };
     // r3: desert macro sheet variation + ice fresnel sky tint
     shader.uniforms.uSandMacro = { value: S.sandMacro ?? 0 };
     shader.uniforms.uIceSky = { value: new THREE.Vector3(...(S.iceSky || [0.66, 0.72, 0.82])) };

@@ -7,8 +7,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  createLandFieldSample, LAND_CROP, LAND_USE_GLSL, landUseAt, landUseProfileIds, landUseUniformValues,
-  resolveLandUseProfile,
+  createLandFieldSample, LAND_CROP, LAND_CROP_ALBEDO, LAND_CROP_GROWTH, LAND_USE_GLSL, landUseAt, landUseBoundary,
+  landUseProfileIds, landUseUniformValues, resolveLandUseProfile,
 } from './landUse.ts';
 import { MAP_IDS } from './maps/catalog.ts';
 
@@ -20,10 +20,46 @@ for (const id of landUseProfileIds()) {
   const p = resolveLandUseProfile(id);
   const v = landUseUniformValues(p);
   assert.ok(v.landA[0] > 0 && v.landA[0] <= 1, `${id}: strength in (0, 1]`);
-  assert.ok(v.landA[2] >= 40 && v.landA[3] >= 40, `${id}: blocks at least 40 m`);
+  assert.ok(v.landA[2] >= 40 && v.landA[3] >= 24, `${id}: blocks at least 40 × 24 m`);
+  assert.ok([0, 1, 2, 3].includes(v.landE[2]), `${id}: a boundary id`);
+  assert.ok(Number.isInteger(v.landE[0]) && v.landE[0] < 65536 && Number.isInteger(v.landE[1]) && v.landE[1] < 4096,
+    `${id}: the slot→kind table packs exactly into float32 integers`);
   assert.ok(v.landB[0] >= 1 && v.landB[0] <= 4 && Number.isInteger(v.landB[0]), `${id}: 1..4 fields a block`);
   assert.ok(v.landB[2] >= 0 && v.landB[2] <= 1 && v.landB[3] >= 0 && v.landB[3] <= 1, `${id}: shares in [0, 1]`);
 }
+
+// every crop kind has its albedo and its growth row; a kind's albedo is a real ground's (0.02–0.35 a channel)
+for (const kind of Object.values(LAND_CROP)) {
+  const a = LAND_CROP_ALBEDO[kind], g = LAND_CROP_GROWTH[kind];
+  assert.ok(a && a.length === 3 && a.every((c) => c >= 0.02 && c <= 0.35), `crop ${kind}: a measured albedo`);
+  assert.ok(g && typeof g.sward === 'boolean' && g.height >= 0 && g.height <= 2 && g.keep <= 1, `crop ${kind}: a growth row`);
+}
+
+// every map's rotation: the crops its fields draw are its region's, its boundary is its region's, every field is
+// one crop (the CPU twin over a 4 m grid of the square)
+for (const id of landUseProfileIds()) {
+  const p = resolveLandUseProfile(id);
+  const seen = new Map();
+  const sample = createLandFieldSample();
+  for (let z = -500; z <= 500; z += 8) for (let x = -500; x <= 500; x += 8) {
+    landUseAt(p, x, z, sample);
+    assert.equal(sample.boundary, ['margin', 'ditch', 'bund', 'wall'].indexOf(landUseBoundary(p)), `${id}: the sample carries the region's boundary`);
+    const prior = seen.get(sample.id);
+    if (prior === undefined) seen.set(sample.id, sample.crop); else assert.equal(prior, sample.crop, `${id}: one crop a field`);
+    assert.deepEqual([sample.tintR, sample.tintG, sample.tintB], [...LAND_CROP_ALBEDO[sample.crop]], `${id}: the sample carries its crop's albedo`);
+  }
+  const kinds = new Set(seen.values());
+  assert.ok(kinds.size >= 3, `${id}: at least three crops sown (${[...kinds].join(',')})`);
+}
+// the slot→kind table: the classic regions keep their identity order (their crops are what they were)
+for (const id of ['verdant', 'coastal', 'frontier']) {
+  const v = landUseUniformValues(resolveLandUseProfile(id));
+  assert.deepEqual([v.landE[0], v.landE[1]], [0 + 16 * 1 + 256 * 2 + 4096 * 3, 4 + 16 * 5 + 256 * 6], `${id}: slots 0..6 are crops 0..6`);
+  assert.equal(v.landE[2], 0, `${id}: a grass margin`);
+}
+assert.equal(landUseBoundary(resolveLandUseProfile('polders')), 'ditch');
+assert.equal(landUseBoundary(resolveLandUseProfile('delta')), 'bund');
+assert.equal(landUseBoundary(resolveLandUseProfile('saltwind')), 'wall');
 
 // the twin over Amberford: determinism, one crop per field, the rotation, margins and tracks
 const verdant = resolveLandUseProfile('verdant');
@@ -93,6 +129,8 @@ assert.ok(marginPts / n > 0.01 && marginPts / n < 0.15, `margins ring the fields
   for (const k of ['0.00523', '0.00311', '-0.00197', '0.00877', '0.00409', '0.00587', '0.00913', '0.00241']) {
     assert.ok(src.split(k).length >= 3, `warp coefficient ${k} appears in both the twin and the GLSL`);
   }
+  assert.ok(/float lu_kind\(float slot\)/.test(LAND_USE_GLSL) && /crop = lu_kind\(lu_crop\(/.test(LAND_USE_GLSL),
+    'the GLSL maps the rolled slot to its crop kind (uLandE), as the twin does');
   for (const k of ['0x7feb352d', '0x846ca68b', '0x9e3779b1', '0x85ebca6b']) {
     assert.ok(src.split(k).length >= 3, `hash constant ${k} appears in both the twin and the GLSL`);
   }

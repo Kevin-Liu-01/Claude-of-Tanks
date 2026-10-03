@@ -561,20 +561,25 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       const landW = (1 - smoothstep(0.05, 0.30, vm)) * smoothstep(5.0, 8.0, roadD) * (1 - smoothstep(0.02, 0.06, slopeN))
         * (1 - smoothstep(0.02, 0.10, water));
       if (landW > 0.5 && _field.active) {
-        if (_field.track > 0.5) keep *= 0.25;
-        else if (_field.edgeM < _field.marginM) { keep = Math.min(1, keep * 1.2); heightScale *= 1.15; }
-        else {
+        if (_field.track > 0.5) {
+          // a polder's ditch: water, its banks reed (olive, tall); a track: trodden, a quarter of the sward
+          if (_field.boundary === 1) {
+            if (_field.edgeM < 0.85) return;
+            keep = Math.min(1, keep * 1.3); heightScale *= 1.5; cropTint = [0.16 / b.tip[0], 0.19 / b.tip[1], 0.07 / b.tip[2]];
+          } else keep *= 0.25;
+        } else if (_field.edgeM < _field.marginM) {
+          if (_field.boundary === 3) { if (_field.edgeM < 0.62) return; keep *= 0.6; } // a dry stone wall and its foot
+          else if (_field.boundary === 2) { keep *= 0.5; heightScale *= 0.6; } // a bund: short grass on its top
+          else { keep = Math.min(1, keep * 1.2); heightScale *= 1.15; } // a margin: rank grass
+        } else {
           const crop = _field.crop;
-          if (crop === LAND_CROP.plough) return;
-          if (crop !== LAND_CROP.pasture) keep = 1; // a sown field has no bare dirt patches
-          // the crop's colour as a multiplier on the biome's ramp, set against the calibrated meadow (tip 0.085/0.17/0.035):
-          // ripe wheat 0.30/0.22/0.075, barley 0.33/0.28/0.12, a young crop 0.075/0.19/0.04, stubble 0.30/0.25/0.13,
-          // sunflower foliage 0.045/0.10/0.025 (luminance 0.06–0.27, the real crops' range)
-          if (crop === LAND_CROP.wheat) { heightScale *= 1.25; cropTint = [3.5, 1.3, 2.15]; }
-          else if (crop === LAND_CROP.barley) { heightScale *= 1.05; cropTint = [3.9, 1.65, 3.4]; }
-          else if (crop === LAND_CROP.green) { heightScale *= 0.75; cropTint = [0.9, 1.12, 1.15]; }
-          else if (crop === LAND_CROP.stubble) { keep = 0.55; heightScale *= 0.24; cropTint = [3.5, 1.47, 3.7]; }
-          else if (crop === LAND_CROP.sunflower) { keep = 0.7; heightScale *= 1.6; cropTint = [0.53, 0.59, 0.7]; }
+          if (!_field.sward) return; // a plough, turned red earth, a paddy's water
+          if (_field.cropKeep >= 0) keep = _field.cropKeep; // a sown field has no bare dirt patches
+          heightScale *= _field.cropHeight;
+          // the crop's own colour (landUse.ts LAND_CROP_ALBEDO, measured: ripe wheat 0.30/0.22/0.075, barley
+          // 0.33/0.28/0.12, a young crop 0.075/0.19/0.04, stubble 0.30/0.25/0.13 …) as a multiplier on THIS biome's
+          // ramp — a fixed multiplier set against the meadow's tip turned a steppe or savanna sward pink
+          if (crop !== LAND_CROP.pasture) cropTint = [_field.tintR / b.tip[0], _field.tintG / b.tip[1], _field.tintB / b.tip[2]];
         }
       }
     }

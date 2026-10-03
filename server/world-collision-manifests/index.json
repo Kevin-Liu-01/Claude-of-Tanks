@@ -26,8 +26,8 @@
       "concealers": 4125
     },
     "urban": {
-      "bytes": 4054381,
-      "sha256": "29aa1cd31cb25a7efb9755fe454ef07a96b4457bb4ab43c2a992be2b72bcd67c",
+      "bytes": 4054416,
+      "sha256": "1811ff1551e7d41fecf6ae21ea5f7d1d21ee39c1d80a9a62da1a45ee5c19d362",
       "obstacles": 2837,
       "colliders": 5497,
       "concealers": 2488
@@ -75,8 +75,8 @@
       "concealers": 5764
     },
     "delta": {
-      "bytes": 1633312,
-      "sha256": "5120f330079ddf52a3eba842d8327f14637c2c9ef174d105dc39e9f1c040e96f",
+      "bytes": 1633344,
+      "sha256": "04a14b77cbd69f9b587db9ac978882ff2b922d7631314f14be649261b4b15a6d",
       "obstacles": 6654,
       "colliders": 6301,
       "concealers": 8284
@@ -103,8 +103,8 @@
       "concealers": 5906
     },
     "caldera": {
-      "bytes": 1472293,
-      "sha256": "ccc6691e8b0afbfd5e4903baad24ba7aa8cb2bc6ec55b9d825c7278eefd97e3e",
+      "bytes": 1472273,
+      "sha256": "eb497d3ca4ecb00da667185bbe5ef49ab8ef54a728f9e4173db70ba89bf988e9",
       "obstacles": 4031,
       "colliders": 4138,
       "concealers": 2845
@@ -145,8 +145,8 @@
       "concealers": 1559
     },
     "polders": {
-      "bytes": 1228716,
-      "sha256": "dc090089c80c38b7fd351db0c62f009d6c240aa6e91dba9aa78b36ddb198e9b1",
+      "bytes": 1228736,
+      "sha256": "349951727d90f0aa1ee1cc5ef58d011a3c51f7c4bcf984a0da997a7261e76caf",
       "obstacles": 3363,
       "colliders": 3129,
       "concealers": 2706
@@ -201,15 +201,15 @@
       "concealers": 5686
     },
     "saltwind": {
-      "bytes": 1193180,
-      "sha256": "ab84bb18b715fa4e004e100b7f60ef7d6a71c67572b0bff2bdc21d7eadb8ca52",
+      "bytes": 1193207,
+      "sha256": "51fb076fa70d9b71b56f7afe1a3637a0333d9a7b1b18ad787d3c0e5005114b2c",
       "obstacles": 2970,
       "colliders": 2773,
       "concealers": 3428
     },
     "reservoir": {
-      "bytes": 1444002,
-      "sha256": "d6a6dae43f189c6ad8176fde758a995f3490258de608f5d9fd808aa4ce668edd",
+      "bytes": 1443996,
+      "sha256": "bab624b3173799c871475c0c94a2a50a9ccb756ac032ef2bdc189852a9bc5aa0",
       "obstacles": 5194,
       "colliders": 5067,
       "concealers": 6054

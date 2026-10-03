@@ -133,8 +133,8 @@ function checkSourceContract(text) {
     'uMeanG', 'uMeanD', 'uMeanR', 'uMeanM', 'uReduxD',
     // terrain v3 (2026-10-02): the ring atlas gradient's wall fade (vec2, set per relief character at the ring's bind) — no sampler
     'uRingReliefWall',
-    // ground lane (2026-10-03): the land use's field system (landUse.ts) — three packed vectors, no sampler
-    'uLandA', 'uLandB', 'uLandC', 'uLandD',
+    // ground lane (2026-10-03): the land use's field system (landUse.ts) — five packed vectors, no sampler
+    'uLandA', 'uLandB', 'uLandC', 'uLandD', 'uLandE',
     // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving — natural steep faces take the D layer (scalar, no sampler)
     'uPavedRock',
   ].sort();

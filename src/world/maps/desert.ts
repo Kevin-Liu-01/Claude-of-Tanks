@@ -208,7 +208,9 @@ export default {
     // finally reads as one weathered rock mass
     // r4: sat 0.55 -> 0.42 — pairs with the makeSandstoneLayer desaturation
     // (terrain.js) to kill the residual PINK cast on the cliff beds
-    rockTone: (h: number, s: number, l: number) => [h, clamp01(s * 0.42), clamp01(0.53 + (l - 0.5) * 0.70)],
+    // ground lane (2026-10-03, the gauntlet: "a purple tint splotch on the mound", "violet-grey rock"): the beds a step
+    // yellower and less desaturated — a near-grey rust beside the saturated sand read violet under the sky's fill
+    rockTone: (h: number, s: number, l: number) => [clamp01(h + 0.022), clamp01(s * 0.62), clamp01(0.53 + (l - 0.5) * 0.70)],
     mudTone: (h: number, s: number, l: number) => [0.078, 0.30, clamp01(l * 1.5 + 0.04)], // cracked dry clay
     mudRough: 1.15,
     // r3 (content_breadth): tintB pushed to a REAL darkener (0.94 -> 0.84
