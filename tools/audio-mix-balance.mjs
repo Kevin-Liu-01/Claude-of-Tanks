@@ -10,7 +10,15 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 //     loudness, at 400 m by at least 4 dB;
 //   - the crew radio sits under a near cannon (at least 6 dB below);
 //   - a live battle stays readable: sound starts per second over 20 s of
-//     real bot combat stay under a ceiling.
+//     real bot combat stay under a ceiling;
+//   - gunfire sounds like guns, not explosions (2026-10-02): every shot,
+//     our own included, reports its transient anatomy (rise to its loudest
+//     millisecond, energy in the first 10 ms, low boom under the body, crest,
+//     samples at the master's soft-clip knee), and a near cannon must crack
+//     (loudest millisecond within 15 ms of the onset, under half its body
+//     below 100 Hz);
+//   - flying the drone, the listener rides it: its motors lead (not the
+//     tank's engine) and the feed brightens toward their buzz.
 //
 // Exit 0 = green. Shares the FIFO capture lock with every browser harness.
 // Usage: node tools/audio-mix-balance.mjs
@@ -19,6 +27,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { bandEnergy, transientAnatomy } from './audio/pcm.mjs';
 
 const outDir = resolve('shots/audio-mix-balance');
 mkdirSync(outDir, { recursive: true });
@@ -56,6 +65,23 @@ function measure(i16, sampleRate) {
   return { rmsDb: db(total / Math.max(1, frames)), shortTermDb: db(maxWindow) };
 }
 
+/** Mono float of a stereo s16 capture. */
+function mono(i16) {
+  const out = new Float32Array(i16.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = (i16[2 * i] + i16[2 * i + 1]) / 65536;
+  return out;
+}
+
+/** A shot's anatomy on the master: what reads as a gun, and how hard it rides the soft clip. */
+function shotAnatomy(i16, sampleRate, masterLevel) {
+  const m = mono(i16);
+  const a = transientAnatomy(m, sampleRate);
+  // The soft clip's knee (0.86) sits before the master volume the tap hears through.
+  let atKnee = 0;
+  for (let i = 0; i < i16.length; i++) if (Math.abs(i16[i]) / 32768 >= 0.86 * masterLevel) atKnee++;
+  return { riseMs: a.riseMs, e10: +a.e10.toFixed(3), lowBody: +a.lowBody.toFixed(3), crestDb: +a.crestDb.toFixed(1), atKnee };
+}
+
 await acquireLock(30 * 60 * 1000);
 process.on('exit', releaseLock);
 const lockRefresher = setInterval(() => refreshCaptureLock(), 60 * 1000);
@@ -84,7 +110,7 @@ const url = `http://localhost:${server.config.server.port}/`;
 console.log(`[mix] vite up at ${url}`);
 
 const browser = await puppeteer.launch({ headless: 'new', args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--autoplay-policy=no-user-gesture-required'] });
-const report = { garage: null, bed: null, shots: {}, radio: null, density: null, errors: [] };
+const report = { garage: null, bed: null, shots: {}, radio: null, density: null, drone: null, errors: [] };
 const fail = (msg) => { report.errors.push(msg); console.error('[mix] FAIL: ' + msg); };
 const consoleErrors = [];
 try {
@@ -99,6 +125,7 @@ try {
   // Default mix, as a fresh player has it.
   await page.evaluate(() => window.__DEBUG.bus.emit('ui:volumes', { master: 0.8, engine: 1, combat: 1, ambience: 1, ui: 1, voice: 1 }));
   const sampleRate = await page.evaluate(() => window.__COT_AUDIO.sampleRate);
+  let lastI16 = null;
   async function capture(name, ms, act) {
     await page.evaluate((s) => window.__COT_AUDIO.startTap(s), Math.ceil(ms / 1000) + 2);
     await sleep(120);
@@ -114,6 +141,7 @@ try {
     const all = Buffer.concat(parts);
     const i16 = new Int16Array(all.buffer, all.byteOffset, all.length / 2);
     writeWav(join(outDir, `${name}.wav`), i16, sampleRate);
+    lastI16 = i16;
     const m = measure(i16, sampleRate);
     console.log(`[mix] ${name.padEnd(18)} rms ${m.rmsDb.toFixed(1).padStart(6)} dBFS  loudest 400 ms ${m.shortTermDb.toFixed(1).padStart(6)} dBFS`);
     return m;
@@ -139,10 +167,23 @@ try {
   for (const [name, dx, dz, minOverBed] of [['cannon_15m', 12, 9, 16], ['cannon_150m', 106, 106, 10], ['cannon_400m', 283, 283, 4]]) {
     const m = await capture(name, 3500, shot(dx, dz));
     const over = m.shortTermDb - report.bed.rmsDb;
-    report.shots[name] = { ...m, overBedDb: +over.toFixed(1) };
+    const anatomy = shotAnatomy(lastI16, sampleRate, 0.8);
+    report.shots[name] = { ...m, overBedDb: +over.toFixed(1), anatomy };
+    console.log(`[mix] ${''.padEnd(18)} anatomy ${JSON.stringify(anatomy)}`);
     if (over < minOverBed) fail(`${name} stands only ${over.toFixed(1)} dB over the battle bed (want ≥ ${minOverBed})`);
     await sleep(600);
   }
+  const near = report.shots.cannon_15m.anatomy;
+  if (near.riseMs > 15) fail(`a near cannon swells to its peak ${near.riseMs} ms after the shot (want ≤ 15: a crack, not an explosion)`);
+  if (near.lowBody > 0.5) fail(`a near cannon's body is ${(100 * near.lowBody).toFixed(0)} % below 100 Hz (want ≤ 50: a report, not a boom)`);
+  // Our own gun, from the hatch beside it.
+  const ownShot = `(() => { const D = window.__DEBUG; const me = D.game.player; const p = me.state.pos;
+    D.bus.emit('shell:fired', { shellId: ${++shellId}, shooterId: me.id, isPlayer: true, shellType: 'APFSDS', caliberMm: 125, muzzlePos: [p.x, p.y + 2, p.z + 4], dir: [0, 0, 1] }); })()`;
+  const own = await capture('cannon_own', 3500, ownShot);
+  report.shots.cannon_own = { ...own, overBedDb: +(own.shortTermDb - report.bed.rmsDb).toFixed(1), anatomy: shotAnatomy(lastI16, sampleRate, 0.8) };
+  console.log(`[mix] ${''.padEnd(18)} anatomy ${JSON.stringify(report.shots.cannon_own.anatomy)}`);
+  if (report.shots.cannon_own.overBedDb < 16) fail(`our own gun stands only ${report.shots.cannon_own.overBedDb} dB over the battle bed (want ≥ 16)`);
+  await sleep(600);
   // 3) The crew radio against a near cannon.
   await page.waitForFunction('window.__COT_AUDIO.voicesLoaded === true', { timeout: 20000 }).catch(() => fail('crew pack did not decode'));
   report.radio = await capture('radio_line', 2600, '(() => { window.__COT_AUDIO.clearVoiceQueue(); window.__COT_AUDIO.sayVoice("enemy_spotted"); })()');
@@ -167,6 +208,35 @@ try {
   console.log(`[mix] live battle: ${report.density.perSecond} sound starts/s, ${density.radioLines} radio lines in 20 s; busiest ${density.top.map(([n, c]) => `${n}×${c}`).join(' ')}`);
   if (report.density.perSecond > 14) fail(`a live battle starts ${report.density.perSecond} sounds per second (want ≤ 14)`);
   if (density.radioLines > 8) fail(`${density.radioLines} radio lines in 20 s of combat (want ≤ 8)`);
+
+  // 5) The drone: flying it, the listener rides it and its motors lead. A fresh Drone battle, captured before
+  //    the bots engage: docked in the tank, then in flight.
+  await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 't90m', mapId: 'verdant', gameMode: 'drone' }), 0); });
+  await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.gameMode === "drone"', { timeout: 180000, polling: 250 });
+  await page.evaluate(() => window.__COT_AUDIO.preload(['drone_fpv_loop', 'drone_fpv_hover_loop', 'drone_wind_loop', 'drone_spinup', 'drone_feed_static_loop', 'drone_link_lost']));
+  await sleep(1500);
+  const docked = await capture('drone_docked', 2000);
+  const dockedI16 = lastI16;
+  await page.mouse.click(640, 400);
+  await page.keyboard.press('KeyV');
+  await page.waitForFunction('window.__DEBUG.game.player.aerial?.active === true', { timeout: 10000 }).catch(() => fail('the drone never launched'));
+  await page.waitForFunction('window.__DEBUG.game.player.aerial?.launching === false', { timeout: 10000 }).catch(() => {});
+  await page.keyboard.down('KeyW');
+  const flight = await capture('drone_flight', 2500);
+  await page.keyboard.up('KeyW');
+  const droneState = await page.evaluate(() => {
+    const A = window.__COT_AUDIO;
+    const me = window.__DEBUG.game.player;
+    return { listener: A.listenerState(), aerial: A.aerialState(), tank: A.engineState().find((e) => e.id === me.id) ?? null };
+  });
+  const buzz = (i16) => { const m = mono(i16); return bandEnergy(m, sampleRate, [[1500, 8000]])[0]; };
+  report.drone = { docked, flight, buzzDocked: +buzz(dockedI16).toFixed(3), buzzFlight: +buzz(lastI16).toFixed(3), state: droneState };
+  console.log(`[mix] drone: listener ${droneState.listener.kind}, own ${JSON.stringify(droneState.aerial.own)}, tank ${droneState.tank ? (droneState.tank.own ? 'own' : droneState.tank.lod) : 'out of range'}, 1.5–8 kHz ${report.drone.buzzDocked} → ${report.drone.buzzFlight}`);
+  if (droneState.listener.kind !== 'player-drone') fail(`flying the drone, the listener is ${droneState.listener.kind}`);
+  if (droneState.aerial.own?.kind !== 'drone' || droneState.aerial.own.gain < 0.5) fail(`the drone's motors do not lead (${JSON.stringify(droneState.aerial.own)})`);
+  if (droneState.tank?.own) fail('flying the drone, our tank is still heard from inside');
+  if (report.drone.buzzFlight < report.drone.buzzDocked + 0.1) fail(`the flight does not brighten toward the motors' buzz (${report.drone.buzzDocked} → ${report.drone.buzzFlight})`);
+  await page.keyboard.press('KeyV');
 
   const KNOWN_UNRELATED = /syncFromState|multiplyQuaternions|tankFactory\.ts/;
   for (const e of consoleErrors.filter((x) => !KNOWN_UNRELATED.test(x))) fail(`console: ${e}`);

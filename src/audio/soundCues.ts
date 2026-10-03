@@ -68,6 +68,8 @@ const o = (value: Partial<ProfileSeed>): Partial<CueProfile> => Object.freeze(va
 
 /** Assets that differ from their group default. */
 const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.freeze({
+  // The procedural muzzle blast (procedural.ts) travels like gunfire, and air takes its crack first.
+  muzzle_blast: { bus: 'weapons', space: 'world', priority: 86, maxInstances: 16, cooldownS: 0, refM: 35, rolloff: 0.55, maxM: 2400, absorb: 1.1, send: 0.1, loudDb: 145, gainDb: 0, pitch: [0.98, 1.02] },
   // Main guns carry across the whole battlefield as distant thunder.
   gun_far_light: o({ refM: 80, rolloff: 0.62, maxM: 2600, absorb: 0.5, send: 0.3, loudDb: 140 }),
   gun_far_medium: o({ refM: 90, rolloff: 0.62, maxM: 2800, absorb: 0.45, send: 0.3, loudDb: 144 }),

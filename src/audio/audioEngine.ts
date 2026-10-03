@@ -39,7 +39,7 @@ import { createAmbienceDirector, sceneAssets, type AmbienceDirector } from './am
 import { GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
 import { BUDGETS, BUS_LEVELS, CONCUSSION, OWN_HIT_FOCUS, SNAPSHOTS, VEHICLE_LOD, type DeviceTier, type SettingsChannel } from './mixPolicy.ts';
 import {
-  ammoRackBeep, createNoiseBank, fireKlaxon, heartbeat, loadingBed, subThump, synthBoom, synthClick,
+  ammoRackBeep, createNoiseBank, fireKlaxon, heartbeat, loadingBed, muzzleBlastBuffer, subThump, synthBoom, synthClick,
   synthImpact, synthShot, type NoiseBank, type Rig,
 } from './procedural.ts';
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
@@ -503,6 +503,21 @@ export function createAudio({
 
   // --------------------------------------------------------------- weapons ---
 
+  // Muzzle blasts, rendered once per bore (procedural.ts): the instant pressure crack a recorded report
+  // never quite has. Level re the report: under it, so it sharpens the attack without reading as a click.
+  const blastBuffers = new Map<number, AudioBuffer>();
+  const BLAST_DB: Readonly<Record<string, number>> = Object.freeze({ cannon: -4, autocannon: -6, mg: -6 });
+  // Machine-gun bursts echo once per beat, not once per round.
+  const lastBurstTail = new Map<string, number>();
+
+  function muzzleBlast(caliberMm: number): AudioBuffer | null {
+    if (!ctx) return null;
+    const bore = Math.max(5, Math.round(caliberMm));
+    let buffer = blastBuffers.get(bore);
+    if (!buffer) { buffer = muzzleBlastBuffer(ctx, bore); blastBuffers.set(bore, buffer); }
+    return buffer;
+  }
+
   function fireWeapon(pos: Vec3, caliberMm: number, soundProfile: string | null | undefined, own: boolean, muzzleIndex = -1, cinematic = false): void {
     if (!ready()) return;
     const report = resolveWeaponReport(caliberMm, soundProfile);
@@ -517,14 +532,23 @@ export function createAudio({
     const base: PlayOptions = { x, y, z, rate: report.rate, gainDb: report.gainDb, ...(bus ? { bus } : {}) };
     if (own) { base.propagate = false; base.priority = 95; }
     const ownReport = own ? OWN_REPORT[cls.id] : undefined;
+    const blastDb = BLAST_DB[cls.family];
+    if (blastDb != null) {
+      const blast = muzzleBlast(caliberMm);
+      if (blast) play('muzzle_blast', { ...base, buffer: blast, rate: 1, loudDb: cls.loudDb + 1, gainDb: (base.gainDb ?? 0) + blastDb + (own ? 2 : 0) });
+    }
     const closePlayed = (!!ownReport && !!play(ownReport, { ...base, gainDb: (base.gainDb ?? 0) + 2.5 }))
       || (closeK > 0.03 && !!play(close, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(closeK) + (own ? 2.5 : 0) }));
     const farPlayed = farK > 0.03 && play(far, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(farK) });
     // A report whose close bank is still decoding must not read as distant.
     const played = (closePlayed || closeK <= 0.4) && (closePlayed || farPlayed);
     if (report.twin) play(close, { ...base, delayS: 0.016, rate: report.rate * (muzzleIndex === 1 ? 1.04 : 0.97), gainDb: (base.gainDb ?? 0) + gainToDb(Math.max(closeK, 0.05)) - 2 });
-    if (cls.family !== 'mg' && scene.tail !== 'none') {
-      play(`tail_${scene.tail}`, { ...base, rate: cls.tailRate * report.rate, delayS: 0.035 + random() * 0.02, gainDb: gainToDb(cls.tailGain) - (own ? 4 : 2) });
+    if (scene.tail !== 'none' && mixer) {
+      const now = mixer.ctx.currentTime;
+      if (cls.family !== 'mg' || now - (lastBurstTail.get(cls.id) ?? -1) > 0.22) {
+        if (cls.family === 'mg') lastBurstTail.set(cls.id, now);
+        play(`tail_${scene.tail}`, { ...base, rate: cls.tailRate * report.rate, delayS: 0.035 + random() * 0.02, gainDb: gainToDb(cls.tailGain) - (own ? 4 : 2) });
+      }
     }
     if (own && listenerScoped && cls.family === 'cannon') {
       const size = caliberMm >= 128 ? 'heavy' : caliberMm >= 111 ? 'large' : 'medium';
@@ -535,13 +559,8 @@ export function createAudio({
     if (own && !cinematic && cls.family === 'cannon') {
       play('gun_recoil_mech', hullOptions({ delayS: 0.035, rate: clamp(1.15 - (caliberMm - 100) / 300, 0.85, 1.15) }));
     }
-    // Weight: the pressure wave under a cannon (the generated reports are lean below 80 Hz).
-    if (noise && mixer && (cls.family === 'cannon' || cls.id === 'rocket_heavy') && (own || distance < 700)) {
-      const bore = clamp((caliberMm - 75) / 80, 0, 1);
-      const level = own ? 0.9 : 0.75 * dbToGain(distanceAttenuationDb(distance, 25, 0.75)) * Math.max(closeK, 0.35);
-      const when = mixer.ctx.currentTime + 0.004 + (own ? 0 : propagationDelayS(distance, atmosphere));
-      subThump(mixer.ctx, mixer.input(bus ?? 'weapons'), noise, when, 78 - 18 * bore, 34 - 8 * bore, 0.45 + 0.35 * bore, level, random);
-    }
+    // (A synthesized sub sweep used to sit under every cannon; 0.5–0.8 s of falling sine is a trailer boom,
+    // and it made gunfire read as explosions. The muzzle blast's punch is the weight now.)
     if ((own || distance < 45) && cls.family === 'autocannon') {
       play('ac_feed', own ? hullOptions({ delayS: cls.actionDelayS, gainDb: -8 }) : { x, y, z, delayS: cls.actionDelayS, gainDb: -10 });
     }
