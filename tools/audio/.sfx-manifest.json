@@ -4331,5 +4331,201 @@
    6.005333
   ],
   "kb": 48
+ },
+ "gunship_cabin_rattle_loop": {
+  "g": "aerial",
+  "n": 1,
+  "d": [
+   6.0907
+  ],
+  "c": 1,
+  "r": 24000,
+  "l": [
+   0.085333,
+   6.005333
+  ],
+  "kb": 52
+ },
+ "gunship_flyover": {
+  "g": "aerial",
+  "n": 1,
+  "d": [
+   5.54
+  ],
+  "c": 1,
+  "r": 24000,
+  "kb": 41
+ },
+ "gunship_30mm_own": {
+  "g": "weapons",
+  "n": 4,
+  "d": [
+   2,
+   2,
+   2,
+   2
+  ],
+  "c": 1,
+  "r": 24000,
+  "kb": 91
+ },
+ "gunship_howitzer_own": {
+  "g": "weapons",
+  "n": 3,
+  "d": [
+   3.48,
+   3.48,
+   3.48
+  ],
+  "c": 1,
+  "r": 48000,
+  "kb": 124
+ },
+ "gunship_missile_own": {
+  "g": "weapons",
+  "n": 2,
+  "d": [
+   3,
+   3
+  ],
+  "c": 1,
+  "r": 24000,
+  "kb": 56
+ },
+ "gunship_30mm_far": {
+  "g": "weapons",
+  "n": 3,
+  "d": [
+   1.58,
+   1.84,
+   2
+  ],
+  "c": 1,
+  "r": 24000,
+  "kb": 34
+ },
+ "gunship_howitzer_far": {
+  "g": "weapons",
+  "n": 2,
+  "d": [
+   4.48,
+   4.48
+  ],
+  "c": 1,
+  "r": 24000,
+  "kb": 70
+ },
+ "gunship_casing_drop": {
+  "g": "mechanism",
+  "n": 2,
+  "d": [
+   1.68,
+   1.76
+  ],
+  "c": 1,
+  "r": 24000,
+  "kb": 26
+ },
+ "gunship_round_load": {
+  "g": "mechanism",
+  "n": 2,
+  "d": [
+   1.06,
+   1.42
+  ],
+  "c": 1,
+  "r": 48000,
+  "kb": 21
+ },
+ "gunship_weapon_select": {
+  "g": "equipment",
+  "n": 1,
+  "d": [
+   0.41
+  ],
+  "c": 1,
+  "r": 48000,
+  "kb": 5
+ },
+ "mode_horde_siren": {
+  "g": "stingers",
+  "n": 1,
+  "d": [
+   6
+  ],
+  "c": 2,
+  "r": 24000,
+  "kb": 66
+ },
+ "mode_horde_all_clear": {
+  "g": "stingers",
+  "n": 1,
+  "d": [
+   5
+  ],
+  "c": 2,
+  "r": 24000,
+  "kb": 73
+ },
+ "mode_frontline_barrage": {
+  "g": "stingers",
+  "n": 1,
+  "d": [
+   6
+  ],
+  "c": 2,
+  "r": 24000,
+  "kb": 69
+ },
+ "mode_juggernaut": {
+  "g": "stingers",
+  "n": 1,
+  "d": [
+   4
+  ],
+  "c": 2,
+  "r": 24000,
+  "kb": 50
+ },
+ "mode_infected_outbreak": {
+  "g": "stingers",
+  "n": 1,
+  "d": [
+   4
+  ],
+  "c": 2,
+  "r": 24000,
+  "kb": 37
+ },
+ "mode_turbo_horn": {
+  "g": "stingers",
+  "n": 1,
+  "d": [
+   3.48
+  ],
+  "c": 2,
+  "r": 24000,
+  "kb": 57
+ },
+ "mode_gungame_armory": {
+  "g": "stingers",
+  "n": 1,
+  "d": [
+   3
+  ],
+  "c": 2,
+  "r": 48000,
+  "kb": 39
+ },
+ "cache_drop": {
+  "g": "props",
+  "n": 2,
+  "d": [
+   2.48,
+   2.48
+  ],
+  "c": 1,
+  "r": 24000,
+  "kb": 46
  }
 }

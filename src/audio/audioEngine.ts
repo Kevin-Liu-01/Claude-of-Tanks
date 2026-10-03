@@ -66,6 +66,8 @@ export interface AudioTerrainProbe {
 interface AudioMixerOptions {
   context?: AudioContext | null;
   getMapId?(): string | null;
+  /** The battle's game mode (each mode opens on its own sound). */
+  getGameMode?(): string | null;
   getTerrain?(): AudioTerrainProbe | null;
   initialPhase?: string;
   tier?: DeviceTier;
@@ -221,6 +223,7 @@ const WEAPON_CLOSE: Readonly<Record<WeaponClassId, string>> = Object.freeze({
   ac_20: 'ac_20_close', ac_25: 'ac_25_close', ac_30: 'ac_30_close', ac_40: 'ac_40_close', ac_50: 'ac_50_close',
   gun_90: 'gun_90_close', gun_105: 'gun_105_close', gun_120: 'gun_120_close', gun_125: 'gun_125_close',
   gun_130: 'gun_130_close', gun_152: 'gun_152_close', atgm: 'atgm_launch', rocket_heavy: 'rocket_salvo',
+  gunship_30: 'ac_30_close', gunship_howitzer: 'gun_152_close', gunship_missile: 'atgm_launch',
 });
 
 /**
@@ -230,6 +233,8 @@ const WEAPON_CLOSE: Readonly<Record<WeaponClassId, string>> = Object.freeze({
 const OWN_REPORT: Readonly<Partial<Record<WeaponClassId, string>>> = Object.freeze({
   gun_90: 'gun_own_medium', gun_105: 'gun_own_medium', gun_120: 'gun_own_large', gun_125: 'gun_own_large',
   gun_130: 'gun_own_heavy', gun_152: 'gun_own_heavy', atgm: 'missile_launch_own',
+  // The AC-130's crew hears its guns inside the cargo cabin, the missile leaving the wing pylon.
+  gunship_30: 'gunship_30mm_own', gunship_howitzer: 'gunship_howitzer_own', gunship_missile: 'gunship_missile_own',
 });
 
 const WEAPON_FAR: Readonly<Record<WeaponClassId, string>> = Object.freeze({
@@ -237,6 +242,7 @@ const WEAPON_FAR: Readonly<Record<WeaponClassId, string>> = Object.freeze({
   ac_20: 'ac_far_light', ac_25: 'ac_far_light', ac_30: 'ac_far_light', ac_40: 'ac_far_heavy', ac_50: 'ac_far_heavy',
   gun_90: 'gun_far_light', gun_105: 'gun_far_light', gun_120: 'gun_far_medium', gun_125: 'gun_far_medium',
   gun_130: 'gun_far_heavy', gun_152: 'gun_far_heavy', atgm: 'ac_far_light', rocket_heavy: 'gun_far_heavy',
+  gunship_30: 'gunship_30mm_far', gunship_howitzer: 'gunship_howitzer_far', gunship_missile: 'ac_far_light',
 });
 
 /** Assets every battle needs before the first shot. */
@@ -274,7 +280,12 @@ const UI_SET = [
 ];
 
 /** Aircraft of the Drone and AC-130 modes, decoded on first sight of one. */
-const AERIAL_SET = ['drone_fpv_loop', 'drone_fpv_hover_loop', 'drone_wind_loop', 'drone_spinup', 'drone_feed_static_loop', 'drone_link_lost', 'gunship_orbit_loop', 'gunship_cabin_loop'];
+const AERIAL_SET = [
+  'drone_fpv_loop', 'drone_fpv_hover_loop', 'drone_wind_loop', 'drone_spinup', 'drone_feed_static_loop', 'drone_link_lost',
+  'gunship_orbit_loop', 'gunship_cabin_loop', 'gunship_cabin_rattle_loop', 'gunship_flyover',
+  'gunship_30mm_own', 'gunship_howitzer_own', 'gunship_missile_own', 'gunship_30mm_far', 'gunship_howitzer_far',
+  'gunship_casing_drop', 'gunship_round_load', 'gunship_weapon_select',
+];
 
 const MODE_SET = [
   'sting_infected',
@@ -282,7 +293,19 @@ const MODE_SET = [
   'ui_flag_taken', 'ui_flag_captured', 'ui_flag_returned', 'ui_flag_dropped', 'ui_wave_clear', 'ui_line_advance',
   'ui_score', 'sting_wave', 'sting_victory', 'sting_defeat', 'sting_draw', 'killcam_in', 'killcam_out', 'spectate_switch',
   'ui_countdown_tick', 'ui_countdown_go',
+  'mode_horde_siren', 'mode_horde_all_clear', 'mode_frontline_barrage', 'mode_juggernaut', 'mode_infected_outbreak',
+  'mode_turbo_horn', 'mode_gungame_armory', 'cache_drop',
 ];
+
+/**
+ * Each mode opens on its own sound (2026-10-02), field sounds rather than music: the Horde's air-raid siren, the
+ * Frontline's preparatory barrage, the Juggernaut's vault door, the Infected's broken radio, Turbo Ball's foghorn,
+ * Gun Game's armory, the AC-130 passing overhead. Realistic opens on none; the rest on the battle horn.
+ */
+const MODE_OPENER: Readonly<Record<string, string>> = Object.freeze({
+  endless_horde: 'mode_horde_siren', frontline_assault: 'mode_frontline_barrage', juggernaut: 'mode_juggernaut',
+  infected: 'mode_infected_outbreak', turbo_ball: 'mode_turbo_horn', gun_game: 'mode_gungame_armory', ac130: 'gunship_flyover',
+});
 
 function detectTier(): DeviceTier {
   const nav = typeof navigator !== 'undefined' ? navigator as Navigator & { deviceMemory?: number } : null;
@@ -294,6 +317,7 @@ function detectTier(): DeviceTier {
 export function createAudio({
   context: initialContext = null,
   getMapId,
+  getGameMode,
   getTerrain,
   initialPhase = 'garage',
   tier: forcedTier,
@@ -532,7 +556,8 @@ export function createAudio({
     const base: PlayOptions = { x, y, z, rate: report.rate, gainDb: report.gainDb, ...(bus ? { bus } : {}) };
     if (own) { base.propagate = false; base.priority = 95; }
     const ownReport = own ? OWN_REPORT[cls.id] : undefined;
-    const blastDb = BLAST_DB[cls.family];
+    // The blast belongs to the close report: past its range the distant bank carries the shot.
+    const blastDb = closeK > 0.05 ? BLAST_DB[cls.family] : undefined;
     if (blastDb != null) {
       const blast = muzzleBlast(caliberMm);
       if (blast) play('muzzle_blast', { ...base, buffer: blast, rate: 1, loudDb: cls.loudDb + 1, gainDb: (base.gainDb ?? 0) + blastDb + (own ? 2 : 0) });
@@ -556,7 +581,10 @@ export function createAudio({
     }
     // The machinery of our own shot: the breech recoiling and running back into
     // battery, the buffer's hiss, the turret's loose gear rattling.
-    if (own && !cinematic && cls.family === 'cannon') {
+    if (own && !cinematic && cls.id === 'gunship_howitzer') {
+      // In the gunship the breech runs open on counter-recoil and throws the hot case onto the deck.
+      play('gunship_casing_drop', hullOptions({ delayS: 0.45 }));
+    } else if (own && !cinematic && cls.family === 'cannon') {
       play('gun_recoil_mech', hullOptions({ delayS: 0.035, rate: clamp(1.15 - (caliberMm - 100) / 300, 0.85, 1.15) }));
     }
     // (A synthesized sub sweep used to sit under every cannon; 0.5–0.8 s of falling sine is a trailer boom,
@@ -1074,7 +1102,7 @@ export function createAudio({
       cassetteLift: 'autoloader_lift', chainRam: 'autoloader_chain_ram', stubEject: 'case_eject_stub',
       bustleIndex: 'bustle_index', clipIndex: 'drum_rotate', drumRotate: 'drum_rotate', drumLoad: 'drum_load_round',
       feedClank: 'ac_feed', magazineSwap: 'magazine_swap', tubeLoad: 'missile_tube_load', launcherRaise: 'launcher_raise',
-      latch: 'latch_ready',
+      latch: 'latch_ready', gunshipLoad: 'gunship_round_load',
     };
     // The doors are machinery the crew hears but does not lean on: a little under the rounds.
     const doors = type === 'ammoDoorOpen' || type === 'ammoDoorClose';
@@ -1094,8 +1122,10 @@ export function createAudio({
       reload.caliber = caliber;
       reload.lastT = t;
       reload.next = 0;
-      reload.plan = resolveReloadCuePlan(total, kind, caliber, loaderKind);
-      logSound('reload:start', { kind, total, caliberMm: caliber, loader: loaderKind });
+      // The AC-130's crew loads its howitzer by hand; its missiles arm on the pylon (whatever hull it fields).
+      const loader = latestPlayer?.aerial?.kind === 'gunship' ? (caliber >= 170 ? 'missile' : 'gunship') : loaderKind;
+      reload.plan = resolveReloadCuePlan(total, kind, caliber, loader);
+      logSound('reload:start', { kind, total, caliberMm: caliber, loader });
     }
     const progress = Number.isFinite(event.progress) ? clamp(Number(event.progress), 0, 1) : clamp(1 - t / total, 0, 1);
     const cues = reload.plan?.cues || [];
@@ -1119,6 +1149,7 @@ export function createAudio({
   // --------------------------------------------------------- mode objectives ---
 
   function onMode(type: string, payload: Record<string, unknown>): void {
+    const mode = getGameMode?.() || 'standard';
     const ours = objectiveTeam(playerTeam);
     const team = payload.team === 'alpha' || payload.team === 'bravo' ? payload.team : null;
     const byMe = payload.by != null && payload.by === playerId;
@@ -1142,17 +1173,25 @@ export function createAudio({
         play('ui_flag_dropped');
         break;
       case 'wave_started':
-        play('sting_wave');
+        // The Horde's waves come on the air-raid siren; the Frontline's counter-attacks under a barrage.
+        play(mode === 'endless_horde' ? 'mode_horde_siren' : mode === 'frontline_assault' ? 'mode_frontline_barrage' : 'sting_wave');
         say('wave_incoming', { delayS: 0.6 });
         break;
       case 'wave_cleared':
-        play('ui_wave_clear');
+        play(mode === 'endless_horde' ? 'mode_horde_all_clear' : 'ui_wave_clear');
         say('wave_cleared', { delayS: 0.4 });
         break;
       case 'line_advanced':
-        play('ui_line_advance');
+        // The line moves forward behind its own guns.
+        play(mode === 'frontline_assault' ? 'mode_frontline_barrage' : 'ui_line_advance');
         say('line_advanced', { prob: 0.5, delayS: 0.4 });
         break;
+      case 'pickup_spawned': {
+        // A cache arrives (Horde repair and ammunition, Gravity boosts): heard where it lands.
+        const x = Number(payload.x), z = Number(payload.z);
+        if (Number.isFinite(x) && Number.isFinite(z)) play('cache_drop', { x, y: Number(payload.y) || frame.y, z, delayS: 0.15 });
+        break;
+      }
       case 'goal_scored':
         if (team === ours) { play('ui_goal'); say('goal_scored', { delayS: 0.2 }); } else play('ui_objective_loss');
         break;
@@ -1882,7 +1921,11 @@ export function createAudio({
     on<undefined>('battle:rollout', () => {
       if (phase !== 'battle' || battleOver) return;
       rolledOut = true;
-      play('sting_battle');
+      const mode = getGameMode?.() || 'standard';
+      if (mode !== 'realistic') {
+        const opener = MODE_OPENER[mode] ?? 'sting_battle';
+        if (!play(opener, opener === 'gunship_flyover' ? { space: 'flat', bus: 'environment' } : undefined)) play('sting_battle');
+      }
       play('ui_countdown_go', { gainDb: -6 });
       say('battle_start', { delayS: 0.5 });
     });
@@ -1927,7 +1970,7 @@ export function createAudio({
       volumeEvents++;
     });
     for (const type of ['zone_captured', 'flag_taken', 'flag_captured', 'flag_returned', 'flag_dropped', 'wave_started', 'wave_cleared',
-      'line_advanced', 'goal_scored', 'ball_hit', 'pickup_collected', 'destruction_scored', 'respawn', 'infected', 'weapon_advanced']) {
+      'line_advanced', 'goal_scored', 'ball_hit', 'pickup_collected', 'pickup_spawned', 'destruction_scored', 'respawn', 'infected', 'weapon_advanced']) {
       on<Record<string, unknown>>(`mode:${type}`, (payload) => onMode(type, payload || {}));
     }
   }
@@ -1941,7 +1984,8 @@ export function createAudio({
     if (slot == null || phase !== 'battle') return;
     const shells = latestPlayer?.spec?.gun?.shells;
     const shell = shells?.[slot];
-    if (loaderKind === 'carousel' || loaderKind === 'bustle') play('autoloader_carousel', hullOptions({ gainDb: -4, maxDurS: 1.2 }));
+    if (latestPlayer?.aerial?.kind === 'gunship') play('gunship_weapon_select', hullOptions());
+    else if (loaderKind === 'carousel' || loaderKind === 'bustle') play('autoloader_carousel', hullOptions({ gainDb: -4, maxDurS: 1.2 }));
     else play('ammo_select', hullOptions());
     if (!shell) return;
     const type = String(shell.type || '');

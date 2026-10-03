@@ -133,15 +133,25 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
   const clip = makeSoftClip(ctx);
   const glue = ctx.createDynamicsCompressor();
   // Glue, not a limiter: a 12 ms attack lets cannon transients through to
-  // the soft clip, which catches the peaks.
+  // the limiter below, which catches the peaks.
   glue.threshold.value = -8;
   glue.knee.value = 8;
   glue.ratio.value = 2.5;
   glue.attack.value = 0.012;
   glue.release.value = 0.2;
+  // A limiter between the glue and the soft clip (2026-10-02): a gun's crack peaks far above its body, and the
+  // clip would square it off (old-film grit). The compressor's built-in look-ahead lets a 2 ms attack take the
+  // peak down smoothly, so the clip is only the last resort.
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = -2;
+  limiter.knee.value = 0;
+  limiter.ratio.value = 20;
+  limiter.attack.value = 0.002;
+  limiter.release.value = 0.09;
   const preMaster = ctx.createGain();
   preMaster.connect(glue);
-  glue.connect(clip);
+  glue.connect(limiter);
+  limiter.connect(clip);
   clip.connect(master);
   master.connect(ctx.destination);
 

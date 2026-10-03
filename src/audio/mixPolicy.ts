@@ -35,8 +35,10 @@ export const BUS_CHANNEL: Readonly<Record<BusId, SettingsChannel>> = Object.free
 export const BUS_LEVELS: Readonly<Record<BusId, number>> = Object.freeze({
   // Measured on the master by tools/audio-mix-balance.mjs: gunfire must stand
   // well clear of the idle battle bed (our engine, the ambience, idling tanks),
-  // and the radio under a near cannon.
-  weapons: 1.5,
+  // and the radio under a near cannon. Gun reports are cracks now (2026-10-02),
+  // their energy in tens of milliseconds, so the gun bus runs hotter and the
+  // master's limiter takes the crack's peak.
+  weapons: 2,
   impacts: 1.3,
   environment: 0.85,
   cinematic: 1,
@@ -49,7 +51,7 @@ export const BUS_LEVELS: Readonly<Record<BusId, number>> = Object.freeze({
   ambience: 0.37,
   ui: 0.6,
   music: 0.6,
-  voice: 0.28,
+  voice: 0.24,
   alarm: 0.55,
 });
 

@@ -574,6 +574,17 @@ const aerial = [
   sfx('drone_link_lost', 'aerial', `Sound effect: a video feed dropping out, a short harsh burst of static that cuts off into silence. ${NO_MUSIC}.`, 1.2, { variants: 1, takes: 4, proc: 'foley' }),
   sfx('gunship_orbit_loop', 'aerial', `Seamless loop of a large four-engine turboprop military aircraft circling slowly overhead at low altitude: a deep droning propeller hum with a slow pulsing beat between the engines, heard from the ground. ${FIELD}, ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 4, proc: 'loop' }),
   sfx('gunship_cabin_loop', 'aerial', `Seamless loop inside the cargo hold of a four-engine turboprop military aircraft in flight: a deep constant engine drone, airframe vibration and rushing air. ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
+  // AC-130 (2026-10-02): the crew hears its guns inside the cabin, the ground hears them from the sky.
+  sfx('gunship_cabin_rattle_loop', 'aerial', `Seamless loop inside the cargo cabin of a military aircraft in flight: loose equipment rattling, straps tapping, fuselage creaks and wind whistling through open gun ports, no engine sound. Continuous at an even level from start to end. ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 4, proc: 'loop' }),
+  sfx('gunship_flyover', 'aerial', `Sound effect: a four-engine turboprop military gunship roaring past low overhead, then banking away into a distant orbit, its engines fading. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 1, takes: 4, proc: 'oneshot', ch: 'stereo' }),
+  sfx('gunship_30mm_own', 'weapons', `Gunshot sound effect: one single shot of a 30 mm autocannon fired from inside the cargo cabin of a military gunship aircraft: an instant, hard, sharp bang from the side-mounted gun, the clatter of its feed mechanism and a spent link dropping. No engine noise. ${REAL}`, 2, { inf: 0.7, variants: 4, takes: 6, proc: 'gunshot', shape: [6, 40, -20] }),
+  sfx('gunship_howitzer_own', 'weapons', `Gunshot sound effect: one single shot of a 105 mm howitzer fired from inside the cargo cabin of a military gunship aircraft: an instantaneous, deafening blast in the enclosed fuselage, the gun slamming back on its recoil mount, then the airframe ringing hollow. No engine noise. ${REAL}`, 3.5, { inf: 0.65, variants: 3, takes: 6, proc: 'gunshot', shape: [12, 140, -15] }),
+  sfx('gunship_missile_own', 'weapons', `Sound effect: a guided missile fired from an aircraft wing pylon, heard from inside the fuselage: a sharp ignition pop, then a fierce roaring rocket motor ripping away ahead into the distance. No engine noise, ${NO_MUSIC}.`, 3, { inf: 0.6, variants: 2, takes: 4, proc: 'weapon-close' }),
+  sfx('gunship_30mm_far', 'weapons', `Gunshot sound effect: a single 30 mm cannon shot fired from an aircraft circling a few hundred metres overhead, heard on the ground: a deep hollow thump from the sky with a short echo. One isolated shot.`, 2, { inf: 0.7, variants: 3, takes: 4, proc: 'weapon-far' }),
+  sfx('gunship_howitzer_far', 'weapons', `One-shot of a howitzer fired from an aircraft circling high overhead, heard on the ground: a deep heavy boom from the sky rolling away across the land. ${FIELD}, ${NO_MUSIC}.`, 4.5, { inf: 0.6, variants: 2, takes: 4, proc: 'weapon-far' }),
+  sfx('gunship_casing_drop', 'mechanism', `One-shot of a large hot brass howitzer shell casing ejected onto the steel floor of an aircraft cabin: a heavy metallic clang, a bounce and a rolling ring. ${NO_MUSIC}.`, 1.8, { variants: 2, takes: 4, proc: 'foley' }),
+  sfx('gunship_round_load', 'mechanism', `One-shot of a heavy howitzer round being lifted and rammed by hand into an open breech: a metallic slide and a solid, weighty clunk as it seats. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 4, proc: 'foley' }),
+  sfx('gunship_weapon_select', 'equipment', `One-shot of a heavy military fire-control selector switch on an aircraft gunnery panel: a firm click, then a short low servo whirr as the selected gun arms. ${NO_MUSIC}.`, 1, { variants: 1, takes: 4, proc: 'foley' }),
 ];
 
 // -------------------------------------------------------------- stingers ---
@@ -587,6 +598,15 @@ const stingers = [
   sfx('sting_draw', 'stingers', `One-shot ${STING}: an unresolved ending, two flat low horn calls.`, 4, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
   sfx('sting_wave', 'stingers', `One-shot ${STING}: an enemy wave approaching, low war drums building, no melody.`, 3, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
   sfx('sting_infected', 'stingers', `One-shot ${STING}: turned to the other side, a low dissonant brass cluster swelling into one dull timpani hit, unsettling.`, 4, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
+  // Mode openers and events (2026-10-02): field sounds, not music, so each mode is recognisable by ear.
+  sfx('mode_horde_siren', 'stingers', `Sound effect: an air-raid siren winding up and wailing over a ruined town, heard from far away. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_horde_all_clear', 'stingers', `Sound effect: a distant air-raid siren holding one long steady all-clear tone, then winding down to silence. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_frontline_barrage', 'stingers', `Sound effect: a distant preparatory artillery barrage, many heavy guns firing far away in rolling succession like continuous thunder. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_juggernaut', 'stingers', `Sound effect: a massive steel vault door slamming shut with a deep metallic boom, then a long low ominous rumble. ${NO_MUSIC}.`, 4, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_infected_outbreak', 'stingers', `Sound effect: a burst of harsh radio interference and garbled static breaking up over a low unsettling electrical drone. ${NO_MUSIC}.`, 4, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_turbo_horn', 'stingers', `Sound effect: one long blast of a deep ship's foghorn echoing across open ground. ${NO_MUSIC}.`, 3.5, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_gungame_armory', 'stingers', `Sound effect: heavy steel weapon racks rattling and a large gun breech being worked open and slammed shut in an armory. ${NO_MUSIC}.`, 3, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('cache_drop', 'props', `One-shot of a heavy supply crate dropped by parachute landing hard on the ground: a deep thud, a crunch and the canopy rustling down. ${FIELD}, ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 4, proc: 'impact', punch: false }),
 ];
 
 export const SFX_CATALOG = Object.freeze([

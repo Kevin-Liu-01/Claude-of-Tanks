@@ -26,7 +26,8 @@ const terrain = {
   getTrackSurfaceAt: () => 0,
   getWaterDepthAt: (x) => (x < -300 ? 2 : 0),
 };
-const audio = createAudio({ context: ctx, getMapId: () => 'urban', getTerrain: () => terrain, tier: 'desktop' });
+let gameMode = 'standard';
+const audio = createAudio({ context: ctx, getMapId: () => 'urban', getGameMode: () => gameMode, getTerrain: () => terrain, tier: 'desktop' });
 const bus = createBus();
 audio.bindBus(bus);
 assert.equal(ctx.nodes.length, 0, 'nothing is built before resume()');
@@ -342,6 +343,64 @@ for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) { ctx.advance(0.4); bus.em
 assert.ok(logSince(since).some((e) => e.b === 'interior'), 'where the loading machinery is heard again');
 delete me.aerial;
 
+// AC-130: the crew hears its guns inside the cabin (the howitzer throwing its case onto the deck, never a
+// tank's recoil machinery), loads the howitzer by hand and arms a gun on the selector; the ground hears the
+// gunship's howitzer from the sky.
+settle(4);
+me.aerial = { kind: 'gunship', active: true, x: 0, y: 240, z: 0 };
+ctx.advance(0.2);
+audio.update(1 / 60, listener, tanks);
+// The aircraft set (the gunship's reports among it) decodes on first sight of one.
+for (let i = 0; i < 1000 && probe.library().pending > 0; i++) await new Promise((resolve) => setTimeout(resolve, 5));
+for (const [weaponSound, caliberMm, report] of [['gunship-autocannon', 30, 'gunship_30mm_own'], ['gunship-howitzer', 152, 'gunship_howitzer_own'], ['gunship-missile', 180, 'gunship_missile_own']]) {
+  since = mark();
+  bus.emit('shell:fired', { shellId: volleyId++, shooterId: 'me', isPlayer: true, muzzlePos: [0, 238, 2], dir: [0, -0.7, 0.7], caliberMm, shellType: 'HE', weaponSound });
+  names = logSince(since).map((e) => e.n);
+  assert.ok(names.includes(report), `the gunship's ${caliberMm} mm plays its cabin report (${names})`);
+  if (caliberMm === 152) {
+    assert.ok(names.includes('gunship_casing_drop') && !names.includes('gun_recoil_mech'), `and throws its case onto the deck (${names})`);
+    assert.ok(names.includes('muzzle_blast'), 'with its muzzle blast');
+  }
+  ctx.advance(0.6);
+}
+since = mark();
+for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) { ctx.advance(0.4); bus.emit('player:reload', { total: 3.5, kind: 'shell', caliberMm: 152, t: 3.5 * (1 - progress), progress }); }
+names = logSince(since).map((e) => e.n);
+for (const id of ['breech_open', 'gunship_round_load', 'breech_close']) assert.ok(names.includes(id), `the howitzer is loaded by hand: ${id} (${names})`);
+bus.emit('player:reload', { total: 3.5, kind: 'shell', caliberMm: 152, t: 0, progress: 1, done: true });
+since = mark();
+bus.emit('ui:shellSelectionChanged', { slot: 1 });
+assert.ok(logSince(since).some((e) => e.n === 'gunship_weapon_select'), 'the selector arms the next gun');
+delete me.aerial;
+ctx.advance(0.6);
+since = mark();
+bus.emit('shell:fired', { shellId: volleyId++, shooterId: 'foe', muzzlePos: [40, 240, 120], dir: [0, -0.8, -0.6], caliberMm: 152, shellType: 'HE', weaponSound: 'gunship-howitzer' });
+names = logSince(since).map((e) => e.n);
+assert.ok(names.includes('gunship_howitzer_far') && !names.includes('gun_152_close'), `a gunship's howitzer is heard from the sky (${names})`);
+
+// Modes: each opens on its own sound and marks its own events.
+settle(2);
+gameMode = 'endless_horde';
+since = mark();
+bus.emit('battle:rollout', {});
+names = logSince(since).map((e) => e.n);
+assert.ok(names.includes('mode_horde_siren') && !names.includes('sting_battle'), `the Horde opens on the air-raid siren (${names})`);
+ctx.advance(1);
+since = mark();
+bus.emit('mode:wave_cleared', { wave: 1 });
+assert.ok(logSince(since).some((e) => e.n === 'mode_horde_all_clear'), 'and sounds the all-clear');
+ctx.advance(1);
+since = mark();
+bus.emit('mode:pickup_spawned', { id: 'loot-1', kind: 'repair', x: 30, y: 3, z: 40 });
+const drop = logSince(since).find((e) => e.n === 'cache_drop');
+assert.ok(drop && Math.abs(drop.d - 50) < 3, `a cache lands where it is (${drop?.d} m)`);
+gameMode = 'frontline_assault';
+ctx.advance(1);
+since = mark();
+bus.emit('mode:line_advanced', { line: 1, total: 3 });
+assert.ok(logSince(since).some((e) => e.n === 'mode_frontline_barrage'), 'the Frontline moves up behind a barrage');
+gameMode = 'standard';
+
 // Gun Game: the crew changes over to the next weapon and calls the load; Infected: a grave sting.
 settle(4);
 since = mark();
@@ -394,6 +453,12 @@ assert.ok(logSince(since).some((e) => e.n === 'ui_tank_select'), 'a tank card li
 bus.emit('phase:change', { phase: 'battle' });
 audio.update(1 / 60, listener, tanks);
 assert.equal(probe.snapshot, 'battle', 'a battle left from the pause menu leaves no pause behind');
+// Realistic opens on no stinger at all.
+gameMode = 'realistic';
+since = mark();
+bus.emit('battle:rollout', {});
+assert.ok(!logSince(since).some((e) => e.b === 'music'), `Realistic opens without a stinger (${logSince(since).map((e) => e.n)})`);
+gameMode = 'standard';
 
 const lateCtx = createFakeContext({ decode: () => fakeBuffer(1.5) });
 const late = createAudio({ context: lateCtx, getMapId: () => 'urban', getTerrain: () => terrain, tier: 'desktop', initialPhase: 'battle' });

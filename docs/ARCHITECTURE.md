@@ -1366,7 +1366,7 @@ sounds come from a few metres away); `voiceLines.ts` + `crewRadio.ts` (crew
 radio); `procedural.ts` (synthesized fallbacks and alarms); `mixPolicy.ts`
 (every level, snapshot, HDR, budget and LOD constant).
 
-**Assets.** 368 sound assets (598 variant files, 17 MB WebM/Opus) under
+**Assets.** 386 sound assets (627 variant files, 18 MB WebM/Opus) under
 `public/audio/sfx/<group>/`, described by `sfxManifest.generated.ts`
 (duration, channels, rate, loop points, size). Crew radio: 13 language packs
 × 97 lines (one to four takes each, mostly two; ~1.5 MB per pack) under

@@ -9,7 +9,8 @@
  *           buzz with motor load, pitched by load, spooling up at launch and
  *           sagging with the battery), the wind rising with speed and the
  *           link's hiss toward the edge of its range and the end of its
- *           battery; or the gunship's cabin drone
+ *           battery; or the gunship's cabin: four turboprops with the airframe
+ *           rattling and the wind at the gun ports
  *
  * Every rig ends in one gain → lowpass → stereo pan chain on its bus.
  */
@@ -30,8 +31,8 @@ type AerialPerspective = 'world' | 'own';
  * the own-perspective level and feed band.
  */
 const AERIAL_SOUND = Object.freeze({
-  drone: Object.freeze({ loop: 'drone_fpv_loop', ownLoop: 'drone_fpv_loop', hoverLoop: 'drone_fpv_hover_loop', windLoop: 'drone_wind_loop', refM: 6, rolloff: 1, maxM: 500, ownLevelDb: -1, ownCutoffHz: 9000, rate: [0.9, 1.2] as const }),
-  gunship: Object.freeze({ loop: 'gunship_orbit_loop', ownLoop: 'gunship_cabin_loop', hoverLoop: null, windLoop: null, refM: 80, rolloff: 0.8, maxM: 3000, ownLevelDb: -5, ownCutoffHz: 20000, rate: [1, 1] as const }),
+  drone: Object.freeze({ loop: 'drone_fpv_loop', ownLoop: 'drone_fpv_loop', hoverLoop: 'drone_fpv_hover_loop', windLoop: 'drone_wind_loop', rattleLoop: null, refM: 6, rolloff: 1, maxM: 500, ownLevelDb: -1, ownCutoffHz: 9000, rate: [0.9, 1.2] as const }),
+  gunship: Object.freeze({ loop: 'gunship_orbit_loop', ownLoop: 'gunship_cabin_loop', hoverLoop: null, windLoop: null, rattleLoop: 'gunship_cabin_rattle_loop', refM: 80, rolloff: 0.8, maxM: 3000, ownLevelDb: -5, ownCutoffHz: 20000, rate: [1, 1] as const }),
 });
 
 interface AerialDeps {
@@ -157,7 +158,9 @@ export function createAerialRig(deps: AerialDeps, kind: AerialKind, perspective:
   // The wind's buffeting rumble would mask the battle under it: only its rush is kept.
   const wind = pilot && sound.windLoop ? makeLoop(sound.windLoop, 150) : null;
   const hiss = pilot ? makeLoop('drone_feed_static_loop') : null;
-  const loops = [motor, hover, wind, hiss].filter((loop): loop is Loop => loop != null);
+  // The gunship's crew: the airframe rattling and the wind at the gun ports under the turboprops.
+  const rattle = own && kind === 'gunship' && sound.rattleLoop ? makeLoop(sound.rattleLoop) : null;
+  const loops = [motor, hover, wind, hiss, rattle].filter((loop): loop is Loop => loop != null);
 
   return {
     kind,
@@ -190,6 +193,7 @@ export function createAerialRig(deps: AerialDeps, kind: AerialKind, perspective:
         const [lo, hi] = sound.rate;
         lastRate = (lo + (hi - lo) * clamp(frame.speedK, 0, 1)) * frame.doppler;
         setLoop(motor, 1, lastRate);
+        if (rattle) setLoop(rattle, 0.45, 1);
       }
       output.gain.setTargetAtTime(lastGain, t, 0.1);
       // The feed's hiss: a trace of it always, most of it as the link frays.
