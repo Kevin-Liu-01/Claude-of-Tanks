@@ -16,6 +16,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // and manifest and relocate any hint the ground no longer clears.
   cliffbridge: { kickoff: { x: 0, z: -155 }, zones: [{ x: 0, z: -155 }, { x: 0, z: 155 }, { x: 360, z: 0 }] },
   steppe: { zones: [{ x: 60, z: 90 }, { x: 292, z: 312 }, { x: -330, z: -240 }] },
+  // Glacier Pass (redesign 2026-10-03): three discs on the line of equal driven distance — the col yard east of the
+  // west pass road (a level apron in the map file), the lake ice off the village (also the turbo-ball kickoff) and the
+  // lake ice by the east shore. The frozen lake is firm, level ground, so the two ice discs seat as they lie.
+  alpine: { kickoff: { x: -25, z: -28 }, zones: [{ x: -266, z: 44 }, { x: -25, z: -28 }, { x: 150, z: -60 }] },
   // Validated full-disc results of the bounded search on these constrained
   // maps. Start with the known clearings; changed terrain still revalidates
   // every footprint and both-team connection before using the ordinary search.

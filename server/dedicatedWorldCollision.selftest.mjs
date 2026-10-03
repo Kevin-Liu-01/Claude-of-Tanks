@@ -54,7 +54,7 @@ const expected = {
   badlands: [2570, 2322, 1513], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [3013, 2765, 1956] (2026-10-02 Redrock Divide redesign (docs/MAP-LAYOUT-BRIEF.md); was [3011, 2915, 1920])
   // Native recapture with prior prop code also contains this additional wreck.
   monsoon: [7972, 7747, 10495], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [9855, 9630, 12375] (2026-10-02 Monsoon Ridge layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md); was [9473, 9215, 12022])
-  alpine: [7004, 6931, 5906], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [9117, 9044, 8009]
+  alpine: [7079, 7008, 5955], // 2026-10-03 Glacier Pass layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md) on the map-borders lane's first pass; was [7004, 6931, 5906] on the old pass, [9117, 9044, 8009] before the border pass
   // Same prior-props baseline verification as Monsoon.
   caldera: [3904, 4049, 2722], // 2026-10-03 Obsidian Caldera layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md) on the map-borders lane's first pass; was [4031, 4138, 2845] on the old floor, [4673, 4818, 3484] on the old border, [5000, 5107, 3810] before both
   foundry: [3242, 3350, 2082], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [4277, 4385, 3119]
