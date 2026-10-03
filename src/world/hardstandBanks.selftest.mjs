@@ -12,8 +12,6 @@ import { getMapConfig } from './maps/index.ts';
 const MAPS_LANE = 'maps lane (visual/maps-layouts)';
 const MAPS_LANE_B = 'maps lane B (visual/maps-layouts-b)';
 const PENDING = Object.freeze([
-  { apron: 'verdant:1', at: [-250, -150], owner: MAPS_LANE },
-  { apron: 'verdant:2', at: [270, 190], owner: MAPS_LANE },
   { apron: 'desert:1', at: [-292, 112], owner: MAPS_LANE },
   { apron: 'desert:2', at: [292, -112], owner: MAPS_LANE },
   { apron: 'urban:1', at: [-330, 24], owner: MAPS_LANE },
