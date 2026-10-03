@@ -222,10 +222,10 @@
       "concealers": 0
     },
     "moon": {
-      "bytes": 391973,
-      "sha256": "d8eebb4e42ec789bc1af8baa422475db0f380015c72f6336ee7d83ce96b1ddd8",
-      "obstacles": 475,
-      "colliders": 381,
+      "bytes": 595551,
+      "sha256": "b5dd211f0de6bc7053fd76385da4fe922158cdb81dcebe80e6701e1422982c8a",
+      "obstacles": 572,
+      "colliders": 412,
       "concealers": 0
     },
     "cliffbridge": {

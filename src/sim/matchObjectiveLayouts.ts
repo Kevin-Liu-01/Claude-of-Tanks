@@ -76,6 +76,9 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // terminal apron, rotationally symmetric about the runway's centre; the two aprons and the holding apron at the
   // runway's centre are level aprons in the map file.
   airfield: { kickoff: { x: 0, z: 0 }, zones: [{ x: -225, z: -150 }, { x: 0, z: 0 }, { x: 225, z: 150 }] },
+  // Earthrise Basin (redesign 2026-10-02): the outpost's landing field (also the turbo-ball kickoff) and the open
+  // floor either side of it on the valley track, rotationally symmetric about the landing field.
+  moon: { kickoff: { x: 0, z: 0 }, zones: [{ x: -102, z: 30 }, { x: 0, z: 0 }, { x: 102, z: -30 }] },
   skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
   // Copper Mesa (layout brief, 2026-10-02): the zones keep their validated seats on the loading shelf; the turbo-ball
   // kickoff is the bounded search's validated seat by the pit's rim, which both teams reach over near-equal drives.
