@@ -24,8 +24,12 @@ import { lightTune } from './lightModelCore.ts';
 
 /** σ (1/m) per unit of the map's fogDensity: Verdant's 0.00074 → 0.00031 (T at 2 km 0.54 on the ground). */
 export const HAZE_SIGMA_PER_FOG = 0.42;
-/** The haze layer's scale height (m) over the ground under the camera. */
-export const HAZE_LAYER_SCALE_M = 700;
+/**
+ * The haze layer's scale height (m) over the ground under the camera: thin enough that a crest 400 m up stands in a
+ * third less haze than its foot (the far ranges read to the horizon) and an overview from 300 m looks down through two
+ * thirds of the ground's (World of Tanks' overviews keep the far half's colour), the path across the ground at its full.
+ */
+export const HAZE_LAYER_SCALE_M = 400;
 /** Per-channel extinction, luminance-weighted mean 1. */
 export const HAZE_EXT_CHROMA: readonly [number, number, number] = Object.freeze([0.90, 1.0, 1.14]) as readonly [number, number, number];
 /** The authored fog tint's share of the in-scatter target (× the map's fogMix); all of it under a closed deck. */

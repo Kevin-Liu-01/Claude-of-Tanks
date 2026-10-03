@@ -1169,7 +1169,7 @@ void main() {
 	// nothing below the horizon line (the history holds no cloud there either) — unless the camera is in the slab
 	float above = max( smoothstep( -0.05, -0.02, dir.y ), uInside );
 	// the knee eases off within a few degrees of the sun: the silver lining of a cloud in front of it outshines the glow
-	float sunNear = pow( max( dot( dir, uSunDir ), 0.0 ), 90.0 );
+	float sunNear = pow( max( dot( dir, uSunDir ), 0.0 ), 400.0 );
 	vec3 rgb = mix( cloudKnee( c.rgb ), min( c.rgb, vec3( 6.0 ) ), sunNear ) * uSkyIntensity * above;
 	float alpha = ( 1.0 - min( c.a, 1.0 ) ) * above;
 	if ( uFlash.w > 0.0 ) {
