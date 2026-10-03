@@ -196,7 +196,8 @@ export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rn
   // the enclosure: the outer run along the yard's far edge, the two end runs back to the house wall; the gate takes the
   // outer run's middle module (or the one beside it)
   const outerN = Math.max(1, Math.round(length / seg)), endN = Math.max(1, Math.round(depth / seg));
-  const gateAt = outerN >= 3 ? Math.floor(outerN / 2) + (rng() < 0.5 ? 0 : outerN % 2 === 0 ? -1 : 0) : -1;
+  // every yard has its way in: the outer run's middle module, or on a short run one of its end modules
+  const gateAt = outerN >= 3 ? Math.floor(outerN / 2) + (rng() < 0.5 ? 0 : outerN % 2 === 0 ? -1 : 0) : rng() < 0.5 ? 0 : outerN - 1;
   const free = (x: number, z: number) => pointClear(world, house, x, z, ROAD_FRONTAGE_CLEARANCE, 0.15, 0);
   for (let i = 0; i < outerN; i++) {
     const a = -length / 2 + (i + 0.5) * length / outerN;
