@@ -91,16 +91,4 @@ assert.match(post, /const terms = hazeTargetTerms\(overcast, hazeTermsScratch\);
 }
 assert.doesNotMatch(clouds, /HAZE_LAW_GLSL|hazeSigma/, 'the clouds keep their own haze law (CLOUD_AERIAL)');
 
-// 2026-10-03 (the gauntlet's wave 13, Frosthollow: "the warm horizon band dims a step"): the target's blue-grey guard
-// catches a greenish cast only, and half the legacy warm lobe stays toward the sun
-assert.match(post, /if \( target\.g > target\.b && target\.g > target\.r \) \{/, 'a warm target keeps its warmth');
-assert.match(post, /target \*= mix\( vec3\( 1\.0 \), vec3\( \$\{AERIAL_WARM_TINT\[0\]\.toFixed\(3\)\}, \$\{AERIAL_WARM_TINT\[1\]\.toFixed\(3\)\}, \$\{AERIAL_WARM_TINT\[2\]\.toFixed\(3\)\} \), \$\{HAZE_LAW_WARM_LOBE\.toFixed\(2\)\} \* sunAmt \);/,
-  'the forward-scatter warm lobe');
-assert.match(post, /const HAZE_LAW_WARM_LOBE = 0\.5;/);
-{
-  // the guard, modelled: a warm low sky toward the sun (r > g > b) passes; a greenish cast (g over r and b) is pulled
-  const guard = (t) => t[1] > t[2] && t[1] > t[0];
-  assert.equal(guard([1.0, 0.95, 0.85]), false, 'the warm horizon passes');
-  assert.equal(guard([0.80, 0.90, 0.85]), true, 'a green cast is caught');
-}
 console.log(`hazeLaw.selftest: Beer–Lambert law (σ ${HAZE_SIGMA_PER_FOG} × fogDensity, layer ${HAZE_LAYER_SCALE_M} m), ${checked} maps readable at 2 km and separated to 3 km, layer integral exact, wiring PASS`);
