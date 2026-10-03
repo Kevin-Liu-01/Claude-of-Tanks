@@ -4,7 +4,9 @@
 // each shot's still moment), through tools/media-production/cinema.mjs under the shared capture lock, then
 // site-loops.mjs for every format (it drops each ProRes film master once its formats are written; the disk is tight).
 //   node tools/media-r5/site50-finals.mjs <resolvedDir> [--only=s01,s02] [--chunk=10] [--film-resolution=2160]
-//     [--still-supersample=1.5] [--keep-film-masters] [--skip-films] [--skip-stills] [--skip-loops]
+//     [--still-supersample=1.5] [--film-master=prores|none] [--keep-film-masters] [--skip-films] [--skip-stills] [--skip-loops]
+// --film-master=none renders no ProRes master: site-loops encodes from the 2160p H.264 proxy (crf 14, ~97 Mbit/s), so
+// chunks can be large (few capture-lock waits) without ~0.77 GB of master per take on the shared disk.
 // cinema.mjs holds the shared capture lock for a whole job list, so the films go in chunks (default 10 per lease) and
 // other sessions' captures get the GPU between them.
 // <resolvedDir> is a lab run over shots/media-r5/site50/scenes (its *.resolved.json); the source scenes supply the
@@ -36,7 +38,7 @@ mkdirSync(renders, { recursive: true });
 const only = flags.only ? [`--only=${flags.only}`] : [];
 const chunk = Math.max(1, Number(flags.chunk ?? 10));
 const filmJobs = join(renders, 'jobs-films.json'), stillJobs = join(renders, 'jobs-stills.json');
-if (!('skip-films' in flags)) run('film jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'films', resolved, join(renders, 'films'), filmJobs, `--resolution=${flags['film-resolution'] ?? 2160}`, '--master=prores', ...only]);
+if (!('skip-films' in flags)) run('film jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'films', resolved, join(renders, 'films'), filmJobs, `--resolution=${flags['film-resolution'] ?? 2160}`, `--master=${flags['film-master'] ?? 'prores'}`, ...only]);
 if (!('skip-stills' in flags)) run('still jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'blur', resolved, join(renders, 'stills'), stillJobs, '--resolution=2160', `--supersample=${flags['still-supersample'] ?? 1.5}`, ...only]);
 const films = 'skip-films' in flags ? [] : JSON.parse(readFileSync(filmJobs, 'utf8'));
 const stills = 'skip-stills' in flags ? [] : JSON.parse(readFileSync(stillJobs, 'utf8'));
