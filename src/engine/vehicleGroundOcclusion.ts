@@ -5,218 +5,417 @@
  * The ground's sky light under and beside the near hulls, inside the aerial pass. Scene-wide GTAO stays off on every
  * tier by the owner's choice (2026-09-28, quality.ts: its speckled crevice wash over terrain and foliage), so this is
  * analytic: no screen-space search, no noise, nothing but the ground around the few hulls the shadow router already
- * selects each frame (nearVehicleShadowDetail.ts: the nearest four within 70 m). Each hull stands for an oriented box
- * — its convex shadow proxy (the armour-derived hull and track guards, tankFactoryCore.ts) carried down to the ground
- * over the running gear — and a ground point loses the sky that box hides from it:
+ * selects each frame (nearVehicleShadowDetail.ts: the nearest four within 70 m). The term dims only the pixel's
+ * ambient share, as the vehicle cavity term does (vehicleOcclusion.ts): colour · (1 − occ · A / (T + A)), the sun term
+ * T and the ambient A the light rig gives the pixel's depth normal (contactShadows.ts) — sunlit ground beside a hull
+ * keeps its sun, the ground in the hull's own shadow (T = 0) takes the whole darkening. A grass or leaf card (its
+ * alpha is its coverage, no sun state) takes a fixed ambient share. Vehicle pixels are never receivers (their own
+ * cavities are vehicleOcclusion.ts's). The term fades out over the selection's last 20 m.
  *
- *   beside the hull (d the horizontal distance to the box, h the box's top over the point, L its long half length)
- *     occ = ½ · sin²(atan(h / d)) · (2/π) · atan(L / d)
- *   a wall of height h subtends elevation α = atan(h/d); the cosine-weighted sky below α over half the azimuth is
- *   ½ sin²α (a long wall); a finite hull covers the azimuth share (2/π) atan(L/d) of that half
- *   under the hull (s metres inside the footprint's nearest edge, W its half width, c the belly's clearance): the sky the
- *   point sees through the two side gaps, 1 − ½ sin²(atan(c/s)) − ½ sin²(atan(c/(2W − s))) — ½ at the edge (continuous
- *   with the law beside it: the first captures showed a hard dark rectangle under every hull on overcast snow), toward
- *   GROUND_AO_UNDER at the belly's middle
+ * 2026-10-03 (the vehicle-ground lane, wave 13: "a strip of fully-lit snow under the belly makes the vehicle look like it
+ * hovers", on the PR head and with this module on alike). Two causes, both measured:
+ *  - the multi-bounce term ran Jimenez et al.'s fit (2016) on the MAP's ground albedo. That fit assumes the occluding
+ *    cavity has the receiver's albedo; under a hull the occluder is the dark, dirty belly. On snow (ρ 0.8) it kept 0.37
+ *    of the sky at the belly's middle and 0.81 at its rear edge, the strip a chase camera sees under the rear plate;
+ *  - the old under-belly law saw the sky through two side gaps at a fixed 0.45 m clearance, which the running gear
+ *    closes, and stopped at 0.85: 0.3 m inside the rear edge it hid 0.65 of the sky where the hull hides 0.79.
  *
- * The term dims only the pixel's ambient share, as the vehicle cavity term does (vehicleOcclusion.ts): colour ·
- * (1 − occ · A / (T + A)), the sun term T and the ambient A the light rig gives the pixel's depth normal
- * (contactShadows.ts) — sunlit ground beside a hull keeps its sun, the ground in the hull's own shadow (T = 0) takes the
- * whole darkening. A grass or leaf card (its alpha is its coverage, no sun state) takes a fixed ambient share. Vehicle
- * pixels are never receivers (their own cavities are vehicleOcclusion.ts's). The term fades out over the selection's
- * last 20 m. `vehicleGroundOcclusionAt` is the CPU twin the receipt pins against the GLSL.
+ * Geometry, exactly. Each hull is three boxes in its own (root) frame, measured once from the built visual: the hull
+ * above its belly (the armour-derived shadow proxy's width, length and deck, down to the measured hull-pan floor), and
+ * the two track runs under it (the track bands' lanes and length, from the contact plane up to the belly). The share of
+ * a receiver's cosine-weighted sky a box hides is its projected solid angle over π, Lambert's edge integral over the
+ * box's silhouette hexagon (Quilez's box-occlusion construction): exact while the box stands above the receiver's
+ * horizon, so each box is clipped at the receiver's height (the clip relaxes as the normal tilts toward a wall). The
+ * belly at 0.31–0.51 m hides 0.96–0.97 of the sky at its middle, half at the footprint's edge, continuously on either
+ * side (no rectangle); a far run is hidden behind the near one, and the hull's reach fades out at three hull heights.
  *
- * 2026-10-03 (fp9: Sirocco's hull shadow measured 0.050 of the sunlit sand in display light, where photographs of hulls on
- * sand run about 0.07–0.16): the sky a hull hides is not all lost — the bright ground around it returns part of it by
- * interreflection off the hull and the ground. The occlusion keeps the visibility Jimenez et al.'s multi-bounce fit gives
- * the map's ground albedo (2016, "Practical Realtime Strategies for Accurate Indirect Occlusion": v' = max(v,
- * ((a v + b) v + c) v), a = 2.0404 ρ − 0.3324, b = −4.7951 ρ + 0.6417, c = 2.7552 ρ + 0.6903): sand (ρ 0.34) keeps
- * 0.70 of the light where the box alone leaves 0.60, snow (ρ 0.8) 0.87, a dark ground (ρ ≤ 0.1) about what it had.
+ * Interreflection, first order. A blocked direction does not see black: it sees the occluder, whose radiance relative
+ * to the sky's is r = ρ_hull · E_face / A_up; the occluder hides (1 − r) of what it covers. The belly sees mostly the
+ * shaded ground under itself and, through its openings and the road-wheel gaps, a share of the lit open ground:
+ *   r_belly = ρ_hull · ρ_ground · (v · (1 + k) + (1 − v) · u)
+ * and a wall sees half sky, half ground (half of it in the hull's own shadow):
+ *   r_wall  = ρ_hull · (½ + ½ · ρ_ground · (1 + ½ k))
+ * with k = T / A_up of open flat ground (the rig's sun over its sky), v = GROUND_AO_BELLY_VIEW, u = GROUND_AO_UNDER_GROUND.
+ * Snow (ρ 0.8, k ≈ 0.65) keeps 0.88 of the belly's occlusion and 0.74 of the walls'; sunny sand (ρ 0.34, k ≈ 6.5)
+ * 0.81 and 0.70. The two strengths blend across the footprint's edge (± GROUND_AO_EDGE_M). Photographs of hulls on sand
+ * put the belly at about 0.07–0.16 of the sunlit ground in display light (the lane's fp9 note): through the AgX curve the
+ * belly's middle here lands at 0.06–0.10. `vehicleGroundOcclusionLocal` is the CPU twin the receipt pins against the GLSL.
  */
 import * as THREE from 'three';
+import { lightTune } from './lightModelCore.ts';
 
 /** At most this many hulls (the shadow router's near selection: NEAR_VEHICLE_SHADOW_MAX). */
 export const GROUND_AO_MAX_HULLS = 4;
-/** The most sky the ground under a hull's belly loses (its middle; the edge loses half, continuous with the side). */
-export const GROUND_AO_UNDER = 0.85;
-/** The belly's clearance over the ground (m): the side gaps the ground under a hull sees the sky through. */
-export const GROUND_AO_CLEARANCE_M = 0.45;
-/** The box is carried this far below the proxy's lowest point (the running gear under the track guards, to the ground). */
-export const GROUND_AO_GEAR_DROP_M = 0.9;
 /** The selection's range (m) and the fade over its last stretch. */
 export const GROUND_AO_RANGE_M = 70;
 export const GROUND_AO_FADE_M = 20;
 /** A card pixel's assumed ambient share (its sun state is unknown: a meadow half in sun, half in shade). */
 export const GROUND_AO_CARD_AMBIENT_SHARE = 0.6;
-/** The ground albedo the multi-bounce term assumes without a grounded light model (atmosphere.ts's default ground). */
+/** The ground albedo without a grounded light model (atmosphere.ts's default ground). */
 export const GROUND_AO_DEFAULT_ALBEDO = 0.25;
+/** The hull's own albedo — dusty paint, the belly's grime, the runs' rubber and steel. */
+export const GROUND_AO_HULL_ALBEDO = 0.25;
+/** The share of the belly's view that is lit open ground: the openings fore and aft between the runs, the road-wheel gaps. */
+export const GROUND_AO_BELLY_VIEW = 0.3;
+/** The shaded ground under the belly (the rest of its view) relative to open ground. */
+export const GROUND_AO_UNDER_GROUND = 0.15;
+/** The track boxes stand this far over the contact plane, so the ground beside them sees each box above its horizon. */
+export const GROUND_AO_TRACK_LIFT_M = 0.02;
+/** A hull's reach fades out between these multiples of its height (deck over the contact plane) from its footprint. */
+export const GROUND_AO_REACH = Object.freeze([1.5, 3] as const);
+/** A track run's between these multiples of its box height (the belly's clearance) from the run's footprint. */
+export const GROUND_AO_TRACK_REACH = Object.freeze([2, 4] as const);
+/** The belly's and the walls' strengths blend across the footprint's edge over ± this (m). */
+export const GROUND_AO_EDGE_M = 0.25;
+/** The receiver's horizon clip drops this far (m) per unit of normal tilt: a wall facing a hull keeps the whole box. */
+export const GROUND_AO_CLIP_SLACK_M = 4;
+/** Fallbacks for a hull without measured contact geometry: the belly's clearance and a run's width (m). */
+export const GROUND_AO_CLEARANCE_M = 0.45;
+export const GROUND_AO_TRACK_WIDTH_M = 0.6;
 
-/** Jimenez et al. 2016's multi-bounce fit: the visibility v of a point whose surroundings have albedo rho, raised by the
- * light they interreflect (never below v; rho 0 leaves v). The GLSL carries the same polynomial. */
-export function vehicleGroundMultiBounce(v: number, rho: number): number {
-  const a = 2.0404 * rho - 0.3324, b = -4.7951 * rho + 0.6417, c = 2.7552 * rho + 0.6903;
-  return Math.max(v, ((a * v + b) * v + c) * v);
+export interface Vec3Like { x: number; y: number; z: number; }
+
+/** A hull's three boxes in its root frame (metres): the hull over its belly and the two runs under it. */
+export interface VehicleGroundBoxes {
+  /** The hull: |x| ≤ hx, yb ≤ y ≤ yt, hz0 ≤ z ≤ hz1 (yb the belly, yt the deck). */
+  readonly hx: number; readonly yb: number; readonly yt: number; readonly hz0: number; readonly hz1: number;
+  /** The runs: xi ≤ |x| ≤ xo, y0 ≤ y ≤ yb, tz0 ≤ z ≤ tz1 (y0 the contact plane plus the lift). */
+  readonly xi: number; readonly xo: number; readonly y0: number; readonly tz0: number; readonly tz1: number;
 }
 
-export interface VehicleGroundOcclusionUniforms {
-  uVehGround: THREE.IUniform<number>;
-  /** Per hull: the box centre (xyz) and its long half length (w). */
-  uVehGroundC: THREE.IUniform<THREE.Vector4[]>;
-  /** Per hull: the box's unit axes (x, y, z) scaled by nothing; the half extents ride in uVehGroundH. */
-  uVehGroundX: THREE.IUniform<THREE.Vector3[]>;
-  uVehGroundY: THREE.IUniform<THREE.Vector3[]>;
-  uVehGroundZ: THREE.IUniform<THREE.Vector3[]>;
-  uVehGroundH: THREE.IUniform<THREE.Vector3[]>;
-  /** 2026-10-03: the ground's albedo (luminance) for the multi-bounce term; 0 turns it off. */
-  uVehGroundAlbedo: THREE.IUniform<number>;
+export interface VehicleGroundStrengths { readonly belly: number; readonly wall: number; }
+
+const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
+const smoothstep = (a: number, b: number, x: number): number => {
+  const t = clamp01((x - a) / (b - a));
+  return t * t * (3 - 2 * t);
+};
+
+/** One silhouette edge of Lambert's edge integral: the angle it subtends times the normal's share of its plane. */
+function edgeTerm(ax: number, ay: number, az: number, bx: number, by: number, bz: number, n: Vec3Like): number {
+  const cx = ay * bz - az * by, cy = az * bx - ax * bz, cz = ax * by - ay * bx;
+  const s = Math.hypot(cx, cy, cz);
+  return s > 1e-6 ? Math.atan2(s, ax * bx + ay * by + az * bz) * (n.x * cx + n.y * cy + n.z * cz) / s : 0;
 }
 
-export function createVehicleGroundOcclusionUniforms(): VehicleGroundOcclusionUniforms {
-  const v3 = () => Array.from({ length: GROUND_AO_MAX_HULLS }, () => new THREE.Vector3());
+/** Quilez's silhouette hexagon: the corner pattern of each vertex (times the corner nearest the receiver). */
+const HEXAGON: readonly (readonly [number | 'x' | 'y' | 'z', number | 'x' | 'y' | 'z', number | 'x' | 'y' | 'z'])[] = [
+  [1, 1, -1], [1, 'x', 'x'], [1, -1, 1], ['z', 'z', 1], [-1, 1, 1], ['y', 1, 'y'],
+];
+
+/**
+ * The share of a receiver's cosine-weighted sky a box hides (its projected solid angle over π): the receiver at q
+ * relative to the box's centre with unit normal n, r the box's half extents. Lambert's edge integral over the box's
+ * silhouette hexagon, signed by the octant's mirror parity and clamped to [0, 1] — exact while the box stands above the
+ * receiver's horizon; a box partly below it subtracts its hidden part, so it can only under-count.
+ */
+export function boxSkyOcclusion(q: Vec3Like, n: Vec3Like, r: Vec3Like): number {
+  const sx = q.x >= 0 ? 1 : -1, sy = q.y >= 0 ? 1 : -1, sz = q.z >= 0 ? 1 : -1;
+  const inside = { x: r.x >= Math.abs(q.x) ? 1 : -1, y: r.y >= Math.abs(q.y) ? 1 : -1, z: r.z >= Math.abs(q.z) ? 1 : -1 };
+  const f = [r.x * sx, r.y * sy, r.z * sz];
+  const at = (k: number | 'x' | 'y' | 'z'): number => (typeof k === 'number' ? k : inside[k]);
+  const verts = HEXAGON.map((pattern) => {
+    const vx = at(pattern[0]) * f[0] - q.x, vy = at(pattern[1]) * f[1] - q.y, vz = at(pattern[2]) * f[2] - q.z;
+    const l = Math.hypot(vx, vy, vz) || 1;
+    return [vx / l, vy / l, vz / l];
+  });
+  let k = 0;
+  for (let i = 0; i < 6; i++) {
+    const a = verts[i], b = verts[(i + 1) % 6];
+    k += edgeTerm(a[0], a[1], a[2], b[0], b[1], b[2], n);
+  }
+  return clamp01((k * sx * sy * sz) / (2 * Math.PI));
+}
+
+/**
+ * What a blocked direction keeps of its darkening: one minus the occluder's radiance relative to the sky's
+ * (first-order interreflection), for the belly enclosure and for the walls, from the ground's albedo and the rig's
+ * sun-to-sky ratio k of open flat ground. The hull's albedo and the belly's view are the knobs the capture may tune.
+ */
+export function vehicleGroundStrengths(
+  groundAlbedo: number, sunToSky: number, hullAlbedo = GROUND_AO_HULL_ALBEDO, bellyView = GROUND_AO_BELLY_VIEW,
+  underGround = GROUND_AO_UNDER_GROUND,
+): VehicleGroundStrengths {
+  const rho = Math.min(Math.max(groundAlbedo, 0), 0.95), k = Math.max(sunToSky, 0);
   return {
-    uVehGround: { value: 0 },
-    uVehGroundC: { value: Array.from({ length: GROUND_AO_MAX_HULLS }, () => new THREE.Vector4()) },
-    uVehGroundX: { value: v3() }, uVehGroundY: { value: v3() }, uVehGroundZ: { value: v3() }, uVehGroundH: { value: v3() },
-    uVehGroundAlbedo: { value: GROUND_AO_DEFAULT_ALBEDO },
+    belly: clamp01(1 - hullAlbedo * rho * (bellyView * (1 + k) + (1 - bellyView) * underGround)),
+    wall: clamp01(1 - hullAlbedo * (0.5 + 0.5 * rho * (1 + 0.5 * k))),
   };
 }
 
-/** The sky share a ground point at horizontal distance d from a box of top height h (over the point) and long half
- * length L loses (the beside law above); `under` inside the footprint. */
-export function vehicleGroundOcclusionBeside(d: number, h: number, L: number): number {
-  if (h <= 0) return 0;
-  const dd = Math.max(d, 0.05);
-  const s = h / Math.hypot(h, dd);
-  return 0.5 * s * s * (2 / Math.PI) * Math.atan(L / dd);
+/**
+ * The CPU twin of the GLSL: the occlusion one hull casts on a receiver at q (root frame) with unit normal n (root
+ * frame), its three boxes clipped at the receiver's horizon, each faded over its reach, the far run hidden behind the
+ * near one, and the belly's or the walls' strength by the receiver's place across the footprint's edge.
+ */
+export function vehicleGroundOcclusionLocal(
+  q: Vec3Like, n: Vec3Like, b: VehicleGroundBoxes, strengths: VehicleGroundStrengths,
+): number {
+  const H = b.yt - b.y0;
+  const hcz = 0.5 * (b.hz0 + b.hz1), hhz = 0.5 * (b.hz1 - b.hz0);
+  const dx = Math.abs(q.x) - b.hx, dz = Math.abs(q.z - hcz) - hhz;
+  const dOut = Math.hypot(Math.max(dx, 0), Math.max(dz, 0));
+  if (dOut > H * GROUND_AO_REACH[1] || q.y > b.yt || q.y < b.y0 - H * GROUND_AO_REACH[1]) return 0;
+  const yc = q.y + 0.002 - GROUND_AO_CLIP_SLACK_M * (1 - n.y);
+  let occ = 0;
+  const bot = Math.max(b.yb, yc);
+  if (bot < b.yt) {
+    occ += (1 - smoothstep(H * GROUND_AO_REACH[0], H * GROUND_AO_REACH[1], dOut))
+      * boxSkyOcclusion({ x: q.x, y: q.y - 0.5 * (bot + b.yt), z: q.z - hcz }, n, { x: b.hx, y: 0.5 * (b.yt - bot), z: hhz });
+  }
+  const tb = Math.max(b.y0, yc);
+  if (tb < b.yb) {
+    const th = b.yb - b.y0, span = Math.max(b.xo - b.xi, 1e-3);
+    const r = { x: 0.5 * (b.xo - b.xi), y: 0.5 * (b.yb - tb), z: 0.5 * (b.tz1 - b.tz0) };
+    const cx = 0.5 * (b.xi + b.xo), cy = 0.5 * (tb + b.yb), cz = 0.5 * (b.tz0 + b.tz1);
+    for (const side of [-1, 1]) {
+      const lx = q.x - side * cx;
+      const reach = Math.hypot(Math.max(Math.abs(lx) - r.x, 0), Math.max(Math.abs(q.z - cz) - r.z, 0));
+      const shown = clamp01(side < 0 ? (b.xo - q.x) / span : (q.x + b.xo) / span);
+      const w = shown * (1 - smoothstep(th * GROUND_AO_TRACK_REACH[0], th * GROUND_AO_TRACK_REACH[1], reach));
+      if (w > 0) occ += w * boxSkyOcclusion({ x: lx, y: q.y - cy, z: q.z - cz }, n, r);
+    }
+  }
+  const sd = dOut + Math.min(Math.max(dx, dz), 0);
+  const s = strengths.wall + (strengths.belly - strengths.wall) * (1 - smoothstep(-GROUND_AO_EDGE_M, GROUND_AO_EDGE_M, sd));
+  return Math.min(occ, 1) * s;
 }
 
-const _box = new THREE.Box3();
-const _c = new THREE.Vector3();
-const _ax = new THREE.Vector3(), _ay = new THREE.Vector3(), _az = new THREE.Vector3();
+/** Several hulls hide the sky as independent occluders; the selection's range fade on the result. */
+export function combineVehicleGroundOcclusion(perHull: readonly number[], distance: number): number {
+  let vis = 1;
+  for (const occ of perHull) vis *= 1 - clamp01(occ);
+  return (1 - vis) * (1 - smoothstep(GROUND_AO_RANGE_M - GROUND_AO_FADE_M, GROUND_AO_RANGE_M, distance));
+}
 
-interface HullBoxSource { readonly matrixWorld: THREE.Matrix4; readonly geometry: THREE.BufferGeometry; }
+export interface VehicleGroundOcclusionUniforms {
+  /** The hulls written this frame (0: the block is skipped). */
+  uVehGround: THREE.IUniform<number>;
+  /** Per hull, three rows: world → root frame (local axis i = dot(row.xyz, P) + row.w; the root's scale included). */
+  uVehGroundM: THREE.IUniform<THREE.Vector4[]>;
+  /** Per hull, three vec4: (hx, yb, yt, hz0), (hz1, xi, xo, y0), (tz0, tz1, weight, 0) — the boxes in the root frame. */
+  uVehGroundB: THREE.IUniform<THREE.Vector4[]>;
+  /** The interreflection's inputs: the ground's albedo, the hull's, the belly's view of open ground, the shaded ground. */
+  uVehGroundLight: THREE.IUniform<THREE.Vector4>;
+}
+
+export function createVehicleGroundOcclusionUniforms(): VehicleGroundOcclusionUniforms {
+  const rows = () => Array.from({ length: GROUND_AO_MAX_HULLS * 3 }, () => new THREE.Vector4());
+  return {
+    uVehGround: { value: 0 },
+    uVehGroundM: { value: rows() },
+    uVehGroundB: { value: rows() },
+    uVehGroundLight: { value: new THREE.Vector4(GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_HULL_ALBEDO, GROUND_AO_BELLY_VIEW, GROUND_AO_UNDER_GROUND) },
+  };
+}
 
 /** The hull proxy of a vehicle root (its shadow detail record's first proxy: procShadow_hull). */
-export function hullProxyOf(root: THREE.Object3D, detailKey = 'nearShadowDetail'): HullBoxSource | null {
-  const cached = root.userData.groundAoHull as HullBoxSource | null | undefined;
+export function hullProxyOf(root: THREE.Object3D, detailKey = 'nearShadowDetail'): THREE.Mesh | null {
+  const cached = root.userData.groundAoHull as THREE.Mesh | null | undefined;
   if (cached !== undefined) return cached;
   const detail = root.userData[detailKey] as { proxies?: readonly THREE.Object3D[] } | undefined;
   const hull = detail?.proxies?.find((p) => p.name === 'procShadow_hull') as THREE.Mesh | undefined;
-  const source = hull?.geometry ? (hull as unknown as HullBoxSource) : null;
+  const source = hull?.geometry ? hull : null;
   if (source && !source.geometry.boundingBox) source.geometry.computeBoundingBox();
   root.userData.groundAoHull = source;
   return source;
 }
 
+const _rel = new THREE.Matrix4(), _part = new THREE.Matrix4(), _bounds = new THREE.Box3();
+
+/** An object's bounds in its root's frame, from the local poses up the chain (never a stale world matrix). */
+function rootFrameBounds(object: THREE.Object3D, root: THREE.Object3D, geometry: THREE.BufferGeometry, out: THREE.Box3): THREE.Box3 | null {
+  if (!geometry.boundingBox) geometry.computeBoundingBox();
+  if (!geometry.boundingBox || geometry.boundingBox.isEmpty()) return null;
+  _rel.identity();
+  let node: THREE.Object3D | null = object;
+  for (; node && node !== root; node = node.parent) {
+    _rel.premultiply(node.matrixAutoUpdate ? _part.compose(node.position, node.quaternion, node.scale) : node.matrix);
+  }
+  if (node !== root) return null;
+  return out.copy(geometry.boundingBox).applyMatrix4(_rel);
+}
+
+interface ContactGeometryLike {
+  bottomYM?: number | null; panYM?: number | null; halfWidM?: number | null; halfLenM?: number | null; zCenterM?: number | null;
+}
+
+const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+
 /**
- * Per frame (post.ts): the boxes of the near hulls the shadow router selected (lighting.ts publishes the selection
- * on scene.userData.nearVehicles). No allocation: the uniform arrays are written in place.
+ * A hull's three boxes, measured once from the built visual and cached on the root: the contact plane, the belly and
+ * the runs' outer edge from the movement contact geometry (tankFactoryCore.ts / restPoseContact.ts), the hull's width,
+ * length and deck from its shadow proxy, the runs' lanes and length from the track bands. Null without a proxy.
+ */
+export function measureVehicleGroundBoxes(root: THREE.Object3D): VehicleGroundBoxes | null {
+  // a showroom hero has no contact geometry until it is lent to a battle (prepareForSimulation): measure again then
+  const cg = (root.userData.contactGeom as ContactGeometryLike | null | undefined) ?? null;
+  const cached = root.userData.groundAoBoxes as VehicleGroundBoxes | null | undefined;
+  if (cached !== undefined && root.userData.groundAoBoxesFor === cg) return cached;
+  let boxes: VehicleGroundBoxes | null = null;
+  const proxy = hullProxyOf(root);
+  const hull = proxy ? rootFrameBounds(proxy, root, proxy.geometry, new THREE.Box3()) : null;
+  if (hull) {
+    let bandXi = Infinity, bandXo = 0, bandZ0 = Infinity, bandZ1 = -Infinity, bands = 0;
+    root.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (!mesh.isMesh || (mesh.name !== 'gearTrackBandL' && mesh.name !== 'gearTrackBandR')) return;
+      const b = rootFrameBounds(mesh, root, mesh.geometry, _bounds);
+      if (!b) return;
+      const inner = b.min.x > 0 ? b.min.x : b.max.x < 0 ? -b.max.x : 0;
+      bandXi = Math.min(bandXi, inner);
+      bandXo = Math.max(bandXo, Math.abs(b.min.x), Math.abs(b.max.x));
+      bandZ0 = Math.min(bandZ0, b.min.z); bandZ1 = Math.max(bandZ1, b.max.z);
+      bands++;
+    });
+    const ground = finite(cg?.bottomYM) ? cg.bottomYM : hull.min.y - GROUND_AO_CLEARANCE_M;
+    const yb = finite(cg?.panYM) ? Math.max(cg.panYM, ground + 0.1) : Math.max(hull.min.y, ground + 0.1);
+    const xo = finite(cg?.halfWidM) && cg.halfWidM > 0.5 ? cg.halfWidM : bands ? bandXo : Math.max(Math.abs(hull.min.x), hull.max.x);
+    const xi = bands && bandXi > 0.2 && bandXi < xo - 0.1 ? bandXi : Math.max(0.2, xo - GROUND_AO_TRACK_WIDTH_M);
+    const zc = finite(cg?.zCenterM) ? cg.zCenterM : 0.5 * (hull.min.z + hull.max.z);
+    const hl = finite(cg?.halfLenM) ? cg.halfLenM : 0.35 * (hull.max.z - hull.min.z);
+    const tz0 = bands ? bandZ0 : zc - hl - 0.5, tz1 = bands ? bandZ1 : zc + hl + 0.5;
+    const candidate: VehicleGroundBoxes = {
+      hx: Math.max(Math.abs(hull.min.x), Math.abs(hull.max.x), xo), yb, yt: hull.max.y, hz0: hull.min.z, hz1: hull.max.z,
+      xi, xo, y0: ground + GROUND_AO_TRACK_LIFT_M, tz0, tz1,
+    };
+    const valid = candidate.yt > candidate.yb + 0.2 && candidate.yb > candidate.y0 && candidate.xo > candidate.xi
+      && candidate.hz1 > candidate.hz0 && candidate.tz1 > candidate.tz0 && Object.values(candidate).every(finite);
+    boxes = valid ? Object.freeze(candidate) : null;
+  }
+  root.userData.groundAoBoxes = boxes;
+  root.userData.groundAoBoxesFor = cg;
+  return boxes;
+}
+
+const _world = new THREE.Matrix4(), _inv = new THREE.Matrix4();
+
+/**
+ * Per frame (post.ts): the boxes of the near hulls the shadow router selected (lighting.ts publishes the selection on
+ * scene.userData.nearVehicles). Each hull's frame comes from its root's own pose this frame — the renderer refreshes
+ * world matrices only inside the render, a frame after a moving hull. No allocation: every uniform is written in place.
  */
 export function updateVehicleGroundOcclusionUniforms(
   u: VehicleGroundOcclusionUniforms, roots: readonly { readonly root: THREE.Object3D }[] | null | undefined, enabled: boolean,
-  groundAlbedo = GROUND_AO_DEFAULT_ALBEDO,
+  // (QA: __LIGHT_TUNE.GROUND_AO_HULL_ALBEDO / GROUND_AO_BELLY_VIEW tune the interreflection without a rebuild)
+  groundAlbedo = GROUND_AO_DEFAULT_ALBEDO, hullAlbedo = lightTune('GROUND_AO_HULL_ALBEDO', GROUND_AO_HULL_ALBEDO),
+  bellyView = lightTune('GROUND_AO_BELLY_VIEW', GROUND_AO_BELLY_VIEW),
 ): void {
-  u.uVehGroundAlbedo.value = Math.min(Math.max(groundAlbedo, 0), 0.95);
+  u.uVehGroundLight.value.set(Math.min(Math.max(groundAlbedo, 0), 0.95), clamp01(hullAlbedo), clamp01(bellyView), GROUND_AO_UNDER_GROUND);
   let n = 0;
   if (enabled && roots) {
     for (let i = 0; i < roots.length && n < GROUND_AO_MAX_HULLS; i++) {
       const root = roots[i].root;
       if (!root.visible) continue;
-      const hull = hullProxyOf(root);
-      const bb = hull?.geometry.boundingBox;
-      if (!hull || !bb || bb.isEmpty()) continue;
-      _box.copy(bb);
-      _box.min.y -= GROUND_AO_GEAR_DROP_M;
-      _box.getCenter(_c).applyMatrix4(hull.matrixWorld);
-      const e = hull.matrixWorld.elements;
-      _ax.set(e[0], e[1], e[2]); _ay.set(e[4], e[5], e[6]); _az.set(e[8], e[9], e[10]);
-      const sx = _ax.length(), sy = _ay.length(), sz = _az.length();
-      const hx = 0.5 * (_box.max.x - _box.min.x) * sx, hy = 0.5 * (_box.max.y - _box.min.y) * sy, hz = 0.5 * (_box.max.z - _box.min.z) * sz;
-      u.uVehGroundC.value[n].set(_c.x, _c.y, _c.z, Math.max(hx, hz));
-      u.uVehGroundX.value[n].copy(_ax).divideScalar(sx || 1);
-      u.uVehGroundY.value[n].copy(_ay).divideScalar(sy || 1);
-      u.uVehGroundZ.value[n].copy(_az).divideScalar(sz || 1);
-      u.uVehGroundH.value[n].set(hx, hy, hz);
+      const b = measureVehicleGroundBoxes(root);
+      if (!b) continue;
+      _world.compose(root.position, root.quaternion, root.scale);
+      if (root.parent) _world.premultiply(root.parent.matrixWorld);
+      const e = _inv.copy(_world).invert().elements;
+      u.uVehGroundM.value[n * 3].set(e[0], e[4], e[8], e[12]);
+      u.uVehGroundM.value[n * 3 + 1].set(e[1], e[5], e[9], e[13]);
+      u.uVehGroundM.value[n * 3 + 2].set(e[2], e[6], e[10], e[14]);
+      u.uVehGroundB.value[n * 3].set(b.hx, b.yb, b.yt, b.hz0);
+      u.uVehGroundB.value[n * 3 + 1].set(b.hz1, b.xi, b.xo, b.y0);
+      u.uVehGroundB.value[n * 3 + 2].set(b.tz0, b.tz1, 1, 0);
       n++;
     }
   }
   u.uVehGround.value = n;
 }
 
-/** The sky share a point s metres inside the footprint's nearest edge loses (the side-gap law above; W the half width). */
-export function vehicleGroundOcclusionUnder(s: number, W: number, clearance = GROUND_AO_CLEARANCE_M): number {
-  const sin2 = (h: number, d: number): number => { const dd = Math.max(d, 1e-3); return (h * h) / (h * h + dd * dd); };
-  const ss = Math.max(0, Math.min(s, W));
-  return Math.min(GROUND_AO_UNDER, 1 - 0.5 * sin2(clearance, ss) - 0.5 * sin2(clearance, 2 * W - ss));
-}
-
-/** The CPU twin of the GLSL: the occlusion a world point takes from one box (centre c, unit axes, half extents). */
-export function vehicleGroundOcclusionAt(
-  p: THREE.Vector3, c: THREE.Vector3, ax: THREE.Vector3, ay: THREE.Vector3, az: THREE.Vector3, half: THREE.Vector3,
-): number {
-  const dx = p.x - c.x, dy = p.y - c.y, dz = p.z - c.z;
-  const lx = dx * ax.x + dy * ax.y + dz * ax.z, ly = dx * ay.x + dy * ay.y + dz * ay.z, lz = dx * az.x + dy * az.y + dz * az.z;
-  const qx = Math.max(Math.abs(lx) - half.x, 0), qz = Math.max(Math.abs(lz) - half.z, 0);
-  const h = half.y - ly; // the box's top over the point
-  if (h <= 0 || ly < -half.y - 0.6) return 0; // above the box, or well below its foot (a slope under it)
-  const d = Math.hypot(qx, qz);
-  if (d <= 0) return vehicleGroundOcclusionUnder(Math.min(half.x - Math.abs(lx), half.z - Math.abs(lz)), Math.min(half.x, half.z));
-  return Math.min(GROUND_AO_UNDER, vehicleGroundOcclusionBeside(d, h, Math.max(half.x, half.z)));
-}
-
 const f = (x: number): string => x.toFixed(4);
 
 /**
  * The block the aerial fragment includes AFTER `CONTACT_SHADOW_GLSL` (it uses that block's cotSunVisOf, cotNormalAt
- * and ambient uniforms): `cotVehicleGroundShade(uv, P, alpha)` → the multiplier for a ground pixel's colour.
+ * and rig uniforms, and the pass's uSunDir): `cotVehicleGroundShade(uv, P, alpha, dist)` → the multiplier for a ground
+ * pixel's colour (1 = untouched).
  */
 export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
     // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts)
     uniform float uVehGround;
-    uniform vec4 uVehGroundC[ ${GROUND_AO_MAX_HULLS} ];
-    uniform vec3 uVehGroundX[ ${GROUND_AO_MAX_HULLS} ];
-    uniform vec3 uVehGroundY[ ${GROUND_AO_MAX_HULLS} ];
-    uniform vec3 uVehGroundZ[ ${GROUND_AO_MAX_HULLS} ];
-    uniform vec3 uVehGroundH[ ${GROUND_AO_MAX_HULLS} ];
-    uniform float uVehGroundAlbedo;
-    float cotVehicleGroundOcclusion( vec3 P ) {
+    uniform vec4 uVehGroundM[ ${GROUND_AO_MAX_HULLS * 3} ];
+    uniform vec4 uVehGroundB[ ${GROUND_AO_MAX_HULLS * 3} ];
+    uniform vec4 uVehGroundLight;
+    // one silhouette edge of Lambert's projected solid angle: the angle it subtends times the normal's share of its plane
+    float cotVgEdge( vec3 a, vec3 b, vec3 n ) {
+      vec3 c = cross( a, b );
+      float s = length( c );
+      return s > 1e-6 ? atan( s, dot( a, b ) ) * dot( n, c ) / s : 0.0;
+    }
+    // the share of the cosine-weighted sky a box (half extents r) hides from q (relative to its centre), normal n:
+    // Quilez's silhouette hexagon, signed by the octant's mirror parity
+    float cotVgBox( vec3 q, vec3 n, vec3 r ) {
+      vec3 sg = step( 0.0, q ) * 2.0 - 1.0;
+      vec3 fq = r * sg;
+      vec3 si = step( abs( q ), r ) * 2.0 - 1.0;
+      vec3 v0 = normalize( vec3( 1.0, 1.0, -1.0 ) * fq - q );
+      vec3 v1 = normalize( vec3( 1.0, si.x, si.x ) * fq - q );
+      vec3 v2 = normalize( vec3( 1.0, -1.0, 1.0 ) * fq - q );
+      vec3 v3 = normalize( vec3( si.z, si.z, 1.0 ) * fq - q );
+      vec3 v4 = normalize( vec3( -1.0, 1.0, 1.0 ) * fq - q );
+      vec3 v5 = normalize( vec3( si.y, 1.0, si.y ) * fq - q );
+      float k = cotVgEdge( v0, v1, n ) + cotVgEdge( v1, v2, n ) + cotVgEdge( v2, v3, n )
+              + cotVgEdge( v3, v4, n ) + cotVgEdge( v4, v5, n ) + cotVgEdge( v5, v0, n );
+      return clamp( k * sg.x * sg.y * sg.z * ${(1 / (2 * Math.PI)).toFixed(7)}, 0.0, 1.0 );
+    }
+    float cotVehicleGroundShade( vec2 uv, vec3 P, float alpha, float dist ) {
+      float fade = 1.0 - smoothstep( ${f(GROUND_AO_RANGE_M - GROUND_AO_FADE_M)}, ${f(GROUND_AO_RANGE_M)}, dist );
+      float sunVis = cotSunVisOf( alpha );
+      // what a blocked direction keeps of its darkening: one minus the occluder's own light over the sky's (first-order
+      // interreflection) — the belly lit by the open ground it glimpses, a wall by half sky and half ground
+      float aUp = uContactAmb.x + uContactAmb.z + uContactAmb.w * max( uContactFillDir.y, 0.0 );
+      float kSun = uContactSunLum * max( uSunDir.y, 0.0 ) / max( aUp, 1e-4 );
+      vec4 lt = uVehGroundLight;
+      float sBelly = clamp( 1.0 - lt.y * lt.x * ( lt.z * ( 1.0 + kSun ) + ( 1.0 - lt.z ) * lt.w ), 0.0, 1.0 );
+      float sWall = clamp( 1.0 - lt.y * ( 0.5 + 0.5 * lt.x * ( 1.0 + 0.5 * kSun ) ), 0.0, 1.0 );
+      vec3 N = vec3( 0.0, 1.0, 0.0 );
+      bool haveN = false;
       float vis = 1.0;
       for ( int i = 0; i < ${GROUND_AO_MAX_HULLS}; i++ ) {
         if ( float( i ) >= uVehGround ) break;
-        vec3 d = P - uVehGroundC[ i ].xyz;
-        vec3 l = vec3( dot( d, uVehGroundX[ i ] ), dot( d, uVehGroundY[ i ] ), dot( d, uVehGroundZ[ i ] ) );
-        vec3 hf = uVehGroundH[ i ];
-        float h = hf.y - l.y;
-        if ( h <= 0.0 || l.y < -hf.y - 0.6 ) continue;
-        float dist = length( max( abs( l.xz ) - hf.xz, vec2( 0.0 ) ) );
-        float occ;
-        if ( dist <= 0.0 ) {
-          // under the belly: the sky through the two side gaps (continuous with the side at the edge)
-          float W = min( hf.x, hf.z );
-          float si = clamp( min( hf.x - abs( l.x ), hf.z - abs( l.z ) ), 0.0, W );
-          float c2 = ${f(GROUND_AO_CLEARANCE_M * GROUND_AO_CLEARANCE_M)};
-          float g1 = max( si, 1e-3 ), g2 = max( 2.0 * W - si, 1e-3 );
-          occ = min( ${f(GROUND_AO_UNDER)}, 1.0 - 0.5 * c2 / ( c2 + g1 * g1 ) - 0.5 * c2 / ( c2 + g2 * g2 ) );
-        } else {
-          float dd = max( dist, 0.05 );
-          float s = h / sqrt( h * h + dd * dd );
-          occ = min( ${f(GROUND_AO_UNDER)}, 0.5 * s * s * ${f(2 / Math.PI)} * atan( uVehGroundC[ i ].w / dd ) );
+        vec4 m0 = uVehGroundM[ i * 3 ], m1 = uVehGroundM[ i * 3 + 1 ], m2 = uVehGroundM[ i * 3 + 2 ];
+        vec3 q = vec3( dot( m0.xyz, P ) + m0.w, dot( m1.xyz, P ) + m1.w, dot( m2.xyz, P ) + m2.w );
+        vec4 b0 = uVehGroundB[ i * 3 ], b1 = uVehGroundB[ i * 3 + 1 ], b2 = uVehGroundB[ i * 3 + 2 ];
+        float H = b0.z - b1.w;
+        float hcz = 0.5 * ( b0.w + b1.x ), hhz = 0.5 * ( b1.x - b0.w );
+        vec2 dd = vec2( abs( q.x ) - b0.x, abs( q.z - hcz ) - hhz );
+        float dOut = length( max( dd, vec2( 0.0 ) ) );
+        if ( dOut > H * ${f(GROUND_AO_REACH[1])} || q.y > b0.z || q.y < b1.w - H * ${f(GROUND_AO_REACH[1])} ) continue;
+        if ( !haveN ) { haveN = true; if ( sunVis >= 0.0 ) N = cotNormalAt( uv, P ); }
+        vec3 n = normalize( vec3( dot( m0.xyz, N ), dot( m1.xyz, N ), dot( m2.xyz, N ) ) );
+        // each box clipped at the receiver's horizon (exact for a level receiver; a wall facing the hull keeps it whole)
+        float yc = q.y + 0.002 - ${f(GROUND_AO_CLIP_SLACK_M)} * ( 1.0 - n.y );
+        float ho = 0.0;
+        float bot = max( b0.y, yc );
+        if ( bot < b0.z ) {
+          ho += ( 1.0 - smoothstep( H * ${f(GROUND_AO_REACH[0])}, H * ${f(GROUND_AO_REACH[1])}, dOut ) )
+            * cotVgBox( vec3( q.x, q.y - 0.5 * ( bot + b0.z ), q.z - hcz ), n, vec3( b0.x, 0.5 * ( b0.z - bot ), hhz ) );
         }
-        vis *= 1.0 - occ;
+        // the two runs under the belly; a run is hidden from a receiver past the other one
+        float tb = max( b1.w, yc );
+        if ( tb < b0.y ) {
+          float th = b0.y - b1.w, span = max( b1.z - b1.y, 1e-3 );
+          vec3 r = vec3( 0.5 * ( b1.z - b1.y ), 0.5 * ( b0.y - tb ), 0.5 * ( b2.y - b2.x ) );
+          float cx = 0.5 * ( b1.y + b1.z ), cy = 0.5 * ( tb + b0.y ), cz = 0.5 * ( b2.x + b2.y );
+          vec2 dl = vec2( abs( q.x + cx ) - r.x, abs( q.z - cz ) - r.z );
+          float wl = clamp( ( b1.z - q.x ) / span, 0.0, 1.0 )
+            * ( 1.0 - smoothstep( th * ${f(GROUND_AO_TRACK_REACH[0])}, th * ${f(GROUND_AO_TRACK_REACH[1])}, length( max( dl, vec2( 0.0 ) ) ) ) );
+          if ( wl > 0.0 ) ho += wl * cotVgBox( vec3( q.x + cx, q.y - cy, q.z - cz ), n, r );
+          vec2 dr = vec2( abs( q.x - cx ) - r.x, abs( q.z - cz ) - r.z );
+          float wr = clamp( ( q.x + b1.z ) / span, 0.0, 1.0 )
+            * ( 1.0 - smoothstep( th * ${f(GROUND_AO_TRACK_REACH[0])}, th * ${f(GROUND_AO_TRACK_REACH[1])}, length( max( dr, vec2( 0.0 ) ) ) ) );
+          if ( wr > 0.0 ) ho += wr * cotVgBox( vec3( q.x - cx, q.y - cy, q.z - cz ), n, r );
+        }
+        // the belly's strength under the hull, the walls' beside it, blended across the footprint's edge
+        float sd = dOut + min( max( dd.x, dd.y ), 0.0 );
+        vis *= 1.0 - min( ho, 1.0 ) * mix( sWall, sBelly, 1.0 - smoothstep( ${f(-GROUND_AO_EDGE_M)}, ${f(GROUND_AO_EDGE_M)}, sd ) ) * b2.z;
       }
-      return 1.0 - vis;
-    }
-    float cotVehicleGroundShade( vec2 uv, vec3 P, float alpha, float dist ) {
-      float occ = cotVehicleGroundOcclusion( P )
-        * ( 1.0 - smoothstep( ${f(GROUND_AO_RANGE_M - GROUND_AO_FADE_M)}, ${f(GROUND_AO_RANGE_M)}, dist ) );
+      float occ = ( 1.0 - vis ) * fade;
       if ( occ <= 0.003 ) return 1.0;
-      // the light the bright ground returns by interreflection (Jimenez et al. 2016's multi-bounce fit, the map's albedo)
-      float mbV = 1.0 - occ, mbR = uVehGroundAlbedo;
-      occ = 1.0 - max( mbV, ( ( ( 2.0404 * mbR - 0.3324 ) * mbV + ( 0.6417 - 4.7951 * mbR ) ) * mbV + ( 2.7552 * mbR + 0.6903 ) ) * mbV );
-      float vis = cotSunVisOf( alpha );
       float ambShare = ${f(GROUND_AO_CARD_AMBIENT_SHARE)};
-      if ( vis >= 0.0 ) {
-        vec3 N = cotNormalAt( uv, P );
-        float T = uContactSunLum * max( dot( N, uSunDir ), 0.0 ) * clamp( vis, 0.0, 1.0 );
+      if ( sunVis >= 0.0 ) {
+        float T = uContactSunLum * max( dot( N, uSunDir ), 0.0 ) * clamp( sunVis, 0.0, 1.0 );
         float A = mix( uContactAmb.y, uContactAmb.x, N.y * 0.5 + 0.5 ) + uContactAmb.z
           + uContactAmb.w * max( dot( N, uContactFillDir ), 0.0 );
         ambShare = A / max( T + A, 1e-4 );
