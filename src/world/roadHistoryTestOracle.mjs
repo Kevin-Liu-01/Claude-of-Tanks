@@ -76,7 +76,7 @@ const reliefLawSource = referenceSource
   // the map-borders lane (2026-10-03): the rim's relief law is the border landform's lift (borderLandform.ts) with the
   // round-47 water gate and coast fade on it — the placement sampler reproduces that current field
   .replace(historicalRim,
-  '    const rimRadius = Math.max(Math.abs(x), Math.abs(z));\n    const rimLift = roadsOn ? border.liftAt(x, z, rimRadius) : border.classicLiftAt(rimRadius);\n    const rimKeep = rimLift > 0 ? coastRimKeep(x, z) : 1;\n    h += rimLift * (1 - waterWeight) * rimKeep;\n    reliefRoadRimShift = roadsOn && rimRadius > 430 ? (rimLift - border.classicLiftAt(rimRadius)) * (1 - waterWeight) * rimKeep : 0;\n')
+  '    const rimRadius = Math.max(Math.abs(x), Math.abs(z));\n    const rimLift = roadsOn ? border.liftAt(x, z, rimRadius, gridSample(gRoadDist, x, z)) : border.classicLiftAt(rimRadius);\n    const rimKeep = rimLift > 0 ? coastRimKeep(x, z) : 1;\n    h += rimLift * (1 - waterWeight) * rimKeep;\n    reliefRoadRimShift = roadsOn && rimRadius > 430 ? (rimLift - border.classicLiftAt(rimRadius)) * (1 - waterWeight) * rimKeep : 0;\n')
   // the road plane's shift (terrain.ts roadRimShift) reaches the historical road blend, which lives in the constraints
   // function, through one closure variable reset at the head of every query (a water core never sets it)
   .replace(historicalNoise, historicalNoise + '  let reliefRoadRimShift = 0;\n')

@@ -30,6 +30,13 @@ export const BORDER_EDGE_M = 512;
 const RIM_AT_PLAYABLE = (() => { const t = (470 - 430) / 82, s = t * t * (3 - 2 * t); return s * s; })();
 /** Metres past the playable edge over which the square's rim hands over to the outland. */
 const HANDOVER_M = 40;
+/**
+ * A road keeps the classic rim across the playable band (its grades were authored on that rim, and a road's grade is a
+ * driving law): full within ROAD_HOLD_IN_M of its centre line, the landform from ROAD_HOLD_OUT_M, handed over to the
+ * landform between the red line and the edge — so a road leaves the square over a low rise, never on an embankment.
+ */
+const ROAD_HOLD_IN_M = 18;
+const ROAD_HOLD_OUT_M = 95;
 /** Field-boundary levels per unit of the two parcel fields: parcels ~50–150 m across. */
 const FIELD_LEVELS = 1.6;
 const _field = { a: 0, b: 0 };
@@ -153,9 +160,10 @@ export interface BorderLandform {
   /**
    * The rim lift in metres at (x, z) for a square radius r (max(|x|, |z|)), replacing rimH · s(r)²: below 430 m nothing,
    * inside the playable square the classic curve times the rim factor (<= 1), past the playable edge the outland's
-   * hills. Callers keep their water, coast and road weights on top.
+   * hills. Callers keep their water, coast and road weights on top. Given the distance to the nearest road, the band
+   * keeps the classic rim along it (ROAD_HOLD_IN_M … ROAD_HOLD_OUT_M), handed over to the landform by the edge.
    */
-  liftAt(x: number, z: number, r: number): number;
+  liftAt(x: number, z: number, r: number, roadDistance?: number): number;
   /** The classic rim lift rimH · s(r)² (s = smoothstep(430, 512, r)): what authoring queries (road grades, pads) keep. */
   classicLiftAt(r: number): number;
   /** The rim factor of the playable band at (x, z): 1 keeps the classic rim, rimFloor is the most open. */
@@ -374,7 +382,7 @@ export function createBorderLandform(
       return out;
     },
     woodsAt,
-    liftAt(x: number, z: number, r: number): number {
+    liftAt(x: number, z: number, r: number, roadDistance = Infinity): number {
       if (r <= BORDER_RIM_START_M) return 0;
       const a = enclosureAt(x, z);
       const k = nearLevelAt(x, z, a) / RIM_AT_PLAYABLE;
@@ -388,6 +396,11 @@ export function createBorderLandform(
       if (anchors.length) {
         const c = anchorAt(x, z);
         if (c > 0) lift += (s * s - lift) * c; // the classic rim and its plateau (s = 1 past the edge)
+      }
+      if (roadDistance < ROAD_HOLD_OUT_M && r < BORDER_EDGE_M) {
+        const hold = (1 - smoothstep(ROAD_HOLD_IN_M, ROAD_HOLD_OUT_M, roadDistance))
+          * (1 - smoothstep(BORDER_PLAYABLE_M - 2, BORDER_EDGE_M, r));
+        lift += (s * s - lift) * hold;
       }
       return lift * rimH;
     },

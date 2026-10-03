@@ -1569,7 +1569,7 @@ function* heightFieldBuildSteps(
     // square the classic S-curve, only ever lowered; past it, the outland's hills. Authoring queries (road node grades,
     // pad seats, lake levels: roads off) keep the classic rim, so every road grade, pad and lake level inside the square
     // is exactly what it was and nothing ripples into the playable ground through the grade smoothing.
-    const rimLift = roadsOn ? border.liftAt(x, z, borderRadius) : border.classicLiftAt(borderRadius);
+    const rimLift = roadsOn ? border.liftAt(x, z, borderRadius, rd) : border.classicLiftAt(borderRadius);
     const rimKeep = rimLift > 0 ? coastRimKeep(x, z) : 1;
     // CW also contains old deployment lanes. Only the two inward pilots
     // limit the new earthwork to actual road shoulders, with a smooth join.
@@ -1583,7 +1583,8 @@ function* heightFieldBuildSteps(
     h += rimLift * (1 - waterWeight) * rimKeep * roadRimWeight(borderCorridorStart, roadsOn, boundedRoadCorridor, cw, roadCorridorWeight);
     // The road grades were authored on the classic rim; a final query's road plane follows the landform's rim instead
     // (the difference, weighted as the authoring weighted the rim), so a road that climbed the old rim never stands on
-    // an embankment where the land was lowered. Zero inside 430 m, where both rims are nothing.
+    // an embankment where the land was lowered. Zero inside 430 m, where both rims are nothing, and along a road inside
+    // the playable square, where the landform keeps the classic rim (its road hold), so every grade there is authored.
     const roadRimShift = roadsOn && borderRadius > 430
       ? (rimLift - border.classicLiftAt(borderRadius)) * (1 - waterWeight) * rimKeep
         * roadRimWeight(borderCorridorStart, false, boundedRoadCorridor, cw, roadCorridorWeight) : 0;
