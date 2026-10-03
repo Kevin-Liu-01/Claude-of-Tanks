@@ -93,6 +93,10 @@ interface HorizonConfig {
   /** The mountains lane (2026-10-02): the tableland bed stair (horizonEscarpment.ts) — overrides of the mesa style's
    * default (a block on another style opts that ring in), or false for none. */
   escarpment?: Partial<EscarpmentSettings> | false;
+  /** The mountains lane (2026-10-03): false marks an authored escarpment as a massif's shoulders rather than a
+   * tableland (Frosthollow): its summits keep standing (no table opening on the ring) and the far range keeps its
+   * peaks (no far plateaus). */
+  tableland?: false;
   /** The mountains lane (2026-10-02): false keeps a ranged ring's round-72b relief (no eroded landform, no range
    * twist) — the receipts' negative control and an authoring opt-out; an object overrides the character's landform
    * knobs (horizonMassif.ts MassifSettings) for this ring and its far range. */
@@ -1911,9 +1915,11 @@ function* carveHorizonMassifsSteps(
 const MESA_ESCARPMENT: EscarpmentSettings = {
   bedM: [36, 70], cliffShare: [0.28, 0.48], talusRise: 0.32, talusCurve: 2.2, dipPerKm: 6, meanderM: 24, meanderWavelengthM: 300,
 };
-/** The tableland rings' side canyons: the eroded landform cutting into the tables (cut only: min(1, multiplier + bias)). */
+/** The tableland rings' side canyons: the eroded landform cutting into the tables (cut only: min(1, multiplier + bias)).
+ * Its base only (erosion 0, 2026-10-03): the drainage octaves cut the crest into a row of narrow fins that the bed stair
+ * stood up as crenellations along Sirocco Wadi's and Copper Mesa's skylines; the base cuts broad embayments. */
 const MESA_CANYONS: MassifSettings = { baseWavelengthM: 1000, gullyWavelengthM: 380, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2.5, branch: 2.5,
-  erosion: 0.5, concavity: 1.0, contrast: 0.5, smoothM: 0 };
+  erosion: 0, concavity: 1.0, contrast: 0.5, smoothM: 0 };
 const MESA_CANYON_BIAS = 0.22;
 
 /** The plain the tablelands stand on: 0.8 x the lowest non-skirt row base (amp included). */
@@ -1942,7 +1948,15 @@ function* carveHorizonEscarpmentsSteps(ring: HorizonRingGeometry, horizon: Horiz
   for (let i = 0; i < rows.length; i++) weights[i] = rows[i].skirt ? 0 : 1;
   const field = createEscarpmentField(((seed ^ 0x5E5C) ^ idHash(mapId)) >>> 0, settings);
   yield* carveEscarpmentRingSteps({ columns: HORIZON_SEGMENTS, rowCount: rows.length, positions: ring.positions, heights: ring.heights, floors, weights,
-    weightAt: (x, z) => smoothstep(70, 230, Math.max(Math.abs(x), Math.abs(z)) - 512) }, field, { talusFill: 0.34 });
+    weightAt: (x, z) => smoothstep(70, 230, Math.max(Math.abs(x), Math.abs(z)) - 512) }, field, {
+    talusFill: 0.34,
+    // a massif's shoulders (an alpine ring) keep the ring's own ledger bound (horizonResources: 3:1 or the authored
+    // slope doubled); the tablelands' cliffs take the stair's 3.6:1
+    maxSlope: style === 'alpine' ? 3.0 : 3.6,
+    // the tables' anti-spire opening: not on a massif (its summits stand) nor on Redrock, whose canyon is authored with
+    // unequal flanks (redrockCanyonHorizon.selftest.mjs) that the opening would level to one bed top
+    tables: horizon.tableland !== false && !(mapId === 'badlands' && horizon.redrockCanyon !== false),
+  });
   let maxHeight = 1;
   for (let i = HORIZON_SEGMENTS * 2; i < ring.heights.length; i++) if (ring.heights[i] > maxHeight) maxHeight = ring.heights[i];
   ring.maxHeight = maxHeight;
@@ -1973,7 +1987,7 @@ function farMassifSettings(ring: MassifSettings | null): MassifSettings {
  * few hundred metres apart, so only the big tiers read: flat tops stepping down the far skyline); null elsewhere. */
 function farEscarpmentSettings(horizon: HorizonConfig, style: HorizonStyle): EscarpmentSettings | null {
   const authored = typeof horizon.escarpment === 'object' && horizon.escarpment !== null;
-  if ((style !== 'mesa' && !authored) || horizon.escarpment === false) return null;
+  if ((style !== 'mesa' && !authored) || horizon.escarpment === false || horizon.tableland === false) return null;
   const near: EscarpmentSettings = { ...MESA_ESCARPMENT, ...(authored ? horizon.escarpment as Partial<EscarpmentSettings> : {}) };
   return { ...near, bedM: [near.bedM[0] * 2.6, near.bedM[1] * 2.6], meanderM: near.meanderM * 2.6, meanderWavelengthM: near.meanderWavelengthM * 2.2 };
 }

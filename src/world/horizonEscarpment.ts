@@ -20,6 +20,9 @@
 // metres of height) is added first, so straight table edges break into buttresses and embayments; the beds' cliff
 // share wanders slowly round the ring, so a cliff pinches out into a slope here and thickens there.
 
+/** Half the narrowest rise the ring's bed stair keeps standing (m): narrower summits come down to their shoulder. */
+const SPIRE_HALF_M = 30;
+
 export interface EscarpmentSettings {
   /** Bed thickness range (m): each bed is one cliff over one talus slope. */
   bedM: readonly [number, number];
@@ -34,6 +37,8 @@ export interface EscarpmentSettings {
   /** Plan meander amplitude (m of height) and wavelength (m): buttresses and embayments along the table edges. */
   meanderM: number;
   meanderWavelengthM: number;
+  /** Share of the stair blended into the ring (default 1): below one the beds soften into shoulders on a massif. */
+  strength?: number;
 }
 
 export interface EscarpmentRingInput {
@@ -141,6 +146,9 @@ export function createEscarpmentField(seed: number, settings: EscarpmentSettings
  */
 export function* carveEscarpmentRingSteps(input: EscarpmentRingInput, field: EscarpmentField, options: {
   talusFill?: number; maxSlope?: number;
+  /** A tableland's (default): summits narrower than about 60 m come down to their shoulders (stage 3b); false keeps a
+   * massif's summits standing (an alpine ring's shoulders). */
+  tables?: boolean;
 } = {}): Generator<void, number, void> {
   const { columns: n, rowCount, positions: p, heights: h, floors, weights, weightAt } = input;
   const weight = new Float32Array(n * rowCount);
@@ -153,6 +161,7 @@ export function* carveEscarpmentRingSteps(input: EscarpmentRingInput, field: Esc
     }
   }
   // (1) + (2): the meander follows the input's own slope (central differences on the grid) so caps and floors keep one level
+  const strength = clamp(field.settings.strength ?? 1, 0, 1);
   const src = Float32Array.from(h);
   const rOf0 = (i: number): number => Math.hypot(p[i * 3], p[i * 3 + 2]);
   for (let i = 0; i < n * rowCount; i++) {
@@ -170,7 +179,7 @@ export function* carveEscarpmentRingSteps(input: EscarpmentRingInput, field: Esc
     const radial = sideA((src[i] - src[im]) / Math.max(1, rOf0(i) - rOf0(im)), (src[ip] - src[i]) / Math.max(1, rOf0(ip) - rOf0(i)));
     const slope = Math.max(along, radial);
     const stepped = field.apply(x, z, h[i], floors[row], clamp((slope - 0.08) / 0.3, 0, 1));
-    h[i] += (stepped - h[i]) * w;
+    h[i] += (stepped - h[i]) * w * strength;
     if (k === n - 1 && (row & 7) === 7) yield;
   }
   yield;
@@ -204,6 +213,27 @@ export function* carveEscarpmentRingSteps(input: EscarpmentRingInput, field: Esc
       if (apron > h[i]) h[i] += (apron - h[i]) * w;
     }
   }
+  // (3b) no spires: a grey-scale opening along each row over about 60 m (openRowTables below) brings every summit
+  // narrower than that down to the shoulder it stands on, blended by the vertex's weight — the bed stair turns a
+  // narrow rise into a stack of cliffs (its cliff band steepens what it takes ~1.8 x), and a crest of such rises read
+  // as crenellations (the coordinator's review of Sirocco Wadi, 2026-10-03); buttresses and tables are wider and keep
+  // their outline. Lowering only, like every bound below.
+  if (options.tables !== false) {
+    const row0 = new Float32Array(n), scratch = new Float32Array(n);
+    for (let row = 0; row < rowCount; row++) {
+      if (weights[row] <= 0) continue;
+      const off = row * n;
+      const r = Math.hypot(p[off * 3], p[off * 3 + 2]);
+      const half = Math.max(1, Math.round(SPIRE_HALF_M / Math.max(1, (2 * Math.PI * r) / n)));
+      for (let k = 0; k < n; k++) row0[k] = h[off + k];
+      openRowTables(row0, 0, n, half, scratch);
+      for (let k = 0; k < n; k++) {
+        const i = off + k, w = weight[i];
+        if (w > 0 && row0[k] < h[i]) h[i] += (row0[k] - h[i]) * w;
+      }
+    }
+  }
+  yield;
   // (4) the cliffs' bound: no face between two rows (or two columns) steeper than `maxSlope` — a cliff, never a vertical
   // sheet of stretched triangles (forward then backward per column over the active rows, then round each row)
   const maxSlope = options.maxSlope ?? 3.6;

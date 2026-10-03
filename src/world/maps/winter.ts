@@ -313,6 +313,15 @@ export default {
     // rib texture compressed to nothing)
     baseHex: 0x76839a, amp: 1.04, style: 'alpine', snowline: 0.24,
     rockHex: 0x424c66, snowHex: 0xdfe7f1, haze: 0.60,
+    // the mountains lane (2026-10-03, the coordinator's review: "the right-hand massif face is a smooth sheared slab with
+    // vertical striations"): the eroded landform carved the cone into a massif but left its face one steep plane at the
+    // ledger's bound. Shoulders — the bed stair at an alpine scale (beds 120-200 m, mostly wall, benches rising a fifth
+    // of a bed, tilted 30 m/km, the faces wandering 50 m in plan over 220 m: spurs and recesses), blended at 0.7 so
+    // the beds soften into shoulders, on the ring alone (not a tableland: its summits and its far peaks stand) — and
+    // couloirs: the landform's drainage deeper and broader (erosion 0.8 over 420 m first gullies)
+    escarpment: { bedM: [120, 200], cliffShare: [0.5, 0.75], talusRise: 0.22, talusCurve: 1.6, dipPerKm: 30, meanderM: 50, meanderWavelengthM: 220, strength: 0.7 },
+    tableland: false,
+    massif: { erosion: 0.8, gullyWavelengthM: 420 },
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)

@@ -150,6 +150,44 @@ function syntheticRing(rows, heightAt) {
   assert.ok(tiers > n * 0.5, `the ramp became tiers at most columns (${tiers} of ${n})`);
 }
 
+// --- no spires on a table, a massif's summits stand, a softened stair moves less (2026-10-03) ------------------------
+// (the coordinator's review: Sirocco Wadi's crest stood a row of narrow pinnacles — the side canyons' drainage cut fins
+// that the stair raised as cliffs — and Frosthollow's massif face was one sheared slab)
+{
+  const rows = 14;
+  // a table at 300 m from row 6 out, a spire two columns wide on its crest rising to 380 m, a broad buttress (24
+  // columns) rising to 360 m elsewhere on the crest
+  const spireAt = (k) => (k === 40 || k === 41);
+  const buttressAt = (k) => k >= 200 && k < 224;
+  const heightAt = (a, r, row, k) => (row < 6 ? 30 + row * 40 : spireAt(k) ? 380 : buttressAt(k) ? 360 : 300);
+  const settings = { bedM: [36, 70], cliffShare: [0.28, 0.48], talusRise: 0.32, talusCurve: 2.2, dipPerKm: 0, meanderM: 0, meanderWavelengthM: 300 };
+  const run = (options, extra = {}) => {
+    const ring = syntheticRing(rows, heightAt);
+    const floors = new Float32Array(rows).fill(30), weights = new Float32Array(rows);
+    for (let row = 6; row < rows; row++) weights[row] = 1;
+    carveEscarpmentRing({ columns: n, rowCount: rows, positions: ring.positions, heights: ring.heights, floors, weights },
+      createEscarpmentField(0x5e5c, { ...settings, ...extra }), options);
+    return ring.heights;
+  };
+  const tables = run({}), massif = run({ tables: false });
+  const crest = rows - 2, at = (h, k) => h[crest * n + k];
+  const shoulder = Math.max(at(tables, 36), at(tables, 45));
+  assert.ok(at(tables, 40) <= shoulder + 0.5 && at(tables, 41) <= shoulder + 0.5,
+    `a spire two columns wide comes down to its shoulder on a table (${at(tables, 40).toFixed(1)} vs ${shoulder.toFixed(1)})`);
+  assert.ok(at(tables, 212) > shoulder + 20, `a buttress 24 columns wide keeps its height (${at(tables, 212).toFixed(1)})`);
+  assert.ok(at(massif, 40) > Math.max(at(massif, 36), at(massif, 45)) + 20, `a massif's summit stands (tables: false; ${at(massif, 40).toFixed(1)})`);
+  // the stair blended at half strength moves the table's open interior (away from the spire, the buttress and the
+  // table's edge, where the bounds rule) about half as far as the full stair, on average
+  const raw = syntheticRing(rows, heightAt).heights, half = run({ tables: false }, { strength: 0.5 });
+  let fullMove = 0, halfMove = 0;
+  for (let row = 8; row < rows; row++) for (let k = 80; k < 180; k++) {
+    const i = row * n + k;
+    fullMove += Math.abs(massif[i] - raw[i]); halfMove += Math.abs(half[i] - raw[i]);
+  }
+  assert.ok(fullMove > 0 && halfMove > fullMove * 0.35 && halfMove < fullMove * 0.65,
+    `a stair at half strength moves the table about half as far (${(halfMove / fullMove).toFixed(2)} of the full stair)`);
+}
+
 // --- the far tables: the opening along a closed far row brings a narrow summit down to its shoulder ---------------
 {
   const N = 120, h = new Float32Array(N).fill(100), scratch = new Float32Array(N);
@@ -231,17 +269,17 @@ function skylineCones(ring) {
 const coneReport = {};
 let carvedTotal = 0, plainTotal = 0;
 // the three cone maps the owner named, the polar station and the two ranged maps with the most cones in the round-72b
-// ring (2026-10-02, 3 seeds x 5 eyes: winter 12 -> 0, frontier 13 -> 0, caldera 16 -> 8, whiteout 22 -> 5,
-// alpine 12 -> 3, cliffbridge 36 -> 6; fleet-wide 224 -> 73. Nordhavn Fjord and Earthrise Basin keep their round-72b
-// rings (massif: false — the carve smoothed Fjord's serrated crest into a wall, 3 -> 11, and drew straight-flanked
-// pyramids on the airless walls, 0 -> 13); Jade River Delta 0 -> 7 and Steinburg 2 -> 4 from the range twist: noted,
-// not gated)
+// ring — the control is that ring itself, both passes off (2026-10-03, 3 seeds x 5 eyes: winter 12 -> 1, frontier
+// 13 -> 0, caldera 47 -> 1, whiteout 22 -> 5, alpine 12 -> 3, cliffbridge 36 -> 6; fleet-wide 272 -> 65. Nordhavn
+// Fjord and Earthrise Basin keep their round-72b rings (massif: false — the carve smoothed Fjord's serrated crest into
+// a wall, 3 -> 11, and drew straight-flanked pyramids on the airless walls, 0 -> 13); Jade River Delta 0 -> 7 and
+// Steinburg 2 -> 4 from the range twist: noted, not gated)
 for (const id of ['winter', 'frontier', 'caldera', 'whiteout', 'alpine', 'cliffbridge']) {
   const config = getMapConfig(id);
   let carved = 0, plain = 0;
   for (const seed of [1337, 2049, 7719]) {
     carved += skylineCones(sampleHorizonGeometry(config, seed)).over70;
-    plain += skylineCones(sampleHorizonGeometry({ ...config, horizon: { ...config.horizon, massif: false } }, seed)).over70;
+    plain += skylineCones(sampleHorizonGeometry({ ...config, horizon: { ...config.horizon, massif: false, escarpment: false } }, seed)).over70;
   }
   coneReport[id] = { carved, plain };
   carvedTotal += carved; plainTotal += plain;
