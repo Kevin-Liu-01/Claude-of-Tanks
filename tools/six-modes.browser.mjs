@@ -4,7 +4,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createCaptureLock } from './capture-lock.mjs';
 import { withMapProbeSession, openGamePage, beginSoloBattle } from './map-probe-runtime.mjs';
-const out=resolve('.qa-dev/six-modes');mkdirSync(out,{recursive:true});
+const remote=process.env.COT_MODE_VERIFY_URL;
+const out=resolve(remote?'.qa-dev/six-modes-live':'.qa-dev/six-modes');mkdirSync(out,{recursive:true});
 const lock=createCaptureLock();let heartbeat;
 const reports=[];
 const battleModes=process.env.COT_AERIAL_ONLY?['drone','ac130']:['drone','ac130','juggernaut','infected','realistic','gun_game'];
@@ -18,7 +19,7 @@ try{
   const mobile=!!initialViewport.isMobile;
   if(process.env.COT_AERIAL_TOUCH_ONLY&&!mobile)continue;
   const suffix=mobile?(initialViewport.width<500?'touch-small':'touch'):'desktop';
-  const {page,errors}=await openGamePage(browser,{port,viewport:initialViewport});
+  const {page,errors}=remote?await openPublishedPage(browser,remote,initialViewport):await openGamePage(browser,{port,viewport:initialViewport});
   page.on('console',message=>{if(message.type()==='error')console.error('browser:',message.text().slice(0,500));});
   await page.click('.cot-battle-mode');
   for(const mode of ['juggernaut','infected','realistic','gun_game','drone','ac130']){
@@ -30,7 +31,7 @@ try{
   await page.screenshot({path:resolve(out,`garage-modes-${suffix}.png`)});
   await page.click('[data-battle-close]');
   for(const mode of battleModes){
-   await page.evaluate(async mode=>{const {writeTeamArrangement}=await import('/src/game/teamArrangement.ts');writeTeamArrangement(mode,mode==='ac130'?{allies:4,enemies:8}:{allies:1,enemies:2});},mode);
+   if(!remote)await page.evaluate(async mode=>{const {writeTeamArrangement}=await import('/src/game/teamArrangement.ts');writeTeamArrangement(mode,mode==='ac130'?{allies:4,enemies:8}:{allies:1,enemies:2});},mode);
    console.log('six-modes: entering',mode,suffix);
    await beginSoloBattle(page,{specId:'m1a2',mapId:'verdant',gameMode:mode});
    assert.equal(await page.evaluate(()=>window.__DEBUG.game.gameMode),mode);
@@ -109,3 +110,11 @@ try{
   console.log('six-modes: all mode entries, FPV controls, orbit and compact screenshots passed');
  });
 }finally{clearInterval(heartbeat);lock.release();}
+
+async function openPublishedPage(browser,url,viewport){
+ const page=await browser.newPage(),errors=[];
+ await page.setViewport({...viewport,deviceScaleFactor:1});page.on('pageerror',error=>errors.push(String(error.message)));
+ await page.goto(url+'/?nosplash=1&tier=desktop&gfxreset=1',{waitUntil:'domcontentloaded',timeout:180000});
+ await page.waitForFunction('window.__GAME_READY === true',{timeout:300000});
+ return {page,errors};
+}
