@@ -248,7 +248,7 @@ interface ActorClient {
  */
 export const SNAPSHOT_SKIP_BYTES = 16 * 1024;
 /**
- * How many snapshots apart the viewer's movement checkpoint (the 44-float integrator state its prediction rewinds to)
+ * How many snapshots apart the viewer's movement checkpoint (the 46-float integrator state its prediction rewinds to)
  * rides: every one. It is 48 of ≈ 206 kbit/s per viewer at 30 Hz (P3b's attribution, 2026-09-29) and a 10 Hz cadence
  * was tried: 3 cm of own misprediction in `snapshotRate.selftest`, but at 14v14 in the soak 257 hard snaps and 1.19 m
  * of end desync against 60 and 0.15 m with a checkpoint every snapshot — the predictor replaying from the row alone

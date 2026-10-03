@@ -98,7 +98,10 @@ import {
   totalAmmunitionCapacity,
 } from '../sim/ammunition.ts';
 import { createAI, roleOf, type AiOrder } from './ai.ts';
-import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.ts';
+import {
+  collectNavigationWrecks, createBotNavigationGrid, planBotRoute, syncNavigationWrecks,
+  type NavigationWreck,
+} from '../sim/botRoutePlanner.ts';
 import {
   pushHullFromHull,
   hullPassesObstacleTop, pushHullFromObstacle,
@@ -312,6 +315,10 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   jev?: JevCommander | null;
   _jevView?: JevBattleView | null;
   _ramPairT?: Map<string, number>;
+  /** The bots' navigation grid for this battle and its wreck footprints (synced like the authority's). */
+  _botNavigation?: Readonly<BotNavigationGrid> | null;
+  _navigationWrecks?: NavigationWreck[];
+  _navigationWreckTicks?: number;
 }
 
 interface SpawnPoint {
@@ -1050,9 +1057,10 @@ function createBattleBot(
     rng: mulberry32(7000 + entityIndex),
     deps: {
       ...context.aiDependencies,
-      planRoute: (start: { x: number; z: number }, goal: { x: number; z: number }) => planBotRoute({
+      planRoute: (start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
+        options?: { requireGoalLevel?: boolean }) => planBotRoute({
         start, goal, navigation: context.botNavigation, rng: searchRng, role: roleOf(entity.spec),
-        spec: entity.spec, useRoleDetour: false,
+        spec: entity.spec, useRoleDetour: false, requireGoalLevel: options?.requireGoalLevel === true,
       }),
       getEnemies: () => {
         enemyScratch.length = 0;
@@ -1252,6 +1260,9 @@ export function setupBattle(
     queryObstacles: botObstacleQuery,
     getObstacles: () => world.getObstacles(),
   });
+  game._botNavigation = botNavigation;
+  game._navigationWrecks = [];
+  game._navigationWreckTicks = 0;
 
   // SYMMETRIC TEAMS (hud_ui r1) → BATTLE-AI r7 (7v7): random battles field 13
   // non-players and split them 6 ALLIES + 7 ENEMIES with a tier-balanced
@@ -2261,6 +2272,11 @@ function retargetObjectiveBots(game: SoloGameState): void {
 }
 
 function stepBotControllers(game: SoloGameState): void {
+  // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (as the authority does)
+  if (game._botNavigation && game._navigationWrecks && (game._navigationWreckTicks = (game._navigationWreckTicks ?? 0) + 1) % 15 === 1) {
+    syncNavigationWrecks(game._botNavigation, game._navigationWrecks,
+      collectNavigationWrecks(game.tanks, game._navigationWrecks));
+  }
   for (const entity of game.tanks) {
     if (entity.modeActive !== false && entity.aiCtl && !entity.combat.destroyed) {
       entity.aiCtl.update(SIM_DT, game.timeS);

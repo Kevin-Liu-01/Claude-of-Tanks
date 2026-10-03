@@ -36,10 +36,13 @@ const deps = {
   spec: routeSpec,
 };
 const navigation = createBotNavigationGrid(deps);
+// one scan when the grid is built: the cells, then three samples along each edge for its steepest stretch
+const scanSamples = heightSamples;
+assert.ok(scanSamples >= 41 * 41 && scanSamples <= 41 * 41 * 13, `one bounded terrain scan (${scanSamples} samples)`);
 const routeA = planBotRoute({ ...deps, navigation, rng: seeded(7) });
 const routeA2 = planBotRoute({ ...deps, navigation, rng: seeded(7) });
 const routeB = planBotRoute({ ...deps, navigation, rng: seeded(99) });
-assert.equal(heightSamples, 41 * 41, 'all bots share one terrain scan');
+assert.equal(heightSamples, scanSamples, 'all bots share one terrain scan');
 assert.deepEqual(routeA, routeA2, 'same match seed reproduces the opening');
 assert.notDeepEqual(routeA, routeB, 'different match seeds vary the opening');
 assert.ok(routeA.some(([, z]) => Math.abs(z) > 85), 'route clears the solid wall');
@@ -71,8 +74,10 @@ assert.equal(courtyardNavigation.blocked[centerCell], 0,
 // Vehicle capability must change the route over the same immutable terrain
 // grid. A strong, high-grip tank can cross the short central ridge; a weak
 // engine cannot sustain that climb and must use either end of the ridge.
+// the ridge's faces climb at the cell-to-cell grade (72 %): the route search reads each edge's steepest stretch, so a
+// vertical-walled block would be a wall for both tanks (2026-10-02)
 const ridgeHeightField = {
-  getHeightAt: (x, z) => Math.abs(x) < 25 && Math.abs(z) < 125 ? 18 : 0,
+  getHeightAt: (x, z) => Math.abs(z) < 125 ? Math.max(0, 18 * Math.min(1 - Math.abs(x) / 25, (125 - Math.abs(z)) / 25)) : 0,
   getGroundType: () => 'medium',
 };
 const ridgeNavigation = createBotNavigationGrid({ heightField: ridgeHeightField });
