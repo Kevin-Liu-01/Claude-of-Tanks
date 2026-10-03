@@ -188,7 +188,7 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
     if (!isStoneLandmark(mark.kind)) return;
     const d = STONE_LANDMARKS[mark.kind];
     stoneJobs.push({
-      spec: { form: d.form, geology: mark.geology ?? d.geology, x: mark.x, z: mark.z, radius: mark.scale ?? d.radius, height: mark.height ?? d.height, yawDeg: mark.yawDeg },
+      spec: { form: d.form, geology: mark.geology ?? d.geology, x: mark.x, z: mark.z, radius: mark.scale ?? d.radius, height: mark.height ?? d.height, yawDeg: mark.yawDeg, tone: mark.tone },
       family: 'landmark', name: mark.name ?? null, stream: ctx.seed + 11701 + 131 * i,
     });
   });

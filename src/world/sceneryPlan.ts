@@ -48,6 +48,8 @@ interface SceneryLandmark {
   /** Stone landmarks: height override. */
   height?: number;
   geology?: RockGeology;
+  /** Stone landmarks: sRGB HSL base tone (a map's own rock); omitted, the geology's. */
+  tone?: readonly [number, number, number];
   name?: string;
 }
 

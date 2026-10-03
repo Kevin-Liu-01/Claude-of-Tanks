@@ -27,6 +27,10 @@
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
+// The scenery's sandstone in the Dahar's own colour: the dusty buff-red of the boulders (props rockTone), not the
+// Buntsandstein red the geology defaults to.
+const DAHAR_ROCK = [0.058, 0.24, 0.55] as const;
+
 // The wadi centreline, symmetric through the ford: (x, z) and (-x, -z) are both on it.
 const WADI = [
   [-512, 140], [-420, 132], [-330, 120], [-250, 100], [-180, 66], [-115, 34], [-55, 16], [0, 0],
@@ -455,19 +459,19 @@ export default {
   // Turned through 180 degrees about the ford like the rest of the map.
   scenery: {
     rockFields: [
-      { geology: 'sandstone', x: -330, z: 120, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the wadi banks at -330,120' },
-      { geology: 'sandstone', x: -250, z: 100, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the wadi banks at -250,100' },
-      { geology: 'sandstone', x: -180, z: 66, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the wadi banks at -180,66' },
-      { geology: 'sandstone', x: 180, z: -66, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the wadi banks at 180,-66' },
-      { geology: 'sandstone', x: 250, z: -100, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the wadi banks at 250,-100' },
-      { geology: 'sandstone', x: 330, z: -120, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the wadi banks at 330,-120' },
-      { geology: 'sandstone', x: -264, z: 376, radius: 90, count: 8, slopeBias: 1, size: [3, 6], forms: [['outcrop', 0.7], ['scree', 0.3]], name: 'the North Mesa ledges' },
+      { geology: 'sandstone', x: -330, z: 120, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], tone: DAHAR_ROCK, name: 'the wadi banks at -330,120' },
+      { geology: 'sandstone', x: -250, z: 100, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], tone: DAHAR_ROCK, name: 'the wadi banks at -250,100' },
+      { geology: 'sandstone', x: -180, z: 66, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], tone: DAHAR_ROCK, name: 'the wadi banks at -180,66' },
+      { geology: 'sandstone', x: 180, z: -66, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], tone: DAHAR_ROCK, name: 'the wadi banks at 180,-66' },
+      { geology: 'sandstone', x: 250, z: -100, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], tone: DAHAR_ROCK, name: 'the wadi banks at 250,-100' },
+      { geology: 'sandstone', x: 330, z: -120, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], tone: DAHAR_ROCK, name: 'the wadi banks at 330,-120' },
+      { geology: 'sandstone', x: -264, z: 376, radius: 90, count: 8, slopeBias: 1, size: [3, 6], forms: [['outcrop', 0.7], ['scree', 0.3]], tone: DAHAR_ROCK, name: 'the North Mesa ledges' },
     ],
     landmarks: [
-      { kind: 'cairn', x: 88, z: -360, scale: 1.5, height: 1.5, geology: 'sandstone', name: 'the rujm on the caravan road' },
-      { kind: 'cairn', x: -88, z: 360, scale: 1.5, height: 1.5, geology: 'sandstone', name: 'the rujm on the caravan road north' },
-      { kind: 'cairn', x: -380, z: 200, scale: 1.4, height: 1.4, geology: 'sandstone', name: 'the rujm on the wadi track' },
-      { kind: 'cairn', x: 380, z: -200, scale: 1.4, height: 1.4, geology: 'sandstone', name: 'the rujm on the wadi track east' },
+      { kind: 'cairn', x: 88, z: -360, scale: 1.5, height: 1.5, geology: 'sandstone', tone: DAHAR_ROCK, name: 'the rujm on the caravan road' },
+      { kind: 'cairn', x: -88, z: 360, scale: 1.5, height: 1.5, geology: 'sandstone', tone: DAHAR_ROCK, name: 'the rujm on the caravan road north' },
+      { kind: 'cairn', x: -380, z: 200, scale: 1.4, height: 1.4, geology: 'sandstone', tone: DAHAR_ROCK, name: 'the rujm on the wadi track' },
+      { kind: 'cairn', x: 380, z: -200, scale: 1.4, height: 1.4, geology: 'sandstone', tone: DAHAR_ROCK, name: 'the rujm on the wadi track east' },
     ],
   },
 
