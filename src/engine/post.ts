@@ -1188,7 +1188,11 @@ const AerialShader = {
         // 2026-10-03: the far cloud shadows (FAR_CLOUD_SHADE_FADE note) — beyond the cascades, the clouds' own shade at
         // the point where the sun's ray from this pixel crosses the cloud base takes the pixel's sun share; before the haze
         if ( uFarShade.w > 0.5 && -viewZ > uFarShadeFade.x && uSunDir.y > 0.05 ) {
+          // every far surface is a receiver (the cloud shades the far forests, the ring's land and the impostors as
+          // well as the terrain): a lit CSM surface carries its visibility in alpha, anything else stands in full sun
+          // out here, past the cascades
           float fsVis = cotSunVisOf( texel.a );
+          if ( fsVis < 0.0 ) fsVis = 1.0;
           if ( fsVis > 0.02 ) {
             vec3 fsP = uCamPos + ray * rayT;
             vec2 fsUv = ( fsP.xz + uSunDir.xz * ( ( uFarShadeBase - fsP.y ) / uSunDir.y ) - uFarShade.xy ) * uFarShade.z + 0.5;

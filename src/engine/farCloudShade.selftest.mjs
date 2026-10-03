@@ -39,7 +39,8 @@ assert.match(clouds, /this\.farShadeMaterial\.dispose\(\);\s*this\.farShadeTarge
 
 // ---- the pass: a far pixel loses its sun share where the sun's ray crosses a shaded cloud base
 assert.match(post, /if \( uFarShade\.w > 0\.5 && -viewZ > uFarShadeFade\.x && uSunDir\.y > 0\.05 \) \{/, 'only beyond the cascades, the sun up');
-assert.match(post, /float fsVis = cotSunVisOf\( texel\.a \);\s*if \( fsVis > 0\.02 \) \{/, 'an opaque lit receiver (never a card, water or the sky)');
+assert.match(post, /float fsVis = cotSunVisOf\( texel\.a \);\s*if \( fsVis < 0\.0 \) fsVis = 1\.0;\s*if \( fsVis > 0\.02 \) \{/,
+  'every far surface receives (a lit CSM surface by its own visibility, the far forests, the ring and the impostors in full sun; the sky never reaches the block)');
 assert.match(post, /vec2 fsUv = \( fsP\.xz \+ uSunDir\.xz \* \( \( uFarShadeBase - fsP\.y \) \/ uSunDir\.y \) - uFarShade\.xy \) \* uFarShade\.z \+ 0\.5;/,
   'the point the sun\'s ray from the pixel crosses the cloud base, in the map\'s square');
 assert.match(post, /texel\.rgb \*= 1\.0 - fsShade \* fsT \/ max\( fsT \+ fsA, 1e-4 \);/, 'the contact shadows\' law: the pixel\'s sun share');
