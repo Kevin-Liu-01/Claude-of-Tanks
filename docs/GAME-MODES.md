@@ -48,11 +48,11 @@ still determine which enemies are visible; changing views does not reveal hidden
 ## Flying a drone
 
 Select **Drone**, enter a battle in your tank, then press **V** or the drone control.
-The quadcopter starts visibly docked on a reusable mission rail seated on the turret. Turretless tank destroyers use a hull-mounted rail.
+The quadcopter starts visibly docked on a reusable mission rail. Large turrets carry the rail; compact turrets and turretless tank destroyers use supported hull positions.
 The rail and its four feet are fitted to each vehicle’s own turret or casemate surfaces; the same
 attachment frame follows turret rotation, and the drone launches from that same moving seat. It can carry future mode equipment. A 2.4-second rotor spool-up and
 smooth lift clear the carrier before the camera eases into first-person
-flight with a white-hot infrared view. The launch and camera handoff stay in normal color; infrared begins only when the view is inside the drone. You directly fly it: **W/S**
+flight with the selected sensor view (white-hot infrared by default). The launch and camera handoff stay in normal color; the sensor begins only when the view is inside the drone. You directly fly it: **W/S**
 move forward or backward, **A/D** strafe, **Space** climbs, and mouse look steers.
 Pitch down and fly forward to descend or dive into a target. Releasing movement
 brakes smoothly into a hover. Light air disturbances, body banking, rotor
@@ -94,7 +94,7 @@ Four allied ground vehicles accompany the gunship by default. They have 90% of t
 **Juggernaut** offers a role setting. As boss, you face the hunting team; as a
 hunter, you join allies against one bot boss. In hosted rooms the boss role belongs
 to the first participating human when that role is selected; other humans hunt it.
-The boss never respawns. Its survival clock and health are shown in the objective.
+The boss is 12% larger, including its armor and module hit geometry, and carries a pulsing blue energy-shield aura that flashes on damage. It never respawns. Its survival clock and health are shown in the objective.
 
 **Infected** begins with four infected opponents (at least three in a custom setup). Survivors have 30% of their normal HP; infected have 125%, 40% more speed and 30% faster reloads. A survivor's destruction changes
 that player's team before their next spawn, including their allied/enemy roster
