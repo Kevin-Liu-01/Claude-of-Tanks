@@ -1,9 +1,11 @@
 import type { HudTank } from './hud.ts';
 import type { EventBus } from '../game/stateCore.ts';
-import { AERIAL_RULES } from '../sim/matchRuleset.ts';
+import { AERIAL_RULES, matchRulesetFor } from '../sim/matchRuleset.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
 import { t } from './i18n.ts';
 import './aerialHud.css';
+
+const GUNSHIP_UNLIMITED=matchRulesetFor('ac130').ammo==='unlimited';
 
 function node<K extends keyof HTMLElementTagNameMap>(tag:K,cls:string,parent:HTMLElement):HTMLElementTagNameMap[K]{
   const element=document.createElement(tag);element.className=cls;parent.append(element);return element;
@@ -51,7 +53,7 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
         const card=cards[slot]!,wait=reload(player?.combat,slot,now),selected=player?.combat?.shellSlot===slot;
         card.button.setAttribute('aria-pressed',String(selected));
         const ammo=player?.combat?.ammo?.[slot];
-        card.status.textContent=wait>0?`${wait.toFixed(1)}s`:t('flight.ready',{ammo:ammo===Infinity?'∞':String(ammo??0)});
+        card.status.textContent=wait>0?`${wait.toFixed(1)}s`:t('flight.ready',{ammo:GUNSHIP_UNLIMITED||ammo===Infinity?'∞':String(ammo??0)});
       }
     },
   };
