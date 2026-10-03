@@ -18,13 +18,20 @@ const TRACK = ['l', 'r'] as const;
 const SUPPORT = ['yaw', 'pitch', 'roll', 'y', 'floorY'] as const;
 // version 3 (bots lane, 2026-10-02): the roof a hull rests on (`_body.restSupportY`, flag bit 10), which the client's
 // replay cannot rebuild without the authority's contact pass
-const VALUE_COUNT = SCALARS.length + SPRING.length + ROCK.length * 2 +
+const VERSION_4_COUNT = SCALARS.length + SPRING.length + ROCK.length * 2 +
   TERRAIN.length + RIDE.length + TRACK.length + SUPPORT.length + 6;
+// version 5 (physics lane, 2026-10-03), appended after the version-4 layout so a version-4 checkpoint still decodes
+// (its landing at rest): the rebound a landing's springs still owe and the landing stroke (`_ride.rebound`,
+// `_ride.stroke`), and the weight-transfer share of the suspension rock (`_susp.d`, `_susp.dv`), which the support
+// solve seats the tracks without
+const RIDE_V5 = ['rebound', 'stroke'] as const;
+const DIVE_V5 = ['d', 'dv'] as const;
+const VALUE_COUNT = VERSION_4_COUNT + RIDE_V5.length + DIVE_V5.length;
 const MAX_ABS_VALUE = 1_000_000;
 const MAX_FLAGS = 2047;
 
 interface MovementPredictionState {
-  version: 4;
+  version: 5;
   values: number[];
   flags: number;
 }
@@ -40,9 +47,9 @@ function restore<T, K extends keyof T>(
   return offset;
 }
 
-function finiteValues(values: RuntimeValue): values is number[] {
-  if (!Array.isArray(values) || values.length !== VALUE_COUNT) return false;
-  for (let index = 0; index < VALUE_COUNT; index++) {
+function finiteValues(values: RuntimeValue, count = VALUE_COUNT): values is number[] {
+  if (!Array.isArray(values) || values.length !== count) return false;
+  for (let index = 0; index < count; index++) {
     const value = values[index];
     if (typeof value !== 'number' || !Number.isFinite(value) ||
         Math.abs(value) > MAX_ABS_VALUE) return false;
@@ -67,13 +74,15 @@ export function captureMovementPredictionState(state: TankState): MovementPredic
     state._body.landingBlendS, state._rollover.elapsedS,
     cacheInitialized ? state._sup.x : 0, cacheInitialized ? state._sup.z : 0,
     restInitialized ? state._body.restSupportY : 0);
+  append(values, state._ride, RIDE_V5);
+  append(values, state._susp, DIVE_V5);
   if (!finiteValues(values)) return null;
   const flags = Number(supportInitialized) | Number(state._ride.grounded) << 1 |
     Number(state._body.tumbling) << 2 | Number(state._body.dynamicSupport) << 3 |
     Number(state._body.autoRighting) << 4 | Number(state._rollover.expired) << 5 |
     Number(state.atGunLimit) << 6 | Number(state.gunLimitSpec) << 7 |
     Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9 | Number(restInitialized) << 10;
-  return { version: 4, values, flags };
+  return { version: 5, values, flags };
 }
 
 export function applyMovementPredictionState(
@@ -81,7 +90,8 @@ export function applyMovementPredictionState(
 ): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const record = value as Record<string, RuntimeValue>;
-  if (record.version !== 4 || !finiteValues(record.values) ||
+  const count = record.version === 5 ? VALUE_COUNT : record.version === 4 ? VERSION_4_COUNT : 0;
+  if (!count || !finiteValues(record.values, count) ||
       typeof record.flags !== 'number' || !Number.isInteger(record.flags) ||
       record.flags < 0 || record.flags > MAX_FLAGS) return false;
   const values = record.values;
@@ -113,5 +123,15 @@ export function applyMovementPredictionState(
   state._sup.rigid = !!(flags & 512);
   state._sup.cg = contact;
   state._body.restSupportY = flags & 1024 ? values[offset + 5] : NaN;
+  if (count === VALUE_COUNT) {
+    offset = restore(state._ride, RIDE_V5, values, offset + 6);
+    restore(state._susp, DIVE_V5, values, offset);
+  } else {
+    // a version-4 checkpoint predates the landing stroke and the dive: none in progress
+    state._ride.rebound = 0;
+    state._ride.stroke = 0;
+    state._susp.d = 0;
+    state._susp.dv = 0;
+  }
   return true;
 }

@@ -145,6 +145,12 @@ interface RockState {
   rv: number;
 }
 
+/** The suspension rock, and the share of its pitch that is weight transfer (`d`, the dive or squat, with its rate). */
+interface SuspensionRockState extends RockState {
+  d: number;
+  dv: number;
+}
+
 interface RideState {
   y: number;
   v: number;
@@ -154,6 +160,11 @@ interface RideState {
   airTime: number;
   /** Rebounds since the hull last left the ground (telemetry for the bounce receipts and probes). */
   bounces: number;
+  /** The rebound a landing's springs owe the hull, returned as they extend (m/s over the ground's rate; 0: none). */
+  rebound: number;
+  /** 1 while the springs absorb a landing on the tracks (the landing stroke: compression and the return to the seat), at
+   * the landing damping; 0 otherwise. */
+  stroke: number;
 }
 
 interface RigidBodyState {
@@ -329,7 +340,7 @@ export interface TankState {
   _gunLimitHoldS: number;
   _autoTraverse: number;
   _swayEst: number;
-  _susp: RockState;
+  _susp: SuspensionRockState;
   _flinch: RockState;
   _ride: RideState;
   _body: RigidBodyState;
@@ -1300,10 +1311,10 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     _gunLimitHoldS: 0,             // continuous-pin dwell for the GUN LIMIT label
     _autoTraverse: 0,              // ±1 while a fixed-mount hull traverse is engaged toward the sight (round 32)
     _swayEst: 0,                   // predicted visual turn-lean sway (rad)
-    _susp: { p: 0, r: 0, pv: 0, rv: 0 }, // mirror of the visual susp rock layer
+    _susp: { p: 0, r: 0, pv: 0, rv: 0, d: 0, dv: 0 }, // mirror of the visual susp rock layer
     _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
     _ride: { // sprung vertical chassis motion + deterministic airborne phase
-      y: pos.y, v: 0, supportY: NaN, groundV: 0, grounded: true, airTime: 0, bounces: 0,
+      y: pos.y, v: 0, supportY: NaN, groundV: 0, grounded: true, airTime: 0, bounces: 0, rebound: 0, stroke: 0,
     },
     _body: { // rigid attitude/contact state; dormant during ordinary driving
       tumbling: false, landingBlendS: 0, dynamicSupport: false, autoRighting: false, restSupportY: NaN,
@@ -1354,6 +1365,8 @@ export function resetTankVerticalState(
   ride.grounded = state.grounded;
   ride.airTime = 0;
   ride.bounces = 0;
+  ride.rebound = 0;
+  ride.stroke = 0;
   state._sup.x = NaN;
   state._body.landingBlendS = 0;
   state._body.dynamicSupport = false;

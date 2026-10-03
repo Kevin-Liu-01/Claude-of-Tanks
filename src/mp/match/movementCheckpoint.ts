@@ -17,10 +17,15 @@
  * Version 4 (physics lane, 2026-10-03) adds the gravity tip of a hull whose centre of mass overhangs its loaded
  * track samples (`_terr.tipPitch`, `_terr.tipRoll`, 48 values): the attitude step reads it before the support solve
  * re-derives it, so a replay starting on an edge tipped like the authority only with it.
+ * Version 5 (physics lane, 2026-10-03) appends, after the version-4 layout, the rebound a landing's springs still owe and
+ * the landing stroke (`_ride.rebound`, `_ride.stroke`) and the weight-transfer share of the suspension rock (`_susp.d`,
+ * `_susp.dv`), 52 values: the springs now take a landing at the stroke's damping and return its rebound as they extend,
+ * and the tracks are seated without the dive, so a replay mid-landing or mid-stop needs them. A version-4 checkpoint (an
+ * older authority) still decodes, as a hull with no landing or dive in progress.
  */
 import type { MovementContactGeometry, TankState } from '../../sim/movement.ts';
 
-export const MOVEMENT_CHECKPOINT_VERSION = 4;
+export const MOVEMENT_CHECKPOINT_VERSION = 5;
 
 const SCALARS = ['yawRate', 'turretYawRate', 'suspensionAimPitch', 'bloomF',
   '_prevSpeed', '_spool', '_fanYield', '_perch', '_gunLimitHoldS', '_swayEst',
@@ -32,8 +37,11 @@ const RIDE = ['y', 'v', 'groundV', 'airTime'] as const;
 const TRACK = ['l', 'r'] as const;
 const SUPPORT = ['yaw', 'pitch', 'roll', 'y', 'floorY'] as const;
 const EXTRA_VALUES = 6;
-export const MOVEMENT_CHECKPOINT_VALUES = SCALARS.length + SPRING.length + TERRAIN.length + ROCK.length * 2 +
+const VERSION_4_VALUES = SCALARS.length + SPRING.length + TERRAIN.length + ROCK.length * 2 +
   RIDE.length + TRACK.length + SUPPORT.length + EXTRA_VALUES;
+const RIDE_V5 = ['rebound', 'stroke'] as const;
+const DIVE_V5 = ['d', 'dv'] as const;
+export const MOVEMENT_CHECKPOINT_VALUES = VERSION_4_VALUES + RIDE_V5.length + DIVE_V5.length;
 const MAX_ABS_VALUE = 1_000_000;
 const MAX_FLAGS = 2047;
 
@@ -52,8 +60,8 @@ function restore<T, K extends keyof T>(target: T, keys: readonly K[], values: re
   return offset;
 }
 
-export function validMovementValues(values: readonly number[]): boolean {
-  if (values.length !== MOVEMENT_CHECKPOINT_VALUES) return false;
+export function validMovementValues(values: readonly number[], count = MOVEMENT_CHECKPOINT_VALUES): boolean {
+  if (values.length !== count) return false;
   for (const value of values) {
     if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > MAX_ABS_VALUE) return false;
   }
@@ -78,6 +86,8 @@ export function captureMovementCheckpoint(state: TankState): MovementCheckpoint 
     state._body.landingBlendS, state._rollover.elapsedS,
     cacheInitialized ? state._sup.x : 0, cacheInitialized ? state._sup.z : 0,
     restInitialized ? state._body.restSupportY : 0);
+  append(values, state._ride, RIDE_V5);
+  append(values, state._susp, DIVE_V5);
   if (!validMovementValues(values)) return null;
   const flags = Number(supportInitialized) | Number(state._ride.grounded) << 1 |
     Number(state._body.tumbling) << 2 | Number(state._body.dynamicSupport) << 3 |
@@ -87,11 +97,16 @@ export function captureMovementCheckpoint(state: TankState): MovementCheckpoint 
   return { version: MOVEMENT_CHECKPOINT_VERSION, values, flags };
 }
 
-/** Restore a checkpoint onto a state; false (and no change) when the layout is not the current version or a value is unsafe. */
+/**
+ * Restore a checkpoint onto a state; false (and no change) when the layout is neither the current version nor version 4
+ * (decoded as a hull with no landing stroke or dive in progress) or a value is unsafe.
+ */
 export function applyMovementCheckpoint(
   state: TankState, checkpoint: MovementCheckpoint, contact: MovementContactGeometry | null = null,
 ): boolean {
-  if (checkpoint.version !== MOVEMENT_CHECKPOINT_VERSION || !validMovementValues(checkpoint.values) ||
+  const count = checkpoint.version === MOVEMENT_CHECKPOINT_VERSION ? MOVEMENT_CHECKPOINT_VALUES
+    : checkpoint.version === 4 ? VERSION_4_VALUES : 0;
+  if (!count || !validMovementValues(checkpoint.values, count) ||
       !Number.isInteger(checkpoint.flags) || checkpoint.flags < 0 || checkpoint.flags > MAX_FLAGS) return false;
   const { values, flags } = checkpoint;
   let offset = restore(state, SCALARS, values, 0);
@@ -120,5 +135,14 @@ export function applyMovementCheckpoint(
   state._sup.cg = contact;
   // the roof the hull rests on: no contact pass runs in the replay, so it holds until the next checkpoint clears it
   state._body.restSupportY = flags & 1024 ? values[offset + 5]! : NaN;
+  if (count === MOVEMENT_CHECKPOINT_VALUES) {
+    offset = restore(state._ride, RIDE_V5, values, offset + 6);
+    restore(state._susp, DIVE_V5, values, offset);
+  } else {
+    state._ride.rebound = 0;
+    state._ride.stroke = 0;
+    state._susp.d = 0;
+    state._susp.dv = 0;
+  }
   return true;
 }
