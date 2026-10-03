@@ -38,8 +38,8 @@ interface GarageCountrySelectionMemory<Spec extends GarageOrderSpec> {
   remember(specId: string): boolean;
 }
 
-// Owner-directed leading runs within each nation's descending tier order.
-// Updated 2026-09-19; stable IDs preserve saved selections when names change.
+// Owner-directed leading runs; China, Poland and the Italian pair are
+// explicitly featured across tiers. Stable IDs preserve saved selections.
 export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
   USA: Object.freeze([
     'm1a3',
@@ -71,12 +71,11 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
     'kf41_lynx_x', 'kf51', 'kf51b', 'spz_puma_s1_x', 'spz_puma_s1', 'marder2', 'mbt70', 'leo2a7v',
   ]),
   China: Object.freeze([
-    'vt4a1',
-    'ztz100_x',
-    'type96b_x',
-    'aft10_x',
-    'type100',
-    'ztz99a2',
+    'vt4a1', 'ztz99a2', 'ztz99a2_prototype',
+    'cn_t72b3_modern', 'cn_t72b3m_modern', 'cn_t80u_modern',
+    'type96b_x', 'type96_80_feng', 'type96_72m_lei', 'aft10_x',
+    'ztz100_x', 'type100', 'ztz100_prototype', 'type96_72_long',
+    'type99a', 'ztz85_iii', 'type59',
   ]),
   // 2026-09-15 owner roster pass ("our x tanks are better models, i like featuring them
   // more"): the X studies lead their tier in every nation that has them; the four T-90 X
@@ -91,6 +90,7 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
     't90a_x',
     'object695_x',
     'tos1a_tagil',
+    'ru_t80u_modern', 'ru_t72b3m_modern', 'ru_t72b3_modern', 't14', 't90ms',
   ]),
   'USSR/Russia': Object.freeze([
     't90ms_x',
@@ -125,6 +125,7 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
     'k2_x',
     'k1a1_x',
   ]),
+  Poland: Object.freeze(['pl01_105', 'pl01']),
   Ukraine: Object.freeze([
     'ua_m1a1_x',
   ]),
@@ -142,19 +143,31 @@ const GARAGE_LEADING_VEHICLE_RANK_BY_NATION = new Map(
   ]),
 );
 
-// The owner explicitly features the definitive C2/C1 before retained
-// Italian prototypes; every other nation's tier-first order stays intact.
-function compareItalianLeadingPair(a: GarageOrderSpec, b: GarageOrderSpec): number {
-  if (a.nation !== 'Italy') return 0;
-  const featured = GARAGE_LEADING_VEHICLE_RANK_BY_NATION.get('Italy')!;
+// Russia and USSR/Russia share one flag. Use the same table in both
+// comparator directions: separate maps made mixed-generation sorting asymmetric.
+const russianRanks = new Map([
+  ...GARAGE_LEADING_VEHICLE_IDS_BY_NATION.Russia,
+  ...GARAGE_LEADING_VEHICLE_IDS_BY_NATION['USSR/Russia'],
+].map((id, rank) => [id, rank]));
+GARAGE_LEADING_VEHICLE_RANK_BY_NATION.set('Russia', russianRanks);
+GARAGE_LEADING_VEHICLE_RANK_BY_NATION.set('USSR/Russia', russianRanks);
+GARAGE_LEADING_VEHICLE_RANK_BY_NATION.set('USSR', russianRanks);
+
+function countryOrderKey(nation: string): string {
+  return nation === 'USSR' || nation === 'USSR/Russia' ? 'Russia' : nation;
+}
+
+function compareFeaturedRun(a: GarageOrderSpec, b: GarageOrderSpec): number {
+  if (!['Italy', 'China', 'Poland'].includes(a.nation)) return 0;
+  const featured = GARAGE_LEADING_VEHICLE_RANK_BY_NATION.get(a.nation)!;
   return (featured.get(a.id) ?? featured.size) - (featured.get(b.id) ?? featured.size);
 }
 
 /**
  * Order cards inside one catalog group by country, descending gameplay tier,
  * then descending display name. Owner-directed leading runs refine the order
- * within a tier, apart from the explicit definitive Italian C2/C1 leading
- * pair ahead of its retained prototypes. The id tie-break keeps duplicate public names deterministic.
+ * within a tier, apart from the explicit Chinese lineup, Polish PL-01s and
+ * definitive Italian C2/C1 pair ahead of their remaining vehicles. The id tie-break keeps duplicate public names deterministic.
  */
 export function compareCountryThenTierThenName<Spec extends GarageOrderSpec>(
   a: Spec,
@@ -164,8 +177,10 @@ export function compareCountryThenTierThenName<Spec extends GarageOrderSpec>(
 ): number {
   const nationDelta = (nationRank.get(a.nation) ?? 99) - (nationRank.get(b.nation) ?? 99);
   if (nationDelta) return nationDelta;
-  const italianLead = compareItalianLeadingPair(a, b);
-  if (italianLead) return italianLead;
+  const countryDelta = NAME_COLLATOR.compare(countryOrderKey(a.nation), countryOrderKey(b.nation));
+  if (countryDelta) return countryDelta;
+  const featuredLead = compareFeaturedRun(a, b);
+  if (featuredLead) return featuredLead;
   const tierDelta = tierOf(b.id) - tierOf(a.id);
   if (tierDelta) return tierDelta;
   const leadingRanks = GARAGE_LEADING_VEHICLE_RANK_BY_NATION.get(a.nation);

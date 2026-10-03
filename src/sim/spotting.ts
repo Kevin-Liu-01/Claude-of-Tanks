@@ -665,7 +665,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
   }
 
   function canSpot(spotter: SpottingTank, target: SpottingTank, timeS: number): boolean {
-    if (!alive(spotter)) return false;
+    if (!alive(spotter) || (target.aerial?.kind === 'gunship' && target.team !== spotter.team)) return false;
     if (canSpotFrom(spotter,target,timeS)) return true;
     const view=spotter.aerial;
     return !!(view?.kind==='drone' && view.active && !view.launching && canSpotFrom(spotter,target,timeS,true));
@@ -888,7 +888,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
      * @param {object} [receiver] TankEntity-like teammate asking for the intel
      */
     isSpotted(id: string, team: string, receiver?: SpottingTank | null): boolean {
-      if (deps.alwaysVisible) return deps.getTanks().some(tank => tank.id === id);
+      if (deps.alwaysVisible) return deps.getTanks().some(tank => tank.id === id && (tank.aerial?.kind !== 'gunship' || tank.team === team));
       const r = recs.get(id);
       const st = r ? r.byTeam[team] : null;
       if (!st || !st.spotted) return false;

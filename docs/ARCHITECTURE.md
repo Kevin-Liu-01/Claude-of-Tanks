@@ -1523,8 +1523,14 @@ its crew the cabin.
 **Crew radio.** National crews: a hull speaks its nation's language
 (en-US, en-GB, de, ru, uk, zh, fr, sv, ja, ko, it, pl, he; commander and crew
 voices per nation: serious, mature voices reading a terse procedure script
-in a controlled delivery, never cheering or panicked), or English or the
-interface language by setting. Radio discipline: priority 0–4 with
+in a controlled delivery, never cheering or panicked). Settings → Sound →
+Crew voices uses the shared flag dropdown to choose National crews (default)
+or any one nation's pack for every tank. The persisted choice and legacy
+migration live in `audio/crewVoice.ts`, shared by input and the lazy engine;
+live changes, new battles and same-entity nation changes all use that resolver.
+Changing language stops old speech and clears pending calls; cold packs wait
+for decoding before considering the existing missing-take fallback.
+Radio discipline: priority 0–4 with
 interrupts for survival calls, per-line and per-group cooldowns, stale
 drops, a 0.8 s gap between calls, a two-line queue, probability gates on
 routine chatter (reloads, allies' kills, autocannon results) and at most one

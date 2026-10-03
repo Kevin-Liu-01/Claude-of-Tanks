@@ -276,8 +276,23 @@ two-line queue, stale calls dropped rather than played late. Routine chatter
 main-gun results are called almost every time, and spot calls are throttled to
 one per five seconds unless several contacts appear at once.
 
-A hull's crew speaks its nation's language (en-US, en-GB, de, ru, uk, zh, fr,
-sv, ja, ko, it, pl, he), or English or the interface language by setting.
+A hull's crew speaks its operating nation's language by default (en-US,
+en-GB, de, ru, uk, zh, fr, sv, ja, ko, it, pl, he). **Settings → Sound →
+Crew voices** offers **National crews**, or one nation's existing pack for
+every tank. The shared nation dropdown shows flags and localized nation
+names. Choosing a crew applies immediately and persists in the `crewVoice`
+field of `cot.settings.v1` as `national` or a pack ID; resetting Sound restores
+`national`. `crewVoice.ts` owns validation, resolution and legacy migration:
+`english` becomes `en-US`, and `interface` becomes the currently resolved
+interface-language pack once (English if unsupported). Later UI locale changes
+do not change that fixed crew choice.
+
+The engine resolves the choice at first audio initialization, on live
+`ui:volumes` changes, and when the player's entity or operating nation changes
+(including vehicle replacement on the same entity). Switching language stops
+the old transmission and clears queued calls. While a chosen pack decodes,
+the radio waits instead of speaking an already-loaded fallback crew. A missing
+take in a finished pack retains the existing US-crew fallback.
 Every line runs through a live intercom chain — a 24 dB/oct 320 Hz–3.4 kHz
 band, a 1.9 kHz presence peak, compression, a tanh drive, a 4.6 kHz headset
 speaker roll-off, a gated static bed and squelch — measured on the live
@@ -288,7 +303,7 @@ drops syllables.
 ### Settings and debugging
 
 The Sound tab (`src/ui/settings.ts`) has the six volume sliders, the crew
-language (national / English / interface), the concussion toggle and the
+voices (National crews / one nation's pack), the concussion toggle and the
 critical-damage heartbeat. After resume, `window.__COT_AUDIO` exposes the
 context, a master PCM tap (`startTap` / `stopTap` / `readTapB64`), the sound-route
 log, the sfx log (asset, start, gain, rate, distance, bus), the voice log,
@@ -516,19 +531,23 @@ Headless selftests (all in `npm test`):
 | `src/audio/vehicleAudioModel.selftest.mjs` | idle, gearboxes, no gear hunting, turbine spool, braking, scrub, landings, stalls |
 | `src/audio/soundAssets.selftest.mjs` | manifests against files, every engine reference, families, tracks, scenes, packs, payload budgets |
 | `src/audio/assetLibrary.selftest.mjs` | pinning, eviction and reload, voice bytes, the mobile variant cap |
-| `src/audio/crewRadio.selftest.mjs` | radio discipline, interrupts, stale drops, national packs with fallback, damage, language resolution |
+| `src/audio/crewVoice.selftest.mjs` | all 13 selectable packs, national/fixed resolution, flags and localized labels, legacy migration, invalid stored values |
+| `src/audio/crewRadio.selftest.mjs` | radio discipline, interrupts, stale drops, missing-take fallback, damage, live switching and cold-pack behavior |
 | `src/audio/audioEngine.selftest.mjs` | the engine against the shipped manifests: rigs, crews, scenes, weapon layering and delay, HDR trim, sub-bass, reloads, hits, edge cases, destruction, concussion, our hits (distant bank, own-hit law, no marker), the gunner's calls and misses, our own report and recoil, the drum refill, the turret start, kill-cam, panning, scope, aircraft (gunship, enemy and own drones), mode events, interface sounds and their dedupe, rig ownership near our hull, late adoption, pause, garage |
 | `src/audio/lazyAudio.selftest.mjs` | deferred engine and loading tone |
 | `src/audio/interfaceSounds.selftest.mjs` | the control classifier (tabs, tank cards, options, toggles, back, primary, sliders, opt-outs, menus) and the delegated listeners |
 
-Browser probes (they take the machine-wide GPU capture lock; set
-`COT_SHOTS_LOCK_TIMEOUT_MS=10800000` on a busy machine):
+Browser probes use the machine-wide GPU capture lock; set
+`COT_SHOTS_LOCK_TIMEOUT_MS=10800000` on a busy machine. The lightweight
+`crew-voice.browser.mjs` fixture expects its caller to hold the capture lease
+and supply a running Vite server, like `custom-select.browser.mjs`.
 
 | Probe | Checks |
 |---|---|
 | `node tools/audio-mix-balance.mjs` | garage audibility, gunfire at 15/150/400 m over the idle battle bed, the radio under a near cannon, sound starts and radio lines per second in live combat |
 | `node tools/sfx-smoke.mjs` | every scene's assets, the calibre ladder, the distance crossfade and propagation delay, routing, jitter, volley headroom (battle held frozen) |
 | `node tools/voice-smoke.mjs` | the national crew, live language switching through the bus and the Sound tab, all 13 packs through the radio chain |
+| `node tools/crew-voice.browser.mjs --url=http://127.0.0.1:5173` | real Settings and persistence in English/Chinese on desktop, phone and landscape; flags, keyboard focus, dismissal, reset, reload, and all 13 packs decoded and played through Web Audio |
 | `node tools/audio-probe.mjs` | the full event, voice and bus matrix with recordings |
 | `node tools/audio-spatial-killcam-probe.mjs` | arcade/sniper perspective, cannon and engine distance falloff, rams, the kill-cam replay |
 | `node tools/pause-probe.mjs` | the pause duck and resume |

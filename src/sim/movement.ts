@@ -284,6 +284,7 @@ interface DriveStep {
 }
 
 export interface TankState {
+  modeScale?: number;
   /** Independent roof station pose, shared by firing and its damage volume. */
   roofGunYaw?: number;
   roofGunPitch?: number;

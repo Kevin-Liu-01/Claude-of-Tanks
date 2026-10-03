@@ -3,10 +3,9 @@ import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.m
 import { createMixer } from './mixer.ts';
 import { createNoiseBank } from './procedural.ts';
 import { createCrewRadio } from './crewRadio.ts';
-import { resolveCrewLanguage } from './voiceLines.ts';
 import { mulberry32 } from './audioMath.ts';
 
-function harness({ languages = ['en-US', 'de'], missing = [] } = {}) {
+function harness({ languages = ['en-US', 'de'], missing = [], loading = [] } = {}) {
   const ctx = createFakeContext();
   const mixer = createMixer({ context: ctx, reverb: false, channelVolumes: { engine: 1, combat: 1, ambience: 1, ui: 1, voice: 1 }, masterVolume: 0.8, muted: false });
   const loaded = [];
@@ -18,6 +17,7 @@ function harness({ languages = ['en-US', 'de'], missing = [] } = {}) {
     has: () => false,
     pick: () => null,
     loadVoice(lang) { loaded.push(lang); return Promise.resolve(); },
+    voiceReady(lang) { return !loading.includes(lang); },
   };
   const random = mulberry32(7);
   const radio = createCrewRadio({ mixer, library, noise: createNoiseBank(ctx, random), random });
@@ -74,11 +74,26 @@ function harness({ languages = ['en-US', 'de'], missing = [] } = {}) {
   assert.ok(lowpass, 'damaged set loses the high band');
 }
 
-// Language resolution: national by default, English or the interface on request.
-assert.equal(resolveCrewLanguage('Germany'), 'de');
-assert.equal(resolveCrewLanguage('Germany', 'english'), 'en-US');
-assert.equal(resolveCrewLanguage('Germany', 'interface', 'zh-CN'), 'zh');
-assert.equal(resolveCrewLanguage('Germany', 'interface', 'en-US'), 'en-US');
-assert.equal(resolveCrewLanguage('Germany', 'interface', 'pt-BR'), 'en-US', 'unsupported interface languages fall back');
+// Switching crews stops old speech and pending calls. A cold pack cannot
+// accidentally play the already-loaded US crew while its own takes decode.
+{
+  const loading = ['de'];
+  const languages = ['en-US'];
+  const { radio, loaded } = harness({ languages, loading });
+  radio.say('penetration');
+  radio.say('repairs', { delayS: 0.2 });
+  assert.equal(radio.debugState().pending.length, 1);
+  radio.setLanguage('de');
+  assert.equal(radio.speaking, false, 'old crew stops');
+  assert.deepEqual(radio.debugState().pending, [], 'old crew queue clears');
+  assert.equal(radio.say('were_hit', { force: true }), false, 'cold pack waits instead of speaking English');
+  assert.deepEqual(loaded, ['de']);
+  loading.length = 0;
+  languages.push('de');
+  assert.equal(radio.say('were_hit', { force: true }), true);
+  assert.equal(radio.log.at(-1).lang, 'de');
+  radio.setLanguage('de');
+  assert.equal(radio.speaking, true, 'reapplying the same choice does not interrupt speech');
+}
 
-console.log('crewRadio.selftest: radio discipline, interrupts, stale drops, national packs with fallback, damage and language resolution passed');
+console.log('crewRadio.selftest: radio discipline, interrupts, stale drops, fallback, damage and live crew switching passed');

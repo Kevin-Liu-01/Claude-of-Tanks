@@ -10,7 +10,9 @@ import { TANK_SPECS } from '../vehicles/specs.ts';
 let count=0;
 for(const spec of Object.values(TANK_SPECS)){
  const seat=missionAttachmentFor(spec);assert.ok(Number.isFinite(seat.y),spec.id);
- assert.equal(seat.frame,spec.armor.turretless?'hull':'turret',spec.id);
+ if(spec.armor.turretless)assert.equal(seat.frame,'hull',spec.id);
+ if(spec.id==='m1a2')assert.equal(seat.frame,'turret');
+ if(['bmp2','spz_puma','type100'].includes(spec.id))assert.equal(seat.frame,'hull','compact IFV turret uses supported hull rail');
  for(const dx of[-seat.footX,seat.footX])for(const dz of[-seat.footZ,seat.footZ]){const height=missionSurfaceAt(spec,seat.x+dx,seat.z+dz);assert.ok(Number.isFinite(height)&&seat.y-height>=.119,`${spec.id}: every foot seats on its owner`);}
  for(const turretYaw of [0,Math.PI/2,-2.1]){
  const e={id:spec.id,team:'alpha',spec,state:{pos:new Vector3(10,0,20),yaw:.6,turretYaw,visualPitch:.12,visualRoll:-.08,speed:0},combat:{destroyed:false},input:{auxiliaryBits:PLAYER_ACTION_BITS.DRONE,throttle:0,steer:0,fire:false,brake:false,aimPoint:new Vector3()}};

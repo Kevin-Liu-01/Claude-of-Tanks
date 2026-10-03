@@ -21,6 +21,8 @@ export interface ShellSpec extends Record<string, RuntimeValue> {
   reloadS?: number;
   /** Ammo types in a named secondary weapon share a reload independently of the main gun. */
   reloadGroup?: string;
+  /** Explicit blast envelope for large aerial warheads, in metres. */
+  blastRadiusM?: number;
   count?: number;
   tracer: string;
   guided?: boolean;
