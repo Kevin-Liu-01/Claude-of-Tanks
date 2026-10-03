@@ -8,227 +8,273 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { buildShot, fire, kill, pen, burn, smoke, boom, dust, mg, barrage, exhaust, flare, smokeScreen, embers, debris, fireField, huge, H } from './setups.mjs';
-import { setById, T, pictureFor, LIGHT_READY, FILM_LENS, sunFor, RIG } from './sets.mjs';
+import { buildShot, fire, kill, pen, burn, smoke, boom, dust, mg, barrage, exhaust, embers, debris, fireField, huge, H } from './setups.mjs';
+import { setById, T, pictureFor, LIGHT_READY, sunFor, RIG } from './sets.mjs';
 import { CAST, CAST_NAMES } from './cast.mjs';
 
 export const LOOP_MS = 6000, XFADE_MS = 600, DUR = LOOP_MS + XFADE_MS;
 export const KINDS = Object.freeze(['tank', 'battle', 'scene']);
-const NIGHT_FLARE = (at, h = 100) => flare(at, 0, { heightM: h, burnS: 40, driftMps: 1.2 });
+/** The site lens: a touch of streak and fringe, no anamorphic bokeh (the references read crisp edge to edge). */
+const SITE_LENS = { streaks: { amount: 0.22, length: 0.6 }, chromaticAberration: 0.08 };
 const hold = (a, b) => [{ tMs: 0, ...a }, { tMs: 'end', ...b }];
 
-// Staging for battlefields the earlier rounds never filmed (anchors from the 13-map scout, 2026-10-02). The scout's
-// own camera rigs put +side on the opposite hand to setups.mjs, so the side views below are its views mirrored in sign.
-const stage = (id, map, time, seed, anchor, heading, more = {}) => ({ id, map, time, seed, anchor, heading, camo: 'factory', ...more });
-const DESERT_DAY = { exposure: -0.4, contrast: 1.12 };
-const NEW = {
-  steppeRoad: stage('tarkhan-golden-road', 'steppe', 'golden', 431, [-211.5, -154], 98, { formation: 'column', lineup: [CAST.leo, CAST.kf51, CAST.leo], count: 3 }),
-  steppeRidge: stage('tarkhan-golden-ridge', 'steppe', 'golden', 432, [264.4, 98], -3, { formation: 'wedge', lineup: [CAST.leo, CAST.kf51, CAST.leo, CAST.kf51, CAST.lynx] }),
-  deltaRiver: stage('jade-morning-river', 'delta', 'morning', 433, [135.3, 144.3], 37, { formation: 'pair', lineup: [CAST.ztz100, CAST.type96b] }),
-  deltaVillage: stage('jade-morning-village', 'delta', 'morning', 434, [24, 42], 106, { formation: 'column', lineup: [CAST.ztz100, CAST.type96b, CAST.ztz100], count: 3 }),
-  frontierFarm: stage('frontier-morning-farm', 'frontier', 'morning', 435, [36, 105.3], 11, { formation: 'pair', lineup: [CAST.type10, CAST.k2] }),
-  titanMesa: stage('titan-golden-mesa', 'titan_gorge', 'golden', 436, [-25, -178.8], 27, { formation: 'column', lineup: [CAST.merkava, CAST.leclerc, CAST.merkava], count: 3 }),
-  oasisMinaret: stage('sunscar-day-minaret', 'oasis', 'day', 437, [92, 80], 261, { formation: 'pair', lineup: [CAST.merkava, CAST.leclerc], picture: DESERT_DAY }),
-  whiteoutPeak: stage('whiteout-morning-peak', 'whiteout', 'morning', 438, [5.1, 279.3], 188, { formation: 'pair', lineup: [CAST.t14, CAST.t90m] }),
-  calderaFight: stage('obsidian-dusk-fight', 'caldera', 'dusk', 439, [10, 14], 188, { formation: 'pair', lineup: [CAST.t90m, CAST.t14],
-    enemies: { along: 90, lat: 6, count: 2, formation: 'pair', lineup: [CAST.leo, CAST.kf51], states: ['burning', 'intact'] } }),
-  poldersMill: stage('tidegate-morning-mill', 'polders', 'morning', 440, [-95.4, -152], 17, { formation: 'column', lineup: [CAST.leo, CAST.cv90, CAST.leo], count: 3 }),
-  reservoirShore: stage('reservoir-sunset-shore', 'reservoir', 'sunset', 441, [93.7, 132.3], 263, { formation: 'pair', lineup: [CAST.leo, CAST.kf51] }),
+// Round 2 of the fifty (owner 2026-10-02): the bar is the owner's own Open Graph key art (a T-90M column under fire on
+// Verdant's country road) and the Steinburg street duel — a battle in full swing in daylight, the hero tank big in frame
+// from a high three-quarter, explosions, smoke columns and debris, lived-in places around it. Every shot is staged as
+// combat on the battlefields that look best (Steinburg, Verdant Fields, Glacier Pass, Sunscar Oasis, Nordhavn Fjord,
+// Monsoon Ridge, Cinder Junction, Ironworks, Frontier Basin, Jade River Delta, Frosthollow, Orchard Valley, Highland
+// Reservoir), by day, with deep focus so the street or field around the tank stays sharp. Anchors come from the
+// validated sets and from road points whose next 70 m are clear of buildings (shots/media-r5/tmp/anchor-candidates.py).
+const CLEAN = { grain: { amount: 0.05, size: 1, color: 0.1, response: 0.7 }, vignette: { amount: 0.22, roundness: 0.55, softness: 0.65 } };
+const stage = (id, map, time, seed, anchor, heading, more = {}) => ({ id, map, time, seed, anchor, heading, camo: 'factory', fStop: 8, picture: CLEAN, ...more });
+const from = (setId, more = {}) => ({ ...setById(setId), fStop: 8, picture: CLEAN, ...more });
+const DESERT_DAY = { ...CLEAN, exposure: -0.4, contrast: 1.12 };
+const pair = (a, b, states = ['burning', 'intact'], more = {}) => ({ along: 74, lat: 2, count: 2, formation: 'pair', lineup: [a, b], states, ...more });
+
+const S = {
+  // Steinburg: the street grid (x = -40 / 35 / 112, z = -96 / -15 / 59) through the brick town
+  stMain: stage('steinburg-day-main', 'urban', 'day', 501, [36, -70], 0, { formation: 'column', lineup: [CAST.leo, CAST.kf51, CAST.leo], count: 3, enemies: pair(CAST.t90m, CAST.t72b3m, ['burning', 'intact'], { along: 80, lat: -2 }) }),
+  stWest: stage('steinburg-day-west', 'urban', 'day', 502, [-39.3, -16], 0, { formation: 'pair', lineup: [CAST.kf51, CAST.sepv3], enemies: pair(CAST.t14, CAST.t90m, ['intact', 'wrecked-burnt'], { along: 70 }) }),
+  stCross: from('steinburg-day-crossroads', { enemies: { along: 70, lat: 4, count: 2, formation: 'pair', lineup: [CAST.t90m, CAST.t72b3m], states: ['wrecked-burnt', 'burning'] } }),
+  stEast: stage('steinburg-day-east', 'urban', 'day', 503, [112.3, -16], 0, { formation: 'column', lineup: [CAST.sepv3, CAST.sepv3, CAST.griffin], count: 3, enemies: pair(CAST.t72b3m, CAST.t90m, ['burning', 'intact'], { along: 84, lat: -3 }) }),
+  stSouth: stage('steinburg-day-south', 'urban', 'day', 504, [32, -95.7], 270, { formation: 'pair', lineup: [CAST.leo, CAST.leclerc], enemies: pair(CAST.t90m, CAST.t72b3m, ['intact', 'burning'], { along: 64, lat: 1 }) }),
+  stNorth: stage('steinburg-day-north', 'urban', 'day', 505, [35.3, 64], 0, { formation: 'column', lineup: [CAST.leclerc, CAST.leclerc, CAST.ariete], count: 3,
+    enemies: { along: 92, lat: 0, count: 3, formation: 'line', spread: 0.45, lineup: [CAST.t72b3m, CAST.t90m, CAST.t72b3m], states: ['wrecked-burnt', 'burning', 'burning'] } }),
+  stSquare: stage('steinburg-day-square', 'urban', 'day', 506, [35.2, -30], 0, { formation: 'pair', lineup: [CAST.leclerc, CAST.kf51], enemies: pair(CAST.t90m, CAST.t14, ['burning', 'wrecked-burnt'], { along: 78, lat: 3 }) }),
+  // Verdant Fields: the country road and the farm village (the Open Graph battlefield)
+  vRoad: stage('verdant-day-road', 'verdant', 'day', 511, [-64, 61.6], 82, { formation: 'column', lineup: [CAST.t90m, CAST.t90m, CAST.t14], count: 3,
+    enemies: { along: 86, lat: -26, count: 3, formation: 'line', spread: 0.6, lineup: ['leo2a6_x', 'm1a2_x', 'leo2a5_x'], states: ['burning', 'intact', 'wrecked-burnt'] } }),
+  vAssault: from('verdant-day-assault'),
+  vVillage: stage('verdant-day-village', 'verdant', 'day', 512, [19.3, 48], 1, { formation: 'pair', lineup: [CAST.t14, CAST.t90m], enemies: pair('leo2a6_x', 'm1a2_x', ['wrecked-burnt', 'intact'], { along: 80, lat: 3 }) }),
+  vFarm: stage('verdant-day-farm', 'verdant', 'day', 513, [6.7, -64], 191, { formation: 'pair', lineup: [CAST.kf51, CAST.leo], enemies: pair(CAST.t90m, CAST.t72b3m, ['burning', 'intact'], { along: 82, lat: -4 }) }),
+  // Glacier Pass: the frozen lake and the alpine village
+  gLake: from('glacier-dawn-lake', { time: 'day', count: 3, enemies: pair(CAST.t90m, CAST.t14, ['intact', 'burning'], { along: 78, lat: 8 }) }),
+  gVillage: stage('glacier-day-village', 'alpine', 'day', 521, [-138, 147], 110, { formation: 'pair', lineup: [CAST.k2, CAST.type10], enemies: pair(CAST.t90m, CAST.t72b3m, ['burning', 'intact'], { along: 74, lat: -3 }) }),
+  // Sunscar Oasis: the minaret, the market street and the caravanserai
+  oMinaret: stage('sunscar-day-minaret', 'oasis', 'day', 437, [92, 80], 261, { formation: 'pair', lineup: [CAST.merkava, CAST.leclerc], picture: DESERT_DAY, enemies: pair(CAST.t72b3m, CAST.t90m, ['burning', 'intact'], { along: 74, lat: 3 }) }),
+  oMarket: stage('sunscar-day-market', 'oasis', 'day', 531, [72, -70], 93, { formation: 'column', lineup: [CAST.leclerc, CAST.merkava, CAST.leclerc], count: 3, picture: DESERT_DAY,
+    enemies: pair(CAST.t72b3m, CAST.t72b3m, ['wrecked-burnt', 'intact'], { along: 84, lat: -2 }) }),
+  oCaravan: stage('sunscar-day-caravanserai', 'oasis', 'day', 532, [146.3, -72.8], 79, { formation: 'pair', lineup: [CAST.merkava, CAST.merkava], picture: DESERT_DAY, enemies: pair(CAST.t72b3m, CAST.t90m, ['intact', 'burning'], { along: 62, lat: 2 }) }),
+  // Nordhavn Fjord: the village, the harbor road and the north road (inland: the shore's border stays out of frame)
+  fVillage: stage('nordhavn-day-village', 'fjord', 'day', 541, [-23.7, -87.7], 198, { formation: 'pair', lineup: [CAST.cv90, CAST.leo], enemies: pair(CAST.t90m, CAST.t72b3m, ['burning', 'intact'], { along: 74, lat: 2 }) }),
+  fHarbor: stage('nordhavn-day-harbor', 'fjord', 'day', 542, [21.7, 59.2], 14, { formation: 'column', lineup: [CAST.leo, CAST.cv90, CAST.leo], count: 3, enemies: pair(CAST.t90m, CAST.t14, ['wrecked-burnt', 'intact'], { along: 90, lat: -6 }) }),
+  fNorth: stage('nordhavn-day-north', 'fjord', 'day', 543, [62, 226], 188, { formation: 'pair', lineup: [CAST.leo, CAST.kf51], enemies: pair(CAST.t90m, CAST.t72b3m, ['intact', 'burning'], { along: 66, lat: 0 }) }),
+  // Monsoon Ridge: the river ford and the temple village
+  mFord: from('monsoon-morning-ford', { enemies: pair(CAST.t72b3m, CAST.t90m, ['burning', 'intact'], { along: 72, lat: 6 }) }),
+  mVillage: stage('monsoon-morning-village', 'monsoon', 'morning', 551, [25, 34.7], 193, { formation: 'pair', lineup: [CAST.type96b, CAST.ztz100], enemies: pair(CAST.t72b3m, CAST.t72b3m, ['burning', 'intact'], { along: 70, lat: 2 }) }),
+  // Cinder Junction: the tracks, the container rows and the water tower
+  rTracks: from('cinder-dusk-tracks', { time: 'golden', lineup: [CAST.sepv3, CAST.sepv3, CAST.sepv3, CAST.griffin], count: 3, enemies: pair(CAST.t90m, CAST.t72b3m, ['burning', 'intact'], { along: 92, lat: 0 }) }),
+  rYard: stage('cinder-day-yard', 'railyard', 'day', 561, [0.6, -48], 0, { formation: 'column', lineup: [CAST.kf51, CAST.kf51, CAST.lynx], count: 3, enemies: pair(CAST.t14, CAST.t90m, ['wrecked-burnt', 'intact'], { along: 80, lat: 3 }) }),
+  rFactory: stage('cinder-day-factory', 'railyard', 'day', 562, [-112, -110.6], 90, { formation: 'pair', lineup: [CAST.sepv3, CAST.sepv3], enemies: pair(CAST.t72b3m, CAST.t90m, ['burning', 'intact'], { along: 76, lat: 0 }) }),
+  // Ironworks: the furnace yard and the gantry road
+  iYard: from('ironworks-night-yard', { time: 'day', enemies: { along: 86, lat: 0, count: 3, formation: 'line', spread: 0.6, lineup: ['leo2a6_x', 'm1a2_x', 'leo2a5_x'], states: ['burning', 'wrecked-burnt', 'intact'] } }),
+  iGantry: stage('ironworks-day-gantry', 'foundry', 'day', 571, [-24.8, 79.7], 119, { formation: 'column', lineup: [CAST.t90m, CAST.t14, CAST.t90m], count: 3, enemies: pair('leo2a6_x', 'm1a2_x', ['burning', 'intact'], { along: 80, lat: 2 }) }),
+  // Frontier Basin: the farm village and the red-roofed farm
+  frVillage: stage('frontier-morning-village', 'frontier', 'morning', 581, [3, 25.5], 93, { formation: 'pair', lineup: [CAST.type10, CAST.k2], enemies: pair(CAST.t90m, CAST.t72b3m, ['intact', 'burning'], { along: 72, lat: -2 }) }),
+  frFarm: stage('frontier-golden-farm', 'frontier', 'golden', 435, [36, 105.3], 11, { formation: 'pair', lineup: [CAST.k2, CAST.type10], count: 1 }),
+  // Jade River Delta: the river village
+  dVillage: stage('jade-morning-village', 'delta', 'morning', 434, [24, 42], 106, { formation: 'column', lineup: [CAST.ztz100, CAST.type96b, CAST.ztz100], count: 3, enemies: pair(CAST.t72b3m, CAST.t90m, ['burning', 'intact'], { along: 80, lat: 0 }) }),
+  // Frosthollow: the onion-domed church and the terrace village
+  wChurch: stage('frosthollow-day-church', 'winter', 'day', 591, [-78, -13.3], 4, { formation: 'pair', lineup: [CAST.t90m, CAST.t14], enemies: pair('leo2a6_x', 'm1a2_x', ['intact', 'burning'], { along: 72, lat: 2 }) }),
+  wVillage: from('frosthollow-night-village', { time: 'day', lineup: [CAST.t14, CAST.t90m, CAST.t14], enemies: pair('leo2a6_x', 'm1a2_x', ['burning', 'wrecked-burnt'], { along: 96, lat: -4 }) }),
+  // Orchard Valley: the packing village
+  orVillage: stage('orchard-day-village', 'orchard', 'day', 601, [-20, -12], 52, { formation: 'column', lineup: [CAST.ariete, CAST.ariete, CAST.leclerc], count: 3, enemies: pair(CAST.t72b3m, CAST.t90m, ['burning', 'intact'], { along: 84, lat: -3 }) }),
+  // Highland Reservoir: the lakeside village
+  reVillage: stage('reservoir-day-village', 'reservoir', 'day', 611, [-82, -42], 216, { formation: 'pair', lineup: [CAST.kf51, CAST.leo], enemies: pair(CAST.t90m, CAST.t72b3m, ['burning', 'intact'], { along: 70, lat: 2 }) }),
 };
+S.orGolden = { ...S.orVillage, id: 'orchard-golden-village', time: 'golden' };
+S.oGolden = { ...S.oMinaret, id: 'sunscar-golden-minaret', time: 'golden' };
 
-// [n, id, kind, title, set (id or own staging), film (buildShot fields; durMs defaults to DUR), still { tMs, exposureMs }]
+// combat beats: a burning wreck with its smoke column, a shell landing near the hero with flying debris, a knockout
+const wreck = foe => [burn(foe, 0), smoke(foe, 0), embers(foe, 0)];
+const hitNear = (lat, lon, tMs, size = 'large') => [boom(H(lat, lon), tMs, size), debris(H(lat, lon), tMs + 30, { count: 34, speedMps: 15, hot: 0.4, scale: 1.1 })];
+const incoming = (foe, lat, lon, tMs) => [fire(foe, tMs), ...hitNear(lat, lon, tMs + 110)];
+const knockout = (shooter, target, tMs) => [fire(shooter, tMs), pen(target, tMs + 90), kill(target, tMs + 210), debris(target, tMs + 230, { count: 44, speedMps: 20, hot: 0.7, scale: 1.2 })];
+// lenses: the Open Graph high three-quarter (ahead and to the side, looking back across the hull at the fight) and the
+// Steinburg high rear quarter (over the engine deck, down the street); k = -1 mirrors to the other side
+const OG = (k = 1, look = 55) => RIG.follow({ side: [7.5 * k, 6.6 * k], along: [6, 4.4], lift: [3.4, 3.2], fov: 46, look: [-7 * k, look, 1.5] });
+const OG_HOLD = (k = 1, look = 55) => hold({ side: 7.5 * k, along: 6, lift: 3.4, fov: 46, lookHero: [-7 * k, look, 1.5] }, { side: 6.8 * k, along: 5.2, lift: 3.2, fov: 44, lookHero: [-7 * k, look, 1.5] });
+const REAR = (k = 1) => RIG.follow({ side: [-6.5 * k, -5.8 * k], along: [-9, -7.6], lift: [5.6, 5.2], fov: 46, look: [2 * k, 45, 1] });
+const REAR_HOLD = (k = 1) => hold({ side: -7 * k, along: -9, lift: 5.6, fov: 44, lookHero: [2 * k, 40, 1] }, { side: -6.3 * k, along: -8, lift: 5.3, fov: 42, lookHero: [2 * k, 40, 1] });
+const DRONE = (k = 1) => RIG.drone({ side: 10 * k, along: [-30, -14], lift: [30, 24], fov: 48, look: [0, 40, 0] });
+const CRANE = (k = 1) => RIG.crane({ side: -6 * k, along: [-12, -17], lift: [1.8, 11], fov: 46, look: [0, 40, 1] });
+
+// [n, id, kind, title, set (staging), film (buildShot fields; durMs defaults to DUR), still { tMs, exposureMs }]
 export const SHOTS = [
-  // ---------------------------------------------------------------- tanks
-  [1, 'lake-glide', 'tank', 'A KF51 Panther glides across the frozen lake at dawn', 'glacier-dawn-lake',
-    { speed: 4.6, effects: [exhaust('hero', 100), exhaust('ally1', 200), dust('hero', 1200, 8, 0.6)], cam: RIG.follow({ side: [11, 9.5], along: [2.2, -0.8], lift: 0.7, fov: 34, look: [0, 0.3, 1.5] }) },
+  // ---------------------------------------------------------------- tanks: the hero on the move through the fight
+  [1, 'main-street-push', 'tank', 'A Leopard 2A7V pushes up the main street of burning Steinburg', S.stMain,
+    { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', 5, 24, 1500), fire('hero', 3400), mg('ally1', 2600, 9), dust('hero', 800, 10, 0.8)], cam: REAR() },
+    { tMs: 3480, exposureMs: 25 }],
+  [2, 'factory-road', 'tank', 'An M1A2 SEPv3 rolls past the factory under fire', S.stEast,
+    { speed: 2.8, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', -5, 18, 2000), mg('ally1', 1200, 9), fire('hero', 3900), dust('hero', 700, 10, 0.8)], cam: OG() },
+    { tMs: 3980, exposureMs: 25 }],
+  [3, 'square-pass', 'tank', 'A Leclerc XLR crosses the burning square', S.stSquare,
+    { speed: 2.2, pinMs: 3300, sun: 'side', effects: [...wreck('foe0'), burn('foe1', 0), smoke('foe1', 0), fireField(H(-9, 12), 0, { radiusM: 4 }), huge(H(10, 46), 2600), fire('hero', 4200)],
+      cam: RIG.passby({ side: 9, along: 0, lift: 1.8, fov: 42, look: [0, 0, 1.6] }) },
     { tMs: 3300, exposureMs: 33 }],
-  [2, 'runway-lead', 'tank', 'An M1A2 SEPv3 leads the wedge down the runway at dawn', 'kestrel-dawn-runway',
-    { speed: 6.2, count: 3, effects: [smokeScreen('ally1', 700, { durationS: 20 }), smokeScreen('ally2', 1000, { durationS: 20 }), dust('hero', 900, 10, 0.8)],
-      cam: RIG.lead({ side: 1.1, along: [24, 16], lift: 0.7, fov: 27, look: [0, -4, 1.6] }) },
-    { tMs: 4200, exposureMs: 33 }],
-  [3, 'canyon-orbit', 'tank', 'A slow orbit of the Leclerc XLR on the canyon floor at golden hour', 'redrock-golden-canyon',
-    { speed: 3.2, effects: [dust('hero', 800, 10, 0.8)], cam: RIG.orbit({ radius: 14.5, from: 28, to: 88, lift: 1.05, fov: 34 }) },
-    { tMs: 3600, exposureMs: 25 }],
-  [4, 'surf-run', 'tank', 'A Leclerc XLR runs the surf line at sunset', 'saltmere-sunset-strand',
-    { speed: 4.6, effects: [dust('hero', 900, 10, 0.8)], cam: RIG.follow({ side: [12.5, 10.5], along: [3, 0.2], lift: 1.0, fov: 32, look: [0, 0, 1.6] }) },
-    { tMs: 3500, exposureMs: 33 }],
-  [5, 'fjord-pass', 'tank', 'A Leopard 2A7V rolls past the fjord at blue hour', 'nordhavn-dusk-fjord',
-    { speed: 4, pinMs: 3300, effects: [], cam: RIG.passby({ side: 9, along: 0, lift: 0.62, fov: 42, look: [0, 0, 1.6] }) },
-    { tMs: 3300, exposureMs: 33 }],
-  [6, 'mars-lead', 'tank', 'A ZTZ-100 leads the convoy under the Martian sky', 'olympus-mars-convoy',
-    { speed: 4.6, effects: [dust('hero', 800, 12, 1), dust('ally1', 900, 10, 0.9)], cam: RIG.lead({ side: 2, along: [20, 14], lift: 0.75, fov: 24, look: [0, -3, 2] }) },
-    { tMs: 3800, exposureMs: 25 }],
-  [7, 'earthrise-climb', 'tank', 'A KF51 Panther climbs toward the rising Earth', 'earthrise-moon',
-    { speed: 2.4, effects: [dust('hero', 900, 8, 0.6)], cam: RIG.chase({ side: -3.6, along: [-22, -27], lift: 1.4, fov: 44, look: [0, 60, 11] }) },
-    { tMs: 3600, exposureMs: 20 }],
-  [8, 'river-ford', 'tank', 'A ZTZ-100 fords the monsoon river', 'monsoon-morning-ford',
-    { speed: 2.6, effects: [], cam: RIG.follow({ side: [14.5, 12.5], along: [3.5, 0.5], lift: 1.0, fov: 30, look: [0, 0, 1.4] }) },
-    { tMs: 3300, exposureMs: 25 }],
-  [9, 'viaduct-deck', 'tank', 'A C2 Ariete column crosses the high viaduct', 'aegis-morning-viaduct',
-    { speed: 3, absY: true, sun: 'front', effects: [], cam: RIG.follow({ side: [13.5, 11.5], along: [3.4, 0.4], lift: 4.0, fov: 31, look: [0, 0, 3.7] }) },
-    { tMs: 3300, exposureMs: 33 }],
-  [10, 'harbor-road', 'tank', 'Ariete and Leclerc tanks along the harbor road', 'saltwind-day-harbor',
-    // the harbor sandbags sit 7 m ahead of the column: a slow creep stops short of them
-    { speed: 0.9, effects: [dust('hero', 800, 8, 0.6)], cam: RIG.follow({ side: [12.5, 10.5], along: [3, -0.4], lift: 3.2, fov: 32, look: [0, 0, 1.4] }) },
-    { tMs: 3300, exposureMs: 33 }],
-  [11, 'tower-roll', 'tank', 'A KF51 Panther rolls beneath the arcology towers', 'blackglass-day-towers',
-    { speed: 2.9, effects: [burn('foe0', 0)], cam: RIG.follow({ side: [7, 6.2], along: [7.5, 4], lift: 0.6, fov: 54, look: [-1, 3, 3.2] }) },
-    { tMs: 3300, exposureMs: 33 }],
-  [12, 'yard-line', 'tank', 'A Leopard and KF51 line crosses the rail yard at golden hour', 'cinder-dusk-tracks',
-    // golden, not the set's dusk: at dusk the yard swallowed the line
-    { time: 'golden', speed: 3.4, effects: [dust('hero', 900, 10, 0.8)], cam: RIG.follow({ side: [13.5, 11.5], along: [3.6, 0.6], lift: 1.0, fov: 30 }) },
-    { tMs: 3300, exposureMs: 33 }],
-  [13, 'street-advance', 'tank', 'A Leopard 2A7V advances up the street under flare light', 'steinburg-night-street',
-    { speed: 1.9, effects: [NIGHT_FLARE([40, 10]), burn('foe0', 0), smoke('foe0', 0), embers('foe0', 0), mg('ally1', 2400, 9)], cam: RIG.follow({ side: [-4.9, -4.6], along: [6.8, 4.6], lift: 1.3, fov: 48, look: [0, 0, 1.6] }) },
-    { tMs: 3300, exposureMs: 40 }],
-  [14, 'village-night', 'tank', 'A Leopard 2A7V through Frosthollow at night', 'frosthollow-night-village',
-    { speed: 2.3, count: 2, effects: [flare([-80, -40], 0, { heightM: 105, burnS: 40, driftMps: 1.2 }), burn('foe0', 0), embers('foe0', 0)], cam: RIG.chase({ side: -3.4, along: [-17, -13.5], lift: 2.2, fov: 42, look: [0, 30, 2] }) },
-    { tMs: 3300, exposureMs: 40 }],
-  [15, 'avenue-armata', 'tank', 'A T-14 Armata moves down the ruined avenue at dusk', 'ruinspires-dusk-avenue',
-    { speed: 2.2, count: 1, picture: { exposure: 0.8 }, effects: [burn('foe0', 0), smoke('foe0', 0)], cam: RIG.chase({ side: 0.5, along: [-12, -9], lift: 2.2, fov: 42, look: [0, 40, 3] }) },
-    { tMs: 3300, exposureMs: 33 }],
-  [16, 'mine-shelf', 'tank', 'M1A2 SEPv3 and K2 tanks on the ore shelf at golden hour', 'copper-golden-mine',
-    { speed: 1.8, count: 3, effects: [burn('foe0', 0), dust('hero', 900, 10, 0.8)], cam: RIG.orbit({ radius: 13, from: 32, to: 70, lift: 1.2, fov: 36 }) },
-    { tMs: 3300, exposureMs: 25 }],
-  [17, 'steppe-road', 'tank', 'A Leopard 2A7V column on the autumn road across the steppe', NEW.steppeRoad,
-    { speed: 3.6, effects: [dust('hero', 700, 10, 0.9), dust('ally1', 760, 10, 0.9), exhaust('hero', 100)], cam: RIG.follow({ side: [-14, -12], along: [3, 0.5], lift: 1.6, fov: 34, look: [0, 0, 1.6] }) },
-    { tMs: 3300, exposureMs: 33 }],
-  [18, 'delta-river', 'tank', 'A ZTZ-100 along the river in the Jade River Delta', NEW.deltaRiver,
-    { speed: 2.8, effects: [dust('hero', 800, 8, 0.6)], cam: RIG.follow({ side: [-15, -13], along: [2.5, 0], lift: 2.2, fov: 32, look: [0, 0, 1.6] }) },
-    { tMs: 3300, exposureMs: 33 }],
-  [19, 'frontier-farm', 'tank', 'A Type 10 rolls past the red-roofed farm in Frontier Basin', NEW.frontierFarm,
-    // solo: the K2 wing drives into the farm buildings
-    { speed: 3, pinMs: 3300, count: 1, effects: [dust('hero', 900, 8, 0.7)], cam: RIG.passby({ side: -12, along: 0, lift: 1.4, fov: 38, look: [0, 0, 1.7] }) },
-    { tMs: 3300, exposureMs: 33 }],
-  [20, 'titan-mesa', 'tank', 'A Merkava Mk 4 column under the striped mesas of Titan Gorge', NEW.titanMesa,
-    { speed: 3.4, effects: [dust('hero', 700, 12, 1), dust('ally1', 760, 10, 0.9)], cam: RIG.follow({ side: [-14.5, -12.5], along: [3, 0.5], lift: 1.4, fov: 32, look: [0, 0, 1.8] }) },
-    { tMs: 3300, exposureMs: 33 }],
-  [21, 'oasis-minaret', 'tank', 'A Merkava Mk 4 passes the minaret at Sunscar Oasis', NEW.oasisMinaret,
-    { speed: 3, effects: [dust('hero', 700, 12, 1)], cam: RIG.follow({ side: [-15, -13], along: [2, 0], lift: 1.8, fov: 34, look: [0, 0, 1.8] }) },
-    { tMs: 3300, exposureMs: 33 }],
-  [22, 'whiteout-peak', 'tank', 'A T-14 Armata crosses the snowfield below the peak at Whiteout Station', NEW.whiteoutPeak,
-    { speed: 2.4, effects: [dust('hero', 800, 10, 0.7)], cam: RIG.follow({ side: [-9, -8], along: [12, 10], lift: 1.3, fov: 40, look: [0, 2, 1.8] }) },
-    { tMs: 3300, exposureMs: 33 }],
+  [4, 'column-under-fire', 'tank', 'A T-90M column drives into the fight on the country road', S.vRoad,
+    { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), burn('foe2', 0), smoke('foe2', 0), ...incoming('foe1', -4, 10, 1300), fire('hero', 2600), huge(H(-30, 70), 3300), barrage(H(-24, 46), 3900, 6, 14), mg('ally1', 4400, 9), fire('ally1', 5200)], cam: OG() },
+    { tMs: 2700, exposureMs: 25 }],
+  [5, 'barn-advance', 'tank', 'A T-14 Armata advances past the barns of Verdant Fields', S.vVillage,
+    { speed: 2.6, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', 6, 20, 2200), fire('hero', 3700), dust('hero', 800, 10, 0.8)], cam: RIG.orbit({ radius: 13, from: 30, to: 72, lift: 3.2, fov: 42, look: [0, 3, 1.4] }) },
+    { tMs: 3780, exposureMs: 25 }],
+  [6, 'farm-charge', 'tank', 'A KF51 Panther charges past the farmhouse through artillery', S.vFarm,
+    { speed: 3.2, sun: 'side', effects: [...wreck('foe0'), barrage(H(-14, 28), 900, 6, 12), barrage(H(12, 44), 3200, 5, 12), fire('hero', 4300), dust('hero', 700, 12, 1)], cam: RIG.lead({ side: 2.5, along: [22, 15], lift: 2.0, fov: 36, look: [0, -3, 1.6] }) },
+    { tMs: 4380, exposureMs: 25 }],
+  [7, 'lake-shellfire', 'tank', 'A KF51 Panther crosses the frozen lake through shellfire', S.gLake,
+    { speed: 3.6, sun: 'side', effects: [burn('foe1', 0), smoke('foe1', 0), ...hitNear(-7, 16, 1400), ...hitNear(9, 32, 3000), fire('hero', 4500), huge(H(-18, 70), 4700), exhaust('hero', 100)],
+      cam: RIG.follow({ side: [10, 8.5], along: [3, 0.5], lift: 1.8, fov: 36, look: [0, 4, 1.4] }) },
+    { tMs: 3060, exposureMs: 25 }],
+  [8, 'market-push', 'tank', 'A Leclerc XLR column pushes through the market street of Sunscar Oasis', S.oMarket,
+    { speed: 2.6, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', -5, 15, 1800), fire('hero', 3600), dust('hero', 700, 12, 1)], cam: REAR() },
+    { tMs: 3680, exposureMs: 25 }],
+  [9, 'harbor-run', 'tank', 'A Leopard 2A7V runs the harbor road at Nordhavn under fire', S.fHarbor,
+    { speed: 3, sun: 'side', effects: [...wreck('foe0'), ...hitNear(8, 20, 1500), mg('ally1', 2400, 9), huge(H(-12, 70), 3200), fire('hero', 4100)], cam: OG() },
+    { tMs: 4180, exposureMs: 25 }],
+  [10, 'ford-shellfire', 'tank', 'A ZTZ-100 fords the river as shells land around it', S.mFord,
+    { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), ...hitNear(-6, 12, 1300), ...hitNear(7, 22, 3100), fire('hero', 4400)], cam: RIG.follow({ side: [12, 10.5], along: [3, 0.5], lift: 2.2, fov: 34, look: [0, 2, 1.4] }) },
+    { tMs: 4480, exposureMs: 25 }],
+  [11, 'container-rows', 'tank', 'A KF51 Panther weaves between the container rows at Cinder Junction', S.rYard,
+    { speed: 2.8, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', -4, 16, 2400), fire('hero', 3900)], cam: RIG.chase({ side: -2.5, along: [-15, -11], lift: 3.2, fov: 44, look: [0, 40, 1.6] }) },
+    { tMs: 3980, exposureMs: 25 }],
+  [12, 'gantry-advance', 'tank', 'A T-90M column advances under the Ironworks gantries', S.iGantry,
+    { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), fireField(H(-8, 20), 0, { radiusM: 3 }), ...hitNear(6, 30, 2000), fire('hero', 3300)], cam: OG() },
+    { tMs: 3380, exposureMs: 25 }],
+  [13, 'farm-race', 'tank', 'A K2 Black Panther races past the red-roofed farm at golden hour', S.frFarm,
+    { speed: 3.4, pinMs: 3300, effects: [fireField(H(14, 36), 0, { radiusM: 5 }), embers(H(14, 36), 0), ...hitNear(-10, 40, 1700), fire('hero', 3300), dust('hero', 900, 10, 0.8)], cam: RIG.passby({ side: -12, along: 0, lift: 1.6, fov: 38, look: [0, 0, 1.7] }) },
+    { tMs: 3380, exposureMs: 25 }],
+  [14, 'snow-push', 'tank', 'A T-14 Armata pushes through snowy Frosthollow', S.wVillage,
+    { speed: 2.4, count: 2, sun: 'side', effects: [...wreck('foe0'), burn('foe1', 0), smoke('foe1', 0), ...hitNear(8, 24, 2100), mg('ally1', 1300, 9), fire('hero', 3600)], cam: RIG.chase({ side: -3, along: [-16, -12.5], lift: 3, fov: 44, look: [0, 30, 1.8] }) },
+    { tMs: 3680, exposureMs: 25 }],
+  [15, 'orchard-column', 'tank', 'An Ariete column drives through the orchard village under fire', S.orVillage,
+    { speed: 2.6, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', 5, 18, 1700), fire('hero', 3500), dust('hero', 700, 10, 0.8)], cam: OG() },
+    { tMs: 3580, exposureMs: 25 }],
 
-  // ---------------------------------------------------------------- battles
-  [23, 'fields-assault', 'battle', 'A T-90M wedge assaults through the fields under fire', 'verdant-day-assault',
-    { speed: 2.4, effects: [burn('foe0', 0), burn('foe1', 0), smoke('foe1', 0), fire('ally1', 1100), huge([-6, 52], 2100), fire('hero', 3600), boom([-20, 40], 4600, 'large')],
-      cam: RIG.follow({ side: [3.3, 2.8], along: [-10, -7.5], lift: 3.2, fov: 44, look: [-4, 60, 2] }) },
-    { tMs: 3720, exposureMs: 25 }],
-  [24, 'fields-fire', 'battle', 'A T-90M fires across the burning fields', 'verdant-day-assault',
-    { speed: 0, effects: [burn('foe0', 0), burn('foe1', 0), smoke('foe1', 0), fire('hero', 1500), huge([-6, 52], 2600), fire('ally1', 4200), mg('ally2', 3200, 9)],
-      cam: hold({ side: 4.6, along: 9.8, lift: 0.45, fov: 38 }, { side: 4.1, along: 8.8, lift: 0.48, fov: 36 }) },
-    { tMs: 1580, exposureMs: 16 }],
-  [25, 'yard-barrage', 'battle', 'An artillery barrage walks across the foundry yard at night', 'ironworks-night-yard',
-    { speed: 0, effects: [flare([40, -110], 0, { heightM: 90, burnS: 40, intensity: 1.4, driftMps: 1.0 }), barrage([40, -122], 900, 7, 16), barrage([30, -112], 3300, 6, 14), fire('hero', 2500), fire('ally1', 4300)],
-      cam: hold({ side: -20, along: -30, lift: 4, fov: 40, lookHero: [0, 40, 6] }, { side: -17, along: -24.5, lift: 4.8, fov: 40, lookHero: [0, 40, 6] }) },
-    { tMs: 2200, exposureMs: 120 }],
-  [26, 'yard-salvo', 'battle', 'T-14 Armatas fire a rippling salvo under flare light', 'ironworks-night-yard',
-    { speed: 0, effects: [flare(H(0, 30), 0, { heightM: 70, burnS: 40, intensity: 1.6, driftMps: 0.6 }), fireField(H(-7, 10), 0, { radiusM: 3 }), fireField(H(21, 8), 0, { radiusM: 3 }), fire('hero', 1100), fire('ally1', 1900), fire('ally2', 2700), fire('ally3', 3500), embers(H(-7, 10), 0)],
-      cam: hold({ side: 9.2, along: 14.4, lift: 1.2, fov: 40, lookHero: [-9, 0, 1.8] }, { side: 8.2, along: 12.6, lift: 1.3, fov: 38, lookHero: [-9, 0, 1.8] }) },
-    { tMs: 2780, exposureMs: 140 }],
-  [27, 'furnace-advance', 'battle', 'T-14 Armatas advance between burning furnaces', 'ironworks-night-yard',
-    // the line's right-hand tank stood where a right-side camera sits: shoot from between the hero and its left wing
-    { speed: 2.4, effects: [flare(H(0, 30), 0, { heightM: 70, burnS: 40, intensity: 1.6, driftMps: 0.6 }), fireField(H(-9, 9), 0, { radiusM: 3 }), embers(H(-9, 9), 0), fireField(H(-8, 22), 0, { radiusM: 3 }), fire('ally1', 3400)],
-      cam: RIG.follow({ side: [-6.5, -6], along: [9, 6.5], lift: 1.4, fov: 38, look: [0, 1, 1.6] }) },
-    { tMs: 3480, exposureMs: 60 }],
-  [28, 'street-kill', 'battle', 'A telephoto view of a kill at the end of the street', 'steinburg-night-street',
-    { speed: 0, effects: [NIGHT_FLARE([40, 10]), burn('foe0', 0), smoke('foe0', 0), fire('hero', 1500), pen('foe1', 1850), kill('foe1', 1970), debris('foe1', 1990)],
-      cam: hold({ side: 0.8, along: 200, lift: 2.2, fov: 10, lookHero: [0, 120, 2] }, { side: 0.8, along: 194, lift: 2.5, fov: 10, lookHero: [0, 120, 2] }) },
-    { tMs: 2150, exposureMs: 33 }],
-  [29, 'street-fire', 'battle', 'A Leopard 2A7V fires down the night street', 'steinburg-night-street',
-    { speed: 0, effects: [NIGHT_FLARE([40, 10]), burn('foe0', 0), smoke('foe0', 0), fire('hero', 1700), mg('ally1', 900, 9), mg('ally1', 3600, 9), fire('ally1', 4600)],
-      cam: hold({ side: 2.5, along: 12.5, lift: 1.1, fov: 40 }, { side: 2.2, along: 11, lift: 1.15, fov: 38 }) },
-    { tMs: 1790, exposureMs: 25 }],
-  [30, 'flare-rise', 'battle', 'An illumination flare climbs over the street fight', 'steinburg-night-street',
-    { speed: 1.4, effects: [flare([36, 30], 800, { heightM: 55, launch: true, intensity: 1.5 }), burn('foe0', 0), smoke('foe0', 0), mg('ally1', 3000, 9), fire('hero', 4700)],
-      cam: hold({ side: -3, along: -10.5, lift: 0.9, fov: 46, lookHero: [0, 60, 26] }, { side: -3, along: -7, lift: 1.1, fov: 44, lookHero: [0, 40, 3] }) },
-    { tMs: 3000, exposureMs: 200 }],
-  [31, 'noon-kill', 'battle', 'A Leclerc XLR fires at high noon in the wadi village', 'sirocco-noon-village',
-    { speed: 1.2, effects: [burn('foe0', 0), smoke('foe0', 0), fire('hero', 2300), dust('hero', 2200, 12, 1), fire('ally1', 4300), mg('ally2', 3500, 9)],
-      cam: hold({ side: 9.4, along: 13.6, lift: 1.3, fov: 40 }, { side: 8.2, along: 11.6, lift: 1.4, fov: 38 }) },
-    { tMs: 2380, exposureMs: 16 }],
-  [32, 'slow-kill', 'battle', 'Slow motion: an ammunition rack goes up in the canyon', 'redrock-golden-kill',
-    { speed: 0, effects: [fire('hero', 900), pen('foe0', 980), kill('foe0', 1030), debris('foe0', 1050)],
-      film: { fps: 30, shutterDeg: 180, samples: 12, maxSamples: 64, speed: [{ tMs: 0, speed: 1 }, { tMs: 940, speed: 1 }, { tMs: 1020, speed: 0.25, ease: 'smooth' }, { tMs: 2420, speed: 0.25 }] },
-      durMs: 2420, // timeline ms; the 0.25x ramp stretches it to a ~6.7 s film
-      cam: hold({ side: -2.2, along: -9, lift: 3.4, fov: 22, lookHero: [3, 72, 1.6] }, { side: -1.9, along: -7.2, lift: 3.3, fov: 20, lookHero: [3, 72, 2.4] }) },
-    { tMs: 1160, exposureMs: 25 }],
-  [33, 'shelf-firefight', 'battle', 'A firefight on the copper mine shelf', 'copper-golden-mine',
-    { speed: 0, effects: [burn('foe0', 0), fire('hero', 1300), fire('foe1', 2700), fire('ally1', 3600), fire('hero', 4900)],
-      cam: hold({ side: 4.6, along: 9.6, lift: 0.45, fov: 38 }, { side: 4.0, along: 8.4, lift: 0.5, fov: 36 }) },
+  // ---------------------------------------------------------------- battles: firefights, hits and knockouts
+  [16, 'street-duel', 'battle', 'Street duel: a KF51 Panther trades fire down a Steinburg street', S.stWest,
+    { speed: 0, sun: 'side', effects: [burn('foe1', 0), smoke('foe1', 0), fire('hero', 1400), ...incoming('foe0', -3, 10, 2500), mg('ally1', 3200, 9), ...knockout('hero', 'foe0', 4200)], cam: REAR_HOLD() },
+    { tMs: 4460, exposureMs: 16 }],
+  [17, 'crossroads-fire', 'battle', 'Fire at the Steinburg crossroads at noon', S.stCross,
+    { speed: 0, effects: [...wreck('foe0'), burn('foe1', 0), fire('hero', 1300), huge(H(-14, 60), 2400), fire('ally1', 3300), barrage(H(8, 85), 3900, 5, 12)],
+      cam: hold({ side: -14.5, along: 16.5, lift: 7.2, fov: 40 }, { side: -12.5, along: 14, lift: 6.4, fov: 38 }) },
     { tMs: 1380, exposureMs: 16 }],
-  [34, 'ford-duel', 'battle', 'K2 and Type 10 tanks trade fire across the ford', 'amberford-golden-ford',
-    // static: the Type 10's wingman slot runs into the ford's stone wall when the pair drives
-    { speed: 0, effects: [burn('foe0', 0), fire('foe1', 1000), fire('hero', 2500), fire('ally1', 4300)],
-      cam: hold({ side: 4.6, along: 9.6, lift: 0.5, fov: 38 }, { side: 4.1, along: 8.6, lift: 0.52, fov: 36 }) },
-    { tMs: 2590, exposureMs: 20 }],
-  [35, 'crossroads-fire', 'battle', 'Fire at the Steinburg crossroads at noon', 'steinburg-day-crossroads',
-    { speed: 0, effects: [burn('foe0', 0), fire('hero', 1600), fire('ally1', 3900)],
-      cam: hold({ side: -14.5, along: 16.5, lift: 7.2, fov: 40 }, { side: -13, along: 14.6, lift: 6.6, fov: 38 }) },
+  [18, 'street-knockout', 'battle', 'A T-90M is knocked out at the end of a Steinburg street', S.stSouth,
+    { speed: 0, sun: 'side', effects: [...wreck('foe1'), ...knockout('hero', 'foe0', 1700), mg('ally1', 3000, 9), fire('ally1', 4400)],
+      cam: hold({ side: 6, along: 7, lift: 3.6, fov: 42, lookHero: [-1, 45, 1.5] }, { side: 5.4, along: 6.2, lift: 3.4, fov: 40, lookHero: [-1, 45, 1.5] }) },
+    { tMs: 2060, exposureMs: 16 }],
+  [19, 'roof-tiles', 'battle', 'Roof tiles rain down as a Leopard 2A7V fires up the street', S.stMain,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', -9, 22, 1200), debris(H(-10, 24), 1360, { count: 50, speedMps: 12, hot: 0.1, scale: 1.4 }), fire('hero', 2600), fire('ally1', 3900)],
+      cam: hold({ side: 5, along: 9, lift: 1.9, fov: 40, lookHero: [0, 2, 1.6] }, { side: 4.5, along: 8, lift: 2, fov: 38, lookHero: [0, 2, 1.6] }) },
+    { tMs: 2680, exposureMs: 16 }],
+  [20, 'road-return-fire', 'battle', 'A T-90M column returns fire across the fields', S.vRoad,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), burn('foe2', 0), smoke('foe2', 0), fire('hero', 1300), fire('ally1', 1900), fire('ally2', 2500), ...incoming('foe1', -3, 8, 3200), huge(H(-30, 75), 4100), barrage(H(-20, 55), 4700, 6, 14)], cam: OG_HOLD() },
+    { tMs: 1380, exposureMs: 16 }],
+  [21, 'fields-assault', 'battle', 'A T-90M wedge assaults through the burning fields', S.vAssault,
+    { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), burn('foe1', 0), smoke('foe1', 0), fire('ally1', 1100), huge(H(-6, 52), 2100), fire('hero', 3600), boom(H(-20, 40), 4600, 'large')],
+      cam: RIG.follow({ side: [7, 6], along: [6, 4.5], lift: 3.2, fov: 46, look: [-6, 60, 2] }) },
+    { tMs: 3720, exposureMs: 25 }],
+  [22, 'walking-barrage', 'battle', 'Artillery walks across the fields toward the wedge', S.vAssault,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), barrage(H(-10, 70), 800, 6, 14), barrage(H(-6, 48), 2200, 6, 14), barrage(H(-2, 28), 3600, 5, 12), fire('hero', 4600)],
+      cam: hold({ side: -12, along: -14, lift: 6, fov: 46, lookHero: [0, 50, 1] }, { side: -11, along: -12.5, lift: 5.6, fov: 44, lookHero: [0, 50, 1] }) },
+    { tMs: 3700, exposureMs: 25 }],
+  [23, 'village-crossroads', 'battle', 'T-14 and T-90M tanks hold the village crossroads', S.vVillage,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), ...incoming('foe1', 4, 12, 2700), fire('ally1', 3900), ...knockout('hero', 'foe1', 5100)], cam: OG_HOLD(-1) },
+    { tMs: 1580, exposureMs: 16 }],
+  [24, 'ice-duel', 'battle', 'A duel on the frozen lake: a T-90M takes the hit', S.gLake,
+    { speed: 0, sun: 'side', effects: [burn('foe1', 0), smoke('foe1', 0), ...knockout('hero', 'foe0', 1500), ...hitNear(-6, 14, 3300), fire('ally1', 4400)],
+      cam: hold({ side: 5, along: 10, lift: 1.0, fov: 38, lookHero: [-1, 40, 1.2] }, { side: 4.6, along: 9.2, lift: 1.05, fov: 36, lookHero: [-1, 40, 1.2] }) },
+    { tMs: 1860, exposureMs: 16 }],
+  [25, 'alpine-village', 'battle', 'K2 and Type 10 tanks fight through the alpine village', S.gVillage,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1400), ...incoming('foe1', 5, 14, 2600), fire('ally1', 3800)], cam: OG_HOLD() },
+    { tMs: 1480, exposureMs: 16 }],
+  [26, 'minaret-fire', 'battle', 'A Merkava Mk 4 fires past the minaret at Sunscar Oasis', S.oMinaret,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1600), fire('ally1', 2900), ...incoming('foe1', -6, 18, 3600)], cam: OG_HOLD() },
     { tMs: 1680, exposureMs: 16 }],
-  [36, 'towers-fire', 'battle', 'A KF51 fires beneath the towers', 'blackglass-day-towers',
-    { speed: 1.6, effects: [burn('foe0', 0), fire('hero', 2900), fire('ally1', 4700)],
-      cam: hold({ side: 6.2, along: 12.5, lift: 1.0, fov: 46, lookHero: [-1, 8, 1.6] }, { side: 5.6, along: 10.6, lift: 1.0, fov: 44, lookHero: [-1, 8, 1.6] }) },
-    { tMs: 2990, exposureMs: 16 }],
-  [37, 'smoke-wall', 'battle', 'Smoke screens bloom behind the column on the runway', 'kestrel-dawn-runway',
-    { speed: 6, pinMs: 3300, formation: [[0, 0], [1.5, -22], [-1, -44]], count: 3, effects: [smokeScreen('ally1', 900, { durationS: 20 }), smokeScreen('ally2', 1300, { durationS: 20 })],
-      cam: RIG.pan({ side: 60, along: 0, lift: 1.6, fov: 14, look: [0, -6, 1.6] }) },
-    { tMs: 3800, exposureMs: 25 }],
-  [38, 'lighthouse-fire', 'battle', 'An M1A2 SEPv3 fires past the lighthouse at sunset', 'saltmere-sunset-lighthouse',
-    { speed: 3, pinMs: 3000, effects: [fire('hero', 3200), dust('hero', 3150, 10, 0.9)], cam: RIG.passby({ side: 10.5, along: 0, lift: 0.7, fov: 42, look: [0, 0, 1.7] }) },
-    { tMs: 3290, exposureMs: 25 }],
-  [39, 'village-fire', 'battle', 'A Leopard fires through the snow at night', 'frosthollow-night-village',
-    { speed: 2.2, count: 2, effects: [flare([-80, -40], 0, { heightM: 105, burnS: 40, driftMps: 1.2 }), burn('foe0', 0), embers('foe0', 0), fire('hero', 3100), dust('hero', 3050, 10, 0.9)],
-      cam: hold({ side: 9, along: 13, lift: 1.4, fov: 40 }, { side: 7.8, along: 10.6, lift: 1.5, fov: 38 }) },
-    { tMs: 3180, exposureMs: 40 }],
-  [40, 'caldera-fight', 'battle', 'T-90M and T-14 tanks fire across Obsidian Caldera at golden hour', NEW.calderaFight,
-    // golden, not dusk: the caldera's black rock swallowed the fight at dusk; low sun behind the ridge reads
-    { time: 'golden', speed: 0, effects: [burn('foe0', 0), smoke('foe0', 0), embers('foe0', 0), fire('hero', 1500), fire('foe1', 2600), fire('ally1', 3800), mg('ally1', 4600, 9)],
-      cam: hold({ side: -15, along: 2, lift: 2.2, fov: 32, lookHero: [0, 4, 1.6] }, { side: -13.5, along: 1.4, lift: 2.1, fov: 30, lookHero: [0, 4, 1.6] }) },
-    { tMs: 1580, exposureMs: 25 }],
+  [27, 'caravanserai-kill', 'battle', 'A T-72B3M is knocked out by the caravanserai', S.oCaravan,
+    { speed: 0, sun: 'side', effects: [...wreck('foe1'), ...knockout('hero', 'foe0', 2000), fire('ally1', 3600)], cam: REAR_HOLD() },
+    { tMs: 2160, exposureMs: 16 }],
+  [28, 'fjord-village', 'battle', 'A CV90 and a Leopard 2A7V hold the fjord village', S.fVillage,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), fire('ally1', 2300), mg('ally1', 3100, 9), ...incoming('foe1', 4, 12, 4000)], cam: OG_HOLD() },
+    { tMs: 1580, exposureMs: 16 }],
+  [29, 'fjord-road-kill', 'battle', 'A T-90M burns on the road above the fjord', S.fNorth,
+    { speed: 0, sun: 'side', effects: [...wreck('foe1'), ...knockout('hero', 'foe0', 1800), fire('ally1', 3800)], cam: REAR_HOLD(-1) },
+    { tMs: 1960, exposureMs: 16 }],
+  [30, 'temple-village', 'battle', 'Type 96B tanks fight through the temple village of Monsoon Ridge', S.mVillage,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), ...incoming('foe1', -4, 12, 2600), fire('ally1', 3900)], cam: OG_HOLD() },
+    { tMs: 1580, exposureMs: 16 }],
+  [31, 'ford-fire', 'battle', 'A ZTZ-100 fires across the river ford', S.mFord,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1700), ...hitNear(6, 9, 2900), fire('ally1', 4300)], cam: OG_HOLD(-1) },
+    { tMs: 1780, exposureMs: 16 }],
+  [32, 'yard-salvo', 'battle', 'M1A2 SEPv3 tanks fire across the rail yard at golden hour', S.rTracks,
+    { speed: 0, effects: [...wreck('foe0'), fire('hero', 1300), fire('ally1', 1900), fire('ally2', 2500), ...incoming('foe1', 6, 14, 3600)],
+      cam: hold({ side: 9, along: 13, lift: 3.4, fov: 42, lookHero: [-4, 40, 1.4] }, { side: 8.2, along: 11.8, lift: 3.2, fov: 40, lookHero: [-4, 40, 1.4] }) },
+    { tMs: 1380, exposureMs: 16 }],
+  [33, 'water-tower', 'battle', 'The line advances past the burning water tower at Cinder Junction', S.rFactory,
+    { speed: 2.2, sun: 'side', effects: [...wreck('foe0'), fireField(H(-12, 18), 0, { radiusM: 5 }), ...hitNear(-8, 25, 1900), fire('hero', 3600)], cam: RIG.chase({ side: -3, along: [-16, -12], lift: 3.4, fov: 44, look: [0, 40, 1.6] }) },
+    { tMs: 3680, exposureMs: 25 }],
+  [34, 'furnace-salvo', 'battle', 'T-14 Armatas fire a rippling salvo in the Ironworks yard', S.iYard,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fireField(H(-7, 10), 0, { radiusM: 3 }), fireField(H(21, 8), 0, { radiusM: 3 }), embers(H(-7, 10), 0), fire('hero', 1100), fire('ally1', 1900), fire('ally2', 2700), fire('ally3', 3500)],
+      cam: hold({ side: 9.2, along: 14.4, lift: 2.4, fov: 40, lookHero: [-9, 0, 1.8] }, { side: 8.2, along: 12.6, lift: 2.4, fov: 38, lookHero: [-9, 0, 1.8] }) },
+    { tMs: 1180, exposureMs: 16 }],
+  [35, 'farm-village', 'battle', 'Type 10 and K2 tanks fight through the farm village of Frontier Basin', S.frVillage,
+    { speed: 0, sun: 'side', effects: [...wreck('foe1'), fire('hero', 1500), ...incoming('foe0', 5, 13, 2700), fire('ally1', 3900)], cam: OG_HOLD() },
+    { tMs: 1580, exposureMs: 16 }],
+  [36, 'barn-knockout', 'battle', 'A Type 10 knocks out a T-90M beside the burning barn', S.frVillage,
+    { speed: 0, sun: 'side', effects: [...wreck('foe1'), fireField(H(-14, 22), 0, { radiusM: 6 }), embers(H(-14, 22), 0), ...knockout('hero', 'foe0', 1900), fire('ally1', 4100)], cam: REAR_HOLD() },
+    { tMs: 2060, exposureMs: 16 }],
+  [37, 'river-village', 'battle', 'ZTZ-100 tanks fight through the river village of the Jade River Delta', S.dVillage,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1400), fire('ally1', 2500), ...incoming('foe1', -5, 14, 3300), fire('ally2', 4300)], cam: OG_HOLD() },
+    { tMs: 1480, exposureMs: 16 }],
+  [38, 'church-knockout', 'battle', 'A Leopard is knocked out beside the onion-domed church', S.wChurch,
+    { speed: 0, sun: 'side', effects: [...wreck('foe1'), ...knockout('hero', 'foe0', 1900), fire('ally1', 3800), mg('ally1', 4800, 9)], cam: OG_HOLD() },
+    { tMs: 2060, exposureMs: 16 }],
+  [39, 'lakeside-village', 'battle', 'A KF51 Panther fires across the village at Highland Reservoir', S.reVillage,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), ...incoming('foe1', 5, 13, 2700), fire('ally1', 3800)], cam: OG_HOLD() },
+    { tMs: 1580, exposureMs: 16 }],
 
-  // ---------------------------------------------------------------- scenes
-  [41, 'lake-shore', 'scene', 'Glacier Pass at dawn: the column on the frozen lake', 'glacier-dawn-lake',
-    { speed: 4.2, pinMs: 3300, effects: [exhaust('hero', 100), exhaust('ally1', 200)], cam: RIG.pan({ side: 64, along: 0, lift: 2.4, fov: 16, look: [0, -12, 1.6] }) },
-    { tMs: 3300, exposureMs: 33 }],
-  [42, 'lake-crane', 'scene', 'Craning up over the frozen lake', 'glacier-dawn-lake',
-    { speed: 4, effects: [], cam: RIG.crane({ side: -5, along: [-21, -28], lift: [1.4, 13], fov: 44, look: [0, 36, 1] }) },
+  // ---------------------------------------------------------------- scenes: the battlefield around the fight
+  [40, 'rooftop-smoke', 'scene', 'Smoke columns rise over the rooftops of Steinburg', S.stNorth,
+    { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), ...wreck('foe1'), ...wreck('foe2'), barrage(H(-20, 140), 2400, 6, 16), fire('hero', 4200)], cam: DRONE() },
+    { tMs: 3300, exposureMs: 25 }],
+  [41, 'church-tower', 'scene', 'The street fight seen from the church tower', S.stMain,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), fire('ally1', 2500), ...incoming('foe1', -4, 16, 3500), fire('ally2', 4700)],
+      cam: hold({ side: -12, along: -30, lift: 16, fov: 38, lookHero: [0, 40, 0] }, { side: -11, along: -27, lift: 15, fov: 37, lookHero: [0, 40, 0] }) },
+    { tMs: 2700, exposureMs: 16 }],
+  [42, 'assault-above', 'scene', 'Verdant Fields from above as the assault rolls in', S.vAssault,
+    { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), burn('foe1', 0), smoke('foe1', 0), huge(H(-6, 52), 1800), barrage(H(-14, 70), 3000, 6, 16), fire('hero', 4300)], cam: DRONE(-1) },
+    { tMs: 3300, exposureMs: 25 }],
+  [43, 'lake-crane', 'scene', 'Glacier Pass: smoke rises over the frozen lake and the peaks', S.gLake,
+    { speed: 3, sun: 'side', effects: [burn('foe1', 0), smoke('foe1', 0), ...hitNear(-12, 40, 2000), fire('hero', 3600)], cam: CRANE() },
     { tMs: 4600, exposureMs: 25 }],
-  [43, 'gorge-wide', 'scene', 'Aegis Crossing seen from the gorge', 'aegis-morning-viaduct',
-    { speed: 3, pinMs: 3300, sun: 'front', effects: [], cam: RIG.pan({ side: -104, along: 6, lift: 44, fov: 28, look: [0, -16, 39.5] }) },
+  [44, 'oasis-golden', 'scene', 'Sunscar Oasis at golden hour: smoke over the palms and the minaret', S.oGolden,
+    { speed: 0, effects: [...wreck('foe0'), fire('hero', 1600), fire('ally1', 3000), ...incoming('foe1', -6, 18, 4000)],
+      cam: RIG.crane({ side: -9, along: [-14, -20], lift: [2.4, 12], fov: 44, look: [0, 30, 2] }) },
     { tMs: 3300, exposureMs: 25 }],
-  [44, 'mars-drone', 'scene', 'High over the Martian convoy', 'olympus-mars-convoy',
-    { speed: 4.6, effects: [dust('hero', 800, 12, 1), dust('ally1', 820, 10, 0.9)], cam: RIG.drone({ side: 8, along: [-30, -12], lift: [24, 19], fov: 46, look: [0, 34, 0] }) },
+  [45, 'harbor-wide', 'scene', 'Nordhavn: the battle on the harbor road below the mountains', S.fHarbor,
+    { speed: 3, sun: 'side', effects: [...wreck('foe0'), ...hitNear(10, 30, 2000), fire('hero', 3800)], cam: RIG.crane({ side: 18, along: [6, 0], lift: [6, 14], fov: 40, look: [0, -10, 1.5] }) },
     { tMs: 3300, exposureMs: 25 }],
-  [45, 'earthrise-wide', 'scene', 'Earthrise Basin: the Earth over the lunar plain', 'earthrise-moon',
-    { speed: 2, effects: [], cam: hold({ side: 16, along: -14, lift: 1.4, fov: 50, lookHero: [-2, 50, 11] }, { side: 14, along: -11, lift: 1.5, fov: 48, lookHero: [-2, 50, 11] }) },
-    { tMs: 3300, exposureMs: 20 }],
-  [46, 'canyon-rim', 'scene', 'Redrock Divide: a Leclerc wedge from the canyon rim', 'redrock-golden-canyon',
-    { speed: 3, effects: ['hero', 'ally1', 'ally2', 'ally3', 'ally4'].map((a, i) => dust(a, 700 + i * 40, 14, 1.1)), cam: RIG.crane({ side: 30, along: [6, -2], lift: [9, 16], fov: 34, look: [0, -10, 1.5] }) },
+  [46, 'river-drone', 'scene', 'Monsoon Ridge: shells land along the jungle river', S.mFord,
+    { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), barrage(H(-10, 30), 1200, 6, 14), barrage(H(8, 50), 3400, 5, 12), fire('hero', 4600)], cam: DRONE() },
     { tMs: 3300, exposureMs: 25 }],
-  [47, 'steppe-ridge', 'scene', 'Tarkhan Steppe: a wedge crests the grass ridge at golden hour', NEW.steppeRidge,
-    // slower: the wedge's wings reach the ridge-top obstacles after 5 s at 3.2 m/s
-    { speed: 2.5, effects: ['hero', 'ally1', 'ally2', 'ally3', 'ally4'].map((a, i) => dust(a, 700 + i * 40, 12, 1)), cam: RIG.crane({ side: -26, along: [26, 18], lift: [4, 13], fov: 40, look: [0, -8, 1.5] }) },
+  [47, 'ironworks-crane', 'scene', 'Ironworks: the yard burns between the smoke stacks', S.iYard,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fireField(H(-7, 10), 0, { radiusM: 3 }), fireField(H(21, 8), 0, { radiusM: 3 }), fire('hero', 1500), fire('ally2', 3200), barrage(H(0, 90), 3800, 5, 14)], cam: CRANE(-1) },
+    { tMs: 4600, exposureMs: 25 }],
+  [48, 'delta-crane', 'scene', 'Jade River Delta: the river village under fire, mountains beyond', S.dVillage,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), fire('ally1', 2600), barrage(H(4, 80), 3500, 6, 14)], cam: CRANE() },
+    { tMs: 4600, exposureMs: 25 }],
+  [49, 'orchard-golden', 'scene', 'Orchard Valley at golden hour: smoke drifts over the orchards', S.orGolden,
+    { speed: 2.6, effects: [...wreck('foe0'), ...incoming('foe1', 5, 18, 1700), fire('hero', 3500)], cam: DRONE(-1) },
     { tMs: 3300, exposureMs: 25 }],
-  [48, 'delta-village', 'scene', 'The river village in the Jade River Delta, mountains beyond', NEW.deltaVillage,
-    { speed: 2.6, pinMs: 3300, effects: [], cam: RIG.pan({ side: -40, along: 0, lift: 3, fov: 24, look: [0, -6, 1.6] }) },
-    { tMs: 3300, exposureMs: 33 }],
-  [49, 'polders-mill', 'scene', 'Tidegate Polders: a column on the dike road past the windmill', NEW.poldersMill,
-    // close pass: from 45 m out the windmill side of the dike is a tree grove
-    { speed: 3, pinMs: 3300, effects: [dust('hero', 800, 8, 0.6)], cam: RIG.passby({ side: -16, along: 0, lift: 1.6, fov: 36, look: [0, 0, 1.8] }) },
-    { tMs: 3300, exposureMs: 33 }],
-  [50, 'reservoir-shore', 'scene', 'Highland Reservoir at sunset: tanks on the glittering shore', NEW.reservoirShore,
-    // slow and solo: at 2.4 m/s the hero reaches the waterline after 4.5 s
-    { speed: 1.3, count: 1, sun: 'back', effects: [dust('hero', 800, 8, 0.6)], cam: RIG.crane({ side: -10, along: [14, 11], lift: [1.5, 7], fov: 40, look: [0, 0, 1.5] }) },
-    { tMs: 3300, exposureMs: 33 }],
+  [50, 'reservoir-crane', 'scene', 'Highland Reservoir: the lake beyond the burning village', S.reVillage,
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), ...incoming('foe1', 5, 13, 2700), fire('ally1', 3800)], cam: CRANE() },
+    { tMs: 4600, exposureMs: 25 }],
 ];
 
 /** Builds one site shot's scene JSON (storyboard + still moment + meta). */
 export function siteScene([n, id, kind, title, setRef, film, still]) {
   const set = typeof setRef === 'string' ? setById(setRef) : setRef;
   const time = film.time ?? set.time;
-  const base = { ...set, time: T(time), picture: pictureFor({ ...set, time }, { ...FILM_LENS, anamorphic: 0.5, ...(film.picture ?? {}) }), light: set.light,
+  const base = { ...set, time: T(time), picture: pictureFor({ ...set, time }, { ...SITE_LENS, ...(film.picture ?? {}) }), light: set.light,
     ...(film.formation ? { formation: film.formation } : {}), ...(film.count ? { count: film.count } : {}),
     ...(film.lineup ? { lineup: film.lineup } : {}), ...('enemies' in film ? { enemies: film.enemies } : {}),
     ...(film.anchor ? { anchor: film.anchor } : {}), ...(film.heading != null ? { heading: film.heading } : {}) };
