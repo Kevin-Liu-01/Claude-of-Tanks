@@ -1,8 +1,9 @@
-import type { ArmorEnvelope, Vec3Tuple } from '../vehicles/specHelpers.ts';
+// Structural hull input keeps the room rules program independent of fleet builders.
+type Vec3Tuple = readonly [number, number, number];
 
 export interface MissionCarrierSpec {
   dims: { hullLengthM: number; widthM: number; heightM: number };
-  armor: Pick<ArmorEnvelope, 'hullPlates'>;
+  armor: { hullPlates: readonly { verts: readonly Vec3Tuple[] }[] };
 }
 export interface MissionAttachment { x: number; y: number; z: number; width: number; depth: number }
 const mounts = new WeakMap<MissionCarrierSpec, MissionAttachment>();
