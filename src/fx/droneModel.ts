@@ -49,7 +49,10 @@ export function createDroneModelKit(nation?:string) {
   fairing.push(new THREE.CylinderGeometry(.054,.054,.02,12).translate(x,.128,z));
   for(let i=0;i<6;i++){const angle=i*Math.PI/3;box(parts,.009,.045,.012,x+Math.cos(angle)*.057,.076,z+Math.sin(angle)*.057);}
   box(parts,.028,.18,.03,x,-.08,z);
-  if(design.frame==='duct')parts.push(new THREE.TorusGeometry(.295,.018,5,24).rotateX(Math.PI/2).translate(x,.125,z));
+  if(design.frame==='duct'){
+   parts.push(new THREE.TorusGeometry(.295,.018,5,24).rotateX(Math.PI/2).translate(x,.125,z));
+   for(let n=0;n<3;n++){const angle=n*Math.PI*2/3;rod(parts,.009,new THREE.Vector3(x+Math.cos(angle)*.05,.11,z+Math.sin(angle)*.05),new THREE.Vector3(x+Math.cos(angle)*.295,.11,z+Math.sin(angle)*.295));}
+  }
   else if(design.frame==='fold')parts.push(new THREE.CylinderGeometry(.052,.052,.055,10).translate(x*.5,.04,z*.5));
   box(fairing,.07,.02,.035,x,.13,z+.07);
  }
@@ -60,7 +63,7 @@ export function createDroneModelKit(nation?:string) {
  }
  // Segmented battery jacket, retaining straps and underslung impact payload.
  box(fairing,.2,.09,.28,0,.23,-.04);
- for(const z of [-.12,.07])box(parts,.218,.012,.032,0,.282,z);
+ for(const z of [-.12,.07]){box(parts,.218,.012,.032,0,.282,z);for(const x of[-.106,.106])box(parts,.012,.094,.032,x,.235,z);}
  fairing.push(new THREE.CapsuleGeometry(.067,.3,4,10).rotateX(Math.PI/2).translate(0,-.105,.015));
  for(const z of [-.1,.14])parts.push(new THREE.TorusGeometry(.072,.008,5,10).translate(0,-.105,z));
  box(parts,.16,.14,.035,0,.005,.28);
@@ -73,7 +76,8 @@ export function createDroneModelKit(nation?:string) {
  }
  for(let i=0;i<5;i++)box(parts,.12,.005,.009,0,.177,-.14+i*.042);
  const body=merge(parts),equipment=merge(fairing),lens=merge(glass);
- const bladeParts=[new THREE.BoxGeometry(.54,.012,.041),new THREE.BoxGeometry(.3,.009,.033).rotateY(Math.PI/2)];
+ const bladeParts=[new THREE.CylinderGeometry(.02,.02,.026,8)];
+ for(let n=0;n<3;n++)bladeParts.push(new THREE.BoxGeometry(.26,.012,.037).translate(.13,0,0).rotateY(n*Math.PI*2/3));
  const rotor=merge(bladeParts);
  const bodyMaterial=new THREE.MeshStandardMaterial({color:0x252d30,roughness:.48,metalness:.6});
  const equipmentMaterial=new THREE.MeshStandardMaterial({color:design.color,roughness:.62,metalness:.3});

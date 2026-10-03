@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {Vector3} from 'three';
 import {createMatchModeController} from './matchModes.ts';
+import {ensureAuthorityFleet} from '../vehicles/authorityFleet.ts';
 import {getSpec} from '../vehicles/specs.ts';
 import {createCombatState,resolveShellHit,resolveHeBurst,shellBlastRadiusM} from './damage.ts';
 import {createShell} from './ballistics.ts';
@@ -8,6 +9,7 @@ import {matchRulesetFor,applyRulesetToCombat,GUNSHIP_WEAPONS} from './matchRules
 import {createSpottingSystem} from './spotting.ts';
 import {tankPoseFromState,blastTargets} from './armor.ts';
 import {applyJuggernautScale} from './juggernautScale.ts';
+await ensureAuthorityFleet(['m1a2']);
 const spec=getSpec('m1a2');
 const tank=(id,team='alpha',bot=false)=>({id,team,bot,spec,state:{pos:new Vector3(0,0,-100),yaw:0,turretYaw:0,visualPitch:0,visualRoll:0,gunPitch:0,speed:0},combat:createCombatState(spec),input:{aimPoint:new Vector3(15,0,-100)}});
 {
