@@ -5,8 +5,8 @@
 // compare outputs are produced from a synthetic census, and the CLI fails closed without starting a server or browser.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createCanvas } from '@napi-rs/canvas';
@@ -411,6 +411,28 @@ try {
   mkdirSync(dirs.lockDir);
   await assert.rejects(createPoliteCaptureLock({ ...dirs, ...fast }).acquire(300), /cot-shots lock timeout/);
   assert.ok(!existsSync(dirs.probeDir), 'a FIFO holder outlasting the wait gets the session mutex handed back');
+  // 2026-10-03: a waiter older than the stale age keeps its place. It renews its ticket while it waits and restores it
+  // when another waiter reaps it; before, it was deleted at 60 min and waited outside the queue behind every later arrival.
+  rmSync(dirs.lockDir, { recursive: true, force: true });
+  const front = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 30000)'], { stdio: 'ignore' });
+  const frontTicket = path.join(dirs.queueDir, t(1, front.pid));
+  writeFileSync(frontTicket, String(front.pid));
+  const frontAlive = setInterval(() => { const now = new Date(); try { utimesSync(frontTicket, now, now); } catch { /* gone */ } }, 30);
+  const ownTickets = () => readdirSync(dirs.queueDir).filter((n) => n.endsWith(`-${process.pid}.t`));
+  const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const patient = createPoliteCaptureLock({ ...dirs, ...fast, ticketStaleMs: 150, ticketRefreshMs: 40 });
+  const waiting = patient.acquire(5000);
+  await pause(450);
+  assert.equal(ownTickets().length, 1, 'a waiter past the stale age still holds its ticket');
+  assert.ok(Date.now() - statSync(path.join(dirs.queueDir, ownTickets()[0])).mtimeMs < 150, 'and keeps renewing it, so no peer reaps it');
+  for (const name of ownTickets()) rmSync(path.join(dirs.queueDir, name));
+  await pause(160);
+  assert.equal(ownTickets().length, 1, 'a reaped ticket is restored in place');
+  assert.ok(!existsSync(dirs.lockDir), 'it still waits behind the live waiter ahead of it');
+  clearInterval(frontAlive); front.kill();
+  await waiting;
+  assert.ok(existsSync(dirs.lockDir), 'and takes the lock when that waiter goes');
+  patient.release();
   rmSync(lockRoot, { recursive: true, force: true });
   console.log('visual-census.selftest: camera sets pinned (core and border), site selection, metrics, store, sheets, index, compare and CLI verified');
 } finally {

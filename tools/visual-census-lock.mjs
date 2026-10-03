@@ -37,10 +37,20 @@ export function stepBehindStamp(names, own, isLive) {
 export function createPoliteCaptureLock({
   probeDir, queueDir = DEFAULT_QUEUE_DIR, lockDir = DEFAULT_LOCK_DIR, maxHolderWaitMs = 8 * 60 * 1000,
   requeuePauseMs = 3000, headPollMs = 1000, log = () => {},
+  ticketStaleMs = TICKET_STALE_MS, ticketRefreshMs = Math.max(1, Math.min(30_000, ticketStaleMs / 3)),
 }) {
   if (!probeDir) throw new Error('createPoliteCaptureLock needs the session mutex directory');
   let fifoHeld = false, probeHeld = false, sequence = 0;
-  const stale = (name) => { try { return Date.now() - statSync(join(queueDir, name)).mtimeMs > TICKET_STALE_MS; } catch { return false; } };
+  const stale = (name) => { try { return Date.now() - statSync(join(queueDir, name)).mtimeMs > ticketStaleMs; } catch { return false; } };
+  // 2026-10-03: a waiter renews its own ticket and restores it if another waiter reaped it, as capture-lock.mjs does;
+  // before, a waiter past the stale age was deleted by the next head() scan and then waited outside the queue.
+  const keepTicket = (name) => {
+    const path = join(queueDir, name), now = new Date();
+    try { utimesSync(path, now, now); } catch (error) {
+      if (error.code !== 'ENOENT') return;
+      try { writeFileSync(path, String(process.pid), { flag: 'wx' }); } catch { /* raced */ }
+    }
+  };
   const live = (name) => !stale(name) && pidAlive(ticketPid(name));
   const names = () => { try { return readdirSync(queueDir).filter((n) => n.endsWith('.t')).sort(); } catch { return []; } };
   const reserve = (stamp) => {
@@ -59,15 +69,6 @@ export function createPoliteCaptureLock({
     }
     return own;
   };
-  // A waiting ticket is renewed every poll (and restored under its own name if a scan reaped it): the queue reaps
-  // tickets an hour stale, and a census that waited longer lost its place for good and waited out its timeout
-  // (2026-10-03, the map-borders lane's first-3 capture: its ticket vanished at 61 min, the process polled on).
-  const keep = (name) => {
-    const ticketPath = join(queueDir, name), now = new Date();
-    try { utimesSync(ticketPath, now, now); } catch (error) {
-      if (error.code === 'ENOENT') { try { writeFileSync(ticketPath, String(process.pid), { flag: 'wx' }); } catch { /* raced */ } }
-    }
-  };
   const tryMkdir = (dir) => { try { mkdirSync(dir); return true; } catch { return false; } };
   const reapStaleLock = () => {
     try {
@@ -85,9 +86,10 @@ export function createPoliteCaptureLock({
     for (let round = 1; ; round++) {
       const ticket = reserve(stamp);
       try {
+        let keptAt = Date.now();
         while (head(ticket) !== ticket) {
           if (late()) throw new Error('cot-shots lock timeout');
-          keep(ticket);
+          if (Date.now() - keptAt >= ticketRefreshMs) { keepTicket(ticket); keptAt = Date.now(); }
           await sleep(headPollMs);
         }
         if (tryMkdir(probeDir)) {
