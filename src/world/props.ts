@@ -7120,6 +7120,15 @@ ${snowCap ? `
       mesh.matrixAutoUpdate = false;
       group.add(mesh);
     }
+    if (built.fieldWorks) {
+      // the field boundaries' walls and banks: low and long, grounded by their own shading and dark foot (no shadow)
+      const works = new THREE.Mesh(built.fieldWorks, mats.rock);
+      works.name = 'props-field-works';
+      works.castShadow = false;
+      works.receiveShadow = true;
+      works.matrixAutoUpdate = false;
+      group.add(works);
+    }
     group.userData.scenery = built.receipt;
   }
   yield* placeScenery();

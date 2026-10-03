@@ -105,12 +105,26 @@ interface SceneryBedrock {
   name?: string;
 }
 
+/**
+ * The field boundaries' built works on the ground lane's land use (fieldWorks.ts): the dry stone walls of a karst's
+ * wall boundaries, the earth banks under a bocage's hedge lines, on the very lines the terrain draws. Decor: no
+ * collision. A world without the land-use hook (or a map without a field system) builds none.
+ */
+interface SceneryFieldWorks {
+  walls?: boolean;
+  banks?: boolean;
+  /** sRGB HSL base tones of the wall stone and the bank's earth. */
+  wallTone?: readonly [number, number, number];
+  bankTone?: readonly [number, number, number];
+}
+
 export interface SceneryConfig {
   rocks?: readonly SceneryRock[];
   rockFields?: readonly SceneryRockField[];
   bedrock?: readonly SceneryBedrock[];
   landmarks?: readonly SceneryLandmark[];
   powerLines?: readonly SceneryPowerLine[];
+  fieldWorks?: SceneryFieldWorks;
 }
 
 /** The share of a bedrock hill's search radius the trees keep off (its flanks and crown; its foot keeps them). */

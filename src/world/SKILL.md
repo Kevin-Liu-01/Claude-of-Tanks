@@ -146,7 +146,10 @@ docs/MAP-LAYOUT-BRIEF.md "Scenery" is the authoring guide. The field wall module
 is a dry-stone wall fitted to the old coursed module's envelope after spending its draws; brick-print maps
 (`sourcedTextures.ts` `sourcedStoneIsBrick`) keep the coursed module through props' local types. The sandbag stacks
 (props local types) are `maps/sceneryKit.ts` `buildSandbagStack`, laid bag by bag in the sourced models' envelopes on
-the canvas weave; their remnants spend the old remnant's draws first.
+the canvas weave; their remnants spend the old remnant's draws first. `fieldWorks.ts` lays a map's field-boundary
+works (a karst's dry stone walls, a bocage's hedge banks) on the ground lane's land use through the height field's
+`_landUseAt` hook — the same boundary band and field gate the terrain draws — as decor with no collision; a world
+without the hook builds none.
 A plan builder reads its battlefield through `structureBuildContext(buckets)`
 (`maps/exteriorDetailKit.ts`), never a positional argument; a part new to a
 builder's seeded stream is tagged `userData.uvJitter = 'none'`, a part that

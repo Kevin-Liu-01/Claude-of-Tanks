@@ -8,7 +8,8 @@
 //      other small item, and the config-only footprints (sceneryPlan.ts) equal the kit's radii; the sandbag stacks
 //      fill the sourced models' envelopes and certify the same way;
 //   3. the composer admits a feature only inside the square, off the pads, out of the road core, out of the water and
-//      off the hard solids, says why it refused, appends static masses, and draws only its own streams;
+//      off the hard solids, says why it refused, appends static masses, and draws only its own streams; the field
+//      boundaries' walls and banks stand on the land use's lines only;
 //   4. every map that authors scenery places all of it on its real ground (a headless props build), its standing
 //      masses reach the collision lists, and no tree stands inside one;
 //   5. props.ts and vegetation.ts carry the pass and the keep-out (source pins).
@@ -23,6 +24,7 @@ import {
   sceneryClearances, withGroundCoverHoles,
 } from './sceneryPlan.ts';
 import { composeScenery } from './scenery.ts';
+import { buildFieldWorks } from './fieldWorks.ts';
 import { certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile } from './structureCollision.ts';
 import { collisionFootprintContainsPoint } from './collision.ts';
 
@@ -308,6 +310,57 @@ function compose(scenery, solids = [], mobile = false) {
   assert.equal(clear[1].halfWidth, 9, 'a scree fan claims its own ground only');
   assert.ok(Math.abs(clear[3].halfWidth - (2.4 * 1.2 + 1.2)) < 1e-9);
   assert.deepEqual(sceneryClearances(undefined), []);
+}
+
+// the field boundaries' works on a synthetic land use (fields 40 x 30 m; a road along z = 75): the dry stone walls
+// stand on the field lines and nowhere else — low, off the road and the pad, deterministic, fewer triangles on the
+// phones — and a margin system's hedge lines get banks; without the hook nothing is built
+{
+  const fields = (boundary, hedgeLines) => ({
+    getHeightAt: (x) => 2 + 0.01 * x, getNormalAt: () => ({ y: 1 }), getWaterMaskAt: () => 0, _villageMask: () => 0,
+    _roadDist: (x, z) => Math.abs(z - 75),
+    _landUseAt: (x, z, out) => {
+      const u = ((x % 40) + 40) % 40, v = ((z % 30) + 30) % 30, du = Math.min(u, 40 - u), dv = Math.min(v, 30 - v);
+      out.active = 1; out.edgeM = Math.min(du, dv); out.boundary = boundary; out.track = 0; out.hedge = hedgeLines && du < 1.2 ? 1 : 0;
+      return out;
+    },
+  });
+  const lay = (ground, options) => {
+    const steps = buildFieldWorks(ground, noise, { spawns: [{ x: 0, z: -300 }], mobile: false, ...options });
+    let step = steps.next();
+    while (!step.done) step = steps.next();
+    return step.value;
+  };
+  const walls = lay(fields(3, false), { walls: true, banks: false });
+  assert.ok(walls.geometry && walls.receipt.wallM > 20000, `the walls run the field lines (${Math.round(walls.receipt.wallM)} m)`);
+  for (const name of ['position', 'normal', 'color', 'aRockGround', 'uv']) assert.ok(walls.geometry.attributes[name], `field walls: carry ${name}`);
+  const p = walls.geometry.attributes.position.array;
+  let off = 0, high = 0, onRoad = 0, onPad = 0;
+  for (let i = 0; i < p.length; i += 3) {
+    const x = p[i], y = p[i + 1], z = p[i + 2];
+    const u = ((x % 40) + 40) % 40, v = ((z % 30) + 30) % 30;
+    if (Math.min(u, 40 - u, v, 30 - v) > 0.9) off++;
+    if (y - (2 + 0.01 * x) > 1.0) high++;
+    if (Math.abs(z - 75) < 4) onRoad++;
+    if (Math.hypot(x, z + 300) < 22) onPad++;
+  }
+  assert.equal(off, 0, 'every wall stands on a field line');
+  assert.equal(high, 0, 'a field wall stays under a metre');
+  assert.equal(onRoad, 0, 'no wall on the road or bridging it');
+  assert.equal(onPad, 0, 'no wall on the spawn pad');
+  const again = lay(fields(3, false), { walls: true, banks: false });
+  assert.deepEqual(Array.from(again.geometry.attributes.position.array), Array.from(p), 'field walls: deterministic');
+  const phone = lay(fields(3, false), { walls: true, banks: false, mobile: true });
+  assert.ok(phone.receipt.triangles < walls.receipt.triangles, `field walls: the phones draw fewer (${phone.receipt.triangles} < ${walls.receipt.triangles})`);
+  const banks = lay(fields(0, true), { walls: false, banks: true });
+  assert.ok(banks.geometry && banks.receipt.bankM > 5000 && banks.receipt.wallM === 0, `banks run the hedge lines (${Math.round(banks.receipt.bankM)} m)`);
+  const bp = banks.geometry.attributes.position.array;
+  let bankOff = 0;
+  for (let i = 0; i < bp.length; i += 3) { const u = ((bp[i] % 40) + 40) % 40; if (Math.min(u, 40 - u) > 1.6) bankOff++; }
+  assert.equal(bankOff, 0, 'every bank stands under a hedge line');
+  const none = lay({ ...fields(3, false), _landUseAt: undefined }, { walls: true, banks: true });
+  assert.equal(none.geometry, null, 'no land use, no field works');
+  for (const b of [walls, again, phone, banks]) b.geometry.dispose();
 }
 
 // ---------------------------------------------------------------------------------------------- 4. the maps

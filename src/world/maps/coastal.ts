@@ -281,6 +281,9 @@ export default {
   // marks each bocage crossroads on the inland road; a standing stone rises on each swell of the downs. Mirrored across
   // the axis like the rest of the map. (The hedges on the hedge banks belong to the land-cover lane.)
   scenery: {
+    // the bocage's hedge lines stand on earth banks (the talus): the ground lane's land use draws the hedges' lines
+    // (landUse.ts) and the banks follow them (fieldWorks.ts; decor, no collision)
+    fieldWorks: { banks: true },
     rocks: [
       { form: 'tor', geology: 'granite', x: -222, z: 22, radius: 7, height: 5.5, yawDeg: 24, name: 'the axis tor' },
       { form: 'tor', geology: 'granite', x: 14, z: -152, radius: 5, height: 4.2, yawDeg: 70, name: 'the south downs tor' },

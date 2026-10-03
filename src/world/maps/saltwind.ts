@@ -156,6 +156,9 @@ export default {
   // the clearance cairn of a Dalmatian field, stands on each upland. Mirrored across the bay's axis like the rest of
   // the map (the rock fields draw their own ground on each side).
   scenery: {
+    // the karst's small fields are walled in dry stone: the ground lane's land use draws their footing (landUse.ts, boundary
+    // 3) and the walls stand on the same lines (fieldWorks.ts; decor, no collision)
+    fieldWorks: { walls: true },
     rocks: [
       { form: 'pavement', geology: 'limestone', x: -350, z: -262, radius: 15, height: 1.6, yawDeg: 30, name: 'the south karst pavement' },
       { form: 'pavement', geology: 'limestone', x: -350, z: 282, radius: 15, height: 1.6, yawDeg: -30, name: 'the north karst pavement' },

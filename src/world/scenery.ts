@@ -8,6 +8,7 @@
 //     bedrock: [{ geology: 'sandstone', x, z, radius, name: 'the gate dome' }, ...],
 //     landmarks: [{ kind: 'calvary', x, z, yawDeg, name: 'the calvary at the crossroads' }, ...],
 //     powerLines: [{ towers: [[x, z], ...], heightM, name: 'the 380 kV line' }],
+//     fieldWorks: { walls: true },   // the land use's wall boundaries built (fieldWorks.ts)
 //   }
 //
 // Rock forms (sceneryRocks.ts: tor, outcrop, crag, pavement, scree, hoodoo, menhir, cairn, calvary) — the authored ones,
@@ -26,6 +27,7 @@ import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildBedrock, buildRockFormation, type RockFormationSpec } from './sceneryRocks.ts';
 import { buildConductor, buildPylon, SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
+import { buildFieldWorks, type FieldWorksReceipt } from './fieldWorks.ts';
 import {
   FIELD_FORMS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, rockReach, type GroundCoverHole, type SceneryConfig,
 } from './sceneryPlan.ts';
@@ -47,8 +49,12 @@ function mulberry32(a: number): Rng {
 interface SceneryHeightField {
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
+  getNormalAt(x: number, z: number): { y: number };
   getWaterMaskAt(x: number, z: number): number;
   _roadDist(x: number, z: number): number;
+  _villageMask?(x: number, z: number): number;
+  /** The ground lane's land use (landUse.ts landUseAt through terrain.ts), when the world has one. */
+  _landUseAt?(x: number, z: number, out: { active: number; edgeM: number; boundary: number; track: number; hedge: number }): { active: number; edgeM: number; boundary: number; track: number; hedge: number };
 }
 
 interface SceneryBuildContext {
@@ -95,11 +101,15 @@ interface SceneryReceipt {
   rockTriangles: number;
   bakedTriangles: number;
   colliders: number;
+  /** The field boundaries' works, when the map asks for them. */
+  fieldWorks?: FieldWorksReceipt;
 }
 
 interface SceneryBuild {
   /** One geometry per rock formation (the props owner merges them into one mesh on the rock material). */
   rockPieces: THREE.BufferGeometry[];
+  /** The field boundaries' walls and banks: one welded geometry on the rock material, decor that casts no shadow. */
+  fieldWorks: THREE.BufferGeometry | null;
   receipt: SceneryReceipt;
 }
 
@@ -155,7 +165,7 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
   const receipt: SceneryReceipt = { features: [], groundCoverHoles: [], placed: 0, skipped: 0, rockTriangles: 0, bakedTriangles: 0, colliders: 0 };
   const rockPieces: THREE.BufferGeometry[] = [];
   const scenery = ctx.scenery;
-  if (!scenery) return { rockPieces, receipt };
+  if (!scenery) return { rockPieces, fieldWorks: null, receipt };
   const noise = new SimplexNoise({ random: mulberry32(ctx.seed + 9299) });
   const ground = ctx.heightField;
   const skip = (feature: SceneryFeatureReceipt, reason: string) => {
@@ -352,5 +362,16 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
     tower.geometry.dispose();
     yield { fine: true, progress: false, stage: 'scenery' };
   }
-  return { rockPieces, receipt };
+
+  // ---- the field boundaries' works: walls and banks on the land use's own lines (decor, no collision)
+  let fieldWorks: THREE.BufferGeometry | null = null;
+  const works = scenery.fieldWorks;
+  if (works && (works.walls || works.banks)) {
+    const built = yield* buildFieldWorks(ground, noise, {
+      walls: !!works.walls, banks: !!works.banks, spawns: ctx.spawns, mobile: ctx.mobile, wallTone: works.wallTone, bankTone: works.bankTone,
+    });
+    fieldWorks = built.geometry;
+    receipt.fieldWorks = built.receipt;
+  }
+  return { rockPieces, fieldWorks, receipt };
 }
