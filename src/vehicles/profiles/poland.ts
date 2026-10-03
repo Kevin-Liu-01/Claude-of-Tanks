@@ -1,3 +1,5 @@
+import {addEscortFieldKit} from './escortFieldKit.ts';
+import {ESCORT_FIELD_KITS} from '../escortFieldKitLayout.ts';
 import { buildJaguarModern } from './t72ModernVariants.ts';
 // Polish armored family — §5.248 GROUND-UP REBUILDS (owner order 2026-08-17:
 // "completely new ones built from the ground up doing high quality visual
@@ -59,6 +61,7 @@ interface PolishBuilderPort {
   muzzleZ?: number;
   topY?: number;
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addExternalArmor(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addCupola(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addEquipment(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
@@ -1394,6 +1397,7 @@ function buildPL01(P: PolishBuilderPort): void {
   addPL01RemoteWeaponStation(P, context);
   addPL01RoofSuite(P, context);
   addPL01Gun(P, context);
+  if (context.is105) addEscortFieldKit(P,ESCORT_FIELD_KITS.pl01_105);
 }
 
 export const POLAND_PROFILES = {

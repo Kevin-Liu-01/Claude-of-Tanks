@@ -931,6 +931,7 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
   clearDecals(...parents: Array<string | string[]>): void;
   scaleAllBuckets(x?: number, y?: number, z?: number): void;
   scaleDecals(scale: number): void;
+  extendHullLength(factor: number): void;
   scaleBuckets(names: string | string[], x?: number, y?: number, z?: number): void;
   offsetBuckets(names: string | string[], x?: number, y?: number, z?: number): void;
   forEachBucketPart(
@@ -7034,6 +7035,20 @@ function* createTankOwnedSteps(
       for (const list of Object.values(buckets)) {
         for (const geo of list) geo.scale(x, y, z);
       }
+    },
+    // Chassis stretch is separate from the wheel course: the profile authors
+    // new axle/end stations, so round tires and rigid track shoes stay round.
+    extendHullLength(factor) {
+      for (const [name, list] of Object.entries(buckets)) {
+        if (BUCKET_DEF[name]?.[0] !== 'hullG') continue;
+        for (const geo of list) geo.scale(1, 1, factor);
+      }
+      for (const child of hullG.children) {
+        let movingGear = child.userData.runningGear === true;
+        child.traverse(node => { movingGear ||= node.userData.runningGear === true; });
+        if (!movingGear) { child.position.z *= factor; child.scale.z *= factor; }
+      }
+      for (const decal of decals) if (decal.parent === 'hull') decal.pos[2] *= factor;
     },
     scaleDecals(scale) {
       for (const decal of decals) {

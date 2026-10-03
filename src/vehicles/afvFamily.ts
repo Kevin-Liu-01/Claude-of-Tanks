@@ -1,3 +1,5 @@
+import {applyEscortFieldKitArmor} from './escortFieldKitArmor.ts';
+import {ESCORT_FIELD_KITS} from './escortFieldKitLayout.ts';
 // Owner-supplied AFV/IFV oracle registrations.
 //
 // The GLBs remain local comparison material only. Runtime vehicles are
@@ -389,8 +391,6 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
     // gun; dims grace covers the published datum).
     dims: { hullLengthM: 7.14, overallLengthM: 7.14, widthM: 3.23, heightM: 2.40 },
     armor: ifvArmor({
-      // Print envelope (x0.9684 z-map): tub floor 0.29, sponson/deck 1.84,
-      // fender band to ±1.615, ring plane 1.85 at z +0.24.
       hl: 3.57, hw: 1.615, inW: 1.00, floor: 0.29, trkTop: 1.20, roofY: 1.84,
       turretPivot: [0, 1.85, 0.24], gunPivot: [0.05, 0.28, 0.65],
       barrelLenM: 2.95, barrelRadM: 0.058,
@@ -408,13 +408,8 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
   },
 
   upior: {
-    // NEW GROUND-UP ID: the Upiór — FICTIONAL Polish concept IFV; the print
-    // IS the design (faceted stealth hull, BMP-2-class turret, tall left
-    // sensor tower). DIMS = PRINT-PROPORTIONAL at the banked 3.00 width
-    // anchor (§5.249 ASK-OWNER default "print-proportional"): the extract
-    // reads L 5.11 / H 2.55 at W 3.00 — the REG row's provisional 6.70
-    // length was a pre-extraction BMP-2-class guess and is superseded by
-    // the print's own proportions (conflict reported to the orchestrator).
+    // Owner's original Polish concept, rebuilt in October with a raised
+    // angular IFV turret, fitted side cassettes and open cage screens.
     id: 'upior', name: 'Upiór IFV', nation: 'Poland', era: 'modern', role: 'ifv',
     hp: 1700,
     enginePowerHp: 800, weightTons: 30.0, topSpeedKmh: 75, reverseSpeedKmh: 30,
@@ -433,33 +428,25 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
         shell('3UOF8 HE-I', 'HE', 30, 8, 8, 52, 960, { reloadS: 0.30, count: 300 }),
       ],
     },
-    // OWNER FLIP ORDER dims (2026-08-17): with the hull un-mirrored (wedge
-    // bow +z, receipts shots/upior-flip/) the turret re-seats rear-of-mid
-    // at the print's own ring station and the 30 mm stays BEHIND the nose
-    // exactly like the print ("gun stays behind the nose", §5.248 packet):
-    // overall = the hull's own span again. The §5.269 6.20 overall was the
-    // mirrored front-of-mid seat's gun overhang.
-    dims: { hullLengthM: 5.15, overallLengthM: 5.21, widthM: 3.00, heightM: 2.55 },
+    // The rear ring station retains the established forward hull orientation.
+    dims: { hullLengthM: 5.15, overallLengthM: 5.30, widthM: 3.69, heightM: 2.98 },
     armor: ifvArmor({
       // Print envelope (width-anchored frame IS the authoring frame): deck
       // crown 1.60, skirts to ±1.50, BMP-2-class turret ring 1.47 at
       // [x -0.10, z -0.74], roof 1.91, tower crown 2.55.
       hl: 2.555, hw: 1.50, inW: 0.85, floor: 0.28, trkTop: 0.83, roofY: 1.58,
-      turretPivot: [-0.10, 1.47, -0.74], gunPivot: [0, 0.21, 0.55],
+      turretPivot: [-0.10, 1.64, -0.74], gunPivot: [0, 0.35, 0.76],
       barrelLenM: 2.40, barrelRadM: 0.035,
       glacis: [40, 90, 140], lower: [35, 60, 90], side: [30, 55, 90],
       skirt: [25, 45, 120], rear: 25, roof: 15,
-      tw: 0.88, tFrontZ: 0.88, tRearZ: -0.77, tH: 0.45,
-      // (OWNER FLIP ORDER 2026-08-17: ring back at the -0.74 rear-of-mid
-      // print station — §5.269's +0.74 "native-frame fix" was itself the
-      // mirrored read; pixel receipts shots/upior-flip/before/)
+      tw: 1.02, tFrontZ: 0.88, tRearZ: -1.04, tH: 0.62,
       cheek: [45, 80, 120], tSide: [30, 50, 80], tRear: 25, tRoof: 15,
       mantlet: [50, 90, 130],
     }),
     visual: {
       scheme: 'digital', base: '#3d4639', weather: '#4b5344',
       patches: ['#262e26', '#565243', '#6a6252'], marking: 'number', number: 'W-01',
-      trackWidthM: 0.36, camoScale: 0.42,
+      trackWidthM: 0.44, camoScale: 0.42,
     },
   },
 
@@ -538,5 +525,7 @@ const bmptT90FlankEra = registries.tankSpecs.t90m?.armor.turretPlates
   .filter((plate) => plate.kind === 'era' && /side/i.test(plate.name))
   .map((plate) => structuredClone(plate)) || [];
 AFV_FAMILY_SPECS.bmpt_t90.armor.turretPlates.push(...bmptT90FlankEra);
+
+applyEscortFieldKitArmor(AFV_FAMILY_SPECS.upior,ESCORT_FIELD_KITS.upior);
 
 registerFleetSpecs(registries, AFV_FAMILY_IDS, AFV_FAMILY_SPECS);

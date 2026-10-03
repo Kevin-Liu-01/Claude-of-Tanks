@@ -1,3 +1,4 @@
+import { VEHICLE_HULL_LENGTH_FACTORS } from '../vehicleSizePolicy.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 // Strictly typed family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
@@ -44,6 +45,7 @@ interface T90Materials extends Record<string, THREE.MeshStandardMaterial> {
 }
 
 interface T90BuilderPort {
+  extendHullLength(factor: number): void;
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
@@ -7668,7 +7670,8 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   // behind the idler, visually merging the two into one terminal wheel.
   // A shorter centered cadence opens distinct bays for both raised end
   // wheels without changing the hull or skirt envelope.
-  const wheelZs = evenStations(6, 3.60, 0.15);
+  const hullLengthFactor = VEHICLE_HULL_LENGTH_FACTORS[P.spec.id] ?? 1;
+  const wheelZs = evenStations(6, 3.60, 0.15).map(z => z * hullLengthFactor);
   // The former 480 mm radius overlapped adjacent tires by 300 mm at this
   // dense 660 mm cadence.  Keep the established 85 mm loaded foot while
   // opening a visible 40 mm bay between every pair.
@@ -7676,19 +7679,19 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.31, wheelW: 0.22, wheelY, xc: 1.435,
     dishR: 0.86, wheelZs,
-    sprocket: { z: -2.46, y: 0.84, r: 0.33 },
+    sprocket: { z: -2.46 * hullLengthFactor, y: 0.84, r: 0.33 },
     // Keep the longer loaded wheelbase, but do not drag the idler under the
     // descending V-bow.  At +2.76 m the animated upper transition cut into
     // both the lower glacis and its shoulder skin; +2.54 m leaves the real
     // wheel-to-wheel clearance while keeping a visibly longer T-90 course.
-    idler: { z: 2.54, y: 0.69, r: 0.29 },
+    idler: { z: 2.54 * hullLengthFactor, y: 0.69, r: 0.29 },
     // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three return
     // rollers per side (FAS T-72 entry; the T-90A X source `support wheels` node); the 2026-09-23 rollerless reading is
     // reversed. Stations follow the source law (4.6 / 51.5 / 91.6 % of the first-to-last-wheel span), r 0.10 m, the axle
     // fitted between the wheel tops and the measured lane ceiling (scratch lane-ceiling-ray probe).
-    rollers: [-1.48, 0.20, 1.65].map((z) => ({ z, y: 0.86, r: 0.10 })),
+    rollers: [-1.48, 0.20, 1.65].map((z) => ({ z: z * hullLengthFactor, y: 0.86, r: 0.10 })),
     trackW: 0.50, topY: 0.98, botY: 0.05, paintedEnds: false,
-    coveredTop: true, arms: false, contactZF: 2.22, contactZR: -2.14,
+    coveredTop: true, arms: false, contactZF: 2.22 * hullLengthFactor, contactZR: -2.14 * hullLengthFactor,
   });
   // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the Russia nation
   // construction (T-90M X source-pressed face, nationWheelSets.ts); the former rim/hub/bolt layers left with it.
@@ -8434,13 +8437,15 @@ function buildT90MProryvNative2026(P: T90BuilderPort): void {
   P.gunG.scale.set(1 / installedTurretX, 1 / installedTurretY, 1);
   const remoteKord = P.turretG.getObjectByName('t90mProryvRemoteKord');
   if (remoteKord) remoteKord.scale.y /= installedTurretY;
+  const hullLengthFactor = VEHICLE_HULL_LENGTH_FACTORS[P.spec.id] ?? 1;
+  if (hullLengthFactor !== 1) P.extendHullLength(hullLengthFactor);
   P.hullG.userData.t90mProryvTrackReceipt = {
     roadWheelRadiusM: 0.31,
     roadWheelCenterY: 0.395,
-    roadWheelSpanM: 3.60,
-    sprocketZ: -2.46,
-    idlerZ: 2.54,
-    structuralHullLengthM: 6.86,
+    roadWheelSpanM: 3.60 * hullLengthFactor,
+    sprocketZ: -2.46 * hullLengthFactor,
+    idlerZ: 2.54 * hullLengthFactor,
+    structuralHullLengthM: 6.86 * hullLengthFactor,
     trackBottomY: 0.05,
     trackTopY: 0.98,
     trackEnvelopeHeightM: 0.93,
