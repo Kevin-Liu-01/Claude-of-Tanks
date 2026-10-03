@@ -2790,7 +2790,8 @@ export function createPost(
     // round 68 (2026-09-24): the volumetric cloud layer marches its slot and resolves its history before the
     // scene draws (src/engine/volumetricClouds.ts; the sky rig publishes it, null on the mobile tier / ?clouds=off)
     // (2026-10-02: with the haze layer's datum, so the clouds' aerial law sees the same layer from the camera's height)
-    scene.userData.volumetricClouds?.beforeSceneRender(renderer, camera, dt, sceneTarget.width, sceneTarget.height, aerial.uniforms.uHazeDatum.value);
+    // (2026-10-03: and the scene depth the last frame resolved, so every cloud layer ends at a surface past the dome)
+    scene.userData.volumetricClouds?.beforeSceneRender(renderer, camera, dt, sceneTarget.width, sceneTarget.height, aerial.uniforms.uHazeDatum.value, sceneTarget.depthTexture);
     // Only this complete frame transaction can bypass LateFX's input copy.
     // Individual warm/debug renders deliberately keep the original path.
     const passes = composer.passes;
