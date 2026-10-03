@@ -3959,9 +3959,13 @@ void splatCompute() {
       } else if (crop < 4.5) {
         // plough: the black earth, turned in furrows across the field, pressed into bands by the tractor's passes; the
         // plough's lands (3.2 m) and the tractor's passes (13 m) carry the lines to the far field
-        cropCol = soilF * vec3(0.60, 0.56, 0.52) * bright;
-        rows = sin(across * 7.854) * 0.16 * tileVis(0.8) + sin(across * 1.963 + jit * 3.0) * 0.07 * tileVis(3.2)
-          + sin(across * 0.483 + jit * 6.0) * 0.08 * tileVis(13.0);
+        // (the round-2 census: at half strength the soil photo's straw and clods still read as a sandy mottle — a
+        // turned field's own lines must carry it, so the soil goes four fifths of the way to its mean)
+        vec3 ploughSoil = mix(soil.rgb, uMeanD.rgb, 0.8);
+        ploughSoil = mix(ploughSoil, vec3(reduxLuma(ploughSoil)), 0.35);
+        cropCol = ploughSoil * vec3(0.60, 0.56, 0.52) * bright;
+        rows = sin(across * 7.854) * 0.16 * tileVis(0.8) + sin(across * 3.927 + jit * 2.0) * 0.07 * tileVis(1.6)
+          + sin(across * 1.963 + jit * 3.0) * 0.10 * tileVis(3.2) + sin(across * 0.483 + jit * 6.0) * 0.10 * tileVis(13.0);
         if (nrmOn) n.xy += vec2(-rowDir.y, rowDir.x) * cos(across * 7.854) * 0.22 * tileVis(0.8) * inField * landW;
       } else if (crop < 5.5) {
         cropCol = vec3(1.218, 1.010, 0.627) * baseL * 2.8 * bright; // stubble

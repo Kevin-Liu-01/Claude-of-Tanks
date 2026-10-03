@@ -395,11 +395,25 @@ function treePositionNoise(x: number, z: number, salt: number): number {
   return raw - Math.floor(raw);
 }
 
+/**
+ * Ground lane (2026-10-03, the gauntlet's wave 3: "stamped circular tree-clump placement from altitude"): a stand's edge
+ * at a bearing, as a share of its disc radius — lobes and bays, the stand drawn out along one bearing (up to ~1.6:1),
+ * hashed from the stand's centre. Every reader of a stand shares it: its trees, the groves at its edge, its saplings,
+ * its understorey and its fringe scrub; the stand's own disc record (its separation, its audits) stays as it was.
+ */
+function standLobeAt(cx: number, cz: number, a: number): number {
+  const p1 = treePositionNoise(cx, cz, 151) * 6.2832, p2 = treePositionNoise(cx, cz, 157) * 6.2832;
+  const p3 = treePositionNoise(cx, cz, 163) * 6.2832, e = 0.10 + 0.22 * treePositionNoise(cx, cz, 167);
+  return Math.max(0.5, 1 + e * Math.cos(2 * (a - p1)) + 0.16 * Math.sin(3 * a + p2) + 0.09 * Math.sin(5 * a + p3));
+}
+
 function _mustReplace(src: string, anchor: string, replacement: string): string {
   const out = src.replace(anchor, replacement);
   if (out === src) throw new Error(`world/vegetation: shader anchor missing: ${anchor}`);
   return out;
 }
+// (exported apart from its declaration: the placement harnesses compile the declaration inside a function body)
+export { standLobeAt };
 
 // aa-r1 ANTI-SHIMMER (owner: "vegetation is still anti aliasing a lot"):
 // mip-aware alpha-coverage rescale on every alpha-tested foliage/grass card.
@@ -5058,6 +5072,14 @@ function* vegetationBuildSteps(
     pushTree(x, z, species, 0.95, 1.7, true); // wide size spread per stand
     return true;
   }
+  /** ground lane: a stand's tree — admitted where the stream drew it (ox, oz), standing at its lobed site when that is a
+   * site too (the draws and the admissions stay what they were) */
+  function addStandTree(ox: number, oz: number, lx: number, lz: number, species: Species): boolean {
+    if (!siteOk(ox, oz, 0)) return false;
+    const lobed = siteOk(lx, lz, 0);
+    pushTree(lobed ? lx : ox, lobed ? lz : oz, species, 0.95, 1.7, true);
+    return true;
+  }
   function isSeparatedTreeCluster(x: number, z: number): boolean {
     for (const c of clusters) {
       if (Math.hypot(x - c.x, z - c.z) < c.r + 26) return false;
@@ -5094,7 +5116,8 @@ function* vegetationBuildSteps(
       for (let i = 0; i < n * 3 && placed < n; i++) {
         const a = rng() * Math.PI * 2, rr = r * Math.sqrt(rng());
         const sp = rng() < 0.8 ? species : pickSpecies(veg.loneMix, rng());
-        if (addTree(x + Math.cos(a) * rr, z + Math.sin(a) * rr, sp)) placed++;
+        const lobe = standLobeAt(x, z, a);
+        if (addStandTree(x + Math.cos(a) * rr, z + Math.sin(a) * rr, x + Math.cos(a) * rr * lobe, z + Math.sin(a) * rr * lobe, sp)) placed++;
       }
       // r6 (content_breadth): coherent PER-STAND tint bias — per-tree jitter
       // alone averages every distant stand toward the same mid-green; a whole-
@@ -5157,13 +5180,14 @@ function* vegetationBuildSteps(
     if (treePositionNoise(x, z, 83) > 0.75) return _groveSite;
     let best = -1, bestD = 120;
     for (let i = 0; i < clusters.length; i++) {
-      const d = Math.hypot(x - clusters[i].x, z - clusters[i].z) - clusters[i].r;
+      const c = clusters[i];
+      const d = Math.hypot(x - c.x, z - c.z) - c.r * standLobeAt(c.x, c.z, Math.atan2(z - c.z, x - c.x));
       if (d < bestD) { bestD = d; best = i; }
     }
     if (best < 0 || bestD < 0) return _groveSite;
     const c = clusters[best];
     const dl = Math.hypot(x - c.x, z - c.z) || 1;
-    const rr = c.r + 1.5 + 9 * treePositionNoise(x, z, 89);
+    const rr = c.r * standLobeAt(c.x, c.z, Math.atan2(z - c.z, x - c.x)) + 1.5 + 9 * treePositionNoise(x, z, 89);
     const tx = c.x + (x - c.x) / dl * rr, tz = c.z + (z - c.z) / dl * rr;
     if (!siteOk(tx, tz, 0)) return _groveSite;
     for (let i = 0; i < _groveMoved.length; i += 2) if (Math.hypot(tx - _groveMoved[i], tz - _groveMoved[i + 1]) < 3) return _groveSite;
@@ -5338,7 +5362,7 @@ function* vegetationBuildSteps(
       const nSap = 3 + (sapRng() * 4) | 0;
       for (let sIt = 0; sIt < nSap; sIt++) {
         const sa = sapRng() * Math.PI * 2;
-        const sr = c.r * (1.02 + sapRng() * 0.35);
+        const sr = c.r * standLobeAt(c.x, c.z, sa) * (1.02 + sapRng() * 0.35);
         const sx = c.x + Math.cos(sa) * sr, sz = c.z + Math.sin(sa) * sr;
         const roll = sapRng(), sc = 0.42 + sapRng() * 0.26;
         const yawS = sapRng() * Math.PI * 2;
@@ -6016,7 +6040,8 @@ function* vegetationBuildSteps(
           const tj = understoreyRng(), tr = understoreyRng(), tg = understoreyRng(), tb = understoreyRng();
           const keepRoll = understoreyRng();
           if (keepRoll > (1 - smoothstepJs(1.05, 1.6, rr)) * 0.9 + 0.1) continue;
-          const x = stand.x + Math.cos(a) * stand.r * rr, z = stand.z + Math.sin(a) * stand.r * rr;
+          const lobe = standLobeAt(stand.x, stand.z, a);
+          const x = stand.x + Math.cos(a) * stand.r * rr * lobe, z = stand.z + Math.sin(a) * stand.r * rr * lobe;
           if (Math.max(Math.abs(x), Math.abs(z)) > bound || inAvoid(x, z)) continue;
           // the map-borders lane: past the playable edge a block's undergrowth keeps to the border's woods
           if (borderWoodsAt && Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M && borderWoodsAt(x, z) < 0.5) continue;
