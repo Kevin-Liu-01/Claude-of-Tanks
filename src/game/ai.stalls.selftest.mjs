@@ -295,6 +295,39 @@ console.log('[6] a mission route that ends short of its objective releases the h
   ok(ctl.debugInfo().missionReleases >= 1, 'through the mission release');
 }
 
+console.log('[7] a hull that has arrived holds its destination; a wedged one still backs off');
+// Battles on every objective mode: a zone holder with nobody in sight reversed off its hold point every 4-5 s,
+// because the arrival itself counted as drive intent and the low-speed watchdog read the hold as a wedge.
+function arrivalRun(specId, walls) {
+  const zone = { mission: 'capture', x: 0, z: 60, radiusM: 30 };
+  const bot = entity('holder', specId, 'enemy', 0, 0, 0);
+  const ctl = controller(bot, { getObjective: () => zone });
+  let arrivedS = null, reverses = 0, reversing = false, path = 0;
+  let px = 0, pz = 0;
+  drive(bot, ctl, walls.length ? 30 : 100, { startS: 300, collide: boxCollider(bot, walls), onTick: (t) => {
+    const st = bot.state;
+    if (arrivedS === null && Math.hypot(st.pos.x - zone.x, st.pos.z - zone.z) < 20 && Math.abs(st.speed) < 0.5) {
+      arrivedS = t;
+    }
+    const counting = walls.length ? true : arrivedS !== null && t > arrivedS + 5;
+    const back = bot.input.throttle < -0.05;
+    if (counting && back && !reversing) reverses++;
+    reversing = back;
+    if (counting) path += Math.hypot(st.pos.x - px, st.pos.z - pz);
+    px = st.pos.x; pz = st.pos.z;
+  } });
+  return { arrivedS, reverses, path };
+}
+for (const specId of ['m1a2', 'type59']) {
+  const { arrivedS, reverses, path } = arrivalRun(specId, []);
+  ok(arrivedS !== null && reverses === 0 && path < 1,
+    `${specId}: arrived at ${arrivedS?.toFixed(0) ?? 'never'} s, then ${reverses} reverses and ${path.toFixed(1)} m in 90 s`);
+}
+{
+  const { reverses } = arrivalRun('m1a2', [box(-40, 12, 40, 14)]);
+  ok(reverses >= 1, `control: a hull wedged on a wall short of the zone still backs off (${reverses} reverses)`);
+}
+
 if (failures) {
   console.error(`ai.stalls.selftest: ${failures} failure(s)`);
   process.exit(1);
