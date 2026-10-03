@@ -3,7 +3,9 @@
 // and a knobbly surface; one without it keeps its exact smooth shape. This receipt holds both halves of that contract.
 import assert from 'node:assert/strict';
 import { createHeightField, sampleLandformHeight } from './terrain.ts';
-import { createGeologyZoneSampler, geologyZoneWeights, knollGeologyHeight, ridgeGeologyHeight } from './landformGeology.ts';
+import {
+  createGeologyZoneSampler, geologyBoulderSite, geologyZoneWeights, knollGeologyHeight, ridgeGeologyHeight,
+} from './landformGeology.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 
 const smoothstep = (a, b, v) => {
@@ -156,8 +158,9 @@ assert.ok(Math.max(...edges) - Math.min(...edges) > 3,
 assert.equal(ridgeGeologyHeight({ kind: 'ridge', x: 0, z: 0, height: 5 }, 0, 0, 1), null, 'no geology, no override');
 
 // 9. Continuous everywhere: no seam where one rill's ground hands over to the next, none round a knoll's back bearing
-// (where the bearing wraps) and none at a breached crater's centre, where every bearing meets. A 1 cm step never moves
-// the ground more than 3 cm on these forms (no strata here, whose risers are walls by design).
+// (where the bearing wraps) and none at a breached crater's centre, where every bearing meets. A 1 cm step moves the
+// ground at most 3 cm on these forms (no strata here, whose risers are walls by design), except on an inselberg's wall
+// (steeper than 3:1 by design), where the rise is still spread over the step, as a seam's is not.
 const seamTests = [
   frame({ kind: 'knoll', x: 0, z: 0, rx: 48, rz: 60, height: 24, yawDeg: 0, geology: { profile: 'cone',
     crater: { rim: 0.16, depthM: 4, breachDeg: 200 }, outline: 0.1, gullies: { count: 11, depthM: 3.2, width: 0.6 },
@@ -168,20 +171,28 @@ const seamTests = [
   frame({ kind: 'knoll', x: 0, z: 0, rx: 48, rz: 60, height: 24, yawDeg: 0, geology: { profile: 'cone',
     crater: { rim: 0.16, depthM: 4, breachDeg: 200 }, outline: 0.1, gullies: { count: 11, depthM: 5, width: 0.55 },
     fans: { reach: 0.32, heightM: 2.4 }, rough: 1.1 } }),
+  frame({ kind: 'knoll', x: 0, z: 0, rx: 34, rz: 40, height: 24, yawDeg: 0, geology: { profile: 'inselberg', outline: 0.18,
+    foot: 0.66, footVary: 0.14, apron: 0.18, crown: 3.2, rough: 1.3, gullies: { count: 12, depthM: 4, width: 0.4 },
+    fans: { reach: 0.35, heightM: 2.6 } } }),
   frame({ kind: 'ridge', x: 0, z: 0, length: 220, width: 50, height: 7, yawDeg: 0, geology: { profile: 'flow', front: 1,
     outline: 0.25, rough: 0.7, gullies: { count: 3, depthM: 1.2, width: 0.4 } } }),
   frame({ kind: 'ridge', x: 0, z: 0, length: 200, width: 60, height: 7, yawDeg: 0, geology: { profile: 'butte',
     wall: [0.4, 0.58], apron: 0.25, outline: 0.28, rough: 0.7, gullies: { count: 3, depthM: 1.2, width: 0.6 } } }),
 ];
-let seamSamples = 0;
+let seamSamples = 0, wallSamples = 0;
 for (const form of seamTests) {
   const reach = Math.max(form.rx ?? 0, form.rz ?? 0, (form.length ?? 0) / 2, form.width ?? 0) * 1.4;
   for (let z = -reach; z <= reach; z += 0.37) for (let x = -reach; x <= reach; x += 0.37) {
     const h = sampleLandformHeight(form, x, z);
     for (const [dx, dz] of [[0.01, 0], [0, 0.01]]) {
       seamSamples++;
-      const jump = Math.abs(sampleLandformHeight(form, x + dx, z + dz) - h);
-      assert.ok(jump <= 0.03, `${form.kind} geology is continuous at (${x.toFixed(2)}, ${z.toFixed(2)}): ${jump.toFixed(3)} m in 1 cm`);
+      const next = sampleLandformHeight(form, x + dx, z + dz), jump = Math.abs(next - h);
+      if (jump <= 0.03) continue;
+      const mid = sampleLandformHeight(form, x + dx / 2, z + dz / 2);
+      const split = Math.max(Math.abs(mid - h), Math.abs(next - mid)) / jump;
+      assert.ok(form.geology.profile === 'inselberg' && jump <= 0.06 && split < 0.8,
+        `${form.kind} geology is continuous at (${x.toFixed(2)}, ${z.toFixed(2)}): ${jump.toFixed(3)} m in 1 cm, ${(split * 100).toFixed(0)} % of it in one half`);
+      wallSamples++;
     }
   }
 }
@@ -310,7 +321,49 @@ const plain = createHeightField(1337, getMapConfig('verdant'));
 assert.equal(plain._mesaW, null, 'no flows and no mesas: no landform mask');
 assert.equal(plain._geologyZoneAt, undefined, 'and no zones');
 
+// 14. An inselberg (gauntlet wave 4, Redrock's "clay-loaf inselbergs ... a perfectly regular terrace ring round each
+// base"): a broad rounded crown, a near-vertical wall, a concave talus apron; the wall's foot, the slope break, wanders
+// round the dome instead of tracing one ring, and its boulder sites fall on the talus between the foot and the fans'
+// reach, crowded towards the foot.
+const jebel = { kind: 'knoll', x: 0, z: 0, rx: 40, rz: 40, height: 24,
+  geology: { profile: 'inselberg', foot: 0.66, footVary: 0.14, apron: 0.18, crown: 3.2 } };
+const slopeAlong = (form, a, r) => (knollGeologyHeight(form, Math.cos(a) * (r - 0.25), Math.sin(a) * (r - 0.25))
+  - knollGeologyHeight(form, Math.cos(a) * (r + 0.25), Math.sin(a) * (r + 0.25))) / 0.5;
+const breaks = [];
+let steepestWall = 0;
+for (let k = 0; k < 36; k++) {
+  const a = k / 36 * Math.PI * 2;
+  let best = 0, at = 0;
+  for (let r = 1; r < 40; r += 0.25) { const g = slopeAlong(jebel, a, r); if (g > best) { best = g; at = r; } }
+  breaks.push(at);
+  steepestWall = Math.max(steepestWall, best);
+  assert.ok(slopeAlong(jebel, a, 2) < 0.05, 'the crown is rounded, level at the top');
+  assert.ok(slopeAlong(jebel, a, at + 4) < best * 0.5, 'below the wall the talus apron is far gentler');
+  assert.ok(slopeAlong(jebel, a, 37) < slopeAlong(jebel, a, at + 4), 'and concave, flattening to the toe');
+}
+assert.ok(steepestWall > 1.4, `the wall is steep (${steepestWall.toFixed(2)})`);
+const breakSpread = Math.max(...breaks) - Math.min(...breaks);
+assert.ok(breakSpread > 0.14 * 0.66 * 40, `the wall's foot wanders round the dome (${Math.min(...breaks)}-${Math.max(...breaks)} m)`);
+const boulderForm = frame({ ...seamTests[3] });
+const boulderReach = 0.35, footOf = (lx, lz) => {
+  // the site's normalized radius on the lobed outline, as knollGeologyHeight measures it
+  const nx = lx / boulderForm.rx, nz = lz / boulderForm.rz;
+  return Math.hypot(nx, nz);
+};
+let boulderSites = 0, nearFoot = 0;
+for (let i = 0; i < 400; i++) {
+  const u = (i * 0.618034) % 1, v = (i * 0.414214) % 1;
+  const [x, z] = geologyBoulderSite(boulderForm, u, v);
+  assert.deepEqual(geologyBoulderSite(boulderForm, u, v), [x, z], 'deterministic');
+  const [lx, lz] = local(boulderForm, x, z), q = footOf(lx, lz);
+  assert.ok(q >= 0.66 * (1 - 0.14) * (1 - 0.18) - 1e-9 && q <= (1 + boulderReach) * (1 + 0.18) + 1e-9,
+    `a boulder site lies on the talus (q ${q.toFixed(3)})`);
+  if (q < 0.9) nearFoot++;
+  boulderSites++;
+}
+assert.ok(nearFoot > boulderSites * 0.35, `boulders crowd towards the wall's foot (${nearFoot} of ${boulderSites} inside q 0.9)`);
+
 console.log(`landformGeology.selftest: ${smoothForms} smooth landforms unchanged; cone flank ${steepest.toFixed(3)} `
   + `(predicted ${predicted.toFixed(3)}), ${notches} rills, lobed reach ${Math.min(...reach)}-${Math.max(...reach)} m, `
   + `${benches} benches on ${benchedBearings} of 12 bearings, `
-  + `flow margin ${Math.min(...edges)}-${Math.max(...edges)} m, ${seamSamples} seam samples continuous, ${fanPeaks} talus fans, flow levee ${(levee - channel).toFixed(2)} m front ${frontSlope.toFixed(2)} vent ${ventSlope.toFixed(2)}; zones: flow ${flowInside} inside, ${flowFaded} faded, cone ${coneInside} inside, fans ${fanPositive} of ${fanSamples} toe samples, sampler ${samplerPoints} points; Caldera's mask = its flow zone at ${maskPoints} points (${onFlows} on flows)`);
+  + `flow margin ${Math.min(...edges)}-${Math.max(...edges)} m, ${seamSamples} seam samples continuous (${wallSamples} on an inselberg's wall), ${fanPeaks} talus fans, flow levee ${(levee - channel).toFixed(2)} m front ${frontSlope.toFixed(2)} vent ${ventSlope.toFixed(2)}; zones: flow ${flowInside} inside, ${flowFaded} faded, cone ${coneInside} inside, fans ${fanPositive} of ${fanSamples} toe samples, sampler ${samplerPoints} points; Caldera's mask = its flow zone at ${maskPoints} points (${onFlows} on flows); inselberg wall ${steepestWall.toFixed(2)}, foot ${Math.min(...breaks)}-${Math.max(...breaks)} m, ${nearFoot} of ${boulderSites} boulder sites near the foot`);

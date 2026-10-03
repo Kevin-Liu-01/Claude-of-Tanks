@@ -5,7 +5,9 @@
 // `geology`, which shapes its own height the way rock and weather shape a real hill:
 // - outline: its plan is lobed, not an ellipse or a straight-sided bar;
 // - profile: 'dome' (the smooth default), 'butte' (a gently domed cap, a steep wall, a concave talus apron), 'cone'
-//   (a summit crater, flanks at a near-constant slope, a rounded toe; the crater may be breached) or, on a ridge,
+//   (a summit crater, flanks at a near-constant slope, a rounded toe; the crater may be breached), 'inselberg' (a
+//   bornhardt: a broad rounded crown steepening into a near-vertical wall, its foot wandering round the dome, over a
+//   concave talus apron; fans spread from the wall's foot) or, on a ridge,
 //   'flow' (a lava flow: a lowered channel between raised levees, a steep margin, a short talus; with `front`, a steep
 //   blocky front at its downhill end);
 // - gullies: V-shaped rills down the flanks, irregularly spaced, fading into the apron; on a knoll, talus fans spread
@@ -22,11 +24,19 @@ export interface LandformGeology {
   outline?: number;
   /** The radial (knoll) or cross-axis (ridge) profile. 'flow' (ridges): a lava flow's lowered channel between raised
    * levees, a steep margin and a short talus. */
-  profile?: 'dome' | 'butte' | 'cone' | 'flow';
+  profile?: 'dome' | 'butte' | 'cone' | 'flow' | 'inselberg';
   /** butte: the cap's edge and the wall's foot, as fractions of the radius or half-width (default 0.45, 0.62). */
   wall?: readonly [number, number];
-  /** butte: the talus apron's height at the wall's foot, as a share of the landform's height (default 0.28). */
+  /** butte / inselberg: the talus apron's height at the wall's foot, as a share of the landform's height (default 0.28
+   * on a butte, 0.16 on an inselberg; an inselberg's apron varies by half of it round the dome). */
   apron?: number;
+  /** inselberg: the wall's foot as a fraction of the radius (default 0.68) and how far it wanders round the dome, as a
+   * share of itself (default 0.12): the slope break between the wall and the talus is never one ring. */
+  foot?: number;
+  footVary?: number;
+  /** inselberg: the crown's breadth, the power of the dome's fall to its wall (default 4: higher is a broader crown
+   * and a steeper wall). */
+  crown?: number;
   /** cone: the crater's rim as a fraction of the radius, its depth in metres and an optional breach bearing in
    * degrees (0 = local +x, counter-clockwise towards local +z). */
   crater?: { rim: number; depthM: number; breachDeg?: number };
@@ -42,6 +52,9 @@ export interface LandformGeology {
   strata?: { stepM: number; riser?: number };
   /** Knobbly relief amplitude in metres. */
   rough?: number;
+  /** Knolls: how many fallen blocks props.ts scatters on the talus, crowded towards the wall's foot and thinning out
+   * past the toe (geologyBoulderSite): a boulder apron. The larger blocks are hard cover. */
+  boulders?: number;
   /** Ridges only: the crest falls along the axis, to (1 - |taper|) of the height at one end: positive lowers the
    * local +x end, negative the -x end. A spur descending from a wall to its toe. */
   taper?: number;
@@ -170,17 +183,42 @@ function coneProfile(q: number, geology: LandformGeology, height: number): numbe
   return s * (1 - Math.exp(-6 * s)) / (1 - Math.exp(-6));
 }
 
-function profileOf(q: number, geology: LandformGeology, height: number, fallback: (q: number) => number): number {
+/** An inselberg (a bornhardt): a broadly rounded crown steepening into a near-vertical wall down to the wall's foot
+ * `foot` (q), then a concave talus apron `apron` high at the foot thinning to the plain at the toe; the crown's fall is
+ * the power `crown` (its steepest, at the foot, is crown x (1 - apron) / foot). */
+function inselbergProfile(q: number, foot: number, apron: number, crown: number): number {
+  if (q >= 1) return 0;
+  if (q <= foot) return 1 - (1 - apron) * (q / foot) ** crown;
+  const t = (1 - q) / (1 - foot);
+  return apron * t * t;
+}
+
+/** An inselberg's wall foot and apron on one bearing: each wanders round the dome (smooth, periodic in the bearing). */
+function inselbergFoot(geology: LandformGeology, theta: number, salt: number): [number, number] {
+  const foot = Math.max(0.3, Math.min(0.9, geology.foot ?? 0.68));
+  const vary = Math.max(0, Math.min(0.3, geology.footVary ?? 0.12));
+  const apron = Math.max(0, Math.min(0.5, geology.apron ?? 0.16));
+  return [Math.max(0.25, Math.min(0.92, foot * (1 + vary * lobe(theta, salt + 29)))),
+    apron * (1 + 0.5 * lobe(theta, salt + 31))];
+}
+
+function profileOf(q: number, geology: LandformGeology, height: number, fallback: (q: number) => number,
+  foot: readonly [number, number] | null = null): number {
   const profile = geology.profile ?? 'dome';
+  if (profile === 'inselberg' && foot) return inselbergProfile(q, foot[0], foot[1], Math.max(1.5, geology.crown ?? 4));
   if (profile === 'butte') return butteProfile(q, geology);
   if (profile === 'cone') return coneProfile(q, geology, height);
   if (profile === 'flow') return flowProfile(q);
   return fallback(q);
 }
 
-/** Where gullies cut: the wall and upper apron of a butte, below the rim of a cone, the mid-flank of a dome. */
-function gullyFlank(q: number, geology: LandformGeology): number {
+/** Where gullies cut: the wall and upper apron of a butte, below the rim of a cone, an inselberg's wall (its clefts),
+ * the mid-flank of a dome. */
+function gullyFlank(q: number, geology: LandformGeology, foot: readonly [number, number] | null = null): number {
   const profile = geology.profile ?? 'dome';
+  if (profile === 'inselberg' && foot) {
+    return smoothstep(foot[0] * 0.3, foot[0] * 0.75, q) * (1 - smoothstep(foot[0], foot[0] + 0.18, q));
+  }
   if (profile === 'butte') {
     const [top, foot] = geology.wall ?? BUTTE_WALL;
     return smoothstep(top * 0.8, foot, q) * (1 - smoothstep(0.75, 1, q));
@@ -223,11 +261,12 @@ function gully(u: number, fall: number, width: number, jitter: number, salt: num
  * widening downslope, highest at the toe and thinning to nothing at `reach` past it. `q` is the normalized radius (1 at
  * the toe); like the rills, the fan is the higher of the two nearest rills' fans, so neighbouring fans meet smoothly.
  */
-function fan(u: number, q: number, width: number, jitter: number, salt: number, period: number, reach: number): number {
-  if (q <= 0.82 || q >= 1 + reach) return 0;
+function fan(u: number, q: number, width: number, jitter: number, salt: number, period: number, reach: number,
+  start = 0.82): number {
+  if (q <= start || q >= 1 + reach) return 0;
   const w = u + jitter, first = Math.floor(w);
-  const along = smoothstep(0.82, 1, q) * (1 - smoothstep(1, 1 + reach, q));
-  const spread = (q - 0.82) / (0.18 + reach); // 0 at the mouth, 1 at the fan's toe
+  const along = smoothstep(start, Math.min(1, start + 0.18), q) * (1 - smoothstep(1, 1 + reach, q));
+  const spread = (q - start) / (1 - start + reach); // 0 at the mouth, 1 at the fan's toe
   let best = 0;
   for (let i = first; i <= first + 1; i++) {
     const key = period > 0 ? ((i % period) + period) % period : i;
@@ -286,16 +325,19 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
   const salt = formSalt(form);
   const theta = Math.atan2(nz, nx);
   if (outline > 0) q /= 1 + outline * lobe(theta, salt);
+  // an inselberg's wall foot and apron on this bearing (its fans spread from the wall's foot)
+  const foot = geology.profile === 'inselberg' ? inselbergFoot(geology, theta, salt) : null;
   // the talus fans below the rills' mouths (the jitter and the rill coordinate as the rills draw them)
   const fanHeight = (): number => {
     if (!fans || !geology.gullies) return 0;
     const count = Math.max(1, Math.round(geology.gullies.count));
     const jitter = (valueNoise(Math.cos(theta) * 1.6 + 7, Math.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
     const metres = fans.heightM ?? geology.gullies.depthM * 0.6;
-    return metres * fan((theta / TAU + 1) * count, q, geology.gullies.width ?? 0.45, jitter, salt + 13, count, reach);
+    return metres * fan((theta / TAU + 1) * count, q, geology.gullies.width ?? 0.45, jitter, salt + 13, count, reach,
+      foot ? foot[0] : 0.82);
   };
   if (q >= 1) return fanHeight();
-  let shape = profileOf(q, geology, height, domeProfile);
+  let shape = profileOf(q, geology, height, domeProfile, foot);
   const breach = geology.profile === 'cone' ? geology.crater?.breachDeg : undefined;
   if (breach !== undefined) {
     // the crater wall opens on one bearing, and a lower notch runs down the flank below it; the notch is deepest at the
@@ -312,7 +354,7 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
     const jitter = (valueNoise(Math.cos(theta) * 1.6 + 7, Math.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
     const count = Math.max(1, Math.round(geology.gullies.count));
     const g = gully((theta / TAU + 1) * count, q, geology.gullies.width ?? 0.45, jitter, salt + 13, count);
-    h -= geology.gullies.depthM * g * gullyFlank(q, geology) * Math.min(1, shape * 3);
+    h -= geology.gullies.depthM * g * gullyFlank(q, geology, foot) * Math.min(1, shape * 3);
   }
   if (geology.strata && height > 0) {
     h = bedded(h, geology.strata, (nx * 0.6 + nz * 0.25) * geology.strata.stepM * 0.5, lx, lz, salt);
@@ -425,7 +467,8 @@ export function geologyZoneWeights(form: GeologicForm, x: number, z: number, out
     const count = Math.max(1, Math.round(geology.gullies.count));
     // the fan as knollGeologyHeight draws it: the same jitter, rill coordinate and salt
     const jitter = (valueNoise(Math.cos(theta) * 1.6 + 7, Math.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
-    out[2] = fan((theta / TAU + 1) * count, q, geology.gullies.width ?? 0.45, jitter, salt + 13, count, reach);
+    const start = geology.profile === 'inselberg' ? inselbergFoot(geology, theta, salt)[0] : 0.82;
+    out[2] = fan((theta / TAU + 1) * count, q, geology.gullies.width ?? 0.45, jitter, salt + 13, count, reach, start);
   }
   return out;
 }
@@ -466,4 +509,28 @@ export function createGeologyZoneSampler(
     }
     return out;
   };
+}
+
+/**
+ * A fallen block's site on a knoll's talus, from two uniform numbers in [0, 1): the bearing from `u`; from `v` a
+ * normalized radius from the wall's foot (an inselberg's, which wanders round the dome; a butte's; a cone's lower
+ * flank; a dome's mid-flank) out past the toe over the fans' reach, crowded towards the foot as fallen blocks are.
+ * World coordinates on the lobed outline (for props.ts's boulder aprons, `geology.boulders`).
+ */
+export function geologyBoulderSite(form: GeologicForm, u: number, v: number): [number, number] {
+  const geology = form.geology ?? {};
+  const salt = formSalt(form);
+  const theta = u * TAU;
+  const profile = geology.profile ?? 'dome';
+  const start = profile === 'inselberg' ? inselbergFoot(geology, theta, salt)[0]
+    : profile === 'butte' ? (geology.wall ?? BUTTE_WALL)[1] : profile === 'cone' ? 0.72 : 0.6;
+  const reach = geology.fans ? Math.max(0.05, Math.min(0.6, geology.fans.reach ?? 0.3)) : 0.15;
+  const q = start + (1 + reach - start) * Math.pow(Math.max(0, Math.min(1, v)), 1.6);
+  const outline = Math.max(0, Math.min(0.35, geology.outline ?? 0));
+  const raw = outline > 0 ? q * (1 + outline * lobe(theta, salt)) : q;
+  const rx = Math.max(1, form.rx || form.r || 70), rz = Math.max(1, form.rz || form.r || rx);
+  const lx = raw * Math.cos(theta) * rx, lz = raw * Math.sin(theta) * rz;
+  const yaw = (form.yawDeg ?? 0) * Math.PI / 180;
+  const c = form._c ?? Math.cos(yaw), s = form._s ?? Math.sin(yaw);
+  return [form.x + lx * c - lz * s, form.z + lx * s + lz * c];
 }
