@@ -135,6 +135,8 @@ function checkSourceContract(text) {
     'uRingReliefWall',
     // ground lane (2026-10-03): the land use's field system (landUse.ts) — five packed vectors, no sampler
     'uLandA', 'uLandB', 'uLandC', 'uLandD', 'uLandE',
+    // ground lane (2026-10-03): the two-formation bedrock's boundary (vec4, no sampler)
+    'uFormation',
     // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving — natural steep faces take the D layer (scalar, no sampler)
     'uPavedRock',
   ].sort();

@@ -273,6 +273,10 @@ interface SplatConfig {
    * the procedural fallback only (sourcedTextures TERRAIN_PLAN). Whiteout grades its inherited winter snow with it. */
   sourcedTint?: Partial<Record<'G' | 'D' | 'R' | 'M', ColorTriple>>;
   sandstone?: boolean;
+  /** Ground lane (2026-10-03, Redrock's inselbergs "like extruded clay"): a two-formation bedrock — the beds under the
+   * boundary (at `atFrac` of the field's height span, wandering ±`wobbleM`) paler by `pale`, those above it redder by
+   * `red` (Wadi Rum: the Umm Ishrin's red over the paler Disi). Absent = one formation. */
+  formation?: { atFrac: number; wobbleM?: number; pale?: number; red?: number };
   iceLake?: boolean;
   seaLake?: boolean;
   /** Round 42: sky light on steep faces turned from the sun, as a fraction of the horizon sky colour (default 2.0). */
@@ -3107,6 +3111,7 @@ uniform float uMaskSize;
 uniform vec4 uMeanG, uMeanD, uMeanR, uMeanM;
 uniform vec3 uTintA, uTintB, uTintC, uRoadTint;
 uniform float uMarshGloss;
+uniform vec4 uFormation; // ground lane: (boundary y, its wander m, the lower formation's paling, the upper's reddening); x < -1e8 = one formation
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uLaneK, uIceDrift, uMidRelief, uFieldPatch;
 // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
@@ -3183,6 +3188,7 @@ float gSeaFoam; // maps r1: foam coverage this fragment (mattes the water gloss)
 vec2 gWallUVx; vec2 gWallUVz; vec2 gWallSigns; float gWallW;
 float gTileMix; // r8 anti-tiling: stochastic rotation-blend weight (set in splatCompute)
 float gCliffJ;  // r8: per-cliff jitter field (set with the wall basis)
+float gBedWob = 0.0; // ground lane: the beds' wander in metres of height (set with the wall basis)
 // Terrain v2 (2026-10-01, the cost pass — the material was ~60 % of Whiteout's GPU frame): the shared 256 px noise
 // texture is read at an explicit isotropic level of detail. Its fields are smooth at every scale the material reads
 // them (features of 9 m and up), yet the anisotropic sampler (x16, kept for the few near taps that still use the
@@ -3693,8 +3699,12 @@ void splatCompute() {
     float cliffJ2 = nz(wp.xz, 0.0047, vec2(0.91, 0.13)).r;
     float wallVScale = 0.87 + cliffJ * 0.26;
     float wallVOff = cliffJ * 9.7 + cliffJ2 * 2.3;
-    gWallUVx.y = gWallUVx.y * wallVScale + wallVOff;
-    gWallUVz.y = gWallUVz.y * wallVScale + wallVOff;
+    // Ground lane (2026-10-03, Redrock's inselbergs "like extruded clay"): the beds wander along the wall (±1.6 m over
+    // ~50 m, ±0.55 m over ~17 m) and swell and thin by region (±18 %), so no wall prints one level ladder
+    gBedWob = (nz(wp.xz, 0.0208, vec2(0.37, 0.83)).g - 0.5) * 3.2 + (nz(wp.xz, 0.0588, vec2(0.71, 0.19)).r - 0.5) * 1.1;
+    float bedSwell = 1.0 + 0.36 * (nz(wp.xz, 0.011, vec2(0.17, 0.53)).r - 0.5);
+    gWallUVx.y = gWallUVx.y * wallVScale * bedSwell + wallVOff + gBedWob;
+    gWallUVz.y = gWallUVz.y * wallVScale * bedSwell + wallVOff + gBedWob;
     gCliffJ = cliffJ;
   }
   // r5 terrain_environment: TRUE TRIPLANAR for the GROUND layers, decoupled
@@ -4287,7 +4297,9 @@ void splatCompute() {
     // amplitude itself breathes so some faces are strongly bedded, others
     // nearly massive rock.
     float bedF = 0.76 + gCliffJ * 0.60;
-    float bedAmp = uStrata * steep * (0.65 + gCliffJ * 0.7);
+    // (ground lane: the beds weather away on the sheerest faces — the clefts and the joints' walls run massive)
+    float bedAmp = uStrata * steep * (0.65 + gCliffJ * 0.7) * (1.0 - 0.6 * smoothstep(0.80, 0.97, slope));
+    float bedY = wp.y - gBedWob;
     // Round 49 (owner 2026-09-23, "Titan's marbled near walls — the round-35 wall texture reads as flowing water at
     // 300 m"): the uniform-isolation probe pinned the swirl on THIS block (zeroing uStrata calmed the sw-corner ring
     // wall; flat normals changed nothing). A continuous 3.3 m sine ladder (±30 %) lay over the bed tile's own 4–12 m
@@ -4299,19 +4311,28 @@ void splatCompute() {
     // laminae still drew the fine wavy lines there — they are gated by the TRUE camera distance, gone by 120 m)
     float lamW = 1.0 - smoothstep(40.0, 120.0, camDist);
     // terrain v2: the beds' height signals are non-periodic (bedSignal) by the map's irregularity (uReduxD.z)
-    float lamina = mix(sin(wp.y * 1.9 * bedF + n2Wall * 2.2 + gCliffJ * 9.3), bedSignal(wp.y + n2Wall * 1.2, 0.067 * bedF, gCliffJ), uReduxD.z);
+    float lamina = mix(sin(bedY * 1.9 * bedF + n2Wall * 2.2 + gCliffJ * 9.3), bedSignal(bedY + n2Wall * 1.2, 0.067 * bedF, gCliffJ), uReduxD.z);
     a.rgb *= 1.0 + lamina * bedAmp * 0.30 * lamW;
     // marker beds: the two long-period terms thresholded into discrete beds — a rust-stained bed 2–5 m thick every
     // 11–17 m on one term, a bleached caprock bed on the other — phase and thickness per cliff (gCliffJ) so no two
     // faces share a sequence, and a thin recessed parting under each rust bed inside 700 m
-    float bedA = mix(sin(wp.y * 0.57 * bedF + n2Wall * 1.9 + gCliffJ * 5.1), bedSignal(wp.y + n2Wall * 3.3, 0.020 * bedF, gCliffJ + 0.31), uReduxD.z);
-    float bedB = mix(sin(wp.y * 0.23 * bedF + n2Wall * 1.1 + 0.8 + gCliffJ * 3.7), bedSignal(wp.y + n2Wall * 4.8, 0.0083 * bedF, gCliffJ + 0.67), uReduxD.z);
+    float bedA = mix(sin(bedY * 0.57 * bedF + n2Wall * 1.9 + gCliffJ * 5.1), bedSignal(bedY + n2Wall * 3.3, 0.020 * bedF, gCliffJ + 0.31), uReduxD.z);
+    float bedB = mix(sin(bedY * 0.23 * bedF + n2Wall * 1.1 + 0.8 + gCliffJ * 3.7), bedSignal(bedY + n2Wall * 4.8, 0.0083 * bedF, gCliffJ + 0.67), uReduxD.z);
     float rust = smoothstep(0.50, 0.82, bedA) * (0.55 + 0.45 * smoothstep(-0.3, 0.4, bedB));
     float pale = smoothstep(0.55, 0.90, bedB) * (1.0 - rust);
     float parting = smoothstep(0.84, 0.97, -bedA) * (1.0 - smoothstep(300.0, 700.0, effDist));
     a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.68, 0.62), rust * min(bedAmp * 2.6, 0.7));
     a.rgb = mix(a.rgb, a.rgb * vec3(1.16, 1.12, 1.04), pale * steep * 0.40);
     a.rgb *= 1.0 - parting * min(bedAmp * 1.6, 0.35);
+    // ground lane: two formations — under the boundary (wandering with the beds and its own ±m) the paler, harder
+    // sandstone, above it the redder; the step is one bed thick, and it reads on the rock wherever the rock shows
+    if (uFormation.x > -1e8) {
+      float fy = bedY - uFormation.x + (nz(wp.xz, 0.0071, vec2(0.83, 0.41)).r - 0.5) * 2.0 * uFormation.y;
+      float upper = smoothstep(-1.2, 1.2, fy);
+      vec3 formCol = mix(a.rgb * vec3(1.0 + uFormation.z, 1.0 + uFormation.z * 0.9, 1.0 + uFormation.z * 0.75),
+                         a.rgb * vec3(1.0 + uFormation.w * 0.4, 1.0 - uFormation.w * 0.35, 1.0 - uFormation.w * 0.55), upper);
+      a.rgb = mix(a.rgb, formCol, max(fR, steep));
+    }
     // joint blocks and varnish where the beds are authored strongly (Titan 0.22 and Skybridge 0.18 full, Copper Mesa
     // and Mars 0.12 six tenths, the desert's 0.10 four tenths, Caldera / Badlands none)
     float jointAmp = smoothstep(0.06, 0.16, uStrata) * steep;
@@ -5164,6 +5185,8 @@ function* createSplatMaterialSteps(
   sourcedReady?: Promise<void>;
 }, void> {
   const S = splatCfg || {};
+  // ground lane: the two-formation bedrock's boundary — the build sets it from the field's height span (S.formation)
+  const formationUniform = { value: new THREE.Vector4(-1e9, 0, 0, 0) };
   const rockMask = selectTerrainLandformMask(S, landformW);
   // r6 terrain_environment: the mesa/rim landform weight rides the MASK's
   // BLUE channel on maps that provide landformW (desert — it has no marshes
@@ -5324,6 +5347,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uMarshGloss = { value: S.marshGloss ?? 0 };
     shader.uniforms.uMicroAmp = { value: S.microAmp ?? 1 };
     shader.uniforms.uStrata = { value: S.strata ?? 0 };
+    shader.uniforms.uFormation = formationUniform; // ground lane: set by the build from the field's height span
     shader.uniforms.uRoadTex = { value: S.pavedRoads ? 1 : clamp(S.roadTexMix ?? 0, 0, 1) };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uWornDirtStrength = { value: clamp(S.wornDirtStrength ?? 0.84, 0, 1) };
@@ -5481,6 +5505,7 @@ function* createSplatMaterialSteps(
   engineCtx.setupShadowMaterial(mat, splatHook);
   mat.customProgramCacheKey = () => `world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}`; // terrain v3 (2026-10-02): v54
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
+  mat.userData.formationUniform = formationUniform;
   mat.userData.groundClock = groundClock; // round 73: advanced with the water sheet's clock (terrainBuildSteps)
   mat.userData.reduxUniforms = reduxUniforms; // round 73: the probes' term isolation (zero a vector, recapture)
   mat.userData.layerMeans = layerMeans; // terrain v2: the measured layer means (probes read and override them)
@@ -5850,6 +5875,12 @@ function* terrainBuildSteps(
     }
   }
   const { material: mat, textures: splatTextures } = materialStep.value;
+  // ground lane: the two-formation bedrock's boundary at its share of the field's height span (S.formation)
+  {
+    const form = (cfg?.splat as { formation?: { atFrac: number; wobbleM?: number; pale?: number; red?: number } } | undefined)?.formation;
+    const u = (mat.userData as { formationUniform?: { value: THREE.Vector4 } }).formationUniform;
+    if (form && u) u.value.set(heightField.minY + (heightField.maxY - heightField.minY) * form.atFrac, form.wobbleM ?? 2.5, form.pale ?? 0.16, form.red ?? 0.12);
+  }
   const chunks: TerrainChunk[] = [];
   const terrainIndexPool: TerrainIndexPool = new Map();
   // Round 73 (2026-09-25, the ground redux): the relief's folds, baked once per world. An 8 m grid of the map's own
