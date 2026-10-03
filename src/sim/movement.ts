@@ -807,6 +807,9 @@ const SUSP_P_CLAMP = 0.065;      // rad — terrain-delta pitch authority
 const SUSP_R_CLAMP = 0.055;      // rad — terrain-delta roll authority
 const SUSP_K_SPEED = 4;          // m/s for full rate scale
 const SUSP_K_GAIN = 0.76;
+/** The dive's damping ratio (SuspensionRockState.d): a hard stop dips the hull 2-4 degrees, then rocks it back past level
+ * (about a third of the dip) before it settles. */
+const DIVE_ZETA = 0.35;
 // Mirror of tankFactory's r6 VISIBLE-dynamics amplification: syncFromState
 // renders the hull at susp.p × SUSP_VIS_P / susp.r × SUSP_VIS_R and sway =
 // _swayEst × SWAY_VIS (readable squat/dive/turn-lean at gameplay camera
@@ -854,8 +857,8 @@ const GUN_LIMIT_LABEL_DIST_M = 120; // terrain-floor pins label only past this
 const GUN_LIMIT_LABEL_DWELL_S = 0.5;
 const SPRING_OMEGA = 2 * Math.PI * 3; // hull attitude spring natural frequency (rad/s)
 const SPRING_ZETA = 0.6;         // damping ratio
-const K_INERTIA = 0.006;         // rad of pitch target per m/s² of longitudinal accel
-const INERTIA_CLAMP = 0.1;       // rad — max inertial pitch contribution
+// (physics lane, 2026-10-03: the inertial pitch that tipped the whole hull, tracks and all, under braking and launch is
+// gone; weight transfer is the suspension rock's dive, SuspensionRockState.d, pitched over seated tracks)
 const DVDT_CLAMP = 16;           // m/s² — reject collision-pushback spikes
 const BLOOM_GROW_TAU = 0.05;     // s — bloom-up is effectively instant
 // controls_gunnery r2: SHRINK tau uses ln6 (grow uses the fixed
@@ -1680,6 +1683,10 @@ const FIT_MIN_SPAN_ZZ = 1.5 * 1.5 / 12;
 const GRADE_PUSH_MAX = Math.tan(60 * Math.PI / 180);
 /** Below this travel the turn is nothing to see, and clipping it at zero would ratchet a crawl up a face. */
 const GRADE_PUSH_MIN_TRAVEL_MPS = 1;
+/** Grades under 14 degrees turn the travel by under 6 % (tan² θ): left alone, so the rolling ground every battle
+ * crosses keeps its drive as before (with the full turn there, six of battlePacing's 132 default matches ended inside
+ * two minutes, against the PR head's four, and a 0.18 launch ramp threw a hull 0.06 m over its lip instead of 0.08). */
+const GRADE_TURN_MIN = 0.25;
 
 /**
  * The ground pushes along its normal (physics lane, 2026-10-03; Titan Gorge, Caldera CTF seed 0): the vertical speed a
@@ -1714,7 +1721,7 @@ function landAlongGrade(state: TankState, ride: RideState): void {
   const push = state.landingImpactMps + ride.rebound;
   if (!(push > 0) || Math.abs(state.speed) < GRADE_PUSH_MIN_TRAVEL_MPS) return;
   const grade = clamp(Math.tan(state._terr.fitPitch), -GRADE_PUSH_MAX, GRADE_PUSH_MAX);
-  if (!(grade * state.speed > 0)) return;
+  if (!(grade * state.speed > 0) || Math.abs(grade) < GRADE_TURN_MIN) return;
   shiftTravelAlongGrade(state, push / (1 + grade * grade));
   // the springs close to the ground's rise under the travel it kept
   ride.groundV = state.speed * grade;
@@ -1723,7 +1730,7 @@ function landAlongGrade(state: TankState, ride: RideState): void {
 function shiftTravelAlongGrade(state: TankState, rise: number): void {
   if (Math.abs(state.speed) < GRADE_PUSH_MIN_TRAVEL_MPS) return;
   const grade = clamp(Math.tan(state._terr.fitPitch), -GRADE_PUSH_MAX, GRADE_PUSH_MAX);
-  if (grade === 0) return;
+  if (Math.abs(grade) < GRADE_TURN_MIN) return;
   const next = state.speed - grade * rise;
   const kept = state.speed > 0 ? Math.max(0, next) : Math.min(0, next);
   // the turn is not a braking or a launch of the drive: the inertial pitch reads the drive's change, not this one
@@ -2341,6 +2348,7 @@ function updateSuspensionRock(
     // 4 m drop past a launch ramp's lip down to its clamp, the support followed that rendered pitch, and the hull left
     // the lip falling instead of rising at the ramp's rate (the base hid it under a nose-dive that lifted the root).
     const sinPitch = Math.sin(state.visualPitch), sinRoll = Math.sin(state.visualRoll);
+    // (the root is the hull's seat on its tracks: the dive, which once lifted it, is not part of the support solve)
     const y = state.pos.y;
     const frontLeft = reachableCorner(hAt(x + forwardX * halfLength - rightX * halfWidth,
       z + forwardZ * halfLength - rightZ * halfWidth), y + halfLength * sinPitch - halfWidth * sinRoll);
@@ -2371,9 +2379,20 @@ function updateSuspensionRock(
       SUSP_R_CLAMP,
     );
   }
-  suspension.pv += (SUSP_W * SUSP_W * (pitchTarget - suspension.p) -
-    2 * SUSP_Z * SUSP_W * suspension.pv) * dt;
-  suspension.p += suspension.pv * dt;
+  // The weight-transfer share of that pitch, the dive or squat (physics lane, 2026-10-03), rides its own spring: the
+  // support solve seats the tracks without it, so a braking dive pitches the hull on its suspension over planted tracks
+  // — the running gear conforms the road wheels (front compressed, rear drooped) — instead of lifting the tail off flat
+  // ground, and it is damped lighter than the terrain rock (DIVE_ZETA), so a hard stop rocks back past level when the
+  // tracks stop pulling. The rest of the pitch (the terrain rock) keeps the rock spring.
+  const diveTarget = acceleration * SUSP_ACCEL_GAIN;
+  let rock = suspension.p - suspension.d;
+  let rockV = suspension.pv - suspension.dv;
+  rockV += (SUSP_W * SUSP_W * (pitchTarget - diveTarget - rock) - 2 * SUSP_Z * SUSP_W * rockV) * dt;
+  rock += rockV * dt;
+  suspension.dv += (SUSP_W * SUSP_W * (diveTarget - suspension.d) - 2 * DIVE_ZETA * SUSP_W * suspension.dv) * dt;
+  suspension.d += suspension.dv * dt;
+  suspension.p = rock + suspension.d;
+  suspension.pv = rockV + suspension.dv;
   suspension.rv += (SUSP_W * SUSP_W * (rollTarget - suspension.r) -
     2 * SUSP_Z * SUSP_W * suspension.rv) * dt;
   suspension.r += suspension.rv * dt;
@@ -2383,6 +2402,37 @@ function updateSuspensionRock(
   suspension.pv *= bleed;
   suspension.r *= bleed;
   suspension.rv *= bleed;
+  suspension.d *= bleed;
+  suspension.dv *= bleed;
+}
+
+/**
+ * The dive pitches the hull over its tracks only as far as its suspension travels (physics lane, 2026-10-03): the
+ * lifting end's wheels droop to keep its track on the ground and the sinking end's compress, each within its stop. A
+ * hull already hanging on drooped tracks over a crest, or bottomed on a landing, has no travel left to pitch into, so
+ * the dive saturates there (the rendered rock gives up the excess with it; the support solve never saw the dive). With
+ * the whole dive riding over the support the rigid track ran 6 cm past its droop over an egg-crate field.
+ */
+function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: TankState): void {
+  const suspension = state._susp;
+  if (suspension.d === 0) return;
+  const ride = state._ride;
+  const hang = Number.isFinite(ride.supportY) ? ride.y - ride.supportY : RIDE_DROOP_M;
+  const contact = entity.contactGeom;
+  const lever = contact
+    ? contact.halfLenM + Math.abs(contact.zCenterM || 0)
+    : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
+  const travel = Math.max(0, Math.min(RIDE_DROOP_M - hang, RIDE_COMPRESSION_M + hang));
+  const limit = Math.asin(Math.min(1, travel / lever)) / SUSP_VIS_P;
+  const excess = suspension.d > limit ? suspension.d - limit : suspension.d < -limit ? suspension.d + limit : 0;
+  if (excess === 0) return;
+  suspension.d -= excess;
+  suspension.p -= excess;
+  // the stop takes the dive's rate into it
+  if (suspension.dv * excess > 0) {
+    suspension.pv -= suspension.dv;
+    suspension.dv = 0;
+  }
 }
 
 function resetSupportSamples(
@@ -3488,7 +3538,6 @@ export function updateTank(
   // A slide has no traction to transfer weight with (physics lane, 2026-10-03): a hull sliding down a face it cannot
   // hold dipped its nose 0.1 rad under the slide's own acceleration, lost the face with its tail and bounced down it.
   const poseDvdt = drive.gripLost ? 0 : priorSpeed * dvdt < 0 ? dvdt * BRAKE_DIVE_MULT : dvdt;
-  const inertialPitch = clamp(K_INERTIA * poseDvdt, -INERTIA_CLAMP, INERTIA_CLAMP);
   state._prevSpeed = state.speed;
 
   // Predicted visual turn-lean sway (tankFactory adds it to rotation.z): fold
@@ -3530,7 +3579,7 @@ export function updateTank(
   // being critically damped in mid-air. Reusing this already-authoritative
   // state keeps snapshots, armor pose and local prediction on one attitude.
   const targetPitch = groundedAtStart
-    ? state._terr.pitch + inertialPitch + suspensionAimPitch
+    ? state._terr.pitch + suspensionAimPitch
     : spr.pitch;
   const targetRoll = groundedAtStart ? state._terr.roll : spr.roll;
   updateHullAttitude(
@@ -3566,7 +3615,8 @@ export function updateTank(
   // track burial on rough ground (r3 drive gate). The fit lands in state._terr
   // for the NEXT tick's spring targets/slope logic (one-tick-old plane —
   // imperceptible at 60 Hz, and exactly the pre-existing contract).
-  const pitchEff = spr.pitch + susp.p * SUSP_VIS_P - flP;
+  // the tracks are seated at the attitude without the dive (SuspensionRockState.d): the hull pitches over them
+  const pitchEff = spr.pitch + (susp.p - susp.d) * SUSP_VIS_P - flP;
   const rollEff = spr.roll + susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + flR;
   // Static-pose cache: a parked, settled tank re-uses the solved height instead
   // of re-sampling the (static) heightfield every tick. The rigid-gear flag is
@@ -3598,6 +3648,14 @@ export function updateTank(
   // Loaded suspension follows the support envelope; once the droop limit is
   // exceeded, the chassis uses an independent ballistic phase until landing.
   updateVerticalContact(state, groundedAtStart, dt, drive);
+  limitDiveToTravel(entity, spec, state);
+  // Off a whole-track seat (a trench crossed, a crest, an edge) the dive is no longer the suspension's to keep apart from
+  // the tracks: it joins the rock, which the support solve seats the tracks at (physics lane, 2026-10-03). Held apart,
+  // a heavy hull nosing into an assault trench's far wall was thrown out of it and stalled nose-up on the wall.
+  if (groundedAtStart && !_wholeTrackOnGround) {
+    state._susp.d = 0;
+    state._susp.dv = 0;
+  }
 
   updateGunLay(entity, debuff, hAt, drive.gunArc, drive.steer, dt);
   updateTrackScrollAndBloom(spec, state, debuff, dt);

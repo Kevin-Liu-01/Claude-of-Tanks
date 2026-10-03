@@ -480,6 +480,7 @@ function newMetrics() {
     liftM: 0,
     energyGainMaxJkg: 0, energyGainSumJkg: 0, apexes: [],
     rest: null, stuckS: 0, longestStuckS: 0, progressM: 0, pushFlips: 0, lastPush: null,
+    renderPitchMaxRad: 0, renderPitchMinRad: 0, diveMaxRad: 0,
     overturnedS: 0, tumblingS: 0, finalUpY: 1, finalOverturned: false,
     settleOscillations: null,
     replay: { samples: 0, maxErrM: 0, sumErrM: 0, maxAttErrRad: 0 },
@@ -778,6 +779,10 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
     if (snap > 0.03) metrics.snaps++;
     metrics.angRateMaxRadS = Math.max(metrics.angRateMaxRadS, Math.abs(dPitch) / DT, Math.abs(dRoll) / DT);
     renderedAttitude(state, att);
+    // the rendered pitch's extremes and the dive's share of it (the suspension's weight transfer, rendered x2.2)
+    if (att.pitch > metrics.renderPitchMaxRad) metrics.renderPitchMaxRad = att.pitch;
+    if (att.pitch < metrics.renderPitchMinRad) metrics.renderPitchMinRad = att.pitch;
+    metrics.diveMaxRad = Math.max(metrics.diveMaxRad, Math.abs((state._susp?.d ?? 0) * 2.2));
     renderedHistory.push(att.pitch, att.roll);
     if (renderedHistory.length > 8) renderedHistory.splice(0, 2);
     if (renderedHistory.length === 8) {

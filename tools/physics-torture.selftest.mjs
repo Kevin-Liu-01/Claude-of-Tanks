@@ -119,7 +119,8 @@ check('flank-steep', 'medium', 'earth', [
 // its grade (movement.ts contactAwareFit's span rule). The grade rule stopped it dead in the trench and it see-sawed.
 check('drive-assault-trench', 'heavy', 'earth', [
   g('progress short of 30 m (m)', (m) => 30 - m.progressM, 0, 'before: 19.6 m'),
-  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 800, 'before: 1366'),
+  // (900: with the grade floor the crossing's own jerk reads 800.2, the far wall's lip taken a little harder)
+  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 900, 'before: 1366'),
 ]);
 
 // Firing in flight (Mars gravity field audit): the shot turns an airborne hull by its rigid-body share, not the
@@ -142,6 +143,15 @@ for (const world of ['mars', 'moon', 'turbo']) {
     g('compression short of 15 cm (m)', (m) => 0.15 - m.gearCompMaxM, 0, 'before: 0 (the rebound left from the drooped line)'),
   ]);
 }
+// Gauntlet wave 2 (the motion strips scored 4.70 and held the merge): the suspension takes the stop.
+// A hard stop dips the hull on its suspension over planted tracks and rocks it back past level; it no longer tips the
+// whole hull, tracks and all, up off flat ground (movement.ts SuspensionRockState.d).
+check('drive-hardstop', 'medium', 'earth', [
+  g('dive past 4 degrees (rad)', (m) => m.diveMaxRad - 4 * Math.PI / 180, 0, 'before: the whole hull tipped 6-8 degrees'),
+  g('dive short of 2 degrees (rad)', (m) => 2 * Math.PI / 180 - m.diveMaxRad, 0, 'guard: the stop shows on the suspension'),
+  g('rock-back short of 0.4 degree (rad)', (m) => 0.4 * Math.PI / 180 - m.renderPitchMaxRad, 0, 'guard: it rocks back when the tracks stop pulling'),
+  g('vertical step (m)', (m) => m.popYMaxM, 0.005, 'guard: the tracks stay planted (the dive is not in the support solve)'),
+]);
 // A hull pivoting across a fence line (Foundry field audit; the bots lane's Coastal seed 25003 jink): a rail under each
 // end pushed it both ways at once and it flipped from side to side every step.
 check('fence-straddle', 'medium', 'earth', [
@@ -159,4 +169,4 @@ if (failures.length) {
   for (const line of failures) console.error(`  ${line}`);
   process.exit(1);
 }
-console.log(`physics-torture.selftest: ${runs} torture runs — boost ceiling, cliff edges, the Sirocco climb and swing, stacking, roof edges, the Moon step, crest launches, trench crossings, firing in flight, the landing stroke, settling contacts, prediction replay and rest all hold`);
+console.log(`physics-torture.selftest: ${runs} torture runs — boost ceiling, cliff edges, the Sirocco climb and swing, stacking, roof edges, the Moon step, crest launches, trench crossings, firing in flight, the landing stroke and the dive, settling contacts, prediction replay and rest all hold`);

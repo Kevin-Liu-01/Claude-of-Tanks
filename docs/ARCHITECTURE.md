@@ -831,7 +831,9 @@ contact constraints and cannot be crossed by residual uphill speed.
   support's rate under the hull turns it (a grade taken gradually keeps the speed's magnitude, `travel·cosθ`; at once
   it loses the plastic share, `travel·cos²θ`; a crest it stays on gives it back); a landing on a face rising in the
   travel's direction is a normal impulse (its vertical part `cos²θ` of the vertical closing law's, its horizontal part
-  out of the travel). Downhill landings and a crawl under 1 m/s are left alone; the travel never passes through zero.
+  out of the travel). Downhill landings, grades under 14 degrees (`GRADE_TURN_MIN`: a turn of under 6 % of the
+  travel, left to the rolling ground every battle crosses) and a crawl under 1 m/s are left alone; the travel never
+  passes through zero.
 - *Landing speed is the hull's own approach.* An airborne hull's ground moves only with its own travel over the
   slope beneath it (its grade along the travel, read from two world samples once the hull is pitched past 72
   degrees and its track samples stack over one point), never with the support envelope's swing as the hull turns.
@@ -846,6 +848,12 @@ contact constraints and cannot be crossed by residual uphill speed.
   wall lifting it) leaves none to return. A hull coming down on its shell rebounds rigidly at once, or stops its
   closing at the contact past 3 m/s. The rendered road wheels droop in the air and are pushed up into the hull by the
   compression (the gear conforms them to the ground at the rendered pose).
+- *Weight transfer is the suspension's dive.* Braking and acceleration pitch the hull on its suspension, not the
+  attitude: the dive (`_susp.d`, part of the rendered rock) rides its own spring (ζ 0.35, `DIVE_ZETA`), the support
+  solve seats the tracks without it, and the road wheels conform under it (front compressed, rear drooped). It is
+  limited by the suspension travel left at each end, and off a whole-track seat (a trench crossed, a crest, an edge)
+  it joins the rock the tracks are seated at. A hard stop dips the hull 2.5-3.5 degrees with its tracks planted and
+  rocks it back past level (about 0.9 degree) when the tracks stop pulling.
 - *The step that leaves the ground moves.* A loaded ride that detaches integrates that step on gravity alone; it
   used to stand still for it, a 13 cm stall in the motion of a hull leaving a face at 8 m/s.
 - *Structures are floors by the underside.* A part is a floor for a hull when its top is within the 0.55 m
