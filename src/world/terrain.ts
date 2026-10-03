@@ -46,7 +46,7 @@ import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
-import { createGeologyZoneSampler, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
+import { createGeologyRockSampler, createGeologyZoneSampler, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
@@ -246,6 +246,10 @@ interface TerrainSettings {
   frozenMarshes: boolean;
   dunes: DuneConfig | null;
   mesas: MesaConfig | null;
+  /** The maps-and-layouts lane (2026-10-03): a map without a mesa field whose rock gate reads its authored rock
+   * landforms instead (butte, inselberg and flow profiles: landformGeology.ts geologyRockWeight), so the gate stays
+   * on and its dune slip faces stay sand. */
+  landformRock?: boolean;
   landforms: LandformConfig[];
   roads: 'country' | AuthoredRoadConfig;
   softLakes?: boolean;
@@ -2224,8 +2228,10 @@ function* heightFieldBuildSteps(
   // surface through mask B and rockGate). Maps without flows keep the mesa wall and rim alone, byte for byte.
   const flowZones = geologyZones && T.landforms.some((form) => form.kind === 'ridge' && form.geology?.profile === 'flow')
     ? geologyZones : null;
+  // a map that opts in (landformRock) gates its rock on every authored rock landform's footprint instead of a mesa field
+  const rockLandforms = T.landformRock ? createGeologyRockSampler(T.landforms) : null;
   function createMesaWeightSampler(): HeightField['_mesaW'] {
-    if (!mesas && !flowZones) return null;
+    if (!mesas && !flowZones && !rockLandforms) return null;
     const zone: GeologyZones = [0, 0, 0];
     return (x: number, z: number): number => {
       let wall = 0;
@@ -2239,6 +2245,7 @@ function* heightFieldBuildSteps(
       }
       // the map-borders lane: the rim is rock only where the border landform keeps it (an open sector's low rim is ground)
       const rim = smoothstep(408, 468, Math.max(Math.abs(x), Math.abs(z))) * smoothstep(0.35, 0.8, border.rimFactorAt(x, z));
+      if (rockLandforms) return Math.max(wall, rim, rockLandforms(x, z));
       return flowZones ? Math.max(wall, rim, flowZones(x, z, zone)[0]) : Math.max(wall, rim);
     };
   }

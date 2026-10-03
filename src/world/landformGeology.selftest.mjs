@@ -4,7 +4,8 @@
 import assert from 'node:assert/strict';
 import { createHeightField, sampleLandformHeight } from './terrain.ts';
 import {
-  createGeologyZoneSampler, geologyBoulderSite, geologyZoneWeights, knollGeologyHeight, ridgeGeologyHeight,
+  createGeologyRockSampler, createGeologyZoneSampler, geologyBoulderSite, geologyRockWeight, geologyZoneWeights,
+  isRockLandform, knollGeologyHeight, ridgeGeologyHeight,
 } from './landformGeology.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 
@@ -363,7 +364,64 @@ for (let i = 0; i < 400; i++) {
 }
 assert.ok(nearFoot > boulderSites * 0.35, `boulders crowd towards the wall's foot (${nearFoot} of ${boulderSites} inside q 0.9)`);
 
+// 15. Rock landforms and cliff ends (Titan Gorge's redesign, 2026-10-03). A map without a mesa field can gate its rock
+// on its authored rock landforms instead (terrain `landformRock`): butte, inselberg and lava-flow profiles, and anything
+// made of slag. A ridge's cliff end keeps the full section out to 94 % of the half-length and then drops to nothing in a
+// wall; an end without one keeps the smooth taper.
+const rockCases = [
+  [{ kind: 'knoll', x: 0, z: 0, rx: 40, height: 20, geology: { profile: 'butte' } }, true, 'a butte'],
+  [{ kind: 'ridge', x: 0, z: 0, length: 200, width: 40, height: 20, geology: { profile: 'butte' } }, true, 'a mesa shelf'],
+  [{ kind: 'knoll', x: 0, z: 0, rx: 40, height: 20, geology: { profile: 'inselberg' } }, true, 'an inselberg'],
+  [{ kind: 'ridge', x: 0, z: 0, length: 200, width: 40, height: 6, geology: { profile: 'flow' } }, true, 'a lava flow'],
+  [{ kind: 'knoll', x: 0, z: 0, rx: 40, height: 20, geology: { profile: 'cone' } }, false, 'a cinder cone'],
+  [{ kind: 'knoll', x: 0, z: 0, rx: 40, height: 20, geology: { outline: 0.2 } }, false, 'a lobed dome'],
+  [{ kind: 'knoll', x: 0, z: 0, rx: 40, height: 20 }, false, 'a smooth knoll'],
+  [{ kind: 'knoll', x: 0, z: 0, rx: 40, height: 9, geology: { outline: 0.1, material: 'slag' } }, true, 'a slag tip'],
+];
+for (const [form, rock, label] of rockCases) assert.equal(isRockLandform(form), rock, `${label} is${rock ? '' : ' not'} rock`);
+const shelf = frame({ kind: 'ridge', x: 30, z: -20, length: 200, width: 40, height: 20, yawDeg: 90,
+  geology: { profile: 'butte', cliffEnd: 'both' } });
+const tip = frame({ kind: 'knoll', x: -150, z: 60, rx: 40, rz: 30, height: 9, yawDeg: 20, geology: { material: 'slag' } });
+const atLocal = (form, lx, lz) => [form.x + lx * form._c - lz * form._s, form.z + lx * form._s + lz * form._c];
+assert.equal(geologyRockWeight(shelf, ...atLocal(shelf, 95, 38)), 1, 'a shelf is rock to its margin and its end');
+assert.equal(geologyRockWeight(shelf, ...atLocal(shelf, 0, 44.5)), 0, 'and nothing 4 m past its margin');
+assert.equal(geologyRockWeight(shelf, ...atLocal(shelf, 104.5, 0)), 0, 'or 4 m past its end');
+assert.equal(geologyRockWeight(tip, ...atLocal(tip, 39, 0)), 1, 'a tip is rock out to its base');
+assert.equal(geologyRockWeight(tip, ...atLocal(tip, 44.5, 0)), 0, 'and nothing 4 m past it');
+assert.equal(createGeologyRockSampler(rockCases.filter(([, rock]) => !rock).map(([form]) => form)), null,
+  'no rock landform: no sampler');
+const rockSampler = createGeologyRockSampler([shelf, tip, cone]);
+let rockPoints = 0, onRock = 0;
+for (let z = -200; z <= 200; z += 3.7) for (let x = -250; x <= 200; x += 3.7) {
+  const w = rockSampler(x, z);
+  assert.equal(w, Math.max(geologyRockWeight(shelf, x, z), geologyRockWeight(tip, x, z)),
+    `the sampler is the strongest rock footprint at (${x}, ${z})`);
+  rockPoints++;
+  if (w === 1) onRock++;
+}
+// a cliff end: the full section out to 94 % of the half-length, a wall to nothing by the end; the other end tapers
+const plainShelf = frame({ ...shelf, geology: { profile: 'butte' } });
+const southCliff = frame({ ...shelf, geology: { profile: 'butte', cliffEnd: 1 } });
+const crestAt = (form, lx) => sampleLandformHeight(form, ...atLocal(form, lx, 0));
+assert.equal(crestAt(shelf, 0.93 * 100), crestAt(shelf, 0), 'a cliff end keeps the full section to 94 % of the half-length');
+assert.equal(crestAt(shelf, 100), 0, 'and is gone at the end');
+const cliffDrop = (crestAt(shelf, 94) - crestAt(shelf, 100)) / 6;
+assert.ok(cliffDrop > 2, `the end is a wall (${cliffDrop.toFixed(2)} m per m)`);
+assert.ok(crestAt(plainShelf, 90) < crestAt(plainShelf, 0) * 0.5, 'without a cliff end the crest tapers away');
+assert.equal(crestAt(southCliff, 90), crestAt(shelf, 90), 'a +1 cliff end walls the +x end');
+assert.equal(crestAt(southCliff, -90), crestAt(plainShelf, -90), 'and leaves the -x end its taper');
+// the height field's rock gate: on a map that opts in, inside the rim band the landform mask is the rock footprint
+const verdantConfig = getMapConfig('verdant');
+const rockMap = createHeightField(1337, { ...verdantConfig, id: undefined,
+  terrain: { ...verdantConfig.terrain, mesas: null, landformRock: true, landforms: [shelf, tip, cone].map(({ _c, _s, ...form }) => form) } });
+assert.equal(typeof rockMap._mesaW, 'function', 'a map that gates on its rock landforms keeps a landform mask');
+let gatePoints = 0;
+for (let z = -200; z <= 200; z += 9.1) for (let x = -250; x <= 200; x += 9.1) {
+  assert.ok(Math.abs(rockMap._mesaW(x, z) - rockSampler(x, z)) < 1e-9, `the mask is the rock footprint at (${x}, ${z})`);
+  gatePoints++;
+}
+
 console.log(`landformGeology.selftest: ${smoothForms} smooth landforms unchanged; cone flank ${steepest.toFixed(3)} `
   + `(predicted ${predicted.toFixed(3)}), ${notches} rills, lobed reach ${Math.min(...reach)}-${Math.max(...reach)} m, `
   + `${benches} benches on ${benchedBearings} of 12 bearings, `
-  + `flow margin ${Math.min(...edges)}-${Math.max(...edges)} m, ${seamSamples} seam samples continuous (${wallSamples} on an inselberg's wall), ${fanPeaks} talus fans, flow levee ${(levee - channel).toFixed(2)} m front ${frontSlope.toFixed(2)} vent ${ventSlope.toFixed(2)}; zones: flow ${flowInside} inside, ${flowFaded} faded, cone ${coneInside} inside, fans ${fanPositive} of ${fanSamples} toe samples, sampler ${samplerPoints} points; Caldera's mask = its flow zone at ${maskPoints} points (${onFlows} on flows); inselberg wall ${steepestWall.toFixed(2)}, foot ${Math.min(...breaks)}-${Math.max(...breaks)} m, ${nearFoot} of ${boulderSites} boulder sites near the foot`);
+  + `flow margin ${Math.min(...edges)}-${Math.max(...edges)} m, ${seamSamples} seam samples continuous (${wallSamples} on an inselberg's wall), ${fanPeaks} talus fans, flow levee ${(levee - channel).toFixed(2)} m front ${frontSlope.toFixed(2)} vent ${ventSlope.toFixed(2)}; zones: flow ${flowInside} inside, ${flowFaded} faded, cone ${coneInside} inside, fans ${fanPositive} of ${fanSamples} toe samples, sampler ${samplerPoints} points; Caldera's mask = its flow zone at ${maskPoints} points (${onFlows} on flows); inselberg wall ${steepestWall.toFixed(2)}, foot ${Math.min(...breaks)}-${Math.max(...breaks)} m, ${nearFoot} of ${boulderSites} boulder sites near the foot; rock: ${onRock} of ${rockPoints} sampler points on rock, cliff end ${cliffDrop.toFixed(2)} m per m, the rock gate matches at ${gatePoints} points`);

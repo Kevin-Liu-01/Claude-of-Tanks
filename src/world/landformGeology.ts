@@ -52,6 +52,9 @@ export interface LandformGeology {
   strata?: { stepM: number; riser?: number };
   /** Knobbly relief amplitude in metres. */
   rough?: number;
+  /** What the landform is made of, where its shape does not say: 'slag' (an industrial tip) counts as a rock
+   * landform for a map's rock gate (geologyRockWeight) so the terrain material can draw it as slag. No height effect. */
+  material?: 'slag';
   /** Knolls: how many fallen blocks props.ts scatters on the talus, crowded towards the wall's foot and thinning out
    * past the toe (geologyBoulderSite): a boulder apron. The larger blocks are hard cover. */
   boulders?: number;
@@ -61,6 +64,9 @@ export interface LandformGeology {
   /** Ridges only: a flow front: +1 ends the local +x end, -1 the -x end, in a steep blocky front over the last 8 % of
    * the length, while the other end thins out gently over its last half (a lava flow's vent end). */
   front?: 1 | -1;
+  /** Ridges only: a cliff end: +1 ends the local +x end, -1 the -x end, 'both' both ends, in a steep wall over the last
+   * 6 % of the length instead of the smooth taper (a shelf whose end would otherwise ramp up onto its cap). */
+  cliffEnd?: 1 | -1 | 'both';
 }
 
 /** The slice of a landform the geology reads. */
@@ -387,6 +393,10 @@ export function ridgeGeologyHeight(form: GeologicForm, lx: number, lz: number, a
     const half = Math.max(1, (form.length || 100) * 0.5), t = Math.max(-1, Math.min(1, lx / half)) * geology.front;
     along = t > 0 ? 1 - smoothstep(0.92, 1, t) : 1 - smoothstep(0.5, 1, -t);
     if (along <= 0) return 0;
+  } else if (geology.cliffEnd && (geology.cliffEnd === 'both' || lx * geology.cliffEnd > 0)) {
+    const half = Math.max(1, (form.length || 100) * 0.5);
+    along = 1 - smoothstep(0.94, 1, Math.abs(lx) / half);
+    if (along <= 0) return 0;
   }
   let fall = 1;
   if (geology.taper) {
@@ -533,4 +543,61 @@ export function geologyBoulderSite(form: GeologicForm, u: number, v: number): [n
   const yaw = (form.yawDeg ?? 0) * Math.PI / 180;
   const c = form._c ?? Math.cos(yaw), s = form._s ?? Math.sin(yaw);
   return [form.x + lx * c - lz * s, form.z + lx * s + lz * c];
+}
+
+/** Whether a landform is bare rock by its geology: a butte or mesa (knoll or ridge), an inselberg, a lava flow, or a
+ * landform made of slag. */
+export function isRockLandform(form: GeologicForm): boolean {
+  const profile = form.geology?.profile;
+  return profile === 'butte' || profile === 'inselberg' || (profile === 'flow' && form.kind === 'ridge')
+    || form.geology?.material === 'slag';
+}
+
+/**
+ * A rock landform's footprint at the world point (x, z), 0..1: 1 over its whole lobed outline (a ridge's margin and
+ * ends, a knoll's base), fading to 0 over FLOW_EDGE_M past it; 0 for any other landform. For a map whose rock gate
+ * reads its authored rock landforms (terrain.ts `landformRock`).
+ */
+export function geologyRockWeight(form: GeologicForm, x: number, z: number): number {
+  if (!isRockLandform(form)) return 0;
+  const geology = form.geology!;
+  const yaw = (form.yawDeg ?? 0) * Math.PI / 180;
+  const c = form._c ?? Math.cos(yaw), s = form._s ?? Math.sin(yaw);
+  const dx = x - form.x, dz = z - form.z;
+  const lx = dx * c + dz * s, lz = -dx * s + dz * c;
+  const outline = Math.max(0, Math.min(0.35, geology.outline ?? 0));
+  const salt = formSalt(form);
+  if (form.kind === 'ridge') {
+    const width = Math.max(1, form.width || 45), half = Math.max(1, (form.length || 100) * 0.5);
+    const edge = width * (outline > 0 ? 1 + outline * edgeLobe(lx, lz >= 0 ? 1 : -1, salt) : 1);
+    return (1 - smoothstep(0, FLOW_EDGE_M, Math.abs(lz) - edge)) * (1 - smoothstep(0, FLOW_EDGE_M, Math.abs(lx) - half));
+  }
+  const rx = Math.max(1, form.rx || form.r || 70), rz = Math.max(1, form.rz || form.r || rx);
+  const nx = lx / rx, nz = lz / rz;
+  let q = Math.sqrt(nx * nx + nz * nz);
+  if (outline > 0) q /= 1 + outline * lobe(Math.atan2(nz, nx), salt);
+  return q > 1 ? 1 - smoothstep(0, FLOW_EDGE_M, (q - 1) * Math.hypot(lx, lz) / q) : 1;
+}
+
+/** The strongest rock-landform footprint over a map's landforms at (x, z), or null when none is rock. */
+export function createGeologyRockSampler(forms: readonly GeologicForm[]): ((x: number, z: number) => number) | null {
+  const rock = forms.filter(isRockLandform);
+  if (!rock.length) return null;
+  const reach = rock.map((form) => {
+    const outline = Math.max(0, Math.min(0.35, form.geology?.outline ?? 0));
+    if (form.kind === 'ridge') {
+      return Math.hypot(Math.max(1, (form.length || 100) * 0.5) + FLOW_EDGE_M,
+        Math.max(1, form.width || 45) * (1 + outline) + FLOW_EDGE_M);
+    }
+    return Math.max(form.rx || form.r || 70, form.rz || form.r || form.rx || 70) * (1 + outline) + FLOW_EDGE_M;
+  });
+  return (x, z) => {
+    let best = 0;
+    for (let i = 0; i < rock.length && best < 1; i++) {
+      const dx = x - rock[i].x, dz = z - rock[i].z;
+      if (dx * dx + dz * dz > reach[i] * reach[i]) continue;
+      best = Math.max(best, geologyRockWeight(rock[i], x, z));
+    }
+    return best;
+  };
 }
