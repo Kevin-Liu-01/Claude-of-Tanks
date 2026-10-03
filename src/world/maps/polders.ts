@@ -109,6 +109,8 @@ export default {
     ],
   },
   props: {
+    // regional-buildings lane: the Zeeland polder kit (maps/regional/polder.ts)
+    architecture: 'polder',
     sourcedPalette: 'coastal',
     plan: ['mill', 'farmhouse', 'granary', 'fishery', 'depot', 'cottage', 'woodshed', 'tavern', 'farmhouse', 'barn', 'barn', 'cottage', 'granary', 'ruin', 'depot', 'woodshed', 'farmhouse', 'barn'],
     destructibleBuildings: ['fieldhut', 'fishershack', 'transformershed', 'huntingblind'],
@@ -125,6 +127,17 @@ export default {
     tankWrecks: { era: 'modern', count: 5, debris: true,
       ids: ['leo2a7v', 'marder1a3', 'strv122', 'leclerc', 'cv90'] },
     inhabit: { stalls: 2, benches: 3, coreClutter: 18, bales: 12, stooks: 12, troughs: 2, laundry: 3, handcarts: 3, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 2, modernClutter: 18, looseClutter: 18, roadFence: 'fenceplank', yardFence: 'fencepicket' },
+  },
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the drainage machinery of a
+  // Zeeland polder. A steel windmotor stands on the bank of each low basin it lifts water out of, every rotor turned
+  // into the same sea wind; a 150 kV line on lattice towers strides across the flats from the old land to the new.
+  scenery: {
+    landmarks: [
+      { kind: 'windpump', x: 82, z: -206, yawDeg: 300, name: 'the windmotor on the retention bay' },
+      { kind: 'windpump', x: 36, z: 250, yawDeg: 300, name: 'the windmotor on the overflow reach' },
+      { kind: 'windpump', x: -122, z: 228, yawDeg: 300, name: 'the windmotor by the oxbow' },
+    ],
+    powerLines: [{ towers: [[-440, -330], [-150, -140], [120, 90], [430, 260]], heightM: 32, name: 'the 150 kV line' }],
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): a second skyline rank of windbreak crowns on
   // the very low ring, sparse stone heaps on the outland (treeline 0.30 fell in the rockfield's dead zone) and more

@@ -92,6 +92,7 @@ assert.match(post, /if \( uVehOcc > 0\.5 && texel\.a >= \$\{VEHICLE_ALPHA_MIN\.t
   'only vehicle pixels in range, before the haze');
 assert.ok(post.indexOf('cotVehicleOcclusionShade( vUv') < post.indexOf('texel.a = 1.0;'), 'consumed before the pass restores alpha');
 assert.match(post, /aerial\.uniforms\.uVehOcc\.value = lightFx\.vehicleOcclusion \? 1 : 0;/, 'the lever drives the uniform');
+// (2026-10-03, the skies-and-atmosphere lane: the far cloud shadows read the same uniforms, so they refresh for them too)
 assert.match(post, /updateContactShadowUniforms\(aerial\.uniforms, camera, scene, lightFx\.contactShadows,\s*lightFx\.contactShadows \|\| lightFx\.vehicleOcclusion\);/,
   'the sun / ambient uniforms refresh for the occlusion even with the contact march off');
 

@@ -164,7 +164,12 @@ export default {
   clouds: { regime: 'cumulus-humilis', coverage: 0.22, cirrus: 0.45, baseM: 1500 },
   sky: {
     sunElevationDeg: 22, sunAzimuthDeg: 116, turbidity: 8.5, rayleigh: 1.15,
-    mieCoefficient: 0.014, mieDirectionalG: 0.89, fogDensity: 0.00082,
+    // 2026-10-03 (the skies lane; the gauntlet's Caldera wave 3: "a large soft white bloom halo that erases the upper-left
+    // quarter of the sky ... an exposure/tonemapping bug"): the halo was the sky's own aureole — the heaviest aerosol of
+    // every map (Mie 6x the Earth's at g 0.89: display luma >= 0.89 out to 15 deg from the sun; the bloom, the shafts and
+    // the flare added 0.01-0.02). Half the aerosol at the tightest lobe the calibration allows keeps the ash haze over
+    // the land (fogDensity) and the bright glare core while the sky a few degrees off the sun keeps its colour
+    mieCoefficient: 0.007, mieDirectionalG: 0.92, fogDensity: 0.00082,
     fogTintHex: 0x81766d, fogMix: 0.67, envIntensity: 0.18,
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the overcast deck authored explicitly (it took
     // the auto branch's 340 m / 0.00015 / 2400 m) — a 360 m ash-laden deck of 2300 m masses with a slightly thinner

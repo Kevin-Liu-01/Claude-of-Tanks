@@ -102,6 +102,8 @@ export default {
   },
 
   props: {
+    // regional-buildings lane: the Prokhorovka kolkhoz kit (maps/regional/kolkhoz.ts)
+    architecture: 'kolkhoz',
     // world-dressing r1: farm-theme catalog — farmhouse (L-wing + porch),
     // raised granary, chapel and a tower windmill join the cottage/barn set
     plan: ['farmhouse', 'barn', 'tavern', 'chapel', 'cottage', 'ruin',
@@ -171,6 +173,19 @@ export default {
       trucks: 3, jeeps: 2, drumClusters: 3, camps: 2,
       modernClutter: { barrier: 4, roadsign: 4, cone: 6, transformer: 3, cablespool: 3 },
     },
+  },
+
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the black-earth plateau's
+  // marks. A standing stone on each kurgan's crown, as the steppe's stone idols stood; an Orthodox roadside cross at the
+  // village's south and north entries; a 110 kV line across the southern fields below the swell.
+  scenery: {
+    landmarks: [
+      { kind: 'menhir', x: -75, z: -245, scale: 0.8, height: 2.6, name: 'the standing stone on the south kurgan' },
+      { kind: 'menhir', x: 95, z: 285, scale: 0.8, height: 2.6, name: 'the standing stone on the north kurgan' },
+      { kind: 'orthodoxcross', x: 14.4, z: -70, yawDeg: 180, name: 'the cross at the south village entry' },
+      { kind: 'orthodoxcross', x: 13.9, z: 150, yawDeg: 0, name: 'the cross at the north village entry' },
+    ],
+    powerLines: [{ towers: [[-440, -170], [-150, -180], [140, -190], [440, -200]], heightM: 30, name: 'the 110 kV line' }],
   },
 
   horizon: {
