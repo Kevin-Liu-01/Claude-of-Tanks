@@ -110,6 +110,8 @@ export const EIFEL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     sourced: { plaster: true, wood: true },
   },
   builders: EIFEL_BUILDERS,
+  // the yards: a plank fence round the kitchen garden and the woodshed, a gate (yards.ts)
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fenceplank', gate: 'gate', shed: 'woodshed', shedSize: [4.2, 5.1], garden: true },
 });
 
 export type { RegionalParts };
