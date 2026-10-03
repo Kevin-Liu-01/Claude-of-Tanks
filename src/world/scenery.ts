@@ -139,8 +139,12 @@ type FieldWorksBuildContext = Pick<SceneryBuildContext,
 
 type SceneryBuildSlice = { fine: true; progress: false; stage: string };
 
-/** The conductors' sag as a share of the span, and the tallest a tower stands (m). */
-const PYLON_SAG = 0.02, PYLON_TALLEST_M = 70;
+/**
+ * The conductors' sag as a share of the span, and the tallest a tower stands (m). Wave 20 read the 2 % sag as "straight
+ * hairlines" at a battle's range: a real line's 3-5 % hangs a visible curve between towers (the towers rise to keep the
+ * crowns clear under it: 57-65 m on the 200-320 m spans the maps author).
+ */
+const PYLON_SAG = 0.04, PYLON_TALLEST_M = 70;
 
 const SQUARE = 480;
 const SPAWN_CLEAR = 22;
@@ -480,7 +484,7 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
         const pa = new THREE.Vector3(ax, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), a.yaw);
         const pb = new THREE.Vector3(ax, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), b.yaw);
         const wire = buildConductor(a.x + pa.x, a.y + ay, a.z + pa.z, b.x + pb.x, b.y + ay, b.z + pb.z,
-          span * (ay >= H - 0.01 ? PYLON_SAG * 0.75 : PYLON_SAG), segments, ay >= H - 0.01 ? 0.03 : 0.045);
+          span * (ay >= H - 0.01 ? PYLON_SAG * 0.8 : PYLON_SAG), segments, ay >= H - 0.01 ? 0.03 : 0.055);
         ctx.conform(wire, ctx.baked);
         ctx.baked.push(wire);
         receipt.bakedTriangles += wire.attributes.position.count / 3;
