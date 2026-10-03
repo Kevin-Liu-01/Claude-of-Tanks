@@ -13,9 +13,11 @@ try{
  await lock.acquire();heartbeat=setInterval(()=>lock.refresh(),30000);
  console.log('six-modes: acquired native capture slot');
  await withMapProbeSession({root:process.cwd(),launch:{executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'}},async({browser,port})=>{
-  for(const mobile of [false,true]) {
-  const initialViewport=mobile?{width:568,height:320,deviceScaleFactor:1,isMobile:true,hasTouch:true}:{width:1280,height:800};
-  const suffix=mobile?'touch':'desktop';
+  const profiles=[{width:1280,height:800},{width:568,height:320,deviceScaleFactor:1,isMobile:true,hasTouch:true},{width:480,height:270,deviceScaleFactor:1,isMobile:true,hasTouch:true}];
+  for(const initialViewport of profiles) {
+  const mobile=!!initialViewport.isMobile;
+  if(process.env.COT_AERIAL_TOUCH_ONLY&&!mobile)continue;
+  const suffix=mobile?(initialViewport.width<500?'touch-small':'touch'):'desktop';
   const {page,errors}=await openGamePage(browser,{port,viewport:initialViewport});
   page.on('console',message=>{if(message.type()==='error')console.error('browser:',message.text().slice(0,500));});
   await page.click('.cot-battle-mode');
@@ -50,6 +52,8 @@ try{
     const after=await page.evaluate(()=>{const v=window.__DEBUG.game.player.aerial;return{x:v.x,y:v.y,z:v.z};});
     assert.ok(Math.hypot(after.x-before.x,after.y-before.y,after.z-before.z)>3,'pilot movement flies the drone');
     await page.screenshot({path:resolve(out,`drone-flight-${suffix}.png`)});
+    assert.equal(await page.$eval('.cot-drive',el=>getComputedStyle(el).display),'none','no tank speedometer during FPV flight');
+    assert.equal(await page.$eval('.cot-dp',el=>getComputedStyle(el).display),'none','no tank damage panel during FPV flight');
     if(mobile)await page.tap('.cot-drone-return');else await page.keyboard.press('KeyV');await page.waitForFunction(()=>!window.__DEBUG.game.player.aerial.active);
     reports.push({mode,mobile,before,after,returned:true});
    }else if(mode==='ac130'){
