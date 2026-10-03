@@ -61,6 +61,11 @@ export function hullUndersideOver(
   rootY: number, sinPitch: number, sinRoll: number,
   frontLift = 0, rearLift = 0,
 ): number {
+  // a record the rect's box does not reach has no sample over it (the root, exactly as the grid would find)
+  const reachX = Math.abs(forwardX) * halfLength + Math.abs(rightX) * halfWidth;
+  const reachZ = Math.abs(forwardZ) * halfLength + Math.abs(rightZ) * halfWidth;
+  if (centerX + reachX < record.min[0] || centerX - reachX > record.max[0]
+    || centerZ + reachZ < record.min[2] || centerZ - reachZ > record.max[2]) return rootY;
   let lowest = Infinity;
   for (let i = 0; i < 5; i++) {
     const along = (i * 0.5 - 1) * halfLength;
