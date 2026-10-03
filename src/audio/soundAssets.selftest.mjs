@@ -44,7 +44,9 @@ for (const block of engine.matchAll(/const WEAPON_(?:CLOSE|FAR)[^=]*= Object\.fr
   for (const m of block[1].matchAll(/: '([a-z0-9_]+)'/g)) referenced.add(m[1]);
 }
 for (const m of rig.matchAll(/'((?:track|water|engine|turret|elevation|interior|fire)_[a-z0-9_]+_loop)'/g)) referenced.add(m[1]);
-for (const id of referenced) assert.ok(SFX_ASSETS[id], `engine references a shipped asset: ${id}`);
+// Cues rendered in procedural.ts rather than shipped as files.
+const PROCEDURAL = new Set(['muzzle_blast']);
+for (const id of referenced) assert.ok(SFX_ASSETS[id] || PROCEDURAL.has(id), `engine references a shipped asset: ${id}`);
 assert.ok(referenced.size > 120, `engine reference scan found ${referenced.size} assets`);
 for (const tail of ['open', 'forest', 'urban', 'mountain']) assert.ok(SFX_ASSETS[`tail_${tail}`], `tail_${tail}`);
 for (const kind of ['interior_medium', 'interior_large', 'interior_heavy']) assert.ok(SFX_ASSETS[`gun_${kind}`]);

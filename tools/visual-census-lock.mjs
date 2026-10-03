@@ -33,6 +33,17 @@ export function stepBehindStamp(names, own, isLive) {
   return null;
 }
 
+/**
+ * A queue ticket name in the shared format (`<15-digit stamp>-<12 digits>-<pid>.t`, which capture-lock.mjs checks).
+ * The middle field is the waiter's ARRIVAL (ms modulo 1e12, plus a bump on a clash), not a per-round counter: a head
+ * that steps behind the next waiter takes that waiter's stamp + 1, so after a few rotations many waiters share one
+ * stamp and the middle field decides. With a round counter there, the longest waiter sorted last among equals every
+ * round (2026-10-03: five runs yielded about 240 times while newer tickets passed); with arrival there, it goes first.
+ */
+export function ticketName(stamp, arrivedMs, pid, bump = 0) {
+  return `${String(stamp).padStart(15, '0')}-${String((arrivedMs % 1e12) + bump).padStart(12, '0')}-${pid}.t`;
+}
+
 /** A FIFO + session-mutex lock with the capture-lock interface: acquire(timeoutMs), refresh(), release(). */
 export function createPoliteCaptureLock({
   probeDir, queueDir = DEFAULT_QUEUE_DIR, lockDir = DEFAULT_LOCK_DIR, maxHolderWaitMs = 8 * 60 * 1000,
@@ -40,7 +51,8 @@ export function createPoliteCaptureLock({
   ticketStaleMs = TICKET_STALE_MS, ticketRefreshMs = Math.max(1, Math.min(30_000, ticketStaleMs / 3)),
 }) {
   if (!probeDir) throw new Error('createPoliteCaptureLock needs the session mutex directory');
-  let fifoHeld = false, probeHeld = false, sequence = 0;
+  let fifoHeld = false, probeHeld = false;
+  const arrived = Date.now();
   const stale = (name) => { try { return Date.now() - statSync(join(queueDir, name)).mtimeMs > ticketStaleMs; } catch { return false; } };
   // 2026-10-03: a waiter renews its own ticket and restores it if another waiter reaped it, as capture-lock.mjs does;
   // before, a waiter past the stale age was deleted by the next head() scan and then waited outside the queue.
@@ -55,8 +67,8 @@ export function createPoliteCaptureLock({
   const names = () => { try { return readdirSync(queueDir).filter((n) => n.endsWith('.t')).sort(); } catch { return []; } };
   const reserve = (stamp) => {
     mkdirSync(queueDir, { recursive: true });
-    for (;;) {
-      const name = `${String(stamp).padStart(15, '0')}-${String(sequence++).padStart(12, '0')}-${process.pid}.t`;
+    for (let bump = 0; ; bump++) {
+      const name = ticketName(stamp, arrived, process.pid, bump);
       try { writeFileSync(join(queueDir, name), String(process.pid), { flag: 'wx' }); return name; }
       catch (error) { if (error.code !== 'EEXIST') throw error; }
     }

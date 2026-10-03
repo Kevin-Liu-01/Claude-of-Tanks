@@ -29,6 +29,8 @@ export interface CanyonGround {
   getBorderHedgeAt?(x: number, z: number): number;
   /** The map-borders lane: the farmsteads past the edge — how many, their build, the field system they square to. */
   _borderFarmsteads?: { count: number; style: FarmsteadStyle; fieldAngle: number };
+  /** The map-borders lane: the hedged stretches of the field boundaries past the edge (borderHedgerows.ts). */
+  _borderHedgeLines?(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[];
   /** The road exits past the edge: [metres off the nearest exit road, its presence 0..1] (terrain.ts roadExitAt). */
   _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
 }

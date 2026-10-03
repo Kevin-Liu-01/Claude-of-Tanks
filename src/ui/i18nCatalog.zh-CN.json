@@ -3809,5 +3809,7 @@
   "flight.supply.short.ammo": "弹药",
   "flight.supply.short.heal": "医疗",
   "flight.signalLost": "信号中断 · 正在返回载具",
-  "flight.scopeView": "瞄准镜视图：{view}。切换传感器视图。"
+  "flight.scopeView": "瞄准镜视图：{view}。切换传感器视图。",
+  "hud.incoming.mixedHits": "命中",
+  "hud.incoming.stackSummary": "{count} 次命中 · 总伤害 {damage}"
 }

@@ -1,9 +1,10 @@
 // src/world/maps/verdant.ts — Verdant Fields, redesigned 2026-10-02 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
-// The palette, sky, vegetation, the country cross of roads (on its classic courses, now authored paths whose exits are
-// graded through the rim) and its junction village are the map's identity and stay (every field the config leaves
-// undefined still falls back to the defaults baked into terrain/vegetation/props); the battlefield around them is new. The old layout put alpha's pad beside the village, 457 m from bravo's arc and in
-// its sight, on five generic landforms that eleven other maps then copied; the 2v2 pacing receipt's seed 21002 ended
-// in 98 s.
+// The palette, sky, vegetation, the country cross of roads and its junction village with the classic town plan (every
+// house and village wall where main has it, restored at the owner's request on 2026-10-03: "the old verdant town plan
+// was better") are the map's identity and stay (every field the config leaves undefined still falls back to the
+// defaults baked into terrain/vegetation/props); the battlefield around them is new. The old layout put alpha's pad
+// beside the village, 457 m from bravo's arc and in its sight, on five generic landforms that eleven other maps then
+// copied; the 2v2 pacing receipt's seed 21002 ended in 98 s.
 //
 // Reference: the black-earth farmland of the Kursk salient around Prokhorovka: open rolling fields on a broad plateau,
 // a village where two country roads cross, field shelterbelts and hedgerow banks, and long low swells that hide a
@@ -12,23 +13,13 @@
 // The story on the ground: the two country roads cross at the village. South and north of it a long swell runs east to
 // west across the fields, broken where the north-south road crosses it, and screens each team's assembly area from the
 // other. Hedgerow banks and the farmsteads along the roads stand between the swells. The layout is rotationally
-// symmetric about the village (10, 20) in its landforms, pads, strongpoints and objectives (the country roads keep
-// their own course): alpha assembles behind the southern swell's western arm, bravo behind the northern swell's eastern
-// arm, so neither sees the other and every approach crests a swell or takes the road through a gap.
+// symmetric about the village (10, 20) in its landforms, pads, strongpoints and field greens (the country roads and the
+// town keep their own course): alpha assembles behind the southern swell's western arm, bravo behind the northern
+// swell's eastern arm, so neither sees the other and every approach crests a swell or takes the road through a gap.
+// The middle zone and the turbo-ball kickoff stand on the deployments' perpendicular bisector by the town, where the
+// houses leave a disc clear.
 
 import { DEFAULT_GARAGE_SKY } from './catalog.ts';
-
-// The two country roads on their classic courses (terrain.ts buildCountryRoads), as authored paths that stop inside
-// the square, so the endpoint completion grades each exit through the rim (the full-span country cross climbed the
-// rim at 30-36 %).
-const countryNorthSouth = Array.from({ length: 29 }, (_, k): [number, number] => {
-  const z = -448 + k * 32;
-  return [10 + 26 * Math.sin(z * 0.0062) + 8 * Math.sin(z * 0.017 + 2.1), z];
-});
-const countryEastWest = Array.from({ length: 29 }, (_, k): [number, number] => {
-  const x = -448 + k * 32;
-  return [x, 46 + 34 * Math.sin(x * 0.0043 + 1.0) + 7 * Math.sin(x * 0.013 - 0.6)];
-});
 
 export default {
   id: 'verdant',
@@ -36,8 +27,8 @@ export default {
   blurb: 'Rolling grassland, hedgerows and a road-junction village',
 
   terrain: {
-    // the classic village rect stays the default; the three default marsh dips go
-    roads: { paths: [countryNorthSouth, countryEastWest] },
+    // the classic village rect and the country cross of roads stay the defaults (the town plan's frontage lots stand at
+    // the cross's 32 m nodes; the map-borders lane grades its exits through the rim); the three default marsh dips go
     hillScale: 0.6,   // the plateau's broad roll (the default 1.0 broke every sightline inside 80 m)
     microScale: 0.75, // field-scale folds (default 1.0)
     // the default rim, stated: the authored border roads' portal shoulders size their support from it
@@ -46,7 +37,6 @@ export default {
     // The village square and the two field greens on the swells' inner slopes: level aprons the zone-control placement
     // seats its 30 m discs on, each clear of the country roads.
     hardstands: [
-      { x: 10, z: 20, width: 60, length: 60, yawDeg: 0, grade: 0 },
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): 24 m north onto flatter ground, a 16 m bank
       { x: -250, z: -126, width: 60, length: 60, yawDeg: 0, level: 1.0, grade: 0, bankM: 16 },
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): 24 m south onto flatter ground, a 16 m bank
@@ -132,13 +122,12 @@ export default {
       { id: 'east-command-fold', role: 'support', x: 320, z: 40, yawDeg: 270,
         structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: 14 },
     ],
+    // The village walls of the classic town plan (relative to the classic village rect; restored at the owner's request,
+    // 2026-10-03: "the old verdant town plan was better"). The midfield field-boundary walls stay out: the hedgerow
+    // banks above are the field edges now.
     wallRuns: [
-      // village walls (relative to the classic village rect)
       [-56, 8, -56, 64, 2], [-56, 8, -20, 8, 3], [74, 30, 74, 96, 4],
       [-8, 110, 52, 110, 2], [38, -34, 74, -34, 1], [-44, 108, -10, 108, 0],
-      // field walls on the hedgerow banks between the swells, each with its rotation about the village
-      [-320, -60, -260, -60, 3], [340, 100, 280, 100, 3], [80, -150, 150, -150, 2], [-60, 190, -130, 190, 2],
-      [-160, -150, -100, -150, 1], [180, 190, 120, 190, 1],
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     // r2: more midfield material breakup (craters/haystacks) — the open
@@ -166,6 +155,11 @@ export default {
     // the well, working farm clutter through the yards, round bales + stooks
     // on the open fields; wooden fences are the breakable plank/picket kit
     wallStyle: 'fieldstone',
+    // the stone that remains (house plinths, the well, rubble) is a dark, warm fieldstone: the default pale grey read
+    // as concrete on the black earth
+    tones: {
+      stone: (_h: number, s: number, l: number) => [0.075, Math.min(1, s * 1.3 + 0.02), l * 0.76],
+    },
     inhabit: {
       stalls: 3, benches: 2, coreClutter: 10,
       bales: 10, stooks: 8,

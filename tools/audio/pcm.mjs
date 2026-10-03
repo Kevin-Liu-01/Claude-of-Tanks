@@ -217,3 +217,62 @@ export function bandEnergy(samples, sampleRate, bands) {
 export function readS16File(file) {
   return s16ToFloat(readFileSync(file));
 }
+
+/**
+ * The anatomy of a gunshot (2026-10-02): a real report is an instant pressure
+ * crack with a decaying body, while a cinematic "blast" swells into its peak
+ * and sits on low boom. Onset = where the 1 ms envelope first climbs to within
+ * 30 dB of its loudest window (walked back from the first window within 20 dB);
+ * riseMs = onset → loudest 1 ms window; e10/e50/e200/e600 = share of the first
+ * 2 s of energy in 0–10, 10–50, 50–200 and 200–600 ms after onset; crestDb =
+ * peak over the loudest 400 ms RMS; lowBody = share below 100 Hz in 50–600 ms.
+ */
+export function transientAnatomy(samples, sampleRate) {
+  const w1 = Math.max(1, Math.round(0.001 * sampleRate));
+  const windows = Math.floor(samples.length / w1);
+  const env = new Float32Array(windows);
+  let peak = 0;
+  let loudest = -Infinity;
+  let loudestAt = 0;
+  for (let k = 0; k < windows; k++) {
+    let e = 0;
+    for (let i = k * w1; i < (k + 1) * w1; i++) { e += samples[i] * samples[i]; peak = Math.max(peak, Math.abs(samples[i])); }
+    env[k] = 10 * Math.log10(e / w1 + 1e-24);
+    if (env[k] > loudest) { loudest = env[k]; loudestAt = k; }
+  }
+  let first = 0;
+  while (first < windows && env[first] < loudest - 20) first++;
+  let onsetK = first;
+  while (onsetK > 0 && env[onsetK - 1] > loudest - 30) onsetK--;
+  const onset = onsetK * w1;
+  const block = Math.round(0.4 * sampleRate);
+  let best = 0;
+  for (let s = 0; s + block <= samples.length; s += Math.round(0.005 * sampleRate)) {
+    let e = 0;
+    for (let i = s; i < s + block; i++) e += samples[i] * samples[i];
+    best = Math.max(best, e / block);
+  }
+  if (!best) best = Math.pow(10, rmsDb(samples) / 10);
+  const energy = (a, b) => {
+    let e = 0;
+    const end = Math.min(samples.length, onset + Math.round(b * sampleRate));
+    for (let i = onset + Math.round(a * sampleRate); i < end; i++) e += samples[i] * samples[i];
+    return e;
+  };
+  const total = energy(0, 2) || 1e-24;
+  const bodyFrom = onset + Math.round(0.05 * sampleRate);
+  const bodyTo = Math.min(samples.length, onset + Math.round(0.6 * sampleRate));
+  const body = new Float32Array(Math.max(4096, bodyTo - bodyFrom));
+  if (bodyTo > bodyFrom) body.set(samples.subarray(bodyFrom, bodyTo));
+  const [lowBody] = bandEnergy(body, sampleRate, [[20, 100]]);
+  const peakDbValue = peak <= 1e-12 ? -240 : 20 * Math.log10(peak);
+  return {
+    riseMs: loudestAt - onsetK,
+    e10: energy(0, 0.01) / total,
+    e50: energy(0.01, 0.05) / total,
+    e200: energy(0.05, 0.2) / total,
+    e600: energy(0.2, 0.6) / total,
+    crestDb: peakDbValue - 10 * Math.log10(best),
+    lowBody,
+  };
+}
