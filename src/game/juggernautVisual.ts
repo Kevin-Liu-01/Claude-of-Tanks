@@ -13,6 +13,14 @@ interface Shield {
 const scales=new WeakMap<THREE.Object3D,number>();
 const shields=new WeakMap<THREE.Object3D,Shield>();
 
+/** End the effect before a surviving battle visual is adopted by the Garage. */
+export function clearJuggernautVisual(root:THREE.Object3D):void {
+  shields.get(root)?.dispose();
+  const scale=scales.get(root)??1;
+  if(scale!==1)root.scale.multiplyScalar(1/scale);
+  scales.delete(root);
+}
+
 /** Shade the actual vehicle surfaces: no enclosing geometry, extra draw calls,
  * enlarged silhouette, or highlight through cover. Instancing, batching, moving
  * turrets and hidden/detached modules keep their original geometry and poses. */
@@ -119,13 +127,20 @@ function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
         float juggernautRim = pow(1.0 - abs(dot(normalize(normal), normalize(vViewPosition))), 2.4);
         vec3 shieldSurface = vJuggernautPosition;
         float wave = smoothstep(0.78, 1.0, sin(shieldSurface.z * 1.65 + shieldSurface.y * 2.6 - juggernautTime * 2.8
-          + sin(shieldSurface.x * 1.8 + juggernautTime * 0.5) * 0.5));
+          + sin(shieldSurface.x * 2.4 + juggernautTime * 1.3) * 1.0
+          + sin(shieldSurface.z * 2.1 - juggernautTime * 0.8) * 0.4));
         float hitGlow = 0.0;
         for(int i = 0; i < ${IMPACT_COUNT}; i++) {
           float age = juggernautHits[i].w;
           if(age >= 0.0 && age < ${IMPACT_DURATION}) {
-            float d = distance(shieldSurface, juggernautHits[i].xyz);
-            float ring = exp(-pow((d - age * 2.4) / 0.16, 2.0));
+            vec3 offset = shieldSurface - juggernautHits[i].xyz;
+            float d = length(offset);
+            vec3 direction = offset / max(d, 0.0001);
+            // Smooth 3-D lobes avoid a circular stamp or an angular seam.
+            float rippleWarp = (sin(direction.x * 7.0 + direction.y * 5.0 + age * 10.0) * 0.15
+              + sin(direction.z * 9.0 - direction.y * 6.0 - age * 7.0) * 0.10)
+              * smoothstep(0.0, 0.28, age);
+            float ring = exp(-pow((d - max(0.0, age * 2.4 + rippleWarp)) / 0.16, 2.0));
             float core = exp(-d * d * 8.0 - age * 7.0);
             float fade = 1.0 - smoothstep(0.25, ${IMPACT_DURATION}, age);
             hitGlow += (ring + core) * fade;
@@ -136,6 +151,6 @@ function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
           + vec3(0.35, 0.82, 1.0) * hitGlow * 2.0;
         #include <opaque_fragment>`);
   };
-  material.customProgramCacheKey=()=>cacheKey+'|juggernaut-surface-waves-v2';
+  material.customProgramCacheKey=()=>cacheKey+'|juggernaut-surface-waves-v3';
   shield.materials.set(source,material);return material;
 }

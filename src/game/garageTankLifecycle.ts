@@ -1,3 +1,5 @@
+import type { Object3D } from 'three';
+import { clearJuggernautVisual } from './juggernautVisual.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * End every battle-owned presentation lifetime before a resident player tank
@@ -9,6 +11,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  *
  */
 interface LifecycleVisual {
+  root?: Object3D;
   resetForGaragePresentation?(): void;
   resetDestroyed?(): void;
   setVisible?(visible: boolean): void;
@@ -80,6 +83,7 @@ export function resetBattleTankForGarage({
   fx.resetAll();
 
   if (!visual) return;
+  if (visual.root) clearJuggernautVisual(visual.root);
   if (typeof visual.resetForGaragePresentation === 'function') {
     visual.resetForGaragePresentation();
   } else if (typeof visual.resetDestroyed === 'function') {
@@ -109,6 +113,7 @@ export function clearBattleAfterExit<Visual extends LifecycleVisual>({
 
   for (const entity of game.allTanks || []) {
     const visual = entity.visual;
+    if (visual?.root) clearJuggernautVisual(visual.root);
     // A successfully adopted player visual is now garage-owned. Sever its
     // entity reference without disposing the scene graph the pedestal cache
     // just acquired. Every other actor releases its visual to the detached

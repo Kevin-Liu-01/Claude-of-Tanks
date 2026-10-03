@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as T from 'three';
-import {syncJuggernautVisual,pulseJuggernautImpact} from './juggernautVisual.ts';
+import {syncJuggernautVisual,pulseJuggernautImpact,clearJuggernautVisual} from './juggernautVisual.ts';
 import {createThermalVehicles} from '../engine/thermalVehicles.ts';
 const dims={widthM:3,hullLengthM:7,heightM:2.6};
 const scene=new T.Group(),root=new T.Group(),turret=new T.Group();scene.add(root);root.add(turret);root.scale.set(2,2,2);
@@ -45,7 +45,7 @@ assert.equal(hits.length,6,'rapid hits use a bounded reusable pool');assert.ok(h
 update(80,1.12,1.3);assert.ok(hits.every(h=>h.w===-1),'all rings expire');
 update(60);assert.ok(hits.every(h=>h.w===-1),'HP loss without a contact never creates a fake whole-tank pulse');
 assert.match(shader.vertexShader,/batchingMatrix \* shieldPoint/);assert.match(shader.vertexShader,/instanceMatrix \* shieldPoint/);
-assert.match(shader.fragmentShader,/distance\(shieldSurface, juggernautHits/);assert.match(shader.fragmentShader,/juggernautTime \* 2.8/);
+assert.match(shader.fragmentShader,/shieldSurface - juggernautHits/);assert.match(shader.fragmentShader,/rippleWarp/);assert.match(shader.fragmentShader,/juggernautTime \* 2.8/);
 const thermal=createThermalVehicles();thermal.begin([{team:'enemy',visual:{root},combat:{}}],true,'ally');assert.notEqual(hull.material,material);thermal.end();assert.equal(hull.material,material);
 let disposed=0;material.addEventListener('dispose',()=>disposed++);
 update(0);assert.equal(hull.material,source,'dead tank stops glowing');assert.equal(disposed,1);assert.equal(gun.material,source);
@@ -54,5 +54,9 @@ const wreck=new T.MeshStandardMaterial({color:0x111111});gun.material=wreck;
 update(100,1);assert.equal(hull.material,source);assert.equal(gun.material,wreck,'mode exit never overwrites damage material changes');assert.deepEqual(root.scale.toArray(),[2,2,2]);
 gun.material=source;update();let removed=0;hull.material.addEventListener('dispose',()=>removed++);root.removeFromParent();assert.equal(removed,1);assert.equal(hull.material,source,'pooled visual is clean on removal');
 scene.add(root);update();assert.equal(root.scale.x,2.24,'rematch never compounds the boss size');update(100,1);
+update();pulseJuggernautImpact(root,[0,1,0]);clearJuggernautVisual(root);clearJuggernautVisual(root);
+assert.equal(hull.material,source);assert.equal(root.scale.x,2);assert.equal(pulseJuggernautImpact(root,[0,1,0]),false,'garage cleanup removes all live ripple state');
+update();const freshShader={uniforms:{},vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader};hull.material.onBeforeCompile(freshShader,{});
+assert.ok(freshShader.uniforms.juggernautHits.value.every(h=>h.w<0),'next match starts without old ripples');clearJuggernautVisual(root);
 geometry.dispose();batch.dispose();source.dispose();wreck.dispose();glassMaterial.dispose();
 console.log('juggernautVisual: exact surfaces, instancing/batching, shared paint isolation, original hooks, articulation, hit pulse, thermal, death, removal and reuse passed');

@@ -158,8 +158,16 @@ try{
    await page.screenshot({path:resolve(out,`${mode}-landscape-${suffix}.png`)});
    const objective=await page.$eval('.cot-mode-status',el=>{const r=el.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom};}).catch(()=>null);
    if(objective)assert.ok(objective.left>=-1&&objective.right<=569&&objective.bottom<=320,`${mode} objective fits landscape`);
+   if(mode==='juggernaut')await page.evaluate(()=>{window.__juggernautReturnRoot=window.__DEBUG.game.player.visual.root;});
    await page.evaluate(()=>window.__DEBUG.leaveBattleToGarage());
    await page.waitForFunction(()=>window.__DEBUG.game.phase==='garage',{timeout:180000});
+   if(mode==='juggernaut'){
+    assert.equal(await page.evaluate(()=>{
+     let leaked=false;window.__juggernautReturnRoot.traverse(o=>{if(o.isMesh&&(Array.isArray(o.material)?o.material:[o.material]).some(m=>m.name==='Juggernaut surface highlight'))leaked=true;});
+     return leaked;
+    }),false,'retained battle visual has no shield after Garage return');
+    await page.screenshot({path:resolve(out,`juggernaut-garage-clean-${suffix}.png`)});
+   }
    await page.setViewport(initialViewport);
   }
   assert.deepEqual(errors,[],'no page errors');
