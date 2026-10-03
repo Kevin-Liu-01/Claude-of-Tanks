@@ -176,7 +176,10 @@ export default {
     // at grazing view angles (terrain.js uIceSky)
     iceSky: [0.76, 0.82, 0.92],
     // lighting_post r5: tintB desaturated toward neutral (was [0.90,0.93,1.00])
-    tintA: [1.03, 1.04, 1.09], tintB: [0.95, 0.965, 1.005], tintC: [1.04, 1.04, 1.07],
+    // 2026-10-03 (maps lane B, the gauntlet's "dull blue-grey plaster"): snow is near neutral, and under overcast its
+    // blue comes only from open sky. A and B go from B/R 1.06 to 1.04, at the same luminance (Rec. 709: A 1.041,
+    // B 0.965). C was already 1.03.
+    tintA: [1.031, 1.041, 1.072], tintB: [0.952, 0.966, 0.990], tintC: [1.04, 1.04, 1.07],
     roadTint: [0.74, 0.68, 0.62], // worn dark slush tracks through the snow
   },
 
