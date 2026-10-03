@@ -773,6 +773,8 @@ export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     damp: 0.85, moss: 0.55,
   },
   wear: 0.22,
+  // the farmyards: a picket fence round a kitchen garden and the woodshed, a gate to the lane (yards.ts)
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencepicket', gate: 'gate', shed: 'woodshed', shedSize: [4.2, 5.1], garden: true },
 });
 
 export { hashSeed };
