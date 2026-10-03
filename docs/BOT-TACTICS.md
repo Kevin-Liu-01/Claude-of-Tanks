@@ -18,7 +18,16 @@ frontline) that has not been able to fight its target for four seconds, because
 it has no sight of it or no loaded round opens the gate, shifts inside the zone:
 to a point on the 0.6 or 0.8 × radius ring in sight of the target and as far
 round its side as the zone allows. It holds that point while it can fight from
-it. A mission bot whose route is used up short of its objective (the planner's
+it. A zone is held from ground a hull can stand on: the centre when the ground
+there and over a hull's length round it is as level as a relocation spot
+(normal.y 0.90) and dry, else the first such point on the 4-20 m rings (inside
+0.7 × radius) from the hull's own side of the zone. Redrock Divide's last
+frontline sector has its centre on a 55-63 degree face; holders drove onto it,
+pivoted there and slid off (24 seeds: 45 damaging falls and 10100 hp before, 9
+and 812 hp after).
+The shift's points obey the same rule, reached by a straight leg sampled every
+3 m no steeper than a comfortable climb (normal.y 0.86).
+A mission bot whose route is used up short of its objective (the planner's
 best ends in another connected component, or a search leg took the waypoints)
 hands the hull to the classic drivers for 20 seconds before the mission takes
 it back. When the grid has no way to the destination at all for the widest hull
@@ -119,6 +128,11 @@ Right-of-way waits for traffic, not for a hull that never moves:
   will pass beside it keeps the radial guard and the speed cap, so two oncoming
   bots pass side by side instead of stopping on every predicted crossing.
 
+A hull that has reached its destination holds it. The arrival is not drive
+intent, so the low-speed watchdog does not read the hold as a wedge and reverse
+the hull off its hold point; a hull pressing into a wall short of it still backs
+off.
+
 A rack that cannot hurt its target stops pressing it. After 60 seconds in sight
 of the target from inside 90 m, with zones visible but no loaded round opening
 the gate and no burst worth a round, the rack counts as spent against that
@@ -134,7 +148,9 @@ there as well (a crest can mask it while the eye still sees the turret). Three
 main-gun rounds in a row from one spot (within 10 m) that do not reach the
 target, judged 1.5 seconds after the last one, give that spot up: the press
 starts from it, or the press point is given up for another, as a masked probe
-gives one up. A rack that is empty finishes a passive hull by ramming when the
+gives one up. A press point the hull has not reached within its distance at
+4 m/s plus 20 seconds (kept across the restarts a flickering sight line makes)
+is given up the same way. A rack that is empty finishes a passive hull by ramming when the
 ram law says the rammer survives. The run that finishes it is judged and driven
 no faster than the slowest closing speed whose share deals 1.8 times the
 target's remaining health (6 m/s at least). Inside 60 m a clear line drives
@@ -158,6 +174,16 @@ Bridge decks are drivable surfaces, not river beds or broad-phase walls. The
 global grid rejects edges through a bridge's side; ingress goes through the
 abutments. Two-way slope checks prevent one-way downhill shortcuts. Physical
 collision remains authoritative, including parapets and piers.
+
+On maps that avoid liquid (`src/sim/navigationLiquidSafety.ts`), the liquid
+guard refuses a stopping corridor that would take a dry hull into the water. A
+hull that already touches liquid may still move, as long as it takes on no
+more: the summed mask under its footprint, sampled every 2 m along the move,
+never grows. It can always drive out, never deeper in. A dry route starts from
+the hull's own cell unless the grid refuses that cell (its sample is liquid) or
+the leg to its centre is not drivable; then it starts from the nearest open
+cell within two rings whose leg is drivable. A hull pushed into the lake always
+has a route out. The pocket escape only takes lanes the liquid guard allows.
 
 The grid's edges are cleared for the widest hull in the fleet (the Jagdpanzer
 E100 X, 2.24 m half-width; `NAV_HULL_HALF_WIDTH_M` is 2.25 and the receipt
@@ -196,18 +222,23 @@ search cannot drive a hull.
   human across the route, the bounded yield in a walled lane (with a moving-lead
   control), oncoming pairs, a smoke-only rack against an idle M1A2 (ram, retire,
   and an APFSDS control), a zone holder that cannot fight from the zone's centre
-  (shut gate, no sight line), and a mission route that ends short of its
-  objective.
+  (shut gate, no sight line), a mission route that ends short of its
+  objective, and a holder that has arrived (with a wedged-hull control).
 - `src/game/ai.passiveTarget.selftest.mjs`: an idle M1A2 behind a crest that
   masks its hull from a flank spot (the press goes round to a point the gun
   reaches the hull from, with an open-flank control), three rounds in a row
   that miss from the flank spot (the spot is given up, with a control whose
-  rounds land), and an empty rack against a 320 hp idle host (a capped
-  finishing ram, with full-health and moving-host controls).
+  rounds land), an empty rack against a 320 hp idle host (a capped finishing
+  ram, with full-health and moving-host controls), and a press point inside a
+  closed pen, given up unreached.
 - `src/game/ai.levels.selftest.mjs`: a synthetic deck over a floor, with and
   without a ramp: the deck bot leaves the floor target for one on its own level,
   the floor bot drives the ramp to the deck, gives the deck target up when no
   route reaches it, and keeps a target in its arc (control).
+- `src/sim/navigationLiquidStart.selftest.mjs`: a synthetic shore with one way
+  out: the guard drives a wet hull out and refuses it deeper in, the dry grid
+  plans from a start cell it refuses, and a bot starting there, facing the lake,
+  reaches dry ground and searches on.
 - `src/sim/botRouteClearance.selftest.mjs`: the grid's hull bound against the
   fleet, a diagonal through a 0.6 m gap, a boulder bent round, a channel left by
   its open end, Steinburg's two pockets and a sweep of the town with no leg
