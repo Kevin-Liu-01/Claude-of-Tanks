@@ -3,7 +3,7 @@
 // battlefields, then Mars and the Moon. Large type only: section words, two counts, three lines, the lockup.
 //   node tools/media-r5/motion/edl-gen.mjs   (writes shots/media-r5/motion/trailer-24h/edl.json)
 import { SITE_URL } from '../paths.mjs';
-import { b, beats, footage, writeEdl } from './edl-common.mjs';
+import { b, beats, canvas, footage, writeEdl } from './edl-common.mjs';
 
 const project = 'trailer-24h', src = footage(project), shots = [];
 const cut = (id, bar, beat, n, inSec = 0) => shots.push({ id, src: src(id), start: b(bar, beat), dur: beats(n), in: inSec });
@@ -45,7 +45,7 @@ cut('s45-harbor-wide', 23, 0.5, 3.5);
 cut('t37-mars-drone', 28, 0, 2);
 cut('t21-earthrise-chase', 28, 2, 2);
 
-writeEdl(project, { fps: 30, width: 1920, height: 1080, duration: 80, letterbox: 2.39, letterboxIn: 0.25, audio: 'assets/audio/mix.wav', grain: 0.07, shots,
+writeEdl(project, { fps: 30, ...canvas(1920, 1080), duration: 80, letterbox: 2.39, letterboxIn: 0.25, audio: 'assets/audio/mix.wav', grain: 0.07, shots,
   titles: [
     { kind: 'logo', start: b(3), dur: 2.45 },
     { kind: 'section', text: 'MORNING', start: b(4, 0.5), dur: b(0, 4) },

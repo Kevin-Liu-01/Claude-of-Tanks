@@ -5,6 +5,11 @@ import { join } from 'node:path';
 import { MOTION } from '../paths.mjs';
 
 export const BPM = 96, BEAT = 60 / BPM, BAR = BEAT * 4;
+/** The films' canvas scale over the 1080p design grid: 2 renders them at 2160p (owner 2026-10-03: super high quality);
+ * MEDIA_R5_FILM_SCALE=1 brings back 1080p drafts. Type scales with the canvas in build.mjs; pixel safe zones use px(). */
+export const FILM_SCALE = Number(process.env.MEDIA_R5_FILM_SCALE ?? 2);
+export const canvas = (w, h) => ({ width: w * FILM_SCALE, height: h * FILM_SCALE });
+export const px = v => Math.round(v * FILM_SCALE);
 /** Seconds at a bar + beat position on the score grid. */
 export const b = (bar, beat = 0) => +(bar * BAR + beat * BEAT).toFixed(4);
 export const beats = n => +(n * BEAT).toFixed(4);

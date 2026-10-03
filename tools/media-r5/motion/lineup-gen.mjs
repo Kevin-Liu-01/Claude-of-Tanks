@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CAST, CAST_NAMES } from '../cast.mjs';
 import { SHOTS as SHOT_ROOT } from '../paths.mjs';
-import { b, beats, footage, writeEdl } from './edl-common.mjs';
+import { b, beats, canvas, footage, writeEdl } from './edl-common.mjs';
 
 const project = 'lineup', src = footage(project), shots = [], titles = [];
 // Round 2 (owner 2026-10-02: "upgrade the videos"): each tank's beat is its own site-fifty fight, entered half a second
@@ -28,6 +28,6 @@ REVEALS.forEach(([id, tank], i) => {
   titles.push({ kind: 'tank', name: CAST_NAMES[tank][0], start: at, dur: beats(2) });
 });
 const end = b(2 + REVEALS.length / 2);
-writeEdl(project, { fps: 30, width: 1920, height: 1080, duration: +(end + 4.5).toFixed(3), letterbox: 2.39, letterboxIn: 0.15, audio: 'assets/audio/mix.wav', grain: 0.06, shots, titles,
+writeEdl(project, { fps: 30, ...canvas(1920, 1080), duration: +(end + 4.5).toFixed(3), letterbox: 2.39, letterboxIn: 0.15, audio: 'assets/audio/mix.wav', grain: 0.06, shots, titles,
   flashes: [{ t: b(2), frames: 3 }, ...REVEALS.map((_, i) => ({ t: b(2 + Math.floor(i / 2), (i % 2) * 2), frames: 1, peak: 0.35 })).slice(1), { t: end, frames: 3 }],
   endcard: { start: end, url: SITE_URL } });
