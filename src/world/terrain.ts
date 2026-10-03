@@ -47,6 +47,7 @@ import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMas
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
+import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
 import { createWaterRippleField } from './waterRipples.ts';
@@ -231,6 +232,9 @@ interface TerrainSettings {
   rimH: number;
   /** Round 47 follow-up: metres from a bay's shoreline over which the border rim lift fades in (0 = rim beside water). */
   coastRimFadeM?: number;
+  /** The map-borders lane (2026-10-03): the land around the square (borderLandform.ts) — overrides of the horizon
+   * style's defaults. The rim inside the playable square may only be lowered by it. */
+  border?: Partial<BorderLandformSettings>;
   village: VillageConfig;
   marshes: MarshSourceConfig[];
   lakes: LakeConfig[];
@@ -350,6 +354,8 @@ export interface HeightField {
   /** Round 63: 0..1 — where the horizon ring's near rows must seat on the outland itself (a railway cutting's mouth:
    * the rim's interior gradient would carry the notch's faces across it); absent on a map without cuttings. */
   getOutlandSeatWeightAt?(x: number, z: number): number;
+  /** The map-borders lane: the near ring's share of the continued ground (1) against the authored ranges (0). */
+  getBorderHandOverAt?(x: number, z: number): number;
   getHeightAtFast(x: number, z: number): number;
   /** Near-mesh triangle surface shared by movement and visible suspension. */
   getContactHeightAt?(x: number, z: number): number;
@@ -388,6 +394,8 @@ export interface HeightField {
   /** Round 73 (2026-09-25): the baked fold term of the terrain build (−1 crest .. +1 hollow, the 8 m / 24 m Laplacian
    * of the relief the chunk vertices carry) — the tall-grass tier thickens and lifts the sward in the hollows. */
   _foldAt?(x: number, z: number): number;
+  /** The map-borders lane (2026-10-03): the ring's carriageway attribute — [signed offset from a road exit line (m), presence]. */
+  _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
   _layout: TerrainLayout;
   /** Frontline Assault trench plan carved into this field (assault-trenches variant), else null. */
   assaultTrenchLines?: AssaultTrenchPlan | null;
@@ -615,6 +623,52 @@ function buildPathRoads(paths: AuthoredRoadConfig['paths']): RoadLine[] {
     roads.push(line);
   }
   return roads;
+}
+
+// The map-borders lane (2026-10-03): the line a road that reaches the playable edge takes on past it — the road's own
+// heading at the edge, walked out in 40 m steps that wander a few degrees (never turning back toward the square) for
+// ~720 m. Geometry only (the border landform opens a valley along it; the height field grades it later). Pure and
+// deterministic per seed; two roads meeting at one portal leave as one.
+interface RoadExitLine { xs: Float64Array; zs: Float64Array; ss: Float64Array; route: number; minX: number; maxX: number; minZ: number; maxZ: number }
+const ROAD_EXIT_STEP_M = 40, ROAD_EXIT_STEPS = 18;
+function buildRoadExitLines(roads: readonly RoadLine[], seed: number): RoadExitLine[] {
+  const exitNoise = new SimplexNoise({ random: mulberry32((seed ^ 0x2E21D5) >>> 0) });
+  const lines: RoadExitLine[] = [], seen: number[][] = [];
+  for (let r = 0; r < roads.length; r++) {
+    const nodes = roads[r];
+    if (nodes.length < 2) continue;
+    for (const end of [0, nodes.length - 1]) {
+      const [ex, ez] = nodes[end];
+      if (Math.max(Math.abs(ex), Math.abs(ez)) < HALF - 24) continue;
+      const back = nodes[end === 0 ? Math.min(nodes.length - 1, 2) : Math.max(0, nodes.length - 3)];
+      let dx = ex - back[0], dz = ez - back[1];
+      const len = Math.hypot(dx, dz);
+      if (len < 1) continue;
+      dx /= len; dz /= len;
+      const major = Math.abs(ex) >= Math.abs(ez);
+      const nx = major ? Math.sign(ex) : 0, nz = major ? 0 : Math.sign(ez);
+      if (dx * nx + dz * nz < 0.35) continue; // a road along the edge is not leaving the square
+      if (seen.some(([sx, sz]) => Math.hypot(sx - ex, sz - ez) < 30)) continue;
+      seen.push([ex, ez]);
+      const xs = new Float64Array(ROAD_EXIT_STEPS + 1), zs = new Float64Array(ROAD_EXIT_STEPS + 1), ss = new Float64Array(ROAD_EXIT_STEPS + 1);
+      xs[0] = ex; zs[0] = ez;
+      let heading = Math.atan2(dz, dx);
+      const outward = Math.atan2(nz, nx);
+      for (let i = 1; i <= ROAD_EXIT_STEPS; i++) {
+        heading += exitNoise.noise(i * 0.43 + r * 3.1, end * 7.7 + 0.5) * 0.16;
+        heading = outward + clamp(Math.atan2(Math.sin(heading - outward), Math.cos(heading - outward)), -0.95, 0.95);
+        xs[i] = xs[i - 1] + Math.cos(heading) * ROAD_EXIT_STEP_M;
+        zs[i] = zs[i - 1] + Math.sin(heading) * ROAD_EXIT_STEP_M;
+        ss[i] = ss[i - 1] + ROAD_EXIT_STEP_M;
+      }
+      let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+      for (let i = 0; i <= ROAD_EXIT_STEPS; i++) {
+        minX = Math.min(minX, xs[i]); maxX = Math.max(maxX, xs[i]); minZ = Math.min(minZ, zs[i]); maxZ = Math.max(maxZ, zs[i]);
+      }
+      lines.push({ xs, zs, ss, route: r, minX, maxX, minZ, maxZ });
+    }
+  }
+  return lines;
 }
 
 const DEFAULT_TERRAIN: TerrainSettings = {
@@ -921,6 +975,14 @@ function* heightFieldBuildSteps(
     return plan;
   };
   const noi = new SimplexNoise({ random: mulberry32((seed ^ 0x9e3779b9) >>> 0) });
+  // The map-borders lane (2026-10-03): the land around the square — the rim lift's landform (borderLandform.ts). Its
+  // own noise stream: the terrain's `noi` sequence is untouched.
+  // a railway cutting's tunnel runs into the hill the old rim stood for: the landform keeps it enclosed there
+  // and a road that leaves the square leaves through a valley (the land opens along its line past the edge)
+  const roadExitLines = buildRoadExitLines(layout.roads, seed);
+  const border = createBorderLandform(seed, T.rimH, resolveBorderLandform(cfg?.horizon?.style, T.border, cfg?.id),
+    (railCuttings ?? []).map((cut) => ({ x: cut.ex + cut.fx * 190, z: cut.ez + cut.fz * 190, radius: 300 })),
+    roadExitLines);
 
   // --- base noise: fBm detail + domain-warped ridge, and a smooth variant ---
   function core(x: number, z: number): { d: number; s: number } {
@@ -1267,7 +1329,7 @@ function* heightFieldBuildSteps(
     }
     return keep;
   }
-  function outlandHeightAt(x: number, z: number): number {
+  function outlandBaseHeightAt(x: number, z: number): number {
     // Round 47 follow-up (2026-09-23): the composition heightAt applies inside the square continues past the red line —
     // the shore rings' liquid surfaces (their dip, their bank pull, their flat core), the border rim gated by that water
     // weight, then the bay banks with the SAME per-lake band the square uses (authored or fitted — a narrower band
@@ -1294,9 +1356,11 @@ function* heightFieldBuildSteps(
       h = baseTerrainHeight(x, z, 0, 0) - liquidDip;
       h = applyMacroTerrain(x, z, h, 0, 0, marshW);
       const borderRadius = Math.max(Math.abs(x), Math.abs(z));
-      const rim = smoothstep(430, HALF, borderRadius);
       // round 47 (2026-09-23): the border rim yields to the water so a shore continues past the square instead of a wall
-      h += rim * rim * T.rimH * (1 - waterWeight) * (rim > 0 ? coastRimKeep(x, z) : 1);
+      // the map-borders lane (2026-10-03): the lift is the border landform's — the outland's own hills, not a plateau
+      // standing rimH over the battlefield
+      const lift = border.liftAt(x, z, borderRadius);
+      h += lift * (1 - waterWeight) * (lift > 0 ? coastRimKeep(x, z) : 1);
       if (waterWeight > 0) h += (waterLevelSum / waterWeightSum - h) * waterWeight;
     }
     if (liquidLakeBanks !== null) {
@@ -1306,6 +1370,85 @@ function* heightFieldBuildSteps(
     return h;
   }
   const outlandLakeHeight: LakeHeightResult = { height: 0, wetness: 0 };
+
+  // The map-borders lane (2026-10-03, owner: "roads ... continue and fade naturally"): every road that reaches the
+  // playable edge runs on past it. The border census showed each one ending where the square ends — the mask's clamped
+  // edge texel dragged the carriageway 24–96 m out and the ring's ground closed over it, so a road led into a hedge or
+  // a hillside and stopped. An exit is the road's own heading at the edge, walked out in 40 m steps that wander a few
+  // degrees (never turning back toward the square) for ~720 m; its grade starts at the square's road at the edge and
+  // follows the smoothed outland (cut and fill, at most 7 %); the outland lies on that grade within 5 m of the line and
+  // eases back to its own ground by 30 m, and the whole corridor dissolves over the exit's last third. The ring carries
+  // the carriageway itself as a vertex attribute (roadExitAt: the signed offset from the line and its presence), so the
+  // splat program draws the road with the square's own road law and no sampler or loop. Lazy: resolved on the first
+  // outland query, when the square's roads are final. Pure, deterministic per seed.
+  interface RoadExit { xs: Float64Array; zs: Float64Array; ys: Float64Array; ss: Float64Array; length: number; minX: number; maxX: number; minZ: number; maxZ: number }
+  const ROAD_EXIT_REACH_M = 34;
+  let _roadExits: RoadExit[] | null = null;
+  function roadExits(): RoadExit[] {
+    if (_roadExits) return _roadExits;
+    const exits: RoadExit[] = [];
+    _roadExits = exits; // the outland queries below read the base ground, never the corridors being built
+    for (const line of roadExitLines) {
+      const { xs, zs, ss } = line;
+      // a road that reaches a shore past the edge ends there (no carriageway on the sea floor)
+      if (liquidWater && (outlandWaterAt(xs[1], zs[1])?.wetness ?? 0) > 0.2) continue;
+      // the grade: the square's road at the edge, then the outland smoothed along the line, at most 7 %
+      const ys = new Float64Array(ROAD_EXIT_STEPS + 1), raw = new Float64Array(ROAD_EXIT_STEPS + 1);
+      for (let i = 0; i <= ROAD_EXIT_STEPS; i++) raw[i] = outlandBaseHeightAt(xs[i], zs[i]);
+      ys[0] = heightAt(clamp(xs[0], -HALF, HALF), clamp(zs[0], -HALF, HALF), true, true);
+      for (let i = 1; i <= ROAD_EXIT_STEPS; i++) {
+        let sum = 0, count = 0;
+        for (let k = Math.max(1, i - 2); k <= Math.min(ROAD_EXIT_STEPS, i + 2); k++) { sum += raw[k]; count++; }
+        const grade = ROAD_EXIT_STEP_M * 0.07;
+        ys[i] = clamp(sum / count, ys[i - 1] - grade, ys[i - 1] + grade);
+      }
+      exits.push({ xs, zs, ys, ss, length: ss[ROAD_EXIT_STEPS], minX: line.minX, maxX: line.maxX, minZ: line.minZ, maxZ: line.maxZ });
+    }
+    return exits;
+  }
+  /** The nearest exit line to (x, z): signed lateral offset (m, + to the line's left), grade there and distance along. */
+  const _exitHit = { exit: -1, offset: 0, y: 0, along: 0 };
+  function nearestRoadExit(x: number, z: number, reach: number): typeof _exitHit {
+    const exits = roadExits(), hit = _exitHit;
+    hit.exit = -1; let best = reach;
+    for (let e = 0; e < exits.length; e++) {
+      const ex = exits[e];
+      if (x < ex.minX - reach || x > ex.maxX + reach || z < ex.minZ - reach || z > ex.maxZ + reach) continue;
+      for (let i = 0; i < ROAD_EXIT_STEPS; i++) {
+        const ax = ex.xs[i], az = ex.zs[i], bx = ex.xs[i + 1] - ax, bz = ex.zs[i + 1] - az;
+        const l2 = bx * bx + bz * bz;
+        const t = clamp(((x - ax) * bx + (z - az) * bz) / l2, 0, 1);
+        const px = x - (ax + bx * t), pz = z - (az + bz * t);
+        const d = Math.hypot(px, pz);
+        if (d >= best) continue;
+        best = d; hit.exit = e;
+        hit.offset = (bx * pz - bz * px) >= 0 ? d : -d;
+        hit.y = ex.ys[i] + (ex.ys[i + 1] - ex.ys[i]) * t;
+        hit.along = ex.ss[i] + ROAD_EXIT_STEP_M * t;
+      }
+    }
+    return hit;
+  }
+  function outlandHeightAt(x: number, z: number): number {
+    const h = outlandBaseHeightAt(x, z);
+    const hit = nearestRoadExit(x, z, ROAD_EXIT_REACH_M);
+    if (hit.exit < 0) return h;
+    const exit = _roadExits![hit.exit];
+    const w = (1 - smoothstep(5, 30, Math.abs(hit.offset))) * (1 - smoothstep(exit.length * 0.62, exit.length, hit.along));
+    return h + (hit.y - h) * w;
+  }
+  /** The ring's carriageway attribute at (x, z): [signed offset from the exit line (m), presence 0..1]. */
+  function roadExitAt(x: number, z: number, out: [number, number]): [number, number] {
+    out[0] = 0; out[1] = 0;
+    const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - HALF;
+    if (edgeOut < -2) return out;
+    const hit = nearestRoadExit(x, z, 40);
+    if (hit.exit < 0) return out;
+    const exit = _roadExits![hit.exit];
+    out[0] = hit.offset;
+    out[1] = smoothstep(-2, 6, edgeOut) * (1 - smoothstep(exit.length * 0.55, exit.length * 0.95, hit.along));
+    return out;
+  }
 
   function heightAt(
     x: number,
@@ -1408,7 +1551,9 @@ function* heightFieldBuildSteps(
       h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - marshW * 0.7) * T.microScale;
     }
     const borderRadius = Math.max(Math.abs(x), Math.abs(z));
-    const rim = smoothstep(430, HALF, borderRadius);
+    // the map-borders lane (2026-10-03): the rim lift is the border landform's (borderLandform.ts) — inside the playable
+    // square the classic S-curve, only ever lowered; past it, the outland's hills
+    const rimLift = border.liftAt(x, z, borderRadius);
     // CW also contains old deployment lanes. Only the two inward pilots
     // limit the new earthwork to actual road shoulders, with a smooth join.
     const roadCorridorWeight = roadCorridorDistanceWeight(boundedRoadCorridor, cw, rd);
@@ -1418,7 +1563,7 @@ function* heightFieldBuildSteps(
     // Round 47 (2026-09-23, owner: "evident right angle with shore and water at the border"): the square rim lift is a
     // Chebyshev square, so inside a bay's bank band it forced the waterline parallel to the red line and raised a wall
     // where the shore should run on; the lift yields to the water weight, so the shore keeps the bay's own contour.
-    h += rim * rim * T.rimH * (1 - waterWeight) * (rim > 0 ? coastRimKeep(x, z) : 1) * roadRimWeight(borderCorridorStart, roadsOn, boundedRoadCorridor, cw, roadCorridorWeight);
+    h += rimLift * (1 - waterWeight) * (rimLift > 0 ? coastRimKeep(x, z) : 1) * roadRimWeight(borderCorridorStart, roadsOn, boundedRoadCorridor, cw, roadCorridorWeight);
     if (waterWeight > 0) {
       const target = waterLevelSum / waterWeightSum;
       h += (target - h) * waterWeight;
@@ -1981,7 +2126,8 @@ function* heightFieldBuildSteps(
       // keeps its rock identity, the open dune field beyond it does not
       const wall = smoothstep(mesas.thr0 - band * 0.55,
         mesas.thr0 + band * (mesas.wallWidth ?? 0.42), mn);
-      const rim = smoothstep(408, 468, Math.max(Math.abs(x), Math.abs(z)));
+      // the map-borders lane: the rim is rock only where the border landform keeps it (an open sector's low rim is ground)
+      const rim = smoothstep(408, 468, Math.max(Math.abs(x), Math.abs(z))) * smoothstep(0.35, 0.8, border.rimFactorAt(x, z));
       return Math.max(wall, rim);
     };
   }
@@ -1996,6 +2142,9 @@ function* heightFieldBuildSteps(
     ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
       railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt) } : {}),
     getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
+    // the map-borders lane: where the near ring hands its continued ground over to the authored ranges
+    getBorderHandOverAt: border.handOverAt,
+    _roadExitAt: roadExitAt,
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),
     bridgeDecks, // round 61
@@ -2902,6 +3051,7 @@ uniform vec4 uReduxC;
 // patchwork (groundRedux.ts), no sampler.
 uniform vec4 uReduxD;
 varying float vShore;        // metres landward of the waterline (32 = no shore near)
+varying vec2 vRoadExit;      // the map-borders lane: [signed offset from a road exit line (m), presence] on the ring
 float gScour = 0.0;          // round 73b: the wind-scoured crust (a satin sheen in the roughness stage)
 float gStrandFoam = 0.0;     // round 73b: the foam line the last run-up left (matte in the roughness stage)
 varying float vFold;         // round 73: the baked fold attribute (−1 crest .. +1 hollow) the chunk vertices carry
@@ -3145,8 +3295,16 @@ void splatCompute() {
   // Round 29 (owner 2026-09-20, "see where the texture just stops"): a road that reaches the playable edge runs on
   // into the ring on its clamped edge texels — a straight continuation of the carriageway and its shoulder — and
   // fades out between 24 and 96 m instead of ending dead on the seam; wear still fades with the 36 m ramp.
-  float outsideRoadW = smoothstep(24.0, 96.0, edgeOut);
+  // the map-borders lane (2026-10-03): the clamped texel no longer drags a road out (it bent every oblique road to the
+  // perpendicular and left it in the ground 96 m out); a road leaving the square runs on across the ring from the exit
+  // attribute (terrain.ts roadExits), with the square's own road law
+  float outsideRoadW = smoothstep(0.0, 10.0, edgeOut);
   mk = vec4(mk.r * (1.0 - outsideRoadW), mk.g * (1.0 - outsideRoadW), mk.b, mk.a * (1.0 - outsideW));
+  if (vRoadExit.y > 0.002) {
+    float dE = abs(vRoadExit.x);
+    mk.g = max(mk.g, max(0.0, 1.0 - dE / 12.0) * vRoadExit.y);
+    mk.r = max(mk.r, (1.0 - smoothstep(3.2, 4.6, dE)) * vRoadExit.y);
+  }
   // round 40: past the square, inside a sea opening, the ring face is this map's water. It starts with the wetness
   // the square carries at its edge (the clamped texel — the bay may still be a turquoise shoal there) and deepens to
   // open sea over the next 320 m, so the seam has no step and the sea reads as a sea offshore.
@@ -4753,9 +4911,9 @@ function* createSplatMaterialSteps(
     assignSplatBiomeUniforms(shader);
     // round 73: the baked fold attribute rides the chunk vertices (the horizon ring's faces carry none and read 0)
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\nattribute float fold;\nvarying float vFold;\nattribute float shore;\nvarying float vShore;');
+      '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\nattribute float fold;\nvarying float vFold;\nattribute float shore;\nvarying float vShore;\nattribute vec2 roadExit;\nvarying vec2 vRoadExit;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <worldpos_vertex>',
-      '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNormal = normalize(mat3(modelMatrix) * objectNormal);\nvFold = fold;\nvShore = (1.0 - shore) * 32.0;'); // round 73b: the shore byte is inverted so a geometry without it (the ring bands) reads 32 m
+      '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNormal = normalize(mat3(modelMatrix) * objectNormal);\nvFold = fold;\nvShore = (1.0 - shore) * 32.0;\nvRoadExit = roadExit;'); // round 73b: the shore byte is inverted so a geometry without it (the ring bands) reads 32 m; the map-borders lane: roadExit (a geometry without it reads no road)
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
       '#include <common>\n' + SPLAT_COMMON_FRAG);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <map_fragment>',
@@ -5234,6 +5392,22 @@ function* terrainBuildSteps(
       shore[i] = metres >= 32 ? 0 : 255 - Math.round(Math.max(0, metres) * (255 / 32));
     }
     geometry.setAttribute('shore', new THREE.BufferAttribute(shore, 1, true));
+  }
+  // The map-borders lane (2026-10-03): the roads that leave the square run on across the ring — the carriageway rides
+  // the ring's vertices as [signed offset from the exit line, presence] (terrain.ts roadExits); set before the seam's
+  // refinement, which carries every attribute into its new vertices
+  if (heightField._roadExitAt && horizonStep.value.userData.horizonRing) {
+    const geometry = horizonStep.value.geometry;
+    const position = geometry.getAttribute('position');
+    const exitAttr = new Float32Array(position.count * 2);
+    const hit: [number, number] = [0, 0];
+    let any = false;
+    for (let i = 0; i < position.count; i++) {
+      heightField._roadExitAt(position.getX(i), position.getZ(i), hit);
+      exitAttr[i * 2] = hit[0]; exitAttr[i * 2 + 1] = hit[1];
+      if (hit[1] > 0) any = true;
+    }
+    if (any) geometry.setAttribute('roadExit', new THREE.BufferAttribute(exitAttr, 2));
   }
   // All surrounding ground shares the live terrain material. Its distant
   // detail is controlled by screen footprint, not a map-boundary switch.

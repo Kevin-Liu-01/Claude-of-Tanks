@@ -44,6 +44,7 @@ import {
 import { buildHorizonFarRange } from '../horizonFarRange.ts';
 import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
 import { continuedGroundAt } from '../horizonSurface.ts';
+import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
@@ -1047,7 +1048,9 @@ function continueHorizonGround(ring: HorizonRingGeometry, ground: CanyonGround |
   for (let i = HORIZON_SEGMENTS; i < ring.heights.length; i++) {
     const x = ring.positions[i * 3], z = ring.positions[i * 3 + 2];
     const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
-    let weight = canyon ? 1 : 1 - smoothstep(140, 460, edgeOut);
+    // the map-borders lane (2026-10-03): the field says where its landform hands over to the authored ranges (a band
+    // that wanders 150–750 m past the edge, so the hand-over draws no ring parallel to the square)
+    let weight = canyon ? 1 : ground.getBorderHandOverAt ? ground.getBorderHandOverAt(x, z) : 1 - smoothstep(140, 460, edgeOut);
     // A rail valley closes over its existing tunnel gallery. Keep the
     // approach on the real bed, then let the authored ridge cover the bore.
     const seat = ground.getOutlandSeatWeightAt?.(x, z) ?? 0;
@@ -1719,7 +1722,8 @@ function seatHorizonSkirtOnGround(
           seat = seatWeight.call(ground, x, z);
           if (seat > 0) geology += (outland.call(ground, x, z) - geology) * seat;
         }
-        const handOver = ri < ridgeRow ? smoothstep(60, 380, edgeOut) : 1;
+        const handOver = ri < ridgeRow
+          ? (ground.getBorderHandOverAt ? 1 - ground.getBorderHandOverAt(x, z) : smoothstep(60, 380, edgeOut)) : 1;
         // Round 67 (2026-09-24, the cutting's tunnel portal): where the weight says the row seats on the outland, the
         // authored profile's share stands down with it — the hand-over left the seated rows 0.5–3.4 m over the bed
         // 100–145 m out (a track laid on the bed there ran under the ring), and the valley now lies on the bed plane
@@ -3416,6 +3420,8 @@ export function* buildHorizonRingSteps(
     // it replaced; 3000 still measured +0.65-0.85): the polar character keeps 1600 instances, clumped by the relief
     // (horizonVista.ts)
     maxInstances: vista ? (reliefCharacter === 'polar' ? 1600 : 8000) : 0, maxRadius: 1050, nearDepth: 300, ridgeRow,
+    // the map-borders lane (2026-10-03): the band's woods take the border landform's share (no hedge round the square)
+    bandShare: resolveBorderLandform(style, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border, mapId).forest,
     detailNoise: mat.userData.horizonDetailNoise as DetailNoiseSampler,
     // round 72c: the stands follow the coarse relief (clumps in the hollows, gaps on the crests, a wandering treeline)
     ...(reliefField ? { reliefAt: (x: number, z: number) => reliefField.low(x, z) / Math.max(1, reliefField.settings.lowAmpM) } : {}),

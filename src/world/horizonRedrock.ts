@@ -20,6 +20,8 @@ export interface CanyonGround {
   /** Round 63 (2026-09-24): 0..1 where the ring's near rows must seat on the outland itself (terrain.ts, a railway
    * cutting's mouth); absent on every map without one, whose ring is byte-identical. */
   getOutlandSeatWeightAt?(x: number, z: number): number;
+  /** The map-borders lane (2026-10-03): the near ring's share of the continued ground (1) against the authored ranges (0). */
+  getBorderHandOverAt?(x: number, z: number): number;
 }
 
 interface SeamPoint { angle: number; x: number; z: number; height: number }
