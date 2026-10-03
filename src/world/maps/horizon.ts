@@ -46,6 +46,8 @@ import { type MassifSettings, carveMassifRingSteps, createMassifField, cutMassif
 import { type EscarpmentSettings, carveEscarpmentRingSteps, createEscarpmentField } from '../horizonEscarpment.ts';
 import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
 import { continuedGroundAt } from '../horizonSurface.ts';
+import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
+import { buildBorderFarmsteads, farmsteadTreesAt, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
@@ -1063,7 +1065,9 @@ function continueHorizonGround(ring: HorizonRingGeometry, ground: CanyonGround |
   for (let i = HORIZON_SEGMENTS; i < ring.heights.length; i++) {
     const x = ring.positions[i * 3], z = ring.positions[i * 3 + 2];
     const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
-    let weight = canyon ? 1 : 1 - smoothstep(140, 460, edgeOut);
+    // the map-borders lane (2026-10-03): the field says where its landform hands over to the authored ranges (a band
+    // that wanders 150–750 m past the edge, so the hand-over draws no ring parallel to the square)
+    let weight = canyon ? 1 : ground.getBorderHandOverAt ? ground.getBorderHandOverAt(x, z) : 1 - smoothstep(140, 460, edgeOut);
     // A rail valley closes over its existing tunnel gallery. Keep the
     // approach on the real bed, then let the authored ridge cover the bore.
     const seat = ground.getOutlandSeatWeightAt?.(x, z) ?? 0;
@@ -1745,7 +1749,8 @@ function seatHorizonSkirtOnGround(
           seat = seatWeight.call(ground, x, z);
           if (seat > 0) geology += (outland.call(ground, x, z) - geology) * seat;
         }
-        const handOver = ri < ridgeRow ? smoothstep(60, 380, edgeOut) : 1;
+        const handOver = ri < ridgeRow
+          ? (ground.getBorderHandOverAt ? 1 - ground.getBorderHandOverAt(x, z) : smoothstep(60, 380, edgeOut)) : 1;
         // Round 67 (2026-09-24, the cutting's tunnel portal): where the weight says the row seats on the outland, the
         // authored profile's share stands down with it — the hand-over left the seated rows 0.5–3.4 m over the bed
         // 100–145 m out (a track laid on the bed there ran under the ring), and the valley now lies on the bed plane
@@ -1960,8 +1965,10 @@ function* carveHorizonEscarpmentsSteps(ring: HorizonRingGeometry, horizon: Horiz
     // unequal flanks (redrockCanyonHorizon.selftest.mjs) that the opening would level to one bed top
     tables: horizon.tableland !== false && !(mapId === 'badlands' && horizon.redrockCanyon !== false),
   });
+  // every row, as continueHorizonGround measures it: on Redrock this runs after the hand-over, whose seam rows can carry the
+  // ring's highest point (seed 2049: the edge mesa at 94.9 m over the outland's 94.7)
   let maxHeight = 1;
-  for (let i = HORIZON_SEGMENTS * 2; i < ring.heights.length; i++) if (ring.heights[i] > maxHeight) maxHeight = ring.heights[i];
+  for (let i = 0; i < ring.heights.length; i++) if (ring.heights[i] > maxHeight) maxHeight = ring.heights[i];
   ring.maxHeight = maxHeight;
 }
 
@@ -3603,6 +3610,23 @@ export function* buildHorizonRingSteps(
   const rimConiferLead = leadOf(true), rimBroadleaf = leadOf(false);
   const horizonVista = mat.userData.horizonVista as { uniforms: Record<string, THREE.IUniform>; canopyMean?: THREE.Vector3 } | undefined;
   const vistaUniforms = horizonVista?.uniforms;
+  // The map-borders lane (2026-10-03): the farmsteads' yards are chosen before the forest, which stands their shelter
+  // trees (borderFarmsteads.ts farmsteadTreesAt); the buildings follow below
+  const farmSpec = ground?._borderFarmsteads;
+  const farmOptions: BorderFarmsteadOptions | null = vista && ground && farmSpec && farmSpec.count > 0 ? (() => {
+    const exit: [number, number] = [0, 0];
+    const roadExitAt = ground._roadExitAt;
+    return {
+      seed: ((seed ^ 0xFA4D) ^ idHash(mapId)) >>> 0, style: farmSpec.style, count: farmSpec.count, fieldAngle: farmSpec.fieldAngle,
+      groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),
+      woodsAt: (x: number, z: number) => ground.getBorderWoodsAt?.(x, z) ?? 0,
+      blockedAt: (x: number, z: number) => Math.max(ground.getOutlandSeatWeightAt?.(x, z) ?? 0, ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0,
+        seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01 ? 1 : 0),
+      ...(roadExitAt ? { roadDistanceAt: (x: number, z: number) => (roadExitAt(x, z, exit)[1] > 0.05 ? Math.abs(exit[0]) : Infinity) } : {}),
+    };
+  })() : null;
+  const farmSites = farmOptions ? selectFarmsteadSites(farmOptions) : [];
+  const borderWoodsAt = ground?.getBorderWoodsAt;
   const forestGroup = buildHorizonForest({
     columns: HORIZON_SEGMENTS, rows, positions: pos, heights: hs, forestCover, maxHeight: maxH, treeline, snowline,
     forest: forestC, fog: fogC, seed: ((seed ^ 0x51F0) ^ idHash(mapId)) >>> 0,
@@ -3612,6 +3636,11 @@ export function* buildHorizonRingSteps(
     // it replaced; 3000 still measured +0.65-0.85): the polar character keeps 1600 instances, clumped by the relief
     // (horizonVista.ts)
     maxInstances: vista ? (reliefCharacter === 'polar' ? 1600 : 8000) : 0, maxRadius: 1050, nearDepth: 300, ridgeRow,
+    // the map-borders lane (2026-10-03): the band's woods take the border landform's share (no hedge round the square)
+    bandShare: resolveBorderLandform(style, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border, mapId).forest,
+    ...(borderWoodsAt ? { woodsAt: farmSites.length
+      ? (x: number, z: number) => Math.max(borderWoodsAt(x, z), farmsteadTreesAt(farmSites, x, z)) : borderWoodsAt } : {}),
+    ...(ground?.getBorderHedgeAt ? { hedgeAt: ground.getBorderHedgeAt } : {}),
     detailNoise: mat.userData.horizonDetailNoise as DetailNoiseSampler,
     // round 72c: the stands follow the coarse relief (clumps in the hollows, gaps on the crests, a wandering treeline)
     ...(reliefField ? { reliefAt: (x: number, z: number) => reliefField.low(x, z) / Math.max(1, reliefField.settings.lowAmpM) } : {}),
@@ -3642,6 +3671,18 @@ export function* buildHorizonRingSteps(
       if (setup && material && !Array.isArray(material)) setup.call(_engineCtx, material, hook ? (shader: unknown) => hook(shader) : null);
     });
     mesh.add(forestGroup);
+  }
+  // The map-borders lane (2026-10-03, gauntlet wave 0: "the border reads as an enclosing clay wall"; the bar is World of
+  // Tanks' red-line shots, villages carrying on past the boundary): farmsteads and hamlets on the ring's seated surface
+  // past the edge (borderFarmsteads.ts) — off the woods, the sea, a railway's right of way and the exit roads'
+  // carriageways, gathered along those roads. One merged mesh, one draw, its shadow in the far cascade only.
+  if (farmOptions && farmSites.length) {
+    const farms = buildBorderFarmsteads({ ...farmOptions, sites: farmSites });
+    if (farms) {
+      const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;
+      if (setup) setup.call(_engineCtx, farms.material as THREE.Material, null);
+      mesh.add(farms);
+    }
   }
   // Round 32 (owner 2026-09-21, "redrock still has the noticeable texture/shadow/quality loss beyond the map
   // borders"): the rock and sand outlands carry instanced boulders on the near ring faces — the battlefield's own

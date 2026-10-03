@@ -53,14 +53,171 @@ export const CENSUS_VIEWS = Object.freeze([
 ].map(freeze));
 const VIEW = Object.freeze(Object.fromEntries(CENSUS_VIEWS.map((v) => [v.name, v])));
 
+// ---------------------------------------------------------------------------------------------- border set
+
+/**
+ * The border census (2026-10-02, the map-borders lane of the Opus 5.5 redesign): the owner's eye test of every map's
+ * rim — "eye test all map skyboxes and where the borders are … a map square boundary area carved into a broader map"
+ * (2026-09-21) — as a SECOND camera set beside the seven core views, with its own protocol and digest so the core
+ * census keeps comparing with every earlier run. Seventeen views per map:
+ *   edge-n/e/s/w, corner-ne/se/sw/nw   — tank eye height (2.5 m over the ground, or over the water surface), level,
+ *                                        from a spot 60–100 m inside the edge looking straight out (corners: along
+ *                                        the diagonal, 60–100 m inside both edges);
+ *   …-up                               — the same eight spots 60 m up, pitched 15° down (the edge, the outland band
+ *                                        and the ranges in one frame);
+ *   oblique-ne                         — 280 m over (230, 230) looking out across the north-east corner, 22° down.
+ * World +X is east, +Z is north. The spot of each side/corner is the first clear candidate (selectBorderSite): the
+ * side's centre line (corners: the diagonal) first, then offsets along the edge; 80 m inside first, then 70, 90, 60,
+ * 100. The eye and the 60 m view of a side share the spot. Poses are ABSOLUTE (borderPose): the camera height comes
+ * from the ground (and water) sampled at the spot, the look from the table's pitch — no ground under the look point
+ * is consulted, so a rim rising past the edge cannot tilt the camera.
+ */
+export const BORDER_PROTOCOL = 'visual-census-border-v1';
+/** The playable square's terrain edge (|x|, |z| = 512, TERRAIN_HALF_EXTENT_M). */
+export const BORDER_EDGE = 512;
+/** Eye height of the rim views (m over the ground or the water surface): a tank commander's eye. */
+export const BORDER_EYE = 2.5;
+const BORDER_SIDES = Object.freeze({ n: [0, 1], e: [1, 0], s: [0, -1], w: [-1, 0], ne: [1, 1], se: [1, -1], sw: [-1, -1], nw: [-1, 1] });
+const BORDER_INSETS = Object.freeze([80, 70, 90, 60, 100]);
+const BORDER_SIDE_OFFSETS = Object.freeze([0, 40, -40, 80, -80, 120, -120, 160, -160, 200, -200]);
+/** Corner spots: every pair of insets from the two edges, the square ones nearest 80 m first, then the skewed ones. */
+const BORDER_CORNER_INSETS = Object.freeze(BORDER_INSETS.flatMap((a) => BORDER_INSETS.map((b) => [a, b]))
+  .map(([a, b], order) => ({ a, b, order }))
+  .sort((p, q) => (Math.abs(p.a - p.b) - Math.abs(q.a - q.b)) || (p.order - q.order))
+  .map(({ a, b }) => Object.freeze([a, b])));
+const BORDER_CORRIDOR = Object.freeze([8, 16, 24]);
+const BORDER_LOOK = 400;
+const SIDE_NAMES = Object.freeze({ n: 'north', e: 'east', s: 'south', w: 'west', ne: 'north-east', se: 'south-east', sw: 'south-west', nw: 'north-west' });
+
+const borderRimView = (side, up) => ({
+  name: `${side.length === 1 ? 'edge' : 'corner'}-${side}${up ? '-up' : ''}`, kind: 'border',
+  label: `${SIDE_NAMES[side]} ${side.length === 1 ? 'edge' : 'corner'} · ${up ? '60 m up' : 'eye height'}`,
+  side, camAbove: up ? 60 : BORDER_EYE, pitchDeg: up ? -15 : 0, fov: CENSUS_FOV,
+});
+export const BORDER_VIEWS = Object.freeze([
+  ...['n', 'e', 's', 'w', 'ne', 'se', 'sw', 'nw'].map((side) => borderRimView(side, false)),
+  ...['n', 'e', 's', 'w', 'ne', 'se', 'sw', 'nw'].map((side) => borderRimView(side, true)),
+  { name: 'oblique-ne', kind: 'oblique', label: 'high oblique across the north-east corner', cam: [230, 280, 230], heading: [1, 1], pitchDeg: -22, fov: CENSUS_FOV },
+].map(freeze));
+
+/** The camera sets a census run may shoot: the seven core views (the default) or the border set. */
+export const CENSUS_VIEW_SETS = Object.freeze({
+  core: Object.freeze({ protocol: CENSUS_PROTOCOL, views: CENSUS_VIEWS }),
+  border: Object.freeze({ protocol: BORDER_PROTOCOL, views: BORDER_VIEWS }),
+});
+
+/** A view set by name; unknown names fail closed. */
+export function censusViewSet(name = 'core') {
+  const set = CENSUS_VIEW_SETS[name];
+  if (!set) throw new Error(`Unknown census view set "${name}" (${Object.keys(CENSUS_VIEW_SETS).join(', ')})`);
+  return set;
+}
+
 /** The views a run shoots: all of them, or the named subset in table order. Unknown names fail closed. */
-export function selectCensusViews(names = null) {
-  if (!names || names.length === 0) return [...CENSUS_VIEWS];
-  const known = new Set(CENSUS_VIEWS.map((v) => v.name));
+export function selectCensusViews(names = null, setName = 'core') {
+  const views = censusViewSet(setName).views;
+  if (!names || names.length === 0) return [...views];
+  const known = new Set(views.map((v) => v.name));
   const unknown = names.filter((n) => !known.has(n));
   if (unknown.length) throw new Error(`Unknown census view(s): ${unknown.join(', ')} (see tools/visual-census-views.mjs)`);
   const wanted = new Set(names);
-  return CENSUS_VIEWS.filter((v) => wanted.has(v.name));
+  return views.filter((v) => wanted.has(v.name));
+}
+
+/**
+ * The deterministic candidate spots of a border view, preferred first. A side: offsets along the edge (the centre
+ * line first), and for each offset the insets 80, 70, 90, 60, 100 m. A corner: the spot `insetX` m inside the east or
+ * west edge and `insetZ` m inside the north or south edge, over every pair of those insets (equal pairs first, in that
+ * order, then the skewed pairs), so the spot always stands 60–100 m inside both edges. Every candidate carries its
+ * outward heading `dir` and the corridor points 8, 16 and 24 m out that the selection keeps clear.
+ */
+export function borderSiteCandidates(view) {
+  const side = BORDER_SIDES[view.side];
+  if (!side) throw new Error(`${view.name}: unknown border side ${view.side}`);
+  const [sx, sz] = side, corner = sx !== 0 && sz !== 0, len = Math.hypot(sx, sz);
+  const nx = sx / len, nz = sz / len, tx = -nz, tz = nx, out = [];
+  const push = (px, pz, spot) => out.push({
+    index: out.length, side: view.side, ...spot, dir: [nx, nz], p: [px, pz],
+    corridor: BORDER_CORRIDOR.map((d) => [px + nx * d, pz + nz * d]),
+  });
+  if (corner) {
+    for (const [insetX, insetZ] of BORDER_CORNER_INSETS) push(sx * (BORDER_EDGE - insetX), sz * (BORDER_EDGE - insetZ), { insetX, insetZ });
+    return out;
+  }
+  for (const offset of BORDER_SIDE_OFFSETS) {
+    for (const inset of BORDER_INSETS) push(sx * (BORDER_EDGE - inset) + tx * offset, sz * (BORDER_EDGE - inset) + tz * offset, { inset, offset });
+  }
+  return out;
+}
+
+/** Every ground point the border selection may read (the spot and its corridor). */
+export function borderSamplePoints(candidates) {
+  return candidates.flatMap((c) => [c.p, ...c.corridor]);
+}
+
+/**
+ * Pick the spot of a border view. Pass 1: dry (water depth ≤ 5 cm), 10 m clear of building footprints and 3 m of
+ * every crown, the corridor 8–24 m out 3 m off footprints and 1.5 m off crowns, and no corridor ground above the eye
+ * (BORDER_EYE − 0.5 m over the spot). Pass 2 lets the ground rise, pass 3 lets crowns into the corridor, pass 4 lets
+ * the spot stand in water (the camera then stands on the surface). Nowhere clear: the first candidate (80 m inside on
+ * the centre line), flagged 'anchor'. The rules do not depend on the view's height, so a side's eye and 60 m views
+ * share one spot.
+ */
+export function selectBorderSite(candidates, { buildings = [], concealers = [], heightAt, waterDepthAt = null }) {
+  if (typeof heightAt !== 'function') throw new Error('selectBorderSite needs heightAt(x, z)');
+  const passes = [
+    { name: 'clear', rise: true, crowns: true, dry: true },
+    { name: 'rise-allowed', rise: false, crowns: true, dry: true },
+    { name: 'crowns-allowed', rise: false, crowns: false, dry: true },
+    { name: 'wet-allowed', rise: false, crowns: false, dry: false },
+  ];
+  for (let pass = 0; pass < passes.length; pass++) {
+    const rule = passes[pass];
+    for (const c of candidates) {
+      const [px, pz] = c.p;
+      if (buildingClearance(px, pz, buildings) < 10 || crownClearance(px, pz, concealers) < 3) continue;
+      if (rule.dry && waterDepthAt && waterDepthAt(px, pz) > 0.05) continue;
+      if (c.corridor.some(([x, z]) => buildingClearance(x, z, buildings) < 3)) continue;
+      if (rule.crowns && c.corridor.some(([x, z]) => crownClearance(x, z, concealers) < 1.5)) continue;
+      const eye = heightAt(px, pz) + BORDER_EYE - 0.5;
+      if (rule.rise && c.corridor.some(([x, z]) => heightAt(x, z) > eye)) continue;
+      return { candidate: c, pass: pass + 1, rule: rule.name };
+    }
+  }
+  return { candidate: candidates[0], pass: 5, rule: 'anchor' };
+}
+
+const lookAt = ([x, y, z], [hx, hz], pitchDeg) => {
+  const len = Math.hypot(hx, hz), pitch = (pitchDeg * Math.PI) / 180;
+  return [x + (hx / len) * BORDER_LOOK, y + Math.tan(pitch) * BORDER_LOOK, z + (hz / len) * BORDER_LOOK];
+};
+
+/**
+ * The absolute pose of a border view at its selected spot: `camAbove` over the ground there (over the water surface
+ * when the spot is wet), looking out along the side's outward heading at the table's pitch.
+ */
+export function borderPose(site, view, groundY, waterDepth = 0) {
+  if (!Number.isFinite(groundY)) throw new Error(`${view.name}: no ground height at the selected spot`);
+  const c = site.candidate, [px, pz] = c.p;
+  const cam = [px, groundY + Math.max(0, waterDepth || 0) + view.camAbove, pz];
+  return {
+    cam, at: lookAt(cam, c.dir, view.pitchDeg), fov: view.fov, absolute: true,
+    selection: { index: c.index, ...(c.insetX !== undefined ? { insetX: c.insetX, insetZ: c.insetZ } : { inset: c.inset, offset: c.offset }),
+      pass: site.pass, rule: site.rule, groundY: Math.round(groundY * 100) / 100,
+      waterDepth: Math.round(Math.max(0, waterDepth || 0) * 100) / 100 },
+  };
+}
+
+/** The ground point an oblique view reads (its camera XZ). */
+export function obliqueSamplePoints(view) {
+  return [[view.cam[0], view.cam[2]]];
+}
+
+/** The absolute pose of the oblique view: `cam[1]` over the ground at its XZ, looking along `heading` at the table's pitch. */
+export function obliquePose(view, groundY) {
+  if (!Number.isFinite(groundY)) throw new Error(`${view.name}: no ground height under the camera`);
+  const cam = [view.cam[0], groundY + view.cam[1], view.cam[2]];
+  return { cam, at: lookAt(cam, view.heading, view.pitchDeg), fov: view.fov, absolute: true, selection: { groundY: Math.round(groundY * 100) / 100 } };
 }
 
 // ---------------------------------------------------------------------------------------------- clearance
