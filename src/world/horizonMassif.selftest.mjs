@@ -323,5 +323,19 @@ assert.ok(carvedTotal <= plainTotal * 0.4, `the measured ranged rings stand far 
   for (let i = 0; i < ring.heights.length; i++) if (ring.heights[i] !== bareRing.heights[i] && !ring.roadPass[i]) moved++;
   assert.equal(moved, 0, 'the passes move only the vertices they mark');
 }
+// a map can keep its ranges whole along its exits (gauntlet wave 6, Frosthollow's edge-n: its north exit runs 480 m into
+// the massif, and the pass was a 190 m trench whose end stood as "a smooth near-vertical curtain")
+{
+  const cfg = getMapConfig('winter');
+  assert.equal(cfg.horizon.roadPasses, false, 'Frosthollow keeps its massif whole along its road exits');
+  const ground = createHeightField(1337, cfg);
+  const ring = sampleHorizonGeometry(cfg, 1337, ground);
+  assert.ok(!ring.roadPass || ring.roadPass.every((v) => v === 0), 'no pass is opened on a map that opts out');
+  const bare = Object.create(ground); bare._roadExitAt = undefined;
+  const bareRing = sampleHorizonGeometry(cfg, 1337, bare);
+  let moved = 0;
+  for (let i = 0; i < ring.heights.length; i++) if (ring.heights[i] !== bareRing.heights[i]) moved++;
+  assert.equal(moved, 0, 'its ring is the one it would be without exits');
+}
 
 console.log('horizonMassif.selftest: the landform, the downslope couloirs, the carve, the canyons, the bed stair, the far tables, the road passes, the budget and the skyline cones PASS', JSON.stringify(coneReport));

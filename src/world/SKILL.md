@@ -90,12 +90,16 @@ the couloirs and bed tones by height — folded into the occlusion and sun texel
 (`encodeCanopyAo` / `encodeCanopySun` against the program's 1.4 power, 0.8 and 0.85 depths and the 0.7 share; no
 shader, sampler or draw). `horizonRelief.selftest.mjs` pins the encoding, the program's constants, the fall-line
 alignment on oblique flanks (the round-72 field fails it) and where the stands may stand. Where the map-borders lane's
-landform is in, the stands follow its woods field (`getBorderWoodsAt`) and its parcels replace the baked ones;
+landform is in, the stands follow its woods field (`getBorderWoodsAt`) across the hand-over where the ring's range trees
+stand (`HORIZON_STAND_HANDOVER_M`, 720-880 m) and its parcels replace the baked ones; past it the stands are the
+ranges' own (a woodland parcel's straight edges drawn up a face read as a band, gauntlet wave 6). The polar and alpine
+couloirs are cut at the depth the round-72 field's radial ribs had (30 / 26 m over 280 / 260 m: the faces' ribs).
 `horizon.reliefCover` overrides a map's cover. Road passes (`openRoadPasses`, after the border's hand-over): a road
 exit (terrain.ts `roadExitAt`, ~720 m) that runs on into the authored ranges gets a valley along its line — floor the
 continued ground at its crossing, 30 m either side, ~24° sides to 220 m — instead of a carriageway painted up a face
 (Cinder Junction's edge-n, gauntlet wave 1); an exit inside a railway cutting's fan is the cutting's. `ring.roadPass`
-marks the moved vertices; `horizonMassif.selftest.mjs` pins it.
+marks the moved vertices; `horizonMassif.selftest.mjs` pins it. `horizon.roadPasses: false` keeps a map's ranges whole
+(Frosthollow: its north exit runs into the massif, where the pass was a trench ending in a wall).
 The far horizon panorama (the mountains lane, 2026-10-03; `horizonPanorama.ts`): beyond the ring the far country
 (1.5-9 km) is BAKED, not drawn live — a polar height grid on the GPU (the character's far field: a warped ridged
 multifractal, Quilez's eroded octaves, Clay John's gullies, a distance envelope of foothills, ranges and the hill
@@ -115,7 +119,14 @@ the deck) — the hill countries as three broad ridgelines over a plinth (forest
 height grid's G channel), the mountain countries by scaling their ranges (≤ 1.8 x), the tablelands by scaling their
 tables (≤ 1.6 x; a third of the far country in tables, none in the first 1.5 km); the near band stays under the ring's
 skyline (a near form mapped onto the shell bent with it from off-centre cameras); the strip below that skyline keeps one
-lit ground tone; the sea weight is softened over ~4°; fine patterns fade with the texel's grazing footprint. Before its
+lit ground tone; the sea weight is softened over ~4°; fine patterns fade with the texel's grazing footprint. Structure
+(gauntlet wave 6, "flat, featureless silhouettes", "box-like flat-topped blocks"): the hill layers' crests carry
+summits and saddles; the tablelands are shaped by their rim distance (the mask's margin over its analytic gradient) —
+a 700 m talus apron to over half the height, a 50 m caprock cliff, an inset upper tier, alcoves and apron gullies,
+broad buttes (narrow tips stay low cones), tops that clear the ring's skyline or stay behind it; the deck follows the
+map's cloud cover (`horizonPanoramaDeckM`: scattered clouds leave the summits standing, a closed deck keeps them under
+it). A sea sector opens on a coastline that recedes with the sector's weight and leaves the water to the game's own sea;
+`panorama.shore` raises a far shore (Saltwind's mainland across its channel). Before its
 bake the panorama takes the battlefield's own ground and rock means (`setGroundTone`, from refreshHorizonGroundTone).
 `horizonPanorama.selftest.mjs` pins the shell, the atlas mapping and the bake contract; the bake's look is iterated
 offline on SwiftShader (no GPU) before the census.

@@ -159,7 +159,10 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     crestSharpness: 1.35, footSharpness: 0.85, billow: 0.15, gullyM: 6.0, gullyWavelengthM: 46, gullyElongation: 4, fineElongation: 1.9, rangeBoost: 1.35, rangeCount: 3, rangeElongation: 3.6,
     talusFloor: 0.28, driftM: 0.9, aoReachM: 170, aoStrength: 0.75, shadowSoft: 0.06, far: FAR_POLAR,
     massif: { baseWavelengthM: 900, gullyWavelengthM: 300, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2.5, branch: 3, erosion: 0.45, concavity: 1.15, contrast: 0.42, smoothM: 140 },
-    drainage: { wavelengthM: 170, octaves: 3, depthM: 9, gain: 0.55, slopeStrength: 2.6, branch: 1.8, grainM: 0.5 }, cover: null,
+    // (gauntlet wave 6, Frosthollow's faces "a smooth curtain ... a wall rather than an alpine face of ribs, couloirs":
+    // the round-72 field's 48 m low ribs, radial, had carried the inward faces' ribs; the couloirs now carry them, down
+    // the fall line, at their depth — 30 m over 280 m first gullies)
+    drainage: { wavelengthM: 280, octaves: 3, depthM: 30, gain: 0.55, slopeStrength: 2.6, branch: 1.8, grainM: 0.5 }, cover: null,
   },
   // spires and glaciers: sharp multifractal crests, short warps, chutes on the faces
   alpine: {
@@ -167,7 +170,7 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     crestSharpness: 1.5, footSharpness: 0.95, billow: 0.05, gullyM: 6.5, gullyWavelengthM: 40, gullyElongation: 4, fineElongation: 1.4, rangeBoost: 1.30, rangeCount: 4, rangeElongation: 3.2,
     talusFloor: 0.30, driftM: 0, aoReachM: 160, aoStrength: 0.80, shadowSoft: 0.05, far: FAR_ALPINE,
     massif: { baseWavelengthM: 850, gullyWavelengthM: 290, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2.5, branch: 3, erosion: 0.45, concavity: 1.15, contrast: 0.42, smoothM: 140 },
-    drainage: { wavelengthM: 160, octaves: 3, depthM: 12, gain: 0.55, slopeStrength: 3.0, branch: 1.6, grainM: 0.6 }, cover: { forest: 0.62, canopy: 0.5, fields: 0 },
+    drainage: { wavelengthM: 260, octaves: 3, depthM: 26, gain: 0.55, slopeStrength: 3.0, branch: 1.6, grainM: 0.6 }, cover: { forest: 0.62, canopy: 0.5, fields: 0 },
   },
   // wooded hills: rounded billows with spurs, shallow drainage
   rolling: {
@@ -603,6 +606,9 @@ function hashCell(ix: number, iz: number, seed: number): number {
 /** Where the ring's range trees stop (horizonVista.ts buildHorizonForest: no range-class tree past 880 m); the baked
  * stands fade in under their outer edge so the two meet without a band. */
 export const HORIZON_COVER_RADIUS_M: readonly [number, number] = [720, 900];
+/** The radii (m) over which the stands hand over from the border's woods to the ranges' own stand field: where the ring's
+ * range trees (which stand in the border's woods) thin out and stop, so no woodland parcel climbs a face past the trees. */
+export const HORIZON_STAND_HANDOVER_M: readonly [number, number] = [720, 880];
 
 interface DrainageInput {
   W: number; H: number; r0: number; dr: number;
@@ -772,7 +778,12 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
         const nA = noise.noise(wx / 420 + 3.3, wz / 420 - 8.1), nB = noise.noise(wx / 160 - 11.7, wz / 160 + 4.9), nC = noise.noise(wx / 45 + 21.1, wz / 45 + 13.3);
         const field = nA * 0.55 + nB * 0.30 + nC * 0.15;
         const bias = (c.forest - 0.5) * 1.0 + 0.20 * smoothstep(0.08, 0.40, slope) + 0.25 * hollow;
-        let stand = input.woodsAt ? input.woodsAt(x, z) : smoothstep(-0.025, 0.025, field + bias);
+        // the border's woods (its parcels between the hedgerows) carry the stands across the borders band; past it, on the
+        // ranges' faces, the stands are the field's own (gauntlet wave 6, Verdant's edge-n: a woodland parcel's straight
+        // edges drawn up the mountain read as "a translucent blue-grey band smeared diagonally across the mountain")
+        const natural = smoothstep(-0.05, 0.05, field + bias);
+        const borderW = input.woodsAt ? 1 - smoothstep(HORIZON_STAND_HANDOVER_M[0], HORIZON_STAND_HANDOVER_M[1], r) : 0;
+        let stand = borderW > 0.001 ? natural + (input.woodsAt!(x, z) - natural) * borderW : natural;
         stand *= 1 - smoothstep(0.80, 1.10, slope); // no stand on a cliff
         if (top !== null) stand *= 1 - smoothstep(top * 0.86, top * 1.02, h0 + nC * 0.06 * top);
         if (snow !== null) stand *= 1 - smoothstep(snow - 60, snow - 10, h0 + nB * 20);

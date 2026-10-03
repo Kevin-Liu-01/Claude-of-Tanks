@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import {
-  HORIZON_COVER_RADIUS_M, HORIZON_RELIEF_AO_DEPTH, HORIZON_RELIEF_AO_POWER, HORIZON_RELIEF_BAKE_R0, HORIZON_RELIEF_BAKE_R1,
+  HORIZON_COVER_RADIUS_M, HORIZON_RELIEF_AO_DEPTH, HORIZON_RELIEF_AO_POWER, HORIZON_RELIEF_BAKE_R0, HORIZON_RELIEF_BAKE_R1, HORIZON_STAND_HANDOVER_M,
   HORIZON_RELIEF_CHARACTERS, HORIZON_RELIEF_GRAD_SCALE, HORIZON_RELIEF_SHADE, HORIZON_RELIEF_SUN_DEPTH,
   bakeHorizonRelief, createHorizonReliefField, encodeCanopyAo, encodeCanopySun, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from './horizonRelief.ts';
@@ -216,10 +216,28 @@ assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteo
   assert.equal(covered({ ...base, treelineM: 0.91 * ring.maxHeight, snowlineM: null }, 'polar').share, 0, 'a polar ring bakes no stand');
   assert.equal(covered({ ...base, treelineM: 0.91 * ring.maxHeight, snowlineM: null, marine: new Float32Array(ring.heights.length).fill(1) }, 'rolling').share, 0,
     'the sea bakes no stand');
-  // the map-borders lane's woods field, where its landform is in: the baked stands follow it (a half-plane of woods
-  // here), so the ring forest's trees and the stands past them are one woods; its parcels replace the baked ones
-  const westWoods = covered({ ...base, treelineM: 0.91 * ring.maxHeight, snowlineM: null, woodsAt: (x) => (x < 0 ? 1 : 0) }, 'rolling');
-  assert.ok(westWoods.share > 0.25 && westWoods.share < 0.55, `the stands follow the border's woods field (${(westWoods.share * 100).toFixed(1)} % of the ring past the forest)`);
+  // the map-borders lane's woods field leads the baked stands across the hand-over, where the ring forest's trees stand in
+  // it; past the hand-over the stands are the ranges' own, whatever the border's field (gauntlet wave 6, Verdant's edge-n:
+  // a woodland parcel's straight edges drawn up a mountain face read as "a translucent blue-grey band")
+  {
+    const settings = resolveHorizonRelief('rolling');
+    const stands = { ...settings, cover: { ...settings.cover, fields: 0 } };
+    const at = (woodsAt) => bakeHorizonRelief({ ...base, treelineM: 0.91 * ring.maxHeight, snowlineM: null, woodsAt }, createHorizonReliefField(0x51ab, stands), [0.4, 0.6, 0.7], { width: 512, height: 64 });
+    const none = at(() => 0), all = at(() => 1);
+    let inBand = 0, past = 0;
+    for (let j = 0; j < 64; j++) {
+      const r = none.r0 + (j + 0.5) * (none.r1 - none.r0) / 64;
+      for (let i = 0; i < 512; i++) {
+        const idx = (j * 512 + i) * 4;
+        const differs = none.data[idx + 2] !== all.data[idx + 2] || none.data[idx + 3] !== all.data[idx + 3];
+        if (r > HORIZON_STAND_HANDOVER_M[0] && r < HORIZON_STAND_HANDOVER_M[1]) { if (differs) inBand++; }
+        // (past the occlusion's and the cast shadows' reach of a band stand's canopy: its shadow falls a little way out)
+        else if (r > HORIZON_STAND_HANDOVER_M[1] + 220 && differs) past++;
+      }
+    }
+    assert.ok(inBand > 200, `the border's woods lead the stands across the hand-over (${inBand} texels follow them)`);
+    assert.equal(past, 0, 'past the hand-over the stands are the ranges\' own: the border\'s woods field changes no texel there');
+  }
   {
     const settings = resolveHorizonRelief('rolling');
     const input = { ...base, treelineM: 0.91 * ring.maxHeight, snowlineM: null, woodsAt: () => 0 };
@@ -229,10 +247,12 @@ assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteo
     let parcels = 0, kept = 0;
     for (let i = 0; i < own.data.length; i += 4) {
       if (own.data[i + 3] < bare.data[i + 3] - 8) parcels++;
-      if (theirs.data[i + 3] !== bare.data[i + 3] || theirs.data[i + 2] !== bare.data[i + 2]) kept++;
+      const r = own.r0 + (Math.floor(i / 4 / 512) + 0.5) * (own.r1 - own.r0) / 64;
+      // (inside the hand-over by the occlusion's and the shadows' reach: a range stand past it shades a little way in)
+      if (r < HORIZON_STAND_HANDOVER_M[0] - 220 && (theirs.data[i + 3] !== bare.data[i + 3] || theirs.data[i + 2] !== bare.data[i + 2])) kept++;
     }
     assert.ok(parcels > 500, `the bake lays its parcels on the open ground (${parcels} texels)`);
-    assert.equal(kept, 0, 'with the border\'s parcels in and no woods, the cover leaves the occlusion and sun texels as they were');
+    assert.equal(kept, 0, 'with the border\'s parcels in and no woods, the cover leaves the texels inside the hand-over as they were');
   }
 }
 

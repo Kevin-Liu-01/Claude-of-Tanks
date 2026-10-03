@@ -10,6 +10,7 @@ import {
 } from './horizonPanorama.ts';
 import { HORIZON_FAR_ROWS } from './horizonFarRange.ts';
 import saltwind from './maps/saltwind.ts';
+import { horizonPanoramaDeckM } from './maps/horizon.ts';
 import { HORIZON_RELIEF_CHARACTERS } from './horizonRelief.ts';
 
 const P = HORIZON_PANORAMA;
@@ -113,6 +114,20 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   assert.ok(pano.treeline < HORIZON_PANORAMA_CHARACTERS.coastal.treeline, 'Saltwind: the karst keeps its woods on the lower flanks');
 }
 assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('texture2D(uHeight, g).g'), 'the strip zones its forest and snow over the plinth');
+
+// --- the far country's deck (gauntlet wave 6: over Verdant's and Frontier Basin's scattered cumulus the far crests were
+// capped and faded at the default 1400 m deck): a closed cloudscape keeps the deck, scattered clouds leave the summits
+// standing among them, a map without a cloudscape keeps the round-72 deck ----------------------------------------------
+assert.equal(horizonPanoramaDeckM({ clouds: { regime: 'fair-weather-cumulus' } }, 1400), 2600, 'scattered cumulus: the far summits stand among the clouds');
+assert.equal(horizonPanoramaDeckM({ clouds: { regime: 'cumulus-humilis', coverage: 0.14 } }, 900), 2600, 'an authored low cover lifts the deck too');
+assert.equal(horizonPanoramaDeckM({ clouds: { regime: 'stratocumulus-deck' } }, 320), 320, 'a closed deck keeps the far country under it');
+assert.equal(horizonPanoramaDeckM({ clouds: { regime: 'fair-weather-cumulus', coverage: 0.8 } }, 1400), 1400, 'an authored cover past 0.6 is a deck');
+assert.equal(horizonPanoramaDeckM({}, 1400), 1400, 'no cloudscape: the round-72 deck');
+// the tablelands: eroded, stepped mesas (a talus apron and a caprock cliff by the rim distance), their tops clearing the
+// ring's skyline or staying behind it (no sliver)
+assert.ok(HORIZON_PANORAMA_SHADERS.height.includes('mesaRamp(s1, 700.0, 50.0)') && HORIZON_PANORAMA_SHADERS.height.includes('mesaRamp(s1 - inset'),
+  'the height pass shapes each table by its rim distance: a talus apron, a cliff, an inset upper tier');
+assert.ok(/uChar2\.z > 0\.5 \? mix\(-0\.03, 0\.06/.test(HORIZON_PANORAMA_SHADERS.height), 'a table\'s top clears the ring\'s skyline or stays behind it');
 
 // --- the shaders: the passes read the uniforms the baker binds -------------------------------------------------------
 for (const [name, source] of Object.entries(HORIZON_PANORAMA_SHADERS)) {

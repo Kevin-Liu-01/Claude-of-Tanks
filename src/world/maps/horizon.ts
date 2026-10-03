@@ -33,6 +33,7 @@ import type { SkyPreset } from '../../engine/sky.ts';
 import { SimplexNoise } from '../../engine/simplexFast.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../../engine/quality.ts';
+import { CLOUDSCAPE_REGIMES } from '../../engine/cloudscapes.ts';
 import { registerRetainedObject3DResources } from '../../engine/resourceLifetime.ts';
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
 import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
@@ -99,6 +100,10 @@ interface HorizonConfig {
   /** The mountains lane (2026-10-03): the far country baked into a panorama (horizonPanorama.ts) beyond the ring on the
    * desktop tier — false keeps the round-72 far range; an object overrides the character's far knobs. */
   panorama?: false | Partial<HorizonPanoramaCharacter>;
+  /** The mountains lane (2026-10-03): false opens no pass along this map's road exits (openRoadPasses) — where an exit
+   * runs into a massif right behind the edge, the pass is a trench as deep as the massif is high, and its end a wall
+   * (gauntlet wave 6, Frosthollow's edge-n: "a smooth near-vertical curtain"). */
+  roadPasses?: boolean;
   /** The mountains lane (2026-10-03): false marks an authored escarpment as a massif's shoulders rather than a
    * tableland (Frosthollow): its summits keep standing (no table opening on the ring) and the far range keeps its
    * peaks (no far plateaus). */
@@ -2124,7 +2129,7 @@ export function sampleHorizonGeometry(
   if (!canyonOutland) drainSteps(carveHorizonEscarpmentsSteps(ring, horizon, mapId, style, seed));
   continueHorizonGround(ring, ground, canyonOutland);
   if (canyonOutland) drainSteps(carveHorizonEscarpmentsSteps(ring, horizon, mapId, style, seed));
-  openRoadPasses(ring, ground);
+  if (horizon.roadPasses !== false) openRoadPasses(ring, ground);
   openHorizonToSea(ring, openings, ground);
   return ring;
 }
@@ -3510,7 +3515,7 @@ export function* buildHorizonRingSteps(
   if (!canyonOutland) yield* carveHorizonEscarpmentsSteps(ring, H, mapId, style, seed);
   continueHorizonGround(ring, ground, canyonOutland);
   if (canyonOutland) yield* carveHorizonEscarpmentsSteps(ring, H, mapId, style, seed);
-  openRoadPasses(ring, ground);
+  if (H.roadPasses !== false) openRoadPasses(ring, ground);
   const sea = openHorizonToSea(ring, seaOpenings, ground);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
   const uvA = buildHorizonUvs(hs, maxH, sea);
@@ -3676,7 +3681,7 @@ export function* buildHorizonRingSteps(
         seed: ((seed ^ 0x9A70) ^ idHash(mapId)) >>> 0, character: reliefCharacter,
         overrides: typeof H.panorama === 'object' ? H.panorama : undefined,
         palette: { base, rock: rockC, snow: snowC, forest: forestC, fog: fogC },
-        sun: [lx, ly, lz], gains: resolveHorizonLightingGains(lighting), deckBaseM, seaOpenings,
+        sun: [lx, ly, lz], gains: resolveHorizonLightingGains(lighting), deckBaseM: horizonPanoramaDeckM(cfg, deckBaseM), seaOpenings,
         seaWeightAt: (angle) => {
           const opening = dominantSeaOpening(angle, seaOpenings);
           return { weight: opening ? seaOpeningWeight(angle, opening) : 0, level: opening?.level ?? 0 };
@@ -3832,6 +3837,21 @@ export function* buildHorizonRingSteps(
 }
 
 /** Synchronous authoring/capture wrapper over the frame-sliceable runtime build. */
+/**
+ * The mountains lane (2026-10-03, gauntlet wave 6: the far layers' crests flattened and faded at Verdant's and Frontier
+ * Basin's default 1400 m deck): the far panorama's deck — the round-72 deck where the map's cloudscape closes the sky
+ * (cover 0.6 or more, or no cloudscape authored), but over scattered clouds (fair-weather cumulus, streets, humilis)
+ * the far summits stand among the clouds: the deck rises to 2.6 km, so no crest is capped or faded under it.
+ */
+export function horizonPanoramaDeckM(cfg: object | null | undefined, deckBaseM: number): number {
+  const clouds = ((cfg as { clouds?: unknown } | null | undefined)?.clouds ?? null) as { regime?: string; coverage?: number } | null;
+  if (!clouds) return deckBaseM;
+  const regime = clouds.regime && Object.prototype.hasOwnProperty.call(CLOUDSCAPE_REGIMES, clouds.regime)
+    ? CLOUDSCAPE_REGIMES[clouds.regime as keyof typeof CLOUDSCAPE_REGIMES] : null;
+  const cover = clouds.coverage ?? regime?.coverage ?? null;
+  return cover !== null && cover < 0.6 ? Math.max(deckBaseM, 2600) : deckBaseM;
+}
+
 export function buildHorizonRing(
   engineCtx: object | null,
   cfg: HorizonMapConfig | null | undefined,

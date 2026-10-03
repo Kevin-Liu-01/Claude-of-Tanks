@@ -322,6 +322,8 @@ export default {
     escarpment: { bedM: [120, 200], cliffShare: [0.5, 0.75], talusRise: 0.22, talusCurve: 1.6, dipPerKm: 30, meanderM: 50, meanderWavelengthM: 220, strength: 0.7 },
     tableland: false,
     massif: { erosion: 0.8, gullyWavelengthM: 420 },
+    // no pass along the north exit: it runs 480 m into the massif, and the pass was a 190 m trench ending in a wall
+    roadPasses: false,
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)

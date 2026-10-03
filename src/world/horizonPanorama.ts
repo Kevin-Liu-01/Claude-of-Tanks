@@ -69,8 +69,8 @@ export interface HorizonPanoramaCharacter {
 export const HORIZON_PANORAMA_CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonPanoramaCharacter>> = Object.freeze({
   alpine: { ampM: 1700, foot: 0.16, macroL: 5200, sharp: 1.45, midL: 1500, gullyL: 520, gullyM: 55, warpM: 900, valley: 0.4, valleyL: 7500, snowline: 0.40, treeline: 0.22, rockSlope: 0.30, bedM: 70, strata: 0.10, tables: false, farRise: 0, layers: 1, plinth: false, shore: 0, shoreM: 5600, shoreRange: 0 },
   polar: { ampM: 1300, foot: 0.18, macroL: 5800, sharp: 1.3, midL: 1700, gullyL: 560, gullyM: 45, warpM: 1000, valley: 0.4, valleyL: 8000, snowline: 0.05, treeline: 0.10, rockSlope: 0.34, bedM: 80, strata: 0.08, tables: false, farRise: 0, layers: 1, plinth: false, shore: 0, shoreM: 5600, shoreRange: 0 },
-  rolling: { ampM: 620, foot: 0.24, macroL: 5600, sharp: 1.15, midL: 2000, gullyL: 600, gullyM: 22, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.85, rockSlope: 0.42, bedM: 60, strata: 0.05, tables: false, farRise: 1.1, layers: 1, plinth: true, shore: 0, shoreM: 5600, shoreRange: 0 },
-  coastal: { ampM: 520, foot: 0.24, macroL: 5400, sharp: 1.15, midL: 1900, gullyL: 600, gullyM: 20, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.80, rockSlope: 0.40, bedM: 50, strata: 0.06, tables: false, farRise: 0.9, layers: 1, plinth: true, shore: 0, shoreM: 5600, shoreRange: 0 },
+  rolling: { ampM: 620, foot: 0.24, macroL: 5600, sharp: 1.3, midL: 1600, gullyL: 450, gullyM: 60, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.85, rockSlope: 0.42, bedM: 60, strata: 0.05, tables: false, farRise: 1.1, layers: 1, plinth: true, shore: 0, shoreM: 5600, shoreRange: 0 },
+  coastal: { ampM: 520, foot: 0.24, macroL: 5400, sharp: 1.3, midL: 1500, gullyL: 450, gullyM: 55, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.80, rockSlope: 0.40, bedM: 50, strata: 0.06, tables: false, farRise: 0.9, layers: 1, plinth: true, shore: 0, shoreM: 5600, shoreRange: 0 },
   volcanic: { ampM: 1300, foot: 0.2, macroL: 5000, sharp: 1.3, midL: 1400, gullyL: 420, gullyM: 45, warpM: 800, valley: 0.4, valleyL: 7500, snowline: 2, treeline: 0.35, rockSlope: 0.32, bedM: 40, strata: 0.16, tables: false, farRise: 0, layers: 1, plinth: false, shore: 0, shoreM: 5600, shoreRange: 0 },
   karst: { ampM: 760, foot: 0.26, macroL: 2600, sharp: 2.2, midL: 900, gullyL: 300, gullyM: 30, warpM: 400, valley: 0.5, valleyL: 5500, snowline: 2, treeline: 0.95, rockSlope: 0.36, bedM: 30, strata: 0.12, tables: false, farRise: 0.3, layers: 1, plinth: false, shore: 0, shoreM: 5600, shoreRange: 0 },
   mesa: { ampM: 900, foot: 0.24, macroL: 6000, sharp: 1.0, midL: 2000, gullyL: 500, gullyM: 30, warpM: 900, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 46, strata: 0.32, tables: true, farRise: 0, layers: 1, plinth: false, shore: 0, shoreM: 5600, shoreRange: 0 },
@@ -339,28 +339,47 @@ float envelopeAt(vec2 p, float r) {
   // under the deck), the summits that still reach it fading into the cloud (the strip's alpha)
   return min(uChar0.x, max(150.0, uChar4.y * 1.4)) * rise * (0.55 + 0.45 * smoothstep(0.15, 0.85, az)) * valley;
 }
-// a tableland: broad tables cut by canyons, buttes standing off them, a low plain between; each table's edge a cliff
-// over a talus ramp, its top one of two caprock levels
+// a tableland: broad tables cut by canyons, buttes standing off them, a low plain between. Each table is shaped by its
+// rim distance (the mask's margin over its own analytic gradient, in metres inside the rim): a concave talus apron 700 m
+// wide rising to over half the table, the caprock cliff over the last 50 m, an inset upper tier on the broader tables
+// (a bench at two-thirds, its own talus and cliff), the rim bitten by alcoves and spurs and the apron cut by gullies — an
+// eroded mesa with its scree, not a box (gauntlet wave 6, Sirocco: "box-like flat-topped blocks with vertical walls …
+// primitive shapes rather than eroded buttes"), at seven-tenths of the old tables' height; buttes the same way, a little
+// taller, broad (a 1.8 km octave past a higher margin) with 320 m aprons, so no butte stands as a needle
+float mesaRamp(float sv, float tw, float cw) {
+  float t = smoothstep(-tw, 0.0, sv);
+  return 0.55 * t * t + 0.45 * smoothstep(0.0, cw, sv);
+}
 float mesaField(vec2 p, float A) {
   vec2 w = p + uChar1.w * vec2(noised(p / 3300.0 + uOff0.zw).x, noised(p / 3300.0 + uOff1.xy).x);
-  float big = noised(w / uChar0.z + uOff0.xy).x * 0.65 + noised(w / (uChar0.z * 0.37) + uOff1.zw).x * 0.35;
-  float butte = noised(w / (uChar0.z * 0.16) + uOff2.zw).x;
-  // (few tables in the first kilometre past the ring: the threshold falls with the distance, so a table's edge is
-  // still a noise-shaped cliff — a mask ramp there drew a smooth sand slope in front of every far table)
-  // (a third of the far country in tables, not half: at -0.12 they joined into one plateau whose rim ran round the
-  // whole ring as a wall — Copper Mesa — instead of mesas and buttes standing over the plain)
-  // (and none in the first one and a half kilometres past the ring: a near table mapped onto the shell stood over the
-  // ring as a curved band from a camera off the square's centre)
+  float L1 = uChar0.z, L2 = uChar0.z * 0.37;
+  vec3 na = noised(w / L1 + uOff0.xy), nb = noised(w / L2 + uOff1.zw), nr = noised(w / 420.0 + uOff2.xy);
+  float big = na.x * 0.65 + nb.x * 0.35 + 0.05 * nr.x;
+  vec2 g = na.yz * (0.65 / L1) + nb.yz * (0.35 / L2) + nr.yz * (0.05 / 420.0);
+  // (few tables in the first one and a half kilometres past the ring: a near table mapped onto the shell stood over the
+  // ring as a curved band from a camera off the square's centre; a third of the far country in tables, not half)
   float th = mix(0.9, 0.16, smoothstep(uFrame.x + 1500.0, uFrame.x + 3000.0, length(p)));
-  float t = smoothstep(th, th + 0.015, big);
-  float tb = smoothstep(th + 0.5, th + 0.52, butte) * (1.0 - t);
-  float edge = max(t, tb * 0.9);
-  float profile = 0.22 * smoothstep(0.0, 0.45, edge) + 0.78 * smoothstep(0.3, 1.0, edge);
+  float s1 = (big - th) / max(length(g), 1e-7);
+  // alcoves and spurs along the rim (~180 m), gullies down the apron (~70 m across the slope)
+  s1 += 45.0 * noised(w / 180.0 + uOff3.zw).x;
   float lv = noised(w / (uChar0.z * 1.3) + uOff3.xy).x;
   float level = 0.42 + 0.22 * step(-0.15, lv) + 0.2 * step(0.3, lv) + 0.04 * noised(w / 1300.0).x;
-  level = mix(level, level + 0.22, tb); // the buttes stand above the tables round them
+  float prof = mesaRamp(s1, 700.0, 50.0);
+  float inset = 260.0 + 160.0 * (noised(w / 2100.0 + vec2(4.1, -2.7)).x * 0.5 + 0.5);
+  float tier = mesaRamp(s1 - inset, 200.0, 30.0);
+  prof = prof * (1.0 - 0.32 * smoothstep(0.0, 1.0, tier)) + 0.32 * tier;
+  float apron = smoothstep(-700.0, -20.0, s1) * (1.0 - smoothstep(-20.0, 0.0, s1));
+  prof *= 1.0 - 0.22 * apron * (noised(w / 70.0 + uOff2.zw).x * 0.5 + 0.5);
+  // buttes off the tables: the finer octave's highs past a higher margin, shaped the same way, standing a little taller
+  float Lb = uChar0.z * 0.3;
+  vec3 nd = noised(w / Lb + uOff2.zw);
+  float sb = (nd.x - (th + 0.5)) / max(length(nd.yz) / Lb, 1e-7);
+  // (a butte stands to its full height only where it is broad: a narrow top — a noise peak's tip — keeps under half,
+  // so it stays a low cone instead of a needle grazing the ring's skyline)
+  float bprof = mesaRamp(sb, 320.0, 16.0) * (0.45 + 0.55 * smoothstep(20.0, 160.0, sb)) * (1.0 - smoothstep(-40.0, 40.0, s1));
   float plain = A * (0.04 + 0.05 * (noised(w / 900.0 + uOff3.zw).x * 0.5 + 0.5));
-  return mix(plain, A * level, profile);
+  float top = 1.0 + 0.04 * noised(w / 700.0 + vec2(-3.3, 1.9)).x;
+  return plain + 0.7 * max(A * level * max(prof, 0.0) * top, A * (level + 0.22) * bprof);
 }
 float gPlinth = 0.0; // farField's plinth at its last point (the height pass writes it beside the height)
 float farField(vec2 p) {
@@ -393,7 +412,9 @@ float farField(vec2 p) {
   if (behind > 0.001 && h > 0.0) {
     vec2 du = p / max(r, 1.0);
     float m = noised(du * 6.0 + uOff1.zw).x * 0.6 + noised(du * 15.0 + uOff2.xy).x * 0.4;
-    float margin = mix(-0.015, 0.075, smoothstep(-0.55, 0.55, m));
+    // (a tableland's tops either clear the ring's skyline or stay behind it: a top grazing it stood as a sliver over the
+    // ring — gauntlet wave 6, Sirocco's corner-ne "a thin vertical rectangular notch cut into the silhouette")
+    float margin = uChar2.z > 0.5 ? mix(-0.03, 0.06, smoothstep(-0.08, 0.08, m)) : mix(-0.015, 0.075, smoothstep(-0.55, 0.55, m));
     float target = min(uFrame.w + r * (edge.a + margin), max(150.0, uChar4.y * 1.25));
     if (uChar2.z > 0.5) {
       // the tablelands scale too (their cliffs and talus keep their profile; lifting the tables to the target stood
@@ -415,7 +436,9 @@ float farField(vec2 p) {
         // the crest line's own summits and saddles (a kilometre or two apart), so no ridge runs level; under the deck
         // the crest bows down instead of flattening on it
         float und = noised(du * (rc / 1400.0) + vec2(fi * 5.7, 9.1)).x * 0.6 + noised(du * (rc / 520.0) + vec2(-fi * 2.3, 4.4)).x * 0.4;
-        float crest = (uFrame.w + rc * (edge.a + cm)) * (0.86 + 0.16 * und);
+        // (gauntlet wave 6: the layers read as "a flat, featureless silhouette" — the crest kept within 16 % of its line;
+        // now summits and saddles: two-thirds of the line in a saddle, a sixth over it on a summit)
+        float crest = (uFrame.w + rc * (edge.a + cm)) * (0.67 + 0.48 * smoothstep(-0.55, 0.75, und));
         crest = crest < cap * 0.8 ? crest : cap * (0.8 + 0.2 * (1.0 - exp(-(crest - cap * 0.8) / (cap * 0.2))));
         lift = max(lift, (crest - 0.6 * A) * prof);
       }
@@ -696,8 +719,9 @@ void main() {
   float sea = edge.g * step(wp.y, edge.b + 0.5);
   col = mix(col, uFog * 0.82, sea);
   float open = max(smoothstep(0.02, 0.2, sea), hiddenW * smoothstep(0.3, 0.7, edge.g));
-  // the air past the shell
-  col = mix(col, uFog * 1.05, 1.0 - exp(-max(0.0, rr - uFrame.z) / 9000.0));
+  // the air past the shell (gauntlet wave 6, the far layers "a flat, hazy, nearly featureless silhouette": a 13 km
+  // e-fold now, and a step under the fog's tone — the battlefield's aerial pass hazes the shell's own depth on top)
+  col = mix(col, uFog * 0.95, 1.0 - exp(-max(0.0, rr - uFrame.z) / 13000.0));
   // into the cloud: a soft, broken fade over the deck's lowest 140 m
   float alpha = (1.0 - smoothstep(uChar4.y - 140.0, uChar4.y + 20.0, wp.y + 60.0 * noised(wp.xz / 260.0 + vec2(4.4, -2.9)).x)) * (1.0 - open);
   gl_FragColor = vec4(pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2)), alpha);
