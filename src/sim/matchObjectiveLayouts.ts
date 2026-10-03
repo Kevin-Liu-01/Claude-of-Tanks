@@ -30,6 +30,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // western cliff, through the harbour road in the lower town (also the turbo-ball kickoff), to the curing yards above
   // the harbour; each team's nearest, middle and farthest zone lie within 1 % of the other's.
   fjord: { kickoff: { x: 40, z: -65 }, zones: [{ x: -200, z: 35 }, { x: 40, z: -65 }, { x: 150, z: -110 }] },
+  // Sunscar Oasis (layout brief, 2026-10-03): three zones across the spring's waist — the palm grove on the spring's
+  // east shore, the palm belt west of the town (also the turbo-ball kickoff) and the souk; the bounded search's seats,
+  // each team's nearest, middle and farthest zone within 2 % of the other's.
+  oasis: { kickoff: { x: 29.1, z: 4.4 }, zones: [{ x: -72.5, z: -11.2 }, { x: 29.1, z: 4.4 }, { x: 157.8, z: 12.6 }] },
   // Tarkhan Steppe (layout brief, 2026-10-02): the three aprons — the station's grain yard by the ford on the line of
   // equal drives, the post-road halt on the plateau near the northern arc and the kolkhoz yard near the southern
   // deployment, each team's home zone as far from it as the other's; the kickoff on the wadi's north bank (the bounded

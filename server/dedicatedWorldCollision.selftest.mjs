@@ -63,7 +63,7 @@ const expected = {
   polders: [3363, 3129, 2706], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [4232, 3998, 3574] (2026-10-02 Tidegate Polders redesign (docs/MAP-LAYOUT-BRIEF.md); was [4268, 4025, 3604])
   copper_mesa: [2187, 2051, 1488], // 2026-10-02 Copper Mesa layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [2240, 2140, 1429]; was [2805, 2705, 1984]
   airfield: [2432, 2568, 1896], // 2026-10-02 Kestrel Airfield redesign (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [2450, 2429, 1959]; was [3671, 3650, 3173]
-  oasis: [2267, 2037, 1562], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [2740, 2510, 2031]
+  oasis: [2225, 2005, 1518], // 2026-10-03 Sunscar Oasis layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [2267, 2037, 1562]; was [2740, 2510, 2031]
   whiteout: [1309, 1175, 575], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [1601, 1467, 875]
   orchard: [3712, 3478, 3917], // 2026-10-02 Orchard Valley layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [3714, 3482, 3941]; was [4923, 4691, 5160]
   longleaf: [4890, 4687, 5803], // 2026-10-02 Longleaf Crossing layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [4953, 4756, 5912]; was [6218, 6021, 7183]
