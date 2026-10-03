@@ -658,8 +658,8 @@ of the 4050 — and would need 2.1–2.9 ms here.
   that made three link and bind the vista program every frame is gone.
 - Boot entry: the cache (`shadowStaticCache.ts`, loaded with the first battle world), the GPU timer (loaded at the
   governor's first decision over a battle world) and the r8 cascade caster proxies (`shadowCasterProxies.ts`, moved
-  out of `lighting.ts` and imported when the first lighting rig is created) live outside the entry chunk: 766,653 →
-  764,176 bytes raw and 228,897 → 228,338 brotli against the PR head. Until a module arrives the ordinary path
+  out of `lighting.ts` and imported when the first lighting rig is created) live outside the entry chunk: 762,514 →
+  760,037 bytes raw and 227,873 → 227,153 brotli against the PR head (a24eb4770). Until a module arrives the ordinary path
   renders — every caster into every cascade (a proxy only drops instances outside its cascade, so the maps are the
   same), the cadence rules.
 
