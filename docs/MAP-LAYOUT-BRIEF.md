@@ -306,6 +306,18 @@ roof weathers down its slope: chalky toward the ridge, rust and grime along the 
 the lived-in parts a kit uses (window boxes, the bench by the door, a woodpile, the roof ladder, an aerial); they are
 dressing (no collision) and the phones leave them out, so the collision a host certifies is tier-independent.
 
+**The yards round the houses.** A kit that names `yard` in its `ArchitectureStyle` (`kinds`, `fence`, `gate`, `shed`,
+`shedSize`, `garden`) gets yards on its houses of those kinds (`src/world/maps/regional/yards.ts`). The stage runs after
+the wrecks on its own stream, so nothing placed before it moves. Each house's yard goes on its freest side: up to 8 m
+deep and as long as that side of the plot, its ground clear of the road frontage (`ROAD_FRONTAGE_CLEARANCE`), every other
+plot, the hard solids and the larger destructibles, the authored objective targets with a 3 m margin, the aprons, the
+bridge decks and the spawn pads, dry and level. Fence or wall modules (the kit's destructible kind) close its three open
+sides with a gate (or an open gap), the kit's own outbuilding stands in a far corner at `shedSize`, and kitchen-garden
+beds (dressing, raised on a slope, left out on phones) take the other. Every element is checked on its own and skipped
+where it does not fit. No house body or plot moves. The props group carries the counts (`userData.regionalYards`),
+`yards.selftest.mjs` holds the planner's clearances, and a kit that adopts yards regenerates its map's shard and re-pins
+its census (obstacles rise by the modules, gates and sheds).
+
 **Adding a builder or a kit.** A builder is `(ctx) => RegionalParts`: build within `ctx.info.w × ctx.info.d`, door
 side +z unless the base builder's frontage says otherwise, draw only from `ctx.rng`, and keep tier-dependent parts to
 dressing. Plots are not all deep: a market row is 12 × 5.2 m, a yard shed 11.7 × 7.2 m, a farmhouse lot 15 × 9 m. A
