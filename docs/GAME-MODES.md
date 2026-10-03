@@ -33,9 +33,9 @@ rule the battle does not keep.
 ## Flying a drone
 
 Select **Drone**, enter a battle in your tank, then press **V** or the drone control.
-The quadcopter starts visibly docked on a reusable mission rail on the rear hull.
+The quadcopter starts visibly docked on a reusable mission rail seated on the turret. Turretless tank destroyers use a hull-mounted rail.
 The rail and its four feet are fitted to each vehicle’s own hull surfaces; the same
-attachment frame can carry future mode equipment. A 2.4-second rotor spool-up and
+attachment frame follows turret rotation, and the drone launches from that same moving seat. It can carry future mode equipment. A 2.4-second rotor spool-up and
 smooth lift clear the carrier before the camera eases into first-person
 flight with a white-hot infrared view. The launch and camera handoff stay in normal color; infrared begins only when the view is inside the drone. You directly fly it: **W/S**
 move forward or backward, **A/D** strafe, **Space** climbs, and mouse look steers.

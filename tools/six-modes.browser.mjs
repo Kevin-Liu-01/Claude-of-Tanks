@@ -37,6 +37,7 @@ try{
    assert.equal(await page.evaluate(()=>window.__DEBUG.game.gameMode),mode);
    if(mode==='drone'){
     assert.equal(await page.evaluate(()=>!!window.__DEBUG.game.player.visual.root.getObjectByName('Docked FPV mission payload')?.visible),true,'drone starts on the carrier');
+    assert.equal(await page.evaluate(()=>window.__DEBUG.game.player.visual.root.getObjectByName('Reusable mission payload rail').parent.name),'rig_turret','mission rail belongs to the turret');
     await page.screenshot({path:resolve(out,`drone-docked-${suffix}.png`)});
     if(mobile)await page.tap('.cot-drone-control');
     else {await page.mouse.click(640,400);await page.keyboard.press('KeyV');}
