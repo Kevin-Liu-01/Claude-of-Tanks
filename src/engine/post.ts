@@ -1316,7 +1316,14 @@ const AerialShader = {
 //    the display-space dither.
 // (the values: a nine-map A/B of four looks — 1.4 / 1.28 keeps a daylight photograph's colour and depth where 1.3 / 1.25
 // read flat, without the forest-floor crush a 1.3 slope with a 0.015 black point gave Caldera)
-const GRADE_SAT_LINEAR = 1.4;
+// 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: "over-bright lime albedo everywhere", "exposure ...
+// oversaturated"): on the grounded rig the scene-referred saturation is AgX's own (1.0). Measured on the wave-0 census frames
+// (CIELAB, 24 frames) the 1.4 boost put the mean chroma at 22 and foliage at 31 against 17 and 21 for the gauntlet's
+// reference photographs (World of Tanks 12 / 15, War Thunder 12 / 18), the sky's b* at −22 against −15; offline re-grades
+// at 1.0 with the calibrated key (lightModel.ts EXPOSURE_KEY) land 17 / 20 / −20. The legacy rig (the mobile tier's
+// Preetham dome, the Garage's enclosed bay, the galaxy skies) keeps the look it was tuned under.
+const GRADE_SAT_LINEAR = 1.0;
+const GRADE_SAT_LINEAR_LEGACY = 1.4;
 const GRADE_CONTRAST = 1.28;
 const GRADE_BLACK_POINT = 0.012;
 const GRADE_SATURATION = 1.0;
@@ -2611,7 +2618,9 @@ export function createPost(
   function updateOutputGrade(): void {
     const model = scene.userData.lightModel as LightModel | undefined;
     const u = grade.uniforms;
-    const contrast = lightTune('GRADE_CONTRAST', GRADE_CONTRAST), satLinear = lightTune('GRADE_SAT_LINEAR', GRADE_SAT_LINEAR);
+    const contrast = lightTune('GRADE_CONTRAST', GRADE_CONTRAST);
+    const satLinear = model?.mode === 'physical'
+      ? lightTune('GRADE_SAT_LINEAR', GRADE_SAT_LINEAR) : lightTune('GRADE_SAT_LINEAR_LEGACY', GRADE_SAT_LINEAR_LEGACY);
     u.uSaturation.value = lightTune('GRADE_SATURATION', GRADE_SATURATION);
     u.uHighlightLift.value = scene.userData.lightEnclosed ? lightTune('GARAGE_HIGHLIGHT_LIFT', GARAGE_HIGHLIGHT_LIFT) : 0;
     u.uBlackPoint.value = lightTune('GRADE_BLACK_POINT', GRADE_BLACK_POINT);

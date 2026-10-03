@@ -21,7 +21,8 @@
  *              environment intensity 1 so a mirror reflects the sky the dome shows; its diffuse share takes
  *              SKY_DIFFUSE_GAIN on top (the aerosol and fair-weather cloud light the round-65 visual calibration
  *              left out of the clean sky: the shade under a clear sky is lit about a quarter as strongly as the sun
- *              lights open ground, not a ninth), and the clear sky's share fades under an overcast deck
+ *              lights open ground, not a ninth) and keeps SKY_DIFFUSE_CHROMA of the clean dome's hue (that light is
+ *              far whiter than the Rayleigh dome), and the clear sky's share fades under an overcast deck
  *   overcast   the deck's own diffuse light, the hemisphere light's new role: the sunlight and skylight the cloud
  *              transmits, neutral grey from above, the ground's reflection from below
  *   ground     below the horizon the environment shows the ground (its albedo under the sky light, and half of it
@@ -80,6 +81,15 @@ function lightTune(name: string, fallback: number): number {
 export const LIGHT_SOLAR_IRRADIANCE = 4.99;
 /** Diffuse sky light over the dome's own radiance (aerosol + fair-weather cloud light the clean sky lacks). */
 export const SKY_DIFFUSE_GAIN = 1.45;
+/**
+ * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: the shade under a hull rendered indigo on straw and
+ * teal on grass): the share of the clean dome's hue the sky's diffuse light keeps about its luminance. The dome's
+ * cosine-weighted light runs B/R 3.3–4 (Verdant 0.069 / 0.130 / 0.273: a Rayleigh sky, far past 20 000 K); real open
+ * shade under a clear sky, with the aerosol and whitened horizon the gain above stands for, runs 9 000–15 000 K
+ * (B/R about 1.6–2.2): 0.4 lands Verdant at 1.8 and Sirocco at 1.6. The luminance — the shade's level, the exposure's
+ * illuminance — is unchanged; the specular share keeps the dome's own colour (a mirror reflects the sky the eye sees).
+ */
+export const SKY_DIFFUSE_CHROMA = 0.4;
 /** Share of the direct sun an overcast deck removes at overcast 1. */
 export const OVERCAST_DIRECT_CUT = 0.9;
 /** Share of the clear sky's light an overcast deck replaces at overcast 1. */
@@ -98,8 +108,11 @@ export const NIGHT_SKY_GLOW = 0.22;
  * The camera's night offset (EV at full night): a moonlit scene sits under two stops below the day (its displayed key
  * about 30 % of Verdant's noon — the old rig's night sat at about a third of its day, and the owner asked on 2026-09-14
  * for a night a little more visible, not darker; the shade keeps the glow's light).
+ * 2026-10-03 (the skies-and-atmosphere lane): −0.25 → +0.265 with the daylight key's calibration (EXPOSURE_KEY 1.5 →
+ * 1.05, half a stop): the night keeps the camera it had (1.5 × 2.6 × 2^−0.25 = 1.05 × 2.6 × 2^0.265 ≈ 3.28), the owner's
+ * displayed level, now about two fifths of the calibrated day's key.
  */
-export const NIGHT_EV = -0.25;
+export const NIGHT_EV = 0.265;
 /**
  * The camera's low-sun offset (EV with the sun near the horizon, full below 6°, none above 18°): a golden-hour scene is
  * exposed for its sky rather than opened toward the day's key, so the long light keeps its depth and the sky its blue
@@ -110,8 +123,18 @@ export const LOW_SUN_EV = -0.5;
 export const NIGHT_GLOW_COLOR: Rgb = Object.freeze([0.72, 0.95, 1.38]) as Rgb;
 /** The sunlit share of the ground the environment shows below the horizon (groundBounce.ts adds the rest). */
 export const GROUND_SUNLIT_SHARE = 0.5;
-/** Exposure law: the key that lands Verdant's lit midtones, its reference illuminance and the adaptation share. */
-export const EXPOSURE_KEY = 1.5;
+/**
+ * Exposure law: the key at the reference illuminance, and the adaptation share.
+ *
+ * 2026-10-03 (the skies-and-atmosphere lane, which the gauntlet's wave 0 handed light, colour and atmosphere: "flat
+ * high-key lighting", "exposure either washed out or oversaturated"): the key is a calibrated meter, π / E_ref — an 18 %
+ * grey card under the reference illuminance (3.0) reaches the tone curve at scene-linear 0.18, AgX's middle grey (display
+ * L* ≈ 53, the photographic standard). The 1.5 it replaces was half a stop hot: a sunlit card at Verdant displayed at
+ * L* ≈ 60 and the census frames' median at L* 63 with their darkest twentieth at 36, against 54 / 23 for the gauntlet's
+ * thirty-five reference photographs (World of Tanks 43 / 19, War Thunder 47 / 17); offline re-grades of the wave-0
+ * frames put this key at 53 / 24.
+ */
+export const EXPOSURE_KEY = 1.05;
 export const EXPOSURE_ADAPTATION = 0.6;
 /** The camera's adaptation bounds around its key (a night scene stays a night scene, a snowfield never goes grey). */
 export const EXPOSURE_MIN = 0.45;
@@ -256,6 +279,7 @@ function resolveGrounded(
     sunColor,
     envIntensity,
     envDiffuseGain,
+    envDiffuseChroma: clamp(lightTune('SKY_DIFFUSE_CHROMA', SKY_DIFFUSE_CHROMA), 0, 1),
     hemiIntensity,
     hemiSky,
     hemiGround,

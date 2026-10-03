@@ -216,6 +216,11 @@ const SHADOW_RADII = [1.6, 2.3, 2.6, 2.8];
 // Keep that older cool shadow response: it grounds tanks, trees and buildings
 // at gameplay distance without lowering the scene's ambient light globally.
 const SHADOW_AMBIENT_DIM = [0.80, 0.88, 1.0];
+// 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: grass in a tank's shadow rendered indigo): that
+// cool dim is the legacy rig's. The grounded rig's shade is lit by the sky light itself (its IBL, groundBounce.ts
+// uCotSkyChroma), so it dims neutrally at the same luminance — painting the sky's blue in a second time turned the
+// shade under a hull indigo on straw and teal on grass. The dim rides a shared uniform (uCotShadowDim, applyGroundBounce).
+const SHADOW_AMBIENT_DIM_LUMA = 0.2126 * SHADOW_AMBIENT_DIM[0] + 0.7152 * SHADOW_AMBIENT_DIM[1] + 0.0722 * SHADOW_AMBIENT_DIM[2];
 const SHADOW_AMBIENT_SPEC_DIM = 0.55;
 // r8 stable PCF: the old pseudo-PCSS multiplier expanded a five-tap kernel
 // as far as 14 texels. Five samples cannot cover that disk, so wide shadows
@@ -554,10 +559,9 @@ vec3 cotPrev;`);
   if (!end.includes(endHead)) {
     throw new Error('lighting.ts: shadow-density anchor not found in lights_fragment_end');
   }
-  const dimVec = `vec3( ${SHADOW_AMBIENT_DIM.map((v) => v.toFixed(3)).join(', ')} )`;
   THREE.ShaderChunk.lights_fragment_end = end.replace(endHead, `#if defined( USE_CSM ) && defined( CSM_CASCADES )
 
-	vec3 cotAmbDim = mix( ${dimVec}, vec3( 1.0 ), cotSunVis );
+	vec3 cotAmbDim = mix( uCotShadowDim, vec3( 1.0 ), cotSunVis );
 
 	#if defined( RE_IndirectDiffuse )
 
@@ -941,8 +945,12 @@ export function createLighting(
         model.groundRadiance[2] * iblDown + model.hemiGround[2] * model.hemiIntensity,
       );
       groundBounceUniforms.uCotSkyDiffuse.value = model.envDiffuseGain;
+      groundBounceUniforms.uCotSkyChroma.value = model.envDiffuseChroma;
+      groundBounceUniforms.uCotShadowDim.value.setScalar(SHADOW_AMBIENT_DIM_LUMA);
     } else {
       groundBounceUniforms.uCotSkyDiffuse.value = 1;
+      groundBounceUniforms.uCotSkyChroma.value = 1;
+      groundBounceUniforms.uCotShadowDim.value.fromArray(SHADOW_AMBIENT_DIM);
     }
     applyGroundBounceRig(groundBounceUniforms, {
       enabled: lightFx.flags.groundBounce, sunDir: sunDirWorld, sunColor: lightRig.sunColor,

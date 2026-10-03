@@ -8,8 +8,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  EXPOSURE_ADAPTATION, EXPOSURE_KEY, EXPOSURE_MAX, EXPOSURE_MIN, GROUND_SUNLIT_SHARE, LIGHT_SOLAR_IRRADIANCE, LOW_SUN_EV, NIGHT_SKY_GLOW, OVERCAST_SKY_CUT,
-  SKY_DIFFUSE_GAIN, atmosphereTransmittance, deriveSun, exposureFor, linearToHex, whiteBalanceGains,
+  EXPOSURE_ADAPTATION, EXPOSURE_KEY, EXPOSURE_MAX, EXPOSURE_MIN, GROUND_SUNLIT_SHARE, LIGHT_SOLAR_IRRADIANCE, LOW_SUN_EV, NIGHT_EV, NIGHT_SKY_GLOW, OVERCAST_SKY_CUT,
+  SKY_DIFFUSE_CHROMA, SKY_DIFFUSE_GAIN, atmosphereTransmittance, deriveSun, exposureFor, linearToHex, whiteBalanceGains,
 } from './lightModel.ts';
 import {
   DEFAULT_GROUND_ALBEDO, EXPOSURE_REFERENCE_ILLUMINANCE, hexToLinear, isGalaxySky, lightTune, loadGroundedLightModel, luminance,
@@ -81,6 +81,19 @@ assert.equal(clear.fillIntensity, 0, 'the anti-sun rescue fill is retired');
 assert.equal(clear.hemiIntensity, 0, 'an open sky has no deck glow');
 assert.equal(clear.envIntensity, 1, 'the environment shows the dome at its own radiance (a mirror reflects the sky the eye sees)');
 near(clear.envDiffuseGain, SKY_DIFFUSE_GAIN, 1e-12, 'the sky\'s diffuse share takes the aerosol / cloud gain');
+// 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: the shade under a hull rendered indigo on straw):
+// the diffuse share keeps part of the clean dome's hue — the light real open shade takes from a clear sky is far whiter
+// than a Rayleigh dome's (9 000–15 000 K, B/R 1.6–2.2, against the dome's 3.3–4)
+near(clear.envDiffuseChroma, SKY_DIFFUSE_CHROMA, 1e-12, 'the sky\'s diffuse share keeps SKY_DIFFUSE_CHROMA of its hue');
+assert.ok(SKY_DIFFUSE_CHROMA > 0.2 && SKY_DIFFUSE_CHROMA < 0.7, 'some of the sky\'s blue, never all of it, never none');
+{
+  const dome = [0.069, 0.130, 0.273]; // Verdant's measured dome irradiance (2026-10-03 census)
+  const L = luminance(dome);
+  const shade = dome.map((c) => L + SKY_DIFFUSE_CHROMA * (c - L));
+  near(luminance(shade), L, 1e-12, 'the chroma keeps the luminance: the shade\'s level and the metered illuminance are unchanged');
+  assert.ok(dome[2] / dome[0] > 3.3, 'the clean dome\'s own light is a deep Rayleigh blue');
+  assert.ok(shade[2] / shade[0] > 1.5 && shade[2] / shade[0] < 2.2, `the shade light ${(shade[2] / shade[0]).toFixed(2)} B/R: open shade's 9 000–15 000 K`);
+}
 clear.groundRadiance.forEach((g, c) => near(g, DEFAULT_GROUND_ALBEDO[c] * (irr[c] + GROUND_SUNLIT_SHARE * clear.sunIntensity * clear.sunColor[c]
   * verdant.sunDir[1] / (Math.PI * SKY_DIFFUSE_GAIN)), 1e-12, `below the horizon: the ground under the sky, half of it sunlit (ch${c})`));
 assert.ok(luminance(clear.groundRadiance) > 2 * luminance(DEFAULT_GROUND_ALBEDO.map((a, i) => a * irr[i])), 'a mirror turned down sees lit ground, not the shade');
@@ -108,7 +121,12 @@ near(nightModel.hemiIntensity, NIGHT_SKY_GLOW, 1e-9, 'the night sky\'s own glow 
 assert.ok(nightModel.hemiSky[2] > nightModel.hemiSky[0] * 1.5, 'in the moonlit sky\'s blue');
 assert.ok(nightModel.exposure > clear.exposure, 'the camera opens for the night');
 const nightKey = (nightModel.illuminance * nightModel.exposure) / (clear.illuminance * clear.exposure);
-assert.ok(nightKey > 0.2 && nightKey < 0.35, `and the night reads as night, a little more visible than the old rig's (${nightKey.toFixed(2)} of the day's key)`);
+// 2026-10-03 (the skies-and-atmosphere lane): the daylight key came down half a stop to a calibrated meter (EXPOSURE_KEY,
+// π / E_ref) while the night keeps the camera it had (the owner, 2026-09-14: "a little more visible, not darker" — the
+// bound holds 1.5 × 2.6 ≈ 1.05 × 3.7), so the night now reads at about two fifths of the calibrated day's key
+near(nightModel.exposure, 1.5 * 2.6 * 2 ** -0.25, 0.02 * nightModel.exposure, 'the night\'s camera holds through the key\'s calibration (the old key, bound and night EV)');
+near(EXPOSURE_KEY * EXPOSURE_MAX * 2 ** NIGHT_EV, 1.5 * 2.6 * 2 ** -0.25, 0.01, 'NIGHT_EV carries the key\'s half stop');
+assert.ok(nightKey > 0.3 && nightKey < 0.5, `and the night reads as night, a little more visible than the old rig's (${nightKey.toFixed(2)} of the day's key)`);
 near(nightModel.sunIntensity, 0.6, 1e-9, 'the night\'s direct light is the authored moon');
 hexToLinear(0xafc3ec).forEach((v, c) => near(nightModel.sunColor[c], v, 1e-12, `the moon's colour ch${c}`));
 assert.ok(luminance(nightModel.groundRadiance) < 0.2 * luminance(clear.groundRadiance), 'the night\'s ground is moonlit, not the day\'s');
@@ -151,6 +169,7 @@ const legacy = resolveLightModel({ sunIntensity: 3.6, sunColorHex: 0xfae8d0, hem
 assert.equal(legacy.mode, 'legacy');
 assert.equal(legacy.sunIntensity, 3.6); assert.equal(legacy.envIntensity, 0.27); assert.equal(legacy.fillIntensity, 0.66);
 near(legacy.hemiIntensity, 0.46 + 0.15, 1e-12, 'the authored hemisphere and its bounce floor');
+assert.equal(legacy.envDiffuseGain, 1); assert.equal(legacy.envDiffuseChroma, 1, 'the legacy rig keeps its environment as it was');
 
 // ---- 7. the wiring
 const sky = readFileSync(new URL('./sky.ts', import.meta.url), 'utf8');
