@@ -165,11 +165,21 @@ export function buildHorizonPanoramaShellGeometry(ringEdge: HorizonPanoramaOptio
   const rows = 1 + P.apronM.length + P.wallElevDeg.length;
   const positions = new Float32Array(stride * rows * 3), uvs = new Float32Array(stride * rows * 2);
   const start = ringEdge.heights.length - n; // the ring's last row
+  // the apron's and the wall's base radius: the ring's outer radius as a running maximum over about 20 degrees, then
+  // averaged over as many — where a sea opening carries the ring's marine faces out to the sea apron (Saltwind, Coastal,
+  // Nordhavn Fjord: 1.3 km to 4.35 km within one column), a wall at the edge's own radius jumped there too, and the
+  // quads joining the two stood radially, edge-on from the bake eye but a sheet of smeared far country from anywhere
+  // else (the census, Saltwind's establishing view: a far range cut off sheer over the bay, a pale wedge beside it);
+  // a ring without openings stays within 1.6 km, so its shell is unchanged
+  const SPAN = 24, outerR = new Float32Array(n), runMax = new Float32Array(n), baseR = new Float32Array(n);
+  for (let c = 0; c < n; c++) outerR[c] = Math.hypot(ringEdge.positions[(start + c) * 3], ringEdge.positions[(start + c) * 3 + 2]);
+  for (let c = 0; c < n; c++) { let m = 0; for (let d = -SPAN; d <= SPAN; d++) m = Math.max(m, outerR[((c + d) % n + n) % n]); runMax[c] = m; }
+  for (let c = 0; c < n; c++) { let sum = 0; for (let d = -SPAN; d <= SPAN; d++) sum += runMax[((c + d) % n + n) % n]; baseR[c] = sum / (2 * SPAN + 1); }
   for (let k = 0; k <= n; k++) {
     const c = k % n, i = start + c;
     const ex = ringEdge.positions[i * 3], ez = ringEdge.positions[i * 3 + 2], eh = ringEdge.heights[i];
     const a = Math.atan2(ez, ex), ca = Math.cos(a), sa = Math.sin(a);
-    const edgeR = Math.hypot(ex, ez);
+    const edgeR = baseR[c];
     let row = 0;
     const put = (x: number, y: number, z: number): void => {
       const o = row * stride + k;
@@ -229,6 +239,11 @@ function buildShellMaterial(): THREE.MeshBasicMaterial {
         discard;
       #else
       {
+        // a radial sheet (where the ring's own outer row jumps out to a sea opening's marine faces) is edge-on from the
+        // bake eye and a smear of far country from anywhere else: not drawn
+        vec3 fn = cross(dFdx(vPanoWorld), dFdy(vPanoWorld));
+        float fl = length(fn), fh = length(fn.xz);
+        if (fl > 1e-6 && fh > 0.5 * fl && abs(dot(fn.xz / fh, normalize(vPanoWorld.xz - uPanoEye.xz + vec2(1e-3)))) < 0.45) discard;
         vec3 d = vPanoWorld - uPanoEye;
         float e = atan(d.y, length(d.xz));
         vec4 pano = texture2D(map, vec2(vPanoU, clamp((e - uPanoElev.x) / (uPanoElev.y - uPanoElev.x), 0.002, 0.998)));
@@ -238,7 +253,7 @@ function buildShellMaterial(): THREE.MeshBasicMaterial {
       }
       #endif`);
   };
-  material.customProgramCacheKey = () => 'horizon-panorama-v1';
+  material.customProgramCacheKey = () => 'horizon-panorama-v2';
   return material;
 }
 
@@ -426,16 +441,26 @@ float farField(vec2 p) {
   // country's own height times the share, with a coastal range along it (the mainland's front ranges: the envelope's
   // share 2.4 km behind the shore, its crest wandering in height), so the far shore stands as a range across the water
   // instead of a low strip where the far country's own relief is low; its low ground stays under the water as bays.
+  // (the census, Saltwind's establishing view: sunk along the bearing, the far ranges beside the bay ended in a sheer wall
+  // over it) — the sea takes the country from a coastline whose distance falls with the sector's weight round the compass:
+  // at the sector's edge the land runs to the annulus's end, toward its middle the coast closes in to the ring, so a bay
+  // opens as headlands receding one behind another into the sea
   h = mix(edge.r * 0.8, h, smoothstep(uFrame.x, uFrame.x + 500.0, r));
   float sink = edge.g * smoothstep(0.0, 0.35, edge.g), seaH = edge.b - 6.0;
-  if (uShore.x > 0.0) {
+  if (sink > 0.0) {
     vec2 su = p / max(r, 1.0);
-    float rs = uShore.y + 1100.0 * noised(su * 5.0 + uOff2.zw).x;
-    float rc = rs + 2400.0, crest = 0.7 + 0.3 * noised(su * 23.0 + uOff3.xy).x;
-    float range = uShore.z * A * crest * exp(-((r - rc) * (r - rc)) / (1600.0 * 1600.0));
-    h = mix(h, seaH + max(0.0, h * uShore.x + range - seaH) * smoothstep(rs, rs + 1800.0, r), sink);
-  } else {
-    h = mix(h, seaH, sink);
+    float coastR = mix(uFrame.y + 500.0, uFrame.x - 300.0, pow(sink, 0.6)) + 700.0 * noised(su * 9.0 + uOff3.zw).x;
+    float water = smoothstep(coastR - 900.0, coastR + 300.0, r);
+    float land = h;
+    if (uShore.x > 0.0) {
+      float rs = uShore.y + 1100.0 * noised(su * 5.0 + uOff2.zw).x;
+      float rc = rs + 2400.0, crest = 0.7 + 0.3 * noised(su * 23.0 + uOff3.xy).x;
+      float range = uShore.z * A * crest * exp(-((r - rc) * (r - rc)) / (1600.0 * 1600.0));
+      float back = smoothstep(rs, rs + 1800.0, r);
+      land = mix(h, h * uShore.x + range, back);
+      water *= 1.0 - back;
+    }
+    h = mix(land, seaH, water);
   }
   return h;
 }
@@ -665,13 +690,16 @@ void main() {
     fill = mix(fill, uFog * 1.05, 0.25 + 0.35 * recede);
     col = mix(col, fill, hiddenW * 0.95);
   }
-  // the sea sectors: the open water under the sky
+  // the sea sectors: the open water is the game's own (the sea apron, 4 km out, and the sky past it) — the strip leaves
+  // it open, as the round-72 far range did (painted, it stood on the shell over the real water as a pale band, a wedge from
+  // a camera off the centre); the ground the ring hides in a sea sector too (from the eye the ring there is the water)
   float sea = edge.g * step(wp.y, edge.b + 0.5);
   col = mix(col, uFog * 0.82, sea);
+  float open = max(smoothstep(0.02, 0.2, sea), hiddenW * smoothstep(0.3, 0.7, edge.g));
   // the air past the shell
   col = mix(col, uFog * 1.05, 1.0 - exp(-max(0.0, rr - uFrame.z) / 9000.0));
   // into the cloud: a soft, broken fade over the deck's lowest 140 m
-  float alpha = 1.0 - smoothstep(uChar4.y - 140.0, uChar4.y + 20.0, wp.y + 60.0 * noised(wp.xz / 260.0 + vec2(4.4, -2.9)).x);
+  float alpha = (1.0 - smoothstep(uChar4.y - 140.0, uChar4.y + 20.0, wp.y + 60.0 * noised(wp.xz / 260.0 + vec2(4.4, -2.9)).x)) * (1.0 - open);
   gl_FragColor = vec4(pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2)), alpha);
 }
 `;
