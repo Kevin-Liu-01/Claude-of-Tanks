@@ -192,7 +192,11 @@ assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteo
   const base = { columns: HORIZON_SEGMENTS, rowCount: ring.rows.length, positions: ring.positions, heights: ring.heights, maxHeight: ring.maxHeight, seed: 0x5eed };
   const covered = (input, character) => {
     const settings = resolveHorizonRelief(character);
-    const bare = bakeHorizonRelief(input, createHorizonReliefField(0x51ab, { ...settings, cover: null }), [0.4, 0.6, 0.7], { width: 512, height: 64 });
+    // the bare bake keeps the walls' rock (the mountain characters' rock bands, the tablelands' varnish): the stands alone
+    // are measured
+    const bareCover = settings.cover && ((settings.cover.varnish ?? 0) > 0 || (settings.cover.beds ?? 0) > 0)
+      ? { ...settings.cover, forest: 0, canopy: 0, fields: 0 } : null;
+    const bare = bakeHorizonRelief(input, createHorizonReliefField(0x51ab, { ...settings, cover: bareCover }), [0.4, 0.6, 0.7], { width: 512, height: 64 });
     // the stands alone (the field parcels start nearer, at 560 m, on the open ground the band trees leave)
     const stands = settings.cover ? { ...settings, cover: { ...settings.cover, fields: 0 } } : settings;
     const bake = bakeHorizonRelief(input, createHorizonReliefField(0x51ab, stands), [0.4, 0.6, 0.7], { width: 512, height: 64 });

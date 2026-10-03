@@ -134,6 +134,9 @@ export interface HorizonReliefCover {
    * down the couloirs), and the tone spread of its beds (strata 3–14 m thick, by world height). 0 = none. */
   varnish?: number;
   beds?: number;
+  /** The beds' thickness scale (1: 3–14 m, the tablelands' laminae; the mountain characters' rock bands, read at one to
+   * three kilometres, are several times thicker). */
+  bedScale?: number;
 }
 
 // round 72b: the far range's own haze is a fifth to a third (was half to two thirds) — the post pass's ring distance law
@@ -162,7 +165,8 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     // (gauntlet wave 6, Frosthollow's faces "a smooth curtain ... a wall rather than an alpine face of ribs, couloirs":
     // the round-72 field's 48 m low ribs, radial, had carried the inward faces' ribs; the couloirs now carry them, down
     // the fall line, at their depth — 30 m over 280 m first gullies)
-    drainage: { wavelengthM: 280, octaves: 3, depthM: 30, gain: 0.55, slopeStrength: 2.6, branch: 1.8, grainM: 0.5 }, cover: null,
+    drainage: { wavelengthM: 280, octaves: 3, depthM: 30, gain: 0.55, slopeStrength: 2.6, branch: 1.8, grainM: 0.5 },
+    cover: { forest: 0, canopy: 0, fields: 0, varnish: 0.10, beds: 0.30, bedScale: 4 },
   },
   // spires and glaciers: sharp multifractal crests, short warps, chutes on the faces
   alpine: {
@@ -170,7 +174,8 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     crestSharpness: 1.5, footSharpness: 0.95, billow: 0.05, gullyM: 6.5, gullyWavelengthM: 40, gullyElongation: 4, fineElongation: 1.4, rangeBoost: 1.30, rangeCount: 4, rangeElongation: 3.2,
     talusFloor: 0.30, driftM: 0, aoReachM: 160, aoStrength: 0.80, shadowSoft: 0.05, far: FAR_ALPINE,
     massif: { baseWavelengthM: 850, gullyWavelengthM: 290, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2.5, branch: 3, erosion: 0.45, concavity: 1.15, contrast: 0.42, smoothM: 140 },
-    drainage: { wavelengthM: 260, octaves: 3, depthM: 26, gain: 0.55, slopeStrength: 3.0, branch: 1.6, grainM: 0.6 }, cover: { forest: 0.62, canopy: 0.5, fields: 0 },
+    drainage: { wavelengthM: 260, octaves: 3, depthM: 26, gain: 0.55, slopeStrength: 3.0, branch: 1.6, grainM: 0.6 },
+    cover: { forest: 0.62, canopy: 0.5, fields: 0, varnish: 0.06, beds: 0.24, bedScale: 3.5 },
   },
   // wooded hills: rounded billows with spurs, shallow drainage
   rolling: {
@@ -721,7 +726,8 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
   const bedTone = new Float32Array(512), bedTop = new Float32Array(513);
   {
     let h = -400;
-    for (let b = 0; b < 512; b++) { bedTop[b] = h; h += 3 + hashCell(b, 17, seed) * 11; bedTone[b] = hashCell(b, 23, seed); }
+    const scale = s.cover?.bedScale ?? 1;
+    for (let b = 0; b < 512; b++) { bedTop[b] = h; h += (3 + hashCell(b, 17, seed) * 11) * scale; bedTone[b] = hashCell(b, 23, seed); }
     bedTop[512] = h;
   }
   const bedAt = (h: number): number => {
