@@ -33,7 +33,7 @@ import { assertPublicBuildEnv } from './tools/publicBuildEnv.ts';
 import { isExistingProjectDocument } from './tools/existing-document-route.ts';
 import { sharedWorkerChunks } from './tools/viteSharedWorkers.ts';
 import { glslMinify } from './tools/viteGlslMinify.ts';
-import { i18nPageCatalogs } from './tools/viteI18nPageCatalogs.ts';
+import { BOOT_RUNTIME_MODULES, i18nPageCatalogs, VITE_PRELOAD_HELPER } from './tools/viteI18nPageCatalogs.ts';
 
 const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 
@@ -345,6 +345,19 @@ export default defineConfig({
         // the 404s it cached for deploy-93 chunks under the deploy-89 immutable rule (docs/DEVELOPMENT.md
         // "Asset caching"); the eight-character width and the [name]-[hash] shape stay the same.
         hashCharacters: 'base36',
+        // 2026-10-02 (tools/viteI18nPageCatalogs.ts): every document's boot runtime is one chunk — the locale runtime
+        // and routing, static-markup localization, responsive layout and Vite's modulepreload polyfill. Every page loads
+        // all of them at boot; automatic chunking split them in two only because lazy chunks import the locale runtime
+        // alone. One chunk keeps the game at its request count now that its English catalog is a chunk of its own.
+        // Vite's preload helper keeps a chunk of its own (the higher priority claims it before the boot group would
+        // pull it in as a dependency): the shared workers load it, and the boot chunk's polyfill needs a document. The
+        // plugin fails the build when the boot chunk holds anything else or a worker reaches it.
+        codeSplitting: {
+          groups: [
+            { name: 'preload-helper', test: VITE_PRELOAD_HELPER, priority: 1 },
+            { name: 'i18n', test: BOOT_RUNTIME_MODULES },
+          ],
+        },
       },
     },
   },

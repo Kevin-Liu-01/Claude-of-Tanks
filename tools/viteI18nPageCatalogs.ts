@@ -12,6 +12,12 @@
 //  - serve: the same subsets as virtual modules at /@cot-i18n/<catalog>.<locale>.js, re-scanned after an edit.
 // The build fails on a scan issue (a key a page could show raw) and on a catalog chunk it cannot find; the dev server
 // warns and serves what it has.
+//
+// The boot runtime every document runs (the locale runtime and routing, static-markup localization, responsive layout,
+// Vite's modulepreload polyfill) is one chunk (vite.config.ts `codeSplitting`): the game's English catalog left the
+// shared runtime chunk, and one boot chunk keeps the game at its request count. Vite's preload helper keeps its own
+// chunk because the shared workers load it and the polyfill needs a document; the build fails when the boot chunk holds
+// another module or a worker entry reaches it.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { OutputBundle, OutputChunk } from 'rolldown';
@@ -23,6 +29,10 @@ import {
 import { LOCALE_CATALOG_META } from '../src/presentation/localizedHtml.ts';
 import type { CatalogLocale } from '../src/ui/i18nDictionaries.ts';
 
+/** The modules every document runs at boot, bundled as one chunk. */
+export const BOOT_RUNTIME_MODULES = /(?:[\\/]src[\\/]ui[\\/](?:i18n|i18nDictionaries|localeRouting|responsiveLayout)\.ts|[\\/]src[\\/]presentation[\\/]staticI18n\.ts|^\0vite\/modulepreload-polyfill\.js)$/;
+/** Vite's dynamic-import preload helper, which keeps a chunk of its own. */
+export const VITE_PRELOAD_HELPER = /^\0vite\/preload-helper\.js$/;
 const LOCALES: readonly CatalogLocale[] = ['en-US', 'zh-CN'];
 const URL_PREFIX = '/@cot-i18n/';
 const VIRTUAL_PREFIX = '\0cot-i18n:';
@@ -96,6 +106,32 @@ export function catalogChunkFiles(bundle: OutputBundle, catalog: string): Record
   return files;
 }
 
+/**
+ * Problems with the boot chunk of a bundle: a module outside the boot runtime inside it, or a non-HTML entry (a shared
+ * worker) that statically reaches it. Empty when the bundle is sound.
+ */
+export function bootChunkProblems(bundle: OutputBundle): string[] {
+  const all = chunks(bundle);
+  const boot = all.find((output) => output.moduleIds.some((id) => /[\\/]src[\\/]ui[\\/]i18n\.ts$/.test(id)));
+  if (!boot) return ['the locale runtime (src/ui/i18n.ts) is in no chunk'];
+  const problems = boot.moduleIds.filter((id) => !BOOT_RUNTIME_MODULES.test(id))
+    .map((id) => `${boot.fileName} holds ${id.replace(/\0/g, '\\0')}, which is not boot runtime`);
+  const byName = new Map(all.map((output) => [output.fileName, output]));
+  for (const entry of all) {
+    if (!entry.isEntry || !entry.facadeModuleId || entry.facadeModuleId.endsWith('.html')) continue;
+    const seen = new Set<string>();
+    const queue = [...entry.imports];
+    while (queue.length) {
+      const file = queue.shift()!;
+      if (seen.has(file)) continue;
+      seen.add(file);
+      queue.push(...(byName.get(file)?.imports ?? []));
+    }
+    if (seen.has(boot.fileName)) problems.push(`${entry.fileName} (a worker or emitted entry) statically loads the boot chunk ${boot.fileName}`);
+  }
+  return problems;
+}
+
 export function i18nPageCatalogs(): Plugin {
   let root = process.cwd();
   let pages: string[] = [];
@@ -163,6 +199,11 @@ export function i18nPageCatalogs(): Plugin {
       server.watcher.on('change', reset);
       server.watcher.on('add', reset);
       server.watcher.on('unlink', reset);
+    },
+    generateBundle(_options, bundle) {
+      if (!build) return;
+      const problems = bootChunkProblems(bundle);
+      if (problems.length) this.error(`cot-i18n-page-catalogs: the boot chunk is unsound:\n  - ${problems.join('\n  - ')}`);
     },
     transformIndexHtml: {
       order: 'post',
