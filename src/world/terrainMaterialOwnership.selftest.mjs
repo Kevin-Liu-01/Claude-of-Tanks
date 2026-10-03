@@ -128,6 +128,8 @@ function checkSourceContract(text) {
     'uMeanG', 'uMeanD', 'uMeanR', 'uMeanM', 'uReduxD',
     // terrain v3 (2026-10-02): the ring atlas gradient's wall fade (vec2, set per relief character at the ring's bind) — no sampler
     'uRingReliefWall',
+    // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving — natural steep faces take the D layer (scalar, no sampler)
+    'uPavedRock',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);

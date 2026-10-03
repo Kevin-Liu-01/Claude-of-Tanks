@@ -5099,6 +5099,27 @@ function* vegetationBuildSteps(
   const _standTint = new THREE.Color();
   // Round 77c: the rim's trees, for their mean stature (the ring forest's impostors take it, horizonForestImpostors.ts)
   const rimTrees: TreeRecord[] = [];
+  // The map-borders lane (2026-10-03, owner: "i literally just see a treeline and then nothing"): the rim forest stands
+  // by the border's woods (the ring forest beyond does too — borderLandform.ts woodsAt), so the woods cross the red line
+  // as one and open country stays open; the blocks used to ring the whole square like a hedge wall, hiding the land
+  // behind them. Past the playable edge a tree outside the woods is dropped (a lone one stays now and then); inside it,
+  // where trees are cover and crush records, a third of the trees in the open stay, so the edge keeps scattered cover
+  // with clearings between. The placement stream is consumed exactly as before — a dropped tree is placed, then popped
+  // with the trunk record and the concealment disc it registered — and a block's understorey still counts it.
+  const borderWoodsAt = heightField.getBorderWoodsAt;
+  function dropRimTreeOutsideWoods(x: number, z: number): boolean {
+    if (!borderWoodsAt) return false;
+    const inside = Math.max(Math.abs(x), Math.abs(z)) <= PLAYABLE_HALF_EXTENT_M;
+    if (treePositionNoise(x, z, 9) < Math.max(inside ? 0.34 : 0.04, borderWoodsAt(x, z))) return false;
+    const tree = trees.pop()!;
+    roadBlockedRimTrees.delete(tree);
+    if (inside && treeObstacles.length && treeObstacles[treeObstacles.length - 1].treeIdx === trees.length) {
+      treeObstacles.pop();
+      const disc = concealers[concealers.length - 1];
+      if (disc && disc.x === tree.x && disc.z === tree.z) concealers.pop();
+    }
+    return true;
+  }
   yield { stage: 'treeLoneAndBelts' };
   function placeRimForest(): void {
     for (let c = 0; c < veg.rimCount; c++) {
@@ -5115,6 +5136,7 @@ function* vegetationBuildSteps(
       _standTint.setRGB(0.88 + tb * 0.24, 0.94 + (rng() - 0.5) * 0.10,
         0.88 + (1 - tb) * 0.22);
       const b0 = trees.length;
+      let placed = 0;
       for (let i = 0; i < n; i++) {
         const x = cx + (rng() - 0.5) * bw, z = cz + (rng() - 0.5) * bw;
         if (Math.max(Math.abs(x), Math.abs(z)) > 506) continue;
@@ -5130,10 +5152,12 @@ function* vegetationBuildSteps(
         // (which sits ~12 m behind the spawn) and keeps the stand in view.
         if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) continue;
         pushTree(x, z, rng() < 0.85 ? species : pickSpecies(veg.rimMix, rng()), 1.35, 2.2, false);
+        placed++;
+        if (dropRimTreeOutsideWoods(x, z)) continue;
         rimTrees.push(trees[trees.length - 1]);
       }
       for (let i = b0; i < trees.length; i++) trees[i].tint.multiply(_standTint);
-      if (trees.length - b0 >= 3) rimBlocks.push({ x: cx, z: cz, r: bw * 0.5 }); // round 77b: a block that stands
+      if (placed >= 3) rimBlocks.push({ x: cx, z: cz, r: bw * 0.5 }); // round 77b: a block that stands
     }
   }
   placeRimForest();
@@ -5148,6 +5172,7 @@ function* vegetationBuildSteps(
       if (noVeg(x, z)) continue; // maps r1: see the rim-block note (sea rim)
       if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) continue;
       pushTree(x, z, pickSpecies(veg.rimMix, rng()), 1.2, 1.9, false);
+      if (dropRimTreeOutsideWoods(x, z)) continue;
       rimTrees.push(trees[trees.length - 1]);
     }
   }
@@ -5801,6 +5826,8 @@ function* vegetationBuildSteps(
           if (keepRoll > (1 - smoothstepJs(1.05, 1.6, rr)) * 0.9 + 0.1) continue;
           const x = stand.x + Math.cos(a) * stand.r * rr, z = stand.z + Math.sin(a) * stand.r * rr;
           if (Math.max(Math.abs(x), Math.abs(z)) > bound || inAvoid(x, z)) continue;
+          // the map-borders lane: past the playable edge a block's undergrowth keeps to the border's woods
+          if (borderWoodsAt && Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M && borderWoodsAt(x, z) < 0.5) continue;
           if (heightField._roadDist(x, z) < 6 || admission()._roadDist(x, z) < 6) continue;
           if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) continue;
           if (admission().getNormalAt(x, z).y < 0.78 || heightField.getNormalAt(x, z).y < 0.78) continue;

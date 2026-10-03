@@ -336,6 +336,17 @@ export function sourcedTerrainLayerPlanned(
   return TERRAIN_PLAN[resolveSourcedTerrainPalette(mapId, settings)][key] != null;
 }
 
+/** The map-borders lane (2026-10-03): the photo set a map's plan routes to layer `key` ('cobble', 'rock', …), or null. */
+export function sourcedTerrainLayerSet(
+  mapId: string,
+  settings: Pick<SourcedTerrainSettings, 'sourcedPalette'> = {},
+  key: LayerKey = 'R',
+): string | null {
+  const row = TERRAIN_PLAN[resolveSourcedTerrainPalette(mapId, settings)][key];
+  if (row == null) return null;
+  return typeof row === 'string' ? row : row.set;
+}
+
 // ARCH-P8: decoded source photos only feed the bounded composite caches below
 // (8 albedo + 4 normal canvases). Keep the most recently used photos up to one
 // battlefield's working set — three terrain sets plus the four building sets,
