@@ -2924,6 +2924,22 @@ float gCliffJ;  // r8: per-cliff jitter field (set with the wall basis)
 // at scale s sits at level log2(footprint × s × 256), the level the hardware would pick for an isotropic footprint.
 float gNoiseLog = 0.0;
 vec4 nz(vec2 p, float s, vec2 o) { return textureLod(uNoise, p * s + o, max(0.0, gNoiseLog + log2(s))); }
+// Ground lane (2026-10-03, the gauntlet's "moiré of concentric arcs in the grass"): a tiled texture read at a world
+// period P is a periodic signal however well its mip chain is filtered — once one period spans only a few pixels of the
+// fragment's footprint, the tile repeat itself beats against the pixel grid (concentric arcs from a raised camera, the
+// round-73 mid octave's 1.08 m tile at 100–190 m). gFootM is the footprint's major axis (m per pixel, set once in
+// splatCompute); tileVis(P) keeps a term whole while a period spans 10 px or more and fades it out by 4 px.
+float gFootM = 0.01;
+float tileVis(float periodM) { return smoothstep(4.0, 10.0, periodM / max(gFootM, 1e-4)); }
+float gFarVis = 1.0; // ground lane: tileVis of the far variants' shortest tile (the base layer's 18 m)
+// Ground lane: a field of the shared noise with no world period — the same texture read twice, at incommensurate
+// scales and turned 42° apart, summed (its variance restored), so no blotch repeats on a grid (the round-73b
+// patchwork's 17.5 m tile read as "softly repeating blotches at a readable, regular interval")
+vec2 nzq(vec2 p, float s, vec2 o) {
+  vec2 a = nz(p, s, o).rg;
+  vec2 b = nz(vec2(0.7431 * p.x - 0.6691 * p.y, 0.6691 * p.x + 0.7431 * p.y), s * 0.7243, o.yx + vec2(0.37, 0.19)).gr;
+  return clamp((a + b - 1.0) * 0.72 + 0.5, 0.0, 1.0);
+}
 // the flat normal a layer's normal tile averages to (x, z perturbation 0; the packed third channel is unused)
 const vec4 NRM_MEAN = vec4(0.5, 0.5, 0.5, 1.0);
 vec4 splatSamp(sampler2D t, vec2 uv, float df, float mb, vec4 mean) {
@@ -2949,6 +2965,9 @@ vec4 splatSamp(sampler2D t, vec2 uv, float df, float mb, vec4 mean) {
   // the 50-150 m midground (critique); softer far contrast + the uncorrelated
   // octave in splatCompute carry that band instead
   farS = mix(farS, mean, min(0.24 + mb * 0.30, 0.64));
+  // ground lane: at a grazing view the far tile's own 18–40 m repeat shrinks to a few pixels deep (the stipple rows
+  // past 300 m) — it eases to the tile mean there
+  farS = mix(mean, farS, gFarVis);
   if (df > 0.996) return farS;
   return mix(texture2D(t, uv, mb), farS, df);
 }
@@ -3189,6 +3208,8 @@ void splatCompute() {
   // terrain v2: the noise reads' level of detail — the major axis of the fragment's world footprint (a wall's vertical
   // footprint counts too: the wall projections read the same texture) in texels of the 256 px noise at scale 1
   gNoiseLog = log2(max(max(length(dFdx(wp)), length(dFdy(wp))) * 256.0, 1e-6));
+  gFootM = exp2(gNoiseLog) / 256.0; // ground lane: the same footprint, in metres per pixel, for tileVis
+  gFarVis = tileVis(18.0);
   float df = smoothstep(45.0, 160.0, effDist);
   // Round 35 (owner 2026-09-21, "stuff in background should never be flat"): a wall is seen face-on, so its texels
   // stay dense on screen far longer than a grazing floor's — the near variant holds twice as far on steep faces
@@ -3263,6 +3284,10 @@ void splatCompute() {
   // r7: 0.74 -> 0.84 — bare-dirt splats must read as real ground breakup
   // between the road decals (ground-cover critique), not a faint stain
   float worn = smoothstep(0.55, 0.80, n2w + (n1w - 0.5) * 0.45);
+  // Ground lane (2026-10-03, the gauntlet: the winter snowfield "marked with swirly brown smudge decals"): snow lies thin
+  // and blows off where the wind scours it — the crests — not in patches across the flats, and what shows through is the
+  // dead sward, not mud (the tint is laid on the D sample below). On a snow map the worn field opens only over a crest.
+  if (uReduxD.y > 1.5) worn *= smoothstep(0.10, 0.50, -vFold) * 0.85;
   // Coastal D doubles as pale beach sand: inland worn turf uses less of it.
   // Keep road/town coverage independent and raw worn aligned with grass scatter.
   // map pass 2026-09-12: uShoulderDirt scales the bare shoulder so snow passes
@@ -3330,6 +3355,23 @@ void splatCompute() {
   // the slope rises, so cliffs read as stratified rock instead of dragged
   // paint
   float steepW = smoothstep(0.20, 0.42, slope) * (1.0 - mkB * 0.85) * rockGate; // r4: tracks the fR band (marbling fix); r6: landform-gated
+  // Ground lane (2026-10-03, the gauntlet: Saltwind's road cut read as "a drainage ditch filled with a flat, unlit
+  // blue-grey plane", Cinder Junction's hill as "white blobs and smears", rock as "hard-edged decal patches"). On the
+  // vegetated battlefields a steep face beside a road or inside a village is an earthwork — the cut and fill banks the
+  // grading left, a yard's terrace — dug soil the turf takes back within a season, never bedrock: only a true cliff
+  // (past ~60°) keeps its rock there. Elsewhere the turf holds the moderate slopes (to ~45°) outside the outcrops'
+  // own patches, so rock breaks the sod in places instead of printing one slope band over every hill flank. What the
+  // earthworks lose to soil is laid back below as a patchy bank of the D layer (bankSoil).
+  float bankSoil = 0.0;
+  if (uReduxD.y < 0.5 && uRockGate < 0.5) {
+    float earthwork = max(smoothstep(0.02, 0.14, mk.g), smoothstep(0.10, 0.35, mk.a)) * (1.0 - smoothstep(0.44, 0.60, slope));
+    float outcrop = smoothstep(0.42, 0.70, nzq(uvW, 0.0093, vec2(0.21, 0.67)).x + (n1h - 0.5) * 0.22);
+    float held = mix(1.0, outcrop, 1.0 - smoothstep(0.22, 0.34, slopeR));
+    float rockKeep = (1.0 - earthwork) * held;
+    bankSoil = max(fR, steepW) * earthwork * (0.30 + 0.50 * smoothstep(0.35, 0.75, n1h * 0.6 + n1 * 0.4));
+    fR *= rockKeep;
+    steepW *= rockKeep;
+  }
   // r7: SHARPENED AXIS TRIPLANAR replaces the r6 tangent projection. The
   // tangent frame was derived from the interpolated normal, so on undulating
   // walls it rotated per-fragment and the sample coordinate wandered — the
@@ -3423,6 +3465,12 @@ void splatCompute() {
   if (hK > 0.001) hBase = reduxLuma(a.rgb) - reduxLuma(uMeanG.rgb);
   if (fD > 0.002 && keepM * (1.0 - seaSand) > 0.002) {
     vec4 aD = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
+    // ground lane: under thin snow the ground that shows is the winter sward — flattened straw and heather, a dull
+    // khaki — not the photo's brown mud
+    if (uReduxD.y > 1.5) {
+      float dL = dot(aD.rgb, vec3(0.36, 0.42, 0.22));
+      aD.rgb = mix(aD.rgb, vec3(dL) * vec3(1.16, 1.06, 0.80) * 1.08, 0.62);
+    }
     // the relief taps and the mix only where the transition runs (the far field and the ?ground=legacy A/B keep
     // the plain mask: with k = 0 reduxHeightMix would still S-curve it)
     if (hK > 0.001) {
@@ -3501,6 +3549,19 @@ void splatCompute() {
   a.rgb = mix(a.rgb, a.rgb * uTintB, smoothstep(0.58, 0.85, 1.0 - meadowB) * (0.17 + 0.09 * n1) * meadowG);
   a.rgb = mix(a.rgb, a.rgb * uTintC, smoothstep(0.52, 0.9, meadowC) * (0.21 + 0.16 * n1) * meadowG);
   a.rgb *= mix(0.93 + meadowC * 0.14, 1.0, projW);
+  // ground lane: the earthworks' bank — patchy dug soil between the turf the bank keeps (bankSoil, above), in the
+  // ground plane on a gentle bank and the walls' projection on a steep one, so its texels never stretch downslope
+  if (bankSoil > 0.003) {
+    vec4 aB = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
+    vec4 nB = NRM_MEAN;
+    if (nrmOn) nB = groundNrm(uNrmD, uv * 0.210, df, mipB);
+    if (triW > 0.003) {
+      aB = mix(aB, wallSamp(uAlbD, uMeanD, 0.210, df, mipB), triW);
+      if (nrmOn) nB = mix(nB, wallNrm(uNrmD, 0.210, df, mipB), triW);
+    }
+    a = mix(a, aB, bankSoil);
+    n = mix(n, nB, bankSoil);
+  }
   // Terrain v2 (2026-10-01, grounded realism): the cover's own patchwork at 2–8 m. A meadow is never one green — paler
   // yellow-green swards, darker blue-green clumps, dead patches; a desert floor has its lag and its blown sand; a
   // snowfield its crust and its powder — at a scale below the macro fields and above the tile, where the tile's repeat
@@ -3509,7 +3570,7 @@ void splatCompute() {
   {
     float patchW = uReduxD.w * meadowG * (1.0 - smoothstep(70.0, 240.0, camDist));
     if (patchW > 0.003) {
-      vec2 hp = nz(uvW, 0.057, vec2(0.31, 0.47)).rg - 0.5;
+      vec2 hp = nzq(uvW, 0.057, vec2(0.31, 0.47)) - 0.5; // ground lane: no 17.5 m repeat (nzq)
       vec3 warmP = uReduxD.y < 0.5 ? vec3(1.07, 1.045, 0.84) : uReduxD.y < 1.5 ? vec3(1.035, 1.015, 0.97) : vec3(1.0, 1.0, 1.0);
       vec3 coolP = uReduxD.y < 0.5 ? vec3(0.88, 0.97, 0.93) : uReduxD.y < 1.5 ? vec3(0.96, 0.96, 0.975) : vec3(0.975, 0.985, 1.0);
       a.rgb *= mix(vec3(1.0), hp.x > 0.0 ? warmP : coolP, min(abs(hp.x) * 2.4, 1.0) * 0.55 * patchW);
@@ -3536,6 +3597,7 @@ void splatCompute() {
     }
     float vergeW = uReduxB.y * shoulder * fD * (1.0 - roadCore) * (1.0 - projW) * (1.0 - fMs)
       * (1.0 - smoothstep(90.0, 160.0, camDist)) * (1.0 - uRoadTex * 0.5);
+    vergeW *= tileVis(1.2); // ground lane
     if (vergeW > 0.003) {
       // the road's own grit (the carriageway's clamped zero-mean rock grain) and a dusty, paler tone on the trodden verge
       float vgL = dot(texture2D(uAlbR, uv * 0.83).rgb, vec3(0.34, 0.45, 0.21));
@@ -3560,6 +3622,7 @@ void splatCompute() {
     vec2 swind = normalize(vec2(0.62, 0.78) + (nz(uv, 0.0025, vec2(0.37, 0.91)).rg - 0.5) * 0.9);
     float sph = dot(uv, swind);
     float sast = sin(sph * 3.4 + n1h * 5.0) * (1.0 - smoothstep(30.0, 120.0, camDist));
+    sast *= tileVis(1.85); // ground lane: the 1.85 m sastrugi wave
     // round 73b: the drift is a sawtooth — a long stoss slope climbing to a sharp lee crest that drops in a fifth of
     // the wavelength — so the drifts carry an EDGE (a shaded lee face under the lit crest line) that reads at range in
     // albedo where the normal has mipped away; round 73's sine was one more soft undulation
@@ -3810,6 +3873,7 @@ void splatCompute() {
     float rw = uRipple.z * (1.0 - fR) * (1.0 - triW * 0.9) * (1.0 - fMs) * sandCoverage;
     float nearRip = 1.0 - smoothstep(40.0, 150.0, camDist);
     float megaRip = 1.1 * (1.0 - smoothstep(110.0, 300.0, camDist)) * rMod;
+    nearRip *= tileVis(2.17); megaRip *= tileVis(11.4); // ground lane: the 2.2 m and 11 m trains at a grazing view
     if (rw * max(nearRip, megaRip) > 0.0005) {
       float rTone;
       vec2 rSlope = sandWaves(uv, wind0, 36.0, 0.35, sinuosity, vec2(2.9, 0.55), vec2(nearRip, megaRip), rTone);
@@ -3853,6 +3917,7 @@ void splatCompute() {
         // terrain v3: and by the TRUE camera distance as well (round 49's lesson: a face-on wall's footprint reads near,
         // so a 0.9 m contour wave survived on the ring's sand faces at a kilometre and aliased into chevrons)
         float wRipW = sandFaceW * (1.0 - smoothstep(200.0, 620.0, effDist)) * (1.0 - smoothstep(150.0, 450.0, camDist)) * 0.10;
+        wRipW *= tileVis(0.86); // ground lane
         vec2 hDir = wn.xz / max(length(wn.xz), 1e-4); // fall-line in the map plane
         a.rgb *= 1.0 + wRip * 0.12 * wRipW;
         n.xy += hDir * wRip * wRipW;
@@ -3866,6 +3931,7 @@ void splatCompute() {
                       texture2D(uAlbG, gWallUVz * 0.10, 1.0).g, gWallW);
       // terrain v3: the 3.7 m flow sine fades by the true camera distance (unmipped, it aliased on the far sand faces)
       flow *= 1.0 - smoothstep(250.0, 600.0, camDist);
+      flow *= tileVis(3.7); // ground lane
       a.rgb *= (1.0 + flow * 0.05 * sandFaceW) * (0.88 + wgA * 0.24 * sandFaceW + (1.0 - sandFaceW) * 0.12);
       a.rgb *= 1.0 - sandFaceW * 0.07; // slip-face definition vs the blown flats
     }
@@ -3902,8 +3968,8 @@ void splatCompute() {
     float decoW = smoothstep(35.0, 90.0, effDist) * (1.0 - smoothstep(160.0, 260.0, effDist))
       * (1.0 - fM) * (1.0 - roadCore);
     if (decoW > 0.004) {
-      float dcA = nz(uv, 0.0293, vec2(0.83, 0.07)).r;
-      float dcB = nz(uv, 0.0741, vec2(0.29, 0.63)).g;
+      float dcA = nzq(uv, 0.0293, vec2(0.83, 0.07)).x; // ground lane: no 34 m / 13.5 m repeat (nzq)
+      float dcB = nzq(uv, 0.0741, vec2(0.29, 0.63)).y;
       a.rgb *= 1.0 + ((dcA - 0.5) * 0.11 + (dcB - 0.5) * 0.07) * decoW;
     }
   }
@@ -3911,6 +3977,7 @@ void splatCompute() {
   float dNear = 1.0 - smoothstep(18.0, 48.0, camDist);
   if (dNear > 0.001) {
     vec3 dn = texture2D(uNrmD, uv * 1.07).xyz * 2.0 - 1.0;
+    dn.xy *= tileVis(0.935); // ground lane: the 0.93 m clod tile fades before it beats against the pixels
     // Open soil benefits from clod-scale relief, but the same normal contains
     // isolated cavities that read as black potholes on a compacted road.
     // Keep every near-detail octave off the carriageway; the dedicated road
@@ -3928,6 +3995,7 @@ void splatCompute() {
     // tile's dark cavities cannot return as repeated black marks.
     float gvL = dot(texture2D(uAlbR, uv * 0.83).rgb, vec3(0.34, 0.45, 0.21));
     float gvM = dot(uMeanR.rgb, vec3(0.34, 0.45, 0.21)); // terrain v2: the rock tile's measured mean
+    gvL = mix(gvM, gvL, tileVis(1.2)); // ground lane: the 1.2 m grit tile (zero-mean, so it eases to nothing)
     a.rgb *= 1.0 + clamp((gvL - gvM) * 1.4, -0.16, 0.20) * roadCore * dNear * (1.0 - uRoadTex);
     // sub-10 m second octave: clod/blade relief right under the camera
     // r6 terrain_environment: band widened (5-15 -> 6-26 m) and the octave
@@ -3936,6 +4004,7 @@ void splatCompute() {
     // ~0.9 m re-projection of the ground layer is the blade/clod-scale
     // signal that resolves right in front of the hull.
     float dNear2 = 1.0 - smoothstep(6.0, 26.0, camDist);
+    dNear2 *= tileVis(0.369); // ground lane: the 0.37 m blade tile at a grazing view
     if (dNear2 > 0.001) {
       vec3 dn2 = texture2D(uNrmG, uv * 2.71).xyz * 2.0 - 1.0;
       float openNear2 = dNear2 * (1.0 - roadCore);
@@ -3956,6 +4025,7 @@ void splatCompute() {
   // ~1.1 m carries the 26–150 m band (open ground, off the carriageway), fading out before the far band's own relief.
   {
     float dMidN = smoothstep(20.0, 40.0, camDist) * (1.0 - smoothstep(110.0, 190.0, camDist)) * uReduxA.y; // round 73b: 26–150 → 20–190 m
+    dMidN *= tileVis(1.075); // ground lane: its 1.08 m tile, seen from a raised camera, was the gauntlet's moiré
     if (dMidN > 0.003) {
       vec3 dnM = texture2D(uNrmG, uv * 0.93).xyz * 2.0 - 1.0;
       n.xy += dnM.xy * 0.42 * dMidN * meadowG * (1.0 - fR) * (1.0 - roadCore);
@@ -4049,6 +4119,7 @@ void splatCompute() {
   {
     float gravSpill = shoulder * (1.0 - roadCore) * smoothstep(0.58, 0.9, n1h)
       * (1.0 - smoothstep(30.0, 90.0, effDist));
+    gravSpill *= tileVis(1.2); // ground lane
     if (gravSpill > 0.004) {
       vec4 gravE = texture2D(uAlbR, uv * 0.83);
       a.rgb = mix(a.rgb, gravE.rgb * vec3(1.02, 0.97, 0.88), gravSpill * 0.5);
@@ -4095,8 +4166,12 @@ void splatCompute() {
     // veins, not a blue static field
     float iceGrey = dot(a.rgb, vec3(0.30, 0.45, 0.25));
     a.rgb = mix(a.rgb, vec3(iceGrey) * vec3(0.965, 1.0, 1.05), fMs * farM * 0.6 * (1.0 - uSea));
-    float drift = smoothstep(0.52, 0.78,
-      nz(uv, 0.021, vec2(0.31, 0.77)).r + (n1h - 0.5) * 0.30);
+    // ground lane (2026-10-03, the gauntlet: "grey frozen ponds dotted with white blobs"): snow on lake ice lies in
+    // drifts the wind combs out along itself — long tongues and streaks three times their width — not round blots
+    vec2 iceWind = vec2(0.6220, 0.7830); // the snow maps' sastrugi wind (the drift waves above)
+    vec2 iceQ = vec2(dot(uv, iceWind) * 0.32, dot(uv, vec2(-iceWind.y, iceWind.x)));
+    float driftN = uSea > 0.5 ? nz(uv, 0.021, vec2(0.31, 0.77)).r : nz(iceQ, 0.034, vec2(0.31, 0.77)).r;
+    float drift = smoothstep(0.52, 0.78, driftN + (n1h - 0.5) * 0.30);
     float bank = 1.0 - smoothstep(0.25, 0.75, fMs); // shoreline band drifts hardest
     driftW = clamp(drift * uIceDrift * (0.48 + bank * 0.52), 0.0, 1.0) * fMs;
     // maps r1: sand/mud shoals belong in the SHALLOWS — deep-water "drift"
@@ -4236,6 +4311,7 @@ void splatCompute() {
     a.rgb = mix(a.rgb, vec3(0.78, 0.80, 0.80), gStrandFoam * 0.40);
     a.rgb *= 1.0 - 0.38 * wrack;
     float pebW = (min(wetSand, 1.0) * 0.45 + wrack * 0.7) * (1.0 - smoothstep(30.0, 90.0, camDist));
+    pebW *= tileVis(0.77); // ground lane
     if (pebW > 0.01) {
       // pebbles and shell in the wet sand and along the wrack line: the rock tile's clamped zero-mean grain
       float pbL = dot(texture2D(uAlbR, uv * 1.3).rgb, vec3(0.34, 0.45, 0.21));
@@ -4276,6 +4352,7 @@ void splatCompute() {
       float mAng = pr * 6.2832 + pg * 2.1;
       vec2 mdir = vec2(cos(mAng), sin(mAng));
       float strip = sin(dot(uv, mdir) * (0.24 + pg * 0.22));
+      strip *= tileVis(13.6); // ground lane
       a.rgb *= 1.0 + strip * 0.05 * fieldW * (0.35 + cropSel);
       // darker margin line along plot borders
       vec2 fr2 = abs(fract(plotUv) - 0.5);
@@ -4288,7 +4365,13 @@ void splatCompute() {
     if (farG > 0.003) {
       // Coarse turf is low relief, not another giant clod normal. Albedo
       // retains the source detail while the actual hills own broad shading.
-      vec3 gnF = texture2D(uNrmG, uv * 0.021).xyz * 2.0 - 1.0;
+      // ground lane: the coarse turf normal and tone were ONE tile of the grass photo blown up to 48 m and 73 m — its
+      // clumps repeated across every far field on that grid; a second read of the same tile, turned 42° and at an
+      // incommensurate scale, averaged in (contrast restored), leaves no period to read
+      vec2 gnA = texture2D(uNrmG, uv * 0.021).xy * 2.0 - 1.0;
+      vec2 gnB = texture2D(uNrmG, TILEROT * uv * 0.0163 + vec2(0.41, 0.23)).xy * 2.0 - 1.0;
+      gnB = vec2(0.7431 * gnB.x + 0.6691 * gnB.y, -0.6691 * gnB.x + 0.7431 * gnB.y);
+      vec3 gnF = vec3((gnA + gnB) * 0.68, 0.0);
       // 2026-09-12 visual restoration: 0.24 -> 0.45. The 1049e4e meadow ran
       // this coarse relief at 1.5 and read as turf to the horizon; 0.24 left
       // every far field a flat sheet. 0.45 keeps the relief without the
@@ -4296,7 +4379,10 @@ void splatCompute() {
       // relief pass 2 (2026-09-12): 0.45 -> 0.9 — halfway back to the
       // reference; the far fields still read as felt at 0.45.
       n.xy += gnF.xy * farG * 0.9;
-      float gLum = dot(texture2D(uAlbG, uv * 0.0137).rgb, vec3(0.36, 0.42, 0.22));
+      float gL0 = dot(uMeanG.rgb, vec3(0.36, 0.42, 0.22));
+      float gLA = dot(texture2D(uAlbG, uv * 0.0137).rgb, vec3(0.36, 0.42, 0.22));
+      float gLB = dot(texture2D(uAlbG, TILEROT * uv * 0.0109 + vec2(0.29, 0.53)).rgb, vec3(0.36, 0.42, 0.22));
+      float gLum = gL0 + ((gLA + gLB) * 0.5 - gL0) * 1.41;
       a.rgb *= mix(1.0, 0.86 + gLum * 0.30, farG * 0.55);
     }
   }
@@ -4354,6 +4440,7 @@ void splatCompute() {
     float faceW = smoothstep(0.02, 0.085, slope) * (1.0 - steepW)
                 * (1.0 - smoothstep(20.0, 60.0, camDist))
                 * (1.0 - fD) * (1.0 - fM) * (1.0 - roadCore) * (1.0 - fR);
+    faceW *= tileVis(0.935); // ground lane
     if (faceW > 0.004) {
       vec2 uvFace = groundChartUv(wp.xz);
       vec2 dnF = groundChartNormalXZ(texture2D(uNrmD, uvFace * 1.07).xy);

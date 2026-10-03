@@ -109,7 +109,12 @@ function checkTerrain(source) {
   assert.ok(frag.includes('uniform vec4 uReduxD;'), 'the exposure / bedding vector is declared');
   assert.ok(blockAfter(frag, 'uReduxD.x > 0.001', 'exposure').includes('normalize(uSunDirW.xz'), 'exposure reads the map sun');
   unique(frag, /float bedSignal\(float y, float scale, float ph\) \{/g, 'the bed signal');
-  assert.ok(blockAfter(frag, 'patchW > 0.003', 'patchwork').includes('nz(uvW, 0.057'), 'the cover patchwork is one explicit-LOD field');
+  // ground lane (2026-10-03, the gauntlet's "softly repeating blotches"): the patchwork is the non-periodic field — two
+  // explicit-LOD reads of the noise, turned 42° apart at incommensurate scales (nzq), so its 17.5 m tile never repeats
+  assert.ok(blockAfter(frag, 'patchW > 0.003', 'patchwork').includes('nzq(uvW, 0.057'), 'the cover patchwork is the non-periodic explicit-LOD field');
+  const nzq = unique(frag, /vec2 nzq\(vec2 p, float s, vec2 o\) \{([\s\S]*?)\n\}/g, 'the non-periodic field')[1];
+  assert.equal((nzq.match(/\bnz\(/g) ?? []).length, 2, 'nzq: two explicit-LOD reads');
+  assert.ok(/0\.7431 \* p\.x - 0\.6691 \* p\.y/.test(nzq) && nzq.includes('s * 0.7243'), 'nzq: the second read is turned and rescaled');
   assert.ok(/float bedA = mix\(sin\([^;]*bedSignal\([^;]*uReduxD\.z\);/.test(frag), 'the marker beds take the non-periodic signal');
   assert.ok(/float ledge = mix\(sin\(ledgePhase\), bedSignal\([^;]*uReduxD\.z\);/.test(frag), 'the far ledges take it too');
   // the sampler budget is unchanged: ten declared samplers

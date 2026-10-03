@@ -166,6 +166,22 @@ function cellSeed(seed: number, ix: number, iz: number): number {
   return (h ^ (h >>> 16)) >>> 0;
 }
 
+/**
+ * Ground lane (2026-10-03, the gauntlet: "pastel pebble dots", "grey pebble dots" strewn at uniform spacing): stones lie
+ * in patches — a wash, a worn spot, the foot of a bank — with bare stretches between. A value noise on a 7 m lattice
+ * (0..1, smooth) the candidates' admission follows.
+ */
+function litterPatch(x: number, z: number, seed: number): number {
+  const fx = x / 7, fz = z / 7;
+  const ix = Math.floor(fx), iz = Math.floor(fz);
+  const tx = fx - ix, tz = fz - iz;
+  const sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
+  const h = (a: number, b: number): number => (cellSeed(seed ^ 0x5BD1E995, a, b) & 0xffff) / 65535;
+  const a = h(ix, iz) + (h(ix + 1, iz) - h(ix, iz)) * sx;
+  const b = h(ix, iz + 1) + (h(ix + 1, iz + 1) - h(ix, iz + 1)) * sx;
+  return a + (b - a) * sz;
+}
+
 export function resolveGroundLitterConfig(config?: GroundLitterConfig | null): Required<GroundLitterConfig> {
   const merged = { ...DEFAULTS, ...(config ?? {}) };
   for (const key of ['density', 'stones', 'clods', 'splinters', 'shoulders'] as const) {
@@ -287,7 +303,9 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
       // open ground keeps about a third of the candidates (grass hides most
       // small stones anyway); shoulders keep far more, worked yards keep a
       // few stones only so settlements stay swept
-      const keep = worked ? 0.2 : 0.34 + shoulder * 0.5;
+      // ground lane: open ground keeps its stones in patches (litterPatch: thick in a patch, nearly none between)
+      const clump = Math.min(1.7, Math.max(0.06, (litterPatch(x, z, seed) - 0.30) * 2.9));
+      const keep = worked ? 0.2 : (0.34 * clump) + shoulder * 0.5;
       if (roll > keep) continue;
       let kind: number;
       if (worked) kind = 0;
@@ -305,7 +323,7 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
       let lift: number;
       if (kind === 0) {
         sx = 0.6 + jitterA * 1.3; sz = 0.65 + jitterB * 0.8; sy = 0.45 + jitterC * 0.35;
-        lift = 0.075 * sy * 0.35;
+        lift = 0.075 * sy * 0.12; // ground lane: bedded in the soil, not set on it (0.35 of its height stood clear)
       } else if (kind === 1) {
         sx = 0.6 + jitterA * 0.9; sz = 0.6 + jitterB * 0.9; sy = 0.5 + jitterC * 0.4;
         lift = 0.06 * sy * 0.3;
@@ -320,10 +338,12 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
       _q.multiply(new THREE.Quaternion().setFromAxisAngle(_up, yaw));
       const tint = kind === 0 ? cfg.stoneTint : cfg.soilTint;
       const shade = kind === 2 ? 0.55 + jitterB * 0.25 : 0.68 + jitterA * 0.5;
-      const warm = kind === 0 ? (jitterB - 0.5) * 0.08 : 0;
+      // ground lane: the warm / cool cast is relative to the tint — the absolute ±0.04 swung a 0.13 stone a third of
+      // its value toward pink or blue (the gauntlet's "pastel" stones)
+      const warm = kind === 0 ? (jitterB - 0.5) * 0.10 : 0;
       const list = scratch[kind];
       list.push(x, y + lift, z, _q.x, _q.y, _q.z, _q.w, sx, sy, sz,
-        Math.min(1, tint[0] * shade + warm), Math.min(1, tint[1] * shade), Math.min(1, tint[2] * shade - warm * 0.5));
+        Math.min(1, tint[0] * shade * (1 + warm)), Math.min(1, tint[1] * shade), Math.min(1, tint[2] * shade * (1 - warm * 0.5)));
     }
     builds++;
     return [Float32Array.from(scratch[0]), Float32Array.from(scratch[1]), Float32Array.from(scratch[2])];

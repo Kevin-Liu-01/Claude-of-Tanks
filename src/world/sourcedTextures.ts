@@ -176,7 +176,9 @@ const TERRAIN_PLAN = {
     // D doubles as the BEACH layer (the uSea shore apron + shoals sample it):
     // pale dry strand sand
     D: { set: 'sand', tint: [0.92, 0.87, 0.76], roughMul: 1.25 },
-    R: { set: 'rock', tint: [1.06, 1.05, 1.02], roughMul: 1.15 }, M: null,
+    // ground lane (2026-10-03): Rock058 ships blue-grey (0.28/0.31/0.33); the coast's granite and Saltwind's limestone
+    // are neutral to warm — the cool cast read as a blue-grey decal under the sky's fill
+    R: { set: 'rock', tint: [1.12, 1.05, 0.95], roughMul: 1.15 }, M: null,
   },
   autumn: {
     // fall meadow: green grass multiplied toward olive-gold hay
