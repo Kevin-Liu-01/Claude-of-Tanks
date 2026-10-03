@@ -61,6 +61,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Jade River Delta (redesign 2026-10-02): the market square on the char (also the turbo-ball kickoff) and a
   // rice-drying yard on each bank, rotationally symmetric about the char's centre.
   delta: { kickoff: { x: -4, z: 14 }, zones: [{ x: -151, z: 43 }, { x: -4, z: 14 }, { x: 143, z: -15 }] },
+  // Highland Reservoir (redesign 2026-10-02): the waterworks' three gravel yards on the line of equal driven distance
+  // between the deployments — the north bank's timber landing, the shore yard (also the turbo-ball kickoff), the
+  // south yard.
+  reservoir: { kickoff: { x: 40, z: -120 }, zones: [{ x: 0, z: 300 }, { x: 40, z: -120 }, { x: 40, z: -340 }] },
   skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
   copper_mesa: { zones: [{ x: 95.75601429460295, z: 25.16493186989846 }, { x: 103.52551824388397, z: -48.38643546884091 }, { x: 159.75453586673763, z: -8.089799185507083 }] },
 };

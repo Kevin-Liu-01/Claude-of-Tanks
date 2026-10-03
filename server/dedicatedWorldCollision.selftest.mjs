@@ -65,7 +65,7 @@ const expected = {
   longleaf: [6218, 6021, 7183],
   mangrove: [5377, 5204, 6535], // 2026-10-02 Mangrove Reach redesign (docs/MAP-LAYOUT-BRIEF.md); was [5282, 5127, 6502]
   saltwind: [3811, 3614, 4260], // 2026-10-02 Saltwind Narrows redesign (docs/MAP-LAYOUT-BRIEF.md); was [3629, 3392, 4048]
-  reservoir: [6425, 6300, 7206],
+  reservoir: [6480, 6355, 7309], // 2026-10-02 Highland Reservoir layout-brief revision (docs/MAP-LAYOUT-BRIEF.md); was [6425, 6300, 7206]
   mars: [769, 715, 0],
   moon: [475, 381, 0],
   cliffbridge: [5903, 5636, 5243],
