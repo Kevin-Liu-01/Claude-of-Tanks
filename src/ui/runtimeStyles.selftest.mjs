@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 
 const [main, garageSource, responsiveCss, garageCss, motionCss, publicNavCss] = await Promise.all([
   readFile(new URL('../main.ts', import.meta.url), 'utf8'),
@@ -134,5 +134,18 @@ for (const [name, css] of [
 }
 assert.ok(responsiveCss.length > 50_000, 'responsive stylesheet is not truncated');
 assert.ok(garageCss.length > 75_000, 'Garage stylesheet is not truncated');
+
+// Only the composition root imports stylesheets statically. A lazy surface loads its CSS with a
+// dynamic import beside its module (battleHudAccess.ts, publicPages.ts): plain-Node selftests
+// import those modules, hud.ts and its graph among them, and Node cannot load a stylesheet.
+const srcRoot = new URL('../', import.meta.url);
+const staticStylesheetImport = /^\s*import\s+(?:[^'";]+\s+from\s+)?['"][^'"]+\.css(?:\?[^'"]*)?['"]/m;
+const stylesheetImporters = [];
+for (const entry of await readdir(srcRoot, { recursive: true })) {
+  if (!entry.endsWith('.ts') || entry === 'main.ts') continue;
+  if (staticStylesheetImport.test(await readFile(new URL(entry, srcRoot), 'utf8'))) stylesheetImporters.push(entry);
+}
+assert.deepEqual(stylesheetImporters, [],
+  'only src/main.ts imports stylesheets statically; a lazy surface loads its CSS with a dynamic import at its boundary');
 
 console.log('static runtime styles: PASS');

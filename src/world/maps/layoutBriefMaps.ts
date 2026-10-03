@@ -6,7 +6,7 @@
 /** Maps rebuilt to the layout brief: their layout, landform, roads, settlements, spawns and objectives are new. */
 export const LAYOUT_BRIEF_MAPS = Object.freeze([
   'desert', 'urban', 'railyard', 'frontier', 'saltwind', 'coastal', 'verdant', 'mangrove', 'badlands', 'polders', 'delta',
-  'reservoir',
+  'reservoir', 'monsoon',
   // maps lane B, batch 5 (2026-10-02)
   'cliffbridge', 'ruinspires', 'airfield',
 ] as const);

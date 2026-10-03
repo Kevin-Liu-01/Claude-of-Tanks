@@ -1,5 +1,17 @@
-// monsoon.js — storm-dark tropical highlands with jungle belts, washed-out
-// roads, a ruined hill town and saturated lowland marshes.
+// src/world/maps/monsoon.ts — Monsoon Ridge, redesigned 2026-10-02 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
+// The flood channel, the ruined hill town, the five roads, the jungle, palette, sky, name and id are the map's identity
+// and stay; the hills are new. The old ones were Verdant's five landforms in a monsoon palette, and their ground closed
+// the median sightline to 78 m.
+//
+// Reference: Kohima in the Naga Hills, April to June 1944: a hill town on a saddle between jungle spurs, Garrison Hill
+// and Jail Hill above its streets, the road winding through, and the monsoon flooding the valley bottoms.
+//
+// The story on the ground: the flood channel runs through the valley from the south-west to the north-east, under the
+// town. A spur ridge stands west of the town north of the channel and another east of it; Garrison Hill rises in the
+// north-west and Jail Hill in the south-west, and two terrace knolls hold the east side. Alpha deploys in the south
+// valley beside the road on its assembly apron, bravo on the northern slope. The zone-control discs stand on the line
+// of equal driven distance: the temple forecourt by the west road, the town's square and the tea estate's drying yard
+// on the east.
 
 import { createMarshChannel } from './marshChannel.ts';
 
@@ -21,32 +33,52 @@ export default {
   name: 'Monsoon Ridge',
   blurb: 'A storm rolls across jungle ridges and the shattered town in the valley',
   terrain: {
-    hillScale: 1.32, microScale: 1.1, rimH: 44, clearMarshVeg: true,
+    hillScale: 1.0, microScale: 1.1, rimH: 44, clearMarshVeg: true,
     roads: { paths: [
       [[-424, -442], [-342, -274], [-306, -82], [-322, 108], [-254, 286], [-174, 462]],
       [[-62, -468], [-42, -282], [-8, -112], [28, 48], [54, 224], [106, 466]],
       [[350, -450], [294, -286], [264, -104], [288, 72], [242, 250], [180, 450]],
-      [[-356, -172], [-214, -132], [-76, -60], [62, -18], [208, -66], [322, -146]],
+      [[-356, -172], [-214, -132], [-76, -60], [62, -18], [208, -66], [264, -104], [322, -146]],
       [[-310, 204], [-164, 168], [-18, 210], [120, 274], [238, 328]],
     ] },
     marshes: [
       ...floodChannel,
       { x: 294, z: -260, r: 38, dip: 1.8 },
     ],
+    // The aprons keep the apron bank law (docs/MAP-LAYOUT-BRIEF.md, "Apron banks"): none makes its bank steeper than
+    // the hills round it. The zone-control seats stand on the line of equal driven distance. The temple forecourt by
+    // the west road and the tea estate's drying yard east of the east spur are aprons; the town's own square needs
+    // none.
+    hardstands: [
+      // Alpha's assembly apron round its pad in the south valley, where road 2 crosses it. It takes the road's own
+      // height and grade (6 % down the valley on this seed), so the road keeps its grade at every terrain seed. Its
+      // turbo goal and its flag seat on it.
+      { x: -40, z: -340, width: 32, length: 32, yawDeg: 6, grade: 'road', bankM: 16 },
+      // the temple forecourt astride the west road, on the road's own grade, with a 24 m bank down to the channel
+      { x: -306, z: 16, width: 44, length: 44, yawDeg: -5, grade: 'road', bankM: 24 },
+      // the drying yard at its ground's median height
+      { x: 400, z: 8, width: 56, length: 56, yawDeg: 0, level: 4.5, grade: 0 },
+    ],
     village: { x0: -132, x1: 156, z0: -112, z1: 174, cx: 12, cz: 26, feather: 50, flatten: 0.74, relief: 0.28 },
     landforms: [
-      { kind: 'ridge', x: -252, z: 4, length: 360, width: 82, height: 9.2, yawDeg: 14 },
-      { kind: 'ridge', x: 246, z: 42, length: 330, width: 78, height: 8.7, yawDeg: -18 },
-      { kind: 'ridge', x: -28, z: 266, length: 230, width: 66, height: 6.4, yawDeg: 82 },
-      { kind: 'knoll', x: 142, z: -226, rx: 82, rz: 64, height: 6.2, yawDeg: 18 },
-      { kind: 'basin', x: -126, z: -202, rx: 104, rz: 76, height: -3.2, yawDeg: -16, wetScale: 0.75 },
+      // the spur ridges west and east of the town, Garrison Hill, Jail Hill, the flood basin and the terrace knolls
+      { kind: 'ridge', x: -200, z: 120, length: 240, width: 70, height: 9, yawDeg: 80 },
+      { kind: 'ridge', x: 215, z: -40, length: 280, width: 60, height: 9, yawDeg: 100 },
+      { kind: 'knoll', x: -100, z: 280, rx: 70, rz: 55, height: 12 },
+      { kind: 'knoll', x: -110, z: -260, rx: 60, rz: 50, height: 10 },
+      { kind: 'basin', x: -300, z: -320, rx: 80, rz: 60, height: -3, wetScale: 0.75 },
+      { kind: 'knoll', x: 330, z: 160, rx: 60, rz: 50, height: 8 },
+      { kind: 'knoll', x: 230, z: -300, rx: 60, rz: 45, height: 8 },
     ],
   },
   spawns: {
-    player: { x: 10, z: -398 },
+    // Alpha forms up on its apron in the south valley beside the road. The old pad (10, -398) stood on a 30 % hillside:
+    // every level apron there inside the turbo arena (|z| <= 402 for the goal) cut a wall into the hill, and its goal
+    // seated 300 m forward. Bravo's pads stand 16 m farther north than before, so the deployments stay 744 m apart.
+    player: { x: -40, z: -340 },
     enemies: [
-      { x: -196, z: 372 }, { x: -126, z: 410 }, { x: -50, z: 366 },
-      { x: 28, z: 414 }, { x: 108, z: 368 }, { x: 188, z: 404 }, { x: 258, z: 356 },
+      { x: -196, z: 388 }, { x: -126, z: 426 }, { x: -50, z: 382 },
+      { x: 28, z: 430 }, { x: 108, z: 384 }, { x: 188, z: 420 }, { x: 258, z: 372 },
     ],
   },
   splat: {
@@ -71,11 +103,11 @@ export default {
       'ruin', 'market', 'farmhouse', 'woodshed'],
     destructibleBuildings: ['stilthouse', 'longhouse', 'fieldhospital', 'commandtent'],
     tacticalBeats: [
-      { id: 'western-temple-ridge', role: 'brawl', x: -290, z: 78, yawDeg: 12,
+      { id: 'western-temple-ridge', role: 'brawl', x: -250, z: 140, yawDeg: 12,
         structure: 'longhouse', redoubt: true, outcrop: { count: 7, radius: 11 }, wreck: true, wreckOffsetZ: -16 },
       { id: 'floodplain-listening-post', role: 'scout', x: 44, z: -184, yawDeg: 18,
         structure: 'commandtent', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },
-      { id: 'eastern-field-hospital', role: 'support', x: 264, z: 72, yawDeg: -16,
+      { id: 'eastern-field-hospital', role: 'support', x: 310, z: -80, yawDeg: -16,
         structure: 'fieldhospital', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: 15 },
     ],
     wallStyle: 'fieldstone', wallStoneChance: 0.78,

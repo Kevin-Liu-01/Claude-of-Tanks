@@ -47,7 +47,7 @@ const expected = {
   delta: [8114, 7761, 9770], // 2026-10-02 Jade River Delta redesign (docs/MAP-LAYOUT-BRIEF.md); was [7742, 7430, 9644]
   badlands: [3013, 2765, 1956], // 2026-10-02 Redrock Divide redesign (docs/MAP-LAYOUT-BRIEF.md); was [3011, 2915, 1920]
   // Native recapture with prior prop code also contains this additional wreck.
-  monsoon: [9473, 9215, 12022],
+  monsoon: [9855, 9630, 12375], // 2026-10-02 Monsoon Ridge layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md); was [9473, 9215, 12022]
   alpine: [9117, 9044, 8009],
   // Same prior-props baseline verification as Monsoon.
   caldera: [5000, 5107, 3810],

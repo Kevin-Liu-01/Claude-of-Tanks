@@ -67,6 +67,7 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Highland Reservoir (redesign 2026-10-02): the waterworks' three gravel yards on the line of equal driven distance
   // between the deployments — the north bank's timber landing, the shore yard (also the turbo-ball kickoff), the
   // south yard.
+  monsoon: { kickoff: { x: -60, z: 24 }, zones: [{ x: -306, z: 16 }, { x: -60, z: 24 }, { x: 400, z: 8 }] },
   reservoir: { kickoff: { x: 40, z: -120 }, zones: [{ x: 0, z: 300 }, { x: 40, z: -120 }, { x: 40, z: -340 }] },
   // Ruinspires (redesign 2026-10-02): the boulevard's three squares, level aprons in the map file, rotationally
   // symmetric about the Square of the Republic (also the turbo-ball kickoff).
