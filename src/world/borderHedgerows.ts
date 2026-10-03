@@ -23,6 +23,11 @@ export interface BorderHedgerowOptions {
   palette: HedgePalette;
   /** Bush crest height range (m). */
   heightM?: readonly [number, number];
+  /**
+   * 'hedge' (the default): a bush line. 'wall': a karst field's dry stone wall — 0.9-1.3 m of grey limestone, 0.9 m
+   * across at its foot, its crest barely lumpy (the palette is then the stone's).
+   */
+  kind?: 'hedge' | 'wall';
 }
 
 const PRESENCE = 0.32;
@@ -41,7 +46,9 @@ const _color = new THREE.Color();
 
 /** The hedgerows' merged mesh, or null when no stretch is hedged. The caller joins its material to the cascades. */
 export function buildBorderHedgerows(options: BorderHedgerowOptions): THREE.Mesh | null {
-  const [hLo, hHi] = options.heightM ?? [2.4, 4.6];
+  const wall = options.kind === 'wall';
+  const [hLo, hHi] = options.heightM ?? (wall ? [0.9, 1.3] : [2.4, 4.6]);
+  const halfFoot = wall ? 0.45 : HALF_FOOT_M;
   const rng = mulberry32((options.seed ^ 0x4ED6E) >>> 0);
   const positions: number[] = [], normals: number[] = [], colors: number[] = [];
   const pal = options.palette;
@@ -76,15 +83,16 @@ export function buildBorderHedgerows(options: BorderHedgerowOptions): THREE.Mesh
         const nx = -tz, nz = tx; // across the line
         // the crest: lumpy along the line, tapered at the run's ends and by the hedge's own presence
         const s = (k - start) * 8 + phase;
-        const lump = 0.5 + 0.28 * Math.sin(s * 0.21) + 0.14 * Math.sin(s * 0.57 + 1.7) + 0.08 * Math.sin(s * 1.31 + 0.4);
+        const lump = wall ? 0.5 + 0.18 * Math.sin(s * 0.13) + 0.08 * Math.sin(s * 0.9 + 1.7)
+          : 0.5 + 0.28 * Math.sin(s * 0.21) + 0.14 * Math.sin(s * 0.57 + 1.7) + 0.08 * Math.sin(s * 1.31 + 0.4);
         const endTaper = Math.min(1, (k - start + 0.6) / 1.6, (end - 1 - k + 0.6) / 1.6);
         const presence = Math.min(1, (line.w[k] - PRESENCE) / (1 - PRESENCE) * 1.6);
         const crest = (hLo + (hHi - hLo) * lump) * (0.35 + 0.65 * endTaper) * (0.55 + 0.45 * presence);
-        const half = HALF_FOOT_M * (0.8 + 0.4 * lump) * (0.6 + 0.4 * endTaper);
-        // the crest leans a little off the line (wind-cut), the foot sinks under the ground's slope
-        const offset = (lump - 0.5) * 0.5 * lean;
+        const half = halfFoot * (0.8 + 0.4 * lump) * (0.6 + 0.4 * endTaper);
+        // the crest leans a little off the line (wind-cut; a wall stands straight), the foot sinks under the ground's slope
+        const offset = wall ? 0 : (lump - 0.5) * 0.5 * lean;
         sections.push({ lx: x + nx * half, lz: z + nz * half, rx: x - nx * half, rz: z - nz * half,
-          cx: x + nx * offset, cz: z + nz * offset, foot: g - 0.7, crest: g + crest, nx, nz });
+          cx: x + nx * offset, cz: z + nz * offset, foot: g - (wall ? 0.35 : 0.7), crest: g + crest, nx, nz });
       }
       const base = col(pal.l0 * 0.78, tint), mid = col((pal.l0 + pal.l1) * 0.5 * 0.86, tint), top = col(pal.l1 * 0.9, tint);
       for (let k = 0; k + 1 < sections.length; k++) {

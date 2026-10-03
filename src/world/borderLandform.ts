@@ -19,6 +19,7 @@
 // Corners lower the rim further (the creases were the strongest tell). Everything is a pure function of (x, z): no
 // grid, no allocation, deterministic per seed, Node-runnable (the authority and the collision builders share it).
 import { SimplexNoise } from '../engine/simplexFast.ts';
+import { type BorderLandUse, type LandUseSampleLike, traceLandUseLines } from './borderLandUse.ts';
 import { createMassifField } from './horizonMassif.ts';
 
 /** The playable half extent (battlefieldBounds PLAYABLE_HALF_EXTENT_M): the rim inside it may only be lowered. */
@@ -268,6 +269,13 @@ const VALLEY_FLOOR_M = 70, VALLEY_SIDE_M = 190;
 export function createBorderLandform(
   seed: number, rimH: number, settings: BorderLandformSettings, anchors: readonly BorderAnchor[] = [],
   valleys: readonly BorderValley[] = [],
+  /**
+   * The map's land use (the ground lane's landUse.ts grid, borderLandUse.ts) when it has a profile: the land past the
+   * edge is then that same grid — its heading squares the farmsteads, its hedged boundaries carry the bush lines (on a
+   * walled region every boundary carries a dry stone wall), its crops and tracks are the terrain material's own; the
+   * landform's parcels and tracks stand down and the woods keep their free-form patches. Null: the landform's own fields.
+   */
+  landUse: BorderLandUse | null = null,
 ): BorderLandform {
   const noise = new SimplexNoise({ random: mulberry32((seed ^ 0xB0BDE5) >>> 0) });
   const { enclosure, hillHeight, reachM, rimFloor, wavelengthM, ridged, terrace } = settings;
@@ -382,9 +390,12 @@ export function createBorderLandform(
     return near + (crest - near) * ramp;
   }
 
+  const landUseSample: LandUseSampleLike = landUse ? landUse.sample() : { active: 0, hedge: 0, edgeM: 1e9, boundary: 0 };
   // the field system (FIELD_PITCH_M): this map's orientation, and its share of boundaries per family
   const fieldRand = mulberry32((seed ^ 0xF1E1D5) >>> 0);
-  const fieldAngle = (fieldRand() < 0.5 ? -1 : 1) * (0.12 + 0.24 * fieldRand());
+  const ownAngle = (fieldRand() < 0.5 ? -1 : 1) * (0.12 + 0.24 * fieldRand());
+  // (a land-use map's grid has its own heading: the farmsteads square up to it)
+  const fieldAngle = landUse ? landUse.heading : ownAngle;
   const fieldCos = Math.cos(fieldAngle), fieldSin = Math.sin(fieldAngle);
   const fieldShare = FIELD_LINE_SHARE[settings.crops] ?? FIELD_LINE_SHARE.temperate;
   /** The two families' pitch levels at (x, z): continuous, a pitch line on every whole level. */
@@ -478,8 +489,9 @@ export function createBorderLandform(
   const fieldWoods = new Map<number, number>();
   function woodsAtField(x: number, z: number): number {
     if (!Number.isFinite(woodsCut)) return woodsCut < 0 ? 1 : 0;
-    if (settings.fields <= 0) {
-      // the wild woods (forest, scrub, mangrove) keep clearings along the edge too, lighter than farmland's
+    if (settings.fields <= 0 || landUse) {
+      // the wild woods (forest, scrub, mangrove) keep clearings along the edge too, lighter than farmland's (and on a
+      // land-use map the woods are free-form: the whole-field cells would be the landform's grid, not the map's)
       const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
       const cut = woodsCut + 0.18 * (1 - smoothstep(30, 160, edgeOut)) + 0.08 * (1 - smoothstep(160, 320, edgeOut));
       return smoothstep(cut - 0.025, cut + 0.025, woodsField(x, z));
@@ -539,6 +551,13 @@ export function createBorderLandform(
     fieldAngle,
     classicIslandAt: (x: number, z: number): number => (anchors.length ? anchorAt(x, z) : 0),
     hedgeAt(x: number, z: number): number {
+      if (landUse) {
+        // the map's own hedged boundaries (landUse.ts), from ~40 m past the edge, none in a wood
+        const fade = smoothstep(25, 110, Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M);
+        if (fade <= 0) return 0;
+        landUse.at(x, z, landUseSample);
+        return landUseSample.active > 0 ? landUseSample.hedge * fade * (1 - woodsAt(x, z)) : 0;
+      }
       if (settings.hedgerows <= 0) return 0;
       // no hedge along the edge itself: the field boundaries are hedged from ~40 m past it
       const fade = smoothstep(25, 110, Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M);
@@ -550,6 +569,13 @@ export function createBorderLandform(
       return line * gaps * fade * settings.hedgerows;
     },
     traceHedgeLines(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[] {
+      if (landUse) {
+        // the map's grid: its hedged short boundaries (a walled region: every boundary, near the edge only — farther out
+        // the material's own wall band carries them)
+        const reach = landUse.boundary > 2.5 ? Math.min(maxOut, 260) : maxOut;
+        return traceLandUseLines(landUse, BORDER_EDGE_M, reach, keep ?? (() => true),
+          (x, z) => smoothstep(25, 110, Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M) * (1 - woodsAt(x, z)));
+      }
       const lines: { xs: number[]; zs: number[]; w: number[] }[] = [];
       if (settings.hedgerows <= 0) return lines;
       const STEP = 8, span = (BORDER_EDGE_M + maxOut) * Math.SQRT2 + 40, kMax = Math.ceil(span / FIELD_PITCH_M) + 2;
@@ -592,7 +618,7 @@ export function createBorderLandform(
     },
     trackAt(x: number, z: number, out: [number, number, number, number]): [number, number, number, number] {
       out[0] = 0; out[1] = 0; out[2] = 0; out[3] = 0;
-      if (settings.fields <= 0) return out;
+      if (settings.fields <= 0 || landUse) return out; // (a land-use map's tracks are the material's own lu_field)
       const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
       // the tracks come in from 20 m past the edge, narrower onto the woods (a forest ride, not a farm track)
       const presence = smoothstep(20, 80, edgeOut) * (1 - 0.6 * woodsAt(x, z)) * Math.min(1, settings.fields * 1.5);
@@ -622,6 +648,12 @@ export function createBorderLandform(
     },
     parcelTintAt(x: number, z: number, out: [number, number, number, number]): [number, number, number, number] {
       out[0] = 0; out[1] = 0; out[2] = 0; out[3] = 1;
+      if (landUse) {
+        // a land-use map: the material draws the map's own fields past the edge; the attribute carries only where they
+        // may lie — off the woods, thinning onto the crests (no fade: the fields run straight across the edge)
+        out[3] = 1 - (1 - woodsAt(x, z)) * (1 - 0.7 * smoothstep(0.62, 0.92, hillsAt(x, z)));
+        return out;
+      }
       if (settings.fields <= 0) return out;
       const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
       const fade = smoothstep(0, 40, edgeOut);
