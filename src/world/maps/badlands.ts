@@ -20,6 +20,9 @@ const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 // The floor's layout turns through 180 degrees about the outpost (8, 0): every feature has its counterpart.
 const pair = <T extends { x: number; z: number }>(form: T): T[] => [form, { ...form, x: 16 - form.x, z: -form.z }];
+// a bar's counterpart turns with it, so a tapered ramp's high end still meets its own wall
+const pairBar = <T extends { x: number; z: number; yawDeg: number }>(form: T): T[] =>
+  [form, { ...form, x: 16 - form.x, z: -form.z, yawDeg: form.yawDeg + 180 }];
 
 export default {
   id: 'badlands',
@@ -49,18 +52,32 @@ export default {
     ],
     village: { x0: -96, x1: 112, z0: -86, z1: 106, cx: 8, cz: 0, feather: 40, flatten: 0.76, relief: 0.16 },
     landforms: [
-      // The inselbergs: sandstone domes on the floor, each a main dome, a lower lobe and a talus skirt. The gate pair
-      // screens each deployment from the other; the lane pairs stand between the tracks on the slices at 35 and 65 %
-      // of the way, where they split the floor into three lanes.
-      ...[
-        [-40, -292, 36, 30, 26, -8, -300, 22, 18], // gate
-        [-118, -128, 34, 40, 24, -140, -98, 20, 24], // west lane
-        [96, -112, 34, 40, 24, 118, -140, 20, 24], // east lane
-      ].flatMap(([x, z, rx, rz, height, lx, lz, lrx, lrz]) => [
-        ...pair({ kind: 'knoll', x, z, rx, rz, height, corridorScale: 1 }),
-        ...pair({ kind: 'knoll', x: lx, z: lz, rx: lrx, rz: lrz, height: Math.round(height * 0.65), corridorScale: 1 }),
-        ...pair({ kind: 'knoll', x: (x * 3 + lx) / 4, z: (z * 3 + lz) / 4, rx: rx * 1.7, rz: rz * 1.7, height: 3.2 }),
-      ]),
+      // The inselbergs: sandstone jebels on the floor, each a main dome and a lower lobe (landformGeology.ts
+      // 'inselberg': a broad rounded crown steepening into a near-vertical wall whose foot wanders round the dome, clefts
+      // down the wall, talus fans spreading from the clefts' mouths over a concave apron, knobbly rock, and a boulder
+      // apron of fallen blocks), and a sand ramp banked against one flank. The gate pair screens each deployment from
+      // the other, 26 m further out than the batch-1 domes so that Frontline Assault's third sector (85 % of the way)
+      // lies on the floor in front of the north gate, not on its face; the lane pairs stand between the tracks on the
+      // slices at 35 and 65 % of the way, where they split the floor into three lanes.
+      ...([
+        [-40, -318, 36, 30, 26, -8, -326, 22, 18, null], // gate (no ramp: the frontline's sector lines run past it)
+        [-118, -128, 34, 40, 24, -140, -98, 20, 24, -70], // west lane, its ramp to the south
+        [96, -112, 34, 40, 24, 118, -140, 20, 24, 110], // east lane, its ramp to the north
+      ] as [number, number, number, number, number, number, number, number, number, number | null][])
+        .flatMap(([x, z, rx, rz, height, lx, lz, lrx, lrz, rampDeg]) => {
+        const ramp = (rampDeg ?? 0) * Math.PI / 180, reach = Math.max(rx, rz) * 0.55 + 34;
+        return [
+          ...pair({ kind: 'knoll', x, z, rx, rz, height, corridorScale: 1, geology: { profile: 'inselberg' as const,
+            outline: 0.18, foot: 0.66, footVary: 0.14, apron: 0.18, crown: 3.2, rough: 1.3, boulders: 24,
+            gullies: { count: 12, depthM: 4, width: 0.4 }, fans: { reach: 0.35, heightM: 2.6 } } }),
+          ...pair({ kind: 'knoll', x: lx, z: lz, rx: lrx, rz: lrz, height: Math.round(height * 0.65), corridorScale: 1,
+            geology: { profile: 'inselberg' as const, outline: 0.2, foot: 0.62, footVary: 0.16, apron: 0.2, crown: 3,
+              rough: 1.1, boulders: 12, gullies: { count: 8, depthM: 3, width: 0.4 }, fans: { reach: 0.35, heightM: 1.8 } } }),
+          // the sand ramp: wind-blown sand banked against the wall, falling away from it
+          ...(rampDeg === null ? [] : pairBar({ kind: 'ridge', x: x + Math.cos(ramp) * reach, z: z + Math.sin(ramp) * reach,
+            length: 72, width: 26, height: 7, yawDeg: rampDeg, geology: { outline: 0.22, taper: 0.92, rough: 0.25 } })),
+        ];
+      }),
       // Sand ramps banked against the wall toes and dune ridges across the floor: hull-down ground in the open
       ...[[-150, -300, 120, 30], [-170, 20, 110, 80], [-20, -40, 90, 40], [110, -310, 100, 20],
         [-196, -130, 80, 10], [150, -330, 90, 60],
