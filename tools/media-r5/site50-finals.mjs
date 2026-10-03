@@ -60,7 +60,8 @@ const encodeLoops = part => {
 };
 for (let i = 0; i < ids.length; i += chunk) {
   const k = i / chunk;
-  if (k >= 2 && encoders[k - 2]) await encoders[k - 2];
+  // (masters on disk only: without them a chunk renders as soon as the lock allows)
+  if (flags['film-master'] !== 'none' && k >= 2 && encoders[k - 2]) await encoders[k - 2];
   const part = new Set(ids.slice(i, i + chunk));
   // cinema.mjs reads resume per job: a re-run keeps every finished film and still
   const jobs = [...films.filter(j => part.has(idOf(j))), ...stills.filter(j => part.has(idOf(j)))].map(j => ({ ...j, resume: 'true' }));
