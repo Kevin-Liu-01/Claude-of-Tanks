@@ -10,6 +10,15 @@ export const CAST = {
   t90m: 't90m_x', ariete: 'ariete_c2_x', t14: 't14_x', k2: 'k2_x', type10: 'type10_x',
   t72b3m: 't72b3m_x', merkava: 'merkava4_x', type96b: 'type96b_x',
   lynx: 'kf41_lynx_x', cv90: 'cv90_mkiv_x', griffin: 'griffin50_x', kurganets: 'kurganets25_x',
+  // owner 2026-10-02 ("use more tanks, we have a lot of really high quality tanks"): the rest of the source-backed fleet
+  strv122: 'strv122_x', cv9040: 'cv90_x', cv90105: 'cv90105_tml_x', arieteC1: 'ariete_c1_x', aft10: 'aft10_x',
+  warrior: 'fv510_milan_x', ajax: 'ajax_x', ares: 'ares_apc_x', sabra: 'sabra_mk2_x', merkava3d: 'merkava3d_x',
+  obj695: 'object695_x', dragun: 'bmp3m_dragun125_x', leo2a6m: 'leo2a6m_x', leo2a5m: 'leo2a4m_x', leo2a5: 'leo2a5_x',
+  leo2a6: 'leo2a6_x', t90a: 't90a_x', t90vladimir: 't90a_vladimir_x', t90sm: 't90sm_x', t90ms: 't90ms_x', t90: 't90_x',
+  k21: 'k21_x', k1a1: 'k1a1_x', amx30: 'amx30_x', amx40: 'amx40_x', amx56: 'leclerc_classic_x', t62: 't62mv1_x',
+  t72b: 't72b_1987_x', t80u: 't80u_x', t72b3: 't72b3_x', t72bu: 't72bu_x', chieftain10: 'chieftain_mk10_x',
+  chieftain5: 'chieftain5_x', challenger1: 'challenger1_x', type90: 'type90_x', type89: 'type89_x', m1a2: 'm1a2_x',
+  tusk: 'm1a2_tusk_x', sepv2: 'm1a2_sepv2_x', abramsUA: 'ua_m1a1_x', puma: 'spz_puma_s1_x', arieteC2: 'ariete_c2_x',
 };
 /** Public names for callouts (from the fleet specs) and nations. */
 export const CAST_NAMES = {
@@ -19,6 +28,16 @@ export const CAST_NAMES = {
   type10_x: ['Type 10', 'Japan'], t72b3m_x: ['T-72B3M', 'Russia'], merkava4_x: ['Merkava Mk 4', 'Israel'],
   type96b_x: ['Type 96B', 'China'], kf41_lynx_x: ['KF41 Lynx', 'Germany'], cv90_mkiv_x: ['CV90 Mk IV', 'Sweden'],
   griffin50_x: ['Griffin 50 mm', 'USA'], kurganets25_x: ['Kurganets-25', 'Russia'],
+  strv122_x: ['Stridsvagn 122', 'Sweden'], cv90_x: ['CV9040C', 'Sweden'], cv90105_tml_x: ['CV90105', 'Sweden'], ariete_c1_x: ['C1 Ariete', 'Italy'],
+  aft10_x: ['AFT-10', 'China'], fv510_milan_x: ['Warrior', 'UK'], ajax_x: ['Ajax', 'UK'], ares_apc_x: ['Ares', 'UK'], sabra_mk2_x: ['Sabra Mk 2', 'Israel'],
+  merkava3d_x: ['Merkava Mk 3D', 'Israel'], object695_x: ['Object 695', 'Russia'], bmp3m_dragun125_x: ['BMP-3M Dragun', 'Russia'],
+  leo2a6m_x: ['Leopard 2A6M', 'Germany'], leo2a4m_x: ['Leopard 2A5M', 'Germany'], leo2a5_x: ['Leopard 2A5', 'Germany'], leo2a6_x: ['Leopard 2A6', 'Germany'],
+  t90a_x: ['T-90A', 'Russia'], t90a_vladimir_x: ['T-90A Vladimir', 'Russia'], t90sm_x: ['T-90SM', 'Russia'], t90ms_x: ['T-90MS Tagil', 'Russia'], t90_x: ['T-90', 'Russia'],
+  k21_x: ['K21', 'South Korea'], k1a1_x: ['K1A1', 'South Korea'], amx30_x: ['AMX-30B', 'France'], amx40_x: ['AMX-40', 'France'], leclerc_classic_x: ['AMX 56 Leclerc', 'France'],
+  t62mv1_x: ['T-62MV-1', 'Russia'], t72b_1987_x: ['T-72B', 'Russia'], t80u_x: ['T-80U', 'Russia'], t72b3_x: ['T-72B3', 'Russia'], t72bu_x: ['T-72BU', 'Russia'],
+  chieftain_mk10_x: ['Chieftain Mk 10', 'UK'], chieftain5_x: ['Chieftain Mk 5', 'UK'], challenger1_x: ['Challenger 1', 'UK'], type90_x: ['Type 90', 'Japan'],
+  type89_x: ['Type 89', 'Japan'], m1a2_x: ['M1A2 Abrams', 'USA'], m1a2_tusk_x: ['M1A2 Abrams TUSK', 'USA'], m1a2_sepv2_x: ['M1A2 Abrams SEPv2', 'USA'],
+  ua_m1a1_x: ['M1A2 Abrams (Ukraine)', 'Ukraine'], spz_puma_s1_x: ['Puma S1', 'Germany'],
 };
 
 const featureCache = new Map();
