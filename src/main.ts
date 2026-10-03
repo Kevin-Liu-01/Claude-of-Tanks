@@ -1385,8 +1385,12 @@ const showroom = createGarageShowroomRuntime({
   heroYawRad: GARAGE_CAMERA_AZIMUTH_RAD,
   heroPitchRad: GARAGE_CAMERA_PITCH_RAD,
   fixedFrame: () => ({
-    x: GARAGE_POS.x, y: GARAGE_POS.y + GARAGE_CAMERA_LOOK_HEIGHT_M, z: GARAGE_POS.z,
-    hw: GARAGE_FRAME_BOX.hw, hh: GARAGE_FRAME_BOX.hh, hd: GARAGE_FRAME_BOX.hd,
+    x: GARAGE_POS.x,
+    y: GARAGE_POS.y + GARAGE_CAMERA_LOOK_HEIGHT_M + (garagePreviewMode === 'capture_the_flag' ? 1.3 : garagePreviewMode === 'drone' ? .35 : 0),
+    z: GARAGE_POS.z,
+    hw: GARAGE_FRAME_BOX.hw,
+    hh: GARAGE_FRAME_BOX.hh + (garagePreviewMode === 'capture_the_flag' ? 1.3 : garagePreviewMode === 'drone' ? .35 : 0),
+    hd: GARAGE_FRAME_BOX.hd,
   }),
   floorY: () => GARAGE_POS.y,
 });

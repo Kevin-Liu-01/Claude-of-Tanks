@@ -18,6 +18,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/aerialMinimap.selftest.mjs',
     'src/sim/droneRecon.selftest.mjs',
     'src/game/missionAttachmentVisual.selftest.mjs',
+    'src/game/garageModePreview.selftest.mjs',
     'src/engine/aerialVision.selftest.mjs',
     'src/engine/thermalVehicles.selftest.mjs',
     'src/game/juggernautVisual.selftest.mjs',
