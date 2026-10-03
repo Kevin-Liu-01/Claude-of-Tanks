@@ -580,7 +580,7 @@ export function createAudio({
         if (cls.family === 'mg') lastBurstTail.set(cls.id, now);
         // The echo sits well under the crack (2026-10-02): at the old level it was nearly as loud as a
         // peak-mastered report and held a near shot within 2–9 dB of its peak for half a second, a blast.
-        play(`tail_${scene.tail}`, { ...base, rate: cls.tailRate * report.rate, delayS: 0.035 + random() * 0.02, gainDb: gainToDb(cls.tailGain) - (own ? 12 : 10) });
+        play(`tail_${scene.tail}`, { ...base, rate: cls.tailRate * report.rate, delayS: 0.035 + random() * 0.02, gainDb: gainToDb(cls.tailGain) - (own ? 14 : 12) });
       }
     }
     if (own && listenerScoped && cls.family === 'cannon') {
