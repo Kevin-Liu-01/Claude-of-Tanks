@@ -8,7 +8,8 @@ import { DUR, KINDS, LOOP_MS, SHOTS, XFADE_MS, siteScene } from './site50.mjs';
 // street duel: a battle in full swing in daylight on the battlefields that look best. These receipts hold the plan:
 // fifty unique shots of every kind, plain titles, takes long enough for the loop and its crossfade, every one-shot
 // event inside the loop body (where the tail-into-head dissolve cannot ghost it), daylight, deep focus, and a fight in
-// every frame — something burning and something firing, hitting or exploding.
+// every frame — something burning and something firing, hitting or exploding. Daylight carries most of the fifty; the
+// owner then asked for sunset and night as well, so both get at least six shots and every night fight is lit by a flare.
 assert.equal(SHOTS.length, 50, 'fifty shots');
 assert.deepEqual(SHOTS.map(s => s[0]), Array.from({ length: 50 }, (_, i) => i + 1), 'numbered 1..50 in order');
 const ids = SHOTS.map(s => s[1]);
@@ -18,7 +19,7 @@ for (const k of KINDS) assert.ok(byKind[k] >= 9, `at least nine ${k} shots (${by
 assert.equal(XFADE_MS < LOOP_MS / 4 && DUR === LOOP_MS + XFADE_MS, true, 'the take is the loop plus its crossfade');
 
 const BATTLEFIELDS = new Set(['urban', 'verdant', 'alpine', 'oasis', 'fjord', 'monsoon', 'railyard', 'foundry', 'frontier', 'delta', 'winter', 'orchard', 'reservoir']);
-const DAYLIGHT = new Set(['morning', 'day', 'golden']);
+const HOURS = new Set(['morning', 'day', 'golden', 'sunset', 'night']);
 const cast = new Set(Object.values(CAST));
 const ONE_SHOT = new Set(['fire', 'tank_kill', 'impact', 'explosion', 'barrage', 'debris', 'shockwave', 'mg_burst']);
 const COMBAT = new Set(['fire', 'tank_kill', 'impact', 'explosion', 'barrage', 'mg_burst']);
@@ -33,7 +34,8 @@ for (const shot of SHOTS) {
   maps.add(scene.map); times.add(scene.meta.time);
   assert.ok(MAP_IDS.includes(scene.map), `${id}: ${scene.map} is a battlefield`);
   assert.ok(BATTLEFIELDS.has(scene.map), `${id}: ${scene.map} is one of the chosen battlefields`);
-  assert.ok(DAYLIGHT.has(scene.meta.time), `${id}: daylight (${scene.meta.time})`);
+  assert.ok(HOURS.has(scene.meta.time), `${id}: a planned hour (${scene.meta.time})`);
+  if (scene.meta.time === 'night') assert.ok(scene.effects.some(e => e.type === 'flare'), `${id}: a night fight is lit by a flare`);
   assert.ok((scene.picture?.dof?.fStop ?? 0) >= 5.6, `${id}: deep focus keeps the surroundings sharp (f/${scene.picture?.dof?.fStop})`);
   assert.equal(scene.meta.id, `s${String(n).padStart(2, '0')}-${id}`);
   const dur = scene.storyboard.durationMs, ramp = Array.isArray(scene.film?.speed) && scene.film.speed.length > 0;
@@ -51,5 +53,9 @@ for (const shot of SHOTS) {
   }
 }
 assert.ok(maps.size >= 10, `many battlefields (${maps.size})`);
-assert.ok(times.size >= 2, `more than one hour of daylight (${[...times].join(', ')})`);
+assert.ok(times.size >= 4, `day, sunset and night (${[...times].join(', ')})`);
+for (const hour of ['sunset', 'night']) {
+  const n = SHOTS.map(siteScene).filter(sc => sc.meta.time === hour).length;
+  assert.ok(n >= 6, `at least six ${hour} shots (${n})`);
+}
 console.log(`site50.selftest: ${SHOTS.length} shots (${KINDS.map(k => `${byKind[k]} ${k}`).join(', ')}) on ${maps.size} battlefields at ${[...times].join(', ')}`);
