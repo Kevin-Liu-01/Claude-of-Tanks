@@ -82,10 +82,10 @@
       "concealers": 8284
     },
     "badlands": {
-      "bytes": 1198913,
-      "sha256": "5bee84ab4e1298b0d23b74e3618ec5725869e01637d93f4eb1a5f0c606e836e2",
-      "obstacles": 2737,
-      "colliders": 2496,
+      "bytes": 1200810,
+      "sha256": "81c61549c78a024c5062e5df4add18c5224deb07a5f09c8453686fa85ce8c7af",
+      "obstacles": 2740,
+      "colliders": 2499,
       "concealers": 1543
     },
     "monsoon": {
@@ -124,10 +124,10 @@
       "concealers": 343
     },
     "blackglass": {
-      "bytes": 3682365,
-      "sha256": "06960810249bef50dd6a95af3b5b92f16f1c854785a05c39382665cf1efa3601",
-      "obstacles": 2882,
-      "colliders": 5679,
+      "bytes": 3085614,
+      "sha256": "3be318a82485cca2274a51e543ea255d1f2756e941db514597123cfeb3e6995d",
+      "obstacles": 2809,
+      "colliders": 5042,
       "concealers": 1477
     },
     "titan_gorge": {
