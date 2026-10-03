@@ -26,8 +26,8 @@
       "concealers": 4125
     },
     "urban": {
-      "bytes": 4054381,
-      "sha256": "29aa1cd31cb25a7efb9755fe454ef07a96b4457bb4ab43c2a992be2b72bcd67c",
+      "bytes": 4054396,
+      "sha256": "d56df93346a10433e90bf725572c914d5d5f24288209e0ba9067ee3f9e998e70",
       "obstacles": 2837,
       "colliders": 5497,
       "concealers": 2488
@@ -48,7 +48,7 @@
     },
     "steppe": {
       "bytes": 1185979,
-      "sha256": "4065558d2e610f0cf3a9a83e5390af661aee78eb02c071c59caf411e3d9e2bca",
+      "sha256": "1fa1cfa75d61280d0845519322822c954475bf605a0154a50650eae666479b97",
       "obstacles": 1990,
       "colliders": 1702,
       "concealers": 879
@@ -61,8 +61,8 @@
       "concealers": 1224
     },
     "frontier": {
-      "bytes": 1908892,
-      "sha256": "7e081061e412bf65ea0e7d575f20a74417afc35ba3e0e8d2b3fcac32de3c23f0",
+      "bytes": 1908895,
+      "sha256": "ce5a1c445c9153b864181695f6c32d4b0c46cc588a920f50bbaf3c262b7cd48f",
       "obstacles": 6316,
       "colliders": 6180,
       "concealers": 6691
@@ -117,8 +117,8 @@
       "concealers": 1897
     },
     "ruinspires": {
-      "bytes": 7338256,
-      "sha256": "bc493513baed7aba1d897f795047204f8ec4effa2bef7ae298401cbae27c3408",
+      "bytes": 7338266,
+      "sha256": "67be41c3deed4680ed4d5a8e5e841234ada3a2a143939b29cce532624fec4d13",
       "obstacles": 2111,
       "colliders": 8572,
       "concealers": 345
