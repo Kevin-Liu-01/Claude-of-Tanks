@@ -108,11 +108,20 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   id: 'franconian',
   region: 'Upper Franconia and Saxony (Kronach, Meissen): walled hill towns of framed and rendered town houses under plain tiles',
   surfaces: {
-    roof: { kind: 'beavertail', tint: [0.52, 0.27, 0.19] },
+    // w2 captures: the first tint made the old town a sea of new orange tile; old plain tiles weather to brown-red
+    roof: { kind: 'beavertail', tint: [0.44, 0.24, 0.18] },
     stone: { kind: 'sandstone', tint: [0.64, 0.52, 0.42] },
     sourced: { plaster: true, wood: true },
   },
   builders: FRANCONIAN_BUILDERS,
+  // render in cream, ochre and pale pink; roofs from a few new red ones to old brown and grey-brown
+  weather: {
+    plaster: [[1, 1, 1], [1, 0.95, 0.86], [1, 0.92, 0.88], [0.97, 0.96, 0.92], [1, 0.9, 0.8]],
+    stone: [[1, 1, 1], [0.92, 0.9, 0.88], [1.04, 0.98, 0.94]],
+    roof: [[1, 0.96, 0.94], [0.84, 0.78, 0.74], [0.74, 0.7, 0.68], [0.9, 0.84, 0.8], [0.68, 0.66, 0.66]],
+    damp: 0.8, moss: 0.5,
+  },
+  wear: 0.25,
 });
 
 export type { RegionalParts, RegionalBuildContext };

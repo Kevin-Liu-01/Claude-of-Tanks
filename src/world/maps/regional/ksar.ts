@@ -11,7 +11,9 @@ import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from '.
 
 const BLUES: readonly Rgb[] = [0x2f6a9e, 0x3a7ab0, 0x2e5f8a].map(rgb);
 const TIMBER = rgb(0x7a6048);
-const MUD: RegionalBucket = 'plaster3';
+// mud plaster over rubble: the map's own render (the sourced plaster set under the desert palette), the colour of the
+// ground it was dug from (w2 captures: the kit's own saturated plaster3 tone read as orange against the sand)
+const MUD: RegionalBucket = 'plaster';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -190,8 +192,8 @@ export const KSAR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   region: 'Dahar plateau, southern Tunisia (Ouled Soltane, Hadada, Chenini): vaulted ghorfa granaries and flat-roofed houses',
   surfaces: {
     roof: { kind: 'canal', tint: [0.70, 0.52, 0.38] },
-    stone: { kind: 'rubble', tint: [0.72, 0.60, 0.46] },
-    sourced: { plaster: false, wood: true },
+    stone: { kind: 'rubble', tint: [0.68, 0.62, 0.53] },
+    sourced: { plaster: true, wood: true },
     tones: {
       plaster: (_h, s, l) => [0.11, Math.min(1, s * 0.2), Math.min(1, l * 1.3 + 0.12)],
       plaster2: (_h, s, l) => [0.09, Math.min(1, s * 0.6 + 0.18), Math.min(1, l * 1.08 + 0.06)],
@@ -199,4 +201,13 @@ export const KSAR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     },
   },
   builders: KSAR_BUILDERS,
+  // mud render from fresh pale clay to an older ochre house to house (Ouled Soltane's courts are both); a dry climate
+  // (little damp, no moss)
+  weather: {
+    plaster: [[1, 1, 1], [1.04, 1.02, 0.98], [0.95, 0.9, 0.82], [0.9, 0.84, 0.74], [1.06, 1.05, 1.02]],
+    stone: [[1, 1, 1], [0.94, 0.92, 0.9]],
+    roof: [[1, 1, 1], [0.9, 0.86, 0.82]],
+    damp: 0.25, moss: 0.05,
+  },
+  wear: 0.15,
 });
