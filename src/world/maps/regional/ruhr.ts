@@ -194,6 +194,8 @@ export const RUHR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     tones: { plaster2: (_h, s, l) => [0.11, Math.min(1, s * 0.6 + 0.2), Math.min(1, l * 1.1 + 0.08)] },
   },
   builders: RUHR_BUILDERS,
+  // the colliery cottages' gardens: a picket fence round the vegetable plot behind the pair, a gate (yards.ts)
+  yard: { kinds: ['rowhouse'], fence: 'fencepicket', gate: 'gate', shed: null, garden: true },
 });
 
 export type { RegionalParts };
