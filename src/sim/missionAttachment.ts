@@ -3,11 +3,23 @@ type Vec3Tuple = readonly [number, number, number];
 
 type SurfacePlate = { verts: readonly Vec3Tuple[]; kind?: string; gunFollow?: boolean };
 export interface MissionCarrierSpec {
+  nation?: string;
   dims: { hullLengthM: number; widthM: number; heightM: number };
   armor: { hullPlates: readonly SurfacePlate[]; turretPlates: readonly SurfacePlate[]; turretPivot: Vec3Tuple; turretless?: boolean };
 }
 export interface MissionAttachment { frame: 'hull' | 'turret'; x: number; y: number; z: number; width: number; depth: number; footX: number; footZ: number }
 const mounts = new WeakMap<MissionCarrierSpec, MissionAttachment>();
+const owners=new WeakMap<MissionCarrierSpec,'hull'|'turret'>();
+export function missionAttachmentFrame(spec:MissionCarrierSpec):'hull'|'turret'{
+ const cached=owners.get(spec);if(cached)return cached;
+ let minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;
+ for(const plate of spec.armor.turretPlates){
+  if(plate.gunFollow||(plate.kind&&plate.kind!=='main'))continue;
+  for(const [x,,z] of plate.verts){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minZ=Math.min(minZ,z);maxZ=Math.max(maxZ,z);}
+ }
+ const frame=spec.armor.turretless||!Number.isFinite(minX)||(maxX-minX)*(maxZ-minZ)<4.5?'hull':'turret';
+ owners.set(spec,frame);return frame;
+}
 
 /** Vertical intersection with an actual hull triangle, in the canonical hull frame. */
 function triangleHeight(x: number, z: number, a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple): number {
@@ -30,20 +42,20 @@ export function hullSurfaceAt(spec: MissionCarrierSpec, x: number, z: number): n
   return surfaceAt(spec.armor.hullPlates,x,z);
 }
 export function missionSurfaceAt(spec: MissionCarrierSpec, x: number, z: number): number {
-  return surfaceAt(spec.armor.turretless ? spec.armor.hullPlates : spec.armor.turretPlates,x,z);
+  return surfaceAt(missionAttachmentFrame(spec)==='hull' ? spec.armor.hullPlates : spec.armor.turretPlates,x,z);
 }
-/** Turret-local payload seat; fixed casemates use the hull. Feet follow actual armor surfaces. */
+/** Turret-local payload seat; compact turrets and fixed casemates use the hull. Feet follow actual armor surfaces. */
 export function missionAttachmentFor(spec: MissionCarrierSpec): MissionAttachment {
   const cached=mounts.get(spec);if(cached)return cached;
-  const frame=spec.armor.turretless?'hull':'turret';
+  const frame=missionAttachmentFrame(spec);
   const plates=frame==='hull'?spec.armor.hullPlates:spec.armor.turretPlates;
   let minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;
   for(const plate of plates){
     if(plate.gunFollow || (plate.kind && plate.kind!=='main'))continue;
     for(const [x,,z] of plate.verts){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minZ=Math.min(minZ,z);maxZ=Math.max(maxZ,z);}
   }
-  // Prefer the rear quarter, away from the gun. Compact turrets retain a full
-  // payload tray with a narrower supported footprint instead of using the hull.
+  // Prefer the rear quarter, away from the gun. Support feet fit the selected
+  // turret or hull surface while the payload tray retains its full size.
   for(const footprint of [1,.8,.6,.4])for(const rear of [.22,.3,.4,.5,.6])for(const side of [.68,.5,.32]){
     const x=minX+(maxX-minX)*side,z=minZ+(maxZ-minZ)*rear;
     const footX=.32*footprint,footZ=.4*footprint;

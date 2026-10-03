@@ -21,7 +21,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 11 | PROD | `t90` | T-90 obr. 1992 | USSR/Russia | X | Modern | Production |
 | 12 | PROD | `t90a` | T-90A obr. 2004 | Russia | IX | Modern | Production |
 | 13 | PROD | `t90a_vladimir` | T-90A obr. 2006 | Russia | IX | Modern | Production |
-| 14 | PROD | `t90a_burlak` | T-90A Burlak Proto | USSR/Russia | X | Modern | Production |
+| 14 | PROD | `t90a_burlak` | T-90A Burlak Prototype | USSR/Russia | X | Modern | Production |
 | 15 | PROD | `t90sm` | T-90SM obr. 2013 | Russia | IX | Modern | Production |
 | 16 | PROD | `t90m` | T-90AM | Russia | IX | Modern | Production |
 | 17 | PROD | `t90ms` | T-90MS obr. 2011 | USSR/Russia | X | Modern | Production |
@@ -94,13 +94,13 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 84 | PROD | `amx56` | Leclerc S1 | France | IX | Modern | Production |
 | 85 | PROD | `type59` | Type 59 | China | VII | Cold War | Production |
 | 86 | PROD | `ztz85_iii` | ZTZ-85-III | China | VIII | Cold War | Production |
-| 87 | PROD | `type99a` | ZTZ-99A (Type 99A) | China | IX | Modern | Production |
+| 87 | PROD | `type99a` | ZTZ-99 Longwei | China | IX | Modern | Production |
 | 88 | PROD | `type96b_x` | Type 96B X | China | X | Modern | Production |
 | 89 | PROD | `type96_72_long` | Type 96-72 Lóng (Concept) | China | IX | Modern | Production |
 | 90 | PROD | `type96_80_feng` | Type 96-80 Fēng (Concept) | China | X | Modern | Production |
 | 91 | PROD | `type96_72m_lei` | Type 96-72M Léi (Concept) | China | X | Modern | Production |
 | 92 | PROD | `aft10_x` | AFT-10 X | China | X | Modern | Production |
-| 93 | PROD | `ztz99a2_prototype` | ZTZ-99A2 Prototype | China | X | Modern | Production |
+| 93 | PROD | `ztz99a2_prototype` | ZTZ-99A | China | X | Modern | Production |
 | 94 | PROD | `ztz99a2` | ZTZ-99A2 | China | X | Modern | Production |
 | 95 | PROD | `vt4a1` | VT-4A1 | China | X | Modern | Production |
 | 96 | PROD | `type100` | Type 100 IFV | China | X | Next Generation | Production |

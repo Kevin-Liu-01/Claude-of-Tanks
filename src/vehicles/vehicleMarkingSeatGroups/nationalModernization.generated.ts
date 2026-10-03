@@ -402,29 +402,29 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
     "schemaVersion": 1,
     "seats": [
       {
-        "kind": "insignia",
-        "parent": "turret",
+        "kind": "designation",
+        "parent": "hull",
         "size": 0.24,
         "pos": [
-          -0.8428789,
-          0.3173171,
-          -1.1833489
+          -1.044,
+          1.4545,
+          -2.8223999
         ],
         "quaternion": [
-          -0.1310428,
-          0.9283869,
-          -0.0486026,
-          -0.3443302
+          0,
+          -0.7071068,
+          0,
+          0.7071068
         ],
-        "surfaceMesh": "turret",
+        "surfaceMesh": "hull",
         "anchorProfile": "cn_t80u_modern",
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.1432177
+        "maximumSurfaceErrorM": 0.937
       },
       {
-        "kind": "designation",
+        "kind": "insignia",
         "parent": "turret",
         "size": 0.24,
         "pos": [

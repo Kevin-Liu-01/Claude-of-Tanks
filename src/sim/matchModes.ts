@@ -10,6 +10,7 @@ import {
   totalAmmunitionCapacity,
 } from './ammunition.ts';
 import { createGunshipEscort, ESCORT_RULES, type EscortState } from './gunshipEscort.ts';
+import { applyJuggernautScale } from './juggernautScale.ts';
 import type { AerialView } from './aerialCombat.ts';
 import type { MatchPlacement } from './matchPlacement.ts';
 import { ASSAULT_LINE_FRACTIONS } from './assaultLines.ts';
@@ -131,7 +132,8 @@ export interface MatchModeEntity {
   id: string;
   team: string;
   bot?: boolean;
-  state: { pos: Vec3Like; yaw: number; speed: number };
+  spec?: {dims:{widthM:number;heightM:number;hullLengthM:number};armor:{boundingRadiusM?:number}};
+  state: { pos: Vec3Like; yaw: number; speed: number; modeScale?:number };
   combat: {
     hp: number;
     maxHp: number;
@@ -140,6 +142,7 @@ export interface MatchModeEntity {
     ammoCapacity: number[];
     equipMults?: Partial<Record<string, number>>;
   };
+  input?: {aimPoint?:Vec3Like};
   aerial?: AerialView;
   modeActive?: boolean;
   modeSpeedMultiplier?: number;
@@ -239,6 +242,7 @@ interface PickupState {
   z: number;
   active: boolean;
   spawnedWave: number;
+  airDrop?: boolean; groundY?:number;startY?:number; landAtS?:number; expiresAtS?:number;
 }
 
 export interface MatchModePresentationState {
@@ -267,6 +271,7 @@ export interface MatchModePresentationState {
   playerAmmoCapacity: number | null;
   aerial?: AerialView;
   escort?: EscortState;
+  support?: {ammoReadyInS:number;healReadyInS:number};
   factions?: { id: string; team: ObjectiveTeam }[];
   boss?: { id: string; team: ObjectiveTeam; hp: number; maxHp: number };
   infection?: { survivors: number; infected: number };
@@ -278,7 +283,7 @@ export interface MatchModePresentationState {
 export interface ModeCheckpoint {
   elapsedS: number; score: TeamScore; weaponKills: [string, number][];
   teams: [string, ObjectiveTeam][]; respawns: [string, { atS: number; healthScale: number }][];
-  destroyed: [string, boolean][]; scored: string[]; escortRescued?: string[];
+  destroyed: [string, boolean][]; scored: string[]; escortRescued?: string[]; support?:{ammoAt:number;healAt:number;sequence:number;pickups:PickupState[]};
 }
 
 export interface MatchModeResult {
@@ -298,6 +303,7 @@ export interface MatchModeController<
   /** Confirmed enemy destruction; ignored for goals/captures and duplicate receipts. */
   recordDestruction(victimId: string, killerId: string | null): void;
   step(dt: number, timeS: number): MatchModeResult | null;
+  requestSupply(entityId:string,kind:'ammo'|'heal',timeS:number):boolean;
   tryHitBall(shell: { dead?: boolean; prevPos: Vec3Like; pos: Vec3Like; vel: Vec3Like;
     shooterId?: string }): boolean;
   botTarget(entity: Entity): { x: number; z: number } | null;
@@ -374,6 +380,16 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const definition = GAME_MODE_DEFINITIONS[id];
   const ruleset: MatchRuleset = rulesetOption && rulesetOption.mode === id ? rulesetOption : matchRulesetFor(id);
   const baseSpeed = ruleset.speedMultiplier;
+  const infectionStamped=new WeakSet<object>();
+  const stampInfection=(entity:Entity):void=>{
+    const infection=ruleset.infection;if(!infection||infectionStamped.has(entity.combat))return;
+    infectionStamped.add(entity.combat);
+    const infected=teamOf(entity)==='bravo';
+    const scale=infected?infection.infectedHpScale:infection.survivorHpScale;
+    entity.combat.maxHp=Math.max(1,Math.round(entity.combat.maxHp*scale));entity.combat.hp=entity.combat.maxHp;
+    if(infected){const mults=entity.combat.equipMults|| (entity.combat.equipMults={});mults.reload=(mults.reload??1)*infection.infectedReloadScale;}
+  };
+
   const scoreTarget = ruleset.scoreTarget ?? scoreTargetForMode(id) ?? Infinity;
   // Physics the ruleset bends: the movement reads modeSpeedMultiplier / modeGravityScale every step,
   // ballistics reads the gravity scale at the muzzle; stamped at start, at every revive, and when a
@@ -407,7 +423,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     });
     destroyed.set(entity.id, !!entity.combat.destroyed);
     entity.modeActive = true;
-    stampPhysics(entity);
+    stampPhysics(entity);stampInfection(entity);
   }
   for (const team of ['alpha', 'bravo'] as const) {
     if (!teams[team].length) continue;
@@ -445,6 +461,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const weaponKills = new Map<string, number>();
   const boss = ruleset.juggernaut ? teams[ruleset.juggernaut.team][0] : null;
   if (boss && ruleset.juggernaut) {
+    applyJuggernautScale(boss);
     boss.combat.maxHp = Math.round(boss.combat.maxHp * ruleset.juggernaut.hpScale);
     boss.combat.hp = boss.combat.maxHp;
     const mults = boss.combat.equipMults || (boss.combat.equipMults = {});
@@ -558,6 +575,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       return; // keep pending, but never retry a bounded search at 60 Hz
     }
     revive(entity, safeSpawn, healthScale);
+    stampInfection(entity);
     if (ruleset.gunGame) setWeaponStage(entity, Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(entity.id) ?? 0) / ruleset.gunGame.killsPerWeapon)));
     entity.modeActive = true;
     // wave pressure: Horde / Frontline defenders drive faster every wave (capped at +55 %)
@@ -1047,9 +1065,54 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
   };
 
+  let ammoAt=0,healAt=0;
+  const requestSupply=(entityId:string,kind:'ammo'|'heal',timeS:number):boolean=>{
+    const entity=entityById.get(entityId);
+    if(id!=='ac130'||result||!entity||entity.combat.destroyed||entity.aerial?.kind!=='gunship'||timeS<(kind==='ammo'?ammoAt:healAt))return false;
+    const aim=entity.input?.aimPoint;if(!aim||!Number.isFinite(aim.x)||!Number.isFinite(aim.z))return false;
+    const requested={x:Math.max(-WORLD_MARGIN_M,Math.min(WORLD_MARGIN_M,aim.x)),z:Math.max(-WORLD_MARGIN_M,Math.min(WORLD_MARGIN_M,aim.z))};
+    const safe=placement?placement.pickup(requested,pickups.filter(p=>p.active).map(p=>({x:p.x,z:p.z,radius:PICKUP_RADIUS_M}))):requested;
+    if(!safe)return false;
+    const free=pickups.find(p=>!p.active);
+    if(!free&&pickups.length>=12)return false;
+    const groundY=terrainHeight(safe.x,safe.z)+1.2;
+    const pickup:PickupState={id:`airdrop-${++pickupSequence}`,kind,x:safe.x,z:safe.z,y:Math.max(groundY,entity.aerial.y),active:true,spawnedWave:0,airDrop:true,groundY,startY:Math.max(groundY,entity.aerial.y),landAtS:timeS+6,expiresAtS:timeS+70};
+    if(free)Object.assign(free,pickup);else pickups.push(pickup);
+    if(kind==='ammo')ammoAt=timeS+22;else healAt=timeS+30;
+    emit('mode_pickup_spawned',{...pickup});return true;
+  };
+  const needsSupply=(entity:Entity,pickup:PickupState):boolean=>pickup.kind==='heal'
+    ?entity.combat.hp<entity.combat.maxHp*.95
+    :totalAmmunition(entity.combat)<totalAmmunitionCapacity(entity.combat)*.9;
+  const supplyTarget=(entity:Entity):BotDestination|null=>{
+    if(id!=='ac130'||teamOf(entity)!=='alpha'||entity.aerial?.kind==='gunship')return null;
+    for(const pickup of pickups){
+      if(!pickup.active||!needsSupply(entity,pickup)||squaredDistance(entity,pickup.x,pickup.z)>260*260)continue;
+      let closest:Entity|null=null,best=Infinity;
+      for(const ally of teams.alpha){
+        if(ally.combat.destroyed||ally.modeActive===false||ally.aerial?.kind==='gunship'||!needsSupply(ally,pickup))continue;
+        const distance=squaredDistance(ally,pickup.x,pickup.z);if(distance<best){best=distance;closest=ally;}
+      }
+      if(closest===entity)return{x:pickup.x,z:pickup.z,mission:'recover'};
+    }
+    return null;
+  };
+  const stepSupport=(timeS:number):void=>{
+    if(id!=='ac130')return;
+    state.support={ammoReadyInS:Math.max(0,ammoAt-timeS),healReadyInS:Math.max(0,healAt-timeS)};
+    for(const pickup of pickups){
+      if(!pickup.active||!pickup.airDrop)continue;
+      if(timeS>=(pickup.expiresAtS??Infinity)){pickup.active=false;continue;}
+      pickup.y=(pickup.groundY??0)+Math.max(0,Math.min(1,((pickup.landAtS??0)-timeS)/6))*((pickup.startY??240)-(pickup.groundY??0));
+      if(timeS<(pickup.landAtS??0))continue;
+      for(const ally of teams.alpha)if(collectPickup(pickup,ally))break;
+    }
+  };
+
   const collectPickup = (pickup: PickupState, entity: Entity): boolean => {
-    if (entity.bot || entity.modeActive === false || entity.combat.destroyed ||
+    if ((entity.bot && !pickup.airDrop) || entity.aerial?.kind==='gunship' || entity.modeActive === false || entity.combat.destroyed ||
         squaredDistance(entity, pickup.x, pickup.z) > PICKUP_RADIUS_M ** 2) return false;
+    if(pickup.airDrop&&!needsSupply(entity,pickup))return false;
     if (pickup.kind === 'ammo') {
       const refill = replenishAmmunition(entity.combat);
       if (refill.totalAdded <= 0) return false;
@@ -1128,6 +1191,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       ...(ruleset.infection ? { factions: entities.map(entity => ({ id: entity.id, team: teamOf(entity) })) } : {}),
       ...(escort ? { escort:{...escort.state} } : {}),
       ...(state.boss ? { boss: { ...state.boss } } : {}),
+      ...(state.support ? {support:{...state.support}} : {}),
       ...(state.infection ? { infection: { ...state.infection } } : {}),
       ...(ruleset.gunGame ? { weaponStages: entities.map(entity => ({ id: entity.id, index: Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(entity.id) ?? 0) / ruleset.gunGame!.killsPerWeapon)) })) } : {}),
       ...(ruleset.gunGame && viewer ? { weaponStage: {
@@ -1292,14 +1356,14 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const botObjective = (entity: Entity): { x: number; z: number; radiusM: number; mission?: BotMission } | null => {
     const point = botTarget(entity);
     if (!point) return null;
-    const radiusM = objective === 'zone_control' || id === 'frontline_assault' ? ZONE_RADIUS_M
+    const radiusM = point.mission === 'recover' ? 3 : objective === 'zone_control' || id === 'frontline_assault' ? ZONE_RADIUS_M
       : id === 'capture_the_flag' ? 20 : id === 'turbo_ball' ? 15 : 25;
     return { ...point, radiusM };
   };
   const botTarget = (entity: Entity): BotDestination | null => {
     if (entity.modeActive === false || entity.combat.destroyed) return null;
     const team = teamOf(entity);
-    if (escort) return escort.target(entity);
+    if (escort) return supplyTarget(entity)??escort.target(entity);
     if (id === 'capture_the_flag') return flagBotTarget(entity, team);
     if (objective === 'zone_control') {
       const point = zoneBotTarget(entity, team);
@@ -1346,6 +1410,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (result) return result;
       placementTimeS = timeS;
       handleDeathsAndRespawns(timeS);
+      stepSupport(timeS);
       if(escort){const outcome=escort.step(timeS,ruleset.timeLimitS??480);if(outcome)return finish(outcome.result,outcome.reason);}
       if (boss && state.boss) {
         state.boss.hp = boss.combat.hp;
@@ -1367,6 +1432,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (id === 'frontline_assault') return stepAssault(dt, timeS);
       return null;
     },
+    requestSupply,
     tryHitBall(shell) {
       if (!ball || shell.dead || pointSegmentDistanceSq(ball, shell.prevPos, shell.pos)
           > (BALL_RADIUS_M + 0.35) ** 2) return false;
@@ -1383,7 +1449,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     botObjective,
     captureCheckpoint(elapsedS) {
       return { elapsedS, score: { ...score }, weaponKills: [...weaponKills], teams: entities.map(entity => [entity.id, teamOf(entity)]),
-        respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]), destroyed: [...destroyed], scored: [...scoredDeaths], ...(escort?{escortRescued:escort.capture()}:{}) };
+        respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]), destroyed: [...destroyed], scored: [...scoredDeaths], ...(escort?{escortRescued:escort.capture(),support:{ammoAt,healAt,sequence:pickupSequence,pickups:pickups.map(p=>({...p}))}}:{}) };
     },
     restoreCheckpoint(checkpoint) {
       score.alpha = checkpoint.score.alpha; score.bravo = checkpoint.score.bravo;
@@ -1400,6 +1466,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       destroyed.clear(); for (const [key, value] of checkpoint.destroyed) destroyed.set(key, value);
       scoredDeaths.clear(); for (const key of checkpoint.scored) scoredDeaths.add(key);
       escort?.restore(checkpoint.escortRescued??[]);
+      if(checkpoint.support){ammoAt=checkpoint.support.ammoAt;healAt=checkpoint.support.healAt;pickupSequence=checkpoint.support.sequence;pickups.length=0;pickups.push(...checkpoint.support.pickups.map(p=>({...p})));}
     },
     serialize,
   };

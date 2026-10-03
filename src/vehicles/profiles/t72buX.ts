@@ -144,7 +144,7 @@ function cheeks(P:TankBuilderPort):void{
     [-.9583,1.77858,1.3914,-.203054,.888535,.41143,.59,.400],
     [.96027,1.77862,1.3914,.203147,.888427,.411618,.59,.400],
   ];
-  for(const [x,y,z,nx,ny,nz,w,d]of cells){
+  for(const [x,y,z,nx,,nz,w,d]of cells){
     // Two petals share the outward ridge. The former lower sheet was
     // translated down into the casting and disappeared from the front.
     const yaw=Math.atan2(nx,nz),depth=d*.76;
