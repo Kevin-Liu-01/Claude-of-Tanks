@@ -166,12 +166,17 @@ export function buildHorizonPanoramaShellGeometry(ringEdge: HorizonPanoramaOptio
       row++;
     };
     put(ex, eh - 0.05, ez);
-    // the apron: from the edge level down toward a low plain at the shell's foot
-    const foot = Math.min(eh, 20) - 25;
+    // the apron: from the edge level down toward a low plain at the shell's foot — from the edge's level averaged over
+    // nine columns (the outer row is jagged column to column, and the apron reads the atlas by its own elevation from
+    // the eye: a jagged apron read a different atlas row per column, one streak each, where a low ring shows it)
+    let ehs = 0;
+    for (let d = -4; d <= 4; d++) ehs += ringEdge.heights[start + ((c + d) % n + n) % n];
+    ehs /= 9;
+    const foot = Math.min(ehs, 20) - 25;
     P.apronM.forEach((r, j) => {
       const rr = Math.max(r, edgeR + 40 * (j + 1));
       const t = (j + 1) / (P.apronM.length + 1);
-      put(ca * rr, eh + (foot - eh) * t, sa * rr);
+      put(ca * rr, ehs + (foot - ehs) * t, sa * rr);
     });
     // the wall: at the shell radius, rows at the strip's elevations as seen from the eye
     const R = Math.max(P.shellM, edgeR + 160);
@@ -555,8 +560,9 @@ void main() {
   float footprint = rr * ((uElev.y - uElev.x) / 512.0) / max(0.01, abs(dot(rayD, n)));
   // (the apron: its first row's light is one value per column — the near ridges' shadows across it — so it would streak;
   // it takes the open sky's)
-  vec4 light = mix(texture2D(uLight, g), vec4(1.0, 0.92, 0.0, 1.0), apron);
   apron = max(apron, smoothstep(40.0, 160.0, footprint));
+  // (a grazing reach's light too: its shadows and occlusion land a column apart as streaks — it takes a mild open sky)
+  vec4 light = mix(texture2D(uLight, g), vec4(0.94, 0.9, 0.0, 1.0), apron);
   float slope = 1.0 - n.y;
   // the zones (forest, fields, snow, scree) by the height over the upland's plinth where it has one
   float hT = clamp((wp.y - texture2D(uHeight, g).g) / uChar4.z, 0.0, 1.0);
@@ -606,8 +612,14 @@ void main() {
   vec3 skyC = uGains.x * (0.62 + 0.38 * n.y) * light.g * skyTint;
   vec3 bounce = uGains.x * 0.12 * (1.0 - n.y) * vec3(0.9, 0.85, 0.75);
   col *= sunC + skyC + bounce;
-  // the sea sectors: the open water under the sky
   vec4 edge = texture2D(uEdge, vec2(u, 0.5));
+  // below the ring's own skyline from the eye the strip is hidden behind the ring — but a camera above the eye or off
+  // the square's centre sees a band of it over the ring's outer rows, and there the strip grazes the near country, one
+  // ground point per column (a band of vertical streaks over Saltmere's coast): it keeps one lit ground tone instead
+  float hiddenW = 1.0 - smoothstep(atan(edge.a) - 0.012, atan(edge.a) - 0.002, e);
+  vec3 flatC = uBase * (uGains.y * 1.05 * max(0.0, uSun.y) * vec3(1.06, 0.98, 0.86) + uGains.x * 0.82 * skyTint);
+  col = mix(col, flatC * (1.0 + 0.05 * n1), hiddenW * 0.9);
+  // the sea sectors: the open water under the sky
   float sea = edge.g * step(wp.y, edge.b + 0.5);
   col = mix(col, uFog * 0.82, sea);
   // the air past the shell
