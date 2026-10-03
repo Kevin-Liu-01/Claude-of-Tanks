@@ -257,6 +257,28 @@ function mulberry(seed) {
   assert.ok(player.client.stats().stalls >= 2);
 }
 
+// ------------------------------------------------------------ every announced fall is retained for a migration boot, across a reset
+// (fix/mp-migration-props, 2026-10-02): a fall's event reaches the client the tick it happens, its frame later; a host that
+// dies between the two leaves the fall in the client's events alone, and a link reset clears those
+{
+  const world = createWorld({ link: { latencyMs: 30, jitterMs: 0, loss: 0 }, botList: [] });
+  const player = world.addClient({ token: 'tok-1', seed: 77 });
+  player.client.connect();
+  player.driver.run(1_500);
+  assert.equal(player.client.phase, 'live');
+  assert.deepEqual(player.client.retainedMigration().fallen, [], 'nothing fell yet');
+  world.server.destroyObstacle(7);
+  world.server.destroyObstacle(11);
+  player.driver.run(300);
+  assert.deepEqual([...player.client.retainedMigration().fallen].sort((a, b) => a - b), [7, 11], 'the client retains every fall it was told of');
+  world.freeze(true);
+  player.driver.run(5_500);
+  world.freeze(false);
+  player.driver.run(3_000);
+  assert.ok(player.client.stats().reconnects >= 1 && player.client.phase === 'live', 'a fresh socket, live again');
+  assert.deepEqual([...player.client.retainedMigration().fallen].sort((a, b) => a - b), [7, 11], 'a reset clears the event queue, never the falls the client was told of');
+}
+
 // ------------------------------------------------------------ input edges survive loss; a wrong token spectates; rates reject
 {
   const world = createWorld({ link: { latencyMs: 60, jitterMs: 20, loss: 0.15, lossFilter }, botList: [] });

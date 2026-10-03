@@ -24,8 +24,17 @@
 //      one that claims the base layout): every fall the authority sends fells the viewer's own record of that prop or
 //      nothing, never another; the persistent list is not read by index on such a world, and through the authority's
 //      identities it lays down exactly the props that fell.
+//   D. (fix/mp-migration-props, 2026-10-02) the host dies between a fall and its frame: a world_prop_destroyed reaches a
+//      peer the tick its prop falls, the destroyed list only with the next snapshot. The real host core and a real
+//      peer client on virtual time; the peer's snapshots are cut from the fall on (its event still arrives), the host
+//      closes — once with the peer's newest frame newer than the sealed keyframe, once with the keyframe newer (its
+//      snapshots cut since before an earlier fall the keyframe lists). The seat retains the fall, its boot state names
+//      every prop it knew fell at a revision counting them, and the second host it boots stands none of them again:
+//      nothing lost, nothing invented. On 47ff227c2 the seat kept no record of the fall and the new host stood the prop
+//      again (1 world-events audit run in 3: a bot crushed it a second time and every peer crunched it).
 // No network, no wall clock: fixed seed, fixed inputs, fixed frames.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
 import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
@@ -37,6 +46,17 @@ import { createHeadlessCollisionWorld } from '../src/world/headlessCollisionWorl
 import { createBattlePresentation } from '../src/mp/presentation/battlePresentation.ts';
 import { createEntitySample } from '../src/mp/match/interpolation.ts';
 import { ENTITY_FLAGS, PHASE, TEAM, VERDICT } from '../src/mp/wire/index.ts';
+import { CLOSE_REASON, MESSAGE_TYPE } from '../src/mp/wire/constants.ts';
+import { peekMessageType } from '../src/mp/wire/codec.ts';
+import { signSeatToken } from '../server/match/seatToken.ts';
+import { MatchClient } from '../src/mp/match/matchClient.ts';
+import { MigratingTransport, WebRtcTransport } from '../src/mp/transport/index.ts';
+import { FakeSignalRelay, RtcWorld } from '../src/mp/transport/rtcDouble.test-support.ts';
+import { createHostPortPair } from '../src/mp/host/hostProtocol.ts';
+import { createMatchHostCore } from '../src/mp/host/matchHostCore.ts';
+import { createMatchHost } from '../src/mp/host/matchHost.ts';
+// a namespace import: the scenario runs on a tree that predates resumeStateFromRetained, and fails on what it retains
+import * as migration from '../src/mp/host/migrationState.ts';
 
 const MAP_ID = 'verdant';
 await ensureAuthorityFleet(['m1a2', 't90m']);
@@ -350,6 +370,168 @@ for (const [name, layout] of Object.entries(layouts)) {
 }
 ploughWorld.release?.();
 
+// ------------------------------------------------------------ D. the host dies between a fall and its frame
+/**
+ * One migration: the real host core (virtual time) with the host's own seat driving north into two fences, a peer (bob)
+ * over the scripted WebRTC world; bob's snapshots are cut from the second fence's fall (keyframeNewer: from before the
+ * first one, so a keyframe sealed between the falls is newer than bob's newest frame), the event still arrives, and the
+ * host closes. Bob's retained state builds the boot as MatchSession does, and a second core boots from it.
+ */
+async function migrationScenario({ keyframeNewer }) {
+  let nowMs = 100_000;
+  let serial = 0;
+  const timers = new Map();
+  const time = {
+    clock: () => nowMs,
+    setTimer(callback, delayMs) { const handle = ++serial; timers.set(handle, { dueMs: nowMs + delayMs, callback, handle }); return handle; },
+    clearTimer(handle) { timers.delete(handle); },
+    schedule(callback, delayMs) { const handle = time.setTimer(callback, delayMs); return () => time.clearTimer(handle); },
+    fireDue() {
+      for (;;) {
+        const due = [...timers.values()].filter((timer) => timer.dueMs <= nowMs).sort((a, b) => a.dueMs - b.dueMs || a.handle - b.handle)[0];
+        if (!due) break;
+        timers.delete(due.handle);
+        due.callback();
+      }
+    },
+  };
+  const TICK_MS = 1000 / 60;
+  const rtc = new RtcWorld();
+  const relay = new FakeSignalRelay('host', 1);
+  const hosts = [];
+  const clients = [];
+  const settle = async (rounds = 6) => {
+    for (let index = 0; index < rounds; index++) {
+      await new Promise((resolve) => setImmediate(resolve)); // Web Crypto resolves on the thread pool
+      relay.flush(); rtc.flush();
+      for (const host of hosts) host.pump(nowMs);
+    }
+  };
+  /** One tick: the actor loops fire, `between` runs before anything they sent is delivered, then everything is. */
+  const step = async (between) => {
+    nowMs += TICK_MS;
+    time.fireDue();
+    between?.();
+    await settle(3);
+    for (const client of clients) client.update(nowMs, TICK_MS / 1000);
+    await settle(2);
+  };
+  // the host drives north from (-250, -250) over bare ground into two fences; nothing else stands in this world
+  const heightField = createDedicatedWorldCollision(MAP_ID).heightField;
+  const fence = (dz, propIdx) => {
+    const x = -250, z = -250 + dz, y = heightField.getHeightAt(x, z);
+    return { b: [x - 3, y - 0.1, z - 0.2, x + 3, y + 1.4, z + 0.2], q: 1, k: 'fenceplank', p: propIdx };
+  };
+  const manifest = { obstacles: [fence(26, 0), fence(44, 1)], colliders: [], concealers: [] };
+  const worlds = [];
+  const cores = [];
+  const createPort = () => {
+    const pair = createHostPortPair();
+    const world = createHeadlessCollisionWorld({ mapId: MAP_ID, heightField, manifest });
+    worlds.push(world);
+    cores.push(createMatchHostCore({
+      port: pair.worker, buildWorld: async () => world, now: time.clock, schedule: time.schedule, setTimer: time.setTimer, clearTimer: time.clearTimer,
+      keyframeIntervalMs: 500, configIntervalMs: 1500, reportIntervalMs: 2000, endedLingerTicks: 30,
+    }));
+    return pair.main;
+  };
+  const SEAT_SECRET = 'scenario-d-seat-secret-0123456789abcdef';
+  const matchId = `m1-${keyframeNewer ? 'k' : 'f'}0ff`;
+  const hostSecret = createHash('sha256').update(`${SEAT_SECRET}:${matchId}`).digest('hex');
+  const tokenFor = (seat, playerId, team, specId) => signSeatToken(hostSecret, { v: 1, roomId: 'ROOMD', seat, playerId, name: playerId, team, specId, iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
+  const seats = [
+    { seat: 0, playerId: 'host', name: 'Host', team: 'alpha', specId: 'm1a2', spawn: { x: -250, z: -250, yaw: 0 } },
+    { seat: 1, playerId: 'bob', name: 'Bob', team: 'bravo', specId: 't90m', spawn: { x: 250, z: 250, yaw: Math.PI } },
+  ];
+  const config = { roomId: 'ROOMD', matchId, generation: 1, mapId: MAP_ID, mode: 'standard', seed: 5, seats, bots: [], countdownS: 0, battleLimitS: 600, hostSecret, manifestBase: null, resume: null };
+  const host = createMatchHost({
+    playerId: 'host', generation: () => relay.generation, createPort, createPeerConnection: rtc.createPeerConnection,
+    room: { signaler: relay.signalerFor('host'), reportMatch: async () => {} }, clock: time.clock, setTimer: time.setTimer, clearTimer: time.clearTimer,
+  });
+  hosts.push(host);
+  const starting = host.start(config);
+  await settle(12);
+  await starting;
+  const hostClient = new MatchClient({
+    transport: new MigratingTransport(host.transport), token: tokenFor(0, 'host', 'alpha', 'm1a2'), clock: time.clock,
+    controls: () => ({ throttle: 1, steer: 0, brake: false, fire: false, aimLocked: false, aimYaw: 0, aimPitch: 0, aimDistance: 300, shellSlot: 0, actionPresses: 0 }),
+  });
+  clients.push(hostClient);
+  hostClient.connect();
+  const bobRtc = new WebRtcTransport({ signaler: relay.signalerFor('bob'), createPeerConnection: rtc.createPeerConnection, clock: time.clock, setTimer: time.setTimer, clearTimer: time.clearTimer, random: () => 0.5 });
+  // the cut: bob's snapshots stop arriving (the host published them; the link dies before they land) — events still do
+  let cutSnapshots = false;
+  const rtcOnFrame = bobRtc.onFrame.bind(bobRtc);
+  bobRtc.onFrame = (listener) => rtcOnFrame((bytes) => { if (!(cutSnapshots && peekMessageType(bytes) === MESSAGE_TYPE.SNAPSHOT)) listener(bytes); });
+  const bobTransport = new MigratingTransport(bobRtc);
+  const bobClient = new MatchClient({ transport: bobTransport, token: tokenFor(1, 'bob', 'bravo', 't90m'), clock: time.clock });
+  clients.push(bobClient);
+  bobClient.connect();
+  for (let n = 0; n < 240 && !(bobClient.retainedMigration().keyframe && bobClient.retainedMigration().config); n++) await step();
+  assert.ok(bobClient.retainedMigration().keyframe && bobClient.retainedMigration().config, 'D: the peer retained the sealed keyframe and boot configuration');
+  const worldA = worlds[0];
+  const hullA = cores[0].actor.entityForWireId(1);
+  assert.ok(!worldA.getObstacles()[0].crushed, `D: the host is still short of the first fence (z ${hullA.state.pos.z.toFixed(1)})`);
+  if (keyframeNewer) cutSnapshots = true;
+  // drive on until the second fence falls; cut bob's snapshots from that tick (its event is already on the wire)
+  let fellAt = -1;
+  for (let n = 0; n < 900 && fellAt < 0; n++) {
+    await step(() => { if (worldA.getObstacles()[1].crushed && fellAt < 0) { fellAt = cores[0].actor.tick; cutSnapshots = true; } });
+  }
+  assert.ok(fellAt > 0, 'D: the host crushed both fences');
+  for (let n = 0; n < 3; n++) await step();
+  const old = cores[0].actor.authority.snapshot({ tick: 0, serverTimeMs: 0, viewerId: 'migration', ackInputSeq: null }).meta;
+  assert.deepEqual([...old.destroyedObstacleIndices].sort((a, b) => a - b), [0, 1], 'D: the old host destroyed both fences');
+  host.stop(CLOSE_REASON.ROOM_CLOSED, 'host left');
+  await settle(4);
+
+  // what bob holds: the second fence's fall arrived, its frame did not
+  const retained = bobClient.retainedMigration();
+  const latest = retained.latestFrame;
+  assert.ok(latest && !latest.destroyed.includes(1), `D: bob's newest frame (tick ${latest?.tick}) predates the second fence's fall (tick ${fellAt})`);
+  const key = await migration.deriveMigrationKey(hostSecret);
+  const keyframe = migration.decodeMigrationKeyframe(await migration.openMigrationBlob(key, retained.keyframe.blob));
+  if (keyframeNewer) {
+    assert.ok(keyframe.tick > latest.tick, `D: the sealed keyframe (tick ${keyframe.tick}) is newer than bob's newest frame (tick ${latest.tick})`);
+    assert.ok(keyframe.frame.destroyed.includes(0) && !latest.destroyed.includes(0), 'D: the keyframe lists the first fence, bob\'s newest frame does not');
+  } else {
+    assert.ok(latest.tick > keyframe.tick && latest.destroyed.includes(0), `D: bob's newest frame (tick ${latest.tick}, the first fence listed) is newer than the keyframe (tick ${keyframe.tick})`);
+  }
+  assert.ok(!keyframe.frame.destroyed.includes(1), 'D: and nothing bob holds lists the second fence');
+  assert.ok(Array.isArray(retained.fallen) && retained.fallen.includes(1), `D: the seat retains the fall it was told of (retained ${JSON.stringify(retained.fallen)})`);
+
+  // the boot, as MatchSession builds it, and a second core booted from it
+  const bootConfig = migration.decodeBootConfig(await migration.openMigrationBlob(key, retained.config.blob));
+  const { state, baseTick } = migration.resumeStateFromRetained(keyframe, retained.keyframe.receivedAtMs, latest, retained.latestFrameAtMs, retained.fallen);
+  assert.equal(baseTick, keyframeNewer ? keyframe.tick : latest.tick, 'D: the boot starts from the newer of the keyframe and the frame');
+  assert.deepEqual([...state.frame.destroyed].sort((a, b) => a - b), [0, 1], 'D: the boot names every prop the seat knew fell');
+  assert.equal(state.frame.meta.destructibleRevision, old.destructibleRevision, `D: at the old host's revision (${old.destructibleRevision}): the base's plus one per fall known from events`);
+  relay.elect('bob');
+  const host2 = createMatchHost({
+    playerId: 'bob', generation: () => relay.generation, createPort, createPeerConnection: rtc.createPeerConnection,
+    room: { signaler: relay.signalerFor('bob'), reportMatch: async () => {} }, clock: time.clock, setTimer: time.setTimer, clearTimer: time.clearTimer,
+  });
+  hosts.push(host2);
+  const starting2 = host2.start({ ...bootConfig, generation: relay.generation, hostSecret, manifestBase: null, resume: { ...state, resumeTick: baseTick + 120 } });
+  await settle(12);
+  await starting2;
+  const resumed = cores[1].actor.authority.snapshot({ tick: 0, serverTimeMs: 0, viewerId: 'migration', ackInputSeq: null }).meta;
+  assert.deepEqual([...resumed.destroyedObstacleIndices].sort((a, b) => a - b), [0, 1], 'D: the second host stands neither fence again (nothing lost, nothing invented)');
+  assert.ok(worlds[1].getObstacles().every((record) => record.crushed), 'D: both fences are down in its collision world');
+  assert.equal(resumed.destructibleRevision, old.destructibleRevision, 'D: and it continues the old host\'s revision');
+  // bob moves onto the second host: the first frame lists both, so his presentation lays the second down (settled)
+  cutSnapshots = false;
+  bobTransport.replace(host2.transport, 'host migration');
+  for (let n = 0; n < 30 && !(bobClient.retainedMigration().latestFrame?.destroyed.includes(1)); n++) await step();
+  assert.ok(bobClient.retainedMigration().latestFrame.destroyed.includes(1), 'D: the seat\'s first frame from its own host lists the fall');
+  host2.stop();
+  await settle(4);
+  for (const client of clients) client.dispose();
+  return `${keyframeNewer ? 'keyframe newer' : 'frame newer'}: fall at tick ${fellAt}, newest frame ${latest.tick}, keyframe ${keyframe.tick}, boot from ${keyframeNewer ? 'the keyframe' : 'the frame'} with ${state.frame.destroyed.length} destroyed at revision ${state.frame.meta.destructibleRevision}`;
+}
+const migrationReport = [await migrationScenario({ keyframeNewer: false }), await migrationScenario({ keyframeNewer: true })];
+
 console.log(`mp world events scenarios: ${drives.length} shared-centre props driven through, each felled by one event and crunched once under its own index (${drives.join('; ')}); `
   + `a fall death (tick ${deathTick}) beside tree ${tree.index} presented at the hull's death position though the frame showed it ${distance(presentedPose, died).toFixed(2)} m away mid-air; `
-  + `${announced.size} falls announced there, nothing else crushed or crunched; worlds laid out otherwise — ${layoutReport.join('; ')}`);
+  + `${announced.size} falls announced there, nothing else crushed or crunched; worlds laid out otherwise — ${layoutReport.join('; ')}; `
+  + `the host dying between a fall and its frame — ${migrationReport.join('; ')}`);

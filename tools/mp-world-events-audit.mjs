@@ -43,6 +43,8 @@ import { createBattlePresentation } from '../src/mp/presentation/battlePresentat
 import { createDedicatedWorldCollision } from '../server/dedicatedWorldCollision.ts';
 import { createObstacleGrid } from '../src/world/collision.ts';
 import { PHASE, TICK_HZ } from '../src/mp/wire/constants.ts';
+import { createHash } from 'node:crypto';
+import { decodeMigrationKeyframe, deriveMigrationKey, openMigrationBlob } from '../src/mp/host/migrationState.ts';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const until = async (predicate, label, timeoutMs) => {
@@ -402,10 +404,24 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     p1.room.disconnect('tab closed');
     retire(p1);
     await until(() => core1.core.stopped, 'the old host stopped', 5_000);
-    // what the elected seat holds now is what its boot overlays on the sealed keyframe (nothing new arrives on the dead link)
-    const knownByElected = p2.session.match?.retainedMigration().latestFrame;
-    const knownByElectedAtClose = knownByElected?.destroyed.length ?? -1;
-    const knownRevisionAtClose = knownByElected?.meta.destructibleRevision ?? -1;
+    // What the elected seat knows fell, read here independently of the boot (nothing new arrives on the dead link): the
+    // newer of the sealed keyframe (opened with the room's host secret, as the seat will) and its own newest frame, plus
+    // every fall the old host sent it — a fall's event reaches the seat the tick it happens, its frame up to two ticks later,
+    // and a host that dies between the two leaves the fall in the seat's events alone (fix/mp-migration-props, 2026-10-02).
+    // The close is graceful in this harness (what was sent before it arrives), so everything sent was received.
+    const retainedAtClose = p2.session.match?.retainedMigration();
+    const latestAtClose = retainedAtClose?.latestFrame ?? null;
+    let keyframeAtClose = null;
+    if (retainedAtClose?.keyframe) {
+      const hostSecret = createHash('sha256').update(`${SECRET}:${p2.session.round.matchStart.matchId}`).digest('hex');
+      const sealed = decodeMigrationKeyframe(await openMigrationBlob(await deriveMigrationKey(hostSecret), retainedAtClose.keyframe.blob));
+      keyframeAtClose = { tick: sealed.tick, destroyed: sealed.frame.destroyed, revision: sealed.frame.meta.destructibleRevision };
+    }
+    const latestBase = latestAtClose ? { tick: latestAtClose.tick, destroyed: latestAtClose.destroyed, revision: latestAtClose.meta.destructibleRevision } : null;
+    const bootBase = keyframeAtClose && (!latestBase || keyframeAtClose.tick >= latestBase.tick) ? { ...keyframeAtClose, source: 'keyframe' } : latestBase ? { ...latestBase, source: 'frame' } : null;
+    const fallsSentToSeat = new Set(hostLog.filter((e) => e.host === 'p1' && e.viewerId === 'p2' && e.type === 'world_prop_destroyed').map((e) => e.index));
+    const knownBySeat = new Set([...(bootBase?.destroyed ?? []), ...fallsSentToSeat]);
+    const knownFromEventsOnly = [...knownBySeat].filter((index) => !(bootBase?.destroyed ?? []).includes(index));
     await until(() => roomEvents.some((event) => event.kind === 'host_changed' && event.generation === 2), 'host_changed after the grace', hostGraceMs + 15_000);
     await until(() => p2.session.role === 'host' && p2.session.matchHost?.state === 'live', 'p2 hosts', 30_000);
     const core2 = hostCores.find((entry) => entry.id === 'p2');
@@ -416,10 +432,13 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     const oldSet = new Set(destroyedOld.indices);
     const newSet = new Set(destroyedNew.indices);
     report.steps.migration = {
-      oldHostTick, resumedTick: core2.core.actor.tick, destroyedOld: destroyedOld.indices.length, revisionOld: destroyedOld.revision, knownByElectedAtClose, knownRevisionAtClose, destroyedNewAtBoot: destroyedNew.indices.length, revisionNewAtBoot: destroyedNew.revision,
+      oldHostTick, resumedTick: core2.core.actor.tick, destroyedOld: destroyedOld.indices.length, revisionOld: destroyedOld.revision,
+      bootBase: bootBase?.source ?? null, baseTick: bootBase?.tick ?? null, keyframeTick: keyframeAtClose?.tick ?? null, latestTick: latestBase?.tick ?? null, baseDestroyed: bootBase?.destroyed.length ?? -1, baseRevision: bootBase?.revision ?? -1,
+      knownBySeat: knownBySeat.size, knownFromEventsOnly: knownFromEventsOnly.length, knownNotRestored: [...knownBySeat].filter((index) => !newSet.has(index)).length,
+      destroyedNewAtBoot: destroyedNew.indices.length, revisionNewAtBoot: destroyedNew.revision,
       restored: destroyedOld.indices.filter((i) => newSet.has(i)).length, lostOnMigration: destroyedOld.indices.filter((i) => !newSet.has(i)).length, inventedOnMigration: destroyedNew.indices.filter((i) => !oldSet.has(i)).length,
     };
-    log(`migration: old host had ${report.steps.migration.destroyedOld} destroyed (revision ${report.steps.migration.revisionOld}); the new host booted with ${report.steps.migration.destroyedNewAtBoot} (revision ${report.steps.migration.revisionNewAtBoot}): ${report.steps.migration.restored} restored, ${report.steps.migration.lostOnMigration} lost`);
+    log(`migration: old host had ${report.steps.migration.destroyedOld} destroyed (revision ${report.steps.migration.revisionOld}); the seat knew ${report.steps.migration.knownBySeat} (its ${report.steps.migration.bootBase} at tick ${report.steps.migration.baseTick}: ${report.steps.migration.baseDestroyed}, ${report.steps.migration.knownFromEventsOnly} more from events); the new host booted with ${report.steps.migration.destroyedNewAtBoot} (revision ${report.steps.migration.revisionNewAtBoot}): ${report.steps.migration.restored} restored, ${report.steps.migration.lostOnMigration} lost`);
     await sleep(afterMs);
     marks.migrationPlayEnd = now();
     const recrushed = hostEventsBetween(marks.newHostLiveAt, marks.migrationPlayEnd, 'world_prop_destroyed').filter((e) => e.host === 'p2' && oldSet.has(e.index));
