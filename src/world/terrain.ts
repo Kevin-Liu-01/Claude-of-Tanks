@@ -1420,8 +1420,12 @@ function* heightFieldBuildSteps(
     clearanceRef = ref;
     return ref;
   }
-  /** How far (m) the ground past the playable edge comes down under the clearance at (x, z), given its height there. */
-  function clearanceReduction(x: number, z: number, h: number): number {
+  /**
+   * How far (m) the ground past the playable edge comes down under the clearance at (x, z), given its height there and
+   * the distance to the nearest road: it ramps in over the first 40 m past the red line (no step at the square's edge),
+   * and a road's own band keeps its ground — the road hold (borderLandform.ts) grades it to the landform by the edge.
+   */
+  function clearanceReduction(x: number, z: number, h: number, roadDistance = Infinity): number {
     const half = CLEARANCE_SIDE_M / 2;
     if (Math.max(Math.abs(x), Math.abs(z)) <= half || border.settings.classic) return 0;
     const cx = clamp(x, -half, half), cz = clamp(z, -half, half), dist = Math.hypot(x - cx, z - cz);
@@ -1435,7 +1439,8 @@ function* heightFieldBuildSteps(
     const excess = h - (edge + 2 + dist * 0.044);
     if (excess <= -CLEARANCE_SOFT_M) return 0;
     const soft = excess >= CLEARANCE_SOFT_M ? excess : (excess + CLEARANCE_SOFT_M) ** 2 / (4 * CLEARANCE_SOFT_M);
-    return soft * (1 - release) * (1 - border.classicIslandAt(x, z));
+    const roadBand = roadDistance < 95 ? 1 - smoothstep(18, 95, roadDistance) : 0;
+    return soft * smoothstep(0, 40, dist) * (1 - release) * (1 - roadBand) * (1 - border.classicIslandAt(x, z));
   }
 
   // The map-borders lane (2026-10-03, owner: "roads ... continue and fade naturally"): every road that reaches the
@@ -1635,15 +1640,21 @@ function* heightFieldBuildSteps(
     // where the shore should run on; the lift yields to the water weight, so the shore keeps the bay's own contour.
     h += rimLift * (1 - waterWeight) * rimKeep * roadRimWeight(borderCorridorStart, roadsOn, boundedRoadCorridor, cw, roadCorridorWeight);
     // the foreground clearance past the red line (final queries; the road plane below comes down with its ground)
-    const clearance = roadsOn && borderRadius > 470 ? clearanceReduction(x, z, h) * (1 - waterWeight) : 0;
+    const clearance = roadsOn && borderRadius > 470 ? clearanceReduction(x, z, h, rd) * (1 - waterWeight) : 0;
     h -= clearance;
     // The road grades were authored on the classic rim; a final query's road plane follows the landform's rim instead
     // (the difference, weighted as the authoring weighted the rim), so a road that climbed the old rim never stands on
     // an embankment where the land was lowered. Zero inside 430 m, where both rims are nothing, and along a road inside
     // the playable square, where the landform keeps the classic rim (its road hold), so every grade there is authored.
-    const roadRimShift = roadsOn && borderRadius > 430
+    let roadRimShift = roadsOn && borderRadius > 430
       ? (rimLift - border.classicLiftAt(borderRadius)) * (1 - waterWeight) * rimKeep
         * roadRimWeight(borderCorridorStart, false, boundedRoadCorridor, cw, roadCorridorWeight) - clearance : 0;
+    // ... but a road that cut through the old rim was never on it: past the red line the plane comes down at most on a
+    // gentle ramp (level at the line, 12 % from 20 m on), so no road drops off the square's edge
+    if (roadRimShift < 0 && borderRadius > 470) {
+      const over = borderRadius - 470;
+      roadRimShift = Math.max(roadRimShift, -0.12 * (over < 20 ? (over * over) / 40 : over - 10));
+    }
     if (waterWeight > 0) {
       const target = waterLevelSum / waterWeightSum;
       h += (target - h) * waterWeight;

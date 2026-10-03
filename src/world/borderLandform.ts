@@ -571,15 +571,16 @@ export function createBorderLandform(
         const w = smoothstep(BORDER_PLAYABLE_M, BORDER_PLAYABLE_M + HANDOVER_M, r);
         lift = square + (outlandLevel(x, z, r, a) - square) * w;
       }
+      let island = 0;
       if (anchors.length) {
-        const c = anchorAt(x, z);
-        if (c > 0) lift += (s * s - lift) * c; // the classic rim and its plateau (s = 1 past the edge)
+        island = anchorAt(x, z);
+        if (island > 0) lift += (s * s - lift) * island; // the classic rim and its plateau (s = 1 past the edge)
       }
-      if (roadDistance < ROAD_HOLD_OUT_M && r < BORDER_EDGE_M) {
+      if (roadDistance < ROAD_HOLD_OUT_M && r < BORDER_EDGE_M && island < 1) {
         // past the red line the road keeps the classic rim's level there (it never climbs toward the old plateau), and
-        // hands over to the landform by the edge
+        // hands over to the landform by the edge; a classic island keeps its own rim and plateau
         const hold = (1 - smoothstep(ROAD_HOLD_IN_M, ROAD_HOLD_OUT_M, roadDistance))
-          * (1 - smoothstep(BORDER_PLAYABLE_M - 2, BORDER_EDGE_M, r));
+          * (1 - smoothstep(BORDER_PLAYABLE_M - 2, BORDER_EDGE_M, r)) * (1 - island);
         lift += (Math.min(s * s, RIM_AT_PLAYABLE) - lift) * hold;
       }
       return lift * rimH;

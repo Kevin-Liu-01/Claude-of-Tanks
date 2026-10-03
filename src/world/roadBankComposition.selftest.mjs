@@ -61,7 +61,9 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
       bridgeDecks = [], bridgeTermsAt = () => ({ span: 0, approach: 0, deckY: 0 }),
       // round 63: heightAt ends with the rail cutting (railCuttingHeight, on final queries); this fixture authors none
       railCuttings = null, railCuttingPortalYs = null, railCuttingsOn = false, railCuttingsSuspended = false,
-      railCuttingHeight = (cuttings, portalYs, x, z, h) => h } = fixture;
+      railCuttingHeight = (cuttings, portalYs, x, z, h) => h,
+      // the map-borders lane (2026-10-03): the foreground clearance past the playable edge (nil on this classic fixture)
+      clearanceReduction = () => 0 } = fixture;
     // Frontline Assault 2026-09-13: heightAt now ends with the assault-trenches carve; the
     // standard field (this fixture) has no plan, so the carve contributes nothing here.
     const trenchPlan = fixture.trenchPlan ?? (() => null);
