@@ -350,7 +350,9 @@ float farField(vec2 p) {
   // ring's skyline seen from the eye — the margin wanders round the compass (-0.9 to +4.3 degrees), so some sectors
   // stay behind the ring and the rest show their layers — and never into the cloud deck. Ranges keep their shape (the
   // field is scaled); tables lift to the level (their cliffs keep their profile).
-  float behind = abs(uChar2.w) * smoothstep(uChar2.w < 0.0 ? 2800.0 : 3400.0, uChar2.w < 0.0 ? 4200.0 : 6500.0, r);
+  // (not over a sea sector or beside one: a coast's uplands rose sheer from the water at the sector's edge)
+  float behind = abs(uChar2.w) * smoothstep(uChar2.w < 0.0 ? 2800.0 : 3400.0, uChar2.w < 0.0 ? 4200.0 : 6500.0, r)
+    * (1.0 - smoothstep(0.02, 0.4, edge.g));
   if (behind > 0.001 && h > 0.0) {
     vec2 du = p / max(r, 1.0);
     float m = noised(du * 6.0 + uOff1.zw).x * 0.6 + noised(du * 15.0 + uOff2.xy).x * 0.4;
@@ -519,12 +521,22 @@ void main() {
   // below the first row's elevation: the ground between the ring and the annulus (the shell's apron reads it from
   // below) — the ray's own meeting with that row's level, so the apron carries ground texture, not one streak per column
   float h0 = texture2D(uHeight, vec2(u, 0.5 / uGrid.y)).r;
+  float apron = 0.0;
   if (hitV <= 0.5 / uGrid.y + 1e-5 && tanE < -1e-4 && h0 < uFrame.w) {
+    // the first row's height smoothed round the compass (it carries the ring's outer heights, column by column)
+    float hs = 0.0;
+    for (int t = -4; t <= 4; t++) hs += texture2D(uHeight, vec2(u + float(t) * 3.0 / uGrid.x, 0.5 / uGrid.y)).r;
+    h0 = hs / 9.0;
     rr = clamp((uFrame.w - h0) / -tanE, 300.0, uFrame.x);
     wp = vec3(cos(a) * rr, h0, sin(a) * rr);
     n = vec3(0.0, 1.0, 0.0);
+    // the apron is seen at a grazing angle: one texel row spans hundreds of metres there, so its parcels, stands and
+    // fine tones would stand as one streak per column (where a low ring shows it) — it keeps the broad tones only
+    apron = 1.0;
   }
-  vec4 light = texture2D(uLight, g);
+  // (the apron: its first row's light is one value per column — the near ridges' shadows across it — so it would streak;
+  // it takes the open sky's)
+  vec4 light = mix(texture2D(uLight, g), vec4(1.0, 0.92, 0.0, 1.0), apron);
   float slope = 1.0 - n.y;
   // the zones (forest, fields, snow, scree) by the height over the upland's plinth where it has one
   float hT = clamp((wp.y - texture2D(uHeight, g).g) / uChar4.z, 0.0, 1.0);
@@ -532,18 +544,19 @@ void main() {
   // the lower flanks: stands of the map's forest (denser on the slopes, broken by clearings and fields on the gentle
   // lowland), the crowns' mottle; the meadows and fields a patchwork of their own tones
   float vegW = uChar3.y > 0.0 ? (1.0 - smoothstep(uChar3.y * 0.75, uChar3.y * 1.05, hT + 0.05 * n1)) * (1.0 - smoothstep(0.32, 0.55, slope)) : 0.0;
-  float standN = noised(wp.xz / 170.0 + vec2(3.1, -7.7)).x + 0.45 * noised(wp.xz / 61.0 + vec2(-9.2, 4.4)).x + 0.25 * noised(wp.xz / 23.0).x;
+  float standN = noised(wp.xz / 170.0 + vec2(3.1, -7.7)).x + (1.0 - apron) * (0.45 * noised(wp.xz / 61.0 + vec2(-9.2, 4.4)).x + 0.25 * noised(wp.xz / 23.0).x);
   float stand = smoothstep(-0.15, 0.2, standN + 1.4 * smoothstep(0.03, 0.18, slope) - 0.55);
-  float mottle = 0.72 + 0.4 * (noised(wp.xz / 29.0 + vec2(11.3, 5.1)).x * 0.5 + 0.5);
+  float mottle = 0.72 + 0.4 * mix(noised(wp.xz / 29.0 + vec2(11.3, 5.1)).x * 0.5 + 0.5, 0.5, apron);
   // the lowland's fields: parcels on a slightly rotated grid (each its own crop: green, straw, tilled earth), on the
   // gentle ground only — distant farmland reads as bands of colour along the hills' feet
   vec2 fq = mat2(0.92, 0.39, -0.39, 0.92) * wp.xz / vec2(260.0, 170.0);
   vec2 fc = floor(fq + 0.3 * vec2(noised(fq * 0.21).x, noised(fq * 0.19 + 7.1).x));
   float crop = hash12(fc + 17.3);
   vec3 cropC = crop < 0.45 ? uBase * vec3(0.95, 1.08, 0.88) : crop < 0.75 ? uBase * vec3(1.32, 1.18, 0.78) : uBase * vec3(1.05, 0.88, 0.7);
-  float fieldW = (1.0 - smoothstep(0.04, 0.1, slope)) * (1.0 - smoothstep(0.25, 0.45, hT)) * step(0.35, uChar3.y);
+  float fieldW = (1.0 - smoothstep(0.04, 0.1, slope)) * (1.0 - smoothstep(0.25, 0.45, hT)) * step(0.35, uChar3.y) * (1.0 - apron);
   float field = noised(floor(wp.xz / 210.0) * 1.7 + vec2(0.5)).x;
-  vec3 meadow = uBase * (1.0 + 0.16 * field + 0.08 * noised(wp.xz / 90.0 + vec2(-2.2, 9.4)).x) * vec3(1.0 + 0.06 * field, 1.0, 1.0 - 0.05 * field);
+  field *= 1.0 - apron;
+  vec3 meadow = uBase * (1.0 + 0.16 * field + 0.08 * (1.0 - apron) * noised(wp.xz / 90.0 + vec2(-2.2, 9.4)).x) * vec3(1.0 + 0.06 * field, 1.0, 1.0 - 0.05 * field);
   meadow = mix(meadow, cropC * (0.95 + 0.1 * noised(wp.xz / 37.0).x), fieldW * 0.85);
   vec3 ground = uBase * (0.92 + 0.16 * (noised(wp.xz / 120.0 + vec2(7.7, -1.3)).x * 0.5 + 0.5));
   vec3 col = mix(ground, mix(meadow, uForest * mottle, stand), vegW);
@@ -651,7 +664,11 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       const angle = (i / EDGE_W) * Math.PI * 2;
       // the ring's last row by angle (its columns are not exactly even after the seam work: nearest by angle)
       const k = Math.round((angle / (Math.PI * 2)) * n) % n;
-      const h = options.ringEdge.heights[start + k];
+      // averaged over nine columns (about 7.5 degrees): the outer row is jagged column to column, and the far country's
+      // first kilometre eases out of it, so a raw column stood in the strip as a streak
+      let h = 0;
+      for (let d = -4; d <= 4; d++) h += options.ringEdge.heights[start + ((k + d) % n + n) % n];
+      h /= 9;
       const sea = options.seaWeightAt ? options.seaWeightAt(angle) : { weight: 0, level: 0 };
       edgeData[i * 4] = THREE.DataUtils.toHalfFloat(h);
       edgeData[i * 4 + 1] = THREE.DataUtils.toHalfFloat(sea.weight);
