@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { TANK_SPECS } from '../specs.ts';
-import { ensureInteriorFills, hasInteriorFills, interiorFillRecord } from '../interiorFills.ts';
+import { ensureInteriorFills, hasInteriorFills, interiorFillRecord, interiorFillBoxes } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { ZTZ100_PROTOTYPE_PROFILES, ZTZ100_PROTOTYPE_DATUMS as D,
   ZTZ100_PROTOTYPE_LAUNCHER as L } from './ztz100Prototype.ts';
@@ -178,18 +178,12 @@ await ensureInteriorFills([id]);
 assert.ok(hasInteriorFills(id), 'actual generated prototype fill record is loaded');
 const fillRecord = interiorFillRecord(id);
 const fillBoxes = Object.fromEntries(['hull', 'turret', 'gun'].map(key =>
-  [key, fillRecord[key] ? Buffer.from(fillRecord[key], 'base64').length / 12 : 0]));
+  [key, interiorFillBoxes(fillRecord,key).length]));
 function fillBounds(record) {
-  const boxes = [];
-  for (const owner of ['hull', 'turret', 'gun']) {
-    const buffer = Buffer.from(record[owner] || '', 'base64');
-    for (let i = 0; i < buffer.length; i += 12) {
-      const span = Array.from({ length: 6 }, (_, k) => buffer.readUInt16LE(i + k * 2));
-      boxes.push({ min: record.o.map((o, k) => o + span[k] * record.v),
-        max: record.o.map((o, k) => o + (span[k + 3] + 1) * record.v) });
-    }
-  }
-  return boxes;
+  return ['hull','turret','gun'].flatMap(owner=>interiorFillBoxes(record,owner).map(box=>({
+    min:box.slice(0,3).map((c,k)=>c-box[k+3]/2),
+    max:box.slice(0,3).map((c,k)=>c+box[k+3]/2),
+  })));
 }
 function assertFillAir(boxes) {
   for (const box of boxes) for (const x of L.columns) for (const y of L.rows) {

@@ -93,7 +93,7 @@ function busKeyOf(type, payload) {
 const pct = (sorted, p) => (sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] : null);
 const dist = (a, b) => (a && b ? Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) : null);
 
-export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, hostGraceMs = 1500, frameHz = 30, teamSize = 4, scripted = true, log = () => {} } = {}) {
+export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, hostGraceMs = 1500, frameHz = 30, teamSize = 4, scripted = true, minLiveCrushes = 3, log = () => {} } = {}) {
   const SECRET = 'mp-world-events-audit-seat-secret-0123456789abcdef';
   const roomEvents = [];
   const rooms = await createP2pRoomDouble({ seatSecret: SECRET, hostGraceMs, onEvent: (event) => roomEvents.push(event) });
@@ -356,10 +356,15 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       log(`scripted: ${JSON.stringify(report.steps.scripted)}`);
     }
     await sleep(playMs);
+    // The live window is wall-clock, and a starved host runs fewer ticks in it (the receipt's 8 s window produced 1-2
+    // crushes in about one run in five under load, 2026-10-03). Extend it, up to three times its length, until the
+    // host has produced the few crushes the judgement below needs; an idle machine never waits past playMs.
+    const liveCrushCount = () => uniqueBy(hostEventsBetween(marks.playStart, now(), 'world_prop_destroyed'), (e) => `${e.tick}:${e.index}`);
+    for (let waited = playMs; waited < playMs * 3 && liveCrushCount() < minLiveCrushes; waited += 1000) await sleep(1000);
     marks.playEnd = now();
     const liveCrushes = hostEventsBetween(marks.playStart, marks.playEnd, 'world_prop_destroyed');
-    report.steps.live = { seconds: playMs / 1000, hostCrushes: uniqueBy(liveCrushes, (e) => `${e.tick}:${e.index}`), hostImpacts: uniqueBy(hostEventsBetween(marks.playStart, marks.playEnd, 'shell_impact'), (e) => e.key), hostHits: uniqueBy(hostEventsBetween(marks.playStart, marks.playEnd, 'shell_hit'), (e) => e.key), hostTick: core1.core.actor.tick };
-    log(`live: ${report.steps.live.hostCrushes} crushes, ${report.steps.live.hostImpacts} shell impacts, ${report.steps.live.hostHits} hits on the host in ${playMs / 1000} s`);
+    report.steps.live = { seconds: Math.round(marks.playEnd - marks.playStart) / 1000, hostCrushes: uniqueBy(liveCrushes, (e) => `${e.tick}:${e.index}`), hostImpacts: uniqueBy(hostEventsBetween(marks.playStart, marks.playEnd, 'shell_impact'), (e) => e.key), hostHits: uniqueBy(hostEventsBetween(marks.playStart, marks.playEnd, 'shell_hit'), (e) => e.key), hostTick: core1.core.actor.tick };
+    log(`live: ${report.steps.live.hostCrushes} crushes, ${report.steps.live.hostImpacts} shell impacts, ${report.steps.live.hostHits} hits on the host in ${report.steps.live.seconds} s`);
 
     // ---- 2. p3 leaves the battle to the Garage and rejoins (a fresh presentation on the running match)
     const rejoinPayload = p3.session.round.matchStart;

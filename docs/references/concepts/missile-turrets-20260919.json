@@ -42,17 +42,17 @@
       "id": "object695_x",
       "test": "src/vehicles/profiles/object695X.selftest.mjs",
       "ring": [
-        0,
-        2.15,
-        -1.1
+        0.0,
+        1.935,
+        -0.9900000000000001
       ],
       "gunLocal": [
-        0,
-        0.88,
-        0.2
+        0.0,
+        0.792,
+        0.18000000000000002
       ],
-      "barrelLengthM": 1.35,
-      "barrelRadiusM": 0.04,
+      "barrelLengthM": 1.215,
+      "barrelRadiusM": 0.036000000000000004,
       "pitchDeg": [
         -8,
         35
@@ -60,12 +60,12 @@
       "cells": 12,
       "backupCaliberMm": 30,
       "roofMachineGuns": 0,
-      "hullLengthM": 7.08,
-      "widthM": 3.985,
-      "tallestM": 3.9,
+      "hullLengthM": 6.372,
+      "widthM": 3.5865,
+      "tallestM": 3.51,
       "silhouette": "Tall narrow pedestal with two separated six-cell pods and a short backup cannon",
-      "hullWidthM": 3.985,
-      "overallLengthM": 7.23
+      "hullWidthM": 3.5865,
+      "overallLengthM": 6.507000000000001
     }
   },
   "dimensionToleranceFraction": 0.03,
@@ -95,5 +95,11 @@
       "final": 1.35
     },
     "reason": "Actual legal rearward yaw/depression contact with retained rear rack; shorter backup preserves pivot, pitch range and hull. Pod tails shorten independently without moving12 mouth axes."
-  }
+  },
+  "ownerAmendments": [
+    {
+      "date": "2026-10-02",
+      "request": "Make Object 695 ten percent smaller; retain its complete missile concept and capabilities."
+    }
+  ]
 }

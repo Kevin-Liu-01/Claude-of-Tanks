@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills } from '../interiorFills.ts';
+import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
 
 // Fixed source-stock calipers, authenticated against the current source-derived stock.
 // These are actual shadow extrema after the existing 50 mm body inset, not
@@ -24,8 +25,9 @@ const cases = {
   k21_x: [['hull', 'max', 'x', 1.684]],
   type96b_x: [['hull', 'max', 'z', 3.51476]],
 };
-// Owner-directed whole-vehicle scale; the caster still uses a physical 50 mm inset.
-const resized={griffin50_x:.9,ajax_x:.9,kf41_lynx_x:.9,k21_x:.9};
+// Owner-directed whole-vehicle scale; the caster still uses a physical 50 mm inset. The factors come from the size
+// policy itself: a hand-kept copy missed main's 0.9 Kurganets-25 and BMP-3M Dragun (2026-10-02).
+const resized=VEHICLE_SIZE_FACTORS;
 // Legacy casters (no supplied-armor calipers) still take the three-draw, owner, no-colour-write, finite and
 // budget checks. Their former byte-exact position digests are retired: whole-tank change detection is the
 // fleet geometry ledger's.

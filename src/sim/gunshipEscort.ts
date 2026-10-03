@@ -1,6 +1,6 @@
 import type { MatchModeEntity, MatchModeResult } from './matchModes.ts';
 
-export const ESCORT_RULES = Object.freeze({ hpScale:.35, reloadScale:2, speedScale:.65, radiusM:26 });
+export const ESCORT_RULES = Object.freeze({ hpScale:.9, reloadScale:2, speedScale:.65, radiusM:26 });
 export interface EscortState {
   total:number; alive:number; rescued:number; required:number; progress:number;
   x:number; y:number; z:number;

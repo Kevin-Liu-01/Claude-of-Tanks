@@ -28,8 +28,8 @@ function createMount(tankRoot:THREE.Object3D,spec:MissionCarrierSpec):MissionVis
   }
   const railGeometry=mergeGeometries(parts);for(const part of parts)part.dispose();
   root.add(new THREE.Mesh(railGeometry,material));
-  const kit=createDroneModelKit();
-  drone.name='Docked FPV mission payload';drone.position.y=DRONE_DOCK_HEIGHT_M;
+  const kit=createDroneModelKit(spec.nation);
+  drone.name='Docked FPV mission payload';drone.userData.variant=kit.name;drone.position.y=DRONE_DOCK_HEIGHT_M;
   drone.add(new THREE.Mesh(kit.body,kit.bodyMaterial),new THREE.Mesh(kit.equipment,kit.equipmentMaterial),new THREE.Mesh(kit.lens,kit.lensMaterial));
   const propPose=new THREE.Object3D(),propParts:THREE.BufferGeometry[]=[];
   for(let i=0;i<4;i++){poseDroneRotor(propPose,i,0);propParts.push(kit.rotor.clone().applyMatrix4(propPose.matrix));}

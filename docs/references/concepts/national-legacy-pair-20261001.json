@@ -16,7 +16,7 @@
       "id": "ua_t72b3m_hetman_ii",
       "ring": [
         0.008,
-        1.545,
+        1.445,
         0.114315
       ],
       "gunLocal": [
@@ -36,12 +36,12 @@
       "hullWidthM": 4.60824,
       "widthM": 4.6082,
       "overallLengthM": 9.8892,
-      "tallestM": 3.41,
+      "tallestM": 3.31,
       "specDimensions": {
         "hullLengthM": 7.509,
         "overallLengthM": 9.968815,
         "widthM": 4.60824,
-        "heightM": 3.41
+        "heightM": 3.31
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
@@ -51,7 +51,7 @@
       "id": "pl_t72b3_zubr_ii",
       "ring": [
         0.008,
-        1.475,
+        1.39,
         0.065591
       ],
       "gunLocal": [
@@ -71,16 +71,22 @@
       "hullWidthM": 4.327,
       "widthM": 4.327,
       "overallLengthM": 9.5268,
-      "tallestM": 3.37,
+      "tallestM": 3.285,
       "specDimensions": {
         "hullLengthM": 6.94035,
         "overallLengthM": 9.635766,
         "widthM": 4.327,
-        "heightM": 3.37
+        "heightM": 3.285
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
       "silhouette": "Polish T-72B3 Zubr II modernization concept retaining the native T-72 hull and running gear beneath a new broad welded turret. Squared side armor cabinets, clipped rear shoulders, a long bustle basket, stepped ERAWA cassette fields and independent optics distinguish its architecture from the T-90SM. Thick segmented skirts fold around both track ends and meet the native curved fenders through continuous fitted shoulders; guarded lamps, engine service fittings, tool rails, strapped stores and rear communications equipment remain physically seated. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
     }
-  }
+  },
+  "ownerAmendments": [
+    {
+      "date": "2026-10-02",
+      "request": "Lower all fourteen national variant turrets to reduce the exposed cylinder between hull and turret. Preserve the other new designs and roof equipment."
+    }
+  ]
 }
