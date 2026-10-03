@@ -31,7 +31,7 @@ export default {
   blurb: 'Black volcanic shelves and abandoned extraction works ring an ash-choked basin',
   terrain: {
     // Dark splat/ash dressing supplies the volcanic character; the lava shelves are authored landforms off the roads.
-    hillScale: 0.88, microScale: 1.02, rimH: 56,
+    hillScale: 0.55, microScale: 0.6, rimH: 56,
     mesas: null,
     marshes: [
       { x: -246, z: 242, r: 36, dip: 1.4 }, { x: 360, z: -230, r: 34, dip: 1.2 },
@@ -52,31 +52,40 @@ export default {
       { x: -332, z: 96, width: 50, length: 50, yawDeg: 0, grade: 'road' },
       { x: 340, z: -200, width: 56, length: 56, yawDeg: -77, level: -1, grade: 0.08, bankM: 30 },
     ],
+    // the yards' worn ground: spoil, wheel wear and spilled ore round each yard in an irregular apron, so a yard reads as
+    // a working place on its bank, not a ruled square (workedGroundMask.ts)
+    workedGround: [
+      { boundary: [[-299, 106], [-313, 121], [-324, 140], [-345, 134], [-359, 121], [-378, 111], [-385, 88], [-367, 72], [-348, 67], [-329, 53], [-304, 59], [-299, 85]], feather: 9, strength: 0.85 },
+      { boundary: [[379, -179], [360, -168], [341, -151], [320, -164], [309, -181], [293, -199], [292, -226], [318, -237], [339, -237], [362, -239], [384, -227], [380, -201]], feather: 10, strength: 0.85 },
+    ],
     village: { x0: -178, x1: 188, z0: -174, z1: 190, cx: 4, cz: 14, feather: 44, flatten: 0.72, relief: 0.24 },
     landforms: [
-      // Three cinder cones, each with its summit crater, rills down its scree and a knobbly surface
-      // (landformGeology.ts). The Cinder Cone is the youngest, its flanks near the scree's angle of repose (its
-      // steepest flank 1.14 x height / (radius x (1 - rim))) and its crater breached to the south-west; the Ember Cone is
-      // older, lower and more gullied; the Little Cone is a parasitic vent.
+      // Three cinder cones, each with its summit crater, rills cut deep into its scree, talus fans spreading below the
+      // rills' mouths onto the floor and a knobbly surface (landformGeology.ts). The Cinder Cone is the youngest, its
+      // flanks near the scree's angle of repose (its steepest flank 1.14 x height / (radius x (1 - rim))) and its crater
+      // breached to the south-west; the Ember Cone is older, lower and more gullied; the Little Cone is a parasitic vent.
       { kind: 'knoll', x: -185, z: 266, rx: 48, rz: 60, height: 24,
         geology: { profile: 'cone', crater: { rim: 0.16, depthM: 4, breachDeg: 200 }, outline: 0.1,
-          gullies: { count: 11, depthM: 3.2, width: 0.55 }, rough: 1.1 } },
+          gullies: { count: 11, depthM: 5, width: 0.55 }, fans: { reach: 0.3, heightM: 2.4 }, rough: 1.1 } },
       { kind: 'knoll', x: 205, z: -300, rx: 60, rz: 60, height: 18,
         geology: { profile: 'cone', crater: { rim: 0.15, depthM: 2.5 }, outline: 0.14,
-          gullies: { count: 12, depthM: 3.5, width: 0.6 }, rough: 1.1 } },
+          gullies: { count: 12, depthM: 5.5, width: 0.6 }, fans: { reach: 0.32, heightM: 2.6 }, rough: 1.1 } },
       { kind: 'knoll', x: -40, z: -345, rx: 36, rz: 36, height: 13,
         geology: { profile: 'cone', crater: { rim: 0.18, depthM: 2 }, outline: 0.08,
-          gullies: { count: 8, depthM: 2, width: 0.55 }, rough: 0.8 } },
-      // The Black Shelves: lava flows with lobed margins, a blocky surface, a steep flow front and a talus apron.
-      { kind: 'ridge', x: -390, z: -100, length: 260, width: 50, height: 6, yawDeg: 70,
-        geology: { profile: 'butte', wall: [0.42, 0.6], apron: 0.25, outline: 0.25, rough: 0.7 } },
-      { kind: 'ridge', x: 390, z: 100, length: 260, width: 50, height: 6, yawDeg: 70,
-        geology: { profile: 'butte', wall: [0.42, 0.6], apron: 0.25, outline: 0.25, rough: 0.7 } },
+          gullies: { count: 8, depthM: 3.2, width: 0.55 }, fans: { reach: 0.28, heightM: 1.6 }, rough: 0.8 } },
+      // The Black Shelves: lava flows run down from the caldera wall: a blocky channel between raised levees, lobed
+      // margins with a steep wall and talus, and a steep front where each flow stopped on the basin floor.
+      { kind: 'ridge', x: -390, z: -100, length: 260, width: 50, height: 8, yawDeg: 70,
+        geology: { profile: 'flow', front: 1, outline: 0.25, rough: 0.9, gullies: { count: 3, depthM: 1.2, width: 0.4 } } },
+      { kind: 'ridge', x: 390, z: 100, length: 260, width: 50, height: 8, yawDeg: 70,
+        geology: { profile: 'flow', front: -1, outline: 0.25, rough: 0.9, gullies: { count: 3, depthM: 1.2, width: 0.4 } } },
       // the Ash Hollow
       { kind: 'basin', x: 100, z: 300, rx: 70, rz: 50, height: -4, geology: { outline: 0.2, rough: 0.35 } },
-      ...[[-150, -330, 160, 10], [160, 330, 160, 10], [420, -80, 150, 80], [-430, 60, 150, 80]]
-        .map(([x, z, length, yawDeg]) => ({ kind: 'ridge', x, z, length, width: 80, height: 7, yawDeg,
-          geology: { profile: 'butte' as const, wall: [0.4, 0.58] as const, apron: 0.25, outline: 0.28, rough: 0.7,
+      // the older flow fields under the caldera wall, their fronts toward the basin (the western and eastern fields stand
+      // off their yards' banks: the apron bank law)
+      ...([[-150, -330, 160, 10, 1], [160, 330, 160, 10, -1], [440, -80, 150, 80, -1], [-450, 60, 150, 80, 1]] as const)
+        .map(([x, z, length, yawDeg, front]) => ({ kind: 'ridge', x, z, length, width: 80, height: 7, yawDeg,
+          geology: { profile: 'flow' as const, front, outline: 0.28, rough: 0.9,
             gullies: { count: 3, depthM: 1.2, width: 0.4 } } })),
     ],
   },
@@ -95,10 +104,13 @@ export default {
     roadTint: [0.49, 0.46, 0.43], strata: 0.05, midRelief: 1.15,
   },
   vegetation: {
-    species: ['pine', 'cedar', 'eucalyptus'], clusterMix: [['pine', 0.45], ['cedar', 0.35], ['eucalyptus', 0.20]],
-    loneMix: [['eucalyptus', 0.40], ['pine', 0.35], ['cedar', 0.25]], rimMix: [['cedar', 0.45], ['pine', 0.40], ['eucalyptus', 0.15]],
-    clusterCount: 42, loneCount: 72, rimCount: 64, grassDensity: 0.48,
-    bushCount: 0.62, bushSpecies: 'pine',
+    // Las Canadas on Tenerife: sparse Canary pine on bare cinder, a few Canary junipers, broom scrub (retama, codeso)
+    // between, no grass carpet (gauntlet wave 3: the eucalyptus hillside and the meadow did not belong in a volcanic
+    // caldera). The pine, cypress and acacia archetypes stand in for the Canary pine, juniper and broom.
+    species: ['pine', 'cypress', 'acacia'], clusterMix: [['pine', 0.82], ['cypress', 0.1], ['acacia', 0.08]],
+    loneMix: [['pine', 0.72], ['cypress', 0.12], ['acacia', 0.16]], rimMix: [['pine', 0.86], ['cypress', 0.08], ['acacia', 0.06]],
+    clusterCount: 16, loneCount: 38, rimCount: 40, grassDensity: 0.03,
+    bushCount: 0.55, bushSpecies: 'acacia',
   },
   props: {
     plan: ['factory', 'foundryoffice', 'stack', 'depot', 'gantry', 'firestation',
