@@ -165,6 +165,10 @@ interface RideState {
   /** 1 while the springs absorb a landing on the tracks (the landing stroke: compression and the return to the seat), at
    * the landing damping; 0 otherwise. */
   stroke: number;
+  /** Height the solver gave the ride (support that rose under it faster than the hull's own travel over a climbable
+   * grade explains) that it has not yet come down from: a fall from it is not a fall the hull made (the fall-damage
+   * ledger; it prices nothing else). */
+  solverLift: number;
 }
 
 interface RigidBodyState {
@@ -305,6 +309,8 @@ export interface TankState {
   verticalSpeed: number;
   grounded: boolean;
   landingImpactMps: number;
+  /** The part of this step's landing the hull fell (landingImpactMps less the solver's lift, by energy): fall damage. */
+  fallImpactMps: number;
   slopeBlocked: boolean;
   yawRate: number;
   visualPitch: number;
@@ -812,6 +818,10 @@ const WALL_PUSH_MAX_M_PER_STEP = 0.1;
 /** The ground lifts a ride at most this far in one step: a solver's correction (a support that jumped under the hull,
  * a top found under it) is spread over steps, never a teleport. */
 const FLOOR_LIFT_MAX_M_PER_STEP = 0.25;
+/** How fast the fall ledger forgets a lift once the ride rides its springs again (RideState.solverLift). */
+const SOLVER_LIFT_FORGET_S = 1;
+/** The lever of a hull's turn on the spot over the ground (its corners sweep the terrain at yawRate times this). */
+const SOLVER_LIFT_TURN_LEVER_M = 4;
 let _reachBaseH: HeightSampler | null = null;
 let _reachTerrainH: HeightSampler | null = null;
 let _reachRootX = 0;
@@ -1443,6 +1453,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     verticalSpeed: 0,
     grounded: true,
     landingImpactMps: 0,
+    fallImpactMps: 0,
     slopeBlocked: false,
     yawRate: 0,
     visualPitch: 0,
@@ -1482,6 +1493,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
     _ride: { // sprung vertical chassis motion + deterministic airborne phase
       y: pos.y, v: 0, supportY: NaN, groundV: 0, grounded: true, airTime: 0, bounces: 0, rebound: 0, stroke: 0,
+      solverLift: 0,
     },
     _body: { // rigid attitude/contact state; dormant during ordinary driving
       tumbling: false, landingBlendS: 0, dynamicSupport: false, autoRighting: false, restSupportY: NaN,
@@ -1524,6 +1536,7 @@ export function resetTankVerticalState(
   state.verticalSpeed = Number.isFinite(verticalSpeed) ? verticalSpeed : 0;
   state.grounded = grounded !== false;
   state.landingImpactMps = 0;
+  state.fallImpactMps = 0;
   const ride = state._ride;
   ride.y = y;
   ride.v = state.verticalSpeed;
@@ -1534,6 +1547,7 @@ export function resetTankVerticalState(
   ride.bounces = 0;
   ride.rebound = 0;
   ride.stroke = 0;
+  ride.solverLift = 0;
   state._sup.x = NaN;
   state._body.landingBlendS = 0;
   state._body.dynamicSupport = false;
@@ -1544,6 +1558,8 @@ export function resetTankVerticalState(
 function initializeRideState(state: TankState, supportY: number): RideState {
   const ride = state._ride;
   state.landingImpactMps = 0;
+  state.fallImpactMps = 0;
+  if (!Number.isFinite(ride.solverLift)) ride.solverLift = 0;
   if (!Number.isFinite(ride.y)) ride.y = state.pos.y;
   if (!Number.isFinite(ride.v)) ride.v = 0;
   if (Number.isFinite(ride.supportY)) return ride;
@@ -1614,6 +1630,10 @@ function advanceAirborneRide(
   const vAtContact = vBefore - gravity * fraction * dt;
   const closing = Math.max(0, ride.groundV - vAtContact);
   state.landingImpactMps = closing;
+  // the fall the hull made: its closing less, by energy, the height the solver gave it since it last rode its ground
+  const ledger = ride.solverLift > 0 ? ride.solverLift : 0;
+  state.fallImpactMps = ledger > 0 ? Math.sqrt(Math.max(0, closing * closing - 2 * gravity * ledger)) : closing;
+  ride.solverLift = 0;
   let seat = crossed ? Math.max(contactY, floorY) : Math.max(Math.min(ride.y, contactY), floorY);
   // a floor that rose past a ride in flight lifts it at most a step's worth, as the loaded floor does
   if (!crossed && seat > ride.y) seat = Math.min(seat, ride.y + FLOOR_LIFT_MAX_M_PER_STEP);
@@ -1789,6 +1809,14 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
       const follow = Math.min(_rotationDrop, ride.y - supportY);
       ride.y -= follow;
       ride.supportY -= follow;
+    }
+    // the fall ledger: support that rose under the hull faster than its own travel (and its turn on the spot) over a
+    // climbable grade explains is the solver's; it is forgotten as the hull rides its springs again
+    if (Number.isFinite(ride.supportY)) {
+      const travelRiseM = (Math.abs(state.speed) + Math.abs(state.yawRate || 0) * SOLVER_LIFT_TURN_LEVER_M) * CLIFF_GRADE * dt;
+      const solverRise = supportY - ride.supportY - travelRiseM;
+      if (solverRise > 0) ride.solverLift = (ride.solverLift || 0) + solverRise;
+      else if (ride.solverLift > 0 && !(ride.y < floorY)) ride.solverLift *= Math.exp(-dt / SOLVER_LIFT_FORGET_S);
     }
     const groundVStart = ride.groundV;
     updateRideSupportVelocity(ride, supportY, dt);

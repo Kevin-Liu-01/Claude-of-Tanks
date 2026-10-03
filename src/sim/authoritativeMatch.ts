@@ -2104,7 +2104,8 @@ export function createAuthoritativeMatch({
       });
       if (result || (impact > 1.5 && fresh)) publishEntityImpact(entity, 'impact', closing, result);
     }
-    const landing = state.landingImpactMps;
+    // the fall the hull made (movement.ts fallImpactMps: the landing less the height the solver gave it, by energy)
+    const landing = Number.isFinite(state.fallImpactMps) ? state.fallImpactMps : state.landingImpactMps;
     if (landing > 0) {
       const upY = Math.cos(state.visualPitch) * Math.cos(state.visualRoll);
       const attitudeFactor = fallAttitudeFactor(state.visualPitch - state._terr.pitch, state.visualRoll - state._terr.roll, upY);

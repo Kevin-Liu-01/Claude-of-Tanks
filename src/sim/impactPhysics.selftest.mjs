@@ -570,4 +570,39 @@ function padField() {
   near(entity.state.pos.y, seat + 2, 0.06, 'and the hull stands on the pad');
 }
 
-console.log('impactPhysics.selftest: Mars/Turbo bounces decay and settle, 1 g barely hops, no tunnelling at 40 m/s (terrain, roof, wall, cliff), slope slide and hold, lateral grip, wreck momentum, landing torque, step-size independence and the ground\'s lift cap pass');
+// ---- 13. a drop the solver made is not a fall (physics lane, 2026-10-03; maps lane A's wedged bots) --------------
+// The fall prices the hull's own fall (movement.ts fallImpactMps): its closing less, by energy, the height the support
+// gave it beyond what its own travel over a climbable grade explains. The pad that lifted a parked hull 2 m goes again
+// at once: the landing reads the 2 m drop's closing, the fall none of it. Dropped from the same height, a hull's fall is
+// priced in full.
+{
+  const field = padField();
+  const entity = makeEntity(field, { mode: 'standard' });
+  settle(entity, field);
+  const seat = entity.state.pos.y;
+  field.pad = 2;
+  entity.state._sup.x = NaN;
+  for (let i = 0; i < 60 && entity.state.pos.y < seat + 1.95; i++) updateTank(entity, field, SIM_DT, null);
+  field.pad = 0;
+  entity.state._sup.x = NaN;
+  let landing = 0;
+  let fall = NaN;
+  run(entity, field, 90, () => {
+    if (entity.state.landingImpactMps > landing) { landing = entity.state.landingImpactMps; fall = entity.state.fallImpactMps; }
+  });
+  assert.ok(landing > 5, `the 2 m drop lands closing at its own speed (${landing.toFixed(2)} m/s)`);
+  assert.ok(fall < 1, `and none of it is the hull's fall (${fall.toFixed(2)} m/s)`);
+
+  const dropped = makeEntity(field, { mode: 'standard' });
+  settle(dropped, field);
+  resetTankVerticalState(dropped.state, dropped.state.pos.y + 2, 0, false);
+  let ownLanding = 0;
+  let ownFall = NaN;
+  run(dropped, field, 90, () => {
+    if (dropped.state.landingImpactMps > ownLanding) { ownLanding = dropped.state.landingImpactMps; ownFall = dropped.state.fallImpactMps; }
+  });
+  near(ownFall, ownLanding, 1e-9, 'a hull dropped from 2 m falls in full');
+  assert.ok(ownFall > 5, `closing at its own speed (${ownFall.toFixed(2)} m/s)`);
+}
+
+console.log('impactPhysics.selftest: Mars/Turbo bounces decay and settle, 1 g barely hops, no tunnelling at 40 m/s (terrain, roof, wall, cliff), slope slide and hold, lateral grip, wreck momentum, landing torque, step-size independence, the ground\'s lift cap and the fall ledger pass');

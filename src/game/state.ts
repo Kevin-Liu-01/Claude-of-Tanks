@@ -2478,7 +2478,8 @@ function resolveTankImpacts(
       pos: [state.pos.x, state.pos.y, state.pos.z], cause: 'contact', hard: false, damage: 0,
     });
   }
-  const landing = state.landingImpactMps;
+  // the fall the hull made (movement.ts fallImpactMps: the landing less the height the solver gave it, by energy)
+  const landing = Number.isFinite(state.fallImpactMps) ? state.fallImpactMps : state.landingImpactMps;
   if (landing > 0) {
     const upY = Math.cos(state.visualPitch) * Math.cos(state.visualRoll);
     const attitudeFactor = fallAttitudeFactor(state.visualPitch - state._terr.pitch, state.visualRoll - state._terr.roll, upY);

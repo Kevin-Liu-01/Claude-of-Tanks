@@ -890,6 +890,9 @@ contact constraints and cannot be crossed by residual uphill speed.
   Skybridge faces) was carried 7-12 m up the face by its own samples and dropped back, again and again, for 500-1900 hp.
 - *The ground lifts a ride at most 0.25 m a step.* A floor that rises past the ride faster (a support that jumped
   under the hull, a top found under it) lifts it over several steps, never in one.
+- *A fall is the hull's own.* Fall damage prices the closing less, by energy, the height the support rose under the
+  ride beyond what its own travel (and its turn on the spot) over a climbable grade explains (`fallImpactMps`; the
+  ledger forgets over a second of riding the springs): a drop caused by the solver correcting itself is never a fall.
 - *Known limits.* Rigid rotation is still about the root, though the tip lever reads the box centre (a nose-first
   landing settles about its centre, so it can hop a few times on a sharp kicker); a hull balanced exactly on a 4 m
   edge hangs nose-up near 80° before it slides off (its tail cannot reach the ground sooner); the drivetrain reads the grade over the hull's run (1° flatter than a 25° face,
