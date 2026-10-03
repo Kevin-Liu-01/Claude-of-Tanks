@@ -1518,7 +1518,10 @@ function* heightFieldBuildSteps(
     if (hit.exit < 0) return out;
     const exit = _roadExits![hit.exit];
     out[0] = hit.offset;
-    out[1] = smoothstep(-2, 6, edgeOut) * (1 - smoothstep(exit.length * 0.55, exit.length * 0.95, hit.along));
+    // the carriageway fades where the ring hands its continued ground over to the authored ranges (gauntlet wave 1,
+    // Cinder Junction: an exit drawn on up a range's face read as a road climbing the backdrop)
+    out[1] = smoothstep(-2, 6, edgeOut) * (1 - smoothstep(exit.length * 0.55, exit.length * 0.95, hit.along))
+      * smoothstep(0.45, 0.9, border.handOverAt(x, z));
     return out;
   }
 
@@ -3560,7 +3563,12 @@ void splatCompute() {
   // rock outcrop patches separated by clean ground
   // Round 45 (AAA checks 3/15, owner audit "monsoon: smooth bare brown mound at the SW corner"): a wet tropical hill
   // keeps its turf to far steeper slopes than a temperate one; the map's hold shifts every slope threshold below.
-  float slopeR = slope - uSlopeGrassHold;
+  // the map-borders lane (2026-10-03, gauntlet wave 1: "a purple ground splotch", the before frames' "blue-grey patch
+  // read as a frozen pond"): round the playable edge the faces of 20-35 degrees are the rim's remnants and small banks,
+  // not cliffs — a rock patch on them reads as a stain, so there the turf holds to ~35 degrees; real walls stay rock
+  float rimBandR = max(abs(wp.x), abs(wp.z));
+  float rimBandW = smoothstep(415.0, 445.0, rimBandR) * (1.0 - smoothstep(650.0, 800.0, rimBandR));
+  float slopeR = slope - uSlopeGrassHold - 0.085 * rimBandW;
   float fR = smoothstep(0.095, 0.235, slopeR + (n1 - 0.5) * 0.16) * rockGate;
   // rock takeover on steep faces: cliff walls and cut banks always read as
   // rock. r3: WIDE, noise-dithered band — the old razor 0.32-0.50 threshold
