@@ -159,7 +159,7 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     crestSharpness: 1.35, footSharpness: 0.85, billow: 0.15, gullyM: 6.0, gullyWavelengthM: 46, gullyElongation: 4, fineElongation: 1.9, rangeBoost: 1.35, rangeCount: 3, rangeElongation: 3.6,
     talusFloor: 0.28, driftM: 0.9, aoReachM: 170, aoStrength: 0.75, shadowSoft: 0.06, far: FAR_POLAR,
     massif: { baseWavelengthM: 900, gullyWavelengthM: 300, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2.5, branch: 3, erosion: 0.45, concavity: 1.15, contrast: 0.42, smoothM: 140 },
-    drainage: { wavelengthM: 170, octaves: 3, depthM: 10, gain: 0.55, slopeStrength: 3.0, branch: 1.6, grainM: 0.5 }, cover: null,
+    drainage: { wavelengthM: 170, octaves: 3, depthM: 9, gain: 0.55, slopeStrength: 2.6, branch: 1.8, grainM: 0.5 }, cover: null,
   },
   // spires and glaciers: sharp multifractal crests, short warps, chutes on the faces
   alpine: {
@@ -186,7 +186,7 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     // occlusion carried its share (Sirocco Wadi's "soft, blobby shading"); the walls' ledges are the escarpment's beds
     // (horizonEscarpment.ts), the drainage cuts the washes down the fall line, the cover darkens the walls' rock
     drainage: { wavelengthM: 150, octaves: 3, depthM: 5, gain: 0.55, slopeStrength: 3.0, branch: 1.4, grainM: 0.4 },
-    cover: { forest: 0, canopy: 0, fields: 0, varnish: 0.36, beds: 0.24 },
+    cover: { forest: 0, canopy: 0, fields: 0, varnish: 0.46, beds: 0.38 },
   },
   // volcanic country: smooth-sided cones cut by radial barrancos, lava benches
   volcanic: {
@@ -210,7 +210,7 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     crestSharpness: 0.8, footSharpness: 0.7, billow: 0.55, gullyM: 2.0, gullyWavelengthM: 70, gullyElongation: 4.5, fineElongation: 1.3, rangeBoost: 1.15, rangeCount: 2, rangeElongation: 4.2,
     talusFloor: 0.6, driftM: 0, aoReachM: 160, aoStrength: 0.55, shadowSoft: 0.07, far: FAR_MARTIAN,
     massif: { baseWavelengthM: 1400, gullyWavelengthM: 520, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2, branch: 2, erosion: 0.35, concavity: 1.05, contrast: 0.30, smoothM: 200 },
-    drainage: { wavelengthM: 240, octaves: 3, depthM: 3.0, gain: 0.55, slopeStrength: 2.4, branch: 1.2, grainM: 0.4 }, cover: { forest: 0, canopy: 0, fields: 0, varnish: 0.26, beds: 0.2 },
+    drainage: { wavelengthM: 240, octaves: 3, depthM: 3.0, gain: 0.55, slopeStrength: 2.4, branch: 1.2, grainM: 0.4 }, cover: { forest: 0, canopy: 0, fields: 0, varnish: 0.34, beds: 0.3 },
   },
   // jungle karst: steep isolated towers, rounded tops, sharp bases
   karst: {
@@ -686,7 +686,10 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
         ehx += e[1] * depth / cell; ehz += e[2] * depth / cell;
         depth *= d.gain; cell *= 0.5;
       }
-      ero[jq * Wq + iq] = eh * weight;
+      // the couloirs come and go across a face (census border views, Frosthollow: one depth over a whole face read as
+      // regular fluting): a ~600 m field sets where they cut deep and where the face stays smooth between ribs
+      const patch = smoothstep(-0.35, 0.55, noise.noise(x / 600 + 61.7, z / 600 - 23.9) + 0.35 * noise.noise(x / 230 - 5.3, z / 230 + 8.8));
+      ero[jq * Wq + iq] = eh * weight * (0.3 + 0.7 * patch);
     }
     if ((jq & 7) === 7) yield;
   }
@@ -745,7 +748,9 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
         gradAt(i, j, g);
         const slope = Math.hypot(g[0], g[1]);
         // a wall from about 24 degrees, full by 42: varnish darker down the couloirs (where the water runs), the beds' tones
-        const wall = smoothstep(0.45, 0.90, slope + noise.noise(x / 70 - 3.1, z / 70 + 8.3) * 0.12) * land;
+        // (from about 14 degrees, full by 35: the escarpments' talus and benches carry rock too — Sirocco Wadi's walls
+        // read as pale clay with the band at 24-42 degrees)
+        const wall = smoothstep(0.25, 0.70, slope + noise.noise(x / 70 - 3.1, z / 70 + 8.3) * 0.12) * land;
         if (wall > 0.001) {
           const streak = clamp(-couloir / Math.max(0.5, d.depthM), 0, 1);
           const varnish = (rock.varnish ?? 0) * (0.65 + 0.35 * streak);
@@ -783,7 +788,11 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
           mottle = crown;
           if (canopyH) canopyH[idx] = forestW * (16 + crown * 3);
         }
-        let light = 1 - forestW * c.canopy * (1 + mottle * 0.18);
+        // the canopy's own texture in the light (census border views, 2026-10-03: a smooth stand read as a blue-grey
+        // sheet draped on the hill, not a wood): crowns and their shaded gaps at 9-16 m, clumps at ~40 m, so the stand
+        // carries the grain a forest shows at one to two kilometres
+        const clump = noise.noise(x / 38 + 13.7, z / 38 - 29.1);
+        let light = 1 - forestW * c.canopy * (0.92 + mottle * 0.42 + clump * 0.16);
         if (c.fields > 0 && input.fields) {
           const open = (1 - forestW) * (1 - smoothstep(0.10, 0.22, slope)) * fieldNear * land;
           if (open > 0.001) {
