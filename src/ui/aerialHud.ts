@@ -26,7 +26,9 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
   const identity=node('button','flight-identity flight-view-switch',heading),title=node('strong','',identity);
   identity.type='button';
   const feed=node('span','flight-feed',identity),viewLabel=node('span','',feed);icon(feed,'undo','flight-cycle-icon');
-  identity.addEventListener('click',()=>setAerialVision(nextAerialVision()));
+  const visionKey=node('kbd','flight-key flight-view-key',feed);visionKey.textContent='I';
+  const switchView=()=>{if(!root.hidden&&!identity.disabled)setAerialVision(nextAerialVision());};
+  identity.addEventListener('click',switchView);bus.on('ui:aerialVision',switchView);
   const telemetry=node('div','flight-telemetry',heading);
   const timer=instrument(telemetry,'reload',t('flight.battery'));
   const link=instrument(telemetry,'radio',t('flight.link'));
@@ -60,11 +62,11 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
     }
   }
   return {
-    update(player:HudTank|null|undefined,now:number,fov:number,dist:number,visible:boolean,key='V',thermalReady=false){
+    update(player:HudTank|null|undefined,now:number,fov:number,dist:number,visible:boolean,key='V',thermalReady=false,viewKey='I'){
       const view=player?.aerial,active=!!view?.active&&visible;
       root.hidden=!active;document.documentElement.dataset.flight=active?view!.kind:'';
       if(!active||!view){wasActive=false;return;}
-      identity.disabled=!thermalReady;
+      identity.disabled=!thermalReady;visionKey.textContent=viewKey;
       viewLabel.textContent=t('flight.view.'+getAerialVision());
       identity.title=t('flight.view.next',{view:t('flight.view.'+nextAerialVision())});
       identity.setAttribute('aria-label',t('flight.view.switch',{current:t('flight.view.'+getAerialVision()),next:t('flight.view.'+nextAerialVision())}));

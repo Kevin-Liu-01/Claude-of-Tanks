@@ -90,3 +90,5 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
  .flight-identity strong{font-size:9px}.flight-view-switch .flight-feed{font-size:8px}
  .flight-emblem{display:none}
 }
+
+@media(pointer:coarse){.flight-view-key{display:none}}

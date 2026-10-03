@@ -337,6 +337,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     bus.emit('ui:click', {});
   });
 
+  onAction('aerialVision', () => { if(battleInputAllowed())bus.emit('ui:aerialVision', {}); });
   onAction('drone', () => bus.emit('ui:drone', {}));
 
   let defaultLightsOn=false, lightIntent:boolean|null=null, lightIntentAt=-Infinity;

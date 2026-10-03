@@ -126,16 +126,16 @@ async function openPublishedPage(browser,url,viewport){
 }
 
 async function checkSensors(page,mode,suffix,mobile){
- await page.evaluate(()=>document.exitPointerLock());
  for(const [label,code] of [['Infrared',1],['Thermal',2],['Night vision',3],['Daylight',0]]){
   await page.waitForFunction((code)=>window.__DEBUG.post.composer.passes.find(p=>p.isOutputGradePass).uniforms.uThermal.value===code,{timeout:5000},code);
+  console.log('six-modes: sensor',mode,suffix,label);
   assert.match(await page.$eval('.flight-view-switch',el=>el.textContent),new RegExp(label));
   const spacing=await page.$eval('.flight-console',el=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return{padding:parseFloat(s.paddingLeft),top:r.top,height:r.height};});
   assert.ok(spacing.padding>=6,'flight panel retains padding against HUD reset');
   const button=await page.$eval('.flight-view-switch',el=>{const r=el.getBoundingClientRect();return{width:r.width,height:r.height};});
   assert.ok(button.width>=44&&button.height>=44,'sensor control has a touch-sized target');
   await page.screenshot({path:resolve(out,`${mode}-sensor-${code}-${suffix}.png`)});
-  if(mobile)await page.tap('.flight-view-switch');else await page.click('.flight-view-switch');
+  if(mobile)await page.tap('.flight-view-switch');else await page.keyboard.press('KeyI');
  }
  await page.waitForFunction(()=>window.__DEBUG.post.composer.passes.find(p=>p.isOutputGradePass).uniforms.uThermal.value===1);
 }

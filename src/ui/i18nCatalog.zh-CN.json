@@ -3803,5 +3803,6 @@
   "flight.view.night": "夜视",
   "flight.view.daylight": "日光",
   "flight.view.next": "切换为{view}",
-  "flight.view.switch": "当前视图：{current}。切换为{next}。"
+  "flight.view.switch": "当前视图：{current}。切换为{next}。",
+  "flight.view.action": "切换空中视图"
 }

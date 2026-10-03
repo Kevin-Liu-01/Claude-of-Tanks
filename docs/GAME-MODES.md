@@ -32,7 +32,7 @@ rule the battle does not keep.
 
 ## Aerial sensor views
 
-In Drone and AC-130, click or tap the view button beside the aircraft icon to cycle
+In Drone and AC-130, press **I** (rebindable in Settings), or tap the view button beside the aircraft icon, to cycle
 **Infrared → Thermal → Night vision → Daylight**. The button shows the active view
 and remembers your choice between flights. It stays disabled until the drone camera
 has entered first-person flight, so takeoff stays in normal color.
