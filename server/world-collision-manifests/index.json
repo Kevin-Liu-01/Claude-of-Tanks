@@ -194,9 +194,9 @@
       "concealers": 5912
     },
     "mangrove": {
-      "bytes": 1199937,
-      "sha256": "f3e5bb6c6a3108eaff3889c020f845dba3a1294c792095e455190cc59a5fae4a",
-      "obstacles": 4525,
+      "bytes": 1224187,
+      "sha256": "8d61047dca67f5a6a92e3caf06dae30b32061017c6104d50f986cb389d1448ce",
+      "obstacles": 4560,
       "colliders": 4300,
       "concealers": 5680
     },
