@@ -1,5 +1,25 @@
-// caldera.js — volcanic mining basin: black lava shelves, sulphur grass,
-// extraction works, ash haze and a ruined settlement around the central road.
+// src/world/maps/caldera.ts — Obsidian Caldera, redesigned 2026-10-03 (maps-and-layouts lane;
+// docs/MAP-LAYOUT-BRIEF.md).
+// The caldera wall (the map's high rim), the mining loop and its roads, the extraction works and the ruined settlement,
+// the palette, sky, name and id are the map's identity and stay; the basin floor is new. The old floor was Verdant's
+// five landforms under seed-random mesa shelves: its sightlines closed to a 76 m median (62 % of the blocked rays under
+// 100 m), its roads climbed past 30 % where shelves and unblended junctions met them, and the zone-control discs stood
+// up to 1.3 times farther from one team.
+//
+// Reference: the Aso caldera on Kyushu: a volcanic basin many kilometres across, its floor farmed and settled, cinder
+// cones such as Komezuka standing on it, black lava flows, and sulphur workings by the active vents.
+//
+// The story on the ground: the mining loop rings the settlement on the basin floor. Three cinder cones stand on the
+// floor at their scree's angle of repose, each with a summit crater: the Cinder Cone in the north-west, the Little Cone
+// south of the loop and the Ember Cone in the south-east. The Black Shelves, flat-topped lava flows, lie off the roads
+// on four sides, and the Ash Hollow, a shallow dry crater, opens north of the loop. The south cross road leaves the
+// west road and ends on the loop. Alpha deploys in the south-west corner, bravo along the northern floor. The
+// zone-control discs stand on the line of equal driven distance: the yard of the Sulphur Works below its stack by the
+// west road, the settlement's west end and the Loading Yard on the east.
+//
+// Landmarks: the Cinder Cone, the Little Cone, the Ember Cone, the Black Shelves, the Ash Hollow, the Sulphur Works'
+// stack and the Loading Yard. At the square's edge the west and east Black Shelves run into the rim: the borders lane
+// carries them outward.
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 
@@ -10,27 +30,54 @@ export default {
   name: 'Obsidian Caldera',
   blurb: 'Black volcanic shelves and abandoned extraction works ring an ash-choked basin',
   terrain: {
-    // Dark splat/ash dressing supplies the volcanic character while lower,
-    // rarer shelves preserve cross-caldera contact and match pacing.
+    // Dark splat/ash dressing supplies the volcanic character; the lava shelves are authored landforms off the roads.
     hillScale: 0.88, microScale: 1.02, rimH: 56,
-    mesas: { amp: 16, thr0: 0.75, thr1: 0.81 },
+    mesas: null,
     marshes: [
-      { x: -246, z: 242, r: 36, dip: 1.4 }, { x: 286, z: -220, r: 34, dip: 1.2 },
+      { x: -246, z: 242, r: 36, dip: 1.4 }, { x: 360, z: -230, r: 34, dip: 1.2 },
     ],
     roads: { paths: [
-      [[-286, -36], [-230, -190], [-74, -282], [104, -264], [242, -160], [286, 8], [238, 174], [82, 270], [-104, 252], [-252, 150], [-286, -36]],
-      [[-434, -448], [-360, -278], [-314, -92], [-286, 92], [-236, 286], [-170, 466]],
+      [[104, -264], [226, -171], [242, -160], [286, 8], [238, 174], [190, 204.5], [82, 270], [-104, 252], [-252, 150],
+        [-286, -36], [-230, -190], [-74, -282], [104, -264]],
+      [[-434, -448], [-360, -278], [-350, -238], [-314, -92], [-286, 92], [-236, 286], [-170, 466]],
       [[350, -446], [302, -270], [278, -92], [296, 86], [258, 268], [198, 452]],
-      [[-304, -210], [-174, -130], [-34, -68], [108, -92], [244, -182]],
-      [[-280, 216], [-146, 152], [-8, 126], [132, 172], [262, 248]],
+      [[-350, -238], [-304, -210], [-174, -130], [-34, -68], [108, -92], [226, -171]],
+      [[-280, 216], [-146, 152], [-8, 126], [132, 172], [190, 204.5], [262, 248]],
     ] },
+    // The zone-control seats on the line of equal driven distance: the western sulphur works' yard and the eastern
+    // loading yard are aprons; the ruined settlement's west end needs none. Both keep the apron bank law
+    // (docs/MAP-LAYOUT-BRIEF.md, "Apron banks"): the sulphur yard follows the west road's grade beside it, and the
+    // loading yard tilts 8 % with the lava slope it is cut into, with a 30 m bank.
+    hardstands: [
+      { x: -332, z: 96, width: 50, length: 50, yawDeg: 0, grade: 'road' },
+      { x: 340, z: -200, width: 56, length: 56, yawDeg: -77, level: -1, grade: 0.08, bankM: 30 },
+    ],
     village: { x0: -178, x1: 188, z0: -174, z1: 190, cx: 4, cz: 14, feather: 44, flatten: 0.72, relief: 0.24 },
     landforms: [
-      { kind: 'ridge', x: -278, z: 20, length: 340, width: 82, height: 9.0, yawDeg: 5 },
-      { kind: 'ridge', x: 280, z: 28, length: 330, width: 82, height: 8.8, yawDeg: -6 },
-      { kind: 'ridge', x: -20, z: 282, length: 250, width: 72, height: 7.2, yawDeg: 84 },
-      { kind: 'knoll', x: 136, z: -242, rx: 88, rz: 62, height: 7.0, yawDeg: 18 },
-      { kind: 'basin', x: -132, z: -218, rx: 106, rz: 74, height: -3.8, yawDeg: -19 },
+      // Three cinder cones, each with its summit crater, rills down its scree and a knobbly surface
+      // (landformGeology.ts). The Cinder Cone is the youngest, its flanks near the scree's angle of repose (its
+      // steepest flank 1.14 x height / (radius x (1 - rim))) and its crater breached to the south-west; the Ember Cone is
+      // older, lower and more gullied; the Little Cone is a parasitic vent.
+      { kind: 'knoll', x: -185, z: 266, rx: 48, rz: 60, height: 24,
+        geology: { profile: 'cone', crater: { rim: 0.16, depthM: 4, breachDeg: 200 }, outline: 0.1,
+          gullies: { count: 11, depthM: 3.2, width: 0.55 }, rough: 1.1 } },
+      { kind: 'knoll', x: 205, z: -300, rx: 60, rz: 60, height: 18,
+        geology: { profile: 'cone', crater: { rim: 0.15, depthM: 2.5 }, outline: 0.14,
+          gullies: { count: 12, depthM: 3.5, width: 0.6 }, rough: 1.1 } },
+      { kind: 'knoll', x: -40, z: -345, rx: 36, rz: 36, height: 13,
+        geology: { profile: 'cone', crater: { rim: 0.18, depthM: 2 }, outline: 0.08,
+          gullies: { count: 8, depthM: 2, width: 0.55 }, rough: 0.8 } },
+      // The Black Shelves: lava flows with lobed margins, a blocky surface, a steep flow front and a talus apron.
+      { kind: 'ridge', x: -390, z: -100, length: 260, width: 50, height: 6, yawDeg: 70,
+        geology: { profile: 'butte', wall: [0.42, 0.6], apron: 0.25, outline: 0.25, rough: 0.7 } },
+      { kind: 'ridge', x: 390, z: 100, length: 260, width: 50, height: 6, yawDeg: 70,
+        geology: { profile: 'butte', wall: [0.42, 0.6], apron: 0.25, outline: 0.25, rough: 0.7 } },
+      // the Ash Hollow
+      { kind: 'basin', x: 100, z: 300, rx: 70, rz: 50, height: -4, geology: { outline: 0.2, rough: 0.35 } },
+      ...[[-150, -330, 160, 10], [160, 330, 160, 10], [420, -80, 150, 80], [-430, 60, 150, 80]]
+        .map(([x, z, length, yawDeg]) => ({ kind: 'ridge', x, z, length, width: 80, height: 7, yawDeg,
+          geology: { profile: 'butte' as const, wall: [0.4, 0.58] as const, apron: 0.25, outline: 0.28, rough: 0.7,
+            gullies: { count: 3, depthM: 1.2, width: 0.4 } } })),
     ],
   },
   spawns: {
@@ -58,16 +105,18 @@ export default {
       'watertower', 'containerRow', 'factory', 'ruin', 'shed', 'warehouse', 'stack', 'depot',
       'containerRow', 'factory', 'warehouse', 'gantry', 'shed', 'stack', 'ruin', 'depot',
       'watertower', 'containerRow', 'factory', 'warehouse', 'shed', 'gantry', 'ruin', 'stack'],
+    // the Sulphur Works' stack stands west of its yard, clear of the zone-control disc
+    plannedSites: [{ structure: 'stack', x: -378, z: 100, yawDeg: 0 }],
     destructibleBuildings: [
       'quonsethut', 'transformershed', 'motorpool', 'guardpost',
       'securityoffice', 'servicegarage', 'relaystation',
     ],
     tacticalBeats: [
-      { id: 'western-lava-cut', role: 'brawl', x: -282, z: 84, yawDeg: 4,
+      { id: 'western-lava-cut', role: 'brawl', x: -290, z: 170, yawDeg: 4,
         structure: 'motorpool', redoubt: true, outcrop: { count: 8, radius: 12, scaleMax: 3.6 }, wreck: true, wreckOffsetZ: -16 },
       { id: 'caldera-survey-post', role: 'scout', x: -46, z: -246, yawDeg: 20,
         structure: 'guardpost', outcrop: { count: 5, radius: 9, scaleMax: 2.9 } },
-      { id: 'eastern-transformer-yard', role: 'support', x: 276, z: 112, yawDeg: -8,
+      { id: 'eastern-transformer-yard', role: 'support', x: 180, z: 160, yawDeg: -8,
         structure: 'transformershed', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: 16 },
     ],
     blockFill: true,

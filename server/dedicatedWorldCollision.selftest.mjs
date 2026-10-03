@@ -19,7 +19,9 @@ const authoredWorlds = new Map();
 // 2026-09-19 hitbox pass: full recapture of every shard; a capture of pristine origin/main placed the same heaps,
 // so the committed rail shards had already drifted from the current planting order (railyard 7 → 6, foundry 5 → 7).
 // 2026-10-01: Cinder Junction's heaps stand on the coal stages beside its two loading stubs (railSpurs.ts coalStage).
-const coalCensus = { railyard: 10, caldera: 7, foundry: 7, skybridge: 5 };
+// 2026-10-03: Obsidian Caldera's rebuild shifts the rail-yard dressing's seeded draws (mapKits.ts addRailYardCoalHeaps):
+// the third heap's draw now lands at (59, -86), within 7 m of the cross road, so the strip keeps six heaps (was 7).
+const coalCensus = { railyard: 10, caldera: 6, foundry: 7, skybridge: 5 };
 
 // 2026-09-29 roads/settlements: native all31-map recapture, terrain1337,
 // props2002, vegetation2001. Counts include shared tree colliders (the capture
@@ -50,7 +52,7 @@ const expected = {
   monsoon: [9855, 9630, 12375], // 2026-10-02 Monsoon Ridge layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md); was [9473, 9215, 12022]
   alpine: [9117, 9044, 8009],
   // Same prior-props baseline verification as Monsoon.
-  caldera: [5000, 5107, 3810],
+  caldera: [4890, 5035, 3695], // 2026-10-03 Obsidian Caldera layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md); was [5000, 5107, 3810]
   foundry: [4277, 4385, 3119],
   ruinspires: [2823, 9284, 1050],
   blackglass: [3661, 5894, 2333],

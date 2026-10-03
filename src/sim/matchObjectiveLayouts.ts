@@ -65,6 +65,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // between the deployments — the north bank's timber landing, the shore yard (also the turbo-ball kickoff), the
   // south yard.
   monsoon: { kickoff: { x: -60, z: 24 }, zones: [{ x: -306, z: 16 }, { x: -60, z: 24 }, { x: 400, z: 8 }] },
+  // Obsidian Caldera (redesign 2026-10-03): three discs on the line of equal driven distance — the Sulphur Works' yard
+  // by the west road, the settlement's west end on the basin floor (also the turbo-ball kickoff), the eastern Loading
+  // Yard. The two yards are graded aprons in the map file; the settlement's floor seats its disc as it lies.
+  caldera: { kickoff: { x: -120, z: 0 }, zones: [{ x: -332, z: 96 }, { x: -120, z: 0 }, { x: 340, z: -200 }] },
   reservoir: { kickoff: { x: 88, z: 8 }, zones: [{ x: -8, z: 154 }, { x: 88, z: 8 }, { x: 12, z: -170 }] },
   skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
   copper_mesa: { zones: [{ x: 95.75601429460295, z: 25.16493186989846 }, { x: 103.52551824388397, z: -48.38643546884091 }, { x: 159.75453586673763, z: -8.089799185507083 }] },
