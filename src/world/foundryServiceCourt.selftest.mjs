@@ -197,8 +197,12 @@ function verifyFoundations(field) {
   assert.equal(windows.length,6);assert.equal(disposals,enabled?6:0,'six construction temporaries disposed, none retained');
   const expected={position:original.attributes.position.array.slice(),normal:original.attributes.normal.array.slice()};
   windows.forEach(({feature,offset},i)=>{
-    const planIndex=[2,3,4,5,7,9][i];assert.equal(offset,planIndex*55,'only original donor decal window');
-    const pose=state.plans[planIndex].source;
+    // 2026-10-03 (the Ironworks redesign): the map's planned landmark sites build first, each with its own foundation
+    // window, so the donors' windows follow them
+    const lead=(getMapConfig('foundry').props.plannedSites??[]).length;
+    const planIndex=[2,3,4,5,7,9][i];assert.equal(offset,(lead+planIndex)*55,'only original donor decal window');
+    assert.equal(state.plans[lead+planIndex].planIndex,planIndex,'the donor follows the planned sites in build order');
+    const pose=state.plans[lead+planIndex].source;
     assert.equal(original.attributes.position.getX(offset),Math.fround(pose.x));
     assert.equal(original.attributes.position.getZ(offset),Math.fround(pose.z));
     if(!enabled)return;
@@ -360,7 +364,11 @@ try {
   ]);
   const config=getMapConfig('foundry');
   checkConfig(config);
-  assert.equal(config.terrain.hardstands,undefined,'no rejected terrain hardstand is resurrected');
+  // 2026-10-03 (the Ironworks redesign): the zone-control yards are aprons of their own on the line of equal driven
+  // distance; the loading court still flattens no pad, so no apron comes within 60 m of a court site.
+  for(const stand of config.terrain.hardstands??[])for(const site of config.props.foundryServiceCourt.sites){
+    assert.ok(Math.hypot(stand.x-site.x,stand.z-site.z)>=60,'no rejected terrain hardstand is resurrected under the court');
+  }
   for(const mapId of MAP_IDS.filter(id=>id!=='foundry')){
     assert.equal(getMapConfig(mapId).props?.foundryServiceCourt,undefined);
     const unread=new Proxy({},{get(){throw new Error('opt-out input accessed');}});
