@@ -30,6 +30,34 @@ export const BORDER_EDGE_M = 512;
 const RIM_AT_PLAYABLE = (() => { const t = (470 - 430) / 82, s = t * t * (3 - 2 * t); return s * s; })();
 /** Metres past the playable edge over which the square's rim hands over to the outland. */
 const HANDOVER_M = 40;
+/** Field-boundary levels per unit of the two parcel fields: parcels ~50–150 m across. */
+const FIELD_LEVELS = 1.6;
+const _field = { a: 0, b: 0 };
+function fieldHash(n: number): number {
+  const s = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+  return s - Math.floor(s);
+}
+/** A parcel's albedo multiplier: the crop by `roll`, its season's shade by `shade`. */
+function cropTint(crops: 'temperate' | 'steppe' | 'polder', roll: number, shade: number): [number, number, number] {
+  const k = 0.92 + shade * 0.16;
+  if (crops === 'steppe') {
+    if (roll < 0.45) return [1.16 * k, 1.07 * k, 0.80 * k];      // stubble, gold
+    if (roll < 0.72) return [0.80 * k, 0.70 * k, 0.58 * k];      // plough, brown
+    if (roll < 0.9) return [1.06 * k, 1.02 * k, 0.86 * k];       // pale straw
+    return [1, 1, 1];
+  }
+  if (crops === 'polder') {
+    if (roll < 0.42) return [0.88 * k, 1.02 * k, 0.82 * k];      // pasture
+    if (roll < 0.66) return [0.82 * k, 0.74 * k, 0.62 * k];      // plough
+    if (roll < 0.8) return [1.22 * k, 1.16 * k, 0.66 * k];       // rapeseed
+    return [1, 1, 1];
+  }
+  if (roll < 0.28) return [1.14 * k, 1.06 * k, 0.80 * k];        // stubble / hay
+  if (roll < 0.48) return [0.82 * k, 0.73 * k, 0.62 * k];        // plough
+  if (roll < 0.66) return [0.90 * k, 1.03 * k, 0.84 * k];        // pasture
+  if (roll < 0.8) return [0.98 * k, 0.88 * k, 0.88 * k];         // fallow
+  return [1, 1, 1];
+}
 
 /** A map's border landform (all optional; resolveBorderLandform fills the style's defaults). */
 export interface BorderLandformSettings {
@@ -52,14 +80,20 @@ export interface BorderLandformSettings {
   /** 0..1: hedgerows — tree lines along two families of curving field boundaries past the edge (farmland), with gates
    * and gaps; 0 none (forest, desert, snow). */
   hedgerows: number;
+  /** 0..1: how strongly the land past the edge reads as fields — parcels of stubble, plough, pasture and fallow
+   * between the hedgerows (the ring's borderTint attribute); 0 none (wild, desert, snow, town). */
+  fields: number;
+  /** The fields' crops: 'temperate' (stubble, plough, pasture, fallow), 'steppe' (stubble and plough), 'polder'
+   * (pasture, plough, rapeseed). */
+  crops: 'temperate' | 'steppe' | 'polder';
 }
 
 /** Defaults by horizon style (the ring's character beyond): enclosed valleys and canyons, open rolling country. */
 const STYLE_DEFAULTS: Readonly<Record<string, BorderLandformSettings>> = {
-  rolling: { enclosure: 0.42, hillHeight: 1.9, reachM: 260, rimFloor: 0.22, wavelengthM: 560, ridged: 0.2, terrace: 0, forest: 0.34, hedgerows: 0.7 },
-  escarpment: { enclosure: 0.5, hillHeight: 2.0, reachM: 240, rimFloor: 0.25, wavelengthM: 540, ridged: 0.35, terrace: 0.25, forest: 0.3, hedgerows: 0.45 },
-  alpine: { enclosure: 0.7, hillHeight: 2.3, reachM: 220, rimFloor: 0.35, wavelengthM: 520, ridged: 0.6, terrace: 0, forest: 0.42, hedgerows: 0.15 },
-  mesa: { enclosure: 0.55, hillHeight: 1.9, reachM: 240, rimFloor: 0.3, wavelengthM: 560, ridged: 0.3, terrace: 0.85, forest: 0.06, hedgerows: 0 },
+  rolling: { enclosure: 0.42, hillHeight: 1.9, reachM: 260, rimFloor: 0.22, wavelengthM: 560, ridged: 0.2, terrace: 0, forest: 0.34, hedgerows: 0.7, fields: 0.6, crops: 'temperate' },
+  escarpment: { enclosure: 0.5, hillHeight: 2.0, reachM: 240, rimFloor: 0.25, wavelengthM: 540, ridged: 0.35, terrace: 0.25, forest: 0.3, hedgerows: 0.45, fields: 0.45, crops: 'temperate' },
+  alpine: { enclosure: 0.7, hillHeight: 2.3, reachM: 220, rimFloor: 0.35, wavelengthM: 520, ridged: 0.6, terrace: 0, forest: 0.42, hedgerows: 0.15, fields: 0.15, crops: 'temperate' },
+  mesa: { enclosure: 0.55, hillHeight: 1.9, reachM: 240, rimFloor: 0.3, wavelengthM: 560, ridged: 0.3, terrace: 0.85, forest: 0.06, hedgerows: 0, fields: 0, crops: 'temperate' },
 };
 
 /**
@@ -68,38 +102,38 @@ const STYLE_DEFAULTS: Readonly<Record<string, BorderLandformSettings>> = {
  * valleys and logging country, tablelands and canyons, mountain valleys. A map config's `terrain.border` overrides it.
  */
 const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
-  verdant: { forest: 0.36, hedgerows: 0.85 },
-  desert: { forest: 0.03, enclosure: 0.5, hedgerows: 0 },
-  winter: { forest: 0.44, hedgerows: 0.2 },
-  urban: { forest: 0.28, hedgerows: 0.5 },
-  coastal: { forest: 0.24, enclosure: 0.36, hedgerows: 0.55 },
-  autumn: { forest: 0.42, enclosure: 0.5, hedgerows: 0.9 },
-  steppe: { enclosure: 0.12, hillHeight: 1.25, reachM: 340, rimFloor: 0.18, wavelengthM: 760, forest: 0.07, hedgerows: 0.55 },
-  railyard: { forest: 0.22, hedgerows: 0.3 },
-  frontier: { forest: 0.36, enclosure: 0.5, hedgerows: 0.6 },
-  fjord: { forest: 0.42 },
-  delta: { enclosure: 0.08, hillHeight: 0.6, reachM: 360, rimFloor: 0.15, wavelengthM: 700, forest: 0.26, hedgerows: 0.35 },
-  monsoon: { forest: 0.6 },
-  alpine: { forest: 0.32 },
-  caldera: { forest: 0.06, terrace: 0.55, ridged: 0.45, hedgerows: 0 },
-  foundry: { forest: 0.2, hedgerows: 0.35 },
-  ruinspires: { forest: 0.1, hedgerows: 0.2 },
-  blackglass: { forest: 0.1, hedgerows: 0.2 },
+  verdant: { forest: 0.36, hedgerows: 0.85, fields: 0.75 },
+  desert: { forest: 0.03, enclosure: 0.5, hedgerows: 0, fields: 0 },
+  winter: { forest: 0.44, hedgerows: 0.2, fields: 0.1 },
+  urban: { forest: 0.28, hedgerows: 0.5, fields: 0.45 },
+  coastal: { forest: 0.24, enclosure: 0.36, hedgerows: 0.55, fields: 0.5 },
+  autumn: { forest: 0.42, enclosure: 0.5, hedgerows: 0.9, fields: 0.8 },
+  steppe: { enclosure: 0.12, hillHeight: 1.25, reachM: 340, rimFloor: 0.18, wavelengthM: 760, forest: 0.07, hedgerows: 0.55, fields: 0.85, crops: 'steppe' },
+  railyard: { forest: 0.22, hedgerows: 0.3, fields: 0.35 },
+  frontier: { forest: 0.36, enclosure: 0.5, hedgerows: 0.6, fields: 0.6 },
+  fjord: { forest: 0.42, fields: 0.1 },
+  delta: { enclosure: 0.08, hillHeight: 0.6, reachM: 360, rimFloor: 0.15, wavelengthM: 700, forest: 0.26, hedgerows: 0.35, fields: 0.55, crops: 'polder' },
+  monsoon: { forest: 0.6, fields: 0.25 },
+  alpine: { forest: 0.32, fields: 0.05 },
+  caldera: { forest: 0.06, terrace: 0.55, ridged: 0.45, hedgerows: 0, fields: 0 },
+  foundry: { forest: 0.2, hedgerows: 0.35, fields: 0.3 },
+  ruinspires: { forest: 0.1, hedgerows: 0.2, fields: 0.1 },
+  blackglass: { forest: 0.1, hedgerows: 0.2, fields: 0.1 },
   titan_gorge: { forest: 0.02, hedgerows: 0 },
   skybridge: { forest: 0.05, hedgerows: 0 },
-  polders: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.12, hedgerows: 0.55 },
+  polders: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.12, hedgerows: 0.55, fields: 0.8, crops: 'polder' },
   copper_mesa: { forest: 0.03, hedgerows: 0 },
-  airfield: { enclosure: 0.18, hillHeight: 1.2, reachM: 360, rimFloor: 0.18, wavelengthM: 700, forest: 0.22, hedgerows: 0.4 },
-  oasis: { enclosure: 0.32, hillHeight: 1.3, forest: 0.02, hedgerows: 0 },
-  whiteout: { forest: 0.08, ridged: 0.4, hedgerows: 0 },
-  orchard: { forest: 0.4, hedgerows: 0.75 },
-  longleaf: { forest: 0.62, hedgerows: 0.2 },
-  mangrove: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.42, hedgerows: 0 },
-  saltwind: { forest: 0.14, terrace: 0.35, hedgerows: 0.35 },
-  reservoir: { forest: 0.5 },
-  mars: { forest: 0, hedgerows: 0 },
-  moon: { forest: 0, hillHeight: 1.6, hedgerows: 0 },
-  cliffbridge: { forest: 0.36, hedgerows: 0.7 },
+  airfield: { enclosure: 0.18, hillHeight: 1.2, reachM: 360, rimFloor: 0.18, wavelengthM: 700, forest: 0.22, hedgerows: 0.4, fields: 0.6, crops: 'steppe' },
+  oasis: { enclosure: 0.32, hillHeight: 1.3, forest: 0.02, hedgerows: 0, fields: 0 },
+  whiteout: { forest: 0.08, ridged: 0.4, hedgerows: 0, fields: 0 },
+  orchard: { forest: 0.4, hedgerows: 0.75, fields: 0.65 },
+  longleaf: { forest: 0.62, hedgerows: 0.2, fields: 0.15 },
+  mangrove: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.42, hedgerows: 0, fields: 0 },
+  saltwind: { forest: 0.14, terrace: 0.35, hedgerows: 0.35, fields: 0.3, crops: 'steppe' },
+  reservoir: { forest: 0.5, fields: 0.15 },
+  mars: { forest: 0, hedgerows: 0, fields: 0 },
+  moon: { forest: 0, hillHeight: 1.6, hedgerows: 0, fields: 0 },
+  cliffbridge: { forest: 0.36, hedgerows: 0.7, fields: 0.65 },
 };
 
 export function resolveBorderLandform(
@@ -130,6 +164,12 @@ export interface BorderLandform {
   woodsAt(x: number, z: number): number;
   /** The border's hedgerows at (x, z): 0 … 1 on a field boundary's tree line (farmland past the edge reads as fields). */
   hedgeAt(x: number, z: number): number;
+  /**
+   * The parcel the land past the edge belongs to, as an albedo offset (multiplier − 1, already weighted): stubble, plough,
+   * pasture or fallow between the hedgerows, faded in from 30 to 150 m past the edge, off the woods and the crests.
+   * Zero wherever there are no fields — a geometry without the attribute reads the same.
+   */
+  parcelTintAt(x: number, z: number, out: [number, number, number]): [number, number, number];
 }
 
 function smoothstep(a: number, b: number, x: number): number {
@@ -243,6 +283,18 @@ export function createBorderLandform(
     return near + (crest - near) * ramp;
   }
 
+  /** The two families of field boundaries: levels of two ~330 m fields (stretched apart, so parcels are not square). */
+  function fieldCoords(x: number, z: number): { a: number; b: number } {
+    _field.a = noise.noise(x * 0.0030 + 71.3, z * 0.0024 - 12.9);
+    _field.b = noise.noise(x * 0.0022 - 44.1, z * 0.0033 + 90.7);
+    return _field;
+  }
+  /** 1 on a field boundary (a 2–3 m line where either family crosses one of its levels), 0 inside a parcel. */
+  function fieldBoundaryAt(x: number, z: number): number {
+    const { a, b } = fieldCoords(x, z);
+    const da = Math.abs(a * FIELD_LEVELS - Math.round(a * FIELD_LEVELS)), db = Math.abs(b * FIELD_LEVELS - Math.round(b * FIELD_LEVELS));
+    return Math.max(1 - smoothstep(0.012, 0.03, da), 1 - smoothstep(0.012, 0.03, db));
+  }
   /** The woods field before its cut: patches at ~420 m and ~160 m, a fine ragged edge, leaning onto the hills. */
   function woodsField(x: number, z: number): number {
     return noise.noise(x * 0.0024 - 33.1, z * 0.0024 + 57.9) * 0.62 + noise.noise(x * 0.0062 + 12.4, z * 0.0062 - 8.8) * 0.3
@@ -268,22 +320,38 @@ export function createBorderLandform(
     return samples[Math.min(samples.length - 1, Math.floor((1 - share) * samples.length))];
   })();
 
+  function woodsAt(x: number, z: number): number {
+    if (!Number.isFinite(woodsCut)) return woodsCut < 0 ? 1 : 0;
+    return smoothstep(woodsCut - 0.025, woodsCut + 0.025, woodsField(x, z));
+  }
+
   return {
     settings,
     hedgeAt(x: number, z: number): number {
       if (settings.hedgerows <= 0) return 0;
-      // two families of field boundaries (the isolines of two ~330 m fields, at different stretches so the parcels are
-      // not square), a 2–3 m line each, broken by gates and gaps; parcels inside woods need no hedge
-      const a = noise.noise(x * 0.0030 + 71.3, z * 0.0024 - 12.9), b = noise.noise(x * 0.0022 - 44.1, z * 0.0033 + 90.7);
-      const line = Math.max(1 - smoothstep(0.008, 0.018, Math.abs(a)), 1 - smoothstep(0.008, 0.018, Math.abs(b)));
+      const line = fieldBoundaryAt(x, z);
       if (line <= 0) return 0;
-      const gaps = smoothstep(-0.25, 0.05, noise.noise(x * 0.017 + 3.3, z * 0.017 - 7.1));
+      // gates and gaps break every boundary; a boundary inside a wood needs no hedge
+      const gaps = smoothstep(-0.3, 0.0, noise.noise(x * 0.017 + 3.3, z * 0.017 - 7.1));
       return line * gaps * settings.hedgerows;
     },
-    woodsAt(x: number, z: number): number {
-      if (!Number.isFinite(woodsCut)) return woodsCut < 0 ? 1 : 0;
-      return smoothstep(woodsCut - 0.025, woodsCut + 0.025, woodsField(x, z));
+    parcelTintAt(x: number, z: number, out: [number, number, number]): [number, number, number] {
+      out[0] = 0; out[1] = 0; out[2] = 0;
+      if (settings.fields <= 0) return out;
+      const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
+      const fade = smoothstep(30, 150, edgeOut);
+      if (fade <= 0) return out;
+      // farmland keeps to the gentler ground: off the woods, thinning onto the crests of the hills
+      const w = settings.fields * fade * (1 - woodsAt(x, z)) * (1 - 0.7 * smoothstep(0.62, 0.92, hillsAt(x, z)));
+      if (w <= 0.002) return out;
+      const { a, b } = fieldCoords(x, z);
+      const id = Math.floor(a * FIELD_LEVELS) * 7919 + Math.floor(b * FIELD_LEVELS) * 104729;
+      const roll = fieldHash(id), shade = fieldHash(id + 31);
+      const crop = cropTint(settings.crops, roll, shade);
+      out[0] = (crop[0] - 1) * w; out[1] = (crop[1] - 1) * w; out[2] = (crop[2] - 1) * w;
+      return out;
     },
+    woodsAt,
     liftAt(x: number, z: number, r: number): number {
       if (r <= BORDER_RIM_START_M) return 0;
       const a = enclosureAt(x, z);

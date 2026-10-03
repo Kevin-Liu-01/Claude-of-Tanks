@@ -360,6 +360,8 @@ export interface HeightField {
   getBorderWoodsAt?(x: number, z: number): number;
   /** The map-borders lane: the border's hedgerows (0 … 1 on a field boundary's tree line past the edge). */
   getBorderHedgeAt?(x: number, z: number): number;
+  /** The map-borders lane: the parcel past the edge as a weighted albedo offset (the ring's borderTint attribute). */
+  _borderParcelAt?(x: number, z: number, out: [number, number, number]): [number, number, number];
   getHeightAtFast(x: number, z: number): number;
   /** Near-mesh triangle surface shared by movement and visible suspension. */
   getContactHeightAt?(x: number, z: number): number;
@@ -2152,6 +2154,7 @@ function* heightFieldBuildSteps(
     getBorderHandOverAt: border.handOverAt,
     getBorderWoodsAt: border.woodsAt,
     getBorderHedgeAt: border.hedgeAt,
+    _borderParcelAt: border.parcelTintAt,
     _roadExitAt: roadExitAt,
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),
@@ -3063,6 +3066,7 @@ uniform vec4 uReduxC;
 uniform vec4 uReduxD;
 varying float vShore;        // metres landward of the waterline (32 = no shore near)
 varying vec2 vRoadExit;      // the map-borders lane: [signed offset from a road exit line (m), presence] on the ring
+varying vec3 vBorderTint;    // the map-borders lane: the ring's farmland parcel, a weighted albedo offset (0 = none)
 float gScour = 0.0;          // round 73b: the wind-scoured crust (a satin sheen in the roughness stage)
 float gStrandFoam = 0.0;     // round 73b: the foam line the last run-up left (matte in the roughness stage)
 varying float vFold;         // round 73: the baked fold attribute (−1 crest .. +1 hollow) the chunk vertices carry
@@ -4468,6 +4472,9 @@ void splatCompute() {
       float margin = smoothstep(0.44, 0.492, max(fr2.x, fr2.y));
       a.rgb *= 1.0 - margin * 0.10 * fieldW;
     }
+    // the map-borders lane (2026-10-03): the farmland past the edge in parcels between the hedgerows (stubble, plough,
+    // pasture, fallow — the ring's borderTint attribute; zero on the battlefield's own chunks)
+    a.rgb *= 1.0 + vBorderTint * (1.0 - fR) * (1.0 - roadCore) * (1.0 - fMs) * (1.0 - projW);
     // coarse turf relief at range (all maps): the far band keeps macro
     // normal structure where the per-texel detail normals have faded out
     float farG = farM * (1.0 - fR) * meadowG * (1.0 - roadCore);
@@ -4940,9 +4947,9 @@ function* createSplatMaterialSteps(
     assignSplatBiomeUniforms(shader);
     // round 73: the baked fold attribute rides the chunk vertices (the horizon ring's faces carry none and read 0)
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\nattribute float fold;\nvarying float vFold;\nattribute float shore;\nvarying float vShore;\nattribute vec2 roadExit;\nvarying vec2 vRoadExit;');
+      '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\nattribute float fold;\nvarying float vFold;\nattribute float shore;\nvarying float vShore;\nattribute vec2 roadExit;\nvarying vec2 vRoadExit;\nattribute vec3 borderTint;\nvarying vec3 vBorderTint;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <worldpos_vertex>',
-      '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNormal = normalize(mat3(modelMatrix) * objectNormal);\nvFold = fold;\nvShore = (1.0 - shore) * 32.0;\nvRoadExit = roadExit;'); // round 73b: the shore byte is inverted so a geometry without it (the ring bands) reads 32 m; the map-borders lane: roadExit (a geometry without it reads no road)
+      '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNormal = normalize(mat3(modelMatrix) * objectNormal);\nvFold = fold;\nvShore = (1.0 - shore) * 32.0;\nvRoadExit = roadExit;\nvBorderTint = borderTint;'); // round 73b: the shore byte is inverted so a geometry without it (the ring bands) reads 32 m; the map-borders lane: roadExit (a geometry without it reads no road)
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
       '#include <common>\n' + SPLAT_COMMON_FRAG);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <map_fragment>',
@@ -5437,6 +5444,21 @@ function* terrainBuildSteps(
       if (hit[1] > 0) any = true;
     }
     if (any) geometry.setAttribute('roadExit', new THREE.BufferAttribute(exitAttr, 2));
+  }
+  // The map-borders lane (2026-10-03, owner: "rolling ground with field patterns"): the farmland past the edge in
+  // parcels between the hedgerows — each ring vertex carries its parcel's albedo offset (borderLandform.ts parcelTintAt)
+  if (heightField._borderParcelAt && horizonStep.value.userData.horizonRing) {
+    const geometry = horizonStep.value.geometry;
+    const position = geometry.getAttribute('position');
+    const tintAttr = new Float32Array(position.count * 3);
+    const tint: [number, number, number] = [0, 0, 0];
+    let any = false;
+    for (let i = 0; i < position.count; i++) {
+      heightField._borderParcelAt(position.getX(i), position.getZ(i), tint);
+      tintAttr[i * 3] = tint[0]; tintAttr[i * 3 + 1] = tint[1]; tintAttr[i * 3 + 2] = tint[2];
+      if (tint[0] !== 0 || tint[1] !== 0 || tint[2] !== 0) any = true;
+    }
+    if (any) geometry.setAttribute('borderTint', new THREE.BufferAttribute(tintAttr, 3));
   }
   // All surrounding ground shares the live terrain material. Its distant
   // detail is controlled by screen footprint, not a map-boundary switch.
