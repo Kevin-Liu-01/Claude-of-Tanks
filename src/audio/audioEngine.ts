@@ -398,6 +398,10 @@ export function createAudio({
   let lastKillAt = -99;
   let lastSpots: number[] = [];
   let lastSpotCallAt = -99;
+  // "We're spotted" once per exposure, not every time an enemy's view flickers back onto a still tank.
+  let lastSixthSenseAt = -99;
+  // Enemy drones already called out (each drone once).
+  const droneWarned = new Set<number>();
   let fireAlarm: Rig | null = null;
   let heartbeatRig: Rig | null = null;
   let heartbeatBelow = 0;
@@ -532,7 +536,7 @@ export function createAudio({
   // Muzzle blasts, rendered once per bore (procedural.ts): the instant pressure crack a recorded report
   // never quite has. Level re the report: under it, so it sharpens the attack without reading as a click.
   const blastBuffers = new Map<number, AudioBuffer>();
-  const BLAST_DB: Readonly<Record<string, number>> = Object.freeze({ cannon: -8, autocannon: -9, mg: -9 });
+  const BLAST_DB: Readonly<Record<string, number>> = Object.freeze({ cannon: -5, autocannon: -8, mg: -9 });
   // Machine-gun bursts echo once per beat, not once per round.
   const lastBurstTail = new Map<string, number>();
 
@@ -585,7 +589,7 @@ export function createAudio({
     }
     if (own && listenerScoped && cls.family === 'cannon') {
       const size = caliberMm >= 128 ? 'heavy' : caliberMm >= 111 ? 'large' : 'medium';
-      play(`gun_interior_${size}`, hullOptions({ bus: 'ownCombat', gainDb: 0 }));
+      play(`gun_interior_${size}`, hullOptions({ bus: 'ownCombat', gainDb: 3 }));
     }
     // The machinery of our own shot: the breech recoiling and running back into
     // battery, the buffer's hiss, the turret's loose gear rattling.
@@ -1281,9 +1285,11 @@ export function createAudio({
       if (info && info.depth > 1.8) play('engine_flood', hullOptions({ delayS: 0.6 }));
     }
     wasDeep = deep;
-    // Stuck: full throttle, no progress, on the ground.
+    // Stuck: full throttle, no progress, on the ground. Never while our throttle flies the drone (the tank sits
+    // still under it), in the gunship, or before the battle rolls out.
     const throttle = Math.abs(entity.input?.throttle ?? 0);
-    if (throttle > 0.6 && Math.abs(state.speed) < 0.35 && state.grounded !== false && !state.overturned && moduleHealth(entity, 'trackL') !== 'red' && moduleHealth(entity, 'trackR') !== 'red' && moduleHealth(entity, 'engine') !== 'red') {
+    const throttleDrivesTank = rolledOut && !entity.aerial?.active && entity.aerial?.kind !== 'gunship';
+    if (throttleDrivesTank && throttle > 0.6 && Math.abs(state.speed) < 0.35 && state.grounded !== false && !state.overturned && moduleHealth(entity, 'trackL') !== 'red' && moduleHealth(entity, 'trackR') !== 'red' && moduleHealth(entity, 'engine') !== 'red') {
       stuckS += dt;
       if (stuckS > 2.6) {
         stuckS = -8;
@@ -1612,8 +1618,14 @@ export function createAudio({
       aerialFrame.speedK = clamp(speed / DRONE.speedMps, 0, 1);
       aerialFrame.strain = 0;
       rig.update(aerialFrame);
+      // An enemy drone closing on us: the commander calls it once, inside 150 m (never a missile).
+      if (!droneWarned.has(shell.id) && aerialFrame.rel.distance < 150 && aerialFrame.doppler > 1.005
+        && playerId && !sameTeam(shell.shooterId, playerId) && tanks.get(playerId)?.alive !== false) {
+        droneWarned.add(shell.id);
+        say('drone_incoming', { delayS: 0.05 });
+      }
     }
-    for (const [id, rig] of droneRigs) if (!seenAerial.has(id)) { rig.kill(0.25); droneRigs.delete(id); }
+    for (const [id, rig] of droneRigs) if (!seenAerial.has(id)) { rig.kill(0.25); droneRigs.delete(id); droneWarned.delete(id); }
 
     // Our own aircraft: the gunship's cabin, or the drone's feed while it flies.
     const view = me?.aerial;
@@ -1675,6 +1687,7 @@ export function createAudio({
     ownAerial = null;
     ownDroneFlying = false;
     aerialWarmed = false;
+    droneWarned.clear();
   }
 
   function stopWorld(reason: string): void {
@@ -1836,7 +1849,9 @@ export function createAudio({
       } else say('enemy_spotted', { delayS: 0.1 });
     });
     on<undefined>('player:spotted', () => {
-      if (phase === 'battle' && !battleOver) {
+      const now = ctx?.currentTime ?? 0;
+      if (phase === 'battle' && !battleOver && now - lastSixthSenseAt > 20) {
+        lastSixthSenseAt = now;
         say('sixth_sense', { delayS: 3.0 });
         play('ui_alert', { delayS: 3.0, gainDb: -6 });
       }

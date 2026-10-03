@@ -13,7 +13,8 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 //     bed. (A near crack is bounded by the master's ceiling, and its 100 ms
 //     sits its crest, about 11 dB, under that peak: 16 dB of 100 ms would mean
 //     squashing it back into a blast; the quieter bed carries the rest.)
-//   - the crew radio sits under a near cannon (at least 6 dB below);
+//   - the crew radio is heard over the battle (2026-10-03): its loudest 100 ms
+//     at least 12 dB over the bed, and no more than 4 dB over a near cannon's;
 //   - a live battle stays readable: sound starts per second over 20 s of
 //     real bot combat stay under a ceiling;
 //   - gunfire sounds like guns, not explosions (2026-10-02): every shot,
@@ -240,9 +241,12 @@ try {
   // 3) The crew radio against a near cannon.
   await page.waitForFunction('window.__COT_AUDIO.voicesLoaded === true', { timeout: 20000 }).catch(() => fail('crew pack did not decode'));
   report.radio = await capture('radio_line', 2600, '(() => { window.__COT_AUDIO.clearVoiceQueue(); window.__COT_AUDIO.sayVoice("enemy_spotted"); })()');
-  const radioUnder = report.shots.cannon_15m.burstDb - report.radio.burstDb;
-  report.radio.underCannonDb = +radioUnder.toFixed(1);
-  if (radioUnder < 6) fail(`the radio is only ${radioUnder.toFixed(1)} dB under a near cannon (want ≥ 6)`);
+  const radioOverBed = report.radio.burstDb - report.bed.rmsDb;
+  const radioOverCannon = report.radio.burstDb - report.shots.cannon_15m.burstDb;
+  report.radio.overBedDb = +radioOverBed.toFixed(1);
+  report.radio.overCannonDb = +radioOverCannon.toFixed(1);
+  if (radioOverBed < 12) fail(`the radio stands only ${radioOverBed.toFixed(1)} dB over the battle bed (want ≥ 12: heard over the battle)`);
+  if (radioOverCannon > 4) fail(`the radio is ${radioOverCannon.toFixed(1)} dB over a near cannon (want ≤ 4)`);
 
   // 4) Density in real combat: release the battle and count sound starts over 20 s.
   await page.evaluate(() => { window.__DEBUG.game.preBattleS = 0; window.__DEBUG.flags.forceFire = true; });

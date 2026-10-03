@@ -1369,7 +1369,7 @@ radio); `procedural.ts` (synthesized fallbacks and alarms); `mixPolicy.ts`
 **Assets.** 386 sound assets (627 variant files, 18 MB WebM/Opus) under
 `public/audio/sfx/<group>/`, described by `sfxManifest.generated.ts`
 (duration, channels, rate, loop points, size). Crew radio: 13 language packs
-× 97 lines (one to four takes each, mostly two; ~1.5 MB per pack) under
+× 98 lines (one to four takes each, mostly two; ~1.5 MB per pack) under
 `public/audio/voice/<lang>/`, described by `voiceManifest.generated.ts`. Both
 are generated offline with ElevenLabs (sound generation `eleven_text_to_sound_v2`;
 speech `eleven_v4` with Voice Library voices), verified (speech-to-text

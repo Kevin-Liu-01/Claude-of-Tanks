@@ -16,7 +16,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
 | 386 sound-effect assets, 627 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 18 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
-| 13 crew radio packs × 97 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.5 MB per language | only the crew's pack (and English if a national take is missing) |
+| 13 crew radio packs × 98 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.5 MB per language | only the crew's pack (and English if a national take is missing) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
 
@@ -348,7 +348,7 @@ Atmosphere events (artillery, flak, AA, flyovers) and destructible props
 
 ### Crew radio
 
-`voiceLines.ts` defines 97 lines with priority (0–4), per-line and per-group
+`voiceLines.ts` defines 98 lines with priority (0–4), per-line and per-group
 cooldowns and staleness; `crewRadio.ts` schedules them with radio discipline:
 one transmission at a time, survival calls interrupt chatter, a 0.8 s gap, a
 two-line queue, stale calls dropped rather than played late. Routine chatter
@@ -495,7 +495,7 @@ squaring the peak. Now:
 
 ```
 crew-lines.json ─┐                    crew-voices.json
- 97 lines,       ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
+ 98 lines,       ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
  13 languages,   │    (per language,       [delivery] text,     best of up to 3        −18 LUFS, 24 kHz
  deliveries ─────┘     per line, per take) stability 0.6        attempts               mono Opus
 ```

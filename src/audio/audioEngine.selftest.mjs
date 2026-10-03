@@ -304,6 +304,8 @@ for (let i = 0; i < 3; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener
 air = probe.aerialState();
 assert.equal(air.drones.length, 1, 'an enemy drone buzzes');
 assert.ok(air.drones[0].gain > 0.05 && air.drones[0].rate > 1, `close and closing in (${JSON.stringify(air.drones[0])})`);
+for (let i = 0; i < 30; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks, [drone]); }
+assert.ok(probe.voiceLog.some((e) => e.id === 'drone_incoming'), `the commander calls the drone, not a missile (${probe.voiceLog.slice(-4).map((e) => e.id)})`);
 drone.dead = true;
 ctx.advance(1 / 60);
 audio.update(1 / 60, listener, tanks, [drone]);
@@ -418,6 +420,20 @@ bus.emit('shell:fired', { shellId: volleyId++, shooterId: 'boss', muzzlePos: [-3
 const bossShot = logSince(since).find((e) => e.n === 'gun_120_close');
 assert.ok(hunterShot && bossShot && bossShot.g > hunterShot.g * 1.2, `the juggernaut's gun carries further (${hunterShot?.g} → ${bossShot?.g})`);
 gameMode = 'standard';
+// The battle has rolled out. Throttle held while our drone flies steers the drone, so the still tank is not
+// "stuck"; the same throttle on a tank that cannot move is.
+const voicesBefore = probe.voiceLog.length;
+me.aerial = { kind: 'drone', active: true, x: 0, y: 30, z: 40, batteryS: 30 };
+me.input.throttle = 1;
+for (let i = 0; i < 200; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks, []); }
+assert.ok(!probe.voiceLog.slice(voicesBefore).some((e) => e.id === 'stuck'), 'flying the drone, the still tank is not stuck');
+delete me.aerial;
+ctx.advance(1);
+audio.update(1 / 60, listener, tanks, []);
+const voicesGrounded = probe.voiceLog.length;
+for (let i = 0; i < 260; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks, []); }
+assert.ok(probe.voiceLog.slice(voicesGrounded).some((e) => e.id === 'stuck'), 'a tank at full throttle that cannot move is');
+me.input.throttle = 0;
 
 // Gun Game: the crew changes over to the next weapon and calls the load; Infected: a grave sting.
 settle(4);

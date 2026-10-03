@@ -79,8 +79,9 @@ export function synthShot(ctx: BaseAudioContext, dest: AudioNode, noise: NoiseBa
  * muzzle — an instant rise, a positive phase that scales with the charge (0.15 ms + 0.02 ms per millimetre
  * of bore: 0.3 ms for a rifle round, 2.6 ms for a 120 mm gun), then its shallow negative phase — the same
  * pulse reflected off the ground a few milliseconds behind, the punch of the expanding gas (a heavily
- * damped low partial of tens of milliseconds that only a large charge has, never a long sub sweep) and
- * the gas roar under it. Peak-normalised and mono; deterministic per bore.
+ * damped low partial of tens of milliseconds that only a large charge has, never a long sub sweep), the
+ * vacuum after it (the air rushing back, a negative-pressure lobe; 2026-10-03) and the gas roar under it.
+ * Peak-normalised and mono; deterministic per bore.
  */
 export function renderMuzzleBlast(out: Float32Array, sampleRate: number, caliberMm: number): void {
   const k = clamp((caliberMm - 7) / 145, 0, 1);
@@ -88,7 +89,12 @@ export function renderMuzzleBlast(out: Float32Array, sampleRate: number, caliber
   const reflectS = 0.0012 + 0.004 * k;
   const punchHz = 95 - 45 * k;
   const punchTau = 0.01 + 0.035 * k;
-  const punchAmp = 0.25 * Math.pow(k, 1.5);
+  const punchAmp = 0.4 * Math.pow(k, 1.5);
+  // The vacuum after the blast: the gas overshoots and the air rushes back, a negative-pressure lobe a few
+  // positive phases after the crack, tens of milliseconds long for a large charge.
+  const suckAt = 3 * tPlus + 0.002;
+  const suckS = 0.012 + 0.045 * k;
+  const suckAmp = 0.5 * Math.pow(k, 1.2);
   const roarTau = 0.005 + 0.03 * k;
   const roarAmp = 0.9 * (0.4 + 0.6 * k);
   const lowA = Math.exp((-2 * Math.PI * (3500 - 2000 * k)) / sampleRate);
@@ -107,8 +113,10 @@ export function renderMuzzleBlast(out: Float32Array, sampleRate: number, caliber
     low = lowA * low + (1 - lowA) * noise();
     high = highA * (high + low - lastLow);
     lastLow = low;
+    const suck = t > suckAt && t < suckAt + suckS ? -suckAmp * Math.sin((Math.PI * (t - suckAt)) / suckS) : 0;
     const v = pulse(t) + 0.55 * pulse(t - reflectS)
       + punchAmp * Math.sin(2 * Math.PI * punchHz * t) * Math.exp(-t / punchTau) * (1 - Math.exp(-t / 0.0015))
+      + suck
       + roarAmp * high * Math.exp(-t / roarTau);
     out[i] = v;
     peak = Math.max(peak, Math.abs(v));

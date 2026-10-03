@@ -215,7 +215,7 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
   // far more rumble than they sound like, and it masks the guns' low end
   // (tools/audio-mix-balance.mjs measured the idle bed 79 % below 200 Hz).
   const SHELVES: Partial<Record<BusId, readonly [BiquadFilterType, number, number]>> = {
-    weapons: ['lowshelf', 110, 2], impacts: ['lowshelf', 110, 4], ownCombat: ['lowshelf', 110, 2], ui: ['highshelf', 5200, -6],
+    weapons: ['lowshelf', 110, 3], impacts: ['lowshelf', 110, 4], ownCombat: ['lowshelf', 110, 3], ui: ['highshelf', 5200, -6],
     ambience: ['highpass', 90, 0],
   };
   const busFilters: BiquadFilterNode[] = [];
