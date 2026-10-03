@@ -156,6 +156,9 @@ export default {
     // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): Wadi Rum's jebels are sheer fluted
     // sandstone massifs standing out of flat sand, not smooth sand piles
     baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0, ground: 'sand', banding: 0.045, panorama: { regional: 'jebel' },
+    // (the outland boulders a shade sparser: they follow the ring's drained faces, and the map's horizon draws no more
+    // triangles than before the mountains lane's relief work)
+    outlandRocks: 0.98,
     forestHex: 0x58402f, rockHex: 0x96533b, haze: 0.92, grain: 0.58,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)

@@ -116,6 +116,9 @@ export default {
   },
   horizon: {
     baseHex: 0x59433a, amp: 2.0, style: 'mesa', treeline: 0.10,
+    // the mountains lane (2026-10-03): the outland boulders a shade sparser — they follow the ring's drained faces, and
+    // the map's horizon draws no more triangles than before that relief work
+    outlandRocks: 0.96,
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): authored strata for the beige-brown
     // chasm walls (the style default 0.16 left the abutment cliffs nearly unbedded)
     banding: 0.20,
