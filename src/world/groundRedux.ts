@@ -84,6 +84,10 @@ export interface GroundReduxProfile {
   /** Terrain v2: the wind's share of the map's authored sand ripples (splat.rippleAmp): 1 where wind shapes the sand,
    * 0 where nothing blows (an airless regolith keeps its impact texture, no ripples). */
   windRipple: number;
+  /** Ground lane (2026-10-03): a volcanic basin's zoning (0 = off, 1 = full): pumice and ash on the level ground,
+   * black and red cinder streaked down the fall line on the cones' flanks, talus aprons at their feet — keyed to the
+   * slopes and folds of the landforms, not to a wind (the material's uReduxFold.w). */
+  volcanic?: number;
   /** The tall-grass biome, or null for a map with no sward (arid, Mars). */
   grass: TallGrassBiome | null;
 }
@@ -172,6 +176,13 @@ const SNOW: Omit<GroundReduxProfile, 'grass'> = {
   ...TEMPERATE, heightBlend: 0.5, glint: 0.9, snowRipple: 0.26, snowMacro: 0.6, foldMoist: 0.22, foldAO: 0.6, foldCrest: 0.3,
   lip: 0.4, verge: 0.3, rim: 0.5, rimTint: HOAR, midAlbedo: 0.6, driftEdge: 1.0, exposure: 0.7, climate: 'snow', patchwork: 0.6,
 };
+// ground lane (2026-10-03, Caldera's gauntlet: "dunes on a volcanic basin — one monotone tan-brown in uniform wind-ripple
+// corrugation"): a volcanic basin takes no wind's patchwork and no ripples; its ground is zoned by its landforms
+// (volcanic), its rock greyed by lichen
+const BASALT_LICHEN = [0.90, 0.94, 0.86] as const;
+const VOLCANIC: Omit<GroundReduxProfile, 'grass'> = {
+  ...ARID, rimTint: BASALT_LICHEN, rim: 0.7, patchwork: 0, windRipple: 0, exposure: 0.5, midAlbedo: 0.8, volcanic: 1,
+};
 const COAST: Omit<GroundReduxProfile, 'grass'> = {
   ...TEMPERATE, swashPeriodS: 8.5, swashReachM: 4.5, swashStrength: 1.5, swashLines: 1.0,
 };
@@ -196,7 +207,7 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   monsoon: { ...STILL_WATER, swashStrength: 0.5, swashReachM: 3, scree: 0.3, rimTint: MOSS,
     grass: meadow(0.9, 1.0, { base: [0.020, 0.045, 0.014], tip: [0.080, 0.180, 0.040], dry: [0.22, 0.22, 0.09], reedMargin: 0.55 }) },
   alpine: { ...SNOW, scree: 0.6, grass: tundra(0.3) },
-  caldera: { ...ARID, grass: null },
+  caldera: { ...VOLCANIC, grass: null },
   foundry: { ...TEMPERATE, scree: 0.15, grass: verge(0.3) },
   ruinspires: { ...TEMPERATE, scree: 0.2, grass: verge(0.4) },
   blackglass: { ...TEMPERATE, scree: 0.2, grass: verge(0.25) },
@@ -242,7 +253,8 @@ export function groundReduxUniformValues(profile: GroundReduxProfile): {
   const tint = (v: number): number => (Number.isFinite(v) ? Math.min(1.5, Math.max(0.3, v)) : 1);
   return {
     reduxA: [clamp01(profile.heightBlend), clamp01(profile.midDetail), clamp01(profile.scree), clamp01(profile.glint)],
-    reduxFold: [clamp01(profile.foldMoist), clamp01(profile.foldAO), clamp01(profile.foldCrest), 0],
+    // (the fourth: the ground lane's volcanic zoning, 0 on every other map)
+    reduxFold: [clamp01(profile.foldMoist), clamp01(profile.foldAO), clamp01(profile.foldCrest), Math.min(1, clamp01(profile.volcanic ?? 0))],
     reduxSwash: [
       profile.swashPeriodS > 0 ? (2 * Math.PI) / profile.swashPeriodS : 0,
       // round 73b: the reach in metres (1..12 — the shore byte spans 32 m and the high-water mark sits at 1.3 × reach + 0.8)

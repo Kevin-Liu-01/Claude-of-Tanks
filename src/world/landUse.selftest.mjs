@@ -22,7 +22,7 @@ for (const id of landUseProfileIds()) {
   assert.ok(v.landA[0] > 0 && v.landA[0] <= 1, `${id}: strength in (0, 1]`);
   assert.ok(v.landA[2] >= 40 && v.landA[3] >= 24, `${id}: blocks at least 40 × 24 m`);
   assert.ok([0, 1, 2, 3].includes(v.landE[2]), `${id}: a boundary id`);
-  assert.ok(Number.isInteger(v.landE[0]) && v.landE[0] < 65536 && Number.isInteger(v.landE[1]) && v.landE[1] < 4096,
+  assert.ok(Number.isInteger(v.landE[0]) && v.landE[0] < 2 ** 20 && Number.isInteger(v.landE[1]) && v.landE[1] < 2 ** 15,
     `${id}: the slot→kind table packs exactly into float32 integers`);
   assert.ok(v.landB[0] >= 1 && v.landB[0] <= 4 && Number.isInteger(v.landB[0]), `${id}: 1..4 fields a block`);
   assert.ok(v.landB[2] >= 0 && v.landB[2] <= 1 && v.landB[3] >= 0 && v.landB[3] <= 1, `${id}: shares in [0, 1]`);
@@ -54,7 +54,7 @@ for (const id of landUseProfileIds()) {
 // the slot→kind table: the classic regions keep their identity order (their crops are what they were)
 for (const id of ['verdant', 'coastal', 'frontier']) {
   const v = landUseUniformValues(resolveLandUseProfile(id));
-  assert.deepEqual([v.landE[0], v.landE[1]], [0 + 16 * 1 + 256 * 2 + 4096 * 3, 4 + 16 * 5 + 256 * 6], `${id}: slots 0..6 are crops 0..6`);
+  assert.deepEqual([v.landE[0], v.landE[1]], [0 + 32 * 1 + 1024 * 2 + 32768 * 3, 4 + 32 * 5 + 1024 * 6], `${id}: slots 0..6 are crops 0..6`);
   assert.equal(v.landE[2], 0, `${id}: a grass margin`);
 }
 assert.equal(landUseBoundary(resolveLandUseProfile('polders')), 'ditch');

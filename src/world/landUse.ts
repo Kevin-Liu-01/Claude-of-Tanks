@@ -20,7 +20,8 @@
 // grass margin with tracks and hedges, a polder's water ditches, a paddy's earth bunds or a karst field's dry stone
 // walls.
 
-export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst';
+export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
+  | 'brownfield';
 
 /** How a region's fields are bounded (the material's uLandE.z). */
 export type LandBoundary = 'margin' | 'ditch' | 'bund' | 'wall';
@@ -62,6 +63,9 @@ export const LAND_CROP = Object.freeze({
   vineyard: 12,   // vine rows over the soil
   hay: 13,        // a mown meadow: pale stripes and windrows
   jute: 14,       // jute (the chars): tall, dark green
+  slag: 15,       // an ironworks' tipped slag: black-grey, granular
+  ballast: 16,    // crushed-stone ballast and hardcore: grey
+  ruderal: 17,    // brownfield grass: patchy, dry, with bare ground between
 } as const);
 export type LandCropId = (typeof LAND_CROP)[keyof typeof LAND_CROP];
 
@@ -87,6 +91,9 @@ export const LAND_CROP_ALBEDO: Readonly<Record<LandCropId, readonly [number, num
   12: [0.060, 0.115, 0.035], // vine foliage
   13: [0.17, 0.20, 0.085],  // mown hay
   14: [0.045, 0.12, 0.032], // jute
+  15: [0.075, 0.072, 0.070], // slag
+  16: [0.16, 0.155, 0.15],  // ballast
+  17: [0.20, 0.19, 0.10],   // ruderal brownfield grass (cured)
 });
 
 /**
@@ -110,6 +117,9 @@ export const LAND_CROP_GROWTH: Readonly<Record<LandCropId, Readonly<{ sward: boo
   12: { sward: true, height: 0.35, keep: 0.35 },
   13: { sward: true, height: 0.30, keep: 0.8 },
   14: { sward: true, height: 1.9, keep: 0.85 },
+  15: { sward: false, height: 0, keep: 0 },
+  16: { sward: true, height: 0.4, keep: 0.12 },
+  17: { sward: true, height: 0.85, keep: 0.6 },
 });
 
 /** Each region's rotation: up to seven slots of [crop kind, share] (the material reads the shares and kinds, uLandC/D/E). */
@@ -132,12 +142,15 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   terrace: [[9, 0.44], [8, 0.20], [10, 0.10], [7, 0.10], [0, 0.16], [4, 0.0], [5, 0.0]],
   // the Dalmatian karst: small walled fields of red earth, vines, dry grazing and a little grain
   karst: [[11, 0.30], [12, 0.26], [0, 0.28], [5, 0.08], [3, 0.08], [1, 0.0], [4, 0.0]],
+  // an ironworks' ground (Völklingen on the Saar): plots of brownfield grass, tipped slag, ballast and hardcore,
+  // rank grass and bare earth, between the works' tracks and the birch scrub that seeds itself along them
+  brownfield: [[17, 0.40], [15, 0.22], [16, 0.18], [0, 0.12], [4, 0.08], [5, 0.0], [3, 0.0]],
 });
 
 /** Each region's field boundary. */
 const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   steppe: 'margin', bocage: 'margin', temperate: 'margin', upland: 'margin', strip: 'margin',
-  polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall',
+  polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin',
 });
 
 /** The rotation's cumulative shares at slots 0..5 (slot 6 takes the rest), normalised. */
@@ -150,11 +163,11 @@ function rotationCumulative(region: LandRegion): [number, number, number, number
   for (let i = 0; i < 6; i++) { acc += (table[i]?.[1] ?? 0) / total; out.push(acc); }
   return out as [number, number, number, number, number, number];
 }
-/** The rotation's slot→kind table, packed four bits a slot: slots 0..3 and 4..6 (exact in a float32). */
+/** The rotation's slot→kind table, packed five bits a slot: slots 0..3 and 4..6 (exact in a float32: < 2^24). */
 function rotationKinds(region: LandRegion): [number, number] {
   const table = ROTATIONS[region];
-  const kind = (i: number): number => (table[i]?.[0] ?? table[table.length - 1][0]) & 15;
-  return [kind(0) + 16 * kind(1) + 256 * kind(2) + 4096 * kind(3), kind(4) + 16 * kind(5) + 256 * kind(6)];
+  const kind = (i: number): number => (table[i]?.[0] ?? table[table.length - 1][0]) & 31;
+  return [kind(0) + 32 * kind(1) + 1024 * kind(2) + 32768 * kind(3), kind(4) + 32 * kind(5) + 1024 * kind(6)];
 }
 
 const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
@@ -203,10 +216,14 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 1, heading: 1.19, blockU: 64, blockV: 46, maxSplit: 2, marginM: 1.2, trackShare: 0.15, hedgeShare: 0.05,
     warpM: 16, region: 'karst', salt: 79,
   },
-  // Caldera (the Aso caldera floor, Kyushu): rectangular paddies on the grid of the farm lanes (~78°)
-  caldera: {
-    strength: 1, heading: 1.36, blockU: 72, blockV: 36, maxSplit: 2, marginM: 0.7, trackShare: 0.25, hedgeShare: 0.05,
-    warpM: 6, region: 'terrace', salt: 83,
+  // (Caldera: the maps lane rebuilt it as Las Cañadas — a volcanic basin of ash flats, cinder cones and lava flows with
+  // no fields; its ground is the volcanic zoning of groundRedux.ts, not a land use. The 'terrace' region stays for a
+  // paddy map.)
+  // Ironworks (foundry: the Völklingen ironworks on the Saar, the maps lane's rebuild): brownfield plots between the
+  // works' streets (an axis grid), birch scrub seeded along some of the plot lines, works tracks along others
+  foundry: {
+    strength: 0.75, heading: 0, blockU: 96, blockV: 64, maxSplit: 3, marginM: 1.6, trackShare: 0.45, hedgeShare: 0.35,
+    warpM: 18, region: 'brownfield', salt: 89,
   },
 });
 
@@ -244,7 +261,7 @@ export function landUseUniformValues(profile: LandUseProfile | null): {
     // (warp m, salt, the rotation's cumulative shares at slots 4 and 5); uLandD = its shares at slots 0..3
     landC: [Math.max(0, profile.warpM), profile.salt >>> 0, c[4], c[5]],
     landD: [c[0], c[1], c[2], c[3]],
-    // the slots' crop kinds (four bits a slot: 0..3, 4..6), the boundary (margin 0, ditch 1, bund 2, wall 3)
+    // the slots' crop kinds (five bits a slot: 0..3, 4..6), the boundary (margin 0, ditch 1, bund 2, wall 3)
     landE: [kinds[0], kinds[1], BOUNDARY_ID[BOUNDARIES[profile.region]], 0],
   };
 }
@@ -332,7 +349,7 @@ function compile(profile: LandUseProfile): CompiledLandUse {
   const cum = new Float64Array(6);
   [...v.landD, v.landC[2], v.landC[3]].forEach((share, i) => { cum[i] = Math.fround(share); });
   const kinds = new Uint8Array(7);
-  for (let i = 0; i < 7; i++) kinds[i] = ((i < 4 ? v.landE[0] : v.landE[1]) >> ((i < 4 ? i : i - 4) * 4)) & 15;
+  for (let i = 0; i < 7; i++) kinds[i] = ((i < 4 ? v.landE[0] : v.landE[1]) >> ((i < 4 ? i : i - 4) * 5)) & 31;
   c = {
     ch: Math.cos(v.landA[1]), sh: Math.sin(v.landA[1]), blockU: v.landA[2], blockV: v.landA[3],
     maxSplit: v.landB[0], marginM: v.landB[1], trackShare: v.landB[2], hedgeShare: v.landB[3],
@@ -440,10 +457,10 @@ float lu_crop(float roll) {
     : roll < uLandC.z ? 4.0 : roll < uLandC.w ? 5.0 : 6.0;
 }
 float lu_kind(float slot) {
-  // the slot's crop kind: four bits a slot, slots 0..3 in uLandE.x and 4..6 in uLandE.y (landUse.ts rotationKinds)
+  // the slot's crop kind: five bits a slot, slots 0..3 in uLandE.x and 4..6 in uLandE.y (landUse.ts rotationKinds)
   int s = int(slot + 0.5);
   int packed = s < 4 ? int(uLandE.x + 0.5) : int(uLandE.y + 0.5);
-  return float((packed >> ((s < 4 ? s : s - 4) * 4)) & 15);
+  return float((packed >> ((s < 4 ? s : s - 4) * 5)) & 31);
 }
 void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter) {
   float warpM = uLandC.x, salt = uLandC.y;

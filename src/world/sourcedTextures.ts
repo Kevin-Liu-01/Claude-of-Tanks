@@ -249,9 +249,14 @@ const TERRAIN_PLAN = {
   caldera: {
     // Charcoal ash still needs a diffuse floor: near-black sourced cavities
     // multiplied by the old tints erased entire shadowed shelves after grade.
-    G: { set: 'dirt', tint: [0.50, 0.47, 0.42], lift: 0.04, roughMul: 1.34 },
-    D: { set: 'dirt', tint: [0.40, 0.38, 0.37], lift: 0.04, roughMul: 1.4 },
-    R: { set: 'rock', tint: [0.52, 0.50, 0.49], lift: 0.04, roughMul: 1.2 }, M: null,
+    // Ground lane (2026-10-03, Caldera's gauntlet: "dunes on a volcanic basin", "a fine repeating weave tile"): the dirt
+    // set is a forest floor of twigs and straw, whose fibres tiled into diagonal streaks the critics read as wind
+    // ripple. The ground is now ash and cinder — the fine-grained sand set, desaturated to a warm dark grey (ash
+    // ~0.15 albedo; the volcanic zoning pales it on the level, blackens and reddens it on the cones), the worn variant
+    // a step darker; the rock a desaturated basalt
+    G: { set: 'sand', desat: 0.85, tint: [0.40, 0.38, 0.36], lift: 0.02, roughMul: 1.3 },
+    D: { set: 'sand', desat: 0.8, tint: [0.31, 0.29, 0.28], lift: 0.02, roughMul: 1.35 },
+    R: { set: 'rock', desat: 0.7, tint: [0.62, 0.60, 0.59], lift: 0.03, roughMul: 1.2 }, M: null,
   },
   foundry: {
     G: { set: 'grass', tint: [0.66, 0.65, 0.56], roughMul: 1.32 },

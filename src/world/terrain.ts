@@ -3143,7 +3143,7 @@ uniform vec4 uSeaBanks[4];
 uniform float uSeaOpeningCount;
 // Round 73 (2026-09-25, the ground redux — groundRedux.ts): four packed vectors and a clock, no sampler (the material
 // sits at the 16-unit budget). uReduxA = (height-blend strength, mid-detail octave, scree band, snow glint);
-// uReduxFold = (hollow moisture, fold occlusion, crest dryness, 0); uReduxSwash = (swash rate rad/s or 0 for a still
+// uReduxFold = (hollow moisture, fold occlusion, crest dryness, the ground lane's volcanic zoning); uReduxSwash = (swash rate rad/s or 0 for a still
 // bank, band width in mask units, wet strength, 0); uReduxSnow = (scour/powder macro, drift amplitude, 0).
 uniform vec4 uReduxA;
 uniform vec4 uReduxFold;
@@ -3666,6 +3666,10 @@ void splatCompute() {
     fR *= rockKeep;
     steepW *= rockKeep;
   }
+  // Ground lane (2026-10-03, Caldera's gauntlet: the lava shelves' fronts "read as long dark trenches"): on a volcanic
+  // basin (groundRedux VOLCANIC) a lava flow — the landform channel, the maps lane's flowCover in the mask — is basalt
+  // over its whole surface, its top, levees and front alike, not only where it is steep
+  if (uReduxFold.w > 0.001 && uRockGate > 0.5) fR = max(fR, rockGate * uReduxFold.w * (1.0 - roadCore));
   // r7: SHARPENED AXIS TRIPLANAR replaces the r6 tangent projection. The
   // tangent frame was derived from the interpolated normal, so on undulating
   // walls it rotated per-fragment and the sample coordinate wandered — the
@@ -3873,6 +3877,34 @@ void splatCompute() {
     a = mix(a, aB, bankSoil);
     n = mix(n, nB, bankSoil);
   }
+  // Ground lane (2026-10-03, Caldera's gauntlet: "dunes on a volcanic basin — every slope one monotone tan-brown, no lava
+  // flows, cinder cones or colour zoning"): a volcanic basin's ground zoned by its landforms' slopes and folds, never by
+  // a wind (groundRedux VOLCANIC, uReduxFold.w). The level basin is pumice and ash, a pale warm grey; a cone's flanks —
+  // the angle of repose — black cinder, oxidised red in patches, with paler weathered streaks down the fall line (the
+  // wall projections' noise stretched along the height: lines of constant x on an x-facing flank are its fall lines);
+  // the gentle hollow aprons at the cones' feet a talus of cinder and lighter fragments. The basalt (the rock layer:
+  // the flows, the crater walls) keeps its own.
+  if (uReduxFold.w > 0.001) {
+    float vw = uReduxFold.w * (1.0 - roadCore) * (1.0 - fR);
+    if (vw > 0.002) {
+      float ashW = 1.0 - smoothstep(0.05, 0.15, slope);
+      float coneW = smoothstep(0.13, 0.30, slope);
+      float fanW = smoothstep(0.06, 0.13, slope) * (1.0 - smoothstep(0.20, 0.30, slope)) * smoothstep(0.02, 0.30, vFold);
+      // ash: pale pumice, a breath of warmth, its own 20–40 m drifts of paler and darker fall
+      vec2 af = nzq(uvW, 0.026, vec2(0.47, 0.81));
+      a.rgb = mix(a.rgb, a.rgb * vec3(1.32, 1.28, 1.20) * (0.90 + 0.20 * af.x), ashW * vw);
+      // cinder: black, oxidised red in ~15–30 m patches, streaked paler down the fall line
+      float ox = smoothstep(0.50, 0.78, nzq(uvW, 0.017, vec2(0.13, 0.37)).y);
+      vec3 cinderCol = a.rgb * mix(vec3(0.50, 0.48, 0.47), vec3(0.74, 0.50, 0.40), ox);
+      float lodF = max(0.0, gNoiseLog + log2(0.035));
+      float fall = mix(textureLod(uNoise, gWallUVx * vec2(0.035, 0.0035) + vec2(0.23, 0.71), lodF).r,
+                       textureLod(uNoise, gWallUVz * vec2(0.035, 0.0035) + vec2(0.23, 0.71), lodF).r, gWallW);
+      cinderCol *= 1.0 + 0.32 * smoothstep(0.56, 0.80, fall) * tileVis(28.0);
+      a.rgb = mix(a.rgb, cinderCol, coneW * vw);
+      // talus fans: cinder strewn with paler fragments in metre-scale blotches
+      a.rgb = mix(a.rgb, a.rgb * mix(vec3(0.66, 0.63, 0.62), vec3(1.12, 1.08, 1.02), smoothstep(0.45, 0.70, n1h)), fanW * vw * 0.8);
+    }
+  }
   // Ground lane (2026-10-03, the gauntlet: "WoT's Prokhorovka and the Breton bocage photo show patchworks of fields in
   // distinct crops and colours, with boundaries, tracks and hedgerows. Ours is one uniform plain."): the land use
   // (landUse.ts, lu_field) over the open, level ground — off the roads, villages, water, rock and slopes past ~12°.
@@ -3907,7 +3939,7 @@ void splatCompute() {
       vec3 cropCol = a.rgb;
       float rows = 0.0; // the crop's row tone, signed
       vec4 soil = vec4(0.0);
-      bool soilCrop = (crop > 3.5 && crop < 4.5) || (crop > 6.5 && crop < 8.5) || (crop > 10.5 && crop < 12.5);
+      bool soilCrop = (crop > 3.5 && crop < 4.5) || (crop > 6.5 && crop < 8.5) || (crop > 10.5 && crop < 12.5) || crop > 16.5;
       if (soilCrop || track > 0.01 || bnd > 1.5) soil = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
       // the soil photo's own mottle (pebbles, clods, dry crust) halved toward its mean and a third of its hue taken out:
       // a turned field reads as one dark, even soil with its lines, not a sandy blotch (Amberford) or red clay (Frontier)
@@ -3970,8 +4002,17 @@ void splatCompute() {
         cropCol = a.rgb * vec3(1.30, 1.12, 0.80);
         float wr = 1.0 - smoothstep(0.35, 0.65, abs(mod(across + jit * 11.0, 6.0) - 3.0));
         rows = -wr * 0.14 * tileVis(6.0) + sin(across * 2.094) * 0.04 * tileVis(3.0);
-      } else {
+      } else if (crop < 14.5) {
         cropCol = vec3(0.600, 1.600, 0.427) * baseL * bright; // jute: tall, dark green
+      } else if (crop < 15.5) {
+        // slag tipped from the furnaces: black-grey, granular, a little blue in the fresh and rust in the weathered
+        cropCol = mix(vec3(0.068, 0.068, 0.072), vec3(0.090, 0.072, 0.060), smoothstep(0.40, 0.75, n1h)) * (0.85 + 0.30 * jit);
+      } else if (crop < 16.5) {
+        cropCol = vec3(0.16, 0.155, 0.15) * (0.88 + 0.24 * n1h) * bright; // ballast and hardcore: grey crushed stone
+      } else {
+        // brownfield grass: a patchy, cured sward with bare ground between its clumps
+        float bare = smoothstep(0.52, 0.72, nzq(uvW, 0.11, vec2(0.71, 0.23)).x);
+        cropCol = mix(a.rgb * vec3(1.35, 1.15, 0.72), soilF * 0.95, bare);
       }
       if (crop > 0.5 && crop < 3.5) {
         // tramlines: the sprayer's wheel tracks, a pair every 18–24 m, a darker crushed line each (a line 0.5 m wide
