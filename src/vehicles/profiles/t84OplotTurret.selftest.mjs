@@ -5,6 +5,7 @@ import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildOplotModern, OPLOT_FRAME } from './oplotModern.ts';
 import { getSpec } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
+import { OPLOT_BUSTLE_FLANK, OPLOT_FLANK_CASSETTE } from '../oplotFlankLayout.ts';
 
 // Main's owner-directed Oplot rebuild (2026-10-02, 245aa4e4e, src/vehicles/profiles/oplotModern.ts) retired the KMDB
 // welded/Duplet turret this receipt used to describe: its t84OplotTurretReceipt, 16 cheek and 8 flank cassettes, and
@@ -13,6 +14,8 @@ import { createTankState } from '../../sim/movement.ts';
 // cassettes per side, a roof station and a rear cage. The receipt checks that design on the real geometry:
 // articulated ownership, the rebuild record and frames, discrete cassette lids, an open gun channel at every legal
 // elevation, cheeks closed onto the body, the rear station, and every cassette seated on the structural shell.
+// 2026-10-03: the middle and rear flank cassettes stood 45 mm and 131 mm off the tapering bustle in a straight row;
+// they now follow the wall (oplotFlankLayout.ts), and their seed plates and the flank drape follow them.
 const id = 't84';
 const cassettes = [];
 registerProfiledBuilders({ [id](P) {
@@ -57,23 +60,37 @@ try {
   const side = (c) => c.size[0] < c.size[1] && c.size[0] < c.size[2];
   assert.equal(cassettes.filter(side).length, 6, 'three flank cassettes on each side');
   assert.equal(cassettes.filter((c) => !side(c)).length, 6, 'three cheek cassettes on each side');
+  // Each body's lid: a face 94% of its receiving face, 10 mm proud of it, facing the body's own outward normal.
+  const frameOf = (cassette) => {
+    const [x, y, z, rx = 0, ry = 0, rz = 0] = cassette.transform, [w, h] = cassette.size;
+    const rotation = new THREE.Euler(rx, ry, rz), outward = side(cassette)
+      ? new THREE.Vector3(Math.sign(x), 0, 0).applyEuler(rotation) : new THREE.Vector3(0, 1, 0).applyEuler(rotation);
+    const centre = new THREE.Vector3(x, y, z);
+    return { centre, outward, inboard: centre.clone().addScaledVector(outward, -(side(cassette) ? w : h) / 2),
+      lid: centre.clone().addScaledVector(outward, (side(cassette) ? w : h) / 2 + .010) };
+  };
   const position = turretExternalArmor.geometry.getAttribute('position');
   const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3();
-  const cheekLidNormal = new THREE.Vector3(0, 1, 0).applyEuler(new THREE.Euler(.25, 0, 0));
-  let cheekLidTriangles = 0, flankLidTriangles = 0;
+  const lidTriangles = cassettes.map(() => 0);
   for (let index = 0; index < position.count; index += 3) {
     a.fromBufferAttribute(position, index); b.fromBufferAttribute(position, index + 1); c.fromBufferAttribute(position, index + 2);
     n.subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a)).normalize();
     const area = b.clone().sub(a).cross(c.clone().sub(a)).length() / 2;
     const centroid = a.clone().add(b).add(c).multiplyScalar(1 / 3);
-    // lid faces: 94% of the cassette's receiving face, 10 mm proud of it
-    if (Math.abs(area - .205 * .94 * .17 * .94 / 2) < 2e-4 && n.dot(cheekLidNormal) > .999
-      && Math.abs(centroid.x) > .45 && Math.abs(centroid.x) < 1.25 && centroid.z > 1.3 && centroid.z < 1.75) cheekLidTriangles++;
-    if (Math.abs(area - .43 * .94 * .39 * .94 / 2) < 2e-4 && Math.abs(n.x) > .999 && Math.sign(n.x) === Math.sign(centroid.x)
-      && Math.abs(Math.abs(centroid.x) - 1.54) < .002 && centroid.z > -1.7 && centroid.z < -.4) flankLidTriangles++;
+    // A lid triangle belongs to the nearest cassette whose lid face it matches in area and facing.
+    let owner = -1, nearest = Infinity;
+    cassettes.forEach((cassette, k) => {
+      const [w, h, d] = cassette.size, { outward, lid } = frameOf(cassette);
+      const face = side(cassette) ? h * .94 * d * .94 / 2 : w * .94 * d * .94 / 2;
+      const distance = centroid.distanceTo(lid);
+      if (Math.abs(area - face) < 2e-4 && n.dot(outward) > .999 && distance < .15 && distance < nearest) { owner = k; nearest = distance; }
+    });
+    if (owner >= 0) lidTriangles[owner]++;
   }
-  assert.equal(cheekLidTriangles, 12, `all six cheek cassette lids remain discrete (${cheekLidTriangles} face triangles)`);
-  assert.equal(flankLidTriangles, 12, `all six flank cassette lids remain discrete (${flankLidTriangles} face triangles)`);
+  const lidCount = (flank) => cassettes.reduce((sum, cassette, k) => sum + (side(cassette) === flank ? lidTriangles[k] : 0), 0);
+  assert.ok(lidTriangles.every((count) => count === 2), `every cassette carries one discrete lid face (${lidTriangles})`);
+  assert.equal(lidCount(false), 12, 'all six cheek cassette lids remain discrete');
+  assert.equal(lidCount(true), 12, 'all six flank cassette lids remain discrete');
 
   // Open gun channel: the pitching cover stays between the cheeks' inner faces at every legal elevation.
   const halfOpening = turretRig.userData.oplotRebuild.gunOpeningM / 2;
@@ -158,11 +175,67 @@ try {
   // Every reactive cassette sits on the structural shell: the centre of its inboard face (the face opposite its lid)
   // lies inside the closed turret stock or within 4 mm of it. Checked last, so every other invariant above has run.
   const seatGap = (cassette) => {
-    const [w, h] = cassette.size, [x, y, z, rx = 0, ry = 0, rz = 0] = cassette.transform;
-    const inboard = (side(cassette) ? new THREE.Vector3(-Math.sign(x) * w / 2, 0, 0) : new THREE.Vector3(0, -h / 2, 0))
-      .applyEuler(new THREE.Euler(rx, ry, rz)).add(new THREE.Vector3(x, y, z));
+    const { inboard } = frameOf(cassette);
     return inside(inboard) ? 0 : distanceToShell(inboard);
   };
+  // A flank cassette is also embedded along its whole length where the side wall is vertical (below y 0.30):
+  // samples across the lower inboard band, at both ends and the middle, lie inside the closed stock.
+  const flankBand = (cassette) => {
+    const { inboard, outward } = frameOf(cassette), [, h, d] = cassette.size;
+    const along = new THREE.Vector3(0, 1, 0).cross(outward).normalize();
+    const misses = [];
+    for (const y of [inboard.y - h / 2 + .03, OPLOT_BUSTLE_FLANK.wallTopY - .02]) for (const t of [-.45, 0, .45]) {
+      const point = inboard.clone().addScaledVector(along, t * d).setY(y).addScaledVector(outward, -.001);
+      if (!inside(point)) misses.push(point.toArray().map((v) => v.toFixed(3)).join(','));
+    }
+    return misses;
+  };
+  for (const cassette of cassettes.filter(side)) {
+    assert.deepEqual(flankBand(cassette), [], `flank cassette at ${cassette.transform.slice(0, 3).map((v) => v.toFixed(3))} is embedded in the vertical side wall`);
+  }
+  // Seeded defect: the former straight-row seats (x 1.47, no yaw) at the middle and rear stations hang in the air.
+  for (const z of OPLOT_FLANK_CASSETTE.stations.slice(1)) {
+    const former = { size: [OPLOT_FLANK_CASSETTE.widthM, OPLOT_FLANK_CASSETTE.heightM, OPLOT_FLANK_CASSETTE.depthM],
+      transform: [OPLOT_FLANK_CASSETTE.frontCenterX, OPLOT_FLANK_CASSETTE.centerY, z, 0, 0, 0] };
+    assert.equal(flankBand(former).length, 6, `the former straight-row seat at z ${z} is rejected`);
+  }
+  // The combat zones follow the seated row. The seed plates (fleetRenewalSpecs.ts) frame the anatomy fit, which
+  // replaces each with one surface per real cassette face: every flank ERA surface lies on a flank cassette's outer
+  // face (within 12 mm of its plane, over the face), and every flank cassette carries at least one surface.
+  for (const sector of ['oplot_side_era_L', 'oplot_side_era_R']) {
+    const sign = sector.endsWith('R') ? 1 : -1, plates = spec.armor.turretPlates.filter((plate) => plate.name === sector);
+    const row = cassettes.filter((cassette) => side(cassette) && Math.sign(cassette.transform[0]) === sign);
+    assert.ok(plates.length >= row.length && plates.every((plate) => plate.era), `${sector}: reactive surfaces registered`);
+    const covered = row.map(() => 0);
+    for (const plate of plates) {
+      const centroid = plate.verts.reduce((sum, v) => sum.add(new THREE.Vector3(...v)), new THREE.Vector3()).divideScalar(plate.verts.length);
+      const owner = row.findIndex((cassette) => {
+        const { centre, outward } = frameOf(cassette), [w, h, d] = cassette.size;
+        const along = new THREE.Vector3(0, 1, 0).cross(outward).normalize(), offset = centroid.clone().sub(centre);
+        return Math.abs(offset.dot(outward) - w / 2) < .012 && Math.abs(offset.dot(along)) < d / 2 + .01
+          && Math.abs(offset.y) < h / 2 + .01;
+      });
+      assert.ok(owner >= 0, `${sector}: surface at ${centroid.toArray().map((v) => v.toFixed(3))} lies on a seated flank cassette`);
+      covered[owner]++;
+    }
+    assert.ok(covered.every((count) => count > 0), `${sector}: every flank cassette carries a combat surface (${covered})`);
+  }
+  // The flank drape hangs just outside the seated cassettes, never inside them or far off them.
+  const drape = turretRig.getObjectByName('t84_ghillie_turret_net');
+  assert.ok(drape?.isMesh, 'Oplot flank drape is present');
+  for (const cassette of cassettes.filter(side)) {
+    const { lid, outward } = frameOf(cassette), gaps = [];
+    for (const dy of [-.12, -.06, 0, .06, .12]) {
+      // Cassette frames are turret-local; the drape and the merged ERA are cast in the world.
+      const origin = turretRig.localToWorld(lid.clone().setY(lid.y + dy).addScaledVector(outward, .6));
+      const toward = outward.clone().negate().transformDirection(turretRig.matrixWorld);
+      const net = new THREE.Raycaster(origin, toward, 0, 1).intersectObject(drape, false)[0];
+      const stock = new THREE.Raycaster(origin, toward, 0, 1).intersectObject(turretExternalArmor, false)[0];
+      if (net && stock) gaps.push(stock.distance - net.distance);
+    }
+    assert.ok(gaps.length >= 3 && gaps.every((gap) => gap > .005 && gap < .09),
+      `flank drape rides 5-90 mm outside the cassette at ${cassette.transform.slice(0, 3).map((v) => v.toFixed(3))} (${gaps.map((g) => g.toFixed(3))})`);
+  }
   // Seeded defect: a seated cheek cassette lifted clear of its cheek (0.25 m along its own normal) reads as unseated.
   const cheek = cassettes.find((cassette) => !side(cassette));
   assert.equal(seatGap(cheek), 0, 'the first cheek cassette is embedded in its cheek');
