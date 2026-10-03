@@ -456,8 +456,16 @@ void main() {
   float standN = noised(wp.xz / 170.0 + vec2(3.1, -7.7)).x + 0.45 * noised(wp.xz / 61.0 + vec2(-9.2, 4.4)).x + 0.25 * noised(wp.xz / 23.0).x;
   float stand = smoothstep(-0.15, 0.2, standN + 1.4 * smoothstep(0.03, 0.18, slope) - 0.55);
   float mottle = 0.72 + 0.4 * (noised(wp.xz / 29.0 + vec2(11.3, 5.1)).x * 0.5 + 0.5);
+  // the lowland's fields: parcels on a slightly rotated grid (each its own crop: green, straw, tilled earth), on the
+  // gentle ground only — distant farmland reads as bands of colour along the hills' feet
+  vec2 fq = mat2(0.92, 0.39, -0.39, 0.92) * wp.xz / vec2(260.0, 170.0);
+  vec2 fc = floor(fq + 0.3 * vec2(noised(fq * 0.21).x, noised(fq * 0.19 + 7.1).x));
+  float crop = hash12(fc + 17.3);
+  vec3 cropC = crop < 0.45 ? uBase * vec3(0.95, 1.08, 0.88) : crop < 0.75 ? uBase * vec3(1.32, 1.18, 0.78) : uBase * vec3(1.05, 0.88, 0.7);
+  float fieldW = (1.0 - smoothstep(0.04, 0.1, slope)) * (1.0 - smoothstep(0.25, 0.45, hT)) * step(0.35, uChar3.y);
   float field = noised(floor(wp.xz / 210.0) * 1.7 + vec2(0.5)).x;
   vec3 meadow = uBase * (1.0 + 0.16 * field + 0.08 * noised(wp.xz / 90.0 + vec2(-2.2, 9.4)).x) * vec3(1.0 + 0.06 * field, 1.0, 1.0 - 0.05 * field);
+  meadow = mix(meadow, cropC * (0.95 + 0.1 * noised(wp.xz / 37.0).x), fieldW * 0.85);
   vec3 ground = uBase * (0.92 + 0.16 * (noised(wp.xz / 120.0 + vec2(7.7, -1.3)).x * 0.5 + 0.5));
   vec3 col = mix(ground, mix(meadow, uForest * mottle, stand), vegW);
   // rock on the steep faces, its beds: a tone per bed, the bedding planes darker
