@@ -486,6 +486,28 @@ function triangulateLoop(points: number[]): number[][] {
   return triangles.filter((triangle) => Math.abs(polygonArea(triangle)) >= 1e-6);
 }
 
+/** A packed convex part carries at most 64 corners (server/collisionManifestFormat.ts). */
+const PACKED_POLYGON_VERTICES = 64;
+
+/**
+ * Drop the straight-through corners of a closed section loop. A long wall cut by many openings (the regional kits'
+ * holed faces, maps/regional/house.ts) is a row of strips, and its section collects a corner at every strip edge; only
+ * a loop over the packed limit is simplified, so every loop the manifests already carried stays as it was.
+ */
+function dropCollinearCorners(points: number[]): number[] {
+  const n = points.length / 2;
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i + n - 1) % n, c = (i + 1) % n;
+    const ax = points[a * 2], az = points[a * 2 + 1], bx = points[i * 2], bz = points[i * 2 + 1], cx = points[c * 2], cz = points[c * 2 + 1];
+    const cross = (bx - ax) * (cz - az) - (bz - az) * (cx - ax);
+    const scale = Math.hypot(bx - ax, bz - az) * Math.hypot(cx - ax, cz - az);
+    if (Math.abs(cross) <= 1e-6 * scale) continue;
+    out.push(bx, bz);
+  }
+  return out.length >= 6 ? out : points;
+}
+
 function isConvexPolygon(points: number[]): boolean {
   const count = points.length / 2;
   let sign = 0;
@@ -532,9 +554,14 @@ function bandProjection(solid: LocalSolid, bandMin: number, bandMax: number): { 
   let loops = 0;
   for (const level of [bandMin, bandMax]) {
     if (level <= solid.minY + 1e-6 || level >= solid.maxY - 1e-6) continue;
-    for (const loop of sliceContours(solid, level)) {
+    for (const section of sliceContours(solid, level)) {
       loops++;
-      if (isConvexPolygon(loop)) { pieces.push({ points: loop, y0: slabMin, y1: slabMax }); continue; }
+      if (isConvexPolygon(section)) {
+        const loop = section.length > 2 * PACKED_POLYGON_VERTICES ? dropCollinearCorners(section) : section;
+        pieces.push({ points: loop, y0: slabMin, y1: slabMax });
+        continue;
+      }
+      const loop = section;
       // an authored concave section (a wall with recesses, a courtyard ring) is ear-clipped and the merge below
       // reassembles its convex pieces the way it assembles a face's triangles; a scanned ring of hundreds of
       // vertices stays whole and sends the band to the raster (ear-clipping it is slow and brittle)
