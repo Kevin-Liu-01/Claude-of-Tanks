@@ -39,6 +39,9 @@ controls, capture/export surface, and production archive;
 `i18n.ts` owns locale detection and runtime formatting; the paired
 `i18nCatalog.<locale>.json` files are the reviewed local source of truth and the
 General Translation CLI boundary documented in `docs/LOCALIZATION.md`.
+`i18nDictionaries.ts` ships no catalog: each document loads its own (the game the
+full catalogs, a public page the page catalog its HTML declares, built from
+`tools/i18n-page-catalogs.mjs`); a key a public page could show raw fails the build.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

@@ -46,10 +46,10 @@ export const BUS_LEVELS: Readonly<Record<BusId, number>> = Object.freeze({
   own: 0.6,
   ownCombat: 1.4,
   interior: 0.95,
-  ambience: 0.45,
+  ambience: 0.37,
   ui: 0.6,
   music: 0.6,
-  voice: 0.5,
+  voice: 0.28,
   alarm: 0.55,
 });
 
