@@ -88,7 +88,7 @@ export function renderMuzzleBlast(out: Float32Array, sampleRate: number, caliber
   const reflectS = 0.0012 + 0.004 * k;
   const punchHz = 95 - 45 * k;
   const punchTau = 0.01 + 0.035 * k;
-  const punchAmp = 0.45 * Math.pow(k, 1.5);
+  const punchAmp = 0.25 * Math.pow(k, 1.5);
   const roarTau = 0.005 + 0.03 * k;
   const roarAmp = 0.9 * (0.4 + 0.6 * k);
   const lowA = Math.exp((-2 * Math.PI * (3500 - 2000 * k)) / sampleRate);

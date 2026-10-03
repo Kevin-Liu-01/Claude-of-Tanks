@@ -555,7 +555,8 @@ export function createAudio({
     const close = WEAPON_CLOSE[cls.id];
     const far = WEAPON_FAR[cls.id];
     const closeK = own ? 1 : 1 - rampBetween(distance, cls.closeFadeM[0], cls.closeFadeM[1]);
-    const farK = own ? 0.35 : rampBetween(distance, cls.farFadeM[0], cls.farFadeM[1]);
+    // Our own shot keeps a trace of its distant report; a gunship's distant report is the ground's, not its crew's.
+    const farK = own ? (cls.id.startsWith('gunship_') ? 0 : 0.35) : rampBetween(distance, cls.farFadeM[0], cls.farFadeM[1]);
     const bus = cinematic ? 'cinematic' as const : own ? 'ownCombat' as const : undefined;
     const base: PlayOptions = { x, y, z, rate: report.rate, gainDb: report.gainDb, ...(bus ? { bus } : {}) };
     if (own) { base.propagate = false; base.priority = 95; }

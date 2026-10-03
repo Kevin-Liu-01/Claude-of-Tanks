@@ -454,7 +454,7 @@ assert.equal(probe.ambientState().bed, 'amb_garage');
 // The hangar is indoors: its workshop sounds come from a few metres away.
 const garageFrom = probe.sfxLog.length ? probe.sfxLog.at(-1).seq : 0;
 for (let t = 0; t < 14; t += 0.25) { ctx.advance(0.25); audio.update(0.25, listener, []); }
-const workshop = probe.sfxLog.filter((e) => e.seq > garageFrom && /garage_clank|spot_crane_chain|spot_radio_far/.test(e.n));
+const workshop = probe.sfxLog.filter((e) => e.seq > garageFrom && /^(garage_clank|spot_garage_|spot_crane_chain|spot_radio_far)/.test(e.n));
 assert.ok(workshop.length > 0 && workshop.every((e) => e.d < 16), `garage spots nearby (${workshop.map((e) => `${e.n}@${e.d}m`)})`);
 // The garage's controls: a tab, then the same press's own 'ui:click' (deduplicated), then a tank card.
 ctx.advance(0.5);

@@ -193,7 +193,8 @@ try {
     report.shots[name] = { ...m, overBedDb: +over.toFixed(1), anatomy };
     console.log(`[mix] ${''.padEnd(18)} anatomy ${JSON.stringify(anatomy)}`);
     if (over < minOverBed) fail(`${name} stands only ${over.toFixed(1)} dB over the battle bed (want ≥ ${minOverBed})`);
-    await sleep(600);
+    // Let the shot's tails die away before the next capture measures against the bed.
+    await sleep(4000);
   }
   const near = report.shots.cannon_15m.anatomy;
   if (near.riseMs > 15) fail(`a near cannon swells to its peak ${near.riseMs} ms after the shot (want ≤ 15: a crack, not an explosion)`);
@@ -207,7 +208,7 @@ try {
   console.log(`[mix] ${''.padEnd(18)} anatomy ${JSON.stringify(report.shots.cannon_own.anatomy)}`);
   if (report.shots.cannon_own.overBedDb < 16) fail(`our own gun stands only ${report.shots.cannon_own.overBedDb} dB over the battle bed (want ≥ 16)`);
   if (report.shots.cannon_own.anatomy.atKnee > 10) fail(`our own gun rides the soft clip (${report.shots.cannon_own.anatomy.atKnee} samples at its knee)`);
-  await sleep(600);
+  await sleep(4000);
   // 3) The crew radio against a near cannon.
   await page.waitForFunction('window.__COT_AUDIO.voicesLoaded === true', { timeout: 20000 }).catch(() => fail('crew pack did not decode'));
   report.radio = await capture('radio_line', 2600, '(() => { window.__COT_AUDIO.clearVoiceQueue(); window.__COT_AUDIO.sayVoice("enemy_spotted"); })()');
