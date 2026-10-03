@@ -25,9 +25,12 @@ import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 // cover (the roadside builder handed its plan out in road order: ten buildings along the south taxiway, six along the
 // north). The cargo side is authored; the terminal side is its rotation.
 const CARGO_SIDE = [
-  // the control tower, the cargo terminal and the hangar behind the apron
+  // the control tower and the two hangars behind the apron. 2026-10-03 (maps lane B, gauntlet wave 11): the cargo
+  // terminal was the civic hall, a 31 m brick box under a broken dome, which the critics read as "a windowless box …
+  // crowned by a dome with spidery legs, a placeholder". A second gabled hangar stands in its place, with roller
+  // doors toward the apron and the sheet cladding below.
   { structure: 'tower', x: -282, z: -128, yawDeg: 0 },
-  { structure: 'civichall', x: -256, z: -206, yawDeg: 0 },
+  { structure: 'warehouse', x: -256, z: -206, yawDeg: 0 },
   { structure: 'warehouse', x: -160, z: -208, yawDeg: 90 },
   // the hangar line, the fire station and the stores along the taxiway
   { structure: 'warehouse', x: -207, z: -82, yawDeg: 90 },
@@ -136,6 +139,9 @@ export default {
       { id: 'eastern-radar-berm', role: 'scout', x: 340, z: -44, yawDeg: -90, structure: 'relaystation', outcrop: { count: 4, radius: 8 } },
     ],
     plannedSites: [...CARGO_SIDE, ...CARGO_SIDE.map(rotateSite)],
+    // 2026-10-03 (maps lane B, gauntlet wave 11): an airfield's hangars and stores are corrugated sheet, not brick
+    // (round 75's industrial cladding, as on Whiteout Station)
+    industrialCladding: 'steel',
     tones: makeRealisticCityBuildingTones({ value: 1, saturation: 0.92, soot: 0.01, roofValue: 0.94 }),
     wallStyle: 'fieldstone', wallStoneChance: 0.6,
     // Blast walls along the hangar line and the terminal forecourt (rotation pairs).
