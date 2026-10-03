@@ -591,7 +591,7 @@ export class MatchSession {
       }
       if (retained.keyframe) {
         const keyframe = decodeMigrationKeyframe(await openMigrationBlob(key, retained.keyframe.blob));
-        const state: HostResumeState = { tick: keyframe.tick, battleTimeMs: keyframe.battleTimeMs, phase: keyframe.phase, frame: keyframe.frame, entities: keyframe.entities };
+        const state: HostResumeState = { ...keyframe };
         let baseTick = keyframe.tick;
         let baseAtMs = retained.keyframe.receivedAtMs;
         const latest = retained.latestFrame;

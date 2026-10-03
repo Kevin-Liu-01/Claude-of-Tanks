@@ -36,7 +36,7 @@ export interface HullImpactResult {
 }
 
 /** The slice of a combat state an impact writes (damage.ts CombatState and the authority's state both satisfy it). */
-type ImpactCombatState = Pick<CombatState, 'hp' | 'maxHp' | 'destroyed' | 'modules' | 'crew' | 'modeDamageTakenScale' | 'modeCriticalDamage'>;
+type ImpactCombatState = Pick<CombatState, 'hp' | 'maxHp' | 'destroyed' | 'modules' | 'crew' | 'modeDamageTakenScale' | 'modeCriticalDamage' | 'modeModuleOnlyDamage'>;
 
 interface HullImpactInput {
   combat: ImpactCombatState;
@@ -228,15 +228,19 @@ export function resolveHullImpact(input: HullImpactInput): HullImpactResult | nu
     : hardImpactDamage(physics, input.massTons, input.closingMps, input.faceForward) -
       (prior > 0 ? hardImpactDamage(physics, input.massTons, prior, input.faceForward) : 0);
   const damage = hullDamageTaken(combat, raw);
-  if (!(damage >= MIN_REPORTED_DAMAGE)) return null;
+  const moduleDamage = combat.modeModuleOnlyDamage ? Math.max(0, raw) : damage;
+  if (!(moduleDamage >= MIN_REPORTED_DAMAGE)) return null;
   combat.hp = Math.max(0, combat.hp - damage);
-  const destroyed = combat.hp <= 0;
+  let destroyed = !combat.modeModuleOnlyDamage && combat.hp <= 0;
   if (destroyed) combat.destroyed = true;
   const modulesHit: ImpactModuleHit[] = [];
   const crewHit: string[] = [];
   if (combat.modeCriticalDamage !== false) {
-    applyImpactModules(combat, kind, damage, input.faceForward, input.sideSign, modulesHit);
+    applyImpactModules(combat, kind, moduleDamage, input.faceForward, input.sideSign, modulesHit);
     applyCrewShock(combat, kind, input.closingMps, input.rng, crewHit);
+  }
+  if (combat.modeModuleOnlyDamage && Object.values(combat.crew).length > 0 && Object.values(combat.crew).every(alive => !alive)) {
+    combat.destroyed = true; combat.hp = 0; destroyed = true;
   }
   return { kind, damage, destroyed, modulesHit, crewHit };
 }

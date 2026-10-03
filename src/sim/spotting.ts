@@ -87,6 +87,8 @@ export interface SpottingRayHit {
 }
 
 interface SpottingDependencies {
+  /** Explicit match rule: render/intel visibility no longer depends on detection. */
+  alwaysVisible?: boolean;
   opticalBlocked?: (a: SpottingVector3, b: SpottingVector3) => boolean;
   getTanks: () => SpottingTank[];
   raycast?: (
@@ -875,6 +877,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
      * @param {object} [receiver] TankEntity-like teammate asking for the intel
      */
     isSpotted(id: string, team: string, receiver?: SpottingTank | null): boolean {
+      if (deps.alwaysVisible) return deps.getTanks().some(tank => tank.id === id);
       const r = recs.get(id);
       const st = r ? r.byTeam[team] : null;
       if (!st || !st.spotted) return false;
@@ -945,7 +948,9 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
       // (minimap-known contacts only, so no hidden enemy's bearing leaks
       // into a HUD number) and keep the larger term.
       const bush = concealmentBushBonus(ent, p, bloom);
-      return fillConcealmentSnapshot(ent, rec, timeS, moving, bloom, bush);
+      const snapshot = fillConcealmentSnapshot(ent, rec, timeS, moving, bloom, bush);
+      if (deps.alwaysVisible) { snapshot.spotted = false; snapshot.camo = 0; snapshot.inBush = false; }
+      return snapshot;
     },
 
     /** Bush bonus along the observer→target LOS (debug/tests). */

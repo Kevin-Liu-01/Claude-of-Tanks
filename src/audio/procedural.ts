@@ -93,6 +93,29 @@ export function synthBoom(ctx: BaseAudioContext, dest: AudioNode, noise: NoiseBa
   sub.start(when); sub.stop(when + dur + 0.1);
 }
 
+/**
+ * The pressure under a heavy report or blast, layered beneath the generated
+ * samples (thin below ~80 Hz): a sine falling from `fromHz` to `toHz` with a
+ * fast attack and a body-length decay, plus a short low-passed noise kick
+ * for the chest hit.
+ */
+export function subThump(ctx: BaseAudioContext, dest: AudioNode, noise: NoiseBank, when: number, fromHz: number, toHz: number, durS: number, gain: number, random: () => number): void {
+  if (gain < 0.002) return;
+  const o = ctx.createOscillator();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(fromHz, when);
+  o.frequency.exponentialRampToValueAtTime(Math.max(18, toHz), when + durS * 0.7);
+  const e = envGain(ctx, when, 0.008, gain, durS);
+  o.connect(e); e.connect(dest);
+  o.start(when); o.stop(when + durS + 0.1);
+  const kick = noiseSource(ctx, noise.pink, when, 0.14, random() * 2);
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 170;
+  const ke = envGain(ctx, when, 0.003, gain * 0.8, 0.14);
+  kick.connect(lp); lp.connect(ke); ke.connect(dest);
+}
+
 /** Fallback armour impact: pen = low clang + debris; ricochet = rising whine; nonpen = dull knock. */
 export function synthImpact(ctx: BaseAudioContext, dest: AudioNode, noise: NoiseBank, when: number, kind: 'pen' | 'ricochet' | 'nonpen', gain: number, random: () => number): void {
   if (kind === 'ricochet') {

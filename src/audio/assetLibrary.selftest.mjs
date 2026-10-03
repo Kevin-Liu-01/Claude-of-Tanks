@@ -40,6 +40,12 @@ assert.ok(desktop.pick('pen_heavy', Math.random), 'and plays once decoded');
 await desktop.loadVoice('ru');
 const stats = desktop.stats();
 assert.ok(stats.voiceMb > 0 && stats.decodedMb > stats.sfxMb, `voice bytes tracked apart (${JSON.stringify(stats)})`);
+// A crew line can be asked for by take (the gunner's "short" is the miss line's second take).
+const missTakes = desktop.voiceTakes('ru', 'miss');
+assert.ok(missTakes >= 2, `the miss line has a short take (${missTakes})`);
+const short = desktop.voice('ru', 'miss', () => 0, 1);
+assert.ok(short && short !== desktop.voice('ru', 'miss', () => 0, 0), 'the requested take, not a random one');
+assert.equal(desktop.voice('ru', 'miss', () => 0, 1), short, 'and the same take every time');
 
 // Mobile: one variant per asset.
 fetched.length = 0;
@@ -50,4 +56,4 @@ assert.ok(mobile.variant('gun_120_close', 0));
 assert.equal(mobile.variant('gun_120_close', 1), null);
 assert.ok(mobile.pick('gun_120_close', Math.random), 'and still picks it');
 
-console.log('assetLibrary.selftest: pinned battle set survives eviction, idle extras evicted and reloaded, voice bytes apart, mobile variant cap passed');
+console.log('assetLibrary.selftest: pinned battle set survives eviction, idle extras evicted and reloaded, voice bytes apart, takes by index, mobile variant cap passed');

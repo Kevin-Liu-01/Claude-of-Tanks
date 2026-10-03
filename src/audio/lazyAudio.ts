@@ -50,7 +50,7 @@ export interface LazyAudio {
   /** Explicit Battle intent only; preserves legacy gesture-time unlocking. */
   startLoadingAfterPaint(yieldForPaint?: () => Promise<void>): Promise<void>;
   bindBus(bus: EventBus): void;
-  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[]): void;
+  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[]): void;
   setMasterVolume(value: number): void;
   mute(muted: boolean): void;
   playGarageSting(): void;
@@ -58,7 +58,6 @@ export interface LazyAudio {
   /** Load the battle's sound groups (optionally its planned roster) before rollout. */
   warmBattleEvents(roster?: readonly string[]): Promise<RuntimeValue>;
   ambientOn(active: boolean): void;
-  hitConfirm(kind: string, damage?: number): void;
   readonly ready: boolean;
   readonly loadingActive: boolean;
 }
@@ -315,8 +314,8 @@ export function createLazyAudio({
       });
       if (real) real.bindBus(nextBus);
     },
-    update(dt: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[]) {
-      real?.update(dt, listener, tanks);
+    update(dt: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[]) {
+      real?.update(dt, listener, tanks, shells);
     },
     setMasterVolume(value: number) {
       latchMasterVolume(value);
@@ -339,7 +338,6 @@ export function createLazyAudio({
       ambientRequested = !!on;
       real?.ambientOn(ambientRequested);
     },
-    hitConfirm(kind: string, damage = 0) { real?.hitConfirm(kind, damage); },
     get ready() { return !!real; },
     get loadingActive() { return !!fallback || loadingRequested; },
   };

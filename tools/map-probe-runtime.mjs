@@ -200,7 +200,7 @@ export async function withMapProbeSession({ root, cacheDir = null, launch = {} }
 export async function openGamePage(browser, { port, viewport, query = MAP_PROBE_GAME_QUERY, readyTimeoutMs = 300000 }) {
   const page = await browser.newPage();
   const errors = [];
-  await page.setViewport({ width: viewport.width, height: viewport.height, deviceScaleFactor: 1 });
+  await page.setViewport({ deviceScaleFactor: 1, ...viewport });
   page.on('pageerror', (error) => errors.push(String(error?.message ?? error)));
   await page.goto(`http://127.0.0.1:${port}/?${query}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: readyTimeoutMs });

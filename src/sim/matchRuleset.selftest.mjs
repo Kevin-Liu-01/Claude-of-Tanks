@@ -8,7 +8,9 @@ import {
   FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, TEAM_ARRANGEMENT_LIMITS, normalizeTeamArrangement,
   acceptsTeamArrangement, hordeWaveSize, BATTLE_FIELD_LIMIT, SIDES_PRESETS, STANDARD_SIDES, isWaveMode, rulesetSides, sidesPresetOf,
   MARS_CACHE_IDS, MARS_DEFAULT_RULES, MARS_GRAVITY_IDS, ENDING_HOLD_LIMIT_S, endingHoldExpired,
+  shell as modeShell,
 } from './matchRuleset.ts';
+import { shell as fleetShell } from '../vehicles/specHelpers.ts';
 
 for (const mode of GAME_MODE_IDS) {
   const a = matchRulesetFor(mode), b = matchRulesetFor(mode);
@@ -26,7 +28,7 @@ assert.equal(standard.timeLimitS, 900); assert.equal(standard.respawnS, null); a
 // owner 2026-09-21: the battle report reads this split — deaths are a stat and `dead` the state at the end
 // only where the ruleset revives
 assert.deepEqual(GAME_MODE_IDS.filter((mode) => matchRulesetFor(mode).respawnS != null).sort(),
-  ['capture_the_flag', 'mars', 'turbo_ball', 'zone_control'], 'exactly the respawning modes revive');
+  ['capture_the_flag', 'drone', 'gun_game', 'infected', 'juggernaut', 'mars', 'turbo_ball', 'zone_control'], 'exactly the respawning modes revive');
 
 const turbo = matchRulesetFor('turbo_ball');
 assert.equal(turbo.gravityScale, 0.6, 'Turbo Ball plays at 0.6 g');
@@ -214,4 +216,11 @@ assert.equal(rulesetAllyCap(standard, 6), 6); assert.equal(rulesetAllyCap(horde,
   assert.equal(endingHoldExpired({ endingHoldS: Number.NaN }, 100, 100), true, 'a malformed hold reads as zero');
 }
 
-console.log('matchRuleset: per-mode values, determinism, campaign difficulty fold, team arrangement clamps, horde wave law, rule-card lines, spawn stamps, ammo/reload helpers and the post-verdict hold verified');
+// The ruleset restates the fleet's shell() factory so the boot stays off the vehicle helpers; the two stay equal,
+// defaults (moduleDmg = calibre, tracer = type) and overrides alike.
+for (const args of [
+  ['Probe AP', 'AP', 30, 210, 165, 120, 1150, {}],
+  ['Probe HE', 'HE', 152, 95, 95, 1400, 42, { tracer: 'DRONE', moduleDmg: 80, guided: true, reloadS: 2, gravityScale: 0 }],
+]) assert.deepEqual(modeShell(...args), fleetShell(...args), `${args[0]}: the ruleset's shell() is the fleet's`);
+
+console.log('matchRuleset: per-mode values, determinism, campaign difficulty fold, team arrangement clamps, horde wave law, rule-card lines, spawn stamps, ammo/reload helpers, the post-verdict hold and the mode weapons verified');

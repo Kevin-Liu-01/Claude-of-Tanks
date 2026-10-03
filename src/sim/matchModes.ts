@@ -9,12 +9,13 @@ import {
   totalAmmunition,
   totalAmmunitionCapacity,
 } from './ammunition.ts';
+import type { AerialView } from './aerialCombat.ts';
 import type { MatchPlacement } from './matchPlacement.ts';
 import { ASSAULT_LINE_FRACTIONS } from './assaultLines.ts';
 import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjectiveLayouts.ts';
 import {
   FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, RULESET_SCORE_TARGETS, matchRulesetFor, type MatchRuleset, hordeWaveSize,
-  MARS_DEFAULT_RULES, type RulesetPhysics,
+  MARS_DEFAULT_RULES, GUN_GAME_WEAPONS, type RulesetPhysics,
 } from './matchRuleset.ts';
 
 export const GAME_MODE_IDS = Object.freeze([
@@ -25,6 +26,12 @@ export const GAME_MODE_IDS = Object.freeze([
   'endless_horde',
   'frontline_assault',
   'mars',
+  'juggernaut',
+  'infected',
+  'realistic',
+  'gun_game',
+  'drone',
+  'ac130',
 ] as const);
 
 export type GameModeId = typeof GAME_MODE_IDS[number];
@@ -80,6 +87,18 @@ export const GAME_MODE_DEFINITIONS: Readonly<Record<GameModeId, GameModeDefiniti
       description: 'Olympus Basin under a galaxy sky: 0.38 g, long jumps, respawns and boost caches. Hold the station sectors — first team to 750 points wins.',
       respawns: true,
     }),
+    juggernaut: Object.freeze({ id: 'juggernaut', label: 'Juggernaut', shortLabel: 'BOSS', icon: 'modeJuggernaut',
+      description: 'Become the armored boss or join the hunters. Destroy the juggernaut before time runs out.', respawns: true }),
+    infected: Object.freeze({ id: 'infected', label: 'Infected', shortLabel: 'INFECT', icon: 'modeInfected',
+      description: 'Survive the outbreak. Destroyed survivors return on the infected side.', respawns: true }),
+    realistic: Object.freeze({ id: 'realistic', label: 'Realistic', shortLabel: 'REAL', icon: 'modeRealistic',
+      description: 'Every tank stays visible. Disable modules, eliminate the crew or detonate ammunition; there is no hull-health victory.', respawns: false }),
+    gun_game: Object.freeze({ id: 'gun_game', label: 'Gun Game', shortLabel: 'GUNS', icon: 'modeGunGame',
+      description: 'Earn confirmed kills to advance through five weapons. Complete the final weapon to win.', respawns: true }),
+    drone: Object.freeze({ id: 'drone', label: 'Drone', shortLabel: 'FPV', icon: 'modeDrone',
+      description: 'Fight in your tank, launch an FPV attack drone, then pilot it into an enemy. Your parked tank stays vulnerable.', respawns: true }),
+    ac130: Object.freeze({ id: 'ac130', label: 'AC-130', shortLabel: 'AC-130', icon: 'modeAc130',
+      description: 'Orbit the battlefield in a gunship. Use the autocannon, 152 mm explosive howitzer and guided missiles from an overhead gunsight.', respawns: false }),
   });
 
 const MODE_SET = new Set<string>(GAME_MODE_IDS);
@@ -118,7 +137,9 @@ export interface MatchModeEntity {
     destroyed: boolean;
     ammo: number[];
     ammoCapacity: number[];
+    equipMults?: Partial<Record<string, number>>;
   };
+  aerial?: AerialView;
   modeActive?: boolean;
   modeSpeedMultiplier?: number;
   /** Ruleset gravity scale (matchRuleset.ts) the movement and ballistics read. */
@@ -140,6 +161,7 @@ export interface MatchModeSpawn {
 interface MatchModeHooks<Entity extends MatchModeEntity> {
   revive(entity: Entity, spawn: MatchModeSpawn, healthScale: number): void;
   setActive?(entity: Entity, active: boolean): void;
+  setWeaponStage?(entity: Entity, stage: number): void;
   terrainHeight?(x: number, z: number): number;
   ballFloorHeight?(x: number, z: number, previousBottomY: number): number;
   emit?(type: string, payload: MatchModeEventPayload): void;
@@ -242,6 +264,19 @@ export interface MatchModePresentationState {
   pickups: PickupState[];
   playerAmmo: number | null;
   playerAmmoCapacity: number | null;
+  aerial?: AerialView;
+  factions?: { id: string; team: ObjectiveTeam }[];
+  boss?: { id: string; team: ObjectiveTeam; hp: number; maxHp: number };
+  infection?: { survivors: number; infected: number };
+  weaponStages?: { id: string; index: number }[];
+  weaponStage?: { index: number; total: number; kills: number; required: number; name: string };
+}
+
+/** Sealed host checkpoint; never publish this private respawn state to spectators. */
+export interface ModeCheckpoint {
+  elapsedS: number; score: TeamScore; weaponKills: [string, number][];
+  teams: [string, ObjectiveTeam][]; respawns: [string, { atS: number; healthScale: number }][];
+  destroyed: [string, boolean][]; scored: string[];
 }
 
 export interface MatchModeResult {
@@ -267,6 +302,8 @@ export interface MatchModeController<
   /** The objective the bot's targets are ranked against: the same point with its capture reach. */
   botObjective(entity: Entity): { x: number; z: number; radiusM: number; mission?: BotMission } | null;
   serialize(viewerId?: string | null): MatchModePresentationState;
+  captureCheckpoint(elapsedS: number): ModeCheckpoint;
+  restoreCheckpoint(checkpoint: ModeCheckpoint): void;
 }
 
 export function normalizeGameMode<Value>(value: Value): GameModeId {
@@ -323,7 +360,7 @@ function pointSegmentDistanceSq(point: Vec3Like, a: Vec3Like, b: Vec3Like): numb
 export function createMatchModeController<Entity extends MatchModeEntity>({
   mode = 'standard', entities, seed = 6000, revive, setActive = () => {},
   terrainHeight = () => 0, ballFloorHeight = terrainHeight, emit = () => {},
-  placement,
+  placement, setWeaponStage = () => {},
   ruleset: rulesetOption,
 }: MatchModeControllerOptions<Entity>): MatchModeController<Entity> {
   if (!Array.isArray(entities) || entities.length < 1 || typeof revive !== 'function') {
@@ -340,7 +377,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // ballistics reads the gravity scale at the muzzle; stamped at start, at every revive, and when a
   // flag changes hands.
   const stampPhysics = (entity: Entity, speed = baseSpeed): void => {
-    entity.modeSpeedMultiplier = speed;
+    entity.modeSpeedMultiplier = speed * (ruleset.infection && teamOf(entity) === 'bravo' ? ruleset.infection.infectedSpeed : 1)
+      * (ruleset.juggernaut && teamOf(entity) === ruleset.juggernaut.team ? ruleset.juggernaut.speedScale : 1);
     entity.modeGravityScale = ruleset.gravityScale;
     entity.modeJumpMps = ruleset.jumpMps;
     entity.modeRecoilLaunchScale = ruleset.recoilLaunchScale;
@@ -401,6 +439,15 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const lateralX = axisZ;
   const lateralZ = -axisX;
   const score: TeamScore = { alpha: 0, bravo: 0 };
+  const weaponKills = new Map<string, number>();
+  const boss = ruleset.juggernaut ? teams[ruleset.juggernaut.team][0] : null;
+  if (boss && ruleset.juggernaut) {
+    boss.combat.maxHp = Math.round(boss.combat.maxHp * ruleset.juggernaut.hpScale);
+    boss.combat.hp = boss.combat.maxHp;
+    const mults = boss.combat.equipMults || (boss.combat.equipMults = {});
+    mults.reload = (mults.reload ?? 1) * ruleset.juggernaut.reloadScale;
+  }
+  if (ruleset.gunGame) for (const entity of entities) setWeaponStage(entity, 0);
   const flags: FlagState[] = id === 'capture_the_flag'
     ? (['alpha', 'bravo'] as const).map((team) => ({
       team,
@@ -478,6 +525,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     pickups,
     playerAmmo: null,
     playerAmmoCapacity: null,
+    ...(boss ? { boss: { id: boss.id, team: teamOf(boss), hp: boss.combat.hp, maxHp: boss.combat.maxHp } } : {}),
+    ...(ruleset.infection ? { infection: { survivors: teams.alpha.length, infected: teams.bravo.length } } : {}),
   };
 
   const resetFlag = (flag: FlagState): void => {
@@ -502,6 +551,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       return; // keep pending, but never retry a bounded search at 60 Hz
     }
     revive(entity, safeSpawn, healthScale);
+    if (ruleset.gunGame) setWeaponStage(entity, Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(entity.id) ?? 0) / ruleset.gunGame.killsPerWeapon)));
     entity.modeActive = true;
     // wave pressure: Horde / Frontline defenders drive faster every wave (capped at +55 %)
     stampPhysics(entity, (id === 'endless_horde' || id === 'frontline_assault') && teamOf(entity) === 'bravo'
@@ -724,6 +774,15 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     destroyed.set(entity.id, isDead);
     if (!isDead) return;
     dropCarriedFlags(entity, timeS);
+    if (entity === boss) return;
+    if (ruleset.infection && teamOf(entity) === 'alpha') {
+      teams.alpha.splice(teams.alpha.indexOf(entity), 1);
+      entity.team = entities.some(other => other.team === 'enemy') ? 'enemy' : 'bravo';
+      teams.bravo.push(entity);
+      spawns.set(entity.id, { ...centers.bravo });
+      stampPhysics(entity);
+      emit('mode_infected', { id: entity.id, team: 'bravo' });
+    }
     if (ruleset.respawnS != null) respawnAt.set(entity.id, { atS: timeS + ruleset.respawnS, healthScale: 1 });
   };
 
@@ -1058,6 +1117,17 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       pickups: pickups.filter((pickup) => pickup.active).map((pickup) => ({ ...pickup })),
       playerAmmo: viewer ? totalAmmunition(viewer.combat) : null,
       playerAmmoCapacity: viewer ? totalAmmunitionCapacity(viewer.combat) : null,
+      ...(viewer?.aerial ? { aerial: { ...viewer.aerial } } : {}),
+      ...(ruleset.infection ? { factions: entities.map(entity => ({ id: entity.id, team: teamOf(entity) })) } : {}),
+      ...(state.boss ? { boss: { ...state.boss } } : {}),
+      ...(state.infection ? { infection: { ...state.infection } } : {}),
+      ...(ruleset.gunGame ? { weaponStages: entities.map(entity => ({ id: entity.id, index: Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(entity.id) ?? 0) / ruleset.gunGame!.killsPerWeapon)) })) } : {}),
+      ...(ruleset.gunGame && viewer ? { weaponStage: {
+        index: Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(viewer.id) ?? 0) / ruleset.gunGame.killsPerWeapon)),
+        total: GUN_GAME_WEAPONS.length, kills: (weaponKills.get(viewer.id) ?? 0) % ruleset.gunGame.killsPerWeapon,
+        required: ruleset.gunGame.killsPerWeapon,
+        name: GUN_GAME_WEAPONS[Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(viewer.id) ?? 0) / ruleset.gunGame.killsPerWeapon))]!.name,
+      } } : {}),
     };
   };
 
@@ -1240,21 +1310,45 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     definition,
     ruleset,
     state,
-    usesElimination: id === 'standard',
+    usesElimination: id === 'standard' || id === 'realistic' || id === 'ac130',
     recordDestruction(victimId, killerId) {
-      if (result || objective !== 'zone_control' || !killerId || killerId === victimId || scoredDeaths.has(victimId)) return;
+      if (result || (objective !== 'zone_control' && !['drone', 'gun_game', 'juggernaut', 'realistic', 'ac130'].includes(id)) || !killerId || killerId === victimId || scoredDeaths.has(victimId)) return;
       const victim=entities.find(entity=>entity.id===victimId);
       const killer=entities.find(entity=>entity.id===killerId);
       if (!victim?.combat.destroyed || !killer || victim.modeActive===false || teamOf(victim)===teamOf(killer)) return;
       scoredDeaths.add(victimId);
       const team=teamOf(killer);
-      score[team]+=ZONE_DESTRUCTION_POINTS;
-      emit('mode_destruction_scored',{team,points:ZONE_DESTRUCTION_POINTS,score:score[team]});
+      const points = objective === 'zone_control' ? ZONE_DESTRUCTION_POINTS : 1;
+      score[team] += points;
+      emit('mode_destruction_scored', { team, points, score: score[team] });
+      if (ruleset.gunGame) {
+        const kills = (weaponKills.get(killerId) ?? 0) + 1;
+        weaponKills.set(killerId, kills);
+        const stage = Math.floor(kills / ruleset.gunGame.killsPerWeapon);
+        if (stage >= GUN_GAME_WEAPONS.length) finish(team, 'weapon_ladder_complete');
+        else if (kills % ruleset.gunGame.killsPerWeapon === 0) {
+          setWeaponStage(killer, stage);
+          emit('mode_weapon_advanced', { id: killerId, stage, name: GUN_GAME_WEAPONS[stage]!.name });
+        }
+      }
+      if (id === 'drone' && score[team] >= scoreTarget) finish(team, 'drone_score_limit');
     },
     step(dt, timeS) {
       if (result) return result;
       placementTimeS = timeS;
       handleDeathsAndRespawns(timeS);
+      if (boss && state.boss) {
+        state.boss.hp = boss.combat.hp;
+        if (boss.combat.destroyed) return finish(otherTeam(teamOf(boss)), 'juggernaut_destroyed');
+        if (ruleset.timeLimitS != null && timeS >= ruleset.timeLimitS) return finish(teamOf(boss), 'juggernaut_survived');
+      }
+      if (state.infection) {
+        state.infection.survivors = teams.alpha.length;
+        state.infection.infected = teams.bravo.length;
+        score.alpha = teams.alpha.length; score.bravo = teams.bravo.length;
+        if (!teams.alpha.length) return finish('bravo', 'outbreak_complete');
+        if (ruleset.timeLimitS != null && timeS >= ruleset.timeLimitS) return finish('alpha', 'survivors_extracted');
+      }
       if (id === 'capture_the_flag') return stepFlags(timeS);
       if (id === 'mars') stepMarsCaches(timeS);
       if (objective === 'zone_control') return stepZones(dt);
@@ -1277,6 +1371,25 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     },
     botTarget,
     botObjective,
+    captureCheckpoint(elapsedS) {
+      return { elapsedS, score: { ...score }, weaponKills: [...weaponKills], teams: entities.map(entity => [entity.id, teamOf(entity)]),
+        respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]), destroyed: [...destroyed], scored: [...scoredDeaths] };
+    },
+    restoreCheckpoint(checkpoint) {
+      score.alpha = checkpoint.score.alpha; score.bravo = checkpoint.score.bravo;
+      weaponKills.clear(); for (const [key, value] of checkpoint.weaponKills) weaponKills.set(key, value);
+      teams.alpha.length = teams.bravo.length = 0;
+      const restoredTeams = new Map(checkpoint.teams);
+      for (const entity of entities) {
+        const team = restoredTeams.get(entity.id) ?? teamOf(entity);
+        if (ruleset.infection && team !== teamOf(entity)) spawns.set(entity.id, { ...centers[team] });
+        entity.team = team; teams[team].push(entity); stampPhysics(entity);
+        if (ruleset.gunGame) setWeaponStage(entity, Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(entity.id) ?? 0) / ruleset.gunGame.killsPerWeapon)));
+      }
+      respawnAt.clear(); for (const [key, value] of checkpoint.respawns) respawnAt.set(key, { ...value });
+      destroyed.clear(); for (const [key, value] of checkpoint.destroyed) destroyed.set(key, value);
+      scoredDeaths.clear(); for (const key of checkpoint.scored) scoredDeaths.add(key);
+    },
     serialize,
   };
 }

@@ -36,7 +36,6 @@ const runtime = createCombatFeedbackRuntime({
     addTrauma: (amount) => calls.push(['trauma', amount]),
     recoilKick: (...args) => calls.push(['recoil', ...args]),
   },
-  audio: { hitConfirm: (...args) => calls.push(['confirm', ...args]) },
   getFx: () => fx,
   hasNetworkMatch: () => networkMatch,
   shotRecoilScale: (_spec, shell) => {
@@ -52,11 +51,10 @@ bus.emit('shell:hit', {
   targetId: 'target', attackerId: 'player', normal: [1, 0, -1],
   kind: 'pen', damage: 400, caliberMm: 120, eraPlate: 'left-cheek',
 });
-assert.deepEqual(calls.slice(0, 3), [
+assert.deepEqual(calls.slice(0, 2), [
   ['era', 'left-cheek'],
   ['flinch', 1, -1, 1.2, 0.4],
-  ['confirm', 'pen', 400],
-], 'hits preserve ERA, flinch, and attacker confirmation reactions');
+], 'hits preserve ERA and flinch reactions (the audio engine confirms hits from the world)');
 
 bus.emit('shell:hit', { targetId: 'player', kind: 'pen', damage: 240, caliberMm: 120 });
 assert.equal(calls.at(-1)[0], 'trauma', 'received damage reaches the camera rig');

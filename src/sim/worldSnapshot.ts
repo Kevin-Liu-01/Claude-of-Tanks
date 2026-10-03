@@ -83,7 +83,7 @@ export interface SnapshotShellSource {
   dead?: boolean;
   pos?: RuntimeValue;
   vel?: RuntimeValue;
-  spec?: { type?: RuntimeValue; guided?: boolean } | null;
+  spec?: { type?: RuntimeValue; tracer?: RuntimeValue; guided?: boolean } | null;
 }
 
 /** One captured tank as the wire carries it (quantized; `eraSpent` only when plates are gone). */
@@ -286,7 +286,7 @@ function captureShellSnapshot(
     vx: quantize(vectorAxis(shell.vel, 0), VELOCITY_SCALE),
     vy: quantize(vectorAxis(shell.vel, 1), VELOCITY_SCALE),
     vz: quantize(vectorAxis(shell.vel, 2), VELOCITY_SCALE),
-    type: String((shell.spec && shell.spec.type) || ''),
+    type: shell.spec?.tracer === 'DRONE' ? 'DRONE' : String((shell.spec && shell.spec.type) || ''),
     guided: shell.spec?.guided === true,
   };
 }
