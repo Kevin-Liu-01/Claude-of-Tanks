@@ -14,7 +14,7 @@ import { loadRgba } from './map-metrics.mjs';
 import { MAP_VIEW_PROBE_VIEWS } from './map-view-probe-views.mjs';
 import { selectStandView } from './environment-shot-camera.mjs';
 import {
-  BORDER_EDGE, BORDER_EYE, BORDER_PROTOCOL, BORDER_VIEWS, CENSUS_FOV, CENSUS_HALF, CENSUS_PROTOCOL, CENSUS_VIEWPORT,
+  BORDER2_PROTOCOL, BORDER2_VIEWS, BORDER_EDGE, BORDER_EYE, BORDER_FRAME_CLEAR_M, BORDER_PROTOCOL, BORDER_VIEWS, CENSUS_FOV, CENSUS_HALF, CENSUS_PROTOCOL, CENSUS_VIEWPORT,
   CENSUS_VIEWS, borderPose, borderSamplePoints, borderSiteCandidates, censusViewSet, horizonRow, obliquePose,
   obliqueSamplePoints, pitchOf, selectBorderSite, selectCensusViews, selectChasePose, selectSkySite, selectTerrainSite,
   selectTreePose, skyPose, skySamplePoints, skySiteCandidates, terrainPose, terrainSamplePoints, terrainSiteCandidates,
@@ -24,7 +24,7 @@ import {
   buildSheets, censusViewsOf, compareCensus, horizonOfState, loadCensus, measureCensus, openCensus, pixelDiff, renderIndex, saveCensus, writeIndex,
 } from './visual-census-report.mjs';
 import { CENSUS_HELP, parseCensusArgs, pickCaptureMaps } from './visual-census.mjs';
-import { createPoliteCaptureLock, stepBehindStamp } from './visual-census-lock.mjs';
+import { createPoliteCaptureLock, stepBehindStamp, ticketName } from './visual-census-lock.mjs';
 import { near } from './receipt-kit.test-support.mjs';
 
 const ROOT = path.resolve(new URL('..', import.meta.url).pathname);
@@ -124,6 +124,28 @@ try {
   const fenced = selectBorderSite(nCandidates, { heightAt: level, buildings: [{ x: 0, z: 400, w: 1200, d: 400 }] });
   assert.deepEqual([fenced.candidate.index, fenced.pass, fenced.rule], [0, 5, 'anchor'], 'nowhere clear: the anchor, flagged');
   assert.throws(() => selectBorderSite(nCandidates, {}), /heightAt/);
+  // the border set's second protocol (2026-10-03, gauntlet wave 1: a tree's leaf cards filled the Verdant north eye
+  // view's corner): the same views, whose spots keep the frame's near field clear of crowns
+  assert.equal(BORDER2_PROTOCOL, 'visual-census-border-v2'); assert.equal(BORDER_FRAME_CLEAR_M, 14);
+  assert.equal(censusViewSet('border2').protocol, BORDER2_PROTOCOL, 'v2 never merges with a v1 census');
+  assert.deepEqual(BORDER2_VIEWS.map((v) => v.name), BORDER_VIEWS.map((v) => v.name), 'the same seventeen views');
+  assert.ok(BORDER2_VIEWS.every((v, i) => v.kind !== 'border' ? JSON.stringify(v) === JSON.stringify(BORDER_VIEWS[i])
+    : v.frameClearM === BORDER_FRAME_CLEAR_M && JSON.stringify({ ...v, frameClearM: undefined }) === JSON.stringify(BORDER_VIEWS[i])),
+  'v2 adds the frame-clear rule to the sixteen rim views and nothing else');
+  assert.equal(createHash('sha256').update(JSON.stringify(BORDER2_VIEWS)).digest('hex'),
+    '8c893c68441109cf70411548d2b46a109c0da103b4e2bf50899632afbe010c54', 'the v2 camera set is pinned');
+  assert.ok(Object.isFrozen(BORDER2_VIEWS) && BORDER2_VIEWS.every((v) => Object.isFrozen(v)));
+  const n2Candidates = borderSiteCandidates(BORDER2_VIEWS.find((v) => v.name === 'edge-n'));
+  assert.ok(n2Candidates.every((c) => c.frameClearM === BORDER_FRAME_CLEAR_M) && nCandidates.every((c) => c.frameClearM === undefined));
+  // a crown 8 m left of the eye and 8 m ahead: clear of the v1 spot rules (3 m round the spot, 1.5 m round the corridor
+  // straight ahead) but inside the frame — v1 keeps the spot, v2 moves it
+  const sideCrown = [{ x: -8, z: 440, r: 4 }];
+  assert.equal(selectBorderSite(nCandidates, { heightAt: level, concealers: sideCrown }).candidate.index, 0, 'v1: the near side crown is allowed');
+  const v2Site = selectBorderSite(n2Candidates, { heightAt: level, concealers: sideCrown });
+  assert.ok(v2Site.candidate.index > 0 && v2Site.pass === 1, 'v2: a crown in the near frame moves the spot');
+  // behind the eye, or past the near field, a crown stays allowed
+  assert.equal(selectBorderSite(n2Candidates, { heightAt: level, concealers: [{ x: 0, z: 410, r: 4 }] }).candidate.index, 0, 'behind the eye');
+  assert.equal(selectBorderSite(n2Candidates, { heightAt: level, concealers: [{ x: -30, z: 462, r: 4 }] }).candidate.index, 0, 'past the near field');
   assert.throws(() => borderPose(nSite, edgeN, undefined), /no ground height/);
   const oblique = BORDER_VIEWS.at(-1);
   assert.deepEqual(obliqueSamplePoints(oblique), [[230, 230]]);
@@ -396,6 +418,11 @@ try {
   const alive = new Set([t(200, 2), t(300, 3)]);
   assert.equal(stepBehindStamp([t(300, 3), t(100, 1), t(200, 2)], t(100, 1), (n) => alive.has(n)), 201, 'one live waiter passes');
   assert.equal(stepBehindStamp([t(100, 1), t(150, 9)], t(100, 1), (n) => alive.has(n)), null, 'a dead waiter does not count');
+  // equal stamps after step-behind rotations: the earlier ARRIVAL sorts first (a per-round counter starved long waiters)
+  const early = ticketName(500, 1791035000000, 77777), late = ticketName(500, 1791035999999, 11);
+  assert.ok(early < late && [late, early].sort()[0] === early, 'among equal stamps the longest waiter goes first');
+  assert.match(early, /^\d{15}-\d{12}-\d+\.t$/, 'the shared ticket format capture-lock.mjs checks');
+  assert.ok(ticketName(500, 1791035000000, 77777, 1) > early && ticketName(500, 1791035000000, 77777, 1) < late, 'a clash bump stays in arrival order');
   const lockRoot = mkdtempSync(path.join(tmpdir(), 'cot-census-lock-'));
   const dirs = { queueDir: path.join(lockRoot, 'queue'), lockDir: path.join(lockRoot, 'lock'), probeDir: path.join(lockRoot, 'probe.lock') };
   const fast = { requeuePauseMs: 20, headPollMs: 20, maxHolderWaitMs: 80 };

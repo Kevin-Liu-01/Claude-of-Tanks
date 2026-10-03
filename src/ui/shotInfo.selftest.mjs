@@ -4,8 +4,9 @@
 // `alive` is authoritative in a reviving mode; a non-reviving battle keeps the event ledger exactly as before.
 import assert from 'node:assert/strict';
 import {
-  recordCombatantDestroyed, recordCombatantRevived, rulesetRevives, mergeEndRosterRow,
+  recordCombatantDestroyed, recordCombatantRevived, rulesetRevives, mergeEndRosterRow, appendIncomingHit,
 } from './shotInfo.ts';
+import { hitOutcomeFor } from './hitEventFormat.ts';
 import { summarizeTeam, rosterRowDetails } from './endScreen.ts';
 
 const ledgerRow = (id, extra = {}) => ({
@@ -85,3 +86,40 @@ assert.equal(rulesetRevives('bogus'), false, 'an unknown mode reads as Standard:
 }
 
 console.log('shotInfo.selftest: respawn ledger — a revive clears dead and keeps deaths, the ended roster is authoritative in reviving modes, standard unchanged');
+
+// Visible runs merge by attacker entity, never by a shared tank type/name or
+// by searching older rows. Raw events and battle totals remain per-hit.
+{
+  const bounce = hitOutcomeFor({ kind: 'ricochet', damage: 0 });
+  const pen = hitOutcomeFor({ kind: 'penetration', damage: 12.4 });
+  const first = appendIncomingHit(null, 'enemy-1', 0, bounce, 100);
+  const second = appendIncomingHit(first, 'enemy-1', 0, bounce, 200);
+  assert.equal(first, second, 'a repeated deflection updates the existing row');
+  assert.equal(second.count, 2);
+  assert.equal(second.damage, 0);
+  assert.equal(second.outcome.id, bounce.id);
+  const mixed = appendIncomingHit(second, 'enemy-1', 12.4, pen, 300);
+  appendIncomingHit(mixed, 'enemy-1', 13.4, pen, 400);
+  assert.equal(mixed.count, 4, 'mixed damaging and deflected shots share the same run');
+  assert.equal(mixed.damage, 25.8, 'damage accumulates before display rounding');
+  assert.equal(mixed.outcome, null, 'a mixed burst never falsely labels every impact a ricochet');
+  assert.equal(mixed.outcomes.get(bounce.id).count, 2);
+  assert.equal(mixed.outcomes.get(pen.id).count, 2);
+  const other = appendIncomingHit(mixed, 'enemy-2', 20, pen, 450);
+  const back = appendIncomingHit(other, 'enemy-1', 10, pen, 500);
+  assert.notEqual(back, first, 'A A B A stays three rows, not a lifetime attacker total');
+  assert.equal(back.count, 1);
+  assert.equal(first.count, 4, 'older rows stay unchanged');
+  const fresh = appendIncomingHit(back, 'enemy-1', 1, pen, 5099);
+  assert.equal(fresh, back, 'each new hit refreshes the visible burst lifetime');
+  const expired = appendIncomingHit(fresh, 'enemy-1', 1, pen, 9699);
+  assert.notEqual(expired, fresh, 'a faded row cannot be resurrected');
+  const unknown = appendIncomingHit(null, null, 10, pen, 0);
+  assert.notEqual(appendIncomingHit(unknown, null, 10, pen, 1), unknown,
+    'unidentified attackers are not assumed to be the same enemy');
+  assert.equal(appendIncomingHit(null, 'enemy-1', 5, pen, 600).count, 1,
+    'a kill notification, removed row or battle reset starts a fresh run');
+  assert.notEqual(appendIncomingHit(expired, 'enemy-1', 1, pen, 1), expired,
+    'a reset presentation clock cannot revive a prior battle');
+}
+console.log('shotInfo.selftest: consecutive incoming bursts, mixed outcomes, identity, expiry and reset passed');

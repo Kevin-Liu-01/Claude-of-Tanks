@@ -22,8 +22,10 @@ const authoredWorlds = new Map();
 // 2026-10-03 the map-borders lane: the dressing stream draws its rim-band props on the border landform's ground before the
 // yards' heaps, so the seven heap draws of Caldera, Ironworks and Skybridge land elsewhere on their unloading strips and
 // the clear-site law admits two fewer on each (was caldera 7, foundry 7, skybridge 5; Caldera on the classic border still
-// admits seven, measured); Cinder Junction's stage is authored
-const coalCensus = { railyard: 10, caldera: 5, foundry: 5, skybridge: 3 };
+// admits seven, measured); Cinder Junction's stage is authored. Wave 2 of that lane (2026-10-03: the road grades past
+// 430 m on the landform's rim) moves the rim-band ground those draws read again: Caldera and Ironworks admit one more
+// (5 -> 6 each).
+const coalCensus = { railyard: 10, caldera: 6, foundry: 6, skybridge: 3 };
 
 // 2026-09-29 roads/settlements: native all31-map recapture, terrain1337,
 // props2002, vegetation2001. Counts include shared tree colliders (the capture
@@ -43,36 +45,36 @@ const expected = {
   winter: [5166, 5026, 4161], // 2026-10-03 Frosthollow layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [5131, 4986, 4125]; was [5931, 5786, 4919]
   urban: [2837, 5497, 2488], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [3859, 6519, 3510] (2026-10-01 Steinburg redesign (docs/MAP-LAYOUT-BRIEF.md); was [3898, 9290, 3530])
   coastal: [3393, 3233, 3416], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [4091, 3931, 4107] (2026-10-02 Saltmere Bay redesign (docs/MAP-LAYOUT-BRIEF.md); was [4161, 3964, 4249], and [4413, 4253, 4411] before its aprons stood on their ground (apron bank law))
-  autumn: [4619, 4505, 4675], // 2026-10-03 Amberford layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [4692, 4546, 4645]; was [5872, 5726, 5822]
-  steppe: [2020, 1731, 888], // 2026-10-03 Tarkhan Steppe layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [1990, 1702, 879]; was [2426, 2138, 1302]
-  railyard: [2174, 2176, 1224], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [2846, 2848, 1899] (2026-10-01 Cinder Junction redesign (docs/MAP-LAYOUT-BRIEF.md); was [2825, 2785, 1983])
+  autumn: [4619, 4505, 4675], // 2026-10-03 Amberford layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's second pass [4692, 4546, 4645]; was [5872, 5726, 5822]
+  steppe: [1958, 1669, 825], // 2026-10-03 Tarkhan Steppe layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's second pass [1949, 1664, 843]; was [2426, 2138, 1302]
+  railyard: [1942, 1944, 994], // 2026-10-03 the map-borders lane (wave 2, the roads authored on the landform's rim and the railways' open line; first pass [2174, 2176, 1224]): rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [2846, 2848, 1899] (2026-10-01 Cinder Junction redesign (docs/MAP-LAYOUT-BRIEF.md); was [2825, 2785, 1983])
   frontier: [6316, 6180, 6691], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [7987, 7851, 8359] (2026-10-02 Frontier Basin redesign (docs/MAP-LAYOUT-BRIEF.md); was [7905, 7634, 8284], and [7730, 7594, 8120] before its aprons stood on their ground (apron bank law))
-  fjord: [5639, 5580, 5852], // 2026-10-03 Nordhavn Fjord layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [5584, 5528, 5764]; was [7357, 7301, 7679]
+  fjord: [5635, 5576, 5851], // 2026-10-03 Nordhavn Fjord layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's second pass [5639, 5580, 5852]; was [7357, 7301, 7679]
   delta: [6654, 6301, 8284], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [8149, 7796, 9775] (2026-10-02 Jade River Delta redesign (docs/MAP-LAYOUT-BRIEF.md); was [7742, 7430, 9644], and [8114, 7761, 9770] before its aprons stood on their ground (apron bank law))
   badlands: [2570, 2322, 1513], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [3013, 2765, 1956] (2026-10-02 Redrock Divide redesign (docs/MAP-LAYOUT-BRIEF.md); was [3011, 2915, 1920])
   // Native recapture with prior prop code also contains this additional wreck.
-  monsoon: [7972, 7747, 10495], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [9855, 9630, 12375] (2026-10-02 Monsoon Ridge layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md); was [9473, 9215, 12022])
-  alpine: [7004, 6931, 5906], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [9117, 9044, 8009]
+  monsoon: [7976, 7751, 10469], // 2026-10-03 the map-borders lane (wave 2, the roads authored on the landform's rim and the railways' open line; first pass [7972, 7747, 10495]): rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [9855, 9630, 12375] (2026-10-02 Monsoon Ridge layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md); was [9473, 9215, 12022])
+  alpine: [7005, 6932, 5907], // 2026-10-03 the map-borders lane (wave 2, the roads authored on the landform's rim and the railways' open line; first pass [7004, 6931, 5906]): rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [9117, 9044, 8009]
   // Same prior-props baseline verification as Monsoon.
-  caldera: [4031, 4138, 2845], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [5000, 5107, 3810]
-  foundry: [3242, 3350, 2082], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [4277, 4385, 3119]
-  ruinspires: [1933, 8350, 462], // 2026-10-02 Ruinspires redesign (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [2111, 8572, 345]; was [2823, 9284, 1050]
+  caldera: [4033, 4140, 2845], // 2026-10-03 the map-borders lane (wave 2, the roads authored on the landform's rim and the railways' open line; first pass [4031, 4138, 2845]): rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [5000, 5107, 3810]
+  foundry: [3249, 3360, 2082], // 2026-10-03 the map-borders lane (wave 2, the roads authored on the landform's rim and the railways' open line; first pass [3242, 3350, 2082]): rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [4277, 4385, 3119]
+  ruinspires: [1933, 8350, 462], // 2026-10-03 Ruinspires layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's second pass [2105, 8566, 343]; was [2823, 9284, 1050]
   blackglass: [2809, 5042, 1477], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [3661, 5894, 2333]
-  titan_gorge: [2486, 2347, 987], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [2725, 2586, 1230]
-  skybridge: [3010, 3213, 1559], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [3522, 3725, 2079]
-  polders: [3363, 3129, 2706], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [4232, 3998, 3574] (2026-10-02 Tidegate Polders redesign (docs/MAP-LAYOUT-BRIEF.md); was [4268, 4025, 3604])
-  copper_mesa: [2189, 2053, 1488], // 2026-10-03 Copper Mesa's north shelf removed (balance) [2187, 2051, 1488]; 2026-10-02 Copper Mesa layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [2240, 2140, 1429]; was [2805, 2705, 1984]
-  airfield: [2432, 2568, 1896], // 2026-10-02 Kestrel Airfield redesign (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [2450, 2429, 1959]; was [3671, 3650, 3173]
-  oasis: [2225, 2005, 1518], // 2026-10-03 Sunscar Oasis layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [2267, 2037, 1562]; was [2740, 2510, 2031]
-  whiteout: [1304, 1169, 575], // 2026-10-03 Whiteout Station layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [1309, 1175, 575]; was [1601, 1467, 875]
-  orchard: [3712, 3478, 3917], // 2026-10-02 Orchard Valley layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [3714, 3482, 3941]; was [4923, 4691, 5160]
-  longleaf: [4890, 4687, 5803], // 2026-10-02 Longleaf Crossing layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [4953, 4756, 5912]; was [6218, 6021, 7183]
+  titan_gorge: [2484, 2345, 987], // 2026-10-03 the map-borders lane (wave 2, the roads authored on the landform's rim and the railways' open line; first pass [2486, 2347, 987]): rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [2725, 2586, 1230]
+  skybridge: [3001, 3204, 1559], // 2026-10-03 the map-borders lane (wave 2, the roads authored on the landform's rim and the railways' open line; first pass [3010, 3213, 1559]): rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [3522, 3725, 2079]
+  polders: [3362, 3128, 2706], // 2026-10-03 the map-borders lane (wave 2, the roads authored on the landform's rim and the railways' open line; first pass [3363, 3129, 2706]): rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [4232, 3998, 3574] (2026-10-02 Tidegate Polders redesign (docs/MAP-LAYOUT-BRIEF.md); was [4268, 4025, 3604])
+  copper_mesa: [2191, 2055, 1488], // 2026-10-03 Copper Mesa (its north shelf removed) layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's second pass [2240, 2140, 1429]; was [2805, 2705, 1984]
+  airfield: [2432, 2568, 1896], // 2026-10-03 Kestrel Airfield layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's second pass [2450, 2429, 1959]; was [3671, 3650, 3173]
+  oasis: [2225, 2005, 1518], // 2026-10-03 Sunscar Oasis layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's second pass [2267, 2037, 1562]; was [2740, 2510, 2031]
+  whiteout: [1300, 1165, 575], // 2026-10-03 Whiteout Station layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's second pass [1303, 1169, 575]; was [1601, 1467, 875]
+  orchard: [3712, 3478, 3917], // 2026-10-03 Orchard Valley layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's second pass [3714, 3482, 3941]; was [4923, 4691, 5160]
+  longleaf: [4890, 4687, 5803], // 2026-10-03 Longleaf Crossing layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's second pass [4953, 4756, 5912]; was [6218, 6021, 7183]
   mangrove: [4520, 4347, 5686], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [5377, 5204, 6535] (2026-10-02 Mangrove Reach redesign (docs/MAP-LAYOUT-BRIEF.md); was [5282, 5127, 6502])
   saltwind: [2970, 2773, 3428], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [3666, 3469, 4131] (2026-10-02 Saltwind Narrows redesign (docs/MAP-LAYOUT-BRIEF.md); was [3629, 3392, 4048], and [3811, 3614, 4260] before its aprons stood on their ground (apron bank law))
-  reservoir: [5194, 5067, 6054], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [6495, 6368, 7349] (2026-10-02 Highland Reservoir layout-brief revision and its aprons on their ground (docs/MAP-LAYOUT-BRIEF.md); was [6425, 6300, 7206])
-  mars: [765, 711, 0], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [769, 715, 0]
-  moon: [579, 417, 0], // 2026-10-03 Earthrise Basin redesign (docs/MAP-LAYOUT-BRIEF.md) and its middle-lane craters, on the map-borders lane's edge [474, 380, 0]; was [475, 381, 0]
-  cliffbridge: [4834, 4982, 3962], // 2026-10-02 Aegis Crossing redesign (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [4656, 4389, 4003]; was [5903, 5636, 5243]
+  reservoir: [5193, 5066, 6054], // 2026-10-03 the map-borders lane (wave 2, the roads authored on the landform's rim and the railways' open line; first pass [5194, 5067, 6054]): rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [6495, 6368, 7349] (2026-10-02 Highland Reservoir layout-brief revision and its aprons on their ground (docs/MAP-LAYOUT-BRIEF.md); was [6425, 6300, 7206])
+  mars: [768, 714, 0], // 2026-10-03 the map-borders lane (wave 2, the roads authored on the landform's rim and the railways' open line; first pass [765, 711, 0]): rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [769, 715, 0]
+  moon: [579, 417, 0], // 2026-10-03 Earthrise Basin (with its middle-lane craters) layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's second pass [474, 380, 0]; was [475, 381, 0]
+  cliffbridge: [4834, 4982, 3962], // 2026-10-03 Aegis Crossing layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's second pass [4656, 4389, 4003]; was [5903, 5636, 5243]
 };
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(expected), MAP_IDS, 'every registered map has a fixed census expectation');

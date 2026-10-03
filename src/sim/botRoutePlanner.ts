@@ -3,6 +3,7 @@ import {
   type BridgeDeckSnap, type NavigationBridgeDeck,
 } from './bridgeDeckNavigation.ts';
 import { createNavigationLiquidSafety } from './navigationLiquidSafety.ts';
+type LiquidCorridorGuard = NonNullable<ReturnType<typeof createNavigationLiquidSafety>>;
 import {
   TERRAIN_MARGIN_EPS,
   driveGroundTypeAt,
@@ -1362,19 +1363,46 @@ function solveRoute(
  * cost and stable cell index as ties. A blocked rounded start fails closed:
  * this policy does not invent a path from a wet/solid deployment position.
  */
+/**
+ * The cell a dry route starts from (bots lane, 2026-10-02; Reservoir pacing seed 120006 on the maps lane's tree). The
+ * hull's own cell, unless the grid refuses it (its sample is liquid) or the leg to its centre is not drivable: through
+ * solid cover, or further into the liquid (the liquid guard's own rule, which lets a hull already in it drive out but
+ * never deeper in). Then the nearest open cell within two rings with a drivable leg, and failing that the nearest open
+ * cell, as the wet grid's start does. A hull whose own cell is refused can always plan out of it.
+ */
+function dryStartCell(navigation: BotNavigationGrid, from: Position2, safe: LiquidCorridorGuard | null): number {
+  const own = cellIndex(worldCell(from.x), worldCell(from.z));
+  const legDrivable = (index: number): boolean => {
+    const x = cellX(navigation.cellPositions, index), z = cellZ(navigation.cellPositions, index);
+    const distance = Math.hypot(x - from.x, z - from.z);
+    if (distance < 0.5) return true;
+    if (safe && !safe(from.x, from.z, Math.atan2(x - from.x, z - from.z), distance)) return false;
+    const clearance = navigation.hullClearance, h = navigation.heights[index];
+    return !clearance || clearance.legClear(from.x, from.z, from.y ?? h, x, z, h, true, false);
+  };
+  if (!navigation.blocked[own] && legDrivable(own)) return own;
+  const count = nearbyOpenCells(navigation, from);
+  for (let i = 0; i < count; i++) if (legDrivable(_startCells[i])) return _startCells[i];
+  if (!navigation.blocked[own]) return own;
+  const [sx, sz] = nearestOpen(navigation.blocked, worldCell(from.x), worldCell(from.z));
+  const nearest = cellIndex(sx, sz);
+  return navigation.blocked[nearest] ? -1 : nearest;
+}
+
 function solveDryRoute(
   from: Position2,
   to: Position2,
   navigation: BotNavigationGrid,
   spec: TerrainMobilitySpec,
   seed: number,
+  safe: LiquidCorridorGuard | null = null,
 ): RouteSolution {
   if (from.x < WORLD_MIN || from.x > WORLD_MAX || from.z < WORLD_MIN || from.z > WORLD_MAX) {
     return { points: [], cells: [], cost: Infinity, reached: false };
   }
-  const sx = worldCell(from.x), sz = worldCell(from.z);
-  const startIndex = cellIndex(sx, sz);
-  if (navigation.blocked[startIndex]) return { points: [], cells: [], cost: Infinity, reached: false };
+  const startIndex = dryStartCell(navigation, from, safe);
+  if (startIndex < 0) return { points: [], cells: [], cost: Infinity, reached: false };
+  const sx = startIndex % GRID_N, sz = Math.floor(startIndex / GRID_N);
   const costs = new Float64Array(GRID_N * GRID_N);
   costs.fill(Infinity);
   const parents = new Int32Array(GRID_N * GRID_N);
@@ -1573,18 +1601,19 @@ function planDryRoute(
   spec: TerrainMobilitySpec, seed: number, rng: () => number,
   role: string, useRoleDetour: boolean,
 ): BotRoutePoint[] {
-  const direct = solveDryRoute(start, goal, grid, spec, seed);
+  const safe = createNavigationLiquidSafety(grid.liquidField, spec);
+  const direct = solveDryRoute(start, goal, grid, spec, seed, safe);
   if (!direct.points.length) return [];
   const terminal = direct.points[direct.points.length - 1];
   const effectiveGoal = { x: terminal[0], z: terminal[1] };
   let raw = direct.points, rawCells = direct.cells;
   if (useRoleDetour) {
     const requestedVia = roleDetourPoint(start, effectiveGoal, role, rng);
-    const first = solveDryRoute(start, requestedVia, grid, spec, seed);
+    const first = solveDryRoute(start, requestedVia, grid, spec, seed, safe);
     const firstEnd = first.points[first.points.length - 1];
     if (firstEnd) {
       const effectiveVia = { x: firstEnd[0], z: firstEnd[1] };
-      const second = solveDryRoute(effectiveVia, effectiveGoal, grid, spec, seed);
+      const second = solveDryRoute(effectiveVia, effectiveGoal, grid, spec, seed, safe);
       const secondEnd = second.points[second.points.length - 1];
       if (secondEnd && secondEnd[0] === terminal[0] && secondEnd[1] === terminal[1]
         && shouldUseRoleDetour(start, effectiveGoal, effectiveVia, direct, first, second)) {
@@ -1598,7 +1627,6 @@ function planDryRoute(
   const points = grid.hullClearance
     ? clearRoute({ points: raw, cells: rawCells, cost: 0, reached: true }, start, null, grid, NO_VIA, true)
     : simplifyRoute(raw, effectiveGoal, true);
-  const safe = createNavigationLiquidSafety(grid.liquidField, spec);
   const last = points[points.length - 1];
   const dx = goal.x-last[0], dz=goal.z-last[1], distance=Math.hypot(dx,dz);
   if (safe && distance > 0 && distance < CELL_M && Math.max(Math.abs(goal.x),Math.abs(goal.z)) <= WORLD_MAX

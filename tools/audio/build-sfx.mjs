@@ -48,7 +48,7 @@ function clippedRun(file) {
   return worst;
 }
 
-const PUNCHY = new Set(['weapon-close', 'impact', 'foley', 'ui', 'radio']);
+const PUNCHY = new Set(['weapon-close', 'gunshot', 'impact', 'foley', 'ui', 'radio']);
 // Takes judged on low-end weight, and groups judged on staying dark (no bright, jingly takes).
 // Loading machinery is judged on weight plus a clean steel transient: dark, but not dull.
 const WEIGHTY = new Set(['weapon-close', 'weapon-far', 'impact']);
@@ -61,16 +61,24 @@ const SINGLE_SHOT = /^(mg_|ac_\d+_close|ac_far_|ac_own|bullet_|ricochet_light|ra
 /**
  * Cut a single-shot take before its second report (some generations answer a
  * "single shot" prompt with a short burst). Leaves the first report and its
- * own tail; the master's fade-out closes the cut.
+ * own tail; the master's fade-out closes the cut. Only a report within 8 dB of
+ * the first counts: a much quieter onset is the shot's own echo and stays.
  */
 function firstShotOnly(channels, sr, entry) {
   if (!SINGLE_SHOT.test(entry.id)) return channels;
   const mono = channels.length > 1 ? channels[0].map((v, i) => 0.5 * (v + channels[1][i])) : channels[0];
   const on = onsets(mono);
   if (on.length < 2) return channels;
-  const gap = on[1] - on[0];
-  if (gap > 1.2) return channels;
-  const cut = Math.max(Math.round((on[0] + 0.06) * sr), Math.round((on[1] - 0.008) * sr));
+  const level = (t) => {
+    let peak = 0;
+    const from = Math.round(t * sr);
+    for (let i = from; i < Math.min(mono.length, from + Math.round(0.02 * sr)); i++) peak = Math.max(peak, Math.abs(mono[i]));
+    return peak;
+  };
+  const first = level(on[0]);
+  const second = on.slice(1).find((t) => t - on[0] <= 1.2 && level(t) >= first * 0.4);
+  if (second == null) return channels;
+  const cut = Math.max(Math.round((on[0] + 0.06) * sr), Math.round((second - 0.008) * sr));
   return channels.map((ch) => ch.slice(0, cut));
 }
 
@@ -85,6 +93,18 @@ function score(m, entry, clip) {
     s += m.firstOnsetS != null && m.firstOnsetS < 0.4 ? 2 : -1;
     if (SINGLE_SHOT.test(entry.id)) s -= 1.5 * Math.max(0, m.onsets - 1);
     else if (entry.proc === 'weapon-close' || /single|one single|isolated/i.test(entry.prompt)) s -= 0.3 * Math.max(0, m.onsets - 3);
+  }
+  // A real gun report (2026-10-02): an instant crack (energy in its first 10 ms, its loudest millisecond within
+  // a few of the onset), crest, and a body that decays instead of swelling into low boom. Scoring guns on
+  // low-end weight had picked exactly the cinematic blasts; a clipped crack sounds like old film.
+  if (entry.proc === 'gunshot' && m.anatomy) {
+    const a = m.anatomy;
+    s += 3 * Math.max(0, 1 - Math.max(0, a.riseMs - 2) / 20);
+    s += 8 * Math.min(0.3, a.e10);
+    s += 1.5 * Math.max(0, Math.min(1, (a.crestDb - 10) / 10));
+    s -= 3 * Math.max(0, a.e600 - 0.35);
+    s -= 2.5 * Math.max(0, a.lowBody - 0.55);
+    if (clip > 3) s -= 3;
   }
   // Dead air: a "4 s" take whose energy is over in 0.2 s is usually a misfire.
   if (!entry.loop && m.decayS < 0.08) s -= 1;
@@ -118,14 +138,20 @@ for (const entry of SFX_CATALOG) {
     return { file, take, m, clip, s: score(m, entry, clip) };
   }).sort((a, b) => b.s - a.s);
   const pinned = picks[entry.id];
-  const chosen = pinned ? pinned.map((t) => ranked.find((r) => r.take === t)).filter(Boolean) : ranked.slice(0, entry.variants);
+  // A single-shot gun take that was really a burst is cut to its first report; one cut to a bare click
+  // (under 0.25 s) is a lost take. Ship fewer variants rather than a click, while two usable takes remain.
+  const usable = entry.proc === 'gunshot' && SINGLE_SHOT.test(entry.id)
+    ? ranked.filter((r) => firstShotOnly(deinterleave(readFileSync(r.file), 2), SR, entry)[0].length >= 0.25 * SR)
+    : ranked;
+  const pool = usable.length >= 2 ? usable : ranked;
+  const chosen = pinned ? pinned.map((t) => ranked.find((r) => r.take === t)).filter(Boolean) : pool.slice(0, entry.variants);
   const dir = join(OUT, entry.group);
   mkdirSync(dir, { recursive: true });
   for (const name of readdirSync(dir)) if (takeFileOf(entry.id).test(name)) rmSync(join(dir, name));
   const files = [];
   chosen.forEach((pick, i) => {
     const channels = firstShotOnly(deinterleave(readFileSync(pick.file), 2), SR, entry);
-    const facts = masterTake({ channels, sr: SR, preset: entry.proc, outBase: join(dir, `${entry.id}_${i}`), aac });
+    const facts = masterTake({ channels, sr: SR, preset: entry.proc, outBase: join(dir, `${entry.id}_${i}`), aac, shape: entry.shape });
     files.push({ ...facts, take: pick.take });
   });
   manifest[entry.id] = {
