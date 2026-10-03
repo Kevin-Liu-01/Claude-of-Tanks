@@ -143,8 +143,10 @@ const tundra = (density: number, heightM = 0.36): TallGrassBiome => ({
   kind: 'tundra', density, heightM, heightVar: 0.45, widthM: 0.028, base: [0.085, 0.07, 0.04], tip: [0.25, 0.20, 0.105],
   dry: [0.27, 0.21, 0.11], waterBand: 0, bank: 1, reedMargin: 0, windDir: [0.95, 0.3],
 });
-const verge = (density: number, heightM = 0.55): TallGrassBiome => ({
-  kind: 'verge', density, heightM, heightVar: 0.35, widthM: 0.045, base: [0.030, 0.045, 0.015], tip: [0.10, 0.16, 0.045],
+// ground lane (2026-10-03, the gauntlet's wave 4 on Cinder Junction: "sparse isolated straight grass blades like
+// toothpicks"): a trodden verge is a short, broad-bladed sward in clumps, not a scatter of tall thin stalks
+const verge = (density: number, heightM = 0.38): TallGrassBiome => ({
+  kind: 'verge', density, heightM, heightVar: 0.45, widthM: 0.06, base: [0.030, 0.045, 0.015], tip: [0.10, 0.16, 0.045],
   dry: [0.25, 0.21, 0.10], waterBand: 0, bank: 1, reedMargin: 0, windDir: [0.7, 0.7], // trodden verge: 0.14
 });
 const dune = (density: number, heightM = 0.8): TallGrassBiome => ({
@@ -195,11 +197,11 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   verdant: { ...TEMPERATE, scree: 0.25, grass: meadow(1.0) },
   desert: { ...ARID, grass: null },
   winter: { ...SNOW, scree: 0.35, grass: tundra(0.35) },
-  urban: { ...TEMPERATE, scree: 0.15, grass: verge(0.3) },
+  urban: { ...TEMPERATE, scree: 0.15, grass: verge(0.5) },
   coastal: { ...COAST, swashReachM: 6, scree: 0.2, grass: dune(0.55) },
   autumn: { ...TEMPERATE, scree: 0.3, grass: meadow(1.0, 0.9, { base: [0.055, 0.045, 0.018], tip: [0.26, 0.21, 0.08], dry: [0.30, 0.23, 0.08] }) },
   steppe: { ...TEMPERATE, foldMoist: 0.5, scree: 0.2, grass: steppe(1.2) },
-  railyard: { ...TEMPERATE, scree: 0.15, grass: verge(0.35) },
+  railyard: { ...TEMPERATE, scree: 0.15, grass: verge(0.55) },
   frontier: { ...TEMPERATE, foldMoist: 0.55, scree: 0.3, grass: savanna(0.85) },
   fjord: { ...COAST, swashPeriodS: 9.5, swashReachM: 4, swashStrength: 1.0, scree: 0.4, grass: dune(0.5) },
   delta: { ...STILL_WATER, rimTint: MOSS, grass: reed(0.75, 1.6, 0.85, 0.5) },
@@ -208,9 +210,9 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
     grass: meadow(0.9, 1.0, { base: [0.020, 0.045, 0.014], tip: [0.080, 0.180, 0.040], dry: [0.22, 0.22, 0.09], reedMargin: 0.55 }) },
   alpine: { ...SNOW, scree: 0.6, grass: tundra(0.3) },
   caldera: { ...VOLCANIC, grass: null },
-  foundry: { ...TEMPERATE, scree: 0.15, grass: verge(0.3) },
-  ruinspires: { ...TEMPERATE, scree: 0.2, grass: verge(0.4) },
-  blackglass: { ...TEMPERATE, scree: 0.2, grass: verge(0.25) },
+  foundry: { ...TEMPERATE, scree: 0.15, grass: verge(0.5) },
+  ruinspires: { ...TEMPERATE, scree: 0.2, grass: verge(0.5) },
+  blackglass: { ...TEMPERATE, scree: 0.2, grass: verge(0.4) },
   titan_gorge: { ...ARID, grass: null },
   skybridge: { ...ARID, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0.4, swashLines: 0.3, grass: null },
   polders: { ...STILL_WATER, grass: reed(0.7, 1.5, 0.85, 0.7) },

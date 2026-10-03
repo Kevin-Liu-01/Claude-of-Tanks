@@ -86,8 +86,10 @@ export const GROUND_LITTER = Object.freeze({
   candidatesPerCell: 210,
   mobileCandidatesPerCell: 150,
   cacheCells: 121,
-  fadeInM: 24,
-  fadeOutM: 32, // == cellM * ring: the ring always covers the fade, wherever the camera sits in its cell
+  // ground lane (2026-10-03, the gauntlet's wave 4: "evenly spaced pebble dots" on three maps): the stones are near
+  // detail — they shrink away from 18 m and are gone by 26 m, inside the ring (cellM * ring = 32 m)
+  fadeInM: 18,
+  fadeOutM: 26,
   minSlopeY: 0.86,
   roadCoreM: 3.2,
   shoulderM: 7.5,
@@ -121,12 +123,14 @@ const DEFAULTS: Required<GroundLitterConfig> = {
 const LITTER_PROFILES: Readonly<Record<string, GroundLitterConfig>> = Object.freeze({
   // ground lane (2026-10-03, the gauntlet: "dark pebble dots" across the winter snow): snow buries the field stones —
   // a few on the snow maps, not a scatter of dark dots
-  winter: { density: 0.12, clods: 0, splinters: 0.25, stoneTint: [0.09, 0.09, 0.10] },
-  whiteout: { density: 0.10, clods: 0, splinters: 0.1, stoneTint: [0.09, 0.09, 0.10] },
+  // (wave 4 on Winter: "evenly spaced black pebble dots" — fewer still, and a weathered grey, not black)
+  winter: { density: 0.06, clods: 0, splinters: 0.25, stoneTint: [0.13, 0.13, 0.14] },
+  whiteout: { density: 0.05, clods: 0, splinters: 0.1, stoneTint: [0.13, 0.13, 0.14] },
   alpine: { density: 0.4, clods: 0.15, splinters: 0.35, stoneTint: [0.13, 0.127, 0.123] },
-  desert: { density: 1.25, clods: 0.25, splinters: 0, stoneTint: [0.19, 0.16, 0.12] },
+  desert: { density: 1.25, clods: 0.25, splinters: 0, stoneTint: [0.20, 0.17, 0.13] },
   oasis: { density: 1.1, clods: 0.2, splinters: 0.05, stoneTint: [0.19, 0.165, 0.125] },
-  badlands: { density: 1.2, clods: 0.3, splinters: 0, stoneTint: [0.18, 0.13, 0.10] },
+  // (wave 4 on Redrock: "grey pebbles on an orange plane" — its own red sandstone, read as the floor's grain)
+  badlands: { density: 1.2, clods: 0.3, splinters: 0, stoneTint: [0.20, 0.115, 0.075] },
   copper_mesa: { density: 1.15, clods: 0.3, splinters: 0.05, stoneTint: [0.17, 0.13, 0.10] },
   titan_gorge: { density: 1.1, clods: 0.2, splinters: 0, stoneTint: [0.15, 0.145, 0.135] },
   caldera: { density: 1.0, clods: 0.2, splinters: 0, stoneTint: [0.09, 0.085, 0.085] },
@@ -180,7 +184,7 @@ function cellSeed(seed: number, ix: number, iz: number): number {
  * (0..1, smooth) the candidates' admission follows.
  */
 function litterPatch(x: number, z: number, seed: number): number {
-  const fx = x / 7, fz = z / 7;
+  const fx = x / 9, fz = z / 9;
   const ix = Math.floor(fx), iz = Math.floor(fz);
   const tx = fx - ix, tz = fz - iz;
   const sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
@@ -343,8 +347,9 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
       // small stones anyway); shoulders keep far more, worked yards keep a
       // few stones only so settlements stay swept
       // ground lane: open ground keeps its stones in patches (litterPatch: thick in a patch, nearly none between)
-      const clump = Math.min(1.7, Math.max(0.06, (litterPatch(x, z, seed) - 0.30) * 2.9));
-      const keep = worked ? 0.2 : (0.34 * clump) + shoulder * 0.5;
+      // (wave 4: still "evenly spaced" — the patches now hold every stone: none between them, fuller inside)
+      const clump = Math.min(2.2, Math.max(0, (litterPatch(x, z, seed) - 0.45) * 4.4));
+      const keep = worked ? 0.2 : (0.42 * clump) + shoulder * 0.5;
       if (roll > keep) continue;
       let kind: number;
       if (worked) kind = 0;
@@ -369,7 +374,9 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
       let sz: number;
       let lift: number;
       if (kind === 0) {
-        sx = 0.6 + jitterA * 1.3; sz = 0.65 + jitterB * 0.8; sy = 0.45 + jitterC * 0.35;
+        // a spread of sizes — many small stones, a few big ones (the square of a draw), each its own proportions
+        const size = 0.55 + 1.5 * jitterA * jitterA;
+        sx = size * (0.8 + jitterB * 0.5); sz = size * (0.85 + jitterC * 0.4); sy = 0.45 + jitterC * 0.35;
         lift = 0.075 * sy * 0.12; // ground lane: bedded in the soil, not set on it (0.35 of its height stood clear)
       } else if (kind === 1) {
         sx = 0.6 + jitterA * 0.9; sz = 0.6 + jitterB * 0.9; sy = 0.5 + jitterC * 0.4;

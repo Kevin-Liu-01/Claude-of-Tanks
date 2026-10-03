@@ -3761,6 +3761,18 @@ void splatCompute() {
   float hK = uReduxA.x * 2.5 * (1.0 - farM) * (1.0 - projW);
   float hBase = 0.0;
   if (hK > 0.001) hBase = reduxLuma(a.rgb) - reduxLuma(uMeanG.rgb);
+  // Ground lane (2026-10-03, the coordinator from Glacier Pass and the gauntlet's wave 4 on Winter: "brown swirled
+  // smears with a combed brush-stroke pattern"): on a snow map, wear — a yard, a verge, a scoured crest — is snow
+  // trampled and compacted, grey-white, slushy in its hollows, not bare soil; the ground shows through only where the
+  // wear is strong, and sooner on a slope turned to the sun
+  if (uReduxD.y > 1.5 && fD > 0.002) {
+    float slush = smoothstep(0.55, 0.82, n1h * 0.6 + n1 * 0.4) * smoothstep(0.0, 0.4, vFold + 0.1);
+    vec3 trampled = a.rgb * vec3(0.80, 0.81, 0.84) * (0.93 + 0.10 * n1h);
+    trampled = mix(trampled, a.rgb * vec3(0.58, 0.60, 0.63), slush * 0.6);
+    a.rgb = mix(a.rgb, trampled, min(1.0, fD * 1.4));
+    float sunSide = smoothstep(0.15, 0.65, dot(wn, uSunDirW));
+    fD = smoothstep(0.70, 0.95, fD) * mix(0.45, 1.0, sunSide);
+  }
   if (fD > 0.002 && keepM * (1.0 - seaSand) > 0.002) {
     vec4 aD = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
     // ground lane: under thin snow the ground that shows is the winter sward — flattened straw and heather, a dull
@@ -3992,12 +4004,13 @@ void splatCompute() {
         cropCol = vec3(3.467, 2.933, 1.133) * baseL * bright; // ripe rice: gold-green
       } else if (crop < 11.5) {
         // terra rossa: the karst's red earth, turned (its grain the soil layer's)
-        cropCol = soilF / max(reduxLuma(soilF), 1e-3) * vec3(1.55, 0.78, 0.55) * 0.12 * bright;
+        // (the round-2 chase frame: at 0.19/0.09/0.07 it read as a flat orange floor — the real soil is a duller brick)
+        cropCol = soilF / max(reduxLuma(soilF), 1e-3) * vec3(1.40, 0.86, 0.66) * 0.115 * bright;
         rows = sin(across * 7.854) * 0.10 * tileVis(0.8) + sin(across * 0.483 + jit * 6.0) * 0.06 * tileVis(13.0);
       } else if (crop < 12.5) {
         // a vineyard: rows 2.2 m apart, the vines' dark canopy 0.9 m wide over the earth between them (red on the
         // karst, the soil layer elsewhere)
-        vec3 earth = bnd > 2.5 ? soilF / max(reduxLuma(soilF), 1e-3) * vec3(1.55, 0.78, 0.55) * 0.12 : soilF * 0.85;
+        vec3 earth = bnd > 2.5 ? soilF / max(reduxLuma(soilF), 1e-3) * vec3(1.40, 0.86, 0.66) * 0.115 : soilF * 0.85;
         vec3 vine = vec3(0.800, 1.533, 0.467) * baseL * bright;
         float vrow = 1.0 - smoothstep(0.20, 0.30, abs(fract(across / 2.2 + jit) - 0.5));
         cropCol = mix(mix(earth, vine, vrow), mix(earth, vine, 0.45), 1.0 - tileVis(2.2));
@@ -4039,9 +4052,11 @@ void splatCompute() {
         float bund = (1.0 - smoothstep(0.30, 0.55, edgeM)) * (1.0 - track);
         a.rgb = mix(a.rgb, mix(soilF * 0.95, a.rgb * vec3(0.95, 1.0, 0.85), 0.40 + 0.25 * n1h), bund * landW);
       } else {
-        // a dry stone wall: pale limestone rubble 0.9 m wide, its joints dark, its foot shaded on the field side
-        float wall = (1.0 - smoothstep(0.38, 0.62, edgeM)) * (1.0 - track);
-        vec3 stone = vec3(0.30, 0.29, 0.27) * (0.78 + 0.34 * n1h) * (1.0 - 0.35 * smoothstep(0.55, 0.80, n1));
+        // a dry stone wall's footing: limestone rubble 0.8 m wide, broken into its stones and gaps and grown over in
+        // places, its foot shaded on the field side (the round-2 chase frame: a pale unbroken strip read as a painted
+        // path — the walls themselves are the scenery lane's to raise on this grid)
+        float wall = (1.0 - smoothstep(0.30, 0.52, edgeM)) * (1.0 - track) * (0.45 + 0.55 * smoothstep(0.30, 0.55, n1h));
+        vec3 stone = vec3(0.235, 0.228, 0.215) * (0.74 + 0.40 * fract(n1h * 7.3)) * (1.0 - 0.35 * smoothstep(0.55, 0.80, n1));
         a.rgb = mix(a.rgb, stone, wall * landW);
         a.rgb *= 1.0 - 0.22 * (smoothstep(0.55, 0.75, edgeM) * (1.0 - smoothstep(0.85, 1.35, edgeM))) * landW;
       }
@@ -5434,6 +5449,14 @@ function* createSplatMaterialSteps(
       '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\nattribute float fold;\nvarying float vFold;\nattribute float shore;\nvarying float vShore;\nattribute vec2 roadExit;\nvarying vec2 vRoadExit;\nattribute vec3 borderTint;\nvarying vec3 vBorderTint;\nattribute vec4 borderTrack;\nvarying vec4 vBorderTrack;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <worldpos_vertex>',
       '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNormal = normalize(mat3(modelMatrix) * objectNormal);\nvFold = fold;\nvShore = (1.0 - shore) * 32.0;\nvRoadExit = roadExit;\nvBorderTint = borderTint;\nvBorderTrack = borderTrack;'); // round 73b: the shore byte is inverted so a geometry without it (the ring bands) reads 32 m; the map-borders lane: roadExit (a geometry without it reads no road)
+    // Ground lane (2026-10-03, the hold-2 census A/B: the "concentric arcs", "weave tile" and "stipple" on every map's
+    // flats vanish with the terrain's shadow receiving turned off, AO and the light effects untouched): a broad, level
+    // receiver under a grazing sun shadows itself in the mid and far cascades at the engine's 0.35-texel normal offset
+    // (shadowStability.ts). The terrain alone takes three times that offset once a cascade's offset outgrows the
+    // contact map's floor — the near map, where the tanks' contact shadows fall, keeps its own.
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <shadowmap_vertex>',
+      _mustReplace(THREE.ShaderChunk.shadowmap_vertex, 'shadowWorldNormal * directionalLightShadows[ i ].shadowNormalBias',
+        'shadowWorldNormal * directionalLightShadows[ i ].shadowNormalBias * mix(1.0, 3.0, smoothstep(0.06, 0.15, directionalLightShadows[ i ].shadowNormalBias))'));
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
       '#include <common>\n' + SPLAT_COMMON_FRAG);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <map_fragment>',

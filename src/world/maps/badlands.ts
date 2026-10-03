@@ -91,6 +91,10 @@ export default {
     loneMix: [['acacia', 0.54], ['oak', 0.28], ['cedar', 0.14], ['palm', 0.04]], rimMix: [['cedar', 0.45], ['acacia', 0.35], ['oak', 0.20]],
     clusterCount: 24, loneCount: 46, rimCount: 30, grassDensity: 0.38,
     clusterScrub: 1.5, bushCount: 0.74, bushSpecies: 'oak',
+    // ground lane (2026-10-03, the gauntlet's wave 4: "saturated green grass cards" on the red floor): the wadi's tufts
+    // are cured straw, as Sirocco's are
+    grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],
+    tuftTone: (h: number, s: number, l: number) => [0.10, 0.24, clamp01(l * 0.70 + 0.12)],
   },
   props: {
     plan: ['caravanserai', 'depot', 'warehouse', 'compoundSouk', 'factory', 'minaret',

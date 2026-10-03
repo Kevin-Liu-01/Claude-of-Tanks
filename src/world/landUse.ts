@@ -87,7 +87,7 @@ export const LAND_CROP_ALBEDO: Readonly<Record<LandCropId, readonly [number, num
   8: [0.040, 0.046, 0.040], // flooded paddy (muddy water)
   9: [0.10, 0.23, 0.045],   // growing rice
   10: [0.26, 0.22, 0.085],  // ripe rice
-  11: [0.21, 0.105, 0.065], // terra rossa
+  11: [0.16, 0.10, 0.075],  // terra rossa (a dull brick, not an orange floor)
   12: [0.060, 0.115, 0.035], // vine foliage
   13: [0.17, 0.20, 0.085],  // mown hay
   14: [0.045, 0.12, 0.032], // jute
@@ -113,7 +113,7 @@ export const LAND_CROP_GROWTH: Readonly<Record<LandCropId, Readonly<{ sward: boo
   8: { sward: false, height: 0, keep: 0 },
   9: { sward: true, height: 0.6, keep: 1 },
   10: { sward: true, height: 0.75, keep: 1 },
-  11: { sward: false, height: 0, keep: 0 },
+  11: { sward: true, height: 0.5, keep: 0.12 }, // turned red earth: a few weeds
   12: { sward: true, height: 0.35, keep: 0.35 },
   13: { sward: true, height: 0.30, keep: 0.8 },
   14: { sward: true, height: 1.9, keep: 0.85 },
