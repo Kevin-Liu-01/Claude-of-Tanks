@@ -152,5 +152,6 @@ npm run build
 ```
 
 `i18n:check` also fails on likely hard-coded, user-visible English strings in
-the typed UI source. Review Chinese at desktop and compact widths after any
+the typed UI source, and on any way for a public page to show a raw key (see
+"Page catalogs"). Review Chinese at desktop and compact widths after any
 large copy update; key parity does not prove layout quality.
