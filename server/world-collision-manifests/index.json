@@ -208,11 +208,11 @@
       "concealers": 4260
     },
     "reservoir": {
-      "bytes": 1644811,
-      "sha256": "eb1f5bbe5f610dfb149fe7068eebbeb966993d5830367baf29bcab742d18368b",
-      "obstacles": 6480,
-      "colliders": 6355,
-      "concealers": 7309
+      "bytes": 1639758,
+      "sha256": "c7a1d01f871fcb4c80c0ca40fb5454d1dd0240b69e5acb744fb6cfbbbe27f511",
+      "obstacles": 6495,
+      "colliders": 6368,
+      "concealers": 7349
     },
     "mars": {
       "bytes": 545444,

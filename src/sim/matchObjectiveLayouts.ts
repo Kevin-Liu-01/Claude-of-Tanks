@@ -65,7 +65,7 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // between the deployments — the north bank's timber landing, the shore yard (also the turbo-ball kickoff), the
   // south yard.
   monsoon: { kickoff: { x: -60, z: 24 }, zones: [{ x: -306, z: 16 }, { x: -60, z: 24 }, { x: 400, z: 8 }] },
-  reservoir: { kickoff: { x: 40, z: -120 }, zones: [{ x: 0, z: 300 }, { x: 40, z: -120 }, { x: 40, z: -340 }] },
+  reservoir: { kickoff: { x: 88, z: 8 }, zones: [{ x: -8, z: 154 }, { x: 88, z: 8 }, { x: 12, z: -170 }] },
   skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
   copper_mesa: { zones: [{ x: 95.75601429460295, z: 25.16493186989846 }, { x: 103.52551824388397, z: -48.38643546884091 }, { x: 159.75453586673763, z: -8.089799185507083 }] },
 };
