@@ -20,6 +20,7 @@ try{
      const D=window.__DEBUG,fx=D.fx,original=fx.update;
      window.__tracerSample=null;window.__restoreTracers=()=>{fx.update=original;};
      let held=null;
+     window.__tracerNetworkSnapshot=()=>{held[0].spec={...held[0].spec,reloadGroup:undefined};};
      fx.update=function(dt,shells,camera,resolve){
       if(!held){
        const shell=shells.find(s=>s.shooterId===D.game.player.id&&!s.dead&&s.spec.reloadGroup===['gunship-cannon','gunship-howitzer','gunship-missile'][slot]&&s.distM>100);
@@ -48,11 +49,18 @@ try{
     assert.equal(sample.heads,1);assert.ok(sample.maxWidth>.2);assert.ok(sample.maxLength<=32.01);assert.ok(sample.maxLength>2);
     await page.screenshot({path:resolve(out,`${viewport.width}-${slot}.png`)});
     results.push({width:viewport.width,...sample});console.log('aerial-tracers:',JSON.stringify(results.at(-1)));
+    await page.evaluate(()=>window.__tracerNetworkSnapshot());
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    assert.equal(await page.evaluate(()=>window.__tracerSample.heads),1,'snapshot shell without local reload group retains its gunship head');
     await page.evaluate(()=>window.__restoreTracers());
     await new Promise(r=>setTimeout(r,1400));
+    assert.equal(await page.evaluate(()=>{
+     const g=window.__DEBUG.fx.group.getObjectByName('Ballistic tracer ribbons and heads').geometry;
+     for(let i=0;i<g.instanceCount;i++)if(g.attributes.aTint.getX(i)===2)return 1;
+     return 0;
+    }),0,'hot heads disappear after the live rounds finish');
    }
-   await page.evaluate(()=>{document.exitPointerLock();window.__DEBUG.fx.resetAll();});
-   assert.equal(await page.evaluate(()=>window.__DEBUG.fx.group.getObjectByName('Ballistic tracer ribbons and heads').geometry.instanceCount),0,'reset removes heads and ribbons');
+   assert.equal(await page.evaluate(()=>{document.exitPointerLock();window.__DEBUG.fx.resetAll();return window.__DEBUG.fx.group.getObjectByName('Ballistic tracer ribbons and heads').geometry.instanceCount;}),0,'reset removes heads and ribbons');
    assert.deepEqual(errors,[],'no shader or page errors');await page.close();
   }
  });
