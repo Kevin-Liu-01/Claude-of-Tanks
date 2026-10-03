@@ -123,11 +123,11 @@ const nationalShowcaseCases = [
   },
   {
     nation: 'Russia', filler: 't90m_proryv',
-    expected: ['t90m_x', 't90sm_x', 't14_x', 'kurganets25_x', 'bmp3m_dragun125_x', 't90a_vladimir_x', 't90a_x', 'object695_x', 'tos1a_tagil', 'ru_t80u_modern', 'ru_t72b3m_modern', 'ru_t72b3_modern', 't14', 't90ms'],
+    expected: ['t90m_x', 't90sm_x', 't90ms_x', 't90a_burlak_x', 't14_x', 'ru_t80u_modern', 'ru_t72b3m_modern', 'ru_t72b3_modern', 'kurganets25_x', 'bmp3m_dragun125_x', 't90a_vladimir_x', 't90a_x', 'object695_x', 'tos1a_tagil', 't14', 't90ms'],
   },
   {
     nation: 'USSR/Russia', filler: 't90a_burlak',
-    expected: ['t90ms_x', 't90a_burlak_x', 't90_x', 't80u_x', 't72bu_x', 't72b_1987_x', 't62mv1_x'],
+    expected: ['t90_x', 't80u_x', 't72bu_x', 't72b_1987_x', 't62mv1_x'],
   },
   {
     nation: 'UK', filler: 'challenger_3',
