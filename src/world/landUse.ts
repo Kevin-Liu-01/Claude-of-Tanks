@@ -103,16 +103,18 @@ export const LAND_CROP_ALBEDO: Readonly<Record<LandCropId, readonly [number, num
  */
 export const LAND_CROP_GROWTH: Readonly<Record<LandCropId, Readonly<{ sward: boolean; height: number; keep: number }>>> = Object.freeze({
   0: { sward: true, height: 1, keep: -1 },     // pasture: the wild sward's own law (keep -1 = unchanged)
-  1: { sward: true, height: 1.25, keep: 1 },
-  2: { sward: true, height: 1.05, keep: 1 },
-  3: { sward: true, height: 0.75, keep: 1 },
+  // (the hold-2 ABBA: +1.1–1.3 ms GPU at the chase views of Amberford and Saltmere, whose cameras stand in or beside
+  // sown fields — a sown field drew every candidate blade, taller, half again the wild sward's; now about its density)
+  1: { sward: true, height: 1.1, keep: 0.75 },
+  2: { sward: true, height: 1.0, keep: 0.75 },
+  3: { sward: true, height: 0.75, keep: 0.8 },
   4: { sward: false, height: 0, keep: 0 },
   5: { sward: true, height: 0.24, keep: 0.55 },
   6: { sward: true, height: 1.6, keep: 0.7 },
   7: { sward: true, height: 0.55, keep: 0.45 },
   8: { sward: false, height: 0, keep: 0 },
-  9: { sward: true, height: 0.6, keep: 1 },
-  10: { sward: true, height: 0.75, keep: 1 },
+  9: { sward: true, height: 0.6, keep: 0.8 },
+  10: { sward: true, height: 0.75, keep: 0.75 },
   11: { sward: true, height: 0.5, keep: 0.12 }, // turned red earth: a few weeds
   12: { sward: true, height: 0.35, keep: 0.35 },
   13: { sward: true, height: 0.30, keep: 0.8 },
