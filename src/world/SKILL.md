@@ -139,8 +139,7 @@ The scenery lane (2026-10-03): a map's named landscape features live in its top-
 pavement, scree, menhirs, cairns, calvaries) as welded vertex-coloured geometry with a convex mass per standing form,
 and a hill's bedrock (`buildBedrock`: jointed beds read off the live ground by rays on the flanks no hull climbs,
 each hill bedded its own way, broken where the ground's clefts cut the wall; a skin with no mass; its `strata` option
-takes the terrain's bed law — the beds on its bedY surfaces, the map's two formations' tones — once terrain.ts exports
-the twins);
+takes the terrain's bed law; parked since wave 16, no map places it: on smooth domes it read as masonry);
 `maps/sceneryKit.ts` holds the timber and steel landmarks (`SCENERY_DESTRUCTIBLE_TYPES`, merged into the props type
 registry after the inhabiting kit's) and the lattice pylons; `scenery.ts` composes them in props after every other
 placement and before the bucket merge (one rock-material mesh for the map, the pylons folded into `baked`, each

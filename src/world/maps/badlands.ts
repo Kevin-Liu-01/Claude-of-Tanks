@@ -158,22 +158,8 @@ export default {
   // its cap on a wind-cut pedestal) stands in the open floor of each mouth; a rujm, the Bedouin cairn, marks each cross
   // track where it leaves for its ravine. Turned through 180 degrees about the outpost like the rest of the floor.
   scenery: {
-    // the inselbergs' own rock: level beds ringing each dome's steep flanks above the talus, split by master joints
-    // into clefts, a bare crown; a skin on ground no hull reaches (the domes stay the terrain)
-    bedrock: [
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -40, z: -318, radius: 42, name: 'the south gate dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 56, z: 318, radius: 42, name: 'the north gate dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -8, z: -326, radius: 26, name: 'the south gate dome\'s lobe' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 24, z: 326, radius: 26, name: 'the north gate dome\'s lobe' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -118, z: -128, radius: 46, name: 'the south-west lane dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 134, z: 128, radius: 46, name: 'the north-east lane dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -140, z: -98, radius: 28, name: 'the south-west lane dome\'s lobe' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 156, z: 98, radius: 28, name: 'the north-east lane dome\'s lobe' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 96, z: -112, radius: 46, name: 'the south-east lane dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -80, z: 112, radius: 46, name: 'the north-west lane dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 118, z: -140, radius: 28, name: 'the south-east lane dome\'s lobe' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -102, z: 140, radius: 28, name: 'the north-west lane dome\'s lobe' },
-    ],
+    // (the bedrock skin on the inselbergs is parked: wave 16's critics read a skin on the jebels' smooth domes as
+    // masonry, "a ziggurat"; the domes' shape is the landform's — world/sceneryRocks.ts buildBedrock stays, unplaced)
     rocks: [
       { form: 'hoodoo', geology: 'sandstone', tone: WADI_RUM_STONE, x: 70, z: -330, radius: 3.4, height: 7, yawDeg: 30, name: 'the south mushroom rock' },
       { form: 'hoodoo', geology: 'sandstone', tone: WADI_RUM_STONE, x: -54, z: 330, radius: 3.4, height: 7, yawDeg: 210, name: 'the north mushroom rock' },
