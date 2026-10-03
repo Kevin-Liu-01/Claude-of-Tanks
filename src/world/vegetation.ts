@@ -5132,10 +5132,42 @@ function* vegetationBuildSteps(
     let tx = x - ux * (e0 - offset), tz = z - uz * (e0 - offset);
     const at = hedgeLandAt(tx, tz, _hedgeLand);
     if (at.edgeM > 3.5) return _hedgeSite;
-    if (at.track > 0.3) { tx = x - ux * (e0 - offset - 3.0); tz = z - uz * (e0 - offset - 3.0); }
+    // only a hedged boundary takes its trees (the layout's hedge lines, landUse.ts hedgeShare): the field trees then draw
+    // a few boundaries as unbroken shelterbelts and hedgerows instead of dotting every one of them evenly (the round-2
+    // lab frames); a tree near an open boundary stays for the groves below
+    // (the flag read half a metre off the line on the tree's own side: each field carries its own boundary's hedge)
+    if (hedgeLandAt(x - ux * (e0 - 0.5), z - uz * (e0 - 0.5), _hedgeLand).hedge < 0.5) return _hedgeSite;
+    hedgeLandAt(tx, tz, _hedgeLand);
+    if (_hedgeLand.track > 0.3) { tx = x - ux * (e0 - offset - 3.0); tz = z - uz * (e0 - offset - 3.0); }
     if (!siteOk(tx, tz, 0)) return _hedgeSite;
     _hedgeSite[0] = tx; _hedgeSite[1] = tz; _hedgeSite[2] = -uz; _hedgeSite[3] = ux;
     return _hedgeSite;
+  }
+  // Ground lane (2026-10-03, the same verdict, on every map): a lone tree that falls near a stand grows at the stand's
+  // edge — the wood's outliers, its advancing scrub — so the trees gather into groves and wood edges with open ground
+  // between instead of an even scatter; one in four stays where it fell (a pasture's true lone trees), and one
+  // already inside a stand stays in it. Hashed by the candidate's own position (no draws; admitted where the stream drew
+  // it) and moved only where the edge site is a site, at least 3 m from every other tree moved there.
+  const _groveSite = [0, 0];
+  const _groveMoved: number[] = [];
+  function groveSite(x: number, z: number): number[] {
+    _groveSite[0] = x; _groveSite[1] = z;
+    if (treePositionNoise(x, z, 83) > 0.75) return _groveSite;
+    let best = -1, bestD = 120;
+    for (let i = 0; i < clusters.length; i++) {
+      const d = Math.hypot(x - clusters[i].x, z - clusters[i].z) - clusters[i].r;
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    if (best < 0 || bestD < 0) return _groveSite;
+    const c = clusters[best];
+    const dl = Math.hypot(x - c.x, z - c.z) || 1;
+    const rr = c.r + 1.5 + 9 * treePositionNoise(x, z, 89);
+    const tx = c.x + (x - c.x) / dl * rr, tz = c.z + (z - c.z) / dl * rr;
+    if (!siteOk(tx, tz, 0)) return _groveSite;
+    for (let i = 0; i < _groveMoved.length; i += 2) if (Math.hypot(tx - _groveMoved[i], tz - _groveMoved[i + 1]) < 3) return _groveSite;
+    _groveMoved.push(tx, tz);
+    _groveSite[0] = tx; _groveSite[1] = tz;
+    return _groveSite;
   }
   function placeLoneTrees(): void {
     for (let i = 0, placed = 0, loneTarget = Math.round(veg.loneCount * treeRichness()); i < 800 && placed < loneTarget; i++) { // lone trees + pairs
@@ -5143,7 +5175,9 @@ function* vegetationBuildSteps(
       const species = pickSpecies(veg.loneMix, rng());
       if (siteOk(x, z, 0)) {
         const site = hedgeSite(x, z, 61);
-        const hx = site[0], hz = site[1], hux = site[2], huz = site[3];
+        let hx = site[0], hz = site[1];
+        const hux = site[2], huz = site[3];
+        if (hux === 0 && huz === 0) { const g = groveSite(x, z); hx = g[0]; hz = g[1]; }
         pushTree(hx, hz, species, 0.95, 1.7, true);
         placed++;
         if (rng() < 0.4) { // companion tree — lone lollipops read fake
@@ -5151,12 +5185,16 @@ function* vegetationBuildSteps(
           const cx = x + Math.cos(a2) * r2, cz = z + Math.sin(a2) * r2;
           const companion = pickSpecies(veg.loneMix, rng());
           if (siteOk(cx, cz, 0)) {
-            // along the hedgerow when the lone tree moved onto one (the same distance, either way along the line)
+            // along the hedgerow when the lone tree moved onto one (the same distance, either way along the line);
+            // beside it at the stand's edge when it moved there
             let px = cx, pz = cz;
             if (hux !== 0 || huz !== 0) {
               const side = Math.cos(a2) * hux + Math.sin(a2) * huz >= 0 ? 1 : -1;
               const lx = hx + hux * r2 * side, lz = hz + huz * r2 * side;
               if (siteOk(lx, lz, 0)) { px = lx; pz = lz; }
+            } else if (hx !== x || hz !== z) {
+              const gx = hx + Math.cos(a2) * r2, gz = hz + Math.sin(a2) * r2;
+              if (siteOk(gx, gz, 0)) { px = gx; pz = gz; }
             }
             pushTree(px, pz, companion, 0.95, 1.7, true);
             placed++;
@@ -5818,7 +5856,27 @@ function* vegetationBuildSteps(
       // (hedgeSite, as the lone trees) — decided where its candidate was drawn, so every seeded draw is unchanged
       if (hedge) {
         const site = hedgeSite(x, z, 67);
-        x = site[0]; z = site[1];
+        if (site[2] !== 0 || site[3] !== 0) { x = site[0]; z = site[1]; }
+        else if (treePositionNoise(x, z, 71) < 0.6) {
+          // ground lane: without a boundary to grow on, a field bush grows at the foot of the nearest tree within
+          // 35 m (2–5 m out from its trunk, on its own side) — scrub knots round the lone trees and the stands' edges
+          // instead of peppering the open ground evenly; position-hashed, so every seeded draw is unchanged
+          let best = -1, bestD = 35;
+          for (let i = 0; i < trees.length; i++) {
+            const d = Math.hypot(x - trees[i].x, z - trees[i].z);
+            if (d < bestD) { bestD = d; best = i; }
+          }
+          if (best >= 0) {
+            const t = trees[best], dl = Math.hypot(x - t.x, z - t.z) || 1;
+            const out = 2 + 3 * treePositionNoise(x, z, 73);
+            const bx = t.x + (x - t.x) / dl * out, bz = t.z + (z - t.z) / dl * out;
+            if (admission()._roadDist(bx, bz) >= 6 && admission().getGroundType(bx, bz) !== 'soft' && !noVeg(bx, bz)
+              && steepSeedOk(admission().getNormalAt(bx, bz).y, bx, bz) && Math.max(Math.abs(bx), Math.abs(bz)) <= 470
+              && !inAvoid(bx, bz)) {
+              x = bx; z = bz;
+            }
+          }
+        }
       }
       const y = heightField.getHeightAt(x, z);
       // hull-height concealers: foliage reaches ~2.5-3 m so a parked tank is
