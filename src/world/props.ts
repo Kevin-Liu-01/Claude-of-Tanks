@@ -329,6 +329,10 @@ interface PropsSettings {
   townCraters: boolean;
   snowCap?: boolean;
   streetRowsAfterLandmarks?: boolean;
+  /** The maps-and-layouts lane (2026-10-03): a roadside or block-fill building whose padded footprint would reach any
+   * carriageway (roadBuildingFrontage.ts buildingFootprintClearsRoads) is left out and the next site takes the plan's
+   * structure. Opt-in: a map without it keeps its draws and its buildings exactly. */
+  roadBuildingClearance?: boolean;
   streetRowRoadStride?: number;
   ruinChance?: number;
   blockFill?: boolean;
@@ -3463,7 +3467,8 @@ ${snowCap ? `
   const structureContext: StructureBuildContext = {
     mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed, cladding: P.industrialCladding ?? 'brick',
   };
-  function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string): boolean {
+  function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
+    fromRoad = false): boolean {
     const tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
@@ -3478,6 +3483,8 @@ ${snowCap ? `
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
     let fit = groundFit(px, pz, info.w, info.d, rot);
     if (fit.spread > P.maxSpread) return false;
+    if (fromRoad && P.roadBuildingClearance
+      && !buildingFootprintClearsRoads({ x: px, z: pz, rot }, info.w, info.d, roads)) return false;
     jitterBuildingUvs(tmp);
     // Keep the original eligibility/build/UV draws. Only an already accepted
     // ordinary roadside building can change parcel-facing; block fill and
@@ -3567,7 +3574,7 @@ ${snowCap ? `
     // 2026-10-02: Mangrove Reach, rebuilt to the layout brief, takes the frontage law as well
     const roadSite = mapId !== 'verdant' && mapId !== 'foundry'
       && !P.streetRows && !P.orbitalSettlement ? { ...cand, side } : undefined;
-    placePlannedBuilding(px, pz, rot, roadSite);
+    placePlannedBuilding(px, pz, rot, roadSite, undefined, true);
   }
   function* placeRoadBuildings(): Generator<PropsBuildSlice, void, void> {
     // Monumental-city maps place their landmark plan first, then let the
@@ -3873,7 +3880,7 @@ ${snowCap ? `
       if (Math.hypot(px - junction.x, pz - junction.z) < 24) return;
       if (!isRoadBuildingSiteClear(px, pz)) return;
       const rot = (brng() < 0.5 ? 0 : Math.PI / 2) + (brng() - 0.5) * 0.06;
-      placePlannedBuilding(px, pz, rot);
+      placePlannedBuilding(px, pz, rot, undefined, undefined, true);
     };
     for (let gz = v.z0 + 14; gz < v.z1 - 14 && bi < builders.length; gz += step) {
       for (let gx = v.x0 + 14; gx < v.x1 - 14 && bi < builders.length; gx += step) {
