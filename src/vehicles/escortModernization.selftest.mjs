@@ -14,7 +14,7 @@ for(const quality of ['high','low'])for(const [id,c] of Object.entries(ESCORT_FI
   t.root.updateMatrixWorld(true);
   t.root.traverse(o=>{if(o.isMesh&&o.name==='hullExternalArmor'){const m=new Mesh(o.geometry,mat);m.updateMatrixWorld(true);proxies.push(m);}});
   const plates=spec.armor.hullPlates.filter(p=>p.surfaceGroup?.startsWith('escort:fieldKit:'));
-  assert.equal(plates.length,c.panels*2*18,'five exposed folds and two caps per cassette');
+  assert.equal(new Set(plates.map(p=>p.name.replace(/_\d+$/,''))).size,c.panels*2,'every cassette retains finite armor on both sides');
   for(const p of plates){
    const verts=p.verts.map(v=>new Vector3(...v)),center=verts.reduce((a,b)=>a.add(b),new Vector3()).multiplyScalar(1/3);
    const normal=verts[1].clone().sub(verts[0]).cross(verts[2].clone().sub(verts[0])).normalize();
@@ -27,6 +27,30 @@ for(const quality of ['high','low'])for(const [id,c] of Object.entries(ESCORT_FI
    const z=(c.rear+(i+.5)*(c.front-c.rear)/c.panels)*f;
    assert.equal(kitHits([side*(c.outer+.3)*f,(c.hem+.2)*f,z],[side*(c.inner+.01)*f,(c.hem+.2)*f,z]).length,1,`${id}: side panel absorbs once`);
    assert.equal(kitHits([side*(c.outer+.3)*f,(c.hem-.1)*f,z],[side*(c.inner+.01)*f,(c.hem-.1)*f,z]).length,0,`${id}: cage air never becomes invisible armor`);
+  }
+  if(id==='pl01_105'){
+   // Independent hull drawing datums: the add-on roof must share the native
+   // upper-glacis plane, including real hit stock in the formerly square corner.
+   const roof=z=>1.975+(z-1.30)*(1.46-1.975)/(3.425-1.30);
+   for(const mesh of proxies){
+    const p=mesh.geometry.getAttribute('position');
+    for(let i=0;i<p.count;i++){
+     const x=Math.abs(p.getX(i))/f,y=p.getY(i)/f,z=p.getZ(i)/f;
+     if(x<1.869||x>2.081||z<1.38)continue;
+     assert(y<=roof(z)+1e-5,'front side armor cannot protrude above the glacis plane');
+    }
+   }
+   for(const side of [-1,1])for(const z of [1.70,2.30,2.90]){
+    const hit=(y)=>kitHits([side*2.38*f,y*f,z*f],[side*1.88*f,y*f,z*f]);
+    assert.equal(hit(roof(z)+.055).length,0,'chopped upper corner remains real empty space');
+    assert.equal(hit(roof(z)-.15).length,1,'sloped cassette retains its lower protection');
+   }
+   const cage=[];t.root.traverse(o=>{if(o.isMesh&&o.name==='hullOpenLattice')cage.push(o)});
+   assert(cage.length>0);
+   for(const mesh of cage){const p=mesh.geometry.getAttribute('position');for(let i=0;i<p.count;i++){
+    const y=p.getY(i)/f,z=p.getZ(i)/f;
+    if(y<.50)assert(z<2.65,'bottom of front cage is raked back from the idler nose');
+   }}
   }
   if(id==='upior'){
    const turret=t.root.getObjectByName('rig_turret'),gun=t.root.getObjectByName('rig_gun');

@@ -1,5 +1,6 @@
 // Owner-directed T-84 concept rebuild: complete T-72B3M 2016 chassis,
 // with a separate Ukrainian angular welded turret and fitted gun opening.
+import {addVehicleGhillieSuit} from '../ghillieSuit.ts';
 import {KIT,muzzleBore} from './kit.ts';
 import {buildT72B3MXHull} from './t72b3mX.ts';
 import {sectionSolid} from './sectionSolid.ts';
@@ -58,6 +59,7 @@ export function buildOplotModern(P:TankBuilderPort):void {
     strappedPack(P,'turret',[x,.83,-1.74],[.53,.20,.52]);
   }
   attachedCage(P,'turret',[0,.33,-2.43],2.38,.47,.30);
+  addVehicleGhillieSuit(P);
   P.decal('turret','number','084',.24,[1.49,.34,-.94],Math.PI/2);
   P.topY=1.62;
   P.turretG.userData.oplotRebuild={donorHull:'t72b3m_x',revision:'angular-20261002',gunOpeningM:.80};

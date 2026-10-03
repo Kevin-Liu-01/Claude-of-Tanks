@@ -90,3 +90,49 @@ Local evidence: `.qa-dev/pr9-followup/{before,after}.json`, `previews/`,
 `typecheck-final-source.log`, `native-audit.log`, `focused-tests.json`.
 The before/after geometry report predates the final Oplot ERA sector names;
 that registration and generated anatomy are verified in the later checks.
+
+## Additional owner edits: Oplot cover and PL-01 105 nose
+
+- Oplot now has foliage enabled on its rebuilt hull and turret: separate
+  fender patches, skirt drapes, welded-roof panels, covered strapped stores,
+  flank foliage and a rear cage net. The old T-84 blanket dimensions were
+  replaced with the new donor/turret datums. The cupola, gunner sight, roof MG,
+  gun channel, engine grille and driver remain open. Net and two leaf colors
+  merge into three meshes per owning rig.
+- PL-01 105's cassette crown and continuous mounting return now meet the
+  actual upper-glacis plane (1.975 m at z=1.30, 1.46 m at z=3.425).
+  Closed cassette end caps and finite combat triangles use the same stations.
+  Forward cage rows terminate on a raked nose, with the bottom 0.65 m aft of
+  the upper carrier. Upior retains its own level side kit.
+- Typecheck and diff whitespace check PASS. The focused escort, ghillie,
+  Oplot donor and Object 695 checks all PASS. The escort test checks every
+  finite plate against HIGH/LOW rendered stock and confirms the removed upper
+  corners are also absent from damage traces. Oplot cloth seating, open roof
+  weapon/sight lanes and turret-following checks PASS. 1280 px angle/side
+  captures completed; the side view confirms the descending PL-01 armor crown
+  and raked cage nose. Front/top review and full regeneration remain pending.
+  Evidence: `.qa-dev/pr9-followup/latest.json`, `latest-angle/`, `latest-side/`.
+
+## Regeneration and raw closure status
+
+The full anatomy update completed all 219 IDs and 657 technical views. Its
+subsequent check passed combat anatomy, mudguard/fender seating and marking
+checks, then stopped on Oplot's stale portrait-fit metadata. Scoped portrait
+regeneration is required before repeating the complete anatomy check. The
+latest two geometry edits also require refreshed anatomy and assets.
+
+An independent 32-ID water scan found 30 failures; the unchanged baseline
+was scanned with identical checker files. Six candidate IDs changed from a
+baseline pass to a failure: T-90SM, BMPT T-90, T-90 obr. 1992, T-90MS, PL-01 105
+and Oplot. Uniform resizes preserve stock but may change voxel sampling;
+that is a hypothesis to test, not a pass exemption. Other failures mix
+existing kit air with changed geometry and remain unclassified. Raw reports
+are `.qa-dev/pr9-followup/{water-check,water-comparison}.json`; do not replace
+these with a blanket zero-leak claim or broad invisible filler.
+
+The new default-resolution closure recheck remains red: Oplot 104.42 L and
+PL-01 105 8.30 L. The uniform-resize diagnostic at 0.02625 m is zero for
+T-90SM and BMPT T-90, but T-90 obr. 1992 still measures 0.07 L and T-90MS
+4.03 L. This supports sampling sensitivity for part of the findings; it
+does not overturn any default-resolution failure. Raw diagnostic files are
+`latest-water.json` and `uniform-voxel-diagnostic.json` in the same evidence folder.
