@@ -15,8 +15,8 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
-| 352 sound-effect assets, 564 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 16.5 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
-| 13 crew radio packs × 98 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.5 MB per language | only the crew's pack (and English if a national take is missing) |
+| 363 sound-effect assets, 588 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 17 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
+| 13 crew radio packs × 97 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.5 MB per language | only the crew's pack (and English if a national take is missing) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
 
@@ -32,7 +32,10 @@ browsers without WebM/Opus decode, i.e. Safari before 17.4).
 
 `src/audio/lazyAudio.ts` keeps the engine out of the boot bundle. The
 AudioContext is created in the first user gesture; until then every call is a
-no-op, so headless captures never touch audio hardware. The engine
+no-op, so headless captures never touch audio hardware. The first click or key
+press anywhere also loads the engine, so the garage's hangar and its controls
+are heard before any battle (until 2026-10-02 the engine waited for the Battle
+button, and the garage was silent on a first visit). The engine
 (`audioEngine.ts`, a 160 kB / 52 kB gzipped lazy chunk including the manifests)
 arrives after the first paint.
 
@@ -43,7 +46,7 @@ the build chose (24 kHz for assets with almost no energy above 12 kHz, else
 Crew packs decode on their own lane so the first radio call never waits behind
 a battle's worth of sound effects.
 
-At every battle phase edge the engine warms and **pins** its battle set: every
+At every battle phase edge, and when it is adopted after that edge has passed, the engine warms and **pins** its battle set: every
 weapon report bank, the combat, occupied-hull, interface and mode sets, the
 map's scene, running gear, and the roster's powertrains (the solo loader also
 awaits this, bounded to 3.5 s, before the reveal). Pinned assets and live loops
@@ -92,9 +95,12 @@ interior, cinematic, ambience (ducked under radio) ─────────�
 ui, music, voice, alarm ──────────────────────────────────────────────────────────────────────────────────────────────┴→ glue → soft clip → master
 ```
 
-- Gunfire leads. Weapons, impacts and the occupied hull's own gun run at full
-  level with a +4–5 dB low shelf at 110 Hz; engines (0.5), ambience (0.45),
-  radio (0.72) and the interface (0.5, with a high-shelf cut) sit underneath.
+- Gunfire and our own tank lead. Weapons (1.15), impacts (1.1) and the occupied
+  hull's gun (1.3) carry a +4–5 dB low shelf at 110 Hz; our own engine and
+  running gear (0.8) and the loading and turret machinery inside it (0.95) sit
+  well above other tanks' engines (0.5); ambience (0.65, beds mastered at −21
+  LUFS), radio (0.72) and the interface (0.6, with a high-shelf cut) sit
+  underneath.
 - The glue compressor has a 12 ms attack and 2.5:1 ratio so cannon transients
   reach the tanh soft clip, which catches the peaks.
 - Settings channels from the Sound tab (`cot.settings.v1`, live via
@@ -131,7 +137,10 @@ hard, mud, sand, snow; water runs the mud set under a wading loop) at slow/fast
 speed, squeal, skid and damaged-engine knock loops, and shift, brake,
 suspension and stall one-shots. The occupied hull adds turret drive, elevation
 servo, cabin hum and rattle. Remote rigs use levels of detail: own, near
-(within 140–165 m, five on desktop) and far (to 900–1000 m, eight).
+(within 140–165 m, five on desktop) and far (to 900–1000 m, eight). A rig's
+range hysteresis never makes a nearby tank read as our own: until 2026-10-02 an
+existing rig within 25 m was promoted to the own perspective (full level,
+centred, with the cabin extras).
 
 ### Weapons
 
@@ -140,14 +149,38 @@ and heavy machine guns, 20/25/30/40/50 mm autocannons, 90/105/120/125/130/152 mm
 cannons, ATGM and heavy rocket launchers (sound profiles refine the trim, e.g.
 the BMP-3's low-pressure 100 mm). Each class has a close bank and a distant
 bank crossfaded by range, a gun tail matched to the map (open, forest, urban,
-mountain), and for the occupied gun in the sight an interior report. A
+mountain), and for the occupied gun in the sight an interior report. Our
+own gun has a dedicated report per bore (`gun_own_medium` for 90–105 mm,
+`gun_own_large` for 120–125 mm, `gun_own_heavy` for 130–152 mm, and
+`missile_launch_own` for launchers), fuller and more detailed than anyone
+else's, as World of Tanks keeps the player's shot apart, with the breech's
+recoil and run-out (`gun_recoil_mech`) under it. A
 synthesized sub-bass thump (a sine falling from about 78 to 26 Hz with a short
 low-passed noise kick) sits under every cannon within 700 m, HE bursts,
 vehicle explosions and penetrations of the occupied hull, because the
 generated reports are thin below 80 Hz. Shell flybys and near-miss cracks are
-timed from the shell's closest approach and muzzle velocity. Reloads play the
-loader's choreography (manual, carousel, bustle, autocannon, missile,
-magazine, intra-clip) at the matching reload progress.
+timed from the shell's closest approach and muzzle velocity.
+
+### Your own tank: loading and machinery
+
+Reloads play the loader's choreography (`resolveReloadCuePlan`) at the matching
+reload progress, close-miked in the turret on the interior bus:
+
+| Loader | Sequence |
+|---|---|
+| Manual | breech drops open, the case is thrown out, the ready-rack door slides open, a round comes out, the door shuts, the round is rammed home (a separate charge for 152 mm), the breech closes |
+| Carousel autoloader | the stub is kicked out, the carousel turns, the cassette lifts, the chain rammer drives the projectile and then the charge, the breech closes |
+| Bustle autoloader | the case is ejected, the next round indexes, the ram, the breech closes |
+| Drum magazine | the drum turns to its first empty chamber, four rounds are fed in one by one, the drum indexes, the breech closes; between rounds of a clip, the drum turns and a round is rammed |
+| Autocannon | the box latches into the feed, the belt and bolt clatter, the latch |
+| Missile | the canister slides into the tube, the second one, the launcher arm swings up, the latch |
+
+Every cycle ends in the lock that says the gun is ready. The turret drive has
+a start when a real slew begins (never on a servo flicker), its electric or
+hydraulic loop, and a braking clunk; the elevation servo hums. At the end of
+its elevation travel the gun gives a soft strain through the mount, never more
+than once in 2.5 s and with no crew call (the old "Can't depress further" was
+dropped as corny).
 
 ### Hits and misses
 
@@ -201,15 +234,26 @@ rides every battle set.
 optional water or machinery layer, weighted spot sounds placed 40–380 m away at
 random bearings (birds higher; no bells, birdsong, breaking glass or alarms —
 crows, hawks, gulls, wind, rubble and machinery instead), a distant-war bed in
-battle, the gun tail and a procedural reverb. The garage is an indoor scene:
-an audible room tone (+7 dB) with workshop clanks, a crane chain and a
-workshop radio 3–14 m away.
+battle, the gun tail and a procedural reverb. The beds were regenerated on
+2026-10-02 without songbirds, bees, sirens or radio tones, selected for an
+even level across the loop seam and for body under the hiss. The garage is a
+working hangar: an audible room tone (+7 dB) with tools, impact wrenches, a
+hammer on a track pin, the crane chain, an air compressor, a diesel being run
+up and the big door 3–14 m away.
+
+Every control in the garage and the menus sounds (`interfaceSounds.ts`): one
+delegated click listener classifies the pressed element — a tab, a tank card
+(which lifts its tank into place), another list option, a toggle, a back or
+close button, the primary action, any other button — and a range input sounds
+on change. An element can name its sound or opt out with `data-ui-sound`. In
+battle only menus and dialogs sound, and a control's own `ui:click` never
+doubles the delegated sound.
 Atmosphere events (artillery, flak, AA, flyovers) and destructible props
 (trees, fences, walls, cars, crates, rubble) have their own assets.
 
 ### Crew radio
 
-`voiceLines.ts` defines 98 lines with priority (0–4), per-line and per-group
+`voiceLines.ts` defines 97 lines with priority (0–4), per-line and per-group
 cooldowns and staleness; `crewRadio.ts` schedules them with radio discipline:
 one transmission at a time, survival calls interrupt chatter, a 0.8 s gap, a
 two-line queue, stale calls dropped rather than played late. Routine chatter
@@ -254,7 +298,7 @@ re-running any step with unchanged inputs spends nothing.
 
 ```
 sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──→ build-sfx.mjs (score, pick, master) ──→ public/audio/sfx + manifest
-   352 entries        ~810 raw takes        onsets, decay, seams,     master.mjs presets, picks override
+   363 entries        ~1,000 raw takes      onsets, decay, seams,     master.mjs presets, picks override
    prompt, dur,       eleven_text_to_       spectral bands,
    takes, variants    sound_v2, pcm_48000   clipping
 ```
@@ -276,8 +320,9 @@ sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──
    first onset for punchy presets, exactly one onset for single-shot assets (MG
    and autocannon close reports, bullets, the radio key), loop seams for loops,
    dead-air rejection, low-end weight for guns and blasts (reward 20–150 Hz,
-   penalise harsh highs), and darkness for the interface, stingers and
-   mechanisms. The best `variants` takes ship; an optional
+   penalise harsh highs), darkness for the interface and stingers, weight
+   plus a clean steel transient for the loading machinery (and one event per
+   clunk, not a rattle of them), and body under the hiss for ambience beds. The best `variants` takes ship; an optional
    `tools/audio/sfx-picks.json` (`{ "<id>": [take, …] }`) pins specific takes. Single-shot assets are truncated after the first
    shot.
 5. **Mastering** (`master.mjs`). Per preset: mono fold without phase
@@ -309,7 +354,7 @@ sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──
 
 ```
 crew-lines.json ─┐                    crew-voices.json
- 98 lines,       ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
+ 97 lines,       ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
  13 languages,   │    (per language,       [delivery] text,     best of up to 3        −18 LUFS, 24 kHz
  deliveries ─────┘     per line, per take) stability 0.6        attempts               mono Opus
 ```
@@ -385,6 +430,20 @@ crew-lines.json ─┐                    crew-voices.json
   - The speech model often doubled very short calls ("Loading. Loading",
     発射、発射) on every attempt; the voice build now detects repeats, prefers
     clean attempts and cuts takes at their pauses (36 flagged takes became 2).
+- **2026-10-02, the crew's own tank.** The owner asked for a beautiful firing
+  sound, the machinery inside the tank, reload, shell insertion, autoloader,
+  missile, rotation and clanging sounds on the model of World of Tanks, louder
+  own-tank sound and firing, better and louder ambience, garage ambience and
+  interface sounds, and an end to the corny limit sounds. Generated: dedicated
+  own-gun reports, the recoil and run-out, a re-prompted loading set (breech,
+  case, rack, ram, charge, ammunition doors, carousel, cassette, chain rammer,
+  bustle, drum rotation and drum loading, autocannon feed, missile tube,
+  launcher arm, ready lock), the turret drive's start, loops and stop, the
+  elevation servo, a quieter limit strain, all 24 battlefield beds and the
+  garage bed, and six hangar sounds; the seven light spots no scene played
+  were removed. Two bugs found by the production check of deploy 168 were
+  fixed: an engine adopted after the battle phase edge never warmed its battle
+  set, and an existing rig within 25 m was promoted to our own perspective.
 - **2026-10-02, hit realism and the new modes.** The owner asked for hits to
   sound far more realistic, and six modes had landed on main. The interface
   hit markers were removed in favour of the impact at the target (new distant
@@ -399,15 +458,17 @@ rounds:
 
 | Kind | First round | Feedback rounds | Total |
 |---|---|---|---|
-| Sound generation | 26,625 | 4,116 | 30,741 |
+| Sound generation | 26,625 | 26,935 | 53,560 |
 | Text-to-speech (casts, auditions, builds, re-rolls) | 9,029 | 10,520 | 19,549 |
 | Speech-to-text verification | 1,718 | 1,909 | 3,627 |
-| **All** | **37,372** | **16,545** | **53,917** |
+| **All** | **37,372** | **39,364** | **76,736** |
 
 The feedback rounds' sound generation is the regenerated interface, stingers
-and foley, the distant armour hits (400) and the aircraft and Infected sounds
-(1,350); nearly all of their speech is the serious recast and rebuild of all 13
-packs (10,873) plus the re-rolls of doubled calls (634).
+and foley, the distant armour hits (400), the aircraft and Infected sounds
+(1,350), and the own-tank round (22,819: the own-gun reports and machinery,
+the turret drive, every battlefield bed twice and ten of them again with four
+takes, the hangar); nearly all of their speech is the serious recast and
+rebuild of all 13 packs (10,873) plus the re-rolls of doubled calls (634).
 
 ## Changing or extending it
 
@@ -419,6 +480,8 @@ packs (10,873) plus the re-rolls of doubled calls (634).
 | Rebuild one language | `npm run audio:voices:build -- --langs de` |
 | Re-roll flagged takes | `npm run audio:voices:build -- --langs ja --lines firing --attempts 10` (earlier attempts come from the cache; the shipped packs used this on their flagged lines, so rebuild those lines with the same flag to reproduce them) |
 | Remove a sound | Delete its catalog entry and run `build-sfx`: assets dropped from the catalog leave the manifest and the disk |
+| Remove a voice line | Delete it from `crew-lines.json` and `VOICE_LINES`, then run `build-voices` (even with a `--lines` filter that matches nothing): lines dropped from the script leave every pack and the manifest |
+| Give a control its sound | Add `data-ui-sound="click|tab|select|toggle|slider|back|confirm|vehicle"` (or `none`) to the element |
 | Recast a language | `voice-casting.mjs --search`, audition with `voice-audition.mjs --candidates <file> --langs <lang>`, update `crew-voices.json`, rebuild the language |
 | Retune the mix | `mixPolicy.ts` (levels, HDR, snapshots, budgets), `soundCues.ts` (per-asset distance laws and caps), then the mix-balance probe |
 
@@ -439,8 +502,9 @@ Headless selftests (all in `npm test`):
 | `src/audio/soundAssets.selftest.mjs` | manifests against files, every engine reference, families, tracks, scenes, packs, payload budgets |
 | `src/audio/assetLibrary.selftest.mjs` | pinning, eviction and reload, voice bytes, the mobile variant cap |
 | `src/audio/crewRadio.selftest.mjs` | radio discipline, interrupts, stale drops, national packs with fallback, damage, language resolution |
-| `src/audio/audioEngine.selftest.mjs` | the engine against the shipped manifests: rigs, crews, scenes, weapon layering and delay, HDR trim, sub-bass, reloads, hits, edge cases, destruction, concussion, our hits (distant bank, own-hit law, no marker), the gunner's calls and misses, kill-cam, panning, scope, aircraft (gunship, enemy and own drones), mode events, pause, garage |
+| `src/audio/audioEngine.selftest.mjs` | the engine against the shipped manifests: rigs, crews, scenes, weapon layering and delay, HDR trim, sub-bass, reloads, hits, edge cases, destruction, concussion, our hits (distant bank, own-hit law, no marker), the gunner's calls and misses, our own report and recoil, the drum refill, the turret start, kill-cam, panning, scope, aircraft (gunship, enemy and own drones), mode events, interface sounds and their dedupe, rig ownership near our hull, late adoption, pause, garage |
 | `src/audio/lazyAudio.selftest.mjs` | deferred engine and loading tone |
+| `src/audio/interfaceSounds.selftest.mjs` | the control classifier (tabs, tank cards, options, toggles, back, primary, sliders, opt-outs, menus) and the delegated listeners |
 
 Browser probes (they take the machine-wide GPU capture lock; set
 `COT_SHOTS_LOCK_TIMEOUT_MS=10800000` on a busy machine):
@@ -468,6 +532,10 @@ Browser probes (they take the machine-wide GPU capture lock; set
   `crew-lines.json`. Two takes remain flagged (a scripted exhale before the
   Chinese near-miss call, a one-syllable Hebrew "goal"), besides homophones
   the transcriber spells differently.
-- The mix-balance probe's last run was queued behind other sessions' GPU work
-  and timed out; its thresholds are the ones above, not yet measured on this
-  build.
+- The mix-balance probe has not completed a run: one waited out its time in
+  the GPU queue and one timed out waiting for the audio context in the garage,
+  where the engine did not load until a battle (fixed in this round). Its
+  thresholds are the ones above, not yet measured.
+- The first garage click loads the engine, so that click itself is silent.
+- The oasis bed's loop seam steps 2.8 dB and the jungle and mangrove beds are
+  mostly insect hiss; every take generated for them was like that.

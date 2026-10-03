@@ -12,27 +12,27 @@
     },
     "home": {
       "requests": 8,
-      "raw": 316865,
-      "gzip": 99402,
-      "brotli": 82381
+      "raw": 328986,
+      "gzip": 104058,
+      "brotli": 86279
     },
     "docs": {
       "requests": 13,
-      "raw": 417969,
-      "gzip": 122331,
-      "brotli": 102144
+      "raw": 431261,
+      "gzip": 127241,
+      "brotli": 106286
     },
     "gallery": {
       "requests": 68,
       "raw": 2278742,
-      "gzip": 658615,
-      "brotli": 553359
+      "gzip": 678587,
+      "brotli": 570235
     },
     "notFound": {
       "requests": 6,
-      "raw": 300301,
-      "gzip": 94130,
-      "brotli": 77860
+      "raw": 312422,
+      "gzip": 98789,
+      "brotli": 81759
     },
     "cn": {
       "requests": 111,

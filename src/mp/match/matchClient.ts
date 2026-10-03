@@ -122,6 +122,13 @@ export interface RetainedMigrationState {
   /** The newest assembled (viewer-filtered) frame and when it arrived: exact for what this viewer could see. */
   latestFrame: SnapshotFrame | null;
   latestFrameAtMs: number | null;
+  /**
+   * The obstacle index of every `world_prop_destroyed` this client received in the round, presented or still queued
+   * (fix/mp-migration-props, 2026-10-02): a fall reaches a peer the tick it happens, the destroyed list only with the
+   * next snapshot, so a host that died between the two left the fall here alone. A link reset clears the event queue,
+   * never this.
+   */
+  fallen: readonly number[];
 }
 
 export interface MatchClientStats {
@@ -255,6 +262,8 @@ export class MatchClient {
   private disposed = false;
   private latestDestroyed: readonly number[] = [];
   private latestRevision = 0;
+  /** Every obstacle a `world_prop_destroyed` named this round (RetainedMigrationState.fallen). */
+  private readonly fallenObstacles = new Set<number>();
   private matchPhase: PhaseId | null = null;
   private verdict: VerdictId | null = null;
   private decodeErrors = 0;
@@ -349,9 +358,15 @@ export class MatchClient {
   get bytesInPerSecond(): number { return this.bytesInPerS; }
   get bytesOutPerSecond(): number { return this.bytesOutPerS; }
 
-  /** The state a newly elected host boots from (the sealed keyframe and config, the newest frame this viewer assembled). */
+  /**
+   * The state a newly elected host boots from (the sealed keyframe and config, the newest frame this viewer assembled,
+   * every prop it was told fell).
+   */
   retainedMigration(): RetainedMigrationState {
-    return { keyframe: this.migration.keyframe, config: this.migration.config, latestFrame: this.snapshots.latest, latestFrameAtMs: this.lastAuthorityAtMs };
+    return {
+      keyframe: this.migration.keyframe, config: this.migration.config, latestFrame: this.snapshots.latest, latestFrameAtMs: this.lastAuthorityAtMs,
+      fallen: [...this.fallenObstacles],
+    };
   }
 
   connect(): void {
@@ -783,7 +798,12 @@ export class MatchClient {
     let game: WireEvent[] | null = null;
     const nowMs = this.clock();
     for (const event of message.events) {
-      if (!this.migration.receive(event, nowMs)) (game ??= []).push(event);
+      if (this.migration.receive(event, nowMs)) continue;
+      (game ??= []).push(event);
+      if (event.kind === 'world_prop_destroyed') {
+        const index = Number(event.payload.obstacleIndex);
+        if (Number.isSafeInteger(index) && index >= 0) this.fallenObstacles.add(index);
+      }
     }
     if (!game) return;
     if (game.length !== message.events.length) message = { type: MESSAGE_TYPE.EVENT, tick: message.tick, events: game };

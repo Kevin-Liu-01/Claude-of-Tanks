@@ -88,12 +88,20 @@ export const MAP_SCENES: Readonly<Record<string, EnvironmentScene>> = Object.fre
 export const GARAGE_SCENE: EnvironmentScene = scene({
   bed: 'amb_garage',
   bedDb: 7,
+  // A working hangar: tools, the crane chain, impact wrenches, a hammer on a
+  // track pin, the compressor, a diesel being run up, the big door.
   spots: Object.freeze([
-    Object.freeze(['garage_clank', 4] as const),
+    Object.freeze(['garage_clank', 3] as const),
+    Object.freeze(['spot_garage_tools', 3] as const),
+    Object.freeze(['spot_garage_wrench', 2] as const),
+    Object.freeze(['spot_garage_hammer', 2] as const),
     Object.freeze(['spot_crane_chain', 2] as const),
+    Object.freeze(['spot_garage_compressor', 1] as const),
+    Object.freeze(['spot_garage_engine', 1] as const),
+    Object.freeze(['spot_garage_door', 1] as const),
     Object.freeze(['spot_radio_far', 1] as const),
   ]),
-  spotEveryS: [5, 12], tail: 'none', reverb: 'hangar', war: 0, indoor: true,
+  spotEveryS: [4, 10], tail: 'none', reverb: 'hangar', war: 0, indoor: true,
 });
 
 export function sceneForMap(mapId: string | null | undefined): EnvironmentScene {

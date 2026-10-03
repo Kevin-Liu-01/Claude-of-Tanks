@@ -138,6 +138,8 @@ export interface GroundBounceRigInput {
 
 /** Refresh the shared uniforms from the light rig (setSun, preset changes, the policy). */
 export function applyGroundBounceRig(uniforms: GroundBounceUniforms, rig: GroundBounceRigInput): void {
+  // the vehicle form fill (vehicles/materials.ts) reads the sun's bearing from this uniform with the bounce off too
+  uniforms.uCotBounceSun.value.set(rig.sunDir.x, rig.sunDir.y, rig.sunDir.z).normalize();
   if (!rig.enabled) {
     uniforms.uCotBounceRad.value.set(0, 0, 0);
     return;
@@ -146,7 +148,6 @@ export function applyGroundBounceRig(uniforms: GroundBounceUniforms, rig: Ground
   uniforms.uCotBounceRad.value.set(radiance.r, radiance.g, radiance.b);
   uniforms.uCotBounceHemi.value.set(
     rig.hemiGround.r * rig.hemiIntensity, rig.hemiGround.g * rig.hemiIntensity, rig.hemiGround.b * rig.hemiIntensity);
-  uniforms.uCotBounceSun.value.set(rig.sunDir.x, rig.sunDir.y, rig.sunDir.z).normalize();
 }
 
 const f = (x: number): string => x.toFixed(4);
