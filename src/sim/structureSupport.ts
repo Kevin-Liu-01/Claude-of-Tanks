@@ -13,7 +13,10 @@
 import type { CollisionRecord, SimpleCollisionShape } from '../world/collision.ts';
 import { driveGroundTypeAt } from './terrainMobility.ts';
 import { tankContactRect } from './tankContactShape.ts';
-import { HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, hullUndersideOver, pointInsideCollisionRecord } from '../world/collision.ts';
+import {
+  HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, createHullFootprint, hullFootprint, hullUndersideOver, pointInsideCollisionRecord,
+  type HullFootprint,
+} from '../world/collision.ts';
 
 /** A hull stands on a part whose top is at most this far above the hull's current belly line (the same step the
  * ground OBB solver treats as "on top of", collision.ts hullPassesObstacleTop). */
@@ -43,20 +46,7 @@ interface SupportObstacleSource {
  * origin alone dropped the roof from under a hull pivoting off its edge (belly on the edge, origin already behind and
  * below it): the hull fell into the building, which the solver then judged it to be standing on.
  */
-export interface HullSupportPose {
-  centerX: number;
-  centerZ: number;
-  forwardX: number;
-  forwardZ: number;
-  rightX: number;
-  rightZ: number;
-  halfLength: number;
-  halfWidth: number;
-  sinPitch: number;
-  sinRoll: number;
-  frontLift: number;
-  rearLift: number;
-}
+export type HullSupportPose = HullFootprint;
 
 export interface StructureSupportField extends SupportHeightField {
   /** Select the hull about to be stepped: gathers the primitives within reach and its belly line (and, with a pose,
@@ -102,29 +92,16 @@ export function structureTopAt(
 type PoseSpec = Parameters<typeof tankContactRect>[0];
 interface PoseState { pos: { x: number; z: number }; yaw: number; visualPitch?: number; visualRoll?: number }
 
-/** Fill `out` with the hull's contact rect and rendered attitude (the ground OBB solver's frame). */
+/** Fill `out` with the hull's footprint at its rendered attitude (the ground OBB solver's frame,
+ * world/collision.ts hullFootprint). */
 export function hullSupportPose(spec: PoseSpec, state: PoseState, out: HullSupportPose): HullSupportPose {
-  const rect = tankContactRect(spec);
-  const forwardX = Math.sin(state.yaw), forwardZ = Math.cos(state.yaw);
-  out.forwardX = forwardX;
-  out.forwardZ = forwardZ;
-  out.rightX = forwardZ;
-  out.rightZ = -forwardX;
-  out.centerX = state.pos.x + forwardZ * rect.centerX + forwardX * rect.centerZ;
-  out.centerZ = state.pos.z - forwardX * rect.centerX + forwardZ * rect.centerZ;
-  out.halfLength = rect.halfLength;
-  out.halfWidth = rect.halfWidth;
-  out.sinPitch = Math.sin(state.visualPitch || 0);
-  out.sinRoll = Math.sin(state.visualRoll || 0);
-  out.frontLift = rect.frontLiftM;
-  out.rearLift = rect.rearLiftM;
-  return out;
+  return hullFootprint(tankContactRect(spec), state.pos.x, state.pos.z, state.yaw, state.visualPitch || 0,
+    state.visualRoll || 0, out);
 }
 
 /** A pose object for one caller's reuse (allocation-free stepping). */
 export function createHullSupportPose(): HullSupportPose {
-  return { centerX: 0, centerZ: 0, forwardX: 0, forwardZ: 1, rightX: 1, rightZ: 0, halfLength: 0, halfWidth: 0,
-    sinPitch: 0, sinRoll: 0, frontLift: 0, rearLift: 0 };
+  return createHullFootprint();
 }
 
 export function createStructureSupportField(
@@ -171,9 +148,7 @@ export function createStructureSupportField(
       if (!pose) return;
       if (floors.length < count) floors = new Float64Array(Math.max(count, floors.length * 2));
       for (let i = 0; i < count; i++) {
-        floors[i] = hullUndersideOver(candidates[i], pose.centerX, pose.centerZ, pose.forwardX, pose.forwardZ,
-          pose.rightX, pose.rightZ, pose.halfLength, pose.halfWidth, bellyY, pose.sinPitch, pose.sinRoll,
-          pose.frontLift, pose.rearLift);
+        floors[i] = hullUndersideOver(candidates[i], pose, bellyY);
       }
     },
     get candidateCount() { return count; },

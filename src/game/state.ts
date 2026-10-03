@@ -105,9 +105,10 @@ import {
   type NavigationWreck,
 } from '../sim/botRoutePlanner.ts';
 import {
-  pushHullFromHull,
+  pushHullFromHull, createHullFootprint, hullFootprint,
   hullPassesObstacleTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord,
+  type HullFootprint, type HullFootprintRect,
 } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { getStoredDifficulty } from './input.ts';
@@ -541,6 +542,15 @@ const _worldRayOrigin = new THREE.Vector3();
 const _toC = new THREE.Vector3();
 const _spawnPos = new THREE.Vector3();
 const _contactCenter = new THREE.Vector3();
+const _obstacleCenter = new THREE.Vector3();
+const _obstacleFoot = createHullFootprint();
+const _fallbackFootprintRect: HullFootprintRect = { centerX: 0, centerZ: 0, halfLength: 0, halfWidth: 0, frontLiftM: 0, rearLiftM: 0 };
+/** A hull with no spec (a bare probe) pushes a level rect of the radius-derived size. */
+function fallbackFootprintRect(halfLength: number, halfWidth: number): HullFootprintRect {
+  _fallbackFootprintRect.halfLength = halfLength;
+  _fallbackFootprintRect.halfWidth = halfWidth;
+  return _fallbackFootprintRect;
+}
 const _nearestTankTrace: NearestTankTrace = {
   distance: Infinity,
   entity: null,
@@ -1613,19 +1623,15 @@ function resolveObstacleCollisions(
   world: SoloWorld,
   self: SoloEntity | null,
   positionY: number,
-  centerX: number,
-  centerZ: number,
-  forwardX: number,
-  forwardZ: number,
-  rightX: number,
-  rightZ: number,
-  halfLength: number,
-  halfWidth: number,
+  foot: HullFootprint,
   obstacles: SoloObstacle[],
   nearby: SoloObstacle[],
   pendingCrush: CrushContact[],
   outPush: THREE.Vector3,
 ): boolean {
+  // the hull's footprint at its attitude (world/collision.ts hullFootprint), as the authority pushes it
+  const { centerX, centerZ, forwardX, forwardZ, rightX, rightZ, halfLength, halfWidth } = foot;
+  _obstacleCenter.set(centerX, positionY, centerZ);
   const broadRadius = Math.sqrt(halfLength * halfLength + halfWidth * halfWidth) + 0.01;
   const candidates = world.queryObstacles
     ? world.queryObstacles(
@@ -1640,14 +1646,10 @@ function resolveObstacleCollisions(
   // the hull's vertical span: a structure part it clears or stays under is no obstacle (2026-09-19)
   const spanTop = positionY + (self ? tankBodyTopM(self.spec) : 3);
   // the standing rule reads the hull's underside over each record, at its attitude (world/collision.ts hullUndersideOver)
-  const sinPitch = self ? Math.sin(self.state.visualPitch || 0) : 0;
-  const sinRoll = self ? Math.sin(self.state.visualRoll || 0) : 0;
-  const lifts = self ? tankContactRect(self.spec) : null;
   let pushed = false;
   for (const obstacle of candidates) {
     if (obstacle.crushed) continue;
-    const spanBottom = hullUndersideOver(obstacle, centerX, centerZ, forwardX, forwardZ, rightX, rightZ,
-      halfLength, halfWidth, positionY, sinPitch, sinRoll, lifts?.frontLiftM ?? 0, lifts?.rearLiftM ?? 0);
+    const spanBottom = hullUndersideOver(obstacle, foot, positionY);
     if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
     const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
     const closestZ = Math.max(obstacle.min[2], Math.min(centerZ, obstacle.max[2]));
@@ -1657,7 +1659,7 @@ function resolveObstacleCollisions(
     const beforeX = outPush.x;
     const beforeZ = outPush.z;
     if (!pushHullFromObstacle(
-      _contactCenter,
+      _obstacleCenter,
       forwardX,
       forwardZ,
       rightX,
@@ -1725,9 +1727,11 @@ function makeCollide(game: SoloGameState, world: SoloWorld): CollisionBundle {
     const tanksPushed = resolveTankCollisions(
       game, self, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush, pendingRams,
     );
+    const foot = contactRect && self
+      ? hullFootprint(contactRect, pos.x, pos.z, yaw, self.state.visualPitch || 0, self.state.visualRoll || 0, _obstacleFoot)
+      : hullFootprint(fallbackFootprintRect(halfL, halfW), pos.x, pos.z, yaw, 0, 0, _obstacleFoot);
     const obstaclesPushed = resolveObstacleCollisions(
-      game, world, self, pos.y, centerX, centerZ, fx, fz, rx, rz,
-      halfL, halfW, obstacles, nearby, pendingCrush, outPush,
+      game, world, self, pos.y, foot, obstacles, nearby, pendingCrush, outPush,
     );
     // crushable props never push (they are queued for crushing instead), so an obstacle push is a hard surface
     bundle.hardContact = boundsPushed || obstaclesPushed;

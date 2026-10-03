@@ -53,9 +53,30 @@ import * as collisionModule from '../src/world/collision.ts';
 import { createPredictionWorld } from '../src/mp/presentation/predictionWorld.ts';
 
 const { hullPassesObstacleTop, pointInsideCollisionRecord, pushHullFromHull, pushHullFromObstacle, setObbShape } = collisionModule;
-// the standing rule's underside (physics lane); a tree without it (the A/B base) reads the root, as its own rule did
-const hullUndersideOver = collisionModule.hullUndersideOver
-  ?? ((_record, _cx, _cz, _fx, _fz, _rx, _rz, _hl, _hw, rootY) => rootY);
+// The standing rule's underside and the footprint the obstacle solver pushes, as the tree under test has them: the
+// hull's footprint at its attitude (world/collision.ts hullFootprint), the flat rect with the earlier underside grid, or
+// (the A/B base, without either) the flat rect and the root.
+const footprintAt = collisionModule.hullFootprint ?? null;
+const footprintScratch = footprintAt ? collisionModule.createHullFootprint() : null;
+const hullUndersideOver = collisionModule.hullUndersideOver ?? null;
+/** Fill `out` ({ centerX, centerZ, forwardX, ..., halfLength, halfWidth }) with the footprint the tree pushes. */
+function obstacleFootprint(rect, state, out) {
+  if (footprintAt) return footprintAt(rect, state.pos.x, state.pos.z, state.yaw, state.visualPitch || 0, state.visualRoll || 0, out);
+  const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw), rx = fz, rz = -fx;
+  out.forwardX = fx; out.forwardZ = fz; out.rightX = rx; out.rightZ = rz;
+  out.centerX = state.pos.x + rx * rect.centerX + fx * rect.centerZ;
+  out.centerZ = state.pos.z + rz * rect.centerX + fz * rect.centerZ;
+  out.halfLength = rect.halfLength; out.halfWidth = rect.halfWidth;
+  return out;
+}
+/** The tree's underside over a record for a hull whose footprint is `foot`. */
+function undersideOver(record, foot, rect, state) {
+  if (!hullUndersideOver) return state.pos.y;
+  if (hullUndersideOver.length === 3) return hullUndersideOver(record, foot, state.pos.y);
+  return hullUndersideOver(record, foot.centerX, foot.centerZ, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ,
+    foot.halfLength, foot.halfWidth, state.pos.y, Math.sin(state.visualPitch || 0), Math.sin(state.visualRoll || 0),
+    rect.frontLiftM ?? 0, rect.rearLiftM ?? 0);
+}
 import { ASSAULT_TRENCH, FIELD_TRENCH, trenchProfile } from '../src/sim/assaultLines.ts';
 
 const DT = SIM_DT;
@@ -172,6 +193,28 @@ export const TERRAIN = {
       return d < reach ? r - Math.sqrt(r * r - d * d) : top + (d - reach) * grade;
     };
   },
+  /** A face that steepens like quarterPipe up to maxDeg, runs `run` metres at that grade, then crests onto a plateau. */
+  crestFace: (at, r, maxDeg, run) => {
+    const reach = r * Math.sin(maxDeg * RAD), top = r - Math.sqrt(r * r - reach * reach), grade = Math.tan(maxDeg * RAD);
+    return (_x, z) => {
+      const d = z - at;
+      if (d <= 0) return 0;
+      if (d < reach) return r - Math.sqrt(r * r - d * d);
+      return top + Math.min(d - reach, run) * grade;
+    };
+  },
+  /** A height profile along z: straight runs between [z, h] points, level beyond the ends. */
+  profile: (points) => (_x, z) => {
+    if (z <= points[0][0]) return points[0][1];
+    for (let i = 1; i < points.length; i++) {
+      const [z1, h1] = points[i];
+      if (z <= z1) {
+        const [z0, h0] = points[i - 1];
+        return h0 + (h1 - h0) * (z - z0) / (z1 - z0);
+      }
+    }
+    return points[points.length - 1][1];
+  },
   sum: (...fns) => (x, z) => { let h = 0; for (const fn of fns) h += fn(x, z); return h; },
 };
 
@@ -248,6 +291,18 @@ export const CASES = [
   // the grade rule stopped the hull and the ride flew on at the climb's 11 m/s — 5.7 m up and a 922 hp landing
   { id: 'climb-face', group: 'drive', seconds: 8, terrain: TERRAIN.quarterPipe(14, 14, 60), spawn: { speed: 'top' }, input: hold(1),
     grounded: true, allowBlocked: true },
+  // Slopes that turn speed into a launch (physics lane, 2026-10-03). Caldera CTF seed 0 (maps lane): a bot at 15 m/s
+  // crested a 29 % rise, landed, and a 36 % upslope threw it back up at +8 m/s, 9 m over the ground, 609 hp. Titan
+  // Gorge: a hull driving up a face that steepens toward 40 degrees was carried up at twice its travel's grade and
+  // launched off the crest.
+  { id: 'land-upslope', group: 'air', seconds: 7, spawn: { z: 2, dropTo: 4, speed: 15 }, input: hold(1),
+    terrain: TERRAIN.profile([[0, 0], [30, 10.8], [32, 10.8], [60, 0.5]]) },
+  { id: 'climb-crest', group: 'air', seconds: 7, spawn: { speed: 9 }, input: hold(1), terrain: TERRAIN.crestFace(14, 12, 38, 5) },
+  // Mars gravity (field audit): a bot firing three times in a 3.7 s boost flight pitched over 95 degrees and came down
+  // on its back — every shot spun the airborne hull by the suspension's ground rock, and the air barely damps a spin.
+  { id: 'air-fire', group: 'air', seconds: (w) => 1 + w.jumpFlightS + 3, terrain: TERRAIN.flat(), input: hold(),
+    actions: [{ t: 1, kind: 'jump' }, ...[1.2, 1.55, 1.9, 2.25, 2.6, 2.95].map((t) => ({ t, kind: 'launch', dir: [0, 0, 1] }))],
+    modes: 'jump' },
   { id: 'kicker', group: 'air', seconds: (w) => 2 + w.dropS(8) * 2 + 3, terrain: TERRAIN.kicker(22, 7, 14), spawn: { speed: 'top' }, input: hold(1) },
   { id: 'land-slope', group: 'air', seconds: (w) => w.dropS(8) + 6, terrain: TERRAIN.slopeAlong(25), spawn: { dropTo: 8 }, input: hold(0, 0, true), rest: 'tail' },
   { id: 'land-tank', group: 'air', seconds: (w) => w.dropS(7) + 6, terrain: TERRAIN.flat(), extras: [{ id: 'lower', specId: 'm1a2', x: 0, z: 0 }],
@@ -392,7 +447,7 @@ function newMetrics() {
     overturnedS: 0, tumblingS: 0, finalUpY: 1, finalOverturned: false,
     settleOscillations: null,
     replay: { samples: 0, maxErrM: 0, sumErrM: 0, maxAttErrRad: 0 },
-    impacts: [], falls: [],
+    impacts: [], falls: [], fallDamageHp: 0, landingTravel: [], airTiltMaxRad: 0,
   };
 }
 
@@ -559,6 +614,8 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
   const pivot = subject.spec.armor?.turretPivot ?? [0, 0, 0];
   const push = { x: 0, z: 0 };
   const center = { x: 0, y: 0, z: 0 };
+  const footCenter = { x: 0, y: 0, z: 0 };
+  const footScratch = { centerX: 0, centerZ: 0, forwardX: 0, forwardZ: 1, rightX: 1, rightZ: 0, halfLength: 0, halfWidth: 0 };
   const floors = new Float64Array(Math.max(1, world.obstacles.length));
   const att = { pitch: 0, roll: 0 };
   const renderedHistory = [];
@@ -692,11 +749,9 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
     center.x = state.pos.x + rx * rect.centerX + fx * rect.centerZ;
     center.z = state.pos.z + rz * rect.centerX + fz * rect.centerZ;
     center.y = state.pos.y;
-    const sinPitchSim = Math.sin(state.visualPitch || 0), sinRollSim = Math.sin(state.visualRoll || 0);
-    for (let i = 0; i < world.obstacles.length; i++) {
-      floors[i] = hullUndersideOver(world.obstacles[i], center.x, center.z, fx, fz, rx, rz, rect.halfLength, rect.halfWidth,
-        state.pos.y, sinPitchSim, sinRollSim, rect.frontLiftM ?? 0, rect.rearLiftM ?? 0);
-    }
+    const foot = obstacleFootprint(rect, state, footprintScratch ?? footScratch);
+    footCenter.x = foot.centerX; footCenter.y = state.pos.y; footCenter.z = foot.centerZ;
+    for (let i = 0; i < world.obstacles.length; i++) floors[i] = undersideOver(world.obstacles[i], foot, rect, state);
     const ground = (x, z) => Math.max(world.contact(x, z), structureTop(world.obstacles, x, z, Infinity, floors));
     const shellDepth = (cloud, frameCos, frameSin, px, py, pz) => {
       let worst = 0, worstZ = 0, worstY = 0;
@@ -732,7 +787,8 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
         continue;
       }
       push.x = 0; push.z = 0;
-      if (pushHullFromObstacle(center, fx, fz, rx, rz, rect.halfLength, rect.halfWidth, record, push, floors[i], state.pos.y + bodyTop)) {
+      if (pushHullFromObstacle(footCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth,
+        record, push, floors[i], state.pos.y + bodyTop)) {
         metrics.obstaclePenMaxM = Math.max(metrics.obstaclePenMaxM, Math.hypot(push.x, push.z));
       }
     }
@@ -766,6 +822,7 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
       metrics.airS += DT;
       airRun += DT;
       metrics.liftM = Math.max(metrics.liftM, state.pos.y - state._sup.y);
+      metrics.airTiltMaxRad = Math.max(metrics.airTiltMaxRad, Math.acos(Math.max(-1, Math.min(1, Math.cos(state.visualPitch) * Math.cos(state.visualRoll)))));
       metrics.longestAirS = Math.max(metrics.longestAirS, airRun);
       apex = Math.max(apex, state.pos.y);
     }
@@ -783,6 +840,8 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
       const kinematic = Math.max(0, -(prev?.rideV ?? 0) + gravity * DT) + rise;
       metrics.closingExcessMps = Math.max(metrics.closingExcessMps, state.landingImpactMps - kinematic);
       metrics.landings.push(+state.landingImpactMps.toFixed(2));
+      // the travel a landing keeps (a face takes its share of it: the push along its normal)
+      metrics.landingTravel.push([+Math.abs(pre.speed).toFixed(2), +Math.abs(state.speed).toFixed(2), +state._ride.v.toFixed(2)]);
       metrics.maxLandingMps = Math.max(metrics.maxLandingMps, state.landingImpactMps);
       metrics.apexes.push(+(apex - world.fn(state.pos.x, state.pos.z)).toFixed(2));
       apex = -Infinity;
@@ -848,6 +907,7 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
   for (const event of match.snapshot({ tick: ticks, serverTimeMs: ticks * 16, viewerId: 'subject', ackInputSeq: 1 }).events ?? []) {
     if (event.type !== 'tank_impact' || event.id !== 'subject') continue;
     (event.cause === 'fall' ? metrics.falls : metrics.impacts).push(+event.closingMps.toFixed(1));
+    if (event.cause === 'fall') metrics.fallDamageHp += event.damage ?? 0;
   }
   if (restSamples.length > 2) metrics.rest = restStats(restSamples);
   metrics.final = { x: +subject.state.pos.x.toFixed(2), y: +subject.state.pos.y.toFixed(3), z: +subject.state.pos.z.toFixed(2),

@@ -24,7 +24,9 @@ import type { Vector3 } from 'three';
 import type { MovementCollisionResolver, MovementHeightField, TankState } from '../../sim/movement.ts';
 import { tankBodyTopM, tankContactRect } from '../../sim/tankContactShape.ts';
 import { pushHullInsidePlayableBounds } from '../../world/battlefieldBounds.ts';
-import { hullPassesObstacleTop, hullUndersideOver, pushHullFromHull, pushHullFromObstacle } from '../../world/collision.ts';
+import {
+  createHullFootprint, hullFootprint, hullPassesObstacleTop, hullUndersideOver, pushHullFromHull, pushHullFromObstacle,
+} from '../../world/collision.ts';
 import type { CollisionRecord } from '../../world/collision.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 import { createHullSupportPose, createStructureSupportField, hullSupportPose } from '../../sim/structureSupport.ts';
@@ -117,7 +119,8 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
   const frame: ContactFrame = { centerX: 0, centerZ: 0, halfLength: 0, halfWidth: 0, forwardX: 0, forwardZ: 1, rightX: 1, rightZ: 0, broadRadius: 0 };
   const otherFrame: ContactFrame = { ...frame };
   const nearby: PredictionObstacle[] = [];
-  const center = { x: 0, y: 0, z: 0 };
+  const footCenter = { x: 0, y: 0, z: 0 };
+  const ownFoot = createHullFootprint();
   const bodyTop = tankBodyTopM(ownSpec);
   const ownRect = tankContactRect(ownSpec);
   // physics lane (2026-10-03): the authority's two vertical rules, which the replay lacked. A hull on a roof stands on
@@ -175,7 +178,6 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
     const yaw = state ? state.yaw : 0;
     const speed = state ? Math.abs(state.speed) : 0;
     contactFrame(ownSpec, position.x, position.z, yaw, frame);
-    center.x = frame.centerX; center.y = position.y; center.z = frame.centerZ;
     pushHullInsidePlayableBounds(
       frame.centerX, frame.centerZ, frame.forwardX, frame.forwardZ, frame.rightX, frame.rightZ,
       frame.halfLength, frame.halfWidth, outPush,
@@ -187,24 +189,24 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
       )
       : (typeof worldCollision.getObstacles === 'function' ? worldCollision.getObstacles() : []);
     // the authority's standing rule and per-part vertical extents (sim/authoritativeMatch.ts collideWithObstacles): the
-    // underside over each record at the hull's attitude, the body's top for parts it passes beneath
-    const sinPitch = state ? Math.sin(state.visualPitch || 0) : 0;
-    const sinRoll = state ? Math.sin(state.visualRoll || 0) : 0;
+    // hull's footprint at its attitude and its underside there, the body's top for parts it passes beneath
+    const foot = hullFootprint(ownRect, position.x, position.z, yaw, state ? state.visualPitch || 0 : 0,
+      state ? state.visualRoll || 0 : 0, ownFoot);
+    footCenter.x = foot.centerX; footCenter.y = position.y; footCenter.z = foot.centerZ;
+    const footRadius = Math.hypot(foot.halfLength, foot.halfWidth) + 0.01;
     const spanTop = position.y + bodyTop;
     for (const obstacle of obstacles) {
       if (obstacle.crushed) continue;
-      const spanBottom = hullUndersideOver(obstacle, frame.centerX, frame.centerZ, frame.forwardX, frame.forwardZ,
-        frame.rightX, frame.rightZ, frame.halfLength, frame.halfWidth, position.y, sinPitch, sinRoll,
-        ownRect.frontLiftM, ownRect.rearLiftM);
+      const spanBottom = hullUndersideOver(obstacle, foot, position.y);
       if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
       if (obstacle.crushable && speed > (obstacle.crushMin ?? 2.8)) continue;
-      const closestX = Math.max(obstacle.min[0], Math.min(frame.centerX, obstacle.max[0]));
-      const closestZ = Math.max(obstacle.min[2], Math.min(frame.centerZ, obstacle.max[2]));
-      const dx = frame.centerX - closestX;
-      const dz = frame.centerZ - closestZ;
-      if (dx * dx + dz * dz >= frame.broadRadius * frame.broadRadius) continue;
+      const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
+      const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
+      const dx = foot.centerX - closestX;
+      const dz = foot.centerZ - closestZ;
+      if (dx * dx + dz * dz >= footRadius * footRadius) continue;
       pushHullFromObstacle(
-        center, frame.forwardX, frame.forwardZ, frame.rightX, frame.rightZ, frame.halfLength, frame.halfWidth, obstacle, outPush,
+        footCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth, obstacle, outPush,
         spanBottom, spanTop,
       );
     }

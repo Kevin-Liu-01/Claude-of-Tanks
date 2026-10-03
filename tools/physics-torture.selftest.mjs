@@ -86,6 +86,20 @@ check('drive-step120', 'medium', 'moon', [
   g('body under the ground (m)', (m) => m.bodyPenMaxM, 0.05, 'before: 1.5 m'),
 ]);
 
+// A roof edge, the low hull (its box runs 0.87 m ahead of its root): its footprint at its attitude and its centre of
+// mass over the roof (world/collision.ts hullFootprint, movement.ts contactAwareFit). It tipped back about its root,
+// hung nose-up against the wall with its full-length rect inside the building, and was pushed out a metre a tick.
+check('land-roof-edge', 'low', 'earth', [
+  g('obstacle overlap (m)', (m) => m.obstaclePenMaxM, 0.1, 'before: 4.11 m inside the building'),
+  g('roof sink (m)', (m) => m.roofSinkMaxM, 0.25, 'before: 0.55 m'),
+]);
+
+// An assault trench under a heavy hull (its 45-degree far wall under the nose, its tail over the trench): the wall is not
+// its grade (movement.ts contactAwareFit's span rule). The grade rule stopped it dead in the trench and it see-sawed.
+check('drive-assault-trench', 'heavy', 'earth', [
+  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 800, 'before: 1366 (see-sawing at 40 degrees in the trench)'),
+]);
+
 // Prediction replays the authority's step from the checkpoint (movement checkpoint v4 carries the tip state).
 check('drive-field-trench', 'medium', 'earth', [
   g('prediction replay error (m)', (m) => m.replay.maxErrM, 0.02, 'guard: without the tip state the replay ran 0.3–1.2 m off', true),

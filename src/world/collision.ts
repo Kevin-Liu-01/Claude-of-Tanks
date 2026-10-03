@@ -55,14 +55,8 @@ export function hullPassesObstacleTop(spanBottom: number, top: number, bottom: n
  * overlap was pushed out three metres in three ticks. A hull driving into a wall at ground level has its underside
  * over the footprint at ground level: still a push.
  */
-export function hullUndersideOver(
-  record: CollisionRecord,
-  centerX: number, centerZ: number,
-  forwardX: number, forwardZ: number, rightX: number, rightZ: number,
-  halfLength: number, halfWidth: number,
-  rootY: number, sinPitch: number, sinRoll: number,
-  frontLift = 0, rearLift = 0,
-): number {
+export function hullUndersideOver(record: CollisionRecord, foot: HullFootprint, rootY: number): number {
+  const { centerX, centerZ, forwardX, forwardZ, rightX, rightZ, halfLength, halfWidth } = foot;
   // a record the rect's box does not reach has no sample over it (the root, exactly as the grid would find)
   const reachX = Math.abs(forwardX) * halfLength + Math.abs(rightX) * halfWidth;
   const reachZ = Math.abs(forwardZ) * halfLength + Math.abs(rightZ) * halfWidth;
@@ -70,22 +64,96 @@ export function hullUndersideOver(
     || centerZ + reachZ < record.min[2] || centerZ - reachZ > record.max[2]) return rootY;
   // the track rows decide when any lies over the record (the tracks are what stand on it); only a nose or tail row
   // alone over it decides by clearing its top
+  const centerY = rootY + foot.centerRise;
   let tracks = Infinity, ends = Infinity;
   for (let i = 0; i < 5; i++) {
     const along = (i * 0.5 - 1) * halfLength;
     const end = i === 0 || i === 4;
-    const lift = i === 4 ? frontLift - HULL_STEP_UP_M : i === 0 ? rearLift - HULL_STEP_UP_M : 0;
+    const lift = i === 4 ? foot.frontLift - HULL_STEP_UP_M : i === 0 ? foot.rearLift - HULL_STEP_UP_M : 0;
     for (let j = 0; j < 3; j++) {
       const across = (j - 1) * halfWidth;
       const x = centerX + forwardX * along + rightX * across;
       const z = centerZ + forwardZ * along + rightZ * across;
       if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
       if (!footprintHolds(record, x, z)) continue;
-      const y = rootY + along * sinPitch + across * sinRoll + lift;
+      const y = centerY + along * foot.riseAlong + across * foot.riseAcross + lift;
       if (end) { if (y < ends) ends = y; } else if (y < tracks) tracks = y;
     }
   }
   return tracks < Infinity ? tracks : ends < Infinity ? ends : rootY;
+}
+
+/**
+ * The hull's footprint over the ground at its attitude (physics lane, 2026-10-03): the contact rect's track plane
+ * projected onto the ground — foreshortened by the pitch and the roll, never longer or wider than the rect — and how
+ * that underside rises across it. The obstacle solver pushes this footprint and the standing rule samples it
+ * (hullUndersideOver). The flat rect at the root kept a hull standing on its tail beside a wall 3.8 m "long", so the
+ * building pushed it a metre a tick while its real footprint was clear of the wall, and its underside samples sat
+ * metres from where the hull's belly was, so the roof it hung on stopped counting as its floor.
+ */
+export interface HullFootprint {
+  /** World centre of the projected rect and its frame. */
+  centerX: number;
+  centerZ: number;
+  forwardX: number;
+  forwardZ: number;
+  rightX: number;
+  rightZ: number;
+  /** Projected half extents. */
+  halfLength: number;
+  halfWidth: number;
+  /** Underside height at the centre above the root, and its rise per horizontal metre forward and to the right. */
+  centerRise: number;
+  riseAlong: number;
+  riseAcross: number;
+  /** Nose and tail lift of the underside above the track plane (the rect's frontLiftM / rearLiftM, upright). */
+  frontLift: number;
+  rearLift: number;
+}
+
+/** The contact rect fields hullFootprint reads (sim/tankContactShape.ts tankContactRect). */
+export interface HullFootprintRect {
+  centerX: number;
+  centerZ: number;
+  halfLength: number;
+  halfWidth: number;
+  frontLiftM: number;
+  rearLiftM: number;
+}
+
+/** Below this the projection is a hull on its end or side: its footprint stops shrinking (and its slope stays finite). */
+const FOOTPRINT_MIN_COS = 0.05;
+
+/** A footprint object for one caller's reuse (allocation-free stepping). */
+export function createHullFootprint(): HullFootprint {
+  return { centerX: 0, centerZ: 0, forwardX: 0, forwardZ: 1, rightX: 1, rightZ: 0, halfLength: 0, halfWidth: 0,
+    centerRise: 0, riseAlong: 0, riseAcross: 0, frontLift: 0, rearLift: 0 };
+}
+
+/** Fill `out` with the footprint of a hull whose root stands at (x, z) with this yaw, pitch and roll. */
+export function hullFootprint(
+  rect: HullFootprintRect, x: number, z: number, yaw: number, pitch: number, roll: number, out: HullFootprint,
+): HullFootprint {
+  const forwardX = Math.sin(yaw), forwardZ = Math.cos(yaw);
+  const sinPitch = Math.sin(pitch), cosPitch = Math.cos(pitch);
+  const sinRoll = Math.sin(roll), cosRoll = Math.cos(roll);
+  const along = cosPitch >= 0 ? Math.max(cosPitch, FOOTPRINT_MIN_COS) : Math.min(cosPitch, -FOOTPRINT_MIN_COS);
+  const across = cosRoll >= 0 ? Math.max(cosRoll, FOOTPRINT_MIN_COS) : Math.min(cosRoll, -FOOTPRINT_MIN_COS);
+  const centerAlong = rect.centerZ * along, centerAcross = rect.centerX * across;
+  out.forwardX = forwardX;
+  out.forwardZ = forwardZ;
+  out.rightX = forwardZ;
+  out.rightZ = -forwardX;
+  out.centerX = x + forwardX * centerAlong + forwardZ * centerAcross;
+  out.centerZ = z + forwardZ * centerAlong - forwardX * centerAcross;
+  out.halfLength = rect.halfLength * Math.abs(along);
+  out.halfWidth = rect.halfWidth * Math.abs(across);
+  out.centerRise = rect.centerZ * sinPitch + rect.centerX * sinRoll;
+  out.riseAlong = sinPitch / along;
+  out.riseAcross = sinRoll / across;
+  out.frontLift = rect.frontLiftM * Math.abs(along);
+  out.rearLift = rect.rearLiftM * Math.abs(along);
+  return out;
 }
 
 /** Allocation-free footprint containment (the compound loop of collisionFootprintContainsPoint, margin 0). */

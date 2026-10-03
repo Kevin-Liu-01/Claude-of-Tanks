@@ -34,6 +34,7 @@ import { CLIFF_GRADE,
 } from './terrainMobility.ts';
 import type { TerrainMobilitySpec } from './terrainMobility.ts';
 import { STANDARD_PHYSICS, type RulesetPhysics } from './matchRuleset.ts';
+import { tankContactRect } from './tankContactShape.ts';
 
 type Vec3Tuple = readonly [number, number, number];
 type HeightSampler = (x: number, z: number) => number;
@@ -1533,6 +1534,9 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   state.pos.y = ride.y;
 }
 
+/** The weighted z-variance of supporting samples that span a pitch (a 1.5 m run: L²/12). */
+const FIT_MIN_SPAN_ZZ = 1.5 * 1.5 / 12;
+
 function solveGunLay(
   spec: MovementSpec,
   state: TankState,
@@ -2562,11 +2566,18 @@ function contactAwareFit(
   // a direction the supporting samples do not span keeps the hull's own attitude (no spring torque about it)
   let pitch = state._spring.pitch;
   let roll = state._spring.roll;
+  // A pitch the supporting samples do not span (a cluster under a metre and a half long) is the face under it, not the
+  // hull's plane: it falls back to the plane of all the samples, the fit before contact-awareness. A heavy hull crossing
+  // an assault trench read the 45-degree far wall under its nose (its tail over the trench) as its grade for one tick,
+  // the grade rule stopped it dead in the trench, and it see-sawed there at 40 degrees for three seconds.
+  const spansPitch = czz > FIT_MIN_SPAN_ZZ;
   if (left > 0 && right > 0 && det > 1e-6) {
-    pitch = Math.atan((czh * cxx - cxh * czx) / det);
+    pitch = spansPitch ? Math.atan((czh * cxx - cxh * czx) / det) : Math.atan2(samples.sumHeightZ, samples.sumZZ);
     roll = Math.atan((cxh * czz - czh * czx) / det);
-  } else if (czz > 1e-4) {
+  } else if (spansPitch) {
     pitch = Math.atan(czh / czz);
+  } else if (czz > 1e-4) {
+    pitch = Math.atan2(samples.sumHeightZ, samples.sumZZ);
   }
   _contactFit.pitch = pitch;
   _contactFit.roll = roll;
@@ -2580,8 +2591,13 @@ function contactAwareFit(
   const travel = state.speed > TIP_TRAVEL_MPS ? 1 : state.speed < -TIP_TRAVEL_MPS ? -1 : 0;
   let tipPitch = 0;
   if (zMax > -Infinity) {
-    const leverFront = -zMax; // the centre of mass ahead of the front-most support: the nose goes down
-    const leverRear = zMin;   // behind the rear-most: the tail goes down
+    // The centre of mass sits over the hull box's centre (tankContactRect), not at the root (physics lane, 2026-10-03):
+    // a hull whose box runs 0.87 m ahead of its root, set down with its root on a roof's back edge, has its weight over
+    // the roof and settles onto it; read from the root it balanced on the edge, tipped back off it and hung at 80
+    // degrees against the wall.
+    const comZ = tankContactRect(spec).centerZ;
+    const leverFront = comZ - zMax; // the centre of mass ahead of the front-most support: the nose goes down
+    const leverRear = zMin - comZ;  // behind the rear-most: the tail goes down
     const pitchGyration = (dims.hullLengthM * dims.hullLengthM + dims.heightM * dims.heightM) / 12;
     if (leverFront > TIP_DEADBAND_M && travel >= 0) {
       tipPitch = -gravity * leverFront * Math.cos(state._spring.pitch) / (pitchGyration + leverFront * leverFront);

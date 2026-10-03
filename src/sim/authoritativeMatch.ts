@@ -90,7 +90,7 @@ import type {
   WorldSnapshot,
 } from './worldSnapshot.ts';
 import {
-  pushHullFromHull,
+  pushHullFromHull, createHullFootprint, hullFootprint,
   hullPassesObstacleTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord,
 } from '../world/collision.ts';
@@ -410,6 +410,8 @@ const TEAM_SPECTATOR = 'spectator';
 
 const _spawn = new Vector3();
 const _contactCenter = new Vector3();
+const _obstacleCenter = new Vector3();
+const _obstacleFoot = createHullFootprint();
 const _aim = new Vector3();
 const _muzzle = new Vector3();
 const _gunDir = new Vector3();
@@ -1117,26 +1119,21 @@ export function createAuthoritativeMatch({
   function collideWithObstacles(
     entity: AuthoritativeEntity,
     pos: Vector3,
-    centerX: number,
-    centerZ: number,
-    fx: number,
-    fz: number,
-    rx: number,
-    rz: number,
-    halfL: number,
-    halfW: number,
     outPush: Vector3,
   ): boolean {
-    const broadRadius = Math.hypot(halfL, halfW) + 0.01;
+    // the obstacle solver pushes the hull's footprint at its attitude and reads its underside there
+    // (world/collision.ts hullFootprint): a hull standing on its tail is not 7 m long against a wall
+    const state = entity.state;
+    const foot = hullFootprint(tankContactRect(entity.spec), pos.x, pos.z, state.yaw, state.visualPitch || 0,
+      state.visualRoll || 0, _obstacleFoot);
+    const centerX = foot.centerX, centerZ = foot.centerZ;
+    _obstacleCenter.set(centerX, pos.y, centerZ);
+    const broadRadius = Math.hypot(foot.halfLength, foot.halfWidth) + 0.01;
     const spanTop = pos.y + tankBodyTopM(entity.spec);
-    const lifts = tankContactRect(entity.spec);
-    // the standing rule reads the hull's underside over each record, at its attitude (world/collision.ts hullUndersideOver)
-    const sinPitch = Math.sin(entity.state.visualPitch || 0), sinRoll = Math.sin(entity.state.visualRoll || 0);
     let hard = false;
     for (const obstacle of obstacleCandidates(centerX, centerZ, broadRadius)) {
       if (obstacle.crushed) continue;
-      const spanBottom = hullUndersideOver(obstacle, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, pos.y, sinPitch, sinRoll,
-        lifts.frontLiftM, lifts.rearLiftM);
+      const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
       if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
       const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
       const closestZ = Math.max(obstacle.min[2], Math.min(centerZ, obstacle.max[2]));
@@ -1146,7 +1143,8 @@ export function createAuthoritativeMatch({
       const beforeX = outPush.x;
       const beforeZ = outPush.z;
       const pushed = pushHullFromObstacle(
-        _contactCenter, fx, fz, rx, rz, halfL, halfW, obstacle, outPush, spanBottom, spanTop,
+        _obstacleCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth,
+        obstacle, outPush, spanBottom, spanTop,
       );
       if (!pushed) continue;
       if (!obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle)) {
@@ -1245,9 +1243,7 @@ export function createAuthoritativeMatch({
     const boundsPushed = pushHullInsidePlayableBounds(
       centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
     );
-    const obstaclesPushed = collideWithObstacles(
-      entity, pos, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
-    );
+    const obstaclesPushed = collideWithObstacles(entity, pos, outPush);
     collideWithEntities(
       entity, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
     );
