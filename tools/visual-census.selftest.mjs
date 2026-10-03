@@ -337,6 +337,9 @@ try {
   const outBorder = path.join(dir, 'census-border');
   const borderCensus = openCensus(null, { ...header, protocol: BORDER_PROTOCOL, viewSet: 'border', viewsDigest: 'b1' });
   assert.equal(censusViewsOf(borderCensus), BORDER_VIEWS); assert.equal(censusViewsOf(census), CENSUS_VIEWS);
+  // authored --pose views (maps lane, 2026-10-03) follow the set's fixed views in a census that recorded them
+  assert.deepEqual(censusViewsOf({ authoredViews: [{ name: 'cone-nw', kind: 'table' }] }).map((v) => v.name),
+    [...CENSUS_VIEWS.map((v) => v.name), 'cone-nw']);
   borderCensus.maps.verdant = { name: 'Verdant Fields', status: 'ok', views: {} };
   for (const view of BORDER_VIEWS) {
     const f = await frame(`census-border/frames/verdant/${view.name}.png`, 320, 180, (x, y) => (y < 80 ? SKY : GROUND));
@@ -384,6 +387,14 @@ try {
   assert.equal(cap.batch, 5); assert.equal(cap.budgetMin, 16);
   assert.equal(parseCensusArgs(['capture', '--out=o']).options.views.length, CENSUS_VIEWS.length);
   assert.equal(parseCensusArgs(['capture', '--out=o']).options.set, 'core');
+  const posed = parseCensusArgs(['capture', '--out=o', '--views=none', '--pose=cone-nw:-120,30,180:-185,10,266+cone-se:120,25,-200:205,8,-300']).options;
+  assert.deepEqual(posed.views.map((v) => [v.name, v.kind, v.cam, v.at, v.authored]),
+    [['cone-nw', 'table', [-120, 30, 180], [-185, 10, 266], true], ['cone-se', 'table', [120, 25, -200], [205, 8, -300], true]]);
+  assert.equal(parseCensusArgs(['capture', '--out=o', '--pose=a:1,2,3:4,5,6']).options.views.length, CENSUS_VIEWS.length + 1);
+  for (const [argv, message] of [[['capture', '--out=o', '--views=none'], /needs at least one --pose/],
+    [['capture', '--out=o', '--pose=bad'], /--pose needs/], [['capture', '--out=o', '--pose=chase:1,2,3:4,5,6'], /Duplicate census view name/]]) {
+    assert.throws(() => parseCensusArgs(argv), message, argv.join(' '));
+  }
   const borderRun = parseCensusArgs(['capture', '--out=o', '--set=border', '--views=corner-sw,edge-n']).options;
   assert.deepEqual([borderRun.set, borderRun.views.map((v) => v.name)], ['border', ['edge-n', 'corner-sw']]);
   assert.equal(parseCensusArgs(['capture', '--out=o', '--set=border']).options.views.length, BORDER_VIEWS.length);
