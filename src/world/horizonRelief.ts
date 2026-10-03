@@ -772,12 +772,13 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
         if (top !== null) stand *= 1 - smoothstep(top * 0.86, top * 1.02, h0 + nC * 0.06 * top);
         if (snow !== null) stand *= 1 - smoothstep(snow - 60, snow - 10, h0 + nB * 20);
         const forestW = stand * nearW * land;
-        // the crowns: a 6–13 m grain in the relief and a mottle in the light where the canopy stands; the canopy's own
+        // the crowns: a 9–16 m grain in the relief and a mottle in the light where the canopy stands (no finer: the atlas
+        // is read at its top level, three to five metres a texel, and a finer grain would shimmer); the canopy's own
         // height (16 m, its crowns 3 m either way) stands in the occlusion and the sun searches, so a stand's edge
         // shades the clearing beside it and casts its shadow down-sun
         let mottle = 0;
         if (forestW > 0.001) {
-          const crown = noise.noise(x / 13 + 41.3, z / 13 - 7.7) * 0.7 + noise.noise(x / 6.5 - 2.9, z / 6.5 + 17.1) * 0.3;
+          const crown = noise.noise(x / 16 + 41.3, z / 16 - 7.7) * 0.7 + noise.noise(x / 9 - 2.9, z / 9 + 17.1) * 0.3;
           v += forestW * crown * 1.3;
           mottle = crown;
           if (canopyH) canopyH[idx] = forestW * (16 + crown * 3);
