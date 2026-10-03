@@ -50,10 +50,14 @@ import { cloudLayerKey, type CloudLayerPreset } from './cloudPresets.ts';
 import { resolvePresetName } from './quality.ts';
 import { publishCloudShade, type CloudShadeUniforms } from './cloudShadeMap.ts';
 import { lightTune } from './lightModelCore.ts';
+import { hazeTargetTerms } from './hazeLaw.ts';
 import {
   CLOUD_CONTRAIL_MAX, CLOUD_FOGBANK_RANGE_M, CLOUD_RAIN_RANGE_M, CLOUD_RAIN_SAMPLES,
   applyCloudWeatherPreset, createCloudWeatherUniforms,
 } from './cloudWeatherLayers.ts';
+
+/** 0..1 smoothstep of a 0..1 ramp (the deck's far rows' share of the overcast haze target). */
+const smoothstep01 = (x: number): number => { const k = Math.min(1, Math.max(0, x)); return k * k * (3 - 2 * k); };
 
 /** History resolution relative to the scene target; the trace target is a quarter of the history each way. */
 export const CLOUD_HISTORY_SCALE = 0.5;
@@ -663,6 +667,13 @@ float cloudHazeLayer( float dist, vec3 dir ) {
 // the aerial pass's law on a layer at its distance: desaturation and a cool shift, then the scatter-in toward
 // the sky-view LUT along the ray under the same ceilings (uncapped: a bank fades into the sky it stands
 // against), both decaying with the layer's altitude over the camera as the pass's height-aware atmosphere does
+// 2026-10-03 (the gauntlet's wave 17 on Frosthollow: "a flat whitish band just above the true horizon where the haze layer
+// meets the cloud deck — a discrete seam"): under a deck the far clouds converge on the aerial pass's own target — the
+// authored tint's share of the hue (x) at the sky's luminance, a level under it (y; hazeLaw.ts hazeTargetTerms) — not the
+// clear sky's LUT: the deck's far rows paled to the clear horizon's glow while the ranges under them took the dim
+// overcast haze. w: the share of that target (none under an open sky, all of it from a third of a deck's overcast)
+uniform vec4 uOvercastHaze;
+uniform vec3 uOvercastTint;
 vec3 cloudHaze( vec3 L, float opacity, float dist, vec3 dir, float hAtt ) {
 	float layer = cloudHazeLayer( dist, dir );
 	float x = dist * ${f(CLOUD_AERIAL.density)} * layer;
@@ -676,7 +687,12 @@ vec3 cloudHaze( vec3 L, float opacity, float dist, vec3 dir, float hAtt ) {
 	float fs = min( 1.0 - exp( -hz * hz ), mix( ${f(CLOUD_AERIAL.scatterCeiling)}, ${f(CLOUD_AERIAL.farScatterCeiling)}, farW ) )
 		* mix( 1.0, hAtt, ${f(CLOUD_AERIAL.heightScatterK)} * ( 1.0 - farW ) );
 	vec3 skyDir = normalize( vec3( dir.x, max( dir.y, 0.02 ), dir.z ) );
-	return mix( L, atmoSkyVisible( skyDir ) * opacity, fs );
+	vec3 target = atmoSkyVisible( skyDir );
+	if ( uOvercastHaze.w > 0.0 ) {
+		vec3 law = mix( target, uOvercastTint * ( luma( target ) / max( luma( uOvercastTint ), 1e-4 ) ), uOvercastHaze.x ) * uOvercastHaze.y;
+		target = mix( target, law, uOvercastHaze.w );
+	}
+	return mix( L, target * opacity, fs );
 }
 // ---- the scene's distance along a ray (2026-10-03; the mountains lane: "seaFogBank() integrates out to 30 km regardless
 // of scene depth", Saltwind's far shore stood as a pale slab over the channel). The layer composites through the dome at
@@ -833,7 +849,7 @@ vec4 farBandLayer( vec3 dir, float cosT, vec3 rayDx, vec3 rayDy, float sceneT, o
 	// fair-weather cumulus keep returning as a flat smeared band at the horizon"): a cumuliform sky's far band stood edge-on
 	// as one opaque ribbon a few degrees up (its broad coverage, opaque at a grazing slant, mipped smooth at the horizon);
 	// a cumuliform sky ends where its traced field does and sinks into the haze, a deck keeps its far rows
-	if ( uFarBand <= 0.0 || dir.y <= 0.004 || uDeckMarch <= 0.0 ) return none;
+	if ( uFarBand <= 0.0 || dir.y <= 0.0005 || uDeckMarch <= 0.0 ) return none;
 	float tb = ( uFarBandAlt - uCamPos.y ) / dir.y;
 	float horiz = tb * length( dir.xz );
 	// a deck's band continues its 10 km march; a cumuliform sky's starts where its 20 km march thins (2026-10-03)
@@ -844,7 +860,10 @@ vec4 farBandLayer( vec3 dir, float cosT, vec3 rayDx, vec3 rayDy, float sceneT, o
 	vec2 gradX = cloudSheetGradient( dir, rayDx, uFarBandAlt - uCamPos.y ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_FARBAND_PERIOD_K)};
 	vec2 gradY = cloudSheetGradient( dir, rayDy, uFarBandAlt - uCamPos.y ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_FARBAND_PERIOD_K)};
 	float fb = textureGrad( tWeather, ( pb.xz / ${f(CLOUD_FARBAND_PERIOD_K)} + uFarBandShift ) / ${f(CLOUD_WEATHER_TILE_M)}, gradX, gradY ).b;
-	float covB = smoothstep( 1.0 - uFarBand, 1.0 - uFarBand + 0.35, fb ) * smoothstep( fbStart, fbStart + fbFade, horiz );
+	// (2026-10-03: a deck's band admits the deck's own coverage when that is more — a closed deck's band stays closed to
+	// the horizon instead of opening gaps of the clear horizon's glow under its edge — and reaches down to the horizon)
+	float fbCov = max( uFarBand, uCoverage );
+	float covB = smoothstep( 1.0 - fbCov, 1.0 - fbCov + 0.35, fb ) * smoothstep( fbStart, fbStart + fbFade, horiz );
 	if ( covB <= 0.0 ) return none;
 	tLayer = tb;
 	// slant depth through a thin lumpy deck: opaque at a grazing angle, a veil overhead
@@ -1435,6 +1454,8 @@ export class VolumetricCloudLayer {
    * the previous camera); false after an inactive frame or a resize. The previous camera's planes go with it.
    */
   private sceneDepthReady = false;
+  /** The haze law's target terms for the deck's far rows, written in place every frame. */
+  private readonly hazeTerms = { x: 0, y: 1 };
   private readonly depthPlanes = new THREE.Vector2(0.5, 4000);
   /** The scene depth post.ts last handed over (a capture's settle re-traces against it with the camera still). */
   private lastSceneDepth: THREE.Texture | null = null;
@@ -1502,6 +1523,8 @@ export class VolumetricCloudLayer {
         uStepScale: { value: 1 }, uDebug: { value: 0 },
         uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 }, uBaseFlat: { value: 0 }, uDeckDetail: { value: 0 }, uFarThin: { value: 0 },
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
+        // 2026-10-03: the deck's far rows on the aerial pass's overcast target (cloudHaze; hazeLaw.ts hazeTargetTerms)
+        uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
         // 2026-10-03: the previous frame's scene depth and the camera that drew it (cloudSceneT)
         tSceneDepth: { value: null }, uSceneDepthOn: { value: 0 }, uSceneNearFar: { value: new THREE.Vector2(0.5, 4000) },
         uDepthRight: { value: new THREE.Vector3(1, 0, 0) }, uDepthUp: { value: new THREE.Vector3(0, 1, 0) },
@@ -1901,6 +1924,16 @@ export class VolumetricCloudLayer {
     t.uHazeDatum.value = Number.isFinite(this.hazeDatum) ? this.hazeDatum : camera.position.y;
     this.applyPresetUniforms(preset);
     this.applyAtmosphereUniforms();
+    // (2026-10-03: the aerial pass's overcast target for the deck's far rows — cloudHaze)
+    {
+      const overcast = (this.scene.userData.lightModel as { overcast?: number } | undefined)?.overcast ?? 0;
+      const terms = hazeTargetTerms(overcast, this.hazeTerms);
+      const a = this.atmosphere;
+      (t.uOvercastHaze.value as THREE.Vector4).set(
+        Math.min(1, Math.max(0, (a.fogMix ?? 0) * terms.x)), terms.y, 0, smoothstep01(overcast / 0.3));
+      const tint = a.fogTint;
+      if (tint) (t.uOvercastTint.value as THREE.Vector3).set(tint.r, tint.g, tint.b);
+    }
     // the low quality preset marches coarser (the same slab, fewer steps); the mobile tier never creates the layer
     t.uStepScale.value = CLOUD_STEP_SCALE_BY_PRESET[resolvePresetName()] ?? 1;
     if (t.uDebug.value !== this.debugMode) { t.uDebug.value = this.debugMode; this.resetHistory(); }

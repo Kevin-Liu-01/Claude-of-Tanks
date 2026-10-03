@@ -46,7 +46,10 @@ assert.match(clouds, /t\.uFarThin\.value = lightTune\('CLOUD_FAR_THIN', CLOUD_FA
 
 // ---- the far band (2026-10-03; waves 13-14: "a ruler-flat pale band at one constant height"): decks only — a cumuliform
 // sky ends where its traced field does and sinks into the haze; the contrails are off on every map
-assert.match(clouds, /if \( uFarBand <= 0\.0 \|\| dir\.y <= 0\.004 \|\| uDeckMarch <= 0\.0 \) return none;/, 'no far band under a cumuliform sky');
+assert.match(clouds, /if \( uFarBand <= 0\.0 \|\| dir\.y <= 0\.0005 \|\| uDeckMarch <= 0\.0 \) return none;/, 'no far band under a cumuliform sky');
+// (2026-10-03, the gauntlet's wave 17 on Frosthollow: a whitish band under the deck's edge) a deck's band admits the deck's
+// own coverage when that is more — a closed deck stays closed to the horizon — and reaches down to it
+assert.match(clouds, /float fbCov = max\( uFarBand, uCoverage \);\s*float covB = smoothstep\( 1\.0 - fbCov, 1\.0 - fbCov \+ 0\.35, fb \)/, 'the deck\'s coverage');
 assert.match(layer, /export const CLOUD_CONTRAILS_ON = false;/, 'contrails off');
 assert.match(layer, /out\.contrails = CLOUD_CONTRAILS_ON \? Math\.round\(clamp\(scape\.contrails \?\? 0, 0, 1\) \* CLOUD_CONTRAIL_MAX\) : 0;/);
 

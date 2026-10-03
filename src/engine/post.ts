@@ -100,8 +100,8 @@ import { createPostFrameAccounting, type CompletedPostFrame } from './postFrameA
 import { LEGACY_EXPOSURE, lightTune, type LightModel } from './lightModelCore.ts';
 import { FOG_LAYER, FOG_LAYER_MIN_M } from './fogLayer.ts';
 import {
-  HAZE_EXT_CHROMA, HAZE_LAW_GLSL, HAZE_OVERCAST_K, HAZE_TARGET_SKY_K, HAZE_TINT_SHARE, HAZE_LAYER_SCALE_M, hazeLayerInverseScale,
-  hazeSigma,
+  HAZE_EXT_CHROMA, HAZE_LAW_GLSL, HAZE_TARGET_SKY_K, HAZE_TINT_SHARE, HAZE_LAYER_SCALE_M, hazeLayerInverseScale,
+  hazeSigma, hazeTargetTerms,
 } from './hazeLaw.ts';
 import { setNightEmissionExposure } from './nightEmissionMaterial.ts';
 import {
@@ -110,6 +110,8 @@ import {
 } from './vehicleGroundOcclusion.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 import type { GpuFrameTimer } from './gpuFrameTimer.ts';
+/** The haze law's target terms, written in place every frame (hazeTargetTerms). */
+const hazeTermsScratch = { x: 0, y: 0 };
 
 interface ReconstructionTelemetry {
   mode: ReconstructionMode;
@@ -2720,13 +2722,9 @@ export function createPost(
       // the whole authored tint under a closed deck (the light model's overcast)
       const overcast = (scene.userData.lightModel as LightModel | undefined)?.overcast ?? 0;
       const law = u.uHazeLaw.value as THREE.Vector4;
-      law.set(
-        hazeSigma(atmosphere.fogDensity),
-        hazeLayerInverseScale(),
-        THREE.MathUtils.lerp(lightTune('AERIAL_TINT_SHARE', HAZE_TINT_SHARE), 1, THREE.MathUtils.clamp(overcast, 0, 1)),
-        lightTune('AERIAL_TARGET_SKY_K', HAZE_TARGET_SKY_K)
-          * THREE.MathUtils.lerp(1, lightTune('AERIAL_OVERCAST_K', HAZE_OVERCAST_K), THREE.MathUtils.clamp(overcast, 0, 1)),
-      );
+      // (the target's tint share and level: hazeLaw.ts hazeTargetTerms, the cloud trace's deck rows read the same)
+      const terms = hazeTargetTerms(overcast, hazeTermsScratch);
+      law.set(hazeSigma(atmosphere.fogDensity), hazeLayerInverseScale(), terms.x, terms.y);
     } else {
       (u.uHazeLaw.value as THREE.Vector4).x = 0;
     }
