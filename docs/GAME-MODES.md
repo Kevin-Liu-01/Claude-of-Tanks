@@ -94,7 +94,7 @@ Four allied ground vehicles accompany the gunship by default. They have 90% of t
 **Juggernaut** offers a role setting. As boss, you face the hunting team; as a
 hunter, you join allies against one bot boss. In hosted rooms the boss role belongs
 to the first participating human when that role is selected; other humans hunt it.
-The boss is 12% larger, including its armor and module hit geometry, and carries a pulsing blue energy-shield aura that flashes on damage. It never respawns. Its survival clock and health are shown in the objective.
+The boss is 12% larger, including its armor and module hit geometry, and carries a subtle blue surface highlight that follows the hull, turret, barrel, and running gear and briefly brightens on damage. There is no enclosing bubble, and the glow does not reveal the tank through cover. It never respawns. Its survival clock and health are shown in the objective.
 
 **Infected** begins with four infected opponents (at least three in a custom setup). Survivors have 30% of their normal HP; infected have 125%, 40% more speed and 30% faster reloads. A survivor's destruction changes
 that player's team before their next spawn, including their allied/enemy roster

@@ -119,7 +119,11 @@ try{
     }
    }
    if(mode==='gun_game')assert.equal(await page.$$eval('.cot-shell:not([hidden])',els=>els.length),1,'Gun Game exposes only the current weapon');
-   if(mode==='juggernaut')assert.ok(await page.evaluate(()=>window.__DEBUG.game.player.visual.root.getObjectByName('Juggernaut energy shield')?.visible),'boss aura is present');
+   if(mode==='juggernaut')assert.ok(await page.evaluate(()=>{
+    const root=window.__DEBUG.game.player.visual.root;let surfaces=0;
+    root.traverse(o=>{if(o.isMesh&&(Array.isArray(o.material)?o.material:[o.material]).some(m=>m.name==='Juggernaut surface highlight'))surfaces++;});
+    return surfaces>0&&!root.getObjectByName('Juggernaut energy shield');
+   }),'boss highlight follows real vehicle surfaces without a bubble');
    if(mode==='juggernaut')assert.match(await page.$eval('.cot-mode-status',el=>el.textContent),/SURVIVE/,'the boss receives its own survival objective');
    await page.screenshot({path:resolve(out,`${mode}-${suffix}.png`)});
    await page.evaluate(()=>document.exitPointerLock());
