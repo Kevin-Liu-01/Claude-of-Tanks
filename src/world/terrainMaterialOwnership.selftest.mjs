@@ -134,7 +134,7 @@ function checkSourceContract(text) {
     // terrain v3 (2026-10-02): the ring atlas gradient's wall fade (vec2, set per relief character at the ring's bind) — no sampler
     'uRingReliefWall',
     // ground lane (2026-10-03): the land use's field system (landUse.ts) — three packed vectors, no sampler
-    'uLandA', 'uLandB', 'uLandC',
+    'uLandA', 'uLandB', 'uLandC', 'uLandD',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);

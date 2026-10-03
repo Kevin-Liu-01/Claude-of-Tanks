@@ -79,23 +79,17 @@ assert.ok(marginPts / n > 0.01 && marginPts / n < 0.15, `margins ring the fields
   assert.ok(checked > 20 && agree / checked > 0.95, `both sides of a track agree (${agree}/${checked})`);
 }
 
-// the GLSL carries the twin's constants: the rotations' cumulative weights, the warp, the hash
+// the GLSL carries the twin's constants: the rotation through the uniforms, the warp, the hash
 {
   const src = readFileSync(new URL('./landUse.ts', import.meta.url), 'utf8');
-  const rot = (region) => {
-    const m = new RegExp(`${region}: \\[([^\\n]*)\\],`).exec(src);
-    return [...m[1].matchAll(/\[(\d), ([0-9.]+)\]/g)].map((r) => Number(r[2]));
-  };
-  const steppe = rot('steppe'), bocage = rot('bocage');
-  const cum = (w) => w.slice(0, 6).reduce((acc, x) => [...acc, (acc.at(-1) ?? 0) + x], []);
-  const glslPairs = [...LAND_USE_GLSL.matchAll(/c(\d) = (?:c\d \+ )?\(region > 0\.5 \? ([0-9.]+) : ([0-9.]+)\)/g)]
-    .map((m) => [Number(m[2]), Number(m[3])]);
-  const c0 = /float c0 = region > 0\.5 \? ([0-9.]+) : ([0-9.]+);/.exec(LAND_USE_GLSL);
-  const glslBocage = [Number(c0[1]), ...glslPairs.map((p) => p[0])];
-  const glslSteppe = [Number(c0[2]), ...glslPairs.map((p) => p[1])];
-  const close = (a, b) => a.length === b.length && a.every((x, i) => Math.abs(x - b[i]) < 1e-9);
-  assert.ok(close(cum(glslSteppe), cum(steppe)), `the GLSL steppe rotation matches (${glslSteppe} vs ${steppe})`);
-  assert.ok(close(cum(glslBocage), cum(bocage)), `the GLSL bocage rotation matches (${glslBocage} vs ${bocage})`);
+  assert.ok(/return roll < uLandD\.x \? 0\.0 : roll < uLandD\.y \? 1\.0 : roll < uLandD\.z \? 2\.0 : roll < uLandD\.w \? 3\.0\s*: roll < uLandC\.z \? 4\.0 : roll < uLandC\.w \? 5\.0 : 6\.0;/.test(LAND_USE_GLSL),
+    'lu_crop walks the packed cumulative shares in crop order');
+  for (const id of landUseProfileIds()) {
+    const v = landUseUniformValues(resolveLandUseProfile(id));
+    const cum = [...v.landD, v.landC[2], v.landC[3]];
+    for (let i = 1; i < cum.length; i++) assert.ok(cum[i] >= cum[i - 1] - 1e-12, `${id}: the cumulative shares climb`);
+    assert.ok(cum[5] <= 1 + 1e-9 && cum[0] >= 0, `${id}: shares within [0, 1]`);
+  }
   for (const k of ['0.00523', '0.00311', '-0.00197', '0.00877', '0.00409', '0.00587', '0.00913', '0.00241']) {
     assert.ok(src.split(k).length >= 3, `warp coefficient ${k} appears in both the twin and the GLSL`);
   }

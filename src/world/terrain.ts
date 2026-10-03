@@ -4957,6 +4957,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uLandA = { value: new THREE.Vector4(...landUse.landA) };
     shader.uniforms.uLandB = { value: new THREE.Vector4(...landUse.landB) };
     shader.uniforms.uLandC = { value: new THREE.Vector4(...landUse.landC) };
+    shader.uniforms.uLandD = { value: new THREE.Vector4(...landUse.landD) };
     // r3: desert macro sheet variation + ice fresnel sky tint
     shader.uniforms.uSandMacro = { value: S.sandMacro ?? 0 };
     shader.uniforms.uIceSky = { value: new THREE.Vector3(...(S.iceSky || [0.66, 0.72, 0.82])) };
