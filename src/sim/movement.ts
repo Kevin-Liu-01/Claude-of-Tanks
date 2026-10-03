@@ -378,6 +378,9 @@ export interface MovementHeightField {
   getHeightAt: HeightSampler;
   getHeightAtFast?: HeightSampler;
   getContactHeightAt?: HeightSampler;
+  /** The terrain's contact surface alone, without the structure tops a support field adds (the terrain-wall rule reads
+   * it: a structure is a floor or a wall by the standing rule, not by its grade). */
+  getTerrainContactHeightAt?: HeightSampler;
   getGroundType(x: number, z: number): string;
   getDriveGroundType?(x: number, z: number): string;
 }
@@ -771,6 +774,149 @@ const CLIFF_PROBE_M = 1.5;
  * (trench and crater walls, kerbs of terraces) — the pacing receipt showed bots stranded at 2 m trench walls. */
 const CLIFF_WALL_PROBE_M = 4.5;
 const CLIFF_WALL_RISE_M = 3.0;
+/**
+ * Terrain walls (physics lane, 2026-10-03; maps lane A: Redrock's sheer jebels, Skybridge's shoulders). Ground higher
+ * than a step-up over where the hull stands is a wall, not ground, where it lies on a face steeper than CLIFF_GRADE (a
+ * face the hull's side is against, whatever the run along it) or beyond a wall (it rises from the root faster than
+ * CLIFF_GRADE on average): the support solve reads such a sample at the ground the hull can reach, the face's foot, so
+ * a hull pressed against a face is never lifted to the face's height, and the face holds it off horizontally along its
+ * normal (pushOffTerrainWalls). A step a tank crosses (HULL_STEP_UP_M plus CLIFF_GRADE times the distance from the root,
+ * as the cliff probe crosses trench walls and terraces) is still ground where its top is reached. A face turns from
+ * ground into wall over a band of grade (WALL_GRADE_FULL), and its foot is followed down its grade by runs that shrink
+ * to nothing at the step-up height, so a sample crossing a face's edge on the terrain's triangle grid never jumps: a
+ * hull pivoting beside a diagonal face hopped where its corners crossed the face's foot. A hull pushed against an
+ * 80-degree face used to be carried up it by its own samples, 7-12 m, and dropped back for 500-1900 hp, again and again.
+ */
+const WALL_REACH_STEPS = 4;
+/** Run of the finite differences that read a face's grade at a contact point. */
+const WALL_GRADIENT_PROBE_M = 0.25;
+/** The grade at which a face is all wall (tan 62.5 degrees); from CLIFF_GRADE to here it turns from ground to wall. */
+const WALL_GRADE_FULL = 1.5 * CLIFF_GRADE;
+/** Runs down a face's grade that find its foot (each the run that would bring the face to the step-up height). */
+const WALL_FOOT_RUNS = 2;
+/** A contact point this far inside the terrain counts (sampling noise below it). */
+const WALL_CONTACT_SLOP_M = 0.02;
+/** A face holds the hull this far off it, horizontally: the pose moves a little after the push within the step (the
+ * attitude spring, the support's height), and a centimetre on an 80-degree face is six vertically, what the bodyPen
+ * receipt measures. */
+const WALL_SKIN_M = 0.03;
+/** The sheerest face grade the skin is measured against (points further above the terrain than its skin skip). */
+const WALL_SKIN_MAX_GRADE = 6;
+/** A heading into a face up to this cosine (20 degrees off it) grinds along it, keeping its speed; from
+ * WALL_STOP_FACING (49 degrees) the face stops the travel's share into it, smoothly between. */
+const WALL_GRAZE_FACING = 0.35;
+const WALL_STOP_FACING = 0.75;
+/** The most a face pushes a hull off in one step, 6 m/s (a deep overlap leaves over a few steps; one step's push is
+ * never a visible jump, the pop receipt's 0.12 m). */
+const WALL_PUSH_MAX_M_PER_STEP = 0.1;
+let _reachBaseH: HeightSampler | null = null;
+let _reachTerrainH: HeightSampler | null = null;
+let _reachRootX = 0;
+let _reachRootZ = 0;
+let _reachRefY = 0;
+
+/** Set the reachable-ground context: the hull's root, and the ground it stands on (its own height in flight). */
+function beginReachableGround(hAt: HeightSampler, terrainAt: HeightSampler, state: TankState): void {
+  _reachBaseH = hAt;
+  _reachTerrainH = terrainAt;
+  _reachRootX = state.pos.x;
+  _reachRootZ = state.pos.z;
+  const under = hAt(state.pos.x, state.pos.z);
+  _reachRefY = state.grounded !== false ? Math.min(under, state.pos.y) : state.pos.y;
+}
+
+/** Can ground at height h, r metres from the root, be reached from the root's ground without climbing a wall? */
+function groundReachable(h: number, r: number): boolean {
+  return h <= _reachRefY + HULL_STEP_UP_M + r * CLIFF_GRADE;
+}
+
+/**
+ * How much of the terrain at (x, z), of height h, is wall: 0 on ground up to CLIFF_GRADE, 1 on a face of
+ * WALL_GRADE_FULL, smooth between. The grade is the lesser of the forward and the central differences (continuous in
+ * the position, so the share is; the forward pair alone decides gentle ground, two samples), and the face's central
+ * grade is written to _wallGradX/_wallGradZ with its magnitude in _wallGrade when the share is not 0.
+ */
+let _wallGradX = 0;
+let _wallGradZ = 0;
+let _wallGrade = 0;
+function wallShareAt(hAt: HeightSampler, x: number, z: number, h: number): number {
+  const forwardX = (hAt(x + WALL_GRADIENT_PROBE_M, z) - h) / WALL_GRADIENT_PROBE_M;
+  const forwardZ = (hAt(x, z + WALL_GRADIENT_PROBE_M) - h) / WALL_GRADIENT_PROBE_M;
+  const forward = Math.sqrt(forwardX * forwardX + forwardZ * forwardZ);
+  if (!(forward > CLIFF_GRADE)) return 0;
+  _wallGradX = 0.5 * (forwardX + (h - hAt(x - WALL_GRADIENT_PROBE_M, z)) / WALL_GRADIENT_PROBE_M);
+  _wallGradZ = 0.5 * (forwardZ + (h - hAt(x, z - WALL_GRADIENT_PROBE_M)) / WALL_GRADIENT_PROBE_M);
+  _wallGrade = Math.sqrt(_wallGradX * _wallGradX + _wallGradZ * _wallGradZ);
+  const grade = Math.min(forward, _wallGrade);
+  if (!(grade > CLIFF_GRADE)) return 0;
+  const t = Math.min(1, (grade - CLIFF_GRADE) / (WALL_GRADE_FULL - CLIFF_GRADE));
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * The foot of the face at (x, z) of height h (wallShareAt not 0, its grade in _wallGrad*): runs down the face's grade,
+ * each the run that would bring the face to the step-up height, a later run by the wall share where it starts (no run
+ * at the step-up height or off the face: the foot is continuous in the sample); the lowest ground found.
+ */
+function wallFootAt(hAt: HeightSampler, x: number, z: number, h: number): number {
+  let px = x;
+  let pz = z;
+  let ph = h;
+  let foot = h;
+  let share = 1;
+  for (let index = 0; index < WALL_FOOT_RUNS; index++) {
+    const over = ph - (_reachRefY + HULL_STEP_UP_M);
+    if (!(over > 0) || !(share > 0) || !(_wallGrade > 1e-6)) break;
+    const run = share * over / Math.max(_wallGrade, CLIFF_GRADE);
+    px -= (_wallGradX / _wallGrade) * run;
+    pz -= (_wallGradZ / _wallGrade) * run;
+    ph = hAt(px, pz);
+    if (ph < foot) foot = ph;
+    if (index + 1 < WALL_FOOT_RUNS) share = wallShareAt(hAt, px, pz, ph);
+  }
+  return foot;
+}
+
+/**
+ * The support solve's height sampler (beginReachableGround first): the terrain at (x, z), or, on a wall (the
+ * terrain-wall rule above), the ground the hull can reach: toward the root where the wall stands between them (a
+ * bisection), toward the face's foot by the sample's wall share where it lies on the face.
+ */
+function reachableGroundAt(x: number, z: number): number {
+  const support = _reachBaseH!(x, z);
+  if (!(support > _reachRefY + HULL_STEP_UP_M)) return support;
+  const hAt = _reachTerrainH!;
+  let h = hAt === _reachBaseH ? support : hAt(x, z);
+  // a structure's top over the terrain here is a floor by the standing rule (the support field's): walls are terrain's
+  if (support > h + 1e-4) return support;
+  const dx = x - _reachRootX;
+  const dz = z - _reachRootZ;
+  const r = Math.sqrt(dx * dx + dz * dz);
+  let px = x;
+  let pz = z;
+  if (!groundReachable(h, r)) {
+    // a wall between the root and the sample: the last reachable ground toward the root (a bisection), which on an
+    // 80-degree face is a point up the face itself, so it still takes the face share below
+    let lo = 0;
+    let hi = 1;
+    h = Math.min(hAt(_reachRootX, _reachRootZ), _reachRefY + HULL_STEP_UP_M);
+    for (let index = 0; index < WALL_REACH_STEPS; index++) {
+      const mid = 0.5 * (lo + hi);
+      const hm = hAt(_reachRootX + dx * mid, _reachRootZ + dz * mid);
+      if (groundReachable(hm, r * mid)) {
+        lo = mid;
+        h = hm;
+      } else {
+        hi = mid;
+      }
+    }
+    if (!(h > _reachRefY + HULL_STEP_UP_M)) return h;
+    px = _reachRootX + dx * lo;
+    pz = _reachRootZ + dz * lo;
+  }
+  const share = wallShareAt(hAt, px, pz, h);
+  return share > 0 ? h + share * (wallFootAt(hAt, px, pz, h) - h) : h;
+}
 const LANDING_CONTACT_BLEND_S = 0.34;
 const LANDING_SPRING_MIN_SCALE = 0.28;
 const LANDING_TORQUE_GAIN = 0.22;
@@ -2060,6 +2206,162 @@ function integrateHorizontalMotion(
   if (lostSpeed > 1.5) state._spool = 0;
 }
 
+const _wallPoints = new WeakMap<object, readonly number[]>();
+/** Plan directions in which the hull's outline meets a face (wallContactPoints). */
+const WALL_OUTLINE_DIRECTIONS = 16;
+/** The grades of the faces the outline is taken against: the shallowest wall, and a sheer one. */
+const WALL_OUTLINE_GRADES = [CLIFF_GRADE, 6] as const;
+
+/**
+ * The hull's points a terrain wall meets first (hull-local xyz triples), cached per spec: for each plan direction and
+ * each outline grade, the closed shell's point that a face of that grade approaching from that direction touches first
+ * (the most outward, less its height over the grade: a face leans away as it rises). A shell of 90-160 points becomes
+ * a few dozen, so the per-tick test costs about what the support's track lines do. A hull without a shell uses its
+ * box's corners and side midpoints at two heights.
+ */
+function wallContactPoints(spec: MovementSpec): readonly number[] {
+  const cached = _wallPoints.get(spec);
+  if (cached) return cached;
+  const hull = spec.armor?.bodyContactPoints?.hull;
+  const points: number[] = [];
+  if (Array.isArray(hull) && hull.length >= 3) {
+    const chosen: number[] = [];
+    for (const grade of WALL_OUTLINE_GRADES) {
+      for (let direction = 0; direction < WALL_OUTLINE_DIRECTIONS; direction++) {
+        const angle = (2 * Math.PI * direction) / WALL_OUTLINE_DIRECTIONS;
+        const ux = Math.sin(angle);
+        const uz = Math.cos(angle);
+        let best = -1;
+        let bestReach = -Infinity;
+        for (let index = 0; index + 2 < hull.length; index += 3) {
+          const reach = hull[index] * ux + hull[index + 2] * uz - hull[index + 1] / grade;
+          if (reach > bestReach) {
+            bestReach = reach;
+            best = index;
+          }
+        }
+        if (best >= 0 && !chosen.includes(best)) chosen.push(best);
+      }
+    }
+    chosen.sort((a, b) => a - b);
+    for (const index of chosen) points.push(hull[index], hull[index + 1], hull[index + 2]);
+  } else {
+    const halfLength = 0.5 * spec.dims.hullLengthM;
+    const halfWidth = 0.5 * spec.dims.widthM;
+    const upperY = Math.max(0.6, 0.45 * spec.dims.heightM);
+    for (const y of [0.25, upperY]) for (const x of [-halfWidth, halfWidth]) for (const z of [-halfLength, 0, halfLength]) points.push(x, y, z);
+  }
+  const frozen = Object.freeze(points);
+  _wallPoints.set(spec, frozen);
+  return frozen;
+}
+
+/**
+ * A terrain wall holds a hull off horizontally (the terrain-wall rule above). A hull contact point inside terrain the
+ * root cannot reach (groundReachable: a wall, not the ground the hull stands on or climbs) is pushed out along the face
+ * normal's horizontal part by the run that clears the face, the deepest point first, at most WALL_PUSH_MAX_M_PER_STEP a
+ * step; travel into the face is a wall impact, as the cliff probe takes one, and travel along it is kept.
+ */
+function pushOffTerrainWalls(
+  spec: MovementSpec,
+  state: TankState,
+  hAt: HeightSampler,
+  forwardX: number,
+  forwardZ: number,
+): void {
+  beginReachableGround(hAt, hAt, state);
+  const points = wallContactPoints(spec);
+  // the hull as it is drawn (the support solve's rendered pose, with the dive): a nose that dips against a face on a hard
+  // stop dips into it otherwise (the bodyPen receipt reads this pose)
+  const susp = state._susp;
+  const pitch = (state.visualPitch || 0) + (susp ? susp.p * SUSP_VIS_P : 0) - (state._flinch?.p ?? 0);
+  const roll = (state.visualRoll || 0) + (susp ? susp.r * SUSP_VIS_R : 0) + (state._swayEst || 0) * SWAY_VIS +
+    (state._flinch?.r ?? 0);
+  const cosYaw = Math.cos(state.yaw);
+  const sinYaw = Math.sin(state.yaw);
+  const cosNegPitch = Math.cos(-pitch);
+  const sinNegPitch = Math.sin(-pitch);
+  const cosRoll = Math.cos(roll);
+  const sinRoll = Math.sin(roll);
+  let deepest = 0;
+  let normalX = 0;
+  let normalZ = 0;
+  for (let index = 0; index + 2 < points.length; index += 3) {
+    const localX = points[index];
+    const localY = points[index + 1];
+    const localZ = points[index + 2];
+    const rolledX = localX * cosRoll - localY * sinRoll;
+    const rolledY = localX * sinRoll + localY * cosRoll;
+    const pitchedZ = rolledY * sinNegPitch + localZ * cosNegPitch;
+    const worldX = state.pos.x + rolledX * cosYaw + pitchedZ * sinYaw;
+    const worldZ = state.pos.z - rolledX * sinYaw + pitchedZ * cosYaw;
+    const worldY = state.pos.y + rolledY * cosNegPitch - localZ * sinNegPitch;
+    const ground = hAt(worldX, worldZ);
+    const depth = ground - worldY;
+    if (!(depth > WALL_CONTACT_SLOP_M - WALL_SKIN_M * WALL_SKIN_MAX_GRADE)) continue;
+    if (!(ground > _reachRefY + HULL_STEP_UP_M)) continue;
+    const dx = worldX - state.pos.x;
+    const dz = worldZ - state.pos.z;
+    const reach = Math.sqrt(dx * dx + dz * dz);
+    const share = wallShareAt(hAt, worldX, worldZ, ground);
+    // ground the hull stands on or climbs is the support's; only a wall pushes, by its share of wall
+    if (!(share > 0) && groundReachable(ground, reach)) continue;
+    let pushX: number;
+    let pushZ: number;
+    let run: number;
+    if (share > 0) {
+      // down the face: the run that brings the face's surface (less its skin) below the point
+      const grade = _wallGrade;
+      const held = depth + Math.min(grade, WALL_SKIN_MAX_GRADE) * WALL_SKIN_M;
+      if (!(held > WALL_CONTACT_SLOP_M) || !(grade > 1e-6)) continue;
+      pushX = -_wallGradX / grade;
+      pushZ = -_wallGradZ / grade;
+      run = share * held / Math.max(grade, CLIFF_GRADE);
+    } else {
+      // over a wall's top (the face lies between the point and the root): back toward the root
+      if (!(depth > WALL_CONTACT_SLOP_M)) continue;
+      const inv = reach > 1e-6 ? 1 / reach : 0;
+      pushX = -dx * inv;
+      pushZ = -dz * inv;
+      run = depth / CLIFF_GRADE;
+    }
+    if (run > deepest) {
+      deepest = run;
+      normalX = pushX;
+      normalZ = pushZ;
+    }
+  }
+  if (!(deepest > 0)) return;
+  const push = Math.min(deepest, WALL_PUSH_MAX_M_PER_STEP);
+  state.pos.x += normalX * push;
+  state.pos.z += normalZ * push;
+  const spring = state._spring;
+  const recoilInto = spring.recoilVX * normalX + spring.recoilVZ * normalZ;
+  if (recoilInto < 0) {
+    spring.recoilVX -= recoilInto * normalX;
+    spring.recoilVZ -= recoilInto * normalZ;
+  }
+  const facing = forwardX * normalX + forwardZ * normalZ;
+  if (state.speed * facing >= 0) return;
+  // Driven into the face, the face takes the travel's share into it (a stop, and a wall impact, as the cliff probe takes
+  // one); grinding along it at a shallow angle, the push alone holds the hull off and it slides on along the face (taken
+  // every step, the share into the face stopped a hull climbing a ramp beside its side wall within a second).
+  const into = Math.abs(facing);
+  const ramp = Math.min(1, Math.max(0, (into - WALL_GRAZE_FACING) / (WALL_STOP_FACING - WALL_GRAZE_FACING)));
+  const share = into * ramp * ramp * (3 - 2 * ramp);
+  if (!(share > 0)) return;
+  const lost = Math.abs(state.speed) * share;
+  state.speed *= 1 - share;
+  _blockedSpeed += lost;
+  if (lost > state.impactMps) {
+    state.impactMps = lost;
+    state.impactSource = IMPACT_SOURCE_CLIFF;
+    state.impactNx = normalX;
+    state.impactNz = normalZ;
+  }
+  if (lost > 1.5) state._spool = 0;
+}
+
 function updateFlinchRock(state: TankState, dt: number): void {
   const flinch = state._flinch;
   if (!flinch) return;
@@ -3018,6 +3320,7 @@ function supportCacheIsFresh(
 function solveSupportHeight(
   entity: MovementEntity,
   hAt: HeightSampler,
+  terrainAt: HeightSampler,
   groundedAtStart: boolean,
   pitch: number,
   roll: number,
@@ -3032,19 +3335,23 @@ function solveSupportHeight(
   const gearBottomY = contact?.bottomYM || 0;
   const halfWidth = contact ? contact.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
   const samples = resetSupportSamples(spec, state, contact, pitch, roll);
-  sampleOuterTrackLines(samples, contact, hAt, halfWidth, gearBottomY);
-  sampleSupportFan(samples, contact, hAt, halfWidth, gearBottomY, rigidGear);
+  // every sample reads the ground the hull can reach: a wall between the root and a sample holds the hull, it does not
+  // carry it up the face (the terrain-wall rule above)
+  beginReachableGround(hAt, terrainAt, state);
+  const groundAt = reachableGroundAt;
+  sampleOuterTrackLines(samples, contact, groundAt, halfWidth, gearBottomY);
+  sampleSupportFan(samples, contact, groundAt, halfWidth, gearBottomY, rigidGear);
   const shellSupportY = rigidBodySupport(
     spec,
     state,
     samples,
-    hAt,
+    groundAt,
     gearBottomY,
     state._body.tumbling || upY < TUMBLE_ENTER_UP_Y,
   );
   const guardSupportY = pointCloudSupportY(
     hullEndGuards(spec),
-    hAt,
+    groundAt,
     samples.worldX,
     samples.worldZ,
     samples.cosYaw,
@@ -3491,6 +3798,7 @@ export function updateTank(
   // short-lived closure per tank per 60 Hz tick (and matches map/headless
   // collision callers).
   const hAt = heightField.getContactHeightAt ?? heightField.getHeightAtFast ?? heightField.getHeightAt;
+  const terrainAt = heightField.getTerrainContactHeightAt ?? hAt;
   if (!(dt > 0)) return;
   const spec = entity.spec;
   const state = entity.state;
@@ -3523,6 +3831,7 @@ export function updateTank(
   // ---- integrate position (+ decaying recoil translation) & stick to terrain ----
   const spr = state._spring;
   integrateHorizontalMotion(spec, state, heightField, collide, drive.forwardX, drive.forwardZ, dt);
+  pushOffTerrainWalls(spec, state, terrainAt, drive.forwardX, drive.forwardZ);
 
   // ---- terrain contact: line sampling, plane fit, attitude spring, SUPPORT ----
   // r5 hard-gate fix. The old model snapped pos.y to the height under the hull
@@ -3631,6 +3940,7 @@ export function updateTank(
   solveSupportHeight(
     entity,
     hAt,
+    terrainAt,
     groundedAtStart,
     pitchEff,
     rollEff,

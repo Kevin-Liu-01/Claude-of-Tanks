@@ -881,10 +881,18 @@ contact constraints and cannot be crossed by residual uphill speed.
   lower's rect against the lower's highest under the upper's); the horizontal solver reserves a pair for the
   vertical layer by that same depth, and a hull standing 0.5 m above its own support is never ground traffic.
   Shell pitch composes as the renderer does (`+z·sin pitch`).
+- *Walls hold; they do not carry.* Ground more than the 0.55 m step-up above where the hull stands is a wall where it
+  lies on a face steeper than the 52° cliff grade (all wall from 62.5°, a share of wall between) or beyond one (rising
+  from the root faster than the cliff grade on average): the support solve reads such a sample at the ground the hull
+  can reach, the face's foot, never the face's height, and the face holds the hull off horizontally along its normal,
+  3 cm clear, at most 0.1 m a step, taking the travel into it as a wall impact (the hull's outline as drawn: 11-21
+  points of its closed shell). A hull partly over an 80-degree face at the foot of its apron (maps lane A's Redrock and
+  Skybridge faces) was carried 7-12 m up the face by its own samples and dropped back, again and again, for 500-1900 hp.
 - *Known limits.* Rigid rotation is still about the root, though the tip lever reads the box centre (a nose-first
   landing settles about its centre, so it can hop a few times on a sharp kicker); a hull balanced exactly on a 4 m
   edge hangs nose-up near 80° before it slides off (its tail cannot reach the ground sooner); the drivetrain reads the grade over the hull's run (1° flatter than a 25° face,
-  7° on 45° — the felt grade is its calibration); casemate barrels can dig in.
+  7° on 45° — the felt grade is its calibration); casemate barrels can dig in; a hull pivoting
+  against a face that runs across the terrain's triangle grid hops on the face's smeared foot (1-2 m/s, never a fall).
 
 ### 3.5 combat — `src/sim/` (pure logic)
 

@@ -172,6 +172,30 @@ check('land-roof-edge', 'medium', 'mars', [
   g('rest jitter at the end (mm rms)', (m) => m.rest?.jitterYRmsMm ?? 0, 0.5, 'before: 12.6 mm, still see-sawing on the edge'),
 ]);
 
+// Terrain walls (maps lane A: Redrock's sheer jebels, Skybridge's shoulders): a hull partly over an 80-degree face at
+// the foot of its apron is held off the face horizontally; its own samples on the face no longer carry it up the face
+// and drop it back, again and again (the reports: 7-12 m swings, 500-1900 hp to a wedged bot in seconds).
+const wallHeld = (before) => [
+  g('falls', (m) => m.falls.length, 0, `before: ${before.falls}`),
+  g('fall damage (hp)', (m) => m.fallDamageHp, 0, `before: ${before.hp} hp`),
+  g('height over the ground (m)', (m) => m.maxHeightM, 1.5, `before: ${before.top} m`),
+];
+const wallClean = [
+  g('landings', (m) => m.landings.length, 0, 'guard: held off the face, it never leaves the ground'),
+  g('vertical step (m)', (m) => m.popYMaxM, 0.12, 'guard: the support never jumps at the foot'),
+  g('shell under the terrain (m)', (m) => m.bodyPenMaxM, 0.05, 'guard: the face holds the hull 3 cm off'),
+];
+check('wall-foot-wedged', 'medium', 'earth', [...wallHeld({ falls: 3, hp: 236, top: 9.6 }), ...wallClean]);
+check('wall-foot-side', 'heavy', 'earth', [...wallHeld({ falls: 4, hp: 3598, top: 14.0 }), ...wallClean]);
+check('wall-foot-side', 'medium', 'moon', [...wallHeld({ falls: 0, hp: 0, top: 57.7 }), ...wallClean]);
+// across the terrain's triangle grid a face's foot is smeared over a cell: the hull still hops there as it pivots
+// (known limit), but it is never carried up the face or hurt
+check('wall-foot-side-t135', 'medium', 'earth', [
+  g('falls', (m) => m.falls.length, 0, 'before: 5'),
+  g('fall damage (hp)', (m) => m.fallDamageHp, 0, 'before: 614 hp'),
+  g('height over the ground (m)', (m) => m.maxHeightM, 2, 'before: 12.8 m'),
+]);
+
 // Rest stays rest: no jitter, no creep on a 25-degree grade on the brake.
 check('rest-slope25', 'medium', 'earth', [
   g('rest jitter (mm rms)', (m) => m.rest?.jitterYRmsMm ?? 0, 0.5, 'guard: a parked hull does not shimmer'),
@@ -183,4 +207,4 @@ if (failures.length) {
   for (const line of failures) console.error(`  ${line}`);
   process.exit(1);
 }
-console.log(`physics-torture.selftest: ${runs} torture runs — boost ceiling, cliff edges, the Sirocco climb and swing, stacking, roof edges, the Moon step, crest launches, trench crossings, firing and hits in flight, the landing stroke and the dive, settling contacts, prediction replay and rest all hold`);
+console.log(`physics-torture.selftest: ${runs} torture runs — boost ceiling, cliff edges, the Sirocco climb and swing, stacking, roof edges, the Moon step, crest launches, trench crossings, firing and hits in flight, the landing stroke and the dive, settling contacts, terrain walls, prediction replay and rest all hold`);

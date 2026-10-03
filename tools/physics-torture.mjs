@@ -226,7 +226,18 @@ export const TERRAIN = {
     return points[points.length - 1][1];
   },
   sum: (...fns) => (x, z) => { let h = 0; for (const fn of fns) h += fn(x, z); return h; },
+  /** A terrain turned about the origin by deg (a point turned by deg reads what the source reads at the point). */
+  turned: (fn, deg) => {
+    const c = Math.cos(deg * RAD), s = Math.sin(deg * RAD);
+    return (x, z) => fn(x * c - z * s, x * s + z * c);
+  },
 };
+
+/** An 80-degree face rising 12 m from the toe of a 30-degree apron at z 10-14 (Redrock's sheer jebels). */
+const JEBEL_FACE = TERRAIN.profile([[0, 0], [10, 0], [14, 2.31], [16.1, 14.3], [60, 14.3]]);
+/** A spawn at distance z out along the face profile of a jebel turned by deg, its yaw turned with it. */
+const turnedSpawn = (z, yaw, deg, extra = {}) =>
+  ({ x: z * Math.sin(deg * RAD), z: z * Math.cos(deg * RAD), yaw: yaw + deg * RAD, ...extra });
 
 /** Collision primitives (world AABB + tight footprint), as the map manifests publish them. */
 export function box(cx, cz, halfWidth, halfLength, bottom, top, { yaw = 0, crushable = false, kind = 'block' } = {}) {
@@ -394,6 +405,21 @@ export const CASES = [
   { id: 'border', group: 'contact', seconds: 5, terrain: TERRAIN.flat(), spawn: { x: 440, yaw: Math.PI / 2, speed: 'top' },
     input: hold(1), allowBlocked: true },
   { id: 'knock-flip', group: 'contact', seconds: 8, terrain: TERRAIN.flat(), input: hold(), actions: [{ t: 1, kind: 'knock', dir: [1, 0.25, 0], mps: 9 }] },
+  // Terrain walls (maps lane A, Redrock's sheer jebels and Skybridge's shoulders, 2026-10-03): a hull partly over an
+  // 80-degree face at the foot of its apron, nose on (wedged) and side on, pivoting (side), was lifted up the face by
+  // its own samples, 7-12 m, and dropped back again and again for 500-1900 hp. The face holds it off horizontally now.
+  // Driving at the face and turning along it (skew) keep the cliff probe's stop. The turned copies put the face across
+  // the terrain's triangle grid (a diagonal foot is smeared over a cell).
+  { id: 'wall-foot-wedged', group: 'contact', seconds: 7, terrain: JEBEL_FACE, spawn: { z: 12.4 }, input: hold(), allowBlocked: true },
+  { id: 'wall-foot-side', group: 'contact', seconds: 7, terrain: JEBEL_FACE, spawn: { z: 13.2, yaw: Math.PI / 2 }, input: hold(0, 1),
+    allowBlocked: true },
+  { id: 'wall-foot-drive', group: 'contact', seconds: 7, terrain: JEBEL_FACE, spawn: { z: 2, speed: 6 }, input: hold(1), allowBlocked: true },
+  { id: 'wall-foot-skew', group: 'contact', seconds: 7, terrain: JEBEL_FACE, spawn: { z: 7, yaw: 0.9, speed: 4 }, input: hold(1, -0.6),
+    allowBlocked: true },
+  { id: 'wall-foot-wedged-t90', group: 'contact', seconds: 7, terrain: TERRAIN.turned(JEBEL_FACE, 90), spawn: turnedSpawn(12.4, 0, 90),
+    input: hold(), allowBlocked: true },
+  { id: 'wall-foot-side-t135', group: 'contact', seconds: 7, terrain: TERRAIN.turned(JEBEL_FACE, 135),
+    spawn: turnedSpawn(13.2, Math.PI / 2, 135), input: hold(0, 1), allowBlocked: true },
 ];
 
 // ---- world construction ------------------------------------------------------------------------------------------

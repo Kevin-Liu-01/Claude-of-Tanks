@@ -30,6 +30,9 @@ interface SupportHeightField {
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
   getContactHeightAt?(x: number, z: number): number;
+  /** The terrain's contact surface alone (movement.ts reads its walls from it; structures are floors or walls by the
+   * standing rule). */
+  getTerrainContactHeightAt?(x: number, z: number): number;
   getGroundType(x: number, z: number): string;
   getDriveGroundType?(x: number, z: number): string;
 }
@@ -123,11 +126,13 @@ export function createStructureSupportField(
   };
   const getHeightAt = sample(terrainAt);
   const getHeightAtFast = sample(terrainFast);
-  const getContactHeightAt = sample(terrain.getContactHeightAt?.bind(terrain) ?? terrainFast);
+  const terrainContact = terrain.getContactHeightAt?.bind(terrain) ?? terrainFast;
+  const getContactHeightAt = sample(terrainContact);
   return {
     getHeightAt,
     getHeightAtFast,
     getContactHeightAt,
+    getTerrainContactHeightAt: terrainContact,
     getGroundType: (x, z) => terrain.getGroundType(x, z),
     getDriveGroundType: (x, z) => driveGroundTypeAt(terrain, x, z),
     beginHull(x, z, bellyY, pose) {
