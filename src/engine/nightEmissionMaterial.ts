@@ -21,11 +21,8 @@ const RED_EMISSION_GAIN = .2;
  * red. A driven red lens is capped at this level through any exposure (setNightEmissionExposure); a dimmer drive (the
  * windows' obstruction bulbs) stays below it untouched, as does every undriven day radiance.
  */
-// 2026-10-03 (the skies-and-atmosphere lane): .5 → .6 with the grounded rig's neutral scene-referred saturation (post.ts
-// GRADE_SAT_LINEAR 1.4 → 1.0, the gauntlet's colour calibration): without the boost the capped lens read a dull brick red
-// (#c35444 at .55 through the whole chain); at .6 it reads the bright lit red the ceiling was set for, from about three
-// quarters of the calibrated day key up.
-export const NIGHT_RED_DISPLAY_LEVEL = .6;
+// (2026-10-03: .6 while the grounded rig ran AgX's own saturation; .5 again with the 1.4 boost and the 1.5 key back.)
+export const NIGHT_RED_DISPLAY_LEVEL = .5;
 /**
  * The camera the authored red lens floors (a lens's own day glow) were tuned at: the legacy rig's exposure, and the light
  * model's day key until its 2026-10-03 calibration (1.05, below it: no daylight camera dims a floor). An unlit red lens (a wreck, a tank with its lights off) holds its on-screen level there when

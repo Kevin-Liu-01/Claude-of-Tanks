@@ -159,9 +159,8 @@ const exposureUniform = regular.shader.uniforms.nightEmissionExposure;
 assert.equal(levelUniform.value, NIGHT_RED_DISPLAY_LEVEL);
 assert.strictEqual(exposureUniform, compileMask().shader.uniforms.nightEmissionExposure, 'one exposure uniform shared by every lens program');
 assert.equal(regular.shader.uniforms.nightEmissionFloorExposure.value, NIGHT_RED_FLOOR_EXPOSURE);
-// 2026-10-03 (the skies-and-atmosphere lane): the grounded rig's day key came down half a stop to a calibrated meter
-// (lightModel.ts EXPOSURE_KEY 1.5 → 1.05); the floors keep the key the lenses were authored under — the legacy rig's
-// exposure (the Garage, the galaxy skies), at or above the grounded day key, so no daylight camera dims an unlit floor
+// the floors keep the key the lenses were authored under — the legacy rig's exposure (the Garage, the galaxy skies), at or
+// above the grounded day key, so no daylight camera dims an unlit floor (2026-10-03: whatever the grounded key)
 assert.equal(NIGHT_RED_FLOOR_EXPOSURE, LEGACY_EXPOSURE, 'the floors hold the authored lenses\' key (the legacy rig\'s exposure)');
 assert.ok(NIGHT_RED_FLOOR_EXPOSURE >= EXPOSURE_KEY, 'at or above the grounded rig\'s day key');
 for (const line of [
@@ -186,9 +185,7 @@ function lensRadiance(total, base, mask, active, exposure) {
 // (a player's lights are on by day too, auxiliary lights: the ceiling engages from the camera where the lit lens
 // reaches it, about two thirds of the day key; under a brighter sky the lens reads a deeper red, as a tail lamp in sun)
 const capFrom = NIGHT_RED_DISPLAY_LEVEL / Math.max(redRadiance.r, redRadiance.g, redRadiance.b);
-// (2026-10-03: with the calibrated day key, 1.05, and the ceiling raised for the neutral grade, the lens reaches it at
-// about three quarters of the key — every dusk and night camera, each above the day key, holds it)
-assert.ok(capFrom < EXPOSURE_KEY, `every night and dusk camera holds the lens at the ceiling (from ${capFrom.toFixed(2)})`);
+assert.ok(capFrom < EXPOSURE_KEY * .5, `every night and dusk camera holds the lens at the ceiling (from ${capFrom.toFixed(2)})`);
 const shownAt = new Map();
 for (const night of [0, 1]) for (const warmth of [0, .25]) for (const exposure of cameras) {
   setNightEmissionExposure(exposure);
