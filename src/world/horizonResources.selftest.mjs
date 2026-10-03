@@ -18,8 +18,10 @@ import {
 // (bench, tables, valley, escarpment, saddle, summits, shoulder — 30 uploaded rows, outer row 1380 m); Redrock keeps
 // the classic six-row ladder for its analytic canyon (redrockCanyonHorizon.selftest).
 const columns = HORIZON_SEGMENTS + 1;
-const uploadedRows = (config, mapId) => config.horizon.style === 'alpine' ? 36
-  : config.horizon.style === 'mesa' && mapId !== 'badlands' ? 30 : 18;
+// (the ring's own style where a map has one: `horizon.ringStyle` over the border's `style`)
+const ringStyleOf = (config) => config.horizon.ringStyle || config.horizon.style;
+const uploadedRows = (config, mapId) => ringStyleOf(config) === 'alpine' ? 36
+  : ringStyleOf(config) === 'mesa' && mapId !== 'badlands' ? 30 : 18;
 const VISTA_TILES = 6; // round 29: meadow, sand, canopy, rock, scree, snow
 
 function radiusAt(position, index) {
@@ -144,7 +146,7 @@ function classicRangeStats(ring) {
 }
 
 function assertClassicLayeredRanges(ring, config, label) {
-  const style = config.horizon.style ?? 'rolling';
+  const style = ringStyleOf(config) ?? 'rolling';
   const amp = config.horizon.amp ?? 1;
   const stats = classicRangeStats(ring);
   assert.equal(stats.folds, 0, `${label}: no angle folds a radial face`);

@@ -156,7 +156,9 @@ export default {
     },
   },
   horizon: {
-    baseHex: 0x436645, amp: 0.9, style: 'rolling', treeline: 0.96, treelineLayers: 3,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the Jamuna chars are a dead-flat
+    // floodplain: the ring's swells low, the far country plain (homestead tree lines over the water-braided flats)
+    baseHex: 0x436645, amp: 0.3, style: 'rolling', treeline: 0.96, treelineLayers: 3, panorama: { regional: 'plain' },
     forestHex: 0x244b2b, rockHex: 0x69705d, haze: 0.96, grain: 0.72,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)

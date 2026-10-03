@@ -232,7 +232,7 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
 
 /** A map's character: authored (`horizon.relief`), else by map identity, else by the ring style. */
 export function resolveHorizonReliefCharacter(
-  horizon: { relief?: HorizonReliefCharacter; style?: string } | null | undefined, mapId: string,
+  horizon: { relief?: HorizonReliefCharacter; style?: string; ringStyle?: string } | null | undefined, mapId: string,
 ): HorizonReliefCharacter {
   if (horizon?.relief && CHARACTERS[horizon.relief]) return horizon.relief;
   if (mapId === 'winter' || mapId === 'whiteout') return 'polar';
@@ -240,7 +240,8 @@ export function resolveHorizonReliefCharacter(
   if (mapId === 'mars') return 'martian';
   if (mapId === 'monsoon' || mapId === 'mangrove') return 'karst';
   if (mapId === 'coastal' || mapId === 'saltwind' || mapId === 'fjord' || mapId === 'polders') return mapId === 'fjord' ? 'alpine' : 'coastal';
-  const style = horizon?.style;
+  // (the ring's own style where it has one: the border's landform keeps `style`)
+  const style = horizon?.ringStyle || horizon?.style;
   if (style === 'alpine') return 'alpine';
   if (style === 'mesa') return 'mesa';
   return 'rolling';

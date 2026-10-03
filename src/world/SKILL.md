@@ -130,6 +130,17 @@ far land falls away within ~12° of any sea sector (no monolith on a headland be
 `panorama.shore` raises a far shore well inside its sector (Saltwind's mainland across its channel). The polar and
 alpine faces carry rock bands (the atlas beds at `cover.bedScale` × their thickness). Before its
 bake the panorama takes the battlefield's own ground and rock means (`setGroundTone`, from refreshHorizonGroundTone).
+Regional far country (gauntlet wave 15, every critic: "mountain ranges behind places that have none"): a map's
+`horizon.panorama: { regional }` takes its real place's far vocabulary (`HORIZON_PANORAMA_REGIONAL`) in place of its
+relief character's — `plain` (floodplain, steppe, polders: swells under 70 m, no layers over the ring, the skyline its
+shelterbelts and woods, a canopy the height pass grows and writes in the grid's B channel for the strip to colour as
+forest), `erg`, `upland` (rounded hills, a half layer), `forested`, `karstRidge`, `ridges`, `jebel` (a short apron, a
+sheer fluted wall: `mesaTalusM`/`mesaCliffM`/`mesaFluteM`), `volcanicField` and `iceSheet` (sparse isolated peaks,
+`peakShare`/`peakM`/`peakRadiusM`/`peakSharp`; their footprint in the grid's A channel, bared to rock by the strip —
+nunataks dark through the ice, the sharp ones drawn out into outcrop ridges). The flat maps' rings were lowered with
+them (the crest past 900 m 21-57 m: a flat far country behind a 100 m ring only moved the wall closer).
+`horizon.ringStyle` gives the ring its own style (rows, profile, rock, relief character) while the border's landform
+keeps reading `style` (Eifel Reservoir: the alpine border its villages stand on, a rolling ring).
 `horizonPanorama.selftest.mjs` pins the shell, the atlas mapping and the bake contract; the bake's look is iterated
 offline on SwiftShader (no GPU) before the census.
 p2 trees lane (2026-10-01): the desktop tiers GROW their near trees — `treeGrowth.ts` (a THREE-free skeleton per

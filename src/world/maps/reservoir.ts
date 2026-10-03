@@ -128,7 +128,10 @@ export default {
       ids: ['k1a1', 'type99a', 'k2', 'bmp3', 'type90'] },
     inhabit: { stalls: 1, benches: 3, coreClutter: 20, bales: 6, troughs: 2, laundry: 2, handcarts: 3, carts: 3, trucks: 5, jeeps: 4, drumClusters: 5, camps: 3, modernClutter: 20, looseClutter: 20, roadFence: 'fenceplank', yardFence: 'fencerail' },
   },
-  horizon: { baseHex: 0x62766a, amp: 1.25, style: 'alpine', treeline: 0.80, snowline: 2, forestHex: 0x304e40, rockHex: 0x828d87, haze: 0.90, grain: 0.52 },
+  // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the northern Eifel is rounded
+  // forested hill country cut by the Rur's valleys — not an alpine skyline: the ring rolling (its own style: the border's
+  // landform stays alpine), the far country upland
+  horizon: { baseHex: 0x62766a, amp: 0.9, style: 'alpine', ringStyle: 'rolling', treeline: 0.80, snowline: 2, panorama: { regional: 'upland' }, forestHex: 0x304e40, rockHex: 0x828d87, haze: 0.90, grain: 0.52 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', coverage: 0.26, streets: 0.3, contrails: 0.3 },
   sky: { ...frontier.sky, sunElevationDeg: 26, sunAzimuthDeg: 142, turbidity: 4.2, fogDensity: 0.00058, fogTintHex: 0x91a8b5, fogMix: 0.5, cloudOpacity: 1.0, cloudOpacity2: 0.66, sunIntensity: 3.8, hemiIntensity: 0.43 },

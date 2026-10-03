@@ -35,7 +35,7 @@ for (const character of HORIZON_RELIEF_CHARACTERS) {
 // the per-map keys: identity first, the style second, the authored key over both
 const expectedCharacter = {
   whiteout: 'polar', winter: 'polar', caldera: 'volcanic', blackglass: 'volcanic', mars: 'martian', monsoon: 'karst', mangrove: 'karst',
-  coastal: 'coastal', saltwind: 'coastal', polders: 'coastal', fjord: 'alpine', alpine: 'alpine', orchard: 'alpine', reservoir: 'alpine',
+  coastal: 'coastal', saltwind: 'coastal', polders: 'coastal', fjord: 'alpine', alpine: 'alpine', orchard: 'alpine', reservoir: 'rolling',
   desert: 'mesa', badlands: 'mesa', titan_gorge: 'mesa', skybridge: 'mesa', copper_mesa: 'mesa',
   verdant: 'rolling', urban: 'rolling', railyard: 'rolling', oasis: 'rolling',
 };
@@ -43,6 +43,10 @@ for (const [mapId, character] of Object.entries(expectedCharacter)) {
   assert.equal(resolveHorizonReliefCharacter(getMapConfig(mapId).horizon, mapId), character, `${mapId} resolves to ${character}`);
 }
 assert.equal(resolveHorizonReliefCharacter({ relief: 'karst', style: 'mesa' }, 'desert'), 'karst', 'an authored key wins');
+// the ring's own style decides where a map has one; the border's landform keeps reading `style` (gauntlet wave 15: Eifel
+// Reservoir's ring rolls like the Eifel over the alpine border its villages were authored on)
+assert.equal(resolveHorizonReliefCharacter({ style: 'alpine', ringStyle: 'rolling' }, 'frontier'), 'rolling', 'the ring\'s own style decides');
+assert.equal(getMapConfig('reservoir').horizon.style, 'alpine', 'Eifel Reservoir\'s border keeps its alpine landform');
 assert.equal(getMapConfig('whiteout').horizon.relief, 'polar', 'Whiteout authors its polar character');
 assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteout stands on the alpine ladder (36 rows) for its polar ranges');
 

@@ -84,7 +84,9 @@ export default {
   // and the polar character's boost standing the ranges behind it to the stratus, snow on the broad faces with rock on
   // the steep ones, the scoured ribs at a third (at 1 they greyed every upper slope to heath), spruce and birch stands
   // on the lower slopes
-  horizon: { baseHex: 0xa3b1be, amp: 1.0, style: 'alpine', relief: 'polar', treeline: 0.22, snowline: 0.30, forestHex: 0x536371, rockHex: 0x5b6772, bareRock: 0.35, haze: 0.92, grain: 0.60 },
+  // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): a polar station on an ice sheet —
+  // a flat white skyline broken by a few dark nunataks (the ring's ranges at under half, low relief overall)
+  horizon: { baseHex: 0xa3b1be, amp: 0.45, style: 'alpine', relief: 'polar', treeline: 0.22, snowline: 0.30, panorama: { regional: 'iceSheet' }, forestHex: 0x536371, rockHex: 0x5b6772, bareRock: 0.35, haze: 0.92, grain: 0.60 },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the polar deck authored explicitly instead of
   // inheriting Frosthollow's (320 m / 0.00013 / 2200 m) — a lower 300 m stratus of smaller 2000 m masses that keeps
   // its texture at the 13° sun's grazing elevations; diffuse light patchiness (cloudShadowAmp 0.08)

@@ -113,7 +113,8 @@ export default {
     },
   },
   horizon: {
-    baseHex: 0x555553, amp: 0.72, style: 'rolling', treeline: 0.5,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): industrial lowland: low rolling hills
+    baseHex: 0x555553, amp: 0.55, style: 'rolling', treeline: 0.5, panorama: { regional: 'upland', ampM: 160, trees: 8 },
     forestHex: 0x39413a, rockHex: 0x666360, haze: 0.97, grain: 0.48,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)

@@ -310,7 +310,9 @@ export default {
   horizon: {
     // r7: treeline 0.5 -> 0.92 — kills the bald-ramp band above the forest
     // cutoff (see verdant.js note)
-    baseHex: 0x525c50, amp: 0.85, style: 'escarpment', treeline: 0.92,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): Upper Franconia's Frankenwald:
+    // a forested plateau cut by valleys, no peaks
+    baseHex: 0x525c50, amp: 0.7, style: 'escarpment', treeline: 0.92, panorama: { regional: 'upland' },
     forestHex: 0x323f30, haze: 1.0,
   },
 

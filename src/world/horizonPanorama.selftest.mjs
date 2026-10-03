@@ -113,6 +113,28 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   assert.ok(pano.shoreRange > 0 && pano.shoreRange <= 1, 'Saltwind: a coastal range along the far shore (no low strip where its own relief is low)');
   assert.ok(pano.treeline < HORIZON_PANORAMA_CHARACTERS.coastal.treeline, 'Saltwind: the karst keeps its woods on the lower flanks');
 }
+// --- the regional classes (gauntlet wave 15, every critic: "mountain ranges behind places that have none"): a map's
+// horizon block picks its real place's far country ------------------------------------------------------------------
+{
+  const plain = resolveHorizonPanoramaCharacter('rolling', { regional: 'plain' });
+  assert.ok(plain.ampM <= 80 && plain.layers === 0 && plain.farRise === 0 && !plain.plinth && plain.trees > 10,
+    'plain: swells under 80 m, nothing lifted over the ring, the skyline its tree lines');
+  const upland = resolveHorizonPanoramaCharacter('alpine', { regional: 'upland' });
+  assert.ok(upland.ampM <= 300 && upland.snowline > 1 && upland.layers < 1, 'upland: rounded hills under 300 m, no snow, a half layer');
+  assert.ok(resolveHorizonPanoramaCharacter('rolling', { regional: 'erg' }).trees === 0, 'erg: no trees');
+  const jebel = resolveHorizonPanoramaCharacter('mesa', { regional: 'jebel' });
+  assert.ok(jebel.tables && jebel.mesaTalusM < 300 && jebel.mesaCliffM > 80, 'jebel: a short apron and a sheer wall');
+  assert.ok(resolveHorizonPanoramaCharacter('polar', { regional: 'iceSheet' }).peakShare > 0, 'iceSheet: nunataks through the ice');
+  assert.ok(resolveHorizonPanoramaCharacter('volcanic', { regional: 'volcanicField' }).ampM < 600, 'volcanicField: no 1300 m spikes');
+  assert.equal(resolveHorizonPanoramaCharacter('rolling', { regional: 'plain', ampM: 50 }).ampM, 50, 'a map overrides its class\'s knobs');
+  for (const u of ['uTrees', 'uMesa', 'uPeaks']) assert.ok(HORIZON_PANORAMA_SHADERS.height.includes(u), `the height pass reads ${u}`);
+  assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('texture2D(uHeight, g).b'), 'the strip colours the far field\'s trees as the forest');
+  // the peaks bare (a white cone through the ice read as one more snow drift): the height pass writes each peak's
+  // footprint beside its tree cover, the strip lays rock over it and holds no snow on its faces
+  assert.ok(HORIZON_PANORAMA_SHADERS.height.includes('vec4(h, gPlinth, gTree, gPeak)'), 'the height pass writes the peaks\' footprint');
+  assert.ok(/float peak = smoothstep\([^;]*texture2D\(uHeight, g\)\.a\)/.test(HORIZON_PANORAMA_SHADERS.strip) && HORIZON_PANORAMA_SHADERS.strip.includes('1.0 - 0.9 * peak'),
+    'the strip bares the peaks: rock over their footprint, no snow on their faces');
+}
 assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('texture2D(uHeight, g).g'), 'the strip zones its forest and snow over the plinth');
 
 // --- the far country's deck (gauntlet wave 6: over Verdant's and Frontier Basin's scattered cumulus the far crests were
@@ -125,8 +147,9 @@ assert.equal(horizonPanoramaDeckM({ clouds: { regime: 'fair-weather-cumulus', co
 assert.equal(horizonPanoramaDeckM({}, 1400), 1400, 'no cloudscape: the round-72 deck');
 // the tablelands: eroded, stepped mesas (a talus apron and a caprock cliff by the rim distance), their tops clearing the
 // ring's skyline or staying behind it (no sliver)
-assert.ok(HORIZON_PANORAMA_SHADERS.height.includes('mesaRamp(s1, 700.0, 50.0)') && HORIZON_PANORAMA_SHADERS.height.includes('mesaRamp(s1 - inset'),
+assert.ok(HORIZON_PANORAMA_SHADERS.height.includes('mesaRamp(s1, uMesa.x, uMesa.z)') && HORIZON_PANORAMA_SHADERS.height.includes('mesaRamp(s1 - inset'),
   'the height pass shapes each table by its rim distance: a talus apron, a cliff, an inset upper tier');
+assert.deepEqual([HORIZON_PANORAMA_CHARACTERS.mesa.mesaTalusM, HORIZON_PANORAMA_CHARACTERS.mesa.mesaCliffM], [700, 50], 'the eroded mesas: a broad apron and a short cliff');
 assert.ok(/uChar2\.z > 0\.5 \? mix\(-0\.03, 0\.06/.test(HORIZON_PANORAMA_SHADERS.height), 'a table\'s top clears the ring\'s skyline or stays behind it');
 // the land falls away within ~12 degrees of any sea sector (Nordhavn Fjord's headland between two openings stood as a
 // monolith in the water), and a far shore fades at the sector's flanks

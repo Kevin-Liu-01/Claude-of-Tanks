@@ -128,7 +128,9 @@ export default {
     },
   },
   horizon: {
-    baseHex: 0x355344, amp: 1.08, style: 'alpine', treeline: 0.97, treelineLayers: 3, snowline: 2,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): Kohima stands on the Naga Hills'
+    // ridges — long steep forested ridges and deep valleys, not a riverside plain or limestone towers
+    baseHex: 0x355344, amp: 1.35, style: 'alpine', treeline: 0.97, treelineLayers: 3, snowline: 2, panorama: { regional: 'ridges' },
     forestHex: 0x193a28, rockHex: 0x59635a, haze: 0.97, grain: 0.64,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)

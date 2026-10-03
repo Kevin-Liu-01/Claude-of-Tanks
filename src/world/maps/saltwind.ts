@@ -155,7 +155,8 @@ export default {
   // ranges across the western channel (the view from the Dalmatian islands), its woods only on the lower flanks
   horizon: {
     baseHex: 0x7f8977, amp: 0.90, style: 'rolling', treeline: 0.42, forestHex: 0x506044, rockHex: 0xa4a391, haze: 0.90, grain: 0.46,
-    panorama: { shore: 1.2, shoreM: 5600, shoreRange: 0.5, treeline: 0.45 },
+    // (gauntlet wave 15: the Dalmatian karst ridge — Biokovo / Mosor — behind the coast: bare limestone over scrub)
+    panorama: { regional: 'karstRidge', shore: 1.2, shoreM: 5600, shoreRange: 0.9, treeline: 0.35 },
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'sea-streets', coverage: 0.30, windDirDeg: 200, farBand: 0.55, fogBank: 0.35, fogBankTopM: 100 },

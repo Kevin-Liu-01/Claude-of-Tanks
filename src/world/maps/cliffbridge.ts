@@ -44,7 +44,8 @@ export default {
       {id:'north-watch',role:'support',x:52,z:155,yawDeg:-90,structure:'guardpost',outcrop:{count:4,radius:9}},
     ],
   },
-  horizon:{...verdant.horizon,amp:1.55,baseHex:0x456a38,rockHex:0x777c70,treeline:.95,haze:.7},
+  // the mountains lane (2026-10-03, gauntlet wave 15): wooded uplands round the gorge (not Verdant's plain)
+  horizon:{...verdant.horizon,amp:1.1,baseHex:0x456a38,rockHex:0x777c70,treeline:.95,haze:.7,panorama:{regional:'upland'}},
   sky:{...verdant.sky,sunElevationDeg:34,sunAzimuthDeg:235,cloudOpacity:.56,cloudOpacity2:.2,cloudAltM:1250,
     fogDensity:.00028,fogTintHex:0xb3c4b6,sunColorHex:0xfff0d9,sunIntensity:3.5,postExposure:.98},
   clouds:{regime:'fair-weather-cumulus',baseM:1200,coverage:.28,contrails: 0.3, cirrus: 0.25},

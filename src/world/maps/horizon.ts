@@ -43,7 +43,7 @@ import {
   bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from '../horizonRelief.ts';
 import { buildHorizonFarRange } from '../horizonFarRange.ts';
-import { type HorizonPanoramaCharacter, createHorizonPanorama } from '../horizonPanorama.ts';
+import { type HorizonPanoramaCharacter, createHorizonPanorama, type HorizonPanoramaRegional } from '../horizonPanorama.ts';
 import { type MassifSettings, carveMassifRingSteps, createMassifField, cutMassifCanyonsSteps } from '../horizonMassif.ts';
 import { type EscarpmentSettings, carveEscarpmentRingSteps, createEscarpmentField } from '../horizonEscarpment.ts';
 import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
@@ -69,6 +69,10 @@ interface HorizonConfig {
   baseHex?: number;
   amp?: number;
   style?: HorizonStyle;
+  /** the ring's own style (its rows, profile, ledges, rock and relief character) where the real place's far hills differ
+   * from the border's landform, which keeps reading `style` (the mountains lane, 2026-10-03: Eifel Reservoir's border
+   * stays the alpine landform its villages and woods were authored on; its ring rolls like the Eifel) */
+  ringStyle?: HorizonStyle;
   snowline?: number;
   treeline?: number;
   treelineLayers?: number;
@@ -101,7 +105,7 @@ interface HorizonConfig {
   escarpment?: Partial<EscarpmentSettings> | false;
   /** The mountains lane (2026-10-03): the far country baked into a panorama (horizonPanorama.ts) beyond the ring on the
    * desktop tier — false keeps the round-72 far range; an object overrides the character's far knobs. */
-  panorama?: false | Partial<HorizonPanoramaCharacter>;
+  panorama?: false | (Partial<HorizonPanoramaCharacter> & { regional?: HorizonPanoramaRegional });
   /** The mountains lane (2026-10-03): false opens no pass along this map's road exits (openRoadPasses) — where an exit
    * runs into a massif right behind the edge, the pass is a trench as deep as the massif is high, and its end a wall
    * (gauntlet wave 6, Frosthollow's edge-n: "a smooth near-vertical curtain"). */
@@ -3386,7 +3390,7 @@ interface HorizonPalette {
 }
 
 function resolveHorizonStyle(horizon: HorizonConfig, mapId: string): HorizonStyle {
-  return horizon.style || STYLE_BY_MAP[mapId] || 'rolling';
+  return horizon.ringStyle || horizon.style || STYLE_BY_MAP[mapId] || 'rolling';
 }
 
 function resolveHorizonSettings(
