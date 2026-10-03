@@ -103,7 +103,8 @@ function fixture(options = {}) {
     },
     padPts: pad ? [{ x: 0, z: 512 }] : [], padYs: [22],
     waterRampStart: .2, waterRampEnd: .8, quarryFloorY: null,
-    border: { liftAt: (_x, _z, r) => { const s = smoothstep(430, 512, r); return s * s * rimHeight; } },
+    border: { liftAt: (_x, _z, r) => { const s = smoothstep(430, 512, r); return s * s * rimHeight; },
+      classicLiftAt: (r) => { const s = smoothstep(430, 512, r); return s * s * rimHeight; } },
   } };
 }
 function sample(factory, options = {}, roadsOn = true, lakesOn = false, x = 0, z = 512) {

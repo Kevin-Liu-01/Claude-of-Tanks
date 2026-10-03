@@ -140,7 +140,10 @@ const failures = [
 ];
 const records = [], errors = [];
 for (const id of ['alpine', 'reservoir']) for (const seed of [1337, 2025]) {
-  const config = getMapConfig(id), old = before.createHeightField(seed, config), next = createHeightField(seed, config);
+  // the map-borders lane (2026-10-03): the retained failures are banks on the CLASSIC rim; the predecessor and the current
+  // program are replayed on it (terrain.border.classic) and the limits are checked on the border landform as well
+  const landform = getMapConfig(id), config = { ...landform, terrain: { ...landform.terrain, border: { classic: true } } };
+  const old = before.createHeightField(seed, config), next = createHeightField(seed, config), live = createHeightField(seed, landform);
   assert.deepEqual(next._layout.roads, old._layout.roads, 'no new road alignment changes');
   assert.deepEqual(next._layout.roadStations, old._layout.roadStations);
   assert.deepEqual(Object.keys(next), Object.keys(old), 'no returned owner fields');
@@ -151,6 +154,8 @@ for (const id of ['alpine', 'reservoir']) for (const seed of [1337, 2025]) {
     assert.ok(prior > fixture.limit, 'actual old-bug negative fails the unchanged physical gate');
     records.push({ ...fixture, prior, current });
     if (current > fixture.limit) errors.push(`${id}/${seed} fixed physical failure (${current} > ${fixture.limit})`);
+    const onLandform = crossSlope(live, fixture.x, fixture.z, fixture.nx, fixture.nz, fixture.span);
+    if (onLandform > fixture.limit) errors.push(`${id}/${seed} physical failure on the border landform (${onLandform} > ${fixture.limit})`);
   }
   for (const p of [config.spawns.player, ...config.spawns.enemies, ...(config.terrain.lakes ?? [])]) {
     assert.equal(next.getHeightAt(p.x, p.z), old.getHeightAt(p.x, p.z), 'actual pad and lake-centre height precedence remains exact');

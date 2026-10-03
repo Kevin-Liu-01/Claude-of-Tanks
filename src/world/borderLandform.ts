@@ -86,6 +86,12 @@ export interface BorderLandformSettings {
   /** The fields' crops: 'temperate' (stubble, plough, pasture, fallow), 'steppe' (stubble and plough), 'polder'
    * (pasture, plough, rapeseed). */
   crops: 'temperate' | 'steppe' | 'polder';
+  /**
+   * The rim as it stood before the border landform (the classic S-curve and the plateau rimH over the geology past the
+   * edge, the old 140–460 m ring hand-over, no woods field): the receipts that replay a pre-landform failure build
+   * their predecessor and current fields with it. Not a map setting.
+   */
+  classic?: boolean;
 }
 
 /** Defaults by horizon style (the ring's character beyond): enclosed valleys and canyons, open rolling country. */
@@ -187,8 +193,10 @@ function mulberry32(a: number): () => number {
 }
 
 /**
- * A place where the border must stay enclosed and high: a railway cutting's tunnel (railSpurs.ts) runs into the hill
- * the old rim stood for, so the landform keeps the full rim and a hill over it there, wherever the map is open.
+ * A place where the border keeps the classic rim: a railway that leaves the square runs through a cutting into a tunnel
+ * in the hill the old rim stood for (railSpurs.ts, rounds 63 and 67 — the bed, the batter faces, the portal and its
+ * gallery are measured against that rim and its plateau), so within the anchor's radius the lift is the classic rim and
+ * plateau, fading back to the landform over its outer half.
  */
 export interface BorderAnchor { x: number; z: number; radius: number }
 /** A road leaving the square (terrain.ts buildRoadExitLines): the land opens into a valley along its line. */
@@ -236,7 +244,7 @@ export function createBorderLandform(
     const e = noise.noise(x * 0.00082 + 17.3, z * 0.00082 - 41.9) * 0.8 + noise.noise(x * 0.0019 - 5.1, z * 0.0019 + 23.7) * 0.25;
     let a = smoothstep(-0.55, 0.55, e + bias);
     if (valleys.length) a *= 1 - 0.9 * valleyAt(x, z);
-    return anchors.length ? Math.max(a, anchorAt(x, z)) : a;
+    return anchors.length ? Math.max(a, anchorAt(x, z)) : a;  // (an anchored sector reads as enclosed for the woods and rim)
   }
   /** 0..1: the corner share — the creases of the old rim stood where both edges are near. */
   function cornerAt(x: number, z: number): number {
@@ -270,7 +278,7 @@ export function createBorderLandform(
   /** The outland's lift (units of rimH) at (x, z) for a square radius r past the playable edge. */
   function outlandLevel(x: number, z: number, r: number, a: number): number {
     const near = nearLevelAt(x, z, a);
-    let h = anchors.length ? Math.max(hillsAt(x, z), 0.8 * anchorAt(x, z)) : hillsAt(x, z);
+    let h = hillsAt(x, z);
     if (valleys.length) h *= 1 - 0.65 * valleyAt(x, z);
     // the reach wanders along the border (spurs and re-entrants) and is shorter where the land is enclosed
     const wander = noise.noise(x * 0.0031 + 91.1, z * 0.0031 - 33.3) * 55;
@@ -325,6 +333,20 @@ export function createBorderLandform(
     return smoothstep(woodsCut - 0.025, woodsCut + 0.025, woodsField(x, z));
   }
 
+  if (settings.classic) {
+    const classicLiftAt = (r: number): number => { const s = smoothstep(BORDER_RIM_START_M, BORDER_EDGE_M, r); return s * s * rimH; };
+    return {
+      settings,
+      liftAt: (_x, _z, r) => classicLiftAt(r),
+      classicLiftAt,
+      rimFactorAt: () => 1,
+      handOverAt: (x, z) => 1 - smoothstep(140, 460, Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M),
+      woodsAt: () => 0,
+      hedgeAt: () => 0,
+      parcelTintAt: (_x, _z, out) => { out[0] = 0; out[1] = 0; out[2] = 0; return out; },
+    };
+  }
+
   return {
     settings,
     hedgeAt(x: number, z: number): number {
@@ -358,21 +380,33 @@ export function createBorderLandform(
       const k = nearLevelAt(x, z, a) / RIM_AT_PLAYABLE;
       const s = smoothstep(BORDER_RIM_START_M, BORDER_EDGE_M, r);
       const square = s * s * k;
-      if (r <= BORDER_PLAYABLE_M) return square * rimH;
-      const w = smoothstep(BORDER_PLAYABLE_M, BORDER_PLAYABLE_M + HANDOVER_M, r);
-      return (square + (outlandLevel(x, z, r, a) - square) * w) * rimH;
+      let lift = square;
+      if (r > BORDER_PLAYABLE_M) {
+        const w = smoothstep(BORDER_PLAYABLE_M, BORDER_PLAYABLE_M + HANDOVER_M, r);
+        lift = square + (outlandLevel(x, z, r, a) - square) * w;
+      }
+      if (anchors.length) {
+        const c = anchorAt(x, z);
+        if (c > 0) lift += (s * s - lift) * c; // the classic rim and its plateau (s = 1 past the edge)
+      }
+      return lift * rimH;
     },
     classicLiftAt(r: number): number {
       const s = smoothstep(BORDER_RIM_START_M, BORDER_EDGE_M, r);
       return s * s * rimH;
     },
     rimFactorAt(x: number, z: number): number {
-      return nearLevelAt(x, z, enclosureAt(x, z)) / RIM_AT_PLAYABLE;
+      const k = nearLevelAt(x, z, enclosureAt(x, z)) / RIM_AT_PLAYABLE;
+      return anchors.length ? k + (1 - k) * anchorAt(x, z) : k;
     },
     handOverAt(x: number, z: number): number {
       const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
       const wander = noise.noise(x * 0.0019 - 71.7, z * 0.0019 + 14.9) * 110;
-      return 1 - smoothstep(330, 820, edgeOut + wander);
+      const landform = 1 - smoothstep(330, 820, edgeOut + wander);
+      if (!anchors.length) return landform;
+      // an anchored sector hands over by the classic law (the tunnel's gallery meets the ring's first ridge at 200 m)
+      const classic = 1 - smoothstep(140, 460, edgeOut);
+      return landform + (classic - landform) * anchorAt(x, z);
     },
   };
 }

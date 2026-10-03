@@ -986,9 +986,16 @@ function* heightFieldBuildSteps(
   // a railway cutting's tunnel runs into the hill the old rim stood for: the landform keeps it enclosed there
   // and a road that leaves the square leaves through a valley (the land opens along its line past the edge)
   const roadExitLines = buildRoadExitLines(layout.roads, seed);
+  // (the anchor follows the railway that leaves the square — a spur path ending on the edge — not whether it is cut, so a
+  // field with the cutting and one without it share their ground at the portal)
+  const railExitAnchors = (T.railSpurs ?? []).flatMap((spur) => {
+    const end = spur.path[spur.path.length - 1];
+    if (!end || Math.max(Math.abs(end[0]), Math.abs(end[1])) < HALF - 4) return [];
+    const len = Math.max(1, Math.hypot(end[0], end[1]));
+    return [{ x: end[0] + (end[0] / len) * 100, z: end[1] + (end[1] / len) * 100, radius: 340 }];
+  });
   const border = createBorderLandform(seed, T.rimH, resolveBorderLandform(cfg?.horizon?.style, T.border, cfg?.id),
-    (railCuttings ?? []).map((cut) => ({ x: cut.ex + cut.fx * 190, z: cut.ez + cut.fz * 190, radius: 300 })),
-    roadExitLines);
+    railExitAnchors, roadExitLines);
 
   // --- base noise: fBm detail + domain-warped ridge, and a smooth variant ---
   function core(x: number, z: number): { d: number; s: number } {
@@ -2152,9 +2159,8 @@ function* heightFieldBuildSteps(
     getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
     // the map-borders lane: where the near ring hands its continued ground over to the authored ranges
     getBorderHandOverAt: border.handOverAt,
-    getBorderWoodsAt: border.woodsAt,
-    getBorderHedgeAt: border.hedgeAt,
-    _borderParcelAt: border.parcelTintAt,
+    // (a receipt's classic border — the rim before the landform — publishes no woods, hedges or parcels)
+    ...(border.settings.classic ? {} : { getBorderWoodsAt: border.woodsAt, getBorderHedgeAt: border.hedgeAt, _borderParcelAt: border.parcelTintAt }),
     _roadExitAt: roadExitAt,
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),
