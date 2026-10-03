@@ -309,7 +309,7 @@ export const PAINT = Object.freeze({
 
 // The hero's first round goes out on a flank (the barrel crosses the frame, away from the lens) in a third of the shots,
 // spread over the kinds (owner 2026-10-03: "experiment with turrets being at unique angles and rotations").
-export const FLANK = new Set([2, 5, 8, 9, 12, 15, 19, 21, 25, 28, 30, 35, 39, 43, 45]);
+export const FLANK = new Set([2, 5, 6, 8, 9, 12, 15, 19, 21, 25, 28, 30, 35, 39, 43, 45]);
 // Close holds where the hero's first free round angles at the lens instead (the turret lab's strongest close frames).
 export const LENS = new Set([16, 20, 26, 31, 37]);
 export const turretStyle = n => (FLANK.has(n) ? 'flank' : LENS.has(n) ? 'lens' : 'sectors');
