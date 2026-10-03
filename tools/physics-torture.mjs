@@ -326,6 +326,11 @@ export const CASES = [
   { id: 'air-fire', group: 'air', seconds: (w) => 1 + w.jumpFlightS + 3, terrain: TERRAIN.flat(), input: hold(),
     actions: [{ t: 1, kind: 'jump' }, ...[1.2, 1.55, 1.9, 2.25, 2.6, 2.95].map((t) => ({ t, kind: 'launch', dir: [0, 0, 1] }))],
     modes: 'jump' },
+  // Moon gravity (field audit): a hull hit at the top of a boost spun onto its back before it came down. Each hit turned
+  // the airborne hull by the suspension's ground rock; in flight it turns it by the rigid body's share, as a shot does.
+  { id: 'air-hit', group: 'air', seconds: (w) => 1 + w.jumpFlightS + 3, terrain: TERRAIN.flat(), input: hold(),
+    actions: [{ t: 1, kind: 'jump' }, ...[1.5, 2, 2.5].map((t, i) => ({ t, kind: 'knock', dir: i === 1 ? [0, 0.1, -1] : [1, 0.1, 0.2], mps: 4 }))],
+    modes: 'jump' },
   { id: 'kicker', group: 'air', seconds: (w) => 2 + w.dropS(8) * 2 + 3, terrain: TERRAIN.kicker(22, 7, 14), spawn: { speed: 'top' }, input: hold(1) },
   { id: 'land-slope', group: 'air', seconds: (w) => w.dropS(8) + 6, terrain: TERRAIN.slopeAlong(25), spawn: { dropTo: 8 }, input: hold(0, 0, true), rest: 'tail' },
   { id: 'land-tank', group: 'air', seconds: (w) => w.dropS(7) + 6, terrain: TERRAIN.flat(), extras: [{ id: 'lower', specId: 'm1a2', x: 0, z: 0 }],

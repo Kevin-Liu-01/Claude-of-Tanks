@@ -3779,8 +3779,12 @@ export function applyShellKnock(state: TankState, dirX: number, dirY: number, di
   const spr = state._spring;
   spr.recoilVX += kx * knockMps * KNOCK_TRANSLATION_GAIN;
   spr.recoilVZ += kz * knockMps * KNOCK_TRANSLATION_GAIN;
-  spr.pitchV += -along * knockMps * 0.12;
-  spr.rollV += (kx * fz - kz * fx) * knockMps * 0.12;
+  // in flight a hit turns the hull by its rigid-body share, as a shot fired in flight does (fireRecoil): the rock is the
+  // suspension's, and at Mars and Moon gravity a hit at the top of a boost spun the hull onto its back before it came
+  // down, the air barely damping the spin (physics lane, 2026-10-03; Moon field audit)
+  const turn = state.grounded === false ? AIR_RECOIL_TURN_SCALE : 1;
+  spr.pitchV += -along * knockMps * 0.12 * turn;
+  spr.rollV += (kx * fz - kz * fx) * knockMps * 0.12 * turn;
   if (knockMps > 2.5) liftTankRide(state, (knockMps - 2.5) * 0.35 + Math.max(0, dirY) * knockMps * 0.3);
 }
 

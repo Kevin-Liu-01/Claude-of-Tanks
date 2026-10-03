@@ -867,7 +867,8 @@ contact constraints and cannot be crossed by residual uphill speed.
   A push is the shortest way out of a footprint (the separating distance toward either side, not the overlap of the
   projections, which for a hull inside a wide footprint is its own width).
 - *Firing in flight.* An airborne hull takes a tenth of the recoil's ground rock as rotation (the rigid body's share;
-  there is no suspension to rock against).
+  there is no suspension to rock against), and a tenth of a shell hit's (a hit at the top of a Moon boost spun the
+  hull onto its back before it came down).
 - *Edges and shells slide.* An undriven hull tipping about an edge, or tumbling, rests on that edge or on its shell,
   not on its tracks: nothing holds it but sliding friction (the slide law), so a hull that lands across a roof's edge
   tips off it and falls instead of see-sawing there for seconds. A driven hull keeps its tracks' purchase.

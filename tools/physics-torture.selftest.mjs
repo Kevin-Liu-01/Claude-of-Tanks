@@ -129,6 +129,12 @@ check('air-fire', 'heavy', 'moon', [
   g('tilt in flight (rad)', (m) => m.airTiltMaxRad, 0.5, 'before: 1.95 rad'),
   g('overturned (s)', (m) => m.overturnedS, 0, 'before: 12.1 s on its back'),
 ]);
+// A hit in flight (Moon gravity field audit) turns the airborne hull by the rigid body's share too (movement.ts
+// applyShellKnock): three hits through a Moon boost tipped the hull 69 degrees and it came down tumbling.
+check('air-hit', 'medium', 'moon', [
+  g('tilt in flight (rad)', (m) => m.airTiltMaxRad, 0.5, 'before: 1.20 rad'),
+  g('tumbling (s)', (m) => m.tumblingS, 0, 'before: 15.3 s, from the tumbling landing on'),
+]);
 
 // Prediction replays the authority's step from the checkpoint (movement checkpoint v4 carries the tip state).
 check('drive-field-trench', 'medium', 'earth', [
@@ -175,4 +181,4 @@ if (failures.length) {
   for (const line of failures) console.error(`  ${line}`);
   process.exit(1);
 }
-console.log(`physics-torture.selftest: ${runs} torture runs — boost ceiling, cliff edges, the Sirocco climb and swing, stacking, roof edges, the Moon step, crest launches, trench crossings, firing in flight, the landing stroke and the dive, settling contacts, prediction replay and rest all hold`);
+console.log(`physics-torture.selftest: ${runs} torture runs — boost ceiling, cliff edges, the Sirocco climb and swing, stacking, roof edges, the Moon step, crest launches, trench crossings, firing and hits in flight, the landing stroke and the dive, settling contacts, prediction replay and rest all hold`);
