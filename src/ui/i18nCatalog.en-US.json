@@ -3797,5 +3797,11 @@
   "flight.link": "Carrier link distance",
   "flight.speed": "Airspeed",
   "flight.zoom": "Scope magnification",
-  "flight.range": "Target distance"
+  "flight.range": "Target distance",
+  "flight.view.infrared": "Infrared",
+  "flight.view.thermal": "Thermal",
+  "flight.view.night": "Night vision",
+  "flight.view.daylight": "Daylight",
+  "flight.view.next": "Switch to {view}",
+  "flight.view.switch": "View: {current}. Switch to {next}."
 }

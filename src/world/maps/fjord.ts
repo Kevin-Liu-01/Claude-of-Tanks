@@ -120,6 +120,9 @@ export default {
     // ribs): gneiss knobs and slabs through the turf on the steeper faces below the treeline, inside a halo of scree
     // (horizonVista.ts outcrops) — the palette is still unchanged
     outcrops: 1,
+    // the mountains lane (2026-10-02): Fjord keeps its aiguilles — its crest was serrated, not coned (the skyline cone
+    // measure, horizonMassif.selftest.mjs: 3 over three seeds), and the carved landform smoothed it into a wall (11)
+    massif: false,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'broken-stratocumulus', windDirDeg: 250, scud: 0.35, farBand: 0.6, fogBank: 0.4, fogBankTopM: 90, rain: 0.3, virga: 0.15, nightGlow: 0.2, nightGlowHex: 0xffd2a0 },
