@@ -20,14 +20,17 @@ function ok(cond, label) {
 
 const DECK_Y = 25, CLIFF_Z = 40;
 /** The deck: north of a 4 m cliff face everything stands 25 m up; a ramp corridor (x 100..130, its sides 3 m faces)
- * climbs to it from z = 40 to z = 125. */
+ * climbs to it from z = 40 to z = 100. (Physics lane, 2026-10-03: the ramp ran to z = 125, and the route the 25 m
+ * navigation grid takes off it at z = 100, west onto the deck, crossed a 7 m side face of 68 degrees the grid cannot
+ * see; the bot reached the deck only because its own support samples carried it up that face, the terrain-wall bug.
+ * A face is a wall now, so the ramp meets the deck where the route leaves it.) */
 function deckField(ramp) {
   const cliff = (z) => Math.max(0, Math.min(DECK_Y, (z - (CLIFF_Z - 2)) / 4 * DECK_Y));
   const getHeightAt = (x, z) => {
     const plateau = cliff(z);
     if (!ramp || x < 97 || x > 133) return plateau;
     // inside the corridor the ramp (floor level up to the cliff line); across its 3 m side faces a blend to the deck
-    const ramped = z <= CLIFF_Z ? 0 : Math.min(DECK_Y, (z - CLIFF_Z) / 85 * DECK_Y);
+    const ramped = z <= CLIFF_Z ? 0 : Math.min(DECK_Y, (z - CLIFF_Z) / 60 * DECK_Y);
     const side = Math.max(0, Math.min(1, Math.max(100 - x, x - 130) / 3));
     return ramped + (plateau - ramped) * side;
   };

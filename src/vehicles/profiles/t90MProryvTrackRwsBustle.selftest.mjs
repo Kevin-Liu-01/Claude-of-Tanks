@@ -2,8 +2,21 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { VEHICLE_HULL_LENGTH_FACTORS, VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
 
 const near = (value, target, epsilon = 1e-6) => Math.abs(value - target) <= epsilon;
+// Owner-directed sizes (2026-10-02, main 245aa4e4e): both long-hull T-90Ms take an additional chassis length `h`
+// (wheel stations and terminal wheels respaced, wheels kept round) before the uniform 1.05 family size `f` the
+// factory bakes into the installed frame. The builder's track receipt records the authored (pre-`f`) stations, so its
+// longitudinal stations carry `h`; installed bounds and the published dimensions carry `f`.
+const h = VEHICLE_HULL_LENGTH_FACTORS.t90m ?? 1, f = VEHICLE_SIZE_FACTORS.t90m ?? 1;
+const longHull = (track, id) => {
+  const hullLength = VEHICLE_HULL_LENGTH_FACTORS[id] ?? 1;
+  assert.ok(near(track.roadWheelSpanM, 3.60 * hullLength), `${id}: six road-wheel stations use the corrected long T-90 wheelbase`);
+  assert.ok(near(track.sprocketZ, -2.46 * hullLength) && near(track.idlerZ, 2.54 * hullLength),
+    `${id}: terminal wheels occupy the corrected long-hull stations`);
+  assert.ok(near(track.structuralHullLengthM, 6.86 * hullLength), `${id}: structural hull spans the shared RU-417/Burlak length`);
+};
 const tank = createTank('t90m', null, {
   proceduralOnly: true,
   quality: 'high',
@@ -19,16 +32,18 @@ try {
   const track = hullRig.userData.t90mProryvTrackReceipt;
   assert.ok(track, 'T-90M exposes its installed running-gear receipt');
   assert.ok(near(track.roadWheelRadiusM, 0.31), 'road wheels use the non-overlapping 310-mm radius');
-  assert.ok(near(track.roadWheelSpanM, 3.60), 'six road-wheel stations use the corrected long T-90 wheelbase');
-  assert.ok(near(track.sprocketZ, -2.46) && near(track.idlerZ, 2.54),
-    'terminal wheels occupy the corrected long-hull stations');
-  assert.ok(near(track.structuralHullLengthM, 6.86), 'structural hull spans the shared RU-417/Burlak length');
+  longHull(track, 't90m');
+  // Seeded defect: the former unstretched stations must fail the owner's long chassis.
+  if (h !== 1) assert.throws(() => longHull({ ...track, roadWheelSpanM: 3.60, sprocketZ: -2.46, idlerZ: 2.54,
+    structuralHullLengthM: 6.86 }, 't90m'), assert.AssertionError, 'the unstretched T-90M wheelbase is rejected');
   assert.ok(near(track.trackEnvelopeHeightM, 0.93), 'linked course spans the 930-mm vertical envelope');
   assert.ok(near(track.rideHeightIncreaseM, 0.16), 'finished hull and turret gain 160 mm of ride height');
   assert.equal(track.roadWheelStations, 6, 'native six-station cadence is preserved');
-  assert.ok(near(getSpec('t90m').dims.heightM, 2.39), 'published vehicle height follows the raised ride datum');
+  assert.ok(near(getSpec('t90m').dims.heightM, 2.39 * f), 'published vehicle height follows the raised ride datum');
   const finalGear = hullRig.userData.runningGearReceipts.at(-1);
   assert.ok(near(finalGear.wheelR, 0.31), 'canonical gear receipt records the smaller wheels');
+  assert.ok(near(Math.max(...finalGear.wheelZs) - Math.min(...finalGear.wheelZs), 3.60 * h),
+    'the built six-station course spans the stretched wheelbase the track receipt records');
   assert.ok(near(finalGear.wheelY - finalGear.wheelR, finalGear.botY + finalGear.trackTh / 2), 'loaded tire foot rests on the band face (ground-datum seat, 2026-09-17)');
 
   tank.root.updateMatrixWorld(true);
@@ -41,7 +56,7 @@ try {
   assert.ok(trackBounds.min.y <= 0.015,
     `linked shoe course remains planted on the ground datum (${trackBounds.min.y.toFixed(3)} m)`);
   const bounds = new THREE.Box3().setFromObject(tank.root);
-  assert.ok(bounds.max.y >= 2.36, `installed silhouette is taller (${bounds.max.y.toFixed(3)} m)`);
+  assert.ok(bounds.max.y >= 2.36 * f, `installed silhouette is taller (${bounds.max.y.toFixed(3)} m)`);
 
   const equipment = turretRig.userData.t90mProryvEquipmentReceipt;
   assert.ok(equipment, 'T-90M exposes its remote station receipt');
@@ -130,9 +145,9 @@ const tierXTank = createTank('t90m_proryv', null, {
 try {
   const tierXTrack = tierXTank.root.getObjectByName('rig_hull')?.userData.t90mProryvTrackReceipt;
   assert.ok(tierXTrack, 'tier-X T-90M Proryv publishes the shared long-chassis receipt');
-  assert.ok(near(tierXTrack.roadWheelSpanM, 3.60)
-    && near(tierXTrack.structuralHullLengthM, 6.86),
-  'tier-IX T-90M and tier-X Proryv use the same corrected long hull');
+  longHull(tierXTrack, 't90m_proryv');
+  assert.ok(near(tierXTrack.roadWheelSpanM, 3.60 * h) && near(tierXTrack.structuralHullLengthM, 6.86 * h),
+    'tier-IX T-90M and tier-X Proryv use the same corrected long hull');
 } finally {
   tierXTank.dispose();
 }

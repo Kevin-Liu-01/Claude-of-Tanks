@@ -7935,6 +7935,10 @@ function* createTankOwnedSteps(
   }
   const physicalBoreEvidence = physicalBore
     ? verifyPhysicalMuzzleBore(recoilG, P.muzzleZ, physicalBore) : null;
+  // The verified recess is open air by contract. The interior-fill generator and the watertight
+  // measurement read it here (tools/physical-bore-air.mjs): a voxel column inside it is never
+  // filled and never counted as a body leak, so no generated solid can cap the bore.
+  if (physicalBore) root.userData.physicalMuzzleBore = { ...physicalBore, frame: recoilG.name, muzzleZ: P.muzzleZ };
   const nominalMuzzleOuterR = Math.max(0.014, (armor.gunBarrel.radiusM || 0.04) * 0.92);
   const caliberRadius = Math.max(0.004, (spec.gun.caliberMm || 20) / 2000);
   const authoredBoreSegments = Number(spec.gun.muzzleBoreSegments);

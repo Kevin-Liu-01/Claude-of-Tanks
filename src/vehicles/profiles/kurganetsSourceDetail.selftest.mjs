@@ -2,8 +2,13 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
+import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
 
 await ensureInteriorFills(['kurganets25_x']);
+// Owner-directed whole-vehicle size (2026-10-02, main 245aa4e4e): the factory bakes the source-frame build into the
+// installed hull frame at this factor. Rays map source-frame probes in and their hits back out, so every caliper
+// below stays a source-frame number (its tolerance then binds the installed stock `f` times tighter).
+const f = VEHICLE_SIZE_FACTORS.kurganets25_x ?? 1;
 for (const quality of ['high', 'low']) {
   const tank = createTank('kurganets25_x', null,
     { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
@@ -14,10 +19,10 @@ for (const quality of ['high', 'low']) {
     tank.root.traverseVisible(mesh => { if (mesh.isMesh) meshes.push(mesh); });
     const scale = hull.getWorldScale(new THREE.Vector3()).x;
     const ray = (position, direction, far) => new THREE.Raycaster(
-      hull.localToWorld(new THREE.Vector3(...position)),
-      new THREE.Vector3(...direction).transformDirection(hull.matrixWorld), 0, far * scale,
+      hull.localToWorld(new THREE.Vector3(...position).multiplyScalar(f)),
+      new THREE.Vector3(...direction).transformDirection(hull.matrixWorld), 0, far * scale * f,
     ).intersectObjects(meshes, false).map(hit => ({
-      name: hit.object.name, point: hull.worldToLocal(hit.point.clone()),
+      name: hit.object.name, point: hull.worldToLocal(hit.point.clone()).divideScalar(f),
     }));
     // Source Object_23 full-scene witnesses distinguish outboard folded banks
     // from the old false center grille and the mudguard-derived stern plane.

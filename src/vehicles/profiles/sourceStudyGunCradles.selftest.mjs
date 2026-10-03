@@ -4,6 +4,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { ensureInteriorFills, hasInteriorFills } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
+import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
 
 // Held-out rays on the existing source-measured housing stock, in the gun
 // frame. These also cross real tube/cradle receiving sections; an empty
@@ -24,8 +25,9 @@ const cases = [
 await ensureInteriorFills(cases.map(row=>row.id));
 
 for (const quality of ['high','low']) for (const sourceRow of cases) {
-  // These source witnesses predate the owner's uniform 90% vehicle sizing.
-  const factor = ['griffin50_x','k21_x','ajax_x'].includes(sourceRow.id) ? .90 : 1;
+  // These source witnesses predate the owner's uniform vehicle sizing. The factors come from the size policy itself:
+  // a hand-kept list missed main's 0.9 Kurganets-25 and BMP-3M Dragun (2026-10-02, 245aa4e4e).
+  const factor = VEHICLE_SIZE_FACTORS[sourceRow.id] ?? 1;
   const row = {...sourceRow, origin:sourceRow.origin.map(v=>v*factor),
     plane:sourceRow.plane*factor, seatZ:sourceRow.seatZ*factor,
     ...(sourceRow.dark ? {dark:{...sourceRow.dark,origin:sourceRow.dark.origin.map(v=>v*factor)}} : {})};
