@@ -1,11 +1,12 @@
 # Fleet follow-up — 2026-10-02
 
-Status: source implementation and visual review complete; final generated-record
-refresh and publication in progress. The failed and incomplete checks below
-remain open; this is not a fully qualified release.
+Status: complete implemented batch prepared for the owner's requested main
+push, with refreshed generated records and inspected captures. The failed and
+incomplete checks below remain open; this is not a fully qualified release.
 Branch `codex/pr9-general-and-fleet-followup`, isolated worktree
 `/Users/kevinliu/.codex/worktrees/pr9-general-improvements/claude-of-tanks`.
-Rebased cleanly onto `origin/main` at `ea639952b` on 2026-10-03. The earlier
+Rebased cleanly onto `origin/main` at `ea639952b`, then `d2a160d1c`, on
+2026-10-03. The latter includes the national crew-voice update. The earlier
 PR #9 integration remains frozen at `1aff79733001601086689097b0092dc45cfa63a7`;
 its complete 1,243-check run finished with 30 failures. Twenty-five subsequently
 passed focused reruns, while five remain unresolved (listed in the companion
@@ -59,8 +60,8 @@ uses equipment buckets and semantic material roles. No broad hidden filler.
 Before publication: HIGH/LOW physical checks; yaw/pitch/recoil and moving gear;
 live/spent/reset ERA; full anatomy update/check; scoped assets and ledger;
 actual Garage/gallery views and switching; typecheck, tests, both builds and
-scoped release gate. All are pending for this new batch. Prior main/deploy
-authorization persists; inherited failures require fresh baseline evidence.
+scoped release gate. Actual outcomes and remaining work are recorded below;
+the generation commands alone are not release qualification.
 
 ## Parallel task scope (one writer, serial implementation)
 
@@ -208,3 +209,24 @@ after its generated anatomy and marking checks passed. The saved images are
 fresh; the remaining correction is to synchronize the runtime projection with
 the hash-verified native capture and repeat the anatomy check. The failed
 attempt is retained in `.qa-dev/pr9-followup/presentation-v3.json`.
+
+### Final projection correction and landing checks
+
+The missing runtime projection records were regenerated from the successful
+v3 native image captures, after validating every selected asset's hash and
+size. This changed 27 projection envelopes and preserved every rendered body
+anchor and every unselected source row. The direct consistency assertion from
+the failed audit now passes for all 219 runtime/manifest records. This repairs
+the mismatch; importing a captured envelope is not a new native centering pass.
+
+After the final rebase, typecheck/unused-symbol checks, exact Garage ordering
+and all 13 crew-voice pack policy checks pass. The two production builds and
+attribution audit passed in v3 before that final crew-voice rebase.
+
+The owner requested the complete push now. The v4 read-only follow-up remains
+queued: native centering, the 15 concept checks, the complete anatomy check,
+post-rebase builds, then `npm run tank:release:check -- --ids=<33 scoped IDs>
+--gate`. The release command acquires its own queue after the preceding lease
+ends. No complete release pass, new combined full-suite pass, or deployment is
+claimed. Local continuation: `.qa-dev/pr9-followup/projection-repair-owner.log`,
+`projection-repair.json` and `release-v4.json`.
