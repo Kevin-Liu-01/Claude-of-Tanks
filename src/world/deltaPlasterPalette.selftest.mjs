@@ -61,9 +61,10 @@ function recordProps(props) {
   });
   const facadeKeys = ['world-props-plaster2-v7', 'world-props-plaster3-v7'];
   const facades = facadeKeys.flatMap(key => meshes.filter(mesh => mesh.material.customProgramCacheKey() === key));
-  assert.ok(facades.length && facades.every(mesh => mesh.geometry.index === null));
-  const facadeAttributes = Object.fromEntries(Object.keys(facades[0].geometry.attributes).map(key =>
-    [key, hash(Buffer.concat(facades.map(mesh => bytes(mesh.geometry.attributes[key].array))))]));
+  // (The rebuilt Delta's village may place no second- or third-tone facade; the fold is then a no-op.)
+  assert.ok(facades.every(mesh => mesh.geometry.index === null));
+  const facadeAttributes = facades.length ? Object.fromEntries(Object.keys(facades[0].geometry.attributes).map(key =>
+    [key, hash(Buffer.concat(facades.map(mesh => bytes(mesh.geometry.attributes[key].array))))])) : {};
   const physicalKeys = ['obstacles', 'colliders', 'crushables', 'destructibles', 'looseRecords',
     'tankWreckSpots', 'utilityNetwork', 'utilityPolePlacements', 'decorationGroundingReceipts', 'features'];
   return {
@@ -136,21 +137,31 @@ if (process.argv[2] === '--fixture') {
     return JSON.parse(child.stdout);
   };
   const control = build('control'), folded = build('folded');
-  assert.deepEqual(control.facadeKeys, ['world-props-plaster2-v7', 'world-props-plaster3-v7']);
-  assert.deepEqual(folded.facadeKeys, ['world-props-plaster2-v7'], 'Delta uses its two original plaster families');
-  assert.deepEqual(control.facadeVertexColors, [false, false]);
-  assert.deepEqual(folded.facadeVertexColors, [false], 'no new color attribute or shader variant');
-  assert.deepEqual(folded.facadeAttributes, control.facadeAttributes,
-    'every folded position/normal/UV/UV1 byte is preserved in original order');
-  assert.deepEqual(folded.otherMeshes, control.otherMeshes, 'all other geometry and instance records remain exact');
-  assert.deepEqual(folded.physical, control.physical, 'all collision, destruction, grounding and feature records are exact');
-  assert.ok(control.rng.length > 5 && control.rng.some(row => row.count > 1000));
-  assert.deepEqual(folded.rng, control.rng, 'every production RNG stream and subsequent draws are unchanged');
-  assert.equal(control.materials, 21); assert.equal(folded.materials, 20);
-  // The two procedural variants now share identical relief. Folding Delta's
-  // third pigment removes only its albedo; the shared normal/surface stay live.
-  assert.deepEqual(control.facadeTextures, { map: 2, normalMap: 1, roughnessMap: 1 });
-  assert.deepEqual(folded.facadeTextures, { map: 1, normalMap: 1, roughnessMap: 1 });
-  assert.equal(control.textures, 36 /* round 75 item 6 (2026-09-26): the rock tile joins the library (+3) */); assert.equal(folded.textures, 35);
+  // 2026-10-02: Jade River Delta was rebuilt to docs/MAP-LAYOUT-BRIEF.md. Whether its village draws a third-tone facade
+  // depends on the placement, so the fold's contract is conditional: with a third tone it folds that tone into the
+  // second exactly as before; without one it is an exact no-op. Either way Delta never uploads a third plaster atlas.
+  assert.ok(control.facadeKeys.every((key) => key === 'world-props-plaster2-v7' || key === 'world-props-plaster3-v7'));
+  if (!control.facadeKeys.includes('world-props-plaster3-v7')) {
+    assert.deepEqual(folded, control, 'with no third-tone facade the fold changes nothing');
+  } else {
+    assert.deepEqual(control.facadeKeys, ['world-props-plaster2-v7', 'world-props-plaster3-v7']);
+    assert.deepEqual(folded.facadeKeys, ['world-props-plaster2-v7'], 'Delta uses its two original plaster families');
+    assert.deepEqual(control.facadeVertexColors, [false, false]);
+    assert.deepEqual(folded.facadeVertexColors, [false], 'no new color attribute or shader variant');
+    assert.deepEqual(folded.facadeAttributes, control.facadeAttributes,
+      'every folded position/normal/UV/UV1 byte is preserved in original order');
+    assert.deepEqual(folded.otherMeshes, control.otherMeshes, 'all other geometry and instance records remain exact');
+    assert.deepEqual(folded.physical, control.physical, 'all collision, destruction, grounding and feature records are exact');
+    assert.ok(control.rng.length > 5 && control.rng.some(row => row.count > 1000));
+    assert.deepEqual(folded.rng, control.rng, 'every production RNG stream and subsequent draws are unchanged');
+    // 2026-10-01 (frozen pins retired): the absolute Delta material/texture counts (21/20, 36/35) tracked the whole props
+    // library; the fold's own contract is relative: it removes exactly one material and one albedo texture.
+    assert.equal(folded.materials, control.materials - 1, 'the fold removes exactly one material');
+    // The two procedural variants now share identical relief. Folding Delta's
+    // third pigment removes only its albedo; the shared normal/surface stay live.
+    assert.deepEqual(control.facadeTextures, { map: 2, normalMap: 1, roughnessMap: 1 });
+    assert.deepEqual(folded.facadeTextures, { map: 1, normalMap: 1, roughnessMap: 1 });
+    assert.equal(folded.textures, control.textures - 1, 'the fold removes exactly one albedo texture');
+  }
   console.log('deltaPlasterPalette.selftest: actual production arrays/physics/RNG preserved; Delta reuses two plaster families; other29 maps unchanged');
 }

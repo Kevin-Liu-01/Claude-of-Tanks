@@ -5,8 +5,27 @@ export interface HardstandConfig {
   length: number;
   yawDeg?: number;
   level?: number;
-  /** Rise per metre along the strip's local +Z; omitted fits the existing road. */
-  grade?: number;
+  /** Rise per metre along the strip's local +Z. Omitted fits the existing road, held to 1 %; 'road' fits it up to
+   * AUTHORED_GRADE_LIMIT, so an apron a sloping road crosses keeps the road's grade at every terrain seed; a number
+   * tilts the apron with its hillside, up to AUTHORED_GRADE_LIMIT. */
+  grade?: number | 'road';
+  /** The bank's width outside the strip in metres; omitted is the road blend's own ROAD_BANK_M. A wider bank meets
+   * ground standing metres off the apron's plane at a slope a tank can climb (the apron bank law,
+   * tools/hardstand-banks.mjs). */
+  bankM?: number;
+}
+
+/** The road blend's own bank: the ground holds an apron's plane to 3.8 m and is back on its own height by 14 m. */
+const ROAD_BANK_M = 14 - 3.8;
+
+/** The steepest authored apron grade (maps lane, 2026-10-02): a graded yard still seats a zone disc (30 m radius,
+ * 7 m relief) and a turbo goal (18 m, 5 m) with room to spare, so an apron on a hillside can follow the hill instead of
+ * cutting a level pit into it. */
+const AUTHORED_GRADE_LIMIT = 0.08;
+
+/** An apron's bank width in metres: its authored bankM, never narrower than the road blend's. */
+export function hardstandBankM(strip: Pick<HardstandConfig, 'bankM'>): number {
+  return Math.max(ROAD_BANK_M, strip.bankM ?? ROAD_BANK_M);
 }
 
 interface HardstandPlane extends HardstandConfig {
@@ -29,10 +48,11 @@ function prepare(
     const angle = (strip.yawDeg ?? 0) * Math.PI / 180;
     const c = Math.cos(angle), s = Math.sin(angle);
     const half = strip.length * 0.5;
-    const grade = strip.grade ?? (roadHeight(strip.x + s * half, strip.z + c * half)
+    const grade = typeof strip.grade === 'number' ? strip.grade : (roadHeight(strip.x + s * half, strip.z + c * half)
       - roadHeight(strip.x - s * half, strip.z - c * half)) / Math.max(1, strip.length);
+    const limit = strip.grade === undefined ? 0.01 : AUTHORED_GRADE_LIMIT;
     return { ...strip, c, s, level: strip.level ?? roadHeight(strip.x, strip.z),
-      grade: Math.max(-0.01, Math.min(0.01, grade)) };
+      grade: Math.max(-limit, Math.min(limit, grade)) };
   });
 }
 
@@ -70,23 +90,53 @@ export function stampHardstandRoadGrids(
   const gridGuard = step * Math.SQRT2;
   // Resolve all planes before modifying the shared elevation grid.
   for (const strip of prepare(strips, roadHeight)) {
-    const [x0, x1, z0, z1] = bounds(strip, step, size, halfMap, 14 + gridGuard);
+    // A wider bank stretches the same blend: the road distance grows ROAD_BANK_M / bank as fast outside the strip,
+    // and the plane's elevation feathers out over the bank plus the flat shoulder.
+    const bank = hardstandBankM(strip), stretch = ROAD_BANK_M / bank;
+    const feather = bank + 3.8;
+    const [x0, x1, z0, z1] = bounds(strip, step, size, halfMap, feather + gridGuard);
     for (let iz = z0; iz <= z1; iz++) for (let ix = x0; ix <= x1; ix++) {
       const x = ix * step - halfMap, z = iz * step - halfMap;
       const sd = signedDistance(strip, x, z) - gridGuard;
-      if (sd >= 14) continue;
+      if (sd >= feather) continue;
       const at = iz * size + ix;
       const along = (x - strip.x) * strip.s + (z - strip.z) * strip.c;
       const target = strip.level + along * strip.grade;
-      elevation[at] += (target - elevation[at]) * (1 - smooth(0, 14, sd));
+      elevation[at] += (target - elevation[at]) * (1 - smooth(0, feather, sd));
       // 3.8 is the canonical fully-flat road shoulder. The entire rectangle
       // inherits that existing path; no hardstand branch enters heightAt.
-      distance[at] = Math.min(distance[at], Math.max(0, sd + 3.8));
+      distance[at] = Math.min(distance[at], Math.max(0, sd * stretch + 3.8));
     }
   }
 }
 
-/** Paint full pavement, not wheel ruts/centre grass, in the existing RG mask. */
+/** The farthest the painted surfacing spills past an apron's edge, in metres (stampHardstandRoadMask). */
+export const HARDSTAND_PAINT_SPILL_M = 4;
+
+function paintHash(ix: number, iz: number): number {
+  let h = Math.imul(ix | 0, 0x27d4eb2d) ^ Math.imul(iz | 0, 0x165667b1) ^ 0x5bd1e995;
+  h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
+  h = Math.imul(h ^ (h >>> 12), 0x297a2d39);
+  return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
+}
+
+function paintNoise(x: number, z: number): number {
+  const ix = Math.floor(x), iz = Math.floor(z), fx = x - ix, fz = z - iz;
+  const ux = fx * fx * (3 - 2 * fx), uz = fz * fz * (3 - 2 * fz);
+  const a = paintHash(ix, iz), b = paintHash(ix + 1, iz), c = paintHash(ix, iz + 1), d = paintHash(ix + 1, iz + 1);
+  return a + (b - a) * ux + (c - a) * uz + (a - b - c + d) * ux * uz;
+}
+
+/** How far the surfacing spills past the edge at (x, z), 0..HARDSTAND_PAINT_SPILL_M: gravel and spoil worked out onto
+ * the bank in irregular tongues, so a yard does not read as a ruled rectangle from the air. Outward only: the apron
+ * itself is always fully paved. */
+function paintSpill(x: number, z: number): number {
+  const n = paintNoise(x / 17 + 41.3, z / 17 - 7.9) * 0.62 + paintNoise(x / 6.5 - 3.1, z / 6.5 + 12.7) * 0.38;
+  return HARDSTAND_PAINT_SPILL_M * smooth(0.35, 0.85, n);
+}
+
+/** Paint full pavement, not wheel ruts/centre grass, in the existing RG mask; the paint's outline wanders out onto
+ * the bank in irregular tongues (paintSpill). */
 export function stampHardstandRoadMask(
   strips: readonly HardstandConfig[],
   pixels: Uint8ClampedArray,
@@ -95,10 +145,10 @@ export function stampHardstandRoadMask(
 ): void {
   const step = mapSize / size, halfMap = mapSize * 0.5;
   for (const strip of prepare(strips, () => 0)) {
-    const [x0, x1, z0, z1] = bounds(strip, step, size, halfMap, 2);
+    const [x0, x1, z0, z1] = bounds(strip, step, size, halfMap, 2 + HARDSTAND_PAINT_SPILL_M);
     for (let iz = z0; iz <= z1; iz++) for (let ix = x0; ix <= x1; ix++) {
-      const coverage = 1 - smooth(-0.75, 1.25,
-        signedDistance(strip, (ix + 0.5) * step - halfMap, (iz + 0.5) * step - halfMap));
+      const edge = signedDistance(strip, (ix + 0.5) * step - halfMap, (iz + 0.5) * step - halfMap);
+      const coverage = 1 - smooth(-0.75, 1.25, edge - paintSpill((ix + 0.5) * step - halfMap, (iz + 0.5) * step - halfMap));
       if (coverage <= 0) continue;
       const at = (iz * size + ix) * 4;
       pixels[at] = Math.max(pixels[at], coverage * 255);
@@ -130,4 +180,14 @@ export function createHardstandVegetationExclusion(
     }
     return false;
   };
+}
+
+/** Whether (x, z) lies under any apron's painted surfacing, its spill included (receipts that tell paved yards from
+ * protected roads). */
+export function createHardstandPaintCover(
+  strips: readonly HardstandConfig[] | undefined,
+): ((x: number, z: number) => boolean) | null {
+  if (!strips?.length) return null;
+  const planes = prepare(strips, () => 0);
+  return (x, z) => planes.some((strip) => signedDistance(strip, x, z) < HARDSTAND_PAINT_SPILL_M + 1.25);
 }

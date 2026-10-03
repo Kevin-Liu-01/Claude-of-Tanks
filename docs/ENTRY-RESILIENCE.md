@@ -13,7 +13,7 @@ read it.
 | Cause (audit rank) | Fix | Where |
 |---|---|---|
 | 9. No production error signal | An anonymous beacon: one `session` record per page load (the whole boot as a timings map, the capability summary, the outcome, a folded battle entry), `error` records only as errors happen, one small `entry` follow-up — three requests per session at most, one for a clean boot. `navigator.sendBeacon` (fetch keepalive fallback) to a Cloudflare Worker that writes one Workers Analytics Engine data point per record; a Vercel fallback that only logs; a report tool over the SQL API. | `cloudflare/telemetry/`, `server/telemetryRecord.ts`, `src/entry/telemetry.ts`, `api/telemetry.ts`, `tools/telemetry-report.mjs` |
-| 1. No WebGL2 gate | A throwaway WebGL2 context before `createRenderer` reads texture units, texture size, vertex texture units, `EXT_color_buffer_float`, the renderer family, storage and worker availability. Each hard failure is one sentence and one action on the inline boot screen; the boot halts on purpose instead of spending the recovery reloads. Software rasterisers, blocked storage and blocked workers proceed with a one-line notice. | `src/engine/capabilityGate.ts`, `index.html` (`halt()`, `#cot-boot-notice`) |
+| 1. No WebGL2 gate | A throwaway WebGL2 context before `createRenderer` reads texture units, texture size, vertex texture units, `EXT_color_buffer_float`, the renderer family, storage and worker availability. Each hard failure is one sentence and one action on the inline boot screen; the boot halts on purpose instead of spending the recovery reloads. Software rasterisers, blocked storage and blocked workers proceed with a one-line notice. Since 2026-10-02 a repeat boot reuses the verdict: a record (`cot.capability.verdict`, keyed by `CAPABILITY_CACHE_VERSION`, the user agent, the memory class and the texture-unit requirement, 14 days at most) is written only after the real renderer came up and matched it; every boot that uses it checks the real context's unmasked renderer and limits (`confirmBootCapability`, called by main.ts right after `createRenderer`) and re-runs the gate on that context when they differ; stops are never cached; `?gate=fresh` probes and clears it; a renderer that throws clears it. Measured on cold headless Chrome (ANGLE Metal, M5 Max): gate-to-real-context 14.6 → 8.1 ms (the first-context cost moves into the real context, 3.4 → 7.3 ms) — a desktop figure; the mobile saving was estimated, not measured. | `src/engine/capabilityGate.ts`, `index.html` (`halt()`, `#cot-boot-notice`) |
 | 7. Texture-unit ceiling unverified | Measured, not assumed: the terrain fragment program binds **16** samplers on desktop (10 declared + `envMap` + `dfgLUT` + 4 CSM cascade shadow maps; 15 on the 3-cascade mobile tier), exactly the WebGL2 minimum. A driver reporting fewer stops with "exposes only N texture units; the battlefield needs 16". | `capabilityGate.ts` `TERRAIN_TEXTURE_UNITS_REQUIRED` |
 | 2. Watchdogs fire on healthy work | The 30 s / 60 s document watchdogs are re-armed by every Resource Timing arrival and every module stage, so they fire only after a full window with nothing arriving; a silent minute is confirmed by a same-origin probe before the document is replaced (a dead connection waits for `online` instead). The terminal message names the failed file (from Resource Timing `responseStatus`), the refused driver, or the slow connection. While the module has not claimed the stage line, the splash counts the entry graph's files as they land. | `index.html` chunk recovery r4 |
 | 3. Asset caching | Deploy 89 served `/assets/(.*)` as `public, max-age=31536000, immutable`; a vercel.json header rule applies to 404s too and the edge cached them for a year, so one transient miss during a promotion poisoned that edge for every player ("A game file failed to download", 2026-09-25). The rule is gone (deploy 93). Since deploy 94 `node tools/vercel-output-immutable.mjs` runs between `vercel build` and `vercel deploy --prebuilt`: it lists the hashed files that exist in `.vercel/output/static/assets` and writes immutable header routes for exactly those (groups of 40, case-sensitive, ahead of the filesystem handle), so a warm cache never revalidates the entry graph while a missing path matches no rule and heals on the next request (`tools/vercel-output-immutable.selftest.mjs`). Documents stay `must-revalidate`; `/maps` and `/minimaps` keep the default. | `vercel.json`, `docs/DEVELOPMENT.md` "Asset caching" |
@@ -36,10 +36,14 @@ stores it in Workers Analytics Engine.
 Sink: the Cloudflare Worker `cloudflare/telemetry` (`README.md` there has
 the deploy steps), reached through `VITE_TELEMETRY_URL` = its origin, baked
 into the bundle and into the `cot-telemetry` meta's `data-url` for the
-inline watchdog. Unset, both post to the Vercel fallback `POST
-/api/telemetry` (same origin; the ICE endpoint's origin allowlist,
-`COT_ALLOWED_ORIGINS` extends it), which validates and logs one JSON line
-per record and stores nothing. Bodies are JSON as `text/plain` — a simple
+inline watchdog. Unset (the deploy strips the sensitive value, so the live
+`data-url` is empty), both recover the Worker by the official-host rule — the
+module client in `telemetryEndpoints()`, the inline watchdog in
+`telemetryErrorEndpoint()` since 2026-10-01
+(`src/entry/inlineWatchdogSink.selftest.mjs`); every other host posts to the
+Vercel fallback `POST /api/telemetry` (same origin; the API origin allowlist
+of `api/_lib/policy.ts`, `COT_ALLOWED_ORIGINS` extends it), which validates
+and logs one JSON line per record and stores nothing. Bodies are JSON as `text/plain` — a simple
 cross-origin request, no preflight — capped at 2 KB by both sinks (the
 client trims to 1.5 KB). Three routes on the Worker:
 
@@ -165,9 +169,11 @@ layout), `server/telemetry.selftest.mjs` (the fallback), `src/entry/telemetry.se
 (the HUD mask note through the v2 client and the shared validator), `tools/telemetry-report.selftest.mjs`,
 `cloudflare/telemetry/test/telemetry.test.ts` (the Worker, Workers runtime —
 `npm run test:telemetry:cloudflare`), `src/engine/capabilityGate.selftest.mjs`,
+`src/engine/capabilityGateCache.selftest.mjs` (the cached verdict: record, key, expiry, corrupt records,
+throwing storage, `?gate=fresh`, real-context mismatch),
 `src/ui/chunkRecovery.selftest.mjs` (r3 cases plus the clocked network
 harness), `src/gallery/chunkRecovery.selftest.mjs` (no cacheable-404 header rule),
 `src/game/battleEntryLifecycle.selftest.mjs`, `src/engine/frameScheduler.selftest.mjs`,
 `src/game/soloBattleEntryRuntime.selftest.mjs`, `src/ui/garageReturnFailure.selftest.mjs`,
-`src/ui/privateRoomFailurePresentation.selftest.mjs`, `src/ui/playMenu.selftest.mjs`,
+`src/ui/roomFailurePresentation.selftest.mjs`, `src/ui/playMenu.selftest.mjs`,
 `src/engine/bootLifecycle.selftest.mjs`; all registered in `tools/selftest-suites.mjs`.

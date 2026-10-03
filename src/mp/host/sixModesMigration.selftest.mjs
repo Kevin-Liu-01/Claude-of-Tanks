@@ -6,8 +6,8 @@ import { captureEntityExtras, encodeMigrationKeyframe, decodeMigrationKeyframe, 
 import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
-await ensureAuthorityFleet(['m1a2']);
 const seats=[{seat:0,playerId:'pilot',name:'Pilot',team:'alpha',specId:'m1a2'},{seat:1,playerId:'enemy',name:'Enemy',team:'bravo',specId:'m1a2'},{seat:2,playerId:'friend',name:'Friend',team:'alpha',specId:'m1a2'}];
+await ensureAuthorityFleet(seats.map(seat=>seat.specId)); // the host is specs only: load the roster's combat anatomy first
 const world=()=>({mapId:'verdant',heightField:{getHeightAt:()=>0,getGroundType:()=> 'hard',getNormalAt:()=>new Vector3(0,1,0)},getObstacles:()=>[]});
 for(const mode of ['gun_game','infected','drone','ac130','juggernaut']){
  const make=resume=>createMatchActor({roomId:'mode-migration',mapId:'verdant',mode,seed:33,seats,bots:mode==='ac130'?Array.from({length:4},(_,i)=>({playerId:'ground-'+i,name:'Escort '+i,team:'alpha',specId:'m1a2'})):[],ruleset:matchRulesetFor(mode),world:world(),countdownS:0,autoStart:false,now:()=>0,schedule:()=>()=>{},resume});

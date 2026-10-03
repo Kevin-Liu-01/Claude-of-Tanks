@@ -119,6 +119,19 @@ assert.equal(applied.length, afterDispose);
 assert.equal(scene.children.length, 0);
 assert.throws(() => runtime.prepare(1337, 'monsoon'), /disposed/);
 
+// 2026-10-01 (the grounded light model): the applied light's own readability share multiplies the weather's
+let lightShare = 0.5;
+const lit = createBattleAtmosphereRuntime({ getAuthoredPreset: () => base, applyPreset() {}, getLightReadability: () => lightShare });
+lit.prepare(13, 'winter');
+assert.equal(lit.weather.timeOfDay, 'day'); assert.equal(getVehicleReadabilityScale(), 0.5, 'day: the light\'s share');
+lit.prepare(5, 'winter');
+assert.equal(lit.weather.timeOfDay, 'night'); near(getVehicleReadabilityScale(), .34 * 0.5, 'night: the moonlit floor × the light\'s share');
+lit.reset(); assert.equal(getVehicleReadabilityScale(), 1, 'the Garage restores full readability');
+lightShare = Number.NaN; lit.prepare(13, 'winter'); assert.equal(getVehicleReadabilityScale(), 1, 'a broken share leaves the authored readability');
+lit.reset(); lightShare = 7; lit.prepare(13, 'winter'); assert.equal(getVehicleReadabilityScale(), 1, 'the share is bounded');
+lit.dispose();
+function near(a, b, what) { assert.ok(Math.abs(a - b) < 1e-12, `${what}: ${a} vs ${b}`); }
+
 // Actual material colors: alias de-duplication, name/type exclusion, same-ID
 // rebuilt worlds, rematches and exact restoration all execute production owner.
 function horizonFixture() {

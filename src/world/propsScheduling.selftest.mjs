@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { box, jitterUV } from './propGeometry.ts';
+import { boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
 // Geometry/output equivalence is separately checked by the whole-world profile;
@@ -384,7 +384,7 @@ assert.ok(placementStart > 0 && placementEnd > placementStart);
 const placementSource = stripTypeScriptTypes(source.slice(placementStart, placementEnd));
 const wreckCast = ['m551_sheridan', 'marder1a3', 'leo2a7v', 'm1a1', 't90a'];
 
-function placementFixture({ authored = true, random = () => 0.25, code = placementSource } = {}) {
+function placementFixture({ authored = true, random = () => 0.25, code = placementSource, roadDistance = 1e9 } = {}) {
   const state = { nullBake: false, maxEmbed: 0, bakes: [], bakeDrains: 0, randomCalls: 0 };
   const outputs = { wreckGeos: [], wreckShadowGeos: [], obstacles: [], colliders: [],
     wreckScorch: [], tankWreckSpots: [], decorationGroundingReceipts: [] };
@@ -401,7 +401,9 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     },
     planGroundedObbPose: () => ({ y: 0, normalX: 0, normalY: 1, normalZ: 0,
       min: 0, max: 0, spread: 0, maxEmbed: state.maxEmbed, maxFloat: 0 }),
-    heightField: {}, _quat: { setFromUnitVectors() {} }, _upAxis: {},
+    // the road footprint law (roadFootprint.ts): far from every road unless a case puts the wreck on one
+    heightField: { _roadDist: () => roadDistance }, shiftClearOfRoadCore, boxClearOfRoadCore, placedB: [],
+    _quat: { setFromUnitVectors() {} }, _upAxis: {},
     _posv: { set() { return this; } },
     setObbShape: record => record, cloneCollisionRecord: record => structuredClone(record),
   };
@@ -451,6 +453,12 @@ function assertRejectedWreckRetry(code = placementSource) {
   assert.equal(f.outputs.colliders.length, wreckCast.length);
 }
 assertRejectedWreckRetry();
+{
+  // a hull whose footprint the road core takes everywhere within 8 m is not placed, and keeps its authored slot
+  const onRoad = placementFixture({ roadDistance: 0 });
+  assert.deepEqual(attemptWreck(onRoad), { placed: false, selected: wreckCast[0] });
+  assertNoPlacement(onRoad);
+}
 
 // Restore the observed defect in memory: selection itself consumed the slot.
 // The same functional assertion must reject this exact old ordering.
@@ -510,10 +518,9 @@ const groundOriginal = groundCandidate
     (_owner, collection) => collection.replace(/^  /gm, ''))
   .replace(/\n    \/\/ Yield only after a complete family transfers its meshes to the props\n    \/\/ group\. Foundation inputs above stay private until collection completes\./, '')
   .replace(/\n    yield \{ fine: true, progress: false, stage: 'ground-(foundations|scars)' \};/g, '');
-// Frozen pre-change body: reconstructing the synchronous control above must
-// remove only scheduling, never silently share a changed formula with control.
-assert.equal(createHash('sha256').update(groundOriginal).digest('hex'),
-  'a2d082b415614f713aded1463cf590049c8465c5c760761eedb908c3ec33cdeb'); // 2026-09-14: craterCap via richCount
+// 2026-10-01 (frozen pins retired): the synchronous control above is derived from the live body by removing only the
+// scheduling yields; the sha256 pin of that derived body froze every decal formula and is gone. Formula changes are
+// owned by the decal receipts, scheduling by the comparisons below.
 const mathStart = source.indexOf('function clamp('), mathEnd = source.indexOf('\n// ---', mathStart);
 const rubbleStart = source.indexOf('  const _rubbleOff ='), rubbleEnd = source.indexOf('\n  function addRubblePile(', rubbleStart);
 assert.ok(mathEnd > mathStart && rubbleEnd > rubbleStart);
@@ -725,8 +732,8 @@ for (const cancelAt of [0, 2, 4, 6, 7, 90]) {
   } finally { before.dispose(); after.dispose(); }
 }
 
-// Freeze the entire original street block, not a second implementation of its
-// geometry: only two completed-family yields may differ from base 03748e0b0.
+// The street control is the live block with only its two completed-family yields removed (2026-10-01: the sha256
+// pin of that block, which froze the street geometry code at 03748e0b0, is retired).
 const streetStart = source.indexOf('  function beginWaterworksRubbleCapture()');
 const streetLast = "  yield { fine: true, stage: 'street-details' };\n";
 const streetEnd = source.indexOf(streetLast, streetStart);
@@ -734,8 +741,6 @@ assert.ok(streetStart > 0 && streetEnd > streetStart);
 const streetCandidate = source.slice(streetStart, streetEnd + streetLast.length);
 const streetOriginal = streetCandidate.replace(
   /\n  yield \{ fine: true, progress: false, stage: 'street-(rubble|curbs)' \};/g, '');
-assert.equal(createHash('sha256').update(streetOriginal).digest('hex'),
-  '5f879376acf5557e58bf385034ca03d3e1d7666cc21e25c05fd77a43c34374b7');
 
 function streetFixture(code = streetCandidate) {
   const completed = [], randoms = [], packets = [], random = seededRandom(2002);
@@ -746,8 +751,8 @@ function streetFixture(code = streetCandidate) {
     placeStreetCurbs() { complete('curbs'); },
     placeCentralMonument() { complete('monument'); },
   };
-  // The bodies above are hash-frozen. Replace only those declarations with
-  // completed-operation spies; retain the actual caller/yield scheduling text.
+  // Replace only the operation declarations with completed-operation spies;
+  // retain the actual caller/yield scheduling text.
   for (const name of Object.keys(operations)) {
     const declaration = new RegExp(`^  function ${name}\\([^\\n]*\\n[\\s\\S]*?^  }\\n`, 'm');
     assert.ok(declaration.test(code), name);

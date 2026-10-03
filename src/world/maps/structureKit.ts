@@ -514,7 +514,7 @@ function addWindow(
 // Heavy structures — merged into the established building material buckets.
 // -------------------------------------------------------------------------
 
-export function makeTavern(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster'): StructureDimensions {
+export function makeTavern(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster'): StructureDimensions {
   const out = parts(), w = 9.2, d = 12.4, wallH = 4.7, roofH = 2.7;
   out.stone.push(box(w + 0.5, 1.0, d + 0.5).translate(0, 0.05, 0));
   out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
@@ -538,7 +538,7 @@ export function makeTavern(rng: Rng, buckets: GeometryBuckets, wallBucket = 'pla
   return { w: w + 0.5, d: d + 2.5, h: wallH + roofH + 1.0 };
 }
 
-export function makeSchoolhouse(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster2'): StructureDimensions {
+export function makeSchoolhouse(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster2'): StructureDimensions {
   const out = parts(), w = 8.6, d = 13.6, wallH = 4.3, roofH = 3.0;
   out.stone.push(box(w + 0.45, 1.1, d + 0.45).translate(0, 0, 0));
   out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
@@ -560,7 +560,7 @@ export function makeSchoolhouse(rng: Rng, buckets: GeometryBuckets, wallBucket =
   return { w: w + 0.5, d: d + 2.5, h: wallH + roofH + 4.0 };
 }
 
-export function makeFireStation(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
+export function makeFireStation(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
   const out = parts(), w = 11.4, d = 15.0, wallH = 5.4;
   cladIndustrialWalls(buckets, out, [box(w, wallH, d).translate(0, wallH / 2, 0)], wallBucket, w, d, wallH);
   out.roof.push(slab(w + 0.5, 0.28, d + 0.5).translate(0, wallH + 0.12, 0));
@@ -580,7 +580,7 @@ export function makeFireStation(rng: Rng, buckets: GeometryBuckets, wallBucket =
   return { w: w + 0.4, d: d + 0.4, h: towerH + 2.3 };
 }
 
-export function makeFishery(rng: Rng, buckets: GeometryBuckets): StructureDimensions {
+export function makeFishery(_rng: Rng, buckets: GeometryBuckets): StructureDimensions {
   const out = parts(), w = 10.2, d = 15.5, wallH = 4.4, roofH = 1.8;
   out.wood.push(box(w, wallH, d).translate(0, wallH / 2 + 0.35, 0));
   out.wood.push(gable(w, roofH, 0.3).translate(0, wallH + 0.35, d / 2 - 0.15));
@@ -663,7 +663,7 @@ function addTimberBathhouseRoof(out: StructureParts, w: number, d: number, wallH
 }
 
 export function makeBathhouse(
-  rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3', style: 'domed' | 'timber' = 'domed',
+  _rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3', style: 'domed' | 'timber' = 'domed',
 ): StructureDimensions {
   const out = parts(), w = 12.4, d = 11.0, wallH = 4.5;
   const walls = style === 'timber' ? 'plaster' : wallBucket;
@@ -696,7 +696,7 @@ export function makeTimberBathhouse(rng: Rng, buckets: GeometryBuckets, wallBuck
   return makeBathhouse(rng, buckets, wallBucket, 'timber');
 }
 
-export function makeCaravanserai(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster'): StructureDimensions {
+export function makeCaravanserai(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster'): StructureDimensions {
   const out = parts(), w = 21.0, d = 19.0, wallH = 5.2;
   // Courtyard plan: four occupied perimeter wings, fortified gate towers.
   out[wallBucket].push(box(w, wallH, 4.0).translate(0, wallH / 2, -d / 2 + 2.0));
@@ -725,7 +725,7 @@ export function makeCaravanserai(rng: Rng, buckets: GeometryBuckets, wallBucket 
   return { w: w + 0.4, d: d + 0.4, h: 7.4 };
 }
 
-export function makeFoundryOffice(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
+export function makeFoundryOffice(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
   const out = parts(), w = 13.0, d = 14.0, wallH = 5.8, roofRise = 1.65;
   const walls: THREE.BufferGeometry[] = [box(w, wallH, d).translate(0, wallH / 2, 0)];
   // Three connected one-way bays replace the former gable/no-op rotation and
@@ -762,7 +762,7 @@ export function makeFoundryOffice(rng: Rng, buckets: GeometryBuckets, wallBucket
   return { w: w + 0.5, d: d + 0.4, h: wallH + 4.0 };
 }
 
-export function makeRangerLodge(rng: Rng, buckets: GeometryBuckets, wallBucket = 'wood'): StructureDimensions {
+export function makeRangerLodge(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'wood'): StructureDimensions {
   const out = parts(), w = 10.8, d = 13.4, wallH = 4.0, roofH = 3.5;
   out.stone.push(box(w + 0.5, 1.2, d + 0.5).translate(0, 0, 0));
   out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
@@ -929,7 +929,7 @@ function addConnectedCrown(out: StructureParts, {
 }
 
 /** Bombed 55 m office tower with an asymmetrical collapsed crown. */
-export function makeMegatower(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3'): StructureDimensions {
+export function makeMegatower(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3'): StructureDimensions {
   const out = parts(), w = 18.5, d = 20.5, podiumH = 6.0;
   out.stone.push(box(w + 5.0, podiumH, d + 4.0).translate(0, podiumH / 2, 0));
   out.dark.push(box(w * 0.55, 3.5, 0.16).translate(0, 1.75, d / 2 + 2.08));
@@ -985,7 +985,7 @@ export function makeMegatower(rng: Rng, buckets: GeometryBuckets, wallBucket = '
 }
 
 /** Twin stepped arcology slabs joined by a damaged high skybridge. */
-function makeArcology(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
+function makeArcology(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
   const out = parts(), towerW = 12.0, d = 22.0, hA = 39.0, hB = 33.0;
   const towers: Array<readonly [number, number, string]> = [
     [-9.0, hA, wallBucket],
@@ -1145,7 +1145,7 @@ function makeTerraceTower(rng: Rng, buckets: GeometryBuckets, wallBucket = 'ston
 }
 
 /** Open-sided concrete parking deck: a broad, tank-scale urban landmark. */
-export function makeParkingDeck(rng: Rng, buckets: GeometryBuckets): StructureDimensions {
+export function makeParkingDeck(_rng: Rng, buckets: GeometryBuckets): StructureDimensions {
   const out = parts(), w = 27.0, d = 22.0, floors = 5, floorH = 2.65;
   for (let i = 0; i <= floors; i++) {
     out.stone.push(slab(w, 0.32, d).translate(0, i * floorH + 0.16, 0));
@@ -1177,7 +1177,7 @@ export function makeParkingDeck(rng: Rng, buckets: GeometryBuckets): StructureDi
 }
 
 /** Monumental civic hall with bombed rotunda and deep colonnade. */
-export function makeCivicHall(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster2'): StructureDimensions {
+export function makeCivicHall(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster2'): StructureDimensions {
   const out = parts(), w = 31.0, d = 18.0, h = 10.5;
   out[wallBucket].push(box(w, h, d).translate(0, h / 2, 0));
   out.stone.push(slab(w + 2.0, 0.55, d + 2.0).translate(0, 0.28, 0));
@@ -1910,6 +1910,207 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
   fueltanks: lightMeta('fueltanks', 'orbital', 2.6, 4.75, 5.4, PAL.orbital, makeFuelTanks, 'metal'),
   landingpad: lightMeta('landingpad', 'orbital', 9.3, 9.3, 6.9, PAL.orbital, makeLandingPad, 'metal'),
 };
+
+// ------------------------------------------------------------------------------------------ regional light variants
+// Regional-buildings lane (2026-10-03; gauntlet wave 15: "the American plank barn with the shingle roof and ranch rail
+// fence is still in [Jade River Delta's] street", Kohima's "bare plank barn on posts"). A map that adopts an
+// architecture kit (maps/regional) builds these in place of the generic light families under the same key (props.ts
+// LOCAL_TYPES): the footprint (hw, hl, h), class, hit points, crush threshold and debris shape stay the family's; the
+// build and its palette are the region's. Every build stands inside the family's footprint box.
+
+const REGIONAL_PAL = {
+  tin: [0x8f9699, 0xb8bfc1, 0x4b5053],
+  mud: [0x7b6650, 0x9c8669, 0x4f4335],
+  bamboo: [0x9f8a62, 0xbfa97e, 0x5d4f37],
+  thatch: [0x7c6b4d, 0x9f8c65, 0x3e3327],
+  nagaWood: [0x5b4735, 0x856b51, 0x2f251b],
+  nipa: [0x6e6447, 0x8f8460, 0x3a3426],
+  mekongPlank: [0x6f6150, 0x8d7c66, 0x3c342b],
+} as const satisfies Record<string, Palette>;
+
+/** A light gable roof built at the origin and moved: the shared roof helper lays its planes out centred on x = 0. */
+function shiftedGableRoof(out: THREE.BufferGeometry[], x: number, w: number, d: number, wallH: number, roofH: number,
+  y0: number, colour: number, rng: Rng): void {
+  const roof: THREE.BufferGeometry[] = [];
+  addLightGableRoof(roof, w, d, wallH, roofH, y0, colour, rng);
+  for (const part of roof) out.push(part.translate(x, 0, 0));
+}
+
+/**
+ * The char homestead (Jamuna, Bangladesh): a galvanised-sheet house on its raised earthen plinth above the flood line,
+ * a two-slope tin roof, a bamboo-posted veranda under a tin awning along the yard side, mud steps.
+ */
+function makeBengalHomestead(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], tin = REGIONAL_PAL.tin, mud = REGIONAL_PAL.mud, bam = REGIONAL_PAL.bamboo;
+  colored(out, box(7.0, 0.9, 13.0).translate(0, 0.45, 0), mud[0], rng, 0.06);
+  colored(out, box(7.3, 0.32, 13.3).translate(0, 0.16, 0), mud[2], rng, 0.05);
+  const x0 = -0.8, y0 = 0.9, w = 5.4, d = 10.6, wallH = 2.5, roofH = 1.5;
+  colored(out, box(w, wallH, d).translate(x0, y0 + wallH / 2, 0), tin[0], rng, 0.1);
+  for (const z of [d / 2 - 0.06, -d / 2 + 0.06]) colored(out, gable(w, roofH, 0.12).translate(x0, y0 + wallH, z), tin[0], rng);
+  shiftedGableRoof(out, x0, w, d, wallH, roofH, y0, tin[2], rng);
+  // the veranda on the yard side: bamboo posts standing on the plinth under a tin awning leaning on the wall
+  const xv = x0 + w / 2;
+  for (const z of [-4.0, -1.35, 1.35, 4.0]) colored(out, cylinder(0.07, 0.08, 2.32).translate(xv + 1.25, y0 + 1.16, z), bam[2], rng);
+  const awning = pitchSkillionRoof(slab(1.55, 0.06, 9.6), 'x', 1, 0.2);
+  colored(out, awning.translate(xv + 0.74, y0 + 2.36, 0), tin[1], rng);
+  colored(out, box(0.06, 1.95, 1.0).translate(xv + 0.03, y0 + 0.98, 0), 0x3a2e24, rng, 0.04);
+  for (const z of [-3.2, 3.2]) colored(out, markWorldAperture(box(0.06, 0.78, 0.9), [1, 0, 0]).translate(xv + 0.03, y0 + 1.52, z), 0x52656a, rng, 0.04);
+  colored(out, box(0.5, 0.45, 1.3).translate(xv + 1.45, 0.22, 0), mud[1], rng, 0.05);
+  return mergeConnectedStructure('longhouse', out);
+}
+
+/** A flood-season house on bamboo stilts: woven-mat walls on a bamboo platform, a tin roof, a ladder of rungs. */
+function makeBengalStiltHouse(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], tin = REGIONAL_PAL.tin, bam = REGIONAL_PAL.bamboo;
+  const lift = 1.7, w = 4.6, d = 6.2, wallH = 2.3, roofH = 1.35;
+  for (const x of [-w / 2 + 0.2, w / 2 - 0.2]) for (const z of [-d / 2 + 0.2, 0, d / 2 - 0.2]) {
+    colored(out, cylinder(0.08, 0.1, lift + 0.1).translate(x, (lift + 0.1) / 2, z), bam[2], rng);
+  }
+  colored(out, slab(w + 0.6, 0.12, d + 0.6).translate(0, lift + 0.06, 0), bam[1], rng);
+  const y0 = lift + 0.12;
+  colored(out, box(w, wallH, d).translate(0, y0 + wallH / 2, 0), bam[0], rng, 0.1);
+  for (const z of [d / 2 - 0.06, -d / 2 + 0.06]) colored(out, gable(w, roofH, 0.12).translate(0, y0 + wallH, z), bam[0], rng);
+  addLightGableRoof(out, w, d, wallH, roofH, y0, tin[0], rng);
+  colored(out, box(0.06, 1.8, 0.85).translate(w / 2 + 0.03, y0 + 0.9, 1.4), 0x3a2e24, rng, 0.04);
+  colored(out, markWorldAperture(box(0.06, 0.7, 0.8), [1, 0, 0]).translate(w / 2 + 0.03, y0 + 1.35, -1.4), 0x52656a, rng, 0.04);
+  // the ladder: two bamboo rails leaning from the ground to the platform edge, rungs lashed across them
+  const foot = w / 2 + 1.1, head = w / 2 + 0.32, run = foot - head;
+  const railLen = Math.hypot(run, lift), lean = Math.atan2(run, lift);
+  for (const dz of [-0.45, 0.45]) {
+    const rail = box(0.07, railLen, 0.07); rail.rotateZ(lean);
+    colored(out, rail.translate((foot + head) / 2, lift / 2, 1.4 + dz), bam[2], rng);
+  }
+  for (let i = 0; i < 5; i++) {
+    const y = 0.3 + i * 0.32;
+    colored(out, box(0.07, 0.07, 0.98).translate(foot - run * (y / lift), y, 1.4), bam[1], rng);
+  }
+  return mergeConnectedStructure('stilthouse', out);
+}
+
+/** A fisherman's shed on the char: woven-mat walls under a low tin roof, a net drying on a bamboo frame. */
+function makeBengalFisherShed(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], tin = REGIONAL_PAL.tin, bam = REGIONAL_PAL.bamboo;
+  const w = 4.2, d = 5.6, wallH = 2.0, roofH = 0.9, z0 = -0.9;
+  const shed: THREE.BufferGeometry[] = [];
+  colored(shed, box(w, wallH, d).translate(0, wallH / 2, 0), bam[0], rng, 0.1);
+  for (const z of [d / 2 - 0.06, -d / 2 + 0.06]) colored(shed, gable(w, roofH, 0.12).translate(0, wallH, z), bam[0], rng);
+  addLightGableRoof(shed, w, d, wallH, roofH, 0, tin[0], rng);
+  colored(shed, box(1.0, 1.7, 0.06).translate(0.6, 0.85, d / 2 + 0.03), 0x3a2e24, rng, 0.04);
+  for (const part of shed) out.push(part.translate(0, 0, z0));
+  // the net frame off the open end: two bamboo poles and the net hung between them, touching the shed's gable
+  const zn = z0 + d / 2 + 0.75;
+  for (const x of [-1.6, 1.6]) colored(out, cylinder(0.05, 0.06, 2.3).translate(x, 1.15, zn), bam[2], rng);
+  colored(out, slab(3.3, 1.5, 0.04).translate(0, 1.35, zn), 0x55604f, rng, 0.08);
+  colored(out, box(3.4, 0.06, 0.06).translate(0, 2.25, zn), bam[2], rng);
+  colored(out, box(0.06, 0.06, 0.9).translate(-1.6, 2.2, zn - 0.45), bam[2], rng);
+  return mergeConnectedStructure('fishershack', out);
+}
+
+/**
+ * The Angami house (Kohima, Naga Hills): low plank walls under a deep thatch swept nearly to the ground, the front
+ * gable crowned with the crossed house-horn boards (kika) of a feast-giver's house, a plank porch wall with its door.
+ */
+function makeAngamiHouse(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], th = REGIONAL_PAL.thatch, wd = REGIONAL_PAL.nagaWood;
+  const w = 5.6, d = 11.2, wallH = 1.8;
+  colored(out, box(w, wallH, d).translate(0, wallH / 2, 0), wd[0], rng, 0.08);
+  // the thatch: a thick prism from 1.1 m to the ridge, its eaves low over the walls
+  colored(out, gable(7.2, 4.4, 12.4).translate(0, 1.1, 0), th[0], rng, 0.1);
+  colored(out, box(0.32, 0.26, 12.6).translate(0, 5.42, 0), th[2], rng, 0.06);
+  // the front: a plank wall under the gable with its door, and the crossed horns at the apex
+  colored(out, box(w - 0.4, 1.7, 0.12).translate(0, 0.85, d / 2 + 0.06), wd[1], rng, 0.08);
+  colored(out, box(0.9, 1.5, 0.06).translate(0.7, 0.75, d / 2 + 0.14), 0x221a12, rng, 0.04);
+  for (const side of [-1, 1]) {
+    const horn = box(0.16, 2.3, 0.1); horn.rotateZ(side * 0.62);
+    colored(out, horn.translate(side * 0.42, 5.55, 6.22), wd[2], rng, 0.05);
+  }
+  return mergeConnectedStructure('longhouse', out);
+}
+
+/** A Naga granary on posts: a plank and bamboo store raised on timber legs under a steep thatch, a notched-log ladder. */
+function makeNagaGranary(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], th = REGIONAL_PAL.thatch, wd = REGIONAL_PAL.nagaWood, bam = REGIONAL_PAL.bamboo;
+  const lift = 1.4, w = 4.2, d = 5.8, wallH = 1.9;
+  for (const x of [-w / 2 + 0.15, w / 2 - 0.15]) for (const z of [-d / 2 + 0.15, 0, d / 2 - 0.15]) {
+    colored(out, box(0.18, lift + 0.08, 0.18).translate(x, (lift + 0.08) / 2, z), wd[2], rng);
+  }
+  colored(out, slab(w + 0.4, 0.12, d + 0.4).translate(0, lift + 0.06, 0), wd[1], rng);
+  colored(out, box(w, wallH, d).translate(0, lift + 0.12 + wallH / 2, 0), bam[0], rng, 0.1);
+  colored(out, gable(5.8, 2.9, 7.2).translate(0, lift + 0.12 + wallH - 0.5, 0), th[0], rng, 0.1);
+  const log = box(0.3, 2.1, 0.3); log.rotateX(-0.5);
+  colored(out, log.translate(0.8, 1.0, d / 2 + 0.55), wd[1], rng);
+  return mergeConnectedStructure('stilthouse', out);
+}
+
+/**
+ * The Mekong long house (Ca Mau): weathered plank walls on a low deck over posts, a nipa-palm thatch, a front porch on
+ * posts and a plank step down to the mud.
+ */
+function makeMekongLongHouse(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], th = REGIONAL_PAL.nipa, wd = REGIONAL_PAL.mekongPlank;
+  const lift = 0.9, w = 5.6, d = 10.0, wallH = 2.4, roofH = 2.2;
+  for (const x of [-w / 2 + 0.2, 0, w / 2 - 0.2]) for (const z of [-d / 2 + 0.2, -d / 6, d / 6, d / 2 - 0.2]) {
+    colored(out, box(0.16, lift + 0.06, 0.16).translate(x, (lift + 0.06) / 2, z), wd[2], rng);
+  }
+  colored(out, slab(w + 0.3, 0.12, d + 1.6).translate(0, lift + 0.06, 0.65), wd[1], rng);
+  const y0 = lift + 0.12;
+  colored(out, box(w, wallH, d).translate(0, y0 + wallH / 2, 0), wd[0], rng, 0.1);
+  for (const z of [d / 2 - 0.06, -d / 2 + 0.06]) colored(out, gable(w, roofH, 0.12).translate(0, y0 + wallH, z), wd[0], rng);
+  colored(out, gable(w + 1.2, roofH + 0.35, d + 2.0).translate(0, y0 + wallH - 0.25, 0.6), th[0], rng, 0.1);
+  for (const x of [-w / 2 + 0.25, w / 2 - 0.25]) colored(out, box(0.14, wallH, 0.14).translate(x, y0 + wallH / 2, d / 2 + 1.25), wd[2], rng);
+  colored(out, box(0.9, 1.9, 0.06).translate(0.6, y0 + 0.95, d / 2 + 0.03), 0x2a2018, rng, 0.04);
+  colored(out, markWorldAperture(box(0.06, 0.7, 0.9), [1, 0, 0]).translate(w / 2 + 0.03, y0 + 1.35, -1.5), 0x52656a, rng, 0.04);
+  colored(out, box(1.0, 0.1, 0.5).translate(0.6, 0.45, d / 2 + 1.75), wd[1], rng);
+  colored(out, box(0.14, 0.45, 0.14).translate(0.6, 0.225, d / 2 + 1.75), wd[2], rng);
+  return mergeConnectedStructure('longhouse', out);
+}
+
+/** A shrimp-pond guard hut on tall stilts: a small plank room on posts under nipa, its ladder down to the bund. */
+function makeMekongPondHut(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], th = REGIONAL_PAL.nipa, wd = REGIONAL_PAL.mekongPlank;
+  const lift = 1.4, w = 3.6, d = 4.6, wallH = 1.8, roofH = 1.0;
+  for (const x of [-w / 2 + 0.15, w / 2 - 0.15]) for (const z of [-d / 2 + 0.15, d / 2 - 0.15]) {
+    colored(out, box(0.16, lift + 0.06, 0.16).translate(x, (lift + 0.06) / 2, z), wd[2], rng);
+  }
+  colored(out, slab(w + 0.5, 0.12, d + 0.5).translate(0, lift + 0.06, 0), wd[1], rng);
+  const y0 = lift + 0.12;
+  colored(out, box(w, wallH, d).translate(0, y0 + wallH / 2, 0), wd[0], rng, 0.1);
+  colored(out, gable(w + 0.9, roofH + 0.3, d + 0.9).translate(0, y0 + wallH - 0.15, 0), th[0], rng, 0.1);
+  colored(out, box(0.06, 1.6, 0.8).translate(w / 2 + 0.03, y0 + 0.8, 0.8), 0x2a2018, rng, 0.04);
+  const foot = w / 2 + 1.2, head = w / 2 + 0.25, run = foot - head;
+  for (const dz of [0.4, 1.2]) {
+    const rail = box(0.07, Math.hypot(run, lift), 0.07); rail.rotateZ(Math.atan2(run, lift));
+    colored(out, rail.translate((foot + head) / 2, lift / 2, dz), wd[2], rng);
+  }
+  for (let i = 0; i < 5; i++) { const y = 0.3 + i * 0.32; colored(out, box(0.07, 0.07, 0.9).translate(foot - run * (y / lift), y, 0.8), wd[1], rng); }
+  return mergeConnectedStructure('fishershack', out);
+}
+
+/** The architecture kits' light-family variants (maps/regional): kit id -> family key -> the variant. */
+export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = (() => {
+  const B = DESTRUCTIBLE_BUILDING_TYPES;
+  const variant = (key: string, pal: Palette, build: LightStructureBuilder, debrisMaterial: DebrisMaterial = 'wood') => {
+    const b = B[key];
+    return lightMeta(b.id, b.family, b.hw, b.hl, b.h, pal, build, debrisMaterial);
+  };
+  return Object.freeze({
+    bengal: Object.freeze({
+      longhouse: variant('longhouse', REGIONAL_PAL.tin, makeBengalHomestead, 'metal'),
+      stilthouse: variant('stilthouse', REGIONAL_PAL.bamboo, makeBengalStiltHouse),
+      fishershack: variant('fishershack', REGIONAL_PAL.bamboo, makeBengalFisherShed),
+    }),
+    kohima: Object.freeze({
+      longhouse: variant('longhouse', REGIONAL_PAL.thatch, makeAngamiHouse),
+      stilthouse: variant('stilthouse', REGIONAL_PAL.thatch, makeNagaGranary),
+    }),
+    // the stilt house keeps the generic wetland family (already a plank house on posts); the barn and the shack go
+    mekong: Object.freeze({
+      longhouse: variant('longhouse', REGIONAL_PAL.mekongPlank, makeMekongLongHouse),
+      fishershack: variant('fishershack', REGIONAL_PAL.mekongPlank, makeMekongPondHut),
+    }),
+  });
+})();
+
 
 export const STRUCTURE_CATALOG = [
   ...Object.keys(STRUCTURE_BUILDERS).map((id) => ({ id, mode: 'merged' })),

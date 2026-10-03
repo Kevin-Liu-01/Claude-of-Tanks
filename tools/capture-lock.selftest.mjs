@@ -64,6 +64,60 @@ async function checkSameMillisecondFifo() {
   }
 }
 
+// 2026-10-02: a live waiter keeps its place past the reaping age. It renews its ticket, and when another process
+// reaps it anyway it restores the same name; only a dead or silent ticket goes stale.
+async function checkLongWaiterKeepsPlace() {
+  const heldDir = join(root, 'long.lock');
+  const longQueue = join(root, 'long.queue');
+  mkdirSync(heldDir); // another owner holds the lock
+  const options = { lockDir: heldDir, queueDir: longQueue, lockStaleMs: 60_000, ticketStaleMs: 200, ticketRefreshMs: 40 };
+  const first = createCaptureLock(options);
+  const second = createCaptureLock(options);
+  const order = [];
+  const pending = [first.acquire(5_000).then(() => { order.push('first'); first.release(); })];
+  const firstTicket = readdirSync(longQueue)[0];
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  pending.push(second.acquire(5_000).then(() => { order.push('second'); second.release(); }));
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 700)); // three reaping ages pass while both wait
+    assert.ok(readdirSync(longQueue).includes(firstTicket), 'a live waiter past the reaping age keeps its ticket');
+    rmSync(join(longQueue, firstTicket)); // a waiter on an older copy of the module reaps it anyway
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    assert.ok(readdirSync(longQueue).includes(firstTicket), 'the reaped live waiter restores the same ticket, so its place');
+  } finally {
+    rmSync(heldDir, { recursive: true, force: true });
+    await Promise.allSettled(pending);
+  }
+  assert.deepEqual(order, ['first', 'second'], 'the long waiter is served first');
+  assert.deepEqual(readdirSync(longQueue), [], 'both acquisitions remove their tickets');
+}
+
+// 2026-10-02: a waiter that gave its turn back (a lock of its own was held by someone queued behind it) re-enters under
+// its original ticket once that holder is done, ahead of everyone who queued after it.
+async function checkRestoredTicket() {
+  const heldDir = join(root, 'restore.lock');
+  const restoreQueue = join(root, 'restore.queue');
+  const options = { lockDir: heldDir, queueDir: restoreQueue, lockStaleMs: 60_000 };
+  const yielding = createCaptureLock(options);
+  await yielding.acquire(1_000);
+  const original = yielding.lastTicket;
+  assert.match(original, new RegExp(`-${process.pid}\\.t$`));
+  yielding.release(); // gives its turn back
+  mkdirSync(heldDir); // the holder it yielded to runs
+  const later = createCaptureLock(options);
+  const order = [];
+  const pending = [later.acquire(5_000).then(() => { order.push('later'); later.release(); })];
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  pending.push(yielding.acquire(5_000, { ticket: original }).then(() => { order.push('restored'); yielding.release(); }));
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  assert.equal(readdirSync(restoreQueue).sort()[0], original, 'the restored ticket sorts at its original place');
+  rmSync(heldDir, { recursive: true });
+  await Promise.allSettled(pending);
+  assert.deepEqual(order, ['restored', 'later'], 'it is served before the waiter that queued after it');
+  assert.deepEqual(readdirSync(restoreQueue), [], 'the restored ticket is removed like any other');
+  await assert.rejects(yielding.acquire(100, { ticket: '000000000000001-000000000000-1.t' }), /not this process/);
+}
+
 async function checkLongWaitFifo() {
   const waitingLockDir = join(root, 'long-wait.lock');
   const waitingQueueDir = join(root, 'long-wait.queue');
@@ -132,8 +186,29 @@ try {
   assert.deepEqual(readdirSync(queueDir), [], 'timed-out waits remove their queue ticket');
 
   await checkSameMillisecondFifo();
+  await checkLongWaiterKeepsPlace();
   await checkLongWaitFifo();
-  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond and long-wait FIFO passed');
+  await checkRestoredTicket();
+
+  // Gate P5 (2026-10-01): waiting() is a read-only count of live queued acquisitions.
+  const probeQueue = join(root, 'probe.queue');
+  const probe = createCaptureLock({ lockDir: join(root, 'probe.lock'), queueDir: probeQueue });
+  assert.equal(probe.waiting(), 0, 'no queue directory: nobody waits');
+  mkdirSync(probeQueue);
+  assert.equal(probe.waiting(), 0, 'an empty queue: nobody waits');
+  writeFileSync(join(probeQueue, `000000000000001-000000000000-${process.pid}.t`), String(process.pid));
+  const longWaiter = `000000000000002-000000000001-${process.pid}.t`;
+  writeFileSync(join(probeQueue, longWaiter), String(process.pid));
+  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+  utimesSync(join(probeQueue, longWaiter), twoHoursAgo, twoHoursAgo);
+  writeFileSync(join(probeQueue, '000000000000003-99999999.t'), '99999999');
+  writeFileSync(join(probeQueue, 'notes.txt'), 'not a ticket');
+  assert.equal(probe.waiting(), 2, 'live tickets count, a long waiter included; dead tickets and other files do not');
+  assert.equal(readdirSync(probeQueue).length, 4, 'waiting() reaps nothing');
+  writeFileSync(join(root, 'queue-file'), 'not a directory');
+  assert.equal(createCaptureLock({ lockDir: join(root, 'other.lock'), queueDir: join(root, 'queue-file') }).waiting(), 1,
+    'an unreadable queue reports a waiter, so callers keep draining');
+  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond FIFO, long-wait FIFO, long-waiter place, restored ticket and waiting() passed');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

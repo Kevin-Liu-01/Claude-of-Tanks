@@ -547,7 +547,16 @@ the solo and authoritative solvers: an airborne hull passing more than the
 stacking approach above another tank flies over it instead of meeting an
 invisible wall. At the fourteen-vehicle ceiling this is 91 allocation-free broad
 phase checks per fixed tick; the capsule and vertical-box work runs only for
-horizontal overlaps. A side/roof-down tank remains physically recoverable: a
+horizontal overlaps. A stack is a landing from above: the upper's bottom may
+sit in the lower's roof by at most 0.6 m plus what two ticks of closing add, so
+two hulls side by side on uneven ground (one in a dip or a crater) stay with the
+horizontal solver instead of the higher being lifted onto the other's roof
+(2026-10-02, Sirocco Wadi frontline seed 96596). A roof contact closing slower
+than 1 m/s is rest, and rest is ground: the upper is grounded at its seated
+height (`_body.restSupportY`, re-seated by every contact pass), drives, brakes,
+stops spinning and rights itself as on terrain, and drives off the roof's edge
+to fall to the ground; before, every pass marked it airborne, so an M1A2 on two
+wrecks spun and climbed there for 300 s. A side/roof-down tank remains physically recoverable: a
 teammate shove or renewed body motion restarts its stationary recovery timer.
 After five still seconds (2026-09-20, owner: "bots should also automatically
 right themselves after like 5 seconds being upside down"; `ROLLOVER_AUTO_RIGHT_S`),
@@ -837,7 +846,8 @@ seated commander as host (`src/mp/room/p2pMatchHost.ts`), the host runs the
 unchanged match actor in a Worker (`src/mp/host/`), and every other seat reaches
 it through `src/mp/transport/webRtcTransport.ts` — one reliable ordered
 `RTCDataChannel`, negotiated through the room's signaling relay, ICE from
-`src/mp/transport/iceConfig.ts` over `api/ice.ts`; the host's own seat rides the
+`src/mp/transport/iceConfig.ts` over the room's own relay credentials
+(`room_relay`, minted for seated players only); the host's own seat rides the
 loopback pair. `migratingTransport.ts` swaps a running client's link across a
 host migration, and the sealed keyframes a client keeps
 (`src/mp/match/migrationStore.ts`) let the next host resume the match.
@@ -942,8 +952,9 @@ server:mp`) for local play and the receipts; `server/match` is the match actor
 the host's browser runs in its Worker and the receipts run in-process
 (`service.ts`, `localRoomService.ts`); `server/world-collision-manifests/`
 holds the per-map collision shards the host inflates
-(`src/mp/host/worldCollision.ts`). `api/ice.ts` mints the TURN credential
-lease.
+(`src/mp/host/worldCollision.ts`). `server/relayCredentials.ts` mints the TURN
+credential lease inside the room — the rooms Worker from its secrets, the LAN
+helper from its environment (`docs/MULTIPLAYER-V2.md` §13.14).
 
 The room, not a client, decides who hosts; the hosting browser is trusted for
 the match it runs, and a seat token (`server/match/seatToken.ts`) binds every

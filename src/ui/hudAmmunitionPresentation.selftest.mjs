@@ -223,7 +223,7 @@ try {
   const englishType = localized.elements.type.textContent;
   const englishAria = localized.elements.button.attributes.get('aria-label');
   mutations.length = 0;
-  setLocale('zh-CN');
+  await setLocale('zh-CN'); // the zh-CN catalog loads on demand (FE-P3)
   localized.slot.render(card, true, true);
   assert.equal(localized.elements.type.textContent, shellTypeLabel('ATGM'));
   assert.equal(localized.elements.button.attributes.get('aria-label'),

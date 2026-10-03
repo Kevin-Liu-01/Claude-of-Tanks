@@ -15,6 +15,8 @@ import { join } from 'node:path';
 
 const DEFAULT_LOCK_DIR = '/tmp/cot-shots.lock';
 const DEFAULT_QUEUE_DIR = '/tmp/cot-shots.queue';
+/** The machine-wide queue directory (read-only use: who is waiting). */
+export const CAPTURE_QUEUE_DIR = DEFAULT_QUEUE_DIR;
 const DEFAULT_LOCK_STALE_MS = 5 * 60 * 1000;
 const DEFAULT_TICKET_STALE_MS = 60 * 60 * 1000;
 
@@ -93,6 +95,18 @@ function reapStaleLock(lockDir, staleMs) {
   }
 }
 
+/** Renew a waiting ticket; restore it under the same name (so the same place) when a process on an older copy of
+ *  this module reaped it while we were still waiting. */
+function keepTicket(path) {
+  const now = new Date();
+  try {
+    utimesSync(path, now, now);
+  } catch (error) {
+    if (error.code !== 'ENOENT') return;
+    try { writeFileSync(path, String(process.pid), { flag: 'wx' }); } catch { /* raced */ }
+  }
+}
+
 // Distinguish acquisitions launched by concurrent workers in one process.
 // Keep the PID last for legacy ticket liveness checks and use exclusive creation.
 let nextTicketSequence = 0;
@@ -109,31 +123,42 @@ function reserveTicket(queueDir) {
   }
 }
 
+/** Re-enter the queue under a ticket this process was issued before (its place); a present copy is kept. */
+function restoreTicket(queueDir, name) {
+  if (!/^\d{15}-\d{12}-\d+\.t$/.test(name) || ticketPid(name) !== process.pid) throw new Error(`not this process's ticket: ${name}`);
+  try { writeFileSync(join(queueDir, name), String(process.pid), { flag: 'wx' }); } catch (error) { if (error.code !== 'EEXIST') throw error; }
+  return name;
+}
+
 export function createCaptureLock({
   lockDir = DEFAULT_LOCK_DIR,
   queueDir = DEFAULT_QUEUE_DIR,
   lockStaleMs = DEFAULT_LOCK_STALE_MS,
   ticketStaleMs = DEFAULT_TICKET_STALE_MS,
+  ticketRefreshMs = Math.max(1, Math.min(30_000, ticketStaleMs / 3)),
 } = {}) {
   let held = false;
+  let lastTicket = null;
 
-  async function acquire(timeoutMs = 10 * 60 * 1000) {
+  /**
+   * Wait for the FIFO head, then take the lock. `ticket` (2026-10-02): re-enter under a ticket this process was issued
+   * by an earlier acquire (\`lastTicket\`) — its original place — for a caller that gave its turn back because a lock
+   * of its own was held by someone queued behind it, and re-enters once that holder is done.
+   */
+  async function acquire(timeoutMs = 10 * 60 * 1000, { ticket = null } = {}) {
     // A landing chain exports COT_SHOTS_LOCK_TIMEOUT_MS (three hours) so every waiter it spawns — the suite runner and
     // the browser receipts that take the lock themselves — outlasts other sessions' captures (2026-09-25: a probe receipt
     // died at its own 45-minute wait while the runner would have waited three hours).
     const chainWait = Number(process.env.COT_SHOTS_LOCK_TIMEOUT_MS);
     if (Number.isFinite(chainWait) && chainWait > timeoutMs) timeoutMs = chainWait;
     mkdirSync(queueDir, { recursive: true });
-    const ownTicket = reserveTicket(queueDir);
+    const ownTicket = ticket ? restoreTicket(queueDir, ticket) : reserveTicket(queueDir);
+    lastTicket = ownTicket;
+    const ownPath = join(queueDir, ownTicket);
     const startedAt = Date.now();
-    // A legitimate capture ahead of us can outlast ticketStaleMs. Keep our
-    // waiting ticket alive without changing its filename or FIFO position.
-    const ticketHeartbeat = setInterval(() => {
-      try {
-        const now = new Date();
-        utimesSync(join(queueDir, ownTicket), now, now);
-      } catch { /* already acquired, timed out, or removed */ }
-    }, Math.max(1, Math.min(30_000, ticketStaleMs / 3)));
+    // A legitimate capture ahead of us can outlast ticketStaleMs. Keep our waiting ticket alive without changing its
+    // filename or FIFO position, and restore it if an older copy of this module reaped it anyway.
+    const ticketHeartbeat = setInterval(() => keepTicket(ownPath), ticketRefreshMs);
     ticketHeartbeat.unref();
     try {
       for (;;) {
@@ -166,7 +191,22 @@ export function createCaptureLock({
     try { rmdirSync(lockDir); } catch { /* already released */ }
   }
 
-  return { acquire, refresh, release };
+  // Read-only count of acquisitions queued behind the owner (2026-10-01, gate P5). An owner's own
+  // ticket is removed once it holds the lock, so every ticket of a live process is someone waiting.
+  // A ticket is counted while its process lives, even past the reaping age (a waiter on an older copy of this
+  // module does not renew its ticket): a long batch must yield to a long waiter. Nothing is reaped here. An unreadable
+  // queue reports one waiter, so a caller that yields to waiters keeps the draining behaviour.
+  function waiting() {
+    let names;
+    try {
+      names = readdirSync(queueDir);
+    } catch (error) {
+      return error.code === 'ENOENT' ? 0 : 1;
+    }
+    return names.filter((name) => name.endsWith('.t') && ticketAlive(name)).length;
+  }
+
+  return { acquire, refresh, release, waiting, get lastTicket() { return lastTicket; } };
 }
 
 const sharedCaptureLock = createCaptureLock();

@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { RuntimeValue } from '../src/runtimeTypes.ts';
 import { createTelemetryRateLimiter } from './telemetry.ts';
+import { allowedApiOrigins } from './_lib/policy.ts';
 import {
   buildJevQuestions, JEV_MODEL, JEV_PROTOCOL_VERSION, parseJevAnswers, validateJevRequest,
   type JevAnswer, type JevRequestBody,
@@ -18,8 +19,8 @@ import {
  * document carries no personal field (the validator refuses names, room codes,
  * addresses and raw coordinates outright).
  *
- * Abuse guards, all in process memory like the telemetry sink: an origin
- * allow-list, a body cap, a per-address token bucket keyed by a salted hash, a
+ * Abuse guards, all in process memory like the telemetry sink: a required,
+ * allow-listed origin, a body cap, a per-address token bucket keyed by a salted hash, a
  * per-session bucket and a hard per-session request budget, a global
  * per-minute ceiling under TypeSafe's published limit, and a cool-down after
  * an upstream 429/529 so a rate-limited key is never hammered. One structured
@@ -38,12 +39,6 @@ const JEV_UPSTREAM_TIMEOUT_MS = 2500;
 const COOLDOWN_MIN_MS = 1000;
 const COOLDOWN_MAX_MS = 30_000;
 
-const OFFICIAL_ORIGINS = new Set([
-  'https://cot.kevinliu.studio',
-  'https://claudeoftanks.kevinliu.studio',
-  'https://claude-of-tanks.vercel.app',
-  'https://claude-of-tanks-kl01s-projects.vercel.app',
-]);
 const LOCAL_ORIGIN_RE = /^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?$/;
 
 interface FetchResponseLike {
@@ -80,15 +75,13 @@ function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function configuredOrigins(env: NodeJS.ProcessEnv): Set<string> {
-  const extra = String(env.COT_ALLOWED_ORIGINS || '')
-    .split(',').map((value) => value.trim()).filter(Boolean);
-  return new Set([...OFFICIAL_ORIGINS, ...extra]);
-}
-
+/**
+ * The origin gate (INFRA-P7, 2026-10-01). Browsers send `Origin` on every POST, same-origin included, so a request
+ * without one is a script spending the TypeSafe key — refused like a foreign origin (it used to pass).
+ */
 function originAllowed(origin: string, env: NodeJS.ProcessEnv, allowLocal: boolean): boolean {
-  if (!origin) return true;
-  if (configuredOrigins(env).has(origin)) return true;
+  if (!origin) return false;
+  if (allowedApiOrigins(env).has(origin)) return true;
   return allowLocal && LOCAL_ORIGIN_RE.test(origin);
 }
 

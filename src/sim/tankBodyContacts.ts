@@ -20,18 +20,24 @@ interface TankBodyState {
   visualRoll: number;
   turretYaw: number;
   overturned?: boolean;
+  /** The hull's own terrain/structure support under its tracks (movement's support envelope), when it has one. */
+  _sup?: { y: number };
   _spring: { pitchV: number; rollV: number };
   _ride: {
     y: number;
     v: number;
     grounded: boolean;
     airTime: number;
+    supportY: number;
+    groundV: number;
   };
   _body?: {
     tumbling: boolean;
     landingBlendS: number;
     dynamicSupport: boolean;
     autoRighting?: boolean;
+    /** The root height this hull rests at on another hull's roof (NaN when it does not): its ground for a tick. */
+    restSupportY?: number;
   };
 }
 
@@ -65,7 +71,29 @@ const STACK_ANGULAR_GAIN = 0.18;
 const STACK_ANGULAR_KICK_MAX = 2.2;
 const STACK_TUMBLE_KICK = 0.55;
 const STACK_RESTITUTION = 0.07;
+/**
+ * Wreck contact (bots lane, 2026-10-02; Sirocco Wadi frontline seed 96596, an M1A2 airborne on wrecks for 300 s).
+ * A stack is a landing from above: the upper's bottom sinks into the lower's roof by what a tick of closing (twice,
+ * for the pass order) and a pitched nose or tail add, never by a side-by-side overlap — a hull hopping beside a wreck
+ * in a 0.7 m dip was lifted 1.9 m onto its roof as a "stack".
+ */
+const STACK_ENTRY_M = 0.6;
+/** The fixed simulation step the entry depth is measured over (prefers-vertical runs inside the movement step). */
+const STACK_STEP_S = 1 / 60;
+/** A roof contact closing slower than this is rest, not an impact: the upper stands on the roof as on ground (it
+ * was held airborne, so it never drove, never stopped spinning, never righted, and climbed as its shell turned). */
+const STACK_REST_MPS = 1.0;
+/** A hull rising off a roof faster than this is leaving it, not resting on it. */
+const STACK_LIFT_MPS = 0.5;
+/**
+ * A hull standing this far above its own terrain/structure support stands on something else: a roof it lost its seat
+ * on this pass, a hull it hangs over (physics lane, 2026-10-03). Its grounded flag still says ground until its next
+ * movement step, and the horizontal solver pushed a hull rocking on a wreck's roof a metre a tick off it as ground
+ * traffic. Suspension and droop keep an ordinarily grounded hull within 0.25 m of its support.
+ */
+const STACK_ELEVATED_M = 0.5;
 
+let _restingScratch = new Uint8Array(64);
 const _boundsA = new Float64Array(3); // minY, maxY, centerY
 const _boundsB = new Float64Array(3);
 
@@ -82,6 +110,10 @@ interface BodyContactFrame {
 }
 
 const _contactFramePool: BodyContactFrame[] = [];
+const _preferFrameA: BodyContactFrame = {
+  active: false, halfWidth: 0, halfLength: 0, forwardX: 0, forwardZ: 0, rightX: 0, rightZ: 0, centerX: 0, centerZ: 0,
+};
+const _preferFrameB: BodyContactFrame = { ..._preferFrameA };
 
 function contactFrame(index: number): BodyContactFrame {
   let frame = _contactFramePool[index];
@@ -154,7 +186,7 @@ function includeHullVerticalBounds(
 ): void {
   for (let index = 0; index < hull.length; index += 3) {
     const rolledY = hull[index] * sinRoll + hull[index + 1] * cosRoll;
-    const worldY = state.pos.y + rolledY * cosPitch - hull[index + 2] * sinPitch;
+    const worldY = state.pos.y + rolledY * cosPitch + hull[index + 2] * sinPitch;
     if (worldY < out[0]) out[0] = worldY;
     if (worldY > out[1]) out[1] = worldY;
   }
@@ -181,11 +213,52 @@ function includeTurretVerticalBounds(
     const localY = pivot[1] + turret[index + 1];
     const localZ = pivot[2] - x * turretSin + z * turretCos;
     const rolledY = localX * sinRoll + localY * cosRoll;
-    const worldY = state.pos.y + rolledY * cosPitch - localZ * sinPitch;
+    const worldY = state.pos.y + rolledY * cosPitch + localZ * sinPitch;
     if (worldY < out[0]) out[0] = worldY;
     if (worldY > out[1]) out[1] = worldY;
   }
 }
+
+/**
+ * The lowest (or highest) closed-shell point of `entity` that lies over another hull's contact rect (physics lane,
+ * 2026-10-03), ±Infinity when none does. A roof contact is decided where the two hulls overlap: the whole-shell
+ * extents made a seat follow the upper's lowest corner wherever it was, so a hull rocking on a roof lifted that corner
+ * clear, lost its seat, dropped a few centimetres and landed again — five times in 1.5 s. Pitch follows the renderer's
+ * composition (rotation.x = -pitch: a nose-up hull raises its front).
+ */
+function shellOverRect(entity: TankBodyEntity, rect: BodyContactFrame, highest: boolean): number {
+  const state = entity.state;
+  const contact = entity.spec.armor?.bodyContactPoints;
+  const pitch = state.visualPitch || 0, roll = state.visualRoll || 0;
+  const cosPitch = Math.cos(pitch), sinPitch = Math.sin(pitch);
+  const cosRoll = Math.cos(roll), sinRoll = Math.sin(roll);
+  const cosYaw = Math.cos(state.yaw), sinYaw = Math.sin(state.yaw);
+  let best = highest ? -Infinity : Infinity;
+  for (let cloud = 0; cloud < 2; cloud++) {
+    const points = cloud === 0 ? contact?.hull : contact?.turret;
+    if (!points || points.length < 3) continue;
+    const pivot = cloud === 1 ? (entity.spec.armor?.turretPivot || _zeroPivot) : _zeroPivot;
+    const frameYaw = cloud === 1 ? (state.turretYaw || 0) : 0;
+    const frameCos = Math.cos(frameYaw), frameSin = Math.sin(frameYaw);
+    for (let index = 0; index + 2 < points.length; index += 3) {
+      const localX = pivot[0] + points[index] * frameCos + points[index + 2] * frameSin;
+      const localY = pivot[1] + points[index + 1];
+      const localZ = pivot[2] - points[index] * frameSin + points[index + 2] * frameCos;
+      const rolledX = localX * cosRoll - localY * sinRoll;
+      const rolledY = localX * sinRoll + localY * cosRoll;
+      const pitchedZ = localZ * cosPitch - rolledY * sinPitch;
+      const worldX = state.pos.x + rolledX * cosYaw + pitchedZ * sinYaw;
+      const worldZ = state.pos.z - rolledX * sinYaw + pitchedZ * cosYaw;
+      const dx = worldX - rect.centerX, dz = worldZ - rect.centerZ;
+      if (Math.abs(dx * rect.forwardX + dz * rect.forwardZ) > rect.halfLength) continue;
+      if (Math.abs(dx * rect.rightX + dz * rect.rightZ) > rect.halfWidth) continue;
+      const worldY = state.pos.y + rolledY * cosPitch + localZ * sinPitch;
+      if (highest ? worldY > best : worldY < best) best = worldY;
+    }
+  }
+  return best;
+}
+const _zeroPivot: readonly number[] = Object.freeze([0, 0, 0]);
 
 function setFallbackVerticalBounds(
   entity: TankBodyEntity,
@@ -241,13 +314,25 @@ function ensureBodyState(state: TankBodyState) {
     landingBlendS: 0,
     dynamicSupport: false,
     autoRighting: false,
+    restSupportY: NaN,
   });
 }
 
 function isDynamicBodyContact(entity: TankBodyEntity): boolean {
   const state = entity.state;
   return state.grounded === false || state.overturned === true ||
-    state._body?.tumbling === true || state._body?.dynamicSupport === true;
+    state._body?.tumbling === true || state._body?.dynamicSupport === true ||
+    Number.isFinite(state._body?.restSupportY) ||
+    state.pos.y > (state._sup?.y ?? Infinity) + STACK_ELEVATED_M;
+}
+
+/** How deep an upper hull's bottom may sit in a lower roof and still be a landing on it (see STACK_ENTRY_M). */
+function stackEntryLimit(upper: TankBodyEntity, lower: TankBodyEntity, minHeight: number, dt: number): number {
+  // (a client's prediction world holds other hulls as interpolated poses without a ride: their vertical speed is 0)
+  const upperV = upper.state.verticalSpeed || upper.state._ride?.v || 0;
+  const lowerV = lower.state.verticalSpeed || lower.state._ride?.v || 0;
+  return Math.min(minHeight * STACK_MAX_PENETRATION_FRACTION,
+    STACK_ENTRY_M + 2 * Math.max(0, lowerV - upperV) * dt);
 }
 
 /**
@@ -273,12 +358,43 @@ export function prefersVerticalTankContact(
   if (Math.abs(_boundsA[2] - _boundsB[2]) < minHeight * STACK_AXIS_FRACTION) {
     return false;
   }
-  const gap = _boundsA[0] > _boundsB[1]
-    ? _boundsA[0] - _boundsB[1]
-    : _boundsB[0] > _boundsA[1]
-      ? _boundsB[0] - _boundsA[1]
-      : 0;
-  return gap <= STACK_APPROACH_M;
+  // the depth is the pair resolver's own (where the footprints overlap, orderedPairDepth): a hull standing on a roof
+  // with its nose or a track hanging beside the lower hull is on that roof, not beside it. Clear above the approach it
+  // is tanksVerticallyClear's; hulls overlapping deeper than a landing are side by side, and the horizontal solver
+  // keeps them apart.
+  const depth = orderedPairDepth(a, b);
+  if (depth < -STACK_APPROACH_M) return false;
+  const aAbove = _boundsA[2] >= _boundsB[2];
+  return depth <= stackEntryLimit(aAbove ? a : b, aAbove ? b : a, minHeight, STACK_STEP_S);
+}
+
+/** contactPenetration for a vertically ordered pair whose bounds are in _boundsA/_boundsB (the higher centre above). */
+function orderedPairDepth(a: TankBodyEntity, b: TankBodyEntity): number {
+  const aAbove = _boundsA[2] >= _boundsB[2];
+  fillContactFrame(_preferFrameA, a);
+  fillContactFrame(_preferFrameB, b);
+  return aAbove
+    ? contactPenetration(a, b, _preferFrameA, _preferFrameB, _boundsA, _boundsB)
+    : contactPenetration(b, a, _preferFrameB, _preferFrameA, _boundsB, _boundsA);
+}
+
+/**
+ * How deep the upper hull's underside sits in the lower hull's top where their footprints overlap (negative: the gap
+ * between them): the upper's lowest shell point over the lower's rect against the lower's highest under the upper's
+ * (shellOverRect); the whole-shell extents only when no shell point lies in the overlap.
+ */
+function contactPenetration(
+  upper: TankBodyEntity,
+  lower: TankBodyEntity,
+  upperFrame: BodyContactFrame,
+  lowerFrame: BodyContactFrame,
+  upperBounds: Float64Array,
+  lowerBounds: Float64Array,
+): number {
+  const regionBottom = shellOverRect(upper, lowerFrame, false);
+  const regionTop = shellOverRect(lower, upperFrame, true);
+  return regionBottom < Infinity && regionTop > -Infinity
+    ? regionTop - regionBottom : lowerBounds[1] - upperBounds[0];
 }
 
 /**
@@ -290,7 +406,12 @@ export function prefersVerticalTankContact(
 export function tanksVerticallyClear(a: TankBodyEntity, b: TankBodyEntity): boolean {
   verticalBounds(a, _boundsA);
   verticalBounds(b, _boundsB);
-  return _boundsA[0] > _boundsB[1] + STACK_APPROACH_M || _boundsB[0] > _boundsA[1] + STACK_APPROACH_M;
+  if (_boundsA[0] > _boundsB[1] + STACK_APPROACH_M || _boundsB[0] > _boundsA[1] + STACK_APPROACH_M) return true;
+  // a vertically ordered pair is clear where the footprints overlap (physics lane, 2026-10-03): a hull above a roof
+  // with a track hanging beside the lower hull, lower than its roof, flies over it
+  const minHeight = Math.min(_boundsA[1] - _boundsA[0], _boundsB[1] - _boundsB[0]);
+  if (Math.abs(_boundsA[2] - _boundsB[2]) < minHeight * STACK_AXIS_FRACTION) return false;
+  return orderedPairDepth(a, b) < -STACK_APPROACH_M;
 }
 
 function setVerticalVelocity(state: TankBodyState, velocity: number): void {
@@ -304,7 +425,10 @@ function moveRootY(state: TankBodyState, delta: number): void {
 }
 
 function prepareContactFrame(entity: TankBodyEntity | null | undefined, index: number): void {
-  const frame = contactFrame(index);
+  fillContactFrame(contactFrame(index), entity);
+}
+
+function fillContactFrame(frame: BodyContactFrame, entity: TankBodyEntity | null | undefined): void {
   frame.active = !!entity?.state && !!entity.spec?.dims && entity.modeActive !== false;
   if (!frame.active || !entity) return;
   const state = entity.state;
@@ -435,14 +559,33 @@ function applyAngularImpact<Entity extends TankBodyEntity>(
   onImpact(upper, lower, closing, normalX, normalZ);
 }
 
+/** A resting roof contact is ground contact: the upper stands at its seated height until the next contact pass. The
+ * ride's support moves with the roof it is on (no launch from the step up onto it). */
+function seatOnRoof(upper: TankBodyEntity, lower: TankBodyEntity): void {
+  const state = upper.state, body = ensureBodyState(state), ride = state._ride;
+  body.dynamicSupport = true;
+  const seated = state.pos.y;
+  body.restSupportY = Number.isFinite(body.restSupportY) ? Math.max(body.restSupportY!, seated) : seated;
+  const lowerV = lower.state.verticalSpeed || lower.state._ride.v || 0;
+  state.grounded = true;
+  ride.grounded = true;
+  ride.airTime = 0;
+  ride.supportY = body.restSupportY!;
+  ride.groundV = lowerV;
+  setVerticalVelocity(state, lowerV);
+}
+
 function resolveContactPair<Entity extends TankBodyEntity>(
   a: Entity,
   b: Entity,
   aFrame: BodyContactFrame,
   bFrame: BodyContactFrame,
   onImpact: TankBodyImpact<Entity> | null,
+  dt: number,
+  aResting: boolean,
+  bResting: boolean,
 ): boolean {
-  if (!isDynamicBodyContact(a) && !isDynamicBodyContact(b)) return false;
+  if (!aResting && !bResting && !isDynamicBodyContact(a) && !isDynamicBodyContact(b)) return false;
   if (!horizontalBodiesOverlap(aFrame, bFrame)) return false;
   verticalBounds(a, _boundsA);
   verticalBounds(b, _boundsB);
@@ -457,15 +600,24 @@ function resolveContactPair<Entity extends TankBodyEntity>(
     lowerBounds[1] - lowerBounds[0],
   );
   if (upperBounds[2] - lowerBounds[2] < minHeight * STACK_AXIS_FRACTION) return false;
-  const penetration = lowerBounds[1] - upperBounds[0];
-  if (penetration < -CONTACT_SLOP_M ||
-      penetration > minHeight * STACK_MAX_PENETRATION_FRACTION) return false;
+  // the contact is where the footprints overlap (contactPenetration)
+  const penetration = contactPenetration(upper, lower, upperFrame, aAbove ? bFrame : aFrame, upperBounds, lowerBounds);
+  // a hull that rested on this roof keeps its seat across the stacking approach unless it is lifting off
+  const upperResting = aAbove ? aResting : bResting;
+  const lift = (upper.state.verticalSpeed || upper.state._ride.v || 0) - (lower.state.verticalSpeed || lower.state._ride.v || 0);
+  const seatGap = upperResting && lift < STACK_LIFT_MPS ? STACK_APPROACH_M : CONTACT_SLOP_M;
+  if (penetration < -seatGap || penetration > stackEntryLimit(upper, lower, minHeight, dt)) return false;
 
   const upperMass = Math.max(1, upper.spec.weightTons || 1);
   const lowerMass = Math.max(1, lower.spec.weightTons || 1);
   const lowerLocked = lower.state.grounded !== false && !ensureBodyState(lower.state).tumbling;
   correctVerticalOverlap(upper, lower, penetration, upperMass, lowerMass, lowerLocked);
   const closing = resolveVerticalImpulse(upper, lower, upperMass, lowerMass, lowerLocked);
+  if (closing < STACK_REST_MPS) {
+    seatOnRoof(upper, lower);
+    upper.state.speed *= 0.985;
+    return true;
+  }
   const upperBody = markDynamicSupport(upper);
   applyAngularImpact(upper, lower, upperFrame, upperBody, closing, onImpact);
   upper.state.speed *= 0.985;
@@ -478,10 +630,18 @@ function resolveContactPair<Entity extends TankBodyEntity>(
  */
 export function resolveTankBodyContacts<Entity extends TankBodyEntity>(
   entities: readonly Entity[],
-  _dt: number,
+  dt: number,
   onImpact: TankBodyImpact<Entity> | null = null,
 ): number {
   prepareContactFrames(entities);
+  // roof rest lasts one movement step: this pass re-seats every hull still on a roof (a hull that rested is still a
+  // dynamic contact for the pass, though its own movement step reset its support flag)
+  if (_restingScratch.length < entities.length) _restingScratch = new Uint8Array(entities.length * 2);
+  for (let i = 0; i < entities.length; i++) {
+    const body = entities[i]?.state?._body;
+    _restingScratch[i] = body && Number.isFinite(body.restSupportY) ? 1 : 0;
+    if (body) body.restSupportY = NaN;
+  }
   let contacts = 0;
   for (let i = 0; i < entities.length; i++) {
     const a = entities[i];
@@ -491,7 +651,9 @@ export function resolveTankBodyContacts<Entity extends TankBodyEntity>(
       const b = entities[j];
       const bFrame = _contactFramePool[j];
       if (!bFrame.active) continue;
-      if (resolveContactPair(a, b, aFrame, bFrame, onImpact)) contacts++;
+      if (resolveContactPair(a, b, aFrame, bFrame, onImpact, dt, _restingScratch[i] === 1, _restingScratch[j] === 1)) {
+        contacts++;
+      }
     }
   }
   return contacts;

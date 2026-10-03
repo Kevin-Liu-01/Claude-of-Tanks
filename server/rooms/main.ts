@@ -16,12 +16,16 @@
  *   COT_ROOMS_MATCH_TRANSPORT   'service' (the match runs in this process, default) | 'p2p' (in the host's browser,
  *                               as the Cloudflare rooms do — docs/MULTIPLAYER-V2.md §13)
  *   COT_MATCH_LOG_LEVEL         debug | info | warn | error
+ *   Relay credentials for the browser-hosted match (§13.14; `server/relayCredentials.ts`, the rooms Worker's names):
+ *   COT_TURN_URLS + COT_TURN_SHARED_SECRET (+ COT_TURN_USERNAME), COT_CLOUDFLARE_TURN_KEY_ID + COT_CLOUDFLARE_TURN_API_TOKEN,
+ *   COT_TURN_ICE_SERVERS_JSON, COT_TURN_TTL_SECONDS, COT_STUN_URLS — all unset by default: a LAN needs host candidates only.
  */
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { installProcessShutdown } from '../processShutdown.ts';
 import { createLogger, parseLogLevel } from '../match/log.ts';
 import { createRoomsServer } from './serve.ts';
+import { createRelayIssuer, pickRelayEnv } from '../relayCredentials.ts';
 
 function integerEnv(name: string, fallback: number, low: number, high: number): number {
   const raw = process.env[name];
@@ -44,6 +48,8 @@ export async function startRoomsServerFromEnv(env: NodeJS.ProcessEnv = process.e
   const world = env.COT_MATCH_WORLD === 'terrain' ? 'terrain' : 'dedicated';
   const transport = env.COT_ROOMS_MATCH_TRANSPORT ?? 'service';
   if (transport !== 'service' && transport !== 'p2p') throw new TypeError("COT_ROOMS_MATCH_TRANSPORT must be 'service' or 'p2p'");
+  const relay = createRelayIssuer({ env: pickRelayEnv(env), warn: (line) => log.warn(line) });
+  if (relay.source !== 'none') log.info(`relay credentials for browser-hosted matches: ${relay.source}`);
   return createRoomsServer({
     host: env.COT_ROOMS_HOST || '0.0.0.0',
     port: integerEnv('COT_ROOMS_PORT', 8792, 1, 65535),
@@ -53,6 +59,7 @@ export async function startRoomsServerFromEnv(env: NodeJS.ProcessEnv = process.e
     world,
     matchTransport: transport,
     log,
+    relayCredentials: () => relay.issue(),
   });
 }
 

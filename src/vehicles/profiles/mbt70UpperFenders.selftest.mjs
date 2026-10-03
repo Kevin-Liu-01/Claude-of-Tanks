@@ -7,6 +7,7 @@ import {MODERN2_BUILDERS} from '../modern2.ts';
 import {getSpec} from '../specs.ts';
 import {createTankState} from '../../sim/movement.ts';
 import {matrix,rollerSuspensionFixtures} from '../returnRollerPhysicsTest.mjs';
+import {findStaticMergePart} from '../staticMergeParts.ts';
 
 // The frozen pre-apron emission digest (and its reconstruction of the two removed rails) is retired: whole-tank
 // change detection of mbt70 is the fleet geometry ledger's. The omit-build below is the live same-run baseline
@@ -219,11 +220,13 @@ for(const quality of ['high','low']){
   assert.equal(ray([old.port.hullG.getObjectByName('hull')],[1.80,1.2,-.14],[-1,0,0],.065).length,0,'Omitting only new stock leaves old side opening');stats.negativeControls++;
   const hull=current.port.hullG.getObjectByName('hull');
   assert.equal(hash(hull.geometry),hash(old.port.hullG.getObjectByName('hull').geometry),'Primary hull bytes and original armor silhouette unchanged');
-  const guards=['hullTrackGuardL','hullTrackGuardR'].map(name=>current.port.hullG.getObjectByName(name));
-  for(const guard of guards){assert.equal(guard.parent,current.port.hullG);
-   assert.equal(guard.userData.combatHitboxRole,'nonArmor');assert.equal(guard.material,current.port.mats.hull);
-   assert.equal(guard.userData.appearanceRole,'armorPaint');assert.equal(guard.userData.trackGuard,true);
-   assert.ok(guard.geometry.attributes.uv&&guard.geometry.attributes.color,'Native merged camouflage projection and dirt color retained');}
+  // The battle build folds the two contiguous guard buckets into one draw (staticDrawMerge.ts): read each through the side table.
+  const guardParts=['hullTrackGuardL','hullTrackGuardR'].map(name=>findStaticMergePart(current.port.hullG,name));
+  const guards=guardParts.map(found=>found.mesh);
+  guardParts.forEach(({mesh:guard,part})=>{const data=part?part.userData:guard.userData;assert.equal(guard.parent,current.port.hullG);
+   assert.equal(data.combatHitboxRole,'nonArmor');assert.equal(guard.material,current.port.mats.hull);
+   assert.equal(data.appearanceRole,'armorPaint');assert.equal(data.trackGuard,true);
+   assert.ok(guard.geometry.attributes.uv&&guard.geometry.attributes.color,'Native merged camouflage projection and dirt color retained');});
   const state=createTankState(getSpec('mbt70'),new T.Vector3(),0);
   for(const distance of[15,75,300]){
    current.tank.syncFromState(state,1/60,distance);current.tank.root.updateMatrixWorld(true);
@@ -234,7 +237,7 @@ for(const quality of ['high','low']){
   // MBT70's visual cassette blocks are plain authored stock, not registered
   // gameplay ERA clusters. An empty strip loop would be a vacuous proof.
   assert.deepEqual(current.tank.root.userData.eraClusterNames??[],[],'No destructive ERA coverage applies to this model');
-  const disposed=[0,0];guards.forEach((g,i)=>g.geometry.addEventListener('dispose',()=>disposed[i]++));current.dispose();assert.deepEqual(disposed,[1,1],'Native merged owners dispose closure geometry exactly once');
+  const disposed=[0,0];guardParts.forEach(({mesh,part},i)=>(part?part.geometry:mesh.geometry).addEventListener('dispose',()=>disposed[i]++));current.dispose();assert.deepEqual(disposed,[1,1],'Native merged owners dispose closure geometry exactly once');
   stats.rows.push({quality,triangles:328,...moving});
  }finally{current.dispose();old.dispose();}
 }

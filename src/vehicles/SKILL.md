@@ -103,6 +103,22 @@ and calibrates armor/module/crew coordinates to checked geometry receipts.
 Procedural low-polygon shadow hulls are presentation-invisible proxies: route
 them with `markShadowOnly()` rather than relying on `colorWrite: false`, which
 still incurs a forward submission in Three.js.
+Battle and Garage builds (`batchStatic`) fold every contiguous run of the final
+coplanar depth-layer order that shares an owner, material, vertex layout, raster
+flags, LOD switch, near-hull shadow and distance-detail membership into one draw
+(`staticDrawMerge.ts`, P21; at most 16,384 vertices per merged draw); unmerged
+meshes keep their layer, so no coplanar winner changes. A folded source keeps its name, userData, layer, geometry and
+frame chain in the merged draw's side table (`staticMergeParts.ts`): resolve a
+name with `findStaticMergePart`, a raycast face with `staticMergePartForFace`,
+and replay per-mesh measurements through `staticMergePartMatrixWorld` (rest
+contact, the presentation floor and showroom framing do). A runtime system that
+edits a vehicle buffer in place must be pinned in the factory's merge options
+(`ownsGeometry`), or the merge folds it; running gear never folds.
+Only parts already at their owner's frame fold by default, so every vertex byte
+is unchanged; `staticDrawMerge: 'translations'` also bakes pure translations but
+moved up to 1,615 px in the P21 float-target captures (float rounding of baked
+positions), so it stays an opt-in. `?staticmerge=off|translations` switches the
+mode on one build for probes.
 Destroyed-only char and ember atlases must remain demand-owned. The battle warm
 pipeline prepares fielded variants before rollout, while `setDestroyed()` is
 the correctness fallback for Studio and diagnostic callers that skip warming;
@@ -257,7 +273,9 @@ silhouette cleanup, armor scaling, and idempotent registration through
 `fleetSpecRegistry.ts`; nation modules own only their explicit deltas.
 Keep `modern1Specs.generated.ts` and `modern2Specs.generated.ts` generator-owned;
 they expose boot-safe metadata while their authored visual builders remain
-demand-loaded.
+demand-loaded. The registry holds that generated metadata on every path
+(`modern1.ts`/`modern2.ts` import it); their live `MODERN1_SPECS` /
+`MODERN2_SPECS` tables are only the generator's source, never registered.
 Keep the Type 10 / Type 10B trunnion, muzzle, throat, and mantlet-fit receipts
 in the pure `profiles/type10GunSeat.ts` boundary; geometry builders consume the
 datums but do not redefine them.
@@ -265,6 +283,13 @@ Do not add regional fleet bundle modules. Browser acquisition maps exact IDs to
 typed family loaders through `fleetManifest.ts` and `fleetFactory.ts`; full
 fleet tools use `tankFactory.ts`. Both paths must convert family profiles with
 `profileBuilderAdapter.ts`; do not duplicate custom/donor/generic dispatch.
+Every facade registers specs through the one ordered `fleetRegistration.ts`
+(spec packs in donor order, then the registration passes): `fleetFactory.ts`,
+the spec-only `authorityFleet.ts` (the host Worker and the Node match service;
+`ensureAuthorityFleet(roster)` loads only the roster's calibration groups) and
+`tankFactory.ts` (whose builder packs keep the tools' historical catalog
+order). Add a spec pack to `fleetRegistration.ts`, never to one facade;
+`fleetParity.selftest.mjs` digests every spec as each facade finalizes it.
 After this sequence passes, commit each tank edit atomically, integrate it from
 an isolated clean worktree onto the current `origin/main`, push `HEAD:main`,
 and report the resulting main hash. Never push a failing or partially verified

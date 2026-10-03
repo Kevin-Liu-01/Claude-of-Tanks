@@ -165,6 +165,46 @@ function restoreReload(target: ReloadLike | undefined, remainingS: number, total
 const RELOAD_KINDS = ['ready', 'shell', 'intraClip', 'magazine'] as const;
 
 /**
+ * What an elected seat resumes the match from (MatchSession's migration boot): the newer of the sealed keyframe and its
+ * own newest frame — that frame's rows overlaid on the keyframe's, hidden entities keeping the keyframe's — and every
+ * prop it was told fell. A `world_prop_destroyed` reaches a peer the tick its prop falls; the destroyed list rides the
+ * next snapshot, up to two ticks later. A host that died between the two left the fall in the seat's event queue alone
+ * (fix/mp-migration-props, 2026-10-02: 1 world-events audit run in 3 on the PR head): the new host booted without it,
+ * stood the prop again, a hull crushed it a second time and every peer crunched a tree the old host had felled. The
+ * list is the base's plus those falls, at the base's revision plus one per fall it adds — the old host counted each
+ * when it destroyed it — and never below the list's length (the host actor republishes its list when the revision moves).
+ */
+export function resumeStateFromRetained(
+  keyframe: MigrationKeyframe,
+  keyframeAtMs: number,
+  latest: SnapshotFrame | null,
+  latestAtMs: number | null,
+  fallen: readonly number[],
+): { state: HostResumeState; baseTick: number; baseAtMs: number } {
+  const state: HostResumeState = { ...keyframe };
+  let baseTick = keyframe.tick;
+  let baseAtMs = keyframeAtMs;
+  if (latest && latest.tick > keyframe.tick && latestAtMs !== null) {
+    // What this viewer saw is exact to its newest frame: overlay those rows; hidden entities keep the sealed keyframe's.
+    const rows = new Map(state.frame.entities.map((row) => [row.entityId, row]));
+    for (const row of latest.entities) rows.set(row.entityId, row);
+    state.frame = { ...state.frame, tick: latest.tick, serverTimeMs: latest.serverTimeMs, entities: [...rows.values()].sort((a, b) => a.entityId - b.entityId), destroyed: latest.destroyed, meta: latest.meta, modeStateJson: latest.modeStateJson };
+    state.tick = latest.tick;
+    state.battleTimeMs = latest.meta.battleTimeMs;
+    baseTick = latest.tick;
+    baseAtMs = latestAtMs;
+  }
+  const listed = new Set(state.frame.destroyed);
+  const added = [...new Set(fallen)].filter((index) => Number.isSafeInteger(index) && index >= 0 && !listed.has(index));
+  if (added.length) {
+    const destroyed = [...state.frame.destroyed, ...added].sort((a, b) => a - b);
+    const destructibleRevision = Math.max(state.frame.meta.destructibleRevision + added.length, destroyed.length);
+    state.frame = { ...state.frame, destroyed, meta: { ...state.frame.meta, destructibleRevision } };
+  }
+  return { state, baseTick, baseAtMs };
+}
+
+/**
  * Write a keyframe's rows and extras onto the actor's entities, and its persistent destroyed list onto the actor's world
  * (before the loop starts). Returns how many entities matched, and how many destroyed props this world restored or
  * does not have. Without the list (world state audit, 2026-10-01) the elected host stood every felled tree back up

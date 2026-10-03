@@ -40,7 +40,11 @@ test('fixed checkpoint is detached, JSON safe, and restores every admitted scala
   const source = entity();
   for (let tick = 0; tick < 90; tick++) updateTank(source, field, SIM_DT);
   const checkpoint = captureMovementPredictionState(source.state);
-  assert.equal(checkpoint.values.length, 45); // round 32: + _autoTraverse; impact physics (2026-09-25): + _terr.fitPitch
+  // round 32: + _autoTraverse; impact physics (2026-09-25): + _terr.fitPitch; bots lane (2026-10-02): + _body.restSupportY;
+  // physics lane (2026-10-03, version 4): + _terr.tipPitch / tipRoll, the gravity tip of an overhanging hull;
+  // (version 5, appended): + _ride.rebound / stroke, the landing the springs still owe and work through, and _susp.d / dv,
+  // the dive
+  assert.equal(checkpoint.values.length, 52);
   assert.deepEqual(JSON.parse(JSON.stringify(checkpoint)), checkpoint);
   const target = entity().state;
   const ride = target._ride;
@@ -72,15 +76,26 @@ test('fresh and airborne checkpoints retain uninitialized support without nonfin
   assert.equal(target._ride.grounded, false);
 });
 
+test('a version-4 checkpoint still decodes, with no landing stroke or dive in progress', () => {
+  const source = entity();
+  for (let tick = 0; tick < 60; tick++) updateTank(source, field, SIM_DT);
+  const v5 = captureMovementPredictionState(source.state);
+  const target = entity().state;
+  target._susp.d = 0.3; target._ride.stroke = 1;
+  assert.equal(applyMovementPredictionState(target, { version: 4, values: v5.values.slice(0, 48), flags: v5.flags }), true);
+  assert.equal(target._ride.y, source.state._ride.y);
+  assert.deepEqual([target._ride.rebound, target._ride.stroke, target._susp.d, target._susp.dv], [0, 0, 0, 0]);
+});
+
 test('malformed checkpoints are rejected atomically, including sparse or oversized numeric arrays', () => {
   const source = entity();
   const good = captureMovementPredictionState(source.state);
   const sparse = good.values.slice();
   delete sparse[8];
   const badNumbers = [NaN, Infinity, -Infinity, 1_000_001, '1', null, undefined];
-  const bad = [null, [], 1, {}, { ...good, version: 3 },
+  const bad = [null, [], 1, {}, { ...good, version: 3 }, { ...good, version: 4 }, { ...good, version: 6 },
     { ...good, values: [] }, { ...good, values: [...good.values, 0] },
-    { ...good, values: sparse }, ...[-1, 1024, 1.5, NaN].map(flags => ({ ...good, flags })),
+    { ...good, values: sparse }, ...[-1, 2048, 1.5, NaN].map(flags => ({ ...good, flags })),
     ...badNumbers.map(value => ({ ...good, values: good.values.map((old, i) => i === 5 ? value : old) }))];
   for (const value of bad) {
     const target = entity().state;

@@ -40,7 +40,7 @@ import {
   exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, ramAggression, ramShares, resolveHullImpact,
   type HullImpactKind, type HullImpactResult,
 } from './impact.ts';
-import { createStructureSupportField } from './structureSupport.ts';
+import { createHullSupportPose, createStructureSupportField, hullSupportPose } from './structureSupport.ts';
 import {
   prefersVerticalTankContact,
   tanksVerticallyClear,
@@ -90,8 +90,8 @@ import type {
   WorldSnapshot,
 } from './worldSnapshot.ts';
 import {
-  pushHullFromHull,
-  hullPassesObstacleTop, pushHullFromObstacle,
+  pushHullFromHull, createHullFootprint, hullFootprint,
+  hullPassesObstacleTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord,
 } from '../world/collision.ts';
 import type { CollisionRecord } from '../world/collision.ts';
@@ -100,7 +100,9 @@ import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.ts'
 import type { EquipmentCombatState } from '../game/equipment.ts';
 import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.ts';
 import type { AiDifficulty } from '../game/ai.ts';
-import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.ts';
+import {
+  collectNavigationWrecks, createBotNavigationGrid, planBotRoute, syncNavigationWrecks, type NavigationWreck,
+} from './botRoutePlanner.ts';
 import type { BotRoutePoint } from './botRoutePlanner.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from '../game/consumables.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
@@ -408,6 +410,8 @@ const TEAM_SPECTATOR = 'spectator';
 
 const _spawn = new Vector3();
 const _contactCenter = new Vector3();
+const _obstacleCenter = new Vector3();
+const _obstacleFoot = createHullFootprint();
 const _aim = new Vector3();
 const _muzzle = new Vector3();
 const _gunDir = new Vector3();
@@ -941,9 +945,10 @@ export function createAuthoritativeMatch({
         // bot philosophy r1: the mode's live objective ranks targets (objective → closest → weakest)
         getObjective: () => modeController.botObjective(entity),
         ...(navigation ? {
-          planRoute: (start: { x: number; z: number }, goal: { x: number; z: number }) => planBotRoute({
+          planRoute: (start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
+            options?: { requireGoalLevel?: boolean }) => planBotRoute({
             start, goal, navigation, rng: searchRng, role: roleOf(entity.spec), spec: entity.spec,
-            useRoleDetour: false,
+            useRoleDetour: false, requireGoalLevel: options?.requireGoalLevel === true,
           }),
         } : {}),
       },
@@ -976,7 +981,15 @@ export function createAuthoritativeMatch({
     if (type === 'tank_destroyed') modeController.recordDestruction(String(payload.id),
       typeof payload.killerId==='string'?payload.killerId:null);
     if (pendingEvents.length >= MAX_EVENTS) pendingEvents.shift();
-    pendingEvents.push({ type, timeS, ...payload });
+    const event: AuthoritativeEvent = { type, timeS, ...payload };
+    // Where the hull died (ghost-crunch lane, 2026-10-02), as tank_ram and tank_impact carry theirs: a peer presents the
+    // death one interpolation step from the pose it shows that frame — mid-fall, mid-slide — and its explosion, wreck
+    // smoke and killcam sat 0.3–0.8 m from the authority's hull (the world-events audit's p2 fall death).
+    if (type === 'tank_destroyed' && typeof payload.x !== 'number') {
+      const dead = entityById.get(String(payload.id));
+      if (dead) { event.x = dead.state.pos.x; event.y = dead.state.pos.y; event.z = dead.state.pos.z; }
+    }
+    pendingEvents.push(event);
   }
 
   function reviveForMode(
@@ -1104,43 +1117,72 @@ export function createAuthoritativeMatch({
     pendingCrush.push({ obstacle, entity, cause: 'ram' });
   }
 
+  /** The contacts the first obstacle sweep found hard, swept again (collideWithObstacles). */
+  const hardObstacles: AuthoritativeObstacle[] = [];
+
   function collideWithObstacles(
     entity: AuthoritativeEntity,
     pos: Vector3,
-    centerX: number,
-    centerZ: number,
-    fx: number,
-    fz: number,
-    rx: number,
-    rz: number,
-    halfL: number,
-    halfW: number,
     outPush: Vector3,
   ): boolean {
-    const broadRadius = Math.hypot(halfL, halfW) + 0.01;
+    // the obstacle solver pushes the hull's footprint at its attitude and reads its underside there
+    // (world/collision.ts hullFootprint): a hull standing on its tail is not 7 m long against a wall
+    const state = entity.state;
+    const foot = hullFootprint(tankContactRect(entity.spec), pos.x, pos.z, state.yaw, state.visualPitch || 0,
+      state.visualRoll || 0, _obstacleFoot);
+    const centerX = foot.centerX, centerZ = foot.centerZ;
+    const broadRadius = Math.hypot(foot.halfLength, foot.halfWidth) + 0.01;
     const spanTop = pos.y + tankBodyTopM(entity.spec);
     let hard = false;
+    // Each record meets the hull where the records before it have pushed it (physics lane, 2026-10-03; Foundry field
+    // audit), as a compound's parts already do: summed from one position, two contacts that push opposite ways (a hull
+    // pivoting across a fence line, a rail under each end) each corrected the whole overlap, so the hull overshot by
+    // the other's share every step and flipped from side to side until one contact won with a 0.65 m jump.
+    const startX = outPush.x, startZ = outPush.z;
+    let hardCount = 0;
     for (const obstacle of obstacleCandidates(centerX, centerZ, broadRadius)) {
-      if (obstacle.crushed || hullPassesObstacleTop(pos.y, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
-      const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
-      const closestZ = Math.max(obstacle.min[2], Math.min(centerZ, obstacle.max[2]));
-      const dx = centerX - closestX;
-      const dz = centerZ - closestZ;
+      if (obstacle.crushed) continue;
+      foot.centerX = centerX + outPush.x - startX;
+      foot.centerZ = centerZ + outPush.z - startZ;
+      _obstacleCenter.set(foot.centerX, pos.y, foot.centerZ);
+      const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
+      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+      const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
+      const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
+      const dx = foot.centerX - closestX;
+      const dz = foot.centerZ - closestZ;
       if (dx * dx + dz * dz >= broadRadius * broadRadius) continue;
       const beforeX = outPush.x;
       const beforeZ = outPush.z;
       const pushed = pushHullFromObstacle(
-        _contactCenter, fx, fz, rx, rz, halfL, halfW, obstacle, outPush, pos.y, spanTop,
+        _obstacleCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth,
+        obstacle, outPush, spanBottom, spanTop,
       );
       if (!pushed) continue;
       if (!obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle)) {
         hard = true; // a solid primitive (or a trunk too slow to fell) is a hard surface
+        hardObstacles[hardCount++] = obstacle;
         continue;
       }
       outPush.x = beforeX;
       outPush.z = beforeZ;
       queueCrushedObstacle(entity, obstacle);
     }
+    // a second sweep over the contacts that pushed, from where the first left the hull: contacts that meet at an angle (a
+    // V of walls the hull is driven into) settle against both instead of leaving the first one's overlap behind
+    for (let index = 0; index < hardCount; index++) {
+      const obstacle = hardObstacles[index]!;
+      foot.centerX = centerX + outPush.x - startX;
+      foot.centerZ = centerZ + outPush.z - startZ;
+      _obstacleCenter.set(foot.centerX, pos.y, foot.centerZ);
+      const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
+      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+      pushHullFromObstacle(
+        _obstacleCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth,
+        obstacle, outPush, spanBottom, spanTop,
+      );
+    }
+    hardObstacles.length = 0;
     return hard;
   }
 
@@ -1229,9 +1271,7 @@ export function createAuthoritativeMatch({
     const boundsPushed = pushHullInsidePlayableBounds(
       centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
     );
-    const obstaclesPushed = collideWithObstacles(
-      entity, pos, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
-    );
+    const obstaclesPushed = collideWithObstacles(entity, pos, outPush);
     collideWithEntities(
       entity, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
     );
@@ -1277,6 +1317,12 @@ export function createAuthoritativeMatch({
       directionX,
       directionZ,
       speedMps,
+      // What fell in any world (ghost-crunch lane, 2026-10-02): the record's box centre at its base. The index is this
+      // authority's (the map's collision manifest); a peer whose world is laid out otherwise — the mobile tier's lighter
+      // placements, Frontline Assault's trench works — finds its own record of the prop by this, or none.
+      x: (obstacle.min[0] + obstacle.max[0]) * 0.5,
+      y: obstacle.min[1],
+      z: (obstacle.min[2] + obstacle.max[2]) * 0.5,
     });
     return true;
   }
@@ -1497,8 +1543,8 @@ export function createAuthoritativeMatch({
     if (bits & PLAYER_ACTION_BITS.RELOAD_MAGAZINE) reloadMagazine(entity);
     if (bits & PLAYER_ACTION_BITS.SPECIAL_ACTION) useSpecialAction(entity);
     if (bits & PLAYER_ACTION_BITS.SELF_RIGHT) {
-      if (requestTankSelfRight(entity.state)) emit('tank_self_right', { id: entity.id });
-      else requestTankJump(entity.state, entity.modeJumpMps);
+      if (requestTankSelfRight(entity.state, entity.modeGravityScale ?? 1)) emit('tank_self_right', { id: entity.id });
+      else requestTankJump(entity.state, entity.modeJumpMps, entity.modeGravityScale ?? 1);
     }
     for (let slot = 0; slot < CONSUMABLE_RULES.length; slot++) {
       useConsumableSlot(entity, bits, slot);
@@ -1963,10 +2009,17 @@ export function createAuthoritativeMatch({
     }
   }
 
+  // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (the solo step too)
+  const navigationWrecks: NavigationWreck[] = [];
+  let navigationWreckTicks = 0;
+
   function updateEntityControls(
     dt: number,
     inputs: ReadonlyMap<string, AuthoritativePlayerInput | null | undefined>,
   ): void {
+    if (botNavigation && navigationWreckTicks++ % 15 === 0) {
+      syncNavigationWrecks(botNavigation, navigationWrecks, collectNavigationWrecks(entities, navigationWrecks));
+    }
     for (const entity of entities) {
       if (entity.modeActive === false) continue;
       if (entity.bot) {
@@ -2051,7 +2104,8 @@ export function createAuthoritativeMatch({
       });
       if (result || (impact > 1.5 && fresh)) publishEntityImpact(entity, 'impact', closing, result);
     }
-    const landing = state.landingImpactMps;
+    // the fall the hull made (movement.ts fallImpactMps: the landing less the height the solver gave it, by energy)
+    const landing = Number.isFinite(state.fallImpactMps) ? state.fallImpactMps : state.landingImpactMps;
     if (landing > 0) {
       const upY = Math.cos(state.visualPitch) * Math.cos(state.visualRoll);
       const attitudeFactor = fallAttitudeFactor(state.visualPitch - state._terr.pitch, state.visualRoll - state._terr.roll, upY);
@@ -2064,6 +2118,7 @@ export function createAuthoritativeMatch({
   }
 
   // round 30: hulls stand on the primitives they are above (structureSupport.ts), the same field the solo sim rides
+  const _supportPose = createHullSupportPose();
   const structureSupport = createStructureSupportField(heightField, {
     queryObstacles: worldCollision && typeof worldCollision.queryObstacles === 'function'
       ? worldCollision.queryObstacles.bind(worldCollision) : undefined,
@@ -2076,8 +2131,10 @@ export function createAuthoritativeMatch({
       if (entity.modeActive === false) continue;
       if (isGunship(entity)) continue;
       movingEntity = entity;
-      // the authority has no rendered contact geometry: the hull origin is its belly line (movement's default)
-      structureSupport.beginHull(entity.state.pos.x, entity.state.pos.z, entity.state.pos.y);
+      // the authority has no rendered contact geometry: the hull origin is its belly line (movement's default); a part
+      // is a floor by the hull's underside over it, the obstacle solver's standing rule (structureSupport.ts)
+      structureSupport.beginHull(entity.state.pos.x, entity.state.pos.z, entity.state.pos.y,
+        hullSupportPose(entity.spec, entity.state, _supportPose));
       // Park the carrier only during ground integration; preserve held flight controls
       // for additional fixed steps when rendering slower than the simulation.
       const parking = entity.aerial?.kind === 'drone' && entity.aerial.active;

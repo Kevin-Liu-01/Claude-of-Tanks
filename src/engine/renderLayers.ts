@@ -223,15 +223,34 @@ export function setShadowCascadePolicy(policy: ShadowCascadePolicy | null): void
   shadowCascadePolicy = policy;
 }
 
+/**
+ * 2026-10-02 (the frame-budget lane): the static shadow-caster cache (engine/shadowStaticCache.ts) renders a cascade
+ * as its cached static depth plus the dynamic casters drawn on top; `false` from it means "render this light the
+ * ordinary way". It runs inside the per-light loop, after the policy's flips and the cascade masks, so both passes see
+ * exactly the caster set the ordinary render would.
+ */
+interface ShadowCascadeCache {
+  renderCascade(
+    renderer: WebGLRenderer, render: (lights: Object3D[], scene: Scene, camera: Camera) => void, single: Object3D[],
+    light: Object3D, cascadeIndex: number, scene: Scene, camera: Camera,
+  ): boolean;
+}
+let shadowCascadeCache: ShadowCascadeCache | null = null;
+
+export function setShadowCascadeCache(cache: ShadowCascadeCache | null): void {
+  shadowCascadeCache = cache;
+}
+
 export function getShadowCascadePolicy(): ShadowCascadePolicy | null {
   return shadowCascadePolicy;
 }
 
 function renderShadowLights(
-  render: ShadowMapRouter['render'], lights: Object3D[], scene: Scene, camera: Camera,
+  renderer: WebGLRenderer, render: ShadowMapRouter['render'], lights: Object3D[], scene: Scene, camera: Camera,
 ): void {
   const policy = shadowCascadePolicy;
-  if ((!policy && shadowCasterCascadeRefs.length === 0) || lights.length < 2) {
+  const cache = shadowCascadeCache;
+  if ((!policy && !cache && shadowCasterCascadeRefs.length === 0) || lights.length < 2) {
     render(lights, scene, camera);
     return;
   }
@@ -242,7 +261,7 @@ function renderShadowLights(
     policy?.beforeLight(light, cascadeIndex);
     hideCastersOutsideCascade(cascadeIndex, lights.length);
     try {
-      render(single, scene, camera);
+      if (!cache?.renderCascade(renderer, render, single, light, cascadeIndex, scene, camera)) render(single, scene, camera);
     } finally {
       restoreHiddenCasters();
       policy?.afterLight(light, cascadeIndex);
@@ -326,7 +345,7 @@ export function routeShadowOnlyLayer(renderer: WebGLRenderer): void {
     let completed = false;
     camera.layers.enable(SHADOW_ONLY_LAYER);
     try {
-      renderShadowLights(render, lights, scene, camera);
+      renderShadowLights(renderer, render, lights, scene, camera);
       completed = true;
     } finally {
       const ownsScope = completed && scope && shadowWarmScopes.get(camera) === scope

@@ -10,11 +10,16 @@
   "observability": { "enabled": true, "head_sampling_rate": 0.1 },
   "ratelimits": [{
     "name": "ROOM_CONNECT_LIMITER",
-    "namespace_id": "2609055512",
+    "namespace_id": "2609055513",
     "simple": { "limit": 120, "period": 60 }
   }],
+  // COT_STUN_URLS (2026-10-02, docs/MULTIPLAYER-V2.md §13.14): what a seat's `room_relay` grant carries when no TURN
+  // credential can be minted (the relay secrets unset, the provider down) — pinned to OFFICIAL_STUN_URLS in
+  // api/_lib/policy.ts by tools/deployment-policy.selftest.mjs. Relay secrets (names only, `wrangler secret put`):
+  // COT_CLOUDFLARE_TURN_KEY_ID and COT_CLOUDFLARE_TURN_API_TOKEN; COT_TURN_TTL_SECONDS (a var) may shorten the hour.
   "vars": {
-    "ALLOWED_ORIGINS": "https://cot.kevinliu.studio"
+    "ALLOWED_ORIGINS": "https://cot.kevinliu.studio",
+    "COT_STUN_URLS": "stun:stun.cloudflare.com:3478"
   },
   // Free plan (owner 2026-09-28): every match runs in the host commander's browser; this Worker carries rooms,
   // signaling and host migration only. The container backend left the tree with the cutover of 2026-09-29.

@@ -4,7 +4,8 @@
 // layer (cloudPresets.ts over its authored sky block) is pinned as the identity table of the round, with the
 // shadow policy (cumulus regimes under a day sun only); the 4 × 4 Bayer slot cycle covers every cell once; the
 // trace shader's haze law mirrors the aerial pass's constants in post.ts; the hook in post.ts, the `?clouds=off`
-// gate in sky.ts and the cascade attach in main.ts are present exactly once.
+// gate in sky.ts are present exactly once; the clouds' shadows reach the lit materials by the one shade map
+// (2026-10-03: the cascade gobos are gone — cloudShadeMap.selftest.mjs pins the path).
 // Round 71 (2026-09-25): the cloudscape pass — the multi-scale weather (a vigour channel), the street / anvil /
 // cirrus companion field in the wind frame, the curl volume and the blue-noise tile; every map's `clouds` block
 // resolves through its regime row (cloudscapes.ts) into the pinned 31-map cloudscape table; the layer is the default from round 71c (owner approval on the review sheet).
@@ -16,15 +17,21 @@ import {
   CLOUD_BLUE_SIZE, CLOUD_CURL_SIZE, CLOUD_DETAIL_SIZE, CLOUD_NOISE_SEED, CLOUD_SHAPE_SIZE, CLOUD_WEATHER_SIZE,
   bakeCloudBlueNoise, bakeCloudCurlVolume, bakeCloudDetailVolume, bakeCloudNoise, bakeCloudShapeVolume, bakeCloudWeatherMap, bakeCloudWeatherStreets,
 } from './cloudNoise.ts';
-import { CLOUD_LAYER_RULES, cloudLayerKey, deriveCloudLayerPreset } from './cloudPresets.ts';
+import { CLOUD_LAYER_RULES, cloudLayerKey, deriveCloudLayerPreset, loadCloudscapeLayers } from './cloudPresets.ts';
 import { CLOUDSCAPE_REGIMES, CLOUDSCAPE_REGIME_NAMES, isCloudscapeRegime } from './cloudscapes.ts';
+import { CLOUD_CONTRAILS_ON } from './cloudscapeLayer.ts';
+import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
+// the count a map authors (what the layer derives with the contrail switch on)
+const authoredContrails = (id) => Math.round(Math.min(1, Math.max(0, getMapConfig(id)?.clouds?.contrails ?? 0)) * CLOUD_CONTRAIL_MAX);
 import {
-  VolumetricCloudLayer, cloudCameraCut, bindCloudShadowCascade, cloudShadowCellOrigin, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
+  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
 } from './volumetricClouds.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
 import { MAP_IDS } from '../world/maps/catalog.ts';
 import { getMapConfig } from '../world/maps/index.ts';
+
+await loadCloudscapeLayers(); // a map's cloudscape resolves behind the battle entry (2026-10-02, the boot weight)
 
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
@@ -70,12 +77,14 @@ assert.equal(cloudCameraCut(0, .36, 1, 1), true, 'large camera turn rebuilds');
 
 // ---- the noise bakes: deterministic bytes at the shipped sizes and at small sizes, tileable, well distributed
 assert.deepEqual([CLOUD_SHAPE_SIZE, CLOUD_DETAIL_SIZE, CLOUD_WEATHER_SIZE, CLOUD_CURL_SIZE, CLOUD_BLUE_SIZE, CLOUD_NOISE_SEED], [64, 32, 256, 32, 32, 2068], 'the shipped sizes and seed');
-assert.equal(digest(bakeCloudShapeVolume(8)), '1f3ecfdabf968b313ef1bbf4583ed7d0cd8e716204434c14226ad0e63fdeec76', 'shape 8³ bytes');
-assert.equal(digest(bakeCloudDetailVolume(8)), 'f09eaa66c1e1f8261d2f6c5068ce8d6e648d8ca1a8fbd1f7f897acd72f82bfba', 'detail 8³ bytes');
-assert.equal(digest(bakeCloudWeatherMap(16)), '6cdaaf2f463d115067fb6d854010f46139574b4785afead0cd17144771dfc735', 'weather 16² bytes (2026-10-02: warped unequal lobes)');
-assert.equal(digest(bakeCloudWeatherStreets(16)), '148c71d25c2b1fabe00082293e6c13f3e8ed9cd4945cf6f071599f0227ce23e9', 'streets 16² bytes (2026-10-02: unequal row populations)');
-assert.equal(digest(bakeCloudCurlVolume(8)), 'f8b276f0ddf5aa7cad6242419cc0d32e5e5026e9a0d09eb045a51dabc62b882f', 'curl 8³ bytes (round 71)');
-assert.equal(digest(bakeCloudBlueNoise(8)), 'a9c6e9a2f163c54d3016ed87a083691079639edec3e9385ad3fb8f74be5481a3', 'blue 8² bytes (round 71)');
+// 2026-10-01 (frozen pins retired): the sha256 pins of every bake at small and shipped sizes were change detectors of
+// the cloud noise; the worker and the main thread run the same pure bakes, so the contract is determinism (two bakes
+// agree byte for byte), the shipped sizes, the seed dependence and the distribution checks below.
+for (const [label, bake] of [['shape 8³', () => bakeCloudShapeVolume(8)], ['detail 8³', () => bakeCloudDetailVolume(8)],
+  ['weather 16²', () => bakeCloudWeatherMap(16)], ['streets 16²', () => bakeCloudWeatherStreets(16)],
+  ['curl 8³', () => bakeCloudCurlVolume(8)], ['blue 8²', () => bakeCloudBlueNoise(8)]]) {
+  assert.equal(digest(bake()), digest(bake()), `${label} bytes are deterministic`);
+}
 const shape = bakeCloudShapeVolume();
 const detail = bakeCloudDetailVolume();
 const weather = bakeCloudWeatherMap();
@@ -103,12 +112,6 @@ assert.equal(weather.length, 256 * 256 * 4);
 assert.equal(streets.length, 256 * 256 * 4);
 assert.equal(curl.length, 32 * 32 * 32 * 4);
 assert.equal(blue.length, 32 * 32 * 4);
-assert.equal(digest(shape), 'ed892103446410c7b4a52d45b06f9bbcf3d812774eb6f94233c0063edc46ce49', 'shape 64³ bytes (2026-09-24, unchanged by round 71)');
-assert.equal(digest(detail), 'e215d7c534e2946014ce0e1cffdf4a3459951b06bbd134049fc98347622804a8', 'detail 32³ bytes (2026-09-24, unchanged by round 71)');
-assert.equal(digest(weather), 'f105cbbe10484a952d83112490977eedc9ba101f1f50c2895200dbef6c87514e', 'weather 256² bytes (2026-10-02: asymmetric clustered lobes)');
-assert.equal(digest(streets), '2ff98749e69ae1ceb71e0738774bfcacc1dd44eaa99ad942607d1a5d96b5645d', 'streets 256² bytes (2026-10-02: unequal row populations and spacing)');
-assert.equal(digest(curl), '2e0be330c6f0e076e5e237ad40721bb2f312c2d5be5f5413dc4d57d7578c763c', 'curl 32³ bytes (2026-09-25)');
-assert.equal(digest(blue), '5aba12bc64a97cb08a62c3106374d2a9f451d31580767d2fc97e0e3fd13907cc', 'blue 32² bytes (2026-09-25, void-and-cluster)');
 assert.equal(digest(bakeCloudShapeVolume(64, CLOUD_NOISE_SEED)), digest(shape), 'the default seed is the shipped seed');
 assert.notEqual(digest(bakeCloudShapeVolume(8, 7)), digest(bakeCloudShapeVolume(8, 8)), 'the seed changes the volume');
 {
@@ -249,7 +252,11 @@ for (const id of MAP_IDS) {
   if (id !== 'mars') assert.ok(config.clouds && isCloudscapeRegime(config.clouds.regime), `${id} authors a cloudscape regime`);
   else assert.ok(!config.clouds && MARS_SKY_PRESET.cloudscape?.regime === 'thin-ice-clouds', 'Mars carries its cloudscape on the shared preset (the ruleset applies it directly)');
   const p = deriveCloudLayerPreset(skyOf(id));
-  table[id] = { regime: p.regime, coverage: +p.coverage.toFixed(3), baseM: p.baseM, thicknessM: Math.round(p.thicknessM), shadow: p.shadow, streets: p.streets, cirrus: p.cirrus, farBand: p.farBand };
+  table[id] = { regime: p.regime, coverage: +p.coverage.toFixed(3), baseM: p.baseM, thicknessM: Math.round(p.thicknessM), shadow: p.shadow, streets: p.streets, cirrus: p.cirrus, farBand: p.farBand,
+    // 2026-10-01: the weather beyond the slab (cloudWeatherLayers.ts) — contrails, rain, virga, the fog bank
+    // (2026-10-03: contrails are off on every map — cloudscapeLayer.ts CLOUD_CONTRAILS_ON; the table keeps the authored
+    // counts, which come back with the switch)
+    contrails: CLOUD_CONTRAILS_ON ? p.contrails : (p.contrails === 0 ? authoredContrails(id) : -1), rain: p.rain, virga: p.virga, fogBank: p.fogBank };
   assert.ok(p.coverage >= 0 && p.coverage <= CLOUD_LAYER_RULES.coverageMax);
   assert.ok(p.baseM > 0 && p.thicknessM > 0 && p.density > 0);
   assert.ok(p.shadowThreshold >= 0 && p.shadowThreshold <= 1);
@@ -262,39 +269,39 @@ for (const id of MAP_IDS) {
   if (p.shearM > 0) assert.ok(p.shearM <= p.thicknessM * 2, `${id}: the lean is bounded by the slab`);
 }
 assert.deepEqual(table, {
-  verdant: { regime: 'fair-weather-cumulus', coverage: 0.36, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.45, cirrus: 0.12, farBand: 0.25 },
-  desert: { regime: 'cumulus-humilis', coverage: 0.14, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.5, farBand: 0.15 },
-  winter: { regime: 'stratocumulus-deck', coverage: 0.86, baseM: 700, thicknessM: 420, shadow: false, streets: 0.2, cirrus: 0, farBand: 0.6 },
-  urban: { regime: 'altocumulus', coverage: 0.55, baseM: 2800, thicknessM: 380, shadow: false, streets: 0.1, cirrus: 0.3, farBand: 0.35 },
-  coastal: { regime: 'sea-streets', coverage: 0.32, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.65 },
-  autumn: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
-  steppe: { regime: 'cloud-streets', coverage: 0.34, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.9, cirrus: 0.2, farBand: 0.35 },
-  railyard: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55 },
-  frontier: { regime: 'cloud-streets', coverage: 0.4, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.85, cirrus: 0.15, farBand: 0.35 },
-  fjord: { regime: 'broken-stratocumulus', coverage: 0.62, baseM: 900, thicknessM: 500, shadow: true, streets: 0.3, cirrus: 0.1, farBand: 0.6 },
-  delta: { regime: 'towering-cumulus', coverage: 0.38, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3 },
-  badlands: { regime: 'cumulus-humilis', coverage: 0.18, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.35, farBand: 0.15 },
-  monsoon: { regime: 'cumulonimbus-front', coverage: 0.4, baseM: 1000, thicknessM: 3000, shadow: true, streets: 0.1, cirrus: 0.25, farBand: 0.4 },
-  alpine: { regime: 'towering-cumulus', coverage: 0.26, baseM: 1900, thicknessM: 900, shadow: true, streets: 0, cirrus: 0.3, farBand: 0.5 },
-  caldera: { regime: 'cumulus-humilis', coverage: 0.22, baseM: 1500, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.45, farBand: 0.15 },
-  foundry: { regime: 'industrial-stratocumulus', coverage: 0.88, baseM: 850, thicknessM: 520, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55 },
-  ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
-  blackglass: { regime: 'ash-veil', coverage: 0.55, baseM: 800, thicknessM: 450, shadow: false, streets: 0.2, cirrus: 0.5, farBand: 0.4 },
-  titan_gorge: { regime: 'dense-overcast', coverage: 0.96, baseM: 450, thicknessM: 500, shadow: false, streets: 0, cirrus: 0, farBand: 0.6 },
-  skybridge: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 700, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.5 },
-  polders: { regime: 'broken-stratocumulus', coverage: 0.68, baseM: 600, thicknessM: 500, shadow: true, streets: 0.4, cirrus: 0.1, farBand: 0.5 },
-  copper_mesa: { regime: 'cumulus-humilis', coverage: 0.2, baseM: 1900, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15 },
-  airfield: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25 },
-  oasis: { regime: 'cumulus-humilis', coverage: 0.17, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15 },
-  whiteout: { regime: 'low-stratus', coverage: 0.97, baseM: 300, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5 },
-  orchard: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.4, cirrus: 0.12, farBand: 0.25 },
-  longleaf: { regime: 'fair-weather-cumulus', coverage: 0.32, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.5, cirrus: 0.12, farBand: 0.25 },
-  mangrove: { regime: 'towering-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3 },
-  saltwind: { regime: 'sea-streets', coverage: 0.3, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.55 },
-  reservoir: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25 },
-  cliffbridge: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1200, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25 },
-  mars: { regime: 'thin-ice-clouds', coverage: 0.06, baseM: 2500, thicknessM: 400, shadow: false, streets: 0.2, cirrus: 0.45, farBand: 0 },
-}, 'the cloudscape of every map (round 71 identity table; round 76: foundry and railyard on the industrial stratocumulus, urban on the altocumulus)');
+  verdant: { regime: 'fair-weather-cumulus', coverage: 0.36, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.45, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
+  desert: { regime: 'cumulus-humilis', coverage: 0.14, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.5, farBand: 0.15, contrails: 2, rain: 0.3, virga: 0.85, fogBank: 0 },
+  winter: { regime: 'stratocumulus-deck', coverage: 0.86, baseM: 700, thicknessM: 420, shadow: false, streets: 0.2, cirrus: 0, farBand: 0.6, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  urban: { regime: 'altocumulus', coverage: 0.55, baseM: 2800, thicknessM: 380, shadow: false, streets: 0.1, cirrus: 0.3, farBand: 0.35, contrails: 4, rain: 0, virga: 0, fogBank: 0 },
+  coastal: { regime: 'sea-streets', coverage: 0.32, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.65, contrails: 0, rain: 0, virga: 0, fogBank: 0.45 },
+  autumn: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
+  steppe: { regime: 'cloud-streets', coverage: 0.34, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.9, cirrus: 0.2, farBand: 0.35, contrails: 0, rain: 0.2, virga: 0, fogBank: 0 },
+  railyard: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  frontier: { regime: 'cloud-streets', coverage: 0.4, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.85, cirrus: 0.15, farBand: 0.35, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
+  fjord: { regime: 'broken-stratocumulus', coverage: 0.62, baseM: 900, thicknessM: 500, shadow: true, streets: 0.3, cirrus: 0.1, farBand: 0.6, contrails: 0, rain: 0.3, virga: 0.15, fogBank: 0.4 },
+  delta: { regime: 'towering-cumulus', coverage: 0.38, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3, contrails: 0, rain: 0.45, virga: 0.1, fogBank: 0 },
+  badlands: { regime: 'cumulus-humilis', coverage: 0.18, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.35, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.9, fogBank: 0 },
+  monsoon: { regime: 'cumulonimbus-front', coverage: 0.4, baseM: 1000, thicknessM: 3000, shadow: true, streets: 0.1, cirrus: 0.25, farBand: 0.4, contrails: 0, rain: 0.85, virga: 0, fogBank: 0 },
+  alpine: { regime: 'towering-cumulus', coverage: 0.26, baseM: 1900, thicknessM: 900, shadow: true, streets: 0, cirrus: 0.3, farBand: 0.5, contrails: 0, rain: 0.15, virga: 0.1, fogBank: 0 },
+  caldera: { regime: 'cumulus-humilis', coverage: 0.22, baseM: 1500, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.45, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
+  foundry: { regime: 'industrial-stratocumulus', coverage: 0.88, baseM: 850, thicknessM: 520, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0.25, virga: 0.6, fogBank: 0 },
+  blackglass: { regime: 'ash-veil', coverage: 0.55, baseM: 800, thicknessM: 450, shadow: false, streets: 0.2, cirrus: 0.5, farBand: 0.4, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  titan_gorge: { regime: 'dense-overcast', coverage: 0.96, baseM: 450, thicknessM: 500, shadow: false, streets: 0, cirrus: 0, farBand: 0.6, contrails: 0, rain: 0.25, virga: 0.55, fogBank: 0 },
+  skybridge: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 700, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.5, contrails: 0, rain: 0.2, virga: 0.5, fogBank: 0 },
+  polders: { regime: 'broken-stratocumulus', coverage: 0.68, baseM: 600, thicknessM: 500, shadow: true, streets: 0.4, cirrus: 0.1, farBand: 0.5, contrails: 3, rain: 0.2, virga: 0.2, fogBank: 0.35 },
+  copper_mesa: { regime: 'cumulus-humilis', coverage: 0.2, baseM: 1900, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
+  airfield: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 6, rain: 0, virga: 0, fogBank: 0 },
+  oasis: { regime: 'cumulus-humilis', coverage: 0.17, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
+  whiteout: { regime: 'low-stratus', coverage: 1, baseM: 300, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  orchard: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.4, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
+  longleaf: { regime: 'fair-weather-cumulus', coverage: 0.32, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.5, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0.3, virga: 0, fogBank: 0 },
+  mangrove: { regime: 'towering-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3, contrails: 0, rain: 0.45, virga: 0.1, fogBank: 0 },
+  saltwind: { regime: 'sea-streets', coverage: 0.3, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.55, contrails: 0, rain: 0, virga: 0, fogBank: 0.35 },
+  reservoir: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
+  mars: { regime: 'thin-ice-clouds', coverage: 0.06, baseM: 2500, thicknessM: 400, shadow: false, streets: 0.2, cirrus: 0.45, farBand: 0, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  cliffbridge: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1200, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.25, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
+}, 'the cloudscape of every map (round 71 identity table; round 76: foundry and railyard on the industrial stratocumulus, urban on the altocumulus; 2026-10-01: the layered sky — contrails, rain and virga, fog banks)');
 {
   // the regime rows are complete and sane; every regime name resolves
   assert.equal(CLOUDSCAPE_REGIME_NAMES.length, 20, 'eighteen round-71 regimes and the two of round 76 (industrial-stratocumulus, altocumulus)');
@@ -409,6 +416,49 @@ assert.equal(CLOUD_AERIAL.heightScale, postConst('AERIAL_HEIGHT_SCALE'));
 assert.equal(CLOUD_AERIAL.heightScatterK, postConst('AERIAL_HEIGHT_SCATTER_K'));
 assert.equal(CLOUD_AERIAL.heightExtK, postConst('AERIAL_HEIGHT_EXT_K'));
 assert.deepEqual([...CLOUD_AERIAL.cool], JSON.parse(postSource.match(/const AERIAL_COOL = (\[[^\]]+\]);/)[1]));
+// 2026-10-02: the pass's haze layer (a camera high over the ground looks through less of it) on the clouds too, from the
+// datum the pass computes for the frame (the ground under the camera), and the square's ceilings a third lower
+assert.equal(CLOUD_AERIAL.layerH, postConst('AERIAL_LAYER_H'));
+assert.ok(layerSource.includes('float layer = cloudHazeLayer( dist, dir );') && layerSource.includes('* ${f(CLOUD_AERIAL.hazeDensity)} * layer;'), 'the layer factor scales both haze curves');
+assert.ok(postSource.includes('beforeSceneRender(renderer, camera, dt, sceneTarget.width, sceneTarget.height, aerial.uniforms.uHazeDatum.value, sceneTarget.depthTexture)'), 'the pass hands the clouds its datum and the scene depth');
+// ---- 2026-10-03 (the mountains lane: "seaFogBank() integrates out to 30 km regardless of scene depth"): every layer the
+// trace sums ends at the scene's surface — the previous frame's resolved depth read through the camera that drew it
+{
+  const trace = layerSource.slice(layerSource.indexOf('const TRACE_FRAGMENT'), layerSource.indexOf('const RESOLVE_FRAGMENT'));
+  for (const u of ['tSceneDepth', 'uSceneDepthOn', 'uSceneNearFar', 'uDepthRight', 'uDepthUp', 'uDepthFwd', 'uDepthTan']) {
+    assert.match(trace, new RegExp(`uniform [a-zA-Z0-9]+ ${u};`), `${u} is declared`);
+    assert.match(layerSource, new RegExp(`${u}: \\{ value: `), `${u} has a uniform object`);
+  }
+  assert.ok(trace.indexOf('float cloudSceneT( vec3 dir )') < trace.indexOf('vec4 slabRain('), 'the helper stands ahead of the layers');
+  assert.match(trace, /if \( uSceneDepthOn < 0\.5 \) return 1e9;/, 'off: no limit');
+  assert.match(trace, /if \( depth >= 0\.999999 \) return 1e9;/, 'the sky (cleared depth): no limit');
+  assert.match(trace, /float sceneT = cloudSceneT\( dir \);\s*t1 = min\( t1, sceneT \);/, 'the slab ends at the surface');
+  assert.match(trace, /float tB = min\( min\( tTop, \$\{f\(CLOUD_FOGBANK_RANGE_M\[1\]\)\} \), sceneT \);/, 'the sea fog bank ends at the surface');
+  assert.match(trace, /tEnd = min\( min\( tEnd, \$\{f\(CLOUD_RAIN_RANGE_M\[1\]\)\} \), sceneT \);/, 'the rain ends at the surface');
+  assert.match(trace, /if \( tb <= 0\.0 \|\| horiz <= fbStart \|\| tb >= sceneT \) return none;/, 'a far band behind a surface is hidden');
+  assert.match(trace, /if \( tc <= 0\.0 \|\| tc >= sceneT \) return none;/, 'the cirrus behind a surface is hidden');
+  // the JS: the previous camera's frame, off for a camera in or over the slab, until the scene has drawn, after a resize
+  assert.match(layerSource, /const depthOn = !!depthTex && this\.sceneDepthReady && this\.hasPrev && C\.pos\.y <= \(t\.uSlabLow\.value as number\);/);
+  assert.match(layerSource, /\(t\.uDepthFwd\.value as THREE\.Vector3\)\.copy\(P\.fwd\);/, 'the camera that drew the depth (the previous frame\'s)');
+  assert.ok(layerSource.indexOf('(t.uSceneNearFar.value as THREE.Vector2).copy(this.depthPlanes);') < layerSource.indexOf('this.depthPlanes.set(camera.near, camera.far);'), 'its planes, before this frame\'s replace them');
+  assert.match(layerSource, /this\.resize\(width, height\); this\.sceneDepthReady = false;/, 'a resize drops the stale depth');
+  assert.match(layerSource, /\/\/ the scene draws next with this camera: its depth is the next frame's cloudSceneT\s*this\.sceneDepthReady = true;/);
+  // the twin of the GLSL's projection and linear depth: a surface 3.8 km out along a ray 20° right of the view, seen by
+  // a camera with near 0.5 / far 4000, comes back at 3.8 km
+  const near = 0.5, far = 4000, tanX = Math.tan(Math.PI / 4) * 16 / 9, tanY = Math.tan(Math.PI / 6);
+  const dir = [Math.sin(0.35), 0.01, -Math.cos(0.35)]; const n = Math.hypot(...dir); dir.forEach((v, i) => { dir[i] = v / n; });
+  const fz = -dir[2], viewZ = -3800 * fz;
+  const depth = (far / (far - near)) * (1 + near / viewZ); // three's perspective depth (OpenGL convention), viewZ < 0
+  const uv = [0.5 + 0.5 * dir[0] / (fz * tanX), 0.5 + 0.5 * dir[1] / (fz * tanY)];
+  assert.ok(uv[0] > 0 && uv[0] < 1 && uv[1] > 0 && uv[1] < 1, 'inside the frame');
+  const back = -((near * far) / ((far - near) * depth - far)) / fz;
+  assert.ok(Math.abs(back - 3800) < 1e-6, `the linear depth round-trips (${back})`);
+  assert.match(trace, /float viewZ = \( uSceneNearFar\.x \* uSceneNearFar\.y \) \/ \( \( uSceneNearFar\.y - uSceneNearFar\.x \) \* depth - uSceneNearFar\.y \);\s*float t = -viewZ \/ fz;/, 'the same linearisation as the aerial pass');
+  // only a surface past the dome limits the layers: inside it the dome's depth test hides them, and a history traced
+  // whole behind a near ridge has nothing missing when a camera turn reveals it
+  assert.match(trace, /return t < \$\{f\(CLOUD_DOME_RADIUS_M\)\} \? 1e9 : t;/, 'a surface inside the dome: the whole sky traced');
+}
+assert.ok(CLOUD_AERIAL.extCeiling <= 0.45 && CLOUD_AERIAL.scatterCeiling <= 0.4, 'the square keeps most of a far range\'s colour');
 // round 71: the far ramp moved out so a deck stays readable at the horizon
 assert.ok(CLOUD_AERIAL.farStartM >= 5000 && CLOUD_AERIAL.farEndM >= 20000 && CLOUD_AERIAL.farScatterCeiling <= 0.85, 'the far scatter ramp keeps a far deck readable');
 const renderFrame = postSource.slice(postSource.indexOf('  function renderFrame('), postSource.indexOf('\n  // Live preset switching'));
@@ -421,16 +471,13 @@ assert.match(skySource, /if \(requested === 'baked'\) return false;\s+return tru
 assert.match(skySource, /requested === 'off'\) return false/, 'the ?clouds=off fallback keeps the baked decks');
 assert.match(skySource, /scene\.userData\.volumetricClouds = volumetricClouds;/);
 assert.match(skySource, /CLOUD_NOISE_KINDS\.every\(\(kind\) => cloudNoiseUpload\[kind\]\)/, 'the worker handshake waits for every kind');
-assert.match(mainSource, /sky\.attachShadowCascades\(lighting\.csm\);/, 'the cascades carry the cloud shadows');
+// 2026-10-03: no cascade gobos — the dithered shade under the PCF taps was the gauntlet's stipple, arcs and weave
+assert.ok(!mainSource.includes('attachShadowCascades') && !skySource.includes('attachShadowCascades'), 'nothing attaches the cascades to the clouds');
 assert.match(mainSource, /cloudscape: config\.clouds/, 'the map\'s clouds block rides with its sky block into the rig');
 assert.ok(layerSource.includes('${ATMOSPHERE_SKY_GLSL}') && layerSource.includes('atmoSkyVisible( skyDir )'), 'the trace hazes toward the sky-view LUT');
-assert.ok(layerSource.includes('markShadowOnly(gobo)'), 'the gobos live on the shadow-only layer');
-assert.ok(layerSource.includes('gobo.customDepthMaterial = this.goboMaterial'), 'the gobos discard by the same two weather fields the trace reads');
-// round 78 (the performance lane): each gobo renders into its own cascade only — three rasterised every plane into
-// every cascade's map (sixteen field-shader draws for four planes on the cumulus maps); the mask is forgotten on detach
-assert.ok(layerSource.includes('setShadowCasterCascades(gobo, 1 << i);'), 'gobo i casts into cascade i only (renderLayers.setShadowCasterCascades)');
-assert.equal(layerSource.match(/setShadowCasterCascades\(gobo, null\);/g)?.length, 1, 'the detach forgets the mask');
-assert.ok(layerSource.indexOf('setShadowCasterCascades(gobo, 1 << i);') < layerSource.indexOf('this.scene.add(gobo);'), 'registered before the plane joins the scene');
+for (const gone of ['markShadowOnly', 'setShadowCasterCascades', 'customDepthMaterial', 'GOBO_FRAGMENT', 'uShadowCellOrigin', 'bindCloudShadowCascade']) {
+  assert.ok(!layerSource.includes(gone), `no shadow-map gobo left (${gone})`);
+}
 // round 78: the low-deck march law — a stratus deck under 400 m takes the cellular decks' 10 km cap and far strides
 // (whiteout's 300 m ceiling marched twenty kilometres of sheet at the centre-far view); the cellular decks are
 // unchanged, every cumuliform regime and high sheet stays on the full march
@@ -456,30 +503,8 @@ assert.match(layerSource, /uniform sampler3D tShape;[\s\S]*uniform sampler3D tDe
 for (const term of ['phaseDual( cosT, 0.8 )', 'exp( -tau * 0.25 )', 'float powder = mix( 1.0, 1.0 - exp( -sig * 60.0 ), powderK )', 'texelFetch( tBlue', 'cloudCoverageAt(', 'uAnvil', 'uShearM', 'uWispiness', 'uCirrus', 'uFarBand', 'uScud', 'halo']) {
   assert.ok(layerSource.includes(term), `the trace carries ${term}`);
 }
-assert.ok(layerSource.includes("name: 'VolumetricCloudTrace'") && layerSource.includes("name: 'VolumetricCloudResolve'") && layerSource.includes("name: 'VolumetricCloudDome'") && layerSource.includes("name: 'VolumetricCloudGobo'"));
-console.log('volumetricClouds.selftest: noise digests (six bakes), tiling, equalisation and street anisotropy, the 31-map cloudscape table, the regime rows, the shadow policy, the slot cycle, the haze mirror and the hooks pinned');
+assert.ok(layerSource.includes("name: 'VolumetricCloudTrace'") && layerSource.includes("name: 'VolumetricCloudResolve'") && layerSource.includes("name: 'VolumetricCloudDome'") && layerSource.includes("name: 'VolumetricCloudFarShade'"));
+console.log('volumetricClouds.selftest: deterministic noise (six bakes), tiling, equalisation and street anisotropy, the 31-map cloudscape table, the regime rows, the shadow policy, the slot cycle, the haze mirror and the hooks pinned');
 
-// A translucent cloud mask is drawn once per cascade, not repeatedly through
-// the other cascades' overlapping planes. Preserve the shared caster hooks.
-{
-  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial());
-  const own=new THREE.OrthographicCamera(),other=new THREE.OrthographicCamera();
-  let before=0,after=0;
-  mesh.onBeforeShadow=()=>before++;mesh.onAfterShadow=()=>after++;
-  bindCloudShadowCascade(mesh,own,new THREE.Vector2(2048,2048));
-  for(const camera of [own,other,own]) {
-    const args=[null,mesh,null,camera,mesh.geometry,mesh.material,null];
-    mesh.onBeforeShadow(...args);
-    assert.equal(mesh.geometry.drawRange.count,camera===own?6:0);
-    mesh.onAfterShadow(...args);
-    assert.equal(mesh.geometry.drawRange.count,Infinity,'next cascade is not left with a disabled plane');
-  }
-  assert.deepEqual([before,after],[3,3]);mesh.geometry.dispose();mesh.material.dispose();
-  assert.match(layerSource,/smoothstep\( uThreshold - 0\.08, uThreshold \+ 0\.08, cloudField/,'cloud edges have a continuous opacity band');
-  assert.match(layerSource,/floor\( gl_FragCoord\.xy \) \+ uShadowCellOrigin/,'coverage follows absolute light-space cells');
-  for(const pixels of [1024,2048,4096])for(const span of [300,660,1200,2500])for(const shift of [-17,-1,0,1,17,257]) {
-    const step=span/pixels,base=cloudShadowCellOrigin(-span/2,-731,span,pixels);
-    const moved=cloudShadowCellOrigin(-span/2,-731-shift*step,span,pixels);
-    assert.equal((moved-shift+512)%256,base,'an integer cascade shift preserves every absolute dither cell');
-  }
-}
+// The shade map keeps the gobos' soft edge band (a continuous opacity over the cut, never a binary stamp).
+assert.match(layerSource,/smoothstep\( uThreshold - 0\.08, uThreshold \+ 0\.08, cloudField/,'cloud edges have a continuous opacity band');

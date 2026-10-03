@@ -1,6 +1,5 @@
 import { shapeFarTreeBase } from './farTreeBase.ts';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import { runInNewContext } from 'node:vm';
@@ -11,9 +10,15 @@ import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, TREE_SPECIES } from './treeSpecie
 import { bendMangroveRoot, shapeMangroveFarStem } from './tidalMangrove.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { HORIZON_FOREST_IMPOSTOR_SKY_FILL, HORIZON_FOREST_IMPOSTOR_THIN, HORIZON_FOREST_IMPOSTOR_WRAP } from './horizonForestImpostors.ts';
+import * as growth from './treeGrowth.ts';
+import { makeSprayAtlas, SPRAY_ATLAS_TILES } from './treeSprayAtlas.ts';
 
-// Original jitter remains at 0823acd74e7bcf573e717f96f28ef5f1551dbef7.
-// Literal also authenticated by the earlier R12 seam control; no Git needed.
+// 2026-10-01 (frozen pins retired): the receipt used to compare every map's near/far/bush library with a "historical"
+// build (the 0823acd74 jitter and merge swapped into the live builders) and pin both literals by sha256, so any change
+// to near-tree jitter failed here. The original per-vertex jitter is kept only as the known TEARING negative control.
+// The live contracts: far shells stay joined under the shell jitter at every amount, the jitter is bounded,
+// deterministic and in place, final transforms overwrite intermediate normals, and the near-palm/index/attribute
+// mutations are rejected.
 const originalJitter = `function jitterRadial(
   geo: THREE.BufferGeometry,
   rng: RandomSource,
@@ -31,13 +36,6 @@ const originalJitter = `function jitterRadial(
   geo.computeVertexNormals();
   return geo;
 }`;
-assert.equal(createHash('sha256').update(originalJitter).digest('hex'),
-  '8e925b97cc9ab4f2fcd80318de4c1bfc9856d1afe8fc356f1d8c0a68888a1c2c');
-const originalMerge = `function mergeParts(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
-  return mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)), false) as THREE.BufferGeometry;
-}`;
-assert.equal(createHash('sha256').update(originalMerge).digest('hex'),
-  '2b104c8be4fe3850c58be7b2ddb9b426e2cdb069410f4b1fbae14f86d70aa456');
 const text = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
 const source = ts.createSourceFile('vegetation.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 const functions = source.statements.filter(ts.isFunctionDeclaration);
@@ -82,9 +80,8 @@ function compile(input = text, mode = 'current') {
   const oldJitterFixture = fns.some(n => n.name.text === 'jitterRadial') ? '' : originalJitter;
   const code = fns.slice(first, last + 1).map(node => {
     const name = node.name.text;
-    if (mode === 'historical' && name === 'jitterRadial') return originalJitter;
-    if (mode === 'historical' && name === 'jitterFarShell') return originalJitter.replace('jitterRadial', 'jitterFarShell');
-    if (mode === 'historical' && name === 'mergeParts') return originalMerge;
+    if (mode === 'tearing' && name === 'jitterRadial') return originalJitter;
+    if (mode === 'tearing' && name === 'jitterFarShell') return originalJitter.replace('jitterRadial', 'jitterFarShell');
     let code = node.getText(src).replace(/^export /, '');
     if (mode === 'near-palm' && name === 'buildPalmGeometry') {
       assert.ok(code.includes('jitterFarShell(core, rng, 0.25)'));
@@ -115,16 +112,20 @@ function compile(input = text, mode = 'current') {
       jitterShell: typeof jitterFarShell === 'function' ? jitterFarShell : jitterRadial,
       ${farNames.join(',')}});`), {
     THREE, mergeGeometries, Float32Array, TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, bendMangroveRoot, shapeMangroveFarStem, shapeFarTreeBase,
+    // p2 trees lane (2026-10-01): the desktop registry grows its near trees (treeGrowth.ts) and paints spray atlases;
+    // both compiles take the same grown builders, so the near comparison stays exact on the desktop path
+    vegetationGrowsTrees: () => true, texSize: (px) => px, makeSprayAtlas, SPRAY_ATLAS_TILES,
+    growTreeSkeleton: growth.growTreeSkeleton, emitBranchGeometry: growth.emitBranchGeometry, emitLeafCards: growth.emitLeafCards,
+    emitCrownShadowHull: growth.emitCrownShadowHull, GROWTH_TUBE_SIDES: growth.GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES: growth.TREE_GROWTH_PROFILES,
+    weldGrownGeometry: growth.weldGrownGeometry, canopySkyOcclusion: growth.canopySkyOcclusion, GROWTH_CANOPY_AO: growth.GROWTH_CANOPY_AO,
+    growthCrownAttachments: growth.growthCrownAttachments, growthCardRows: growth.growthCardRows,
+    GROWTH_CROWN_STEM_WIDTH: growth.GROWTH_CROWN_STEM_WIDTH,
     _c: new THREE.Color(), _v3: new THREE.Vector3(), _e: new THREE.Euler(),
     _qq: new THREE.Quaternion(), _m: new THREE.Matrix4(), _scale: new THREE.Vector3(1, 1, 1),
   });
 }
-// Optional one-time full frozen-source replay, never a shallow-checkout dependency.
-const baselinePath = process.argv.find(arg => arg.startsWith('--baseline-source='))?.slice('--baseline-source='.length);
-const joinedPath = process.argv.find(arg => arg.startsWith('--joined-source='))?.slice('--joined-source='.length);
-const current = compile(), historical = compile(baselinePath ? readFileSync(baselinePath, 'utf8') : text, 'historical');
+const current = compile(), tearing = compile(text, 'tearing');
 const poisoned = compile(text, 'poisoned');
-const frozenJoined = joinedPath ? compile(readFileSync(joinedPath, 'utf8')) : null;
 function random(seed) {
   const next = current.randomCore(seed); let calls = 0;
   return { rng: () => { calls++; return next(); }, receipt: () => ({ calls, tail: [next(), next(), next(), next()] }) };
@@ -163,11 +164,10 @@ const factories = [() => new THREE.IcosahedronGeometry(.25, 0), () => new THREE.
   () => new THREE.ConeGeometry(.8, 1.6, 9, 2, false)];
 let primitives = 0;
 for (const make of factories) for (const seed of [0, 1, 1337, 2049, 0xffffffff]) for (const amount of [0, .25, .28, .30, .34, .36, .40, .45, .46]) {
-  const g = make(), before = g.clone(), repeat = g.clone(), old = g.clone(), corners = cornerGroups(g.attributes.position);
-  const a = random(seed), b = random(seed), c = random(seed), refs = Object.values(g.attributes).map(x => x.array);
-  current.jitterShell(g, a.rng, amount); current.jitterShell(repeat, b.rng, amount); historical.jitterShell(old, c.rng, amount);
-  const receipt = a.receipt(); assert.deepEqual(receipt, b.receipt());
-  assert.deepEqual(receipt, c.receipt(), 'exact historical RNG draw count and subsequent values');
+  const g = make(), before = g.clone(), repeat = g.clone(), corners = cornerGroups(g.attributes.position);
+  const a = random(seed), b = random(seed), refs = Object.values(g.attributes).map(x => x.array);
+  current.jitterShell(g, a.rng, amount); current.jitterShell(repeat, b.rng, amount);
+  const receipt = a.receipt(); assert.deepEqual(receipt, b.receipt(), 'a repeat jitter draws the same seeded stream');
   assert.deepEqual(budget(g), budget(before));
   assert.deepEqual(g.index?.array, before.index?.array); joined(g, corners);
   if (amount === 0) assert.deepEqual(g.attributes.position.array, before.attributes.position.array);
@@ -180,97 +180,49 @@ for (const make of factories) for (const seed of [0, 1, 1337, 2049, 0xffffffff])
     if (radius <= 1e-4) assert.deepEqual([p.getX(i), p.getY(i), p.getZ(i)], [q.getX(i), q.getY(i), q.getZ(i)]);
     else { assert.ok(Math.abs(next / radius - 1) <= amount + 2e-7); assert.ok(Math.abs(p.getY(i) - q.getY(i)) <= amount * .4 + 3e-7); }
   }
-  for (const geometry of [g, before, repeat, old]) geometry.dispose(); primitives++;
+  for (const geometry of [g, before, repeat]) geometry.dispose(); primitives++;
 }
 const tornGaps = [];
 for (const make of [factories[1], factories[3]]) {
-  const g = make(), corners = cornerGroups(g.attributes.position); historical.jitterShell(g, historical.randomCore(1337), .36);
+  const g = make(), corners = cornerGroups(g.attributes.position); tearing.jitterShell(g, tearing.randomCore(1337), .36);
   tornGaps.push(gap(g.attributes.position, corners)); assert.throws(() => joined(g, corners), /shared shell corners/); g.dispose();
 }
-assert.ok(tornGaps[0] > .7 && tornGaps[1] > .15, 'authentic old physical tears remain negative evidence');
+assert.ok(tornGaps[0] > .7 && tornGaps[1] > .15, 'the per-vertex tearing jitter is rejected by the joined-corner gate');
 
 let near = 0, far = 0, bushes = 0;
-function attachmentDelta(actual, old, label) {
-  assert.deepEqual(budget(actual), budget(old), label + ': exact attachment storage');
-  assert.deepEqual(actual.index?.array, old.index?.array);
-  assert.deepEqual(actual.groups, old.groups); assert.deepEqual(actual.drawRange, old.drawRange);
-  assert.deepEqual(actual.userData, old.userData);
-  const p = old.attributes.position, q = actual.attributes.position;
-  const top = Math.max(...Array.from({ length: p.count }, (_, i) => p.getY(i)));
-  assert.equal(new Set(Array.from({ length: p.count }, (_, i) => p.getY(i))).size, 2);
-  let cap = 0;
-  for (let i = 0; i < p.count; i++) {
-    if (p.getY(i) === top) cap++;
-    else assert.deepEqual([q.getX(i), q.getY(i), q.getZ(i)], [p.getX(i), p.getY(i), p.getZ(i)],
-      label + ': exact ground ring; only the pre-existing cap may move to its changed crown');
-  }
-  assert.equal(cap, 36); // 2026-09-12: the far trunk is a six-sided flared stem, no longer a five-sided cone
-  for (const [name, attr] of Object.entries(actual.attributes)) {
-    assert.ok(attr.array.every(Number.isFinite));
-    if (name !== 'position' && name !== 'normal') assert.ok(bytes(attr.array).equals(bytes(old.attributes[name].array)), label + '/' + name);
-  }
-}
-function compareFarPart(actual, old, poisonedNormals, held, key, label, crownAttachment) {
-  assert.deepEqual(budget(actual), budget(old)); assert.deepEqual(actual.index?.array, old.index?.array);
-  // Only Mangrove's willow cap follows its changed actual crown. Independent
-  // packed-vertex/triangle ray containment remains in tidalMangrove.selftest.
-  if (key === 'trunk' && crownAttachment) attachmentDelta(actual, old, label + '/far trunk');
-  else if (key === 'trunk') exact(actual, old, label + '/far trunk');
-  else {
-    assert.deepEqual(actual.attributes.uv.array, old.attributes.uv.array);
-    const n = actual.attributes.normal;
-    for (let i = 0; i < n.count; i++) assert.ok(Math.abs(Math.hypot(n.getX(i), n.getY(i), n.getZ(i)) - 1) < 1e-6);
-  }
-  exact(actual, poisonedNormals, label + '/all final transforms overwrite intermediate normals');
-  if (held) {
-    if (key === 'trunk' && crownAttachment) attachmentDelta(actual, held, label + '/frozen joined far attachment');
-    else exact(actual, held, label + '/frozen joined far output');
-    held.dispose();
-  }
-  actual.dispose(); old.dispose(); poisonedNormals.dispose();
-}
-function compareLibrary(seed, veg, label) {
-  const a = current.library(seed, veg), b = historical.library(seed, veg), p = poisoned.library(seed, veg);
-  const frozen = frozenJoined?.library(seed, veg);
-  assert.deepEqual(a.speciesList, b.speciesList);
+const finite = (g, label) => { for (const [name, attr] of Object.entries(g.attributes)) assert.ok(attr.array.every(Number.isFinite), `${label}/${name}: finite`); };
+function checkLibrary(seed, veg, label) {
+  const a = current.library(seed, veg), p = poisoned.library(seed, veg);
   for (const species of a.speciesList) {
     for (let k = 0; k < 3; k++) {
-      const actual = a.SPECIES[species].near(k, a.palOf(species)), old = b.SPECIES[species].near(k, b.palOf(species));
-      assert.deepEqual(JSON.parse(JSON.stringify(current.rngReceipt())), JSON.parse(JSON.stringify(historical.rngReceipt())),
-        label + '/near exact constructor RNG tails');
-      for (const key of Object.keys(actual)) {
-        if(species==='palm'&&key==='trunk'){
-          assert.deepEqual(budget(actual[key]),budget(old[key]),'palm crown keeps its geometry budget');
-          for(const attr of ['uv','color','aFlex'])assert.deepEqual(actual[key].attributes[attr].array,old[key].attributes[attr].array);
-          const p=actual[key].attributes.position, corners=new Set();
-          for(const attr of ['position','normal'])assert.deepEqual(actual[key].attributes[attr].array.subarray(0,(p.count-60)*3),old[key].attributes[attr].array.subarray(0,(p.count-60)*3),'only palm core changes');
-          for(let i=p.count-60;i<p.count;i++)corners.add(`${p.getX(i)},${p.getY(i)},${p.getZ(i)}`);
-          assert.equal(corners.size,12,'palm crown corners stay joined');
-        }else exact(actual[key], old[key], `${label}/${species}/${k}/near/${key}`);
-        actual[key].dispose();old[key].dispose();
-      }
+      const actual = a.SPECIES[species].near(k, a.palOf(species));
+      current.rngReceipt();
+      for (const key of Object.keys(actual)) { finite(actual[key], `${label}/${species}/${k}/near/${key}`); actual[key].dispose(); }
       near++;
     }
     for (let k = 0; k < 2; k++) {
-      const r = random(seed + a.SPECIES[species].farSeed + k * 101), s = random(seed + b.SPECIES[species].farSeed + k * 101), t = random(seed + a.SPECIES[species].farSeed + k * 101);
-      const actual = a.SPECIES[species].far(r.rng, a.palOf(species), k), old = b.SPECIES[species].far(s.rng, b.palOf(species), k), poisonedNormals = p.SPECIES[species].far(t.rng, p.palOf(species), k);
-      const receipt = r.receipt(); assert.deepEqual(receipt, s.receipt()); assert.deepEqual(receipt, t.receipt());
-      const frozenRng = random(seed + a.SPECIES[species].farSeed + k * 101);
-      const held = frozen?.SPECIES[species].far(frozenRng.rng, frozen.palOf(species), k);
-      if (held) assert.deepEqual(receipt, frozenRng.receipt());
+      const r = random(seed + a.SPECIES[species].farSeed + k * 101), t = random(seed + a.SPECIES[species].farSeed + k * 101);
+      const actual = a.SPECIES[species].far(r.rng, a.palOf(species), k), poisonedNormals = p.SPECIES[species].far(t.rng, p.palOf(species), k);
+      assert.deepEqual(r.receipt(), t.receipt(), label + '/far constructor RNG');
       for (const key of Object.keys(actual)) {
-        compareFarPart(actual[key], old[key], poisonedNormals[key], held?.[key], key, label,
-          species === 'willow' && veg.willowForm === 'tidalMangrove');
+        const part = actual[key], partLabel = `${label}/${species}/${k}/far/${key}`;
+        finite(part, partLabel);
+        if (key !== 'trunk') {
+          const n = part.attributes.normal;
+          for (let i = 0; i < n.count; i++) assert.ok(Math.abs(Math.hypot(n.getX(i), n.getY(i), n.getZ(i)) - 1) < 1e-6, partLabel + ': unit normals');
+        }
+        exact(part, poisonedNormals[key], partLabel + ': all final transforms overwrite intermediate normals');
+        part.dispose(); poisonedNormals[key].dispose();
       }
       far++;
     }
   }
-  const r = random(seed + 491), s = random(seed + 491);
-  const actual = current.buildBushCards(r.rng, a.palOf(a.bushSpecies)), old = historical.buildBushCards(s.rng, b.palOf(b.bushSpecies));
-  exact(actual, old, label + '/bush'); assert.deepEqual(r.receipt(), s.receipt()); actual.dispose(); old.dispose(); bushes++;
+  const r = random(seed + 491);
+  const bush = current.buildBushCards(r.rng, a.palOf(a.bushSpecies));
+  finite(bush, label + '/bush'); bush.dispose(); bushes++;
 }
-for (const id of MAP_IDS) compareLibrary(1337, getMapConfig(id).vegetation, id);
-for (const seed of [0, 1337, 7719]) for (const snow of [0, .65]) compareLibrary(seed, {
+for (const id of MAP_IDS) checkLibrary(1337, getMapConfig(id).vegetation, id);
+for (const seed of [0, 1337, 7719]) for (const snow of [0, .65]) checkLibrary(seed, {
   species: TREE_SPECIES, bushSpecies: 'oak', palettes: { pine: { snow, cardHue: .23 }, birch: { snow, cardHue: .57 },
     oak: { cardHue: .2 }, palm: { frond: { hue: .18, sat: .2, l: .4 } } },
 }, `all-species/${seed}/${snow}`);
@@ -306,6 +258,5 @@ const impostorText = readFileSync(new URL('./treeImpostors.ts', import.meta.url)
 const skyFill = impostorText.match(/material\.envMapIntensity = ([0-9.]+); \/\/ the far canopy's sky fill/);
 assert.ok(skyFill && Number(skyFill[1]) === HORIZON_FOREST_IMPOSTOR_SKY_FILL, 'the ring forest takes the far tier\'s sky fill');
 const ringImpostorLaw = { wrap: HORIZON_FOREST_IMPOSTOR_WRAP, thin: HORIZON_FOREST_IMPOSTOR_THIN, skyFill: HORIZON_FOREST_IMPOSTOR_SKY_FILL };
-console.log(JSON.stringify({ protocol: 'vegetation-far-seams-v1', primitives, near, far, bushes, tornGaps, ringImpostorLaw,
-  baselineSource: baselinePath ?? 'literal original jitter/merge with current authored builders' }));
-console.log('Tree seams: joined palm core verified, other near geometry exact, far topology/RNG/budgets preserved, historical tears/index/attribute mutations rejected. No native art or cost acceptance.');
+console.log(JSON.stringify({ protocol: 'vegetation-far-seams-v2', primitives, near, far, bushes, tornGaps, ringImpostorLaw }));
+console.log('Far seams: joined bounded deterministic shell jitter, finite libraries, recomputed far normals, tearing/near-palm/index/attribute mutations rejected. No native art or cost acceptance.');

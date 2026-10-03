@@ -107,7 +107,7 @@ export default {
     forestHex: 0x2f3937, rockHex: 0x5c5e5c, haze: 0.95, grain: 0.60,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'fair-weather-cumulus', coverage: 0.42, streets: 0.3, baseM: 1100 },
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.42, streets: 0.3, baseM: 1100, virga: 0.6, rain: 0.25 },
   sky: {
     sunElevationDeg: 24, sunAzimuthDeg: 118, turbidity: 7.0, rayleigh: 1.15,
     mieCoefficient: 0.010, mieDirectionalG: 0.86, fogDensity: 0.00068,
@@ -118,6 +118,8 @@ export default {
     cloudOpacity: 1.08, cloudOpacity2: 0.82, cloudTintHex: 0xd0d1ce,
     cloudAltM: 360, cloudHazeK: 0.00014, cloudUvM: 2400, cloudShadowAmp: 0.12,
     sunIntensity: 3.8, sunColorHex: 0xffd0aa, hemiIntensity: 0.34, postExposure: 0.94,
+    // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
+    lighting: { groundAlbedoHex: 0xad9b7c },
   },
   minimap: {
     base: [76, 79, 78], hard: [88, 88, 87], soft: [59, 65, 64],

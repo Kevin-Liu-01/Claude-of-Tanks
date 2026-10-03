@@ -11,7 +11,9 @@ import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../s
  */
 import * as THREE from 'three';
 import type { ArmorIntersection, ArmorModel } from '../sim/armor.ts';
-import { createStructureSupportField, type StructureSupportField } from '../sim/structureSupport.ts';
+import {
+  createHullSupportPose, createStructureSupportField, hullSupportPose, type StructureSupportField,
+} from '../sim/structureSupport.ts';
 import type { BotNavigationGrid, BotRoutePoint } from '../sim/botRoutePlanner.ts';
 import type {
   DamageGunSpec,
@@ -98,11 +100,15 @@ import {
   totalAmmunitionCapacity,
 } from '../sim/ammunition.ts';
 import { createAI, roleOf, type AiOrder } from './ai.ts';
-import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.ts';
 import {
-  pushHullFromHull,
-  hullPassesObstacleTop, pushHullFromObstacle,
+  collectNavigationWrecks, createBotNavigationGrid, planBotRoute, syncNavigationWrecks,
+  type NavigationWreck,
+} from '../sim/botRoutePlanner.ts';
+import {
+  pushHullFromHull, createHullFootprint, hullFootprint,
+  hullPassesObstacleTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord,
+  type HullFootprint, type HullFootprintRect,
 } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { getStoredDifficulty } from './input.ts';
@@ -312,6 +318,10 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   jev?: JevCommander | null;
   _jevView?: JevBattleView | null;
   _ramPairT?: Map<string, number>;
+  /** The bots' navigation grid for this battle and its wreck footprints (synced like the authority's). */
+  _botNavigation?: Readonly<BotNavigationGrid> | null;
+  _navigationWrecks?: NavigationWreck[];
+  _navigationWreckTicks?: number;
 }
 
 interface SpawnPoint {
@@ -525,12 +535,22 @@ const FIRE_TICK_S = 0.5;
 
 // module-scope scratch — no per-frame allocation
 const _muzzle = new THREE.Vector3();
+const _supportPose = createHullSupportPose();
 const _dir = new THREE.Vector3();
 const _seg = new THREE.Vector3();
 const _worldRayOrigin = new THREE.Vector3();
 const _toC = new THREE.Vector3();
 const _spawnPos = new THREE.Vector3();
 const _contactCenter = new THREE.Vector3();
+const _obstacleCenter = new THREE.Vector3();
+const _obstacleFoot = createHullFootprint();
+const _fallbackFootprintRect: HullFootprintRect = { centerX: 0, centerZ: 0, halfLength: 0, halfWidth: 0, frontLiftM: 0, rearLiftM: 0 };
+/** A hull with no spec (a bare probe) pushes a level rect of the radius-derived size. */
+function fallbackFootprintRect(halfLength: number, halfWidth: number): HullFootprintRect {
+  _fallbackFootprintRect.halfLength = halfLength;
+  _fallbackFootprintRect.halfWidth = halfWidth;
+  return _fallbackFootprintRect;
+}
 const _nearestTankTrace: NearestTankTrace = {
   distance: Infinity,
   entity: null,
@@ -1050,9 +1070,10 @@ function createBattleBot(
     rng: mulberry32(7000 + entityIndex),
     deps: {
       ...context.aiDependencies,
-      planRoute: (start: { x: number; z: number }, goal: { x: number; z: number }) => planBotRoute({
+      planRoute: (start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
+        options?: { requireGoalLevel?: boolean }) => planBotRoute({
         start, goal, navigation: context.botNavigation, rng: searchRng, role: roleOf(entity.spec),
-        spec: entity.spec, useRoleDetour: false,
+        spec: entity.spec, useRoleDetour: false, requireGoalLevel: options?.requireGoalLevel === true,
       }),
       getEnemies: () => {
         enemyScratch.length = 0;
@@ -1252,6 +1273,9 @@ export function setupBattle(
     queryObstacles: botObstacleQuery,
     getObstacles: () => world.getObstacles(),
   });
+  game._botNavigation = botNavigation;
+  game._navigationWrecks = [];
+  game._navigationWreckTicks = 0;
 
   // SYMMETRIC TEAMS (hud_ui r1) → BATTLE-AI r7 (7v7): random battles field 13
   // non-players and split them 6 ALLIES + 7 ENEMIES with a tier-balanced
@@ -1594,24 +1618,22 @@ function queueCrush(
   pendingCrush.push({ ob: obstacle, ent: self });
 }
 
+/** The contacts the first obstacle sweep found hard, swept again (resolveObstacleCollisions). */
+const _hardObstacles: SoloObstacle[] = [];
+
 function resolveObstacleCollisions(
   game: SoloGameState,
   world: SoloWorld,
   self: SoloEntity | null,
   positionY: number,
-  centerX: number,
-  centerZ: number,
-  forwardX: number,
-  forwardZ: number,
-  rightX: number,
-  rightZ: number,
-  halfLength: number,
-  halfWidth: number,
+  foot: HullFootprint,
   obstacles: SoloObstacle[],
   nearby: SoloObstacle[],
   pendingCrush: CrushContact[],
   outPush: THREE.Vector3,
 ): boolean {
+  // the hull's footprint at its attitude (world/collision.ts hullFootprint), as the authority pushes it
+  const { centerX, centerZ, forwardX, forwardZ, rightX, rightZ, halfLength, halfWidth } = foot;
   const broadRadius = Math.sqrt(halfLength * halfLength + halfWidth * halfWidth) + 0.01;
   const candidates = world.queryObstacles
     ? world.queryObstacles(
@@ -1625,18 +1647,28 @@ function resolveObstacleCollisions(
   const selfSpeed = self ? Math.abs(self.state.speed) : 0;
   // the hull's vertical span: a structure part it clears or stays under is no obstacle (2026-09-19)
   const spanTop = positionY + (self ? tankBodyTopM(self.spec) : 3);
+  // the standing rule reads the hull's underside over each record, at its attitude (world/collision.ts hullUndersideOver)
   let pushed = false;
+  // each record meets the hull where the records before it have pushed it (sim/authoritativeMatch.ts
+  // collideWithObstacles): two opposing contacts summed from one position flipped the hull from side to side
+  const startX = outPush.x, startZ = outPush.z;
+  let hardCount = 0;
   for (const obstacle of candidates) {
-    if (obstacle.crushed || hullPassesObstacleTop(positionY, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
-    const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
-    const closestZ = Math.max(obstacle.min[2], Math.min(centerZ, obstacle.max[2]));
-    const deltaX = centerX - closestX;
-    const deltaZ = centerZ - closestZ;
+    if (obstacle.crushed) continue;
+    foot.centerX = centerX + outPush.x - startX;
+    foot.centerZ = centerZ + outPush.z - startZ;
+    _obstacleCenter.set(foot.centerX, positionY, foot.centerZ);
+    const spanBottom = hullUndersideOver(obstacle, foot, positionY);
+    if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+    const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
+    const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
+    const deltaX = foot.centerX - closestX;
+    const deltaZ = foot.centerZ - closestZ;
     if (deltaX * deltaX + deltaZ * deltaZ >= broadRadius * broadRadius) continue;
     const beforeX = outPush.x;
     const beforeZ = outPush.z;
     if (!pushHullFromObstacle(
-      _contactCenter,
+      _obstacleCenter,
       forwardX,
       forwardZ,
       rightX,
@@ -1645,7 +1677,7 @@ function resolveObstacleCollisions(
       halfWidth,
       obstacle,
       outPush,
-      positionY,
+      spanBottom,
       spanTop,
     )) continue;
     if (obstacle.crushable && self &&
@@ -1656,7 +1688,20 @@ function resolveObstacleCollisions(
       continue;
     }
     pushed = true;
+    _hardObstacles[hardCount++] = obstacle;
   }
+  // a second sweep over the contacts that pushed, from where the first left the hull (sim/authoritativeMatch.ts)
+  for (let index = 0; index < hardCount; index++) {
+    const obstacle = _hardObstacles[index]!;
+    foot.centerX = centerX + outPush.x - startX;
+    foot.centerZ = centerZ + outPush.z - startZ;
+    _obstacleCenter.set(foot.centerX, positionY, foot.centerZ);
+    const spanBottom = hullUndersideOver(obstacle, foot, positionY);
+    if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+    pushHullFromObstacle(_obstacleCenter, forwardX, forwardZ, rightX, rightZ, halfLength, halfWidth, obstacle, outPush,
+      spanBottom, spanTop);
+  }
+  _hardObstacles.length = 0;
   return pushed;
 }
 
@@ -1704,9 +1749,11 @@ function makeCollide(game: SoloGameState, world: SoloWorld): CollisionBundle {
     const tanksPushed = resolveTankCollisions(
       game, self, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush, pendingRams,
     );
+    const foot = contactRect && self
+      ? hullFootprint(contactRect, pos.x, pos.z, yaw, self.state.visualPitch || 0, self.state.visualRoll || 0, _obstacleFoot)
+      : hullFootprint(fallbackFootprintRect(halfL, halfW), pos.x, pos.z, yaw, 0, 0, _obstacleFoot);
     const obstaclesPushed = resolveObstacleCollisions(
-      game, world, self, pos.y, centerX, centerZ, fx, fz, rx, rz,
-      halfL, halfW, obstacles, nearby, pendingCrush, outPush,
+      game, world, self, pos.y, foot, obstacles, nearby, pendingCrush, outPush,
     );
     // crushable props never push (they are queued for crushing instead), so an obstacle push is a hard surface
     bundle.hardContact = boundsPushed || obstaclesPushed;
@@ -2262,6 +2309,11 @@ function retargetObjectiveBots(game: SoloGameState): void {
 }
 
 function stepBotControllers(game: SoloGameState): void {
+  // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (as the authority does)
+  if (game._botNavigation && game._navigationWrecks && (game._navigationWreckTicks = (game._navigationWreckTicks ?? 0) + 1) % 15 === 1) {
+    syncNavigationWrecks(game._botNavigation, game._navigationWrecks,
+      collectNavigationWrecks(game.tanks, game._navigationWrecks));
+  }
   for (const entity of game.tanks) {
     if (entity.modeActive !== false && entity.aiCtl && !entity.combat.destroyed) {
       entity.aiCtl.update(SIM_DT, game.timeS);
@@ -2318,7 +2370,9 @@ function applyBotSupportActions(game: SoloGameState, bus: EventBus): void {
     if (actionBits & PLAYER_ACTION_BITS.SPECIAL_ACTION) activateSpecialAction(entity);
     // round 60 pacing: an overturned bot asks for the self-right a player has (the authority does the same)
     if (actionBits & PLAYER_ACTION_BITS.SELF_RIGHT) {
-      if (!requestTankSelfRight(entity.state)) requestTankJump(entity.state, entity.modeJumpMps);
+      if (!requestTankSelfRight(entity.state, entity.modeGravityScale ?? 1)) {
+        requestTankJump(entity.state, entity.modeJumpMps, entity.modeGravityScale ?? 1);
+      }
     }
     entity.input.auxiliaryBits = (entity.input.auxiliaryBits || 0) | (actionBits & (
       PLAYER_ACTION_BITS.SMOKE | PLAYER_ACTION_BITS.LIGHTS | PLAYER_ACTION_BITS.LIGHTS_OFF | PLAYER_ACTION_BITS.ROOF_GUN
@@ -2424,7 +2478,8 @@ function resolveTankImpacts(
       pos: [state.pos.x, state.pos.y, state.pos.z], cause: 'contact', hard: false, damage: 0,
     });
   }
-  const landing = state.landingImpactMps;
+  // the fall the hull made (movement.ts fallImpactMps: the landing less the height the solver gave it, by energy)
+  const landing = Number.isFinite(state.fallImpactMps) ? state.fallImpactMps : state.landingImpactMps;
   if (landing > 0) {
     const upY = Math.cos(state.visualPitch) * Math.cos(state.visualRoll);
     const attitudeFactor = fallAttitudeFactor(state.visualPitch - state._terr.pitch, state.visualRoll - state._terr.roll, upY);
@@ -2466,7 +2521,7 @@ function stepTankMovement(
     // round 30: a hull above a building's roof stands on it (structureSupport.ts); the belly line is the hull
     // origin plus the contact geometry's belly offset
     support.beginHull(entity.state.pos.x, entity.state.pos.z,
-      entity.state.pos.y + (entity.contactGeom?.bottomYM ?? 0));
+      entity.state.pos.y + (entity.contactGeom?.bottomYM ?? 0), hullSupportPose(entity.spec, entity.state, _supportPose));
     // Park the carrier only during ground integration; preserve held flight controls
     // for additional fixed steps when rendering slower than the simulation.
     const parking = entity.aerial?.kind === 'drone' && entity.aerial.active;

@@ -26,6 +26,8 @@ Before publishing:
    commit — at minimum `npm run typecheck` and the core receipt suite
    (`npm test`), on every push, however small the change (owner 2026-09-23,
    after a push that turned `balanceMatchups` red on shared main for a night).
+   `node tools/gate.mjs --baseline=<starting-base>` runs all of it in one
+   versioned command (below).
    Record the validated commit. An earlier branch's green result does
    not certify conflict resolution or later source edits. For geometry, use
    the complete anatomy and targeted release procedure in `AGENTS.md`.
@@ -52,6 +54,96 @@ or deploy. Both agents must invoke it; it cannot establish that a test was run
 or that an overlap was reviewed honestly. Its regression test uses two local
 clones to exercise stale remote data, stale validation and an accidental
 whole-file rollback that Git would otherwise allow.
+
+### The versioned gate: `tools/gate.mjs` (2026-10-01)
+
+Codex, Claude and CI run the same gate from the checkout under test. It replaces the gate half of
+the generated landing chain (`.qa-dev/landing/gen-chain.py` writing `release-then-deploy-*.sh` into
+a session scratchpad), which was not versioned and was lost once with a scratchpad.
+
+    node tools/gate.mjs                                # typecheck, build, i18n, budget, workers, receipts, preflight
+    node tools/gate.mjs --baseline=<starting-base>     # stop the line (below)
+    node tools/gate.mjs --steps=typecheck,build,workers   # a subset, in the canonical order; --skip=<steps> removes some
+    node tools/gate.mjs --only='src/vehicles/**'       # receipt selection passes through: --shard=i/n, --all, --order=registry
+    node tools/gate.mjs --dry-run                      # print the plan, run nothing
+
+- **build** is `npm run build`; its prebuild runs `npm run i18n:validate` and its page catalog plugin
+  runs the `tools/i18n-page-catalogs.mjs` scan, so **i18n** adds only `tools/i18n-scan.mjs --check`, the
+  rest of `npm run i18n:check`.
+- **budget** runs `tools/bundle-budget.mjs` once that file exists and is skipped until then.
+- **workers** runs the `typecheck` and `test` scripts of every `cloudflare/*/package.json` (rooms and
+  telemetry). They were in no gate before: the rooms typecheck was red on main for days unseen.
+  A missing Worker install fails with the `npm ci --prefix cloudflare/<name>` to run; `--install`
+  runs it.
+- **receipts** is `tools/run-selftests.mjs all` with one log per receipt (`--logs`).
+- **preflight** runs `tools/shared-main-preflight.mjs` for the validated HEAD with `--base`
+  (default: the merge-base with `origin/main`) and `--reviewed-main` passed through; in place when
+  the checkout is clean, otherwise in a reusable detached worktree of HEAD. HEAD moving or a tracked
+  change during the gate fails it. The gate never fetches: fetch and integrate first (step 1).
+
+The gate stops at the first red step (`--keep-going` runs the rest) and writes `gate.json` and
+`gate.md` to `--out` (default `<tmp>/cot-gate/<time>-<sha>`). Like the landing chains, it waits up to
+three hours for the capture lock unless `COT_SHOTS_LOCK_TIMEOUT_MS` is set. It never pushes, deploys,
+fetches or changes a setting; publishing and deploying stay separate steps.
+
+**Stop the line (`--baseline=<ref>`, gate audit P2).** Every receipt red here runs again alone, on this
+tree and on a temporary worktree of `<ref>` at the same time (holding the capture lease like any
+receipt run). It counts as **inherited** only when both fail with the same first error: the process's
+own uncaught error after Node's source caret, its message lines and the asserted `actual`/`expected`,
+with checkout paths, temporary directories and millisecond timings normalised. A differing pair runs
+once more to tell an **unstable** baseline message from a **changed** one. A receipt that passes on
+`<ref>` (or does not exist there) is a **regression**; regression and changed stop the gate and
+`gate.md` shows both messages. A receipt that passes alone here is **flaky** under the suite's load.
+Flaky and unstable are reported and block only with `--strict`. This replaces the exit-status
+comparison of 2026-09-30 (below), which let a new defect inside an old red pass.
+
+`.github/workflows/ci.yml` runs the static steps (`typecheck`, `build`, `i18n`, `budget`, `workers`)
+through this gate on every pull request and push to main, on a blobless sparse checkout without
+`public/media`, `public/icons`, `public/maps` and `docs/references` (the build reads none of them). It
+has no secrets and no deploy; a receipts job follows once main is green.
+
+### Releasing: `tools/release.mjs` (2026-10-01)
+
+The deployment owner releases a gated commit with the versioned tool instead of the scratchpad
+`deploy-prod-main.sh`; [DEPLOYS.md](DEPLOYS.md) keeps the policy and the ledger.
+
+    node tools/release.mjs build <sha>       # worktree of <sha>; npm ci; vercel pull; vercel build --prod; carry-forward; immutable routes
+    node tools/release.mjs deploy <sha> --title="deploy N: <title>"   # vercel deploy --prebuilt --prod, then verify
+    node tools/release.mjs verify <sha> --sweep   # served stamp names <sha>; every chunk 200; a missing chunk uncacheable
+    node tools/release.mjs rollback [--to=<deployment>]   # promote the deployment before the live one
+    node tools/release.mjs workers <sha> [--only=rooms]   # npm ci, typecheck, test, wrangler deploy --tag/--message <sha>
+    node tools/release.mjs <command> ... --dry-run   # print every command; run nothing (no Vercel, wrangler or network)
+
+- `build` deletes the pulled `.vercel/.env*.local` files in a `finally` block, whatever happens. The
+  only edit to them is dropping the redacted `VITE_*="[SENSITIVE]"` lines (see "Redacted public
+  settings" below); secrets are never printed or changed.
+- The build's own install rewrites `package-lock.json`; the tool restores it and refuses a tree with
+  other tracked changes, so the stamp is never `.dirty`.
+- **Old tabs keep their chunks (2026-10-02).** A tab opened before a deploy keeps importing the hashed
+  chunks its page named; a deploy used to delete every one the new build did not emit (deploy 163: one
+  tab requested a removed chunk 33,875 times in a day, 6 % of the week's requests). `build` therefore
+  keeps a release cache outside git (`--asset-cache=<dir>`, `COT_RELEASE_ASSET_CACHE`, default
+  `~/.cache/cot-release`): every build records its own hashed `/assets` files there, and copies the files
+  of the last `--carry=<N>` releases (default 3; `--carry=0` turns it off) that it does not emit itself
+  into `.vercel/output/static/assets`, newest release first and at most `--carry-max-mb=<MB>` (default
+  200), before `tools/vercel-output-immutable.mjs` writes the immutable routes — so the carried files are
+  immutable too. Hashed names never collide, so nothing the build emits is replaced; a release records only
+  its own files, so a carried file leaves with the release that emitted it; the cache keeps the newest
+  N + 1 releases and prunes everything else; a rebuild of the same commit replaces its entry (a build that is
+  never deployed still occupies one slot). The output directory is removed before `vercel build`, so a reused
+  worktree cannot record an earlier run's carried files as its own. A missing cache only means nothing is
+  carried that time. `tools/release.selftest.mjs` drives the carry, the cap, the pruning and the lock on
+  temporary directories. Collision manifests (`/mp-collision/`) are not carried: the host reads their index
+  before each fetch.
+- `deploy` attaches the branch-link metadata (`githubCommitSha`, `githubCommitRef=main`, the subject
+  or `--title`, the repository ids) and then waits for the served `application-version` to name the
+  commit. Append the DEPLOYS.md row by hand: number, time, sha, title, served bundle, deployment id.
+- `rollback` uses `vercel promote`, which also turns production-domain auto-assignment back on; a
+  plain `vercel rollback` leaves it off, so the next prebuilt deploy would not go live.
+- Scope: `--scope` or `COT_VERCEL_SCOPE` (default `kl01s-projects`). The `vercel` on PATH (or
+  `COT_VERCEL_BIN`) must be the pinned major version (`VERCEL_CLI_MAJOR`).
+- Worker rollbacks are `npx wrangler rollback` in the Worker's directory; never across a Durable
+  Object migration tag.
 
 Publication and deployment are separate. Agree on one deployment owner for a
 round, follow [DEPLOYS.md](DEPLOYS.md), and record the actual served build version.
@@ -93,6 +185,29 @@ The default local URL is usually http://localhost:5173.
 The home and docs routes are separate Vite entries. They must remain able to
 load without preloading the game module graph.
 
+`vercel.json` publishes them with pattern rewrites (`/docs/:topic(...)` →
+`/docs-:topic.html` and the `/cn` twins; the topic list matches
+`PUBLIC_ROUTE_RECORDS`). A trailing-slash form of a slashless page answers 308
+to the canonical path; `/cn/` keeps its slash because it is the zh-CN game's
+canonical URL, which is why there is no global `trailingSlash` setting.
+`tools/vercel-routes.selftest.mjs` resolves every route through the conversion
+`vercel build` runs (`@vercel/routing-utils`) against the frozen deploy-163 table.
+
+The alias domains `claudeoftanks.kevinliu.studio` and `claude-of-tanks.vercel.app`
+answer 308 to `https://cot.kevinliu.studio` with path and query (host-equality
+redirects, the hosts from `api/_lib/policy.ts`); deployment URLs and the protected
+production domain are untouched, so the release step still verifies a deployment
+on its own URL.
+
+Every response also carries `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin`, a `Permissions-Policy` that
+denies camera, microphone, geolocation, payment, USB, serial, HID and Bluetooth,
+`X-Frame-Options: SAMEORIGIN` and `Cross-Origin-Opener-Policy: same-origin`
+(one `/:path(.*)` header rule; 2026-10-01). The site opens no popup it talks to
+(external links are `noopener`) and nothing embeds it from another origin; a
+future portal or app embed needs `frame-ancestors`/XFO revisited first. There is
+no enforced CSP yet: the inline scripts would need build-time hashes.
+
 ### Capture-lock wait (2026-09-25)
 
 The selftest runners wait for the shared capture lock (`/tmp/cot-shots.lock`, FIFO tickets in `/tmp/cot-shots.queue`) before their browser receipts; `COT_SHOTS_LOCK_TIMEOUT_MS` sets that wait (default 45 min — chain 94 died at 1/413 behind another session's browser audit, so landing chains export three hours).
@@ -121,7 +236,9 @@ wait is stale by the time the lock arrives — re-read it after `acquire()` and 
 
 ### Asset caching (2026-09-25)
 
-**Asset caching (2026-09-25).** Vite emits content-hashed files under `/assets/`. Do NOT add a header rule for `/assets/(.*)` in `vercel.json`: a `headers` rule applies to every response on the path including a 404, and Vercel's edge then caches that 404 for the rule's lifetime — under deploy 89's immutable rule one transient miss during a promotion became a permanent "A game file failed to download" for every player on that edge node (`tools/vercel-config.selftest.mjs` and `src/gallery/chunkRecovery.selftest.mjs` refuse the rule). The year-long header comes from the deploy step instead: `node tools/vercel-output-immutable.mjs` runs between `vercel build` and `vercel deploy --prebuilt` and writes immutable, case-sensitive header routes for exactly the hashed files that exist in `.vercel/output/static/assets` (groups of 40 names per route, ahead of the filesystem handle; `--check` verifies coverage; `tools/vercel-output-immutable.selftest.mjs`). A path that is not in the build matches no rule, keeps Vercel's default `public, max-age=0, must-revalidate` answer and heals on the next request; documents, `/maps` and `/minimaps` keep that default too. Deploy 94 also re-encoded every chunk hash as base36 (`build.rollupOptions.output.hashCharacters`), so every `/assets` URL changed once and an edge node that had cached 404s for deploy-93 chunks (a browser's boot-retry loop during the promotion, answered by the old config) never serves them again. Every deploy's verify step then sweeps the served index's chunks (all must answer 200), checks that a missing `/assets` path is not cacheable and boots the alias headless before the DEPLOYS.md row is written.
+**Asset caching (2026-09-25).** Vite emits content-hashed files under `/assets/`. Do NOT add a header rule for `/assets/(.*)` in `vercel.json`: a `headers` rule applies to every response on the path including a 404, and Vercel's edge then caches that 404 for the rule's lifetime — under deploy 89's immutable rule one transient miss during a promotion became a permanent "A game file failed to download" for every player on that edge node (`tools/vercel-config.selftest.mjs` and `src/gallery/chunkRecovery.selftest.mjs` refuse the rule). The year-long header comes from the deploy step instead: `node tools/vercel-output-immutable.mjs` runs between `vercel build` and `vercel deploy --prebuilt` and writes immutable, case-sensitive header routes for exactly the hashed files that exist in `.vercel/output/static/assets` (groups of 40 names per route, ahead of the filesystem handle; `--check` verifies coverage; `tools/vercel-output-immutable.selftest.mjs`). A path that is not in the build matches no rule, keeps Vercel's default `public, max-age=0, must-revalidate` answer and heals on the next request; documents keep that default too. Since 2026-10-01 the same per-file routes make the content-addressed collision manifests (`/mp-collision/<map>.<sha12>.json`; the index stays default) immutable and give the existing images, audio and fonts under `/textures`, `/icons`, `/fonts`, `/audio`, `/maps` and `/minimaps` `public, max-age=3600, stale-while-revalidate=86400` (they keep their URL across deploys, so an hour fresh and a day served stale while revalidating); `--check` covers all three families (deploy 163's output: 949 + 33 + 2,480 files, 90 routes, config.json 39 → 119 KB). Deploy 94 also re-encoded every chunk hash as base36 (`build.rollupOptions.output.hashCharacters`), so every `/assets` URL changed once and an edge node that had cached 404s for deploy-93 chunks (a browser's boot-retry loop during the promotion, answered by the old config) never serves them again. Every deploy's verify step then sweeps the served index's chunks (all must answer 200), checks that a missing `/assets` path is not cacheable and boots the alias headless before the DEPLOYS.md row is written.
+
+**Versioned runtime audio (2026-10-02, withdrawn the same day).** A build-only plugin served the old engine's 111 sound files from content-hashed `/assets/audio` copies so returning visitors skipped their revalidations. The SFX engine redesign (main 0924ef281) replaced that engine and its files with 2,868 `.webm` assets fetched by `src/audio/assetLibrary.ts`, so the plugin and `src/runtimeFiles.ts` were removed rather than left copying nothing. Versioned URLs for the new engine's assets are a follow-up for its owner (the removed plugin is in PR #9's history).
 
 ## Development services
 
@@ -154,43 +271,43 @@ Internet rooms use the rooms Worker (`cloudflare/rooms/README.md` deploys it on 
 on a build, the official site resolves it from `src/officialHost.ts`). There is no self-hosted compose stack any more:
 a self-host needs the static site, the rooms Worker (or the LAN helper on a reachable host) and a TURN relay.
 
-Production private rooms automatically request short-lived credentials from
-`/api/ice`. For a fully self-hosted deployment, configure coturn with
-`use-auth-secret` and supply the same shared secret to the application:
+Relay (TURN) credentials come from the room a player is seated in (2026-10-02, `docs/MULTIPLAYER-V2.md` §13.14): a
+seat of a running peer-to-peer match asks its room (`room_relay`) once per peer connection, and the room mints one
+grant per request — never cached, never logged, at most six a minute per seat and 96 per room. The production rooms
+Worker mints Cloudflare Realtime TURN credentials from two secrets (names only; `wrangler secret put` in
+`cloudflare/rooms`):
+
+    COT_CLOUDFLARE_TURN_KEY_ID
+    COT_CLOUDFLARE_TURN_API_TOKEN
+
+Without them a seat receives the Worker's STUN servers alone (`COT_STUN_URLS` in `cloudflare/rooms/wrangler.jsonc`,
+the policy's `OFFICIAL_STUN_URLS`): joining works, a strict NAT cannot relay. A self-host runs the same Worker with its
+own secrets, or the LAN helper on a reachable host with the same names in its environment — there also coturn
+(`use-auth-secret`, credentials made in-process, no provider call):
 
     COT_TURN_URLS=turn:turn.example.test:3478,turns:turn.example.test:5349
     COT_TURN_SHARED_SECRET=replace-with-coturn-static-auth-secret
     COT_TURN_USERNAME=cot
 
-The endpoint generates expiring HMAC credentials locally and makes no hosted
-provider request. As an optional managed alternative, configure Cloudflare
-Realtime TURN:
+or a fixed JSON array of ICE servers (another provider): `COT_TURN_ICE_SERVERS_JSON`. Credentials last one hour
+(2026-10-01; eight hours before): a connection lives one match. `COT_TURN_TTL_SECONDS` may shorten the lease to twenty
+minutes and can no longer lengthen it. `COT_STUN_URLS` names the STUN servers a grant carries when no relay can be
+minted (unset on the LAN helper: a LAN needs host candidates only). Long-lived provider secrets must never use the
+`VITE_` prefix or enter the browser bundle. `/api/ice` mints nothing any more: for one release it answers the official
+STUN servers to tabs loaded before the move, then it goes.
 
-    COT_CLOUDFLARE_TURN_KEY_ID
-    COT_CLOUDFLARE_TURN_API_TOKEN
-
-For fixed credentials or another provider, use a JSON array of ICE servers:
-
-    COT_TURN_ICE_SERVERS_JSON
-
-`COT_TURN_TTL_SECONDS` controls the self-hosted or Cloudflare credential
-lifetime (clamped to one hour through one day; default eight hours).
-`VITE_ICE_CONFIG_URL` is only needed when credentials are served from
-a different endpoint. Long-lived provider secrets must never use the `VITE_`
-prefix or enter the browser bundle.
-
-Before certifying private rooms in production, check the room Worker and the ICE endpoint:
+Before certifying private rooms in production, check the room Worker:
 
     curl -fsS https://cot-rooms.kk23907751.workers.dev/healthz
-    curl -fsS https://cot.kevinliu.studio/api/ice
 
 Then run the three-browser proof against the deployed site, the only origin the Worker admits:
 
     node tools/mp-p2p-e2e.mjs --site=https://cot.kevinliu.studio
 
-The health must answer `{ ok, backend: durable-object, matchHost: p2p }`. The ICE response
-must be HTTP 200 and include at least one `turn:` or `turns:` URL, and the
-browser must obtain a relay candidate from those credentials.  
+The health must answer `{ ok, backend: durable-object, matchHost: p2p }`. A seat's relay grant (the
+`ice:resolved` facts of `tools/mp-p2p-soak.mjs --ice=all`, or a seated room client's `room_relay`) must include at
+least one `turn:` or `turns:` URL, and the browser must obtain a relay candidate from those credentials.
+
 ## Fast validation
 
 Run the complete Node self-test suite:
@@ -288,9 +405,11 @@ exercise each case. The impact plan reduces deployment-note invalidation from
 roughly 500 checks to 161 on this revision; fresh environmental checks are additional.
 This is a dependency count, not a claim about elapsed time on a busy host.
 
-**One fleet pass per build (2026-10-02).** The previous receipts repeatedly rebuilt the whole fleet. The integrated roster has 219 playable tanks. Three fleet passes now build each tank once
+**One fleet pass per build (2026-10-02).** Ten receipts used to rebuild the whole fleet each (219 playable tanks
+since main's Hetman II and Zubr II), and the build is nearly all of their cost (the audits themselves take under 5 s
+per fleet). Three fleet passes now build each tank once
 per build and run every audit that reads that build on it (`src/vehicles/fleetPass.test-support.mjs`; the audits are
-the former receipts' checks, moved verbatim into `*Audit.test-support.mjs` modules beside them):
+the former receipts' checks, with their assertions unchanged, in `*Audit.test-support.mjs` modules beside them):
 
 - `fleetPassHigh` — the unbatched seed-4242 HIGH build: the geometry ledger's HIGH rows, machine-gun mounts (with the
   detached-mount negative control), track end wraps (with the broken-station controls and 3/5 mm limits), wheel
@@ -298,7 +417,15 @@ the former receipts' checks, moved verbatim into `*Audit.test-support.mjs` modul
 - `fleetPassLow` — the same build at LOW: the ledger's LOW rows, ERA registration and gun articulation (formerly
   `gunArticulation` and `eraGameplayRegistration`).
 - `fleetPassDefault` — the factory default (seed 4000), the build the marking-seat and combat-anatomy generators
-  measure: combat anatomy, mudguard seating, vehicle markings and tank assets (formerly four receipts).
+  measure: combat anatomy, mudguard seating, vehicle markings and tank assets (formerly four receipts), and the
+  fleet watertight gate (2026-10-02, `watertightAudit.test-support.mjs`): every hull holds water with its shipped
+  fills, measured exactly as `tools/tank-watertight-check.mjs` does (the body each tank's fills bound, track-lane,
+  retained and declared-bore air reported apart). A profile's verified physical muzzle bore is open air by contract
+  (2026-10-03, `tools/physical-bore-air.mjs`): the fill generator never fills it, so no generated box can cap the
+  recess the build verifies, and water in a bore column is never counted as a leak. The pass builds without the fill
+  registry, so the audit attaches each tank's fills
+  through `applyInteriorFills` and removes them again; it costs about 1 s of CPU a hull (209 s for the fleet) and no
+  extra build. A stale fill record fails by name with its regeneration command.
 
 The builds stay separate where the checks read different models: camo seeds move seeded stowage, the generated seats
 and calibrations are solved on the default seed, the ledger pins seed 4242, and `fleetFloorClearance` needs the static
@@ -308,15 +435,41 @@ before the build's microtasks (kf51, kf51b and the PT-91M rewrite UVs or vertex 
 one microtask turn. An audit that poses the model restores it or is declared last; after every other audit the pass
 compares each node's parent, visibility and transform and every mesh's bytes, instances and materials with what the
 audit received, and fails the audit that left a difference. A failing audit stops receiving tanks while the others go
-on, its build is discarded, and the pass names every failed audit and tank. The integration strengthens the guard
-to include material colors, physical parameters, shader hooks, texture bindings/transforms and semantic metadata
-on every node and geometry, with cyclic-reference handling and negative controls. PR #9 reported lower fleet
-construction cost on its earlier roster; those timings are not a measurement of this 219-vehicle integration.
+on, its build is discarded, and the pass names every failed audit and tank. Main's integration (2026-10-02)
+strengthened the guard to material colors, physical parameters, shader hooks, texture bindings/transforms and
+semantic metadata on every node and geometry, with cyclic-reference handling and negative controls. Measured on the
+217-tank roster (CPU-seconds, load about 25): the ten receipts 1,961 s, the five that replace them 1,025 s (the three
+passes 602 s); a whole cold suite 91 CPU-min instead of 106.
 
 Receipts share `tools/receipt-kit.test-support.mjs` (`near`, `nearStrict`, `geometryHash`) instead of defining their
 own copies. Source-shape guards, functional simulation tests and real visual checks still make different claims:
 a source regex does not prove a rendered result. The full gate inventory is not a
 substitute for the map/contact, shadow-motion and real Garage/battle review.
+
+**Scheduling, selection and cache identity (2026-10-01).** Only the order and the batching of the
+work changed; every selected receipt still runs every assertion in a fresh process.
+
+- A lease batch older than 45 s yields (drains, releases, re-queues) only while another acquisition
+  waits in the capture queue; with nobody queued the batch window restarts and the lease is
+  refreshed, never released (gate P5). The pool logs how often it renewed and yielded.
+- The pool admits the barrier receipts (exclusive CPU and self-leasing browser checks) first, then the
+  rest longest-first by the last observed run time (gate P7). Receipts with no observation take the
+  90th percentile; `--order=registry` restores registry admission. The registry order stays the
+  reporting order: the earliest registry failure supplies the exit status. Run times live in
+  `runtimes.json` beside the proofs (built once from the newest PASS record per receipt, then updated
+  by every ordinary PASS or FAIL). A replay of the real pool on the audit's medians: cold 24.2 min ->
+  18.1 (P5) -> 15.4 (P5+P7).
+- `--only=<glob>[,<glob>]` selects registry entries (`**`, `*`, `?`, `{a,b}`, a trailing `/` for a tree;
+  matching nothing exits 2). `--shard=i/n` runs one of n deterministic shards balanced by the
+  committed snapshot `tools/selftest-durations.json`, so separate CI jobs derive the same partition
+  (the report records its fingerprint). Regenerate the snapshot with
+  `node tools/run-selftests.mjs --write-durations` after a full run; a stale entry only unbalances.
+- `--logs=<dir>` writes each receipt's output to `<dir>/<receipt>.log` (a file descriptor, never a
+  pipe); `tools/gate.mjs` uses it to quote each red receipt's first error.
+- The proof store is keyed on the repository's root commit instead of the origin URL, so a renamed
+  remote no longer cold-starts every proof. The first run links the new directory to the URL-keyed
+  one, so existing proofs keep counting (`tools/selftest-cache-dir.mjs`; a shallow clone keeps the URL
+  key). These live outside `tools/selftest-cache.mjs` on purpose: that file salts every proof key.
 
 The runner retains bounded CPU workers, fresh child processes, fair capture-queue
 batches and exclusive browser/timing checks. It reports every ordinary failure in
@@ -614,7 +767,7 @@ Run a path and link audit:
 Before a production release:
 
 1. Confirm the worktree contains only intended changes.
-2. Run npm test.
+2. Run `node tools/gate.mjs --baseline=<starting-base>` (typecheck, build, Workers, receipts, preflight).
 3. Run the targeted subsystem checks from the matrix.
 4. Run npm run tank:native:check when fleet or build boundaries changed.
 5. Run npm run test:net:v2:p2p when networking or room behavior changed.
@@ -662,3 +815,5 @@ landing's, and the chain continues with the receipt named in the deploy row ("la
 that passes on the base and fails on the landing stops the chain as before. The rule exists because a session that deploys
 without gating on the suite can leave main red for a day; it never lets a landing make main worse, and the named receipts stay
 the repair debt of whoever broke them.
+2026-10-01: an identical exit status is not an identical failure (a census drifting from 456 to 470 inside an already-red
+receipt would have passed). The versioned rule compares the first error message and is `node tools/gate.mjs --baseline=<base>` (above).

@@ -31,6 +31,9 @@ import { publicRouteForEntry, resolveLocalePath } from './src/ui/localeRouting.t
 import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.ts';
 import { assertPublicBuildEnv } from './tools/publicBuildEnv.ts';
 import { isExistingProjectDocument } from './tools/existing-document-route.ts';
+import { sharedWorkerChunks } from './tools/viteSharedWorkers.ts';
+import { glslMinify } from './tools/viteGlslMinify.ts';
+import { BOOT_RUNTIME_MODULES, i18nPageCatalogs, VITE_PRELOAD_HELPER } from './tools/viteI18nPageCatalogs.ts';
 
 const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 
@@ -197,11 +200,24 @@ function forceNotFoundStatus(res: ServerResponse): void {
 }
 
 export default defineConfig({
-  // Static wreck workers retain the same on-demand fleet-family imports.
-  // The worker build is a separate bundle: its chunks (the fleet family modules the wreck workers import) take the
-  // same base36 hash alphabet so every /assets URL moved together (2026-09-25, docs/DEVELOPMENT.md "Asset caching").
+  // Workers Vite still bundles on their own (the match host, the material painter, the sky/cloud/schematic/texture
+  // workers) keep ES modules so their donor families stay on-demand imports, and their chunks take the same base36
+  // hash alphabet so every /assets URL moved together (2026-09-25, docs/DEVELOPMENT.md "Asset caching").
   worker: { format: 'es', rollupOptions: { output: { hashCharacters: 'base36' } } },
   plugins: [
+    // 2026-10-02 (tools/viteSharedWorkers.ts): the wreck bake and Garage workshop workers are entries of the page
+    // build and import the page's own chunks (dist/assets 954 files / 34.9 MB -> 682 / 27.7 MB; a worker never
+    // downloads again a module the page already holds). The match host stays separate: its spec-only graph would
+    // split four boot chunks (+5 game / +4 gallery requests) or drag the builder core into the host. The small
+    // workers are single self-contained files.
+    ...sharedWorkerChunks({ workers: {
+      'src/world/wreckBakeWorker.ts': {},
+      'src/game/garageWorkshopGeometryWorker.ts': { privateCopies: ['src/vehicles/profileBuilderAdapter.ts'] },
+    } }),
+    // 2026-10-02 (tools/viteGlslMinify.ts): comments and line-edge whitespace out of the game's own complete shader
+    // programs at build time; lines, directives, in-line text and every library shader stay as written (game boot
+    // -31.3 KB raw / -10.4 KB brotli).
+    glslMinify(),
     { name: 'cot-public-build-env', apply: 'build', configResolved(config) { assertPublicBuildEnv(config.env); } },
     {
       name: 'cot-app-version',
@@ -237,6 +253,12 @@ export default defineConfig({
         return localizeHtmlDocument(html, route, locale);
       },
     },
+    // FE-P3 + 2026-10-02 (tools/viteI18nPageCatalogs.ts): every document loads its own catalogs. The game keeps the full
+    // ones; each public page loads a generated page catalog holding only the keys its code and markup can show. Every
+    // built page preloads its English chunk and names its zh-CN chunk in an inert meta, which localizeHtmlDocument turns
+    // into a modulepreload on Chinese documents (build-time /cn/ pages and the middleware's request-time ones), so
+    // English visitors never fetch Chinese and Chinese pages never flash English.
+    i18nPageCatalogs(),
     {
       name: 'cot-site-entry-output',
       enforce: 'post',
@@ -292,6 +314,9 @@ export default defineConfig({
     },
   },
   build: {
+    // Vite's per-chunk gzip report re-compresses ~950 chunks on every build. Sizes are owned by
+    // tools/bundle-budget.mjs (`npm run check:bundle`), which measures the page closures instead.
+    reportCompressedSize: false,
     rollupOptions: {
       // Multi-page build: the game and independently bootable public/tools
       // surfaces. Presentation routes never inherit the playable boot graph.
@@ -320,6 +345,24 @@ export default defineConfig({
         // the 404s it cached for deploy-93 chunks under the deploy-89 immutable rule (docs/DEVELOPMENT.md
         // "Asset caching"); the eight-character width and the [name]-[hash] shape stay the same.
         hashCharacters: 'base36',
+        // 2026-10-02 (tools/viteI18nPageCatalogs.ts): every document's boot runtime is one chunk — the locale runtime
+        // and routing, static-markup localization, responsive layout and Vite's modulepreload polyfill. Every page loads
+        // all of them at boot; automatic chunking split them in two only because lazy chunks import the locale runtime
+        // alone. One chunk keeps the game at its request count now that its English catalog is a chunk of its own.
+        // Vite's preload helper keeps a chunk of its own (the higher priority claims it before the boot group would
+        // pull it in as a dependency): the shared workers load it, and the boot chunk's polyfill needs a document. The
+        // plugin fails the build when the boot chunk holds anything else or a worker reaches it.
+        codeSplitting: {
+          groups: [
+            { name: 'preload-helper', test: VITE_PRELOAD_HELPER, priority: 1 },
+            { name: 'i18n', test: BOOT_RUNTIME_MODULES },
+            // 2026-10-03 (physics lane): the solo sim, the authority host and the client's prediction world all step
+            // hulls against the same contact rules — the structure support field and the hull-on-hull pass ride with
+            // the collision primitives they are built on, instead of splitting into two chunks of their own (+1 game
+            // request) once the prediction world became their third importer.
+            { name: 'collision', test: /[\\/]src[\\/](world[\\/]collision|sim[\\/]structureSupport|sim[\\/]tankBodyContacts)\.ts$/ },
+          ],
+        },
       },
     },
   },

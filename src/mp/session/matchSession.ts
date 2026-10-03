@@ -37,9 +37,9 @@ import type { RoomHostChangedPayload, RoomMatchStartPayload, RoomMatchStatusPayl
 import { createMatchHost } from '../host/matchHost.ts';
 import type { MatchHost } from '../host/matchHost.ts';
 import { planFromRoster, planHostBoot } from '../host/hostPlan.ts';
-import type { HostBootConfig, HostPort, HostResumeState, HostToWorkerMessage, WorkerToHostMessage } from '../host/hostProtocol.ts';
+import type { HostBootConfig, HostPort, HostToWorkerMessage, WorkerToHostMessage } from '../host/hostProtocol.ts';
 import type { HostBootPlan } from '../host/hostPlan.ts';
-import { decodeBootConfig, decodeMigrationKeyframe, deriveMigrationKey, openMigrationBlob } from '../host/migrationState.ts';
+import { decodeBootConfig, decodeMigrationKeyframe, deriveMigrationKey, openMigrationBlob, resumeStateFromRetained } from '../host/migrationState.ts';
 
 export type SessionPhase = 'lobby' | 'loading' | 'match' | 'ended' | 'lost';
 
@@ -67,7 +67,7 @@ export interface SessionPresentation {
 
 /** The peer-to-peer surfaces a session needs (absent: rtc:// matches cannot be entered). */
 export interface MatchSessionP2pOptions {
-  /** ICE servers for the peer transport and the host acceptor (v1's loadIceConfiguration result, or a resolver). */
+  /** ICE servers for the peer transport and the host acceptor: fixed, or a resolver per connection (the room's relay grant, `createRoomIceResolver`). */
   ice?: RtcIceConfig | (() => Promise<RtcIceConfig> | RtcIceConfig);
   createPeerConnection?: RtcPeerConnectionFactory;
   /** The host actor's thread (a Worker in the browser, the in-process core in Node); absent: this seat cannot host. */
@@ -591,20 +591,8 @@ export class MatchSession {
       }
       if (retained.keyframe) {
         const keyframe = decodeMigrationKeyframe(await openMigrationBlob(key, retained.keyframe.blob));
-        const state: HostResumeState = { ...keyframe };
-        let baseTick = keyframe.tick;
-        let baseAtMs = retained.keyframe.receivedAtMs;
-        const latest = retained.latestFrame;
-        if (latest && latest.tick > keyframe.tick && retained.latestFrameAtMs !== null) {
-          // What this viewer saw is exact to its newest frame: overlay those rows; hidden entities keep the sealed keyframe's.
-          const rows = new Map(state.frame.entities.map((row) => [row.entityId, row]));
-          for (const row of latest.entities) rows.set(row.entityId, row);
-          state.frame = { ...state.frame, tick: latest.tick, serverTimeMs: latest.serverTimeMs, entities: [...rows.values()].sort((a, b) => a.entityId - b.entityId), destroyed: latest.destroyed, meta: latest.meta, modeStateJson: latest.modeStateJson };
-          state.tick = latest.tick;
-          state.battleTimeMs = latest.meta.battleTimeMs;
-          baseTick = latest.tick;
-          baseAtMs = retained.latestFrameAtMs;
-        }
+        // the newer of the keyframe and this viewer's newest frame, and every prop this seat was told fell (migrationState.ts)
+        const { state, baseTick, baseAtMs } = resumeStateFromRetained(keyframe, retained.keyframe.receivedAtMs, retained.latestFrame, retained.latestFrameAtMs, retained.fallen);
         const elapsedTicks = Math.max(0, Math.ceil((this.clock() - baseAtMs) / TICK_MS));
         resume = { ...state, resumeTick: Math.max(change.resumeTick, baseTick + elapsedTicks) };
       }

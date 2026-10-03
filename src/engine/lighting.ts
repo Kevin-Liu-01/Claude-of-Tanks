@@ -22,7 +22,8 @@ import {
   snapShadowCoordinate,
 } from './shadowStability.ts';
 import { createShadowFitCache } from './shadowFitCache.ts';
-import { markShadowOnly, registerShadowCascadeCamera, setShadowCascadePolicy } from './renderLayers.ts';
+import { registerShadowCascadeCamera, setShadowCascadeCache, setShadowCascadePolicy } from './renderLayers.ts';
+import type { ShadowStaticCache } from './shadowStaticCache.ts';
 import { csmSampledFromM, evaluateShadowCasterProfiles, type ShadowCascadeSample } from './shadowCasterProfiles.ts';
 import {
   cascadeRangesFromBreaks, createNearVehicleShadowPolicy, type CascadeRange, type NearVehicleShadowPolicy,
@@ -33,7 +34,23 @@ import {
   createGroundBounceUniforms,
 } from './groundBounce.ts';
 import { currentPostLightFxQuery, resolvePostLightFx } from './postLightFxPolicy.ts';
+import {
+  CLOUD_SHADE_PARS_GLSL, CLOUD_SHADE_SAMPLER_BUDGET, attachCloudShadeUniforms, cloudShadeSamplerCount, createCloudShadeUniforms,
+} from './cloudShadeMap.ts';
 import type { PublishedLightRig } from './contactShadows.ts';
+import { authoredSunOf, resolveLightModel, type LightModel, type LightModelPreset } from './lightModelCore.ts';
+import type { AtmosphereParams } from './atmosphere.ts';
+
+/** What sky.ts publishes on scene.userData.atmosphere that the grounded light model reads (sky.ts AtmospherePublishedState). */
+interface AtmosphereLightInputs {
+  active?: boolean;
+  skyView?: THREE.Texture | null;
+  params?: AtmosphereParams | null;
+  irradianceRaw?: THREE.Color | null;
+}
+
+/** setSun's preset: the sky preset fields the rig reads (a map's sky block, the Garage trim, a weather preset). */
+type SunPreset = LightModelPreset & { sunIntensity?: number; sunColorHex?: number; hemiIntensity?: number; fillIntensity?: number };
 
 interface ShadowDebugOptions {
   noCull?: boolean;
@@ -41,6 +58,8 @@ interface ShadowDebugOptions {
   freezeMask?: number;
   /** Round 28: keep every hull on its convex proxies (A/B probes for the near-hull detail casters). */
   noVehicleDetail?: boolean;
+  /** 2026-10-02: render every caster into every cascade every frame (the static-caster cache off; A/B probes). */
+  noStaticCache?: boolean;
 }
 
 declare global {
@@ -49,7 +68,6 @@ declare global {
   }
 }
 
-type NumericAttributeArray = THREE.InstancedBufferAttribute['array'];
 type MaterialCompileHook = THREE.Material['onBeforeCompile'];
 
 type CsmShaderOwner = Pick<CSM, 'shaders'>;
@@ -201,6 +219,11 @@ const SHADOW_RADII = [1.6, 2.3, 2.6, 2.8];
 // Keep that older cool shadow response: it grounds tanks, trees and buildings
 // at gameplay distance without lowering the scene's ambient light globally.
 const SHADOW_AMBIENT_DIM = [0.80, 0.88, 1.0];
+// 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: grass in a tank's shadow rendered indigo): that
+// cool dim is the legacy rig's. The grounded rig's shade is lit by the sky light itself (its IBL, groundBounce.ts
+// uCotSkyChroma), so it dims neutrally at the same luminance — painting the sky's blue in a second time turned the
+// shade under a hull indigo on straw and teal on grass. The dim rides a shared uniform (uCotShadowDim, applyGroundBounce).
+const SHADOW_AMBIENT_DIM_LUMA = 0.2126 * SHADOW_AMBIENT_DIM[0] + 0.7152 * SHADOW_AMBIENT_DIM[1] + 0.0722 * SHADOW_AMBIENT_DIM[2];
 const SHADOW_AMBIENT_SPEC_DIM = 0.55;
 // r8 stable PCF: the old pseudo-PCSS multiplier expanded a five-tap kernel
 // as far as 14 texels. Five samples cannot cover that disk, so wide shadows
@@ -311,6 +334,8 @@ const FILL_INTENSITY = 0.66;
 // canopies lift out of black without flattening ground-shadow contrast.
 const FILL_ELEV_Y = 70;
 const FILL_HORIZ_M = 230;
+/** The legacy environment's share of shadowless sun the PMREM folds from the dome's disc (round 65; contactShadows.ts). */
+const LEGACY_ENV_DISC_FILL = 0.5;
 
 type DrawableImage = CanvasImageSource & { width: number; height: number };
 
@@ -430,335 +455,22 @@ function buildCoverageMipmaps(tex: THREE.Texture, cutoff: number): void {
   tex.needsUpdate = true;
 }
 
-// --- r8 CASCADE CASTER PROXIES (correctness: replaces the r7 in-place instance
-// compaction; shadow-flash root cause 2026-09-13) ----------------------------
-// r7 compacted each heavy InstancedMesh's instance prefix inside onBeforeShadow
-// and drew count=K. Three r185's shadow pass, however, runs objects.update() —
-// the ONLY place instance buffers upload — BEFORE onBeforeShadow, gated to once
-// per render call (WebGLShadowMap.renderObject: objects.update → onBeforeShadow
-// → renderBufferDirect). The compacted bytes therefore never reached the GPU
-// before the draw: every cascade rendered the FIRST K instances in owner order,
-// not the K visible ones. Casters past index K lost their shadow, and since K
-// changes with every camera move, WHICH casters were missing changed too — the
-// "tree / bush / pole shadows flash while driving" report. Proven with a
-// still-camera A/B (.qa-dev/cull-still-ab.mjs, temporal passes off): cull on vs
-// off differed by 3.9k px of missing shadow, on vs on by 0 px; 63 % of the
-// cascade-0-visible trunks and 81 % of the visible bushes sat past the prefix.
-// Now every heavy static owner gets one SHADOW-ONLY PROXY per near cascade: a
-// child of the owner on SHADOW_ONLY_LAYER that shares the owner's vertex and
-// index buffers and owns its instance buffers. lighting.update() compacts each
-// scheduled proxy to its cascade's frustum BEFORE renderer.render(), so the
-// shadow pass's own objects.update() uploads exactly the bytes the draw uses.
-// Owner buffers are never written. The owner casts only into the last cascade
-// (that box spans the map, so culling there saves nothing); a proxy draws
-// solely in its own cascade (count=0 elsewhere — three skips zero-instance
-// draws). Culling stays conservative: per-instance world spheres (geometry
-// sphere x instance scale + SHADOW_CULL_MARGIN for wind sway) against the
-// cascade frustum. __SHADOW_DEBUG.noCull (probes) makes owners draw everything.
-// Nothing here listens on geometries or holds strong owner references, so a
-// discarded world (or a shared library geometry outliving it) never pins a
-// mesh; proxies die with their owner and the browser frees their GL buffers.
-const SHADOW_CULL_MIN_TRIS = 24000; // capacity*trisPerInstance below this: not worth proxies
-const SHADOW_CULL_MARGIN = 4.0; // meters: wind sway + normal cascade-fit movement
-
-interface CasterProxyRecord {
-  readonly owner: THREE.InstancedMesh;
-  /** Owner geometry the proxies mirror; a swap rebuilds the record. */
-  readonly geometry: THREE.BufferGeometry;
-  readonly capacity: number;
-  readonly proxies: THREE.InstancedMesh[];
-  /** Per proxy: [instanceMatrix, ...geometry instanced attributes], aligned with ownerAttrs. */
-  readonly proxyAttrs: THREE.InstancedBufferAttribute[][];
-  readonly ownerAttrs: THREE.InstancedBufferAttribute[];
-  /** Visible instance count compacted into each proxy. */
-  readonly counts: Int32Array;
-  /** Per-instance world bounding spheres of the owner's current instances. */
-  readonly centers: Float32Array;
-  readonly radii: Float32Array;
-  n: number;
-  matrixVersion: number;
-  /** Set once the proxies hold a compaction; until then the owner casts everywhere. */
-  ready: boolean;
-  /** Owner count saved across one cascade draw by the before/after hooks. */
-  savedCount: number;
+// 2026-10-02 (the frame-budget lane): the r8 cascade caster proxies live in shadowCasterProxies.ts, imported when the
+// first lighting rig is created, outside the boot entry. Until the module has arrived heavy owners cast every instance
+// into every cascade — the same maps (a proxy only drops the instances outside its cascade's frustum).
+type CasterProxyModule = typeof import('./shadowCasterProxies.ts');
+let casterProxies: CasterProxyModule | null = null;
+let casterProxiesLoad: Promise<CasterProxyModule | null> | null = null;
+function loadCasterProxies(lights: readonly THREE.DirectionalLight[]): void {
+  casterProxiesLoad ??= import('./shadowCasterProxies.ts').then((module) => module, () => null);
+  void casterProxiesLoad.then((module) => {
+    if (!module) return;
+    module.registerCasterCascades(lights); // before the first owner meets a hook: an unregistered cascade builds none
+    casterProxies = module;
+  });
 }
-
-const _casterRecords = new WeakMap<THREE.InstancedMesh, CasterProxyRecord | null>();
-/** Weak owner list for the per-frame compaction; dead entries are pruned as met. */
-const _casterOwners: WeakRef<THREE.InstancedMesh>[] = [];
-const _proxyOf = new WeakMap<THREE.InstancedMesh, { rec: CasterProxyRecord; cascade: number }>();
-const _cascadeIndexByCamera = new WeakMap<THREE.Camera, number>();
-/** Near cascades that receive proxies (every registered cascade but the last). */
-let _casterProxyCascades = 0;
-const _cullSphere = new THREE.Sphere();
-const _cullVec = new THREE.Vector3();
-const _cullMat = new THREE.Matrix4();
-const _cullFrusta: (THREE.Frustum | null)[] = [];
-const noopRaycast = (): void => {};
-
-function geometryTris(geo: THREE.BufferGeometry): number {
-  const idx = geo.index;
-  const pos = geo.attributes && geo.attributes.position;
-  return (((idx ? idx.count : (pos ? pos.count : 0)) / 3) | 0);
-}
-
-function shadowCullDebugDisabled(): boolean {
-  return typeof window !== 'undefined' && !!window.__SHADOW_DEBUG?.noCull;
-}
-
-/** Tell the shadow hooks which cascade each shadow camera belongs to. */
-function registerCasterCascades(lights: readonly THREE.DirectionalLight[]): void {
-  for (let i = 0; i < lights.length; i++) _cascadeIndexByCamera.set(lights[i].shadow.camera, i);
-  _casterProxyCascades = Math.max(_casterProxyCascades, lights.length - 1);
-}
-
-function cloneInstancedAttribute(source: THREE.InstancedBufferAttribute): THREE.InstancedBufferAttribute {
-  const Ctor = source.array.constructor as unknown as new (length: number) => NumericAttributeArray;
-  const clone = new THREE.InstancedBufferAttribute(
-    new Ctor(source.array.length), source.itemSize, source.normalized, source.meshPerAttribute);
-  clone.setUsage(THREE.DynamicDrawUsage);
-  return clone;
-}
-
-function isAttachedTo(object: THREE.Object3D, root: THREE.Object3D): boolean {
-  let node: THREE.Object3D | null = object;
-  while (node) {
-    if (node === root) return true;
-    node = node.parent;
-  }
-  return false;
-}
-
-/** Drop a record's proxies; the owner is re-classified by its next shadow draw when `forget`. */
-function disposeCasterRecord(rec: CasterProxyRecord, forget: boolean): void {
-  for (const proxy of rec.proxies) {
-    rec.owner.remove(proxy);
-    _proxyOf.delete(proxy);
-  }
-  rec.proxies.length = 0;
-  if (forget) _casterRecords.delete(rec.owner);
-  else _casterRecords.set(rec.owner, null);
-}
-
-/** Build the proxies for a heavy owner; null when the owner cannot be mirrored. */
-function buildCasterRecord(owner: THREE.InstancedMesh): CasterProxyRecord | null {
-  const geo = owner.geometry;
-  if (!geo.boundingSphere) geo.computeBoundingSphere();
-  const bs = geo.boundingSphere;
-  const capacity = owner.instanceMatrix.count;
-  if (!bs || !isFinite(bs.radius) || bs.radius <= 0 || capacity <= 0 || _casterProxyCascades <= 0) {
-    _casterRecords.set(owner, null);
-    return null;
-  }
-  const ownerAttrs: THREE.InstancedBufferAttribute[] = [owner.instanceMatrix];
-  for (const key of Object.keys(geo.attributes)) {
-    const attr = geo.attributes[key];
-    if (!(attr instanceof THREE.InstancedBufferAttribute)) continue;
-    if (attr.count < capacity) {
-      _casterRecords.set(owner, null);
-      return null;
-    }
-    ownerAttrs.push(attr);
-  }
-  const proxies: THREE.InstancedMesh[] = [];
-  const proxyAttrs: THREE.InstancedBufferAttribute[][] = [];
-  const rec: CasterProxyRecord = {
-    owner, geometry: geo, capacity, proxies, proxyAttrs, ownerAttrs,
-    counts: new Int32Array(_casterProxyCascades),
-    centers: new Float32Array(capacity * 3),
-    radii: new Float32Array(capacity),
-    n: 0, matrixVersion: -1, ready: false, savedCount: owner.count,
-  };
-  for (let i = 0; i < _casterProxyCascades; i++) {
-    const proxyGeometry = new THREE.BufferGeometry();
-    if (geo.index) proxyGeometry.setIndex(geo.index);
-    const attrs: THREE.InstancedBufferAttribute[] = [];
-    for (const key of Object.keys(geo.attributes)) {
-      const attr = geo.attributes[key];
-      if (attr instanceof THREE.InstancedBufferAttribute) {
-        const clone = cloneInstancedAttribute(attr);
-        proxyGeometry.setAttribute(key, clone);
-        attrs.push(clone);
-      } else {
-        proxyGeometry.setAttribute(key, attr); // shared vertex buffer, uploaded once
-      }
-    }
-    proxyGeometry.groups = geo.groups;
-    proxyGeometry.drawRange = geo.drawRange;
-    proxyGeometry.boundingSphere = bs;
-    proxyGeometry.boundingBox = geo.boundingBox;
-    const proxy = new THREE.InstancedMesh(proxyGeometry, owner.material, capacity);
-    proxy.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    if (owner.instanceColor) {
-      // keep the owner's depth-program variant (USE_INSTANCING_COLOR); the depth pass never reads it
-      proxy.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
-      proxy.instanceColor.setUsage(THREE.DynamicDrawUsage);
-    }
-    proxy.customDepthMaterial = owner.customDepthMaterial;
-    proxy.customDistanceMaterial = owner.customDistanceMaterial;
-    proxy.castShadow = true;
-    proxy.receiveShadow = false;
-    proxy.frustumCulled = false;
-    proxy.matrixAutoUpdate = false;
-    proxy.matrixWorldAutoUpdate = false;
-    proxy.matrixWorld.copy(owner.matrixWorld);
-    proxy.count = 0;
-    proxy.raycast = noopRaycast; // aim/pick rays never see shadow geometry
-    proxy.name = `${owner.name || 'caster'}-shadow-c${i}`;
-    proxy.userData.cotCasterProxy = true;
-    proxy.userData.aoExclude = true;
-    markShadowOnly(proxy);
-    owner.add(proxy);
-    proxies.push(proxy);
-    proxyAttrs.push([proxy.instanceMatrix, ...attrs]);
-    _proxyOf.set(proxy, { rec, cascade: i });
-  }
-  _casterRecords.set(owner, rec);
-  _casterOwners.push(new WeakRef(owner));
-  return rec;
-}
-
-function resolveCasterRecord(owner: THREE.InstancedMesh): CasterProxyRecord | null {
-  const record = _casterRecords.get(owner);
-  if (record !== undefined) return record;
-  if (_proxyOf.has(owner) || geometryTris(owner.geometry) * owner.instanceMatrix.count < SHADOW_CULL_MIN_TRIS) {
-    _casterRecords.set(owner, null);
-    return null;
-  }
-  return buildCasterRecord(owner);
-}
-
-/** Re-derive per-instance world spheres when the owner's instances changed. */
-function refreshCasterSpheres(rec: CasterProxyRecord): void {
-  const owner = rec.owner;
-  const n = Math.min(owner.count, rec.capacity);
-  if (rec.matrixVersion === owner.instanceMatrix.version && rec.n === n) return;
-  const bs = rec.geometry.boundingSphere as THREE.Sphere;
-  const matrices = owner.instanceMatrix.array;
-  for (let i = 0; i < n; i++) {
-    _cullMat.fromArray(matrices, i * 16).premultiply(owner.matrixWorld);
-    _cullVec.copy(bs.center).applyMatrix4(_cullMat);
-    rec.centers[i * 3] = _cullVec.x;
-    rec.centers[i * 3 + 1] = _cullVec.y;
-    rec.centers[i * 3 + 2] = _cullVec.z;
-    rec.radii[i] = bs.radius * _cullMat.getMaxScaleOnAxis() + SHADOW_CULL_MARGIN;
-  }
-  rec.n = n;
-  rec.matrixVersion = owner.instanceMatrix.version;
-}
-
-/** Copy the owner instances inside `frustum` into proxy `cascade`'s prefix and mark it for upload. */
-function compactCasterProxy(rec: CasterProxyRecord, cascade: number, frustum: THREE.Frustum): void {
-  const n = rec.n;
-  const centers = rec.centers;
-  const radii = rec.radii;
-  const sources = rec.ownerAttrs;
-  const targets = rec.proxyAttrs[cascade];
-  let k = 0;
-  for (let j = 0; j < n; j++) {
-    _cullSphere.center.set(centers[j * 3], centers[j * 3 + 1], centers[j * 3 + 2]);
-    _cullSphere.radius = radii[j];
-    if (!frustum.intersectsSphere(_cullSphere)) continue;
-    for (let a = 0; a < sources.length; a++) {
-      const size = sources[a].itemSize;
-      const src = sources[a].array;
-      const dst = targets[a].array;
-      const from = j * size;
-      const to = k * size;
-      for (let c = 0; c < size; c++) dst[to + c] = src[from + c];
-    }
-    k++;
-  }
-  rec.counts[cascade] = k;
-  if (k === 0) return;
-  for (let a = 0; a < targets.length; a++) {
-    const attr = targets[a];
-    attr.clearUpdateRanges();
-    attr.addUpdateRange(0, k * attr.itemSize);
-    attr.needsUpdate = true;
-  }
-}
-
-/**
- * Before renderer.render(): compact every registered owner's proxies for the
- * cascades that draw this frame (`all` for shadow priming), using the poses
- * applyStableCascadePoses just wrote so the frusta match the maps.
- */
-function updateCasterProxies(
-  lights: readonly THREE.DirectionalLight[],
-  root: THREE.Object3D,
-  all: boolean,
-): void {
-  if (_casterOwners.length === 0 || shadowCullDebugDisabled()) return;
-  const proxyCascades = Math.min(_casterProxyCascades, lights.length);
-  let scheduled = 0;
-  for (let i = 0; i < proxyCascades; i++) {
-    _cullFrusta[i] = null;
-    const light = lights[i];
-    if (!all && !light.shadow.needsUpdate) continue;
-    light.updateMatrixWorld();
-    light.target.updateMatrixWorld();
-    light.shadow.updateMatrices(light);
-    _cullFrusta[i] = light.shadow.getFrustum();
-    scheduled |= 1 << i;
-  }
-  if (!scheduled) return;
-  for (let r = _casterOwners.length - 1; r >= 0; r--) {
-    const owner = _casterOwners[r].deref();
-    const rec = owner ? _casterRecords.get(owner) : null;
-    if (!owner || !rec) {
-      _casterOwners.splice(r, 1);
-      continue;
-    }
-    if (!isAttachedTo(owner, root)) continue;
-    if (owner.geometry !== rec.geometry || owner.instanceMatrix.count !== rec.capacity) {
-      disposeCasterRecord(rec, true);
-      _casterOwners.splice(r, 1);
-      continue;
-    }
-    refreshCasterSpheres(rec);
-    for (let i = 0; i < rec.proxies.length; i++) {
-      const proxy = rec.proxies[i];
-      proxy.matrixWorld.copy(owner.matrixWorld);
-      proxy.castShadow = owner.castShadow;
-      if (proxy.material !== owner.material) proxy.material = owner.material;
-      if (proxy.customDepthMaterial !== owner.customDepthMaterial) proxy.customDepthMaterial = owner.customDepthMaterial;
-      const frustum = _cullFrusta[i];
-      if (frustum) compactCasterProxy(rec, i, frustum);
-    }
-    rec.ready = true;
-  }
-}
-
-/** onBeforeShadow half: a proxy draws only in its cascade, an owner only where no proxy covers. */
-function casterProxyBeforeShadow(object: THREE.Object3D, shadowCamera: THREE.Camera): void {
-  if (!(object instanceof THREE.InstancedMesh)) return;
-  const noCull = shadowCullDebugDisabled();
-  const asProxy = _proxyOf.get(object);
-  if (asProxy) {
-    object.count = !noCull && _cascadeIndexByCamera.get(shadowCamera) === asProxy.cascade
-      ? asProxy.rec.counts[asProxy.cascade]
-      : 0;
-    return;
-  }
-  const rec = resolveCasterRecord(object);
-  if (!rec) return;
-  rec.savedCount = object.count;
-  if (noCull || !rec.ready) return;
-  const cascade = _cascadeIndexByCamera.get(shadowCamera);
-  if (cascade !== undefined && cascade < rec.proxies.length) object.count = 0;
-}
-
-/** onAfterShadow half: owners get their count back, proxies return to zero, before anyone reads them. */
-function casterProxyAfterShadow(object: THREE.Object3D): void {
-  if (!(object instanceof THREE.InstancedMesh)) return;
-  if (_proxyOf.has(object)) {
-    object.count = 0;
-    return;
-  }
-  const rec = _casterRecords.get(object);
-  if (rec) object.count = rec.savedCount;
-}
+/** map.ts freezes the battle world's root after its build: the static shadow layer (shadowStaticCache.ts). */
+const isFrozenWorldRoot = (object: THREE.Object3D): boolean => object.userData.matrixTraversalFrozen === true;
 
 // --- r6 SHADOW-CASTER RESCUE (critical: "shadow draw distance ~120m — every
 // mid-distance building, silo, hay bale, fence and tree sits on uniformly lit
@@ -797,17 +509,22 @@ function patchShadowDepthPacking(): void {
       depthMaterial.depthPacking = THREE.RGBADepthPacking;
       depthMaterial.needsUpdate = true;
     }
-    // r8 cascade caster proxies (see the block above)
-    casterProxyBeforeShadow(object, shadowCamera);
+    // r8 cascade caster proxies (shadowCasterProxies.ts)
+    casterProxies?.casterProxyBeforeShadow(object, shadowCamera);
   };
   const afterHook: THREE.Mesh['onAfterShadow'] = function (_renderer, object) {
-    casterProxyAfterShadow(object);
+    casterProxies?.casterProxyAfterShadow(object);
   };
   THREE.Mesh.prototype.onBeforeShadow = hook;
   THREE.SkinnedMesh.prototype.onBeforeShadow = hook;
   THREE.Mesh.prototype.onAfterShadow = afterHook;
   THREE.SkinnedMesh.prototype.onAfterShadow = afterHook;
 }
+
+/** 2026-10-03 (cloudShadeMap.ts): a sun cascade's light × the clouds' share, before its shadow. */
+const COT_CLOUD_SUN_GLSL = `#if defined( COT_CLOUD_SHADE ) && defined( USE_SHADOWMAP )
+					directLight.color *= vCotCloudSun;
+#endif`;
 
 let stableShadowSamplingPatched = false;
 /** Keep the PCF kernel orientation stable in shadow space during camera motion. */
@@ -838,9 +555,16 @@ float cotCascadeVis = 1.0;
 vec3 cotPrev;`);
   frag = frag.replace(fadeAnchor, `${fadeAnchor}
 					cotCascadeVis = directLight.color.g / max( prevColor.g, 1e-4 );`);
+  // 2026-10-03 (cloudShadeMap.ts): the clouds' share of the sun, per vertex, on each sun cascade's light before its shadow
+  // (the ratio above stays the cascade's own visibility; lights_fragment_end folds the cloud into cotSunVis)
+  const fadePrevAnchor = 'vec3 prevColor = directLight.color;';
+  if (frag.split(fadePrevAnchor).length !== 2) throw new Error('lighting.ts: cloud-shade anchor not found in lights_fragment_begin');
+  frag = frag.replace(fadePrevAnchor, `${COT_CLOUD_SUN_GLSL}
+					${fadePrevAnchor}`);
   frag = frag.replace(fadeBlendAnchor, `${fadeBlendAnchor}
 					cotSunVis = mix( cotSunVis, cotCascadeVis, blendRatio );`);
-  frag = frag.replace(noFadeAnchor, `cotPrev = directLight.color;
+  frag = frag.replace(noFadeAnchor, `${COT_CLOUD_SUN_GLSL}
+				cotPrev = directLight.color;
 				${noFadeAnchor}
 				cotSunVis = min( cotSunVis, directLight.color.g / max( cotPrev.g, 1e-4 ) );`);
   THREE.ShaderChunk.lights_fragment_begin = frag;
@@ -850,10 +574,12 @@ vec3 cotPrev;`);
   if (!end.includes(endHead)) {
     throw new Error('lighting.ts: shadow-density anchor not found in lights_fragment_end');
   }
-  const dimVec = `vec3( ${SHADOW_AMBIENT_DIM.map((v) => v.toFixed(3)).join(', ')} )`;
   THREE.ShaderChunk.lights_fragment_end = end.replace(endHead, `#if defined( USE_CSM ) && defined( CSM_CASCADES )
 
-	vec3 cotAmbDim = mix( ${dimVec}, vec3( 1.0 ), cotSunVis );
+	#if defined( COT_CLOUD_SHADE ) && defined( USE_SHADOWMAP )
+	cotSunVis *= vCotCloudSun;
+	#endif
+	vec3 cotAmbDim = mix( uCotShadowDim, vec3( 1.0 ), cotSunVis );
 
 	#if defined( RE_IndirectDiffuse )
 
@@ -893,7 +619,22 @@ ${endHead}`);
   THREE.ShaderChunk.lights_pars_begin = `#if defined( USE_CSM ) && defined( CSM_CASCADES )
 ${GROUND_BOUNCE_GLSL_PARS}
 #endif
+#if defined( COT_CLOUD_SHADE ) && defined( USE_SHADOWMAP )
+varying float vCotCloudSun;
+#endif
 ${THREE.ShaderChunk.lights_pars_begin}`;
+
+  // 2026-10-03 (cloudShadeMap.ts): the clouds' share of the sun, fetched per vertex from the one undithered shade map
+  // (a cloud shadow is tens to hundreds of metres across; the map's texel 23 m) and carried to the fragment
+  THREE.ShaderChunk.shadowmap_pars_vertex = `${THREE.ShaderChunk.shadowmap_pars_vertex}
+#if defined( COT_CLOUD_SHADE ) && defined( USE_SHADOWMAP )
+${CLOUD_SHADE_PARS_GLSL}
+varying float vCotCloudSun;
+#endif`;
+  THREE.ShaderChunk.shadowmap_vertex = `${THREE.ShaderChunk.shadowmap_vertex}
+#if defined( COT_CLOUD_SHADE ) && defined( USE_SHADOWMAP )
+	vCotCloudSun = cotCloudSun( worldPosition.xyz );
+#endif`;
 
   // Round 69: an opaque lit pixel writes 2 + its sun visibility (cotSunVis, captured above) into the scene
   // target's alpha — the canvas is opaque (renderer.ts, alpha false) and opaque draws blend nothing, so the
@@ -946,6 +687,7 @@ export function releaseCsmShaderMaterial(
     delete material.defines.USE_CSM;
     delete material.defines.CSM_CASCADES;
     delete material.defines.CSM_FADE;
+    delete material.defines.COT_CLOUD_SHADE; // 2026-10-03: the cloud shade rides on the CSM registration (cloudShadeMap.ts)
   }
   material.needsUpdate = true;
   return true;
@@ -994,7 +736,7 @@ export function createLighting(
   }) as ExtendedCsm;
   csm.fade = true;
   csm.updateFrustums(); // required after changing fade
-  registerCasterCascades(csm.lights);
+  loadCasterProxies(csm.lights);
   for (let i = 0; i < csm.lights.length; i++) registerShadowCascadeCamera(csm.lights[i].shadow.camera, i);
   // Round 28 (2026-09-20, owner: "shadows look weird on tanks"): the nearest hulls cast their real armour
   // into the cascade that covers them instead of their convex proxies (nearVehicleShadowDetail.ts). Desktop
@@ -1013,6 +755,22 @@ export function createLighting(
     enabled: () => nearVehicleDetailAllowed && !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noVehicleDetail),
   });
   setShadowCascadePolicy(nearVehiclePolicy);
+  // 2026-10-03: the same near hulls carry the ground's occlusion in the aerial pass (vehicleGroundOcclusion.ts); the
+  // selection array is updated in place each frame
+  scene.userData.nearVehicles = nearVehiclePolicy.selected;
+  // 2026-10-02 (the frame-budget lane, P20): each desktop cascade keeps its static casters' depth and redraws only the
+  // dynamic ones while its snapped pose and the static content hold (shadowStaticCache.ts). The module loads with the
+  // first battle world (a frozen world root in the scene), outside the boot graph; until it arrives, and if it never
+  // does, every cascade renders the ordinary way. Phones keep the plain render: the copies would cost them memory.
+  let staticShadowCache: ShadowStaticCache | null = null;
+  let staticShadowCacheRequested = mobileTier;
+  const requestStaticShadowCache = (): void => {
+    staticShadowCacheRequested = true;
+    import('./shadowStaticCache.ts').then((module) => {
+      staticShadowCache = module.createShadowStaticCache();
+      setShadowCascadeCache(staticShadowCache);
+    }, () => { /* the ordinary render for the session */ });
+  };
   const shadowFitCache = createShadowFitCache();
   const fitLightDirection = [0, 0, 0];
   /** Per-cascade shadow box size held across small fov lerps (see updateFov). */
@@ -1161,6 +919,7 @@ export function createLighting(
   /** Mark every cascade for complete redraw on the next two frames. */
   function forceAllCascades(): void {
     forceFrames = 2;
+    staticShadowCache?.invalidate('force');
     shadowScheduler.reset();
     for (let i = FAR_CASCADE_START; i < csm.lights.length; i++) {
       csm.lights[i].shadow.needsUpdate = true;
@@ -1197,20 +956,49 @@ export function createLighting(
   // against, refreshed from the rig below whenever the sun or the preset changes — and the rig the post chain
   // reads for its contact shadows (contactShadows.ts): sun, hemisphere poles and the anti-sun fill.
   const groundBounceUniforms = createGroundBounceUniforms();
+  // 2026-10-03 (cloudShadeMap.ts): the cloud shade map's uniforms every CSM material shares (the volumetric layer writes
+  // them when it refreshes the map, scene.userData.cloudShadeUniforms); phones take no define (no volumetric layer)
+  const cloudShadeOn = !mobileTier;
+  const cloudShadeUniforms = createCloudShadeUniforms();
+  scene.userData.cloudShadeUniforms = cloudShadeUniforms;
   const lightFx = { flags: resolvePostLightFx(preset, getDeviceTier(), currentPostLightFxQuery()) };
   const lightRig: PublishedLightRig = {
     sunIntensity: SUN_INTENSITY, sunColor: new THREE.Color(SUN_COLOR),
     hemiIntensity: hemi.intensity, hemiSky: hemi.color, hemiGround: hemi.groundColor,
     fillIntensity: FILL_INTENSITY, fillColor: new THREE.Color(FILL_COLOR), fillDir: new THREE.Vector3(0, 1, 0),
+    envDiffuseGain: 1, envDiscFill: LEGACY_ENV_DISC_FILL,
   };
   scene.userData.lightRig = lightRig;
   const sunDirWorld = new THREE.Vector3();
+  // 2026-10-01: the grounded model's ground (its albedo) and the ground pole the sky light already gives a face
+  // turned down (the environment's shaded ground + the deck's reflection), so the bounce adds only the sunlit excess
+  let rigModel: LightModel | null = null;
+  const groundTone = new THREE.Color();
+  const groundPole = new THREE.Color();
   function applyGroundBounce(): void {
     sunDirWorld.copy(csm.lightDirection).negate().normalize();
+    const model = rigModel?.mode === 'physical' ? rigModel : null;
+    if (model) {
+      groundTone.setRGB(model.groundAlbedo[0], model.groundAlbedo[1], model.groundAlbedo[2]);
+      const iblDown = Math.PI * model.envIntensity * model.envDiffuseGain;
+      groundPole.setRGB(
+        model.groundRadiance[0] * iblDown + model.hemiGround[0] * model.hemiIntensity,
+        model.groundRadiance[1] * iblDown + model.hemiGround[1] * model.hemiIntensity,
+        model.groundRadiance[2] * iblDown + model.hemiGround[2] * model.hemiIntensity,
+      );
+      groundBounceUniforms.uCotSkyDiffuse.value = model.envDiffuseGain;
+      groundBounceUniforms.uCotSkyChroma.value = model.envDiffuseChroma;
+      groundBounceUniforms.uCotShadowDim.value.setScalar(SHADOW_AMBIENT_DIM_LUMA);
+    } else {
+      groundBounceUniforms.uCotSkyDiffuse.value = 1;
+      groundBounceUniforms.uCotSkyChroma.value = 1;
+      groundBounceUniforms.uCotShadowDim.value.fromArray(SHADOW_AMBIENT_DIM);
+    }
     applyGroundBounceRig(groundBounceUniforms, {
       enabled: lightFx.flags.groundBounce, sunDir: sunDirWorld, sunColor: lightRig.sunColor,
-      sunIntensity: lightRig.sunIntensity, groundTone: hemi.groundColor, hemiGround: hemi.groundColor,
-      hemiIntensity: hemi.intensity,
+      sunIntensity: lightRig.sunIntensity, groundTone: model ? groundTone : hemi.groundColor,
+      hemiGround: model ? groundPole : hemi.groundColor, hemiIntensity: model ? 1 : hemi.intensity,
+      ...(model ? { gain: 1 } : {}),
     });
   }
   // Round 65 (2026-09-24): the hemisphere light's sky colour follows the rendered sky. sky.ts publishes the
@@ -1245,6 +1033,12 @@ export function createLighting(
   fill.target.position.set(0, 0, 0);
   scene.add(fill);
   scene.add(fill.target);
+  // 2026-10-01 (the grounded light model, lightModel.ts): wherever the physically based sky runs — sky.ts built its
+  // sky-view LUT before this rig exists (desktop) — the sky's own light, the deck and the ground replace the
+  // anti-sun rescue fill, a second unshadowed sun on every backlit face: setSun drives its intensity to zero. The
+  // light itself stays in the scene so every lit program keeps one light signature whichever rig a preset resolves
+  // to (a zero-intensity directional costs a few ALU per fragment; a signature change recompiles every program).
+  const physicalRig = !!(scene.userData.atmosphere as AtmosphereLightInputs | undefined)?.skyView;
   lightRig.fillDir.copy(fill.position).normalize();
   applyGroundBounce();
 
@@ -1337,17 +1131,78 @@ export function createLighting(
 
   function updateLighting(force = false, dt = 1 / 60): void {
     lastFitChangedMask = 0;
-    if (consumeDormantOrPrimedFrame(force)) return;
+    if (consumeDormantOrPrimedFrame(force)) { staticShadowCache?.disarm(); return; }
     preservePrimedFrame = false;
     const transitionCascade = consumePendingShadowResize();
     lastFitChangedMask = prepareCurrentCascadeFits(force);
     shFrame++;
     const step = Math.max(0, Math.min(0.05, Number(dt) || 0));
+    const forcedFrame = force || forceFrames > 0;
     scheduleCascadeFrame(force, step, transitionCascade);
     applyFarCascadeDormancy();
-    updateCasterProxies(csm.lights, scene, false);
+    casterProxies?.updateCasterProxies(csm.lights, scene, false);
     nearVehiclePolicy.update();
     evaluateCasterProfiles(false);
+    if (!staticShadowCacheRequested && scene.children.some(isFrozenWorldRoot)) requestStaticShadowCache();
+    // last: the static content the cascades' copies are checked against includes this frame's caster masks
+    staticShadowCache?.beginFrame({ scene, lights: csm.lights, forced: forcedFrame || transitionCascade >= 0,
+      enabled: !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noStaticCache) });
+  }
+
+  /**
+   * 2026-10-01: resolve and apply the light (lightModel.ts) for a sky preset — the grounded model on the physically
+   * based sky, the authored rig on the Preetham tier and inside the Garage. The Garage is the phase that asked for
+   * far-cascade dormancy (an enclosed presentation: setFarCascadeDormant): the sky does not light a sealed bay, so it
+   * keeps the rig its showroom lights were tuned with, under the legacy rig's exposure. The model owns
+   * scene.environmentIntensity from here (sky.ts sets the same value when it installs an environment).
+   */
+  let lastSunPreset: SunPreset | null = null;
+  function applyRig(opts: SunPreset): void {
+    const atmo = scene.userData.atmosphere as AtmosphereLightInputs | undefined;
+    const irr = atmo?.irradianceRaw;
+    const physical = physicalRig && !farCascadeDormant && !!atmo?.active && !!atmo.params && !!irr;
+    const authoredSun = authoredSunOf(opts);
+    const model = resolveLightModel(opts, physical ? atmo!.params! : null,
+      physical ? { irradianceRaw: [irr!.r, irr!.g, irr!.b] } : null, authoredSun);
+    rigModel = model;
+    scene.userData.lightModel = model;
+    scene.userData.lightEnclosed = farCascadeDormant;
+    scene.environmentIntensity = model.envIntensity;
+    const intensity = model.mode === 'physical' ? model.sunIntensity : (opts.sunIntensity ?? SUN_INTENSITY);
+    const colorHex = opts.sunColorHex ?? SUN_COLOR;
+    fill.intensity = model.mode === 'physical' ? 0 : (opts.fillIntensity ?? FILL_INTENSITY);
+    csm.lightIntensity = intensity;
+    for (let k = 0; k < csm.lights.length; k++) {
+      csm.lights[k].intensity = intensity;
+      if (model.mode === 'physical') csm.lights[k].color.setRGB(model.sunColor[0], model.sunColor[1], model.sunColor[2]);
+      else csm.lights[k].color.setHex(colorHex);
+    }
+    if (model.mode === 'physical') {
+      // the deck's glow from above and its reflection off the ground from below (0 under an open sky)
+      hemi.intensity = model.hemiIntensity;
+      hemi.color.setRGB(model.hemiSky[0], model.hemiSky[1], model.hemiSky[2]);
+      hemi.groundColor.setRGB(model.hemiGround[0], model.hemiGround[1], model.hemiGround[2]);
+    } else {
+      const presetHemi = opts.hemiIntensity ?? HEMI_INTENSITY;
+      hemi.intensity = presetHemi + hemiFloorFor(presetHemi);
+      hemi.groundColor.setHex(HEMI_GROUND_COLOR);
+      applyHemisphereSkyHue();
+    }
+    const sun = csm.lightDirection;
+    const fx = sun.x, fz = sun.z; // csm.lightDirection points FROM the sun: its xz is the anti-sun azimuth
+    const fl = Math.hypot(fx, fz) || 1;
+    fill.position.set((fx / fl) * FILL_HORIZ_M, FILL_ELEV_Y, (fz / fl) * FILL_HORIZ_M);
+    lightRig.envDiffuseGain = model.mode === 'physical' ? model.envDiffuseGain : 1;
+    lightRig.envDiscFill = model.mode === 'physical' ? 0 : LEGACY_ENV_DISC_FILL;
+    // round 69: the published rig and the ground bounce follow the preset
+    lightRig.sunIntensity = intensity;
+    lightRig.sunColor.setHex(colorHex);
+    if (model.mode === 'physical') lightRig.sunColor.setRGB(model.sunColor[0], model.sunColor[1], model.sunColor[2]);
+    lightRig.hemiIntensity = hemi.intensity;
+    lightRig.fillIntensity = fill.intensity;
+    lightRig.fillDir.copy(fill.position).normalize();
+    applyGroundBounce();
+    shadowFitCache.invalidate();
   }
 
   // Round 79 (2026-09-28, the performance lane): the caster profiles (renderLayers.setShadowCasterProfile) are
@@ -1395,6 +1250,7 @@ export function createLighting(
     invalidateShadowMaps(): void {
       staticPresentationDormant = false;
       preservePrimedFrame = false;
+      staticShadowCache?.dispose();
       for (const light of csm.lights) {
         light.shadow.dispose();
         light.shadow.map = null;
@@ -1416,6 +1272,8 @@ export function createLighting(
       const next = !!on;
       if (farCascadeDormant === next) return;
       farCascadeDormant = next;
+      // 2026-10-01: an enclosed presentation keeps the authored rig; leaving it restores the grounded model
+      if (lastSunPreset) applyRig(lastSunPreset);
       if (next) applyFarCascadeDormancy();
       else forceAllCascades();
     },
@@ -1469,7 +1327,7 @@ export function createLighting(
       const info = renderer2.info;
       const shadowMap = renderer2.shadowMap;
       const gl = renderer2.getContext();
-      updateCasterProxies(csm.lights, scene2, true); // the primed maps must see the same caster sets
+      casterProxies?.updateCasterProxies(csm.lights, scene2, true); // the primed maps must see the same caster sets
       evaluateCasterProfiles(true);
       const timings = await primeShadowCascades({
         renderer: renderer2, scene: scene2, camera: camera2,
@@ -1520,6 +1378,12 @@ export function createLighting(
       extraHook: MaterialCompileHook | null = null,
     ): T {
       csm.setupMaterial(mat);
+      // 2026-10-03 (cloudShadeMap.ts): the clouds' shadows on the sun term — every desktop CSM material built on three's
+      // own shaders unless it opts out (material.userData.cotCloudShade = false: it writes vCotCloudSun itself) or its
+      // program has no sampler to spare; a ShaderMaterial opts in with true (its chunks must carry the varying both ways)
+      const optIn = mat.userData.cotCloudShade as boolean | undefined;
+      const cloudShade = cloudShadeOn && (optIn === true || (optIn !== false && !(mat as unknown as { isShaderMaterial?: boolean }).isShaderMaterial));
+      if (cloudShade) (mat.defines ??= {}).COT_CLOUD_SHADE = '';
       {
         // Round 69: the ground-bounce uniforms ride on every CSM registration (groundBounce.ts).
         const csmHook = mat.onBeforeCompile;
@@ -1527,6 +1391,15 @@ export function createLighting(
           csmHook(shader, rdr);
           attachGroundBounceUniforms(shader, groundBounceUniforms);
           if (extraHook) extraHook(shader, rdr);
+          if (cloudShade) {
+            attachCloudShadeUniforms(shader, cloudShadeUniforms);
+            // three counts a program's units against the fragment limit (sixteen) wherever the sampler sits: a program
+            // already at it keeps no cloud shade rather than warn on every draw (the terrain sits at fifteen)
+            if (cloudShadeSamplerCount(shader, mat, cascadeCount, !!scene.environment) + 1 > CLOUD_SHADE_SAMPLER_BUDGET) {
+              shader.vertexShader = `#undef COT_CLOUD_SHADE\n${shader.vertexShader}`;
+              shader.fragmentShader = `#undef COT_CLOUD_SHADE\n${shader.fragmentShader}`;
+            }
+          }
         };
       }
       // Alpha-tested foliage: replace the GPU-averaged mip chain with a
@@ -1628,34 +1501,10 @@ export function createLighting(
      * @param {{sunIntensity?:number, sunColorHex?:number, hemiIntensity?:number}} [opts]
      * @returns {void}
      */
-    setSun(
-      dir: THREE.Vector3,
-      opts: { sunIntensity?: number; sunColorHex?: number; hemiIntensity?: number; fillIntensity?: number } = {},
-    ): void {
+    setSun(dir: THREE.Vector3, opts: SunPreset = {}): void {
       csm.lightDirection.copy(dir).negate().normalize();
-      const intensity = opts.sunIntensity ?? SUN_INTENSITY;
-      const colorHex = opts.sunColorHex ?? SUN_COLOR;
-      fill.intensity = opts.fillIntensity ?? FILL_INTENSITY;
-      csm.lightIntensity = intensity;
-      for (let k = 0; k < csm.lights.length; k++) {
-        csm.lights[k].intensity = intensity;
-        csm.lights[k].color.setHex(colorHex);
-      }
-      {
-        const presetHemi = opts.hemiIntensity ?? HEMI_INTENSITY;
-        hemi.intensity = presetHemi + hemiFloorFor(presetHemi);
-      }
-      applyHemisphereSkyHue();
-      const fx = -dir.x, fz = -dir.z;
-      const fl = Math.hypot(fx, fz) || 1;
-      fill.position.set((fx / fl) * FILL_HORIZ_M, FILL_ELEV_Y, (fz / fl) * FILL_HORIZ_M);
-      // round 69: the published rig and the ground bounce follow the preset
-      lightRig.sunIntensity = intensity;
-      lightRig.sunColor.setHex(colorHex);
-      lightRig.hemiIntensity = hemi.intensity;
-      lightRig.fillIntensity = fill.intensity;
-      lightRig.fillDir.copy(fill.position).normalize();
-      applyGroundBounce();
+      lastSunPreset = opts;
+      applyRig(opts);
       shadowFitCache.invalidate();
       prepareCurrentCascadeFits(true);
       applyStableCascadePoses(csm, allCascadeMask);
@@ -1681,6 +1530,7 @@ export function createLighting(
         farCascadeDormancyRequested: farCascadeDormant,
         staticPresentationDormant,
         farCascadeDepthReady: canDormantShadowCascades(csm.lights, FAR_CASCADE_START),
+        staticCache: staticShadowCache?.telemetry() ?? null,
         cascades: csm.lights.map((light) => {
           const shadow = light.shadow;
           return {

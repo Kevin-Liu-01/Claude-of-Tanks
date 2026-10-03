@@ -3,28 +3,38 @@
 Production is `https://cot.kevinliu.studio` (Vercel project `kl01s-projects/claude-of-tanks`).
 Deploys are manual, from the detached gate checkout after its gate is green, with the Vercel
 CLI: `vercel pull --yes --environment=production` → `vercel build --prod` →
-`node tools/vercel-output-immutable.mjs` (per-file immutable cache routes for the hashed files
-that exist in the build output — a prefix rule cached 404s, deploys 89–92) → `vercel deploy --prebuilt --prod`. There is no CI deploy: the GitHub deploy workflow was
+`node tools/vercel-output-immutable.mjs` (per-file cache routes for the files that exist in the
+build output: immutable for hashed assets and collision manifests, one hour for runtime media —
+a prefix rule cached 404s, deploys 89–92) → `vercel deploy --prebuilt --prod`. There is no CI deploy: the GitHub deploy workflow was
 removed on 2026-09-14 (its last run had failed on an invalid `VERCEL_TOKEN` secret), and the
 owner's standing rule is that nothing deploys without a green gate and a person running it.
 
 Deploys 3–20 were made from a detached, dirty gate checkout, so Vercel recorded them as
 `ref HEAD, dirty` with no branch link and the dashboard lists them by id with the source
 "vercel deploy" (deployment metadata is immutable, so those rows stay that way). From deploy
-21 the deploy runs in a clean clone on branch `main` (`deploy-prod-main.sh <number> "<title>"`
-in the session scratchpad: fetch, reset to origin/main, `vercel pull`, `vercel build --prod`,
-restore package-lock.json, `node tools/vercel-output-immutable.mjs`, `vercel deploy --prebuilt --prod`) and passes the branch-link
-metadata Vercel documents for CLI deploys — `githubDeployment=1`, `githubCommitRef=main`,
-the commit sha and subject, and the linked repository's name and ids — so the list reads
-`main · deploy N: <title>` and the production branch owns the deployment. `title` and
-`gateHead` ride along as before; the script appends the row below.
+21 the deploy builds a clean tree of the gated commit and passes the branch-link metadata Vercel
+documents for CLI deploys — `githubDeployment=1`, `githubCommitRef=main`, the commit sha and
+subject, and the linked repository's name and ids — so the list reads `main · deploy N: <title>`
+and the production branch owns the deployment; `title` and `gateHead` ride along. Deploys 21–163
+ran it through a session-scratchpad script; from 2026-10-01 it is the versioned
+`tools/release.mjs` ([DEVELOPMENT.md](DEVELOPMENT.md#releasing-toolsreleasemjs-2026-10-01)):
+`node tools/release.mjs build <sha>` (a temporary worktree of the commit, `npm ci`, `vercel pull`,
+the redacted-setting strip, `vercel build --prod`, the lockfile restore, the carry-forward of the
+last three releases' hashed `/assets` files from the local release cache (so a tab opened before the
+deploy keeps loading its chunks), `node tools/vercel-output-immutable.mjs` and `--check`, and the pulled `.vercel/.env*.local` files
+deleted whatever happens), then `node tools/release.mjs deploy <sha> --title="deploy N: <title>"`,
+which waits for the served version stamp. Every subcommand takes `--dry-run`. Append the row below
+by hand. `node tools/release.mjs rollback` promotes the production deployment before the live one
+(`vercel promote` also turns production-domain auto-assignment back on), and
+`node tools/release.mjs workers <sha>` deploys the edge services tagged with the commit.
 
-**Git auto-deploys are off.** `vercel.json` carries
-`"git": { "deploymentEnabled": { "main": false, "codex/*": false } }` (2026-09-15, owner: the
+**Git auto-deploys are off.** `vercel.json` carries `"git": { "deploymentEnabled": false }` (2026-09-15, owner: the
 Aug 26 – Sep 10 commit storm built 1,220 times — one Vercel build per pushed commit, ~1,400 billed
-build minutes). A push never builds; production changes only through the prebuilt CLI deploy
-above, once per round after the gate, which uploads a local build and consumes no Vercel build
-minutes. Preview deployments for `codex/*` branches are off for the same reason. The Ignored Build
+build minutes). The first form listed only `main` and `codex/*`, so every other branch still
+built a preview (13 paid `mp/*` builds on 09-30/10-01); since 2026-10-01 the boolean turns git
+deployments off for every branch (`tools/vercel-config.selftest.mjs`). A push never builds;
+production changes only through the prebuilt CLI deploy above, once per round after the gate,
+which uploads a local build and consumes no Vercel build minutes. The Ignored Build
 Step is deliberately not used — one gate, not two. To check: `vercel ls claude-of-tanks --scope
 kl01s-projects` must list only the intentional deployments in this table.
 

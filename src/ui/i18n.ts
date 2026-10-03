@@ -11,11 +11,16 @@
  * - `formatNumber` / `formatDate` route through `Intl` with the active locale,
  *   so zh-CN no longer shows English commas in the HUD or end overlay.
  *
- * This module is intentionally DOM-free at import time: `getLocale()` only
- * touches `localStorage` and `navigator` when first called, not at module load.
+ * This module never writes the DOM or storage at import time: `getLocale()`
+ * persists and mirrors the locale when first called. Module evaluation only
+ * reads the boot locale (route, storage, navigator) and awaits the document's
+ * dictionaries (top-level await below), so `t()` stays synchronous for every
+ * module that imports this one: English documents never download the zh-CN
+ * catalog, Chinese ones never flash English (FE-P3), and a public page loads
+ * only its own page catalog (i18nDictionaries.ts).
  */
 
-import { CATALOG } from './i18nCatalog.ts';
+import { catalogText, loadLocaleDictionary, localeDictionary } from './i18nDictionaries.ts';
 import {
   DEFAULT_LOCALE as FALLBACK_LOCALE,
   resolveLocalePath,
@@ -107,14 +112,25 @@ export function getLocale(): SupportedLocale {
   return currentLocale;
 }
 
-/** Switch the active locale and broadcast `cot:locale-changed` on `window`. */
-export function setLocale(locale: SupportedLocale): void {
+/**
+ * Switch the active locale and broadcast `cot:locale-changed` on `window`.
+ * Product switches reload the document right after (screens own translated DOM)
+ * and the next document awaits its catalog. An in-place switch to a catalog that
+ * is not resident yet broadcasts again once it is; the promise settles then.
+ */
+export function setLocale(locale: SupportedLocale): Promise<void> {
   ensureInitialised();
   const previous = currentLocale;
   currentLocale = locale;
   persist(locale);
   syncLocaleCssVariables();
   broadcast(previous, locale);
+  if (localeDictionary(locale)) return Promise.resolve();
+  return loadLocaleDictionary(locale).then(() => {
+    if (currentLocale !== locale) return;
+    syncLocaleCssVariables();
+    broadcast(previous, locale);
+  }, () => { /* offline or removed chunk: English until the next document retries */ });
 }
 
 /**
@@ -150,17 +166,6 @@ export function getSupportedLocales(): readonly SupportedLocale[] {
   return SUPPORTED_LOCALES;
 }
 
-function formatTemplate(template: string, vars?: Record<string, string | number>): string {
-  if (!vars) return template;
-  return template.replace(/\{(\w+)\}/g, (match, key: string) => {
-    if (Object.prototype.hasOwnProperty.call(vars, key)) {
-      const value = vars[key];
-      return value === undefined || value === null ? match : String(value);
-    }
-    return match;
-  });
-}
-
 /**
  * Translate a key. Falls back to the key itself when no English entry exists
  * (this keeps developer-facing strings legible during incremental rollout) and
@@ -171,12 +176,7 @@ function formatTemplate(template: string, vars?: Record<string, string | number>
  */
 export function t(key: string, vars?: Record<string, string | number>): string {
   ensureInitialised();
-  // Lazy require keeps the import graph free of cycles with the catalog.
-  const dict = loadDictionary();
-  const bundle = dict[currentLocale] ?? dict[FALLBACK_LOCALE];
-  const fallback = dict[FALLBACK_LOCALE];
-  const raw = bundle[key] ?? fallback?.[key] ?? key;
-  return formatTemplate(raw, vars);
+  return catalogText(currentLocale, key, vars);
 }
 
 /** Format a number using the active locale (replaces `toLocaleString('en-US')`). */
@@ -185,11 +185,10 @@ export function formatNumber(
   options?: Intl.NumberFormatOptions,
 ): string {
   ensureInitialised();
-  if (typeof Intl === 'undefined') return String(value);
   try {
     return new Intl.NumberFormat(currentLocale, options).format(value);
   } catch (_) {
-    return String(value);
+    return String(value); // no Intl (a ReferenceError) or options this engine rejects
   }
 }
 
@@ -199,21 +198,28 @@ export function formatDate(
   options?: Intl.DateTimeFormatOptions,
 ): string {
   ensureInitialised();
-  if (typeof Intl === 'undefined') {
-    const date = value instanceof Date ? value : new Date(value);
-    return date.toISOString();
-  }
   try {
     return new Intl.DateTimeFormat(currentLocale, options).format(value);
   } catch (_) {
-    const date = value instanceof Date ? value : new Date(value);
-    return date.toISOString();
+    // No Intl (a ReferenceError) or options this engine rejects: ISO keeps the value legible.
+    return (value instanceof Date ? value : new Date(value)).toISOString();
   }
 }
 
-type Dictionary = Readonly<Record<string, string>>;
-type Catalog = Readonly<Record<SupportedLocale, Dictionary>>;
-function loadDictionary(): Catalog {
-  return CATALOG;
+// In a browser document English and the boot locale's dictionary are resident before
+// any module that imports this one evaluates. English is the fallback of every lookup:
+// a document whose English chunk fails stops like one whose static chunk failed (the
+// game's inline watchdog recovers by reloading). Another locale's failed chunk degrades
+// to English, never a stalled boot. Module workers reach this module through shared code
+// (the map catalog) and never wait while evaluating: one that awaited here could miss
+// messages posted during the gap. Outside Vite (`import.meta.env` is undefined: Node
+// servers, tools and receipts) the full English catalog stays resident, as before.
+if (typeof window !== 'undefined') {
+  await Promise.all([
+    loadLocaleDictionary(FALLBACK_LOCALE),
+    loadLocaleDictionary(detectLocale()).catch(() => { /* English fallback (an English boot shares one request) */ }),
+  ]);
+} else if (!import.meta.env) {
+  await loadLocaleDictionary(FALLBACK_LOCALE);
 }
 

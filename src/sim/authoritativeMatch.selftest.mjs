@@ -797,12 +797,16 @@ assert.ok(stackMatch.snapshot({ tick: 1, serverTimeMs: 17,
   viewerId: 'stack-top', ackInputSeq: 0 }).events.some((event) => event.type === 'tank_ram'),
 'vertical tank contact emits the same replicated ram event');
 
+// The direct target is a hull this HE round cannot penetrate head-on: a penetrating HE round bursts inside and throws no
+// external splash (damage.ts), so with the M551's thin front the fixture depended on where the default map's ground put
+// the strike. 2026-10-02: the rebuilt Verdant's level village square turned the old oblique, non-penetrating strike into
+// a penetration (he_pen, no splash); an M1A2 front takes the surface burst on both terrains.
 const heMatch = createAuthoritativeMatch({
   countdownS: 0,
   seed: 19,
   players: [
     { id: 'he-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -25, yaw: 0 } },
-    { id: 'he-direct', specId: 'm551_sheridan', team: 'bravo', spawn: { x: 0, z: 0, yaw: Math.PI } },
+    { id: 'he-direct', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 0, yaw: Math.PI } },
     { id: 'he-splash', specId: 'm551_sheridan', team: 'bravo', spawn: { x: 3.2, z: 0, yaw: Math.PI } },
   ],
 });

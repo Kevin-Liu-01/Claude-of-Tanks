@@ -1,6 +1,6 @@
 ---
 name: api-skill
-description: Maintain the deployed ICE credential, telemetry, Jev proxy and public GitHub-count HTTP entrypoints.
+description: Maintain the deprecated STUN-only ICE answer, telemetry, Jev proxy and public GitHub-count HTTP entrypoints.
 ---
 
 # claude-of-tanks / api
@@ -12,9 +12,14 @@ adapters thin; room policy belongs to `src/mp/room` and `server/`, not browser c
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-`ice.ts` provides validated static, coturn, or Cloudflare TURN configuration:
-the client (`src/mp/transport/iceConfig.ts`) asks `/api/ice` on https pages and
-uses host candidates on LAN. `github-stars.ts` proxies the public repository
+`ice.ts` is DEPRECATED (2026-10-02, `docs/MULTIPLAYER-V2.md` §13.14): relay
+credentials are minted inside the room for its seated players
+(`server/relayCredentials.ts`, the rooms Worker's `room_relay`), and for one
+release this route answers the official STUN servers (`OFFICIAL_STUN_URLS` of
+`_lib/policy.ts`) to tabs loaded before the move — no TURN, no secret, no
+provider call; the new client never calls it. Delete it (and
+`server/ice.selftest.mjs`) with the next release. `github-stars.ts` logs
+`cot-github-stars` lines per upstream failure. `github-stars.ts` proxies the public repository
 count with bounded upstream requests and cache headers. `telemetry.ts` is the
 entry-telemetry fallback sink (`docs/ENTRY-RESILIENCE.md`), used only while
 `VITE_TELEMETRY_URL` is unset: one v2 record per request validated through the
@@ -34,15 +39,24 @@ multiplayer (`api/signal.ts`) left the tree with the cutover of 2026-09-29
 <!-- agent-docs:fill:patterns -->
 
 - Preserve allowed-origin checks, method/status contracts, and upstream timeouts.
-- Keep ICE responses private/no-store and credentials server-side. Document
-  environment variable names only; never commit secret values or log credentials.
+- Origins, the canonical host and the Worker URLs come from the deployment policy
+  module `api/_lib/policy.ts` (`allowedApiOrigins(env)`); never repeat them in a
+  function. `_`-prefixed paths are shared code, not routes. The Workers'
+  `ALLOWED_ORIGINS` and the entry telemetry literals are pinned to it by
+  `node tools/deployment-policy.selftest.mjs`.
+- Keep responses that could carry a credential private/no-store; relay
+  credentials belong to the room (`server/relayCredentials.ts`), never to a
+  public route. Document environment variable names only; never commit secret
+  values or log credentials.
 - Handler factories accept injected fetch, clock, and environment dependencies
   so failure paths can be tested without external services.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
 
-- TURN configuration: inspect `ice.ts` and run `node server/ice.selftest.mjs`.
+- TURN configuration: the room's issuer, `server/relayCredentials.ts` (`node
+  server/relayCredentials.selftest.mjs`; the Worker's `npm --prefix
+  cloudflare/rooms test`); the deprecated route: `node server/ice.selftest.mjs`.
 - Star-count responses: run `node server/githubStars.selftest.mjs`; inspect
   `src/ui/githubStars.ts` for the loading/error presentation contract.
 - Telemetry beacon: run `node server/telemetryRecord.selftest.mjs`,

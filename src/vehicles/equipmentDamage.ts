@@ -246,6 +246,11 @@ export class EquipmentDamage {
     return owner;
   }
 
+  /** Static draw merges must leave every buffer a lid range edits in place. */
+  ownsGeometry(geometry: THREE.BufferGeometry): boolean {
+    return this.owners.some((owner) => owner.geometry === geometry);
+  }
+
   /** One bounded nearest-part buckle per hit; no frame-loop work or mesh copies. */
   apply(event: EquipmentDamageEvent): boolean {
     if (this.disposed || !isLocalEquipmentHit(event)) return false;

@@ -21,6 +21,12 @@ against the live material from fixed supplied poses. Its required `--url`,
 produce native before/after/restore images and resource receipts. It owns the
 capture lease; do not wrap it in another lease or treat images as timing proof.
 
+`visual-census.mjs` is the visual-redesign baseline: the same seven views of
+every registered map (authored time of day, desktop High, 1600x900) through
+`__SHOTS.set` and the capture readiness gates, per-frame metrics in one
+census.json, contact sheets, an index and an A/B `compare`; `capture` resumes
+in bounded batches and takes the cot-shots lease itself (probe mutex = caller).
+
 Performance probes drive the browser and record JSON; fleet/geometry tools audit
 authored tanks; screenshot/visual tools stage canonical views; strip/release
 tools enforce public asset boundaries. `local-import-integrity.selftest.mjs`
@@ -248,13 +254,16 @@ bad flag return before a server exists; every run writes
 | `world-layer-isolation-probe.mjs` | which world layer draws a step at the water edge (round 40) | `--maps=coastal --views=bird-e-edge,over-e-560` |
 | `salvo-indicator-probe.mjs` | the salvo rack drives the HUD magazine indicator through real input (round 41) | default `--ids=ztz100_prototype:salvo,leclerc_x:autoloader,t72b3m:single` |
 | `water-drive-probe.mjs` | the wake and churn trail of a fording hull (round 46) | `--maps=reservoir --speed=7` |
+| `suspension-strip-probe.mjs` | frame strips of the player hull for the visual gauntlet (physics lane, 2026-10-03): rough ground at speed, a hard stop, a landing in each gravity world, a rest on a slope; each frame stamped (root height, rendered pitch and roll, wheels in contact, each road wheel's travel) and checked against the sim state it was synced from, a landing's window anchored on its touchdown step | `--root=<checkout> --dist=<built dist> --out=<dir> --tag=after --ids=land-mars,hardstop` |
 | `map-metrics.mjs` | Node ports of the PIL metrics: `skyline` (check 5), `stripe` (check 8), `boxes` (checks 3, 4, 11); PIL-identical on the round-43/47 frames | `skyline <dir> a desert`, `stripe <png> 900,480,1500,700`, `boxes <dir> boxes.json titan_gorge a b` |
 
 The probe mutex is the caller's: hold `$SP/probe.lock` around the whole run and
 use `nice -n 19`. The tools take neither it nor the `/tmp/cot-shots` FIFO, so
 never run one beside `npm test` or the release gate; never edit tracked source
 while one is capturing (vite serves the tree live); the server binds
-127.0.0.1:5300–5399, never 5197–5199. Receipts:
+127.0.0.1:5300–5399, never 5197–5199. `--dist=<dir>` (where a tool accepts it) serves a built dist through vite
+preview instead (`withDistProbeSession`): a before/after pair from two builds shares no module graph or optimizer
+cache, and nothing reads the live tree. Receipts:
 `map-probe-runtime.selftest.mjs` (arguments, the pinned view table, pose math,
 the mirrored-frame note, `--help` without a network) and
 `map-metrics.selftest.mjs` (synthetic frames of known luma / wavelength /

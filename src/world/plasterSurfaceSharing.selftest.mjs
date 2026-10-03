@@ -16,91 +16,10 @@ import { normalTextureFromHeight, textureFromRgbaPixels } from './proceduralText
 import { resolveStructureWindowStyle } from './structureInstanceAppearance.ts';
 import { applyRockShaderHook, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
 
-// Independent control frozen before sharing at 465a68f7c43cd9ed1cc23ce62853ab9d1c6e0b43.
-// Keep the painter, tone, normal, packed-surface and CanvasTexture formulas
-// independent of production. Native Canvas, Three.Color and SimplexNoise are
-// the common execution substrate, not mock pixel uploads or skipped coverage.
-const prechange = String.raw`
-const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
-function smoothstep(a, b, x) {
-  const t = clamp((x - a) / (b - a), 0, 1);
-  return t * t * (3 - 2 * t);
-}
-function toTexture(pixels, size, { srgb = false, anisotropy = 4, repeat = true } = {}) {
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
-  canvas.getContext('2d').putImageData(new ImageData(pixels, size, size), 0, 0);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = texture.wrapT = repeat ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
-  texture.anisotropy = anisotropy;
-  if (srgb) texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
-function normalFromHeight(height, size, strength, anisotropy) {
-  const pixels = new Uint8ClampedArray(size * size * 4);
-  const sample = (x, y) => height[((y + size) % size) * size + ((x + size) % size)];
-  const normal = new THREE.Vector3();
-  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-    const dx = (sample(x + 1, y - 1) + 2 * sample(x + 1, y) + sample(x + 1, y + 1))
-      - (sample(x - 1, y - 1) + 2 * sample(x - 1, y) + sample(x - 1, y + 1));
-    const dy = (sample(x - 1, y + 1) + 2 * sample(x, y + 1) + sample(x + 1, y + 1))
-      - (sample(x - 1, y - 1) + 2 * sample(x, y - 1) + sample(x + 1, y - 1));
-    normal.set(-dx * strength, -dy * strength, 1).normalize();
-    const offset = (y * size + x) * 4;
-    pixels[offset] = normal.x * 127.5 + 127.5;
-    pixels[offset + 1] = normal.y * 127.5 + 127.5;
-    pixels[offset + 2] = normal.z * 127.5 + 127.5;
-    pixels[offset + 3] = 255;
-  }
-  return toTexture(pixels, size, { anisotropy });
-}
-const _toneCol = new THREE.Color(), _toneHsl = { h: 0, s: 0, l: 0 };
-function applyTone(px, fn) {
-  if (!fn) return px;
-  for (let i = 0; i < px.length; i += 4) {
-    _toneCol.setRGB(px[i] / 255, px[i + 1] / 255, px[i + 2] / 255);
-    _toneCol.getHSL(_toneHsl);
-    const [h, s, l] = fn(_toneHsl.h, _toneHsl.s, _toneHsl.l);
-    _toneCol.setHSL(((h % 1) + 1) % 1, clamp(s, 0, 1), clamp(l, 0, 1));
-    px[i] = _toneCol.r * 255; px[i + 1] = _toneCol.g * 255; px[i + 2] = _toneCol.b * 255;
-  }
-  return px;
-}
-function surfaceFromHeight(h, s, anisotropy, {
-  roughMin = 0.72, roughMax = 0.98, aoMin = 0.76,
-} = {}) {
-  const px = new Uint8ClampedArray(s * s * 4);
-  for (let i = 0; i < h.length; i++) {
-    const height = clamp(h[i], 0, 1), j = i * 4;
-    px[j] = (aoMin + height * (1 - aoMin)) * 255;
-    px[j + 1] = (roughMin + (1 - height) * (roughMax - roughMin)) * 255;
-    px[j + 2] = 0; px[j + 3] = 255;
-  }
-  return toTexture(px, s, { anisotropy });
-}
-const _col = new THREE.Color();
-function makePlaster(noi, anisotropy, tone = null) {
-  const s = 256, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
-  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
-    const i = y * s + x, j = i * 4;
-    const n1 = noi.noise(x * 0.045, y * 0.045) * 0.5 + 0.5;
-    const n2 = noi.noise(x * 0.16 + 40, y * 0.16 - 21) * 0.5 + 0.5;
-    const stain = smoothstep(0.55, 0.9, noi.noise(x * 0.02 - 90, y * 0.05 + 33) * 0.5 + 0.5);
-    const streak = smoothstep(0.60, 0.92, noi.noise(x * 0.11 + 250, y * 0.018 - 7) * 0.5 + 0.5);
-    const l = 0.44 + n1 * 0.08 + n2 * 0.04 - stain * 0.15 - streak * 0.08;
-    _col.setHSL(0.085, 0.13 - stain * 0.05, l);
-    px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
-    hgt[i] = n1 * 0.5 + n2 * 0.5;
-  }
-  applyTone(px, tone);
-  return {
-    albedo: toTexture(px, s, { srgb: true, anisotropy }),
-    normal: normalFromHeight(hgt, s, 1.2, anisotropy),
-    surface: surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.84, roughMax: 0.98, aoMin: 0.80 }),
-  };
-}
-`;
-
+// 2026-10-01 (frozen pins retired): the control used to be an embedded copy of the 465a68f7c painter, tone, normal and
+// surface formulas plus a copy of that commit's palette call sites, so any intended plaster repaint failed here. The
+// control is now the CURRENT production palette with relief sharing disabled (every family paints its own normal and
+// surface): sharing must be a pure allocation saving, with identical pixels, noise order, checkpoints and materials.
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const sourced = readFileSync(new URL('./sourcedTextures.ts', import.meta.url), 'utf8');
@@ -115,29 +34,17 @@ const tone = section(terrain, 'const _toneCol =', '// --------------------------
 const productionPainter = new Function('THREE', 'toTexture', 'normalFromHeight',
   `${stripTypeScriptTypes(math + tone + painter).replace(/^export /gm, '')}\nreturn makePlaster;`)(
   THREE, textureFromRgbaPixels, normalTextureFromHeight);
-const controlPainter = new Function('THREE', `${prechange}\nreturn makePlaster;`)(THREE);
+// Unshared control: the same production painter, ignoring the shared relief argument.
+const controlPainter = (noi, anisotropy, tone) => productionPainter(noi, anisotropy, tone);
 const productionPalette = section(source, '  const T = P.tones || {};', '  const roofT =');
-// Frozen call-site policy too: primary, the two default tone shifts and yields.
-const controlPalette = `
-  const T = P.tones || {};
-  const plaster = makePlaster(noi, aniso, T.plaster || null);
-  yield { fine: true };
-  const _tShift = (base, dh, ds, dl) => (h, s, l) => {
-    const [bh, bs, bl] = base ? base(h, s, l) : [h, s, l];
-    return [Math.max(0, Math.min(1, bh + dh)), Math.max(0, Math.min(1, bs * ds)),
-      Math.max(0, Math.min(1, bl * dl))];
-  };
-  const plaster2 = makePlaster(noi, aniso, T.plaster2 || _tShift(T.plaster, +0.022, 1.1, 0.90));
-  yield { fine: true };
-  const plaster3 = makePlaster(noi, aniso, T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84));
-  yield { fine: true };
-`;
+assert.match(productionPalette, /makePlaster\(noi, aniso,\s+T\.plaster3 \|\| _tShift\(T\.plaster, [^)]*\), plaster2\)/,
+  'plaster3 borrows plaster2 relief at the production call site');
 function compilePalette(body, makePlaster) {
   return new Function('makePlaster', `${stripTypeScriptTypes(
     `function* palette(noi, aniso, P) { ${body}\nreturn { plaster, plaster2, plaster3 }; }`)}\nreturn palette;`)(makePlaster);
 }
 const generate = compilePalette(productionPalette, productionPainter);
-const control = compilePalette(controlPalette, controlPainter);
+const control = compilePalette(productionPalette, controlPainter);
 
 const { values } = parseArgs({ options: { 'canvas-module': { type: 'string' } } });
 if (values['canvas-module'] !== undefined) assert.ok(isAbsolute(values['canvas-module']));
@@ -213,11 +120,12 @@ const materialStage = section(source, '  const windowStyle = resolveStructureWin
 const roof = new Function('THREE', `${stripTypeScriptTypes(section(source,
   'function makeRoofMaterial(', 'function buildStoneCourseEdges('))}\nreturn makeRoofMaterial;`)(THREE);
 // round 75 (2026-09-26): the 'steel' atlas family joins the material stage (propsSteelAtlas.ts)
-const remaining = ['roofT', 'stone', 'wood', 'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'vehiclePaint', 'steel', 'rockDetail'];
+const remaining = ['roofT', 'stone', 'fieldStone', 'wood', 'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'vehiclePaint', 'steel', 'rockDetail'];
 const materialFactory = new Function('THREE', 'resolveStructureWindowStyle', 'makeRoofMaterial',
   'registerRetainedObject3DResources', '_mustReplace', 'rockDressingFor', 'applyRockShaderHook', `${stripTypeScriptTypes(`
   function* materialSteps(group, engineCtx, mapId, atlases, grimeTex) {
     const { ${[...families, ...remaining].join(', ')} } = atlases, P = {};
+    const regionalArchitecture = null; // a map without a regional kit (maps/regional): no weathered materials
     ${materialStage}
     return { mats, retainedSurfaceMaterials };
   }`)}\nreturn materialSteps;`)(THREE, resolveStructureWindowStyle, roof, registerRetainedObject3DResources,
@@ -333,23 +241,27 @@ try {
   assertSharing(primary);
   assert.deepEqual([textureSnapshot(primary.plaster3.normal), textureSnapshot(primary.plaster3.surface)], variants,
     'actual sourced image-swap function cannot alter procedural relief');
-  assert.match(source, /applySourcedBuildings\(\s*\{ plaster, roof: roofT, wood, stone \}/,
+  // a regional architecture kit (maps/regional) passes its own subset of the same primary sets
+  const sourcedCall = /applySourcedBuildings\(([^]*?)mapId, P, sourceApplication/.exec(source)?.[1] ?? '';
+  assert.match(sourcedCall, /: \{ plaster, roof: roofT, wood, stone \}/,
     'only the primary plaster enters the sourced replacement owner');
+  assert.doesNotMatch(sourcedCall, /plaster[23]/, 'no plaster variant enters the sourced replacement owner, kit or not');
 
   // Negative controls: reject primary sharing even though its initial relief
-  // pixels happen to match; reject a changed normal formula independently.
+  // pixels happen to match; reject a changed relief byte independently.
   const badOwner = { ...primary, plaster3: { ...primary.plaster3, normal: primary.plaster.normal } };
   assert.throws(() => assertSharing(badOwner), assert.AssertionError);
-  const changed = prechange.replace('normalFromHeight(hgt, s, 1.2, anisotropy)', 'normalFromHeight(hgt, s, 1.3, anisotropy)');
-  assert.notEqual(changed, prechange);
-  const wrongPainter = new Function('THREE', `${changed}\nreturn makePlaster;`)(THREE);
-  const wrong = build(compilePalette(controlPalette, wrongPainter), samples[0]);
-  const right = build(control, samples[0]);
+  const right = build(control, samples[0]), shared = build(generate, samples[0]);
   // Hash only this deliberate mismatch: formatting a 256² Buffer diff can
   // dwarf the test itself. Positive controls above compare every native byte.
-  const normalHash = palette => createHash('sha256')
-    .update(textureSnapshot(palette.plaster.normal).rgba).digest('hex');
-  assert.throws(() => assert.equal(normalHash(wrong.palette), normalHash(right.palette)), assert.AssertionError);
+  const reliefHash = palette => createHash('sha256')
+    .update(textureSnapshot(palette.plaster3.normal).rgba).digest('hex');
+  assert.equal(reliefHash(shared.palette), reliefHash(right.palette), 'shared plaster3 relief equals its own unshared paint');
+  const tampered = right.palette.plaster3.normal.image;
+  const context = tampered.getContext('2d'), image = context.getImageData(0, 0, 1, 1);
+  image.data[0] ^= 1; context.putImageData(image, 0, 0);
+  assert.throws(() => assert.equal(reliefHash(shared.palette), reliefHash(right.palette)), assert.AssertionError,
+    'the relief parity comparison detects a one-byte change');
   console.log(JSON.stringify({ ok: true, evidence: 'native Canvas CPU pixels/materials; no GPU or frame timing claim',
     rasterizer: { name: rasterizer.name, version: rasterizer.version }, receipts, ownershipCases: 2 }, null, 2));
 } finally {

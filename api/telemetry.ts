@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { RuntimeValue } from '../src/runtimeTypes.ts';
 import { TELEMETRY_MAX_BODY_BYTES, validateTelemetryRecord } from '../server/telemetryRecord.ts';
+import { allowedApiOrigins } from './_lib/policy.ts';
 
 /**
  * /api/telemetry — the entry-telemetry fallback sink (docs/ENTRY-RESILIENCE.md).
@@ -20,13 +21,6 @@ import { TELEMETRY_MAX_BODY_BYTES, validateTelemetryRecord } from '../server/tel
  * room names. Fields with those names are rejected outright.
  */
 
-const OFFICIAL_ORIGINS = new Set([
-  'https://cot.kevinliu.studio',
-  'https://claudeoftanks.kevinliu.studio',
-  'https://claude-of-tanks.vercel.app',
-  'https://claude-of-tanks-kl01s-projects.vercel.app',
-]);
-
 interface TelemetryHandlerOptions {
   env?: NodeJS.ProcessEnv;
   now?: () => number;
@@ -41,12 +35,6 @@ type TelemetryHandler = (
   request: IncomingMessage,
   response: ServerResponse,
 ) => Promise<void>;
-
-function configuredOrigins(env: NodeJS.ProcessEnv): Set<string> {
-  const extra = String(env.COT_ALLOWED_ORIGINS || '')
-    .split(',').map((value) => value.trim()).filter(Boolean);
-  return new Set([...OFFICIAL_ORIGINS, ...extra]);
-}
 
 function send(response: ServerResponse, status: number, body: RuntimeValue): void {
   response.statusCode = status;
@@ -146,7 +134,7 @@ export function createTelemetryHandler({
       send(response, 405, { error: 'method_not_allowed' });
       return;
     }
-    if (origin && !configuredOrigins(env).has(origin)) {
+    if (origin && !allowedApiOrigins(env).has(origin)) {
       send(response, 403, { error: 'origin_forbidden' });
       return;
     }

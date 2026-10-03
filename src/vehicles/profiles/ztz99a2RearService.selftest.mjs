@@ -89,18 +89,44 @@ assert.notEqual(signature(prototype.turret), signature(production.turret),
 const chevronFaceEra = production.tank.root.getObjectByName('turretExternalArmor');
 assert(chevronFaceEra && chevronFaceEra.geometry.attributes.position.count >= 180,
   'ZTZ-99A2: raised ERA face courses remain complete on both permanent cheeks');
-assert(new Box3().setFromObject(production.turret).max.z >= 1.83,
-  'ZTZ-99A2: permanent closed chevron volumes project around the gun throat');
+// Main's owner-directed mantlet fit (2026-10-02, 245aa4e4e) opens a 0.80 m gun channel through the turret stock,
+// so the carriers' first inboard station (x 0.22: ridge z 1.72, roof root y 0.83 at z 0.58) is gone by design and
+// each closed carrier now ends in a capped wall at |x| 0.40. Its wall section follows from the station table
+// (station 1 at x 0.34-0.40, station 2 at x 0.62-0.82): ridge (y 0.3791, z 1.6491), roof root (y 0.8257,
+// z 0.4314) and chin return (y -0.04, z 0.82). The front envelope is measured on the stock outboard of the channel.
+const channelHalfWidth = 0.40;
+const chevronWall = [[0.379091, 1.649091], [0.825714, 0.431429], [-0.04, 0.82]];
 const chevronPositions = production.turret.geometry.attributes.position;
+const onWall = (side, [y, z]) => {
+  for (let index = 0; index < chevronPositions.count; index++) {
+    if (Math.abs(chevronPositions.getX(index) - side * channelHalfWidth) < 1e-4
+      && Math.abs(chevronPositions.getY(index) - y) < 1e-4
+      && Math.abs(chevronPositions.getZ(index) - z) < 1e-4) return true;
+  }
+  return false;
+};
+const closedWalls = () => {
+  for (const side of [-1, 1]) for (const corner of chevronWall) {
+    assert(onWall(side, corner), `ZTZ-99A2: permanent chevron carrier closes at the gun-channel wall (${side}, ${corner})`);
+  }
+};
+closedWalls();
+// Seeded defect: the carriers pulled 10 mm back from their measured wall section must fail.
+production.turret.geometry.translate(0, 0, -0.01);
+assert.throws(closedWalls, assert.AssertionError, 'ZTZ-99A2: a displaced chevron wall section is rejected');
+production.turret.geometry.translate(0, 0, 0.01);
+closedWalls();
+assert(new Box3().setFromObject(production.turret).max.z >= production.turretRig.position.z + chevronWall[0][1] - 1e-4,
+  'ZTZ-99A2: permanent closed chevron volumes project to the gun-channel walls');
 let frontMinY = Infinity;
 let frontMaxY = -Infinity;
 for (let index = 0; index < chevronPositions.count; index++) {
-  if (chevronPositions.getZ(index) < 0.55) continue;
+  if (chevronPositions.getZ(index) < 0.40 || Math.abs(chevronPositions.getX(index)) < channelHalfWidth - 1e-6) continue;
   frontMinY = Math.min(frontMinY, chevronPositions.getY(index));
   frontMaxY = Math.max(frontMaxY, chevronPositions.getY(index));
 }
-assert(frontMinY <= -0.039 && frontMaxY >= 0.829 && frontMaxY - frontMinY >= 0.869,
-  'ZTZ-99A2: permanent chevron geometry spans the roof-to-chin front envelope');
+assert(frontMinY <= -0.039 && frontMaxY >= 0.8257 && frontMaxY - frontMinY >= 0.865,
+  `ZTZ-99A2: permanent chevron geometry spans the roof-to-chin front envelope (${frontMinY}..${frontMaxY})`);
 
 for (const vehicle of [prototype, production, vt4a1]) {
   const hullReceipt = vehicle.hullRig.userData.ztz99a2HullIntegrationReceipt;

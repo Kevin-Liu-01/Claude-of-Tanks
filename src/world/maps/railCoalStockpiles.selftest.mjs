@@ -7,6 +7,7 @@ import {createHeightField, mulberry32} from '../terrain.ts';
 import {MAP_IDS, getMapConfig} from './index.ts';
 import {convexHull2, pushHullFromObstacle, rayCollisionRecord, collisionFootprintContainsPoint} from '../collision.ts';
 import {dressMapExtras} from './mapKits.ts';
+import {railCoalStageStations} from '../railSpurs.ts';
 
 const kitsUrl = new URL('./mapKits.ts', import.meta.url);
 const controlUrl = new URL('./mapKits.ts?legacy-coal-control', import.meta.url);
@@ -51,7 +52,30 @@ function build(mapId, field, seed, legacy = false, blockers = []) {
     rng:()=>{calls++;return random();}, buckets, obstacles, colliders});
   return {buckets, obstacles, colliders, calls, next:random()};
 }
-function validatePile(geometry, obstacle, collider, field) {
+// The legacy yards' heaps belong to the unloading strip east of the outer siding; a spur's coal stage (2026-10-01,
+// Cinder Junction) puts each heap on one of its stations beside the stub.
+// The track a heap must leave drivable: the legacy yards' five north-south sidings at the heap's z, or the stub the
+// stage stands beside (its nearest centreline point).
+const legacyStrip = { contains: (x, z) => x > 81.5 && x < 93.5 && z > -55.5 && z < -6.5,
+  tracks: (_x, z) => [40, 49, 58, 67, 76].map(railX => [railX, z]) };
+function nearestOnPath(path, x, z) {
+  let best = null, bestD = Infinity;
+  for (let i = 1; i < path.length; i++) {
+    const [ax, az] = path[i - 1], [bx, bz] = path[i], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
+    const t = l2 ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l2)) : 0;
+    const px = ax + dx * t, pz = az + dz * t, d = Math.hypot(px - x, pz - z);
+    if (d < bestD) { bestD = d; best = [px, pz]; }
+  }
+  return best;
+}
+function coalStrip(field) {
+  const stages = (field._layout.railSpurs ?? []).filter(spur => spur.coalStage);
+  if (!stages.length) return legacyStrip;
+  const stations = stages.flatMap(spur => railCoalStageStations(spur));
+  return { contains: (x, z) => stations.some(station => Math.hypot(x - station.x, z - station.z) < 3.4),
+    tracks: (x, z) => stages.map(spur => nearestOnPath(spur.path, x, z)) };
+}
+function validatePile(geometry, obstacle, collider, field, strip = legacyStrip) {
   assert.equal(geometry.index, null);
   const position = geometry.attributes.position, normal = geometry.attributes.normal;
   assert.equal(position.count,216,'72 flat-shaded triangles per stockpile versus100 on the old ellipsoid');
@@ -65,7 +89,7 @@ function validatePile(geometry, obstacle, collider, field) {
     const x=position.getX(i), y=position.getY(i), z=position.getZ(i);
     points.push([x,z]);low=Math.min(low,y);high=Math.max(high,y);
     assert.ok(y-field.getHeightAt(x,z)<0.9,'stockpiles stay below a metre above their support');
-    assert.ok(x>81.5 && x<93.5 && z>-55.5 && z<-6.5,'coal belongs to the outer-siding service strip');
+    assert.ok(strip.contains(x,z),'coal belongs to its service strip: east of the outer siding, or a stage station beside its stub');
     assert.ok(field._roadDist(x,z)>=7-1e-5,'roads retain footprint clearance');
     assert.ok(field.getWaterMaskAt(x,z)<=0.01,'no floating or flooded piles');
     assert.ok(normal.getY(i)>0,'every open stockpile face has outward/upward winding');
@@ -79,8 +103,8 @@ function validatePile(geometry, obstacle, collider, field) {
   const push={x:0,z:0};
   assert.ok(pushHullFromObstacle({x,z},0,1,1,0,2,1.5,obstacle,push),'a hull cannot drive through the pile');
   assert.ok(Math.hypot(push.x,push.z)>0);
-  for(const railX of [40,49,58,67,76]) {
-    assert.equal(pushHullFromObstacle({x:railX,z},0,1,1,0,2,1.5,obstacle,{x:0,z:0}),false,
+  for(const [railX,railZ] of strip.tracks(x,z)) {
+    assert.equal(pushHullFromObstacle({x:railX,z:railZ},0,1,1,0,2,1.5,obstacle,{x:0,z:0}),false,
       'the new solid footprint leaves every adjacent siding driveable');
   }
   const rayY=(low+high)/2;
@@ -140,38 +164,34 @@ for(const mapId of MAP_IDS) {
       }
       for(const parapet of parapets){assert.equal(parapet.y0,deck.deckY);assert.ok(parapet.y1-parapet.y0>=1,'a parapet stops a hull');}
     });
-    // Round 67 (2026-09-24): Tarkhan's tunnel portal is the third — the rail kit's one record where a spur's cutting
-    // leaves the square (a compound: the gallery block and two flank walls closing the valley at the headwall's
-    // plane, footed under the outland bed); railCutting.selftest certifies its parts, here only the footprint contract.
-    const portals=candidate.obstacles.filter(record=>record.kind==='tunnel-portal');
-    assert.equal(portals.length,mapId==='steppe'?1:0,`${mapId}: only Tarkhan's spur ends in a tunnel portal`);
-    assert.equal(candidate.colliders.filter(record=>record.kind==='tunnel-portal').length,portals.length);
-    for(const portal of portals){
-      assert.equal(portal.shape2.kind,'compound');assert.equal(portal.shape2.parts.length,3,'the gallery block and two flank walls');
-      assert.ok(portal.min[0]>512,'the portal stands past the red line, down the valley');
-      const bed=field.getOutlandHeightAt(portal.shape2.cx,portal.shape2.cz);
-      assert.ok(portal.min[1]<bed&&portal.max[1]>bed+10,'footed under the outland bed, taller than a hull can mount');
-      assert.equal(Math.min(...portal.shape2.parts.map(part=>part.y0)),portal.min[1]);assert.equal(Math.max(...portal.shape2.parts.map(part=>part.y1)),portal.max[1]);
-    }
-    const solids=coal.length+mills.length+bridges.length+portals.length;
+    // Round 67's tunnel portals (Tarkhan's spur, 2026-10-01 Cinder Junction's main line) are retired (2026-10-03, the
+    // map-borders lane): a cutting's line runs on in the open past the edge and publishes no record (railCutting.selftest).
+    assert.equal(candidate.obstacles.filter(record=>record.kind==='tunnel-portal').length,0,`${mapId}: no tunnel portal`);
+    const solids=coal.length+mills.length+bridges.length;
     assert.equal(candidate.obstacles.length,solids);assert.equal(candidate.colliders.length,solids);
     if(railMaps.includes(mapId)) assert.ok(coal.length>0,`${mapId}: retain recognizable coal stockpiles`);
     else assert.equal(coal.length,0,`${mapId}: all26 other map outputs unchanged`);
-    const soft=record=>record.kind!=='mill-house'&&record.kind!=='bridge'&&record.kind!=='tunnel-portal';
+    const soft=record=>record.kind!=='mill-house'&&record.kind!=='bridge';
     const heaps=candidate.obstacles.filter(soft), heapColliders=candidate.colliders.filter(soft);
-    coal.forEach((geometry,index)=>validatePile(geometry,heaps[index],heapColliders[index],field));
+    const strip=coalStrip(field);
+    coal.forEach((geometry,index)=>validatePile(geometry,heaps[index],heapColliders[index],field,strip));
     totals[mapId]=coal.length;
   } finally {dispose(baseline);dispose(candidate);}
 }
-const config=getMapConfig('railyard'), real=createHeightField(1337,config);
-const flat={...real,getHeightAt:()=>0,_roadDist:()=>100,getWaterMaskAt:()=>0};
-for(const field of [{...flat,getWaterMaskAt:()=>1}, {...flat,getHeightAt:x=>x},
-  {...flat,_roadDist:x=>x>81?0:100}]) {
-  const result=build('railyard',field,2002);
-  assert.equal(result.buckets.baked.filter(isCoal).length,0,'wet, steep or road-overlapping sites fail closed');dispose(result);
+// The clear-site law fails closed on a legacy yard (Foundry's strip) and on Cinder Junction's two coal stages.
+for(const [mapId,roadBlock,blocker] of [['foundry',x=>x>81?0:100,[{min:[80,-10,-60],max:[96,20,0]}]],
+  ['railyard',()=>0,[{min:[-112,-10,-48],max:[112,20,48]}]]]) {
+  const config=getMapConfig(mapId), real=createHeightField(1337,config);
+  const flat={...real,getHeightAt:()=>0,_roadDist:()=>100,getWaterMaskAt:()=>0};
+  const open=build(mapId,flat,2002);
+  assert.ok(open.buckets.baked.filter(isCoal).length>0,`${mapId}: a flat dry clear field admits heaps`);dispose(open);
+  for(const field of [{...flat,getWaterMaskAt:()=>1}, {...flat,getHeightAt:x=>x}, {...flat,_roadDist:roadBlock}]) {
+    const result=build(mapId,field,2002);
+    assert.equal(result.buckets.baked.filter(isCoal).length,0,`${mapId}: wet, steep or road-overlapping sites fail closed`);dispose(result);
+  }
+  const blocked=build(mapId,flat,2002,false,blocker);
+  assert.equal(blocked.buckets.baked.filter(isCoal).length,0,`${mapId}: do not bury piles inside existing authored solids`);dispose(blocked);
 }
-const blocked=build('railyard',flat,2002,false,[{min:[80,-10,-60],max:[96,20,0]}]);
-assert.equal(blocked.buckets.baked.filter(isCoal).length,0,'do not bury piles inside existing authored solids');dispose(blocked);
 const propsSource=readFileSync(new URL('../props.ts',import.meta.url),'utf8');
 assert.match(propsSource,/baked: new THREE.MeshStandardMaterial\(\{ vertexColors: true, roughness: 0.88, metalness: 0 \}\)/);
 assert.match(propsSource,/dark: new THREE.MeshStandardMaterial\(\{ color: 0x161a1d, roughness: 0.35, metalness: 0.15 \}\)/,

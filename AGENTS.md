@@ -64,7 +64,7 @@ worktree and never stage generated tank work wholesale.
 <!-- agent-docs:auto:dirmap start -->
 | Directory | Skill | Purpose |
 |---|---|---|
-| `api/` | [`api/SKILL.md`](api/SKILL.md) | Maintain the deployed ICE credential, telemetry, Jev proxy and public GitHub-count HTTP entrypoints. |
+| `api/` | [`api/SKILL.md`](api/SKILL.md) | Maintain the deprecated STUN-only ICE answer, telemetry, Jev proxy and public GitHub-count HTTP entrypoints. |
 | `server/` | [`server/SKILL.md`](server/SKILL.md) | Implement and operate the match actor, the LAN room helper, collision manifests, ICE and telemetry services. |
 | `src/` | [`src/SKILL.md`](src/SKILL.md) | Navigate browser boot and shared source contracts while preserving subsystem and bundle boundaries. |
 | `src/app/` | [`src/app/SKILL.md`](src/app/SKILL.md) | Maintain typed application composition, lazy owner access, frame wiring, and combat warm lifecycle. |
@@ -147,7 +147,7 @@ worktree and never stage generated tank work wholesale.
 - Do not import full fleet builders into a new boot-critical module.
 - Do not add multicrew roles or multiple player seats inside one vehicle.
 - Never deploy per commit. Git auto-deploys are disabled in `vercel.json`
-  (`git.deploymentEnabled` off for `main` and `codex/*`); production changes
+  (`git.deploymentEnabled: false`, every branch); production changes
   only through the once-per-round prebuilt CLI deploy in `docs/DEPLOYS.md`
   (`vercel pull --yes --environment=production && vercel build --prod &&
   node tools/vercel-output-immutable.mjs && vercel deploy --prebuilt --prod`,
@@ -156,7 +156,18 @@ worktree and never stage generated tank work wholesale.
 
 ## Extending this project's agent system
 <!-- agent-docs:fill:extending -->
-Refresh generated blocks with `KEVIN_WIKI_ROOT=/Users/kevinliu/repos/Kevin-Wiki-v3
-npm run agent-docs -- scaffold .`, then run the corresponding `doctor --json`.
-Edit prose only below `agent-docs:fill` markers; generated auto blocks are owned
-by the scaffold command.
+The `agent-docs:auto` blocks come from the Agent-Docs kit in the owner's
+Kevin-Wiki checkout, which is outside this repo and optional: with one,
+`KEVIN_WIKI_ROOT=<checkout> npm run agent-docs -- scaffold .` refreshes them
+and `-- doctor --json` checks them; without it the command exits 2 and can be
+skipped. The Graphify commands above need the same checkout (read
+`~/Documents/GitHub/kevin-wiki` as `$KEVIN_WIKI_ROOT`). Edit prose only below
+`agent-docs:fill` markers; generated auto blocks are owned by the scaffold
+command.
+
+When a generated block lags, `package.json` wins. The Commands block predates
+the current scripts: `npm test` runs `tools/run-selftests.mjs all`;
+`npm run build` adds `tools/generate-localized-pages.mjs` between the Vite
+build and `tools/strip-nc-assets.mjs` (after the `i18n:validate` prebuild);
+`npm run typecheck` runs TypeScript 7 native (`@typescript/native`), then
+`tools/core-unused-check.mjs`.

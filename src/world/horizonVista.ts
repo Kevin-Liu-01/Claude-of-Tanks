@@ -295,6 +295,18 @@ function tileMean2(tile: TilePixels): THREE.Vector3 {
   return new THREE.Vector3(2 * sum[0] / n, 2 * sum[1] / n, 2 * sum[2] / n);
 }
 
+let sharedCanopy: TilePixels | null = null;
+/**
+ * 2026-10-02 (the frame-budget lane): the one tile a terrain-bound ring still needs — its ring forest's crown mottle
+ * (the canopy texture and its mean). The ring itself draws with the battlefield's terrain material, so the other five
+ * tiles and the vista program are never built for it.
+ */
+export function createVistaCanopyTile(size = VISTA_TILE_SIZE): Pick<VistaTiles, 'canopy' | 'canopyMean'> {
+  const pixels = sharedTiles && sharedTiles.canopy.size === size ? sharedTiles.canopy
+    : sharedCanopy && sharedCanopy.size === size ? sharedCanopy : (sharedCanopy = makeCanopyTile(size));
+  return { canopyMean: tileMean2(pixels), canopy: tileToTexture(pixels) };
+}
+
 /** Tile pixels are authored once per page (about 60 ms); each ring owns its own GPU textures over them. */
 export function createVistaTiles(size = VISTA_TILE_SIZE): VistaTiles {
   if (!sharedTiles || sharedTiles.meadow.size !== size) {
@@ -661,6 +673,16 @@ interface HorizonForestOptions {
    * positive, a hollow negative) — the stands clump in the hollows and thin on the crests, and on a snow map the band's
    * treeline wanders by it instead of ending in a straight belt at the first ridge. */
   reliefAt?: (x: number, z: number) => number;
+  /** The map-borders lane (2026-10-03): the woodland share of the band (borderLandform.ts `forest`). When set, the band's
+   * stands are woods in patches covering that share of it — copses, woods on the shoulders, open fields between — where
+   * the old law forested nearly the whole band (the "hedge" round the square); unset keeps that law. */
+  bandShare?: number;
+  /** The map-borders lane: the border's woods field (borderLandform.ts woodsAt, 0..1) — when given, the stands follow it
+   * (the square's rim trees past the playable edge stand by the same field) instead of the ring's own patch field. */
+  woodsAt?: (x: number, z: number) => number;
+  /** The map-borders lane: the border's hedgerows (borderLandform.ts hedgeAt, 0..1) — tree lines along the field
+   * boundaries past the edge. */
+  hedgeAt?: (x: number, z: number) => number;
   /** Strength of the per-fragment aerial haze toward the fog tint (the ring's own uVHaze). */
   haze?: number;
   /** Textures created here join the ring's retained list. */
@@ -673,6 +695,10 @@ interface HorizonForestOptions {
 /** vegetation.ts buildPineFarGeometry / buildOakFarGeometry defaults (vista pass values). */
 const HORIZON_FOREST_CONIFER_PALETTE: HorizonForestSpeciesPalette = { hue: 0.315, sat: 0.36, l0: 0.165, l1: 0.27 };
 const HORIZON_FOREST_BROADLEAF_PALETTE: HorizonForestSpeciesPalette = { hue: 0.24, sat: 0.37, l0: 0.205, l1: 0.31 };
+/** The ring forest's broadleaf palette with a map's override over it (the hedgerows take the same green). */
+export function horizonBroadleafPalette(override?: Partial<HorizonForestSpeciesPalette>): HorizonForestSpeciesPalette {
+  return { ...HORIZON_FOREST_BROADLEAF_PALETTE, ...(override ?? {}) };
+}
 
 interface TreeGeometry { geometry: THREE.BufferGeometry; height: number }
 
@@ -912,6 +938,34 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
     const steep = band ? smoothstep(0.85, 1.15, slope) : smoothstep(0.50, 0.82, slope);
     return standF * treeF * (1 - steep) * (1 - rockW) * forestAmp;
   };
+  // The map-borders lane (2026-10-03): the band's woods field — patches at a few hundred metres (the 600 m and 140 m
+  // fields) broken by the 43 m one, leaning onto the slopes (a farmed floor, wooded shoulders). Its threshold is the
+  // quantile that leaves `bandShare` of the band's faces wooded, measured over the band itself, so the share holds on
+  // every map whatever the noise does there.
+  const bandShare = options.bandShare;
+  const woodsAt = (x: number, z: number, slope: number): number => {
+    if (!noise) return 0.5;
+    const nB = noise(x * 0.0016 + 0.13, z * 0.0016 + 0.71) - 0.5;
+    const nC = noise(x * 0.0071 + 0.47, z * 0.0071 + 0.09) - 0.5;
+    const nD = noise(x * 0.0230 + 0.31, z * 0.0230 + 0.57) - 0.5;
+    return nB * 1.0 + nC * 0.75 + nD * 0.22 + Math.min(0.6, slope) * 0.35;
+  };
+  let woodsCut = -Infinity;
+  if (bandShare !== undefined && !options.woodsAt) {
+    const samples: number[] = [];
+    for (let row = 1; row < Math.min(rows.length - 1, ridgeRow); row++) {
+      if (rows[row].skirt && rows[row + 1].skirt) continue;
+      for (let column = 0; column < n; column += 2) {
+        const i00 = row * n + column, i10 = (row + 1) * n + column;
+        const x = (positions[i00 * 3] + positions[i10 * 3]) * 0.5, z = (positions[i00 * 3 + 2] + positions[i10 * 3 + 2]) * 0.5;
+        const span = Math.max(1, Math.hypot(positions[i10 * 3] - positions[i00 * 3], positions[i10 * 3 + 2] - positions[i00 * 3 + 2]));
+        samples.push(woodsAt(x, z, Math.abs(heights[i10] - heights[i00]) / span));
+      }
+    }
+    samples.sort((a, b) => a - b);
+    const share = Math.max(0, Math.min(1, bandShare));
+    woodsCut = share <= 0 ? Infinity : samples.length ? samples[Math.min(samples.length - 1, Math.floor((1 - share) * samples.length))] : -Infinity;
+  }
   const surface = { x: 0, y: 0, z: 0, slope: 0 };
   for (let row = 1; row < rows.length - 1; row++) {
     if (rows[row].skirt && rows[row + 1].skirt) continue;
@@ -945,7 +999,19 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         if (!band && (y > maxHeight * 0.5 || Math.hypot(x, z) > 880 || snowline <= 1)) continue;
         if (band && y > maxHeight * 0.5) continue; // and no band tree on a foothill crest that climbs past half the ring
         if (options.clearAt && options.clearAt(x, z) > 0.5) continue; // round 63: the cutting's right-of-way
-        const stand = standWeightAt(x, y, z, faceSlope, band);
+        let stand = standWeightAt(x, y, z, faceSlope, band);
+        // the map-borders lane: the woods are patches covering the map's share, on the band and on the near ranges the
+        // border landform now shapes (its hills reach 330–820 m out); a lone tree stands in the open
+        if (bandShare !== undefined) {
+          // (a lone field tree's chance follows the country: a wooded valley has more of them than a steppe)
+          const lone = 0.045 * bandShare;
+          // (the hedges' bush lines are geometry now, borderHedgerows.ts: the ring forest stands only their standards)
+          if (options.woodsAt) stand *= Math.max(lone, options.woodsAt(x, z), options.hedgeAt ? options.hedgeAt(x, z) * 0.35 : 0);
+          else {
+            const w = woodsAt(x, z, faceSlope);
+            stand *= w >= woodsCut + 0.04 ? 1 : w >= woodsCut - 0.04 ? smoothstep(woodsCut - 0.04, woodsCut + 0.04, w) : lone;
+          }
+        }
         // round 72c (integrator: a straight treeline belt on the apron of Whiteout / Frosthollow): the stands follow the
         // relief — clumps in the gullies and hollows, gaps on the scoured crests and shoulders — and on a snow map,
         // where no range trees continue past the first ridge, the band's outer edge is a wandering treeline (the

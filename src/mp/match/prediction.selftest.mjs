@@ -62,7 +62,7 @@ function viewerOf(entity) {
  * Drive both sides from one control script. The authority row for tick S reaches
  * the client `lagTicks` later (it has predicted up to S + lagTicks by then).
  */
-function simulate({ ticks, script, lagTicks = 6, serverScript = script, predictor = new LocalPredictor(SPEC, { heightField: FIELD }), seedFirst = true, onTick = () => {} }) {
+function simulate({ ticks, script, lagTicks = 6, serverScript = script, predictor = new LocalPredictor(SPEC, { heightField: FIELD }), seedFirst = true, onTick = () => {}, beforeServerStep = null, viewerFor = viewerOf }) {
   const server = createReference();
   const history = new Map();
   const errors = [];
@@ -75,8 +75,9 @@ function simulate({ ticks, script, lagTicks = 6, serverScript = script, predicto
     controls.set(tick, c);
     const serverControl = control(tick, serverScript(tick));
     applyControl(server, serverControl);
+    if (beforeServerStep) beforeServerStep(server, tick);
     updateTank(server, FIELD, SIM_DT, null);
-    if (tick % 2 === 0) history.set(tick, { row: rowOf(server), viewer: viewerOf(server) });
+    if (tick % 2 === 0) history.set(tick, { row: rowOf(server), viewer: viewerFor(server) });
     // The authority for tick (tick - lagTicks) arrives now.
     const authorityTick = tick - lagTicks;
     if (seedFirst && !rowSeeded && authorityTick >= 0) {
@@ -142,7 +143,9 @@ function maxStep(presented, from = 1) {
   });
   const stats = predictor.getStats();
   assert.equal(stats.hardSnaps, 0, 'a braking divergence is far below the 7 m snap');
-  assert.ok(stats.maxPositionErrorM > 0.05, `the divergence was seen: ${stats.maxPositionErrorM}`);
+  // (physics lane, 2026-10-03: a hard stop no longer tips the whole hull up off its tracks — the dive is the suspension's —
+  // so the six-tick lag's divergence is the travel's alone, 4.6 cm where the lifted root made it 8)
+  assert.ok(stats.maxPositionErrorM > 0.03, `the divergence was seen: ${stats.maxPositionErrorM}`);
   assert.ok(stats.maxCorrectionStepM <= DEFAULT_CORRECTION_POLICY.maxHorizontalStepM + DEFAULT_CORRECTION_POLICY.maxVerticalStepM + 1e-9,
     `release per frame is bounded: ${stats.maxCorrectionStepM}`);
   assert.ok(stats.maxCorrectionStepM <= 0.25, 'correction release ≤ 0.25 m');
@@ -254,6 +257,68 @@ function maxStep(presented, from = 1) {
   assert.equal(p.holdsRestingHull, false, 'drive intent releases the hold at once');
 }
 
+// ------------------------------------------------------------ a disclosed hull presented where it used to be (client soak, 2026-10-01)
+// Remote hulls are presented one interpolation delay old, while the authority row a reconciliation rewinds to has
+// already resolved every contact of its tick. Here the authority drives up its lane alone and a hull is presented
+// inside that lane (it has since pulled away). Without the world's anchor every replay starts inside the presented
+// hull: a parallel one shoves the prediction sideways on every rewind, an angled one grinds the replay's speed away
+// (2.2 m of misprediction in the client soak beside an ally bot backing out of a human's way). The anchor seats the
+// stale hull against the authority's pose instead, so the prediction drives the authority's lane.
+{
+  const { createPredictionWorld } = await import('../presentation/predictionWorld.ts');
+  const staleHullRun = (hull, anchored) => {
+    let predictor = null;
+    const other = { spec: SPEC, state: { pos: new Vector3(hull.x, 0, hull.z), yaw: hull.yaw }, collidable: true };
+    const world = createPredictionWorld({
+      worldCollision: { heightField: FIELD, getObstacles: () => [] }, ownSpec: SPEC,
+      ownState: () => predictor?.simulationState ?? null, others: () => [other],
+    });
+    predictor = new LocalPredictor(SPEC, anchored ? world : { ...world, anchor: null });
+    const { server } = simulate({ ticks: 240, script: (tick) => ({ throttle: tick > 10 ? 1 : 0 }), lagTicks: 6, predictor });
+    return { stats: predictor.getStats(), lateralM: Math.abs(predictor.simulationState.pos.x - server.state.pos.x) };
+  };
+  const alongside = { x: 3.4, z: 0, yaw: 0 }; // parallel, 0.3 m into the lane for the whole run
+  const plainAlongside = staleHullRun(alongside, false);
+  const seatedAlongside = staleHullRun(alongside, true);
+  assert.ok(plainAlongside.stats.contactReconciliations > 50 && plainAlongside.stats.maxPositionErrorM > 0.3,
+    `control: without the anchor every replay starts inside the presented hull (${plainAlongside.stats.contactReconciliations} contact reconciliations, ${plainAlongside.stats.maxPositionErrorM.toFixed(3)} m)`);
+  assert.equal(seatedAlongside.stats.contactReconciliations, 0, 'the seated hull never touches the lane the authority drives');
+  assert.ok(seatedAlongside.stats.maxPositionErrorM < 0.01, `seated: ${seatedAlongside.stats.maxPositionErrorM.toFixed(4)} m`);
+  assert.ok(seatedAlongside.lateralM < 0.01, 'the prediction keeps the authority\'s lane');
+  const angled = { x: 3.3, z: 8, yaw: 0.12 }; // its rear corner reaches into the lane ahead
+  const plainAngled = staleHullRun(angled, false);
+  const seatedAngled = staleHullRun(angled, true);
+  assert.ok(plainAngled.stats.maxPositionErrorM > 1.2, `control: the plain replay grinds its speed away (${plainAngled.stats.maxPositionErrorM.toFixed(3)} m)`);
+  assert.ok(seatedAngled.stats.maxPositionErrorM < 0.6 && seatedAngled.stats.maxPositionErrorM < plainAngled.stats.maxPositionErrorM / 2,
+    `seated: ${seatedAngled.stats.maxPositionErrorM.toFixed(3)} m against ${plainAngled.stats.maxPositionErrorM.toFixed(3)} m`);
+}
+
+// ------------------------------------------------------------ a hull resting on another hull's roof (checkpoint v3)
+// The authority's contact pass seats a hull that settled on a wreck's roof every tick (`_body.restSupportY`); the
+// client's replay has no contact pass. Carried by the checkpoint the roof holds the replay up; without it (the version-2
+// layout) every replay sank toward the terrain under the roof and every snapshot pulled the hull back up.
+{
+  const ROOF_M = 1.6;
+  const onRoof = (server) => { server.state._body.restSupportY = height(server.state.pos.x, server.state.pos.z) + ROOF_M; };
+  const withoutRoof = (server) => {
+    const viewer = viewerOf(server);
+    const roofless = captureMovementCheckpoint({ ...server.state, _body: { ...server.state._body, restSupportY: NaN } });
+    return { ...viewer, movementFlags: roofless.flags, movementValues: roofless.values.map(Math.fround) };
+  };
+  const rest = (viewerFor) => {
+    const { predictor, server } = simulate({ ticks: 360, script: () => ({}), lagTicks: 6, beforeServerStep: onRoof, viewerFor });
+    return { stats: predictor.getStats(), server, predicted: predictor.simulationState };
+  };
+  const carried = rest(viewerOf);
+  const dropped = rest(withoutRoof);
+  assert.ok(carried.server.state.pos.y > height(0, 0) + ROOF_M - 0.2, `fixture: the authority hull rests on the roof (y ${carried.server.state.pos.y.toFixed(2)})`);
+  assert.ok(dropped.stats.maxPositionErrorM > 0.02 && dropped.stats.reconciliations > 100,
+    `control: without the roof every replay sinks (${dropped.stats.maxPositionErrorM.toFixed(3)} m)`);
+  assert.ok(carried.stats.maxPositionErrorM < 0.005, `with the roof the replay stays on it (${carried.stats.maxPositionErrorM.toFixed(4)} m)`);
+  assert.ok(Math.abs(carried.predicted.pos.y - carried.server.state.pos.y) < 0.01, 'the predicted hull sits where the authority\'s does');
+  assert.equal(carried.stats.hardSnaps, 0);
+}
+
 // ------------------------------------------------------------ missing checkpoint, contact smoothing hook, reset
 {
   let contacts = 0;
@@ -276,4 +341,4 @@ function maxStep(presented, from = 1) {
   assert.throws(() => new LocalPredictor(SPEC, { heightField: null }));
 }
 
-console.log('mp prediction: exact replay with matching controls, divergence corrected inside the 110/160/75 ms envelopes with ≤ 0.2 m releases, hard snap at 7 m, death/respawn, resting hold, collision adapter pass');
+console.log('mp prediction: exact replay with matching controls, divergence corrected inside the 110/160/75 ms envelopes with ≤ 0.2 m releases, hard snap at 7 m, death/respawn, resting hold, stale presented hulls seated at the rewind, a hull resting on a roof replayed on it, collision adapter pass');

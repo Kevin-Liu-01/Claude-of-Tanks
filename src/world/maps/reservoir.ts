@@ -1,5 +1,17 @@
-// Upland waterworks: a western deployment forks around the offset reservoir,
-// with a screened northern bank and a dry southern dam-side saddle.
+// src/world/maps/reservoir.ts — Highland Reservoir, revised 2026-10-02 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
+// The three-lobed reservoir, the waterworks, the service settlement, the ridges, the road fork and both deployments are
+// the map's identity and stay. The old layout let alpha's pad see the middle of bravo's assembly ground over the east
+// ridge, left that ground between bravo's two pockets with 15 % cover, and put every zone-control disc 30-130 m closer
+// to alpha: the lake makes bravo drive round it.
+//
+// Reference: the Roer dams in the Eifel highlands (the Urft and Schwammenauel reservoirs, winter 1944-45): an upland
+// lake held by a dam, spruce and pine on the ridges, waterworks on the shore, and a service village below the woods.
+//
+// The story on the ground: alpha forms up on the western apron behind the west ridge, and the road forks round the
+// lake. Bravo assembles in two pockets on the east plateau, south and north of the lake, with a spruce knoll between
+// them that hides both from the west. The zone-control discs stand on the waterworks' three gravel yards, which lie on
+// the line of equal driven distance between the deployments: it runs east of the straight midline, round the lake,
+// from the north bank's timber landing over the dry promontory between the lobes to the substation road.
 import frontier from './frontier.ts';
 export default {
   id: 'reservoir', name: 'Highland Reservoir',
@@ -13,7 +25,19 @@ export default {
     // Existing hardstand stamps grade the current road grids/mask; no mesh,
     // additional terrain buffer, path or material is constructed here.
     hardstands: [
-      { x: -393, z: -73, width: 76, length: 260, yawDeg: -7, grade: 0 },
+      // Alpha's assembly apron round its pad and the road's west gate, tilted 5 % down to the east with the hillside
+      // and given a 24 m bank: the old 76 x 260 m level slab at 2.0 m stood up to 12 m off its ground and cut walls on
+      // every side (docs/MAP-LAYOUT-BRIEF.md, "Apron banks"). The road's west gate (-424, -72) stays on it.
+      { x: -394, z: -72, width: 40, length: 72, yawDeg: 90, level: 4.5, grade: -0.05, bankM: 24 },
+      // The waterworks' three gravel yards on the line of equal driven distance between the deployments (the lake
+      // makes bravo drive round it, so the line runs east of the straight one), each where its ground spreads least.
+      // The north bank's timber landing and the south yard by the substation road both stand on the shore road. They
+      // take its own height and grade (grade 'road'), so the road keeps its grade at every terrain seed. The yard on
+      // the dry promontory between the lobes stands at its ground's median height. The zone-control discs seat on
+      // them.
+      { x: -8, z: 154, width: 50, length: 50, yawDeg: 15, grade: 'road', bankM: 16 },
+      { x: 88, z: 8, width: 50, length: 50, yawDeg: 0, level: -8, grade: 0 },
+      { x: 12, z: -170, width: 44, length: 44, yawDeg: -24, grade: 'road', bankM: 30 },
     ],
     roads: { paths: [
       // Western deployment enters one fork, not one of several full-height
@@ -40,7 +64,7 @@ export default {
       // Stay east of the basin: extrapolating the first interior tangent
       // previously sent this service road 355m southwest to the wrong gate.
       // The intermediate bend spreads the turn before the southern spawn.
-      [[420, -480], [420, -448], [370, -400], [370, -328], [436, -288], [420, -208], [392, -100], [416, 0],
+      [[420, -480], [420, -448], [370, -400], [370, -328], [436, -288], [420, -208], [392, -100], [424, 0],
         [388, 160], [448, 226], [372, 282], [440, 354], [448, 400], [480, 400]],
     ] },
     // Three unequal lobes form an irregular upland retention basin. Their
@@ -59,8 +83,16 @@ export default {
       { kind: 'ridge', x: 102, z: 282, length: 290, width: 68, height: 7.0, yawDeg: 86 },
       { kind: 'basin', x: 162, z: 12, rx: 152, rz: 232, height: -5.0, wetScale: 0.2 },
       { kind: 'knoll', x: -126, z: 250, rx: 94, rz: 68, height: 5.8 },
+      // a spruce knoll on the east plateau between bravo's two assembly pockets: it hides them from the western
+      // deployment and gives the plateau's open middle its cover
+      { kind: 'knoll', x: 372, z: 30, rx: 34, rz: 46, height: 5.5 },
     ],
   },
+  layoutBrief: { exceptions: {
+    solidPropsInWater: 'the waterworks\' bank manifold and submerged-footed intake (src/world/reservoirWaterworks.ts) '
+      + 'stand in the lake by design, where they draw water from the middle lobe',
+  } },
+
   spawns: {
     player: { x: -384, z: -72,
       formation: { columnSpacingM: 8, rowSpacingM: 13 } },
@@ -76,6 +108,8 @@ export default {
     clusterCount: 66, loneCount: 98, rimCount: 108, grassDensity: 0.96, bushCount: 1.0, bushSpecies: 'birch', clusterScrub: 1.6,
   },
   props: {
+    // regional-buildings lane: the Eifel Fachwerk-and-greywacke kit (maps/regional/eifel.ts)
+    architecture: 'eifel',
     sourcedPalette: 'frontier',
     // A supported control kiosk, bank manifold and submerged-footed intake
     // replace three accepted rubble piles; the closed works leave roads open.
@@ -96,9 +130,27 @@ export default {
       ids: ['k1a1', 'type99a', 'k2', 'bmp3', 'type90'] },
     inhabit: { stalls: 1, benches: 3, coreClutter: 20, bales: 6, troughs: 2, laundry: 2, handcarts: 3, carts: 3, trucks: 5, jeeps: 4, drumClusters: 5, camps: 3, modernClutter: 20, looseClutter: 20, roadFence: 'fenceplank', yardFence: 'fencerail' },
   },
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Eifel's slate. The
+  // cleaved greywacke and slate stand out of every ridge's flanks in crags with their scree; a crag rises above the
+  // lake's south and north shores; a timber field cross stands in the angle of the road fork below the west ridge.
+  scenery: {
+    rocks: [
+      { form: 'crag', geology: 'slate', x: 200, z: -150, radius: 6, height: 5, yawDeg: 20, name: 'the crag above the south shore' },
+      { form: 'crag', geology: 'slate', x: 40, z: 160, radius: 6, height: 4.5, yawDeg: 60, name: 'the crag above the north shore' },
+    ],
+    rockFields: [
+      { geology: 'slate', x: -276, z: 14, radius: 95, count: 7, slopeBias: 0.8, size: [2.5, 5], name: 'the west ridge slate' },
+      { geology: 'slate', x: 340, z: 12, radius: 95, count: 7, slopeBias: 0.8, size: [2.5, 5], name: 'the east ridge slate' },
+      { geology: 'slate', x: 102, z: -256, radius: 80, count: 5, slopeBias: 0.8, size: [2.5, 5], name: 'the south ridge slate' },
+      { geology: 'slate', x: 102, z: 282, radius: 80, count: 5, slopeBias: 0.8, size: [2.5, 5], name: 'the north ridge slate' },
+    ],
+    landmarks: [
+      { kind: 'waysidecross', x: -318, z: -80, yawDeg: 45, name: 'the cross at the road fork' },
+    ],
+  },
   horizon: { baseHex: 0x62766a, amp: 1.25, style: 'alpine', treeline: 0.80, snowline: 2, forestHex: 0x304e40, rockHex: 0x828d87, haze: 0.90, grain: 0.52 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'fair-weather-cumulus', coverage: 0.26, streets: 0.3 },
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.26, streets: 0.3, contrails: 0.3 },
   sky: { ...frontier.sky, sunElevationDeg: 26, sunAzimuthDeg: 142, turbidity: 4.2, fogDensity: 0.00058, fogTintHex: 0x91a8b5, fogMix: 0.5, cloudOpacity: 1.0, cloudOpacity2: 0.66, sunIntensity: 3.8, hemiIntensity: 0.43 },
   minimap: { ...frontier.minimap, base: [78, 105, 77], hard: [111, 114, 98], soft: [47, 75, 71], water: 'rgba(43,89,111,.86)', waterStroke: 'rgba(23,55,73,.94)' },
   shot: { pos: [-248, 57, -248], look: [108, -1, 74] },

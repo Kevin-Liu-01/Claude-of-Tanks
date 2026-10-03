@@ -243,12 +243,15 @@ function createRecordedPresentation(options, record) {
       return true;
     },
     setPerspective(entityId) { record.push(`perspective:${entityId}`); return true; },
+    // the real presentation's rule: a mobile-tier or variant world is not the authority's index space
+    get sharesAuthorityIndices() { return options.worldCollision?.layoutTier !== 'mobile' && !options.worldCollision?.terrainVariant; },
+    setAuthorityObstacles(identity) { record.push('presentation.authorityObstacles'); presentation.authorityIdentity = identity; },
     dispose() { record.push('presentation.dispose'); presentation.disposed = true; },
   };
   return presentation;
 }
 
-function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000, p2p = null } = {}) {
+function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000, p2p = null, layoutTier = null, loadAuthorityObstacles = null } = {}) {
   const calls = [];
   const bus = [];
   const game = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'verdant', phase: 'garage', gameMode: 'standard', matchModeState: null };
@@ -281,7 +284,7 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
   const statusEvents = [];
   const statusReports = [];
   const timers = [];
-  const worldCollision = { heightField: { getHeightAt: () => 0 }, getObstacles: () => [] };
+  const worldCollision = { heightField: { getHeightAt: () => 0 }, getObstacles: () => [], layoutTier };
   const ports = {
     lifecycle,
     load: {
@@ -296,6 +299,7 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
       recordTrace: (trace) => { ports.trace = trace; },
       recordEntryFailure: (failure) => { ports.failure = failure; },
       recordSlowEntry: (beacon) => { calls.push(`slowEntry:${beacon.stage}:${beacon.code}:${beacon.pending}`); (ports.slowEntries ??= []).push(beacon); },
+      ...(loadAuthorityObstacles ? { loadAuthorityObstacles: (mapId, signal) => { calls.push(`authorityObstacles:${mapId}:${signal instanceof AbortSignal}`); return loadAuthorityObstacles(mapId, signal); } } : {}),
     },
     roster: {
       getMap: (mapId) => ({ name: `Map ${mapId}`, thumb: `${mapId}.jpg`, biome: mapId }),
@@ -840,4 +844,47 @@ assert.ok(calls.includes('client.leave'), 'disposing the composition leaves the 
   hosted.composition.dispose();
 }
 
-console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, and runs a shader preparation past its budget once more before failing');
+// ------------------------------------------------------------ the ICE of a room session (2026-10-02, §13.14): the resolver is
+// built once per room session from the room's mode and the room client the seat holds, and is the session's own `ice`
+{
+  const built = [];
+  const resolver = async () => ({ iceServers: [], relayOnly: false });
+  const iced = createHarness({ p2p: { createHostPort: () => { throw new Error('the receipt never boots a host'); }, manifestBase: null, tier: 'desktop',
+    createIceResolver: (mode, room) => { built.push({ mode, room }); return resolver; } } });
+  const room = makeRoomSession(iced.calls);
+  iced.composition.beginRoom({ role: 'host', session: room, lobbyState: room.lobby });
+  assert.equal(built.length, 1, 'one resolver per room session');
+  assert.equal(built[0].room, room.client, 'built over the room client this seat holds');
+  assert.equal(built[0].mode, room.roomInfo.mode === 'lan' ? 'lan' : 'private', 'with the room\'s mode');
+  assert.equal(iced.sessions[0]?.options?.p2p?.ice, resolver, 'the session resolves every connection through it');
+  assert.equal('loadIce' in (iced.sessions[0]?.options?.p2p ?? {}), false, 'no credential endpoint port remains');
+  iced.composition.dispose();
+}
+
+// ------------------------------------------------------------ a world laid out otherwise (ghost-crunch lane, 2026-10-02): a mobile-tier
+// world is not the host manifest's index space, so the round loads the manifest's obstacle identities beside the roster and
+// hands them to the presentation (the persistent destroyed list reads through them); the base layout loads nothing
+{
+  const identity = (index) => ({ x: index, z: -index, kind: 'tree' });
+  for (const [layoutTier, expected] of [['mobile', true], ['desktop', false]]) {
+    const layout = createHarness({ layoutTier, loadAuthorityObstacles: async () => identity });
+    const room = makeRoomSession(layout.calls);
+    layout.composition.beginRoom({ role: 'host', session: room, lobbyState: room.lobby });
+    await layout.sessions[0].enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
+    await settle(4);
+    const presentation = layout.presentations[0];
+    assert.equal(layout.calls.includes('authorityObstacles:alpine:true'), expected, `${layoutTier}: the manifest's identities load only for a world laid out otherwise`);
+    assert.equal(presentation.authorityIdentity === identity, expected, `${layoutTier}: and reach the presentation`);
+    layout.composition.dispose();
+  }
+  const failing = createHarness({ layoutTier: 'mobile', loadAuthorityObstacles: async () => { throw new Error('manifest unreachable'); } });
+  const room = makeRoomSession(failing.calls);
+  failing.composition.beginRoom({ role: 'host', session: room, lobbyState: room.lobby });
+  await failing.sessions[0].enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
+  await settle(4);
+  assert.ok(failing.calls.some((entry) => typeof entry === 'string' && entry.startsWith('warn:multiplayer v2 authority obstacles:manifest unreachable')), 'an unreachable manifest is a warning; the round goes on (live falls still find their records)');
+  assert.equal(failing.presentations[0].disposed, false);
+  failing.composition.dispose();
+}
+
+console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, runs a shader preparation past its budget once more before failing, and loads the obstacle identities of the host manifest for a world laid out otherwise');

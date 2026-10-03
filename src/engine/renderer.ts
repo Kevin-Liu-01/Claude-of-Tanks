@@ -54,7 +54,7 @@ function applyOutputResolution(
  *
  * @param {HTMLElement} container - DOM element that receives the canvas; its
  *   client size (falling back to the window size) drives the initial viewport.
- * @returns {THREE.WebGLRenderer} configured renderer (ACES, sRGB out, PCF soft shadows)
+ * @returns {THREE.WebGLRenderer} configured renderer (AgX, sRGB out, PCF soft shadows)
  */
 export function createRenderer(container: HTMLElement): GameRenderer {
   const renderer = new THREE.WebGLRenderer({
@@ -106,23 +106,14 @@ export function createRenderer(container: HTMLElement): GameRenderer {
   applyOutputResolution(renderer, width, height);
   renderer.setSize(width, height);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  // 1.05 compensates the deeper key:fill rebalance (lighting.ts/sky.ts r2) so
-  // midtones sit where they did while shadow cores drop. r6: 1.05 → 1.08 —
-  // the stronger grade S-curve (post.ts GRADE_CONTRAST 1.34) pulled midtone
-  // foliage below the WoT reference band; a slight exposure lift restores
-  // midtones while the contrast + black anchor keep shadow cores dense.
-  // r7: 1.08 → 1.16 — pixel-measured lit playfield luma sat at 0.20-0.30
-  // display (WoT reference ~0.35): the whole foreground read underexposed
-  // against the hazy far field. Paired with the post.ts grade-pivot fix
-  // (0.5 → 0.33) so the lift lands in the midtones instead of being crushed
-  // back down by the old above-pivot-only contrast.
-  // r6: A/B'd 1.20 alongside the deeper grade S-curve (post.ts 1.36) — the
-  // lift blew the high-albedo maps out (desert sand + winter snowfield went
-  // textureless near-white) while buying almost nothing on verdant. Stays
-  // 1.16; the grade pivot (0.33) keeps the lit playfield stable under the
-  // stronger contrast on its own.
-  renderer.toneMappingExposure = 1.16;
+  // 2026-10-01 (the lighting lane, grounded realism): AgX replaces ACES. The fitted ACES curve skewed every
+  // saturated colour on its way to white (cyan skies, acid greens, orange skin on sunlit sand) and clipped the
+  // sky's highlights near 2; the r3-r7 grade stack spent itself compensating. AgX (three's implementation of the
+  // log-encoded sigmoid with a path to white) keeps hue, rolls highlights off over ~16 stops and leaves the
+  // look to a light grade (post.ts). Exposure is the light model's (lightModel.ts: an adapting camera per map and
+  // time of day, applied in the output pass), so the renderer's own stays at unity.
+  renderer.toneMapping = THREE.AgXToneMapping;
+  renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is deprecated in r185
   routeShadowOnlyLayer(renderer);

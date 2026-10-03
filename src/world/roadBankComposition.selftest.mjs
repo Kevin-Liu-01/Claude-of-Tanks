@@ -17,15 +17,17 @@ function declaration(text, name) {
   return matches[0];
 }
 const heightNode = declaration(source, 'heightAt');
+// The map-borders lane (2026-10-03): the rim lift is the border landform's (borderLandform.ts) — `rimLift`, evaluated
+// once per query; the fixture's `border` stub returns the classic rim (rimH · s(r)², s = smoothstep(430, 512)), so the
+// road-bank composition below is checked on the same rim it was written against.
 const rimStatements = heightNode.body.statements.filter(node => ts.isExpressionStatement(node)
-  && node.expression.getText().startsWith('h += rim * rim * T.rimH *'));
+  && node.expression.getText().startsWith('h += rimLift *'));
 assert.equal(rimStatements.length, 1, 'identify the actual heightAt rim operation');
 const rim = rimStatements[0], heightSource = heightNode.getText();
 const constraints = declaration(source, 'applyHeightConstraints').getText();
-// Keep the extracted function's construction-time closure in sync with terrain.
-// These fixtures exercise ordinary banks; Desert's wider bank has its own map gate.
-const roadBankPolicy = source.match(/const roadBankWidth = [^;]+;/)?.[0];
-assert.ok(roadBankPolicy, 'production road-bank width policy is present');
+// Keep the extracted function's construction-time closure in sync with terrain. Every map grades the same 14 m
+// road bank (2026-10-01: Sirocco Wadi's 104 m earthworks left with its old roads, docs/MAP-LAYOUT-BRIEF.md).
+assert.equal(source.includes('roadBankWidth'), false, 'no map-specific road-bank width remains');
 const helperSource = ['sampleRoadSupportDistance', 'roadCorridorDistanceWeight', 'roadRimWeight',
   'roadShoulderWeight', 'applyRoadShoulderDetail'].map(name => declaration(source, name).getText()).join('\n');
 const ownership = source.match(/let boundedRoadCorridor = [\s\S]*?;/)?.[0];
@@ -40,14 +42,14 @@ for (const id of ['verdant', 'fjord', 'copper_mesa', ...boundedMaps]) for (const
 // Exact local predecessor statement from 8367e8c4211d8732ef5a9d566a1a7bbe828acd8b.
 // No Git/history dependency or whole-terrain golden: only this changed operation
 // is replayed inside the current production heightAt and constraint functions.
-const oldRim = 'h += rim * rim * T.rimH * (borderCorridorStart === null ? 1 : 1 - cw * roadCorridorWeight);';
+const oldRim = 'h += rimLift * (borderCorridorStart === null ? 1 : 1 - cw * roadCorridorWeight);';
 function replacingRim(statement) {
   return heightSource.slice(0, rim.getStart() - heightNode.getStart()) + statement
     + heightSource.slice(rim.end - heightNode.getStart());
 }
 function compile(body, constraintBody = constraints, helpers = helperSource) {
   return new Function('fixture', `
-    const { HALF, CELL, GN, T, cfg, borderCorridorStart, boundedRoadCorridor, gCorridor, gRoadDist, gRoadElev,
+    const { HALF, CELL, GN, T, cfg, borderCorridorStart, boundedRoadCorridor, gCorridor, gRoadDist, gRoadElev, border,
       sampleHeightGridCell, clamp, smoothstep, villageMask, baseTerrainHeight,
       applyMacroTerrain, noi, liquidSurfaces, liquidIndex, liquidIndexWords,
       _MARSHES, _LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons,
@@ -59,14 +61,16 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
       bridgeDecks = [], bridgeTermsAt = () => ({ span: 0, approach: 0, deckY: 0 }),
       // round 63: heightAt ends with the rail cutting (railCuttingHeight, on final queries); this fixture authors none
       railCuttings = null, railCuttingPortalYs = null, railCuttingsOn = false, railCuttingsSuspended = false,
-      railCuttingHeight = (cuttings, portalYs, x, z, h) => h } = fixture;
+      railCuttingHeight = (cuttings, portalYs, x, z, h) => h,
+      // the map-borders lane (2026-10-03): the foreground clearance past the playable edge (nil on this classic fixture),
+      // the classic rim the authoring queries keep (the stub's own rim) and the road grades' landform pass (off here)
+      clearanceReduction = () => 0, classicRimLift = (r) => border.liftAt(0, 0, r), authoringOnLandform = false } = fixture;
     // Frontline Assault 2026-09-13: heightAt now ends with the assault-trenches carve; the
     // standard field (this fixture) has no plan, so the carve contributes nothing here.
     const trenchPlan = fixture.trenchPlan ?? (() => null);
     // 2026-09-17 field trenches: the projected height function also reads the standard-map field plan (null here)
     const fieldTrenchPlan = fixture.fieldTrenchPlan ?? (() => null);
     const assaultTrenchCarveDepth = fixture.assaultTrenchCarveDepth ?? (() => 0);
-    ${roadBankPolicy}
     ${stripTypeScriptTypes(helpers)}
     ${stripTypeScriptTypes(constraintBody)}
     ${stripTypeScriptTypes(body)}
@@ -102,6 +106,7 @@ function fixture(options = {}) {
     },
     padPts: pad ? [{ x: 0, z: 512 }] : [], padYs: [22],
     waterRampStart: .2, waterRampEnd: .8, quarryFloorY: null,
+    border: { liftAt: (_x, _z, r) => { const s = smoothstep(430, 512, r); return s * s * rimHeight; } },
   } };
 }
 function sample(factory, options = {}, roadsOn = true, lakesOn = false, x = 0, z = 512) {

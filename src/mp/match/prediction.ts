@@ -37,6 +37,15 @@ export interface PredictionWorld {
   contactGeom?: MovementContactGeometry | null;
   /** The room's ruleset impact physics (landing rebound); absent = the whole-game block. */
   physics?: RulesetPhysics | null;
+  /**
+   * Called with the authority's own pose after every rewind, before the replay. The authority resolved every contact
+   * at that tick, so a disclosed hull this pose already penetrates is presented where it used to be (the interpolation
+   * delay behind a turning or reversing hull); the world seats that hull against the pose until the next anchor, so
+   * the replay does not start inside it and grind its speed away (client soak, 2026-10-01).
+   */
+  anchor?: ((state: TankState) => void) | null;
+  /** Called before every replayed step with the simulated hull (the structure support gathers the primitives under it). */
+  beginStep?: ((state: TankState) => void) | null;
 }
 
 export interface PredictionAuthority {
@@ -347,6 +356,7 @@ export class LocalPredictor {
       origin.y + Math.sin(control.aimPitch) * control.aimDistance,
       origin.z + Math.cos(control.aimYaw) * cosPitch * control.aimDistance,
     );
+    this.world.beginStep?.(this.sim.state);
     updateTank(this.sim, this.world.heightField, SIM_DT, this.collide);
   }
 
@@ -432,6 +442,7 @@ export class LocalPredictor {
     this.sim.state = state;
     applyAuthorityRow(state, authority.row);
     this.restoreCheckpoint(authority.viewer);
+    this.world.anchor?.(state);
     this.clearCorrection();
     this.holdingRest = false;
     this.contactSmoothingS = 0;
@@ -447,6 +458,7 @@ export class LocalPredictor {
   private rewind(authority: PredictionAuthority): void {
     applyAuthorityRow(this.sim.state, authority.row);
     this.restoreCheckpoint(authority.viewer);
+    this.world.anchor?.(this.sim.state);
   }
 
   /** Replay the unacknowledged ticks; true when the newest tick was stepped (its predecessor pose captured). */

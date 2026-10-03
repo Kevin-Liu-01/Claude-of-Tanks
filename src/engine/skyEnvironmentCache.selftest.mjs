@@ -115,12 +115,12 @@ const source = readFileSync(new URL('./sky.ts', import.meta.url), 'utf8');
 const file = ts.createSourceFile('sky.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 const fn = name => file.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === name).getText(file);
 const configuredSource = fn('configureSkyUniforms');
-// PR #9: current wiring and the actual bake below replace a source hash
-// that rejected the already-shipped Earthrise uniform addition.
-for (const wiring of ['  u.uEarth ??= { value: 0 };\n  u.uEarth.value = preset.earth;\n',
-  '    shader.uniforms.uEarth = u.uEarth;\n', 'uPlanetR, uPlanetTint, uEarth ) * uNight;']) {
-  assert.equal(configuredSource.split(wiring).length, 2,
-    `configureSkyUniforms wires the lunar Earth uniform exactly once: ${wiring.trim()}`);
+// 2026-10-01 (frozen pins retired): the sha256 pin of configureSkyUniforms projected back onto its round-22 text froze
+// every radiance formula and injected shader byte, so any sky redesign failed here. The lunar Earth uniform's wiring is
+// still checked on the current source, and the bake owner below executes the real configureSkyUniforms.
+for (const wiring of ['  u.uEarth ??= { value: 0 };\n  u.uEarth.value = preset.earth;\n', '    shader.uniforms.uEarth = u.uEarth;\n',
+  'uPlanetR, uPlanetTint, uEarth ) * uNight;']) {
+  assert.equal(configuredSource.split(wiring).length, 2, `configureSkyUniforms wires the lunar Earth uniform exactly once: ${wiring.trim()}`);
 }
 const keySource = ['horizonColorKey', 'environmentKey', 'withEnvironmentRenderState', 'disposeEnvironmentSky'].map(fn).join('\n');
 let bakeMethod;
@@ -180,6 +180,9 @@ function skyFixture() {
   }
   const code = `const { renderer, scene, preset, sunDir } = input;
     const atmosphereKeySuffixLive = '';
+    // 2026-10-01 (the grounded light model): the owner's environment intensity reads the model's value, null on the
+    // legacy dome this fixture bakes — the authored floor applies exactly as before
+    const physicalEnvIntensity = null;
     const refreshAtmosphere = () => { input.refreshAtmosphere(); return false; };
     const DEFAULT_PRESET = preset, ENV_SKY_SCALE = 50, ENV_INTENSITY_FLOOR = 0.21, HDRI_ENV_URL = null;
     const loadHdriEnvironment = () => { throw new Error('unexpected HDRI'); };

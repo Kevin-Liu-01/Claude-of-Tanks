@@ -28,20 +28,36 @@
  * march strides longer through empty air and with the pixel footprint at range. The composite is a
  * horizon-flattened dome mesh in the scene's transparent queue (depth-tested by the terrain and the ring, never
  * writing depth), premultiplied over the physically based dome, sampling the history with a Catmull-Rom filter.
- * Cloud shadows come from a per-cascade plane on the shadow-only layer whose custom depth material discards
- * outside the cloud cores of the same two weather fields (the CSM carries them at no shading cost); each plane
- * renders into ITS OWN cascade only (round 78: `setShadowCasterCascades` — three would rasterise every plane
- * into every map, sixteen field-shader draws for four); post.ts owns one hook:
+ * Cloud shadows: the layer renders the clouds' shade — the cores of the same two weather fields at the cloud base —
+ * undithered into one map around the camera, and every material that joins the cascades multiplies its sun term by
+ * the share it leaves (cloudShadeMap.ts; 2026-10-03: until then a per-cascade plane dithered the shade into the shadow
+ * maps, and its moiré under the PCF taps was the gauntlet's stipple, arcs, weave and checkerboard); post.ts owns one hook:
  * `scene.userData.volumetricClouds.beforeSceneRender(...)` at the top of its frame transaction.
+ *
+ * 2026-10-01 (the clouds-and-skyboxes lane): the layered sky. The same trace draws the weather beyond the slab
+ * (cloudWeatherLayers.ts) — a fog bank lying on the sea and rain shafts / virga under the base in front of the slab,
+ * the far band behind it, the cirrus sheet with contrails last — and the composite adds lightning in a night front.
+ * A deck's underside mottles with its rolls, the noise boils, the cirrus comes in patches; the sky light reaches the
+ * clouds dimmed once (the summary's sky intensity undone), the moonlight's hue lights them at night and a town's glow
+ * rides on the bases; a camera in or over a low deck sees the cloud in front of the terrain.
  */
 import * as THREE from 'three';
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 import { ATMOSPHERE_SKY_GLSL, ATMO_GROUND_KM } from './atmosphere.ts';
 import type { AtmospherePublishedState } from './sky.ts';
-import { markShadowOnly, setShadowCasterCascades } from './renderLayers.ts';
 import { CLOUD_BLUE_SIZE, CLOUD_CURL_SIZE, CLOUD_DETAIL_SIZE, CLOUD_SHAPE_SIZE, CLOUD_WEATHER_SIZE } from './cloudNoise.ts';
 import { cloudLayerKey, type CloudLayerPreset } from './cloudPresets.ts';
 import { resolvePresetName } from './quality.ts';
+import { publishCloudShade, type CloudShadeUniforms } from './cloudShadeMap.ts';
+import { lightTune } from './lightModelCore.ts';
+import { hazeTargetTerms } from './hazeLaw.ts';
+import {
+  CLOUD_CONTRAIL_MAX, CLOUD_FOGBANK_RANGE_M, CLOUD_RAIN_RANGE_M, CLOUD_RAIN_SAMPLES,
+  applyCloudWeatherPreset, createCloudWeatherUniforms,
+} from './cloudWeatherLayers.ts';
+
+/** 0..1 smoothstep of a 0..1 ramp (the deck's far rows' share of the overcast haze target). */
+const smoothstep01 = (x: number): number => { const k = Math.min(1, Math.max(0, x)); return k * k * (3 - 2 * k); };
 
 /** History resolution relative to the scene target; the trace target is a quarter of the history each way. */
 export const CLOUD_HISTORY_SCALE = 0.5;
@@ -89,8 +105,82 @@ export const CLOUD_CELLS_PER_TILE = 4;
  * cores in the mid-tones under the clear sky's level, the thin borders and the lit walls white.
  */
 export const CLOUD_DECK_SUN_SHARE = 0.35;
+/** 2026-10-01: a lightning stroke's peak glow on the cloud around it (the composite's units, after the night dimming). */
+const CLOUD_FLASH_STRENGTH = 0.9;
+/** 2026-10-01: the cirrus streak frame's warp (m): the jet's eddies bend the streaks over tens of kilometres. */
+const CIRRUS_WARP_M = 2600;
+/** 2026-10-01: the convective boil — the shape and detail noise rise through a cumulus at this rate (m/s). */
+const CLOUD_BOIL_M_PER_S = 0.7;
+/** 2026-10-01: the trails' upper drift and the boil wrap here (m): whole tiles of every field they read. */
+const CLOUD_UPPER_WRAP_M = 600000;
+/**
+ * A drift kept inside (-w, w) (2026-10-02): continuous through zero and a whole wrap at +-w. The positive modulo it
+ * replaces jumped a whole wrap on the first frame after a capture zeroed the drifts (the census and the shot tools
+ * zero them for a frame-comparable field) — a seam for every lookup whose period does not divide the wrap: the boiling
+ * noise (its vertical period follows the slab's thickness) ghosted every captured cloud.
+ */
+const wrapDrift = (v: number, w: number): number => (v >= w ? v - w : v <= -w ? v + w : v);
+/**
+ * 2026-10-01: the ground's light on the cloud bases at night — the preset's glow (linear, already scaled by the night
+ * amount) joins the base ambient at this strength in the trace's units (the night bottom ambient is ~0.06 there).
+ */
+const CLOUD_GROUND_GLOW_K = 0.16;
+/**
+ * 2026-10-03 (the skies lane; the gauntlet's wave 4: "evenly spaced popcorn cumulus ... one sprite stamped repeatedly"):
+ * the cumulus fields' period (x the weather tile: 30 km) and the field multiplier in a gap (its mean over the broad field
+ * is 1, so the map's coverage holds on average: 0.4 in the gaps, 1.6 at a field's heart).
+ */
+export const CLOUD_CLUSTER_PERIOD_K = 2.5;
+export const CLOUD_CLUSTER_GAP = 0.4;
 /** The far band shows beyond this horizontal distance (m), fading in over the next three kilometres. */
 const CLOUD_FARBAND_START_M = 8000;
+/**
+ * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: "a pasted stratus ribbon", Saltwind's "hard-edged
+ * pale streak ... a compositing seam or cloud-layer LOD transition"): a cumuliform sky's band starts where its traced
+ * cumulus thin out (they are marched to 20 km), not at the decks' 8 km — there the flat band began 10° up in the middle of
+ * the traced field, one pale sheet with an edge across the sky — and fades in over a longer run, so it sits on the
+ * horizon (under 4–5° at a 1.4 km band) as the distant field's crowding, never in front of the traced clouds.
+ */
+export const CLOUD_FARBAND_START_CU_M = 16000;
+export const CLOUD_FARBAND_FADE_CU_M = 9000;
+/**
+ * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: "no cloud shadows on the land"): the cloud shade
+ * map, the clouds' one shadow path (cloudShadeMap.ts). The cores of the two weather fields at the cloud base, undithered,
+ * over a square around the camera, world-anchored (snapped to its texel) and refreshed every few frames (the wind moves
+ * it a metre); every material that joins the cascades multiplies its sun term by the share it leaves, per vertex, at
+ * every distance. (Until fp10 the cascades carried dithered gobos — their moiré under the PCF taps was the gauntlet's
+ * stipple, arcs, weave and checkerboard — and this map served the aerial pass beyond them.)
+ */
+export const CLOUD_FAR_SHADE_SIZE = 512;
+/** The square's side (m): the battlefield, the ring and the land an overview sees (a texel 23 m). */
+export const CLOUD_FAR_SHADE_SPAN_M = 12000;
+/** Frames between refreshes (a 6 m/s wind moves the field under a metre; a texel is 23 m). */
+export const CLOUD_FAR_SHADE_EVERY = 8;
+/** 2026-10-03: the far cumuliform field's thinning past ~9 km (cloudWeather; QA: __LIGHT_TUNE.CLOUD_FAR_THIN). 0 = off until a lab shows it. */
+export const CLOUD_FAR_THIN = 0;
+/**
+ * 2026-10-03 (fp11: a deck's lumps at 0.8 gave its base rolls and lumps but at one strength everywhere, a texture laid over
+ * the sheet): the share of a deck's lump strength a broad field gates (the weather's broad channel at 1.5x its tile, its
+ * own offset), so the base reads lumpy over some stretches of the deck and smooth over others. 0 = the lumps everywhere.
+ */
+export const CLOUD_LUMP_GATE = 1;
+/** The broad field's period for the lump gate (x the weather tile: 18 km, stretches of a few kilometres). */
+export const CLOUD_LUMP_GATE_PERIOD_K = 1.5;
+/**
+ * 2026-10-03 (the gauntlet's wave 17, Opus on the cumulus — still the top sky defect: "soft, low-contrast cotton puffs at
+ * random heights, no shared flat base, undersides barely shaded, hardly flattening toward the horizon"): three cumulus
+ * knobs, 0 = the candidate's cumulus, read per frame (QA: __LIGHT_TUNE) until a capture shows them —
+ *   CLOUD_BASE_SHARP  the condensation level reads as one flat surface: near a flat-based cumulus's base the shape noise
+ *                     and the billows give way to the footprint, so the underside is a crisp plane at the field's base;
+ *   CLOUD_BASE_DARK   a cumulus's underside in the shade of the mass above it: the base's direct and diffused light and
+ *                     its sky floor drop toward the dark grey of a thick cumulus seen from below;
+ *   CLOUD_FAR_FLAT    the distant field flattens: past ~6 km a cumuliform column's top lowers, up to two fifths at 18 km.
+ */
+export const CLOUD_BASE_SHARP = 0;
+export const CLOUD_BASE_DARK = 0;
+export const CLOUD_FAR_FLAT = 0;
+/** The share of the sun a cloud core takes (the map's darkest texel). */
+export const CLOUD_SHADOW_CORE = 0.62;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
 export const CLOUD_MARCH_STEPS = 96;
 /** The farthest slant distance marched (m): a bank beyond it has melted into the sky (the far scatter ramp). */
@@ -135,7 +225,9 @@ export function cloudCameraCut(movedM: number, turnedRad: number, previousTan: n
  * far deck a band darker than the sky around it (winter / whiteout skylines rose a tenth).
  */
 export const CLOUD_AERIAL = Object.freeze({
-  density: 0.00145, hazeDensity: 0.00092, hazeStart: 85, extCeiling: 0.60, scatterCeiling: 0.55,
+  density: 0.00145, hazeDensity: 0.00092, hazeStart: 85, extCeiling: 0.42, scatterCeiling: 0.38,
+  /** 2026-10-02: the pass's haze layer (AERIAL_LAYER_H): its scale height over the ground under the camera (m) */
+  layerH: 300,
   desat: 0.62, cool: [0.90, 0.97, 1.08] as const,
   /** the pass's height-aware atmosphere: the falloff's start over the camera (m), its e-fold height, the shares */
   heightRef: 30, heightScale: 150, heightScatterK: 0.75, heightExtK: 0.35,
@@ -198,7 +290,7 @@ vec3 cloudProject( vec3 p, vec3 camPos, vec3 right, vec3 up, vec3 fwd, vec2 tanv
 }
 `;
 
-/** The two weather fields as the trace and the shadow gobos read them (the gobos discard on the same field). */
+/** The two weather fields as the trace and the cloud shade map read them (the map cuts the same field). */
 const CLOUD_FIELD_GLSL = /* glsl */`
 uniform sampler2D tWeather;
 uniform sampler2D tStreets;
@@ -207,6 +299,9 @@ uniform vec2 uStreetShift;
 uniform vec2 uWindDir;
 uniform float uStreets;
 uniform float uFieldMix;
+uniform float uCluster;
+// the last cloudField call's cumulus-field gate (1 without fields): the trace's far-field re-mix gates its cells alike
+float cloudGate = 1.0;
 // the equalised field the coverage cuts at a world xz: the cell-carried cumuliform one blended toward the
 // street field in the wind frame (rows along the wind), or the broad stratiform one
 float cloudField( vec2 pxz, out vec4 w, out vec4 st ) {
@@ -215,7 +310,16 @@ float cloudField( vec2 pxz, out vec4 w, out vec4 st ) {
 	w = textureLod( tWeather, ( pxz + uWeatherShift ) / ${f(CLOUD_WEATHER_TILE_M)}, 0.0 );
 	vec2 q = vec2( dot( pxz, uWindDir ), dot( pxz, vec2( -uWindDir.y, uWindDir.x ) ) );
 	st = textureLod( tStreets, ( q + uStreetShift ) / ${f(CLOUD_STREET_TILE_M)}, 0.0 );
-	return mix( mix( w.r, st.r, uStreets ), w.b, uFieldMix );
+	float field = mix( mix( w.r, st.r, uStreets ), w.b, uFieldMix );
+	// 2026-10-03: the cumulus fields (CloudscapeConfig.cluster) — a broad field at ${CLOUD_CLUSTER_PERIOD_K}x the tile gates the cells:
+	// inside a field they merge into large masses, at its edge they fray small, between fields the sky is clear
+	cloudGate = 1.0;
+	if ( uCluster > 0.0 ) {
+		float g = textureLod( tWeather, ( pxz + uWeatherShift * 0.5 ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_CLUSTER_PERIOD_K)} + vec2( 0.37, 0.61 ), 0.0 ).b;
+		cloudGate = mix( 1.0, ${f(CLOUD_CLUSTER_GAP)} + ${f(2 * (1 - CLOUD_CLUSTER_GAP))} * smoothstep( 0.3, 0.7, g ), uCluster );
+		field *= cloudGate;
+	}
+	return field;
 }
 `;
 
@@ -274,6 +378,17 @@ uniform float uCellTile;
 uniform float uDeckLight;
 uniform float uUndulatus;
 uniform float uInterior;
+// 2026-10-03: a deck's sub-cell lumps (cloudscapes.ts lumps; 0 = the cells alone)
+uniform float uLumps;
+uniform float uBaseFlat;
+// 2026-10-03: a deck's definition (CloudLayerPreset.deckDetail; 0 = round 76's deck)
+uniform float uDeckDetail;
+// 2026-10-03: the far cumuliform field's thinning (CLOUD_FAR_THIN; 0 = off)
+uniform float uFarThin;
+// 2026-10-03: the cumulus knobs (CLOUD_BASE_SHARP, CLOUD_BASE_DARK, CLOUD_FAR_FLAT; 0 = off)
+uniform float uBaseSharp;
+uniform float uBaseDark;
+uniform float uFarFlat;
 uniform vec3 uSkyIrradiance;
 uniform float uHang;
 // QA: 1 = no depth-above term, 2 = no detail erosion, 3 = no light march, 4 = flat white density (structure only),
@@ -309,8 +424,15 @@ Weather cloudWeather( vec2 pxz ) {
 	o.roll = st.r;
 	// the street share fades past four kilometres: the far field reads as scattered cumulus, not as rolls
 	// converging on the horizon (71c)
-	float farK = smoothstep( 4000.0, 11000.0, length( pxz - uCamPos.xz ) );
-	field = mix( field, mix( w.r, w.b, uFieldMix ), uStreets * 0.55 * farK );
+	float farD = length( pxz - uCamPos.xz );
+	float farK = smoothstep( 4000.0, 11000.0, farD );
+	// (2026-10-03: the far cells take the cumulus-field gate too — ungated, a street regime's far half came back as the even
+	// popcorn the fields remove: 41 % of Saltwind's and Saltmere Bay's far field at streets 0.75)
+	field = mix( field, mix( w.r, w.b, uFieldMix ) * cloudGate, uStreets * 0.55 * farK );
+	// 2026-10-03 (the gauntlet's wave 4: "fewer small puffs near the horizon"): past ~9 km a cumuliform field's cut rises by
+	// a share of its coverage, so the marginal cells — the small puffs perspective piles along the horizon — thin out while
+	// the large masses stand (the decks keep their far rows: they are the horizon's own sheet)
+	if ( uFarThin > 0.0 ) field -= uFarThin * ( 1.0 - uStratiform ) * smoothstep( 9000.0, 20000.0, farD ) * uCoverage * 0.5;
 	float anvilField = st.g;
 	// the field is equalised: the map's coverage admits exactly that fraction; inside, the local coverage runs
 	// 0..1 (skewed high) and carves the base shape into masses — a region is never one solid slab
@@ -341,6 +463,8 @@ Weather cloudWeather( vec2 pxz ) {
 	float cluster = smoothstep( 0.62, 0.92, w.g ) * pow( o.cov, 0.5 );
 	top = mix( top, 1.0, uTowers * cluster * smoothstep( 0.3, 0.8, o.type ) );
 	o.top = mix( top, 0.78 + 0.22 * w.a, uStratiform );
+	// (2026-10-03: the distant cumuliform field flattens — CLOUD_FAR_FLAT)
+	if ( uFarFlat > 0.0 ) o.top *= 1.0 - 0.4 * uFarFlat * ( 1.0 - uStratiform ) * smoothstep( 6000.0, 18000.0, farD );
 	if ( uDebug == 7.0 ) o.top = 1.0;
 	return o;
 }
@@ -362,11 +486,28 @@ float cloudCoverageAt( vec2 pxz ) {
 // a slice at the slab's mid altitude at the deck's own period: 1 at a cell's core, near 0 on its borders. The
 // column's thickness follows it (a stratocumulus deck is thick cells with thin borders), its base hangs under the
 // cores, and the borders open where the coverage is marginal. 1 when the regime has no cells (round 71's sheet).
+// 2026-10-03: a deck's lump strength at a column — the regime's lumps under a broad field's gate (CLOUD_LUMP_GATE), so
+// the rolls come and go across the deck instead of one even mottle; 0 without lumps
+float cloudLumpK( vec2 cxz ) {
+	if ( uLumps <= 0.0 ) return 0.0;
+	float b = textureLod( tWeather, ( cxz + uWeatherShift * 0.5 ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_LUMP_GATE_PERIOD_K)} + vec2( 0.53, 0.29 ), 0.0 ).b;
+	return uLumps * mix( 1.0, smoothstep( 0.3, 0.7, b ), ${f(CLOUD_LUMP_GATE)} );
+}
 float cloudCellK( vec2 cxz ) {
 	if ( uCells <= 0.0 ) return 1.0;
 	vec3 cp = ( vec3( cxz.x, uBase + uThick * 0.5, cxz.y ) + uNoiseShift ) / uCellTile;
 	vec4 c = texture( tShape, cp );
-	return mix( 1.0, smoothstep( 0.12, 0.88, c.g * 0.75 + c.b * 0.25 ), uCells );
+	float k = mix( 1.0, smoothstep( 0.12, 0.88, c.g * 0.75 + c.b * 0.25 ), uCells );
+	// 2026-10-03: the sub-cell lumps — the detail volume's Worley lumps at twice its period (lumps of a few hundred
+	// metres) carry the cell factor down to the scale of a stratocumulus base's rolls: each lump core a thicker, lower,
+	// darker column, the lanes between them thinner and brighter (one fetch per column, the deck rows only)
+	float lk = cloudLumpK( cxz );
+	if ( lk > 0.0 ) {
+		vec3 dl = texture( tDetail, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift * 0.73 ) / ${f(CLOUD_DETAIL_TILE_M * 2)} ).rgb;
+		float lump = smoothstep( 0.25, 0.8, dl.r * 0.55 + dl.g * 0.3 + dl.b * 0.15 );
+		k *= mix( 1.0, 0.45 + 0.85 * lump, lk );
+	}
+	return k;
 }
 // density 0..1 at a world point. detail: whether the erosion volumes are sampled (the light march skips them);
 // foot: the pixel footprint (m) at the point, which fades the fine erosion fetch out at range; cellK: the column's
@@ -397,7 +538,12 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 	float hN = hRel / max( w.top * thickK, 0.05 );
 	if ( hN >= 1.25 ) return 0.0;
 	float t = w.type;
-	float riseEnd = mix( 0.05, 0.14, t );
+	// 2026-10-03 (the skies lane; the gauntlet's wave 5: "a flat, blurry, low-definition overcast sky ... reads as a
+	// placeholder skybox"): a deck's definition — less of the sheet's flattening, the detail erosion near a cumulus's
+	// strength and a crisper outline, so the rolls and cloudlets of a stratocumulus base read
+	float deckK = uDeckDetail * max( smoothstep( 0.3, 0.6, uStratiform ), uCells * 0.8 );
+	// (2026-10-03: a cumulus base is its condensation level — uBaseFlat sharpens the rise, CloudLayerPreset.baseFlat)
+	float riseEnd = mix( 0.05, 0.14, t ) * ( 1.0 - 0.6 * uBaseFlat * ( 1.0 - uStratiform ) );
 	float fallStart = t < 0.5 ? mix( 0.5, 0.48, t * 2.0 ) : mix( 0.48, 0.86, ( t - 0.5 ) * 2.0 );
 	// the anvil: over the top quarter the mass widens instead of narrowing, flattened under a flat top and
 	// spread downwind
@@ -434,13 +580,15 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 	float base = ( uDebug == 6.0 ? 0.8 : remap( s.r, lowFreq - 1.0, 1.0, 0.0, 1.0 ) ) * hg;
 	if ( detail && uDebug != 6.0 ) {
 		// the second octave's billows crinkle the mass at 90 - 23 m, more toward the top
+		// (2026-10-01: and a deck's rolls and lumps — its shape period is the cells' few kilometres, so without this
+		// octave a stratocumulus was a field of smooth plates with nothing between the cell and the turret)
 		float bill2 = s2.g * 0.625 + s2.b * 0.25 + s2.a * 0.125;
 		float topW = smoothstep( 0.3, 0.85, hN ) * ( 1.0 - uStratiform );
-		base = remap( base, ( 1.0 - bill2 ) * 0.22 * ( 0.5 + topW ), 1.0, 0.0, 1.0 );
+		base = remap( base, ( 1.0 - bill2 ) * ( 0.22 * ( 0.5 + topW ) + 0.25 * uCells ), 1.0, 0.0, 1.0 );
 	}
 	// a stratus sheet is dense across its footprint (with a little mottle); cumulus keeps the shape's billows
 	// (round 76: a cellular deck keeps more of the mottle inside its cells)
-	base = mix( base, base * 0.3 + 0.7 * hg, uStratiform * 0.8 * ( 1.0 - 0.3 * uCells ) );
+	base = mix( base, base * 0.3 + 0.7 * hg, uStratiform * 0.8 * ( 1.0 - 0.3 * uCells ) * ( 1.0 - 0.5 * deckK ) );
 	// the coverage threshold rises with height so a mass is widest at its base and narrows to a dome (a tower
 	// to a head); a cumulonimbus narrows less, and the anvil lowers the threshold again
 	float narrow = mix( 0.45, 0.75, uTowers ) * ( 1.0 - uStratiform ) * ( 1.0 - 0.6 * smoothstep( 0.6, 1.0, t ) );
@@ -454,6 +602,12 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 	// Keep the three-dimensional billows visible through the body. Saturating
 	// every admitted weather column erased them into a smooth solid cylinder.
 	d *= mix( 1.0, mix( 0.4, 1.25, smoothstep( 0.25, 0.75, s.g ) ), uDebug == 6.0 ? 0.0 : 1.0 - uStratiform );
+	// (2026-10-03: a flat-based cumulus's condensation level as one crisp plane — CLOUD_BASE_SHARP: near the base a column
+	// that carries the body fills to the footprint's density, so the underside is flat and dense to its outline; a
+	// column the noise left empty stays empty — fp12: filling the whole footprint laid flat grey lenses with no body
+	// under the empty cells of Frontier's and Coastal's fields)
+	float bk = uBaseSharp * uBaseFlat * ( 1.0 - uStratiform ) * ( 1.0 - smoothstep( 0.04, 0.22, hN ) );
+	if ( bk > 0.0 ) d = mix( d, max( d, smoothstep( 0.01, 0.12, d ) * w.cov * hg * 0.9 ), bk );
 	if ( detail && d > 0.0 && d < 0.95 && uDebug != 2.0 ) {
 		// two Worley-fbm fetches on a lattice the curl field advects (more with height: turbulent tops, calm
 		// bases): the coarse one (lumps of 25 - 100 m) everywhere, a fine one (7 - 27 m) where the pixel
@@ -478,10 +632,14 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 		float amount = ( mix( 0.3, 0.85, smoothstep( 0.05, 0.6, hN ) ) + uTowers * 0.35 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) )
 			* ( 1.0 - uStratiform * 0.8 ) * mix( 0.8, 1.25, uWispiness ) * mix( 0.35, 1.0, smoothstep( 0.0, 0.2, uWispiness ) )
 			* mix( 1.0, 1.25, uCells );
+		// 2026-10-03: a flat base keeps its erosion to the flanks and the tops (the lumps under the base rounded every
+		// cumulus into a cotton ball)
+		amount *= mix( 1.0, smoothstep( 0.0, 0.18, hN ), uBaseFlat * ( 1.0 - uStratiform ) );
+		amount *= 1.0 + 1.8 * deckK;
 		d = remap( d, erode * amount, 1.0, 0.0, 1.0 );
 		// a sharper threshold: the density saturates a short way in from the outline (crisper edges, no
-		// semi-transparent halo around every mass)
-		d = smoothstep( 0.03, 0.6, d );
+		// semi-transparent halo around every mass; a defined deck's crisper still)
+		d = smoothstep( 0.03 + 0.09 * deckK, 0.6 - 0.25 * deckK, d );
 		// round 76: the interior octave — the coarse detail lumps (25–100 m) modulate the density inside the mass
 		// instead of vanishing in the remap, so the light march shades the lit face bulge by bulge
 		if ( uInterior > 0.0 ) d *= mix( 1.0, 0.5 + 0.5 * hfCoarse, uInterior );
@@ -518,22 +676,274 @@ float cloudColumnDepthAbove( vec3 p, Weather w, float cellK ) {
 float cloudDepthAbove( vec3 p, Weather w ) {
 	return cloudDensity( p + vec3( 0.0, 70.0, 0.0 ), w, false, 0.0 ) * 110.0 * uDensity;
 }
+// 2026-10-02: the battlefield haze is a layer over the ground (post.ts AERIAL_LAYER_H): the path-averaged density
+// between the camera's height and the point's over the same path from the ground — 1 for a camera on the ground (the
+// chase, the sights), 0.63 for the census bird at 300 m — so a cloud bank and the ground under it haze alike
+uniform float uHazeDatum;
+float cloudHazeLayer( float dist, vec3 dir ) {
+	float y0 = max( uCamPos.y - uHazeDatum, 0.0 );
+	if ( y0 <= 1.0 ) return 1.0;
+	float y1 = max( uCamPos.y + dir.y * dist - uHazeDatum, 0.0 );
+	float H = ${f(CLOUD_AERIAL.layerH)};
+	float fromCam = abs( y0 - y1 ) < 1.0 ? exp( -0.5 * ( y0 + y1 ) / H ) : H * ( exp( -y1 / H ) - exp( -y0 / H ) ) / ( y0 - y1 );
+	float fromGround = y1 < 1.0 ? exp( -0.5 * y1 / H ) : H * ( 1.0 - exp( -y1 / H ) ) / y1;
+	return clamp( fromCam / max( fromGround, 1e-3 ), 0.0, 1.0 );
+}
 // the aerial pass's law on a layer at its distance: desaturation and a cool shift, then the scatter-in toward
 // the sky-view LUT along the ray under the same ceilings (uncapped: a bank fades into the sky it stands
 // against), both decaying with the layer's altitude over the camera as the pass's height-aware atmosphere does
+// 2026-10-03 (the gauntlet's wave 17 on Frosthollow: "a flat whitish band just above the true horizon where the haze layer
+// meets the cloud deck — a discrete seam"): under a deck the far clouds converge on the aerial pass's own target — the
+// authored tint's share of the hue (x) at the sky's luminance, a level under it (y; hazeLaw.ts hazeTargetTerms) — not the
+// clear sky's LUT: the deck's far rows paled to the clear horizon's glow while the ranges under them took the dim
+// overcast haze. w: the share of that target (none under an open sky, all of it from a third of a deck's overcast)
+uniform vec4 uOvercastHaze;
+uniform vec3 uOvercastTint;
 vec3 cloudHaze( vec3 L, float opacity, float dist, vec3 dir, float hAtt ) {
-	float x = dist * ${f(CLOUD_AERIAL.density)};
+	float layer = cloudHazeLayer( dist, dir );
+	float x = dist * ${f(CLOUD_AERIAL.density)} * layer;
 	float fe = min( 1.0 - exp( -x * x ), ${f(CLOUD_AERIAL.extCeiling)} ) * mix( 1.0, hAtt, ${f(CLOUD_AERIAL.heightExtK)} );
 	vec3 hazy = mix( L, vec3( luma( L ) ), ${f(CLOUD_AERIAL.desat)} ) * vec3( ${CLOUD_AERIAL.cool.map(f).join(', ')} );
 	L = mix( L, hazy, fe );
-	float hz = max( dist - ${f(CLOUD_AERIAL.hazeStart)}, 0.0 ) * ${f(CLOUD_AERIAL.hazeDensity)};
+	float hz = max( dist - ${f(CLOUD_AERIAL.hazeStart)}, 0.0 ) * ${f(CLOUD_AERIAL.hazeDensity)} * layer;
 	// beyond the ring's range the pass's ceiling and altitude rule no longer apply (they hold a lit mountain
 	// against the haze): a bank far out converges on the sky it stands against
 	float farW = smoothstep( ${f(CLOUD_AERIAL.farStartM)}, ${f(CLOUD_AERIAL.farEndM)}, dist );
 	float fs = min( 1.0 - exp( -hz * hz ), mix( ${f(CLOUD_AERIAL.scatterCeiling)}, ${f(CLOUD_AERIAL.farScatterCeiling)}, farW ) )
 		* mix( 1.0, hAtt, ${f(CLOUD_AERIAL.heightScatterK)} * ( 1.0 - farW ) );
 	vec3 skyDir = normalize( vec3( dir.x, max( dir.y, 0.02 ), dir.z ) );
-	return mix( L, atmoSkyVisible( skyDir ) * opacity, fs );
+	vec3 target = atmoSkyVisible( skyDir );
+	if ( uOvercastHaze.w > 0.0 ) {
+		vec3 law = mix( target, uOvercastTint * ( luma( target ) / max( luma( uOvercastTint ), 1e-4 ) ), uOvercastHaze.x ) * uOvercastHaze.y;
+		target = mix( target, law, uOvercastHaze.w );
+	}
+	return mix( L, target * opacity, fs );
+}
+// ---- the scene's distance along a ray (2026-10-03; the mountains lane: "seaFogBank() integrates out to 30 km regardless
+// of scene depth", Saltwind's far shore stood as a pale slab over the channel). The layer composites through the dome at
+// 3.4 km with the depth test, so a surface out past it (to the camera's 4 km) took every layer the trace summed — the
+// whole sea fog bank from its 3.6 km out, the rain, the far band, the cirrus — with a sheer cut where the surface
+// crossed the bank's start. The trace runs before the frame's scene, so it reads the previous frame's resolved depth
+// through the camera that drew it (post.ts hands it over; a frame-old silhouette is sub-pixel at that range): every
+// layer ends at the surface. 1e9 for the sky, outside that frustum, or before a frame has drawn the scene.
+uniform sampler2D tSceneDepth;
+uniform float uSceneDepthOn;
+uniform vec2 uSceneNearFar;
+uniform vec3 uDepthRight;
+uniform vec3 uDepthUp;
+uniform vec3 uDepthFwd;
+uniform vec2 uDepthTan;
+float cloudSceneT( vec3 dir ) {
+	if ( uSceneDepthOn < 0.5 ) return 1e9;
+	float fz = dot( dir, uDepthFwd );
+	if ( fz < 0.05 ) return 1e9;
+	vec2 uv = 0.5 + 0.5 * vec2( dot( dir, uDepthRight ) / ( fz * uDepthTan.x ), dot( dir, uDepthUp ) / ( fz * uDepthTan.y ) );
+	if ( uv.x <= 0.0 || uv.y <= 0.0 || uv.x >= 1.0 || uv.y >= 1.0 ) return 1e9;
+	float depth = textureLod( tSceneDepth, uv, 0.0 ).r;
+	if ( depth >= 0.999999 ) return 1e9;
+	float viewZ = ( uSceneNearFar.x * uSceneNearFar.y ) / ( ( uSceneNearFar.y - uSceneNearFar.x ) * depth - uSceneNearFar.y );
+	float t = -viewZ / fz;
+	// a surface inside the dome hides the dome there (its depth test): trace the whole sky behind it, so the history a
+	// camera turn reveals at a near ridge's silhouette is complete — only a surface past the dome limits the layers
+	return t < ${f(CLOUD_DOME_RADIUS_M)} ? 1e9 : t;
+}
+// ---- the weather layers (2026-10-01): the contrails, the rain and virga, the sea fog bank — cloudWeatherLayers.ts
+// places the trails and packs these uniforms
+uniform vec4 uContrailA[ ${CLOUD_CONTRAIL_MAX} ];
+uniform vec4 uContrailB[ ${CLOUD_CONTRAIL_MAX} ];
+uniform float uContrails;
+uniform vec2 uUpperDrift;
+uniform vec4 uRain;
+uniform vec4 uFogBank;
+// a in front of b (premultiplied radiance, transmittance)
+vec4 cloudOver( vec4 a, vec4 b ) { return vec4( a.rgb + a.a * b.rgb, a.a * b.a ); }
+// ---- contrails: the optical depth of the trails at a world xz on the cirrus sheet (foot = the texel's footprint, m)
+float contrailDepth( vec2 xz, float foot ) {
+	float tau = 0.0;
+	vec2 rel = xz + uUpperDrift;
+	for ( int i = 0; i < ${CLOUD_CONTRAIL_MAX}; i++ ) {
+		if ( float( i ) >= uContrails ) break;
+		vec4 A = uContrailA[ i ], B = uContrailB[ i ];
+		float along = dot( rel, A.xy ) - A.w;
+		if ( abs( along ) > B.x ) continue;
+		float across = dot( rel, vec2( -A.y, A.x ) ) - A.z;
+		// 0 at the tail, 1 at the head (where the aircraft is): the trail is older toward its tail
+		float s = along / B.x * 0.5 + 0.5;
+		float age = mix( B.z, B.y, s );
+		// (2026-10-03: a fresh trail 40 m wide, not 22 — a line two or three pixels wide at 10 km read as a scratch)
+		float w = mix( 40.0, 1500.0, age * age );
+		// (foot is the trace texel's footprint, four history pixels; each history pixel takes its own jittered sample
+		// over the cycle, so a trail keeps a history pixel's width — the accumulation averages the rest)
+		float wf = max( w, foot * 0.3 );
+		// two engine plumes a little apart at the head, merged within a few kilometres
+		float split = 18.0 * ( 1.0 - smoothstep( 0.0, 0.25, age ) );
+		float u0 = ( across - split ) / wf, u1 = ( across + split ) / wf;
+		float prof = 0.5 * ( exp( -u0 * u0 ) + exp( -u1 * u1 ) );
+		// the ice spreads: the depth falls with the width (and a texel wider than the trail averages it)
+		float peak = B.w * sqrt( 40.0 / w ) * ( w / wf );
+		// an old trail breaks into fibres and lumps along its length
+		vec4 fib = textureLod( tStreets, vec2( along, across * 3.0 ) / 30000.0, 0.0 );
+		peak *= mix( 1.0, 0.45 + 0.9 * fib.a, smoothstep( 0.2, 0.7, age ) );
+		// 2026-10-03 (the skies lane; wave 5's "perfectly straight streak ... a rendering artifact"): a trail persists only
+		// where the air at its height is supersaturated over ice, so it runs in segments of a few kilometres with gaps where
+		// the air is dry — the broad weather channel along the track, at its own phase per trail
+		peak *= smoothstep( 0.3, 0.55, textureLod( tWeather, vec2( along / 30000.0 + float( i ) * 0.173, 0.29 + float( i ) * 0.137 ), 0.0 ).b );
+		float ends = smoothstep( 0.0, 0.3, s ) * ( 1.0 - smoothstep( 0.992, 1.0, s ) );
+		tau += prof * peak * ends;
+	}
+	return tau;
+}
+// ---- rain shafts and virga under the slab's precipitating cores, between the camera and the base
+float cloudPrecip( vec2 pxz ) {
+	vec4 w, st;
+	float field = cloudField( pxz, w, st );
+	float cov = clamp( ( field - ( 1.0 - uCoverage ) ) / max( uCoverage * 0.5, 0.02 ), 0.0, 1.0 );
+	if ( uClearRadius > 0.0 ) cov *= smoothstep( uClearRadius * 0.6, uClearRadius * 1.4, length( pxz - uCamPos.xz ) );
+	float vig = mix( uTypeRange.x, uTypeRange.y, w.g );
+	return cov * cov * smoothstep( 0.35, 0.75, st.g ) * mix( 0.5, 1.0, smoothstep( 0.35, 0.8, vig ) );
+}
+vec4 slabRain( vec3 dir, float cosT, float jitter, float sceneT, out float tLayer ) {
+	tLayer = 1e9;
+	vec4 none = vec4( 0.0, 0.0, 0.0, 1.0 );
+	if ( uRain.x <= 0.0 || dir.y > 0.35 || dir.y < -0.03 || uCamPos.y > uBase ) return none;
+	float tEnd = dir.y > 0.002 ? ( uBase - uCamPos.y ) / dir.y : ${f(CLOUD_RAIN_RANGE_M[1])};
+	tEnd = min( min( tEnd, ${f(CLOUD_RAIN_RANGE_M[1])} ), sceneT );
+	float tStart = ${f(CLOUD_RAIN_RANGE_M[0])};
+	if ( tEnd <= tStart ) return none;
+	float dt = ( tEnd - tStart ) / ${f(CLOUD_RAIN_SAMPLES)};
+	vec3 L = vec3( 0.0 );
+	float T = 1.0, tAcc = 0.0, wAcc = 0.0;
+	float drop = max( uBase - uCamPos.y + 6.0, 50.0 );
+	for ( int i = 0; i < ${CLOUD_RAIN_SAMPLES}; i++ ) {
+		float t = tStart + dt * ( float( i ) + jitter );
+		vec3 p = uCamPos + dir * t;
+		float fall = max( uBase - p.y, 0.0 );
+		// the column the rain fell from: upwind of the point by the lean
+		vec2 cxz = p.xz - uWindDir * fall * uRain.z;
+		float prec = cloudPrecip( cxz );
+		if ( prec <= 0.0 ) continue;
+		// streaks: the detail volume on a slice, constant down the fall (curtains), and the virga's evaporation front
+		float streak = texture( tDetail, vec3( cxz.x, 37.0, cxz.y ) / 520.0 ).r;
+		float reach = 1.0 - uRain.y * ( 0.55 + 0.45 * streak );
+		float vprof = 1.0 - smoothstep( reach - 0.18, reach + 0.04, fall / drop );
+		float rho = uRain.x * uRain.w * prec * ( 0.4 + 0.9 * streak ) * vprof;
+		if ( rho <= 0.0 ) continue;
+		// lit by the lower sky under the cloud (darker under a heavy core) and the sun's forward glow through the drops
+		vec3 S = ( uAmbientBottom * 1.6 * uAmbientScale * ( 1.0 - 0.45 * prec ) + uSunRadiance * phaseHG( cosT, 0.72 ) * 0.1 * uSunGain ) * uTint;
+		float Ts = exp( -rho * dt );
+		float dT = T * ( 1.0 - Ts );
+		L += S * dT; tAcc += t * dT; wAcc += dT;
+		T *= Ts;
+		tLayer = min( tLayer, t );
+	}
+	if ( wAcc < 1e-4 ) return none;
+	float hAtt = 1.0;
+	return vec4( cloudHaze( L, 1.0 - T, tAcc / wAcc, dir, hAtt ), T );
+}
+// ---- a fog bank lying on the sea at the horizon: the ray's run under the bank's top past the terrain
+vec4 seaFogBank( vec3 dir, float jitter, float sceneT ) {
+	vec4 none = vec4( 0.0, 0.0, 0.0, 1.0 );
+	if ( uFogBank.x <= 0.0 || dir.y > 0.05 || dir.y < -0.03 ) return none;
+	float tA = uFogBank.z;
+	float tTop = dir.y > 1e-4 ? ( uFogBank.y - uCamPos.y ) / dir.y : 1e9;
+	float tB = min( min( tTop, ${f(CLOUD_FOGBANK_RANGE_M[1])} ), sceneT );
+	if ( tB <= tA ) return none;
+	float tau = 0.0;
+	for ( int i = 0; i < 6; i++ ) {
+		float t = mix( tA, tB, ( float( i ) + jitter ) / 6.0 );
+		vec3 p = uCamPos + dir * t;
+		// banks with gaps between them (the broad field at twice the tile), a lumpy top
+		vec2 q = p.xz + uWeatherShift * 0.3;
+		float patchF = textureLod( tWeather, q / ${f(CLOUD_WEATHER_TILE_M * 2)} + vec2( 0.13, 0.77 ), 0.0 ).b;
+		float cov = smoothstep( 1.0 - uFogBank.x, 1.0 - uFogBank.x + 0.25, patchF );
+		float topLocal = uFogBank.y * ( 0.5 + 0.6 * textureLod( tWeather, q / 2600.0, 0.0 ).a );
+		tau += cov * smoothstep( 0.0, 0.3, ( topLocal - p.y ) / max( topLocal, 1.0 ) );
+	}
+	tau *= uFogBank.w * ( tB - tA ) / 6.0;
+	if ( tau < 1e-3 ) return none;
+	float T = exp( -tau );
+	// a sunlit fog top is white; its face takes the sky's light
+	vec3 S = ( uSunRadiance * clamp( uSunDir.y, 0.0, 1.0 ) * 0.3 / CL_PI * uSunGain + uAmbientTop * 1.05 + uAmbientBottom * 0.3 ) * uAmbientScale * uTint;
+	return vec4( cloudHaze( S * ( 1.0 - T ), 1.0 - T, 0.5 * ( tA + tB ), dir, 1.0 ), T );
+}
+// ---- the far band: a distant stratocumulus deck beyond the slab's traced range, a flat band at the horizon
+vec4 farBandLayer( vec3 dir, float cosT, vec3 rayDx, vec3 rayDy, float sceneT, out float tLayer ) {
+	tLayer = 1e9;
+	vec4 none = vec4( 0.0, 0.0, 0.0, 1.0 );
+	// 2026-10-03 (the skies lane; the gauntlet's waves 13-14: "a ruler-flat pale band at one constant height", "the
+	// fair-weather cumulus keep returning as a flat smeared band at the horizon"): a cumuliform sky's far band stood edge-on
+	// as one opaque ribbon a few degrees up (its broad coverage, opaque at a grazing slant, mipped smooth at the horizon);
+	// a cumuliform sky ends where its traced field does and sinks into the haze, a deck keeps its far rows
+	if ( uFarBand <= 0.0 || dir.y <= 0.0005 || uDeckMarch <= 0.0 ) return none;
+	float tb = ( uFarBandAlt - uCamPos.y ) / dir.y;
+	float horiz = tb * length( dir.xz );
+	// a deck's band continues its 10 km march; a cumuliform sky's starts where its 20 km march thins (2026-10-03)
+	float fbStart = uDeckMarch > 0.0 ? ${f(CLOUD_FARBAND_START_M)} : ${f(CLOUD_FARBAND_START_CU_M)};
+	float fbFade = uDeckMarch > 0.0 ? 3000.0 : ${f(CLOUD_FARBAND_FADE_CU_M)};
+	if ( tb <= 0.0 || horiz <= fbStart || tb >= sceneT ) return none;
+	vec3 pb = uCamPos + dir * tb;
+	vec2 gradX = cloudSheetGradient( dir, rayDx, uFarBandAlt - uCamPos.y ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_FARBAND_PERIOD_K)};
+	vec2 gradY = cloudSheetGradient( dir, rayDy, uFarBandAlt - uCamPos.y ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_FARBAND_PERIOD_K)};
+	float fb = textureGrad( tWeather, ( pb.xz / ${f(CLOUD_FARBAND_PERIOD_K)} + uFarBandShift ) / ${f(CLOUD_WEATHER_TILE_M)}, gradX, gradY ).b;
+	// (2026-10-03: a deck's band admits the deck's own coverage when that is more — a closed deck's band stays closed to
+	// the horizon instead of opening gaps of the clear horizon's glow under its edge — and reaches down to the horizon)
+	float fbCov = max( uFarBand, uCoverage );
+	float covB = smoothstep( 1.0 - fbCov, 1.0 - fbCov + 0.35, fb ) * smoothstep( fbStart, fbStart + fbFade, horiz );
+	if ( covB <= 0.0 ) return none;
+	tLayer = tb;
+	// slant depth through a thin lumpy deck: opaque at a grazing angle, a veil overhead
+	float tauB = covB * 1.6 / max( dir.y, 0.03 );
+	float TB = exp( -tauB );
+	float sunB = phaseHG( cosT, 0.3 ) * exp( -tauB * 0.5 ) * 2.0 + 0.12;
+	vec3 SB = ( uSunRadiance * sunB * 0.5 * uSunGain + uAmbientTop * 0.9 * uAmbientScale ) * uTint;
+	return vec4( cloudHaze( SB * ( 1.0 - TB ), 1.0 - TB, tb, dir, 1.0 ), TB );
+}
+// ---- the cirrus sheet: wind-sheared streaks of ice high over everything, the forward lobe and the 22° halo; the
+// contrails ride on the same sheet (2026-10-01)
+vec4 cirrusLayer( vec3 dir, float cosT, vec3 rayDx, vec3 rayDy, float sceneT ) {
+	vec4 none = vec4( 0.0, 0.0, 0.0, 1.0 );
+	if ( ( uCirrus <= 0.0 && uContrails <= 0.0 ) || dir.y <= 0.012 ) return none;
+	float tc = ( uCirrusAlt - uCamPos.y ) / dir.y;
+	if ( tc <= 0.0 || tc >= sceneT ) return none;
+	vec3 pc = uCamPos + dir * tc;
+	vec2 q = vec2( dot( pc.xz, uCirrusDir ), dot( pc.xz, vec2( -uCirrusDir.y, uCirrusDir.x ) ) );
+	vec2 gx = cloudSheetGradient( dir, rayDx, uCirrusAlt - uCamPos.y ) / ${f(CLOUD_CIRRUS_TILE_M)};
+	vec2 gy = cloudSheetGradient( dir, rayDy, uCirrusAlt - uCamPos.y ) / ${f(CLOUD_CIRRUS_TILE_M)};
+	float tauC = 0.0;
+	// 2026-10-01: cirrus comes in patches and bands with clear sky between, and its streaks curve with the jet's
+	// eddies — the broad field gates the coverage (the same mean over the sky) and a slow warp bends the streak frame
+	// (round 71's sheet was one comb of parallel streaks from horizon to horizon)
+	vec4 cw = textureLod( tWeather, pc.xz / ${f(CLOUD_CIRRUS_TILE_M * 1.5)} + vec2( 0.71, 0.19 ), 0.0 );
+	float patchC = 0.35 + 1.3 * cw.b;
+	q += ( textureLod( tWeather, pc.xz / ${f(CLOUD_CIRRUS_TILE_M * 2.2)} + vec2( 0.13, 0.57 ), 0.0 ).gb - 0.5 ) * ${f(CIRRUS_WARP_M)};
+	if ( uCirrus > 0.0 ) {
+		vec2 across = vec2( -uCirrusDir.y, uCirrusDir.x );
+		vec2 gradX = vec2( dot( gx, uCirrusDir ), dot( gx, across ) );
+		vec2 gradY = vec2( dot( gy, uCirrusDir ), dot( gy, across ) );
+		vec4 c1 = textureGrad( tStreets, ( q + uCirrusShift ) / ${f(CLOUD_CIRRUS_TILE_M)}, gradX, gradY );
+		// the second octave keeps the streak axis (both axes scaled alike: unequal scales rotate the streaks
+		// into a lattice of crossing lines)
+		vec4 c2 = textureGrad( tStreets, ( q * 1.6 + uCirrusShift * 1.7 + vec2( 3100.0, 900.0 ) ) / ${f(CLOUD_CIRRUS_TILE_M)}, gradX * 1.6, gradY * 1.6 );
+		float streak = c1.b * 0.7 + c2.b * 0.3;
+		float cEff = clamp( uCirrus * patchC, 0.0, 0.98 );
+		float covC = smoothstep( 1.0 - cEff, 1.0 - cEff + 0.55, streak );
+		// the fibres modulate gently: a fibrous sheet, not a comb of parallel lines
+		float fibres = mix( 0.75, 1.0, c2.a ) * mix( 0.85, 1.0, c1.a );
+		tauC = covC * fibres * uCirrusDensity / max( dir.y, 0.1 );
+	}
+	if ( uContrails > 0.0 ) tauC += contrailDepth( pc.xz, max( length( gx ), length( gy ) ) * ${f(CLOUD_CIRRUS_TILE_M)} ) / max( dir.y, 0.1 );
+	if ( tauC <= 0.0 ) return none;
+	float TC = exp( -tauC );
+	float ang = acos( clamp( cosT, -1.0, 1.0 ) );
+	// ice: a strong forward lobe with the 22° halo of hexagonal crystals (a soft ring — the haze around the sun)
+	// (2026-10-01: a square, not pow() — GLSL leaves pow undefined for a negative base, inside the ring)
+	float hx = ( ang - 0.384 ) / 0.07;
+	float halo = exp( -hx * hx ) * 0.10;
+	float phC = phaseHG( cosT, 0.7 ) * 0.65 + phaseHG( cosT, -0.25 ) * 0.35 + halo;
+	vec3 SC = ( uSunRadiance * phC * 1.2 * uSunGain + uAmbientTop * 0.6 * uAmbientScale ) * uTint;
+	// aerial: the slant through the boundary-layer haze — a cirrus overhead stays clear, one at the horizon melts
+	float distC = tc * clamp( ${f(CLOUD_AERIAL.cirrusHazeScaleM)} / max( uCirrusAlt - uCamPos.y, 100.0 ), 0.0, 1.0 );
+	return vec4( cloudHaze( SC * ( 1.0 - TC ), 1.0 - TC, distC, dir, 1.0 ), TC );
 }
 void main() {
 	// the history pixel this trace texel refreshes (its slot of the 4 x 4 block), sub-pixel jittered
@@ -564,6 +974,9 @@ void main() {
 	// deck's grazing rays otherwise marched it for the whole twenty kilometres (polders at 600 m: 2.3 ms a slot)
 	// (round 78: a low stratus deck too — whiteout's 300 m ceiling took the full march; cloudDeckMarch)
 	if ( uDeckMarch > 0.0 ) t1 = min( t1, ${f(CLOUD_DECK_MARCH_MAX_M)} );
+	// (2026-10-03: and at the scene's surface past the dome — cloudSceneT)
+	float sceneT = cloudSceneT( dir );
+	t1 = min( t1, sceneT );
 	if ( t1 > t0 && uCoverage > 0.0 ) {
 		float span = t1 - t0;
 		// empty-space skipping: a segment up to twelve kilometres is tested at weather taps 450 m apart (jittered)
@@ -645,12 +1058,14 @@ void main() {
 					// the diffusion regime of a thick non-absorbing cloud: diffuse light is transmitted about
 					// 1 / (1 + 0.75 (1 - g) tau), so the base of an overcast sheet is bright and the shaded side of a
 					// cumulus stays grey, not black; it builds with height in the cloud (the lower parts are darker)
-					float msV = mix( 0.35, 1.0, smoothstep( 0.0, 0.5, hN ) );
+					// (2026-10-03: a cumulus's underside in the shade of the mass above it — CLOUD_BASE_DARK)
+					float bd = uBaseDark * ( 1.0 - uStratiform );
+					float msV = mix( 0.35 - 0.15 * bd, 1.0, smoothstep( 0.0, 0.5, hN ) );
 					// (71b: 0.2 read as a grey cloud — a lit face is a near-white diffuser under the sun's irradiance,
 					// E · albedo / π at its skin, decaying into the mass with the diffusion law)
 					float diffusion = mix( 0.7, 0.45, uStratiform ) / ( 1.0 + 0.15 * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
 					// darker bases: their direct light is scattered away by the cloud above
-					float baseShadow = mix( 0.35, 1.0, smoothstep( -0.1, 0.45, hN ) );
+					float baseShadow = mix( 0.35 - 0.17 * bd, 1.0, smoothstep( -0.1, 0.45, hN ) );
 					// ambient: the sky's irradiance lights the tops, the bases see the horizon band and the ground; a
 					// stratus sheet is diffuser-lit; the deeper into the mass, the less of either arrives, and the
 					// underside of a thick lump is darker than a thin edge (the depth above it)
@@ -673,7 +1088,7 @@ void main() {
 					// (the cumulus floor sits at a third of the sky mean — 0.85 lifted every base to the lit level and
 					// flattened the masses to white — and a cumulonimbus base deck takes half of that: its wall is dark)
 					float deckFloor = smoothstep( 0.3, 0.9, uStratiform );
-					float floorK = mix( 0.34, 1.25, deckFloor ) * mix( 1.0, 0.35, cb * ( 1.0 - deckFloor ) );
+					float floorK = mix( 0.34 - 0.14 * bd, 1.25, deckFloor ) * mix( 1.0, 0.35, cb * ( 1.0 - deckFloor ) );
 					float floorDecay = mix( 0.04, 0.08, deckFloor );
 					amb = max( amb, uSkyMean * floorK * ( 0.5 + 0.5 * exp( -tauUp * floorDecay ) ) );
 					amb *= uAmbientScale;
@@ -691,6 +1106,21 @@ void main() {
 						// the breaks). From below, the lower sky and the ground bounce (the map's ambient scale: snow
 						// lifts a deck) and, near a column's top, the sky itself.
 						float tauAbove = cloudColumnDepthAbove( p, w, cellK );
+						// 2026-10-01: the underside's mottle — the deck's rolls and lumps (the shape volume's mid octaves
+						// at half the cell period) thicken and thin the column over each point, so a stratocumulus base
+						// reads lumpy grey instead of airbrushed (one fetch, the deck rows only)
+						if ( uCells > 0.0 ) {
+							vec4 mo = texture( tShape, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift ) / ( uCellTile * 0.5 ) );
+							tauAbove *= mix( 1.0, 0.2 + 1.6 * ( mo.b * 0.6 + mo.a * 0.4 ), 0.75 * uCells );
+							// 2026-10-03 (the skies lane): the base's fine mottle — the detail volume's Worley lumps on the base
+							// plane (coherent through the column, so the view march keeps them), each lump a thicker, darker
+							// column with lighter seams between: a stratocumulus base reads lumpy, not airbrushed
+							float lkB = cloudLumpK( cxz );
+							if ( lkB > 0.0 ) {
+								vec3 dm = texture( tDetail, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift * 0.91 ) / ${f(CLOUD_DETAIL_TILE_M)} ).rgb;
+								tauAbove *= mix( 1.0, 0.3 + 1.4 * smoothstep( 0.15, 0.85, dm.r * 0.55 + dm.g * 0.3 + dm.b * 0.15 ), lkB );
+							}
+						}
 						float Tdiff = 1.0 / ( 1.0 + 0.1125 * tauAbove );
 						// (the transmitted sun at a third of its physical share: the battlefield skies are exposed for the
 						// ground with the horizon band near white, and a physically lit base — a third to a half of a lit
@@ -738,63 +1168,21 @@ void main() {
 			}
 		}
 	}
-	// ---- the far band: a distant stratocumulus deck beyond the slab's traced range, a flat band at the horizon
-	if ( uFarBand > 0.0 && dir.y > 0.004 && T > 0.01 ) {
-		float tb = ( uFarBandAlt - uCamPos.y ) / dir.y;
-		float horiz = tb * length( dir.xz );
-		if ( tb > 0.0 && horiz > ${f(CLOUD_FARBAND_START_M)} ) {
-			vec3 pb = uCamPos + dir * tb;
-			vec2 gradX = cloudSheetGradient( dir, rayDx, uFarBandAlt - uCamPos.y ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_FARBAND_PERIOD_K)};
-			vec2 gradY = cloudSheetGradient( dir, rayDy, uFarBandAlt - uCamPos.y ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_FARBAND_PERIOD_K)};
-			float fb = textureGrad( tWeather, ( pb.xz / ${f(CLOUD_FARBAND_PERIOD_K)} + uFarBandShift ) / ${f(CLOUD_WEATHER_TILE_M)}, gradX, gradY ).b;
-			float covB = smoothstep( 1.0 - uFarBand, 1.0 - uFarBand + 0.35, fb ) * smoothstep( ${f(CLOUD_FARBAND_START_M)}, ${f(CLOUD_FARBAND_START_M + 3000)}, horiz );
-			if ( covB > 0.0 ) {
-				// slant depth through a thin lumpy deck: opaque at a grazing angle, a veil overhead
-				float tauB = covB * 1.6 / max( dir.y, 0.03 );
-				float TB = exp( -tauB );
-				float sunB = phaseHG( cosT, 0.3 ) * exp( -tauB * 0.5 ) * 2.0 + 0.12;
-				vec3 SB = ( uSunRadiance * sunB * 0.5 * uSunGain + uAmbientTop * 0.9 * uAmbientScale ) * uTint;
-				vec3 LB = cloudHaze( SB * ( 1.0 - TB ), 1.0 - TB, tb, dir, 1.0 );
-				L += T * LB;
-				T *= TB;
-			}
-		}
+	// ---- 2026-10-01: the layered sky. In front of the slab along the horizon rays: a fog bank lying on the sea, then
+	// the rain shafts and virga hanging under the base; behind it the far band, then the cirrus sheet with its
+	// contrails.
+	vec4 acc = vec4( L, T );
+	float tRain;
+	vec4 fogL = seaFogBank( dir, jitter, sceneT );
+	vec4 rainL = slabRain( dir, cosT, jitter, sceneT, tRain );
+	acc = cloudOver( cloudOver( fogL, rainL ), acc );
+	if ( acc.a > 0.01 ) {
+		float tB;
+		acc = cloudOver( acc, farBandLayer( dir, cosT, rayDx, rayDy, sceneT, tB ) );
 	}
-	// ---- the cirrus sheet: wind-sheared streaks of ice high over everything, the forward lobe and the 22° halo
-	if ( uCirrus > 0.0 && dir.y > 0.012 && T > 0.01 ) {
-		float tc = ( uCirrusAlt - uCamPos.y ) / dir.y;
-		if ( tc > 0.0 ) {
-			vec3 pc = uCamPos + dir * tc;
-			vec2 q = vec2( dot( pc.xz, uCirrusDir ), dot( pc.xz, vec2( -uCirrusDir.y, uCirrusDir.x ) ) );
-			vec2 gx = cloudSheetGradient( dir, rayDx, uCirrusAlt - uCamPos.y ) / ${f(CLOUD_CIRRUS_TILE_M)};
-			vec2 gy = cloudSheetGradient( dir, rayDy, uCirrusAlt - uCamPos.y ) / ${f(CLOUD_CIRRUS_TILE_M)};
-			vec2 across = vec2( -uCirrusDir.y, uCirrusDir.x );
-			vec2 gradX = vec2( dot( gx, uCirrusDir ), dot( gx, across ) );
-			vec2 gradY = vec2( dot( gy, uCirrusDir ), dot( gy, across ) );
-			vec4 c1 = textureGrad( tStreets, ( q + uCirrusShift ) / ${f(CLOUD_CIRRUS_TILE_M)}, gradX, gradY );
-			// the second octave keeps the streak axis (both axes scaled alike: unequal scales rotate the streaks
-			// into a lattice of crossing lines)
-			vec4 c2 = textureGrad( tStreets, ( q * 1.6 + uCirrusShift * 1.7 + vec2( 3100.0, 900.0 ) ) / ${f(CLOUD_CIRRUS_TILE_M)}, gradX * 1.6, gradY * 1.6 );
-			float streak = c1.b * 0.7 + c2.b * 0.3;
-			float covC = smoothstep( 1.0 - uCirrus, 1.0 - uCirrus + 0.65, streak );
-			if ( covC > 0.0 ) {
-				// the fibres modulate gently: a fibrous sheet, not a comb of parallel lines
-				float fibres = mix( 0.75, 1.0, c2.a ) * mix( 0.85, 1.0, c1.a );
-				float tauC = covC * fibres * uCirrusDensity / max( dir.y, 0.1 );
-				float TC = exp( -tauC );
-				float ang = acos( clamp( cosT, -1.0, 1.0 ) );
-				// ice: a strong forward lobe with the 22° halo of hexagonal crystals (a soft ring — the haze around the sun)
-				float halo = exp( -pow( ( ang - 0.384 ) / 0.07, 2.0 ) ) * 0.10;
-				float phC = phaseHG( cosT, 0.7 ) * 0.65 + phaseHG( cosT, -0.25 ) * 0.35 + halo;
-				vec3 SC = ( uSunRadiance * phC * 1.2 * uSunGain + uAmbientTop * 0.6 * uAmbientScale ) * uTint;
-				// aerial: the slant through the boundary-layer haze — a cirrus overhead stays clear, one at the horizon melts
-				float distC = tc * clamp( ${f(CLOUD_AERIAL.cirrusHazeScaleM)} / max( uCirrusAlt - uCamPos.y, 100.0 ), 0.0, 1.0 );
-				vec3 LC = cloudHaze( SC * ( 1.0 - TC ), 1.0 - TC, distC, dir, 1.0 );
-				L += T * LC;
-				T *= TC;
-			}
-		}
-	}
+	if ( acc.a > 0.01 ) acc = cloudOver( acc, cirrusLayer( dir, cosT, rayDx, rayDy, sceneT ) );
+	L = acc.rgb;
+	T = acc.a;
 	gl_FragColor = vec4( max( L, vec3( 0.0 ) ), clamp( T, 0.0, 1.0 ) );
 }`;
 
@@ -914,6 +1302,18 @@ uniform vec2 uTargetSize;
 uniform vec2 uHistorySize;
 uniform vec3 uKnee;
 uniform float uSkyIntensity;
+// 2026-10-01: lightning in a night storm — the flash's direction from the camera and its strength (0 = none); drawn
+// here at the full frame rate (the history refreshes a sixteenth of its texels a frame and would smear a flash)
+uniform vec4 uFlash;
+uniform vec3 uFlashTint;
+// 2026-10-03 (the skies lane): toward the sun from the camera — a thin cloud in front of the sun keeps its forward-
+// scattered light above the knee (the dome exempts the sun's spot from its knee and adds the glow after it, so a kneed
+// cloud read as a dark eye around the sun on Nordhavn and the polders)
+uniform vec3 uSunDir;
+// 2026-10-01: 1 while the camera stands inside or over the slab (a bird's view over a low deck): the cloud between it and
+// the ground is in front of everything, so the composite covers the frame below the horizon too (the trace marches the
+// downward rays to the slab's floor) instead of leaving the terrain unclouded under the camera
+uniform float uInside;
 varying vec3 vWorldPosition;
 vec4 cloudsCatmullRom( vec2 uv, vec2 size ) {
 	vec2 sp = uv * size;
@@ -939,45 +1339,34 @@ void main() {
 	vec3 dir = normalize( vWorldPosition - cameraPosition );
 	vec2 uv = gl_FragCoord.xy / uTargetSize;
 	vec4 c = max( cloudsCatmullRom( uv, uHistorySize ), vec4( 0.0 ) );
-	// nothing below the horizon line (the history holds no cloud there either)
-	float above = smoothstep( -0.05, -0.02, dir.y );
-	vec3 rgb = cloudKnee( c.rgb ) * uSkyIntensity * above;
+	// nothing below the horizon line (the history holds no cloud there either) — unless the camera is in the slab
+	float above = max( smoothstep( -0.05, -0.02, dir.y ), uInside );
+	// the knee eases off within a few degrees of the sun: the silver lining of a cloud in front of it outshines the glow
+	float sunNear = pow( max( dot( dir, uSunDir ), 0.0 ), 400.0 );
+	vec3 rgb = mix( cloudKnee( c.rgb ), min( c.rgb, vec3( 6.0 ) ), sunNear ) * uSkyIntensity * above;
 	float alpha = ( 1.0 - min( c.a, 1.0 ) ) * above;
+	if ( uFlash.w > 0.0 ) {
+		// the cloud mass around the strike lit from inside: a broad glow and a bright core, only where there is cloud
+		float k = max( dot( dir, uFlash.xyz ), 0.0 );
+		rgb += uFlashTint * ( uFlash.w * ( pow( k, 30.0 ) * 0.7 + pow( k, 600.0 ) * 1.6 ) * alpha );
+	}
 	gl_FragColor = vec4( rgb, alpha );
 }`;
 
-/** Cover the current shadow camera directly. A world-space plane placed at
- * its previous near clip can cut across the next cascade during camera motion. */
-const GOBO_VERTEX = /* glsl */`
-varying vec2 vXZ;
-uniform mat4 uShadowWorld;
-uniform vec4 uShadowBounds;
-uniform float uCloudBase;
-void main() {
-	vec2 q = position.xy + 0.5;
-	vec3 p = (uShadowWorld * vec4(mix(uShadowBounds.x, uShadowBounds.y, q.x),
-		mix(uShadowBounds.z, uShadowBounds.w, q.y), -1.5, 1.0)).xyz;
-	vec3 direction = -uShadowWorld[2].xyz;
-	vXZ = p.xz + direction.xz * ((uCloudBase - p.y) / direction.y);
-	gl_Position = vec4(position.xy * 2.0, -0.999999, 1.0);
-}`;
-
-const GOBO_FRAGMENT = /* glsl */`
+/** 2026-10-03: the cloud shade map — the clouds' shade at the cloud base, undithered, over the square around the camera. */
+const FAR_SHADE_FRAGMENT = /* glsl */`
 precision highp float;
 ${CLOUD_FIELD_GLSL}
 uniform float uThreshold;
-uniform vec2 uShadowCellOrigin;
-varying vec2 vXZ;
+uniform vec3 uClear;
+uniform vec3 uFarShadeRect;
+varying vec2 vUv;
 void main() {
+	vec2 xz = uFarShadeRect.xy + ( vUv - 0.5 ) * uFarShadeRect.z;
 	vec4 w, st;
-	// A binary weather cutoff stamped polygonal shadows onto open beaches.
-	// World-anchored coverage gives PCF a soft, translucent cloud edge. A
-	// screen-space pattern changes phase whenever a cascade moves.
-	float shade = 0.62 * smoothstep( uThreshold - 0.08, uThreshold + 0.08, cloudField( vXZ, w, st ) );
-	vec2 cell = mod( floor( gl_FragCoord.xy ) + uShadowCellOrigin, 256.0 );
-	float dither = fract( 52.9829189 * fract( dot( cell, vec2( 0.06711056, 0.00583715 ) ) ) );
-	if ( dither >= shade ) discard;
-	gl_FragColor = vec4( 1.0 );
+	float shade = ${f(CLOUD_SHADOW_CORE)} * smoothstep( uThreshold - 0.08, uThreshold + 0.08, cloudField( xz, w, st ) );
+	if ( uClear.z > 0.0 ) shade *= smoothstep( uClear.z * 0.6, uClear.z * 1.4, length( xz - uClear.xy ) );
+	gl_FragColor = vec4( shade, 0.0, 0.0, 1.0 );
 }`;
 
 interface CloudNoiseTextures {
@@ -991,49 +1380,6 @@ interface CloudNoiseTextures {
 
 /** The bake buffers as the worker posts them (or the synchronous fallback bakes them). */
 export type CloudNoiseUpload = Partial<Record<CloudNoiseKind, Uint8Array>>;
-
-interface CascadeLightLike {
-  position: THREE.Vector3;
-  shadow: { camera: THREE.OrthographicCamera; mapSize: THREE.Vector2 };
-}
-
-/** Each coverage mask belongs to one shadow map. Overlapping masks from
- * other cascades would multiply the translucent cloud's occlusion. */
-export function cloudShadowCellOrigin(min: number, inverseTranslation: number, span: number, pixels: number): number {
-  return ((Math.round((min - inverseTranslation) * pixels / span) % 256) + 256) % 256;
-}
-
-export function bindCloudShadowCascade(gobo: THREE.Mesh, shadowCamera: THREE.OrthographicCamera, mapSize: THREE.Vector2): void {
-  const before = gobo.onBeforeShadow, after = gobo.onAfterShadow;
-  gobo.onBeforeShadow = function (renderer, object, camera, current, geometry, material, group) {
-    before.call(this, renderer, object, camera, current, geometry, material, group);
-    geometry.setDrawRange(0, current === shadowCamera ? 6 : 0);
-    const depth = material as THREE.ShaderMaterial;
-    const origin = depth.uniforms?.uShadowCellOrigin?.value as THREE.Vector2 | undefined;
-    if (current === shadowCamera && origin) {
-      // The shadow renderer has just updated this camera. Anchor coverage to
-      // its absolute integer light-space cells, including during raw renders
-      // that do not advance the cloud layer or its gobo transforms.
-      const m = shadowCamera.matrixWorldInverse.elements;
-      origin.set(cloudShadowCellOrigin(shadowCamera.left, m[12], shadowCamera.right - shadowCamera.left, mapSize.x),
-        cloudShadowCellOrigin(shadowCamera.bottom, m[13], shadowCamera.top - shadowCamera.bottom, mapSize.y));
-      (depth.uniforms.uShadowWorld.value as THREE.Matrix4).copy(shadowCamera.matrixWorld);
-      (depth.uniforms.uShadowBounds.value as THREE.Vector4).set(shadowCamera.left, shadowCamera.right,
-        shadowCamera.bottom, shadowCamera.top);
-      depth.uniformsNeedUpdate = true;
-    }
-  };
-  gobo.onAfterShadow = function (renderer, object, camera, current, geometry, material, group) {
-    geometry.setDrawRange(0, Infinity);
-    after.call(this, renderer, object, camera, current, geometry, material, group);
-  };
-}
-
-/** What the layer needs of the CSM: its lights (per cascade) and the from-sun direction. */
-export interface CloudShadowCascades {
-  lights: readonly CascadeLightLike[];
-  lightDirection: THREE.Vector3;
-}
 
 /** QA: one readback of the history (bottom-up rows, RGBA8: the radiance clamped, alpha = transmittance). */
 interface CloudHistoryReadback {
@@ -1081,7 +1427,7 @@ function makeWeather(bytes: Uint8Array, size: number, name: string, filter: THRE
 /**
  * The layer. Created by the sky rig on the desktop tier when the atmosphere runs; `setPreset` per map (null
  * keeps the baked decks), `setNoise` when the worker's bakes arrive, `beforeSceneRender` from post.ts every
- * frame, `attachShadowCascades` once the CSM exists.
+ * frame (it refreshes the cloud shade map the lit materials read: cloudShadeMap.ts).
  */
 export class VolumetricCloudLayer {
   readonly dome: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>;
@@ -1092,7 +1438,13 @@ export class VolumetricCloudLayer {
   private readonly traceMaterial: THREE.ShaderMaterial;
   private readonly resolveMaterial: THREE.ShaderMaterial;
   private readonly domeMaterial: THREE.ShaderMaterial;
-  private readonly goboMaterial: THREE.ShaderMaterial;
+  /** The clouds' shadow field: the uniform objects the shade map reads (and the ring's horizon shade, horizonCloudShade.ts). */
+  private readonly goboMaterial: { readonly uniforms: Record<string, THREE.IUniform> };
+  private readonly farShadeMaterial: THREE.ShaderMaterial;
+  private farShadeTarget: THREE.WebGLRenderTarget | null = null;
+  private farShadeAge = Infinity;
+  private farShadeValid = false;
+  private readonly farShadeInfo = { texture: null as THREE.Texture | null, rect: new THREE.Vector3(), baseM: 1400 };
   private copyMaterial: THREE.ShaderMaterial | null = null;
   private copyTarget: THREE.WebGLRenderTarget | null = null;
   private history: [THREE.WebGLRenderTarget, THREE.WebGLRenderTarget];
@@ -1107,6 +1459,15 @@ export class VolumetricCloudLayer {
   private readonly weatherShift = new THREE.Vector2();
   private readonly noiseShift = new THREE.Vector3();
   private readonly cirrusShift = new THREE.Vector2();
+  private readonly upperDrift = new THREE.Vector2();
+  /** 2026-10-02: the aerial pass's haze-layer datum (the ground under the camera, post.ts uHazeDatum); NaN until a frame passes it. */
+  private hazeDatum = Number.NaN;
+  private flashSeed = 0x2f6b4a1d;
+  private flashClock = 0;
+  private flashNext = 3;
+  private flashAge = 1e3;
+  private flashStrokes = 0;
+  private flashPeak = 0;
   private readonly windDir = new THREE.Vector2(1, 0);
   private frame = 0;
   private traces = 0;
@@ -1115,11 +1476,22 @@ export class VolumetricCloudLayer {
   private readonly prevCam = { pos: new THREE.Vector3(), right: new THREE.Vector3(1, 0, 0), up: new THREE.Vector3(0, 1, 0), fwd: new THREE.Vector3(0, 0, -1), tan: new THREE.Vector2(1, 1) };
   private readonly cam = { pos: new THREE.Vector3(), right: new THREE.Vector3(1, 0, 0), up: new THREE.Vector3(0, 1, 0), fwd: new THREE.Vector3(0, 0, -1), tan: new THREE.Vector2(1, 1) };
   private hasPrev = false;
+  /**
+   * 2026-10-03: whether the scene was drawn after the last full trace (the depth texture then holds that frame, seen by
+   * the previous camera); false after an inactive frame or a resize. The previous camera's planes go with it.
+   */
+  private sceneDepthReady = false;
+  /** The haze law's target terms for the deck's far rows, written in place every frame. */
+  private readonly hazeTerms = { x: 0, y: 1 };
+  private readonly depthPlanes = new THREE.Vector2(0.5, 4000);
+  /** The scene depth post.ts last handed over (a capture's settle re-traces against it with the camera still). */
+  private lastSceneDepth: THREE.Texture | null = null;
   private context: ReturnType<THREE.WebGLRenderer['getContext']> | null = null;
   private rendererInfo: THREE.WebGLRenderer['info'] | null = null;
-  private cascades: CloudShadowCascades | null = null;
-  private gobos: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>[] = [];
   private readonly scratch = new THREE.Vector3();
+  private readonly irr = new THREE.Color();
+  private readonly hz = new THREE.Color();
+  private readonly zenith = new THREE.Color();
   /** Frames rendered with the layer showing (probes). */
   framesShown = 0;
   /** Camera cuts detected (probes). */
@@ -1134,6 +1506,8 @@ export class VolumetricCloudLayer {
   benchRepeat = 1;
   /** QA: isolate a term (0 = off; 1 no depth-above, 2 no erosion, 3 no light march, 4 flat density); the history re-keys on a change. */
   debugMode = 0;
+  /** QA: hold a lightning strike at this strength in a night storm (0 = the natural sequence). */
+  qaFlash = 0;
   private timerExt: { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null | undefined;
   private timerQuery: WebGLQuery | null = null;
   private timerOpen = false;
@@ -1152,7 +1526,7 @@ export class VolumetricCloudLayer {
     });
     const field = () => ({
       tWeather: { value: null }, tStreets: { value: null }, uWeatherShift: { value: new THREE.Vector2() }, uStreetShift: { value: new THREE.Vector2() },
-      uWindDir: { value: new THREE.Vector2(1, 0) }, uStreets: { value: 0 }, uFieldMix: { value: 0 },
+      uWindDir: { value: new THREE.Vector2(1, 0) }, uStreets: { value: 0 }, uFieldMix: { value: 0 }, uCluster: { value: 0 },
     });
     this.traceMaterial = new THREE.ShaderMaterial({
       name: 'VolumetricCloudTrace', vertexShader: QUAD_VERTEX, fragmentShader: TRACE_FRAGMENT, depthTest: false, depthWrite: false, blending: THREE.NoBlending,
@@ -1161,7 +1535,7 @@ export class VolumetricCloudLayer {
         tAtmoSky: { value: null }, uAtmoSun: { value: new THREE.Vector3(0, 1, 0) }, uAtmoViewH: { value: ATMO_GROUND_KM + 0.05 },
         uAtmoKnee: { value: knee }, uAtmoIntensity: { value: 1 },
         tShape: { value: null }, tDetail: { value: null }, tCurl: { value: null }, tBlue: { value: null },
-        uSlot: { value: new THREE.Vector2() }, uSubPixel: { value: new THREE.Vector2() }, uFrameNoise: { value: 0 },
+        uSlot: { value: new THREE.Vector2() }, uSubPixel: { value: new THREE.Vector2() }, uFrameNoise: { value: 0 }, uHazeDatum: { value: 0 },
         uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uSunRadiance: { value: new THREE.Vector3(8, 8, 8) },
         uAmbientTop: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uAmbientBottom: { value: new THREE.Vector3(0.2, 0.25, 0.3) },
         uSkyMean: { value: new THREE.Vector3(0.3, 0.35, 0.45) },
@@ -1174,8 +1548,17 @@ export class VolumetricCloudLayer {
         uCirrus: { value: 0 }, uCirrusDir: { value: new THREE.Vector2(1, 0) }, uCirrusAlt: { value: 10000 }, uCirrusShift: { value: new THREE.Vector2() }, uCirrusDensity: { value: 0.7 },
         uFarBand: { value: 0 }, uFarBandAlt: { value: 2000 }, uFarBandShift: { value: new THREE.Vector2() },
         uStepScale: { value: 1 }, uDebug: { value: 0 },
-        uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 },
+        uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 }, uBaseFlat: { value: 0 }, uDeckDetail: { value: 0 }, uFarThin: { value: 0 },
+        uBaseSharp: { value: 0 }, uBaseDark: { value: 0 }, uFarFlat: { value: 0 },
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
+        // 2026-10-03: the deck's far rows on the aerial pass's overcast target (cloudHaze; hazeLaw.ts hazeTargetTerms)
+        uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
+        // 2026-10-03: the previous frame's scene depth and the camera that drew it (cloudSceneT)
+        tSceneDepth: { value: null }, uSceneDepthOn: { value: 0 }, uSceneNearFar: { value: new THREE.Vector2(0.5, 4000) },
+        uDepthRight: { value: new THREE.Vector3(1, 0, 0) }, uDepthUp: { value: new THREE.Vector3(0, 1, 0) },
+        uDepthFwd: { value: new THREE.Vector3(0, 0, -1) }, uDepthTan: { value: new THREE.Vector2(1, 1) },
+        // 2026-10-01: the weather layers beyond the slab (cloudWeatherLayers.ts)
+        ...createCloudWeatherUniforms(),
       },
     });
     this.resolveMaterial = new THREE.ShaderMaterial({
@@ -1188,10 +1571,18 @@ export class VolumetricCloudLayer {
         uHistoryValid: { value: 0 }, uRebuildK: { value: -1 }, uMinAlpha: { value: 0.12 },
       },
     });
-    this.goboMaterial = new THREE.ShaderMaterial({
-      name: 'VolumetricCloudGobo', vertexShader: GOBO_VERTEX, fragmentShader: GOBO_FRAGMENT, side: THREE.DoubleSide,
-      uniforms: { ...field(), uThreshold: { value: 0.5 }, uShadowCellOrigin: { value: new THREE.Vector2() },
-        uShadowWorld: { value: new THREE.Matrix4() }, uShadowBounds: { value: new THREE.Vector4() }, uCloudBase: { value: 1400 } },
+    // the clouds' shadow field: the two weather fields, their drift, the cut and the front's clear radius (the shade map
+    // reads these very objects, and so does the ring's horizon shade)
+    this.goboMaterial = { uniforms: { ...field(), uThreshold: { value: 0.5 }, uClear: { value: new THREE.Vector3() }, uCloudBase: { value: 1400 } } };
+    const gu = this.goboMaterial.uniforms;
+    this.farShadeMaterial = new THREE.ShaderMaterial({
+      name: 'VolumetricCloudFarShade', vertexShader: QUAD_VERTEX, fragmentShader: FAR_SHADE_FRAGMENT,
+      depthTest: false, depthWrite: false, blending: THREE.NoBlending,
+      uniforms: {
+        tWeather: gu.tWeather, tStreets: gu.tStreets, uWeatherShift: gu.uWeatherShift, uStreetShift: gu.uStreetShift,
+        uWindDir: gu.uWindDir, uStreets: gu.uStreets, uFieldMix: gu.uFieldMix, uCluster: gu.uCluster, uThreshold: gu.uThreshold, uClear: gu.uClear,
+        uFarShadeRect: { value: new THREE.Vector3(0, 0, CLOUD_FAR_SHADE_SPAN_M) },
+      },
     });
     this.quad = new FullScreenQuad(this.traceMaterial);
     this.domeMaterial = new THREE.ShaderMaterial({
@@ -1199,6 +1590,8 @@ export class VolumetricCloudLayer {
       uniforms: {
         tClouds: { value: this.history[0].texture }, uTargetSize: { value: new THREE.Vector2(1, 1) }, uHistorySize: { value: new THREE.Vector2(4, 4) },
         uKnee: { value: knee }, uSkyIntensity: { value: 1 },
+        uFlash: { value: new THREE.Vector4() }, uFlashTint: { value: new THREE.Vector3(0.78, 0.84, 1.0) }, uInside: { value: 0 },
+        uSunDir: { value: new THREE.Vector3(0, 1, 0) },
       },
       transparent: true, depthWrite: false, depthTest: true, side: THREE.BackSide,
       blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
@@ -1206,7 +1599,9 @@ export class VolumetricCloudLayer {
     });
     // the same shell as the baked cumulus deck: horizon-grazing rays from any battle camera hit it, the
     // terrain and the ring occlude the rest; AO's prepass ignores it like the decks
-    const geometry = new THREE.SphereGeometry(CLOUD_DOME_RADIUS_M, 48, 24, 0, Math.PI * 2, 0, Math.PI * 0.65);
+    // (2026-10-01: the whole sphere — a camera in or over a low deck composites the cloud below the horizon too; from
+    // the ground the lower half sits behind the terrain and fails the depth test before shading)
+    const geometry = new THREE.SphereGeometry(CLOUD_DOME_RADIUS_M, 48, 32, 0, Math.PI * 2, 0, Math.PI);
     this.dome = new THREE.Mesh(geometry, this.domeMaterial);
     this.dome.name = 'cloudLayerVolumetric';
     this.dome.frustumCulled = false;
@@ -1234,6 +1629,8 @@ export class VolumetricCloudLayer {
     if (key !== this.presetKey) {
       this.presetKey = key;
       this.resetHistory();
+      // the weather layers' placement (storm cells, trails) is static per preset: resolved once, never per frame
+      if (preset) applyCloudWeatherPreset(this.traceMaterial.uniforms, preset);
     }
     this.preset = preset;
     this.updateGoboMaterials();
@@ -1268,44 +1665,6 @@ export class VolumetricCloudLayer {
     this.historyValid = false;
   }
 
-  /** The CSM lights whose cascades carry the cloud shadows (one plane each on the shadow-only layer, discarding by the cloud field). */
-  attachShadowCascades(cascades: CloudShadowCascades): void {
-    if (this.cascades === cascades) return;
-    this.detachShadowCascades();
-    this.cascades = cascades;
-    for (let i = 0; i < cascades.lights.length; i++) {
-      const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, colorWrite: false, depthWrite: false });
-      const geometry = new THREE.PlaneGeometry(1, 1);
-      const gobo = new THREE.Mesh(geometry, material);
-      gobo.name = `cloudShadowGobo${i}`;
-      gobo.castShadow = true;
-      gobo.receiveShadow = false;
-      gobo.frustumCulled = false;
-      gobo.visible = false;
-      // the shadow pass renders the plane with the field material: the same two weather fields the trace reads
-      gobo.customDepthMaterial = this.goboMaterial;
-      bindCloudShadowCascade(gobo, cascades.lights[i].shadow.camera, cascades.lights[i].shadow.mapSize);
-      markShadowOnly(gobo);
-      // round 78: the plane is sized to cascade i's shadow box and carries the field only there — the router
-      // hides it around every other cascade's pass (one field-shader draw per cascade instead of one per pair)
-      setShadowCasterCascades(gobo, 1 << i);
-      this.scene.add(gobo);
-      this.gobos.push(gobo);
-    }
-    this.updateGoboMaterials();
-  }
-
-  private detachShadowCascades(): void {
-    for (const gobo of this.gobos) {
-      setShadowCasterCascades(gobo, null);
-      gobo.removeFromParent();
-      gobo.geometry.dispose();
-      gobo.material.dispose();
-    }
-    this.gobos = [];
-    this.cascades = null;
-  }
-
   private updateGoboMaterials(): void {
     const preset = this.preset;
     const g = this.goboMaterial.uniforms;
@@ -1313,11 +1672,12 @@ export class VolumetricCloudLayer {
     g.uCloudBase.value = preset?.baseM ?? 1400;
     g.uStreets.value = preset ? preset.streets : 0;
     g.uFieldMix.value = preset ? preset.fieldMix : 0;
+    g.uCluster.value = preset?.cluster ?? 0;
   }
 
-  /** Whether the cascades carry cloud shadows this frame. */
+  /** Whether the clouds cast shadows this frame (the shade map the lit materials read; the ring's horizon shade follows it). */
   get shadowsActive(): boolean {
-    return this.active && !!this.preset?.shadow && this.gobos.length > 0 && this.preset.coverage > 0;
+    return this.active && !!this.preset?.shadow && this.preset.coverage > 0;
   }
 
   private refreshLifetime(): void {
@@ -1381,6 +1741,10 @@ export class VolumetricCloudLayer {
     t.uDeckLight.value = preset.deckLight;
     t.uUndulatus.value = preset.undulatus;
     t.uInterior.value = preset.interior;
+    t.uLumps.value = preset.lumps ?? 0;
+    t.uBaseFlat.value = preset.baseFlat ?? 0;
+    t.uDeckDetail.value = preset.deckDetail ?? 0;
+    t.uCluster.value = preset.cluster ?? 0;
     // the scud band never reaches down past the lower half of the base altitude (a 300 m ceiling's rags stay aloft)
     t.uSlabLow.value = Math.min(preset.baseM - hang, preset.scud > 0 ? Math.max(preset.baseM * 0.45, preset.baseM - CLOUD_SCUD_BAND_M) : preset.baseM);
     t.uCoverage.value = preset.coverage;
@@ -1430,13 +1794,23 @@ export class VolumetricCloudLayer {
     const illuminance = 8.0;
     if (sunT) (t.uSunRadiance.value as THREE.Vector3).set(sunT.r, sunT.g, sunT.b).multiplyScalar(illuminance);
     else (t.uSunRadiance.value as THREE.Vector3).setScalar(illuminance);
+    // 2026-10-01: the key light's hue on the clouds — white by day (the transmittance colours the sun), the moonlight's at night
+    const key = this.preset?.keyTint;
+    if (key) (t.uSunRadiance.value as THREE.Vector3).multiply(this.scratch.set(key[0], key[1], key[2]));
+    // 2026-10-01: the summary is read with the preset's sky intensity applied (atmosphere.ts update(params, skyIntensity)),
+    // and the composite multiplies the clouds by it once more: undo it here so the ambient is dimmed once, like the
+    // sun. At night (.08) the twice-dimmed sky light left every face turned from the moon black — the round-68
+    // "black occluders"; a day sky (1) is unchanged.
+    const undim = 1 / Math.max(1e-3, a.skyIntensity);
     // ambient: the cosine-weighted sky irradiance / π (a diffuse top under the whole sky), the base sees the
     // horizon band and the ground
-    const irr = summary?.irradiance ?? a.irradiance;
+    const irrSrc = summary?.irradiance ?? a.irradiance;
+    const irr = this.irr.setRGB(irrSrc.r * undim, irrSrc.g * undim, irrSrc.b * undim);
     (t.uAmbientTop.value as THREE.Vector3).set(irr.r, irr.g, irr.b).multiplyScalar(0.55);
     // round 76: the deck lighting takes the sky's irradiance on a horizontal diffuser whole (the summary's E / π)
     (t.uSkyIrradiance.value as THREE.Vector3).set(irr.r, irr.g, irr.b);
-    const hz = summary?.horizon ?? irr;
+    const hzSrc = summary?.horizon ?? irrSrc;
+    const hz = this.hz.setRGB(hzSrc.r * undim, hzSrc.g * undim, hzSrc.b * undim);
     const stratiform = this.preset?.stratiform ?? 0;
     // cumulus bases see the horizon band and the ground; an overcast sheet's base is lit through the sheet by
     // the whole sky, so it takes the sky irradiance's cool hue, never the low sun's warm band
@@ -1445,17 +1819,24 @@ export class VolumetricCloudLayer {
     (t.uAmbientBottom.value as THREE.Vector3).set(irr.r, irr.g, irr.b).multiplyScalar(0.22)
       .addScaledVector(this.scratch.set(hz.r, hz.g, hz.b), 0.08)
       .lerp(this.scratch.set(irr.r, irr.g, irr.b).multiplyScalar(0.42), stratiform);
+    // 2026-10-01: a lit town's glow on the bases at night (the preset scales it by the night amount: zero by day)
+    const glow = this.preset?.groundGlow;
+    if (glow && (glow[0] > 0 || glow[1] > 0 || glow[2] > 0)) {
+      (t.uAmbientBottom.value as THREE.Vector3).addScaledVector(this.scratch.set(glow[0], glow[1], glow[2]), CLOUD_GROUND_GLOW_K);
+    }
     // the stratus floor: the brighter of the horizon band's and the mean upper sky's luminance — the sky a far
     // ceiling replaces at the skyline is the horizon band, the brightest of a hazy sky — in a hue half way from
     // the zenith's (cool) to neutral: an arctic white-out ceiling, never the band's tan
     const hl = Math.max(1e-4, 0.2126 * hz.r + 0.7152 * hz.g + 0.0722 * hz.b);
-    const mean = summary?.meanLuminance ?? hl;
+    const mean = summary ? summary.meanLuminance * undim : hl;
     const floorLum = Math.max(hl, mean);
-    const zenith = summary?.zenith ?? irr;
+    const zSrc = summary?.zenith ?? irrSrc;
+    const zenith = this.zenith.setRGB(zSrc.r * undim, zSrc.g * undim, zSrc.b * undim);
     const zl = Math.max(1e-4, 0.2126 * zenith.r + 0.7152 * zenith.g + 0.0722 * zenith.b);
     (t.uSkyMean.value as THREE.Vector3).set(zenith.r, zenith.g, zenith.b).multiplyScalar(floorLum / zl)
       .lerp(this.scratch.set(floorLum, floorLum, floorLum), 0.5);
     this.domeMaterial.uniforms.uSkyIntensity.value = a.skyIntensity;
+    (this.domeMaterial.uniforms.uSunDir.value as THREE.Vector3).copy(a.sunDir).normalize();
   }
 
   private captureCamera(camera: THREE.PerspectiveCamera): void {
@@ -1501,35 +1882,30 @@ export class VolumetricCloudLayer {
     (u.uCamTan.value as THREE.Vector2).copy(cam.tan);
   }
 
-  /** The draw hook supplies the current shadow projection, including when
-   * the scene is rendered directly without advancing the cloud animation. */
-  private updateGobos(_preset: CloudLayerPreset): void {
-    const cascades = this.cascades;
-    const show = this.shadowsActive;
-    if (!cascades) return;
-    const dir = cascades.lightDirection;
-    for (let i = 0; i < this.gobos.length; i++) {
-      const gobo = this.gobos[i];
-      const light = cascades.lights[i];
-      if (!light || !show || Math.abs(dir.y) < 0.02) { gobo.visible = false; continue; }
-      gobo.visible = true;
-    }
-  }
-
   /**
    * post.ts's hook, before the scene draws: advance the wind, detect a camera cut, trace this frame's slot(s)
    * and resolve the history the dome composites. `width` × `height` is the scene target.
    */
-  beforeSceneRender(renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera, dt: number, width: number, height: number): void {
+  /**
+   * @param hazeDatum the aerial pass's haze-layer datum (post.ts uHazeDatum: the ground under the camera); a call
+   * without it (the Studio's and the captures' settle) keeps the last one the frame passed
+   */
+  beforeSceneRender(
+    renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera, dt: number, width: number, height: number, hazeDatum?: number,
+    sceneDepth?: THREE.Texture | null,
+  ): void {
+    if (hazeDatum !== undefined && Number.isFinite(hazeDatum)) this.hazeDatum = hazeDatum;
+    if (sceneDepth !== undefined) this.lastSceneDepth = sceneDepth;
     const preset = this.preset;
     if (!preset || !this.active || renderer !== this.renderer) {
       this.dome.visible = false;
-      for (const gobo of this.gobos) gobo.visible = false;
+      this.sceneDepthReady = false;
+      this.dropCloudShade();
       return;
     }
     this.refreshLifetime();
-    if (this.context?.isContextLost()) { this.dome.visible = false; return; }
-    if (width !== this.targetWidth || height !== this.targetHeight) this.resize(width, height);
+    if (this.context?.isContextLost()) { this.dome.visible = false; this.sceneDepthReady = false; return; }
+    if (width !== this.targetWidth || height !== this.targetHeight) { this.resize(width, height); this.sceneDepthReady = false; }
     // wind drift, bounded to the weather tile (every noise tiles within it); the street field drifts in the
     // wind frame, the cirrus sheet at twice the speed along its own streaks
     const step = Math.max(0, Math.min(0.1, dt || 0));
@@ -1537,13 +1913,24 @@ export class VolumetricCloudLayer {
     this.windDir.set(wdx, wdz);
     const wx = wdx * preset.windSpeed * step, wz = wdz * preset.windSpeed * step;
     const shift = this.weatherShift;
-    shift.x = ((shift.x - wx) % CLOUD_WEATHER_TILE_M + CLOUD_WEATHER_TILE_M) % CLOUD_WEATHER_TILE_M;
-    shift.y = ((shift.y - wz) % CLOUD_WEATHER_TILE_M + CLOUD_WEATHER_TILE_M) % CLOUD_WEATHER_TILE_M;
+    shift.x = wrapDrift(shift.x - wx, CLOUD_WEATHER_TILE_M);
+    shift.y = wrapDrift(shift.y - wz, CLOUD_WEATHER_TILE_M);
     const ns = this.noiseShift;
-    ns.x = ((ns.x - wx * 0.8) % CLOUD_SHAPE_TILE_STRATUS_M + CLOUD_SHAPE_TILE_STRATUS_M) % CLOUD_SHAPE_TILE_STRATUS_M;
-    ns.z = ((ns.z - wz * 0.8) % CLOUD_SHAPE_TILE_STRATUS_M + CLOUD_SHAPE_TILE_STRATUS_M) % CLOUD_SHAPE_TILE_STRATUS_M;
+    ns.x = wrapDrift(ns.x - wx * 0.8, CLOUD_SHAPE_TILE_STRATUS_M);
+    ns.z = wrapDrift(ns.z - wz * 0.8, CLOUD_SHAPE_TILE_STRATUS_M);
+    // 2026-10-01: the billows boil — the noise rises slowly through a convective cloud (a deck's cells turn over
+    // slower), so a cumulus' outline changes over minutes instead of sliding past as a frozen sculpture (wrapped at the
+    // upper drifts' 600 km: the vertical period of the lookups follows the slab's thickness, so any wrap is a seam —
+    // this one comes after 238 hours)
+    ns.y = wrapDrift(ns.y - CLOUD_BOIL_M_PER_S * (1 - 0.8 * preset.stratiform) * step, CLOUD_UPPER_WRAP_M);
     const cs = this.cirrusShift;
-    cs.x = ((cs.x - preset.windSpeed * 2 * step) % CLOUD_CIRRUS_TILE_M + CLOUD_CIRRUS_TILE_M) % CLOUD_CIRRUS_TILE_M;
+    cs.x = wrapDrift(cs.x - preset.windSpeed * 2 * step, CLOUD_CIRRUS_TILE_M);
+    // 2026-10-01: the contrails ride the upper wind (the cirrus' veered direction, twice the speed), wrapped at 600 km —
+    // a whole number of the fibres' 30 km tiles and far past any match: the analytic trails never jump while a battle runs
+    const ux = Math.cos(preset.cirrusAngleRad), uz = Math.sin(preset.cirrusAngleRad);
+    const ud = this.upperDrift;
+    ud.x = wrapDrift(ud.x - ux * preset.windSpeed * 2 * step, CLOUD_UPPER_WRAP_M);
+    ud.y = wrapDrift(ud.y - uz * preset.windSpeed * 2 * step, CLOUD_UPPER_WRAP_M);
     const t = this.traceMaterial.uniforms, g = this.goboMaterial.uniforms;
     const offX = preset.offset[0] * CLOUD_WEATHER_TILE_M, offY = preset.offset[1] * CLOUD_WEATHER_TILE_M;
     // the drift in the wind frame: the streets ride along the wind (the shift projected onto it) plus the map's offset
@@ -1556,8 +1943,29 @@ export class VolumetricCloudLayer {
     (t.uNoiseShift.value as THREE.Vector3).copy(ns);
     (t.uCirrusShift.value as THREE.Vector2).set(cs.x + offX * 1.9, offY * 2.3);
     (t.uFarBandShift.value as THREE.Vector2).set(shift.x * 0.5 + offX * 1.37, shift.y * 0.5 + offY * 0.61);
+    // (the trails drift by the upper wind in world space; their placement is relative to the map's origin, never wrapped
+    // across their own length — the drift wraps at the cirrus tile, far past the ±26 km the trails span)
+    (t.uUpperDrift.value as THREE.Vector2).copy(ud);
+    // (2026-10-03: the far field's thinning, read per frame so a lab can sweep it: CLOUD_FAR_THIN)
+    t.uFarThin.value = lightTune('CLOUD_FAR_THIN', CLOUD_FAR_THIN);
+    // (2026-10-03: the cumulus knobs, read per frame so a lab can sweep them)
+    t.uBaseSharp.value = lightTune('CLOUD_BASE_SHARP', CLOUD_BASE_SHARP);
+    t.uBaseDark.value = lightTune('CLOUD_BASE_DARK', CLOUD_BASE_DARK);
+    t.uFarFlat.value = lightTune('CLOUD_FAR_FLAT', CLOUD_FAR_FLAT);
+    // (no datum yet: the camera stands on the layer's base, the haze law of a camera on the ground)
+    t.uHazeDatum.value = Number.isFinite(this.hazeDatum) ? this.hazeDatum : camera.position.y;
     this.applyPresetUniforms(preset);
     this.applyAtmosphereUniforms();
+    // (2026-10-03: the aerial pass's overcast target for the deck's far rows — cloudHaze)
+    {
+      const overcast = (this.scene.userData.lightModel as { overcast?: number } | undefined)?.overcast ?? 0;
+      const terms = hazeTargetTerms(overcast, this.hazeTerms);
+      const a = this.atmosphere;
+      (t.uOvercastHaze.value as THREE.Vector4).set(
+        Math.min(1, Math.max(0, (a.fogMix ?? 0) * terms.x)), terms.y, 0, smoothstep01(overcast / 0.3));
+      const tint = a.fogTint;
+      if (tint) (t.uOvercastTint.value as THREE.Vector3).set(tint.r, tint.g, tint.b);
+    }
     // the low quality preset marches coarser (the same slab, fewer steps); the mobile tier never creates the layer
     t.uStepScale.value = CLOUD_STEP_SCALE_BY_PRESET[resolvePresetName()] ?? 1;
     if (t.uDebug.value !== this.debugMode) { t.uDebug.value = this.debugMode; this.resetHistory(); }
@@ -1566,6 +1974,18 @@ export class VolumetricCloudLayer {
     const P = this.prevCam, C = this.cam;
     P.pos.copy(C.pos); P.right.copy(C.right); P.up.copy(C.up); P.fwd.copy(C.fwd); P.tan.copy(C.tan);
     this.captureCamera(camera);
+    // (2026-10-03: the scene depth the last frame left, read through the camera that drew it — cloudSceneT; off for a
+    // camera in or over the slab, whose dome draws without the depth test, and until a frame has drawn the scene)
+    const depthTex = sceneDepth ?? this.lastSceneDepth;
+    const depthOn = !!depthTex && this.sceneDepthReady && this.hasPrev && C.pos.y <= (t.uSlabLow.value as number);
+    t.tSceneDepth.value = depthOn ? depthTex : null;
+    t.uSceneDepthOn.value = depthOn ? 1 : 0;
+    (t.uSceneNearFar.value as THREE.Vector2).copy(this.depthPlanes);
+    (t.uDepthRight.value as THREE.Vector3).copy(P.right);
+    (t.uDepthUp.value as THREE.Vector3).copy(P.up);
+    (t.uDepthFwd.value as THREE.Vector3).copy(P.fwd);
+    (t.uDepthTan.value as THREE.Vector2).copy(P.tan);
+    this.depthPlanes.set(camera.near, camera.far);
     if (this.hasPrev) {
       const moved = C.pos.distanceTo(P.pos);
       const turned = C.fwd.angleTo(P.fwd);
@@ -1574,6 +1994,7 @@ export class VolumetricCloudLayer {
       this.resetHistory();
     }
     this.hasPrev = true;
+    (g.uClear.value as THREE.Vector3).set(C.pos.x, C.pos.z, preset.clearRadiusM);
     this.setCameraUniforms(this.traceMaterial, C);
     this.setCameraUniforms(this.resolveMaterial, C);
     t.uPixelAngle.value = (C.tan.y * 2) / Math.max(4, this.history[0].height);
@@ -1613,7 +2034,98 @@ export class VolumetricCloudLayer {
     this.frame++;
     this.framesShown++;
     this.dome.visible = true;
-    this.updateGobos(preset);
+    // 2026-10-01: a camera in or over the slab sees the cloud in front of the terrain (no depth test, no horizon mask)
+    const inside = C.pos.y > (t.uSlabLow.value as number) ? 1 : 0;
+    this.domeMaterial.uniforms.uInside.value = inside;
+    if (this.domeMaterial.depthTest === !!inside) this.domeMaterial.depthTest = !inside;
+    this.updateFarShade(preset);
+    this.updateLightning(preset, step);
+    // the scene draws next with this camera: its depth is the next frame's cloudSceneT
+    this.sceneDepthReady = true;
+  }
+
+  /**
+   * 2026-10-03: the cloud shade map (CLOUD_FAR_SHADE_* note) — re-rendered when its texel-snapped square moves or every
+   * CLOUD_FAR_SHADE_EVERY frames and published to the lit materials' shared uniforms (scene.userData.cloudShadeUniforms,
+   * lighting.ts); off where the clouds cast no shadows.
+   */
+  private updateFarShade(preset: CloudLayerPreset): void {
+    if (!preset.shadow || preset.coverage <= 0) { this.dropCloudShade(); return; }
+    const texel = CLOUD_FAR_SHADE_SPAN_M / CLOUD_FAR_SHADE_SIZE;
+    const cx = Math.round(this.cam.pos.x / texel) * texel, cz = Math.round(this.cam.pos.z / texel) * texel;
+    const rect = this.farShadeInfo.rect;
+    const moved = !this.farShadeValid || rect.x !== cx || rect.y !== cz;
+    if (!moved && ++this.farShadeAge < CLOUD_FAR_SHADE_EVERY) return;
+    if (!this.farShadeTarget) {
+      this.farShadeTarget = makeTarget(CLOUD_FAR_SHADE_SIZE, CLOUD_FAR_SHADE_SIZE, 'clouds-far-shade', THREE.UnsignedByteType);
+    }
+    rect.set(cx, cz, CLOUD_FAR_SHADE_SPAN_M);
+    (this.farShadeMaterial.uniforms.uFarShadeRect.value as THREE.Vector3).copy(rect);
+    this.renderQuad(this.farShadeMaterial, this.farShadeTarget);
+    this.farShadeInfo.texture = this.farShadeTarget.texture;
+    this.farShadeInfo.baseM = preset.baseM;
+    this.farShadeAge = 0;
+    this.farShadeValid = true;
+    const shared = this.scene.userData.cloudShadeUniforms as CloudShadeUniforms | undefined;
+    if (shared) {
+      publishCloudShade(shared, this.farShadeInfo as { texture: THREE.Texture; rect: THREE.Vector3; baseM: number },
+        this.traceMaterial.uniforms.uSunDir.value as THREE.Vector3);
+    }
+  }
+
+  /** The shared cloud-shade uniforms while the map is live (the ring's vista samples the same map: horizonCloudShade.ts). */
+  get cloudShade(): CloudShadeUniforms | null {
+    const shared = this.scene.userData.cloudShadeUniforms as CloudShadeUniforms | undefined;
+    return this.active && this.farShadeValid && shared ? shared : null;
+  }
+
+  /** The clouds cast no shadow this frame: the map is stale and the lit materials stand in full sun. */
+  private dropCloudShade(): void {
+    this.farShadeValid = false;
+    const shared = this.scene.userData.cloudShadeUniforms as CloudShadeUniforms | undefined;
+    if (shared) publishCloudShade(shared, null, this.traceMaterial.uniforms.uSunDir.value as THREE.Vector3);
+  }
+
+  /**
+   * 2026-10-03: the cloud shade map (diagnostics; the lit materials read it through cloudShadeMap.ts): r = the share of
+   * the sun a cloud takes, its square (centre x, z and side, m) and the cloud base it was cut at (m); null where the
+   * clouds cast no shadows this frame.
+   */
+  get farShade(): { readonly texture: THREE.Texture; readonly rect: THREE.Vector3; readonly baseM: number } | null {
+    const info = this.farShadeInfo;
+    return this.active && this.farShadeValid && info.texture && this.preset?.shadow ? info as { texture: THREE.Texture; rect: THREE.Vector3; baseM: number } : null;
+  }
+
+  /**
+   * 2026-10-01: lightning in a night storm (a front's towers or the distant storm cells, night only). A deterministic
+   * sequence (presentation only — never the simulation's randomness): a strike every 4–16 s somewhere in a cell, one
+   * to three return strokes over a third of a second, the cloud around it lit from inside in the composite.
+   */
+  private updateLightning(preset: CloudLayerPreset, step: number): void {
+    const flash = this.domeMaterial.uniforms.uFlash.value as THREE.Vector4;
+    const stormy = preset.timeOfDay === 'night' && preset.anvil >= 0.5;
+    if (!stormy) { flash.w = 0; return; }
+    const rnd = (): number => { this.flashSeed = (Math.imul(this.flashSeed, 1664525) + 1013904223) >>> 0; return this.flashSeed / 4294967296; };
+    this.flashClock += step;
+    if (this.flashClock >= this.flashNext) {
+      this.flashClock = 0;
+      this.flashNext = 4 + 12 * rnd();
+      this.flashAge = 0;
+      this.flashStrokes = 1 + Math.floor(rnd() * 3);
+      this.flashPeak = CLOUD_FLASH_STRENGTH * (0.5 + 0.5 * rnd());
+      // where: a tower of the front off in the wind's sector, past its clear radius, in the lower half of its body
+      const cam = this.cam.pos;
+      const az = preset.windDirRad + (rnd() - 0.5) * 2.4, d = preset.clearRadiusM * 1.6 + 6000 * rnd();
+      const x = cam.x + Math.cos(az) * d, z = cam.z + Math.sin(az) * d, y = preset.baseM + preset.thicknessM * (0.2 + 0.4 * rnd());
+      flash.set(x - cam.x, y - cam.y, z - cam.z, 0).normalize();
+    }
+    this.flashAge += step;
+    // return strokes: bright pulses 80 ms apart decaying over 60 ms each
+    const strokeT = this.flashAge / 0.09;
+    const k = Math.floor(strokeT);
+    flash.w = k < this.flashStrokes ? this.flashPeak * Math.exp(-(strokeT - k) * 0.09 / 0.03) * (1 - 0.25 * k) : 0;
+    // QA: hold the current strike at this strength (a still of the storm lit from inside)
+    if (this.qaFlash > 0) flash.w = this.qaFlash;
   }
 
   /** One timer query in flight: a pending one is read (or dropped when disjoint) before a new one opens. */
@@ -1698,7 +2210,7 @@ export class VolumetricCloudLayer {
   }
 
   dispose(): void {
-    this.detachShadowCascades();
+    this.dropCloudShade();
     for (const rt of this.history) rt.dispose();
     this.trace.dispose();
     this.copyTarget?.dispose();
@@ -1706,7 +2218,10 @@ export class VolumetricCloudLayer {
     this.traceMaterial.dispose();
     this.resolveMaterial.dispose();
     this.domeMaterial.dispose();
-    this.goboMaterial.dispose();
+    this.farShadeMaterial.dispose();
+    this.farShadeTarget?.dispose();
+    this.farShadeTarget = null;
+    this.farShadeValid = false;
     this.dome.geometry.dispose();
     this.dome.removeFromParent();
     this.quad.dispose();

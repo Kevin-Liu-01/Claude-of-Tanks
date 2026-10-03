@@ -1,3 +1,7 @@
+import { fisheryWharfClearance } from './fisheryWharfSite.ts';
+import type { RiverLandingAnchor } from './maps/riverLandings.ts';
+import { sceneryClearances, type SceneryConfig } from './sceneryPlan.ts';
+
 /** Construction-only clearance shared by every tree placement path. */
 export interface StructureClearance {
   x: number;
@@ -32,6 +36,19 @@ export function createStructureClearances(
       cos: Math.cos(yaw), sin: Math.sin(yaw),
     }];
   });
+}
+
+/**
+ * The keepout hook for placed structures that need clear ground: each publishes its real footprint from the same plan
+ * its placement uses, so a terrain or landing edit moves the clearance with it. The first user is Mangrove's fishery
+ * wharf (maps-and-layouts lane, 2026-10-02). A map without such a structure gets none, and its vegetation is exact.
+ */
+export function placedStructureClearances(mapId: string | undefined,
+  field: Parameters<typeof fisheryWharfClearance>[1], riverLandings: readonly RiverLandingAnchor[],
+  scenery: SceneryConfig | null = null): StructureClearance[] {
+  const wharf = fisheryWharfClearance(mapId, field, riverLandings);
+  // the scenery lane (2026-10-03): a map's rock formations and landmarks (sceneryPlan.ts), from its config alone
+  return [...(wharf ? [wharf] : []), ...sceneryClearances(scenery)];
 }
 
 export function overlapsStructureClearance(

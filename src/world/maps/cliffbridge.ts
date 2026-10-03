@@ -28,7 +28,8 @@ export default {
   splat: {...verdant.splat, sourcedPalette:'verdant', fieldPatch:.35,
     tintA:[.94,1.04,.87],tintB:[.82,.91,.74],tintC:[1,1.05,.88],roadTint:[.83,.80,.70]},
   vegetation: {...verdant.vegetation,clusterCount:60,loneCount:130,rimCount:95,grassDensity:1,bushCount:.8},
-  props: {...verdant.props,plan:['cottage','farmhouse','tavern','chapel','barn','schoolhouse','cottage','granary','cottage','farmhouse'],
+  // regional-buildings lane: Verdant's Prokhorovka kolkhoz kit stays on Verdant (architecture: undefined)
+  props: {...verdant.props,architecture:undefined,plan:['cottage','farmhouse','tavern','chapel','barn','schoolhouse','cottage','granary','cottage','farmhouse'],
     destructibleBuildings:['fieldhut','leanto'], blockFill:false,extraKits:[],buildingLat:[20,5],spacingPad:12,sideSkip:.12,
     wallRuns:[],telegraph:true,rocks:180,outcrops:38,craters:8,rubblePiles:0,hedgehogs:4,sandbagLines:6,
     cropFields:3,haystacks:14,
@@ -47,7 +48,7 @@ export default {
   horizon:{...verdant.horizon,amp:1.55,baseHex:0x456a38,rockHex:0x777c70,treeline:.95,haze:.7},
   sky:{...verdant.sky,sunElevationDeg:34,sunAzimuthDeg:235,cloudOpacity:.56,cloudOpacity2:.2,cloudAltM:1250,
     fogDensity:.00028,fogTintHex:0xb3c4b6,sunColorHex:0xfff0d9,sunIntensity:3.5,postExposure:.98},
-  clouds:{regime:'fair-weather-cumulus',baseM:1200,coverage:.28},
+  clouds:{regime:'fair-weather-cumulus',baseM:1200,coverage:.28,contrails: 0.3, cirrus: 0.25},
   minimap:{...verdant.minimap},
   shot:{pos:[-170,45,-170],look:[20,-4,30]},
 } satisfies MapCompositionConfig;

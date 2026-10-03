@@ -329,7 +329,7 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'cloud-streets', coverage: 0.34, streets: 0.9, cirrus: 0.2 },
+  clouds: { regime: 'cloud-streets', coverage: 0.34, streets: 0.9, cirrus: 0.2, rain: 0.2 },
   sky: {
     // high dry-season sun through light dust: warm-white light, hazy skirt.
     // r2: rayleigh up / turbidity + warm casts down — the first render came
@@ -339,6 +339,8 @@ export default {
     fogDensity: 0.00052, fogTintHex: 0xb3ab94, fogMix: 0.62, envIntensity: 0.18,
     cloudOpacity: 0.55, cloudOpacity2: 0.32, cloudTintHex: 0xfdf6ea,
     sunIntensity: 4.25, sunColorHex: 0xfff0d6, hemiIntensity: 0.30,
+    // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
+    lighting: { groundAlbedoHex: 0x898165 },
   },
 
   minimap: {

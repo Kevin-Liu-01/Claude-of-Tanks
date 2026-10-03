@@ -11,7 +11,7 @@ import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { MIGRATION_EVENT_KIND } from './hostProtocol.ts';
 import {
   MIGRATION_CHUNK_BYTES, MigrationStore, applyResumeState, captureEntityExtras, chunkMigrationBlob, decodeBootConfig, decodeMigrationKeyframe,
-  deriveMigrationKey, encodeBootConfig, encodeMigrationKeyframe, openMigrationBlob, sealMigrationBlob,
+  deriveMigrationKey, encodeBootConfig, encodeMigrationKeyframe, openMigrationBlob, resumeStateFromRetained, sealMigrationBlob,
 } from './migrationState.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 
@@ -140,6 +140,41 @@ b.start();
 assert.equal(b.tick, decoded.tick);
 assert.equal(b.authority.phase, 'playing');
 b.stop();
+
+// ---- the elected seat's boot state (fix/mp-migration-props, 2026-10-02): the newer of the keyframe and its newest frame, and
+// every prop it was told fell — a fall whose frame the dying host never published lies only in the seat's events
+const frameAt = (tick, destroyed, revision, entities = rows) => ({ ...decoded.frame, tick, serverTimeMs: Math.round(tick * TICK_MS), destroyed, entities, meta: { ...decoded.frame.meta, destructibleRevision: revision, battleTimeMs: tick * 10 } });
+{
+  // the newest frame is newer: its rows overlay the keyframe's, its list is the base; a fall it lacks joins it, the revision counts it
+  const latest = frameAt(decoded.tick + 6, [3, 9, 27, 4], 8, rows.filter((row) => row.entityId !== 1).map((row) => ({ ...row, x: row.x + 1000 })));
+  const { state, baseTick, baseAtMs } = resumeStateFromRetained(decoded, 500, latest, 700, [3, 4, 11, 11, -1, 2.5]);
+  assert.equal(baseTick, latest.tick);
+  assert.equal(baseAtMs, 700);
+  assert.equal(state.tick, latest.tick);
+  assert.deepEqual(state.frame.destroyed, [3, 4, 9, 11, 27], 'the frame\'s list and the fall it never listed (duplicates and malformed indices dropped)');
+  assert.equal(state.frame.meta.destructibleRevision, 9, 'the frame\'s revision plus the one fall it adds');
+  assert.equal(state.frame.entities.find((row) => row.entityId === 1).x, decoded.frame.entities.find((row) => row.entityId === 1).x, 'an entity the seat could not see keeps the keyframe\'s row');
+  assert.equal(state.frame.entities.find((row) => row.entityId === 2).x, rows.find((row) => row.entityId === 2).x + 1000, 'a seen entity takes the newest row');
+  assert.deepEqual(decoded.frame.destroyed, [3, 9, 27], 'the decoded keyframe is not mutated');
+  // the keyframe is newer: its list is the base (a frame older than it has nothing to add), falls after it join it
+  const stale = frameAt(decoded.tick - 30, [3], 1);
+  const fromKeyframe = resumeStateFromRetained(decoded, 500, stale, 450, [5]);
+  assert.equal(fromKeyframe.baseTick, decoded.tick);
+  assert.equal(fromKeyframe.baseAtMs, 500);
+  assert.deepEqual(fromKeyframe.state.frame.destroyed, [3, 5, 9, 27]);
+  assert.equal(fromKeyframe.state.frame.meta.destructibleRevision, 8, 'the keyframe\'s revision 7 plus one');
+  // nothing new: the base stands as it was; a revision behind its list is lifted to the list's length (the actor republishes on a move)
+  assert.deepEqual(resumeStateFromRetained(decoded, 500, null, null, [9, 27]).state.frame, decoded.frame);
+  const behind = resumeStateFromRetained(decoded, 500, frameAt(decoded.tick + 3, [1, 2, 3, 4], 2), 600, [6]);
+  assert.equal(behind.state.frame.meta.destructibleRevision, 5);
+  // booted from it, a second actor stands none of them again
+  const worldC = makeWorld();
+  const c = createMatchActor({ roomId: 'mig', mapId: 'verdant', seed: 99, seats, bots, world: worldC, now, schedule, autoStart: false, resume: { tick: state.tick, battleTimeMs: state.battleTimeMs } });
+  assert.equal(applyResumeState(c, state).destroyedRestored, 5);
+  assert.deepEqual(worldC.obstacles.map((o, index) => (o.crushed ? index : -1)).filter((index) => index >= 0), [3, 4, 9, 11, 27]);
+  assert.equal(c.authority.snapshot({ tick: state.tick, serverTimeMs: 0, viewerId: 'migration', ackInputSeq: null }).meta.destructibleRevision, 9);
+  c.stop();
+}
 a.stop();
 
 // ---- chunking under the event limit; the store assembles, dedupes, keeps the newest, rejects malformed, clears
@@ -189,4 +224,4 @@ const configBack = decodeBootConfig(configBytes);
 assert.deepEqual(configBack.seats, seats);
 assert.equal(configBack.generation, 2);
 assert.throws(() => decodeBootConfig(new TextEncoder().encode('{"roomId":1}')), /invalid/);
-console.log('migrationState.selftest: seal/open, keyframe codec, actor restore (entities and the destroyed list with its revision), chunk store and config blob verified');
+console.log('migrationState.selftest: seal/open, keyframe codec, actor restore (entities and the destroyed list with its revision), the elected seat\'s boot state (the newer base and the falls it was told of), chunk store and config blob verified');

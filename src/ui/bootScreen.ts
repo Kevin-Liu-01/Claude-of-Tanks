@@ -33,7 +33,12 @@ declare global {
   interface Window {
     __COT_NO_BOOT_HERO?: boolean;
     __COT_FORCE_SPLASH?: boolean;
-    __COT_BOOT_RECOVERY?: { progress?(stage: string): void; halt?(code: string, message: string): void };
+    __COT_BOOT_RECOVERY?: {
+      progress?(stage: string): void;
+      halt?(code: string, message: string): void;
+      /** Post-boot: the inline watchdog's visible reload action for a failed game file (index.html). */
+      showRetry?(reason: string): void;
+    };
     /** Set by the inline watchdog when the capability gate stopped the boot on purpose. */
     __COT_BOOT_HALTED?: string;
   }

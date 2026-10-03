@@ -5,8 +5,8 @@ never close, first-time entry that does not fail, no lag, the cleanest code, bui
 
 This document is the program's charter: what the current design cannot do, the target
 architecture, the numbers it is sized to, the phases with their acceptance gates, and the
-decisions that are the owner's. `docs/MULTIPLAYER-ARCHITECTURE.md` describes the v1 stack that
-this program replaces; it stays accurate for v1 until each of its sections is retired here.
+decisions that are the owner's. The v1 stack this program replaced left the tree with the cutover
+of 2026-09-29 (§13.10); its architecture document survives only in Git history.
 
 ## 1. Requirements
 
@@ -20,7 +20,7 @@ this program replaces; it stays accurate for v1 until each of its sections is re
 
 ## 2. Why v1 cannot get there (first-principles reading)
 
-The v1 stack (`docs/MULTIPLAYER-ARCHITECTURE.md`) runs the match authority in one player's
+The v1 stack (retired at the cutover, §13.10) runs the match authority in one player's
 browser and fans out over WebRTC data channels; a Cloudflare Durable Object relays signaling;
 TURN credentials come from `/api/ice`. It was built for 2v2 to 7v7 between friends and is
 verified to 14 players. Its limits follow from where the authority lives, not from bugs:
@@ -645,7 +645,7 @@ exit flow and presentation of v2 carry over unchanged: they speak the same wire 
 | Host authority (`server/match/matchActor.ts`) | the host commander's browser, in a Worker thread | the v2 authority unchanged: 60 Hz sim, viewer-specific snapshots, seat tokens verified with the room's secret handed to the host at `match_start` |
 | Host's own client | the host browser | `loopbackTransport` into the actor (the host plays on its own authority, as in v1) |
 | Peers | every other browser | `webRtcTransport` (RTCDataChannel) into the host's actor through an `rtcClientLink` |
-| ICE | `api/ice.ts` (Vercel) | STUN + TURN credentials as v1 uses them; a strict NAT relays through TURN |
+| ICE | `api/ice.ts` (Vercel) — since 2026-10-02 the room (§13.14) | STUN + TURN credentials as v1 uses them; a strict NAT relays through TURN |
 | Match container (`cloudflare/rooms/src/matchContainer.ts`, `server/match/main.ts`) | parked | an optional `MatchHost` implementation for a paid account; not deployed |
 
 The Room DO never carries game traffic: on the Free plan every WebSocket message is billed as a request and 28 clients
@@ -904,7 +904,9 @@ one map fetched per hosted match, nothing on the boot path.
 
 **Bundle.** `vite build` at the base (a2b660786) and this tip: `main-*.js` 763,135 → 764,155 B raw (+1,020),
 228,927 → 229,059 B brotli (+132). The host Worker chunk `matchHostWorker-*.js` is 10.4 MB raw / 2.1 MB brotli
-(the actor, the simulation, the fleet builders) and loads only when a seat hosts.
+(the actor, the simulation, the fleet builders) and loads only when a seat hosts. (2026-10-01: 1.33 MB raw / 0.29 MB
+brotli from 11.55 / 1.78 — the actor reads the spec-only `src/vehicles/authorityFleet.ts` and the host loads its
+roster's combat-anatomy chunks at boot: 0.49 MB raw / 77 KB brotli more for a 3-hull roster.)
 
 **Receipts and proofs.** `roomClientSignals`, `webRtcTransport` (on the scripted WebRTC world
 `rtcDouble.test-support.ts`), `rtcClientLink`, `matchActorResume`, `seatTokenWeb`, `hostPlan`, `migrationState`
@@ -951,7 +953,9 @@ the client then simply stays.~~ P3: the double now applies P1's rule and `tools/
 client under it on the real actor (the match resumes on the last resort after the 30 s report budget). P1b (2026-09-28):
 the room now elects at once on the decline (§13.2.1) and the same receipt measures 1 ms. (3) Hidden entities resume up to one keyframe interval old; a cheaper sealed *delta*
 stream is the follow-up if the soak shows it matters. (4) The Worker chunk is heavy (10.4 MB raw): the fleet builders
-ride along because the actor imports `tankFactory`; a fleet-family split for the host is the P3 optimisation. (5) The
+ride along because the actor imports `tankFactory`; a fleet-family split for the host is the P3 optimisation. Done
+2026-10-01: the actor reads the spec-only authority fleet (no builders) and the roster's calibration groups load at boot.
+(5) The
 three-browser proof against the real room service needs the Worker to allow a development origin (`ALLOWED_ORIGINS`)
 or a run from the site origin — done from the site origin (`--site`, §13.8). (6) The old host's return in the headless proof is at the mercy of the host's GPU: the
 compile budget (5 s, extended once) is a production constant; a green rejoin needs a quiet host.
@@ -1410,8 +1414,8 @@ the v1 tools and their receipts, the dedicated/container match pieces).
   `lobby-prefetch-before-ready`, `multiplayer-loading-build-probe`, `multiplayer-render-perf`, the CDP observers only
   they consumed, the dual-screen marketing capture) and their receipts, the `test:net:*` scripts other than `v2`,
   `server:signal`, `server:match`, `selfhost:config`, `multiplayer:config`, `net:prod:check`, the
-  `quality:coverage:prediction` script; `docs/MULTIPLAYER-ARCHITECTURE.md` and `docs/MULTIPLAYER-HOSTING.md` are
-  two-line pointers here.
+  `quality:coverage:prediction` script; the two v1 documents (`MULTIPLAYER-ARCHITECTURE.md`, `MULTIPLAYER-HOSTING.md`)
+  became two-line pointers here and were deleted on 2026-10-01.
 - *Vocabulary*: the room failure codes are the room's (`src/mp/session/roomFailure.ts`: `expired`, `kicked`,
   `resume_denied`, `room_closed`, `room_full`, `invalid_room_code`, `access_denied`, `room_service_unavailable`,
   `connection_failed`); the i18n keys of the v1-only failures (host left, host runtime failed, the WebRTC timeouts) left
@@ -1422,22 +1426,23 @@ the v1 tools and their receipts, the dedicated/container match pieces).
 - *Environment names that are now dead for the owner to delete* (never deleted by this lane): `VITE_SIGNAL_URL`,
   `COT_SIGNAL_BACKEND`, `COT_SIGNAL_REDIS_REDIS_URL`, `COT_SIGNAL_REDIS_KV_URL`, `COT_SIGNAL_REDIS_KV_REST_API_URL`,
   `COT_SIGNAL_REDIS_KV_REST_API_TOKEN`, `COT_ALLOWED_ORIGINS` (if only `api/signal` read it — `api/ice.ts` keeps its own
-  origin list), `VITE_MATCH_SERVICE`; `VITE_ICE_CONFIG_URL` and every `COT_TURN_*` / `COT_CLOUDFLARE_TURN_*` stay.
+  origin list), `VITE_MATCH_SERVICE`; `VITE_ICE_CONFIG_URL` and every `COT_TURN_*` / `COT_CLOUDFLARE_TURN_*` stay (until §13.14 moved the relay into the room).
 - *Worker*: `cloudflare/rooms` needs no migration (the class chain is unchanged: v1 created `Room` and the container
   class, v2 deleted the container class); the `@cloudflare/containers` dependency stays in `package.json` until the
   integrator can run `npm uninstall @cloudflare/containers` in `cloudflare/rooms` (this lane installs nothing).
 
-**Hosting after the cutover (what `docs/MULTIPLAYER-HOSTING.md` said that is still true).**
+**Hosting after the cutover (what the v1 hosting runbook said that is still true).**
 
 - Internet rooms: the rooms Worker (`cloudflare/rooms`, Free plan; `cloudflare/rooms/README.md` deploys it), named by
   `VITE_ROOMS_URL` on the site build or, on the official site, by `src/officialHost.ts`. The room host is resolved by
   `src/mp/session/endpoint.ts`; there is no connection-settings field.
 - LAN and offline: `npm run server:mp` (`server/rooms/main.ts`, port 8792: rooms plus the match in-process, or the
   browser-hosted match with `COT_ROOMS_MATCH_TRANSPORT=p2p`); browsers on the network choose LAN in the Play menu.
-- ICE: `api/ice.ts` issues short-lived TURN credentials from server secrets (`COT_TURN_*`, `COT_CLOUDFLARE_TURN_*`,
-  `COT_TURN_ICE_SERVERS_JSON`); the client asks `/api/ice` on https pages (`VITE_ICE_CONFIG_URL` names another
-  endpoint) and uses host candidates on LAN. A strict NAT relays through TURN; nothing contacts a public STUN service
-  implicitly.
+- ICE (since 2026-10-02, §13.14): the room mints short-lived TURN credentials for its seated players (`room_relay`)
+  from the rooms Worker's secrets (`COT_CLOUDFLARE_TURN_*`; the LAN helper reads the same names and `COT_TURN_*`,
+  `COT_TURN_ICE_SERVERS_JSON` from its environment); without them a seat gets the Worker's `COT_STUN_URLS` alone. LAN
+  rooms use host candidates. A strict NAT relays through TURN; nothing contacts a STUN or TURN server the room did not
+  name. `/api/ice` answers the official STUN servers for one release (tabs loaded before the move), then goes.
 - Verification: `npm test` (the room actor, the p2p host, the client, the composition, the headless p2p flow),
   `npm run test:net:v2:rooms` (the Worker under the Workers runtime), `npm run test:net:v2:p2p` (three real browsers),
   `npm run test:net:v2:p2p:soak`, and `tools/mp-p2p-e2e.mjs --site=https://cot.kevinliu.studio` against production.
@@ -1671,7 +1676,9 @@ the host — closes its tab, p2 is elected and resumes from the sealed keyframe;
 400 ms before a view ends, before its host stops, or before the seat's link resets is not judged (the interpolation delay
 keeps it from presenting; a reset clears the queue by design). Limit: one Node process cannot configure the fleet factory
 twice (the actor's eager `tankFactory` and the presentation's lazy `fleetFactory`), so the presentations have no actors —
-own-shot feedback, wreck poses and ERA are receipted in `battlePresentation.selftest`, not measured here.
+own-shot feedback, wreck poses and ERA are receipted in `battlePresentation.selftest`, not measured here. (2026-10-01: the
+actor no longer loads `tankFactory` — it reads the spec-only authority fleet — so the actor no longer stands in the way;
+the audit itself still stubs the visuals.)
 
 **The state-channel matrix.** How each thing the peer presents is produced, travels and is applied; the verdict per scenario
 after this lane (the audit's rows are in the scratchpad's `world-events-matrix-after.md`).
@@ -1687,7 +1694,7 @@ after this lane (the audit's rows are in the scratchpad's `world-events-matrix-a
 | Destroyed props — the fall | `destroyObstacle` → `world_prop_destroyed` | EVENT (never tiered, never skipped) | `applyEvent` → `crushObstacle(dir, speed)` + `prop:crushed` | **FIXED**: 419/419 through the event, Δ p50 2 ticks, max 6, 0 early, the authority's direction (before: 0) | PASS | **FIXED**: 0 re-destroyed, 0 ghost crunches (from 5 and 5) | PASS |
 | Shell impacts (terrain, props) | `emitWorldShellImpact` (x, y, z, normal) | EVENT, observable-shooter rule | `shell:expired` with the payload position | PASS: 83/83, pos err 0.000 m; **FIXED** lateness: Δ max 7 ticks (one slow frame) from 11–18 | PASS | PASS | PASS |
 | Shell hits | `emitShellHitEvent` (`...hit` with pos / normal) | EVENT, observable pair | `shell:hit` + killcam feed | PASS: 235/235, 0 duplicate; **FIXED** lateness: Δ max 6 from 13–16 | PASS | PASS | PASS |
-| Destruction, ram, crash | the authority | EVENT | `tank:destroyed` (pos: the presented actor), `tank:ram`, `tank:impact` (payload pos) | PASS: 71/71, Δ max 6 | PASS (wreck from the row; the explosion is not replayed) | PASS | PASS |
+| Destruction, ram, crash | the authority | EVENT | `tank:destroyed` (pos: the presented actor; the hull's death position since §13.15), `tank:ram`, `tank:impact` (payload pos) | PASS: 71/71, Δ max 6 | PASS (wreck from the row; the explosion is not replayed) | PASS | PASS |
 | Module state, fire (events) | `module_state`, `tank_fire` | EVENT | `module:state`, `tank:fire` | PASS | open: an FX column for a tank already burning needs a `lastKnownPos` the joiner lacks | PASS | PASS |
 | Spotted / visibility | the spotting system filters the viewer snapshot | presence in the frame | `setVisible` / `networkVisible` | PASS (§13.9 invariant) | PASS | PASS | PASS |
 | Clock, phase, countdown, verdict | meta | every snapshot (+ `match_ended`) | `applyFrame`, `applyVerdict` (grace) | PASS (§13.12) | PASS | PASS | PASS |
@@ -1727,6 +1734,186 @@ a link reset (the last ~150 ms before a reconnect or a migration) are not replay
 one-shot effect is gone (1 impact and 1 hit in the final run's reconnect and host-close windows). (4) The harness's
 presentations carry no actors (the fleet factory configures once per process), so own-shot feedback is receipted, not
 measured, here.
+
+### 13.14 Relay credentials from the room (lane `mp/room-relay-credentials`, 2026-10-02)
+
+**Why.** `/api/ice` (a Vercel function) minted one-hour Cloudflare TURN credentials for any request that passed its origin
+check (INFRA-P7: a same-origin page or an allow-listed `Origin`) — a header any script can send, so anyone could mint relay
+time billed to the account. Since this lane the room mints them, for its own seated players only.
+
+**The contract** (`src/mp/room/protocol.ts`, the block `// ---- Relay credentials from the room`):
+
+- `room_relay` (client → room, with a requestId, no payload) asks for the ICE servers of ONE peer connection — a peer's
+  connect attempt (each reconnect and migration) or an offer its host accepts. The room answers `room_relay
+  { iceServers, relay, expiresInSeconds? }` to the requesting socket alone (`readRoomRelayPayload` validates it; `relay`
+  is recomputed from the servers).
+- Admission, each refusal with its code: a requestId (`invalid_payload`); a seated socket (`not_in_room`); a seat token of
+  the running peer-to-peer match (`relay_phase`, a new code — a waiting room, a match that ended, a service-hosted match,
+  a seat without a token); the windows (`rate_limit`): `ROOM_RELAY_SEAT_LIMIT` = 6 grants per seat and
+  `ROOM_RELAY_ROOM_LIMIT` = 96 per room in each `ROOM_RELAY_WINDOW_MS` (60 s), fixed windows counted at admission and
+  kept in memory (a room object that hibernated starts fresh ones: no storage write per request).
+- Minting: once per admitted request through the host's `relayCredentials` port (`RoomActorPorts`), never cached across
+  seats or requests, never persisted, never logged; a seat that leaves or is kicked while its grant is minted receives
+  nothing. A room without the port, an unset secret or a failed provider answers the STUN servers alone (`relay: false`,
+  possibly no server) — never an error: a joiner's link degrades to direct paths and joining never depends on a relay.
+
+**The issuer** (`server/relayCredentials.ts`, runtime-neutral: fetch, `AbortSignal.timeout`, WebCrypto HMAC-SHA1) keeps the
+retired function's three sources under its names — `COT_TURN_ICE_SERVERS_JSON` (fixed servers), `COT_TURN_URLS` +
+`COT_TURN_SHARED_SECRET` (+ `COT_TURN_USERNAME`; self-hosted coturn, credentials made locally) and
+`COT_CLOUDFLARE_TURN_KEY_ID` + `COT_CLOUDFLARE_TURN_API_TOKEN` (production: the same `generate-ice-servers` call, one per
+grant) — and its lease: one hour, `COT_TURN_TTL_SECONDS` may shorten it to twenty minutes and never lengthen it. The
+provider call is bounded at 4 s (inside the client's 6 s `ROOM_RELAY_REQUEST_TIMEOUT_MS`); each failure leaves one
+`cot-relay` line (status, cause, latency), never a token, key id or credential. `COT_STUN_URLS` names the STUN fallback:
+`OFFICIAL_STUN_URLS` of `api/_lib/policy.ts` in `cloudflare/rooms/wrangler.jsonc` (pinned by
+`tools/deployment-policy.selftest.mjs`), unset on the LAN helper (a LAN needs host candidates only).
+
+**Where it runs.** The rooms Worker (`cloudflare/rooms/src/room.ts`: the issuer from the object's secrets on the first
+admitted request) and the LAN helper (`server/rooms/main.ts`, the same names from its environment, all unset by default).
+
+**The client.** `RoomClient.requestRelay()` is one request; `createRoomIceResolver({ mode, room })`
+(`src/mp/transport/iceConfig.ts`) is one per room session (`BrowserP2pPorts.createIceResolver(mode, room)`, built over the
+room client the seat holds; `src/main.ts` wires it). A LAN room asks nothing; a private room's resolutions in flight share
+one request and a grant younger than `RELAY_GRANT_REUSE_MS` (30 s) is reused — a host answering a 14v14 election's 27
+offers asks once, which is what the seat window assumes; a refusal, a timeout or a room that predates the request falls
+back to the newest grant with at least a minute left, else to host candidates; it never rejects. The transports still
+resolve per connection (`WebRtcTransport.connect`, `createRtcHostAcceptor`), from the room now. `resolveIceConfigUrl` and
+`VITE_ICE_CONFIG_URL` are gone.
+
+**`/api/ice`: retired, kept one release as a credential-free STUN answer.** Deleting it outright would leave every tab
+loaded before the site deploy with host candidates only — its `loadIceConfiguration` falls back to an empty server list
+on any error, a 404 included — so old tabs would lose STUN, not just TURN. For one release the route answers
+`OFFICIAL_STUN_URLS` with no TURN server, no credential, no environment read and no provider call; the new client never
+calls it. Delete `api/ice.ts` and `server/ice.selftest.mjs` with the next release; the Vercel TURN variables
+(`COT_CLOUDFLARE_TURN_KEY_ID`, `COT_CLOUDFLARE_TURN_API_TOKEN`, `COT_TURN_*`) are read by nothing on Vercel once the site
+of this lane is live, and the owner deletes them then.
+
+**Rollout** (the Worker before the site: an old room answers `room_relay` with `unknown_message`, which a new client turns
+into host candidates): `wrangler secret put COT_CLOUDFLARE_TURN_KEY_ID` and `wrangler secret put
+COT_CLOUDFLARE_TURN_API_TOKEN` in `cloudflare/rooms` (the values the Vercel project holds today), then the Worker
+(`node tools/release.mjs workers <sha> --only=rooms`), then a seated probe (a grant with TURN URLs), then the site
+deploy, then the Vercel TURN variables removed. Old tabs never send `room_relay`, so the Worker deploy changes nothing
+for them; a Worker without the secrets answers STUN alone.
+
+**Receipts.** `server/relayCredentials.selftest.mjs` (the sources, the lease table, one call per grant, the failures and
+their lines), `src/mp/room/roomActor.selftest.mjs` (admission, both windows — the room's needs a room of 17 seats — a
+seat kicked or leaving mid-mint, a failing port), `src/mp/room/roomClientSignals.selftest.mjs` (the request, the
+validation, the codes, the budget), `src/mp/transport/iceConfig.selftest.mjs` (the resolver), `browserComposition`
+(one resolver per room session over its client), `tools/mp-rooms-p2p-e2e.mjs` (the LAN helper's coturn grants over real
+sockets), `tools/mp-p2p-headless.mjs` (every peer connection of the run built with the room's grant: 10 of 10 from 4
+requests), `server/ice.selftest.mjs` (the deprecated answer), and the Workers-runtime suites: `cloudflare/rooms`
+`test/relay.test.ts` (a fake TURN key under `wrangler.relay.test.jsonc`: seated grants per request, the refusals with no
+provider call, the seat window, the eight-hour ask clamped to the hour, a failing provider) and `test/p2p.test.ts` (no
+secret: STUN alone, no provider call, no error).
+
+**Cost.** One `room_relay` is one handled room message (billed at the conservative one-request rule) and one provider
+subrequest: about one per seat at a start and one per migration window, ≈ 30–40 per 14v14 match.
+
+### 13.15 Ghost crunches traced (lane `fix/mp-ghost-crunch`, 2026-10-02)
+
+**The finding.** A world-events audit run on the PR branch (d0a4d470f, machine load ≈ 49) failed with a `prop:crushed`
+"for a prop the host never sent" on three views at once (p1 back as a peer, p2, p3's rejoin) and a fall death presented
+0.806 m from the authority's hull. The hypothesis to prove or disprove: a client-side crush beside a dying tank.
+
+**Traced on the real harness** (bots driven into verdant's hedgehogs and dropped beside trees at the start of live play,
+stacks on every presentation crush and effect, the host world's crushed flags and list read at the end):
+
+1. **Not a ghost — an attribution artifact.** Each "ghost" was the authority's own `world_prop_destroyed`, presented once,
+   at the right tick, through `battlePresentation.applyEvent` on the event's record. A hedgehog is three beam records;
+   two share one box centre (all 8 verdant hedgehogs: 808/809 … 829/830). One crush fells the whole prop — the collision
+   world (`headlessCollisionWorld.crushObstacle`, the browser's `CrushableClutter.setCrushed`) crushes the siblings, so
+   the authority sends exactly one event and lists one index — but the effect carried only a position, and the audit
+   read it back as the sibling (the last record with that centre): an effect for a record "never sent", and the sent
+   record "crushed without an effect" (the run's one `crush w/o FX` per view). No presentation path crushes on a death
+   (the prediction world never crushes; the wreck presentation never touches the world); the deaths were not near a
+   hedgehog. **Fix:** `prop:crushed` names its obstacle (`obstacleIndex`, and the prop's height `h` as the solo crush
+   does); the audit attributes an effect by that index, a centre two records share attributes nothing.
+2. **A real misplacement.** The death was presented at the pose the frame showed. A fall death lands between two
+   snapshots; the event released at the landing tick read the interpolated (or predicted) pose one step earlier —
+   mid-air, 0.3–0.8 m above and beside the hull — and the explosion, the wreck smoke column (`effects.ts lastKnownPos`)
+   and the killcam sat there. **Fix:** `tank_destroyed` carries the hull's position at its death (`authoritativeMatch`
+   `emit`, as `tank_ram` and `tank_impact` carry theirs), and the presentation places the death there (an older host's
+   event falls back to the presented pose).
+3. **The real ghost falls the trace turned up: worlds laid out otherwise.** The host plays on the map's collision
+   manifest, captured from the desktop tier's build of the base map; the authority's obstacle index is that list's.
+   A peer's presentation crushed `getObstacles()[index]` of its own rendered world — but the mobile tier counts fewer
+   props and trees (`environmentRichness`, `treeRichness`: verdant 6,641 records against 6,977, 57 at the same index,
+   2,838 of the desktop trees elsewhere or absent) and Frontline Assault's trench works add 144 records ahead of the
+   trees (every tree shifted). Measured with the real Node-built worlds against 274 authority falls (four hull trios
+   ploughing four stands): an index-only presentation felled **237 other props** on the mobile tier and **215** on the
+   trench build — a tree nobody touched, with its crunch, while the one the hull crossed stood on. **Fix:** the event
+   carries its record's identity (box centre `x, y, z`; `kind` was there); the presentation
+   (`src/mp/presentation/authorityObstacles.ts`) fells the record at the index when it is that prop, else its own record
+   of that prop found by identity (`queryObstacles` around the centre, 1 cm, same kind), else nothing — never another prop (identity: 212 felled, 0 wrong on the mobile tier; 270, 0 wrong
+   on the trench build). A world announces its layout (`map.ts layoutTier`, `terrainVariant`); one laid out otherwise
+   does not read the persistent destroyed list by index (it would lay random props down settled) — the round loads the
+   manifest's obstacle identities beside the roster (`worldCollision.ts loadObstacleIdentities`, the same verified
+   content-addressed file the host fetches; `browserComposition` → `setAuthorityObstacles`) and the list is read through
+   them. An event whose record at its index is another prop also proves a layout the world did not announce.
+
+**Receipts.** `tools/mp-world-events-scenarios.selftest.mjs` (new, core, ≈ 4 s, deterministic; fails on d0a4d470f at
+all three): the real authority on verdant's shard into the real presentation — every hedgehog driven through, each felled
+by one event and crunched once under its own index (4 through a record whose centre another shares), a re-send crunching
+nothing; a fall death beside a tree presented at the hull's death position though the frame shows it 0.40 m away
+mid-air, nothing crushed or crunched but announced falls; three hulls ploughing verdant's densest stand into a lighter
+(mobile-shaped), a variant (trench-shaped), an unannounced and the base world — every fall fells the authority's prop or
+nothing, every fall whose prop the world has fells it, the list lays nothing down by index on a world laid out otherwise
+and exactly the destroyed props through the identities. `tools/mp-world-events-audit.selftest.mjs` scripts both cases
+into every run (a bot into the hedgehog whose first-met beam shares its centre; a bot dropped 40 m on one hit point
+beside a tree, presented within 1 cm on every view), labels the returning p1 `p1'` (it overwrote `p1#0` in the per-view
+table) and judges deaths against the hull, not against their own payload. `src/mp/host/worldCollision.selftest.mjs` (the
+identities), `browserComposition.selftest` (loaded for a mobile-tier world only; an unreachable manifest is a warning).
+
+**Solo.** The solo step crushes on its own authority (`state.ts resolveCrushContacts`): a hedgehog's siblings are
+crushed by the clutter before the loop reaches them (`if (obstacle.crushed) continue`), so it plays one crunch per prop,
+as the authority sends one event; solo's `tank:destroyed` already carries the death-tick position. The cosmetic
+crushables loop (`battlePresentationRuntime.crushNearbyProps`: telegraph poles and the 'loop' clutter — barrels, cones,
+pallets — that have no obstacle record) runs on each presented hull in both modes; the authority does not model those
+props, so in a network match each peer topples them from the hulls it sees, unsynchronized and not persistent (a rejoin
+sees them standing). Open, with the rest of the mobile-tier divergence: a mobile or Frontline Assault peer still predicts
+against its own layout (props the authority lacks, props it cannot see) and sees cover the authority does not have; the
+assault host plays the base terrain under the clients' carved trenches. The fix there is one layout for every peer of a
+match (or a manifest per layout), not a translation.
+
+### 13.16 A migration keeps every fall the seat knew (lane `fix/mp-migration-props`, 2026-10-02)
+
+**The finding.** On the PR head with main's six modes (47ff227c2) the world-events audit failed 3 runs in 10 (4 of 4
+passed before the merge; nothing in main touches destroyed-prop migration — the merge only made a race visible): the old
+host had 55 destroyed props, the elected seat's newest frame 54, the new host booted with 54; that prop stood again, a bot
+crushed it a second time and p2 and p3 both crunched it. A second failure was the audit's own: it compared the boot with
+the seat's newest frame alone while the boot had rightly used a newer sealed keyframe.
+
+**Traced** (the audit with the old host's tab closed the moment a scripted fall's event went out): tree 1307 fell at host
+tick 1150; its `world_prop_destroyed` reached p2 and p3 — still queued, the presented tick never reached it — while the
+frame listing it (the next snapshot, up to two ticks later) was never published; both seats' newest frame was tick 1149
+(41 props, without 1307), the keyframe tick 1131. The elected p2 booted from that frame (41: lost 1), and the migration's
+link reset cleared both queues: nobody presented the fall, the new host stood the tree, and the next hull through it
+felled it again with a crunch on every seat.
+
+**Fix.** The match client retains the obstacle index of every `world_prop_destroyed` it receives in the round, presented or
+queued (`RetainedMigrationState.fallen`; a link reset clears the queue, never this). The elected seat's boot state
+(`migrationState.resumeStateFromRetained`, called by `MatchSession.becomeHost`) is the newer of the sealed keyframe and its
+newest frame, plus those falls, at the base's revision plus one per fall it adds (the old host counted each when it
+destroyed it), never below the list's length. The peers' queued fall events are still cleared at the reset; the new host's
+first frame lists the prop and their presentations lay it down settled — no fall replayed, no crunch.
+
+**What the revision means to the clients' reading.** It counts falls (one per destroyed record; a restore continues it).
+The host actor republishes its sorted list only when the revision moves (`destroyedList`), so a restored list must come
+with a revision at least its length — a resumed actor starts at −1 and lists everything in its first frame. The wire
+carries the list whole in a keyframe and as additions in a delta, by content; a client's assembled list is their union,
+replaced by a new socket's keyframe. The presentation re-reads the list whenever the pair (revision, length) changes and
+judges each listed prop by itself (`authorityObstacles`), so nothing reads the revision as monotonic: a booted host whose
+revision and list match what the seat knew converges every peer, and a peer that saw the fall already keeps it down.
+
+**Receipts.** `tools/mp-world-events-scenarios.selftest.mjs` part D (fails on 47ff227c2: the seat kept no record of the
+fall; its boot logic listed `[0]` of the two fences): the real host core and a peer client on virtual time, the peer's
+snapshots cut from a fence's fall while its event still arrives, the host closed — once with the peer's newest frame newer
+than the keyframe, once with the keyframe newer (cut since before an earlier fence the keyframe lists) — the seat retains the
+fall, the boot names both fences at the old host's revision, the second host stands neither again, and the seat's first
+frame from it lists the fall. `migrationState.selftest` (the base choice, the overlay, the merge, the revision; an actor
+booted from it), `matchClient.selftest` (retained across a reset). The audit judges what the seat knew independently of
+the boot — the newer of the keyframe (opened with the room's host secret) and the newest frame, plus every fall the old
+host sent it — everything known is restored, nothing beyond the old host's list is invented, and the revision counts the
+restored falls within the old host's.
 
 ## 10. Decisions for the owner
 

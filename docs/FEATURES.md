@@ -172,7 +172,7 @@ Relevant implementation:
 
 - src/sim/movement.ts
 - src/world/terrain.ts
-- src/world/collision.js
+- src/world/collision.ts
 - src/vehicles/tankFactory.ts
 - tools/track-geometry.selftest.mjs
 

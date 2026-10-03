@@ -163,8 +163,9 @@ orders applied, discards by reason, tokens, latency, back-off) — `window.__DEB
 
 ## The proxy (`api/jev.ts`)
 
-- `POST /api/jev` only; origin allow-list (the official origins + `COT_ALLOWED_ORIGINS`; the dev wrapper
-  also accepts `http://localhost:*`); CORS headers only for an allowed origin.
+- `POST /api/jev` only; a present, allow-listed `Origin` (the official origins from `api/_lib/policy.ts` +
+  `COT_ALLOWED_ORIGINS`; the dev wrapper also accepts `http://localhost:*`) — browsers send `Origin` on every
+  POST, so a request without one is refused (2026-10-01); CORS headers only for an allowed origin.
 - `TYPESAFE_API_KEY` from the environment (production: the server-only Vercel variable; never `VITE_`);
   missing → `503 not_configured` and the commander falls back.
 - Body ≤ 32 KB, strict validation (`validateJevRequest`: bounds, resolved references, `pii_field:*`

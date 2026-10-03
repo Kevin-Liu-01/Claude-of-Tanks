@@ -1,5 +1,6 @@
 /** Redrock's canyon continues beyond the playable square on the existing ring.
  * Shared geological shape, not another mountain/noise profile or scene owner. */
+import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import type { Color } from 'three';
 
@@ -20,6 +21,18 @@ export interface CanyonGround {
   /** Round 63 (2026-09-24): 0..1 where the ring's near rows must seat on the outland itself (terrain.ts, a railway
    * cutting's mouth); absent on every map without one, whose ring is byte-identical. */
   getOutlandSeatWeightAt?(x: number, z: number): number;
+  /** The map-borders lane (2026-10-03): the near ring's share of the continued ground (1) against the authored ranges (0). */
+  getBorderHandOverAt?(x: number, z: number): number;
+  /** The map-borders lane: the border's woods (0 open … 1 wooded). */
+  getBorderWoodsAt?(x: number, z: number): number;
+  /** The map-borders lane: the border's hedgerows (0 … 1 on a field boundary's tree line). */
+  getBorderHedgeAt?(x: number, z: number): number;
+  /** The map-borders lane: the farmsteads past the edge — how many, their build, the field system they square to. */
+  _borderFarmsteads?: { count: number; style: FarmsteadStyle; fieldAngle: number };
+  /** The map-borders lane: the hedged stretches of the field boundaries past the edge (borderHedgerows.ts). */
+  _borderHedgeLines?(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[];
+  /** The road exits past the edge: [metres off the nearest exit road, its presence 0..1] (terrain.ts roadExitAt). */
+  _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
 }
 
 interface SeamPoint { angle: number; x: number; z: number; height: number }

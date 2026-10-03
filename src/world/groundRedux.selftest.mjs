@@ -90,6 +90,7 @@ assert.equal(resolveGroundReduxProfile('mars').foldMoist, 0, 'no moisture in the
 // 3. The uniform packing the material reads: four packed vectors, the rate is 2π / period, clamped bands.
 const u = groundReduxUniformValues(resolveGroundReduxProfile('coastal'));
 assert.equal(u.reduxA.length, 4); assert.equal(u.reduxFold.length, 4); assert.equal(u.reduxSwash.length, 4); assert.equal(u.reduxSnow.length, 3);
+assert.equal(u.reduxD.length, 4, 'terrain v2 (2026-10-01): the exposure / climate / bedding vector');
 assert.ok(Math.abs(u.reduxSwash[0] - (2 * Math.PI) / 8.5) < 1e-12, 'the swash rate is 2π over the map\'s swell period');
 assert.equal(u.reduxSwash[1], 6, 'round 73b: the reach in metres (Saltmere 6 m), read off the baked shore byte — the mask apron is two metres on a real beach'); assert.equal(u.reduxSwash[2], 1.5, 'the Saltwind probe (2026-09-26): strength 1.5 read as wet sand');
 assert.equal(u.reduxSwash[3], 1, 'the foam and wrack lines at full on a sea beach');
@@ -148,12 +149,14 @@ assert.ok(/float x = f \+ \(hLayer - hBase\) \* k \* 4\.0 \* f \* \(1\.0 - f\);/
 assert.ok(material.includes('float hK = uReduxA.x * 2.5 * (1.0 - farM) * (1.0 - projW);'), 'and fades with the far variant, off the wall projections');
 // 2026-09-26: the relief taps and both mixes run only where the transition does — the far field and the zeroed
 // `?ground=legacy` A/B keep the plain mask (reduxHeightMix with k = 0 would still S-curve it)
-assert.ok(material.includes('if (hK > 0.001) hBase = reduxLuma(a.rgb) - reduxLuma(texture2D(uAlbG, uv * 0.240, 7.0).rgb);'), 'the base relief is gated on the transition strength');
+// terrain v2 (2026-10-01): the base tile's relief reads against its measured mean (uMeanG, was the deep-mip fetch)
+assert.ok(material.includes('if (hK > 0.001) hBase = reduxLuma(a.rgb) - reduxLuma(uMeanG.rgb);'), 'the base relief is gated on the transition strength');
 assert.equal((material.match(/if \(hK > 0\.001\) \{/g) || []).length, 2, 'the dirt and rock height mixes are gated on it');
 assert.ok(material.includes('(1.0 - smoothstep(14.0, 42.0, camDist))'), 'glints live inside 42 m — no shimmer at range');
 // the wiring: profile from the map id inside the material steps (the call site keeps its shape), the fold
 // attribute on the vertices, the AO hook on Three's own stage, the clock shared with the sheet, the key
-assert.ok(terrain.includes('const redux = groundReduxUniformValues(resolveGroundReduxProfile(mapId));'));
+// terrain v2 (2026-10-01): the profile is resolved once (the ripple amplitude reads its wind share) and packed
+assert.ok(terrain.includes('const groundProfile = resolveGroundReduxProfile(mapId);') && terrain.includes('const redux = groundReduxUniformValues(groundProfile);'));
 assert.ok(terrain.includes("geo.setAttribute('fold', new THREE.BufferAttribute(fold, 1, true));"), 'one normalised byte per vertex');
 assert.ok(terrain.includes('attribute float fold;\\nvarying float vFold;') && terrain.includes('vFold = fold;'), 'the vertex shader forwards the fold');
 // round 73b: the shore byte — inverted, so the ring bands (no attribute) read 32 m; one normalised byte per vertex
@@ -166,10 +169,10 @@ assert.ok(terrain.includes("'#include <aomap_fragment>\\nreflectedLight.indirect
 assert.ok(terrain.includes('heightField._foldAt = foldAt;'), 'the tall grass reads the same folds');
 assert.ok(terrain.includes('if (groundClock && Number.isFinite(dt) && dt > 0) groundClock.value += dt;')
   && terrain.includes('if (groundClock) groundClock.value = t;'), 'the swash breathes on the water sheet\'s clock and freezes with it');
-assert.ok(terrain.includes("world-terrain-splat-v52-"), 'the program key moved with the fragment (round 73b: v43)');
+assert.ok(terrain.includes("world-terrain-splat-v54-"), 'the program key moved with the fragment (round 73b: v43; terrain v2, 2026-10-01: v53; terrain v3, 2026-10-02: v54)');
 assert.ok(!/uniform sampler2D uPress|uniform sampler2D uRedux/.test(material), 'no new sampler');
 
 // 6. The budgets the perf bench compares against (docs/MAP-BEAUTIFICATION.md round 73).
 assert.deepEqual({ ...GROUND_REDUX_BUDGET }, { terrainGpuMs: 0.8, tallGrassGpuMs: 1.0, shorelineGpuMs: 0.2, cpuMs: 0.2, drawCalls: 6, terrainSamplers: 16, terrainDeclaredSamplers: 10 });
 
-console.log(`groundRedux.selftest: ${MAP_IDS.length} map profiles, uniform packing (six vectors), the quality knob, the terrain material's redux contract (ten samplers, v43, the borders, the strand in metres on the shore byte) and the budgets pinned`);
+console.log(`groundRedux.selftest: ${MAP_IDS.length} map profiles, uniform packing (seven vectors), the quality knob, the terrain material's redux contract (ten samplers, v43, the borders, the strand in metres on the shore byte) and the budgets pinned`);

@@ -70,13 +70,16 @@ export default {
     inhabit: { stalls: 5, benches: 3, coreClutter: 22, pots: 10, laundry: 4, handcarts: 3, carts: 4, trucks: 4, jeeps: 3, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): dune-ring tone grain 0.46 -> 0.62
-  horizon: { baseHex: 0xaa936b, amp: 0.90, style: 'rolling', ground: 'sand', treeline: 0.12, forestHex: 0x70704b, rockHex: 0xae9471, haze: 0.88, grain: 0.62 },
+  horizon: { baseHex: 0xaa936b, amp: 0.90, style: 'rolling', ground: 'sand', treeline: 0.12, forestHex: 0x70704b, rockHex: 0xae9471, haze: 0.88, grain: 0.62,
+    // the mountains lane (2026-10-02): the desert hills round the spring are gour — flat-topped residual hills cut by
+    // their beds — not smooth rolling downs: a gentler bed stair than the tableland rings' (horizonEscarpment.ts)
+    escarpment: { bedM: [22, 42], cliffShare: [0.24, 0.40], talusRise: 0.30, meanderM: 16 } },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): a textured high sky (0.5 / 0.22 -> 0.78 / 0.48 on
   // an 820 m deck of 2900 m cells that the low 22° sun rakes), the dust haze a step cooler than the sun (0xb0a18a ->
   // 0xb3ada3, saturation 0.21 -> 0.09 at the same lightness) and patchier light on the dunes (cloudShadowAmp 0.24)
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'cumulus-humilis', coverage: 0.17, cirrus: 0.4, windDirDeg: 120 },
-  sky: { ...desert.sky, sunElevationDeg: 22, sunAzimuthDeg: 104, turbidity: 5.2, fogDensity: 0.00052, fogTintHex: 0xb3ada3, fogMix: 0.46, cloudOpacity: 0.78, cloudOpacity2: 0.48, cloudAltM: 820, cloudHazeK: 0.00012, cloudUvM: 2900, cloudShadowAmp: 0.24, sunIntensity: 4.0, hemiIntensity: 0.40 },
+  sky: { ...desert.sky, sunElevationDeg: 22, sunAzimuthDeg: 104, turbidity: 5.2, /* 2026-10-03 (the skies lane, agreed with the mountains lane: one haze law from the camera to the far country, the map's fogDensity its one lever): arid air is clear — 0.00025 on the four arid maps (a meteorological range near 37 km; a ridge 300 m up at 7.5 km keeps about 60 % of its contrast) (was 0.00052) */ fogDensity: 0.00025, fogTintHex: 0xb3ada3, fogMix: 0.46, cloudOpacity: 0.78, cloudOpacity2: 0.48, cloudAltM: 820, cloudHazeK: 0.00012, cloudUvM: 2900, cloudShadowAmp: 0.24, sunIntensity: 4.0, hemiIntensity: 0.40 },
   minimap: { ...desert.minimap, water: 'rgba(45,111,108,.86)', waterStroke: 'rgba(23,70,70,.94)' },
   shot: { pos: [-252, 52, -246], look: [86, 1, 80] },
   // round 66 (2026-09-24, the FFT ocean): a still spring pool with a breath of desert wind — clear water over pale

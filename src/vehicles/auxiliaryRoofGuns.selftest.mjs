@@ -1,5 +1,5 @@
 // auxiliaryRoofGuns.selftest.mjs — combat anatomy's roof-gun table agrees with the full inventory.
-// `npm run tank:controls:check` regenerates both files from a fleet build; this receipt keeps the derived
+// `npm run tank:controls:check` regenerates all three files from a fleet build; this receipt keeps the derived
 // table honest in npm test without building the fleet, and keeps the spec finalizer off the 217 kB inventory
 // (fleetFactory.ts, in the garage boot, imports combatAnatomy.ts).
 import assert from 'node:assert/strict';

@@ -22,6 +22,12 @@ export interface BattleAtmosphereRuntimeOptions {
   getAuthoredPreset(): MapSkyConfig;
   getGameMode?(): string;
   getWorldRoot?(): THREE.Object3D | null;
+  /**
+   * 2026-10-01 (the grounded light model): the share of the vehicles' shade readability lift the applied light still
+   * needs (lightModel.ts `vehicleReadability`: the adapting camera and an overcast deck already light the shade);
+   * 1 when absent.
+   */
+  getLightReadability?(): number;
 }
 
 export interface BattleAtmosphereRuntime {
@@ -122,7 +128,9 @@ export function createBattleAtmosphereRuntime(options: BattleAtmosphereRuntimeOp
     }
     const nextAuthored = { ...options.getAuthoredPreset() };
     options.applyPreset(mapId === 'moon' ? nextAuthored : mars ? { ...MARS_SKY_PRESET } : weatherPreset(nextAuthored, next));
-    setVehicleReadabilityScale(next?.timeOfDay === 'night' ? .34 : 1); // 2026-09-14: was .24, night readability lifted with the moon
+    // 2026-09-14: night .34 (was .24, night readability lifted with the moon); 2026-10-01: × the light's own share
+    const light = options.getLightReadability?.() ?? 1;
+    setVehicleReadabilityScale((next?.timeOfDay === 'night' ? .34 : 1) * (Number.isFinite(light) ? Math.min(1, Math.max(0, light)) : 1));
     restoreHorizon();
     if (next?.timeOfDay === 'night') dimHorizon(root, horizonColors);
     authored = nextAuthored;

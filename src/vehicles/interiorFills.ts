@@ -141,11 +141,14 @@ interface ApplyInteriorFillsOptions {
   readonly gunG?: THREE.Object3D | null;
   readonly material: THREE.Material;
   readonly disposables: { push(resource: { dispose(): void }): unknown };
+  /** A record to apply instead of the registered one: the fleet watertight gate attaches the shipped fills to its
+   * shared fill-free build without loading the registry, so the pass's other audits keep their build. */
+  readonly record?: InteriorFillRecord | null;
 }
 
 /** Add the registered fills for a tank to its hull and turret rigs. Returns box counts (0 when none are registered). */
-export function applyInteriorFills({ specId, hullG, turretG, gunG = null, material, disposables }: ApplyInteriorFillsOptions): { hull: number; turret: number; gun: number } {
-  const record = registry.get(specId);
+export function applyInteriorFills({ specId, hullG, turretG, gunG = null, material, disposables, record: explicit }: ApplyInteriorFillsOptions): { hull: number; turret: number; gun: number } {
+  const record = explicit === undefined ? registry.get(specId) : explicit;
   const counts = { hull: 0, turret: 0, gun: 0 };
   if (!record) return counts;
   const inverse = new THREE.Matrix4();

@@ -3,20 +3,23 @@ import assert from 'node:assert/strict';
 import ts from 'typescript-compiler-api';
 
 export const AUTHORED_EXIT_FIXTURE = {
+  // Glacier Pass redesign (2026-10-03): the pass roads' interiors gain the cross roads' shared junction stations; the
+  // south exits move to where every terrain seed keeps the 18 % grade law, each still meeting the edge due south of
+  // its last station (road 0 on x = -346, road 1 on x = -160, road 2 on x = 330 through a station 80 m inside).
   alpine: [
-    { path: 0, prefix: [[-420, -480]], suffix: [[-202, 480]], original:
-      [[-420, -450], [-346, -278], [-316, -90], [-330, 108], [-276, 290], [-202, 468]] },
-    { path: 1, prefix: [[-112, -480]], suffix: [[-18, 480]], original:
-      [[-112, -466], [-146, -304], [-154, -168], [-172, -28], [-138, 142], [-86, 316], [-18, 466]] },
+    { path: 0, prefix: [[-346, -480]], suffix: [[-202, 480]], original:
+      [[-346, -278], [-340, -240], [-316, -90], [-330, 108], [-303, 200], [-276, 290], [-202, 468]] },
+    { path: 1, prefix: [[-160, -480]], suffix: [[-18, 480]], original:
+      [[-160, -380], [-146, -304], [-154, -168], [-172, -28], [-138, 142], [-86, 316], [-18, 466]] },
     { path: 2, prefix: [[330, -480]], suffix: [[212, 480]], original:
-      [[330, -452], [286, -282], [246, -122], [226, 42], [258, 218], [212, 410]] },
+      [[330, -400], [286, -282], [264, -194], [246, -122], [226, 42], [258, 218], [245, 272], [212, 410]] },
   ],
   reservoir: [
     { path: 0, prefix: [[-480, -72]], suffix: [], original:
       [[-424, -72], [-364, -72], [-340, -88], [-238, -174], [-78, -212],
         [42, -244], [172, -224], [294, -190], [392, -100]] },
     { path: 4, prefix: [[420, -480], [420, -448], [370, -400]], suffix: [[448, 400], [480, 400]], original:
-      [[370, -328], [436, -288], [420, -208], [392, -100], [416, 0],
+      [[370, -328], [436, -288], [420, -208], [392, -100], [424, 0],
         [388, 160], [448, 226], [372, 282], [440, 354]] },
   ],
 };

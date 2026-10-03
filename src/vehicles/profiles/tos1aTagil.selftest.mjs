@@ -11,6 +11,7 @@ import {verifyGunCradleSeats} from '../gunCradleSeats.test-support.mjs';
 import {TOS1A_TAGIL_LAYOUT as D,TOS1A_TAGIL_LAUNCHER_MUZZLES as M} from '../tos1aTagilLayout.ts';
 import {buildTos1aTagil} from './tos1aTagil.ts';
 import {KIT} from './kit.ts';
+import {findStaticMergePart,staticMergePartForFace} from '../staticMergeParts.ts';
 
 const sha=x=>createHash('sha256').update(x).digest('hex');
 const attribute=a=>sha(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
@@ -32,6 +33,8 @@ function cast(tank,frame,start,direction,far=5){
   tank.root.updateMatrixWorld(true);const ray=new T.Raycaster(frame.localToWorld(new T.Vector3(...start)),new T.Vector3(...direction).transformDirection(frame.matrixWorld),0,far),bounds=new T.Box3();
   return ray.intersectObjects(meshes(tank.root).filter(m=>{if(m.isInstancedMesh){if(!m.boundingBox)m.computeBoundingBox();bounds.copy(m.boundingBox);}else{if(!m.geometry.boundingBox)m.geometry.computeBoundingBox();bounds.copy(m.geometry.boundingBox);}bounds.applyMatrix4(m.matrixWorld);return ray.ray.intersectsBox(bounds);}),false)[0];
 }
+// Battle builds fold contiguous same-material runs into one draw (staticDrawMerge.ts); name the source part hit.
+const hitName=hit=>staticMergePartForFace(hit.object,hit.faceIndex)?.name??hit.object.name;
 function coordinate(tank,frame,start,direction,axis,expected,far=5){
   const hit=cast(tank,frame,start,direction,far);assert(hit,`missing physical stock at ${start}`);
   const value=frame.worldToLocal(hit.point.clone())[axis];assert(Math.abs(value-expected)<.001,`${start}: ${axis}=${value}, expected ${expected}`);return hit;
@@ -40,16 +43,16 @@ function cells(tank){
   const gun=tank.root.getObjectByName('rig_gun');
   for(const {x,y,z} of M){
     const terminal=coordinate(tank,gun,[x,y,z+.2],[0,0,-1],'z',D.terminalZ);
-    assert.equal(terminal.object.name,'gunMountDark','deep dark breech is physical pitching stock');
+    assert.equal(hitName(terminal),'gunMountDark','deep dark breech is physical pitching stock');
     for(const [dx,dy] of [[.135,0],[-.135,0],[0,.135],[0,-.135]]){
       const ring=coordinate(tank,gun,[x+dx,y+dy,z+.2],[0,0,-1],'z',z,.3);
       assert(ring.face.normal.z>.99,'front rim faces out under normal single-sided material');
     }
     const inner=coordinate(tank,gun,[x,y,2.20],[1,0,0],'x',x+D.boreRadius,.2);
-    assert.equal(inner.object.name,'gunMountDark','physical inner sleeve uses dark unpainted metal');
+    assert.equal(hitName(inner),'gunMountDark','physical inner sleeve uses dark unpainted metal');
     const direction=new T.Vector3(-.56,.34,1).normalize();
     const oblique=cast(tank,gun,new T.Vector3(x,y,z).addScaledVector(direction,.3).toArray(),direction.negate().toArray(),.6);
-    assert(oblique&&oblique.object.name==='gunMountDark','portrait-direction first hit is the deep curved metal sleeve');
+    assert(oblique&&hitName(oblique)==='gunMountDark','portrait-direction first hit is the deep curved metal sleeve');
     assert(!oblique.object.material.map,'no camouflage texture inside the actual launch tube');
     assert(gun.worldToLocal(oblique.point.clone()).z<2.45,'oblique mouth still exposes depth, not a dark cap');
   }
@@ -164,7 +167,7 @@ function lodPresentation(tank){
     tank.root.traverse(object=>{if(object.isLOD)object.update(camera);});
     const visible=new Set(meshes(tank.root));
     for(const name of ['hullDetail','hullExternalArmor','hullDark','turretEquipment','turretDetail','turretDark','turretGlass','gunMountDark']){
-      const mesh=tank.root.getObjectByName(name);
+      const mesh=findStaticMergePart(tank.root,name)?.mesh;
       assert(visible.has(mesh),`${distance}m: actual structural/sight/sleeve mesh ${name} remains visible`);
       assert(!mesh.parent.isLOD,`${name}: permanent stock is not attached to an empty distance level`);
     }

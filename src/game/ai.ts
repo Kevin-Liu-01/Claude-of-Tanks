@@ -79,6 +79,8 @@ interface AllyAvoidanceRisk {
   longSafe: number;
   headingDot: number;
   predictedCross: number;
+  /** The ally stands in this hull's lane (not only on a predicted crossing). */
+  inLane: boolean;
   ownRadius: number;
   ownHalfWidth: number;
   speed: number;
@@ -323,8 +325,8 @@ interface AiDependencies {
    * grid, no role detour). Empty when the goal lies in another connected component. Absent in headless
    * fixtures, where the search falls back to the local corner-hop router.
    */
-  planRoute?(start: { x: number; z: number }, goal: { x: number; z: number }):
-    ReadonlyArray<readonly [number, number]>;
+  planRoute?(start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
+    options?: { requireGoalLevel?: boolean }): ReadonlyArray<readonly [number, number]>;
 }
 
 interface CreateAiOptions {
@@ -473,6 +475,16 @@ const REACT_BACKOFF_HP = 0.42;
 const REACT_ANGLE_RAD = 0.75;
 const REACT_ANGLE_OFFSET_RAD = 0.42;
 const REACT_BACKOFF_M = 32;
+// A casemate lays its gun with the hull (bots lane, 2026-10-03; Aegis Crossing pacing seed 53002, the Strv 103 alone
+// against two T-90Ms): every move that turned the hull turned the gun off its target. Its shoot-and-scoot drove to a
+// spot 94-152 degrees off the bearing, its hit jink turned the bow onto the shooter (a second tank on its flank), its
+// moves into cover drove forward to crests behind it, and a blocked corridor swung it to an escape heading: the gun
+// stood 19-24 degrees off for seconds at a time and it died 12 s into the fight. Engaged, a casemate keeps the bow on
+// its target: it scoots along the line of fire, CASEMATE_SCOOT_M back off its spot and then up to it again (the
+// S-tank's hull-down drill, so the legs do not walk it out of the fight), backs into cover, jinks with the bow on the
+// target, falls back in reverse and stops at a blocked corridor instead of turning.
+const CASEMATE_SCOOT_M = 25;
+const CASEMATE_SCOOT_S = 8;
 const REACT_JINK_PERIOD_S = 0.8;
 const REACT_DURATION_S: Readonly<Record<Reaction, number>> = Object.freeze({
   cover: 7, backoff: 5, angle: 2.5, jink: 3.2,
@@ -487,9 +499,25 @@ const FRIENDLY_CORRIDOR_PAD_M = 1.25;
 const FRIENDLY_HE_PAD_M = 1.5;
 const FRIENDLY_PREDICT_MAX_S = 1.5;
 const FRIENDLY_LANE_RELOCATE_S = 1.2;
+// The lane search (bots lane, 2026-10-02; Steinburg 7v7 seed 88677, profiled: 18.8 s of the authority's 77.8 s of
+// step CPU over 300 s). A blocked trigger with no lateral lane in sight re-ran the whole search (six candidate points,
+// a terrain sight line each) on every tick for as long as the block lasted. A search that finds no lane now waits
+// FRIENDLY_LANE_RETRY_S before the next one; the block, the trigger hold and every other use of the dwell are unchanged.
+const FRIENDLY_LANE_RETRY_S = 1.2;
 const FRIENDLY_SEPARATION_LOOK_M = 26;
 const FRIENDLY_SEPARATION_PREDICT_S = 1.8;
 const FRIENDLY_STOP_DECEL_MPS2 = 4.0;
+// The bounded yield (bots lane, 2026-10-02): right-of-way waits for traffic, not for a hull that never moves. A bot
+// held behind a PARKED ally (an idle human, a teammate holding its band) for ALLY_HOLD_LIMIT_S gives way: a passing
+// path on a wider lane, or the shared stuck escalation (reverse burst, detour side flip, waypoint skip, pocket
+// escape). Cinder Junction 7v7 seed 72839 waited 239 s behind the idle host while the yield disarmed every stuck
+// watchdog.
+const ALLY_HOLD_LIMIT_S = 8;
+const ALLY_HOLD_CLEAR_M = 12;   // a hold ends once the hull has got this far from where it began…
+const ALLY_HOLD_FORGET_S = 3;   // …or once nothing has held it for this long
+const ALLY_PARKED_MPS = 0.5;
+// The give-way's passing path tries these lanes beyond the ordinary one (both sides each).
+const TRAFFIC_DETOUR_WIDE_EXTRA_M = Object.freeze([4, 9]);
 
 const LOS_INTERVAL_S    = 0.14;   // target-acquisition / LOS cadence
 const PROBE_INTERVAL_S  = 0.55;   // weak-spot + shell-slot probe cadence
@@ -542,6 +570,27 @@ const PASSIVE_PRESS_REPICK_S = 3;
 const PASSIVE_PRESS_LANE_HULL_FRAC = 0.4; // the press point must reach the HULL with the gun, not only the turret top
 const PASSIVE_PRESS_DENIED_S = 6;          // closed penetration gate held at the press point before it is given up
 const PASSIVE_PRESS_ARC_S = 3;             // gun pinned at a pitch stop at the press point before it is given up
+// An unreachable press point (bots lane, 2026-10-02; Reservoir pacing seed 50003 on the maps lane's tree with the
+// liquid-start fix): the last bravo T-90M's press point lay below a bank the terrain guard would not let it descend,
+// and the press gave a point up only once the hull stood on it, so for 540 s it drove at the bank, reversed and drove
+// again, firing a round now and then. A press point the hull has not reached within its distance at
+// PRESS_REACH_SPEED_MPS plus PRESS_REACH_SLACK_S (kept across the press restarts a flickering sight line makes) is
+// given up like a masked one and another is picked.
+const PRESS_REACH_SPEED_MPS = 4;
+const PRESS_REACH_SLACK_S = 20;
+// Missing an idle target (bots lane, 2026-10-02; Winter pacing seed 23000 on the maps lane's tree): a T-90M stood
+// 57-66 m off the idle host's flank for five minutes while its HEAT rounds dug into a crest 16 m short of the hull or
+// passed over the turret. The press held off because the hull stood "already on its flank at point-blank", and the
+// shoot-and-scoot is off against a passive target, so nothing moved it. PASSIVE_PRESS_MISSES main-gun rounds in a row
+// that leave the gun without a hit on the target (judged MISS_SETTLE_S after the last one, once its shell has landed)
+// are a verdict on the spot: the press starts from it, or the press point it stands on is given up, exactly as a
+// masked probe gives one up. The rounds count from one spot (within MISS_SPOT_M), so fire on the move never adds up to a
+// verdict on the point the hull arrives at. The flank exemption also takes the press point's own test: from where the
+// hull stands the gun must reach the hull (PASSIVE_PRESS_LANE_HULL_FRAC), re-tested every FLANK_LANE_RECHECK_S.
+const PASSIVE_PRESS_MISSES = 3;
+const MISS_SETTLE_S = 1.5;
+const MISS_SPOT_M = 10;                    // rounds fired farther apart than this are from different spots
+const FLANK_LANE_RECHECK_S = 1;
 const GUN_ARC_MARGIN_RAD = 0.026;          // 1.5° inside the mechanical elevation / depression stops
 // Round 60: a flank whose side aspect leaves the gate closed carries on round toward the rear.
 const FLANK_REAR_ASPECT_RAD = 2.35;        // 135° off the nose
@@ -573,6 +622,84 @@ const RAM_MAX_CLOSING_MPS = 14;
 const RAM_SELF_BUDGET_FRAC = 0.8;          // the rams a kill needs may cost at most this share of own hull
 const RAM_RUN_UP_M = 45;                   // a stalled ram backs off to this range before the next run
 const EMPTY_RETIRE_M = 240;                // an empty bot that cannot ram keeps at least this far from its enemies
+// The finishing run (bots lane, 2026-10-02; Ruinspires pacing seed 37001 on the maps lane's tree): the last bravo M1A2
+// emptied its rack with the idle host at 320 hp and retired for the last 325 s, to the 900 s cap. The ram law splits a
+// run's pool by mass and discounts the rammer, so what the rammer pays per point it deals is fixed, and a full-speed
+// run spends the overkill on both hulls: one 14 m/s run would deal 1516 to the host and 985 to the 803 hp rammer.
+// Against a passive target the run that finishes it is driven no faster than the slowest closing speed whose share
+// still deals RAM_FINISH_MARGIN times the target's hp (the margin covers a blow on the glacis, which takes 0.7 of the
+// pool's share), never under RAM_CAP_MIN_MPS, and the exchange is judged at that speed. Runs that cannot finish the
+// target alone are judged, and driven, at full speed, as before. Three more things kept the runs from landing: the
+// run aimed 20 m past the hull, so the corner router rounded whatever stood beyond it and the hull swerved off (inside
+// RAM_STRAIGHT_M a clear line to the hull is now driven straight at it); the empty rack's probe finds no zone with no
+// round aboard, and that probe miss scooted the hull off the run every few seconds (it no longer does); and the run's
+// own contact moved the host, which restarted its still clock, so the plan lapsed to the full-speed judgement and the
+// hull retired for 15 s (the bump of a run in contact no longer counts as the target moving).
+const RAM_FINISH_MARGIN = 1.8;
+const RAM_CAP_MIN_MPS = 6;
+const RAM_CAP_BRAKE_MPS = 0.75;            // over the run's cap the hull coasts; this far over it brakes
+const RAM_STRAIGHT_M = 60;
+const RAM_LINE_RECHECK_S = 0.5;
+const RAM_CONTACT_HOLD_S = 4;              // after a contact the target's motion is the run's own push
+// The spent rack (bots lane, 2026-10-02, Frontier Basin 7v7 seed 88677): the last bravo Challenger 2 had only its
+// L34 WP smoke rounds left against the idle M1A2 — no zone opened the gate, no burst was worth a round — and the
+// press, the closed-gate flank and the press repicks cycled for six minutes without a shot until the 900 s cap.
+// Seconds in sight of a target, from inside RACK_SPENT_RANGE_M (where range no longer shuts the gate), that no
+// loaded round can hurt (zones visible, gate shut, no worthwhile burst) end the attempt: the rack counts as spent
+// against that target (ram when the ram law allows, otherwise the retirement), any other spotted enemy outranks
+// it, and the verdict lapses after RACK_SPENT_FOR_S.
+const RACK_SPENT_S = 60;
+const RACK_SPENT_RANGE_M = 90;
+const RACK_SPENT_FOR_S = 90;
+// On-objective geometry (bots lane, 2026-10-02, Cinder Junction and Steinburg frontline seed 72839): a zone mission
+// drives the hull to the zone's centre and holds it there, and the mission owns the hull — so with a target the
+// turret could not fight from that spot (no sight of it, or a gate no loaded round opens) the vantage seek, the
+// closed-gate flank and the press never ran. Attackers and defenders held the last line 17 m apart, silent, for
+// 640 s; a defender at 44 % held 119 s without a sight line. A zone holder that has not been able to fight its
+// target for OBJECTIVE_SHIFT_DWELL_S shifts inside the zone instead: to a point on the OBJECTIVE_SHIFT_RINGS ×
+// radius rings in sight of the target, as far round toward its side as the zone allows. It holds that point while it
+// can fight from it and picks another once it has not been able to for the same dwell; leaving the zone or losing
+// the target ends it.
+const OBJECTIVE_SHIFT_DWELL_S = 4;
+const OBJECTIVE_SHIFT_RINGS = Object.freeze([0.6, 0.8]);
+// A zone's hold point (bots lane, 2026-10-03; Redrock Divide frontline): line 3's centre (52.9, 274.6) lies on the
+// plateau's 55-63 degree south face, and a zone mission drove every holder to that centre. Hulls climbed onto the face,
+// pivoted there for half a minute while the terrain guard flickered, slid off and fell; one M1A2 slid onto a wreck
+// and dropped 12 m (24 seeds: 45 damaging falls, 44 of them off that face). A zone mission holds the ground nearest
+// the centre a hull can stand on: the centre itself when its footprint is level enough to hold (the relocation
+// cell's SPOT_NORMAL_Y_MIN at the centre and over a hull's length round it, and dry), else the first such point on
+// the ZONE_HOLD_RINGS_M rings (inside ZONE_HOLD_MAX_FRAC of the zone's radius), the hull's own side of the zone first.
+// A zone on holdable ground is held at its centre as before.
+const ZONE_HOLD_RINGS_M = Object.freeze([4, 8, 12, 16, 20]);
+const ZONE_HOLD_BEARINGS = 16;
+const ZONE_HOLD_FOOTPRINT_M = 5;
+const ZONE_HOLD_MAX_FRAC = 0.7;
+// The on-objective shift's points obey the same rule (their old test sampled the leg twice, and a defender on the
+// plateau picked shift points on the floor beyond the face, drove onto it and pivoted there for a minute): holdable
+// ground, reached by a straight leg sampled every ZONE_LEG_STEP_M no steeper than LEG_NORMAL_Y_MIN.
+const ZONE_LEG_STEP_M = 3;
+// A route used up short of the objective (the mission's own plan ends in another connected component for this
+// hull or comes back empty, or a search leg took the waypoints) releases the hull to the classic drivers for this
+// long before the mission plans again (Cinder Junction frontline seed 72839: a Challenger 2 stood 494 s at its route
+// end, 192 m short of the line, its target in sight, the gate shut).
+const MISSION_RELEASE_S = 20;
+// Another level (bots lane, 2026-10-02; Cliffbridge pacing seed 53003: a T-90M on the gorge floor under the bridge
+// and one on its deck, 40 m apart vertically and 17-45 m on the map, stood engaged 570 s, neither gun able to lay
+// on the other, until the 900 s cap). A target on another level the gun cannot be laid on from here — more than
+// ELEVATION_LEVEL_M above or below, outside the elevation/depression arc at this distance — for ELEVATION_LOCK_S
+// is a verdict: a free hull changes level by a route to the target's own level when the grid has one within
+// LEVEL_ROUTE_MAX_M (driven until the hull stands on that level with the target in sight, for at most the route's
+// length at LEVEL_ROUTE_SPEED_MPS plus LEVEL_ROUTE_SLACK_S or LEVEL_ROUTE_STRIKES stuck strikes), and otherwise (no
+// route, a mission holding the hull, or the route spent short of the level) leaves that target alone for
+// UNBEARABLE_S: another spotted enemy takes the slot, or the mission and the no-contact search take the hull.
+const ELEVATION_LEVEL_M = 8;
+const ELEVATION_LOCK_S = 6;
+const LEVEL_ROUTE_MAX_M = 900;
+const LEVEL_ROUTE_SPEED_MPS = 5;
+const LEVEL_ROUTE_SLACK_S = 25;
+const LEVEL_ROUTE_STRIKES = 4;
+const UNBEARABLE_S = 75;
+const LEVEL_ROUTE_OPTIONS = Object.freeze({ requireGoalLevel: true });
 // Search goal order by how many legs have ended without contact: straight at the enemy first, then the last
 // sighting and the ring round the sector, then the ring from other sides.
 const SEARCH_ORDER: ReadonlyArray<readonly string[]> = Object.freeze([
@@ -782,7 +909,8 @@ function ensureAiInput(entity: AiEntity): void {
 }
 
 function isCasemate(spec: AiSpec): boolean {
-  return spec.gunArcDeg != null && spec.gunArcDeg <= 30;
+  // movement.ts gives a turretless hull a fixed arc even when the spec authors none (gunArcRadFor)
+  return !!spec.armor?.turretless || (spec.gunArcDeg != null && spec.gunArcDeg <= 30);
 }
 
 function findHeShellSlot(spec: AiSpec): number {
@@ -998,6 +1126,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let shotsFromSpot = 0;
   const scootPoint = { x: 0, z: 0 };
   let scootUntilS = -1;
+  let scootLine = 0;          // a casemate's scoot along its line of fire: -1 back, +1 up, 0 a free leg
+  let lineScootUp = false;    // the casemate's next scoot goes up the line (it last backed off it)
   let relocations = 0;   // probe-visible shoot-and-scoot counter
   let prevReloadT = 0;   // reload-edge watch (a jump up = a shot left the gun)
   // universal retreat-toward-support (tracked/low): time-boxed reverse window
@@ -1047,6 +1177,17 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let passivePressCandidate = -1;            // probe-visible: ring * 16 + bearing index of the chosen press point
   let passivePressArcT = 0;                  // gun pinned at a pitch stop while standing on the press point
   const pressVeto = { x: 0, z: 0, untilS: -1 }; // a press point whose probe found the hull masked
+  // missing an idle target (see PASSIVE_PRESS_MISSES)
+  let missStreak = 0;                        // main-gun rounds in a row at missStreakTargetId without a hit on it…
+  let missStreakTargetId: string | null = null;
+  const missSpot = { x: 0, z: 0 };           // …all fired from within MISS_SPOT_M of this spot
+  let missLastShotS = -Infinity;
+  let missVerdicts = 0;                      // probe-visible count of spots given up for their misses
+  let pressPickS = -Infinity;                // when the press point was last picked…
+  let pressReachByS = Infinity;              // …and the time it must be reached by (PRESS_REACH_SLACK_S)
+  let pressUnreached = 0;                    // probe-visible count of press points given up unreached
+  let flankLaneCheckS = -Infinity;
+  let flankLaneClear = false;                // the flank exemption's gun-to-hull lane at the last check
   // round 62 pacing: the search for a lost enemy (beginSearchLeg / updateSearchLeg)
   let searching = false;                     // a search leg's route is in the waypoints
   let searchKind = '';                       // probe-visible: sector | seen | objective | sweep | wide | direct
@@ -1069,10 +1210,43 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let conserving = false;                    // holding fire at a bot / passive target the lay is unlikely to hit
   let conserveHolds = 0;                     // probe-visible count of ticks a loaded gun held fire to conserve
   let emptyRack = false;
+  let rackSpentT = 0;                        // the spent-rack dwell against rackDwellId (see updateSpentRack)
+  let rackDwellId: string | null = null;
+  let rackSpentId: string | null = null;     // the target the rack was last found unable to hurt…
+  let rackSpentUntilS = -1;                  // …until this sim second
+  let rackSpentVerdicts = 0;                 // probe-visible count
+  // the on-objective shift (see OBJECTIVE_SHIFT_DWELL_S)
+  let cannotFightT = 0;
+  const objectiveShiftPoint = { x: 0, z: 0 };
+  let objectiveShifting = false;
+  let objectiveShifts = 0;                   // probe-visible count
+  // the zone's hold point (see ZONE_HOLD_RINGS_M), kept for the zone centre it was found for
+  const zoneHold = { x: 0, z: 0 };
+  let zoneHoldForX = NaN, zoneHoldForZ = NaN;
+  let zoneHoldMoves = 0;                     // probe-visible count of zone centres held from ground beside them
+  let missionReleaseUntilS = -1;             // a blocked mission route has released the hull until then
+  let missionReleases = 0;                   // probe-visible count
+  // another level (see ELEVATION_LOCK_S)
+  let elevationLockT = 0;
+  let levelRouting = false;
+  let levelRouteTargetId: string | null = null;
+  let levelRouteUntilS = -1;
+  let levelRouteStrikes = 0;
+  let levelRoutes = 0;                       // probe-visible count
+  let unbearableId: string | null = null;    // the target no gun angle or route reaches…
+  let unbearableUntilS = -1;                 // …until this sim second
+  let unbearableVerdicts = 0;                // probe-visible count
+  const levelGoal = { x: 0, z: 0, y: 0 };
+  const enemyScratch: AiEntity[] = [];
   let ramming = false;
   let ramRuns = 0;                           // probe-visible count of ram runs begun
   let ramCommitUntilS = -1;
   let ramBackoffUntilS = -1;                 // a stalled run backs off for the next run-up
+  let ramCapMps = Infinity;                  // the run's closing-speed cap (see RAM_FINISH_MARGIN)
+  let ramLineCheckS = -Infinity;
+  let ramLineClear = false;                  // the straight line to the rammed hull at the last check
+  let ramContactUntilS = -1;                 // the run touched the hull: its motion until then is our push…
+  let ramContactId: string | null = null;    // …on this hull
   const ramPoint = { x: 0, z: 0 };
   // geometry-hard blocked commit → follow the authored lane a while
   let laneFallbackUntilS = -1;
@@ -1086,6 +1260,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let friendlyBlockT = 0;
   let friendlyBlockCount = 0;
   let friendlyLaneMoves = 0;
+  let friendlyLaneRetryS = -Infinity;        // a lane search that found nothing waits until then (FRIENDLY_LANE_RETRY_S)
+  let friendlyLaneSearches = 0;              // probe-visible count of lane searches run
   let lastFriendlyRisk: FriendlyFireRisk | null = null;
   let underFire: AiEntity | null = null; // shooter revealed by hitting us/a teammate
   let underFireUntilS = -Infinity; // reaction window end (sim seconds)
@@ -1129,7 +1305,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let allyEscapeSteer = 0;
   let trafficDetourUntilS = -1;
   let trafficDetourStage = 0;
+  let trafficDetourAllyId: string | null = null; // the parked ally the committed passing path goes round
   const trafficNear = { x: 0, z: 0 }, trafficFar = { x: 0, z: 0 };
+  // the bounded yield (see updateAllyHold): time held behind a parked ally, where the hold began, give-ways
+  let allyHoldT = 0;
+  let allyHoldLastS = -Infinity;
+  const allyHoldAnchor = { x: 0, z: 0 };
+  let allyHoldGiveWays = 0;
 
   // Stuck / gun-limit recovery.
   let lowSpeedT = 0;
@@ -1222,7 +1404,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function aliveEnemies(): AiEntity[] {
     const list = deps.getEnemies();
-    return list; // filtered inline at use sites to avoid allocation
+    if (unbearableId === null) return list; // filtered inline at use sites to avoid allocation
+    // a target on a level no gun angle or route reaches is out of the ranking while the verdict lasts
+    enemyScratch.length = 0;
+    for (let i = 0; i < list.length; i++) if (list[i].id !== unbearableId) enemyScratch.push(list[i]);
+    return enemyScratch;
   }
 
   function enemyAlive(e: AiEntity | null | undefined): e is AiEntity {
@@ -1313,7 +1499,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     eyeZ: number,
   ): boolean {
     const aggressor = activeAggressor(timeS);
-    if (!aggressor || aggressor === target) return false;
+    if (!aggressor || aggressor === target || aggressor.id === unbearableId) return false;
     if (target && enemyAlive(target) && isVisibleToTeam(target)) {
       const current = target.state.pos;
       const currentClear = hasLos(eyeX, eyeYPosition, eyeZ, current.x, eyeY(target), current.z);
@@ -1406,6 +1592,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     eyeZ: number,
   ): boolean {
     if (!target) return false;
+    if (target.id === unbearableId) {
+      // left alone (see ELEVATION_LOCK_S): its sighting is no chase point, so the search can begin at once
+      target = null;
+      losClear = false;
+      lastSeenAtS = -Infinity;
+      return false;
+    }
     if (!enemyAlive(target)) {
       target = null;
       losClear = false;
@@ -1420,6 +1613,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     losClear = visible
       && hasLos(eyeX, eyeYPosition, eyeZ, position.x, eyeY(target), position.z);
     if (visible) rememberPosition(target, timeS);
+    // the rack is spent on this one: any other spotted enemy in sight takes the slot (the ranking puts it first)
+    if (target.id === rackSpentId && scanVisibleTarget(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return true;
     if (tryPrioritizeLocalThreat(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return true;
     if (tryPrioritizeWeakTarget(enemies, timeS, eyeX, eyeYPosition, eyeZ)) return true;
     const memoryActive = timeS - lastSeenAtS <= TARGET_MEMORY_S;
@@ -1448,7 +1643,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const health = targetHealthFraction(candidate);
     const threatDistance = Math.sqrt(distanceSq) * focusWeight(candidate);
     const band = Math.floor(threatDistance / TARGET_BAND_M);
-    return (onObjective(candidate) ? 0 : 1e9) + band * 1e6
+    // a target this rack has been found unable to hurt ranks after every other (see RACK_SPENT_S)
+    return (candidate.id === rackSpentId ? 2e9 : 0) + (onObjective(candidate) ? 0 : 1e9) + band * 1e6
       + (health == null ? 1 : Math.max(0, Math.min(1, health))) * 1e5 + threatDistance;
   }
 
@@ -1989,6 +2185,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     longSafe: 0,
     headingDot: 1,
     predictedCross: 0,
+    inLane: false,
     ownRadius: 0,
     ownHalfWidth: 0,
     speed: 0,
@@ -2052,6 +2249,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     allyRisk.longSafe = longSafe;
     allyRisk.headingDot = headingDot;
     allyRisk.predictedCross = predictedCross;
+    allyRisk.inLane = aheadRisk;
     return score;
   }
 
@@ -2085,6 +2283,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return allyRisk.ally !== null;
   }
 
+  /** The committed passing path is going round this ally, and the ally is still stopped. */
+  function passingStoppedAlly(best: AiEntity): boolean {
+    return nowS < trafficDetourUntilS && best.id === trafficDetourAllyId && Math.abs(best.state.speed || 0) <= 1;
+  }
+
   function applyAllySteering(input: AiInput): boolean {
     const best = allyRisk.ally;
     if (!best) return false;
@@ -2096,6 +2299,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const hasPriority = !best.isPlayer && String(entity.id) < String(best.id);
     const mustYield = following || !hasPriority;
     allyYielding = mustYield;
+    // The committed passing path already steers round this ally. An evasive nudge on top of it cancelled the
+    // detour's pivot (Cinder Junction 7v7 seed 72839: the detour's -1 plus the head-on +1 left the hull at 0 for
+    // 239 s behind the idle host). The speed cap and the emergency stop still apply to it and to everyone else.
+    if (passingStoppedAlly(best)) return mustYield;
     const side = headOn ? 1 : Math.sign(
       (Math.abs(allyRisk.predictedCross) > 0.2
         ? -allyRisk.predictedCross : -allyRisk.cross) ||
@@ -2126,20 +2333,38 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       (!liquidSafe || liquidSafe(st.pos.x, st.pos.z, st.yaw, -8));
   }
 
+  /**
+   * Too close to turn in place: a pivot sweeps the hull's corners round its centre, so the gap must hold both
+   * hulls' half-diagonals. Inside it the reverse escape, not a pivot onto a passing path, opens the gap.
+   */
+  function allyTooCloseToPivot(best: AiEntity): boolean {
+    const own = spec.dims, other = best.spec.dims;
+    const ownHalfDiagonal = Math.hypot((own.hullLengthM || own.lengthM || 6) * 0.5, (own.widthM || 3) * 0.5);
+    const allyHalfDiagonal = Math.hypot((other.hullLengthM || other.lengthM || 6) * 0.5, (other.widthM || 3) * 0.5);
+    const gap = Math.hypot(best.state.pos.x - entity.state.pos.x, best.state.pos.z - entity.state.pos.z);
+    return gap < ownHalfDiagonal + allyHalfDiagonal + 0.5;
+  }
+
   function resolveAllyEmergency(input: AiInput, dt: number, mustYield: boolean, timeS: number): boolean {
     const best = allyRisk.ally;
     if (!best) return false;
     const longitudinalGap = allyRisk.along - allyRisk.longSafe;
+    // The nose-to-nose gap is a lane rule: a hull that will pass beside this one (a crossing risk outside the
+    // lane) keeps the radial guard and the speed cap, but an along-gap stop on it froze both hulls of a
+    // side-by-side pass in a stop-and-go loop (each stop ends the predicted crossing, each restart re-arms it).
     const emergency = allyRisk.distance < allyRisk.ownRadius +
       tankSafetyRadius(best) * 0.74 + 0.55 ||
-      (allyRisk.along > 0 && longitudinalGap < 0.8);
+      (allyRisk.inLane && allyRisk.along > 0 && longitudinalGap < 0.8);
     if (!emergency) return false;
     if (!allyEmergencyActive) allyEmergencyStops++;
     allyEmergencyActive = true;
     input.throttle = 0;
     input.brake = allyRisk.speed > 0.45;
     allyDeadlockT += allyRisk.speed < 0.7 ? dt : 0;
-    if (mustYield && allyDeadlockT > 0.9 && allyRisk.speed < 0.45 &&
+    // a committed passing path round this ally turns the hull in place here: no reverse escape out of it
+    // while there is room to turn
+    const passing = passingStoppedAlly(best) && !allyTooCloseToPivot(best);
+    if (mustYield && !passing && allyDeadlockT > 0.9 && allyRisk.speed < 0.45 &&
         aftCorridorClear()) {
       // A one-frame reverse impulse was immediately overwritten by the
       // waypoint driver. Commit briefly, but recheck the rear every tick.
@@ -2186,26 +2411,44 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       (!liquidSafe || liquidSafe(x, z, yaw, distance));
   }
 
-  function startTrafficDetour(timeS: number): void {
+  /**
+   * The committed passing path round a stopped ally: a leg sideways off the line to it, then a leg past it, both
+   * checked against solid cover, terrain and water. It starts once the bot has yielded to the ally for 1.25 s or
+   * has stood in the emergency gap behind it, with room to turn, for half the reverse escape's dwell: for a parked
+   * hull the passing path, not a reverse escape that re-approaches the same hull, is the answer. The legs lie on
+   * the line from the bot to the ally, so a hull an escape left angled off that line still passes beside the ally.
+   * `wide` (the bounded yield's give-way, see updateAllyHold) tries the wider lanes of TRAFFIC_DETOUR_WIDE_EXTRA_M.
+   */
+  function startTrafficDetour(timeS: number, wide = false): boolean {
     const best = allyRisk.ally;
-    if (!best || Math.abs(best.state.speed) > 1 || allyYieldT < 1.25 || allyRisk.speed > 3) return;
+    if (!best || Math.abs(best.state.speed) > 1 || allyRisk.speed > 3) return false;
+    if (!wide && allyYieldT < 1.25 &&
+        (!allyYielding || allyDeadlockT < 0.45 || allyTooCloseToPivot(best))) return false;
     const st = entity.state;
-    const fx = Math.sin(st.yaw), fz = Math.cos(st.yaw);
-    const width = (spec.dims.widthM + best.spec.dims.widthM) * .5 + 5;
+    let ux = best.state.pos.x - st.pos.x, uz = best.state.pos.z - st.pos.z;
+    const gap = Math.hypot(ux, uz) || 1;
+    ux /= gap; uz /= gap;
+    const base = (spec.dims.widthM + best.spec.dims.widthM) * .5 + 5;
     const preferred = Math.sign(-allyRisk.cross || 1);
-    for (let i = 0; i < 2; i++) {
-      const side = i === 0 ? preferred : -preferred;
-      const nx = st.pos.x + fz * width * side, nz = st.pos.z - fx * width * side;
-      const advance = Math.max(0, allyRisk.along) + allyRisk.longSafe + 6;
-      const tx = nx + fx * advance, tz = nz + fz * advance;
-      if (!trafficLegSafe(st.pos.x, st.pos.z, nx, nz) || !trafficLegSafe(nx, nz, tx, tz)) continue;
-      trafficNear.x = nx; trafficNear.z = nz;
-      trafficFar.x = tx; trafficFar.z = tz;
-      trafficDetourStage = 0;
-      trafficDetourUntilS = timeS + 24;
-      allyEscapeUntilS = -1;
-      break;
+    const lanes = wide ? TRAFFIC_DETOUR_WIDE_EXTRA_M.length : 1;
+    for (let lane = 0; lane < lanes; lane++) {
+      const width = base + (wide ? TRAFFIC_DETOUR_WIDE_EXTRA_M[lane] : 0);
+      for (let i = 0; i < 2; i++) {
+        const side = i === 0 ? preferred : -preferred;
+        const nx = st.pos.x + uz * width * side, nz = st.pos.z - ux * width * side;
+        const advance = gap + allyRisk.longSafe + 6;
+        const tx = nx + ux * advance, tz = nz + uz * advance;
+        if (!trafficLegSafe(st.pos.x, st.pos.z, nx, nz) || !trafficLegSafe(nx, nz, tx, tz)) continue;
+        trafficNear.x = nx; trafficNear.z = nz;
+        trafficFar.x = tx; trafficFar.z = tz;
+        trafficDetourStage = 0;
+        trafficDetourUntilS = timeS + 24;
+        trafficDetourAllyId = best.id;
+        allyEscapeUntilS = -1;
+        return true;
+      }
     }
+    return false;
   }
 
   function driveTrafficDetour(input: AiInput, timeS: number): void {
@@ -2221,14 +2464,63 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     input.steer = clamp(error * 2.2, -1, 1);
     input.throttle = Math.abs(error) < .45 ? .65 : 0;
     input.brake = Math.abs(error) >= .45 && Math.abs(st.speed) > .5;
-    driveIntent = true;
+    // the pivot onto a leg turns the hull in place like faceYaw: only the legs themselves are drive intent, or the
+    // low-speed watchdog reads a 2-3 s pivot as a wedge and reverses the hull out of its own passing path
+    driveIntent = input.throttle > 0;
+  }
+
+  /**
+   * The bounded yield. A hold begins on a tick the drive wants to move but yields to a parked ally (a reverse
+   * escape from one counts) and its clock runs until the hull is ALLY_HOLD_CLEAR_M from where it began or nothing
+   * has held it for ALLY_HOLD_FORGET_S, so an escape that backs off and re-approaches the same hull stays one
+   * hold. At ALLY_HOLD_LIMIT_S the yield gives way: the passing path and the escape in hand are dropped for a
+   * passing path on a wider lane (backing straight off first when the hulls are too close to turn), and with
+   * none safe the shared stuck escalation takes over, its side flipped away from the parked hull and the reverse
+   * burst swinging the bow that way. Each further hold is another strike, so a lane the parked hull closes ends
+   * in the pocket escape and the search's next goal.
+   */
+  function updateAllyHold(dt: number, timeS: number, held: boolean): void {
+    const st = entity.state;
+    if (allyHoldT > 0 && (timeS - allyHoldLastS > ALLY_HOLD_FORGET_S ||
+        Math.hypot(st.pos.x - allyHoldAnchor.x, st.pos.z - allyHoldAnchor.z) > ALLY_HOLD_CLEAR_M)) allyHoldT = 0;
+    const holding = held && driveIntent;
+    if (holding) {
+      if (allyHoldT === 0) {
+        allyHoldAnchor.x = st.pos.x;
+        allyHoldAnchor.z = st.pos.z;
+      }
+      allyHoldLastS = timeS;
+    } else if (allyHoldT === 0) {
+      return;
+    }
+    allyHoldT += dt;
+    if (allyHoldT < ALLY_HOLD_LIMIT_S || !holding) return;
+    allyHoldT = 0;
+    allyHoldGiveWays++;
+    allyYieldT = 0;
+    trafficDetourUntilS = -1;
+    allyEscapeUntilS = -1;
+    const parked = allyRisk.ally;
+    if (parked && startTrafficDetour(timeS, true)) {
+      if (allyTooCloseToPivot(parked)) {
+        unstickUntilS = timeS + UNSTICK_TIME_S;
+        unstickSteer = 0;
+      }
+      return;
+    }
+    // no wider lane either: escalateStuckRecovery flips detourSide, so leave it on the side away from the hull
+    detourSide = Math.sign(allyRisk.cross) || detourSide;
+    escalateStuckRecovery(timeS, false);
+    unstickUntilS = timeS + UNSTICK_TIME_S;
+    unstickSteer = -detourSide; // reversing flips the steer: the bow swings toward the detour side
   }
 
   function avoidAllies(input: AiInput, dt: number, timeS: number): void {
     if (!entity.state.grounded) return;
     if (timeS < allyEscapeUntilS && getAllies) {
       allyRisk.friends = getAllies();
-      if (aftCorridorClear()) {
+      updateAllyHold(dt, timeS, true);
+      if (timeS < allyEscapeUntilS && aftCorridorClear()) {
         input.throttle = -0.42;
         input.steer = allyEscapeSteer;
         input.brake = false;
@@ -2242,11 +2534,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     if (!scanAllyRisk(input)) {
       decayAllyAvoidance(dt);
+      updateAllyHold(dt, timeS, false);
       return;
     }
     const mustYield = applyAllySteering(input);
     if (mustYield) allyYieldT += dt;
     else allyYieldT = Math.max(0, allyYieldT - dt);
+    updateAllyHold(dt, timeS, mustYield && Math.abs(allyRisk.ally!.state.speed || 0) < ALLY_PARKED_MPS);
     if (timeS >= trafficDetourUntilS) startTrafficDetour(timeS);
     if (resolveAllyEmergency(input, dt, mustYield, timeS)) return;
     allyDeadlockT = Math.max(0, allyDeadlockT - dt * 2);
@@ -2276,6 +2570,20 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let routeTimer = 0;
   let routeGoalX = 1e9;
   let routeGoalZ = 1e9;
+  // Corner hold (bots lane, 2026-10-03; Coastal pacing seed 25003 on the physics lane's tree): a T-90M Proryv pressed
+  // against a boulder's north-west corner re-chose its corner at every recheck, and each choice undid the last.
+  // Pressed to the rock, the north-east corner's lane ran inside the rock's margin, so it turned for the north-west
+  // one; the turn swung its centre 0.36 m off the rock, the north-east lane cleared and its score won it back. It
+  // jinked every 0.6 s and never left the rock. A recheck that would take back the corner the hull gave up less than
+  // ROUTE_CORNER_FLIP_S ago is a flip: the hull keeps its current corner instead, while that corner's lane stays clear
+  // and the destination stays put, for ROUTE_CORNER_SETTLE_S; a reached corner hands over to the next as before, and a
+  // stuck strike drops the plan. Only a flip is held: a hold on every new corner (or on every corner the hull pivoted
+  // toward) reshuffled the routes of every battle and added two sub-120 s battlePacing matches.
+  const ROUTE_CORNER_FLIP_S = 2;
+  const ROUTE_CORNER_SETTLE_S = 6;
+  const routeCornerGivenUp = { x: NaN, z: NaN, atS: -Infinity }; // the corner the last switch left
+  let routeCornerSettledUntilS = -Infinity;  // a flip was refused: the current corner is kept until then
+  let routeCornerFlips = 0;                  // probe-visible count of refused flips
   let terrainRouteUntilS = -1;
   // a corner just reached is vetoed briefly so the replan hops to the NEXT
   // corner along the box instead of re-offering the same cell (the crawl
@@ -2411,6 +2719,19 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     routeCandidates[3].z = box.max[2] + clearance;
   }
 
+  /** A corner's lane from the hull: on the map, not underfoot, dry, not just vetoed, clear of `box` by `margin`. */
+  function cornerOpen(
+    box: AiObstacle, sourceX: number, sourceZ: number, cx: number, cz: number, margin: number,
+  ): boolean {
+    if (Math.max(Math.abs(cx), Math.abs(cz)) > 500) return false;
+    const d1 = Math.hypot(cx - sourceX, cz - sourceZ);
+    if (d1 < 2) return false; // standing on this corner already
+    if (liquidSafe && !liquidSafe(sourceX,sourceZ,Math.atan2(cx-sourceX,cz-sourceZ),d1)) return false;
+    if (nowS < lastCorner.untilS &&
+        Math.hypot(cx - lastCorner.x, cz - lastCorner.z) < 3) return false;
+    return !routeSegmentHitsBox(sourceX, sourceZ, cx, cz, box, margin);
+  }
+
   function chooseRouteCorner(
     box: AiObstacle,
     sourceX: number,
@@ -2426,13 +2747,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (let i = 0; i < routeCandidates.length; i++) {
       const cx = routeCandidates[i].x;
       const cz = routeCandidates[i].z;
-      if (Math.max(Math.abs(cx), Math.abs(cz)) > 500) continue;
+      if (!cornerOpen(box, sourceX, sourceZ, cx, cz, margin)) continue;
       const d1 = Math.hypot(cx - sourceX, cz - sourceZ);
-      if (d1 < 2) continue; // standing on this corner already
-      if (liquidSafe && !liquidSafe(sourceX,sourceZ,Math.atan2(cx-sourceX,cz-sourceZ),d1)) continue;
-      if (nowS < lastCorner.untilS &&
-          Math.hypot(cx - lastCorner.x, cz - lastCorner.z) < 3) continue;
-      if (routeSegmentHitsBox(sourceX, sourceZ, cx, cz, box, margin)) continue;
       const score = d1 + Math.hypot(goalX - cx, goalZ - cz) +
         cornerBias(sourceX, sourceZ, directionX, directionZ, cx, cz);
       if (score < best) { best = score; bx = cx; bz = cz; }
@@ -2445,6 +2761,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   function planRoute(gx: number, gz: number): void {
+    // the corner the hull is on its way to (see ROUTE_CORNER_FLIP_S)
+    const wasActive = routeActive, heldX = routeCorner.x, heldZ = routeCorner.z;
     routeActive = false;
     const st = entity.state;
     const sourceX = st.pos.x;
@@ -2461,9 +2779,31 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       sourceX, sourceZ, directionX, directionZ, limit, margin,
     );
     if (box) {
+      const heldOpen = wasActive && cornerOpen(box, sourceX, sourceZ, heldX, heldZ, margin);
+      if (heldOpen && nowS < routeCornerSettledUntilS) {
+        routeCorner.x = heldX;
+        routeCorner.z = heldZ;
+        routeActive = true;
+        return;
+      }
       chooseRouteCorner(
         box, sourceX, sourceZ, gx, gz, directionX, directionZ, margin,
       );
+      if (routeActive && wasActive && Math.hypot(routeCorner.x - heldX, routeCorner.z - heldZ) > 1) {
+        const takesBack = nowS - routeCornerGivenUp.atS < ROUTE_CORNER_FLIP_S
+          && Math.hypot(routeCorner.x - routeCornerGivenUp.x, routeCorner.z - routeCornerGivenUp.z) < 1;
+        if (takesBack && heldOpen) {
+          // a flip: keep the corner the hull is on its way to
+          routeCorner.x = heldX;
+          routeCorner.z = heldZ;
+          routeCornerSettledUntilS = nowS + ROUTE_CORNER_SETTLE_S;
+          routeCornerFlips++;
+          return;
+        }
+        routeCornerGivenUp.x = heldX;
+        routeCornerGivenUp.z = heldZ;
+        routeCornerGivenUp.atS = nowS;
+      }
       if (!liquidSafe || routeActive) return;
     }
     if (liquidSafe || nowS < terrainRouteUntilS) {
@@ -2515,6 +2855,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (clear < 12) continue;
       const ex = sx + ux * clear, ez = sz + uz * clear;
       if (Math.max(Math.abs(ex), Math.abs(ez)) > 470) continue;
+      // a lane the final liquid brake would refuse is no escape (a hull already in the liquid keeps the ways out)
+      if (liquidSafe && !liquidSafe(sx, sz, a, clear)) continue;
       const h0 = terrainSafety.surfaceY(sx, sz);
       const terrainCost = terrainLineCost(sx, sz, h0, ux, uz);
       if (!Number.isFinite(terrainCost)) continue;
@@ -2525,6 +2867,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     scootPoint.x = bx;
     scootPoint.z = bz;
     scootUntilS = nowS + 6;
+    scootLine = 0;
     routeTimer = 0;
     return true;
   }
@@ -2602,19 +2945,25 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     let dx = x - st.pos.x, dz = z - st.pos.z;
     let dist = Math.hypot(dx, dz);
-    trackNavProgress(x, z, dist); // r6 wedge watchdog (see update())
     if (dist < ARRIVE_DIST_M) {
+      // an arrival holds the hull on purpose: no drive intent, or the low-speed watchdog read every hold at a
+      // destination as a wedge and reversed the hull off it (a zone holder jiggled on its line every 4-5 s)
       input.throttle = 0;
       input.steer = 0;
       input.brake = Math.abs(st.speed) > 0.5;
       if (crossBridge && combatRouteIndex < combatRoute.length - 1) { combatRouteIndex++; return false; }
       return true;
     }
+    trackNavProgress(x, z, dist); // r6 wedge watchdog (see update())
     // r7 CORNER-HOP ROUTER (see planRoute): re-plan when the goal moved or
     // the recheck timer lapsed; while a solid blocker sits on the straight
     // line, the steering goal becomes the corner around it.
-    if (routeTimer <= 0 ||
-        Math.abs(x - routeGoalX) > 12 || Math.abs(z - routeGoalZ) > 12) {
+    const goalMoved = Math.abs(x - routeGoalX) > 12 || Math.abs(z - routeGoalZ) > 12;
+    if (routeTimer <= 0 || goalMoved) {
+      if (goalMoved) { // a new destination chooses its corner afresh
+        routeCornerSettledUntilS = -Infinity;
+        routeCornerGivenUp.atS = -Infinity;
+      }
       routeGoalX = x;
       routeGoalZ = z;
       routeTimer = ROUTE_RECHECK_S;
@@ -2697,6 +3046,42 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     input.steer = Math.abs(err) > 0.06 ? clamp(err * 2.5, -1, 1) : 0;
     input.throttle = 0;
     input.brake = Math.abs(st.speed) > 0.5;
+  }
+
+  /**
+   * A casemate's leg along its line of fire with the bow on `facing`: back onto (x, z) for a negative throttle, up to
+   * it for a positive one. True once within 4 m of the point or once the hull has passed it.
+   */
+  function driveOnLine(input: AiInput, x: number, z: number, facing: number, throttle: number): boolean {
+    const st = entity.state;
+    const dx = x - st.pos.x, dz = z - st.pos.z;
+    const ahead = dx * Math.sin(facing) + dz * Math.cos(facing);
+    if (dx * dx + dz * dz < 16 || ahead * throttle <= 0) return true;
+    if (throttle < 0) {
+      reverseFacing(input, facing, throttle);
+    } else {
+      faceYaw(input, facing);
+      input.throttle = throttle;
+      input.brake = false;
+    }
+    return false;
+  }
+
+  /** True when (x, z) lies behind the hull's line to its target, within 45 degrees of straight back. */
+  function behindOnLine(x: number, z: number): boolean {
+    const st = entity.state;
+    const bearing = targetBearing();
+    const dx = x - st.pos.x, dz = z - st.pos.z;
+    const length = Math.hypot(dx, dz);
+    return length > 1e-3 && -(dx * Math.sin(bearing) + dz * Math.cos(bearing)) / length > Math.SQRT1_2;
+  }
+
+  /** The bearing to the target (the hull's own heading without one). */
+  function targetBearing(): number {
+    const st = entity.state;
+    return target && target.state
+      ? Math.atan2(target.state.pos.x - st.pos.x, target.state.pos.z - st.pos.z)
+      : st.yaw;
   }
 
   /**
@@ -2945,11 +3330,32 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         reverseFacing(input, bearing, -0.8);
         return;
       }
-      // straight through the target: the arrive test must not stop the hull short of contact
-      ramPoint.x = navX + (dx / dist) * 20;
-      ramPoint.z = navZ + (dz / dist) * 20;
-      driveToXZ(input, ramPoint.x, ramPoint.z, 1.0);
+      // in contact with the hull: what it moves now is the run's own push (see RAM_CONTACT_HOLD_S)
+      if (dist < (spec.dims.hullLengthM + target.spec.dims.hullLengthM) * 0.5 + 1.5) {
+        ramContactUntilS = timeS + RAM_CONTACT_HOLD_S;
+        ramContactId = target.id;
+      }
+      if (timeS - ramLineCheckS >= RAM_LINE_RECHECK_S) {
+        ramLineCheckS = timeS;
+        ramLineClear = dist <= RAM_STRAIGHT_M && !findBlockingObstacle(st.pos.x, st.pos.z, dx / dist, dz / dist,
+          Math.max(0, dist - target.spec.dims.hullLengthM * 0.5), spec.dims.widthM * 0.5 + 0.3);
+      }
+      if (ramLineClear) {
+        // a clear line: straight at the hull (the router would round whatever stands beyond it)
+        const err = wrapAngle(bearing - st.yaw);
+        input.steer = clamp(err * 2.2, -1, 1);
+        input.throttle = Math.abs(err) > 1.2 ? 0.3 : 1;
+        trackNavProgress(navX, navZ, dist); // the wedge and orbit watchdogs judge the run against the hull itself
+      } else {
+        // straight through the target: the arrive test must not stop the hull short of contact
+        ramPoint.x = navX + (dx / dist) * 20;
+        ramPoint.z = navZ + (dz / dist) * 20;
+        driveToXZ(input, ramPoint.x, ramPoint.z, 1.0);
+      }
       input.brake = false;
+      // a finishing run against a passive hull closes no faster than the speed it was judged at
+      if (st.speed > ramCapMps) input.throttle = 0;
+      if (st.speed > ramCapMps + RAM_CAP_BRAKE_MPS) input.brake = true;
       return;
     }
     const enemy = nearestLivingEnemy();
@@ -3008,7 +3414,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       return;
     }
     if (hasMoveTarget) {
-      if (driveToXZ(input, moveTarget.x, moveTarget.z, 0.6)) hasMoveTarget = false;
+      const arrived = casemate && behindOnLine(moveTarget.x, moveTarget.z)
+        ? driveOnLine(input, moveTarget.x, moveTarget.z, targetBearing(), -0.6)
+        : driveToXZ(input, moveTarget.x, moveTarget.z, 0.6);
+      if (arrived) hasMoveTarget = false;
       return;
     }
     if (role === 'scout') {
@@ -3232,6 +3641,29 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (hf.getNormalAt(sx, sz).y < LEG_NORMAL_Y_MIN) return false;
     }
     return true;
+  }
+
+  /**
+   * A casemate's scoot spot on its line of fire: CASEMATE_SCOOT_M back, or up again after a leg back (a shorter leg,
+   * then the other way, when that ground does not serve). Returns the leg's direction (-1 back, +1 up), 0 for none.
+   */
+  function pickLineScoot(): number {
+    const st = entity.state;
+    const bearing = targetBearing();
+    const first = lineScootUp ? 1 : -1;
+    for (const direction of [first, -first]) {
+      for (const distance of [CASEMATE_SCOOT_M, CASEMATE_SCOOT_M * 0.5]) {
+        const cx = st.pos.x + Math.sin(bearing) * distance * direction;
+        const cz = st.pos.z + Math.cos(bearing) * distance * direction;
+        if (Math.max(Math.abs(cx), Math.abs(cz)) > 470) continue;
+        if (!reachableSpot(cx, cz) || !legDrivable(st.pos.x, st.pos.z, cx, cz)) continue;
+        scootPoint.x = cx;
+        scootPoint.z = cz;
+        lineScootUp = direction < 0;
+        return direction;
+      }
+    }
+    return 0;
   }
 
   /**
@@ -3908,9 +4340,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const position = entity.state.pos;
     let nearest: AiEntity | null = null;
     let nearestDistanceSq = Infinity;
+    // a target left alone for its level is searched for only when no other enemy lives
+    let others = false;
+    for (let index = 0; index < enemies.length && !others; index++) {
+      others = enemyAlive(enemies[index]) && enemies[index].id !== unbearableId;
+    }
     for (let index = 0; index < enemies.length; index++) {
       const candidate = enemies[index];
-      if (!enemyAlive(candidate)) continue;
+      if (!enemyAlive(candidate) || (others && candidate.id === unbearableId)) continue;
       const dx = candidate.state.pos.x - position.x;
       const dz = candidate.state.pos.z - position.z;
       const distanceSq = dx * dx + dz * dz;
@@ -4099,8 +4536,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     );
   }
 
-  function beginScoot(durationS: number): void {
+  function beginScoot(durationS: number, line = 0): void {
     scootUntilS = nowS + durationS;
+    scootLine = line;
     hasMoveTarget = false;
     hasCoverPoint = false;
     if (mode === 'seekCover') mode = 'engage';
@@ -4116,17 +4554,33 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         shotsFromSpot = 0;
       }
       shotsFromSpot++;
+      if (target) { // a round left the gun at the target: it counts against this spot until a hit reports back
+        if (target.id !== missStreakTargetId
+            || Math.hypot(position.x - missSpot.x, position.z - missSpot.z) > MISS_SPOT_M) {
+          missStreakTargetId = target.id;
+          missStreak = 0;
+          missSpot.x = position.x;
+          missSpot.z = position.z;
+        }
+        missStreak++;
+        missLastShotS = timeS;
+      }
       const shouldScoot = tune.scootAfter > 0
         && shotsFromSpot >= tune.scootAfter
         && timeS >= scootUntilS
         && !targetPassive(timeS); // round 60 pacing: a solution on a passive target is kept, not scooted away from
-      if (shouldScoot && pickScoot()) beginScoot(14);
+      if (shouldScoot && casemate) {
+        const line = pickLineScoot();
+        if (line) beginScoot(CASEMATE_SCOOT_S, line);
+      } else if (shouldScoot && pickScoot()) beginScoot(14);
     }
     prevReloadT = reloadTime;
   }
 
   function updateProbeRelocation(dt: number, timeS: number): void {
-    probeMissT = probeMiss && target && losClear ? probeMissT + dt : 0;
+    // an empty rack's probe finds no zone because no round is aboard, not because the hull is masked: its scoots cut
+    // every ram run short (see RAM_FINISH_MARGIN)
+    probeMissT = probeMiss && target && losClear && !emptyRack ? probeMissT + dt : 0;
     if (probeMissT <= 6 || timeS < scootUntilS) return;
     if (pickScoot()) beginScoot(10);
     probeMissT = 0;
@@ -4198,7 +4652,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       fallbackPoint.x - position.x,
       fallbackPoint.z - position.z,
     );
-    fallbackReverse = Math.abs(wrapAngle(supportYaw - entity.state.yaw)) > Math.PI * 0.55;
+    fallbackReverse = casemate || Math.abs(wrapAngle(supportYaw - entity.state.yaw)) > Math.PI * 0.55;
   }
 
   function maybeStartFallback(
@@ -4223,9 +4677,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * the kinetic ram law both authorities apply to enemy contacts (damage.ts ramDamage), or retiring. It rams
    * only when the law says the exchange is survivable: the rams a kill needs, at the closing speed a straight
    * run reaches, cost at most RAM_SELF_BUDGET_FRAC of its own hull. Otherwise it keeps EMPTY_RETIRE_M from
-   * every enemy and leaves the finish to its team.
+   * every enemy and leaves the finish to its team. Against a passive target the run that finishes it is judged,
+   * and capped (ramCapMps), at the slowest closing speed that still finishes it (see RAM_FINISH_MARGIN).
    */
   function ramWorthAgainst(opponent: AiEntity): boolean {
+    ramCapMps = Infinity;
     const mine = entity.combat;
     const theirs = opponent.combat;
     if (!mine || !theirs || theirs.destroyed) return false;
@@ -4233,14 +4689,53 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       ((spec.topSpeedKmh || 0) / 3.6) * RAM_APPROACH_EFFICIENCY);
     const split = ramDamage(spec.weightTons, opponent.spec.weightTons, closing);
     if (!(split.toB > 0)) return false;
-    const ramsNeeded = Math.ceil(Math.max(1, theirs.hp) / split.toB);
+    const hp = Math.max(1, theirs.hp);
+    const ramsNeeded = Math.ceil(hp / split.toB);
+    if (ramsNeeded === 1 && opponent === target && targetPassive(nowS)) {
+      const need = hp * RAM_FINISH_MARGIN;
+      if (need < split.toB) {
+        // the pool grows monotonically with the closing speed: bisect for the slowest run whose share reaches `need`
+        let lo = 0, hi = closing;
+        for (let i = 0; i < 16; i++) {
+          const mid = (lo + hi) * 0.5;
+          if (ramDamage(spec.weightTons, opponent.spec.weightTons, mid).toB >= need) hi = mid;
+          else lo = mid;
+        }
+        const cap = Math.min(closing, Math.max(hi, RAM_CAP_MIN_MPS));
+        const run = ramDamage(spec.weightTons, opponent.spec.weightTons, cap);
+        if (!(run.toA < mine.hp * RAM_SELF_BUDGET_FRAC)) return false;
+        ramCapMps = cap;
+        return true;
+      }
+    }
     return ramsNeeded * split.toA < mine.hp * RAM_SELF_BUDGET_FRAC;
   }
 
-  function updateEmptyRack(timeS: number): void {
-    emptyRack = firstAvailableSlot() < 0;
+  /** The spent-rack dwell and verdict (see RACK_SPENT_S). */
+  function updateSpentRack(dt: number, timeS: number): void {
+    if (rackSpentId !== null && timeS >= rackSpentUntilS) rackSpentId = null;
+    if (!target || !enemyAlive(target)) return;
+    if (target.id !== rackDwellId) {
+      rackDwellId = target.id;
+      rackSpentT = 0;
+    }
+    if (target.id === rackSpentId) return;
+    // a shut gate on visible zones is evidence against the rack; an open one clears it; no sight proves nothing
+    if (penGateOk || heWorth) rackSpentT = 0;
+    else if (losClear && !probeMiss && currentTargetDistance() <= RACK_SPENT_RANGE_M) rackSpentT += dt;
+    if (rackSpentT < RACK_SPENT_S) return;
+    rackSpentT = 0;
+    rackSpentId = target.id;
+    rackSpentUntilS = timeS + RACK_SPENT_FOR_S;
+    rackSpentVerdicts++;
+  }
+
+  function updateEmptyRack(dt: number, timeS: number): void {
+    updateSpentRack(dt, timeS);
+    emptyRack = firstAvailableSlot() < 0 || (!!target && target.id === rackSpentId);
     if (!emptyRack) {
       ramming = false;
+      ramCapMps = Infinity;
       return;
     }
     if (ramming && timeS < ramCommitUntilS && target && enemyAlive(target)) return; // a run is committed
@@ -4263,7 +4758,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function updateSquadManeuver(timeS: number, distance: number): void {
     if (timeS < squadThinkAtS) return;
     squadThinkAtS = timeS + 1;
-    if (!target || !losClear || !getAllies || orderActive() || getObjective?.()?.mission
+    if (!target || !losClear || !getAllies || orderActive() || getObjective?.()?.mission || emptyRack
         || mode !== 'engage' || distance < 70 || distance > 280
         || timeS < squadFlankAtS + 22 || (entity.combat?.hp ?? 1) / (entity.combat?.maxHp ?? 1) < .45) return;
     // The slow/armoured hull pins the target while one faster teammate changes
@@ -4286,13 +4781,101 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     startFlank(timeS);
   }
 
+  /** Is the target on another level the gun cannot be laid on from here (see ELEVATION_LOCK_S)? */
+  function targetOffLevel(candidate: AiEntity): boolean {
+    const position = entity.state.pos, other = candidate.state.pos;
+    const rise = other.y - position.y;
+    if (Math.abs(rise) < ELEVATION_LEVEL_M) return false;
+    return !withinGunArc(Math.atan2(rise, Math.max(1, Math.hypot(other.x - position.x, other.z - position.z))));
+  }
+
+  function endLevelRoute(): void {
+    levelRouting = false;
+    levelRouteTargetId = null;
+    waypoints.length = 0;
+    wpIndex = 0;
+  }
+
+  function markUnbearable(candidate: AiEntity, timeS: number): void {
+    unbearableId = candidate.id;
+    unbearableUntilS = timeS + UNBEARABLE_S;
+    unbearableVerdicts++;
+  }
+
+  /** A route to the target's own level, when the grid has one short enough: the hull drives it (driveCurrentMode). */
+  function beginLevelRoute(candidate: AiEntity, timeS: number): boolean {
+    if (!deps.planRoute) return false;
+    const position = entity.state.pos;
+    levelGoal.x = candidate.state.pos.x;
+    levelGoal.z = candidate.state.pos.z;
+    levelGoal.y = candidate.state.pos.y;
+    const route = deps.planRoute(position, levelGoal, LEVEL_ROUTE_OPTIONS);
+    if (!route.length) return false;
+    let length = 0, previousX = position.x, previousZ = position.z;
+    for (let i = 0; i < route.length; i++) {
+      length += Math.hypot(route[i][0] - previousX, route[i][1] - previousZ);
+      previousX = route[i][0];
+      previousZ = route[i][1];
+    }
+    if (length > LEVEL_ROUTE_MAX_M) return false;
+    setSearchWaypoints(route);
+    levelRouting = true;
+    levelRouteTargetId = candidate.id;
+    levelRouteUntilS = timeS + length / LEVEL_ROUTE_SPEED_MPS + LEVEL_ROUTE_SLACK_S;
+    levelRouteStrikes = strikeEvents;
+    levelRoutes++;
+    hasMoveTarget = false;
+    hasCoverPoint = false;
+    hasVantage = false;
+    scootUntilS = -1;
+    settleUntilS = -1;
+    passivePressing = false;
+    return true;
+  }
+
+  /** The other-level verdict and the route that changes level (see ELEVATION_LOCK_S). */
+  function updateElevationLock(dt: number, timeS: number): void {
+    if (unbearableId !== null && timeS >= unbearableUntilS) unbearableId = null;
+    if (levelRouting) {
+      const lost = !target || !enemyAlive(target) || target.id !== levelRouteTargetId;
+      // the route ends on the target's level with the target in sight (the gun fires on the way whenever it bears;
+      // walking away from a cliff brings the angle into the arc long before the deck comes into view, and the top
+      // of a ramp is no place to stop)
+      const onLevel = !lost && Math.abs(target!.state.pos.y - entity.state.pos.y) < ELEVATION_LEVEL_M;
+      if (lost || (onLevel && losClear)) {
+        endLevelRoute();
+        return;
+      }
+      const last = waypoints[waypoints.length - 1];
+      const usedUp = !last || (wpIndex >= waypoints.length - 1
+        && Math.hypot(last.x - entity.state.pos.x, last.z - entity.state.pos.z) < ARRIVE_DIST_M * 2);
+      if (usedUp || timeS >= levelRouteUntilS || strikeEvents - levelRouteStrikes >= LEVEL_ROUTE_STRIKES) {
+        endLevelRoute();
+        // arrived on its level, the ordinary engagement takes over; short of it, the target is left alone
+        if (!onLevel) markUnbearable(target!, timeS);
+      }
+      return;
+    }
+    if (!target || !enemyAlive(target) || !targetOffLevel(target)) {
+      elevationLockT = 0;
+      return;
+    }
+    elevationLockT += dt;
+    if (elevationLockT < ELEVATION_LOCK_S) return;
+    elevationLockT = 0;
+    // a mission objective keeps the hull; only a free hull takes the long way to another level
+    if (getObjective?.()?.mission || !beginLevelRoute(target, timeS)) markUnbearable(target, timeS);
+  }
+
   function updateDoctrine(
     combat: CombatState | undefined,
     dt: number,
     timeS: number,
     targetDistance: number,
   ): void {
-    updateEmptyRack(timeS);
+    updateElevationLock(dt, timeS);
+    updateEmptyRack(dt, timeS);
+    updateObjectiveShift(dt);
     updatePassivePress(dt, timeS, targetDistance);
     updateShotRelocation(combat, timeS);
     updateProbeRelocation(dt, timeS);
@@ -4314,7 +4897,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function updatePenDeniedManeuver(dt: number, timeS: number): void {
     const canShootHe = chosenSlot === heSlot && slotHasAmmo(heSlot) && heWorth;
     const targetHolds = !!target && Math.abs(target.state.speed ?? 0) < 0.5;
-    const denied = targetHolds && losClear && !penGateOk && !canShootHe && mode !== 'flank';
+    // an empty or spent rack rams or retires (driveEmptyRack): a flank to open the gate has nothing to fire
+    const denied = targetHolds && losClear && !penGateOk && !canShootHe && mode !== 'flank' && !emptyRack;
     penDeniedT = denied ? penDeniedT + dt : 0;
     if (penDeniedT < PEN_DENIED_FLANK_S || timeS < scootUntilS || passivePressing) return;
     penDeniedT = 0;
@@ -4345,7 +4929,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       lastPenAtS = timeS;
       prevTargetReloadT = target.combat?.reload?.t ?? 0;
     }
-    const still = Math.abs(target.state.speed ?? 0) < 0.5 && Math.abs(target.state.yawRate ?? 0) < 0.05;
+    // a hull this bot's ram run is pushing has not moved itself (see RAM_CONTACT_HOLD_S)
+    const still = (Math.abs(target.state.speed ?? 0) < 0.5 && Math.abs(target.state.yawRate ?? 0) < 0.05)
+      || (ramming && timeS < ramContactUntilS && ramContactId === target.id);
     targetStillS = still ? targetStillS + dt : 0;
     const reloadT = target.combat?.reload?.t ?? 0;
     if (reloadT > prevTargetReloadT + 1) targetLastShotS = timeS; // a shell left its gun
@@ -4355,6 +4941,40 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function targetPassive(timeS: number): boolean {
     return !!target && targetStillS >= PASSIVE_TARGET_STILL_S
       && timeS - targetLastShotS >= PASSIVE_TARGET_SILENT_S;
+  }
+
+  /** The press point's lane: the gun, standing at (x, z) `distance` m from the target, reaches its hull. */
+  function pressLaneClear(x: number, z: number, distance: number): boolean {
+    if (!target) return false;
+    const tp = target.state.pos;
+    const gunY = hf.getHeightAt(x, z) + selfGunM;
+    const hullY = tp.y + target.spec.dims.heightM * PASSIVE_PRESS_LANE_HULL_FRAC;
+    return withinGunArc(Math.atan2(hullY - gunY, distance)) && hasLos(x, gunY, z, tp.x, hullY, tp.z);
+  }
+
+  /** The flank exemption's lane from where the hull stands (see PASSIVE_PRESS_MISSES), re-tested at a fixed cadence. */
+  function flankLaneHolds(timeS: number, distance: number): boolean {
+    if (timeS - flankLaneCheckS >= FLANK_LANE_RECHECK_S) {
+      flankLaneCheckS = timeS;
+      flankLaneClear = pressLaneClear(entity.state.pos.x, entity.state.pos.z, distance);
+    }
+    return flankLaneClear;
+  }
+
+  /** Main-gun rounds in a row have left the gun without reaching the target (see PASSIVE_PRESS_MISSES). */
+  function missedOut(timeS: number): boolean {
+    const st = entity.state;
+    return !!target && missStreakTargetId === target.id && missStreak >= PASSIVE_PRESS_MISSES
+      && timeS - missLastShotS >= MISS_SETTLE_S && Math.hypot(st.pos.x - missSpot.x, st.pos.z - missSpot.z) <= MISS_SPOT_M;
+  }
+
+  /** Give up the spot the misses were fired from: no press point near it for a while, and a fresh count. */
+  function giveUpMissedSpot(x: number, z: number, timeS: number): void {
+    pressVeto.x = x;
+    pressVeto.z = z;
+    pressVeto.untilS = timeS + 120;
+    missStreak = 0;
+    missVerdicts++;
   }
 
   /** The side-aspect point nearer to where this hull already stands; the far side, then (round 67) land-only
@@ -4386,10 +5006,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         if (liquidSafe && !liquidSafe(x, z, Math.atan2(tp.x - x, tp.z - z), 0)) continue;
         // Copper Mesa seeds 0/1/3 after the first press: the point at the foot of the host's plateau masked the
         // hull behind the rim — the gun, not the eye, must reach the hull from the press point.
-        const gunY = hf.getHeightAt(x, z) + selfGunM;
-        const hullY = tp.y + target.spec.dims.heightM * PASSIVE_PRESS_LANE_HULL_FRAC;
-        if (!withinGunArc(Math.atan2(hullY - gunY, radius))) continue;
-        if (!hasLos(x, gunY, z, tp.x, hullY, tp.z)) continue;
+        if (!pressLaneClear(x, z, radius)) continue;
+        // the reach deadline survives a restart onto the same point, or a flickering sight line would reset it forever
+        const samePoint = Math.hypot(x - pressPoint.x, z - pressPoint.z) <= 12 && nowS - pressPickS < 30;
+        if (!samePoint) {
+          pressReachByS = nowS + PRESS_REACH_SLACK_S + Math.hypot(x - st.pos.x, z - st.pos.z) / PRESS_REACH_SPEED_MPS;
+        }
+        pressPickS = nowS;
         pressPoint.x = x;
         pressPoint.z = z;
         passivePressCandidate = ring * 16 + k; // round 67: 0/1 the sides, 2–9 the fallbacks, 10 straight in
@@ -4406,10 +5029,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       passivePressing = false;
       return;
     }
+    const missed = missedOut(timeS);
     if (!passivePressing) {
       if (timeS - lastPenAtS < PASSIVE_PRESS_NO_PEN_S) return;
-      if (distance <= PASSIVE_PRESS_STANDOFF_M + ARRIVE_DIST_M
-          && aspectAngle() >= PASSIVE_PRESS_ASPECT_RAD * 0.7) return; // already on its flank at point-blank
+      // already on its flank at point-blank, with the gun on the hull and its rounds arriving
+      if (!missed && distance <= PASSIVE_PRESS_STANDOFF_M + ARRIVE_DIST_M
+          && aspectAngle() >= PASSIVE_PRESS_ASPECT_RAD * 0.7 && flankLaneHolds(timeS, distance)) return;
+      if (missed) giveUpMissedSpot(missSpot.x, missSpot.z, timeS);
       if (outnumberedSolo() || !pickPressPoint()) return;
       passivePressing = true;
       passivePressRepickS = timeS + PASSIVE_PRESS_REPICK_S;
@@ -4432,13 +5058,18 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // Saltwind seed 0: both side points failed and the straight-in point left the gate closed (ratio 0.7 on the
       // glacis) with the hull in plain view — a closed gate held at the press point is the same verdict, and so
       // is a gun pinned at its pitch stop there (Coastal seed 3).
-      if (atPoint && (probeMiss || penDeniedT >= PASSIVE_PRESS_DENIED_S || passivePressArcT >= PASSIVE_PRESS_ARC_S)
-          && firstAvailableSlot() >= 0) {
+      // A press point its rounds do not reach from (missedOut) is given up the same way.
+      // So is a point the hull has not reached in time (see PRESS_REACH_SLACK_S).
+      const unreached = !atPoint && timeS >= pressReachByS;
+      if (((atPoint && (probeMiss || penDeniedT >= PASSIVE_PRESS_DENIED_S || passivePressArcT >= PASSIVE_PRESS_ARC_S
+          || missed)) || unreached) && firstAvailableSlot() >= 0) {
         passivePressArcT = 0;
+        if (missed) giveUpMissedSpot(missSpot.x, missSpot.z, timeS);
         pressVeto.x = pressPoint.x;
         pressVeto.z = pressPoint.z;
         pressVeto.untilS = timeS + 120;
         passivePressRepicks++;
+        if (unreached) pressUnreached++;
         if (!pickPressPoint()) passivePressing = false;
       }
     }
@@ -4459,8 +5090,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function updateFriendlyLaneRelocation(timeS: number): void {
     const shouldRelocate = friendlyBlockT >= FRIENDLY_LANE_RELOCATE_S
-      && target && losClear && timeS >= scootUntilS;
-    if (!shouldRelocate || !pickFriendlyFireLane()) return;
+      && target && losClear && timeS >= scootUntilS && timeS >= friendlyLaneRetryS;
+    if (!shouldRelocate) return;
+    friendlyLaneSearches++;
+    if (!pickFriendlyFireLane()) {
+      friendlyLaneRetryS = timeS + FRIENDLY_LANE_RETRY_S;
+      return;
+    }
     beginScoot(7);
     friendlyBlockT = 0;
     friendlyLaneMoves++;
@@ -4562,7 +5198,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     switch (reaction) {
       case 'cover':
-        if (driveToXZ(input, reactPoint.x, reactPoint.z, 1)) reaction = null;
+        if (casemate ? driveOnLine(input, reactPoint.x, reactPoint.z, threatBearing, -0.85)
+          : driveToXZ(input, reactPoint.x, reactPoint.z, 1)) reaction = null;
         return true;
       case 'backoff': {
         const dx = reactPoint.x - st.pos.x, dz = reactPoint.z - st.pos.z;
@@ -4583,7 +5220,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         // short back-and-forth jinks spoil the shooter's lead while the bow
         // turns onto the shot (movement.ts flips steering in reverse)
         const phase = Math.floor((reactUntilS - timeS) / REACT_JINK_PERIOD_S) % 2 === 0 ? 1 : -1;
-        const err = wrapAngle(threatBearing - st.yaw);
+        const bow = casemate && target && losClear ? targetBearing() : threatBearing;
+        const err = wrapAngle(bow - st.yaw);
         const steerSign = st.speed < -0.15 ? -1 : 1;
         input.steer = Math.abs(err) > 0.06 ? clamp(err * 2.0, -1, 1) * steerSign : 0;
         input.throttle = 0.8 * phase * reactSide;
@@ -4592,6 +5230,125 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       }
     }
     return false;
+  }
+
+  /** A zone mission's hold point and radius, or null for other missions and modes. */
+  function zoneObjective(): AiObjective | null {
+    const objective = getObjective?.();
+    return objective && (objective.mission === 'capture' || objective.mission === 'assault') ? objective : null;
+  }
+
+  /** Ground a hull can stand and hold on: level enough at the point and round its footprint, and dry. */
+  function holdableGround(x: number, z: number): boolean {
+    const min = casemate ? CASEMATE_SPOT_NORMAL_Y_MIN : SPOT_NORMAL_Y_MIN;
+    if (hf.getNormalAt!(x, z).y < min) return false;
+    for (let k = 0; k < 8; k++) {
+      const a = k * (TAU / 8);
+      if (hf.getNormalAt!(x + Math.sin(a) * ZONE_HOLD_FOOTPRINT_M, z + Math.cos(a) * ZONE_HOLD_FOOTPRINT_M).y < min) {
+        return false;
+      }
+    }
+    return !liquidSafe || liquidSafe(x, z, 0, 0);
+  }
+
+  /** The straight leg from (x0, z0) to (x1, z1) is no steeper than a comfortable climb (every ZONE_LEG_STEP_M). */
+  function legDrivable(x0: number, z0: number, x1: number, z1: number): boolean {
+    const length = Math.hypot(x1 - x0, z1 - z0);
+    for (let d = ZONE_LEG_STEP_M; d < length; d += ZONE_LEG_STEP_M) {
+      const f = d / length;
+      if (hf.getNormalAt!(x0 + (x1 - x0) * f, z0 + (z1 - z0) * f).y < LEG_NORMAL_Y_MIN) return false;
+    }
+    return true;
+  }
+
+  /** Where a zone mission holds the zone centred at (x, z): its centre, or holdable ground beside it. */
+  function zoneHoldPoint(x: number, z: number, radiusM: number): { x: number; z: number } {
+    if (Math.abs(x - zoneHoldForX) < 1 && Math.abs(z - zoneHoldForZ) < 1) return zoneHold;
+    zoneHoldForX = x;
+    zoneHoldForZ = z;
+    zoneHold.x = x;
+    zoneHold.z = z;
+    if (!hf.getNormalAt || holdableGround(x, z)) return zoneHold;
+    const st = entity.state;
+    const own = Math.atan2(st.pos.x - x, st.pos.z - z);
+    for (let ring = 0; ring < ZONE_HOLD_RINGS_M.length; ring++) {
+      const r = ZONE_HOLD_RINGS_M[ring];
+      if (r > radiusM * ZONE_HOLD_MAX_FRAC) break;
+      for (let k = 0; k < ZONE_HOLD_BEARINGS; k++) {
+        // the hull's own side first, then alternately either way round
+        const step = (k + 1) >> 1;
+        const a = own + (k & 1 ? step : -step) * (TAU / ZONE_HOLD_BEARINGS);
+        const px = x + Math.sin(a) * r, pz = z + Math.cos(a) * r;
+        if (!holdableGround(px, pz)) continue;
+        zoneHold.x = px;
+        zoneHold.z = pz;
+        zoneHoldMoves++;
+        return zoneHold;
+      }
+    }
+    return zoneHold; // nothing holdable inside the zone: the centre, as before
+  }
+
+  /** Pick the shift point: on the ring round the zone, in sight of the target, as far round its side as possible. */
+  function pickObjectiveShift(objective: AiObjective): boolean {
+    if (!target) return false;
+    const st = entity.state;
+    const tp = target.state.pos;
+    const ty = eyeY(target);
+    let bestScore = -Infinity;
+    for (let k = 0; k < 8 * OBJECTIVE_SHIFT_RINGS.length; k++) {
+      const radius = objective.radiusM * OBJECTIVE_SHIFT_RINGS[k >> 3];
+      const a = (k & 7) * (TAU / 8) + (k >> 3) * (TAU / 16); // the outer ring sits between the inner ring's bearings
+      const x = objective.x + Math.sin(a) * radius;
+      const z = objective.z + Math.cos(a) * radius;
+      if (Math.hypot(x - st.pos.x, z - st.pos.z) < ARRIVE_DIST_M * 1.5) continue; // where it already stands
+      if (!reachableSpot(x, z)) continue;
+      // the shift point is holdable ground the hull reaches without crossing a face (see ZONE_HOLD_RINGS_M)
+      if (hf.getNormalAt && (!holdableGround(x, z) || !legDrivable(st.pos.x, st.pos.z, x, z))) continue;
+      if (liquidSafe && !liquidSafe(x, z, Math.atan2(tp.x - x, tp.z - z), 0)) continue;
+      if (!hasLos(x, hf.getHeightAt(x, z) + selfEyeM, z, tp.x, ty, tp.z)) continue;
+      // 0 at the target's bow, π at its rear: a gate the front shuts is opened from the side
+      // (capped at the beam: a side plate is enough, and the rear would mean driving round the target)
+      const aspect = Math.min(Math.PI / 2, Math.abs(wrapAngle(Math.atan2(x - tp.x, z - tp.z) - target.state.yaw)));
+      const score = aspect * 10 - Math.hypot(x - st.pos.x, z - st.pos.z) * 0.1;
+      if (score <= bestScore) continue;
+      bestScore = score;
+      objectiveShiftPoint.x = x;
+      objectiveShiftPoint.z = z;
+    }
+    return bestScore > -Infinity;
+  }
+
+  function updateObjectiveShift(dt: number): void {
+    const objective = zoneObjective();
+    const onObjective = !!objective && Math.hypot(objective.x - entity.state.pos.x, objective.z - entity.state.pos.z)
+      <= objective.radiusM;
+    if (!onObjective || !target || !enemyAlive(target) || emptyRack) {
+      cannotFightT = 0;
+      objectiveShifting = false;
+      return;
+    }
+    if (losClear && (penGateOk || heWorth) && isVisibleToTeam(target)) {
+      cannotFightT = 0; // fighting: the hull holds where it stands (the shift point, or the zone's centre)
+      return;
+    }
+    cannotFightT += dt;
+    if (cannotFightT < OBJECTIVE_SHIFT_DWELL_S) return;
+    cannotFightT = 0;
+    if (!pickObjectiveShift(objective!)) return;
+    objectiveShifting = true;
+    objectiveShifts++;
+  }
+
+  /** Drive the live shift; true while it owns the hull (the point reached, the hull faces the target there). */
+  function driveObjectiveShift(input: AiInput): boolean {
+    if (!objectiveShifting || !target) return false;
+    if (driveToXZ(input, objectiveShiftPoint.x, objectiveShiftPoint.z, 0.8)) {
+      const st = entity.state;
+      faceYaw(input, Math.atan2(target.state.pos.x - st.pos.x, target.state.pos.z - st.pos.z));
+      driveIntent = false; // holding the firing point is the point: the low-speed watchdog must not back it off
+    }
+    return true;
   }
 
   function driveMission(input: AiInput): boolean {
@@ -4610,9 +5367,25 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       driveToXZ(input, destination.x, destination.z, 1);
       return true;
     }
-    if (missionRouteNeedsRefresh(destination.x, destination.z)) {
-      setWaypoints([[destination.x, destination.z]], { loop: false });
+    if (nowS < missionReleaseUntilS) return false;
+    const offObjective = Math.hypot(destination.x - entity.state.pos.x, destination.z - entity.state.pos.z)
+      > objective.radiusM;
+    missionOffObjective = offObjective;
+    // a zone is held from ground a hull can stand on (see ZONE_HOLD_RINGS_M)
+    const hold = objective.mission === 'capture' || objective.mission === 'assault'
+      ? zoneHoldPoint(destination.x, destination.z, objective.radiusM) : destination;
+    if (missionRouteNeedsRefresh(hold.x, hold.z)) {
+      setWaypoints([[hold.x, hold.z]], { loop: false });
     }
+    // a route used up short of the objective (the mission's own, or a search leg that took the waypoints) is no
+    // reason to park: the classic drivers take the hull for a while (Sirocco Wadi frontline seed 57001: a defender
+    // stood 254 s at a search leg's end 116 m from the idle host, its gate shut on the host's front)
+    if (offObjective && routeUsedUp()) {
+      missionReleaseUntilS = nowS + MISSION_RELEASE_S;
+      missionReleases++;
+      return false;
+    }
+    if (!offObjective && driveObjectiveShift(input)) return true;
     drivePatrol(input);
     return true;
   }
@@ -4622,6 +5395,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     driveIntent = false;
     if (driveMission(input)) return;
     if (driveReaction(input, timeS)) return;
+    // the route to the target's level owns the hull while it runs (see ELEVATION_LOCK_S)
+    if (levelRouting) {
+      drivePatrol(input);
+      return;
+    }
     if (passivePressing && target && losClear) {
       drivePassivePress(input);
       return;
@@ -4634,7 +5412,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       return;
     }
     if (timeS < scootUntilS) {
-      if (driveToXZ(input, scootPoint.x, scootPoint.z, 0.95)) {
+      const arrived = scootLine !== 0
+        ? driveOnLine(input, scootPoint.x, scootPoint.z, targetBearing(), 0.8 * scootLine)
+        : driveToXZ(input, scootPoint.x, scootPoint.z, 0.95);
+      if (arrived) {
         scootUntilS = -1;
         spotPos.x = entity.state.pos.x;
         spotPos.z = entity.state.pos.z;
@@ -4645,7 +5426,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     if (mode === 'patrol') drivePatrol(input);
     else if (mode === 'engage') driveEngage(input, timeS, targetDistance);
-    else if (mode === 'seekCover') driveToXZ(input, coverPoint.x, coverPoint.z, 0.9);
+    else if (mode === 'seekCover') {
+      if (casemate && behindOnLine(coverPoint.x, coverPoint.z)) {
+        driveOnLine(input, coverPoint.x, coverPoint.z, targetBearing(), -0.9);
+      } else driveToXZ(input, coverPoint.x, coverPoint.z, 0.9);
+    }
     else {
       const flankPoint = flankPoints[Math.min(flankIndex, 2)];
       if (driveToXZ(input, flankPoint.x, flankPoint.z, 1)) flankIndex++;
@@ -4772,7 +5557,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         terrainAvoidUntilS = timeS + 3;
         routeTimer = 0;
       }
-      if (terrainBlocked || timeS < terrainAvoidUntilS) {
+      if ((terrainBlocked || timeS < terrainAvoidUntilS) && casemate && target && losClear) {
+        // an engaged casemate stops at the blocked corridor: the escape turn would swing its gun off the target
+        input.throttle = 0;
+        input.brake = speed > 0.3;
+        input.steer = 0;
+      } else if (terrainBlocked || timeS < terrainAvoidUntilS) {
         // Hold the escape turn long enough to complete it. Handing the hull
         // back to its old waypoint on the first safe sample oscillated along
         // the gorge edge instead of turning away from it.
@@ -4885,9 +5675,29 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * @param {{loop?: boolean}} options route behavior; patrol routes loop by default
    */
   let missionRouteX = Infinity, missionRouteZ = Infinity, missionRouteAtS = -Infinity;
+  let missionRouteEndX = NaN, missionRouteEndZ = NaN; // the planned mission route's last waypoint
+  let missionOffObjective = false;                    // the hull stood off its objective at the last mission step
   function missionRouteNeedsRefresh(x: number, z: number): boolean {
     return Math.hypot(x - missionRouteX, z - missionRouteZ) >= 12
-      || (nowS - missionRouteAtS >= 6 && (waypoints.length === 0 || terrainBlocked || navNoProgressT > 4));
+      || (nowS - missionRouteAtS >= 6 && (waypoints.length === 0 || terrainBlocked || navNoProgressT > 4
+        || (missionOffObjective && missionRouteEnded())));
+  }
+
+  /** The route in the waypoints is used up: none left, or the hull stands at the last one. */
+  function routeUsedUp(): boolean {
+    const last = waypoints[waypoints.length - 1];
+    return !last || (wpIndex >= waypoints.length - 1
+      && Math.hypot(last.x - entity.state.pos.x, last.z - entity.state.pos.z) < ARRIVE_DIST_M * 2);
+  }
+
+  /**
+   * The mission's own route is used up: its plan came back empty, or the hull stands at its last waypoint. A route
+   * that has since taken the waypoints (a search leg) is not the mission's: it keeps them, as it always has.
+   */
+  function missionRouteEnded(): boolean {
+    const last = waypoints[waypoints.length - 1];
+    if (!last) return missionRouteAtS > -Infinity && Number.isNaN(missionRouteEndX);
+    return last.x === missionRouteEndX && last.z === missionRouteEndZ && routeUsedUp();
   }
 
   function setWaypoints(
@@ -4901,9 +5711,18 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const [x, z] = points[0];
       if (!missionRouteNeedsRefresh(x, z)) return;
       missionRouteX = x; missionRouteZ = z; missionRouteAtS = nowS;
-      if (deps.planRoute) points = deps.planRoute(entity.state.pos, { x, z });
+      // the grid has no way the widest hull fits from here (a passage two wrecks narrow, a zone centre against a
+      // wall): the destination itself stays the waypoint, for the local router to approach, never no route at all
+      if (deps.planRoute) {
+        const planned = deps.planRoute(entity.state.pos, { x, z });
+        if (planned.length) points = planned;
+      }
+      const end = points[points.length - 1];
+      missionRouteEndX = end ? end[0] : NaN;
+      missionRouteEndZ = end ? end[1] : NaN;
     } else {
       missionRouteX = missionRouteZ = Infinity;
+      missionRouteEndX = missionRouteEndZ = NaN;
     }
     waypoints.length = 0;
     for (let i = 0; i < points.length; i++) {
@@ -4926,6 +5745,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!hitEvent) return;
     if (hitEvent.shellName && !spec.gun.shells.some(shell => shell.name === hitEvent.shellName)) return;
     if (target && hitEvent.targetId === target.id) {
+      missStreak = 0; // the round reached the target: the spot's lay holds (see PASSIVE_PRESS_MISSES)
       const k = hitEvent.kind;
       if (k === 'nonpen' || k === 'ricochet' || k === 'spaced_absorb' || k === 'era') {
         nonPenCount++;
@@ -5071,13 +5891,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       burstDamage: Math.round(burstDamage),
       friendlyBlockT: +friendlyBlockT.toFixed(2),
       friendlyBlockCount,
-      friendlyLaneMoves,
+      friendlyLaneMoves, friendlyLaneSearches,
       friendlyBlockKind: lastFriendlyRisk ? lastFriendlyRisk.kind : null,
       friendlyBlockId: lastFriendlyRisk ? lastFriendlyRisk.allyId : null,
       allyYielding, allyAvoidingId,
       allyClosestM: Number.isFinite(allyClosestM) ? +allyClosestM.toFixed(2) : null,
       allyYieldT: +allyYieldT.toFixed(2),
       allyEmergencyStops, allyReverseEscapes,
+      allyHoldT: +allyHoldT.toFixed(2), allyHoldGiveWays,
       losBlockedT: +losBlockedT.toFixed(1), hasVantage,
       navT: +navNoProgressT.toFixed(1), strikes: stuckStrikes, // r6 watchdog
       penDeniedT: +penDeniedT.toFixed(1), // round 48 pacing: closed pen gate dwell
@@ -5093,7 +5914,18 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       searchGoalX: Math.round(searchGoal.x), searchGoalZ: Math.round(searchGoal.z),
       wpIndex, wpCount: waypoints.length,
       waypointX: waypoints[wpIndex]?.x ?? null, waypointZ: waypoints[wpIndex]?.z ?? null,
-      conserveHolds, emptyRack, ramming, ramRuns,
+      conserveHolds, emptyRack, ramming, ramRuns, ramCapMps: Number.isFinite(ramCapMps) ? +ramCapMps.toFixed(2) : null,
+      missStreak, missVerdicts, pressUnreached,
+      rackSpent: !!target && target.id === rackSpentId, rackSpentT: +rackSpentT.toFixed(1), rackSpentVerdicts,
+      objectiveShifts, objectiveShifting, zoneHoldMoves,
+      routeCornerX: routeActive ? +routeCorner.x.toFixed(2) : null,
+      routeCornerZ: routeActive ? +routeCorner.z.toFixed(2) : null, routeCornerFlips,
+      objectiveShiftX: objectiveShifting ? +objectiveShiftPoint.x.toFixed(1) : null,
+      objectiveShiftZ: objectiveShifting ? +objectiveShiftPoint.z.toFixed(1) : null,
+      zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,
+      zoneHoldZ: Number.isFinite(zoneHoldForZ) ? +zoneHold.z.toFixed(1) : null,
+      missionReleases, missionReleased: nowS < missionReleaseUntilS,
+      levelRouting, levelRoutes, unbearableVerdicts, unbearable: unbearableId, elevationLockT: +elevationLockT.toFixed(1),
       pressing: nowS < pressUntilS,
       pressPointX: passivePressing ? pressPoint.x : NaN, // round 67: the chosen press point (NaN while not pressing)
       pressPointZ: passivePressing ? pressPoint.z : NaN,

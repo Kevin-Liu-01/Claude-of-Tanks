@@ -2,7 +2,8 @@
 // presentation metadata read from the finished geometry (never written).
 // Split out of tankFactoryCore.ts in round 46 (docs/CLEANUP-2026-09-22.md §4.4).
 import * as THREE from 'three';
-import { isVehicleInstancedMesh, isVehicleMesh, type VehicleInstancedMesh, type VehicleMesh } from './vehicleMesh.ts';
+import { isVehicleInstancedMesh, isVehicleMesh, type VehicleInstancedMesh } from './vehicleMesh.ts';
+import { staticMergePartMatrixWorld, staticMergePartsOf } from './staticMergeParts.ts';
 
 // ---------------------------------------------------------------------------
 // Rest-pose contact scan (movement-solve metadata — reads geometry, never
@@ -25,6 +26,7 @@ import { isVehicleInstancedMesh, isVehicleMesh, type VehicleInstancedMesh, type 
 // corner verts, a pad field is thousands.)
 const _rcM = new THREE.Matrix4();
 const _rcM2 = new THREE.Matrix4();
+const _rcPartWorld = new THREE.Matrix4();
 const _rcV = new THREE.Vector3();
 const _floorHeap: number[] = [];
 const FLOOR_DENSE_SAMPLES = 12;
@@ -134,14 +136,14 @@ export function materialWritesColor(material: THREE.Material | THREE.Material[])
 }
 
 function centerSpanningMeshBottomY(
-  mesh: VehicleMesh,
+  geometry: THREE.BufferGeometry,
+  matrixWorld: THREE.Matrix4,
   invRoot: THREE.Matrix4,
 ): number | null {
-  if (isVehicleInstancedMesh(mesh)) return null;
-  if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
-  const bounds = mesh.geometry.boundingBox;
+  if (!geometry.boundingBox) geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox;
   if (!bounds) return null;
-  _rcM2.multiplyMatrices(invRoot, mesh.matrixWorld);
+  _rcM2.multiplyMatrices(invRoot, matrixWorld);
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = Infinity;
@@ -196,12 +198,12 @@ function appendInstancedRestContactSamples(
 }
 
 function appendMeshRestContactSamples(
-  mesh: VehicleMesh,
+  matrixWorld: THREE.Matrix4,
   position: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
   invRoot: THREE.Matrix4,
   samples: RestContactSamples,
 ): void {
-  _rcM2.multiplyMatrices(invRoot, mesh.matrixWorld);
+  _rcM2.multiplyMatrices(invRoot, matrixWorld);
   const stride = Math.max(1, Math.floor(position.count / 20000));
   for (let vertex = 0; vertex < position.count; vertex += stride) {
     _rcV.fromBufferAttribute(position, vertex).applyMatrix4(_rcM2);
@@ -219,20 +221,37 @@ function collectRestContactSamples(
   if (!isVehicleMesh(object) && !isVehicleInstancedMesh(object)) return;
   if (!materialWritesColor(object.material)) return;
   if (!isVisibleBelowRoot(object, root)) return;
-  const position = object.geometry.getAttribute?.('position');
-  if (!position?.count) return;
-  if (isVehicleMesh(object)) {
-    const meshBottomY = centerSpanningMeshBottomY(object, invRoot);
-    if (meshBottomY !== null
-      && (samples.panYM === null || meshBottomY < samples.panYM)) {
-      samples.panYM = meshBottomY;
-    }
-  }
   if (isVehicleInstancedMesh(object)) {
-    appendInstancedRestContactSamples(object, position, invRoot, samples);
-  } else {
-    appendMeshRestContactSamples(object, position, invRoot, samples);
+    const position = object.geometry.getAttribute?.('position');
+    if (position?.count) appendInstancedRestContactSamples(object, position, invRoot, samples);
+    return;
   }
+  // A static draw merge replays each folded source exactly as its own mesh:
+  // its geometry, its bounds and its per-mesh sampling stride.
+  const parts = staticMergePartsOf(object);
+  if (parts.length) {
+    for (const part of parts) {
+      appendRestContactMesh(part.geometry, staticMergePartMatrixWorld(object, part, _rcPartWorld), invRoot, samples);
+    }
+    return;
+  }
+  appendRestContactMesh(object.geometry, object.matrixWorld, invRoot, samples);
+}
+
+function appendRestContactMesh(
+  geometry: THREE.BufferGeometry,
+  matrixWorld: THREE.Matrix4,
+  invRoot: THREE.Matrix4,
+  samples: RestContactSamples,
+): void {
+  const position = geometry.getAttribute?.('position');
+  if (!position?.count) return;
+  const meshBottomY = centerSpanningMeshBottomY(geometry, matrixWorld, invRoot);
+  if (meshBottomY !== null
+    && (samples.panYM === null || meshBottomY < samples.panYM)) {
+    samples.panYM = meshBottomY;
+  }
+  appendMeshRestContactSamples(matrixWorld, position, invRoot, samples);
 }
 
 export function measureRestContact(root: THREE.Object3D): RestContactReceipt | null {
@@ -305,6 +324,7 @@ export function measureRestContact(root: THREE.Object3D): RestContactReceipt | n
 // cheap bounding-box walk once when seatOnFloor is first called.
 const _pfM = new THREE.Matrix4();
 const _pfM2 = new THREE.Matrix4();
+const _pfPartWorld = new THREE.Matrix4();
 const _pfV = new THREE.Vector3();
 export function measurePresentationFloor(root: THREE.Object3D): number | null {
   try {
@@ -328,6 +348,14 @@ export function measurePresentationFloor(root: THREE.Object3D): number | null {
         current && current !== root; current = current.parent) {
         if (!current.visible) return;
       }
+      const parts = isVehicleInstancedMesh(object) ? [] : staticMergePartsOf(object);
+      for (const part of parts) {
+        if (!part.geometry.boundingBox) part.geometry.computeBoundingBox();
+        const partBox = part.geometry.boundingBox;
+        if (!partBox || partBox.isEmpty()) continue;
+        considerBox(partBox, _pfM.multiplyMatrices(invRoot, staticMergePartMatrixWorld(object, part, _pfPartWorld)));
+      }
+      if (parts.length) return;
       if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
       const box = object.geometry.boundingBox;
       if (!box || box.isEmpty()) return;

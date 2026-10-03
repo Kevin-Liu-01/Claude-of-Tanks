@@ -36,14 +36,25 @@ function assertMonotoneRadii(position, label) {
   }
 }
 
-function assertBoundedSubdivisionRelief(position, style, label) {
+// 2026-10-02 (the mountains lane; owner: "clouds are the bar; mountains, horizons and terrain must match"): beyond the first
+// ridge the ranged rings are carved by the eroded landform (horizonMassif.ts) and the tableland rings by the bed stair
+// (horizonEscarpment.ts), so an interpolated row no longer sits on its authored anchors' chord — the cols, couloirs,
+// spurs and tiers stand BETWEEN the authored rows by design. The round-72b anchor-band law (each interpolated row within
+// the chord, or the anchors' band, plus 12 % of the span) described the old interpolation and is retired; what it
+// guarded stays live: (a) no cliff between two rows past the ledger's bound (enforceLedgerSlopes still runs after the
+// carve) — on the tablelands the stair's own cliff bound, 3.6:1 (74 degrees), so a cliff never becomes a vertical sheet;
+// (b) no one-column needle beyond the first ridge (a vertex more than one arc step over BOTH neighbours: a single 15–20 m
+// column cannot carry a summit) — the carve's own needle filter, so a ring that opts out of the landform (massif: false:
+// Nordhavn Fjord's aiguilles, Earthrise Basin's walls) keeps its round-72b crests and is not held to it; (c) real relief
+// between the anchors.
+function assertBoundedSubdivisionRelief(position, style, label, carved = true) {
   // Alpine spends two existing outer-shoulder subdivisions on the near
   // foothill transition. Authored ridges still anchor all inserted relief.
   // round 47: the mesa stack's seven authored rows (5, 9, 13, 17, 21, 25, 29) and, on the cap maps, its two cap fronts
   const anchors = style === 'alpine' ? [1, 5, 10, 15, 20, 25, 30, 35]
     : ['skybridge', 'copper_mesa', 'titan_gorge'].includes(label) ? [1, 5, 8, 9, 13, 16, 17, 21, 25, 29]
       : style === 'mesa' ? [1, 5, 9, 13, 17, 21, 25, 29] : [1, 5, 9, 13, 17];
-  let reliefSamples = 0;
+  let reliefSamples = 0, needles = 0;
   for (let span = 1; span < anchors.length; span++) {
     for (let column = 0; column < columns - 1; column++) {
       const first = anchors[span - 1] * columns + column;
@@ -52,29 +63,31 @@ function assertBoundedSubdivisionRelief(position, style, label) {
       const radialSpan = radiusAt(position, last) - firstRadius;
       const rise = position.getY(last) - position.getY(first);
       const authoredSlope = Math.abs(rise) / radialSpan;
+      const bound = style === 'mesa' ? 3.6 : Math.max(style === 'alpine' ? 3.0 : 1.9, authoredSlope * (style === 'alpine' ? 2 : 1) + 0.3);
       for (let row = anchors[span - 1] + 1; row <= anchors[span]; row++) {
         const index = row * columns + column;
         const previous = index - columns;
         const radius = radiusAt(position, index);
         const gap = radius - radiusAt(position, previous);
         const slope = Math.abs(position.getY(index) - position.getY(previous)) / gap;
-        assert.ok(slope <= Math.max(style === 'alpine' ? 3.0 : 1.9, authoredSlope * (style === 'alpine' ? 2 : 1) + 0.3),
-          `${label}: subdivision does not introduce near-vertical cliffs between authored ridges`);
+        assert.ok(slope <= bound + 0.001,
+          `${label}: no cliff between rows past the ${style === 'mesa' ? 'stair\'s 3.6:1' : 'ledger\'s'} bound (${slope.toFixed(2)} > ${bound.toFixed(2)})`);
         if (row < anchors[span]) {
           const linearHeight = position.getY(first) + rise * (radius - firstRadius) / radialSpan;
-          const relief = Math.abs(position.getY(index) - linearHeight);
-          const outsideAnchors = Math.max(0,
-            position.getY(index) - Math.max(position.getY(first), position.getY(last)),
-            Math.min(position.getY(first), position.getY(last)) - position.getY(index));
-          assert.ok((style === 'alpine' ? outsideAnchors : relief) <= radialSpan * 0.12 + 0.001,
-            `${label}: rounded slopes stay inside anchor heights plus bounded crag relief`);
-          if (relief > 0.01) reliefSamples++;
+          if (Math.abs(position.getY(index) - linearHeight) > 0.01) reliefSamples++;
+        }
+        if (span >= 2 && row < anchors[span]) {
+          const left = row * columns + (column + columns - 2) % (columns - 1), right = row * columns + column + 1;
+          const arc = Math.hypot(position.getX(right) - position.getX(left), position.getZ(right) - position.getZ(left)) * 0.5;
+          const y = position.getY(index);
+          if (Math.min(y - position.getY(left), y - position.getY(right)) > arc + 0.001) needles++;
         }
       }
     }
   }
   assert.ok(reliefSamples > columns,
     `${label}: coherent shoulders retain real relief instead of flattening the mountain faces`);
+  if (carved) assert.equal(needles, 0, `${label}: no one-column needles beyond the first ridge (${needles})`);
 }
 
 function assertLayeredMountainBounds(position, style, label) {
@@ -160,6 +173,14 @@ function assertClassicLayeredRanges(ring, config, label) {
     `${label}: at least ${style === 'alpine' ? 'three' : 'two'} separate ranges each hold a sustained skyline sector (${stats.skyline.join(',')})`);
 }
 
+// 2026-10-02 (the mountains lane; owner: "layered escarpments … talus aprons … buttresses"): the tableland rings' side
+// canyons (horizonMassif.ts, cut only) dissect the tables and the bed stair (horizonEscarpment.ts) turns each supported
+// approach into tiers — talus benches under cliffs — so the round-47 gates move with that direction: the caps stay
+// broad two-dimensional tops on both ranges (30+ nearly level quads, runs of 8+, 40k m2 near and 60k m2 far — the
+// canyons take the rest; round 47 measured 80–164 quads before the dissection), the passes and the meandering cap
+// fronts are unchanged, and the approach answers to the stair's laws instead of the 1.25:1 / 1.8:1 ramps (the plain
+// sheets the owner sent back): every row step within the 3.6:1 cliff bound, and a talus bench (a step under 0.6:1)
+// with a cliff (a step over 1.4:1) on the rise at one tall column in ten or more, on both ranges.
 function assertSkybridgeTableCaps(ring, label) {
   const n = HORIZON_SEGMENTS, p = ring.positions;
   const y = (row, c) => p[(row * n + c) * 3 + 1];
@@ -191,10 +212,8 @@ function assertSkybridgeTableCaps(ring, label) {
       assert.ok(Math.abs(twiceArea) > 1500, `${label}: cap quads have substantial finite width`); // 431 columns: 12.5 m x 80 m quads
       area += Math.abs(twiceArea) * 0.5;
     }
-    // The restored 1049e4e tables sit at 760/1240 m instead of 1140/1810 m, so
-    // the same cap coverage subtends proportionally less plan area.
-    assert.ok(capQuads >= 35 && longestRun >= 8 && area > (top === 9 ? 40000 : 120000),
-      `${label}: range ${top} has broad attached table tops, not single-column apexes (${capQuads} quads, ${Math.round(area)} m2)`);
+    assert.ok(capQuads >= 30 && longestRun >= 8 && area > (top === 9 ? 40000 : 60000),
+      `${label}: range ${top} has broad attached table tops, not single-column apexes (${capQuads} quads, run ${longestRun}, ${Math.round(area)} m2)`);
     const values = Array.from({ length: n }, (_, c) => y(top, c));
     assert.ok(values.filter(value => value < Math.max(...values) - 100).length >= 30,
       `${label}: truncation preserves low passes instead of creating a flat enclosing lid`);
@@ -202,14 +221,22 @@ function assertSkybridgeTableCaps(ring, label) {
     assert.ok(Math.max(...edgeRadii) - Math.min(...edgeRadii) > 100,
       `${label}: cap fronts keep irregular meandering setbacks, not rectangular blocks`);
   }
-  // round 47: the near tables keep the 1.25:1 supported approach; the far escarpment now stands over a real valley
-  // floor and its cliff-and-talus front is bounded at 1.8:1 (about 61°)
-  for (let c = 0; c < n; c++) {
-    for (const [before, after, limit] of [[5, 6, 1.251], [6, 7, 1.251], [7, 8, 1.251], [8, 9, 1.251],
-      [13, 14, 1.801], [14, 15, 1.801], [15, 16, 1.801], [16, 17, 1.801]]) {
-      assert.ok((y(after, c) - y(before, c)) / (radius(after, c) - radius(before, c)) <= limit,
-        `${label}: supporting slopes remain bounded at every angle (rows ${before}-${after} within ${limit})`);
+  for (const [low, front] of [[5, 9], [13, 17]]) {
+    let tall = 0, tiered = 0;
+    for (let c = 0; c < n; c++) {
+      let bench = false, cliff = false;
+      for (let row = low + 1; row <= front; row++) {
+        const slope = (y(row, c) - y(row - 1, c)) / (radius(row, c) - radius(row - 1, c));
+        assert.ok(slope <= 3.601, `${label}: the approach's cliffs stay within the stair's 3.6:1 bound (rows ${row - 1}-${row}: ${slope.toFixed(2)})`);
+        if (slope < 0.6) bench = true;
+        if (slope > 1.4) cliff = true;
+      }
+      if (y(front, c) - y(low, c) < 40) continue;
+      tall++;
+      if (bench && cliff) tiered++;
     }
+    assert.ok(tiered >= tall * 0.1,
+      `${label}: the rise to range ${front} carries tiers — a talus bench and a cliff — not one ramp (${tiered} of ${tall} tall columns)`);
   }
 }
 
@@ -246,12 +273,13 @@ function assertVistaSurfaceShader(shader, normals, label) {
   // fields (horizonCloudShade.ts, inside a branch the layer opens) are the fetches outside the projection macro
   // round 72c (2026-09-26, perf): the projection macro became the far-LOD function vTile — five fetch sites (the
   // horizontal plane, the two vertical planes of the near triplanar, the cylindrical plane of the far pair, and the
-  // same pair inside the 120 m blend); the relief atlas and the two cloud-shade fetches stay: 6 -> 8
-  assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 8,
-    `${label}: the far-LOD tile function's five fetch sites, the relief atlas fetch and the two cloud-shade fetches are the only fetch sites (round 72c)`);
+  // same pair inside the 120 m blend); the relief atlas and the cloud-shade fetch stay: 6 -> 8; 2026-10-03: the cloud shade
+  // samples the one shade map (one fetch where it re-cut two weather fields, horizonCloudShade.ts): 8 -> 7
+  assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 7,
+    `${label}: the far-LOD tile function's five fetch sites, the relief atlas fetch and the cloud-shade map's fetch are the only fetch sites (round 72c; 2026-10-03)`);
   assert.match(fragment, /gLodFar = smoothstep\(880\.0, 1000\.0, vHDist\);/, `${label}: the tiles' far LOD keys on the camera distance past the first ridge (round 72c)`);
   assert.match(fragment, /if \(gLodFar > 0\.999\) return flatTap \* gAw\.y \+ texture2D\(tex, vec2\(gCylU \* cyl, gP\.y \* s\)/, `${label}: past 1 km a tile is two fetches — the horizontal plane and one cylindrical plane (round 72c)`);
-  assert.match(fragment, /if \(uVCShade > 0\.001\) \{/, `${label}: the cloud-shade fetches are skipped while the layer is off (round 72)`);
+  assert.match(fragment, /if \(uVCShade > 0\.001 && uSunDirW\.y > 0\.03\) \{/, `${label}: the cloud-shade fetch is skipped while the layer is off (round 72) or the sun grazes`);
   assert.match(fragment, /texture2D\(uVRelief, vec2\(vMapUv\.x \* 0\.1, \(radius - uVReliefR\.x\) \* uVReliefR\.y\)\)/,
     `${label}: the relief atlas is read by the ring's own angle u and the fragment's radius (round 72)`);
   // round 72b: the occlusion is read deeper (pow(relief.z, 1.4)), the snow edge is a five-degree slope threshold, the crests scour
@@ -457,7 +485,7 @@ try {
     assert.equal(geometryBytes, columns * rows * 11 * 4 + (rows - 1) * HORIZON_SEGMENTS * 6 * 2,
       `${mapId}: eleven floats per vertex plus a 16-bit index — no extra vertex attribute or buffer`);
     assertMonotoneRadii(position, mapId);
-    assertBoundedSubdivisionRelief(position, style, mapId);
+    assertBoundedSubdivisionRelief(position, style, mapId, config.horizon.massif !== false);
     assertLayeredMountainBounds(position, style, mapId);
     for (let i = 0; i < normal.count; i++) {
       const length = Math.hypot(normal.getX(i), normal.getY(i), normal.getZ(i));

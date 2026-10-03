@@ -1,12 +1,16 @@
+import { CANONICAL_ORIGIN } from '../../api/_lib/policy.ts';
 import { PRODUCT_STATS } from '../productStats.ts';
-import { catalogText } from '../ui/i18nCatalog.ts';
+// Resident dictionaries: the browser's runtime locale (playMenu, studio) or both on the server, where
+// middleware.ts imports the full catalog (src/ui/i18nCatalog.ts registers zh-CN).
+import { catalogText } from '../ui/i18nDictionaries.ts';
 import {
   hrefForLocale,
   resolveLocalePath,
   type SupportedLocale,
 } from '../ui/localeRouting.ts';
 
-export const SITE_ORIGIN = 'https://cot.kevinliu.studio';
+/** The canonical origin, from the deployment policy module (api/_lib/policy.ts). */
+export const SITE_ORIGIN = CANONICAL_ORIGIN;
 
 type SiteMetadata = {
   title: string;

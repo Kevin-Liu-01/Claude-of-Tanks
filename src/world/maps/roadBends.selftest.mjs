@@ -34,6 +34,9 @@ assert.ok(white.every(p=>p[1]<=-104),'Whiteout service street has no triangular1
 const salt=getMapConfig('saltwind').terrain.roads.paths[3];
 assert.deepEqual(salt[0],[-190,-36],'market street starts at existing harbor plaza');
 assert.ok(salt.every((p,i)=>!i||p[0]>salt[i-1][0]),'market street progresses inland without doubled-back loops');
+// 2026-10-03 (the classic Verdant town plan restored): the village's frontage lots stand at the country generator's 32 m
+// nodes, which authored paths split in two (buildPathRoads), so Verdant keeps the generator; the map-borders lane grades
+// its exits through the rim.
 assert.equal(getMapConfig('verdant').terrain.roads,undefined,'Verdant keeps its existing country route generator');
 // The registry stays intact, whatever its size (it grew 31 -> 33 with moon and cliffbridge, 0e5fc79e2): every id is
 // unique and resolves to its own config rather than getMapConfig's Verdant fallback.

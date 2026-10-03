@@ -3,10 +3,12 @@ import * as THREE from 'three';
 import { interiorFillBoundaryTriangles } from './interior-fill-body-policy.mjs';
 import { collectTriangles } from './tank-surface-collect.mjs';
 import { voxelise, floodExterior, deepInterior } from './tank-voxel-body.mjs';
+import { insideBoreAir, physicalBoreAir } from './physical-bore-air.mjs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
 
 const id = 'bmp3m_dragun125_x';
-const configuredIds = [id, 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'amx10p_25', 'leclerc_classic_x', 't80u'];
+const configuredIds = [id, 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'amx10p_25', 'leclerc_classic_x', 't80u',
+  'k21_x', 'kurganets25_x'];
 const names = ['hull', 'hullDetail', 'hullDark', 'turret', 'turretDetail', 'gun',
   'gunDark', 'gunMount', 'gunMountDark', 'muzzleBoreShadowFallbackDisc', 'track'];
 const triangles = names.map((name, mesh) => ({ mesh, identity: name }));
@@ -45,12 +47,18 @@ for (const missing of launcherBuckets) {
 
 }
 
-function leaks(tris, meshes, voxel = .025) {
+// Declared physical bore air (tools/physical-bore-air.mjs) is open by contract and never filled by the generator, so
+// it is counted apart here as the generator and the watertight measurement count it.
+function leaks(tris, meshes, voxel = .025, boreAir = null) {
   const grid = voxelise(tris, meshes, { voxel });
   const exterior = floodExterior(grid), deep = deepInterior(grid);
-  let count = 0;
-  for (let i = 0; i < exterior.length; i++) if (exterior[i] && deep[i]) count++;
-  return { count, bodyTriangles: grid.bodyTris };
+  let count = 0, bore = 0;
+  for (let i = 0; i < exterior.length; i++) {
+    if (!(exterior[i] && deep[i])) continue;
+    const x = i % grid.nx, y = ((i / grid.nx) | 0) % grid.ny, z = (i / (grid.nx * grid.ny)) | 0;
+    if (insideBoreAir(boreAir, grid, x, y, z)) bore++; else count++;
+  }
+  return { count, bore, bodyTriangles: grid.bodyTris };
 }
 
 // The selection still exposes a real broken primary shell to flood/repair.
@@ -85,14 +93,16 @@ for (const configuredId of configuredIds) for (const quality of ['high', 'low'])
   try {
     const { tris, meshes } = collectTriangles(tank.root);
     const boundary = interiorFillBoundaryTriangles(configuredId, tris, meshes);
-    const withFittings = leaks(tris, meshes), primary = leaks(boundary, meshes);
+    const boreAir = physicalBoreAir(tank.root);
+    if (configuredId === id) assert.ok(boreAir, `${id}: the verified 125 mm recess is recorded as declared bore air`);
+    const withFittings = leaks(tris, meshes, .025, boreAir), primary = leaks(boundary, meshes, .025, boreAir);
     assert.ok(withFittings.count > 0, 'the former broad family span invents exterior cage/optic pockets');
     if (configuredId === id || configuredId === 'amx10p_25' || configuredId === 't80u') assert.equal(primary.count, 0,
       `${configuredId}: actual authored primary bodies are closed at generator resolution`);
     const gun = rows => rows.filter(row => /^(gun|mantlet|muzzle)/i.test(meshes[row.mesh]));
     assert.deepEqual(gun(boundary), gun(tris), 'complete physical bore/mount stock remains in the body input');
     results.push({ id: configuredId, quality, exteriorPocketVoxels: withFittings.count, primaryLeakVoxels: primary.count,
-      originalBodyTriangles: withFittings.bodyTriangles, primaryBodyTriangles: primary.bodyTriangles });
+      boreAirVoxels: primary.bore, originalBodyTriangles: withFittings.bodyTriangles, primaryBodyTriangles: primary.bodyTriangles });
   } finally { tank.dispose(); }
 }
 for (const launcherId of launcherIds) for (const quality of ['high', 'low']) {

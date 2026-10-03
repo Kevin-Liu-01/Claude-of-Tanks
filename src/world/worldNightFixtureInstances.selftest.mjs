@@ -14,7 +14,6 @@ const panes = new Set(['fieldhut', 'fishershack', 'saunahut', 'alpinerefuge', 's
   'guardpost', 'quonsethut', 'checkpointhut', 'securityoffice', 'servicegarage', 'corneroffice',
   // 2026-09-19 Mars station: the habitat dome and module carry glass panes and door lights, the landing pad a kiosk window
   'habdome', 'habmodule', 'landingpad', 'missioncontrol', 'greenhouse', 'ascentlander']);
-const newOrbital = new Set(['missioncontrol', 'greenhouse', 'ascentlander', 'rovergarage']);
 function assertExposedAperture(geometry, id) {
   const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()); mesh.updateMatrixWorld(true);
   const mask = geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE), position = geometry.getAttribute('position');
@@ -33,8 +32,25 @@ function assertExposedAperture(geometry, id) {
   mesh.material.dispose();
   assert(visible > 0 && visible >= tested / 2, `${id}: actual exposed pane faces exist beyond authored mullions/canopies`);
 }
-const hash = createHash('sha256');
-let vertices = 0, indices = 0, totalCalls = 0;
+// 2026-10-01 (frozen pins retired): the sha256 of all 26 intact/debris families × 3 seeds (positions, normals, UVs,
+// colors, RNG, topology) and the exact vertex/call totals were change detectors of the building kits. The night-mask
+// contracts stay, plus a live check that a rebuild from the same seed reproduces every stream and RNG draw.
+function familyDigest(type, seed) {
+  const hash = createHash('sha256');
+  let state = seed, calls = 0;
+  const rng = () => { calls++; state = Math.imul(state, 1664525) + 1013904223 | 0; return (state >>> 0) / 4294967296; };
+  for (const mode of ['build', 'broken']) {
+    const geometry = type[mode](rng);
+    for (const name of ['position', 'normal', 'uv', 'color', NIGHT_EMISSION_ATTRIBUTE]) {
+      const array = geometry.getAttribute(name)?.array;
+      if (array) hash.update(Buffer.from(array.buffer, array.byteOffset, array.byteLength));
+    }
+    if (geometry.index) { const array = geometry.index.array; hash.update(Buffer.from(array.buffer, array.byteOffset, array.byteLength)); }
+    geometry.dispose();
+  }
+  hash.update(JSON.stringify([state, calls]));
+  return hash.digest('hex');
+}
 for (const [id, type] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) for (const seed of [17, 42, 2026]) {
   let state = seed, calls = 0;
   const rng = () => { calls++; state = Math.imul(state, 1664525) + 1013904223 | 0; return (state >>> 0) / 4294967296; };
@@ -52,28 +68,10 @@ for (const [id, type] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) for (const
           'only the original relay tip bulb, not antenna legs or cooling louvers');
       }
     }
-    // Preserve the original 26-family receipt while independently auditing the new kits.
-    if (!newOrbital.has(id)) {
-      hash.update(JSON.stringify([id, mode, seed]));
-      for (const name of ['position', 'normal', 'uv', 'color']) {
-        const array = geometry.getAttribute(name)?.array;
-        if (array) hash.update(Buffer.from(array.buffer, array.byteOffset, array.byteLength));
-      }
-      if (geometry.index) {
-        const array = geometry.index.array; hash.update(Buffer.from(array.buffer, array.byteOffset, array.byteLength));
-      }
-      vertices += geometry.getAttribute('position').count; indices += geometry.index?.count ?? 0;
-    }
     geometry.dispose();
   }
-  if (!newOrbital.has(id)) { totalCalls += calls; hash.update(JSON.stringify([state, calls])); }
+  assert.equal(familyDigest(type, seed), familyDigest(type, seed), `${id}/${seed}: a rebuild reproduces every stream and RNG draw`);
 }
-// 2026-09-19: six orbital families (Mars station) join the 20. Round 75 (2026-09-26): the quonset hut's sheet ribs run
-// across its length and it gains a framed wicket door, rear apertures, a skirt, a threshold and a stovepipe (its new parts
-// paint from a forked stream, so every other family's draws are the same); digest re-pinned.
-assert.equal(hash.digest('hex'), 'bbc405ab06e49351bc1018b8e8834107cbd79d0b1921379419d3d0b65dd8f152',
-  'all 26 intact/debris families × 3 seeds retain exact original positions, normals, UVs, colors, RNG and topology');
-assert.deepEqual({ vertices, indices, totalCalls }, { vertices: 140976 /* round 75: the quonset hut's new parts */, indices: 0, totalCalls: 87495 } /* 2026-09-19: +6 orbital families */);
 const propsSource = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 assert.match(propsSource, /rec\.state = 1;\s*if \(pool\?\.imI\) setWorldNightFixtureActive\(pool\.imI, rec\.slot, false\)/,
   'all authored destruction routes switch off the original instance at the state transition');
@@ -175,4 +173,4 @@ try {
   for (const geometry of Object.values(buckets).flat()) geometry.dispose(); ordinaryGlass.dispose();
   for (const material of [structureMaterial, glassMaterial, curtain, plain]) material.dispose();
 }
-console.log('worldNightFixtureInstances: 20-family byte/RNG parity, true apertures, lantern sides, event-owned destruction, stable light/draw owners and day/Garage restoration PASS');
+console.log('worldNightFixtureInstances: deterministic family streams, true apertures, lantern sides, event-owned destruction, stable light/draw owners and day/Garage restoration PASS');

@@ -13,12 +13,46 @@ on the objective. Critical non-carriers may briefly fall back. Route cursors
 survive repeated unchanged assignments, and single destinations go through the
 terrain-aware navigation grid.
 
+The mission never parks a hull that cannot fight. A zone holder (zone control,
+frontline) that has not been able to fight its target for four seconds, because
+it has no sight of it or no loaded round opens the gate, shifts inside the zone:
+to a point on the 0.6 or 0.8 × radius ring in sight of the target and as far
+round its side as the zone allows. It holds that point while it can fight from
+it. A zone is held from ground a hull can stand on: the centre when the ground
+there and over a hull's length round it is as level as a relocation spot
+(normal.y 0.90) and dry, else the first such point on the 4-20 m rings (inside
+0.7 × radius) from the hull's own side of the zone. Redrock Divide's last
+frontline sector has its centre on a 55-63 degree face; holders drove onto it,
+pivoted there and slid off (24 seeds: 45 damaging falls and 10100 hp before, 9
+and 812 hp after).
+The shift's points obey the same rule, reached by a straight leg sampled every
+3 m no steeper than a comfortable climb (normal.y 0.86).
+A mission bot whose route is used up short of its objective (the planner's
+best ends in another connected component, or a search leg took the waypoints)
+hands the hull to the classic drivers for 20 seconds before the mission takes
+it back. When the grid has no way to the destination at all for the widest hull
+(two wrecks plug the approach, the zone's centre stands against a wall), the
+destination itself stays the waypoint and the local router approaches it.
+
+A target on another level is a verdict, not a fight to keep. One more than 8 m
+above or below whose bearing lies outside the gun's elevation or depression arc
+from where the hull stands (a deck over a gorge floor, a cliff top over its
+foot) for six seconds makes a free hull change level: the navigation grid plans
+a route to the target's own level (the goal cell on that level, the route empty
+when it cannot arrive there) and the hull drives it, the gun firing whenever it
+bears, until it stands on that level with the target in sight. With no such
+route within 900 m, a mission objective holding the hull, or the route spent
+(its time, four stuck strikes, its end) short of the level, the target is left
+alone for 75 seconds: another spotted enemy takes the slot, or the mission and
+the no-contact search take the hull, and the search looks for the other enemies
+first.
+
 | Mode | Coordination |
 | --- | --- |
 | Capture the Flag | Runner brings the flag home. Up to two nearest responders recover the home flag. Two escorts cover opposite sides of a carrier. Larger teams retain home defense; extra raiders approach separate lanes. |
 | Turbo Ball | One striker retains the role for four seconds unless a teammate becomes substantially closer. It circles behind the ball, aligns centrally and drives through contact toward the opposing goal. Other bots screen separate lanes and cover their own goal. |
 | Zone Control / Gravity | Once-per-second team allocation balances distance, existing assignments, ownership and contested zones. Jev can redirect a bounded reinforcement group. |
-| Frontline | Attackers and defenders work on the current sector; defenders do not navigate to hidden enemy coordinates. |
+| Frontline | Attackers and defenders work on the current sector; defenders do not navigate to hidden enemy coordinates. When the attack takes the second-to-last sector, its bots hold that sector until every living bot has come up (at most 60 s, or until a human of the side stands within 250 m of the last sector), then attack the last one together: the bots revived at the spawn no longer arrive 40-80 s behind the attack and die alone (24 seeds each: Redrock Divide 9 to 12 and Desert 4 to 8 alpha wins). |
 | Regular / combat | A mobile teammate is elected to flank a shared visible contact while an anchor keeps it engaged. Election uses mobility, health and stable IDs; existing flanks prevent duplicate commitments. |
 | Horde | Existing wave pursuit, repair, reload and survival rules continue, with the new shared abilities and terrain safety. |
 
@@ -66,6 +100,14 @@ retaliation, hidden-contact safety and engagement of a sole survivor.
 - Lights switch off. Existing consumable, self-right, magazine and suspension
   decisions continue. Independent missile channels can be selected while the
   cannon reloads, including authored ammunition slots beyond the first three.
+- A casemate (any turretless hull or authored gun arc of 30 degrees or less: the
+  Strv 103 family, UDES 03, Jagdpanzer E100) lays its gun with the hull, so an
+  engaged one keeps the bow on its target. It scoots along the line of fire,
+  25 m back off its spot and then up to it again, backs into cover crests, jinks
+  with the bow on its target, falls back in reverse and stops at a blocked
+  corridor instead of turning away. Aegis Crossing pacing seed 53002: the Strv
+  103 used to scoot to a spot 94-152 degrees off the bearing and jink toward a
+  flanker, standing 19-24 degrees off its target for seconds at a time.
 
 ## Traffic and keeping the battle moving
 
@@ -77,6 +119,60 @@ passing path instead of alternating steering back toward the blocked route.
 No-contact bots begin seeking a new approach after 25 seconds, independently
 of the opening long-range fire restriction. Combat destinations crossing a
 bridge use the same navigation grid and abutments as mission destinations.
+
+Right-of-way waits for traffic, not for a hull that never moves:
+
+- The passing path round a stopped ally starts after 1.25 s of yielding, or
+  after half a second stopped in the gap behind it when there is room to turn.
+  Its legs lie on the line from the bot to the ally. While it runs, it owns the
+  steering (no evasive nudge) and no reverse escape interrupts it, but the speed
+  cap and the emergency stop still apply. Its pivot is not drive intent, so the
+  low-speed watchdog does not read it as a wedge.
+- The yield is bounded. Eight seconds held behind a parked ally give way: first
+  a passing path on a wider lane, then the shared stuck escalation (a reverse
+  burst, a detour side flip, a waypoint skip and, on repeats, the pocket
+  escape). A moving lead is traffic and never triggers it.
+- The nose-to-nose gap stop applies to a hull in this bot's lane. A hull that
+  will pass beside it keeps the radial guard and the speed cap, so two oncoming
+  bots pass side by side instead of stopping on every predicted crossing.
+
+A hull that has reached its destination holds it. The arrival is not drive
+intent, so the low-speed watchdog does not read the hold as a wedge and reverse
+the hull off its hold point; a hull pressing into a wall short of it still backs
+off.
+
+A route corner round cover is not taken back at the next recheck. A recheck
+that would return to the corner the hull gave up less than 2 s ago keeps the
+current corner instead, while its lane stays clear and the destination stays
+put, for 6 s; a reached corner, a stuck strike or a new destination still
+chooses afresh. A T-90M pressed against a Coastal boulder chose between the
+boulder's two corners at every 0.6 s recheck: its pivot swung it 0.36 m off the
+rock, which reopened the lane the other corner needed, and it jinked in place.
+
+A rack that cannot hurt its target stops pressing it. After 60 seconds in sight
+of the target from inside 90 m, with zones visible but no loaded round opening
+the gate and no burst worth a round, the rack counts as spent against that
+target for 90 seconds. The bot rams when the ram law allows it and otherwise
+retires past 240 m, and any other spotted enemy outranks the target.
+
+A passive target is finished, not plinked. When a target has held its hull
+still and its gun silent for 15 seconds and this bot's rounds have not
+penetrated it for 15 seconds, the bot presses to a side aspect from which its
+gun reaches the hull, not only the turret top. Standing on the target's flank at
+point-blank range spares the press only when the gun reaches the hull from
+there as well (a crest can mask it while the eye still sees the turret). Three
+main-gun rounds in a row from one spot (within 10 m) that do not reach the
+target, judged 1.5 seconds after the last one, give that spot up: the press
+starts from it, or the press point is given up for another, as a masked probe
+gives one up. A press point the hull has not reached within its distance at
+4 m/s plus 20 seconds (kept across the restarts a flickering sight line makes)
+is given up the same way. A rack that is empty finishes a passive hull by ramming when the
+ram law says the rammer survives. The run that finishes it is judged and driven
+no faster than the slowest closing speed whose share deals 1.8 times the
+target's remaining health (6 m/s at least). Inside 60 m a clear line drives
+straight at the hull. Its own contact does not count as the target moving, and
+the empty rack's probe does not scoot the run away. Runs that cannot finish the
+target alone keep the full-speed judgement.
 
 The traffic regressions run actual movement for both teams: parked hulls,
 oncoming pairs, and a three-bot queue. The pacing target is 4–8 minutes with
@@ -95,6 +191,46 @@ global grid rejects edges through a bridge's side; ingress goes through the
 abutments. Two-way slope checks prevent one-way downhill shortcuts. Physical
 collision remains authoritative, including parapets and piers.
 
+On maps that avoid liquid (`src/sim/navigationLiquidSafety.ts`), the liquid
+guard refuses a stopping corridor that would take a dry hull into the water. A
+hull that already touches liquid may still move, as long as it takes on no
+more: the summed mask under its footprint, sampled every 2 m along the move,
+never grows. It can always drive out, never deeper in. A dry route starts from
+the hull's own cell unless the grid refuses that cell (its sample is liquid) or
+the leg to its centre is not drivable; then it starts from the nearest open
+cell within two rings whose leg is drivable. A hull pushed into the lake always
+has a route out. The pocket escape only takes lanes the liquid guard allows.
+
+The grid's edges are cleared for the widest hull in the fleet (the Jagdpanzer
+E100 X, 2.24 m half-width; `NAV_HULL_HALF_WIDTH_M` is 2.25 and the receipt
+measures the fleet against it). An edge is open when its straight line keeps
+2.75 m from every solid footprint; otherwise it may bend once round the cover
+or shift its whole lane up to 4.5 m sideways, inside the two cells' squares, and
+the route carries that way's points; otherwise it is closed. A part high over
+the route (a deck above the gorge) is no wall, and on and beside a deck the
+parts a hull rides onto or over (the slab, the piers under it) follow the same
+rule as the hull's collision. Each edge's steepest stretch (three terrain
+samples between the cells) is held to the same two-way slope rule as the
+cell-to-cell grade, so a cliff between two cell centres is no climb. Each of
+those samples also reads the side slope across the edge, 2 m either side of
+its line, and the edge holds it to the same rule: an edge that climbs a face
+at a slant, gentle along its own line, while the ground falls away beside the
+hull at 60 degrees, is no lane (Redrock Divide's plateau face routed frontline
+defenders across it; with the rule its falls near the last sector went from 18
+to 1 in 24 seeds). The terrain is read, not a deck: the deck's sides keep their
+own rules, and under a deck the gorge floor's own slope counts. Legs off
+the grid are cleared too: a route starts at the nearest cell on the hull's own
+level that it reaches straight (or round a detour point), on the goal's side of
+the closed edges first, and it reaches the exact goal only by a clear leg, a
+detour point round the goal, or not at all. A goal beyond the reachable cells
+ends the route at the cell nearest it. Wrecks narrow streets after the grid is
+built: a few times a second both authorities re-test the edges round the
+battle's wrecks, closing the ones they plug and laning the ones they narrow.
+Objective placement floods the same edges (`src/sim/matchPlacementAccess.ts`):
+an edge closed for the hull or over a cliff between two cell centres closes the
+objective flood too, so no flag, zone, goal or pickup is placed where the route
+search cannot drive a hull.
+
 ## Verification
 
 - `src/game/ai.targeting.selftest.mjs`: target identity parity and local-fight
@@ -104,6 +240,32 @@ collision remains authoritative, including parapets and piers.
   in `.qa-dev/bot-targeting/`. Fixed-step time is accelerated; this is behavior
   evidence, not a rendering-performance benchmark.
 
+- `src/game/ai.stalls.selftest.mjs`: the stalls the 2026-10-02 pilot-map battles
+  found, each in a deterministic fixture that fails without its fix: a parked
+  human across the route, the bounded yield in a walled lane (with a moving-lead
+  control), oncoming pairs, a smoke-only rack against an idle M1A2 (ram, retire,
+  and an APFSDS control), a zone holder that cannot fight from the zone's centre
+  (shut gate, no sight line), a mission route that ends short of its
+  objective, and a holder that has arrived (with a wedged-hull control).
+- `src/game/ai.passiveTarget.selftest.mjs`: an idle M1A2 behind a crest that
+  masks its hull from a flank spot (the press goes round to a point the gun
+  reaches the hull from, with an open-flank control), three rounds in a row
+  that miss from the flank spot (the spot is given up, with a control whose
+  rounds land), an empty rack against a 320 hp idle host (a capped finishing
+  ram, with full-health and moving-host controls), and a press point inside a
+  closed pen, given up unreached.
+- `src/game/ai.levels.selftest.mjs`: a synthetic deck over a floor, with and
+  without a ramp: the deck bot leaves the floor target for one on its own level,
+  the floor bot drives the ramp to the deck, gives the deck target up when no
+  route reaches it, and keeps a target in its arc (control).
+- `src/sim/navigationLiquidStart.selftest.mjs`: a synthetic shore with one way
+  out: the guard drives a wet hull out and refuses it deeper in, the dry grid
+  plans from a start cell it refuses, and a bot starting there, facing the lake,
+  reaches dry ground and searches on.
+- `src/sim/botRouteClearance.selftest.mjs`: the grid's hull bound against the
+  fleet, a diagonal through a 0.6 m gap, a boulder bent round, a channel left by
+  its open end, Steinburg's two pockets and a sweep of the town with no leg
+  through cover, and a deck crossing that stays on the deck.
 - `src/game/ai.selftest.mjs`: ability requests, fourth-slot independent launcher,
   ground/air edge behavior, continuing missions under contact, route reuse and
   a mobile flanker with an anchor, alongside existing aiming/survival tests.

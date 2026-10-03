@@ -97,7 +97,21 @@ import {
   POST_LIGHT_FX_OFF, currentPostLightFxQuery, resolvePostLightFx, samePostLightFx, type PostLightFxFlags,
 } from './postLightFxPolicy.ts';
 import { createPostFrameAccounting, type CompletedPostFrame } from './postFrameAccounting.ts';
+import { LEGACY_EXPOSURE, lightTune, type LightModel } from './lightModelCore.ts';
+import { FOG_LAYER, FOG_LAYER_MIN_M } from './fogLayer.ts';
+import {
+  HAZE_EXT_CHROMA, HAZE_LAW_GLSL, HAZE_TARGET_SKY_K, HAZE_TINT_SHARE, HAZE_LAYER_SCALE_M, hazeLayerInverseScale,
+  hazeSigma, hazeTargetTerms,
+} from './hazeLaw.ts';
+import { setNightEmissionExposure } from './nightEmissionMaterial.ts';
+import {
+  GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_RANGE_M, VEHICLE_GROUND_OCCLUSION_GLSL, createVehicleGroundOcclusionUniforms, updateVehicleGroundOcclusionUniforms,
+  type VehicleGroundOcclusionUniforms,
+} from './vehicleGroundOcclusion.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
+import type { GpuFrameTimer } from './gpuFrameTimer.ts';
+/** The haze law's target terms, written in place every frame (hazeTargetTerms). */
+const hazeTermsScratch = { x: 0, y: 0 };
 
 interface ReconstructionTelemetry {
   mode: ReconstructionMode;
@@ -161,6 +175,8 @@ export interface PostRuntime {
   aerial: ShaderPass;
   readonly msaaSamples: number;
   readonly dynScale: number;
+  /** 2026-10-02: the governor's sampled GPU frame time in ms (null before a sample or without the timer extension). */
+  readonly gpuFrameMs: number | null;
   readonly perfTrim: number;
   warmFirstFrame(yieldBeforePass?: ((label: string) => Promise<void>) | null): Promise<PostWarmTiming[]>;
   render(dt: number, frameWallDtSeconds?: number): void;
@@ -171,6 +187,8 @@ export interface PostRuntime {
   setQuality(level: 'high' | 'low'): void;
   resetPerfTrims(): void;
   setAdaptiveSuspended(suspended: boolean): void;
+  /** 2026-10-01: the battlefield's ground height (world x, z → y) — the base of the aerial haze layer. */
+  setGroundHeightSource(source: ((x: number, z: number) => number) | null): void;
   resetAdaptiveResolution(): void;
   forcePerfTrim(level: number): void;
   /** Round 69: the desktop light effects (postLightFxPolicy.ts) — resolved flags and the two quarter-res passes. */
@@ -345,18 +363,30 @@ const AERIAL_HAZE_DENSITY = 0.00092; // 1/m, slower second curve for scatter-in
 // 1 km and the far ranges dissolved into one veil; capped, a range keeps >= 40 % of its own colour (extinction) and
 // >= 45 % of its own light (scatter-in) at any distance. Both ceilings sit past ~650 m, so the midfield law
 // (r6 de-milk, r2 black-point guard) is untouched.
-const AERIAL_EXT_CEILING = 0.60;
-const AERIAL_SCATTER_CEILING = 0.55;
+// 2026-10-02 (the clouds lane, handed the square's law by the lighting lane, whose ring ceilings came down a third): the
+// square's far half still read hazed at ground level on the census bird and centre-far views, so the square's ceilings
+// come down a third too (0.60 / 0.55 -> 0.42 / 0.38) — a range across the square keeps most of its own colour, the
+// ring's law still continuous at the seam (it eases from these to AERIAL_RING_*); volumetricClouds.ts CLOUD_AERIAL
+// mirrors them so a cloud bank and the ground under it haze alike.
+const AERIAL_EXT_CEILING = 0.42;
+const AERIAL_SCATTER_CEILING = 0.38;
 // Round 72b (integrator: "the boosted outer rows are washed toward the sky by the post aerial ceilings ... give the
 // ring its own distance law"): beyond the playable square the two ceilings ease with the distance past the square's
 // edge — continuous with the square's law at the seam (round 29 / 35), lower across the ring's ranges (edgeOut 260 m
 // out) so a range keeps half its own colour and contrast, and rising again toward the far range (900–2600 m out) so
 // the far peaks stay bluer and lighter, never gone: with the ring's own material haze the ridge contrast holds about
 // half the near value at 2 km and a fifth at 3.3 km. The playable terrain keeps round 39's ceilings untouched.
-const AERIAL_RING_EXT_NEAR = 0.50;
-const AERIAL_RING_EXT_FAR = 0.64;
-const AERIAL_RING_SCATTER_NEAR = 0.44;
-const AERIAL_RING_SCATTER_FAR = 0.58;
+// 2026-10-02 (the grounded light model; the terrain lane's ring lab and the visual census: every ring face sat at
+// these ceilings, the "mountains paler than the sky" of desert, badlands, titan_gorge, saltwind, alpine and oasis was
+// mostly this wash, and the ring now draws with the battlefield's own terrain material, so the veil no longer has
+// low detail to hide): about a third lower across the ring — a range 1-3 km out keeps most of its own colour and
+// relief, as on a clear day; still continuous with the square's ceilings at the seam, still rising toward the far
+// range so the far peaks read bluer and lighter. The square's ceilings above are shared with the volumetric clouds'
+// aerial law (volumetricClouds.ts CLOUD_AERIAL) and stay as they are.
+const AERIAL_RING_EXT_NEAR = 0.34;
+const AERIAL_RING_EXT_FAR = 0.46;
+const AERIAL_RING_SCATTER_NEAR = 0.30;
+const AERIAL_RING_SCATTER_FAR = 0.42;
 const AERIAL_RING_EDGE_IN_M = 260;
 const AERIAL_RING_FAR_START_M = 900;
 const AERIAL_RING_FAR_END_M = 2600;
@@ -390,6 +420,10 @@ const AERIAL_SUN_POW = 5.0; // width of the warm forward-scatter lobe
 // near-white" on player_view): 0.41 -> 0.385 — one more step below white so
 // the brightest scatter-in convergence stays clearly a color, not a blowout.
 const AERIAL_HAZE_LUM_CAP = 0.385;
+// 2026-10-01 (the grounded light model): on the physically based sky the target's levers (AerialShader uAerial*):
+// the share of the authored fog tint, the legacy directional tints' strength and the cap (lightTune A/B hooks).
+const AERIAL_FOG_MIX_SCALE = 1;
+const AERIAL_TINT_MIX = 1;
 // r9 SNIPER DE-HAZE: main.ts already scales the FogExp2 density down at high
 // zoom (fov < 15), but the aerial pass kept FULL density, so the x8 sight
 // picture stayed a desaturated teal wash — a 450 m hillside at x8 subtends
@@ -448,6 +482,8 @@ const AERIAL_DETAIL_ARCADE_FAR = 950; // m
 // a diffuse-lit deck cannot cast crisp cloud shadows, but soft fog
 // patchiness still breaks the wash).
 const CLOUD_SHADE_DEFAULT = 0.22;
+// 2026-10-03: the clouds' shadows are the lit materials' own now (cloudShadeMap.ts: one undithered map multiplies every
+// CSM material's sun term at every distance); the far pass this block held beyond the cascades is gone with the gobos.
 // r5 HEIGHT-AWARE HAZE ("a diagonal fog-gradient band cutting across the
 // winter massif reads as a shader artifact — replace with height-based fog
 // so the band follows altitude"): in-scatter accumulates along the path
@@ -460,6 +496,13 @@ const AERIAL_HEIGHT_REF = 30; // m above camera where the falloff starts
 const AERIAL_HEIGHT_SCALE = 150; // e-fold height of the scatter falloff (m)
 const AERIAL_HEIGHT_SCATTER_K = 0.75; // share of scatter-in that obeys altitude
 const AERIAL_HEIGHT_EXT_K = 0.35; // share of extinction that obeys altitude
+// 2026-10-01 (the grounded light model; the visual census: "haze flattens every overview — bird-view saturation 0.17
+// against 0.50 at chase height"): the battlefield haze is a layer over the ground, so a camera high above it looks
+// down through less of it than a camera on the ground sees along the same distance. The path-averaged density of an
+// exponential layer (scale height AERIAL_LAYER_H over the ground under the camera, uHazeDatum) between the camera's
+// height and the pixel's, over the same path from the ground — the camera's altitude alone, since the pixel's height
+// is AERIAL_HEIGHT_*'s: 1 for every camera on the ground (the chase, the sights), 0.63 for the census bird at 300 m.
+const AERIAL_LAYER_H = 300;
 // r4 LP2 FAR-FIELD HUE CLAMP ("sniper_view top half: horizon forest renders
 // as solid two-tone teal blobs under a saturated jade-green fog — sampled RGB
 // [55,90,73] G-dominant where atmospheric haze must be blue-grey, B>=G").
@@ -489,6 +532,10 @@ const AERIAL_HUE_CLAMP_NEAR = 560; // m — clamp fades in from here
 const AERIAL_HUE_CLAMP_FAR = 1150; // m — full strength beyond
 const AERIAL_HUE_CLAMP_MAX = 0.45; // max pull toward blue-grey
 const AERIAL_HUE_GREY = [0.92, 0.99, 1.12]; // blue-grey pole (per-channel luma scale)
+// 2026-10-03 (the skies-and-atmosphere lane): on the physically based sky (uAtmo) the haze is one Beer–Lambert law
+// (hazeLaw.ts: σ from the map's own fogDensity, an exponential haze layer, the sky behind as the in-scatter target) —
+// the Gaussian curves, their ceilings, the desaturation, the cool multiply and the green hue clamp above stay the mobile
+// tier's legacy law, byte for byte (the hue clamp keeps only its sniper-scope share on the haze law)
 // r9 PRE-TONEMAP EMISSIVE SHOULDER ("fireball core is fully clipped: flat
 // blown white-yellow disc — the tonemapper has no highlight shoulder on
 // emissives"): the additive fire/flash sprite stacks reach 5-20 in linear
@@ -913,6 +960,12 @@ const AerialShader = {
     uAtmoHorizonCap: { value: 0.45 },
     uAtmoFogTint: { value: new THREE.Color(0x7e97b8) },
     uAtmoFogMix: { value: 0.55 },
+    // 2026-10-01 (the grounded light model): the physically based target's three levers — the authored fog tint's
+    // share (a scale on uAtmoFogMix), the strength of the legacy directional warm / cool multipliers (the sky-view
+    // LUT already carries the sun side's warmth) and the far-field luminance cap
+    uAerialFogMixScale: { value: AERIAL_FOG_MIX_SCALE },
+    uAerialTintMix: { value: AERIAL_TINT_MIX },
+    uAerialHazeCap: { value: AERIAL_HAZE_LUM_CAP },
     uSunDir: { value: new THREE.Vector3(0, 1, 0) }, // world, toward the sun
     // camera world basis + frustum half-tangents for per-pixel view rays
     uCamRight: { value: new THREE.Vector3(1, 0, 0) },
@@ -920,6 +973,14 @@ const AerialShader = {
     uCamFwd: { value: new THREE.Vector3(0, 0, -1) },
     uTan: { value: new THREE.Vector2(1, 1) },
     uCamPos: { value: new THREE.Vector3() },
+    // 2026-10-01: world y of the haze layer's base (the ground under the camera; setGroundHeightSource)
+    uHazeDatum: { value: 0 },
+    // 2026-10-03 (the skies lane): the physically based haze law (hazeLaw.ts) — x σ at the datum (1/m),
+    // y 1 / the layer's scale height, z the fog tint's share of the target, w the target's ceiling over the sky behind;
+    // uHazeZoom: σ's zoom scale (the sniper de-haze), uHazeChroma: the per-channel extinction
+    uHazeLaw: { value: new THREE.Vector4(0, 1 / HAZE_LAYER_SCALE_M, HAZE_TINT_SHARE, HAZE_TARGET_SKY_K) },
+    uHazeZoom: { value: 1 },
+    uHazeChroma: { value: new THREE.Vector3(...HAZE_EXT_CHROMA) },
     uDetailW: { value: 0 }, // sniper far-field detail weight (0 in arcade)
     uCloudShade: { value: CLOUD_SHADE_DEFAULT }, // per-map cloud-shadow depth
     // aa-r1: composer-buffer texel size for the firefly clamp's diagonal
@@ -931,6 +992,8 @@ const AerialShader = {
     ...createContactShadowUniforms(),
     // owner 2026-10-02: vehicle-only cavity occlusion (vehicleOcclusion.ts) — uVehOcc 0 skips the block
     ...createVehicleOcclusionUniforms(),
+    // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts) — uVehGround 0 skips it
+    ...createVehicleGroundOcclusionUniforms(),
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -945,6 +1008,9 @@ const AerialShader = {
     uniform float uAtmoHorizonCap;
     uniform vec3 uAtmoFogTint;
     uniform float uAtmoFogMix;
+    uniform float uAerialFogMixScale;
+    uniform float uAerialTintMix;
+    uniform float uAerialHazeCap;
     uniform sampler2D tDiffuse;
     uniform sampler2D tDepth;
     uniform float uNear;
@@ -963,6 +1029,10 @@ const AerialShader = {
     uniform vec3 uCamFwd;
     uniform vec2 uTan;
     uniform vec3 uCamPos;
+    uniform float uHazeDatum;
+    uniform vec4 uHazeLaw;
+    uniform float uHazeZoom;
+    uniform vec3 uHazeChroma;
     uniform float uDetailW;
     uniform float uCloudShade;
     uniform vec2 uInvSize;
@@ -970,6 +1040,8 @@ const AerialShader = {
     varying vec2 vUv;
     ${CONTACT_SHADOW_GLSL}
     ${VEHICLE_OCCLUSION_GLSL}
+    ${VEHICLE_GROUND_OCCLUSION_GLSL}
+    ${HAZE_LAW_GLSL}
     // The broad horizontal cloud shadow field keeps its existing 2D noise.
     float vhash( vec2 p ) {
       return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 );
@@ -1034,7 +1106,24 @@ const AerialShader = {
           + uCamUp * ( vUv.y * 2.0 - 1.0 ) * uTan.y );
         float sunAmt = pow( max( dot( ray, uSunDir ), 0.0 ), ${AERIAL_SUN_POW.toFixed(1)} );
         vec3 hazeCol;
-        if ( uAtmo > 0.5 ) {
+        bool hazeLaw = uAtmo > 0.5 && uHazeLaw.x > 0.0;
+        if ( hazeLaw ) {
+          // 2026-10-03 (hazeLaw.ts): the in-scatter target is the sky behind the surface (the
+          // sky-view LUT along the ray, the horizon for rays below it) a step under its own luminance, its hue drawn
+          // toward the map's authored fog tint by the tint's share (all of it under a closed deck, whose grey the
+          // clear sky's LUT does not know) — never the clear sky's luminance cap of the legacy target below, which
+          // pulled every far range toward one grey
+          vec3 skyDir = normalize( vec3( ray.x, max( ray.y, 0.02 ), ray.z ) );
+          vec3 skyT = atmoSkyVisible( skyDir );
+          float skyL = dot( skyT, vec3( 0.2126, 0.7152, 0.0722 ) );
+          float tintL = max( dot( uAtmoFogTint, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
+          vec3 target = mix( skyT, uAtmoFogTint * ( skyL / tintL ), clamp( uAtmoFogMix * uHazeLaw.z, 0.0, 1.0 ) );
+          if ( target.g > target.b ) {
+            float tl = dot( target, vec3( 0.2126, 0.7152, 0.0722 ) );
+            target = mix( target, vec3( tl * 0.92, tl * 0.99, tl * 1.12 ), 0.6 );
+          }
+          hazeCol = target * uHazeLaw.w;
+        } else if ( uAtmo > 0.5 ) {
           // round 65: the sky-view LUT along this pixel's ray (just above the horizon for rays below it),
           // under the legacy horizon luminance ceiling, mixed with the authored fog tint — the tint following
           // the sky's own elevation ratio, as the round-37 falloff scaled the whole legacy target — then the
@@ -1044,16 +1133,16 @@ const AerialShader = {
           float skyL = dot( skyT, vec3( 0.2126, 0.7152, 0.0722 ) );
           skyT *= min( 1.0, uAtmoHorizonCap / max( skyL, 1e-4 ) );
           float elev = min( skyL / max( uAtmoHorizonLum, 1e-4 ), 1.0 );
-          vec3 target = mix( skyT, uAtmoFogTint * elev, uAtmoFogMix );
+          vec3 target = mix( skyT, uAtmoFogTint * elev, uAtmoFogMix * uAerialFogMixScale );
           if ( target.g > target.b ) {
             float tl = dot( target, vec3( 0.2126, 0.7152, 0.0722 ) );
             target = mix( target, vec3( tl * 0.92, tl * 0.99, tl * 1.12 ), 0.6 );
           }
-          hazeCol = target * mix(
+          hazeCol = target * mix( vec3( 1.0 ), mix(
             vec3( ${AERIAL_COOL_TINT[0].toFixed(3)}, ${AERIAL_COOL_TINT[1].toFixed(3)}, ${AERIAL_COOL_TINT[2].toFixed(3)} ),
-            vec3( ${AERIAL_WARM_TINT[0].toFixed(3)}, ${AERIAL_WARM_TINT[1].toFixed(3)}, ${AERIAL_WARM_TINT[2].toFixed(3)} ), sunAmt );
+            vec3( ${AERIAL_WARM_TINT[0].toFixed(3)}, ${AERIAL_WARM_TINT[1].toFixed(3)}, ${AERIAL_WARM_TINT[2].toFixed(3)} ), sunAmt ), uAerialTintMix );
           float hazeLum = dot( hazeCol, vec3( 0.2126, 0.7152, 0.0722 ) );
-          hazeCol *= min( 1.0, ${AERIAL_HAZE_LUM_CAP.toFixed(3)} / max( hazeLum, 1e-4 ) );
+          hazeCol *= min( 1.0, uAerialHazeCap / max( hazeLum, 1e-4 ) );
         } else {
           hazeCol = mix( uHazeCool, uHazeWarm, sunAmt );
           // round 37 (AAA program check 5, "a mountain is never paler than the sky behind it"): the targets above
@@ -1076,60 +1165,85 @@ const AerialShader = {
         if ( uVehOcc > 0.5 && texel.a >= ${VEHICLE_ALPHA_MIN.toFixed(1)} && -viewZ < ${VEHICLE_OCCLUSION_RANGE_M.toFixed(1)} ) {
           texel.rgb *= cotVehicleOcclusionShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
         }
+        // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts): its ambient share
+        if ( uVehGround > 0.5 && texel.a < ${VEHICLE_ALPHA_MIN.toFixed(1)} && -viewZ < ${GROUND_AO_RANGE_M.toFixed(1)} ) {
+          texel.rgb *= cotVehicleGroundShade( vUv, uCamPos + ray * rayT, texel.a, -viewZ );
+        }
         // height-aware atmosphere (see AERIAL_HEIGHT_* const block): pixels
         // high above the battlefield datum sit in thinner air — scatter-in
         // (and a share of extinction) decays with altitude so mountain walls
         // haze bottom-up instead of wearing a screen-diagonal gradient band.
         float wy = uCamPos.y + ray.y * rayT;
-        float hAtt = exp( -max( wy - uCamPos.y - ${AERIAL_HEIGHT_REF.toFixed(1)}, 0.0 )
+        float hAtt = hazeLaw ? 1.0 : exp( -max( wy - uCamPos.y - ${AERIAL_HEIGHT_REF.toFixed(1)}, 0.0 )
           / ${AERIAL_HEIGHT_SCALE.toFixed(1)} );
-        float x = -viewZ * uDensity;
-        float f = 1.0 - exp( -x * x );
-        f *= mix( 1.0, hAtt, ${AERIAL_HEIGHT_EXT_K.toFixed(2)} );
-        // round 39 (owner 2026-09-22, "it still seems too disappear-y"): extinction used to reach 0.88 at 1 km and
-        // 1.0 by 1.5 km — the far ranges lost every trace of their own colour and read as one veil. Ceilings on the
-        // extinction (${AERIAL_EXT_CEILING.toFixed(2)}) and the scatter-in (${AERIAL_SCATTER_CEILING.toFixed(2)}) leave
-        // every range at least a third of its own colour and shading; both bite only past ~650 m, the midfield law is unchanged
-        // round 72b: the ring's own distance law past the square (see the AERIAL_RING_* const block)
-        vec3 wpRing = uCamPos + ray * rayT;
-        float edgeOutRing = max( abs( wpRing.x ), abs( wpRing.z ) ) - 512.0;
-        float ringIn = smoothstep( 0.0, ${AERIAL_RING_EDGE_IN_M.toFixed(1)}, edgeOutRing );
-        float ringFar = smoothstep( ${AERIAL_RING_FAR_START_M.toFixed(1)}, ${AERIAL_RING_FAR_END_M.toFixed(1)}, edgeOutRing );
-        float extCeil = mix( ${AERIAL_EXT_CEILING.toFixed(2)}, mix( ${AERIAL_RING_EXT_NEAR.toFixed(2)}, ${AERIAL_RING_EXT_FAR.toFixed(2)}, ringFar ), ringIn );
-        float scatCeil = mix( ${AERIAL_SCATTER_CEILING.toFixed(2)}, mix( ${AERIAL_RING_SCATTER_NEAR.toFixed(2)}, ${AERIAL_RING_SCATTER_FAR.toFixed(2)}, ringFar ), ringIn );
-        f = min( f, extCeil );
-        float lum = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
-        vec3 hazy = mix( texel.rgb, vec3( lum ), uDesat ) * uCool;
-        texel.rgb = mix( texel.rgb, hazy, f );
-        // scattering-in: distance pulls everything toward the sun-directional
-        // sky haze — warm near the sun azimuth, cool blue away from it.
-        // r2 BLACK-POINT GUARD ("combat frame drowned in a warm low-contrast
-        // veil ... lifted blacks"): scatter-in is additive skylight and used
-        // to lift even the deepest shadow cores, so no pixel in a hazy frame
-        // could reach display black. Pixels below ~0.05 linear luminance now
-        // keep 75% of their darkness (they still shift hue with distance via
-        // the extinction term above) — the frame keeps a true black anchor.
-        // r6 midfield de-milk ("player_view midfield sits under a milky haze
-        // veil ... fog starts too close and too bright for a clear noon
-        // sky"): scatter-in now starts ~85 m out — the 150-350 m aim band
-        // keeps its contrast while the far field still converges on the same
-        // atmosphere (a ~28% cut at village range, <10% at 900 m).
-        // Extinction/desat above still start at the camera, so depth cueing
-        // stays continuous.
-        float hzD = max( -viewZ - 85.0, 0.0 );
-        // r6 sniper far-band give-back (see the uHazeFull uniform note).
-        // lighting_post r7: 0.62 -> 0.50 — with the impostor band relit to
-        // sun-matched albedo (horizon.js handoff) the full-density give-back
-        // re-veiled it toward the cool haze pole at zoom; half density keeps
-        // the backdrop atmospheric without re-tealing the canopy.
-        float dHaze = max( uHazeDensity,
-          uHazeFull * 0.50 * smoothstep( 430.0, 780.0, rayT ) );
-        float x2 = hzD * dHaze;
-        float f2 = 1.0 - exp( -x2 * x2 );
-        f2 *= 0.25 + 0.75 * smoothstep( 0.0, 0.05, lum );
-        f2 *= mix( 1.0, hAtt, ${AERIAL_HEIGHT_SCATTER_K.toFixed(2)} );
-        f2 = min( f2, scatCeil );
-        texel.rgb = mix( texel.rgb, hazeCol, f2 );
+        // the haze layer seen from the camera's altitude (AERIAL_LAYER_H note): the path-averaged density between the
+        // camera's height and the pixel's over the same path from the ground
+        float hzY0 = max( uCamPos.y - uHazeDatum, 0.0 );
+        float hzY1 = max( wy - uHazeDatum, 0.0 );
+        float hzLayer = 1.0;
+        if ( !hazeLaw && hzY0 > 1.0 ) {
+          float hzH = ${AERIAL_LAYER_H.toFixed(1)};
+          float hzFromCam = abs( hzY0 - hzY1 ) < 1.0 ? exp( -0.5 * ( hzY0 + hzY1 ) / hzH )
+            : hzH * ( exp( -hzY1 / hzH ) - exp( -hzY0 / hzH ) ) / ( hzY0 - hzY1 );
+          float hzFromGround = hzY1 < 1.0 ? exp( -0.5 * hzY1 / hzH ) : hzH * ( 1.0 - exp( -hzY1 / hzH ) ) / hzY1;
+          hzLayer = clamp( hzFromCam / max( hzFromGround, 1e-3 ), 0.0, 1.0 );
+        }
+        if ( hazeLaw ) {
+          // 2026-10-03: the physically based haze (hazeLaw.ts). The optical depth is σ times the path
+          // length times the layer's path-averaged density between the camera's height and the surface's (1 at the
+          // datum); the sniper de-haze scales σ and the far band keeps half of it (the uHazeFull note)
+          float sig = uHazeLaw.x * max( uHazeZoom, 0.5 * smoothstep( 430.0, 780.0, rayT ) );
+          vec3 trans = hazeTransmittance( sig, rayT, hazeLayerMean( hzY0 * uHazeLaw.y, hzY1 * uHazeLaw.y ), uHazeChroma );
+          texel.rgb = texel.rgb * trans + hazeCol * ( 1.0 - trans );
+        } else {
+          float x = -viewZ * uDensity * hzLayer;
+          float f = 1.0 - exp( -x * x );
+          f *= mix( 1.0, hAtt, ${AERIAL_HEIGHT_EXT_K.toFixed(2)} );
+          // round 39 (owner 2026-09-22, "it still seems too disappear-y"): extinction used to reach 0.88 at 1 km and
+          // 1.0 by 1.5 km — the far ranges lost every trace of their own colour and read as one veil. Ceilings on the
+          // extinction (${AERIAL_EXT_CEILING.toFixed(2)}) and the scatter-in (${AERIAL_SCATTER_CEILING.toFixed(2)}) leave
+          // every range at least a third of its own colour and shading; both bite only past ~650 m, the midfield law is unchanged
+          // round 72b: the ring's own distance law past the square (see the AERIAL_RING_* const block)
+          vec3 wpRing = uCamPos + ray * rayT;
+          float edgeOutRing = max( abs( wpRing.x ), abs( wpRing.z ) ) - 512.0;
+          float ringIn = smoothstep( 0.0, ${AERIAL_RING_EDGE_IN_M.toFixed(1)}, edgeOutRing );
+          float ringFar = smoothstep( ${AERIAL_RING_FAR_START_M.toFixed(1)}, ${AERIAL_RING_FAR_END_M.toFixed(1)}, edgeOutRing );
+          float extCeil = mix( ${AERIAL_EXT_CEILING.toFixed(2)}, mix( ${AERIAL_RING_EXT_NEAR.toFixed(2)}, ${AERIAL_RING_EXT_FAR.toFixed(2)}, ringFar ), ringIn );
+          float scatCeil = mix( ${AERIAL_SCATTER_CEILING.toFixed(2)}, mix( ${AERIAL_RING_SCATTER_NEAR.toFixed(2)}, ${AERIAL_RING_SCATTER_FAR.toFixed(2)}, ringFar ), ringIn );
+          f = min( f, extCeil );
+          float lum = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
+          vec3 hazy = mix( texel.rgb, vec3( lum ), uDesat ) * uCool;
+          texel.rgb = mix( texel.rgb, hazy, f );
+          // scattering-in: distance pulls everything toward the sun-directional
+          // sky haze — warm near the sun azimuth, cool blue away from it.
+          // r2 BLACK-POINT GUARD ("combat frame drowned in a warm low-contrast
+          // veil ... lifted blacks"): scatter-in is additive skylight and used
+          // to lift even the deepest shadow cores, so no pixel in a hazy frame
+          // could reach display black. Pixels below ~0.05 linear luminance now
+          // keep 75% of their darkness (they still shift hue with distance via
+          // the extinction term above) — the frame keeps a true black anchor.
+          // r6 midfield de-milk ("player_view midfield sits under a milky haze
+          // veil ... fog starts too close and too bright for a clear noon
+          // sky"): scatter-in now starts ~85 m out — the 150-350 m aim band
+          // keeps its contrast while the far field still converges on the same
+          // atmosphere (a ~28% cut at village range, <10% at 900 m).
+          // Extinction/desat above still start at the camera, so depth cueing
+          // stays continuous.
+          float hzD = max( -viewZ - 85.0, 0.0 );
+          // r6 sniper far-band give-back (see the uHazeFull uniform note).
+          // lighting_post r7: 0.62 -> 0.50 — with the impostor band relit to
+          // sun-matched albedo (horizon.js handoff) the full-density give-back
+          // re-veiled it toward the cool haze pole at zoom; half density keeps
+          // the backdrop atmospheric without re-tealing the canopy.
+          float dHaze = max( uHazeDensity,
+            uHazeFull * 0.50 * smoothstep( 430.0, 780.0, rayT ) );
+          float x2 = hzD * dHaze * hzLayer;
+          float f2 = 1.0 - exp( -x2 * x2 );
+          f2 *= 0.25 + 0.75 * smoothstep( 0.0, 0.05, lum );
+          f2 *= mix( 1.0, hAtt, ${AERIAL_HEIGHT_SCATTER_K.toFixed(2)} );
+          f2 = min( f2, scatCeil );
+          texel.rgb = mix( texel.rgb, hazeCol, f2 );
+        }
         // large-scale cloud shadows / light patchiness (see CLOUD_SHADE
         // const block): world-anchored soft patches multiply the ground —
         // the sun visibility modulation establishing shots were missing.
@@ -1143,13 +1257,14 @@ const AerialShader = {
         // green-dominant pixels are forced toward same-luma blue-grey so the
         // horizon band can never read jade-green — zoom-independent, unlike
         // the density curves above.
+        // (2026-10-03: on the haze law only the sniper scope keeps it — the law's own in-scatter blues the far green)
         float hueW = ${AERIAL_HUE_CLAMP_MAX.toFixed(3)}
-          * smoothstep( ${AERIAL_HUE_CLAMP_NEAR.toFixed(1)}, ${AERIAL_HUE_CLAMP_FAR.toFixed(1)}, rayT );
+          * smoothstep( ${AERIAL_HUE_CLAMP_NEAR.toFixed(1)}, ${AERIAL_HUE_CLAMP_FAR.toFixed(1)}, rayT ) * ( hazeLaw ? uDetailW : 1.0 );
         if ( hueW > 0.002 ) {
           float gDom = smoothstep( 0.0, 0.032, texel.g - texel.b );
           float hl = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
           vec3 grey = hl * vec3( ${AERIAL_HUE_GREY[0].toFixed(3)}, ${AERIAL_HUE_GREY[1].toFixed(3)}, ${AERIAL_HUE_GREY[2].toFixed(3)} );
-          texel.rgb = mix( texel.rgb, grey, hueW * gDom );
+          texel.rgb = mix( texel.rgb, grey, hueW * gDom * hzLayer );
         }
         // Same arcade/scope amplitude, distances and chroma policy; sample
         // true world volume so every slope retains two surface dimensions.
@@ -1197,120 +1312,50 @@ const AerialShader = {
     }`,
 };
 
-// Final grade (applied after output conversion, i.e. in display sRGB space):
-// S-curve contrast, saturation, subtle corner vignette, a real black anchor
-// and ONE fixed warm white balance — the same grade for every camera, so the
-// battlefield establishing shot and the combat closeup read as one game
-// (r3: "battlefield is cool and washed out while combat_firing is warm and
-// punchy — looks like two different games"). r3 tuning: vignette 0.32 → 0.17
-// (the old strength stacked with canopy shadows into unmotivated black corner
-// masses), saturation 1.15 → 1.08 (distance desat now comes from the aerial
-// pass; global oversaturation was amplifying the foliage albedo clash),
-// black anchor 0.01 → 0.006.
-// r4 grade identity pass ("neutral washed tonemapping, no grade identity"):
-// contrast 1.12 → 1.18 for a punchier midtone S-curve, black anchor 0.006 →
-// 0.010 so shadow cores actually reach display black, vignette 0.17 → 0.23,
-// and a NEW luminance-keyed split-tone — highlights pulled warm (sun family),
-// shadows pulled cool blue-grey — the classic AAA warm/cool grade axis. The
-// old fixed warm balance is softened (1.04 → 1.02 red) so shadows are allowed
-// to actually go cool instead of being re-warmed globally.
-// r5 ("grade is low-contrast with slightly lifted blacks; palette split
-// between olive terrain and cyan sky"): contrast 1.18 → 1.26 (~10% more
-// midtone S-curve), black anchor 0.010 → 0.016 (pull blacks down ~5% so
-// shadow cores reach true display black), and a NEW green-warming term (see
-// uGreenWarm below) that shifts green-dominant terrain/foliage pixels toward
-// warm summer green, unifying them with the warm-key sky like WoT.
-// r6 ("tonemapping/color grading is neutral and flat: midtones washed, blacks
-// lifted, no filmic contrast or grade identity"): contrast 1.26 → 1.34,
-// black anchor 0.016 → 0.021 (shadow cores hit true display black),
-// saturation 1.08 → 1.10, vignette 0.23 → 0.27, and both split-tone poles
-// pushed ~40% further apart so the warm-highlight/cool-shadow axis is an
-// unmistakable grade identity rather than a subliminal one. A soft highlight
-// shoulder (GRADE_KNEE*) rolls speculars/sky whites off instead of clipping
-// — the barrel-top hot edge and the horizon band stop slamming to 1.0.
-// r7 PIVOT FIX ("midtone contrast is low, highlights and midtones compress
-// into the same band; foreground reads underexposed"): the contrast op was a
-// linear expansion around DISPLAY 0.5 — but pixel-measuring the frozen shots
-// put the entire lit playfield at 0.20-0.30 display luma, i.e. the whole
-// scene sat BELOW the pivot, so "more contrast" only dragged every midtone
-// darker (lit grass 0.21, hull flank 0.09) while the hazy hills/sky (0.45+)
-// stretched brighter — the exact "dark flat foreground under a bright far
-// field" split the critic flagged. The pivot now sits at 0.33, inside the
-// scene's actual midtone band: contrast separates lit-vs-shadow around the
-// playfield instead of crushing all of it, and the light-rig lift
-// (lighting.ts hemi bounce floor + renderer exposure 1.08 → 1.16) moves the
-// lit field up toward the WoT ~0.35 reference. Black anchor eases 0.021 →
-// 0.012 (the anchor no longer needs to fake density the pivot now provides).
-// Greens: measured lit grass rgb was (0.25,0.21,0.04) — blue channel ~zero,
-// the "lime-yellow drift" — because GREEN_WARM 0.90-blue x high-tint
-// 0.925-blue x balance 0.975-blue compounded to a 0.81 blue kill on every
-// green-dominant highlight. GREEN_WARM softened to a hue nudge, a dedicated
-// ~9% green desaturation term (uGreenDesat) pulls foliage chroma back to the
-// WoT olive band, and global saturation eases 1.10 → 1.06.
-// r6 grade-identity push ("tonemapping/color grading is neutral and flat —
-// AAA tank games ship a strong LUT: warm highlights, cooled shadows, punchy
-// contrast, subtle vignette"): contrast 1.30 → 1.36 around the same measured
-// 0.33 pivot, saturation 1.06 → 1.09, vignette 0.24 → 0.26, and the split-
-// tone poles pushed ~20% further apart (below). Paired with renderer.ts
-// exposure 1.16 → 1.20 so the midtone band holds its WoT-reference level
-// while lit-vs-shadow separation deepens (contrast alone would drag the
-// sub-pivot playfield darker — the r7 failure mode).
-// r5 ("verdant gameplay cameras are oversaturated acid green-yellow — neon
-// mobile-game; real WoT ground is desaturated multi-hue"): global saturation
-// 1.09 → 1.045 (~-4% overall, and the aerial chroma octave now supplies hue
-// VARIETY so the field no longer needs raw chroma to read alive), green
-// chroma pull 0.12 → 0.19, and the green-warm hue nudge halved (below) so
-// the blue channel of grass stops being driven to ~0 (the lime-acid tell).
-const GRADE_CONTRAST = 1.36;
-const GRADE_PIVOT = 0.33;
-const GRADE_SATURATION = 1.045;
-// r4 LP2 ("vignette stacks to a ~30-35% corner luminance falloff on bright
-// daylight wides — sky corners [121,155,164] vs [187,217,219] center; reads
-// as a filter, not photography"): 0.26 → 0.21, and the shader now keys the
-// vignette to the PIXEL's own luma — bright sky/haze corners keep >=60% of
-// their level (a sunny establishing shot must not wear a dusk filter) while
-// midtone/dark corners keep the full grade weight for combat framing.
-// terrain_environment r4: -> 0.14 — the corner darkening on establishing
-// shots read as an Instagram filter, not lens shading (critique, minor)
-const GRADE_VIGNETTE = 0.14;
+// Output transform and display grade (redesigned 2026-10-01, the lighting lane: grounded realism). The light
+// arrives physically balanced (lightModel.ts: the sun through the atmosphere, the sky's own light, the deck,
+// the ground), so the grade no longer manufactures lighting: the r3–r7 stack — a contrast S-curve around a
+// 0.33 pivot, a black lift, split-toned shadows and highlights, a fixed warm balance, green warming and
+// green desaturation, a foliage highlight shoulder and a rational knee, all compensating ACES's per-channel
+// saturation and the old rig's flat fill — is retired with ACES. What remains, in order:
+//  - linear: the light model's exposure (an adapting camera, per map and time of day) and its white
+//    balance (a subtle per-climate shift), then the renderer's AgX curve (three's AgXToneMapping: a
+//    log-encoded sigmoid with a path to white — saturated highlights desaturate instead of skewing hue, the
+//    sun's halo and the clouds roll off instead of clipping, ~16 stops of latitude);
+//  - a scene-referred saturation and contrast before the curve: chroma around the pixel's luminance (AgX's path
+//    to white desaturates on its way up; a daylight photograph keeps its colour), then a log-space slope around
+//    the 18% card (the way a colourist grades film scans: shadows deepen and highlights spread without moving
+//    mid-grey), because AgX's neutral base keeps a soft toe that reads flat in daylight;
+//  - display: a small black point (the camera's flare floor, so shadow cores reach a real dark), a display
+//    saturation trim, the corner vignette (luma-keyed, a lens's falloff, not a filter), the scope treatment,
+//    the display-space dither.
+// (the values: a nine-map A/B of four looks — 1.4 / 1.28 keeps a daylight photograph's colour and depth where 1.3 / 1.25
+// read flat, without the forest-floor crush a 1.3 slope with a 0.015 black point gave Caldera)
+// 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: "over-bright lime albedo everywhere", "exposure ...
+// oversaturated"): on the grounded rig the scene-referred saturation is AgX's own (1.0). Measured on the wave-0 census frames
+// (CIELAB, 24 frames) the 1.4 boost put the mean chroma at 22 and foliage at 31 against 17 and 21 for the gauntlet's
+// reference photographs (World of Tanks 12 / 15, War Thunder 12 / 18), the sky's b* at −22 against −15; offline re-grades
+// at 1.0 with the calibrated key (lightModel.ts EXPOSURE_KEY) land 17 / 20 / −20. The legacy rig (the mobile tier's
+// Preetham dome, the Garage's enclosed bay, the galaxy skies) keeps the look it was tuned under.
+// (Back to 1.4 with the key, the gauntlet's wave 7: the colour pass returns with an albedo-aware key, not before.)
+const GRADE_SAT_LINEAR = 1.4;
+const GRADE_SAT_LINEAR_LEGACY = 1.4;
+const GRADE_CONTRAST = 1.28;
+const GRADE_BLACK_POINT = 0.012;
+const GRADE_SATURATION = 1.0;
+// 2026-10-02 (the Garage under AgX): the showroom keeps its authored rig (lighting.ts, an enclosed presentation), tuned
+// under ACES's steep shoulder; AgX's gentler path to white compressed its spot-lit highlights (garage boot p95 182 →
+// 161, the showroom's own p90/p95/p99 197/207/215 → 162/179/194) while the dark bay and the midtones held (frame
+// median 24, showroom median 87). A display shoulder for the enclosed presentation only: luma
+// L + k·L·(1 − L)^1.5·smoothstep(0.36, 0.66, L), each pixel's hue kept. The lift peaks where AgX compressed most (a
+// display level of 0.6–0.7) and eases toward white; nothing below the showroom's median moves, white stays white
+// (the boot frame: p95 182, p99 211, the showroom's p90/p95/p99 195/206/216, both medians held).
+const GARAGE_HIGHLIGHT_LIFT = 0.95;
+// r4 LP2 ("vignette stacks to a ~30-35% corner luminance falloff on bright daylight wides"): the shader keys
+// the vignette to the PIXEL's own luma — bright sky/haze corners keep most of their level — and
+// terrain_environment r4 eased it to 0.14; 2026-10-01: 0.10, a lens's natural falloff.
+const GRADE_VIGNETTE = 0.10;
 const GRADE_VIGNETTE_BRIGHT_KEEP = 0.62; // fraction of vignette removed on bright pixels
-// r2: 0.012 → 0.015 — paired with the aerial black-point guard so combat
-// frames under smoke/haze keep a true display-black anchor (the r2 critique's
-// "lifted blacks" veil read).
-// lighting_post r7 ("lifted black floor across the wide shots: no pixel
-// reaches a true dark, shadow interiors are milky"): 0.015 → 0.022 — canopy
-// shadow cores and building interiors now anchor at ~5% display luma. The
-// grade's low-end contrast taper (smoothstep 0.045-0.30 below) still holds
-// the 0.08-0.25 shadow BODY band, so only the deepest cores take the toe.
-const GRADE_BLACK_LIFT = 0.022;
-// r3 ("desert is exposure-blown: sand midtones near RGB 245, dune relief
-// unreadable"): knee 0.86 → 0.82 — the rational shoulder starts a step lower
-// so the sand/snow top-end re-spreads into readable texture; paired with the
-// earlier high-luma contrast taper below (0.60 → 0.52) and the per-map
-// uExposure trim (sky preset `postExposure`, e.g. desert 0.88).
-// r4 LP2 ("tank_closeup_modern: near-sepia warm cast floods the road and a
-// pale blown sky band upper-left"): 0.82 → 0.80 — the shoulder starts a step
-// lower so cream road/field highlights re-spread instead of pooling in the
-// warm split-tone band.
-const GRADE_KNEE = 0.80; // display-space luma where the highlight shoulder starts
-// (r9: the linear GRADE_KNEE_SLOPE 0.55 knee was replaced by a rational
-// shoulder in the shader — see the "soft highlight shoulder" note there.)
-// Warm afternoon balance, matching the sun key instead of fighting it.
-const GRADE_BALANCE = [1.02, 1.0, 0.975];
-// Applied only to green-dominant pixels (terrain/foliage): warms hue toward
-// yellow-green without touching sky, tank camo browns, or skin-tone-ish dirt.
-const GRADE_GREEN_WARM = [1.016, 1.0, 0.982]; // r5: halved — see saturation note
-// r2: 0.09 → 0.12 — "grass is a flat saturated lime-green albedo ... WoT
-// grass is desaturated olive"; the extra chroma pull moves the whole green
-// band toward the olive reference (terrain.js albedo desat carries the rest).
-const GRADE_GREEN_DESAT = 0.19; // chroma pull-back on green-dominant pixels (r5: 0.12 → 0.19, olive band)
-// Split-tone poles (multiplied in by shadow/highlight membership).
-// r4 LP2: highlight pole eased ~25% ([1.074,1.010,0.930] → [1.056,1.008,0.947])
-// — at full strength the warm pole compounded with the sun key into the
-// closeup "near-sepia wash" over roads/fields; the warm/cool grade axis stays
-// clearly legible (shadow pole untouched) without flooding bright neutrals.
-const GRADE_SHADOW_TINT = [0.936, 0.986, 1.084]; // cool blue-grey shadows
-const GRADE_HIGH_TINT = [1.056, 1.008, 0.947]; // warm sun-kissed highlights
 
 // SNIPER SCOPE TREATMENT (r8 — "sniper view has no scope treatment at all: no
 // vignette, no edge blur, it is the raw frame with HUD lines"). Applied in
@@ -1371,22 +1416,20 @@ const GradeShader = {
   name: 'GradeShader',
   uniforms: {
     tDiffuse: { value: null },
+    uSatLinear: { value: GRADE_SAT_LINEAR },
     uContrast: { value: GRADE_CONTRAST },
+    uBlackPoint: { value: GRADE_BLACK_POINT },
     uThermal: { value: 0 },
     uThermalPixel: { value: new THREE.Vector2(1/1280,1/720) },
     uSaturation: { value: GRADE_SATURATION },
+    uHighlightLift: { value: 0 },
     uVignette: { value: GRADE_VIGNETTE },
-    uBlack: { value: GRADE_BLACK_LIFT },
-    uBalance: { value: new THREE.Vector3(...GRADE_BALANCE) },
-    uShadowTint: { value: new THREE.Vector3(...GRADE_SHADOW_TINT) },
-    uHighTint: { value: new THREE.Vector3(...GRADE_HIGH_TINT) },
-    uGreenWarm: { value: new THREE.Vector3(...GRADE_GREEN_WARM) },
-    // r3 per-map display exposure trim: driven per frame from
-    // scene.userData.postExposure (written by sky.ts applyPreset from the
-    // map preset's `postExposure`, default 1.0). Multiplies BEFORE the
-    // grade's contrast/knee so a -0.2 EV desert trim re-seats sand midtones
-    // into the readable band instead of just dimming the final image.
+    // 2026-10-01: the light model's linear exposure (lightModel.ts exposureFor, scene.userData.lightModel),
+    // applied before the tone curve with its white balance — never a display-space trim again
     uExposure: { value: 1 },
+    uWhiteBalance: { value: new THREE.Vector3(1, 1, 1) },
+    // 2026-10-01: 0..1 night (lightModel.ts) — the scotopic shift of low light toward a desaturated blue
+    uNight: { value: 0 },
     uScope: { value: 0 }, // 0 = arcade, 1 = sniper (eased by render())
     // r4: zoom-scaled center unsharp while scoped — the x8 picture magnifies
     // terrain/horizon texels far past their mip frequency and the far field
@@ -1408,17 +1451,13 @@ const GradeShader = {
     }`,
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
-    uniform float uContrast;
     uniform float uThermal;
     uniform vec2 uThermalPixel;
     uniform float uSaturation;
+    uniform float uHighlightLift;
+    uniform float uBlackPoint;
     uniform float uVignette;
-    uniform float uBlack;
-    uniform vec3 uBalance;
-    uniform vec3 uShadowTint;
-    uniform vec3 uHighTint;
-    uniform vec3 uGreenWarm;
-    uniform float uExposure;
+    uniform float uNight;
     uniform float uScope;
     uniform float uSharp;
     uniform float uAspect;
@@ -1445,13 +1484,8 @@ const GradeShader = {
         }
         // high-zoom center unsharp (r4): counteracts the mip-frequency
         // watercolor smear on the magnified far field; skips the blur ring.
-        // aa-r1: the sharpen DELTA is now soft-limited to ±0.085 display
-        // units. The x8 sight picture magnifies minified foliage into a
-        // churning 1px leaf checkerboard; an UNBOUNDED unsharp re-amplified
-        // exactly that churn (the motion-burst crops showed near-full-
-        // contrast seethe across every scoped crown). Real structural edges
-        // sharpen on deltas well under the cap, so the tack-sharp x8 read is
-        // kept while single-pixel flicker stops being multiplied.
+        // aa-r1: the sharpen DELTA is soft-limited to ±0.085 display units so
+        // single-pixel foliage churn is not multiplied.
         float sharpW = uSharp * ( 1.0 - smoothstep( ${(SCOPE_BLUR_START - 0.08).toFixed(3)}, ${SCOPE_BLUR_START.toFixed(3)}, scopeR ) );
         if ( sharpW > 0.001 ) {
           vec2 px = vec2( 0.0009 / uAspect, 0.0009 ); // ~1 px at 1080p (r5: tighter kernel = crisper x8)
@@ -1463,90 +1497,32 @@ const GradeShader = {
           texel.rgb = max( texel.rgb + shD, 0.0 );
         }
       }
-      vec3 col = texel.rgb;
-      // per-map display exposure trim (sky preset postExposure, default 1.0)
-      col *= uExposure;
-      // gameplay_feel r6 (round critique MINOR): sun-facing scoped washout —
-      // while scoped, pull the BRIGHT end (luma-keyed: shadow/midtone level
-      // untouched) so bright ground + haze + bloom can no longer stack the
-      // upper half of the sight picture into unreadable near-white milk.
-      // Pairs with the scoped bloom/aerial trims in render().
-      // lighting_post r7: 0.30 over 0.34-0.95 was a second whole-frame veil —
-      // it dragged every ordinary 0.4-0.6 luma pixel (horizon band, scree,
-      // sky) 8-14% darker and stacked with the old vignette into the "top
-      // 40% under a murky veil" critical. Only true near-milk is pulled now.
+      vec3 col = clamp( texel.rgb, 0.0, 1.0 );
+      // gameplay_feel r6: sun-facing scoped washout — while scoped, pull only
+      // true near-milk (luma-keyed) so bright ground + haze + bloom cannot
+      // stack the sight picture into unreadable white
       if ( uScope > 0.001 ) {
         float scLum = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
         col *= 1.0 - 0.14 * uScope * smoothstep( 0.62, 0.97, scLum );
       }
-      // fixed warm white balance — identical for every camera/shot
-      col = clamp( col * uBalance, 0.0, 1.0 );
-      // warm the terrain/foliage greens only (green-dominant pixels): unifies
-      // the olive ground plane with the warm sun key, WoT summer-map style;
-      // then pull their chroma back ~9% so foliage sits in the olive band
-      // instead of drifting lime-yellow (r7 — measured blue channel ~0.04)
-      float greenDom = smoothstep( 0.0, 0.14, col.g - max( col.r, col.b ) );
-      col *= mix( vec3( 1.0 ), uGreenWarm, greenDom );
-      float gLuma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
-      col = mix( col, vec3( gLuma ), ${GRADE_GREEN_DESAT.toFixed(3)} * greenDom );
-      // r2 FOLIAGE HIGHLIGHT SHOULDER ("bushes blow out to near-white lime
-      // with no rolloff"): sunlit high-chroma greens were riding the ACES
-      // per-channel top end into a clipped lime — real vegetation highlights
-      // desaturate toward pale warm green and roll off, they never peg the
-      // green channel. Above ~0.58 display luma, green-dominant pixels lose
-      // chroma progressively (up to 35%) and ease down ~12% in level, so
-      // canopy/bush hot spots keep leaf texture instead of clipping.
-      // r4 LP2: 0.35/0.12 → 0.46/0.15 — sniper-view right-side foreground
-      // foliage still clipped to flat lime; hot green leaves now roll off
-      // harder toward pale warm green (real canopy highlight behavior).
-      float gHot = greenDom * smoothstep( 0.58, 0.90, gLuma );
-      col = mix( col, vec3( gLuma ), 0.46 * gHot );
-      col *= 1.0 - 0.15 * gHot;
-      // black anchor + linear contrast around the scene's measured midtone
-      // band (uPivot ~0.33, NOT display 0.5 — see the r7 note above).
-      // r6 HIGH-LUMA TAPER: the above-pivot expansion is what shoved snow
-      // fields, desert sand and the horizon haze band toward clipped white
-      // when contrast rose to 1.36 (a 0.80-luma snow pixel stretched to
-      // 0.97). The contrast gain now eases back to 1.0 across 0.60-0.95
-      // luma, so the S-curve buys its lit-vs-shadow punch in the playfield
-      // band while brights keep their measured level and texture.
-      col = max( col - vec3( uBlack ), vec3( 0.0 ) );
-      float cLuma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
-      float cGain = uContrast - ( uContrast - 1.0 ) * smoothstep( 0.52, 0.90, cLuma );
-      // r5 LOW-END TAPER ("player-view shadow floor is near-black — blue-sky
-      // daylight should fill shadows to ~35-45%"): the sub-pivot expansion
-      // was dragging the whole 0.08-0.25 SHADOW-BODY band toward black on
-      // top of the ACES toe (measured: a 20% linear road shadow displayed at
-      // 11%). Ease the contrast gain out below ~0.30 luma so shadow bodies
-      // keep their fill while crevice/AO cores (< ~0.05) still reach the
-      // black anchor and the midtone S-curve identity is untouched.
-      cGain = mix( 1.0, cGain, smoothstep( 0.045, 0.30, cLuma ) );
-      col = clamp( mix( vec3( ${GRADE_PIVOT.toFixed(3)} ), col, cGain ), 0.0, 1.0 );
-      // split-tone: cool shadows / warm highlights, keyed on luminance.
-      // lighting_post r7 ("combat_firing white balance is split within the
-      // frame: dirt road stays cool blue-gray while adjacent grass carries
-      // the warm golden grade"): the 0.12-0.72 band held a 0.35-0.45-luma
-      // road at ~50% shadow-tint membership while brighter grass beside it
-      // rode the warm pole — two white balances in one frame. Band tightened
-      // to 0.10-0.55: midtone ground now shares the warm side with its
-      // surroundings; true shadows (<0.15) keep the full cool pole.
+      // the camera's flare floor: a small black point so shadow cores reach a real dark
+      col = max( col - vec3( uBlackPoint ), vec3( 0.0 ) ) / ( 1.0 - uBlackPoint );
+      // saturation around the pixel's own luma
       float luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
-      vec3 split = mix( uShadowTint, uHighTint, smoothstep( 0.10, 0.55, luma ) );
-      col = clamp( col * split, 0.0, 1.0 );
-      // soft highlight shoulder: roll near-white values off instead of
-      // clipping (metal speculars, horizon band) — filmic top-end.
-      // r9: the old LINEAR knee (slope 0.55) mapped the whole 0.86-1.0 input
-      // band into 0.86-0.94 at constant slope — desert sand and urban
-      // sidewalk fields all collapsed into one flat "textureless near-white"
-      // band. Rational shoulder instead: smooth derivative at the knee,
-      // asymptote 1.0, monotone spread — top-end texture stays ordered and
-      // visible instead of quantizing into a plateau.
-      vec3 over = max( col - vec3( ${GRADE_KNEE.toFixed(3)} ), vec3( 0.0 ) );
-      col = min( col, vec3( ${GRADE_KNEE.toFixed(3)} ) )
-        + over / ( 1.0 + over / ${(1 - GRADE_KNEE).toFixed(3)} );
-      // saturation
-      luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
       col = clamp( mix( vec3( luma ), col, uSaturation ), 0.0, 1.0 );
+      // the enclosed Garage's highlight shoulder (GARAGE_HIGHLIGHT_LIFT note)
+      if ( uHighlightLift > 0.001 ) {
+        float hlL = max( dot( col, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
+        float hlD = max( 1.0 - hlL, 0.0 );
+        float hlLift = hlL + uHighlightLift * hlL * hlD * sqrt( hlD ) * smoothstep( 0.36, 0.66, hlL );
+        col = clamp( col * ( hlLift / hlL ), 0.0, 1.0 );
+      }
+      // night (2026-10-01): low light reads through the rods — colour drains from the shadows and dim midtones
+      // toward a cool blue (the Purkinje shift); highlights (lamps, the moon, muzzle flashes) keep their colour
+      if ( uNight > 0.001 ) {
+        float scot = uNight * 0.55 * ( 1.0 - smoothstep( 0.06, 0.55, luma ) );
+        col = mix( col, luma * vec3( 0.82, 0.96, 1.22 ), scot );
+      }
       // vignette (radial, corners only) — luma-adaptive: bright sky/haze
       // corners keep most of their level so sunny establishing shots read
       // as photography, not a dusk filter (see GRADE_VIGNETTE note)
@@ -1557,21 +1533,17 @@ const GradeShader = {
       col *= 1.0 - vig * smoothstep( 0.34, 1.15, dot( q, q ) * 2.0 ); // terrain_environment r4: wider falloff
       // sniper optics (lighting_post r7): corner-only shade in corner-
       // normalized radius — zero inside 0.60 of the corner distance, max 20%
-      // at the extreme corners. Never touches the top/bottom frame centers
-      // (the r7 "dark veil over the whole scoreboard band" fix). No opaque
-      // scope-tube cut (WoT sniper never masks the frame).
+      // at the extreme corners. Never touches the top/bottom frame centers.
+      // No opaque scope-tube cut (WoT sniper never masks the frame).
       if ( uScope > 0.001 ) {
         float cornerR = scopeR / length( vec2( uAspect, 1.0 ) );
         col *= 1.0 - uScope * ${SCOPE_VIGNETTE_MAX.toFixed(3)}
           * smoothstep( ${SCOPE_VIGNETTE_INNER.toFixed(3)}, 1.0, cornerR );
       }
-      // lighting_post r7 ("deep-blue-to-haze sky transition shows visible
-      // gradient banding" on desert): the grade's contrast/knee re-spreads
-      // the 8-bit-bound sky ramp and re-quantizes it. A ±0.7 LSB interleaved-
-      // gradient-noise dither at the very end of the display chain breaks
-      // every low-frequency ramp (sky dome, haze band, vignette falloff)
-      // below the visibility threshold — IGN has a far better spectrum for
-      // this than white noise, and 1080p captures stay deterministic.
+      // lighting_post r7: a ±0.7 LSB interleaved-gradient-noise dither at the
+      // very end of the display chain breaks every low-frequency ramp (sky
+      // dome, haze band, vignette falloff) below the visibility threshold;
+      // IGN keeps 1080p captures deterministic.
       float ign = fract( 52.9829189 * fract(
         dot( gl_FragCoord.xy, vec2( 0.06711056, 0.00583715 ) ) ) );
       col += ( ign - 0.5 ) * ( 1.4 / 255.0 );
@@ -1614,6 +1586,10 @@ function createOutputGradePass(): OutputGradePass {
     uniform sampler2D tDiffuse;
     uniform sampler2D tLightFx;
     uniform float uLightFx;
+    uniform float uExposure;
+    uniform vec3 uWhiteBalance;
+    uniform float uSatLinear;
+    uniform float uContrast;
     #include <tonemapping_pars_fragment>
     #include <colorspace_pars_fragment>
 
@@ -1625,6 +1601,12 @@ function createOutputGradePass(): OutputGradePass {
       vec4 outputColor = texture2D( tDiffuse, sampleUv );
       // round 69: sun shafts + lens flare, linear HDR, before the output transform
       if ( uLightFx > 0.5 ) outputColor.rgb += texture2D( tLightFx, sampleUv ).rgb;
+      // 2026-10-01: the light model's exposure and white balance, linear, before the tone curve, then the
+      // scene-referred contrast around the 18% card (a log-space slope)
+      outputColor.rgb *= uExposure * uWhiteBalance;
+      float sceneLuma = dot( outputColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
+      outputColor.rgb = max( mix( vec3( sceneLuma ), outputColor.rgb, uSatLinear ), vec3( 0.0 ) );
+      outputColor.rgb = 0.18 * pow( max( outputColor.rgb, vec3( 1e-6 ) ) * ( 1.0 / 0.18 ), vec3( uContrast ) );
       #ifdef LINEAR_TONE_MAPPING
         outputColor.rgb = LinearToneMapping( outputColor.rgb );
       #elif defined( REINHARD_TONE_MAPPING )
@@ -2301,6 +2283,13 @@ export function createPost(
   const upscaler = new FsrUpscalePass();
   upscaler.temporalAccumulation = taaEnabled;
   composer.addPass(upscaler);
+  {
+    // the governor's GPU sample closes with the frame's last pass (dynGovern opens it)
+    const renderUpscaler = upscaler.render.bind(upscaler);
+    upscaler.render = (...args: Parameters<FsrUpscalePass['render']>) => {
+      try { renderUpscaler(...args); } finally { gpuFrameTimer?.endFrame(); }
+    };
+  }
 
   // --- Quality-aware sizing --------------------------------------------------
   // The composer's pixel ratio is the renderer's, CAPPED by the preset
@@ -2397,6 +2386,12 @@ export function createPost(
   const qualityPolicy = new AdaptiveQualityPolicy(
     baseDynamicScale(renderer.getPixelRatio(), preset),
   );
+  // 2026-10-02 (the frame-budget lane): the frame's GPU time, sampled every fourth frame, lets the policy predict an
+  // up-step's cost and tell a GPU overload from a main-thread one (gpuFrameTimer.ts, adaptiveQualityPolicy.ts). The
+  // timer loads at the governor's first decision over a battle world (map.ts freezes its root), outside the boot
+  // graph; until it arrives, or without the timer extension, the policy decides on the frame cadence alone.
+  let gpuFrameTimer: GpuFrameTimer | null = null;
+  let gpuFrameTimerRequested = false;
   let dynEma = 0; // ms (r5 kept seconds; ms reads directly against budgets)
   let dynClock = 0;
   let telemetryClock = 0;
@@ -2513,6 +2508,13 @@ export function createPost(
 
   /** Collect one frame of evidence and ask the pure policy for a bounded step. */
   function dynGovern(dt: number): void {
+    // The frame's sampled GPU time opens here, at the top of the frame transaction, and closes after the final pass
+    // (the upscaler's render, wrapped below). Only a live governor reads the samples: a pinned or suspended one leaves
+    // the timer target to the probes' own queries (they cannot nest).
+    if (gpuFrameTimer) {
+      gpuFrameTimer.paused = adaptiveSuspended || dynPin !== null;
+      gpuFrameTimer.beginFrame();
+    }
     if (adaptiveSuspended) return;
     if (!(dt > 0)) return; // adaptiveFrameSeconds excludes warm/hitch samples
     // rAF-starvation fallback frames (main.ts ticks hidden documents at
@@ -2536,6 +2538,8 @@ export function createPost(
       renderer.domElement.dataset.frameEmaMs = dynEma.toFixed(2);
       renderer.domElement.dataset.dynScale = qualityPolicy.dynamicScale.toFixed(3);
       renderer.domElement.dataset.dynBudgetMs = dynBudgetMs.toFixed(2);
+      const gpuMs = gpuFrameTimer?.lastMs ?? null;
+      if (gpuMs !== null) renderer.domElement.dataset.gpuFrameMs = gpuMs.toFixed(2);
     }
     if (dynPin !== null) return; // QA pin owns the scale; telemetry stays live
     // Resolution only moves inside a preset's readability fence. DPR-1
@@ -2561,6 +2565,12 @@ export function createPost(
     dynWinFrames = 0;
     dynWinMisses = 0;
     dynLastDecision = dynClock;
+    if (!gpuFrameTimerRequested && scene.children.some((o) => o.userData.matrixTraversalFrozen === true)) {
+      gpuFrameTimerRequested = true;
+      import('./gpuFrameTimer.ts').then((module) => {
+        gpuFrameTimer = module.createGpuFrameTimer(renderer.getContext() as WebGL2RenderingContext);
+      }, () => { /* the cadence rules alone */ });
+    }
     const action = qualityPolicy.evaluate({
       clockSeconds: dynClock,
       frameEmaMs: dynEma,
@@ -2570,6 +2580,7 @@ export function createPost(
       dynamicScaleFloor: dynamicScaleFloor(renderer.getPixelRatio(), preset),
       maximumTrim: trimMax(),
       mayRaiseTier: canRecoverAutoTier(),
+      gpuFrameMs: gpuFrameTimer?.takeWindow() ?? null,
     });
     renderer.domElement.dataset.fps = windowFps.toFixed(1);
     renderer.domElement.dataset.fpsBaseline = qualityPolicy.learnedBaselineFps.toFixed(1);
@@ -2581,6 +2592,7 @@ export function createPost(
   }
   function resetGovernorState() {
     dynPin = null;
+    gpuFrameTimer?.reset();
     qualityPolicy.reset(baseDynamicScale(renderer.getPixelRatio(), preset), dynClock);
     dynEma = 0;
     dynRingN = 0;
@@ -2605,12 +2617,44 @@ export function createPost(
       ? Math.max(AERIAL_ZOOM_FLOOR, Math.pow(camera.fov / AERIAL_ZOOM_FOV, 1.5))
       : 1;
     aerial.uniforms.uDensity.value = AERIAL_DENSITY * fovScale;
-    aerial.uniforms.uHazeDensity.value = AERIAL_HAZE_DENSITY * fovScale;
+    aerial.uniforms.uHazeDensity.value = lightTune('AERIAL_HAZE_DENSITY', AERIAL_HAZE_DENSITY) * fovScale;
+    aerial.uniforms.uHazeZoom.value = fovScale;
     aerial.uniforms.uDetailW.value = THREE.MathUtils.clamp(
       (AERIAL_DETAIL_FOV - camera.fov) / (AERIAL_DETAIL_FOV - 8),
       0,
       1,
     );
+  }
+
+  /**
+   * 2026-10-01: the light model's camera (lightModel.ts, published by lighting.setSun on scene.userData.lightModel):
+   * the exposure and white balance applied before the tone curve, the per-map contrast and saturation after it.
+   * Without a model (before the first preset) the legacy rig's exposure and the preset's trim stand in.
+   */
+  function updateOutputGrade(): void {
+    const model = scene.userData.lightModel as LightModel | undefined;
+    const u = grade.uniforms;
+    const contrast = lightTune('GRADE_CONTRAST', GRADE_CONTRAST);
+    const satLinear = model?.mode === 'physical'
+      ? lightTune('GRADE_SAT_LINEAR', GRADE_SAT_LINEAR) : lightTune('GRADE_SAT_LINEAR_LEGACY', GRADE_SAT_LINEAR_LEGACY);
+    u.uSaturation.value = lightTune('GRADE_SATURATION', GRADE_SATURATION);
+    u.uHighlightLift.value = scene.userData.lightEnclosed ? lightTune('GARAGE_HIGHLIGHT_LIFT', GARAGE_HIGHLIGHT_LIFT) : 0;
+    u.uBlackPoint.value = lightTune('GRADE_BLACK_POINT', GRADE_BLACK_POINT);
+    u.uVignette.value = lightTune('GRADE_VIGNETTE', GRADE_VIGNETTE);
+    u.uNight.value = model?.night ?? 0;
+    if (model) {
+      u.uExposure.value = model.exposure;
+      u.uWhiteBalance.value.set(model.whiteBalance[0], model.whiteBalance[1], model.whiteBalance[2]);
+      u.uContrast.value = contrast * model.contrast;
+      u.uSatLinear.value = satLinear * model.saturation;
+    } else {
+      u.uExposure.value = lightTune('LEGACY_EXPOSURE', LEGACY_EXPOSURE) * (scene.userData.postExposure || 1);
+      u.uWhiteBalance.value.set(1, 1, 1);
+      u.uContrast.value = contrast;
+      u.uSatLinear.value = satLinear;
+    }
+    // the night lenses hold their display level through the camera's exposure (nightEmissionMaterial.ts)
+    setNightEmissionExposure(u.uExposure.value);
   }
 
   function updateScopeGrade(): void {
@@ -2627,6 +2671,7 @@ export function createPost(
     bloom.strength = BLOOM_STRENGTH * (1 - 0.5 * scopeWeight);
     aerial.uniforms.uDensity.value *= 1 - 0.22 * scopeWeight;
     aerial.uniforms.uHazeDensity.value *= 1 - 0.30 * scopeWeight;
+    aerial.uniforms.uHazeZoom.value *= 1 - 0.30 * scopeWeight;
   }
 
   function updateAerialFogColors(): void {
@@ -2661,15 +2706,36 @@ export function createPost(
       u.uAtmoHorizonCap.value = atmosphere.horizonCap;
       u.uAtmoFogTint.value.copy(atmosphere.fogTint);
       u.uAtmoFogMix.value = atmosphere.fogMix;
+      u.uAerialFogMixScale.value = lightTune('AERIAL_FOG_MIX_SCALE', AERIAL_FOG_MIX_SCALE);
+      u.uAerialTintMix.value = lightTune('AERIAL_TINT_MIX', AERIAL_TINT_MIX);
+      u.uAerialHazeCap.value = lightTune('AERIAL_HAZE_LUM_CAP', AERIAL_HAZE_LUM_CAP);
+      // 2026-10-03: the haze law (hazeLaw.ts) — σ from the map's own air, the tint's share growing to
+      // the whole authored tint under a closed deck (the light model's overcast)
+      const overcast = (scene.userData.lightModel as LightModel | undefined)?.overcast ?? 0;
+      const law = u.uHazeLaw.value as THREE.Vector4;
+      // (the target's tint share and level: hazeLaw.ts hazeTargetTerms, the cloud trace's deck rows read the same)
+      const terms = hazeTargetTerms(overcast, hazeTermsScratch);
+      law.set(hazeSigma(atmosphere.fogDensity), hazeLayerInverseScale(), terms.x, terms.y);
+    } else {
+      (u.uHazeLaw.value as THREE.Vector4).x = 0;
     }
   }
 
+  let groundHeightAt: ((x: number, z: number) => number) | null = null;
   function updateAerialCameraBasis(): void {
     const elements = camera.matrixWorld.elements;
     aerial.uniforms.uCamRight.value.set(elements[0], elements[1], elements[2]);
     aerial.uniforms.uCamUp.value.set(elements[4], elements[5], elements[6]);
     aerial.uniforms.uCamFwd.value.set(-elements[8], -elements[9], -elements[10]);
     aerial.uniforms.uCamPos.value.set(elements[12], elements[13], elements[14]);
+    // 2026-10-01: the haze layer's base under the camera (the battlefield's ground; 0 before a world supplies it)
+    const ground = groundHeightAt ? groundHeightAt(elements[12], elements[14]) : 0;
+    const datum = Number.isFinite(ground) ? ground : 0;
+    aerial.uniforms.uHazeDatum.value = datum;
+    // 2026-10-02: the materials' fog on the same layer (fogLayer.ts), off for a camera near the ground (the plain law)
+    FOG_LAYER.x = elements[13] - datum;
+    FOG_LAYER.y = datum;
+    FOG_LAYER.w = FOG_LAYER.x > FOG_LAYER_MIN_M ? lightTune('FOG_LAYER', 1) : 0;
     const halfFovTangent = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
     aerial.uniforms.uTan.value.set(halfFovTangent * camera.aspect, halfFovTangent);
     const sunDirection = scene.userData.sunDirWorld;
@@ -2678,6 +2744,15 @@ export function createPost(
 
   /** Round 69: per-frame state of the light effects (the sun on screen, the rig, the levers). */
   function updatePostLightFx(): void {
+    // (2026-10-03: the ground's albedo for the multi-bounce term — the grounded light model's ground, the legacy rig the
+    // default; QA: __LIGHT_TUNE.GROUND_AO_MULTIBOUNCE 0 turns it off)
+    const groundModel = scene.userData.lightModel as LightModel | undefined;
+    const groundRho = groundModel?.mode === 'physical'
+      ? 0.2126 * groundModel.groundAlbedo[0] + 0.7152 * groundModel.groundAlbedo[1] + 0.0722 * groundModel.groundAlbedo[2]
+      : GROUND_AO_DEFAULT_ALBEDO;
+    updateVehicleGroundOcclusionUniforms(aerial.uniforms as unknown as VehicleGroundOcclusionUniforms,
+      scene.userData.nearVehicles as readonly { root: THREE.Object3D }[] | undefined, lightFx.vehicleOcclusion && lightTune('VEHICLE_GROUND_AO', 1) > 0,
+      groundRho * lightTune('GROUND_AO_MULTIBOUNCE', 1));
     updateContactShadowUniforms(aerial.uniforms, camera, scene, lightFx.contactShadows,
       lightFx.contactShadows || lightFx.vehicleOcclusion);
     aerial.uniforms.uVehOcc.value = lightFx.vehicleOcclusion ? 1 : 0;
@@ -2693,7 +2768,7 @@ export function createPost(
     // Animation stays bounded; cadence and hitch filtering need actual time.
     dynGovern(adaptiveFrameSeconds(dt, frameWallDtSeconds));
     updateAerialZoom();
-    grade.uniforms.uExposure.value = scene.userData.postExposure || 1;
+    updateOutputGrade();
     grade.uniforms.uThermal.value = camera.userData.sensorVision ?? (camera.userData.thermalFlight === true ? (camera.userData.flightVision ?? 1) : 0);
     grade.uniforms.uThermalPixel.value.set(1/sceneTarget.width,1/sceneTarget.height);
     aerial.uniforms.uCloudShade.value = scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT;
@@ -2703,7 +2778,9 @@ export function createPost(
     updatePostLightFx();
     // round 68 (2026-09-24): the volumetric cloud layer marches its slot and resolves its history before the
     // scene draws (src/engine/volumetricClouds.ts; the sky rig publishes it, null on the mobile tier / ?clouds=off)
-    scene.userData.volumetricClouds?.beforeSceneRender(renderer, camera, dt, sceneTarget.width, sceneTarget.height);
+    // (2026-10-02: with the haze layer's datum, so the clouds' aerial law sees the same layer from the camera's height)
+    // (2026-10-03: and the scene depth the last frame resolved, so every cloud layer ends at a surface past the dome)
+    scene.userData.volumetricClouds?.beforeSceneRender(renderer, camera, dt, sceneTarget.width, sceneTarget.height, aerial.uniforms.uHazeDatum.value, sceneTarget.depthTexture);
     // Only this complete frame transaction can bypass LateFX's input copy.
     // Individual warm/debug renders deliberately keep the original path.
     const passes = composer.passes;
@@ -2858,6 +2935,9 @@ export function createPost(
      * settings-UI observability for the governor above; read-only. */
     get dynScale() { return qualityPolicy.dynamicScale; },
 
+    /** The governor's sampled GPU frame time (ms; null before a sample or without the timer extension). */
+    get gpuFrameMs() { return gpuFrameTimer?.lastMs ?? null; },
+
     /**
      * QA hook (engine-aa r1): pin the governor at a fixed scale so dpr-2
      * captures are deterministic on hosts whose sibling workloads keep the
@@ -2903,6 +2983,10 @@ export function createPost(
      * @param {boolean} suspended
      * @returns {void}
      */
+    setGroundHeightSource(source) {
+      groundHeightAt = source;
+    },
+
     setAdaptiveSuspended(suspended) {
       const next = !!suspended;
       if (next === adaptiveSuspended) return;

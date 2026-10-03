@@ -4827,6 +4827,7 @@ different `--root` (the baseline checkout, e.g. a clean clone of `origin/main`) 
 | `tools/map-metrics.mjs skyline` | check 5: median ground/sky display-luma ratio at the detected skyline (> 1 = range paler than the sky) | 37, 39, 47 | `skyline <dir> <tag> <maps> [sky-w,sky-s,centre-far]` |
 | `tools/map-metrics.mjs stripe` | check 8: windowed 2-D FFT of a region's detrended luminance — peak share, wavelength, heading, top-1 % share, anisotropy, std | 43 | `stripe <image> x0,y0,x1,y1 …` (round 43 regions: desert w-wall-mid 900,480,1500,700; bird-w 200,560,1300,700; Oasis w-wall-mid 200,520,1300,800) |
 | `tools/map-metrics.mjs boxes` | checks 3, 4, 11: shaded / lit box means, ground 5th percentile and mean, wall rgb / hue / sat / luma, A → B with % deltas | 42, 45, 47 | `boxes <capdir> boxes.json <maps> a b [views]` with the round-47a boxes below |
+| `tools/visual-census.mjs` | the visual-redesign baseline (2026-10-01): every registered map at its authored time of day, desktop High, 1600 × 900, staged by `__SHOTS.set` and shot after the capture readiness gates (sourced textures, terrain lookahead, grass work, impostor bake, the cloud history settled with its drift zeroed) — the game's establishing shot, chase, bird, `sky-w` / `sky-s` (the round-35 poses above), a terrain and a tree close-up (`tools/visual-census-views.mjs`); per-frame luma percentiles, saturation, colourfulness, the sky / ground split and contrast, check 5, ring height, skyline relief and detail energy (`tools/visual-census-metrics.mjs`) in one census.json; contact sheets per view and per map, an index and an A/B compare (`tools/visual-census-report.mjs`) | redesign | `npm run build`; `capture --out=<dir> [--batch=8 --budget-min=14]` (resumes; takes the cot-shots lock, the probe mutex stays the caller's); `report --out=<dir>`; `compare --a=<dir> --b=<dir> --out=<dir>` |
 
 How each acceptance of the fifteen checks is re-run: checks 1, 2, 10, 12 and 13 (continuity across the red line,
 roads and tree lines, props, water at the edge) with `map-view-probe` views `out-*`, `edge-*-low`, `bird-*-edge`,
@@ -6082,6 +6083,658 @@ neither confirmed nor refuted, and the g1 reading stands as written: +1.8 ms med
 quiet, against −129 draws and −0.83 M triangles. Ready to run in the next quiet window without changes:
 `zsh $SP/r79/winter-quiet.sh w1 $SP/r79/snap-base $SP/r79/snap-d` (the six pairs), then `zsh $SP/r79/winter-chain.sh`
 (the attribution, only if ≥ 4 of 6 stay positive).
+
+### 2026-10-01 — the layered sky (the clouds-and-skyboxes lane of the visual redesign)
+
+**Owner (2026-10-01): "redesign map and trees and horizon and skyboxes and clouds and light and literally everything …
+build this and finish it" — grounded realism and natural light; the clouds already "look amazing" and set the bar, so
+take them further and make every map's whole sky (its cloud field, its weather, its haze layers and the sky they sit
+in) believable and specific to its place and its time.** Branch `visual/clouds-skyboxes` on the PR branch (c959ac4b6);
+the lighting lane redesigns the dome, the light model and the tone mapping in parallel — the clouds compute their light
+in the sky's own units from the published atmosphere, so they follow its exposure, and are re-tuned under its light
+when the integrator merges it.
+
+**What the captures of c959ac4b6 showed** (`$SP/p2/clouds/before/`, sky-w / sky-s / chase / bird at day, sky views at
+sunset and night). The fair-weather cumulus hold (Verdant's puffs, the round-71 bar) but read as smooth cotton inside
+their outline and their towers' heads fray into cotton candy — the round-71 erosion put the wispy (inverted-Worley)
+octave on the TOPS and the billows under the bases, the opposite of a growing cumulus (cauliflower head, flat base
+with a few fractus rags): the open "cauliflower only at the outline". The decks (Winter, Fjord, Railyard) read
+airbrushed — a smooth transmitted-light underside with no rolls in it. Sirocco's cirrus is one comb of parallel
+streaks from horizon to horizon. Monsoon's "cumulonimbus front" is fair-weather towers with no storm in it: no dark
+base, no rain, no anvil. Every sky is a single slab and a cirrus sheet — no mid-level cloud, no weather at the horizon.
+At night the clouds were black occluders: the atmosphere's summary is read with the preset's sky intensity applied
+and the composite multiplies the clouds by it again, so the sky light reached them dimmed twice (0.08² at night) while
+the moon reached them once, and the night preset's dark blue `cloudTintHex` (a colour for the painted decks) became
+their albedo.
+
+**The layered sky (placed by `src/engine/cloudWeatherLayers.ts`, written in the slab's trace program so the build's GLSL minifier strips its comments with the program's, lit by the same atmosphere).**
+- *Contrails* — fresh lines of two merging plumes at the head that spread into contrail cirrus toward the tail (the
+  width 22 m → 1.5 km with age, the optical depth falling with √width), breaking into fibres when old, drifting with
+  the upper wind, deterministic per map (two trails often share an airway).
+- *Rain shafts and virga* under the slab's own precipitating cores (the cumuliform coverage, the vigour and the
+  anvil / precipitation field), between the camera and the base along the horizon rays: the columns lean a third of a
+  metre per metre of fall, streak with the detail volume, and evaporate partway down under a dry base (virga).
+- *A sea fog bank* lying on the horizon (banks with gaps, a lumpy top, white in the sun), in front of the slab.
+- *Lightning* in a night front, drawn in the composite at the frame rate (the history refreshes a sixteenth of its
+  texels a frame and would smear a flash): a strike every 4–16 s in a tower off in the wind's sector, one to three
+  return strokes.
+
+**The slab.** The cumulus shape is main's (83b0c0b62, "break up cylindrical cloud silhouettes": the warped unequal
+weather lobes, shear from the base, the silhouette-scale curl, billows kept through the body), verified there on
+Verdant and Steinburg; the lane's own cumulus laws (the wispy share falling with height, a 0.42 outline saturation,
+the interior octave on the cumuliform rows, a 0.42–0.78 fair-weather type range) showed no clear gain in the labs and
+were withdrawn at the merge so that work stands as tested. The lane keeps a slow
+convective boil (the noise rises 0.7 m/s through a cumulus, a deck's cells turn over at a fifth of that), mottled deck
+undersides (the shape volume's mid octaves at half the cell period thicken and thin the column over each point), the
+cirrus in patches and curved by the jet's eddies (the same mean coverage, the streak frame warped by ±1.3 km), the
+22° halo's argument squared (GLSL leaves `pow` undefined for a negative base — inside the ring), and the gobos hold a
+front's clear radius (shadows fell under the sky the front keeps open).
+
+**Time of day (`cloudPresets.ts`).** The diurnal cycle of convective cloud: a cumuliform sky (not a deck, a sheet or a
+front's anvils) flattens a little toward sunset (coverage × 0.88, towers × 0.65, thickness × 0.88 — the first cut at
+0.8 / 0.45 / 0.78 emptied the evening sky) and has mostly gone by night (× 0.58, × 0.25, × 0.62); a front's towers
+live through the night. A map's `sunset` / `night` knobs win over the law (most temperate maps raise an altocumulus
+layer for their sunset). At night the layer keeps a grey-white albedo and lets the moonlight bring the hue (the night
+preset's dark blue deck tint made black cut-outs); the sunset keeps the preset's warm deck tint (without it the
+captures showed the front-lit evening cumulus grey-white — the low sun's back-scattered share is small beside the
+sky's light). `diurnal: false` holds an authored constant sky (Mars).
+
+**Captures and drifts (2026-10-02).** The capture tools zero the cloud drifts for a frame-comparable field. The drifts
+wrapped by a positive modulo, so a zeroed drift jumped a whole wrap on the next frame — a seam for every lookup whose
+period does not divide the wrap, above all the boil (the shape volume's vertical period follows the slab's
+thickness): the settled history blended two fields and every captured cloud of the lane ghosted. The drifts now stay
+inside (−w, w), continuous through zero; the boil wraps at 600 km (238 hours at 0.7 m/s).
+
+**The labs (2026-10-02; `$SP/p2/clouds/lab1`, `lab2`: preset variants laid over the live layer, one boot per map).**
+Removed (2026-10-02; the first cut is in 31c46bfa8 for a rebuild): the mid layer — its 2.5D sheet read as white pancakes
+(altostratus; thinner, wider and softer variants smeared), dozens of small discs (lenticular) and dark specks at
+sunset (altocumulus) — and the distant cumulonimbus, whose narrow tower under a round flat anvil read as a mushroom
+cloud on every open horizon (Redrock, the Delta, Mangrove, the Steppe) and, lit by a night strike, as an explosion.
+Kept: the contrails (crisp paired lines that spread, Verdant, Sirocco, the polders, the airfield), the patchy curved
+cirrus (Sirocco's comb is gone), the moonlit night decks and fronts (grey masses instead of black cut-outs), the
+lightning in Monsoon's night front (the slab's own towers lit from inside), the warm sunset; Whiteout's coverage 1
+closes its ink-blot hole (a dark smudge remains).
+
+**Night.** The ambient is dimmed once (the summary's sky intensity undone before the composite applies it), the
+moonlight's hue (the night key light at luminance one) lights the clouds, and a lit town's glow rides on the bases
+(`nightGlow` / `nightGlowHex`: sodium on the yards and the industrial maps, greenhouse orange on the polders, a warm
+white over the station and the airfield).
+
+**Per map** (`clouds` blocks; the regime row fills the rest — towering cumulus and the fronts bring rain, dry-air
+cumulus its virga). The night column is the diurnal law's cover and the town glow:
+
+| map | slab (day) | weather | night |
+|---|---|---|---|
+| Verdant Fields (verdant) | fair-weather-cumulus 0.36 @ 1400 m | 2 contrails, cirrus 0.12 | cover 0.21 |
+| Sirocco Wadi (desert) | cumulus-humilis 0.14 @ 1700 m | 2 contrails, rain 0.3 / virga 0.85, cirrus 0.5 | cover 0.08 |
+| Frosthollow (winter) | stratocumulus-deck 0.86 @ 700 m | — | cover 0.86, town glow |
+| Steinburg (urban) | altocumulus 0.55 @ 2800 m | 4 contrails, cirrus 0.3 | cover 0.55, town glow |
+| Saltmere Bay (coastal) | sea-streets 0.32 @ 1100 m | fog bank 0.45, cirrus 0.08 | cover 0.19, town glow |
+| Amberford (autumn) | fair-weather-cumulus 0.26 @ 1400 m | 2 contrails, cirrus 0.12 | cover 0.15 |
+| Tarkhan Steppe (steppe) | cloud-streets 0.34 @ 1400 m | rain 0.2, cirrus 0.2 | cover 0.20 |
+| Cinder Junction (railyard) | industrial-stratocumulus 0.92 @ 800 m | — | cover 0.92, town glow |
+| Frontier Basin (frontier) | cloud-streets 0.40 @ 1400 m | 2 contrails, cirrus 0.15 | cover 0.23 |
+| Nordhavn Fjord (fjord) | broken-stratocumulus 0.62 @ 900 m | rain 0.3 / virga 0.15, fog bank 0.4, cirrus 0.1 | cover 0.62, town glow |
+| Jade River Delta (delta) | towering-cumulus 0.38 @ 1200 m | rain 0.45 / virga 0.1, cirrus 0.1 | cover 0.22 |
+| Redrock Divide (badlands) | cumulus-humilis 0.18 @ 1700 m | rain 0.3 / virga 0.9, cirrus 0.35 | cover 0.10 |
+| Monsoon Ridge (monsoon) | cumulonimbus-front 0.40 @ 1000 m | rain 0.85, cirrus 0.25 | cover 0.40 |
+| Glacier Pass (alpine) | towering-cumulus 0.26 @ 1900 m | rain 0.15 / virga 0.1, cirrus 0.3 | cover 0.15 |
+| Obsidian Caldera (caldera) | cumulus-humilis 0.22 @ 1500 m | rain 0.3 / virga 0.85, cirrus 0.45 | cover 0.13 |
+| Ironworks (foundry) | industrial-stratocumulus 0.88 @ 850 m | — | cover 0.88, town glow |
+| Ruinspires (ruinspires) | fair-weather-cumulus 0.42 @ 1100 m | rain 0.25 / virga 0.6, cirrus 0.12 | cover 0.24 |
+| Blackglass District (blackglass) | ash-veil 0.55 @ 800 m | cirrus 0.5 | cover 0.55, town glow |
+| Titan Gorge (titan_gorge) | dense-overcast 0.96 @ 450 m | rain 0.25 / virga 0.55 | cover 0.96 |
+| Skybridge Chasm (skybridge) | fair-weather-cumulus 0.42 @ 700 m | rain 0.2 / virga 0.5, cirrus 0.12 | cover 0.24 |
+| Tidegate Polders (polders) | broken-stratocumulus 0.68 @ 600 m | 3 contrails, rain 0.2 / virga 0.2, fog bank 0.35, cirrus 0.1 | cover 0.68, town glow |
+| Copper Mesa Mine (copper_mesa) | cumulus-humilis 0.20 @ 1900 m | rain 0.3 / virga 0.85, cirrus 0.4 | cover 0.12 |
+| Kestrel Airfield (airfield) | fair-weather-cumulus 0.38 @ 1400 m | 6 contrails, cirrus 0.12 | cover 0.22, town glow |
+| Sunscar Oasis (oasis) | cumulus-humilis 0.17 @ 1700 m | rain 0.3 / virga 0.85, cirrus 0.4 | cover 0.10 |
+| Whiteout Station (whiteout) | low-stratus 1.00 @ 300 m | — | cover 1.00, town glow |
+| Orchard Valley (orchard) | fair-weather-cumulus 0.28 @ 1400 m | 2 contrails, cirrus 0.12 | cover 0.16 |
+| Longleaf Crossing (longleaf) | fair-weather-cumulus 0.32 @ 1400 m | rain 0.3, cirrus 0.12 | cover 0.19 |
+| Mangrove Reach (mangrove) | towering-cumulus 0.34 @ 1200 m | rain 0.45 / virga 0.1, cirrus 0.1 | cover 0.20 |
+| Saltwind Narrows (saltwind) | sea-streets 0.30 @ 1100 m | fog bank 0.35, cirrus 0.08 | cover 0.17 |
+| Highland Reservoir (reservoir) | fair-weather-cumulus 0.26 @ 1400 m | 2 contrails, cirrus 0.12 | cover 0.15 |
+| Olympus Basin (mars) | thin-ice-clouds 0.06 @ 2500 m | cirrus 0.45 | cover 0.06 |
+| Aegis Crossing (cliffbridge) | fair-weather-cumulus 0.28 @ 1200 m | 2 contrails, cirrus 0.25 | cover 0.16 |
+
+**Cost** (`$SP/p2/clouds/bench-a12.json`: the PR with the light lane, ccd3c3703, against the lane on it, 2e21e663a;
+desktop High at 1600 × 900 on an M5 Max 40-core GPU; sky-w; A B B A per map; the cloud pass measured by repetition —
+K = 1 and K = 11 trace slots between one-pixel reads, which Chrome's GPU process answers only after every queued
+command ran (`gl.finish()` does not wait there: the first bench read a slot as 0.01 ms)). The layer traces one slot a
+frame. Per slot, base → lane (ms, mean of two runs each, run spread under 0.01 ms except Sirocco's ±0.1): Verdant
+1.083 → 1.140 (+0.06), Sirocco 0.151 → 0.293 (+0.14, the patchy cirrus and two trails over a nearly clear sky),
+Frosthollow 0.646 → 0.756 (+0.11), Monsoon 0.853 → 0.918 (+0.07), Whiteout 0.666 → 0.647 (−0.02), Nordhavn 1.156 →
+1.282 (+0.13), the polders 1.033 → 1.171 (+0.14), Caldera 0.244 → 0.305 (+0.06), Ironworks 0.519 → 0.554 (+0.04),
+Mangrove 1.327 → 1.471 (+0.14): +0.09 ms a frame on average, +0.14 at most. On the mid-range laptop proxy (a 10-core
+Apple GPU or an RTX 4050/4060 laptop part, about a quarter to a fifth of this GPU) that is +0.35–0.7 ms of a 16.7 ms
+frame. Whole-frame GPU medians (a timer query around post.render) moved −0.03 to +2.4 ms with run spreads of 1–6 ms
+under a machine load of 24–120 from other sessions; the first run of every A B B A set read low (a warm-up the
+pattern does not cancel), so they bound nothing finer than ±2 ms and the per-slot figures stand as the cost. The
+removed mid layer and storm cells took 2,794 of the trace's 10,753 GLSL tokens and 11 KB of the game entry; the lane
+now adds 11,096 B raw / 2,992 B brotli to the entry (765,690 / 228,689 against the 766,616 / 229,050 budget). The
+mobile tier never creates the layer, so phones are unchanged by construction.
+
+**Receipts.** `cloudWeatherLayers.selftest.mjs` (new, core group): the trails' placement, the packing, the gating, the
+composite, the time of day, lightning, the drifts through zero, the removed layers staying out, the cloudscape on
+every sky path. `volumetricClouds.selftest.mjs`: the identity table re-pinned with the weather fields (contrails, rain,
+virga, fog bank) and Whiteout's coverage 1; the aerial mirror with the haze layer, the datum hand-off and the
+square's ceilings.
+
+**The haze layer and the square's ceilings (2026-10-02, handed over by the lighting lane).** The clouds' aerial law
+(CLOUD_AERIAL) now takes the pass's 300 m haze layer — the path-averaged density from the camera's height, from the
+datum the pass computes for the frame — so a cloud bank and the ground under it haze alike from a raised camera, and
+the square's ceilings came down a third with the pass's (0.60 / 0.55 → 0.42 / 0.38). Measured on seven maps (Verdant,
+Sirocco, Frosthollow, Monsoon, the polders, Nordhavn, Glacier Pass; `$SP/p2/clouds/final3`, the lane before and after
+in one FIFO turn): the census bird and centre-far frames moved by a mean of 0.1–0.9 levels, under 2 % of their pixels
+by more than 8 (grass and tree motion) — the ceilings do not bite in those views, so the far half's ground haze is set
+elsewhere (the materials' FogExp2 at the preset's fogDensity × FOG_EXTINCTION_SHARE, and the pass's scatter-in target).
+That stays open with the lighting lane; the clouds composite in the dome and take no material fog.
+
+**The overcast light (the lighting lane's model).** A cloudscape that casts no cloud shadows drives the light as an
+overcast deck by its coverage (lightModel.ts resolveOvercast: smoothstep 0.6–0.97). That holds five maps: Titan Gorge
+(dense overcast 0.96 → 1.0), Cinder Junction (industrial Sc 0.92 → 0.95), Ironworks (0.88 → 0.85), Frosthollow (Sc
+deck 0.86 → 0.79) and Whiteout Station (1 → 1) — each a closed or nearly closed deck, so a shadowless (or nearly
+shadowless) light is what those skies give; the broken decks of Nordhavn (0.62) and the polders (0.68) keep their
+cloud shadows and the sun.
+
+**Every sky path carries the cloudscape.** `worldActivationRuntime.restoreAtmosphere` (the shots, the Studio staging,
+the census frames) applied the sky block alone, so those frames rendered the legacy layer derived from it — Titan
+Gorge's dense overcast as scattered cumulus, Winter's deck as a flat stratus; it now carries `config.clouds` like the
+battle's `getAuthoredPreset`.
+
+### Terrain v2/v3 — 2026-10-01/02: the ground at a fraction of the cost, grounded terms, sand in trains, the ring as the battlefield's own material
+
+The Opus 5.5 redesign's terrain-and-horizon lane (branch `visual/terrain-horizon`; owner direction: grounded realism,
+natural light, photographic materials, the desktop high tier inside 60 fps on a mid-range laptop GPU, phones never
+slower). The architecture audit measured the terrain material at about 60 % of Whiteout's GPU frame.
+
+**Why it cost that much.** The splat fragment sampled all four layers (base, soil, wet, rock), albedo and normal,
+through `groundSamp` (two samplings of a rotation blend) over `splatSamp` (a near tap plus a far variant plus a deep-mip
+"tile mean" tap) at every fragment, and multiplied most of them by a zero coverage; the packed-road palette and the
+mid-band rock relief ran under every fragment too, and the 256 px shared noise texture — read some forty times per
+fragment — went through the x16 anisotropic sampler, up to sixteen trilinear probes per read on the grazing far ground
+that fills every skyline view. A static model of the executed fetches: open grass at 15 m about 59 fetches before,
+about 33 after (23 of them isotropic explicit-LOD reads); open grass at 400 m about 94 before (all anisotropic), about
+27–33 after.
+
+**The cost pass (program key v53; v54 with terrain v3).** Every coverage weight is known before any layer is fetched (the height
+transitions keep 0 at 0 and 1 at 1), so each layer is fetched inside its own coverage branch and the base tile only
+where the layers above it leave any of it (`covG`, executed on scalar ports by `terrainMaterialV2.selftest`); the
+rotation blend and the wall projections fetch their second sampling only inside the crossover band; past the far
+band (`farM > 0.98`) no layer detail normal is fetched (sub-pixel there — the geometric normal and the coarse relief
+terms carry the shading); the far variant is one fetch and its tile mean, like every deep-mip mean of the transitions
+and the zero-mean octaves, is the layer's measured mean (`uMeanG/D/R/M`, measured from the layer image at build and
+again after the sourced swap); the noise reads take an explicit isotropic level of detail from one footprint per
+fragment (`nz`, `textureLod`) — the near, high-frequency reads keep the anisotropic path. Same ten samplers.
+
+**Grounded terms (one per-map table, `groundRedux.ts`: `exposure`, `climate`, `bedIrregularity`, `patchwork`; packed in
+`uReduxD`, no sampler).** Slope exposure: a slope turned to the map's sun dries and pales (straw, bleached rock, crusted
+snow), one turned away holds moisture (darker, greener, mossier; desert varnish; powder) — the largest colour pattern of
+a real landscape follows its relief, on the battlefield and on the ranges (`uVExposure`). The cover's 2–8 m patchwork
+(one non-repeating field below the macro tints, inside the gameplay band). Non-periodic cliff beds (`bedSignal`: two
+noise lines along the world height replace the world-height sines of the marker beds, laminae and far ledges; the vista
+does the same with its detail noise) and buttresses and alcoves on the ring walls (a tall arc-frame lookup feeding the
+vista's bump height).
+
+**Sand in trains.** The census's contour "marble" on every dune map (Sirocco Wadi, Titan Gorge, Skybridge, Sunscar
+Oasis, Olympus Basin, the moon) was round 43's own fix: one global phase `dot(world, wind)` under a per-position wind
+rotation, so the phase jumped wherever the rotation changed and its isolines closed into loops. Ripples come in trains:
+the waves now run in 36 m cells (the bedforms in 260 m cells), each cell with its own heading within ±20° (±26°) of the
+map's wind and its own phase, blended bilinearly between the four nearest cells (`sandWaves`) — straight or sinuous,
+never looping — at round 43's two wave numbers, amplitudes, gates and tilt cap. Airless ground has no wind ripples
+(`windRipple: 0` on the moon).
+
+**The ring is the battlefield's own material.** Since d20f64198 (continuous map horizons) every face of the horizon
+ring and of its far range draws with the live terrain program past the square (`bindAutumnHorizonGround` with
+`continuousGround`); the vista material is no longer drawn and only carries the relief atlas the terrain program reads
+on the ring draw (`uRingDraw`). The ring lab proved it: runtime edits of every vista uniform left the frame unchanged,
+while the post pass's aerial curves and the terrain program's uniforms move it. So the mountains' look and cost are
+the terrain material's — the cost pass, the exposure law and the non-periodic beds above reach them directly (the
+census's de-banded walls on Highland Reservoir and Glacier Pass) — and a first lit-vista attempt in this lane was
+withdrawn as dead code.
+
+**Terrain v3 (2026-10-02): what the ring shows.** The census sheets of the desert ranges (Sirocco Wadi, Olympus Basin,
+Titan Gorge, Skybridge) showed a corrugated chevron sheet over every mountain at 1–2 km: the dune bedforms (26 m
+trains) ran on the ring's 15–28° faces below the wall band, and the slip faces' unmipped 0.9 m contour wave and 3.7 m
+flow sine — faded by the footprint distance, which a face-on wall reads as near — aliased at a kilometre. Bedforms now
+stay on gentle sand (gone by 24°), and both sines fade by the true camera distance. The ring lab (runtime edits of the
+program's uniforms through `userData.splatUniforms`, no rebuild) then isolated the rest: zeroing the ring's surface
+atlas removed both the chevrons left on Sirocco Wadi's far ranges and the dimples on Copper Mesa's walls, while the
+far-wall rescue's knobs (rock masses, coarse normals, their vertical stretch, ledges) and an occlusion-driven couloir
+fill changed nothing visible at ring distance and were dropped. The atlas's fine relief is a slope's detail: on the
+tablelands' and the martian scarps' flanks and walls (relief characters `mesa` and `martian`) its gradient now fades
+over the face's own slope from 20° to 41° (`uRingReliefWall`, set at the ring's bind); the caps keep it, the occlusion
+and the cast shadows keep their weight everywhere, and the snow, alpine, rolling and coastal ranges keep it in full —
+their ridges are its relief. Earthrise Basin's regolith palette is a dark, faintly warm grey (the census: "the
+regolith reads as snow"), its slopes the same regolith rather than pale rock.
+
+**Measured (2026-10-02, Apple M5 Max through ANGLE Metal, headless Chrome, 1600×900, desktop High with the dynamic
+scale pinned at 1, every bot frozen; `.qa-dev/terrain-perf-probe.mjs` in the lane, untracked).** Frame GPU time from
+EXT_disjoint_timer_query_webgl2 (one query per frame, p25 of 180 frames per pose), the PR base (c959ac4b6) against
+terrain v2 (3c1c33490) from frozen production builds, alternated A B B A per map in two runs on different hours (four
+pairs per map and pose), each pair the delta of adjacent slots; median [min..max]: Whiteout chase −2.9 ms [−7.3..−2.3],
+sky-w −2.5 [−3.7..−1.2]; Sirocco Wadi chase −3.5 [−5.3..−2.1], sky-w −1.3 [−3.7..+0.4]; Monsoon Ridge chase −2.0
+[−2.8..−1.5], sky-w −1.2 [−4.0..+1.3]; Verdant chase −0.7 [−3.9..+1.6], sky-w −1.0 [−1.5..0.0] (whole frames of
+16–22 ms; main-thread CPU unchanged within ±1 ms). The mobile tier (A B B A, two pairs): Whiteout chase −2.5 ms
+[−2.9..−2.0], Verdant +0.2 [−0.5..+0.8], i.e. not slower. The machine carried other sessions' GPU work through most
+pairs (load 7–109, foreign GPU-process CPU up to 12 cores), which is why single pairs spread; the interleaved
+hide/show attribution was too noisy under that load to split terrain from ring and is not quoted.
+
+### The border landform — 2026-10-03 (the map-borders lane of the Opus 5.5 redesign)
+
+Owner (2026-10-02): "maps need to look so much better esp the horizons and transitions around map borders"; (2026-10-03)
+"i literally just see a treeline and then nothing transitioning and going into mountains or stuff beyond border". The
+border census (`tools/visual-census.mjs capture --set=border`: the four edges and four corners from a spot 60–100 m
+inside the square at tank eye height and 60 m up, and a high oblique across the north-east corner — the owner's eye
+test as seventeen pinned views with their own protocol, `visual-census-border-v1`) showed one cause behind most of it:
+
+- **The square sat in a bowl.** The rim lift was one Chebyshev-square S-curve — `rimH · s(r)²`, `s = smoothstep(430,
+  512, max(|x|, |z|))` — so every side was the same 18–58 m escarpment, every corner a V-shaped crease where two
+  walls met, and past the edge the land was a plateau standing `rimH` over the battlefield with the authored ranges
+  behind it. The rim's 25–45° faces took the steep-slope rock layer: the pale streaks along all four sides (on the
+  paved maps, whose R layer is cobble, white ones).
+- **A hedge round the square.** The rim forest's blocks inside the square and the ring forest's band past it (a stand
+  law that wooded almost the whole band) stood all round as one tree wall, hiding whatever lay behind.
+- **Roads ended.** The mask's clamped edge texel dragged a road 24–96 m out, bent to the perpendicular, and the ring
+  closed over it.
+
+What changed (`world/borderLandform.ts`, wired through `terrain.ts`, `maps/horizon.ts`, `horizonVista.ts`,
+`vegetation.ts`):
+
+- **The lift is a landform.** Inside the playable square (|x|, |z| ≤ 470) the classic S-curve stays and may only be
+  LOWERED (a rim factor ≤ 1: no slope, cover or obstacle is added where tanks drive); past it the lift hands over within
+  40 m to the outland's own hills — domain-warped fBm in 2D with the map's character (rounded downs, ridged crests or
+  tableland terraces), rising from the square's level over a reach that wanders along the border and growing into the
+  foothills of the ranges behind. A low-frequency enclosure field decides where hills stand close and where the land
+  opens out; the in-square rim factor follows it, and corners lower the rim further. Each map has its character
+  (`MAP_BORDERS`: open steppe and airfield country, flat deltas, polders and tidal flats, wooded valleys, tablelands,
+  mountain valleys; `terrain.border` overrides). The near ring hands its continued ground to the authored ranges over a
+  band that wanders 330–820 m past the edge (`getBorderHandOverAt`), not a ring parallel to the square.
+- **Authoring keeps the classic rim.** Road node grades, pad seats and lake levels (queries with roads off) read the
+  classic rim, so no road grade, pad or lake level inside the square moves; a final query shifts the road plane by the
+  difference between the landform's rim and the classic one, so a road that climbed the old rim does not stand on an
+  embankment where the land was lowered.
+- **Roads run on.** Every road that reaches the edge leaves along its own heading for ~720 m (40 m steps that wander a
+  few degrees, never back toward the square); the landform opens a valley along that line; the outland lies on a
+  graded corridor (cut and fill, at most 7 %, starting at the square's road at the edge); the ring carries the
+  carriageway as a vertex attribute (`roadExit`: the signed offset from the line and its presence) that the splat
+  program reads with the square's own road law — no sampler, no loop.
+- **Woods, hedgerows and fields across the red line.** The landform owns one woods field (patches of a few hundred
+  metres leaning onto its hills, calibrated to the map's woodland share), a hedgerow field (field boundaries as levels
+  of two ~330 m fields, 2–3 m lines with gates and gaps) and the parcels between them (stubble, plough, pasture,
+  fallow — temperate, steppe or polder crops — carried on the ring as an albedo-offset attribute, `borderTint`, faded
+  in from 30 m past the edge). The ring forest stands by the woods and the hedgerows; the square's rim trees past the
+  playable edge stand by the woods, and inside it a third of the trees in the open stay as scattered cover (the
+  placement stream is consumed exactly as before; a dropped tree's trunk record and concealment disc go with it).
+- **Railways keep their hill.** Within 340 m of a railway that leaves the square (Tarkhan's and Cinder Junction's
+  cuttings, rounds 63/67) the lift is the classic rim and plateau and the ring hands over by the classic law, so the
+  cutting, the portal and its gallery stand where they were measured.
+- **Paved maps' hillsides are ground.** Where the map's R layer is its paving (`uPavedRock`: Cinder Junction, Steinburg,
+  Ironworks, Kestrel) a natural steep face takes the D layer instead of drawing cobbles.
+
+Receipts: `terrain.border.classic` rebuilds the rim as it stood before the landform, so the receipts that replay a
+pre-landform failure (`roadBorderCorridor`, `roadCutRecovery`, Delta's seam lip in `horizonAutumnGround`) build their
+predecessor and current fields on it and check their physical limits on the landform as well; the history oracle's
+relief-law constructor carries the landform's rim and the road plane's shift; the material receipts follow the exit
+attribute, the parcels and the paved rock.
+
+#### The second pass — 2026-10-03: what the eye sees from the square (gauntlet wave 0)
+
+The gauntlet's wave 0 (3.16/10, every shot AMATEUR) named the band: "the border reads as an enclosing clay wall
+rather than land continuing into foothills and mountains"; the bar is World of Tanks' red-line shots, where terrain,
+fields and villages carry on past the boundary. An offline eye-view probe (a ray march over the square's heights and
+the ring's seated surface, woods as a 15 m canopy: per border view, 13 rays across the frame and the range of each
+ray's skyline) showed what blocked the view: banks of 13–25° a few metres past the red line — the geology's own hills,
+the landform's crests, a corner's rise, the road hold climbing toward the old plateau — and woods standing on it.
+
+- **The foreground clearance.** Past the playable edge the ground rises at most ~2.5° over the square's own edge (its
+  outland composition along the 470 m square, smoothed over ±40 m) for its first ~260 m, released by ~540 m: a smooth
+  minimum that never raises anything, ramped in over the first 40 m past the line (no step at the square's edge); a
+  road's own band keeps its ground (the road hold grades it), a railway's classic island keeps its ground, nothing
+  inside the playable square moves. Over the 33 maps' eight eye views (terrain only, 13 rays a view) the views whose
+  skyline stood within 300 m of the edge above 1.5° fell from 198 of 264 to 30 (the rest are the maps' own mountains
+  inside the square and the two railway tunnel hills); the skylines now stand at the foothills 550–830 m out.
+- **A field system.** The parcels were the level sets of two noise fields (curving blobs, little oval islands). The
+  fields are now two families of near-straight lines on a 46 m pitch, one orientation per map 7–21° off the square's
+  axes (no boundary runs along the red line), warped ±22 m over a kilometre; a share of each family's lines are field
+  boundaries (temperate ~190 × 255 m, steppe ~500 × 650 m, polder 84 m strips), never a closed loop. Hedgerows stand on
+  the boundaries by stretches from ~40 m past the edge; 42 % of the boundaries carry a 3 m packed-dirt farm track 4 m
+  beside the hedge in runs of ~320 m (the ring's `borderTrack` attribute: per family the metres from the nearest track
+  and its boundary, linear across the track so a triangle interpolates it exactly; the splat program draws it
+  anti-aliased by the pixel's footprint and fades it beyond ~1.2 km).
+- **Whole-field woods and an open near band.** In farmland most woods are whole fields with straight edges along the
+  boundaries (the free-form woods keep their cores on the hills); a field touching the first 70 m past the edge is never
+  a wood and the near band stays mostly open to ~190 m (strongly) and ~380 m, so the eye runs over fields to the woods
+  rising behind. The wild woods (maps without fields) keep lighter clearings along the edge.
+- **Farmsteads and hamlets** (`world/borderFarmsteads.ts`). Yards are searched on the ring's seated surface (flat, off
+  the woods, the sea, a railway's right of way and the exit roads' carriageways), gather along the exit roads as hamlets
+  and stand alone among the fields elsewhere; a house, a barn, most a shed and on the steppe and polders sometimes a silo,
+  squared to the fields, in the region's build (temperate, steppe, polder, winter, arid, nordic, tropical, alpine; 0–14
+  a map), and a map's first hamlet in a parish style has its church (nave, tower, spire). The ring forest stands each
+  farm's shelter trees (an arc 26–58 m round the yard). One merged vertex-coloured mesh: one draw and one far-cascade
+  shadow draw, ~0.4–1.2k triangles.
+- **Coasts.** Past ~150 m each bank of a sea opening takes its own headlands and bays (three octaves, 3 km to 420 m, up
+  to 30 % of the half-width), CPU sector and GLSL twin alike.
+- **The road hold.** Along a road inside the playable band the landform keeps the classic rim (its grades are authored
+  on it: every grade in the square is unchanged), and past the red line it holds the rim's level at the red line rather
+  than its climb, handing over to the landform by the edge (never inside a railway's classic island); a road that cut
+  through the old rim comes down past the line on a gentle ramp (level at the line, 12 % from 20 m on).
+- **Cost at ring build.** The land-use queries keep tables of the field lines, a field's woods by its corners and the
+  last point of each field: the ring builds in 290–590 ms on Verdant, Railyard, Desert and Steppe (base 270–540 ms) and
+  its attributes in 26–81 ms; no per-frame CPU work; the track adds a vec4 attribute and a few ALU on ring pixels.
+
+Largest open item in the band: a railway that leaves the square (Cinder Junction, Steppe) still runs into a tunnel in the
+classic rim's hill at the edge (rounds 63/67) — wooded now, but a hill standing in the view; the open line past the
+edge is the next step. (Closed in wave 2 below: the open line.)
+
+#### Wave 1 — 2026-10-03: the middle distance and the critics' artifacts
+
+Gauntlet wave 1 passed the first pass (3.02 → 3.55, the horizon and border criterion +2 to +4 on most views) and named
+the band's largest remaining defect: past the edge the country read as an empty, uniform plain. It also found four
+artifacts in the after frames.
+
+- **Hedgerows as bush lines** (`world/borderHedgerows.ts`). The field boundaries' hedges were ring-forest trees 20–40 m
+  apart: a dotted line of crowns, nothing past 300 m. Every hedged stretch of a boundary past the edge is now a bush
+  line — a prism 2.6 m across at its foot, 2.4–4.6 m high with a lumpy crest, tapered at its gaps — seated on the ring's
+  surface in the ring forest's broadleaf green a shade darker (the landform's lines: `traceHedgeLines`, each field line
+  traced in 8 m steps by Newton on its level). One merged mesh, one draw and one far-cascade shadow draw (Amberford
+  8 km of hedge in 3.2k triangles; 5–12 ms at ring build). The ring forest stands only the hedges' standards.
+- **Crops in calibrated colours.** The parcels' mild tints (±10–20 %) gave way to the ground lane's calibration
+  (`landUse.ts`): each crop a multiple of the local sward's luminance — ripe wheat 2.8×, barley 3.0×, a young crop
+  1.25× greener, stubble 2.8× straw, plough of dark soil, sunflower 0.7×, the polders' rapeseed — on each region's
+  rotation. The ring's `borderTint` carries the crop premultiplied by its weight, the weight stored as `1 − w` so a
+  geometry without the attribute (WebGL's generic default `(0, 0, 0, 1)`) reads no crop. Faded in over the first 40 m
+  past the edge; none on slopes past ~25°.
+- **One field grid on both sides (pending the ground lane's merge).** On a map with a land-use profile the land past
+  the edge becomes the map's own grid: `borderLandUse.ts` traces its hedged boundaries (on a walled karst region every
+  boundary, as dry stone walls) from `landUseAt`, the grid's heading squares the farmsteads, and the material draws the
+  grid's crops and tracks across the edge; the landform's own fields serve the maps without a profile.
+- **Artifacts.** A road exit is painted only on the ring's continued ground (Cinder Junction: an exit drawn on up a
+  range's face read as a road climbing the backdrop and a bright seam up the mountainside). Round the playable edge
+  (415–800 m) the turf holds to ~35° (the rim's remnants of 20–35° took the slope rock as a violet splotch on Sirocco
+  Wadi and a blue-grey patch on Amberford). The farmsteads' colours sit at 0.8 of their value (a white wall in full sun
+  read as a glowing sprite). The border census has a second protocol, `--set=border2` (`visual-census-border-v2`), whose
+  spots also keep every crown 14 m off inside the view's wedge (Amberford's north view stood beside a tree's leaf cards).
+
+#### Wave 2 — 2026-10-03: the railways run on in the open; the roads come down with the land
+
+- **The open line** (`world/railSpurs.ts` `RAIL_OPEN_*`, supersedes rounds 63/67's tunnel). Cinder Junction's main line
+  and Tarkhan's siding left the square through a cutting into a tunnel portal in a hill the classic rim stood for (a
+  classic-rim island the landform kept round each exit: the last wall round the square). The islands and the tunnels are
+  retired. Past the path's end the line keeps its own heading for 900 m: its bed continues the cutting's and then the
+  outland's own ground, smoothed over ±40 m and graded to at most 1.5 % (`resolveRailOpenLine`, stations 20 m apart),
+  in a shallow cutting or on an embankment with real banks (1.6 run per metre, eased in over the first 20 m); the
+  formation widens over the first 30 m to a 24 m right of way, because the horizon ring's faces are 8–16 m across there
+  and a narrower floor was drawn as a blend of bed and bank; the corridor hands back to the ground over its last third.
+  The ranges stand back 320 m along the line (`BorderValley.holdM`: the landform's hand-over moves out within 90–300 m
+  of the line), so the ring keeps the bed to ~650 m instead of climbing 50 m in 300 m under it; the valley follows the
+  spur that leaves the square, not its cutting, so the map with and without the cutting differ only in the corridor.
+  The kit lays the first 240 m of track on the bed (no collision record: the bounds push keeps hulls inside 470 m); the
+  ring draws the ballast and, near the camera, the rails beyond (`railExitAt`: the signed offset kept 40 m either side
+  so a triangle interpolates it exactly, the presence faded at 0.55–0.9 of the run, at the hand-over and wherever the
+  ring's own height leaves the bed by 0.6–2 m). The ring forest, the hedgerows and the farmsteads keep off the corridor.
+- **The roads come down with the land** (`terrain.ts` heightAt). The first pass lowered the rim but kept road authoring
+  on the classic rim (with a road hold along each road and the road plane shifted down by at most 12 % past the red
+  line): a road authored up the old 20–40 m rim stood on a causeway that high where the land beside it came down —
+  67 of the 223 road exits stood more than 5 m over the land 30–40 m beside them, 50 more than 10 m (Ruin Spires and
+  Olympus Basin 25–33 m at the edge, Foundry 21 m, against 18 over 5 m in the base). The road grades now take a second
+  authoring pass on the landform's rim — the same law (portals, smoothing, junctions, the inherited maps' remap and
+  the northern alignments) run on a second set of node heights — blended in from 430 m, where the rim begins, to
+  460 m; inside 430 m every grade is the classic pass's to the bit (a single landform pass had rippled 1.2 m into the
+  square through the grade smoothing and moved the raw inputs of the inherited-grade maps). The road hold and the
+  plane's shift are gone (the plane comes down only with the foreground clearance, from which a road's own band is
+  exempt); water authoring keeps the classic rim, so no lake, marsh or bank level moves. 8 exits remain over 5 m (the
+  worst 10 m, Cinder Junction's north-west road on a rise at the edge), the median 0.4 m; the in-square ground moves
+  only past 400 m, the bounds push already keeping play inside 470 m.
+
+### 2026-10-03 — skies, light and colour: one haze law, the shade's own colour, a calibrated camera (the skies-and-atmosphere lane)
+
+**Owner (2026-10-02): "dude genuinely maps need to look so much better esp the horizons and transitions around map
+borders"; (2026-10-03): "in the horizon i literally just see a treeline and then nothing transitioning and going into
+mountains or stuff beyond border".** Branch `visual/skies-atmosphere` of the PR #9 program. The lane owns the sky, the
+clouds, the fog, the aerial perspective and the per-map light and atmosphere parameters; the mountains lane owns the far
+ranges' geometry and surface, the borders lane the band from the square's edge to about 1 km. From the gauntlet's wave 0
+(3.16/10, every shot AMATEUR, the game identified in every blind pair) the lane owns light, colour and atmosphere as one
+system.
+
+**The audit (census on b74e1c251, all 33 maps; sky and atmosphere scored together, 1–10).** Most clear maps shared one
+deep cobalt sky and one field of cotton cumulus; the decks read airbrushed; the overcast decks opened holes (Titan
+Gorge's blue hole, Ironworks' lens, Whiteout Station's blue smudge); the overviews wore a milky band in the middle distance
+(Amberford, Frontier Basin). Scores: Titan Gorge 2.5; Cinder Junction, Whiteout Station and Ironworks 3; Verdant
+Fields, Sirocco Wadi, Frosthollow, Amberford, Frontier Basin, Redrock Divide, Obsidian Caldera and the Tidegate Polders
+3.5; Nordhavn Fjord, Ruinspires, Copper Mesa Mine, Kestrel Airfield, Sunscar Oasis, Orchard Valley, Longleaf Crossing,
+Mangrove Reach, Saltwind Narrows, Highland Reservoir, Skybridge Chasm, the Blackglass District, Aegis Crossing and
+Olympus Basin (a cartoon nebula) 4; Saltmere Bay, Tarkhan Steppe and Glacier Pass 4.5; the Jade River Delta and
+Earthrise Basin 5; Steinburg and Monsoon Ridge 5.5.
+
+**Why the far half read milky.** Three hazes stacked on the far land, none of them proportional to distance:
+- the aerial pass's two Gaussian curves (1 − exp(−(k·d)²)) saturated at about 650 m under fixed ceilings — 0.42 / 0.38
+  over the square, *lower* (0.34 / 0.30) across the ring's first kilometre — so every surface from 0.7 to 3 km wore the
+  same veil and the square's far edge wore more of it than the mountains behind it;
+- on top of the haze the pass desaturated (0.62) and cooled the far land, and pulled far greens toward a blue-grey (the
+  sniper-scope hue clamp, which ran in arcade too) — the land lost its colour before any haze reached it;
+- the materials' FogExp2 (fogDensity × 0.55) laid a second Gaussian veil over the ranges: 15 % at 1 km, 47 % at 2 km,
+  62–77 % at 3 km.
+The scatter target was capped at a fixed luminance and mixed with the authored fog tint, so every far range converged
+on one grey near the sky's brightness: Verdant's 2 km ridge read 1.0× the sky above it.
+
+**The haze law (`hazeLaw.ts`, c48ddb221 / f36a89b48).** One Beer–Lambert law over the physically based sky: the light of
+a thing d metres out reaches the camera as L·T + S·(1 − T), T = exp(−σ·d·ρ̄·c) per channel, with σ the map's own air
+(fogDensity × 0.42), ρ̄ the path-averaged density of an exponential layer (scale height 400 m over the ground under the
+camera — a crest stands in thinner air than its foot, an overview from 300 m looks down through two thirds of the
+ground's haze), c the aerosol chroma (0.90 / 1.0 / 1.14: far sandstone keeps its warmth) and S the sky behind the point
+(× 0.92, the authored fog tint at 0.4 of the map's fog mix, a closed deck's target × 0.45). Every kilometre adds the
+same share, so near, mid and far stay separate layers: on every authored map a ridge 2 km out keeps ≥ 0.49 of its
+contrast (Monsoon, the thickest air) and 300 m keeps ≥ 0.85. The materials' fog keeps 0.3 of its share on that path; the
+clouds keep their own law (a low deck's structure washed toward the horizon white under this one); the mobile tier's
+Preetham dome keeps the old law byte for byte. The sun's cloud knee eases within ~5° of the disc (a dark "eye" read
+around the sun on Fjord and the Polders where the kneed cloud sat under the unkneed glow).
+
+**The shade's colour (2b20e01a1; the gauntlet: "grass in the tank's shadow renders saturated indigo ... reads as a hole
+in the ground").** The grounded rig lights the shade with the clean dome's own irradiance — a Rayleigh-only sky whose
+cosine-weighted light runs B/R 3.3–4 (Verdant 0.069 / 0.130 / 0.273, far past 20 000 K) — amplified by
+SKY_DIFFUSE_GAIN, and the legacy cool shadow dim (0.80 / 0.88 / 1.0) painted the blue in a second time: in the wave-0
+frames the light in Sirocco's hull shadow ran 3.8× bluer than its sunlight, Saltmere Bay's 4.6× (open shade under a clear
+sky: about 2×). The environment's diffuse share now keeps SKY_DIFFUSE_CHROMA 0.4 of the dome's hue about its luminance
+(the aerosol, the whitened horizon and the fair-weather cloud the clean dome leaves out — the same light the gain stands
+for): Verdant's shade light lands at B/R 1.8, Sirocco's 1.6 (9 000–15 000 K); the luminance (the shade's level, the
+metered illuminance) and the specular share (a mirror reflects the sky the eye sees) are unchanged. The grounded rig
+dims its shadowed ambient neutrally at the legacy dim's luminance; the legacy rig (the mobile tier, the Garage, the
+galaxy skies) keeps its cool dim and its dome's hue.
+
+**A calibrated camera and AgX's own saturation (2b20e01a1).** Measured on the 24 wave-0 census frames against the
+gauntlet's 82 references (CIELAB) and re-graded offline through the very output chain the night-lens oracle models
+(`$SP/p2/skies/tools/regrade.py`: display → scene-referred → a new grade, round-trip residual 0.00/255):
+- the exposure key was half a stop hot: a sunlit 18 % card at Verdant displayed at L* 60, the frames' median at L* 63
+  and their darkest twentieth at 36, against 54 / 23 for the photographs (World of Tanks 43 / 19, War Thunder 47 / 17).
+  EXPOSURE_KEY is now a calibrated meter, π / E_ref = 1.05: an 18 % card under the reference illuminance reaches AgX at
+  scene-linear 0.18, its middle grey (L* ≈ 53); the re-grades land 53 / 24;
+- the scene-referred saturation boost (1.4) put the mean chroma at 22 and the foliage at 31, against 17 and 21 for the
+  photographs (World of Tanks 12 / 15), the sky's b* at −22 against −15: the grounded rig now runs AgX's own (1.0), the
+  re-grades land 17 / 20 / −20; the legacy rig keeps 1.4;
+- the night keeps the camera the owner approved ("a little more visible, not darker", 2026-09-14): NIGHT_EV −0.25 →
+  +0.265 carries the key's half stop (1.05 × 2.6 × 2^0.265 = 1.5 × 2.6 × 2^−0.25 = 3.28); the red night lens's ceiling
+  .5 → .6 (under the neutral grade the capped lens read a dull brick, #c35444) and the lens floors keep the key they were
+  authored under (the legacy rig's 1.5).
+A calibrated camera shows the albedos as they are: Verdant's meadow renders at L* 70+ (albedo ≥ 0.33), pale and washed
+where fresh grass is 0.1–0.2 and a dry meadow 0.2–0.3 — the ground and vegetation lanes calibrate the albedos; nothing
+should be brightened to undo the key.
+**Held back after the gauntlet's wave 7** (PR head against the lane: sky +0.13, horizon +0.25, lighting −0.20,
+Frosthollow's chase −1.6): a key matched to the photographs' median pulled every snowfield to grey (L* 70–73 against the
+PR head's 79–80; a photographer keeps snow near white, +1 to +1.5 EV over a mid-grey meter). The key (1.5), the
+saturation (1.4), the night EV (−0.25) and the night lens (.5) are back; the shading fix stays. The calibration returns
+only with an albedo-aware key that keeps snow and bright sand high-key.
+
+**Cloud shadows past the cascades, the far band on the horizon, the ground's sky under the hulls (de224d484).**
+- The gobos dither the clouds' shade into the cascades only, so an overview's land past 700 m lay in one even sun. The
+  clouds render the same shade (the same two weather fields, core and uniform objects as the gobos) into a 256-square
+  map over 12 km around the camera, snapped to its 47 m texel and refreshed every eight frames or when the square moves;
+  the aerial pass takes each far pixel's sun share away by it where the sun's ray from the pixel crosses the cloud base
+  (the contact shadows' law, colour · (1 − shade · T / (T + A)): a slope already turned from the sun keeps its shade),
+  fading in across three's last-cascade fade (0.875–1.125 of the shadow range in view depth), complementary. **Off by
+  default since fp9** (`FAR_CLOUD_SHADE_ON` / `CLOUD_FAR_SHADE_ON` 0, fdb7df96d): the frames showed no effect. Its QA
+  view (`__LIGHT_TUNE.FAR_CLOUD_SHADE = 2`: the map's shade in red over a 1.5 km grid of its uv) showed the map populated
+  on the far ranges while the depth-reconstructed normal took the whole sun term away (past the cascades neighbouring
+  pixels quantise to one depth and the normal degenerates). The pass now weighs a far pixel at level ground's sun share;
+  the default moves only when a capture shows it. Off, the clouds render no map and the pass skips the block.
+- A cumuliform sky's far band started at the decks' 8 km, 10° up inside its own traced field (marched to 20 km): one
+  pale sheet with an edge across the sky (Saltwind's "hard-edged pale streak ... a compositing seam"). It starts at
+  16 km and fades in over 9 km — under 4–5° at a 1.4 km band, the distant field's crowding on the horizon; the decks keep
+  8 km.
+- Scene-wide GTAO stays off (the owner, 2026-09-28). The ground around the four hulls the shadow router already selects
+  loses the sky each hull hides (`vehicleGroundOcclusion.ts`): an oriented box per hull (its armour-derived shadow proxy
+  carried down over the running gear), ½ sin²(atan(h/d)) · (2/π) atan(L/d) beside it (a wall's cosine-weighted share over
+  the azimuth a finite hull covers), 0.85 under the footprint, on the pixel's ambient share only; analytic, no noise.
+
+**The first A/B on the PR head (fp6: 3ed03998a against the lane, the 24 wave-0 shots, the census views).** CIELAB over
+the 24 frames, PR head → lane (the 35 photographs): p5 / p50 lightness 32.5 / 60.6 → 26.7 / 52.7 (22.5 / 54.4), mean
+chroma 23.1 → 17.0 (16.7), foliage chroma 33.1 → 19.9 (20.8), the sky's b* −21.9 → −19.2 (−15.1). The hull shadow on
+Sirocco's straw (46, 67, 79) → (36, 32, 25): its light from 3.75× bluer than the sun's to 1.02×; Saltmere Bay's teal
+shadow dark olive; Saltwind's streak and the coastal ribbon gone; Verdant's and Frontier Basin's far ranges step
+lighter and bluer instead of one pale wash. Two defects of the lane's own showed and were fixed before the hand-over: a
+hard dark rectangle under every hull on overcast ground (the footprint's fixed 0.85 against the side law's 0.5 at the
+hull's foot — now the sky through the side gaps, continuous at the edge), and no cloud shadow past the cascades (the far
+pass took only CSM-lit pixels; the far forests' impostors and the ring's land are receivers too).
+
+**Caldera's halo was the sky's own aureole (fp8; 77b6b5737).** The gauntlet read a soft white halo erasing a quarter of
+Obsidian Caldera's sky as an exposure or tone-mapping bug. Isolation variants on its tree and sunward views (bloom,
+shafts and flare off, singly and together) left it in place: display luma ≥ 0.89 out to 15° from the sun with every
+effect on or off; the three effects added 0.01–0.02 near the sun, and the grade's highlight shoulder runs only in the
+Garage. Caldera carried the heaviest aerosol of every map (turbidity 8.5 × Mie 0.014, about six times the Earth's, at
+g 0.89). Half the aerosol at the tightest lobe the calibration allows (Mie 0.007, g 0.92) keeps the ash haze over the
+land (its fogDensity is unchanged) and the bright core; fp9 shows the glow pulled in to the disc.
+
+**Cumulus fields and flat bases (fp9; ec15fdffd).** The gauntlet's wave 4 read every cumuliform sky as "dozens of
+near-identical, evenly spaced popcorn cumulus with no flat or shaded bases". Two terms in the one field and density
+every consumer reads (the trace, the gobos, the far shade):
+- `cluster`: a broad weather channel at 2.5× the cells' tile (30 km) gates the cells — 0.4× in a gap, 1.6× at a field's
+  heart, mean 1. Inside a field the cells merge into large masses, at its edge they fray small, between fields the sky
+  is clear;
+- `baseFlat`: a cumulus base cut at its condensation level — the base's rise sharpened and the detail erosion kept to the
+  flanks and the tops (the erosion lumps under the base had rounded every cumulus into a cotton ball).
+The cumuliform regimes take both (fair-weather 0.6, the streets 0.4, humilis and towering 0.5) and the fair-weather rows
+density 0.12 and ambient 0.9, so a shaded base reads grey instead of lifted back to white; the decks, sheets and fronts
+keep the even field. fp9: merged masses with grey undersides and clear gaps on Verdant and Saltmere Bay. The gate's mean
+holds a map's coverage only where the coverage cut sits mid-distribution: at a humilis map's 0.14–0.20 the cut is in the
+field's upper tail and a heart's 1.3× lifts many cells just over it — Sirocco's horizon took a band of small puffs (the
+next lab's item).
+
+**Sirocco's clear air (fp9; eb5914da5) and one law to the far country.** Dry desert air is clear: turbidity 7 → 5 and
+Mie 0.009 → 0.006 (a bluer low sky behind the ranges, which is the haze's target) and fogDensity 0.00047 → 0.0003 (a range
+10 km out keeps about half its contrast instead of a third); Oasis inherits the sky, the Garage's mirror follows. fp9:
+the far mesas keep their warm rock and their shading where the PR head shows pale lavender planes. The mountains lane
+measured the arid ranges at 0.95–1.07 of the sky's brightness on its baked panorama: two terms stacked there — this
+pass hazes the panorama's shell by its depth (camera → 2.6 km) and the bake added its own fixed 9 km e-fold for the air
+past the shell (a ridge 300 m up at 7.5 km: 56 % fog on Sirocco, 64–66 % on Badlands, Copper Mesa and Oasis). Agreed
+with the mountains lane (2026-10-03): the bake's air past the shell follows this law — `hazeSigma(fogDensity)` over the
+remaining path, `hazeLayerMean` between the ray's height at the shell and the country's, `HAZE_EXT_CHROMA`, the target
+from `ATMOSPHERE_SKY_GLSL`'s `atmoSkyVisible` as the aerial pass builds it — so the map's fogDensity is the one lever,
+and the four arid maps go to 0.00025 (a 300 m ridge at 7.5 km keeps about 60 % of its contrast) once a capture shows it.
+
+**fp9 on the PR head (6938b8413 against the lane, the 24 wave-0 shots and Caldera's three).** CIELAB over the 27 frames,
+PR head → lane (the photographs): p5 / p50 lightness 30.3 / 58.7 → 23.8 / 49.9 (22.5 / 54.4), mean chroma 22.4 → 15.7
+(16.7), foliage chroma 32.7 → 18.9 (20.8), the sky's b* −22.0 → −18.1 (−15.1). The lane's median sits 1.3 L* under fp8's
+(the denser cumulus, the clearer desert air).
+
+**Open after fp9.**
+- Sirocco's hull shadow is near black: shade / sun 0.050 in display-linear light (sRGB 30, 28, 23 on 185, 164, 137 sand),
+  where photographs of hulls on sand run about 0.07–0.16. The light balance itself is right (open shade / sun 0.155
+  scene-linear: the sky's cosine-weighted irradiance × 1.45 against the sun on the ground); the hull's sky occlusion,
+  the shadowed ambient's dim and the tone curve's toe stack on it. Next: the hull occlusion's multi-bounce term
+  (Jimenez's polynomial on the map's ground albedo: bright sand returns some of the light the hull hides).
+- The far cloud shade waits for its capture (above).
+- The humilis maps' horizon puffs (above) and the arid fogDensity (above).
+- Saltwind's sky-w pale band is the sea's horizon (the view looks along open water); the Frontier contrail reads as a
+  hard streak.
+
+**The clouds' shadows by one path (fp10; 2292e9149, 0ff4e2949, 495846781).** The ground lane traced a family of the
+gauntlet's defects to the cloud gobos — the "uniform stippled dot pattern" (Saltmere Bay, Sirocco), the "concentric
+arcs" and "weave tile" (Saltmere, Obsidian Caldera), the "checkerboard / diamond tiling" and the "contour-like streaks"
+(Frontier Basin, the ring faces): each cascade's depth map carried the clouds' shade as an interleaved-gradient dither
+(up to 62 % of the texels) and three's PCF read it with five fixed Vogel taps; the high tier runs no TAA, so neither
+noise averaged out. The lines ended at the cascades' 700 m and vanished with the gobos off (Bayer, white-hash and R2
+dithers alias alike: dithered depth coverage itself was the fault). Now:
+- the layer renders the shade undithered into one map at the cloud base — 512² over 12 km around the camera (23 m
+  texels), snapped to its texel, refreshed every eight frames or when the square moves — and publishes it to the
+  scene's shared uniforms the moment it is refreshed (`scene.userData.cloudShadeUniforms`, `cloudShadeMap.ts`);
+- lighting.ts patches three's shared chunks: `shadowmap_vertex` fetches the share per vertex (a cloud shadow is tens
+  to hundreds of metres across), each sun cascade's light takes it before its shadow on both CSM paths, and
+  `cotSunVis` takes it too (the scene alpha, the contact shadows' sun share, the shadowed ambient dim);
+  `setupShadowMaterial` sets `COT_CLOUD_SHADE` and binds the shared uniforms on every desktop CSM material built on
+  three's shaders (opt-out `userData.cotCloudShade = false`, a custom ShaderMaterial opts in with true); a program
+  that would pass sixteen samplers with the map keeps none (three counts a program's units against the fragment
+  limit; the inline standard maps of the physical fragment are not units until set — the terrain counts fourteen,
+  fifteen with the environment, sixteen with the map);
+- the ring's vista samples the same map (`horizonCloudShade.ts`: one fetch where it re-cut two weather fields);
+- phones take nothing (no volumetric layer); the gobo planes, their depth material and the aerial pass's far shade
+  block are gone.
+
+**fp10 and the candidate (2026-10-03; the gauntlet's waves 7, 13 and 14).**
+- *The camera stays the PR head's.* Wave 7 held the calibrated key (EXPOSURE_KEY 1.05 with AgX's own saturation): it
+  greyed every snowfield. The split hand-over put the key (1.5), the saturation (1.4), the night EV (−0.25) and the night
+  lens (.5) back and kept the shading fix — at the PR head's key and saturation Sirocco's hull-shadow light still runs
+  1.13× the sun's B/R (the PR head's 3.75×; 1.06× at saturation 1.0, so the boost re-adds little colour).
+- *A bright ground opens the camera* (`exposureAlbedoEV`, lightModel.ts): a map whose ground albedo passes 0.35 gains
+  0.42 stops per doubling, at most 0.75 EV, by day — Frosthollow and Whiteout (0.80) +0.5 EV, every other map none; the
+  photographer's compensation over snow, keyed to the authored albedo, never the global camera (wave 13: Frosthollow's
+  establishing −1.3 for a greyer frame).
+- *Arid air:* fogDensity 0.00025 on Sirocco, Badlands, Copper Mesa and Oasis (Badlands' far ridge contrast 0.165 against
+  the PR head's 0.114); the mountains lane's panorama bake takes the same law past its shell once hazeLaw.ts is merged.
+- *The hull's multi-bounce* (vehicleGroundOcclusion.ts): the occlusion keeps Jimenez et al.'s multi-bounce visibility on
+  the map's ground albedo (Sirocco's hull shade / sun 0.071 → 0.081; snow lifts most).
+- *No contrails* (cloudscapeLayer.ts `CLOUD_CONTRAILS_ON`): fp10's segmented, thinner trails still read as straight lines
+  and the critics called every one a render glitch; the reference tank games carry none.
+- *No cumuliform far band:* edge-on, its broad coverage turned into one opaque pale ribbon a few degrees over the hills
+  ("a ruler-flat pale band at one constant height"); a cumuliform sky now ends where its traced field does and sinks into
+  the haze, a deck keeps its far rows.
+- *Humilis keeps the even field* (the fields' hearts swelled Sirocco's sparse cells into cotton masses); the street
+  regimes' far cells take the fields' gate (ungated, a street sky's far half came back as even popcorn).
+- Knobs left off until a capture shows them: `deckDetail` (fp10: it thinned the decks instead of defining them) and
+  `CLOUD_FAR_THIN` (the far cumuliform cut).
+
+**fp11, the gate capture (2026-10-03; the PR head 0bbb0cddc against the candidate ffc6e86ab in one hold, the census
+recipe and its cloudscape gate, nine maps).**
+- *Snow* (ground L*, the frame's lower quarter, median): Frosthollow establishing 80.2 → 85.4 and chase 79.2 → 84.0,
+  Whiteout 64.5 → 72.2 and 63.8 → 70.3 — above the PR head on all four. The candidate without the lift matches the PR
+  head (80.0, 78.5, 64.7, 62.7): the albedo lift is the whole difference (exposure × √2 on the two snow maps, every other
+  map's exposure unchanged).
+- *The horizon band* (wave 13: "the warm horizon band dims a step"): on Frosthollow's establishing view the far ranges
+  and their haze (frame rows 180–315) run L* 72.3–73.6 on the PR head, 67.4–70.7 without the lift (the dimming fp10
+  showed) and 74.4–77.3 with it, 1.4–2.5 b* less blue. A warm lobe in the haze law's target (half the legacy forward lobe
+  toward the sun, the hue guard keyed on green casts only) changed no pixel of the eighteen establishing and sky-w frames
+  — no census view faces the sun — and stays off the candidate.
+- *Decks:* lumps 0.8 raised a deck's structure by half (sky-w structure: Railyard 1.90 → 2.82, Frosthollow 1.31 → 1.95)
+  as one even mottle over the whole sheet; the interior octave does nothing on a deck (Railyard 1.884 against 1.897) and
+  `CLOUD_FAR_THIN` 1 removed only a few marginal puffs on the horizon (Frontier, Coastal). Both stay off.
+- *Chase frames vary on the tank from run to run:* the dev root (the candidate's code but for the haze hue) differs from
+  the candidate only on the hull in every chase frame (Whiteout's tank renders darker in the candidate's frame than in
+  either other root's), so a chase pair is no evidence about the hull's light.
+
+**The wave-17 batch (fp12, 2026-10-03; the PR head 21b4e853f against the batch in one hold; the gauntlet's wave 19).**
+- *A deck's far rows meet the ranges' haze* (Frosthollow: "a flat whitish band just above the true horizon where the haze
+  layer meets the cloud deck — a discrete seam"). Under a deck the aerial pass hazed the ranges toward its overcast target
+  while the cloud trace hazed the deck's far rows toward the clear sky's LUT, the bright horizon glow, and the deck's far
+  band (the regime's 0.6 under a 0.86 deck) opened gaps of that glow under the deck's edge. Both now read one pair of
+  target terms (`hazeLaw.ts` `hazeTargetTerms`: the authored tint's share and the level under the light model's
+  overcast); a deck's far band admits the deck's own coverage and reaches down to 0.03° over the horizon. fp12: the pale
+  strip under the deck's edge is gone; the critics no longer name the seam (+0.29).
+- *Overcast snow* (Whiteout's chase: "dull blue-grey plaster, darker and much bluer than the neutral overcast sky"). A
+  deck sends back part of what the ground sends up (`OVERCAST_GROUND_RETURN` 0.5, in the deck's own light: E · g / (1 − g),
+  g = overcast × 0.5 × the ground's albedo — a snowfield under a closed deck ×1.67, grass ×1.1, an open sky nothing),
+  the clear sky's share under a deck keeps `SKY_DIFFUSE_CHROMA` × (1 − overcast) of the dome's blue, and the bright-ground
+  lift drops to K 0.25 (+0.3 EV on the snow maps) now that the return brightens an overcast snowfield by itself. fp12:
+  Whiteout's snow/sky display-linear luminance 0.51 → 0.64, the snow's B/R 1.36 → 1.27; the critics: Whiteout's chase
+  1.86 → 3.86, its establishing 2.71 → 3.43. The blue left is Whiteout's authored splat tint (tintB B/R 1.17).
+- *Every cloud layer ends at a surface past the dome* (the mountains lane: `seaFogBank()` integrated from 3.6 to 30 km
+  whatever the scene held — a far shore past 3.6 km took the whole bank with a sheer cut). post.ts hands the trace the
+  scene depth the last frame resolved; the trace reads it through the camera that drew it (`cloudSceneT`) and the slab's
+  march, the bank and the rain end at the surface, the far band and the cirrus behind it hidden. A surface inside the
+  dome changes nothing (its depth test hides the layer there, and the history stays whole for a camera turn).
+- *Not adopted:* the cumulus knobs as shot (`CLOUD_BASE_SHARP` filled every cell's footprint at its base — "grey
+  soft-edged flat lozenges", "a regular row of grey pills"; fixed to fill only a column that carries the body, off until
+  the re-shoot), the gated deck lumps ("a uniform, high-frequency grain like stucco"), and the haze's warm lobe toward the
+  sun (no pixel changed on four maps' sunward views). Desert's sky-w streak was the before frame's contrail.
 
 ## Acceptance is visual and measured
 

@@ -112,9 +112,11 @@ const SETS = {
 // packed roughness floor so sourced sets never reintroduce specular sheen.
 const TERRAIN_PLAN = {
   moon: {
-    G: { set: 'sand', desat: 1, tint: [.71,.73,.77], roughMul: 1.3 },
-    D: { set: 'sand', desat: 1, tint: [.62,.64,.69], roughMul: 1.3 },
-    R: { set: 'rock', desat: 1, tint: [1.42,1.46,1.52], roughMul: 1.2 }, M: null,
+    // terrain v3 (2026-10-02, the baseline census: "the regolith reads as snow"): regolith is a dark, faintly warm grey
+    // (albedo ~0.12, so mid-grey under the lunar sun), not the cool near-white the sand set carried at .71–.77
+    G: { set: 'sand', desat: 1, tint: [.44,.43,.41], roughMul: 1.3 },
+    D: { set: 'sand', desat: 1, tint: [.37,.36,.35], roughMul: 1.3 },
+    R: { set: 'rock', desat: 1, tint: [.80,.79,.78], roughMul: 1.2 }, M: null, // the slopes are the same regolith, not pale rock
   },
   verdant: {
     // 2026-09-12 visual restoration: the untinted photo grass rendered the
@@ -334,17 +336,35 @@ export function sourcedTerrainLayerPlanned(
   return TERRAIN_PLAN[resolveSourcedTerrainPalette(mapId, settings)][key] != null;
 }
 
+/** The map-borders lane (2026-10-03): the photo set a map's plan routes to layer `key` ('cobble', 'rock', …), or null. */
+export function sourcedTerrainLayerSet(
+  mapId: string,
+  settings: Pick<SourcedTerrainSettings, 'sourcedPalette'> = {},
+  key: LayerKey = 'R',
+): string | null {
+  const row = TERRAIN_PLAN[resolveSourcedTerrainPalette(mapId, settings)][key];
+  if (row == null) return null;
+  return typeof row === 'string' ? row : row.set;
+}
+
+// ARCH-P8: decoded source photos only feed the bounded composite caches below
+// (8 albedo + 4 normal canvases). Keep the most recently used photos up to one
+// battlefield's working set — three terrain sets plus the four building sets,
+// four maps each — so a map's own loads never evict each other, while earlier
+// battlefields' photos are released (the cache used to keep all 48 forever).
+// src/world/sourcedImageCache.selftest.mjs proves the bound covers every map.
+const IMAGE_CACHE_MAX = 28;
 const _imgCache = new Map<string, Promise<HTMLImageElement>>();
 function loadImage(url: string): Promise<HTMLImageElement> {
-  if (!_imgCache.has(url)) {
-    _imgCache.set(url, new Promise<HTMLImageElement>((resolve, reject) => {
-      const im = new Image();
-      im.onload = () => resolve(im);
-      im.onerror = () => reject(new Error(`sourced texture missing: ${url}`));
-      im.src = url;
-    }));
-  }
-  return _imgCache.get(url)!;
+  const cached = _imgCache.get(url);
+  if (cached) return touchLru(_imgCache, url, cached, IMAGE_CACHE_MAX);
+  const request = new Promise<HTMLImageElement>((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error(`sourced texture missing: ${url}`));
+    im.src = url;
+  });
+  return touchLru(_imgCache, url, request, IMAGE_CACHE_MAX);
 }
 
 // Readback-heavy AO and roughness decoding shares one opted-in scratch
@@ -908,6 +928,13 @@ export function sourcedBuildingTintPolicy(
   return palette[bucket] ?? null;
 }
 
+/** The maps whose stone bucket is the sourced brick print (their field walls keep the coursed module, props.ts). */
+export function sourcedStoneIsBrick(mapId: string): boolean {
+  // maps r1: the rail yard's industrial halls are brick like the town's
+  return mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera'
+    || mapId === 'ruinspires' || mapId === 'blackglass' || mapId === 'skybridge';
+}
+
 export function applySourcedBuildings(
   sets: Partial<Record<BuildingBucket, TextureLayer>>,
   mapId: string,
@@ -920,10 +947,7 @@ export function applySourcedBuildings(
   const plan: Partial<Record<BuildingBucket, keyof typeof SETS>> = {
     plaster: 'plaster', roof: 'roof', wood: 'wood',
   };
-  // maps r1: the rail yard's industrial halls are brick like the town's
-  if ((mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera'
-      || mapId === 'ruinspires' || mapId === 'blackglass' || mapId === 'skybridge')
-      && sets.stone) plan.stone = 'brick';
+  if (sourcedStoneIsBrick(mapId) && sets.stone) plan.stone = 'brick';
   // Steinburg and Ruinspires keep the PROCEDURAL roof sheet: their tone hooks
   // bake deliberately restrained roof families that a single sourced tint
   // cannot reproduce. This also prevents the raw orange tile set from

@@ -34,6 +34,13 @@ const PRIMARY_BODY_BUCKETS = Object.freeze({
   // slat rails and roof optics sit outside them: combining those separate parts
   // into one vertical span would invent body volume across their real air gaps.
   bmp3m_dragun125_x: Object.freeze(['hull', 'turret']),
+  // 2026-10-02 (fleet watertight gate): the K21's turret launcher tubes and the
+  // Kurganets-25's roof launcher fan are open exterior stock around closed
+  // primary shells. A fills-to-zero pass against every body mesh filled the
+  // launcher bores in front of their closed caps (k21Launcher) and the deck air
+  // over the fan receivers (kurganetsSourceDetail); their air stays exterior.
+  k21_x: Object.freeze(['hull', 'turret']),
+  kurganets25_x: Object.freeze(['hull', 'turret']),
   // The supplied Trophy Mk.4 likewise uses its primary hull/turret shells as
   // the repair boundary; its bounded authored seams are handled by the fill
   // generator rather than by treating unrelated exterior fittings as shell.

@@ -9,12 +9,15 @@
   "compatibility_flags": ["nodejs_compat"],
   "ratelimits": [{
     "name": "ROOM_CONNECT_LIMITER",
-    "namespace_id": "2609055512",
+    "namespace_id": "2609055513",
     "simple": { "limit": 120, "period": 60 }
   }],
+  // No relay secret (2026-10-02, §13.14): a seat's room_relay is answered with COT_STUN_URLS alone — the deployed Worker
+  // before `wrangler secret put` (test/relay.test.ts runs the configured Worker under wrangler.relay.test.jsonc).
   "vars": {
     "ALLOWED_ORIGINS": "https://cot.kevinliu.studio",
-    "MATCH_SEAT_SECRET": "rooms-test-seat-secret-0123456789abcdef"
+    "MATCH_SEAT_SECRET": "rooms-test-seat-secret-0123456789abcdef",
+    "COT_STUN_URLS": "stun:stun.cloudflare.com:3478"
   },
   "durable_objects": {
     "bindings": [

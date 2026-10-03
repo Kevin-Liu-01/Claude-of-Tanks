@@ -61,13 +61,9 @@ export function assertRoadNetwork(mapId, roads) {
   roads.forEach((road, index) => {
     for (let i = 1; i < road.length; i++) {
       const length = Math.hypot(road[i][0] - road[i - 1][0], road[i][1] - road[i - 1][1]);
-      // Desert keeps its33 authored Z stations while the mesa bypass moves
-      // sideways between them. Bound its diagonal without resampling props;
-      // all other country/grid and authored routes retain the34m ceiling.
-      if (mapId === 'desert' && index === 0) {
-        assert.equal(road[i][1] - road[i - 1][1], 32, 'Desert keeps32m longitudinal stations');
-        assert.ok(length > 1e-7 && length <= 75, 'Desert lateral bypass has bounded nondegenerate stations');
-      } else assert.ok(length > 1e-7 && length <= 34, `${mapId}/${index}: finite nondegenerate bounded sampling`);
+      // Every country/grid and authored route keeps the 34 m station ceiling (2026-10-01: Sirocco Wadi's 75 m
+      // mesa-bypass stations left with its old roads).
+      assert.ok(length > 1e-7 && length <= 34, `${mapId}/${index}: finite nondegenerate bounded sampling`);
     }
     intents[index].forEach((intent, end) => {
       const p = end ? road.at(-1) : road[0];
@@ -281,8 +277,12 @@ for (const mapId of MAP_IDS) {
       }
     }
   }
+  // The map-borders lane (2026-10-03): past 430 m the ground is the border landform, which opens a valley wherever a
+  // road leaves the square — so completing a road to the edge also moves the rim band around its exit (by design, not
+  // grading). The footprint counts the grading of the completion: the cells inside the rim band's start.
   let changedCells = 0, changedInteriorAwayFromRoads = 0, outsideEnvelope = 0, changedLiquidCells = 0, cells = 0;
   for (let z = -508; z <= 508; z += 8) for (let x = -508; x <= 508; x += 8) {
+    if (Math.max(Math.abs(x), Math.abs(z)) >= 430) continue;
     cells++;
     if (Math.abs(after.getHeightAt(x, z) - field.getHeightAt(x, z)) <= 1e-4) continue;
     changedCells++;

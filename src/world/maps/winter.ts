@@ -316,7 +316,7 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'stratocumulus-deck' },
+  clouds: { regime: 'stratocumulus-deck', nightGlow: 0.3, nightGlowHex: 0xffc080 },
   sky: {
     // FLAT OVERCAST: higher-but-weak sun (no warm horizon glow), heavy grey
     // cloud deck, raised ambient/env fill so light reads diffuse
@@ -336,6 +336,8 @@ export default {
     // 0.94 -> 0.86 with the snowpack L step above — the lit snow leaves the
     // tonemap shoulder so the skyline against the capped sky can exist
     sunIntensity: 1.35, sunColorHex: 0xdfe7f2, hemiIntensity: 0.74, postExposure: 0.86,
+    // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
+    lighting: { groundAlbedoHex: 0xe5e7ec, warmth: 0.25, exposureEV: -0.25 },
   },
 
   minimap: {

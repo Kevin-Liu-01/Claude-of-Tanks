@@ -357,7 +357,7 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'fair-weather-cumulus', coverage: 0.26, streets: 0.3, windDirDeg: 100 },
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.26, streets: 0.3, windDirDeg: 100, contrails: 0.3 },
   sky: {
     // low golden-afternoon sun — the light that sells the season
     sunElevationDeg: 24, sunAzimuthDeg: 115,
@@ -365,6 +365,8 @@ export default {
     fogDensity: 0.00070, fogTintHex: 0x9aa3b5, fogMix: 0.55, envIntensity: 0.2,
     cloudOpacity: 0.75, cloudOpacity2: 0.5, cloudTintHex: 0xfff4e4,
     sunIntensity: 4.3, sunColorHex: 0xffe6bd, hemiIntensity: 0.30,
+    // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
+    lighting: { groundAlbedoHex: 0x817359 },
   },
 
   minimap: {

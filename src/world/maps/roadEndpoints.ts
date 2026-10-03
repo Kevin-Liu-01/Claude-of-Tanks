@@ -20,7 +20,7 @@ export function originalRoadPlacementConfig(cfg: TerrainMapConfig | null): Terra
 
 export type RoadPoint = readonly [number, number];
 type RoadEndpoint = 'boundary' | 'loop' | 'shore' | { junction: number; at?: RoadPoint };
-type RoadEnds = readonly [RoadEndpoint, RoadEndpoint];
+export type RoadEnds = readonly [RoadEndpoint, RoadEndpoint];
 const through: RoadEnds = ['boundary', 'boundary'];
 const join = (start: number, end: number): RoadEnds => [{ junction: start }, { junction: end }];
 
@@ -31,14 +31,27 @@ const join = (start: number, end: number): RoadEnds => [{ junction: start }, { j
  * sole shore termini; Caldera's first road is a genuine closed mining loop.
  */
 export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>> = {
-  verdant: [through, through], desert: [through, through],
+  verdant: [through, through],
+  // Sirocco Wadi redesign (2026-10-01): the caravan road and the wadi track run edge to edge through the ksar; each
+  // ring lane leaves the caravan road and ends on the wadi track.
+  desert: [through, through, join(0, 1), join(0, 1)],
   // Frosthollow redesign (owner 2026-09-23): the valley road and the moraine track run edge to edge, the pass road
   // leaves the west border and ends on the valley road, the Bystra crossing starts there and leaves east, the sawmill
   // lateral links the valley road to the moraine track, the back lane joins the valley road to the pass road and the
   // yard loop rejoins the valley road at both ends.
   winter: [through, ['boundary', { junction: 0 }], [{ junction: 0 }, 'boundary'], through, join(0, 3), join(0, 1), join(0, 0)],
-  urban: Array.from({ length: 8 }, () => through),
-  coastal: [through, through, ['boundary', 'shore'], ['boundary', 'shore']],
+  // Steinburg redesign (2026-10-01): the Hauptstrasse, the trade road and the bypass run edge to edge; each valley
+  // road enters from the west edge and ends on the bypass; the farm road links the two valley roads; each wall lane
+  // leaves the Hauptstrasse west of the square for the trade road, and its second leg leaves the trade road for the
+  // Hauptstrasse east of the square.
+  urban: [through, through, through, ['boundary', { junction: 2 }], ['boundary', { junction: 2 }],
+    join(3, 4), join(0, 1), join(1, 0), join(0, 1), join(1, 0)],
+  // Saltmere Bay redesign (2026-10-02): the inland road runs between its two border stubs, which start exactly on its
+  // ends and leave the square; the coast road runs between the two bocage lanes; each shore lane leaves the inland
+  // road for the strand (the map's two shore termini, as before); the bocage lanes (one the reflection of the other
+  // across the axis) run from the west edge to the coast road.
+  coastal: [join(7, 6), join(4, 5), [{ junction: 0 }, 'shore'], [{ junction: 0 }, 'shore'], ['boundary', { junction: 1 }],
+    ['boundary', { junction: 1 }], [{ junction: 0 }, 'boundary'], [{ junction: 0 }, 'boundary']],
   // Amberford redesign (owner 2026-09-23): the coach road runs edge to edge; the manor lane leaves the cross lanes
   // and exits north-east; the mill lane leaves the market square west; the sunken lane enters from the west edge and
   // ends at the cross lanes; the north lane links the square to the manor lane.
@@ -46,8 +59,13 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   // Tarkhan Steppe (round 48, owner 2026-09-23 redesign): highway, station road, east track and plateau road
   // all leave the square; the sor track starts on the station road and ends at the salt pan's shore.
   steppe: [through, through, through, through, [{ junction: 1 }, 'shore']],
-  railyard: Array.from({ length: 6 }, () => through),
-  frontier: [through, through, through, join(0, 2)],
+  // Cinder Junction redesign (2026-10-01): the central road, the two crossing roads and the two yard service roads all
+  // run edge to edge; each works road leaves a service road and ends on a crossing road.
+  railyard: [through, through, through, through, through, join(3, 2), join(4, 1)],
+  // Frontier Basin redesign (2026-10-02): the main road and the valley road run edge to edge through the crossroads;
+  // each farm lane enters from the edge past a ridge's end and ends on the valley road; each ridge lane leaves the main
+  // road at a saddle and ends on the valley road at a mill.
+  frontier: [through, through, ['boundary', { junction: 1 }], ['boundary', { junction: 1 }], join(0, 1), join(0, 1)],
   fjord: [through, through, through, join(0, 2), join(0, 2)],
   // The two southwest approaches converge before the border: one shared
   // exit avoids intersecting unequal-height parallel cuts in the narrow rim.
@@ -55,7 +73,9 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   badlands: [through, through, through, join(0, 2), join(0, 2)],
   monsoon: [through, through, through, join(0, 2), join(0, 2)],
   alpine: [through, through, through, join(0, 2), join(0, 2)],
-  caldera: [['loop', 'loop'], through, through, join(1, 2), join(1, 2)],
+  // Obsidian Caldera redesign (2026-10-02): the south cross road leaves the west road and ends on the mining loop, which
+  // carries it on to the east road; a second crossing of the loop compressed its grade between two junction plateaus.
+  caldera: [['loop', 'loop'], through, through, join(1, 0), join(1, 2)],
   foundry: [...Array.from({ length: 6 }, () => through), join(0, 2), join(0, 2), join(0, 2)],
   ruinspires: Array.from({ length: 12 }, () => through),
   blackglass: Array.from({ length: 6 }, () => through),
@@ -69,7 +89,10 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   orchard: [through, through, through, join(1, 2), join(1, 2)],
   longleaf: [join(1, 3), through, through, through, join(1, 3)],
   mangrove: [through, through, through, join(0, 2), join(0, 2)],
-  saltwind: [through, through, through, join(0, 2), join(0, 2)],
+  // Saltwind Narrows redesign (2026-10-02): the harbour road, the central road and the east road run edge to edge; the
+  // market street and the northern hairpin road leave the harbour road for the east road, and the southern hairpin
+  // road (the northern one's reflection across the bay's axis) does the same.
+  saltwind: [through, through, through, join(0, 2), join(0, 2), join(0, 2)],
   reservoir: [['boundary', { junction: 4 }], join(0, 4), join(0, 1), join(0, 1), through],
   // Mars (round 23): the default two-road grid, both routes leaving the basin
   mars: [through, through],
@@ -161,7 +184,14 @@ export function completeRoadEndpoints(mapId: string | undefined, roads: [number,
   half = 512): [number, number][][] {
   const intents = ROAD_ENDPOINT_INTENTS[mapId as MapId];
   if (!intents) return roads; // ad-hoc selftest/authoring layouts are unchanged
-  if (roads.length !== intents.length) throw new Error(`${mapId}: road endpoint intent count does not match routes`);
+  return completeRoadsWithIntents(intents, roads, half, mapId);
+}
+
+/** The same completion under explicit intents: receipts that exercise the machinery on synthetic road sets name their
+ * own intents instead of borrowing a battlefield's, whose road net a redesign may change. */
+export function completeRoadsWithIntents(intents: readonly RoadEnds[], roads: [number, number][][],
+  half = 512, label = 'synthetic'): [number, number][][] {
+  if (roads.length !== intents.length) throw new Error(`${label}: road endpoint intent count does not match routes`);
   const portals = roads.map((road, index) => {
     let line = intents[index][0] === 'boundary' ? completeStart(road, 'boundary', roads, half) : road;
     if (intents[index][1] === 'boundary') line = completeStart(line.slice().reverse(), 'boundary', roads, half).reverse();
@@ -170,7 +200,7 @@ export function completeRoadEndpoints(mapId: string | undefined, roads: [number,
   return portals.map((road, index) => {
     let line = completeStart(road, intents[index][0], portals, half);
     line = completeStart(line.slice().reverse(), intents[index][1], portals, half).reverse();
-    if (line.length < 2) throw new Error(`${mapId}: road ${index} has no length after junction completion`);
+    if (line.length < 2) throw new Error(`${label}: road ${index} has no length after junction completion`);
     return line;
   });
 }
@@ -246,6 +276,12 @@ export function alignAddedRoadJunctionGrades(mapId: string | undefined,
   source: readonly (readonly RoadPoint[])[], completed: readonly (readonly RoadPoint[])[], elevations: number[][]): void {
   const intents = ROAD_ENDPOINT_INTENTS[mapId as MapId];
   if (!intents) return;
+  alignAddedRoadJunctionGradesWithIntents(intents, source, completed, elevations);
+}
+
+/** alignAddedRoadJunctionGrades under explicit intents (see completeRoadsWithIntents). */
+export function alignAddedRoadJunctionGradesWithIntents(intents: readonly RoadEnds[],
+  source: readonly (readonly RoadPoint[])[], completed: readonly (readonly RoadPoint[])[], elevations: number[][]): void {
   for (let route = 0; route < completed.length; route++) for (let end = 0; end < 2; end++) {
     const intent = intents[route][end], line = completed[route], at = end ? line.length - 1 : 0;
     if (typeof intent !== 'object' || source[route].includes(line[at])) continue;

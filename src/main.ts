@@ -70,6 +70,8 @@ import {
 } from './engine/quality.ts';
 import { createSky } from './engine/sky.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
+import { loadGroundedLightModel } from './engine/lightModelCore.ts';
+import { loadCloudscapeLayers } from './engine/cloudPresets.ts';
 import { battlePreferences } from './game/battlePreferences.ts';
 import { createFrontlineAtmosphereAccess } from './world/frontlineAtmosphereAccess.ts';
 import { createNightLightingAccess } from './engine/nightLightingAccess.ts';
@@ -114,6 +116,7 @@ import { waterContactMaskAt } from './world/waterContactMask.ts';
 import type { GroundDisturbance } from './world/groundPressure.ts';
 import { tankContactRect } from './sim/tankContactShape.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
+import { currentViewport, mapBackdropFor } from './ui/mapBackdrop.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
@@ -139,6 +142,7 @@ import {
 } from './ui/garageStage.ts';
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
+import { classifyChunkFailure } from './app/lazyImportRetry.ts';
 import {
   GARAGE_VARIANTS, getGarageVariant, loadGarageVariantId, saveGarageVariantId,
 } from './game/garageVariants.ts';
@@ -274,8 +278,8 @@ const SIM_DT = 1 / 60;
 const VERDANT_GARAGE_POS = Object.freeze({ x: -1500, z: -1500 });
 const GARAGE_POS = new THREE.Vector3(VERDANT_GARAGE_POS.x, 0, VERDANT_GARAGE_POS.z);
 const pendingRoomInvitePromise = startupIntent.pendingRoomInvite;
-const mapHeroes: Readonly<Record<string, string>> = MAP_HEROES;
-const mapThumbs: Readonly<Record<string, string>> = MAP_THUMBS;
+// FE-P13: battle loading art follows the viewport (a 1280 card on small and medium screens, else the 4K hero).
+const battleBackdrop = (mapId: string): string => mapBackdropFor(mapId, currentViewport());
 const minimapAssetUrl = (mapId: string): string => (
   getMinimapAssetUrl(mapId, import.meta.env.BASE_URL || '/')
 );
@@ -385,6 +389,8 @@ const renderer = await (async () => {
     });
   }
 })();
+// The real context confirms (and records) the verdict; a cached one that no longer matches re-runs the gate on it.
+await bootCapability.confirm(renderer.getContext());
 let graphicsContextLost = false;
 let rearmRafAfterContext = () => {}; // installed when the main loop is ready
 // MOBILE r2: GPU self-test + rescue ladder. The owner's iPhone renders every
@@ -449,7 +455,6 @@ const lighting: MainLightingRuntime = await bootStage(
   'lighting',
   () => createLighting(scene, camera, sky.sunDir),
 );
-sky.attachShadowCascades(lighting.csm); // round 68: the cascades carry the volumetric layer's cloud shadows
 // The sealed garage can only see the near/contact shadow bands. Request far
 // dormancy now; lighting deliberately renders every native CSM depth map once
 // before honoring it because all PCF samplers remain active in the shader.
@@ -493,6 +498,15 @@ const _upNormal = new THREE.Vector3(0, 1, 0);
 let worldRuntime: WorldActivationRuntime<MainWorld, RuntimeValue>;
 let battleHudRuntime: MainBattleHudRuntime | null = null;
 const currentWorld = () => worldRuntime?.current ?? null;
+/**
+ * 2026-10-01 (the grounded light model, engine/lightModel.ts): the light reads a deck's overcast from the cloudscape, so
+ * the live world's cloudscape rides with its sky block wherever the light is set — as in the battle atmosphere's
+ * authored preset below (the sky block itself stays byte-identical to the Garage's copy).
+ */
+const withWorldCloudscape = <T extends MainWorld['config']['sky'] | null>(skyConfig: T): T => {
+  const config: MapCompositionConfig | undefined = currentWorld()?.config;
+  return skyConfig && config?.clouds && config.sky === skyConfig ? { ...skyConfig, cloudscape: config.clouds } as T : skyConfig;
+};
 const currentHud = () => battleHudRuntime?.currentHud() ?? null;
 const currentDamagePanel = () => battleHudRuntime?.currentDamagePanel() ?? null;
 const hfProxy = createLiveHeightFieldProxy({
@@ -536,7 +550,7 @@ worldRuntime = createWorldActivationRuntime<
   awaitInitialCloudWarm: () => bootCloudWarmP,
   applySkyPreset: (skyConfig) => sky.applyPreset(skyConfig, scene),
   applySkyPresentation: (skyConfig) => sky.applyPresentationPreset(skyConfig, scene),
-  setSun: (skyConfig) => lighting.setSun(sky.sunDir, skyConfig),
+  setSun: (skyConfig) => lighting.setSun(sky.sunDir, withWorldCloudscape(skyConfig)),
   getFogDensity: () => scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0,
   onFogDensityChanged: (density) => { baseFogDensity = density; },
   canCreateCollider: () => isSoloBattleRuntimeReady(),
@@ -783,7 +797,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
     const variant = getGarageVariant(selectedGarageVariantId);
     return getGarageSkyPreset(variant.mapId);
   },
-  getBattleSkyConfig: () => currentWorld()?.config.sky ?? null,
+  getBattleSkyConfig: () => withWorldCloudscape(currentWorld()?.config.sky ?? null),
   getGroundHeight: () => 0,
   getPhase: () => game.phase,
   // Desktop releases detached stage/workshop geometry while retaining textures
@@ -866,6 +880,10 @@ const garageDressingScheduler = createGarageDressingScheduler({
   acquireBackgroundWork: (kind, stillValid) =>
     garageIdleWorkCoordinator.acquire(kind, stillValid),
   onVisualChange: () => invalidateGaragePresentation(),
+  // INFRA-P11: failures back off and stop; a removed hashed chunk (this tab outlived its deployment)
+  // surfaces the inline watchdog's reload action instead of retrying.
+  classifyFailure: (error) => classifyChunkFailure(error),
+  onChunkMissing: () => window.__COT_BOOT_RECOVERY?.showRetry?.('module'),
 });
 const scheduleGarageDressingBuild = garageDressingScheduler.schedule;
 
@@ -1469,6 +1487,8 @@ let battleWatchdogRadianceScale = 1;
 const battleAtmosphere = createBattleAtmosphereAccess(() => ({
   getGameMode: () => game.phase === 'studio' ? 'standard' : game.gameMode,
   getWorldRoot: () => currentWorld()?.group ?? null,
+  // 2026-10-01 (engine/lightModel.ts): the vehicles' readability lift follows the applied light
+  getLightReadability: () => (scene.userData.lightModel as { vehicleReadability?: number } | undefined)?.vehicleReadability ?? 1,
   getAuthoredPreset: () => {
     const config: MapCompositionConfig | undefined = currentWorld()?.config;
     if (!config) return {};
@@ -1517,6 +1537,8 @@ const nightLighting = createNightLightingAccess({
     : entity.team !== 'enemy' || game.spotting?.isSpotted(entity.id, 'player', game.player) === true,
 });
 const post = createPost(renderer, scene, camera);
+// 2026-10-01 (engine/post.ts AERIAL_LAYER_H): the aerial haze is a layer over the battlefield's ground
+post.setGroundHeightSource((x, z) => hfProxy.getHeightAt(x, z));
 const viewport = createViewportRuntime({
   container,
   renderer,
@@ -1982,7 +2004,7 @@ const networkBattleIntentCover = createIntentCover({
   rosterRows: rosterPresentation.lobbyRows,
   getMapPresentation: (mapId, fallback) => ({
     name: mapId ? getMapName(mapId) : fallback,
-    thumb: mapId ? mapHeroes[mapId] || mapThumbs[mapId] || '' : '',
+    thumb: mapId ? battleBackdrop(mapId) : '',
     biome: mapId || 'none',
   }),
   coverRendering: battleEntryLifecycle.coverRendering,
@@ -2088,7 +2110,7 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     getMapName,
     loadMapConfig: (mapId: string) => import('./world/maps/index.ts')
       .then(({ getMapConfig }) => getMapConfig(mapId)),
-    getMapThumb: (mapId: string) => mapHeroes[mapId] || mapThumbs[mapId] || '',
+    getMapThumb: (mapId: string) => battleBackdrop(mapId),
     hasCachedWorld: (mapId: string) => !!worldCache.get(mapId),
     getWorld: () => {
       const world = currentWorld();
@@ -2188,8 +2210,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
     import('./mp/host/browserHostPort.ts'),
     import('./mp/host/worldCollision.ts'),
     import('./mp/transport/iceConfig.ts'),
-    import('./mp/session/endpoint.ts'),
-  ]).then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE }, { loadIceConfiguration }, { resolveIceConfigUrl }]) => {
+  ]).then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }, { createRoomIceResolver }]) => {
     // The launch runs on the app's ports: the loader, the world, the warm owners, the activation.
     const options = multiplayerAppPorts();
     const activation = createActivationRuntime(options.activation);
@@ -2197,7 +2218,8 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
       clientBuild: import.meta.env.MODE,
       ports: {
         lifecycle: battleEntryLifecycle,
-        load: options.load,
+        // a world laid out otherwise than the host's manifest reads the destroyed list through the manifest's identities
+        load: { ...options.load, loadAuthorityObstacles: (mapId, signal) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal }) },
         roster: options.roster,
         scene: {
           engineCtx,
@@ -2239,17 +2261,13 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           report: (summary, reason) => entryTelemetry.send({ kind: 'mp_exit', mode: 'network', code: reason, reason: summary.health, link: summary }),
         },
         // Peer-to-peer (docs/MULTIPLAYER-V2.md §13): the host actor's Worker chunk, the collision manifests the build serves,
-        // ICE from the credential service (api/ice.ts through src/mp/transport/iceConfig.ts), the device tier (the mobile tier never hosts).
+        // ICE from the room this seat holds (§13.14: its relay credentials through src/mp/transport/iceConfig.ts), the
+        // device tier (the mobile tier never hosts).
         p2p: {
           createHostPort: createBrowserHostPort,
           manifestBase: COLLISION_MANIFEST_ROUTE,
           tier: getDeviceTier(),
-          loadIce: async (mode) => {
-            const configuration = mode === 'lan'
-              ? await loadIceConfiguration({ mode })
-              : await loadIceConfiguration({ mode, endpoint: resolveIceConfigUrl({ configured: import.meta.env.VITE_ICE_CONFIG_URL, protocol: location.protocol }) });
-            return { iceServers: configuration.iceServers, relayOnly: configuration.relayOnly };
-          },
+          createIceResolver: (mode, room) => createRoomIceResolver({ mode, room }),
         },
       },
     });
@@ -2332,7 +2350,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           getMap: (mapId: string) => {
             return {
               name: getMapName(mapId),
-              thumb: mapHeroes[mapId] || mapThumbs[mapId] || '',
+              thumb: battleBackdrop(mapId),
               biome: mapId,
             };
           },
@@ -3039,7 +3057,8 @@ window.__SHOTS = {
     if (!isShotViewName(name)) {
       throw new Error(`Unknown screenshot view: ${name}`);
     }
-    const { setShotView } = await import('./dev/shotRuntime.ts');
+    const [{ setShotView }] = await Promise.all([import('./dev/shotRuntime.ts'), loadGroundedLightModel(), loadCloudscapeLayers()]);
+    // (the staged map's open sky takes the grounded light model and its cloudscape, as a battle's does: the boot weight)
     type ShotRuntimeContext = Parameters<typeof setShotView>[1];
     return setShotView(name, checkedIntegrationPort<ShotRuntimeContext>({
       preloadSoloBattleRuntime,

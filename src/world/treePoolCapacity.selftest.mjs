@@ -9,7 +9,7 @@ import { TREE_ARCHETYPES, treeTrunkCollisionRadiusM } from './treeSpecies.ts';
 import { setCircleShape } from './collision.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
-import { createStructureClearances, excludeStructureVegetation, excludeVegetation } from './vegetationClearance.ts';
+import { createStructureClearances, excludeStructureVegetation, excludeVegetation, placedStructureClearances } from './vegetationClearance.ts';
 import { redistributeAuthoredTrees } from './authoredTreePlacement.ts';
 import { relocateTidalMangroves } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -32,7 +32,7 @@ assert.equal(poolCode.split(capacityLine).length, 2, 'one construction-only spec
 const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRadiusM, setCircleShape,
   PLAYABLE_HALF_EXTENT_M, isClearOfSpawns, createStructureClearances, excludeStructureVegetation, excludeVegetation,
   redistributeAuthoredTrees, relocateTidalMangroves, DESTRUCTIBLE_BUILDING_TYPES, applyLodShadowFadeDepth,
-  markShadowOnly, treeRichness, setShadowCasterProfile };
+  markShadowOnly, treeRichness, setShadowCasterProfile, placedStructureClearances };
 
 function compile(legacy) {
   const pools = legacy ? poolCode.replace(capacityLine, 'const capacity = trees.length;') : poolCode;

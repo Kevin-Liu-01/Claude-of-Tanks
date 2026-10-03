@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
+import { isLayoutBriefMap } from './maps/layoutBriefMaps.ts';
 import { createHeightField, createLayout } from './terrain.ts';
 import { roadNetworkComponentCount } from './maps/roadEndpoints.ts';
 import { authoredRoadStationCount, authoredRoadStationIndex } from './maps/roadStations.ts';
-import { redrockCanyonCenter } from './redrockCanyon.ts';
+import { redrockCanyonCenter, redrockCanyonFloorHalfWidth } from './redrockCanyon.ts';
 import {
   HORIZON_TREELINE_ATLAS_VARIANTS,
   HORIZON_TREELINE_MAX_LAYERS,
@@ -87,7 +88,12 @@ function assertAuthoredMacroTerrain(config, hf) {
   assert.equal(config.terrain.redrockCanyon, true, 'Badlands explicitly owns the regional canyon');
   assert.equal(config.terrain.mesas, null, 'blanket random mesas cannot substitute for canyon walls');
   assert.equal(config.terrain.rimH, 0, 'canyon mouths are not closed by a square rim');
-  assert.deepEqual(config.terrain.landforms, [], 'held low shelf rows are not the regional terrain');
+  // 2026-10-02 (Redrock Divide rebuilt to docs/MAP-LAYOUT-BRIEF.md): the canyon stays the regional terrain, and the
+  // authored landforms are floor features (inselbergs, dune ridges and sand ramps), never shelf rows on the walls.
+  for (const form of config.terrain.landforms) {
+    assert.ok(Math.abs(form.x - redrockCanyonCenter(form.z)) < redrockCanyonFloorHalfWidth(form.z),
+      `Badlands' ${form.kind} at (${form.x}, ${form.z}) stands on the canyon floor`);
+  }
   // Check the actual completed heightfield, not just a new configuration label.
   // The dedicated badlandsRelief suite additionally covers two seeds, roads,
   // deployment/tactical footprints, support construction and live-cache parity.
@@ -105,8 +111,12 @@ function assertAuthoredMacroTerrain(config, hf) {
   assert.throws(() => assertAuthoredMacroTerrain(canyon, flat), { code: 'ERR_ASSERTION' }, 'metadata alone is not macro terrain');
   assert.throws(() => assertAuthoredMacroTerrain({ ...canyon, terrain: { ...canyon.terrain, redrockCanyon: false } }, flat),
     { code: 'ERR_ASSERTION' }, 'missing explicit canyon owner is rejected');
-  assert.throws(() => assertAuthoredMacroTerrain({ ...canyon, id: 'frontier' }, flat),
-    { code: 'ERR_ASSERTION' }, 'the other29 maps keep the original five-landform requirement');
+  assert.throws(() => assertAuthoredMacroTerrain({ ...canyon, id: 'frontier',
+    terrain: { ...canyon.terrain, landforms: [] } }, flat),
+  { code: 'ERR_ASSERTION' }, 'the other maps keep the original five-landform requirement');
+  assert.throws(() => assertAuthoredMacroTerrain({ ...canyon, terrain: { ...canyon.terrain,
+    landforms: [{ kind: 'ridge', x: redrockCanyonCenter(0) + 300, z: 0, length: 200, width: 40, height: 6 }] } }, flat),
+  { code: 'ERR_ASSERTION' }, 'a shelf row on the canyon wall is rejected');
 }
 
 // Mars mode (2026-09-18): Olympus Basin joins the catalog
@@ -154,7 +164,10 @@ for (const mapId of MAP_IDS) {
   assert.equal(config.shot.pos.length, 3, `${mapId}: establishing camera position`);
   assert.equal(config.shot.look.length, 3, `${mapId}: establishing camera target`);
   const beats = config.props.tacticalBeats || [];
-  assert.equal(beats.length, mapId === 'moon' ? 0 : mapId === 'cliffbridge' ? 2 : 3, `${mapId}: three deliberate lane strongpoints`);
+  // Layout-brief maps (2026-10-01, docs/MAP-LAYOUT-BRIEF.md) author their strongpoints in symmetric pairs, with
+  // optional posts on the symmetry line: at least three, every role present.
+  if (isLayoutBriefMap(mapId)) assert.ok(beats.length >= 3, `${mapId}: at least three deliberate lane strongpoints`);
+  else assert.equal(beats.length, mapId === 'moon' ? 0 : mapId === 'cliffbridge' ? 2 : 3, `${mapId}: three deliberate lane strongpoints`);
   assert.deepEqual([...new Set(beats.map((beat) => beat.role))].sort(),
     mapId === 'moon' ? [] : mapId === 'cliffbridge' ? ['brawl','support'] : ['brawl', 'scout', 'support'], `${mapId}: distinct vehicle-role decisions`);
   assert.equal(new Set(beats.map((beat) => beat.id)).size, beats.length,
@@ -267,7 +280,10 @@ for (const mapId of [...EXPANSION, ...EXTREME]) {
     `${mapId}: connected road network spans both deployment regions`);
 
   const beats = config.props.tacticalBeats || [];
-  assert.equal(beats.length, mapId === 'moon' ? 0 : mapId === 'cliffbridge' ? 2 : 3, `${mapId}: three deliberate lane strongpoints`);
+  // Layout-brief maps (2026-10-01, docs/MAP-LAYOUT-BRIEF.md) author their strongpoints in symmetric pairs, with
+  // optional posts on the symmetry line: at least three, every role present.
+  if (isLayoutBriefMap(mapId)) assert.ok(beats.length >= 3, `${mapId}: at least three deliberate lane strongpoints`);
+  else assert.equal(beats.length, mapId === 'moon' ? 0 : mapId === 'cliffbridge' ? 2 : 3, `${mapId}: three deliberate lane strongpoints`);
   assert.deepEqual([...new Set(beats.map((beat) => beat.role))].sort(),
     mapId === 'moon' ? [] : mapId === 'cliffbridge' ? ['brawl','support'] : ['brawl', 'scout', 'support'], `${mapId}: distinct vehicle-role decisions`);
   assert.equal(new Set(beats.map((beat) => beat.id)).size, beats.length,

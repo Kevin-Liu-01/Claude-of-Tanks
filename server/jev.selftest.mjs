@@ -193,7 +193,13 @@ function fixture(overrides = {}) {
   assert.equal((await invoke(local.handler, { body: request(), origin: 'http://localhost.evil.example' })).status, 403, 'only the bare local hosts qualify');
   const extra = fixture({ options: { env: { TYPESAFE_API_KEY: KEY, COT_ALLOWED_ORIGINS: 'https://staging.example' } } });
   assert.equal((await invoke(extra.handler, { body: request(), origin: 'https://staging.example' })).status, 200, 'COT_ALLOWED_ORIGINS extends the allowlist');
-  assert.equal((await invoke(extra.handler, { body: request(), origin: '' })).status, 200, 'an origin-less request (no browser) passes the allowlist');
+  // INFRA-P7 (2026-10-01): browsers send Origin on every POST, same-origin included; an origin-less request is a script.
+  const originless = await invoke(extra.handler, { body: request(), origin: '' });
+  assert.equal(originless.status, 403, 'an origin-less POST (no browser) is refused, no longer waved through');
+  assert.equal(originless.body.error, 'origin_forbidden');
+  assert.equal(originless.headers.has('access-control-allow-origin'), false);
+  assert.equal((await invoke(extra.handler, { method: 'OPTIONS', origin: '' })).status, 403, 'an origin-less preflight is refused too');
+  assert.equal(extra.upstream.calls.length, 1, 'only the allow-listed origin reached upstream');
   assert.equal(f.upstream.calls.length, 0, 'refused requests never reach upstream');
   const unconfigured = fixture({ options: { env: {} } });
   const missing = await invoke(unconfigured.handler, { body: request() });

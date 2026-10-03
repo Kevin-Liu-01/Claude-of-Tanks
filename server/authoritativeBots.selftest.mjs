@@ -118,6 +118,9 @@ assert.ok(calibrationShots >= 50,
 // gun cannot reach (behind a crest, outside the elevation arc), so the fired
 // sample loses its doomed rounds and the rate rose 54.7 % -> 62.5 % on the same
 // eight seeds with the aim model untouched; ceiling 0.58 -> 0.70.
-assert.ok(movingHitRate >= 0.12 && movingHitRate <= 0.70,
+// 2026-10-02 (Verdant rebuilt to the layout brief): the same four spawns now meet on the village square and its even
+// fields instead of the old 1.0-scale roll, and the rate on the same eight seeds rose 67.0 % (124/185, the PR head
+// before the rebuild) -> 71.7 % (119/166) with the aim model untouched; ceiling 0.70 -> 0.76.
+assert.ok(movingHitRate >= 0.12 && movingHitRate <= 0.76,
   `moving-battle hit rate stays useful but non-robotic (${(movingHitRate * 100).toFixed(1)}%)`);
 console.log(`authoritativeBots.selftest: route/ally/aim gates passed; live moving-battle hit rate ${(movingHitRate * 100).toFixed(1)}% (${calibrationHits}/${calibrationShots})`);

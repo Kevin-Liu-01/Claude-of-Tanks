@@ -1,0 +1,30 @@
+// The Workers-runtime test configuration of the relay credentials (2026-10-02, docs/MULTIPLAYER-V2.md §13.14): the real
+// Worker and Room object with a Cloudflare Realtime TURN key configured. The key id and token are FAKE test values — the
+// provider call is answered by the test's fetch double (test/relay.test.ts), never by rtc.live.cloudflare.com — and the
+// lease asks for eight hours so the one-hour clamp is proven.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cot-rooms-relay-test",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "ratelimits": [{
+    "name": "ROOM_CONNECT_LIMITER",
+    "namespace_id": "2609055513",
+    "simple": { "limit": 120, "period": 60 }
+  }],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://cot.kevinliu.studio",
+    "MATCH_SEAT_SECRET": "rooms-test-seat-secret-0123456789abcdef",
+    "COT_STUN_URLS": "stun:stun.cloudflare.com:3478",
+    "COT_CLOUDFLARE_TURN_KEY_ID": "relay-test-key-id",
+    "COT_CLOUDFLARE_TURN_API_TOKEN": "relay-test-api-token",
+    "COT_TURN_TTL_SECONDS": "28800"
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "ROOMS", "class_name": "Room" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
+}

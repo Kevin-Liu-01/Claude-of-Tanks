@@ -19,6 +19,11 @@ for(const quality of ['high','low']){
     try{const [x,y,z]=direction,c=Math.cos(.01),s=Math.sin(.01);lamp.direction=[x*c+z*s,y,z*c-x*s];
       assert.throws(()=>assertCurrentT90MLampSeats(current),/physical aperture azimuth/,'A real azimuth error cannot pass the Float32 cap tolerance');
     }finally{lamp.direction=direction;}
+    // Seeded defect: the housing set 5 mm deeper behind the lenses leaves less than 4 mm of lap.
+    const hull=current.root.getObjectByName('hull'),z=hull.position.z;
+    try{hull.position.z=z-.005;
+      assert.throws(()=>assertCurrentT90MLampSeats(current),/Finite rear lens stock enters the actual housing/,'A housing that loses the lens lap remains a real failure');
+    }finally{hull.position.z=z;}
     assertCurrentT90MLampSeats(current);
   }finally{current.dispose();}
 }

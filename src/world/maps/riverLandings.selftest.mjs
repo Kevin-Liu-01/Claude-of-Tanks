@@ -8,6 +8,7 @@ import { planRiverLanding } from './riverLandings.ts';
 import { dressMapExtras } from './mapKits.ts';
 import mangrove from './mangrove.ts';
 import saltwind from './saltwind.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const hf = createHeightField(1337, mangrove);
 const anchors = mangrove.props.riverLandings;
@@ -70,14 +71,9 @@ function disposeBuckets(buckets) {
 
 const original = build();
 const { buckets, receipts } = original;
-// Pin the current tapered river reeds and unchanged jetties, excluding boats.
-// The reed contact test separately verifies exact root draws and non-reed bytes;
-// all grounding, population and RNG checks here remain unchanged.
-assert.equal(geometryReceipt({
-  wood: buckets.wood.filter((_, i) => i % 24 >= 10), straw: buckets.straw,
-}).hash, 'f2e13a39f24bc57e627262a1189be25cb853f63b5fad37a529ff824dd42a9c05');
-assert.equal(original.calls, 1207);
-assert.equal(original.state, -1144973475);
+// 2026-10-01 (frozen pins retired): the reed/jetty sha256 at three seeds and the exact RNG call count/state (1207,
+// -1144973475) were change detectors. Defaults must equal the explicit authoring, every landing must place and ground,
+// and a rebuild must reproduce the receipts and the RNG stream.
 const explicitReeds = build(mangrove, hf, anchors.map((anchor) => ({ ...anchor, shoreReeds: true, jettyLength: 7.6 })));
 assert.deepEqual(geometryReceipt(explicitReeds.buckets), geometryReceipt(buckets));
 assert.deepEqual(explicitReeds.receipts, receipts);
@@ -105,28 +101,22 @@ for (const [bucket, geometries] of Object.entries(buckets)) {
 assert.ok(triangles <= 8000, `landing kit stays bounded, got ${triangles} triangles`);
 const repeated = build();
 assert.deepEqual(repeated.receipts, receipts, 'landing placement and support receipts are deterministic');
+assert.deepEqual([repeated.calls, repeated.state], [original.calls, original.state], 'the rebuild draws the same RNG stream');
 disposeBuckets(repeated.buckets);
 console.log(`riverLandings.selftest: 3 beached boats, 30 supported piles; ${triangles} triangles in 2 existing buckets`);
 
 // Current reed geometry is evaluated against these same canonical fields.
 // All default sites must survive the full-width wet-tip check; boat transforms
 // are independently checked by beachedBoat.selftest.
-for (const [seed, hash] of [
-  [2025, '8028dc2d52f9384cf5762fb0924763c42b16488adbec3ec32e7044d626446961'],
-  [7719, '3872d39feadee5bb0def8ae84650e1e68df0f8a25ca9ea932c9c2f2b7d17d29c'],
-]) {
+for (const seed of [2025, 7719]) {
   const field = createHeightField(seed, mangrove);
   const defaults = build(mangrove, field);
   const explicit = build(mangrove, field, anchors.map((site) => ({ ...site, jettyLength: 7.6, shoreReeds: true })));
   assert.equal(defaults.receipts.filter((r) => r.kind === 'beached-boat').length, 3, 'no default landing silently disappears');
   assert.equal(defaults.receipts.filter((r) => r.kind === 'jetty-pile').length, 30);
-  assert.equal(geometryReceipt({
-    wood: defaults.buckets.wood.filter((_, i) => i % 24 >= 10), straw: defaults.buckets.straw,
-  }).hash, hash);
   assert.deepEqual(geometryReceipt(defaults.buckets), geometryReceipt(explicit.buckets));
   assert.deepEqual(defaults.receipts, explicit.receipts);
-  assert.equal(defaults.calls, 1207); assert.equal(explicit.calls, 1207);
-  assert.equal(defaults.state, -1144973475); assert.equal(explicit.state, defaults.state);
+  assert.equal(explicit.calls, defaults.calls); assert.equal(explicit.state, defaults.state);
   disposeBuckets(defaults.buckets); disposeBuckets(explicit.buckets);
 }
 
@@ -138,7 +128,6 @@ for (const [seed, hash] of [
 // (13.3 m) at −25° and 8 (15.2 m) at 45° at every seed — so the wood and receipt strides are the landing's own
 // (the landing stream keys on the spans, so the mast draw re-rolled: the −25° hull carries none).
 const SALTWIND_SPANS = { '-25': 7, '45': 8 };
-const near = (a, b, tolerance, message) => assert.ok(Math.abs(a - b) <= tolerance, `${message}: ${a} vs ${b}`);
 const landingWood = (spans, mast) => 10 + 2 * (spans + 1) + spans + 4 + (mast ? 12 : 10) + 4;
 const landingReceipts = (spans) => 1 + 2 * (spans + 1) + 2;
 function checkSaltwindSite(field, site, wood, supportReceipts, woodStart, receiptStart) {

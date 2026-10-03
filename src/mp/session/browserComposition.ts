@@ -33,10 +33,12 @@ import { createBattlePresentation } from '../presentation/battlePresentation.ts'
 import type {
   BattlePresentation, BattlePresentationOptions, EngineContext, EventBus, MatchActor, PresentationGameState, TankVisual,
 } from '../presentation/battlePresentation.ts';
+import type { ObstacleIdentity } from '../presentation/authorityObstacles.ts';
 import type { WorldCollisionLike } from '../presentation/predictionWorld.ts';
 import type { ControlSample } from '../match/inputStream.ts';
 import type { MatchFrame } from '../match/matchClient.ts';
 import type { Unsubscribe } from '../transport/transport.ts';
+import type { RtcIceConfig } from '../transport/webRtcTransport.ts';
 import { ACTION_BITS, VERDICT } from '../wire/index.ts';
 import type { VerdictId, WelcomeMessage, WireEvent } from '../wire/index.ts';
 import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
@@ -121,6 +123,11 @@ export interface BrowserLoadPorts {
   /** The battle-only modules a round needs before it presents (HUD, touch controls, FX, killcam, warm owners). */
   loadModules(): MaybePromise<RuntimeValue>;
   loadWorld(mapId: string, onProgress: (fraction: number, label: string) => void, terrainVariant?: TerrainVariant): MaybePromise<RuntimeValue>;
+  /**
+   * The authority's obstacle identities by index (its collision manifest, src/mp/host/worldCollision.ts): loaded only for
+   * a world laid out otherwise than the manifest, so the presentation can read the persistent destroyed list.
+   */
+  loadAuthorityObstacles?(mapId: string, signal: AbortSignal): Promise<(index: number) => ObstacleIdentity | null>;
   nextFrame(): MaybePromise<RuntimeValue>;
   setAdaptiveSuspended(suspended: boolean): void;
   now?(): number;
@@ -270,12 +277,15 @@ export interface BrowserStatusPorts {
 }
 
 /**
- * The peer-to-peer surfaces (P2 client lane, 2026-09-28): ICE from v1's credential source per room mode, the host
- * actor's Worker, where the collision manifests are served, the device tier (the mobile tier never hosts).
+ * The peer-to-peer surfaces (P2 client lane, 2026-09-28): the ICE of each room session, the host actor's Worker, where
+ * the collision manifests are served, the device tier (the mobile tier never hosts).
  */
 export interface BrowserP2pPorts extends Omit<MatchSessionP2pOptions, 'ice' | 'onLog'> {
-  /** ICE servers for a room mode (`lan` needs none; `private` asks the credential service). */
-  loadIce?(mode: RoomMode): Promise<MatchSessionP2pOptions['ice'] extends infer T ? Exclude<T, undefined | (() => unknown)> : never>;
+  /**
+   * The ICE resolver of one room session (2026-10-02, docs/MULTIPLAYER-V2.md §13.14): `lan` needs no server; a private
+   * room's relay credentials come from the room this seat holds (`RoomClient.requestRelay`), per peer connection.
+   */
+  createIceResolver?(mode: RoomMode, room: V2RoomSession['client']): () => Promise<RtcIceConfig>;
 }
 
 export interface BrowserCompositionPorts {
@@ -826,7 +836,7 @@ export function createBrowserComposition({
       ...(p2pPorts ? {
         p2p: {
           ...p2pPorts,
-          ice: p2pPorts.loadIce ? () => p2pPorts.loadIce!(roomMode()) : undefined,
+          ice: p2pPorts.createIceResolver ? p2pPorts.createIceResolver(roomMode(), next.client) : undefined,
           onLog: (level, message, fields) => {
             const detail = fields ? `${message} ${JSON.stringify(fields)}` : message;
             if (level === 'error') reportError(`multiplayer v2 host ${level}`, detail);
@@ -977,6 +987,16 @@ export function createBrowserComposition({
         },
       });
       active.presentation = battlePresentation;
+      // A world laid out otherwise than the authority's manifest (the mobile tier, Frontline Assault's trench works) finds
+      // every live fall by the event's own identity, and reads the persistent destroyed list through the manifest's
+      // (ghost-crunch lane, 2026-10-02). Loaded beside the roster and never awaited: until it lands the list waits.
+      if (!battlePresentation.sharesAuthorityIndices && load.loadAuthorityObstacles) {
+        void Promise.resolve().then(() => load.loadAuthorityObstacles!(active.mapId, active.abort.signal)).then((identity) => {
+          if (round === active && !disposed) battlePresentation.setAuthorityObstacles(identity);
+        }).catch((error) => {
+          if (!active.abort.signal.aborted) reportWarning('multiplayer v2 authority obstacles', messageOf(error));
+        });
+      }
       load.battleLoad.progress(0.56, 'Opening match channel');
       const sessionPresentation: SessionPresentation = {
         adapter: battlePresentation,

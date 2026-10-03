@@ -100,7 +100,11 @@ for (const id of MAP_IDS) {
 // with 0e5fc79e2): the count follows the registry instead of a literal.
 assert.equal(unchangedStampMaps, MAP_IDS.filter(id => id !== 'skybridge').length,
   'every battlefield but Skybridge keeps the unchanged construction stamp');
-const skyConfig = getMapConfig('skybridge');
+// The map-borders lane (2026-10-03): the retained failure is a bank on the CLASSIC rim (the S-curve the stamp was
+// written against); the border landform lowers that rim at the road's exit, so both the predecessor and the current
+// stamp are replayed on the classic border (terrain.border.classic) and the gate is checked on the landform as well.
+const skyLandform = getMapConfig('skybridge');
+const skyConfig = { ...skyLandform, terrain: { ...skyLandform.terrain, border: { classic: true } } };
 const oldSky = oldCreateHeightField(1337, skyConfig), newSky = createHeightField(1337, skyConfig);
 assert.deepEqual(newSky._layout, oldSky._layout, 'profile does not change road/layout/station ownership');
 assert.deepEqual(Object.keys(newSky), Object.keys(oldSky), 'no retained owner or grid field');
@@ -113,6 +117,7 @@ const oldPeak = peakSlope(oldSky), newPeak = peakSlope(newSky);
 assert.equal(oldPeak, 2.008386024307697, 'actual predecessor reproduces the retained48m failure');
 assert.ok(oldPeak > 2, 'old constant core fails the unchanged bank gate');
 assert.ok(newPeak <= 2, 'fixed retained peak must pass; whole-bank gates remain separate');
+assert.ok(peakSlope(createHeightField(1337, skyLandform)) <= 2, 'the retained peak passes on the border landform too');
 assert.equal(minimumRoadSegmentRadius([300, -100], [100, -300]), 200, 'inward x=-z crossing owns the minimum');
 assert.equal(minimumRoadSegmentRadius([100, -300], [300, -100]), 200, 'reversing the route preserves the bound');
 assert.equal(minimumRoadSegmentRadius([100, 300], [300, 100]), 200, 'x=z crossing is also checked');
@@ -123,7 +128,9 @@ assert.equal(roadBorderCorridorStart('alpine',
   [[[400, 350], [400, 400], [100, 100], [100, 512]]],
   [[[400, 350], [400, 400]]], 0, 1024), 68, 'the actual bent added polyline, not its endpoint chord, owns admission');
 const bounds = {};
-for (const [id, expected, historical] of [['fjord', 430, false], ['alpine', 378, true],
+// 2026-10-03 (the Glacier Pass redesign): alpine's historical extrapolated exits follow its new interiors
+// (tools/road-authored-exit-fixture.mjs), so its historical opening is 314 (was 378); the authored opening stays 448.
+for (const [id, expected, historical] of [['fjord', 430, false], ['alpine', 314, true],
   ['reservoir', 311.8490566037736, true], ['alpine', 448, false], ['reservoir', 448, false]]) {
   const cfg = historical ? originalExitConfig(getMapConfig(id)) : getMapConfig(id);
   const layout = createLayout(cfg), grid = new Float32Array(257 * 257);
@@ -275,8 +282,6 @@ for (const edge of [18, 64]) {
 }
 const constraintSource = terrainSource.slice(terrainSource.indexOf('  function applyHeightConstraints('),
   terrainSource.indexOf('  function heightAt(', terrainSource.indexOf('  function applyHeightConstraints(')));
-const roadBankPolicy = terrainSource.match(/const roadBankWidth = [^;]+;/)?.[0];
-assert.ok(roadBankPolicy, 'production road-bank width policy is present');
 const constraintFactory = new Function('fixture', `
   const { cfg = { id: 'alpine' }, GN, gRoadDist, gRoadElev, sampleHeightGridCell, composeLakeHeight,
     _LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons, lakeHeightResult,
@@ -285,7 +290,6 @@ const constraintFactory = new Function('fixture', `
     bridgeDecks = [], bridgeTermsAt = () => ({ span: 0, approach: 0, deckY: 0 }),
     // 0e5fc79e2: a dry viaduct (T.bridges, Aegis Crossing) cuts shoulder noise flush with its deck; none authored here
     T = {}, bridgeDeckOver = () => null } = fixture;
-  ${roadBankPolicy}
   ${stripTypeScriptTypes(constraintSource)}
   return applyHeightConstraints;
 `);

@@ -17,8 +17,8 @@ import { getMapConfig } from './index.ts';
 import { HULL_STANDABLE_HEIGHT_M, hullPassesObstacleTop, pushHullFromObstacle, rayCollisionRecord } from '../collision.ts';
 import { structureTopAt } from '../../sim/structureSupport.ts';
 import { createDedicatedWorldCollision } from '../../../server/dedicatedWorldCollision.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-const near = (a, b, tolerance, message) => assert.ok(Math.abs(a - b) <= tolerance, `${message}: ${a} vs ${b}`);
 const names = ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked'];
 const cfg = getMapConfig('autumn'), field = createHeightField(1337, cfg);
 const buckets = Object.fromEntries(names.map((name) => [name, []])), obstacles = [], colliders = [];

@@ -2,8 +2,10 @@
 // value (Vercel's sensitive placeholder `[SENSITIVE]`, deploy 114, 2026-09-28), the LAN helper on a local host, null elsewhere.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { LAN_ROOMS_PORT, configuredRoomsUrl, resolveIceConfigUrl, resolveRoomsUrl } from './endpoint.ts';
+import * as endpoint from './endpoint.ts';
+import { LAN_ROOMS_PORT, configuredRoomsUrl, resolveRoomsUrl } from './endpoint.ts';
 import { OFFICIAL_ROOMS_URL, OFFICIAL_SITE_HOST, OFFICIAL_TELEMETRY_URL, isOfficialSiteHost } from '../../officialHost.ts';
+import { SITE_ORIGIN } from '../../presentation/siteMetadata.ts';
 
 const official = { protocol: 'https:', hostname: OFFICIAL_SITE_HOST };
 assert.equal(resolveRoomsUrl({ configured: 'wss://rooms.example.test/', ...official }), 'wss://rooms.example.test', 'a configured wss origin wins');
@@ -20,8 +22,7 @@ assert.equal(configuredRoomsUrl('[SENSITIVE]'), null); assert.equal(configuredRo
 assert.equal(configuredRoomsUrl('wss://a.b')?.host, 'a.b');
 assert.ok(isOfficialSiteHost(' Cot.Kevinliu.Studio ') && !isOfficialSiteHost('cot.kevinliu.studio:443') && !isOfficialSiteHost(undefined));
 // The constants agree with the site's canonical origin and the Workers' names in the repo (docs/DEPLOYS.md rows name the URLs).
-const siteOrigin = /SITE_ORIGIN = '([^']+)'/.exec(readFileSync(new URL('../../presentation/siteMetadata.ts', import.meta.url), 'utf8'))?.[1];
-assert.equal(new URL(siteOrigin).host, OFFICIAL_SITE_HOST, 'OFFICIAL_SITE_HOST is the canonical site host');
+assert.equal(new URL(SITE_ORIGIN).host, OFFICIAL_SITE_HOST, 'OFFICIAL_SITE_HOST is the canonical site host');
 for (const [url, dir] of [[OFFICIAL_ROOMS_URL, 'rooms'], [OFFICIAL_TELEMETRY_URL, 'telemetry']]) {
   const name = /"name":\s*"([^"]+)"/.exec(readFileSync(new URL(`../../../cloudflare/${dir}/wrangler.jsonc`, import.meta.url), 'utf8'))?.[1];
   assert.equal(new URL(url).hostname.split('.')[0], name, `${dir}: the official URL names the Worker in cloudflare/${dir}/wrangler.jsonc`);
@@ -32,18 +33,8 @@ assert.equal(/OFFICIAL_SITE_HOST = '([^']+)'/.exec(telemetrySource)?.[1], OFFICI
 assert.equal(/OFFICIAL_TELEMETRY_URL = '([^']+)'/.exec(telemetrySource)?.[1], OFFICIAL_TELEMETRY_URL, 'telemetry.ts repeats OFFICIAL_TELEMETRY_URL verbatim');
 console.log('endpoint.selftest: configured / official / LAN / preview room hosts, the sensitive placeholder, the Worker names');
 
-// The ICE credential endpoint (from src/net/signalEndpoint.ts until the cutover of 2026-09-29): same-origin TURN
-// credentials unless a deployment names another http(s) endpoint; nothing implicit on a plain http:// page.
-{
-  const page = { protocol: 'https:', hostname: 'cot.kevinliu.studio' };
-  assert.equal(resolveIceConfigUrl(page), '/api/ice');
-  assert.equal(resolveIceConfigUrl({ protocol: 'http:' }), '', 'local development does not contact a credential provider implicitly');
-  for (const configured of ['/api/ice', './ice', 'https://ice.example.test/api/ice', '//ice.example.test/api/ice']) {
-    assert.equal(resolveIceConfigUrl({ ...page, configured }), configured);
-  }
-  assert.throws(() => resolveIceConfigUrl({ ...page, configured: 'http://ice.example.test/api/ice' }), /mixed content/);
-  assert.throws(() => resolveIceConfigUrl({ ...page, configured: 'wss://ice.example.test/api/ice' }), /must use http/);
-  assert.throws(() => resolveIceConfigUrl({ ...page, configured: 'https://user:secret@ice.example.test/api/ice' }), /credentials/);
-  assert.throws(() => resolveIceConfigUrl({ ...page, configured: '/api/ice#secret' }), /fragment/);
-}
-console.log('endpoint.selftest: the ICE credential endpoint resolves beside the room host');
+// The ICE credential endpoint left with the relay credentials' move into the room (2026-10-02, docs/MULTIPLAYER-V2.md
+// §13.14): a page resolves the room host alone, and a private room's ICE comes from the room it is seated in.
+assert.equal('resolveIceConfigUrl' in endpoint, false, 'no ICE endpoint is resolved beside the room host any more');
+assert.doesNotMatch(readFileSync(new URL('./endpoint.ts', import.meta.url), 'utf8'), /api\/ice|VITE_ICE_CONFIG_URL/, 'endpoint.ts names no credential endpoint');
+console.log('endpoint.selftest: no ICE credential endpoint beside the room host (the room mints the relay credentials)');

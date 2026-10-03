@@ -155,18 +155,26 @@ for (const species of ['pine', 'birch']) {
     for (let index = 0; index < uv.count; index++) {
       if (initialUV[index * 2] < 0) {
         snowVertices++;
-        assert.equal(uv.getX(index), 248 / 256);
+        // p2 trees lane (2026-10-01): the bark sheet is four 256-column style blocks (1024 wide); the snow strip sits
+        // in the furrowed block's gutter
+        assert.equal(uv.getX(index), 248 / 1024);
         assert.equal(uv.getY(index), 0.5);
         assert.deepEqual(Array.from(color.array.slice(index * 3, index * 3 + 3)),
           Array.from(initialColor.slice(index * 3, index * 3 + 3)),
           'snow samples neutral albedo/normal without added brightness compensation');
       } else {
         barkVertices++;
-        assert.ok(uv.getX(index) >= 2 / 256 && uv.getX(index) <= 238 / 256,
-          'every actual bark face stays inside the padded bark tile');
+        // every face inside one style block's padded 236 columns: a grown trunk's style (u = 2 + 2 × style + the
+        // fraction, treeGrowth.ts) or the legacy root flare and tongues on the furrowed block
+        const column = uv.getX(index) * 1024, inBlock = column - Math.floor(column / 256) * 256;
+        assert.ok(column >= 2 && column <= 1024 - 18 && inBlock >= 2 - 1e-3 && inBlock <= 238 + 1e-3,
+          'every actual bark face stays inside the padded bark tile of its style');
         const originalLuma = initialColor[index * 3] * 0.2126
           + initialColor[index * 3 + 1] * 0.7152 + initialColor[index * 3 + 2] * 0.0722;
-        if (originalLuma <= 0.065) {
+        if (initialUV[index * 2] >= 2) {
+          // p2 trees lane: a grown trunk's styled wood is authored against the sheet — no compensation
+          assert.equal(color.getX(index), initialColor[index * 3], 'grown wood keeps its authored tint');
+        } else if (originalLuma <= 0.065) {
           assert.ok(Math.abs(color.getX(index) * 0.5 - initialColor[index * 3]) < 1e-7,
             'dark bark restores the authored reflectance lost to the sheet multiplier');
         } else if (originalLuma >= 0.12) {
@@ -174,6 +182,11 @@ for (const species of ['pine', 'birch']) {
             'already-pale bark keeps its existing reflectance and highlight headroom');
         }
       }
+    }
+    // p2 trees lane: a welded (indexed) grown trunk counts its triangle corners — the flat count it stands for
+    if (tree.index) {
+      snowVertices = 0; barkVertices = 0;
+      for (const vertex of tree.index.array) if (initialUV[vertex * 2] < 0) snowVertices++; else barkVertices++;
     }
     assert.ok(snowVertices >= 60 && barkVertices >= 600,
       'the fixture exercises real snow lobes and a complete branched trunk');
@@ -206,6 +219,10 @@ Object.defineProperty(globalThis, 'document', {
     },
   },
 });
+// p2 trees lane (2026-10-02): the desktop Garage grows its trees (vegetation.ts buildGrownGarageTree, treeGrowth's
+// receipt); this receipt's subject is the round-8 garage pine — the phones' and `?legacyTrees=1` kit
+const locationDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'location');
+Object.defineProperty(globalThis, 'location', { configurable: true, value: { search: '?legacyTrees=1' } });
 try {
   for (let variant = 0; variant < 3; variant++) {
     const kit = createGarageTreeKit({}, null, 'pine', 2001, variant);
@@ -229,6 +246,8 @@ try {
 } finally {
   if (documentDescriptor) Object.defineProperty(globalThis, 'document', documentDescriptor);
   else delete globalThis.document;
+  if (locationDescriptor) Object.defineProperty(globalThis, 'location', locationDescriptor);
+  else delete globalThis.location;
 }
 assert.equal(strokes.length, 95 * 3, 'each unchanged needle atlas retains 95 seeded sprays');
 const colors = strokes.map((style) => new Color(style));

@@ -329,7 +329,13 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   await p.applyRoster(roster, context);
   p.applyFrame(frame({ entities: [sample(2, 20, 12), sample(3, -50, -50)] }));
   const world = p.predictionWorld();
-  assert.ok(world && world.heightField === worldCollision.heightField);
+  // The prediction world rides the authority's structure support field over the shared terrain (physics lane,
+  // 2026-10-03; it used to hand movement the bare height field, so a predicted hull fell through a roof the authority
+  // stood it on): the terrain is the same function, the wall's top a floor only for a hull above it.
+  assert.ok(world && typeof world.heightField.beginHull === 'function' && typeof world.beginStep === 'function');
+  for (const [x, z] of [[20, -20], [-60, 40], [5, 5]]) {
+    assert.equal(world.heightField.getHeightAt(x, z), worldCollision.heightField.getHeightAt(x, z), 'the same terrain away from parts');
+  }
   assert.equal(p.predictionWorld(), world, 'the world is built once per viewer spec');
   const push = new Vector3();
   assert.equal(world.collide(new Vector3(20, 0, -20), 4, push), false, 'open ground pushes nothing');
@@ -337,6 +343,22 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   assert.ok(push.z < 0);
   assert.equal(world.collide(new Vector3(20, 0, 14), 4, push), true, 'a disclosed hull pushes');
   assert.ok(Math.hypot(push.x, push.z) > 0);
+  // A rewind to an authority pose inside the presented hull (one interpolation delay old; the authority resolved that
+  // contact) seats the hull against the pose: the pose is clear, the hull stays solid one step further in, and a rewind
+  // that is clear presents it where it is again. A penetration within the wire's quantization is left as presented.
+  const depth = Math.hypot(push.x, push.z);
+  const nx = push.x / depth, nz = push.z / depth;
+  world.anchor({ pos: new Vector3(20, 0, 14), yaw: ownState.yaw });
+  assert.equal(world.collide(new Vector3(20, 0, 14), 4, push), false, 'the authority pose is clear of the seated hull');
+  assert.equal(world.collide(new Vector3(20 - nx * 0.3, 0, 14 - nz * 0.3), 4, push), true, 'the seated hull is still solid');
+  assert.ok(Math.abs(Math.hypot(push.x, push.z) - 0.3) < 0.01, `pushed back by the 0.3 m it was driven in (${Math.hypot(push.x, push.z)})`);
+  world.anchor({ pos: new Vector3(20, 0, -20), yaw: ownState.yaw });
+  assert.equal(world.collide(new Vector3(20, 0, 14), 4, push), true, 'a clear rewind presents the hull where it is');
+  assert.ok(Math.abs(Math.hypot(push.x, push.z) - depth) < 1e-9);
+  const graze = new Vector3(20 + nx * (depth - 0.02), 0, 14 + nz * (depth - 0.02));
+  world.anchor({ pos: graze, yaw: ownState.yaw });
+  assert.equal(world.collide(graze, 4, push), true, 'a 2 cm overlap at the rewind is contact, not a stale hull');
+  assert.ok(Math.abs(Math.hypot(push.x, push.z) - 0.02) < 0.005);
   p.applyFrame(frame({ entities: [sample(3, -50, -50)] }));
   assert.equal(world.collide(new Vector3(20, 0, 14), 4, push), false, 'a hidden hull never pushes (its coordinates are stale)');
   p.dispose();

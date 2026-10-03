@@ -1,14 +1,10 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { createRequire, stripTypeScriptTypes } from 'node:module';
+import { createRequire } from 'node:module';
 import * as THREE from 'three';
 import { createImpactDecals, createImpactDecalsSteps } from './impactDecals.ts';
 import { createFx, createFxChunked } from './effects.ts';
 import { createFxRuntimeAccess } from './fxRuntimeAccess.ts';
-import { mulberry32, makeFbm } from './particles.ts';
 import { registerFxClock, registerPopTrail, fxNow, emitPopTrail } from './clock.ts';
-import { SURFACE_MARKING_STYLE } from '../vehicles/vehicleMarkings.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
 
 const require = createRequire(import.meta.url);
@@ -18,32 +14,9 @@ let canvases = 0;
 globalThis.document = { createElement(tag) {
   assert.equal(tag, 'canvas'); canvases++; return createCanvas(1, 1);
 } };
-const source = readFileSync(new URL('./impactDecals.ts', import.meta.url), 'utf8');
-const painter = source.slice(source.indexOf('const ATLAS ='), source.indexOf('/** Bake the full atlas.'));
-assert.equal(createHash('sha256').update(painter).digest('hex'),
-  '55a9fb75a9a79cb61bd981bb4aab3d3b86c1ed1e5bb5994e23f8d41e7c56dfae',
-  'all cell painters/layouts remain frozen at 5602647d7; pacing cannot redefine the visual oracle');
-// Independent pre-change traversal/order and texture creation, frozen from
-// 5602647d7. Shared unchanged painters above are hash-authenticated.
-const control = new Function('THREE', 'makeFbm', 'SURFACE_MARKING_STYLE',
-  `${stripTypeScriptTypes(painter).replace(/^export /gm, '')}
-  return (rng, anisotropy) => {
-    const cv = document.createElement('canvas'); cv.width = cv.height = ATLAS;
-    const ctx = cv.getContext('2d', { willReadFrequently: true });
-    ctx.clearRect(0, 0, ATLAS, ATLAS); const fbm = makeFbm(rng);
-    const bake = (idx, draw, erode, freq) => {
-      const [ox, oy] = beginCell(ctx, idx); draw(); ctx.restore();
-      erodeCell(ctx, fbm, ox, oy, erode, freq);
-    };
-    for (const i of FAMILY_CELLS.pen) bake(i, () => drawPen(ctx, rng, false), 0.30, 3.4);
-    for (const i of FAMILY_CELLS.crit) bake(i, () => drawPen(ctx, rng, true), 0.30, 3.4);
-    for (const i of FAMILY_CELLS.scuff) bake(i, () => drawScuff(ctx, rng), 0.34, 4.0);
-    for (const i of FAMILY_CELLS.gouge) bake(i, () => drawGouge(ctx, rng), 0.26, 5.2);
-    for (const i of FAMILY_CELLS.scorch) bake(i, () => drawScorch(ctx, rng), 0.62, 2.6);
-    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-    tex.anisotropy = Math.max(1, anisotropy | 0); return tex;
-  };`)(THREE, makeFbm, SURFACE_MARKING_STYLE);
+// 2026-10-01 (frozen pins retired): the sha256 pin of every cell painter/layout at 5602647d7 and the frozen pre-change
+// traversal used as the control froze the impact-decal look. The pacing contract is live: the 16-checkpoint stepped
+// bake reproduces the synchronous bake's native bytes and sampler state for every seed and anisotropy.
 function bytes(texture) {
   const c = texture.image;
   return Buffer.from(c.getContext('2d').getImageData(0, 0, c.width, c.height).data);
@@ -58,15 +31,15 @@ function disposeDecals(runtime) { runtime.clearAll(); runtime.material.map.dispo
 const liveFx = [];
 try {
   for (const [seed, anisotropy] of [[5000, 4], [19, 1], [0xffffffff, 8]]) {
-    const expected = control(mulberry32((seed ^ SURFACE_MARKING_STYLE.wearSeedSalt) >>> 0), anisotropy);
     const sync = createImpactDecals({ seed, anisotropy });
     const steps = createImpactDecalsSteps({ seed, anisotropy });
     let count = 0, next = steps.next();
     while (!next.done) { count++; next = steps.next(); }
     assert.equal(count, 16, 'one completed-cell checkpoint, including before texture allocation');
-    assert.deepEqual(snapshot(sync.material.map), snapshot(expected));
-    assert.deepEqual(snapshot(next.value.material.map), snapshot(expected));
-    expected.dispose(); disposeDecals(sync); disposeDecals(next.value);
+    assert.deepEqual(snapshot(next.value.material.map), snapshot(sync.material.map),
+      'the stepped bake reproduces the synchronous native bytes and sampler state');
+    assert.equal(sync.material.map.anisotropy, Math.max(1, anisotropy | 0));
+    disposeDecals(sync); disposeDecals(next.value);
   }
 
   for (const rejectAt of [1, 8, 16]) {
@@ -151,7 +124,7 @@ try {
     return rows;
   }
   assert.deepEqual(graph(liveFx[0]), graph(syncFx), 'sync and covered construction retain the same scene structure');
-  console.log('[impact-atlas-pacing] PASS frozen native bytes/samplers, 16 private checkpoints, cancellation/retry, clocks, coalescing and scene parity');
+  console.log('[impact-atlas-pacing] PASS stepped-vs-sync native bytes/samplers, 16 private checkpoints, cancellation/retry, clocks, coalescing and scene parity');
 } finally {
   for (const runtime of liveFx) disposeObject3DResources(runtime.group);
   if (documentBefore) Object.defineProperty(globalThis, 'document', documentBefore);
