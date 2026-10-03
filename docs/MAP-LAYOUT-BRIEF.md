@@ -267,6 +267,50 @@ props code shaped every layout, and the next maps should start from them:
   ends join the main course. environmentExpansion checks each trail's continuity and the joins (Jade River Delta).
 - **Cross-road ends.** Start a cross road on a node of the road it meets, as Delta's cross road starts on the west
   road's node. Left to the endpoint completion, the extension met the other road 1.7 m lower and climbed to it at 29 %.
+- **Settlements stay where they stand.** The owner's ruling (October 3, 2026): no layout change moves a settlement
+  building that PR #9's head has. A town is fragile. On Titan Gorge each of these re-seated it on its own: the noise
+  mesas' removal, the aprons, the shared road nodes, the landforms, alpha's spawn and the road setback (18, 1, 6, 1, 20
+  and 3 of 28 houses kept their places). On Ironworks, bravo's new deployment corridors did it (33 of 46). A rebuilt map
+  keeps its town in one of two ways:
+  - Where the inputs the town is built from can stay as they were, keep them. Verdant keeps the country road
+    generator, whose 32 m nodes are its frontage lots.
+  - Otherwise record the town from the build that has it and replay it:
+    `node tools/record-town-plan.mjs --root=<checkout> --write=src/world/maps/townPlans.generated.ts <maps>`, then set
+    `props.townPlan` and `props.townLightPlan`. Each planned building is rebuilt from its own recorded stream at its
+    recorded pose, whatever the ground, roads or aprons under it have become. Each light building (the huts, tents
+    and sheds of `placeDestructibleBuildings`) stands at its recorded pose. The generated road, row and block-fill
+    passes place nothing more.
+
+  `src/world/townPlans.selftest.mjs` holds every recorded town against the footprints PR #9's head's shards carried.
+- **Buildings in a carriageway.** `props.roadBuildingClearance` runs once every settlement building stands. It moves a
+  building whose footprint stands within the 3.5 m road core by the least distance that clears it: rings of 0.5 m out
+  to 30 m, on 15-degree bearings starting away from the road. The building keeps its ground fit and stays clear of
+  every other footprint and strongpoint. Nothing draws, so every other building stays exactly where it stood.
+  Blackglass: 8 of its 150 blocks moved 1–9.5 m. One civic hall at (-101.9, -85.8) has no clear place within 30 m and
+  still stands in road 3. The fix is to bend that road round it, which needs the district replayed first so the bend
+  re-seats nothing.
+- **Equivalent deployments.** Both teams deploy in the same shape: bravo's seven pads are alpha's 4 x 2 block mirrored.
+  Then run the bots lane's swap test (`fair-swap`: the same 20 seeds with the deployments exchanged). If one deployment
+  wins two thirds or more of the paired games (24 of 36), the positions differ as well. Turn the layout about its
+  centre: each block, its screening feature, its near objective and its strongpoints become the other's rotation, and
+  the middle disc stands on the deployments' bisector. Turn the rock with them: turning the deployments alone does not
+  help when the walls around them differ. The north deployment's share of the 40 swap games, before and after the turn:
+  - Titan Gorge: 27 → 24.
+  - Skybridge Chasm: 27. Its deployments alone were turned three times (23, 30 and 28): its 300 m south segments
+    against 160 m north ones kept the north ahead (81 of 120). With the segments turned about the shoulder system's
+    middle as well: 21.
+  - Olympus Basin: 34 → 22, with its rock authored in pairs about the station.
+
+  Glacier Pass, Obsidian Caldera, Ironworks and Blackglass were already even with blocks alone (20–24 of 40).
+- **Noise mesas and roads.** A noise mesa field stands its walls wherever the noise crosses its threshold, so at some
+  terrain seeds a road runs along a wall's foot or over it. Olympus Basin's country roads reached 30 % at two of the
+  road-grade law's three seeds. Author the rock instead, off the roads: Olympus Basin's four mesas and two craters are
+  paired about the station, and its roads stay under 14 % at all three seeds.
+- **Shoulders and noses.** Where a deployment corridor or a settlement's feather crosses a narrow rock wall, it lowers
+  the wall into a ramp onto its cap. Bots that climb it fall off the walls. Keep such walls whole (`corridorScale: 1`,
+  `settlementScale: 1`), and the bots drive round them. End a wall segment in a nose (`cliffEnd: 'nose'`), whose wall
+  and talus turn round the end, not in a cut. A cut end drops its talus apron in a step that bots drive off. Skybridge
+  v6 lost 1556 hp in four standard matches at the cut ends; with noses and whole walls it lost 170 hp in twelve.
 - **Budget.** All three pilots exceed point 10's 10 % triangle budget. The coordinator approved this for PR #9 on
   October 2, 2026, pending the owner. The extra triangles are content the brief wants. Trimming goes to frame-time
   work, such as shadow caching and LOD for parapets and wire, rather than to removing content. Whole-map prop
