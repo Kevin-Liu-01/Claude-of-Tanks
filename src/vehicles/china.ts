@@ -94,7 +94,7 @@ const CHINA_SPECS = {
     armorFactor: 1.14,
   }),
   ztz99a2_prototype: variant('ztz99a2_prototype', 'type99a', {
-    name: 'ZTZ-99A2 Prototype', number: '99A2-P', base: '#35453a', weather: '#4a5847',
+    name: 'ZTZ-99A', number: '99A', base: '#35453a', weather: '#4a5847',
     patches: ['#222f28', '#59634c', '#73694f'], camoScale: 0.43,
     dims: {
       hullLengthM: 7.6, overallLengthM: 11.0, widthM: 3.7, heightM: 2.45,

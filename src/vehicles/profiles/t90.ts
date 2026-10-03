@@ -1,3 +1,4 @@
+import { VEHICLE_HULL_LENGTH_FACTORS } from '../vehicleSizePolicy.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 // Strictly typed family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
@@ -15,7 +16,6 @@ import {
   tubeGun,
   ruSaddle,
   ruBoot,
-  nsvt,
   mast,
   rehookClone,
   ruGlacisKit,
@@ -45,6 +45,7 @@ interface T90Materials extends Record<string, THREE.MeshStandardMaterial> {
 }
 
 interface T90BuilderPort {
+  extendHullLength(factor: number): void;
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
@@ -908,7 +909,7 @@ interface T90ALegacyTurretReceiptContext {
 }
 
 function addT90ALegacyHull(P: T90BuilderPort): void {
-  const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret } = KIT;
+  const { box } = KIT;
   // VERTEX ROUND r2 (batch-12 oracle normalized to published dims): re-anchor
   // to docs/references/vertex/t90a.json — hull mask +-3.43 (6.865), deck
   // plateau 1.29-1.37 with the rear stack bumps 1.44-1.49 @ -3.16..-3.32,
@@ -1187,7 +1188,7 @@ function addT90ALegacyTurret(P: T90BuilderPort, {
   adoptT90MFamilyGun,
   recordSeatReceipt,
 }: ResolvedT90ALegacyOptions): T90ALegacyTurretReceiptContext {
-  const { box, cylY, cylZ, polyTurret } = KIT;
+  const { box, cylY, cylZ } = KIT;
   // ---- turret: measured T-90A cast shell ----
   // Primary mass follows the source silhouette; every K-5/optic/weapon
   // fitting below is seated into that mass rather than a shared family box.
@@ -3389,7 +3390,7 @@ function buildPT91M(P: T90BuilderPort): void {
 
 
 function addT90MProryvHull(P: T90BuilderPort): void {
-  const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret, slab } = KIT;
+  const { box, cylX, stowage } = KIT;
   loftHull(P, {
     // r26a render re-read: plan bow center is 3.05 (extract corners said
     // 3.20 — REF-RENDER OUTRANKS ROW ANALYSIS), corners 3.27, lower tub
@@ -3851,7 +3852,7 @@ interface T90MProryvLegacyContext {
 }
 
 function addT90MProryvTurret(P: T90BuilderPort): T90MProryvLegacyContext {
-  const { box, cylY, cylZ, polyTurret } = KIT;
+  const { box, cylZ, polyTurret } = KIT;
   // ---- WELDED turret (identity delta vs the t90a cast dome): flat cheek
   // planform w/ chamfered corners, broad flat roof, separated furniture ----
   P.turretG.position.set(0, 1.40, 0.13);
@@ -4263,7 +4264,7 @@ function buildT90MProryv(P: T90BuilderPort): void {
 
 
 function addT90SMLegacyHullFront(P: T90BuilderPort): void {
-  const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret, slab } = KIT;
+  const { box } = KIT;
   // VERTEX ROUND r2 (batch-12 normalized oracle): re-anchored to
   // docs/references/vertex/t90sm.json — hull mask +-3.43 (6.857 = published,
   // the r5 span-matching lips are DELETED), deck plateau 1.40-1.46, welded
@@ -4558,7 +4559,7 @@ function addT90SMLegacyTurretShell(P: T90BuilderPort): T90SMLegacyTurretContext 
   // band lives on flank roof boxes at |x| 0.65..1.05 (ref front cols +-0.1..
   // 0.61 read 1.99); tower bodies low (1.94) with THIN 2.24-2.25 spikes at
   // world -1.39/-1.94 (ref side 1-col spikes); heightM p95 -> 2.24 (pub 2.23)
-  const { tw, f, b, h } = addT90SMTurretFoundation(P);
+  const { tw, f, h } = addT90SMTurretFoundation(P);
   // Owner fit pass (2026-08-25): a tapered structural collar spans the
   // hull-deck/turret seam.  Its lower edge is buried 40 mm below the turret
   // datum and its upper edge overlaps the first 80 mm cheek course, so the
@@ -4722,9 +4723,9 @@ function addT90SMLegacyTurretShell(P: T90BuilderPort): T90SMLegacyTurretContext 
 
 function addT90SMLegacyRoof(
   P: T90BuilderPort,
-  { tw, h }: T90SMLegacyTurretContext,
+  _context: T90SMLegacyTurretContext,
 ): void {
-  const { box, cylY, cylZ } = KIT;
+  const { box, cylY } = KIT;
   // T3R ROOF EQUIPMENT ENSEMBLE (owner punch list 3: "no attachments or
   // decorations or the machine gun turret"). Today's side digest: the ref's
   // tall 2.239 band spans z world -0.44..-1.32 (my old towers sat aft+low —
@@ -4822,9 +4823,9 @@ function addT90SMLegacyRoof(
 
 function addT90SMLegacyBustleStructure(
   P: T90BuilderPort,
-  { tw, h }: T90SMLegacyTurretContext,
+  _context: T90SMLegacyTurretContext,
 ): void {
-  const { box, cylZ } = KIT;
+  const { box } = KIT;
   // squared removable bustle: full depth only to |x| 0.91 (ref plan rear
   // staircase -2.43 center / -1.99 @1.0 / -1.31 @1.15 / -1.0 @1.23).
   // r9: the ref bustle UNDERSIDE rises rearward (1.654@-2.16 ->
@@ -6941,7 +6942,7 @@ function addT90MSCrownFacetSeams(P: T90BuilderPort): void {
 }
 
 function rebuildT90MSTurretExact(P: T90BuilderPort): void {
-  const { box, cylY, cylZ, polyTurret, torus } = KIT;
+  const { box, cylY, cylZ, torus } = KIT;
 
   // T-90MS SOURCE REBUILD (2026-08-10).  The recovered print measures a
   // low welded primary body (x +/-1.82, z -2.39..+1.45, broad roof near
@@ -7669,7 +7670,8 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   // behind the idler, visually merging the two into one terminal wheel.
   // A shorter centered cadence opens distinct bays for both raised end
   // wheels without changing the hull or skirt envelope.
-  const wheelZs = evenStations(6, 3.60, 0.15);
+  const hullLengthFactor = VEHICLE_HULL_LENGTH_FACTORS[P.spec.id] ?? 1;
+  const wheelZs = evenStations(6, 3.60, 0.15).map(z => z * hullLengthFactor);
   // The former 480 mm radius overlapped adjacent tires by 300 mm at this
   // dense 660 mm cadence.  Keep the established 85 mm loaded foot while
   // opening a visible 40 mm bay between every pair.
@@ -7677,19 +7679,19 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.31, wheelW: 0.22, wheelY, xc: 1.435,
     dishR: 0.86, wheelZs,
-    sprocket: { z: -2.46, y: 0.84, r: 0.33 },
+    sprocket: { z: -2.46 * hullLengthFactor, y: 0.84, r: 0.33 },
     // Keep the longer loaded wheelbase, but do not drag the idler under the
     // descending V-bow.  At +2.76 m the animated upper transition cut into
     // both the lower glacis and its shoulder skin; +2.54 m leaves the real
     // wheel-to-wheel clearance while keeping a visibly longer T-90 course.
-    idler: { z: 2.54, y: 0.69, r: 0.29 },
+    idler: { z: 2.54 * hullLengthFactor, y: 0.69, r: 0.29 },
     // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three return
     // rollers per side (FAS T-72 entry; the T-90A X source `support wheels` node); the 2026-09-23 rollerless reading is
     // reversed. Stations follow the source law (4.6 / 51.5 / 91.6 % of the first-to-last-wheel span), r 0.10 m, the axle
     // fitted between the wheel tops and the measured lane ceiling (scratch lane-ceiling-ray probe).
-    rollers: [-1.48, 0.20, 1.65].map((z) => ({ z, y: 0.86, r: 0.10 })),
+    rollers: [-1.48, 0.20, 1.65].map((z) => ({ z: z * hullLengthFactor, y: 0.86, r: 0.10 })),
     trackW: 0.50, topY: 0.98, botY: 0.05, paintedEnds: false,
-    coveredTop: true, arms: false, contactZF: 2.22, contactZR: -2.14,
+    coveredTop: true, arms: false, contactZF: 2.22 * hullLengthFactor, contactZR: -2.14 * hullLengthFactor,
   });
   // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the Russia nation
   // construction (T-90M X source-pressed face, nationWheelSets.ts); the former rim/hub/bolt layers left with it.
@@ -8435,13 +8437,15 @@ function buildT90MProryvNative2026(P: T90BuilderPort): void {
   P.gunG.scale.set(1 / installedTurretX, 1 / installedTurretY, 1);
   const remoteKord = P.turretG.getObjectByName('t90mProryvRemoteKord');
   if (remoteKord) remoteKord.scale.y /= installedTurretY;
+  const hullLengthFactor = VEHICLE_HULL_LENGTH_FACTORS[P.spec.id] ?? 1;
+  if (hullLengthFactor !== 1) P.extendHullLength(hullLengthFactor);
   P.hullG.userData.t90mProryvTrackReceipt = {
     roadWheelRadiusM: 0.31,
     roadWheelCenterY: 0.395,
-    roadWheelSpanM: 3.60,
-    sprocketZ: -2.46,
-    idlerZ: 2.54,
-    structuralHullLengthM: 6.86,
+    roadWheelSpanM: 3.60 * hullLengthFactor,
+    sprocketZ: -2.46 * hullLengthFactor,
+    idlerZ: 2.54 * hullLengthFactor,
+    structuralHullLengthM: 6.86 * hullLengthFactor,
     trackBottomY: 0.05,
     trackTopY: 0.98,
     trackEnvelopeHeightM: 0.93,

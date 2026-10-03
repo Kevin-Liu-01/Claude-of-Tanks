@@ -1,15 +1,13 @@
 /**
  * Crew radio line catalog: priority, cooldown, mutual-exclusion group and
  * staleness for every line id in the national scripts
- * (tools/audio/crew-lines.json), plus the crew-language resolution.
+ * (tools/audio/crew-lines.json).
  *
  * Priority ladder (radio discipline): 4 = result and critical survival, may
  * cut anything below; 3 = actionable damage and decisive events, may cut
  * flavour; 2 = important reports; 1 = situational; 0 = flavour that never
  * waits in the queue.
  */
-
-import { CREW_LANGUAGES, crewLanguageForNation, type CrewLanguage } from './vehicleAudioProfiles.ts';
 
 export interface VoiceLineMeta {
   readonly pri: 0 | 1 | 2 | 3 | 4;
@@ -133,32 +131,3 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
 /** One radio net: a dead-air gap between transmissions and a short queue. */
 /** A disciplined net: one transmission at a time with a breath between calls, two waiting at most. */
 export const RADIO_DISCIPLINE = Object.freeze({ gapS: 0.8, queueMax: 2, defaultStaleS: 1.2 });
-
-/**
- * Which language the crew speaks: the operating nation by default; English
- * (US crews' recordings) on request; or the interface language when the
- * player prefers to understand every call.
- */
-export type CrewVoiceSetting = 'national' | 'english' | 'interface';
-
-export function isCrewVoiceSetting(value: unknown): value is CrewVoiceSetting {
-  return value === 'national' || value === 'english' || value === 'interface';
-}
-
-export function resolveCrewLanguage(
-  nation: unknown,
-  setting: CrewVoiceSetting = 'national',
-  interfaceLocale: string | null = null,
-): CrewLanguage {
-  if (setting === 'english') return 'en-US';
-  if (setting === 'interface') {
-    const locale = String(interfaceLocale || '').toLowerCase();
-    const direct = CREW_LANGUAGES.find((lang) => lang.toLowerCase() === locale);
-    if (direct) return direct;
-    const base = locale.split('-')[0];
-    const byBase = CREW_LANGUAGES.find((lang) => lang.split('-')[0] === base);
-    if (byBase) return byBase;
-    return 'en-US';
-  }
-  return crewLanguageForNation(nation);
-}

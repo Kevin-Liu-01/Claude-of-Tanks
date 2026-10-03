@@ -532,62 +532,15 @@ const strv122HullY = (_x: number, z: number): number => {
   // wrap while still following the glacis angle.
   return armorY + 0.15;
 };
-const t84HullY = (_x: number, z: number): number => {
-  if (z < -4.25) return 1.40;
-  if (z < 0.55) return 1.45;
-  return 1.45 - (z - 0.55) * 0.15;
-};
-
-type RoofSupportZone = readonly [
-  minX: number, maxX: number, minZ: number, maxZ: number, supportY: number,
-];
-
-const T84_ROOF_SUPPORT_ZONES: readonly RoofSupportZone[] = [
-  [0.19, 0.67, -1.91, -1.58, 0.8092],
-  [-0.90, -0.20, 0.43, 0.61, 0.815],
-  [0.20, 0.50, 0.43, 0.59, 0.815],
-  [-1.05, -0.84, 0.03, 0.42, 0.6583],
-  [0.14, 0.70, -0.64, -0.06, 0.826],
-  [-1.00, -0.14, -0.34, 0.00, 0.9075],
-];
-
-function pointInsideRoofSupportZone(x: number, z: number, zone: RoofSupportZone): boolean {
-  return x >= zone[0] && x <= zone[1] && z >= zone[2] && z <= zone[3];
-}
-
-function t84BaseRoofSupportY(x: number, z: number): number {
-  const absoluteX = Math.abs(x);
-  if (z < -0.72) return profileY([[-2.09, 0.595], [-0.72, 0.675]], z);
-  if (z < 0.745) {
-    if (absoluteX < 0.22) return 0.717;
-    return absoluteX < 0.73 ? 0.805 : 0.6073;
-  }
-  return 0.59 + THREE.MathUtils.clamp((1.62 - z) * 0.09, 0, 0.08)
-    - Math.max(0, absoluteX - 0.98) * 0.08;
-}
-// T-84 turret carrier surface. The old net was authored as one y=.89 sheet:
-// it floated 80-350 mm above most of the roof while slicing through the
-// commander Kord. That intersection hid the weapon cradle and made its ammo
-// box, receiver ends and nearby fittings read as detached squares. This
-// envelope follows the welded roof and Duplet field, then rises locally over
-// every proud fitting. The ghillie is added after all hard equipment in the
-// vehicle builder, so it visually lands on the finished assembly.
-const t84RoofHardY = (x: number, z: number): number => {
-  let support = t84BaseRoofSupportY(x, z);
-  for (const zone of T84_ROOF_SUPPORT_ZONES) {
-    if (pointInsideRoofSupportZone(x, z, zone)) support = Math.max(support, zone[4]);
-  }
-  return support;
-};
+// The rebuilt Oplot keeps the donor fenders and a new welded turret. Cloth
+// follows those surfaces; hatches, MG, sights and the pitching gun stay open.
+const t84HullY = (_x: number, z: number): number => profileY([
+  [-2.80, 1.526], [1.65, 1.509], [2.70, 1.446],
+], z) + 0.027;
 const t84TurretCoverGapM = 0.026;
-const t84TurretCoverY = (x: number, z: number): number => (
-  t84RoofHardY(x, z) + t84TurretCoverGapM
-);
-const t84TurretSideTopY = (z: number): number => {
-  if (z < -0.72) return profileY([[-1.96, 0.625], [-0.72, 0.705]], z);
-  if (z < 0.64) return 0.555;
-  return 0.66 - THREE.MathUtils.clamp((z - 0.64) / 0.54, 0, 1) * 0.12;
-};
+const t84TurretCoverY = (_x: number, z: number): number => profileY([
+  [-2.15, 0.66], [-0.50, 0.74], [0.28, 0.73], [1.63, 0.56],
+], z) + t84TurretCoverGapM;
 const oplotHullY = (_x: number, z: number): number => (
   z < 1.45 ? 1.51 : 1.51 - (z - 1.45) * 0.15
 );
@@ -739,32 +692,36 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
     },
   },
   t84: {
-    id: 't84', seed: 840, style: 'leafy', density: 0.84, leafScale: 0.92,
-    foliage: false,
-    light: 0x68784d, dark: 0x35452f, netColor: 'rgba(42,56,34,0.80)',
+    id: 't84', seed: 840, style: 'leafy', density: 1.0, leafScale: 1.02,
+    light: 0x6e804b, dark: 0x35492e, netColor: 'rgba(42,56,34,0.84)',
     hull: {
-      top: [{ x0: -1.56, x1: 1.56, z0: -4.60, z1: 2.08, nx: 24, nz: 52,
-        yAt: t84HullY,
-        outline: [[-1.18, -4.60], [1.18, -4.60], [1.56, -4.05], [1.56, 1.52], [1.04, 2.08], [-1.04, 2.08], [-1.56, 1.52], [-1.56, -4.05]],
-        holes: [rect(-1.36, 1.36, -2.42, 0.86), rect(-0.22, 0.22, 0.72, 1.42)], seed: 141 }],
-      side: [-1, 1].map((side) => ({ side, z0: -4.15, z1: 1.78, nz: 42, ny: 8,
-        topAt: (z) => t84HullY(0, z), bottomAt: (z) => 1.18 + Math.sin(z * 2.7) * 0.025,
-        outAt: (_z, t) => 1.82 + (1 - t) * 0.040, seed: 149 + side })),
+      // Separate shoulder covers leave the driver, engine grilles, lights and
+      // turret sweep uncovered. Side nets hang outside the armored skirts.
+      top: [-1, 1].map(side => ({ x0: side < 0 ? -1.74 : 1.42,
+        x1: side < 0 ? -1.42 : 1.74, z0: 1.93, z1: 2.68, nx: 5, nz: 12,
+        yAt: t84HullY, seatGapM: 0.027, seat: 'donor-fender', seed: 141 + side })),
+      side: [-1, 1].map(side => ({ side, z0: -2.80, z1: 2.85, nz: 42, ny: 8,
+        topAt: () => 1.405, bottomAt: z => 0.92 + Math.sin(z * 3.7) * 0.025,
+        outAt: (_z, t) => 1.995 + (1 - t) * 0.012, seed: 149 + side })),
     },
     turret: {
-      top: [{ x0: -1.16, x1: 1.16, z0: -1.96, z1: 1.62, nx: 20, nz: 30,
-        yAt: t84TurretCoverY,
-        outline: [[-0.80, -1.96], [0.80, -1.96], [1.16, -1.02], [1.13, 0.86], [0.68, 1.62], [-0.68, 1.62], [-1.13, 0.86], [-1.16, -1.02]],
-        // Only the cannon working corridor remains open. Roof fittings and
-        // the Kord now receive the net after they are physically seated.
-        holes: [rect(-0.34, 0.34, 0.78, 1.70)],
-        seatGapM: t84TurretCoverGapM, seat: 'roof-equipment-envelope', seed: 157 }],
-      side: [-1, 1].map((side) => ({ side, z0: -1.88, z1: 1.08, nz: 26, ny: 7,
-        topAt: t84TurretSideTopY, bottomAt: (z) => -0.03 + Math.sin(z * 3.6) * 0.025,
-        outAt: (z, t) => (z < -0.85 ? 1.04 : 1.31) + (1 - t) * 0.035, seed: 165 + side })),
-      face: [{ z: 1.94, x0: -1.12, x1: 1.12, y0: -0.06, y1: 0.72, nx: 18, ny: 8,
-        outline: [[-0.80, -0.06], [0.80, -0.06], [1.12, 0.30], [0.76, 0.72], [-0.76, 0.72], [-1.12, 0.30]],
-        holes: [rect(-0.46, 0.46, -0.10, 0.65)], seed: 173 }],
+      top: [
+        { x0: -0.94, x1: 0.94, z0: -1.30, z1: 0.25, nx: 24, nz: 22,
+          yAt: t84TurretCoverY,
+          holes: [rect(0.10, 1.10, -1.20, 0.30), rect(-1.08, -0.13, -0.79, 0.30)],
+          seatGapM: t84TurretCoverGapM, seat: 'welded-roof', seed: 157 },
+        ...[-0.68, 0, 0.68].map(x => ({ x0: x - 0.26, x1: x + 0.26,
+          z0: -1.99, z1: -1.49, nx: 7, nz: 8, yAt: () => 0.959,
+          seatGapM: t84TurretCoverGapM, seat: 'strapped-bustle-pack', seed: 161 })),
+        ...[-1, 1].map(side => ({ x0: side < 0 ? -0.94 : 0.57,
+          x1: side < 0 ? -0.57 : 0.94, z0: 0.43, z1: 0.84, nx: 6, nz: 7,
+          yAt: t84TurretCoverY, seatGapM: t84TurretCoverGapM, seat: 'cheek-roof', seed: 169 + side })),
+      ],
+      side: [-1, 1].map(side => ({ side, z0: -1.66, z1: -0.42, nz: 20, ny: 7,
+        topAt: () => 0.56, bottomAt: z => 0.15 + Math.sin(z * 3.6) * 0.016,
+        outAt: (_z, t) => 1.574 + (1 - t) * 0.010, seed: 175 + side })),
+      face: [{ z: -2.456, x0: -1.17, x1: 1.17, y0: 0.13, y1: 0.56, nx: 26, ny: 7,
+        seatGapM: 0.026, seat: 'bustle-cage', seed: 183 }],
     },
   },
   ua_t84_oplot_m: {

@@ -35,11 +35,14 @@ for (const id of ['pl01', 'pl01_105']) {
   const cupola = turret.getObjectByName('turretCupola');
 
   const hullBounds = new Box3().setFromObject(hull);
+  // The 105's owner-requested field cage extends beyond the original fenders;
+  // driver-seat work still must preserve the floor, fore/aft and roof datums.
+  const halfWidth = id === 'pl01_105' ? 2.285 : 1.922;
   assert.deepEqual(
     [...hullBounds.min.toArray(), ...hullBounds.max.toArray()]
       .map((value) => Number(value.toFixed(6))),
-    [-1.922, 0, -3.565, 1.922, 2.203312, 3.44],
-    `${id} driver-roof seating must not change the hull envelope`,
+    [-halfWidth, 0, -3.565, halfWidth, 2.203312, 3.44],
+    `${id} driver-roof seating must preserve the hull and authored cage envelope`,
   );
   const driverSeat = hull.userData.pl01DriverRoofSeat;
   assert.equal(driverSeat?.revision, 'flush-r1',

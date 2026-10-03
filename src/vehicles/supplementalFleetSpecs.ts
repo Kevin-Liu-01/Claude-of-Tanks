@@ -334,7 +334,7 @@ const SPECS: FleetTankSpec[] = [
   // the Burlak bustle overhangs the hull rear ~0.24 past the T-90A datum
   // (print -3.66 corroborates) — 9.76 is the variant's honest gun-forward
   // total (ASK-OWNER note in the packet; §5.38 named only heightM 2.30).
-  make('t90a', 't90a_burlak', 'T-90A Burlak Proto', 'USSR/Russia',
+  make('t90a', 't90a_burlak', 'T-90A Burlak Prototype', 'USSR/Russia',
     { hp: 2500, gun: {
         reloadS: 6.0,
         shells: requireFleetSpec('t90a').gun.shells.map((round, index) => ({
