@@ -85,6 +85,8 @@ const _desired = new THREE.Vector3();
 const _viewDir = new THREE.Vector3();
 const _rayDir = new THREE.Vector3();
 const _autoAimAnchor = new THREE.Vector3();
+const _aimOrigin = new THREE.Vector3();
+const _aimAnchor = new THREE.Vector3();
 // >>> gameplay_feel r4: uphill framing assist scratch
 const _lookTarget = new THREE.Vector3();
 // <<< gameplay_feel r4
@@ -444,7 +446,10 @@ export function createCameraRig(
       _rayDir.multiplyScalar(1 / segLen);
       const hit = raycast(pivot, _rayDir, segLen);
       if (hit !== null) {
-        _desired.copy(hit.point).addScaledVector(hit.normal, COLLISION_PAD_M);
+        // Retreat along the orbit segment. A surface normal can point through
+        // the pivot when the tank brushes a wall, reversing lookAt and aim.
+        const pullIn = Math.max(0.15, Math.min(segLen, hit.dist - COLLISION_PAD_M));
+        _desired.copy(pivot).addScaledVector(_rayDir, pullIn);
       }
     }
 
@@ -493,10 +498,28 @@ export function createCameraRig(
     } else {
       camera.getWorldDirection(_rayDir);
     }
-    const hit = aimRaycast(camera.position, _rayDir, MAX_AIM_DIST_M);
+    _aimOrigin.copy(camera.position);
+    let rayStart = 0;
+    if (rig.mode === 'ARCADE' && !cursorAimOn && !isIsometric()) {
+      // The orbit camera sits behind the gun. Cover on that camera-to-gun
+      // segment is not a valid target: aiming at it slews the turret backwards
+      // and entering the scope can latch that backwards yaw. Start the same
+      // sight ray at the gun's horizontal depth plane, independent of hull yaw.
+      sniperAnchorFor(player, _aimAnchor);
+      const horizontalSq = _rayDir.x * _rayDir.x + _rayDir.z * _rayDir.z;
+      if (horizontalSq > 1e-6) {
+        rayStart = THREE.MathUtils.clamp(
+          ((_aimAnchor.x - camera.position.x) * _rayDir.x +
+            (_aimAnchor.z - camera.position.z) * _rayDir.z + 0.05) / horizontalSq,
+          0, MAX_AIM_DIST_M - 1,
+        );
+        _aimOrigin.addScaledVector(_rayDir, rayStart);
+      }
+    }
+    const hit = aimRaycast(_aimOrigin, _rayDir, MAX_AIM_DIST_M - rayStart);
     if (hit !== null) {
       rig.aimPoint.copy(hit.point);
-      rig.aimDist = hit.dist;
+      rig.aimDist = hit.dist + rayStart;
     } else {
       rig.aimPoint.copy(camera.position).addScaledVector(_rayDir, MAX_AIM_DIST_M);
       rig.aimDist = MAX_AIM_DIST_M;
