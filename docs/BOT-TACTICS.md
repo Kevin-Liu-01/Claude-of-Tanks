@@ -134,7 +134,9 @@ there as well (a crest can mask it while the eye still sees the turret). Three
 main-gun rounds in a row from one spot (within 10 m) that do not reach the
 target, judged 1.5 seconds after the last one, give that spot up: the press
 starts from it, or the press point is given up for another, as a masked probe
-gives one up. A rack that is empty finishes a passive hull by ramming when the
+gives one up. A press point the hull has not reached within its distance at
+4 m/s plus 20 seconds (kept across the restarts a flickering sight line makes)
+is given up the same way. A rack that is empty finishes a passive hull by ramming when the
 ram law says the rammer survives. The run that finishes it is judged and driven
 no faster than the slowest closing speed whose share deals 1.8 times the
 target's remaining health (6 m/s at least). Inside 60 m a clear line drives
@@ -158,6 +160,16 @@ Bridge decks are drivable surfaces, not river beds or broad-phase walls. The
 global grid rejects edges through a bridge's side; ingress goes through the
 abutments. Two-way slope checks prevent one-way downhill shortcuts. Physical
 collision remains authoritative, including parapets and piers.
+
+On maps that avoid liquid (`src/sim/navigationLiquidSafety.ts`), the liquid
+guard refuses a stopping corridor that would take a dry hull into the water. A
+hull that already touches liquid may still move, as long as it takes on no
+more: the summed mask under its footprint, sampled every 2 m along the move,
+never grows. It can always drive out, never deeper in. A dry route starts from
+the hull's own cell unless the grid refuses that cell (its sample is liquid) or
+the leg to its centre is not drivable; then it starts from the nearest open
+cell within two rings whose leg is drivable. A hull pushed into the lake always
+has a route out. The pocket escape only takes lanes the liquid guard allows.
 
 The grid's edges are cleared for the widest hull in the fleet (the Jagdpanzer
 E100 X, 2.24 m half-width; `NAV_HULL_HALF_WIDTH_M` is 2.25 and the receipt
@@ -202,12 +214,17 @@ search cannot drive a hull.
   masks its hull from a flank spot (the press goes round to a point the gun
   reaches the hull from, with an open-flank control), three rounds in a row
   that miss from the flank spot (the spot is given up, with a control whose
-  rounds land), and an empty rack against a 320 hp idle host (a capped
-  finishing ram, with full-health and moving-host controls).
+  rounds land), an empty rack against a 320 hp idle host (a capped finishing
+  ram, with full-health and moving-host controls), and a press point inside a
+  closed pen, given up unreached.
 - `src/game/ai.levels.selftest.mjs`: a synthetic deck over a floor, with and
   without a ramp: the deck bot leaves the floor target for one on its own level,
   the floor bot drives the ramp to the deck, gives the deck target up when no
   route reaches it, and keeps a target in its arc (control).
+- `src/sim/navigationLiquidStart.selftest.mjs`: a synthetic shore with one way
+  out: the guard drives a wet hull out and refuses it deeper in, the dry grid
+  plans from a start cell it refuses, and a bot starting there, facing the lake,
+  reaches dry ground and searches on.
 - `src/sim/botRouteClearance.selftest.mjs`: the grid's hull bound against the
   fleet, a diagonal through a 0.6 m gap, a boulder bent round, a channel left by
   its open end, Steinburg's two pockets and a sweep of the town with no leg
