@@ -37,7 +37,7 @@ The quadcopter starts visibly docked on a reusable mission rail on the rear hull
 The rail and its four feet are fitted to each vehicle’s own hull surfaces; the same
 attachment frame can carry future mode equipment. A 2.4-second rotor spool-up and
 smooth lift clear the carrier before the camera eases into first-person
-flight with a monochrome thermal-style treatment. You directly fly it: **W/S**
+flight with a white-hot infrared view. The launch and camera handoff stay in normal color; infrared begins only when the view is inside the drone. You directly fly it: **W/S**
 move forward or backward, **A/D** strafe, **Space** climbs, and mouse look steers.
 Pitch down and fly forward to descend or dive into a target. Releasing movement
 brakes smoothly into a hover. Light air disturbances, body banking, rotor
@@ -55,7 +55,7 @@ cooldown. The parked tank remains vulnerable; destroying it ends its drone fligh
 Other players see the quadcopter, camera, underslung warhead, and spinning rotors.
 Bots can fly drones too. An airborne drone also supplies its carrier’s team with
 reconnaissance out to 350 m, reduced by target camouflage. Buildings, terrain and
-smoke still block its line of sight, including at close range; the thermal-style
+smoke still block its line of sight, including at close range; the infrared
 picture is not permission to see through cover. Destroying the carrier removes
 the drone observer, and contacts use the normal spotting linger and radio sharing.
 
@@ -422,3 +422,9 @@ The browser probe `.qa-dev/mode-loop.mjs` plays every mode against the dev serve
 it asserts the ruleset stamps on the player (hull, gravity, equipment), the HUD
 objective line and clock, a single result, the end screen (with the campaign block
 after a ladder sortie) and a clean Garage return, then starts the next mode.
+
+### Infrared and flight motion
+
+Drone FPV and the AC-130 sight show cool, dark terrain and bright vehicle heat, with a soft sensor glow around hot surfaces. Hostile tanks read brighter than friendly vehicles; team markers remain available. Heat follows visible vehicle geometry, respects depth and alpha cutouts, and does not reveal unspotted or network-hidden enemies through cover. Exiting the aerial camera restores normal materials and color.
+
+The drone reacts to bounded gusts, banks under acceleration and makes visible stabilization corrections. Its camera follows a smaller share of the wobble so the pilot can still aim. Horizontal mouse and touch movement follow screen direction in both flight modes; vertical behavior is unchanged.

@@ -1372,6 +1372,8 @@ const GradeShader = {
   uniforms: {
     tDiffuse: { value: null },
     uContrast: { value: GRADE_CONTRAST },
+    uThermal: { value: 0 },
+    uThermalPixel: { value: new THREE.Vector2(1/1280,1/720) },
     uSaturation: { value: GRADE_SATURATION },
     uVignette: { value: GRADE_VIGNETTE },
     uBlack: { value: GRADE_BLACK_LIFT },
@@ -1407,6 +1409,8 @@ const GradeShader = {
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
     uniform float uContrast;
+    uniform float uThermal;
+    uniform vec2 uThermalPixel;
     uniform float uSaturation;
     uniform float uVignette;
     uniform float uBlack;
@@ -1571,6 +1575,15 @@ const GradeShader = {
       float ign = fract( 52.9829189 * fract(
         dot( gl_FragCoord.xy, vec2( 0.06711056, 0.00583715 ) ) ) );
       col += ( ign - 0.5 ) * ( 1.4 / 255.0 );
+      if ( uThermal > 0.5 ) {
+        float heat = thermalHeat(vUv);
+        // A small sensor point-spread halo, not an outline through cover.
+        vec2 d = uThermalPixel * 2.2;
+        float halo = (thermalHeat(vUv+vec2(d.x,0.0))+thermalHeat(vUv-vec2(d.x,0.0))
+          +thermalHeat(vUv+vec2(0.0,d.y))+thermalHeat(vUv-vec2(0.0,d.y))) * 0.25;
+        float cool = 0.055 + dot(col,vec3(0.2126,0.7152,0.0722)) * 0.38;
+        col = vec3(mix(cool,0.97,clamp(heat+halo*0.22,0.0,1.0)));
+      }
       gl_FragColor = vec4( clamp( col, 0.0, 1.0 ), texel.a );
     }`,
 };
@@ -1593,6 +1606,10 @@ function createOutputGradePass(): OutputGradePass {
     #include <tonemapping_pars_fragment>
     #include <colorspace_pars_fragment>
 
+    float thermalHeat(vec2 sampleUv) {
+      float energy = dot(texture2D(tDiffuse,sampleUv).rgb,vec3(0.2126,0.7152,0.0722));
+      return smoothstep(1.55,3.1,energy);
+    }
     vec4 sampleDisplay( vec2 sampleUv ) {
       vec4 outputColor = texture2D( tDiffuse, sampleUv );
       // round 69: sun shafts + lens flare, linear HDR, before the output transform
@@ -2666,6 +2683,8 @@ export function createPost(
     dynGovern(adaptiveFrameSeconds(dt, frameWallDtSeconds));
     updateAerialZoom();
     grade.uniforms.uExposure.value = scene.userData.postExposure || 1;
+    grade.uniforms.uThermal.value = camera.userData.thermalFlight === true ? 1 : 0;
+    grade.uniforms.uThermalPixel.value.set(1/sceneTarget.width,1/sceneTarget.height);
     aerial.uniforms.uCloudShade.value = scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT;
     updateScopeGrade();
     updateAerialFogColors();

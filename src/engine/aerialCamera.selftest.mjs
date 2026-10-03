@@ -23,8 +23,19 @@ for(const kind of ['gunship','drone'])for(const startYaw of [0,Math.PI/2,Math.PI
   const mouseDX=!cursorAim&&axis==='horizontal'?-sign*30:0;
   const mouseDY=!cursorAim&&axis==='vertical'?sign*30:0;
   r.update(actor,{mouseDX,mouseDY,wheel:0,cursorAim,cursorX:axis==='horizontal'?sign:0,cursorY:axis==='vertical'?-sign:0},1/60);
-  const screen=actor.input.aimPoint.clone().project(oldCamera);
+  const screen=new Vector3(0,0,-1).applyQuaternion(c.quaternion).multiplyScalar(1000).add(c.position).project(oldCamera);
   assert.ok(axis==='horizontal'?screen.x*sign>.001:screen.y*sign<-.001,`${kind} ${axis} direction ${sign}, cursor=${cursorAim}, yaw=${startYaw}`);
  }
 }
 console.log('aerialCamera: mouse and cursor directions correct in both aircraft at four headings; vertical unchanged');
+
+const launchCamera=new PerspectiveCamera(),launchRig=createAerialCamera(launchCamera);
+const carrier={aerial:{...e.aerial,kind:'drone',active:true,launching:true,batteryS:40},input:{aimPoint:new Vector3()}};
+const idle={mouseDX:0,mouseDY:0,wheel:0};
+launchRig.update(carrier,idle,1/60);assert.equal(launchCamera.userData.thermalFlight,false);
+carrier.aerial.launching=false;
+launchRig.update(carrier,idle,1/60);assert.equal(launchCamera.userData.thermalFlight,false,'launch flag ends before camera handoff');
+for(let i=0;i<40;i++)launchRig.update(carrier,idle,1/60);
+assert.equal(launchCamera.userData.thermalFlight,true,'infrared starts only inside FPV');
+carrier.aerial.active=false;launchRig.update(carrier,idle,1/60);assert.equal(launchCamera.userData.thermalFlight,false);
+console.log('aerialCamera: launch and camera handoff stay in color; FPV alone enables infrared');
