@@ -36,6 +36,8 @@ interface TallGrassField {
   _foldAt?(x: number, z: number): number;
   /** Ground lane (2026-10-03): the field the terrain draws here (landUse.ts); absent on a map without fields. */
   _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
+  /** Ground lane (2026-10-03): the canopy's cover (0..1) — little sward grows in a stand's shade. */
+  _woodsAt?(x: number, z: number): number;
 }
 
 type TallGrassBlocked = (x: number, y: number, z: number, height: number, radius: number) => boolean;
@@ -493,8 +495,11 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     if (Math.max(Math.abs(x), Math.abs(z)) > 474) return;
     let keep = 1;
     const roadD = field._roadDist ? field._roadDist(x, z) : 1e9;
-    if (roadD < TALL_GRASS.roadKeepOutM) return;
-    if (roadD < TALL_GRASS.roadShoulderM) keep *= (roadD - TALL_GRASS.roadKeepOutM) / (TALL_GRASS.roadShoulderM - TALL_GRASS.roadKeepOutM);
+    // ground lane (2026-10-03): the sward meets a road on a ragged line — it stands back from the carriageway by up to
+    // 2.2 m more in trodden bays along it (a 2.2 m noise), never one ruled keep-out line; it never comes nearer
+    const keepOut = TALL_GRASS.roadKeepOutM + (roadD < TALL_GRASS.roadShoulderM + 3 ? swardNoise(x, z, 2.2, 0x7a11) * 2.2 : 0);
+    if (roadD < keepOut) return;
+    if (roadD < TALL_GRASS.roadShoulderM) keep *= (roadD - keepOut) / (TALL_GRASS.roadShoulderM - keepOut);
     if (field._noVeg && field._noVeg(x, z)) return;
     const ground = field.getGroundType ? field.getGroundType(x, z) : 'medium';
     if (ground === 'hard') return;
@@ -575,6 +580,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     }
     // ground lane (2026-10-03): a wild sward grows in tussocks with thinner ground between them, and stands tall in
     // some patches and grazed short in others; a sown crop stands even (no tussocks there)
+    if (field._woodsAt) keep *= 1 - 0.85 * field._woodsAt(x, z); // a stand's shade: litter, little sward
     if (!cropTint && b.kind !== 'reed') {
       keep *= 0.30 + 0.70 * smoothstep(0.28, 0.72, swardNoise(x, z, 1.7, 0x51a7));
       heightScale *= 0.62 + 0.76 * swardNoise(x, z, 9, 0x2c3d);

@@ -392,6 +392,8 @@ export interface HeightField {
   /** Ground lane (2026-10-03): the field the terrain material draws at (x, z) (landUse.ts) — absent on a map without
    * fields; the tiers that grow on the ground (tall grass, tufts) stand as its crop. */
   _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
+  /** Ground lane (2026-10-03): the canopy's cover (0..1) once the vegetation is placed (terrain applyWoodsMask). */
+  _woodsAt?(x: number, z: number): number;
   _layout: TerrainLayout;
   /** Frontline Assault trench plan carved into this field (assault-trenches variant), else null. */
   assaultTrenchLines?: AssaultTrenchPlan | null;
@@ -2821,7 +2823,7 @@ function makeShaderNoiseTexture(_seed: number): THREE.CanvasTexture {
   for (let j = 0; j < s * s; j++) {
     px[j * 4] = (a[j] * 0.5 + 0.5) * 255;
     px[j * 4 + 1] = (b[j] * 0.5 + 0.5) * 255;
-    px[j * 4 + 2] = 128; px[j * 4 + 3] = 255;
+    px[j * 4 + 2] = 0; px[j * 4 + 3] = 255; // ground lane: B carries the woods mask (applyWoodsMask), empty until then
   }
   // r5: aniso 16 (was 1) — this texture feeds UNCONDITIONAL albedo terms
   // (0.90 + n2*0.20, far mottling, meadow tints). At aniso 1 every steep face
@@ -3602,10 +3604,16 @@ void splatCompute() {
   // barley, young green crop, stubble, dark sunflower, or the soil layer for a plough of black earth; every crop
   // carries its own rows — furrows, tramlines, combine swaths, mowing stripes — each faded by its period over the
   // footprint; a grass margin rings every field, and dirt tracks with two ruts run along the long boundaries.
+  // The woods: the stands' cover from the placed trees (vegetation.ts _woodsMask in the noise texture's blue channel,
+  // 4 m texels over the square, 0 until the world's assembly applies it — terrain applyWoodsMask). No field is sown
+  // under a closed canopy; the forest floor is drawn below.
+  float woods = 0.0;
+  if (max(abs(wp.x), abs(wp.z)) < 511.0) woods = nz(wp.xz, 1.0 / 1024.0, vec2(0.5)).b;
   float landW = 0.0;
   if (uLandA.x > 0.001) {
     landW = uLandA.x * meadowG * (1.0 - fR) * (1.0 - outsideW) * (1.0 - smoothstep(0.05, 0.30, mk.a))
-      * (1.0 - shoulder) * (1.0 - smoothstep(0.020, 0.060, slope)) * (1.0 - smoothstep(0.02, 0.10, fM));
+      * (1.0 - shoulder) * (1.0 - smoothstep(0.020, 0.060, slope)) * (1.0 - smoothstep(0.02, 0.10, fM))
+      * (1.0 - smoothstep(0.10, 0.45, woods));
     if (landW > 0.003) {
       float crop, edgeM, track, jit; vec2 rowDir;
       lu_field(wp.xz, crop, edgeM, track, rowDir, jit);
@@ -3662,6 +3670,22 @@ void splatCompute() {
         vec3 trackCol = soil.rgb * vec3(0.92, 0.88, 0.80) * (1.0 - 0.28 * ruts);
         a.rgb = mix(a.rgb, trackCol, track * landW * clamp(ruts * 1.3 + 0.35, 0.0, 1.0));
       }
+    }
+  }
+  // Ground lane (2026-10-03, round 77's open item "no floor darkening under the canopy"): the forest floor — leaf
+  // litter over the soil, browner and a shade darker than the turf, broken by moss and by the sward that holds on in
+  // the light gaps (a ~12 m field with no world period); on a snow map the snow lies thin under the conifers and the
+  // needles and the soil show in the wells. Rock and the roads keep their own.
+  if (woods > 0.02) {
+    float gap = nzq(uvW, 0.021, vec2(0.13, 0.59)).x;
+    float floorW = woods * (1.0 - 0.8 * fR) * (1.0 - roadCore);
+    vec3 soilF = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB).rgb;
+    if (uReduxD.y > 1.5) {
+      a.rgb = mix(a.rgb, soilF * vec3(0.80, 0.70, 0.62), floorW * smoothstep(0.55, 0.95, woods) * smoothstep(0.35, 0.75, gap) * 0.55);
+    } else {
+      vec3 litter = soilF * vec3(1.06, 0.86, 0.64) * (0.92 + 0.16 * n1h);
+      vec3 floorCol = mix(litter, a.rgb * vec3(0.78, 0.96, 0.66), smoothstep(0.55, 0.80, gap) * 0.7);
+      a.rgb = mix(a.rgb, floorCol, floorW * (uReduxD.y < 0.5 ? 0.85 : 0.5));
     }
   }
   // Terrain v2 (2026-10-01, grounded realism): the cover's own patchwork at 2–8 m. A meadow is never one green — paler
@@ -5436,6 +5460,35 @@ function* terrainBuildSteps(
     };
     heightField._foldAt = foldAt;
   }
+  // Ground lane (2026-10-03): the vegetation's woods mask (vegetation.ts _woodsMask, 256² over the square) lands in the
+  // noise texture's free blue channel — one 4 m texel per mask cell, the field read at the square's own scale — and on
+  // the height field for the ground tiers. Called by the world's assembly once the trees are placed.
+  group.userData.applyWoodsMask = (mask: Float32Array): void => {
+    const size = Math.round(Math.sqrt(mask.length));
+    const noise = splatTextures[9] as THREE.Texture | undefined;
+    const canvas = noise?.image as HTMLCanvasElement | undefined;
+    if (canvas && typeof canvas.getContext === 'function' && canvas.width === size && canvas.height === size) {
+      const context = canvas.getContext('2d');
+      if (context) {
+        const image = context.getImageData(0, 0, size, size);
+        // the canvas uploads flipped (texture v = 1 at its top row): mask row j (z from -512) is canvas row size-1-j
+        for (let j = 0; j < size; j++) {
+          for (let i = 0; i < size; i++) image.data[((size - 1 - j) * size + i) * 4 + 2] = Math.round(Math.max(0, Math.min(1, mask[j * size + i])) * 255);
+        }
+        context.putImageData(image, 0, 0);
+        noise!.needsUpdate = true;
+      }
+    }
+    const cell = 1024 / size;
+    heightField._woodsAt = (x: number, z: number): number => {
+      const u = Math.max(0, Math.min(size - 1.001, (x + 512) / cell - 0.5));
+      const v = Math.max(0, Math.min(size - 1.001, (z + 512) / cell - 0.5));
+      const i = Math.floor(u), j = Math.floor(v), fu = u - i, fv = v - j, k = j * size + i;
+      const a = mask[k] + (mask[k + 1] - mask[k]) * fu;
+      const b = mask[k + size] + (mask[k + size + 1] - mask[k + size]) * fu;
+      return a + (b - a) * fv;
+    };
+  };
   // Round 73b (2026-09-26): the shore distance the strand reads — metres landward of the sheet's waterline from the
   // map's own shoreline contours (the discs the mask bake and the sheet share; the waterline is where the contour's
   // wetness ramp crosses the map's sea ramp). The mask's ramp is two or three metres wide on a real beach, so the
