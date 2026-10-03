@@ -237,15 +237,43 @@ for (const family of repairedLightFamilies) {
 
 assert.ok(polePolicyByMap.get('verdant').pairs > 0 && polePolicyByMap.get('verdant').singles > 0,
   'Verdant Fields keeps flat-ground pairs while its uneven stations become single posts');
-assert.ok(polePolicyByMap.get('titan_gorge').singles >= 20
-  && polePolicyByMap.get('titan_gorge').singles > polePolicyByMap.get('titan_gorge').pairs * 3,
-  'Titan Gorge uses single posts throughout its steep utility corridor');
+// 2026-10-03: Titan Gorge's redesign took the noise mesas off its first road, so its line now crosses the floor (pairs) and
+// the shelves' toes (single posts); Skybridge's steep corridor carries the single-post case
+assert.ok(polePolicyByMap.get('titan_gorge').pairs > 0 && polePolicyByMap.get('titan_gorge').singles > 0,
+  'Titan Gorge keeps flat-floor pairs while its uneven stations become single posts');
+assert.ok(polePolicyByMap.get('skybridge').singles >= 20
+  && polePolicyByMap.get('skybridge').singles > polePolicyByMap.get('skybridge').pairs * 3,
+  'Skybridge uses single posts throughout its steep utility corridor');
 // The original b0e014818 regression covered a shelf in the pre-completion
 // road field. New road grading may remove that hazard, not pole protection.
 // Titan has no id-dependent quarry/terrain policy: omit only road dispatch,
 // retaining its actual authored paths, seed, landforms and placement rules.
-const historicalTitanPolicy = auditUtilityPoleStations(createHeightField(1337,
-  { ...getMapConfig('titan_gorge'), id: undefined }), 'historical Titan Gorge');
+// 2026-10-03: Titan Gorge's redesign took the noise mesas (and so the shelf) off its first road, so the regression keeps
+// the pre-redesign terrain as its fixture: the mesa field, the six smooth landforms, the roads and the deployment.
+const HISTORICAL_TITAN = Object.freeze({
+  mesas: { amp: 22, thr0: 0.755, thr1: 0.815, wallWidth: 0.62, corridorFloor: 0.30 },
+  roads: { paths: [
+    [[-420, -458], [-338, -338], [-286, -206], [-220, -86], [-142, 28], [-82, 168], [-18, 306], [62, 466]],
+    [[-128, -466], [-88, -324], [-28, -184], [44, -42], [126, 92], [212, 226], [306, 356], [390, 458]],
+    [[366, -454], [304, -304], [246, -168], [172, -28], [92, 108], [8, 242], [-84, 370], [-176, 466]],
+    [[-382, -72], [-260, -92], [-142, -60], [-12, -82], [116, -48], [244, -76], [372, -54]],
+    [[-334, 228], [-214, 192], [-96, 220], [30, 188], [154, 224], [284, 196]],
+  ] },
+  landforms: [
+    { kind: 'ridge', x: -268, z: 18, length: 760, width: 118, height: 17.5, yawDeg: -4, corridorScale: 0.38 },
+    { kind: 'ridge', x: 278, z: 12, length: 760, width: 122, height: 18.0, yawDeg: 5, corridorScale: 0.38 },
+    { kind: 'ridge', x: -52, z: 312, length: 330, width: 98, height: 12.0, yawDeg: 82, corridorScale: 0.42 },
+    { kind: 'knoll', x: -116, z: -248, rx: 124, rz: 78, height: 9.0, yawDeg: 22, corridorScale: 0.44 },
+    { kind: 'basin', x: 22, z: 18, rx: 188, rz: 124, height: -7.0, yawDeg: -12, corridorScale: 0.68 },
+    { kind: 'knoll', x: 162, z: 274, rx: 112, rz: 72, height: 8.0, yawDeg: -24, corridorScale: 0.46 },
+  ],
+});
+const titanToday = getMapConfig('titan_gorge');
+const historicalTitanPolicy = auditUtilityPoleStations(createHeightField(1337, {
+  ...titanToday, id: undefined,
+  terrain: { ...titanToday.terrain, ...HISTORICAL_TITAN, hardstands: undefined, landformRock: false },
+  spawns: { ...titanToday.spawns, player: { x: -352, z: -392 } },
+}), 'historical Titan Gorge');
 assert.ok(historicalTitanPolicy.maxRejectedRelief > 2,
   'historical Titan Gorge audit covers the cliff shelves that previously suspended a second post');
 assert.deepEqual(polePolicyByMap.get('delta'), { pairs: 0, singles: 0, maxRejectedRelief: 0 },
@@ -338,12 +366,48 @@ for (const mapId of ['ruinspires', 'blackglass']) {
     `${mapId}: skyline uses authored weathered material tones`);
 }
 
+// Canyon walls: ridges of canyon height (17 m or more) on both flanks of the canyon's axis, 100 m or more off it. Each
+// flank is measured by the length its walls cover along the axis inside the playable square (the union of their
+// spans), and must cover most of it, 60 % or more. The 2026-10-03 redesigns end Titan's shelves in cliffs at 660 m
+// (70 %). The two 760 m ridges the old check counted (a length of 700 m or more was all it asked) ran end to end along
+// the x axis through the middle, 1 and 31 m off it, so they met it by length alone.
+function canyonWallCoverage(config) {
+  const walls = config.terrain.landforms.filter((form) => form.kind === 'ridge' && (form.height || 0) >= 17);
+  if (!walls.length) return [];
+  const lead = walls.reduce((best, form) => ((form.length || 0) > (best.length || 0) ? form : best));
+  const yaw = (lead.yawDeg || 0) * Math.PI / 180, ax = Math.cos(yaw), az = Math.sin(yaw);
+  const flanks = new Map();
+  for (const form of walls) {
+    const offset = -form.x * az + form.z * ax;
+    if (Math.abs(offset) < 100) continue;
+    const along = form.x * ax + form.z * az;
+    const reach = (form.length || 100) / 2 * Math.abs(Math.cos(((form.yawDeg || 0) - (lead.yawDeg || 0)) * Math.PI / 180));
+    const span = [Math.max(-PLAYABLE_HALF_EXTENT_M, along - reach), Math.min(PLAYABLE_HALF_EXTENT_M, along + reach)];
+    if (span[1] > span[0]) flanks.set(Math.sign(offset), [...(flanks.get(Math.sign(offset)) ?? []), span]);
+  }
+  return [...flanks.values()].map((spans) => {
+    spans.sort((a, b) => a[0] - b[0]);
+    let covered = 0, end = -Infinity;
+    for (const [from, to] of spans) {
+      if (to > end) covered += to - Math.max(from, end);
+      end = Math.max(end, to);
+    }
+    return covered;
+  });
+}
 for (const mapId of ['titan_gorge', 'skybridge']) {
   const config = getMapConfig(mapId);
-  const majorWalls = config.terrain.landforms.filter((form) =>
-    form.kind === 'ridge' && form.height >= 17 && form.length >= 700);
-  assert.ok(majorWalls.length >= 2,
+  if (mapId === 'titan_gorge') {
+    const covered = canyonWallCoverage(config);
+    assert.ok(covered.length === 2 && Math.min(...covered) >= 0.6 * 2 * PLAYABLE_HALF_EXTENT_M,
+      `${mapId}: paired canyon walls span most of the battlefield (${covered.map((m) => m.toFixed(0)).join(' / ')} m `
+      + `of ${2 * PLAYABLE_HALF_EXTENT_M} m)`);
+  } else {
+    // Skybridge keeps the length check until its redesign lands.
+    assert.ok(config.terrain.landforms.filter((form) =>
+      form.kind === 'ridge' && form.height >= 17 && form.length >= 700).length >= 2,
     `${mapId}: paired canyon walls span most of the battlefield`);
+  }
   assert.ok(config.horizon.style === 'mesa' && config.horizon.amp >= 1.9,
     `${mapId}: distant skyline reads at Grand Canyon scale`);
 }

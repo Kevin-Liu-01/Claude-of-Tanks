@@ -161,6 +161,12 @@ Siting an apron:
 5. Run the map's receipts. Re-pin the receipts it moves, with before/after evidence in the commit.
 6. Bots: run seeded matches on every supported mode. The map's median standard match must fall inside 240–480 s,
    with no stalemate and no stuck bot.
+   Falls: count the damaging falls (`tank_impact` events with cause `fall`) in seeded 7v7 Standard and Endless Horde
+   matches, four seeds each, on the old layout and the new one. None of three numbers may rise: the total fall
+   damage, the worst single fall, and the count of falls of 50 hp or more. A drop under 50 hp is a kerb or a bank
+   taken at speed and does not count; moving a road or a bank moves where such drops happen without making the map
+   more dangerous. A bare count of falls is too crude: on Titan Gorge it rose 9 → 24 in Endless Horde while the total
+   fell 1134 → 637 hp and the worst fall 457 → 88 hp.
 7. Multiplayer: the host loads the new shard, and a headless peer-to-peer run plays the map
    (`node tools/mp-p2p-headless.mjs --map=<id> --world=dedicated`).
 8. Capture chase, bird and tactical-overhead views before and after; measure draw calls, triangles and frame time
@@ -223,6 +229,14 @@ props code shaped every layout, and the next maps should start from them:
   `src/world/props.ts`.
 - **Marine structures.** A wharf seated on its landing stands over the water by design; the map names it as a
   `solidPropsInWater` exception.
+- **Shelves end in cliffs.** A long shelf whose ends taper is a ramp onto its cap, and bots drive up it and fall off
+  the walls. End a shelf in cliffs (`cliffEnd` on a ridge's geology) short of the deployments. On Titan Gorge, four
+  seeded standard matches took 15 damaging falls on the old mesa field (4259 hp, the worst 1274 hp) and 4 on the
+  660 m shelves with cliff ends (61 hp, the worst 25 hp). Its first shelves, with tapered ends, took 29 falls in
+  Endless Horde (3383 hp, the worst 1442 hp).
+- **Rock without a mesa field.** A map that drops its noise mesas for authored shelves and buttes sets
+  `landformRock`, so the terrain's rock gate reads its rock landforms (butte, inselberg and lava-flow profiles, and
+  slag) instead (`src/world/landformGeology.ts`).
 - **Canyon maps.** On Redrock Divide the canyon (`src/world/redrockCanyon.ts`) stays the regional terrain, and the
   authored landforms are floor features: inselbergs, dune ridges and sand ramps. `mapQuality` checks that each one
   stands on the canyon floor. An inselberg is a steep dome with `corridorScale: 1`, so a deployment corridor that

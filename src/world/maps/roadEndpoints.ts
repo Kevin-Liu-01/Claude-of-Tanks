@@ -237,7 +237,7 @@ export function gradeRoadPortals(mapId: string | undefined, roads: readonly (rea
 /** Preserve the existing road bake before adding exits on three reviewed maps.
  * All other maps retain their previous construction order exactly. */
 export function usesInheritedRoadGrades(mapId: string | undefined): boolean {
-  return mapId === 'blackglass' || mapId === 'titan_gorge' || mapId === 'skybridge';
+  return mapId === 'blackglass' || mapId === 'skybridge';
 }
 
 function sampleRoadGrade(point: RoadPoint, road: readonly RoadPoint[], elevations: readonly number[]): number {
