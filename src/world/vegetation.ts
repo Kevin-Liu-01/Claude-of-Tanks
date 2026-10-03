@@ -43,7 +43,7 @@ import {
 import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
-import { treeBiomeColour, treeBiomePalette, treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomePalette, treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -183,6 +183,12 @@ interface VegetationConfig {
   palettes: Partial<Record<Species, VegetationPalette>>;
   avoid: VegetationDisc[] | null;
   belts?: VegetationBelt[];
+  /**
+   * Trees round 2b: where the map's palms grow (a spring, a wadi bed, an oasis): a palm drawn anywhere else grows as
+   * `palmFallback` (default: the map's first other species), so no draw moves.
+   */
+  palmSites?: readonly VegetationDisc[];
+  palmFallback?: Species;
   clusterScrub?: number;
   authoredTrees?: AuthoredTreeFeature[];
   stubblePatches?: readonly GrassStubblePatch[];
@@ -5036,6 +5042,9 @@ function* vegetationBuildSteps(
     // trees round 2: the stream the tree's own draws come from (the woodlots draw from theirs, placeTreeClusters)
     r: RandomSource = rng,
   ): void {
+    // trees round 2b: a palm outside the map's palm sites grows as its fallback species (every path: stands, lone trees,
+    // belts, the rim); no draw moves
+    if (species === 'palm' && palmElsewhere && !palmSiteOk(x, z)) species = palmElsewhere;
     const y = heightField.getHeightAt(x, z);
     const sc = scMin + r() * (scMax - scMin);
     const archetype = TREE_ARCHETYPES[species];
@@ -5117,15 +5126,25 @@ function* vegetationBuildSteps(
       // MAX_BUSH_BONUS 0.6 -> 0.5 in src/sim/spotting.ts (already applied).
     }
   }
+  // trees round 2b (the gauntlet's wave 15: "palms included, whatever the place"): a map that names its palms' sites
+  // grows them there only, any other palm as its fallback species (veg.palmSites; no draw moves)
+  const palmElsewhere: Species | null = veg.palmSites
+    ? (veg.palmFallback ?? (veg.species.find((sp) => sp !== 'palm') ?? null)) : null;
+  function palmSiteOk(x: number, z: number): boolean {
+    for (const site of veg.palmSites ?? []) if (Math.hypot(x - site.x, z - site.z) < site.r) return true;
+    return false;
+  }
   function addTree(x: number, z: number, species: Species, r: RandomSource = rng): boolean {
     if (!siteOk(x, z, 0)) return false;
     pushTree(x, z, species, 0.95, 1.7, true, r); // wide size spread per stand
     return true;
   }
   function isSeparatedTreeCluster(x: number, z: number, r = 0): boolean {
-    // trees round 2: a woodlot keeps clear of the others by its own reach too (the round-1 stands by the others' only)
+    // trees round 2: a woodlot keeps clear of the others by a little of its own reach too (the round-1 stands by the
+    // others' only). Round 2b: a tenth of it, not half — at half, the round-1-sized woodlots fitted a third fewer stands
+    // on the crowded maps (Nordhavn Fjord 81 -> 49, Monsoon Ridge 120 -> 75) and their corridors lost their cover
     for (const c of clusters) {
-      if (Math.hypot(x - c.x, z - c.z) < c.r + 26 + r * 0.5) return false;
+      if (Math.hypot(x - c.x, z - c.z) < c.r + 26 + r * 0.1) return false;
     }
     return true;
   }
@@ -5215,17 +5234,34 @@ function* vegetationBuildSteps(
   function placeTreeClusters(): void {
     replayRoundOneStandDraws();
     const wr = mulberry32((seed ^ 0x30d1a7) >>> 0);
+    // trees round 2b: a hyper-arid place's stands are open groves in the low ground (a third of a wood's trees over
+    // three and a half times the ground each, seated in a wadi bed or a hollow)
+    const arid = treeBiomeArid(cfg?.id);
     let attempts = 0;
     const clusterTarget = Math.round(veg.clusterCount * treeRichness());
-    while (clusters.length < clusterTarget && attempts++ < 2600) {
-      const x = (wr() * 2 - 1) * 430, z = (wr() * 2 - 1) * 430;
+    // round 2b: more tries than the round-1 2600 — a woodlot of the round-1 footprint fits fewer ways on a crowded map
+    while (clusters.length < clusterTarget && attempts++ < 6000) {
+      // the stand's leading species first: a palm stand on a map that names its palm sites stands in one (the oasis,
+      // the wadi, the spring), any other anywhere on the field
+      const species = pickSpecies(veg.clusterMix, wr());
+      const palmStand = species === 'palm' && !!veg.palmSites?.length;
+      let x = (wr() * 2 - 1) * 430, z = (wr() * 2 - 1) * 430;
+      if (palmStand) {
+        const site = veg.palmSites![Math.min(veg.palmSites!.length - 1, Math.floor(wr() * veg.palmSites!.length))];
+        const a = wr() * Math.PI * 2, rr = site.r * Math.sqrt(wr());
+        x = site.x + Math.cos(a) * rr; z = site.z + Math.sin(a) * rr;
+      }
       if (!siteOk(x, z, 6)) continue;
-      // the stand's trees and the canopy each takes (a closed wood: 26–42 m² a tree), so its area follows its count — a
-      // round-1 stand drew its radius apart from its count and many read as thin orchards; then a stretch along a
-      // heading (area kept) and three harmonics of the outline
+      if (arid && !palmStand && hollowDepthAt(x, z) < 0.8) continue;
+      // the stand's trees and the ground each takes, so its area follows its count — a round-1 stand drew its radius
+      // apart from its count and many read as thin orchards; then a stretch along a heading (area kept) and three
+      // harmonics of the outline. Trees round 2b: 48-84 m² a tree (the round-1 stands' mean footprint, ~66 m²): at the
+      // closed wood's 26-42 m² the woods covered half the ground they did, and the deployments' corridors lost a quarter
+      // of their tree cover (Fjord 14.6 -> 11.1 %, Monsoon 23.2 -> 16.6 %, Verdant 20.6 -> 15.2 %) — the fast-match
+      // tail battlePacing guards grew from three to six
       // r5: ~1.7x trees per stand — designated forest strips must read DENSE (closed canopy) next to WoT tree lines
-      const n = 24 + (wr() * 34) | 0;
-      const base = Math.sqrt(n * (26 + wr() * 16) / Math.PI);
+      const n0 = 24 + (wr() * 34) | 0, n = arid ? Math.max(5, Math.round(n0 * 0.35)) : n0;
+      const base = Math.sqrt(n * (48 + wr() * 36) * (arid ? 2 : 1) / Math.PI);
       const stretch = Math.sqrt(1 + wr() * wr() * 1.6);
       const heading = wr() * Math.PI;
       const shape: WoodlotShape = {
@@ -5235,9 +5271,8 @@ function* vegetationBuildSteps(
       };
       const r = base * stretch;
       if (!isSeparatedTreeCluster(x, z, r)) continue;
-      const species = pickSpecies(veg.clusterMix, wr());
       // a large wood holds a clearing (a glade, a felled patch) off its centre
-      const clearing = base > 21 ? { a: wr() * Math.PI * 2, k: 0.3 + wr() * 0.3, r: base * (0.2 + wr() * 0.12) } : null;
+      const clearing = base > 21 && !arid ? { a: wr() * Math.PI * 2, k: 0.3 + wr() * 0.3, r: base * (0.2 + wr() * 0.12) } : null;
       let placed = 0;
       const cb0 = trees.length;
       const index = clusters.length;
@@ -5267,14 +5302,87 @@ function* vegetationBuildSteps(
   }
   placeTreeClusters();
   yield { stage: 'treeClusters' };
-  function placeLoneTrees(): void {
-    for (let i = 0, placed = 0, loneTarget = Math.round(veg.loneCount * treeRichness()); i < 800 && placed < loneTarget; i++) { // lone trees + pairs
+  /**
+   * The round-1 lone trees' draws on the shared stream: the scatter runs as it always did, its trees placed and then
+   * popped with their trunk records and concealment discs, so every placement after it (the belts, the rim, the bushes)
+   * keeps its seat (the woodlots' rule, replayRoundOneStandDraws).
+   */
+  function replayRoundOneLoneDraws(): void {
+    const t0 = trees.length, o0 = treeObstacles.length, c0 = concealers.length;
+    for (let i = 0, placed = 0, loneTarget = Math.round(veg.loneCount * treeRichness()); i < 800 && placed < loneTarget; i++) {
       const x = (rng() * 2 - 1) * 460, z = (rng() * 2 - 1) * 460;
       if (addTree(x, z, pickSpecies(veg.loneMix, rng()))) {
         placed++;
-        if (rng() < 0.4) { // companion tree — lone lollipops read fake
+        if (rng() < 0.4) {
           const a2 = rng() * Math.PI * 2, r2 = 4 + rng() * 7;
           if (addTree(x + Math.cos(a2) * r2, z + Math.sin(a2) * r2, pickSpecies(veg.loneMix, rng()))) placed++;
+        }
+      }
+    }
+    trees.length = t0; treeObstacles.length = o0; concealers.length = c0;
+  }
+  /** How far a point lies under the ground 30 m round it (m; a wadi bed or a hollow is positive). */
+  function hollowDepthAt(x: number, z: number): number {
+    let mean = 0;
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      mean += heightField.getHeightAt(x + Math.cos(a) * 30, z + Math.sin(a) * 30);
+    }
+    return mean / 8 - heightField.getHeightAt(x, z);
+  }
+  /**
+   * Trees round 2b (2026-10-03, the gauntlet's wave 15: "trees scattered at even, savanna-like spacing, whatever the
+   * place"): a lone tree stands where field trees stand. Over half at a woodlot's edge, just outside its outline where
+   * the wood's seedlings reach into the field; a fifth along a field boundary (a road's verge); a quarter as field
+   * clumps (a tree and two or three companions, a hedgerow's remnant) in the open ground between the deployments, where
+   * the round-1 scatter gave the fights their cover (battlePacing's fast tail grew without it). In a hyper-arid place
+   * (treeBiomes.ts arid) every one keeps to the low ground, the wadi beds and hollows where the water table lies. The
+   * lone trees draw from their own stream; the round-1 scatter's draws replay on the shared one.
+   */
+  function placeLoneTrees(): void {
+    replayRoundOneLoneDraws();
+    const lr = mulberry32((seed ^ 0x1a0e5) >>> 0);
+    const arid = treeBiomeArid(cfg?.id);
+    const loneTarget = Math.round(veg.loneCount * treeRichness());
+    let reach = 0;
+    for (const stand of clusters) reach += stand.r;
+    const standByReach = (u: number): number => {
+      let acc = 0;
+      for (let k = 0; k < clusters.length; k++) { acc += clusters[k].r; if (u * reach <= acc) return k; }
+      return clusters.length - 1;
+    };
+    // the deployments' axis (the player's anchor to the enemies' centroid) for the field clumps
+    const anchorB = L.spawns.enemies.reduce((acc, e) => { acc.x += e.x / L.spawns.enemies.length; acc.z += e.z / L.spawns.enemies.length; return acc; }, { x: 0, z: 0 });
+    const axisX = anchorB.x - L.spawns.player.x, axisZ = anchorB.z - L.spawns.player.z, axisL = Math.hypot(axisX, axisZ) || 1;
+    let placed = 0;
+    for (let i = 0; i < 2400 && placed < loneTarget; i++) {
+      const roll = lr();
+      let x = (lr() * 2 - 1) * 460, z = (lr() * 2 - 1) * 460, companions = lr() < 0.4 ? 1 : 0;
+      if (arid) {
+        // a wadi bed or a hollow, or nothing (try again)
+        if (hollowDepthAt(x, z) < 1.2) continue;
+      } else if (roll < 0.55 && clusters.length) {
+        // a woodlot's edge: a stand by its reach, a point a little outside its outline
+        const index = standByReach(lr()), a = lr() * Math.PI * 2, k = 1.08 + lr() * 0.45;
+        const point = standPoint(index, clusters[index], a, k);
+        x = point[0]; z = point[1];
+      } else if (roll < 0.75) {
+        // a field boundary: a road's verge, just outside the trees' road clearance
+        const d = admission()._roadDist(x, z);
+        if (d < 10 || d > 17) continue;
+      } else {
+        // a field clump in the open ground between the deployments (along the axis, its middle seven tenths, within
+        // 220 m of it)
+        const t = 0.15 + lr() * 0.7, w = (lr() * 2 - 1) * 220;
+        x = L.spawns.player.x + axisX * t - (axisZ / axisL) * w;
+        z = L.spawns.player.z + axisZ * t + (axisX / axisL) * w;
+        companions = 2 + (lr() < 0.4 ? 1 : 0);
+      }
+      if (addTree(x, z, pickSpecies(veg.loneMix, lr()), lr)) {
+        placed++;
+        for (let c = 0; c < companions; c++) {
+          const a2 = lr() * Math.PI * 2, r2 = 4 + lr() * 7;
+          if (addTree(x + Math.cos(a2) * r2, z + Math.sin(a2) * r2, pickSpecies(veg.loneMix, lr()), lr)) placed++;
         }
       }
     }
@@ -5423,7 +5531,8 @@ function* vegetationBuildSteps(
         const jr = sapRng(), jg = sapRng(), jb = sapRng();
         if (!siteOk(sx, sz, 0)) continue;
         const sy = heightField.getHeightAt(sx, sz);
-        const spS = pickSpecies(veg.clusterMix, roll);
+        let spS = pickSpecies(veg.clusterMix, roll);
+        if (spS === 'palm' && palmElsewhere && !palmSiteOk(sx, sz)) spS = palmElsewhere;
         const archetypeS = TREE_ARCHETYPES[spS];
         const sapScaleX = sc * (0.86 + treePositionNoise(sx, sz, 11) * 0.28);
         const sapScaleY = sc * (0.90 + treePositionNoise(sx, sz, 12) * 0.20);

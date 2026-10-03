@@ -31,6 +31,8 @@ export interface TreeBiome {
    * the texture tone and the card hue and saturation.
    */
   palette?: Readonly<TreeBiomeColour>;
+  /** A hyper-arid place: its stands are open groves in the low ground, its lone trees keep to the wadi beds (vegetation.ts). */
+  arid?: true;
 }
 
 /** A biome's foliage colour defaults (vegetation.ts VegetationPalette's colour fields). */
@@ -50,8 +52,8 @@ const ARID_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   texTone: (_h: number, s: number, l: number): [number, number, number] => [0.17, Math.min(1, s * 0.5), Math.min(1, l * 1.06)],
 });
 
-const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, palette?: Readonly<TreeBiomeColour>): Readonly<TreeBiome> =>
-  Object.freeze({ place, slots: Object.freeze(slots), ...(shrub ? { shrub } : {}), ...(palette ? { palette } : {}) });
+const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, palette?: Readonly<TreeBiomeColour>, arid?: true): Readonly<TreeBiome> =>
+  Object.freeze({ place, slots: Object.freeze(slots), ...(shrub ? { shrub } : {}), ...(palette ? { palette } : {}), ...(arid ? { arid } : {}) });
 
 /**
  * Per map id. Slots a map does not plant are harmless (the table is read per planted slot). Maps that are absent keep
@@ -73,10 +75,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   verdant: B('Prokhorovka, Kursk oblast', { pine: { form: 'birch', leaves: true }, willow: { form: 'birch', leaves: true } }),
   // Wadi Rum: sparse, dust-dulled umbrella acacias (and the spring's palms) over white-broom scrub (Retama raetam: the
   // map's oak bushes read as lawn shrubs on the sand)
-  badlands: B('Wadi Rum, Jordan', { cedar: { form: 'acacia' }, oak: { form: 'acacia' } }, 'broom', ARID_FOLIAGE),
+  badlands: B('Wadi Rum, Jordan', { cedar: { form: 'acacia' }, oak: { form: 'acacia' } }, 'broom', ARID_FOLIAGE, true),
   // a Saharan wadi: date palms and acacias (the map's oak palette dusts them already; the defaults fill any slot it misses)
-  desert: B('a Saharan wadi', { eucalyptus: { form: 'acacia' } }, undefined, ARID_FOLIAGE),
-  oasis: B('a Saharan oasis', { eucalyptus: { form: 'acacia' } }, undefined, ARID_FOLIAGE),
+  desert: B('a Saharan wadi', { eucalyptus: { form: 'acacia' } }, undefined, ARID_FOLIAGE, true),
+  oasis: B('a Saharan oasis', { eucalyptus: { form: 'acacia' } }, undefined, ARID_FOLIAGE, true),
   // the Rur dams in the Eifel: spruce plantations and beech, birches in leaf
   reservoir: B('the Rur dams, Eifel', { pine: { form: 'beech' }, fir: { form: 'spruce' }, birch: { form: 'birch', leaves: true } }),
   // the summer battlefields whose maps plant birches: in leaf (a bare birch crown in a green summer read as a dead tree,
@@ -135,6 +137,11 @@ export function treeBiomePalette<P extends TreeBiomePaletteTerms>(pal: P, form: 
     ...(formed.cardSat === undefined && defaults.cardSat !== undefined ? { cardSat: defaults.cardSat } : {}),
     ...(!formed.texTone && defaults.texTone ? { texTone: defaults.texTone } : {}),
   };
+}
+
+/** Whether a map's place is hyper-arid (open groves in the low ground, lone trees in the wadi beds). */
+export function treeBiomeArid(mapId: string | null | undefined): boolean {
+  return !!(mapId && TREE_BIOMES[mapId]?.arid);
 }
 
 /** The foliage colour defaults of a map's place, or none. */
