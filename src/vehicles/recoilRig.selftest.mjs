@@ -126,6 +126,21 @@ for (const id of TWIN_PLANT) {
     `${id}: flash origin swaps the full ${(bore[1] - bore[0]).toFixed(2)} m`);
   near(c.x, 0, 1e-6, `${id}: no-index sample stays the center anchor`);
   near(a.y, b.y, 1e-6, `${id}: twin tips share the bore height`);
+  // Each tube is drawn on its own fire axis and sized once (2026-10-03: the resize bake scaled the
+  // rig_barrel groups a second time, so the BMPT T-90's tubes stood 0.441 m apart for its 0.42 m axes).
+  const tubesOnAxes = () => barrelGs.forEach((group, index) => {
+    const tube = group.getObjectByName(`gunBarrel${index}`);
+    assert.ok(tube?.isMesh, `${id}: tube ${index} rides its own barrel group`);
+    const centre = recoilG.worldToLocal(new THREE.Box3().setFromObject(tube).getCenter(new THREE.Vector3()));
+    near(centre.x, bore[index], 1e-3, `${id}: tube ${index} is drawn on its fire axis`);
+  });
+  tubesOnAxes();
+  barrelGs[0].scale.setScalar(1.05);
+  visual.root.updateMatrixWorld(true);
+  assert.throws(tubesOnAxes, assert.AssertionError, `${id}: a tube sized twice is rejected`);
+  barrelGs[0].scale.setScalar(1);
+  visual.root.updateMatrixWorld(true);
+  tubesOnAxes();
 
   // internal cursor alternates when no index is passed (studio/bridge path)
   assert.equal(visual.recoilKick(0, 0.36), 0, `${id}: cursor shot 1 -> barrel 0`);
