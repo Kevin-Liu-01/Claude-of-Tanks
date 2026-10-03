@@ -2,7 +2,6 @@
 // and the same event's unobstructed frontal frame (DVIDS 2587515). Dimensions
 // and concealed closures are construction estimates, not photogrammetry.
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';

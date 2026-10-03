@@ -5,7 +5,7 @@ const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const access = await readFile(new URL('./soloBattleAccess.ts', import.meta.url), 'utf8');
 const intent = await readFile(new URL('./battleIntentRuntime.ts', import.meta.url), 'utf8');
 const loading = await readFile(new URL('./soloBattleLoadingRuntime.ts', import.meta.url), 'utf8');
-assert.doesNotMatch(main, /from ['"]\.\/game\/state\.js['"]/, 
+assert.doesNotMatch(main, /from ['"]\.\/game\/state\.(?:js|ts)['"]/, 
   'garage boot must not statically import solo battle authority');
 assert.match(main, /from ['"]\.\/game\/soloBattleAccess\.ts['"]/,
   'the composition root uses the typed lazy-access owner');

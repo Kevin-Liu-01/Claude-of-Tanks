@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
+import { nearStrict as near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Held-out canonical owner-source weapon.001 rays (source hash is pinned
 // independently by the QA source-world certificate, not loaded at runtime).
@@ -16,7 +17,6 @@ const SECTIONS=[
   [6.10,1.90374855,1.73187217,-.07914111,.09469938],
   [6.20,1.90346067,1.73218240,-.07878831,.09451462],
 ];
-function near(actual,wanted,tolerance,label){assert.ok(Number.isFinite(actual)&&Math.abs(actual-wanted)<tolerance,`${label}: ${actual} vs source ${wanted} ±${tolerance}`);}
 function first(mesh,origin,direction,axis){return new T.Raycaster(new T.Vector3(...origin),new T.Vector3(...direction)).intersectObject(mesh,true)[0]?.point[axis];}
 function sourceSections(gun,label){
   for(const[z,top,bottom,left,right]of SECTIONS){

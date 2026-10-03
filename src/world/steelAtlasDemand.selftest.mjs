@@ -22,7 +22,8 @@ for (const id of MAP_IDS) {
   assert.equal(steelAtlasNeeded(plan, props.industrialCladding), expected, `${id}: the predicate follows the plan`);
   if (!expected) without.push(id);
 }
-assert.deepEqual(without, ['verdant', 'desert', 'coastal', 'autumn', 'oasis', 'orchard'], 'six battlefields draw no steel (2026-09-26 plans)');
+// 2026-10-01 (frozen pins retired): the dated list of the six steel-free battlefields of the 2026-09-26 plans was a
+// snapshot of authored data; every battlefield answers to the predicate above against its own plan instead.
 assert.equal(steelAtlasNeeded(['cottage', 'barn'], undefined), false);
 assert.equal(steelAtlasNeeded(['cottage', 'containerRow'], undefined), true, 'a container row');
 assert.equal(steelAtlasNeeded(['cottage', 'shed'], undefined), true, 'a yard kind (its profile places drums)');

@@ -438,14 +438,6 @@ interface T26TurretConfig {
   m47?: boolean;
 }
 
-interface M47TurretConfig extends T26TurretConfig {
-  bustleSecs: BustleSection[];
-  mg: M2StationConfig;
-  blisterX: number;
-  blisterY: number;
-  blisterZ: number;
-}
-
 interface Vec3Object {
   x: number;
   y: number;
@@ -3895,8 +3887,8 @@ function pattonFaceCassette(
   rx = 0,
   ry = 0,
   rz = 0,
-  rows = 1,
-  cols = 1,
+  _rows = 1,
+  _cols = 1,
 ): void {
   const { box, cylZ, xform } = KIT;
   P.add(bucket, box(w, h, d), x, y, z, rx, ry, rz);
@@ -4588,7 +4580,7 @@ function applyM60CompactScale(
 }
 
 function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
-  const { box, cylY, cylZ, cylX, sph, xform, liftEye, buildGun, tarpRoll, torus, towCable } = KIT;
+  const { box, cylY, cylZ, cylX, xform, liftEye, buildGun, torus, towCable } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   // SHADED-PARITY r3 item 3 (m60-scoped material lift): 'glass' (near-black
   // metallic) never read as optics on the proof board — the reference pods
@@ -5354,7 +5346,7 @@ function addM60A2ShoulderArmor(P: PattonBuilderPort, cfg: M60A2BuildConfig): voi
   }
 }
 
-function addM60A2HullFurniture(P: PattonBuilderPort, cfg: M60A2BuildConfig): void {
+function addM60A2HullFurniture(P: PattonBuilderPort, _cfg: M60A2BuildConfig): void {
   const { box, cylZ } = KIT;
   const slab = orientedSlab;
   // outer skirt lip to 1.78 (ref front 1.85 at 1.75-1.79), then the LOW
@@ -5727,7 +5719,7 @@ function m48RadialRoofSeat(
 }
 
 function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
-  const { box, cylX, cylY, cylZ, sph, buildGun, tarpRoll } = KIT;
+  const { box, cylX, cylY, cylZ, sph, buildGun } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const hull = curveHull(P, cfg.hull);
   const buildM48HullStage1 = (): void => {
@@ -6159,153 +6151,6 @@ function xformCyl(r: number): THREE.CylinderGeometry {
   g.rotateX(Math.PI / 2);
   return g;
 }
-
-// ---------------------------------------------------------------------------
-// Measured per-tank data (v6 true-camera work orders, world coords).
-// ---------------------------------------------------------------------------
-// M26 — VERTEX ROUND r3 (2026-08-05): POST-WARP RE-ANCHOR. batch-42
-// (bc17984) stretched the print body 6.076 -> 6.33 (z-warp about -1.317,
-// muzzle pinned at tail'+8.65) and the extract was REGENERATED on the warped
-// bytes — every constant below is authored in the WARPED extract frame
-// (docs/references/vertex/m26_pershing.json: hull mask -4.326..+2.004, ring
-// (0, 1.518, -0.454), muzzle +4.326, pubDims heightM 3.08). The old batch-8
-// trace frame (ring +0.187, tail -3.61, muzzle +5.00) sat ~0.65 forward of
-// the warped ref — the r0 workorder read side dAlong 0.632 / plan dy -0.832
-// (the m47 batch-34 re-phase class this round retires).
-// Ref lines (dense retrace probe, tools/tmp-m46-retrace.mjs --id=m26):
-// bow: knee (1.564, 1.54) then the print's own STEEP glacis face to
-// (1.60, 1.135) — the print compresses the real ~46-deg glacis into a
-// near-vertical bow read (the pre-warp extract shows the same cliff:
-// deckCorners (1.564,1.54)->(1.594,1.193); certified print-class residual,
-// packet r3) — toe apron carried by bow EYES (1.045..1.19 to z 1.655, the
-// m47 class), hull-mask front by the bow fender PLATFORMS (1.008..1.099 to
-// z 1.913, plan x 1.09..1.65) + the single LEFT tab to 1.99 (m45 class);
-// hatch-bay dip 1.35 @ z 1.35 (ref corners (1.344,1.344)->(1.214,1.53));
-// deck 1.519 fwd / 1.552 aft of -1.47 (hood bumps 1.566 @ 0.67..0.83, cap
-// 1.582 @ -1.88, bump plates 1.588 @ -2.33..-2.47); rear ramp falls from
-// (-2.90, 1.547) through the measured steps to the tail lip (-4.326, 1.235);
-// full width ends -4.03, plate hw 0.60 to -4.245, duckbill/pintle tiers to
-// -4.322 (plan centre -4.3201). Tracks: contact flat -2.985..+0.944 (pins
-// 1.00/-3.02), idler (1.66, 0.67, 0.15) — wrap face 1.90 / crest 0.91 under
-// the 1.008 platform floor (m45 §B4 law), sprocket (-3.94, 0.76, 0.12) —
-// wrap bottom 0.55 flat -4.04..-4.14 (face -4.15 vs plan tracks -4.11:
-// certified +0.04), tension idler (-3.30, 0.25, 0.15) pressing the ref's
-// shallow ramp start (bots 0.03-0.16 over -3.09..-3.41).
-const M26_HULL: PattonHullConfig = {
-  // front view: belly 0.4344 spans |x| <= ~0.98, track inner edge ~1.03 /
-  // outer ~1.71 (trackW 0.67 / inset 0.05), deck plates 1.50-1.54 out to
-  // +-1.60, fender line 1.313-1.372 at +-1.66..1.755
-  W: 3.51, bandHW: 1.60, trackW: 0.60, trackInset: 0.095, sponsonY: 1.05, bellyY: 0.435,
-  bellyHW: 1.00, noseW: 1.30,
-  deckCorridor: { x: 1.00, floor: 1.29, z0: -2.95, z1: 1.35 },
-  runningGearFit: true, runningGearFace: true,
-  darkGearFit: true, // r3 tone transfer (m45 r1 / m46 r7 / m47 A3 recipe):
-                     // roller brackets + flap straps off the pale bucket
-  deck: [[1.60, 1.135], [1.564, 1.54], [1.464, 1.535], [1.44, 1.45], [1.35, 1.35],
-    [1.21, 1.53], [0.85, 1.525], [0.82, 1.519], [-1.44, 1.519], [-1.50, 1.552],
-    [-2.90, 1.547], [-2.96, 1.52], [-3.10, 1.505], [-3.16, 1.487], [-3.44, 1.47],
-    [-3.50, 1.435], [-3.60, 1.40], [-3.95, 1.394], [-4.04, 1.345], [-4.14, 1.318],
-    [-4.19, 1.30]],
-  fenderY: [1.345, 1.44, -4.06],
-  toeBot: 1.005, bellyFrontZ: 1.35, bellyRearZ: -2.95, tailBotY: 0.78,
-  tailTaper: { z0: -4.03, hw1: 0.79 },
-  duckbills: { z: -3.99 },
-  flapF: [1.918, 0.77, 1.008], flapR: [-4.10, 0.88, 1.26],
-  gear: {
-    wheelR: 0.33, span: [0.80, -2.86], rollerN: 5, rollerY: 0.98,
-    contactZF: 0.83, contactZR: -2.92,
-    idler: { z: 1.60, y: 0.67, r: 0.15 }, sprocket: { z: -3.87, y: 0.79, r: 0.07 },
-    tension: { z: -3.30, y: 0.25, r: 0.15, support: true },
-  },
-};
-const M26_FIT: HullFurniture = {
-  hatchZ: 0.75, bowMG: [0.55, 1.28, 1.37, 0.35],
-  lights: { x: 0.68, y: 1.40, z: 1.48, rx: -0.35 }, siren: [-0.3, 1.51, 1.10],
-  shackleY: 1.12, shackleZ: 1.575,
-  // grille bay interior to the 1.552 aft shelf band (frames/slats all under
-  // the 1.5781 trace quantum); the 1.578+ bumps ride caps + bump plates.
-  // r4: bay seat 1.545 -> 1.532 so the deckSlats field plate (1.561)
-  // swallows the 0.104-pitch usKit slat tops 1 mm under its top face (the
-  // m46 r10 mechanism exactly — the bay reads ONE louvre field under the
-  // ref's own 0.0808 crest rhythm, not two beating pitches).
-  grille: { z0: -1.55, z1: -2.28, y: 1.532, rx: 0 }, caps: [0.85, -1.88], noRearEyes: true,
-  rearGrilleY: 1.02, rearGrilleW: 0.56, rearGrilleZ: -4.196,
-};
-
-// M45 — VERTEX ROUND r1 (2026-08-05): re-authored in the EXTRACT frame
-// (docs/references/vertex/m45_patton.json — the r1 family round adjudicated
-// m45 NO-WARP: hullMask -0.9% inside grace, bodyLen -5.1% is a 12%-filter
-// artifact). Ref lines (extract world): glacis (2.42, 1.385) -> toe (2.71,
-// 1.105), toe lip 1.099 to 3.041 (fender platforms 2.948, single LEFT tab
-// 3.046); deck 1.5245 fwd / 1.5525 aft of -0.31 (caps bump 1.581 at
-// -0.63..-0.73); rear ramp 1.526 @ -1.68 -> 1.28 @ -2.93; tail tiers
-// 1.256/1.144 to -3.234 floating at bot 0.919; contact flat -1.78..+1.97,
-// front ramp to the idler wrap ending 2.95, rear ramp slope 0.52 to the
-// print's chopped small end wheel (wrap bottom ~0.50, plan end -2.88 —
-// §B6 both-ends-raised holds; the small-radius residual is the m46
-// chopped-track class, documented in the packet).
-const M45_HULL: PattonHullConfig = {
-  // r2 (90-ladder): bandHW 1.60 -> 1.28 + cfg.deckShoulder (m47 r2 lane,
-  // skirt-deepened) — the ref front view rolls the deck edge down 1.5525 ->
-  // ~1.50 over |x| 1.28..1.61 (the flat 1.60 band read +0.02..+0.06 on ~17
-  // front columns, the row's err carpet). Fender plate widens inboard to
-  // the new band edge automatically ((bhw+fhw)/2 seat).
-  W: 3.51, bandHW: 1.28, trackW: 0.58, trackInset: 0.095, sponsonY: 1.05, bellyY: 0.46, noseW: 1.04,
-  bellyHW: 1.04, glacisWingY0: 1.30, glacisWingDrop: 0.04,
-  deckCorridor: { x: 1.04, floor: 1.30, z0: -1.55, z1: 2.43 },
-  runningGearFit: true, runningGearFace: true,
-  darkGearFit: true, // r1 tone transfer (m46 r7 A4 / m47 A3 recipe): muffler-leg
-                     // class fittings off the pale bucket — bucket swap only
-
-  deck: [[2.71, 1.105], [2.42, 1.385], [2.34, 1.478], [2.29, 1.53], [2.15, 1.5575],
-    [1.75, 1.5575], [1.69, 1.539], [1.63, 1.5245], [-0.28, 1.5245], [-0.34, 1.5525],
-    [-1.66, 1.5525], [-1.73, 1.512], [-2.00, 1.4685], [-2.06, 1.477], [-2.13, 1.477],
-    [-2.19, 1.4335], [-2.50, 1.372]],
-  // r2f: plate span RESTORED to r1 (2.48..-2.842) — the never-flipped SIDE
-  // rows pin the 1.29-line there, and station i13's 4.64% width deficit
-  // under the r2e mirror proved the ref's rear hanger stations are real
-  // (the r2e -2.49 cut chased a grid-phase flicker at the 1.72 lip column;
-  // that column is a certified ref-teeter — the ref's own hanger x-span
-  // ~1.66..1.70 drifts in and out of the lip window per grid).
-  fenderY: [1.293, 2.48, -2.842], fenderHW: 1.676,
-  toeBot: 1.005, bellyFrontZ: 2.10, bellyRearZ: -2.10,
-  narrowTail: { hw: 0.81, z0: -2.50, z1: -2.885, top1: 1.29, botY: 0.55 },
-  // flaps ride ABOVE/BEHIND the end-wheel wraps (§B4: the r2 track-clip read
-  // front 230 / rear 176 voxels — flapF plane tangent to the idler wrap
-  // face, flapR plane inside the sprocket wrap arc, platforms clipped by
-  // the 1.11 wrap crest; idler lowered to the ref's own sub-lip wrap)
-  // r2 (90-ladder): flapF band raised 0.62 -> 1.005 — the ref's own bow-flap
-  // band at the 3.006 column is 1.011..1.099 (the old 0.62 skirt hung 0.39
-  // below it, the row's p95 carrier). The column stays dims-FAT via the
-  // side_whole gun-over-flap span (body filter is |top-bot|, harness ~1263);
-  // hull-row registration re-anchors on the idler-wrap fat column ~2.93
-  // (ref's own wrap class, §D counterweight verified in the workorder).
-  // r2g: flap plane 2.97 -> 2.925 — the flap face owned SIXTEEN plan track
-  // columns at 2.994 vs the ref's own 2.939 flap line; at the raised
-  // 1.005 band the plane clears the wrap arc's z-2.925 cross-section
-  // (y <= 0.80 there), so the r1 §B4 wrap-face constraint no longer binds.
-  // Extend only the hidden upper edge into the fixed fender underside; the
-  // source-pinned lower band and terminal-wheel clearances stay unchanged.
-  flapF: [2.925, 1.27, 1.38], flapR: [-2.81, 1.27, 1.32],
-  gear: {
-    // r2b (90-ladder): contactZR -1.79 -> -1.705 — the loop eases ~0.1 m
-    // past the patch end, so the proc band sat at 0 through z -2.29 where
-    // the ref return line rises 0.074..0.24 (§B6 contact pins; the ref's
-    // own flat still reads to -1.78 within one column).
-    wheelR: 0.33, span: [1.95, -1.65], rollerN: 5, rollerY: 0.98, contactZF: 1.97, contactZR: -1.705,
-    idler: { z: 2.56, y: 0.68, r: 0.21 }, sprocket: { z: -2.66, y: 0.74, r: 0.10 },
-    tension: { z: -2.05, y: 0.30, r: 0.15, support: true },
-  },
-};
-const M45_FIT: HullFurniture = {
-  hatchZ: 1.82, hatchFlush: true, bowMG: [0.55, 1.28, 2.42, -0.80],
-  lights: { x: 0.68, y: 1.40, z: 2.52, rx: -0.62 },
-  shackleY: 0.98, shackleZ: 2.60,
-  grille: { z0: -0.44, z1: -1.155, y: 1.532, rx: 0 }, caps: [0.25, -0.68],
-  // r2d: rearGrilleZ -3.225 -> -3.19 (its rear face fed the -3.269
-  // hull-row column's phantom fat band — see the tailStack bracket note).
-  rearGrilleY: 1.02, rearGrilleW: 0.56, rearGrilleZ: -3.19, noRearEyes: true,
-};
 
 // M46 — batch-8 re-trace (seated oracle): toe (2.42, 1.19) with fender
 // platforms to 2.70 (y ~1.14); deck 1.60-1.65 with muffler band 1.75 over

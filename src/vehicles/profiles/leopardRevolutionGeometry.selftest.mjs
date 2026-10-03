@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Independent source probes are documented in the owner-source packet. These
 // assertions inspect generated vertices, triangles and instance transforms;
@@ -11,10 +12,6 @@ const tank = createTank('leo2_revolution', null, {
   quality: 'high',
 });
 
-const near = (actual, expected, tolerance, label) => {
-  assert.ok(Number.isFinite(actual) && Math.abs(actual - expected) <= tolerance,
-    `${label}: ${actual.toFixed(4)} m; source ${expected} ± ${tolerance} m`);
-};
 const bounds = (object) => new THREE.Box3().setFromObject(object);
 const mesh = (name) => {
   const found = tank.root.getObjectByName(name);

@@ -12,49 +12,43 @@ import {createTankState} from '../../sim/movement.ts';
 import {leopardReturnRollers} from './leopardReturnRollers.ts';
 import {matrix,finiteClearance,continuousShoeClearance,moving,rollerSuspensionFixtures} from '../returnRollerPhysicsTest.mjs';
 import {auditVisibleReturnRollerContact} from '../returnRollerContactTest.mjs';
-import {unlinedLeopard2A5TestBuilder} from './leopardUpperBandHistoryTest.mjs';
 
 const cases=[['leo2a7v_x',buildLeopard2A7VX],['leo2a4m_x',buildLeopard2A4MX],
  ['leo2a5_x',buildLeopard2A5X],['leo2_revolution',buildLeopardRevolution],['kf51_x',buildKF51X]];
 const requested=process.argv[2];
 if(requested&&!cases.some(([id])=>id===requested))throw new Error('Unknown exact roller target');
 const selected=requested?cases.filter(([id])=>id===requested):cases;
-// Exact gear inputs from published 9b65f4bfa before this four-ID addition.
-// ORIGINAL: the pre-roller gear inputs; leo2_revolution carries floorY:-.014 since the 2026-09-17 ground datum (an authored input, not a helper key)
-const ORIGINAL={
- leo2a7v_x:{style:'rubber',wheelR:.375,wheelW:.37,wheelZs:[-2.38,-1.57,-.76,.05,.86,1.67,2.48],wheelY:.46,xc:1.48,
-  trackW:.66,trackTh:.074,topY:1.32,sprocket:{z:-3.120,y:.9647,r:.3813},idler:{z:3.247,y:.9063,r:.2785},paintedEnds:true,arms:true,coveredTop:true},
- leo2a4m_x:{style:'rubber',wheelR:.3459,wheelW:.35,wheelZs:[-2.469,-1.693,-.846,-.054,.719,1.516,2.353],wheelY:.444,xc:1.352,
-  trackW:.590,trackTh:.072,topY:1.242,sprocket:{z:-3.064,y:.874,r:.368},idler:{z:3.209,y:.846,r:.290},paintedEnds:true,arms:true,coveredTop:true},
- leo2a5_x:{style:'rubber',wheelR:.3516,wheelW:.34,wheelZs:[-2.25,-1.40,-.57,.28,1.06,1.86,2.70],wheelY:.44,xc:1.371,
-  trackW:.648,trackTh:.0389,topY:1.24558,trackShoeDimensions:{padHeight:.0389,grouserHeight:.01636,webHeight:.04948,
-   hornHeight:.06464,pinRadius:.01636,pinCentreY:-.01945},shoeWidthScale:1.032,
-  sprocket:{z:-2.91,y:.914,r:.360,trackR:.2712},idler:{z:3.46,y:.915,r:.273,trackR:.2471},paintedEnds:true,arms:true,coveredTop:true},
- leo2_revolution:{style:'rubber',floorY:-.014,wheelR:.3305,wheelW:.35,wheelZs:[-2.211,-1.471,-.663,.092,.828,1.588,2.386],wheelY:.421,xc:1.312,
-  trackW:.535,trackTh:.072,sprocket:{z:-2.7783,y:.836,r:.3514},idler:{z:3.202,y:.809,r:.2777},topY:1.157,paintedEnds:true,arms:true,coveredTop:true},
- kf51_x:{style:'rubber',wheelR:.3280,wheelW:.36,wheelY:.4323,xc:1.2770,
-  wheelZs:[-2.2118,-1.4265,-.6365,.1300,.8573,1.5808,2.3520],trackW:.5770,trackTh:.070,
-  sprocket:{z:-2.9275,y:.7982,r:.318},idler:{z:3.1721,y:.7422,r:.293},
-  topY:1.154,paintedEnds:true,arms:true,coveredTop:true},
-};
+// The pre-roller witness (literal published 9b65f4bfa gear inputs and the leopardX.ts source replay without the
+// A5 lining call) is retired: whole-tank change detection is the fleet geometry ledger's. The A5 lining is now
+// isolated live: the unlined twin is the same build with the band buffers restored to their state right after
+// the gear was built (the lining only rewrites those buffers). A live roller-free twin of the current builder
+// still proves the rollers are additive for every hull except leo2a5_x, whose lining needs the roller stations
+// (its roller-free twin would need a source replay and is not attempted).
+// Fixture configuration for the station-validation negatives below (leo2a7v_x running gear).
+const STATION_FIXTURE={style:'rubber',wheelR:.375,wheelW:.37,wheelZs:[-2.38,-1.57,-.76,.05,.86,1.67,2.48],wheelY:.46,xc:1.48,
+ trackW:.66,trackTh:.074,topY:1.32,sprocket:{z:-3.120,y:.9647,r:.3813},idler:{z:3.247,y:.9063,r:.2785},paintedEnds:true,arms:true,coveredTop:true};
 const stats={builds:0,rollers:0,poses:0,negativeControls:0,rows:[]};
 const hash=g=>{const h=createHash('sha256');for(const key of Object.keys(g.attributes).sort()){
  const a=g.attributes[key];h.update(key);h.update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
  }if(g.index)h.update(Buffer.from(g.index.array.buffer,g.index.array.byteOffset,g.index.array.byteLength));return h.digest('hex');};
-function capture(id,build,quality,old,unlined=false){
- let port,cfg,gear;const emissions=[],original=KIT.buildRunningGear,originalBandPositions=[];
+function capture(id,build,quality,unlined=false,omitRollers=false){
+ let port,cfg,gear;const emissions=[],original=KIT.buildRunningGear,bandBefore=[],gearBand=[];
  KIT.buildRunningGear=(p,input)=>{
-  const {rollers,rollerR,returnRollerWidthM,returnRollerInsetM,returnRollerGeometry,trackCarrierFromOuterFace,loopPoints,botY,rigidLinkChords,...retained}=input; // rigidLinkChords: helper-added (2026-09-17)
-  assert.ok(Math.abs(botY-KIT.groundSeatBotY(p.spec,input))<1e-9,'botY is the ground-datum seat (2026-09-17)');
-  assert.equal(trackCarrierFromOuterFace,id==='leo2a5_x'?true:undefined);
-  if(old)p.disposables.push(returnRollerGeometry); // Test inverse never adopts this caller-owned new buffer.
-  assert.deepEqual(retained,ORIGINAL[id],'Every pre-existing gear input remains exact');
-  cfg=old?retained:input;gear=original(p,cfg);
-  if(old)for(const name of['gearTrackBandL','gearTrackBandR'])originalBandPositions.push([name,p.hullG.getObjectByName(name).geometry.attributes.position.array.slice()]);
+  assert.ok(Math.abs(input.botY-KIT.groundSeatBotY(p.spec,input))<1e-9,'botY is the ground-datum seat (2026-09-17)');
+  assert.equal(input.trackCarrierFromOuterFace,id==='leo2a5_x'?true:undefined);
+  if(omitRollers){
+   const {rollers,rollerR,returnRollerWidthM,returnRollerInsetM,returnRollerGeometry,trackCarrierFromOuterFace,loopPoints,botY,rigidLinkChords,...retained}=input;
+   p.disposables.push(returnRollerGeometry);cfg=retained; // the twin never adopts this caller-owned buffer
+  }else cfg=input;
+  gear=original(p,cfg);
+  for(const name of['gearTrackBandL','gearTrackBandR']){
+   const g=p.hullG.getObjectByName(name).geometry;
+   if(unlined)bandBefore.push([name,g.attributes.position.array.slice(),g.attributes.normal.array.slice()]);
+   if(omitRollers)gearBand.push([name,g.attributes.position.array.slice()]);
+  }
   return gear;
  };
- const runBuild=id==='leo2a5_x'&&(old||unlined)?unlinedLeopard2A5TestBuilder:build;
- registerProfiledBuilders({[id]:P=>{port=P;runBuild(new Proxy(P,{get(target,key){
+ registerProfiledBuilders({[id]:P=>{port=P;build(new Proxy(P,{get(target,key){
   if(!['add','addEquipment','addMudguard'].includes(key))return Reflect.get(target,key);
   return(...args)=>{
    const at=key==='addMudguard'?1:0,g=args[at+1],transform=args.slice(at+2);
@@ -62,14 +56,19 @@ function capture(id,build,quality,old,unlined=false){
    return target[key](...args);
   };
  }}));
- if(old){
-  for(const[name,positions]of originalBandPositions)assert.deepEqual(P.hullG.getObjectByName(name).geometry.attributes.position.array,positions,
-   'Original-input control has no added support frames and receives no lining');
+ if(omitRollers){
+  for(const[name,positions]of gearBand)assert.deepEqual(P.hullG.getObjectByName(name).geometry.attributes.position.array,positions,
+   'Roller-free twin has no added support frames and receives no lining');
   const mounts=P.hullG.getObjectByName('gearReturnRollerSpindles');assert.equal(mounts.count,8);mounts.removeFromParent();mounts.dispose();
  }
  }});
  try{
   const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+  for(const [name,position,normal]of bandBefore){
+   const g=port.hullG.getObjectByName(name).geometry;
+   g.attributes.position.array.set(position);g.attributes.normal.array.set(normal);
+   g.attributes.position.needsUpdate=g.attributes.normal.needsUpdate=true;g.computeBoundingBox();g.computeBoundingSphere();
+  }
   tank.root.updateMatrixWorld(true);stats.builds++;
   return{tank,port,cfg,gear,emissions,receipt:port.hullG.userData.runningGearReceipts[0],dispose(){tank.dispose();}};
  }finally{KIT.buildRunningGear=original;registerProfiledBuilders({[id]:build});}
@@ -122,9 +121,8 @@ function mounts(c,bounds){
  if(panther){assert.ok(oldRootGap>.02,'Original Leopard root would float over 20 mm outside KF51 skin');stats.negativeControls++;}
 }
 function a5Lining(current,quality,bounds){
- const plain=capture('leo2a5_x',buildLeopard2A5X,quality,false,true);
+ const plain=capture('leo2a5_x',buildLeopard2A5X,quality,true);
  try{
-  assert.deepEqual(current.emissions,plain.emissions);assert.deepEqual(body(current.tank.root),body(plain.tank.root));
   current.gear.resetPose();current.gear.update(0,0);plain.gear.update(0,0);
   let changed=0;
   for(const name of['gearTrackBandL','gearTrackBandR']){
@@ -162,21 +160,24 @@ function a5Lining(current,quality,bounds){
  }finally{current.cfg.trackCarrierFromOuterFace=true;current.gear.resetPose();current.gear.update(0,0);plain.dispose();}
 }
 for(const [id,build]of selected)for(const quality of['high','low']){
- const old=capture(id,build,quality,true),current=capture(id,build,quality,false);
+ const current=capture(id,build,quality);
+ const omitted=id==='leo2a5_x'?null:capture(id,build,quality,false,true);
  try{
-  assert.equal(old.port.hullG.getObjectByName('gearReturnRollerTires'),undefined,'Original missing-roller witness');
-  assert.deepEqual(current.emissions,old.emissions,'Every pre-existing authored emission is byte-identical');
-  assert.deepEqual(body(current.tank.root),body(old.tank.root),'Actual hull/turret/gun armor, finish and rig stay exact');
-  for(const name of['rig_hull','rig_turret','rig_gun'])assert.deepEqual(current.tank.root.getObjectByName(name).matrixWorld.elements,
-   old.tank.root.getObjectByName(name).matrixWorld.elements,'Original normalized hull/turret/gun datums');
-  for(const key of['wheelZs','wheelR','wheelY','sprocket','idler','botY','trackW','trackTh'])assert.deepEqual(current.receipt[key],old.receipt[key]);
-  for(const name of['gearRoadWheelTires','gearRoadWheelDiscs','gearRoadWheelInsets','gearSuspensionLinks','gearSuspensionJointBosses']){
-   const a=current.port.hullG.getObjectByName(name),b=old.port.hullG.getObjectByName(name);
-   if(!a&&!b)continue; // 2026-09-22: the Leopard 2A6 X nation wheel has no dark inset layer on either build
-   assert.equal(hash(a.geometry),hash(b.geometry));assert.deepEqual(a.instanceMatrix.array,b.instanceMatrix.array);
+  if(omitted){
+   assert.equal(omitted.port.hullG.getObjectByName('gearReturnRollerTires'),undefined,'Roller-free twin has no rollers');
+   assert.deepEqual(current.emissions,omitted.emissions,'Rollers add or change no authored emission (live roller-free twin)');
+   assert.deepEqual(body(current.tank.root),body(omitted.tank.root),'Hull/turret/gun armor, finish and rig unchanged by the rollers');
+   for(const name of['rig_hull','rig_turret','rig_gun'])assert.deepEqual(current.tank.root.getObjectByName(name).matrixWorld.elements,
+    omitted.tank.root.getObjectByName(name).matrixWorld.elements,'Normalized hull/turret/gun datums unchanged by the rollers');
+   for(const key of['wheelZs','wheelR','wheelY','sprocket','idler','botY','trackW','trackTh'])assert.deepEqual(current.receipt[key],omitted.receipt[key]);
+   for(const name of['gearRoadWheelTires','gearRoadWheelDiscs','gearRoadWheelInsets','gearSuspensionLinks','gearSuspensionJointBosses']){
+    const a=current.port.hullG.getObjectByName(name),b=omitted.port.hullG.getObjectByName(name);
+    if(!a&&!b)continue; // 2026-09-22: the Leopard 2A6 X nation wheel has no dark inset layer on either build
+    assert.equal(hash(a.geometry),hash(b.geometry));assert.deepEqual(a.instanceMatrix.array,b.instanceMatrix.array);
+   }
+   const lower=c=>c.receipt.loopPoints.slice(c.receipt.loopPoints.findIndex(([z])=>z>c.cfg.idler.z+1e-7));
+   assert.deepEqual(lower(current),lower(omitted),'Lower contact/run and lower end arcs unchanged by the rollers');
   }
-  const lower=c=>c.receipt.loopPoints.slice(c.receipt.loopPoints.findIndex(([z])=>z>c.cfg.idler.z+1e-7));
-  assert.deepEqual(lower(current),lower(old),'Existing lower contact/run and lower end arcs retained');
   for(let i=0;i<current.receipt.loopPoints.length;i++){
    const a=current.receipt.loopPoints[i],b=current.receipt.loopPoints[(i+1)%current.receipt.loopPoints.length];
    assert.ok(Math.hypot(a[0]-b[0],a[1]-b[1])>1e-7,'No zero-length carrier cell');
@@ -220,7 +221,7 @@ for(const [id,build]of selected)for(const quality of['high','low']){
   current.gear.resetPose();current.gear.update(0,0);current.tank.root.updateMatrixWorld(true);
   const band=current.port.hullG.getObjectByName('gearTrackBandL');
   assert.ok(finiteClearance(band,matrix(band,0,current.port.hullG),bad)<-.025,'Raised-roller negative control intersects real carrier');stats.negativeControls++;
- }finally{old.dispose();current.dispose();}
+ }finally{current.dispose();omitted?.dispose();}
  // Real batched battle presentation, not just calling the distance API on
  // an inspection build which has no installed far-detail groups.
  const battle=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:true,battleDetailLod:true,camoSeed:4242});stats.builds++;
@@ -257,10 +258,10 @@ for(const quality of['high','low']){
  }finally{rollerless.dispose();}
 }
 for(const stations of[[],[-2,-1,1],[-2,1,1,2],[-2,0,NaN,2],[-4,-1,1,2]]){
- assert.throws(()=>leopardReturnRollers({},ORIGINAL.leo2a7v_x,stations),/four ordered stations/);stats.negativeControls++;
+ assert.throws(()=>leopardReturnRollers({},STATION_FIXTURE,stations),/four ordered stations/);stats.negativeControls++;
 }
 for(const root of[0,NaN,1.4]){
- assert.throws(()=>leopardReturnRollers({},ORIGINAL.leo2a7v_x,[-2,-.4,1,2],0,root),/positive finite root/);stats.negativeControls++;
+ assert.throws(()=>leopardReturnRollers({},STATION_FIXTURE,[-2,-.4,1,2],0,root),/positive finite root/);stats.negativeControls++;
 }
 material.dispose();
 console.log('leopardReturnRollers: '+JSON.stringify(stats));

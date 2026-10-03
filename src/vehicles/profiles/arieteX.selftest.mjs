@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildArieteX } from './arieteXPhotoDraft.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Isolated historical PHOTO primitive regression. The actual supplied-file X
 // is tested separately; this must never count as its visual acceptance.
@@ -11,9 +12,6 @@ registerProfiledBuilders({ ariete_c1_x: buildArieteX });
 // Independent CIO envelope anchors. Interior station/optic-depth assertions
 // below are construction contracts, NOT claimed measurements of the AI GLB.
 const PUBLISHED = { roof: 2.50, hullRoof: 1.82, clearance: .48, width: 3.61, length: 9.87 };
-const near = (got, expected, tolerance, label) => assert.ok(
-  Number.isFinite(got) && Math.abs(got - expected) <= tolerance,
-  `${label}: ${got}, expected ${expected} ± ${tolerance}`);
 const ray = (meshes, from, direction, far = 20) => new THREE.Raycaster(
   new THREE.Vector3(...from), new THREE.Vector3(...direction), 0, far,
 ).intersectObjects(meshes, false)[0];

@@ -1,16 +1,17 @@
 import assert from 'node:assert/strict';
-import {createHash} from 'node:crypto';
 import * as T from 'three';
 import {createTank} from './tankFactory.ts';
 import {getSpec} from './specs.ts';
 import {installCanvasFixture} from './canvasFixture.test-support.mjs';
-import {FIXED_SOURCE_SKIRTS,verifyHistoricalFixedSkirtSource,withHistoricalFixedSkirtFinish} from './fixedSourceSkirtPaint.test-support.mjs';
+import {FIXED_SOURCE_SKIRTS,withHistoricalFixedSkirtFinish} from './fixedSourceSkirtPaint.test-support.mjs';
 import {CAMO_UV_REPEATS_PER_M} from './camoWorldScale.ts';
+import { geometryHash as kitGeometryHash } from '../../tools/receipt-kit.test-support.mjs';
 
+// 2026-10-01 (owner: retire frozen pins): the pinned pre-finish profile source digests are gone. The live
+// differential stays: the same build with only the declared fixed sheets returned to the rubber bucket
+// (withHistoricalFixedSkirtFinish, which also counts them) must match the painted build triangle for triangle.
 const changed=new Set(['hullRubber','hullFixedPaintedBodywork']);
-function geometryHash(g){const h=createHash('sha256');
-  for(const name of Object.keys(g.attributes).sort()){const a=g.attributes[name];h.update(name).update(String(a.itemSize)).update(String(a.normalized));h.update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));}
-  if(g.index)h.update(Buffer.from(g.index.array.buffer,g.index.array.byteOffset,g.index.array.byteLength));return h.digest('hex');}
+const geometryHash=g=>kitGeometryHash(g,{layout:true});
 function other(root){const rows=[];root.updateMatrixWorld(true);root.traverse(o=>{if(!o.isMesh||changed.has(o.name))return;
   rows.push([o.name,geometryHash(o.geometry),o.matrixWorld.elements,o.material.name,o.count??null,
     o.instanceMatrix?Array.from(o.instanceMatrix.array):null,o.userData.combatHitboxRole]);});return rows;}
@@ -33,7 +34,6 @@ function paint(tank,id){const skin=tank.root.getObjectByName('hullFixedPaintedBo
 }
 const restore=installCanvasFixture();let checks=0;
 try{for(const id of Object.keys(FIXED_SOURCE_SKIRTS)){
-  verifyHistoricalFixedSkirtSource(id);
   for(const quality of ['high','low'])for(const camoPattern of ['factory','winter']){
     const build=()=>createTank(id,null,{quality,camoPattern,materialMode:'rendered',proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
     const before=withHistoricalFixedSkirtFinish(id,build),after=build();
@@ -55,4 +55,4 @@ try{for(const id of Object.keys(FIXED_SOURCE_SKIRTS)){
     }finally{before.dispose();after.dispose();}
   }
 }}finally{restore();}
-console.log(`fixedSourceSkirtPaint: three authenticated source profiles, ${checks} posed/depleted whole-model differentials PASS; native visual review remains separate`);
+console.log(`fixedSourceSkirtPaint: three fixed-skirt profiles, ${checks} posed/depleted whole-model differentials PASS; native visual review remains separate`);

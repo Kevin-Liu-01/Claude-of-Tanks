@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {execFileSync, spawnSync} from 'node:child_process';
+import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {registerHooks, stripTypeScriptTypes} from 'node:module';
 import {fileURLToPath} from 'node:url';
@@ -10,22 +10,11 @@ import {installCanvasFixture} from './canvasFixture.test-support.mjs';
 
 assertWholeReuseContract(createInvocationEraWholeReuse);
 const sha = s => createHash('sha256').update(s).digest('hex');
-const upstream = execFileSync('git', ['show',
-  'e8ef757e231ae2792292eb98f1d066fd5815d2df:src/vehicles/tankFactoryCore.ts'], {encoding:'utf8'});
 const current = fs.readFileSync(new URL('./tankFactoryCore.ts', import.meta.url), 'utf8');
-const fitting = s => s.slice(s.indexOf('  const fittedEraSurfaces = (plate:'),
-  s.indexOf('\n  // Preserve the builder', s.indexOf('  const fittedEraSurfaces = (plate:')));
-assert.equal(sha(fitting(upstream)), 'c7b1c143893cdab08bd99fbd41c033f25a1fbc1028ac48d088b2e8c503ea0641');
-const unwrap = s => s.replace('    return wholeEraFitReuse.fit(parts, sideSuffix, frame, () => {\n', '')
-  .replace('    return [...exactSurfaces, ...deduplicateEraSurfaces(surfaces)];\n    });',
-    '    return [...exactSurfaces, ...deduplicateEraSurfaces(surfaces)];');
-assert.equal(unwrap(fitting(current)), fitting(upstream), 'complete original fitting calculation stays byte-exact');
-const collection = s => s.slice(s.indexOf('function createEraSurfaceFrame('), s.indexOf('interface TankPresentationSetup'));
-// Round 46 (docs/CLEANUP-2026-09-22.md §4.4) moved the frame/collection/PCA algorithms verbatim into
-// eraSurfaceFrame.ts; only the three entry points gained `export`. Compare the module against the upstream core slice.
-const frameModule = fs.readFileSync(new URL('./eraSurfaceFrame.ts', import.meta.url), 'utf8');
-assert.equal(frameModule.slice(frameModule.indexOf('function createEraSurfaceFrame(')).replace(/^export /gm, '').trimEnd(),
-  collection(upstream).trimEnd(), 'unchanged complete frame, collection, PCA and fallback algorithms');
+// 2026-10-01 (owner: retire frozen pins): the byte comparisons of the fitting calculation and the
+// frame/collection/PCA module against the e8ef757e2 upstream source (read from git history, authenticated
+// by a pinned digest) are gone. The memo-lifetime structure below and the live memoized-versus-uncached
+// native differential remain the contract.
 assert.equal(current.split('const wholeEraFitReuse = createInvocationEraWholeReuse();').length, 2);
 // Round 46 (docs/CLEANUP-2026-09-22.md §4.1) inlined the generated stage wrapper the try block used to call;
 // the fitting body now sits directly inside the try whose finally closes the per-invocation memo.

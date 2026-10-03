@@ -1,14 +1,11 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
+import { nearStrict as near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Independent canonical Gun_Msh measurements, not builder metadata: source
 // collar Z [5.452418073,5.655017121], radius [.107723912,.107725538].
 // Its centerline is Y1.85491175. The complete source muzzle ends Z6.899749978.
-const near=(actual,target,tolerance,label)=>assert.ok(
-  Number.isFinite(actual)&&Math.abs(actual-target)<tolerance,
-  `${label}: ${actual} vs ${target} ± ${tolerance}`,
-);
 function top(object,z) {
   return new THREE.Raycaster(new THREE.Vector3(0,3,z),new THREE.Vector3(0,-1,0),0,2)
     .intersectObject(object,false)[0]?.point.y;

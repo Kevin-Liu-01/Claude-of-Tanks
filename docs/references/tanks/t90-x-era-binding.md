@@ -31,7 +31,8 @@ multiset hashes (four vehicles at high/low LOD), checks every complete fitted
 facet against an actually stripped native triangle within 2 micrometres,
 rejects translated air-only faces, checks unchanged permanent buffers and exact
 reset, and pins inherited effectiveness plus source rig/combat anchors.
-The unchanged fleet `eraGameplayRegistration.selftest.mjs` remains the actual
+The unchanged fleet ERA registration audit (`eraGameplayRegistrationAudit.test-support.mjs`, run by
+`fleetPassLow.selftest.mjs`) remains the actual
 first-hit activation, visual-strip, spent second-hit and reset audit.
 
 Because attached hardware moves to its owner's camouflaged external-armor

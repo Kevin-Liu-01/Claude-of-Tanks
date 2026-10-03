@@ -5,6 +5,7 @@ import {registerProfiledBuilders} from '../tankFactoryCore.ts';
 import {ensureInteriorFills,hasInteriorFills} from '../interiorFills.ts';
 import {buildNamerIfv} from './merkavaX.ts';
 import {KIT} from './kit.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const id='namer_ifv', solid=new T.MeshBasicMaterial({side:T.DoubleSide});
 function effective(object){
@@ -14,10 +15,6 @@ function effective(object){
 function first(root,origin,direction,far=10){
   return new T.Raycaster(new T.Vector3(...origin),new T.Vector3(...direction),0,far)
     .intersectObject(root,true).find(hit=>effective(hit.object));
-}
-function near(actual,expected,tolerance,label){
-  assert.ok(Number.isFinite(actual)&&Math.abs(actual-expected)<=tolerance,
-    `${label}: ${actual} vs source ${expected} ±${tolerance}`);
 }
 function build(quality,omitBase=false){
   const parts=[];

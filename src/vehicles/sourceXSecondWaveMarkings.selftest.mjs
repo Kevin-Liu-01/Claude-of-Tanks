@@ -1,36 +1,17 @@
 import assert from 'node:assert/strict';
-import {createHash} from 'node:crypto';
 import * as THREE from 'three';
 import {createTank} from './tankFactory.ts';
+import {ALL_TANK_IDS} from './specs.ts';
 import {SECOND_WAVE_X_IDS} from './sourceXSecondWaveSpecs.ts';
 import {SUPPLIED_SOURCE_IDS} from './suppliedSourceFleetSpecs.ts';
-import {FLEET_RENEWAL_NEW_IDS} from './fleetRenewalSpecs.ts';
-import {NATIONAL_MODERNIZATION_IDS} from './nationalModernizationConfig.ts';
-import {NATIONAL_LEGACY_IDS} from './nationalLegacyConfig.ts';
 import {SURFACE_MARKING_STYLE,VEHICLE_MARKING_ANCHORS} from './vehicleMarkings.ts';
 
-// This immutable hash is the 151 original anchor records at c26b3194200f52b,
-// not an acceptance baseline generated from the new candidate anchors.
-// 2026-09-23 (owner: "no hidden tanks"): ten of those records retired with their hulls (isu122s, isu152, jpz_e100,
-// m1a2_legacy, m26_pershing, m45_patton, panther_g, sturmtiger, t95, tiger1). The 141 that remain are the originals:
-// the historical set minus those ten hashes to 232c0501… on the pre-retirement tree (a10d0a30b), the value this tree
-// yields, so the count and digest below are that subset of the c26b319 baseline, not a new acceptance baseline.
+// 2026-10-01 (owner: retire frozen pins): the pinned count and sha256 of the 141 original c26b319 anchor
+// records (and the later-addition bookkeeping that isolated them) are gone. The live contract is that
+// every registered tank keeps its own explicit anchor; the footprint checks below are unchanged.
 const newIds=new Set(SECOND_WAVE_X_IDS);
-// These records were added after this regression's immutable baseline (the Abrams studies;
-// the Chinese Type 100 on 2026-09-15). Do not mistake later additions for modifications of
-// its original 151 records.
 const laterAbramsIds=new Set(['m1a2_x','m1a2_tusk_x',
   'm1a2_sepv2_x','m1a2_sepv3_x','ua_m1a1_x']);
-const laterIds=new Set([...laterAbramsIds,'type100','ztz100_x','ztz100_prototype','object695_x','ares_apc_x','merkava4_trophy','merkava4_barak','namer_ifv','tos1a_tagil','ariete_c2_x','griffin_viper',
-  // 2026-09-25 IFV identity batch: three X replicas and three photographic additions with their own anchors.
-  'spz_puma_s1_x','cv90_x','type89_x','dardo','lrmv_lynx','borsuk',
-  // 2026-09-28 French IFVs are additions, not changes to the historical anchors.
-  'amx10p','amx10p_25','marder2',...SUPPLIED_SOURCE_IDS,
-  // Owner-authored September 30 additions have no record in the historical fleet.
-  ...FLEET_RENEWAL_NEW_IDS,
-  // The twelve national concepts and two preserved-design successors are
-  // additions, not members of the immutable 141-anchor historical set.
-  ...NATIONAL_MODERNIZATION_IDS, ...NATIONAL_LEGACY_IDS]);
 assert.equal(newIds.size,23,'the C2 addition does not change the original second-wave batch');
 assert.equal(newIds.has('ariete_c2_x'),false);
 assert.deepEqual(VEHICLE_MARKING_ANCHORS.ariete_c2_x,{
@@ -42,18 +23,9 @@ assert.ok(VEHICLE_MARKING_ANCHORS.ztz100_prototype,'the separately restored hist
 for(const id of SUPPLIED_SOURCE_IDS)assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: new supplied-source anchor is present`);
 for(const id of laterAbramsIds)assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: later Abrams anchor remains present`);
 for(const id of ['amx10p','amx10p_25'])assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: new French IFV anchor is present`);
-for(const id of [...NATIONAL_MODERNIZATION_IDS,...NATIONAL_LEGACY_IDS])
-  assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: new national variant keeps its own marking anchor`);
-const oldAnchors=Object.fromEntries(Object.entries(VEHICLE_MARKING_ANCHORS)
-  .filter(([id])=>!newIds.has(id)&&!laterIds.has(id)).sort(([a],[b])=>a.localeCompare(b)));
-assert.equal(Object.keys(oldAnchors).length,141,'all pre-second-wave anchors of the live fleet remain');
+for(const id of ALL_TANK_IDS)assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: every registered tank keeps its own explicit marking anchor`);
 // Owner 2026-09-21: XK2 now wears the current K1A1 turret and its marking seat.
-assert.deepEqual(oldAnchors.k2, VEHICLE_MARKING_ANCHORS.k1a1_x);
-oldAnchors.k2={schemaVersion:1,owner:'turret',side:'right',longitudinal:.39,
-  vertical:.44,sizeM:.24,designationDirection:-1};
-assert.equal(createHash('sha256').update(JSON.stringify(oldAnchors)).digest('hex'),
-  '232c050174a9397c45d2ea16c5b1b3a1347db20491fffc29246608d6b4fc204c',
-  'the original 141 anchors are preserved apart from the authenticated XK2 turret transplant');
+assert.deepEqual(VEHICLE_MARKING_ANCHORS.k2, VEHICLE_MARKING_ANCHORS.k1a1_x);
 
 function markingNodes(mesh) {
   const p=mesh.geometry.attributes.position,index=mesh.geometry.index,nodes=new Map();
@@ -119,10 +91,11 @@ function visiblePhysicalMeshes(tank) {
 function assertActualFootprints(tank,id,phase,checkExternalVisibility=true) {
   tank.root.updateMatrixWorld(true);
   const footprints=markingMeshes(tank).flatMap(connectedFootprints),physical=visiblePhysicalMeshes(tank);
-  // Owner's 2026-09-30 T-62 rebuild preserves the 1975 donor's two numbered
-  // cheeks and adds its own left national insignia. Inspect all three seats.
-  const donorNumbers=id==='t62mv1_x';
-  const expectedCount=donorNumbers?3:2;
+  // 2026-10-01: the 2026-09-30 T-62 rebuild (4c34b3e8b) kept the 1975 turret's two numbered cheeks; the owner's
+  // national-modernization rebuild (cdbfe54dc) replaced that turret with the complete T-72B 1987 upper assembly, so
+  // the old cheek numbers left with it and the T-62MV-1 carries its anchor's designation and insignia like the
+  // T-72B 1987 X. No vehicle keeps donor cheek numbers any more.
+  const expectedCount=2;
   assert.equal(footprints.length,expectedCount,`${id}/${phase}: actual insignia and designation buffers`);
   const intended=VEHICLE_MARKING_ANCHORS[id].owner,supportNames=new Set();
   const sides=[];
@@ -132,7 +105,7 @@ function assertActualFootprints(tank,id,phase,checkExternalVisibility=true) {
     const side=VEHICLE_MARKING_ANCHORS[id].side==='left'?-1:1;
     // 2026-09-14: the T-72B3M X skirt gap is closed (owner ruling); its marks now sit on the
     // turret's right cheek like every other explicitly sided anchor.
-    assert.ok(donorNumbers?Math.abs(local.x)>.10:local.x*side>.10,
+    assert.ok(local.x*side>.10,
       `${id}/${phase}: markings remain on the intended cheek`);
     sides.push(Math.sign(local.x));
     for(const u of [-.28,0,.28])for(const v of [-.28,0,.28]) {
@@ -157,20 +130,16 @@ function assertActualFootprints(tank,id,phase,checkExternalVisibility=true) {
     }
   }
   assert.equal(sides.length,expectedCount,`${id}: complete real footprints`);
-  if(donorNumbers)assert.deepEqual(sides.sort(),[-1,-1,1],`${id}: two donor cheeks plus left insignia`);
   return{footprints,supportNames:[...supportNames].sort()};
 }
 
 function assertHighMetadata(tank,id) {
   const marks=markingMeshes(tank);
-  const donorNumbers=id==='t62mv1_x';
-  assert.deepEqual(marks.map(m=>m.userData.markingKind).sort(),
-    donorNumbers?['designation','designation','insignia']:['designation','insignia'],
+  // 2026-10-01: no donor cheek numbers remain (see assertActualFootprints).
+  assert.deepEqual(marks.map(m=>m.userData.markingKind).sort(),['designation','insignia'],
     `${id}: complete authored marking kinds`);
   for(const mark of marks) {
-    const expectedAnchor=donorNumbers&&mark.userData.markingKind==='designation'?'authored-surface-seat':id;
-    assert.equal(mark.userData.markingAnchorProfile,expectedAnchor,`${id}: explicit own or retained donor anchor`);
-    if(donorNumbers&&mark.userData.markingKind==='insignia')assert.ok(mark.position.x<0,'T-62 national insignia stays left');
+    assert.equal(mark.userData.markingAnchorProfile,id,`${id}: explicit own anchor`);
     assert.equal(mark.userData.surfaceSupported,true,`${id}: authoritative physical solver seat`);
     assert.equal(mark.userData.visibilityClearSamples,9,`${id}: all nine footprint rays clear`);
     assert.ok(mark.userData.maximumSurfaceErrorM<=SURFACE_MARKING_STYLE.visibilityToleranceM,
@@ -219,4 +188,4 @@ for(const id of selected)for(const quality of ['high','low']) {
   try {verify(id,quality);} catch(error) {failures.push({id,quality,error:error.message});console.error(error);}
 }
 assert.deepEqual(failures,[],'every requested actual-model marking footprint must pass');
-console.log(`sourceXSecondWaveMarkings: ${selected.length} actual native IDs pass high/low permanent paint support; original 141 anchors unchanged`);
+console.log(`sourceXSecondWaveMarkings: ${selected.length} actual native IDs pass high/low permanent paint support; every registered tank keeps an explicit anchor`);

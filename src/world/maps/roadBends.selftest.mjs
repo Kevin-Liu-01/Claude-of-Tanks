@@ -35,5 +35,8 @@ const salt=getMapConfig('saltwind').terrain.roads.paths[3];
 assert.deepEqual(salt[0],[-190,-36],'market street starts at existing harbor plaza');
 assert.ok(salt.every((p,i)=>!i||p[0]>salt[i-1][0]),'market street progresses inland without doubled-back loops');
 assert.equal(getMapConfig('verdant').terrain.roads,undefined,'Verdant keeps its existing country route generator');
-assert.equal(MAP_IDS.length,31);
-console.log('roadBends: bounded curves, preserved junctions/borders, coherent service routes,31-map registry');
+// The registry stays intact, whatever its size (it grew 31 -> 33 with moon and cliffbridge, 0e5fc79e2): every id is
+// unique and resolves to its own config rather than getMapConfig's Verdant fallback.
+assert.equal(new Set(MAP_IDS).size,MAP_IDS.length,'map ids are unique');
+for(const id of MAP_IDS) assert.equal(getMapConfig(id).id,id,`${id}: the registry resolves its own config`);
+console.log(`roadBends: bounded curves, preserved junctions/borders, coherent service routes, ${MAP_IDS.length}-map registry`);

@@ -14,18 +14,8 @@ import {KIT} from './kit.ts';
 
 const sha=x=>createHash('sha256').update(x).digest('hex');
 const attribute=a=>sha(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
-// Authenticated a6fa51e18 native donor before the neutral chassis extraction; re-pinned 2026-09-21 for the side-station
-// end-wrap bake (the T-90MS X bands are laid about each side's own outer wheels — tankFactoryCore buildRunningGear).
-// 2026-09-22 nation wheel standard: the T-90MS donor chassis draws the T-90M X pressed face through nationWheelSets.ts; repinned.
-// 2026-09-22 re-base (owner: "the point of adding holes instead of carving them into the barrel is that we save on triangles"): the fleet fallback mouth is a flat ring + disc (terminal-surface-fit-r3; the separate Annulus mesh is gone and the Rim geometry changed) and the second-wave/Abrams/Leclerc/Strv tubes are closed at their source tips, so the frozen digests below moved. Superseded: 9976ffbe…, 79ca4399….
-// round 40 (2026-09-22): re-pinned on the combined tree — the muzzle-recess closures (r40-bores: 15 hulls' lofts end on a cap) and the
-// retired dev hulls / Panther G manifest entry (r40-cleanup) moved the frozen digests below; captured from the current build
-// 2026-09-25 FSP-03: T-90MS X chassis digests re-pinned once — its three source-measured return rollers return.
-// 2026-10-01: replaying the 53864e65b profile reproduces both previous hashes exactly.
-// The 884384729 roof station changes only six RWS/merged rows; native world triangles,
-// normals, UVs, color attributes and materials reconcile. See the dated preservation
-// receipt in docs/history/research/national-legacy-pair-20261001.md. Strict pin retained.
-const donorHashes={high:'52a5f1542223cf26b4ce482b5738017b8de3d2b60d37253b0f5cf282b8cd99ca' /* round 35 (2026-09-22): camo UV density is the fleet constant 0.5 rep/m and the first bake reads the pattern stream (camoWorldScale.ts) — uv attributes and material bakes move; positions unchanged */,low:'a14d2e9e283b42319c566f48976d90ad76956fa644365b3644dcb027b1322702'};
+// The donor T-90MS X is built live in the same run: the TOS-1A chassis must carry its physical attributes unchanged
+// (same-run comparison below). Whole-tank change detection of t90ms_x itself is the fleet geometry ledger's job.
 function payload(root,hullOnly=false){
   root.updateMatrixWorld(true);const rows=[];
   root.traverse(m=>{
@@ -255,8 +245,7 @@ const options=quality=>({quality,geometryReceipt:true,proceduralOnly:true,batchS
 const results=[];
 if(process.argv.includes('--filled'))await ensureInteriorFills(['tos1a_tagil']);
 for(const quality of ['high','low']){
-  const donor=createTank('t90ms_x',null,options(quality));const donorPayload=payload(donor.root),hull=payload(donor.root,true);
-  assert.equal(sha(JSON.stringify(donorPayload)),donorHashes[quality],'original complete T-90MS geometry/material/instance/transform payload remains byte-identical');donor.dispose();
+  const donor=createTank('t90ms_x',null,options(quality));const hull=payload(donor.root,true);donor.dispose();
   cleanParts();const tank=createTank('tos1a_tagil',null,options(quality));
   try{
     assert.deepEqual(geometryOnly(payload(tank.root,true)),geometryOnly(hull),'actual complete chassis/ERA/gear physical attributes retained; paint UV projection is independent');
@@ -285,4 +274,4 @@ for(const quality of ['high','low'])for(const corruption of ['missing-cell','mis
   cleanParts();fault=corruption;altered=0;const tank=createTank('tos1a_tagil',null,options(quality));
   try{assert(altered>0,'negative changes real emitted geometry or its actual material');assert.throws(()=>['missing-cell','painted-liner'].includes(corruption)?cells(tank):corruption==='floating-access'?accessSeats():verifyGunCradleSeats(tank.root),assert.AssertionError,`${quality} ${corruption} fails physical proof`);}finally{tank.dispose();fault=null;}
 }
-cleanParts();console.log('tos1aTagil PASS: complete donor preservation;24 real220mm openings/terminals; exact dark sleeve partition; seated yaw/cradle/MG/optics;40 legal poses;14 broken-stock/material negatives',JSON.stringify(results));
+cleanParts();console.log('tos1aTagil PASS: live donor chassis retained;24 real220mm openings/terminals; exact dark sleeve partition; seated yaw/cradle/MG/optics;40 legal poses;14 broken-stock/material negatives',JSON.stringify(results));

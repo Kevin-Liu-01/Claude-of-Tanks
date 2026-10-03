@@ -3,7 +3,7 @@ import {createHash}from 'node:crypto';
 import * as T from 'three';
 import {createTank,KIT}from '../tankFactory.ts';
 import {auditTankWheelQuality}from '../wheelQuality.ts';
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b}`);
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 const names=['k1SourceWheelFacesL','k1SourceWheelFacesR'];
 function build(quality,legacy=false){
  const old=KIT.buildRunningGear;let gear;

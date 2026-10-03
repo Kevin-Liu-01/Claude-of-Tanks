@@ -3,8 +3,8 @@ import * as T from 'three';
 import {addStrv122XSuppliedGear,strv122SuppliedWheelSolids} from './strv122XSuppliedGear.ts';
 import {isTrackShoeMesh} from '../../../tools/track-clip-classification.mjs';
 import {measureSpatialArmClearance} from '../suspensionClearance.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b} ±${t}`);
 const SOURCE_ROAD_Z=[-2.245,-1.4375,-.645,.1275,.8925,1.6675,2.465];
 function fixture(high){
  const material=new T.MeshStandardMaterial();

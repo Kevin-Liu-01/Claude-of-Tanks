@@ -7,6 +7,8 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 import { garageStatGroup } from '../../ui/garageDossier.ts';
+import { VEHICLE_ROLE_PROFILES } from '../roleProfiles.ts';
+import { tacticalRoleHandling } from '../tacticalRoleBalance.ts';
 
 const spec = getSpec('m551_sheridan');
 const ttsSpec = getSpec('m551a1_tts');
@@ -19,6 +21,16 @@ assert.equal(spec.gun.primaryGuided, true);
 assert.equal(spec.gun.shells.length, 1, 'Sheridan is a dedicated missile-only tank');
 assert.equal(spec.gun.shells[0].guided, true);
 assert.match(spec.gun.shells[0].name, /MGM-51C Shillelagh/i);
+// 2026-10-01: the role balance (0e5fc79e2, tacticalRoleBalance.ts) layers the Sheridan's scout doctrine onto its
+// authored traverse rates and gun handling after the envelope below is published; the authored values are unchanged
+// and the doctrine's own factors are the tactical-role regression's.
+assert.equal(VEHICLE_ROLE_PROFILES.m551_sheridan.doctrine, 'scout', 'Sheridan keeps its scout doctrine');
+const authoredHandling = tacticalRoleHandling({
+  hullTraverseDegS: 54,
+  turretTraverseDegS: 46,
+  gun: { ...spec.gun, baseAccuracy: 0.28, aimTimeS: 1.45,
+    bloom: { move: 0.06, hullRot: 0.07, turret: 0.05, afterShot: 1.8 } },
+}, 'scout');
 assert.deepEqual({
   hp: spec.hp,
   enginePowerHp: spec.enginePowerHp,
@@ -35,14 +47,14 @@ assert.deepEqual({
   hp: 2050,
   enginePowerHp: 400,
   reverseSpeedKmh: 24,
-  hullTraverseDegS: 54,
-  turretTraverseDegS: 46,
+  hullTraverseDegS: authoredHandling.hullTraverseDegS,
+  turretTraverseDegS: authoredHandling.turretTraverseDegS,
   gunPitchDegS: 36,
   terrainResistance: { hard: 0.58, medium: 0.72, soft: 1.12 },
   reloadS: 8.6,
-  baseAccuracy: 0.28,
-  aimTimeS: 1.45,
-  bloom: { move: 0.06, hullRot: 0.07, turret: 0.05, afterShot: 1.8 },
+  baseAccuracy: authoredHandling.gun.baseAccuracy,
+  aimTimeS: authoredHandling.gun.aimTimeS,
+  bloom: authoredHandling.gun.bloom,
 }, 'Sheridan owns its complete Tier IX light-missile handling envelope');
 assert.deepEqual({
   pen100Mm: spec.gun.shells[0].pen100Mm,
@@ -75,6 +87,10 @@ assert.ok(spec.armor.modules.some((module) => module.module === 'missileRack'),
 assert.equal(tankTier(ttsSpec.id), 10, 'M551A1 TTS is the Tier X Sheridan variant');
 assert.equal(ttsSpec.variantOf, spec.id);
 assert.equal(ttsSpec.era, 'next-generation');
+// 2026-10-01: the same scout doctrine layer (0e5fc79e2) applies to the TTS's authored 0.24 accuracy / 1.25 s aim.
+assert.equal(VEHICLE_ROLE_PROFILES.m551a1_tts.doctrine, 'scout', 'TTS keeps its scout doctrine');
+const ttsHandling = tacticalRoleHandling({ hullTraverseDegS: ttsSpec.hullTraverseDegS,
+  turretTraverseDegS: ttsSpec.turretTraverseDegS, gun: { ...ttsSpec.gun, baseAccuracy: 0.24, aimTimeS: 1.25 } }, 'scout');
 assert.deepEqual({
   hp: ttsSpec.hp,
   enginePowerHp: ttsSpec.enginePowerHp,
@@ -89,8 +105,8 @@ assert.deepEqual({
   weightTons: 24.8,
   reverseSpeedKmh: 28,
   reloadS: 7.4,
-  accuracy: 0.24,
-  aimTimeS: 1.25,
+  accuracy: ttsHandling.gun.baseAccuracy,
+  aimTimeS: ttsHandling.gun.aimTimeS,
 }, 'TTS owns an explicit Tier X light-missile balance envelope');
 assert.deepEqual(ttsSpec.gun.shells.map((round) => ({
   name: round.name,
@@ -365,16 +381,32 @@ try {
   assert.deepEqual(ttsRunningGearContract, baseRunningGearContract,
     'M551A1 TTS reuses the Sheridan wheels and complete closed track loop exactly');
 
-  const remoteAutocannonMechanism = ttsTank.root
-    .getObjectByName('m551a1TtsAutocannonMechanism');
-  assert.ok(remoteAutocannonMechanism);
-  const remoteAutocannon = remoteAutocannonMechanism.parent;
-  assert.equal(remoteAutocannon?.userData.barrelDiameterM, 0.094,
-    'TTS 30 mm barrel keeps a lean remote-weapon silhouette');
-  assert.ok(ttsTank.root.getObjectByName('turretEquipment'),
-    'remote-station armor is merged into the vehicle-scale camouflage bucket');
-  assert.ok(ttsTank.root.getObjectByName('turretGlass'),
-    'remote-station apertures are merged into the canonical optics bucket');
+  // 2026-09-30 (884384729 controls integration, 4c34b3e8b remote roof weapons): the TTS 30 mm station is the shared
+  // remote auxiliary station (beginAuxiliaryStation). Its stock lives in yaw and pitch meshes under
+  // rig_turret/m551a1TtsRemoteAutocannon; the former custom group's 'm551a1TtsAutocannonMechanism' mesh and its
+  // barrelDiameterM metadata are gone, so the barrel is measured on the actual pitching geometry.
+  const remoteAutocannon = ttsTank.root.getObjectByName('m551a1TtsRemoteAutocannon');
+  assert.ok(remoteAutocannon?.userData.remoteControlled && remoteAutocannon.userData.caliberMm === 30
+    && remoteAutocannon.userData.fittingExact && remoteAutocannon.parent?.name === 'rig_turret',
+  'TTS 30 mm remote station is one exact turret-mounted fitting');
+  const remoteAutocannonMechanism = remoteAutocannon.getObjectByName('m551a1TtsRemoteAutocannon_pitch_turretDark');
+  assert.ok(remoteAutocannonMechanism?.isMesh && remoteAutocannonMechanism.parent?.name === 'auxiliaryWeaponPitch',
+    'TTS breech, barrel and muzzle pitch with the station');
+  ttsTank.root.updateMatrixWorld(true);
+  const { auxiliaryPivot, barrelAxisLocalY, muzzleLocalZ } = remoteAutocannon.userData;
+  const barrelAxis = remoteAutocannonMechanism.parent.localToWorld(new THREE.Vector3(
+    0, barrelAxisLocalY - auxiliaryPivot[1], muzzleLocalZ - auxiliaryPivot[2] - 0.4));
+  const barrelFace = (sign) => new THREE.Raycaster(barrelAxis.clone().add(new THREE.Vector3(sign * 0.5, 0, 0)),
+    new THREE.Vector3(-sign, 0, 0), 0, 0.5).intersectObject(remoteAutocannonMechanism, false)[0]?.point.x ?? NaN;
+  const barrelDiameterM = barrelFace(1) - barrelFace(-1);
+  assert.ok(Math.abs(barrelDiameterM - 0.094) < 1e-3,
+    `TTS 30 mm barrel keeps a lean remote-weapon silhouette (${barrelDiameterM} m)`);
+  assert.equal(remoteAutocannon.getObjectByName('m551a1TtsRemoteAutocannon_pitch_turretEquipment')?.material,
+    ttsTank.root.getObjectByName('turretEquipment')?.material,
+    'remote-station armor shares the vehicle-scale camouflage material');
+  assert.equal(remoteAutocannon.getObjectByName('m551a1TtsRemoteAutocannon_pitch_turretGlass')?.material,
+    ttsTank.root.getObjectByName('turretGlass')?.material,
+    'remote-station apertures share the canonical optics material');
   assert.equal(ttsTank.root.getObjectByName('sheridanCommanderM2AmmoBox'), undefined,
     'the manned commander M2 and ammunition rack do not survive inside the TTS station');
   const fittings = [];

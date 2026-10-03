@@ -15,7 +15,7 @@
       "id": "ua_t80u_modern",
       "ring": [
         0.008,
-        1.565,
+        1.49,
         0.07187
       ],
       "gunLocal": [
@@ -35,12 +35,12 @@
       "hullWidthM": 4.331,
       "widthM": 4.331,
       "overallLengthM": 9.5328,
-      "tallestM": 3.17,
+      "tallestM": 3.095,
       "specDimensions": {
         "hullLengthM": 6.72,
         "overallLengthM": 9.531870000000001,
         "widthM": 4.331,
-        "heightM": 3.17
+        "heightM": 3.095
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
@@ -50,7 +50,7 @@
       "id": "ua_t72b3m_modern",
       "ring": [
         0.008,
-        1.545,
+        1.46,
         0.114315
       ],
       "gunLocal": [
@@ -70,12 +70,12 @@
       "hullWidthM": 4.391,
       "widthM": 4.391,
       "overallLengthM": 9.6902,
-      "tallestM": 3.33,
+      "tallestM": 3.245,
       "specDimensions": {
         "hullLengthM": 7.31,
         "overallLengthM": 9.869315,
         "widthM": 4.391,
-        "heightM": 3.33
+        "heightM": 3.245
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
@@ -85,7 +85,7 @@
       "id": "ua_t72b3_modern",
       "ring": [
         0.008,
-        1.475,
+        1.39,
         0.065591
       ],
       "gunLocal": [
@@ -105,12 +105,12 @@
       "hullWidthM": 4.53417,
       "widthM": 4.5342,
       "overallLengthM": 9.5268,
-      "tallestM": 3.05,
+      "tallestM": 2.965,
       "specDimensions": {
         "hullLengthM": 6.8784,
         "overallLengthM": 9.604791,
         "widthM": 4.53417,
-        "heightM": 3.05
+        "heightM": 2.965
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
@@ -120,7 +120,7 @@
       "id": "pl_t80u_modern",
       "ring": [
         0.008,
-        1.565,
+        1.49,
         0.07187
       ],
       "gunLocal": [
@@ -140,12 +140,12 @@
       "hullWidthM": 4.303,
       "widthM": 4.303,
       "overallLengthM": 9.5628,
-      "tallestM": 3.24,
+      "tallestM": 3.165,
       "specDimensions": {
         "hullLengthM": 6.82,
         "overallLengthM": 9.58187,
         "widthM": 4.303,
-        "heightM": 3.24
+        "heightM": 3.165
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
@@ -155,7 +155,7 @@
       "id": "pl_t72b3m_modern",
       "ring": [
         0.008,
-        1.545,
+        1.46,
         0.114315
       ],
       "gunLocal": [
@@ -175,12 +175,12 @@
       "hullWidthM": 4.463,
       "widthM": 4.463,
       "overallLengthM": 9.6902,
-      "tallestM": 3.39,
+      "tallestM": 3.305,
       "specDimensions": {
         "hullLengthM": 7.31,
         "overallLengthM": 9.869315,
         "widthM": 4.463,
-        "heightM": 3.39
+        "heightM": 3.305
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
@@ -190,7 +190,7 @@
       "id": "pl_t72b3_modern",
       "ring": [
         0.008,
-        1.475,
+        1.39,
         0.065591
       ],
       "gunLocal": [
@@ -210,12 +210,12 @@
       "hullWidthM": 4.283,
       "widthM": 4.283,
       "overallLengthM": 9.5268,
-      "tallestM": 3.05,
+      "tallestM": 2.965,
       "specDimensions": {
         "hullLengthM": 6.95035,
         "overallLengthM": 9.640766,
         "widthM": 4.283,
-        "heightM": 3.05
+        "heightM": 2.965
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
@@ -225,7 +225,7 @@
       "id": "cn_t80u_modern",
       "ring": [
         0.008,
-        1.565,
+        1.49,
         0.07187
       ],
       "gunLocal": [
@@ -245,12 +245,12 @@
       "hullWidthM": 4.34,
       "widthM": 4.34,
       "overallLengthM": 9.5328,
-      "tallestM": 3.19,
+      "tallestM": 3.115,
       "specDimensions": {
         "hullLengthM": 6.72,
         "overallLengthM": 9.531870000000001,
         "widthM": 4.34,
-        "heightM": 3.19
+        "heightM": 3.115
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
@@ -260,7 +260,7 @@
       "id": "cn_t72b3m_modern",
       "ring": [
         0.008,
-        1.545,
+        1.46,
         0.114315
       ],
       "gunLocal": [
@@ -280,12 +280,12 @@
       "hullWidthM": 4.54,
       "widthM": 4.54,
       "overallLengthM": 9.6902,
-      "tallestM": 3.36,
+      "tallestM": 3.275,
       "specDimensions": {
         "hullLengthM": 7.31,
         "overallLengthM": 9.869315,
         "widthM": 4.54,
-        "heightM": 3.36
+        "heightM": 3.275
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
@@ -295,7 +295,7 @@
       "id": "cn_t72b3_modern",
       "ring": [
         0.008,
-        1.475,
+        1.39,
         0.065591
       ],
       "gunLocal": [
@@ -315,12 +315,12 @@
       "hullWidthM": 4.363,
       "widthM": 4.363,
       "overallLengthM": 9.5268,
-      "tallestM": 3.05,
+      "tallestM": 2.965,
       "specDimensions": {
         "hullLengthM": 6.8784,
         "overallLengthM": 9.604791,
         "widthM": 4.363,
-        "heightM": 3.05
+        "heightM": 2.965
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
@@ -330,7 +330,7 @@
       "id": "ru_t80u_modern",
       "ring": [
         0.008,
-        1.565,
+        1.49,
         0.07187
       ],
       "gunLocal": [
@@ -350,12 +350,12 @@
       "hullWidthM": 4.47,
       "widthM": 4.47,
       "overallLengthM": 9.5328,
-      "tallestM": 3.25,
+      "tallestM": 3.175,
       "specDimensions": {
         "hullLengthM": 6.84,
         "overallLengthM": 9.59187,
         "widthM": 4.47,
-        "heightM": 3.25
+        "heightM": 3.175
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
@@ -365,7 +365,7 @@
       "id": "ru_t72b3m_modern",
       "ring": [
         0.008,
-        1.545,
+        1.46,
         0.114315
       ],
       "gunLocal": [
@@ -385,12 +385,12 @@
       "hullWidthM": 4.61,
       "widthM": 4.61,
       "overallLengthM": 9.6902,
-      "tallestM": 3.41,
+      "tallestM": 3.325,
       "specDimensions": {
         "hullLengthM": 7.31,
         "overallLengthM": 9.869315,
         "widthM": 4.61,
-        "heightM": 3.41
+        "heightM": 3.325
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
@@ -400,7 +400,7 @@
       "id": "ru_t72b3_modern",
       "ring": [
         0.008,
-        1.475,
+        1.39,
         0.065591
       ],
       "gunLocal": [
@@ -420,12 +420,12 @@
       "hullWidthM": 4.45,
       "widthM": 4.45,
       "overallLengthM": 9.5268,
-      "tallestM": 3.08,
+      "tallestM": 2.995,
       "specDimensions": {
         "hullLengthM": 6.92035,
         "overallLengthM": 9.625766,
         "widthM": 4.45,
-        "heightM": 3.08
+        "heightM": 2.995
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
@@ -464,5 +464,11 @@
     "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSRmTK9_XGXpddCEI5gDDdnlg4JU-AEXMb1UVKBJyd1mA&s",
     "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSraApuOBhrnnfkHeOg61v8lO9NMRwpNOwFYx9QqLktQ&s=10",
     "https://static.encyclopedia.warthunder.com/images/ussr_t_72m2_moderna.png"
+  ],
+  "ownerAmendments": [
+    {
+      "date": "2026-10-02",
+      "request": "Lower all fourteen national variant turrets to reduce the exposed cylinder between hull and turret. Preserve the other new designs and roof equipment."
+    }
   ]
 }

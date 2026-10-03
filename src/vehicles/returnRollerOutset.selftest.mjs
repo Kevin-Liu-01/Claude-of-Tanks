@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import * as THREE from 'three';
 import {KIT} from './tankFactoryCore.ts';
-import {createTank} from './tankFactory.ts';
+import './tankFactory.ts'; // configured factory: the same fixture path as fleet builds
 
 const BASE={wheelR:.4,wheelW:.3,wheelZs:[-1,0,1],wheelY:.5,xc:1.3,
   sprocket:{z:-2,y:.7,r:.3},idler:{z:2,y:.7,r:.3},trackW:.5,topY:1,
@@ -24,8 +24,8 @@ function fixture(options={},high=true){
   }
 }
 function originalGearAttributes(geometry){
-  // Shared lamp materials add a disabled channel to some M1A2 gear. Keep
-  // the four historical physical hashes; inherited gear must remain unlit.
+  // Shared lamp materials add a disabled channel to some gear. Inherited
+  // gear must remain unlit; every shape byte stays in the same-run comparisons.
   const mask=geometry.getAttribute('nightEmissionMask');
   if(mask){
     assert.ok(mask.array instanceof Uint8Array,'night mask is byte-sized');
@@ -99,20 +99,7 @@ for(const high of[true,false]){
 for(const value of[NaN,Infinity,-.001,.5001,'bad'])assert.throws(()=>fixture({returnRollerOutsetM:value}),/return-roller outset/);
 const boundary=fixture({returnRollerOutsetM:.5});try{axes(boundary,0,.5);}finally{boundary.dispose();}
 
-// Immutable buffers recorded before optional source wheel/axle APIs. These
-// are original vehicles, not new builders or self-derived expected hashes.
-const ORIGINALS={
-  // 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel and lost the void-dress blocks; repinned.
-  // 2026-09-22 LOW road-wheel tier (roadWheelGeometry.ts WheelDetail): the hollow paired tire loses its inner-wall bevel at LOW; m1a2's
-  // LOW digest moved, HIGH is byte-identical. Round 40 axial fit: leo2a5's Leopard 2A6 face keeps its proportion under the track-width
-  // cap, so both leo2a5 digests moved. Repinned from the current build.
-  m1a2:['f47719f80c839456827c6c2fd417bb6796333fb5ad123a27087bfe2c43f7d253','08e417b03e8090cd6a4ba591bbe44d64f1480d24cf304b868c54b2c97a746c09'],
-  // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS! then we can delete any wheels we dont use anymore"): leo2a5 draws the Leopard 2A6 X paired dish
-  // (nationWheelConstructions.ts) and the fleet arm seated against it; gear digests repinned from the current build.
-  leo2a5:['ab00046e4763c592a8b36687503909190a8120ce826c5947fc391f8133e46c4e','76972d775591dd7fbea18b534e58341109ab4c7df09a8558e1e7ebc07dc3829c'],
-};
-for(const[id,hashes]of Object.entries(ORIGINALS))for(const[index,quality]of['high','low'].entries()){
-  const tank=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,batchStatic:false});
-  try{assert.equal(fingerprint(tank.root),hashes[index],`${id}/${quality} original gear remains byte-identical`);}finally{tank.dispose();}
-}
-console.log('returnRollerOutset: high/low actual native axes, load/spin independence, zero/default and four original gear hashes PASS');
+// 2026-10-01 (owner: retire frozen pins): the four pinned m1a2/leo2a5 gear digests (recorded before the
+// optional source wheel/axle APIs) are gone; the fleet geometry ledger owns whole-tank change detection and
+// roadWheelRestHeights.selftest.mjs keeps the real-hull unlit-gear check for the same hulls.
+console.log('returnRollerOutset: high/low actual native axes, load/spin independence and zero/default equivalence PASS');

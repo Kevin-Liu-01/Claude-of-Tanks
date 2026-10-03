@@ -60,15 +60,6 @@ function bodyStation(z: number, half: number, roof: number, floor: number, frame
   ]};
 }
 
-function shellStation(z: number, half: number, roofHalf: number, low: number, high: number, frame: Frame): SolidSection {
-  const lower=Math.min(.09,(high-low)*.23),upper=Math.min(.34,(high-low)*.42);
-  return {z:z-frame.center-frame.z,ring:[
-    [-half+.06,low+frame.ground-frame.y],[half-.06,low+frame.ground-frame.y],
-    [half,low+lower+frame.ground-frame.y],[half,high-upper+frame.ground-frame.y],
-    [roofHalf,high+frame.ground-frame.y],[-roofHalf,high+frame.ground-frame.y],
-    [-half,high-upper+frame.ground-frame.y],[-half,low+lower+frame.ground-frame.y],
-  ]};
-}
 
 function topPart(P: TankBuilderPort, frame: Frame, slot: string, geometry: THREE.BufferGeometry,
   x: number,y: number,z: number,rx=0,ry=0,rz=0): void {
@@ -786,14 +777,6 @@ function addBarakRearMissionModule(P: TankBuilderPort): void {
   P.turretG.add(roofWeapon);
 }
 
-function addModernMerkavaRearClosure(P: TankBuilderPort, wideTrophySkirts: boolean, rearZ = -3.89): void {
-  // Both supplied late-Mk.4 studies carry a deeper armored rear termination
-  // than the clean baseline recipe. Keep it hull-owned so turret yaw cannot
-  // drag the closure away from the chassis.
-  P.addEquipment('hullDetail',box(3.20,.48,.18),0,1.22,rearZ);
-  if(!wideTrophySkirts)return;
-  addTrophyWideSkirts(P);
-}
 
 function addTrophyWideSkirts(P: TankBuilderPort): void {
   for(const side of[-1,1]){
@@ -873,24 +856,6 @@ function addTrophyRearFaceDetails(P: TankBuilderPort): void {
   });
 }
 
-function modernMerkavaGlacisCap(topDrop = 0, steepShoulder = true): THREE.BufferGeometry {
-  // Both modern source families keep more shoulder height through the forward
-  // engine deck than the clean Mk.4 study. This closed cap follows four
-  // independently measured longitudinal stations; it is not a flat overlay.
-  const shoulder: SolidSection[]=steepShoulder?[
-    {z:1.45,ring:[[-1.70,1.56-topDrop],[1.70,1.56-topDrop],[1.70,1.72-topDrop],[-1.70,1.72-topDrop]]},
-    {z:2.05,ring:[[-1.70,1.47-topDrop],[1.70,1.47-topDrop],[1.70,1.54-topDrop],[-1.70,1.54-topDrop]]},
-  ]:[
-    {z:1.85,ring:[[-1.70,1.56-topDrop],[1.70,1.56-topDrop],[1.70,1.66-topDrop],[-1.70,1.66-topDrop]]},
-  ];
-  return sectionSolid([
-    ...shoulder,
-    {z:2.75,ring:[[-1.70,1.30],[1.70,1.30],[1.70,1.52-topDrop],[-1.70,1.52-topDrop]]},
-    {z:3.35,ring:[[-1.05,1.16],[1.05,1.16],[1.05,1.33-topDrop],[-1.05,1.33-topDrop]]},
-    {z:3.72,ring:[[-1.02,1.00],[1.02,1.00],[1.02,1.12-topDrop],[-1.02,1.12-topDrop]]},
-    {z:3.80,ring:[[-1.02,.98],[1.02,.98],[1.02,1.06-topDrop],[-1.02,1.06-topDrop]]},
-  ]);
-}
 
 function trophyMerkavaGlacisCap(): THREE.BufferGeometry {
   // Trophy source sections keep the high engine-deck shoulder, then descend

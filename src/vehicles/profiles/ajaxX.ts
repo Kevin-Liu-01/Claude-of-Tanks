@@ -347,7 +347,7 @@ function turretSideEquipment(P: TankBuilderPort, add: EquipmentAdder): void {
   for(const z of [-2.40,-1.53,-.08])add('turretDetail',box(.12,.046,.055),-1.365,2.605,z);
 }
 
-function smokeBankCarrier(P: TankBuilderPort, add: EquipmentAdder, side: number): void {
+function smokeBankCarrier(_P: TankBuilderPort, add: EquipmentAdder, side: number): void {
     // Object_27 has two short, inclined receiver brackets per bank. A
     // single vertical face plate incorrectly buried the outboard column.
     // These scalar widths/angles come from the source support envelopes.
@@ -393,7 +393,7 @@ function turretServicePlateAndAntennas(P: TankBuilderPort, add: EquipmentAdder):
   add('turretDetail',cylY(.012,.019,.415,P.q?12:8),.162,3.2245,-1.104);
 }
 
-function turretHatches(P: TankBuilderPort, add: EquipmentAdder): void {
+function turretHatches(_P: TankBuilderPort, add: EquipmentAdder): void {
   // Object_27's two broad clipped covers and their hinge/latch hardware.
   for(const [x,width] of [[-.423,.835],[.602,.916]]) {
     add('turretDetail',horizontalPlate(width,.81,.050,.15),x,2.714,-1.54);
@@ -436,7 +436,7 @@ function panoramicSight(P: TankBuilderPort, add: EquipmentAdder): void {
   add('turretGlass',box(.267,.223,.018),.569,3.321,-2.130);
 }
 
-function portSight(P: TankBuilderPort, add: EquipmentAdder): void {
+function portSight(_P: TankBuilderPort, add: EquipmentAdder): void {
   // Object_6 has one port low sight, not two mirrored forward screens.
   add('turretDetail',box(.358,.256,.270),-.510,2.804,-.973);
   add('turretGlass',box(.233,.198,.014),-.492,2.812,-.832);

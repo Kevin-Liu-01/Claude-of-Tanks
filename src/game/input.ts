@@ -1,5 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createWheelNotcher } from './wheelNotches.ts';
+import { isCrewVoiceSetting, normalizeCrewVoiceSetting, type CrewVoiceSetting } from '../audio/crewVoice.ts';
+import { getLocale } from '../ui/i18n.ts';
 // src/game/input.ts — rebindable action-map input layer.
 //
 // Raw KeyboardEvent.code / mouse-button / mouse-wheel / gamepad events are
@@ -121,16 +123,10 @@ export interface InputSettings {
   volUi: number;
   volVoice: number;
   alarmHeartbeat: boolean;
-  /** Which language the crew radio speaks (src/audio/voiceLines.ts). */
-  crewVoice: CrewVoiceChoice;
+  /** National crews or one fixed crew pack (src/audio/crewVoice.ts). */
+  crewVoice: CrewVoiceSetting;
   /** Muffle and ear-ringing after a close blast. */
   audioConcussion: boolean;
-}
-
-type CrewVoiceChoice = 'national' | 'english' | 'interface';
-
-function isCrewVoiceChoice(value: unknown): value is CrewVoiceChoice {
-  return value === 'national' || value === 'english' || value === 'interface';
 }
 
 type BindingMap = Record<ActionId, string | null>;
@@ -636,7 +632,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     }
     if (typeof storedSettings.armorAimOverlay === 'boolean') settings.armorAimOverlay = storedSettings.armorAimOverlay;
     if (typeof storedSettings.alarmHeartbeat === 'boolean') settings.alarmHeartbeat = storedSettings.alarmHeartbeat;
-    if (isCrewVoiceChoice(storedSettings.crewVoice)) settings.crewVoice = storedSettings.crewVoice;
+    settings.crewVoice = normalizeCrewVoiceSetting(storedSettings.crewVoice,
+      storedSettings.crewVoice === 'interface' ? getLocale() : null);
     if (typeof storedSettings.audioConcussion === 'boolean') settings.audioConcussion = storedSettings.audioConcussion;
     for (const k of VOLUME_KEYS) {
       if (typeof storedSettings[k] === 'number') settings[k] = clamp(storedSettings[k], 0, 1);
@@ -646,7 +643,12 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   // --- gameplay settings -------------------------------------------------------
   const settings: InputSettings = { ...DEFAULT_SETTINGS };
   const storedSettings = loadJson(SETTINGS_KEY);
-  if (isRecord(storedSettings)) applyStoredSettings(settings, storedSettings);
+  if (isRecord(storedSettings)) {
+    applyStoredSettings(settings, storedSettings);
+    if (storedSettings.crewVoice === 'english' || storedSettings.crewVoice === 'interface') {
+      saveJson(SETTINGS_KEY, { ...storedSettings, crewVoice: settings.crewVoice });
+    }
+  }
 
   // --- live state ----------------------------------------------------------------
   const down = new Set<string>(); // active codes — Set semantics kill key-ghosting
@@ -1238,7 +1240,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       else if (key === 'alarmHeartbeat') settings.alarmHeartbeat = !!value;
       else if (key === 'audioConcussion') settings.audioConcussion = !!value;
       else if (key === 'crewVoice') {
-        if (isCrewVoiceChoice(value)) settings.crewVoice = value;
+        if (isCrewVoiceSetting(value)) settings.crewVoice = value;
       }
       else if (key === 'sensitivity') settings.sensitivity = num(1, 0.2, 3);
       else if (key === 'sniperSensScale') settings.sniperSensScale = num(1, 0.2, 3);

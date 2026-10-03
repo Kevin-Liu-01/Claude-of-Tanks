@@ -20,6 +20,7 @@ import { ARIETE_C1_X_DATUMS, ARIETE_X_FAMILY_SCALE, ARIETE_C1_X_GUN_PITCH_BY_YAW
 import { CHALLENGER1_SUPPLIED_DATUMS } from './profiles/challenger1XSuppliedFrame.ts';
 import { STRV122_SUPPLIED_DATUMS } from './profiles/strv122XSuppliedFrame.ts';
 import { applySourceXAuxArmor } from './sourceXAuxArmor.ts';
+import { applyLeclercClassicXFieldKitArmor } from './leclercClassicXKitArmor.ts';
 import type { FleetTankSpec, FleetDimensions } from './specContracts.ts';
 
 const entries = [
@@ -167,6 +168,8 @@ function applyAuthoredFrame(spec: FleetTankSpec, id: string): void {
   }
   if (id === 'jpz_e100_x') applyJagdpanzerFixedArmor(spec);
   applySourceXAuxArmor(spec, id);
+  // The AMX 56 field kit's thick side modules are installed armor stock outside the source skirt faces.
+  if (id === 'leclerc_classic_x') applyLeclercClassicXFieldKitArmor(spec);
   const createZones = authoredEraZones[id as keyof typeof authoredEraZones];
   if (createZones) {
     // The retained donor is the owner's non-ERA T-62 obr.1975. The separately
