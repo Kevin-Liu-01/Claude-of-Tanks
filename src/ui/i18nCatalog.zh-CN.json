@@ -3797,5 +3797,11 @@
   "flight.link": "载车链路距离",
   "flight.speed": "空速",
   "flight.zoom": "瞄具倍率",
-  "flight.range": "目标距离"
+  "flight.range": "目标距离",
+  "flight.view.infrared": "红外",
+  "flight.view.thermal": "热成像",
+  "flight.view.night": "夜视",
+  "flight.view.daylight": "日光",
+  "flight.view.next": "切换为{view}",
+  "flight.view.switch": "当前视图：{current}。切换为{next}。"
 }

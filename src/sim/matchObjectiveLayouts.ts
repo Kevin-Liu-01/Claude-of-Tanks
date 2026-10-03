@@ -26,7 +26,7 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Sirocco Wadi (redesign 2026-10-01): three gravel bars in the wadi bed, rotationally symmetric about the ford — the
   // gap between the mesas, the souk ground at the ford (also the turbo-ball kickoff), the eastern fan. Each is a graded
   // apron in the map file, so the discs seat where they are authored and both teams drive the same distances.
-  desert: { kickoff: { x: 0, z: 0 }, zones: [{ x: -292, z: 112 }, { x: 0, z: 0 }, { x: 292, z: -112 }] },
+  desert: { kickoff: { x: 0, z: 0 }, zones: [{ x: -300, z: 84 }, { x: 0, z: 0 }, { x: 292, z: -112 }] },
   // Steinburg (redesign 2026-10-01): three discs on the spur's crest, mirror-symmetric across it — the farm road's
   // crossing in the western orchards and the market square (also the turbo-ball kickoff), each a paved apron in the
   // map file, and the bypass in the gap beyond the castle rock, the validated seat of the bounded search on the
@@ -43,14 +43,14 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Saltwind Narrows (redesign 2026-10-02): three discs on the bay's axis (z = 10), the line the layout is mirrored
   // across — the village square and the upper village, validated seats on the village's graded floor, and the karst
   // spine's saddle, a level apron in the map file; the turbo-ball kickoff seats at the market crossroads.
-  saltwind: { kickoff: { x: 40, z: 4 }, zones: [{ x: -122, z: 8 }, { x: -44, z: 14 }, { x: 230, z: 10 }] },
+  saltwind: { kickoff: { x: 40, z: 4 }, zones: [{ x: -122, z: 8 }, { x: -44, z: 14 }, { x: 230, z: 26 }] },
   // Saltmere Bay (redesign 2026-10-02): three discs on the axis between the two shore lanes (z = 22), the line the
   // layout is mirrored across — the inland hamlet's green and the bocage crossroads' meadow (level aprons in the map
   // file) and the village's west end (a validated seat on its graded floor, also the turbo-ball kickoff).
   coastal: { kickoff: { x: 60, z: 22 }, zones: [{ x: -290, z: 22 }, { x: -155, z: 22 }, { x: 60, z: 22 }] },
   // Verdant Fields (redesign 2026-10-02): three level aprons, rotationally symmetric about the village — the southern
   // field green, the village square (also the turbo-ball kickoff), the northern field green.
-  verdant: { kickoff: { x: 10, z: 20 }, zones: [{ x: -250, z: -150 }, { x: 10, z: 20 }, { x: 270, z: 190 }] },
+  verdant: { kickoff: { x: 10, z: 20 }, zones: [{ x: -250, z: -126 }, { x: 10, z: 20 }, { x: 270, z: 166 }] },
   // Mangrove Reach (redesign 2026-10-02): three seats on the line of equal distance between the deployments — the
   // western meadow below the creek, the fishing village (also the turbo-ball kickoff), the eastern island's flats.
   mangrove: { kickoff: { x: -55, z: 10 }, zones: [{ x: -230, z: 95 }, { x: -55, z: 10 }, { x: 240, z: -90 }] },
@@ -68,7 +68,7 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // between the deployments — the north bank's timber landing, the shore yard (also the turbo-ball kickoff), the
   // south yard.
   monsoon: { kickoff: { x: -60, z: 24 }, zones: [{ x: -306, z: 16 }, { x: -60, z: 24 }, { x: 400, z: 8 }] },
-  reservoir: { kickoff: { x: 40, z: -120 }, zones: [{ x: 0, z: 300 }, { x: 40, z: -120 }, { x: 40, z: -340 }] },
+  reservoir: { kickoff: { x: 88, z: 8 }, zones: [{ x: -8, z: 154 }, { x: 88, z: 8 }, { x: 12, z: -170 }] },
   // Ruinspires (redesign 2026-10-02): the boulevard's three squares, level aprons in the map file, rotationally
   // symmetric about the Square of the Republic (also the turbo-ball kickoff).
   ruinspires: { kickoff: { x: 0, z: 0 }, zones: [{ x: -225, z: 0 }, { x: 0, z: 0 }, { x: 225, z: 0 }] },

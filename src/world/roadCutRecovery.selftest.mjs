@@ -132,11 +132,11 @@ const failures = [
   { id: 'alpine', seed: 1337, x: -142, z: -510, nx: 1, nz: 0, span: 2, limit: 2, old: 2.046130209195251 },
   { id: 'alpine', seed: 2025, x: -50, z: 510, nx: 1, nz: 0, span: 2, limit: 2, old: 2.2056770037931983 },
   { id: 'alpine', seed: 2025, x: -28, z: 472, nx: 1, nz: 0, span: 2, limit: 1.4, old: 1.5010676125114628 },
-  // 2026-10-02: Highland Reservoir's layout-brief revision set the western apron's plane at 2.0 m (it had followed the
-  // road's centre height, 3.6 m); the predecessor program on today's config gives 0.583 and 0.529 there (was 0.426 and
-  // 0.408), still over the limit, and the current program leaves the spot flat.
-  { id: 'reservoir', seed: 1337, x: -446, z: -72, nx: 1, nz: 0, span: 4, limit: .35, old: .5830689668655396 },
-  { id: 'reservoir', seed: 2025, x: -446, z: -72, nx: 1, nz: 0, span: 4, limit: .35, old: .5291497707366943 },
+  // 2026-10-02 (the apron bank law): Highland Reservoir's western apron now rises 5 % to the west with its hillside
+  // (docs/MAP-LAYOUT-BRIEF.md, "Apron banks"), so the plane its west gate continues is the hill's own. The predecessor
+  // program no longer fails there: 0.080 and 0.050 at (-446, -72), and at most 0.092 and 0.120 anywhere on the road
+  // west of the apron, all under the 0.35 limit (the witnesses were 0.583 and 0.529). Alpine's witnesses carry the
+  // negative; Reservoir keeps its pad, lake-centre and alignment checks below.
 ];
 const records = [], errors = [];
 for (const id of ['alpine', 'reservoir']) for (const seed of [1337, 2025]) {
