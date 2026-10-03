@@ -8,6 +8,7 @@ import {
   HORIZON_PANORAMA, HORIZON_PANORAMA_CHARACTERS, HORIZON_PANORAMA_SHADERS, buildHorizonPanoramaShellGeometry,
   createHorizonPanorama, horizonPanoramaUv, horizonRingSkylineTan, resolveHorizonPanoramaCharacter,
 } from './horizonPanorama.ts';
+import { HORIZON_FAR_ROWS } from './horizonFarRange.ts';
 import { HORIZON_RELIEF_CHARACTERS } from './horizonRelief.ts';
 
 const P = HORIZON_PANORAMA;
@@ -30,6 +31,10 @@ const ringEdge = (() => {
   assert.equal(pos.count, rows * stride, 'the shell: (columns + the seam column) x rows vertices');
   assert.equal(geometry.index.count / 3, (rows - 1) * n * 2, `the shell's triangles (${(rows - 1) * n * 2})`);
   assert.ok((rows - 1) * n * 2 < 7000, 'the shell stays a few thousand triangles: one cheap draw');
+  // the brief's budget: per map no more triangles than before — the shell draws fewer than the round-72 far range it
+  // hides once baked (its rows x the same ring columns)
+  assert.ok(rows <= HORIZON_FAR_ROWS.length,
+    `the shell's ${(rows - 1) * n * 2} triangles stay under the far range's ${(HORIZON_FAR_ROWS.length - 1) * n * 2}`);
   const start = ringEdge.heights.length - n;
   for (let k = 0; k <= n; k++) {
     const c = k % n;

@@ -18,7 +18,8 @@
 //     shell, transparent above the cloud deck, the sky and the open sea.
 //
 // The strip is drawn by ONE mesh: an apron from the ring's outer edge out to the shell (2.6 km) and the shell's wall,
-// sampling the atlas by direction from the bake eye — about 6k triangles, no per-frame CPU, one atlas fetch per fragment.
+// sampling the atlas by direction from the bake eye — 3.4k triangles (fewer than the round-72 far range's 4.3k it stands
+// in for), no per-frame CPU, one atlas fetch per fragment.
 // The bake runs where a renderer exists (the world's impostor warm-up under the loading cover; the first update
 // otherwise), re-bakes after a GPU suspension disposes the atlas, and until it has baked the round-72 far range stays
 // on (the receipts, a renderer without float targets). Desktop tier only: the mobile tier has no far range.
@@ -34,9 +35,11 @@ export const HORIZON_PANORAMA = Object.freeze({
   elevMin: -3 * DEG, elevMax: 22 * DEG,
   width: 8192, height: 512,
   gridA: 4096, gridR: 256,
-  /** the apron's rows between the ring's outer edge and the shell (m out from the centre) and the wall's elevations */
+  /** the apron's rows between the ring's outer edge and the shell (m out from the centre) and the wall's elevations:
+   * its foot and its top only — a column's wall vertices stand on one vertical line and the fragment takes its own
+   * direction from the eye, so rows between them drew triangles without changing a pixel */
   apronM: [1900, 2300] as readonly number[],
-  wallElevDeg: [-4, 1, 6, 12, 22] as readonly number[],
+  wallElevDeg: [-4, 22] as readonly number[],
 });
 
 /** The far country's vocabulary per relief character (amplitudes in m; wavelengths in m). */
