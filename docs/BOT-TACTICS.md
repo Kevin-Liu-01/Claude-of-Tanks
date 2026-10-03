@@ -18,7 +18,16 @@ frontline) that has not been able to fight its target for four seconds, because
 it has no sight of it or no loaded round opens the gate, shifts inside the zone:
 to a point on the 0.6 or 0.8 × radius ring in sight of the target and as far
 round its side as the zone allows. It holds that point while it can fight from
-it. A mission bot whose route is used up short of its objective (the planner's
+it. A zone is held from ground a hull can stand on: the centre when the ground
+there and over a hull's length round it is as level as a relocation spot
+(normal.y 0.90) and dry, else the first such point on the 4-20 m rings (inside
+0.7 × radius) from the hull's own side of the zone. Redrock Divide's last
+frontline sector has its centre on a 55-63 degree face; holders drove onto it,
+pivoted there and slid off (24 seeds: 45 damaging falls and 10100 hp before, 9
+and 812 hp after).
+The shift's points obey the same rule, reached by a straight leg sampled every
+3 m no steeper than a comfortable climb (normal.y 0.86).
+A mission bot whose route is used up short of its objective (the planner's
 best ends in another connected component, or a search leg took the waypoints)
 hands the hull to the classic drivers for 20 seconds before the mission takes
 it back. When the grid has no way to the destination at all for the widest hull
