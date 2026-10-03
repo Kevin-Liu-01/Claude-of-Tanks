@@ -6583,9 +6583,15 @@ only with an albedo-aware key that keeps snow and bright sand high-key.
   16 km and fades in over 9 km — under 4–5° at a 1.4 km band, the distant field's crowding on the horizon; the decks keep
   8 km.
 - Scene-wide GTAO stays off (the owner, 2026-09-28). The ground around the four hulls the shadow router already selects
-  loses the sky each hull hides (`vehicleGroundOcclusion.ts`): an oriented box per hull (its armour-derived shadow proxy
-  carried down over the running gear), ½ sin²(atan(h/d)) · (2/π) atan(L/d) beside it (a wall's cosine-weighted share over
-  the azimuth a finite hull covers), 0.85 under the footprint, on the pixel's ambient share only; analytic, no noise.
+  loses the sky each hull hides (`vehicleGroundOcclusion.ts`), on the pixel's ambient share only; analytic, no noise.
+  Since the vehicle-ground lane (2026-10-03, wave 13's "strip of fully-lit snow under the belly") each hull is three boxes
+  measured from the built visual — the hull over its measured belly, the two track runs under it — and a box hides its
+  exact projected solid angle (Lambert's edge integral over the silhouette hexagon, clipped at the receiver's horizon):
+  0.97 of the sky under a 0.31 m belly, half at the footprint's edge, continuous on both sides. A blocked direction keeps
+  its occluder's own light (first-order interreflection with a 0.25 hull albedo): the belly lit by the open ground it
+  glimpses, a wall by half sky and half ground. The ground-albedo multi-bounce it replaced (Jimenez's fit, which assumes
+  the cavity has the receiver's albedo) kept 0.37 of the sky under a snow belly and 0.81 at its rear edge; snow's belly
+  now keeps 0.13, sunny sand's 0.21.
 
 **The first A/B on the PR head (fp6: 3ed03998a against the lane, the 24 wave-0 shots, the census views).** CIELAB over
 the 24 frames, PR head → lane (the 35 photographs): p5 / p50 lightness 32.5 / 60.6 → 26.7 / 52.7 (22.5 / 54.4), mean
@@ -6642,7 +6648,8 @@ PR head → lane (the photographs): p5 / p50 lightness 30.3 / 58.7 → 23.8 / 49
   where photographs of hulls on sand run about 0.07–0.16. The light balance itself is right (open shade / sun 0.155
   scene-linear: the sky's cosine-weighted irradiance × 1.45 against the sun on the ground); the hull's sky occlusion,
   the shadowed ambient's dim and the tone curve's toe stack on it. Next: the hull occlusion's multi-bounce term
-  (Jimenez's polynomial on the map's ground albedo: bright sand returns some of the light the hull hides).
+  (Jimenez's polynomial on the map's ground albedo: bright sand returns some of the light the hull hides). (Superseded
+  the same day by the first-order interreflection above: the polynomial lifted snow's belly to a lit strip.)
 - The far cloud shade waits for its capture (above).
 - The humilis maps' horizon puffs (above) and the arid fogDensity (above).
 - Saltwind's sky-w pale band is the sea's horizon (the view looks along open water); the Frontier contrail reads as a
