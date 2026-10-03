@@ -2557,6 +2557,20 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let routeTimer = 0;
   let routeGoalX = 1e9;
   let routeGoalZ = 1e9;
+  // Corner hold (bots lane, 2026-10-03; Coastal pacing seed 25003 on the physics lane's tree): a T-90M Proryv pressed
+  // against a boulder's north-west corner re-chose its corner at every recheck, and each choice undid the last.
+  // Pressed to the rock, the north-east corner's lane ran inside the rock's margin, so it turned for the north-west
+  // one; the turn swung its centre 0.36 m off the rock, the north-east lane cleared and its score won it back. It
+  // jinked every 0.6 s and never left the rock. A recheck that would take back the corner the hull gave up less than
+  // ROUTE_CORNER_FLIP_S ago is a flip: the hull keeps its current corner instead, while that corner's lane stays clear
+  // and the destination stays put, for ROUTE_CORNER_SETTLE_S; a reached corner hands over to the next as before, and a
+  // stuck strike drops the plan. Only a flip is held: a hold on every new corner (or on every corner the hull pivoted
+  // toward) reshuffled the routes of every battle and added two sub-120 s battlePacing matches.
+  const ROUTE_CORNER_FLIP_S = 2;
+  const ROUTE_CORNER_SETTLE_S = 6;
+  const routeCornerGivenUp = { x: NaN, z: NaN, atS: -Infinity }; // the corner the last switch left
+  let routeCornerSettledUntilS = -Infinity;  // a flip was refused: the current corner is kept until then
+  let routeCornerFlips = 0;                  // probe-visible count of refused flips
   let terrainRouteUntilS = -1;
   // a corner just reached is vetoed briefly so the replan hops to the NEXT
   // corner along the box instead of re-offering the same cell (the crawl
@@ -2692,6 +2706,19 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     routeCandidates[3].z = box.max[2] + clearance;
   }
 
+  /** A corner's lane from the hull: on the map, not underfoot, dry, not just vetoed, clear of `box` by `margin`. */
+  function cornerOpen(
+    box: AiObstacle, sourceX: number, sourceZ: number, cx: number, cz: number, margin: number,
+  ): boolean {
+    if (Math.max(Math.abs(cx), Math.abs(cz)) > 500) return false;
+    const d1 = Math.hypot(cx - sourceX, cz - sourceZ);
+    if (d1 < 2) return false; // standing on this corner already
+    if (liquidSafe && !liquidSafe(sourceX,sourceZ,Math.atan2(cx-sourceX,cz-sourceZ),d1)) return false;
+    if (nowS < lastCorner.untilS &&
+        Math.hypot(cx - lastCorner.x, cz - lastCorner.z) < 3) return false;
+    return !routeSegmentHitsBox(sourceX, sourceZ, cx, cz, box, margin);
+  }
+
   function chooseRouteCorner(
     box: AiObstacle,
     sourceX: number,
@@ -2707,13 +2734,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (let i = 0; i < routeCandidates.length; i++) {
       const cx = routeCandidates[i].x;
       const cz = routeCandidates[i].z;
-      if (Math.max(Math.abs(cx), Math.abs(cz)) > 500) continue;
+      if (!cornerOpen(box, sourceX, sourceZ, cx, cz, margin)) continue;
       const d1 = Math.hypot(cx - sourceX, cz - sourceZ);
-      if (d1 < 2) continue; // standing on this corner already
-      if (liquidSafe && !liquidSafe(sourceX,sourceZ,Math.atan2(cx-sourceX,cz-sourceZ),d1)) continue;
-      if (nowS < lastCorner.untilS &&
-          Math.hypot(cx - lastCorner.x, cz - lastCorner.z) < 3) continue;
-      if (routeSegmentHitsBox(sourceX, sourceZ, cx, cz, box, margin)) continue;
       const score = d1 + Math.hypot(goalX - cx, goalZ - cz) +
         cornerBias(sourceX, sourceZ, directionX, directionZ, cx, cz);
       if (score < best) { best = score; bx = cx; bz = cz; }
@@ -2726,6 +2748,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   function planRoute(gx: number, gz: number): void {
+    // the corner the hull is on its way to (see ROUTE_CORNER_FLIP_S)
+    const wasActive = routeActive, heldX = routeCorner.x, heldZ = routeCorner.z;
     routeActive = false;
     const st = entity.state;
     const sourceX = st.pos.x;
@@ -2742,9 +2766,31 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       sourceX, sourceZ, directionX, directionZ, limit, margin,
     );
     if (box) {
+      const heldOpen = wasActive && cornerOpen(box, sourceX, sourceZ, heldX, heldZ, margin);
+      if (heldOpen && nowS < routeCornerSettledUntilS) {
+        routeCorner.x = heldX;
+        routeCorner.z = heldZ;
+        routeActive = true;
+        return;
+      }
       chooseRouteCorner(
         box, sourceX, sourceZ, gx, gz, directionX, directionZ, margin,
       );
+      if (routeActive && wasActive && Math.hypot(routeCorner.x - heldX, routeCorner.z - heldZ) > 1) {
+        const takesBack = nowS - routeCornerGivenUp.atS < ROUTE_CORNER_FLIP_S
+          && Math.hypot(routeCorner.x - routeCornerGivenUp.x, routeCorner.z - routeCornerGivenUp.z) < 1;
+        if (takesBack && heldOpen) {
+          // a flip: keep the corner the hull is on its way to
+          routeCorner.x = heldX;
+          routeCorner.z = heldZ;
+          routeCornerSettledUntilS = nowS + ROUTE_CORNER_SETTLE_S;
+          routeCornerFlips++;
+          return;
+        }
+        routeCornerGivenUp.x = heldX;
+        routeCornerGivenUp.z = heldZ;
+        routeCornerGivenUp.atS = nowS;
+      }
       if (!liquidSafe || routeActive) return;
     }
     if (liquidSafe || nowS < terrainRouteUntilS) {
@@ -2898,8 +2944,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // r7 CORNER-HOP ROUTER (see planRoute): re-plan when the goal moved or
     // the recheck timer lapsed; while a solid blocker sits on the straight
     // line, the steering goal becomes the corner around it.
-    if (routeTimer <= 0 ||
-        Math.abs(x - routeGoalX) > 12 || Math.abs(z - routeGoalZ) > 12) {
+    const goalMoved = Math.abs(x - routeGoalX) > 12 || Math.abs(z - routeGoalZ) > 12;
+    if (routeTimer <= 0 || goalMoved) {
+      if (goalMoved) { // a new destination chooses its corner afresh
+        routeCornerSettledUntilS = -Infinity;
+        routeCornerGivenUp.atS = -Infinity;
+      }
       routeGoalX = x;
       routeGoalZ = z;
       routeTimer = ROUTE_RECHECK_S;
@@ -5774,6 +5824,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       missStreak, missVerdicts, pressUnreached,
       rackSpent: !!target && target.id === rackSpentId, rackSpentT: +rackSpentT.toFixed(1), rackSpentVerdicts,
       objectiveShifts, objectiveShifting, zoneHoldMoves,
+      routeCornerX: routeActive ? +routeCorner.x.toFixed(2) : null,
+      routeCornerZ: routeActive ? +routeCorner.z.toFixed(2) : null, routeCornerFlips,
       objectiveShiftX: objectiveShifting ? +objectiveShiftPoint.x.toFixed(1) : null,
       objectiveShiftZ: objectiveShifting ? +objectiveShiftPoint.z.toFixed(1) : null,
       zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,
