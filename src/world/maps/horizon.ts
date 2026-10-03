@@ -1961,6 +1961,15 @@ function farMassifSettings(ring: MassifSettings | null): MassifSettings {
   return { ...m, baseWavelengthM: m.baseWavelengthM * 2.2, gullyWavelengthM: m.gullyWavelengthM * 2.2, smoothM: 0 };
 }
 
+/** The mountains lane: a tableland ring's far plateaus — its bed stair at about 2.6 x the beds (the far rows stand a
+ * few hundred metres apart, so only the big tiers read: flat tops stepping down the far skyline); null elsewhere. */
+function farEscarpmentSettings(horizon: HorizonConfig, style: HorizonStyle): EscarpmentSettings | null {
+  const authored = typeof horizon.escarpment === 'object' && horizon.escarpment !== null;
+  if ((style !== 'mesa' && !authored) || horizon.escarpment === false) return null;
+  const near: EscarpmentSettings = { ...MESA_ESCARPMENT, ...(authored ? horizon.escarpment as Partial<EscarpmentSettings> : {}) };
+  return { ...near, bedM: [near.bedM[0] * 2.6, near.bedM[1] * 2.6], meanderM: near.meanderM * 2.6, meanderWavelengthM: near.meanderWavelengthM * 2.2 };
+}
+
 function usesFiniteTableCaps(horizon: HorizonConfig, mapId: string, style: HorizonStyle): boolean {
   return style === 'mesa' && horizon.finiteTableCaps !== false
     && (mapId === 'skybridge' || mapId === 'copper_mesa' || mapId === 'titan_gorge');
@@ -3534,6 +3543,7 @@ export function* buildHorizonRingSteps(
       nearEdge: { columns: HORIZON_SEGMENTS, positions: pos, heights: hs },
       detailTexture: mat.userData.horizonDetail2 as THREE.Texture | undefined,
       massif: H.massif === false ? null : farMassifSettings(reliefSettings.massif),
+      escarpment: farEscarpmentSettings(H, style),
     });
     if (farRange) mesh.add(farRange);
   }

@@ -15,6 +15,7 @@ import { SimplexNoise } from '../engine/simplexFast.ts';
 import { type SeaOpening, dominantSeaOpening, seaOpeningWeight, seaHeadlandWeight } from './edgeWater.ts';
 import type { HorizonFarRangeSettings, HorizonReliefCharacter } from './horizonRelief.ts';
 import { type MassifSettings, createMassifField, suppressNeedles } from './horizonMassif.ts';
+import { type EscarpmentSettings, createEscarpmentField } from './horizonEscarpment.ts';
 
 export const HORIZON_FAR_SEGMENTS = 288;
 
@@ -56,6 +57,9 @@ interface HorizonFarRangeOptions {
   /** The mountains lane (2026-10-02): the ring's eroded landform at the far range's scale (horizonMassif.ts), which
    * carves the ranged silhouette into crests, cols and spurs; absent keeps the round-72b massifs. */
   massif?: MassifSettings | null;
+  /** The mountains lane: a tableland ring's far plateaus — its bed stair at the far range's scale (flat tops stepping
+   * down in tiers along the far skyline); absent for none. */
+  escarpment?: EscarpmentSettings | null;
 }
 
 interface HorizonFarRangeGeometry {
@@ -89,7 +93,7 @@ export function resolveFarRangeAmp(settings: HorizonFarRangeSettings, deckBaseM:
 }
 
 /** Pure geometry (world xz, heights), for the mesh and the receipts. */
-export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'seed' | 'settings' | 'deckBaseM' | 'seaOpenings' | 'nearEdge' | 'massif'>): HorizonFarRangeGeometry {
+export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'seed' | 'settings' | 'deckBaseM' | 'seaOpenings' | 'nearEdge' | 'massif' | 'escarpment'>): HorizonFarRangeGeometry {
   const { settings: s, seed } = options;
   const n = options.nearEdge?.columns ?? HORIZON_FAR_SEGMENTS, rows = HORIZON_FAR_ROWS;
   const noise = new SimplexNoise({ random: mulberry32(seed >>> 0) });
@@ -155,6 +159,7 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
   // the mountains lane (2026-10-02): the ring's eroded landform at about twice its scale (the far rows are 290-340 m
   // apart and its columns 27-48 m), calibrated over the far annulus, carves the ranged relief into crests and cols
   const massif = options.massif ? createMassifField((seed ^ 0x6A55) >>> 0, options.massif, [rows[0].r, rows[rows.length - 1].r]) : null;
+  const plateaus = options.escarpment ? createEscarpmentField((seed ^ 0x5F1A) >>> 0, options.escarpment) : null;
   const positions = new Float32Array(n * rows.length * 3);
   const heights = new Float32Array(n * rows.length);
   const marine = new Float32Array(n * rows.length);
@@ -191,6 +196,8 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
       if (massif) relief *= massif.multiplier(x, z);
       // the crest row carries the peaks; the rows before it rise toward them, the rows behind fall away
       let h = HORIZON_FAR_FOOT_M + ampM * env * (0.18 + 0.82 * relief) * lift;
+      // a tableland's far country: the bed stair at the far scale (flat tops, tiers down the far skyline)
+      if (plateaus && row > 0) h = plateaus.apply(x, z, h, HORIZON_FAR_FOOT_M, 1);
       // sea sectors: the far ring is open water there (a little under the level, the apron carries the surface)
       const opening = dominantSeaOpening(a, options.seaOpenings);
       const sea = opening ? seaOpeningWeight(a, opening) : 0;

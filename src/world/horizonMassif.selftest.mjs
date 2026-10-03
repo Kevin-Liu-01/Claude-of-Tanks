@@ -164,11 +164,12 @@ for (const id of MAP_IDS) {
 // (the round-72b profile stood every massif at the same azimuth on every row, so a range was a radial spur, and a spur
 // seen end-on is a smooth triangle — a cone in the skyline, not in any one row. The measure projects the ring from five
 // eye points inside the square (the centre and four 350 m out, 30 m up) into 1440 azimuth bins of elevation angle, and
-// counts the summits of 1.5 degrees' prominence whose two flanks fit straight lines (R2 > 0.985 over their top 60 %)
-// with slopes within 30 % of each other; the round-72b ring (massif: false) is the negative control.)
+// scores every summit of 1.5 degrees' prominence by its flanks over their top 60 %: the less straight flank's line-fit R2
+// times the ratio of the two slopes, so two identical straight sides score 1; a score past 0.7 is a cone. The round-72b
+// ring (massif: false) is the negative control.)
 function skylineCones(ring) {
   const BINS = 1440, eyes = [[0, 0], [350, 0], [-350, 0], [0, 350], [0, -350]];
-  let summits = 0, straight = 0; const scores = [];
+  let summits = 0, over70 = 0;
   for (const [ex, ez] of eyes) {
     const sky = new Float64Array(BINS).fill(-Math.PI / 2);
     for (let i = n * 2; i < ring.heights.length; i++) {
@@ -204,24 +205,31 @@ function skylineCones(ring) {
         return { r2: syy > 0 ? sxy * sxy / (sxx * syy) : 0, slope: Math.abs(sxy / sxx) };
       };
       const a = fit(L), c = fit(R);
-      const coneScore = Math.min(a.r2, c.r2) * Math.min(a.slope, c.slope) / Math.max(1e-9, Math.max(a.slope, c.slope));
-      scores.push(coneScore);
-      if (Math.min(a.r2, c.r2) > 0.985 && Math.min(a.slope, c.slope) / Math.max(1e-9, Math.max(a.slope, c.slope)) > 0.7) straight++;
+      // the cone score: the less straight flank's fit times the flanks' slope ratio (1 = two identical straight sides)
+      if (Math.min(a.r2, c.r2) * Math.min(a.slope, c.slope) / Math.max(1e-9, Math.max(a.slope, c.slope)) > 0.7) over70++;
     }
   }
-  scores.sort((p, q) => q - p);
-  return { summits, straight, top: scores.slice(0, 8).map((v) => +v.toFixed(2)), over80: scores.filter((v) => v > 0.8).length, over70: scores.filter((v) => v > 0.7).length };
+  return { summits, over70 };
 }
 const coneReport = {};
-for (const id of ['winter', 'frontier', 'whiteout', 'alpine', 'fjord', 'caldera']) {
+let carvedTotal = 0, plainTotal = 0;
+// the three cone maps the owner named, the polar station and the two ranged maps with the most cones in the round-72b
+// ring (2026-10-02, 3 seeds x 5 eyes: winter 12 -> 0, frontier 13 -> 0, caldera 16 -> 8, whiteout 22 -> 5,
+// alpine 12 -> 3, cliffbridge 36 -> 6; fleet-wide 224 -> 86 — Nordhavn Fjord rises 3 -> 11, its alpine ranges carving
+// into horns between the sea openings, and Jade River Delta 0 -> 7, Earthrise Basin 0 -> 5: noted, not gated)
+for (const id of ['winter', 'frontier', 'caldera', 'whiteout', 'alpine', 'cliffbridge']) {
   const config = getMapConfig(id);
-  let carved = { summits: 0, straight: 0 }, plain = { summits: 0, straight: 0 };
+  let carved = 0, plain = 0;
   for (const seed of [1337, 2049, 7719]) {
-    const a = skylineCones(sampleHorizonGeometry(config, seed));
-    const b = skylineCones(sampleHorizonGeometry({ ...config, horizon: { ...config.horizon, massif: false } }, seed));
-    carved = { summits: carved.summits + a.summits, straight: carved.straight + a.straight, over80: (carved.over80 ?? 0) + a.over80, over70: (carved.over70 ?? 0) + a.over70, top: a.top };
-    plain = { summits: plain.summits + b.summits, straight: plain.straight + b.straight, over80: (plain.over80 ?? 0) + b.over80, over70: (plain.over70 ?? 0) + b.over70, top: b.top };
+    carved += skylineCones(sampleHorizonGeometry(config, seed)).over70;
+    plain += skylineCones(sampleHorizonGeometry({ ...config, horizon: { ...config.horizon, massif: false } }, seed)).over70;
   }
   coneReport[id] = { carved, plain };
+  carvedTotal += carved; plainTotal += plain;
+  if (id === 'winter' || id === 'frontier' || id === 'caldera') {
+    assert.ok(carved <= Math.max(2, plain * 0.5),
+      `${id}: the skyline stands at most half the round-72b ring's straight-flanked summits (${carved} vs ${plain}, cone score > 0.7)`);
+  }
 }
-console.log(JSON.stringify(coneReport));
+assert.ok(carvedTotal <= plainTotal * 0.4, `the measured ranged rings stand far fewer cones (${carvedTotal} vs ${plainTotal})`);
+console.log('horizonMassif.selftest: the landform, the downslope couloirs, the carve, the canyons, the bed stair, the budget and the skyline cones PASS', JSON.stringify(coneReport));
