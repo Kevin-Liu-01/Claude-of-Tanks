@@ -3522,6 +3522,15 @@ function* vegetationBuildSteps(
         if (vColor.r < 0.0) diffuseColor.rgb = -vColor.rgb * (dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) / 0.28);
         else diffuseColor *= vColor;
       #endif`);
+    // ground lane (2026-10-03, waves 13/14: "grass in shadow turns a saturated teal or indigo"): a blade's indirect light
+    // is the sky's blue fill; desaturated to a third of its hue and warmed a little (the ground's bounce through the
+    // sward), the shaded sward reads as a darker version of its own colour, not a coloured decal (placed where the lit
+    // program carries the anchor; the receipts' bare stand-ins do not)
+    if (shader.fragmentShader.includes('#include <lights_fragment_end>')) {
+      shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>', /* glsl */`
+      irradiance = mix( vec3( dot( irradiance, vec3( 0.2126, 0.7152, 0.0722 ) ) ), irradiance, 0.33 ) * vec3( 1.04, 1.0, 0.90 );
+      #include <lights_fragment_end>`);
+    }
     useAttributeNormal(shader);
     mipAlphaGuard(shader); // aa-r1: distance-stable blade coverage
   };
@@ -3574,9 +3583,9 @@ function* vegetationBuildSteps(
         // thin blades survive their deep mips and the far fields keep the dark
         // tuft cover the 1049e4e pastures showed to ~300 m; the near carpet
         // keeps the crisp 0.44 edge beside the tracks.
-        // v8/v7: root-anchored shadow lookup; v9/v8 (ground lane): the crop tuft's colour branch
-        matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v9', 0.34),
-        matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v8'),
+        // v8/v7: root-anchored shadow lookup; v9/v8 (ground lane): the crop tuft's colour branch; v10/v9: the shaded sky light desaturated
+        matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v10', 0.34),
+        matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v9'),
       });
       yield { stage: 'grassPrep', fine: true };
     }
@@ -3605,8 +3614,8 @@ function* vegetationBuildSteps(
   const _splatScratch = { n1: 0, n2: 0, mA: 0 };
   // ground lane (2026-10-03): the field the terrain draws under a tuft (the height field's landUse.ts hook; absent on a
   // map without fields and in the sandboxed harnesses) — a reused record, inline so the section needs no import
-  const _landScratch: LandFieldSample = { active: 0, crop: 0, edgeM: 0, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
-    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1 };
+  const _landScratch: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
   const landUseAt = heightField._landUseAt ?? null;
   // ground lane: the canopy's cover (set once the trees are placed; null before — a tuft built earlier ignores it)
   let woodsCoverAt: ((x: number, z: number) => number) | null = null;
@@ -5143,8 +5152,8 @@ function* vegetationBuildSteps(
   const _hedgeSite = [0, 0, 0, 0]; // x, z, tangent x, tangent z
   // the field system read here from the height field itself (this section runs in the placement harnesses too)
   const hedgeLandAt = heightField._landUseAt ?? null;
-  const _hedgeLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
-    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1 };
+  const _hedgeLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
   function hedgeSite(x: number, z: number, salt: number): number[] {
     _hedgeSite[0] = x; _hedgeSite[1] = z; _hedgeSite[2] = 0; _hedgeSite[3] = 0;
     if (hedgeLandAt === null) return _hedgeSite;

@@ -79,13 +79,13 @@ export const LAND_CROP_ALBEDO: Readonly<Record<LandCropId, readonly [number, num
   0: [0.085, 0.170, 0.035], // pasture: the calibrated meadow tip (groundRedux.ts MEADOW_TIP)
   1: [0.30, 0.22, 0.075],   // ripe wheat
   2: [0.33, 0.28, 0.12],    // barley
-  3: [0.075, 0.19, 0.04],   // young green crop
+  3: [0.065, 0.13, 0.05],   // young green crop (wave 14, verdant chase: "oversaturated lime … artificial turf": a deeper, bluer green)
   4: [0.050, 0.042, 0.034], // plough (black earth; the terrain uses its own soil layer)
   5: [0.30, 0.25, 0.13],    // stubble
   6: [0.045, 0.10, 0.025],  // sunflower foliage
   7: [0.050, 0.105, 0.030], // row crop foliage
   8: [0.040, 0.046, 0.040], // flooded paddy (muddy water)
-  9: [0.10, 0.23, 0.045],   // growing rice
+  9: [0.085, 0.17, 0.05],   // growing rice
   10: [0.26, 0.22, 0.085],  // ripe rice
   11: [0.16, 0.10, 0.075],  // terra rossa (a dull brick, not an orange floor)
   12: [0.060, 0.115, 0.035], // vine foliage
@@ -109,7 +109,7 @@ export const LAND_CROP_GROWTH: Readonly<Record<LandCropId, Readonly<{ sward: boo
   // sown fields — a sown field drew every candidate blade, taller, half again the wild sward's; now about its density)
   1: { sward: true, height: 1.1, keep: 0.75 },
   2: { sward: true, height: 1.0, keep: 0.75 },
-  3: { sward: true, height: 0.75, keep: 0.8 },
+  3: { sward: true, height: 0.75, keep: 0.65 },
   4: { sward: false, height: 0, keep: 0 },
   5: { sward: true, height: 0.24, keep: 0.55 },
   6: { sward: true, height: 1.6, keep: 0.7 },
@@ -432,8 +432,11 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   out.crop = crop;
   out.edgeM = Math.min(edgeU, edgeV);
   out.endM = rowAlongU ? edgeU : edgeV;
-  const rx = rowAlongU ? ch : -sh, rz = rowAlongU ? sh : ch;
-  out.rowX = rx; out.rowZ = rz;
+  // each field's own row direction: the long side's axis turned up to ±20° by the field's hash (wave 14: one direction
+  // per parcel, varied between parcels — never the block grid's two axes alternating as a woven crosshatch)
+  const r0x = rowAlongU ? ch : -sh, r0z = rowAlongU ? sh : ch;
+  const ra = (luRand(fieldA, fieldB, salt + 41) - 0.5) * 0.7, rc = Math.cos(ra), rs = Math.sin(ra);
+  out.rowX = r0x * rc - r0z * rs; out.rowZ = r0x * rs + r0z * rc;
   out.jitter = luRand(fieldA, fieldB, salt + 29);
   // the margin the material draws: a grass margin's own width; a bund's and a wall's fixed footing (LAND_USE_GLSL's
   // users in terrain.ts: the field starts at 0.85 m past a bund, 1.45 m past a wall)
@@ -481,7 +484,7 @@ float lu_kind(float slot) {
   int packed = s < 4 ? int(uLandE.x + 0.5) : int(uLandE.y + 0.5);
   return float((packed >> ((s < 4 ? s : s - 4) * 5)) & 31);
 }
-void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter, out float endM) {
+void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter, out float endM, out float hedge) {
   float warpM = uLandC.x, salt = uLandC.y;
   vec2 w = vec2(sin(p.x * 0.00523 + p.y * 0.00311 + 1.3) + 0.5 * sin(p.x * -0.00197 + p.y * 0.00877 + 4.1),
                 sin(p.x * 0.00409 - p.y * 0.00587 + 2.7) + 0.5 * sin(p.x * 0.00913 + p.y * 0.00241 + 0.6));
@@ -521,6 +524,12 @@ void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2
   edgeM = min(edgeU, edgeV);
   endM = rowAlongU ? edgeU : edgeV;
   rowDir = rowAlongU ? vec2(ch, sh) : vec2(-sh, ch);
+  float ra = (lu_rand(row, fieldB, salt + 41.0) - 0.5) * 0.7, rc = cos(ra), rs = sin(ra);
+  rowDir = vec2(rowDir.x * rc - rowDir.y * rs, rowDir.x * rs + rowDir.y * rc);
   jitter = lu_rand(row, fieldB, salt + 29.0);
+  // the boundary's hedge (the twin's out.hedge): a hedged short boundary, 1.2 m full and gone by 2.4 m into the field
+  bool hedgeOn = lu_rand(row, col * 8.0 + (alongU ? k : 7.0), salt + 37.0) < uLandB.w;
+  float dShort = alongU ? min(edgeU, min(lu, blockU - lu)) : min(lu, blockU - lu);
+  hedge = hedgeOn ? 1.0 - smoothstep(1.2, 2.4, dShort) : 0.0;
 }
 `;

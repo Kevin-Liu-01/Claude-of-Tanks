@@ -111,7 +111,7 @@ export const TALL_GRASS = Object.freeze({
                       // of Tarkhan's 44 k clumps sat over the tier's 1 ms budget on the toggle bench)
     fade: Object.freeze([-1, 0, 38, 46] as const), // (in0, in1, out0, out1) m — a strict in-ramp (smoothstep needs edge0 < edge1)
     cap: 56000,       // Tarkhan's 1.2 × steppe filled 40 000 and dropped its ring's far cells (the first sheets)
-    programKey: 'world-tall-grass-near-v1',
+    programKey: 'world-tall-grass-near-v2', // v2 (ground lane): the shaded sky light desaturated
   }),
   far: Object.freeze({
     cellM: 24,
@@ -119,7 +119,7 @@ export const TALL_GRASS = Object.freeze({
     perM2: 0.20,      // single wide blades per square metre (0.30 on the first sheet massed into a dark carpet at 30–120 m)
     fade: Object.freeze([34, 46, 104, 120] as const),
     cap: 28000,
-    programKey: 'world-tall-grass-far-v2',
+    programKey: 'world-tall-grass-far-v3', // v3 (ground lane): the shaded sky light desaturated
   }),
   /** Blade width multiplier of the far ring (one strip carries the read), the root-to-tip gradient exponents and the
    * far ring's lift: the near clump keeps a dark root; the far blade — seen from above, mostly root in screen space,
@@ -350,6 +350,14 @@ varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;`);
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <common>',
       '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; uniform vec3 uGrassDry; uniform float uBladeGamma; uniform float uBladeLift; varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;');
     // both faces of a strip light the same way (no back-face flip) and the root is dark under the sward
+    // ground lane (2026-10-03, waves 13/14: "grass in shadow turns a saturated teal or indigo" — the tank's shadow on the
+    // sward): a blade's indirect light is the sky's blue fill; desaturated to a third of its hue and warmed a little (the
+    // ground's bounce through the sward), the shaded sward reads as a darker version of its own colour
+    // (a lit program carries the anchor; the receipts' bare shader stand-ins do not, so it is placed where it exists)
+    if (shader.fragmentShader.includes('#include <lights_fragment_end>')) {
+      shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>',
+        'irradiance = mix( vec3( dot( irradiance, vec3( 0.2126, 0.7152, 0.0722 ) ) ), irradiance, 0.33 ) * vec3( 1.04, 1.0, 0.90 );\n#include <lights_fragment_end>');
+    }
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <normal_fragment_begin>',
       '#include <normal_fragment_begin>\nnormal = normalize( vNormal );\nnonPerturbedNormal = normal;');
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <color_fragment>',
@@ -591,6 +599,11 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     if (!cropTint && b.kind !== 'reed') {
       keep *= 0.30 + 0.70 * smoothstep(0.28, 0.72, swardNoise(x, z, 1.7, 0x51a7));
       heightScale *= 0.62 + 0.76 * swardNoise(x, z, 9, 0x2c3d);
+    } else if (cropTint) {
+      // (wave 14, verdant chase: a sown field read as "a uniform carpet … at one height and spacing, like artificial
+      // turf") a crop stands evenly but not as a mat: thinner and shorter in its wet and poor patches, every few metres
+      keep *= 0.55 + 0.45 * smoothstep(0.25, 0.70, swardNoise(x, z, 2.3, 0x51a7));
+      heightScale *= 0.80 + 0.40 * swardNoise(x, z, 6.5, 0x2c3d);
     }
     if (roll > keep) return;
     if (n && n.y < TALL_GRASS.minSlopeY) return;

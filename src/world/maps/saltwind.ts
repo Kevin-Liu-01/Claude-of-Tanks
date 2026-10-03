@@ -120,7 +120,7 @@ export default {
     // tree and rock counts stay at the environmentExpansion first-pass ceilings.
     clusterCount: 34, loneCount: 52, rimCount: 62, grassDensity: 0.68, bushCount: 1.3, bushSpecies: 'acacia', clusterScrub: 1.9,
     // ground lane: the tufts a garrigue's dry grey-olive, not a meadow's green
-    tuftTone: (h: number, s: number, l: number) => [0.17, s * 0.55, l * 0.96],
+    tuftTone: (_h: number, s: number, l: number) => [0.17, s * 0.55, l * 0.96],
   },
   props: {
     sourcedPalette: 'coastal',

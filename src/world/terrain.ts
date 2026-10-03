@@ -4079,24 +4079,23 @@ void splatCompute() {
       * (1.0 - shoulder) * (1.0 - smoothstep(0.020, 0.060, slope)) * (1.0 - smoothstep(0.02, 0.10, fM))
       * (1.0 - smoothstep(0.10, 0.45, woods));
     if (landW > 0.003) {
-      float crop, edgeM, track, jit, endM; vec2 rowDir;
-      lu_field(wp.xz, crop, edgeM, track, rowDir, jit, endM);
+      float crop, edgeM, track, jit, endM, hedgeL; vec2 rowDir;
+      lu_field(wp.xz, crop, edgeM, track, rowDir, jit, endM, hedgeL);
       // the region's boundary (landUse.ts BOUNDARIES): 0 a grass margin with tracks, 1 a polder's water ditches on the
       // long lines, 2 a paddy's earth bund, 3 a karst field's dry stone wall
       float bnd = uLandE.z;
       float marginM = uLandB.y * (0.7 + 0.6 * n1h);
+      // (wave 14: "a sharp diagonal straight-line seam … a texture-blend bug, not a land-use boundary") a grass margin's
+      // field edge wanders ±2–3 m along its boundary and the crop thins raggedly into the margin over 4 m, by a field of no
+      // period — the boundary is a strip of rank grass between two worked fields, never a line between two colours. A
+      // bund's or a wall's footing keeps its own straight line.
+      float edgeW = edgeM + (nzq(uvW, 0.045, vec2(0.21, 0.83)).y - 0.5) * 4.4 + (n1h - 0.5) * 1.6;
       float inField = bnd > 1.5 ? smoothstep(bnd > 2.5 ? 0.95 : 0.50, bnd > 2.5 ? 1.45 : 0.85, edgeM)
-                                : smoothstep(marginM * 0.5, marginM * 1.3, edgeM);
+                                : smoothstep(marginM, marginM + 4.0, edgeW);
       inField *= 1.0 - track;
-      float across = dot(wp.xz, vec2(-rowDir.y, rowDir.x)); // metres across the rows
-      // the headland: where a row crop's rows end the tractor turns, and the last passes run along the boundary — a strip
-      // 6–11 m deep across both row ends, its rows turned a right angle, its ground a shade more trodden; from the air
-      // every arable field wears this frame (the coastal establishing pair, hold 3: parcels meeting at razor-straight
-      // edges with nothing to say where one field's work stops)
-      float headM = 6.0 + 5.0 * fract(jit * 7.31);
-      bool rowCrop = crop > 0.5 && crop < 7.5;
-      float headT = rowCrop ? 1.0 - smoothstep(headM - 0.35, headM + 0.35, endM) : 0.0;
-      if (headT > 0.5) across = dot(wp.xz, rowDir);
+      // one row direction a field (landUse.ts: its long side's axis turned by its own hash), its lines bent a little
+      // over tens of metres — never ruled stripes repeating field to field (wave 14's "regular crosshatch weave")
+      float across = dot(wp.xz, vec2(-rowDir.y, rowDir.x)) + (nzq(uvW, 0.013, vec2(0.47, 0.13)).x - 0.5) * 5.0;
       // (wave 8, saltwind chase: "an unnaturally regular striped banding pattern"; the verdant plough "a low-resolution
       // repeating texture"): every ruled period a field drew — furrows, the tractor's passes, tramlines, swaths, mown
       // stripes — read as synthetic at full strength. They stand down to a breath of themselves, and where they show
@@ -4214,12 +4213,6 @@ void splatCompute() {
         float tram = exp(-tq * tq) * smoothstep(0.12, 0.45, 0.5 / max(gFootM, 1e-3));
         rows -= tram * 0.22;
       }
-      if (rowCrop) {
-        // the headland's trodden ground (a turned field's darker, a standing crop's thinner) and the first furrow's line
-        cropCol *= mix(1.0, crop > 3.5 && crop < 4.5 ? 0.95 : 1.03, headT);
-        float fq = (endM - headM) / 0.35;
-        rows -= exp(-fq * fq) * 0.12 * tileVis(0.7);
-      }
       cropCol *= (1.0 + rows * rowsShow) * fieldVar;
       a.rgb = mix(a.rgb, cropCol, inField * landW);
       // (the verdant establishing pair, hold 3: a turned field read as gravel or crumpled paper — the meadow's blade,
@@ -4229,8 +4222,14 @@ void splatCompute() {
       gFieldWater = water * inField * landW;
       if (water > 0.5 && nrmOn) n = mix(n, NRM_MEAN, gFieldWater);
       if (bnd < 1.5) {
-        // the margin: an uncultivated strip of rank grass, a shade darker and greener than the fields either side
-        a.rgb = mix(a.rgb, a.rgb * vec3(0.90, 0.98, 0.84), (1.0 - inField) * (1.0 - track) * landW * 0.7);
+        // the margin: an uncultivated strip of rank grass, a shade darker and greener than the fields either side, lumpy
+        // with its tussocks; a hedged boundary carries its hedge bank — the shrubs' dark base and their shade, broken
+        // along its run, under the hedge's own trees and bushes (the vegetation tier seats them on the same line)
+        a.rgb = mix(a.rgb, a.rgb * vec3(0.90, 0.98, 0.84) * (0.86 + 0.28 * n1h), (1.0 - inField) * (1.0 - track) * landW * 0.75);
+        if (hedgeL > 0.01) {
+          float hb = hedgeL * (0.55 + 0.45 * smoothstep(0.30, 0.70, nzq(uvW, 0.17, vec2(0.83, 0.37)).x));
+          a.rgb = mix(a.rgb, a.rgb * vec3(0.52, 0.60, 0.46), hb * (1.0 - track) * landW * 0.85);
+        }
       } else if (bnd < 2.5) {
         // a paddy's bund: a raised earth line half a metre wide, grassed on its top, between the water and the rice
         float bund = (1.0 - smoothstep(0.30, 0.55, edgeM)) * (1.0 - track);
@@ -4630,7 +4629,7 @@ void splatCompute() {
     // every desert mountain at 1–2 km. Gentle sand only.
     float bedW = min(uRipple.z * 2.2, 1.0) * bedMod * (1.0 - fR) * (1.0 - roadCore)
                * (1.0 - triW) * smoothstep(60.0, 170.0, effDist) * (1.0 - smoothstep(0.035, 0.09, slope))
-               * (1.0 - fMs) * sandCoverage * ringNoTrains;
+               * (1.0 - fMs) * ringNoTrains * sandCoverage;
     if (bedW > 0.002) {
       float bed;
       vec2 bedSlope = sandWaves(uv, wind0, 260.0, 0.45, nz(uv, 0.0021, vec2(0.19, 0.57)).g * 2.0, vec2(0.24, 0.0), vec2(1.0, 0.0), bed);
