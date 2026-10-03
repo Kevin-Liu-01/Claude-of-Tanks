@@ -128,6 +128,102 @@ const ruin: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+// ---- the base plots the first kit left to the generic yard (gauntlet wave 15: containers, gantries and steel water
+// towers read as a rail yard, not a Jordanian desert outpost)
+
+/** A shop row of the souq: one storey of rendered block, a run of shopfronts with rolling shutters and awnings, a flat
+ *  roof behind a parapet with its tanks (the base marketRow plot). */
+const souqRow: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng;
+  const W = Math.max(6, Math.min(10, ctx.info.w - 0.6)), D = Math.max(10, Math.min(18, ctx.info.d - 0.6));
+  const H = 3.6, wall: RegionalBucket = ctx.wallBucket === 'stone' ? 'plaster' : ctx.wallBucket as RegionalBucket;
+  sink.span('stone', -W / 2 - 0.05, -0.3, -D / 2 - 0.05, W / 2 + 0.05, 0.25, D / 2 + 0.05);
+  sink.span(wall, -W / 2, 0.25, -D / 2, W / 2, H, D / 2);
+  for (const [x0, z0, x1, z1] of [[-W / 2, -D / 2, W / 2, -D / 2 + 0.22], [-W / 2, D / 2 - 0.22, W / 2, D / 2], [-W / 2, -D / 2, -W / 2 + 0.22, D / 2], [W / 2 - 0.22, -D / 2, W / 2, D / 2]] as const) {
+    sink.span(wall, x0, H, z0, x1, H + 0.6, z1);
+  }
+  // the shopfronts along the street side (+x): rolling shutters half up over dark shops, an awning over each
+  const face: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
+  const n = Math.max(2, Math.floor(D / 3.2));
+  for (let k = 0; k < n; k++) {
+    const u = -D / 2 + (k + 0.5) * D / n, w = D / n - 0.7;
+    faceBox(sink, 'dark', face, u, 1.45, 0.005, w, 2.3, 0.02, { decor: true });
+    faceBox(sink, 'structureMetal', face, u, 2.15 + rng() * 0.25, 0.04, w, 0.9 + rng() * 0.4, 0.05, { colour: rgb(0x8a8e90), decor: true });
+    faceBox(sink, 'structureMetal', face, u, 2.95, 0.55, w + 0.3, 0.05, 1.1, { colour: pick(rng, SAND_SHEET), decor: true });
+    faceBox(sink, 'structureWood', face, u, 3.3, 0.03, w * 0.8, 0.35, 0.04, { colour: pick(rng, STEEL_DOORS), decor: true });
+  }
+  rooftop(sink, W, D, H, rng);
+  return sink.finish();
+};
+
+/** Lock-up stores in place of a container row: a single storey of bare block with steel roller doors (containerRow). */
+const lockUps: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng;
+  const W = Math.max(10, Math.min(16, ctx.info.w - 0.6)), D = Math.max(4.6, Math.min(6.4, ctx.info.d - 0.6)), H = 3.3;
+  sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, H, D / 2);
+  sink.span('stone', -W / 2 - 0.08, H, -D / 2 - 0.08, W / 2 + 0.08, H + 0.25, D / 2 + 0.08);
+  const face: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
+  const n = Math.max(3, Math.floor(W / 3.4));
+  for (let k = 0; k < n; k++) {
+    const u = -W / 2 + (k + 0.5) * W / n;
+    faceBox(sink, 'structureMetal', face, u, 1.3, 0.03, W / n - 0.8, 2.5, 0.05, { colour: pick(rng, STEEL_DOORS), decor: true });
+  }
+  rooftop(sink, W, D, H + 0.25, rng);
+  return sink.finish();
+};
+
+/** A lorry shelter in place of a gantry crane: a steel portal canopy on columns over a concrete apron, open-sided. */
+const lorryShelter: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng;
+  const W = Math.max(12, Math.min(20, ctx.info.w - 1.0)), D = Math.max(4.4, Math.min(6.0, ctx.info.d - 0.4)), H = 5.2;
+  sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.12, D / 2);
+  const steel = rgb(0x7a7e80);
+  for (let k = 0, n = Math.max(3, Math.round(W / 5) + 1); k < n; k++) {
+    const x = -W / 2 + 0.25 + (W - 0.5) * k / (n - 1);
+    for (const z of [-D / 2 + 0.25, D / 2 - 0.25]) sink.span('structureMetal', x - 0.12, 0.12, z - 0.12, x + 0.12, H, z + 0.12, { colour: steel });
+    sink.span('structureMetal', x - 0.1, H - 0.4, -D / 2 + 0.1, x + 0.1, H, D / 2 - 0.1, { colour: steel });
+  }
+  const roof: RoofSpec = { kind: 'gable', pitchDeg: 6, eave: 0.4, verge: 0.3, thickness: 0.06, bucket: 'structureMetal', ridge: 'saddle' };
+  sink.placed(Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(D, W, H, roof), roof, pick(rng, SAND_SHEET)));
+  return sink.finish();
+};
+
+/** The village water tower: four concrete legs with ring beams, a rendered concrete tank, a ladder (watertower). */
+const concreteTower: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const S = Math.max(3.6, Math.min(5.0, Math.min(ctx.info.w, ctx.info.d) - 0.4)), legH = 9.0, tankH = 3.2;
+  const c = S / 2 - 0.3;
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) sink.span('plaster', sx * c - 0.22, -0.3, sz * c - 0.22, sx * c + 0.22, legH, sz * c + 0.22);
+  for (const y of [3.2, 6.2]) {
+    sink.span('plaster', -c - 0.15, y, -c - 0.15, c + 0.15, y + 0.3, -c + 0.15);
+    sink.span('plaster', -c - 0.15, y, c - 0.15, c + 0.15, y + 0.3, c + 0.15);
+    sink.span('plaster', -c - 0.15, y, -c + 0.15, -c + 0.15, y + 0.3, c - 0.15);
+    sink.span('plaster', c - 0.15, y, -c + 0.15, c + 0.15, y + 0.3, c - 0.15);
+  }
+  sink.span('plaster', -S / 2, legH, -S / 2, S / 2, legH + tankH, S / 2);
+  sink.span('plaster', -S / 2 - 0.12, legH + tankH, -S / 2 - 0.12, S / 2 + 0.12, legH + tankH + 0.25, S / 2 + 0.12);
+  for (let y = 0.4; y < legH + tankH; y += 0.35) sink.span('structureMetal', c + 0.22, y, -0.25, c + 0.26, y + 0.04, 0.25, { colour: rgb(0x5a5e60), decor: true });
+  return sink.finish();
+};
+
+/** The mosque's minaret: a slender rendered shaft on a square base, a balcony ring, a lantern and a pointed cap. */
+const minaret: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const H = Math.max(10, Math.min(13, ctx.info.h)), B = 2.6;
+  sink.span('stone', -B / 2, -0.3, -B / 2, B / 2, 2.4, B / 2);
+  sink.cylinder('plaster', [0, 2.4, 0], 'y', H * 0.62 - 2.4, 0.95, 8, {}, 0.82, true, Math.PI / 8);
+  const bal = H * 0.62;
+  // the balcony: a corbelled slab and its solid parapet drum (an open ring shows its inner faces from above)
+  sink.cylinder('plaster', [0, bal, 0], 'y', 0.3, 1.35, 8, {}, 1.35, true, Math.PI / 8);
+  sink.cylinder('plaster', [0, bal + 0.3, 0], 'y', 0.55, 1.3, 8, { decor: true }, 1.3, true, Math.PI / 8);
+  sink.cylinder('plaster', [0, bal + 0.3, 0], 'y', H * 0.2, 0.7, 8, {}, 0.7, true, Math.PI / 8);
+  sink.cylinder('structureMetal', [0, bal + 0.3 + H * 0.2, 0], 'y', H * 0.16, 0.78, 8, { colour: rgb(0x3f6a5a) }, 0.05, true, Math.PI / 8);
+  return sink.finish();
+};
+
 export const WADIRUM_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   adobe: blockHouse,
   depot: steelStore,
@@ -138,6 +234,11 @@ export const WADIRUM_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Objec
   compound: fort,
   compoundSouk: fort,
   ruin,
+  marketRow: souqRow,
+  containerRow: lockUps,
+  gantry: lorryShelter,
+  watertower: concreteTower,
+  minaret,
 });
 
 export const WADIRUM_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
