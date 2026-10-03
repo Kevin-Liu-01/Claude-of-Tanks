@@ -40,7 +40,7 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Saltwind Narrows (redesign 2026-10-02): three discs on the bay's axis (z = 10), the line the layout is mirrored
   // across — the village square and the upper village, validated seats on the village's graded floor, and the karst
   // spine's saddle, a level apron in the map file; the turbo-ball kickoff seats at the market crossroads.
-  saltwind: { kickoff: { x: 40, z: 4 }, zones: [{ x: -122, z: 8 }, { x: -44, z: 14 }, { x: 230, z: 10 }] },
+  saltwind: { kickoff: { x: 40, z: 4 }, zones: [{ x: -122, z: 8 }, { x: -44, z: 14 }, { x: 230, z: 26 }] },
   // Saltmere Bay (redesign 2026-10-02): three discs on the axis between the two shore lanes (z = 22), the line the
   // layout is mirrored across — the inland hamlet's green and the bocage crossroads' meadow (level aprons in the map
   // file) and the village's west end (a validated seat on its graded floor, also the turbo-ball kickoff).
