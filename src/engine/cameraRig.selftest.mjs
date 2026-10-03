@@ -296,3 +296,67 @@ console.log('cameraRig.selftest: live gun-hold sight, snap-free release, and mou
   assert.deepEqual(camera.position.toArray(),[1,50,2],'replay and external camera owners retain control');
 }
 console.log('cameraRig.selftest: isometric framing, input, terrain, rotation, zoom and scope passed');
+
+// A wall touching the chase pivot must pull the camera inward, never push it
+// through the pivot and reverse the view while the player holds the mouse still.
+{
+  const camera = new PerspectiveCamera(60, 16 / 9, .1, 2000);
+  const actor = { state: { pos: new Vector3(), yaw: 0, turretYaw: 0 },
+    spec: { dims: { heightM: 2.4 } }, input: { aimPoint: new Vector3() } };
+  const rig = createCameraRig(camera, {
+    heightField: { getHeightAt: () => 0 }, getPlayer: () => actor,
+    raycast: (origin, dir) => ({ point: origin.clone().addScaledVector(dir, .05),
+      normal: new Vector3(0, 0, 1), dist: .05 }),
+    aimRaycast: () => null,
+  });
+  rig.snapArcade(2, 0, -.1);
+  assert.ok(camera.getWorldDirection(new Vector3()).z > .9,
+    'near-wall collision padding cannot flip the chase view behind the tank');
+  for (let frame = 0; frame < 90; frame++) {
+    actor.state.pos.z += .25;
+    rig.update(1 / 60, idle);
+    assert.ok(camera.getWorldDirection(new Vector3()).z > 0,
+      'driving past a touching wall without mouse input preserves view direction');
+  }
+}
+
+// A camera-visible obstacle behind the gun must not become a backwards gun
+// command. Deliberately aiming backwards still selects that same obstacle.
+{
+  const camera = new PerspectiveCamera(60, 16 / 9, .1, 2000);
+  const actor = { state: { pos: new Vector3(), yaw: 0, turretYaw: 0 },
+    spec: { dims: { heightM: 2.4 } }, input: { aimPoint: new Vector3() } };
+  let planes = [-4, 20];
+  const cast = (origin, dir, maxDist) => {
+    let best = null;
+    for (const z of planes) {
+      const t = (z - origin.z) / dir.z;
+      if (t >= 0 && t <= maxDist && (!best || t < best.dist))
+        best = { point: origin.clone().addScaledVector(dir, t), dist: t, normal: new Vector3(0, 0, -1) };
+    }
+    return best;
+  };
+  const rig = createCameraRig(camera, { heightField: { getHeightAt: () => 0 },
+    getPlayer: () => actor, raycast: () => null, aimRaycast: cast });
+  rig.snapArcade(2, 0, -.1);
+  assert.equal(actor.input.aimPoint.z, 20, 'the sight targets ahead of the gun, past a rear obstruction');
+  for (let frame = 0; frame < 90; frame++) {
+    actor.state.pos.z += .08;
+    rig.update(1 / 60, idle);
+    assert.equal(actor.input.aimPoint.z, 20, 'driving without mouse input never acquires rear cover');
+  }
+  rig.update(1 / 60, { ...idle, mouseDX: 1 });
+  rig.enterSniper();
+  rig.update(1 / 60, idle);
+  assert.ok(camera.getWorldDirection(new Vector3()).z > 0,
+    'scoping cannot latch the rear obstruction into a permanent backwards view');
+  actor.state.pos.set(0, 0, 0);
+  rig.snapArcade(2, Math.PI, -.1);
+  assert.equal(actor.input.aimPoint.z, -4, 'intentional rear aiming remains available');
+  rig.snapSniper(2, 0, -.1);
+  assert.equal(actor.input.aimPoint.z, 20, 'sniper uses its unchanged gun-origin ray');
+  planes = [1, 20];
+  rig.snapArcade(2, 0, -.1);
+  assert.equal(actor.input.aimPoint.z, 1, 'close cover ahead of the gun still stops the aiming ray');
+}
+console.log('cameraRig.selftest: close-wall and rear-obstruction aim stability passed');

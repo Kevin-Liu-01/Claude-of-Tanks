@@ -54,6 +54,8 @@ export interface Mixer {
   concussion(strength: number): boolean;
   duckForVoice(active: boolean): void;
   cabinLevel(): number;
+  /** The master limiter's current gain reduction (dB, ≤ 0): how hard a crack is being held down. */
+  limiterReduction(): number;
   update(dtS: number): void;
   busGains(): Record<string, number>;
   dispose(): void;
@@ -133,15 +135,30 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
   const clip = makeSoftClip(ctx);
   const glue = ctx.createDynamicsCompressor();
   // Glue, not a limiter: a 12 ms attack lets cannon transients through to
-  // the soft clip, which catches the peaks.
+  // the limiter below, which catches the peaks.
   glue.threshold.value = -8;
   glue.knee.value = 8;
   glue.ratio.value = 2.5;
   glue.attack.value = 0.012;
   glue.release.value = 0.2;
+  // A limiter between the glue and the soft clip (2026-10-02): a gun's crack peaks far above its body, and the
+  // clip would square it off (old-film grit). The compressor's built-in look-ahead lets a 2 ms attack take the
+  // peak down smoothly, so the clip is only the last resort.
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = -2.6;
+  limiter.knee.value = 0;
+  limiter.ratio.value = 20;
+  limiter.attack.value = 0.002;
+  limiter.release.value = 0.25;
+  // A Web Audio compressor adds its own makeup gain ((1 / curve(0 dBFS))^0.6, +1.5 dB here) that cannot be
+  // switched off; taken back out, the limiter is unity below its threshold and its ceiling stays under the clip.
+  const limiterTrim = ctx.createGain();
+  limiterTrim.gain.value = Math.pow(Math.pow(10, (limiter.threshold.value - limiter.threshold.value / limiter.ratio.value) / 20), 0.6);
   const preMaster = ctx.createGain();
   preMaster.connect(glue);
-  glue.connect(clip);
+  glue.connect(limiter);
+  limiter.connect(limiterTrim);
+  limiterTrim.connect(clip);
   clip.connect(master);
   master.connect(ctx.destination);
 
@@ -190,13 +207,15 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
     own: ownLp, ownCombat: ownLp, interior: interiorSnap, cinematic: body, ambience: ambienceSnap,
     ui: preMaster, music: preMaster, voice: preMaster, alarm: preMaster,
   };
-  // Weight: gunfire, impacts and the hull's own gun get a low shelf (the
-  // generated reports are lean below 100 Hz), the interface a gentle top cut.
+  // Weight: gunfire, impacts and the hull's own gun get a low shelf, the
+  // interface a gentle top cut. The gun shelves are +2 dB since the reports
+  // became cracks (2026-10-02): +5 dB on the muzzle blast's punch held the
+  // limiter down for tens of milliseconds and squashed the crack.
   // The beds lose their sub-bass: loudness-normalised (K-weighted) beds carry
   // far more rumble than they sound like, and it masks the guns' low end
   // (tools/audio-mix-balance.mjs measured the idle bed 79 % below 200 Hz).
   const SHELVES: Partial<Record<BusId, readonly [BiquadFilterType, number, number]>> = {
-    weapons: ['lowshelf', 110, 5], impacts: ['lowshelf', 110, 4], ownCombat: ['lowshelf', 110, 5], ui: ['highshelf', 5200, -6],
+    weapons: ['lowshelf', 110, 2], impacts: ['lowshelf', 110, 4], ownCombat: ['lowshelf', 110, 2], ui: ['highshelf', 5200, -6],
     ambience: ['highpass', 90, 0],
   };
   const busFilters: BiquadFilterNode[] = [];
@@ -315,6 +334,7 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
       glide(worldDuck.gain, dbToGain(VOICE_DUCK.worldDb * voiceDuck), tau);
     },
     cabinLevel: () => dbToGain(SNAPSHOTS[snapshot].cabinDb),
+    limiterReduction: () => (typeof limiter.reduction === 'number' ? limiter.reduction : 0),
     update(dtS) {
       const dt = clamp(dtS, 0, 0.25);
       hdrTop = Math.max(HDR.floorDb, hdrTop - HDR.releaseDbPerS * dt);
