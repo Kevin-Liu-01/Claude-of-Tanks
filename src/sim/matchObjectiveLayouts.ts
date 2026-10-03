@@ -34,6 +34,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // east shore, the palm belt west of the town (also the turbo-ball kickoff) and the souk; the bounded search's seats,
   // each team's nearest, middle and farthest zone within 2 % of the other's.
   oasis: { kickoff: { x: 29.1, z: 4.4 }, zones: [{ x: -72.5, z: -11.2 }, { x: 29.1, z: 4.4 }, { x: 157.8, z: 12.6 }] },
+  // Whiteout Station (layout brief, 2026-10-03): three zones across the station — the motor pool yard, the service
+  // court (also the turbo-ball kickoff, beside it) and the melt pan's frozen west shore; the bounded search's seats,
+  // each team's nearest, middle and farthest zone within 3 % of the other's.
+  whiteout: { kickoff: { x: -53.7, z: 5 }, zones: [{ x: -154.9, z: 25.1 }, { x: -48.1, z: 10.7 }, { x: 50.5, z: -7.7 }] },
   // Tarkhan Steppe (layout brief, 2026-10-02): the three aprons — the station's grain yard by the ford on the line of
   // equal drives, the post-road halt on the plateau near the northern arc and the kolkhoz yard near the southern
   // deployment, each team's home zone as far from it as the other's; the kickoff on the wadi's north bank (the bounded

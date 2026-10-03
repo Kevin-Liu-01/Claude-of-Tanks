@@ -64,7 +64,7 @@ const expected = {
   copper_mesa: [2187, 2051, 1488], // 2026-10-02 Copper Mesa layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [2240, 2140, 1429]; was [2805, 2705, 1984]
   airfield: [2432, 2568, 1896], // 2026-10-02 Kestrel Airfield redesign (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [2450, 2429, 1959]; was [3671, 3650, 3173]
   oasis: [2225, 2005, 1518], // 2026-10-03 Sunscar Oasis layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [2267, 2037, 1562]; was [2740, 2510, 2031]
-  whiteout: [1309, 1175, 575], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [1601, 1467, 875]
+  whiteout: [1304, 1169, 575], // 2026-10-03 Whiteout Station layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [1309, 1175, 575]; was [1601, 1467, 875]
   orchard: [3712, 3478, 3917], // 2026-10-02 Orchard Valley layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [3714, 3482, 3941]; was [4923, 4691, 5160]
   longleaf: [4890, 4687, 5803], // 2026-10-02 Longleaf Crossing layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [4953, 4756, 5912]; was [6218, 6021, 7183]
   mangrove: [4520, 4347, 5686], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [5377, 5204, 6535] (2026-10-02 Mangrove Reach redesign (docs/MAP-LAYOUT-BRIEF.md); was [5282, 5127, 6502])

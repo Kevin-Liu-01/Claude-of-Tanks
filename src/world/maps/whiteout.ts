@@ -24,10 +24,23 @@ export default {
     landforms: [
       { kind: 'ridge', x: -186, z: -52, length: 180, width: 44, height: 5.6, yawDeg: 8 },
       { kind: 'ridge', x: 196, z: 84, length: 190, width: 48, height: 6.0, yawDeg: -6 },
-      { kind: 'ridge', x: -20, z: 268, length: 220, width: 62, height: 6.4, yawDeg: 88 },
+      // 2026-10-03 (maps lane B): the north berm turns across the approach and moves north (it ran north-south at x -20
+      // from z 158 to 378), off Verdant's northern ridge (the layout brief's skeleton rule: at most one of Verdant's
+      // landforms with one of this map's within 75 m), 2 m higher so that, faded by the arc's pad clearings, it still
+      // screens the two deployments from each other
+      { kind: 'ridge', x: -14, z: 300, length: 170, width: 50, height: 8.4, yawDeg: 4 },
       { kind: 'ridge', x: -10, z: -270, length: 200, width: 56, height: 5.8, yawDeg: 88 },
       { kind: 'basin', x: 98, z: 12, rx: 108, rz: 128, height: -2.2, wetScale: 0.2 },
       { kind: 'knoll', x: -346, z: 24, rx: 84, rz: 102, height: 7.0 },
+      // 2026-10-03 (maps lane B): periglacial geology — an esker, the sinuous gravel ridge a meltwater tunnel left under
+      // the ice, winds across the south-west tundra in three linked reaches; three pingos, the ice-cored frost mounds
+      // of a polar plain, stand in the open south-east, north-east and south-west.
+      { kind: 'ridge', x: -392, z: -268, length: 90, width: 16, height: 3.2, yawDeg: 62 },
+      { kind: 'ridge', x: -352, z: -198, length: 80, width: 15, height: 3.6, yawDeg: 48 },
+      { kind: 'ridge', x: -300, z: -146, length: 76, width: 14, height: 3.0, yawDeg: 30 },
+      { kind: 'knoll', x: 318, z: -262, r: 20, height: 4.2 },
+      { kind: 'knoll', x: 360, z: 330, r: 18, height: 3.8 },
+      { kind: 'knoll', x: -250, z: -320, r: 17, height: 3.4 },
     ],
   },
   spawns: { player: { x: -102, z: -390 }, enemies: [
@@ -60,8 +73,11 @@ export default {
     buildingLat: [14, 2], destructibleBuildingLat: [18, 3], sideSkip: 0.18, spacingPad: 8,
     tacticalBeats: [
       { id: 'station-motor-pool', role: 'brawl', x: -196, z: 26, yawDeg: 90, structure: 'motorpool', redoubt: true, outcrop: { count: 5, radius: 10 }, wreck: true },
-      { id: 'eastern-weather-relay', role: 'scout', x: 288, z: 38, yawDeg: -90, structure: 'relaystation', outcrop: { count: 4, radius: 8 } },
-      { id: 'north-fuel-shelter', role: 'support', x: 12, z: 266, yawDeg: 180, structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true },
+      // 2026-10-03 (maps lane B): the weather relay moves from (288, 38), 52 m from Verdant's eastern observer, and the
+      // fuel shelter from (12, 266), 13 m from Verdant's northern command fold, behind the moved north berm (the layout
+      // brief's skeleton rule: no strongpoint within 60 m of one of Verdant's)
+      { id: 'eastern-weather-relay', role: 'scout', x: 320, z: -10, yawDeg: -90, structure: 'relaystation', outcrop: { count: 4, radius: 8 } },
+      { id: 'north-fuel-shelter', role: 'support', x: -70, z: 270, yawDeg: 180, structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true },
     ],
     tones: makeRealisticCityBuildingTones({ value: 1.04, saturation: 1.02, soot: 0.01, roofValue: 0.94 }),
     industrialCladding: 'steel', // round 75: a polar station's halls are corrugated sheet, not brick
