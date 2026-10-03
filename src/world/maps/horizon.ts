@@ -2011,15 +2011,20 @@ function* carveHorizonMassifsSteps(
   ring.maxHeight = maxHeight;
 }
 
-/** The mountains lane: the tableland rings' bed stair (horizonEscarpment.ts) — the style default, per-map overridable. */
+/** The mountains lane: the tableland rings' bed stair (horizonEscarpment.ts) — the style default, per-map overridable.
+ * (gauntlet wave 18, the Dahar "smooth planar wedges with ruler-straight crest lines": thinner beds, 26-50 m, so a wall
+ * carries more cliff bands and the tables more tiers; the beds dip 24 m per km and their rims meander 48 m, so the tops
+ * step across the skyline instead of standing at one level) */
 const MESA_ESCARPMENT: EscarpmentSettings = {
-  bedM: [36, 70], cliffShare: [0.28, 0.48], talusRise: 0.32, talusCurve: 2.2, dipPerKm: 24, meanderM: 48, meanderWavelengthM: 300,
+  bedM: [26, 50], cliffShare: [0.28, 0.48], talusRise: 0.32, talusCurve: 2.2, dipPerKm: 24, meanderM: 48, meanderWavelengthM: 300,
 };
 /** The tableland rings' side canyons: the eroded landform cutting into the tables (cut only: min(1, multiplier + bias)).
- * Its base only (erosion 0, 2026-10-03): the drainage octaves cut the crest into a row of narrow fins that the bed stair
- * stood up as crenellations along Sirocco Wadi's and Copper Mesa's skylines; the base cuts broad embayments. */
-const MESA_CANYONS: MassifSettings = { baseWavelengthM: 1000, gullyWavelengthM: 380, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2.5, branch: 2.5,
-  erosion: 0, concavity: 1.0, contrast: 0.5, smoothM: 0 };
+ * Its base and one octave of 380 m wadis (2026-10-03): the three drainage octaves cut the crest into a row of narrow fins
+ * that the bed stair stood up as crenellations along Sirocco Wadi's and Copper Mesa's skylines; the base alone left
+ * "smooth planar wedges with ruler-straight crest lines" (gauntlet wave 18) — the first octave notches the rims into
+ * spurs and re-entrants as wide as a table's tier, too broad for the stair to stand up as fins. */
+const MESA_CANYONS: MassifSettings = { baseWavelengthM: 1000, gullyWavelengthM: 380, gullyOctaves: 1, gullyGain: 0.5, slopeStrength: 2.5, branch: 2.5,
+  erosion: 0.3, concavity: 1.0, contrast: 0.5, smoothM: 0 };
 const MESA_CANYON_BIAS = 0.22;
 
 /** The plain the tablelands stand on: 0.8 x the lowest non-skirt row base (amp included). */
