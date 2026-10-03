@@ -3205,17 +3205,6 @@ ${snowCap ? `
     const [hw, hl] = destructibleFootprint(kind);
     return boxClearOfRoadCore(heightField, x, z, hw * sc + 0.05, hl * sc + 0.05, yaw);
   }
-  // A fence module or gate never stands where a bridge deck spans (maps lane B, 2026-10-02): the ground there is the
-  // bed or the wall under the span, so a roadside run along a viaduct hung down its gorge. The run still takes the
-  // module's draws, so every other placement keeps its seat.
-  function underBridgeDeck(x: number, z: number): boolean {
-    for (const deck of heightField.bridgeDecks ?? []) {
-      const dx = x - deck.x, dz = z - deck.z;
-      if (Math.abs(dx * deck.ux + dz * deck.uz) <= deck.halfLength + 2
-        && Math.abs(dx * deck.uz - dz * deck.ux) <= deck.halfWidth + 2) return true;
-    }
-    return false;
-  }
   /**
    * March destructible fence MODULES (FENCE_SEG pitch) along a ground line —
    * the wooden-fence side of the wall kit. Modules pitch to the terrain,
@@ -3236,6 +3225,17 @@ ${snowCap ? `
   ): void {
     const curved = path ? fencePathSampler(path) : null;
     const along = curved?.length ?? Math.hypot(x1 - x0, z1 - z0);
+    // A module or gate never stands where a bridge deck spans (maps lane B, 2026-10-02): the ground there is the bed or
+    // the wall under the span, so a roadside run along a viaduct hung down its gorge. The run still takes the module's
+    // draws, so every other placement keeps its seat. (Declared inside the run: roadStations executes this function.)
+    function underBridgeDeck(x: number, z: number): boolean {
+      for (const deck of heightField.bridgeDecks ?? []) {
+        const dx = x - deck.x, dz = z - deck.z;
+        if (Math.abs(dx * deck.ux + dz * deck.uz) <= deck.halfLength + 2
+          && Math.abs(dx * deck.uz - dz * deck.ux) <= deck.halfWidth + 2) return true;
+      }
+      return false;
+    }
     const n = Math.max(1, Math.round(along / FENCE_SEG));
     const tx = (x1 - x0) / along, tz = (z1 - z0) / along;
     const straightYaw = Math.atan2(tx, tz); // module runs along local +z
