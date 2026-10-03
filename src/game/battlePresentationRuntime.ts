@@ -1,5 +1,5 @@
 import { applyJuggernautScale } from '../sim/juggernautScale.ts';
-import { syncJuggernautVisual } from './juggernautVisual.ts';
+import { syncJuggernautVisual, clearJuggernautVisual } from './juggernautVisual.ts';
 import type { ArmorEnvelope } from '../vehicles/specHelpers.ts';
 import { syncMissionAttachment } from './missionAttachmentVisual.ts';
 import { syncGunshipVisual, hideGunshipVisual } from './gunshipVisual.ts';
@@ -271,8 +271,10 @@ export function createBattlePresentationRuntime({
         detailVisible,
       );
     }
-    if((game.matchModeState as {boss?:{id:string}}|null)?.boss?.id===entity.id)applyJuggernautScale(entity as TankEntity & {state:TankState});
-    syncJuggernautVisual(visual.root,entity.spec.dims,state.modeScale??1,entity.combat?.hp??0,entity.combat?.maxHp??1,dtFrame??0);
+    if(game.phase==='battle'){
+      if((game.matchModeState as {boss?:{id:string}}|null)?.boss?.id===entity.id)applyJuggernautScale(entity as TankEntity & {state:TankState});
+      syncJuggernautVisual(visual.root,entity.spec.dims,state.modeScale??1,entity.combat?.hp??0,entity.combat?.maxHp??1,dtFrame??0);
+    } else clearJuggernautVisual(visual.root);
     syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed);
     if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0, !entity.isPlayer && visual.root.visible);
     else hideGunshipVisual(visual.root);

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { Object3D, PerspectiveCamera, Scene, Vector3 } from 'three';
+import { Object3D, PerspectiveCamera, Scene, Vector3, Mesh, BoxGeometry, MeshStandardMaterial } from 'three';
 
 import { createBattlePresentationRuntime } from './battlePresentationRuntime.ts';
 import {
@@ -315,3 +315,15 @@ function createHarness({
 }
 
 console.log('battlePresentationRuntime.selftest: interpolation, visibility, detail, FX, and terrain passed');
+
+{
+ const {entity,root}=createEntity({isPlayer:true});
+ const material=new MeshStandardMaterial(),mesh=new Mesh(new BoxGeometry(),material);root.add(mesh);
+ entity.state.modeScale=1.12;entity.combat.hp=100;entity.combat.maxHp=100;
+ const {runtime,game}=createHarness({tanks:[entity]});
+ runtime.update(.016,1);assert.notEqual(mesh.material,material);
+ game.phase='ended';runtime.update(.016,1);assert.equal(mesh.material,material,'post-battle readout clears the aura');assert.equal(root.scale.x,1);
+ game.phase='garage';game.matchModeState={boss:{id:entity.id}};runtime.update(.016,1);
+ assert.equal(mesh.material,material,'stale boss identity/scale cannot reactivate a garage aura');assert.equal(root.scale.x,1);
+ mesh.geometry.dispose();material.dispose();
+}
