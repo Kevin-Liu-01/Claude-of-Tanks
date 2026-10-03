@@ -61,7 +61,7 @@ const expected = {
   titan_gorge: [2486, 2347, 987], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [2725, 2586, 1230]
   skybridge: [3010, 3213, 1559], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [3522, 3725, 2079]
   polders: [3363, 3129, 2706], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [4232, 3998, 3574] (2026-10-02 Tidegate Polders redesign (docs/MAP-LAYOUT-BRIEF.md); was [4268, 4025, 3604])
-  copper_mesa: [2187, 2051, 1488], // 2026-10-02 Copper Mesa layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [2240, 2140, 1429]; was [2805, 2705, 1984]
+  copper_mesa: [2189, 2053, 1488], // 2026-10-03 Copper Mesa's north shelf removed (balance) [2187, 2051, 1488]; 2026-10-02 Copper Mesa layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [2240, 2140, 1429]; was [2805, 2705, 1984]
   airfield: [2432, 2568, 1896], // 2026-10-02 Kestrel Airfield redesign (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [2450, 2429, 1959]; was [3671, 3650, 3173]
   oasis: [2225, 2005, 1518], // 2026-10-03 Sunscar Oasis layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [2267, 2037, 1562]; was [2740, 2510, 2031]
   whiteout: [1304, 1169, 575], // 2026-10-03 Whiteout Station layout pass (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [1309, 1175, 575]; was [1601, 1467, 875]

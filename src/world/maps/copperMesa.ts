@@ -1,5 +1,5 @@
-// A horseshoe quarry with a low ore-cut, two unequal rim routes and a
-// transverse service shelf. No new geometry family or runtime update loop.
+// A horseshoe quarry with a low ore-cut and two unequal rim routes. No new
+// geometry family or runtime update loop.
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import desert from './desert.ts';
 import { roundRoadBends } from './roadBends.ts';
@@ -26,7 +26,11 @@ export default {
       { kind: 'basin', x: -78, z: 20, rx: 178, rz: 214, height: -11.0, corridorScale: 0.7 },
       { kind: 'ridge', x: -322, z: 58, length: 430, width: 78, height: 11.2, yawDeg: 18 },
       { kind: 'ridge', x: 130, z: 56, length: 400, width: 74, height: 8.4, yawDeg: -8 },
-      { kind: 'ridge', x: -58, z: 260, length: 280, width: 64, height: 8.6, yawDeg: 88 },
+      // 2026-10-03 (maps lane B): the transverse service shelf north of the pit (an 8.6 m east-west ridge at z 260)
+      // is gone. It lifted the north team's central assembly ground 4-6 m onto a forward slope in full view of the
+      // south rim, with nothing like it on the south side. Over 40 all-bot seeds the south won 29-11 whichever team
+      // stood there (the bots lane's swap test), with 15 of 16 first kills. Without it: 19-21 in each of two 40-seed
+      // blocks; first spot, first damage and first kill 8-8, 8-8 and 9-7 over 16.
       { kind: 'knoll', x: -186, z: -250, rx: 104, rz: 58, height: 5.8 },
       { kind: 'knoll', x: 310, z: -250, rx: 72, rz: 78, height: 6.8 },
       // 2026-10-02 (maps lane B): the waste-rock dumps the haulage tipped beside the pit's south and north approaches,

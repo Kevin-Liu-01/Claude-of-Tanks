@@ -326,6 +326,13 @@ Frosthollow, Nordhavn Fjord; Sunscar Oasis, Whiteout Station; October 2–3, 202
 - **One-sided slowing.** Slowing ground decides all-bot matches when it lies on one side's approach. Two bogs south
   of Nordhavn Fjord's western town fixed a fast pacing seed but went 15-1 to the south, and a matching pair to the
   north still went 29-11 over 40 seeds. Before keeping a pacing fix, play 40 all-bot seeds.
+- **One-sided shelves.** The bots' opening goals (`botOpeningGoal` in `src/sim/authoritativeMatch.ts`) sit in
+  rotational symmetry about the midpoint of the two spawn anchors. A landform under one team's goals with no match
+  under the other team's goals decides all-bot matches. On Copper Mesa an east-west ridge north of the pit lifted the
+  north team's central goals 4–6 m onto a forward slope, in view of the south rim. The south won 29–11 over 40 seeds,
+  whichever team deployed there, and took 15 of 16 first kills. With the ridge removed, the split was 19–21 in each of
+  two 40-seed blocks. A copy of the ridge on the south side did not fix it (30–10). Compare the ground under each
+  team's goals before you move the spawns.
 - **Geology.** `src/world/maps/geology.ts` holds `gully()` (three nested troughs, narrowing toward the head) and
   `talusFan()` (a steep cone at a gully mouth with a low apron down the fall line). A `gorge` landform with a positive
   height is a mesa or butte: a level cap with faces steep enough to read as rock. Keep features that change a gorge's
