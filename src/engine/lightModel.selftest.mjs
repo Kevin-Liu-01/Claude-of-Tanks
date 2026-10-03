@@ -173,8 +173,9 @@ assert.equal(legacy.envDiffuseGain, 1); assert.equal(legacy.envDiffuseChroma, 1,
 
 // ---- 6b. the bright-ground lift (2026-10-03; the gauntlet's wave 7: a median-matched key greyed the snow): off until a
 // capture shows it; a snowfield opens about half a stop at K 0.42, a ground at or under the reference is untouched
-assert.equal(EXPOSURE_ALBEDO_K, 0, 'off by default');
-assert.equal(exposureAlbedoEV(0.8), 0, 'no lift while off');
+assert.equal(EXPOSURE_ALBEDO_K, 0.42, 'about half a stop on Frosthollow');
+assert.ok(Math.abs(exposureAlbedoEV(0.799) - 0.5) < 0.05, 'Frosthollow opens about half a stop by default');
+assert.equal(exposureAlbedoEV(0.338), 0, 'Sirocco\'s sand (0.34) is untouched');
 {
   const saved = globalThis.__LIGHT_TUNE;
   globalThis.__LIGHT_TUNE = { EXPOSURE_ALBEDO_K: 0.42 };
