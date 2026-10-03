@@ -34,6 +34,9 @@ import {
   createGroundBounceUniforms,
 } from './groundBounce.ts';
 import { currentPostLightFxQuery, resolvePostLightFx } from './postLightFxPolicy.ts';
+import {
+  CLOUD_SHADE_PARS_GLSL, CLOUD_SHADE_SAMPLER_BUDGET, attachCloudShadeUniforms, cloudShadeSamplerCount, createCloudShadeUniforms,
+} from './cloudShadeMap.ts';
 import type { PublishedLightRig } from './contactShadows.ts';
 import { authoredSunOf, resolveLightModel, type LightModel, type LightModelPreset } from './lightModelCore.ts';
 import type { AtmosphereParams } from './atmosphere.ts';
@@ -518,6 +521,11 @@ function patchShadowDepthPacking(): void {
   THREE.SkinnedMesh.prototype.onAfterShadow = afterHook;
 }
 
+/** 2026-10-03 (cloudShadeMap.ts): a sun cascade's light × the clouds' share, before its shadow. */
+const COT_CLOUD_SUN_GLSL = `#if defined( COT_CLOUD_SHADE ) && defined( USE_SHADOWMAP )
+					directLight.color *= vCotCloudSun;
+#endif`;
+
 let stableShadowSamplingPatched = false;
 /** Keep the PCF kernel orientation stable in shadow space during camera motion. */
 function patchStableShadowSampling() {
@@ -547,9 +555,16 @@ float cotCascadeVis = 1.0;
 vec3 cotPrev;`);
   frag = frag.replace(fadeAnchor, `${fadeAnchor}
 					cotCascadeVis = directLight.color.g / max( prevColor.g, 1e-4 );`);
+  // 2026-10-03 (cloudShadeMap.ts): the clouds' share of the sun, per vertex, on each sun cascade's light before its shadow
+  // (the ratio above stays the cascade's own visibility; lights_fragment_end folds the cloud into cotSunVis)
+  const fadePrevAnchor = 'vec3 prevColor = directLight.color;';
+  if (frag.split(fadePrevAnchor).length !== 2) throw new Error('lighting.ts: cloud-shade anchor not found in lights_fragment_begin');
+  frag = frag.replace(fadePrevAnchor, `${COT_CLOUD_SUN_GLSL}
+					${fadePrevAnchor}`);
   frag = frag.replace(fadeBlendAnchor, `${fadeBlendAnchor}
 					cotSunVis = mix( cotSunVis, cotCascadeVis, blendRatio );`);
-  frag = frag.replace(noFadeAnchor, `cotPrev = directLight.color;
+  frag = frag.replace(noFadeAnchor, `${COT_CLOUD_SUN_GLSL}
+				cotPrev = directLight.color;
 				${noFadeAnchor}
 				cotSunVis = min( cotSunVis, directLight.color.g / max( cotPrev.g, 1e-4 ) );`);
   THREE.ShaderChunk.lights_fragment_begin = frag;
@@ -561,6 +576,9 @@ vec3 cotPrev;`);
   }
   THREE.ShaderChunk.lights_fragment_end = end.replace(endHead, `#if defined( USE_CSM ) && defined( CSM_CASCADES )
 
+	#if defined( COT_CLOUD_SHADE ) && defined( USE_SHADOWMAP )
+	cotSunVis *= vCotCloudSun;
+	#endif
 	vec3 cotAmbDim = mix( uCotShadowDim, vec3( 1.0 ), cotSunVis );
 
 	#if defined( RE_IndirectDiffuse )
@@ -601,7 +619,22 @@ ${endHead}`);
   THREE.ShaderChunk.lights_pars_begin = `#if defined( USE_CSM ) && defined( CSM_CASCADES )
 ${GROUND_BOUNCE_GLSL_PARS}
 #endif
+#if defined( COT_CLOUD_SHADE ) && defined( USE_SHADOWMAP )
+varying float vCotCloudSun;
+#endif
 ${THREE.ShaderChunk.lights_pars_begin}`;
+
+  // 2026-10-03 (cloudShadeMap.ts): the clouds' share of the sun, fetched per vertex from the one undithered shade map
+  // (a cloud shadow is tens to hundreds of metres across; the map's texel 23 m) and carried to the fragment
+  THREE.ShaderChunk.shadowmap_pars_vertex = `${THREE.ShaderChunk.shadowmap_pars_vertex}
+#if defined( COT_CLOUD_SHADE ) && defined( USE_SHADOWMAP )
+${CLOUD_SHADE_PARS_GLSL}
+varying float vCotCloudSun;
+#endif`;
+  THREE.ShaderChunk.shadowmap_vertex = `${THREE.ShaderChunk.shadowmap_vertex}
+#if defined( COT_CLOUD_SHADE ) && defined( USE_SHADOWMAP )
+	vCotCloudSun = cotCloudSun( worldPosition.xyz );
+#endif`;
 
   // Round 69: an opaque lit pixel writes 2 + its sun visibility (cotSunVis, captured above) into the scene
   // target's alpha — the canvas is opaque (renderer.ts, alpha false) and opaque draws blend nothing, so the
@@ -922,6 +955,11 @@ export function createLighting(
   // against, refreshed from the rig below whenever the sun or the preset changes — and the rig the post chain
   // reads for its contact shadows (contactShadows.ts): sun, hemisphere poles and the anti-sun fill.
   const groundBounceUniforms = createGroundBounceUniforms();
+  // 2026-10-03 (cloudShadeMap.ts): the cloud shade map's uniforms every CSM material shares (the volumetric layer writes
+  // them when it refreshes the map, scene.userData.cloudShadeUniforms); phones take no define (no volumetric layer)
+  const cloudShadeOn = !mobileTier;
+  const cloudShadeUniforms = createCloudShadeUniforms();
+  scene.userData.cloudShadeUniforms = cloudShadeUniforms;
   const lightFx = { flags: resolvePostLightFx(preset, getDeviceTier(), currentPostLightFxQuery()) };
   const lightRig: PublishedLightRig = {
     sunIntensity: SUN_INTENSITY, sunColor: new THREE.Color(SUN_COLOR),
@@ -1339,6 +1377,12 @@ export function createLighting(
       extraHook: MaterialCompileHook | null = null,
     ): T {
       csm.setupMaterial(mat);
+      // 2026-10-03 (cloudShadeMap.ts): the clouds' shadows on the sun term — every desktop CSM material built on three's
+      // own shaders unless it opts out (material.userData.cotCloudShade = false: it writes vCotCloudSun itself) or its
+      // program has no sampler to spare; a ShaderMaterial opts in with true (its chunks must carry the varying both ways)
+      const optIn = mat.userData.cotCloudShade as boolean | undefined;
+      const cloudShade = cloudShadeOn && (optIn === true || (optIn !== false && !(mat as unknown as { isShaderMaterial?: boolean }).isShaderMaterial));
+      if (cloudShade) (mat.defines ??= {}).COT_CLOUD_SHADE = '';
       {
         // Round 69: the ground-bounce uniforms ride on every CSM registration (groundBounce.ts).
         const csmHook = mat.onBeforeCompile;
@@ -1346,6 +1390,15 @@ export function createLighting(
           csmHook(shader, rdr);
           attachGroundBounceUniforms(shader, groundBounceUniforms);
           if (extraHook) extraHook(shader, rdr);
+          if (cloudShade) {
+            attachCloudShadeUniforms(shader, cloudShadeUniforms);
+            // three counts a program's units against the fragment limit (sixteen) wherever the sampler sits: a program
+            // already at it keeps no cloud shade rather than warn on every draw (the terrain sits at fifteen)
+            if (cloudShadeSamplerCount(shader, mat, cascadeCount, !!scene.environment) + 1 > CLOUD_SHADE_SAMPLER_BUDGET) {
+              shader.vertexShader = `#undef COT_CLOUD_SHADE\n${shader.vertexShader}`;
+              shader.fragmentShader = `#undef COT_CLOUD_SHADE\n${shader.fragmentShader}`;
+            }
+          }
         };
       }
       // Alpha-tested foliage: replace the GPU-averaged mip chain with a

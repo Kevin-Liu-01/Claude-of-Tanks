@@ -791,8 +791,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-03 (the skies-and-atmosphere lane): the Beer–Lambert aerial perspective on the physically based sky
     'src/engine/hazeLaw.selftest.mjs',
     'src/engine/volumetricClouds.selftest.mjs',
-    // 2026-10-03 (the skies-and-atmosphere lane): the far cloud shadows beyond the cascades
-    'src/engine/farCloudShade.selftest.mjs',
+    // 2026-10-03 (the skies-and-atmosphere lane): the clouds' shadows by one undithered map on every lit material
+    'src/engine/cloudShadeMap.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the ground's sky under and beside the near hulls
     'src/engine/vehicleGroundOcclusion.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the cumulus fields and the flat condensation base

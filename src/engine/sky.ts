@@ -44,7 +44,7 @@ import {
 } from './skyCloudBake.ts';
 import { deriveCloudLayerPreset, type CloudLayerPreset } from './cloudPresets.ts';
 import type { CloudscapeConfig } from './cloudscapes.ts';
-import { CLOUD_NOISE_KINDS, VolumetricCloudLayer, type CloudNoiseKind, type CloudNoiseUpload, type CloudShadowCascades } from './volumetricClouds.ts';
+import { CLOUD_NOISE_KINDS, VolumetricCloudLayer, type CloudNoiseKind, type CloudNoiseUpload } from './volumetricClouds.ts';
 import { bakeCloudNoise } from './cloudNoise.ts';
 
 type ColorTriple = readonly [number, number, number];
@@ -132,8 +132,6 @@ interface SkyRig {
     targetScene: THREE.Scene,
   ): void;
   applyPreset(preset: Partial<SkyPreset> | null | undefined, targetScene: THREE.Scene): void;
-  /** Round 68: the CSM whose cascades carry the volumetric layer's cloud shadows (null when the layer is off). */
-  attachShadowCascades(cascades: CloudShadowCascades): void;
   /** Round 68: the volumetric layer (probes), null on the mobile tier / `?clouds=off`. */
   readonly volumetricClouds: VolumetricCloudLayer | null;
 }
@@ -1773,9 +1771,6 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
      */
     ensureCloudTextures,
     ensureCloudTexturesChunked,
-    attachShadowCascades(cascades: CloudShadowCascades): void {
-      volumetricClouds?.attachShadowCascades(cascades);
-    },
     volumetricClouds,
 
     /**

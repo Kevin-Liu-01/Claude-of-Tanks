@@ -28,10 +28,10 @@
  * march strides longer through empty air and with the pixel footprint at range. The composite is a
  * horizon-flattened dome mesh in the scene's transparent queue (depth-tested by the terrain and the ring, never
  * writing depth), premultiplied over the physically based dome, sampling the history with a Catmull-Rom filter.
- * Cloud shadows come from a per-cascade plane on the shadow-only layer whose custom depth material discards
- * outside the cloud cores of the same two weather fields (the CSM carries them at no shading cost); each plane
- * renders into ITS OWN cascade only (round 78: `setShadowCasterCascades` — three would rasterise every plane
- * into every map, sixteen field-shader draws for four); post.ts owns one hook:
+ * Cloud shadows: the layer renders the clouds' shade — the cores of the same two weather fields at the cloud base —
+ * undithered into one map around the camera, and every material that joins the cascades multiplies its sun term by
+ * the share it leaves (cloudShadeMap.ts; 2026-10-03: until then a per-cascade plane dithered the shade into the shadow
+ * maps, and its moiré under the PCF taps was the gauntlet's stipple, arcs, weave and checkerboard); post.ts owns one hook:
  * `scene.userData.volumetricClouds.beforeSceneRender(...)` at the top of its frame transaction.
  *
  * 2026-10-01 (the clouds-and-skyboxes lane): the layered sky. The same trace draws the weather beyond the slab
@@ -45,11 +45,10 @@ import * as THREE from 'three';
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 import { ATMOSPHERE_SKY_GLSL, ATMO_GROUND_KM } from './atmosphere.ts';
 import type { AtmospherePublishedState } from './sky.ts';
-import { markShadowOnly, setShadowCasterCascades } from './renderLayers.ts';
 import { CLOUD_BLUE_SIZE, CLOUD_CURL_SIZE, CLOUD_DETAIL_SIZE, CLOUD_SHAPE_SIZE, CLOUD_WEATHER_SIZE } from './cloudNoise.ts';
 import { cloudLayerKey, type CloudLayerPreset } from './cloudPresets.ts';
 import { resolvePresetName } from './quality.ts';
-import { lightTune } from './lightModelCore.ts';
+import { publishCloudShade, type CloudShadeUniforms } from './cloudShadeMap.ts';
 import {
   CLOUD_CONTRAIL_MAX, CLOUD_FOGBANK_RANGE_M, CLOUD_RAIN_RANGE_M, CLOUD_RAIN_SAMPLES,
   applyCloudWeatherPreset, createCloudWeatherUniforms,
@@ -140,21 +139,19 @@ const CLOUD_FARBAND_START_M = 8000;
 export const CLOUD_FARBAND_START_CU_M = 16000;
 export const CLOUD_FARBAND_FADE_CU_M = 9000;
 /**
- * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: "no cloud shadows on the land"): the far cloud
- * shadows. The gobos carry the clouds' shadows only inside the cascades (700 m on desktop: an overview's land beyond
- * them lay in one even sun). The same shade the gobos dither into the cascades — the cores of the same two weather
- * fields at the cloud base — is rendered small over a square around the camera, world-anchored (snapped to its texel),
- * refreshed every few frames (the wind moves it a metre), and the aerial pass (post.ts) takes each far pixel's sun share
- * away by it beyond the cascades' fade, as the cascades do inside it.
+ * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: "no cloud shadows on the land"): the cloud shade
+ * map, the clouds' one shadow path (cloudShadeMap.ts). The cores of the two weather fields at the cloud base, undithered,
+ * over a square around the camera, world-anchored (snapped to its texel) and refreshed every few frames (the wind moves
+ * it a metre); every material that joins the cascades multiplies its sun term by the share it leaves, per vertex, at
+ * every distance. (Until fp10 the cascades carried dithered gobos — their moiré under the PCF taps was the gauntlet's
+ * stipple, arcs, weave and checkerboard — and this map served the aerial pass beyond them.)
  */
-export const CLOUD_FAR_SHADE_SIZE = 256;
-/** The square's side (m): the land an overview sees, its ring's first kilometres beyond the square. */
+export const CLOUD_FAR_SHADE_SIZE = 512;
+/** The square's side (m): the battlefield, the ring and the land an overview sees (a texel 23 m). */
 export const CLOUD_FAR_SHADE_SPAN_M = 12000;
-/** Frames between refreshes (a 6 m/s wind moves the field under a metre; a texel is 47 m). */
+/** Frames between refreshes (a 6 m/s wind moves the field under a metre; a texel is 23 m). */
 export const CLOUD_FAR_SHADE_EVERY = 8;
-/** Whether the far shade renders by default (post.ts FAR_CLOUD_SHADE_ON mirrors it; QA: __LIGHT_TUNE.FAR_CLOUD_SHADE). */
-export const CLOUD_FAR_SHADE_ON = 0;
-/** The gobos' darkest dither: the share of the sun a cloud core takes (the shade map holds the same value). */
+/** The share of the sun a cloud core takes (the map's darkest texel). */
 export const CLOUD_SHADOW_CORE = 0.62;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
 export const CLOUD_MARCH_STEPS = 96;
@@ -265,7 +262,7 @@ vec3 cloudProject( vec3 p, vec3 camPos, vec3 right, vec3 up, vec3 fwd, vec2 tanv
 }
 `;
 
-/** The two weather fields as the trace and the shadow gobos read them (the gobos discard on the same field). */
+/** The two weather fields as the trace and the cloud shade map read them (the map cuts the same field). */
 const CLOUD_FIELD_GLSL = /* glsl */`
 uniform sampler2D tWeather;
 uniform sampler2D tStreets;
@@ -1248,45 +1245,7 @@ void main() {
 	gl_FragColor = vec4( rgb, alpha );
 }`;
 
-/** Cover the current shadow camera directly. A world-space plane placed at
- * its previous near clip can cut across the next cascade during camera motion. */
-const GOBO_VERTEX = /* glsl */`
-varying vec2 vXZ;
-uniform mat4 uShadowWorld;
-uniform vec4 uShadowBounds;
-uniform float uCloudBase;
-void main() {
-	vec2 q = position.xy + 0.5;
-	vec3 p = (uShadowWorld * vec4(mix(uShadowBounds.x, uShadowBounds.y, q.x),
-		mix(uShadowBounds.z, uShadowBounds.w, q.y), -1.5, 1.0)).xyz;
-	vec3 direction = -uShadowWorld[2].xyz;
-	vXZ = p.xz + direction.xz * ((uCloudBase - p.y) / direction.y);
-	gl_Position = vec4(position.xy * 2.0, -0.999999, 1.0);
-}`;
-
-const GOBO_FRAGMENT = /* glsl */`
-precision highp float;
-${CLOUD_FIELD_GLSL}
-uniform float uThreshold;
-uniform vec2 uShadowCellOrigin;
-uniform vec3 uClear;
-varying vec2 vXZ;
-void main() {
-	vec4 w, st;
-	// A binary weather cutoff stamped polygonal shadows onto open beaches.
-	// World-anchored coverage gives PCF a soft, translucent cloud edge. A
-	// screen-space pattern changes phase whenever a cascade moves.
-	float shade = ${f(CLOUD_SHADOW_CORE)} * smoothstep( uThreshold - 0.08, uThreshold + 0.08, cloudField( vXZ, w, st ) );
-	// 2026-10-01: a front's clear radius holds its towers off the camera (the trace's own law), so no cloud stands
-	// over the sky it keeps open and none may shade the ground under it (xy = the camera's xz, z = the radius)
-	if ( uClear.z > 0.0 ) shade *= smoothstep( uClear.z * 0.6, uClear.z * 1.4, length( vXZ - uClear.xy ) );
-	vec2 cell = mod( floor( gl_FragCoord.xy ) + uShadowCellOrigin, 256.0 );
-	float dither = fract( 52.9829189 * fract( dot( cell, vec2( 0.06711056, 0.00583715 ) ) ) );
-	if ( dither >= shade ) discard;
-	gl_FragColor = vec4( 1.0 );
-}`;
-
-/** 2026-10-03: the far cloud shade — the gobos' shade, undithered, over the square around the camera (post.ts samples it). */
+/** 2026-10-03: the cloud shade map — the clouds' shade at the cloud base, undithered, over the square around the camera. */
 const FAR_SHADE_FRAGMENT = /* glsl */`
 precision highp float;
 ${CLOUD_FIELD_GLSL}
@@ -1313,49 +1272,6 @@ interface CloudNoiseTextures {
 
 /** The bake buffers as the worker posts them (or the synchronous fallback bakes them). */
 export type CloudNoiseUpload = Partial<Record<CloudNoiseKind, Uint8Array>>;
-
-interface CascadeLightLike {
-  position: THREE.Vector3;
-  shadow: { camera: THREE.OrthographicCamera; mapSize: THREE.Vector2 };
-}
-
-/** Each coverage mask belongs to one shadow map. Overlapping masks from
- * other cascades would multiply the translucent cloud's occlusion. */
-export function cloudShadowCellOrigin(min: number, inverseTranslation: number, span: number, pixels: number): number {
-  return ((Math.round((min - inverseTranslation) * pixels / span) % 256) + 256) % 256;
-}
-
-export function bindCloudShadowCascade(gobo: THREE.Mesh, shadowCamera: THREE.OrthographicCamera, mapSize: THREE.Vector2): void {
-  const before = gobo.onBeforeShadow, after = gobo.onAfterShadow;
-  gobo.onBeforeShadow = function (renderer, object, camera, current, geometry, material, group) {
-    before.call(this, renderer, object, camera, current, geometry, material, group);
-    geometry.setDrawRange(0, current === shadowCamera ? 6 : 0);
-    const depth = material as THREE.ShaderMaterial;
-    const origin = depth.uniforms?.uShadowCellOrigin?.value as THREE.Vector2 | undefined;
-    if (current === shadowCamera && origin) {
-      // The shadow renderer has just updated this camera. Anchor coverage to
-      // its absolute integer light-space cells, including during raw renders
-      // that do not advance the cloud layer or its gobo transforms.
-      const m = shadowCamera.matrixWorldInverse.elements;
-      origin.set(cloudShadowCellOrigin(shadowCamera.left, m[12], shadowCamera.right - shadowCamera.left, mapSize.x),
-        cloudShadowCellOrigin(shadowCamera.bottom, m[13], shadowCamera.top - shadowCamera.bottom, mapSize.y));
-      (depth.uniforms.uShadowWorld.value as THREE.Matrix4).copy(shadowCamera.matrixWorld);
-      (depth.uniforms.uShadowBounds.value as THREE.Vector4).set(shadowCamera.left, shadowCamera.right,
-        shadowCamera.bottom, shadowCamera.top);
-      depth.uniformsNeedUpdate = true;
-    }
-  };
-  gobo.onAfterShadow = function (renderer, object, camera, current, geometry, material, group) {
-    geometry.setDrawRange(0, Infinity);
-    after.call(this, renderer, object, camera, current, geometry, material, group);
-  };
-}
-
-/** What the layer needs of the CSM: its lights (per cascade) and the from-sun direction. */
-export interface CloudShadowCascades {
-  lights: readonly CascadeLightLike[];
-  lightDirection: THREE.Vector3;
-}
 
 /** QA: one readback of the history (bottom-up rows, RGBA8: the radiance clamped, alpha = transmittance). */
 interface CloudHistoryReadback {
@@ -1403,7 +1319,7 @@ function makeWeather(bytes: Uint8Array, size: number, name: string, filter: THRE
 /**
  * The layer. Created by the sky rig on the desktop tier when the atmosphere runs; `setPreset` per map (null
  * keeps the baked decks), `setNoise` when the worker's bakes arrive, `beforeSceneRender` from post.ts every
- * frame, `attachShadowCascades` once the CSM exists.
+ * frame (it refreshes the cloud shade map the lit materials read: cloudShadeMap.ts).
  */
 export class VolumetricCloudLayer {
   readonly dome: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>;
@@ -1414,7 +1330,8 @@ export class VolumetricCloudLayer {
   private readonly traceMaterial: THREE.ShaderMaterial;
   private readonly resolveMaterial: THREE.ShaderMaterial;
   private readonly domeMaterial: THREE.ShaderMaterial;
-  private readonly goboMaterial: THREE.ShaderMaterial;
+  /** The clouds' shadow field: the uniform objects the shade map reads (and the ring's horizon shade, horizonCloudShade.ts). */
+  private readonly goboMaterial: { readonly uniforms: Record<string, THREE.IUniform> };
   private readonly farShadeMaterial: THREE.ShaderMaterial;
   private farShadeTarget: THREE.WebGLRenderTarget | null = null;
   private farShadeAge = Infinity;
@@ -1453,8 +1370,6 @@ export class VolumetricCloudLayer {
   private hasPrev = false;
   private context: ReturnType<THREE.WebGLRenderer['getContext']> | null = null;
   private rendererInfo: THREE.WebGLRenderer['info'] | null = null;
-  private cascades: CloudShadowCascades | null = null;
-  private gobos: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>[] = [];
   private readonly scratch = new THREE.Vector3();
   private readonly irr = new THREE.Color();
   private readonly hz = new THREE.Color();
@@ -1531,12 +1446,9 @@ export class VolumetricCloudLayer {
         uHistoryValid: { value: 0 }, uRebuildK: { value: -1 }, uMinAlpha: { value: 0.12 },
       },
     });
-    this.goboMaterial = new THREE.ShaderMaterial({
-      name: 'VolumetricCloudGobo', vertexShader: GOBO_VERTEX, fragmentShader: GOBO_FRAGMENT, side: THREE.DoubleSide,
-      uniforms: { ...field(), uThreshold: { value: 0.5 }, uShadowCellOrigin: { value: new THREE.Vector2() }, uClear: { value: new THREE.Vector3() },
-        uShadowWorld: { value: new THREE.Matrix4() }, uShadowBounds: { value: new THREE.Vector4() }, uCloudBase: { value: 1400 } },
-    });
-    // the far shade reads the gobos' own uniform objects (the field, its drift, the cut, the front's clear radius)
+    // the clouds' shadow field: the two weather fields, their drift, the cut and the front's clear radius (the shade map
+    // reads these very objects, and so does the ring's horizon shade)
+    this.goboMaterial = { uniforms: { ...field(), uThreshold: { value: 0.5 }, uClear: { value: new THREE.Vector3() }, uCloudBase: { value: 1400 } } };
     const gu = this.goboMaterial.uniforms;
     this.farShadeMaterial = new THREE.ShaderMaterial({
       name: 'VolumetricCloudFarShade', vertexShader: QUAD_VERTEX, fragmentShader: FAR_SHADE_FRAGMENT,
@@ -1628,44 +1540,6 @@ export class VolumetricCloudLayer {
     this.historyValid = false;
   }
 
-  /** The CSM lights whose cascades carry the cloud shadows (one plane each on the shadow-only layer, discarding by the cloud field). */
-  attachShadowCascades(cascades: CloudShadowCascades): void {
-    if (this.cascades === cascades) return;
-    this.detachShadowCascades();
-    this.cascades = cascades;
-    for (let i = 0; i < cascades.lights.length; i++) {
-      const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, colorWrite: false, depthWrite: false });
-      const geometry = new THREE.PlaneGeometry(1, 1);
-      const gobo = new THREE.Mesh(geometry, material);
-      gobo.name = `cloudShadowGobo${i}`;
-      gobo.castShadow = true;
-      gobo.receiveShadow = false;
-      gobo.frustumCulled = false;
-      gobo.visible = false;
-      // the shadow pass renders the plane with the field material: the same two weather fields the trace reads
-      gobo.customDepthMaterial = this.goboMaterial;
-      bindCloudShadowCascade(gobo, cascades.lights[i].shadow.camera, cascades.lights[i].shadow.mapSize);
-      markShadowOnly(gobo);
-      // round 78: the plane is sized to cascade i's shadow box and carries the field only there — the router
-      // hides it around every other cascade's pass (one field-shader draw per cascade instead of one per pair)
-      setShadowCasterCascades(gobo, 1 << i);
-      this.scene.add(gobo);
-      this.gobos.push(gobo);
-    }
-    this.updateGoboMaterials();
-  }
-
-  private detachShadowCascades(): void {
-    for (const gobo of this.gobos) {
-      setShadowCasterCascades(gobo, null);
-      gobo.removeFromParent();
-      gobo.geometry.dispose();
-      gobo.material.dispose();
-    }
-    this.gobos = [];
-    this.cascades = null;
-  }
-
   private updateGoboMaterials(): void {
     const preset = this.preset;
     const g = this.goboMaterial.uniforms;
@@ -1676,9 +1550,9 @@ export class VolumetricCloudLayer {
     g.uCluster.value = preset?.cluster ?? 0;
   }
 
-  /** Whether the cascades carry cloud shadows this frame. */
+  /** Whether the clouds cast shadows this frame (the shade map the lit materials read; the ring's horizon shade follows it). */
   get shadowsActive(): boolean {
-    return this.active && !!this.preset?.shadow && this.gobos.length > 0 && this.preset.coverage > 0;
+    return this.active && !!this.preset?.shadow && this.preset.coverage > 0;
   }
 
   private refreshLifetime(): void {
@@ -1883,21 +1757,6 @@ export class VolumetricCloudLayer {
     (u.uCamTan.value as THREE.Vector2).copy(cam.tan);
   }
 
-  /** The draw hook supplies the current shadow projection, including when
-   * the scene is rendered directly without advancing the cloud animation. */
-  private updateGobos(_preset: CloudLayerPreset): void {
-    const cascades = this.cascades;
-    const show = this.shadowsActive;
-    if (!cascades) return;
-    const dir = cascades.lightDirection;
-    for (let i = 0; i < this.gobos.length; i++) {
-      const gobo = this.gobos[i];
-      const light = cascades.lights[i];
-      if (!light || !show || Math.abs(dir.y) < 0.02) { gobo.visible = false; continue; }
-      gobo.visible = true;
-    }
-  }
-
   /**
    * post.ts's hook, before the scene draws: advance the wind, detect a camera cut, trace this frame's slot(s)
    * and resolve the history the dome composites. `width` × `height` is the scene target.
@@ -1911,8 +1770,7 @@ export class VolumetricCloudLayer {
     const preset = this.preset;
     if (!preset || !this.active || renderer !== this.renderer) {
       this.dome.visible = false;
-      for (const gobo of this.gobos) gobo.visible = false;
-      this.farShadeValid = false;
+      this.dropCloudShade();
       return;
     }
     this.refreshLifetime();
@@ -2022,18 +1880,17 @@ export class VolumetricCloudLayer {
     const inside = C.pos.y > (t.uSlabLow.value as number) ? 1 : 0;
     this.domeMaterial.uniforms.uInside.value = inside;
     if (this.domeMaterial.depthTest === !!inside) this.domeMaterial.depthTest = !inside;
-    this.updateGobos(preset);
     this.updateFarShade(preset);
     this.updateLightning(preset, step);
   }
 
   /**
-   * 2026-10-03: the far cloud shade (CLOUD_FAR_SHADE_* note) — re-rendered when its texel-snapped square moves or every
-   * CLOUD_FAR_SHADE_EVERY frames; off (null for post.ts) where the clouds cast no shadows.
+   * 2026-10-03: the cloud shade map (CLOUD_FAR_SHADE_* note) — re-rendered when its texel-snapped square moves or every
+   * CLOUD_FAR_SHADE_EVERY frames and published to the lit materials' shared uniforms (scene.userData.cloudShadeUniforms,
+   * lighting.ts); off where the clouds cast no shadows.
    */
   private updateFarShade(preset: CloudLayerPreset): void {
-    // (off with post.ts FAR_CLOUD_SHADE_ON, the QA lever turns both on)
-    if (!preset.shadow || preset.coverage <= 0 || !(lightTune('FAR_CLOUD_SHADE', CLOUD_FAR_SHADE_ON) > 0)) { this.farShadeValid = false; return; }
+    if (!preset.shadow || preset.coverage <= 0) { this.dropCloudShade(); return; }
     const texel = CLOUD_FAR_SHADE_SPAN_M / CLOUD_FAR_SHADE_SIZE;
     const cx = Math.round(this.cam.pos.x / texel) * texel, cz = Math.round(this.cam.pos.z / texel) * texel;
     const rect = this.farShadeInfo.rect;
@@ -2049,11 +1906,23 @@ export class VolumetricCloudLayer {
     this.farShadeInfo.baseM = preset.baseM;
     this.farShadeAge = 0;
     this.farShadeValid = true;
+    const shared = this.scene.userData.cloudShadeUniforms as CloudShadeUniforms | undefined;
+    if (shared) {
+      publishCloudShade(shared, this.farShadeInfo as { texture: THREE.Texture; rect: THREE.Vector3; baseM: number },
+        this.traceMaterial.uniforms.uSunDir.value as THREE.Vector3);
+    }
+  }
+
+  /** The clouds cast no shadow this frame: the map is stale and the lit materials stand in full sun. */
+  private dropCloudShade(): void {
+    this.farShadeValid = false;
+    const shared = this.scene.userData.cloudShadeUniforms as CloudShadeUniforms | undefined;
+    if (shared) publishCloudShade(shared, null, this.traceMaterial.uniforms.uSunDir.value as THREE.Vector3);
   }
 
   /**
-   * 2026-10-03: the far cloud shade for the aerial pass (post.ts): the map (r = the share of the sun a cloud takes, as
-   * the gobos dither it), its square (centre x, z and side, m) and the cloud base it was cut at (m); null where the
+   * 2026-10-03: the cloud shade map (diagnostics; the lit materials read it through cloudShadeMap.ts): r = the share of
+   * the sun a cloud takes, its square (centre x, z and side, m) and the cloud base it was cut at (m); null where the
    * clouds cast no shadows this frame.
    */
   get farShade(): { readonly texture: THREE.Texture; readonly rect: THREE.Vector3; readonly baseM: number } | null {
@@ -2175,7 +2044,7 @@ export class VolumetricCloudLayer {
   }
 
   dispose(): void {
-    this.detachShadowCascades();
+    this.dropCloudShade();
     for (const rt of this.history) rt.dispose();
     this.trace.dispose();
     this.copyTarget?.dispose();
@@ -2183,7 +2052,6 @@ export class VolumetricCloudLayer {
     this.traceMaterial.dispose();
     this.resolveMaterial.dispose();
     this.domeMaterial.dispose();
-    this.goboMaterial.dispose();
     this.farShadeMaterial.dispose();
     this.farShadeTarget?.dispose();
     this.farShadeTarget = null;
