@@ -36,18 +36,19 @@ import { settleMapTextures } from './map-environment-acquisition.mjs';
 import { settleResidencyTerrain } from './world-residency-acquisition.mjs';
 import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.mjs';
 import {
-  CENSUS_HALF, CENSUS_PROTOCOL, CENSUS_VIEWPORT, CENSUS_VIEWS, selectCensusViews, selectChasePose, selectSkySite,
+  CENSUS_HALF, CENSUS_VIEWPORT, CENSUS_VIEWS, borderPose, borderSamplePoints, borderSiteCandidates, censusViewSet,
+  obliquePose, obliqueSamplePoints, selectBorderSite, selectCensusViews, selectChasePose, selectSkySite,
   selectTerrainSite, selectTreePose, skyPose, skySamplePoints, skySiteCandidates, terrainPose, terrainSamplePoints,
   terrainSiteCandidates,
 } from './visual-census-views.mjs';
-import { buildSheets, compareCensus, loadCensus, measureCensus, openCensus, saveCensus, writeIndex } from './visual-census-report.mjs';
+import { buildSheets, censusViewsOf, compareCensus, loadCensus, measureCensus, openCensus, saveCensus, writeIndex } from './visual-census-report.mjs';
 
 const TOOL = 'visual-census';
 const PORT_SPAN = 20;
 const GAME_QUERY = 'nosplash=1&tier=desktop';
 const COMMANDS = Object.freeze(['capture', 'metrics', 'sheets', 'index', 'report', 'compare']);
 const FLAGS = Object.freeze({
-  capture: ['root', 'out', 'maps', 'views', 'serve', 'port', 'batch', 'budget-min', 'lock-timeout-min', 'settle-ms', 'probe-lock'],
+  capture: ['root', 'out', 'set', 'maps', 'views', 'serve', 'port', 'batch', 'budget-min', 'lock-timeout-min', 'settle-ms', 'probe-lock'],
   metrics: ['out', 'force'], sheets: ['out'], index: ['out'], report: ['out', 'force'], compare: ['a', 'b', 'out'],
 });
 const NUMERIC = new Set(['port', 'batch', 'budget-min', 'lock-timeout-min', 'settle-ms']);
@@ -56,13 +57,15 @@ const BOOLEANS = new Set(['force']);
 
 export const CENSUS_HELP = `node tools/${TOOL}.mjs <command> [--flag=value ...]
 
-  capture  --out=<dir> [--root=<checkout>] [--maps=a,b] [--views=a,b] [--serve=dist|dev] [--port=5421]
-           [--batch=<n>] [--budget-min=<m>] [--lock-timeout-min=30] [--settle-ms=1200] [--probe-lock=<dir>]
+  capture  --out=<dir> [--root=<checkout>] [--set=core|border] [--maps=a,b] [--views=a,b] [--serve=dist|dev]
+           [--port=5421] [--batch=<n>] [--budget-min=<m>] [--lock-timeout-min=30] [--settle-ms=1200] [--probe-lock=<dir>]
            Shoot ${CENSUS_VIEWS.map((v) => v.name).join(', ')} of every registered map (or --maps) into <out>/frames
-           and merge each map into <out>/census.json. --serve=dist (default) previews <root>/dist: run npm run build
-           first. --batch / --budget-min bound one run so batches resume where the last stopped. --probe-lock waits
-           in the cot-shots FIFO without that session mutex and takes it only at the FIFO head
-           (tools/visual-census-lock.mjs); without it the caller holds any session mutex.
+           and merge each map into <out>/census.json. --set=border shoots the border set instead (the eye-height and
+           60 m views of the four edges and four corners from inside the square, and a high oblique across the
+           north-east corner; its own protocol, so a border census never merges with a core one). --serve=dist
+           (default) previews <root>/dist: run npm run build first. --batch / --budget-min bound one run so batches
+           resume where the last stopped. --probe-lock waits in the cot-shots FIFO without that session mutex and
+           takes it only at the FIFO head (tools/visual-census-lock.mjs); without it the caller holds any session mutex.
   metrics  --out=<dir> [--force]      per-frame metrics into census.json (only frames without them unless --force)
   sheets   --out=<dir>                contact sheets: one per view (every map), one per map (every view)
   index    --out=<dir>                <out>/index.md (keeps the hand-written visual read between its markers)
@@ -111,8 +114,10 @@ export function parseCensusArgs(argv) {
     const port = values.port ?? 5421;
     if (!Number.isInteger(port) || port < 1024 || port + PORT_SPAN > 65536) throw new Error(`--port must be an integer port, got ${port}`);
     if ([5197, 5198, 5199].some((p) => p >= port && p < port + PORT_SPAN)) throw new Error('--port range must avoid 5197–5199');
+    const set = values.set ?? 'core';
+    censusViewSet(set);
     Object.assign(options, {
-      root: path.resolve(values.root ?? process.cwd()), maps: values.maps ?? null, views: selectCensusViews(values.views),
+      root: path.resolve(values.root ?? process.cwd()), set, maps: values.maps ?? null, views: selectCensusViews(values.views, set),
       serve, port, batch: values.batch ?? null, budgetMin: values['budget-min'] ?? null,
       lockTimeoutMin: values['lock-timeout-min'] ?? 30, settleMs: values['settle-ms'] ?? 1200,
       probeLock: values['probe-lock'] ? path.resolve(values['probe-lock']) : null,
@@ -144,12 +149,12 @@ const git = (root, args) => {
   catch { return null; }
 };
 
-function censusHeader(root, serve) {
-  const distIndex = path.join(root, 'dist', 'index.html');
+function censusHeader(root, serve, setName = 'core') {
+  const distIndex = path.join(root, 'dist', 'index.html'), set = censusViewSet(setName);
   return {
-    protocol: CENSUS_PROTOCOL, tool: TOOL, root, serve, viewport: CENSUS_VIEWPORT, query: GAME_QUERY, preset: 'high',
-    pinnedScene: PINNED_SCENE,
-    views: CENSUS_VIEWS, viewsDigest: createHash('sha256').update(JSON.stringify(CENSUS_VIEWS)).digest('hex'),
+    protocol: set.protocol, tool: TOOL, root, serve, viewport: CENSUS_VIEWPORT, query: GAME_QUERY, preset: 'high',
+    pinnedScene: PINNED_SCENE, ...(setName === 'core' ? {} : { viewSet: setName }),
+    views: set.views, viewsDigest: createHash('sha256').update(JSON.stringify(set.views)).digest('hex'),
     revision: git(root, ['rev-parse', 'HEAD']), revisionShort: git(root, ['rev-parse', '--short=9', 'HEAD']),
     branch: git(root, ['rev-parse', '--abbrev-ref', 'HEAD']),
     gameRevision: git(root, ['log', '-1', '--format=%H %s', '--', 'src', 'public', 'index.html', 'vite.config.ts']),
@@ -282,9 +287,16 @@ function pageCaptureState() {
   };
 }
 
-/** The page script that poses one view (null pose = keep the staged shot), zeroes the cloud drift and resets its history. */
+/**
+ * The page script that poses one view (null pose = keep the staged shot), zeroes the cloud drift and resets its history.
+ * Table / hull / sky / terrain / tree poses resolve their heights over the clamped ground here; a border-set pose is
+ * absolute (resolved Node-side from the sampled ground, tools/visual-census-views.mjs borderPose) and set as it is.
+ */
 function poseScript(pose) {
-  const posing = pose ? `resolved = resolveGroundPose(${JSON.stringify({ cam: pose.cam, at: pose.at })}, (x, z) => hf.getHeightAt(x, z), ${CENSUS_HALF}, ${pose.fov});
+  const resolving = pose?.absolute
+    ? `resolved = ${JSON.stringify({ cam: pose.cam, at: pose.at, fov: pose.fov })};`
+    : `resolved = resolveGroundPose(${JSON.stringify({ cam: pose?.cam, at: pose?.at })}, (x, z) => hf.getHeightAt(x, z), ${CENSUS_HALF}, ${pose?.fov});`;
+  const posing = pose ? `${resolving}
     D.rig.setExternalPose(new V(...resolved.cam), new V(...resolved.at), resolved.fov);` : '';
   return `(() => {
     const resolveGroundPose = ${resolveGroundPose.toString()};
@@ -358,6 +370,8 @@ async function planViews(page, views, player) {
   for (const view of views) {
     if (view.kind === 'terrain') { const candidates = terrainSiteCandidates(player, view); searches.set(view.name, { candidates, points: terrainSamplePoints(candidates) }); }
     if (view.kind === 'sky') { const candidates = skySiteCandidates(view); searches.set(view.name, { candidates, points: skySamplePoints(candidates) }); }
+    if (view.kind === 'border') { const candidates = borderSiteCandidates(view); searches.set(view.name, { candidates, points: borderSamplePoints(candidates) }); }
+    if (view.kind === 'oblique') searches.set(view.name, { candidates: null, points: obliqueSamplePoints(view) });
   }
   const points = [...searches.values()].flatMap((search) => search.points);
   const samples = points.length ? await page.evaluate(pageHeights, points) : [];
@@ -371,6 +385,10 @@ async function planViews(page, views, player) {
     else if (view.kind === 'terrain') pose = terrainPose(selectTerrainSite(searches.get(view.name).candidates, ground), view);
     else if (view.kind === 'sky') pose = skyPose(selectSkySite(searches.get(view.name).candidates, ground, view), view);
     else if (view.kind === 'tree') pose = selectTreePose(data, view);
+    else if (view.kind === 'border') {
+      const site = selectBorderSite(searches.get(view.name).candidates, ground), [px, pz] = site.candidate.p;
+      pose = borderPose(site, view, ground.heightAt(px, pz), ground.waterDepthAt(px, pz));
+    } else if (view.kind === 'oblique') pose = obliquePose(view, ground.heightAt(view.cam[0], view.cam[2]));
     plans[view.name] = pose?.skipped ? { skipped: pose.skipped } : { pose, selection: pose?.selection ?? null };
   }
   return { plans, layout: { buildings: data.buildings.length, clusters: data.clusters.length, water: data.water.length, roads: data.roads.length, concealers: data.concealers.length } };
@@ -411,7 +429,7 @@ const stamp = () => new Date().toTimeString().slice(0, 8);
 async function runCapture(options) {
   process.chdir(options.root); // the repository's vite config resolves its source graph from the cwd
   const registry = await registeredMaps(options.root);
-  const header = censusHeader(options.root, options.serve);
+  const header = censusHeader(options.root, options.serve, options.set);
   const census = openCensus(loadCensus(options.out), header);
   const maps = pickCaptureMaps(registry.ids, census, options);
   const session = {
@@ -554,7 +572,7 @@ async function runReport(options, steps) {
   let sheets = null;
   if (steps.includes('sheets') || steps.includes('index')) {
     if (steps.includes('sheets')) sheets = await buildSheets(options.out, census, { mapIds });
-    else sheets = { views: CENSUS_VIEWS.map((v) => `sheets/view-${v.name}.jpg`), maps: mapIds.map((id) => `sheets/map-${id}.jpg`) };
+    else sheets = { views: censusViewsOf(census).map((v) => `sheets/view-${v.name}.jpg`), maps: mapIds.map((id) => `sheets/map-${id}.jpg`) };
     if (steps.includes('sheets')) console.log(`[${TOOL}] sheets: ${sheets.views.length + sheets.maps.length} written`);
   }
   if (steps.includes('index')) console.log(`[${TOOL}] index: ${writeIndex(options.out, census, { mapIds, sheets, reproduce: reproduceLines(census, options.out) })}`);
