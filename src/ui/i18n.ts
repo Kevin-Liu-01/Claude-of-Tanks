@@ -13,13 +13,14 @@
  *
  * This module never writes the DOM or storage at import time: `getLocale()`
  * persists and mirrors the locale when first called. Module evaluation only
- * reads the boot locale (route, storage, navigator) so that a Chinese boot can
- * await its catalog before any dependent module runs (top-level await below):
- * English documents never download the zh-CN catalog, Chinese ones never
- * flash English (FE-P3).
+ * reads the boot locale (route, storage, navigator) and awaits the document's
+ * dictionaries (top-level await below), so `t()` stays synchronous for every
+ * module that imports this one: English documents never download the zh-CN
+ * catalog, Chinese ones never flash English (FE-P3), and a public page loads
+ * only its own page catalog (i18nDictionaries.ts).
  */
 
-import { loadLocaleDictionary, localeDictionary } from './i18nDictionaries.ts';
+import { catalogText, loadLocaleDictionary, localeDictionary } from './i18nDictionaries.ts';
 import {
   DEFAULT_LOCALE as FALLBACK_LOCALE,
   resolveLocalePath,
@@ -165,17 +166,6 @@ export function getSupportedLocales(): readonly SupportedLocale[] {
   return SUPPORTED_LOCALES;
 }
 
-function formatTemplate(template: string, vars?: Record<string, string | number>): string {
-  if (!vars) return template;
-  return template.replace(/\{(\w+)\}/g, (match, key: string) => {
-    if (Object.prototype.hasOwnProperty.call(vars, key)) {
-      const value = vars[key];
-      return value === undefined || value === null ? match : String(value);
-    }
-    return match;
-  });
-}
-
 /**
  * Translate a key. Falls back to the key itself when no English entry exists
  * (this keeps developer-facing strings legible during incremental rollout) and
@@ -186,10 +176,7 @@ function formatTemplate(template: string, vars?: Record<string, string | number>
  */
 export function t(key: string, vars?: Record<string, string | number>): string {
   ensureInitialised();
-  const fallback = localeDictionary(FALLBACK_LOCALE);
-  const bundle = localeDictionary(currentLocale) ?? fallback;
-  const raw = bundle?.[key] ?? fallback?.[key] ?? key;
-  return formatTemplate(raw, vars);
+  return catalogText(currentLocale, key, vars);
 }
 
 /** Format a number using the active locale (replaces `toLocaleString('en-US')`). */
@@ -198,11 +185,10 @@ export function formatNumber(
   options?: Intl.NumberFormatOptions,
 ): string {
   ensureInitialised();
-  if (typeof Intl === 'undefined') return String(value);
   try {
     return new Intl.NumberFormat(currentLocale, options).format(value);
   } catch (_) {
-    return String(value);
+    return String(value); // no Intl (a ReferenceError) or options this engine rejects
   }
 }
 
@@ -212,25 +198,28 @@ export function formatDate(
   options?: Intl.DateTimeFormatOptions,
 ): string {
   ensureInitialised();
-  if (typeof Intl === 'undefined') {
-    const date = value instanceof Date ? value : new Date(value);
-    return date.toISOString();
-  }
   try {
     return new Intl.DateTimeFormat(currentLocale, options).format(value);
   } catch (_) {
-    const date = value instanceof Date ? value : new Date(value);
-    return date.toISOString();
+    // No Intl (a ReferenceError) or options this engine rejects: ISO keeps the value legible.
+    return (value instanceof Date ? value : new Date(value)).toISOString();
   }
 }
 
-// In a browser document the boot locale's dictionary is resident before any module
-// that imports this one evaluates. Workers and servers reach this module through
-// shared code (the map catalog) and never wait on a download while evaluating: a
-// module worker that awaited here could miss messages posted during the gap. A
-// failed catalog chunk (offline, or a removed deployment, which the inline watchdog
-// recovers by reloading) degrades to English, never a stalled boot.
+// In a browser document English and the boot locale's dictionary are resident before
+// any module that imports this one evaluates. English is the fallback of every lookup:
+// a document whose English chunk fails stops like one whose static chunk failed (the
+// game's inline watchdog recovers by reloading). Another locale's failed chunk degrades
+// to English, never a stalled boot. Module workers reach this module through shared code
+// (the map catalog) and never wait while evaluating: one that awaited here could miss
+// messages posted during the gap. Outside Vite (`import.meta.env` is undefined: Node
+// servers, tools and receipts) the full English catalog stays resident, as before.
 if (typeof window !== 'undefined') {
-  await loadLocaleDictionary(detectLocale()).catch(() => { /* English fallback */ });
+  await Promise.all([
+    loadLocaleDictionary(FALLBACK_LOCALE),
+    loadLocaleDictionary(detectLocale()).catch(() => { /* English fallback (an English boot shares one request) */ }),
+  ]);
+} else if (!import.meta.env) {
+  await loadLocaleDictionary(FALLBACK_LOCALE);
 }
 

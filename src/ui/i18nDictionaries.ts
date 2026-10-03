@@ -1,71 +1,80 @@
 /**
  * i18nDictionaries.ts — the locale dictionaries this document has loaded (FE-P3).
  *
- * English ships in the module graph: it is the fallback of every lookup. Chinese is
- * a separate chunk loaded on demand: the i18n runtime awaits it before any module
- * that imports `i18n.ts` evaluates when a browser document boots in zh-CN, and the
- * `/cn/` documents modulepreload it (src/presentation/localizedHtml.ts), so English
- * visitors never download it and Chinese pages never flash English.
+ * No catalog ships in this module. The i18n runtime awaits its document's dictionaries
+ * before any module that imports `i18n.ts` evaluates: English, the fallback of every
+ * lookup, and the active locale when it is another. Which dictionaries those are is the
+ * document's choice:
+ *   - the game (`<meta name="cot-i18n-catalog" content="game">`) loads the full catalogs,
+ *     `i18nCatalogEnUS.ts` and `i18nCatalogZhCN.ts`, as does any document that names no
+ *     page catalog chunk (a source page outside the build, a Node test);
+ *   - a public page declares a page catalog (`home`, `docs`, `docsTopic`, `notFound`,
+ *     `gallery`) and the build adds the URL of each locale's chunk, which holds only the
+ *     keys the page's code and markup can show, to that meta (`data-en-us`, `data-zh-cn`;
+ *     tools/viteI18nPageCatalogs.ts, tools/i18n-page-catalogs.mjs).
+ * Built pages preload their English chunk beside the module entry and `/cn/` documents
+ * their Chinese one (src/presentation/localizedHtml.ts), so the await stays off the
+ * critical path; English visitors never download Chinese.
  *
- * Server and build code that needs both catalogs synchronously imports
- * `i18nCatalog.ts`, which registers zh-CN here; browser code must not
+ * Server and build code that needs both full catalogs synchronously imports
+ * `i18nCatalog.ts`, which registers them here; browser code must not
  * (src/ui/i18nLazyCatalog.selftest.mjs).
- *
- * Module scope stays side-effect free and only the lookups reference English, so a
- * graph that reaches this module through shared code without translating anything
- * (the match-host worker builds maps) tree-shakes the English data away.
  */
-import enUS from './i18nCatalog.en-US.json' with { type: 'json' };
-
 export type CatalogLocale = 'en-US' | 'zh-CN';
-type LazyLocale = Exclude<CatalogLocale, 'en-US'>;
 type Dictionary = Readonly<Record<string, string>>;
 
-const english: Dictionary = enUS;
-
-const LOADERS: Readonly<Record<LazyLocale, () => Promise<{ default: Dictionary }>>> = {
+const FULL_CATALOGS: Readonly<Record<CatalogLocale, () => Promise<{ default: Dictionary }>>> = {
+  'en-US': () => import('./i18nCatalogEnUS.ts'),
   'zh-CN': () => import('./i18nCatalogZhCN.ts'),
 };
 
-const loaded: Partial<Record<LazyLocale, Dictionary>> = {};
-const pending: Partial<Record<LazyLocale, Promise<void>>> = {};
+const loaded: Partial<Record<CatalogLocale, Dictionary>> = {};
+const pending: Partial<Record<CatalogLocale, Promise<void>>> = {};
 
-/** Make a dictionary resident (the server-side full catalog registers zh-CN on import). */
-export function registerLocaleDictionary(locale: LazyLocale, dictionary: Dictionary): void {
+/** The page catalog chunk this document names for a locale (a same-origin path), else null: the full catalog loads. */
+export function pageCatalogUrl(locale: CatalogLocale): string | null {
+  // A document without querySelector is a Node test's stand-in.
+  const url = globalThis.document?.querySelector?.('meta[name="cot-i18n-catalog"]')?.getAttribute(`data-${locale.toLowerCase()}`);
+  return url && /^\/[^/\\]/.test(url) ? url : null;
+}
+
+/** Make a dictionary resident (the server-side full catalog registers both locales on import). */
+export function registerLocaleDictionary(locale: CatalogLocale, dictionary: Dictionary): void {
   loaded[locale] = dictionary;
 }
 
-/** The resident dictionary of a locale, if it has loaded. English always has. */
+/** The resident dictionary of a locale, if it has loaded. */
 export function localeDictionary(locale: CatalogLocale): Dictionary | undefined {
-  return locale === 'en-US' ? english : loaded[locale];
+  return loaded[locale];
 }
 
 /**
- * Load a locale's dictionary once. Concurrent callers share one request; a failed
- * request (a missing or offline chunk) rejects and leaves the next call free to retry.
+ * Load a locale's dictionary once. Concurrent callers share one request; a failed request
+ * (a missing or offline chunk) rejects and leaves the next call free to retry.
  */
 export function loadLocaleDictionary(locale: CatalogLocale): Promise<void> {
-  if (locale === 'en-US' || loaded[locale]) return Promise.resolve();
-  let request = pending[locale];
-  if (!request) {
-    request = LOADERS[locale]().then((module) => {
+  if (loaded[locale]) return Promise.resolve();
+  const url = pageCatalogUrl(locale);
+  return pending[locale] ??= (url ? import(/* @vite-ignore */ url) as Promise<{ default: Dictionary }> : FULL_CATALOGS[locale]())
+    .then((module) => {
       loaded[locale] = module.default;
-    }).finally(() => {
+    })
+    .finally(() => {
       delete pending[locale];
     });
-    pending[locale] = request;
-  }
-  return request;
 }
 
-/** Look a key up in a resident dictionary, falling back to English and then to the key itself. */
+/**
+ * Look a key up in the resident dictionaries — the locale's, then English, then the key itself —
+ * and fill its `{name}` placeholders. A placeholder without a value (or with null) stays as written.
+ */
 export function catalogText(
   locale: CatalogLocale,
   key: string,
   vars?: Readonly<Record<string, string | number>>,
 ): string {
-  const source = localeDictionary(locale)?.[key] ?? english[key] ?? key;
-  if (!vars) return source;
-  return source.replace(/\{(\w+)\}/g, (match, name: string) =>
-    Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : match);
+  const source = loaded[locale]?.[key] ?? loaded['en-US']?.[key] ?? key;
+  return vars
+    ? source.replace(/\{(\w+)\}/g, (match, name: string) => (Object.hasOwn(vars, name) ? String(vars[name] ?? match) : match))
+    : source;
 }
