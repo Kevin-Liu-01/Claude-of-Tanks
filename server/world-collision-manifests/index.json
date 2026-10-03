@@ -33,10 +33,10 @@
       "concealers": 2475
     },
     "coastal": {
-      "bytes": 1209524,
-      "sha256": "30165451d168013388fb13645dd4cef5eada6b6da6d8cdb225ff43a1152adfc0",
+      "bytes": 1209396,
+      "sha256": "7709987089b8f488888ed38268554221d9079db26c587874dca91b7e60dfd04e",
       "obstacles": 3405,
-      "colliders": 3299,
+      "colliders": 3300,
       "concealers": 3402
     },
     "autumn": {

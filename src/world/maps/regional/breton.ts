@@ -357,43 +357,47 @@ const cannery: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = { ...stateFor(ctx), wall: 'stone' as RegionalBucket };
   const rng = st.rng;
-  const W = Math.max(7, Math.min(9.4, ctx.info.w - 7)), D = Math.max(12, Math.min(17.5, ctx.info.d - 2.5));
+  // the mill and the boiler house behind it (3.45 m) share the plot's depth, the pair centred on it
+  const W = Math.max(7, Math.min(9.4, ctx.info.w - 7)), D = Math.max(12, Math.min(17.5, ctx.info.d - 0.4 - 3.45));
+  const shift = Math.max(0, Math.min(3.45, ctx.info.d - 0.4 - D) / 2);
   const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'gate', u: 0, w: 2.6, y0: 0, h: 2.9 }];
   for (const face of ['right', 'left'] as const) {
     for (const o of windowRhythm(face, 0, D, { w: 1.0, h: 1.9, sill: 1.05, spacing: 2.3, margin: 1.2 })) openings.push(o);
   }
   openings.push({ face: 'right', storey: 0, kind: 'door', u: D * 0.38, w: 1.1, y0: 0, h: 2.2 });
-  const frame = buildHouse(sink, {
-    w: W, d: D, plinth: { h: 0.2, out: 0.05, bucket: 'stone' }, storeys: [{ h: 4.1, wall: 'stone' }],
-    roof: slate(36 + rng() * 4), gableBucket: 'stone', openings: openings.filter((o, k, all) =>
-      !all.some((q, j) => j < k && q.face === o.face && Math.abs(q.u - o.u) < (q.w + o.w) / 2 + 0.3)),
-    chimneys: [], gutters: { colour: rgb(0x55595c) }, verge: null, reveal: 0.36,
-  }, dialect({ ...st, window: { ...st.window, shutters: null, bars: 'six' }, litShare: 0.15 }));
-  gableParapets(sink, frame, 0, rng);
-  quoins(sink, frame);
-  // the ridge lantern: a raised slate-roofed strip with louvred sides along the middle of the ridge
-  const rg = frame.roof, len = D * 0.55, lw = 0.7, lh = 0.65, y0 = rg.ridgeTopY - 0.25;
-  sink.span('dark', -lw / 2 + 0.03, y0, -len / 2, lw / 2 - 0.03, y0 + lh, len / 2, { decor: true });
-  for (const side of [-1, 1]) {
-    for (let z = -len / 2 + 0.1; z < len / 2; z += 0.22) {
-      sink.span('structureWood', side * lw / 2 - 0.04, y0 + 0.08, z, side * lw / 2 + 0.04, y0 + lh - 0.08, z + 0.1, { colour: rgb(0x4e5154), decor: true });
+  sink.placed(0, 0, 0, shift, () => {
+    const frame = buildHouse(sink, {
+      w: W, d: D, plinth: { h: 0.2, out: 0.05, bucket: 'stone' }, storeys: [{ h: 4.1, wall: 'stone' }],
+      roof: slate(36 + rng() * 4), gableBucket: 'stone', openings: openings.filter((o, k, all) =>
+        !all.some((q, j) => j < k && q.face === o.face && Math.abs(q.u - o.u) < (q.w + o.w) / 2 + 0.3)),
+      chimneys: [], gutters: { colour: rgb(0x55595c) }, verge: null, reveal: 0.36,
+    }, dialect({ ...st, window: { ...st.window, shutters: null, bars: 'six' }, litShare: 0.15 }));
+    gableParapets(sink, frame, 0, rng);
+    quoins(sink, frame);
+    // the ridge lantern: a raised slate-roofed strip with louvred sides along the middle of the ridge
+    const rg = frame.roof, len = D * 0.55, lw = 0.7, lh = 0.65, y0 = rg.ridgeTopY - 0.25;
+    sink.span('dark', -lw / 2 + 0.03, y0, -len / 2, lw / 2 - 0.03, y0 + lh, len / 2, { decor: true });
+    for (const side of [-1, 1]) {
+      for (let z = -len / 2 + 0.1; z < len / 2; z += 0.22) {
+        sink.span('structureWood', side * lw / 2 - 0.04, y0 + 0.08, z, side * lw / 2 + 0.04, y0 + lh - 0.08, z + 0.1, { colour: rgb(0x4e5154), decor: true });
+      }
     }
-  }
-  const lantern: RoofSpec = { kind: 'gable', pitchDeg: 36, eave: 0.12, verge: 0.06, thickness: 0.08, bucket: 'roof', ridge: 'saddle' };
-  sink.placed(0, 0, 0, 0, () => emitRoof(sink, roofGeometry(lw, len, y0 + lh, lantern), { ...lantern, decor: true }));
-  // the boiler house: a lean-to against the back gable (-z) and its square granite stack
-  const bw = Math.min(W - 1.2, 5), bd = 3.2, bz1 = -D / 2, bz0 = bz1 - bd;
-  sink.span('stone', -bw / 2, -0.3, bz0, bw / 2, 2.9, bz1 + 0.02);
-  const tan = 0.32;
-  sink.prism('roof', [[-bw / 2 - 0.15, 3.0, bz1 + 0.02], [bw / 2 + 0.15, 3.0, bz1 + 0.02], [bw / 2 + 0.15, 3.0 - (bd + 0.25) * tan, bz0 - 0.25],
-    [-bw / 2 - 0.15, 3.0 - (bd + 0.25) * tan, bz0 - 0.25]], [0, Math.cos(Math.atan(tan)), -Math.sin(Math.atan(tan))], 0.1, {},
-  { kind: 'plane', origin: [0, 3.1, bz1], u: [1, 0, 0], v: [0, -Math.sin(Math.atan(tan)), -Math.cos(Math.atan(tan))] });
-  const sx = bw / 2 - 0.8, sz = (bz0 + bz1) / 2, h = 12 + rng() * 3;
-  sink.span('stone', sx - 0.65, -0.3, sz - 0.65, sx + 0.65, 3.4, sz + 0.65);
-  sink.cylinder('stone', [sx, 3.4, sz], 'y', h - 3.4, 0.62, 4, {}, 0.46, true, Math.PI / 4);
-  sink.span('stone', sx - 0.52, h, sz - 0.52, sx + 0.52, h + 0.3, sz + 0.52, { decor: true });
-  doorUnit(sink, { origin: [0, 0, bz0], u: [-1, 0, 0], out: [0, 0, -1], width: bw }, -bw * 0.2, 0, 0.95, 2.0,
-    { leaf: shade(st.paint, 0.7), frame: { bucket: 'stone', width: 0.24, out: 0.06 }, steps: null, leafKind: 'plank' });
+    const lantern: RoofSpec = { kind: 'gable', pitchDeg: 36, eave: 0.12, verge: 0.06, thickness: 0.08, bucket: 'roof', ridge: 'saddle' };
+    sink.placed(0, 0, 0, 0, () => emitRoof(sink, roofGeometry(lw, len, y0 + lh, lantern), { ...lantern, decor: true }));
+    // the boiler house: a lean-to against the back gable (-z) and its square granite stack
+    const bw = Math.min(W - 1.2, 5), bd = 3.2, bz1 = -D / 2, bz0 = bz1 - bd;
+    sink.span('stone', -bw / 2, -0.3, bz0, bw / 2, 2.9, bz1 + 0.02);
+    const tan = 0.32;
+    sink.prism('roof', [[-bw / 2 - 0.15, 3.0, bz1 + 0.02], [bw / 2 + 0.15, 3.0, bz1 + 0.02], [bw / 2 + 0.15, 3.0 - (bd + 0.25) * tan, bz0 - 0.25],
+      [-bw / 2 - 0.15, 3.0 - (bd + 0.25) * tan, bz0 - 0.25]], [0, Math.cos(Math.atan(tan)), -Math.sin(Math.atan(tan))], 0.1, {},
+    { kind: 'plane', origin: [0, 3.1, bz1], u: [1, 0, 0], v: [0, -Math.sin(Math.atan(tan)), -Math.cos(Math.atan(tan))] });
+    const sx = bw / 2 - 0.8, sz = (bz0 + bz1) / 2, h = 12 + rng() * 3;
+    sink.span('stone', sx - 0.65, -0.3, sz - 0.65, sx + 0.65, 3.4, sz + 0.65);
+    sink.cylinder('stone', [sx, 3.4, sz], 'y', h - 3.4, 0.62, 4, {}, 0.46, true, Math.PI / 4);
+    sink.span('stone', sx - 0.52, h, sz - 0.52, sx + 0.52, h + 0.3, sz + 0.52, { decor: true });
+    doorUnit(sink, { origin: [0, 0, bz0], u: [-1, 0, 0], out: [0, 0, -1], width: bw }, -bw * 0.2, 0, 0.95, 2.0,
+      { leaf: shade(st.paint, 0.7), frame: { bucket: 'stone', width: 0.24, out: 0.06 }, steps: null, leafKind: 'plank' });
+  });
   return sink.finish();
 };
 
