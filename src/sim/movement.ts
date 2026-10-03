@@ -1536,7 +1536,11 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
     : advanceAirborneRide(state, ride, dt, contactY, floorY, drive.gravityScale, drive.restitution, drive.bounceMin, drive.bounceMaxHeight);
   if (grounded) ride.bounces = 0;
   if (groundedAtStart) {
-    if (_wholeTrackOnGround) turnAlongGrade(state, groundTurn);
+    // a hull turning about its own axes (settling from a tumble, righting) moves its support by geometry, not by travel
+    // over a grade, and a hull sliding on a face its tracks cannot hold moves along it under the slide law
+    if (_wholeTrackOnGround && !state._body.tumbling && !state._body.autoRighting && !drive.gripLost) {
+      turnAlongGrade(state, groundTurn);
+    }
   } else if (state.landingImpactMps > 0) {
     landAlongGrade(state, ride, vStart - GRAVITY * drive.gravityScale * dt, grounded);
   }
