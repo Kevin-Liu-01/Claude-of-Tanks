@@ -33,7 +33,6 @@ const PENDING = Object.freeze([
   { apron: 'steppe:0', at: [-330, -240], owner: MAPS_LANE_B },
   { apron: 'steppe:1', at: [60, 90], owner: MAPS_LANE_B },
   { apron: 'steppe:2', at: [292, 312], owner: MAPS_LANE_B },
-  { apron: 'airfield:0', at: [0, 0], owner: MAPS_LANE_B },
 ]);
 
 // The scan sees the wall that set the law: Monsoon's first assembly apron, 44 m at 1.0 m on a hillside 5-15 m high,
