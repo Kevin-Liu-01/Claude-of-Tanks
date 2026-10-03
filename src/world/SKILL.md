@@ -78,6 +78,20 @@ runs after its ground hand-over. Both run once per ring at construction as slice
 rings) and an `escarpment` block on another style opts it in (Sunscar Oasis). The
 ring atlas's occlusion and cast shadows take their own share (`RING_RELIEF_SHADE`, horizonAutumnGround.ts) beside the
 gradient's 0.18. `horizonMassif.selftest.mjs` pins the laws and the skyline cone measure.
+The far horizon panorama (the mountains lane, 2026-10-03; `horizonPanorama.ts`): beyond the ring the far country
+(1.5-9 km) is BAKED, not drawn live — a polar height grid on the GPU (the character's far field: a warped ridged
+multifractal, Quilez's eroded octaves, Clay John's gullies, a distance envelope of foothills, ranges and the hill
+countries' low far mountains, valleys between, tablelands' caps, sea sectors, the first kilometre easing out of the
+ring's outer heights, everything under a low cloud deck scaled beneath it), its light (the map's sun with soft cast
+shadows, the sky's occlusion), then a cylindrical strip (8192 x 512, -3..22 degrees from an eye 30 m over the centre)
+shaded by the far surface law (strata, scree, snow and forest at the ring's own altitudes, stands and fields, rock
+patches) and graded toward the fog colour past the shell. One mesh shows it (`horizon-far-range` too, so the night dims
+it): an apron off the ring's outer edge and a wall at 2.6 km, sampling the atlas by direction from the bake eye, the
+scene fog off as on the round-72 range. The world bakes it under the loading cover (`map.ts` warmImpostors) or on the
+first update, again after a GPU suspension disposes the atlas; until then the round-72 far range draws (receipts, no
+float targets). `horizon.panorama: false` keeps the old range; an object overrides the character's far knobs.
+`horizonPanorama.selftest.mjs` pins the shell, the atlas mapping and the bake contract; the bake's look is iterated
+offline on SwiftShader (no GPU) before the census.
 p2 trees lane (2026-10-01): the desktop tiers GROW their near trees — `treeGrowth.ts` (a THREE-free skeleton per
 species profile: stem or leader, scaffolds or whorls, side shoots and twigs bent by gravity and clipped by the crown
 envelope; spray seats on the outer branches; `supportSprays` draws every spray-bearing branch the tube budget left
