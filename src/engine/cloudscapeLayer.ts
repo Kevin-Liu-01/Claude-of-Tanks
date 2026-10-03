@@ -76,6 +76,10 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     deckLight: row?.deckLight ?? legacy.deckLight,
     undulatus: row?.undulatus ?? legacy.undulatus,
     interior: row?.interior ?? legacy.interior,
+    lumps: row?.lumps ?? legacy.lumps ?? 0,
+    cluster: row?.cluster ?? legacy.cluster ?? 0,
+    baseFlat: row?.baseFlat ?? legacy.baseFlat ?? 0,
+    deckDetail: row?.deckDetail ?? legacy.deckDetail ?? 0,
   };
   const coverage = clamp(pick('coverage'), 0, R.coverageMax);
   const thicknessM = Math.max(50, pick('thicknessM'));
@@ -127,16 +131,27 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     deckLight: clamp(pick('deckLight'), 0, 1),
     undulatus: clamp(pick('undulatus'), 0, 1),
     interior: clamp(pick('interior'), 0, 1),
+    lumps: clamp(pick('lumps'), 0, 1),
+    cluster: clamp(pick('cluster'), 0, 1),
+    baseFlat: clamp(pick('baseFlat'), 0, 1),
+    deckDetail: clamp(pick('deckDetail'), 0, 1),
     ...resolveWeather(sky, scape, row),
   };
 }
 
+/**
+ * 2026-10-03 (the skies lane; the gauntlet's waves 5, 13 and 14: "a long, perfectly straight bright line slashes diagonally
+ * across the sky, unmistakably reading as a render glitch" — fp10's segmented, thinner trails still read as lines, and
+ * the reference tank games carry none): contrails off on every map. The placement, the packing and the trace's trail
+ * law stay (cloudWeatherLayers.ts); true brings every map's authored count back.
+ */
+export const CLOUD_CONTRAILS_ON = false;
 /** 2026-10-01: the weather beyond the slab and the time's light from the regime's row and the map's block. */
 function resolveWeather(sky: CloudLayerSkyInput, scape: CloudscapeConfig, row: (typeof CLOUDSCAPE_REGIMES)[CloudscapeRegime] | null): ReturnType<typeof neutralWeather> {
   const W = CLOUD_WEATHER_RULES;
   const timeOfDay = scapeTime(sky, scape);
   const out = neutralWeather(timeOfDay);
-  out.contrails = Math.round(clamp(scape.contrails ?? 0, 0, 1) * CLOUD_CONTRAIL_MAX);
+  out.contrails = CLOUD_CONTRAILS_ON ? Math.round(clamp(scape.contrails ?? 0, 0, 1) * CLOUD_CONTRAIL_MAX) : 0;
   out.contrailAge = clamp(scape.contrailAge ?? 0.5, 0, 1);
   out.rain = clamp(scape.rain ?? row?.rain ?? 0, 0, 1);
   out.virga = clamp(scape.virga ?? row?.virga ?? 0, 0, 1);

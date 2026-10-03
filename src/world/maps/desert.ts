@@ -27,6 +27,10 @@
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
+// The scenery's sandstone in the Dahar's own colour: the dusty buff-red of the boulders (props rockTone), not the
+// Buntsandstein red the geology defaults to.
+const DAHAR_ROCK = [0.058, 0.24, 0.55] as const;
+
 // The wadi centreline, symmetric through the ford: (x, z) and (-x, -z) are both on it.
 const WADI = [
   [-512, 140], [-420, 132], [-330, 120], [-250, 100], [-180, 66], [-115, 34], [-55, 16], [0, 0],
@@ -335,6 +339,8 @@ export default {
   },
 
   props: {
+    // regional-buildings lane: the Tunisian ksar kit (maps/regional/ksar.ts)
+    architecture: 'ksar',
     // r2 (content_breadth): plan 10 -> 18 slots — three more adobe clusters
     // plus a souk ('market'/'marketRow' builders, maps/mapKits.ts via the
     // urbanKit registry) so the crossroads reads as a lived-in bazaar town
@@ -451,6 +457,28 @@ export default {
     },
   },
 
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Dahar sandstone. The wadi
+  // cuts its banks into bedded ledges and scree on both sides; the North Mesa's flanks break into ledges; a rujm, the
+  // cairn that marks a desert track, stands beside the caravan road and the wadi track where each enters the basin.
+  // Turned through 180 degrees about the ford like the rest of the map.
+  scenery: {
+    rockFields: [
+      { geology: 'sandstone', x: -330, z: 120, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], tone: DAHAR_ROCK, name: 'the wadi banks at -330,120' },
+      { geology: 'sandstone', x: -250, z: 100, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], tone: DAHAR_ROCK, name: 'the wadi banks at -250,100' },
+      { geology: 'sandstone', x: -180, z: 66, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], tone: DAHAR_ROCK, name: 'the wadi banks at -180,66' },
+      { geology: 'sandstone', x: 180, z: -66, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], tone: DAHAR_ROCK, name: 'the wadi banks at 180,-66' },
+      { geology: 'sandstone', x: 250, z: -100, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], tone: DAHAR_ROCK, name: 'the wadi banks at 250,-100' },
+      { geology: 'sandstone', x: 330, z: -120, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], tone: DAHAR_ROCK, name: 'the wadi banks at 330,-120' },
+      { geology: 'sandstone', x: -264, z: 376, radius: 90, count: 8, slopeBias: 1, size: [3, 6], forms: [['outcrop', 0.7], ['scree', 0.3]], tone: DAHAR_ROCK, name: 'the North Mesa ledges' },
+    ],
+    landmarks: [
+      { kind: 'cairn', x: 88, z: -360, scale: 1.5, height: 1.5, geology: 'sandstone', tone: DAHAR_ROCK, name: 'the rujm on the caravan road' },
+      { kind: 'cairn', x: -88, z: 360, scale: 1.5, height: 1.5, geology: 'sandstone', tone: DAHAR_ROCK, name: 'the rujm on the caravan road north' },
+      { kind: 'cairn', x: -380, z: 200, scale: 1.4, height: 1.4, geology: 'sandstone', tone: DAHAR_ROCK, name: 'the rujm on the wadi track' },
+      { kind: 'cairn', x: 380, z: -200, scale: 1.4, height: 1.4, geology: 'sandstone', tone: DAHAR_ROCK, name: 'the rujm on the wadi track east' },
+    ],
+  },
+
   horizon: {
     // banding up / grain down (r3): the far canyon walls must read as
     // stratified sandstone beds, not vertical fiber — constant-altitude
@@ -469,7 +497,12 @@ export default {
     // saturated blue right down to the ridges (40 display luma at +4° against a horizon band near 140), so the pale
     // ranges read 2.3× brighter than the sky behind them; more Rayleigh lifts the low sky toward the dusty pale blue a
     // real desert horizon carries (Oasis inherits this sky), the zenith stays deep
-    turbidity: 7, rayleigh: 0.85, mieCoefficient: 0.009, mieDirectionalG: 0.8,
+    // 2026-10-03 (the skies lane; the gauntlet's wave 4, Sirocco's establishing: "the background ranges share the sand's
+    // pale beige ... mountains, plain and village dissolve into one washed-out plane with none of the hard-sun shadow a
+    // desert should show"): dry desert air is clear — turbidity 7 -> 5 and Mie 0.009 -> 0.006 (a bluer low sky behind the
+    // ranges, the haze's target) with the haze itself thinned below (fogDensity 0.00047 -> 0.0003: a range 10 km out
+    // keeps about half its contrast instead of a third)
+    turbidity: 5, rayleigh: 0.85, mieCoefficient: 0.006, mieDirectionalG: 0.8,
     // 0.00105 washed the mesa tablelands to unshaded clay by 900 m — 0.00086
     // keeps the heat haze but lets the strata banding read on the skyline
     // r1 (content_breadth): 0.00086 -> 0.00066 — even at 0.00086 everything
@@ -486,7 +519,8 @@ export default {
     // round 47 (2026-09-23): envIntensity stays 0.16 — sky.ts clamps scene.environmentIntensity to
     // ENV_INTENSITY_FLOOR (0.21), so any preset value below that (0.16, or the 0.19 the audit proposed) renders the
     // same; a real environment lift here must exceed 0.21 and was not tested this round. Oasis inherits this value.
-    fogDensity: 0.00047, fogTintHex: 0xbdb5a8 /* round 47 (2026-09-23): a step cooler than the sun so haze and sand stop sharing one ochre (lane r47c) */, fogMix: 0.60, envIntensity: 0.16, // lighting_post r4: 0.22 -> 0.16 (sun/lee dune separation)
+    // 2026-10-03 (the skies lane, agreed with the mountains lane: one haze law from the camera to the far country, the map's fogDensity its one lever): arid air is clear — 0.00025 on the four arid maps (a meteorological range near 37 km; a ridge 300 m up at 7.5 km keeps about 60 % of its contrast)
+    fogDensity: 0.00025, fogTintHex: 0xbdb5a8 /* round 47 (2026-09-23): a step cooler than the sun so haze and sand stop sharing one ochre (lane r47c) */, fogMix: 0.60, envIntensity: 0.16, // lighting_post r4: 0.22 -> 0.16 (sun/lee dune separation)
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): a textured high sky instead of a thin veil —
     // broken altocumulus (0.35 -> 0.78) under a cirrus sheet (0.18 -> 0.48) on an explicit 900 m virtual deck with a
     // slower slant haze (0.00012) and smaller 2600 m cells, so the deck keeps its cauliflower structure down to the

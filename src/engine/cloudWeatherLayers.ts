@@ -72,10 +72,14 @@ export function cloudContrails(preset: Pick<CloudLayerPreset, 'contrails' | 'con
       dir: [Math.cos(angle), Math.sin(angle)],
       offsetM: (h(3) - 0.5) * 26000,
       centreM: (h(4) - 0.5) * 18000,
-      halfLengthM: 14000 + 26000 * h(5),
+      // 2026-10-03 (the skies lane; the gauntlet's wave 5: "a bright, perfectly straight diagonal streak spans almost
+      // the entire sky, an unmistakable rendering artifact"): 14–44 km long instead of 28–80 (a trail crosses a sector of
+      // the sky, not all of it) and a fresh trail's optical depth 0.2–0.38 instead of 0.32–0.62 (a thin veil, not a
+      // glaring line); the GLSL breaks each trail where the air is too dry for it to persist
+      halfLengthM: 7000 + 15000 * h(5),
       headAge: Math.min(tail, age * 0.25 * h(7)),
       tailAge: tail,
-      depth: 0.32 + 0.3 * h(8),
+      depth: 0.2 + 0.18 * h(8),
     });
   }
   return out;

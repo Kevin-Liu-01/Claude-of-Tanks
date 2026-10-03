@@ -297,7 +297,7 @@ for (const id of MAP_IDS) {
 }
 const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
 assert.match(map, /createTallGrass\(heightField, \{/, 'the world builds the tier on its height field');
-assert.match(map, /blocked: createGroundCoverClearance\(queryObstacles\)/, 'kept out of the sealed footprints');
+assert.match(map, /blocked: groundCoverClearance\(\)/, 'kept out of the sealed footprints (and the scenery\'s holes)');
 assert.match(map, /splatNoise: sampleSplatNoise,/, 'thinned by the terrain\'s own dirt fields');
 assert.match(map, /tallGrass\.update\(dt, cameraPos, focusPos, cameraFwd\)/, 'the frame update streams the rings and steps the press');
 assert.match(map, /tallGrass\.dispose\(\)/, 'released with the world');

@@ -200,6 +200,8 @@ export default {
   },
 
   props: {
+    // regional-buildings lane: the Breton granite kit (maps/regional/breton.ts)
+    architecture: 'breton',
     // world-dressing r1: + chapel and granary in the fishing village
     plan: ['fishery', 'boatshed', 'chapel', 'netyard', 'market', 'cottage',
       'lighthouse', 'cottage', 'ruin', 'barn', 'granary', 'boatshed',
@@ -273,6 +275,33 @@ export default {
       modernClutter: { barrier: 4, roadsign: 5, cone: 7, transformer: 3, cablespool: 3 },
     },
     cropFields: 3,
+  },
+
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Pays de Leon's granite and
+  // its wayside stone. The axis knoll carries the tor between the hamlet's green and the crossroads' meadow; a tor
+  // stands on each downs' shoulder above its bocage lane; the downs' granite shows through their thin soil; a calvary
+  // marks each bocage crossroads on the inland road; a standing stone rises on each swell of the downs. Mirrored across
+  // the axis like the rest of the map. (The hedges on the hedge banks belong to the land-cover lane.)
+  scenery: {
+    // the bocage's hedge lines stand on earth banks (the talus): the ground lane's land use draws the hedges' lines
+    // (landUse.ts) and the banks follow them (fieldWorks.ts; decor, no collision)
+    fieldWorks: { banks: true },
+    rocks: [
+      { form: 'tor', geology: 'granite', x: -222, z: 22, radius: 7, height: 5.5, yawDeg: 24, name: 'the axis tor' },
+      { form: 'tor', geology: 'granite', x: 14, z: -152, radius: 5, height: 4.2, yawDeg: 70, name: 'the south downs tor' },
+      { form: 'tor', geology: 'granite', x: 14, z: 196, radius: 5, height: 4.2, yawDeg: -70, name: 'the north downs tor' },
+    ],
+    // the granite showing through the thin soil of the downs' swells: whalebacks, small tors and their stone
+    rockFields: [
+      { geology: 'granite', x: -40, z: -236, radius: 120, count: 7, slopeBias: 0.5, size: [2.5, 5.5], name: 'the south downs granite' },
+      { geology: 'granite', x: -40, z: 280, radius: 120, count: 7, slopeBias: 0.5, size: [2.5, 5.5], name: 'the north downs granite' },
+    ],
+    landmarks: [
+      { kind: 'calvary', x: -78, z: -140, yawDeg: 15, name: 'the south crossroads calvary' },
+      { kind: 'calvary', x: -78, z: 184, yawDeg: -15, name: 'the north crossroads calvary' },
+      { kind: 'menhir', x: -70, z: -236, height: 4.6, name: 'the south downs standing stone' },
+      { kind: 'menhir', x: -70, z: 280, height: 4.6, name: 'the north downs standing stone' },
+    ],
   },
 
   horizon: {

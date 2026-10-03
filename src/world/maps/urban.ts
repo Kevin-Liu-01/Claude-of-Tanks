@@ -187,6 +187,8 @@ export default {
   },
 
   props: {
+    // regional-buildings lane: the Franconian town kit (maps/regional/franconian.ts)
+    architecture: 'franconian',
     plan: PLAN, // consumed by blockFill for the block interiors
     destructibleBuildings: [
       'guardpost', 'checkpointhut', 'fieldhospital', 'transformershed', 'motorpool',
@@ -307,6 +309,20 @@ export default {
   },
 
 
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Franconian Jura. The castle
+  // rock shows its bedded limestone in crags round the Burgberg's flanks; a carved Bildstock stands at the farm
+  // crossing on the west road and another where the farm track leaves the east valley road.
+  scenery: {
+    rocks: [
+      { form: 'outcrop', geology: 'limestone', x: 176, z: -20, radius: 6, height: 6.5, name: 'the castle rock\'s south crag' },
+      { form: 'outcrop', geology: 'limestone', x: 186, z: 32, radius: 5, height: 5.5, name: 'the castle rock\'s east crag' },
+      { form: 'outcrop', geology: 'limestone', x: 132, z: -44, radius: 4.5, height: 4.5, name: 'the castle rock\'s west crag' },
+    ],
+    landmarks: [
+      { kind: 'bildstock', x: -362, z: 66, yawDeg: 135, name: 'the shrine at the farm crossing' },
+      { kind: 'bildstock', x: 248, z: -226, yawDeg: 0, name: 'the shrine on the east valley road' },
+    ],
+  },
   horizon: {
     // r7: treeline 0.5 -> 0.92 — kills the bald-ramp band above the forest
     // cutoff (see verdant.js note)

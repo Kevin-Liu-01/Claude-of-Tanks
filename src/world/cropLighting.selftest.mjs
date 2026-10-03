@@ -28,8 +28,11 @@ const hookSource = declaration(propsSource, 'cropAttributeNormal');
 const finalizeSource = declaration(propsSource, 'finalizeCropFields');
 const setupSource = declaration(lightingSource, 'setupShadowMaterial', true);
 // round 69 (2026-09-25): the method also binds the ground-bounce rig; the sandbox injects inert stubs for it.
-const createSetup = new Function('csm', 'buildCoverageMipmaps', 'attachGroundBounceUniforms', 'groundBounceUniforms',
+// (2026-10-03: and the cloud shade's — cloudShadeMap.ts; off here, as on the phone tier)
+const createSetupWith = new Function('csm', 'buildCoverageMipmaps', 'attachGroundBounceUniforms', 'groundBounceUniforms',
+  'cloudShadeOn', 'attachCloudShadeUniforms', 'cloudShadeUniforms', 'cloudShadeSamplerCount', 'cascadeCount', 'scene', 'CLOUD_SHADE_SAMPLER_BUDGET',
   `${stripTypeScriptTypes(`const owner = { ${setupSource} };`)}\nreturn owner.setupShadowMaterial;`);
+const createSetup = (csmArg, mips, attach, bounce) => createSetupWith(csmArg, mips, attach, bounce, false, () => {}, {}, () => 0, 3, {}, 16);
 function cropApi(group, engineCtx, finalize = finalizeSource, three = THREE) {
   return new Function('THREE', 'mergeGeometries', 'group', 'engineCtx',
     `${stripTypeScriptTypes(`${replaceSource}\n${hookSource}\n${finalize}`)}

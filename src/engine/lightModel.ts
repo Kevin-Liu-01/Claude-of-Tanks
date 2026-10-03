@@ -21,7 +21,8 @@
  *              environment intensity 1 so a mirror reflects the sky the dome shows; its diffuse share takes
  *              SKY_DIFFUSE_GAIN on top (the aerosol and fair-weather cloud light the round-65 visual calibration
  *              left out of the clean sky: the shade under a clear sky is lit about a quarter as strongly as the sun
- *              lights open ground, not a ninth), and the clear sky's share fades under an overcast deck
+ *              lights open ground, not a ninth) and keeps SKY_DIFFUSE_CHROMA of the clean dome's hue (that light is
+ *              far whiter than the Rayleigh dome), and the clear sky's share fades under an overcast deck
  *   overcast   the deck's own diffuse light, the hemisphere light's new role: the sunlight and skylight the cloud
  *              transmits, neutral grey from above, the ground's reflection from below
  *   ground     below the horizon the environment shows the ground (its albedo under the sky light, and half of it
@@ -80,6 +81,15 @@ function lightTune(name: string, fallback: number): number {
 export const LIGHT_SOLAR_IRRADIANCE = 4.99;
 /** Diffuse sky light over the dome's own radiance (aerosol + fair-weather cloud light the clean sky lacks). */
 export const SKY_DIFFUSE_GAIN = 1.45;
+/**
+ * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: the shade under a hull rendered indigo on straw and
+ * teal on grass): the share of the clean dome's hue the sky's diffuse light keeps about its luminance. The dome's
+ * cosine-weighted light runs B/R 3.3–4 (Verdant 0.069 / 0.130 / 0.273: a Rayleigh sky, far past 20 000 K); real open
+ * shade under a clear sky, with the aerosol and whitened horizon the gain above stands for, runs 9 000–15 000 K
+ * (B/R about 1.6–2.2): 0.4 lands Verdant at 1.8 and Sirocco at 1.6. The luminance — the shade's level, the exposure's
+ * illuminance — is unchanged; the specular share keeps the dome's own colour (a mirror reflects the sky the eye sees).
+ */
+export const SKY_DIFFUSE_CHROMA = 0.4;
 /** Share of the direct sun an overcast deck removes at overcast 1. */
 export const OVERCAST_DIRECT_CUT = 0.9;
 /** Share of the clear sky's light an overcast deck replaces at overcast 1. */
@@ -88,6 +98,16 @@ export const OVERCAST_SKY_CUT = 0.85;
 export const OVERCAST_TRANSMISSION = 0.42;
 /** The deck's light: a neutral grey, a touch cool (linear, luminance ≈ 1; overcast daylight ≈ 6500–7000 K). */
 export const OVERCAST_LIGHT_COLOR: Rgb = Object.freeze([0.96, 1.0, 1.04]) as Rgb;
+/**
+ * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 17 on Whiteout's chase: the overcast snow read as "dull
+ * blue-grey plaster, darker and much bluer than the neutral overcast sky" — its light a fifth darker than the deck's
+ * level and B/R 1.36 against the sky's 1.13): the share of the light a ground sends up that a deck's base sends back
+ * down (a stratus base returns about half of it). Light bounces between a bright ground and a closed deck — why an
+ * overcast snowfield is bright and a whiteout loses its horizon — so the deck's glow carries the returned light,
+ * E · g / (1 − g) on the direct E, g = overcast × this × the ground's albedo: a snowfield (0.80) under a closed deck
+ * gains two thirds, grass (0.2) a tenth, an open sky nothing.
+ */
+export const OVERCAST_GROUND_RETURN = 0.5;
 /**
  * The night's own sky light (horizontal irradiance at full night, light units): the moonlit sky, airglow and the
  * scattered light of a populated horizon that keep a moonlit field readable — the dome's 8 % moonlit sky alone
@@ -98,6 +118,7 @@ export const NIGHT_SKY_GLOW = 0.22;
  * The camera's night offset (EV at full night): a moonlit scene sits under two stops below the day (its displayed key
  * about 30 % of Verdant's noon — the old rig's night sat at about a third of its day, and the owner asked on 2026-09-14
  * for a night a little more visible, not darker; the shade keeps the glow's light).
+ * (2026-10-03: +0.265 while the daylight key sat at 1.05, carrying the night's camera; −0.25 again with the key back at 1.5.)
  */
 export const NIGHT_EV = -0.25;
 /**
@@ -106,11 +127,44 @@ export const NIGHT_EV = -0.25;
  * (the adapting camera alone lifted the 7° sunset to a pale, flat near-day).
  */
 export const LOW_SUN_EV = -0.5;
+/**
+ * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 7: a key matched to the photographs' median greyed
+ * every snowfield): the camera's lift for a bright ground, the way a photographer opens up over a snowfield. A map whose
+ * ground albedo (its luminance) passes EXPOSURE_ALBEDO_REF gains EXPOSURE_ALBEDO_K stops per doubling, at most
+ * EXPOSURE_ALBEDO_MAX_EV, by day (Frosthollow's 0.80: +0.3 EV at K 0.25); every darker ground is untouched (QA:
+ * __LIGHT_TUNE.EXPOSURE_ALBEDO_K; fp10's preview of +0.5 EV put the snow at L* 83-85 against 77-80).
+ * (2026-10-03, the gauntlet's wave 19: K 0.42 → 0.25 with the deck's ground return, which brightens an overcast
+ * snowfield by itself — OVERCAST_GROUND_RETURN; fp12's lift25 frames: Whiteout's chase 1.86 → 3.86 against the PR head.)
+ */
+export const EXPOSURE_ALBEDO_REF = 0.35;
+export const EXPOSURE_ALBEDO_K = 0.25;
+export const EXPOSURE_ALBEDO_MAX_EV = 0.75;
+/** The bright-ground lift (EV) of a ground albedo (luminance) by day; 0 at or under the reference. */
+export function exposureAlbedoEV(groundLuminance: number): number {
+  const k = lightTune('EXPOSURE_ALBEDO_K', EXPOSURE_ALBEDO_K);
+  if (!(k > 0) || !(groundLuminance > EXPOSURE_ALBEDO_REF)) return 0;
+  return clamp(k * Math.log2(groundLuminance / EXPOSURE_ALBEDO_REF), 0, lightTune('EXPOSURE_ALBEDO_MAX_EV', EXPOSURE_ALBEDO_MAX_EV));
+}
 /** Its colour: the blue of a moonlit sky (linear, luminance ≈ 1). */
 export const NIGHT_GLOW_COLOR: Rgb = Object.freeze([0.72, 0.95, 1.38]) as Rgb;
 /** The sunlit share of the ground the environment shows below the horizon (groundBounce.ts adds the rest). */
 export const GROUND_SUNLIT_SHARE = 0.5;
-/** Exposure law: the key that lands Verdant's lit midtones, its reference illuminance and the adaptation share. */
+/**
+ * Exposure law: the key at the reference illuminance, and the adaptation share.
+ *
+ * 2026-10-03 (the skies-and-atmosphere lane, which the gauntlet's wave 0 handed light, colour and atmosphere: "flat
+ * high-key lighting", "exposure either washed out or oversaturated"): the key is a calibrated meter, π / E_ref — an 18 %
+ * grey card under the reference illuminance (3.0) reaches the tone curve at scene-linear 0.18, AgX's middle grey (display
+ * L* ≈ 53, the photographic standard). The 1.5 it replaces was half a stop hot: a sunlit card at Verdant displayed at
+ * L* ≈ 60 and the census frames' median at L* 63 with their darkest twentieth at 36, against 54 / 23 for the gauntlet's
+ * thirty-five reference photographs (World of Tanks 43 / 19, War Thunder 47 / 17); offline re-grades of the wave-0
+ * frames put this key at 53 / 24.
+ *
+ * Back to 1.5 the same day (the gauntlet's wave 7, PR head against the lane: sky +0.13, lighting −0.20, Frosthollow's
+ * chase −1.6): a key matched to the photographs' median pulled every snowfield to grey (the snow at L* 70–73 against
+ * 79–80, where a photographer keeps it near white with +1 to +1.5 EV over a mid-grey meter). The calibration returns
+ * only with an albedo-aware key that holds snow and bright sand high (the lane's next hand-over).
+ */
 export const EXPOSURE_KEY = 1.5;
 export const EXPOSURE_ADAPTATION = 0.6;
 /** The camera's adaptation bounds around its key (a night scene stays a night scene, a snowfield never goes grey). */
@@ -235,17 +289,20 @@ function resolveGrounded(
   const deckGlow = overcast * lightTune('OVERCAST_TRANSMISSION', OVERCAST_TRANSMISSION) * (clearSunH + clearSkyH);
   // at night the hemisphere also carries the night sky's own glow (NIGHT_SKY_GLOW), blended into its colour by share
   const nightGlow = night * lightTune('NIGHT_SKY_GLOW', NIGHT_SKY_GLOW);
-  const hemiIntensity = deckGlow + nightGlow;
+  const ground = L.groundAlbedoHex != null ? hexToLinear(L.groundAlbedoHex) : atmosphereOf().groundAlbedo;
+  // (2026-10-03) the deck sends back part of what the ground sends up (OVERCAST_GROUND_RETURN), in the deck's own light
+  const groundReturn = clamp(overcast * lightTune('OVERCAST_GROUND_RETURN', OVERCAST_GROUND_RETURN) * luminance(ground), 0, 0.9);
+  const returned = (sunIrradiance * sinEl + skyLightH + deckGlow + nightGlow) * groundReturn / (1 - groundReturn);
+  const hemiIntensity = deckGlow + nightGlow + returned;
   const glowShare = hemiIntensity > 1e-6 ? nightGlow / hemiIntensity : 0;
   const hemiSky: Rgb = [0, 1, 2].map((c) => OVERCAST_LIGHT_COLOR[c] + (NIGHT_GLOW_COLOR[c] - OVERCAST_LIGHT_COLOR[c]) * glowShare) as unknown as Rgb;
-  const ground = L.groundAlbedoHex != null ? hexToLinear(L.groundAlbedoHex) : atmosphereOf().groundAlbedo;
   // the deck's light from below is its reflection off the ground: the hemisphere's ground pole is the albedo itself
   const hemiGround: Rgb = [ground[0], ground[1], ground[2]];
   const illuminance = sunIrradiance * sinEl + skyLightH + hemiIntensity;
   const sunElevationDeg = Math.asin(clamp(params.sunDir[1], -1, 1)) * 180 / Math.PI;
   const lowSun = (1 - night) * (1 - smoothstep(6, 18, sunElevationDeg));
   const exposure = exposureFor(illuminance, (L.exposureEV ?? 0) + night * lightTune('NIGHT_EV', NIGHT_EV)
-    + lowSun * lightTune('LOW_SUN_EV', LOW_SUN_EV));
+    + lowSun * lightTune('LOW_SUN_EV', LOW_SUN_EV) + (1 - night) * exposureAlbedoEV(luminance(ground)));
   // the readability lift's floor holds its on-screen level as the camera adapts (Verdant's key keeps it whole), and
   // fades with the deck that lights the shade itself
   const vehicleReadability = clamp(Math.min(1, lightTune('EXPOSURE_KEY', EXPOSURE_KEY) / exposure)
@@ -256,6 +313,9 @@ function resolveGrounded(
     sunColor,
     envIntensity,
     envDiffuseGain,
+    // (2026-10-03: the clear sky's share under a deck keeps none of the dome's blue at a closed deck — the deck's light
+    // is the deck's grey; the clear dome's Rayleigh hue on the remaining share put Whiteout's snow at B/R 1.36)
+    envDiffuseChroma: clamp(lightTune('SKY_DIFFUSE_CHROMA', SKY_DIFFUSE_CHROMA), 0, 1) * (1 - clamp(overcast, 0, 1)),
     hemiIntensity,
     hemiSky,
     hemiGround,

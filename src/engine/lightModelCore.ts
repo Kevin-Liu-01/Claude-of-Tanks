@@ -65,6 +65,8 @@ export interface LightModel {
   envIntensity: number;
   /** Extra factor on the environment's diffuse share (the CSM lit materials, lighting.ts). */
   envDiffuseGain: number;
+  /** The share of the sky's hue the environment's diffuse share keeps about its luminance (groundBounce.ts uCotSkyChroma). */
+  envDiffuseChroma: number;
   hemiIntensity: number;
   hemiSky: Rgb;
   hemiGround: Rgb;
@@ -187,6 +189,7 @@ function legacyModel(preset: LightModelPreset): LightModel {
     sunColor: hexToLinear(preset.sunColorHex ?? LEGACY_SUN_HEX),
     envIntensity: Math.max(preset.envIntensity ?? LEGACY_ENV, LEGACY_ENV_FLOOR),
     envDiffuseGain: 1,
+    envDiffuseChroma: 1,
     hemiIntensity: hemiPreset + hemiFloor,
     hemiSky: hexToLinear(0xaac8f5),
     hemiGround: hexToLinear(0x94815f),

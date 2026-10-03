@@ -937,6 +937,13 @@ export function sourcedBuildingTintPolicy(
   return palette[bucket] ?? null;
 }
 
+/** The maps whose stone bucket is the sourced brick print (their field walls keep the coursed module, props.ts). */
+export function sourcedStoneIsBrick(mapId: string): boolean {
+  // maps r1: the rail yard's industrial halls are brick like the town's
+  return mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera'
+    || mapId === 'ruinspires' || mapId === 'blackglass' || mapId === 'skybridge';
+}
+
 export function applySourcedBuildings(
   sets: Partial<Record<BuildingBucket, TextureLayer>>,
   mapId: string,
@@ -949,10 +956,7 @@ export function applySourcedBuildings(
   const plan: Partial<Record<BuildingBucket, keyof typeof SETS>> = {
     plaster: 'plaster', roof: 'roof', wood: 'wood',
   };
-  // maps r1: the rail yard's industrial halls are brick like the town's
-  if ((mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera'
-      || mapId === 'ruinspires' || mapId === 'blackglass' || mapId === 'skybridge')
-      && sets.stone) plan.stone = 'brick';
+  if (sourcedStoneIsBrick(mapId) && sets.stone) plan.stone = 'brick';
   // Steinburg and Ruinspires keep the PROCEDURAL roof sheet: their tone hooks
   // bake deliberately restrained roof families that a single sourced tint
   // cannot reproduce. This also prevents the raw orange tile set from
