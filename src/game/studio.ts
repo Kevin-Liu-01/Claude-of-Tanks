@@ -1881,7 +1881,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       fx.destruction(position, null, size === 'medium' ? 'shot' : (params.cause || 'ammorack'));
     }
     // `huge` (fuel / ammunition cook-off column) only exists as a cinematic recipe
-    if (size === 'huge' || cinematicFor(params)) ensureCinematics().explosion(id, position, size);
+    if (size === 'huge' || cinematicFor(params)) ensureCinematics().explosion(id, position, size, params.cause);
     return true;
   }
 

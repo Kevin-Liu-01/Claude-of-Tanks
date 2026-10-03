@@ -222,6 +222,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioFxSettings.selftest.mjs',
     'src/game/studioTrackDust.selftest.mjs',
     'src/fx/cinematicFx.selftest.mjs',
+    'src/fx/cinematicShotBlast.selftest.mjs',
     'tools/studio-example-scenarios.selftest.mjs',
     'src/vehicles/spareTrackAttachment.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',

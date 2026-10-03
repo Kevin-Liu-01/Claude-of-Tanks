@@ -912,8 +912,11 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
         debrisBurst(ctx, pos.x, pos.y, pos.z, 8, 12, 0.5, 0.8, 0.4);
       }
     },
-    explosion(id, pos, size) {
+    explosion(id, pos, size, cause) {
       const ctx = ctxFor(id, 4);
+      // a shell burst ('shot') is not a tank: no ammunition cook-offs — their hatch blowtorch jets would burn in mid-air
+      // over open ground (2026-10-03, the floating fire in the site fifty)
+      const ammunition = cause !== 'shot';
       const gy = port.groundY(pos.x, pos.z);
       const y = Math.max(pos.y - 0.4, gy) + 0.6;
       if (size === 'small') { heBurst(ctx, pos.x, pos.z, 1.0, 0, 0.6); return; }
@@ -927,7 +930,7 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
         fireball(ctx, pos.x, y + 0.8, pos.z, { scale: 1.15, smoke: 1.1, rise: 1.15 });
         debrisBurst(ctx, pos.x, y + 1, pos.z, 26, 20, 0.7, 1);
         emberBurst(ctx, pos.x, y + 2, pos.z, 90, 14);
-        cookOffs(ctx, pos.x, y + 0.6, pos.z, 2, 3, 0.9);
+        if (ammunition) cookOffs(ctx, pos.x, y + 0.6, pos.z, 2, 3, 0.9);
         return;
       }
       // huge: fuel / ammunition cook-off column
@@ -936,7 +939,7 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       debrisBurst(ctx, pos.x, y + 1.5, pos.z, 44, 28, 0.75, 1.5, 0.8);
       emberBurst(ctx, pos.x, y + 4, pos.z, 200, 20);
       shockwave(ctx, pos.x, pos.z, 34, 1.5);
-      cookOffs(ctx, pos.x, y + 0.5, pos.z, 5, 7, 1.2);
+      if (ammunition) cookOffs(ctx, pos.x, y + 0.5, pos.z, 5, 7, 1.2);
       const now = env.nowS;
       addEmitter(columnEmitter(`${id}:column`, rngFor(id, 41), now + 0.8, now + 60, pos.x, y, pos.z, 48, 5, 0.85));
       addEmitter(fireFieldEmitter(`${id}:fire`, rngFor(id, 42), world, now + 0.5, now + 18, pos.x, pos.z, 6, 1.3, true));
