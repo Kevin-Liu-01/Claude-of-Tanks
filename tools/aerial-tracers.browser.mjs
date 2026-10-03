@@ -15,6 +15,7 @@ try{
    page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
    await page.evaluate(async()=>{const {writeTeamArrangement}=await import('/src/game/teamArrangement.ts');writeTeamArrangement('ac130',{allies:4,enemies:4});});
    await beginSoloBattle(page,{specId:'m1a2',mapId:'verdant',gameMode:'ac130'});
+   if(!viewport.hasTouch){await page.mouse.click(viewport.width/2,viewport.height/2);await page.waitForFunction(()=>document.pointerLockElement!==null,{timeout:5000});}
    for(const slot of [0,1,2]){
     await page.evaluate(slot=>{
      const D=window.__DEBUG,fx=D.fx,original=fx.update;
@@ -38,12 +39,13 @@ try{
       }
      };
     },slot);
-    const button=await page.$(`.flight-weapon:nth-child(${slot+1})`);
-    if(viewport.hasTouch)await button.tap();else await button.click();
+    if(viewport.hasTouch)await page.tap(`.flight-weapon:nth-child(${slot+1})`);
+    else await page.keyboard.press(`Digit${slot+1}`);
     await page.waitForFunction(slot=>window.__DEBUG.game.player.combat.shellSlot===slot,{},slot);
     if(viewport.hasTouch){const p=await page.$eval('.cot-touch .fire:not(.alt)',el=>{const b=el.getBoundingClientRect();return{x:b.x+b.width/2,y:b.y+b.height/2};});await page.touchscreen.touchStart(p.x,p.y);}
     else{await page.mouse.move(viewport.width/2,viewport.height/2);await page.mouse.down();}
-    await page.waitForFunction(()=>window.__tracerSample?.heads>0,{timeout:15000});
+    try {await page.waitForFunction(()=>window.__tracerSample?.heads>0,{timeout:15000});}
+    catch(error){writeFileSync(resolve(out,'failure.json'),JSON.stringify(await page.evaluate(()=>({sample:window.__tracerSample,phase:window.__DEBUG.game.phase,playerInput:window.__DEBUG.game.player.input,slot:window.__DEBUG.game.player.combat.shellSlot,shells:window.__DEBUG.game.shells,locked:!!document.pointerLockElement})),null,2));await page.screenshot({path:resolve(out,'failure.png')});throw error;}
     if(viewport.hasTouch)await page.touchscreen.touchEnd();else await page.mouse.up();
     const sample=await page.evaluate(()=>window.__tracerSample);
     assert.equal(sample.heads,1);assert.ok(sample.maxWidth>.2);assert.ok(sample.maxLength<=32.01);assert.ok(sample.maxLength>2);
