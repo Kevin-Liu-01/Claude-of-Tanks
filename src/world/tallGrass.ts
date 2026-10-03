@@ -172,6 +172,21 @@ const smoothstep = (a: number, b: number, x: number): number => {
 };
 
 /**
+ * Ground lane (2026-10-03): a smooth value noise on a `cell`-metre lattice (0..1) — the sward's tussocks (1.7 m) and
+ * its tall and grazed patches (9 m). Position-hashed: it draws nothing from a cell's seeded stream.
+ */
+function swardNoise(x: number, z: number, cell: number, salt: number): number {
+  const fx = x / cell, fz = z / cell;
+  const ix = Math.floor(fx), iz = Math.floor(fz);
+  const tx = fx - ix, tz = fz - iz;
+  const sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
+  const h = (a: number, b: number): number => (cellSeed(salt, a, b) & 0xffff) / 65535;
+  const a = h(ix, iz) + (h(ix + 1, iz) - h(ix, iz)) * sx;
+  const b = h(ix, iz + 1) + (h(ix + 1, iz + 1) - h(ix, iz + 1)) * sx;
+  return a + (b - a) * sz;
+}
+
+/**
  * A clump of `blades` strips fanned around the root, each `segments` quads tall plus a tip triangle: position.x is
  * the across coordinate (−0.5..0.5 of the root width), position.y the height fraction t (the shader builds the
  * blade in world units from the instance's yaw / height / width), z the blade's own fan angle. Unit-sized; the
@@ -257,7 +272,7 @@ function tallGrassHook(shared: SharedUniforms, fade: readonly [number, number, n
 uniform float uWindTime; uniform vec3 uCamPos; uniform vec3 uCamFwd; uniform float uSniperFade;
 uniform vec2 uWindDir; uniform sampler2D uPress; uniform vec4 uPressParams; uniform vec4 uGrassFade; uniform float uBend;
 attribute vec4 aBlade;
-varying float vBladeT; varying float vBladeCrush;`);
+varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;`);
     // the blade's own normal: its face turned by the yaw, leaning toward the sky so the strip never lights as a wall
     shader.vertexShader = mustReplace(shader.vertexShader, '#include <beginnormal_vertex>', /* glsl */`
       float cotYaw = aBlade.x + position.z;
@@ -279,6 +294,12 @@ varying float vBladeT; varying float vBladeCrush;`);
         float yaw = cotYaw;
         float hgt = aBlade.y * fade;
         float wid = aBlade.z;
+        // ground lane (2026-10-03, the gauntlet: "a uniform fur carpet", "a sparse comb of stiff blades"): every blade of
+        // a clump is its own — 62–124 % of the clump's height, its own lean (a long blade arches out and droops a little)
+        // and its own tone (the fragment cures a fifth of them to straw)
+        float bR = fract(sin(position.z * 91.7 + aBlade.w * 437.3) * 43758.5453);
+        float bR2 = fract(bR * 7.31 + aBlade.w * 3.17);
+        hgt *= 0.62 + 0.62 * bR;
         // the press at the root: how flat, which way, how bruised
         float press = 0.0; vec2 pdir = vec2(0.0, 1.0); float crush = 0.0;
         if (uPressParams.w > 0.5) {
@@ -300,12 +321,14 @@ varying float vBladeT; varying float vBladeCrush;`);
         vec3 pos = vec3(position.x * wid * taper * across.x, 0.0, position.x * wid * taper * across.y);
         float ang = press * uBend;
         vec3 up = vec3(pdir.x * sin(ang), cos(ang), pdir.y * sin(ang));
-        vec2 lean = vec2(cos(aBlade.w * 6.2832), sin(aBlade.w * 6.2832)) * 0.12;
-        pos += up * (t * hgt);
+        float leanA = aBlade.w * 6.2832 + (bR2 - 0.5) * 2.4;
+        vec2 lean = vec2(cos(leanA), sin(leanA)) * (0.10 + 0.34 * bR2);
+        pos += up * (t * hgt * (1.0 - 0.30 * dot(lean, lean) * t));
         pos.xz += (lean * (1.0 - press) + wind + pdir * press * 0.35) * t * t * hgt;
         transformed = pos;
         vBladeT = t;
         vBladeCrush = crush;
+        vBladeTone = bR2;
       }`);
     // the round-13 rule: the cascade shadow is read at the blade's root, so a swaying tip keeps one shadow state
     shader.vertexShader = mustReplace(shader.vertexShader, '#include <shadowmap_vertex>', /* glsl */`
@@ -320,12 +343,16 @@ varying float vBladeT; varying float vBladeCrush;`);
       #endif
       #include <shadowmap_vertex>`);
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; uniform float uBladeGamma; uniform float uBladeLift; varying float vBladeT; varying float vBladeCrush;');
+      '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; uniform float uBladeGamma; uniform float uBladeLift; varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;');
     // both faces of a strip light the same way (no back-face flip) and the root is dark under the sward
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <normal_fragment_begin>',
       '#include <normal_fragment_begin>\nnormal = normalize( vNormal );\nnonPerturbedNormal = normal;');
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <color_fragment>',
-      `#include <color_fragment>\ndiffuseColor.rgb *= mix(uGrassBase, uGrassTip, pow(vBladeT, uBladeGamma)) * uBladeLift * (1.0 - ${TALL_GRASS.crushDarken.toFixed(2)} * vBladeCrush);`);
+      `#include <color_fragment>\ndiffuseColor.rgb *= mix(uGrassBase, uGrassTip, pow(vBladeT, uBladeGamma)) * uBladeLift * (1.0 - ${TALL_GRASS.crushDarken.toFixed(2)} * vBladeCrush);`
+      // ground lane: a sward is never one green — each blade a shade lighter or darker, a fifth cured to straw from the
+      // tip down (the dead leaves of last season standing in the new)
+      + `\n{ float cure = smoothstep(0.78, 0.84, vBladeTone) * (0.55 + 0.45 * vBladeT);`
+      + `\n  diffuseColor.rgb *= mix(vec3(0.80 + 0.40 * fract(vBladeTone * 3.7)), vec3(1.42, 1.0, 1.55) * 0.92, cure); }`);
   };
 }
 
@@ -536,6 +563,12 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
           else if (crop === LAND_CROP.sunflower) { keep = 0.7; heightScale *= 1.6; cropTint = [0.82, 1.02, 0.78]; }
         }
       }
+    }
+    // ground lane (2026-10-03): a wild sward grows in tussocks with thinner ground between them, and stands tall in
+    // some patches and grazed short in others; a sown crop stands even (no tussocks there)
+    if (!cropTint && b.kind !== 'reed') {
+      keep *= 0.30 + 0.70 * smoothstep(0.28, 0.72, swardNoise(x, z, 1.7, 0x51a7));
+      heightScale *= 0.62 + 0.76 * swardNoise(x, z, 9, 0x2c3d);
     }
     if (roll > keep) return;
     if (n && n.y < TALL_GRASS.minSlopeY) return;

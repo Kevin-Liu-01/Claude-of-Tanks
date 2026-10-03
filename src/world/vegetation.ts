@@ -3559,6 +3559,7 @@ function* vegetationBuildSteps(
   const _m4 = new THREE.Matrix4();
   const _q = new THREE.Quaternion();
   const _qLean = new THREE.Quaternion();
+  const _bushCast = new THREE.Color(); // ground lane: a shrub's own cast
   const _axLean = new THREE.Vector3();
   const _pv = new THREE.Vector3();
   const _sv = new THREE.Vector3();
@@ -5066,14 +5067,55 @@ function* vegetationBuildSteps(
   }
   placeTreeClusters();
   yield { stage: 'treeClusters' };
+  // Ground lane (2026-10-03, the gauntlet: trees "scattered evenly instead of growing in clumps, groves and forest
+  // masses"): on a map with a field system (the height field's landUse.ts hook) a lone tree is a hedgerow tree — it
+  // stands on the nearest field boundary within 45 m (in the boundary's grass margin, 1–2.5 m off the line, beside a
+  // track rather than on it) and its companion stands along the same line, so the field trees draw the boundaries as
+  // broken shelterbelts. The admission is decided where the seeded stream drew the candidate (the same draws, the same
+  // trees); the tree moves only where the boundary site is a site too. Without a field system nothing moves.
+  const _hedgeSite = [0, 0, 0, 0]; // x, z, tangent x, tangent z
+  function hedgeSite(x: number, z: number, salt: number): number[] {
+    _hedgeSite[0] = x; _hedgeSite[1] = z; _hedgeSite[2] = 0; _hedgeSite[3] = 0;
+    if (landUseAt === null) return _hedgeSite;
+    const e0 = landUseAt(x, z, _landScratch).edgeM;
+    if (!_landScratch.active || e0 > 45) return _hedgeSite;
+    const gx = landUseAt(x + 1, z, _landScratch).edgeM - e0, gz = landUseAt(x, z + 1, _landScratch).edgeM - e0;
+    const gl = Math.hypot(gx, gz);
+    if (gl < 0.3) return _hedgeSite;
+    const ux = gx / gl, uz = gz / gl;
+    const offset = 1.0 + 1.5 * treePositionNoise(x, z, salt);
+    let tx = x - ux * (e0 - offset), tz = z - uz * (e0 - offset);
+    const at = landUseAt(tx, tz, _landScratch);
+    if (at.edgeM > 3.5) return _hedgeSite;
+    if (at.track > 0.3) { tx = x - ux * (e0 - offset - 3.0); tz = z - uz * (e0 - offset - 3.0); }
+    if (!siteOk(tx, tz, 0)) return _hedgeSite;
+    _hedgeSite[0] = tx; _hedgeSite[1] = tz; _hedgeSite[2] = -uz; _hedgeSite[3] = ux;
+    return _hedgeSite;
+  }
   function placeLoneTrees(): void {
     for (let i = 0, placed = 0, loneTarget = Math.round(veg.loneCount * treeRichness()); i < 800 && placed < loneTarget; i++) { // lone trees + pairs
       const x = (rng() * 2 - 1) * 460, z = (rng() * 2 - 1) * 460;
-      if (addTree(x, z, pickSpecies(veg.loneMix, rng()))) {
+      const species = pickSpecies(veg.loneMix, rng());
+      if (siteOk(x, z, 0)) {
+        const site = hedgeSite(x, z, 61);
+        const hx = site[0], hz = site[1], hux = site[2], huz = site[3];
+        pushTree(hx, hz, species, 0.95, 1.7, true);
         placed++;
         if (rng() < 0.4) { // companion tree — lone lollipops read fake
           const a2 = rng() * Math.PI * 2, r2 = 4 + rng() * 7;
-          if (addTree(x + Math.cos(a2) * r2, z + Math.sin(a2) * r2, pickSpecies(veg.loneMix, rng()))) placed++;
+          const cx = x + Math.cos(a2) * r2, cz = z + Math.sin(a2) * r2;
+          const companion = pickSpecies(veg.loneMix, rng());
+          if (siteOk(cx, cz, 0)) {
+            // along the hedgerow when the lone tree moved onto one (the same distance, either way along the line)
+            let px = cx, pz = cz;
+            if (hux !== 0 || huz !== 0) {
+              const side = Math.cos(a2) * hux + Math.sin(a2) * huz >= 0 ? 1 : -1;
+              const lx = hx + hux * r2 * side, lz = hz + huz * r2 * side;
+              if (siteOk(lx, lz, 0)) { px = lx; pz = lz; }
+            }
+            pushTree(px, pz, companion, 0.95, 1.7, true);
+            placed++;
+          }
         }
       }
     }
@@ -5684,7 +5726,7 @@ function* vegetationBuildSteps(
       : [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
     const bushPlacements: [THREE.Matrix4[], THREE.Matrix4[]] = [[], []];
     const bushKeep: [boolean[],boolean[]]=[[],[]];
-    function addBush(x: number, z: number): void {
+    function addBush(x: number, z: number, hedge = false): void {
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) return;
       if (inAvoid(x, z)) return;
       if (rng() > veg.bushCount) return; // per-map density scale
@@ -5702,13 +5744,25 @@ function* vegetationBuildSteps(
         clump = biome * (0.12 + 0.88 * thicket);
         if (rng() > clump * 0.95 + 0.05) return;
       }
+      // ground lane (2026-10-03): a field bush on a map with a field system grows in the nearest boundary's margin
+      // (hedgeSite, as the lone trees) — decided where its candidate was drawn, so every seeded draw is unchanged
+      if (hedge) {
+        const site = hedgeSite(x, z, 67);
+        x = site[0]; z = site[1];
+      }
       const y = heightField.getHeightAt(x, z);
       // hull-height concealers: foliage reaches ~2.5-3 m so a parked tank is
       // genuinely occluded (knee-high shrubs sold zero visual concealment)
       // r5: size keyed to the clump core — 2-3x spread, big growth at centers
       const sc = (1.6 + rng() * 1.6) * (0.7 + clump * 0.45);
       _q.setFromAxisAngle(_up, rng() * Math.PI * 2);
-      _m4.compose(_pv.set(x, y - 0.05, z), _q, _sv.set(sc, sc * (1.05 + rng() * 0.35), sc));
+      // ground lane (2026-10-03, the gauntlet: bushes were "near-identical round green balls"): each shrub its own shape —
+      // an oval footprint (the across axis 72–100 % of the cover axis, so it never leaves its cover disc), a crown a
+      // little lower or taller, and a lean of up to 6° about its own long axis; position-hashed, no seeded draw
+      const hz = treePositionNoise(x, z, 41), hy = treePositionNoise(x, z, 43), ht = treePositionNoise(x, z, 47);
+      _qLean.setFromAxisAngle(_axLean.set(1, 0, 0), (ht - 0.5) * 0.21);
+      _q.multiply(_qLean);
+      _m4.compose(_pv.set(x, y - 0.05, z), _q, _sv.set(sc, sc * (1.05 + rng() * 0.35) * (0.80 + 0.30 * hy), sc * (0.72 + 0.28 * hz)));
       const variant=(rng()*2)|0,keep=!newlyUnsafeRoadSite(x,z,6,.78);
       // a placed structure's clear ground takes no bush either: dropped after its draws, so every later bush stays
       if (placedClearances.length && overlapsStructureClearance(placedClearances, x, z, 2.5 * sc + 0.3)) return;
@@ -5740,7 +5794,7 @@ function* vegetationBuildSteps(
         const x = (rng() * 2 - 1) * 455, z = (rng() * 2 - 1) * 455;
         const rd = admission()._roadDist(x, z);
         if (rd > 26 && rng() > 0.55) continue;
-        addBush(x, z);
+        addBush(x, z, true);
       }
     }
     function placeBushClumps(): void {
@@ -5778,6 +5832,14 @@ function* vegetationBuildSteps(
           _c.setRGB(bj * (0.94 + rng() * 0.14), bj * (0.98 + rng() * 0.14), bj * (0.90 + rng() * 0.16));
           if(!bushKeep[bv][i])continue;
           const placement=bushPlacements[bv][i],e=placement.elements;
+          // ground lane: one shrub of a thicket is greyer, the next yellower or bluer (a position hash, no seeded draw)
+          {
+            const hh = treePositionNoise(e[12], e[14], 53), ha = treePositionNoise(e[12], e[14], 59);
+            const amt = 0.10 + 0.22 * ha;
+            if (hh < 0.34) _c.multiply(_bushCast.setRGB(1 + 0.12 * amt * 4, 1 + 0.02 * amt * 4, 1 - 0.20 * amt * 4).multiplyScalar(1 / (1 + amt * 0.4)));
+            else if (hh < 0.67) _c.multiply(_bushCast.setRGB(1 - 0.06 * amt * 4, 1 + 0.01 * amt * 4, 1 + 0.10 * amt * 4));
+            else { const g = (_c.r + _c.g + _c.b) / 3; _c.lerp(_bushCast.setRGB(g, g, g), amt * 1.6); }
+          }
           m.setMatrixAt(kept,placement);m.setColorAt(kept,_c);
           bushFadeReg.push({attr:bAttr,slot:kept,x:e[12],z:e[14],fade:0});
           kept++;

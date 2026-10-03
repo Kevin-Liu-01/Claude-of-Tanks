@@ -1990,6 +1990,8 @@ function* heightFieldBuildSteps(
     };
   }
   const mesaWeight = createMesaWeightSampler();
+  const landUseProfile = resolveLandUseProfile(cfg?.id); // ground lane
+  const legacyGroundLanes = typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '');
 
   return {
     getHeightAt, getHeightAtFast, getContactHeightAt, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,
@@ -2006,6 +2008,11 @@ function* heightFieldBuildSteps(
     size: MAP_SIZE, minY, maxY,
     _roadDist: (x: number, z: number) => gridSample(gRoadDist, x, z),
     _villageMask: villageMask,
+    // ground lane (2026-10-03): the field system the terrain material draws (landUse.ts) — on the field itself, so the
+    // client, the browser host and the server's collision shards place hedgerow trees and field bushes alike;
+    // `?ground=legacy` draws no fields and grows no crops
+    ...(landUseProfile && !legacyGroundLanes ? { _landUseAt: (x: number, z: number, out: LandFieldSample): LandFieldSample =>
+      landUseAt(landUseProfile, x, z, out) } : {}),
     // Frontline Assault trenches (assault-trenches variant), null on the standard field.
     assaultTrenchLines: trenchPlan(),
     // Field trenches on every standard field (2026-09-17), also on the assault variant clear of its sector lines.
@@ -5034,17 +5041,6 @@ function* createSplatMaterialSteps(
   ], sourcedReady: sourcedTexturesReady.then(() => undefined, () => undefined) };
 }
 
-/**
- * Ground lane (2026-10-03): the field system the terrain material draws (landUse.ts), exposed on the height field for
- * the tiers that grow on the ground (the tall grass and the tufts stand as its crop). Attached by both terrain build
- * wrappers before their steps run; `?ground=legacy` draws no fields and grows no crops.
- */
-function attachTerrainLandUse(heightField: HeightField, cfg: TerrainMapConfig | null): void {
-  const profile = resolveLandUseProfile(cfg?.id);
-  const legacyGround = typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '');
-  if (profile && !legacyGround) heightField._landUseAt = (x, z, out) => landUseAt(profile, x, z, out);
-}
-
 // ---------------------------------------------------------------------------
 // Chunked LOD terrain meshes
 // ---------------------------------------------------------------------------
@@ -5302,7 +5298,6 @@ export function buildTerrainMeshes(
   engineCtx: TerrainEngineContext,
   cfg: TerrainMapConfig | null = null,
 ): THREE.Group {
-  attachTerrainLandUse(heightField, cfg); // ground lane
   const g = terrainBuildSteps(heightField, engineCtx, cfg);
   let r = g.next();
   while (!r.done) r = g.next();
@@ -5326,7 +5321,6 @@ export async function buildTerrainMeshesAsync(
   streamOpts: TerrainStreamOptions | null = null,
   sourcePreparation = prepareSourcedTerrain(cfg?.id || 'verdant', cfg?.splat || {}, { worker: true }),
 ): Promise<THREE.Group> {
-  attachTerrainLandUse(heightField, cfg); // ground lane
   const g: Iterator<TerrainBuildProgress, THREE.Group, void> =
     terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation);
   let completed = false;

@@ -114,9 +114,11 @@ const DEFAULTS: Required<GroundLitterConfig> = {
  * rest run the defaults. A map's `vegetation.litter` overrides this table.
  */
 const LITTER_PROFILES: Readonly<Record<string, GroundLitterConfig>> = Object.freeze({
-  winter: { density: 0.3, clods: 0, splinters: 0.25, stoneTint: [0.09, 0.09, 0.10] },
-  whiteout: { density: 0.25, clods: 0, splinters: 0.1, stoneTint: [0.09, 0.09, 0.10] },
-  alpine: { density: 0.7, clods: 0.15, splinters: 0.35, stoneTint: [0.13, 0.13, 0.14] },
+  // ground lane (2026-10-03, the gauntlet: "dark pebble dots" across the winter snow): snow buries the field stones —
+  // a few on the snow maps, not a scatter of dark dots
+  winter: { density: 0.12, clods: 0, splinters: 0.25, stoneTint: [0.09, 0.09, 0.10] },
+  whiteout: { density: 0.10, clods: 0, splinters: 0.1, stoneTint: [0.09, 0.09, 0.10] },
+  alpine: { density: 0.4, clods: 0.15, splinters: 0.35, stoneTint: [0.13, 0.13, 0.14] },
   desert: { density: 1.25, clods: 0.25, splinters: 0, stoneTint: [0.19, 0.16, 0.12] },
   oasis: { density: 1.1, clods: 0.2, splinters: 0.05, stoneTint: [0.19, 0.165, 0.125] },
   badlands: { density: 1.2, clods: 0.3, splinters: 0, stoneTint: [0.18, 0.13, 0.10] },

@@ -128,9 +128,12 @@ const reed = (density: number, heightM = 1.6, waterBand = 0.85, bank = 0): TallG
 // dead sedge through the snow: dark straw, thin and short — the first sheet's pale 0.46 tips lit white under the
 // snow maps' fill and read as frost spikes; round 73b keeps it to the hollows and the lee sides in clumps (the
 // tier's admission law), so the density here is the clump's, not a carpet's
+// ground lane (2026-10-03, the gauntlet: "single toothpick grass stalks" on the winter snow): the sedge reads as dead
+// winter grass — a dull tan between the round-73 frost spikes (0.46) and the near-black sticks (0.17) — and every
+// blade of a clump differs (tallGrass.ts: its own height, lean and tone)
 const tundra = (density: number, heightM = 0.36): TallGrassBiome => ({
-  kind: 'tundra', density, heightM, heightVar: 0.45, widthM: 0.024, base: [0.06, 0.05, 0.03], tip: [0.17, 0.14, 0.075],
-  dry: [0.20, 0.16, 0.09], waterBand: 0, bank: 1, reedMargin: 0, windDir: [0.95, 0.3],
+  kind: 'tundra', density, heightM, heightVar: 0.45, widthM: 0.028, base: [0.085, 0.07, 0.04], tip: [0.25, 0.20, 0.105],
+  dry: [0.27, 0.21, 0.11], waterBand: 0, bank: 1, reedMargin: 0, windDir: [0.95, 0.3],
 });
 const verge = (density: number, heightM = 0.55): TallGrassBiome => ({
   kind: 'verge', density, heightM, heightVar: 0.35, widthM: 0.045, base: [0.08, 0.10, 0.04], tip: [0.28, 0.34, 0.13],
@@ -159,8 +162,10 @@ const ARID: Omit<GroundReduxProfile, 'grass'> = {
   ...TEMPERATE, heightBlend: 0.3, foldMoist: 0.35, foldAO: 0.55, foldCrest: 0.35,
   lip: 0.25, verge: 0.5, rim: 0.5, rimTint: DUST, midAlbedo: 0.7, exposure: 0.8, climate: 'arid', patchwork: 0.7,
 };
+// ground lane (2026-10-03, the gauntlet: "a featureless grey-white plane... no drifts, crust, tracks or depth"): the
+// wind-carved sastrugi and drift waves read under the camera (snowRipple 0.16 → 0.26)
 const SNOW: Omit<GroundReduxProfile, 'grass'> = {
-  ...TEMPERATE, heightBlend: 0.5, glint: 0.9, snowRipple: 0.16, snowMacro: 0.6, foldMoist: 0.22, foldAO: 0.6, foldCrest: 0.3,
+  ...TEMPERATE, heightBlend: 0.5, glint: 0.9, snowRipple: 0.26, snowMacro: 0.6, foldMoist: 0.22, foldAO: 0.6, foldCrest: 0.3,
   lip: 0.4, verge: 0.3, rim: 0.5, rimTint: HOAR, midAlbedo: 0.6, driftEdge: 1.0, exposure: 0.7, climate: 'snow', patchwork: 0.6,
 };
 const COAST: Omit<GroundReduxProfile, 'grass'> = {
