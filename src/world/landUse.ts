@@ -168,26 +168,45 @@ function warpZ(x: number, z: number): number {
 }
 
 /** The crop a field's roll picks — the GLSL lu_crop on the same cumulative shares (the uniforms' float32 values). */
-function cropFromRoll(c: readonly number[], roll: number): LandCropId {
-  for (let i = 0; i < 6; i++) if (roll < Math.fround(c[i])) return i as LandCropId;
+function cropFromRoll(c: Float64Array, roll: number): LandCropId {
+  for (let i = 0; i < 6; i++) if (roll < c[i]) return i as LandCropId;
   return 6;
+}
+
+/** A profile's layout constants, resolved once (the uniforms' own packing and float32 shares). */
+interface CompiledLandUse {
+  ch: number; sh: number; blockU: number; blockV: number; maxSplit: number; marginM: number;
+  trackShare: number; hedgeShare: number; warpM: number; salt: number; cum: Float64Array;
+}
+const compiled = new WeakMap<LandUseProfile, CompiledLandUse>();
+function compile(profile: LandUseProfile): CompiledLandUse {
+  let c = compiled.get(profile);
+  if (c) return c;
+  const v = landUseUniformValues(profile);
+  const cum = new Float64Array(6);
+  [...v.landD, v.landC[2], v.landC[3]].forEach((share, i) => { cum[i] = Math.fround(share); });
+  c = {
+    ch: Math.cos(v.landA[1]), sh: Math.sin(v.landA[1]), blockU: v.landA[2], blockV: v.landA[3],
+    maxSplit: v.landB[0], marginM: v.landB[1], trackShare: v.landB[2], hedgeShare: v.landB[3],
+    warpM: v.landC[0], salt: v.landC[1], cum,
+  };
+  compiled.set(profile, c);
+  return c;
 }
 
 /**
  * The field under (x, z): its crop, the distance to its boundary, whether a track or a hedge runs there and the row
- * direction — the CPU twin of LAND_USE_GLSL's lu_field (same hash, same warp, same layout).
+ * direction — the CPU twin of LAND_USE_GLSL's lu_field (same hash, same warp, same layout). Pure and allocation-free
+ * (a profile's constants are resolved once): ~0.16 µs a call (Node 24), cheap enough for a map-load sweep of the land past the
+ * edge (the map-borders lane lays its parcels, hedgerows and tracks on this grid). The layout runs on unbounded past
+ * the square; the cell hash keeps its period beyond ±160 km.
  */
 export function landUseAt(profile: LandUseProfile | null, x: number, z: number, out: LandFieldSample): LandFieldSample {
   out.active = 0; out.crop = 0; out.edgeM = 1e9; out.marginM = 0; out.track = 0; out.hedge = 0; out.rowX = 1; out.rowZ = 0;
   out.jitter = 0; out.id = 0;
   if (!profile || !(profile.strength > 0)) return out;
-  const v = landUseUniformValues(profile);
-  const [, heading, blockU, blockV] = v.landA;
-  const [maxSplit, marginM, trackShare, hedgeShare] = v.landB;
-  const [warpM, salt, c4, c5] = v.landC;
-  const cum = [...v.landD, c4, c5];
+  const { ch, sh, blockU, blockV, maxSplit, marginM, trackShare, hedgeShare, warpM, salt, cum } = compile(profile);
   const px = x + warpX(x, z) * warpM, pz = z + warpZ(x, z) * warpM;
-  const ch = Math.cos(heading), sh = Math.sin(heading);
   const qu = ch * px + sh * pz, qv = -sh * px + ch * pz;
   const row = Math.floor(qv / blockV);
   const shift = luRand(row, 7, salt) * blockU;

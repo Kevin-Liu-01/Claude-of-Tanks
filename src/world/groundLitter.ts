@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { getDeviceTier } from '../engine/quality.ts';
 
 // environment density pass (2026-09-12): the ground litter tier. The maps read
@@ -19,6 +20,8 @@ interface GroundLitterField {
   _roadDist?(x: number, z: number): number;
   _noVeg?(x: number, z: number): boolean;
   getWaterMaskAt?(x: number, z: number): number;
+  /** Ground lane (2026-10-03): the canopy's cover (0..1, terrain applyWoodsMask) — fallen wood lies under the stands. */
+  _woodsAt?(x: number, z: number): number;
 }
 
 export interface GroundLitterConfig {
@@ -104,7 +107,9 @@ const DEFAULTS: Required<GroundLitterConfig> = {
   // field stone sits darker than sun-dried dirt. (The first passes rendered
   // white specks at any tint: the material was outside the cascaded-shadow
   // setup, so all four cascade lights struck it at once — see setupMaterial.)
-  stoneTint: [0.20, 0.19, 0.17],
+  // ground lane (2026-10-03, the gauntlet: "evenly sprinkled blue pebbles"): a soil-coated field stone, warm and at the
+  // dirt's own value (was a neutral 0.20/0.19/0.17 the sky's blue fill turned pale blue, a step brighter than the turf)
+  stoneTint: [0.135, 0.122, 0.104],
   soilTint: [0.17, 0.13, 0.09],
 };
 
@@ -118,7 +123,7 @@ const LITTER_PROFILES: Readonly<Record<string, GroundLitterConfig>> = Object.fre
   // a few on the snow maps, not a scatter of dark dots
   winter: { density: 0.12, clods: 0, splinters: 0.25, stoneTint: [0.09, 0.09, 0.10] },
   whiteout: { density: 0.10, clods: 0, splinters: 0.1, stoneTint: [0.09, 0.09, 0.10] },
-  alpine: { density: 0.4, clods: 0.15, splinters: 0.35, stoneTint: [0.13, 0.13, 0.14] },
+  alpine: { density: 0.4, clods: 0.15, splinters: 0.35, stoneTint: [0.13, 0.127, 0.123] },
   desert: { density: 1.25, clods: 0.25, splinters: 0, stoneTint: [0.19, 0.16, 0.12] },
   oasis: { density: 1.1, clods: 0.2, splinters: 0.05, stoneTint: [0.19, 0.165, 0.125] },
   badlands: { density: 1.2, clods: 0.3, splinters: 0, stoneTint: [0.18, 0.13, 0.10] },
@@ -139,8 +144,9 @@ const LITTER_PROFILES: Readonly<Record<string, GroundLitterConfig>> = Object.fre
   delta: { density: 0.9, stones: 0.6, clods: 0.7, splinters: 0.7 },
   mangrove: { density: 0.9, stones: 0.6, clods: 0.7, splinters: 0.7 },
   polders: { density: 0.8 },
-  coastal: { stones: 1.1, splinters: 0.3, stoneTint: [0.17, 0.165, 0.155] },
-  saltwind: { stones: 1.1, splinters: 0.3, stoneTint: [0.17, 0.165, 0.155] },
+  // a limestone coast: pale stone, warm rather than grey-blue
+  coastal: { stones: 1.1, splinters: 0.3, stoneTint: [0.165, 0.152, 0.132] },
+  saltwind: { stones: 1.1, splinters: 0.3, stoneTint: [0.165, 0.152, 0.132] },
 });
 
 export function groundLitterProfile(mapId: string): GroundLitterConfig {
@@ -193,17 +199,48 @@ export function resolveGroundLitterConfig(config?: GroundLitterConfig | null): R
   return merged;
 }
 
+/**
+ * Ground lane (2026-10-03, the gauntlet: "a faceted low-poly boulder", "thin brown stick props"): a field stone is a
+ * rounded, lopsided pebble — the twelve corners of the icosahedron welded, pushed in and out by a fixed hash and
+ * smooth-shaded — and a fallen stick is a crooked branch: a butt, a bend and a side twig, not a straight dowel.
+ */
+function makeStone(): THREE.BufferGeometry {
+  const raw = new THREE.IcosahedronGeometry(0.075, 0);
+  raw.deleteAttribute('normal');
+  raw.deleteAttribute('uv');
+  const stone = mergeVertices(raw);
+  raw.dispose();
+  const position = stone.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < position.count; i++) {
+    const h = Math.sin(i * 12.9898 + 4.1) * 43758.5453;
+    const k = 0.80 + 0.36 * (h - Math.floor(h));
+    position.setXYZ(i, position.getX(i) * k, position.getY(i) * k * 0.92, position.getZ(i) * k);
+  }
+  stone.computeVertexNormals();
+  return stone;
+}
+function makeBranch(): THREE.BufferGeometry {
+  // (a cylinder turned onto +X has its radiusTop at -X)
+  const butt = new THREE.CylinderGeometry(0.026, 0.020, 0.30, 5);
+  butt.rotateZ(Math.PI / 2); butt.translate(-0.13, 0, 0);
+  const tip = new THREE.CylinderGeometry(0.020, 0.012, 0.27, 5);
+  tip.rotateZ(Math.PI / 2); tip.translate(0.135, 0, 0); tip.rotateZ(0.05); tip.rotateY(0.30); tip.translate(0.02, 0, 0);
+  const twig = new THREE.CylinderGeometry(0.009, 0.005, 0.15, 4);
+  twig.rotateZ(Math.PI / 2); twig.translate(0.075, 0, 0); twig.rotateY(-0.75); twig.translate(-0.10, 0, 0);
+  const branch = mergeGeometries([butt, tip, twig])!;
+  for (const g of [butt, tip, twig]) g.dispose();
+  branch.computeVertexNormals();
+  return branch;
+}
 function makeGeometries(): [THREE.BufferGeometry, THREE.BufferGeometry, THREE.BufferGeometry] {
-  const stone = new THREE.IcosahedronGeometry(0.075, 0);
   const clod = new THREE.DodecahedronGeometry(0.06, 0);
-  const splinter = new THREE.CylinderGeometry(0.018, 0.026, 0.55, 5);
-  splinter.rotateZ(Math.PI / 2);
-  for (const geometry of [stone, clod, splinter]) geometry.computeVertexNormals();
-  return [stone, clod, splinter];
+  clod.computeVertexNormals();
+  return [makeStone(), clod, makeBranch()];
 }
 
 function makeMaterial(setup?: GroundLitterOptions['setupMaterial']): THREE.MeshStandardMaterial {
-  const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.92, metalness: 0 });
+  // ground lane: fully rough — a soil-coated stone has no sheen to mirror the sky's blue in
+  const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0 });
   const hook: GroundLitterMaterialHook = (shader) => {
     shader.uniforms.uLitterFade = { value: new THREE.Vector2(GROUND_LITTER.fadeInM, GROUND_LITTER.fadeOutM) };
     shader.vertexShader = shader.vertexShader
@@ -318,6 +355,14 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
         kind = pick < stoneW ? 0 : pick < stoneW + cfg.clods ? 1 : 2;
       }
       if (mixTotal <= 0) continue;
+      if (kind === 2) {
+        // ground lane (2026-10-03, the gauntlet: "thin brown stick props sprinkled uniformly"): fallen wood lies under
+        // the stands (the woods mask), with a stray stick in the open now and then — a quarter keep without the mask
+        const woods = field._woodsAt ? field._woodsAt(x, z) : 0.25;
+        const t = Math.min(1, Math.max(0, (woods - 0.1) / 0.5));
+        const hash = (cellSeed(seed ^ 0x2F1A5, Math.floor(x * 4), Math.floor(z * 4)) & 0xffff) / 65535;
+        if (hash > 0.06 + 0.94 * t * t * (3 - 2 * t)) continue;
+      }
       const y = heightAt(x, z);
       let sx: number;
       let sy: number;
