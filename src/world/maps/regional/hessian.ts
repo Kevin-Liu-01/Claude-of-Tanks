@@ -68,6 +68,8 @@ export interface HessianState {
   crosses: boolean;
   litShare: number;
   mobile: boolean;
+  /** the building's look-only stream (ctx.variant): panel limewash, never the geometry */
+  look: () => number;
 }
 
 const OUT = 0.035, POST = 0.17;
@@ -92,7 +94,22 @@ export function stateFor(ctx: RegionalBuildContext, rng: () => number): HessianS
     crosses: rng() < 0.55,
     litShare: 0.38,
     mobile: ctx.tier === 'mobile',
+    look: ctx.variant,
   };
+}
+
+/**
+ * One infill panel limewashed at its own time (2026-10-03, after gauntlet wave 0's "one tiled texture"): every panel of a
+ * framed wall is daubed and washed on its own, so the panels of an old house differ by a shade, a few freshly whitened,
+ * a few gone grey. Half the panels carry their own wash: a decor quad a few millimetres proud of the wall, inside its
+ * timbers, from the look-only stream (the build stream, geometry and collision as before).
+ */
+function panelWash(sink: PartSink, face: Face, st: HessianState, a: number, b: number, ya: number, yb: number): void {
+  const roll = st.look(), k = st.look();
+  if (roll >= 0.5 || b - a < 0.2 || yb - ya < 0.2) return;
+  const shadeK = k < 0.3 ? 1.06 + k * 0.2 : 0.8 + (k - 0.3) * 0.2;
+  const P = (u: number, y: number) => H.facePoint(face, u, y, 0.003);
+  sink.quad(st.infill, P(a + 0.01, ya + 0.01), P(b - 0.01, ya + 0.01), P(b - 0.01, yb - 0.01), P(a + 0.01, yb - 0.01), { decor: true, shade: shadeK });
 }
 
 /** The framed wall: sill beam, plate, corner and opening posts, rails, braces and the parapet crosses. */
@@ -108,6 +125,8 @@ function fachwerkWall(sink: PartSink, face: Face, rect: WallRect, openings: Open
     return;
   }
   const yA = y0 + 0.18, yB = y1 - 0.16;
+  // a burnt opening's soot climbs the panels round it: a panel wash would paint over it
+  const sooty = openings.some((o) => o.state === 'burnt');
   const posts: number[] = [u0 + 0.1, u1 - 0.1];
   for (const o of openings) {
     posts.push(o.u - o.w / 2 - POST / 2, o.u + o.w / 2 + POST / 2);
@@ -153,6 +172,7 @@ function fachwerkWall(sink: PartSink, face: Face, rect: WallRect, openings: Open
     if (op) {
       const head = y0 + op.y0 + op.h;
       if (head + 0.15 < yB) H.rail(sink, SW, face, a, b, head + 0.08, 0.14, OUT, tc);
+      if (!sooty && head + 0.36 < yB) panelWash(sink, face, st, a, b, head + 0.15, yB);
       continue;
     }
     const cornerBay = i === 0 || i === all.length - 2;
@@ -164,6 +184,13 @@ function fachwerkWall(sink: PartSink, face: Face, rect: WallRect, openings: Open
     }
     H.rail(sink, SW, face, a, b, brust, 0.14, OUT, tc);
     if (sturz + 0.15 < yB) H.rail(sink, SW, face, a, b, sturz, 0.14, OUT, tc);
+    if (!sooty) {
+      panelWash(sink, face, st, a, b, yA, brust - 0.07);
+      if (sturz + 0.15 < yB) {
+        panelWash(sink, face, st, a, b, brust + 0.07, sturz - 0.07);
+        panelWash(sink, face, st, a, b, sturz + 0.07, yB);
+      } else panelWash(sink, face, st, a, b, brust + 0.07, yB);
+    }
   }
 }
 
