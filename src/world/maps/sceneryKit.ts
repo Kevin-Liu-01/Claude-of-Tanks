@@ -452,16 +452,22 @@ function sandbagBag(len: number, thick: number, wid: number, r: Rng): THREE.Buff
   box3.deleteAttribute('uv');
   box3.deleteAttribute('normal');
   const p = box3.attributes.position;
-  const sag = 0.06 + r() * 0.1, twist = (r() - 0.5) * 0.12, tie = r() < 0.5 ? 1 : -1;
+  const sag = 0.08 + r() * 0.12, twist = (r() - 0.5) * 0.12, tie = r() < 0.5 ? 1 : -1;
+  // the tied end gathers to a neck with its two ears standing out; the folded end is tucked flat under
+  const ear = 0.035 + r() * 0.03, slump = 0.04 + r() * 0.05;
   for (let i = 0; i < p.count; i++) {
     const u = p.getX(i) * 2, v = p.getY(i) * 2, w = p.getZ(i) * 2; // -1..1
     const endT = Math.pow(Math.abs(u), 4);
-    // the tied end pinches harder than the folded one
-    const pinch = u * tie > 0 ? 0.36 : 0.24;
+    const tied = u * tie > 0;
+    const pinch = tied ? 0.42 : 0.24;
+    // the fill settles: the bag spreads a little at its belly and its top flattens where the course above bears on it
+    const spread = 1 + slump * (1 - u * u) * (v < 0 ? 1 : 0.4);
     const y = v * 0.5 * thick * (1 - pinch * endT) * (1 - 0.32 * w * w) - (v > 0 ? sag * thick * (1 - u * u) * (1 - 0.5 * w * w) : 0);
-    const z = w * 0.5 * wid * (1 - 0.1 * Math.pow(Math.abs(u), 6) * (u * tie > 0 ? 1.4 : 1));
-    const x = u * 0.5 * len * (1 - 0.06 * w * w);
-    p.setXYZ(i, x, y + twist * u * w * thick * 0.5, z);
+    const z = w * 0.5 * wid * spread * (1 - 0.1 * Math.pow(Math.abs(u), 6) * (tied ? 1.4 : 1));
+    // the ears: the tied end's corners pulled out along the bag and up a little, its middle drawn in to the knot
+    const earPull = tied && Math.abs(u) > 0.99 ? (Math.abs(w) > 0.5 ? ear : -ear * 0.4) : 0;
+    const x = u * 0.5 * len * (1 - 0.06 * w * w) + Math.sign(u) * earPull * len;
+    p.setXYZ(i, x, y + twist * u * w * thick * 0.5 + (earPull > 0 ? thick * 0.08 : 0), z);
   }
   const g = mergeVerticesKeepIndex(box3);
   g.computeVertexNormals();
@@ -517,19 +523,26 @@ function sandbagCourses(half: number, depth: number, height: number, r: Rng): TH
       const wid = Math.max(0.2, rowHalf - 0.005);
       const n = Math.max(2, Math.round((half * 2) / 0.6));
       const len = (half * 2) / n;
-      const shift = c % 2 ? len * 0.5 : 0;
-      for (let k = -1; k < n; k++) {
-        let x0 = -half + shift + k * len, x1 = x0 + len;
+      // a staggered bond, as hands lay it: each course shifted its own way (about half a bag), every bag a little
+      // longer or shorter than the last, so the joints wander instead of lining up
+      const shift = (c % 2 ? len * 0.5 : 0) + (r() - 0.5) * len * 0.3;
+      let x = -half + shift - len;
+      const top = c === courses - 1;
+      while (x < half) {
+        const bagLenNominal = len * (0.85 + r() * 0.3);
+        let x0 = x, x1 = x + bagLenNominal;
+        x = x1;
         x0 = Math.max(-half, x0); x1 = Math.min(half, x1);
         if (x1 - x0 < len * 0.3) continue;
-        // the top course: the odd bag missing or slumped
-        if (c === courses - 1 && r() < 0.12) continue;
+        // the top course: the odd bag missing, the rest standing at their own heights (an uneven line)
+        if (top && r() < 0.16) continue;
         const bagLen = (x1 - x0) * (0.97 + r() * 0.05);
-        const bag = sandbagBag(bagLen, thick * (1.12 + r() * 0.14), wid * (0.95 + r() * 0.08), r);
-        bag.rotateY((r() - 0.5) * 0.05 + (side < 0 ? Math.PI : 0));
-        bag.rotateZ((r() - 0.5) * 0.05);
-        bag.rotateX((r() - 0.5) * 0.06 - side * 0.04);
-        bag.translate((x0 + x1) / 2 + (r() - 0.5) * 0.03, c * thick + thick * 0.5 + (r() - 0.5) * 0.015, side * (rowHalf - wid * 0.5) + (r() - 0.5) * 0.03);
+        const bag = sandbagBag(bagLen, thick * (1.1 + r() * 0.16), wid * (0.95 + r() * 0.08), r);
+        bag.rotateY((r() - 0.5) * 0.07 + (side < 0 ? Math.PI : 0));
+        bag.rotateZ((r() - 0.5) * 0.07);
+        bag.rotateX((r() - 0.5) * 0.08 - side * 0.04);
+        const rise = top ? (r() - 0.5) * thick * 0.35 : (r() - 0.5) * 0.015;
+        bag.translate((x0 + x1) / 2 + (r() - 0.5) * 0.03, c * thick + thick * 0.5 + rise, side * (rowHalf - wid * 0.5) + (r() - 0.5) * 0.03);
         parts.push(bag);
       }
     }
