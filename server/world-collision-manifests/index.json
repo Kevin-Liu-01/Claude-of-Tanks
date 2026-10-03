@@ -27,7 +27,7 @@
     },
     "urban": {
       "bytes": 4391421,
-      "sha256": "6848e0fb5c1f6b67fbab1a8b935dc01be7997c06a6118cadbf69abeacc05ba2e",
+      "sha256": "243cf35665363f2bf470c5eb3d44edcefb3bc4bbe784e69d8995885263c9d55a",
       "obstacles": 2833,
       "colliders": 6794,
       "concealers": 2475
@@ -103,22 +103,22 @@
       "concealers": 5955
     },
     "caldera": {
-      "bytes": 1226162,
-      "sha256": "799dab1fb72af6dfeaa313044bfe96e8899197a50dcfb64c6acea78c6ecbaed0",
+      "bytes": 1226164,
+      "sha256": "0dcbd56dacafadd7366db61ce828824df01cb65f37ff8c46bf56d8e18729b48f",
       "obstacles": 2474,
       "colliders": 2594,
       "concealers": 1227
     },
     "foundry": {
-      "bytes": 1454320,
-      "sha256": "be39514da177d5146028f97f1e744cf07e44e6d0ad95d82f7071c1c929879b7d",
+      "bytes": 1454322,
+      "sha256": "24ff6091eedf18b63e1cf82028d169a7519c05772b6a95716268d787df0501cd",
       "obstacles": 3034,
       "colliders": 3276,
       "concealers": 1897
     },
     "ruinspires": {
       "bytes": 7297640,
-      "sha256": "5f65ba9b340910705231e5b1a6b712f9cfcf25fcba2a5c3c55cf856410ba7804",
+      "sha256": "3261a48e3eed3f4d5ee88ed0e9c9ddc4cf308d8dc9071bdfc41413d7ad20bce6",
       "obstacles": 2105,
       "colliders": 8566,
       "concealers": 343
