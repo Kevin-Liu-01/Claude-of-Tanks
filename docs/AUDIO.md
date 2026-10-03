@@ -110,7 +110,7 @@ ui, music, voice, alarm ──────────────────�
   dBFS). Four runs later — the ambience bus high-pass, idling engines quieter
   than loaded ones, cannons keeping their close report to about 150 m, and
   the trims above — the bed is −27.7 dBFS, a cannon stands 17.9, 11.1 and
-  7.8 dB above it at 15, 150 and 400 m, and the radio sits 8.4 dB under a
+  7.9 dB above it at 15, 150 and 400 m, and the radio sits 8.4 dB under a
   near cannon.
 - The glue compressor has a 12 ms attack and 2.5:1 ratio so cannon transients
   reach the tanh soft clip, which catches the peaks.
