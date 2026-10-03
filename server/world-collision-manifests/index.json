@@ -75,11 +75,11 @@
       "concealers": 7679
     },
     "delta": {
-      "bytes": 1962211,
-      "sha256": "12d1ee3cb01e8cc5853847d6c9cf119ee9749b09b59429ffb002b468f79717bd",
-      "obstacles": 7742,
-      "colliders": 7430,
-      "concealers": 9644
+      "bytes": 1853126,
+      "sha256": "84036dee8282cd662766068f9c4de4d59e158e08d0cc3e3b99550e33262c1cd6",
+      "obstacles": 8114,
+      "colliders": 7761,
+      "concealers": 9770
     },
     "badlands": {
       "bytes": 1234977,

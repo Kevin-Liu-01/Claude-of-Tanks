@@ -191,6 +191,10 @@ props code shaped every layout, and the next maps should start from them:
   crosses it leaves it whole and the bots drive round it.
 - **Aprons are paved.** A hardstand paints the road mask, so a zone apron reads as packed track surface. Seat one
   where such ground belongs: a square, a farmyard, a depot's vehicle park.
+- **Braided rivers.** A river that splits round a char is authored as trails: the main course and each branch, whose
+  ends join the main course. environmentExpansion checks each trail's continuity and the joins (Jade River Delta).
+- **Cross-road ends.** Start a cross road on a node of the road it meets, as Delta's cross road starts on the west
+  road's node. Left to the endpoint completion, the extension met the other road 1.7 m lower and climbed to it at 29 %.
 - **Budget.** All three pilots exceed point 10's 10 % triangle budget. The coordinator approved this for PR #9 on
   October 2, 2026, pending the owner. The extra triangles are content the brief wants. Trimming goes to frame-time
   work, such as shadow caching and LOD for parapets and wire, rather than to removing content. Whole-map prop
