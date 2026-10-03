@@ -3624,9 +3624,11 @@ function* vegetationBuildSteps(
   ): number {
     if (noVeg(x, z) && !batterAdmits(x, z)) return -1;
     const groundType = heightField.getGroundType(x, z);
-    // ground lane (2026-10-03): the turf's edge along a road dissolves over a metre and a half (a position hash), not
-    // one ruled line at 4.2 m from the centreline — it never comes nearer than that line
-    if (groundType === 'hard' || heightField._roadDist(x, z) < 4.2 + treePositionNoise(x, z, 71) * 1.6) return -1;
+    // ground lane (2026-10-03): the turf's edge along a road dissolves over a metre and a half (a position hash, inline:
+    // the grass harnesses compile this filter without the module's helpers), not one ruled line at 4.2 m from the
+    // centreline — it never comes nearer than that line
+    const edgeHash = Math.sin(x * 12.9898 + z * 78.233 + 2678.049) * 43758.5453;
+    if (groundType === 'hard' || heightField._roadDist(x, z) < 4.2 + (edgeHash - Math.floor(edgeHash)) * 1.6) return -1;
     if (groundType === 'soft' && roll > 0.3) return -1;
     if (heightField._villageMask(x, z) > 0.35
       && roll > (carpet ? 0.35 : 0.15)) return -1;
