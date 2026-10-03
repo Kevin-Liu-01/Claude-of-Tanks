@@ -4,7 +4,7 @@
 // under sheet roofs with a columned porch; open boat shelters and shrimp-pond guard huts on stilts; tin-roofed market
 // halls; a collapsed stilt house where the shelling found it.
 import { PartSink, faceBox, pick, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, RUSTED, WEATHERED_PLANK, boardWall, ladder, stilts, veranda } from './vernacular.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -98,7 +98,7 @@ function groundHouse(ctx: RegionalBuildContext): RegionalParts {
 }
 
 /** An open shelter on stilts: posts, a deck and a roof (boat sheds, pond guard huts). */
-function shelter(ctx: RegionalBuildContext, opts: { deck?: boolean; walls?: 0 | 1 | 2 } = {}): RegionalParts {
+function shelter(ctx: RegionalBuildContext, opts: { deck?: boolean; walls?: 0 | 1 | 2 | 3 } = {}): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   const W = Math.max(3.6, Math.min(7, ctx.info.w - 0.8)), D = Math.max(5, Math.min(11, ctx.info.d - 0.8));
@@ -112,13 +112,24 @@ function shelter(ctx: RegionalBuildContext, opts: { deck?: boolean; walls?: 0 | 
   }
   const thatched = rng() < 0.5;
   const roof = thatched ? nipa(28) : tole(18);
-  emitRoof(sink, roofGeometry(W, D, top, roof), roof);
-  // plank or woven-mat walls: the back (1), the back and both sides (2); the front stays open to the creek or yard
+  const rg = roofGeometry(W, D, top, roof);
+  emitRoof(sink, rg, roof);
+  // plank or woven-mat walls: the back (1), the back and both sides (2), and the creek end round a boat mouth (3)
   if (opts.walls) {
     const sheet = rng() < 0.5 ? BAMBOO_MAT : shade(post, 0.9);
     sink.span('structureWood', -W / 2 + 0.1, lift, -D / 2 + 0.06, W / 2 - 0.1, top - 0.12, -D / 2 + 0.14, { colour: sheet });
+    // a walled end closes its gable up to the roof
+    const gable = rg.gable ? rg.gable.map(([u, y]): [number, number] => [u * 0.97, y <= top + 1e-6 ? top - 0.12 : y - 0.02]) : null;
+    if (gable) wallPolygon(sink, 'structureWood', { origin: [0, 0, -D / 2 + 0.06], u: [-1, 0, 0], out: [0, 0, -1], width: W }, gable, 0.08, { colour: sheet });
+    if (gable && opts.walls > 2) wallPolygon(sink, 'structureWood', { origin: [0, 0, D / 2 - 0.3], u: [1, 0, 0], out: [0, 0, 1], width: W }, gable, 0.08, { colour: sheet });
     if (opts.walls > 1) {
       for (const sx of [-1, 1]) sink.span('structureWood', sx * (W / 2 - 0.14) - 0.04, lift, -D / 2 + 0.14, sx * (W / 2 - 0.14) + 0.04, top - 0.12, D / 2 - 0.3, { colour: sheet });
+    }
+    if (opts.walls > 2) {
+      // the creek end boarded in either side of the boat mouth, a board fascia over it
+      const mouth = W * 0.5;
+      for (const sx of [-1, 1]) sink.span('structureWood', sx > 0 ? mouth / 2 : -W / 2 + 0.1, lift, D / 2 - 0.38, sx > 0 ? W / 2 - 0.1 : -mouth / 2, top - 0.12, D / 2 - 0.3, { colour: sheet });
+      sink.span('structureWood', -mouth / 2, top - 0.75, D / 2 - 0.38, mouth / 2, top - 0.12, D / 2 - 0.3, { colour: sheet });
     }
   }
   return sink.finish();
@@ -167,7 +178,7 @@ export const MEKONG_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
   farmhouse: (ctx) => groundHouse(ctx),
   // boat shelters walled at the back, stores and rice houses walled on three sides (they keep the cover of the base
   // sheds), the depot a rendered shophouse
-  boatshed: (ctx) => shelter(ctx, { walls: 1 }),
+  boatshed: (ctx) => shelter(ctx, { walls: 3 }),
   granary: (ctx) => shelter(ctx, { deck: true, walls: 2 }),
   woodshed: (ctx) => shelter(ctx, { walls: 2 }),
   marketRow: marketHall,
