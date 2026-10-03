@@ -133,6 +133,14 @@ intent, so the low-speed watchdog does not read the hold as a wedge and reverse
 the hull off its hold point; a hull pressing into a wall short of it still backs
 off.
 
+A route corner round cover is not taken back at the next recheck. A recheck
+that would return to the corner the hull gave up less than 2 s ago keeps the
+current corner instead, while its lane stays clear and the destination stays
+put, for 6 s; a reached corner, a stuck strike or a new destination still
+chooses afresh. A T-90M pressed against a Coastal boulder chose between the
+boulder's two corners at every 0.6 s recheck: its pivot swung it 0.36 m off the
+rock, which reopened the lane the other corner needed, and it jinked in place.
+
 A rack that cannot hurt its target stops pressing it. After 60 seconds in sight
 of the target from inside 90 m, with zones visible but no loaded round opening
 the gate and no burst worth a round, the rack counts as spent against that

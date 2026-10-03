@@ -950,6 +950,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.passiveTarget.selftest.mjs',
     // 2026-10-03 (bots lane): a zone centred on a face is held from holdable ground beside it.
     'src/game/ai.zoneHold.selftest.mjs',
+    // 2026-10-03 (bots lane): a route corner the hull pivots toward is held through the rechecks.
+    'src/game/ai.cornerHold.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',
