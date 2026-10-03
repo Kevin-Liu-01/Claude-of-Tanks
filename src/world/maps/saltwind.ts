@@ -152,6 +152,39 @@ export default {
       ids: ['ariete', 'leclerc_xlr', 'm60a3', 'merkava4b', 'm2a2_bradley'] },
     inhabit: { stalls: 4, benches: 4, coreClutter: 22, pots: 8, laundry: 4, handcarts: 4, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 2, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencepicket' },
   },
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the karst. Bare limestone
+  // pavement (clints split by grikes) lies on the open uplands above the bay; the lower slopes' outcrop knolls show
+  // their bedded limestone scars; the terrace flights and the spine break into small pavements and ledges; a gomila,
+  // the clearance cairn of a Dalmatian field, stands on each upland. Mirrored across the bay's axis like the rest of
+  // the map (the rock fields draw their own ground on each side).
+  scenery: {
+    // the karst's small fields are walled in dry stone: the ground lane's land use draws their footing (landUse.ts, boundary
+    // 3) and the walls stand on the same lines (fieldWorks.ts; decor, no collision)
+    fieldWorks: { walls: true, wallTone: [0.11, 0.07, 0.6] },
+    // the masonry is the same pale limestone as the outcrops (the maps lane's boulders, lightness 0.52-0.73): the stone
+    // print (mean sRGB lightness 0.36) lifted to lightness 0.6 at the limestone's hue
+    masonryTint: [2.74, 3.01, 3.2],
+    rocks: [
+      { form: 'pavement', geology: 'limestone', x: -350, z: -262, radius: 15, height: 1.6, yawDeg: 30, name: 'the south karst pavement' },
+      { form: 'pavement', geology: 'limestone', x: -350, z: 282, radius: 15, height: 1.6, yawDeg: -30, name: 'the north karst pavement' },
+      { form: 'outcrop', geology: 'limestone', x: 90, z: -132, radius: 8, height: 3.6, yawDeg: 10, name: 'the south spine scar' },
+      { form: 'outcrop', geology: 'limestone', x: 90, z: 152, radius: 8, height: 3.6, yawDeg: -10, name: 'the north spine scar' },
+      { form: 'outcrop', geology: 'limestone', x: -190, z: -124, radius: 7, height: 3.2, yawDeg: 40, name: 'the south harbour scar' },
+      { form: 'outcrop', geology: 'limestone', x: -190, z: 144, radius: 7, height: 3.2, yawDeg: -40, name: 'the north harbour scar' },
+    ],
+    // the bare limestone of the terrace flights and the spine: small pavements and low bedded ledges on the slopes
+    rockFields: [
+      { geology: 'limestone', x: 40, z: -235, radius: 115, count: 14, slopeBias: 0.6, name: 'the south terrace karst' },
+      { geology: 'limestone', x: 40, z: 255, radius: 115, count: 14, slopeBias: 0.6, name: 'the north terrace karst' },
+      { geology: 'limestone', x: -100, z: -300, radius: 70, count: 7, slopeBias: 0.5, name: 'the south upland karst' },
+      { geology: 'limestone', x: -100, z: 320, radius: 70, count: 7, slopeBias: 0.5, name: 'the north upland karst' },
+      { geology: 'limestone', x: 230, z: 10, radius: 140, count: 12, slopeBias: 0.4, name: 'the karst spine' },
+    ],
+    landmarks: [
+      { kind: 'cairn', x: -330, z: -170, scale: 4.2, height: 2.6, name: 'the south gomila' },
+      { kind: 'cairn', x: -330, z: 190, scale: 4.2, height: 2.6, name: 'the north gomila' },
+    ],
+  },
   horizon: { baseHex: 0x7f8977, amp: 0.90, style: 'rolling', treeline: 0.42, forestHex: 0x506044, rockHex: 0xa4a391, haze: 0.90, grain: 0.46 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'sea-streets', coverage: 0.30, windDirDeg: 200, farBand: 0.55, fogBank: 0.35, fogBankTopM: 100 },

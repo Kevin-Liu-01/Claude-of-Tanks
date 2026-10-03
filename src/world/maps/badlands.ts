@@ -23,6 +23,10 @@ const pair = <T extends { x: number; z: number }>(form: T): T[] => [form, { ...f
 // a bar's counterpart turns with it, so a tapered ramp's high end still meets its own wall
 const pairBar = <T extends { x: number; z: number; yawDeg: number }>(form: T): T[] =>
   [form, { ...form, x: 16 - form.x, z: -form.z, yawDeg: form.yawDeg + 180 }];
+// The scenery lane (2026-10-03): Redrock's scenery stone in the terrain's own sandstone (sRGB HSL; the terrain's rock
+// reads hue 0.03-0.05, saturation 0.22, lightness 0.5-0.57 lit): the domes' beds, the ledges and the cairns read as one
+// rock with the walls they stand on, not as darker, redder cladding.
+const WADI_RUM_STONE = [0.045, 0.32, 0.52] as const;
 
 export default {
   id: 'badlands',
@@ -148,6 +152,30 @@ export default {
       trucks: 7, jeeps: 5, drumClusters: 8, camps: 5, modernClutter: 28,
       roadFence: 'fencerail', yardFence: 'fencewattle',
     },
+  },
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): Wadi Rum's sandstone. Bedded
+  // ledges, scree and the odd pedestal rock break out round the foot of every inselberg; a mushroom rock (a hoodoo,
+  // its cap on a wind-cut pedestal) stands in the open floor of each mouth; a rujm, the Bedouin cairn, marks each cross
+  // track where it leaves for its ravine. Turned through 180 degrees about the outpost like the rest of the floor.
+  scenery: {
+    // (the bedrock skin on the inselbergs is parked: wave 16's critics read a skin on the jebels' smooth domes as
+    // masonry, "a ziggurat"; the domes' shape is the landform's — world/sceneryRocks.ts buildBedrock stays, unplaced)
+    rocks: [
+      { form: 'hoodoo', geology: 'sandstone', tone: WADI_RUM_STONE, x: 70, z: -330, radius: 3.4, height: 7, yawDeg: 30, name: 'the south mushroom rock' },
+      { form: 'hoodoo', geology: 'sandstone', tone: WADI_RUM_STONE, x: -54, z: 330, radius: 3.4, height: 7, yawDeg: 210, name: 'the north mushroom rock' },
+    ],
+    rockFields: [
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -40, z: -318, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south gate dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 56, z: 318, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north gate dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -118, z: -128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south-west lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 134, z: 128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north-east lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 96, z: -112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south-east lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -80, z: 112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north-west lane dome' },
+    ],
+    landmarks: [
+      { kind: 'cairn', x: -270, z: -228, scale: 1.6, height: 1.6, geology: 'sandstone', tone: WADI_RUM_STONE, name: 'the rujm at the south ravine' },
+      { kind: 'cairn', x: 286, z: 228, scale: 1.6, height: 1.6, geology: 'sandstone', tone: WADI_RUM_STONE, name: 'the rujm at the north ravine' },
+    ],
   },
   horizon: {
     // Round 29 (owner 2026-09-20, "see where the texture just stops"): treeline 0.06 let the vista paint every
