@@ -3205,6 +3205,17 @@ ${snowCap ? `
     const [hw, hl] = destructibleFootprint(kind);
     return boxClearOfRoadCore(heightField, x, z, hw * sc + 0.05, hl * sc + 0.05, yaw);
   }
+  // A fence module or gate never stands where a bridge deck spans (maps lane B, 2026-10-02): the ground there is the
+  // bed or the wall under the span, so a roadside run along a viaduct hung down its gorge. The run still takes the
+  // module's draws, so every other placement keeps its seat.
+  function underBridgeDeck(x: number, z: number): boolean {
+    for (const deck of heightField.bridgeDecks ?? []) {
+      const dx = x - deck.x, dz = z - deck.z;
+      if (Math.abs(dx * deck.ux + dz * deck.uz) <= deck.halfLength + 2
+        && Math.abs(dx * deck.uz - dz * deck.ux) <= deck.halfWidth + 2) return true;
+    }
+    return false;
+  }
   /**
    * March destructible fence MODULES (FENCE_SEG pitch) along a ground line —
    * the wooden-fence side of the wall kit. Modules pitch to the terrain,
@@ -3241,7 +3252,7 @@ ${snowCap ? `
         if (openRun && !gated && drng() < gateChance) {
           // hang an open gate at the field entrance the road cuts
           const gy = heightField.getHeightAt(ax, az);
-          addDestructible('gate', ax, gy - 0.06, az, yaw, 1);
+          if (!underBridgeDeck(ax, az)) addDestructible('gate', ax, gy - 0.06, az, yaw, 1);
           gated = true;
         }
         openRun = false;
@@ -3251,7 +3262,8 @@ ${snowCap ? `
       const ya = heightField.getHeightAt(ax, az), yb = heightField.getHeightAt(bx, bz);
       const cy = Math.min(ya, yb);
       const tiltX = Math.atan2(yb - ya, FENCE_SEG) * 0.85;
-      addDestructible(kind, cx, cy - 0.06, cz, yaw, 0.96 + drng() * 0.10, tiltX, (drng() - 0.5) * 0.03);
+      const scale = 0.96 + drng() * 0.10, tiltZ = (drng() - 0.5) * 0.03;
+      if (!underBridgeDeck(cx, cz)) addDestructible(kind, cx, cy - 0.06, cz, yaw, scale, tiltX, tiltZ);
       openRun = true;
     }
   }

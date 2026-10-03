@@ -1506,9 +1506,29 @@ function* heightFieldBuildSteps(
       }
     }
   }
+  // 2026-10-02 (maps lane B, Aegis Crossing): a dry viaduct's road rides its deck, not the gorge bed under it. Its nodes
+  // over the span take the line between the ground just beyond the two abutments before the grading runs, or the
+  // smoothing drags the road into the gorge's lips on both sides of the bridge. Like the northern-grade alignments it
+  // is a finished-road law, so the construction-only placement sampler keeps the original grading.
+  function levelViaductSpanNodes(gradeRoads: RoadLine[], nodeElev: number[][]): void {
+    for (const bridge of T.bridges ?? []) {
+      const nodes = gradeRoads[bridge.route], elev = nodeElev[bridge.route];
+      if (!nodes || !elev) continue;
+      const a = bridge.yawDeg * Math.PI / 180, ux = Math.cos(a), uz = Math.sin(a);
+      const halfLength = bridge.spanM / 2, end = halfLength + 4;
+      const y0 = heightAt(bridge.x - ux * end, bridge.z - uz * end, false, false);
+      const y1 = heightAt(bridge.x + ux * end, bridge.z + uz * end, false, false);
+      for (let i = 0; i < nodes.length; i++) {
+        const dx = nodes[i][0] - bridge.x, dz = nodes[i][1] - bridge.z, along = dx * ux + dz * uz;
+        if (Math.abs(along) > halfLength || Math.abs(dx * uz - dz * ux) > bridge.widthM / 2) continue;
+        elev[i] = y0 + (y1 - y0) * (along + end) / (2 * end);
+      }
+    }
+  }
   function buildRoadElevationGrid(): void {
     const authoringRoads = inheritedRoads ?? roads;
     const nodeElev = authoringRoads.map((nodes) => nodes.map(([nx, nz]) => heightAt(nx, nz, false, false)));
+    if (!placementOnly && T.bridges?.length) levelViaductSpanNodes(authoringRoads, nodeElev);
     if (!placementOnly && !inheritedRoads && T.roads !== 'country' && T.roads.paths) {
       const offset = T.roads.grid ? T.roads.grid.xs.length + T.roads.grid.zs.length : 0;
       gradeRoadPortals(cfg?.id, roads, nodeElev, T.roads.paths, offset);

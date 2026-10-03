@@ -95,7 +95,9 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   // Mars (round 23): the default two-road grid, both routes leaving the basin
   mars: [through, through],
   moon: [through, through, join(0, 1)],
-  cliffbridge: [through, through, join(0, 1), join(0, 1)],
+  // Aegis Crossing redesign (2026-10-02): the main road runs edge to edge over the viaduct; each ford road leaves the
+  // main road at a town's edge for its ford, where its other half starts and returns to the main road.
+  cliffbridge: [through, join(0, 2), join(1, 0), join(0, 4), join(3, 0)],
 };
 
 /** Segment intersection, including touching and collinear overlap. The

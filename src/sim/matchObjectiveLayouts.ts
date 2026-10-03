@@ -14,7 +14,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // yard — three graded aprons in the map file — a
   // south-west / centre / north-east diagonal. Both authorities revalidate each disc against the current terrain
   // and manifest and relocate any hint the ground no longer clears.
-  cliffbridge: { kickoff: { x: 0, z: -155 }, zones: [{ x: 0, z: -155 }, { x: 0, z: 155 }, { x: 360, z: 0 }] },
+  // Aegis Crossing (redesign 2026-10-02): mirror-symmetric across the gorge's axis — the two bridgehead market squares
+  // (level aprons in the map file) and the gorge floor west of the viaduct, where the mills stood; the turbo-ball
+  // kickoff on the gorge floor east of it. Both teams reach the floor from the fords at the gorge's two ends.
+  cliffbridge: { kickoff: { x: 130, z: 0 }, zones: [{ x: 0, z: -172 }, { x: 0, z: 172 }, { x: -130, z: 0 }] },
   steppe: { zones: [{ x: 60, z: 90 }, { x: 292, z: 312 }, { x: -330, z: -240 }] },
   // Validated full-disc results of the bounded search on these constrained
   // maps. Start with the known clearings; changed terrain still revalidates

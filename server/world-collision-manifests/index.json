@@ -229,11 +229,11 @@
       "concealers": 0
     },
     "cliffbridge": {
-      "bytes": 1722970,
-      "sha256": "99335788c286a1758b26244a71734555022813e325fed5850dbe17a8fadcce1d",
-      "obstacles": 5903,
-      "colliders": 5636,
-      "concealers": 5243
+      "bytes": 2176976,
+      "sha256": "3ad5ba8dfef2b0de04394f4044e9f40f2a4bb67a99072f67cacc881d9652c84d",
+      "obstacles": 6265,
+      "colliders": 6435,
+      "concealers": 5388
     }
   }
 }
