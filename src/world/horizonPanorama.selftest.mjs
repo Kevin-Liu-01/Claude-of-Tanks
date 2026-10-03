@@ -9,6 +9,7 @@ import {
   createHorizonPanorama, horizonPanoramaUv, horizonRingSkylineTan, resolveHorizonPanoramaCharacter,
 } from './horizonPanorama.ts';
 import { HORIZON_FAR_ROWS } from './horizonFarRange.ts';
+import saltwind from './maps/saltwind.ts';
 import { HORIZON_RELIEF_CHARACTERS } from './horizonRelief.ts';
 
 const P = HORIZON_PANORAMA;
@@ -97,6 +98,20 @@ for (const [character, c] of Object.entries(HORIZON_PANORAMA_CHARACTERS)) {
   assert.equal(c.plinth, character === 'rolling' || character === 'coastal', `${character}: the hill countries layer as ridgelines, the mountain countries scale their ranges`);
 }
 assert.ok(HORIZON_PANORAMA_SHADERS.height.includes('edge.a') && HORIZON_PANORAMA_SHADERS.height.includes('gPlinth'), 'the height pass reads the ring\'s skyline and writes the plinth');
+// the far shore (gauntlet wave 4, Saltwind's western sea read as the world's end): a channel coast raises the land across
+// the water per map; every character keeps its sea sectors open to the horizon unless the map opts in
+for (const [character, c] of Object.entries(HORIZON_PANORAMA_CHARACTERS)) {
+  assert.equal(c.shore, 0, `${character}: the sea sectors stay open sea by default`);
+  assert.equal(c.shoreRange, 0, `${character}: and no coastal range stands in them`);
+}
+assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShore\.x > 0\.0/.test(HORIZON_PANORAMA_SHADERS.height), 'the height pass raises the far shore where a map asks for one');
+{
+  const horizon = saltwind.horizon;
+  const pano = resolveHorizonPanoramaCharacter('coastal', horizon.panorama);
+  assert.ok(pano.shore > 1 && pano.shoreM > 4000 && pano.shoreM < 7000, 'Saltwind: the mainland\'s ranges across the western channel, 4-7 km out');
+  assert.ok(pano.shoreRange > 0 && pano.shoreRange <= 1, 'Saltwind: a coastal range along the far shore (no low strip where its own relief is low)');
+  assert.ok(pano.treeline < HORIZON_PANORAMA_CHARACTERS.coastal.treeline, 'Saltwind: the karst keeps its woods on the lower flanks');
+}
 assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('texture2D(uHeight, g).g'), 'the strip zones its forest and snow over the plinth');
 
 // --- the shaders: the passes read the uniforms the baker binds -------------------------------------------------------

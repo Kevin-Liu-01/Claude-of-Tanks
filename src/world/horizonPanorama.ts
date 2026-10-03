@@ -55,17 +55,26 @@ export interface HorizonPanoramaCharacter {
   /** true: the layers rise as a broad upland plinth under the far country's own hills (the hill countries: their slopes
    * stay gentle, wooded and farmed); false: the ranges' relief is scaled (the mountain countries: steeper, rockier) */
   plinth: boolean;
+  /** the far shore across a sea sector (a channel coast: the mainland or the islands across the water, as seen from the
+   * Dalmatian islands): the share of the far country's own height it rises to; 0 keeps the sector open sea to the
+   * horizon (the ocean coasts) */
+  shore: number;
+  /** the channel: the far shore's distance from the battlefield's centre (m; it wanders 1.1 km either way) */
+  shoreM: number;
+  /** the coastal range behind the far shore (the mainland's front ranges along the coast), as a share of the far
+   * country's envelope; 0: the far shore is the far country's own relief only */
+  shoreRange: number;
 }
 
 export const HORIZON_PANORAMA_CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonPanoramaCharacter>> = Object.freeze({
-  alpine: { ampM: 1700, foot: 0.16, macroL: 5200, sharp: 1.45, midL: 1500, gullyL: 520, gullyM: 55, warpM: 900, valley: 0.4, valleyL: 7500, snowline: 0.40, treeline: 0.22, rockSlope: 0.30, bedM: 70, strata: 0.10, tables: false, farRise: 0, layers: 1, plinth: false },
-  polar: { ampM: 1300, foot: 0.18, macroL: 5800, sharp: 1.3, midL: 1700, gullyL: 560, gullyM: 45, warpM: 1000, valley: 0.4, valleyL: 8000, snowline: 0.05, treeline: 0.10, rockSlope: 0.34, bedM: 80, strata: 0.08, tables: false, farRise: 0, layers: 1, plinth: false },
-  rolling: { ampM: 620, foot: 0.24, macroL: 5600, sharp: 1.15, midL: 2000, gullyL: 600, gullyM: 22, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.85, rockSlope: 0.42, bedM: 60, strata: 0.05, tables: false, farRise: 1.1, layers: 1, plinth: true },
-  coastal: { ampM: 520, foot: 0.24, macroL: 5400, sharp: 1.15, midL: 1900, gullyL: 600, gullyM: 20, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.80, rockSlope: 0.40, bedM: 50, strata: 0.06, tables: false, farRise: 0.9, layers: 1, plinth: true },
-  volcanic: { ampM: 1300, foot: 0.2, macroL: 5000, sharp: 1.3, midL: 1400, gullyL: 420, gullyM: 45, warpM: 800, valley: 0.4, valleyL: 7500, snowline: 2, treeline: 0.35, rockSlope: 0.32, bedM: 40, strata: 0.16, tables: false, farRise: 0, layers: 1, plinth: false },
-  karst: { ampM: 760, foot: 0.26, macroL: 2600, sharp: 2.2, midL: 900, gullyL: 300, gullyM: 30, warpM: 400, valley: 0.5, valleyL: 5500, snowline: 2, treeline: 0.95, rockSlope: 0.36, bedM: 30, strata: 0.12, tables: false, farRise: 0.3, layers: 1, plinth: false },
-  mesa: { ampM: 900, foot: 0.24, macroL: 6000, sharp: 1.0, midL: 2000, gullyL: 500, gullyM: 30, warpM: 900, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 46, strata: 0.32, tables: true, farRise: 0, layers: 1, plinth: false },
-  martian: { ampM: 1300, foot: 0.24, macroL: 7000, sharp: 1.0, midL: 2400, gullyL: 600, gullyM: 35, warpM: 1100, valley: 0.5, valleyL: 8500, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 60, strata: 0.26, tables: true, farRise: 0, layers: 1, plinth: false },
+  alpine: { ampM: 1700, foot: 0.16, macroL: 5200, sharp: 1.45, midL: 1500, gullyL: 520, gullyM: 55, warpM: 900, valley: 0.4, valleyL: 7500, snowline: 0.40, treeline: 0.22, rockSlope: 0.30, bedM: 70, strata: 0.10, tables: false, farRise: 0, layers: 1, plinth: false, shore: 0, shoreM: 5600, shoreRange: 0 },
+  polar: { ampM: 1300, foot: 0.18, macroL: 5800, sharp: 1.3, midL: 1700, gullyL: 560, gullyM: 45, warpM: 1000, valley: 0.4, valleyL: 8000, snowline: 0.05, treeline: 0.10, rockSlope: 0.34, bedM: 80, strata: 0.08, tables: false, farRise: 0, layers: 1, plinth: false, shore: 0, shoreM: 5600, shoreRange: 0 },
+  rolling: { ampM: 620, foot: 0.24, macroL: 5600, sharp: 1.15, midL: 2000, gullyL: 600, gullyM: 22, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.85, rockSlope: 0.42, bedM: 60, strata: 0.05, tables: false, farRise: 1.1, layers: 1, plinth: true, shore: 0, shoreM: 5600, shoreRange: 0 },
+  coastal: { ampM: 520, foot: 0.24, macroL: 5400, sharp: 1.15, midL: 1900, gullyL: 600, gullyM: 20, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.80, rockSlope: 0.40, bedM: 50, strata: 0.06, tables: false, farRise: 0.9, layers: 1, plinth: true, shore: 0, shoreM: 5600, shoreRange: 0 },
+  volcanic: { ampM: 1300, foot: 0.2, macroL: 5000, sharp: 1.3, midL: 1400, gullyL: 420, gullyM: 45, warpM: 800, valley: 0.4, valleyL: 7500, snowline: 2, treeline: 0.35, rockSlope: 0.32, bedM: 40, strata: 0.16, tables: false, farRise: 0, layers: 1, plinth: false, shore: 0, shoreM: 5600, shoreRange: 0 },
+  karst: { ampM: 760, foot: 0.26, macroL: 2600, sharp: 2.2, midL: 900, gullyL: 300, gullyM: 30, warpM: 400, valley: 0.5, valleyL: 5500, snowline: 2, treeline: 0.95, rockSlope: 0.36, bedM: 30, strata: 0.12, tables: false, farRise: 0.3, layers: 1, plinth: false, shore: 0, shoreM: 5600, shoreRange: 0 },
+  mesa: { ampM: 900, foot: 0.24, macroL: 6000, sharp: 1.0, midL: 2000, gullyL: 500, gullyM: 30, warpM: 900, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 46, strata: 0.32, tables: true, farRise: 0, layers: 1, plinth: false, shore: 0, shoreM: 5600, shoreRange: 0 },
+  martian: { ampM: 1300, foot: 0.24, macroL: 7000, sharp: 1.0, midL: 2400, gullyL: 600, gullyM: 35, warpM: 1100, valley: 0.5, valleyL: 8500, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 60, strata: 0.26, tables: true, farRise: 0, layers: 1, plinth: false, shore: 0, shoreM: 5600, shoreRange: 0 },
 });
 
 export interface HorizonPanoramaPalette { base: THREE.Color; rock: THREE.Color; snow: THREE.Color; forest: THREE.Color; fog: THREE.Color }
@@ -262,6 +271,7 @@ uniform vec4 uChar3;   // snowline, treeline, rockSlope, bedM
 uniform vec4 uChar4;   // strata, deckM, ampM, farRise
 uniform vec4 uFrame;   // innerM, outerM, shellM, eyeY
 uniform sampler2D uEdge; // per azimuth: r = the ring's outer height, g = sea weight, b = sea level, a = tan of the ring's skyline
+uniform vec4 uShore;   // the far shore's height share (0: open sea), the channel's distance (m), its coastal range's share
 
 float macroField(vec2 q) {
   float sum = 0.0, amp = 1.0, weight = 1.0, norm = 0.0;
@@ -408,9 +418,25 @@ float farField(vec2 p) {
   float nearCap = uFrame.w + r * (edge.a - 0.03);
   float nearW = 1.0 - smoothstep(3200.0, 4800.0, r);
   if (h > nearCap) h = mix(h, nearCap + (h - nearCap) * 0.15, nearW);
-  // the first kilometre eases out of the ring's outer heights; the sea sectors sink under their level
+  // the first kilometre eases out of the ring's outer heights; the sea sectors sink under their level — to the horizon,
+  // or on a channel coast (uShore.x > 0, per map) as far as the far shore: the mainland or the islands across the water
+  // (Saltwind, gauntlet wave 4: "behind the end of the road the land collapses into a thin flat strip with a pale blue
+  // band under the haze line, so the world seems to end"; from the Dalmatian islands the mainland's ranges stand across
+  // the channel). The shore wanders 1.1 km round its distance and rises out of the water over 1.8 km to the far
+  // country's own height times the share, with a coastal range along it (the mainland's front ranges: the envelope's
+  // share 2.4 km behind the shore, its crest wandering in height), so the far shore stands as a range across the water
+  // instead of a low strip where the far country's own relief is low; its low ground stays under the water as bays.
   h = mix(edge.r * 0.8, h, smoothstep(uFrame.x, uFrame.x + 500.0, r));
-  h = mix(h, edge.b - 6.0, edge.g * smoothstep(0.0, 0.35, edge.g));
+  float sink = edge.g * smoothstep(0.0, 0.35, edge.g), seaH = edge.b - 6.0;
+  if (uShore.x > 0.0) {
+    vec2 su = p / max(r, 1.0);
+    float rs = uShore.y + 1100.0 * noised(su * 5.0 + uOff2.zw).x;
+    float rc = rs + 2400.0, crest = 0.7 + 0.3 * noised(su * 23.0 + uOff3.xy).x;
+    float range = uShore.z * A * crest * exp(-((r - rc) * (r - rc)) / (1600.0 * 1600.0));
+    h = mix(h, seaH + max(0.0, h * uShore.x + range - seaH) * smoothstep(rs, rs + 1800.0, r), sink);
+  } else {
+    h = mix(h, seaH, sink);
+  }
   return h;
 }
 `;
@@ -784,6 +810,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
         options.snowlineM != null ? options.snowlineM / ch.ampM : ch.snowline,
         options.treelineM != null ? options.treelineM / ch.ampM : ch.treeline, ch.rockSlope, ch.bedM) },
       uChar4: { value: new THREE.Vector4(ch.strata, options.deckBaseM, ch.ampM, ch.farRise) },
+      uShore: { value: new THREE.Vector4(ch.shore, ch.shoreM, ch.shoreRange, 0) },
       uFrame: { value: new THREE.Vector4(P.innerM, P.outerM, P.shellM, P.eyeY) },
       uGrid: { value: new THREE.Vector2((options.resolution ?? P).gridA, (options.resolution ?? P).gridR) },
       uEdge: { value: edgeTex },

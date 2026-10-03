@@ -150,7 +150,13 @@ export default {
       ids: ['ariete', 'leclerc_xlr', 'm60a3', 'merkava4b', 'm2a2_bradley'] },
     inhabit: { stalls: 4, benches: 4, coreClutter: 22, pots: 8, laundry: 4, handcarts: 4, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 2, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencepicket' },
   },
-  horizon: { baseHex: 0x7f8977, amp: 0.90, style: 'rolling', treeline: 0.42, forestHex: 0x506044, rockHex: 0xa4a391, haze: 0.90, grain: 0.46 },
+  // the mountains lane (2026-10-03, gauntlet wave 4: past the harbour road "the land collapses into a thin flat strip with
+  // a pale blue band under the haze line, so the world seems to end"): the far panorama raises the mainland's karst
+  // ranges across the western channel (the view from the Dalmatian islands), its woods only on the lower flanks
+  horizon: {
+    baseHex: 0x7f8977, amp: 0.90, style: 'rolling', treeline: 0.42, forestHex: 0x506044, rockHex: 0xa4a391, haze: 0.90, grain: 0.46,
+    panorama: { shore: 1.2, shoreM: 5600, shoreRange: 0.5, treeline: 0.45 },
+  },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'sea-streets', coverage: 0.30, windDirDeg: 200, farBand: 0.55, fogBank: 0.35, fogBankTopM: 100 },
   sky: { ...coastal.sky, sunElevationDeg: 30, sunAzimuthDeg: 112, turbidity: 3.9, fogDensity: 0.00052, fogTintHex: 0x9cb8c5, fogMix: 0.48, cloudOpacity: 0.86, cloudOpacity2: 0.5, sunIntensity: 3.95, hemiIntensity: 0.42 },
