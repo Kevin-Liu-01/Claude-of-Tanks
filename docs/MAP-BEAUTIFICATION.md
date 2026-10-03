@@ -6711,6 +6711,31 @@ recipe and its cloudscape gate, nine maps).**
   the candidate only on the hull in every chase frame (Whiteout's tank renders darker in the candidate's frame than in
   either other root's), so a chase pair is no evidence about the hull's light.
 
+**The wave-17 batch (fp12, 2026-10-03; the PR head 21b4e853f against the batch in one hold; the gauntlet's wave 19).**
+- *A deck's far rows meet the ranges' haze* (Frosthollow: "a flat whitish band just above the true horizon where the haze
+  layer meets the cloud deck — a discrete seam"). Under a deck the aerial pass hazed the ranges toward its overcast target
+  while the cloud trace hazed the deck's far rows toward the clear sky's LUT, the bright horizon glow, and the deck's far
+  band (the regime's 0.6 under a 0.86 deck) opened gaps of that glow under the deck's edge. Both now read one pair of
+  target terms (`hazeLaw.ts` `hazeTargetTerms`: the authored tint's share and the level under the light model's
+  overcast); a deck's far band admits the deck's own coverage and reaches down to 0.03° over the horizon. fp12: the pale
+  strip under the deck's edge is gone; the critics no longer name the seam (+0.29).
+- *Overcast snow* (Whiteout's chase: "dull blue-grey plaster, darker and much bluer than the neutral overcast sky"). A
+  deck sends back part of what the ground sends up (`OVERCAST_GROUND_RETURN` 0.5, in the deck's own light: E · g / (1 − g),
+  g = overcast × 0.5 × the ground's albedo — a snowfield under a closed deck ×1.67, grass ×1.1, an open sky nothing),
+  the clear sky's share under a deck keeps `SKY_DIFFUSE_CHROMA` × (1 − overcast) of the dome's blue, and the bright-ground
+  lift drops to K 0.25 (+0.3 EV on the snow maps) now that the return brightens an overcast snowfield by itself. fp12:
+  Whiteout's snow/sky display-linear luminance 0.51 → 0.64, the snow's B/R 1.36 → 1.27; the critics: Whiteout's chase
+  1.86 → 3.86, its establishing 2.71 → 3.43. The blue left is Whiteout's authored splat tint (tintB B/R 1.17).
+- *Every cloud layer ends at a surface past the dome* (the mountains lane: `seaFogBank()` integrated from 3.6 to 30 km
+  whatever the scene held — a far shore past 3.6 km took the whole bank with a sheer cut). post.ts hands the trace the
+  scene depth the last frame resolved; the trace reads it through the camera that drew it (`cloudSceneT`) and the slab's
+  march, the bank and the rain end at the surface, the far band and the cirrus behind it hidden. A surface inside the
+  dome changes nothing (its depth test hides the layer there, and the history stays whole for a camera turn).
+- *Not adopted:* the cumulus knobs as shot (`CLOUD_BASE_SHARP` filled every cell's footprint at its base — "grey
+  soft-edged flat lozenges", "a regular row of grey pills"; fixed to fill only a column that carries the body, off until
+  the re-shoot), the gated deck lumps ("a uniform, high-frequency grain like stucco"), and the haze's warm lobe toward the
+  sun (no pixel changed on four maps' sunward views). Desert's sky-w streak was the before frame's contrail.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

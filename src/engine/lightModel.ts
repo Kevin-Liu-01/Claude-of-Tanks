@@ -99,6 +99,16 @@ export const OVERCAST_TRANSMISSION = 0.42;
 /** The deck's light: a neutral grey, a touch cool (linear, luminance ≈ 1; overcast daylight ≈ 6500–7000 K). */
 export const OVERCAST_LIGHT_COLOR: Rgb = Object.freeze([0.96, 1.0, 1.04]) as Rgb;
 /**
+ * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 17 on Whiteout's chase: the overcast snow read as "dull
+ * blue-grey plaster, darker and much bluer than the neutral overcast sky" — its light a fifth darker than the deck's
+ * level and B/R 1.36 against the sky's 1.13): the share of the light a ground sends up that a deck's base sends back
+ * down (a stratus base returns about half of it). Light bounces between a bright ground and a closed deck — why an
+ * overcast snowfield is bright and a whiteout loses its horizon — so the deck's glow carries the returned light,
+ * E · g / (1 − g) on the direct E, g = overcast × this × the ground's albedo: a snowfield (0.80) under a closed deck
+ * gains two thirds, grass (0.2) a tenth, an open sky nothing.
+ */
+export const OVERCAST_GROUND_RETURN = 0.5;
+/**
  * The night's own sky light (horizontal irradiance at full night, light units): the moonlit sky, airglow and the
  * scattered light of a populated horizon that keep a moonlit field readable — the dome's 8 % moonlit sky alone
  * lights the shade about a tenth as strongly as the moon lights open ground, which reads as a black void on a screen.
@@ -121,11 +131,13 @@ export const LOW_SUN_EV = -0.5;
  * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 7: a key matched to the photographs' median greyed
  * every snowfield): the camera's lift for a bright ground, the way a photographer opens up over a snowfield. A map whose
  * ground albedo (its luminance) passes EXPOSURE_ALBEDO_REF gains EXPOSURE_ALBEDO_K stops per doubling, at most
- * EXPOSURE_ALBEDO_MAX_EV, by day (Frosthollow's 0.80: +0.5 EV at K 0.42); every darker ground is untouched (QA:
+ * EXPOSURE_ALBEDO_MAX_EV, by day (Frosthollow's 0.80: +0.3 EV at K 0.25); every darker ground is untouched (QA:
  * __LIGHT_TUNE.EXPOSURE_ALBEDO_K; fp10's preview of +0.5 EV put the snow at L* 83-85 against 77-80).
+ * (2026-10-03, the gauntlet's wave 19: K 0.42 → 0.25 with the deck's ground return, which brightens an overcast
+ * snowfield by itself — OVERCAST_GROUND_RETURN; fp12's lift25 frames: Whiteout's chase 1.86 → 3.86 against the PR head.)
  */
 export const EXPOSURE_ALBEDO_REF = 0.35;
-export const EXPOSURE_ALBEDO_K = 0.42;
+export const EXPOSURE_ALBEDO_K = 0.25;
 export const EXPOSURE_ALBEDO_MAX_EV = 0.75;
 /** The bright-ground lift (EV) of a ground albedo (luminance) by day; 0 at or under the reference. */
 export function exposureAlbedoEV(groundLuminance: number): number {
@@ -277,10 +289,13 @@ function resolveGrounded(
   const deckGlow = overcast * lightTune('OVERCAST_TRANSMISSION', OVERCAST_TRANSMISSION) * (clearSunH + clearSkyH);
   // at night the hemisphere also carries the night sky's own glow (NIGHT_SKY_GLOW), blended into its colour by share
   const nightGlow = night * lightTune('NIGHT_SKY_GLOW', NIGHT_SKY_GLOW);
-  const hemiIntensity = deckGlow + nightGlow;
+  const ground = L.groundAlbedoHex != null ? hexToLinear(L.groundAlbedoHex) : atmosphereOf().groundAlbedo;
+  // (2026-10-03) the deck sends back part of what the ground sends up (OVERCAST_GROUND_RETURN), in the deck's own light
+  const groundReturn = clamp(overcast * lightTune('OVERCAST_GROUND_RETURN', OVERCAST_GROUND_RETURN) * luminance(ground), 0, 0.9);
+  const returned = (sunIrradiance * sinEl + skyLightH + deckGlow + nightGlow) * groundReturn / (1 - groundReturn);
+  const hemiIntensity = deckGlow + nightGlow + returned;
   const glowShare = hemiIntensity > 1e-6 ? nightGlow / hemiIntensity : 0;
   const hemiSky: Rgb = [0, 1, 2].map((c) => OVERCAST_LIGHT_COLOR[c] + (NIGHT_GLOW_COLOR[c] - OVERCAST_LIGHT_COLOR[c]) * glowShare) as unknown as Rgb;
-  const ground = L.groundAlbedoHex != null ? hexToLinear(L.groundAlbedoHex) : atmosphereOf().groundAlbedo;
   // the deck's light from below is its reflection off the ground: the hemisphere's ground pole is the albedo itself
   const hemiGround: Rgb = [ground[0], ground[1], ground[2]];
   const illuminance = sunIrradiance * sinEl + skyLightH + hemiIntensity;
@@ -298,7 +313,9 @@ function resolveGrounded(
     sunColor,
     envIntensity,
     envDiffuseGain,
-    envDiffuseChroma: clamp(lightTune('SKY_DIFFUSE_CHROMA', SKY_DIFFUSE_CHROMA), 0, 1),
+    // (2026-10-03: the clear sky's share under a deck keeps none of the dome's blue at a closed deck — the deck's light
+    // is the deck's grey; the clear dome's Rayleigh hue on the remaining share put Whiteout's snow at B/R 1.36)
+    envDiffuseChroma: clamp(lightTune('SKY_DIFFUSE_CHROMA', SKY_DIFFUSE_CHROMA), 0, 1) * (1 - clamp(overcast, 0, 1)),
     hemiIntensity,
     hemiSky,
     hemiGround,
