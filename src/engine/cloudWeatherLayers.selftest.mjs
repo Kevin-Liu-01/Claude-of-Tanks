@@ -11,7 +11,7 @@ import {
 import {
   cloudLayerKey, cloudNightAmount, cloudTimeOfDay, deriveCloudLayerPreset, loadCloudscapeLayers,
 } from './cloudPresets.ts';
-import { CLOUD_DIURNAL } from './cloudscapeLayer.ts';
+import { CLOUD_DIURNAL, CLOUD_CONTRAILS_ON } from './cloudscapeLayer.ts';
 
 import { CLOUDSCAPE_REGIMES } from './cloudscapes.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
@@ -32,8 +32,10 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   for (const t of a) {
     assert.ok(Math.abs(Math.hypot(...t.dir) - 1) < 1e-9, 'unit headings');
     assert.ok(t.headAge <= t.tailAge && t.tailAge <= 1 && t.headAge >= 0, 'a trail is younger at its head');
-    assert.ok(Math.abs(t.offsetM) <= 13000 && Math.abs(t.centreM) <= 9000 && t.halfLengthM >= 14000 && t.halfLengthM <= 40000);
-    assert.ok(t.depth > 0.3 && t.depth < 0.65);
+    // (2026-10-03, the gauntlet's wave 5: "a bright, perfectly straight diagonal streak spans almost the entire sky"):
+    // 14–44 km long, a fresh trail's optical depth 0.2–0.38 (a thin veil, not a glaring line)
+    assert.ok(Math.abs(t.offsetM) <= 13000 && Math.abs(t.centreM) <= 9000 && t.halfLengthM >= 7000 && t.halfLengthM <= 22000);
+    assert.ok(t.depth >= 0.2 && t.depth <= 0.38);
   }
   assert.equal(cloudContrails({ ...base, contrails: 0 }).length, 0);
   assert.equal(cloudContrails({ ...base, contrails: 9 }).length, CLOUD_CONTRAIL_MAX, 'never past the uniform arrays');
@@ -67,6 +69,11 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   // (2026-10-02: the mid layer and the distant storm cells were removed after the labs — pancakes and mushroom clouds)
   for (const gone of ['midLayer', 'midThickness', 'stormCells', 'stormDensity', 'cloudCylinderSpan', 'uMid', 'uStorm']) assert.ok(!src.includes(gone), `${gone} is gone`);
   assert.match(glsl, /float\( i \) >= uContrails/, 'the trails by their count');
+  // a trail persists only in supersaturated air: segments of a few kilometres with dry gaps, its own phase per trail
+  assert.match(glsl, /peak \*= smoothstep\( 0\.3, 0\.55, textureLod\( tWeather, vec2\( along \/ 30000\.0 \+ float\( i \) \* 0\.173, 0\.29 \+ float\( i \) \* 0\.137 \), 0\.0 \)\.b \);/,
+    'the persistence segments along each trail');
+  assert.match(glsl, /float w = mix\( 40\.0, 1500\.0, age \* age \);/, 'a fresh trail 40 m wide');
+  assert.match(glsl, /float peak = B\.w \* sqrt\( 40\.0 \/ w \) \* \( w \/ wf \);/, 'its depth spreads with its width');
   assert.match(glsl, /if \( uRain\.x <= 0\.0/, 'the rain by its amount');
   assert.match(glsl, /if \( uFogBank\.x <= 0\.0/, 'the fog bank by its amount');
   assert.doesNotMatch(glsl, /pow\( \(/, 'no pow of a signed difference (undefined in GLSL for a negative base)');
@@ -91,7 +98,7 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   assert.ok(layer.includes('...createCloudWeatherUniforms(),'));
 }
 
-// ---- lightning (night storms only, deterministic, drawn in the composite), the gobos' clear radius, the slab's new laws
+// ---- lightning (night storms only, deterministic, drawn in the composite), the shadows' clear radius, the slab's new laws
 {
   const { VolumetricCloudLayer } = await import('./volumetricClouds.ts');
   const layer = new VolumetricCloudLayer({}, new THREE.Scene(), {}, new THREE.Vector3(1, 1, 1));
@@ -114,7 +121,7 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   const layerSrc = here('./volumetricClouds.ts');
   assert.ok(layerSrc.includes('uniform vec4 uFlash;') && layerSrc.includes('this.updateLightning(preset, step);'), 'the flash is drawn in the composite at the frame rate');
   assert.ok(!/TRACE_FRAGMENT[\s\S]*uFlash[\s\S]*const RESOLVE_FRAGMENT/.test(layerSrc), 'never in the trace (the history would smear it)');
-  assert.ok(layerSrc.includes('if ( uClear.z > 0.0 ) shade *= smoothstep( uClear.z * 0.6, uClear.z * 1.4, length( vXZ - uClear.xy ) );'), 'a front\'s clear radius holds the cloud shadows off the camera like its towers');
+  assert.ok(layerSrc.includes('if ( uClear.z > 0.0 ) shade *= smoothstep( uClear.z * 0.6, uClear.z * 1.4, length( xz - uClear.xy ) );'), 'a front\'s clear radius holds the cloud shadows off the camera like its towers (the shade map)');
   assert.ok(layerSrc.includes('(g.uClear.value as THREE.Vector3).set(C.pos.x, C.pos.z, preset.clearRadiusM);'), 'the clear centre follows the camera');
   assert.ok(layerSrc.includes('float patchC = 0.35 + 1.3 * cw.b;'), 'the cirrus comes in patches (the same mean coverage)');
   assert.ok(layerSrc.includes('tauAbove *= mix( 1.0, 0.2 + 1.6 * ( mo.b * 0.6 + mo.a * 0.4 ), 0.75 * uCells );'), 'a deck\'s underside mottles with its rolls');
@@ -163,7 +170,8 @@ const skyOf = (id, time = 'day') => {
   }
   // a map's own knobs for its time win over the law; an authored constant sky opts out
   const own = deriveCloudLayerPreset({ ...skyOf('verdant', 'sunset'), cloudscape: { ...scape, sunset: { contrails: 0.5, coverage: 0.2 } } });
-  assert.deepEqual([own.contrails, own.coverage], [3, 0.2]);
+  // (2026-10-03: contrails are off on every map — cloudscapeLayer.ts CLOUD_CONTRAILS_ON; the per-time override still applies)
+  assert.deepEqual([own.contrails, own.coverage], [CLOUD_CONTRAILS_ON ? 3 : 0, 0.2]);
   const constant = deriveCloudLayerPreset({ ...skyOf('verdant', 'night'), cloudscape: { ...scape, diurnal: false } });
   assert.equal(constant.coverage, day.coverage, 'diurnal: false keeps the day\'s cloud');
   // the evening keeps the preset's warm deck tint (the captures without it: grey-white front-lit cumulus at sunset)

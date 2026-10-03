@@ -7,7 +7,7 @@ const { releaseCsmShaderMaterial } = await import('./lighting.ts');
 function registeredMaterial() {
   const material = {
     isMaterial: true,
-    defines: { USE_CSM: 1, CSM_CASCADES: 4, CSM_FADE: '' },
+    defines: { USE_CSM: 1, CSM_CASCADES: 4, CSM_FADE: '', COT_CLOUD_SHADE: '' },
     onBeforeCompile: () => {},
     needsUpdate: false,
   };
@@ -22,6 +22,7 @@ function registeredMaterial() {
   assert.equal(material.defines.USE_CSM, undefined);
   assert.equal(material.defines.CSM_CASCADES, undefined);
   assert.equal(material.defines.CSM_FADE, undefined);
+  assert.equal(material.defines.COT_CLOUD_SHADE, undefined, 'the cloud shade leaves with the registration');
   assert.equal(material.needsUpdate, true);
   assert.equal(releaseCsmShaderMaterial(csm, material), false, 'release is idempotent');
 }

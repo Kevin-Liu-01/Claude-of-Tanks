@@ -93,6 +93,8 @@ assert.deepEqual(groundBounceIrradiance({ x: 0, y: 1, z: 0 }, sunLow, 1, radianc
   const shader = { uniforms: {} };
   attachGroundBounceUniforms(shader, u);
   assert.equal(shader.uniforms.uCotBounceRad, u.uCotBounceRad, 'the very same uniform object rides every program');
+  assert.equal(shader.uniforms.uCotSkyChroma, u.uCotSkyChroma); assert.equal(shader.uniforms.uCotShadowDim, u.uCotShadowDim);
+  assert.equal(u.uCotSkyChroma.value, 1, 'the sky keeps its hue until a rig says otherwise');
 }
 
 // 6. the GLSL term carries the same law and literals
@@ -109,9 +111,10 @@ assert.ok(GROUND_BOUNCE_GLSL_TERM.includes('if ( dot( uCotBounceRad, vec3( 1.0 )
 // 7. lighting.ts wiring
 const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
 assert.match(lighting, /iblIrradiance \*= cotAmbDim;\n\$\{GROUND_BOUNCE_GLSL_TERM\}\n\t#endif/, 'the term sits inside the RE_IndirectDiffuse block after the ambient dims');
-assert.match(lighting, /THREE\.ShaderChunk\.lights_pars_begin = `#if defined\( USE_CSM \) && defined\( CSM_CASCADES \)\n\$\{GROUND_BOUNCE_GLSL_PARS\}\n#endif\n\$\{THREE\.ShaderChunk\.lights_pars_begin\}`;/,
+// (2026-10-03: the cloud shade's varying follows the declarations, cloudShadeMap.ts)
+assert.match(lighting, /THREE\.ShaderChunk\.lights_pars_begin = `#if defined\( USE_CSM \) && defined\( CSM_CASCADES \)\n\$\{GROUND_BOUNCE_GLSL_PARS\}\n#endif\n#if defined\( COT_CLOUD_SHADE \) && defined\( USE_SHADOWMAP \)\nvarying float vCotCloudSun;\n#endif\n\$\{THREE\.ShaderChunk\.lights_pars_begin\}`;/,
   'the declarations precede every CSM fragment');
-assert.match(lighting, /csm\.setupMaterial\(mat\);\s*\{[^}]*const csmHook = mat\.onBeforeCompile;\s*mat\.onBeforeCompile = \(shader, rdr\) => \{\s*csmHook\(shader, rdr\);\s*attachGroundBounceUniforms\(shader, groundBounceUniforms\);\s*if \(extraHook\) extraHook\(shader, rdr\);/,
+assert.match(lighting, /csm\.setupMaterial\(mat\);[\s\S]{0,900}?\{\s*\/\/ Round 69: the ground-bounce uniforms ride on every CSM registration \(groundBounce\.ts\)\.\s*const csmHook = mat\.onBeforeCompile;\s*mat\.onBeforeCompile = \(shader, rdr\) => \{\s*csmHook\(shader, rdr\);\s*attachGroundBounceUniforms\(shader, groundBounceUniforms\);\s*if \(extraHook\) extraHook\(shader, rdr\);/,
   'every CSM registration attaches the uniforms after the CSM hook and before the caller\'s hook');
 assert.equal((lighting.match(/csm\.setupMaterial\(/g) || []).length, 1, 'setupShadowMaterial is the only registration path');
 assert.match(lighting, /lightRig\.fillDir\.copy\(fill\.position\)\.normalize\(\);\s*applyGroundBounce\(\);/, 'applied once the rig exists');
@@ -123,7 +126,24 @@ assert.match(lighting, /lightRig\.sunIntensity = intensity;\s*lightRig\.sunColor
 assert.match(lighting, /groundTone: model \? groundTone : hemi\.groundColor,\s*hemiGround: model \? groundPole : hemi\.groundColor, hemiIntensity: model \? 1 : hemi\.intensity,/,
   'the ground tone is the model\'s albedo on the grounded rig, the rig\'s own ground pole on the legacy one (no terrain sampler)');
 assert.match(lighting, /groundBounceUniforms\.uCotSkyDiffuse\.value = model\.envDiffuseGain;/, 'the sky\'s diffuse gain rides the same uniforms');
-assert.ok(GROUND_BOUNCE_GLSL_TERM.startsWith('\n\tiblIrradiance *= uCotSkyDiffuse;\n'), 'the diffuse gain scales the environment before the bounce adds the ground');
-assert.ok(GROUND_BOUNCE_GLSL_PARS.includes('uniform float uCotSkyDiffuse;'));
+// 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: grass in a tank's shadow rendered indigo and teal):
+// the grounded rig's environment diffuse keeps part of the clean dome's hue about its luminance (lightModel.ts
+// SKY_DIFFUSE_CHROMA), and its shadow dims the ambient neutrally at the legacy dim's luminance — the legacy rig's cool
+// dim painted the sky's blue in a second time over a sky light already a deep Rayleigh blue
+assert.ok(GROUND_BOUNCE_GLSL_TERM.startsWith('\n\tiblIrradiance = mix( vec3( dot( iblIrradiance, vec3( 0.2126, 0.7152, 0.0722 ) ) ), iblIrradiance, uCotSkyChroma ) * uCotSkyDiffuse;\n'),
+  'the chroma and the diffuse gain shape the environment before the bounce adds the ground');
+assert.ok(GROUND_BOUNCE_GLSL_PARS.includes('uniform float uCotSkyDiffuse;') && GROUND_BOUNCE_GLSL_PARS.includes('uniform float uCotSkyChroma;')
+  && GROUND_BOUNCE_GLSL_PARS.includes('uniform vec3 uCotShadowDim;'));
+assert.match(lighting, /vec3 cotAmbDim = mix\( uCotShadowDim, vec3\( 1\.0 \), cotSunVis \);/, 'the shadow\'s ambient dim rides the shared uniform');
+assert.match(lighting, /groundBounceUniforms\.uCotSkyChroma\.value = model\.envDiffuseChroma;\s*groundBounceUniforms\.uCotShadowDim\.value\.setScalar\(SHADOW_AMBIENT_DIM_LUMA\);/,
+  'the grounded rig: the model\'s chroma, a neutral shadow dim');
+assert.match(lighting, /groundBounceUniforms\.uCotSkyChroma\.value = 1;\s*groundBounceUniforms\.uCotShadowDim\.value\.fromArray\(SHADOW_AMBIENT_DIM\);/,
+  'the legacy rig: the dome\'s own hue and its cool shadow dim, as they were');
+{
+  const dim = lighting.match(/const SHADOW_AMBIENT_DIM = \[([\d., ]+)\];/)[1].split(',').map(Number);
+  assert.deepEqual(dim, [0.80, 0.88, 1.0], 'the legacy dim');
+  assert.match(lighting, /const SHADOW_AMBIENT_DIM_LUMA = 0\.2126 \* SHADOW_AMBIENT_DIM\[0\] \+ 0\.7152 \* SHADOW_AMBIENT_DIM\[1\] \+ 0\.0722 \* SHADOW_AMBIENT_DIM\[2\];/,
+    'the neutral dim keeps the legacy dim\'s luminance: the shade is as deep, only its hue changes');
+}
 
 console.log('groundBounce.selftest: view-factor conservation, ground-lit and receiver laws, energy bounds, rig mapping, GLSL literals and the lighting hook pinned');

@@ -262,7 +262,9 @@ for (const mapId of MAP_IDS) {
       queryObstacles(...args) { obstacleQueries++; return world.queryObstacles(...args); } });
     // Fixed operation ceilings, not noisy wall-time thresholds. These include
     // the reused original bot grid and private objective connectivity setup.
-    assert.ok(heightReads <= 65536 && normalReads <= 32768 && obstacleQueries <= 6000,
+    // (2026-10-03: the grid reads the side slope across each edge at its three interior samples, two reads each:
+    // about 89k height reads on the largest map, against 52k before.)
+    assert.ok(heightReads <= 98304 && normalReads <= 32768 && obstacleQueries <= 6000,
       `${mapId}/${mode}: bounded construction reads ${heightReads}/${normalReads}/${obstacleQueries}`);
     construction.push({ mapId, mode, heightReads, normalReads, obstacleQueries });
     const objectives = mode === 'zone_control' ? layout.zones.map(p => [p, 30, 7])

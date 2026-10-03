@@ -6488,6 +6488,229 @@ artifacts in the after frames.
   worst 10 m, Cinder Junction's north-west road on a rise at the edge), the median 0.4 m; the in-square ground moves
   only past 400 m, the bounds push already keeping play inside 470 m.
 
+### 2026-10-03 — skies, light and colour: one haze law, the shade's own colour, a calibrated camera (the skies-and-atmosphere lane)
+
+**Owner (2026-10-02): "dude genuinely maps need to look so much better esp the horizons and transitions around map
+borders"; (2026-10-03): "in the horizon i literally just see a treeline and then nothing transitioning and going into
+mountains or stuff beyond border".** Branch `visual/skies-atmosphere` of the PR #9 program. The lane owns the sky, the
+clouds, the fog, the aerial perspective and the per-map light and atmosphere parameters; the mountains lane owns the far
+ranges' geometry and surface, the borders lane the band from the square's edge to about 1 km. From the gauntlet's wave 0
+(3.16/10, every shot AMATEUR, the game identified in every blind pair) the lane owns light, colour and atmosphere as one
+system.
+
+**The audit (census on b74e1c251, all 33 maps; sky and atmosphere scored together, 1–10).** Most clear maps shared one
+deep cobalt sky and one field of cotton cumulus; the decks read airbrushed; the overcast decks opened holes (Titan
+Gorge's blue hole, Ironworks' lens, Whiteout Station's blue smudge); the overviews wore a milky band in the middle distance
+(Amberford, Frontier Basin). Scores: Titan Gorge 2.5; Cinder Junction, Whiteout Station and Ironworks 3; Verdant
+Fields, Sirocco Wadi, Frosthollow, Amberford, Frontier Basin, Redrock Divide, Obsidian Caldera and the Tidegate Polders
+3.5; Nordhavn Fjord, Ruinspires, Copper Mesa Mine, Kestrel Airfield, Sunscar Oasis, Orchard Valley, Longleaf Crossing,
+Mangrove Reach, Saltwind Narrows, Highland Reservoir, Skybridge Chasm, the Blackglass District, Aegis Crossing and
+Olympus Basin (a cartoon nebula) 4; Saltmere Bay, Tarkhan Steppe and Glacier Pass 4.5; the Jade River Delta and
+Earthrise Basin 5; Steinburg and Monsoon Ridge 5.5.
+
+**Why the far half read milky.** Three hazes stacked on the far land, none of them proportional to distance:
+- the aerial pass's two Gaussian curves (1 − exp(−(k·d)²)) saturated at about 650 m under fixed ceilings — 0.42 / 0.38
+  over the square, *lower* (0.34 / 0.30) across the ring's first kilometre — so every surface from 0.7 to 3 km wore the
+  same veil and the square's far edge wore more of it than the mountains behind it;
+- on top of the haze the pass desaturated (0.62) and cooled the far land, and pulled far greens toward a blue-grey (the
+  sniper-scope hue clamp, which ran in arcade too) — the land lost its colour before any haze reached it;
+- the materials' FogExp2 (fogDensity × 0.55) laid a second Gaussian veil over the ranges: 15 % at 1 km, 47 % at 2 km,
+  62–77 % at 3 km.
+The scatter target was capped at a fixed luminance and mixed with the authored fog tint, so every far range converged
+on one grey near the sky's brightness: Verdant's 2 km ridge read 1.0× the sky above it.
+
+**The haze law (`hazeLaw.ts`, c48ddb221 / f36a89b48).** One Beer–Lambert law over the physically based sky: the light of
+a thing d metres out reaches the camera as L·T + S·(1 − T), T = exp(−σ·d·ρ̄·c) per channel, with σ the map's own air
+(fogDensity × 0.42), ρ̄ the path-averaged density of an exponential layer (scale height 400 m over the ground under the
+camera — a crest stands in thinner air than its foot, an overview from 300 m looks down through two thirds of the
+ground's haze), c the aerosol chroma (0.90 / 1.0 / 1.14: far sandstone keeps its warmth) and S the sky behind the point
+(× 0.92, the authored fog tint at 0.4 of the map's fog mix, a closed deck's target × 0.45). Every kilometre adds the
+same share, so near, mid and far stay separate layers: on every authored map a ridge 2 km out keeps ≥ 0.49 of its
+contrast (Monsoon, the thickest air) and 300 m keeps ≥ 0.85. The materials' fog keeps 0.3 of its share on that path; the
+clouds keep their own law (a low deck's structure washed toward the horizon white under this one); the mobile tier's
+Preetham dome keeps the old law byte for byte. The sun's cloud knee eases within ~5° of the disc (a dark "eye" read
+around the sun on Fjord and the Polders where the kneed cloud sat under the unkneed glow).
+
+**The shade's colour (2b20e01a1; the gauntlet: "grass in the tank's shadow renders saturated indigo ... reads as a hole
+in the ground").** The grounded rig lights the shade with the clean dome's own irradiance — a Rayleigh-only sky whose
+cosine-weighted light runs B/R 3.3–4 (Verdant 0.069 / 0.130 / 0.273, far past 20 000 K) — amplified by
+SKY_DIFFUSE_GAIN, and the legacy cool shadow dim (0.80 / 0.88 / 1.0) painted the blue in a second time: in the wave-0
+frames the light in Sirocco's hull shadow ran 3.8× bluer than its sunlight, Saltmere Bay's 4.6× (open shade under a clear
+sky: about 2×). The environment's diffuse share now keeps SKY_DIFFUSE_CHROMA 0.4 of the dome's hue about its luminance
+(the aerosol, the whitened horizon and the fair-weather cloud the clean dome leaves out — the same light the gain stands
+for): Verdant's shade light lands at B/R 1.8, Sirocco's 1.6 (9 000–15 000 K); the luminance (the shade's level, the
+metered illuminance) and the specular share (a mirror reflects the sky the eye sees) are unchanged. The grounded rig
+dims its shadowed ambient neutrally at the legacy dim's luminance; the legacy rig (the mobile tier, the Garage, the
+galaxy skies) keeps its cool dim and its dome's hue.
+
+**A calibrated camera and AgX's own saturation (2b20e01a1).** Measured on the 24 wave-0 census frames against the
+gauntlet's 82 references (CIELAB) and re-graded offline through the very output chain the night-lens oracle models
+(`$SP/p2/skies/tools/regrade.py`: display → scene-referred → a new grade, round-trip residual 0.00/255):
+- the exposure key was half a stop hot: a sunlit 18 % card at Verdant displayed at L* 60, the frames' median at L* 63
+  and their darkest twentieth at 36, against 54 / 23 for the photographs (World of Tanks 43 / 19, War Thunder 47 / 17).
+  EXPOSURE_KEY is now a calibrated meter, π / E_ref = 1.05: an 18 % card under the reference illuminance reaches AgX at
+  scene-linear 0.18, its middle grey (L* ≈ 53); the re-grades land 53 / 24;
+- the scene-referred saturation boost (1.4) put the mean chroma at 22 and the foliage at 31, against 17 and 21 for the
+  photographs (World of Tanks 12 / 15), the sky's b* at −22 against −15: the grounded rig now runs AgX's own (1.0), the
+  re-grades land 17 / 20 / −20; the legacy rig keeps 1.4;
+- the night keeps the camera the owner approved ("a little more visible, not darker", 2026-09-14): NIGHT_EV −0.25 →
+  +0.265 carries the key's half stop (1.05 × 2.6 × 2^0.265 = 1.5 × 2.6 × 2^−0.25 = 3.28); the red night lens's ceiling
+  .5 → .6 (under the neutral grade the capped lens read a dull brick, #c35444) and the lens floors keep the key they were
+  authored under (the legacy rig's 1.5).
+A calibrated camera shows the albedos as they are: Verdant's meadow renders at L* 70+ (albedo ≥ 0.33), pale and washed
+where fresh grass is 0.1–0.2 and a dry meadow 0.2–0.3 — the ground and vegetation lanes calibrate the albedos; nothing
+should be brightened to undo the key.
+**Held back after the gauntlet's wave 7** (PR head against the lane: sky +0.13, horizon +0.25, lighting −0.20,
+Frosthollow's chase −1.6): a key matched to the photographs' median pulled every snowfield to grey (L* 70–73 against the
+PR head's 79–80; a photographer keeps snow near white, +1 to +1.5 EV over a mid-grey meter). The key (1.5), the
+saturation (1.4), the night EV (−0.25) and the night lens (.5) are back; the shading fix stays. The calibration returns
+only with an albedo-aware key that keeps snow and bright sand high-key.
+
+**Cloud shadows past the cascades, the far band on the horizon, the ground's sky under the hulls (de224d484).**
+- The gobos dither the clouds' shade into the cascades only, so an overview's land past 700 m lay in one even sun. The
+  clouds render the same shade (the same two weather fields, core and uniform objects as the gobos) into a 256-square
+  map over 12 km around the camera, snapped to its 47 m texel and refreshed every eight frames or when the square moves;
+  the aerial pass takes each far pixel's sun share away by it where the sun's ray from the pixel crosses the cloud base
+  (the contact shadows' law, colour · (1 − shade · T / (T + A)): a slope already turned from the sun keeps its shade),
+  fading in across three's last-cascade fade (0.875–1.125 of the shadow range in view depth), complementary. **Off by
+  default since fp9** (`FAR_CLOUD_SHADE_ON` / `CLOUD_FAR_SHADE_ON` 0, fdb7df96d): the frames showed no effect. Its QA
+  view (`__LIGHT_TUNE.FAR_CLOUD_SHADE = 2`: the map's shade in red over a 1.5 km grid of its uv) showed the map populated
+  on the far ranges while the depth-reconstructed normal took the whole sun term away (past the cascades neighbouring
+  pixels quantise to one depth and the normal degenerates). The pass now weighs a far pixel at level ground's sun share;
+  the default moves only when a capture shows it. Off, the clouds render no map and the pass skips the block.
+- A cumuliform sky's far band started at the decks' 8 km, 10° up inside its own traced field (marched to 20 km): one
+  pale sheet with an edge across the sky (Saltwind's "hard-edged pale streak ... a compositing seam"). It starts at
+  16 km and fades in over 9 km — under 4–5° at a 1.4 km band, the distant field's crowding on the horizon; the decks keep
+  8 km.
+- Scene-wide GTAO stays off (the owner, 2026-09-28). The ground around the four hulls the shadow router already selects
+  loses the sky each hull hides (`vehicleGroundOcclusion.ts`): an oriented box per hull (its armour-derived shadow proxy
+  carried down over the running gear), ½ sin²(atan(h/d)) · (2/π) atan(L/d) beside it (a wall's cosine-weighted share over
+  the azimuth a finite hull covers), 0.85 under the footprint, on the pixel's ambient share only; analytic, no noise.
+
+**The first A/B on the PR head (fp6: 3ed03998a against the lane, the 24 wave-0 shots, the census views).** CIELAB over
+the 24 frames, PR head → lane (the 35 photographs): p5 / p50 lightness 32.5 / 60.6 → 26.7 / 52.7 (22.5 / 54.4), mean
+chroma 23.1 → 17.0 (16.7), foliage chroma 33.1 → 19.9 (20.8), the sky's b* −21.9 → −19.2 (−15.1). The hull shadow on
+Sirocco's straw (46, 67, 79) → (36, 32, 25): its light from 3.75× bluer than the sun's to 1.02×; Saltmere Bay's teal
+shadow dark olive; Saltwind's streak and the coastal ribbon gone; Verdant's and Frontier Basin's far ranges step
+lighter and bluer instead of one pale wash. Two defects of the lane's own showed and were fixed before the hand-over: a
+hard dark rectangle under every hull on overcast ground (the footprint's fixed 0.85 against the side law's 0.5 at the
+hull's foot — now the sky through the side gaps, continuous at the edge), and no cloud shadow past the cascades (the far
+pass took only CSM-lit pixels; the far forests' impostors and the ring's land are receivers too).
+
+**Caldera's halo was the sky's own aureole (fp8; 77b6b5737).** The gauntlet read a soft white halo erasing a quarter of
+Obsidian Caldera's sky as an exposure or tone-mapping bug. Isolation variants on its tree and sunward views (bloom,
+shafts and flare off, singly and together) left it in place: display luma ≥ 0.89 out to 15° from the sun with every
+effect on or off; the three effects added 0.01–0.02 near the sun, and the grade's highlight shoulder runs only in the
+Garage. Caldera carried the heaviest aerosol of every map (turbidity 8.5 × Mie 0.014, about six times the Earth's, at
+g 0.89). Half the aerosol at the tightest lobe the calibration allows (Mie 0.007, g 0.92) keeps the ash haze over the
+land (its fogDensity is unchanged) and the bright core; fp9 shows the glow pulled in to the disc.
+
+**Cumulus fields and flat bases (fp9; ec15fdffd).** The gauntlet's wave 4 read every cumuliform sky as "dozens of
+near-identical, evenly spaced popcorn cumulus with no flat or shaded bases". Two terms in the one field and density
+every consumer reads (the trace, the gobos, the far shade):
+- `cluster`: a broad weather channel at 2.5× the cells' tile (30 km) gates the cells — 0.4× in a gap, 1.6× at a field's
+  heart, mean 1. Inside a field the cells merge into large masses, at its edge they fray small, between fields the sky
+  is clear;
+- `baseFlat`: a cumulus base cut at its condensation level — the base's rise sharpened and the detail erosion kept to the
+  flanks and the tops (the erosion lumps under the base had rounded every cumulus into a cotton ball).
+The cumuliform regimes take both (fair-weather 0.6, the streets 0.4, humilis and towering 0.5) and the fair-weather rows
+density 0.12 and ambient 0.9, so a shaded base reads grey instead of lifted back to white; the decks, sheets and fronts
+keep the even field. fp9: merged masses with grey undersides and clear gaps on Verdant and Saltmere Bay. The gate's mean
+holds a map's coverage only where the coverage cut sits mid-distribution: at a humilis map's 0.14–0.20 the cut is in the
+field's upper tail and a heart's 1.3× lifts many cells just over it — Sirocco's horizon took a band of small puffs (the
+next lab's item).
+
+**Sirocco's clear air (fp9; eb5914da5) and one law to the far country.** Dry desert air is clear: turbidity 7 → 5 and
+Mie 0.009 → 0.006 (a bluer low sky behind the ranges, which is the haze's target) and fogDensity 0.00047 → 0.0003 (a range
+10 km out keeps about half its contrast instead of a third); Oasis inherits the sky, the Garage's mirror follows. fp9:
+the far mesas keep their warm rock and their shading where the PR head shows pale lavender planes. The mountains lane
+measured the arid ranges at 0.95–1.07 of the sky's brightness on its baked panorama: two terms stacked there — this
+pass hazes the panorama's shell by its depth (camera → 2.6 km) and the bake added its own fixed 9 km e-fold for the air
+past the shell (a ridge 300 m up at 7.5 km: 56 % fog on Sirocco, 64–66 % on Badlands, Copper Mesa and Oasis). Agreed
+with the mountains lane (2026-10-03): the bake's air past the shell follows this law — `hazeSigma(fogDensity)` over the
+remaining path, `hazeLayerMean` between the ray's height at the shell and the country's, `HAZE_EXT_CHROMA`, the target
+from `ATMOSPHERE_SKY_GLSL`'s `atmoSkyVisible` as the aerial pass builds it — so the map's fogDensity is the one lever,
+and the four arid maps go to 0.00025 (a 300 m ridge at 7.5 km keeps about 60 % of its contrast) once a capture shows it.
+
+**fp9 on the PR head (6938b8413 against the lane, the 24 wave-0 shots and Caldera's three).** CIELAB over the 27 frames,
+PR head → lane (the photographs): p5 / p50 lightness 30.3 / 58.7 → 23.8 / 49.9 (22.5 / 54.4), mean chroma 22.4 → 15.7
+(16.7), foliage chroma 32.7 → 18.9 (20.8), the sky's b* −22.0 → −18.1 (−15.1). The lane's median sits 1.3 L* under fp8's
+(the denser cumulus, the clearer desert air).
+
+**Open after fp9.**
+- Sirocco's hull shadow is near black: shade / sun 0.050 in display-linear light (sRGB 30, 28, 23 on 185, 164, 137 sand),
+  where photographs of hulls on sand run about 0.07–0.16. The light balance itself is right (open shade / sun 0.155
+  scene-linear: the sky's cosine-weighted irradiance × 1.45 against the sun on the ground); the hull's sky occlusion,
+  the shadowed ambient's dim and the tone curve's toe stack on it. Next: the hull occlusion's multi-bounce term
+  (Jimenez's polynomial on the map's ground albedo: bright sand returns some of the light the hull hides).
+- The far cloud shade waits for its capture (above).
+- The humilis maps' horizon puffs (above) and the arid fogDensity (above).
+- Saltwind's sky-w pale band is the sea's horizon (the view looks along open water); the Frontier contrail reads as a
+  hard streak.
+
+**The clouds' shadows by one path (fp10; 2292e9149, 0ff4e2949, 495846781).** The ground lane traced a family of the
+gauntlet's defects to the cloud gobos — the "uniform stippled dot pattern" (Saltmere Bay, Sirocco), the "concentric
+arcs" and "weave tile" (Saltmere, Obsidian Caldera), the "checkerboard / diamond tiling" and the "contour-like streaks"
+(Frontier Basin, the ring faces): each cascade's depth map carried the clouds' shade as an interleaved-gradient dither
+(up to 62 % of the texels) and three's PCF read it with five fixed Vogel taps; the high tier runs no TAA, so neither
+noise averaged out. The lines ended at the cascades' 700 m and vanished with the gobos off (Bayer, white-hash and R2
+dithers alias alike: dithered depth coverage itself was the fault). Now:
+- the layer renders the shade undithered into one map at the cloud base — 512² over 12 km around the camera (23 m
+  texels), snapped to its texel, refreshed every eight frames or when the square moves — and publishes it to the
+  scene's shared uniforms the moment it is refreshed (`scene.userData.cloudShadeUniforms`, `cloudShadeMap.ts`);
+- lighting.ts patches three's shared chunks: `shadowmap_vertex` fetches the share per vertex (a cloud shadow is tens
+  to hundreds of metres across), each sun cascade's light takes it before its shadow on both CSM paths, and
+  `cotSunVis` takes it too (the scene alpha, the contact shadows' sun share, the shadowed ambient dim);
+  `setupShadowMaterial` sets `COT_CLOUD_SHADE` and binds the shared uniforms on every desktop CSM material built on
+  three's shaders (opt-out `userData.cotCloudShade = false`, a custom ShaderMaterial opts in with true); a program
+  that would pass sixteen samplers with the map keeps none (three counts a program's units against the fragment
+  limit; the inline standard maps of the physical fragment are not units until set — the terrain counts fourteen,
+  fifteen with the environment, sixteen with the map);
+- the ring's vista samples the same map (`horizonCloudShade.ts`: one fetch where it re-cut two weather fields);
+- phones take nothing (no volumetric layer); the gobo planes, their depth material and the aerial pass's far shade
+  block are gone.
+
+**fp10 and the candidate (2026-10-03; the gauntlet's waves 7, 13 and 14).**
+- *The camera stays the PR head's.* Wave 7 held the calibrated key (EXPOSURE_KEY 1.05 with AgX's own saturation): it
+  greyed every snowfield. The split hand-over put the key (1.5), the saturation (1.4), the night EV (−0.25) and the night
+  lens (.5) back and kept the shading fix — at the PR head's key and saturation Sirocco's hull-shadow light still runs
+  1.13× the sun's B/R (the PR head's 3.75×; 1.06× at saturation 1.0, so the boost re-adds little colour).
+- *A bright ground opens the camera* (`exposureAlbedoEV`, lightModel.ts): a map whose ground albedo passes 0.35 gains
+  0.42 stops per doubling, at most 0.75 EV, by day — Frosthollow and Whiteout (0.80) +0.5 EV, every other map none; the
+  photographer's compensation over snow, keyed to the authored albedo, never the global camera (wave 13: Frosthollow's
+  establishing −1.3 for a greyer frame).
+- *Arid air:* fogDensity 0.00025 on Sirocco, Badlands, Copper Mesa and Oasis (Badlands' far ridge contrast 0.165 against
+  the PR head's 0.114); the mountains lane's panorama bake takes the same law past its shell once hazeLaw.ts is merged.
+- *The hull's multi-bounce* (vehicleGroundOcclusion.ts): the occlusion keeps Jimenez et al.'s multi-bounce visibility on
+  the map's ground albedo (Sirocco's hull shade / sun 0.071 → 0.081; snow lifts most).
+- *No contrails* (cloudscapeLayer.ts `CLOUD_CONTRAILS_ON`): fp10's segmented, thinner trails still read as straight lines
+  and the critics called every one a render glitch; the reference tank games carry none.
+- *No cumuliform far band:* edge-on, its broad coverage turned into one opaque pale ribbon a few degrees over the hills
+  ("a ruler-flat pale band at one constant height"); a cumuliform sky now ends where its traced field does and sinks into
+  the haze, a deck keeps its far rows.
+- *Humilis keeps the even field* (the fields' hearts swelled Sirocco's sparse cells into cotton masses); the street
+  regimes' far cells take the fields' gate (ungated, a street sky's far half came back as even popcorn).
+- Knobs left off until a capture shows them: `deckDetail` (fp10: it thinned the decks instead of defining them) and
+  `CLOUD_FAR_THIN` (the far cumuliform cut).
+
+**fp11, the gate capture (2026-10-03; the PR head 0bbb0cddc against the candidate ffc6e86ab in one hold, the census
+recipe and its cloudscape gate, nine maps).**
+- *Snow* (ground L*, the frame's lower quarter, median): Frosthollow establishing 80.2 → 85.4 and chase 79.2 → 84.0,
+  Whiteout 64.5 → 72.2 and 63.8 → 70.3 — above the PR head on all four. The candidate without the lift matches the PR
+  head (80.0, 78.5, 64.7, 62.7): the albedo lift is the whole difference (exposure × √2 on the two snow maps, every other
+  map's exposure unchanged).
+- *The horizon band* (wave 13: "the warm horizon band dims a step"): on Frosthollow's establishing view the far ranges
+  and their haze (frame rows 180–315) run L* 72.3–73.6 on the PR head, 67.4–70.7 without the lift (the dimming fp10
+  showed) and 74.4–77.3 with it, 1.4–2.5 b* less blue. A warm lobe in the haze law's target (half the legacy forward lobe
+  toward the sun, the hue guard keyed on green casts only) changed no pixel of the eighteen establishing and sky-w frames
+  — no census view faces the sun — and stays off the candidate.
+- *Decks:* lumps 0.8 raised a deck's structure by half (sky-w structure: Railyard 1.90 → 2.82, Frosthollow 1.31 → 1.95)
+  as one even mottle over the whole sheet; the interior octave does nothing on a deck (Railyard 1.884 against 1.897) and
+  `CLOUD_FAR_THIN` 1 removed only a few marginal puffs on the horizon (Frontier, Coastal). Both stay off.
+- *Chase frames vary on the tank from run to run:* the dev root (the candidate's code but for the haze hue) differs from
+  the candidate only on the hull in every chase frame (Whiteout's tank renders darker in the candidate's frame than in
+  either other root's), so a chase pair is no evidence about the hull's light.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

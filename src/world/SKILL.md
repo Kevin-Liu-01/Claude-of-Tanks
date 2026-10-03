@@ -160,6 +160,29 @@ catalog façade pass (the masonry buckets carry the centred wall envelope).
 legacy displacement's projected hull stays the collision proxy: every cut
 moves a vertex inward), the per-map moss / dust / soil dressing, the triplanar
 rock tile and the hook layered on the grime hook.
+The scenery lane (2026-10-03): a map's named landscape features live in its top-level `scenery` block
+(`sceneryPlan.ts` holds the contract, the config-only footprints the vegetation keeps off and the ground-cover holes);
+`sceneryRocks.ts` builds the rock forms (granite tors, bedded sandstone / limestone outcrops, slate crags, limestone
+pavement, scree, menhirs, cairns, calvaries) as welded vertex-coloured geometry with a convex mass per standing form,
+and a hill's bedrock (`buildBedrock`: jointed beds read off the live ground by rays on the flanks no hull climbs,
+each hill bedded its own way, broken where the ground's clefts cut the wall; a skin with no mass; its `strata` option
+takes the terrain's bed law; parked since wave 16, no map places it: on smooth domes it read as masonry);
+`maps/sceneryKit.ts` holds the timber and steel landmarks (`SCENERY_DESTRUCTIBLE_TYPES`, merged into the props type
+registry after the inhabiting kit's) and the lattice pylons; `scenery.ts` composes them in props after every other
+placement and before the bucket merge (one rock-material mesh for the map, the pylons folded into `baked`, each
+feature on its own seeded stream, every refusal named in `props.group.userData.scenery`). `scenery.selftest.mjs` pins the forms, the kit, the admission and every authoring map's placement;
+docs/MAP-LAYOUT-BRIEF.md "Scenery" is the authoring guide. The field wall module (`maps/inhabitKit.ts` `wallstone`)
+is a dry-stone wall fitted to the old coursed module's envelope after spending its draws; brick-print maps
+(`sourcedTextures.ts` `sourcedStoneIsBrick`) keep the coursed module through props' local types. The sandbag stacks
+(props local types) are `maps/sceneryKit.ts` `buildSandbagStack`, laid bag by bag in the sourced models' envelopes on
+the canvas weave; their remnants spend the old remnant's draws first. `fieldWorks.ts` lays a map's field-boundary
+works (a karst's dry stone walls, a bocage's hedge banks) on the ground lane's land use through the height field's
+`_landUseAt` hook — the same boundary band and field gate the terrain draws — as decor with no collision, at most
+1 m tall; a world without the hook builds none. Props builds them last (`placeFieldBoundaryWorks`, after the pools'
+refit, through `scenery.ts` `composeFieldWorks`), so they keep off every mode's objective discs where the match
+placement seats them on those final solids, as well as the aprons, yards, bridges, trenches, pads and roads; the
+selftest proves it on Saltwind and Saltmere. A map's `scenery.masonryTint` tints the props stone print (Saltwind's
+limestone).
 A plan builder reads its battlefield through `structureBuildContext(buckets)`
 (`maps/exteriorDetailKit.ts`), never a positional argument; a part new to a
 builder's seeded stream is tagged `userData.uvJitter = 'none'`, a part that
