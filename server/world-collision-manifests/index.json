@@ -47,8 +47,8 @@
       "concealers": 4675
     },
     "steppe": {
-      "bytes": 1167734,
-      "sha256": "5865ac5ab26034c548d05c2429c17150574d03633fbfafe31918cc278ca93cf6",
+      "bytes": 1167738,
+      "sha256": "43478fa4b118cf060abdad381df0fde8448b7597ac96dc25b8ae52e9210386fb",
       "obstacles": 2020,
       "colliders": 1731,
       "concealers": 888
@@ -117,8 +117,8 @@
       "concealers": 2082
     },
     "ruinspires": {
-      "bytes": 7073564,
-      "sha256": "6ab2a3e1cb2884b24b4a48e3e4298aec14fb6fb17ac8a7615126a5d6fcbcd378",
+      "bytes": 7073574,
+      "sha256": "77382e9073964385ada43c2b54902b987a4c5610dbea6e8216a9616b7ce6835f",
       "obstacles": 1933,
       "colliders": 8350,
       "concealers": 462
