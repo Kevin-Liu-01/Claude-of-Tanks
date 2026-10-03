@@ -490,6 +490,12 @@ const CLOUD_SHADE_DEFAULT = 0.22;
  * cascade fades out linearly over 0.875–1.125 of the shadow range in view depth), so the two hand over without a seam.
  */
 const FAR_CLOUD_SHADE_FADE = Object.freeze([0.875, 1.125] as const);
+/**
+ * Off until its frames prove it (2026-10-03: fp9's QA view showed the shade reaching the far ranges while the depth-normal
+ * sun share took all of it away; the level-ground share replaces that and waits for its own capture). 1 turns it on (QA:
+ * __LIGHT_TUNE.FAR_CLOUD_SHADE, 2 the QA view); off, the pass skips the block and the clouds render no map.
+ */
+export const FAR_CLOUD_SHADE_ON = 0;
 // r5 HEIGHT-AWARE HAZE ("a diagonal fog-gradient band cutting across the
 // winter massif reads as a shader artifact — replace with height-based fog
 // so the band follows altitude"): in-scatter accumulates along the path
@@ -1199,11 +1205,14 @@ const AerialShader = {
             float fsShade = texture2D( tFarShade, fsUv ).r
               * clamp( ( -viewZ - uFarShadeFade.x ) / ( uFarShadeFade.y - uFarShadeFade.x ), 0.0, 1.0 )
               * step( 0.0, fsUv.x ) * step( fsUv.x, 1.0 ) * step( 0.0, fsUv.y ) * step( fsUv.y, 1.0 );
-            if ( fsShade > 0.004 ) {
-              vec3 fsN = cotNormalAt( vUv, fsP );
-              float fsT = uContactSunLum * max( dot( fsN, uSunDir ), 0.0 ) * fsVis;
-              float fsA = mix( uContactAmb.y, uContactAmb.x, fsN.y * 0.5 + 0.5 ) + uContactAmb.z
-                + uContactAmb.w * max( dot( fsN, uContactFillDir ), 0.0 );
+            // QA (__LIGHT_TUNE.FAR_CLOUD_SHADE = 2): the map's shade in red over a 1.5 km grid of its uv in green / blue
+            if ( uFarShade.w > 1.5 ) texel.rgb = vec3( fsShade * 1.6, step( 0.95, fract( fsUv * 8.0 ) ) * 0.5 );
+            else if ( fsShade > 0.004 ) {
+              // the sun share of level ground: past the cascades the depth buffer quantises adjacent pixels to one
+              // depth and a reconstructed normal degenerates (fp9's QA view showed the shade on the far ranges while the
+              // depth normal took all of it away); a far slope is read at the ground's share
+              float fsT = uContactSunLum * uSunDir.y * fsVis;
+              float fsA = uContactAmb.x + uContactAmb.z + uContactAmb.w * max( uContactFillDir.y, 0.0 );
               texel.rgb *= 1.0 - fsShade * fsT / max( fsT + fsA, 1e-4 );
             }
           }
@@ -2788,7 +2797,7 @@ export function createPost(
   function updatePostLightFx(): void {
     // 2026-10-03: the far cloud shadows (FAR_CLOUD_SHADE_FADE note) — on wherever the clouds publish their shade; they
     // read the contact shadows' sun and ambient uniforms
-    const farShade = lightTune('FAR_CLOUD_SHADE', 1) > 0
+    const farShade = lightTune('FAR_CLOUD_SHADE', FAR_CLOUD_SHADE_ON) > 0
       ? (scene.userData.volumetricClouds as { farShade?: { texture: THREE.Texture; rect: THREE.Vector3; baseM: number } | null } | null | undefined)?.farShade ?? null
       : null;
     updateVehicleGroundOcclusionUniforms(aerial.uniforms as unknown as VehicleGroundOcclusionUniforms,
@@ -2796,7 +2805,7 @@ export function createPost(
     const fs = aerial.uniforms.uFarShade.value as THREE.Vector4;
     if (farShade) {
       aerial.uniforms.tFarShade.value = farShade.texture;
-      fs.set(farShade.rect.x, farShade.rect.y, 1 / farShade.rect.z, 1);
+      fs.set(farShade.rect.x, farShade.rect.y, 1 / farShade.rect.z, lightTune('FAR_CLOUD_SHADE', FAR_CLOUD_SHADE_ON));
       aerial.uniforms.uFarShadeBase.value = farShade.baseM;
       const range = Math.max(Math.min(camera.far, preset.shadowMaxFar) - camera.near, 1);
       (aerial.uniforms.uFarShadeFade.value as THREE.Vector2).set(FAR_CLOUD_SHADE_FADE[0] * range, FAR_CLOUD_SHADE_FADE[1] * range);

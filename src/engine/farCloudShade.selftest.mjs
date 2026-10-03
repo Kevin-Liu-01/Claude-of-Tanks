@@ -32,8 +32,7 @@ assert.match(clouds, /tWeather: gu\.tWeather, tStreets: gu\.tStreets, uWeatherSh
 assert.match(clouds, /const cx = Math\.round\(this\.cam\.pos\.x \/ texel\) \* texel, cz = Math\.round\(this\.cam\.pos\.z \/ texel\) \* texel;/,
   'snapped to its texel: the shadows never swim as the camera moves');
 assert.match(clouds, /if \(!moved && \+\+this\.farShadeAge < CLOUD_FAR_SHADE_EVERY\) return;/, 'a refresh when the square moves, else on the schedule');
-assert.match(clouds, /if \(!preset\.shadow \|\| preset\.coverage <= 0\) \{ this\.farShadeValid = false; return; \}/,
-  'a deck that casts no cloud shadows publishes none (the overcast regimes)');
+// (a deck that casts no cloud shadows publishes none: the overcast regimes — pinned above with the lever)
 assert.match(clouds, /this\.updateGobos\(preset\);\s*this\.updateFarShade\(preset\);/, 'refreshed beside the gobos, after the wind moved');
 assert.match(clouds, /this\.farShadeMaterial\.dispose\(\);\s*this\.farShadeTarget\?\.dispose\(\);/, 'disposed with the layer');
 
@@ -44,15 +43,25 @@ assert.match(post, /float fsVis = cotSunVisOf\( texel\.a \);\s*if \( fsVis < 0\.
 assert.match(post, /vec2 fsUv = \( fsP\.xz \+ uSunDir\.xz \* \( \( uFarShadeBase - fsP\.y \) \/ uSunDir\.y \) - uFarShade\.xy \) \* uFarShade\.z \+ 0\.5;/,
   'the point the sun\'s ray from the pixel crosses the cloud base, in the map\'s square');
 assert.match(post, /texel\.rgb \*= 1\.0 - fsShade \* fsT \/ max\( fsT \+ fsA, 1e-4 \);/, 'the contact shadows\' law: the pixel\'s sun share');
-assert.match(post, /float fsT = uContactSunLum \* max\( dot\( fsN, uSunDir \), 0\.0 \) \* fsVis;/);
-assert.match(post, /float fsA = mix\( uContactAmb\.y, uContactAmb\.x, fsN\.y \* 0\.5 \+ 0\.5 \) \+ uContactAmb\.z\s*\+ uContactAmb\.w \* max\( dot\( fsN, uContactFillDir \), 0\.0 \);/,
-  'the rig\'s ambient on the pixel\'s normal, as the contact shadows weigh it');
+// (2026-10-03: at level ground's share — past the cascades a depth-reconstructed normal degenerates: fp9's QA view showed
+// the shade on the far ranges while the depth normal's sun term took all of it away)
+assert.match(post, /float fsT = uContactSunLum \* uSunDir\.y \* fsVis;/, 'the sun on level ground');
+assert.match(post, /float fsA = uContactAmb\.x \+ uContactAmb\.z \+ uContactAmb\.w \* max\( uContactFillDir\.y, 0\.0 \);/,
+  'the rig\'s ambient on level ground, as the contact shadows weigh it');
+assert.doesNotMatch(post.slice(post.indexOf('the far cloud shadows (FAR_CLOUD_SHADE_FADE note)'), post.indexOf('float wy = uCamPos.y + ray.y * rayT;')), /cotNormalAt/,
+  'no depth normal past the cascades');
 const vehAt = post.indexOf('texel.rgb *= cotVehicleOcclusionShade(');
 const farAt = post.indexOf('if ( uFarShade.w > 0.5 && -viewZ > uFarShadeFade.x');
 const hazeAt = post.indexOf('float wy = uCamPos.y + ray.y * rayT;');
 assert.ok(vehAt > 0 && farAt > vehAt && hazeAt > farAt, 'after the world position and the vehicle occlusion, before the haze');
 assert.match(post, /lightFx\.contactShadows \|\| lightFx\.vehicleOcclusion \|\| !!farShade\);/, 'the sun / ambient uniforms refresh for it');
-assert.match(post, /fs\.set\(farShade\.rect\.x, farShade\.rect\.y, 1 \/ farShade\.rect\.z, 1\);/, 'on wherever the clouds publish a map');
+assert.match(post, /fs\.set\(farShade\.rect\.x, farShade\.rect\.y, 1 \/ farShade\.rect\.z, lightTune\('FAR_CLOUD_SHADE', FAR_CLOUD_SHADE_ON\)\);/, 'on wherever the clouds publish a map (QA 2: the map shown)');
+// off until its frames prove it (2026-10-03): the pass skips the block, the clouds render no map
+assert.match(post, /export const FAR_CLOUD_SHADE_ON = 0;/); assert.match(clouds, /export const CLOUD_FAR_SHADE_ON = 0;/);
+assert.match(clouds, /if \(!preset\.shadow \|\| preset\.coverage <= 0 \|\| !\(lightTune\('FAR_CLOUD_SHADE', CLOUD_FAR_SHADE_ON\) > 0\)\) \{ this\.farShadeValid = false; return; \}/,
+  'no map is rendered while the lever is off');
+assert.match(post, /const farShade = lightTune\('FAR_CLOUD_SHADE', FAR_CLOUD_SHADE_ON\) > 0/);
+assert.match(post, /if \( uFarShade\.w > 1\.5 \) texel\.rgb = vec3\( fsShade \* 1\.6, step\( 0\.95, fract\( fsUv \* 8\.0 \) \) \* 0\.5 \);\s*else if \( fsShade > 0\.004 \) \{/, 'the QA view of the far shade');
 assert.match(post, /\} else \{\s*fs\.w = 0;\s*\}/, 'off without one (the mobile tier, a deck, ?clouds=off)');
 
 // ---- the hand-over: the map fades in exactly as three's last cascade fades its shadow out (view depth / shadow range)

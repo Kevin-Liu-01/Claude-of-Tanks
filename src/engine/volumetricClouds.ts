@@ -49,6 +49,7 @@ import { markShadowOnly, setShadowCasterCascades } from './renderLayers.ts';
 import { CLOUD_BLUE_SIZE, CLOUD_CURL_SIZE, CLOUD_DETAIL_SIZE, CLOUD_SHAPE_SIZE, CLOUD_WEATHER_SIZE } from './cloudNoise.ts';
 import { cloudLayerKey, type CloudLayerPreset } from './cloudPresets.ts';
 import { resolvePresetName } from './quality.ts';
+import { lightTune } from './lightModelCore.ts';
 import {
   CLOUD_CONTRAIL_MAX, CLOUD_FOGBANK_RANGE_M, CLOUD_RAIN_RANGE_M, CLOUD_RAIN_SAMPLES,
   applyCloudWeatherPreset, createCloudWeatherUniforms,
@@ -151,6 +152,8 @@ export const CLOUD_FAR_SHADE_SIZE = 256;
 export const CLOUD_FAR_SHADE_SPAN_M = 12000;
 /** Frames between refreshes (a 6 m/s wind moves the field under a metre; a texel is 47 m). */
 export const CLOUD_FAR_SHADE_EVERY = 8;
+/** Whether the far shade renders by default (post.ts FAR_CLOUD_SHADE_ON mirrors it; QA: __LIGHT_TUNE.FAR_CLOUD_SHADE). */
+export const CLOUD_FAR_SHADE_ON = 0;
 /** The gobos' darkest dither: the share of the sun a cloud core takes (the shade map holds the same value). */
 export const CLOUD_SHADOW_CORE = 0.62;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
@@ -2010,7 +2013,8 @@ export class VolumetricCloudLayer {
    * CLOUD_FAR_SHADE_EVERY frames; off (null for post.ts) where the clouds cast no shadows.
    */
   private updateFarShade(preset: CloudLayerPreset): void {
-    if (!preset.shadow || preset.coverage <= 0) { this.farShadeValid = false; return; }
+    // (off with post.ts FAR_CLOUD_SHADE_ON, the QA lever turns both on)
+    if (!preset.shadow || preset.coverage <= 0 || !(lightTune('FAR_CLOUD_SHADE', CLOUD_FAR_SHADE_ON) > 0)) { this.farShadeValid = false; return; }
     const texel = CLOUD_FAR_SHADE_SPAN_M / CLOUD_FAR_SHADE_SIZE;
     const cx = Math.round(this.cam.pos.x / texel) * texel, cz = Math.round(this.cam.pos.z / texel) * texel;
     const rect = this.farShadeInfo.rect;
