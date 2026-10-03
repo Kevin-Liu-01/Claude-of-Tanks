@@ -33,10 +33,10 @@
       "concealers": 3510
     },
     "coastal": {
-      "bytes": 1343710,
-      "sha256": "395ea1ddce7649a63758205424f47281bf10cc23283f84369a33bea9c204e121",
+      "bytes": 1398694,
+      "sha256": "2cbad049f95d88fbf8a9904033c8e05992b6bc21c4f806b16509bcbbe15e032b",
       "obstacles": 4091,
-      "colliders": 3911,
+      "colliders": 3979,
       "concealers": 4107
     },
     "autumn": {
@@ -61,10 +61,10 @@
       "concealers": 1899
     },
     "frontier": {
-      "bytes": 2123211,
-      "sha256": "98ba6bb5805e464bd2d252c424d8a371b5631fa4c2457fd75311a8420d9e33bf",
+      "bytes": 2233945,
+      "sha256": "d9dd2de1eedf3052ab92fcb6a0497a8f0741328aa4fc8f2b6c7fd711a6793217",
       "obstacles": 7987,
-      "colliders": 7907,
+      "colliders": 7942,
       "concealers": 8359
     },
     "fjord": {
@@ -201,10 +201,10 @@
       "concealers": 6535
     },
     "saltwind": {
-      "bytes": 1205265,
-      "sha256": "2f85201b43fbb63b17ae97f0ba4403460f6856068e1163d59382fa3e20dedd18",
+      "bytes": 1244755,
+      "sha256": "16b9b01b3ca644d26075758db3f96e0c9133a9a62fe681926988749ac262a922",
       "obstacles": 3666,
-      "colliders": 3429,
+      "colliders": 3461,
       "concealers": 4131
     },
     "reservoir": {
