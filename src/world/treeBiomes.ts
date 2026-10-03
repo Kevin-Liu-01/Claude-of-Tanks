@@ -77,3 +77,30 @@ export function treeBiomeSlot(mapId: string | null | undefined, slot: TreeSpecie
   if (!mapId) return null;
   return TREE_BIOMES[mapId]?.slots[slot] ?? null;
 }
+
+/** The colour terms of a map palette that a regional form may set aside (vegetation.ts VegetationPalette's subset). */
+export interface TreeBiomePaletteTerms {
+  cardHue?: number;
+  cardSat?: number;
+  texTone?: unknown;
+  birchLeaves?: boolean;
+}
+
+/**
+ * The palette a slot's regional form grows with. A form of another family keeps the map palette's tone and snow but
+ * not the card hue and saturation tuned for the slot's family. A form that grows leaves takes them (birchLeaves); on
+ * a palette authored for bare crowns (no birchLeaves of its own) it also sets aside that palette's twig colours, the
+ * texture tone and the card hue and saturation, which would paint the new leaves the twigs' colour. Cinder Junction's
+ * sooty-gold birch twigs turned its leafy birches orange-brown: the gauntlet's "dead/brown foliage scattered randomly
+ * among healthy green trees, reading as a widespread asset bug" (wave 6).
+ */
+export function treeBiomePalette<P extends TreeBiomePaletteTerms>(pal: P, form: { leaves?: boolean } | null, crossFamily: boolean): P {
+  if (!form) return pal;
+  const bareTuned = form.leaves === true && pal.birchLeaves !== true;
+  return {
+    ...pal,
+    ...(crossFamily || bareTuned ? { cardHue: undefined, cardSat: undefined } : {}),
+    ...(bareTuned ? { texTone: undefined } : {}),
+    ...(form.leaves ? { birchLeaves: true } : {}),
+  };
+}

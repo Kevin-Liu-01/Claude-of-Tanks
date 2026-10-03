@@ -1633,12 +1633,29 @@ function smooth01(x: number): number {
 }
 
 /**
+ * Trees round 2 (2026-10-03): the crown masses' porosity — the share of the sun a mass of the hull lets through, by
+ * Beer-Lambert over its sprays: exp(-G x coverage x leaf area / projected area), the sprays turned at random (G, the
+ * mean projection of a flat card, a half), each card stopping its atlas's opaque share (treeSprayAtlas.ts
+ * SPRAY_ATLAS_COVERAGE), the area the mass's ellipsoid shades under a sun at `sunElevation` (its RMS over azimuth);
+ * held inside [min, max] so a mass never casts solid and never vanishes. A dense oak mass keeps about a third of the
+ * sun, a weeping eucalyptus or an Aleppo pine more than half (the gauntlet's "dense, unexplained dark shadow-shape"
+ * under a sparse crown, wave 6).
+ */
+export const GROWTH_CROWN_POROSITY = Object.freeze({ leafProjection: 0.5, sunElevation: Math.PI / 4, min: 0.08, max: 0.72, coverage: 0.28 });
+
+/** One crown mass of a shadow hull: its vertex range and the share of the sun it lets through. */
+export interface CrownShadowMass { start: number; end: number; transmittance: number }
+
+/**
  * The crown's shadow caster: position-only, the stem and scaffold wood as five-sided tubes and the foliage as a
  * handful of low ellipsoids fitted to clusters of spray seats (the masses a sun shadow resolves at the cascades'
- * texel sizes — the near crown's own shape, not a generic lobe). Flat triangles.
+ * texel sizes — the near crown's own shape, not a generic lobe). Flat triangles. The wood leads; each crown mass
+ * carries its porosity (GROWTH_CROWN_POROSITY, the sprays' `coverage` the tree's atlas share).
  */
-export function emitCrownShadowHull(skeleton: TreeSkeleton, clusters = 8): Float32Array & { woodVertices: number } {
+export function emitCrownShadowHull(skeleton: TreeSkeleton, clusters = 8, coverage: number = GROWTH_CROWN_POROSITY.coverage):
+  Float32Array & { woodVertices: number; masses: CrownShadowMass[] } {
   const out: number[] = [];
+  const masses: CrownShadowMass[] = [];
   // wood: the stem and the first-order limbs
   for (const branch of skeleton.branches) {
     if (branch.order > 1 || (branch.order === 1 && branch.nodes[0].r < 0.06)) continue;
@@ -1708,13 +1725,22 @@ export function emitCrownShadowHull(skeleton: TreeSkeleton, clusters = 8): Float
       });
       if (!n) continue;
       // the sprays fill about four fifths of their cluster's box
+      const a = ex * 0.92, b = ey * 0.85, c = ez * 0.92, start = out.length / 3;
       for (let v = 0; v < ip.count; v++) {
-        out.push(centres[i].x + ip.getX(v) * ex * 0.92, centres[i].y + ip.getY(v) * ey * 0.85, centres[i].z + ip.getZ(v) * ez * 0.92);
+        out.push(centres[i].x + ip.getX(v) * a, centres[i].y + ip.getY(v) * b, centres[i].z + ip.getZ(v) * c);
       }
+      // the mass's porosity: its sprays' card area over the ellipsoid's shade under the law's sun
+      let leafArea = 0;
+      skeleton.leaves.forEach((leaf, j) => { if (assign[j] === i) leafArea += leaf.length * leaf.width; });
+      const ce = Math.cos(GROWTH_CROWN_POROSITY.sunElevation), se = Math.sin(GROWTH_CROWN_POROSITY.sunElevation);
+      const shade = Math.PI * Math.sqrt(ce * ce * ((b * c) ** 2 + (a * b) ** 2) * 0.5 + se * se * (a * c) ** 2);
+      const depth = GROWTH_CROWN_POROSITY.leafProjection * coverage * leafArea / Math.max(1e-3, shade);
+      masses.push({ start, end: out.length / 3,
+        transmittance: Math.min(GROWTH_CROWN_POROSITY.max, Math.max(GROWTH_CROWN_POROSITY.min, Math.exp(-depth))) });
     }
     ico.dispose();
   }
-  return Object.assign(new Float32Array(out), { woodVertices });
+  return Object.assign(new Float32Array(out), { woodVertices, masses });
 }
 
 /**

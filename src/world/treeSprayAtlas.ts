@@ -26,6 +26,16 @@ export const SPRAY_KINDS: readonly SprayKind[] = Object.freeze(['oak', 'poplar',
   'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'broom']);
 /** Tiles per side of every spray atlas. */
 export const SPRAY_ATLAS_TILES = 2;
+/**
+ * Trees round 2 (2026-10-03): each atlas's opaque share, the mean alpha over its painted 512 px atlas
+ * (treeCrownShading.selftest.mjs paints them again and holds the table to it). The crown shadow hull's porosity reads
+ * it (treeGrowth.ts emitCrownShadowHull): a spray card stops this share of the sun that meets it.
+ */
+export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.freeze({
+  oak: 0.318, poplar: 0.285, willow: 0.17, acacia: 0.362, eucalyptus: 0.239, birch: 0.219, aspen: 0.274, 'birch-bare': 0.13,
+  spruce: 0.269, fir: 0.329, pine: 0.161, cedar: 0.188, cypress: 0.291, mangrove: 0.264, beech: 0.313, chestnut: 0.396,
+  holmOak: 0.213, olive: 0.225, canaryPine: 0.197, aleppoPine: 0.108, larch: 0.157, broom: 0.131,
+});
 
 interface LeafColor { hue: number; sat: number; light: number }
 /** The base leaf colour of each kind (linear HSL, the convention of the round-8 painters' css()). */

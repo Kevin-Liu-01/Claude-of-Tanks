@@ -6,8 +6,10 @@
 // depth pass now lets the sun through the crown's leaf gaps: a two-octave value noise in SUN space — the world position
 // turned by the shadow camera's rotation alone, so the pattern is anchored to the world and the same in every cascade
 // and every frame while the cascades snap and slide with the camera (the LOD dissolve's rule, engine/lodShadowFade.ts)
-// — discards the crown masses' fragments where it runs low. Both faces of a mass see the same sun-space point along a
-// ray, so a gap opens through the whole crown. The wood never opens (`aCrown` 0 on its triangles: a stem's shadow is a
+// — discards the crown masses' fragments where it runs low. Each mass opens as far as its own sprays leave it open
+// (treeGrowth.ts GROWTH_CROWN_POROSITY: a sparse weeping crown lets more sun through than a dense oak) and draws its
+// own pattern, so where the sun crosses two masses it has to find a gap in both and a crown's heart casts darker than
+// its fringe. Both faces of a mass see the same sun-space point along a ray, so a gap opens through the whole mass. The wood never opens (`aCrown` 0 on its triangles: a stem's shadow is a
 // line, not a dotted one), and the gaps close where a cascade's texel grows past the leaf-cluster scale (the pattern
 // would alias into crawling dots there): the far cascades keep the solid mass, the near ones the dapple.
 //
@@ -20,16 +22,37 @@ import { LOD_SHADOW_FADE_ATTRIBUTE, patchLodShadowFadeDepthShader } from '../eng
 type MaterialShader = Parameters<THREE.Material['onBeforeCompile']>[0];
 type DappleMesh = THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>;
 
-/** The per-vertex crown flag a dappled proxy carries: 1 on the crown masses, 0 on the wood. */
+/**
+ * The per-vertex crown tag a dappled proxy carries: 0 on the wood; on a crown mass its index + 1 (its own pattern) plus,
+ * in the fraction, the noise level under which the sun passes (crownDappleTags).
+ */
 export const CROWN_DAPPLE_ATTRIBUTE = 'aCrown';
-export const CROWN_DAPPLE_PROGRAM_KEY = 'cot-crown-dapple-depth-v1';
+export const CROWN_DAPPLE_PROGRAM_KEY = 'cot-crown-dapple-depth-v2';
 
 /**
- * The dapple law: the leaf-cluster cell (m) of the coarse octave (the fine one is 0.43 of it), the gap threshold on
- * the noise (the share of the crown the sun passes is about the share of the noise under it, ~30 %), and the shadow
- * texel sizes (m) over which the gaps close (full under the first, none past the second).
+ * The dapple law: the leaf-cluster cell (m) of the coarse octave (the fine one is 0.43 of it); the noise level under
+ * which a share of the sun passes, at shares 0, 0.05 … 1 (the two-octave noise's quantiles, measured on a CPU grid of
+ * the shader's own hash: treeCrownShading.selftest.mjs measures them again); the sun-space offset between two masses'
+ * patterns (m, per mass index); the shadow texel sizes (m) over which the gaps close (full under the first, none past
+ * the second).
  */
-export const CROWN_DAPPLE_LAW = Object.freeze({ cellM: 0.55, fine: 0.43, gap: 0.40, texelFadeM: Object.freeze([0.07, 0.2] as const) });
+export const CROWN_DAPPLE_LAW = Object.freeze({
+  cellM: 0.55, fine: 0.43,
+  thresholds: Object.freeze([0.014, 0.243, 0.294, 0.331, 0.361, 0.388, 0.413, 0.435, 0.458, 0.479, 0.5, 0.522, 0.543, 0.565,
+    0.588, 0.613, 0.639, 0.669, 0.706, 0.757, 0.986] as const),
+  massOffsetM: Object.freeze([7.13, 3.71] as const),
+  texelFadeM: Object.freeze([0.07, 0.2] as const),
+});
+
+/** The noise level under which `transmittance` (0..1) of the sun passes a crown mass (the law's quantiles, linear). */
+export function crownDappleThreshold(transmittance: number): number {
+  const table = CROWN_DAPPLE_LAW.thresholds, last = table.length - 1;
+  const x = Math.min(1, Math.max(0, transmittance)) * last, i = Math.min(last - 1, Math.floor(x));
+  return table[i] + (table[i + 1] - table[i]) * (x - i);
+}
+
+/** The tag's fraction: the threshold scaled into [TAG_MARGIN, TAG_MARGIN + TAG_SPAN] of the unit. */
+const TAG_MARGIN = 0.02, TAG_SPAN = 0.96;
 
 function replaceAnchor(source: string, anchor: string, replacement: string): string {
   const patched = source.replace(anchor, replacement);
@@ -64,14 +87,19 @@ float cotDappleNoise( vec2 p ) {
   return mix( mix( cotDappleHash( i ), cotDappleHash( i + vec2( 1.0, 0.0 ) ), u.x ),
     mix( cotDappleHash( i + vec2( 0.0, 1.0 ) ), cotDappleHash( i + vec2( 1.0, 1.0 ) ), u.x ), u.y );
 }`);
+  const [ox, oy] = CROWN_DAPPLE_LAW.massOffsetM;
   shader.fragmentShader = replaceAnchor(shader.fragmentShader, '#include <alphatest_fragment>', `#include <alphatest_fragment>
     if ( vCotCrown > 0.5 ) {
+      // the mass (its own pattern) and the noise level under which the sun passes it (crownDappleTags' encoding)
+      float cotMass = floor( vCotCrown );
+      float cotThreshold = ( vCotCrown - cotMass - ${TAG_MARGIN.toFixed(3)} ) / ${TAG_SPAN.toFixed(3)};
+      vec2 cotSun = vCotSun + cotMass * vec2( ${ox.toFixed(3)}, ${oy.toFixed(3)} );
       // metres of sun space per shadow texel: the gaps live where the cascade resolves them
       float cotTexel = max( length( dFdx( vCotSun ) ), length( dFdy( vCotSun ) ) );
       float cotDetail = 1.0 - smoothstep( ${t0.toFixed(3)}, ${t1.toFixed(3)}, cotTexel );
-      float cotLeaf = cotDappleNoise( vCotSun * ${(1 / CROWN_DAPPLE_LAW.cellM).toFixed(4)} ) * 0.62
-        + cotDappleNoise( vCotSun * ${(1 / (CROWN_DAPPLE_LAW.cellM * CROWN_DAPPLE_LAW.fine)).toFixed(4)} + 17.31 ) * 0.38;
-      if ( cotLeaf < ${CROWN_DAPPLE_LAW.gap.toFixed(3)} * cotDetail ) discard;
+      float cotLeaf = cotDappleNoise( cotSun * ${(1 / CROWN_DAPPLE_LAW.cellM).toFixed(4)} ) * 0.62
+        + cotDappleNoise( cotSun * ${(1 / (CROWN_DAPPLE_LAW.cellM * CROWN_DAPPLE_LAW.fine)).toFixed(4)} + 17.31 ) * 0.38;
+      if ( cotLeaf < cotThreshold * cotDetail ) discard;
     }`);
 }
 
@@ -98,11 +126,15 @@ export function applyCrownDappleDepth<T extends DappleMesh>(mesh: T): T {
 }
 
 /**
- * The crown flag of a hull built by emitCrownShadowHull: its first `woodVertices` vertices are the wood, the rest the
- * crown masses (and any trailing caster a builder appends after `crownEnd`, wood again — the mangrove's stilt arches).
+ * The crown tags of a hull built by emitCrownShadowHull: 0 on the wood and on anything outside its masses (a trailing
+ * caster a builder appends: the mangrove's stilt arches); on mass m, m + 1 plus the noise level under which its
+ * transmittance passes, kept inside the fraction's margins so the interpolated tag never crosses an integer.
  */
-export function crownDappleFlags(vertexCount: number, woodVertices: number, crownEnd = vertexCount): Float32Array {
-  const flags = new Float32Array(vertexCount);
-  for (let i = woodVertices; i < Math.min(crownEnd, vertexCount); i++) flags[i] = 1;
-  return flags;
+export function crownDappleTags(vertexCount: number, masses: readonly { start: number; end: number; transmittance: number }[]): Float32Array {
+  const tags = new Float32Array(vertexCount);
+  masses.forEach((mass, m) => {
+    const tag = m + 1 + TAG_MARGIN + TAG_SPAN * crownDappleThreshold(mass.transmittance);
+    for (let i = Math.max(0, mass.start); i < Math.min(mass.end, vertexCount); i++) tags[i] = tag;
+  });
+  return tags;
 }

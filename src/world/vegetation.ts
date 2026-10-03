@@ -38,12 +38,12 @@ import { createTreeImpostorLibrary, type TreeImpostorLibrary, type TreeImpostorR
 // branch-spray atlases
 import {
   canopySkyOcclusion, crownLobes, crownSurfaceNormal, emitBranchGeometry, GROWTH_CROWN_SHADING, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCardRows, GROWTH_CROWN_STEM_WIDTH, growthCrownAttachments,
-  growTreeSkeleton, GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type GrowthSpecies,
+  growTreeSkeleton, GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type CrownShadowMass, type GrowthSpecies,
 } from './treeGrowth.ts';
-import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
+import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
-import { treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomePalette, treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -52,7 +52,7 @@ import type { PropsMapConfig } from './props.ts';
 import { getDeviceTier, texSize } from '../engine/quality.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
 // trees round 2 (2026-10-03): the grown crowns' dappled shadow
-import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleFlags } from './crownShadowDapple.ts';
+import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
 import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { advanceGrassChunkWork, createGrassChunkWork,
@@ -2446,9 +2446,11 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   if (palm) { cards.deleteAttribute('aAxis'); cards.deleteAttribute('aLeaf'); }
   // the crown's own shadow hull rides on the trunk (createTreeMeshPools builds the pool's proxy from it); a mangrove's
   // stilt arches cast with it
-  let hull: Float32Array = emitCrownShadowHull(skeleton);
-  // trees round 2: the hull's wood, then its crown masses (crownShadowDapple.ts opens the masses' leaf gaps)
-  trunk.userData.shadowHullCrown = [(hull as Float32Array & { woodVertices: number }).woodVertices, hull.length / 3];
+  // trees round 2: the hull's wood, then its crown masses, each with the share of the sun its sprays let through (the
+  // tree's own atlas share of opaque leaf: crownShadowDapple.ts opens each mass that far)
+  const crownHull = emitCrownShadowHull(skeleton, 8, SPRAY_ATLAS_COVERAGE[grownFormSprayKind(species, pal)] ?? undefined);
+  let hull: Float32Array = crownHull;
+  trunk.userData.shadowHullMasses = crownHull.masses;
   if (tidal) {
     const arches = parts.slice(rootFirst, rootEnd).map((g) => (g.index ? g.toNonIndexed() : g).getAttribute('position').array as Float32Array);
     const joined = new Float32Array(hull.length + arches.reduce((n, a) => n + a.length, 0));
@@ -4679,19 +4681,22 @@ function* vegetationBuildSteps(
     if (!grownTrees) return legacy;
     sprayAtlasSpecies.add(species);
     // trees round 2: the slot grows as its regional form (treeBiomes.ts); its seeds, its far stand-ins and its records
-    // stay the slot's. A form of another family keeps the map palette's tone and snow but not the card hue and
-    // saturation tuned for the slot's family, and takes the form's leaves (a birch form on a pine slot is leafy).
+    // stay the slot's. Its palette is the map's through the form (treeBiomePalette): a form of another family drops the
+    // card hue and saturation tuned for the slot's family, a leafy form on a palette tuned for bare twigs drops the
+    // twigs' colours, and a leafy form takes its leaves (a birch form on a pine slot is leafy).
     const form = formOf(species), growth: GrowthSpecies = form?.form ?? species;
     const family = TREE_GROWTH_PROFILES[growth].family;
     const crossFamily = !!form && family !== (TREE_ARCHETYPES[species]?.family ?? 'broadleaf');
-    const formPal = (pal: VegetationPalette): VegetationPalette => (!form ? pal
-      : { ...pal, ...(crossFamily ? { cardHue: undefined, cardSat: undefined } : {}), ...(form.leaves ? { birchLeaves: true } : {}) });
+    const formPal = (pal: VegetationPalette): VegetationPalette => treeBiomePalette(pal, form, crossFamily);
     return {
       texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed, grown: true,
       // the leaf-scale detail of the form's family (a holm oak on a cedar slot is leaves, not needles)
       detailSpecies: !form ? species : family === 'conifer' ? 'pine' : family === 'birch' ? 'birch' : 'oak',
       // a snowy palette's texTone is the round-8 cards' hoar-frost wash (their snow); the spray atlas paints its snow
-      tex: (r, pal) => makeSprayAtlas(grownFormSprayKind(growth, formPal(pal)), r, texSize(512), (pal.snow ?? 0) > 0.05 ? null : pal.texTone || null, pal.snow ?? 0),
+      tex: (r, pal) => {
+        const fp = formPal(pal);
+        return makeSprayAtlas(grownFormSprayKind(growth, fp), r, texSize(512), (fp.snow ?? 0) > 0.05 ? null : fp.texTone || null, fp.snow ?? 0);
+      },
       near: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, formPal(pal)),
       far: legacy.far,
     };
@@ -5624,10 +5629,10 @@ function* vegetationBuildSteps(
           if (hull) {
             proxyGeometry = new THREE.BufferGeometry();
             proxyGeometry.setAttribute('position', new THREE.BufferAttribute(hull.slice(), 3));
-            // trees round 2: the crown masses' flag (the wood never dapples)
-            const crown = g.trunk.userData.shadowHullCrown as readonly [number, number] | undefined;
-            if (crown) {
-              proxyGeometry.setAttribute(CROWN_DAPPLE_ATTRIBUTE, new THREE.BufferAttribute(crownDappleFlags(hull.length / 3, crown[0], crown[1]), 1));
+            // trees round 2: the crown masses' tags, each its own pattern and porosity (the wood never dapples)
+            const masses = g.trunk.userData.shadowHullMasses as readonly CrownShadowMass[] | undefined;
+            if (masses) {
+              proxyGeometry.setAttribute(CROWN_DAPPLE_ATTRIBUTE, new THREE.BufferAttribute(crownDappleTags(hull.length / 3, masses), 1));
             }
             // position-only: the welded hull shares every corner (its shadow passes run a fraction of the vertices)
             proxyGeometry = weldGrownGeometry(proxyGeometry);
