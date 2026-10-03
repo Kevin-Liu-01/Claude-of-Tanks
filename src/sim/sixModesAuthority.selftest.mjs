@@ -9,7 +9,7 @@ import { AERIAL_RULES } from './matchRuleset.ts';
 const modes=['juggernaut','infected','realistic','gun_game','drone','ac130'];
 for(const mode of modes){
  const match=createAuthoritativeMatch({gameMode:mode,countdownS:0,mapId:'verdant',seed:23,
-  players:[{id:'pilot',specId:'m1a2',team:'alpha',spawn:{x:0,z:-50,yaw:0}}, {id:'hostile',specId:'m1a2',team:'bravo',spawn:{x:0,z:80,yaw:Math.PI}}]});
+  players:[{id:'pilot',specId:'m1a2',team:'alpha',spawn:{x:0,z:-50,yaw:0}}, {id:'hostile',specId:'m1a2',team:'bravo',spawn:{x:0,z:80,yaw:Math.PI}},...(mode==='ac130'?[{id:'escort',specId:'m1a2',team:'alpha',bot:true,spawn:{x:10,z:-100,yaw:0}}]:[])]});
  match.onMatchReady();
  const pilot=match.entityById.get('pilot');const inputs=new Map([['pilot',{throttle:0,steer:0,brake:false,fire:false,aimYaw:0,aimPitch:-.7,shellSlot:0,actionBits:mode==='drone'?PLAYER_ACTION_BITS.DRONE:0}]]);
  match.step({dt:1/60,inputs});inputs.get('pilot').actionBits=0;
@@ -30,6 +30,8 @@ for(const mode of modes){
   assert.ok(pilot.aerial.y>pilot.state.pos.y+3,'drone leaves parked tank');
  }
  if(mode==='ac130'){
+  assert.equal(snap.meta.modeState.escort.total,1);assert.equal(match.entityById.get('escort').aerial,undefined,'escorts remain ground vehicles');
+  assert.ok(match.entityById.get('escort').combat.maxHp<1000,'authority applies escort vulnerability');
   assert.ok(pilot.state.pos.y>=AERIAL_RULES.gunship.altitudeM);assert.equal(pilot.spec.gun.shells[1].caliberMm,152);
   inputs.get('pilot').fire=true;match.step({dt:1/60,inputs});
   const fired=match.eventsForViewer('pilot').filter(e=>e.type==='shell_fired');assert.ok(fired.length,'gunship fires an actual authoritative projectile');

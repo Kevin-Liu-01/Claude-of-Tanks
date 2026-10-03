@@ -1083,7 +1083,7 @@ function createBattleBot(
       getEnemies: () => {
         enemyScratch.length = 0;
         for (const candidate of context.game.tanks) {
-          if (candidate.team !== entity.team && !candidate.combat.destroyed) {
+          if (candidate.team !== entity.team && candidate.modeActive !== false && !candidate.combat.destroyed && !isGunship(candidate)) {
             enemyScratch.push(candidate);
           }
         }

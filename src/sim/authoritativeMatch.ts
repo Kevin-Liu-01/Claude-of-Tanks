@@ -923,7 +923,7 @@ export function createAuthoritativeMatch({
         raycast: spottingRaycast,
         getEnemies: () => {
           opponents.length = 0;
-          for (const candidate of entities) if (candidate.team !== entity.team) opponents.push(candidate);
+          for (const candidate of entities) if (candidate.team !== entity.team && candidate.modeActive !== false && !isGunship(candidate)) opponents.push(candidate);
           return opponents;
         },
         getAllies: () => {

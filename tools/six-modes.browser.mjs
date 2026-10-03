@@ -30,7 +30,7 @@ try{
   await page.screenshot({path:resolve(out,`garage-modes-${suffix}.png`)});
   await page.click('[data-battle-close]');
   for(const mode of battleModes){
-   await page.evaluate(async mode=>{const {writeTeamArrangement}=await import('/src/game/teamArrangement.ts');writeTeamArrangement(mode,{allies:1,enemies:2});},mode);
+   await page.evaluate(async mode=>{const {writeTeamArrangement}=await import('/src/game/teamArrangement.ts');writeTeamArrangement(mode,mode==='ac130'?{allies:4,enemies:8}:{allies:1,enemies:2});},mode);
    console.log('six-modes: entering',mode,suffix);
    await beginSoloBattle(page,{specId:'m1a2',mapId:'verdant',gameMode:mode});
    assert.equal(await page.evaluate(()=>window.__DEBUG.game.gameMode),mode);
@@ -59,6 +59,10 @@ try{
     if(mobile)await page.tap('.cot-drone-return');else await page.keyboard.press('KeyV');await page.waitForFunction(()=>!window.__DEBUG.game.player.aerial.active);
     reports.push({mode,mobile,before,after,returned:true});
    }else if(mode==='ac130'){
+    const escort=await page.evaluate(()=>({...window.__DEBUG.game.matchModeController.state.escort}));
+    assert.ok(escort.total>=2&&escort.required>=1,'gunship has a vulnerable ground escort');
+    assert.match(await page.$eval('.cot-mode-status',el=>el.textContent),/PROTECT THE CONVOY/);
+    await page.waitForFunction(()=>{const e=window.__DEBUG.game.matchModeController.state.escort;return e.progress>.01||e.rescued>0;},{timeout:30000});
     const before=await page.evaluate(()=>({...window.__DEBUG.game.player.aerial}));
     await new Promise(r=>setTimeout(r,1200));
     const after=await page.evaluate(()=>({...window.__DEBUG.game.player.aerial}));

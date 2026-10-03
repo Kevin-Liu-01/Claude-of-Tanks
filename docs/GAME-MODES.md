@@ -28,7 +28,7 @@ rule the battle does not keep.
 | Realistic | Destroy the opposing force through critical damage | Always-visible vehicles; no hull HP attrition, automatic module repair or consumables | No | Crew eliminated or ammunition destruction eliminates a team; 15:00 draw |
 | Gun Game | Complete a five-weapon ladder | Two confirmed kills per stage; unlimited ammunition | 4 s | First player to complete the ladder; 15:00 score decision |
 | Drone | Destroy opponents with tanks and directly piloted drones | Launch a physical FPV quadcopter from the tank; contact uses normal explosive collision and damage | 6 s | First team to 20 kills (configurable), or 10:00 score decision |
-| AC-130 | Clear the ground force from an orbiting gunship | Overhead scope, three independent weapon channels, unlimited ammunition and always-visible targets | No | Ground force eliminated, aircraft destroyed, or 8:00 draw |
+| AC-130 | Protect ground allies until at least half reach extraction | Fragile escorts, a marked exit, overhead scope, three independent weapon channels and unlimited ammunition | No | Half extracted; defeat if too few survive or 8:00 expires |
 
 ## Flying a drone
 
@@ -69,6 +69,8 @@ Fire with the normal fire control and select weapons with **1–3** or the ammun
 buttons in the dedicated flight console: a rapid 30 mm cannon, a 152 mm explosive howitzer, and guided missiles.
 The weapon channels reload independently. Missiles follow the sight; cannon and
 howitzer rounds travel through the normal ballistic and armor simulation.
+
+Four allied ground vehicles accompany the gunship by default. They have 35% of their normal hull strength, slower reloads and reduced speed, and use normal navigation to reach the green **E** extraction area. Enemies pursue the convoy. Save at least half; killing enemies alone does not complete the mission. The objective shows allies still on the field, the number extracted, the rescue requirement and route progress. Casualties do not respawn. An eight-minute timeout or losing too many escorts fails the operation. Multiplayer pilots all provide air support, with separate friendly bots reserved for the escort. Extraction and casualty state survive host migration.
 
 ## Asymmetric teams and progression
 
