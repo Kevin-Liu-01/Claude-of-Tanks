@@ -43,7 +43,7 @@ const instantiate = new Function('ports', stripTypeScriptTypes(`
   const taa = { enabled: false }; let taaFrame = 0;
   const taaJitterOffset = () => [0, 0], applyProjectionJitter = () => {};
   const sceneTarget = { width: 1, height: 1 };
-  const camera = ports.camera ?? { updateProjectionMatrix() {} };
+  const camera = ports.camera ?? { updateProjectionMatrix() {}, userData: {} }; // the frame reads the aerial flags
   ${postSource.slice(frameStart, frameEnd)}
 `) + '\nreturn frameAccounting;');
 
@@ -122,7 +122,7 @@ function fixture(castShadow = false, fragmented = false) {
   gtao.enabled = false; lateFx.softState = { isActive: () => false };
   for (const pass of [sceneAA, aerial, gtao, lateFx, final]) composer.addPass(pass);
   const post = instantiate({ renderer, composer, sceneAA, aerial, gtao, lateFx, scene,
-    grade: { uniforms: { uExposure: { value: 1 } } }, createPostFrameAccounting,
+    grade: { uniforms: { uExposure: { value: 1 }, uThermal: { value: 0 }, uThermalPixel: { value: new THREE.Vector2() } } }, createPostFrameAccounting,
     beginStaticDrawRangeFrame, endStaticDrawRangeFrame });
   return {
     scene, root, owner, mesh, camera, renderer, composer, draws,
