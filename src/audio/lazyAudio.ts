@@ -163,6 +163,7 @@ export function createLazyAudio({
   let masterVolume = storedMasterVolume();
   let garageStingPending = false;
   let loadingRevision = 0;
+  let gestureBound = false;
 
   const unlockContext = (): AudioContext | null => {
     if (!context) context = createContext();
@@ -313,6 +314,19 @@ export function createLazyAudio({
         if (latestPhase !== 'battle') ambientRequested = false;
       });
       if (real) real.bindBus(nextBus);
+      // The garage has sound of its own (its hangar, its controls): the first
+      // gesture anywhere unlocks the context inside the gesture and loads the
+      // mixer, so neither waits for a first battle.
+      if (!gestureBound && typeof document !== 'undefined') {
+        gestureBound = true;
+        const onGesture = (): void => {
+          document.removeEventListener('pointerdown', onGesture, true);
+          document.removeEventListener('keydown', onGesture, true);
+          if (!muted && masterVolume > 0) resume();
+        };
+        document.addEventListener('pointerdown', onGesture, true);
+        document.addEventListener('keydown', onGesture, true);
+      }
     },
     update(dt: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[]) {
       real?.update(dt, listener, tanks, shells);

@@ -64,7 +64,6 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   ammo_low: V(1, 45, 'ammo', 1.2),
   ammo_empty: V(1, 6, 'ammo', 1.0),
   ammo_out_all: V(3, 30, 'ammo', 1.2),
-  gun_limit: V(1, 25, 'gun_cycle', 0.6),
   target_locked: V(1, 4, 'gun_cycle', 0.5),
   target_lost: V(1, 6, 'gun_cycle', 0.6),
   // incoming
