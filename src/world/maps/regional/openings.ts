@@ -36,9 +36,11 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
   facePanel(sink, pane, face, u, y + h / 2, r > 0 ? back + 0.012 : 0.018, w, h, { ...dec, window: face.out });
   const F = style.frameWidth, O = style.frameOut;
   const fc = { colour: style.frame, decor: true };
-  // frame: jambs, head and bottom rail, standing out of the pane plane
-  faceBox(sink, 'structureWood', face, u - w / 2 + F / 2, y + h / 2, back + O / 2, F, h, O, fc);
-  faceBox(sink, 'structureWood', face, u + w / 2 - F / 2, y + h / 2, back + O / 2, F, h, O, fc);
+  // frame: jambs, head and bottom rail, standing out of the pane plane; a jamb's foot stands on the sill and its head
+  // under the reveal's soffit (or a surround's lintel standing as far out): those caps never show
+  const jamb = { bottom: !!style.sill, top: r > 0 || (!!style.surround && style.surround.out >= O) };
+  faceBox(sink, 'structureWood', face, u - w / 2 + F / 2, y + h / 2, back + O / 2, F, h, O, fc, jamb);
+  faceBox(sink, 'structureWood', face, u + w / 2 - F / 2, y + h / 2, back + O / 2, F, h, O, fc, jamb);
   faceBox(sink, 'structureWood', face, u, y + h - F / 2, back + O / 2, w - 2 * F, F, O, fc, 'ends');
   faceBox(sink, 'structureWood', face, u, y + F / 2, back + O / 2, w - 2 * F, F, O, fc, 'ends');
   const bar = Math.max(0.03, F * 0.55), barO = O * 0.7;
@@ -76,12 +78,14 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
     } else {
       for (const side of [-1, 1]) {
         const cu = u + side * (w / 2 + sideOff + leaf / 2 + 0.02);
-        faceBox(sink, 'structureWood', face, cu, y + h / 2, 0.035, leaf, h + 0.02, 0.035, sc);
+        // the open leaf folded back flat on the wall (its back face then never shows), its rails on its face
+        const T = 0.035, front = T + 0.001, ro = front + 0.01 - 0.002;
+        faceBox(sink, 'structureWood', face, cu, y + h / 2, front - T / 2, leaf, h + 0.02, T, sc);
         if (sh.kind === 'louvred') {
           // two rails read the louvre frame; the detail tile's grain carries the slats
-          for (const t of [0.06, 0.94]) faceBox(sink, 'structureWood', face, cu, y + h * t, 0.06, leaf, 0.05, 0.02, sc);
+          for (const t of [0.06, 0.94]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf, 0.05, 0.02, sc, { back: true });
         } else if (sh.kind === 'plank') {
-          for (const t of [0.18, 0.82]) faceBox(sink, 'structureWood', face, cu, y + h * t, 0.06, leaf - 0.04, 0.07, 0.02, sc);
+          for (const t of [0.18, 0.82]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf - 0.04, 0.07, 0.02, sc, { back: true });
         }
       }
     }

@@ -19,6 +19,8 @@ export const FRANCONIAN_PALETTE: FachwerkPalette = Object.freeze({
   doors: [0x426b49, 0x7a3024, 0x6a4b33, 0x4f6274].map(rgb),
   shutters: [0x4a7451, 0x7a3a2a, 0x667a86].map(rgb),
   shutterShare: 0.4, hungGable: 0.08, stoneGround: 0.7, halfHip: 0.15,
+  // the upper storeys' casements two-light, a single mullion (the town's 160 houses carry ~3,000 windows)
+  upperBars: 'two',
 });
 
 /** The town house: a street front three or four storeys high, framed or rendered, gable- or eaves-fronted. */

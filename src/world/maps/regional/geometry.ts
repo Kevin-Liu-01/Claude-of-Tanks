@@ -376,15 +376,19 @@ export function facePoint(face: Face, u: number, y: number, o = 0): Vec3 {
   return [face.origin[0] + face.u[0] * u + face.out[0] * o, y + face.origin[1], face.origin[2] + face.u[2] * u + face.out[2] * o];
 }
 
+/** Faces of a face-aligned box that something else covers: its ends (u faces), top, bottom or back. */
+export interface FaceBoxHidden { ends?: boolean; top?: boolean; bottom?: boolean; back?: boolean }
+
 /** A face-aligned box: centre (u, y, out), size (along u, up, out). */
 export function faceBox(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, o: number,
-  su: number, sy: number, so: number, opts: EmitOptions = {}, hidden?: 'ends' | 'caps'): void {
+  su: number, sy: number, so: number, opts: EmitOptions = {}, hidden?: 'ends' | 'caps' | FaceBoxHidden): void {
   const centre = facePoint(face, u, y, o);
   const frame = new LocalFrame(face.u, [0, 1, 0], face.out, [0, 0, 0]);
   // a part seated on (or into) the wall never shows its back face: leave it out; 'ends' (u faces) and 'caps'
-  // (top and bottom) abut neighbouring parts
+  // (top and bottom) abut neighbouring parts; a part mounted on another names what that part covers
+  const h: FaceBoxHidden = hidden === 'ends' ? { ends: true } : hidden === 'caps' ? { top: true, bottom: true } : hidden ?? {};
   const seated = o - so / 2 <= 0.002;
-  const skip: FaceSkip = { nz: seated, px: hidden === 'ends', nx: hidden === 'ends', py: hidden === 'caps', ny: hidden === 'caps' };
+  const skip: FaceSkip = { nz: seated || !!h.back, px: !!h.ends, nx: !!h.ends, py: !!h.top, ny: !!h.bottom };
   sink.box(bucket, centre, [su / 2, sy / 2, so / 2], { ...opts, uv: opts.uv ?? WORLD }, frame, skip);
 }
 

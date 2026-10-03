@@ -36,6 +36,8 @@ export interface FachwerkPalette {
   stoneGround: number;
   /** share of half-hipped roofs */
   halfHip: number;
+  /** the glazing bars of the windows above the ground storey (a town's upper casements), when they differ */
+  upperBars?: WindowStyle['bars'];
 }
 
 export const HESSIAN_PALETTE: FachwerkPalette = Object.freeze({
@@ -226,7 +228,9 @@ function fachwerkGable(sink: PartSink, face: Face, poly: Array<[number, number]>
 export function hessianDialect(st: HessianState): HouseDialect {
   return {
     window: (sink, face, o, y0) => windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h,
-      o.kind === 'loft' ? { ...st.window, shutters: null, bars: 'none' } : st.window, st.rng, o.kind === 'loft' ? 0 : st.litShare),
+      o.kind === 'loft' ? { ...st.window, shutters: null, bars: 'none' }
+        : o.storey > 0 && palette.upperBars ? { ...st.window, bars: palette.upperBars } : st.window,
+      st.rng, o.kind === 'loft' ? 0 : st.litShare),
     door: (sink, face, o, y0, frame) => {
       if (o.kind === 'gate') {
         gateUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, GATE, { bucket: 'stone', width: 0.28, out: 0.12 });
