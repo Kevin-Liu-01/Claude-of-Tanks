@@ -14,7 +14,7 @@ assert.ok(LAYOUT_BRIEF_MAPS.length > 0, 'the brief roster names at least one reb
 // stood before the brief (frozen here when Verdant itself was rebuilt, 2026-10-02, so the check keeps its meaning).
 const VERDANT_SKELETON = {
   landforms: [
-    { kind: 'ridge', x: -244, z: 18 }, { kind: 'ridge', x: 246, z: 54 }, { kind: 'ridge', x: -54, z: 232 },
+    { kind: 'ridge', x: -244, z: 18, yawDeg: 10 }, { kind: 'ridge', x: 246, z: 54, yawDeg: -14 }, { kind: 'ridge', x: -54, z: 232, yawDeg: 74 },
     { kind: 'knoll', x: 168, z: -218 }, { kind: 'basin', x: -142, z: -176 },
   ],
   beats: [
@@ -22,6 +22,20 @@ const VERDANT_SKELETON = {
     { id: 'northern-command-fold', x: 24, z: 270 },
   ],
 };
+// A landform borrows the skeleton when it is the same kind within 75 m of one of Verdant's, and a ridge only when it also
+// runs the same way, its axis within 30 degrees of the swell's (2026-10-03: Skybridge Chasm's north-south canyon
+// shoulders stand where two of Verdant's east-west swells stood, a different landform in the same place).
+const axisApart = (a, b) => { const d = (((a - b) % 180) + 180) % 180; return Math.min(d, 180 - d); };
+const borrowedFrom = (forms) => VERDANT_SKELETON.landforms.filter((form) => forms.some((own) => own.kind === form.kind
+  && Math.hypot(own.x - form.x, own.z - form.z) < 75
+  && (form.kind !== 'ridge' || axisApart(own.yawDeg ?? 0, form.yawDeg) <= 30))).length;
+// negative controls: the skeleton copied as it was is caught whole, and so is a copy nudged 60 m with its swells turned
+// 25 degrees; only the ridges turned across the swells' run (80 degrees) stop counting
+assert.equal(borrowedFrom(VERDANT_SKELETON.landforms), 5, 'a true copy of Verdant\'s skeleton is borrowed whole');
+assert.equal(borrowedFrom(VERDANT_SKELETON.landforms.map((form) => ({ ...form, x: form.x + 60,
+  ...(form.kind === 'ridge' ? { yawDeg: form.yawDeg + 25 } : {}) }))), 5, 'a nudged, slightly turned copy is still borrowed');
+assert.equal(borrowedFrom(VERDANT_SKELETON.landforms.map((form) => form.kind === 'ridge' ? { ...form, yawDeg: form.yawDeg + 80 }
+  : form)), 2, 'ridges turned across the swells stop counting; the knoll and the basin still do');
 for (const mapId of LAYOUT_BRIEF_MAPS) {
   const config = getMapConfig(mapId);
   const m = await computeLayoutMetrics(mapId);
@@ -49,10 +63,8 @@ for (const mapId of LAYOUT_BRIEF_MAPS) {
   assert.ok(Math.hypot(kickoff.x - hints.kickoff.x, kickoff.z - hints.kickoff.z) < 1, `${mapId}: the kickoff seats where authored`);
   assert.ok(Array.isArray(m.objectives.capture_the_flag), `${mapId}: flag bases place`);
 
-  // no borrowed skeleton: at most one of Verdant's five landforms survives within 75 m, none of its beat sites
-  const forms = config.terrain.landforms ?? [];
-  const borrowed = VERDANT_SKELETON.landforms.filter((form) => forms.some((own) => own.kind === form.kind
-    && Math.hypot(own.x - form.x, own.z - form.z) < 75)).length;
+  // no borrowed skeleton: at most one of Verdant's five landforms survives (borrowedFrom above), none of its beat sites
+  const borrowed = borrowedFrom(config.terrain.landforms ?? []);
   assert.ok(borrowed <= 1, `${mapId}: Verdant's landform skeleton is gone (${borrowed}/5 within 75 m)`);
   for (const beat of VERDANT_SKELETON.beats) {
     assert.ok((config.props.tacticalBeats ?? []).every((own) => Math.hypot(own.x - beat.x, own.z - beat.z) >= 60),

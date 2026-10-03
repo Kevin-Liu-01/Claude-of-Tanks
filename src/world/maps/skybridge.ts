@@ -1,8 +1,27 @@
-// skybridge.js — a fortified canyon crossing above a drowned gorge. Giant
-// rock shoulders define three vertical lanes while a ruined arcology bridge
-// and industrial control district anchor the center.
+// src/world/maps/skybridge.ts — Skybridge Chasm, redesigned 2026-10-03 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
+// The drowned gorge and its lakes, the five roads, the control district (standing exactly as PR #9's head seated it:
+// props.ts townPlan), the bridge, the palette, sky, name and id are the map's identity and stay; the canyon's ground
+// is new. The old floor was a seed-random mesa field (shelves wherever the noise crossed its threshold) over two 770 m
+// ridges laid end to end across the middle. Its sightlines closed to a 76 m median (1.7 % at 300 m or more), six
+// structures stood in the carriageways, the deployments stood 863 m apart (alpha's block in the south-west corner,
+// bravo's seven pads spread 494 m along the north edge), and the zone-control discs stood up to 3.1 times farther from
+// one team; bots drove off the shelves (twelve standard matches: 26 damaging falls, 2177 hp in all, the worst 489 hp).
+//
+// Reference: Glen Canyon above Lake Powell: a canyon drowned by its reservoir, bedded sandstone walls standing in
+// segments between the side canyons that break them, talus under every wall, and a high crossing at the narrows.
+//
+// The story on the ground: the gorge runs north to south between rock shoulders, bedded sandstone walls 18 m high in
+// three segments a side, broken where the cross roads pass so the floor splits into a west lane, the gorge and an east
+// lane. Every segment ends in a nose (its wall and talus turning round the end, so no taper ramps onto a cap and no
+// apron stops in a cut) and stands whole through the deployment corridors and the district's feather. The drowned
+// gorge's basin holds the lakes below the control district. The layout turns about (5, 60), the middle of the shoulder
+// system: the teams come in from the gorge's two ends, each in a 4 x 2 block between the end segments and behind a gate
+// butte that screens it down the gorge's axis, and each block, its segments, its butte and its strongpoints are the
+// other's rotation there. The zone-control discs stand on the line of equal driven distance: the west lane's yard, the
+// gorge's west shore (also the turbo-ball kickoff) and the east lane's yard.
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -11,36 +30,62 @@ export default {
   name: 'Skybridge Chasm',
   blurb: 'A broken high crossing and fortress-scale control works span a deep flooded canyon',
   terrain: {
-    hillScale: 0.80, microScale: 0.82, rimH: 58, softLakes: true,
-    mesas: { amp: 18, thr0: 0.76, thr1: 0.82, wallWidth: 0.64, corridorFloor: 0.34 },
+    hillScale: 0.62, microScale: 0.66, rimH: 58, softLakes: true,
+    // the authored shoulders replace the noise mesas, and the rock gate reads them (terrain.ts landformRock)
+    mesas: null, landformRock: true,
     marshes: [],
     lakes: [
       { x: -34, z: 62, r: 92, depth: 2.2 },
       { x: 36, z: 146, r: 88, depth: 2.2 },
     ],
+    // three aprons for the zone-control discs on the line of equal driven distance: the west lane's yard, the gorge's
+    // west shore between the lake and the west middle segment (tilted to its ground) and the east lane's yard (tilted
+    // to its ground)
+    hardstands: [
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): each sited by tools/hardstand-site.mjs on its ground
+      { x: -300, z: 62, width: 56, length: 56, yawDeg: 0, level: -2.9, grade: 0, bankM: 16 },
+      { x: -139, z: 49, width: 56, length: 56, yawDeg: -100, level: 0, grade: 0.08, bankM: 20 },
+      { x: 310, z: 42, width: 56, length: 56, yawDeg: -170, level: -1.2, grade: 0.074, bankM: 16 },
+    ],
     village: { x0: -176, x1: 186, z0: -170, z1: 196, cx: 8, cz: 16, feather: 54, flatten: 0.72, relief: 0.28 },
+    // each cross road's junctions and the northern fork are nodes both roads share, so the junction blend grades one
+    // point there (no step between two bakes)
     roads: { paths: [
-      [[-430, -450], [-350, -314], [-278, -172], [-208, -30], [-132, 118], [-58, 268], [24, 454]],
-      [[-116, -458], [-72, -318], [-18, -178], [42, -42], [116, 92], [198, 230], [292, 354], [380, 456]],
-      [[356, -454], [294, -310], [236, -166], [170, -22], [92, 116], [16, 252], [-78, 376], [-164, 466]],
-      [[-382, -126], [-246, -92], [-116, -118], [18, -80], [148, -112], [282, -82], [394, -104]],
-      [[-326, 252], [-204, 210], [-82, 238], [42, 204], [168, 238], [292, 208]],
+      [[-430, -450], [-350, -314], [-278, -172], [-239.23, -93.35], [-208, -30], [-132, 118], [-73.9, 235.78], [-58, 268], [-35.25, 319.61], [24, 454]],
+      [[-116, -458], [-72, -318], [-18, -178], [24.53, -81.61], [42, -42], [116, 92], [198, 230], [198.48, 230.63], [292, 354], [380, 456]],
+      [[356, -454], [294, -310], [236, -166], [205.36, -99.16], [170, -22], [92, 116], [42.72, 204.19], [16, 252], [-35.25, 319.61], [-78, 376], [-164, 466]],
+      [[-382, -126], [-246, -92], [-239.23, -93.35], [-116, -118], [18, -80], [24.53, -81.61], [148, -112], [205.36, -99.16], [282, -82], [394, -104]],
+      [[-326, 252], [-204, 210], [-82, 238], [-73.9, 235.78], [42, 204], [42.72, 204.19], [168, 238], [198.48, 230.63], [292, 208]],
     ] },
     landforms: [
-      { kind: 'ridge', x: -286, z: 24, length: 770, width: 126, height: 18.8, yawDeg: -3, corridorScale: 0.40 },
-      { kind: 'ridge', x: 294, z: 18, length: 770, width: 128, height: 19.2, yawDeg: 4, corridorScale: 0.40 },
-      { kind: 'ridge', x: -10, z: 318, length: 360, width: 100, height: 12.5, yawDeg: 86, corridorScale: 0.44 },
-      { kind: 'knoll', x: -132, z: -246, rx: 118, rz: 76, height: 8.8, yawDeg: 20, corridorScale: 0.46 },
-      { kind: 'basin', x: 10, z: 84, rx: 170, rz: 144, height: -7.8, yawDeg: -8, corridorScale: 0.72 },
-      { kind: 'knoll', x: 174, z: -230, rx: 104, rz: 68, height: 8.0, yawDeg: -20, corridorScale: 0.46 },
+      // The canyon's rock shoulders: bedded sandstone walls (cliff bands, benches, talus; landformGeology.ts) along the
+      // west and east, broken where the two cross roads pass, so the floor splits into a west lane, the gorge and an east
+      // lane. Every segment ends in a nose: its wall and talus apron turn round the end, so no taper ramps up onto a cap
+      // and no apron stops in a cut. The segments are each other's rotation about (5, 60), the middle of the system, so
+      // each deployment stands between two 176 m end segments with a 100 m gap 130-230 m ahead of it (the swap test,
+      // 2026-10-03: with 300 m south segments the north deployment won 81 of 120 games over three layouts).
+      ...[[-215, -238, 176], [-215, 60, 220], [-215, 358, 176], [225, -238, 176], [225, 60, 220], [225, 358, 176]]
+        .map(([x, z, length]) => ({ kind: 'ridge', x, z, length, width: 34, height: 18, yawDeg: 90, corridorScale: 1, settlementScale: 1,
+          geology: { profile: 'butte' as const, wall: [0.35, 0.6] as const, apron: 0.28, cliffEnd: 'nose' as const,
+            strata: { stepM: 4.5, riser: 0.35 },
+            outline: 0.25, rough: 0.8, gullies: { count: 3, depthM: 2, width: 0.5 } } })),
+      // the gate buttes: one in front of each deployment, each the other's rotation about (5, 60), screening the
+      // deployments from each other down the gorge's axis (whole through the deployment corridors: bots drive round them)
+      ...[[10, -220], [0, 340]].map(([x, z]) => ({ kind: 'knoll', x, z, rx: 22, rz: 20, height: 16, corridorScale: 1, settlementScale: 1,
+        geology: { profile: 'butte' as const, wall: [0.4, 0.62] as const, apron: 0.28, strata: { stepM: 4.5, riser: 0.35 },
+          outline: 0.2, rough: 0.8, gullies: { count: 5, depthM: 1.5, width: 0.5 } } })),
+      // the drowned gorge's basin under the lakes
+      { kind: 'basin', x: 10, z: 84, rx: 170, rz: 144, height: -7.8, yawDeg: -8, corridorScale: 0.72,
+        geology: { outline: 0.2, rough: 0.4 } },
     ],
   },
   spawns: {
-    player: { x: -332, z: -396 },
-    enemies: [
-      { x: -242, z: 392 }, { x: -164, z: 428 }, { x: -84, z: 384 },
-      { x: -2, z: 424 }, { x: 82, z: 382 }, { x: 166, z: 418 }, { x: 252, z: 376 },
-    ],
+    // The teams come in from opposite ends of the gorge: bravo's seven pads on the northern floor, centred where its old
+    // line of pads stood, and alpha's 4 x 2 block as their rotation about (5, 60) on the southern floor (the swap test,
+    // 2026-10-03: alpha's south-west corner block lost 27 of 40 games to bravo's northern block, the deployments
+    // exchanged or not).
+    player: { x: 10.6, z: -276.3 },
+    enemies: [{ x: 11.4, z: 396.3 }, { x: 3.4, z: 396.3 }, { x: -4.6, z: 396.3 }, { x: -12.6, z: 396.3 }, { x: 11.4, z: 406.3 }, { x: 3.4, z: 406.3 }, { x: -4.6, z: 406.3 }],
   },
   splat: {
     // round 47 (2026-09-23, owner: "ground patterns are too black"): lightness FLOORS like every sibling canyon map
@@ -84,15 +129,26 @@ export default {
       'motorpool', 'quonsethut', 'transformershed', 'guardpost',
       'securityoffice', 'servicegarage', 'relaystation',
     ],
+    // the strongpoints stand in pairs that are each other's rotation about (5, 60), 60 m or more from Verdant's old
+    // strongpoint sites (which the brief keeps clear): the western abutment in the south-west lane and the eastern
+    // control yard in the north-east, the spillway scout post below the district and the northern relay post above it
     tacticalBeats: [
-      { id: 'western-abutment', role: 'brawl', x: -266, z: 94, yawDeg: -4,
+      { id: 'western-abutment', role: 'brawl', x: -266, z: -20, yawDeg: -4,
         structure: 'motorpool', redoubt: true, outcrop: { count: 8, radius: 13, scaleMax: 4.0 }, wreck: true, wreckOffsetZ: -18 },
-      { id: 'spillway-scout-post', role: 'scout', x: 24, z: -226, yawDeg: 18,
+      { id: 'spillway-scout-post', role: 'scout', x: -100, z: -200, yawDeg: 18,
         structure: 'guardpost', outcrop: { count: 5, radius: 9, scaleMax: 2.9 } },
-      { id: 'eastern-control-yard', role: 'support', x: 276, z: 116, yawDeg: 5,
+      { id: 'northern-relay-post', role: 'scout', x: 110, z: 320, yawDeg: 198,
+        structure: 'guardpost', outcrop: { count: 5, radius: 9, scaleMax: 2.9 } },
+      { id: 'eastern-control-yard', role: 'support', x: 276, z: 140, yawDeg: 176,
         structure: 'transformershed', redoubt: true, outcrop: { count: 7, radius: 11, scaleMax: 3.5 }, wreck: true, wreckOffsetX: 18 },
     ],
     blockFill: true, extraKits: ['rail'], wallStyle: 'fieldstone', wallStoneChance: 0.82,
+    // the control district's blocks keep their footprints off every carriageway
+    // the control district stands as PR #9's head seated it (the owner's town-plan ruling, 2026-10-03); a building of it
+    // that stands in a carriageway moves by the least distance that clears it
+    townPlan: TOWN_PLANS.skybridge,
+    townLightPlan: TOWN_LIGHT_PLANS.skybridge,
+    roadBuildingClearance: true,
     tones: makeRealisticCityBuildingTones({
       value: 0.92, saturation: 1.06, soot: 0.015, roofValue: 0.90,
     }),

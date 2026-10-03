@@ -87,7 +87,11 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Yard. The two yards are graded aprons in the map file; the settlement's floor seats its disc as it lies.
   caldera: { kickoff: { x: -120, z: 0 }, zones: [{ x: -332, z: 96 }, { x: -120, z: 0 }, { x: 340, z: -200 }] },
   reservoir: { kickoff: { x: 88, z: 8 }, zones: [{ x: -8, z: 154 }, { x: 88, z: 8 }, { x: 12, z: -170 }] },
-  skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
+  // Skybridge Chasm (redesign 2026-10-03, the layout turned about the shoulder system's middle (5, 60)): three discs on
+  // the line of equal driven distance, each on an apron in the map file — the west lane's yard, the gorge's west shore
+  // between the lake and the west middle segment (also the turbo-ball kickoff) and the east lane's yard. Driven reach
+  // 475 / 464 m, 387 / 408 m and 457 / 488 m.
+  skybridge: { kickoff: { x: -139, z: 49 }, zones: [{ x: -300, z: 62 }, { x: -139, z: 49 }, { x: 310, z: 42 }] },
   // Olympus Basin (layout 2026-10-03, turned about the station): three discs on yards of equal driven reach — the
   // north-west yard (bravo's near zone) and the south-east yard (alpha's near zone), each the other's rotation about the
   // station and each an apron in the map file, and the station's west yard on the deployments' bisector (a validated seat

@@ -208,6 +208,21 @@ function assertCurrentCorridorSeam(mapId, config, roads, field) {
     }
   }
 }
+// The wider shoulder gate holds the banks a completion grades (2026-10-03, maps-and-layouts lane). Relief a map authors
+// steeper than the gate (Skybridge's canyon walls, 192 m beside its north exit) counts only where the completion made it
+// steeper; the near gate (18 m) stays absolute.
+const crossSlopeAt = (f, px, pz, dx, dz) => Math.abs(f.getHeightAt(px + dz / 2, pz - dx / 2) - f.getHeightAt(px - dz / 2, pz + dx / 2)) / 2;
+const wideShoulderCounts = (slope, authored) => slope <= 2 || slope > authored + 1e-9;
+{
+  // negative controls on a road running north (dx 0, dz 2), 2 m east of a wall rising east at x = 100
+  const wall = (rise) => ({ getHeightAt: (x) => Math.max(0, Math.min(12, (x - 100) * rise)) });
+  const flat = { getHeightAt: () => 0 }, cliff = wall(2.4);
+  const gate = (after, field) => { const slope = crossSlopeAt(after, 102, 0, 0, 2);
+    return wideShoulderCounts(slope, crossSlopeAt(field, 102, 0, 0, 2)) && slope > 2; };
+  assert.equal(gate(cliff, cliff), false, 'an authored cliff the completion leaves alone passes the wider gate');
+  assert.equal(gate(wall(3.1), cliff), true, 'the same cliff steepened past the law by the completion still fails');
+  assert.equal(gate(wall(2.6), flat), true, 'a bank the completion grades past the law on flat ground still fails');
+}
 for (const mapId of MAP_IDS) {
   // 2026-09-17 field trenches: both sides of the terrain comparison are built untrenched; the carve has its own receipt.
   const config = getMapConfig(mapId), control = { ...originalConfig(config), fieldTrenches: false };
@@ -271,8 +286,8 @@ for (const mapId of MAP_IDS) {
         const px = x + dz * offset * side / 2, pz = z - dx * offset * side / 2;
         if (Math.max(Math.abs(px), Math.abs(pz)) > 510) continue;
         if (offset <= 18 && field.getWaterMaskAt(px, pz) > .2) wetShoulders++;
-        const slope = Math.abs(after.getHeightAt(px + dz / 2, pz - dx / 2) - after.getHeightAt(px - dz / 2, pz + dx / 2)) / 2;
-        shoulderGrade = Math.max(shoulderGrade, slope);
+        const slope = crossSlopeAt(after, px, pz, dx, dz);
+        if (wideShoulderCounts(slope, crossSlopeAt(field, px, pz, dx, dz))) shoulderGrade = Math.max(shoulderGrade, slope);
         if (offset <= 18) nearShoulderGrade = Math.max(nearShoulderGrade, slope);
       }
     }
