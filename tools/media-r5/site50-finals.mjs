@@ -69,7 +69,8 @@ for (let i = 0; i < ids.length; i += chunk) {
   writeFileSync(file, JSON.stringify(jobs, null, 1));
   run(`chunk ${i / chunk + 1} (${[...part][0]}…, ${jobs.length} jobs)`, 'node',
     ['tools/media-production/cinema.mjs', `--jobs=${file}`, `--cache-dir=${cacheDir}`, '--resume=true']);
-  if (!('skip-loops' in flags)) encodeLoops(part);
+  // yield once so the encode chain starts this chunk's loops now (the chunk renders block the event loop)
+  if (!('skip-loops' in flags)) { encodeLoops(part); await new Promise(resolve => setImmediate(resolve)); }
 }
 await Promise.all(encoders);
 console.log('[finals] done');

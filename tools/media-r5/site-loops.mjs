@@ -17,7 +17,7 @@
 //   <id>-4k.png           the 4K still master; <id>-4k.jpg (q95) and <id>.webp (1920, q92) from it
 //   <id>.scene.json       the Studio scene the take was rendered from (map, hour, cast and paint, turrets, effects,
 //                         lens path); the still is the same scene at meta.still.tMs (owner 2026-10-02)
-//   node tools/media-r5/site-loops.mjs [rendersRoot=shots/media-r5/site50/renders] [deliverRoot=shots/media-r5/site50/deliver] [ids,...] [--drop-film-masters] [--loop-master]
+//   node tools/media-r5/site-loops.mjs [rendersRoot=shots/media-r5/site50/renders] [deliverRoot=shots/media-r5/site50/deliver] [ids,...] [--drop-film-masters] [--loop-master] [--force]
 // rendersRoot holds the cinema outputs as films/<id>/ (cinema-jobs films) and stills/<id>/ (cinema-jobs blur).
 // --drop-film-masters deletes each ProRes film master once its formats are written (the proxy stays).
 import { execFileSync } from 'node:child_process';
@@ -56,7 +56,14 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   const master = filmMaster ?? pick(join(renders, 'films', id, 'films'), /-proxy\.mp4$/);
   const still = pick(join(renders, 'stills', id, 'stills'), /\.png$/);
   if (!master) { console.log(`${id}: no film yet`); continue; }
-  const out = join(deliver, id); mkdirSync(out, { recursive: true });
+  const out = join(deliver, id);
+  // up to date: every format newer than its film and still (several passes may cover one shot; --force re-encodes)
+  const done = existsSync(join(out, `${id}.mp4`)) && existsSync(join(out, `${id}-share.gif`)) && (!still || existsSync(join(out, `${id}-4k.png`)));
+  const newest = Math.max(statSync(master).mtimeMs, still ? statSync(still).mtimeMs : 0);
+  if (done && !flags.has('--force') && statSync(join(out, `${id}-share.gif`)).mtimeMs > newest && statSync(join(out, `${id}.mp4`)).mtimeMs > newest) {
+    console.log(`${id}: formats up to date`); continue;
+  }
+  mkdirSync(out, { recursive: true });
   const D = probe(master), X = XFADE_MS / 1000, L = +(D - X).toFixed(3), uhd = heightOf(master) >= 2160;
   if (!(L >= 2)) throw new Error(`${id}: take of ${D}s is too short for a ${X}s crossfade`);
   // tail (L..D) dissolves into head (0..X); then the body (X..L): out(L-) = clip(L-) and out(0) = clip(L), so the wrap is continuous
