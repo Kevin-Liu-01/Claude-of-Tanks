@@ -45,7 +45,7 @@ const expected = {
   frontier: [7730, 7594, 8120], // 2026-10-02 Frontier Basin redesign (docs/MAP-LAYOUT-BRIEF.md); was [7905, 7634, 8284]
   fjord: [7357, 7301, 7679],
   delta: [7742, 7430, 9644],
-  badlands: [3011, 2915, 1920],
+  badlands: [3013, 2765, 1956], // 2026-10-02 Redrock Divide redesign (docs/MAP-LAYOUT-BRIEF.md); was [3011, 2915, 1920]
   // Native recapture with prior prop code also contains this additional wreck.
   monsoon: [9473, 9215, 12022],
   alpine: [9117, 9044, 8009],

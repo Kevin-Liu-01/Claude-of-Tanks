@@ -185,6 +185,12 @@ props code shaped every layout, and the next maps should start from them:
   `src/world/props.ts`.
 - **Marine structures.** A wharf seated on its landing stands over the water by design; the map names it as a
   `solidPropsInWater` exception.
+- **Canyon maps.** On Redrock Divide the canyon (`src/world/redrockCanyon.ts`) stays the regional terrain, and the
+  authored landforms are floor features: inselbergs, dune ridges and sand ramps. `mapQuality` checks that each one
+  stands on the canyon floor. An inselberg is a steep dome with `corridorScale: 1`, so a deployment corridor that
+  crosses it leaves it whole and the bots drive round it.
+- **Aprons are paved.** A hardstand paints the road mask, so a zone apron reads as packed track surface. Seat one
+  where such ground belongs: a square, a farmyard, a depot's vehicle park.
 - **Budget.** All three pilots exceed point 10's 10 % triangle budget. The coordinator approved this for PR #9 on
   October 2, 2026, pending the owner. The extra triangles are content the brief wants. Trimming goes to frame-time
   work, such as shadow caching and LOD for parapets and wire, rather than to removing content. Whole-map prop

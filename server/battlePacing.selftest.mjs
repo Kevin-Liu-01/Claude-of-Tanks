@@ -75,7 +75,8 @@ const timeouts = resultReasons.filter((reason) => reason === 'time_limit').lengt
 // any one seed: the 132 matches are deterministic, but each outcome is chaotic in its inputs, so every correct routing
 // or placement change flips a few seeds either way. Two such changes showed it:
 // - The maps lane's road footprint fix left out a boulder that stood in Redrock Divide's road at (-200, 21). Alpha's
-//   bot then drove straight up the road and won seed 32002's 1v2 in 105 s, where it had lost at 269 s.
+//   bot then drove straight up the road and won seed 32002's 1v2 in 105 s, where it had lost at 269 s. (Redrock's
+//   rebuild to the layout brief, 2026-10-02, reseeded that ground; its four seeds now run 165-279 s.)
 // - The bots lane's clearance-aware navigation grid stopped 28-65 % of each map's planned routes from passing through
 //   cover or sub-hull gaps. On the maps tree with that fix, three matches end inside 120 s (Fjord 30001 110 s,
 //   Redrock 32003 102 s, Mangrove 48001 117 s), each one alpha's lone bot winning its 1v2 with no pile-on.
@@ -103,8 +104,6 @@ const FAST_TAIL = { maxShare: 0.03, floorS: 90 };
 /** One-line causes of known fast matches, keyed `${mapId} ${seed}`. */
 const LONE_BOT_WINS = 'alpha\'s lone bot wins its 1v2 on the clearance-aware route grid, with no pile-on';
 const FAST_MATCH_CAUSES = {
-  'badlands 32002': 'the road footprint fix left out a boulder that stood in the road at (-200, 21); alpha\'s bot '
-    + 'drives straight up the road and wins its 1v2',
   'fjord 30001': LONE_BOT_WINS,
   'badlands 32003': LONE_BOT_WINS,
   'mangrove 48001': LONE_BOT_WINS,
