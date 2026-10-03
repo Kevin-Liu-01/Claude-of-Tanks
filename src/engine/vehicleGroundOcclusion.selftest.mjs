@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
   GROUND_AO_BELLY_VIEW, GROUND_AO_CARD_AMBIENT_SHARE, GROUND_AO_CLIP_SLACK_M, GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_EDGE_M,
-  GROUND_AO_FADE_M, GROUND_AO_HULL_ALBEDO, GROUND_AO_HULL_SKIN_M, GROUND_AO_MAX_HULLS, GROUND_AO_RANGE_M, GROUND_AO_REACH, GROUND_AO_TRACK_LIFT_M,
+  GROUND_AO_FADE_M, GROUND_AO_HULL_ALBEDO, GROUND_AO_HULL_SKIN_M, GROUND_AO_MAX_HULLS, GROUND_AO_PLATE_OVERHANG_M, GROUND_AO_RANGE_M, GROUND_AO_REACH, GROUND_AO_TRACK_LIFT_M,
   GROUND_AO_TRACK_REACH, GROUND_AO_UNDER_GROUND, VEHICLE_GROUND_OCCLUSION_GLSL, boxSkyOcclusion, combineVehicleGroundOcclusion,
   createVehicleGroundOcclusionUniforms, hullProxyOf, measureVehicleGroundBoxes, updateVehicleGroundOcclusionUniforms,
   vehicleGroundOcclusionLocal, vehicleGroundStrengths,
@@ -82,19 +82,19 @@ for (let c = 0.1, prev = 2; c < 4; c += 0.1) {
 assert.equal(boxSkyOcclusion({ x: 0, y: 2, z: 0 }, UP, { x: 1.8, y: 0.7, z: 3.6 }), 0, 'a box under the receiver\'s horizon hides nothing');
 
 // ---- 2. a hull: the measured T-90M (belly 0.31 m, deck 1.32 m, runs 1.11–1.72 m out), exact boxes, darkest under the belly
-const T90 = Object.freeze({ hx: 1.79, yb: 0.31, yt: 1.32, hz0: -3.42, hz1: 3.68, xi: 1.11, xo: 1.72, y0: 0.02, tz0: -2.89, tz1: 3.43 });
+const T90 = Object.freeze({ hx: 1.79, yb: 0.31, yt: 1.32, hz0: -2.89, hz1: 3.61, xi: 1.11, xo: 1.72, y0: 0.02, tz0: -2.89, tz1: 3.43 });
 const ONE = Object.freeze({ belly: 1, wall: 1 });
 const F = (x, z, y = 0, n = UP) => vehicleGroundOcclusionLocal({ x, y, z }, n, T90, ONE);
-const bellyOnly = boxSkyOcclusion({ x: 0, y: -0.31 - 0.505, z: 0.3 - 0.13 }, UP, { x: 1.79, y: 0.505, z: 3.55 });
+const bellyOnly = boxSkyOcclusion({ x: 0, y: -0.31 - 0.505, z: 0.3 - 0.36 }, UP, { x: 1.79, y: 0.505, z: 3.25 });
 assert.ok(F(0, 0.3) >= bellyOnly && F(0, 0.3) - bellyOnly < 0.05, `the belly dominates under the hull, the runs close its sides (${bellyOnly.toFixed(3)})`);
 assert.ok(F(0, 0.3) > 0.97 && F(0, 0.3) <= 1, `the belly's middle loses almost all its sky (${F(0, 0.3).toFixed(3)})`);
-near(F(0, -3.42), 0.5, 0.04, 'half at the rear edge');
-assert.ok(F(0, -3.1) > 0.8, `0.3 m inside the rear edge (${F(0, -3.1).toFixed(3)}; the old side-gap law hid 0.65)`);
-assert.ok(F(0, -5) > 0.05 && F(0, -5) < 0.15 && F(0, -7.5) === 0, 'behind the hull it fades, and is gone past its reach');
+near(F(0, T90.hz0), 0.5, 0.06, 'half at the rear edge');
+assert.ok(F(0, T90.hz0 + 0.3) > 0.8, `0.3 m inside the rear edge (${F(0, T90.hz0 + 0.3).toFixed(3)}; the old side-gap law hid 0.65)`);
+assert.ok(F(0, T90.hz0 - 1.6) > 0.05 && F(0, T90.hz0 - 1.6) < 0.15 && F(0, T90.hz0 - 4.1) === 0, 'behind the hull it fades, and is gone past its reach');
 assert.ok(F(-1.8, 0.3) > 0.8 && F(-2.2, 0.3) > 0.35 && F(-3.2, 0.3) < 0.2, 'the run\'s contact line, then a short skirt');
 assert.equal(F(0, 0.3, 1.5), 0, 'over the deck: nothing');
 // the hull's own surface over the belly (a marking decal blended over it reads as a card or lit ground): never a receiver
-for (const [x, y, z] of [[1.82, 0.9, 0], [0.5, 1.0, 0.5], [-1.85, 0.6, -2], [0.2, 0.8, 3.75]]) {
+for (const [x, y, z] of [[1.82, 0.9, 0], [0.5, 1.0, 0.5], [-1.85, 0.6, -2], [0.2, 0.8, 3.65]]) {
   assert.equal(F(x, z, y), 0, `the hull's skin at ${x}, ${y}, ${z}`);
   assert.equal(F(x, z, y, unit(0.3, 0.2, 0.9)), 0, 'whatever its normal');
 }
@@ -102,7 +102,7 @@ assert.ok(F(1.82, 0, 0) > 0.4 && F(1.95, 0, 0.9) > 0, 'the ground at the hull\'s
 assert.ok(F(0, 0.3, -8) === 0, 'a slope far under the hull: nothing');
 // continuous across every edge: the footprint's, the runs' faces and ends, a corner (1 mm steps; a step function would
 // keep its jump at any step, a steep wall-side gradient shrinks with it)
-for (const [line, label] of [[(t) => [0, -4.4 + t], 'the rear edge'], [(t) => [-2.6 + t, 0.3], 'a side'], [(t) => [-2.6 + t, 4.4 - t], 'a corner'],
+for (const [line, label] of [[(t) => [0, T90.hz0 - 0.9 + t], 'the rear edge'], [(t) => [-2.6 + t, 0.3], 'a side'], [(t) => [-2.6 + t, 4.4 - t], 'a corner'],
   [(t) => [-1.4, 2.7 + t], 'a run\'s front end'], [(t) => [-2.6 + t, -3.2], 'past the runs\' rear ends']]) {
   let prev = null, worst = 0;
   for (let t = 0; t <= 1.7; t += 0.001) {
@@ -133,7 +133,7 @@ const jimenez = (v, rho) => { const a = 2.0404 * rho - 0.3324, b = -4.7951 * rho
 near(jimenez(0.15, 0.8), 0.367, 0.002, 'the old middle on snow'); near(jimenez(0.5, 0.8), 0.81, 0.005, 'the old rear edge on snow');
 const visSnow = (x, z) => 1 - vehicleGroundOcclusionLocal({ x, y: 0, z }, UP, T90, snow);
 assert.ok(visSnow(0, 0.3) < 0.16, `snow under the belly keeps ${visSnow(0, 0.3).toFixed(3)} of its sky`);
-assert.ok(visSnow(0, -3.1) < 0.3 && visSnow(0, -3.42) < 0.65, `the rear strip: ${visSnow(0, -3.1).toFixed(3)} 0.3 m in, ${visSnow(0, -3.42).toFixed(3)} at the edge`);
+assert.ok(visSnow(0, T90.hz0 + 0.3) < 0.3 && visSnow(0, T90.hz0) < 0.65, `the rear strip: ${visSnow(0, T90.hz0 + 0.3).toFixed(3)} 0.3 m in, ${visSnow(0, T90.hz0).toFixed(3)} at the edge`);
 // photographs of hulls on sand: the belly at 0.07–0.16 of the sunlit ground in display light ≈ 0.18–0.32 of its sky
 // (through AgX on the lane's measured Sirocco frames); sunny sand's belly middle lands inside
 const visSand = 1 - vehicleGroundOcclusionLocal({ x: 0, y: 0, z: 0.3 }, UP, T90, sand);
@@ -163,7 +163,8 @@ function builtHull(name, { z = 0, bands = true, contact = true } = {}) {
   const { root, proxy } = builtHull('t90');
   assert.equal(hullProxyOf(root), proxy, 'the hull proxy');
   const b = measureVehicleGroundBoxes(root);
-  for (const [key, want] of Object.entries({ hx: 1.79, yb: 0.31, yt: 1.37, hz0: -3.42, hz1: 3.68, xi: 1.11, xo: 1.72, y0: GROUND_AO_TRACK_LIFT_M, tz0: -2.89, tz1: 3.43 })) {
+  // the box proxy has no low vertices between the runs: the belly runs the contact run ± GROUND_AO_BELLY_BEYOND_RUN_M
+  for (const [key, want] of Object.entries({ hx: 1.79, yb: 0.31, yt: 1.37, hz0: 0.36 - 2.35 - 0.6 - 0.3, hz1: 0.36 + 2.35 + 0.6 + 0.3, xi: 1.11, xo: 1.72, y0: GROUND_AO_TRACK_LIFT_M, tz0: -2.89, tz1: 3.43 })) {
     near(b[key], want, 1e-6, `measured ${key}`);
   }
   assert.equal(measureVehicleGroundBoxes(root), b, 'measured once, cached on the root');
@@ -175,6 +176,16 @@ function builtHull(name, { z = 0, bands = true, contact = true } = {}) {
   assert.ok(lent !== bare && Math.abs(lent.yb - 0.5) < 1e-9 && Math.abs(lent.y0 - (0.05 + GROUND_AO_TRACK_LIFT_M)) < 1e-9,
     'a showroom hero lent to a battle is measured again from its contact geometry');
   assert.equal(measureVehicleGroundBoxes(new THREE.Group()), null, 'no proxy, no boxes');
+  // a rear plate rising off the ground over the last metre (the M1A2's: 0.41 m to 1.0 m): the box keeps the belly
+  // plate's own length plus a short overhang, so the ground under the sloped plate keeps much of its sky
+  const slopedHull = builtHull('sloped');
+  const g2 = new THREE.BoxGeometry(3.58, 1.01, 7.1, 4, 1, 14).translate(0, 0.865, 0.13), sp = g2.getAttribute('position');
+  for (let i = 0; i < sp.count; i++) if (sp.getY(i) < 0.4 && sp.getZ(i) < -2.4) sp.setY(i, sp.getY(i) + (-2.4 - sp.getZ(i)) * 0.6);
+  g2.computeBoundingBox();
+  slopedHull.proxy.geometry = g2;
+  const sb = measureVehicleGroundBoxes(slopedHull.root);
+  near(sb.hz0, -3.42 + 2 * (7.1 / 14) - GROUND_AO_PLATE_OVERHANG_M, 1e-6, 'the hull box ends a short overhang past the belly plate');
+  near(sb.hz1, 3.68, 1e-6, 'the flat nose keeps the proxy\'s length');
 }
 
 // ---- 5. the uniforms: the router's nearest hulls, each frame from its pose, written in place
@@ -259,4 +270,4 @@ assert.match(post, /const groundRho = groundModel\?\.mode === 'physical'\s*\? 0\
   'the grounded model\'s ground albedo (luminance), the default on the legacy rig');
 assert.equal(GROUND_AO_DEFAULT_ALBEDO, 0.25);
 
-console.log(`vehicleGroundOcclusion.selftest: exact box sky shares (closed forms, quadrature), the hull's three boxes (belly ${F(0, 0.3).toFixed(3)}, rear edge ${F(0, -3.42).toFixed(3)}), the first-order interreflection (snow belly keeps ${visSnow(0, 0.3).toFixed(3)}, sand ${visSand.toFixed(3)}), the measured boxes, the router-fed in-place uniforms, the gating, the GLSL and the wiring PASS`);
+console.log(`vehicleGroundOcclusion.selftest: exact box sky shares (closed forms, quadrature), the hull's three boxes (belly ${F(0, 0.3).toFixed(3)}, rear edge ${F(0, T90.hz0).toFixed(3)}), the first-order interreflection (snow belly keeps ${visSnow(0, 0.3).toFixed(3)}, sand ${visSand.toFixed(3)}), the measured boxes, the router-fed in-place uniforms, the gating, the GLSL and the wiring PASS`);

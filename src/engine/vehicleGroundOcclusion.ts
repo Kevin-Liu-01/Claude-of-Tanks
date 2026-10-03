@@ -21,7 +21,8 @@
  *    closes, and stopped at 0.85: 0.3 m inside the rear edge it hid 0.65 of the sky where the hull hides 0.79.
  *
  * Geometry, exactly. Each hull is three boxes in its own (root) frame, measured once from the built visual: the hull
- * above its belly (the armour-derived shadow proxy's width, length and deck, down to the measured hull-pan floor), and
+ * above its belly (the armour-derived shadow proxy's width and deck, the belly plate's length, down to the measured
+ * hull-pan floor), and
  * the two track runs under it (the track bands' lanes and length, from the contact plane up to the belly). The share of
  * a receiver's cosine-weighted sky a box hides is its projected solid angle over π, Lambert's edge integral over the
  * box's silhouette hexagon (Quilez's box-occlusion construction): exact while the box stands above the receiver's
@@ -74,6 +75,17 @@ export const GROUND_AO_CLIP_SLACK_M = 4;
  * blended over it, whose alpha no longer carries the vehicle tag (vehicleOcclusion.ts) — and is never a receiver.
  */
 export const GROUND_AO_HULL_SKIN_M = 0.12;
+/**
+ * The hull box runs the belly plate's own length — the proxy's lowest vertices between the runs, within this band (m) of
+ * the belly — plus
+ * GROUND_AO_PLATE_OVERHANG_M at each end: a sloped nose or rear plate rises off the ground (the M1A2's from 0.41 m to
+ * 1.0 m over its last metre), so the ground under it keeps much of its sky.
+ */
+export const GROUND_AO_BELLY_PLATE_BAND_M = 0.12;
+export const GROUND_AO_PLATE_OVERHANG_M = 0.3;
+/** Where the proxy's low vertices do not span a plate (a coarse hull), the belly ends this far (m) past the track run's
+ * ground contact — over the end wheels. */
+export const GROUND_AO_BELLY_BEYOND_RUN_M = 0.6;
 /** Fallbacks for a hull without measured contact geometry: the belly's clearance and a run's width (m). */
 export const GROUND_AO_CLEARANCE_M = 0.45;
 export const GROUND_AO_TRACK_WIDTH_M = 0.6;
@@ -227,19 +239,35 @@ export function hullProxyOf(root: THREE.Object3D, detailKey = 'nearShadowDetail'
   return source;
 }
 
-const _rel = new THREE.Matrix4(), _part = new THREE.Matrix4(), _bounds = new THREE.Box3();
+const _rel = new THREE.Matrix4(), _part = new THREE.Matrix4(), _bounds = new THREE.Box3(), _vertex = new THREE.Vector3();
 
-/** An object's bounds in its root's frame, from the local poses up the chain (never a stale world matrix). */
-function rootFrameBounds(object: THREE.Object3D, root: THREE.Object3D, geometry: THREE.BufferGeometry, out: THREE.Box3): THREE.Box3 | null {
-  if (!geometry.boundingBox) geometry.computeBoundingBox();
-  if (!geometry.boundingBox || geometry.boundingBox.isEmpty()) return null;
-  _rel.identity();
+/** An object's matrix in its root's frame, from the local poses up the chain (never a stale world matrix). */
+function rootFrameMatrix(object: THREE.Object3D, root: THREE.Object3D, out: THREE.Matrix4): THREE.Matrix4 | null {
+  out.identity();
   let node: THREE.Object3D | null = object;
   for (; node && node !== root; node = node.parent) {
-    _rel.premultiply(node.matrixAutoUpdate ? _part.compose(node.position, node.quaternion, node.scale) : node.matrix);
+    out.premultiply(node.matrixAutoUpdate ? _part.compose(node.position, node.quaternion, node.scale) : node.matrix);
   }
-  if (node !== root) return null;
+  return node === root ? out : null;
+}
+
+/** An object's bounds in its root's frame. */
+function rootFrameBounds(object: THREE.Object3D, root: THREE.Object3D, geometry: THREE.BufferGeometry, out: THREE.Box3): THREE.Box3 | null {
+  if (!geometry.boundingBox) geometry.computeBoundingBox();
+  if (!geometry.boundingBox || geometry.boundingBox.isEmpty() || !rootFrameMatrix(object, root, _rel)) return null;
   return out.copy(geometry.boundingBox).applyMatrix4(_rel);
+}
+
+/** The z extent of the belly plate: the proxy's vertices under `top` between the runs (|x| ≤ xMax, root frame). */
+function bellyPlateSpan(proxy: THREE.Mesh, root: THREE.Object3D, top: number, xMax: number): [number, number] | null {
+  const position = proxy.geometry.getAttribute('position');
+  if (!position || !rootFrameMatrix(proxy, root, _rel)) return null;
+  let z0 = Infinity, z1 = -Infinity;
+  for (let i = 0; i < position.count; i++) {
+    _vertex.fromBufferAttribute(position, i).applyMatrix4(_rel);
+    if (_vertex.y <= top && Math.abs(_vertex.x) <= xMax) { z0 = Math.min(z0, _vertex.z); z1 = Math.max(z1, _vertex.z); }
+  }
+  return z1 > z0 ? [z0, z1] : null;
 }
 
 interface ContactGeometryLike {
@@ -281,8 +309,15 @@ export function measureVehicleGroundBoxes(root: THREE.Object3D): VehicleGroundBo
     const zc = finite(cg?.zCenterM) ? cg.zCenterM : 0.5 * (hull.min.z + hull.max.z);
     const hl = finite(cg?.halfLenM) ? cg.halfLenM : 0.35 * (hull.max.z - hull.min.z);
     const tz0 = bands ? bandZ0 : zc - hl - 0.5, tz1 = bands ? bandZ1 : zc + hl + 0.5;
+    let plate = proxy ? bellyPlateSpan(proxy, root, Math.min(hull.min.y, yb) + GROUND_AO_BELLY_PLATE_BAND_M, xi + 0.15) : null;
+    if (plate && plate[1] - plate[0] < 1) plate = null;
+    if (!plate && finite(cg?.halfLenM) && finite(cg?.zCenterM)) {
+      plate = [cg.zCenterM - cg.halfLenM - GROUND_AO_BELLY_BEYOND_RUN_M, cg.zCenterM + cg.halfLenM + GROUND_AO_BELLY_BEYOND_RUN_M];
+    }
+    const hz0 = plate ? Math.max(hull.min.z, plate[0] - GROUND_AO_PLATE_OVERHANG_M) : hull.min.z;
+    const hz1 = plate ? Math.min(hull.max.z, plate[1] + GROUND_AO_PLATE_OVERHANG_M) : hull.max.z;
     const candidate: VehicleGroundBoxes = {
-      hx: Math.max(Math.abs(hull.min.x), Math.abs(hull.max.x), xo), yb, yt: hull.max.y, hz0: hull.min.z, hz1: hull.max.z,
+      hx: Math.max(Math.abs(hull.min.x), Math.abs(hull.max.x), xo), yb, yt: hull.max.y, hz0, hz1,
       xi, xo, y0: ground + GROUND_AO_TRACK_LIFT_M, tz0, tz1,
     };
     const valid = candidate.yt > candidate.yb + 0.2 && candidate.yb > candidate.y0 && candidate.xo > candidate.xi
