@@ -36,7 +36,7 @@ import { settleMapTextures } from './map-environment-acquisition.mjs';
 import { settleResidencyTerrain } from './world-residency-acquisition.mjs';
 import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.mjs';
 import {
-  CENSUS_HALF, CENSUS_VIEWPORT, CENSUS_VIEWS, borderPose, borderSamplePoints, borderSiteCandidates, censusViewSet,
+  CENSUS_FOV, CENSUS_HALF, CENSUS_VIEWPORT, CENSUS_VIEWS, borderPose, borderSamplePoints, borderSiteCandidates, censusViewSet,
   obliquePose, obliqueSamplePoints, selectBorderSite, selectCensusViews, selectChasePose, selectSkySite,
   selectTerrainSite, selectTreePose, skyPose, skySamplePoints, skySiteCandidates, terrainPose, terrainSamplePoints,
   terrainSiteCandidates,
@@ -48,7 +48,7 @@ const PORT_SPAN = 20;
 const GAME_QUERY = 'nosplash=1&tier=desktop';
 const COMMANDS = Object.freeze(['capture', 'metrics', 'sheets', 'index', 'report', 'compare']);
 const FLAGS = Object.freeze({
-  capture: ['root', 'out', 'set', 'maps', 'views', 'serve', 'port', 'batch', 'budget-min', 'lock-timeout-min', 'settle-ms', 'probe-lock'],
+  capture: ['root', 'out', 'set', 'maps', 'views', 'pose', 'serve', 'port', 'batch', 'budget-min', 'lock-timeout-min', 'settle-ms', 'probe-lock'],
   metrics: ['out', 'force'], sheets: ['out'], index: ['out'], report: ['out', 'force'], compare: ['a', 'b', 'out'],
 });
 const NUMERIC = new Set(['port', 'batch', 'budget-min', 'lock-timeout-min', 'settle-ms']);
@@ -57,8 +57,9 @@ const BOOLEANS = new Set(['force']);
 
 export const CENSUS_HELP = `node tools/${TOOL}.mjs <command> [--flag=value ...]
 
-  capture  --out=<dir> [--root=<checkout>] [--set=core|border] [--maps=a,b] [--views=a,b] [--serve=dist|dev]
-           [--port=5421] [--batch=<n>] [--budget-min=<m>] [--lock-timeout-min=30] [--settle-ms=1200] [--probe-lock=<dir>]
+  capture  --out=<dir> [--root=<checkout>] [--set=core|border] [--maps=a,b] [--views=a,b|none] [--serve=dist|dev]
+           [--pose=name:cx,cy,cz:ax,ay,az[+name:…]] [--port=5421] [--batch=<n>] [--budget-min=<m>]
+           [--lock-timeout-min=30] [--settle-ms=1200] [--probe-lock=<dir>]
            Shoot ${CENSUS_VIEWS.map((v) => v.name).join(', ')} of every registered map (or --maps) into <out>/frames
            and merge each map into <out>/census.json. --set=border shoots the border set instead (the eye-height and
            60 m views of the four edges and four corners from inside the square, and a high oblique across the
@@ -66,6 +67,8 @@ export const CENSUS_HELP = `node tools/${TOOL}.mjs <command> [--flag=value ...]
            (default) previews <root>/dist: run npm run build first. --batch / --budget-min bound one run so batches
            resume where the last stopped. --probe-lock waits in the cot-shots FIFO without that session mutex and
            takes it only at the FIFO head (tools/visual-census-lock.mjs); without it the caller holds any session mutex.
+           --pose adds authored table views (camera and look point, each height over the ground beneath it) after the
+           set's views, for a landform no fixed view frames; --views=none shoots only those.
   metrics  --out=<dir> [--force]      per-frame metrics into census.json (only frames without them unless --force)
   sheets   --out=<dir>                contact sheets: one per view (every map), one per map (every view)
   index    --out=<dir>                <out>/index.md (keeps the hand-written visual read between its markers)
@@ -75,6 +78,25 @@ export const CENSUS_HELP = `node tools/${TOOL}.mjs <command> [--flag=value ...]
 Run capture under nice -n 19; it takes the cot-shots capture lock itself (with --probe-lock, the session mutex too).`;
 
 // ---------------------------------------------------------------------------------------------- arguments
+
+/**
+ * Authored table views from --pose (maps lane, 2026-10-03): `name:cx,cy,cz:ax,ay,az`, several joined by `+`. Each is a
+ * table view (the camera and the look point each stand their y over the ground beneath them, as the bird view does)
+ * shot after the set's views, so a landform the fixed views never frame can be judged.
+ */
+export function parseCensusPoses(raw) {
+  if (raw === undefined) return [];
+  return raw.split('+').map((spec) => {
+    const parts = spec.split(':');
+    const name = parts[0], cam = (parts[1] ?? '').split(',').map(Number), at = (parts[2] ?? '').split(',').map(Number);
+    if (parts.length !== 3 || !/^[a-z][a-z0-9-]*$/.test(name) || cam.length !== 3 || at.length !== 3
+      || ![...cam, ...at].every(Number.isFinite)) {
+      throw new Error(`--pose needs name:cx,cy,cz:ax,ay,az (got "${spec}")`);
+    }
+    return Object.freeze({ name, kind: 'table', label: `${name} (authored pose)`, cam: Object.freeze(cam),
+      at: Object.freeze(at), fov: CENSUS_FOV, authored: true });
+  });
+}
 
 /** Parse argv (command first, then --name=value flags; booleans bare). Fails closed before anything starts. */
 export function parseCensusArgs(argv) {
@@ -116,8 +138,14 @@ export function parseCensusArgs(argv) {
     if ([5197, 5198, 5199].some((p) => p >= port && p < port + PORT_SPAN)) throw new Error('--port range must avoid 5197–5199');
     const set = values.set ?? 'core';
     censusViewSet(set);
+    const poses = parseCensusPoses(values.pose);
+    const none = values.views?.length === 1 && values.views[0] === 'none';
+    if (none && !poses.length) throw new Error('--views=none needs at least one --pose');
+    const views = [...(none ? [] : selectCensusViews(values.views, set)), ...poses];
+    const names = views.map((view) => view.name);
+    if (new Set(names).size !== names.length) throw new Error(`Duplicate census view name in ${names.join(', ')}`);
     Object.assign(options, {
-      root: path.resolve(values.root ?? process.cwd()), set, maps: values.maps ?? null, views: selectCensusViews(values.views, set),
+      root: path.resolve(values.root ?? process.cwd()), set, maps: values.maps ?? null, views,
       serve, port, batch: values.batch ?? null, budgetMin: values['budget-min'] ?? null,
       lockTimeoutMin: values['lock-timeout-min'] ?? 30, settleMs: values['settle-ms'] ?? 1200,
       probeLock: values['probe-lock'] ? path.resolve(values['probe-lock']) : null,
@@ -149,12 +177,15 @@ const git = (root, args) => {
   catch { return null; }
 };
 
-function censusHeader(root, serve, setName = 'core') {
+function censusHeader(root, serve, setName = 'core', authored = []) {
   const distIndex = path.join(root, 'dist', 'index.html'), set = censusViewSet(setName);
   return {
     protocol: set.protocol, tool: TOOL, root, serve, viewport: CENSUS_VIEWPORT, query: GAME_QUERY, preset: 'high',
     pinnedScene: PINNED_SCENE, ...(setName === 'core' ? {} : { viewSet: setName }),
     views: set.views, viewsDigest: createHash('sha256').update(JSON.stringify(set.views)).digest('hex'),
+    // authored --pose views ride beside the set's fixed views; the digest names them, so a census never mixes poses
+    ...(authored.length ? { authoredViews: authored,
+      authoredDigest: createHash('sha256').update(JSON.stringify(authored)).digest('hex') } : {}),
     revision: git(root, ['rev-parse', 'HEAD']), revisionShort: git(root, ['rev-parse', '--short=9', 'HEAD']),
     branch: git(root, ['rev-parse', '--abbrev-ref', 'HEAD']),
     gameRevision: git(root, ['log', '-1', '--format=%H %s', '--', 'src', 'public', 'index.html', 'vite.config.ts']),
@@ -429,7 +460,7 @@ const stamp = () => new Date().toTimeString().slice(0, 8);
 async function runCapture(options) {
   process.chdir(options.root); // the repository's vite config resolves its source graph from the cwd
   const registry = await registeredMaps(options.root);
-  const header = censusHeader(options.root, options.serve, options.set);
+  const header = censusHeader(options.root, options.serve, options.set, options.views.filter((view) => view.authored));
   const census = openCensus(loadCensus(options.out), header);
   const maps = pickCaptureMaps(registry.ids, census, options);
   const session = {
