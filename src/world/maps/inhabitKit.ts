@@ -1039,33 +1039,45 @@ function keepFaces<T extends THREE.BufferGeometry>(g: T, keep: readonly number[]
   return g;
 }
 
-/** A stone with its corners knocked off (each of the eight corners moves inward by up to a fifth of the stone), its
- * hidden faces left out, and its own texture window (a random offset, finer than the hearting's), so no two stones
- * show one patch. */
+/** The wall's texture density: the fieldstone print's stones come out a hand to a forearm long (0.15-0.4 m). */
+const DRY_UV = 1.2;
+
+/**
+ * A stone: a box with its corners knocked back a little (each corner moves inward by up to a tenth), only its listed
+ * faces kept, and a texture window of its own projected on each face at the wall's density (a random offset), so the
+ * print runs across it the right way and no two stones show one patch.
+ */
 function roughStone(w: number, h: number, d: number, r: Rng, keep: readonly number[]): THREE.BufferGeometry {
-  const g = box(w, h, d, 0.34);
-  const uv = g.attributes.uv, du = r() * 8, dv = r() * 8;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) + du, uv.getY(i) + dv);
-  const p = g.attributes.position;
+  const g = new THREE.BoxGeometry(w, h, d);
+  const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
   const knock = new Map<string, [number, number, number]>();
   for (let i = 0; i < p.count; i++) {
     const key = `${Math.sign(p.getX(i))},${Math.sign(p.getY(i))},${Math.sign(p.getZ(i))}`;
     let k = knock.get(key);
-    if (!k) knock.set(key, k = [1 - r() * 0.22, 1 - r() * 0.2, 1 - r() * 0.22]);
+    if (!k) knock.set(key, k = [1 - r() * 0.1, 1 - r() * 0.1, 1 - r() * 0.1]);
     p.setXYZ(i, p.getX(i) * k[0], p.getY(i) * k[1], p.getZ(i) * k[2]);
+  }
+  const du = r() * 8, dv = r() * 8;
+  for (let i = 0; i < p.count; i++) {
+    const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i));
+    const [a, b] = ax > 0.5 ? [p.getZ(i), p.getY(i)] : ay > 0.5 ? [p.getX(i), p.getZ(i)] : [p.getX(i), p.getY(i)];
+    uv.setXY(i, du + a * DRY_UV, dv + b * DRY_UV);
   }
   g.computeVertexNormals();
   return keepFaces(g, keep);
 }
 
-/** The dry-stone module along +Z (local X across, base at y = 0), before it is fitted to the original envelope:
- * about 350 triangles, every stone a box with its hidden faces left out. */
+/**
+ * The dry-stone module along +Z (local X across, base at y = 0), before it is fitted to the original envelope: a
+ * battered hearting carrying the fieldstone print at a dry-stone wall's scale, flat face stones standing a few
+ * centimetres proud of it in rough courses (their tops catch the light), and a comb of cope stones set on edge, packed
+ * tight and leaning together. About 360 triangles: the faces no one sees are left out.
+ */
 function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  const L = WALL_SEG, H = broken ? 0.32 + r() * 0.16 : 0.9, bottom = 0.25, top = broken ? 0.22 : 0.17;
-  const halfAt = (y: number) => bottom + (top - bottom) * Math.min(1, y / 0.9);
-  // the hearting: a battered core, its faces a little uneven (the stone texture carries the small stones between
-  // the face stones); its bottom sits in the ground and is left out
+  const L = WALL_SEG, H = broken ? 0.32 + r() * 0.16 : 0.92, bottom = 0.26, top = broken ? 0.22 : 0.18;
+  const halfAt = (y: number) => bottom + (top - bottom) * Math.min(1, y / 0.92);
+  // the hearting: a battered core, its faces a little uneven; its bottom sits in the ground and is left out
   const core = new THREE.BoxGeometry(2, 1, 2, 1, 2, 4);
   const cp = core.attributes.position;
   // the unevenness is a function of the corner's place (the box's faces share their corners: no crack opens); the
@@ -1076,48 +1088,50 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
   for (let i = 0; i < cp.count; i++) {
     const u = cp.getZ(i), y = (cp.getY(i) + 0.5) * H, z = u * (L / 2) * 0.995, side = Math.sign(cp.getX(i));
     const half = halfAt(y) - 0.03 - Math.max(0, u - 0.5) * 0.03;
-    cp.setXYZ(i, side * half + Math.sin(Math.PI * u) * bow, y + (y > 0.01 ? lift(side, z) * 0.02 : 0), z);
+    cp.setXYZ(i, side * half + Math.sin(Math.PI * u) * bow, y + (y > 0.01 ? lift(side, z) * 0.015 : 0), z);
   }
   core.computeVertexNormals();
-  parts.push(keepFaces(scaleUV(core, L * 0.7, H * 0.7), [0, 1, 2, 4, 5]));
-  // the face stones: rough courses on both faces, over half the face in stones standing proud of the hearting
-  const courses = broken ? [[0, 0.18]] : [[0, 0.26], [0.24, 0.48], [0.46, 0.7], [0.68, 0.9]];
+  parts.push(keepFaces(scaleUV(core, L * DRY_UV, H * DRY_UV), [0, 1, 2, 4, 5]));
+  // the face stones: flat, long, a few centimetres proud, in rough courses on both faces (their outer face and their
+  // top: the ends and the bed are inside the wall or too small to see)
+  const courseH = broken ? 0.16 : 0.18;
+  const courses = broken ? 1 : Math.floor((H - 0.02) / courseH);
   for (const face of [-1, 1]) {
-    const keep = face > 0 ? [0, 2, 4, 5] : [1, 2, 4, 5]; // the back (into the hearting) and the bed are hidden
-    for (const [y0, y1] of courses) {
-      let z = -L / 2 + r() * 0.2;
+    const keep = face > 0 ? [0, 2] : [1, 2];
+    for (let c = 0; c < courses; c++) {
+      const y0 = c * courseH;
+      let z = -L / 2 + r() * 0.25;
       while (z < L / 2 - 0.12) {
-        const len = 0.34 + r() * 0.36;
-        const stoneH = (y1 - y0) * (0.8 + r() * 0.35);
-        const proud = 0.035 + r() * 0.05;
-        if (r() < 0.58) {
-          const stone = roughStone(proud + 0.06, stoneH, Math.min(len, L / 2 - z) * 0.92, r, keep);
-          stone.rotateY((r() - 0.5) * 0.12); stone.rotateX((r() - 0.5) * 0.12);
-          const yc = (y0 + y1) / 2 + (r() - 0.5) * 0.04;
-          parts.push(stone.translate(face * (halfAt(yc) - 0.03 + proud / 2), yc, z + len / 2));
+        const len = 0.28 + r() * 0.27;
+        const stoneH = 0.09 + r() * 0.06, proud = 0.015 + r() * 0.03;
+        if (r() < 0.42) {
+          const yc = y0 + courseH * (0.35 + r() * 0.3);
+          const stone = roughStone(proud + 0.05, stoneH, Math.min(len, L / 2 - z) * 0.94, r, keep);
+          stone.rotateY((r() - 0.5) * 0.04);
+          parts.push(stone.translate(face * (halfAt(yc) - 0.03 - 0.025 + (proud + 0.05) / 2), yc, z + len / 2));
         }
         z += len;
       }
     }
   }
   if (!broken) {
-    // the coping: cope stones set on edge across the top, tilted, the tall ones and the short ones in turn
-    let z = -L / 2 + 0.02;
-    let k = 0;
+    // the coping: cope stones on edge across the top, packed so each overlaps the next a little, all leaning one way
+    const lean = (r() - 0.5) * 0.1;
+    let z = -L / 2 + 0.01;
     while (z < L / 2 - 0.05) {
-      const thick = 0.2 + r() * 0.14, h = (k++ % 2 ? 0.17 : 0.25) + r() * 0.06;
-      const cope = roughStone(0.44 + r() * 0.08, h, thick, r, [0, 1, 2, 4, 5]);
-      cope.rotateX((r() - 0.5) * 0.3); cope.rotateZ((r() - 0.5) * 0.08);
-      parts.push(cope.translate((r() - 0.5) * 0.03, H + h * 0.42, z + thick / 2));
-      z += thick * (0.92 + r() * 0.1);
+      const thick = 0.14 + r() * 0.08, h = 0.19 + r() * 0.04;
+      const cope = roughStone(top * 2 + 0.06 + r() * 0.04, h, thick, r, [0, 1, 2, 4, 5]);
+      cope.rotateX(lean + (r() - 0.5) * 0.03); cope.rotateZ((r() - 0.5) * 0.03);
+      parts.push(cope.translate((r() - 0.5) * 0.02, H + h * 0.42 + (r() - 0.5) * 0.015, z + thick / 2));
+      z += thick * (0.93 + r() * 0.03);
     }
   } else {
     // the stones that came off it, tumbled on both sides
     for (let k = 0; k < 9; k++) {
-      const bs = 0.16 + r() * 0.2;
-      const stone = roughStone(bs * (1.1 + r() * 0.6), bs * 0.7, bs, r, [0, 1, 2, 3, 4, 5]);
-      stone.rotateY(r() * Math.PI); stone.rotateX((r() - 0.5) * 0.6);
-      parts.push(stone.translate((r() < 0.5 ? -1 : 1) * (0.35 + r() * 0.6), bs * 0.3, (r() - 0.5) * L * 0.9));
+      const bs = 0.14 + r() * 0.16;
+      const stone = roughStone(bs * (1.4 + r() * 0.6), bs * 0.55, bs, r, [0, 1, 2, 3, 4, 5]);
+      stone.rotateY(r() * Math.PI); stone.rotateX((r() - 0.5) * 0.5);
+      parts.push(stone.translate((r() < 0.5 ? -1 : 1) * (0.35 + r() * 0.6), bs * 0.25, (r() - 0.5) * L * 0.9));
     }
   }
   // nothing runs past the hearting's ends: the module's length is the core's, so a run's terminal module still
