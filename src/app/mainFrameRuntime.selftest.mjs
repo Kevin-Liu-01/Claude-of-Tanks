@@ -7,7 +7,7 @@ import { createGarageFramePacer } from '../engine/garageFramePacer.ts';
 
 function createFixture({
   phase = 'garage', shotMode = false, studioActive = false, trace = null,
-  densityChanged = false, contextLost = false, useRealGaragePacer = false,
+  densityChanged = false, contextLost = false, useRealGaragePacer = false, modePreview = null,
 } = {}) {
   const calls = [];
   const frameRequests = [];
@@ -70,6 +70,7 @@ function createFixture({
       update: () => calls.push('showroom'),
     },
     pedestal: { switchPending: false },
+    garageModePreview: modePreview,
     networkSession: { pump: () => calls.push('network') },
     garageFramePacer: {
       noteActivity: nowMs => {
@@ -312,3 +313,14 @@ assert.match(mainSource, /isTransitionHoldingSceneForFadeIn: \(\) => transition\
   'production frames consume the transition owner lease, not veil visibility through fade-out');
 
 console.log('mainFrameRuntime.selftest: retained Garage, studio, shot, and battle frames pass');
+
+{
+ let updates=0,clears=0;
+ const preview={animated:true,update(){updates++;},clear(){clears++;}};
+ const fixture=createFixture({useRealGaragePacer:true,modePreview:preview});
+ fixture.runtime.tick(1000);fixture.runtime.tick(1100);
+ assert.ok(updates>=2,'mode animation keeps settled Garage frames alive');
+ assert.equal(clears,0);
+ const battle=createFixture({phase:'battle',modePreview:preview});battle.runtime.tick(2000);
+ assert.ok(clears>0,'Garage preview releases before battle presentation');
+}

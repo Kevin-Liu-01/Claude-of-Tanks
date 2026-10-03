@@ -158,6 +158,7 @@ interface GarageOptions {
   readonly specs: GarageTankSpec[];
   readonly bus?: { emit(event: string, payload: RuntimeValue): void };
   readonly onSelect?: (specId: string) => void;
+  readonly onGameModeSelect?: (mode: GameModeId) => void;
   readonly onBattle?: (
     specId: string,
     mapId: string,
@@ -2930,6 +2931,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     for (const choice of battleRuleChoices) choice.setAttribute('aria-pressed', 'false');
     renderBattleOptions();
+    opts.onGameModeSelect?.(battleGameMode);
   }
   let renderBattleOptions: () => void = () => {};
   function setBattleGameMode(nextMode: RuntimeValue): void {
@@ -2938,6 +2940,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!meta) return;
     battleMode = 'solo';
     battleGameMode = id;
+    opts.onGameModeSelect?.(id);
     try { localStorage.setItem('cot.game.mode.v1', id); } catch (_) { /* session-only */ }
     requiredElement<HTMLElement>(battleModeBtn, 'span').textContent = meta.short;
     requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
@@ -3319,6 +3322,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
      * @param {string} [selectedId] - initially highlighted tank id.
      */
     show(selected = selectedId) {
+      // The full play menu also owns mode selection; reconcile it on return.
+      try {
+        const remembered = localStorage.getItem('cot.game.mode.v1');
+        if (remembered && normalizeGameMode(remembered) !== battleGameMode) setBattleGameMode(remembered);
+      } catch (_) { /* session-only mode choice */ }
       refreshServiceRecord();
       closeGarageVariantMenu();
       setGaragePanel('');

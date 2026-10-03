@@ -37,9 +37,9 @@ export function clearJuggernautVisual(root:THREE.Object3D,restoreSavedMaterials=
 /** Shade the actual vehicle surfaces: no enclosing geometry, extra draw calls,
  * enlarged silhouette, or highlight through cover. Instancing, batching, moving
  * turrets and hidden/detached modules keep their original geometry and poses. */
-export function syncJuggernautVisual(root:THREE.Object3D,_dims:{widthM:number;hullLengthM:number;heightM:number},scale:number,hp:number,maxHp:number,dt:number):void {
-  const previous=scales.get(root)??1;
-  if(previous!==scale){root.scale.multiplyScalar(scale/previous);scales.set(root,scale);}
+export function syncJuggernautVisual(root:THREE.Object3D,_dims:{widthM:number;hullLengthM:number;heightM:number},scale:number,hp:number,maxHp:number,dt:number,enlarge=true):void {
+  const previous=scales.get(root)??1,visualScale=enlarge?scale:1;
+  if(previous!==visualScale){root.scale.multiplyScalar(visualScale/previous);scales.set(root,visualScale);}
   let shield=shields.get(root);
   if(scale<=1||hp<=0){shield?.dispose();return;}
   if(!shield){

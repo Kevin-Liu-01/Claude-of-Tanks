@@ -1,3 +1,4 @@
+import { createLazyRuntimeOwner } from './app/lazyRuntimeOwner.ts';
 import { structureTopAt, SUPPORT_STEP_UP_M } from './sim/structureSupport.ts';
 import type { CollisionRecord } from './world/collision.ts';
 import './ui/battleUiVisibility.css';
@@ -1158,13 +1159,29 @@ const playSurface = createPlaySurfaceRuntime({
 // and solo all dismiss the operation picker before the next painted frame.
 bus.on('ui:battleStart', () => {
   sceneWatchdogEntryGeneration++;
+  garageModePreview.current?.clear();
   coveredBattleWatchdog = null;
   playSurface.hideForBattle();
 });
 
+let garagePreviewMode = 'standard';
+const garageModePreview = createLazyRuntimeOwner(
+  () => import('./game/garageModePreview.ts'), module => module.createGarageModePreview(),
+);
+const garagePreviewAnimated = () => garagePreviewMode === 'juggernaut' || garagePreviewMode === 'capture_the_flag';
+
 const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   specs: VISIBLE_TANK_IDS.map(getSpec),
   bus,
+  onGameModeSelect: mode => {
+    garagePreviewMode = mode;
+    garageModePreview.current?.clear();
+    if (['juggernaut', 'drone', 'capture_the_flag'].includes(mode)) {
+      void garageModePreview.preload().then(() => invalidateGaragePresentation())
+        .catch(error => console.error('[garage mode preview]', error));
+    }
+    invalidateGaragePresentation();
+  },
   onSelect: (specId: string) => {
     battleIntent.invalidateMapPlan();
     selectedVehicle.select(specId);
@@ -2924,6 +2941,14 @@ const mainFrame = createMainFrameRuntime({
   post,
   showroom,
   pedestal,
+  garageModePreview: {
+    get animated() { return garagePreviewAnimated(); },
+    clear: () => garageModePreview.current?.clear(),
+    update: dt => {
+      const visual = pedestal.current;
+      garageModePreview.current?.update(visual?.root ?? null, visual ? getSpec(visual.specId) : null, garagePreviewMode, dt);
+    },
+  },
   networkSession: networkPump,
   garageFramePacer,
   battleFrame,
@@ -2976,7 +3001,7 @@ const frameLoop = createFrameLoopScheduler({
   shouldUseIdleCadence: () => bootComplete && battlePhase.isGarage() &&
     !battleEntryLifecycle.renderingCovered && !transition.active &&
     !studio.active && !shotMode && !showroom.moving &&
-    !pedestal.switchPending,
+    !pedestal.switchPending && !garagePreviewAnimated(),
   idleIntervalMs: 5000,
 });
 rearmRafAfterContext = frameLoop.restart;
