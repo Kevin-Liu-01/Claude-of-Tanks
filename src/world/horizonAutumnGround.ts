@@ -108,11 +108,16 @@ function bindRingReliefAtlas(mesh: Mesh, vistaMaterial: Material, terrainMateria
   if (!amp || !texture) return;
   const window = vista.uniforms.uVReliefR?.value as { x: number; y: number } | undefined;
   if (window) (ring.uRingReliefR.value as { set(x: number, y: number): void }).set(window.x, window.y);
-  ring.uRingReliefGrad.value = vista.uniforms.uVReliefGrad?.value ?? 1;
   // The terrain already carries geometric slopes, detail normals and live
   // shadows. Full vista relief double-counted those slopes and turned the
   // exterior into dark, inflated folds. Keep it as subordinate fine relief.
-  ring.uRingReliefAmp.value = amp * 0.18;
+  // The mountains lane (2026-10-02): the program scales the atlas's three terms — the fine gradient, the folds'
+  // occlusion and the ridges' cast shadows — by one amplitude, so the 0.18 that kept the gradient subordinate also cut
+  // the occlusion to 14 % and the cast shadows to 15 %: past the live cascades (about a kilometre) the ranges had no
+  // shadow at all, and a valley read as light as the ridge above it. The amplitude is now the shading's
+  // (RING_RELIEF_SHADE) and the gradient scale divides by the same factor, so the gradient's share is unchanged.
+  ring.uRingReliefAmp.value = amp * RING_RELIEF_SHADE;
+  ring.uRingReliefGrad.value = ((vista.uniforms.uVReliefGrad?.value as number | undefined) ?? 1) * RING_RELIEF_GRADIENT / RING_RELIEF_SHADE;
   // terrain v3 (2026-10-02, the ring lab: zeroing the atlas removed the chevrons on Sirocco Wadi's far ranges and the
   // dimples on Copper Mesa's walls): the atlas's fine relief is a slope's detail; on the tablelands' and the martian
   // scarps' flanks and walls its gradient printed those patterns, so there it fades over the face's own slope from 20°
@@ -138,6 +143,11 @@ function bindRingReliefAtlas(mesh: Mesh, vistaMaterial: Material, terrainMateria
 }
 
 interface VistaMaterialData { uniforms: Record<string, { value: unknown }>; base: Color }
+
+/** The ring atlas's gradient share (terrain v2's subordinate fine relief) and its shading share (the mountains lane:
+ * the folds' occlusion and the ridges' cast shadows at 0.7 x their baked strength). */
+export const RING_RELIEF_GRADIENT = 0.18;
+export const RING_RELIEF_SHADE = 0.7;
 
 /** Terrain v3: the slope band (1 - n.y of the ring face) over which the atlas gradient fades, per relief character. */
 export const RING_RELIEF_WALL_BAND: Readonly<Record<string, readonly [number, number]>> = { mesa: [0.06, 0.25], martian: [0.06, 0.25] };

@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { type SeaOpening, dominantSeaOpening, seaOpeningWeight, seaHeadlandWeight } from './edgeWater.ts';
 import type { HorizonFarRangeSettings, HorizonReliefCharacter } from './horizonRelief.ts';
+import { type MassifSettings, createMassifField, suppressNeedles } from './horizonMassif.ts';
 
 export const HORIZON_FAR_SEGMENTS = 288;
 
@@ -52,6 +53,9 @@ interface HorizonFarRangeOptions {
   /** Actual outer edge of the near landscape. The distant apron starts here
    * instead of leaving a sky-visible annular gap before its old 1860 m foot. */
   nearEdge?: { columns: number; positions: Float32Array; heights: Float32Array };
+  /** The mountains lane (2026-10-02): the ring's eroded landform at the far range's scale (horizonMassif.ts), which
+   * carves the ranged silhouette into crests, cols and spurs; absent keeps the round-72b massifs. */
+  massif?: MassifSettings | null;
 }
 
 interface HorizonFarRangeGeometry {
@@ -85,7 +89,7 @@ export function resolveFarRangeAmp(settings: HorizonFarRangeSettings, deckBaseM:
 }
 
 /** Pure geometry (world xz, heights), for the mesh and the receipts. */
-export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'seed' | 'settings' | 'deckBaseM' | 'seaOpenings' | 'nearEdge'>): HorizonFarRangeGeometry {
+export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'seed' | 'settings' | 'deckBaseM' | 'seaOpenings' | 'nearEdge' | 'massif'>): HorizonFarRangeGeometry {
   const { settings: s, seed } = options;
   const n = options.nearEdge?.columns ?? HORIZON_FAR_SEGMENTS, rows = HORIZON_FAR_ROWS;
   const noise = new SimplexNoise({ random: mulberry32(seed >>> 0) });
@@ -107,7 +111,7 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
       // row of cones the step clamp had cut to straight flanks): massifs 1.6–2.2 km along the axis (was 2.4–3.2 km,
       // six crests around the whole horizon) carrying two octaves of serration whose amplitude falls with their
       // wavelength (a 1/f^0.8 spectrum: 0.5 / 0.2 / 0.08), so the flanks stay under the clamp at 25–30°
-      lambdaAlong: 1600 + rangeRng() * 600, lambdaAcross: 720 + rangeRng() * 240,
+      lambdaAlong: (options.massif ? 2100 : 1600) + rangeRng() * (options.massif ? 800 : 600), lambdaAcross: (options.massif ? 880 : 720) + rangeRng() * 240,
       o1: rangeRng() * 100, o2: rangeRng() * 100, o3: rangeRng() * 100, o4: rangeRng() * 100, jitterPhase: rangeRng() * 100,
     };
   });
@@ -148,14 +152,29 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
     rangeScale = 0.5 / Math.max(1e-4, Math.sqrt(sq / (N * R)));
   }
   const knee = (v: number): number => (v < 0.8 ? v : 0.8 + 0.2 * Math.tanh((v - 0.8) / 0.2));
+  // the mountains lane (2026-10-02): the ring's eroded landform at about twice its scale (the far rows are 290-340 m
+  // apart and its columns 27-48 m), calibrated over the far annulus, carves the ranged relief into crests and cols
+  const massif = options.massif ? createMassifField((seed ^ 0x6A55) >>> 0, options.massif, [rows[0].r, rows[rows.length - 1].r]) : null;
   const positions = new Float32Array(n * rows.length * 3);
   const heights = new Float32Array(n * rows.length);
   const marine = new Float32Array(n * rows.length);
+  // the mountains lane: the crest wanders in depth — per column the row that carries the summit moves between the
+  // second and the fifth row (a slow field round the horizon), the rows before it rising on the authored front slope
+  // and the rows behind falling away, so the far summits stand at different distances instead of in one ring of cones
+  const crestRow = (ca: number, sa: number): number => clamp(2.85 + 1.15 * (noise.noise(ca * 2.2 + 31.1, sa * 2.2 - 7.7) * 0.7
+    + noise.noise(ca * 5.1 - 3.3, sa * 5.1 + 12.9) * 0.3), 1.8, 3.8);
+  const wanderLift = (row: number, crest: number): number => {
+    if (row === 0) return 0;
+    const d = row - crest;
+    const v = Math.exp(-((d / (d < 0 ? 1.9 : 1.4)) ** 2));
+    return row === rows.length - 1 ? Math.min(0.35, v) : v;
+  };
   for (let row = 0; row < rows.length; row++) {
-    const { r: rowR, lift } = rows[row];
+    const { r: rowR } = rows[row];
     for (let k = 0; k < n; k++) {
       const a = (k / n) * TAU;
       const ca = Math.cos(a), sa = Math.sin(a);
+      const lift = massif ? wanderLift(row, crestRow(ca, sa)) : rows[row].lift;
       // the ranges come and go around the horizon: a slow envelope between the floor and the full height
       const env = s.floor + (1 - s.floor) * smoothstep(0.12, 0.88, noise.noise(ca * 1.7 + 11.3, sa * 1.7 - 4.1) * 0.5 + 0.5);
       // a rigid radius meander per row so the crest lines bend in plan
@@ -169,6 +188,7 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
       const base = ridged(noise.noise(wx * 0.0017 + 41, wz * 0.0017 - 17)) * 0.6 + ridged(noise.noise(wx * 0.0041 - 23, wz * 0.0041 + 31)) * 0.4;
       let relief = rangeReliefAt(x, z, a) * rangeScale + base * 0.2;
       relief = knee(Math.max(0, relief));
+      if (massif) relief *= massif.multiplier(x, z);
       // the crest row carries the peaks; the rows before it rise toward them, the rows behind fall away
       let h = HORIZON_FAR_FOOT_M + ampM * env * (0.18 + 0.82 * relief) * lift;
       // sea sectors: the far ring is open water there (a little under the level, the apron carries the surface)
@@ -207,11 +227,14 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
     }
   }
   // a step clamp along each row (the same law as the alpine ring): no one-column needles at three kilometres — a
-  // column-to-column step of at most 0.9 of the row's arc, a 42° flank
+  // column-to-column step of at most 0.9 of the row's arc, a 42° flank. The mountains lane: with the eroded landform
+  // the bound opens to 1.1 of the arc (48°) and the one-column needles come out first (horizonMassif.ts), so a summit
+  // keeps its own flanks instead of the clamp's straight 42° lines (the round-72b cones of the far horizon)
   for (let row = 1; row < rows.length; row++) {
     const off = row * n;
+    if (massif) suppressNeedles(heights, positions, off, n);
     // no smoothing pass (round 72b: three rounded every crest into a dome); the step clamp below keeps the needles out
-    const maxStep = rows[row].r * TAU / n * 0.9;
+    const maxStep = rows[row].r * TAU / n * (massif ? 1.1 : 0.9);
     for (let pass = 0; pass < 3; pass++) {
       for (let k = 0; k < n; k++) {
         const km = (k - 1 + n) % n;
