@@ -108,11 +108,9 @@ export const NIGHT_SKY_GLOW = 0.22;
  * The camera's night offset (EV at full night): a moonlit scene sits under two stops below the day (its displayed key
  * about 30 % of Verdant's noon — the old rig's night sat at about a third of its day, and the owner asked on 2026-09-14
  * for a night a little more visible, not darker; the shade keeps the glow's light).
- * 2026-10-03 (the skies-and-atmosphere lane): −0.25 → +0.265 with the daylight key's calibration (EXPOSURE_KEY 1.5 →
- * 1.05, half a stop): the night keeps the camera it had (1.5 × 2.6 × 2^−0.25 = 1.05 × 2.6 × 2^0.265 ≈ 3.28), the owner's
- * displayed level, now about two fifths of the calibrated day's key.
+ * (2026-10-03: +0.265 while the daylight key sat at 1.05, carrying the night's camera; −0.25 again with the key back at 1.5.)
  */
-export const NIGHT_EV = 0.265;
+export const NIGHT_EV = -0.25;
 /**
  * The camera's low-sun offset (EV with the sun near the horizon, full below 6°, none above 18°): a golden-hour scene is
  * exposed for its sky rather than opened toward the day's key, so the long light keeps its depth and the sky its blue
@@ -133,8 +131,13 @@ export const GROUND_SUNLIT_SHARE = 0.5;
  * L* ≈ 60 and the census frames' median at L* 63 with their darkest twentieth at 36, against 54 / 23 for the gauntlet's
  * thirty-five reference photographs (World of Tanks 43 / 19, War Thunder 47 / 17); offline re-grades of the wave-0
  * frames put this key at 53 / 24.
+ *
+ * Back to 1.5 the same day (the gauntlet's wave 7, PR head against the lane: sky +0.13, lighting −0.20, Frosthollow's
+ * chase −1.6): a key matched to the photographs' median pulled every snowfield to grey (the snow at L* 70–73 against
+ * 79–80, where a photographer keeps it near white with +1 to +1.5 EV over a mid-grey meter). The calibration returns
+ * only with an albedo-aware key that holds snow and bright sand high (the lane's next hand-over).
  */
-export const EXPOSURE_KEY = 1.05;
+export const EXPOSURE_KEY = 1.5;
 export const EXPOSURE_ADAPTATION = 0.6;
 /** The camera's adaptation bounds around its key (a night scene stays a night scene, a snowfield never goes grey). */
 export const EXPOSURE_MIN = 0.45;

@@ -6500,6 +6500,11 @@ gauntlet's 82 references (CIELAB) and re-graded offline through the very output 
 A calibrated camera shows the albedos as they are: Verdant's meadow renders at L* 70+ (albedo ≥ 0.33), pale and washed
 where fresh grass is 0.1–0.2 and a dry meadow 0.2–0.3 — the ground and vegetation lanes calibrate the albedos; nothing
 should be brightened to undo the key.
+**Held back after the gauntlet's wave 7** (PR head against the lane: sky +0.13, horizon +0.25, lighting −0.20,
+Frosthollow's chase −1.6): a key matched to the photographs' median pulled every snowfield to grey (L* 70–73 against the
+PR head's 79–80; a photographer keeps snow near white, +1 to +1.5 EV over a mid-grey meter). The key (1.5), the
+saturation (1.4), the night EV (−0.25) and the night lens (.5) are back; the shading fix stays. The calibration returns
+only with an albedo-aware key that keeps snow and bright sand high-key.
 
 **Cloud shadows past the cascades, the far band on the horizon, the ground's sky under the hulls (de224d484).**
 - The gobos dither the clouds' shade into the cascades only, so an overview's land past 700 m lay in one even sun. The

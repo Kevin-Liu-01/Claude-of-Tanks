@@ -121,12 +121,11 @@ near(nightModel.hemiIntensity, NIGHT_SKY_GLOW, 1e-9, 'the night sky\'s own glow 
 assert.ok(nightModel.hemiSky[2] > nightModel.hemiSky[0] * 1.5, 'in the moonlit sky\'s blue');
 assert.ok(nightModel.exposure > clear.exposure, 'the camera opens for the night');
 const nightKey = (nightModel.illuminance * nightModel.exposure) / (clear.illuminance * clear.exposure);
-// 2026-10-03 (the skies-and-atmosphere lane): the daylight key came down half a stop to a calibrated meter (EXPOSURE_KEY,
-// π / E_ref) while the night keeps the camera it had (the owner, 2026-09-14: "a little more visible, not darker" — the
-// bound holds 1.5 × 2.6 ≈ 1.05 × 3.7), so the night now reads at about two fifths of the calibrated day's key
-near(nightModel.exposure, 1.5 * 2.6 * 2 ** -0.25, 0.02 * nightModel.exposure, 'the night\'s camera holds through the key\'s calibration (the old key, bound and night EV)');
-near(EXPOSURE_KEY * EXPOSURE_MAX * 2 ** NIGHT_EV, 1.5 * 2.6 * 2 ** -0.25, 0.01, 'NIGHT_EV carries the key\'s half stop');
-assert.ok(nightKey > 0.3 && nightKey < 0.5, `and the night reads as night, a little more visible than the old rig's (${nightKey.toFixed(2)} of the day's key)`);
+// (2026-10-03: the night's camera is the owner's — "a little more visible, not darker", 2026-09-14 — whatever the day key:
+// the key, its bound and NIGHT_EV hold 1.5 × 2.6 × 2^−0.25 between them)
+near(nightModel.exposure, 1.5 * 2.6 * 2 ** -0.25, 0.02 * nightModel.exposure, 'the night\'s camera (the key, the bound and the night EV)');
+near(EXPOSURE_KEY * EXPOSURE_MAX * 2 ** NIGHT_EV, 1.5 * 2.6 * 2 ** -0.25, 0.01, 'NIGHT_EV holds it with the day key');
+assert.ok(nightKey > 0.2 && nightKey < 0.35, `and the night reads as night, a little more visible than the old rig's (${nightKey.toFixed(2)} of the day's key)`);
 near(nightModel.sunIntensity, 0.6, 1e-9, 'the night\'s direct light is the authored moon');
 hexToLinear(0xafc3ec).forEach((v, c) => near(nightModel.sunColor[c], v, 1e-12, `the moon's colour ch${c}`));
 assert.ok(luminance(nightModel.groundRadiance) < 0.2 * luminance(clear.groundRadiance), 'the night\'s ground is moonlit, not the day\'s');

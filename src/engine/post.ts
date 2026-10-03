@@ -1335,7 +1335,8 @@ const AerialShader = {
 // reference photographs (World of Tanks 12 / 15, War Thunder 12 / 18), the sky's b* at −22 against −15; offline re-grades
 // at 1.0 with the calibrated key (lightModel.ts EXPOSURE_KEY) land 17 / 20 / −20. The legacy rig (the mobile tier's
 // Preetham dome, the Garage's enclosed bay, the galaxy skies) keeps the look it was tuned under.
-const GRADE_SAT_LINEAR = 1.0;
+// (Back to 1.4 with the key, the gauntlet's wave 7: the colour pass returns with an albedo-aware key, not before.)
+const GRADE_SAT_LINEAR = 1.4;
 const GRADE_SAT_LINEAR_LEGACY = 1.4;
 const GRADE_CONTRAST = 1.28;
 const GRADE_BLACK_POINT = 0.012;
