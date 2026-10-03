@@ -47,14 +47,14 @@ export interface HorizonPanoramaCharacter {
 }
 
 export const HORIZON_PANORAMA_CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonPanoramaCharacter>> = Object.freeze({
-  alpine: { ampM: 1000, foot: 0.16, macroL: 5200, sharp: 1.45, midL: 1500, gullyL: 520, gullyM: 55, warpM: 900, valley: 0.4, valleyL: 7500, snowline: 0.40, treeline: 0.22, rockSlope: 0.30, bedM: 70, strata: 0.10, tables: false },
-  polar: { ampM: 820, foot: 0.18, macroL: 5800, sharp: 1.3, midL: 1700, gullyL: 560, gullyM: 45, warpM: 1000, valley: 0.4, valleyL: 8000, snowline: 0.05, treeline: 0.10, rockSlope: 0.34, bedM: 80, strata: 0.08, tables: false },
-  rolling: { ampM: 520, foot: 0.24, macroL: 5600, sharp: 1.15, midL: 2000, gullyL: 600, gullyM: 22, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.85, rockSlope: 0.42, bedM: 60, strata: 0.05, tables: false },
-  coastal: { ampM: 420, foot: 0.24, macroL: 5400, sharp: 1.15, midL: 1900, gullyL: 600, gullyM: 20, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.80, rockSlope: 0.40, bedM: 50, strata: 0.06, tables: false },
-  volcanic: { ampM: 720, foot: 0.2, macroL: 5000, sharp: 1.3, midL: 1400, gullyL: 420, gullyM: 45, warpM: 800, valley: 0.4, valleyL: 7500, snowline: 2, treeline: 0.35, rockSlope: 0.32, bedM: 40, strata: 0.16, tables: false },
-  karst: { ampM: 470, foot: 0.26, macroL: 2600, sharp: 2.2, midL: 900, gullyL: 300, gullyM: 30, warpM: 400, valley: 0.5, valleyL: 5500, snowline: 2, treeline: 0.95, rockSlope: 0.36, bedM: 30, strata: 0.12, tables: false },
-  mesa: { ampM: 540, foot: 0.24, macroL: 6000, sharp: 1.0, midL: 2000, gullyL: 500, gullyM: 30, warpM: 900, valley: 0.5, valleyL: 7000, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 46, strata: 0.32, tables: true },
-  martian: { ampM: 860, foot: 0.24, macroL: 7000, sharp: 1.0, midL: 2400, gullyL: 600, gullyM: 35, warpM: 1100, valley: 0.5, valleyL: 8500, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 60, strata: 0.26, tables: true },
+  alpine: { ampM: 1700, foot: 0.16, macroL: 5200, sharp: 1.45, midL: 1500, gullyL: 520, gullyM: 55, warpM: 900, valley: 0.4, valleyL: 7500, snowline: 0.40, treeline: 0.22, rockSlope: 0.30, bedM: 70, strata: 0.10, tables: false },
+  polar: { ampM: 1300, foot: 0.18, macroL: 5800, sharp: 1.3, midL: 1700, gullyL: 560, gullyM: 45, warpM: 1000, valley: 0.4, valleyL: 8000, snowline: 0.05, treeline: 0.10, rockSlope: 0.34, bedM: 80, strata: 0.08, tables: false },
+  rolling: { ampM: 620, foot: 0.24, macroL: 5600, sharp: 1.15, midL: 2000, gullyL: 600, gullyM: 22, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.85, rockSlope: 0.42, bedM: 60, strata: 0.05, tables: false },
+  coastal: { ampM: 520, foot: 0.24, macroL: 5400, sharp: 1.15, midL: 1900, gullyL: 600, gullyM: 20, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.80, rockSlope: 0.40, bedM: 50, strata: 0.06, tables: false },
+  volcanic: { ampM: 1300, foot: 0.2, macroL: 5000, sharp: 1.3, midL: 1400, gullyL: 420, gullyM: 45, warpM: 800, valley: 0.4, valleyL: 7500, snowline: 2, treeline: 0.35, rockSlope: 0.32, bedM: 40, strata: 0.16, tables: false },
+  karst: { ampM: 760, foot: 0.26, macroL: 2600, sharp: 2.2, midL: 900, gullyL: 300, gullyM: 30, warpM: 400, valley: 0.5, valleyL: 5500, snowline: 2, treeline: 0.95, rockSlope: 0.36, bedM: 30, strata: 0.12, tables: false },
+  mesa: { ampM: 620, foot: 0.24, macroL: 6000, sharp: 1.0, midL: 2000, gullyL: 500, gullyM: 30, warpM: 900, valley: 0.5, valleyL: 7000, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 46, strata: 0.32, tables: true },
+  martian: { ampM: 1300, foot: 0.24, macroL: 7000, sharp: 1.0, midL: 2400, gullyL: 600, gullyM: 35, warpM: 1100, valley: 0.5, valleyL: 8500, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 60, strata: 0.26, tables: true },
 });
 
 export interface HorizonPanoramaPalette { base: THREE.Color; rock: THREE.Color; snow: THREE.Color; forest: THREE.Color; fog: THREE.Color }
@@ -252,38 +252,42 @@ float gullyOctave(vec2 p, vec2 dir, float seed) {
   return va / wt;
 }
 float envelopeAt(vec2 p, float r) {
-  float d = smoothstep(uFrame.x, uFrame.x + 1800.0, r);
-  float rise = (uChar0.y + (1.0 - uChar0.y) * d) * (1.0 + 0.25 * smoothstep(4000.0, 9000.0, r));
+  float d = smoothstep(uFrame.x, uFrame.x + 1600.0, r);
+  float rise = (uChar0.y + (1.0 - uChar0.y) * d) * (1.0 - 0.18 * smoothstep(5500.0, 9000.0, r));
   float az = noised(p / 11000.0 + uOff2.xy).x * 0.5 + 0.5;
   vec2 w = p + uChar1.w * vec2(noised(p / 3300.0 + uOff0.zw).x, noised(p / 3300.0 + uOff1.xy).x);
   float vf = abs(noised(w / uChar2.y + uOff2.zw).x);
   float valley = 1.0 - uChar2.x * (1.0 - smoothstep(0.0, 0.45, vf));
   return uChar0.x * rise * (0.55 + 0.45 * smoothstep(0.15, 0.85, az)) * valley;
 }
+// a tableland: broad tables cut by canyons, buttes standing off them, a low plain between; each table's edge a cliff
+// over a talus ramp, its top one of two caprock levels
+float mesaField(vec2 p, float A) {
+  vec2 w = p + uChar1.w * vec2(noised(p / 3300.0 + uOff0.zw).x, noised(p / 3300.0 + uOff1.xy).x);
+  float big = noised(w / uChar0.z + uOff0.xy).x * 0.65 + noised(w / (uChar0.z * 0.37) + uOff1.zw).x * 0.35;
+  float butte = noised(w / (uChar0.z * 0.16) + uOff2.zw).x;
+  float t = smoothstep(0.02, 0.06, big);
+  float tb = smoothstep(0.5, 0.56, butte) * (1.0 - t);
+  float edge = max(t, tb * 0.9);
+  float profile = 0.22 * smoothstep(0.0, 0.45, edge) + 0.78 * smoothstep(0.3, 1.0, edge);
+  float level = 0.58 + 0.2 * step(0.1, noised(w / (uChar0.z * 1.3) + uOff3.xy).x) + 0.04 * noised(w / 1300.0).x;
+  float plain = A * (0.05 + 0.04 * noised(w / 900.0 + uOff3.zw).x);
+  return mix(plain, A * level, profile);
+}
 float farField(vec2 p) {
   float r = length(p);
   float A = envelopeAt(p, r);
-  float h = A * baseField(p);
+  float h = uChar2.z > 0.5 ? mesaField(p, A) : A * baseField(p);
   // the gullies: two erosion octaves across the local slope, deeper on the steeper ground
   float e = 30.0;
   vec2 g = A * vec2(baseField(p + vec2(e, 0.0)) - baseField(p - vec2(e, 0.0)), baseField(p + vec2(0.0, e)) - baseField(p - vec2(0.0, e))) / (2.0 * e);
   float s = length(g);
-  if (s > 0.02) {
+  if (uChar2.z < 0.5 && s > 0.02) {
     vec2 sd = g / s;
     float k = clamp(s * 2.2, 0.4, 2.2);
     vec2 dir = vec2(sd.y, -sd.x) * k;
     float gs = gullyOctave(p / uChar1.y + uOff3.xy, dir, 17.0) + 0.5 * gullyOctave(p / (uChar1.y * 0.5) + uOff3.zw, dir, 48.0);
     h += uChar1.z * smoothstep(0.05, 0.35, s) * gs * (0.4 + 0.6 * smoothstep(0.0, A * 0.5, h));
-  }
-  // a tableland: caprock where the field saturates, beds stepping the flanks (a cliff over a talus slope per bed)
-  if (uChar2.z > 0.5) {
-    float capH = A * (0.5 + 0.1 * noised(p / 2600.0 + uOff2.xy * 1.7).x);
-    if (h > capH) h = capH + (h - capH) * 0.05;
-    float bed = uChar3.w * 1.5;
-    float t = h / bed, bi = floor(t), fr = t - bi;
-    float cliff = 0.35 + 0.3 * hash12(vec2(bi * 3.1 + 7.0, 1.3));
-    float st = fr < 1.0 - cliff ? 0.25 * pow(fr / (1.0 - cliff), 1.6) : 0.25 + 0.75 * ((fr - (1.0 - cliff)) / cliff);
-    h = (bi + st) * bed * 0.88 + h * 0.12;
   }
   h = max(0.0, h);
   // the first kilometre eases out of the ring's outer heights; the sea sectors sink under their level
