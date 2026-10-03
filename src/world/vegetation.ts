@@ -43,7 +43,7 @@ import {
 import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
-import { treeBiomePalette, treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeColour, treeBiomePalette, treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -4683,11 +4683,13 @@ function* vegetationBuildSteps(
     // trees round 2: the slot grows as its regional form (treeBiomes.ts); its seeds, its far stand-ins and its records
     // stay the slot's. Its palette is the map's through the form (treeBiomePalette): a form of another family drops the
     // card hue and saturation tuned for the slot's family, a leafy form on a palette tuned for bare twigs drops the
-    // twigs' colours, and a leafy form takes its leaves (a birch form on a pine slot is leafy).
+    // twigs' colours, and a leafy form takes its leaves (a birch form on a pine slot is leafy); the place's foliage
+    // colour fills what the map palette leaves unnamed (Wadi Rum's dust-dulled acacias).
     const form = formOf(species), growth: GrowthSpecies = form?.form ?? species;
     const family = TREE_GROWTH_PROFILES[growth].family;
     const crossFamily = !!form && family !== (TREE_ARCHETYPES[species]?.family ?? 'broadleaf');
-    const formPal = (pal: VegetationPalette): VegetationPalette => treeBiomePalette(pal, form, crossFamily);
+    const placeColour = treeBiomeColour(cfg?.id);
+    const formPal = (pal: VegetationPalette): VegetationPalette => treeBiomePalette(pal, form, crossFamily, placeColour);
     return {
       texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed, grown: true,
       // the leaf-scale detail of the form's family (a holm oak on a cedar slot is leaves, not needles)
@@ -5818,7 +5820,9 @@ function* vegetationBuildSteps(
     return [material, depth];
   }
   function createBushes(): void {
-    const bushPal = palOf(bushSpecies);
+    // trees round 2: the desktop shrubs take the place's foliage colour where the map palette names none (the phones
+    // keep the palette as it is)
+    const bushPal = grownTrees ? treeBiomePalette(palOf(bushSpecies), null, false, treeBiomeColour(cfg?.id)) : palOf(bushSpecies);
     // p2 trees lane: the desktop shrubs grow from the bush species' sprays (buildGrownShrub); the phones keep the cards
     // the shrub grows from the sprays its material paints: the Mangrove map's willow form is the mangrove
     // trees round 2: the shrubs grow as the map's shrub form (their own material: shrubMaterials) or the bush slot's form

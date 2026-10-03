@@ -8,7 +8,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import ts from 'typescript-compiler-api';
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, TREE_SPECIES } from './treeSpecies.ts';
 import { bendMangroveRoot, shapeMangroveFarStem } from './tidalMangrove.ts';
-import { treeBiomePalette, treeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeColour, treeBiomePalette, treeBiomeSlot } from './treeBiomes.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { HORIZON_FOREST_IMPOSTOR_SKY_FILL, HORIZON_FOREST_IMPOSTOR_THIN, HORIZON_FOREST_IMPOSTOR_WRAP } from './horizonForestImpostors.ts';
 import * as growth from './treeGrowth.ts';
@@ -122,7 +122,7 @@ function compile(input = text, mode = 'current') {
     growthCrownAttachments: growth.growthCrownAttachments, growthCardRows: growth.growthCardRows,
     GROWTH_CROWN_STEM_WIDTH: growth.GROWTH_CROWN_STEM_WIDTH,
     // trees round 2 (2026-10-03): the crowns' lobes and hull normal (the shrubs' shade, the snow load) and the map's biome
-    crownLobes: growth.crownLobes, crownSurfaceNormal: growth.crownSurfaceNormal, treeBiomeSlot, treeBiomePalette,
+    crownLobes: growth.crownLobes, crownSurfaceNormal: growth.crownSurfaceNormal, treeBiomeSlot, treeBiomePalette, treeBiomeColour,
     GROWTH_CROWN_SHADING: growth.GROWTH_CROWN_SHADING,
     _c: new THREE.Color(), _v3: new THREE.Vector3(), _e: new THREE.Euler(),
     _qq: new THREE.Quaternion(), _m: new THREE.Matrix4(), _scale: new THREE.Vector3(1, 1, 1),

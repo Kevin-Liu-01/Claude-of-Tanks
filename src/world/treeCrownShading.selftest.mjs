@@ -18,7 +18,7 @@ import {
 import { makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_KINDS } from './treeSprayAtlas.ts';
 import { LOD_SHADOW_FADE_ATTRIBUTE } from '../engine/lodShadowFade.ts';
 import { growShrubSkeleton } from './treeGrowth.ts';
-import { TREE_BIOMES, treeBiomePalette, treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
+import { TREE_BIOMES, treeBiomeColour, treeBiomePalette, treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
 import { TREE_SPECIES } from './treeSpecies.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
 
@@ -268,6 +268,22 @@ assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alo
   assert.equal(treeBiomePalette(twigs, null, false), twigs, 'no form: the map palette as it is');
   // the table's railyard birches are leafy, and their map palette is the twig-tuned one this rule is for
   assert.equal(treeBiomeSlot('railyard', 'birch')?.leaves, true);
+}
+{
+  // the place's foliage colour (wave 15: "lush green groves on Wadi Rum"): it fills what a map palette leaves unnamed and
+  // never overrides a named colour; Wadi Rum's acacias are dust-dulled over white-broom scrub, Las Cañadas' acacia slot a pine
+  const arid = treeBiomeColour('badlands');
+  assert.ok(arid && arid.cardSat < 0.2 && typeof arid.texTone === 'function', 'Wadi Rum carries a dust-dulled foliage colour');
+  const [h, sat, l] = arid.texTone(0.22, 0.4, 0.2);
+  assert.ok(Math.abs(h - 0.17) < 1e-9 && sat <= 0.2 + 1e-9 && l >= 0.2, 'the tone pulls the leaves toward a pale khaki at half the saturation');
+  const filled = treeBiomePalette({}, null, false, arid);
+  assert.ok(filled.cardHue === arid.cardHue && filled.cardSat === arid.cardSat && filled.texTone === arid.texTone, 'an unnamed palette takes the place\'s colour');
+  const named = { cardHue: 0.3, cardSat: 0.4, texTone: (x, y, z) => [x, y, z] };
+  const kept = treeBiomePalette(named, null, false, arid);
+  assert.ok(kept.cardHue === 0.3 && kept.cardSat === 0.4 && kept.texTone === named.texTone, 'a named colour wins');
+  assert.equal(treeBiomeColour('verdant'), null, 'a temperate place keeps the green defaults');
+  assert.equal(treeBiomeShrub('badlands'), 'broom', 'Wadi Rum\'s scrub is white broom');
+  assert.equal(treeBiomeSlot('caldera', 'acacia')?.form, 'canaryPine', 'no umbrella acacia on Teide');
 }
 assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a tree slot');
 {

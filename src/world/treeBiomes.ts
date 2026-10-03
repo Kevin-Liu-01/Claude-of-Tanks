@@ -26,19 +26,42 @@ export interface TreeBiome {
   slots: Readonly<Partial<Record<TreeSpecies, Readonly<TreeBiomeSlot>>>>;
   /** The form the map's shrubs (its bushes and understorey) grow as, with their own atlas (vegetation.ts createBushes). */
   shrub?: GrowthSpecies;
+  /**
+   * The place's foliage colour where the map palette names none (treeBiomePalette fills the gaps, every grown slot):
+   * the texture tone and the card hue and saturation.
+   */
+  palette?: Readonly<TreeBiomeColour>;
 }
 
-const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies): Readonly<TreeBiome> =>
-  Object.freeze({ place, slots: Object.freeze(slots), ...(shrub ? { shrub } : {}) });
+/** A biome's foliage colour defaults (vegetation.ts VegetationPalette's colour fields). */
+export interface TreeBiomeColour {
+  cardHue?: number;
+  cardSat?: number;
+  texTone?: (h: number, s: number, l: number) => [number, number, number];
+}
+
+/**
+ * Hyper-arid foliage: an acacia of Wadi Rum or the Sahara is a grey, dust-dulled olive, not a lawn's green (the
+ * gauntlet's wave 15: "lush green groves on Wadi Rum"). The texture loses half its saturation toward a khaki hue and the
+ * card tint is a pale buff, as the desert maps' own oak palettes already paint their trees.
+ */
+const ARID_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.15, cardSat: 0.14,
+  texTone: (_h: number, s: number, l: number): [number, number, number] => [0.17, Math.min(1, s * 0.5), Math.min(1, l * 1.06)],
+});
+
+const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, palette?: Readonly<TreeBiomeColour>): Readonly<TreeBiome> =>
+  Object.freeze({ place, slots: Object.freeze(slots), ...(shrub ? { shrub } : {}), ...(palette ? { palette } : {}) });
 
 /**
  * Per map id. Slots a map does not plant are harmless (the table is read per planted slot). Maps that are absent keep
  * every slot as its own form.
  */
 export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object.freeze({
-  // Las Cañadas del Teide: sparse Canary pines on bare cinder (the map's density and its scrub are the maps lane's)
-  caldera: B('Las Cañadas del Teide, Tenerife', { pine: { form: 'canaryPine' }, cedar: { form: 'canaryPine' }, eucalyptus: { form: 'canaryPine' } },
-    'broom'),
+  // Las Cañadas del Teide: sparse Canary pines on bare cinder (the map's density and its scrub are the maps lane's; its
+  // acacia slot, the maps lane's scrub stand-in, grows as young pines among the trees and as broom among the bushes)
+  caldera: B('Las Cañadas del Teide, Tenerife', { pine: { form: 'canaryPine' }, cedar: { form: 'canaryPine' }, eucalyptus: { form: 'canaryPine' },
+    acacia: { form: 'canaryPine' } }, 'broom'),
   // the Dalmatian coast: Aleppo pine, holm oak and olive (and cypress, which the map names directly)
   saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak' }, acacia: { form: 'olive' } }),
   // the Breton bocage: oak and sweet chestnut along the hedgebanks (the maritime pine stays a pine)
@@ -48,11 +71,12 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // Prokhorovka: birch and oak shelterbelts, poplars along the tracks (the map's willow and pine slots grow as birches:
   // wave 4 read the weeping willows of the left treeline as "hanging curtains of flat strips")
   verdant: B('Prokhorovka, Kursk oblast', { pine: { form: 'birch', leaves: true }, willow: { form: 'birch', leaves: true } }),
-  // Wadi Rum: sparse umbrella acacias (and the oasis palms)
-  badlands: B('Wadi Rum, Jordan', { cedar: { form: 'acacia' }, oak: { form: 'acacia' } }),
-  // a Saharan wadi: date palms and acacias
-  desert: B('a Saharan wadi', { eucalyptus: { form: 'acacia' } }),
-  oasis: B('a Saharan oasis', { eucalyptus: { form: 'acacia' } }),
+  // Wadi Rum: sparse, dust-dulled umbrella acacias (and the spring's palms) over white-broom scrub (Retama raetam: the
+  // map's oak bushes read as lawn shrubs on the sand)
+  badlands: B('Wadi Rum, Jordan', { cedar: { form: 'acacia' }, oak: { form: 'acacia' } }, 'broom', ARID_FOLIAGE),
+  // a Saharan wadi: date palms and acacias (the map's oak palette dusts them already; the defaults fill any slot it misses)
+  desert: B('a Saharan wadi', { eucalyptus: { form: 'acacia' } }, undefined, ARID_FOLIAGE),
+  oasis: B('a Saharan oasis', { eucalyptus: { form: 'acacia' } }, undefined, ARID_FOLIAGE),
   // the Rur dams in the Eifel: spruce plantations and beech, birches in leaf
   reservoir: B('the Rur dams, Eifel', { pine: { form: 'beech' }, fir: { form: 'spruce' }, birch: { form: 'birch', leaves: true } }),
   // the summer battlefields whose maps plant birches: in leaf (a bare birch crown in a green summer read as a dead tree,
@@ -94,13 +118,26 @@ export interface TreeBiomePaletteTerms {
  * sooty-gold birch twigs turned its leafy birches orange-brown: the gauntlet's "dead/brown foliage scattered randomly
  * among healthy green trees, reading as a widespread asset bug" (wave 6).
  */
-export function treeBiomePalette<P extends TreeBiomePaletteTerms>(pal: P, form: { leaves?: boolean } | null, crossFamily: boolean): P {
-  if (!form) return pal;
-  const bareTuned = form.leaves === true && pal.birchLeaves !== true;
-  return {
+export function treeBiomePalette<P extends TreeBiomePaletteTerms>(pal: P, form: { leaves?: boolean } | null, crossFamily: boolean,
+  defaults: Readonly<TreeBiomeColour> | null = null): P {
+  const bareTuned = !!form && form.leaves === true && pal.birchLeaves !== true;
+  const formed: P = !form ? pal : {
     ...pal,
     ...(crossFamily || bareTuned ? { cardHue: undefined, cardSat: undefined } : {}),
     ...(bareTuned ? { texTone: undefined } : {}),
     ...(form.leaves ? { birchLeaves: true } : {}),
   };
+  if (!defaults) return formed;
+  // the place's colour fills what the map palette leaves unnamed (a named colour always wins)
+  return {
+    ...formed,
+    ...(formed.cardHue === undefined && defaults.cardHue !== undefined ? { cardHue: defaults.cardHue } : {}),
+    ...(formed.cardSat === undefined && defaults.cardSat !== undefined ? { cardSat: defaults.cardSat } : {}),
+    ...(!formed.texTone && defaults.texTone ? { texTone: defaults.texTone } : {}),
+  };
+}
+
+/** The foliage colour defaults of a map's place, or none. */
+export function treeBiomeColour(mapId: string | null | undefined): Readonly<TreeBiomeColour> | null {
+  return (mapId ? TREE_BIOMES[mapId]?.palette : null) ?? null;
 }
