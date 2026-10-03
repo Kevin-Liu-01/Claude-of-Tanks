@@ -2765,6 +2765,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (clear < 12) continue;
       const ex = sx + ux * clear, ez = sz + uz * clear;
       if (Math.max(Math.abs(ex), Math.abs(ez)) > 470) continue;
+      // a lane the final liquid brake would refuse is no escape (a hull already in the liquid keeps the ways out)
+      if (liquidSafe && !liquidSafe(sx, sz, a, clear)) continue;
       const h0 = terrainSafety.surfaceY(sx, sz);
       const terrainCost = terrainLineCost(sx, sz, h0, ux, uz);
       if (!Number.isFinite(terrainCost)) continue;

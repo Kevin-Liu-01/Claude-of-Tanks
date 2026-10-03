@@ -159,6 +159,16 @@ global grid rejects edges through a bridge's side; ingress goes through the
 abutments. Two-way slope checks prevent one-way downhill shortcuts. Physical
 collision remains authoritative, including parapets and piers.
 
+On maps that avoid liquid (`src/sim/navigationLiquidSafety.ts`), the liquid
+guard refuses a stopping corridor that would take a dry hull into the water. A
+hull that already touches liquid may still move, as long as it takes on no
+more: the summed mask under its footprint, sampled every 2 m along the move,
+never grows. It can always drive out, never deeper in. A dry route starts from
+the hull's own cell unless the grid refuses that cell (its sample is liquid) or
+the leg to its centre is not drivable; then it starts from the nearest open
+cell within two rings whose leg is drivable. A hull pushed into the lake always
+has a route out. The pocket escape only takes lanes the liquid guard allows.
+
 The grid's edges are cleared for the widest hull in the fleet (the Jagdpanzer
 E100 X, 2.24 m half-width; `NAV_HULL_HALF_WIDTH_M` is 2.25 and the receipt
 measures the fleet against it). An edge is open when its straight line keeps
@@ -208,6 +218,10 @@ search cannot drive a hull.
   without a ramp: the deck bot leaves the floor target for one on its own level,
   the floor bot drives the ramp to the deck, gives the deck target up when no
   route reaches it, and keeps a target in its arc (control).
+- `src/sim/navigationLiquidStart.selftest.mjs`: a synthetic shore with one way
+  out: the guard drives a wet hull out and refuses it deeper in, the dry grid
+  plans from a start cell it refuses, and a bot starting there, facing the lake,
+  reaches dry ground and searches on.
 - `src/sim/botRouteClearance.selftest.mjs`: the grid's hull bound against the
   fleet, a diagonal through a 0.6 m gap, a boulder bent round, a channel left by
   its open end, Steinburg's two pockets and a sweep of the town with no leg
