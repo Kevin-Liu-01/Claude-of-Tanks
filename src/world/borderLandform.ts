@@ -37,8 +37,19 @@ const HANDOVER_M = 40;
  */
 const ROAD_HOLD_IN_M = 18;
 const ROAD_HOLD_OUT_M = 95;
-/** Field-boundary levels per unit of the two parcel fields: parcels ~50–150 m across. */
-const FIELD_LEVELS = 1.6;
+/**
+ * The field system past the edge: two families of near-straight lines (one per map, 7–21° off the square's axes so no
+ * hedge runs along the red line; warped ±22 m over a kilometre) on a 46 m pitch. A share of each family's pitch lines
+ * are field boundaries — fields from 46 m strips to ~600 m blocks, never a closed loop — and a share of those carry a
+ * farm track. Shares per crops style: [family a, family b].
+ */
+const FIELD_PITCH_M = 46;
+const FIELD_LINE_SHARE: Record<'temperate' | 'steppe' | 'polder', [number, number]> = {
+  temperate: [0.24, 0.18], steppe: [0.09, 0.07], polder: [0.55, 0.08],
+};
+/** Of the field boundaries, the share that carries a farm track (in runs of ~320 m, 70 % of them laid). */
+const TRACK_LINE_SHARE = 0.42;
+const TRACK_RUN_LEVELS = 7;
 const _field = { a: 0, b: 0 };
 function fieldHash(n: number): number {
   const s = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
@@ -184,6 +195,13 @@ export interface BorderLandform {
    * Zero wherever there are no fields — a geometry without the attribute reads the same.
    */
   parcelTintAt(x: number, z: number, out: [number, number, number]): [number, number, number];
+  /**
+   * The farm tracks past the edge, as the ring's borderTrack attribute: per field family, [1000 + signed metres from the
+   * nearest track's centre line divided by the tracks' presence (so a fading track narrows), that track's boundary
+   * index]. Linear across the track, so a ring triangle interpolates it exactly; a triangle whose vertices name different
+   * boundaries draws none, and 999 m (or a geometry without the attribute, which reads 0) draws none.
+   */
+  trackAt(x: number, z: number, out: [number, number, number, number]): [number, number, number, number];
 }
 
 function smoothstep(a: number, b: number, x: number): number {
@@ -299,17 +317,42 @@ export function createBorderLandform(
     return near + (crest - near) * ramp;
   }
 
-  /** The two families of field boundaries: levels of two ~330 m fields (stretched apart, so parcels are not square). */
+  // the field system (FIELD_PITCH_M): this map's orientation, and its share of boundaries per family
+  const fieldRand = mulberry32((seed ^ 0xF1E1D5) >>> 0);
+  const fieldAngle = (fieldRand() < 0.5 ? -1 : 1) * (0.12 + 0.24 * fieldRand());
+  const fieldCos = Math.cos(fieldAngle), fieldSin = Math.sin(fieldAngle);
+  const fieldShare = FIELD_LINE_SHARE[settings.crops] ?? FIELD_LINE_SHARE.temperate;
+  /** The two families' pitch levels at (x, z): continuous, a pitch line on every whole level. */
   function fieldCoords(x: number, z: number): { a: number; b: number } {
-    _field.a = noise.noise(x * 0.0030 + 71.3, z * 0.0024 - 12.9);
-    _field.b = noise.noise(x * 0.0022 - 44.1, z * 0.0033 + 90.7);
+    const u = x * fieldCos + z * fieldSin, v = z * fieldCos - x * fieldSin;
+    _field.a = (u + 22 * noise.noise(x * 0.0011 + 5.1, z * 0.0011 - 3.7)) / FIELD_PITCH_M;
+    _field.b = (v + 22 * noise.noise(x * 0.0011 - 8.2, z * 0.0011 + 6.6)) / FIELD_PITCH_M;
     return _field;
   }
-  /** 1 on a field boundary (a 2–3 m line where either family crosses one of its levels), 0 inside a parcel. */
+  const lineHash = (k: number, family: number): number => fieldHash(k * 1.618 + family * 311.7 + 0.5);
+  const isFieldLine = (k: number, family: number): boolean => lineHash(k, family) < fieldShare[family];
+  const isTrackLine = (k: number, family: number): boolean => lineHash(k, family) < fieldShare[family] * TRACK_LINE_SHARE;
+  /** The field (between two boundaries) a level lies in: the nearest boundary at or below it. */
+  function fieldCell(level: number, family: number): number {
+    let k = Math.floor(level);
+    for (let i = 0; i < 64 && !isFieldLine(k, family); i++) k--;
+    return k;
+  }
+  /** 1 on a field boundary (a 4–10 m band either side of its line), 0 inside a field; segments of a boundary drop out. */
   function fieldBoundaryAt(x: number, z: number): number {
     const { a, b } = fieldCoords(x, z);
-    const da = Math.abs(a * FIELD_LEVELS - Math.round(a * FIELD_LEVELS)), db = Math.abs(b * FIELD_LEVELS - Math.round(b * FIELD_LEVELS));
-    return Math.max(1 - smoothstep(0.012, 0.03, da), 1 - smoothstep(0.012, 0.03, db));
+    let line = 0;
+    for (let family = 0; family < 2; family++) {
+      const level = family ? b : a, k = Math.round(level);
+      if (!isFieldLine(k, family)) continue;
+      const metres = Math.abs(level - k) * FIELD_PITCH_M;
+      if (metres >= 5) continue;
+      // a boundary stretch between two of the other family's boundaries is hedged or open as a whole
+      const other = fieldCell(family ? a : b, 1 - family);
+      if (fieldHash(k * 3.7 + other * 11.3 + family * 5.9) > 0.8) continue;
+      line = Math.max(line, 1 - smoothstep(2, 5, metres));
+    }
+    return line;
   }
   /** The woods field before its cut: patches at ~420 m and ~160 m, a fine ragged edge, leaning onto the hills. */
   function woodsField(x: number, z: number): number {
@@ -338,7 +381,22 @@ export function createBorderLandform(
 
   function woodsAt(x: number, z: number): number {
     if (!Number.isFinite(woodsCut)) return woodsCut < 0 ? 1 : 0;
-    return smoothstep(woodsCut - 0.025, woodsCut + 0.025, woodsField(x, z));
+    if (settings.fields <= 0) return smoothstep(woodsCut - 0.025, woodsCut + 0.025, woodsField(x, z));
+    // In farmland most woods are whole fields, so their edges run straight along the boundaries: a field is wooded
+    // where the woods field at its middle passes the cut. The free-form woods keep only their cores (on the hills).
+    const { a, b } = fieldCoords(x, z);
+    const ca = fieldCell(a, 0), cb = fieldCell(b, 1);
+    let na = ca + 1, nb = cb + 1;
+    for (let i = 0; i < 64 && !isFieldLine(na, 0); i++) na++;
+    for (let i = 0; i < 64 && !isFieldLine(nb, 1); i++) nb++;
+    const mu = (ca + na) * 0.5 * FIELD_PITCH_M, mv = (cb + nb) * 0.5 * FIELD_PITCH_M;
+    const mx = mu * fieldCos - mv * fieldSin, mz = mu * fieldSin + mv * fieldCos;
+    // the first ~250 m past the edge stay mostly open, so from the square the eye runs over fields to the woods rising
+    // behind them (a wood on the red line is the hedge the owner saw, "a treeline and then nothing")
+    const open = (ex: number, ez: number) => 0.14 * (1 - smoothstep(110, 360, Math.max(Math.abs(ex), Math.abs(ez)) - BORDER_EDGE_M));
+    const field = woodsField(mx, mz) > woodsCut + open(mx, mz) ? 1 : 0;
+    const core = woodsCut + 0.06 + open(x, z);
+    return Math.max(field, smoothstep(core, core + 0.05, woodsField(x, z)));
   }
 
   if (settings.classic) {
@@ -352,6 +410,7 @@ export function createBorderLandform(
       woodsAt: () => 0,
       hedgeAt: () => 0,
       parcelTintAt: (_x, _z, out) => { out[0] = 0; out[1] = 0; out[2] = 0; return out; },
+      trackAt: (_x, _z, out) => { out[0] = 0; out[1] = 0; out[2] = 0; out[3] = 0; return out; },
     };
   }
 
@@ -359,11 +418,44 @@ export function createBorderLandform(
     settings,
     hedgeAt(x: number, z: number): number {
       if (settings.hedgerows <= 0) return 0;
+      // no hedge along the edge itself: the field boundaries are hedged from ~40 m past it
+      const fade = smoothstep(25, 110, Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M);
+      if (fade <= 0) return 0;
       const line = fieldBoundaryAt(x, z);
       if (line <= 0) return 0;
       // gates and gaps break every boundary; a boundary inside a wood needs no hedge
       const gaps = smoothstep(-0.3, 0.0, noise.noise(x * 0.017 + 3.3, z * 0.017 - 7.1));
-      return line * gaps * settings.hedgerows;
+      return line * gaps * fade * settings.hedgerows;
+    },
+    trackAt(x: number, z: number, out: [number, number, number, number]): [number, number, number, number] {
+      out[0] = 0; out[1] = 0; out[2] = 0; out[3] = 0;
+      if (settings.fields <= 0) return out;
+      const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
+      // the tracks come in from 20 m past the edge, narrower onto the woods (a forest ride, not a farm track)
+      const presence = smoothstep(20, 80, edgeOut) * (1 - 0.6 * woodsAt(x, z)) * Math.min(1, settings.fields * 1.5);
+      if (presence <= 0.02) return out;
+      const { a, b } = fieldCoords(x, z);
+      const a0 = a, b0 = b, e = 3;
+      const ax = fieldCoords(x + e, z).a, bx = _field.b, az = fieldCoords(x, z + e).a, bz = _field.b;
+      const metresPer = [e / Math.max(1e-6, Math.hypot(ax - a0, az - a0)), e / Math.max(1e-6, Math.hypot(bx - b0, bz - b0))];
+      for (let family = 0; family < 2; family++) {
+        const level = family ? b0 : a0, other = family ? a0 : b0;
+        // the nearest track line of this family (scanning out from the nearest pitch line)
+        const k0 = Math.round(level);
+        let k = Number.NaN;
+        for (let i = 0; i < 48 && Number.isNaN(k); i++) {
+          if (isTrackLine(k0 + i, family)) k = k0 + i;
+          else if (i > 0 && isTrackLine(k0 - i, family)) k = k0 - i;
+        }
+        let centre = 999;
+        if (!Number.isNaN(k) && fieldHash(k * 2.3 + Math.floor(other / TRACK_RUN_LEVELS) * 17.9 + family * 3.3) < 0.7) {
+          // the track runs 4 m off its boundary (beside the hedge), on the boundary's +level side
+          centre = Math.max(-999, Math.min(999, ((level - k) * metresPer[family] - 4) / presence));
+        }
+        out[family * 2] = centre + 1000;
+        out[family * 2 + 1] = Number.isNaN(k) ? 0 : k;
+      }
+      return out;
     },
     parcelTintAt(x: number, z: number, out: [number, number, number]): [number, number, number] {
       out[0] = 0; out[1] = 0; out[2] = 0;
@@ -375,7 +467,7 @@ export function createBorderLandform(
       const w = settings.fields * fade * (1 - woodsAt(x, z)) * (1 - 0.7 * smoothstep(0.62, 0.92, hillsAt(x, z)));
       if (w <= 0.002) return out;
       const { a, b } = fieldCoords(x, z);
-      const id = Math.floor(a * FIELD_LEVELS) * 7919 + Math.floor(b * FIELD_LEVELS) * 104729;
+      const id = fieldCell(a, 0) * 7919 + fieldCell(b, 1) * 104729;
       const roll = fieldHash(id), shade = fieldHash(id + 31);
       const crop = cropTint(settings.crops, roll, shade);
       out[0] = (crop[0] - 1) * w; out[1] = (crop[1] - 1) * w; out[2] = (crop[2] - 1) * w;
