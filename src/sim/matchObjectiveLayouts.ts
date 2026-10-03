@@ -53,9 +53,13 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // layout is mirrored across — the inland hamlet's green and the bocage crossroads' meadow (level aprons in the map
   // file) and the village's west end (a validated seat on its graded floor, also the turbo-ball kickoff).
   coastal: { kickoff: { x: 60, z: 22 }, zones: [{ x: -290, z: 22 }, { x: -155, z: 22 }, { x: 60, z: 22 }] },
-  // Verdant Fields (redesign 2026-10-02): three level aprons, rotationally symmetric about the village — the southern
-  // field green, the village square (also the turbo-ball kickoff), the northern field green.
-  verdant: { kickoff: { x: 10, z: 20 }, zones: [{ x: -250, z: -126 }, { x: 10, z: 20 }, { x: 270, z: 166 }] },
+  // Verdant Fields (redesign 2026-10-02; the classic town plan restored 2026-10-03): the southern and northern field
+  // greens, level aprons that are each other's rotation about the village (10, 20), and the middle disc on the
+  // deployments' perpendicular bisector at the town's south-east edge (64.4, -5.4), the nearest place on it where the
+  // houses leave a 30 m disc clear; the turbo-ball kickoff seats on the same bisector beside the town's centre
+  // (-11.7, 30.2). Driven reach: 273 / 712 m, 457 / 462 m, 712 / 273 m; the kickoff 461 / 458 m. Rotating the greens
+  // about the middle disc instead would leave one team's green 96 m nearer (objective symmetry 1.43).
+  verdant: { kickoff: { x: -11.7, z: 30.2 }, zones: [{ x: -250, z: -126 }, { x: 64.4, z: -5.4 }, { x: 270, z: 166 }] },
   // Mangrove Reach (redesign 2026-10-02): three seats on the line of equal distance between the deployments — the
   // western meadow below the creek, the fishing village (also the turbo-ball kickoff), the eastern island's flats.
   mangrove: { kickoff: { x: -55, z: 10 }, zones: [{ x: -230, z: 95 }, { x: -55, z: 10 }, { x: 240, z: -90 }] },
