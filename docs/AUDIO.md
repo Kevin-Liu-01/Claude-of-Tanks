@@ -95,12 +95,15 @@ interior, cinematic, ambience (ducked under radio) ─────────�
 ui, music, voice, alarm ──────────────────────────────────────────────────────────────────────────────────────────────┴→ glue → limiter → soft clip → master
 ```
 
-- Gunfire and our own tank lead. Weapons (1.5), impacts (1.3) and the occupied
-  hull's gun (1.4) carry a +4–5 dB low shelf at 110 Hz; our own engine and
-  running gear (0.6) and the loading and turret machinery inside it (0.95) sit
-  above other tanks' engines (0.5); ambience (0.37, beds mastered at −21 LUFS
-  and high-passed at 90 Hz on the bus), radio (0.28) and the interface (0.6,
-  with a high-shelf cut) sit underneath.
+- Gunfire and our own tank lead. Weapons (1.3) and the occupied hull's gun
+  (1.3) carry a +2 dB low shelf at 110 Hz and impacts (1.3) +4 dB; our own
+  engine and running gear (0.36) and the loading and turret machinery inside
+  it (0.95) sit above other tanks' engines (0.31); ambience (0.18, beds
+  mastered at −21 LUFS and high-passed at 90 Hz on the bus), radio (0.09) and
+  the interface (0.6, with a high-shelf cut) sit underneath. A gun's echo tail
+  sits 12 dB under its report (14 under our own), its distant bank 3 dB under
+  in the crossfade, and its muzzle blast 8 dB under a cannon's report (9 under
+  autocannons and machine guns).
 - The levels are measured on the master by `tools/audio-mix-balance.mjs`. Its
   first run, on deploy 169's louder engine and ambience (0.8 and 0.65), put
   the idle battle bed at −22 dBFS with a cannon at 15 m only 11.6 dB above it.
@@ -109,15 +112,37 @@ ui, music, voice, alarm ──────────────────�
   (the glue compressor and soft clip hold its short-term level near −10
   dBFS). Four runs later — the ambience bus high-pass, idling engines quieter
   than loaded ones, cannons keeping their close report to about 150 m, and
-  the trims above — the bed is −27.7 dBFS, a cannon stands 17.9, 11.1 and
-  7.9 dB above it at 15, 150 and 400 m, and the radio sits 8.4 dB under a
-  near cannon.
+  the trims of the time — the bed was −27.7 dBFS, a cannon stood 17.9, 11.1
+  and 7.9 dB above it at 15, 150 and 400 m, and the radio 8.4 dB under a near
+  cannon.
+- Then the guns became cracks (2026-10-02/03), and six more measurements
+  rebuilt the mix around them. A crack is judged on its loudest 100 ms (a
+  400 ms window rewards a long boom), its peak and its decay, from its arrival
+  over the bed. A near crack is bounded by the master's ceiling, and its
+  100 ms sits its crest (about 11 dB) under that peak, so more gun level only
+  squashes it: each louder step took a near cannon's decay (its loudest 50 ms
+  in the first 100 ms against 250–700 ms) from 7.1 dB to 1.5 dB, because the
+  limiter flattened the crack while the echo tail, unchanged while the reports
+  became peak-mastered and about 8 dB lower in loudness, passed under its
+  threshold at nearly the shot's level: half a second within 2–9 dB of the
+  peak is a blast. The tails came down 10 dB, the blast 4, the gun shelves 3,
+  the limiter learned to release slowly, the cannon reports were re-shaped to
+  decay a third faster, and the guns came back down until the limiter only
+  trims the top of a near crack (the probe reads its gain reduction), with
+  the bed about 4 dB lower to keep them dominant. Gates: a near
+  cannon 12 dB over the bed on its loudest 100 ms with its crack peaking at
+  least 22 dB over it and decaying at least 8 dB; 10 and 4 dB at 150 and
+  400 m; our own gun 14 dB with a 22 dB crack; at most 40 samples at the soft
+  clip's knee; the radio 6 dB under a near cannon. The final measurement (d52e45620): the bed −32.0 dBFS; a near cannon 13.6 dB over it on its loudest 100 ms, its crack peaking 24.1 dB over it and decaying 10.6 dB, held down 2.3 dB by the limiter with nothing at the clip's knee; 10.7 and 6.2 dB at 150 and 400 m; our own gun 17.2 dB with a 28.0 dB crack (3.3 dB of limiting); the radio 7.4 dB under a near cannon; the garage −31.3 dBFS.
 - The glue compressor has a 12 ms attack and 2.5:1 ratio so cannon transients
-  reach the limiter after it (−2 dBFS, 20:1, 2 ms attack, 90 ms release): the
-  compressor's built-in look-ahead lets it take a crack's peak down smoothly,
-  and the tanh soft clip behind it is only the last resort. Before the limiter
-  the cracking guns rode the clip (a near cannon put 111 samples at its knee,
-  our own gun 254), which squares a crack off into old-film grit.
+  reach the limiter after it (−2.6 dBFS, 20:1, 2 ms attack, 250 ms release):
+  the compressor's built-in look-ahead lets it take a crack's peak down
+  smoothly, and the tanh soft clip behind it is only the last resort. A Web
+  Audio compressor adds its own makeup gain ((1 / curve(0 dBFS))^0.6, +1.5 dB
+  here) that cannot be switched off; a trim after the limiter takes it back
+  out, or the limiter would raise everything, the bed included. Before the
+  limiter the cracking guns rode the clip (a near cannon put 111 samples at
+  its knee, our own gun 254), which squares a crack off into old-film grit.
 - Settings channels from the Sound tab (`cot.settings.v1`, live via
   `ui:volumes`) scale the buses: master, engine, gunfire (combat), ambience,
   interface, voice. The occupied gun answers to the gunfire slider.
