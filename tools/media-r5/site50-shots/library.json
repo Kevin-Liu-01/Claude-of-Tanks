@@ -28,6 +28,19 @@
       "at": "2026-10-03T18:31:40.585Z",
       "why": "floating fire: shell hits used the ammo-rack tank blast, whose turret-ring fire burns at hull height with no tank under it"
      }
+    },
+    {
+     "round": "r4b",
+     "sceneVersion": "v5",
+     "sceneSha256": "476ec0b3255c80c47efc8e57910dc2d6109f8aa57dfbef00fce6af823a35ed92",
+     "renderer": "b9aad8d18",
+     "at": "2026-10-03T21:42:23.770Z",
+     "kept": "shots/media-r5/site50/versions/r4b",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts in the engine layer",
+     "superseded": {
+      "at": "2026-10-03T21:42:23.805Z",
+      "why": "cinematic cook-off jets (a tank's ammunition blowtorch) burned in mid-air over shell hits; fixed in bca048dab"
+     }
     }
    ],
    "title": "A Leopard 2A6 pushes up the main street of burning Steinburg",
@@ -71,6 +84,19 @@
      "superseded": {
       "at": "2026-10-03T16:55:40.215Z",
       "why": "track-dust leak (fixed in e2582bcf6): rendered after another take in the same cinema session, its dust followed that take's tanks"
+     }
+    },
+    {
+     "round": "r4b",
+     "sceneVersion": "v5",
+     "sceneSha256": "548a68c5742c69b0365f359e1e763198ca0b519ec40763c33361cfa5a03295b3",
+     "renderer": "b9aad8d18",
+     "at": "2026-10-03T21:42:23.770Z",
+     "kept": "shots/media-r5/site50/versions/r4b",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts in the engine layer",
+     "superseded": {
+      "at": "2026-10-03T21:42:23.805Z",
+      "why": "cinematic cook-off jets (a tank's ammunition blowtorch) burned in mid-air over shell hits; fixed in bca048dab"
      }
     }
    ],
@@ -116,6 +142,19 @@
       "at": "2026-10-03T16:55:40.215Z",
       "why": "track-dust leak (fixed in e2582bcf6): rendered after another take in the same cinema session, its dust followed that take's tanks"
      }
+    },
+    {
+     "round": "r4b",
+     "sceneVersion": "v5",
+     "sceneSha256": "c98c00ba27c6643134e13521aa9893c72ec7f42dbfef2a4efb4f05bb7bc4bea7",
+     "renderer": "b9aad8d18",
+     "at": "2026-10-03T21:42:23.770Z",
+     "kept": "shots/media-r5/site50/versions/r4b",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts in the engine layer",
+     "superseded": {
+      "at": "2026-10-03T21:42:23.805Z",
+      "why": "cinematic cook-off jets (a tank's ammunition blowtorch) burned in mid-air over shell hits; fixed in bca048dab"
+     }
     }
    ],
    "title": "A Leclerc XLR crosses the burning square",
@@ -159,6 +198,19 @@
      "superseded": {
       "at": "2026-10-03T16:55:40.215Z",
       "why": "track-dust leak (fixed in e2582bcf6): rendered after another take in the same cinema session, its dust followed that take's tanks"
+     }
+    },
+    {
+     "round": "r4b",
+     "sceneVersion": "v5",
+     "sceneSha256": "80b15aa2230146b0313fc8d248e484bc9ccaec1731ab352a4bb92c14d52cae66",
+     "renderer": "b9aad8d18",
+     "at": "2026-10-03T21:42:23.770Z",
+     "kept": "shots/media-r5/site50/versions/r4b",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts in the engine layer",
+     "superseded": {
+      "at": "2026-10-03T21:42:23.805Z",
+      "why": "cinematic cook-off jets (a tank's ammunition blowtorch) burned in mid-air over shell hits; fixed in bca048dab"
      }
     }
    ],
@@ -204,6 +256,19 @@
       "at": "2026-10-03T18:31:40.585Z",
       "why": "floating fire: shell hits used the ammo-rack tank blast, whose turret-ring fire burns at hull height with no tank under it"
      }
+    },
+    {
+     "round": "r4b",
+     "sceneVersion": "v5",
+     "sceneSha256": "f37b28b5ca292cf9a5f90a48a8f7411e367dcd66fd385ffc3915aac6370c4f87",
+     "renderer": "b9aad8d18",
+     "at": "2026-10-03T21:42:23.770Z",
+     "kept": "shots/media-r5/site50/versions/r4b",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts in the engine layer",
+     "superseded": {
+      "at": "2026-10-03T21:42:23.805Z",
+      "why": "cinematic cook-off jets (a tank's ammunition blowtorch) burned in mid-air over shell hits; fixed in bca048dab"
+     }
     }
    ],
    "title": "A T-14 Armata advances past the barns of Verdant Fields",
@@ -247,6 +312,19 @@
      "superseded": {
       "at": "2026-10-03T16:55:40.215Z",
       "why": "track-dust leak (fixed in e2582bcf6): rendered after another take in the same cinema session, its dust followed that take's tanks"
+     }
+    },
+    {
+     "round": "r4b",
+     "sceneVersion": "v5",
+     "sceneSha256": "f0d84df44ff0d83f567b8a962a6d7ca22ac2b85854ed4ec801d7e9cd47c51c69",
+     "renderer": "b9aad8d18",
+     "at": "2026-10-03T21:42:23.770Z",
+     "kept": "shots/media-r5/site50/versions/r4b",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts in the engine layer",
+     "superseded": {
+      "at": "2026-10-03T21:42:23.805Z",
+      "why": "cinematic cook-off jets (a tank's ammunition blowtorch) burned in mid-air over shell hits; fixed in bca048dab"
      }
     }
    ],

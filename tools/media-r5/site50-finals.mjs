@@ -5,6 +5,9 @@
 // site-loops.mjs for every format (it drops each ProRes film master once its formats are written; the disk is tight).
 //   node tools/media-r5/site50-finals.mjs <resolvedDir> [--only=s01,s02] [--chunk=10] [--film-resolution=2160]
 //     [--still-supersample=1.5] [--film-master=prores|none] [--keep-film-masters] [--skip-films] [--skip-stills] [--skip-loops]
+//     [--min-free-gb=6]
+// The disk is shared with other sessions: a chunk starts only while --min-free-gb is free (a 2160p take with its formats
+// is ~0.35 GB); below it the run stops once the encodes in flight finish, and a re-run resumes where it stopped.
 // --film-master=none renders no ProRes master: site-loops encodes from the 2160p H.264 proxy (crf 14, ~97 Mbit/s), so
 // chunks can be large (few capture-lock waits) without ~0.77 GB of master per take on the shared disk.
 // cinema.mjs holds the shared capture lock for a whole job list, so the films go in chunks (default 10 per lease) and
@@ -12,7 +15,7 @@
 // <resolvedDir> is a lab run over shots/media-r5/site50/scenes (its *.resolved.json); the source scenes supply the
 // still moments. Outputs: shots/media-r5/site50/renders/{films,stills}/<id>/, shots/media-r5/site50/deliver/<id>/.
 import { spawn, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statfsSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { SHOTS, TOOL } from './paths.mjs';
 
@@ -37,6 +40,8 @@ console.log(`[finals] ${staged} resolved site shots in ${resolved}`);
 mkdirSync(renders, { recursive: true });
 const only = flags.only ? [`--only=${flags.only}`] : [];
 const chunk = Math.max(1, Number(flags.chunk ?? 10));
+const minFreeGb = Number(flags['min-free-gb'] ?? 6);
+const freeGb = () => { const s = statfsSync(renders); return (s.bavail * s.bsize) / 1e9; };
 const filmJobs = join(renders, 'jobs-films.json'), stillJobs = join(renders, 'jobs-stills.json');
 if (!('skip-films' in flags)) run('film jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'films', resolved, join(renders, 'films'), filmJobs, `--resolution=${flags['film-resolution'] ?? 2160}`, `--master=${flags['film-master'] ?? 'prores'}`, ...only]);
 if (!('skip-stills' in flags)) run('still jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'blur', resolved, join(renders, 'stills'), stillJobs, '--resolution=2160', `--supersample=${flags['still-supersample'] ?? 1.5}`, ...only]);
@@ -62,6 +67,10 @@ for (let i = 0; i < ids.length; i += chunk) {
   const k = i / chunk;
   // (masters on disk only: without them a chunk renders as soon as the lock allows)
   if (flags['film-master'] !== 'none' && k >= 2 && encoders[k - 2]) await encoders[k - 2];
+  if (freeGb() < minFreeGb) {
+    await Promise.all(encoders);
+    throw new Error(`${freeGb().toFixed(1)} GB free, under --min-free-gb=${minFreeGb}: stopped before chunk ${k + 1} of ${Math.ceil(ids.length / chunk)}`);
+  }
   const part = new Set(ids.slice(i, i + chunk));
   // cinema.mjs reads resume per job: a re-run keeps every finished film and still
   const jobs = [...films.filter(j => part.has(idOf(j))), ...stills.filter(j => part.has(idOf(j)))].map(j => ({ ...j, resume: 'true' }));
