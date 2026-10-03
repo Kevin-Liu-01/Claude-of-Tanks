@@ -56,7 +56,7 @@ const expected = {
   blackglass: [3661, 5894, 2333],
   titan_gorge: [2725, 2586, 1230],
   skybridge: [3522, 3725, 2079],
-  polders: [4268, 4025, 3604],
+  polders: [4232, 3998, 3574], // 2026-10-02 Tidegate Polders redesign (docs/MAP-LAYOUT-BRIEF.md); was [4268, 4025, 3604]
   copper_mesa: [2805, 2705, 1984],
   airfield: [3671, 3650, 3173],
   oasis: [2740, 2510, 2031],

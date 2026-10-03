@@ -55,6 +55,9 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // deployments, rotationally symmetric about the outpost — the west lane's vehicle park, the outpost's square (also
   // the turbo-ball kickoff), the east lane's vehicle park.
   badlands: { kickoff: { x: 8, z: 0 }, zones: [{ x: -122, z: 21 }, { x: 8, z: 0 }, { x: 138, z: -21 }] },
+  // Tidegate Polders (redesign 2026-10-02): the farm court's paved yard (also the turbo-ball kickoff) and a field on
+  // each side of it, the north field within 8 m of the south field's rotation about the farm court.
+  polders: { kickoff: { x: -40, z: 0 }, zones: [{ x: -135, z: -198 }, { x: -40, z: 0 }, { x: 7, z: 230 }] },
   skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
   copper_mesa: { zones: [{ x: 95.75601429460295, z: 25.16493186989846 }, { x: 103.52551824388397, z: -48.38643546884091 }, { x: 159.75453586673763, z: -8.089799185507083 }] },
 };
