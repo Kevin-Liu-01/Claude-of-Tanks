@@ -1913,6 +1913,12 @@ export class VolumetricCloudLayer {
     }
   }
 
+  /** The shared cloud-shade uniforms while the map is live (the ring's vista samples the same map: horizonCloudShade.ts). */
+  get cloudShade(): CloudShadeUniforms | null {
+    const shared = this.scene.userData.cloudShadeUniforms as CloudShadeUniforms | undefined;
+    return this.active && this.farShadeValid && shared ? shared : null;
+  }
+
   /** The clouds cast no shadow this frame: the map is stale and the lit materials stand in full sun. */
   private dropCloudShade(): void {
     this.farShadeValid = false;
