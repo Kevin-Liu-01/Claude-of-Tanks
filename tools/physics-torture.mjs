@@ -558,6 +558,8 @@ function replayStateFrom(entity) {
   state.gunPitch = source.gunPitch;
   state.grounded = source.grounded;
   state.overturned = source.overturned;
+  // the hydropneumatic aim the client's presentation sets from the special action (prediction.ts copies it too)
+  state.suspensionAim = source.suspensionAim;
   state._body.autoRighting = source._body.autoRighting;
   state._body.tumbling = state.overturned || state._body.autoRighting;
   state._prevSpeed = state.speed;
