@@ -528,11 +528,16 @@ function testAxis(
   const centerA = pos.x * nx + pos.z * nz;
   const radiusA = halfL * Math.abs(fx * nx + fz * nz) +
     halfW * Math.abs(rx * nx + rz * nz);
-  const ov = Math.min(centerA + radiusA, maxB) - Math.max(centerA - radiusA, minB);
-  if (ov <= 0) return false;
+  // the distance that separates along +n and along -n (physics lane, 2026-10-03): the overlap of the two projections is
+  // that distance only while neither holds the other — a hull inside a wide footprint read its own width, a long hull
+  // across a thin wall the wall's thickness, and the push walked it sideways through the building
+  const outPlus = maxB - (centerA - radiusA);
+  const outMinus = centerA + radiusA - minB;
+  if (outPlus <= 0 || outMinus <= 0) return false;
+  const ov = Math.min(outPlus, outMinus);
   if (ov < best.overlap) {
-    const towardHull = (pos.x - centerBX) * nx + (pos.z - centerBZ) * nz;
-    const sign = towardHull >= 0 ? 1 : -1;
+    const sign = outPlus < outMinus ? 1 : outMinus < outPlus ? -1
+      : (pos.x - centerBX) * nx + (pos.z - centerBZ) * nz >= 0 ? 1 : -1;
     best.overlap = ov; best.nx = nx * sign; best.nz = nz * sign;
   }
   return true;
