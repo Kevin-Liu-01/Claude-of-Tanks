@@ -782,6 +782,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-03 (the skies-and-atmosphere lane): the Beer–Lambert aerial perspective on the physically based sky
     'src/engine/hazeLaw.selftest.mjs',
     'src/engine/volumetricClouds.selftest.mjs',
+    // 2026-10-03 (the skies-and-atmosphere lane): the far cloud shadows beyond the cascades
+    'src/engine/farCloudShade.selftest.mjs',
+    // 2026-10-03 (the skies-and-atmosphere lane): the ground's sky under and beside the near hulls
+    'src/engine/vehicleGroundOcclusion.selftest.mjs',
     // 2026-10-01 (the clouds-and-skyboxes lane): the layered sky — mid layers, contrails, storm cells, rain, fog banks, lightning, the time of day
     'src/engine/cloudWeatherLayers.selftest.mjs',
     'src/engine/rendererContextRecovery.selftest.mjs',

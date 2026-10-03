@@ -122,6 +122,30 @@ const wrapDrift = (v: number, w: number): number => (v >= w ? v - w : v <= -w ? 
 const CLOUD_GROUND_GLOW_K = 0.16;
 /** The far band shows beyond this horizontal distance (m), fading in over the next three kilometres. */
 const CLOUD_FARBAND_START_M = 8000;
+/**
+ * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: "a pasted stratus ribbon", Saltwind's "hard-edged
+ * pale streak ... a compositing seam or cloud-layer LOD transition"): a cumuliform sky's band starts where its traced
+ * cumulus thin out (they are marched to 20 km), not at the decks' 8 km — there the flat band began 10° up in the middle of
+ * the traced field, one pale sheet with an edge across the sky — and fades in over a longer run, so it sits on the
+ * horizon (under 4–5° at a 1.4 km band) as the distant field's crowding, never in front of the traced clouds.
+ */
+export const CLOUD_FARBAND_START_CU_M = 16000;
+export const CLOUD_FARBAND_FADE_CU_M = 9000;
+/**
+ * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: "no cloud shadows on the land"): the far cloud
+ * shadows. The gobos carry the clouds' shadows only inside the cascades (700 m on desktop: an overview's land beyond
+ * them lay in one even sun). The same shade the gobos dither into the cascades — the cores of the same two weather
+ * fields at the cloud base — is rendered small over a square around the camera, world-anchored (snapped to its texel),
+ * refreshed every few frames (the wind moves it a metre), and the aerial pass (post.ts) takes each far pixel's sun share
+ * away by it beyond the cascades' fade, as the cascades do inside it.
+ */
+export const CLOUD_FAR_SHADE_SIZE = 256;
+/** The square's side (m): the land an overview sees, its ring's first kilometres beyond the square. */
+export const CLOUD_FAR_SHADE_SPAN_M = 12000;
+/** Frames between refreshes (a 6 m/s wind moves the field under a metre; a texel is 47 m). */
+export const CLOUD_FAR_SHADE_EVERY = 8;
+/** The gobos' darkest dither: the share of the sun a cloud core takes (the shade map holds the same value). */
+export const CLOUD_SHADOW_CORE = 0.62;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
 export const CLOUD_MARCH_STEPS = 96;
 /** The farthest slant distance marched (m): a bank beyond it has melted into the sky (the far scatter ramp). */
@@ -716,12 +740,15 @@ vec4 farBandLayer( vec3 dir, float cosT, vec3 rayDx, vec3 rayDy, out float tLaye
 	if ( uFarBand <= 0.0 || dir.y <= 0.004 ) return none;
 	float tb = ( uFarBandAlt - uCamPos.y ) / dir.y;
 	float horiz = tb * length( dir.xz );
-	if ( tb <= 0.0 || horiz <= ${f(CLOUD_FARBAND_START_M)} ) return none;
+	// a deck's band continues its 10 km march; a cumuliform sky's starts where its 20 km march thins (2026-10-03)
+	float fbStart = uDeckMarch > 0.0 ? ${f(CLOUD_FARBAND_START_M)} : ${f(CLOUD_FARBAND_START_CU_M)};
+	float fbFade = uDeckMarch > 0.0 ? 3000.0 : ${f(CLOUD_FARBAND_FADE_CU_M)};
+	if ( tb <= 0.0 || horiz <= fbStart ) return none;
 	vec3 pb = uCamPos + dir * tb;
 	vec2 gradX = cloudSheetGradient( dir, rayDx, uFarBandAlt - uCamPos.y ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_FARBAND_PERIOD_K)};
 	vec2 gradY = cloudSheetGradient( dir, rayDy, uFarBandAlt - uCamPos.y ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_FARBAND_PERIOD_K)};
 	float fb = textureGrad( tWeather, ( pb.xz / ${f(CLOUD_FARBAND_PERIOD_K)} + uFarBandShift ) / ${f(CLOUD_WEATHER_TILE_M)}, gradX, gradY ).b;
-	float covB = smoothstep( 1.0 - uFarBand, 1.0 - uFarBand + 0.35, fb ) * smoothstep( ${f(CLOUD_FARBAND_START_M)}, ${f(CLOUD_FARBAND_START_M + 3000)}, horiz );
+	float covB = smoothstep( 1.0 - uFarBand, 1.0 - uFarBand + 0.35, fb ) * smoothstep( fbStart, fbStart + fbFade, horiz );
 	if ( covB <= 0.0 ) return none;
 	tLayer = tb;
 	// slant depth through a thin lumpy deck: opaque at a grazing angle, a veil overhead
@@ -1208,7 +1235,7 @@ void main() {
 	// A binary weather cutoff stamped polygonal shadows onto open beaches.
 	// World-anchored coverage gives PCF a soft, translucent cloud edge. A
 	// screen-space pattern changes phase whenever a cascade moves.
-	float shade = 0.62 * smoothstep( uThreshold - 0.08, uThreshold + 0.08, cloudField( vXZ, w, st ) );
+	float shade = ${f(CLOUD_SHADOW_CORE)} * smoothstep( uThreshold - 0.08, uThreshold + 0.08, cloudField( vXZ, w, st ) );
 	// 2026-10-01: a front's clear radius holds its towers off the camera (the trace's own law), so no cloud stands
 	// over the sky it keeps open and none may shade the ground under it (xy = the camera's xz, z = the radius)
 	if ( uClear.z > 0.0 ) shade *= smoothstep( uClear.z * 0.6, uClear.z * 1.4, length( vXZ - uClear.xy ) );
@@ -1216,6 +1243,22 @@ void main() {
 	float dither = fract( 52.9829189 * fract( dot( cell, vec2( 0.06711056, 0.00583715 ) ) ) );
 	if ( dither >= shade ) discard;
 	gl_FragColor = vec4( 1.0 );
+}`;
+
+/** 2026-10-03: the far cloud shade — the gobos' shade, undithered, over the square around the camera (post.ts samples it). */
+const FAR_SHADE_FRAGMENT = /* glsl */`
+precision highp float;
+${CLOUD_FIELD_GLSL}
+uniform float uThreshold;
+uniform vec3 uClear;
+uniform vec3 uFarShadeRect;
+varying vec2 vUv;
+void main() {
+	vec2 xz = uFarShadeRect.xy + ( vUv - 0.5 ) * uFarShadeRect.z;
+	vec4 w, st;
+	float shade = ${f(CLOUD_SHADOW_CORE)} * smoothstep( uThreshold - 0.08, uThreshold + 0.08, cloudField( xz, w, st ) );
+	if ( uClear.z > 0.0 ) shade *= smoothstep( uClear.z * 0.6, uClear.z * 1.4, length( xz - uClear.xy ) );
+	gl_FragColor = vec4( shade, 0.0, 0.0, 1.0 );
 }`;
 
 interface CloudNoiseTextures {
@@ -1331,6 +1374,11 @@ export class VolumetricCloudLayer {
   private readonly resolveMaterial: THREE.ShaderMaterial;
   private readonly domeMaterial: THREE.ShaderMaterial;
   private readonly goboMaterial: THREE.ShaderMaterial;
+  private readonly farShadeMaterial: THREE.ShaderMaterial;
+  private farShadeTarget: THREE.WebGLRenderTarget | null = null;
+  private farShadeAge = Infinity;
+  private farShadeValid = false;
+  private readonly farShadeInfo = { texture: null as THREE.Texture | null, rect: new THREE.Vector3(), baseM: 1400 };
   private copyMaterial: THREE.ShaderMaterial | null = null;
   private copyTarget: THREE.WebGLRenderTarget | null = null;
   private history: [THREE.WebGLRenderTarget, THREE.WebGLRenderTarget];
@@ -1446,6 +1494,17 @@ export class VolumetricCloudLayer {
       name: 'VolumetricCloudGobo', vertexShader: GOBO_VERTEX, fragmentShader: GOBO_FRAGMENT, side: THREE.DoubleSide,
       uniforms: { ...field(), uThreshold: { value: 0.5 }, uShadowCellOrigin: { value: new THREE.Vector2() }, uClear: { value: new THREE.Vector3() },
         uShadowWorld: { value: new THREE.Matrix4() }, uShadowBounds: { value: new THREE.Vector4() }, uCloudBase: { value: 1400 } },
+    });
+    // the far shade reads the gobos' own uniform objects (the field, its drift, the cut, the front's clear radius)
+    const gu = this.goboMaterial.uniforms;
+    this.farShadeMaterial = new THREE.ShaderMaterial({
+      name: 'VolumetricCloudFarShade', vertexShader: QUAD_VERTEX, fragmentShader: FAR_SHADE_FRAGMENT,
+      depthTest: false, depthWrite: false, blending: THREE.NoBlending,
+      uniforms: {
+        tWeather: gu.tWeather, tStreets: gu.tStreets, uWeatherShift: gu.uWeatherShift, uStreetShift: gu.uStreetShift,
+        uWindDir: gu.uWindDir, uStreets: gu.uStreets, uFieldMix: gu.uFieldMix, uThreshold: gu.uThreshold, uClear: gu.uClear,
+        uFarShadeRect: { value: new THREE.Vector3(0, 0, CLOUD_FAR_SHADE_SPAN_M) },
+      },
     });
     this.quad = new FullScreenQuad(this.traceMaterial);
     this.domeMaterial = new THREE.ShaderMaterial({
@@ -1808,6 +1867,7 @@ export class VolumetricCloudLayer {
     if (!preset || !this.active || renderer !== this.renderer) {
       this.dome.visible = false;
       for (const gobo of this.gobos) gobo.visible = false;
+      this.farShadeValid = false;
       return;
     }
     this.refreshLifetime();
@@ -1918,7 +1978,41 @@ export class VolumetricCloudLayer {
     this.domeMaterial.uniforms.uInside.value = inside;
     if (this.domeMaterial.depthTest === !!inside) this.domeMaterial.depthTest = !inside;
     this.updateGobos(preset);
+    this.updateFarShade(preset);
     this.updateLightning(preset, step);
+  }
+
+  /**
+   * 2026-10-03: the far cloud shade (CLOUD_FAR_SHADE_* note) — re-rendered when its texel-snapped square moves or every
+   * CLOUD_FAR_SHADE_EVERY frames; off (null for post.ts) where the clouds cast no shadows.
+   */
+  private updateFarShade(preset: CloudLayerPreset): void {
+    if (!preset.shadow || preset.coverage <= 0) { this.farShadeValid = false; return; }
+    const texel = CLOUD_FAR_SHADE_SPAN_M / CLOUD_FAR_SHADE_SIZE;
+    const cx = Math.round(this.cam.pos.x / texel) * texel, cz = Math.round(this.cam.pos.z / texel) * texel;
+    const rect = this.farShadeInfo.rect;
+    const moved = !this.farShadeValid || rect.x !== cx || rect.y !== cz;
+    if (!moved && ++this.farShadeAge < CLOUD_FAR_SHADE_EVERY) return;
+    if (!this.farShadeTarget) {
+      this.farShadeTarget = makeTarget(CLOUD_FAR_SHADE_SIZE, CLOUD_FAR_SHADE_SIZE, 'clouds-far-shade', THREE.UnsignedByteType);
+    }
+    rect.set(cx, cz, CLOUD_FAR_SHADE_SPAN_M);
+    (this.farShadeMaterial.uniforms.uFarShadeRect.value as THREE.Vector3).copy(rect);
+    this.renderQuad(this.farShadeMaterial, this.farShadeTarget);
+    this.farShadeInfo.texture = this.farShadeTarget.texture;
+    this.farShadeInfo.baseM = preset.baseM;
+    this.farShadeAge = 0;
+    this.farShadeValid = true;
+  }
+
+  /**
+   * 2026-10-03: the far cloud shade for the aerial pass (post.ts): the map (r = the share of the sun a cloud takes, as
+   * the gobos dither it), its square (centre x, z and side, m) and the cloud base it was cut at (m); null where the
+   * clouds cast no shadows this frame.
+   */
+  get farShade(): { readonly texture: THREE.Texture; readonly rect: THREE.Vector3; readonly baseM: number } | null {
+    const info = this.farShadeInfo;
+    return this.active && this.farShadeValid && info.texture && this.preset?.shadow ? info as { texture: THREE.Texture; rect: THREE.Vector3; baseM: number } : null;
   }
 
   /**
@@ -2044,6 +2138,10 @@ export class VolumetricCloudLayer {
     this.resolveMaterial.dispose();
     this.domeMaterial.dispose();
     this.goboMaterial.dispose();
+    this.farShadeMaterial.dispose();
+    this.farShadeTarget?.dispose();
+    this.farShadeTarget = null;
+    this.farShadeValid = false;
     this.dome.geometry.dispose();
     this.dome.removeFromParent();
     this.quad.dispose();

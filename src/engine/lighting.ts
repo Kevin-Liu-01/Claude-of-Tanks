@@ -721,6 +721,9 @@ export function createLighting(
     enabled: () => nearVehicleDetailAllowed && !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noVehicleDetail),
   });
   setShadowCascadePolicy(nearVehiclePolicy);
+  // 2026-10-03: the same near hulls carry the ground's occlusion in the aerial pass (vehicleGroundOcclusion.ts); the
+  // selection array is updated in place each frame
+  scene.userData.nearVehicles = nearVehiclePolicy.selected;
   // 2026-10-02 (the frame-budget lane, P20): each desktop cascade keeps its static casters' depth and redraws only the
   // dynamic ones while its snapped pose and the static content hold (shadowStaticCache.ts). The module loads with the
   // first battle world (a frozen world root in the scene), outside the boot graph; until it arrives, and if it never
