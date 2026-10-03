@@ -6736,6 +6736,16 @@ recipe and its cloudscape gate, nine maps).**
   the re-shoot), the gated deck lumps ("a uniform, high-frequency grain like stucco"), and the haze's warm lobe toward the
   sun (no pixel changed on four maps' sunward views). Desert's sky-w streak was the before frame's contrail.
 
+**The cost and the clamp's proof (2026-10-03, one held turn with fp13).**
+- *Perf, ABBA:* the gobo build (a12c5681a) against the one-path build with the wave-17 batch (4b558d224), three maps
+  × two views × 300 frames, desktop high at 1600 × 900. GPU p25 lane → dev: Desert chase 12.28 → 12.34, centre-far
+  12.44 → 12.35; Frontier 13.86 → 12.14 and 12.43 → 11.93; Verdant 12.21 → 11.95 and 12.02 → 11.14 (ms) — no worse
+  anywhere, though the dev build also carries the PR head's scenery (Frontier's chase 455 draw calls against 417). Every
+  slot held 60 fps (a 16.7 ms frame interval); the CPU deltas sat inside the machine's load swing (load1 11 → 32).
+- *The bank clamp on the mountains lane's recipe* (their 01b90af3b with the panorama shell pushed to 4.5 km, scratch):
+  without the clamp Saltwind's far shells past 3.6 km stood as pale washed slabs with sheer sides and Coastal's far shore
+  as a white band; with it they keep their own colour and the bank stays in front of them and over the open sea.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
