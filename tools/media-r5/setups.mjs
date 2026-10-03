@@ -143,12 +143,28 @@ function sampleKeys(keys, t, ease) {
  * same grid as the tanks so the lens stays locked. Fields: side, along, lift, fov,
  * roll, lookHero [ls, la, ll]; `orbit` (deg around the hero) + `radius` replace side/along.
  * Shot: { durMs, speed, curveDegS, foeSpeed, stepMs, ease, keepWidth, pinMs, turretSweep,
- *   turretKeys: [[tMs, deg]], cam: [...], cues, effects, film, still: { tMs, exposureMs } } */
+ *   turretKeys: [[tMs, deg]], turrets: { [actor]: deg | [[tMs, deg]] }, guns: { [actor]: deg | [[tMs, deg]] },
+ *   cam: [...], cues, effects, film, still: { tMs, exposureMs } }
+ * `turrets` / `guns` pose any actor (turret relative to its hull, + toward the hull's left; gun elevation): a number
+ * holds, keys ease (smoothstep) from one to the next. */
+const keyAt = (spec, t) => {
+  if (!Array.isArray(spec)) return spec;
+  if (t <= spec[0][0]) return spec[0][1];
+  if (t >= spec[spec.length - 1][0]) return spec[spec.length - 1][1];
+  let i = 0; while (spec[i + 1][0] < t) i++;
+  const u = (t - spec[i][0]) / (spec[i + 1][0] - spec[i][0]);
+  return spec[i][1] + (spec[i + 1][1] - spec[i][1]) * u * u * (3 - 2 * u);
+};
 export function buildShot(s, m) {
   const scene = buildScene({ ...s, cameras: [] });
   delete scene.cameraVariants;
   const dur = m.durMs, sp = m.speed ?? 0, fsp = m.foeSpeed ?? 0, curve = m.curveDegS ?? 0;
-  const step = m.stepMs ?? (curve || (m.cam ?? []).length > 2 || m.keepWidth ? 100 : 250);
+  const keyedPose = [...Object.values(m.turrets ?? {}), ...Object.values(m.guns ?? {})].some(Array.isArray);
+  for (const a of scene.actors) {
+    if (m.turrets?.[a.name] != null) a.turretDeg = +keyAt(m.turrets[a.name], 0).toFixed(2);
+    if (m.guns?.[a.name] != null) a.gunDeg = +keyAt(m.guns[a.name], 0).toFixed(2);
+  }
+  const step = m.stepMs ?? (curve || (m.cam ?? []).length > 2 || m.keepWidth || keyedPose ? 100 : 250);
   const grid = []; for (let t = 0; t < dur; t += step) grid.push(Math.round(t)); grid.push(dur);
   for (const c of m.cam) { const t = c.tMs === 'end' ? dur : c.tMs; if (!grid.includes(t)) grid.push(t); }
   grid.sort((a, b) => a - b);
@@ -163,8 +179,10 @@ export function buildShot(s, m) {
     const lat = d[0] * f0.r[0] + d[1] * f0.r[1], lon = d[0] * f0.f[0] + d[1] * f0.f[1], yaw = a.facingDeg - s.heading;
     paths.set(a.name, t => { const hp = heroPath(t); const fr = frame(hp.p, hp.h); return { p: fr.at(lat, lon), h: hp.h + yaw }; });
   }
-  const moving = sp > 0 || fsp > 0 || m.turretKeys || m.turretSweep;
+  const moving = sp > 0 || fsp > 0 || m.turretKeys || m.turretSweep || keyedPose;
+  const gunAt = (a, t) => (m.guns?.[a.name] != null ? +keyAt(m.guns[a.name], t).toFixed(2) : a.gunDeg);
   const turretAt = (a, t) => {
+    if (m.turrets?.[a.name] != null) return +keyAt(m.turrets[a.name], t).toFixed(2);
     if (a.name === 'hero' && m.turretKeys) {
       const tk = m.turretKeys; if (t <= tk[0][0]) return tk[0][1]; if (t >= tk[tk.length - 1][0]) return tk[tk.length - 1][1];
       let i = 0; while (tk[i + 1][0] < t) i++; const u = (t - tk[i][0]) / (tk[i + 1][0] - tk[i][0]); return tk[i][1] + (tk[i + 1][1] - tk[i][1]) * (u * u * (3 - 2 * u));
@@ -173,7 +191,7 @@ export function buildShot(s, m) {
   };
   const tracks = moving ? scene.actors.map(a => ({ actor: a.name, keys: grid.map((t, i) => {
     const q = paths.get(a.name)(t);
-    return { id: `${a.name}-${i}`, tMs: t, pos: q.p, facingDeg: q.h, turretDeg: turretAt(a, t), gunDeg: a.gunDeg, transition: 'linear' };
+    return { id: `${a.name}-${i}`, tMs: t, pos: q.p, facingDeg: q.h, turretDeg: turretAt(a, t), gunDeg: gunAt(a, t), transition: 'linear' };
   }) })) : [];
   const keys = m.cam.map(c => {
     const [ls, la, ll] = c.lookHero ?? [0, 2, 1.8];

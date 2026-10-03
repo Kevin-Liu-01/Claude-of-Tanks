@@ -12,6 +12,7 @@ import { buildShot, fire, kill, pen, burn, smoke, boom, dust, mg, barrage, exhau
 import { setById, T, pictureFor, LIGHT_READY, sunFor, RIG } from './sets.mjs';
 import { CAST, CAST_NAMES } from './cast.mjs';
 import { blockedFraction } from './camera-clearance.mjs';
+import { choreograph } from './turret-choreo.mjs';
 
 export const LOOP_MS = 6000, XFADE_MS = 600, DUR = LOOP_MS + XFADE_MS;
 export const KINDS = Object.freeze(['tank', 'battle', 'scene']);
@@ -193,8 +194,8 @@ export const SHOTS = [
       cam: hold({ side: 4.5, along: -9, lift: 1.1, fov: 38, lookHero: [-1, 40, 1.2] }, { side: 4.1, along: -8.2, lift: 1.15, fov: 36, lookHero: [-1, 40, 1.2] }) },
     { tMs: 1860, exposureMs: 16 }],
   [25, 'alpine-village', 'battle', 'A Leopard 2A5 and a CV90105 fight through the alpine village', S.gVillage,
-    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1400), ...incoming('foe1', 5, 14, 2600), fire('ally1', 3800)], cam: OG_HOLD() },
-    { tMs: 1480, exposureMs: 16 }],
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1400), ...incoming('foe1', 5, 14, 2600), fire('hero', 3200), fire('ally1', 3800)], cam: OG_HOLD() },
+    { tMs: 3280, exposureMs: 16 }],
   [26, 'minaret-fire', 'battle', 'A Merkava Mk 3D fires past the minaret at Sunscar Oasis', S.oMinaret,
     // low and level: from the shoulder height the oasis floor's dark contour bands filled the frame and hid the minaret
     { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1600), fire('ally1', 2900), ...incoming('foe1', -6, 18, 3600)],
@@ -204,14 +205,14 @@ export const SHOTS = [
     { speed: 0, sun: 'side', effects: [...wreck('foe1'), ...knockout('hero', 'foe0', 2000), fire('ally1', 3600)], cam: REAR_HOLD() },
     { tMs: 2160, exposureMs: 16 }],
   [28, 'fjord-village', 'battle', 'A Stridsvagn 122 and a CV9040C hold the fjord village', S.fVillage,
-    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), fire('ally1', 2300), mg('ally1', 3100, 9), ...incoming('foe1', 4, 12, 4000)], cam: OG_HOLD() },
-    { tMs: 1580, exposureMs: 16 }],
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), fire('ally1', 2300), mg('ally1', 3100, 9), fire('hero', 3300), ...incoming('foe1', 4, 12, 4000)], cam: OG_HOLD() },
+    { tMs: 3380, exposureMs: 16 }],
   [29, 'fjord-road-kill', 'battle', 'A T-90 burns on the road above the fjord', S.fNorth,
     { speed: 0, sun: 'side', effects: [...wreck('foe1'), ...knockout('hero', 'foe0', 1800), fire('ally1', 3800)], cam: REAR_HOLD(-1) },
     { tMs: 1960, exposureMs: 16 }],
   [30, 'temple-village', 'battle', 'A K1A1 and a K21 fight through the temple village of Monsoon Ridge', S.mVillage,
-    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), ...incoming('foe1', -4, 12, 2600), fire('ally1', 3900)], cam: OG_HOLD() },
-    { tMs: 1580, exposureMs: 16 }],
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), ...incoming('foe1', -4, 12, 2600), fire('hero', 3200), fire('ally1', 3900)], cam: OG_HOLD() },
+    { tMs: 3280, exposureMs: 16 }],
   [31, 'ford-fire', 'battle', 'A Type 96B fires across the river ford', S.mFord,
     { lineup: [CAST.type96b, CAST.aft10], speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1700), ...hitNear(6, 9, 2900), fire('ally1', 4300)], cam: OG_HOLD(-1) },
     { tMs: 1780, exposureMs: 16 }],
@@ -227,8 +228,8 @@ export const SHOTS = [
       cam: hold({ side: 9.2, along: 14.4, lift: 2.4, fov: 40, lookHero: [-9, 0, 1.8] }, { side: 8.2, along: 12.6, lift: 2.4, fov: 38, lookHero: [-9, 0, 1.8] }) },
     { tMs: 1180, exposureMs: 16 }],
   [35, 'farm-village', 'battle', 'A Type 90 and a Type 89 fight through the farm village of Frontier Basin', S.frVillage,
-    { speed: 0, sun: 'side', effects: [...wreck('foe1'), fire('hero', 1500), ...incoming('foe0', 5, 13, 2700), fire('ally1', 3900)], cam: OG_HOLD() },
-    { tMs: 1580, exposureMs: 16 }],
+    { speed: 0, sun: 'side', effects: [...wreck('foe1'), fire('hero', 1500), ...incoming('foe0', 5, 13, 2700), fire('hero', 3300), fire('ally1', 3900)], cam: OG_HOLD() },
+    { tMs: 3380, exposureMs: 16 }],
   [36, 'barn-knockout', 'battle', 'A Type 10 knocks out a T-90M beside the burning barn', S.frVillage,
     { lineup: [CAST.type10, CAST.k2], speed: 0, sun: 'side', effects: [...wreck('foe1'), fireField(H(-14, 22), 0, { radiusM: 6 }), embers(H(-14, 22), 0), ...knockout('hero', 'foe0', 1900), fire('ally1', 4100)], cam: REAR_HOLD() },
     { tMs: 2060, exposureMs: 16 }],
@@ -239,8 +240,8 @@ export const SHOTS = [
     { time: 'night', picture: { exposure: 0.6 }, speed: 0, effects: [NIGHT_FLARE(H(-6, 55), 95), ...wreck('foe1'), ...knockout('hero', 'foe0', 1900), fire('ally1', 3800), mg('ally1', 4800, 9)], cam: OG_HOLD() },
     { tMs: 2060, exposureMs: 16 }],
   [39, 'lakeside-village', 'battle', 'A Chieftain Mk 10 fires across the village at Highland Reservoir', S.reVillage,
-    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), ...incoming('foe1', 5, 13, 2700), fire('ally1', 3800)], cam: OG_HOLD() },
-    { tMs: 1580, exposureMs: 16 }],
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), ...incoming('foe1', 5, 13, 2700), fire('hero', 3300), fire('ally1', 3800)], cam: OG_HOLD() },
+    { tMs: 3380, exposureMs: 16 }],
 
   // ---------------------------------------------------------------- scenes: the battlefield around the fight
   [40, 'rooftop-smoke', 'scene', 'Smoke columns rise over the rooftops of Steinburg', S.stNorth,
@@ -306,6 +307,10 @@ export const PAINT = Object.freeze({
   49: ['oakleaf', 'service_soviet_coldwar'], 50: ['service_challenger_3', 'paint_ru_t80u_modern'],
 });
 
+// The hero's first round goes out on a flank (the barrel crosses the frame, away from the lens) in a third of the shots,
+// spread over the kinds (owner 2026-10-03: "experiment with turrets being at unique angles and rotations").
+export const FLANK = new Set([2, 5, 8, 9, 12, 15, 19, 21, 25, 28, 30, 35, 39, 43, 45]);
+
 const CAMERA_BLOCKED_MAX = 0.1;
 const mirrorCam = cam => cam.map(k => ({ ...k, ...(k.side != null ? { side: -k.side } : {}), ...(k.orbit != null ? { orbit: -k.orbit } : {}),
   ...(k.lookHero ? { lookHero: [-k.lookHero[0], k.lookHero[1], k.lookHero[2]] } : {}) }));
@@ -323,15 +328,21 @@ export function siteScene([n, id, kind, title, setRef, film, still]) {
   if (foeCamo && base.enemies) base.enemies = { ...base.enemies, camo: foeCamo };
   // the lens must clear the battlefield's buildings: a camera path inside a wall or blind behind one is mirrored to the
   // hero's other side, tucked in and raised, or both — whichever clears the most (camera-clearance.mjs)
-  let scene = buildShot(base, { durMs: DUR, ...film, still }), cameraFix = null;
+  let scene = buildShot(base, { durMs: DUR, ...film, still }), cameraFix = null, lens = film.cam;
   const blocked0 = blockedFraction(scene);
   if (blocked0 > CAMERA_BLOCKED_MAX) {
     let best = blocked0;
     for (const [name, cam] of [['mirrored', mirrorCam(film.cam)], ['tucked', tuckCam(film.cam)], ['mirrored+tucked', tuckCam(mirrorCam(film.cam))]]) {
       const alt = buildShot(base, { durMs: DUR, ...film, cam, still }), f = blockedFraction(alt);
-      if (f < best) { best = f; scene = alt; cameraFix = name; }
+      if (f < best) { best = f; scene = alt; cameraFix = name; lens = cam; }
     }
   }
+  // turrets (turret-choreo.mjs): every gun watches its own sector, traverses to each of its targets and is home again
+  // before the loop wraps; the FLANK shots swing the hero's first round out across the frame
+  const style = FLANK.has(n) ? 'flank' : 'sectors';
+  const choreo = choreograph(scene, { loopMs: LOOP_MS, xfadeMs: XFADE_MS, style });
+  scene = buildShot(base, { durMs: DUR, ...film, cam: lens, still, turrets: choreo.turrets, guns: choreo.guns,
+    effects: [...(film.effects ?? []), ...choreo.effects] });
   if (set.autoPlace === false) scene.autoPlace = false;
   if (set.allowWater) for (const a of scene.actors) a.allowWater = true;
   const az = LIGHT_READY ? sunFor(scene, film.sun ?? set.sun, time) : null;
@@ -339,7 +350,8 @@ export function siteScene([n, id, kind, title, setRef, film, still]) {
   const hero = scene.actors[0]?.id;
   scene.meta = { n, id: `s${String(n).padStart(2, '0')}-${id}`, kind, title, set: set.id, map: set.map, time, hero, heroName: CAST_NAMES[hero]?.[0] ?? hero,
     loopMs: LOOP_MS, xfadeMs: XFADE_MS, still,
-    paint: { unit: base.camo, enemy: base.enemies ? base.enemies.camo ?? base.camo : null }, ...(cameraFix ? { cameraFix } : {}) };
+    paint: { unit: base.camo, enemy: base.enemies ? base.enemies.camo ?? base.camo : null },
+    turrets: { style, plan: choreo.notes }, ...(cameraFix ? { cameraFix } : {}) };
   return scene;
 }
 

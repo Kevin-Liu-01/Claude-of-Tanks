@@ -92,4 +92,46 @@ for (const shot of SHOTS) {
   assert.deepEqual(scene.meta.paint, { unit, enemy: foes.length ? enemy : null }, `${id}: the scene records its paint`);
 }
 assert.equal(units.size, SHOTS.length, 'fifty schemes for fifty shots');
+
+// Turrets (owner 2026-10-03: "experiment with turrets being at unique angles and rotations"; turret-choreo.mjs): every
+// allied turret is keyed; a turret's pose at t matches t + LOOP_MS through the crossfade (the loop never doubles a
+// barrel); traverses stay near a real turret's top speed; a knockout round leaves a gun laid on its target; and the
+// fifty show off-axis guns: flank swings on the FLANK shots and wingmen watching their own sectors.
+const wrap = d => ((d % 360) + 540) % 360 - 180;
+const trackAt = (keys, t, f) => { let i = 0; while (i < keys.length - 2 && keys[i + 1].tMs <= t) i++; const a = keys[i], b = keys[i + 1] ?? a; const u = Math.min(1, Math.max(0, (t - a.tMs) / Math.max(1, b.tMs - a.tMs))); return a[f] + (b[f] - a[f]) * u; };
+let flankSwings = 0, wideWingmen = 0;
+for (const shot of SHOTS) {
+  const [n, id] = shot, scene = siteScene(shot), tracks = scene.storyboard.actorTracks ?? [];
+  assert.ok(['sectors', 'flank'].includes(scene.meta.turrets?.style), `${id}: a turret style`);
+  for (const a of scene.actors.filter(x => !x.name.startsWith('foe'))) {
+    const keys = tracks.find(tr => tr.actor === a.name)?.keys;
+    assert.ok(keys?.length > 2, `${id}: ${a.name}'s turret is keyed`);
+    for (let t = 0; t <= XFADE_MS; t += 50) {
+      const seam = Math.abs(wrap(trackAt(keys, t, 'turretDeg') - trackAt(keys, t + LOOP_MS, 'turretDeg')));
+      assert.ok(seam < 0.5, `${id}: ${a.name}'s turret at ${t} ms differs from ${t + LOOP_MS} ms by ${seam.toFixed(2)}°`);
+    }
+    let fastest = 0, offAxis = 0;
+    for (let i = 1; i < keys.length; i++) {
+      fastest = Math.max(fastest, Math.abs(wrap(keys[i].turretDeg - keys[i - 1].turretDeg)) / ((keys[i].tMs - keys[i - 1].tMs) / 1000));
+      offAxis = Math.max(offAxis, Math.abs(wrap(keys[i].turretDeg)));
+    }
+    assert.ok(fastest <= 70, `${id}: ${a.name} traverses at ${fastest.toFixed(0)}°/s`);
+    if (a.name === 'hero' && scene.meta.turrets.style === 'flank' && offAxis >= 40) flankSwings++;
+    if (a.name !== 'hero' && offAxis >= 40) { wideWingmen++; }
+  }
+  // a knockout round leaves a gun laid on the tank it kills
+  for (const k of scene.effects.filter(e => e.type === 'tank_kill')) {
+    const shotFx = scene.effects.filter(e => e.type === 'fire' && !e.actor.startsWith('foe') && e.tMs <= k.tMs && e.tMs >= k.tMs - 400).at(-1);
+    if (!shotFx) continue;
+    const keys = tracks.find(tr => tr.actor === shotFx.actor).keys, foe = scene.actors.find(f => f.name === k.actor);
+    const p = [trackAt(keys, shotFx.tMs, 'pos') ?? 0, 0], pos = (() => { let i = 0; while (i < keys.length - 2 && keys[i + 1].tMs <= shotFx.tMs) i++; return keys[i].pos; })();
+    void p;
+    const want = wrap(Math.atan2(foe.pos[0] - pos[0], foe.pos[1] - pos[1]) * 180 / Math.PI - trackAt(keys, shotFx.tMs, 'facingDeg'));
+    const got = trackAt(keys, shotFx.tMs, 'turretDeg');
+    assert.ok(Math.abs(wrap(got - want)) < 3, `${id}: ${shotFx.actor}'s knockout round is laid ${wrap(got - want).toFixed(1)}° off ${k.actor}`);
+  }
+  void n;
+}
+assert.ok(flankSwings >= 10, `the hero's gun swings out across the frame in at least ten shots (${flankSwings})`);
+assert.ok(wideWingmen >= 15, `wingmen watch their own sectors in at least fifteen places (${wideWingmen})`);
 console.log(`site50.selftest: ${SHOTS.length} shots (${KINDS.map(k => `${byKind[k]} ${k}`).join(', ')}) on ${maps.size} battlefields at ${[...times].join(', ')}`);
