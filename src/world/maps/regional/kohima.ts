@@ -37,6 +37,8 @@ const bungalow: RegionalBuilder = (ctx) => {
     w: W, d: D, plinth: { h: 0.75, out: 0.1, bucket: 'stone' }, storeys: [{ h: 3.3, wall: 'plaster' }],
     roof: tin(28, 'hip'), roofColour, gableBucket: 'plaster', openings,
     chimneys: [{ x: -W * 0.25, z: -D * 0.2, sx: 0.65, sz: 0.65, above: 0.9, bucket: 'stone', cap: 'slab' }], gutters: null, verge: null,
+    // Assam-type walls: lime plaster on split-bamboo ekra between timber posts, no masonry under it to show
+    spall: null,
   }, dialect);
   veranda(sink, frame.faces.front, 0.75, frame.eaveY - 0.2, W, 2.2, WHITE, { bucket: 'structureMetal', colour: roofColour });
   veranda(sink, frame.faces.left, 0.75, frame.eaveY - 0.2, D, 2.2, WHITE, { bucket: 'structureMetal', colour: roofColour });
