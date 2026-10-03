@@ -34,6 +34,9 @@ for(const id of ['m1a2','kf41_lynx_x','strv103']){
  preview.update(b.root,b.spec,'capture_the_flag',.04);
  assert.ok(shader.uniforms.flagTime.value>time,'cloth animation advances');
  assert.match(shader.vertexShader,/objectNormal = normalize/,'lighting follows cloth deformation');
+ preview.update(b.root,b.spec,'infected',.016);
+ assert.equal(b.mesh.material.name,'Infected surface highlight');
+ assert.equal(b.root.getObjectByName('Capture flag assembly'),undefined);
  preview.update(b.root,b.spec,'standard',.016);
  assert.equal(b.root.getObjectByName('Reusable mission payload rail'),undefined);
  preview.update(b.root,b.spec,'juggernaut',.016);preview.clear();

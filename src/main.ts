@@ -1168,7 +1168,7 @@ let garagePreviewMode = 'standard';
 const garageModePreview = createLazyRuntimeOwner(
   () => import('./game/garageModePreview.ts'), module => module.createGarageModePreview(),
 );
-const garagePreviewAnimated = () => garagePreviewMode === 'juggernaut' || garagePreviewMode === 'capture_the_flag';
+const garagePreviewAnimated = () => garagePreviewMode === 'juggernaut' || garagePreviewMode === 'capture_the_flag' || garagePreviewMode === 'infected';
 
 const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   specs: VISIBLE_TANK_IDS.map(getSpec),
@@ -1176,7 +1176,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   onGameModeSelect: mode => {
     garagePreviewMode = mode;
     garageModePreview.current?.clear();
-    if (['juggernaut', 'drone', 'capture_the_flag'].includes(mode)) {
+    if (['juggernaut', 'drone', 'capture_the_flag', 'infected'].includes(mode)) {
       void garageModePreview.preload().then(() => invalidateGaragePresentation())
         .catch(error => console.error('[garage mode preview]', error));
     }

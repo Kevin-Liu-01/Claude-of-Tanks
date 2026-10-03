@@ -327,3 +327,32 @@ console.log('battlePresentationRuntime.selftest: interpolation, visibility, deta
  assert.equal(mesh.material,material,'stale boss identity/scale cannot reactivate a garage aura');assert.equal(root.scale.x,1);
  mesh.geometry.dispose();material.dispose();
 }
+
+{
+ const {entity,root}=createEntity({id:'carrier',isPlayer:true});
+ const material=new MeshStandardMaterial(),mesh=new Mesh(new BoxGeometry(),material);root.add(mesh);
+ entity.combat.hp=80;entity.combat.maxHp=100;
+ const {runtime,game}=createHarness({tanks:[entity]});
+ const flag={team:'bravo',status:'carried',carrierId:entity.id};
+ game.matchModeState={id:'capture_the_flag',perspectiveTeam:'alpha',flags:[flag]};
+ runtime.update(.016,1);
+ assert.equal(mesh.material.name,'Flag carrier surface highlight');
+ assert.equal(root.scale.x,1,'carriers keep their actual dimensions');
+ const shader={uniforms:{},vertexShader:'#include <common>\n#include <project_vertex>',fragmentShader:'#include <common>\n#include <opaque_fragment>'};
+ mesh.material.onBeforeCompile(shader,{});
+ assert.equal(shader.uniforms.energyColor.value.getHex(),0xf26a62,'enemy flag gives red energy');
+ assert.equal(shader.uniforms.energyPattern.value,1,'carrier uses its own chevron pattern');
+ game.matchModeState.perspectiveTeam='bravo';runtime.update(.016,1);
+ assert.equal(shader.uniforms.energyColor.value.getHex(),0x6fe887,'color matches the flag marker for the local viewer');
+ flag.carrierId=null;flag.status='dropped';runtime.update(.016,1);
+ assert.equal(mesh.material,material,'dropping the flag removes its aura');
+ game.matchModeState={id:'infected',factions:[{id:entity.id,team:'alpha'}]};runtime.update(.016,1);
+ assert.equal(mesh.material,material,'survivors do not glow');
+ game.matchModeState.factions[0].team='bravo';runtime.update(.016,1);
+ mesh.material.onBeforeCompile(shader,{});
+ assert.equal(shader.uniforms.energyColor.value.getHex(),0x80ef35);
+ assert.equal(shader.uniforms.energyPattern.value,2,'infection uses uneven vein pulses');
+ assert.equal(root.scale.x,1);
+ entity.combat.destroyed=true;runtime.update(.016,1);assert.equal(mesh.material,material,'dead infected stops glowing');
+ mesh.geometry.dispose();material.dispose();
+}

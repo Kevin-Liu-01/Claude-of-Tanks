@@ -4,8 +4,16 @@ interface Surface {mesh:THREE.Mesh;original:THREE.Material|THREE.Material[];high
 const IMPACT_COUNT=6;
 const IMPACT_DURATION=1.2;
 interface Impact {anchor:THREE.Object3D|null;local:THREE.Vector3;sample:THREE.Vector4}
+export interface TankEnergyStyle { readonly color: number; readonly pattern: number; readonly name: string }
+export const TANK_ENERGY = Object.freeze({
+  juggernaut: Object.freeze({color:0x35aaff,pattern:0,name:'Juggernaut surface highlight'}),
+  flagOwn: Object.freeze({color:0x6fe887,pattern:1,name:'Flag carrier surface highlight'}),
+  flagEnemy: Object.freeze({color:0xf26a62,pattern:1,name:'Flag carrier surface highlight'}),
+  infected: Object.freeze({color:0x80ef35,pattern:2,name:'Infected surface highlight'}),
+});
 interface Shield {
   surfaces:Surface[];materials:Map<THREE.Material,THREE.Material>;
+  style:TankEnergyStyle;color:{value:THREE.Color};pattern:{value:number};
   strength:{value:number};time:{value:number};rootInverse:{value:THREE.Matrix4};
   impacts:Impact[];hitPositions:{value:THREE.Vector4[]};nextImpact:number;
   dispose:()=>void;refresh:()=>void;refreshIn:number;
@@ -37,7 +45,7 @@ export function clearJuggernautVisual(root:THREE.Object3D,restoreSavedMaterials=
 /** Shade the actual vehicle surfaces: no enclosing geometry, extra draw calls,
  * enlarged silhouette, or highlight through cover. Instancing, batching, moving
  * turrets and hidden/detached modules keep their original geometry and poses. */
-export function syncJuggernautVisual(root:THREE.Object3D,_dims:{widthM:number;hullLengthM:number;heightM:number},scale:number,hp:number,maxHp:number,dt:number,enlarge=true):void {
+export function syncTankEnergyVisual(root:THREE.Object3D,_dims:{widthM:number;hullLengthM:number;heightM:number},scale:number,hp:number,maxHp:number,dt:number,enlarge=true,style:TankEnergyStyle=TANK_ENERGY.juggernaut):void {
   const previous=scales.get(root)??1,visualScale=enlarge?scale:1;
   if(previous!==visualScale){root.scale.multiplyScalar(visualScale/previous);scales.set(root,visualScale);}
   let shield=shields.get(root);
@@ -59,6 +67,7 @@ export function syncJuggernautVisual(root:THREE.Object3D,_dims:{widthM:number;hu
     const bindings=new WeakMap<THREE.Mesh,Surface>();
     const inspect=(object:THREE.Object3D)=>{
       if(!(object instanceof THREE.Mesh))return;
+      for(let part:THREE.Object3D|null=object;part&&part!==root;part=part.parent)if(part.userData.excludeModeEnergy)return;
       const bound=bindings.get(object);
       if(bound&&object.material===bound.highlight)return;
       const current=object.material;
@@ -69,8 +78,13 @@ export function syncJuggernautVisual(root:THREE.Object3D,_dims:{widthM:number;hu
       else {const surface={mesh:object,original,highlight};surfaces.push(surface);bindings.set(object,surface);}
       object.material=highlight;
     };
-    shield={surfaces,materials,strength,time,rootInverse,impacts,hitPositions:{value:impacts.map(i=>i.sample)},nextImpact:0,dispose,refresh:()=>root.traverse(inspect),refreshIn:0};
+    shield={surfaces,materials,strength,time,rootInverse,style,color:{value:new THREE.Color(style.color)},pattern:{value:style.pattern},impacts,hitPositions:{value:impacts.map(i=>i.sample)},nextImpact:0,dispose,refresh:()=>root.traverse(inspect),refreshIn:0};
     shields.set(root,shield);root.addEventListener('removed',dispose);
+  }
+  if(shield.style!==style){
+    shield.style=style;shield.color.value.setHex(style.color);shield.pattern.value=style.pattern;
+    for(const material of shield.materials.values())material.name=style.name;
+    for(const impact of shield.impacts){impact.anchor=null;impact.sample.w=-1;}
   }
   // Detail groups reattach as tanks approach. Discover those real surfaces at
   // a bounded cadence, without traversing the whole vehicle every frame.
@@ -112,7 +126,7 @@ export function pulseJuggernautImpact(root:THREE.Object3D,pos:readonly number[],
 function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
   if(!(source instanceof THREE.MeshStandardMaterial)||!source.colorWrite||source.transparent)return source;
   const existing=shield.materials.get(source);if(existing)return existing;
-  const material=source.clone();material.name='Juggernaut surface highlight';
+  const material=source.clone();material.name=shield.style.name;
   // Shader drivers (especially the prewarmed burn uniforms) are live objects,
   // not serializable metadata. Preserve their identities when isolating paint.
   material.userData={...source.userData};
@@ -122,6 +136,7 @@ function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
   material.onBeforeCompile=function(shader,renderer){
     compile.call(this,shader,renderer);
     shader.uniforms.juggernautStrength=shield.strength;shader.uniforms.juggernautTime=shield.time;
+    shader.uniforms.energyColor=shield.color;shader.uniforms.energyPattern=shield.pattern;
     shader.uniforms.juggernautRootInverse=shield.rootInverse;shader.uniforms.juggernautHits=shield.hitPositions;
     shader.vertexShader=shader.vertexShader
       .replace('#include <common>','#include <common>\nuniform mat4 juggernautRootInverse;\nvarying vec3 vJuggernautPosition;')
@@ -136,13 +151,23 @@ function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
         vJuggernautPosition = (juggernautRootInverse * modelMatrix * shieldPoint).xyz;
       `);
     shader.fragmentShader=shader.fragmentShader
-      .replace('#include <common>',`#include <common>\nuniform float juggernautStrength;\nuniform float juggernautTime;\nuniform vec4 juggernautHits[${IMPACT_COUNT}];\nvarying vec3 vJuggernautPosition;`)
+      .replace('#include <common>',`#include <common>\nuniform float juggernautStrength;\nuniform float juggernautTime;\nuniform vec3 energyColor;\nuniform float energyPattern;\nuniform vec4 juggernautHits[${IMPACT_COUNT}];\nvarying vec3 vJuggernautPosition;`)
       .replace('#include <opaque_fragment>',`
         float juggernautRim = pow(1.0 - abs(dot(normalize(normal), normalize(vViewPosition))), 2.4);
         vec3 shieldSurface = vJuggernautPosition;
         float wave = smoothstep(0.78, 1.0, sin(shieldSurface.z * 1.65 + shieldSurface.y * 2.6 - juggernautTime * 2.8
           + sin(shieldSurface.x * 2.4 + juggernautTime * 1.3) * 1.0
           + sin(shieldSurface.z * 2.1 - juggernautTime * 0.8) * 0.4));
+        if(energyPattern > 0.5 && energyPattern < 1.5) {
+          // Carrier chevrons travel up the skin like the banner's woven emblem.
+          wave = smoothstep(0.78,1.0,sin(shieldSurface.y*6.0-abs(shieldSurface.x)*3.5-juggernautTime*3.2));
+          wave *= 0.7+0.3*sin(shieldSurface.z*3.0+juggernautTime);
+        } else if(energyPattern > 1.5) {
+          // Uneven green veins breathe across infected armor.
+          float veins = sin(shieldSurface.x*4.2+sin(shieldSurface.z*3.5+juggernautTime))
+            + sin(shieldSurface.y*5.6-shieldSurface.z*2.8-juggernautTime*1.6);
+          wave = smoothstep(0.8,1.65,veins)*(0.7+0.3*sin(juggernautTime*2.2));
+        }
         float hitGlow = 0.0;
         for(int i = 0; i < ${IMPACT_COUNT}; i++) {
           float age = juggernautHits[i].w;
@@ -161,11 +186,14 @@ function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
           }
         }
         hitGlow = min(hitGlow, 2.0);
-        outgoingLight += vec3(0.03, 0.48, 1.0) * (0.055 + juggernautRim * 0.65 + wave * 0.6) * juggernautStrength
-          + vec3(0.35, 0.82, 1.0) * hitGlow * 2.0;
+        outgoingLight += energyColor * (0.055 + juggernautRim * 0.65 + wave * 0.6) * juggernautStrength
+          + mix(energyColor,vec3(1.0),0.4) * hitGlow * 2.0;
         #include <opaque_fragment>`);
   };
-  material.customProgramCacheKey=()=>cacheKey+'|juggernaut-surface-waves-v3';
+  material.customProgramCacheKey=()=>cacheKey+'|tank-mode-energy-v4';
   highlightSources.set(material,source);
   shield.materials.set(source,material);return material;
 }
+
+/** Existing boss integration shares the same owned material lifecycle. */
+export const syncJuggernautVisual = syncTankEnergyVisual;

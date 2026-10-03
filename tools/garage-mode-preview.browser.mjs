@@ -14,8 +14,8 @@ async function selectMode(page,mode){
 }
 function previewState(){
  const root=window.__DEBUG.pedestalVisual?.root;if(!root)return null;
- let shield=0;root.traverse(o=>{if(o.isMesh&&[].concat(o.material).some(m=>m.name==='Juggernaut surface highlight'))shield++;});
- return {shield,drone:!!root.getObjectByName('Docked FPV mission payload'),flag:!!root.getObjectByName('Capture flag assembly')};
+ let shield=0,carrier=0,infected=0;root.traverse(o=>{if(o.isMesh&&[].concat(o.material).some(m=>m.name==='Juggernaut surface highlight'))shield++;if(o.isMesh&&[].concat(o.material).some(m=>m.name==='Flag carrier surface highlight'))carrier++;if(o.isMesh&&[].concat(o.material).some(m=>m.name==='Infected surface highlight'))infected++;});
+ return {shield,carrier,infected,drone:!!root.getObjectByName('Docked FPV mission payload'),flag:!!root.getObjectByName('Capture flag assembly')};
 }
 try{
  await lock.acquire();heartbeat=setInterval(()=>lock.refresh(),30000);
@@ -28,11 +28,11 @@ try{
    for(const id of mobile?['m1a2']:['m1a2','kf41_lynx_x','strv103']){
     await page.evaluate(id=>window.__DEBUG.selectGarageTank(id),id);
     await page.waitForFunction(id=>window.__DEBUG.pedestalVisual?.specId===id,{timeout:180000},id);
-    for(const mode of ['juggernaut','drone','capture_the_flag','standard']){
+    for(const mode of ['juggernaut','drone','capture_the_flag','infected','standard']){
      await selectMode(page,mode);
      await page.waitForFunction((fn,mode)=>{
       const state=(0,eval)(`(${fn})`)();
-      return state&&!!state.shield===(mode==='juggernaut')&&state.drone===(mode==='drone')&&state.flag===(mode==='capture_the_flag');
+      return state&&!!state.shield===(mode==='juggernaut')&&state.drone===(mode==='drone')&&state.flag===(mode==='capture_the_flag')&&!!state.carrier===(mode==='capture_the_flag')&&!!state.infected===(mode==='infected');
      },{timeout:30000},previewState.toString(),mode);
      await new Promise(r=>setTimeout(r,400));
      await page.screenshot({path:resolve(out,`${id}-${mode}-${suffix}.png`)});

@@ -8,7 +8,7 @@ interface MissionVisual { root: THREE.Group; drone: THREE.Group; kind: 'drone' |
 const mounts=new WeakMap<THREE.Object3D,MissionVisual>();
 function createMount(tankRoot:THREE.Object3D,spec:MissionCarrierSpec,kind:'drone'|'flag'='drone'):MissionVisual {
   const seat=missionAttachmentFor(spec),root=new THREE.Group(),drone=new THREE.Group();
-  root.name='Reusable mission payload rail';root.position.set(seat.x,seat.y,seat.z);
+  root.name='Reusable mission payload rail';root.userData.excludeModeEnergy=true;root.position.set(seat.x,seat.y,seat.z);
   const parent=seat.frame==='turret'?tankRoot.getObjectByName('rig_turret'):tankRoot;
   if(!parent)throw new Error('Turret mission attachment requires the turret rig');
   // Armor datums are metres, including legacy rigs with a compressed parent.
