@@ -555,6 +555,9 @@ const ui = [
 // its pilot's feed) and the four-engine gunship circling overhead.
 const aerial = [
   sfx('drone_fpv_loop', 'aerial', `Seamless loop of a small FPV combat drone flying close by: four small electric motors at high rpm, an aggressive buzzing propeller whine, steady and constant. ${FIELD}, ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 4, proc: 'loop' }),
+  // The pilot's drone crossfades from this hover hum into the full-throttle buzz above as its motors work.
+  sfx('drone_fpv_hover_loop', 'aerial', `Seamless loop of a small quadcopter drone hovering steadily in place close by: four small electric motors at moderate rpm, a smooth even propeller hum with a soft whine, calm and constant. ${FIELD}, ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 4, proc: 'loop' }),
+  sfx('drone_wind_loop', 'aerial', `Seamless loop of wind rushing past a small drone flying fast: steady airflow and soft buffeting on a tiny microphone, no motor or propeller sound. Continuous at an even level from start to end. ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 4, proc: 'loop' }),
   sfx('drone_spinup', 'aerial', `Sound effect: a small quadcopter drone's four electric motors spinning up from rest and lifting off, a rising buzzing whine. ${NO_MUSIC}.`, 2, { variants: 1, takes: 4, proc: 'foley' }),
   sfx('drone_feed_static_loop', 'aerial', `Seamless loop of a weak analog video link: a low soft steady hiss with faint crackle and brief dropouts. ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
   sfx('drone_link_lost', 'aerial', `Sound effect: a video feed dropping out, a short harsh burst of static that cuts off into silence. ${NO_MUSIC}.`, 1.2, { variants: 1, takes: 4, proc: 'foley' }),

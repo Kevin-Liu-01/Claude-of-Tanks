@@ -145,6 +145,7 @@ ctx.advance(3);
 bus.emit('shell:hit', { shellId: 4, pos: [0, 1.5, 2], kind: 'pen', targetId: 'me', attackerId: 'foe', damage: 300, caliberMm: 120, targetMaxHp: 1000, targetHpAfter: 700 });
 names = probe.sfxLog.slice(since).map((e) => e.n);
 assert.ok(names.includes('pen_heavy') && names.includes('pen_interior'), `penetration on our hull (${names})`);
+const interiorHitGain = probe.sfxLog.slice(since).find((e) => e.n === 'pen_interior').g;
 ctx.advance(0.25);
 audio.update(1 / 60, listener, tanks);
 assert.equal(probe.voiceLog.at(-1)?.id, 'were_hit');
@@ -287,8 +288,8 @@ assert.ok(!probe.engineState().some((e) => e.id === 'gunship'), 'no tank engine 
 for (let i = 0; i < 3; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks); }
 assert.equal(probe.aerialState().gunships.length, 0, 'and fades when it is gone');
 
-// Drone: an enemy quadcopter is heard where it flies; ours spins up on our hull, flies on its
-// feed (no world loop for it) and cuts out with the link.
+// Drone: an enemy quadcopter is heard where it flies; ours spins up as it lifts off, and while it
+// flies we listen through it (no world loop for it, our tank heard from outside) until the link cuts.
 const drone = { id: 500, shooterId: 'foe', dead: false, spec: { tracer: 'DRONE', type: 'HE' }, pos: { x: 20, y: 25, z: 60 }, vel: { x: 0, y: 0, z: -40 } };
 for (let i = 0; i < 3; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks, [drone]); }
 air = probe.aerialState();
@@ -301,17 +302,37 @@ assert.equal(probe.aerialState().drones.length, 0, 'its buzz ends with it');
 since = mark();
 me.aerial = { kind: 'drone', active: true, x: 0, y: 14, z: 6, batteryS: 40 };
 const ours = { id: 501, shooterId: 'me', dead: false, spec: { tracer: 'DRONE', type: 'HE' }, pos: { x: 0, y: 14, z: 6 }, vel: { x: 0, y: 5, z: 30 } };
+// The pose runtime moves the listener into the drone while it flies.
+Object.assign(listener, { kind: 'player-drone', pos: { x: 0, y: 14, z: 6 } });
 for (let i = 0; i < 3; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks, [ours]); }
 air = probe.aerialState();
-assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'drone_spinup'), 'our drone spins up on the hull');
-assert.equal(air.own?.kind, 'drone', 'and we hear it through its feed');
+assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'drone_spinup'), 'our drone spins up as it lifts off');
+assert.equal(air.own?.kind, 'drone', 'and we fly with its motors');
 assert.equal(air.drones.length, 0, 'not as a drone in the world');
+assert.equal(probe.engineState().find((e) => e.id === 'me')?.own, false, 'our tank is heard from the drone, not from inside it');
+const spinning = air.own.gain;
+for (let i = 0; i < 160; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks, [ours]); }
+const flown = probe.aerialState().own.gain;
+assert.ok(flown > 3 * spinning && flown > 0.6, `the motors spool up to lead the mix (${spinning} → ${flown})`);
+// From the drone the hull's machinery is not heard; a hit on it is felt, muffled.
+since = mark();
+for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) { ctx.advance(0.4); bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 7 * (1 - progress), progress }); }
+audio.update(1 / 60, listener, tanks, [ours]);
+assert.ok(!probe.sfxLog.slice(since).some((e) => e.b === 'interior'), `no loading machinery in the feed (${probe.sfxLog.slice(since).map((e) => e.n)})`);
+bus.emit('shell:hit', { shellId: 7, pos: [0, 1.5, 2], kind: 'pen', targetId: 'me', attackerId: 'foe', damage: 100, caliberMm: 120, targetMaxHp: 1000, targetHpAfter: 600 });
+const felt = probe.sfxLog.slice(since).find((e) => e.n === 'pen_interior');
+assert.ok(felt && felt.g < interiorHitGain * 0.4, `the hit on our hull is felt under the feed (${felt?.g} vs ${interiorHitGain})`);
 since = mark();
 me.aerial = { kind: 'drone', active: false, x: 0, y: 2, z: 0, batteryS: 0 };
+Object.assign(listener, { kind: 'player-tank', pos: { x: 0, y: 2, z: 0 } });
 ctx.advance(1 / 60);
 audio.update(1 / 60, listener, tanks, []);
 assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'drone_link_lost'), 'the feed dies in a burst of static');
 assert.equal(probe.aerialState().own, null);
+assert.equal(probe.engineState().find((e) => e.id === 'me')?.own, true, 'and we are back inside the tank');
+since = mark();
+for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) { ctx.advance(0.4); bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 7 * (1 - progress), progress }); }
+assert.ok(probe.sfxLog.slice(since).some((e) => e.b === 'interior'), 'where the loading machinery is heard again');
 delete me.aerial;
 
 // Gun Game: the crew changes over to the next weapon and calls the load; Infected: a grave sting.

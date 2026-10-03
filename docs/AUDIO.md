@@ -15,7 +15,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
-| 366 sound-effect assets, 596 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 17 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
+| 368 sound-effect assets, 598 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 17 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
 | 13 crew radio packs × 97 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.5 MB per language | only the crew's pack (and English if a national take is missing) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
@@ -225,11 +225,21 @@ or an own perspective for the pilot or crew.
 
 - **Drone.** FPV drones fly as shells, so the live shell list reaches the audio
   update. An enemy drone buzzes where it flies (loud close, gone within about
-  500 m) and pitches up as it closes in. Our own spins up on our hull, is then
-  heard through its band-limited feed, whose hiss rises toward the 850 m range
-  limit and the last ten seconds of battery, and cuts out in a burst of static
-  when it strikes, is recalled or dies. The pilot stays in the tank, so the
-  strike's explosion arrives from there, seconds later.
+  500 m) and pitches up as it closes in. Our own spins up as it lifts off, and
+  while it flies the listener rides it (`player-drone` in
+  `listenerPoseRuntime.ts`): the battle is heard from the drone, our tank is
+  one more vehicle heard from outside, the hull's machinery is not heard, and a
+  hit on the hull is felt 10 dB down and muffled under the feed. The drone's
+  motors lead (−1 dB on the own bus): a hover hum crossfades into the
+  full-throttle buzz as the motors work harder (speed, climbing, correcting),
+  pitched by that load, spooling up over the 2.4 s launch and sagging over the
+  battery's last ten seconds; wind rises with the square of speed (high-passed
+  at 150 Hz), and the link's hiss rises toward the 850 m range limit and the
+  last ten seconds of battery. It cuts out in a burst of static when it
+  strikes, is recalled or dies; a strike is heard up close, then the listener
+  is back in the tank. Until 2026-10-02 the listener stayed in the tank, so a
+  flying drone sounded like the tank's own engine with a quiet, muffled buzz
+  under it.
 - **AC-130.** A gunship is a roster tank pinned to its orbit; it never gets a
   tank rig. The ground hears four turboprops circling overhead; its crew hears
   the cabin drone. Its guns use the normal report classes.
@@ -313,7 +323,7 @@ re-running any step with unchanged inputs spends nothing.
 
 ```
 sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──→ build-sfx.mjs (score, pick, master) ──→ public/audio/sfx + manifest
-   366 entries        ~1,000 raw takes      onsets, decay, seams,     master.mjs presets, picks override
+   368 entries        ~1,000 raw takes      onsets, decay, seams,     master.mjs presets, picks override
    prompt, dur,       eleven_text_to_       spectral bands,
    takes, variants    sound_v2, pcm_48000   clipping
 ```

@@ -44,6 +44,8 @@ import {
 } from './procedural.ts';
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
+import { cueProfile } from './soundCues.ts';
+import { AERIAL_RULES } from '../sim/matchRuleset.ts';
 import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
 import type { ModuleHealth, SurfaceId, VehicleAudioInput } from './vehicleAudioModel.ts';
@@ -272,7 +274,7 @@ const UI_SET = [
 ];
 
 /** Aircraft of the Drone and AC-130 modes, decoded on first sight of one. */
-const AERIAL_SET = ['drone_fpv_loop', 'drone_spinup', 'drone_feed_static_loop', 'drone_link_lost', 'gunship_orbit_loop', 'gunship_cabin_loop'];
+const AERIAL_SET = ['drone_fpv_loop', 'drone_fpv_hover_loop', 'drone_wind_loop', 'drone_spinup', 'drone_feed_static_loop', 'drone_link_lost', 'gunship_orbit_loop', 'gunship_cabin_loop'];
 
 const MODE_SET = [
   'sting_infected',
@@ -410,6 +412,15 @@ export function createAudio({
 
   function play(id: string, options?: PlayOptions): boolean {
     if (!pool) return false;
+    if (listenerKind === 'player-drone' && library) {
+      // Flying the drone we listen through it: the hull we sit in is felt only when it is
+      // hit (muffled, under the feed), and its machinery is not heard at all.
+      const cue = cueProfile(id, library.record(id)?.g ?? 'impacts');
+      if ((options?.space ?? cue.space) === 'hull') {
+        if ((options?.bus ?? cue.bus) !== 'ownCombat') return false;
+        options = { ...options, gainDb: (options?.gainDb ?? 0) - 10, lowpassHz: Math.min(options?.lowpassHz ?? 22000, 1600) };
+      }
+    }
     return !!pool.play(id, options);
   }
 
@@ -1346,7 +1357,8 @@ export function createAudio({
       if (probeSolo != null && entity.id !== probeSolo) continue;
       const p = entity.state.pos;
       const d = Math.hypot(p.x - frame.x, p.y - frame.y, p.z - frame.z);
-      const own = entity.id === listenerOwnerId;
+      // Flying the drone, our tank is heard from the drone like any other.
+      const own = entity.id === listenerOwnerId && listenerKind !== 'player-drone';
       const existing = rigs.has(entity.id);
       if (!own && d > (existing ? VEHICLE_LOD.farOutM : VEHICLE_LOD.farInM)) continue;
       let slot = candidateSlots[candidates.length];
@@ -1439,9 +1451,13 @@ export function createAudio({
   const gunshipRigs = new Map<string, AerialRig>();
   let ownAerial: AerialRig | null = null;
   let ownDroneFlying = false;
+  // Our drone's launch time and last velocity (its motors work hardest while it corrects).
+  let ownDroneSince = 0;
+  let ownDroneVx = 0, ownDroneVy = 0, ownDroneVz = 0, ownDroneAccel = 0;
+  const DRONE = AERIAL_RULES.drone;
   let aerialWarmed = false;
   const seenAerial = new Set<number | string>();
-  const aerialFrame: AerialFrame = { rel: { right: 0, up: 0, ahead: 0, distance: 0 }, atmosphere, doppler: 1, speedK: 0, strain: 0 };
+  const aerialFrame: AerialFrame = { rel: { right: 0, up: 0, ahead: 0, distance: 0 }, atmosphere, doppler: 1, speedK: 0, strain: 0, load: 1, spool: 1, sag: 0 };
 
   interface DroneShell { id?: number; shooterId?: string; dead?: boolean; pos?: { x: number; y: number; z: number }; vel?: { x: number; y: number; z: number }; spec?: { tracer?: string } }
 
@@ -1455,7 +1471,7 @@ export function createAudio({
     return dopplerRatio(-((p.x - frame.x) * vx + (p.y - frame.y) * vy + (p.z - frame.z) * vz) / distance, atmosphere);
   }
 
-  function updateAerial(list: readonly RuntimeValue[], shells: readonly RuntimeValue[]): void {
+  function updateAerial(list: readonly RuntimeValue[], shells: readonly RuntimeValue[], dt: number): void {
     if (!mixer || !library || !pool) return;
     seenAerial.clear();
     aerialFrame.atmosphere = atmosphere;
@@ -1499,7 +1515,7 @@ export function createAudio({
       const v = shell.vel;
       const speed = v ? Math.hypot(v.x, v.y, v.z) : 0;
       aerialFrame.doppler = v ? radialDoppler(p, v.x, v.y, v.z, aerialFrame.rel.distance) : 1;
-      aerialFrame.speedK = clamp(speed / 42, 0, 1);
+      aerialFrame.speedK = clamp(speed / DRONE.speedMps, 0, 1);
       aerialFrame.strain = 0;
       rig.update(aerialFrame);
     }
@@ -1510,8 +1526,10 @@ export function createAudio({
     const flying = view?.kind === 'drone' && !!view.active && !me?.combat?.destroyed;
     const cabin = view?.kind === 'gunship' && !me?.combat?.destroyed;
     if (flying && !ownDroneFlying) {
-      // The quadcopter spins up on our hull, then we hear it through its feed.
-      play('drone_spinup', hullOptions({ bus: 'own', lowpassHz: 7000 }));
+      // The quadcopter spins up and lifts off our hull; from here we listen through it.
+      play('drone_spinup', { space: 'flat', bus: 'own', lowpassHz: 9000 });
+      ownDroneSince = mixer.ctx.currentTime;
+      ownDroneVx = ownDroneVy = ownDroneVz = ownDroneAccel = 0;
       logSound('aerial:launch', { id: me?.id });
     } else if (!flying && ownDroneFlying) {
       play('drone_link_lost', { space: 'flat', bus: 'own', lowpassHz: 5000 });
@@ -1528,17 +1546,28 @@ export function createAudio({
     if (wantKind === 'drone') {
       const p = me.state.pos;
       const range = Math.hypot((view.x ?? p.x) - p.x, (view.y ?? p.y) - p.y, (view.z ?? p.z) - p.z);
-      // The link frays toward the 850 m range limit and the last ten seconds of battery.
-      aerialFrame.strain = Math.max(rampBetween(range, 550, 850), rampBetween(10 - (view.batteryS ?? 40), 0, 10));
-      let speed = 0;
+      const battery = rampBetween(10 - (view.batteryS ?? DRONE.batteryS), 0, 10);
+      // The link frays over the last third of its range and the last ten seconds of battery.
+      aerialFrame.strain = Math.max(rampBetween(range, DRONE.rangeM * 0.65, DRONE.rangeM), battery);
+      let vx = 0, vy = 0, vz = 0;
       for (let i = 0; i < shells.length; i++) {
         const shell = shells[i] as DroneShell;
-        if (shell?.spec?.tracer === 'DRONE' && !shell.dead && shell.vel && listenerShot(shell.shooterId)) { speed = Math.hypot(shell.vel.x, shell.vel.y, shell.vel.z); break; }
+        if (shell?.spec?.tracer === 'DRONE' && !shell.dead && shell.vel && listenerShot(shell.shooterId)) { vx = shell.vel.x; vy = shell.vel.y; vz = shell.vel.z; break; }
       }
-      aerialFrame.speedK = clamp(speed / 42, 0, 1);
+      // Motor load: forward speed, climbing, and how hard the controller is correcting.
+      const accel = dt > 1e-4 ? Math.hypot(vx - ownDroneVx, vy - ownDroneVy, vz - ownDroneVz) / dt : 0;
+      ownDroneAccel += (accel - ownDroneAccel) * Math.min(1, dt * 6);
+      ownDroneVx = vx; ownDroneVy = vy; ownDroneVz = vz;
+      aerialFrame.speedK = clamp(Math.hypot(vx, vy, vz) / DRONE.speedMps, 0, 1);
+      aerialFrame.load = clamp(0.3 + 0.45 * aerialFrame.speedK + 0.25 * clamp(vy / DRONE.climbMps, 0, 1) + 0.25 * clamp(ownDroneAccel / 25, 0, 1), 0, 1);
+      aerialFrame.spool = clamp((mixer.ctx.currentTime - ownDroneSince) / DRONE.launchS, 0, 1);
+      aerialFrame.sag = battery;
     } else {
       aerialFrame.strain = 0;
       aerialFrame.speedK = 1;
+      aerialFrame.load = 1;
+      aerialFrame.spool = 1;
+      aerialFrame.sag = 0;
     }
     ownAerial.update(aerialFrame);
   }
@@ -1932,7 +1961,7 @@ export function createAudio({
       }
       if (phase === 'battle') {
         updateRigs(list, dt);
-        updateAerial(list, shells);
+        updateAerial(list, shells, dt);
         if (startEngineSoon && playerId) {
           const rig = rigs.get(playerId);
           if (rig) { rig.startEngine(); startEngineSoon = false; }
