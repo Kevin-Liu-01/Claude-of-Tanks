@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { MAP_IDS } from '../../src/world/maps/mapIds.ts';
 import { CAST } from './cast.mjs';
-import { DUR, KINDS, LOOP_MS, SHOTS, XFADE_MS, siteScene } from './site50.mjs';
+import { isBuiltInCamoId } from '../../src/vehicles/camoPolicy.ts';
+import { DUR, KINDS, LOOP_MS, PAINT, SHOTS, XFADE_MS, siteScene } from './site50.mjs';
 import { blockedFraction, heroInFrameFraction } from './camera-clearance.mjs';
 
 // Owner 2026-10-02: fifty new shots of tanks, battles and battlefields for the site, each one continuous take that
@@ -62,4 +63,33 @@ for (const hour of ['sunset', 'night']) {
   const n = SHOTS.map(siteScene).filter(sc => sc.meta.time === hour).length;
   assert.ok(n >= 6, `at least six ${hour} shots (${n})`);
 }
+
+// Paint (owner 2026-10-02: "all of our tanks have too similar camos"): every unit wears its own catalog scheme, no two
+// shots alike; no stock coat, single-tone national coat, insignia, brand or novelty paint; snow schemes only on snow;
+// the enemy in another scheme; and since the Studio paints per vehicle model, one model never carries two schemes.
+const NOT_FIELD_PAINT = new Set(['auto', 'factory', 'signature', 'urban', 'normandy44', 'berlin45', 'mono', 'carbon', 'prism',
+  'claude', 'spark', 'openai', 'xai', 'gemini', 'ducky', 'suits', 'flames', 'leopardprint', 'bolt', 'stars', 'daisy', 'circuit', 'racing', 'paintball']);
+const SNOW = new Set(['winter', 'washworn', 'winterbands', 'merdcwinter', 'ardennes44']), SNOW_MAPS = new Set(['alpine', 'winter']);
+const fieldPaint = p => isBuiltInCamoId(p) && !NOT_FIELD_PAINT.has(p) && !p.startsWith('national_');
+const units = new Set();
+for (const shot of SHOTS) {
+  const [n, id] = shot, scene = siteScene(shot), [unit, enemy] = PAINT[n] ?? [];
+  assert.ok(fieldPaint(unit), `${id}: the unit wears field paint from the catalog (${unit})`);
+  assert.ok(!units.has(unit), `${id}: ${unit} already dresses another shot`); units.add(unit);
+  assert.ok(!SNOW.has(unit) || SNOW_MAPS.has(scene.map), `${id}: a snow scheme off the snow (${unit} on ${scene.map})`);
+  const foes = scene.actors.filter(a => a.name.startsWith('foe'));
+  for (const a of scene.actors) assert.equal(a.camo, a.name.startsWith('foe') ? enemy : unit, `${id}: ${a.name} wears the plan's paint`);
+  if (foes.length) {
+    assert.ok(fieldPaint(enemy) && enemy !== unit, `${id}: the enemy wears other field paint (${enemy})`);
+    assert.ok(!SNOW.has(enemy) || SNOW_MAPS.has(scene.map), `${id}: an enemy snow scheme off the snow (${enemy})`);
+  } else assert.equal(enemy, null, `${id}: no enemy, no enemy paint`);
+  const bySpec = new Map();
+  for (const a of scene.actors) {
+    const seen = bySpec.get(a.id);
+    assert.ok(seen == null || seen === a.camo, `${id}: ${a.id} carries two schemes (${seen}, ${a.camo})`);
+    bySpec.set(a.id, a.camo);
+  }
+  assert.deepEqual(scene.meta.paint, { unit, enemy: foes.length ? enemy : null }, `${id}: the scene records its paint`);
+}
+assert.equal(units.size, SHOTS.length, 'fifty schemes for fifty shots');
 console.log(`site50.selftest: ${SHOTS.length} shots (${KINDS.map(k => `${byKind[k]} ${k}`).join(', ')}) on ${maps.size} battlefields at ${[...times].join(', ')}`);

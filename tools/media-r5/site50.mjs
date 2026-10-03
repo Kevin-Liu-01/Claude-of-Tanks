@@ -277,6 +277,32 @@ export const SHOTS = [
     { tMs: 4600, exposureMs: 25 }],
 ];
 
+// Paint (owner 2026-10-02: "all of our tanks have too similar camos"). On their stock coats twelve of the fifty heroes
+// wore the same Russian digital and ten the same Leopard three-tone, and nearly every enemy the Russian digital. Each
+// shot's unit now wears its own scheme from the catalog — no two shots alike — picked for its battlefield and hour:
+// snow schemes only on the snow maps, sand and pixel-desert on Sunscar, urban blocks and dazzle in Steinburg, light
+// coats for the night fights so the flare catches them. Its enemy wears a different scheme. The Studio paints per
+// vehicle model, so no model may appear on both sides of one shot. n: [unit scheme, enemy scheme]
+export const PAINT = Object.freeze({
+  1: ['flecktarn', 'sig_t90a'], 2: ['berlin', 'service_soviet_coldwar'], 3: ['urbanblock', 'sig_t90'],
+  4: ['sig_t90', 'service_leo2a6m'], 5: ['sig_object695_x', 'merdc'], 6: ['splinter', 'sig_t90a_vladimir'],
+  7: ['winterbands', 'service_soviet_coldwar'], 8: ['chocchip', 'sig_t90ms'], 9: ['sig_leo2a4_otco', 'sig_t90a'],
+  10: ['sig_type100', 'rasputitsa'], 11: ['desert', 'paint_ru_t80u_modern'], 12: ['sig_t90ms', 'summer'],
+  13: ['sig_k2b', null], 14: ['winter', 'merdcwinter'], 15: ['autumn', 'service_soviet_coldwar'],
+  16: ['dazzle', 'sig_t90a'], 17: ['service_strv122', 'sig_t72m1_jaguar'], 18: ['digitaldesert', 'service_soviet_coldwar'],
+  19: ['ambushdot', 'paint_ru_t80u_modern'], 20: ['rasputitsa', 'merdc'], 21: ['sig_t90sm', 'service_leo2a6m'],
+  22: ['sig_tos1a_tagil', 'summer'], 23: ['hexfield', 'service_usa_desert'], 24: ['merdcwinter', 'sig_t90a_vladimir'],
+  25: ['washworn', 'service_soviet_coldwar'], 26: ['sig_merkava3c', 'paint_amx40'], 27: ['sig_merkava4b', 'sig_t90ms'],
+  28: ['paint_cv90_mkiv', 'sig_t90'], 29: ['tigerstripe', 'sig_t90a_vladimir'], 30: ['jungleops', 'sig_t72m1_jaguar'],
+  31: ['service_type99a', 'rasputitsa'], 32: ['service_usa_desert', 'sig_t90a'], 33: ['sig_ua_m1a1', 'sig_t90m'],
+  34: ['sig_bmpt_t90', 'service_leo2a6m'], 35: ['sig_type90a', 'service_soviet_coldwar'], 36: ['amoeba', 'paint_ru_t80u_modern'],
+  37: ['sig_ztz100_x', 'sig_t90'], 38: ['ardennes44', 'merdcwinter'], 39: ['dpm', 'sig_t90a'],
+  40: ['sig_amx56', 'service_soviet_coldwar'], 41: ['sig_sabra_mk2_x', 'sig_t90'], 42: ['paint_ru_t80u_modern', 'service_leo2a6m'],
+  43: ['m90', 'winter'], 44: ['pinkdesert', 'sig_t90ms'], 45: ['naval', 'sig_t90a'],
+  46: ['tropic', 'rasputitsa'], 47: ['sig_t90a', 'summer'], 48: ['sig_ztz85_iii', 'sig_t72m1_jaguar'],
+  49: ['oakleaf', 'service_soviet_coldwar'], 50: ['service_challenger_3', 'paint_ru_t80u_modern'],
+});
+
 const CAMERA_BLOCKED_MAX = 0.1;
 const mirrorCam = cam => cam.map(k => ({ ...k, ...(k.side != null ? { side: -k.side } : {}), ...(k.orbit != null ? { orbit: -k.orbit } : {}),
   ...(k.lookHero ? { lookHero: [-k.lookHero[0], k.lookHero[1], k.lookHero[2]] } : {}) }));
@@ -289,6 +315,9 @@ export function siteScene([n, id, kind, title, setRef, film, still]) {
     ...(film.formation ? { formation: film.formation } : {}), ...(film.count ? { count: film.count } : {}),
     ...(film.lineup ? { lineup: film.lineup } : {}), ...('enemies' in film ? { enemies: film.enemies } : {}),
     ...(film.anchor ? { anchor: film.anchor } : {}), ...(film.heading != null ? { heading: film.heading } : {}) };
+  const [camo, foeCamo] = PAINT[n] ?? [];
+  if (camo) base.camo = camo;
+  if (foeCamo && base.enemies) base.enemies = { ...base.enemies, camo: foeCamo };
   // the lens must clear the battlefield's buildings: a camera path inside a wall or blind behind one is mirrored to the
   // hero's other side, tucked in and raised, or both — whichever clears the most (camera-clearance.mjs)
   let scene = buildShot(base, { durMs: DUR, ...film, still }), cameraFix = null;
@@ -306,7 +335,8 @@ export function siteScene([n, id, kind, title, setRef, film, still]) {
   if (az != null) scene.light = { ...(scene.light ?? {}), sunAzimuthDeg: az };
   const hero = scene.actors[0]?.id;
   scene.meta = { n, id: `s${String(n).padStart(2, '0')}-${id}`, kind, title, set: set.id, map: set.map, time, hero, heroName: CAST_NAMES[hero]?.[0] ?? hero,
-    loopMs: LOOP_MS, xfadeMs: XFADE_MS, still, ...(cameraFix ? { cameraFix } : {}) };
+    loopMs: LOOP_MS, xfadeMs: XFADE_MS, still,
+    paint: { unit: base.camo, enemy: base.enemies ? base.enemies.camo ?? base.camo : null }, ...(cameraFix ? { cameraFix } : {}) };
   return scene;
 }
 

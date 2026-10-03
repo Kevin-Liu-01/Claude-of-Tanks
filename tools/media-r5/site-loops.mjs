@@ -7,6 +7,8 @@
 //   <id>-mobile.mp4   960x540 H.264 24 fps, silent (phone variants, the web-video-r1 budget)
 //   <id>.jpg          1920x1080 poster = the loop's first frame
 //   <id>.webp         1920x1080 still from the 4K master; <id>-4k.png the master itself
+//   <id>.scene.json   the Studio scene the take was rendered from (map, hour, cast and paint, effects, lens path);
+//                     the still is the same scene at meta.still.tMs (owner 2026-10-02: record each image's JSON)
 //   node tools/media-r5/site-loops.mjs [rendersRoot=shots/media-r5/site50/renders] [deliverRoot=shots/media-r5/site50/deliver] [ids,...]
 // rendersRoot holds the cinema outputs as films/<id>/ (cinema-jobs films) and stills/<id>/ (cinema-jobs blur).
 import { execFileSync } from 'node:child_process';
@@ -45,6 +47,8 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   ff('-i', loopMaster, '-vf', `${scale(960)},fps=24`, '-an', '-c:v', 'libx264', '-crf', '30', '-maxrate', '800k', '-bufsize', '1600k', '-preset', 'slow', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', join(out, `${id}-mobile.mp4`));
   ff('-i', loopMaster, '-frames:v', '1', '-vf', scale(1920), '-q:v', '3', join(out, `${id}.jpg`));
   const files = { webm: `${id}/${id}.webm`, mp4: `${id}/${id}.mp4`, mobile: `${id}/${id}-mobile.mp4`, poster: `${id}/${id}.jpg` };
+  const scene = join(renders, 'films', 'scenes', `${id}.json`);
+  if (existsSync(scene)) { copyFileSync(scene, join(out, `${id}.scene.json`)); files.scene = `${id}/${id}.scene.json`; }
   if (still) {
     const png = join(out, `${id}-4k.png`); copyFileSync(still, png);
     const im = await loadImage(readFileSync(png)), c = createCanvas(1920, Math.round(im.height * 1920 / im.width));
@@ -58,7 +62,7 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
 }
 // the index is rebuilt from the deliver folder itself, so overlapping runs (one per render chunk) never drop a shot
 const index = join(deliver, 'deliver-index.json');
-const KEYS = { webm: '.webm', mp4: '.mp4', mobile: '-mobile.mp4', poster: '.jpg', still4k: '-4k.png', still: '.webp' };
+const KEYS = { webm: '.webm', mp4: '.mp4', mobile: '-mobile.mp4', poster: '.jpg', still4k: '-4k.png', still: '.webp', scene: '.scene.json' };
 const merged = readdirSync(deliver).filter(d => /^s\d\d-/.test(d) && existsSync(join(deliver, d, `${d}.mp4`))).sort().map(id => {
   const files = Object.fromEntries(Object.entries(KEYS).filter(([, ext]) => existsSync(join(deliver, id, `${id}${ext}`))).map(([k, ext]) => [k, `${id}/${id}${ext}`]));
   const loopS = rows.find(r => r.id === id)?.loopS ?? +probe(join(deliver, id, `${id}.mp4`)).toFixed(3);
