@@ -69,8 +69,9 @@ const shifer = (pitch: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec => ({
 function khata(ctx: RegionalBuildContext, opts: { long?: boolean } = {}): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
-  // a long khata (dwelling and byre under one roof) on a wide plot lies along it, built a quarter turn round so its
-  // side door faces the frontage: the plot's body is kept, not shrunk to a cottage across it
+  // a long khata (dwelling and byre under one roof) on a wide plot lies along it, built a quarter turn round with its
+  // side door and porch on the plot's +z side and a gable to each end: the plot's body is kept, not shrunk to a cottage
+  // across it
   const turned = !!opts.long && ctx.info.w > ctx.info.d + 1;
   const pw = turned ? ctx.info.d : ctx.info.w, pd = turned ? ctx.info.w : ctx.info.d;
   // (turned, the porch on the door side stays inside the plot)
@@ -280,16 +281,19 @@ function club(ctx: RegionalBuildContext, school = false): RegionalParts {
   const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.3, y0: 0, h: 2.3 }];
   for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, D, { w: school ? 1.25 : 1.0, h: 1.5, sill: 0.95, spacing: school ? 2.2 : 2.6, margin: 1.0 })) openings.push(o);
   for (const o of windowRhythm('front', 0, W, { w: 1.0, h: 1.4, sill: 1.0, spacing: 2.4, margin: 1.0, avoid: [[-1.0, 1.0]] })) openings.push(o);
-  const frame = buildHouse(sink, {
-    w: W, d: D, plinth: { h: 0.5, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.3, wall }], roof: shifer(26, 'hip'), gableBucket: wall,
-    openings, chimneys: [{ x: 0.9, z: -D * 0.2, sx: 0.55, sz: 0.55, above: 0.8, bucket: 'stone', cap: 'slab' }], gutters: null, verge: null,
-  }, dialect({ ...st, window: { ...st.window, shutters: null, surround: school ? null : st.window.surround } }));
-  // the porch canopy on two posts and its sign board
-  const f = frame.faces.front;
-  for (const du of [-1.0, 1.0]) faceBox(sink, 'structureWood', f, du, 1.45, 1.5, 0.14, 2.9, 0.14, { colour: WHITE_FRAME });
-  const canopy: RoofSpec = { kind: 'gable', pitchDeg: 24, eave: 0.15, verge: 0.1, thickness: 0.08, bucket: 'roof', ridge: null };
-  sink.placed(Math.PI / 2, 0, 0, D / 2 + 0.85, () => emitRoof(sink, roofGeometry(1.8, 2.6, 2.9, canopy), canopy));
-  faceBox(sink, 'structureWood', f, 0, 3.0, 0.03, 2.6, 0.55, 0.04, { colour: school ? rgb(0x8a2e26) : st.paint, decor: true });
+  // set back so its porch canopy (1.9 m) stays inside the plot
+  sink.placed(0, 0, 0, -Math.min(0.75, Math.max(0, (ctx.info.d - D) / 2 - 0.25)), () => {
+    const frame = buildHouse(sink, {
+      w: W, d: D, plinth: { h: 0.5, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.3, wall }], roof: shifer(26, 'hip'), gableBucket: wall,
+      openings, chimneys: [{ x: 0.9, z: -D * 0.2, sx: 0.55, sz: 0.55, above: 0.8, bucket: 'stone', cap: 'slab' }], gutters: null, verge: null,
+    }, dialect({ ...st, window: { ...st.window, shutters: null, surround: school ? null : st.window.surround } }));
+    // the porch canopy on two posts and its sign board
+    const f = frame.faces.front;
+    for (const du of [-1.0, 1.0]) faceBox(sink, 'structureWood', f, du, 1.45, 1.5, 0.14, 2.9, 0.14, { colour: WHITE_FRAME });
+    const canopy: RoofSpec = { kind: 'gable', pitchDeg: 24, eave: 0.15, verge: 0.1, thickness: 0.08, bucket: 'roof', ridge: null };
+    sink.placed(Math.PI / 2, 0, 0, D / 2 + 0.85, () => emitRoof(sink, roofGeometry(1.8, 2.6, 2.9, canopy), canopy));
+    faceBox(sink, 'structureWood', f, 0, 3.0, 0.03, 2.6, 0.55, 0.04, { colour: school ? rgb(0x8a2e26) : st.paint, decor: true });
+  });
   return sink.finish();
 }
 
