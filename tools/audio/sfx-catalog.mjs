@@ -11,7 +11,9 @@
 //
 // Fields: id, group, prompt, dur (s), inf (prompt_influence), loop, variants
 // (shipped), takes (generated; ≥ variants), proc (mastering preset in
-// process-audio.mjs), ch ('mono' for every 3D emitter, 'stereo' for beds/UI).
+// process-audio.mjs), ch ('mono' for every 3D emitter, 'stereo' for beds/UI),
+// shape ([holdMs, tauMs, floorDb] for master.mjs's transient designer: gun
+// reports decay from their crack instead of holding a blast body).
 
 const NO_MUSIC = 'no music, no voices';
 const FIELD = 'High-quality professional field recording';
@@ -26,25 +28,30 @@ function punchy(prompt) {
 }
 
 /** Shorthand for an entry. */
-function sfx(id, group, prompt, dur, { inf = 0.45, loop = false, variants = 1, takes = variants, proc = 'oneshot', ch = 'mono', punch = proc === 'impact' } = {}) {
+function sfx(id, group, prompt, dur, { inf = 0.45, loop = false, variants = 1, takes = variants, proc = 'oneshot', ch = 'mono', punch = proc === 'impact', shape = null } = {}) {
   const text = punch ? punchy(prompt) : prompt;
-  return Object.freeze({ id, group, prompt: text, dur, inf: punch ? Math.max(inf, 0.6) : inf, loop, variants, takes, proc, ch });
+  return Object.freeze({ id, group, prompt: text, dur, inf: punch ? Math.max(inf, 0.6) : inf, loop, variants, takes, proc, ch, ...(shape ? { shape } : {}) });
 }
 
 // ------------------------------------------------------------ main guns ---
+// Real reports, not cinematic blasts (2026-10-02): the earlier "deep concussive low-frequency punch … rolling
+// echo" prompts, picked for low-end weight, came back as explosions that swell into a low boom 0.1–0.3 s after
+// the shot. A gun is an instant pressure crack; its weight is the punch under the crack and the echo after it.
+const REAL = `Realistic documentary field recording, not cinematic, no explosion, no rumble swell, no debris, ${NO_MUSIC}. One isolated shot.`;
+// The report decays more slowly as the bore (and charge) grows.
 const CANNONS = [
-  ['gun_90', '90 mm', 'sharp hard crack'],
-  ['gun_105', '105 mm', 'hard ear-splitting crack'],
-  ['gun_120', '120 mm smoothbore', 'violent ear-splitting crack'],
-  ['gun_125', '125 mm smoothbore', 'violent ear-splitting crack with a heavier body'],
-  ['gun_130', '130 mm', 'colossal crack and pressure wave'],
-  ['gun_152', '152 mm heavy', 'colossal deep blast and pressure wave'],
+  ['gun_90', '90 mm', 'an extremely sharp, cracking muzzle blast with a lighter body', [10, 65, -21]],
+  ['gun_105', '105 mm', 'an extremely sharp, ear-splitting muzzle-blast crack', [10, 70, -21]],
+  ['gun_120', '120 mm smoothbore', 'a violent, extremely sharp muzzle-blast crack', [12, 80, -20]],
+  ['gun_125', '125 mm smoothbore', 'a violent, very sharp muzzle-blast crack with a deeper report', [12, 85, -20]],
+  ['gun_130', '130 mm', 'a massive, sharp muzzle-blast crack with a deep report', [14, 90, -19]],
+  ['gun_152', '152 mm heavy', 'a colossal, sharp muzzle blast with a deep, heavy report', [15, 105, -18]],
 ];
 
 const weapons = [
-  ...CANNONS.map(([id, bore, crack]) => sfx(`${id}_close`, 'weapons',
-    `One-shot of a single ${bore} tank main gun firing, recorded close outside the tank: supersonic muzzle blast with a ${crack}, deep concussive low-frequency punch, then a rolling outdoor echo tail. ${FIELD}, ${NO_MUSIC}.`,
-    4, { inf: 0.55, variants: 3, takes: 4, proc: 'weapon-close' })),
+  ...CANNONS.map(([id, bore, crack, shape]) => sfx(`${id}_close`, 'weapons',
+    `Gunshot sound effect: one single shot of a ${bore} tank cannon at a military range, recorded 30 metres beside it: instantaneous, ${crack}, a hard concussive punch as the pressure wave slaps off the ground, then a dry echo rolling off distant hills. ${REAL}`,
+    3.5, { inf: 0.6, variants: 3, takes: 6, proc: 'gunshot', shape })),
   sfx('gun_far_light', 'weapons', `One-shot of a tank cannon fired about one kilometre away: muffled boom with a soft attack and a rolling thunder-like echo across open terrain, no crack. ${FIELD}, ${NO_MUSIC}.`, 4.5, { variants: 2, takes: 3, proc: 'weapon-far' }),
   sfx('gun_far_medium', 'weapons', `One-shot of a large-calibre tank gun fired far away, over a kilometre: deep heavy boom, low rumbling echo rolling across hills, no crack. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 2, takes: 3, proc: 'weapon-far' }),
   sfx('gun_far_heavy', 'weapons', `One-shot of a very heavy gun fired far in the distance: enormous low thud and long rolling thunder echo, no crack. ${FIELD}, ${NO_MUSIC}.`, 5.5, { variants: 2, takes: 3, proc: 'weapon-far' }),
@@ -53,9 +60,13 @@ const weapons = [
   sfx('gun_interior_heavy', 'weapons', `One-shot heard from inside a heavy armoured vehicle as its own huge gun fires: crushing muffled blast, deep hull boom, violent recoil slam. ${NO_MUSIC}.`, 2.8, { variants: 2, takes: 2, proc: 'weapon-close' }),
   // The crew's own gun, heard from the hatch beside it: the report the player hears on every shot,
   // fuller and more detailed than anyone else's (the interior reports above cover the sight).
-  sfx('gun_own_medium', 'weapons', `Gunshot sound effect: one single shot of a 105 mm tank main gun heard from the commander's open hatch right beside it: a sharp supersonic crack fused with a deep chest-thumping boom, the turret's steel ringing, the clank of the recoiling breech, then a short rolling outdoor echo. One isolated shot.`, 4, { inf: 0.6, variants: 3, takes: 5, proc: 'weapon-close' }),
-  sfx('gun_own_large', 'weapons', `Gunshot sound effect: one single shot of a 120 mm smoothbore tank gun heard from the commander's open hatch right beside it: an enormous sharp crack fused with a massive deep boom that shakes the hull, the steel turret ringing, the heavy clank of the recoiling breech, then a rolling outdoor echo. One isolated shot.`, 4.5, { inf: 0.6, variants: 3, takes: 5, proc: 'weapon-close' }),
-  sfx('gun_own_heavy', 'weapons', `Gunshot sound effect: one single shot of a 152 mm heavy tank gun heard from the commander's open hatch right beside it: a colossal blast with a crushing deep pressure wave, the whole vehicle shuddering, the slam of the huge breech recoiling, then a long rolling echo. One isolated shot.`, 5, { inf: 0.6, variants: 3, takes: 5, proc: 'weapon-close' }),
+  ...[
+    ['gun_own_medium', '105 mm', 'a deafening muzzle-blast crack', [12, 80, -17]],
+    ['gun_own_large', '120 mm smoothbore', 'a violent, deafening muzzle-blast crack', [12, 90, -17]],
+    ['gun_own_heavy', '152 mm', 'a colossal muzzle-blast crack with a deep report', [14, 105, -16]],
+  ].map(([id, bore, crack, shape]) => sfx(id, 'weapons',
+    `Gunshot sound effect: one single shot of a ${bore} tank gun heard from the commander's open hatch beside it: instantaneous, ${crack} and a concussive pressure slap, the steel turret ringing briefly, the clank of the recoiling breech, then a short outdoor echo. ${REAL}`,
+    4, { inf: 0.6, variants: 3, takes: 6, proc: 'gunshot', shape })),
   sfx('tail_open', 'weapons', `One-shot echo tail only of a distant gunshot over open fields: no initial blast, a soft diffuse rolling reverberation decaying over four seconds. ${NO_MUSIC}.`, 4, { variants: 2, takes: 2, proc: 'tail' }),
   sfx('tail_urban', 'weapons', `One-shot echo tail only of a gunshot between concrete buildings in a ruined town: no initial blast, sharp slap-back echoes then a long low reverberant tail. ${NO_MUSIC}.`, 4, { variants: 2, takes: 2, proc: 'tail' }),
   sfx('tail_mountain', 'weapons', `One-shot echo tail only of a gunshot in a mountain valley: no initial blast, distinct delayed echoes bouncing off cliffs, long decay. ${NO_MUSIC}.`, 4.5, { variants: 2, takes: 2, proc: 'tail' }),
@@ -64,11 +75,11 @@ const weapons = [
 
 // ----------------------------------------------------------- autocannons ---
 const AUTOCANNONS = [
-  ['ac_20', '20 mm', 'very sharp snappy bang'],
-  ['ac_25', '25 mm chain gun', 'sharp punchy bang'],
-  ['ac_30', '30 mm', 'hard punchy bang'],
-  ['ac_40', '40 mm', 'heavy punchy boom'],
-  ['ac_50', '50 mm', 'heavy booming report'],
+  ['ac_20', '20 mm', 'snappy crack', [6, 30, -22]],
+  ['ac_25', '25 mm chain gun', 'sharp crack', [6, 33, -22]],
+  ['ac_30', '30 mm', 'hard, sharp crack', [7, 38, -22]],
+  ['ac_40', '40 mm', 'heavy, sharp crack', [8, 45, -21]],
+  ['ac_50', '50 mm', 'heavy, deep crack', [9, 55, -21]],
 ];
 
 // Pilots (2026-10-02): short "one-shot of a single round" prompts at 0.6–1.4 s
@@ -76,17 +87,17 @@ const AUTOCANNONS = [
 // attack … One isolated shot." framing at ≥1.2 s gives a clean transient at
 // full level. Mastering trims each to its own tail.
 const autocannons = [
-  ...AUTOCANNONS.map(([id, bore, report]) => sfx(`${id}_close`, 'weapons',
-    `Gunshot sound effect: a single close-up ${bore} cannon shot from an armoured vehicle, extremely loud ${report} with a hard attack and a metallic mechanical clank, then an outdoor echo. One isolated shot.`,
-    2, { inf: 0.75, variants: 4, takes: 5, proc: 'weapon-close' })),
+  ...AUTOCANNONS.map(([id, bore, report, shape]) => sfx(`${id}_close`, 'weapons',
+    `Gunshot sound effect: one single shot of a ${bore} autocannon on an armoured vehicle at a firing range, recorded close beside it: an instant, extremely sharp ${report} with a hard punch and a metallic clank of the mechanism, then a short outdoor echo. ${REAL}`,
+    2, { inf: 0.75, variants: 4, takes: 6, proc: 'gunshot', shape })),
   sfx('ac_far_light', 'weapons', `Gunshot sound effect: a single autocannon shot heard about 600 metres away, short dull thump with a quick outdoor echo. One isolated shot.`, 2, { inf: 0.7, variants: 3, takes: 3, proc: 'weapon-far' }),
   sfx('ac_far_heavy', 'weapons', `Gunshot sound effect: a single heavy autocannon shot heard far away, muffled thud with a rolling echo. One isolated shot.`, 2.2, { inf: 0.7, variants: 3, takes: 3, proc: 'weapon-far' }),
 ];
 
 // -------------------------------------------------------- machine guns ---
 const machineGuns = [
-  sfx('mg_rifle_close', 'weapons', `Gunshot sound effect: a single close-up 7.62 mm machine gun shot, very loud sharp crack with an immediate hard attack and a short punchy body, then a brief outdoor echo. One isolated shot.`, 1.2, { inf: 0.75, variants: 4, takes: 6, proc: 'weapon-close' }),
-  sfx('mg_heavy_close', 'weapons', `Gunshot sound effect: a single close-up .50 calibre heavy machine gun shot, very loud deep punchy blast with a hard attack, then a short outdoor echo. One isolated shot.`, 1.4, { inf: 0.75, variants: 4, takes: 6, proc: 'weapon-close' }),
+  sfx('mg_rifle_close', 'weapons', `Gunshot sound effect: one single shot of a 7.62 mm machine gun at a firing range, recorded close beside it: an instant, extremely sharp, dry crack, a tight punchy report and a faint metallic click of the action, then a short outdoor echo. ${REAL}`, 1.2, { inf: 0.75, variants: 4, takes: 8, proc: 'gunshot', shape: [4, 25, -26] }),
+  sfx('mg_heavy_close', 'weapons', `Gunshot sound effect: one single shot of a .50 calibre heavy machine gun at a firing range, recorded close beside it: an instant, very loud, sharp and deep crack with a hard punch and a heavy metallic clack of the action, then a short outdoor echo. ${REAL}`, 1.4, { inf: 0.75, variants: 4, takes: 8, proc: 'gunshot', shape: [6, 35, -24] }),
   sfx('mg_far', 'weapons', `Gunshot sound effect: a single gunshot heard a few hundred metres away, small hollow pop with a short echo. One isolated shot.`, 1.2, { inf: 0.7, variants: 3, takes: 4, proc: 'weapon-far' }),
 ];
 
@@ -555,11 +566,25 @@ const ui = [
 // its pilot's feed) and the four-engine gunship circling overhead.
 const aerial = [
   sfx('drone_fpv_loop', 'aerial', `Seamless loop of a small FPV combat drone flying close by: four small electric motors at high rpm, an aggressive buzzing propeller whine, steady and constant. ${FIELD}, ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 4, proc: 'loop' }),
+  // The pilot's drone crossfades from this hover hum into the full-throttle buzz above as its motors work.
+  sfx('drone_fpv_hover_loop', 'aerial', `Seamless loop of a small quadcopter drone hovering steadily in place close by: four small electric motors at moderate rpm, a smooth even propeller hum with a soft whine, calm and constant. ${FIELD}, ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 4, proc: 'loop' }),
+  sfx('drone_wind_loop', 'aerial', `Seamless loop of wind rushing past a small drone flying fast: steady airflow and soft buffeting on a tiny microphone, no motor or propeller sound. Continuous at an even level from start to end. ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 4, proc: 'loop' }),
   sfx('drone_spinup', 'aerial', `Sound effect: a small quadcopter drone's four electric motors spinning up from rest and lifting off, a rising buzzing whine. ${NO_MUSIC}.`, 2, { variants: 1, takes: 4, proc: 'foley' }),
   sfx('drone_feed_static_loop', 'aerial', `Seamless loop of a weak analog video link: a low soft steady hiss with faint crackle and brief dropouts. ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
   sfx('drone_link_lost', 'aerial', `Sound effect: a video feed dropping out, a short harsh burst of static that cuts off into silence. ${NO_MUSIC}.`, 1.2, { variants: 1, takes: 4, proc: 'foley' }),
   sfx('gunship_orbit_loop', 'aerial', `Seamless loop of a large four-engine turboprop military aircraft circling slowly overhead at low altitude: a deep droning propeller hum with a slow pulsing beat between the engines, heard from the ground. ${FIELD}, ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 4, proc: 'loop' }),
   sfx('gunship_cabin_loop', 'aerial', `Seamless loop inside the cargo hold of a four-engine turboprop military aircraft in flight: a deep constant engine drone, airframe vibration and rushing air. ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
+  // AC-130 (2026-10-02): the crew hears its guns inside the cabin, the ground hears them from the sky.
+  sfx('gunship_cabin_rattle_loop', 'aerial', `Seamless loop inside the cargo cabin of a military aircraft in flight: loose equipment rattling, straps tapping, fuselage creaks and wind whistling through open gun ports, no engine sound. Continuous at an even level from start to end. ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 4, proc: 'loop' }),
+  sfx('gunship_flyover', 'aerial', `Sound effect: a four-engine turboprop military gunship roaring past low overhead, then banking away into a distant orbit, its engines fading. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 1, takes: 4, proc: 'oneshot', ch: 'stereo' }),
+  sfx('gunship_30mm_own', 'weapons', `Gunshot sound effect: one single shot of a 30 mm autocannon fired from inside the cargo cabin of a military gunship aircraft: an instant, hard, sharp bang from the side-mounted gun, the clatter of its feed mechanism and a spent link dropping. No engine noise. ${REAL}`, 2, { inf: 0.7, variants: 4, takes: 6, proc: 'gunshot', shape: [6, 40, -20] }),
+  sfx('gunship_howitzer_own', 'weapons', `Gunshot sound effect: one single shot of a 105 mm howitzer fired from inside the cargo cabin of a military gunship aircraft: an instantaneous, deafening blast in the enclosed fuselage, the gun slamming back on its recoil mount, then the airframe ringing hollow. No engine noise. ${REAL}`, 3.5, { inf: 0.65, variants: 3, takes: 6, proc: 'gunshot', shape: [12, 140, -15] }),
+  sfx('gunship_missile_own', 'weapons', `Sound effect: a guided missile fired from an aircraft wing pylon, heard from inside the fuselage: a sharp ignition pop, then a fierce roaring rocket motor ripping away ahead into the distance. No engine noise, ${NO_MUSIC}.`, 3, { inf: 0.6, variants: 2, takes: 4, proc: 'weapon-close' }),
+  sfx('gunship_30mm_far', 'weapons', `Gunshot sound effect: a single 30 mm cannon shot fired from an aircraft circling a few hundred metres overhead, heard on the ground: a deep hollow thump from the sky with a short echo. One isolated shot.`, 2, { inf: 0.7, variants: 3, takes: 4, proc: 'weapon-far' }),
+  sfx('gunship_howitzer_far', 'weapons', `One-shot of a howitzer fired from an aircraft circling high overhead, heard on the ground: a deep heavy boom from the sky rolling away across the land. ${FIELD}, ${NO_MUSIC}.`, 4.5, { inf: 0.6, variants: 2, takes: 4, proc: 'weapon-far' }),
+  sfx('gunship_casing_drop', 'mechanism', `One-shot of a large hot brass howitzer shell casing ejected onto the steel floor of an aircraft cabin: a heavy metallic clang, a bounce and a rolling ring. ${NO_MUSIC}.`, 1.8, { variants: 2, takes: 4, proc: 'foley' }),
+  sfx('gunship_round_load', 'mechanism', `One-shot of a heavy howitzer round being lifted and rammed by hand into an open breech: a metallic slide and a solid, weighty clunk as it seats. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 4, proc: 'foley' }),
+  sfx('gunship_weapon_select', 'equipment', `One-shot of a heavy military fire-control selector switch on an aircraft gunnery panel: a firm click, then a short low servo whirr as the selected gun arms. ${NO_MUSIC}.`, 1, { variants: 1, takes: 4, proc: 'foley' }),
 ];
 
 // -------------------------------------------------------------- stingers ---
@@ -573,6 +598,15 @@ const stingers = [
   sfx('sting_draw', 'stingers', `One-shot ${STING}: an unresolved ending, two flat low horn calls.`, 4, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
   sfx('sting_wave', 'stingers', `One-shot ${STING}: an enemy wave approaching, low war drums building, no melody.`, 3, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
   sfx('sting_infected', 'stingers', `One-shot ${STING}: turned to the other side, a low dissonant brass cluster swelling into one dull timpani hit, unsettling.`, 4, { variants: 1, takes: 3, proc: 'sting', ch: 'stereo' }),
+  // Mode openers and events (2026-10-02): field sounds, not music, so each mode is recognisable by ear.
+  sfx('mode_horde_siren', 'stingers', `Sound effect: an air-raid siren winding up and wailing over a ruined town, heard from far away. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_horde_all_clear', 'stingers', `Sound effect: a distant air-raid siren holding one long steady all-clear tone, then winding down to silence. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_frontline_barrage', 'stingers', `Sound effect: a distant preparatory artillery barrage, many heavy guns firing far away in rolling succession like continuous thunder. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_juggernaut', 'stingers', `Sound effect: a massive steel vault door slamming shut with a deep metallic boom, then a long low ominous rumble. ${NO_MUSIC}.`, 4, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_infected_outbreak', 'stingers', `Sound effect: a burst of harsh radio interference and garbled static breaking up over a low unsettling electrical drone. ${NO_MUSIC}.`, 4, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_turbo_horn', 'stingers', `Sound effect: one long blast of a deep ship's foghorn echoing across open ground. ${NO_MUSIC}.`, 3.5, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_gungame_armory', 'stingers', `Sound effect: heavy steel weapon racks rattling and a large gun breech being worked open and slammed shut in an armory. ${NO_MUSIC}.`, 3, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('cache_drop', 'props', `One-shot of a heavy supply crate dropped by parachute landing hard on the ground: a deep thud, a crunch and the canopy rustling down. ${FIELD}, ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 4, proc: 'impact', punch: false }),
 ];
 
 export const SFX_CATALOG = Object.freeze([
