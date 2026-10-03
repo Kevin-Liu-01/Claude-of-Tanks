@@ -513,6 +513,58 @@ uniform vec2 uElev;
 uniform sampler2D uEdge;
 ${NOISE_GLSL}
 ${GRID_LOOKUP_GLSL}
+vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
+  float slope = 1.0 - n.y;
+  // the zones (forest, fields, snow, scree) by the height over the upland's plinth where it has one
+  float hT = clamp((wp.y - texture2D(uHeight, g).g) / uChar4.z, 0.0, 1.0);
+  float n1 = noised(wp.xz / 1900.0 + vec2(5.3, 1.7)).x * 0.7 + noised(wp.xz / 700.0 + vec2(-3.1, 8.2)).x * 0.3;
+  // the lower flanks: stands of the map's forest (denser on the slopes, broken by clearings and fields on the gentle
+  // lowland), the crowns' mottle; the meadows and fields a patchwork of their own tones
+  float vegW = uChar3.y > 0.0 ? (1.0 - smoothstep(uChar3.y * 0.75, uChar3.y * 1.05, hT + 0.05 * n1)) * (1.0 - smoothstep(0.32, 0.55, slope)) : 0.0;
+  float standN = noised(wp.xz / 170.0 + vec2(3.1, -7.7)).x + (1.0 - apron) * (0.45 * noised(wp.xz / 61.0 + vec2(-9.2, 4.4)).x + 0.25 * noised(wp.xz / 23.0).x);
+  float stand = smoothstep(-0.15, 0.2, standN + 1.4 * smoothstep(0.03, 0.18, slope) - 0.55);
+  float mottle = 0.72 + 0.4 * mix(noised(wp.xz / 29.0 + vec2(11.3, 5.1)).x * 0.5 + 0.5, 0.5, apron);
+  // the lowland's fields: parcels on a slightly rotated grid (each its own crop: green, straw, tilled earth), on the
+  // gentle ground only — distant farmland reads as bands of colour along the hills' feet
+  vec2 fq = mat2(0.92, 0.39, -0.39, 0.92) * wp.xz / vec2(260.0, 170.0);
+  vec2 fc = floor(fq + 0.3 * vec2(noised(fq * 0.21).x, noised(fq * 0.19 + 7.1).x));
+  float crop = hash12(fc + 17.3);
+  vec3 cropC = crop < 0.45 ? uBase * vec3(0.95, 1.08, 0.88) : crop < 0.75 ? uBase * vec3(1.32, 1.18, 0.78) : uBase * vec3(1.05, 0.88, 0.7);
+  float fieldW = (1.0 - smoothstep(0.04, 0.1, slope)) * (1.0 - smoothstep(0.25, 0.45, hT)) * step(0.35, uChar3.y) * (1.0 - apron);
+  float field = noised(floor(wp.xz / 210.0) * 1.7 + vec2(0.5)).x;
+  field *= 1.0 - apron;
+  vec3 meadow = uBase * (1.0 + 0.16 * field + 0.08 * (1.0 - apron) * noised(wp.xz / 90.0 + vec2(-2.2, 9.4)).x) * vec3(1.0 + 0.06 * field, 1.0, 1.0 - 0.05 * field);
+  meadow = mix(meadow, cropC * (0.95 + 0.1 * noised(wp.xz / 37.0).x), fieldW * 0.85);
+  vec3 ground = uBase * (0.92 + 0.16 * (noised(wp.xz / 120.0 + vec2(7.7, -1.3)).x * 0.5 + 0.5));
+  vec3 col = mix(ground, mix(meadow, uForest * mottle, stand), vegW);
+  // rock on the steep faces, its beds: a tone per bed, the bedding planes darker
+  float bt = (wp.y + (wp.x * 0.6 + wp.z * 0.8) * 0.004) / uChar3.w;
+  float bi = floor(bt), bf = bt - bi;
+  float tone = hash12(vec2(bi * 7.13 + 1.7, 3.9));
+  float bedTone = 1.0 + uChar4.x * (tone - 0.5) * 2.0;
+  float plane = 1.0 - smoothstep(0.0, 0.08, bf) * smoothstep(0.0, 0.08, 1.0 - bf);
+  vec3 rockC = mix(uRock, uRock2, tone > 0.55 ? 0.7 : 0.0) * bedTone * (1.0 - 0.54 * plane * uChar4.x);
+  // the rock's own patches: warmer and cooler outcrops over a few hundred metres, weathered paler on the crests
+  float rockN = noised(wp.xz / 420.0 + vec2(-6.1, 2.3)).x;
+  rockC *= vec3(1.0 + 0.07 * rockN, 1.0 + 0.02 * rockN, 1.0 - 0.06 * rockN) * (1.0 + 0.12 * smoothstep(0.55, 0.95, hT));
+  float rockW = smoothstep(uChar3.z, uChar3.z + 0.16, slope + 0.04 * n1);
+  col = mix(col, rockC, rockW);
+  // scree on the moderate slopes below the rock
+  col = mix(col, uScree, smoothstep(0.12, 0.24, slope) * (1.0 - rockW) * (1.0 - vegW) * 0.7);
+  // snow above the snowline on the slopes that hold it
+  if (uChar3.x < 1.5) col = mix(col, uSnow, smoothstep(uChar3.x - 0.05, uChar3.x + 0.12, hT + 0.06 * n1) * (1.0 - smoothstep(0.3, 0.5, slope)));
+  col *= 1.0 + 0.08 * n1;
+  // the sun with its cast shadows, the sky with its occlusion
+  float ndl = max(0.0, dot(n, uSun));
+  float fogL = (uFog.r + uFog.g + uFog.b) / 3.0;
+  vec3 skyTint = 0.55 + 0.45 * uFog / max(1e-3, fogL);
+  // the sun warm, the shade lit by the sky (cooler), a little light bounced up from the valleys
+  vec3 sunC = uGains.y * 1.05 * ndl * light.r * vec3(1.06, 0.98, 0.86);
+  vec3 skyC = uGains.x * (0.62 + 0.38 * n.y) * light.g * skyTint;
+  vec3 bounce = uGains.x * 0.12 * (1.0 - n.y) * vec3(0.9, 0.85, 0.75);
+  col *= sunC + skyC + bounce;
+  return col;
+}
 void main() {
   float u = vUv.x, a = u * 6.2831853;
   float e = mix(uElev.x, uElev.y, vUv.y);
@@ -563,62 +615,27 @@ void main() {
   apron = max(apron, smoothstep(40.0, 160.0, footprint));
   // (a grazing reach's light too: its shadows and occlusion land a column apart as streaks — it takes a mild open sky)
   vec4 light = mix(texture2D(uLight, g), vec4(0.94, 0.9, 0.0, 1.0), apron);
-  float slope = 1.0 - n.y;
-  // the zones (forest, fields, snow, scree) by the height over the upland's plinth where it has one
-  float hT = clamp((wp.y - texture2D(uHeight, g).g) / uChar4.z, 0.0, 1.0);
+  vec3 col = surfaceColour(g, wp, n, apron, light);
   float n1 = noised(wp.xz / 1900.0 + vec2(5.3, 1.7)).x * 0.7 + noised(wp.xz / 700.0 + vec2(-3.1, 8.2)).x * 0.3;
-  // the lower flanks: stands of the map's forest (denser on the slopes, broken by clearings and fields on the gentle
-  // lowland), the crowns' mottle; the meadows and fields a patchwork of their own tones
-  float vegW = uChar3.y > 0.0 ? (1.0 - smoothstep(uChar3.y * 0.75, uChar3.y * 1.05, hT + 0.05 * n1)) * (1.0 - smoothstep(0.32, 0.55, slope)) : 0.0;
-  float standN = noised(wp.xz / 170.0 + vec2(3.1, -7.7)).x + (1.0 - apron) * (0.45 * noised(wp.xz / 61.0 + vec2(-9.2, 4.4)).x + 0.25 * noised(wp.xz / 23.0).x);
-  float stand = smoothstep(-0.15, 0.2, standN + 1.4 * smoothstep(0.03, 0.18, slope) - 0.55);
-  float mottle = 0.72 + 0.4 * mix(noised(wp.xz / 29.0 + vec2(11.3, 5.1)).x * 0.5 + 0.5, 0.5, apron);
-  // the lowland's fields: parcels on a slightly rotated grid (each its own crop: green, straw, tilled earth), on the
-  // gentle ground only — distant farmland reads as bands of colour along the hills' feet
-  vec2 fq = mat2(0.92, 0.39, -0.39, 0.92) * wp.xz / vec2(260.0, 170.0);
-  vec2 fc = floor(fq + 0.3 * vec2(noised(fq * 0.21).x, noised(fq * 0.19 + 7.1).x));
-  float crop = hash12(fc + 17.3);
-  vec3 cropC = crop < 0.45 ? uBase * vec3(0.95, 1.08, 0.88) : crop < 0.75 ? uBase * vec3(1.32, 1.18, 0.78) : uBase * vec3(1.05, 0.88, 0.7);
-  float fieldW = (1.0 - smoothstep(0.04, 0.1, slope)) * (1.0 - smoothstep(0.25, 0.45, hT)) * step(0.35, uChar3.y) * (1.0 - apron);
-  float field = noised(floor(wp.xz / 210.0) * 1.7 + vec2(0.5)).x;
-  field *= 1.0 - apron;
-  vec3 meadow = uBase * (1.0 + 0.16 * field + 0.08 * (1.0 - apron) * noised(wp.xz / 90.0 + vec2(-2.2, 9.4)).x) * vec3(1.0 + 0.06 * field, 1.0, 1.0 - 0.05 * field);
-  meadow = mix(meadow, cropC * (0.95 + 0.1 * noised(wp.xz / 37.0).x), fieldW * 0.85);
-  vec3 ground = uBase * (0.92 + 0.16 * (noised(wp.xz / 120.0 + vec2(7.7, -1.3)).x * 0.5 + 0.5));
-  vec3 col = mix(ground, mix(meadow, uForest * mottle, stand), vegW);
-  // rock on the steep faces, its beds: a tone per bed, the bedding planes darker
-  float bt = (wp.y + (wp.x * 0.6 + wp.z * 0.8) * 0.004) / uChar3.w;
-  float bi = floor(bt), bf = bt - bi;
-  float tone = hash12(vec2(bi * 7.13 + 1.7, 3.9));
-  float bedTone = 1.0 + uChar4.x * (tone - 0.5) * 2.0;
-  float plane = 1.0 - smoothstep(0.0, 0.08, bf) * smoothstep(0.0, 0.08, 1.0 - bf);
-  vec3 rockC = mix(uRock, uRock2, tone > 0.55 ? 0.7 : 0.0) * bedTone * (1.0 - 0.54 * plane * uChar4.x);
-  // the rock's own patches: warmer and cooler outcrops over a few hundred metres, weathered paler on the crests
-  float rockN = noised(wp.xz / 420.0 + vec2(-6.1, 2.3)).x;
-  rockC *= vec3(1.0 + 0.07 * rockN, 1.0 + 0.02 * rockN, 1.0 - 0.06 * rockN) * (1.0 + 0.12 * smoothstep(0.55, 0.95, hT));
-  float rockW = smoothstep(uChar3.z, uChar3.z + 0.16, slope + 0.04 * n1);
-  col = mix(col, rockC, rockW);
-  // scree on the moderate slopes below the rock
-  col = mix(col, uScree, smoothstep(0.12, 0.24, slope) * (1.0 - rockW) * (1.0 - vegW) * 0.7);
-  // snow above the snowline on the slopes that hold it
-  if (uChar3.x < 1.5) col = mix(col, uSnow, smoothstep(uChar3.x - 0.05, uChar3.x + 0.12, hT + 0.06 * n1) * (1.0 - smoothstep(0.3, 0.5, slope)));
-  col *= 1.0 + 0.08 * n1;
-  // the sun with its cast shadows, the sky with its occlusion
-  float ndl = max(0.0, dot(n, uSun));
   float fogL = (uFog.r + uFog.g + uFog.b) / 3.0;
   vec3 skyTint = 0.55 + 0.45 * uFog / max(1e-3, fogL);
-  // the sun warm, the shade lit by the sky (cooler), a little light bounced up from the valleys
-  vec3 sunC = uGains.y * 1.05 * ndl * light.r * vec3(1.06, 0.98, 0.86);
-  vec3 skyC = uGains.x * (0.62 + 0.38 * n.y) * light.g * skyTint;
-  vec3 bounce = uGains.x * 0.12 * (1.0 - n.y) * vec3(0.9, 0.85, 0.75);
-  col *= sunC + skyC + bounce;
   vec4 edge = texture2D(uEdge, vec2(u, 0.5));
   // below the ring's own skyline from the eye the strip is hidden behind the ring — but a camera above the eye or off
   // the square's centre sees a band of it over the ring's outer rows, and there the strip grazes the near country, one
   // ground point per column (a band of vertical streaks over Saltmere's coast): it keeps one lit ground tone instead
   float hiddenW = 1.0 - smoothstep(atan(edge.a) - 0.012, atan(edge.a) - 0.002, e);
-  vec3 flatC = uBase * (uGains.y * 1.05 * max(0.0, uSun.y) * vec3(1.06, 0.98, 0.86) + uGains.x * 0.82 * skyTint);
-  col = mix(col, flatC * (1.0 + 0.05 * n1), hiddenW * 0.9);
+  if (hiddenW > 0.001) {
+    // (a re-march from a higher eye was tried — the country behind the shell point seen from 300 m — and banded column
+    // by column on the ridges it grazed: the fill stays a lit ground tone, its woods and fields as broad patches round
+    // the compass, receding into the air toward the skyline so it reads as land falling away, not a sheet)
+    vec2 sp = vec2(cos(a), sin(a)) * uFrame.z;
+    float patchN = noised(sp / 900.0 + vec2(2.3, -7.1)).x * 0.6 + noised(sp / 340.0 + vec2(-4.4, 1.9)).x * 0.4;
+    vec3 flatC = uBase * (uGains.y * 1.05 * max(0.0, uSun.y) * vec3(1.06, 0.98, 0.86) + uGains.x * 0.82 * skyTint);
+    vec3 fill = mix(flatC, flatC * uForest / max(vec3(1e-3), uBase) * 0.95, smoothstep(0.05, 0.45, patchN) * step(0.35, uChar3.y));
+    float recede = smoothstep(atan(edge.a) - 0.06, atan(edge.a), e);
+    fill = mix(fill, uFog * 1.05, 0.25 + 0.35 * recede);
+    col = mix(col, fill, hiddenW * 0.95);
+  }
   // the sea sectors: the open water under the sky
   float sea = edge.g * step(wp.y, edge.b + 0.5);
   col = mix(col, uFog * 0.82, sea);
