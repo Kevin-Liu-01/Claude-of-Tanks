@@ -1911,6 +1911,114 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
   landingpad: lightMeta('landingpad', 'orbital', 9.3, 9.3, 6.9, PAL.orbital, makeLandingPad, 'metal'),
 };
 
+// ------------------------------------------------------------------------------------------ regional light variants
+// Regional-buildings lane (2026-10-03; gauntlet wave 15: "the American plank barn with the shingle roof and ranch rail
+// fence is still in [Jade River Delta's] street"). A map that adopts an
+// architecture kit (maps/regional) builds these in place of the generic light families under the same key (props.ts
+// LOCAL_TYPES): the footprint (hw, hl, h), class, hit points, crush threshold and debris shape stay the family's; the
+// build and its palette are the region's. Every build stands inside the family's footprint box.
+
+const REGIONAL_PAL = {
+  tin: [0x8f9699, 0xb8bfc1, 0x4b5053],
+  mud: [0x7b6650, 0x9c8669, 0x4f4335],
+  bamboo: [0x9f8a62, 0xbfa97e, 0x5d4f37],
+} as const satisfies Record<string, Palette>;
+
+/** A light gable roof built at the origin and moved: the shared roof helper lays its planes out centred on x = 0. */
+function shiftedGableRoof(out: THREE.BufferGeometry[], x: number, w: number, d: number, wallH: number, roofH: number,
+  y0: number, colour: number, rng: Rng): void {
+  const roof: THREE.BufferGeometry[] = [];
+  addLightGableRoof(roof, w, d, wallH, roofH, y0, colour, rng);
+  for (const part of roof) out.push(part.translate(x, 0, 0));
+}
+
+/**
+ * The char homestead (Jamuna, Bangladesh): a galvanised-sheet house on its raised earthen plinth above the flood line,
+ * a two-slope tin roof, a bamboo-posted veranda under a tin awning along the yard side, mud steps.
+ */
+function makeBengalHomestead(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], tin = REGIONAL_PAL.tin, mud = REGIONAL_PAL.mud, bam = REGIONAL_PAL.bamboo;
+  colored(out, box(7.0, 0.9, 13.0).translate(0, 0.45, 0), mud[0], rng, 0.06);
+  colored(out, box(7.3, 0.32, 13.3).translate(0, 0.16, 0), mud[2], rng, 0.05);
+  const x0 = -0.8, y0 = 0.9, w = 5.4, d = 10.6, wallH = 2.5, roofH = 1.5;
+  colored(out, box(w, wallH, d).translate(x0, y0 + wallH / 2, 0), tin[0], rng, 0.1);
+  for (const z of [d / 2 - 0.06, -d / 2 + 0.06]) colored(out, gable(w, roofH, 0.12).translate(x0, y0 + wallH, z), tin[0], rng);
+  shiftedGableRoof(out, x0, w, d, wallH, roofH, y0, tin[2], rng);
+  // the veranda on the yard side: bamboo posts standing on the plinth under a tin awning leaning on the wall
+  const xv = x0 + w / 2;
+  for (const z of [-4.0, -1.35, 1.35, 4.0]) colored(out, cylinder(0.07, 0.08, 2.32).translate(xv + 1.25, y0 + 1.16, z), bam[2], rng);
+  const awning = pitchSkillionRoof(slab(1.55, 0.06, 9.6), 'x', 1, 0.2);
+  colored(out, awning.translate(xv + 0.74, y0 + 2.36, 0), tin[1], rng);
+  colored(out, box(0.06, 1.95, 1.0).translate(xv + 0.03, y0 + 0.98, 0), 0x3a2e24, rng, 0.04);
+  for (const z of [-3.2, 3.2]) colored(out, markWorldAperture(box(0.06, 0.78, 0.9), [1, 0, 0]).translate(xv + 0.03, y0 + 1.52, z), 0x52656a, rng, 0.04);
+  colored(out, box(0.5, 0.45, 1.3).translate(xv + 1.45, 0.22, 0), mud[1], rng, 0.05);
+  return mergeConnectedStructure('longhouse', out);
+}
+
+/** A flood-season house on bamboo stilts: woven-mat walls on a bamboo platform, a tin roof, a ladder of rungs. */
+function makeBengalStiltHouse(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], tin = REGIONAL_PAL.tin, bam = REGIONAL_PAL.bamboo;
+  const lift = 1.7, w = 4.6, d = 6.2, wallH = 2.3, roofH = 1.35;
+  for (const x of [-w / 2 + 0.2, w / 2 - 0.2]) for (const z of [-d / 2 + 0.2, 0, d / 2 - 0.2]) {
+    colored(out, cylinder(0.08, 0.1, lift + 0.1).translate(x, (lift + 0.1) / 2, z), bam[2], rng);
+  }
+  colored(out, slab(w + 0.6, 0.12, d + 0.6).translate(0, lift + 0.06, 0), bam[1], rng);
+  const y0 = lift + 0.12;
+  colored(out, box(w, wallH, d).translate(0, y0 + wallH / 2, 0), bam[0], rng, 0.1);
+  for (const z of [d / 2 - 0.06, -d / 2 + 0.06]) colored(out, gable(w, roofH, 0.12).translate(0, y0 + wallH, z), bam[0], rng);
+  addLightGableRoof(out, w, d, wallH, roofH, y0, tin[0], rng);
+  colored(out, box(0.06, 1.8, 0.85).translate(w / 2 + 0.03, y0 + 0.9, 1.4), 0x3a2e24, rng, 0.04);
+  colored(out, markWorldAperture(box(0.06, 0.7, 0.8), [1, 0, 0]).translate(w / 2 + 0.03, y0 + 1.35, -1.4), 0x52656a, rng, 0.04);
+  // the ladder: two bamboo rails leaning from the ground to the platform edge, rungs lashed across them
+  const foot = w / 2 + 1.1, head = w / 2 + 0.32, run = foot - head;
+  const railLen = Math.hypot(run, lift), lean = Math.atan2(run, lift);
+  for (const dz of [-0.45, 0.45]) {
+    const rail = box(0.07, railLen, 0.07); rail.rotateZ(lean);
+    colored(out, rail.translate((foot + head) / 2, lift / 2, 1.4 + dz), bam[2], rng);
+  }
+  for (let i = 0; i < 5; i++) {
+    const y = 0.3 + i * 0.32;
+    colored(out, box(0.07, 0.07, 0.98).translate(foot - run * (y / lift), y, 1.4), bam[1], rng);
+  }
+  return mergeConnectedStructure('stilthouse', out);
+}
+
+/** A fisherman's shed on the char: woven-mat walls under a low tin roof, a net drying on a bamboo frame. */
+function makeBengalFisherShed(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], tin = REGIONAL_PAL.tin, bam = REGIONAL_PAL.bamboo;
+  const w = 4.2, d = 5.6, wallH = 2.0, roofH = 0.9, z0 = -0.9;
+  const shed: THREE.BufferGeometry[] = [];
+  colored(shed, box(w, wallH, d).translate(0, wallH / 2, 0), bam[0], rng, 0.1);
+  for (const z of [d / 2 - 0.06, -d / 2 + 0.06]) colored(shed, gable(w, roofH, 0.12).translate(0, wallH, z), bam[0], rng);
+  addLightGableRoof(shed, w, d, wallH, roofH, 0, tin[0], rng);
+  colored(shed, box(1.0, 1.7, 0.06).translate(0.6, 0.85, d / 2 + 0.03), 0x3a2e24, rng, 0.04);
+  for (const part of shed) out.push(part.translate(0, 0, z0));
+  // the net frame off the open end: two bamboo poles and the net hung between them, touching the shed's gable
+  const zn = z0 + d / 2 + 0.75;
+  for (const x of [-1.6, 1.6]) colored(out, cylinder(0.05, 0.06, 2.3).translate(x, 1.15, zn), bam[2], rng);
+  colored(out, slab(3.3, 1.5, 0.04).translate(0, 1.35, zn), 0x55604f, rng, 0.08);
+  colored(out, box(3.4, 0.06, 0.06).translate(0, 2.25, zn), bam[2], rng);
+  colored(out, box(0.06, 0.06, 0.9).translate(-1.6, 2.2, zn - 0.45), bam[2], rng);
+  return mergeConnectedStructure('fishershack', out);
+}
+
+/** The architecture kits' light-family variants (maps/regional): kit id -> family key -> the variant. */
+export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = (() => {
+  const B = DESTRUCTIBLE_BUILDING_TYPES;
+  const variant = (key: string, pal: Palette, build: LightStructureBuilder, debrisMaterial: DebrisMaterial = 'wood') => {
+    const b = B[key];
+    return lightMeta(b.id, b.family, b.hw, b.hl, b.h, pal, build, debrisMaterial);
+  };
+  return Object.freeze({
+    bengal: Object.freeze({
+      longhouse: variant('longhouse', REGIONAL_PAL.tin, makeBengalHomestead, 'metal'),
+      stilthouse: variant('stilthouse', REGIONAL_PAL.bamboo, makeBengalStiltHouse),
+      fishershack: variant('fishershack', REGIONAL_PAL.bamboo, makeBengalFisherShed),
+    }),
+  });
+})();
+
+
 export const STRUCTURE_CATALOG = [
   ...Object.keys(STRUCTURE_BUILDERS).map((id) => ({ id, mode: 'merged' })),
   ...Object.values(DESTRUCTIBLE_BUILDING_TYPES).map(({ id, family }) => ({ id, family, mode: 'destructible' })),

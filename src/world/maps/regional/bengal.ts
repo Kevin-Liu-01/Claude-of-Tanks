@@ -190,11 +190,45 @@ const wrecked: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+/**
+ * A bazaar stall (the base market plot): a raised earthen platform, bamboo posts carrying a tin roof that falls to the
+ * lane, a tin back wall, a plank counter with sacks of rice and lentils and baskets of produce.
+ */
+const bazaarStall: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng;
+  const W = Math.max(4.5, Math.min(6.4, ctx.info.w - 0.4)), D = Math.max(3.6, Math.min(5.0, ctx.info.d - 0.4));
+  const floor = 0.35, back = 2.95, front = 2.4;
+  sink.span('plaster3', -W / 2 - 0.25, -0.3, -D / 2 - 0.25, W / 2 + 0.25, floor, D / 2 + 0.25);
+  for (const [x, z, h] of [[-1, -1, back], [1, -1, back], [-1, 1, front], [1, 1, front]] as const) {
+    sink.span('structureWood', x * (W / 2 - 0.15) - 0.07, floor, z * (D / 2 - 0.15) - 0.07, x * (W / 2 - 0.15) + 0.07, h, z * (D / 2 - 0.15) + 0.07, { colour: BAMBOO_MAT });
+  }
+  sink.span('structureMetal', -W / 2 + 0.08, floor, -D / 2 + 0.08, W / 2 - 0.08, back - 0.12, -D / 2 + 0.16, { colour: sheetColour(rng) });
+  // the tin roof falls from the back wall to the lane: a shed laid along the stall's depth (local +x low = world +z)
+  const roof: RoofSpec = { kind: 'shed', pitchDeg: Math.atan2(back - front, D) * 180 / Math.PI, eave: 0.35, verge: 0.3, thickness: 0.05, bucket: 'structureMetal', ridge: null };
+  sink.placed(-Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(D, W, front, roof), roof, sheetColour(rng)));
+  sink.span('structureWood', -W / 2 + 0.35, floor, D / 2 - 1.0, W / 2 - 0.35, floor + 0.8, D / 2 - 0.45, { colour: pick(rng, WEATHERED_PLANK) });
+  // the goods: jute sacks on the counter and the floor, flat baskets of produce
+  const jute = rgb(0xa08a62), produce: readonly Rgb[] = [0x8a3a2a, 0xc0902a, 0x5a7a3a, 0xb8b0a0].map(rgb);
+  for (let k = 0, n = 3 + Math.floor(rng() * 3); k < n; k++) {
+    const x = -W / 2 + 0.7 + rng() * (W - 1.4), onCounter = rng() < 0.5;
+    const y0 = onCounter ? floor + 0.8 : floor, z = onCounter ? D / 2 - 0.72 : -D / 2 + 0.7 + rng() * 0.8;
+    sink.span('structureWood', x - 0.22, y0, z - 0.16, x + 0.22, y0 + 0.42 + rng() * 0.16, z + 0.16, { colour: jute, decor: true });
+  }
+  for (let k = 0; k < 3; k++) {
+    const x = -W / 2 + 0.8 + k * (W - 1.6) / 2;
+    sink.cylinder('structureWood', [x, floor + 0.8, D / 2 - 0.72], 'y', 0.12, 0.28, 8, { colour: pick(rng, produce), decor: true });
+  }
+  return sink.finish();
+};
+
 export const BENGAL_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => tinHouse(ctx),
   farmhouse: (ctx) => tinHouse(ctx, { big: true }),
   marketRow: bazaar,
   fishery: bazaar,
+  // the base market plot: a tin bazaar stall (gauntlet wave 15: the delta's streets still showed the generic stall)
+  market: bazaarStall,
   cornershop: brickShop,
   depot: brickShop,
   chapel: mosque,

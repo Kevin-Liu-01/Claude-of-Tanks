@@ -69,7 +69,7 @@ import {
   type AutumnCropRow, type AutumnHeadlandSite,
 } from './autumnHeadlands.ts';
 import {
-  DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
+  DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
 } from './maps/structureKit.ts';
 import {
   addCatalogExterior, addConnectedExterior, carryExteriorChimneyTops, exteriorChimneyTops,
@@ -3198,6 +3198,9 @@ ${snowCap ? `
       build: () => buildSourcedStructureGeometry('sandbagwall'),
       broken: bSandbagBroken,
     },
+    // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
+    // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
+    ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
   };
   const destructibleContext: DestructibleBuildContext = {
     heightField,

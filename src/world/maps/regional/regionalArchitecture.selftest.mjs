@@ -24,7 +24,7 @@ import { roadSettlementJunction } from '../../roadSettlementJunction.ts';
 import { roadBuildingFrontage, roadBuildingDoorAxis, buildingFootprintClearsRoads, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion } from '../../roadBuildingFrontage.ts';
 import { VILLAGE_BUILDERS } from '../villageKit.ts';
 import { URBAN_BUILDERS } from '../urbanKit.ts';
-import { STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, makeTimberBathhouse } from '../structureKit.ts';
+import { STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, makeTimberBathhouse } from '../structureKit.ts';
 import { addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops } from '../exteriorDetailKit.ts';
 import { jitterUV } from '../../propGeometry.ts';
 import { sampleObbGround } from '../../propPlacement.ts';
@@ -50,7 +50,7 @@ const INFO = {
   rangerlodge: [12.8, 16.4, 10.7], marketRow: [9, 16, 4], fishery: [18, 20, 7], rowhouse: [9.6, 10.2, 11],
   adobe: [6.6, 7.6, 4.2], caravanserai: [21.4, 19.4, 7.4], compound: [23, 14.5, 5.6], compoundSouk: [22, 16, 6],
   minaret: [4, 4, 13], bathhouse: [11, 10, 7], factory: [16, 26, 15], watertower: [5.6, 5.6, 14],
-  shed: [8, 14, 6], stack: [3.4, 3.4, 26],
+  shed: [8, 14, 6], stack: [3.4, 3.4, 26], market: [6.6, 5.2, 3.0],
 };
 // triangles per building, the three-storey tavern included (its forty windows cut into the wall with reveals, sills,
 // frames, bars and shutters, its window boxes, bench, woodpile, roof ladder and aerial, and a stripped roof patch when
@@ -216,5 +216,25 @@ for (const id of adopting) {
   assert.equal(after.obstacles, before.obstacles, `${id}: one ground-contact record per building, as before`);
   const tb = Object.values(before.triangles).reduce((a, b) => a + b, 0), ta = Object.values(after.triangles).reduce((a, b) => a + b, 0);
   console.log(`${id} (${config.props.architecture}): ${after.buildings.length} buildings in place, stream exact; settlement triangles ${tb} → ${ta}, shell records ${before.colliders} → ${after.colliders}`);
+}
+// the kits' light-family variants (structureKit REGIONAL_DESTRUCTIBLE_TYPES, swapped in through props.ts LOCAL_TYPES):
+// a known kit, an existing family, the family's footprint, class, hit points and crush threshold, a grounded build
+// (mergeConnectedStructure certifies it) inside the family's box, and a broken state
+for (const [kit, table] of Object.entries(REGIONAL_DESTRUCTIBLE_TYPES)) {
+  assert.ok(ARCHITECTURE_STYLE_IDS.includes(kit), `${kit}: light variants for an unknown kit`);
+  for (const [key, meta] of Object.entries(table)) {
+    const base = DESTRUCTIBLE_BUILDING_TYPES[key];
+    assert.ok(base, `${kit}/${key}: no such light family`);
+    for (const field of ['hw', 'hl', 'h', 'cls', 'contact', 'keep', 'crushMin', 'collider']) {
+      assert.equal(meta[field], base[field], `${kit}/${key}: ${field} must stay the family's`);
+    }
+    const g = meta.build(streamFrom(7));
+    g.computeBoundingBox();
+    const bb = g.boundingBox;
+    assert.ok(Math.max(-bb.min.x, bb.max.x) <= base.hw + 0.4 && Math.max(-bb.min.z, bb.max.z) <= base.hl + 0.4, `${kit}/${key}: the build leaves the family's footprint`);
+    assert.ok(bb.max.y <= base.h + 0.05 && bb.min.y >= -0.05, `${kit}/${key}: the build leaves the family's height band`);
+    assert.ok(meta.broken(streamFrom(9)).getAttribute('position').count > 0, `${kit}/${key}: no broken state`);
+    console.log(`${kit} ${key}: a ${base.family} variant, ${(g.index ? g.index.count : g.getAttribute('position').count) / 3} triangles`);
+  }
 }
 console.log('regional architecture: kits sound, placements preserved');
