@@ -1,6 +1,9 @@
 import type { EraProtection } from '../sim/armor.ts';
 import type { ModuleId } from '../sim/moduleCatalog.ts';
-import type { RuntimeValue } from '../runtimeTypes.ts';
+
+// The shell record and builder live in the DOM-free sim (the mode rulesets, which the rooms Worker reaches, use them).
+export { shell } from '../sim/shellSpec.ts';
+export type { ShellSpec } from '../sim/shellSpec.ts';
 
 // Pure constructors shared by fleet spec packs. Keep this module free of
 // registry imports so extension packs can use it without creating cycles.
@@ -54,27 +57,6 @@ export interface CrewBox {
   min: Vec3Tuple;
   max: Vec3Tuple;
   turretLocal: boolean;
-}
-
-export interface ShellSpec extends Record<string, RuntimeValue> {
-  name: string;
-  type: string;
-  caliberMm: number;
-  pen100Mm: number;
-  pen1000Mm: number;
-  dmg: number;
-  velocityMps: number;
-  moduleDmg: number;
-  reloadS?: number;
-  /** Ammo types in a named secondary weapon share a reload independently of the main gun. */
-  reloadGroup?: string;
-  count?: number;
-  tracer: string;
-  guided?: boolean;
-  /** Guided rounds: launcher tubes modelled on the vehicle (0 = fired through the gun). Owner 2026-09-18: the minimum
-   * missile load is one round per tube ("the BMPT T-90 should have minimum 8 since it has 8 tubes") — pinned by
-   * guidedLauncherTubes.selftest against the profiles' published tube censuses. */
-  launcherTubes?: number;
 }
 
 export interface ArmorEnvelope {
@@ -192,20 +174,6 @@ export const moduleBox = (
 export const crewBox = (
   crew: string, min: Vec3Tuple, max: Vec3Tuple, turretLocal = false,
 ): CrewBox => ({ crew, min, max, turretLocal });
-
-export const shell = (
-  name: string,
-  type: string,
-  caliberMm: number,
-  pen100Mm: number,
-  pen1000Mm: number,
-  dmg: number,
-  velocityMps: number,
-  extra: Readonly<Record<string, RuntimeValue>> | null = null,
-): ShellSpec => ({
-    name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps,
-    moduleDmg: caliberMm, tracer: type, ...(extra || {}),
-});
 
 export const apfsdsPenetration = (quoted2km: number): [number, number, number] => {
   const pen1000 = quoted2km / 0.90;

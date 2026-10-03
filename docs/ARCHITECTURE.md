@@ -1366,7 +1366,7 @@ sounds come from a few metres away); `voiceLines.ts` + `crewRadio.ts` (crew
 radio); `procedural.ts` (synthesized fallbacks and alarms); `mixPolicy.ts`
 (every level, snapshot, HDR, budget and LOD constant).
 
-**Assets.** 363 sound assets (588 variant files, 17 MB WebM/Opus) under
+**Assets.** 366 sound assets (596 variant files, 17 MB WebM/Opus) under
 `public/audio/sfx/<group>/`, described by `sfxManifest.generated.ts`
 (duration, channels, rate, loop points, size). Crew radio: 13 language packs
 × 97 lines (one to four takes each, mostly two; ~1.5 MB per pack) under
@@ -1410,7 +1410,7 @@ live play (camera pullback must not change range) and from the camera in
 cinematic and garage views; azimuth follows the camera (screen-right is
 `forward × up`). Distance law with excess attenuation per cue: gunfire,
 impacts and explosions use a compressed game-mix curve (a cannon at 400 m is
-17 dB down, not 33) so a battle stays audible across the map, while
+12 dB down, not 33) so a battle stays audible across the map, while
 small clutter (props, other hulls' brakes and gears, bullet impacts) is
 local and short-ranged. ISO 9613 air absorption lowpass, speed-of-sound
 delay beyond 18 m, Doppler on passing sources, terrain occlusion from seven

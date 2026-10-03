@@ -8,7 +8,7 @@
 // controller, setupBattle, movement (gravity, speed), ballistics (shell gravity), damage (hit
 // points lost), ammunition and equipment at spawn, and the play-menu rule cards.
 import type { GameModeId } from './matchModes.ts';
-import { shell } from '../vehicles/specHelpers.ts';
+import { shell } from './shellSpec.ts';
 
 /** Mode weapons are fictional gameplay loadouts; they never mutate the fleet catalog. */
 export const GUN_GAME_WEAPONS = Object.freeze([

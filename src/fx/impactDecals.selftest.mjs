@@ -36,7 +36,9 @@ if (!/onFxEvent\(bus, 'shell:hit',[\s\S]{0,1800}impactDecals\.stampFromEvent\(e,
 }
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
-if (!/await createFxChunked\(engineCtx, hfProxy, \{[\s\S]{0,320}resolveEntity:[\s\S]{0,120}resolveFxSubject/.test(mainSource)) {
+const fxCallStart = mainSource.indexOf('await createFxChunked(engineCtx, hfProxy, {');
+const fxOptions = fxCallStart < 0 ? '' : mainSource.slice(fxCallStart, mainSource.indexOf('}, createOpaqueLoadingYielder(', fxCallStart));
+if (!/resolveEntity:\s*\(targetId\)\s*=>\s*resolveFxSubject\(/.test(fxOptions)) {
   throw new Error('production FX must resolve struck solo, network, and player-owned tanks');
 }
 if (!/const resolved = resolveEntity\?\.\(targetId\);[\s\S]{0,100}isDecalEntity\(resolved\)/.test(effectsSource)) {

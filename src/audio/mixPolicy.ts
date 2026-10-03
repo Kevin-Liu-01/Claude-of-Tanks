@@ -33,20 +33,23 @@ export const BUS_CHANNEL: Readonly<Record<BusId, SettingsChannel>> = Object.free
  * interface) sit under them so a cannon is never masked by an idling engine.
  */
 export const BUS_LEVELS: Readonly<Record<BusId, number>> = Object.freeze({
-  weapons: 1.15,
-  impacts: 1.1,
+  // Measured on the master by tools/audio-mix-balance.mjs: gunfire must stand
+  // well clear of the idle battle bed (our engine, the ambience, idling tanks),
+  // and the radio under a near cannon.
+  weapons: 1.5,
+  impacts: 1.3,
   environment: 0.85,
   cinematic: 1,
   vehicles: 0.5,
   // Our own tank leads: its engine and running gear, its gun, and the loading
-  // and turret machinery inside it sit well above everyone else's.
-  own: 0.8,
-  ownCombat: 1.3,
+  // and turret machinery inside it sit above everyone else's.
+  own: 0.6,
+  ownCombat: 1.4,
   interior: 0.95,
-  ambience: 0.65,
+  ambience: 0.45,
   ui: 0.6,
   music: 0.6,
-  voice: 0.72,
+  voice: 0.5,
   alarm: 0.55,
 });
 

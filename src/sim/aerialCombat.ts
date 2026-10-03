@@ -4,7 +4,7 @@ import { createShell, type ShellEntity } from './ballistics.ts';
 import { AERIAL_RULES, DRONE_WARHEAD, type MatchRuleset } from './matchRuleset.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
 import { missionAttachmentFor, DRONE_DOCK_HEIGHT_M, type MissionCarrierSpec } from './missionAttachment.ts';
-import type { ShellSpec } from '../vehicles/specHelpers.ts';
+import type { ShellSpec } from './shellSpec.ts';
 
 export interface AerialView {
   kind: 'drone' | 'gunship'; active: boolean; launching: boolean;

@@ -55,6 +55,7 @@ function createHarness({
   fxEnabled = true,
   cinematic = false,
   pedestalVisual = null,
+  player = undefined,
 } = {}) {
   const scene = new Scene();
   const camera = new PerspectiveCamera(60, 16 / 9, 0.5, 4000);
@@ -81,7 +82,7 @@ function createHarness({
   const game = {
     phase,
     tanks,
-    player: tanks.find((tank) => tank.isPlayer) || tanks[0] || null,
+    player: player !== undefined ? player : tanks.find((tank) => tank.isPlayer) || tanks[0] || null,
     spotting: { isSpotted: () => spotted },
   };
   const runtime = createBattlePresentationRuntime({
@@ -128,8 +129,9 @@ function createHarness({
 
 {
   const hidden = createEntity({ id: 'hidden', team: 'enemy' });
-  const harness = createHarness({ tanks: [hidden.entity], spotted: false });
-  harness.game.player = null; // The sole enemy is a target, not the viewing player.
+  // Opponents are whoever is not on the player's team: the player (off scene) is on 'player'.
+  const me = createEntity({ id: 'me', team: 'player', isPlayer: true }).entity;
+  const harness = createHarness({ tanks: [hidden.entity], spotted: false, player: me });
   harness.runtime.update(1 / 60);
   assert.equal(hidden.root.parent, null, 'fully hidden opponents leave scene traversal');
   assert.equal(hidden.root.userData.battleVisibilityDetached, true);
@@ -148,8 +150,8 @@ function createHarness({
 
 {
   const foreign = createEntity({ id: 'foreign', team: 'enemy' });
-  const harness = createHarness({ tanks: [foreign.entity], spotted: true });
-  harness.game.player = null;
+  const me = createEntity({ id: 'me', team: 'player', isPlayer: true }).entity;
+  const harness = createHarness({ tanks: [foreign.entity], spotted: true, player: me });
   foreign.root.removeFromParent();
   harness.runtime.update(1 / 60);
   assert.equal(foreign.root.parent, null,

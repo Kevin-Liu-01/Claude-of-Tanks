@@ -421,13 +421,16 @@ const ambience = [
 // Short positional one-shots the environment director scatters around the
 // listener (random bearing, 40–400 m) so a map never sounds like a loop.
 const SPOTS = [
+  ['songbird', 'a songbird singing a short phrase', 3, 3],
   ['crow', 'a crow cawing twice', 2, 2],
+  ['lark', 'a skylark trilling high above', 3, 2],
   ['hawk', 'a hawk screeching in the sky', 2, 2],
   ['eagle', 'an eagle crying out over a valley', 2.5, 1],
   ['woodpecker', 'a woodpecker drumming on a tree trunk', 2, 2],
   ['gulls', 'seagulls crying overhead', 3, 2],
   ['geese', 'a flock of geese honking as they fly past', 3.5, 1],
   ['heron', 'a heron croaking harshly', 1.5, 1],
+  ['tropical_bird', 'an exotic tropical bird calling', 2.5, 3],
   ['cicadas', 'a burst of cicadas buzzing then fading', 4, 2],
   ['frog', 'a large frog croaking', 1.5, 2],
   ['bees', 'bees buzzing past', 2.5, 1],
