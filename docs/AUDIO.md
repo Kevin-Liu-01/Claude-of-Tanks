@@ -15,16 +15,18 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
-| 386 sound-effect assets, 627 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 18 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
+| 398 sound-effect assets, 649 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 18.6 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
 | 13 crew radio packs × 98 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.5 MB per language | only the crew's pack (and English if a national take is missing) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
 
-Procedural Web Audio (`src/audio/procedural.ts`) supplies what is better
-synthesized than sampled: the loading tone, the fire klaxon, the ammo-rack beep,
-the heartbeat, gear and turbine whines, the radio squelch, the sub-bass thump
-under heavy reports, and fallbacks for every sample while it decodes (and for
-browsers without WebM/Opus decode, i.e. Safari before 17.4).
+Every sound is one of these recordings (2026-10-03). Nothing is synthesized:
+no oscillator, rendered buffer or noise burst is ever heard, and a cue whose
+asset is still decoding, or that the browser cannot decode (Safari before 17.4
+has no WebM/Opus), is silent rather than replaced by a stand-in.
+`soundAssets.selftest.mjs` fails on any `createOscillator` in `src/audio/` or
+the HUD. The only generated signal left is the reverb's impulse response,
+which is never heard on its own.
 
 ## Runtime
 
@@ -95,15 +97,16 @@ interior, cinematic, ambience (ducked under radio) ─────────�
 ui, music, voice, alarm ──────────────────────────────────────────────────────────────────────────────────────────────┴→ glue → limiter → soft clip → master
 ```
 
-- Gunfire and our own tank lead. Weapons (1.3) and the occupied hull's gun
-  (1.3) carry a +2 dB low shelf at 110 Hz and impacts (1.3) +4 dB; our own
+- Gunfire and our own tank lead. Weapons (1.5) and the occupied hull's gun
+  (1.6) carry a +3 dB low shelf at 110 Hz and impacts (1.3) +4 dB; our own
   engine and running gear (0.36) and the loading and turret machinery inside
   it (0.95) sit above other tanks' engines (0.31); ambience (0.18, beds
-  mastered at −21 LUFS and high-passed at 90 Hz on the bus), radio (0.09) and
-  the interface (0.6, with a high-shelf cut) sit underneath. A gun's echo tail
-  sits 12 dB under its report (14 under our own), its distant bank 3 dB under
-  in the crossfade, and its muzzle blast 8 dB under a cannon's report (9 under
-  autocannons and machine guns).
+  mastered at −21 LUFS and high-passed at 90 Hz on the bus) and the interface
+  (0.6, with a high-shelf cut) sit underneath. The crew radio (0.24) is heard
+  over the battle: while a line plays the beds drop 10 dB and the world 4. A
+  gun's echo tail sits 12 dB under its report (14 under our own), its distant
+  bank 3 dB under in the crossfade, and its punch 6 dB under a cannon's
+  report, 16 under an autocannon's and 19 under a machine gun's.
 - The levels are measured on the master by `tools/audio-mix-balance.mjs`. Its
   first run, on deploy 169's louder engine and ambience (0.8 and 0.65), put
   the idle battle bed at −22 dBFS with a cannon at 15 m only 11.6 dB above it.
@@ -204,21 +207,21 @@ under it.
 A gun report is a crack: the close reports were regenerated on 2026-10-02 and
 measure 13–22 dB of crest, their loudest millisecond 4–41 ms after the onset
 and at most 22 % of their body below 100 Hz (see Sound effects below). Under
-each one, within the close range, plays a procedural muzzle blast
-(`renderMuzzleBlast` in `procedural.ts`, rendered once per bore and played
-through the voice pool like a recorded report): the Friedlander pressure pulse
-of the charge, with an instant rise and a positive phase of 0.15 ms + 0.02 ms
-per millimetre of bore (0.3 ms for a rifle round, 2.6 ms for a 120 mm gun),
-its reflection off the ground, the punch of the expanding gas (a heavily damped
-low partial only large charges have) and the gas roar. It sits 4 dB under a
-cannon's report and 6 dB under autocannons and machine guns (2 dB higher for
-our own gun); air absorption leaves only a thud at range. Until then a
-synthesized sine sweep from about 78 to 26 Hz sat under every cannon within
-700 m; 0.5–0.8 s of falling sine is a trailer boom, it made gunfire read as
-explosions, and it is gone from the firing path (HE bursts, vehicle
-explosions and penetrations of the occupied hull keep their thump). Shell
-flybys and near-miss cracks are timed from the shell's closest approach and
-muzzle velocity.
+each one, within the close range, plays the punch of the muzzle blast: a
+recorded slam of air with the air rushing back behind it (`blast_punch_light`
+under machine guns, `blast_punch_medium` under autocannons,
+`blast_punch_heavy` under guns), pitched lower as the bore grows and cut after
+0.22, 0.32 and 0.5 s so it weights the attack without blurring the decay. It
+sits 6 dB under a cannon's report, 16 under an autocannon's and 19 under a
+machine gun's (2 dB higher for our own gun); air absorption leaves only a
+thud at range. Until 2026-10-03 the punch was rendered (a Friedlander pressure
+pulse per bore); before that a synthesized sine sweep from about 78 to 26 Hz
+sat under every cannon within 700 m, and 0.5–0.8 s of falling sine is a
+trailer boom that made gunfire read as explosions. HE bursts, vehicle
+explosions and penetrations of the occupied hull carry their weight in
+recorded, low-passed layers (`blast_sub`, `hull_thud_sub`). Shell flybys and
+near-miss cracks are timed from the shell's closest approach and muzzle
+velocity.
 
 ### Your own tank: loading and machinery
 
@@ -375,10 +378,13 @@ the radio waits instead of speaking an already-loaded fallback crew. A missing
 take in a finished pack retains the existing US-crew fallback.
 Every line runs through a live intercom chain — a 24 dB/oct 320 Hz–3.4 kHz
 band, a 1.9 kHz presence peak, compression, a tanh drive, a 4.6 kHz headset
-speaker roll-off, a gated static bed and squelch — measured on the live
-output at 77–93 % of the energy inside 300–3400 Hz and under 0.1 % above 6 kHz
-in every language. A damaged radio module narrows the band, adds drive and
-drops syllables.
+speaker roll-off, and the recorded net static (`radio_static_loop`) gated
+with the line between the recorded key-up and release (`radio_key_in`,
+`radio_key_out`) — measured on the live output at 77–93 % of the energy inside
+300–3400 Hz and under 0.1 % above 6 kHz in every language. The release does
+not chirp: the synthesized squelch it replaced let a tone fall from 1250 to
+900 Hz after every line, a little boing. A damaged radio module narrows the
+band, adds drive and drops syllables.
 
 ### Settings and debugging
 
@@ -408,7 +414,7 @@ re-running any step with unchanged inputs spends nothing.
 
 ```
 sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──→ build-sfx.mjs (score, pick, master) ──→ public/audio/sfx + manifest
-   386 entries        ~1,300 raw takes      onsets, decay, seams,     master.mjs presets, picks override
+   398 entries        ~1,100 raw takes      onsets, decay, seams,     master.mjs presets, picks override
    prompt, dur,       eleven_text_to_       spectral bands,
    takes, variants    sound_v2, pcm_48000   clipping
 ```
@@ -433,7 +439,11 @@ sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──
    weight for distant reports and blasts (reward 20–150 Hz, penalise harsh
    highs), darkness for the interface and stingers, weight
    plus a clean steel transient for the loading machinery (and one event per
-   clunk, not a rattle of them), and body under the hiss for ambience beds. The best `variants` takes ship; an optional
+   clunk, not a rattle of them), body under the hiss for ambience beds, and
+   for the punch and low layers an instant slam over within 200 ms and no
+   pitched tone in the low band: a take whose 25–250 Hz content holds a
+   regular pitch for 60 ms while it glides 12 % (or for 150 ms at all) is a
+   falling sine, a cartoon boing, and loses (`lowToneGlide` in `pcm.mjs`). The best `variants` takes ship; an optional
    `tools/audio/sfx-picks.json` (`{ "<id>": [take, …] }`) pins specific takes. Single-shot assets are truncated after the first
    shot.
 5. **Mastering** (`master.mjs`). Per preset: mono fold without phase
@@ -442,7 +452,9 @@ sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──
    (`[last 4096 samples | body | first 4096]`) so `loopStart`/`loopEnd` from the
    manifest never click. Gun reports (the `gunshot` preset) are normalised on
    their true peak (−1.5 dBTP, the limiter left above it) and shaped by the
-   transient designer below; other close weapon sounds land at −9 LUFS
+   transient designer below, and so are the punches under them (`punch`); the
+   low layers under blasts (`sub`) keep only what passes a two-stage 190 Hz
+   low-pass and are normalised on their peak; other close weapon sounds land at −9 LUFS
    momentary max, impacts −10, foley −14, the interface −16, ambience beds −21
    LUFS integrated.
    Assets with almost no energy above 12 kHz are stored at 24 kHz.
@@ -605,6 +617,18 @@ crew-lines.json ─┐                    crew-voices.json
   sounds and custom sounds for every mode: the gunship's crew cabin, its guns
   inside and from the sky, its hand-loaded howitzer and selector, and an opener
   per mode with the Horde's siren, the Frontline's barrage and the caches.
+- **2026-10-03, nothing synthesized.** The owner heard a little boing all
+  through battles and found it on a listening page: the impact fallback, a
+  triangle wave sweeping from about 1.2 to 2.8 kHz that played at a fixed level,
+  unplaced, on every hit whose recorded impact had been culled for distance or
+  by the HDR window. Every synthesized sound went with it. The fallbacks
+  (shots, explosions, impacts, clicks, the engine, the loading rumble) are
+  gone, and the radio's key-up, release and static, the punch under the guns,
+  the low end under blasts and hull hits, the cabin alarms, the heartbeat, the
+  drivetrain whines, the loading bed and the sixth-sense lamp are recordings:
+  13 new assets and a release regenerated without its chirp (1,806 credits). The
+  same round put the crew over the battle, added the incoming-drone call,
+  silenced calls that were wrong while standing still and opened up the sight.
 
 ### Cost
 
@@ -613,19 +637,20 @@ rounds:
 
 | Kind | First round | Feedback rounds | Total |
 |---|---|---|---|
-| Sound generation | 26,625 | 33,503 | 60,128 |
-| Text-to-speech (casts, auditions, builds, re-rolls) | 9,029 | 10,520 | 19,549 |
-| Speech-to-text verification | 1,718 | 1,909 | 3,627 |
-| **All** | **37,372** | **45,932** | **83,304** |
+| Sound generation | 26,625 | 35,309 | 61,934 |
+| Text-to-speech (casts, auditions, builds, re-rolls) | 9,029 | 10,673 | 19,702 |
+| Speech-to-text verification | 1,718 | 1,928 | 3,646 |
+| **All** | **37,372** | **47,910** | **85,282** |
 
 The feedback rounds' sound generation is the regenerated interface, stingers
 and foley, the distant armour hits (400), the aircraft and Infected sounds
 (1,350), and the own-tank round (22,819: the own-gun reports and machinery,
 the turret drive, every battlefield bed twice and ten of them again with four
 takes, the hangar), the drone's hover and wind (528), the regenerated gun
-reports (3,044) and the AC-130 and mode packs (2,996); nearly all of their
-speech is the serious recast and rebuild of all 13 packs (10,873) plus the
-re-rolls of doubled calls (634).
+reports (3,044), the AC-130 and mode packs (2,996) and the recordings that
+replaced every synthesized sound (1,806); nearly all of their speech is the
+serious recast and rebuild of all 13 packs (10,873), the re-rolls of doubled
+calls (634) and the incoming-drone call (172).
 
 ## Changing or extending it
 
@@ -654,14 +679,14 @@ Headless selftests (all in `npm test`):
 |---|---|
 | `src/audio/audioMath.selftest.mjs` | distance law, air absorption, atmospheres, delay, Doppler, crossfades, listener frame and pan side |
 | `src/audio/vehicleAudioProfiles.selftest.mjs` | powertrain mapping, families, crews, loaders, drives |
-| `src/audio/weaponAudio.selftest.mjs` | bore classes, ordering, report trims, reload choreography, the muzzle blast (instant, peak-normalised, deterministic, longer and lower with the bore) |
+| `src/audio/weaponAudio.selftest.mjs` | bore classes, ordering, report trims, reload choreography |
 | `src/audio/vehicleAudioModel.selftest.mjs` | idle, gearboxes, no gear hunting, turbine spool, braking, scrub, landings, stalls |
-| `src/audio/soundAssets.selftest.mjs` | manifests against files, every engine reference, families, tracks, scenes, packs, payload budgets |
+| `src/audio/soundAssets.selftest.mjs` | manifests against files, every engine reference, families, tracks, scenes, packs, payload budgets, and no oscillator anywhere in the sound engine or the HUD |
 | `src/audio/assetLibrary.selftest.mjs` | pinning, eviction and reload, voice bytes, the mobile variant cap |
 | `src/audio/crewVoice.selftest.mjs` | all 13 selectable packs, national/fixed resolution, flags and localized labels, legacy migration, invalid stored values |
-| `src/audio/crewRadio.selftest.mjs` | radio discipline, interrupts, stale drops, missing-take fallback, damage, live switching and cold-pack behavior |
-| `src/audio/audioEngine.selftest.mjs` | the engine against the shipped manifests: rigs, crews, scenes, weapon layering and delay, HDR trim, sub-bass, reloads, hits, edge cases, destruction, concussion, our hits (distant bank, own-hit law, no marker), the gunner's calls and misses, our own report and recoil, the drum refill, the turret start, kill-cam, panning, scope, aircraft (gunship, enemy and own drones), mode events, interface sounds and their dedupe, rig ownership near our hull, late adoption, pause, garage |
-| `src/audio/lazyAudio.selftest.mjs` | deferred engine and loading tone |
+| `src/audio/crewRadio.selftest.mjs` | radio discipline, interrupts, stale drops, missing-take fallback, damage, live switching and cold-pack behavior, the recorded key-up, release and net static (and silence, never a tone, while they decode) |
+| `src/audio/audioEngine.selftest.mjs` | the engine against the shipped manifests: rigs, crews, scenes, weapon layering and delay, HDR trim, the punch and low layers, reloads, hits, edge cases, destruction, concussion, our hits (distant bank, own-hit law, no marker), the gunner's calls and misses, our own report and recoil, the drum refill, the turret start, kill-cam, panning, scope, aircraft (gunship, enemy and own drones), mode events, interface sounds and their dedupe, the cabin alarms, the sixth-sense lamp and the loading bed, no oscillator in a whole session, rig ownership near our hull, late adoption, pause, garage |
+| `src/audio/lazyAudio.selftest.mjs` | deferred engine; the facade makes no sound of its own |
 | `src/audio/interfaceSounds.selftest.mjs` | the control classifier (tabs, tank cards, options, toggles, back, primary, sliders, opt-outs, menus) and the delegated listeners |
 
 Browser probes use the machine-wide GPU capture lock; set
@@ -671,7 +696,7 @@ and supply a running Vite server, like `custom-select.browser.mjs`.
 
 | Probe | Checks |
 |---|---|
-| `node tools/audio-mix-balance.mjs` | garage audibility; gunfire at 15/150/400 m and our own gun over the idle battle bed on their loudest 100 ms (14/10/4 and 16 dB), and a near crack's peak (22 dB); each shot's anatomy from its arrival (a near cannon must crack: rise ≤ 15 ms, ≤ 50 % low body) and soft-clip hits; the radio under a near cannon; sound starts and radio lines per second in live combat; the drone in flight (the listener rides it, its motors lead, the feed brightens); an AC-130 battle (the opener, the cabin, the howitzer and its case) |
+| `node tools/audio-mix-balance.mjs` | garage audibility; gunfire at 15/150/400 m and our own gun over the idle battle bed on their loudest 100 ms (14/10/4 and 16 dB), and a near crack's peak (22 dB); each shot's anatomy from its arrival (a near cannon must crack: rise ≤ 15 ms, ≤ 50 % low body) and soft-clip hits; the radio at least 12 dB over the bed and at most 4 dB over a near cannon; sound starts and radio lines per second in live combat; the drone in flight (the listener rides it, its motors lead, the feed brightens); an AC-130 battle (the opener, the cabin, the howitzer and its case) |
 | `node tools/sfx-smoke.mjs` | every scene's assets, the calibre ladder, the distance crossfade and propagation delay, routing, jitter, volley headroom (battle held frozen) |
 | `node tools/voice-smoke.mjs` | the national crew, live language switching through the bus and the Sound tab, all 13 packs through the radio chain |
 | `node tools/crew-voice.browser.mjs --url=http://127.0.0.1:5173` | real Settings and persistence in English/Chinese on desktop, phone and landscape; flags, keyboard focus, dismissal, reset, reload, and all 13 packs decoded and played through Web Audio |
@@ -681,8 +706,8 @@ and supply a running Vite server, like `custom-select.browser.mjs`.
 
 ## Known limits
 
-- Browsers without WebM/Opus decode (Safari before 17.4) hear the procedural
-  fallbacks.
+- Browsers without WebM/Opus decode (Safari before 17.4) are silent: there are
+  no synthesized fallbacks.
 - `/audio/` files are revalidated by ETag (only hashed `/assets/` are
   immutable), so a regenerated file with the same name is picked up on the next
   load at the cost of a revalidation per file.

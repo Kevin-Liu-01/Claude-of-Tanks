@@ -2,10 +2,11 @@
  * src/audio/audioEngine.ts — the Claude of Tanks sound engine (SFX r5).
  *
  * Sample-driven, event-directed and physically placed:
- *   - ~350 generated sound assets (tools/audio/sfx-catalog.mjs, ElevenLabs
+ *   - ~400 generated sound assets (tools/audio/sfx-catalog.mjs, ElevenLabs
  *     sound-effects model, mastered by tools/audio/build-sfx.mjs) loaded in
  *     lazy groups — the battle roster's powertrains and guns, the map's scene,
- *     the core combat set — with procedural fallbacks while they decode;
+ *     the core combat set. Every sound is a recording: nothing is synthesized,
+ *     and a cue whose asset is still decoding is silent (no fallback);
  *   - weapons by bore class (7.62 mm … 152 mm, autocannons, launchers) with
  *     close/distant report crossfades, the map's outdoor tail, speed-of-sound
  *     delay, supersonic flybys and the occupied hull's interior report;
@@ -27,7 +28,7 @@ import type { AudioListenerPose } from './listenerPoseRuntime.ts';
 import { getLocale } from '../ui/i18n.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
 import {
-  atmosphereForMap, clamp, dbToGain, dopplerRatio, gainToDb, mulberry32, propagationDelayS, rampBetween,
+  atmosphereForMap, clamp, dbToGain, dopplerRatio, gainToDb, mulberry32, rampBetween,
   toListenerFrame, distanceAttenuationDb, panFromRelative,
   type AtmosphereProfile, type ListenerFrame, type RelativePosition,
 } from './audioMath.ts';
@@ -37,11 +38,7 @@ import { createVoicePool, type PlayOptions, type VoicePool } from './voicePool.t
 import { createCrewRadio, type CrewRadio } from './crewRadio.ts';
 import { createAmbienceDirector, sceneAssets, type AmbienceDirector } from './ambienceDirector.ts';
 import { GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
-import { BUDGETS, BUS_LEVELS, CONCUSSION, OWN_HIT_FOCUS, SNAPSHOTS, VEHICLE_LOD, type DeviceTier, type SettingsChannel } from './mixPolicy.ts';
-import {
-  ammoRackBeep, createNoiseBank, fireKlaxon, heartbeat, loadingBed, muzzleBlastBuffer, subThump, synthBoom, synthClick,
-  synthImpact, synthShot, type NoiseBank, type Rig,
-} from './procedural.ts';
+import { BUDGETS, BUS_LEVELS, CONCUSSION, SNAPSHOTS, VEHICLE_LOD, type DeviceTier, type SettingsChannel } from './mixPolicy.ts';
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
 import { cueProfile } from './soundCues.ts';
@@ -245,6 +242,11 @@ const WEAPON_FAR: Readonly<Record<WeaponClassId, string>> = Object.freeze({
   gunship_30: 'gunship_30mm_far', gunship_howitzer: 'gunship_howitzer_far', gunship_missile: 'ac_far_light',
 });
 
+/** A running loop the engine can stop (the fire alarm, the heartbeat, the loading bed). */
+interface Rig {
+  stop(fadeS?: number): void;
+}
+
 /** Assets every battle needs before the first shot. */
 const CORE_BATTLE = [
   'pen_heavy', 'pen_light', 'pen_interior', 'ricochet_heavy', 'ricochet_light', 'nonpen_heavy', 'nonpen_interior',
@@ -260,6 +262,8 @@ const CORE_BATTLE = [
   'tail_open', 'tail_forest', 'tail_urban', 'tail_mountain', 'gun_far_light', 'gun_far_medium', 'gun_far_heavy',
   'ac_far_light', 'ac_far_heavy', 'mg_far', 'mg_rifle_close', 'mg_heavy_close', 'smoke_launcher', 'smoke_burst',
   'radio_interference', 'ui_alert',
+  'blast_punch_light', 'blast_punch_medium', 'blast_punch_heavy', 'blast_sub',
+  'gear_whine_loop', 'electric_drive_loop', 'turbo_whistle_loop',
   'sting_battle', 'distant_artillery', 'distant_flak', 'distant_mg', 'jet_flyover',
 ];
 
@@ -272,12 +276,16 @@ const PLAYER_HULL = [
   'ammo_select', 'missile_mode', 'dry_fire', 'gun_limit', 'traverse_grind_loop', 'rollover', 'overturned_groan',
   'engine_flood', 'bubbles_loop', 'hull_debris_patter', 'scope_in', 'scope_out', 'lock_on', 'lock_off',
   'missile_warning', 'roof_gun_servo', 'tinnitus', 'hydro_susp', 'jump_launch', 'self_right', 'hatch', 'switch_toggle',
+  'hull_thud_sub', 'alarm_fire_loop', 'alarm_ammo', 'heartbeat_loop',
 ];
 
 const UI_SET = [
   'ui_click', 'ui_toggle', 'ui_back', 'ui_confirm', 'ui_error', 'ui_tab', 'ui_tank_select', 'ui_deploy',
-  'ui_slider', 'ui_ready', 'sting_garage',
+  'ui_slider', 'ui_ready', 'sting_garage', 'loading_bed_loop',
 ];
+
+/** The crew radio's keyed elements and net static, decoded from boot like the interface. */
+const RADIO_SET = ['radio_interference', 'radio_key_in', 'radio_key_out', 'radio_static_loop'];
 
 /** Aircraft of the Drone and AC-130 modes, decoded on first sight of one. */
 const AERIAL_SET = [
@@ -330,7 +338,6 @@ export function createAudio({
   let pool: VoicePool | null = null;
   let radio: CrewRadio | null = null;
   let ambience: AmbienceDirector | null = null;
-  let noise: NoiseBank | null = null;
   const random = mulberry32(0x7a11c);
 
   // ---- settings (cot.settings.v1, live via 'ui:volumes').
@@ -370,6 +377,7 @@ export function createAudio({
   let paused = false;
   let killcam = false;
   let loading: Rig | null = null;
+  let loadingActive = false;
   let ambientWanted = false;
   let playerId: string | null = null;
   let playerTeam: string | null = null;
@@ -400,6 +408,7 @@ export function createAudio({
   let lastSpotCallAt = -99;
   // "We're spotted" once per exposure, not every time an enemy's view flickers back onto a still tank.
   let lastSixthSenseAt = -99;
+  let lastSixthAlertAt = -99;
   // Enemy drones already called out (each drone once).
   const droneWarned = new Set<number>();
   let fireAlarm: Rig | null = null;
@@ -452,6 +461,13 @@ export function createAudio({
       }
     }
     return !!pool.play(id, options);
+  }
+
+  /** A looping cue as a stoppable handle; null while its asset decodes (a missing loop stays silent). */
+  function loopRig(id: string, options: PlayOptions = {}): Rig | null {
+    const voice = pool?.play(id, { ...options, loop: true }) ?? null;
+    if (!voice) return null;
+    return { stop: (fadeS = 0.2) => { pool?.stop((v) => v === voice, fadeS); } };
   }
 
   function at(p: Vec3 | { x: number; y: number; z: number }): PlayOptions {
@@ -533,19 +549,19 @@ export function createAudio({
 
   // --------------------------------------------------------------- weapons ---
 
-  // Muzzle blasts, rendered once per bore (procedural.ts): the instant pressure crack a recorded report
-  // never quite has. Level re the report: under it, so it sharpens the attack without reading as a click.
-  const blastBuffers = new Map<number, AudioBuffer>();
-  const BLAST_DB: Readonly<Record<string, number>> = Object.freeze({ cannon: -5, autocannon: -8, mg: -9 });
+  // The punch under a close report (recorded layers by bore; until 2026-10-03 a rendered pressure pulse): the air
+  // slam a crack alone lacks. Level re the report: under it, and cut short, so it weights the attack without
+  // blurring the decay. The cannon level matches the rendered pulse it replaced; the small bores sit 4 dB above
+  // theirs, which had all but vanished under the report.
+  const BLAST_DB: Readonly<Record<string, number>> = Object.freeze({ cannon: -6, autocannon: -16, mg: -19 });
   // Machine-gun bursts echo once per beat, not once per round.
   const lastBurstTail = new Map<string, number>();
 
-  function muzzleBlast(caliberMm: number): AudioBuffer | null {
-    if (!ctx) return null;
-    const bore = Math.max(5, Math.round(caliberMm));
-    let buffer = blastBuffers.get(bore);
-    if (!buffer) { buffer = muzzleBlastBuffer(ctx, bore); blastBuffers.set(bore, buffer); }
-    return buffer;
+  /** The punch layer for a report: which recording, its rate (a bigger bore sits lower) and how long it may ring. */
+  function punchFor(family: string, caliberMm: number): { id: string; rate: number; maxDurS: number } {
+    if (family === 'mg') return { id: 'blast_punch_light', rate: clamp(1.12 - (caliberMm - 7.62) / 50, 0.96, 1.12), maxDurS: 0.22 };
+    if (family === 'autocannon') return { id: 'blast_punch_medium', rate: clamp(1.15 - (caliberMm - 20) / 60, 0.9, 1.15), maxDurS: 0.32 };
+    return { id: 'blast_punch_heavy', rate: clamp(1.1 - (caliberMm - 90) / 200, 0.88, 1.1), maxDurS: 0.5 };
   }
 
   function fireWeapon(pos: Vec3, caliberMm: number, soundProfile: string | null | undefined, own: boolean, muzzleIndex = -1, cinematic = false, shooterId: string | null = null): void {
@@ -568,15 +584,15 @@ export function createAudio({
     // The blast belongs to the close report: past its range the distant bank carries the shot.
     const blastDb = closeK > 0.05 ? BLAST_DB[cls.family] : undefined;
     if (blastDb != null) {
-      const blast = muzzleBlast(caliberMm);
-      if (blast) play('muzzle_blast', { ...base, buffer: blast, rate: 1, loudDb: cls.loudDb + 1, gainDb: (base.gainDb ?? 0) + blastDb + (own ? 2 : 0) });
+      const punch = punchFor(cls.family, caliberMm);
+      play(punch.id, { ...base, rate: punch.rate, maxDurS: punch.maxDurS, loudDb: cls.loudDb + 1, gainDb: (base.gainDb ?? 0) + blastDb + (own ? 2 : 0) });
     }
-    const closePlayed = (!!ownReport && !!play(ownReport, { ...base, gainDb: (base.gainDb ?? 0) + 2.5 }))
-      || (closeK > 0.03 && !!play(close, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(closeK) + (own ? 2.5 : 0) }));
+    // The crew's own report when the class has one, the close report otherwise.
+    if (!(ownReport && play(ownReport, { ...base, gainDb: (base.gainDb ?? 0) + 2.5 })) && closeK > 0.03) {
+      play(close, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(closeK) + (own ? 2.5 : 0) });
+    }
     // The distant banks are loudness-mastered booms, the close reports peak-mastered cracks: the boom sits under.
-    const farPlayed = farK > 0.03 && play(far, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(farK) - 3 });
-    // A report whose close bank is still decoding must not read as distant.
-    const played = (closePlayed || closeK <= 0.4) && (closePlayed || farPlayed);
+    if (farK > 0.03) play(far, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(farK) - 3 });
     if (report.twin) play(close, { ...base, delayS: 0.016, rate: report.rate * (muzzleIndex === 1 ? 1.04 : 0.97), gainDb: (base.gainDb ?? 0) + gainToDb(Math.max(closeK, 0.05)) - 2 });
     if (scene.tail !== 'none' && mixer) {
       const now = mixer.ctx.currentTime;
@@ -600,13 +616,9 @@ export function createAudio({
       play('gun_recoil_mech', hullOptions({ delayS: 0.035, rate: clamp(1.15 - (caliberMm - 100) / 300, 0.85, 1.15) }));
     }
     // (A synthesized sub sweep used to sit under every cannon; 0.5–0.8 s of falling sine is a trailer boom,
-    // and it made gunfire read as explosions. The muzzle blast's punch is the weight now.)
+    // and it made gunfire read as explosions. The recorded punch is the weight now.)
     if ((own || distance < 45) && cls.family === 'autocannon') {
       play('ac_feed', own ? hullOptions({ delayS: cls.actionDelayS, gainDb: -8 }) : { x, y, z, delayS: cls.actionDelayS, gainDb: -10 });
-    }
-    if (!played && noise && mixer) {
-      const gain = own ? 0.6 : dbToGain(distanceAttenuationDb(distance, 12, 1)) * 0.7;
-      if (gain > 0.003) synthShot(mixer.ctx, mixer.input(bus ?? 'weapons'), noise, mixer.ctx.currentTime + (own ? 0.005 : Math.min(3, distance / atmosphere.speedOfSoundMps)), caliberMm, gain, random);
     }
   }
 
@@ -686,26 +698,18 @@ export function createAudio({
     if (mixer.concussion(0.35 + 0.5 * strength) && strength > 0.45) play('tinnitus', { delayS: 0.15 });
   }
 
-  /** A synthesized layer's level under a cue's distance law, carried by the own-hit focus law when it is ours. */
-  function lawGain(distance: number, refM: number, rolloff: number, focus: boolean): number {
-    return focus
-      ? dbToGain(distanceAttenuationDb(distance, refM * OWN_HIT_FOCUS.refScale, Math.min(rolloff, OWN_HIT_FOCUS.maxRolloff)))
-      : dbToGain(distanceAttenuationDb(distance, refM, rolloff));
-  }
-
   function explosion(x: number, y: number, z: number, caliberMm: number, bus?: 'cinematic', focus = false): void {
     const id = caliberMm >= 140 ? 'expl_he_large' : caliberMm >= 61 ? 'expl_he_medium' : 'expl_he_small';
     const distance = distanceTo(x, y, z);
-    if (noise && mixer && caliberMm >= 61 && distance < (focus ? 1200 : 600)) {
+    if (caliberMm >= 61 && distance < (focus ? 1200 : 600)) {
+      // The ground shock under the blast: generated blasts are thin below ~80 Hz, and this low-passed recording
+      // carries the weight (a bigger shell sits lower and a little louder).
       const size = clamp((caliberMm - 61) / 90, 0, 1);
-      subThump(mixer.ctx, mixer.input(bus ?? 'impacts'), noise, mixer.ctx.currentTime + 0.004 + propagationDelayS(distance, atmosphere),
-        70 - 16 * size, 30 - 6 * size, 0.6 + 0.4 * size, 0.85 * lawGain(distance, 22, 0.7, focus), random);
+      play('blast_sub', { x, y, z, rate: 1.1 - 0.25 * size, gainDb: -1 + 2 * size, focus, ...(bus ? { bus } : {}) });
     }
     if (!bus) blastNearHull(distance, caliberMm);
     const rate = clamp(1.08 - (caliberMm - 100) / 600, 0.86, 1.12);
-    if (!play(id, { x, y, z, rate, focus, ...(bus ? { bus } : {}) }) && noise && mixer) {
-      synthBoom(mixer.ctx, mixer.input('impacts'), noise, mixer.ctx.currentTime + Math.min(3, distance / atmosphere.speedOfSoundMps), 0.5 + caliberMm / 150, dbToGain(distanceAttenuationDb(distance, 14, 0.95)) * 0.8, random);
-    }
+    play(id, { x, y, z, rate, focus, ...(bus ? { bus } : {}) });
     if (distance > 700) play('expl_far', { x, y, z, gainDb: -4, focus });
     if (distance < 40 && caliberMm >= 61) play('debris_dirt', { x, y, z, delayS: 0.35, gainDb: -4 });
   }
@@ -753,7 +757,6 @@ export function createAudio({
     const heat = event.shellType === 'HEAT';
     // Our own cannon and autocannon hits carry (OWN_HIT_FOCUS); machine-gun pings stay local.
     const focus = !small && listenerShot(event.attackerId);
-    const seqBefore = pool?.log.at(-1)?.seq ?? 0;
     // Reactive armour is additive to the deeper result: every positioned
     // cassette detonates, and a pass-through activation without positions
     // still gets its blast at the impact point.
@@ -769,7 +772,7 @@ export function createAudio({
         if (heat) play('heat_impact', { x, y, z, gainDb: -3, focus });
         if (ownHull && (event.damage || 0) > 0) {
           play('pen_interior', hullOptions({ bus: 'ownCombat', gainDb: small ? -14 : medium ? -6 : 0 }));
-          if (!small && noise && mixer) subThump(mixer.ctx, mixer.input('ownCombat'), noise, mixer.ctx.currentTime + 0.004, 96, 46, 0.3, medium ? 0.45 : 0.8, random);
+          if (!small) play('hull_thud_sub', hullOptions({ bus: 'ownCombat', gainDb: medium ? -5 : 0 }));
         }
         break;
       case 'ricochet':
@@ -801,10 +804,6 @@ export function createAudio({
       }
       default:
         break;
-    }
-    const anyPlayed = (pool?.log.at(-1)?.seq ?? 0) > seqBefore;
-    if (!anyPlayed && noise && mixer && (event.kind === 'pen' || event.kind === 'ricochet' || event.kind === 'nonpen')) {
-      synthImpact(mixer.ctx, mixer.input('impacts'), noise, mixer.ctx.currentTime, event.kind, 0.4, random);
     }
     // Hull-borne debris from a close blast.
     if (!ownHull && (event.kind === 'he_splash' || event.kind === 'terrain') && listenerValid && distanceTo(x, y, z) < 14 && playerEntityInfo()?.alive) {
@@ -962,13 +961,11 @@ export function createAudio({
     if (cause === 'fire') {
       play('burnout_blast', { x, y, z, focus, ...bus });
     } else {
-      const ok = play(cause === 'ammorack' ? 'tank_explode_ammo' : 'tank_explode', { x, y, z, focus, ...bus });
+      play(cause === 'ammorack' ? 'tank_explode_ammo' : 'tank_explode', { x, y, z, focus, ...bus });
       const blastM = distanceTo(x, y, z);
-      if (noise && mixer && blastM < (focus ? 1800 : 900)) {
-        subThump(mixer.ctx, mixer.input(cinematic ? 'cinematic' : 'impacts'), noise, mixer.ctx.currentTime + 0.004 + (cinematic ? 0 : propagationDelayS(blastM, atmosphere)),
-          cause === 'ammorack' ? 58 : 64, cause === 'ammorack' ? 22 : 26, cause === 'ammorack' ? 1.3 : 1.0, 0.95 * lawGain(blastM, 30, 0.6, focus), random);
+      if (blastM < (focus ? 1800 : 900)) {
+        play('blast_sub', { x, y, z, rate: cause === 'ammorack' ? 0.8 : 0.88, gainDb: cause === 'ammorack' ? 2 : 1, focus, ...bus });
       }
-      if (!ok && noise && mixer) synthBoom(mixer.ctx, mixer.input(cinematic ? 'cinematic' : 'impacts'), noise, mixer.ctx.currentTime, 1.8, 0.8 * dbToGain(distanceAttenuationDb(distanceTo(x, y, z), 18, 0.95)), random);
       if (!cinematic && blastM > 600) play('expl_far', { x, y, z, focus, gainDb: -3 });
       play('debris_metal', { x, y, z, delayS: 0.25 * stretch, focus, ...slow });
       if (cause === 'ammorack') play('turret_land', { x: x + (random() - 0.5) * 8, y, z: z + (random() - 0.5) * 8, delayS: (1.5 + random() * 1.1) * stretch, focus, ...slow });
@@ -1086,11 +1083,11 @@ export function createAudio({
     if (event.id === playerId && event.module === 'radio') radio?.setRadioDamage(rank(event.state) as 0 | 1 | 2);
     if (playerId == null || event.id !== playerId || phase !== 'battle') return;
     if (event.source === 'hit') {
-      if (worse && event.module === 'ammoRack' && mixer) ammoRackBeep(mixer.ctx, mixer.input('alarm'), mixer.ctx.currentTime + 0.01);
+      if (worse && event.module === 'ammoRack') play('alarm_ammo', { delayS: 0.01 });
       return;
     }
     if (worse) {
-      if (event.module === 'ammoRack' && mixer) ammoRackBeep(mixer.ctx, mixer.input('alarm'), mixer.ctx.currentTime + 0.01);
+      if (event.module === 'ammoRack') play('alarm_ammo', { delayS: 0.01 });
       const call = event.module === 'engine' && event.state === 'red' ? 'engine_destroyed' : MODULE_CALL[event.module];
       const track = event.module === 'trackL' || event.module === 'trackR';
       if (call && (event.state === 'red' || !track)) say(call, { delayS: 0.1 });
@@ -1260,7 +1257,7 @@ export function createAudio({
       else if (heartbeatBelow === 0 || frac < heartbeatBelow - 0.05) {
         heartbeatBelow = frac;
         heartbeatRig?.stop();
-        heartbeatRig = heartbeat(mixer.ctx, mixer.input('alarm'), mixer.ctx.currentTime, 6);
+        heartbeatRig = loopRig('heartbeat_loop', { maxDurS: 6 });
       }
     }
     // First move after rollout.
@@ -1448,7 +1445,7 @@ export function createAudio({
   const byDistance = (a: RigCandidate, b: RigCandidate): number => a.d - b.d;
 
   function updateRigs(list: readonly RuntimeValue[], dt: number): void {
-    if (!mixer || !library || !pool || !noise || !ctx) return;
+    if (!mixer || !library || !pool || !ctx) return;
     candidates.length = 0;
     for (let i = 0; i < list.length; i++) {
       const entity = toEntity(list[i]);
@@ -1492,7 +1489,7 @@ export function createAudio({
       if (!info) continue;
       let rig = rigs.get(c.id);
       if (!rig) {
-        rig = createVehicleRig({ mixer, library, pool, noise, random, reverb: budget.reverb }, c.id, info.identity, lod);
+        rig = createVehicleRig({ mixer, library, pool, random, reverb: budget.reverb }, c.id, info.identity, lod);
         rigs.set(c.id, rig);
         logSound('engine:start', { id: c.id, own: lod === 'own', family: info.identity.engine });
       } else rig.setLod(lod);
@@ -1748,13 +1745,12 @@ export function createAudio({
     mixer = createMixer({ context: ctx, reverb: budget.reverb, channelVolumes: chan, masterVolume, muted });
     const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || '/';
     library = createAssetLibrary({ context: ctx, base, lowMemory: tier === 'mobile', maxDecodedMb: budget.maxDecodedMb, maxVariants: budget.maxVariants });
-    noise = createNoiseBank(ctx, random);
     pool = createVoicePool({ mixer, library, random, budget: budget.voices, reverb: budget.reverb });
     pool.setOcclusionProbe((x, y, z) => occlusionAt(x, y, z));
-    radio = createCrewRadio({ mixer, library, noise, random });
+    radio = createCrewRadio({ mixer, library, random });
     ambience = createAmbienceDirector({ mixer, library, pool, random });
-    library.pin([...UI_SET, 'radio_interference']);
-    void library.load([...UI_SET, 'radio_interference']);
+    library.pin([...UI_SET, ...RADIO_SET]);
+    void library.load([...UI_SET, ...RADIO_SET]);
     // A battle hull may already be indexed (late adoption mid-battle).
     if (playerId || crewVoice !== 'national') applyCrewLanguage();
     installDebugSurface();
@@ -1781,12 +1777,12 @@ export function createAudio({
 
   function interfaceSound(sound: InterfaceSound, inMenu: boolean): void {
     if (!ready() || (phase === 'battle' && !inMenu) || !interfaceOnce()) return;
-    if (!play(INTERFACE_ASSET[sound]) && mixer) synthClick(mixer.ctx, mixer.input('ui'), mixer.ctx.currentTime, 0.25);
+    play(INTERFACE_ASSET[sound]);
   }
 
   function uiClick(): void {
     if (!interfaceOnce()) return;
-    if (!play('ui_click') && mixer) synthClick(mixer.ctx, mixer.input('ui'), mixer.ctx.currentTime, 0.25);
+    play('ui_click');
   }
 
   function bindBus(bus: EventBus): void {
@@ -1814,7 +1810,7 @@ export function createAudio({
         if (e.burning && !playerBurning) {
           playerBurning = true;
           fireAlarm?.stop();
-          fireAlarm = fireKlaxon(mixer.ctx, mixer.input('alarm'));
+          fireAlarm = loopRig('alarm_fire_loop');
           say('fire');
         } else if (!e.burning && playerBurning) {
           playerBurning = false;
@@ -1850,10 +1846,16 @@ export function createAudio({
     });
     on<undefined>('player:spotted', () => {
       const now = ctx?.currentTime ?? 0;
-      if (phase === 'battle' && !battleOver && now - lastSixthSenseAt > 20) {
+      if (phase !== 'battle' || battleOver) return;
+      // The lamp lights 3 s after we are seen and burns for 8: its alert sounds each time it lights, the crew's
+      // call once per exposure.
+      if (now - lastSixthAlertAt > 12) {
+        lastSixthAlertAt = now;
+        play('ui_alert', { delayS: 3.0, gainDb: -6 });
+      }
+      if (now - lastSixthSenseAt > 20) {
         lastSixthSenseAt = now;
         say('sixth_sense', { delayS: 3.0 });
-        play('ui_alert', { delayS: 3.0, gainDb: -6 });
       }
     });
     on<{ slot?: number }>('ui:consumableUsed', (e) => {
@@ -2097,8 +2099,8 @@ export function createAudio({
    * hull, interface and mode sets, the map's scene, running gear and the
    * roster's powertrains (or one band of every family when the roster is
    * unknown). Runs at every battle phase edge whatever the entry path (solo
-   * loader, multiplayer, debug start), so no first shot falls back to the
-   * synthesized report; the solo loader also awaits it before the reveal.
+   * loader, multiplayer, debug start), so no first shot is silent while its
+   * bank decodes; the solo loader also awaits it before the reveal.
    */
   function warmBattle(roster?: readonly string[]): Promise<void> {
     if (!library) return Promise.resolve();
@@ -2123,13 +2125,15 @@ export function createAudio({
   }
 
   function loadingOn(on: boolean): void {
-    if (!mixer || !noise) return;
-    if (on && !loading) {
-      loading = loadingBed(mixer.ctx, mixer.input('music'), noise, random);
+    if (!mixer || !pool) return;
+    if (on && !loadingActive) {
+      loadingActive = true;
+      loading = loopRig('loading_bed_loop');
       play('ui_deploy', { gainDb: -3 });
       logSound('loading:start');
-    } else if (!on && loading) {
-      loading.stop(0.3);
+    } else if (!on && loadingActive) {
+      loadingActive = false;
+      loading?.stop(0.3);
       loading = null;
       logSound('loading:stop');
     }
@@ -2265,7 +2269,7 @@ export function createAudio({
     },
     playGarageSting() {
       if (!ready()) return;
-      if (!play('sting_garage') && mixer && noise) synthBoom(mixer.ctx, mixer.input('music'), noise, mixer.ctx.currentTime, 0.6, 0.3, random);
+      play('sting_garage');
     },
     loadingOn,
     warmBattleEvents(roster) {
