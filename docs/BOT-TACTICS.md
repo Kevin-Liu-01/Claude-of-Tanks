@@ -100,6 +100,14 @@ retaliation, hidden-contact safety and engagement of a sole survivor.
 - Lights switch off. Existing consumable, self-right, magazine and suspension
   decisions continue. Independent missile channels can be selected while the
   cannon reloads, including authored ammunition slots beyond the first three.
+- A casemate (any turretless hull or authored gun arc of 30 degrees or less: the
+  Strv 103 family, UDES 03, Jagdpanzer E100) lays its gun with the hull, so an
+  engaged one keeps the bow on its target. It scoots along the line of fire,
+  25 m back off its spot and then up to it again, backs into cover crests, jinks
+  with the bow on its target, falls back in reverse and stops at a blocked
+  corridor instead of turning away. Aegis Crossing pacing seed 53002: the Strv
+  103 used to scoot to a spot 94-152 degrees off the bearing and jink toward a
+  flanker, standing 19-24 degrees off its target for seconds at a time.
 
 ## Traffic and keeping the battle moving
 
