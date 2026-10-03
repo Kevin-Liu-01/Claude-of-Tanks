@@ -8,7 +8,16 @@
 // controller, setupBattle, movement (gravity, speed), ballistics (shell gravity), damage (hit
 // points lost), ammunition and equipment at spawn, and the play-menu rule cards.
 import type { GameModeId } from './matchModes.ts';
-import { shell } from '../vehicles/specHelpers.ts';
+import type { RuntimeValue } from '../runtimeTypes.ts';
+import type { ShellSpec } from '../vehicles/specHelpers.ts';
+
+/** The fleet's shell() factory (src/vehicles/specHelpers.ts), restated: this table is read at boot, and importing the
+ * vehicle helpers put them in a chunk of their own on the game and gallery pages (tools/bundle-budget.json).
+ * matchRuleset.selftest holds the two factories equal. */
+export const shell = (name: string, type: string, caliberMm: number, pen100Mm: number, pen1000Mm: number, dmg: number,
+  velocityMps: number, extra: Readonly<Record<string, RuntimeValue>>): ShellSpec => ({
+  name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps, moduleDmg: caliberMm, tracer: type, ...extra,
+});
 
 /** Mode weapons are fictional gameplay loadouts; they never mutate the fleet catalog. */
 export const GUN_GAME_WEAPONS = Object.freeze([
