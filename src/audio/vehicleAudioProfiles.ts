@@ -35,7 +35,7 @@ export const CREW_LANGUAGES: readonly CrewLanguage[] = Object.freeze([
 
 type TrackClass = 'light' | 'heavy';
 type TurretDrive = 'electric' | 'hydraulic';
-export type LoaderKind = 'manual' | 'carousel' | 'bustle' | 'autocannon' | 'missile';
+export type LoaderKind = 'manual' | 'carousel' | 'bustle' | 'autocannon' | 'missile' | 'gunship';
 type ShiftStyle = 'manual' | 'automatic' | 'none';
 
 /** Powertrain behaviour the RPM model and the layer mixer read. */

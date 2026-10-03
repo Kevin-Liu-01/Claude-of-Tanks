@@ -23,9 +23,9 @@ export const AERIAL_RULES = Object.freeze({
   gunship: Object.freeze({ altitudeM: 240, radiusM: 90, orbitRadS: .09 }),
 });
 export const GUNSHIP_WEAPONS = Object.freeze([
-  shell('30 mm Autocannon', 'AP', 30, 220, 180, 160, 1300, { reloadS: .14, reloadGroup: 'gunship-cannon' }),
-  shell('152 mm Howitzer', 'HE', 152, 110, 110, 1500, 800, { reloadS: 3.5, reloadGroup: 'gunship-howitzer', blastRadiusM: 22 }),
-  shell('Guided Missile', 'HE', 180, 320, 320, 1600, 400, { guided: true, reloadS: 7, reloadGroup: 'gunship-missile', blastRadiusM: 18 }),
+  shell('30 mm Autocannon', 'AP', 30, 220, 180, 160, 1300, { reloadS: .14, reloadGroup: 'gunship-cannon', soundProfile: 'gunship-autocannon' }),
+  shell('152 mm Howitzer', 'HE', 152, 110, 110, 1500, 800, { reloadS: 3.5, reloadGroup: 'gunship-howitzer', blastRadiusM: 22, soundProfile: 'gunship-howitzer' }),
+  shell('Guided Missile', 'HE', 180, 320, 320, 1600, 400, { guided: true, reloadS: 7, reloadGroup: 'gunship-missile', blastRadiusM: 18, soundProfile: 'gunship-missile' }),
 ]);
 export const DRONE_WARHEAD = shell('FPV warhead', 'HE', 152, 95, 95, 1400, 42, { tracer: 'DRONE', gravityScale: 0, maxLifetimeS: AERIAL_RULES.drone.batteryS });
 

@@ -62,8 +62,9 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
       // round 63: heightAt ends with the rail cutting (railCuttingHeight, on final queries); this fixture authors none
       railCuttings = null, railCuttingPortalYs = null, railCuttingsOn = false, railCuttingsSuspended = false,
       railCuttingHeight = (cuttings, portalYs, x, z, h) => h,
-      // the map-borders lane (2026-10-03): the foreground clearance past the playable edge (nil on this classic fixture)
-      clearanceReduction = () => 0 } = fixture;
+      // the map-borders lane (2026-10-03): the foreground clearance past the playable edge (nil on this classic fixture),
+      // the classic rim the authoring queries keep (the stub's own rim) and the road grades' landform pass (off here)
+      clearanceReduction = () => 0, classicRimLift = (r) => border.liftAt(0, 0, r), authoringOnLandform = false } = fixture;
     // Frontline Assault 2026-09-13: heightAt now ends with the assault-trenches carve; the
     // standard field (this fixture) has no plan, so the carve contributes nothing here.
     const trenchPlan = fixture.trenchPlan ?? (() => null);
@@ -105,8 +106,7 @@ function fixture(options = {}) {
     },
     padPts: pad ? [{ x: 0, z: 512 }] : [], padYs: [22],
     waterRampStart: .2, waterRampEnd: .8, quarryFloorY: null,
-    border: { liftAt: (_x, _z, r) => { const s = smoothstep(430, 512, r); return s * s * rimHeight; },
-      classicLiftAt: (r) => { const s = smoothstep(430, 512, r); return s * s * rimHeight; } },
+    border: { liftAt: (_x, _z, r) => { const s = smoothstep(430, 512, r); return s * s * rimHeight; } },
   } };
 }
 function sample(factory, options = {}, roadsOn = true, lakesOn = false, x = 0, z = 512) {

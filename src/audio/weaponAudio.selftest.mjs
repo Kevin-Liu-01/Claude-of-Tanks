@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { WEAPON_CLASSES, resolveReloadCuePlan, resolveWeaponReport, weaponClassForCaliber } from './weaponAudio.ts';
+import { renderMuzzleBlast } from './procedural.ts';
 
 // Bore classes across the fleet's calibres.
 const bores = [
@@ -63,4 +64,34 @@ for (const total of [4, 8, 16]) {
   assert.ok(Math.abs((1 - close) * total - 0.22) < 0.05 || close === 0.86, `breech timing at ${total} s`);
 }
 
-console.log(`weaponAudio.selftest: ${bores.length} bores, class ordering, report trims and reload choreography passed`);
+// The muzzle blast: an instant pressure crack (its loudest sample inside the first millisecond), peak-normalised
+// and the same every time for a bore; a bigger charge rings longer and sits lower.
+const SR = 48000;
+const blastOf = (mm) => {
+  const out = new Float32Array(Math.round(SR * (0.06 + 0.24 * Math.min(1, Math.max(0, (mm - 7) / 145)))));
+  renderMuzzleBlast(out, SR, mm);
+  return out;
+};
+const ringMs = (x) => {
+  let last = 0;
+  for (let i = 0; i < x.length; i++) if (Math.abs(x[i]) > 0.03) last = i;
+  return (last / SR) * 1000;
+};
+const brightness = (x) => {
+  let diff = 0, sum = 0;
+  for (let i = 1; i < x.length; i++) { diff += Math.abs(x[i] - x[i - 1]); sum += Math.abs(x[i]); }
+  return diff / sum;
+};
+const blasts = [7.62, 30, 120, 152].map(blastOf);
+for (const [i, x] of blasts.entries()) {
+  assert.ok(Math.abs(Math.max(...x.map(Math.abs)) - 1) < 1e-6, `blast ${i} is peak-normalised`);
+  const loudest = x.reduce((at, v, j) => (Math.abs(v) > Math.abs(x[at]) ? j : at), 0);
+  assert.ok(loudest < SR / 1000, `blast ${i} is loudest in its first millisecond (${(loudest / SR * 1000).toFixed(2)} ms)`);
+}
+assert.deepEqual(blastOf(120), blasts[2], 'a bore renders the same blast every time');
+for (let i = 1; i < blasts.length; i++) {
+  assert.ok(ringMs(blasts[i]) > ringMs(blasts[i - 1]), `a bigger charge rings longer (${ringMs(blasts[i - 1])} → ${ringMs(blasts[i])} ms)`);
+  assert.ok(brightness(blasts[i]) < brightness(blasts[i - 1]), 'and sits lower');
+}
+
+console.log(`weaponAudio.selftest: ${bores.length} bores, class ordering, report trims, reload choreography and muzzle blasts passed`);

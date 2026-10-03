@@ -19,6 +19,7 @@
 // Corners lower the rim further (the creases were the strongest tell). Everything is a pure function of (x, z): no
 // grid, no allocation, deterministic per seed, Node-runnable (the authority and the collision builders share it).
 import { SimplexNoise } from '../engine/simplexFast.ts';
+import { type BorderLandUse, type LandUseSampleLike, traceLandUseLines } from './borderLandUse.ts';
 import { createMassifField } from './horizonMassif.ts';
 
 /** The playable half extent (battlefieldBounds PLAYABLE_HALF_EXTENT_M): the rim inside it may only be lowered. */
@@ -31,13 +32,6 @@ export const BORDER_EDGE_M = 512;
 const RIM_AT_PLAYABLE = (() => { const t = (470 - 430) / 82, s = t * t * (3 - 2 * t); return s * s; })();
 /** Metres past the playable edge over which the square's rim hands over to the outland. */
 const HANDOVER_M = 40;
-/**
- * A road keeps the classic rim across the playable band (its grades were authored on that rim, and a road's grade is a
- * driving law): full within ROAD_HOLD_IN_M of its centre line, the landform from ROAD_HOLD_OUT_M, handed over to the
- * landform between the red line and the edge — so a road leaves the square over a low rise, never on an embankment.
- */
-const ROAD_HOLD_IN_M = 18;
-const ROAD_HOLD_OUT_M = 95;
 /**
  * The field system past the edge: two families of near-straight lines (one per map, 7–21° off the square's axes so no
  * hedge runs along the red line; warped ±22 m over a kilometre) on a 46 m pitch. A share of each family's pitch lines
@@ -56,26 +50,34 @@ function fieldHash(n: number): number {
   const s = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
   return s - Math.floor(s);
 }
-/** A parcel's albedo multiplier: the crop by `roll`, its season's shade by `shade`. */
-function cropTint(crops: 'temperate' | 'steppe' | 'polder', roll: number, shade: number): [number, number, number] {
-  const k = 0.92 + shade * 0.16;
-  if (crops === 'steppe') {
-    if (roll < 0.45) return [1.16 * k, 1.07 * k, 0.80 * k];      // stubble, gold
-    if (roll < 0.72) return [0.80 * k, 0.70 * k, 0.58 * k];      // plough, brown
-    if (roll < 0.9) return [1.06 * k, 1.02 * k, 0.86 * k];       // pale straw
-    return [1, 1, 1];
-  }
-  if (crops === 'polder') {
-    if (roll < 0.42) return [0.88 * k, 1.02 * k, 0.82 * k];      // pasture
-    if (roll < 0.66) return [0.82 * k, 0.74 * k, 0.62 * k];      // plough
-    if (roll < 0.8) return [1.22 * k, 1.16 * k, 0.66 * k];       // rapeseed
-    return [1, 1, 1];
-  }
-  if (roll < 0.28) return [1.14 * k, 1.06 * k, 0.80 * k];        // stubble / hay
-  if (roll < 0.48) return [0.82 * k, 0.73 * k, 0.62 * k];        // plough
-  if (roll < 0.66) return [0.90 * k, 1.03 * k, 0.84 * k];        // pasture
-  if (roll < 0.8) return [0.98 * k, 0.88 * k, 0.88 * k];         // fallow
-  return [1, 1, 1];
+/**
+ * The crops past the edge, calibrated with the ground lane's field system (landUse.ts, the terrain material's lu_field):
+ * each crop's colour as a multiple of the local sward's luminance (~0.075 linear) — ripe wheat 2.8x, barley 3.0x, a
+ * young crop 1.25x greener, stubble 2.8x straw, plough of dark soil (~0.035), sunflower 0.70x — so a field reads the
+ * same either side of the red line. [r, g, b, weight]: pasture keeps most of the sward's own tone.
+ */
+const CROPS: Readonly<Record<string, readonly [number, number, number, number]>> = Object.freeze({
+  pasture: [0.86, 1.12, 0.62, 0.35],
+  wheat: [3.85, 2.78, 1.12, 1],
+  barley: [3.72, 3.13, 1.59, 1],
+  green: [1.13, 1.77, 0.45, 1],
+  plough: [0.66, 0.45, 0.28, 1],
+  stubble: [3.41, 2.83, 1.76, 1],
+  sunflower: [0.66, 0.93, 0.33, 1],
+  rapeseed: [3.2, 2.9, 0.55, 1],
+});
+/** Each region's rotation (landUse.ts ROTATIONS; the polders take the bocage's grazing with rapeseed for sunflower). */
+const ROTATIONS: Readonly<Record<'temperate' | 'steppe' | 'polder', readonly (readonly [string, number])[]>> = Object.freeze({
+  steppe: [['pasture', 0.16], ['wheat', 0.27], ['barley', 0.11], ['green', 0.14], ['plough', 0.15], ['stubble', 0.11], ['sunflower', 0.06]],
+  temperate: [['pasture', 0.30], ['wheat', 0.19], ['barley', 0.12], ['green', 0.14], ['plough', 0.13], ['stubble', 0.08], ['sunflower', 0.04]],
+  polder: [['pasture', 0.46], ['wheat', 0.10], ['barley', 0.06], ['green', 0.14], ['plough', 0.12], ['stubble', 0.07], ['rapeseed', 0.05]],
+});
+/** A field's crop by its roll (0..1) on the region's rotation. */
+function cropOf(crops: 'temperate' | 'steppe' | 'polder', roll: number): readonly [number, number, number, number] {
+  const table = ROTATIONS[crops] ?? ROTATIONS.temperate;
+  let acc = 0;
+  for (const [name, share] of table) { acc += share; if (roll < acc) return CROPS[name]; }
+  return CROPS[table[table.length - 1][0]];
 }
 
 /** A map's border landform (all optional; resolveBorderLandform fills the style's defaults). */
@@ -180,17 +182,13 @@ export interface BorderLandform {
   readonly settings: BorderLandformSettings;
   /** The field system's orientation (rad; 0 in classic mode): the farmsteads square up to it. */
   readonly fieldAngle: number;
-  /** 0..1: a classic-rim island here (a railway's cutting and tunnel hill), which keeps its ground. */
-  classicIslandAt(x: number, z: number): number;
   /**
    * The rim lift in metres at (x, z) for a square radius r (max(|x|, |z|)), replacing rimH · s(r)²: below 430 m nothing,
    * inside the playable square the classic curve times the rim factor (<= 1), past the playable edge the outland's
-   * hills. Callers keep their water, coast and road weights on top. Given the distance to the nearest road, the band
-   * keeps the classic rim along it (ROAD_HOLD_IN_M … ROAD_HOLD_OUT_M), handed over to the landform by the edge.
+   * hills. Callers keep their water, coast and road weights on top; the road grades are authored on this same lift
+   * (terrain.ts), so a road comes down with the land beside it.
    */
-  liftAt(x: number, z: number, r: number, roadDistance?: number): number;
-  /** The classic rim lift rimH · s(r)² (s = smoothstep(430, 512, r)): what authoring queries (road grades, pads) keep. */
-  classicLiftAt(r: number): number;
+  liftAt(x: number, z: number, r: number): number;
   /** The rim factor of the playable band at (x, z): 1 keeps the classic rim, rimFloor is the most open. */
   rimFactorAt(x: number, z: number): number;
   /** The near ring's hand-over to the authored ranges: 1 = this landform (the continued ground), 0 = the ring's rows. */
@@ -204,11 +202,21 @@ export interface BorderLandform {
   /** The border's hedgerows at (x, z): 0 … 1 on a field boundary's tree line (farmland past the edge reads as fields). */
   hedgeAt(x: number, z: number): number;
   /**
-   * The parcel the land past the edge belongs to, as an albedo offset (multiplier − 1, already weighted): stubble, plough,
-   * pasture or fallow between the hedgerows, faded in from 30 to 150 m past the edge, off the woods and the crests.
-   * Zero wherever there are no fields — a geometry without the attribute reads the same.
+   * The hedged stretches of the field boundaries past the edge (borderHedgerows.ts builds their bush lines): every
+   * field line of both families traced across the band in 8 m steps, each point with the hedge's presence (the
+   * boundary's stretch hedged, its gates and gaps, the fade from the edge, none in a wood); nothing beyond `maxOut` m
+   * past the edge or where `keep(x, z)` is false (the ranges' hand-over, the sea).
    */
-  parcelTintAt(x: number, z: number, out: [number, number, number]): [number, number, number];
+  traceHedgeLines(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[];
+  /**
+   * The crop of the field the land past the edge belongs to, premultiplied by its weight: [colour x w, 1 - w] (the
+   * weight stored as its complement, so a geometry without the attribute — WebGL's generic default (0, 0, 0, 1) — reads
+   * no crop), the colour
+   * as a multiple of the local sward's luminance (CROPS); faded in over the first 40 m past the edge (no plain band
+   * after the square's own fields), off the woods and the crests. Zero wherever there are no fields — a geometry without
+   * the attribute reads the same.
+   */
+  parcelTintAt(x: number, z: number, out: [number, number, number, number]): [number, number, number, number];
   /**
    * The farm tracks past the edge, as the ring's borderTrack attribute: per field family, [1000 + signed metres from the
    * nearest track's centre line divided by the tracks' presence (so a fading track narrows), that track's boundary
@@ -232,24 +240,29 @@ function mulberry32(a: number): () => number {
   };
 }
 
-/**
- * A place where the border keeps the classic rim: a railway that leaves the square runs through a cutting into a tunnel
- * in the hill the old rim stood for (railSpurs.ts, rounds 63 and 67 — the bed, the batter faces, the portal and its
- * gallery are measured against that rim and its plateau), so within the anchor's radius the lift is the classic rim and
- * plateau, fading back to the landform over its outer half.
- */
-export interface BorderAnchor { x: number; z: number; radius: number }
-/** A road leaving the square (terrain.ts buildRoadExitLines): the land opens into a valley along its line. */
-export interface BorderValley { xs: ArrayLike<number>; zs: ArrayLike<number>; minX: number; maxX: number; minZ: number; maxZ: number }
+/** A road or a railway leaving the square (terrain.ts buildRoadExitLines, a cutting's open line): the land opens into a
+ * valley along its line. `holdM` (a railway's): the ranges stand back from the line by up to that much — the hand-over
+ * to the authored ranges moves out along it (full within HOLD_FLOOR_M of the line, none by HOLD_SIDE_M), so the
+ * graded line runs on into a valley instead of under the foot of a range that rises 50 m in 300 m. */
+export interface BorderValley {
+  xs: ArrayLike<number>; zs: ArrayLike<number>; minX: number; maxX: number; minZ: number; maxZ: number; holdM?: number;
+}
 const VALLEY_FLOOR_M = 70, VALLEY_SIDE_M = 190;
+const HOLD_FLOOR_M = 90, HOLD_SIDE_M = 300;
 
 /**
  * The map's border landform. `rimH` is the map's authored rim height (TerrainSettings.rimH) — the scale every height
  * here is measured in, so a 58 m canyon rim and an 18 m polder dike keep their proportions.
  */
 export function createBorderLandform(
-  seed: number, rimH: number, settings: BorderLandformSettings, anchors: readonly BorderAnchor[] = [],
-  valleys: readonly BorderValley[] = [],
+  seed: number, rimH: number, settings: BorderLandformSettings, valleys: readonly BorderValley[] = [],
+  /**
+   * The map's land use (the ground lane's landUse.ts grid, borderLandUse.ts) when it has a profile: the land past the
+   * edge is then that same grid — its heading squares the farmsteads, its hedged boundaries carry the bush lines (on a
+   * walled region every boundary carries a dry stone wall), its crops and tracks are the terrain material's own; the
+   * landform's parcels and tracks stand down and the woods keep their free-form patches. Null: the landform's own fields.
+   */
+  landUse: BorderLandUse | null = null,
 ): BorderLandform {
   const noise = new SimplexNoise({ random: mulberry32((seed ^ 0xB0BDE5) >>> 0) });
   const { enclosure, hillHeight, reachM, rimFloor, wavelengthM, ridged, terrace } = settings;
@@ -261,15 +274,6 @@ export function createBorderLandform(
   const inv = 1 / Math.max(120, wavelengthM);
   const bias = (Math.max(0, Math.min(1, enclosure)) * 2 - 1) * 0.75;
 
-  /** 0..1: enclosed (hills close to the edge) vs open, a ~1.2 km field so a side changes character once or twice. */
-  function anchorAt(x: number, z: number): number {
-    let w = 0;
-    for (let i = 0; i < anchors.length; i++) {
-      const anchor = anchors[i];
-      w = Math.max(w, 1 - smoothstep(anchor.radius * 0.55, anchor.radius, Math.hypot(x - anchor.x, z - anchor.z)));
-    }
-    return w;
-  }
   /** 1 on a leaving road's line, 0 by VALLEY_SIDE_M from it (bounding boxes first: most queries touch no line). */
   // (valleyAt, enclosureAt and hillsAt keep their last point: one lift asks each of them twice of the same point)
   let valleyX = Number.NaN, valleyZ = Number.NaN, valleyLast = 0;
@@ -279,19 +283,33 @@ export function createBorderLandform(
     valleyLast = valleyDistanceWeight(x, z);
     return valleyLast;
   }
+  /** The distance from (x, z) to a valley's line, or `reach` when it is farther. */
+  function lineDistance(line: BorderValley, x: number, z: number, reach: number): number {
+    let best = reach;
+    if (x < line.minX - best || x > line.maxX + best || z < line.minZ - best || z > line.maxZ + best) return best;
+    for (let i = 0; i + 1 < line.xs.length; i++) {
+      const ax = line.xs[i], az = line.zs[i], bx = line.xs[i + 1] - ax, bz = line.zs[i + 1] - az;
+      const t = Math.max(0, Math.min(1, ((x - ax) * bx + (z - az) * bz) / (bx * bx + bz * bz)));
+      const d = Math.hypot(x - ax - bx * t, z - az - bz * t);
+      if (d < best) best = d;
+    }
+    return best;
+  }
   function valleyDistanceWeight(x: number, z: number): number {
     let best = VALLEY_SIDE_M;
-    for (let v = 0; v < valleys.length; v++) {
-      const line = valleys[v];
-      if (x < line.minX - best || x > line.maxX + best || z < line.minZ - best || z > line.maxZ + best) continue;
-      for (let i = 0; i + 1 < line.xs.length; i++) {
-        const ax = line.xs[i], az = line.zs[i], bx = line.xs[i + 1] - ax, bz = line.zs[i + 1] - az;
-        const t = Math.max(0, Math.min(1, ((x - ax) * bx + (z - az) * bz) / (bx * bx + bz * bz)));
-        const d = Math.hypot(x - ax - bx * t, z - az - bz * t);
-        if (d < best) best = d;
-      }
-    }
+    for (let v = 0; v < valleys.length; v++) best = lineDistance(valleys[v], x, z, best);
     return 1 - smoothstep(VALLEY_FLOOR_M, VALLEY_SIDE_M, best);
+  }
+  /** How far (m) the hand-over to the ranges moves out at (x, z): a railway's valley holds them back (BorderValley.holdM). */
+  const holdValleys = valleys.filter((line) => (line.holdM ?? 0) > 0);
+  function holdAt(x: number, z: number): number {
+    let hold = 0;
+    for (let v = 0; v < holdValleys.length; v++) {
+      const line = holdValleys[v];
+      const d = lineDistance(line, x, z, HOLD_SIDE_M);
+      if (d < HOLD_SIDE_M) hold = Math.max(hold, line.holdM! * (1 - smoothstep(HOLD_FLOOR_M, HOLD_SIDE_M, d)));
+    }
+    return hold;
   }
   let enclosureX = Number.NaN, enclosureZ = Number.NaN, enclosureLast = 0;
   function enclosureAt(x: number, z: number): number {
@@ -304,7 +322,7 @@ export function createBorderLandform(
     const e = noise.noise(x * 0.00082 + 17.3, z * 0.00082 - 41.9) * 0.8 + noise.noise(x * 0.0019 - 5.1, z * 0.0019 + 23.7) * 0.25;
     let a = smoothstep(-0.55, 0.55, e + bias);
     if (valleys.length) a *= 1 - 0.9 * valleyAt(x, z);
-    return anchors.length ? Math.max(a, anchorAt(x, z)) : a;  // (an anchored sector reads as enclosed for the woods and rim)
+    return a;
   }
   /** 0..1: the corner share — the creases of the old rim stood where both edges are near. */
   function cornerAt(x: number, z: number): number {
@@ -364,9 +382,12 @@ export function createBorderLandform(
     return near + (crest - near) * ramp;
   }
 
+  const landUseSample: LandUseSampleLike = landUse ? landUse.sample() : { active: 0, hedge: 0, edgeM: 1e9, boundary: 0 };
   // the field system (FIELD_PITCH_M): this map's orientation, and its share of boundaries per family
   const fieldRand = mulberry32((seed ^ 0xF1E1D5) >>> 0);
-  const fieldAngle = (fieldRand() < 0.5 ? -1 : 1) * (0.12 + 0.24 * fieldRand());
+  const ownAngle = (fieldRand() < 0.5 ? -1 : 1) * (0.12 + 0.24 * fieldRand());
+  // (a land-use map's grid has its own heading: the farmsteads square up to it)
+  const fieldAngle = landUse ? landUse.heading : ownAngle;
   const fieldCos = Math.cos(fieldAngle), fieldSin = Math.sin(fieldAngle);
   const fieldShare = FIELD_LINE_SHARE[settings.crops] ?? FIELD_LINE_SHARE.temperate;
   /** The two families' pitch levels at (x, z): continuous, a pitch line on every whole level. */
@@ -449,10 +470,7 @@ export function createBorderLandform(
   let woodsX = Number.NaN, woodsZ = Number.NaN, woodsLast = 0;
   function woodsAt(x: number, z: number): number {
     if (x === woodsX && z === woodsZ) return woodsLast;
-    // a railway's tunnel hill (a classic island) is wooded over its cutting, as such hills are (the ring forest keeps
-    // off the line's own right of way), so it reads as a hill and not a bare cone at the edge
-    const island = anchors.length ? smoothstep(0.12, 0.55, anchorAt(x, z)) : 0;
-    woodsLast = island > 0.999 ? 1 : Math.max(island, woodsAtField(x, z));
+    woodsLast = woodsAtField(x, z);
     woodsX = x; woodsZ = z;
     return woodsLast;
   }
@@ -460,8 +478,9 @@ export function createBorderLandform(
   const fieldWoods = new Map<number, number>();
   function woodsAtField(x: number, z: number): number {
     if (!Number.isFinite(woodsCut)) return woodsCut < 0 ? 1 : 0;
-    if (settings.fields <= 0) {
-      // the wild woods (forest, scrub, mangrove) keep clearings along the edge too, lighter than farmland's
+    if (settings.fields <= 0 || landUse) {
+      // the wild woods (forest, scrub, mangrove) keep clearings along the edge too, lighter than farmland's (and on a
+      // land-use map the woods are free-form: the whole-field cells would be the landform's grid, not the map's)
       const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
       const cut = woodsCut + 0.18 * (1 - smoothstep(30, 160, edgeOut)) + 0.08 * (1 - smoothstep(160, 320, edgeOut));
       return smoothstep(cut - 0.025, cut + 0.025, woodsField(x, z));
@@ -503,14 +522,13 @@ export function createBorderLandform(
     return {
       settings,
       fieldAngle: 0,
-      classicIslandAt: () => 1,
       liftAt: (_x, _z, r) => classicLiftAt(r),
-      classicLiftAt,
       rimFactorAt: () => 1,
       handOverAt: (x, z) => 1 - smoothstep(140, 460, Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M),
       woodsAt: () => 0,
       hedgeAt: () => 0,
-      parcelTintAt: (_x, _z, out) => { out[0] = 0; out[1] = 0; out[2] = 0; return out; },
+      traceHedgeLines: () => [],
+      parcelTintAt: (_x, _z, out) => { out[0] = 0; out[1] = 0; out[2] = 0; out[3] = 1; return out; },
       trackAt: (_x, _z, out) => { out[0] = 0; out[1] = 0; out[2] = 0; out[3] = 0; return out; },
     };
   }
@@ -518,8 +536,14 @@ export function createBorderLandform(
   return {
     settings,
     fieldAngle,
-    classicIslandAt: (x: number, z: number): number => (anchors.length ? anchorAt(x, z) : 0),
     hedgeAt(x: number, z: number): number {
+      if (landUse) {
+        // the map's own hedged boundaries (landUse.ts), from ~40 m past the edge, none in a wood
+        const fade = smoothstep(25, 110, Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M);
+        if (fade <= 0) return 0;
+        landUse.at(x, z, landUseSample);
+        return landUseSample.active > 0 ? landUseSample.hedge * fade * (1 - woodsAt(x, z)) : 0;
+      }
       if (settings.hedgerows <= 0) return 0;
       // no hedge along the edge itself: the field boundaries are hedged from ~40 m past it
       const fade = smoothstep(25, 110, Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M);
@@ -530,9 +554,57 @@ export function createBorderLandform(
       const gaps = smoothstep(-0.3, 0.0, noise.noise(x * 0.017 + 3.3, z * 0.017 - 7.1));
       return line * gaps * fade * settings.hedgerows;
     },
+    traceHedgeLines(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[] {
+      if (landUse) {
+        // the map's grid: its hedged short boundaries (a walled region: every boundary, near the edge only — farther out
+        // the material's own wall band carries them)
+        const reach = landUse.boundary > 2.5 ? Math.min(maxOut, 260) : maxOut;
+        return traceLandUseLines(landUse, BORDER_EDGE_M, reach, keep ?? (() => true),
+          (x, z) => smoothstep(25, 110, Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M) * (1 - woodsAt(x, z)));
+      }
+      const lines: { xs: number[]; zs: number[]; w: number[] }[] = [];
+      if (settings.hedgerows <= 0) return lines;
+      const STEP = 8, span = (BORDER_EDGE_M + maxOut) * Math.SQRT2 + 40, kMax = Math.ceil(span / FIELD_PITCH_M) + 2;
+      for (let family = 0; family < 2; family++) {
+        for (let k = -kMax; k <= kMax; k++) {
+          if (!isFieldLine(k, family)) continue;
+          let cur: { xs: number[]; zs: number[]; w: number[] } | null = null;
+          const close = (): void => { if (cur && cur.xs.length >= 2) lines.push(cur); cur = null; };
+          for (let s = -span; s <= span; s += STEP) {
+            // the point of level k at along-coordinate s: the unwarped line, then Newton on the level (the warp is slow)
+            let across = k * FIELD_PITCH_M, x = 0, z = 0;
+            const at = (): void => {
+              if (family === 0) { x = across * fieldCos - s * fieldSin; z = across * fieldSin + s * fieldCos; }
+              else { x = s * fieldCos - across * fieldSin; z = s * fieldSin + across * fieldCos; }
+            };
+            at();
+            const out0 = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
+            if (out0 < -10 || out0 > maxOut + 40) { close(); continue; }
+            for (let it = 0; it < 3; it++) {
+              const c = fieldCoords(x, z);
+              across -= ((family ? c.b : c.a) - k) * FIELD_PITCH_M;
+              at();
+            }
+            const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
+            if (edgeOut < 20 || edgeOut > maxOut || (keep && !keep(x, z))) { close(); continue; }
+            const c = fieldCoords(x, z), other = fieldCell(family ? c.a : c.b, 1 - family);
+            let w = 0;
+            if (fieldHash(k * 3.7 + other * 11.3 + family * 5.9) <= 0.8) {
+              const gaps = smoothstep(-0.3, 0.0, noise.noise(x * 0.017 + 3.3, z * 0.017 - 7.1));
+              w = gaps * smoothstep(25, 110, edgeOut) * Math.min(1, settings.hedgerows * 1.25);
+              if (w > 0) w *= 1 - woodsAt(x, z);
+            }
+            if (!cur) cur = { xs: [], zs: [], w: [] };
+            cur.xs.push(x); cur.zs.push(z); cur.w.push(w);
+          }
+          close();
+        }
+      }
+      return lines;
+    },
     trackAt(x: number, z: number, out: [number, number, number, number]): [number, number, number, number] {
       out[0] = 0; out[1] = 0; out[2] = 0; out[3] = 0;
-      if (settings.fields <= 0) return out;
+      if (settings.fields <= 0 || landUse) return out; // (a land-use map's tracks are the material's own lu_field)
       const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
       // the tracks come in from 20 m past the edge, narrower onto the woods (a forest ride, not a farm track)
       const presence = smoothstep(20, 80, edgeOut) * (1 - 0.6 * woodsAt(x, z)) * Math.min(1, settings.fields * 1.5);
@@ -560,24 +632,29 @@ export function createBorderLandform(
       }
       return out;
     },
-    parcelTintAt(x: number, z: number, out: [number, number, number]): [number, number, number] {
-      out[0] = 0; out[1] = 0; out[2] = 0;
+    parcelTintAt(x: number, z: number, out: [number, number, number, number]): [number, number, number, number] {
+      out[0] = 0; out[1] = 0; out[2] = 0; out[3] = 1;
+      if (landUse) {
+        // a land-use map: the material draws the map's own fields past the edge; the attribute carries only where they
+        // may lie — off the woods, thinning onto the crests (no fade: the fields run straight across the edge)
+        out[3] = 1 - (1 - woodsAt(x, z)) * (1 - 0.7 * smoothstep(0.62, 0.92, hillsAt(x, z)));
+        return out;
+      }
       if (settings.fields <= 0) return out;
       const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
-      const fade = smoothstep(30, 150, edgeOut);
+      const fade = smoothstep(0, 40, edgeOut);
       if (fade <= 0) return out;
       // farmland keeps to the gentler ground: off the woods, thinning onto the crests of the hills
-      const w = settings.fields * fade * (1 - woodsAt(x, z)) * (1 - 0.7 * smoothstep(0.62, 0.92, hillsAt(x, z)));
-      if (w <= 0.002) return out;
+      const w0 = Math.min(1, settings.fields * 1.25) * fade * (1 - woodsAt(x, z)) * (1 - 0.7 * smoothstep(0.62, 0.92, hillsAt(x, z)));
+      if (w0 <= 0.002) return out;
       const { a, b } = fieldCoords(x, z);
       const id = fieldCell(a, 0) * 7919 + fieldCell(b, 1) * 104729;
-      const roll = fieldHash(id), shade = fieldHash(id + 31);
-      const crop = cropTint(settings.crops, roll, shade);
-      out[0] = (crop[0] - 1) * w; out[1] = (crop[1] - 1) * w; out[2] = (crop[2] - 1) * w;
+      const crop = cropOf(settings.crops, fieldHash(id)), bright = 0.9 + 0.2 * fieldHash(id + 31), w = w0 * crop[3];
+      out[0] = crop[0] * bright * w; out[1] = crop[1] * bright * w; out[2] = crop[2] * bright * w; out[3] = 1 - w;
       return out;
     },
     woodsAt,
-    liftAt(x: number, z: number, r: number, roadDistance = Infinity): number {
+    liftAt(x: number, z: number, r: number): number {
       if (r <= BORDER_RIM_START_M) return 0;
       const a = enclosureAt(x, z);
       const k = nearLevelAt(x, z, a) / RIM_AT_PLAYABLE;
@@ -588,36 +665,15 @@ export function createBorderLandform(
         const w = smoothstep(BORDER_PLAYABLE_M, BORDER_PLAYABLE_M + HANDOVER_M, r);
         lift = square + (outlandLevel(x, z, r, a) - square) * w;
       }
-      let island = 0;
-      if (anchors.length) {
-        island = anchorAt(x, z);
-        if (island > 0) lift += (s * s - lift) * island; // the classic rim and its plateau (s = 1 past the edge)
-      }
-      if (roadDistance < ROAD_HOLD_OUT_M && r < BORDER_EDGE_M && island < 1) {
-        // past the red line the road keeps the classic rim's level there (it never climbs toward the old plateau), and
-        // hands over to the landform by the edge; a classic island keeps its own rim and plateau
-        const hold = (1 - smoothstep(ROAD_HOLD_IN_M, ROAD_HOLD_OUT_M, roadDistance))
-          * (1 - smoothstep(BORDER_PLAYABLE_M - 2, BORDER_EDGE_M, r)) * (1 - island);
-        lift += (Math.min(s * s, RIM_AT_PLAYABLE) - lift) * hold;
-      }
       return lift * rimH;
     },
-    classicLiftAt(r: number): number {
-      const s = smoothstep(BORDER_RIM_START_M, BORDER_EDGE_M, r);
-      return s * s * rimH;
-    },
     rimFactorAt(x: number, z: number): number {
-      const k = nearLevelAt(x, z, enclosureAt(x, z)) / RIM_AT_PLAYABLE;
-      return anchors.length ? k + (1 - k) * anchorAt(x, z) : k;
+      return nearLevelAt(x, z, enclosureAt(x, z)) / RIM_AT_PLAYABLE;
     },
     handOverAt(x: number, z: number): number {
       const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
       const wander = noise.noise(x * 0.0019 - 71.7, z * 0.0019 + 14.9) * 110;
-      const landform = 1 - smoothstep(330, 820, edgeOut + wander);
-      if (!anchors.length) return landform;
-      // an anchored sector hands over by the classic law (the tunnel's gallery meets the ring's first ridge at 200 m)
-      const classic = 1 - smoothstep(140, 460, edgeOut);
-      return landform + (classic - landform) * anchorAt(x, z);
+      return 1 - smoothstep(330, 820, edgeOut + wander - (holdValleys.length ? holdAt(x, z) : 0));
     },
   };
 }
