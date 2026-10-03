@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import {
   createWaterRippleField, WATER_RIPPLE_WINDOW_M, WATER_RIPPLE_TEXELS, WATER_RIPPLE_DEPTH_M, WATER_RIPPLE_FIXED_DT,
   WATER_RIPPLE_MAX_SUBSTEPS, WATER_RIPPLE_GRAVITY, WATER_RIPPLE_HULL_DRAFT_M, WATER_RIPPLE_CHURN_FULL_SPEED_MPS,
+  WATER_RIPPLE_SLEEP_AFTER_S,
 } from './waterRipples.ts';
 import { createShallowWaterSurface, WAKE_FULL_SPEED_MPS } from './shallowWater.ts';
 
@@ -160,6 +161,50 @@ sheet.update(WATER_RIPPLE_FIXED_DT);
 assert.equal(f3.steps, 1, 'update without an anchor only advances the clock');
 sheet.mesh.material.dispose();
 f3.dispose();
+
+// 6b. 2026-10-02 (the frame-budget lane): idle sleep. No hull in the water and no splash for WATER_RIPPLE_SLEEP_AFTER_S:
+//     the field is set to rest once and skips its passes (the clock and the window run on); any disturbance wakes it.
+{
+  const r = recordingRenderer();
+  const f = createWaterRippleField(r, { tier: 'desktop' });
+  const stepRenders = () => r.log.filter((e) => e[0] === 'render' && e[1] === 'waterRipples:step').length;
+  const resetRenders = () => r.log.filter((e) => e[0] === 'render' && e[1] === 'waterRipples:reset').length;
+  f.setDisturbances([{ x: 0, z: 0, strength: 1, speed: 5 }]);
+  for (let i = 0; i < 120; i++) f.step(WATER_RIPPLE_FIXED_DT, 0, 0);
+  assert.equal(f.asleep, false, 'a hull in the water keeps the field stepping');
+  assert.equal(stepRenders(), 120);
+  f.setDisturbances([]);
+  const quietFrames = Math.ceil(WATER_RIPPLE_SLEEP_AFTER_S / WATER_RIPPLE_FIXED_DT);
+  for (let i = 0; i < quietFrames - 1; i++) f.step(WATER_RIPPLE_FIXED_DT, 0, 0);
+  assert.equal(f.asleep, false, 'the wake keeps stepping while it decays');
+  assert.equal(stepRenders(), 120 + quietFrames - 1, 'identical stepping while the field is active');
+  const resetsBefore = resetRenders();
+  f.step(WATER_RIPPLE_FIXED_DT, 0, 0);
+  assert.equal(f.asleep, true, `quiet for ${WATER_RIPPLE_SLEEP_AFTER_S} s: asleep`);
+  assert.equal(resetRenders(), resetsBefore + 2, 'the field is set exactly to rest once (both targets)');
+  const asleepAt = stepRenders();
+  for (let i = 0; i < 300; i++) f.step(WATER_RIPPLE_FIXED_DT, 3 + i * 0.1, 0);
+  assert.equal(stepRenders(), asleepAt, 'asleep: no passes');
+  assert.equal(f.sleptSteps, 300, 'the skipped fixed steps are counted');
+  assert.deepEqual([f.params.y, f.params.w], [3 + 299 * 0.1, 1], 'the window keeps following the anchor, active (at rest)');
+  f.addImpulse(4, 4, 1.5, 0.2);
+  f.step(WATER_RIPPLE_FIXED_DT, 0, 0);
+  assert.equal(f.asleep, false, 'a splash wakes the field');
+  assert.equal(stepRenders(), asleepAt + 1, 'and steps on the frame it lands');
+  for (let i = 0; i < quietFrames; i++) f.step(WATER_RIPPLE_FIXED_DT, 0, 0);
+  assert.equal(f.asleep, true);
+  f.setDisturbances([{ x: 1, z: 1, strength: 0.6 }]);
+  f.step(WATER_RIPPLE_FIXED_DT, 0, 0);
+  assert.equal(f.asleep, false, 'a hull entering the water wakes it');
+  f.setDisturbances([]);
+  globalThis.__WORLD_SIM_DEBUG = { noSleep: true };
+  for (let i = 0; i < quietFrames + 10; i++) f.step(WATER_RIPPLE_FIXED_DT, 0, 0);
+  assert.equal(f.asleep, false, '__WORLD_SIM_DEBUG.noSleep: the field never sleeps (the A/B baseline)');
+  delete globalThis.__WORLD_SIM_DEBUG;
+  f.clear();
+  assert.equal(f.asleep, false, 'clear() returns a sleeping field to a fresh one');
+  f.dispose();
+}
 
 // 7. The world wiring: the terrain hands the height field the splash hook, the FX layer uses it and drops its prints.
 const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');

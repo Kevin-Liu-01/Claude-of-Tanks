@@ -44,6 +44,7 @@ import {
 } from './procedural.ts';
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
+import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
 import type { ModuleHealth, SurfaceId, VehicleAudioInput } from './vehicleAudioModel.ts';
 import { resolveReloadCuePlan, resolveWeaponReport, type ReloadCuePlan, type ReloadCueType, type WeaponClassId } from './weaponAudio.ts';
@@ -220,6 +221,15 @@ const WEAPON_CLOSE: Readonly<Record<WeaponClassId, string>> = Object.freeze({
   gun_130: 'gun_130_close', gun_152: 'gun_152_close', atgm: 'atgm_launch', rocket_heavy: 'rocket_salvo',
 });
 
+/**
+ * The crew's own gun: a dedicated report, fuller than anyone else's, as World
+ * of Tanks keeps the player's shot apart. Classes without one use their close bank.
+ */
+const OWN_REPORT: Readonly<Partial<Record<WeaponClassId, string>>> = Object.freeze({
+  gun_90: 'gun_own_medium', gun_105: 'gun_own_medium', gun_120: 'gun_own_large', gun_125: 'gun_own_large',
+  gun_130: 'gun_own_heavy', gun_152: 'gun_own_heavy', atgm: 'missile_launch_own',
+});
+
 const WEAPON_FAR: Readonly<Record<WeaponClassId, string>> = Object.freeze({
   mg_rifle: 'mg_far', mg_heavy: 'mg_far',
   ac_20: 'ac_far_light', ac_25: 'ac_far_light', ac_30: 'ac_far_light', ac_40: 'ac_far_heavy', ac_50: 'ac_far_heavy',
@@ -246,6 +256,8 @@ const CORE_BATTLE = [
 ];
 
 const PLAYER_HULL = [
+  'gun_own_medium', 'gun_own_large', 'gun_own_heavy', 'missile_launch_own', 'gun_recoil_mech', 'charge_ram',
+  'ammo_door_open', 'ammo_door_close', 'drum_rotate', 'drum_load_round', 'launcher_raise', 'turret_start',
   'breech_open', 'breech_close', 'case_eject_brass', 'case_eject_stub', 'shell_grab', 'shell_ram', 'autoloader_carousel',
   'autoloader_lift', 'autoloader_chain_ram', 'bustle_index', 'ac_feed', 'magazine_swap', 'missile_tube_load', 'latch_ready',
   'gun_interior_medium', 'gun_interior_large', 'gun_interior_heavy', 'repair_kit', 'first_aid', 'extinguisher',
@@ -369,6 +381,7 @@ export function createAudio({
   let lastGunLimitAt = -99;
   let slewS = 0;
   let lastTurretStopAt = -99;
+  let lastTurretStartAt = -99;
   let lastPitch: number | null = null;
   let lastSmokeBorn = -1;
   const reload: { active: boolean; total: number; kind: string; caliber: number; lastT: number; next: number; plan: ReloadCuePlan | null } = {
@@ -492,7 +505,9 @@ export function createAudio({
     const bus = cinematic ? 'cinematic' as const : own ? 'ownCombat' as const : undefined;
     const base: PlayOptions = { x, y, z, rate: report.rate, gainDb: report.gainDb, ...(bus ? { bus } : {}) };
     if (own) { base.propagate = false; base.priority = 95; }
-    const closePlayed = closeK > 0.03 && play(close, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(closeK) + (own ? 1.5 : 0) });
+    const ownReport = own ? OWN_REPORT[cls.id] : undefined;
+    const closePlayed = (!!ownReport && !!play(ownReport, { ...base, gainDb: (base.gainDb ?? 0) + 2.5 }))
+      || (closeK > 0.03 && !!play(close, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(closeK) + (own ? 2.5 : 0) }));
     const farPlayed = farK > 0.03 && play(far, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(farK) });
     // A report whose close bank is still decoding must not read as distant.
     const played = (closePlayed || closeK <= 0.4) && (closePlayed || farPlayed);
@@ -503,6 +518,11 @@ export function createAudio({
     if (own && listenerScoped && cls.family === 'cannon') {
       const size = caliberMm >= 128 ? 'heavy' : caliberMm >= 111 ? 'large' : 'medium';
       play(`gun_interior_${size}`, hullOptions({ bus: 'ownCombat', gainDb: 0 }));
+    }
+    // The machinery of our own shot: the breech recoiling and running back into
+    // battery, the buffer's hiss, the turret's loose gear rattling.
+    if (own && !cinematic && cls.family === 'cannon') {
+      play('gun_recoil_mech', hullOptions({ delayS: 0.035, rate: clamp(1.15 - (caliberMm - 100) / 300, 0.85, 1.15) }));
     }
     // Weight: the pressure wave under a cannon (the generated reports are lean below 80 Hz).
     if (noise && mixer && (cls.family === 'cannon' || cls.id === 'rocket_heavy') && (own || distance < 700)) {
@@ -1018,13 +1038,17 @@ export function createAudio({
     const mass = clamp(caliber / 110, 0.6, 1.4);
     const rate = clamp(1.12 - (mass - 1) * 0.25, 0.85, 1.25);
     const asset: Readonly<Record<ReloadCueType, string>> = {
-      caseEject: caliber <= 105 ? 'case_eject_brass' : 'case_eject_stub', breechOpen: 'breech_open', shellGrab: 'shell_grab',
-      ram: 'shell_ram', chargeRam: 'shell_ram', breechClose: 'breech_close', carouselTurn: 'autoloader_carousel',
+      caseEject: caliber <= 105 ? 'case_eject_brass' : 'case_eject_stub', breechOpen: 'breech_open',
+      ammoDoorOpen: 'ammo_door_open', shellGrab: 'shell_grab', ammoDoorClose: 'ammo_door_close',
+      ram: 'shell_ram', chargeRam: 'charge_ram', breechClose: 'breech_close', carouselTurn: 'autoloader_carousel',
       cassetteLift: 'autoloader_lift', chainRam: 'autoloader_chain_ram', stubEject: 'case_eject_stub',
-      bustleIndex: 'bustle_index', clipIndex: 'bustle_index', feedClank: 'ac_feed', magazineSwap: 'magazine_swap',
-      tubeLoad: 'missile_tube_load', latch: 'latch_ready',
+      bustleIndex: 'bustle_index', clipIndex: 'drum_rotate', drumRotate: 'drum_rotate', drumLoad: 'drum_load_round',
+      feedClank: 'ac_feed', magazineSwap: 'magazine_swap', tubeLoad: 'missile_tube_load', launcherRaise: 'launcher_raise',
+      latch: 'latch_ready',
     };
-    play(asset[type], hullOptions({ rate, gainDb: type === 'chargeRam' ? -4 : 0 }));
+    // The doors are machinery the crew hears but does not lean on: a little under the rounds.
+    const doors = type === 'ammoDoorOpen' || type === 'ammoDoorClose';
+    play(asset[type], hullOptions({ rate: doors ? 1 : rate, gainDb: doors ? -3 : 0 }));
   }
 
   function onReload(event: ReloadEvent): void {
@@ -1052,7 +1076,7 @@ export function createAudio({
     }
     reload.lastT = t;
     if (event.done) {
-      if (reload.plan?.ready) play('latch_ready', hullOptions({ gainDb: -6 }));
+      if (reload.plan?.ready) play('latch_ready', hullOptions({ gainDb: -2 }));
       reload.active = false;
       reloadCalled = false;
       if (total >= 1.25) say('reloaded', { prob: 0.35, delayS: 0.08 });
@@ -1196,20 +1220,27 @@ export function createAudio({
     const now = ctx.currentTime;
     const limit = !!state.atGunLimit;
     const slewing = Math.abs(state.turretYawRate ?? 0) > 0.05;
-    if (limit && !wasAtLimit && now - lastGunLimitAt > 1.5) {
+    if (limit && !wasAtLimit && now - lastGunLimitAt > 2.5) {
       lastGunLimitAt = now;
-      play('gun_limit', hullOptions({ gainDb: -4 }));
-      if (slewing || random() < 0.3) say('gun_limit', { prob: 0.25, delayS: 0.2 });
+      // The elevation drive straining against its stop: felt through the mount, not announced.
+      play('gun_limit', hullOptions({ gainDb: slewing ? -12 : -9 }));
     }
     wasAtLimit = limit;
     // The turret drive's stop clunk ends a real slew (a quarter second or
     // more), not the servo settling; and a damaged ring's grind.
     const traverse = Math.abs(state.turretYawRate ?? 0);
-    if (traverse > 0.12) slewS += dt;
-    else if (traverse < 0.02) {
+    if (traverse > 0.12) {
+      const before = slewS;
+      slewS += dt;
+      // The drive takes up the turret's weight: one start per real slew, never per servo flicker.
+      if (before < 0.1 && slewS >= 0.1 && now - lastTurretStartAt > 0.8) {
+        lastTurretStartAt = now;
+        play('turret_start', hullOptions({ gainDb: -6 }));
+      }
+    } else if (traverse < 0.02) {
       if (slewS > 0.25 && now - lastTurretStopAt > 0.6) {
         lastTurretStopAt = now;
-        play('turret_stop', hullOptions({ gainDb: -6 }));
+        play('turret_stop', hullOptions({ gainDb: -4 }));
       }
       slewS = 0;
     }
@@ -1322,7 +1353,7 @@ export function createAudio({
       if (!slot) { slot = { id: '', entity, d: 0 }; candidateSlots.push(slot); }
       slot.id = entity.id;
       slot.entity = entity;
-      slot.d = own ? -1 : d - (existing ? 25 : 0);
+      slot.d = own ? -1 : Math.max(0, d - (existing ? 25 : 0));
       candidates.push(slot);
     }
     candidates.sort(byDistance);
@@ -1593,9 +1624,32 @@ export function createAudio({
     installDebugSurface();
     applyScene();
     chooseSnapshot();
+    // Adopted after the battle phase edge: warm the battle set now (its edge has passed).
+    if (phase === 'battle') void warmBattle();
+  }
+
+  /** The garage's and menus' controls (interfaceSounds.ts classifies the pressed element). */
+  const INTERFACE_ASSET: Readonly<Record<InterfaceSound, string>> = Object.freeze({
+    click: 'ui_click', tab: 'ui_tab', select: 'ui_toggle', toggle: 'ui_toggle', slider: 'ui_slider',
+    back: 'ui_back', confirm: 'ui_confirm', vehicle: 'ui_tank_select',
+  });
+  let lastInterfaceAt = -1;
+
+  /** One interface sound per press: a control's own 'ui:click' never doubles the delegated one. */
+  function interfaceOnce(): boolean {
+    if (!ctx) return false;
+    if (ctx.currentTime - lastInterfaceAt < 0.09) return false;
+    lastInterfaceAt = ctx.currentTime;
+    return true;
+  }
+
+  function interfaceSound(sound: InterfaceSound, inMenu: boolean): void {
+    if (!ready() || (phase === 'battle' && !inMenu) || !interfaceOnce()) return;
+    if (!play(INTERFACE_ASSET[sound]) && mixer) synthClick(mixer.ctx, mixer.input('ui'), mixer.ctx.currentTime, 0.25);
   }
 
   function uiClick(): void {
+    if (!interfaceOnce()) return;
     if (!play('ui_click') && mixer) synthClick(mixer.ctx, mixer.input('ui'), mixer.ctx.currentTime, 0.25);
   }
 
@@ -1972,6 +2026,7 @@ export function createAudio({
         gunships: [...gunshipRigs.entries()].map(([id, rig]) => ({ id, gain: +rig.lastGain.toFixed(4), rate: +rig.lastRate.toFixed(3) })),
         own: ownAerial ? { kind: ownAerial.kind, gain: +ownAerial.lastGain.toFixed(4) } : null,
       }),
+      interfaceSound: (sound: InterfaceSound, inMenu = false) => interfaceSound(sound, inMenu),
       setEngineProbeSolo(id: string | null = null) { probeSolo = id || null; return probeSolo; },
       sayVoice: (id: string) => radio?.say(id, { force: true }) ?? false,
       forceCrewLanguage(lang: string | null = null) {
@@ -2044,6 +2099,9 @@ export function createAudio({
     };
     (window as unknown as { __COT_AUDIO?: unknown }).__COT_AUDIO = surface;
   }
+
+  // Every control in the garage and the menus sounds (not the battle controls).
+  if (typeof document !== 'undefined') bindInterfaceSounds(document, (hit) => interfaceSound(hit.sound, hit.inMenu));
 
   return {
     resume,

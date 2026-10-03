@@ -295,6 +295,18 @@ function tileMean2(tile: TilePixels): THREE.Vector3 {
   return new THREE.Vector3(2 * sum[0] / n, 2 * sum[1] / n, 2 * sum[2] / n);
 }
 
+let sharedCanopy: TilePixels | null = null;
+/**
+ * 2026-10-02 (the frame-budget lane): the one tile a terrain-bound ring still needs — its ring forest's crown mottle
+ * (the canopy texture and its mean). The ring itself draws with the battlefield's terrain material, so the other five
+ * tiles and the vista program are never built for it.
+ */
+export function createVistaCanopyTile(size = VISTA_TILE_SIZE): Pick<VistaTiles, 'canopy' | 'canopyMean'> {
+  const pixels = sharedTiles && sharedTiles.canopy.size === size ? sharedTiles.canopy
+    : sharedCanopy && sharedCanopy.size === size ? sharedCanopy : (sharedCanopy = makeCanopyTile(size));
+  return { canopyMean: tileMean2(pixels), canopy: tileToTexture(pixels) };
+}
+
 /** Tile pixels are authored once per page (about 60 ms); each ring owns its own GPU textures over them. */
 export function createVistaTiles(size = VISTA_TILE_SIZE): VistaTiles {
   if (!sharedTiles || sharedTiles.meadow.size !== size) {

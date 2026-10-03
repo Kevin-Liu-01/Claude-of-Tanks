@@ -35,18 +35,24 @@ assert.equal(resolveWeaponReport(100, 'bmp3-100mm').gainDb < 0, true, 'the low-p
 // Reload choreography.
 assert.equal(resolveReloadCuePlan(0.3, 'shell', 30).profile, 'rapid', 'per-shot autocannon cycles have no cues');
 const manual = resolveReloadCuePlan(6, 'shell', 120, 'manual');
-assert.deepEqual(manual.cues.map((c) => c.type), ['breechOpen', 'caseEject', 'shellGrab', 'ram', 'breechClose']);
+assert.deepEqual(manual.cues.map((c) => c.type), ['breechOpen', 'caseEject', 'ammoDoorOpen', 'shellGrab', 'ammoDoorClose', 'ram', 'breechClose'],
+  'the loader opens the ready-rack door, takes a round, shuts it and rams');
 const heavy = resolveReloadCuePlan(20, 'shell', 152, 'manual');
 assert.ok(heavy.cues.some((c) => c.type === 'chargeRam'), 'separate-loading rounds ram a charge');
 const carousel = resolveReloadCuePlan(7, 'shell', 125, 'carousel');
 assert.deepEqual(carousel.cues.map((c) => c.type), ['stubEject', 'carouselTurn', 'cassetteLift', 'chainRam', 'chainRam', 'breechClose']);
 const bustle = resolveReloadCuePlan(5, 'shell', 120, 'bustle');
 assert.ok(bustle.cues.some((c) => c.type === 'bustleIndex'));
-assert.equal(resolveReloadCuePlan(3, 'magazine', 120).profile, 'magazine');
+const drum = resolveReloadCuePlan(6, 'magazine', 120);
+assert.equal(drum.profile, 'magazine');
+assert.equal(drum.cues.filter((c) => c.type === 'drumLoad').length, 4, 'a drum refill feeds its rounds in one by one');
+assert.deepEqual([drum.cues[0].type, drum.cues.at(-1).type], ['drumRotate', 'breechClose']);
 assert.equal(resolveReloadCuePlan(2.5, 'intraClip', 120).profile, 'intraClip');
 assert.equal(resolveReloadCuePlan(4, 'shell', 30, 'autocannon').profile, 'autocannon');
-assert.equal(resolveReloadCuePlan(14, 'shell', 140, 'missile').profile, 'missile');
-for (const plan of [manual, heavy, carousel, bustle]) {
+const missile = resolveReloadCuePlan(14, 'shell', 140, 'missile');
+assert.equal(missile.profile, 'missile');
+assert.ok(missile.cues.some((c) => c.type === 'launcherRaise'), 'the launcher arm comes up before the latch');
+for (const plan of [manual, heavy, carousel, bustle, drum]) {
   for (let i = 1; i < plan.cues.length; i++) assert.ok(plan.cues[i].at >= plan.cues[i - 1].at, `${plan.profile} cues are ordered`);
   assert.ok(plan.cues.every((c) => c.at >= 0 && c.at <= 1), `${plan.profile} cues lie inside the cycle`);
   assert.equal(plan.cues.at(-1).type, 'breechClose', `${plan.profile} ends on the breech`);

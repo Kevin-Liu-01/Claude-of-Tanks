@@ -49,6 +49,7 @@ import { continuedGroundAt } from '../horizonSurface.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
+  createVistaCanopyTile,
   type VistaGround,
   type HorizonForestSpeciesPalette,
 } from '../horizonVista.ts';
@@ -2439,6 +2440,18 @@ interface HorizonMaterialContext {
   relief: { bake: HorizonReliefBake | null; settings: HorizonReliefSettings };
   /** Round 72: the map's lighting the ring's gains follow (the sky preset's sun and hemisphere, the deck's cover). */
   lighting: HorizonLighting;
+  /**
+   * 2026-10-02: the ring will draw every face with the battlefield's terrain material (terrain.ts binds it with
+   * continuousGround), so its own material is a data carrier only: no vista program, no ground / rock / scree / snow
+   * tiles; the relief atlas, the canopy tile and the haze stay for the terrain bands and the ring forest.
+   */
+  terrainBound: boolean;
+}
+
+/** Build-time options of the ring. */
+interface HorizonRingOptions {
+  /** The caller binds every ring face to the terrain material (terrain.ts): build no vista program. */
+  terrainBound?: boolean;
 }
 
 /** Round 72: the vista's sun and sky gains, and the far range's, from the map's own lighting. */
@@ -2568,6 +2581,7 @@ float horizonWaterVariation = 0.0;
 function* buildHorizonMaterialSteps({
   noise: gnoi, banding, snowline, treeline, grainAmp, style, seed, mapId,
   sun, maxHeight: maxH, retainedTextures, base, forest, snow, rock, fog, haze, vista, ground, bareRock, outcrops, relief, lighting,
+  terrainBound,
 }: HorizonMaterialContext): Generator<void, THREE.MeshBasicMaterial, void> {
   const [lx, ly, lz] = sun;
   const gullyAmp = style === 'alpine' ? 0.06 : style === 'mesa' ? 0.14 : 0.0;
@@ -2660,6 +2674,27 @@ function* buildHorizonMaterialSteps({
     // broad stands from the 312 m field opened by the 83 m field, held off steep faces and the crests and
     // tinted with the map's forest ratio, give them the patchwork real hills carry
     const standFrag = style === 'rolling' || style === 'escarpment' ? 0.72 : 0.0;
+    // 2026-10-02 (the frame-budget lane): a terrain-bound ring never draws this material — its relief atlas, canopy
+    // tile and haze are all the terrain bands and the ring forest read, so it carries those and no vista program
+    if (vista && terrainBound) {
+      const canopyTile = createVistaCanopyTile();
+      retainedTextures.push(canopyTile.canopy);
+      const reliefTexture = relief.bake ? makeReliefTexture(relief.bake) : null;
+      if (reliefTexture) retainedTextures.push(reliefTexture);
+      const carried: Record<string, THREE.IUniform> = {
+        uVRelief: { value: reliefTexture },
+        uVReliefR: { value: new THREE.Vector2(relief.bake?.r0 ?? 0, 1 / Math.max(1, (relief.bake?.r1 ?? 1) - (relief.bake?.r0 ?? 0))) },
+        uVReliefGrad: { value: relief.bake?.gradScale ?? 1 },
+        uVReliefAmp: { value: reliefTexture ? 1 : 0 },
+        uVCanopy: { value: canopyTile.canopy },
+        uVHaze: { value: haze * (style === 'alpine' ? 0.78 : 0.92) },
+      };
+      mat.userData.horizonDetailNoise = detailNoise;
+      mat.userData.horizonDetail2 = detail2;
+      mat.userData.horizonVista = { uniforms: carried, base: base.clone(), canopyMean: canopyTile.canopyMean };
+      mat.userData.horizonTerrainBound = true;
+      return mat;
+    }
     // Vista pass (2026-09-19): one layered world-anchored material for every style on the desktop tier — see
     // horizonVista.ts. Tints are ratios to the base tone; amplitudes follow the style's landform language.
     const tiles = vista ? createVistaTiles() : null;
@@ -3285,6 +3320,7 @@ export function* buildHorizonRingSteps(
   cfg: HorizonMapConfig | null | undefined,
   seed: number,
   ground?: CanyonGround,
+  { terrainBound = false }: HorizonRingOptions = {},
 ): Generator<void, THREE.Mesh, void> {
   const H = cfg?.horizon || {};
   const mapId = cfg?.id || 'verdant';
@@ -3453,7 +3489,7 @@ export function* buildHorizonRingSteps(
     mapId,
     sun: [lx, ly, lz], maxHeight: maxH, retainedTextures,
     base, forest: forestC, snow: snowC, rock: rockC, fog: fogC, haze, vista, ground: vistaGround, bareRock, outcrops,
-    relief: { bake: reliefBake, settings: reliefSettings }, lighting,
+    relief: { bake: reliefBake, settings: reliefSettings }, lighting, terrainBound,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'horizon-ring';
