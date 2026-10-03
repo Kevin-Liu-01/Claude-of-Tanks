@@ -39,7 +39,10 @@ export function createAerialCamera(camera: THREE.PerspectiveCamera) {
         owner=entity;previousKind=view.kind;yaw=view.yaw;pitch=-.12;zoom=1;launchBlend=view.launching?1:0;
         focus.set(0,view.kind==='gunship'?view.y-AERIAL_RULES.gunship.altitudeM:0,0);
       }
-      const dx=input.mouseDX+(input.cursorAim?(input.cursorX??0)*dt*350:0);
+      // consumeMouseDelta supplies world-yaw X (already negated), while
+      // the gimbal and FPV helpers below take screen-right-positive motion.
+      // Absolute cursor coordinates are already in screen space.
+      const dx=-input.mouseDX+(input.cursorAim?(input.cursorX??0)*dt*350:0);
       const dy=input.mouseDY-(input.cursorAim?(input.cursorY??0)*dt*250:0);
       camera.position.set(view.x,view.y+.12,view.z);
       if(view.kind==='gunship') aimGunship(view,input,dx,dy);
