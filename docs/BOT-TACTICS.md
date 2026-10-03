@@ -133,6 +133,14 @@ intent, so the low-speed watchdog does not read the hold as a wedge and reverse
 the hull off its hold point; a hull pressing into a wall short of it still backs
 off.
 
+A route corner round cover is not taken back at the next recheck. A recheck
+that would return to the corner the hull gave up less than 2 s ago keeps the
+current corner instead, while its lane stays clear and the destination stays
+put, for 6 s; a reached corner, a stuck strike or a new destination still
+chooses afresh. A T-90M pressed against a Coastal boulder chose between the
+boulder's two corners at every 0.6 s recheck: its pivot swung it 0.36 m off the
+rock, which reopened the lane the other corner needed, and it jinked in place.
+
 A rack that cannot hurt its target stops pressing it. After 60 seconds in sight
 of the target from inside 90 m, with zones visible but no loaded round opening
 the gate and no burst worth a round, the rack counts as spent against that
@@ -195,7 +203,14 @@ the route (a deck above the gorge) is no wall, and on and beside a deck the
 parts a hull rides onto or over (the slab, the piers under it) follow the same
 rule as the hull's collision. Each edge's steepest stretch (three terrain
 samples between the cells) is held to the same two-way slope rule as the
-cell-to-cell grade, so a cliff between two cell centres is no climb. Legs off
+cell-to-cell grade, so a cliff between two cell centres is no climb. Each of
+those samples also reads the side slope across the edge, 2 m either side of
+its line, and the edge holds it to the same rule: an edge that climbs a face
+at a slant, gentle along its own line, while the ground falls away beside the
+hull at 60 degrees, is no lane (Redrock Divide's plateau face routed frontline
+defenders across it; with the rule its falls near the last sector went from 18
+to 1 in 24 seeds). The terrain is read, not a deck: the deck's sides keep their
+own rules, and under a deck the gorge floor's own slope counts. Legs off
 the grid are cleared too: a route starts at the nearest cell on the hull's own
 level that it reaches straight (or round a detour point), on the goal's side of
 the closed edges first, and it reaches the exact goal only by a clear leg, a

@@ -937,6 +937,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/shellSurface.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
+    // 2026-10-03 (bots lane): an edge holds the side slope across it to the two-way slope rule.
+    'src/sim/botRouteSideSlope.selftest.mjs',
     'src/sim/botNavigationWater.selftest.mjs',
     'src/sim/navigationLiquidSafety.selftest.mjs',
     'src/sim/navigationLiquidStart.selftest.mjs',
@@ -958,6 +960,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.passiveTarget.selftest.mjs',
     // 2026-10-03 (bots lane): a zone centred on a face is held from holdable ground beside it.
     'src/game/ai.zoneHold.selftest.mjs',
+    // 2026-10-03 (bots lane): a route corner the hull pivots toward is held through the rechecks.
+    'src/game/ai.cornerHold.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',
@@ -1108,6 +1112,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/hardstandSurface.selftest.mjs',
     'src/world/hardstandBanks.selftest.mjs', // 2026-10-02: the apron bank law, every map, with its pending list
     'src/world/landformGeology.selftest.mjs', // 2026-10-03: landform geology, and every smooth landform unchanged
+    'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every house and village wall where main has it)
     'src/world/terrainSurfaceDetail.selftest.mjs',
     'src/world/terrainMaterialOwnership.selftest.mjs',
     'src/world/terrainProjection.selftest.mjs',
