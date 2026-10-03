@@ -1,4 +1,4 @@
-// Round 69 (2026-09-24): the four desktop light effects run behind their own preset levers, never on the mobile
+// Round 69 (2026-09-24): the desktop light effects (five since the owner's 2026-10-02 vehicle cavity occlusion) run behind their own preset levers, never on the mobile
 // tier, and the `?fx=` query is the QA switch (`?fx=off` keeps every pinned capture exact; `?fx=names` keeps only
 // the named effects). This receipt pins the policy, the presets that carry the levers and the two consumers.
 import assert from 'node:assert/strict';
@@ -8,7 +8,7 @@ import {
 } from './postLightFxPolicy.ts';
 import { PRESETS } from './quality.ts';
 
-const ALL = Object.freeze({ contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true });
+const ALL = Object.freeze({ contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, vehicleOcclusion: true });
 
 // 1. query parsing
 assert.equal(parsePostLightFxQuery(null), null);
@@ -21,16 +21,18 @@ for (const q of ['?fx=on', '?fx=all', '?fx=default', '?fx=1']) assert.equal(pars
   assert.ok(set instanceof Set);
   assert.deepEqual([...set].sort(), ['contact', 'flare'], 'unknown names are ignored, not errors');
 }
-assert.deepEqual(Object.keys(POST_LIGHT_FX_NAMES).sort(), ['bounce', 'contact', 'flare', 'shafts']);
+assert.deepEqual(Object.keys(POST_LIGHT_FX_NAMES).sort(), ['bounce', 'cavity', 'contact', 'flare', 'shafts']);
 
 // 2. resolution
 assert.deepEqual(resolvePostLightFx(ALL, 'desktop', null), ALL);
 assert.deepEqual(resolvePostLightFx(ALL, 'mobile', null), POST_LIGHT_FX_OFF, 'the mobile tier never runs them');
 assert.deepEqual(resolvePostLightFx(ALL, 'desktop', 'off'), POST_LIGHT_FX_OFF, '?fx=off');
 assert.deepEqual(resolvePostLightFx(ALL, 'desktop', new Set(['contact', 'shafts'])),
-  { contactShadows: true, groundBounce: false, sunShafts: true, lensFlare: false }, 'named effects only');
+  { contactShadows: true, groundBounce: false, sunShafts: true, lensFlare: false, vehicleOcclusion: false }, 'named effects only');
 assert.deepEqual(resolvePostLightFx({ contactShadows: true }, 'desktop', new Set(['contact', 'flare'])),
-  { contactShadows: true, groundBounce: false, sunShafts: false, lensFlare: false }, 'a name still needs its lever');
+  { contactShadows: true, groundBounce: false, sunShafts: false, lensFlare: false, vehicleOcclusion: false }, 'a name still needs its lever');
+assert.deepEqual(resolvePostLightFx(ALL, 'desktop', new Set(['cavity'])),
+  { contactShadows: false, groundBounce: false, sunShafts: false, lensFlare: false, vehicleOcclusion: true }, '?fx=cavity keeps the vehicle occlusion alone');
 assert.deepEqual(resolvePostLightFx({}, 'desktop', null), POST_LIGHT_FX_OFF, 'no levers: nothing runs');
 assert.ok(samePostLightFx(resolvePostLightFx(ALL, 'desktop', null), ALL));
 assert.ok(!samePostLightFx(POST_LIGHT_FX_OFF, ALL));
@@ -39,11 +41,11 @@ assert.ok(Object.isFrozen(resolvePostLightFx(ALL, 'desktop', null)));
 // 3. the presets: the three desktop tiers above Low carry every lever; Low and the phones none
 for (const name of ['ultra', 'high', 'medium']) {
   const p = PRESETS[name];
-  assert.deepEqual([p.contactShadows, p.groundBounce, p.sunShafts, p.lensFlare], [true, true, true, true], name);
+  assert.deepEqual([p.contactShadows, p.groundBounce, p.sunShafts, p.lensFlare, p.vehicleOcclusion], [true, true, true, true, true], name);
 }
 for (const name of ['low', 'mobile-low', 'mobile', 'mobile-high']) {
   const p = PRESETS[name];
-  assert.deepEqual([p.contactShadows, p.groundBounce, p.sunShafts, p.lensFlare], [undefined, undefined, undefined, undefined], name);
+  assert.deepEqual([p.contactShadows, p.groundBounce, p.sunShafts, p.lensFlare, p.vehicleOcclusion], [undefined, undefined, undefined, undefined, undefined], name);
 }
 
 // 4. the consumers resolve the same policy with the device tier and the page query

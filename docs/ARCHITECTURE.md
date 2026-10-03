@@ -486,6 +486,17 @@ resolved depth and blended into the CSM visibility the opaque lit materials writ
 through the CSM shader patch (`engine/groundBounce.ts`), and quarter-resolution sun shafts and a lens flare
 (`engine/sunShafts.ts`, `engine/lensFlare.ts`) written into one light target the grade adds before its tonemap; the
 pass order above is unchanged and no full-resolution pass was added.
+Vehicle form in shade (2026-10-02): the vehicle readability floors (`vehicles/materials.ts`) aim a shaded plate's
+fill by its world orientation — sky-facing plates most, the sun's bearing a little, a 0.28 lens share kept for
+readability — rather than by how squarely it faces the lens; indirect light falls toward the ground along each
+vehicle's own up axis (× 0.66 at the hull bottom, back to 1 at 1.75 m) through one shared ground reference that every
+vehicle mesh points at its root before it draws (`tankFactoryCore.ts`); and a fifth light lever, `vehicleOcclusion`
+(`engine/vehicleOcclusion.ts`, ultra/high/medium, `?fx=cavity`), adds a vehicle-only cavity occlusion inside the aerial
+pass — fixed horizon taps against the resolved depth on pixels whose alpha carries the vehicle tag, scaling only the
+ambient share — for bustles, skirts and wheel bays. Scene-wide GTAO stays off. The deep-shade floor lifts the light a
+plate receives, not its output: each texel lands in proportion to its own paint against the map's mean tone (its last
+mip), so a camouflage keeps its light/dark contrast on shaded sides and under canopy (the old lift brought every texel
+to one luminance along its hue, and a desert scheme's dark patches vanished into the base tan).
 Volumetric clouds (round 68, 2026-09-24): on the desktop tier `engine/volumetricClouds.ts` raymarches a per-map cloud
 slab (its layer derived by `engine/cloudPresets.ts` from the map's authored sky block, its noise volumes baked by
 `engine/cloudNoise.ts` in a worker) at one sixteenth of a half-resolution history with a 4 × 4 slot cycle and

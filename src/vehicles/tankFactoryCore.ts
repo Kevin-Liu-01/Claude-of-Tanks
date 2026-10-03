@@ -30,7 +30,10 @@ import {
   torus, xform,
 } from './factoryGeometry.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
-import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish } from './materials.ts';
+import {
+  createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
+  setVehicleGroundFromRoot, resetVehicleGround,
+} from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
@@ -1509,6 +1512,26 @@ function installBattleDetailGroups(records: readonly StaticDetailRecord[]): {
 // object-local even though materials are shared: Three invokes it immediately
 // before applying the material's raster state for that draw. Shadow materials
 // are deliberately ignored, so the arbitration cannot introduce shadow acne.
+// Owner 2026-10-02 ("shadows on tanks make them look a lil flat"): the vehicle materials' ground occlusion reads one
+// shared ground reference (materials.ts); every final mesh of this vehicle points it at the vehicle's root just
+// before it draws and releases it after, so the lower hull, running gear and track run of whichever tank is drawing
+// fall off toward its own ground contact. Installed after decoration, batching and detail regrouping, beside the
+// coplanar layers, so every color-pass mesh carries it; the root closure costs no parent walk per draw.
+function installVehicleGroundReference(root: THREE.Object3D): void {
+  root.traverse((object) => {
+    if (!(object as THREE.Mesh).isMesh) return;
+    const before = object.onBeforeRender, after = object.onAfterRender;
+    object.onBeforeRender = function vehicleGroundBefore(...args: Parameters<THREE.Object3D['onBeforeRender']>) {
+      setVehicleGroundFromRoot(root);
+      before.apply(this, args);
+    };
+    object.onAfterRender = function vehicleGroundAfter(...args: Parameters<THREE.Object3D['onAfterRender']>) {
+      after.apply(this, args);
+      resetVehicleGround();
+    };
+  });
+}
+
 function installCoplanarDepthLayers(root: THREE.Object3D): void {
   interface DepthRecord {
     object: VehicleMesh;
@@ -10052,6 +10075,7 @@ function* createTankOwnedSteps(
     // Run after decoration, static batching and battle-detail regrouping so
     // every final color-pass mesh receives exactly one stable layer.
     installCoplanarDepthLayers(root);
+    installVehicleGroundReference(root);
     finalizeVehicleNightLighting(root);
     const tailFinalizeFinishedAt = performance.now();
     // Retain each authored hull/turret/gun proxy and its articulation owner.
