@@ -128,6 +128,11 @@ assert.equal(horizonPanoramaDeckM({}, 1400), 1400, 'no cloudscape: the round-72 
 assert.ok(HORIZON_PANORAMA_SHADERS.height.includes('mesaRamp(s1, 700.0, 50.0)') && HORIZON_PANORAMA_SHADERS.height.includes('mesaRamp(s1 - inset'),
   'the height pass shapes each table by its rim distance: a talus apron, a cliff, an inset upper tier');
 assert.ok(/uChar2\.z > 0\.5 \? mix\(-0\.03, 0\.06/.test(HORIZON_PANORAMA_SHADERS.height), 'a table\'s top clears the ring\'s skyline or stays behind it');
+// the land falls away within ~12 degrees of any sea sector (Nordhavn Fjord's headland between two openings stood as a
+// monolith in the water), and a far shore fades at the sector's flanks
+assert.ok(HORIZON_PANORAMA_SHADERS.height.includes('nearSea') && HORIZON_PANORAMA_SHADERS.height.includes('fract(a0 - 0.034)'),
+  'the far land tapers by its nearness to a sea sector, either side');
+assert.ok(HORIZON_PANORAMA_SHADERS.height.includes('smoothstep(0.0, 0.6, sink)'), 'the far shore stands well inside the sector only');
 
 // --- the shaders: the passes read the uniforms the baker binds -------------------------------------------------------
 for (const [name, source] of Object.entries(HORIZON_PANORAMA_SHADERS)) {

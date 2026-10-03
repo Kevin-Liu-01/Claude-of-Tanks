@@ -469,21 +469,31 @@ float farField(vec2 p) {
   // at the sector's edge the land runs to the annulus's end, toward its middle the coast closes in to the ring, so a bay
   // opens as headlands receding one behind another into the sea
   h = mix(edge.r * 0.8, h, smoothstep(uFrame.x, uFrame.x + 500.0, r));
+  // the land falls away within ~12 degrees of a sea sector, the nearest opening counted either side (Nordhavn Fjord's
+  // headland between its two openings stood at the mouth as an alpine monolith in the water, its sides cut by the sea)
+  float a0 = fract(atan(p.y, p.x) * 0.15915494309);
+  float nearSea = max(edge.g, max(
+    max(texture2D(uEdge, vec2(fract(a0 + 0.017), 0.5)).g, texture2D(uEdge, vec2(fract(a0 - 0.017), 0.5)).g),
+    max(texture2D(uEdge, vec2(fract(a0 + 0.034), 0.5)).g, texture2D(uEdge, vec2(fract(a0 - 0.034), 0.5)).g)));
+  float landKeep = 1.0 - smoothstep(0.0, 0.45, nearSea);
   float sink = edge.g * smoothstep(0.0, 0.35, edge.g), seaH = edge.b - 6.0;
   if (sink > 0.0) {
     vec2 su = p / max(r, 1.0);
     float coastR = mix(uFrame.y + 500.0, uFrame.x - 300.0, pow(sink, 0.6)) + 700.0 * noised(su * 9.0 + uOff3.zw).x;
     float water = smoothstep(coastR - 900.0, coastR + 300.0, r);
-    float land = h;
+    float land = h * landKeep;
     if (uShore.x > 0.0) {
       float rs = uShore.y + 1100.0 * noised(su * 5.0 + uOff2.zw).x;
       float rc = rs + 2400.0, crest = 0.7 + 0.3 * noised(su * 23.0 + uOff3.xy).x;
       float range = uShore.z * A * crest * exp(-((r - rc) * (r - rc)) / (1600.0 * 1600.0));
-      float back = smoothstep(rs, rs + 1800.0, r);
-      land = mix(h, h * uShore.x + range, back);
+      // (well inside the sector only: at its flanks the far shore meets the tapered land, not a wall beside it)
+      float back = smoothstep(rs, rs + 1800.0, r) * smoothstep(0.0, 0.6, sink);
+      land = mix(land, h * uShore.x + range, back);
       water *= 1.0 - back;
     }
     h = mix(land, seaH, water);
+  } else {
+    h *= landKeep;
   }
   return h;
 }
