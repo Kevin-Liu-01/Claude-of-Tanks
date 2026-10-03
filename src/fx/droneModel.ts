@@ -76,7 +76,7 @@ export function createDroneModelKit(nation?:string) {
  }
  for(let i=0;i<5;i++)box(parts,.12,.005,.009,0,.177,-.14+i*.042);
  const body=merge(parts),equipment=merge(fairing),lens=merge(glass);
- const bladeParts=[new THREE.CylinderGeometry(.02,.02,.026,8)];
+ const bladeParts:THREE.BufferGeometry[]=[new THREE.CylinderGeometry(.02,.02,.026,8)];
  for(let n=0;n<3;n++)bladeParts.push(new THREE.BoxGeometry(.26,.012,.037).translate(.13,0,0).rotateY(n*Math.PI*2/3));
  const rotor=merge(bladeParts);
  const bodyMaterial=new THREE.MeshStandardMaterial({color:0x252d30,roughness:.48,metalness:.6});
