@@ -1372,7 +1372,7 @@ sounds come from a few metres away); `voiceLines.ts` + `crewRadio.ts` (crew
 radio); `procedural.ts` (synthesized fallbacks and alarms); `mixPolicy.ts`
 (every level, snapshot, HDR, budget and LOD constant).
 
-**Assets.** 366 sound assets (596 variant files, 17 MB WebM/Opus) under
+**Assets.** 386 sound assets (627 variant files, 18 MB WebM/Opus) under
 `public/audio/sfx/<group>/`, described by `sfxManifest.generated.ts`
 (duration, channels, rate, loop points, size). Crew radio: 13 language packs
 × 97 lines (one to four takes each, mostly two; ~1.5 MB per pack) under
@@ -1389,7 +1389,8 @@ snapshot lowpass/level → voice duck`; `own (the occupied hull's engine and
 mechanisms) and ownCombat (its gun, interior report and hits on it) →
 snapshot lowpass/level`; `interior`, `cinematic`, `ambience (ducked under
 radio)`; `ui, music, voice, alarm → pre-master`; then `glue compressor (12 ms
-attack, lets transients through) → tanh soft clip → master`. Gunfire leads:
+attack, lets transients through) → look-ahead limiter (takes a crack's peak)
+→ tanh soft clip → master`. Gunfire leads:
 weapons, impacts and ownCombat run at full level with a low shelf for
 weight, and the constant layers (engines, ambience, radio, interface) sit
 under them. Settings channels (`cot.settings.v1`, live via 'ui:volumes':
@@ -1403,8 +1404,10 @@ top; a new voice more than 18 dB below it is trimmed by half the excess (at
 most 12 dB) and one 50 dB below is not started, so a 152 mm report masks
 rifle fire while playing in full itself. A close blast on the occupied hull
 triggers a concussion (muffle and recovery, optional tinnitus; settings
-toggle). Cannons, HE bursts, vehicle explosions and penetrations of the
-occupied hull carry a synthesized sub-bass thump under the samples.
+toggle). Every gun report carries a procedural muzzle blast (a Friedlander
+pressure pulse scaled to the bore) within its close range; HE bursts, vehicle
+explosions and penetrations of the occupied hull carry a synthesized sub-bass
+thump under the samples.
 Hits have no interface marker: the impact at the target (close banks
 crossfading into distant armour-hit banks by range), the target's
 destruction and the gunner's call confirm them, and the listener's own
@@ -1437,13 +1440,16 @@ one-shots. The occupied hull adds turret-drive and elevation servo loops,
 interior hum and rattle; remote rigs use LOD (own / near ≤140–165 m / far
 ≤900–1000 m, desktop 5 near + 8 far, mobile 3 + 4).
 
-**Weapons.** Fifteen report classes (rifle and heavy MG; 20–50 mm
-autocannon; 90–152 mm cannon; ATGM; heavy rocket) with close and distant
-banks crossfaded by range, per-map gun tails (open, forest, urban,
-mountain), the interior report when scoped, twin-weapon stagger, autocannon
-feed, supersonic flyby and near-miss crack, missile warning. Reloads play the
-loader's choreography (manual, carousel, bustle, autocannon, missile,
-magazine, intra-clip) timed to `player:reload` progress.
+**Weapons.** Eighteen report classes (rifle and heavy MG; 20–50 mm
+autocannon; 90–152 mm cannon; ATGM; heavy rocket; the AC-130's autocannon,
+howitzer and missiles) with close and distant banks crossfaded by range,
+per-map gun tails (open, forest, urban, mountain; once per beat for a
+machine-gun burst), the interior report when scoped, twin-weapon stagger,
+autocannon feed, supersonic flyby and near-miss crack, missile warning. The
+close reports are cracks chosen by transient anatomy and mastered on their
+true peak. Reloads play the loader's choreography (manual, carousel, bustle,
+autocannon, missile, the gunship's hand-loaded howitzer, magazine,
+intra-clip) timed to `player:reload` progress.
 
 **Event table.** shell:fired / weapon:predicted / auxiliary:fired →
 reports; shell:hit → impact by kind and calibre (pen, ricochet, nonpen,
@@ -1456,18 +1462,20 @@ crew calls; consumables, shell selection, magazine reloads, dry fire,
 auto-aim lock, armor overlay, minimap zoom, spectate, jump, self-right,
 smoke screens, artillery/flak/AA/flyover atmosphere, killcam:begin / done /
 impact / shot / collision (the replay's debris stretches to its 0.55×
-rate), ui:pause, battle phase edges and results, and fifteen match-mode
-events (zones, flags, waves, goals, respawns, pickups, Infected conversions,
-Gun Game weapon changeovers).
+rate), ui:pause, battle phase edges and results (each game mode opens on its
+own sound, read through a `getGameMode` getter), and sixteen match-mode
+events (zones, flags, waves, goals, respawns, pickups and cache drops,
+Infected conversions, Gun Game weapon changeovers).
 
 **Aircraft.** `aerialRig.ts` plays the Drone and AC-130 aircraft: a moving
 loop with distance law, air absorption, pan and Doppler, or the pilot's or
 crew's own perspective. FPV drones fly as shells, so the listener runtime
 passes the live shell list to the audio update; an enemy drone buzzes where it
-flies, ours spins up on our hull and is heard through its band-limited feed
-until it strikes or is recalled. A gunship is a roster tank pinned to its
-orbit: it never gets a tank rig; the ground hears its turboprops overhead and
-its crew the cabin.
+flies; while ours flies the listener rides it (`player-drone`), its motors
+lead and our tank is heard from outside until it strikes or is recalled. A
+gunship is a roster tank pinned to its orbit: it never gets a tank rig; the
+ground hears its turboprops and guns from the sky, and its crew the cabin and
+the guns firing inside it.
 
 **Crew radio.** National crews: a hull speaks its nation's language
 (en-US, en-GB, de, ru, uk, zh, fr, sv, ja, ko, it, pl, he; commander and crew

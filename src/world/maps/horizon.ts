@@ -48,9 +48,11 @@ import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloud
 import { continuedGroundAt } from '../horizonSurface.ts';
 import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
 import { buildBorderFarmsteads, farmsteadTreesAt, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
+import { buildBorderHedgerows } from '../borderHedgerows.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
+  horizonBroadleafPalette,
   createVistaCanopyTile,
   type VistaGround,
   type HorizonForestSpeciesPalette,
@@ -1061,11 +1063,9 @@ function continueHorizonGround(ring: HorizonRingGeometry, ground: CanyonGround |
     // the map-borders lane (2026-10-03): the field says where its landform hands over to the authored ranges (a band
     // that wanders 150–750 m past the edge, so the hand-over draws no ring parallel to the square)
     let weight = canyon ? 1 : ground.getBorderHandOverAt ? ground.getBorderHandOverAt(x, z) : 1 - smoothstep(140, 460, edgeOut);
-    // A rail valley closes over its existing tunnel gallery. Keep the
-    // approach on the real bed, then let the authored ridge cover the bore.
+    // A railway's open line past the edge (railSpurs.ts RAIL_OPEN_*): the rows lie on its real bed (the round-67 tunnel
+    // gallery the authored ridge closed over is retired)
     const seat = ground.getOutlandSeatWeightAt?.(x, z) ?? 0;
-    const radialRun = edgeOut * Math.hypot(x, z) / Math.max(Math.abs(x), Math.abs(z));
-    weight *= 1 - seat * smoothstep(125, 200, radialRun);
     if (weight <= 0) continue;
     let height = continuedGroundAt(ground, x, z);
     // The square-clamped residual can sample the cutting's side bank. Its
@@ -1208,8 +1208,7 @@ function openHorizonToSea(
 
 /**
  * Round 67 (2026-09-24): the first authored ridge of every style stands this far past the rim (its row margin below;
- * the row's own radius only exceeds it on the square's sides) — a railway cutting's tunnel portal (railSpurs.ts
- * RAIL_TUNNEL_RIDGE_RUN_M, held equal by railCutting.selftest) ends its gallery on that line.
+ * the row's own radius only exceeds it on the square's sides).
  */
 export const HORIZON_FIRST_RIDGE_MARGIN_M = 200;
 
@@ -3645,6 +3644,22 @@ export function* buildHorizonRingSteps(
   // Tanks' red-line shots, villages carrying on past the boundary): farmsteads and hamlets on the ring's seated surface
   // past the edge (borderFarmsteads.ts) — off the woods, the sea, a railway's right of way and the exit roads'
   // carriageways, gathered along those roads. One merged mesh, one draw, its shadow in the far cascade only.
+  // The map-borders lane (2026-10-03, gauntlet wave 1: "the empty middle distance"): the hedges as bush lines along the
+  // hedged stretches of the field boundaries past the edge, on the ring's continued ground (not on the ranges or the sea)
+  const hedgeLines = vista && ground?._borderHedgeLines ? ground._borderHedgeLines(900, (x, z) =>
+    (ground.getBorderHandOverAt?.(x, z) ?? 1) > 0.5 && !(seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01)
+    && (ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0) < 0.05 && (ground.getOutlandSeatWeightAt?.(x, z) ?? 0) < 0.05) : [];
+  if (hedgeLines.length) {
+    const hedges = buildBorderHedgerows({
+      seed: ((seed ^ 0x4ED9) ^ idHash(mapId)) >>> 0, lines: hedgeLines, groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),
+      palette: horizonBroadleafPalette(rimBroadleaf ? vegetation?.palettes?.[rimBroadleaf]?.canopy : undefined),
+    });
+    if (hedges) {
+      const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;
+      if (setup) setup.call(_engineCtx, hedges.material as THREE.Material, null);
+      mesh.add(hedges);
+    }
+  }
   if (farmOptions && farmSites.length) {
     const farms = buildBorderFarmsteads({ ...farmOptions, sites: farmSites });
     if (farms) {
