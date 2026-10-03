@@ -416,7 +416,11 @@ function topSpeedMps(entity) {
 
 function seatAirborne(entity, world, dropTo, { pitch = 0, roll = 0, vy = 0 } = {}) {
   const state = entity.state;
-  const y = Math.max(world.fn(state.pos.x, state.pos.z), structureTop(world.obstacles, state.pos.x, state.pos.z)) + dropTo;
+  // an inverted hull hangs its body below the root: seat its roof clear of the ground (a 2.5 m drop buried a heavy
+  // hull's turret 0.7 m, and the first tick's lift read as a 0.67 m pop)
+  const upright = Math.cos(pitch) * Math.cos(roll);
+  const clearance = upright < 0 ? Math.max(dropTo, -upright * tankBodyTopM(entity.spec) + 0.05) : dropTo;
+  const y = Math.max(world.fn(state.pos.x, state.pos.z), structureTop(world.obstacles, state.pos.x, state.pos.z)) + clearance;
   state._spring.pitch = state.visualPitch = pitch;
   state._spring.roll = state.visualRoll = roll;
   state._spring.pitchV = 0;
