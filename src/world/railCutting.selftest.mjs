@@ -177,8 +177,8 @@ for (const lat of [4.7, 5.2, 5.6]) {
   near(field.getHeightAt(500, -181 - lat), portalY + RAIL_CUTTING_GRADE * 60 + (lat - 4) / RAIL_CUTTING_BATTER, 1e-9, `the south face at the batter (lateral ${lat})`);
 }
 assert.equal(field.getHeightAt(500, -191), uncut.getHeightAt(500, -191), 'beyond the daylight line the ground it was');
-near(field.getHeightAt(410, -226), -0.01, 0.02, 'the station road node before the rim');
-near(field.getHeightAt(512, -232), 3.44, 0.02, 'and at the edge: authored on the landform\'s rim, it comes down with the land (20.4 m on the old plateau)');
+near(field.getHeightAt(410, -226), 0.52, 0.02, 'the station road node before the rim (inside 430 m the classic grades, as authored)');
+near(field.getHeightAt(512, -232), 3.44, 0.02, 'and at the edge: graded on the landform\'s rim past 430 m, it comes down with the land (20.4 m on the old plateau)');
 near(field.getHeightAt(424, -181), -1.55, 0.02, 'the plain before the fade');
 // every sample outside the corridor is byte-identical to the map without the cutting; the road nodes to the bit
 let moved = 0, outside = 0, west = 0;
