@@ -13,3 +13,7 @@ for(const kind of ['drone','gunship']){
  assert.equal(calls.at(-1)[0],'restore');
 }
 console.log('aerialMinimap: aircraft projection, carrier tether, orbit, sight and canvas state passed');
+
+const edgeCalls=[],edgeCtx=new Proxy({}, {get:(o,k)=>o[k]??((...args)=>edgeCalls.push([k,...args]))});
+drawAerialMinimap(edgeCtx,{kind:'drone',x:800,z:-800,yaw:0},{x:0,z:0},null,{x:0,z:1},(x,z)=>projectWorldToMinimap(x,z,1000,250),.25);
+assert.deepEqual(edgeCalls.find(c=>c[0]==='translate'),['translate',9,241],'drone beyond ground-map boundary keeps a visible edge marker');
