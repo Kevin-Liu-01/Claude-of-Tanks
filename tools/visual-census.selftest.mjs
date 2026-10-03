@@ -491,6 +491,23 @@ try {
   await assert.rejects(createPoliteCaptureLock({ ...dirs, ...fast }).acquire(150), /cot-shots lock timeout/, 'a busy session mutex never blocks the FIFO lock');
   assert.ok(!existsSync(dirs.lockDir), 'the FIFO lock was never taken while the session mutex was busy');
   rmSync(dirs.probeDir, { recursive: true });
+  // 2026-10-03: a dead holder's session mutex (its pid gone, past the grace age) is reaped and taken; a live holder's
+  // mutex never is, nor one younger than the grace age (the busy case above: a fresh mutex with no pid yet).
+  mkdirSync(dirs.probeDir);
+  const deadHolder = spawn(process.execPath, ['-e', ''], { stdio: 'ignore' });
+  await new Promise((resolve) => deadHolder.once('exit', resolve));
+  writeFileSync(path.join(dirs.probeDir, 'pid'), String(deadHolder.pid));
+  const reaper = createPoliteCaptureLock({ ...dirs, ...fast, probeDeadGraceMs: 0 });
+  await reaper.acquire(2000);
+  assert.ok(existsSync(dirs.lockDir) && readFileSync(path.join(dirs.probeDir, 'pid'), 'utf8') === String(process.pid),
+    "a dead holder's session mutex is reaped and taken");
+  reaper.release();
+  mkdirSync(dirs.probeDir);
+  writeFileSync(path.join(dirs.probeDir, 'pid'), String(process.pid));
+  await assert.rejects(createPoliteCaptureLock({ ...dirs, ...fast, probeDeadGraceMs: 0 }).acquire(150), /cot-shots lock timeout/,
+    "a live holder's session mutex is never reaped");
+  assert.ok(existsSync(dirs.probeDir) && !existsSync(dirs.lockDir), "the live holder keeps its mutex and nobody takes the FIFO lock");
+  rmSync(dirs.probeDir, { recursive: true });
   mkdirSync(dirs.lockDir);
   await assert.rejects(createPoliteCaptureLock({ ...dirs, ...fast }).acquire(300), /cot-shots lock timeout/);
   assert.ok(!existsSync(dirs.probeDir), 'a FIFO holder outlasting the wait gets the session mutex handed back');
