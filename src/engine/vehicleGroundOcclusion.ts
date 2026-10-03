@@ -13,7 +13,10 @@
  *     occ = ½ · sin²(atan(h / d)) · (2/π) · atan(L / d)
  *   a wall of height h subtends elevation α = atan(h/d); the cosine-weighted sky below α over half the azimuth is
  *   ½ sin²α (a long wall); a finite hull covers the azimuth share (2/π) atan(L/d) of that half
- *   under the hull (inside the box's footprint): GROUND_AO_UNDER (the belly, the tracks and the hull over the point)
+ *   under the hull (s metres inside the footprint's nearest edge, W its half width, c the belly's clearance): the sky the
+ *   point sees through the two side gaps, 1 − ½ sin²(atan(c/s)) − ½ sin²(atan(c/(2W − s))) — ½ at the edge (continuous
+ *   with the law beside it: the first captures showed a hard dark rectangle under every hull on overcast snow), toward
+ *   GROUND_AO_UNDER at the belly's middle
  *
  * The term dims only the pixel's ambient share, as the vehicle cavity term does (vehicleOcclusion.ts): colour ·
  * (1 − occ · A / (T + A)), the sun term T and the ambient A the light rig gives the pixel's depth normal
@@ -26,8 +29,10 @@ import * as THREE from 'three';
 
 /** At most this many hulls (the shadow router's near selection: NEAR_VEHICLE_SHADOW_MAX). */
 export const GROUND_AO_MAX_HULLS = 4;
-/** The ground under a hull's footprint (the belly and the running gear over it) loses this share of its sky. */
+/** The most sky the ground under a hull's belly loses (its middle; the edge loses half, continuous with the side). */
 export const GROUND_AO_UNDER = 0.85;
+/** The belly's clearance over the ground (m): the side gaps the ground under a hull sees the sky through. */
+export const GROUND_AO_CLEARANCE_M = 0.45;
 /** The box is carried this far below the proxy's lowest point (the running gear under the track guards, to the ground). */
 export const GROUND_AO_GEAR_DROP_M = 0.9;
 /** The selection's range (m) and the fade over its last stretch. */
@@ -116,6 +121,13 @@ export function updateVehicleGroundOcclusionUniforms(
   u.uVehGround.value = n;
 }
 
+/** The sky share a point s metres inside the footprint's nearest edge loses (the side-gap law above; W the half width). */
+export function vehicleGroundOcclusionUnder(s: number, W: number, clearance = GROUND_AO_CLEARANCE_M): number {
+  const sin2 = (h: number, d: number): number => { const dd = Math.max(d, 1e-3); return (h * h) / (h * h + dd * dd); };
+  const ss = Math.max(0, Math.min(s, W));
+  return Math.min(GROUND_AO_UNDER, 1 - 0.5 * sin2(clearance, ss) - 0.5 * sin2(clearance, 2 * W - ss));
+}
+
 /** The CPU twin of the GLSL: the occlusion a world point takes from one box (centre c, unit axes, half extents). */
 export function vehicleGroundOcclusionAt(
   p: THREE.Vector3, c: THREE.Vector3, ax: THREE.Vector3, ay: THREE.Vector3, az: THREE.Vector3, half: THREE.Vector3,
@@ -126,7 +138,8 @@ export function vehicleGroundOcclusionAt(
   const h = half.y - ly; // the box's top over the point
   if (h <= 0 || ly < -half.y - 0.6) return 0; // above the box, or well below its foot (a slope under it)
   const d = Math.hypot(qx, qz);
-  return d <= 0 ? GROUND_AO_UNDER : Math.min(GROUND_AO_UNDER, vehicleGroundOcclusionBeside(d, h, Math.max(half.x, half.z)));
+  if (d <= 0) return vehicleGroundOcclusionUnder(Math.min(half.x - Math.abs(lx), half.z - Math.abs(lz)), Math.min(half.x, half.z));
+  return Math.min(GROUND_AO_UNDER, vehicleGroundOcclusionBeside(d, h, Math.max(half.x, half.z)));
 }
 
 const f = (x: number): string => x.toFixed(4);
@@ -153,8 +166,15 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
         float h = hf.y - l.y;
         if ( h <= 0.0 || l.y < -hf.y - 0.6 ) continue;
         float dist = length( max( abs( l.xz ) - hf.xz, vec2( 0.0 ) ) );
-        float occ = ${f(GROUND_AO_UNDER)};
-        if ( dist > 0.0 ) {
+        float occ;
+        if ( dist <= 0.0 ) {
+          // under the belly: the sky through the two side gaps (continuous with the side at the edge)
+          float W = min( hf.x, hf.z );
+          float si = clamp( min( hf.x - abs( l.x ), hf.z - abs( l.z ) ), 0.0, W );
+          float c2 = ${f(GROUND_AO_CLEARANCE_M * GROUND_AO_CLEARANCE_M)};
+          float g1 = max( si, 1e-3 ), g2 = max( 2.0 * W - si, 1e-3 );
+          occ = min( ${f(GROUND_AO_UNDER)}, 1.0 - 0.5 * c2 / ( c2 + g1 * g1 ) - 0.5 * c2 / ( c2 + g2 * g2 ) );
+        } else {
           float dd = max( dist, 0.05 );
           float s = h / sqrt( h * h + dd * dd );
           occ = min( ${f(GROUND_AO_UNDER)}, 0.5 * s * s * ${f(2 / Math.PI)} * atan( uVehGroundC[ i ].w / dd ) );
