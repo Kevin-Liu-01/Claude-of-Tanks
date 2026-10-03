@@ -23,8 +23,12 @@ import { CENSUS_HEADLINE_METRICS, detectSkyline, frameMetrics, highPass, histogr
 import {
   buildSheets, censusViewsOf, compareCensus, horizonOfState, loadCensus, measureCensus, openCensus, pixelDiff, renderIndex, saveCensus, writeIndex,
 } from './visual-census-report.mjs';
-import { CENSUS_HELP, parseCensusArgs, pickCaptureMaps } from './visual-census.mjs';
-import { createPoliteCaptureLock, stepBehindStamp } from './visual-census-lock.mjs';
+import {
+  CENSUS_HELP, CLOUDSCAPE_WAIT_MS, censusShotView, censusWarmupMap, cloudscapeVerdict, parseCensusArgs, pickCaptureMaps,
+} from './visual-census.mjs';
+import { MAP_IDS, getMapConfig } from '../src/world/maps/index.ts';
+import { CLOUDSCAPE_REGIMES } from '../src/engine/cloudscapes.ts';
+import { createPoliteCaptureLock, stepBehindStamp, ticketName } from './visual-census-lock.mjs';
 import { near } from './receipt-kit.test-support.mjs';
 
 const ROOT = path.resolve(new URL('..', import.meta.url).pathname);
@@ -337,6 +341,9 @@ try {
   const outBorder = path.join(dir, 'census-border');
   const borderCensus = openCensus(null, { ...header, protocol: BORDER_PROTOCOL, viewSet: 'border', viewsDigest: 'b1' });
   assert.equal(censusViewsOf(borderCensus), BORDER_VIEWS); assert.equal(censusViewsOf(census), CENSUS_VIEWS);
+  // authored --pose views (maps lane, 2026-10-03) follow the set's fixed views in a census that recorded them
+  assert.deepEqual(censusViewsOf({ authoredViews: [{ name: 'cone-nw', kind: 'table' }] }).map((v) => v.name),
+    [...CENSUS_VIEWS.map((v) => v.name), 'cone-nw']);
   borderCensus.maps.verdant = { name: 'Verdant Fields', status: 'ok', views: {} };
   for (const view of BORDER_VIEWS) {
     const f = await frame(`census-border/frames/verdant/${view.name}.png`, 320, 180, (x, y) => (y < 80 ? SKY : GROUND));
@@ -384,6 +391,14 @@ try {
   assert.equal(cap.batch, 5); assert.equal(cap.budgetMin, 16);
   assert.equal(parseCensusArgs(['capture', '--out=o']).options.views.length, CENSUS_VIEWS.length);
   assert.equal(parseCensusArgs(['capture', '--out=o']).options.set, 'core');
+  const posed = parseCensusArgs(['capture', '--out=o', '--views=none', '--pose=cone-nw:-120,30,180:-185,10,266+cone-se:120,25,-200:205,8,-300']).options;
+  assert.deepEqual(posed.views.map((v) => [v.name, v.kind, v.cam, v.at, v.authored]),
+    [['cone-nw', 'table', [-120, 30, 180], [-185, 10, 266], true], ['cone-se', 'table', [120, 25, -200], [205, 8, -300], true]]);
+  assert.equal(parseCensusArgs(['capture', '--out=o', '--pose=a:1,2,3:4,5,6']).options.views.length, CENSUS_VIEWS.length + 1);
+  for (const [argv, message] of [[['capture', '--out=o', '--views=none'], /needs at least one --pose/],
+    [['capture', '--out=o', '--pose=bad'], /--pose needs/], [['capture', '--out=o', '--pose=chase:1,2,3:4,5,6'], /Duplicate census view name/]]) {
+    assert.throws(() => parseCensusArgs(argv), message, argv.join(' '));
+  }
   const borderRun = parseCensusArgs(['capture', '--out=o', '--set=border', '--views=corner-sw,edge-n']).options;
   assert.deepEqual([borderRun.set, borderRun.views.map((v) => v.name)], ['border', ['edge-n', 'corner-sw']]);
   assert.equal(parseCensusArgs(['capture', '--out=o', '--set=border']).options.views.length, BORDER_VIEWS.length);
@@ -413,11 +428,57 @@ try {
   assert.equal(parseCensusArgs(['capture', '--out=o', '--probe-lock=rel/probe.lock']).options.probeLock, path.resolve('rel/probe.lock'));
   assert.equal(parseCensusArgs(['capture', '--out=o']).options.probeLock, null);
 
+  // ------------------------------------------------------------------ the cloudscape gate (2026-10-03, the skies lane's race)
+  // The first map staged after boot could keep the deck derivation its sky took before the lazy cloudscape module
+  // loaded (staging the map the world already shows applies no sky): fp8's Verdant rendered the legacy 'scattered'
+  // layer on both roots. Every map passes the gate before any view: its layer's regime is the authored one, or a
+  // throwaway warm-up map is staged and then the map again; a map that still fails is not captured.
+  assert.equal(cloudscapeVerdict({ layer: false, authored: 'sea-streets', regime: null }), 'none', 'no volumetric layer');
+  assert.equal(cloudscapeVerdict({ layer: true, authored: null, regime: 'scattered' }), 'none', 'no authored cloudscape');
+  assert.equal(cloudscapeVerdict({ layer: true, authored: 'sea-streets', regime: null }), 'decks', 'the baked decks show');
+  assert.equal(cloudscapeVerdict({ layer: true, authored: 'sea-streets', regime: 'sea-streets' }), 'ready');
+  assert.equal(cloudscapeVerdict({ layer: true, authored: 'fair-weather-cumulus', regime: 'scattered' }), 'legacy', 'the race');
+  assert.equal(cloudscapeVerdict(null), 'none');
+  assert.equal(censusShotView('verdant'), 'battlefield');
+  assert.equal(censusShotView('caldera'), 'battlefield_caldera');
+  assert.equal(censusWarmupMap(['garage', 'battlefield', 'battlefield_desert'], 'verdant'), 'desert', 'the boot map warms up elsewhere');
+  assert.equal(censusWarmupMap(['garage', 'battlefield', 'battlefield_desert'], 'caldera'), 'verdant');
+  assert.throws(() => censusWarmupMap(['garage', 'battlefield'], 'verdant'), /no warm-up map/);
+  assert.ok(CLOUDSCAPE_WAIT_MS >= 5000 && CLOUDSCAPE_WAIT_MS <= 60000);
+  // the gate can tell the race apart on every map: an authored cloudscape names a regime of its own, never one of the
+  // deck derivation's four (cloudPresets.ts deriveLegacy), and the resolver keeps it (cloudscapeLayer.ts)
+  const legacyRegimes = ['scattered', 'broken', 'overcast', 'storm'];
+  let authoredScapes = 0;
+  for (const id of MAP_IDS) {
+    const config = getMapConfig(id), scape = config.clouds ?? config.sky?.cloudscape ?? null;
+    if (!scape) continue;
+    assert.ok(Object.hasOwn(CLOUDSCAPE_REGIMES, scape.regime), `${id} names a cloudscape regime (${scape.regime})`);
+    assert.ok(!legacyRegimes.includes(scape.regime), `${id}'s regime is not a deck derivation's`);
+    authoredScapes++;
+  }
+  assert.ok(authoredScapes >= 30, `the gate covers the maps' authored cloudscapes (${authoredScapes})`);
+  const layerSource = readFileSync(path.join(ROOT, 'src/engine/cloudscapeLayer.ts'), 'utf8');
+  assert.match(layerSource, /regime: scape\.regime \?\? legacy\.regime/, 'the resolver keeps the authored regime');
+  assert.match(readFileSync(path.join(ROOT, 'src/engine/volumetricClouds.ts'), 'utf8'), /get currentPreset\(\)/,
+    'the layer publishes the preset it draws');
+  // and stageMap runs it before the map's texture settle (so before every view), with the warm-up fallback
+  const toolSource = readFileSync(path.join(ROOT, 'tools/visual-census.mjs'), 'utf8');
+  const stageSource = toolSource.slice(toolSource.indexOf('async function stageMap('), toolSource.indexOf('/** Node-side poses of every view'));
+  const gateAt = stageSource.indexOf('let cloudscape = await awaitCloudscape(page);');
+  assert.ok(gateAt > 0 && gateAt < stageSource.indexOf('settleMapTextures'), 'the gate precedes the texture settle');
+  assert.match(stageSource, /await setShot\(warmup\);\s*await setShot\(mapId\);/, 'the fallback stages the warm-up, then the map');
+  assert.match(stageSource, /cloudscape, \.\.\.state \}/, 'the stage record carries the gate\'s evidence');
+
   // ------------------------------------------------------------------ polite lock (FIFO first, session mutex at the head)
   const t = (stamp, pid) => `${String(stamp).padStart(15, '0')}-000000000000-${pid}.t`;
   const alive = new Set([t(200, 2), t(300, 3)]);
   assert.equal(stepBehindStamp([t(300, 3), t(100, 1), t(200, 2)], t(100, 1), (n) => alive.has(n)), 201, 'one live waiter passes');
   assert.equal(stepBehindStamp([t(100, 1), t(150, 9)], t(100, 1), (n) => alive.has(n)), null, 'a dead waiter does not count');
+  // equal stamps after step-behind rotations: the earlier ARRIVAL sorts first (a per-round counter starved long waiters)
+  const early = ticketName(500, 1791035000000, 77777), late = ticketName(500, 1791035999999, 11);
+  assert.ok(early < late && [late, early].sort()[0] === early, 'among equal stamps the longest waiter goes first');
+  assert.match(early, /^\d{15}-\d{12}-\d+\.t$/, 'the shared ticket format capture-lock.mjs checks');
+  assert.ok(ticketName(500, 1791035000000, 77777, 1) > early && ticketName(500, 1791035000000, 77777, 1) < late, 'a clash bump stays in arrival order');
   const lockRoot = mkdtempSync(path.join(tmpdir(), 'cot-census-lock-'));
   const dirs = { queueDir: path.join(lockRoot, 'queue'), lockDir: path.join(lockRoot, 'lock'), probeDir: path.join(lockRoot, 'probe.lock') };
   const fast = { requeuePauseMs: 20, headPollMs: 20, maxHolderWaitMs: 80 };
@@ -456,7 +517,7 @@ try {
   assert.ok(existsSync(dirs.lockDir), 'and takes the lock when that waiter goes');
   patient.release();
   rmSync(lockRoot, { recursive: true, force: true });
-  console.log('visual-census.selftest: camera sets pinned (core and border), site selection, metrics, store, sheets, index, compare and CLI verified');
+  console.log(`visual-census.selftest: camera sets pinned (core and border), site selection, metrics, store, sheets, index, compare, CLI and the cloudscape gate (${authoredScapes} authored cloudscapes) verified`);
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }
