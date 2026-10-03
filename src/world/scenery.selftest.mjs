@@ -2,7 +2,8 @@
 //
 //   1. every rock form builds closed, finite, welded-then-split geometry with the attributes the props rock material
 //      reads (position, normal, colour, aRockGround, uv), inside its triangle budget on both tiers, deterministically;
-//      standing forms publish a convex collision mass, pavements and scree none (they lie under a hull's step);
+//      standing forms publish a convex collision mass, pavements and scree none (they lie under a hull's step); a
+//      hill's bedrock rings only the flanks no hull climbs, faces outward and publishes no mass;
 //   2. the kit's destructible landmarks keep their collision inside their visible geometry and certify like every
 //      other small item, and the config-only footprints (sceneryPlan.ts) equal the kit's radii;
 //   3. the composer admits a feature only inside the square, off the pads, out of the road core, out of the water and
@@ -14,11 +15,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
-import { buildRockFormation } from './sceneryRocks.ts';
+import { buildBedrock, buildRockFormation } from './sceneryRocks.ts';
 import { SCENERY_DESTRUCTIBLE_TYPES, buildConductor, buildPylon } from './maps/sceneryKit.ts';
 import {
-  LANDMARK_RADIUS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, pylonLegHalf, rockReach, sceneryClearances,
-  withGroundCoverHoles,
+  BEDROCK_TREE_CLEAR, LANDMARK_RADIUS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, pylonLegHalf, rockReach,
+  sceneryClearances, withGroundCoverHoles,
 } from './sceneryPlan.ts';
 import { composeScenery } from './scenery.ts';
 import { certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile } from './structureCollision.ts';
@@ -136,6 +137,49 @@ for (const kind of Object.keys(STONE_LANDMARKS)) assert.ok(isStoneLandmark(kind)
   assert.ok(Math.min(...ys) < 13 && Math.min(...ys) > 10, 'a conductor sags between its towers');
 }
 
+// a hill's bedrock: a dome (the terrain's knoll profile) on a plain; the beds start above the highest ground a hull
+// climbs (grade 0.9) and never below it, face out of the hill, and carry no mass; the phones draw fewer triangles
+{
+  const dome = { getHeightAt: (x, z) => {
+    const q = Math.hypot(x / 34, z / 30), w = 1 - (q <= 0.12 ? 0 : q >= 1 ? 1 : ((q - 0.12) / 0.88) ** 2 * (3 - 2 * (q - 0.12) / 0.88));
+    return 2 + 26 * w * w * (3 - 2 * w);
+  } };
+  // the highest ground a hull climbs: the outermost point on each ray steeper than 0.9
+  let climbTop = -Infinity;
+  for (let j = 0; j < 72; j++) {
+    const a = j / 72 * Math.PI * 2;
+    for (let r = 45; r > 1; r -= 0.25) {
+      const h0 = dome.getHeightAt(Math.cos(a) * (r - 0.5), Math.sin(a) * (r - 0.5)), h1 = dome.getHeightAt(Math.cos(a) * (r + 0.5), Math.sin(a) * (r + 0.5));
+      if (h0 - h1 > 0.9) { climbTop = Math.max(climbTop, dome.getHeightAt(Math.cos(a) * r, Math.sin(a) * r)); break; }
+    }
+  }
+  const spec = { geology: 'sandstone', x: 0, z: 0, radius: 42 };
+  const desk = buildBedrock(spec, dome, noise, mulberry32(91));
+  const again = buildBedrock(spec, dome, noise, mulberry32(91));
+  const phone = buildBedrock(spec, dome, noise, mulberry32(91), { mobile: true });
+  assert.ok(desk.geometry && phone.geometry, 'the dome shows its bedrock on both tiers');
+  assert.equal(desk.masses.length, 0, 'bedrock is a skin: no collision mass');
+  assert.deepEqual(Array.from(again.geometry.attributes.position.array), Array.from(desk.geometry.attributes.position.array), 'bedrock: deterministic on its stream');
+  for (const name of ['position', 'normal', 'color', 'aRockGround', 'uv']) assert.ok(desk.geometry.attributes[name], `bedrock: carries ${name}`);
+  const p = desk.geometry.attributes.position.array, n = desk.geometry.attributes.normal.array;
+  assert.ok(p.every(Number.isFinite) && n.every(Number.isFinite), 'bedrock: finite');
+  let lowest = Infinity, outward = 0, faces = 0;
+  for (let i = 0; i < p.length; i += 3) {
+    lowest = Math.min(lowest, p[i + 1]);
+    const r = Math.hypot(p[i], p[i + 2]);
+    // the beds' faces (steep normals) point out of the hill
+    if (r > 4 && Math.abs(n[i + 1]) < 0.5) { outward += (n[i] * p[i] + n[i + 2] * p[i + 2]) / r; faces++; }
+  }
+  assert.ok(lowest > climbTop + 1.2, `bedrock starts above the highest climbable ground (${lowest.toFixed(2)} > ${climbTop.toFixed(2)})`);
+  assert.ok(faces > 100 && outward / faces > 0.5, `bedrock faces out of the hill (${(outward / faces).toFixed(2)})`);
+  assert.ok(desk.triangles <= 14000, `bedrock: ${desk.triangles} triangles within 14000`);
+  assert.ok(phone.triangles < desk.triangles, `bedrock: the phones draw fewer (${phone.triangles} < ${desk.triangles})`);
+  // a plain shows none
+  const flat = buildBedrock(spec, { getHeightAt: () => 3 }, noise, mulberry32(91));
+  assert.equal(flat.geometry, null, 'a plain has no flank to show rock');
+  for (const b of [desk, again, phone]) b.geometry.dispose();
+}
+
 // ---------------------------------------------------------------------------------------------- 3. the composer
 
 const field = {
@@ -228,6 +272,8 @@ function compose(scenery, solids = [], mobile = false) {
     powerLines: [{ towers: [[100, 100], [300, 100]] }],
   });
   assert.equal(clear.length, 2 + 2 + 2);
+  const hill = sceneryClearances({ bedrock: [{ geology: 'sandstone', x: 5, z: 6, radius: 40 }] });
+  assert.deepEqual(hill.map((c) => [c.x, c.z, c.halfWidth]), [[5, 6, 40 * BEDROCK_TREE_CLEAR]], 'a bedrock hill keeps the trees off its flanks');
   assert.equal(clear[0].halfWidth, rockReach({ form: 'tor', radius: 6 }) + 1.5);
   assert.equal(clear[1].halfWidth, 9, 'a scree fan claims its own ground only');
   assert.ok(Math.abs(clear[3].halfWidth - (2.4 * 1.2 + 1.2)) < 1e-9);
@@ -260,7 +306,8 @@ for (const mapId of maps.MAP_IDS) {
     assert.equal(feature.status, 'placed', `${mapId}: ${feature.name ?? feature.kind} stands (${feature.reason ?? ''})`);
   }
   const authored = (config.scenery.rocks?.length ?? 0) + (config.scenery.landmarks?.length ?? 0)
-    + (config.scenery.rockFields?.length ?? 0) + (config.scenery.powerLines ?? []).reduce((n, line) => n + line.towers.length, 0);
+    + (config.scenery.rockFields?.length ?? 0) + (config.scenery.bedrock?.length ?? 0)
+    + (config.scenery.powerLines ?? []).reduce((n, line) => n + line.towers.length, 0);
   for (const feature of receipt.features.filter((f) => f.family === 'rockField')) {
     assert.ok(feature.placedOf[0] >= Math.ceil(feature.placedOf[1] * 0.75), `${mapId}: ${feature.name} lays most of its count (${feature.placedOf.join('/')})`);
   }

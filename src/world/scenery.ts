@@ -5,14 +5,15 @@
 //   scenery: {
 //     rocks: [{ form: 'tor', geology: 'granite', x, z, radius, height, name: 'the tor above the mill' }, ...],
 //     rockFields: [{ geology: 'limestone', x, z, radius, count, slopeBias, name: 'the terrace karst' }, ...],
-//     hedgerows: [{ path: [[x, z], ...], gates: [0.5], name: 'the croft bank' }, ...],   (the vegetation grows these)
+//     bedrock: [{ geology: 'sandstone', x, z, radius, name: 'the gate dome' }, ...],
 //     landmarks: [{ kind: 'calvary', x, z, yawDeg, name: 'the calvary at the crossroads' }, ...],
 //     powerLines: [{ towers: [[x, z], ...], heightM, name: 'the 380 kV line' }],
 //   }
 //
 // Rock forms (sceneryRocks.ts: tor, outcrop, crag, pavement, scree, hoodoo, menhir, cairn, calvary) — the authored ones,
 // the rock fields' and the stone landmarks — build into one welded mesh on the props rock material (one draw for the
-// whole map) and publish each standing mass as a static convex collider; the timber, steel and stucco landmarks
+// whole map) and publish each standing mass as a static convex collider (a hill's bedrock — its beds ringing the steep
+// flanks no hull reaches — joins the same mesh and publishes none); the timber, steel and stucco landmarks
 // (maps/sceneryKit.ts: bildstock, waysidecross, orthodoxcross, windpump, tomb, strawstack) join the props destructible
 // pools; pylon lines fold into the `baked` bucket with their four legs as colliders. Every feature is checked before it
 // is laid — inside the square, clear of the spawn pads, of the road core, of water and of the hard solids already
@@ -23,7 +24,7 @@
 // vegetation (sceneryPlan.ts sceneryClearances) so no tree grows through a tor; the rock fields keep off the trees.
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
-import { buildRockFormation, type RockFormationSpec } from './sceneryRocks.ts';
+import { buildBedrock, buildRockFormation, type RockFormationSpec } from './sceneryRocks.ts';
 import { buildConductor, buildPylon, SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
 import {
   FIELD_FORMS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, rockReach, type GroundCoverHole, type SceneryConfig,
@@ -71,7 +72,7 @@ interface SceneryBuildContext {
 }
 
 interface SceneryFeatureReceipt {
-  family: 'rock' | 'rockField' | 'landmark' | 'powerLine';
+  family: 'rock' | 'rockField' | 'bedrock' | 'landmark' | 'powerLine';
   kind: string;
   name: string | null;
   x: number;
@@ -198,6 +199,22 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
     rockPieces.push(built.geometry);
     for (const mass of built.masses) addMass(mass.points, mass.y0, mass.y1);
     if (!standing) receipt.groundCoverHoles.push({ x: spec.x, z: spec.z, r: spec.radius * (spec.form === 'pavement' ? 0.85 : 0.6) });
+    feature.triangles = built.triangles;
+    receipt.rockTriangles += built.triangles;
+    receipt.placed++;
+    receipt.features.push(feature);
+    yield { fine: true, progress: false, stage: 'scenery' };
+  }
+
+  // ---- bedrock: a hill's beds on its steep flanks, a skin no hull reaches (no mass); one stream each
+  for (const [hi, hill] of (scenery.bedrock ?? []).entries()) {
+    const feature: SceneryFeatureReceipt = { family: 'bedrock', kind: `${hill.geology} bedrock`, name: hill.name ?? null, x: hill.x, z: hill.z, status: 'placed' };
+    if (Math.max(Math.abs(hill.x), Math.abs(hill.z)) > SQUARE) { skip(feature, 'outside the square'); continue; }
+    if (ground.getWaterMaskAt(hill.x, hill.z) > 0.05) { skip(feature, 'water'); continue; }
+    const built = buildBedrock({ geology: hill.geology, x: hill.x, z: hill.z, radius: hill.radius, minGrade: hill.minGrade, beds: hill.beds, crown: hill.crown, tone: hill.tone },
+      ground, noise, mulberry32(ctx.seed + 17101 + 131 * hi), { mobile: ctx.mobile });
+    if (!built.geometry) { skip(feature, 'no flank steeper than the hulls climb'); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
+    rockPieces.push(built.geometry);
     feature.triangles = built.triangles;
     receipt.rockTriangles += built.triangles;
     receipt.placed++;

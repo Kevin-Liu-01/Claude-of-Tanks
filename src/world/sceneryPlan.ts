@@ -84,27 +84,37 @@ interface SceneryRockField {
 }
 
 /**
- * A hedgerow: the shrubs of a field boundary or a bocage bank, planted along a line (the bank's crest). The vegetation
- * grows it from the map's bush species, two staggered rows of overlapping shrubs with gateways; it conceals like any
- * bush (a hedge is cover) and blocks nothing.
+ * Bedrock on a hill's steep flanks (sceneryRocks.ts buildBedrock): the hill's own beds, level, ringing it from the
+ * highest ground a hull climbs to up to its crown, split into blocks by the vertical joints, rounded knobs on the
+ * summit. A skin on ground no hull reaches: it carries no collision, and the hill under it stays the terrain.
  */
-interface SceneryHedgerow {
-  /** The line, as [x, z] stations. */
-  path: ReadonlyArray<readonly [number, number]>;
-  /** Gateways: fractions along the line where a 5 m gap stands. */
-  gates?: readonly number[];
-  /** Height class: 1 a trimmed field hedge (about 2.5 m), 1.4 an overgrown bocage hedge (about 3.5 m). */
-  height?: number;
+interface SceneryBedrock {
+  geology: RockGeology;
+  /** The hill's summit. */
+  x: number;
+  z: number;
+  /** How far out from the summit the flanks are searched (the hill's foot). */
+  radius: number;
+  /** Ground steeper than this (rise over run) shows its rock: default 0.9, the steepest a hull climbs. */
+  minGrade?: number;
+  /** The beds' thickness range (m). */
+  beds?: readonly [number, number];
+  /** Rounded knobs on the summit (default true). */
+  crown?: boolean;
+  tone?: readonly [number, number, number];
   name?: string;
 }
 
 export interface SceneryConfig {
   rocks?: readonly SceneryRock[];
   rockFields?: readonly SceneryRockField[];
-  hedgerows?: readonly SceneryHedgerow[];
+  bedrock?: readonly SceneryBedrock[];
   landmarks?: readonly SceneryLandmark[];
   powerLines?: readonly SceneryPowerLine[];
 }
+
+/** The share of a bedrock hill's search radius the trees keep off (its flanks and crown; its foot keeps them). */
+export const BEDROCK_TREE_CLEAR = 0.72;
 
 /** The geologies' default field mixes: what a hillside of that rock shows. */
 export const FIELD_FORMS: Readonly<Record<RockGeology, ReadonlyArray<readonly [RockForm, number]>>> = Object.freeze({
@@ -151,8 +161,8 @@ export function rockReach(rock: Pick<SceneryRock, 'form' | 'radius'>): number {
 
 /**
  * The vegetation keep-out of a map's scenery, from its config alone (vegetation builds before props): every rock
- * formation's standing ground and every landmark's footprint, with a working margin. A map without scenery gets none,
- * and its vegetation is exact.
+ * formation's standing ground, every landmark's footprint, with a working margin, and a bedrock hill's flanks and
+ * crown. A map without scenery gets none, and its vegetation is exact.
  */
 export function sceneryClearances(scenery: SceneryConfig | null | undefined): StructureClearance[] {
   if (!scenery) return [];
@@ -171,63 +181,7 @@ export function sceneryClearances(scenery: SceneryConfig | null | undefined): St
   for (const line of scenery.powerLines ?? []) {
     for (const [x, z] of line.towers) disc(x, z, pylonLegHalf(line.heightM) * 1.1 + 1.5);
   }
-  return out;
-}
-
-/** One hedge shrub: where it stands, its uniform scale, its height factor, its yaw and its tint draws. */
-interface HedgeShrub {
-  x: number;
-  z: number;
-  scale: number;
-  hy: number;
-  yaw: number;
-  tint: readonly [number, number, number, number];
-}
-
-function hedgeRng(a: number): () => number {
-  return () => {
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-
-/**
- * Lay a map's hedgerows: shrubs every 1.9 m (3 m on the phones) in two rows staggered 0.55 m either side of the line,
- * gateways cut where authored and a rare natural gap, each hedge from its own stream so editing one never moves
- * another. Pure geometry: the vegetation applies the ground's admission (roads, water, pads, keep-outs).
- */
-export function planHedgerows(hedgerows: readonly SceneryHedgerow[] | null | undefined, seed: number, mobile = false): HedgeShrub[] {
-  const out: HedgeShrub[] = [];
-  (hedgerows ?? []).forEach((hedge, index) => {
-    const rng = hedgeRng(seed + 17401 + 131 * index);
-    const step = mobile ? 3.0 : 1.9;
-    const height = hedge.height ?? 1.2;
-    let total = 0;
-    const legs: Array<[number, number, number, number, number]> = [];
-    for (let i = 1; i < hedge.path.length; i++) {
-      const [ax, az] = hedge.path[i - 1], [bx, bz] = hedge.path[i];
-      const len = Math.hypot(bx - ax, bz - az);
-      legs.push([ax, az, bx, bz, len]);
-      total += len;
-    }
-    const gates = (hedge.gates ?? []).map((f) => f * total);
-    let along = 0, row = 0;
-    for (const [ax, az, bx, bz, len] of legs) {
-      const ux = (bx - ax) / (len || 1), uz = (bz - az) / (len || 1);
-      for (let d = (along === 0 ? 0.6 : 0); d < len; d += step * (0.85 + rng() * 0.3)) {
-        const at = along + d;
-        const gapRoll = rng(), jitter = (rng() - 0.5) * 0.8, side = (row++ % 2 ? 1 : -1) * (0.45 + rng() * 0.2);
-        const scale = (1.15 + rng() * 0.55) * height, hy = 0.9 + rng() * 0.35, yaw = rng() * Math.PI * 2;
-        const tint = [rng(), rng(), rng(), rng()] as const;
-        if (gates.some((g) => Math.abs(g - at) < 2.6)) continue;
-        if (gapRoll < 0.035) continue;
-        out.push({ x: ax + ux * (d + jitter) - uz * side, z: az + uz * (d + jitter) + ux * side, scale, hy, yaw, tint });
-      }
-      along += len;
-    }
-  });
+  for (const hill of scenery.bedrock ?? []) disc(hill.x, hill.z, hill.radius * BEDROCK_TREE_CLEAR);
   return out;
 }
 

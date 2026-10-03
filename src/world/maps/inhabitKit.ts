@@ -977,7 +977,7 @@ function wallCourses(
   return { parts, top: y };
 }
 
-function bWallStone(rng: Rng): THREE.BufferGeometry {
+function wallStoneEnvelope(rng: Rng): THREE.BufferGeometry {
   const { parts, top } = wallCourses(rng, 0.46, [0.42, 0.38, 0.30]);
   // uneven capstone course: 4 slabs with per-slab pitch
   for (let k = 0; k < 4; k++) {
@@ -988,7 +988,7 @@ function bWallStone(rng: Rng): THREE.BufferGeometry {
   }
   return merge(parts);
 }
-function bWallStoneBroken(rng: Rng): THREE.BufferGeometry {
+function wallStoneBrokenDraws(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   // crumbled remnant courses: two low stubs with a bite between them
   for (const [z0, len] of [[-WALL_SEG / 2, WALL_SEG * 0.30], [WALL_SEG * 0.14, WALL_SEG * 0.34]]) {
@@ -1006,6 +1006,158 @@ function bWallStoneBroken(rng: Rng): THREE.BufferGeometry {
     parts.push(blk);
   }
   return merge(parts);
+}
+
+// The scenery lane (2026-10-03; the gauntlet's wave 0: "a stone wall built from obviously stacked rectangular blocks
+// with no mortar lines, weathering or chipped corners"): the field wall is built as a dry-stone wall — a battered
+// hearting, face stones of every size standing proud of it in rough courses, their corners knocked off, and a coping of
+// cope stones set on edge along the top. The original course builder still runs first: it spends exactly the draws it
+// always spent (every pool built after the wall keeps its geometry) and gives the module's envelope, and the new wall
+// is fitted to that envelope, so the fitted wall collider (wallSpanPlacement.ts refits it to the geometry) keeps its
+// plan and height; only its foot follows the new stones' ground samples by a millimetre or two. Where a map's stone
+// bucket is a brick print (sourcedStoneIsBrick, sourcedTextures.ts) the coursed module stays — its courses are what
+// the brick print was laid out for — through COURSED_WALLSTONE in props.ts's local types.
+function dryStoneRng(seed: number): Rng {
+  let a = seed | 0;
+  return () => {
+    a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/** Keep only the listed faces of a box (BoxGeometry's face groups run +x, -x, +y, -y, +z, -z). */
+function keepFaces<T extends THREE.BufferGeometry>(g: T, keep: readonly number[]): T {
+  const index = g.index!.array, kept: number[] = [];
+  for (const group of g.groups) {
+    if (!keep.includes(group.materialIndex ?? 0)) continue;
+    for (let i = group.start; i < group.start + group.count; i++) kept.push(index[i]);
+  }
+  g.setIndex(kept);
+  g.clearGroups();
+  return g;
+}
+
+/** A stone with its corners knocked off (each of the eight corners moves inward by up to a fifth of the stone), its
+ * hidden faces left out, and its own texture window (a random offset, finer than the hearting's), so no two stones
+ * show one patch. */
+function roughStone(w: number, h: number, d: number, r: Rng, keep: readonly number[]): THREE.BufferGeometry {
+  const g = box(w, h, d, 0.34);
+  const uv = g.attributes.uv, du = r() * 8, dv = r() * 8;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) + du, uv.getY(i) + dv);
+  const p = g.attributes.position;
+  const knock = new Map<string, [number, number, number]>();
+  for (let i = 0; i < p.count; i++) {
+    const key = `${Math.sign(p.getX(i))},${Math.sign(p.getY(i))},${Math.sign(p.getZ(i))}`;
+    let k = knock.get(key);
+    if (!k) knock.set(key, k = [1 - r() * 0.22, 1 - r() * 0.2, 1 - r() * 0.22]);
+    p.setXYZ(i, p.getX(i) * k[0], p.getY(i) * k[1], p.getZ(i) * k[2]);
+  }
+  g.computeVertexNormals();
+  return keepFaces(g, keep);
+}
+
+/** The dry-stone module along +Z (local X across, base at y = 0), before it is fitted to the original envelope:
+ * about 350 triangles, every stone a box with its hidden faces left out. */
+function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const L = WALL_SEG, H = broken ? 0.32 + r() * 0.16 : 0.9, bottom = 0.25, top = broken ? 0.22 : 0.17;
+  const halfAt = (y: number) => bottom + (top - bottom) * Math.min(1, y / 0.9);
+  // the hearting: a battered core, its faces a little uneven (the stone texture carries the small stones between
+  // the face stones); its bottom sits in the ground and is left out
+  const core = new THREE.BoxGeometry(2, 1, 2, 1, 2, 4);
+  const cp = core.attributes.position;
+  // the unevenness is a function of the corner's place (the box's faces share their corners: no crack opens); the
+  // bow is nil at both ends, where the next module meets it, and the +z end steps a centimetre and a half inside the
+  // next module's start, so the overlapping ends of a run never share a plane (no depth fighting at the joints)
+  const phase = r() * 10, bow = (r() < 0.5 ? -1 : 1) * 0.012;
+  const lift = (x: number, z: number) => Math.sin(z * 7.3 + x * 3.1 + phase) * 0.5 + Math.sin(z * 17.9 - phase) * 0.5;
+  for (let i = 0; i < cp.count; i++) {
+    const u = cp.getZ(i), y = (cp.getY(i) + 0.5) * H, z = u * (L / 2) * 0.995, side = Math.sign(cp.getX(i));
+    const half = halfAt(y) - 0.03 - Math.max(0, u - 0.5) * 0.03;
+    cp.setXYZ(i, side * half + Math.sin(Math.PI * u) * bow, y + (y > 0.01 ? lift(side, z) * 0.02 : 0), z);
+  }
+  core.computeVertexNormals();
+  parts.push(keepFaces(scaleUV(core, L * 0.7, H * 0.7), [0, 1, 2, 4, 5]));
+  // the face stones: rough courses on both faces, over half the face in stones standing proud of the hearting
+  const courses = broken ? [[0, 0.18]] : [[0, 0.26], [0.24, 0.48], [0.46, 0.7], [0.68, 0.9]];
+  for (const face of [-1, 1]) {
+    const keep = face > 0 ? [0, 2, 4, 5] : [1, 2, 4, 5]; // the back (into the hearting) and the bed are hidden
+    for (const [y0, y1] of courses) {
+      let z = -L / 2 + r() * 0.2;
+      while (z < L / 2 - 0.12) {
+        const len = 0.34 + r() * 0.36;
+        const stoneH = (y1 - y0) * (0.8 + r() * 0.35);
+        const proud = 0.035 + r() * 0.05;
+        if (r() < 0.58) {
+          const stone = roughStone(proud + 0.06, stoneH, Math.min(len, L / 2 - z) * 0.92, r, keep);
+          stone.rotateY((r() - 0.5) * 0.12); stone.rotateX((r() - 0.5) * 0.12);
+          const yc = (y0 + y1) / 2 + (r() - 0.5) * 0.04;
+          parts.push(stone.translate(face * (halfAt(yc) - 0.03 + proud / 2), yc, z + len / 2));
+        }
+        z += len;
+      }
+    }
+  }
+  if (!broken) {
+    // the coping: cope stones set on edge across the top, tilted, the tall ones and the short ones in turn
+    let z = -L / 2 + 0.02;
+    let k = 0;
+    while (z < L / 2 - 0.05) {
+      const thick = 0.2 + r() * 0.14, h = (k++ % 2 ? 0.17 : 0.25) + r() * 0.06;
+      const cope = roughStone(0.44 + r() * 0.08, h, thick, r, [0, 1, 2, 4, 5]);
+      cope.rotateX((r() - 0.5) * 0.3); cope.rotateZ((r() - 0.5) * 0.08);
+      parts.push(cope.translate((r() - 0.5) * 0.03, H + h * 0.42, z + thick / 2));
+      z += thick * (0.92 + r() * 0.1);
+    }
+  } else {
+    // the stones that came off it, tumbled on both sides
+    for (let k = 0; k < 9; k++) {
+      const bs = 0.16 + r() * 0.2;
+      const stone = roughStone(bs * (1.1 + r() * 0.6), bs * 0.7, bs, r, [0, 1, 2, 3, 4, 5]);
+      stone.rotateY(r() * Math.PI); stone.rotateX((r() - 0.5) * 0.6);
+      parts.push(stone.translate((r() < 0.5 ? -1 : 1) * (0.35 + r() * 0.6), bs * 0.3, (r() - 0.5) * L * 0.9));
+    }
+  }
+  // nothing runs past the hearting's ends: the module's length is the core's, so a run's terminal module still
+  // reaches its authored post at every height (the end stones are squared off against the next module's)
+  const g = merge(parts), zEnd = (L / 2) * 0.995, gp = g.attributes.position;
+  for (let i = 0; i < gp.count; i++) gp.setZ(i, Math.max(-zEnd, Math.min(zEnd, gp.getZ(i))));
+  return g;
+}
+
+/** Map a geometry affinely onto a box (each axis on its own), so its extents are the box's. */
+function fitToEnvelope(g: THREE.BufferGeometry, box3: THREE.Box3): THREE.BufferGeometry {
+  g.computeBoundingBox();
+  const b = g.boundingBox!;
+  const p = g.attributes.position;
+  const sx = (box3.max.x - box3.min.x) / Math.max(1e-6, b.max.x - b.min.x);
+  const sy = (box3.max.y - box3.min.y) / Math.max(1e-6, b.max.y - b.min.y);
+  const sz = (box3.max.z - box3.min.z) / Math.max(1e-6, b.max.z - b.min.z);
+  // the normals go through the inverse transpose (a per-axis scale: divide), so each stone keeps its smooth faces
+  const n = g.attributes.normal;
+  for (let i = 0; i < p.count; i++) {
+    p.setXYZ(i, box3.min.x + (p.getX(i) - b.min.x) * sx, box3.min.y + (p.getY(i) - b.min.y) * sy, box3.min.z + (p.getZ(i) - b.min.z) * sz);
+    const nx = n.getX(i) / sx, ny = n.getY(i) / sy, nz = n.getZ(i) / sz, len = Math.hypot(nx, ny, nz) || 1;
+    n.setXYZ(i, nx / len, ny / len, nz / len);
+  }
+  g.computeBoundingBox();
+  return g;
+}
+
+function bWallStone(rng: Rng): THREE.BufferGeometry {
+  const envelope = wallStoneEnvelope(rng);
+  envelope.computeBoundingBox();
+  const box3 = envelope.boundingBox!.clone();
+  envelope.dispose();
+  const seed = Math.round((box3.max.x - box3.min.x) * 1e6 + (box3.max.y - box3.min.y) * 1e4 + box3.max.z * 1e3);
+  return fitToEnvelope(dryStoneModule(dryStoneRng(seed), false), box3);
+}
+
+function bWallStoneBroken(rng: Rng): THREE.BufferGeometry {
+  wallStoneBrokenDraws(rng).dispose(); // the original remnant's draws, so every later pool keeps its geometry
+  return dryStoneModule(dryStoneRng(0x5d0e), true);
 }
 
 function bWallAdobe(rng: Rng): THREE.BufferGeometry {
@@ -1482,3 +1634,9 @@ export const DESTRUCTIBLE_TYPES = {
   transformer: { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.85, hw: 0.76, hl: 0.51, build: bTransformer, broken: bTransformerBroken, collider: true, keep: 0.86, crushMin: 2.2 },
   cablespool:  { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.5,  hw: 0.66, hl: 0.76, build: bCableSpool, broken: bCableSpoolBroken, keep: 0.9 },
 } satisfies Record<string, DestructiblePropType>;
+
+/** The coursed wall module the brick-print maps keep (see bWallStone): the stone wall's record with its original
+ * courses and remnant. */
+export const COURSED_WALLSTONE = {
+  ...DESTRUCTIBLE_TYPES.wallstone, build: wallStoneEnvelope, broken: wallStoneBrokenDraws,
+} satisfies DestructiblePropType;

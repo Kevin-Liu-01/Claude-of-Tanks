@@ -275,9 +275,9 @@ export default {
 
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Pays de Leon's granite and
   // its wayside stone. The axis knoll carries the tor between the hamlet's green and the crossroads' meadow; a tor
-  // stands on each downs' shoulder above its bocage lane; the downs' granite shows through their thin soil; every
-  // hedge bank carries its hedge; a calvary marks each bocage crossroads on the inland road; a standing stone rises on
-  // each swell of the downs. Mirrored across the axis like the rest of the map.
+  // stands on each downs' shoulder above its bocage lane; the downs' granite shows through their thin soil; a calvary
+  // marks each bocage crossroads on the inland road; a standing stone rises on each swell of the downs. Mirrored across
+  // the axis like the rest of the map. (The hedges on the hedge banks belong to the land-cover lane.)
   scenery: {
     rocks: [
       { form: 'tor', geology: 'granite', x: -222, z: 22, radius: 7, height: 5.5, yawDeg: 24, name: 'the axis tor' },
@@ -288,15 +288,6 @@ export default {
     rockFields: [
       { geology: 'granite', x: -40, z: -236, radius: 120, count: 7, slopeBias: 0.5, size: [2.5, 5.5], name: 'the south downs granite' },
       { geology: 'granite', x: -40, z: 280, radius: 120, count: 7, slopeBias: 0.5, size: [2.5, 5.5], name: 'the north downs granite' },
-    ],
-    // the bocage: an overgrown hedge on the crest of every hedge bank (talus), a gateway into each field
-    hedgerows: [
-      { path: [[-305.5, -121.9], [-250, -120], [-194.5, -118.1]], gates: [0.62], height: 1.35, name: 'the south croft bank' },
-      { path: [[-305.5, 165.9], [-250, 164], [-194.5, 162.1]], gates: [0.62], height: 1.35, name: 'the north croft bank' },
-      { path: [[-84.3, -106.9], [-40, -110], [4.3, -113.1]], gates: [0.35], height: 1.35, name: 'the south downs bank' },
-      { path: [[-84.3, 150.9], [-40, 154], [4.3, 157.1]], gates: [0.35], height: 1.35, name: 'the north downs bank' },
-      { path: [[-337.1, -80.1], [-330, -40], [-322.9, 0.1]], gates: [0.5], height: 1.35, name: 'the south hamlet bank' },
-      { path: [[-337.1, 124.1], [-330, 84], [-322.9, 43.9]], gates: [0.5], height: 1.35, name: 'the north hamlet bank' },
     ],
     landmarks: [
       { kind: 'calvary', x: -78, z: -140, yawDeg: 15, name: 'the south crossroads calvary' },

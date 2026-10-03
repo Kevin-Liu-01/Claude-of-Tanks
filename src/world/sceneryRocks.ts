@@ -741,6 +741,273 @@ function calvary(spec: RockFormationSpec, ground: RockGround, noise: SimplexNois
   }
 }
 
+// ---------------------------------------------------------------------------------------------- bedrock
+
+/** Bedrock on a hill's steep flanks (the scenery `bedrock` family). */
+export interface BedrockSpec {
+  geology: RockGeology;
+  /** The hill's summit: the centre the beds ring. */
+  x: number;
+  z: number;
+  /** How far out from the summit the flanks are searched. */
+  radius: number;
+  /** Ground steeper than this (rise over run) shows its rock; a hull climbs the gentler ground, so the beds start above
+   * the highest ground it reaches. */
+  minGrade?: number;
+  /** The beds' thickness range (m). */
+  beds?: readonly [number, number];
+  /** Rounded knobs on the summit. */
+  crown?: boolean;
+  tone?: readonly [number, number, number];
+}
+
+const BEDROCK_STEP = 0.5;   // the ray profiles' step (m)
+const BEDROCK_CLEAR = 1.6;  // the lowest bed stands this far above the highest ground a hull climbs to on its ray
+const BEDROCK_BENCH = 3.4;  // a bed whose bench would run wider than this is not cut: the ground there is gentle
+
+/** The joint spacing and the open joints' width (m) of each geology's beds. */
+const BEDROCK_JOINTS: Readonly<Record<RockGeology, readonly [number, number, number, number]>> = Object.freeze({
+  sandstone: [3.5, 9, 0.25, 0.7],
+  limestone: [2.5, 6, 0.15, 0.45],
+  granite: [4, 10, 0.3, 0.8],
+  slate: [1.5, 4, 0.1, 0.3],
+});
+
+/**
+ * Bedrock showing through a hill's steep flanks: the hill's own beds, level, ringing it from the highest ground a hull
+ * can climb to up to its crown. Each bed stands a little proud of the slope with a steep face (the hard beds farther
+ * than the soft ones under them), a rounded lip and a bench running back into the hill, where the next bed sits; the
+ * vertical joints split every bed into blocks, open a little, staggered from bed to bed; rounded knobs crown the
+ * summit (Wadi Rum's domes, the Bungle Bungle beehives). The ground under it stays the hill: the hulls and shells meet
+ * the terrain, and the rock is a skin no hull reaches, so it publishes no mass. Rays from the summit read the hill;
+ * nothing is drawn where the ground is gentle, under water or beyond the search radius.
+ */
+export function buildBedrock(
+  spec: BedrockSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, { mobile = false }: RockBuildOptions = {},
+): RockFormationBuild {
+  const minGrade = spec.minGrade ?? 0.9;
+  const [tMin, tMax] = spec.beds ?? (spec.geology === 'sandstone' ? [1.2, 3.2] : spec.geology === 'limestone' ? [0.8, 2.2] : [1.0, 2.6]);
+  // (a phone's beds keep their joints farther apart: fewer blocks, the same rock)
+  const [jMin0, jMax0, gMin, gMax] = BEDROCK_JOINTS[spec.geology];
+  const jMin = jMin0 * (mobile ? 1.6 : 1), jMax = jMax0 * (mobile ? 1.6 : 1);
+  // the rays: one every 3.5 m (6 m on phones) round the search radius's middle, so a big mesa's rim is read as finely
+  // as a dome's
+  const rays = Math.max(mobile ? 36 : 48, Math.min(mobile ? 120 : 200, Math.round((Math.PI * spec.radius) / (mobile ? 6 : 3.5))));
+  const steps = Math.max(4, Math.ceil(spec.radius / BEDROCK_STEP)), stride = steps + 1;
+  const groundAt = ground.getHeightAtFast ? (x: number, z: number) => ground.getHeightAtFast!(x, z) : (x: number, z: number) => ground.getHeightAt(x, z);
+  // the ray profiles: the ground from the summit outward
+  const H = new Float32Array(rays * stride);
+  for (let j = 0; j < rays; j++) {
+    const a = (j / rays) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+    for (let k = 0; k <= steps; k++) H[j * stride + k] = groundAt(spec.x + c * k * BEDROCK_STEP, spec.z + s * k * BEDROCK_STEP);
+  }
+  // per ray: the crest (the highest ground on its inner part) and the highest ground a hull climbs to from outside
+  // (the outermost point steeper than minGrade)
+  const peak = new Int32Array(rays), climb = new Float32Array(rays);
+  let top = -Infinity, foot = Infinity, summitX = spec.x, summitZ = spec.z;
+  for (let j = 0; j < rays; j++) {
+    const row = j * stride;
+    let best = 0;
+    for (let k = 1; k <= steps * 0.4; k++) if (H[row + k] > H[row + best]) best = k;
+    peak[j] = best;
+    if (H[row + best] > top) {
+      top = H[row + best];
+      const a = (j / rays) * Math.PI * 2;
+      summitX = spec.x + Math.cos(a) * best * BEDROCK_STEP; summitZ = spec.z + Math.sin(a) * best * BEDROCK_STEP;
+    }
+    foot = Math.min(foot, H[row + steps]);
+    climb[j] = Infinity;
+    for (let k = steps - 1; k > best; k--) {
+      if ((H[row + k - 1] - H[row + k + 1]) / (2 * BEDROCK_STEP) > minGrade) { climb[j] = H[row + k]; break; }
+    }
+  }
+  /** The first radius on ray j, going out from its crest, where the ground falls below y (NaN: none in reach). */
+  const edge = (j: number, y: number): number => {
+    const row = j * stride;
+    let k = peak[j];
+    if (H[row + k] < y) return NaN;
+    for (k++; k <= steps; k++) {
+      if (H[row + k] < y) {
+        const h0 = H[row + k - 1], h1 = H[row + k];
+        return (k - 1 + (h0 - y) / Math.max(1e-6, h0 - h1)) * BEDROCK_STEP;
+      }
+    }
+    return NaN;
+  };
+  const rayAt = (theta: number): [number, number, number] => {
+    const f = ((theta / (Math.PI * 2)) % 1 + 1) % 1 * rays;
+    const j0 = Math.floor(f) % rays;
+    return [j0, (j0 + 1) % rays, f - Math.floor(f)];
+  };
+  const edgeAt = (theta: number, y: number): number => {
+    const [j0, j1, f] = rayAt(theta);
+    const a = edge(j0, y), b = edge(j1, y);
+    return a + (b - a) * f;
+  };
+  const climbAt = (theta: number): number => { const [j0, j1] = rayAt(theta); return Math.max(climb[j0], climb[j1]); };
+
+  const pieces: Piece[] = [];
+  let lowest = Infinity;
+  for (let j = 0; j < rays; j++) lowest = Math.min(lowest, climb[j]);
+  if (!Number.isFinite(lowest) || !(top > lowest)) return { geometry: null, masses: [], pieces: 0, triangles: 0 };
+  const sandstone = spec.geology === 'sandstone';
+  const segLen = mobile ? 3.5 : 2.5;
+  // the hill's reference radius (half way up its rock) sets the joint and dip arcs
+  let rs = 0, rn = 0;
+  for (let j = 0; j < rays; j += 4) { const r = edge(j, (lowest + top) * 0.5); if (Number.isFinite(r)) { rs += r; rn++; } }
+  if (!rn) return { geometry: null, masses: [], pieces: 0, triangles: 0 };
+  const rRef = Math.max(3, rs / rn);
+  // the beds dip a little (one to four degrees) toward one side; the master joints cut every bed at the same places,
+  // opening clefts from the crown to the foot, and the beds' own joints between them are tight and staggered
+  const dipAz = rng() * Math.PI * 2, tanDip = spec.geology === 'slate' ? 0 : 0.02 + rng() * 0.05;
+  const dipAt = (theta: number) => tanDip * rRef * Math.cos(theta - dipAz);
+  const masters = Math.max(3, Math.round((Math.PI * 2 * rRef) / (10 + rng() * 8)));
+  const master: Array<[number, number]> = []; // [angle, cleft width m]
+  const m0 = rng() * Math.PI * 2;
+  for (let m = 0; m < masters; m++) master.push([m0 + (m + (rng() - 0.5) * 0.6) * (Math.PI * 2 / masters), gMin + 0.3 + rng() * (gMax + 0.6 - gMin)]);
+  let y0 = lowest + BEDROCK_CLEAR;
+  let hard = 0, soft = 0;
+  const bedTops: number[] = [];
+  for (let bed = 0; bed < 60; bed++) {
+    // a sandstone's thick hard beds part on thin soft ones that the weather cuts back
+    const isSoft = sandstone && bed > 0 && rng() < 0.55 && !(pieces.length && soft > hard);
+    const t = isSoft ? 0.3 + rng() * 0.4 : tMin + rng() * (tMax - tMin);
+    const y1 = y0 + t;
+    if (y1 > top - 0.6) break;
+    const layer = isSoft ? 2 * soft++ + 1 : 2 * hard++;
+    let bs = 0, bn = 0;
+    for (let j = 0; j < rays; j += 4) { const r = edge(j, (y0 + y1) * 0.5); if (Number.isFinite(r)) { bs += r; bn++; } }
+    const proud = isSoft ? 0.06 + rng() * 0.1 : 0.4 + rng() * 0.5;
+    const batter = (0.06 + rng() * 0.12) * t;
+    const bev = isSoft ? Math.min(0.15, t * 0.3) : Math.min(0.5, t * 0.22);
+    const stagger = rng();
+    if (!bn) { y0 = y1; continue; }
+    const rMean = Math.max(2, bs / bn);
+    for (let m = 0; m < masters; m++) {
+      const [aStart, wStart] = master[m], [aNext, wNext] = master[(m + 1) % masters];
+      const spanStart = aStart + wStart * 0.5 / rMean;
+      const spanEnd = (m + 1 < masters ? aNext : aNext + Math.PI * 2) - wNext * 0.5 / rMean;
+      // the bed's own joints: tight, staggered from the bed below (a soft bed is one block per span)
+      let theta = spanStart;
+      let first = true;
+      while (theta < spanEnd - 0.01) {
+        let arc = isSoft ? Infinity : jMin + rng() * (jMax - jMin);
+        if (first && !isSoft) { arc *= 0.3 + stagger * 0.7; first = false; }
+        const tight = (0.05 + rng() * 0.09) / rMean;
+        const t0 = theta, t1 = Math.min(theta + arc / rMean, spanEnd);
+        theta = t1 + tight;
+        if (spanEnd - t1 < (jMin * 0.4) / rMean) theta = spanEnd; // no sliver at the span's end
+        const t1b = theta >= spanEnd ? spanEnd : t1;
+        if (t1b <= t0) continue;
+        const p = proud * (0.8 + rng() * 0.4);
+        const n = Math.max(2, Math.ceil(((t1b - t0) * rMean) / segLen));
+        // the profile at each sample, or null where the bed is not cut (gentle, unreachable or climbable ground)
+        const rows: Array<number[] | null> = [];
+        for (let i = 0; i <= n; i++) {
+          const th = t0 + (t1b - t0) * (i / n);
+          const dy = dipAt(th), b0 = y0 + dy, b1 = y1 + dy;
+          const r0 = edgeAt(th, b0), r1 = edgeAt(th, b1);
+          if (!Number.isFinite(r0) || !Number.isFinite(r1) || r0 < 1.5 || r0 - r1 > BEDROCK_BENCH || b0 < climbAt(th) + BEDROCK_CLEAR) { rows.push(null); continue; }
+          const c = Math.cos(th), sn = Math.sin(th);
+          const wob = noise.noise(th * rMean * 0.35 + bed * 3.1, b0 * 0.21) * 0.5 + 0.5;
+          const pp = p * (0.8 + 0.4 * wob);
+          const bulge = noise.noise(th * rMean * 0.9 - bed * 1.7, b0 * 0.4 + 5) * 0.14 * t;
+          // inner bottom, outer bottom (undercut), the face's belly, the face under the lip, the lip, inner top
+          const prof: Array<[number, number]> = [
+            [r0 - 0.7, b0 - 0.05],
+            [r0 + pp * 0.55, b0 - 0.05],
+            [r0 + pp + bulge - batter * 0.45, b0 + t * 0.42],
+            [r0 + pp - batter - bev * 0.6, b1 - bev],
+            [r0 + pp - batter - bev * 1.8, b1 + 0.02],
+            [r1 - 0.7, b1 + 0.02],
+          ];
+          const row: number[] = [];
+          for (const [r, y] of prof) row.push(spec.x + c * r, y, spec.z + sn * r);
+          rows.push(row);
+        }
+        // each run of cut samples is one block (an uncut sample parts it)
+        let i = 0;
+        while (i < rows.length) {
+          while (i < rows.length && !rows[i]) i++;
+          const firstRow = i;
+          while (i < rows.length && rows[i]) i++;
+          if (i - firstRow < 2) continue;
+          const run = rows.slice(firstRow, i) as number[][];
+          const positions: number[] = [];
+          for (const row of run) positions.push(...row);
+          const index: number[] = [];
+          const v = (k: number, q: number) => k * 6 + q;
+          // the underside is left out: a bed sits on the bench below it, and under the lowest the hill shows through
+          for (let k = 0; k + 1 < run.length; k++) {
+            for (let q = 1; q < 5; q++) index.push(v(k, q), v(k + 1, q + 1), v(k + 1, q), v(k, q), v(k, q + 1), v(k + 1, q + 1));
+          }
+          const last = run.length - 1;
+          for (let q = 1; q < 5; q++) {
+            index.push(v(0, 0), v(0, q + 1), v(0, q));          // the block's first end faces back along the ring
+            index.push(v(last, 0), v(last, q), v(last, q + 1)); // its last end faces on along it
+          }
+          const g = new THREE.BufferGeometry();
+          g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+          g.setIndex(index);
+          pieces.push({ geometry: g, layer, standing: false });
+        }
+      }
+    }
+    bedTops.push(y1);
+    y0 = y1;
+  }
+  // the crown: the bare rock of the summit, one sheet laid over the cap above the last bed (its rim tucked into that
+  // bed's bench), a little proud of the ground and swelling where the weather has left it
+  // (it starts from the highest bed whose top rings most of the hill: a lobe's last beds run only along its saddle)
+  let capY = NaN;
+  for (let b = bedTops.length - 1; b >= 0 && Number.isNaN(capY); b--) {
+    let ring = 0;
+    for (let j = 0; j < rays; j++) if (Number.isFinite(edge(j, bedTops[b] + dipAt((j / rays) * Math.PI * 2)))) ring++;
+    if (ring >= rays * 0.6) capY = bedTops[b];
+  }
+  if ((spec.crown ?? true) && Number.isFinite(capY)) {
+    const rings = mobile ? 4 : 6;
+    const rim = new Float32Array(rays);
+    let ok = 0;
+    for (let j = 0; j < rays; j++) { const r = edge(j, capY + dipAt((j / rays) * Math.PI * 2)); rim[j] = Number.isFinite(r) ? Math.max(0, r - 0.4) : NaN; if (Number.isFinite(r)) ok++; }
+    if (ok >= rays * 0.5) {
+      // a ray with no rim (it runs on over a saddle) takes the nearest rims either side, so the sheet stays whole
+      const known = Float32Array.from(rim);
+      for (let j = 0; j < rays; j++) {
+        if (Number.isFinite(known[j])) continue;
+        let a = 1, b = 1;
+        while (!Number.isFinite(known[(j - a + rays) % rays])) a++;
+        while (!Number.isFinite(known[(j + b) % rays])) b++;
+        rim[j] = (known[(j - a + rays) % rays] * b + known[(j + b) % rays] * a) / (a + b);
+      }
+      const positions: number[] = [], index: number[] = [];
+      const peakY = groundAt(summitX, summitZ);
+      positions.push(summitX, peakY + 0.45, summitZ);
+      for (let k = 1; k <= rings; k++) {
+        for (let j = 0; j < rays; j++) {
+          const a = (j / rays) * Math.PI * 2, f = k / rings, r = rim[j] * f;
+          // the rays start at the authored centre; the sheet's rings start at the summit and reach each ray's rim
+          const x = summitX + (spec.x + Math.cos(a) * rim[j] - summitX) * f, z = summitZ + (spec.z + Math.sin(a) * rim[j] - summitZ) * f;
+          const swell = (noise.noise(x * 0.11 + 7.3, z * 0.11 - 2.9) * 0.5 + 0.5) * 0.5 * (1 - f * f);
+          positions.push(x, groundAt(x, z) + 0.3 + swell - (k === rings ? 0.25 : 0) + r * 0, z);
+        }
+      }
+      const at = (k: number, j: number) => (k === 0 ? 0 : 1 + (k - 1) * rays + (j % rays));
+      for (let j = 0; j < rays; j++) index.push(at(0, 0), at(1, j + 1), at(1, j));
+      for (let k = 1; k < rings; k++) {
+        for (let j = 0; j < rays; j++) index.push(at(k, j), at(k, j + 1), at(k + 1, j + 1), at(k, j), at(k + 1, j + 1), at(k + 1, j));
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      g.setIndex(index);
+      pieces.push({ geometry: g, layer: 2 * hard, standing: false });
+    }
+  }
+  const count = pieces.length;
+  const geometry = count ? finish(pieces, spec.geology, spec.tone, ground, noise, spec.x * 0.017 - spec.z * 0.011) : null;
+  return { geometry, masses: [], pieces: count, triangles: geometry ? geometry.attributes.position.count / 3 : 0 };
+}
+
 type FormBuilder = (spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]) => void;
 const FORMS: Readonly<Record<RockForm, FormBuilder>> = Object.freeze({
   tor: graniteTor, outcrop: beddedOutcrop, crag: slateCrag, pavement: limestonePavement, scree, hoodoo,

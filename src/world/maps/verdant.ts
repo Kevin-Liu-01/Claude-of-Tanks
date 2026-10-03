@@ -178,16 +178,9 @@ export default {
   },
 
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the black-earth plateau's
-  // marks. A field hedge on every hedgerow bank; a standing stone on each kurgan's crown, as the steppe's stone idols
-  // stood; an Orthodox roadside cross at the village's south and north entries; a 110 kV line across the southern
-  // fields below the swell.
+  // marks. A standing stone on each kurgan's crown, as the steppe's stone idols stood; an Orthodox roadside cross at the
+  // village's south and north entries; a 110 kV line across the southern fields below the swell.
   scenery: {
-    hedgerows: [
-      { path: [[-308.1, -90.0], [-260, -90], [-211.9, -90.0]], gates: [0.5], height: 1.1, name: 'the south-west hedgerow bank' },
-      { path: [[231.9, 130.0], [280, 130], [328.1, 130.0]], gates: [0.5], height: 1.1, name: 'the north-east hedgerow bank' },
-      { path: [[75.7, -113.1], [120, -110], [164.3, -106.9]], gates: [0.5], height: 1.1, name: 'the south-east hedgerow bank' },
-      { path: [[-144.3, 146.9], [-100, 150], [-55.7, 153.1]], gates: [0.5], height: 1.1, name: 'the north-west hedgerow bank' },
-    ],
     landmarks: [
       { kind: 'menhir', x: -75, z: -245, scale: 0.8, height: 2.6, name: 'the standing stone on the south kurgan' },
       { kind: 'menhir', x: 95, z: 285, scale: 0.8, height: 2.6, name: 'the standing stone on the north kurgan' },
