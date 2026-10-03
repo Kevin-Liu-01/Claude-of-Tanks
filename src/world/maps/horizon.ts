@@ -47,7 +47,7 @@ import { type EscarpmentSettings, carveEscarpmentRingSteps, createEscarpmentFiel
 import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
 import { continuedGroundAt } from '../horizonSurface.ts';
 import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
-import { buildBorderFarmsteads, ringSurfaceSampler } from '../borderFarmsteads.ts';
+import { buildBorderFarmsteads, farmsteadTreesAt, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
@@ -1948,8 +1948,10 @@ function* carveHorizonEscarpmentsSteps(ring: HorizonRingGeometry, horizon: Horiz
   const field = createEscarpmentField(((seed ^ 0x5E5C) ^ idHash(mapId)) >>> 0, settings);
   yield* carveEscarpmentRingSteps({ columns: HORIZON_SEGMENTS, rowCount: rows.length, positions: ring.positions, heights: ring.heights, floors, weights,
     weightAt: (x, z) => smoothstep(70, 230, Math.max(Math.abs(x), Math.abs(z)) - 512) }, field, { talusFill: 0.34 });
+  // every row, as continueHorizonGround measures it: on Redrock this runs after the hand-over, whose seam rows can carry the
+  // ring's highest point (seed 2049: the edge mesa at 94.9 m over the outland's 94.7)
   let maxHeight = 1;
-  for (let i = HORIZON_SEGMENTS * 2; i < ring.heights.length; i++) if (ring.heights[i] > maxHeight) maxHeight = ring.heights[i];
+  for (let i = 0; i < ring.heights.length; i++) if (ring.heights[i] > maxHeight) maxHeight = ring.heights[i];
   ring.maxHeight = maxHeight;
 }
 
@@ -3577,6 +3579,23 @@ export function* buildHorizonRingSteps(
   const rimConiferLead = leadOf(true), rimBroadleaf = leadOf(false);
   const horizonVista = mat.userData.horizonVista as { uniforms: Record<string, THREE.IUniform>; canopyMean?: THREE.Vector3 } | undefined;
   const vistaUniforms = horizonVista?.uniforms;
+  // The map-borders lane (2026-10-03): the farmsteads' yards are chosen before the forest, which stands their shelter
+  // trees (borderFarmsteads.ts farmsteadTreesAt); the buildings follow below
+  const farmSpec = ground?._borderFarmsteads;
+  const farmOptions: BorderFarmsteadOptions | null = vista && ground && farmSpec && farmSpec.count > 0 ? (() => {
+    const exit: [number, number] = [0, 0];
+    const roadExitAt = ground._roadExitAt;
+    return {
+      seed: ((seed ^ 0xFA4D) ^ idHash(mapId)) >>> 0, style: farmSpec.style, count: farmSpec.count, fieldAngle: farmSpec.fieldAngle,
+      groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),
+      woodsAt: (x: number, z: number) => ground.getBorderWoodsAt?.(x, z) ?? 0,
+      blockedAt: (x: number, z: number) => Math.max(ground.getOutlandSeatWeightAt?.(x, z) ?? 0, ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0,
+        seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01 ? 1 : 0),
+      ...(roadExitAt ? { roadDistanceAt: (x: number, z: number) => (roadExitAt(x, z, exit)[1] > 0.05 ? Math.abs(exit[0]) : Infinity) } : {}),
+    };
+  })() : null;
+  const farmSites = farmOptions ? selectFarmsteadSites(farmOptions) : [];
+  const borderWoodsAt = ground?.getBorderWoodsAt;
   const forestGroup = buildHorizonForest({
     columns: HORIZON_SEGMENTS, rows, positions: pos, heights: hs, forestCover, maxHeight: maxH, treeline, snowline,
     forest: forestC, fog: fogC, seed: ((seed ^ 0x51F0) ^ idHash(mapId)) >>> 0,
@@ -3588,7 +3607,8 @@ export function* buildHorizonRingSteps(
     maxInstances: vista ? (reliefCharacter === 'polar' ? 1600 : 8000) : 0, maxRadius: 1050, nearDepth: 300, ridgeRow,
     // the map-borders lane (2026-10-03): the band's woods take the border landform's share (no hedge round the square)
     bandShare: resolveBorderLandform(style, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border, mapId).forest,
-    ...(ground?.getBorderWoodsAt ? { woodsAt: ground.getBorderWoodsAt } : {}),
+    ...(borderWoodsAt ? { woodsAt: farmSites.length
+      ? (x: number, z: number) => Math.max(borderWoodsAt(x, z), farmsteadTreesAt(farmSites, x, z)) : borderWoodsAt } : {}),
     ...(ground?.getBorderHedgeAt ? { hedgeAt: ground.getBorderHedgeAt } : {}),
     detailNoise: mat.userData.horizonDetailNoise as DetailNoiseSampler,
     // round 72c: the stands follow the coarse relief (clumps in the hollows, gaps on the crests, a wandering treeline)
@@ -3625,18 +3645,8 @@ export function* buildHorizonRingSteps(
   // Tanks' red-line shots, villages carrying on past the boundary): farmsteads and hamlets on the ring's seated surface
   // past the edge (borderFarmsteads.ts) — off the woods, the sea, a railway's right of way and the exit roads'
   // carriageways, gathered along those roads. One merged mesh, one draw, its shadow in the far cascade only.
-  const farmSpec = ground?._borderFarmsteads;
-  if (vista && ground && farmSpec && farmSpec.count > 0) {
-    const exit: [number, number] = [0, 0];
-    const roadExitAt = ground._roadExitAt;
-    const farms = buildBorderFarmsteads({
-      seed: ((seed ^ 0xFA4D) ^ idHash(mapId)) >>> 0, style: farmSpec.style, count: farmSpec.count, fieldAngle: farmSpec.fieldAngle,
-      groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),
-      woodsAt: (x, z) => ground.getBorderWoodsAt?.(x, z) ?? 0,
-      blockedAt: (x, z) => Math.max(ground.getOutlandSeatWeightAt?.(x, z) ?? 0, ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0,
-        seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01 ? 1 : 0),
-      ...(roadExitAt ? { roadDistanceAt: (x: number, z: number) => (roadExitAt(x, z, exit)[1] > 0.05 ? Math.abs(exit[0]) : Infinity) } : {}),
-    });
+  if (farmOptions && farmSites.length) {
+    const farms = buildBorderFarmsteads({ ...farmOptions, sites: farmSites });
     if (farms) {
       const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;
       if (setup) setup.call(_engineCtx, farms.material as THREE.Material, null);

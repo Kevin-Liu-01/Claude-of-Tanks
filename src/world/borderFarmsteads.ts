@@ -28,9 +28,15 @@ export interface BorderFarmsteadOptions {
   /** The band past the square's edge the yards stand in (m). */
   nearM?: number;
   farM?: number;
+  /** Sites already chosen (selectFarmsteadSites with these options): the ring forest read them for the shelter trees. */
+  sites?: readonly FarmsteadSite[];
 }
 
-export interface FarmsteadSite { x: number; z: number; yaw: number; road: boolean }
+export interface FarmsteadSite {
+  x: number; z: number; yaw: number; road: boolean;
+  /** The side its shelter trees stand on (rad): the farm's windbreak arc. */
+  shelter: number;
+}
 
 const HALF = 512;
 
@@ -94,7 +100,7 @@ export function selectFarmsteadSites(options: BorderFarmsteadOptions): Farmstead
       const side = Math.abs(x) > Math.abs(z) ? (x > 0 ? 1 : 3) : (z > 0 ? 0 : 2);
       // square to the fields, or to the road the farm stands on (a quarter turn either way, a few degrees of settling)
       const yaw = options.fieldAngle + (rng() < 0.5 ? 0 : Math.PI / 2) + (rng() - 0.5) * 0.1;
-      candidates.push({ x, z, yaw, road: roadBonus > 0, score, side });
+      candidates.push({ x, z, yaw, road: roadBonus > 0, score, side, shelter: rng() * Math.PI * 2 });
     }
   }
   candidates.sort((a, b) => b.score - a.score);
@@ -112,7 +118,26 @@ export function selectFarmsteadSites(options: BorderFarmsteadOptions): Farmstead
     if (!ok || hamlet > 2) continue;
     picked.push(c); perSide[c.side]++;
   }
-  return picked.map(({ x, z, yaw, road }) => ({ x, z, yaw, road }));
+  return picked.map(({ x, z, yaw, road, shelter }) => ({ x, z, yaw, road, shelter }));
+}
+
+/**
+ * The farms' shelter trees as a woods weight (0..1) the ring forest stands by: an arc of trees 26–58 m round each yard
+ * on its shelter side (a windbreak and an orchard corner, never over the buildings), so a farm reads as a farm among
+ * its trees and not boxes on a lawn.
+ */
+export function farmsteadTreesAt(sites: readonly FarmsteadSite[], x: number, z: number): number {
+  let w = 0;
+  for (let i = 0; i < sites.length; i++) {
+    const site = sites[i], dx = x - site.x, dz = z - site.z;
+    if (dx > 60 || dx < -60 || dz > 60 || dz < -60) continue;
+    const d = Math.hypot(dx, dz);
+    const ring = smoothstep(24, 32, d) * (1 - smoothstep(44, 58, d));
+    if (ring <= 0) continue;
+    const arc = smoothstep(-0.35, 0.25, Math.cos(Math.atan2(dz, dx) - site.shelter));
+    w = Math.max(w, ring * arc * 0.95);
+  }
+  return w;
 }
 
 type RGB = readonly [number, number, number];
@@ -294,9 +319,38 @@ function footprint(groundAt: (x: number, z: number) => number, f: Frame, L: numb
 
 function pick<T>(list: readonly T[], rng: () => number): T { return list[Math.floor(rng() * list.length) % list.length]; }
 
+/** The hamlet's church: a nave with its tower at the west end and a spire, 40 m off the farm on the road side. */
+function addChurch(s: Soup, options: BorderFarmsteadOptions, site: FarmsteadSite, pal: Palette): void {
+  const rng = mulberry32(((options.seed ^ 0xC4C4) + Math.round(site.x * 7 + site.z * 13)) >>> 0);
+  const cos = Math.cos(site.yaw), sin = Math.sin(site.yaw);
+  const cx = site.x + 40 * -sin, cz = site.z + 40 * cos;
+  const nave: Frame = { x: cx, z: cz, cos, sin };
+  const L = 17 + rng() * 5, W = 8.5 + rng() * 1.5;
+  const [lo, hi] = footprint(options.groundAt, nave, L + 6, W);
+  if (!Number.isFinite(lo)) return;
+  const wall: RGB = options.style === 'polder' ? [0.52, 0.30, 0.24] : options.style === 'nordic' ? [0.88, 0.87, 0.82] : [0.80, 0.77, 0.70];
+  const roof: RGB = options.style === 'winter' ? [0.90, 0.91, 0.93] : options.style === 'polder' ? [0.22, 0.22, 0.24] : pick(pal.roofs, rng);
+  const y0 = lo - 0.4, eave = hi + 0.3 + 7.5;
+  addWalls(s, nave, L, W, y0, eave, wall, rng, 1, true);
+  addGableRoof(s, nave, L, W, eave, 48 * Math.PI / 180, wall, roof, rng);
+  // the tower at the nave's west end, its spire
+  const t = 2.8, tower: Frame = { x: cx - (L / 2 + t) * cos, z: cz - (L / 2 + t) * sin, cos, sin };
+  const top = hi + 0.3 + 20 + rng() * 6;
+  addBox(s, tower, 0, 0, t, t, y0, top, wall);
+  const spire = top + 7 + rng() * 4, apex = at(tower, 0, 0, spire);
+  const corners = [at(tower, -t, -t, top), at(tower, t, -t, top), at(tower, t, t, top), at(tower, -t, t, top)];
+  for (let i = 0; i < 4; i++) s.tri(corners[i], corners[(i + 1) % 4], apex, roof, 0.9 + (i % 2) * 0.1);
+  // the belfry openings, one dark slot a face
+  for (const [u, v, du, dv] of [[t + 0.04, 0, 0, 1], [-t - 0.04, 0, 0, -1], [0, t + 0.04, -1, 0], [0, -t - 0.04, 1, 0]]) {
+    const a = at(tower, u - du * 0.6, v - dv * 0.6, top - 3.2), b = at(tower, u + du * 0.6, v + dv * 0.6, top - 3.2);
+    const c = at(tower, u + du * 0.6, v + dv * 0.6, top - 1.2), d = at(tower, u - du * 0.6, v - dv * 0.6, top - 1.2);
+    s.quad(a, b, c, d, WINDOW);
+  }
+}
+
 /** The farmsteads' merged mesh, or null when there are none. The caller joins its material to the shadow cascades. */
 export function buildBorderFarmsteads(options: BorderFarmsteadOptions): THREE.Mesh | null {
-  const sites = selectFarmsteadSites(options);
+  const sites = options.sites ?? selectFarmsteadSites(options);
   if (sites.length === 0) return null;
   const pal = PALETTES[options.style] ?? PALETTES.temperate;
   const s = new Soup();
@@ -355,6 +409,10 @@ export function buildBorderFarmsteads(options: BorderFarmsteadOptions): THREE.Me
       if (Number.isFinite(g)) addSilo(s, p[0], p[2], g - 0.3, 2.4 + rng() * 0.6, 9 + rng() * 4, [0.72, 0.72, 0.70], [0.55, 0.55, 0.54]);
     }
   }
+  const churchStyles: readonly FarmsteadStyle[] = ['temperate', 'polder', 'winter', 'alpine', 'nordic'];
+  const hamlet = churchStyles.includes(options.style)
+    ? sites.find((a) => a.road && sites.some((b) => b !== a && b.road && Math.hypot(a.x - b.x, a.z - b.z) < 150)) : undefined;
+  if (hamlet) addChurch(s, options, hamlet, pal);
   if (s.positions.length === 0) return null;
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(s.positions, 3));
