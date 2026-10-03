@@ -46,7 +46,7 @@ import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
-import { knollGeologyHeight, ridgeGeologyHeight, type LandformGeology } from './landformGeology.ts';
+import { createGeologyZoneSampler, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
@@ -409,6 +409,9 @@ export interface HeightField {
   /** Round 73 (2026-09-25): the baked fold term of the terrain build (−1 crest .. +1 hollow, the 8 m / 24 m Laplacian
    * of the relief the chunk vertices carry) — the tall-grass tier thickens and lifts the sward in the hollows. */
   _foldAt?(x: number, z: number): number;
+  /** The maps-and-layouts lane (2026-10-03): the authored landforms' geological zones at (x, z), each 0..1 —
+   * [lava flow, cinder cone, talus fan] (landformGeology.ts geologyZoneWeights); absent on a map without them. */
+  _geologyZoneAt?(x: number, z: number, out: GeologyZones): GeologyZones;
   /** The map-borders lane (2026-10-03): the ring's carriageway attribute — [signed offset from a road exit line (m), presence]. */
   _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
   _layout: TerrainLayout;
@@ -2229,6 +2232,8 @@ function* heightFieldBuildSteps(
     };
   }
   const mesaWeight = createMesaWeightSampler();
+  // the authored landforms' geological zones (pure; for the terrain material and CPU-side dressing)
+  const geologyZones = createGeologyZoneSampler(T.landforms);
 
   return {
     getHeightAt, getHeightAtFast, getContactHeightAt, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,
@@ -2266,6 +2271,7 @@ function* heightFieldBuildSteps(
       return yield* heightFieldBuildSteps(seed,originalRoadPlacementConfig(cfg),true);
     }} : {}),
     _mesaW: mesaWeight,
+    ...(geologyZones ? { _geologyZoneAt: geologyZones } : {}),
     ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt } : {}),
   };
 }

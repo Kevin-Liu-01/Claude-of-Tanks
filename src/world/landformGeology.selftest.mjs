@@ -3,7 +3,7 @@
 // and a knobbly surface; one without it keeps its exact smooth shape. This receipt holds both halves of that contract.
 import assert from 'node:assert/strict';
 import { sampleLandformHeight } from './terrain.ts';
-import { knollGeologyHeight, ridgeGeologyHeight } from './landformGeology.ts';
+import { createGeologyZoneSampler, geologyZoneWeights, knollGeologyHeight, ridgeGeologyHeight } from './landformGeology.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 
 const smoothstep = (a, b, v) => {
@@ -165,6 +165,11 @@ const seamTests = [
   frame({ kind: 'knoll', x: 0, z: 0, rx: 60, rz: 60, height: 18, yawDeg: 0, geology: { profile: 'cone',
     crater: { rim: 0.15, depthM: 2.5, breachDeg: 180 }, outline: 0.14, gullies: { count: 12, depthM: 3.5, width: 0.6 },
     rough: 1.1 } }),
+  frame({ kind: 'knoll', x: 0, z: 0, rx: 48, rz: 60, height: 24, yawDeg: 0, geology: { profile: 'cone',
+    crater: { rim: 0.16, depthM: 4, breachDeg: 200 }, outline: 0.1, gullies: { count: 11, depthM: 5, width: 0.55 },
+    fans: { reach: 0.32, heightM: 2.4 }, rough: 1.1 } }),
+  frame({ kind: 'ridge', x: 0, z: 0, length: 220, width: 50, height: 7, yawDeg: 0, geology: { profile: 'flow', front: 1,
+    outline: 0.25, rough: 0.7, gullies: { count: 3, depthM: 1.2, width: 0.4 } } }),
   frame({ kind: 'ridge', x: 0, z: 0, length: 200, width: 60, height: 7, yawDeg: 0, geology: { profile: 'butte',
     wall: [0.4, 0.58], apron: 0.25, outline: 0.28, rough: 0.7, gullies: { count: 3, depthM: 1.2, width: 0.6 } } }),
 ];
@@ -181,7 +186,114 @@ for (const form of seamTests) {
   }
 }
 
+// 10. Talus fans: below a rilled cone's toe the ground rises in fans on the rills' bearings, thins between them and is
+// gone past the fans' reach; a cone without fans keeps nothing past its toe.
+const fanned = { kind: 'knoll', x: 0, z: 0, rx: 60, rz: 60, height: 18,
+  geology: { profile: 'cone', crater: { rim: 0.15, depthM: 3 }, gullies: { count: 9, depthM: 3 }, fans: { reach: 0.3 } } };
+const bareFans = { ...fanned, geology: { ...fanned.geology, fans: undefined } };
+const toeRing = [];
+for (let i = 0; i < 720; i++) {
+  const a = i / 720 * Math.PI * 2;
+  toeRing.push(knollGeologyHeight(fanned, Math.cos(a) * 60 * 1.08, Math.sin(a) * 60 * 1.08));
+  assert.equal(knollGeologyHeight(bareFans, Math.cos(a) * 60 * 1.08, Math.sin(a) * 60 * 1.08), 0, 'no fans, nothing past the toe');
+  assert.equal(knollGeologyHeight(fanned, Math.cos(a) * 60 * 1.31, Math.sin(a) * 60 * 1.31), 0, 'nothing past the fans\' reach');
+}
+const fanPeaks = toeRing.filter((h, i) => h > 0.3 && h >= toeRing[(i + 719) % 720] && h >= toeRing[(i + 1) % 720]).length;
+assert.ok(fanPeaks >= 5 && fanPeaks <= 11, `about nine fans spread past the toe (${fanPeaks})`);
+assert.ok(Math.max(...toeRing) <= 3 * 0.6 + 1e-9, 'a fan stands no higher than its height at the toe');
+assert.ok(Math.min(...toeRing) < 0.05, 'the fans thin out between the rills');
+
+// 11. A lava flow: its channel a step below its levees, a steep margin, and a steep blocky front at its downhill end
+// while its vent end thins out gently.
+const lava = frame({ kind: 'ridge', x: 0, z: 0, length: 200, width: 50, height: 8, yawDeg: 0,
+  geology: { profile: 'flow', front: 1 } });
+const channel = sampleLandformHeight(lava, 0, 0), levee = sampleLandformHeight(lava, 0, 50 * 0.74);
+assert.ok(levee - channel > 1.2, `the levees stand above the channel (${(levee - channel).toFixed(2)} m)`);
+const axisSlope = (from, to) => {
+  let worst = 0;
+  for (let x = from; x < to; x += 0.5) worst = Math.max(worst, Math.abs(sampleLandformHeight(lava, x + 0.5, 0) - sampleLandformHeight(lava, x, 0)) / 0.5);
+  return worst;
+};
+const frontSlope = axisSlope(85, 100), ventSlope = axisSlope(-100, -45);
+assert.ok(frontSlope > 0.6 && ventSlope < 0.3, `a steep front (${frontSlope.toFixed(2)}) and a thinning vent end (${ventSlope.toFixed(2)})`);
+assert.ok(sampleLandformHeight(lava, 0, 50 * 0.95) < levee * 0.4, 'a steep margin below the levee');
+
+// 12. Zones (the terrain material's and the dressing's keys): a flow's whole lobed footprint is flow, fading over 4 m past
+// its margin and its ends; a cone's lobed base is cone, fading over 3 m; past a cone's base a fan's zone is its height
+// share, exactly the ground the fans raise there.
+const zone = [0, 0, 0];
+const lobedFlow = frame({ kind: 'ridge', x: 30, z: -20, length: 220, width: 50, height: 7, yawDeg: 35, geology: {
+  profile: 'flow', front: 1, outline: 0.25, rough: 0.7, gullies: { count: 3, depthM: 1.2, width: 0.4 } } });
+const toWorld = (form, lx, lz) => [form.x + lx * form._c - lz * form._s, form.z + lx * form._s + lz * form._c];
+let flowInside = 0, flowFaded = 0;
+for (let lx = -110; lx <= 110; lx += 2.5) {
+  // the margin along this station, where the flow's ground meets the plain
+  for (const side of [1, -1]) {
+    let edge = 0;
+    while (edge < 90 && sampleLandformHeight(lobedFlow, ...toWorld(lobedFlow, lx, side * (edge + 0.25))) > 1e-9) edge += 0.25;
+    for (let lz = 0; lz < edge; lz += 1) {
+      assert.equal(geologyZoneWeights(lobedFlow, ...toWorld(lobedFlow, lx, side * lz), zone)[0], 1,
+        `flow zone 1 over the footprint (${lx}, ${side * lz})`);
+      flowInside++;
+    }
+    if (Math.abs(lx) < 100) {
+      assert.equal(geologyZoneWeights(lobedFlow, ...toWorld(lobedFlow, lx, side * (edge + 4.6)), zone)[0], 0,
+        `flow zone gone 4 m past the margin (${lx})`);
+      flowFaded++;
+    }
+  }
+}
+assert.equal(geologyZoneWeights(lobedFlow, ...toWorld(lobedFlow, 110 + 4.01, 0), zone)[0], 0, 'flow zone gone past the front');
+assert.ok(geologyZoneWeights(lobedFlow, ...toWorld(lobedFlow, 110 + 2, 0), zone)[0] > 0.2, 'the front fades, not cut');
+assert.equal(geologyZoneWeights(lobedFlow, ...toWorld(lobedFlow, -110, 0), zone)[0], 1, 'the vent end is flow to its tip');
+const fannedCone = frame({ kind: 'knoll', x: -40, z: 70, rx: 48, rz: 60, height: 24, yawDeg: 20, geology: { profile: 'cone',
+  crater: { rim: 0.16, depthM: 4, breachDeg: 200 }, outline: 0.1, gullies: { count: 11, depthM: 5, width: 0.55 },
+  fans: { reach: 0.32, heightM: 2.4 }, rough: 1.1 } });
+const unfanned = { ...fannedCone, geology: { ...fannedCone.geology, fans: undefined } };
+let coneInside = 0, fanSamples = 0, fanPositive = 0;
+for (let i = 0; i < 1440; i++) {
+  const a = i / 1440 * Math.PI * 2;
+  // the base along this bearing: where the cone (without its fans) meets the plain
+  let r = 0;
+  while (r < 120 && knollGeologyHeight(unfanned, Math.cos(a) * (r + 0.25), Math.sin(a) * (r + 0.25)) !== 0) r += 0.25;
+  for (const f of [0.2, 0.6, 0.97]) {
+    const [x, z] = toWorld(fannedCone, Math.cos(a) * r * f, Math.sin(a) * r * f);
+    assert.equal(geologyZoneWeights(fannedCone, x, z, zone)[1], 1, `cone zone 1 inside the base (${i}, ${f})`);
+    coneInside++;
+  }
+  const [ox, oz] = toWorld(fannedCone, Math.cos(a) * (r + 3.4), Math.sin(a) * (r + 3.4));
+  assert.equal(geologyZoneWeights(fannedCone, ox, oz, zone)[1], 0, `cone zone gone 3 m past the base (${i})`);
+  for (const extra of [0.5, 4, 9, 15]) {
+    const lx = Math.cos(a) * (r + extra), lz = Math.sin(a) * (r + extra);
+    const share = geologyZoneWeights(fannedCone, ...toWorld(fannedCone, lx, lz), zone)[2];
+    assert.ok(Math.abs(knollGeologyHeight(fannedCone, lx, lz) - 2.4 * share) < 1e-9,
+      `past the base the ground is the fans' height share (${i}, +${extra} m)`);
+    fanSamples++;
+    if (share > 0) fanPositive++;
+  }
+}
+assert.ok(fanPositive > fanSamples * 0.15 && fanPositive < fanSamples, `fans cover much of the toe ring, not all (${fanPositive} of ${fanSamples})`);
+assert.deepEqual(geologyZoneWeights({ kind: 'ridge', x: 0, z: 0, height: 5, geology: { profile: 'butte' } }, 0, 0, zone), [0, 0, 0],
+  'a butte names no zone');
+// the map's sampler: null without zones, and the strongest of each zone over the zoned landforms everywhere
+assert.equal(createGeologyZoneSampler([{ kind: 'knoll', x: 0, z: 0, height: 9 }, { kind: 'ridge', x: 0, z: 0, height: 4,
+  geology: { profile: 'butte' } }]), null, 'no zoned landform, no sampler');
+const zonedForms = [lobedFlow, fannedCone, frame({ kind: 'knoll', x: 300, z: 300, rx: 40, rz: 40, height: 10, yawDeg: 0,
+  geology: { profile: 'butte' } })];
+const sampler = createGeologyZoneSampler(zonedForms);
+const each = [0, 0, 0], best = [0, 0, 0];
+let samplerPoints = 0;
+for (let z = -160; z <= 200; z += 3.3) for (let x = -200; x <= 200; x += 3.3) {
+  best.fill(0);
+  for (const form of zonedForms) {
+    geologyZoneWeights(form, x, z, each);
+    for (let k = 0; k < 3; k++) best[k] = Math.max(best[k], each[k]);
+  }
+  assert.deepEqual(sampler(x, z, zone), best, `the sampler is the strongest zone at (${x}, ${z})`);
+  samplerPoints++;
+}
+
 console.log(`landformGeology.selftest: ${smoothForms} smooth landforms unchanged; cone flank ${steepest.toFixed(3)} `
   + `(predicted ${predicted.toFixed(3)}), ${notches} rills, lobed reach ${Math.min(...reach)}-${Math.max(...reach)} m, `
   + `${benches} benches on ${benchedBearings} of 12 bearings, `
-  + `flow margin ${Math.min(...edges)}-${Math.max(...edges)} m, ${seamSamples} seam samples continuous`);
+  + `flow margin ${Math.min(...edges)}-${Math.max(...edges)} m, ${seamSamples} seam samples continuous, ${fanPeaks} talus fans, flow levee ${(levee - channel).toFixed(2)} m front ${frontSlope.toFixed(2)} vent ${ventSlope.toFixed(2)}; zones: flow ${flowInside} inside, ${flowFaded} faded, cone ${coneInside} inside, fans ${fanPositive} of ${fanSamples} toe samples, sampler ${samplerPoints} points`);

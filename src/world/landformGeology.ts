@@ -4,20 +4,25 @@
 // one perfectly level terrace", with no rock, jointing, erosion gullies, talus or scree. A landform may now carry
 // `geology`, which shapes its own height the way rock and weather shape a real hill:
 // - outline: its plan is lobed, not an ellipse or a straight-sided bar;
-// - profile: 'dome' (the smooth default), 'butte' (a gently domed cap, a steep wall, a concave talus apron) or 'cone'
-//   (a summit crater, flanks at a near-constant slope, a rounded toe; the crater may be breached);
-// - gullies: V-shaped rills down the flanks, irregularly spaced, fading into the apron;
+// - profile: 'dome' (the smooth default), 'butte' (a gently domed cap, a steep wall, a concave talus apron), 'cone'
+//   (a summit crater, flanks at a near-constant slope, a rounded toe; the crater may be breached) or, on a ridge,
+//   'flow' (a lava flow: a lowered channel between raised levees, a steep margin, a short talus; with `front`, a steep
+//   blocky front at its downhill end);
+// - gullies: V-shaped rills down the flanks, irregularly spaced, fading into the apron; on a knoll, talus fans spread
+//   below the rills' mouths onto the plain;
 // - strata: bedding, a bench and a riser per bed, the beds dipping slightly so no bench is level;
 // - rough: knobbly relief a few metres across, on the landform and not on the plain round it.
 // Every term is a deterministic function of (x, z) and the landform's own frame: no terrain seed, no random stream, no
 // grid. A landform without `geology` keeps its exact smooth shape: terrain.ts calls this module only when it is set.
-// The terrain's rock layer follows slope, so the walls, risers and gully sides read as rock.
+// The terrain's rock layer follows slope, so the walls, risers and gully sides read as rock. geologyZoneWeights names
+// the zones a material can key on: a lava flow's footprint, a cinder cone's base and its talus fans.
 
 export interface LandformGeology {
   /** Plan irregularity, 0 (the authored ellipse or bar) to 0.35. */
   outline?: number;
-  /** The radial (knoll) or cross-axis (ridge) profile. */
-  profile?: 'dome' | 'butte' | 'cone';
+  /** The radial (knoll) or cross-axis (ridge) profile. 'flow' (ridges): a lava flow's lowered channel between raised
+   * levees, a steep margin and a short talus. */
+  profile?: 'dome' | 'butte' | 'cone' | 'flow';
   /** butte: the cap's edge and the wall's foot, as fractions of the radius or half-width (default 0.45, 0.62). */
   wall?: readonly [number, number];
   /** butte: the talus apron's height at the wall's foot, as a share of the landform's height (default 0.28). */
@@ -29,6 +34,10 @@ export interface LandformGeology {
    * metres and their width as a share of their spacing (default 0.45); each rill varies its own depth, head and
    * meander. */
   gullies?: { count: number; depthM: number; width?: number };
+  /** Knolls with gullies: talus fans spread below each rill's mouth onto the plain: their reach past the toe as a share
+   * of the radius (default 0.3) and their height in metres at the toe (default 0.6 x the rill depth); each fan varies
+   * with its rill. */
+  fans?: { reach?: number; heightM?: number };
   /** Bedding: the bed thickness in metres and the riser's share of each bed (default 0.3). */
   strata?: { stepM: number; riser?: number };
   /** Knobbly relief amplitude in metres. */
@@ -36,6 +45,9 @@ export interface LandformGeology {
   /** Ridges only: the crest falls along the axis, to (1 - |taper|) of the height at one end: positive lowers the
    * local +x end, negative the -x end. A spur descending from a wall to its toe. */
   taper?: number;
+  /** Ridges only: a flow front: +1 ends the local +x end, -1 the -x end, in a steep blocky front over the last 8 % of
+   * the length, while the other end thins out gently over its last half (a lava flow's vent end). */
+  front?: 1 | -1;
 }
 
 /** The slice of a landform the geology reads. */
@@ -49,8 +61,16 @@ export interface GeologicForm {
   rx?: number;
   rz?: number;
   r?: number;
+  /** The plan rotation (geologyZoneWeights; the height functions take the local frame). */
+  yawDeg?: number;
+  /** Its cosine and sine, as terrain.ts createLayout caches them. */
+  _c?: number;
+  _s?: number;
   geology?: LandformGeology;
 }
+
+/** The geological zones at a point, each 0..1: [lava flow, cinder cone, talus fan] (geologyZoneWeights). */
+export type GeologyZones = [number, number, number];
 
 const TAU = Math.PI * 2;
 const BUTTE_WALL: readonly [number, number] = [0.45, 0.62];
@@ -125,6 +145,18 @@ function butteProfile(q: number, geology: LandformGeology): number {
   return apron * (1 - t) * (1 - t);
 }
 
+/** A lava flow's cross-section: the channel a step below its levees, the levee crests near the margin, a steep
+ * margin wall and a short concave talus. */
+function flowProfile(q: number): number {
+  if (q >= 1) return 0;
+  if (q <= 0.45) return 0.82;
+  if (q <= 0.7) return 0.82 + 0.18 * smoothstep(0.45, 0.7, q);
+  if (q <= 0.78) return 1;
+  if (q <= 0.9) return 1 - 0.78 * smoothstep(0.78, 0.9, q);
+  const t = (q - 0.9) / 0.1;
+  return 0.22 * (1 - t) * (1 - t);
+}
+
 /** A cinder cone: a summit crater, then flanks at a near-constant slope that round into the toe:
  * p = s (1 - e^(-6 s)), s the share of the flank still below; its steepest point is 1.14 x the mean flank slope. */
 function coneProfile(q: number, geology: LandformGeology, height: number): number {
@@ -142,6 +174,7 @@ function profileOf(q: number, geology: LandformGeology, height: number, fallback
   const profile = geology.profile ?? 'dome';
   if (profile === 'butte') return butteProfile(q, geology);
   if (profile === 'cone') return coneProfile(q, geology, height);
+  if (profile === 'flow') return flowProfile(q);
   return fallback(q);
 }
 
@@ -156,6 +189,7 @@ function gullyFlank(q: number, geology: LandformGeology): number {
     const rim = geology.crater?.rim ?? 0.12;
     return smoothstep(rim, rim + 0.15, q) * (1 - smoothstep(0.8, 1, q));
   }
+  if (profile === 'flow') return smoothstep(0.72, 0.8, q) * (1 - smoothstep(0.88, 1, q));
   return smoothstep(0.08, 0.35, q) * (1 - smoothstep(0.7, 1, q));
 }
 
@@ -182,6 +216,31 @@ function gully(u: number, fall: number, width: number, jitter: number, salt: num
     cut = Math.max(cut, smoothstep(0, 1, 1 - d / half) * depth * smoothstep(head, head + 0.18, fall));
   }
   return cut;
+}
+
+/**
+ * Talus fans below the rills' mouths, in [0, 1] of their height: rill i's fan follows its rill's line past the toe,
+ * widening downslope, highest at the toe and thinning to nothing at `reach` past it. `q` is the normalized radius (1 at
+ * the toe); like the rills, the fan is the higher of the two nearest rills' fans, so neighbouring fans meet smoothly.
+ */
+function fan(u: number, q: number, width: number, jitter: number, salt: number, period: number, reach: number): number {
+  if (q <= 0.82 || q >= 1 + reach) return 0;
+  const w = u + jitter, first = Math.floor(w);
+  const along = smoothstep(0.82, 1, q) * (1 - smoothstep(1, 1 + reach, q));
+  const spread = (q - 0.82) / (0.18 + reach); // 0 at the mouth, 1 at the fan's toe
+  let best = 0;
+  for (let i = first; i <= first + 1; i++) {
+    const key = period > 0 ? ((i % period) + period) % period : i;
+    // the rill's own line where it leaves the flank (the meander at fall = 1, as gully() draws it)
+    const meander = 0.14 * Math.sin(7 + hash2(key, 1, salt) * TAU) + 0.06 * Math.sin(17 + hash2(key, 2, salt) * TAU);
+    const d = Math.abs(w + meander - i);
+    const half = Math.max(0.05, width * (0.7 + 0.6 * hash2(key, 3, salt)) * 0.5) * (1 + 1.6 * spread);
+    if (d >= half) continue;
+    const size = 0.5 + 0.5 * hash2(key, 6, salt);
+    const t = d / half;
+    best = Math.max(best, (1 - t * t) * along * size);
+  }
+  return best;
 }
 
 /**
@@ -221,11 +280,21 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
   const nx = lx / rx, nz = lz / rz;
   let q = Math.sqrt(nx * nx + nz * nz);
   const outline = Math.max(0, Math.min(0.35, geology.outline ?? 0));
-  if (q > 1 + outline + 0.01) return 0;
+  const fans = geology.fans && geology.gullies && height > 0 ? geology.fans : null;
+  const reach = fans ? Math.max(0.05, Math.min(0.6, fans.reach ?? 0.3)) : 0;
+  if (q > (1 + outline) * (1 + reach) + 0.01) return 0;
   const salt = formSalt(form);
   const theta = Math.atan2(nz, nx);
   if (outline > 0) q /= 1 + outline * lobe(theta, salt);
-  if (q >= 1) return 0;
+  // the talus fans below the rills' mouths (the jitter and the rill coordinate as the rills draw them)
+  const fanHeight = (): number => {
+    if (!fans || !geology.gullies) return 0;
+    const count = Math.max(1, Math.round(geology.gullies.count));
+    const jitter = (valueNoise(Math.cos(theta) * 1.6 + 7, Math.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
+    const metres = fans.heightM ?? geology.gullies.depthM * 0.6;
+    return metres * fan((theta / TAU + 1) * count, q, geology.gullies.width ?? 0.45, jitter, salt + 13, count, reach);
+  };
+  if (q >= 1) return fanHeight();
   let shape = profileOf(q, geology, height, domeProfile);
   const breach = geology.profile === 'cone' ? geology.crater?.breachDeg : undefined;
   if (breach !== undefined) {
@@ -251,7 +320,7 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
   if (geology.rough) {
     h += geology.rough * roughness(lx, lz, salt) * Math.min(1, Math.abs(shape) * 2.5) * Math.sign(height || 1);
   }
-  return h;
+  return h + fanHeight();
 }
 
 /**
@@ -271,6 +340,12 @@ export function ridgeGeologyHeight(form: GeologicForm, lx: number, lz: number, a
   if (outline > 0) q /= 1 + outline * edgeLobe(lx, side, salt);
   if (q >= 1) return 0;
   const shape = profileOf(q, geology, height, ridgeShoulder);
+  if (geology.front) {
+    // a flow's own ends: a steep blocky front downhill, a gently thinning vent end uphill
+    const half = Math.max(1, (form.length || 100) * 0.5), t = Math.max(-1, Math.min(1, lx / half)) * geology.front;
+    along = t > 0 ? 1 - smoothstep(0.92, 1, t) : 1 - smoothstep(0.5, 1, -t);
+    if (along <= 0) return 0;
+  }
   let fall = 1;
   if (geology.taper) {
     const half = Math.max(1, (form.length || 100) * 0.5);
@@ -291,4 +366,104 @@ export function ridgeGeologyHeight(form: GeologicForm, lx: number, lz: number, a
     h += geology.rough * roughness(lx, lz, salt) * Math.min(1, along * Math.abs(shape) * 2.5) * Math.sign(height || 1);
   }
   return h;
+}
+
+/** The soft edge outside a lava flow's footprint and outside a cinder cone's base, in metres (geologyZoneWeights). */
+const FLOW_EDGE_M = 4;
+const CONE_EDGE_M = 3;
+
+/** Whether a landform's geology names a zone: a lava flow (a ridge), a cinder cone or a cone's talus fans (knolls). */
+export function hasGeologyZones(form: GeologicForm): boolean {
+  const geology = form.geology;
+  if (!geology) return false;
+  if (form.kind === 'ridge') return geology.profile === 'flow';
+  return geology.profile === 'cone' || !!(geology.fans && geology.gullies && (form.height || 0) > 0);
+}
+
+/**
+ * The geological zones of one landform at the world point (x, z), each 0..1, written to `out` as [flow, cone, fan]:
+ * - flow: 1 over a 'flow' ridge's whole lobed footprint (channel, levees, margin, talus and front), fading to 0 over
+ *   FLOW_EDGE_M past its margin and past its ends;
+ * - cone: 1 inside a 'cone' knoll's lobed base (crater, flanks and toe), fading to 0 over CONE_EDGE_M past it;
+ * - fan: a talus fan's thickness as a share of its height at the toe (the fan's own 0..1 shape: its height in metres
+ *   is `fans.heightM` times this).
+ * The zones describe the authored landform; where a road or a spawn's clearance lowers it, the terrain's own masks
+ * paint over them. For the terrain material (the flow footprint rides the landform mask) and CPU-side dressing.
+ */
+export function geologyZoneWeights(form: GeologicForm, x: number, z: number, out: GeologyZones): GeologyZones {
+  out[0] = 0; out[1] = 0; out[2] = 0;
+  const geology = form.geology;
+  if (!geology) return out;
+  const yaw = (form.yawDeg ?? 0) * Math.PI / 180;
+  const c = form._c ?? Math.cos(yaw), s = form._s ?? Math.sin(yaw);
+  const dx = x - form.x, dz = z - form.z;
+  const lx = dx * c + dz * s, lz = -dx * s + dz * c;
+  const outline = Math.max(0, Math.min(0.35, geology.outline ?? 0));
+  const salt = formSalt(form);
+  if (form.kind === 'ridge') {
+    if (geology.profile !== 'flow') return out;
+    const width = Math.max(1, form.width || 45), half = Math.max(1, (form.length || 100) * 0.5);
+    // the margin as ridgeGeologyHeight lobes it: q = |lz| / (width (1 + outline edgeLobe)) reaches 1 there
+    const edge = width * (outline > 0 ? 1 + outline * edgeLobe(lx, lz >= 0 ? 1 : -1, salt) : 1);
+    out[0] = (1 - smoothstep(0, FLOW_EDGE_M, Math.abs(lz) - edge))
+      * (1 - smoothstep(0, FLOW_EDGE_M, Math.abs(lx) - half));
+    return out;
+  }
+  const rx = Math.max(1, form.rx || form.r || 70), rz = Math.max(1, form.rz || form.r || rx);
+  const nx = lx / rx, nz = lz / rz;
+  const theta = Math.atan2(nz, nx);
+  let q = Math.sqrt(nx * nx + nz * nz);
+  if (outline > 0) q /= 1 + outline * lobe(theta, salt);
+  if (geology.profile === 'cone') {
+    // metres past the lobed base along this bearing: q grows linearly with the distance from the centre
+    const rho = Math.hypot(lx, lz);
+    out[1] = q > 1 ? 1 - smoothstep(0, CONE_EDGE_M, (q - 1) * rho / q) : 1;
+  }
+  const fans = geology.fans && geology.gullies && (form.height || 0) > 0 ? geology.fans : null;
+  if (fans && geology.gullies) {
+    const reach = Math.max(0.05, Math.min(0.6, fans.reach ?? 0.3));
+    const count = Math.max(1, Math.round(geology.gullies.count));
+    // the fan as knollGeologyHeight draws it: the same jitter, rill coordinate and salt
+    const jitter = (valueNoise(Math.cos(theta) * 1.6 + 7, Math.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
+    out[2] = fan((theta / TAU + 1) * count, q, geology.gullies.width ?? 0.45, jitter, salt + 13, count, reach);
+  }
+  return out;
+}
+
+/** How far from its centre a landform's zones reach, in metres. */
+function zoneReach(form: GeologicForm): number {
+  const geology = form.geology!;
+  const outline = Math.max(0, Math.min(0.35, geology.outline ?? 0));
+  if (form.kind === 'ridge') {
+    return Math.hypot(Math.max(1, (form.length || 100) * 0.5) + FLOW_EDGE_M,
+      Math.max(1, form.width || 45) * (1 + outline) + FLOW_EDGE_M);
+  }
+  const rx = Math.max(1, form.rx || form.r || 70), rz = Math.max(1, form.rz || form.r || rx);
+  const reach = geology.fans ? Math.max(0.05, Math.min(0.6, geology.fans.reach ?? 0.3)) : 0;
+  return Math.max(rx, rz) * (1 + outline) * (1 + reach) + CONE_EDGE_M;
+}
+
+/**
+ * The map's geological zones at (x, z): the strongest of each zone over its landforms (geologyZoneWeights), or null
+ * when no landform has a zone. Pure and deterministic; it allocates nothing per call.
+ */
+export function createGeologyZoneSampler(
+  forms: readonly GeologicForm[],
+): ((x: number, z: number, out: GeologyZones) => GeologyZones) | null {
+  const zoned = forms.filter(hasGeologyZones);
+  if (!zoned.length) return null;
+  const reach = zoned.map(zoneReach);
+  const one: GeologyZones = [0, 0, 0];
+  return (x, z, out) => {
+    out[0] = 0; out[1] = 0; out[2] = 0;
+    for (let i = 0; i < zoned.length; i++) {
+      const dx = x - zoned[i].x, dz = z - zoned[i].z;
+      if (dx * dx + dz * dz > reach[i] * reach[i]) continue;
+      geologyZoneWeights(zoned[i], x, z, one);
+      if (one[0] > out[0]) out[0] = one[0];
+      if (one[1] > out[1]) out[1] = one[1];
+      if (one[2] > out[2]) out[2] = one[2];
+    }
+    return out;
+  };
 }
