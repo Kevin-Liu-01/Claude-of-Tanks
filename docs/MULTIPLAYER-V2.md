@@ -1694,7 +1694,7 @@ after this lane (the audit's rows are in the scratchpad's `world-events-matrix-a
 | Destroyed props — the fall | `destroyObstacle` → `world_prop_destroyed` | EVENT (never tiered, never skipped) | `applyEvent` → `crushObstacle(dir, speed)` + `prop:crushed` | **FIXED**: 419/419 through the event, Δ p50 2 ticks, max 6, 0 early, the authority's direction (before: 0) | PASS | **FIXED**: 0 re-destroyed, 0 ghost crunches (from 5 and 5) | PASS |
 | Shell impacts (terrain, props) | `emitWorldShellImpact` (x, y, z, normal) | EVENT, observable-shooter rule | `shell:expired` with the payload position | PASS: 83/83, pos err 0.000 m; **FIXED** lateness: Δ max 7 ticks (one slow frame) from 11–18 | PASS | PASS | PASS |
 | Shell hits | `emitShellHitEvent` (`...hit` with pos / normal) | EVENT, observable pair | `shell:hit` + killcam feed | PASS: 235/235, 0 duplicate; **FIXED** lateness: Δ max 6 from 13–16 | PASS | PASS | PASS |
-| Destruction, ram, crash | the authority | EVENT | `tank:destroyed` (pos: the presented actor), `tank:ram`, `tank:impact` (payload pos) | PASS: 71/71, Δ max 6 | PASS (wreck from the row; the explosion is not replayed) | PASS | PASS |
+| Destruction, ram, crash | the authority | EVENT | `tank:destroyed` (pos: the presented actor; the hull's death position since §13.15), `tank:ram`, `tank:impact` (payload pos) | PASS: 71/71, Δ max 6 | PASS (wreck from the row; the explosion is not replayed) | PASS | PASS |
 | Module state, fire (events) | `module_state`, `tank_fire` | EVENT | `module:state`, `tank:fire` | PASS | open: an FX column for a tank already burning needs a `lastKnownPos` the joiner lacks | PASS | PASS |
 | Spotted / visibility | the spotting system filters the viewer snapshot | presence in the frame | `setVisible` / `networkVisible` | PASS (§13.9 invariant) | PASS | PASS | PASS |
 | Clock, phase, countdown, verdict | meta | every snapshot (+ `match_ended`) | `applyFrame`, `applyVerdict` (grace) | PASS (§13.12) | PASS | PASS | PASS |
@@ -1807,6 +1807,72 @@ secret: STUN alone, no provider call, no error).
 
 **Cost.** One `room_relay` is one handled room message (billed at the conservative one-request rule) and one provider
 subrequest: about one per seat at a start and one per migration window, ≈ 30–40 per 14v14 match.
+
+### 13.15 Ghost crunches traced (lane `fix/mp-ghost-crunch`, 2026-10-02)
+
+**The finding.** A world-events audit run on the PR branch (d0a4d470f, machine load ≈ 49) failed with a `prop:crushed`
+"for a prop the host never sent" on three views at once (p1 back as a peer, p2, p3's rejoin) and a fall death presented
+0.806 m from the authority's hull. The hypothesis to prove or disprove: a client-side crush beside a dying tank.
+
+**Traced on the real harness** (bots driven into verdant's hedgehogs and dropped beside trees at the start of live play,
+stacks on every presentation crush and effect, the host world's crushed flags and list read at the end):
+
+1. **Not a ghost — an attribution artifact.** Each "ghost" was the authority's own `world_prop_destroyed`, presented once,
+   at the right tick, through `battlePresentation.applyEvent` on the event's record. A hedgehog is three beam records;
+   two share one box centre (all 8 verdant hedgehogs: 808/809 … 829/830). One crush fells the whole prop — the collision
+   world (`headlessCollisionWorld.crushObstacle`, the browser's `CrushableClutter.setCrushed`) crushes the siblings, so
+   the authority sends exactly one event and lists one index — but the effect carried only a position, and the audit
+   read it back as the sibling (the last record with that centre): an effect for a record "never sent", and the sent
+   record "crushed without an effect" (the run's one `crush w/o FX` per view). No presentation path crushes on a death
+   (the prediction world never crushes; the wreck presentation never touches the world); the deaths were not near a
+   hedgehog. **Fix:** `prop:crushed` names its obstacle (`obstacleIndex`, and the prop's height `h` as the solo crush
+   does); the audit attributes an effect by that index, a centre two records share attributes nothing.
+2. **A real misplacement.** The death was presented at the pose the frame showed. A fall death lands between two
+   snapshots; the event released at the landing tick read the interpolated (or predicted) pose one step earlier —
+   mid-air, 0.3–0.8 m above and beside the hull — and the explosion, the wreck smoke column (`effects.ts lastKnownPos`)
+   and the killcam sat there. **Fix:** `tank_destroyed` carries the hull's position at its death (`authoritativeMatch`
+   `emit`, as `tank_ram` and `tank_impact` carry theirs), and the presentation places the death there (an older host's
+   event falls back to the presented pose).
+3. **The real ghost falls the trace turned up: worlds laid out otherwise.** The host plays on the map's collision
+   manifest, captured from the desktop tier's build of the base map; the authority's obstacle index is that list's.
+   A peer's presentation crushed `getObstacles()[index]` of its own rendered world — but the mobile tier counts fewer
+   props and trees (`environmentRichness`, `treeRichness`: verdant 6,641 records against 6,977, 57 at the same index,
+   2,838 of the desktop trees elsewhere or absent) and Frontline Assault's trench works add 144 records ahead of the
+   trees (every tree shifted). Measured with the real Node-built worlds against 274 authority falls (four hull trios
+   ploughing four stands): an index-only presentation felled **237 other props** on the mobile tier and **215** on the
+   trench build — a tree nobody touched, with its crunch, while the one the hull crossed stood on. **Fix:** the event
+   carries its record's identity (box centre `x, y, z`; `kind` was there); the presentation
+   (`src/mp/presentation/authorityObstacles.ts`) fells the record at the index when it is that prop, else its own record
+   of that prop found by identity (`queryObstacles` around the centre, 1 cm, same kind), else nothing — never another prop (identity: 212 felled, 0 wrong on the mobile tier; 270, 0 wrong
+   on the trench build). A world announces its layout (`map.ts layoutTier`, `terrainVariant`); one laid out otherwise
+   does not read the persistent destroyed list by index (it would lay random props down settled) — the round loads the
+   manifest's obstacle identities beside the roster (`worldCollision.ts loadObstacleIdentities`, the same verified
+   content-addressed file the host fetches; `browserComposition` → `setAuthorityObstacles`) and the list is read through
+   them. An event whose record at its index is another prop also proves a layout the world did not announce.
+
+**Receipts.** `tools/mp-world-events-scenarios.selftest.mjs` (new, core, ≈ 4 s, deterministic; fails on d0a4d470f at
+all three): the real authority on verdant's shard into the real presentation — every hedgehog driven through, each felled
+by one event and crunched once under its own index (4 through a record whose centre another shares), a re-send crunching
+nothing; a fall death beside a tree presented at the hull's death position though the frame shows it 0.40 m away
+mid-air, nothing crushed or crunched but announced falls; three hulls ploughing verdant's densest stand into a lighter
+(mobile-shaped), a variant (trench-shaped), an unannounced and the base world — every fall fells the authority's prop or
+nothing, every fall whose prop the world has fells it, the list lays nothing down by index on a world laid out otherwise
+and exactly the destroyed props through the identities. `tools/mp-world-events-audit.selftest.mjs` scripts both cases
+into every run (a bot into the hedgehog whose first-met beam shares its centre; a bot dropped 40 m on one hit point
+beside a tree, presented within 1 cm on every view), labels the returning p1 `p1'` (it overwrote `p1#0` in the per-view
+table) and judges deaths against the hull, not against their own payload. `src/mp/host/worldCollision.selftest.mjs` (the
+identities), `browserComposition.selftest` (loaded for a mobile-tier world only; an unreachable manifest is a warning).
+
+**Solo.** The solo step crushes on its own authority (`state.ts resolveCrushContacts`): a hedgehog's siblings are
+crushed by the clutter before the loop reaches them (`if (obstacle.crushed) continue`), so it plays one crunch per prop,
+as the authority sends one event; solo's `tank:destroyed` already carries the death-tick position. The cosmetic
+crushables loop (`battlePresentationRuntime.crushNearbyProps`: telegraph poles and the 'loop' clutter — barrels, cones,
+pallets — that have no obstacle record) runs on each presented hull in both modes; the authority does not model those
+props, so in a network match each peer topples them from the hulls it sees, unsynchronized and not persistent (a rejoin
+sees them standing). Open, with the rest of the mobile-tier divergence: a mobile or Frontline Assault peer still predicts
+against its own layout (props the authority lacks, props it cannot see) and sees cover the authority does not have; the
+assault host plays the base terrain under the clients' carved trenches. The fix there is one layout for every peer of a
+match (or a manifest per layout), not a translation.
 
 ## 10. Decisions for the owner
 
