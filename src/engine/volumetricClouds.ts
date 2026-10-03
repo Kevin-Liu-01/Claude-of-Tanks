@@ -307,6 +307,8 @@ uniform float uCellTile;
 uniform float uDeckLight;
 uniform float uUndulatus;
 uniform float uInterior;
+// 2026-10-03: a deck's sub-cell lumps (cloudscapes.ts lumps; 0 = the cells alone)
+uniform float uLumps;
 uniform vec3 uSkyIrradiance;
 uniform float uHang;
 // QA: 1 = no depth-above term, 2 = no detail erosion, 3 = no light march, 4 = flat white density (structure only),
@@ -399,7 +401,16 @@ float cloudCellK( vec2 cxz ) {
 	if ( uCells <= 0.0 ) return 1.0;
 	vec3 cp = ( vec3( cxz.x, uBase + uThick * 0.5, cxz.y ) + uNoiseShift ) / uCellTile;
 	vec4 c = texture( tShape, cp );
-	return mix( 1.0, smoothstep( 0.12, 0.88, c.g * 0.75 + c.b * 0.25 ), uCells );
+	float k = mix( 1.0, smoothstep( 0.12, 0.88, c.g * 0.75 + c.b * 0.25 ), uCells );
+	// 2026-10-03: the sub-cell lumps — the detail volume's Worley lumps at twice its period (lumps of a few hundred
+	// metres) carry the cell factor down to the scale of a stratocumulus base's rolls: each lump core a thicker, lower,
+	// darker column, the lanes between them thinner and brighter (one fetch per column, the deck rows only)
+	if ( uLumps > 0.0 ) {
+		vec3 dl = texture( tDetail, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift * 0.73 ) / ${f(CLOUD_DETAIL_TILE_M * 2)} ).rgb;
+		float lump = smoothstep( 0.25, 0.8, dl.r * 0.55 + dl.g * 0.3 + dl.b * 0.15 );
+		k *= mix( 1.0, 0.45 + 0.85 * lump, uLumps );
+	}
+	return k;
 }
 // density 0..1 at a world point. detail: whether the erosion volumes are sampled (the light march skips them);
 // foot: the pixel footprint (m) at the point, which fades the fine erosion fetch out at range; cellK: the column's
@@ -929,6 +940,13 @@ void main() {
 						if ( uCells > 0.0 ) {
 							vec4 mo = texture( tShape, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift ) / ( uCellTile * 0.5 ) );
 							tauAbove *= mix( 1.0, 0.2 + 1.6 * ( mo.b * 0.6 + mo.a * 0.4 ), 0.75 * uCells );
+							// 2026-10-03 (the skies lane): the base's fine mottle — the detail volume's Worley lumps on the base
+							// plane (coherent through the column, so the view march keeps them), each lump a thicker, darker
+							// column with lighter seams between: a stratocumulus base reads lumpy, not airbrushed
+							if ( uLumps > 0.0 ) {
+								vec3 dm = texture( tDetail, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift * 0.91 ) / ${f(CLOUD_DETAIL_TILE_M)} ).rgb;
+								tauAbove *= mix( 1.0, 0.3 + 1.4 * smoothstep( 0.15, 0.85, dm.r * 0.55 + dm.g * 0.3 + dm.b * 0.15 ), uLumps );
+							}
 						}
 						float Tdiff = 1.0 / ( 1.0 + 0.1125 * tauAbove );
 						// (the transmitted sun at a third of its physical share: the battlefield skies are exposed for the
@@ -1115,6 +1133,10 @@ uniform float uSkyIntensity;
 // here at the full frame rate (the history refreshes a sixteenth of its texels a frame and would smear a flash)
 uniform vec4 uFlash;
 uniform vec3 uFlashTint;
+// 2026-10-03 (the skies lane): toward the sun from the camera — a thin cloud in front of the sun keeps its forward-
+// scattered light above the knee (the dome exempts the sun's spot from its knee and adds the glow after it, so a kneed
+// cloud read as a dark eye around the sun on Nordhavn and the polders)
+uniform vec3 uSunDir;
 // 2026-10-01: 1 while the camera stands inside or over the slab (a bird's view over a low deck): the cloud between it and
 // the ground is in front of everything, so the composite covers the frame below the horizon too (the trace marches the
 // downward rays to the slab's floor) instead of leaving the terrain unclouded under the camera
@@ -1146,7 +1168,9 @@ void main() {
 	vec4 c = max( cloudsCatmullRom( uv, uHistorySize ), vec4( 0.0 ) );
 	// nothing below the horizon line (the history holds no cloud there either) — unless the camera is in the slab
 	float above = max( smoothstep( -0.05, -0.02, dir.y ), uInside );
-	vec3 rgb = cloudKnee( c.rgb ) * uSkyIntensity * above;
+	// the knee eases off within a few degrees of the sun: the silver lining of a cloud in front of it outshines the glow
+	float sunNear = pow( max( dot( dir, uSunDir ), 0.0 ), 90.0 );
+	vec3 rgb = mix( cloudKnee( c.rgb ), min( c.rgb, vec3( 6.0 ) ), sunNear ) * uSkyIntensity * above;
 	float alpha = ( 1.0 - min( c.a, 1.0 ) ) * above;
 	if ( uFlash.w > 0.0 ) {
 		// the cloud mass around the strike lit from inside: a broad glow and a bright core, only where there is cloud
@@ -1402,7 +1426,7 @@ export class VolumetricCloudLayer {
         uCirrus: { value: 0 }, uCirrusDir: { value: new THREE.Vector2(1, 0) }, uCirrusAlt: { value: 10000 }, uCirrusShift: { value: new THREE.Vector2() }, uCirrusDensity: { value: 0.7 },
         uFarBand: { value: 0 }, uFarBandAlt: { value: 2000 }, uFarBandShift: { value: new THREE.Vector2() },
         uStepScale: { value: 1 }, uDebug: { value: 0 },
-        uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 },
+        uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 },
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
         // 2026-10-01: the weather layers beyond the slab (cloudWeatherLayers.ts)
         ...createCloudWeatherUniforms(),
@@ -1430,6 +1454,7 @@ export class VolumetricCloudLayer {
         tClouds: { value: this.history[0].texture }, uTargetSize: { value: new THREE.Vector2(1, 1) }, uHistorySize: { value: new THREE.Vector2(4, 4) },
         uKnee: { value: knee }, uSkyIntensity: { value: 1 },
         uFlash: { value: new THREE.Vector4() }, uFlashTint: { value: new THREE.Vector3(0.78, 0.84, 1.0) }, uInside: { value: 0 },
+        uSunDir: { value: new THREE.Vector3(0, 1, 0) },
       },
       transparent: true, depthWrite: false, depthTest: true, side: THREE.BackSide,
       blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
@@ -1616,6 +1641,7 @@ export class VolumetricCloudLayer {
     t.uDeckLight.value = preset.deckLight;
     t.uUndulatus.value = preset.undulatus;
     t.uInterior.value = preset.interior;
+    t.uLumps.value = preset.lumps ?? 0;
     // the scud band never reaches down past the lower half of the base altitude (a 300 m ceiling's rags stay aloft)
     t.uSlabLow.value = Math.min(preset.baseM - hang, preset.scud > 0 ? Math.max(preset.baseM * 0.45, preset.baseM - CLOUD_SCUD_BAND_M) : preset.baseM);
     t.uCoverage.value = preset.coverage;
@@ -1707,6 +1733,7 @@ export class VolumetricCloudLayer {
     (t.uSkyMean.value as THREE.Vector3).set(zenith.r, zenith.g, zenith.b).multiplyScalar(floorLum / zl)
       .lerp(this.scratch.set(floorLum, floorLum, floorLum), 0.5);
     this.domeMaterial.uniforms.uSkyIntensity.value = a.skyIntensity;
+    (this.domeMaterial.uniforms.uSunDir.value as THREE.Vector3).copy(a.sunDir).normalize();
   }
 
   private captureCamera(camera: THREE.PerspectiveCamera): void {

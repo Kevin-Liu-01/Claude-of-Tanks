@@ -127,6 +127,12 @@ export interface CloudscapeConfig {
    * density remap) and a detailed first light tap, so the lit face reads as cauliflower and not only the outline.
    */
   interior?: number;
+  /**
+   * 2026-10-03 (the skies lane): 0..1 a deck's sub-cell lumps — the detail volume's Worley lumps (a few hundred metres)
+   * thicken and lower the column over each lump core, so a stratocumulus base reads as rolls and lumps with lighter lanes
+   * between them instead of an airbrushed plate per cell (Frosthollow, Nordhavn, the yards). 0 = round 76's cells alone.
+   */
+  lumps?: number;
   // ---- 2026-10-01: the weather layers beyond the slab (cloudWeatherLayers.ts) and the time of day
   /** 0..1 contrails (six at 1) over the sky and their spread: 0 fresh lines, 1 old contrail cirrus. */
   contrails?: number;
@@ -182,13 +188,15 @@ interface CloudscapeRegimeRow {
   deckLight: number;
   undulatus: number;
   interior: number;
+  /** 2026-10-03: the deck's sub-cell lumps (0 = none). */
+  lumps: number;
   /** 2026-10-01: the regime's weather beyond the slab (a map authors the rest: contrails, the fog bank, the night glow). */
   rain: number;
   virga: number;
 }
 
 /** A row names the layered sky's weather only where it has some (2026-10-01): the rest is a clear sky's. */
-const CLEAR_WEATHER = Object.freeze({ rain: 0, virga: 0 } as const);
+const CLEAR_WEATHER = Object.freeze({ rain: 0, virga: 0, lumps: 0 } as const);
 type CloudscapeRegimeRowInput = Omit<CloudscapeRegimeRow, keyof typeof CLEAR_WEATHER> & Partial<Pick<CloudscapeRegimeRow, keyof typeof CLEAR_WEATHER>>;
 const row = (r: CloudscapeRegimeRowInput): CloudscapeRegimeRow => Object.freeze({ ...CLEAR_WEATHER, ...r });
 

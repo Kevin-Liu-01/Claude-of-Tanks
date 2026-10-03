@@ -76,6 +76,7 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     deckLight: row?.deckLight ?? legacy.deckLight,
     undulatus: row?.undulatus ?? legacy.undulatus,
     interior: row?.interior ?? legacy.interior,
+    lumps: row?.lumps ?? legacy.lumps ?? 0,
   };
   const coverage = clamp(pick('coverage'), 0, R.coverageMax);
   const thicknessM = Math.max(50, pick('thicknessM'));
@@ -127,6 +128,7 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     deckLight: clamp(pick('deckLight'), 0, 1),
     undulatus: clamp(pick('undulatus'), 0, 1),
     interior: clamp(pick('interior'), 0, 1),
+    lumps: clamp(pick('lumps'), 0, 1),
     ...resolveWeather(sky, scape, row),
   };
 }

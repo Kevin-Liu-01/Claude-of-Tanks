@@ -35,6 +35,7 @@ import {
 import { SkyEnvironmentCache } from './skyEnvironmentCache.ts';
 import { authoredSunOf, lightTune, resolveLightModel, type LightingConfig, type LightModelPreset } from './lightModelCore.ts';
 import { installFogLayer } from './fogLayer.ts';
+import { HAZE_MATERIAL_FOG_SHARE } from './hazeLaw.ts';
 import type { AtmosphereParams } from './atmosphere.ts';
 import {
   bakeCirrusPixels,
@@ -734,6 +735,8 @@ export interface AtmospherePublishedState {
   horizonCap: number;
   fogTint: THREE.Color;
   fogMix: number;
+  /** 2026-10-03: the preset's fogDensity (its total air), the post pass's haze law reads its σ from it. */
+  fogDensity: number;
   irradiance: THREE.Color;
   /** The live summary readback (diagnostics; the aerial pass reads only the scalars above). */
   summary: AtmosphereSummary | null;
@@ -1193,7 +1196,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   const atmosphereState: AtmospherePublishedState = {
     active: false, skyView: atmosphereLuts?.skyView.texture ?? null, viewHeightKm: 0.05, sunDir,
     knee: new THREE.Vector3(SKY_KNEE, SKY_KNEE_RANGE, SKY_KNEE_FALLOFF), skyIntensity: 1, horizonLum: 0.45,
-    horizonCap: HORIZON_LUM_CAP, fogTint: new THREE.Color(preset.fogTintHex), fogMix: preset.fogMix, irradiance: new THREE.Color(0.3, 0.4, 0.6),
+    horizonCap: HORIZON_LUM_CAP, fogTint: new THREE.Color(preset.fogTintHex), fogMix: preset.fogMix, fogDensity: preset.fogDensity, irradiance: new THREE.Color(0.3, 0.4, 0.6),
     summary: atmosphereLuts?.summary ?? null,
     params: null, irradianceRaw: new THREE.Color(0, 0, 0),
   };
@@ -1242,6 +1245,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     atmosphereState.horizonLum = 0.2126 * summary.horizon.r + 0.7152 * summary.horizon.g + 0.0722 * summary.horizon.b;
     atmosphereState.fogTint.setHex(preset.fogTintHex);
     atmosphereState.fogMix = preset.fogMix;
+    atmosphereState.fogDensity = preset.fogDensity;
     atmosphereState.irradiance.copy(summary.irradiance);
     scene.userData.skyIrradiance = atmosphereState.irradiance; // lighting.ts: the hemisphere light's hue
     atmosphereFalloff = summary.elevationFalloff;
@@ -1834,7 +1838,11 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // preset.fogDensity is total atmosphere; the exp2 fog takes only its
       // extinction share — post.ts's aerial pass carries the scatter-in hue
       // (see FOG_EXTINCTION_SHARE).
-      targetScene.fog = new THREE.FogExp2(fogColor, preset.fogDensity * lightTune('FOG_EXTINCTION_SHARE', FOG_EXTINCTION_SHARE));
+      // 2026-10-03: on the physically based sky the aerial pass's haze law carries the aerial perspective
+      // (hazeLaw.ts); the materials keep HAZE_MATERIAL_FOG_SHARE of their share — enough to haze what writes no
+      // depth (far smoke and flashes against the sky), not a second veil over the ranges
+      targetScene.fog = new THREE.FogExp2(fogColor, preset.fogDensity * lightTune('FOG_EXTINCTION_SHARE', FOG_EXTINCTION_SHARE)
+        * (atmosphereState.active ? lightTune('AERIAL_MATERIAL_FOG_SHARE', HAZE_MATERIAL_FOG_SHARE) : 1));
       // round 37: the post aerial pass scales its scatter-in target by the sky's elevation falloff (see
       // sampleHorizonElevationFalloff); a cached atmosphere costs no render here. Round 65: the physically
       // based sky reports its own falloff from the summary (the post pass samples the LUT per pixel anyway).

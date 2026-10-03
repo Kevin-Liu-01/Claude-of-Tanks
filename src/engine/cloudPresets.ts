@@ -82,6 +82,8 @@ export interface CloudLayerPreset {
   undulatus: number;
   /** Round 76: 0..1 the interior density octave inside cumuliform masses (a detailed first light tap). */
   interior: number;
+  /** 2026-10-03: 0..1 a deck's sub-cell lumps (cloudscapes.ts CloudscapeConfig.lumps). */
+  lumps: number;
   /** 2026-10-01: the time of day the layer was resolved for (cloudTimeOfDay: the diurnal law's input). */
   timeOfDay: CloudTimeOfDay;
   /** 2026-10-01: contrails — how many (0..6) and their mean spread (0 fresh, 1 old contrail cirrus). */
@@ -258,7 +260,7 @@ function deriveLegacy(sky: CloudLayerSkyInput): CloudLayerPreset {
     cirrus: 0, cirrusAngleRad: windDirRad + R.cirrusVeerRad, cirrusAltM: 10000, cirrusDensity: R.cirrusDensity,
     sunGain: 1, ambientScale: 1, farBand: 0, farBandAltM: Math.min(R.farBandMaxAltM, baseM + thicknessM * 0.5), scud: 0,
     // round 76 fields at their neutral values: no deck cells, the round-71 floor lighting, no undulatus, no interior octave
-    cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0,
+    cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0, lumps: 0,
     // 2026-10-01 fields at their neutral values: no weather beyond the slab, a white key light, no ground glow
     ...neutralWeather(cloudTimeOfDay(sky)),
   };
@@ -324,7 +326,7 @@ export function cloudLayerKey(p: CloudLayerPreset): string {
   return [p.regime, p.coverage, p.baseM, p.thicknessM, p.towers, p.stratiform, p.fieldMix, p.density, ...p.tint,
     p.windDirRad, p.windSpeed, ...p.offset, p.clearRadiusM, p.shadow ? 1 : 0, p.shadowThreshold,
     ...p.typeRange, p.anvil, p.wispiness, p.shearM, p.streets, p.cirrus, p.cirrusAngleRad, p.cirrusAltM, p.cirrusDensity,
-    p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud, p.cells, p.cellM, p.deckLight, p.undulatus, p.interior,
+    p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud, p.cells, p.cellM, p.deckLight, p.undulatus, p.interior, p.lumps ?? 0,
     p.timeOfDay, p.contrails, p.contrailAge, p.rain, p.virga, p.fogBank, p.fogBankTopM, ...p.groundGlow, ...p.keyTint,
   ].map((v) => (typeof v === 'number' ? v.toFixed(5) : v)).join(',');
 }
