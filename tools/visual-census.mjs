@@ -5,7 +5,9 @@
 // (tools/visual-census-views.mjs) — through the game's deterministic shot controls (__SHOTS.set stages the map: world,
 // sourced textures, pinned roster, frozen effects and wind), waiting for the capture readiness gates before every
 // frame: sourced-texture receipt, terrain lookahead drained, grass work drained, tree impostors baked, the volumetric
-// cloud history settled with its wind drift zeroed. Metrics per frame (tools/visual-census-metrics.mjs), contact
+// cloud history settled with its wind drift zeroed. Before any view a map passes the cloudscape gate: its volumetric
+// layer must draw the map's authored cloudscape regime, else a throwaway warm-up map is staged and then the map again
+// (cloudscapeVerdict; the verdict, the wait and any warm-up are in the map's stage record). Metrics per frame (tools/visual-census-metrics.mjs), contact
 // sheets, the index and an A/B compare come from tools/visual-census-report.mjs.
 //
 //   npm run build
@@ -170,6 +172,41 @@ export function pickCaptureMaps(registered, census, { maps = null, batch = null 
   return ids;
 }
 
+// ---------------------------------------------------------------------------------------------- cloudscape gate
+
+/** How long a staged map may take to show its own cloudscape before the warm-up fallback, and after it (ms). */
+export const CLOUDSCAPE_WAIT_MS = 15000;
+
+/**
+ * The cloudscape gate's verdict on a staged map's sky (pageCloudscapeState): the volumetric layer must draw the map's
+ * authored cloudscape regime, not the deck derivation it falls back on while the lazy cloudscape module is not loaded.
+ * - 'none': no volumetric layer (another tier), or the map authors no cloudscape: the deck derivation is the map's own;
+ * - 'decks': the layer has no preset (the atmosphere is not showing, or no cloud cover): the baked decks show;
+ * - 'ready': the layer's regime is the authored one;
+ * - 'legacy': it is another (the 2026-10-03 race: the boot map, staged first, kept the 'scattered' derivation its sky
+ *   took before the module loaded, because staging the map the world already shows applies no sky).
+ */
+export function cloudscapeVerdict(state) {
+  if (!state?.layer || !state.authored) return 'none';
+  if (!state.regime) return 'decks';
+  return state.regime === state.authored ? 'ready' : 'legacy';
+}
+
+/** The shot view that stages a map ('battlefield' is Verdant's). */
+export function censusShotView(mapId) {
+  return mapId === 'verdant' ? 'battlefield' : `battlefield_${mapId}`;
+}
+
+/** The throwaway warm-up map of the gate's fallback: the first battlefield of the build's shot views that is not the
+ * map itself (staging it, then the map, re-applies the map's sky with the cloudscape module loaded). */
+export function censusWarmupMap(shotViews, mapId) {
+  for (const view of shotViews) {
+    const id = view === 'battlefield' ? 'verdant' : view.startsWith('battlefield_') ? view.slice('battlefield_'.length) : null;
+    if (id && id !== mapId) return id;
+  }
+  throw new Error(`no warm-up map: this build has no battlefield shot view besides ${mapId}'s`);
+}
+
 // ---------------------------------------------------------------------------------------------- identity
 
 const git = (root, args) => {
@@ -280,6 +317,16 @@ function pageGrassReady() {
   return s.pendingVisible === 0 && !s.carpet.pending;
 }
 
+/** The staged map's authored cloudscape regime and the regime the volumetric layer draws (cloudscapeVerdict). */
+function pageCloudscapeState() {
+  const D = window.__DEBUG, config = D.world?.config ?? {}, vc = D.scene.userData.volumetricClouds;
+  return {
+    mapId: D.world?.mapId ?? null, layer: !!vc,
+    authored: config.clouds?.regime ?? config.sky?.cloudscape?.regime ?? null,
+    regime: vc?.currentPreset?.regime ?? null,
+  };
+}
+
 function pageSettleClouds() {
   const D = window.__DEBUG, vc = D.scene.userData.volumetricClouds;
   if (!vc) return { present: false };
@@ -380,18 +427,49 @@ async function pageAlive(page) {
 
 // ---------------------------------------------------------------------------------------------- one map
 
+/** Poll the staged map's cloudscape until the gate passes or CLOUDSCAPE_WAIT_MS runs out; the last state and verdict. */
+async function awaitCloudscape(page) {
+  const started = Date.now();
+  let state = await page.evaluate(pageCloudscapeState), verdict = cloudscapeVerdict(state);
+  while (verdict === 'legacy' && Date.now() - started < CLOUDSCAPE_WAIT_MS) {
+    await sleep(250);
+    state = await page.evaluate(pageCloudscapeState);
+    verdict = cloudscapeVerdict(state);
+  }
+  return { ...state, verdict, waitedMs: Date.now() - started };
+}
+
 async function stageMap(page, mapId, env, timeoutMs) {
-  const shotView = mapId === 'verdant' ? 'battlefield' : `battlefield_${mapId}`;
+  const shotView = censusShotView(mapId);
   if (!env.shotViews.includes(shotView)) throw new Error(`this build has no ${shotView} shot view`);
   const started = Date.now();
-  await within(page.evaluate((name) => window.__SHOTS.set(name), shotView), timeoutMs, `__SHOTS.set(${shotView})`);
+  const setShot = (id) => within(page.evaluate((name) => window.__SHOTS.set(name), censusShotView(id)), timeoutMs,
+    `__SHOTS.set(${censusShotView(id)})`);
+  await setShot(mapId);
+  // the cloudscape gate, before any view: the map's sky must carry its own cloudscape, not the boot's deck derivation;
+  // when it does not, stage a throwaway warm-up map and then this one, which applies this map's sky afresh
+  let cloudscape = await awaitCloudscape(page);
+  if (cloudscape.verdict === 'legacy') {
+    const warmup = censusWarmupMap(env.shotViews, mapId), first = cloudscape;
+    console.log(`[${TOOL}] ${stamp()} ${mapId}: the cloud layer draws '${first.regime}', not the authored '${first.authored}' `
+      + `cloudscape; warming up on ${warmup}`);
+    await setShot(warmup);
+    await setShot(mapId);
+    cloudscape = { ...(await awaitCloudscape(page)), warmup, before: { regime: first.regime, waitedMs: first.waitedMs } };
+    if (cloudscape.verdict === 'legacy') {
+      throw new Error(`${mapId}: the cloud layer draws '${cloudscape.regime}', not the authored '${cloudscape.authored}' `
+        + `cloudscape, even after a warm-up on ${warmup}`);
+    }
+  }
+  if (cloudscape.mapId !== mapId) throw new Error(`staged ${cloudscape.mapId} for the cloudscape gate, expected ${mapId}`);
   const readiness = await page.evaluate(settleMapTextures, { mapId, timeoutMs: 180000 });
   await page.evaluate(() => window.__DEBUG.post.pinDynScale(1));
   const state = await page.evaluate(pageStageState);
   if (state.mapId !== mapId) throw new Error(`staged ${state.mapId}, expected ${mapId}`);
   if (state.preset !== 'high') throw new Error(`preset ${state.preset}, expected high`);
   if (!state.player) throw new Error('the shot recipe staged no player hull');
-  return { shotView, ms: Date.now() - started, readiness: { evidence: readiness.evidence, targets: readiness.results?.length ?? null }, ...state };
+  return { shotView, ms: Date.now() - started, readiness: { evidence: readiness.evidence, targets: readiness.results?.length ?? null },
+    cloudscape, ...state };
 }
 
 /** Node-side poses of every view from the page's layout data (one heights round trip for the site searches). */
