@@ -4,7 +4,6 @@ import { AERIAL_RULES, matchRulesetFor } from '../sim/matchRuleset.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
 import { uiIconSVG, type UiIconId } from './uiIcons.ts';
 import { t } from './i18n.ts';
-import './aerialHud.css';
 
 const GUNSHIP_UNLIMITED=matchRulesetFor('ac130').ammo==='unlimited';
 function node<K extends keyof HTMLElementTagNameMap>(tag:K,cls:string,parent:HTMLElement):HTMLElementTagNameMap[K]{
