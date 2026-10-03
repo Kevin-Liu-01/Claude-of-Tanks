@@ -590,7 +590,14 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
         } else if (_field.edgeM < _field.marginM) {
           if (_field.boundary === 3) { if (_field.edgeM < 0.62) return; keep *= 0.6; } // a dry stone wall and its foot
           else if (_field.boundary === 2) { keep *= 0.5; heightScale *= 0.6; } // a bund: short grass on its top
-          else { keep = Math.min(1, keep * 1.2); heightScale *= 1.15; } // a margin: rank grass
+          else {
+            // a margin: an uncut strip of rank grass and tall weeds (wave 21, the Verdant boundary: "just a line where
+            // sparse lime grass stops and a uniform golden crop carpet begins") — denser and taller than either field,
+            // uneven, a third of it cured: the strip a chase camera reads between two fields
+            keep = Math.min(1, keep * 1.6);
+            heightScale *= 1.45 + 0.65 * swardNoise(x, z, 2.1, 0x6e11);
+            if (swardNoise(x, z, 0.9, 0x3a5f) > 0.62) cropTint = [b.dry[0] / b.tip[0], b.dry[1] / b.tip[1], b.dry[2] / b.tip[2]];
+          }
         } else {
           const crop = _field.crop;
           if (!_field.sward) return; // a plough, turned red earth, a paddy's water
@@ -602,6 +609,18 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
           // (a bare field's weeds keep the grass's own cured end, not the soil's colour: LAND_CROP_GROWTH weed)
           if (_field.weed) cropTint = [b.dry[0] / b.tip[0], b.dry[1] / b.tip[1], b.dry[2] / b.tip[2]];
           else if (crop !== LAND_CROP.pasture) cropTint = [_field.tintR / b.tip[0], _field.tintG / b.tip[1], _field.tintB / b.tip[2]];
+          // the headland (the terrain draws the same strip): 3–5.5 m inside the margin where the drill turned, the crop
+          // pressed flat and thinner, weeds coming up in it
+          if (_field.boundary === 0 && crop !== LAND_CROP.pasture) {
+            const headW = 3.0 + 2.5 * swardNoise(x, z, 23, 0x4ead) + (swardNoise(x, z, 7, 0x77e1) - 0.5) * 2.0;
+            const into = _field.edgeM - _field.marginM;
+            if (into < headW) {
+              const h = 1 - smoothstep(headW - 1.2, headW, into);
+              keep *= 1 - 0.45 * h;
+              heightScale *= 1 - 0.40 * h;
+              if (h > 0.5 && swardNoise(x, z, 1.3, 0x5eed) > 0.70) cropTint = [b.dry[0] / b.tip[0], b.dry[1] / b.tip[1], b.dry[2] / b.tip[2]];
+            }
+          }
         }
       }
     }

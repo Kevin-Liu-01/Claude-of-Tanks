@@ -4215,6 +4215,20 @@ void splatCompute() {
       }
       cropCol *= (1.0 + rows * rowsShow) * fieldVar;
       a.rgb = mix(a.rgb, cropCol, inField * landW);
+      // (wave 21, the Verdant boundary at tank eye: "a dead-straight, unblended seam between the green grass field and the
+      // golden wheat field") a worked field's edge is a feature: inside its grass margin lies the headland, 3–5.5 m where
+      // the drill turned — the crop pressed flat and thinner with the soil showing in it, and the turning wheels' two arcs
+      // along the edge (the tall-grass tier flattens and weeds the same strip; the margin itself grows rank and tall)
+      if (bnd < 0.5 && crop > 0.5 && water < 0.5) {
+        float headW = 3.0 + 2.5 * nzq(uvW, 0.031, vec2(0.11, 0.59)).y;
+        float into = edgeW - marginM;
+        float headL = inField * (1.0 - smoothstep(headW - 1.2, headW, into)) * (1.0 - track);
+        vec3 soilM = mix(uMeanD.rgb, vec3(reduxLuma(uMeanD.rgb)), 0.35);
+        vec3 worn = mix(cropCol, soilM, 0.25 + 0.20 * n1h) * vec3(1.05, 1.02, 0.96);
+        float hq1 = (into - 1.1) / 0.32, hq2 = (into - 2.9) / 0.32;
+        float arcs = (exp(-hq1 * hq1) + exp(-hq2 * hq2)) * smoothstep(0.12, 0.45, 0.5 / max(gFootM, 1e-3));
+        a.rgb = mix(a.rgb, worn * (1.0 - 0.22 * arcs), headL * landW * 0.80);
+      }
       // (the verdant establishing pair, hold 3: a turned field read as gravel or crumpled paper — the meadow's blade,
       // tussock and coarse-turf relief and their photo tone ran on under the soil; a sown field carries its own rows)
       gCropW = (crop > 0.5 && (crop < 12.5 || crop > 13.5)) ? inField * landW : 0.0;
