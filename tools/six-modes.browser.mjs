@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { createCaptureLock } from './capture-lock.mjs';
 import { withMapProbeSession, openGamePage, beginSoloBattle } from './map-probe-runtime.mjs';
 const remote=process.env.COT_MODE_VERIFY_URL;
-const out=resolve(remote?'.qa-dev/six-modes-live':'.qa-dev/six-modes');mkdirSync(out,{recursive:true});
+const out=resolve(process.env.COT_MODE_LIST==='realistic'?'.qa-dev/scope-views':remote?'.qa-dev/six-modes-live':'.qa-dev/six-modes');mkdirSync(out,{recursive:true});
 const lock=createCaptureLock();let heartbeat;
 const reports=[];
 const battleModes=process.env.COT_MODE_LIST?process.env.COT_MODE_LIST.split(','):process.env.COT_AERIAL_ONLY?['drone','ac130']:['drone','ac130','juggernaut','infected','realistic','gun_game'];
