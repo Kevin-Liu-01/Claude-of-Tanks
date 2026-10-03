@@ -15,7 +15,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
-| 363 sound-effect assets, 588 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 17 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
+| 366 sound-effect assets, 596 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 17 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
 | 13 crew radio packs × 97 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.5 MB per language | only the crew's pack (and English if a national take is missing) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
@@ -63,8 +63,8 @@ profile from `soundCues.ts` (per manifest group, with per-asset overrides):
   `flat` (interface, radio, beds).
 - **Distance law**: `distanceAttenuationDb(distance, refM, rolloff)` plus 6 dB/km
   of excess loss. Gunfire, impacts and explosions use a compressed game-mix
-  curve (weapons: reference 25 m, rolloff 0.6, so a cannon at 100 m is 8 dB
-  down instead of 19, and at 400 m 17 dB instead of 33). Small clutter is
+  curve (weapons: reference 35 m, rolloff 0.55, so a cannon at 100 m is 5 dB
+  down instead of 19, and at 400 m 12 dB instead of 33). Small clutter is
   short-ranged: props 260 m, other hulls' brakes, gears and suspension
   140–150 m, bullet impacts 120–180 m.
 - **Air and terrain**: an ISO 9613 air-absorption lowpass, terrain occlusion
@@ -95,12 +95,15 @@ interior, cinematic, ambience (ducked under radio) ─────────�
 ui, music, voice, alarm ──────────────────────────────────────────────────────────────────────────────────────────────┴→ glue → soft clip → master
 ```
 
-- Gunfire and our own tank lead. Weapons (1.15), impacts (1.1) and the occupied
-  hull's gun (1.3) carry a +4–5 dB low shelf at 110 Hz; our own engine and
-  running gear (0.8) and the loading and turret machinery inside it (0.95) sit
-  well above other tanks' engines (0.5); ambience (0.65, beds mastered at −21
-  LUFS), radio (0.72) and the interface (0.6, with a high-shelf cut) sit
-  underneath.
+- Gunfire and our own tank lead. Weapons (1.5), impacts (1.3) and the occupied
+  hull's gun (1.4) carry a +4–5 dB low shelf at 110 Hz; our own engine and
+  running gear (0.6) and the loading and turret machinery inside it (0.95) sit
+  above other tanks' engines (0.5); ambience (0.45, beds mastered at −21
+  LUFS), radio (0.5) and the interface (0.6, with a high-shelf cut) sit
+  underneath. The levels are measured on the master by the mix-balance
+  probe: its first run, on deploy 169's louder engine and ambience (0.8 and
+  0.65), put the idle battle bed at −22 dBFS and a cannon at 15 m only 11.6
+  dB above it, so the bed came down and gunfire went up.
 - The glue compressor has a 12 ms attack and 2.5:1 ratio so cannon transients
   reach the tanh soft clip, which catches the peaks.
 - Settings channels from the Sound tab (`cot.settings.v1`, live via
@@ -232,10 +235,12 @@ rides every battle set.
 
 `environmentScenes.ts` gives each of the 33 maps a scene: a stereo bed, an
 optional water or machinery layer, weighted spot sounds placed 40–380 m away at
-random bearings (birds higher; no bells, birdsong, breaking glass or alarms —
-crows, hawks, gulls, wind, rubble and machinery instead), a distant-war bed in
+random bearings (birds higher; mostly crows, hawks, gulls, wind, rubble and
+machinery, with songbirds, bees and a distant siren among them where they
+belong, and no bells, breaking glass or car alarms), a distant-war bed in
 battle, the gun tail and a procedural reverb. The beds were regenerated on
-2026-10-02 without songbirds, bees, sirens or radio tones, selected for an
+2026-10-02 without songbirds, bees, sirens or radio tones (those come as
+spots), selected for an
 even level across the loop seam and for body under the hiss. The garage is a
 working hangar: an audible room tone (+7 dB) with tools, impact wrenches, a
 hammer on a track pin, the crane chain, an air compressor, a diesel being run
@@ -298,7 +303,7 @@ re-running any step with unchanged inputs spends nothing.
 
 ```
 sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──→ build-sfx.mjs (score, pick, master) ──→ public/audio/sfx + manifest
-   363 entries        ~1,000 raw takes      onsets, decay, seams,     master.mjs presets, picks override
+   366 entries        ~1,000 raw takes      onsets, decay, seams,     master.mjs presets, picks override
    prompt, dur,       eleven_text_to_       spectral bands,
    takes, variants    sound_v2, pcm_48000   clipping
 ```
@@ -532,10 +537,10 @@ Browser probes (they take the machine-wide GPU capture lock; set
   `crew-lines.json`. Two takes remain flagged (a scripted exhale before the
   Chinese near-miss call, a one-syllable Hebrew "goal"), besides homophones
   the transcriber spells differently.
-- The mix-balance probe has not completed a run: one waited out its time in
-  the GPU queue and one timed out waiting for the audio context in the garage,
-  where the engine did not load until a battle (fixed in this round). Its
-  thresholds are the ones above, not yet measured.
+- The mix-balance probe's first completed run (deploy 169's levels) failed
+  every gunfire threshold; the levels above are the rebalance it prompted,
+  awaiting its next run. Earlier runs waited out the GPU queue or timed out on
+  the garage, where the engine did not load until a battle.
 - The first garage click loads the engine, so that click itself is silent.
 - The oasis bed's loop seam steps 2.8 dB and the jungle and mangrove beds are
   mostly insect hiss; every take generated for them was like that.
