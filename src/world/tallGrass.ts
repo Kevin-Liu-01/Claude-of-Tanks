@@ -249,6 +249,8 @@ interface SharedUniforms {
   uPressParams: { value: THREE.Vector4 };
   uGrassBase: { value: THREE.Vector3 };
   uGrassTip: { value: THREE.Vector3 };
+  /** Ground lane: the biome's cured-blade colour (its `dry`), the colour a dead blade takes from the tip down. */
+  uGrassDry: { value: THREE.Vector3 };
 }
 
 /** The blade shader: every dimension from the instance attribute, the press from the field, the shadow at the root. */
@@ -264,6 +266,7 @@ function tallGrassHook(shared: SharedUniforms, fade: readonly [number, number, n
     shader.uniforms.uPressParams = shared.uPressParams;
     shader.uniforms.uGrassBase = shared.uGrassBase;
     shader.uniforms.uGrassTip = shared.uGrassTip;
+    shader.uniforms.uGrassDry = shared.uGrassDry;
     shader.uniforms.uGrassFade = { value: new THREE.Vector4(fade[0], fade[1], fade[2], fade[3]) };
     shader.uniforms.uBend = { value: bendRad };
     shader.uniforms.uBladeGamma = { value: bladeGamma };
@@ -343,7 +346,7 @@ varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;`);
       #endif
       #include <shadowmap_vertex>`);
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; uniform float uBladeGamma; uniform float uBladeLift; varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;');
+      '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; uniform vec3 uGrassDry; uniform float uBladeGamma; uniform float uBladeLift; varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;');
     // both faces of a strip light the same way (no back-face flip) and the root is dark under the sward
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <normal_fragment_begin>',
       '#include <normal_fragment_begin>\nnormal = normalize( vNormal );\nnonPerturbedNormal = normal;');
@@ -352,7 +355,8 @@ varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;`);
       // ground lane: a sward is never one green — each blade a shade lighter or darker, a fifth cured to straw from the
       // tip down (the dead leaves of last season standing in the new)
       + `\n{ float cure = smoothstep(0.78, 0.84, vBladeTone) * (0.55 + 0.45 * vBladeT);`
-      + `\n  diffuseColor.rgb *= mix(vec3(0.80 + 0.40 * fract(vBladeTone * 3.7)), vec3(1.42, 1.0, 1.55) * 0.92, cure); }`);
+      + `\n  diffuseColor.rgb *= 0.80 + 0.40 * fract(vBladeTone * 3.7);`
+      + `\n  diffuseColor.rgb = mix(diffuseColor.rgb, uGrassDry * mix(0.45, 1.0, vBladeT) * uBladeLift, cure); }`);
   };
 }
 
@@ -377,8 +381,9 @@ function makeSharedUniforms(): SharedUniforms {
     uWindDir: { value: new THREE.Vector2(0.8, 0.6) },
     uPress: { value: null },
     uPressParams: { value: new THREE.Vector4(GROUND_PRESSURE_WINDOW_FALLBACK, 0, 0, 0) },
-    uGrassBase: { value: new THREE.Vector3(0.08, 0.11, 0.03) },
-    uGrassTip: { value: new THREE.Vector3(0.3, 0.4, 0.12) },
+    uGrassBase: { value: new THREE.Vector3(0.025, 0.042, 0.012) },
+    uGrassTip: { value: new THREE.Vector3(0.085, 0.170, 0.035) },
+    uGrassDry: { value: new THREE.Vector3(0.27, 0.22, 0.095) },
   };
 }
 const GROUND_PRESSURE_WINDOW_FALLBACK = 96;
@@ -424,6 +429,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     shared.uWindDir.value.set(biome.windDir[0], biome.windDir[1]).normalize();
     shared.uGrassBase.value.set(biome.base[0], biome.base[1], biome.base[2]);
     shared.uGrassTip.value.set(biome.tip[0], biome.tip[1], biome.tip[2]);
+    shared.uGrassDry.value.set(biome.dry[0], biome.dry[1], biome.dry[2]);
   }
   const pressure = biome && tier !== 'mobile' ? createGroundPressureField(options.renderer, { tier }) : null;
   if (pressure) { shared.uPress = pressure.stateUniform; shared.uPressParams.value = pressure.params; }
@@ -556,11 +562,14 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
           const crop = _field.crop;
           if (crop === LAND_CROP.plough) return;
           if (crop !== LAND_CROP.pasture) keep = 1; // a sown field has no bare dirt patches
-          if (crop === LAND_CROP.wheat) { heightScale *= 1.25; cropTint = [2.05, 1.18, 1.45]; }
-          else if (crop === LAND_CROP.barley) { heightScale *= 1.05; cropTint = [2.15, 1.38, 1.95]; }
-          else if (crop === LAND_CROP.green) { heightScale *= 0.75; cropTint = [1.05, 1.22, 0.92]; }
-          else if (crop === LAND_CROP.stubble) { keep = 0.55; heightScale *= 0.24; cropTint = [1.95, 1.32, 1.65]; }
-          else if (crop === LAND_CROP.sunflower) { keep = 0.7; heightScale *= 1.6; cropTint = [0.82, 1.02, 0.78]; }
+          // the crop's colour as a multiplier on the biome's ramp, set against the calibrated meadow (tip 0.085/0.17/0.035):
+          // ripe wheat 0.30/0.22/0.075, barley 0.33/0.28/0.12, a young crop 0.075/0.19/0.04, stubble 0.30/0.25/0.13,
+          // sunflower foliage 0.045/0.10/0.025 (luminance 0.06–0.27, the real crops' range)
+          if (crop === LAND_CROP.wheat) { heightScale *= 1.25; cropTint = [3.5, 1.3, 2.15]; }
+          else if (crop === LAND_CROP.barley) { heightScale *= 1.05; cropTint = [3.9, 1.65, 3.4]; }
+          else if (crop === LAND_CROP.green) { heightScale *= 0.75; cropTint = [0.9, 1.12, 1.15]; }
+          else if (crop === LAND_CROP.stubble) { keep = 0.55; heightScale *= 0.24; cropTint = [3.5, 1.47, 3.7]; }
+          else if (crop === LAND_CROP.sunflower) { keep = 0.7; heightScale *= 1.6; cropTint = [0.53, 0.59, 0.7]; }
         }
       }
     }

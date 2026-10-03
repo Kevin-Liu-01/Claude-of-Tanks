@@ -3736,12 +3736,18 @@ function* vegetationBuildSteps(
     tl += dryPatch * 0.05;
     if (veg.tuftTone) [th, ts, tl] = veg.tuftTone(th, ts, tl);
     let cropHeight = 1;
-    if (crop === 1) { th = 0.112 + (hueJ - 0.5) * 0.02; ts = 0.52; tl = 0.50 + (lumJ - 0.5) * 0.08; cropHeight = 1.15; } // ripe wheat
-    else if (crop === 2) { th = 0.128 + (hueJ - 0.5) * 0.02; ts = 0.44; tl = 0.56 + (lumJ - 0.5) * 0.08; } // barley
-    else if (crop === 3) { th = 0.245 + (hueJ - 0.5) * 0.02; ts = 0.46; tl = 0.40 + (lumJ - 0.5) * 0.06; cropHeight = 0.8; } // green crop
-    else if (crop === 5) { th = 0.108; ts = 0.36; tl = 0.52 + (lumJ - 0.5) * 0.08; cropHeight = 0.32; } // stubble
-    else if (crop === 6) { th = 0.27; ts = 0.38; tl = 0.30 + (lumJ - 0.5) * 0.06; cropHeight = 1.4; } // sunflower
     _c.setHSL(((th % 1) + 1) % 1, clamp(ts, 0, 1), clamp(tl, 0, 1));
+    // a crop's tuft: the card's green blades (≈ 0.22/0.32/0.05 linear) multiplied to the crop's measured colour —
+    // ripe wheat 0.30/0.22/0.075, barley 0.33/0.28/0.12, a young crop 0.075/0.19/0.04, stubble 0.30/0.25/0.13,
+    // sunflower foliage 0.045/0.10/0.025 (an instance colour may exceed one; the card stays the sward's)
+    if (crop > 0) {
+      const lj = 0.90 + 0.20 * lumJ;
+      if (crop === 1) { _c.setRGB(1.38 * lj, 0.70 * lj, 1.50 * lj); cropHeight = 1.15; }
+      else if (crop === 2) { _c.setRGB(1.52 * lj, 0.89 * lj, 2.40 * lj); }
+      else if (crop === 3) { _c.setRGB(0.35 * lj, 0.60 * lj, 0.82 * lj); cropHeight = 0.8; }
+      else if (crop === 5) { _c.setRGB(1.38 * lj, 0.79 * lj, 2.60 * lj); cropHeight = 0.32; }
+      else if (crop === 6) { _c.setRGB(0.21 * lj, 0.32 * lj, 0.50 * lj); cropHeight = 1.4; }
+    }
     const t = _tuftScratch;
     // r2: midfield (non-carpet) tufts run ~15% wider — see the cull note
     // above (r3: 1.15 -> 1.28, coverage where the carpet hands over)

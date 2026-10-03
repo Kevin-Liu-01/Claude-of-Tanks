@@ -3623,9 +3623,10 @@ void splatCompute() {
         // pasture: half the meadows are hay — mown in stripes up and down the field
         rows = jit > 0.5 ? sin(across * 2.094) * 0.06 * tileVis(3.0) : 0.0;
       } else if (crop < 1.5) {
-        cropCol = vec3(1.375, 0.994, 0.399) * baseL * 2.0 * bright; // ripe wheat
+        // albedo calibration (with the light lane): a ripe crop is cured straw, 0.20–0.25 against the sward's ~0.075
+        cropCol = vec3(1.375, 0.994, 0.399) * baseL * 2.8 * bright; // ripe wheat
       } else if (crop < 2.5) {
-        cropCol = vec3(1.239, 1.043, 0.530) * baseL * 2.3 * bright; // barley
+        cropCol = vec3(1.239, 1.043, 0.530) * baseL * 3.0 * bright; // barley
       } else if (crop < 3.5) {
         cropCol = vec3(0.906, 1.416, 0.362) * baseL * 1.25 * bright; // young green crop
       } else if (crop < 4.5) {
@@ -3635,7 +3636,7 @@ void splatCompute() {
         rows = fur * 0.16 * tileVis(0.8) + sin(across * 0.483 + jit * 6.0) * 0.05 * tileVis(13.0);
         if (nrmOn) n.xy += vec2(-rowDir.y, rowDir.x) * cos(across * 7.854) * 0.22 * tileVis(0.8) * inField * landW;
       } else if (crop < 5.5) {
-        cropCol = vec3(1.218, 1.010, 0.627) * baseL * 1.75 * bright; // stubble
+        cropCol = vec3(1.218, 1.010, 0.627) * baseL * 2.8 * bright; // stubble
         rows = sin(across * 1.047 + jit * 6.0) * 0.07 * tileVis(6.0); // the combine's swaths
       } else {
         cropCol = vec3(0.942, 1.330, 0.466) * baseL * 0.70 * bright; // sunflower
