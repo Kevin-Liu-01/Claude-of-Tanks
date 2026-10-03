@@ -385,7 +385,7 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
 
     // ---- engine bank.
     const running = state.running ? 1 : 0;
-    const engineLevel = running * startFade * (0.5 + 0.5 * state.load) * (lod === 'far' ? 0.9 : 1);
+    const engineLevel = running * startFade * (0.3 + 0.7 * state.load) * (lod === 'far' ? 0.9 : 1);
     const rpm = Math.max(family.idleRpm * 0.5, state.rpm);
     let anyReady = false;
     for (let i = 0; i < bandAssets.length; i++) {
