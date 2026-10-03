@@ -277,8 +277,12 @@ for (const mapId of MAP_IDS) {
       }
     }
   }
+  // The map-borders lane (2026-10-03): past 430 m the ground is the border landform, which opens a valley wherever a
+  // road leaves the square — so completing a road to the edge also moves the rim band around its exit (by design, not
+  // grading). The footprint counts the grading of the completion: the cells inside the rim band's start.
   let changedCells = 0, changedInteriorAwayFromRoads = 0, outsideEnvelope = 0, changedLiquidCells = 0, cells = 0;
   for (let z = -508; z <= 508; z += 8) for (let x = -508; x <= 508; x += 8) {
+    if (Math.max(Math.abs(x), Math.abs(z)) >= 430) continue;
     cells++;
     if (Math.abs(after.getHeightAt(x, z) - field.getHeightAt(x, z)) <= 1e-4) continue;
     changedCells++;

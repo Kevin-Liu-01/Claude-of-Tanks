@@ -135,6 +135,8 @@ function checkSourceContract(text) {
     'uRingReliefWall',
     // ground lane (2026-10-03): the land use's field system (landUse.ts) — three packed vectors, no sampler
     'uLandA', 'uLandB', 'uLandC', 'uLandD',
+    // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving — natural steep faces take the D layer (scalar, no sampler)
+    'uPavedRock',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
