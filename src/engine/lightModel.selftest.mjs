@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import {
   EXPOSURE_ADAPTATION, EXPOSURE_KEY, EXPOSURE_MAX, EXPOSURE_MIN, GROUND_SUNLIT_SHARE, LIGHT_SOLAR_IRRADIANCE, LOW_SUN_EV, NIGHT_EV, NIGHT_SKY_GLOW, OVERCAST_SKY_CUT,
   SKY_DIFFUSE_CHROMA, SKY_DIFFUSE_GAIN, atmosphereTransmittance, deriveSun, exposureFor, linearToHex, whiteBalanceGains,
+  EXPOSURE_ALBEDO_K, EXPOSURE_ALBEDO_REF, exposureAlbedoEV,
 } from './lightModel.ts';
 import {
   DEFAULT_GROUND_ALBEDO, EXPOSURE_REFERENCE_ILLUMINANCE, hexToLinear, isGalaxySky, lightTune, loadGroundedLightModel, luminance,
@@ -169,6 +170,22 @@ assert.equal(legacy.mode, 'legacy');
 assert.equal(legacy.sunIntensity, 3.6); assert.equal(legacy.envIntensity, 0.27); assert.equal(legacy.fillIntensity, 0.66);
 near(legacy.hemiIntensity, 0.46 + 0.15, 1e-12, 'the authored hemisphere and its bounce floor');
 assert.equal(legacy.envDiffuseGain, 1); assert.equal(legacy.envDiffuseChroma, 1, 'the legacy rig keeps its environment as it was');
+
+// ---- 6b. the bright-ground lift (2026-10-03; the gauntlet's wave 7: a median-matched key greyed the snow): off until a
+// capture shows it; a snowfield opens about half a stop at K 0.42, a ground at or under the reference is untouched
+assert.equal(EXPOSURE_ALBEDO_K, 0, 'off by default');
+assert.equal(exposureAlbedoEV(0.8), 0, 'no lift while off');
+{
+  const saved = globalThis.__LIGHT_TUNE;
+  globalThis.__LIGHT_TUNE = { EXPOSURE_ALBEDO_K: 0.42 };
+  near(exposureAlbedoEV(0.799), 0.42 * Math.log2(0.799 / EXPOSURE_ALBEDO_REF), 1e-12, 'Frosthollow\'s snow');
+  assert.ok(exposureAlbedoEV(0.799) > 0.45 && exposureAlbedoEV(0.799) < 0.55, 'about half a stop');
+  assert.equal(exposureAlbedoEV(EXPOSURE_ALBEDO_REF), 0, 'the reference ground is untouched');
+  assert.equal(exposureAlbedoEV(0.16), 0, 'a darker ground never darkens');
+  assert.ok(exposureAlbedoEV(5) <= 0.75 + 1e-12, 'capped');
+  globalThis.__LIGHT_TUNE = saved;
+}
+assert.match(readFileSync(new URL('./lightModel.ts', import.meta.url), 'utf8'), /\+ \(1 - night\) \* exposureAlbedoEV\(luminance\(ground\)\)\);/, 'by day, on the map\'s ground albedo');
 
 // ---- 7. the wiring
 const sky = readFileSync(new URL('./sky.ts', import.meta.url), 'utf8');

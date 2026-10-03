@@ -117,6 +117,22 @@ export const NIGHT_EV = -0.25;
  * (the adapting camera alone lifted the 7° sunset to a pale, flat near-day).
  */
 export const LOW_SUN_EV = -0.5;
+/**
+ * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 7: a key matched to the photographs' median greyed
+ * every snowfield): the camera's lift for a bright ground, the way a photographer opens up over a snowfield. A map whose
+ * ground albedo (its luminance) passes EXPOSURE_ALBEDO_REF gains EXPOSURE_ALBEDO_K stops per doubling, at most
+ * EXPOSURE_ALBEDO_MAX_EV, by day (Frosthollow's 0.80: +0.5 EV at K 0.42); every darker ground is untouched. K 0 = off
+ * until a capture shows it (QA: __LIGHT_TUNE.EXPOSURE_ALBEDO_K).
+ */
+export const EXPOSURE_ALBEDO_REF = 0.35;
+export const EXPOSURE_ALBEDO_K = 0;
+export const EXPOSURE_ALBEDO_MAX_EV = 0.75;
+/** The bright-ground lift (EV) of a ground albedo (luminance) by day; 0 at or under the reference. */
+export function exposureAlbedoEV(groundLuminance: number): number {
+  const k = lightTune('EXPOSURE_ALBEDO_K', EXPOSURE_ALBEDO_K);
+  if (!(k > 0) || !(groundLuminance > EXPOSURE_ALBEDO_REF)) return 0;
+  return clamp(k * Math.log2(groundLuminance / EXPOSURE_ALBEDO_REF), 0, lightTune('EXPOSURE_ALBEDO_MAX_EV', EXPOSURE_ALBEDO_MAX_EV));
+}
 /** Its colour: the blue of a moonlit sky (linear, luminance ≈ 1). */
 export const NIGHT_GLOW_COLOR: Rgb = Object.freeze([0.72, 0.95, 1.38]) as Rgb;
 /** The sunlit share of the ground the environment shows below the horizon (groundBounce.ts adds the rest). */
@@ -271,7 +287,7 @@ function resolveGrounded(
   const sunElevationDeg = Math.asin(clamp(params.sunDir[1], -1, 1)) * 180 / Math.PI;
   const lowSun = (1 - night) * (1 - smoothstep(6, 18, sunElevationDeg));
   const exposure = exposureFor(illuminance, (L.exposureEV ?? 0) + night * lightTune('NIGHT_EV', NIGHT_EV)
-    + lowSun * lightTune('LOW_SUN_EV', LOW_SUN_EV));
+    + lowSun * lightTune('LOW_SUN_EV', LOW_SUN_EV) + (1 - night) * exposureAlbedoEV(luminance(ground)));
   // the readability lift's floor holds its on-screen level as the camera adapts (Verdant's key keeps it whole), and
   // fades with the deck that lights the shade itself
   const vehicleReadability = clamp(Math.min(1, lightTune('EXPOSURE_KEY', EXPOSURE_KEY) / exposure)
