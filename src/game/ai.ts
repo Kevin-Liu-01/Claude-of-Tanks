@@ -560,6 +560,14 @@ const PASSIVE_PRESS_REPICK_S = 3;
 const PASSIVE_PRESS_LANE_HULL_FRAC = 0.4; // the press point must reach the HULL with the gun, not only the turret top
 const PASSIVE_PRESS_DENIED_S = 6;          // closed penetration gate held at the press point before it is given up
 const PASSIVE_PRESS_ARC_S = 3;             // gun pinned at a pitch stop at the press point before it is given up
+// An unreachable press point (bots lane, 2026-10-02; Reservoir pacing seed 50003 on the maps lane's tree with the
+// liquid-start fix): the last bravo T-90M's press point lay below a bank the terrain guard would not let it descend,
+// and the press gave a point up only once the hull stood on it, so for 540 s it drove at the bank, reversed and drove
+// again, firing a round now and then. A press point the hull has not reached within its distance at
+// PRESS_REACH_SPEED_MPS plus PRESS_REACH_SLACK_S (kept across the press restarts a flickering sight line makes) is
+// given up like a masked one and another is picked.
+const PRESS_REACH_SPEED_MPS = 4;
+const PRESS_REACH_SLACK_S = 20;
 // Missing an idle target (bots lane, 2026-10-02; Winter pacing seed 23000 on the maps lane's tree): a T-90M stood
 // 57-66 m off the idle host's flank for five minutes while its HEAT rounds dug into a crest 16 m short of the hull or
 // passed over the turret. The press held off because the hull stood "already on its flank at point-blank", and the
@@ -1146,6 +1154,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   const missSpot = { x: 0, z: 0 };           // …all fired from within MISS_SPOT_M of this spot
   let missLastShotS = -Infinity;
   let missVerdicts = 0;                      // probe-visible count of spots given up for their misses
+  let pressPickS = -Infinity;                // when the press point was last picked…
+  let pressReachByS = Infinity;              // …and the time it must be reached by (PRESS_REACH_SLACK_S)
+  let pressUnreached = 0;                    // probe-visible count of press points given up unreached
   let flankLaneCheckS = -Infinity;
   let flankLaneClear = false;                // the flank exemption's gun-to-hull lane at the last check
   // round 62 pacing: the search for a lost enemy (beginSearchLeg / updateSearchLeg)
@@ -4844,6 +4855,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         // Copper Mesa seeds 0/1/3 after the first press: the point at the foot of the host's plateau masked the
         // hull behind the rim — the gun, not the eye, must reach the hull from the press point.
         if (!pressLaneClear(x, z, radius)) continue;
+        // the reach deadline survives a restart onto the same point, or a flickering sight line would reset it forever
+        const samePoint = Math.hypot(x - pressPoint.x, z - pressPoint.z) <= 12 && nowS - pressPickS < 30;
+        if (!samePoint) {
+          pressReachByS = nowS + PRESS_REACH_SLACK_S + Math.hypot(x - st.pos.x, z - st.pos.z) / PRESS_REACH_SPEED_MPS;
+        }
+        pressPickS = nowS;
         pressPoint.x = x;
         pressPoint.z = z;
         passivePressCandidate = ring * 16 + k; // round 67: 0/1 the sides, 2–9 the fallbacks, 10 straight in
@@ -4890,14 +4907,17 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // glacis) with the hull in plain view — a closed gate held at the press point is the same verdict, and so
       // is a gun pinned at its pitch stop there (Coastal seed 3).
       // A press point its rounds do not reach from (missedOut) is given up the same way.
-      if (atPoint && (probeMiss || penDeniedT >= PASSIVE_PRESS_DENIED_S || passivePressArcT >= PASSIVE_PRESS_ARC_S
-          || missed) && firstAvailableSlot() >= 0) {
+      // So is a point the hull has not reached in time (see PRESS_REACH_SLACK_S).
+      const unreached = !atPoint && timeS >= pressReachByS;
+      if (((atPoint && (probeMiss || penDeniedT >= PASSIVE_PRESS_DENIED_S || passivePressArcT >= PASSIVE_PRESS_ARC_S
+          || missed)) || unreached) && firstAvailableSlot() >= 0) {
         passivePressArcT = 0;
         if (missed) giveUpMissedSpot(missSpot.x, missSpot.z, timeS);
         pressVeto.x = pressPoint.x;
         pressVeto.z = pressPoint.z;
         pressVeto.untilS = timeS + 120;
         passivePressRepicks++;
+        if (unreached) pressUnreached++;
         if (!pickPressPoint()) passivePressing = false;
       }
     }
@@ -5673,7 +5693,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       wpIndex, wpCount: waypoints.length,
       waypointX: waypoints[wpIndex]?.x ?? null, waypointZ: waypoints[wpIndex]?.z ?? null,
       conserveHolds, emptyRack, ramming, ramRuns, ramCapMps: Number.isFinite(ramCapMps) ? +ramCapMps.toFixed(2) : null,
-      missStreak, missVerdicts,
+      missStreak, missVerdicts, pressUnreached,
       rackSpent: !!target && target.id === rackSpentId, rackSpentT: +rackSpentT.toFixed(1), rackSpentVerdicts,
       objectiveShifts, objectiveShifting,
       missionReleases, missionReleased: nowS < missionReleaseUntilS,

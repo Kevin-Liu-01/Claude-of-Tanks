@@ -134,7 +134,9 @@ there as well (a crest can mask it while the eye still sees the turret). Three
 main-gun rounds in a row from one spot (within 10 m) that do not reach the
 target, judged 1.5 seconds after the last one, give that spot up: the press
 starts from it, or the press point is given up for another, as a masked probe
-gives one up. A rack that is empty finishes a passive hull by ramming when the
+gives one up. A press point the hull has not reached within its distance at
+4 m/s plus 20 seconds (kept across the restarts a flickering sight line makes)
+is given up the same way. A rack that is empty finishes a passive hull by ramming when the
 ram law says the rammer survives. The run that finishes it is judged and driven
 no faster than the slowest closing speed whose share deals 1.8 times the
 target's remaining health (6 m/s at least). Inside 60 m a clear line drives
@@ -212,8 +214,9 @@ search cannot drive a hull.
   masks its hull from a flank spot (the press goes round to a point the gun
   reaches the hull from, with an open-flank control), three rounds in a row
   that miss from the flank spot (the spot is given up, with a control whose
-  rounds land), and an empty rack against a 320 hp idle host (a capped
-  finishing ram, with full-health and moving-host controls).
+  rounds land), an empty rack against a 320 hp idle host (a capped finishing
+  ram, with full-health and moving-host controls), and a press point inside a
+  closed pen, given up unreached.
 - `src/game/ai.levels.selftest.mjs`: a synthetic deck over a floor, with and
   without a ramp: the deck bot leaves the floor target for one on its own level,
   the floor bot drives the ramp to the deck, gives the deck target up when no
