@@ -11,6 +11,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/modeConfiguration.selftest.mjs',
     'src/sim/sixModes.selftest.mjs',
     'src/sim/droneRecon.selftest.mjs',
+    'src/fx/droneMotion.selftest.mjs',
     'src/engine/aerialCamera.selftest.mjs',
     'src/sim/sixModesAuthority.selftest.mjs',
   'src/mp/host/sixModesMigration.selftest.mjs',

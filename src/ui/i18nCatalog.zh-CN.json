@@ -3773,8 +3773,8 @@
   "flight.battery": "无人机电量",
   "flight.drone": "FPV · 侦察",
   "flight.launching": "起飞中",
-  "flight.gunship": "AC-130 · 空中炮艇",
-  "flight.return": "返回坦克 · V",
+  "flight.gunship": "AC-130",
+  "flight.return": "返回坦克",
   "flight.weapon.0": "30毫米机炮",
   "flight.weapon.1": "152毫米高爆弹",
   "flight.weapon.2": "制导导弹",
@@ -3783,5 +3783,10 @@
   "flight.ready": "就绪 · {ammo}",
   "flight.hint.drone": "WASD飞行 · 鼠标转向 · 空格爬升 · 侦察敌人或撞击引爆",
   "flight.hint.gunship": "鼠标瞄准 · 点击开火 · 1 / 2 / 3武器 · 滚轮缩放",
-  "flight.climb": "爬升"
+  "flight.climb": "爬升",
+  "flight.thermal": "热成像画面",
+  "flight.link": "载车链路距离",
+  "flight.speed": "空速",
+  "flight.zoom": "瞄具倍率",
+  "flight.range": "目标距离"
 }

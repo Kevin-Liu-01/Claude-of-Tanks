@@ -46,7 +46,9 @@ export function createAerialCamera(camera: THREE.PerspectiveCamera) {
       else aimDrone(view,dx,dy,dt);
       const fov=view.kind==='gunship'?55/zoom:85;
       if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
-      camera.lookAt(target);entity.input?.aimPoint?.copy(target);return true;
+      camera.lookAt(target);
+      if(view.kind==='drone'&&!view.launching) camera.rotateZ(Math.sin(view.batteryS*2.6)*.0025);
+      entity.input?.aimPoint?.copy(target);return true;
     },
   };
 }

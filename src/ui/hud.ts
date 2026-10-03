@@ -2967,12 +2967,14 @@ export function initHud(bus: EventBus): HudRuntime {
       `<span class="veh"><i class="tier"></i><span class="vn"></span><i class="brain" hidden></i></span></span>` +
       `<div class="hpm"><i></i></div>`;
     const iconEl = requireElement<HTMLElement>(rootEl, '.ic');
-    maskIcon(iconEl, spec.id, 'side_silhouette', ally ? PEN_GREEN : PEN_RED);
+    const gunship=tank.aerial?.kind==='gunship';
+    if(gunship)iconEl.innerHTML=uiIconSVG('modeAc130',24,ally?PEN_GREEN:PEN_RED);
+    else maskIcon(iconEl, spec.id, 'side_silhouette', ally ? PEN_GREEN : PEN_RED);
     if (tank.isPlayer) rootEl.classList.add('me');
-    requireElement<HTMLElement>(rootEl, '.tier').textContent = tierNumeral(spec.id) || '–';
+    requireElement<HTMLElement>(rootEl, '.tier').textContent = gunship ? '' : tierNumeral(spec.id) || '–';
     requireElement<HTMLElement>(rootEl, '.nick').textContent = nickFor(tank);
-    requireElement<HTMLElement>(rootEl, '.vn').textContent = spec.name;
-    rootEl.title = `${nickFor(tank)} · ${spec.name}`;
+    requireElement<HTMLElement>(rootEl, '.vn').textContent = gunship ? 'AC-130' : spec.name;
+    rootEl.title = `${nickFor(tank)} · ${gunship?'AC-130':spec.name}`;
     // Jev commander (2026-09-25): a bot under Jev's orders carries a small tag beside its vehicle
     const brainEl = requireElement<HTMLElement>(rootEl, '.brain');
     brainEl.textContent = t('hud.brain.jev');
@@ -6344,7 +6346,7 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     root.classList.toggle('realistic-mode', frame.matchModeState?.id === 'realistic');
     updateSpecialAction(frame.player || playerRef);
-    aerialHud.update(frame.player || playerRef,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden');
+    aerialHud.update(frame.player || playerRef,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V');
     updateDriveReadout(frame.player || playerRef, frame.timeS);
     updateDamagePanelPose(state.camera);
     shotInfo.setPlayer(playerId);

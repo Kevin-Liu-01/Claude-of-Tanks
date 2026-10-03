@@ -3773,8 +3773,8 @@
   "flight.battery": "Drone battery",
   "flight.drone": "FPV · RECON",
   "flight.launching": "LAUNCHING",
-  "flight.gunship": "AC-130 · GUNSHIP",
-  "flight.return": "Return to tank · V",
+  "flight.gunship": "AC-130",
+  "flight.return": "Return to tank",
   "flight.weapon.0": "30 mm cannon",
   "flight.weapon.1": "152 mm HE",
   "flight.weapon.2": "Guided missile",
@@ -3783,5 +3783,10 @@
   "flight.ready": "READY · {ammo}",
   "flight.hint.drone": "WASD fly · Mouse steer · Space climb · Spot enemies or collide to detonate",
   "flight.hint.gunship": "Mouse aim · Click fire · 1 / 2 / 3 weapons · Scroll zoom",
-  "flight.climb": "Climb"
+  "flight.climb": "Climb",
+  "flight.thermal": "THERMAL FEED",
+  "flight.link": "Carrier link distance",
+  "flight.speed": "Airspeed",
+  "flight.zoom": "Scope magnification",
+  "flight.range": "Target distance"
 }

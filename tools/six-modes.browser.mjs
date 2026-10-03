@@ -54,6 +54,8 @@ try{
     await page.screenshot({path:resolve(out,`drone-flight-${suffix}.png`)});
     assert.equal(await page.$eval('.cot-drive',el=>getComputedStyle(el).display),'none','no tank speedometer during FPV flight');
     assert.equal(await page.$eval('.cot-dp',el=>getComputedStyle(el).display),'none','no tank damage panel during FPV flight');
+    const consoleBounds=await page.$eval('.flight-console',el=>{const r=el.getBoundingClientRect();return{top:r.top,left:r.left,right:r.right,bottom:r.bottom};});
+    assert.ok(consoleBounds.top>initialViewport.height/2+12,'flight console stays below the sight');
     if(mobile)await page.tap('.cot-drone-return');else await page.keyboard.press('KeyV');await page.waitForFunction(()=>!window.__DEBUG.game.player.aerial.active);
     reports.push({mode,mobile,before,after,returned:true});
    }else if(mode==='ac130'){
@@ -70,7 +72,7 @@ try{
    }else reports.push({mode,mobile,state:await page.evaluate(()=>window.__DEBUG.game.matchModeState)});
    if(mode==='ac130'){
     const bounds=await page.$eval('.flight-console',el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom};});
-    assert.ok(bounds.x>=0&&bounds.y>=0&&bounds.right<=initialViewport.width&&bounds.bottom<=initialViewport.height,'flight controls fit screen');
+    assert.ok(bounds.x>=0&&bounds.y>initialViewport.height/2+12&&bounds.right<=initialViewport.width&&bounds.bottom<=initialViewport.height,'flight controls fit below sight');
     assert.equal(await page.$eval('.cot-drive',el=>getComputedStyle(el).display),'none','no tank speedometer in gunship');
    }
    if(mode==='gun_game')assert.equal(await page.$$eval('.cot-shell:not([hidden])',els=>els.length),1,'Gun Game exposes only the current weapon');

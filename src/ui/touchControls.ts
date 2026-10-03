@@ -628,7 +628,7 @@ export function createTouchControls({
   // Losing the page (app switch, notification shade, tab change) must drop every held
   // touch: the fire gesture AND the joystick / aim pad / pinch (2026-09-14 touch QA: the
   // knob stayed 40 px off centre and the tank kept driving after a backgrounded hold).
-  const climb=document.createElement('button');climb.type='button';climb.className='flight-climb';climb.textContent=t('flight.climb');root.append(climb);
+  const climb=document.createElement('button');climb.type='button';climb.className='flight-climb';climb.innerHTML=`${uiIconSVG('moveForward',21)}<span>${t('flight.climb')}</span>`;root.append(climb);
   climb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();climb.setPointerCapture(e.pointerId);input.pressVirtual('handbrake');});
   const releaseClimb=()=>input.releaseVirtual('handbrake');
   climb.addEventListener('pointerup',releaseClimb);climb.addEventListener('pointercancel',releaseClimb);climb.addEventListener('lostpointercapture',releaseClimb);

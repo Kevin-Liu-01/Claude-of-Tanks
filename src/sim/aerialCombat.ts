@@ -124,6 +124,12 @@ function advanceDrone(entity:AerialEntity,flight:Flight,shell:ShellEntity<ShellS
   }
   else {
     steerDrone(entity, v, shell, dt);
+    // Small zero-mean air disturbances; the velocity controller continuously corrects them.
+    const phase=flight.born*.73;
+    direction.x+=.1*Math.sin(age*1.7+phase);
+    direction.y+=.12*Math.sin(age*2.3+phase);
+    direction.z+=.08*Math.sin(age*1.9+phase);
+
   }
   if(v.launching) shell.vel.copy(direction);
   else shell.vel.lerp(direction, 1-Math.exp(-dt*AERIAL_RULES.drone.responseHz));

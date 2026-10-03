@@ -40,7 +40,9 @@ smooth lift clear the carrier before the camera eases into first-person
 flight with a monochrome thermal-style treatment. You directly fly it: **W/S**
 move forward or backward, **A/D** strafe, **Space** climbs, and mouse look steers.
 Pitch down and fly forward to descend or dive into a target. Releasing movement
-brakes smoothly into a hover. Touch look and the movement controls use the same
+brakes smoothly into a hover. Light air disturbances, body banking, rotor
+spool-up and continuous stabilization corrections keep the drone visibly airborne;
+the FPV camera filters that motion down to a small stabilized sway. Touch look and the movement controls use the same
 flight inputs, with a dedicated **Climb** button. The flight console shows battery
 time, carrier-link distance, speed, and **Return to tank**. Tank ammunition and
 vehicle controls are hidden while flying.
