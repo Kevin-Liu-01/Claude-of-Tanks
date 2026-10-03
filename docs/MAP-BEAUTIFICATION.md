@@ -6509,8 +6509,8 @@ woodland belts with height, farm clusters and roofs, and roads that visibly cont
 - **The raised exits** (`terrain.ts` `buildRoadElevationGrid`): the landform pass's portal tails carried the authored
   grade over the landform's own ground to the edge. A tail past 430 m now comes down to at most 1.5 m over the land
   under it, and comes back up wherever that would drop it faster than 15 %; a cut is kept. Exits standing more than 5 m
-  over the land 30–40 m beside them: 8 → 2 (Olympus Basin's north road on a ridge just past the edge, 6.5 m; Nordhavn's
-  north road 80 m out, 6.1 m).
+  over the land 30–40 m beside them: 8 → 2 (Olympus Basin's north road on a ridge just past the edge, 6.1 m; Nordhavn's
+  north road 80 m out, 6.3 m).
 - **The track's bed.** The kit's open-line track lies on a ballast bed with shoulders (`mapKits.ts` `layRailSpan`), and
   the ring's ballast is a darker stone grey.
 - **Each map its own country** (`borderLandform.ts` `borderLandformSeed`). Every battle builds at the one terrain seed
