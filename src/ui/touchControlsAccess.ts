@@ -25,6 +25,7 @@ export interface TouchControlsOptions {
   onOpenSettings(): void;
   onToggleSound(): boolean;
   isSniper(): boolean;
+  getFlightKind?(): string | undefined;
 }
 
 interface TouchControlsModule {

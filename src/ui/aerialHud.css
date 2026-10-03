@@ -1,0 +1,70 @@
+.cot-flight-hud{position:absolute;inset:0;pointer-events:none;color:#e1f5ee;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px #000}
+.cot-flight-hud[hidden],.cot-flight-hud [hidden]{display:none!important}
+.flight-sight{position:absolute;left:50%;top:50%;width:42px;height:42px;transform:translate(-50%,-50%);background:
+ linear-gradient(currentColor,currentColor) left top/12px 1px,
+ linear-gradient(currentColor,currentColor) left top/1px 12px,
+ linear-gradient(currentColor,currentColor) right top/12px 1px,
+ linear-gradient(currentColor,currentColor) right top/1px 12px,
+ linear-gradient(currentColor,currentColor) left bottom/12px 1px,
+ linear-gradient(currentColor,currentColor) left bottom/1px 12px,
+ linear-gradient(currentColor,currentColor) right bottom/12px 1px,
+ linear-gradient(currentColor,currentColor) right bottom/1px 12px;background-repeat:no-repeat}
+.flight-sight::after{content:'';position:absolute;left:50%;top:50%;width:3px;height:3px;transform:translate(-50%,-50%);background:currentColor}
+.flight-console{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 48px));padding:10px 12px;background:linear-gradient(145deg,rgba(29,40,48,.96),rgba(7,13,18,.95));border:1px solid #61717b;border-top:2px solid #efad47;box-shadow:0 4px 18px #0009,inset 0 1px #ffffff0c;box-sizing:border-box;pointer-events:auto;color:#e8edf0}
+.flight-heading{display:flex;align-items:center;gap:10px;min-height:38px}
+.flight-emblem{display:flex;align-items:center;justify-content:center;flex:0 0 40px;height:38px;color:#ffc46b;background:#b777222b;clip-path:polygon(24% 0,76% 0,100% 50%,76% 100%,24% 100%,0 50%)}
+.flight-emblem svg{width:23px;height:23px}
+.flight-identity{display:flex;flex-direction:column;gap:3px;min-width:0}
+.flight-identity strong{font-size:12px;letter-spacing:.1em;color:#ffc46b;white-space:nowrap}
+.flight-feed{font-size:8px;font-weight:750;letter-spacing:.16em;color:#91a3af}
+.flight-telemetry{display:flex;gap:10px;align-items:center;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+.flight-instrument{display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap}
+.flight-icon{display:inline-flex;align-items:center;justify-content:center;color:#adbdc8}
+.flight-instrument .flight-icon svg{width:15px;height:15px}
+.flight-battery{display:block;width:100%;height:5px;margin:7px 0 9px;appearance:none;background:#344049;border:0}
+.flight-battery::-webkit-meter-bar{height:5px;background:#344049;border:0;border-radius:0}
+.flight-battery::-webkit-meter-optimum-value{background:#f0b452}.flight-battery::-moz-meter-bar{background:#f0b452}
+.low-battery .flight-battery::-webkit-meter-optimum-value{background:#f26957}.low-battery .flight-instrument:first-child{color:#ff9b7f}
+.flight-weapons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0}
+.flight-weapon,.cot-drone-return{-webkit-tap-highlight-color:transparent;border:1px solid #52616b;border-bottom:2px solid #6b7c89;background:linear-gradient(#25333d,#111b23);color:#e3ebef;font:inherit;cursor:pointer;min-height:44px}
+.flight-weapon{position:relative;display:flex;align-items:center;min-height:62px;padding:8px 18px 8px 8px;gap:7px;text-align:left}
+.flight-weapon-icon{display:flex;flex:0 0 24px;color:#bac8d2}.flight-weapon-icon svg{width:24px;height:30px}
+.flight-weapon-copy{display:flex;flex-direction:column;min-width:0;gap:5px}
+.flight-weapon-copy strong{font-size:11px;line-height:1.15}.flight-weapon small{font-size:9px;letter-spacing:.06em;color:#9dabb6}
+.flight-key{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 2px;border:1px solid #82909a;border-radius:2px;font-family:inherit;font-size:10px;font-weight:700;color:#c1cbd2;box-sizing:border-box}
+.flight-weapon>.flight-key{position:absolute;top:4px;right:4px}
+.flight-weapon[aria-pressed=true]{border-color:#efad47;background:linear-gradient(#5e4828,#2c251a);color:#ffdb9f;box-shadow:inset 0 0 12px #eaa33412}
+.flight-weapon[aria-pressed=true] .flight-weapon-icon,.flight-weapon[aria-pressed=true] small{color:#ffc46b}
+.flight-weapon.reloading small{color:#f5a955}
+.flight-weapon:focus-visible,.cot-drone-return:focus-visible{outline:2px solid #ffe0a6;outline-offset:2px}
+.flight-weapon:active,.cot-drone-return:active{filter:brightness(1.25)}
+.flight-actions{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.flight-hint{font-size:10px;color:#a9b6c0;line-height:1.4;max-width:350px}
+.cot-drone-return{display:flex;align-items:center;gap:7px;padding:6px 9px;flex-shrink:0;font-size:11px}
+.cot-drone-return .flight-icon svg{width:17px;height:17px}
+html[data-flight=drone] .cot-touch .fire,html[data-flight=drone] .cot-touch .scope,html[data-flight=drone] .cot-touch .autoaim,
+html[data-flight=gunship] .cot-touch .joy,html[data-flight=gunship] .cot-touch .autoaim,html[data-flight=gunship] .cot-touch .fire.alt,
+html[data-flight=drone] .cot-touch .jump,html[data-flight=gunship] .cot-touch .jump{display:none!important}
+html[data-flight=gunship] .cot-touch-aim .aimpad{width:100%}
+html[data-flight=gunship] .cot-touch .scope{left:max(16px,env(safe-area-inset-left))!important;right:auto!important}
+html[data-flight=drone] .cot-touch .flight-climb{display:flex}
+.cot-touch .flight-climb{display:none;position:absolute;right:max(16px,env(safe-area-inset-right));bottom:30px;width:64px;height:64px;align-items:center;justify-content:center;border-radius:8px;border:2px solid #d49b45;background:linear-gradient(#403522,#15212a);color:#ffce86;flex-direction:column;gap:3px;pointer-events:auto;touch-action:none;font-size:12px}
+html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.cot-shells,.cot-drive,.cot-dp,.cot-vehicle-controls,.cot-tgt){display:none!important}
+@media(pointer:coarse){
+ .flight-console{width:min(480px,calc(100% - 260px));bottom:max(8px,env(safe-area-inset-bottom));padding:6px 7px}
+ .flight-heading{min-height:30px;gap:6px;flex-wrap:wrap}.flight-emblem{flex-basis:30px;height:30px}.flight-emblem svg{width:20px;height:20px}
+ .flight-identity strong{font-size:10px}.flight-feed{font-size:7px}.flight-instrument{font-size:10px}.flight-telemetry{gap:8px}
+ .flight-telemetry{flex:1 0 auto}.flight-instrument .flight-icon svg{width:12px;height:12px}
+ .flight-battery{height:3px;margin:4px 0}.flight-battery::-webkit-meter-bar{height:3px}
+ .flight-hint{display:none}.flight-actions{justify-content:flex-end}.cot-drone-return{min-height:44px;padding:4px 7px;font-size:10px}
+ .flight-weapon{min-height:57px;padding:5px 3px;flex-direction:column;gap:3px;justify-content:center;text-align:center}
+ .flight-weapon-icon{flex-basis:auto}.flight-weapon-icon svg{width:20px;height:21px}
+ .flight-weapon-copy{gap:3px}.flight-weapon-copy strong{font-size:9px}.flight-weapon small{font-size:8px}.flight-weapons{margin-bottom:0;gap:4px}
+ .flight-key{min-width:13px;height:14px;font-size:9px}.flight-weapon>.flight-key{top:2px;right:2px}
+}
+@media(max-width:450px) and (orientation:portrait){.flight-console{width:calc(100% - 24px);bottom:175px}}
+
+@media(pointer:coarse) and (max-width:520px) and (orientation:landscape){.flight-console{width:calc(100% - 230px)}}
+@media(pointer:coarse){.cot-flight-hud[data-kind=gunship] .flight-console{width:min(480px,calc(100% - 190px))}}
+
+.flight-climb svg{width:21px;height:21px}

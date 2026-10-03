@@ -133,6 +133,7 @@ interface FxDecalVisual {
 }
 
 interface FxEntity {
+  aerial?: {active:boolean;yaw:number};
   visual: FxVisual;
   state: {
     pos?: THREE.Vector3;
@@ -228,6 +229,8 @@ interface SmokeColumn {
 }
 
 interface LiveShell {
+  ageS?: number;
+  shooterId?: ShellId;
   rocket?: boolean;
   id: ShellId;
   pos: THREE.Vector3;
@@ -3678,7 +3681,10 @@ function* createFxSteps(
       if (shell.dead) continue;
       if (shell.spec?.tracer === 'DRONE') {
         // The FPV camera sits inside its airframe; retain the launch/remote silhouette.
-        if (shell.pos.distanceToSquared(camera.position) > 4) drones.write(shell.pos, shell.vel);
+        if (shell.pos.distanceToSquared(camera.position) > 4) {
+          const flyer=decalEntityFor(shell.shooterId)?.aerial;
+          drones.write(shell.pos,shell.vel,shell.id,flyer?.active?flyer.yaw:undefined,shell.ageS);
+        }
         continue;
       }
       const guided = !!shell.spec?.guided || shell.rocket === true;

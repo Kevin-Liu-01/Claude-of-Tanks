@@ -8,18 +8,19 @@ import { minimapYawForHeading } from './minimapOrientation.ts';
 const source = await readFile(new URL('./hud.ts', import.meta.url), 'utf8');
 const spotById = new Map();
 const functions = source.slice(source.indexOf('  function spotMemoryFor('), source.indexOf('  function isSpotted('));
-const update = new Function('spotById', 'SPOT_RANGE_M', 'SPOT_PERSIST_S', 'hasLOS',
-  stripTypeScriptTypes(functions) + '\nreturn updateSpotting;')(spotById, 500, 5, () => true);
 const player = { id:'player', isPlayer:true, state:{pos:{x:0,y:0,z:0},yaw:0} };
+// Spotting and blips read the player's team (Infected converts players); this player keeps the default side.
+const update = new Function('spotById', 'SPOT_RANGE_M', 'SPOT_PERSIST_S', 'hasLOS', 'playerRef',
+  stripTypeScriptTypes(functions) + '\nreturn updateSpotting;')(spotById, 500, 5, () => true, player);
 const enemy = { id:'enemy', team:'enemy', modeActive:true, state:{pos:{x:100,y:0,z:30},yaw:0.7}, combat:{destroyed:false} };
 let seen = true;
 const frame = { player, tanks:[player,enemy], timeS:10, spotting:{isSpotted:()=>seen} };
 const tick = () => { frame.timeS += 1; update(frame); };
 const ghosts=[], live=[];
 const blipSource = source.slice(source.indexOf('  function pushTankMinimapBlip('), source.indexOf('  function collectMinimapTankBlips('));
-const drawBlip = new Function('spotById','worldToMap','pushLiveBlip','drawGhostMarker','mmCtx','PEN_GREEN','PEN_RED',
+const drawBlip = new Function('spotById','worldToMap','pushLiveBlip','drawGhostMarker','mmCtx','PEN_GREEN','PEN_RED','playerRef',
   stripTypeScriptTypes(blipSource)+'\nreturn pushTankMinimapBlip;')(
-  spotById,(x,z)=>[x,z],(...args)=>live.push(args),(...args)=>ghosts.push(args),{},'green','red');
+  spotById,(x,z)=>[x,z],(...args)=>live.push(args),(...args)=>ghosts.push(args),{},'green','red',player);
 
 tick();
 assert.equal(spotById.get(enemy.id).vis,true);

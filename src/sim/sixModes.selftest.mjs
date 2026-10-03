@@ -54,14 +54,15 @@ function mode(id,entities,arrangement=null){return createMatchModeController({mo
  assert.ok(e.aerial.y>0);assert.equal(e.state.pos.y,0,'parked tank stays on ground');
  e.input.throttle=0;e.input.steer=0;e.input.brake=false;const hoverY=shells[0].pos.y;
  for(let i=0;i<30;i++){stepAerial(e,9+i/60,1/60,()=>id++,s=>shells.push(s));stepShell(shells[0],1/60);}
- assert.equal(shells[0].pos.y,hoverY,'multiple fixed steps preserve hover without inventing climb input');
+ assert.ok(Math.abs(shells[0].pos.y-hoverY)<.3,'braking settles vertical inertia without inventing climb');
+ const settled=shells[0].vel.length();assert.ok(settled<5,'released controls brake instead of coasting indefinitely');
  shells[0].dead=true;stepAerial(e,10,1/60,()=>id++,s=>shells.push(s));assert.equal(e.aerial.active,false);assert.equal(e.aerial.cooldownS,AERIAL_RULES.drone.cooldownS);
  e.input.auxiliaryBits=PLAYER_ACTION_BITS.DRONE;stepAerial(e,11,1/60,()=>id++,s=>shells.push(s));assert.equal(shells.length,1,'cooldown rejects launch');
  e.input.auxiliaryBits=PLAYER_ACTION_BITS.DRONE;stepAerial(e,40,1/60,()=>id++,s=>shells.push(s));assert.equal(shells.length,2);
  e.combat.destroyed=true;stepAerial(e,41,1/60,()=>id++,s=>shells.push(s));assert.equal(shells[1].dead,true);assert.equal(e.aerial.active,false);
 }
 {
- const e=tank('gunship');initializeAerial(e,matchRulesetFor('ac130'));setModeWeapon(e,'gunship');stepAerial(e,5,1/60,()=>0,()=>{});
+ const e=tank('gunship');initializeAerial(e,matchRulesetFor('ac130'));assert.equal(e.state.pos.y,AERIAL_RULES.gunship.altitudeM,'aircraft is airborne before the first step');setModeWeapon(e,'gunship');stepAerial(e,5,1/60,()=>0,()=>{});
  assert.equal(e.spec.gun.shells.length,3);assert.equal(e.spec.gun.shells[1].caliberMm,152);assert.equal(e.spec.gun.shells[2].guided,true);
  assert.equal(e.state.pos.y,AERIAL_RULES.gunship.altitudeM);assert.ok(Math.abs(Math.hypot(e.state.pos.x,e.state.pos.z)-AERIAL_RULES.gunship.radiusM)<1e-6);
  const hostile=tank('ground','bravo');initializeAerial(hostile,matchRulesetFor('ac130'));assert.equal(hostile.aerial,undefined);

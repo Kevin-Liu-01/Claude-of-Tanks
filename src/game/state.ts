@@ -1057,7 +1057,7 @@ function createBattleBot(
       getEnemies: () => {
         enemyScratch.length = 0;
         for (const candidate of context.game.tanks) {
-          if (candidate.team !== entity.team && !candidate.combat.destroyed) {
+          if (candidate.team !== entity.team && candidate.modeActive !== false && !candidate.combat.destroyed && !isGunship(candidate)) {
             enemyScratch.push(candidate);
           }
         }
@@ -1351,7 +1351,7 @@ export function setupBattle(
       ent.visual?.resetDestroyed?.();
       ent.visual?.setVisible(true);
       refreshContactGeometry(ent);
-      for (let tick = 0; tick < 30; tick++) {
+      for (let tick = 0; !isGunship(ent) && tick < 30; tick++) {
         updateTank(ent, world.heightField, SIM_DT);
       }
       ent.visual?.syncFromState?.(ent.state);

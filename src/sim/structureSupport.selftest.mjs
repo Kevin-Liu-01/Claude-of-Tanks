@@ -66,9 +66,10 @@ assert.equal(field2.getHeightAt(72, 20), 12);
 
 // --- wiring: both sims ride the support field
 const state = readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8');
-assert.match(state, /support\.beginHull\(entity\.state\.pos\.x, entity\.state\.pos\.z,\n\s*entity\.state\.pos\.y \+ \(entity\.contactGeom\?\.bottomYM \?\? 0\)\);\n\s*updateTank\(entity, support, SIM_DT, collider\.collide\);/,
+// (the Drone mode parks a pilot's hull between the two, 2026-10-02: the order and arguments are what matter)
+assert.match(state, /support\.beginHull\(entity\.state\.pos\.x, entity\.state\.pos\.z,\n\s*entity\.state\.pos\.y \+ \(entity\.contactGeom\?\.bottomYM \?\? 0\)\);[\s\S]{0,700}?updateTank\(entity, support, SIM_DT, collider\.collide\);/,
   'the solo step selects the hull and rides the support field');
 const authority = readFileSync(new URL('./authoritativeMatch.ts', import.meta.url), 'utf8');
-assert.match(authority, /structureSupport\.beginHull\(entity\.state\.pos\.x, entity\.state\.pos\.z, entity\.state\.pos\.y\);\n\s*updateTank\(entity, structureSupport, dt, collideMovingEntity\);/,
+assert.match(authority, /structureSupport\.beginHull\(entity\.state\.pos\.x, entity\.state\.pos\.z, entity\.state\.pos\.y\);[\s\S]{0,700}?updateTank\(entity, structureSupport, dt, collideMovingEntity\);/,
   'the authority rides the same field');
 console.log('structureSupport.selftest: containment per primitive, standable tops, field composition and sim wiring');
