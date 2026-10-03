@@ -152,11 +152,11 @@
       "concealers": 3574
     },
     "copper_mesa": {
-      "bytes": 986587,
-      "sha256": "07157ce443c7b21a2bfe9e337222de4a2bb91ce0951cf2370235d18ab6db1b03",
-      "obstacles": 2805,
-      "colliders": 2705,
-      "concealers": 1984
+      "bytes": 923503,
+      "sha256": "c7e6290d0b43b4f997127ea728c56f844d7b766c73586ad5af78e2cb29de5cfa",
+      "obstacles": 2803,
+      "colliders": 2667,
+      "concealers": 2094
     },
     "airfield": {
       "bytes": 1287692,

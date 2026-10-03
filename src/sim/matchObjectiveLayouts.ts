@@ -77,5 +77,9 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // runway's centre are level aprons in the map file.
   airfield: { kickoff: { x: 0, z: 0 }, zones: [{ x: -225, z: -150 }, { x: 0, z: 0 }, { x: 225, z: 150 }] },
   skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
-  copper_mesa: { zones: [{ x: 95.75601429460295, z: 25.16493186989846 }, { x: 103.52551824388397, z: -48.38643546884091 }, { x: 159.75453586673763, z: -8.089799185507083 }] },
+  // Copper Mesa (layout brief, 2026-10-02): the zones keep their validated seats on the loading shelf; the turbo-ball
+  // kickoff is the bounded search's validated seat by the pit's rim, which both teams reach over near-equal drives.
+  copper_mesa: { kickoff: { x: -42.48600289336476, z: -3.085425678063796 }, zones: [
+    { x: 95.75601429460295, z: 25.16493186989846 }, { x: 103.52551824388397, z: -48.38643546884091 },
+    { x: 159.75453586673763, z: -8.089799185507083 }] },
 };

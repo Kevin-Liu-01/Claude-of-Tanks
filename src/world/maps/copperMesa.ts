@@ -7,25 +7,32 @@ export default {
   id: 'copper_mesa', name: 'Copper Mesa Mine',
   blurb: 'Ore terraces and haul-road switchbacks encircle an abandoned open-pit mine',
   terrain: {
-    hillScale: 0.9, microScale: 0.8, rimH: 38, quarryBenches: true,
+    hillScale: 0.72, microScale: 0.8, rimH: 38, quarryBenches: true,
     village: { x0: 64, x1: 256, z0: -190, z1: 128, cx: 160, cz: -24, feather: 40, flatten: 0.78, relief: 0.18 },
     roads: { paths: roundRoadBends([
       // A stepped loading apron on the eastern shelf puts the gantries and
       // stores beside the haul road; the pit floor remains a separate lane.
-      [[84, -464], [236, -298], [148, -146], [148, -68], [218, -68], [218, 90], [206, 272], [106, 462]],
+      [[84, -464], [236, -298], [148, -146], [148, -68], [194, -68], [218, -44], [218, 90], [206, 272], [106, 462]],
       [[-326, -462], [-354, -288], [-338, -86], [-258, 90], [-170, 284], [-72, 462]],
-      [[-88, -454], [-206, -286], [-192, -136], [-78, -86], [-112, 48], [-44, 190], [4, 458]],
+      // 2026-10-02 (maps lane B): the pit lane skirts the mud pan's west side and climbs the north benches in a long
+      // curve, under the brief's road grade at every terrain seed (it went straight up them at up to 19 %).
+      [[-88, -454], [-206, -286], [-192, -136], [-78, -86], [-110, -10], [-114, 44], [-84, 94], [-62, 140], [-44, 190],
+        [4, 458]],
       [[354, -444], [376, -230], [364, -26], [338, 170], [328, 354], [290, 470]],
       [[-258, 90], [-104, 168], [28, 90], [136, 90], [218, 90], [338, 170]],
     ]) },
     marshes: [{ x: -66, z: 32, r: 38, dip: 0.8 }],
     landforms: [
       { kind: 'basin', x: -78, z: 20, rx: 178, rz: 214, height: -11.0, corridorScale: 0.7 },
-      { kind: 'ridge', x: -298, z: 40, length: 430, width: 78, height: 11.2, yawDeg: 18 },
+      { kind: 'ridge', x: -322, z: 58, length: 430, width: 78, height: 11.2, yawDeg: 18 },
       { kind: 'ridge', x: 130, z: 56, length: 400, width: 74, height: 8.4, yawDeg: -8 },
       { kind: 'ridge', x: -58, z: 260, length: 280, width: 64, height: 8.6, yawDeg: 88 },
       { kind: 'knoll', x: -186, z: -250, rx: 104, rz: 58, height: 5.8 },
       { kind: 'knoll', x: 310, z: -250, rx: 72, rz: 78, height: 6.8 },
+      // 2026-10-02 (maps lane B): the waste-rock dumps the haulage tipped beside the pit's south and north approaches,
+      // flat-topped spoil heaps that screen each assembly ground from the other.
+      { kind: 'knoll', x: -72, z: -296, rx: 76, rz: 34, height: 8.5, yawDeg: 8, corridorScale: 1 },
+      { kind: 'knoll', x: -12, z: 300, rx: 72, rz: 34, height: 8.5, yawDeg: -6, corridorScale: 1 },
     ],
   },
   spawns: { player: { x: -104, z: -394 }, enemies: [
@@ -58,7 +65,7 @@ export default {
     wallStyle: 'fieldstone', wallStoneChance: 0.8,
     wallRuns: [[110, -162, 110, -106, 2], [172, -116, 232, -116, 2], [246, -40, 246, 22, 3], [166, 118, 230, 118, 2], [-126, -244, -58, -244, 3], [-326, 96, -326, 168, 2]],
     well: false, hayCrates: false, fences: true, telegraph: false, carts: false, logs: false,
-    rocks: 224, outcrops: 42, craters: 52, rubblePiles: 26, sandbagLines: 16, hedgehogs: 12,
+    rocks: 180, outcrops: 24, craters: 52, rubblePiles: 26, sandbagLines: 16, hedgehogs: 12,
     tankWrecks: { era: 'modern', count: 5, debris: true,
       ids: ['m551_sheridan', 'm60a2', 'm1a1', 'bmp3', 'm60a3'] },
     inhabit: { stalls: 0, benches: 2, coreClutter: 22, drums: 12, trucks: 7, jeeps: 3, drumClusters: 6, camps: 2, modernClutter: 22, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
