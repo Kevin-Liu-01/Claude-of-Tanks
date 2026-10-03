@@ -49,6 +49,7 @@ import { CLOUD_BLUE_SIZE, CLOUD_CURL_SIZE, CLOUD_DETAIL_SIZE, CLOUD_SHAPE_SIZE, 
 import { cloudLayerKey, type CloudLayerPreset } from './cloudPresets.ts';
 import { resolvePresetName } from './quality.ts';
 import { publishCloudShade, type CloudShadeUniforms } from './cloudShadeMap.ts';
+import { lightTune } from './lightModelCore.ts';
 import {
   CLOUD_CONTRAIL_MAX, CLOUD_FOGBANK_RANGE_M, CLOUD_RAIN_RANGE_M, CLOUD_RAIN_SAMPLES,
   applyCloudWeatherPreset, createCloudWeatherUniforms,
@@ -151,6 +152,8 @@ export const CLOUD_FAR_SHADE_SIZE = 512;
 export const CLOUD_FAR_SHADE_SPAN_M = 12000;
 /** Frames between refreshes (a 6 m/s wind moves the field under a metre; a texel is 23 m). */
 export const CLOUD_FAR_SHADE_EVERY = 8;
+/** 2026-10-03: the far cumuliform field's thinning past ~9 km (cloudWeather; QA: __LIGHT_TUNE.CLOUD_FAR_THIN). 0 = off until a lab shows it. */
+export const CLOUD_FAR_THIN = 0;
 /** The share of the sun a cloud core takes (the map's darkest texel). */
 export const CLOUD_SHADOW_CORE = 0.62;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
@@ -355,6 +358,8 @@ uniform float uLumps;
 uniform float uBaseFlat;
 // 2026-10-03: a deck's definition (CloudLayerPreset.deckDetail; 0 = round 76's deck)
 uniform float uDeckDetail;
+// 2026-10-03: the far cumuliform field's thinning (CLOUD_FAR_THIN; 0 = off)
+uniform float uFarThin;
 uniform vec3 uSkyIrradiance;
 uniform float uHang;
 // QA: 1 = no depth-above term, 2 = no detail erosion, 3 = no light march, 4 = flat white density (structure only),
@@ -390,10 +395,15 @@ Weather cloudWeather( vec2 pxz ) {
 	o.roll = st.r;
 	// the street share fades past four kilometres: the far field reads as scattered cumulus, not as rolls
 	// converging on the horizon (71c)
-	float farK = smoothstep( 4000.0, 11000.0, length( pxz - uCamPos.xz ) );
+	float farD = length( pxz - uCamPos.xz );
+	float farK = smoothstep( 4000.0, 11000.0, farD );
 	// (2026-10-03: the far cells take the cumulus-field gate too — ungated, a street regime's far half came back as the even
 	// popcorn the fields remove: 41 % of Saltwind's and Saltmere Bay's far field at streets 0.75)
 	field = mix( field, mix( w.r, w.b, uFieldMix ) * cloudGate, uStreets * 0.55 * farK );
+	// 2026-10-03 (the gauntlet's wave 4: "fewer small puffs near the horizon"): past ~9 km a cumuliform field's cut rises by
+	// a share of its coverage, so the marginal cells — the small puffs perspective piles along the horizon — thin out while
+	// the large masses stand (the decks keep their far rows: they are the horizon's own sheet)
+	if ( uFarThin > 0.0 ) field -= uFarThin * ( 1.0 - uStratiform ) * smoothstep( 9000.0, 20000.0, farD ) * uCoverage * 0.5;
 	float anvilField = st.g;
 	// the field is equalised: the map's coverage admits exactly that fraction; inside, the local coverage runs
 	// 0..1 (skewed high) and carves the base shape into masses — a region is never one solid slab
@@ -1430,7 +1440,7 @@ export class VolumetricCloudLayer {
         uCirrus: { value: 0 }, uCirrusDir: { value: new THREE.Vector2(1, 0) }, uCirrusAlt: { value: 10000 }, uCirrusShift: { value: new THREE.Vector2() }, uCirrusDensity: { value: 0.7 },
         uFarBand: { value: 0 }, uFarBandAlt: { value: 2000 }, uFarBandShift: { value: new THREE.Vector2() },
         uStepScale: { value: 1 }, uDebug: { value: 0 },
-        uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 }, uBaseFlat: { value: 0 }, uDeckDetail: { value: 0 },
+        uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 }, uBaseFlat: { value: 0 }, uDeckDetail: { value: 0 }, uFarThin: { value: 0 },
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
         // 2026-10-01: the weather layers beyond the slab (cloudWeatherLayers.ts)
         ...createCloudWeatherUniforms(),
@@ -1816,6 +1826,8 @@ export class VolumetricCloudLayer {
     // (the trails drift by the upper wind in world space; their placement is relative to the map's origin, never wrapped
     // across their own length — the drift wraps at the cirrus tile, far past the ±26 km the trails span)
     (t.uUpperDrift.value as THREE.Vector2).copy(ud);
+    // (2026-10-03: the far field's thinning, read per frame so a lab can sweep it: CLOUD_FAR_THIN)
+    t.uFarThin.value = lightTune('CLOUD_FAR_THIN', CLOUD_FAR_THIN);
     // (no datum yet: the camera stands on the layer's base, the haze law of a camera on the ground)
     t.uHazeDatum.value = Number.isFinite(this.hazeDatum) ? this.hazeDatum : camera.position.y;
     this.applyPresetUniforms(preset);

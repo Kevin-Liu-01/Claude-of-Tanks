@@ -6,7 +6,7 @@
 // regimes that take them (a stratiform deck never does).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { CLOUD_CLUSTER_GAP, CLOUD_CLUSTER_PERIOD_K } from './volumetricClouds.ts';
+import { CLOUD_CLUSTER_GAP, CLOUD_CLUSTER_PERIOD_K, CLOUD_FAR_THIN } from './volumetricClouds.ts';
 import { CLOUDSCAPE_REGIMES } from './cloudscapes.ts';
 
 const here = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
@@ -37,6 +37,12 @@ assert.match(clouds, /cloudGate = mix\( 1\.0, \$\{f\(CLOUD_CLUSTER_GAP\)\} \+ \$
 // (2026-10-03) the trace's far-field re-mix toward the cells takes the same gate (a street regime's far half was ungated)
 assert.match(clouds, /field = mix\( field, mix\( w\.r, w\.b, uFieldMix \) \* cloudGate, uStreets \* 0\.55 \* farK \);/, 'the far cells gated alike');
 assert.match(clouds, /float cloudGate = 1\.0;/); assert.match(clouds, /\tcloudGate = 1\.0;\n\tif \( uCluster > 0\.0 \) \{/, 'reset per call');
+
+// ---- the far field's thinning (2026-10-03; wave 4: "fewer small puffs near the horizon"): cumuliform only, past ~9 km,
+// a share of the coverage off the cut; off until a lab shows it, read per frame for a sweep
+assert.equal(CLOUD_FAR_THIN, 0, 'off by default');
+assert.match(clouds, /if \( uFarThin > 0\.0 \) field -= uFarThin \* \( 1\.0 - uStratiform \) \* smoothstep\( 9000\.0, 20000\.0, farD \) \* uCoverage \* 0\.5;/, 'the far cut');
+assert.match(clouds, /t\.uFarThin\.value = lightTune\('CLOUD_FAR_THIN', CLOUD_FAR_THIN\);/, 'per frame');
 
 // ---- a deck's definition (2026-10-03; the gauntlet's wave 5: "a flat, blurry, low-definition overcast sky ... reads as a
 // placeholder skybox"): a knob every deck regime can take, 0 = round 76's deck (no regime takes it until a lab shows it)
