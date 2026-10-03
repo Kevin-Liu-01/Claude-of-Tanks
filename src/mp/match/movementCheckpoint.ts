@@ -9,10 +9,15 @@
  * with the same field order so a sim change moves both sides together.
  * Version 2 (impact physics, 2026-09-25) adds the terrain fit's pure
  * least-squares pitch, which the two-point settle now measures against.
+ * Version 3 (bots lane, 2026-10-02) adds the roof a hull rests on
+ * (`_body.restSupportY`, flag bit 10): the authority's contact pass seats a
+ * hull that settled on another hull's roof every tick, and the client's replay
+ * has no contact pass, so without it a hull resting on a wreck sank toward the
+ * terrain in every replay and was pulled back up by every snapshot.
  */
 import type { MovementContactGeometry, TankState } from '../../sim/movement.ts';
 
-export const MOVEMENT_CHECKPOINT_VERSION = 2;
+export const MOVEMENT_CHECKPOINT_VERSION = 3;
 
 const SCALARS = ['yawRate', 'turretYawRate', 'suspensionAimPitch', 'bloomF',
   '_prevSpeed', '_spool', '_fanYield', '_perch', '_gunLimitHoldS', '_swayEst',
@@ -23,11 +28,11 @@ const TERRAIN = ['pitch', 'roll', 'fitPitch'] as const;
 const RIDE = ['y', 'v', 'groundV', 'airTime'] as const;
 const TRACK = ['l', 'r'] as const;
 const SUPPORT = ['yaw', 'pitch', 'roll', 'y', 'floorY'] as const;
-const EXTRA_VALUES = 5;
+const EXTRA_VALUES = 6;
 export const MOVEMENT_CHECKPOINT_VALUES = SCALARS.length + SPRING.length + TERRAIN.length + ROCK.length * 2 +
   RIDE.length + TRACK.length + SUPPORT.length + EXTRA_VALUES;
 const MAX_ABS_VALUE = 1_000_000;
-const MAX_FLAGS = 1023;
+const MAX_FLAGS = 2047;
 
 export interface MovementCheckpoint {
   version: number;
@@ -65,15 +70,17 @@ export function captureMovementCheckpoint(state: TankState): MovementCheckpoint 
   append(values, state._sup, SUPPORT);
   const supportInitialized = Number.isFinite(state._ride.supportY);
   const cacheInitialized = Number.isFinite(state._sup.x) && Number.isFinite(state._sup.z);
+  const restInitialized = Number.isFinite(state._body.restSupportY);
   values.push(supportInitialized ? state._ride.supportY : 0,
     state._body.landingBlendS, state._rollover.elapsedS,
-    cacheInitialized ? state._sup.x : 0, cacheInitialized ? state._sup.z : 0);
+    cacheInitialized ? state._sup.x : 0, cacheInitialized ? state._sup.z : 0,
+    restInitialized ? state._body.restSupportY : 0);
   if (!validMovementValues(values)) return null;
   const flags = Number(supportInitialized) | Number(state._ride.grounded) << 1 |
     Number(state._body.tumbling) << 2 | Number(state._body.dynamicSupport) << 3 |
     Number(state._body.autoRighting) << 4 | Number(state._rollover.expired) << 5 |
     Number(state.atGunLimit) << 6 | Number(state.gunLimitSpec) << 7 |
-    Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9;
+    Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9 | Number(restInitialized) << 10;
   return { version: MOVEMENT_CHECKPOINT_VERSION, values, flags };
 }
 
@@ -108,5 +115,7 @@ export function applyMovementCheckpoint(
   state._sup.z = flags & 256 ? values[offset + 4]! : NaN;
   state._sup.rigid = !!(flags & 512);
   state._sup.cg = contact;
+  // the roof the hull rests on: no contact pass runs in the replay, so it holds until the next checkpoint clears it
+  state._body.restSupportY = flags & 1024 ? values[offset + 5]! : NaN;
   return true;
 }

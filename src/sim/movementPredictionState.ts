@@ -14,13 +14,15 @@ const TERRAIN = ['pitch', 'roll', 'fitPitch'] as const;
 const RIDE = ['y', 'v', 'groundV', 'airTime'] as const;
 const TRACK = ['l', 'r'] as const;
 const SUPPORT = ['yaw', 'pitch', 'roll', 'y', 'floorY'] as const;
+// version 3 (bots lane, 2026-10-02): the roof a hull rests on (`_body.restSupportY`, flag bit 10), which the client's
+// replay cannot rebuild without the authority's contact pass
 const VALUE_COUNT = SCALARS.length + SPRING.length + ROCK.length * 2 +
-  TERRAIN.length + RIDE.length + TRACK.length + SUPPORT.length + 5;
+  TERRAIN.length + RIDE.length + TRACK.length + SUPPORT.length + 6;
 const MAX_ABS_VALUE = 1_000_000;
-const MAX_FLAGS = 1023;
+const MAX_FLAGS = 2047;
 
 interface MovementPredictionState {
-  version: 2;
+  version: 3;
   values: number[];
   flags: number;
 }
@@ -58,16 +60,18 @@ export function captureMovementPredictionState(state: TankState): MovementPredic
   append(values, state._sup, SUPPORT);
   const supportInitialized = Number.isFinite(state._ride.supportY);
   const cacheInitialized = Number.isFinite(state._sup.x) && Number.isFinite(state._sup.z);
+  const restInitialized = Number.isFinite(state._body.restSupportY);
   values.push(supportInitialized ? state._ride.supportY : 0,
     state._body.landingBlendS, state._rollover.elapsedS,
-    cacheInitialized ? state._sup.x : 0, cacheInitialized ? state._sup.z : 0);
+    cacheInitialized ? state._sup.x : 0, cacheInitialized ? state._sup.z : 0,
+    restInitialized ? state._body.restSupportY : 0);
   if (!finiteValues(values)) return null;
   const flags = Number(supportInitialized) | Number(state._ride.grounded) << 1 |
     Number(state._body.tumbling) << 2 | Number(state._body.dynamicSupport) << 3 |
     Number(state._body.autoRighting) << 4 | Number(state._rollover.expired) << 5 |
     Number(state.atGunLimit) << 6 | Number(state.gunLimitSpec) << 7 |
-    Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9;
-  return { version: 2, values, flags };
+    Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9 | Number(restInitialized) << 10;
+  return { version: 3, values, flags };
 }
 
 export function applyMovementPredictionState(
@@ -75,7 +79,7 @@ export function applyMovementPredictionState(
 ): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const record = value as Record<string, RuntimeValue>;
-  if (record.version !== 2 || !finiteValues(record.values) ||
+  if (record.version !== 3 || !finiteValues(record.values) ||
       typeof record.flags !== 'number' || !Number.isInteger(record.flags) ||
       record.flags < 0 || record.flags > MAX_FLAGS) return false;
   const values = record.values;
@@ -106,5 +110,6 @@ export function applyMovementPredictionState(
   state._sup.z = flags & 256 ? values[offset + 4] : NaN;
   state._sup.rigid = !!(flags & 512);
   state._sup.cg = contact;
+  state._body.restSupportY = flags & 1024 ? values[offset + 5] : NaN;
   return true;
 }

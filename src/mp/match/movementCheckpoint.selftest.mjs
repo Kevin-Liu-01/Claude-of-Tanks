@@ -25,8 +25,8 @@ function drive(ticks) {
   return state;
 }
 
-assert.equal(MOVEMENT_CHECKPOINT_VERSION, 2, 'impact physics (2026-09-25): the terrain fit carries its pure least-squares pitch');
-assert.equal(MOVEMENT_CHECKPOINT_VALUES, 45);
+assert.equal(MOVEMENT_CHECKPOINT_VERSION, 3, 'bots lane (2026-10-02): the roof a hull rests on rides with the integrator');
+assert.equal(MOVEMENT_CHECKPOINT_VALUES, 46);
 
 const driven = drive(180);
 const ours = captureMovementCheckpoint(driven);
@@ -34,7 +34,7 @@ const theirs = captureMovementPredictionState(driven);
 assert.ok(ours && theirs);
 assert.equal(ours.version, theirs.version);
 assert.equal(ours.flags, theirs.flags);
-assert.deepEqual(ours.values, theirs.values, 'the v2 checkpoint is the v1 layout value for value');
+assert.deepEqual(ours.values, theirs.values, 'the wire checkpoint is the authority layout value for value');
 assert.equal(ours.values.length, MOVEMENT_CHECKPOINT_VALUES);
 
 // Restoring onto a fresh state reproduces the driven integrator exactly (the fields the checkpoint owns).
@@ -60,10 +60,24 @@ assert.ok(Math.abs(f32._ride.y - driven._ride.y) < 1e-4);
 // Rejections leave the state untouched.
 const untouched = createTankState(SPEC, new Vector3(), 0);
 const before = JSON.stringify(captureMovementCheckpoint(untouched));
-assert.equal(applyMovementCheckpoint(untouched, { version: 3, values: ours.values, flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 2, values: ours.values.slice(1), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 2, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 2, values: ours.values, flags: 4096 }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 2, values: ours.values.slice(0, 45), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 4, values: ours.values, flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 3, values: ours.values.slice(1), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 3, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 3, values: ours.values, flags: 4096 }), false);
 assert.equal(JSON.stringify(captureMovementCheckpoint(untouched)), before);
 
-console.log('mp movement checkpoint: 45-value version-2 layout identical to the legacy v2, identity after apply, f32 tolerant, typed rejections pass');
+// Version 3: a hull resting on another hull's roof carries that roof; a free hull carries none (flag bit 10 clear).
+assert.equal(ours.flags & 1024, 0, 'a hull on the ground carries no roof');
+const resting = drive(60);
+resting._body.restSupportY = resting.pos.y + 0.4;
+const roof = captureMovementCheckpoint(resting);
+assert.equal(roof.flags & 1024, 1024, 'a seated hull flags its roof');
+assert.deepEqual(roof.values, captureMovementPredictionState(resting).values, 'both encoders carry the roof');
+const seated = createTankState(SPEC, resting.pos, resting.yaw);
+assert.equal(applyMovementCheckpoint(seated, roof), true);
+assert.equal(seated._body.restSupportY, resting._body.restSupportY, 'the replay starts on the roof');
+assert.equal(applyMovementCheckpoint(seated, ours), true);
+assert.ok(Number.isNaN(seated._body.restSupportY), 'a checkpoint without a roof clears it');
+
+console.log('mp movement checkpoint: 46-value version-3 layout identical to the authority encoder, the roof a hull rests on carried and cleared, identity after apply, f32 tolerant, typed rejections pass');
