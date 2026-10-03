@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
   GROUND_AO_BELLY_VIEW, GROUND_AO_CARD_AMBIENT_SHARE, GROUND_AO_CLIP_SLACK_M, GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_EDGE_M,
-  GROUND_AO_FADE_M, GROUND_AO_HULL_ALBEDO, GROUND_AO_MAX_HULLS, GROUND_AO_RANGE_M, GROUND_AO_REACH, GROUND_AO_TRACK_LIFT_M,
+  GROUND_AO_FADE_M, GROUND_AO_HULL_ALBEDO, GROUND_AO_HULL_SKIN_M, GROUND_AO_MAX_HULLS, GROUND_AO_RANGE_M, GROUND_AO_REACH, GROUND_AO_TRACK_LIFT_M,
   GROUND_AO_TRACK_REACH, GROUND_AO_UNDER_GROUND, VEHICLE_GROUND_OCCLUSION_GLSL, boxSkyOcclusion, combineVehicleGroundOcclusion,
   createVehicleGroundOcclusionUniforms, hullProxyOf, measureVehicleGroundBoxes, updateVehicleGroundOcclusionUniforms,
   vehicleGroundOcclusionLocal, vehicleGroundStrengths,
@@ -93,6 +93,12 @@ assert.ok(F(0, -3.1) > 0.8, `0.3 m inside the rear edge (${F(0, -3.1).toFixed(3)
 assert.ok(F(0, -5) > 0.05 && F(0, -5) < 0.15 && F(0, -7.5) === 0, 'behind the hull it fades, and is gone past its reach');
 assert.ok(F(-1.8, 0.3) > 0.8 && F(-2.2, 0.3) > 0.35 && F(-3.2, 0.3) < 0.2, 'the run\'s contact line, then a short skirt');
 assert.equal(F(0, 0.3, 1.5), 0, 'over the deck: nothing');
+// the hull's own surface over the belly (a marking decal blended over it reads as a card or lit ground): never a receiver
+for (const [x, y, z] of [[1.82, 0.9, 0], [0.5, 1.0, 0.5], [-1.85, 0.6, -2], [0.2, 0.8, 3.75]]) {
+  assert.equal(F(x, z, y), 0, `the hull's skin at ${x}, ${y}, ${z}`);
+  assert.equal(F(x, z, y, unit(0.3, 0.2, 0.9)), 0, 'whatever its normal');
+}
+assert.ok(F(1.82, 0, 0) > 0.4 && F(1.95, 0, 0.9) > 0, 'the ground at the hull\'s foot, and a wall pixel just past its skin, still are');
 assert.ok(F(0, 0.3, -8) === 0, 'a slope far under the hull: nothing');
 // continuous across every edge: the footprint's, the runs' faces and ends, a corner (1 mm steps; a step function would
 // keep its jump at any step, a steep wall-side gradient shrinks with it)
@@ -235,6 +241,7 @@ assert.match(g, /ambShare = A \/ max\( T \+ A, 1e-4 \);/, 'only the ambient shar
 assert.match(g, /return 1\.0 - occ \* ambShare;/);
 assert.ok(!/2\.0404|Jimenez|fract\( sin/.test(g), 'no ground-albedo multi-bounce, no per-pixel noise');
 assert.ok(g.indexOf('if ( !haveN )') > g.indexOf('continue;'), 'the depth normal only for a pixel some hull reaches');
+assert.ok(g.includes(`if ( q.y > b0.y + 0.02 && dOut < ${f4(GROUND_AO_HULL_SKIN_M)} ) continue;`), 'the hull\'s own skin is skipped');
 
 // ---- 8. the wiring: the router's selection, the aerial pass's order, the lever, the ground's albedo
 const post = here('./post.ts'), lighting = here('./lighting.ts');

@@ -69,6 +69,11 @@ export const GROUND_AO_TRACK_REACH = Object.freeze([2, 4] as const);
 export const GROUND_AO_EDGE_M = 0.25;
 /** The receiver's horizon clip drops this far (m) per unit of normal tilt: a wall facing a hull keeps the whole box. */
 export const GROUND_AO_CLIP_SLACK_M = 4;
+/**
+ * A pixel within this far (m) of the hull's footprint and over its belly is the hull itself — a marking decal or glass
+ * blended over it, whose alpha no longer carries the vehicle tag (vehicleOcclusion.ts) — and is never a receiver.
+ */
+export const GROUND_AO_HULL_SKIN_M = 0.12;
 /** Fallbacks for a hull without measured contact geometry: the belly's clearance and a run's width (m). */
 export const GROUND_AO_CLEARANCE_M = 0.45;
 export const GROUND_AO_TRACK_WIDTH_M = 0.6;
@@ -156,6 +161,7 @@ export function vehicleGroundOcclusionLocal(
   const dx = Math.abs(q.x) - b.hx, dz = Math.abs(q.z - hcz) - hhz;
   const dOut = Math.hypot(Math.max(dx, 0), Math.max(dz, 0));
   if (dOut > H * GROUND_AO_REACH[1] || q.y > b.yt || q.y < b.y0 - H * GROUND_AO_REACH[1]) return 0;
+  if (q.y > b.yb + 0.02 && dOut < GROUND_AO_HULL_SKIN_M) return 0;
   const yc = q.y + 0.002 - GROUND_AO_CLIP_SLACK_M * (1 - n.y);
   let occ = 0;
   const bot = Math.max(b.yb, yc);
@@ -383,6 +389,8 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
         vec2 dd = vec2( abs( q.x ) - b0.x, abs( q.z - hcz ) - hhz );
         float dOut = length( max( dd, vec2( 0.0 ) ) );
         if ( dOut > H * ${f(GROUND_AO_REACH[1])} || q.y > b0.z || q.y < b1.w - H * ${f(GROUND_AO_REACH[1])} ) continue;
+        // the hull itself (a marking decal or glass blended over it no longer carries the vehicle tag): never a receiver
+        if ( q.y > b0.y + 0.02 && dOut < ${f(GROUND_AO_HULL_SKIN_M)} ) continue;
         if ( !haveN ) { haveN = true; if ( sunVis >= 0.0 ) N = cotNormalAt( uv, P ); }
         vec3 n = normalize( vec3( dot( m0.xyz, N ), dot( m1.xyz, N ), dot( m2.xyz, N ) ) );
         // each box clipped at the receiver's horizon (exact for a level receiver; a wall facing the hull keeps it whole)
