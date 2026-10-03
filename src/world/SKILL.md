@@ -125,8 +125,10 @@ summits and saddles; the tablelands are shaped by their rim distance (the mask's
 a 700 m talus apron to over half the height, a 50 m caprock cliff, an inset upper tier, alcoves and apron gullies,
 broad buttes (narrow tips stay low cones), tops that clear the ring's skyline or stay behind it; the deck follows the
 map's cloud cover (`horizonPanoramaDeckM`: scattered clouds leave the summits standing, a closed deck keeps them under
-it). A sea sector opens on a coastline that recedes with the sector's weight and leaves the water to the game's own sea;
-`panorama.shore` raises a far shore (Saltwind's mainland across its channel). Before its
+it). A sea sector opens on a coastline that recedes with the sector's weight and leaves the water to the game's own sea; the
+far land falls away within ~12° of any sea sector (no monolith on a headland between two openings, Nordhavn Fjord);
+`panorama.shore` raises a far shore well inside its sector (Saltwind's mainland across its channel). The polar and
+alpine faces carry rock bands (the atlas beds at `cover.bedScale` × their thickness). Before its
 bake the panorama takes the battlefield's own ground and rock means (`setGroundTone`, from refreshHorizonGroundTone).
 `horizonPanorama.selftest.mjs` pins the shell, the atlas mapping and the bake contract; the bake's look is iterated
 offline on SwiftShader (no GPU) before the census.
