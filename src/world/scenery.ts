@@ -367,8 +367,10 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
   let fieldWorks: THREE.BufferGeometry | null = null;
   const works = scenery.fieldWorks;
   if (works && (works.walls || works.banks)) {
+    // (the hard solids already placed: buildings, walls, the rock masses above; not the trees, not the crushable clutter)
+    const solids = ctx.obstacles.filter((ob) => ob.treeIdx == null && !ob.crushable && !SOFT_KINDS.has(ob.kind ?? ''));
     const built = yield* buildFieldWorks(ground, noise, {
-      walls: !!works.walls, banks: !!works.banks, spawns: ctx.spawns, mobile: ctx.mobile, wallTone: works.wallTone, bankTone: works.bankTone,
+      walls: !!works.walls, banks: !!works.banks, spawns: ctx.spawns, solids, mobile: ctx.mobile, wallTone: works.wallTone, bankTone: works.bankTone,
     });
     fieldWorks = built.geometry;
     receipt.fieldWorks = built.receipt;

@@ -358,6 +358,13 @@ function compose(scenery, solids = [], mobile = false) {
   let bankOff = 0;
   for (let i = 0; i < bp.length; i += 3) { const u = ((bp[i] % 40) + 40) % 40; if (Math.min(u, 40 - u) > 1.6) bankOff++; }
   assert.equal(bankOff, 0, 'every bank stands under a hedge line');
+  // a placed solid on a field line (a barn across the x = 40 line): the wall stops short of it
+  const fenced = lay(fields(3, false), { walls: true, banks: false, solids: [{ min: [34, 0, -6], max: [46, 4, 6] }] });
+  const fp = fenced.geometry.attributes.position.array;
+  let inBarn = 0;
+  for (let i = 0; i < fp.length; i += 3) if (fp[i] > 34 && fp[i] < 46 && fp[i + 2] > -6 && fp[i + 2] < 6) inBarn++;
+  assert.equal(inBarn, 0, 'no wall runs through a placed solid');
+  fenced.geometry.dispose();
   const none = lay({ ...fields(3, false), _landUseAt: undefined }, { walls: true, banks: true });
   assert.equal(none.geometry, null, 'no land use, no field works');
   for (const b of [walls, again, phone, banks]) b.geometry.dispose();

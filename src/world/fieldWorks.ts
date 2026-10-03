@@ -21,13 +21,20 @@ interface FieldWorksGround {
   getWaterMaskAt(x: number, z: number): number;
   _roadDist(x: number, z: number): number;
   _villageMask?(x: number, z: number): number;
+  /** The stands' cover (0..1), when the world has applied it: no field is drawn under a closed canopy. */
+  _woodsAt?(x: number, z: number): number;
   _landUseAt?(x: number, z: number, out: FieldSample): FieldSample;
 }
+
+/** A placed solid's footprint (props obstacles): the works keep off it. */
+interface FieldWorksSolid { min: ArrayLike<number>; max: ArrayLike<number> }
 
 interface FieldWorksOptions {
   walls: boolean;
   banks: boolean;
   spawns: ReadonlyArray<{ x: number; z: number }>;
+  /** The hard solids already placed (buildings, walls, rock masses): a wall or a bank never runs through one. */
+  solids?: readonly FieldWorksSolid[];
   mobile: boolean;
   /** sRGB HSL base tones of the wall stone and the bank's earth. */
   wallTone?: readonly [number, number, number];
@@ -75,9 +82,32 @@ export function* buildFieldWorks(
   const heightAt = ground.getHeightAtFast ? (x: number, z: number) => ground.getHeightAtFast!(x, z) : (x: number, z: number) => ground.getHeightAt(x, z);
   const fieldGate = (x: number, z: number): boolean => {
     const vm = ground._villageMask ? ground._villageMask(x, z) : 0;
+    const woods = ground._woodsAt ? ground._woodsAt(x, z) : 0;
     const w = (1 - smooth(0.05, 0.30, vm)) * smooth(5.0, 8.0, ground._roadDist(x, z))
-      * (1 - smooth(0.02, 0.06, 1 - ground.getNormalAt(x, z).y)) * (1 - smooth(0.02, 0.10, ground.getWaterMaskAt(x, z)));
+      * (1 - smooth(0.02, 0.06, 1 - ground.getNormalAt(x, z).y)) * (1 - smooth(0.02, 0.10, ground.getWaterMaskAt(x, z)))
+      * (1 - smooth(0.10, 0.45, woods));
     return w > 0.5;
+  };
+  // the placed solids on an 8 m grid (their footprints grown by the work's half width and a margin)
+  const SOLID_CELL = 8, solidGrid = new Map<number, number[]>();
+  const solids = options.solids ?? [];
+  const solidKey = (cx: number, cz: number) => (cx + 1024) * 2048 + (cz + 1024);
+  solids.forEach((solid, k) => {
+    const x0 = Math.floor((solid.min[0] - 2) / SOLID_CELL), x1 = Math.floor((solid.max[0] + 2) / SOLID_CELL);
+    const z0 = Math.floor((solid.min[2] - 2) / SOLID_CELL), z1 = Math.floor((solid.max[2] + 2) / SOLID_CELL);
+    if (x1 - x0 > 16 || z1 - z0 > 16) return; // a map-sized record is not a placed solid
+    for (let cx = x0; cx <= x1; cx++) for (let cz = z0; cz <= z1; cz++) {
+      const list = solidGrid.get(solidKey(cx, cz)); if (list) list.push(k); else solidGrid.set(solidKey(cx, cz), [k]);
+    }
+  });
+  const inSolid = (x: number, z: number, r: number): boolean => {
+    const list = solidGrid.get(solidKey(Math.floor(x / SOLID_CELL), Math.floor(z / SOLID_CELL)));
+    if (!list) return false;
+    for (const k of list) {
+      const solid = solids[k];
+      if (x > solid.min[0] - r && x < solid.max[0] + r && z > solid.min[2] - r && z < solid.max[2] + r) return true;
+    }
+    return false;
   };
   const step = options.mobile ? 2 : 1.5;
   // the feet on a 2 m hash: one foot a metre or so along a line
@@ -118,7 +148,7 @@ export function* buildFieldWorks(
       const ux = gx / gl, uz = gz / gl;
       const fx = px - ux * e0, fz = pz - uz * e0;
       if (near(fx, fz, 0.9)) continue;
-      if (!fieldGate(fx, fz)) continue;
+      if (!fieldGate(fx, fz) || inSolid(fx, fz, wall ? 0.7 : 1.5)) continue;
       if (options.spawns.some((p) => Math.hypot(p.x - fx, p.z - fz) < SPAWN_CLEAR)) continue;
       const list = hash.get(key(fx, fz));
       if (list) list.push(fx, fz); else hash.set(key(fx, fz), [fx, fz]);
@@ -153,8 +183,11 @@ export function* buildFieldWorks(
     fwd[i] = bf; back[i] = bb;
   }
   // (and the ground between them must admit the work too: a link never bridges a road, a yard or a ditch)
-  const links = (i: number, j: number) => j >= 0 && (fwd[j] === i || back[j] === i)
-    && fieldGate((feet[i * 5] + feet[j * 5]) * 0.5, (feet[i * 5 + 1] + feet[j * 5 + 1]) * 0.5);
+  const links = (i: number, j: number) => {
+    if (j < 0 || (fwd[j] !== i && back[j] !== i)) return false;
+    const mx = (feet[i * 5] + feet[j * 5]) * 0.5, mz = (feet[i * 5 + 1] + feet[j * 5 + 1]) * 0.5;
+    return fieldGate(mx, mz) && !inSolid(mx, mz, feet[i * 5 + 4] === 0 ? 0.7 : 1.5);
+  };
   const edgeA = new Int32Array(count0).fill(-1), edgeB = new Int32Array(count0).fill(-1);
   for (let i = 0; i < count0; i++) {
     if (links(i, fwd[i])) edgeA[i] = fwd[i];
