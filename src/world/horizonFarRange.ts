@@ -132,7 +132,9 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
       const n1 = noise.noise(along / g.lambdaAlong + g.o1, across / g.lambdaAcross + g.o2);
       // the massif itself is rounded (a ridged cusp across a 700 m range at the character's sharpness was a cone
       // seen from the side); the character's sharpness belongs to the serrations on it
-      const r1 = Math.pow(1 - Math.abs(n1), 0.75);
+      // (the mountains lane: with the eroded landform the massif's own crest is rounded — a ridged cusp across the range
+      // is a straight-sided triangle seen from the side, the far skyline's pyramids — and the landform carves the crest)
+      const r1 = options.massif ? Math.pow(Math.max(0, 1 - n1 * n1), 1.4) : Math.pow(1 - Math.abs(n1), 0.75);
       const jitter = noise.noise(along / (g.lambdaAlong * 0.6) + g.jitterPhase, 3.3) * g.lambdaAlong * 0.15;
       // the serrations: one octave at a third of the massif (460–630 m: eight to ten of the 288 columns at the crest
       // row — a finer octave sampled at two to four columns aliased into one-column needles that the step clamp cut

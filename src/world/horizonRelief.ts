@@ -84,14 +84,17 @@ export interface HorizonReliefSettings {
 // round 72b: the far range's own haze is a fifth to a third (was half to two thirds) — the post pass's ring distance law
 // (post.ts AERIAL_RING_*) hazes it again on top, and the two together left the ranges at a fifth of the near contrast at
 // 2 km against the ring's 40 % law
-const FAR_ALPINE: HorizonFarRangeSettings = { ampM: 820, floor: 0.34, hazeIn: 0.20, hazeOut: 0.34, snowline: 0.55, sharpness: 1.7 };
+// the mountains lane (2026-10-02): the alpine, karst and volcanic far peaks stood steeper than the far row's 48-degree bound, so
+// the bound drew their flanks as straight lines — pyramids along the far skyline; 820 -> 660 m (alpine), 520 -> 460 m
+// (karst), 560 -> 500 m (volcanic) with softer serrations keeps their flanks their own
+const FAR_ALPINE: HorizonFarRangeSettings = { ampM: 660, floor: 0.34, hazeIn: 0.20, hazeOut: 0.34, snowline: 0.55, sharpness: 1.3 };
 const FAR_POLAR: HorizonFarRangeSettings = { ampM: 640, floor: 0.30, hazeIn: 0.19, hazeOut: 0.34, snowline: 0.18, sharpness: 1.4 };
 const FAR_ROLLING: HorizonFarRangeSettings = { ampM: 360, floor: 0.40, hazeIn: 0.22, hazeOut: 0.35, snowline: 2, sharpness: 0.85 };
 const FAR_MESA: HorizonFarRangeSettings = { ampM: 470, floor: 0.45, hazeIn: 0.21, hazeOut: 0.35, snowline: 2, sharpness: 0.75 };
-const FAR_VOLCANIC: HorizonFarRangeSettings = { ampM: 560, floor: 0.28, hazeIn: 0.21, hazeOut: 0.35, snowline: 2, sharpness: 1.05 };
+const FAR_VOLCANIC: HorizonFarRangeSettings = { ampM: 500, floor: 0.28, hazeIn: 0.21, hazeOut: 0.35, snowline: 2, sharpness: 0.95 };
 const FAR_COASTAL: HorizonFarRangeSettings = { ampM: 300, floor: 0.35, hazeIn: 0.23, hazeOut: 0.36, snowline: 2, sharpness: 0.9 };
 const FAR_MARTIAN: HorizonFarRangeSettings = { ampM: 1050, floor: 0.50, hazeIn: 0.17, hazeOut: 0.31, snowline: 2, sharpness: 0.6 };
-const FAR_KARST: HorizonFarRangeSettings = { ampM: 520, floor: 0.30, hazeIn: 0.22, hazeOut: 0.36, snowline: 2, sharpness: 1.5 };
+const FAR_KARST: HorizonFarRangeSettings = { ampM: 460, floor: 0.30, hazeIn: 0.22, hazeOut: 0.36, snowline: 2, sharpness: 1.25 };
 
 /** The characters: the vocabulary of each mountain country, from the field guides rather than from one another. */
 const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>> = {

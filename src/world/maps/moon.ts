@@ -46,7 +46,10 @@ export default {
     ],
   },
   horizon: { baseHex: 0x686b73, rockHex: 0x858a94, amp: 1.35, style: 'rolling', treeline: 0,
-    treelineLayers: 0, ground: 'sand', relief: 'martian', haze: 0, grain: .7, farRange: true },
+    treelineLayers: 0, ground: 'sand', relief: 'martian', haze: 0, grain: .7, farRange: true,
+    // the mountains lane (2026-10-02): an airless highland is worn smooth by impacts, not cut by water — the landform
+    // keeps its broad massifs and drops the drainage (no couloirs), its summits rounded (convex, concavity < 1)
+    massif: { erosion: 0, concavity: 0.8, contrast: 0.3, smoothM: 220 } },
   sky: { skyIntensity: 0, nightSky: 1, galaxy: .35, nebulaHex: 0, earth: 1, planetDeg: 18, planetHex: 0x8abdff,
     sunElevationDeg: 28, sunAzimuthDeg: 48, turbidity: 1, rayleigh: 0, mieCoefficient: 0,
     fogDensity: 0, fogMix: 0, envIntensity: .3, cloudOpacity: 0, cloudOpacity2: 0, cloudShadowAmp: 0,

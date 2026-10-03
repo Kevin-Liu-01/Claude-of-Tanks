@@ -94,8 +94,9 @@ interface HorizonConfig {
    * default (a block on another style opts that ring in), or false for none. */
   escarpment?: Partial<EscarpmentSettings> | false;
   /** The mountains lane (2026-10-02): false keeps a ranged ring's round-72b relief (no eroded landform, no range
-   * twist) — the receipts' negative control and an authoring opt-out. */
-  massif?: false;
+   * twist) — the receipts' negative control and an authoring opt-out; an object overrides the character's landform
+   * knobs (horizonMassif.ts MassifSettings) for this ring and its far range. */
+  massif?: false | Partial<MassifSettings>;
   seaOpening?: HorizonSeaOpening;
   /**
    * Terrain-following canopy belts across the visible mountain faces. Off by
@@ -1861,7 +1862,7 @@ function* carveHorizonMassifsSteps(
 ): Generator<void, void, void> {
   const amp = horizon.amp ?? 1;
   // (a near-flat ring — Polders' 30 m dike-country ridge — keeps its round-72 relief, as the slope-break wander does)
-  const massif = relief && relief.settings.rangeCount > 0 && ring.maxHeight >= 60 && horizon.massif !== false ? relief.settings.massif : null;
+  const massif = relief && relief.settings.rangeCount > 0 && ring.maxHeight >= 60 ? resolveMassifSettings(horizon, relief.settings.massif) : null;
   // (Redrock's outland is the analytic canyon, which the continued ground writes over every row: no side canyons there)
   const canyons = !massif && style === 'mesa' && horizon.escarpment !== false && !(mapId === 'badlands' && horizon.redrockCanyon !== false);
   if (!massif && !canyons) return;
@@ -1952,6 +1953,13 @@ function drainSteps<T>(steps: Generator<void, T, void>): T {
   let step = steps.next();
   while (!step.done) step = steps.next();
   return step.value;
+}
+
+/** The ring's landform: the character's, with the map's authored knobs over it (`horizon.massif`), or null when the map
+ * opts out or the character carries none. */
+function resolveMassifSettings(horizon: HorizonConfig, character: MassifSettings | null): MassifSettings | null {
+  if (horizon.massif === false || !character) return null;
+  return typeof horizon.massif === 'object' ? { ...character, ...horizon.massif } : character;
 }
 
 /** The mountains lane: the far range's landform — the ring's at 2.2 x its wavelengths (the tableland rings, which carry
@@ -3542,7 +3550,7 @@ export function* buildHorizonRingSteps(
       treeline: treeline > 0 && treeline < 1.5 ? treeline : 0, seaOpenings, nearMaxHeight: maxH,
       nearEdge: { columns: HORIZON_SEGMENTS, positions: pos, heights: hs },
       detailTexture: mat.userData.horizonDetail2 as THREE.Texture | undefined,
-      massif: H.massif === false ? null : farMassifSettings(reliefSettings.massif),
+      massif: H.massif === false ? null : farMassifSettings(resolveMassifSettings(H, reliefSettings.massif)),
       escarpment: farEscarpmentSettings(H, style),
     });
     if (farRange) mesh.add(farRange);
