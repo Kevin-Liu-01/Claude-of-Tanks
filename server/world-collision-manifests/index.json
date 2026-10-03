@@ -5,10 +5,10 @@
   "vegetationSeed": 2001,
   "maps": {
     "verdant": {
-      "bytes": 1519793,
-      "sha256": "33d6bd93f7f513bbfbca404dd7c6932c0d96fb3daf2fb7802408eec093fec998",
-      "obstacles": 5305,
-      "colliders": 5040,
+      "bytes": 1476239,
+      "sha256": "f80fc937e752889b536b2886e3884d692a067ecdefd88fee83e2f73bdaf7297e",
+      "obstacles": 5121,
+      "colliders": 4857,
       "concealers": 5950
     },
     "desert": {
