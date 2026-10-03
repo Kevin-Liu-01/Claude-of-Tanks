@@ -278,8 +278,8 @@ scenery: {
 The rock material is the boulders' (`rockDressing.ts`): the map's moss, dust and soil laws, the triplanar detail tile
 and the cascade setup, so a tor and the boulders round it are one rock. A geology's tone can be overridden with `tone`
 (sRGB HSL), for example to match a map's `rockTone`. A map whose masonry is its own rock tints the props stone print
-with `scenery.masonryTint` (a linear multiplier): Saltwind's dry stone walls, their posts and its stone houses are the
-pale karst limestone of its outcrops, and every other map keeps its print.
+with `scenery.masonryTint` (a linear multiplier): Saltwind's dry stone walls, their heads and its stone houses are the
+weathered grey karst limestone of its outcrops, and every other map keeps its print.
 
 The field walls (`props.wallRuns`, the `wallstone` module of `maps/inhabitKit.ts`) are dry-stone walls on every map
 whose stone bucket is fieldstone: a battered hearting, face stones in rough courses standing proud of it with their
