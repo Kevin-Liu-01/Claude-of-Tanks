@@ -299,6 +299,10 @@ interface PropsSettings {
    * whatever the ground, roads or aprons under the town have become; the generated road, row and block-fill passes then
    * place nothing more. */
   townPlan?: readonly TownPlanEntry[];
+  /** The light buildings of a recorded settlement (maps/townPlans.generated.ts TOWN_LIGHT_PLANS): each destructible
+   * building's kind and final pose as that build placed it. They stand there whatever the ground has become, and the
+   * light-building pass draws nothing. */
+  townLightPlan?: readonly TownLightEntry[];
   tones: Record<string, ToneFunction | null | undefined>;
   rockTone: ToneFunction | null;
   wallStoneChance: number;
@@ -369,6 +373,9 @@ interface PropsSettings {
 export interface TownPlanEntry {
   structure: string; planIndex: number; wall: string; rng: number; x: number; z: number; rot: number;
 }
+
+/** One light (destructible) building as a recorded build seated it (PropsMapConfig.townLightPlan): its kind and pose. */
+export interface TownLightEntry { kind: string; x: number; z: number; rot: number; }
 
 export interface PropsMapConfig {
   id: string;
@@ -4115,6 +4122,19 @@ ${snowCap ? `
   // Each type becomes one intact InstancedMesh plus an empty broken-state
   // pool, bounded to the handful of families authored by the active map.
   function* placeDestructibleBuildings(): Generator<PropsBuildSlice, void, void> {
+    // a recorded settlement's light buildings stand at their recorded poses, and the pass draws nothing
+    if (P.townLightPlan) {
+      for (const entry of P.townLightPlan) {
+        const meta = DESTRUCTIBLE_BUILDING_TYPES[entry.kind];
+        if (!meta) continue;
+        const fit = groundFit(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot);
+        addDestructible(entry.kind, entry.x, fit.y + 0.04, entry.z, entry.rot);
+        buildingFeatures.push({ x: entry.x, z: entry.z, w: meta.hw * 2, d: meta.hl * 2, rot: entry.rot });
+        placedB.push({ x: entry.x, z: entry.z, rr: Math.hypot(meta.hw, meta.hl) * 0.72 });
+        yield { fine: true };
+      }
+      return;
+    }
     if (!P.destructibleBuildings?.length) return;
     const srng = mulberry32(seed + 17041);
     const lateral = P.destructibleBuildingLat || [9.5, 9.0];

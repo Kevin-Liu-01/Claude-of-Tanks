@@ -25,7 +25,7 @@
 // switchback, the dry-river camp and the eastern shelf battery. The horizon ring still carries the gigantic stacked
 // escarpments beyond the edge without collision or draw calls.
 
-import { TOWN_PLANS } from './townPlans.generated.ts';
+import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -126,6 +126,8 @@ export default {
     ],
     // the town stands as PR #9's head seated it (the owner's town-plan ruling, 2026-10-03), whatever the redesigned ground
     townPlan: TOWN_PLANS.titan_gorge,
+    // and its light buildings (the huts, tents and motor pools) stand where that build placed them too
+    townLightPlan: TOWN_LIGHT_PLANS.titan_gorge,
     // its five buildings that stand in a carriageway move by the least distance that clears it; the rest stay put
     roadBuildingClearance: true,
     blockFill: true, wallStyle: 'adobe', wallStoneChance: 0.18,

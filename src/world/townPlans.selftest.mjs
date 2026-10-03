@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { decodeCollisionManifest } from '../../server/collisionManifestCodec.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
-import { TOWN_PLANS } from './maps/townPlans.generated.ts';
+import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './maps/townPlans.generated.ts';
 
 // The PR head's (0bbb0cddc) 'structure' footprints per map, [centre x, centre z, width, depth] in metres, and how many
 // of them stood in a carriageway there (and so may move off it).
@@ -116,5 +116,19 @@ for (const [mapId, { carriageway, structures }] of Object.entries(PR_HEAD)) {
   }
   assert.ok(moved <= carriageway, `${mapId}: only buildings that stood in a carriageway move (${moved} of ${carriageway})`);
   summary.push(`${mapId} ${exact} exact, ${moved} off a carriageway (up to ${worstMove.toFixed(1)} m)`);
+}
+// Light buildings (props.ts townLightPlan): a replayed settlement replays its huts, tents and sheds as well, so each one
+// the record holds stands at its recorded pose in the committed shard: a destructible of its kind whose footprint holds
+// that point (the pool refits a light building's box to the solids it bears on, up to a metre off its centre).
+assert.deepEqual(Object.keys(TOWN_LIGHT_PLANS).sort(), Object.keys(TOWN_PLANS).sort(), 'every recorded plan records its light buildings');
+for (const [mapId, entries] of Object.entries(TOWN_LIGHT_PLANS)) {
+  assert.equal(getMapConfig(mapId).props.townLightPlan, entries, `${mapId}: the map replays its recorded light buildings`);
+  const obstacles = decodeCollisionManifest(JSON.parse(readFileSync(
+    new URL(`../../server/world-collision-manifests/${mapId}.json`, import.meta.url), 'utf8'))).obstacles;
+  for (const entry of entries) {
+    assert.ok(obstacles.some((o) => o.k === entry.kind && entry.x >= o.b[0] && entry.x <= o.b[3]
+      && entry.z >= o.b[2] && entry.z <= o.b[5]), `${mapId}: the ${entry.kind} stands at its recorded (${entry.x}, ${entry.z})`);
+  }
+  summary.push(`${mapId} ${entries.length} light buildings at their recorded poses`);
 }
 console.log(`townPlans.selftest: ${summary.join('; ')}`);
