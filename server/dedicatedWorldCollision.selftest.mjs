@@ -64,7 +64,7 @@ const expected = {
   orchard: [4923, 4691, 5160],
   longleaf: [6218, 6021, 7183],
   mangrove: [5377, 5156, 6535], // 2026-10-03 regional mekong kit (maps/regional/mekong.ts): the shells follow the region's buildings (was [5377, 5204, 6535]); 2026-10-02 Mangrove Reach redesign (docs/MAP-LAYOUT-BRIEF.md); was [5282, 5127, 6502]
-  saltwind: [3666, 3461, 4131], // 2026-10-03 kits v2: openings cut with reveals, the fish store, loggia and customs house (was [3666, 3429, 4131]); Dalmatian kit (maps/regional/dalmatian.ts): low limestone shells; was [3666, 3469, 4131], [3629, 3392, 4048] before the Saltwind Narrows redesign (docs/MAP-LAYOUT-BRIEF.md), and [3811, 3614, 4260] before its aprons stood on their ground (apron bank law)
+  saltwind: [3666, 3486, 4131], // 2026-10-03 kits v2.2: the ruins' wall heads broken in slopes (was [3666, 3461, 4131]); 2026-10-03 kits v2: openings cut with reveals, the fish store, loggia and customs house (was [3666, 3429, 4131]); Dalmatian kit (maps/regional/dalmatian.ts): low limestone shells; was [3666, 3469, 4131], [3629, 3392, 4048] before the Saltwind Narrows redesign (docs/MAP-LAYOUT-BRIEF.md), and [3811, 3614, 4260] before its aprons stood on their ground (apron bank law)
   reservoir: [6495, 6402, 7349], // 2026-10-03 regional eifel kit (maps/regional/eifel.ts): the shells follow the region's buildings (was [6495, 6368, 7349]); 2026-10-02 Highland Reservoir layout-brief revision and its aprons on their ground (docs/MAP-LAYOUT-BRIEF.md); was [6425, 6300, 7206]
   mars: [769, 715, 0],
   moon: [475, 381, 0],

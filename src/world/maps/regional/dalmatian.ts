@@ -9,7 +9,7 @@ import {
   PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb,
 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { pottedPlant, tvAerial, washingLine } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -323,39 +323,48 @@ const boathouse: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** An abandoned house: the stone shell standing to its gables, window holes, the roof fallen in. */
+/**
+ * An abandoned house (the war of 1991–95 and the emigration before it): the stone shell standing to its gables, the
+ * wall heads broken in slopes, not steps, a breach or two down toward the sill, window holes through the walls that
+ * still stand high enough to hold them, the roof fallen in as a heap of tiles and rubble.
+ */
 const ruin: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   const W = Math.max(5.4, ctx.info.w - 0.3), D = Math.max(7.4, ctx.info.d - 0.3);
   const t = 0.5, H1 = 5.2;
-  const walls: Array<{ x0: number; x1: number; z0: number; z1: number; gable: boolean }> = [
-    { x0: -W / 2, x1: W / 2, z0: D / 2 - t, z1: D / 2, gable: true },
-    { x0: -W / 2, x1: W / 2, z0: -D / 2, z1: -D / 2 + t, gable: true },
-    { x0: -W / 2, x1: -W / 2 + t, z0: -D / 2 + t, z1: D / 2 - t, gable: false },
-    { x0: W / 2 - t, x1: W / 2, z0: -D / 2 + t, z1: D / 2 - t, gable: false },
+  const faces: Array<{ face: Face; gable: boolean }> = [
+    { face: { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, gable: true },
+    { face: { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W }, gable: true },
+    { face: { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D - 2 * t }, gable: false },
+    { face: { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D - 2 * t }, gable: false },
   ];
-  for (const wl of walls) {
-    const alongX = wl.gable;
-    const len = alongX ? wl.x1 - wl.x0 : wl.z1 - wl.z0;
-    const n = 4;
+  for (const { face, gable } of faces) {
+    const L = face.width, n = 8;
+    // the broken head: a height at every station, the gable's slope kept on most of a gable wall
+    const tops: number[] = [];
+    for (let k = 0; k <= n; k++) {
+      const u = -L / 2 + L * k / n, mid = Math.abs(u) / (L / 2);
+      let h = H1 * (0.58 + rng() * 0.38);
+      if (gable && rng() < 0.75) h = Math.max(h, H1 + (1 - mid) * W * 0.18 * (0.6 + rng() * 0.4));
+      tops.push(h);
+    }
+    // a breach: two or three neighbouring stations down near the sill
+    if (rng() < 0.6) { const k = 1 + Math.floor(rng() * (n - 2)); tops[k] = 0.8 + rng() * 0.7; tops[k + 1] = Math.min(tops[k + 1], 1.6 + rng()); }
     for (let k = 0; k < n; k++) {
-      const a = k / n, b = (k + 1) / n;
-      const mid = Math.abs((a + b) / 2 - 0.5);
-      let top = H1 * (0.55 + rng() * 0.45);
-      if (wl.gable) top = Math.max(top, H1 + (0.5 - mid) * W * 0.36 * (rng() < 0.6 ? 1 : 0.4));
-      if (rng() < 0.12) top *= 0.4;
-      if (alongX) sink.span('stone', wl.x0 + len * a, -0.3, wl.z0, wl.x0 + len * b, top, wl.z1);
-      else sink.span('stone', wl.x0, -0.3, wl.z0 + len * a, wl.x1, top, wl.z0 + len * b);
+      const a = -L / 2 + L * k / n, b = -L / 2 + L * (k + 1) / n;
+      wallPolygon(sink, 'stone', face, [[a, -0.3], [b, -0.3], [b, tops[k + 1]], [a, tops[k]]], t);
+    }
+    // window holes where the wall still stands to the lintel
+    if (!gable) {
+      for (const u of [-L * 0.25, L * 0.25]) {
+        const k = Math.min(n - 1, Math.max(0, Math.floor((u + L / 2) / (L / n))));
+        if (Math.min(tops[k], tops[k + 1]) < 4.4) continue;
+        faceBox(sink, 'dark', face, u, 3.6, -t / 2, 0.7, 1.0, t + 0.02, { decor: true });
+      }
     }
   }
-  // dark window holes through the long walls (seen from both sides: the roof is gone), a fallen heap inside
-  for (const side of [-1, 1]) {
-    for (const z of [-D * 0.25, D * 0.25]) {
-      const x0 = side > 0 ? W / 2 - t - 0.01 : -W / 2 - 0.01, x1 = x0 + t + 0.02;
-      sink.span('dark', x0, 3.1, z - 0.35, x1, 4.1, z + 0.35, { decor: true });
-    }
-  }
+  // the fallen roof: a heap of rubble and tiles inside the shell
   sink.span('stone', -W * 0.3, -0.2, -D * 0.25, W * 0.3, 0.9, D * 0.2, { decor: true });
   sink.span('roof', -W * 0.25, 0.85, -D * 0.1, W * 0.2, 1.1, D * 0.15, { decor: true });
   return sink.finish();

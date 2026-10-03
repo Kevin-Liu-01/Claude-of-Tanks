@@ -255,14 +255,19 @@ const ruin: RegionalBuilder = (ctx) => {
   const rng = ctx.rng;
   const W = Math.max(5.4, ctx.info.w - 0.3), D = Math.max(7.4, ctx.info.d - 0.3);
   const t = 0.55;
-  for (const [x0, z0, x1, z1] of [[-W / 2, -D / 2, -W / 2 + t, D / 2], [W / 2 - t, -D / 2, W / 2, D / 2], [-W / 2 + t, -D / 2, W / 2 - t, -D / 2 + t]] as const) {
-    const along = Math.abs(x1 - x0) > Math.abs(z1 - z0);
-    const n = 4;
+  // the long walls and the back gable broken down to their lower courses, their heads in slopes, a gap or two
+  const lows: Face[] = [
+    { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D - t },
+    { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D - t },
+    { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W - 2 * t },
+  ];
+  for (const face of lows) {
+    const L = face.width, n = 6;
+    const tops = Array.from({ length: n + 1 }, () => 0.9 + rng() * 2.0);
+    if (rng() < 0.5) tops[1 + Math.floor(rng() * (n - 2))] = 0.3;
     for (let k = 0; k < n; k++) {
-      if (rng() < 0.2) continue;
-      const a = k / n, b = (k + 1) / n, top = 1.0 + rng() * 1.8;
-      if (along) sink.span('stone', x0 + (x1 - x0) * a, -0.3, z0, x0 + (x1 - x0) * b, top, z1);
-      else sink.span('stone', x0, -0.3, z0 + (z1 - z0) * a, x1, top, z0 + (z1 - z0) * b);
+      const a = -L / 2 + L * k / n, b = -L / 2 + L * (k + 1) / n;
+      wallPolygon(sink, 'stone', face, [[a, -0.3], [b, -0.3], [b, tops[k + 1]], [a, tops[k]]], t);
     }
   }
   // the standing gable with its stack
