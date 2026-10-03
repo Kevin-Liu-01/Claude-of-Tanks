@@ -1013,8 +1013,11 @@ function* heightFieldBuildSteps(
   });
   const border = createBorderLandform(seed, T.rimH, resolveBorderLandform(cfg?.horizon?.style, T.border, cfg?.id),
     [...roadExitLines, ...railExitValleys]);
-  /** The classic rim lift rimH · s(r)² (s = smoothstep(430, 512, r)): what the water authoring queries keep. */
+  /** The classic rim lift rimH · s(r)² (s = smoothstep(430, 512, r)): what the authoring queries read (roads off). */
   const classicRimLift = (r: number): number => { const s = smoothstep(430, 512, r); return s * s * T.rimH; };
+  // the map-borders lane (wave 2): set while buildRoadElevationGrid authors its second pass of road nodes on the
+  // landform's rim (heightAt's rim lift)
+  let authoringOnLandform = false;
 
   // --- base noise: fBm detail + domain-warped ridge, and a smooth variant ---
   function core(x: number, z: number): { d: number; s: number } {
@@ -1672,13 +1675,13 @@ function* heightFieldBuildSteps(
     }
     const borderRadius = Math.max(Math.abs(x), Math.abs(z));
     // the map-borders lane (2026-10-03): the rim lift is the border landform's (borderLandform.ts) — inside the playable
-    // square the classic S-curve, only ever lowered; past it, the outland's hills. The road and bridge authoring queries
-    // (road node grades, bridge beds: roads off) read the same rim as the final ground: the first pass kept them on the
-    // classic rim, so a road authored up the old 20-40 m rim stood on a causeway that high where the land beside it
-    // came down (68 of the 223 road exits over 5 m, Ruin Spires' and Olympus Basin's 25-33 m at the edge). The water
-    // authoring queries (lakes off: lake levels, marsh and lake banks) keep the classic rim, so every water level and
-    // bank is what it was.
-    const rimLift = lakesOn ? border.liftAt(x, z, borderRadius) : classicRimLift(borderRadius);
+    // square the classic S-curve, only ever lowered; past it, the outland's hills. Authoring queries (roads off: road
+    // node grades, lake levels, marsh and lake banks, bridge beds) keep the classic rim, so every water level and every
+    // grade inside 430 m is what it was; the road grades past it take a second authoring pass on the landform's rim
+    // (buildRoadElevationGrid) — the first pass kept them on the classic rim, so a road authored up the old 20-40 m rim
+    // stood on a causeway that high where the land beside it came down (67 of the 223 road exits over 5 m, Ruin Spires'
+    // and Olympus Basin's 25-33 m at the edge).
+    const rimLift = roadsOn || authoringOnLandform ? border.liftAt(x, z, borderRadius) : classicRimLift(borderRadius);
     const rimKeep = rimLift > 0 ? coastRimKeep(x, z) : 1;
     // CW also contains old deployment lanes. Only the two inward pilots
     // limit the new earthwork to actual road shoulders, with a smooth join.
@@ -1693,9 +1696,10 @@ function* heightFieldBuildSteps(
     // the foreground clearance past the red line (final queries; the road plane below comes down with its ground)
     const clearance = roadsOn && borderRadius > 470 ? clearanceReduction(x, z, h, rd) * (1 - waterWeight) : 0;
     h -= clearance;
-    // The road grades are authored on the same rim, so a final query's road plane comes down only with the foreground
-    // clearance (a road's own band is exempt from it: clearanceReduction) — past the red line at most on a gentle ramp
-    // (level at the line, 12 % from 20 m on), so no road drops off the square's edge
+    // The road grades past 430 m are authored on the landform's rim (buildRoadElevationGrid's second pass), so a final
+    // query's road plane comes down only with the foreground clearance (a road's own band is exempt from it:
+    // clearanceReduction) — past the red line at most on a gentle ramp (level at the line, 12 % from 20 m on), so no
+    // road drops off the square's edge
     let roadRimShift = -clearance;
     if (roadRimShift < 0 && borderRadius > 470) {
       const over = borderRadius - 470;
@@ -1791,26 +1795,46 @@ function* heightFieldBuildSteps(
   function buildRoadElevationGrid(): void {
     const authoringRoads = inheritedRoads ?? roads;
     const nodeElev = authoringRoads.map((nodes) => nodes.map(([nx, nz]) => heightAt(nx, nz, false, false)));
+    // the map-borders lane (wave 2): the same law run a second time on the landform's rim; from 430 m, where the rim
+    // begins, the grades follow it (blended in by 460 m below), inside it every grade is the classic pass's to the bit
+    authoringOnLandform = !placementOnly;
+    const rimElev = placementOnly ? null : authoringRoads.map((nodes) => nodes.map(([rx, rz]) => heightAt(rx, rz, false, false)));
+    authoringOnLandform = false;
     if (!placementOnly && !inheritedRoads && T.roads !== 'country' && T.roads.paths) {
       const offset = T.roads.grid ? T.roads.grid.xs.length + T.roads.grid.zs.length : 0;
       gradeRoadPortals(cfg?.id, roads, nodeElev, T.roads.paths, offset);
+      if (rimElev) gradeRoadPortals(cfg?.id, roads, rimElev, T.roads.paths, offset);
     }
     smoothRoadElevations(nodeElev);
+    if (rimElev) smoothRoadElevations(rimElev);
     blendRoadJunctions(nodeElev, authoringRoads);
+    if (rimElev) blendRoadJunctions(rimElev, authoringRoads);
     if (inheritedRoads) {
       borderCorridorStart = buildRoadBorderCorridors();
       boundedRoadCorridor = borderCorridorStart !== null && usesBoundedRoadShoulders(cfg?.id);
       remapInheritedRoadElevations(inheritedRoads, roads, nodeElev);
+      if (rimElev) remapInheritedRoadElevations(inheritedRoads, roads, rimElev);
       if (T.roads !== 'country' && T.roads.paths) {
         const offset = T.roads.grid ? T.roads.grid.xs.length + T.roads.grid.zs.length : 0;
         gradeRoadPortals(cfg?.id, roads, nodeElev, T.roads.paths, offset);
+        if (rimElev) gradeRoadPortals(cfg?.id, roads, rimElev, T.roads.paths, offset);
       }
       alignAddedRoadJunctionGrades(cfg?.id, inheritedRoads, roads, nodeElev);
+      if (rimElev) alignAddedRoadJunctionGrades(cfg?.id, inheritedRoads, roads, rimElev);
     }
     if (!placementOnly) {
       alignFjordNorthernRoadGrades(cfg?.id, roads, nodeElev);
       alignCopperNorthernRoadGrades(cfg?.id, roads, nodeElev);
       alignPoldersNorthernRoadGrades(cfg?.id, roads, nodeElev);
+    }
+    if (rimElev) {
+      alignFjordNorthernRoadGrades(cfg?.id, roads, rimElev);
+      alignCopperNorthernRoadGrades(cfg?.id, roads, rimElev);
+      alignPoldersNorthernRoadGrades(cfg?.id, roads, rimElev);
+      for (let r = 0; r < roads.length; r++) for (let i = 0; i < roads[r].length; i++) {
+        const w = smoothstep(430, 460, Math.max(Math.abs(roads[r][i][0]), Math.abs(roads[r][i][1])));
+        if (w > 0) nodeElev[r][i] += (rimElev[r][i] - nodeElev[r][i]) * w;
+      }
     }
     for (let i = 0; i < GN * GN; i++) {
       const e = nodeElev[gSegRoad![i]];

@@ -164,7 +164,7 @@ export const RAIL_OPEN_WIDEN_M = 30;
 export const RAIL_OPEN_STEP_M = 20;
 export const RAIL_OPEN_GRADE = 0.015;
 export const RAIL_OPEN_BANK = 1.6;
-export const RAIL_OPEN_BANK_EASE_M = 20;
+const RAIL_OPEN_BANK_EASE_M = 20;
 export const RAIL_OPEN_KIT_M = 240;
 /** The exclusion keeps this much more than the floor clear: the cess shoulder the spur berth keeps past its slab. */
 const RAIL_CUTTING_SHOULDER_M = RAIL_SPUR_BERTH_M - RAIL_SPUR_BALLAST_M / 2;
