@@ -139,12 +139,19 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
   };
 }
 
+/**
+ * 2026-10-03 (the skies lane; the gauntlet's waves 5, 13 and 14: "a long, perfectly straight bright line slashes diagonally
+ * across the sky, unmistakably reading as a render glitch" — fp10's segmented, thinner trails still read as lines, and
+ * the reference tank games carry none): contrails off on every map. The placement, the packing and the trace's trail
+ * law stay (cloudWeatherLayers.ts); true brings every map's authored count back.
+ */
+export const CLOUD_CONTRAILS_ON = false;
 /** 2026-10-01: the weather beyond the slab and the time's light from the regime's row and the map's block. */
 function resolveWeather(sky: CloudLayerSkyInput, scape: CloudscapeConfig, row: (typeof CLOUDSCAPE_REGIMES)[CloudscapeRegime] | null): ReturnType<typeof neutralWeather> {
   const W = CLOUD_WEATHER_RULES;
   const timeOfDay = scapeTime(sky, scape);
   const out = neutralWeather(timeOfDay);
-  out.contrails = Math.round(clamp(scape.contrails ?? 0, 0, 1) * CLOUD_CONTRAIL_MAX);
+  out.contrails = CLOUD_CONTRAILS_ON ? Math.round(clamp(scape.contrails ?? 0, 0, 1) * CLOUD_CONTRAIL_MAX) : 0;
   out.contrailAge = clamp(scape.contrailAge ?? 0.5, 0, 1);
   out.rain = clamp(scape.rain ?? row?.rain ?? 0, 0, 1);
   out.virga = clamp(scape.virga ?? row?.virga ?? 0, 0, 1);

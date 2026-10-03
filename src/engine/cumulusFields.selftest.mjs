@@ -44,6 +44,12 @@ assert.equal(CLOUD_FAR_THIN, 0, 'off by default');
 assert.match(clouds, /if \( uFarThin > 0\.0 \) field -= uFarThin \* \( 1\.0 - uStratiform \) \* smoothstep\( 9000\.0, 20000\.0, farD \) \* uCoverage \* 0\.5;/, 'the far cut');
 assert.match(clouds, /t\.uFarThin\.value = lightTune\('CLOUD_FAR_THIN', CLOUD_FAR_THIN\);/, 'per frame');
 
+// ---- the far band (2026-10-03; waves 13-14: "a ruler-flat pale band at one constant height"): decks only — a cumuliform
+// sky ends where its traced field does and sinks into the haze; the contrails are off on every map
+assert.match(clouds, /if \( uFarBand <= 0\.0 \|\| dir\.y <= 0\.004 \|\| uDeckMarch <= 0\.0 \) return none;/, 'no far band under a cumuliform sky');
+assert.match(layer, /export const CLOUD_CONTRAILS_ON = false;/, 'contrails off');
+assert.match(layer, /out\.contrails = CLOUD_CONTRAILS_ON \? Math\.round\(clamp\(scape\.contrails \?\? 0, 0, 1\) \* CLOUD_CONTRAIL_MAX\) : 0;/);
+
 // ---- a deck's definition (2026-10-03; the gauntlet's wave 5: "a flat, blurry, low-definition overcast sky ... reads as a
 // placeholder skybox"): a knob every deck regime can take, 0 = round 76's deck (no regime takes it until a lab shows it)
 assert.match(clouds, /float deckK = uDeckDetail \* max\( smoothstep\( 0\.3, 0\.6, uStratiform \), uCells \* 0\.8 \);/, 'decks only');

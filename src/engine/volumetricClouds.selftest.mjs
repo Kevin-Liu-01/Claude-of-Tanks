@@ -19,6 +19,10 @@ import {
 } from './cloudNoise.ts';
 import { CLOUD_LAYER_RULES, cloudLayerKey, deriveCloudLayerPreset, loadCloudscapeLayers } from './cloudPresets.ts';
 import { CLOUDSCAPE_REGIMES, CLOUDSCAPE_REGIME_NAMES, isCloudscapeRegime } from './cloudscapes.ts';
+import { CLOUD_CONTRAILS_ON } from './cloudscapeLayer.ts';
+import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
+// the count a map authors (what the layer derives with the contrail switch on)
+const authoredContrails = (id) => Math.round(Math.min(1, Math.max(0, getMapConfig(id)?.clouds?.contrails ?? 0)) * CLOUD_CONTRAIL_MAX);
 import {
   VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
 } from './volumetricClouds.ts';
@@ -250,7 +254,9 @@ for (const id of MAP_IDS) {
   const p = deriveCloudLayerPreset(skyOf(id));
   table[id] = { regime: p.regime, coverage: +p.coverage.toFixed(3), baseM: p.baseM, thicknessM: Math.round(p.thicknessM), shadow: p.shadow, streets: p.streets, cirrus: p.cirrus, farBand: p.farBand,
     // 2026-10-01: the weather beyond the slab (cloudWeatherLayers.ts) — contrails, rain, virga, the fog bank
-    contrails: p.contrails, rain: p.rain, virga: p.virga, fogBank: p.fogBank };
+    // (2026-10-03: contrails are off on every map — cloudscapeLayer.ts CLOUD_CONTRAILS_ON; the table keeps the authored
+    // counts, which come back with the switch)
+    contrails: CLOUD_CONTRAILS_ON ? p.contrails : (p.contrails === 0 ? authoredContrails(id) : -1), rain: p.rain, virga: p.virga, fogBank: p.fogBank };
   assert.ok(p.coverage >= 0 && p.coverage <= CLOUD_LAYER_RULES.coverageMax);
   assert.ok(p.baseM > 0 && p.thicknessM > 0 && p.density > 0);
   assert.ok(p.shadowThreshold >= 0 && p.shadowThreshold <= 1);

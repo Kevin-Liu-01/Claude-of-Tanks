@@ -11,7 +11,7 @@ import {
 import {
   cloudLayerKey, cloudNightAmount, cloudTimeOfDay, deriveCloudLayerPreset, loadCloudscapeLayers,
 } from './cloudPresets.ts';
-import { CLOUD_DIURNAL } from './cloudscapeLayer.ts';
+import { CLOUD_DIURNAL, CLOUD_CONTRAILS_ON } from './cloudscapeLayer.ts';
 
 import { CLOUDSCAPE_REGIMES } from './cloudscapes.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
@@ -170,7 +170,8 @@ const skyOf = (id, time = 'day') => {
   }
   // a map's own knobs for its time win over the law; an authored constant sky opts out
   const own = deriveCloudLayerPreset({ ...skyOf('verdant', 'sunset'), cloudscape: { ...scape, sunset: { contrails: 0.5, coverage: 0.2 } } });
-  assert.deepEqual([own.contrails, own.coverage], [3, 0.2]);
+  // (2026-10-03: contrails are off on every map — cloudscapeLayer.ts CLOUD_CONTRAILS_ON; the per-time override still applies)
+  assert.deepEqual([own.contrails, own.coverage], [CLOUD_CONTRAILS_ON ? 3 : 0, 0.2]);
   const constant = deriveCloudLayerPreset({ ...skyOf('verdant', 'night'), cloudscape: { ...scape, diurnal: false } });
   assert.equal(constant.coverage, day.coverage, 'diurnal: false keeps the day\'s cloud');
   // the evening keeps the preset's warm deck tint (the captures without it: grey-white front-lit cumulus at sunset)

@@ -785,7 +785,11 @@ vec4 seaFogBank( vec3 dir, float jitter ) {
 vec4 farBandLayer( vec3 dir, float cosT, vec3 rayDx, vec3 rayDy, out float tLayer ) {
 	tLayer = 1e9;
 	vec4 none = vec4( 0.0, 0.0, 0.0, 1.0 );
-	if ( uFarBand <= 0.0 || dir.y <= 0.004 ) return none;
+	// 2026-10-03 (the skies lane; the gauntlet's waves 13-14: "a ruler-flat pale band at one constant height", "the
+	// fair-weather cumulus keep returning as a flat smeared band at the horizon"): a cumuliform sky's far band stood edge-on
+	// as one opaque ribbon a few degrees up (its broad coverage, opaque at a grazing slant, mipped smooth at the horizon);
+	// a cumuliform sky ends where its traced field does and sinks into the haze, a deck keeps its far rows
+	if ( uFarBand <= 0.0 || dir.y <= 0.004 || uDeckMarch <= 0.0 ) return none;
 	float tb = ( uFarBandAlt - uCamPos.y ) / dir.y;
 	float horiz = tb * length( dir.xz );
 	// a deck's band continues its 10 km march; a cumuliform sky's starts where its 20 km march thins (2026-10-03)
