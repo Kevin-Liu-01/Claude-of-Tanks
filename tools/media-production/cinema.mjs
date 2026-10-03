@@ -179,7 +179,7 @@ try {
   await server.listen();
   const origin = server.resolvedUrls?.local?.[0]?.replace(/\/$/, '') ?? `http://127.0.0.1:${port}`;
   browser = await puppeteer.launch({ headless: true, handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false,
-    protocolTimeout: 1800000, args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] });
+    protocolTimeout: 1800000, args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--js-flags=--expose-gc'] });
   const page = await browser.newPage(), errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   page.on('console', message => { if (message.type() === 'error' && !message.text().includes('favicon')) errors.push(message.text()); });
@@ -262,7 +262,11 @@ try {
             }, 'image/png'));
             pending.add(upload);
             upload.finally(() => pending.delete(upload));
-            while (pending.size > 3) await Promise.race(pending);
+            while (pending.size > 2) await Promise.race(pending);
+            // Grained, smoky 1080p frames encode to ~5-8 MB PNGs and Chrome keeps each uploaded blob until a collection:
+            // 198 of them overran its blob store (net::ERR_BLOB_OUT_OF_MEMORY, 2026-10-02). Every tenth frame, let the
+            // uploads land and collect.
+            if (index % 10 === 9) { await Promise.all([...pending]); globalThis.gc?.(); }
             return { ...frame, renderMs };
           }, { index, token });
           if (Math.abs(info.timelineMs - plan.frameTimelineMs(index)) > 1e-6) throw Error('The frame clock drifted from the film plan');
