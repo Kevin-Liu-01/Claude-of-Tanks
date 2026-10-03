@@ -141,6 +141,8 @@ export default {
       { id: 'spine-limestone-watch', role: 'scout', x: 330, z: 10, yawDeg: -90, structure: 'guardpost', outcrop: { count: 5, radius: 10 } },
     ],
     wallStyle: 'fieldstone', wallStoneChance: 0.82,
+    // weathered Dalmatian limestone: the boulders and outcrops near-white grey (the default boulders are dark and mossy)
+    rockTone: (_h: number, _s: number, l: number) => [0.11, 0.045, Math.min(1, l * 0.9 + 0.29)],
     // the village crofts and a dry-stone terrace wall (gromace) on each flight, its reflection on the other
     wallRuns: [[-244, -80, -232, -16, 2], [-244, 36, -244, 100, 3], [-150, -72, -80, -72, 2], [-150, 92, -80, 92, 3],
       [60, -150, 140, -160, 2], [60, 170, 140, 180, 2]],
