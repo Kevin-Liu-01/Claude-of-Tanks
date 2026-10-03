@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-// Final renders of the site fifty from a lab-resolved directory: film jobs (1080p, the scene's own film block) and
-// motion-blur still jobs (2160p at each shot's still moment), through tools/media-production/cinema.mjs under the
-// shared capture lock, then site-loops.mjs for the site's formats.
-//   node tools/media-r5/site50-finals.mjs <resolvedDir> [--only=s01,s02] [--chunk=10] [--skip-films] [--skip-stills] [--skip-loops]
+// Final renders of the site fifty from a lab-resolved directory: film jobs (2160p by default since the owner asked for
+// super high quality on 2026-10-03; the scene's own film block) and motion-blur still jobs (2160p, supersampled 1.5x, at
+// each shot's still moment), through tools/media-production/cinema.mjs under the shared capture lock, then
+// site-loops.mjs for every format (it drops each ProRes film master once its formats are written; the disk is tight).
+//   node tools/media-r5/site50-finals.mjs <resolvedDir> [--only=s01,s02] [--chunk=10] [--film-resolution=2160]
+//     [--still-supersample=1.5] [--keep-film-masters] [--skip-films] [--skip-stills] [--skip-loops]
 // cinema.mjs holds the shared capture lock for a whole job list, so the films go in chunks (default 10 per lease) and
 // other sessions' captures get the GPU between them.
 // <resolvedDir> is a lab run over shots/media-r5/site50/scenes (its *.resolved.json); the source scenes supply the
@@ -34,8 +36,8 @@ mkdirSync(renders, { recursive: true });
 const only = flags.only ? [`--only=${flags.only}`] : [];
 const chunk = Math.max(1, Number(flags.chunk ?? 10));
 const filmJobs = join(renders, 'jobs-films.json'), stillJobs = join(renders, 'jobs-stills.json');
-if (!('skip-films' in flags)) run('film jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'films', resolved, join(renders, 'films'), filmJobs, '--resolution=1080', '--master=prores', ...only]);
-if (!('skip-stills' in flags)) run('still jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'blur', resolved, join(renders, 'stills'), stillJobs, '--resolution=2160', ...only]);
+if (!('skip-films' in flags)) run('film jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'films', resolved, join(renders, 'films'), filmJobs, `--resolution=${flags['film-resolution'] ?? 2160}`, '--master=prores', ...only]);
+if (!('skip-stills' in flags)) run('still jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'blur', resolved, join(renders, 'stills'), stillJobs, '--resolution=2160', `--supersample=${flags['still-supersample'] ?? 1.5}`, ...only]);
 const films = 'skip-films' in flags ? [] : JSON.parse(readFileSync(filmJobs, 'utf8'));
 const stills = 'skip-stills' in flags ? [] : JSON.parse(readFileSync(stillJobs, 'utf8'));
 const idOf = job => job.out.split('/').pop();
@@ -44,7 +46,7 @@ const ids = [...new Set([...films, ...stills].map(idOf))].sort();
 const encoders = [];
 const encodeLoops = part => encoders.push(new Promise((done, fail) => {
   console.log(`[finals] loops for ${[...part][0]}… (background)`);
-  const child = spawn('node', [join(TOOL, 'site-loops.mjs'), renders, join(SHOTS, 'site50/deliver'), [...part].join(',')], { stdio: 'inherit' });
+  const child = spawn('node', [join(TOOL, 'site-loops.mjs'), renders, join(SHOTS, 'site50/deliver'), [...part].join(','), ...('keep-film-masters' in flags ? [] : ['--drop-film-masters'])], { stdio: 'inherit' });
   child.on('exit', code => (code === 0 ? done() : fail(new Error(`loops exited ${code}`))));
 }));
 for (let i = 0; i < ids.length; i += chunk) {
