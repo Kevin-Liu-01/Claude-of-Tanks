@@ -22,6 +22,8 @@ export interface CanyonGround {
   getOutlandSeatWeightAt?(x: number, z: number): number;
   /** The map-borders lane (2026-10-03): the near ring's share of the continued ground (1) against the authored ranges (0). */
   getBorderHandOverAt?(x: number, z: number): number;
+  /** The map-borders lane: the border's woods (0 open … 1 wooded). */
+  getBorderWoodsAt?(x: number, z: number): number;
 }
 
 interface SeamPoint { angle: number; x: number; z: number; height: number }

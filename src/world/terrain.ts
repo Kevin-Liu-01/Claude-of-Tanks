@@ -18,7 +18,7 @@ import {
   type TerrainLodLevel,
 } from './terrainLodPolicy.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
-import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalette, sourcedTerrainLayerPlanned,
+import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalette, sourcedTerrainLayerPlanned, sourcedTerrainLayerSet,
   type TerrainPaletteId, type TerrainSourcePreparation } from './sourcedTextures.ts';
 import { HORIZON_SEGMENTS, buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
@@ -356,6 +356,8 @@ export interface HeightField {
   getOutlandSeatWeightAt?(x: number, z: number): number;
   /** The map-borders lane: the near ring's share of the continued ground (1) against the authored ranges (0). */
   getBorderHandOverAt?(x: number, z: number): number;
+  /** The map-borders lane: the border's woods (0 open … 1 wooded) — the ring forest and the rim trees past 470 m stand by it. */
+  getBorderWoodsAt?(x: number, z: number): number;
   getHeightAtFast(x: number, z: number): number;
   /** Near-mesh triangle surface shared by movement and visible suspension. */
   getContactHeightAt?(x: number, z: number): number;
@@ -1552,8 +1554,10 @@ function* heightFieldBuildSteps(
     }
     const borderRadius = Math.max(Math.abs(x), Math.abs(z));
     // the map-borders lane (2026-10-03): the rim lift is the border landform's (borderLandform.ts) — inside the playable
-    // square the classic S-curve, only ever lowered; past it, the outland's hills
-    const rimLift = border.liftAt(x, z, borderRadius);
+    // square the classic S-curve, only ever lowered; past it, the outland's hills. Authoring queries (road node grades,
+    // pad seats, lake levels: roads off) keep the classic rim, so every road grade, pad and lake level inside the square
+    // is exactly what it was and nothing ripples into the playable ground through the grade smoothing.
+    const rimLift = roadsOn ? border.liftAt(x, z, borderRadius) : border.classicLiftAt(borderRadius);
     // CW also contains old deployment lanes. Only the two inward pilots
     // limit the new earthwork to actual road shoulders, with a smooth join.
     const roadCorridorWeight = roadCorridorDistanceWeight(boundedRoadCorridor, cw, rd);
@@ -2144,6 +2148,7 @@ function* heightFieldBuildSteps(
     getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
     // the map-borders lane: where the near ring hands its continued ground over to the authored ranges
     getBorderHandOverAt: border.handOverAt,
+    getBorderWoodsAt: border.woodsAt,
     _roadExitAt: roadExitAt,
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),
@@ -3000,6 +3005,9 @@ uniform vec4 uMeanG, uMeanD, uMeanR, uMeanM;
 uniform vec3 uTintA, uTintB, uTintC, uRoadTint;
 uniform float uMarshGloss;
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uLaneK, uIceDrift, uMidRelief, uFieldPatch;
+// the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
+// Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
+uniform float uPavedRock;
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
 uniform vec3 uIceSky;     // r3: fresnel sky tint reflected by clear lake ice
@@ -3602,17 +3610,29 @@ void splatCompute() {
   // rock layer: pre-blend planar/wall by triW so the partial-fR band (24-45
   // deg) never lays stretched planar rock over the triplanar sand
   if (fR > 0.002 && keepS > 0.002) {
-    vec4 aR = groundSamp(uAlbR, uMeanR, uv * 0.155, df, mipB);
-    vec4 nR = NRM_MEAN;
-    if (nrmOn) nR = groundNrm(uNrmR, uv * 0.155, df, mipB);
-    if (triW > 0.003) {
-      aR = mix(aR, wallSamp(uAlbR, uMeanR, 0.155, df, mipB), triW);
-      if (nrmOn) nR = mix(nR, wallNrm(uNrmR, 0.155, df, mipB), triW);
+    vec4 aR, nR = NRM_MEAN;
+    vec4 meanR = uMeanR;
+    if (uPavedRock > 0.5) {
+      // the map-borders lane: a paved map's hillside is its bare ground, not its cobbles (the census's white streaks)
+      meanR = uMeanD;
+      aR = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
+      if (nrmOn) nR = groundNrm(uNrmD, uv * 0.210, df, mipB);
+      if (triW > 0.003) {
+        aR = mix(aR, wallSamp(uAlbD, uMeanD, 0.210, df, mipB), triW);
+        if (nrmOn) nR = mix(nR, wallNrm(uNrmD, 0.210, df, mipB), triW);
+      }
+    } else {
+      aR = groundSamp(uAlbR, uMeanR, uv * 0.155, df, mipB);
+      if (nrmOn) nR = groundNrm(uNrmR, uv * 0.155, df, mipB);
+      if (triW > 0.003) {
+        aR = mix(aR, wallSamp(uAlbR, uMeanR, 0.155, df, mipB), triW);
+        if (nrmOn) nR = mix(nR, wallNrm(uNrmR, 0.155, df, mipB), triW);
+      }
     }
     // round 73: the rock border is a height transition too — the outcrop's high faces clear the turf or the snow,
     // its seams stay buried
     if (hK > 0.001) {
-      float hR = reduxLuma(aR.rgb) - reduxLuma(uMeanR.rgb);
+      float hR = reduxLuma(aR.rgb) - reduxLuma(meanR.rgb);
       fR = reduxHeightMix(fR, hBase, hR, hK * 0.8);
       hBase = mix(hBase, hR, fR);
     }
@@ -3622,9 +3642,14 @@ void splatCompute() {
   // a vertical face (grazing-angle gradient = wavy banding along cliff tops)
   float n2Wall = wallNoiseG(0.0031, vec2(0.41, 0.13));
   if (steepW > 0.001) {
-    vec4 aS = wallSamp(uAlbR, uMeanR, 0.155, df, mipB);
-    a = mix(a, aS, steepW);
-    if (nrmOn) n = mix(n, wallNrm(uNrmR, 0.155, df, mipB), steepW);
+    if (uPavedRock > 0.5) {
+      a = mix(a, wallSamp(uAlbD, uMeanD, 0.210, df, mipB), steepW);
+      if (nrmOn) n = mix(n, wallNrm(uNrmD, 0.210, df, mipB), steepW);
+    } else {
+      vec4 aS = wallSamp(uAlbR, uMeanR, 0.155, df, mipB);
+      a = mix(a, aS, steepW);
+      if (nrmOn) n = mix(n, wallNrm(uNrmR, 0.155, df, mipB), steepW);
+    }
   }
   // meadow macro variation, three scales (~80 m, ~230 m, ~600 m): dry-straw
   // patches, dark clover, and broad field-to-field tone shifts so open ground
@@ -4868,6 +4893,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uRingRock = { value: new THREE.Vector2(...(S.ringRockSlope ?? [0.22, 0.48])) }; // round 49
     // round 55: the bedded sandstone R (no sourced R in the map's plan) carries the noise wall crag, not the tile's beds
     shader.uniforms.uBeddedR = { value: S.sandstone && !sourcedTerrainLayerPlanned(mapId, S, 'R') ? 1 : 0 };
+    shader.uniforms.uPavedRock = { value: sourcedTerrainLayerSet(mapId, S, 'R') === 'cobble' ? 1 : 0 }; // the map-borders lane
     // r2: agrarian field patchwork — only sensible on temperate farmland maps
     shader.uniforms.uFieldPatch = { value: S.fieldPatch ?? 0 };
     // r3: desert macro sheet variation + ice fresnel sky tint

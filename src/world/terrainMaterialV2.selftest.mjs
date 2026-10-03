@@ -55,7 +55,9 @@ function checkTerrain(source) {
     ['fD > 0.002 && keepM * (1.0 - seaSand) > 0.002', 'vec4 aD = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);', 'the worn soil'],
     ['seaSand > 0.003', 'a = mix(a, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), seaSand);', 'the beach apron'],
     ['fMs > 0.002 && keepR > 0.002', 'a = mix(a, groundSamp(uAlbM, uMeanM, uv * 0.190, df, mipB), fMs);', 'the wet layer'],
-    ['fR > 0.002 && keepS > 0.002', 'vec4 aR = groundSamp(uAlbR, uMeanR, uv * 0.155, df, mipB);', 'the rock'],
+    ['fR > 0.002 && keepS > 0.002', 'aR = groundSamp(uAlbR, uMeanR, uv * 0.155, df, mipB);', 'the rock'],
+    // the map-borders lane (2026-10-03): a paved map's steep faces take the bare ground (D), inside the same branch
+    ['fR > 0.002 && keepS > 0.002', 'aR = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);', 'the rock on a paved map'],
     ['dW > 0.002', 'vec3 packedRoad = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;', 'the packed road'],
     ['rockRelW > 0.002', 'texture2D(uNrmR, uv * 0.041)', 'the rock relief'],
   ];

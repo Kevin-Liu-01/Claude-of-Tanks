@@ -57,13 +57,19 @@ assert.match(terrainSource, /\(streak - 0\.5\) \* 0\.16 \* max\(lane, 0\.35 \* c
   'tyre streaks are an along-lane modulation bounded to +/-8%');
 assert.doesNotMatch(terrainSource, /rutG/, 'the mask-gradient emboss of the old rut bytes is gone');
 
-// Round 29 (owner 2026-09-20, "see where the texture just stops"): a road that reaches the playable edge runs on
-// into the horizon ring on the mask's clamped edge texels and fades between 24 and 96 m past the edge; settlement
-// wear keeps its short fade and the landform/marsh channel its edge value.
+// Round 29 (owner 2026-09-20, "see where the texture just stops") ran a road on into the horizon ring on the mask's
+// clamped edge texels, fading between 24 and 96 m past the edge. The map-borders lane (2026-10-03) replaced that: the
+// clamped texel bent every oblique road to the perpendicular and left it in the ground 96 m out, so the clamped road
+// channels now fade within 10 m and a road that leaves the square runs on across the ring from the exit attribute
+// (terrain.ts roadExits: [signed offset from the exit line, presence], the square's own road law on mk.g / mk.r);
+// settlement wear keeps its short fade and the landform/marsh channel its edge value.
 assert.match(terrainSource, /float edgeOut = max\(abs\(wp\.x\), abs\(wp\.z\)\) - 512\.0;/, 'the edge distance is measured once');
-assert.match(terrainSource, /float outsideRoadW = smoothstep\(24\.0, 96\.0, edgeOut\);/, 'roads fade out between 24 and 96 m past the edge');
+assert.match(terrainSource, /float outsideRoadW = smoothstep\(0\.0, 10\.0, edgeOut\);/, 'the clamped road texel fades within 10 m past the edge');
 assert.match(terrainSource, /mk = vec4\(mk\.r \* \(1\.0 - outsideRoadW\), mk\.g \* \(1\.0 - outsideRoadW\), mk\.b, mk\.a \* \(1\.0 - outsideW\)\);/,
-  'only the road channels take the long fade; wear keeps the 36 m ramp and the landform/marsh channel its edge value');
+  'only the road channels take the clamped-texel fade; wear keeps the 36 m ramp and the landform/marsh channel its edge value');
+assert.match(terrainSource, /if \(vRoadExit\.y > 0\.002\) \{\s*float dE = abs\(vRoadExit\.x\);\s*mk\.g = max\(mk\.g, max\(0\.0, 1\.0 - dE \/ 12\.0\) \* vRoadExit\.y\);/,
+  'past the edge the road exit attribute writes the centreline distance (mk.g, 12 m to byte 0) the road law reads');
+assert.match(terrainSource, /attribute vec2 roadExit;\\nvarying vec2 vRoadExit;/, 'the exit attribute is a vertex attribute (a geometry without it reads no road)');
 assert.doesNotMatch(terrainSource, /mk = mix\(mk, vec4\(0\.0, 0\.0, mk\.b, 0\.0\), outsideW\);/, 'the old all-channel 36 m fade is gone');
 
 console.log('terrainRoadMaterial self-test passed');

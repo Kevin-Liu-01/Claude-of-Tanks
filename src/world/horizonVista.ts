@@ -677,6 +677,9 @@ interface HorizonForestOptions {
    * stands are woods in patches covering that share of it — copses, woods on the shoulders, open fields between — where
    * the old law forested nearly the whole band (the "hedge" round the square); unset keeps that law. */
   bandShare?: number;
+  /** The map-borders lane: the border's woods field (borderLandform.ts woodsAt, 0..1) — when given, the stands follow it
+   * (the square's rim trees past the playable edge stand by the same field) instead of the ring's own patch field. */
+  woodsAt?: (x: number, z: number) => number;
   /** Strength of the per-fragment aerial haze toward the fog tint (the ring's own uVHaze). */
   haze?: number;
   /** Textures created here join the ring's retained list. */
@@ -941,7 +944,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
     return nB * 1.0 + nC * 0.75 + nD * 0.22 + Math.min(0.6, slope) * 0.35;
   };
   let woodsCut = -Infinity;
-  if (bandShare !== undefined) {
+  if (bandShare !== undefined && !options.woodsAt) {
     const samples: number[] = [];
     for (let row = 1; row < Math.min(rows.length - 1, ridgeRow); row++) {
       if (rows[row].skirt && rows[row + 1].skirt) continue;
@@ -993,9 +996,13 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         // the map-borders lane: the woods are patches covering the map's share, on the band and on the near ranges the
         // border landform now shapes (its hills reach 330–820 m out); a lone tree stands in the open
         if (bandShare !== undefined) {
-          const w = woodsAt(x, z, faceSlope);
           // (a lone field tree's chance follows the country: a wooded valley has more of them than a steppe)
-          stand *= w >= woodsCut + 0.04 ? 1 : w >= woodsCut - 0.04 ? smoothstep(woodsCut - 0.04, woodsCut + 0.04, w) : 0.045 * bandShare;
+          const lone = 0.045 * bandShare;
+          if (options.woodsAt) stand *= Math.max(lone, options.woodsAt(x, z));
+          else {
+            const w = woodsAt(x, z, faceSlope);
+            stand *= w >= woodsCut + 0.04 ? 1 : w >= woodsCut - 0.04 ? smoothstep(woodsCut - 0.04, woodsCut + 0.04, w) : lone;
+          }
         }
         // round 72c (integrator: a straight treeline belt on the apron of Whiteout / Frosthollow): the stands follow the
         // relief — clumps in the gullies and hollows, gaps on the scoured crests and shoulders — and on a snow map,

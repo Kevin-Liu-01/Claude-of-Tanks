@@ -67,8 +67,10 @@ const reliefLawSource = referenceSource
     '    if (usesPhysicalRoadStations(cfg?.id)) { smoothRoadGradesByDistance(roads, nodeElev); return; }\n')
   .replace(historicalJunctionBlend, historicalJunctionBlend +
     '    if (usesPhysicalRoadStations(cfg?.id)) { blendRoadNetworkGrades(roads, nodeElev); return; }\n')
+  // the map-borders lane (2026-10-03): the rim's relief law is the border landform's lift (borderLandform.ts) with the
+  // round-47 water gate and coast fade on it — the placement sampler reproduces that current field
   .replace(historicalRim,
-  '    const rim = smoothstep(430, HALF, Math.max(Math.abs(x), Math.abs(z)));\n    h += rim * rim * T.rimH * (1 - waterWeight) * (rim > 0 ? coastRimKeep(x, z) : 1);\n')
+  '    const rimLift = border.liftAt(x, z, Math.max(Math.abs(x), Math.abs(z)));\n    h += rimLift * (1 - waterWeight) * (rimLift > 0 ? coastRimKeep(x, z) : 1);\n')
   .replace(historicalRoadBlend, `    const rd = gridSample(gRoadDist, x, z);
     if (rd < 14) {
       let roadElevation = gridSample(gRoadElev, x, z);

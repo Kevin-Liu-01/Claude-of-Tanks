@@ -113,10 +113,18 @@ export interface BorderLandform {
    * hills. Callers keep their water, coast and road weights on top.
    */
   liftAt(x: number, z: number, r: number): number;
+  /** The classic rim lift rimH · s(r)² (s = smoothstep(430, 512, r)): what authoring queries (road grades, pads) keep. */
+  classicLiftAt(r: number): number;
   /** The rim factor of the playable band at (x, z): 1 keeps the classic rim, rimFloor is the most open. */
   rimFactorAt(x: number, z: number): number;
   /** The near ring's hand-over to the authored ranges: 1 = this landform (the continued ground), 0 = the ring's rows. */
   handOverAt(x: number, z: number): number;
+  /**
+   * The border's woods at (x, z), 0 (open country) … 1 (inside a wood), with a soft ten-metre edge: patches of a few
+   * hundred metres leaning onto the hills, calibrated so `forest` of the near outland is wooded. The ring forest and
+   * the square's own rim trees past the playable edge both stand by it, so the woods cross the red line as one.
+   */
+  woodsAt(x: number, z: number): number;
 }
 
 function smoothstep(a: number, b: number, x: number): number {
@@ -230,8 +238,37 @@ export function createBorderLandform(
     return near + (crest - near) * ramp;
   }
 
+  /** The woods field before its cut: patches at ~420 m and ~160 m, a fine ragged edge, leaning onto the hills. */
+  function woodsField(x: number, z: number): number {
+    return noise.noise(x * 0.0024 - 33.1, z * 0.0024 + 57.9) * 0.62 + noise.noise(x * 0.0062 + 12.4, z * 0.0062 - 8.8) * 0.3
+      + noise.noise(x * 0.019 - 2.2, z * 0.019 + 4.6) * 0.08 + (hillsAt(x, z) - 0.5) * 0.35;
+  }
+  // the cut that leaves `forest` of the near outland wooded: the field's quantile over a fixed lattice of the band
+  // 0–400 m past the edge (deterministic per seed, ~2.3k samples)
+  const woodsCut = (() => {
+    const share = Math.max(0, Math.min(1, settings.forest));
+    if (share <= 0) return Infinity;
+    if (share >= 1) return -Infinity;
+    const samples: number[] = [];
+    for (let d = 20; d <= 400; d += 40) {
+      for (let k = 0; k < 236; k++) {
+        const t = (k / 236) * 4, side = Math.floor(t), f = t - side, along = -512 - d + f * (1024 + 2 * d);
+        const out = 512 + d;
+        const x = side === 0 ? along : side === 1 ? out : side === 2 ? -along : -out;
+        const z = side === 0 ? out : side === 1 ? -along : side === 2 ? -out : along;
+        samples.push(woodsField(x, z));
+      }
+    }
+    samples.sort((a, b) => a - b);
+    return samples[Math.min(samples.length - 1, Math.floor((1 - share) * samples.length))];
+  })();
+
   return {
     settings,
+    woodsAt(x: number, z: number): number {
+      if (!Number.isFinite(woodsCut)) return woodsCut < 0 ? 1 : 0;
+      return smoothstep(woodsCut - 0.025, woodsCut + 0.025, woodsField(x, z));
+    },
     liftAt(x: number, z: number, r: number): number {
       if (r <= BORDER_RIM_START_M) return 0;
       const a = enclosureAt(x, z);
@@ -241,6 +278,10 @@ export function createBorderLandform(
       if (r <= BORDER_PLAYABLE_M) return square * rimH;
       const w = smoothstep(BORDER_PLAYABLE_M, BORDER_PLAYABLE_M + HANDOVER_M, r);
       return (square + (outlandLevel(x, z, r, a) - square) * w) * rimH;
+    },
+    classicLiftAt(r: number): number {
+      const s = smoothstep(BORDER_RIM_START_M, BORDER_EDGE_M, r);
+      return s * s * rimH;
     },
     rimFactorAt(x: number, z: number): number {
       return nearLevelAt(x, z, enclosureAt(x, z)) / RIM_AT_PLAYABLE;
