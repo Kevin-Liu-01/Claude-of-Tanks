@@ -4,7 +4,8 @@
 // layer (cloudPresets.ts over its authored sky block) is pinned as the identity table of the round, with the
 // shadow policy (cumulus regimes under a day sun only); the 4 × 4 Bayer slot cycle covers every cell once; the
 // trace shader's haze law mirrors the aerial pass's constants in post.ts; the hook in post.ts, the `?clouds=off`
-// gate in sky.ts and the cascade attach in main.ts are present exactly once.
+// gate in sky.ts are present exactly once; the clouds' shadows reach the lit materials by the one shade map
+// (2026-10-03: the cascade gobos are gone — cloudShadeMap.selftest.mjs pins the path).
 // Round 71 (2026-09-25): the cloudscape pass — the multi-scale weather (a vigour channel), the street / anvil /
 // cirrus companion field in the wind frame, the curl volume and the blue-noise tile; every map's `clouds` block
 // resolves through its regime row (cloudscapes.ts) into the pinned 31-map cloudscape table; the layer is the default from round 71c (owner approval on the review sheet).
@@ -18,8 +19,12 @@ import {
 } from './cloudNoise.ts';
 import { CLOUD_LAYER_RULES, cloudLayerKey, deriveCloudLayerPreset, loadCloudscapeLayers } from './cloudPresets.ts';
 import { CLOUDSCAPE_REGIMES, CLOUDSCAPE_REGIME_NAMES, isCloudscapeRegime } from './cloudscapes.ts';
+import { CLOUD_CONTRAILS_ON } from './cloudscapeLayer.ts';
+import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
+// the count a map authors (what the layer derives with the contrail switch on)
+const authoredContrails = (id) => Math.round(Math.min(1, Math.max(0, getMapConfig(id)?.clouds?.contrails ?? 0)) * CLOUD_CONTRAIL_MAX);
 import {
-  VolumetricCloudLayer, cloudCameraCut, bindCloudShadowCascade, cloudShadowCellOrigin, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
+  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
 } from './volumetricClouds.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
@@ -249,7 +254,9 @@ for (const id of MAP_IDS) {
   const p = deriveCloudLayerPreset(skyOf(id));
   table[id] = { regime: p.regime, coverage: +p.coverage.toFixed(3), baseM: p.baseM, thicknessM: Math.round(p.thicknessM), shadow: p.shadow, streets: p.streets, cirrus: p.cirrus, farBand: p.farBand,
     // 2026-10-01: the weather beyond the slab (cloudWeatherLayers.ts) — contrails, rain, virga, the fog bank
-    contrails: p.contrails, rain: p.rain, virga: p.virga, fogBank: p.fogBank };
+    // (2026-10-03: contrails are off on every map — cloudscapeLayer.ts CLOUD_CONTRAILS_ON; the table keeps the authored
+    // counts, which come back with the switch)
+    contrails: CLOUD_CONTRAILS_ON ? p.contrails : (p.contrails === 0 ? authoredContrails(id) : -1), rain: p.rain, virga: p.virga, fogBank: p.fogBank };
   assert.ok(p.coverage >= 0 && p.coverage <= CLOUD_LAYER_RULES.coverageMax);
   assert.ok(p.baseM > 0 && p.thicknessM > 0 && p.density > 0);
   assert.ok(p.shadowThreshold >= 0 && p.shadowThreshold <= 1);
@@ -427,16 +434,13 @@ assert.match(skySource, /if \(requested === 'baked'\) return false;\s+return tru
 assert.match(skySource, /requested === 'off'\) return false/, 'the ?clouds=off fallback keeps the baked decks');
 assert.match(skySource, /scene\.userData\.volumetricClouds = volumetricClouds;/);
 assert.match(skySource, /CLOUD_NOISE_KINDS\.every\(\(kind\) => cloudNoiseUpload\[kind\]\)/, 'the worker handshake waits for every kind');
-assert.match(mainSource, /sky\.attachShadowCascades\(lighting\.csm\);/, 'the cascades carry the cloud shadows');
+// 2026-10-03: no cascade gobos — the dithered shade under the PCF taps was the gauntlet's stipple, arcs and weave
+assert.ok(!mainSource.includes('attachShadowCascades') && !skySource.includes('attachShadowCascades'), 'nothing attaches the cascades to the clouds');
 assert.match(mainSource, /cloudscape: config\.clouds/, 'the map\'s clouds block rides with its sky block into the rig');
 assert.ok(layerSource.includes('${ATMOSPHERE_SKY_GLSL}') && layerSource.includes('atmoSkyVisible( skyDir )'), 'the trace hazes toward the sky-view LUT');
-assert.ok(layerSource.includes('markShadowOnly(gobo)'), 'the gobos live on the shadow-only layer');
-assert.ok(layerSource.includes('gobo.customDepthMaterial = this.goboMaterial'), 'the gobos discard by the same two weather fields the trace reads');
-// round 78 (the performance lane): each gobo renders into its own cascade only — three rasterised every plane into
-// every cascade's map (sixteen field-shader draws for four planes on the cumulus maps); the mask is forgotten on detach
-assert.ok(layerSource.includes('setShadowCasterCascades(gobo, 1 << i);'), 'gobo i casts into cascade i only (renderLayers.setShadowCasterCascades)');
-assert.equal(layerSource.match(/setShadowCasterCascades\(gobo, null\);/g)?.length, 1, 'the detach forgets the mask');
-assert.ok(layerSource.indexOf('setShadowCasterCascades(gobo, 1 << i);') < layerSource.indexOf('this.scene.add(gobo);'), 'registered before the plane joins the scene');
+for (const gone of ['markShadowOnly', 'setShadowCasterCascades', 'customDepthMaterial', 'GOBO_FRAGMENT', 'uShadowCellOrigin', 'bindCloudShadowCascade']) {
+  assert.ok(!layerSource.includes(gone), `no shadow-map gobo left (${gone})`);
+}
 // round 78: the low-deck march law — a stratus deck under 400 m takes the cellular decks' 10 km cap and far strides
 // (whiteout's 300 m ceiling marched twenty kilometres of sheet at the centre-far view); the cellular decks are
 // unchanged, every cumuliform regime and high sheet stays on the full march
@@ -462,30 +466,8 @@ assert.match(layerSource, /uniform sampler3D tShape;[\s\S]*uniform sampler3D tDe
 for (const term of ['phaseDual( cosT, 0.8 )', 'exp( -tau * 0.25 )', 'float powder = mix( 1.0, 1.0 - exp( -sig * 60.0 ), powderK )', 'texelFetch( tBlue', 'cloudCoverageAt(', 'uAnvil', 'uShearM', 'uWispiness', 'uCirrus', 'uFarBand', 'uScud', 'halo']) {
   assert.ok(layerSource.includes(term), `the trace carries ${term}`);
 }
-assert.ok(layerSource.includes("name: 'VolumetricCloudTrace'") && layerSource.includes("name: 'VolumetricCloudResolve'") && layerSource.includes("name: 'VolumetricCloudDome'") && layerSource.includes("name: 'VolumetricCloudGobo'"));
+assert.ok(layerSource.includes("name: 'VolumetricCloudTrace'") && layerSource.includes("name: 'VolumetricCloudResolve'") && layerSource.includes("name: 'VolumetricCloudDome'") && layerSource.includes("name: 'VolumetricCloudFarShade'"));
 console.log('volumetricClouds.selftest: deterministic noise (six bakes), tiling, equalisation and street anisotropy, the 31-map cloudscape table, the regime rows, the shadow policy, the slot cycle, the haze mirror and the hooks pinned');
 
-// A translucent cloud mask is drawn once per cascade, not repeatedly through
-// the other cascades' overlapping planes. Preserve the shared caster hooks.
-{
-  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial());
-  const own=new THREE.OrthographicCamera(),other=new THREE.OrthographicCamera();
-  let before=0,after=0;
-  mesh.onBeforeShadow=()=>before++;mesh.onAfterShadow=()=>after++;
-  bindCloudShadowCascade(mesh,own,new THREE.Vector2(2048,2048));
-  for(const camera of [own,other,own]) {
-    const args=[null,mesh,null,camera,mesh.geometry,mesh.material,null];
-    mesh.onBeforeShadow(...args);
-    assert.equal(mesh.geometry.drawRange.count,camera===own?6:0);
-    mesh.onAfterShadow(...args);
-    assert.equal(mesh.geometry.drawRange.count,Infinity,'next cascade is not left with a disabled plane');
-  }
-  assert.deepEqual([before,after],[3,3]);mesh.geometry.dispose();mesh.material.dispose();
-  assert.match(layerSource,/smoothstep\( uThreshold - 0\.08, uThreshold \+ 0\.08, cloudField/,'cloud edges have a continuous opacity band');
-  assert.match(layerSource,/floor\( gl_FragCoord\.xy \) \+ uShadowCellOrigin/,'coverage follows absolute light-space cells');
-  for(const pixels of [1024,2048,4096])for(const span of [300,660,1200,2500])for(const shift of [-17,-1,0,1,17,257]) {
-    const step=span/pixels,base=cloudShadowCellOrigin(-span/2,-731,span,pixels);
-    const moved=cloudShadowCellOrigin(-span/2,-731-shift*step,span,pixels);
-    assert.equal((moved-shift+512)%256,base,'an integer cascade shift preserves every absolute dither cell');
-  }
-}
+// The shade map keeps the gobos' soft edge band (a continuous opacity over the cut, never a binary stamp).
+assert.match(layerSource,/smoothstep\( uThreshold - 0\.08, uThreshold \+ 0\.08, cloudField/,'cloud edges have a continuous opacity band');
