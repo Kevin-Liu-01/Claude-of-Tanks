@@ -299,3 +299,39 @@ of them:
 - **Sealed blocks.** Street rows on both sides of every street can seal a block's interior; a bot hunting a hull beyond
   it presses at the gaps until the match times out. Leave one side of a contour street open (`streetRowKeepouts`
   rectangles: Ruinspires' terrace gardens).
+
+Batches 6–8 (Copper Mesa, Earthrise Basin, Orchard Valley, Longleaf Crossing; Tarkhan Steppe, Amberford,
+Frosthollow, Nordhavn Fjord; Sunscar Oasis, Whiteout Station; October 2–3, 2026) added these:
+
+- **Road-graded greens.** An apron a lane crosses at a fixed level kinks the lane on the terrain seeds whose ground
+  differs: Amberford's greens put 47 % into a lane at seed 2025. Give such an apron `grade: 'road'` with its length
+  along the lane. At a crossroads, turn it along the road that climbs (Frosthollow's moraine crossroads).
+- **Exits beside cuttings.** A road exit graded through the rim cuts a corridor whose shoulders reach about 60 m.
+  Tarkhan Steppe's station road ran 50 m from the rail cutting and lowered the ring's plateau beside the notch; its
+  last node now turns the exit 99 m away.
+- **Scarps.** A road straight up a terrace scarp exceeds 18 % (Nordhavn Fjord's northern roads: 21–26 %). Cross it
+  on a diagonal. A ramp landform near deployment pads does nothing, because the pads' clearing fade (36–90 m) takes
+  it out.
+- **Junctions on the flat.** Where two roads meet on a slope, their elevation grids disagree at the seam, and the 4 m
+  sample reads the step as a grade (a 1.2 m step read as 30 %). Join roads where the ground is level.
+- **Acute corners.** The roadside plan tests a building's centre, 7.5 m off any road, so a long building in the
+  acute corner of a junction reaches the other road. `props.roadBuildingKeepouts` keeps roadside centres out of a disc
+  (Nordhavn Fjord's town crossroads). Deep compounds need a wider `buildingLat` (Sunscar Oasis: 16–18 m).
+- **Strongpoints.** A tactical beat stands inside ±360 m and at least 60 m from each of Verdant's three. Check that
+  its structure stands after a move (`.qa-dev/beats-check.mjs`): on a steep site the structure is dropped.
+- **Skeleton kinds.** The skeleton rule compares landforms of one kind: a ridge with Verdant's ridges, a knoll with
+  its knoll, a basin with its basin. A scree cone (a knoll) within 75 m of Verdant's southern knoll counts.
+- **Screens fade.** A berm near a deployment arc loses height to the pads' clearing fade. Whiteout Station's north
+  berm, moved 79 m off Verdant's ridge, screens the deployments only at 8.4 m.
+- **One-sided slowing.** Slowing ground decides all-bot matches when it lies on one side's approach. Two bogs south
+  of Nordhavn Fjord's western town fixed a fast pacing seed but went 15-1 to the south, and a matching pair to the
+  north still went 29-11 over 40 seeds. Before keeping a pacing fix, play 40 all-bot seeds.
+- **Geology.** `src/world/maps/geology.ts` holds `gully()` (three nested troughs, narrowing toward the head) and
+  `talusFan()` (a steep cone at a gully mouth with a low apron down the fall line). A `gorge` landform with a positive
+  height is a mesa or butte: a level cap with faces steep enough to read as rock. Keep features that change a gorge's
+  walls or floor under 40-seed review: buttresses on Aegis Crossing's walls fixed a fast pacing seed but brought back
+  900 s standoffs between bots on the floor's two reaches.
+- **Seeds re-roll.** Any terrain or prop change re-rolls a few battlePacing seeds. The borders pass's rim trees moved
+  Aegis Crossing's seed 53002 from 217 s to 118 s with no change to the map's own layout. Read the 12-seed distribution
+  and fix a fast or capped seed with a change that reads right on the map, not by trying perturbations until it
+  passes.
