@@ -5,6 +5,7 @@
 // collision shard, the navigation grid and the minimap all see the one surface.
 
 type Basin = { kind: 'basin'; x: number; z: number; rx: number; rz: number; height: number; yawDeg: number };
+type Knoll = { kind: 'knoll'; x: number; z: number; rx: number; rz: number; height: number; yawDeg: number };
 
 /** A gully — a balka in a loess scarp, a coombe in a chalk escarpment, a couloir down a mountain flank, a wash off a
  * mesa. Three overlapping troughs climb from the mouth to the head, each narrower and shallower than the one below,
@@ -26,4 +27,19 @@ export function gully(mouthX: number, mouthZ: number, headX: number, headZ: numb
       yawDeg: Math.round(Math.atan2(z1 - z0, x1 - x0) * 180 / Math.PI),
     };
   });
+}
+
+/** A talus cone: the scree a gully or a cliff sheds at its foot. A steep cone at the apex and a low apron spread
+ * down the fall line (toward towardX/Z) together give the concave profile of a debris fan. */
+export function talusFan(apexX: number, apexZ: number, towardX: number, towardZ: number, lengthM: number,
+  height: number): Knoll[] {
+  const dx = towardX - apexX, dz = towardZ - apexZ, d = Math.hypot(dx, dz), ux = dx / d, uz = dz / d;
+  const yawDeg = Math.round(Math.atan2(uz, ux) * 180 / Math.PI);
+  return [
+    { kind: 'knoll', x: Math.round(apexX + ux * lengthM * 0.22), z: Math.round(apexZ + uz * lengthM * 0.22),
+      rx: Math.round(lengthM * 0.34), rz: Math.round(lengthM * 0.28), height, yawDeg },
+    { kind: 'knoll', x: Math.round(apexX + ux * lengthM * 0.55), z: Math.round(apexZ + uz * lengthM * 0.55),
+      rx: Math.round(lengthM * 0.6), rz: Math.round(lengthM * 0.46), height: Math.round(height * 0.45 * 10) / 10,
+      yawDeg },
+  ];
 }

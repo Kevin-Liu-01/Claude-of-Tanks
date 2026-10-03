@@ -22,6 +22,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // southern deployment, the ford green on the line of equal drives and the fair green near the northern arc; the
   // kickoff on the north-bank meadow between the bridge and the ford.
   autumn: { kickoff: { x: 119, z: 34 }, zones: [{ x: 22, z: -192 }, { x: 154, z: 54 }, { x: 0, z: 102 }] },
+  // Frosthollow (layout brief, 2026-10-03): three zones across the valley's waist — the terrace hay meadow behind the
+  // sawmill, the Bystra crossing's east-bank landing and the moraine crossroads (the last two graded aprons in the map
+  // file); the kickoff on the Bystra crossing itself.
+  winter: { kickoff: { x: 10, z: 0 }, zones: [{ x: -175, z: 65 }, { x: 95, z: -5 }, { x: 190, z: -40 }] },
   // Tarkhan Steppe (layout brief, 2026-10-02): the three aprons — the station's grain yard by the ford on the line of
   // equal drives, the post-road halt on the plateau near the northern arc and the kolkhoz yard near the southern
   // deployment, each team's home zone as far from it as the other's; the kickoff on the wadi's north bank (the bounded

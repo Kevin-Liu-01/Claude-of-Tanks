@@ -36,7 +36,7 @@ const coalCensus = { railyard: 10, caldera: 7, foundry: 7, skybridge: 5 };
 const expected = {
   verdant: [6678, 6413, 7323], // 2026-10-02 Verdant Fields redesign (docs/MAP-LAYOUT-BRIEF.md); was [6977, 6678, 7507], and [6845, 6575, 7445] before its aprons stood on their ground (apron bank law)
   desert: [2943, 2883, 3123], // 2026-10-01 Sirocco Wadi redesign (docs/MAP-LAYOUT-BRIEF.md); was [2673, 2605, 3139], and [2856, 2796, 2991] before its aprons stood on their ground (apron bank law)
-  winter: [5931, 5786, 4919],
+  winter: [5996, 5856, 4991], // 2026-10-03 Frosthollow layout pass (docs/MAP-LAYOUT-BRIEF.md); was [5931, 5786, 4919]
   urban: [3859, 6519, 3510], // 2026-10-01 Steinburg redesign (docs/MAP-LAYOUT-BRIEF.md); was [3898, 9290, 3530]
   coastal: [4091, 3931, 4107], // 2026-10-02 Saltmere Bay redesign (docs/MAP-LAYOUT-BRIEF.md); was [4161, 3964, 4249], and [4413, 4253, 4411] before its aprons stood on their ground (apron bank law)
   autumn: [5721, 5607, 5773], // 2026-10-03 Amberford layout pass (docs/MAP-LAYOUT-BRIEF.md); was [5872, 5726, 5822]

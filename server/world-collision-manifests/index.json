@@ -19,11 +19,11 @@
       "concealers": 3123
     },
     "winter": {
-      "bytes": 1644202,
-      "sha256": "a1eee5b1236e58aed4b9ec7bef18c8f6dab750f63fc57a2ad1b6967b5a24a5f6",
-      "obstacles": 5931,
-      "colliders": 5786,
-      "concealers": 4919
+      "bytes": 1678687,
+      "sha256": "4a3f86ee2b34fd75385c05ea6322aff74454f9ea3944770e566b88687df5de62",
+      "obstacles": 5996,
+      "colliders": 5856,
+      "concealers": 4991
     },
     "urban": {
       "bytes": 4205979,
