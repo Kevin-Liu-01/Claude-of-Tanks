@@ -108,7 +108,10 @@ const CRANE = (k = 1) => RIG.crane({ side: -6 * k, along: [-12, -17], lift: [1.8
 export const SHOTS = [
   // ---------------------------------------------------------------- tanks: the hero on the move through the fight
   [1, 'main-street-push', 'tank', 'A Leopard 2A6 pushes up the main street of burning Steinburg', S.stMain,
-    { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', 5, 24, 1500), fire('hero', 3400), mg('ally1', 2600, 9), dust('hero', 800, 10, 0.8)], cam: REAR() },
+    // over the right shoulder and down the street: REAR() sat in the east row's walls and its mirror looked across the
+    // street into them (review 2026-10-03)
+    { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', 5, 24, 1500), fire('hero', 3400), mg('ally1', 2600, 9), dust('hero', 800, 10, 0.8)],
+      cam: RIG.follow({ side: [3.6, 3.3], along: [-8.5, -7.2], lift: [4.6, 4.3], fov: 46, look: [3, 40, 0.8] }) },
     { tMs: 3480, exposureMs: 25 }],
   [2, 'factory-road', 'tank', 'An M1A2 Abrams TUSK rolls past the factory under fire', S.stEast,
     { count: 2, speed: 2.8, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', -5, 18, 2000), mg('ally1', 1200, 9), fire('hero', 3900), dust('hero', 700, 10, 0.8)], cam: OG() },
