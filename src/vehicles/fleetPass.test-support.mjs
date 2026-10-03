@@ -53,21 +53,27 @@ function hashState(hash, value, seen = new Map()) {
   if (seen.has(value)) { hash.update(`ref:${seen.get(value)};`); return; }
   seen.set(value, seen.size);
   hash.update(`${value.constructor?.name ?? 'object'}{`);
-  if (ArrayBuffer.isView(value)) hash.update(bytesOf(value));
-  else if (value instanceof ArrayBuffer) hash.update(new Uint8Array(value));
-  else if (value instanceof Map) {
-    for (const [key, item] of value) { hashState(hash, key, seen); hashState(hash, item, seen); }
-  } else if (value instanceof Set) {
-    for (const item of value) hashState(hash, item, seen);
-  } else {
-    for (const key of Object.keys(value).sort()) {
-      hash.update(`${JSON.stringify(key)}:`);
-      const descriptor = Object.getOwnPropertyDescriptor(value, key);
-      if ('value' in descriptor) hashState(hash, descriptor.value, seen);
-      else { hashState(hash, descriptor.get, seen); hashState(hash, descriptor.set, seen); }
-    }
-  }
+  hashContents(hash, value, seen);
   hash.update('}');
+}
+
+function hashContents(hash, value, seen) {
+  if (ArrayBuffer.isView(value)) { hash.update(bytesOf(value)); return; }
+  if (value instanceof ArrayBuffer) { hash.update(new Uint8Array(value)); return; }
+  if (value instanceof Map) {
+    for (const [key, item] of value) { hashState(hash, key, seen); hashState(hash, item, seen); }
+    return;
+  }
+  if (value instanceof Set) {
+    for (const item of value) hashState(hash, item, seen);
+    return;
+  }
+  for (const key of Object.keys(value).sort()) {
+    hash.update(`${JSON.stringify(key)}:`);
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if ('value' in descriptor) hashState(hash, descriptor.value, seen);
+    else { hashState(hash, descriptor.get, seen); hashState(hash, descriptor.set, seen); }
+  }
 }
 
 /** Every node's identity, parent, visibility and local transform, in traversal order. Reads only. */
@@ -141,6 +147,70 @@ function messageOf(error, maxLines = 24) {
     .map((line, index) => (index && line ? `      ${line}` : line)).join('\n');
 }
 
+function buildForAudits(id, pending, create, build, stats, fail) {
+  const at = performance.now();
+  try { const tank = create(id, null, build); stats.builds++; return tank; }
+  catch (error) { for (const entry of pending) fail(entry, id, error); return null; }
+  finally { stats.buildMs += performance.now() - at; }
+}
+
+function changedBuildError(id, name, change) {
+  return new assert.AssertionError({
+    message: `${id}: ${name} left the shared build changed (${change}); restore what the audit poses, `
+      + 'or declare it last',
+  });
+}
+
+function sharedBuildChange(tank, guarded, pose, meshes, stats) {
+  if (!guarded) return null;
+  const at = performance.now();
+  try {
+    return poseChange(pose, poseOf(tank.root))
+      ?? (meshFingerprint(tank.root) === meshes ? null : 'mesh geometry, instances or materials/metadata');
+  } finally { stats.guardMs += performance.now() - at; }
+}
+
+async function checkTank(id, entries, create, build, stats, fail) {
+  const pending = entries.filter((entry) => !entry.failed && (!entry.covers || entry.covers.has(id)));
+  const firstAsync = pending.findIndex((entry) => isAsyncFunction(entry.audit.check));
+  let tank = null, settled = false;
+  const discard = () => {
+    try { tank?.dispose(); } finally { tank = null; }
+  };
+  try {
+    for (let index = 0; index < pending.length; index++) {
+      const entry = pending[index];
+      if (!tank) {
+        tank = buildForAudits(id, pending.slice(index), create, build, stats, fail);
+        if (!tank) break;
+        settled = false;
+      }
+      if (!settled && firstAsync >= 0 && index >= firstAsync) {
+        await Promise.resolve();
+        settled = true;
+      }
+      const guarded = index < pending.length - 1;
+      let at = performance.now();
+      const pose = guarded ? poseOf(tank.root) : null, meshes = guarded ? meshFingerprint(tank.root) : null;
+      stats.guardMs += performance.now() - at;
+      at = performance.now();
+      try {
+        const result = entry.audit.check(id, tank);
+        if (typeof result?.then === 'function') await result;
+      } catch (error) {
+        fail(entry, id, error);
+        discard();
+        continue;
+      } finally { entry.ms += performance.now() - at; }
+      const change = sharedBuildChange(tank, guarded, pose, meshes, stats);
+      if (change) {
+        fail(entry, id, changedBuildError(id, entry.name, change));
+        discard();
+      }
+    }
+  } finally { discard(); }
+}
+
 /**
  * @param {{ name: string, build: object, ids: Iterable<string>,
  *   audits: { name: string, ids?: Iterable<string>, create: () => { check(id, tank): unknown, finish?(): unknown } }[],
@@ -167,56 +237,9 @@ export async function runFleetPass({ name, build, ids, audits, createTank: creat
     try { entry.audit = await createAudit(); } catch (error) { fail(entry, 'setup', error); }
   }
   const started = performance.now();
-  let builds = 0, buildMs = 0, guardMs = 0;
-  for (const id of roster) {
-    const pending = entries.filter((entry) => !entry.failed && (!entry.covers || entry.covers.has(id)));
-    const firstAsync = pending.findIndex((entry) => isAsyncFunction(entry.audit.check));
-    let tank = null, settled = false;
-    const discard = () => {
-      try { tank?.dispose(); } finally { tank = null; }
-    };
-    try {
-      for (let index = 0; index < pending.length; index++) {
-        const entry = pending[index];
-        if (!tank) {
-          const at = performance.now();
-          try { tank = create(id, null, build); builds++; settled = false; }
-          catch (error) {
-            for (const rest of pending.slice(index)) fail(rest, id, error);
-            break;
-          } finally { buildMs += performance.now() - at; }
-        }
-        if (!settled && firstAsync >= 0 && index >= firstAsync) {
-          await Promise.resolve();
-          settled = true;
-        }
-        const guarded = index < pending.length - 1;
-        let at = performance.now();
-        const pose = guarded ? poseOf(tank.root) : null, meshes = guarded ? meshFingerprint(tank.root) : null;
-        guardMs += performance.now() - at;
-        at = performance.now();
-        try {
-          const result = entry.audit.check(id, tank);
-          if (typeof result?.then === 'function') await result;
-        } catch (error) {
-          fail(entry, id, error);
-          discard();
-          continue;
-        } finally { entry.ms += performance.now() - at; }
-        if (!guarded) continue;
-        at = performance.now();
-        const change = poseChange(pose, poseOf(tank.root))
-          ?? (meshFingerprint(tank.root) === meshes ? null : 'mesh geometry, instances or materials/metadata');
-        guardMs += performance.now() - at;
-        if (change) {
-          fail(entry, id, new assert.AssertionError({
-            message: `${id}: ${entry.name} left the shared build changed (${change}); restore what the audit poses, `
-              + 'or declare it last' }));
-          discard();
-        }
-      }
-    } finally { discard(); }
-  }
+  const stats = { builds: 0, buildMs: 0, guardMs: 0 };
+  for (const id of roster) await checkTank(id, entries, create, build, stats, fail);
+  const { builds, buildMs, guardMs } = stats;
   for (const entry of entries) {
     if (entry.failed) continue;
     const at = performance.now();
