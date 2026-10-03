@@ -41,6 +41,9 @@ function stiltHouse(ctx: RegionalBuildContext, opts: { lift?: number } = {}): Re
   const wallColour = mat ? BAMBOO_MAT : pick(rng, WEATHERED_PLANK);
   const thatched = rng() < 0.6;
   stilts(sink, W, D, lift, shade(post, 0.85));
+  // the back half of the under-floor boarded in for nets, tools and the boat engine (it also keeps the cover the
+  // base house gave: an open stilt house is a window under its floor)
+  sink.span('structureWood', -W / 2 + 0.12, -0.25, -D / 2 + 0.12, W / 2 - 0.12, lift + 0.06, -D * 0.04, { colour: shade(wallColour, 0.72) });
   const wallH = 2.5, top = lift + 0.16 + wallH;
   sink.placed(0, 0, lift + 0.16, 0, () => {
     // the house body: a structural wall box behind board dressing
@@ -59,8 +62,8 @@ function stiltHouse(ctx: RegionalBuildContext, opts: { lift?: number } = {}): Re
   const roof = thatched ? nipa(30 + rng() * 6) : tole(20 + rng() * 6);
   emitRoof(sink, roofGeometry(W, D, top, roof), roof);
   const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  veranda(sink, front, lift, top - 0.05, W, 1.6, post, { bucket: thatched ? 'straw' : 'roof' });
-  ladder(sink, { ...front, origin: [0, 0, D / 2 + 1.6] }, W * 0.3, 0, lift + 0.16, shade(post, 0.9));
+  veranda(sink, front, lift, top - 0.05, W, 1.3, post, { bucket: thatched ? 'straw' : 'roof' });
+  ladder(sink, { ...front, origin: [0, 0, D / 2 + 1.3] }, W * 0.3, 0, lift + 0.16, shade(post, 0.9));
   return sink.finish();
 }
 
@@ -95,7 +98,7 @@ function groundHouse(ctx: RegionalBuildContext): RegionalParts {
 }
 
 /** An open shelter on stilts: posts, a deck and a roof (boat sheds, pond guard huts). */
-function shelter(ctx: RegionalBuildContext, opts: { deck?: boolean } = {}): RegionalParts {
+function shelter(ctx: RegionalBuildContext, opts: { deck?: boolean; walls?: 0 | 1 | 2 } = {}): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   const W = Math.max(3.6, Math.min(7, ctx.info.w - 0.8)), D = Math.max(5, Math.min(11, ctx.info.d - 0.8));
@@ -110,6 +113,14 @@ function shelter(ctx: RegionalBuildContext, opts: { deck?: boolean } = {}): Regi
   const thatched = rng() < 0.5;
   const roof = thatched ? nipa(28) : tole(18);
   emitRoof(sink, roofGeometry(W, D, top, roof), roof);
+  // plank or woven-mat walls: the back (1), the back and both sides (2); the front stays open to the creek or yard
+  if (opts.walls) {
+    const sheet = rng() < 0.5 ? BAMBOO_MAT : shade(post, 0.9);
+    sink.span('structureWood', -W / 2 + 0.1, lift, -D / 2 + 0.06, W / 2 - 0.1, top - 0.12, -D / 2 + 0.14, { colour: sheet });
+    if (opts.walls > 1) {
+      for (const sx of [-1, 1]) sink.span('structureWood', sx * (W / 2 - 0.14) - 0.04, lift, -D / 2 + 0.14, sx * (W / 2 - 0.14) + 0.04, top - 0.12, D / 2 - 0.3, { colour: sheet });
+    }
+  }
   return sink.finish();
 }
 
@@ -126,8 +137,9 @@ const marketHall: RegionalBuilder = (ctx) => {
   }
   const roof = tole(16);
   emitRoof(sink, roofGeometry(W, D, top, roof), roof, rng() < 0.5 ? pick(rng, RUSTED) : undefined);
+  // the stall platforms: fixed counters of plank on block (they stand as the base hall's walls stood: cover)
   for (const side of [-1, 1]) for (let z = -D / 2 + 1.2; z < D / 2 - 1; z += 2.4) {
-    sink.span('structureWood', side * (W / 2 - 1.3) - 0.5, 0.25, z - 1.0, side * (W / 2 - 1.3) + 0.5, 1.15, z + 1.0, { colour: pick(rng, WEATHERED_PLANK), decor: true });
+    sink.span('structureWood', side * (W / 2 - 1.3) - 0.5, 0.25, z - 1.0, side * (W / 2 - 1.3) + 0.5, 1.15, z + 1.0, { colour: pick(rng, WEATHERED_PLANK) });
   }
   return sink.finish();
 };
@@ -153,11 +165,13 @@ const collapsed: RegionalBuilder = (ctx) => {
 export const MEKONG_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => stiltHouse(ctx),
   farmhouse: (ctx) => groundHouse(ctx),
-  boatshed: (ctx) => shelter(ctx),
-  granary: (ctx) => shelter(ctx, { deck: true }),
-  woodshed: (ctx) => shelter(ctx),
+  // boat shelters walled at the back, stores and rice houses walled on three sides (they keep the cover of the base
+  // sheds), the depot a rendered shophouse
+  boatshed: (ctx) => shelter(ctx, { walls: 1 }),
+  granary: (ctx) => shelter(ctx, { deck: true, walls: 2 }),
+  woodshed: (ctx) => shelter(ctx, { walls: 2 }),
   marketRow: marketHall,
-  depot: marketHall,
+  depot: (ctx) => groundHouse(ctx),
   ruin: collapsed,
 });
 
