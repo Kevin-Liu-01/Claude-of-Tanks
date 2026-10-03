@@ -1116,7 +1116,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/hardstandSurface.selftest.mjs',
     'src/world/hardstandBanks.selftest.mjs', // 2026-10-02: the apron bank law, every map, with its pending list
     'src/world/landformGeology.selftest.mjs', // 2026-10-03: landform geology, and every smooth landform unchanged
-    'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every house and village wall where main has it)
+    'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every planned building on main's plot, the village walls)
     'src/world/terrainSurfaceDetail.selftest.mjs',
     'src/world/terrainMaterialOwnership.selftest.mjs',
     'src/world/terrainProjection.selftest.mjs',
@@ -1251,6 +1251,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/structureKit.selftest.mjs',
     'src/world/maps/marsSettlement.selftest.mjs',
     'src/world/orchardBathhouse.selftest.mjs',
+    // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap
+    'src/world/maps/regional/regionalArchitecture.selftest.mjs',
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
     'src/world/structureCollision.selftest.mjs',

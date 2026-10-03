@@ -14,6 +14,7 @@ import { sampleObbGround } from './propPlacement.ts';
 import { deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand } from './structureCollision.ts';
 import { createHeightField } from './terrain.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
+import { rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
 
 for (const [tx, tz] of [[0, 1], [1, 0], [0.6, 0.8]]) for (const side of [-1, 1]) {
   for (const kind of ['cottage', 'farmhouse', 'woodshed']) {
@@ -80,7 +81,8 @@ const hooks = registerHooks({ load(url, context, next) {
 const originals = await import('./props.ts');
 hooks.deregister();
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-const names = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked', 'steel', 'structureMetal'];
+const names = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked', 'steel', 'structureMetal', 'structureWood',
+  'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof'];
 function section(start, end) {
   const a = source.indexOf(start), b = source.indexOf(end, a + start.length);
   assert.ok(a >= 0 && b > a, start); return source.slice(a, b);
@@ -88,6 +90,8 @@ function section(start, end) {
 const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE, VILLAGE_BUILDERS, URBAN_BUILDERS, STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES,
   makeTimberBathhouse, addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, jitterUV,
   sampleObbGround, deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand,
+  // regional-buildings lane: the map's architecture kit swaps a placed building's geometry before its collision
+  rebuildRegionalStructure, resolveRegionalArchitecture,
   buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
   ...Object.fromEntries(['mulberry32', 'makeCottage', 'makeBarn', 'makeTower', 'makeRuin', 'makeAdobe', 'makeRowhouse']
     .map(key => [key, originals[key]])),
@@ -104,6 +108,7 @@ function build(config, enable) {
     const _upAxis = new THREE.Vector3(0,1,0), _one = new THREE.Vector3(1,1,1);
     const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
     const ensureSteelAtlas = () => {};
+    const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
     ${section('function mergeInto(', 'type GroundDecalKind')}
     ${section('  function groundFit(', "  yield { stage: 'yard-clutter' };\n")}
     ${section('  const roads = L.roads;', '  // heaped masonry chunks')}
