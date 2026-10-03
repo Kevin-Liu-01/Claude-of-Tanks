@@ -6,7 +6,9 @@
 // regimes that take them (a stratiform deck never does).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { CLOUD_CLUSTER_GAP, CLOUD_CLUSTER_PERIOD_K, CLOUD_FAR_THIN } from './volumetricClouds.ts';
+import {
+  CLOUD_BASE_DARK, CLOUD_BASE_SHARP, CLOUD_CLUSTER_GAP, CLOUD_CLUSTER_PERIOD_K, CLOUD_FAR_FLAT, CLOUD_FAR_THIN, CLOUD_LUMP_GATE, CLOUD_LUMP_GATE_PERIOD_K,
+} from './volumetricClouds.ts';
 import { CLOUDSCAPE_REGIMES } from './cloudscapes.ts';
 
 const here = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
@@ -44,9 +46,36 @@ assert.equal(CLOUD_FAR_THIN, 0, 'off by default');
 assert.match(clouds, /if \( uFarThin > 0\.0 \) field -= uFarThin \* \( 1\.0 - uStratiform \) \* smoothstep\( 9000\.0, 20000\.0, farD \) \* uCoverage \* 0\.5;/, 'the far cut');
 assert.match(clouds, /t\.uFarThin\.value = lightTune\('CLOUD_FAR_THIN', CLOUD_FAR_THIN\);/, 'per frame');
 
+// ---- the cumulus knobs (2026-10-03; the gauntlet's wave 17, Opus: "soft, low-contrast cotton puffs at random heights, no
+// shared flat base, undersides barely shaded, hardly flattening toward the horizon"): off until a capture shows them,
+// read per frame for a sweep
+assert.deepEqual([CLOUD_BASE_SHARP, CLOUD_BASE_DARK, CLOUD_FAR_FLAT], [0, 0, 0], 'the candidate\'s cumulus by default');
+for (const [u, k] of [['uBaseSharp', 'CLOUD_BASE_SHARP'], ['uBaseDark', 'CLOUD_BASE_DARK'], ['uFarFlat', 'CLOUD_FAR_FLAT']]) {
+  assert.match(clouds, new RegExp(`uniform float ${u};`), `${u} is declared`);
+  assert.match(clouds, new RegExp(`t\\.${u}\\.value = lightTune\\('${k}', ${k}\\);`), `${u} per frame`);
+}
+assert.match(clouds, /float bk = uBaseSharp \* uBaseFlat \* \( 1\.0 - uStratiform \) \* \( 1\.0 - smoothstep\( 0\.04, 0\.22, hN \) \);\s*if \( bk > 0\.0 \) d = mix\( d, max\( d, smoothstep\( 0\.01, 0\.12, d \) \* w\.cov \* hg \* 0\.9 \), bk \);/,
+  'a flat-based cumulus: a column that carries the body fills its base, an empty one stays empty (fp12: no bodiless lenses)');
+{
+  // the fill, modelled: an empty column (d 0) stays 0; a thin edge of a body (d 0.06) rises toward the footprint; a dense
+  // core is untouched
+  const sm = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+  const fill = (d, cov, hg = 1, bk = 1) => d + (Math.max(d, sm(0.01, 0.12, d) * cov * hg * 0.9) - d) * bk;
+  assert.equal(fill(0, 0.8), 0, 'an empty column stays empty');
+  assert.ok(fill(0.06, 0.8) > 0.3, `a body's thin edge fills (${fill(0.06, 0.8).toFixed(2)})`);
+  assert.equal(fill(0.9, 0.8), 0.9, 'a dense core is untouched');
+}
+assert.match(clouds, /float bd = uBaseDark \* \( 1\.0 - uStratiform \);\s*float msV = mix\( 0\.35 - 0\.15 \* bd, 1\.0,/, 'the base\'s diffused light');
+assert.match(clouds, /float baseShadow = mix\( 0\.35 - 0\.17 \* bd, 1\.0,/, 'its direct light');
+assert.match(clouds, /float floorK = mix\( 0\.34 - 0\.14 \* bd, 1\.25, deckFloor \)/, 'its sky floor (a deck\'s untouched)');
+assert.match(clouds, /if \( uFarFlat > 0\.0 \) o\.top \*= 1\.0 - 0\.4 \* uFarFlat \* \( 1\.0 - uStratiform \) \* smoothstep\( 6000\.0, 18000\.0, farD \);/, 'the far field flattens');
+
 // ---- the far band (2026-10-03; waves 13-14: "a ruler-flat pale band at one constant height"): decks only — a cumuliform
 // sky ends where its traced field does and sinks into the haze; the contrails are off on every map
-assert.match(clouds, /if \( uFarBand <= 0\.0 \|\| dir\.y <= 0\.004 \|\| uDeckMarch <= 0\.0 \) return none;/, 'no far band under a cumuliform sky');
+assert.match(clouds, /if \( uFarBand <= 0\.0 \|\| dir\.y <= 0\.0005 \|\| uDeckMarch <= 0\.0 \) return none;/, 'no far band under a cumuliform sky');
+// (2026-10-03, the gauntlet's wave 17 on Frosthollow: a whitish band under the deck's edge) a deck's band admits the deck's
+// own coverage when that is more — a closed deck stays closed to the horizon — and reaches down to it
+assert.match(clouds, /float fbCov = max\( uFarBand, uCoverage \);\s*float covB = smoothstep\( 1\.0 - fbCov, 1\.0 - fbCov \+ 0\.35, fb \)/, 'the deck\'s coverage');
 assert.match(layer, /export const CLOUD_CONTRAILS_ON = false;/, 'contrails off');
 assert.match(layer, /out\.contrails = CLOUD_CONTRAILS_ON \? Math\.round\(clamp\(scape\.contrails \?\? 0, 0, 1\) \* CLOUD_CONTRAIL_MAX\) : 0;/);
 
@@ -60,6 +89,19 @@ assert.match(clouds, /t\.uDeckDetail\.value = preset\.deckDetail \?\? 0;/);
 assert.match(layer, /deckDetail: clamp\(pick\('deckDetail'\), 0, 1\),/);
 assert.match(presets, /p\.cluster \?\? 0, p\.deckDetail \?\? 0,/, 'in the layer\'s key');
 for (const [name, r] of Object.entries(CLOUDSCAPE_REGIMES)) assert.equal(r.deckDetail, 0, `${name}: round 76's deck until a lab shows the knob`);
+// ---- a deck's lumps (2026-10-03; fp11: lumps 0.8 gave a deck's base its rolls, at one strength everywhere — a texture
+// laid over the sheet): a broad field gates the strength, so the base reads lumpy over some stretches of the deck and
+// smooth over others; both lump sites read the gated strength; no regime takes lumps until a lab shows the gated knob
+assert.equal(CLOUD_LUMP_GATE, 1, 'the lumps come and go with the broad field');
+assert.ok(CLOUD_LUMP_GATE_PERIOD_K >= 1 && CLOUD_LUMP_GATE_PERIOD_K <= 3, 'stretches of a few kilometres');
+assert.match(clouds, /float cloudLumpK\( vec2 cxz \) \{\s*if \( uLumps <= 0\.0 \) return 0\.0;/, 'no fetch without lumps');
+assert.match(clouds, /\$\{f\(CLOUD_WEATHER_TILE_M \* CLOUD_LUMP_GATE_PERIOD_K\)\} \+ vec2\( 0\.53, 0\.29 \), 0\.0 \)\.b;/, 'the broad channel at its own period and offset');
+assert.match(clouds, /return uLumps \* mix\( 1\.0, smoothstep\( 0\.3, 0\.7, b \), \$\{f\(CLOUD_LUMP_GATE\)\} \);/, 'the gate');
+assert.equal((clouds.match(/= cloudLumpK\( cxz \);/g) ?? []).length, 2, 'the cell factor and the base mottle read the gated strength');
+assert.match(clouds, /k \*= mix\( 1\.0, 0\.45 \+ 0\.85 \* lump, lk \);/, 'the cell factor');
+assert.match(clouds, /dm\.b \* 0\.15 \), lkB \);/, 'the base mottle');
+assert.ok(!/, uLumps \);/.test(clouds), 'no ungated lump site left');
+for (const [name, r] of Object.entries(CLOUDSCAPE_REGIMES)) assert.equal(r.lumps ?? 0, 0, `${name}: no lumps until a lab shows the gated knob`);
 assert.match(clouds, /uFieldMix: \{ value: 0 \}, uCluster: \{ value: 0 \},/, 'every consumer\'s field uniforms carry it');
 assert.match(clouds, /uFieldMix: gu\.uFieldMix, uCluster: gu\.uCluster,/, 'the far shade reads the gobos\' own');
 assert.match(clouds, /g\.uCluster\.value = preset\?\.cluster \?\? 0;/, 'the gobos follow the preset');
@@ -93,4 +135,4 @@ for (const regime of ['stratocumulus-deck', 'overcast-stratus', 'low-stratus', '
 assert.ok(CLOUDSCAPE_REGIMES['fair-weather-cumulus'].density > 0.1, 'a fair-weather cumulus dense enough to shade its own base');
 assert.ok(CLOUDSCAPE_REGIMES['fair-weather-cumulus'].ambientScale < 1, 'and its shaded base not lifted back by the fill');
 
-console.log(`cumulusFields.selftest: the cumulus fields' gate (gap ${CLOUD_CLUSTER_GAP}, mean 1, ${CLOUD_CLUSTER_PERIOD_K}x the tile), the flat base, the plumbing and the cumuliform regimes PASS`);
+console.log(`cumulusFields.selftest: the cumulus fields' gate (gap ${CLOUD_CLUSTER_GAP}, mean 1, ${CLOUD_CLUSTER_PERIOD_K}x the tile), the deck lumps' broad gate, the flat base, the plumbing and the cumuliform regimes PASS`);
