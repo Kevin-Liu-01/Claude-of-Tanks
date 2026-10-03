@@ -43,7 +43,7 @@ for (const m of manifest50) {
 const films = [];
 const FILM_INFO = [
   ['trailer-24h', 'Around the Clock', 'Eighty seconds from midnight to midnight: the newest main battle tanks across 20 battlefields at every hour, tracked, panned and craned through Scene Studio. Original procedural score.', '1920×1080 · 30 fps · 80 s · stereo'],
-  ['lineup', 'The Lineup', 'Twelve of the newest main battle tanks, one beat each: ZTZ-100, KF51 Panther, Leclerc XLR, M1A2 SEPv3, Leopard 2A7V, T-90M, C2 Ariete, T-14, K2, Type 10, Merkava Mk 4, T-72B3M.', '1920×1080 · 30 fps · 24.5 s · stereo'],
+  ['lineup', 'The Lineup', 'Twenty-four tanks from across the fleet, each in its own fight: KF51 Panther, Leopard 2A6, M1A2 Abrams TUSK, Leclerc XLR, T-90M, T-14 Armata, Stridsvagn 122, M1A2 Abrams, Leopard 2A7V, ZTZ-100, Challenger 1, T-90MS Tagil, K2 Black Panther, T-80U, C1 Ariete, Merkava Mk 3D, Merkava Mk 4, K1A1, Type 90, Type 10, Chieftain Mk 10, M1A2 Abrams SEPv3, T-90SM, Leopard 2A5.', '1920×1080 · 30 fps · 39.5 s · stereo'],
   ['cut-30', 'Around the Clock · 30 s', 'The trailer, cut to thirty seconds.', '1920×1080 · 30 fps · 30 s · stereo'],
   ['vertical-15', 'Around the Clock · vertical 15 s', 'For phones: six hours of the day in fifteen seconds.', '1080×1920 · 30 fps · 15 s · stereo'],
   ['studio-feature', 'Scene Studio', 'The real Studio, captured frame by frame: stage any tank, block the camera, pick any hour, grade it like film and export with real motion blur.', '1920×1080 · 30 fps · 30 s · stereo'],
