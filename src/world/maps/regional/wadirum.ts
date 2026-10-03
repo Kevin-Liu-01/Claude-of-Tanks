@@ -257,6 +257,8 @@ export const WADIRUM_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     sourced: { plaster: true, wood: true },
   },
   builders: WADIRUM_BUILDERS,
+  // the courtyards: a block wall round the house's court, a gate (yards.ts)
+  yard: { kinds: ['adobe'], fence: 'walladobe', gate: 'gate', shed: null, garden: false },
 });
 
 export type { RegionalParts };
