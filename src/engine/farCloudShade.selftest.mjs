@@ -27,7 +27,7 @@ const clear = 'if ( uClear.z > 0.0 ) shade *= smoothstep( uClear.z * 0.6, uClear
 assert.equal(clouds.split(clear).length - 1, 2, 'and keep the same clear radius around a front\'s camera');
 assert.match(clouds, /const FAR_SHADE_FRAGMENT = \/\* glsl \*\/`\nprecision highp float;\n\$\{CLOUD_FIELD_GLSL\}/, 'the map reads the shared field GLSL');
 assert.match(clouds, /vec2 xz = uFarShadeRect\.xy \+ \( vUv - 0\.5 \) \* uFarShadeRect\.z;/, 'texel centres over the square');
-assert.match(clouds, /tWeather: gu\.tWeather, tStreets: gu\.tStreets, uWeatherShift: gu\.uWeatherShift, uStreetShift: gu\.uStreetShift,\s*uWindDir: gu\.uWindDir, uStreets: gu\.uStreets, uFieldMix: gu\.uFieldMix, uThreshold: gu\.uThreshold, uClear: gu\.uClear,/,
+assert.match(clouds, /tWeather: gu\.tWeather, tStreets: gu\.tStreets, uWeatherShift: gu\.uWeatherShift, uStreetShift: gu\.uStreetShift,\s*uWindDir: gu\.uWindDir, uStreets: gu\.uStreets, uFieldMix: gu\.uFieldMix, uCluster: gu\.uCluster, uThreshold: gu\.uThreshold, uClear: gu\.uClear,/,
   'the very uniform objects the gobos read: one drift, one cut, one clear radius');
 assert.match(clouds, /const cx = Math\.round\(this\.cam\.pos\.x \/ texel\) \* texel, cz = Math\.round\(this\.cam\.pos\.z \/ texel\) \* texel;/,
   'snapped to its texel: the shadows never swim as the camera moves');

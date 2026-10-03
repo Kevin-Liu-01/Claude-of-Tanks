@@ -120,6 +120,13 @@ const wrapDrift = (v: number, w: number): number => (v >= w ? v - w : v <= -w ? 
  * amount) joins the base ambient at this strength in the trace's units (the night bottom ambient is ~0.06 there).
  */
 const CLOUD_GROUND_GLOW_K = 0.16;
+/**
+ * 2026-10-03 (the skies lane; the gauntlet's wave 4: "evenly spaced popcorn cumulus ... one sprite stamped repeatedly"):
+ * the cumulus fields' period (x the weather tile: 30 km) and the field multiplier in a gap (its mean over the broad field
+ * is 1, so the map's coverage holds on average: 0.4 in the gaps, 1.6 at a field's heart).
+ */
+export const CLOUD_CLUSTER_PERIOD_K = 2.5;
+export const CLOUD_CLUSTER_GAP = 0.4;
 /** The far band shows beyond this horizontal distance (m), fading in over the next three kilometres. */
 const CLOUD_FARBAND_START_M = 8000;
 /**
@@ -264,6 +271,7 @@ uniform vec2 uStreetShift;
 uniform vec2 uWindDir;
 uniform float uStreets;
 uniform float uFieldMix;
+uniform float uCluster;
 // the equalised field the coverage cuts at a world xz: the cell-carried cumuliform one blended toward the
 // street field in the wind frame (rows along the wind), or the broad stratiform one
 float cloudField( vec2 pxz, out vec4 w, out vec4 st ) {
@@ -272,7 +280,14 @@ float cloudField( vec2 pxz, out vec4 w, out vec4 st ) {
 	w = textureLod( tWeather, ( pxz + uWeatherShift ) / ${f(CLOUD_WEATHER_TILE_M)}, 0.0 );
 	vec2 q = vec2( dot( pxz, uWindDir ), dot( pxz, vec2( -uWindDir.y, uWindDir.x ) ) );
 	st = textureLod( tStreets, ( q + uStreetShift ) / ${f(CLOUD_STREET_TILE_M)}, 0.0 );
-	return mix( mix( w.r, st.r, uStreets ), w.b, uFieldMix );
+	float field = mix( mix( w.r, st.r, uStreets ), w.b, uFieldMix );
+	// 2026-10-03: the cumulus fields (CloudscapeConfig.cluster) — a broad field at ${CLOUD_CLUSTER_PERIOD_K}x the tile gates the cells:
+	// inside a field they merge into large masses, at its edge they fray small, between fields the sky is clear
+	if ( uCluster > 0.0 ) {
+		float g = textureLod( tWeather, ( pxz + uWeatherShift * 0.5 ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_CLUSTER_PERIOD_K)} + vec2( 0.37, 0.61 ), 0.0 ).b;
+		field *= mix( 1.0, ${f(CLOUD_CLUSTER_GAP)} + ${f(2 * (1 - CLOUD_CLUSTER_GAP))} * smoothstep( 0.3, 0.7, g ), uCluster );
+	}
+	return field;
 }
 `;
 
@@ -333,6 +348,7 @@ uniform float uUndulatus;
 uniform float uInterior;
 // 2026-10-03: a deck's sub-cell lumps (cloudscapes.ts lumps; 0 = the cells alone)
 uniform float uLumps;
+uniform float uBaseFlat;
 uniform vec3 uSkyIrradiance;
 uniform float uHang;
 // QA: 1 = no depth-above term, 2 = no detail erosion, 3 = no light march, 4 = flat white density (structure only),
@@ -465,7 +481,8 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 	float hN = hRel / max( w.top * thickK, 0.05 );
 	if ( hN >= 1.25 ) return 0.0;
 	float t = w.type;
-	float riseEnd = mix( 0.05, 0.14, t );
+	// (2026-10-03: a cumulus base is its condensation level — uBaseFlat sharpens the rise, CloudLayerPreset.baseFlat)
+	float riseEnd = mix( 0.05, 0.14, t ) * ( 1.0 - 0.6 * uBaseFlat * ( 1.0 - uStratiform ) );
 	float fallStart = t < 0.5 ? mix( 0.5, 0.48, t * 2.0 ) : mix( 0.48, 0.86, ( t - 0.5 ) * 2.0 );
 	// the anvil: over the top quarter the mass widens instead of narrowing, flattened under a flat top and
 	// spread downwind
@@ -548,6 +565,9 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 		float amount = ( mix( 0.3, 0.85, smoothstep( 0.05, 0.6, hN ) ) + uTowers * 0.35 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) )
 			* ( 1.0 - uStratiform * 0.8 ) * mix( 0.8, 1.25, uWispiness ) * mix( 0.35, 1.0, smoothstep( 0.0, 0.2, uWispiness ) )
 			* mix( 1.0, 1.25, uCells );
+		// 2026-10-03: a flat base keeps its erosion to the flanks and the tops (the lumps under the base rounded every
+		// cumulus into a cotton ball)
+		amount *= mix( 1.0, smoothstep( 0.0, 0.18, hN ), uBaseFlat * ( 1.0 - uStratiform ) );
 		d = remap( d, erode * amount, 1.0, 0.0, 1.0 );
 		// a sharper threshold: the density saturates a short way in from the outline (crisper edges, no
 		// semi-transparent halo around every mass)
@@ -1452,7 +1472,7 @@ export class VolumetricCloudLayer {
     });
     const field = () => ({
       tWeather: { value: null }, tStreets: { value: null }, uWeatherShift: { value: new THREE.Vector2() }, uStreetShift: { value: new THREE.Vector2() },
-      uWindDir: { value: new THREE.Vector2(1, 0) }, uStreets: { value: 0 }, uFieldMix: { value: 0 },
+      uWindDir: { value: new THREE.Vector2(1, 0) }, uStreets: { value: 0 }, uFieldMix: { value: 0 }, uCluster: { value: 0 },
     });
     this.traceMaterial = new THREE.ShaderMaterial({
       name: 'VolumetricCloudTrace', vertexShader: QUAD_VERTEX, fragmentShader: TRACE_FRAGMENT, depthTest: false, depthWrite: false, blending: THREE.NoBlending,
@@ -1474,7 +1494,7 @@ export class VolumetricCloudLayer {
         uCirrus: { value: 0 }, uCirrusDir: { value: new THREE.Vector2(1, 0) }, uCirrusAlt: { value: 10000 }, uCirrusShift: { value: new THREE.Vector2() }, uCirrusDensity: { value: 0.7 },
         uFarBand: { value: 0 }, uFarBandAlt: { value: 2000 }, uFarBandShift: { value: new THREE.Vector2() },
         uStepScale: { value: 1 }, uDebug: { value: 0 },
-        uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 },
+        uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 }, uBaseFlat: { value: 0 },
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
         // 2026-10-01: the weather layers beyond the slab (cloudWeatherLayers.ts)
         ...createCloudWeatherUniforms(),
@@ -1502,7 +1522,7 @@ export class VolumetricCloudLayer {
       depthTest: false, depthWrite: false, blending: THREE.NoBlending,
       uniforms: {
         tWeather: gu.tWeather, tStreets: gu.tStreets, uWeatherShift: gu.uWeatherShift, uStreetShift: gu.uStreetShift,
-        uWindDir: gu.uWindDir, uStreets: gu.uStreets, uFieldMix: gu.uFieldMix, uThreshold: gu.uThreshold, uClear: gu.uClear,
+        uWindDir: gu.uWindDir, uStreets: gu.uStreets, uFieldMix: gu.uFieldMix, uCluster: gu.uCluster, uThreshold: gu.uThreshold, uClear: gu.uClear,
         uFarShadeRect: { value: new THREE.Vector3(0, 0, CLOUD_FAR_SHADE_SPAN_M) },
       },
     });
@@ -1632,6 +1652,7 @@ export class VolumetricCloudLayer {
     g.uCloudBase.value = preset?.baseM ?? 1400;
     g.uStreets.value = preset ? preset.streets : 0;
     g.uFieldMix.value = preset ? preset.fieldMix : 0;
+    g.uCluster.value = preset?.cluster ?? 0;
   }
 
   /** Whether the cascades carry cloud shadows this frame. */
@@ -1701,6 +1722,8 @@ export class VolumetricCloudLayer {
     t.uUndulatus.value = preset.undulatus;
     t.uInterior.value = preset.interior;
     t.uLumps.value = preset.lumps ?? 0;
+    t.uBaseFlat.value = preset.baseFlat ?? 0;
+    t.uCluster.value = preset.cluster ?? 0;
     // the scud band never reaches down past the lower half of the base altitude (a 300 m ceiling's rags stay aloft)
     t.uSlabLow.value = Math.min(preset.baseM - hang, preset.scud > 0 ? Math.max(preset.baseM * 0.45, preset.baseM - CLOUD_SCUD_BAND_M) : preset.baseM);
     t.uCoverage.value = preset.coverage;

@@ -795,6 +795,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/farCloudShade.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the ground's sky under and beside the near hulls
     'src/engine/vehicleGroundOcclusion.selftest.mjs',
+    // 2026-10-03 (the skies-and-atmosphere lane): the cumulus fields and the flat condensation base
+    'src/engine/cumulusFields.selftest.mjs',
     // 2026-10-01 (the clouds-and-skyboxes lane): the layered sky — mid layers, contrails, storm cells, rain, fog banks, lightning, the time of day
     'src/engine/cloudWeatherLayers.selftest.mjs',
     'src/engine/rendererContextRecovery.selftest.mjs',

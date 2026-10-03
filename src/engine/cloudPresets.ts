@@ -84,6 +84,13 @@ export interface CloudLayerPreset {
   interior: number;
   /** 2026-10-03: 0..1 a deck's sub-cell lumps (cloudscapes.ts CloudscapeConfig.lumps). */
   lumps: number;
+  /**
+   * 2026-10-03 (the skies lane; the gauntlet's wave 0: "round-bottomed cotton-ball clouds"): 0..1 a cumulus base cut at
+   * its condensation level — the base's rise sharpened and the erosion kept to the flanks and tops (0 = the round-71 base).
+   */
+  baseFlat?: number;
+  /** 2026-10-03: 0..1 the cumulus fields and gaps (cloudscapes.ts CloudscapeConfig.cluster). */
+  cluster?: number;
   /** 2026-10-01: the time of day the layer was resolved for (cloudTimeOfDay: the diurnal law's input). */
   timeOfDay: CloudTimeOfDay;
   /** 2026-10-01: contrails — how many (0..6) and their mean spread (0 fresh, 1 old contrail cirrus). */
@@ -326,7 +333,7 @@ export function cloudLayerKey(p: CloudLayerPreset): string {
   return [p.regime, p.coverage, p.baseM, p.thicknessM, p.towers, p.stratiform, p.fieldMix, p.density, ...p.tint,
     p.windDirRad, p.windSpeed, ...p.offset, p.clearRadiusM, p.shadow ? 1 : 0, p.shadowThreshold,
     ...p.typeRange, p.anvil, p.wispiness, p.shearM, p.streets, p.cirrus, p.cirrusAngleRad, p.cirrusAltM, p.cirrusDensity,
-    p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud, p.cells, p.cellM, p.deckLight, p.undulatus, p.interior, p.lumps ?? 0,
+    p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud, p.cells, p.cellM, p.deckLight, p.undulatus, p.interior, p.lumps ?? 0, p.baseFlat ?? 0, p.cluster ?? 0,
     p.timeOfDay, p.contrails, p.contrailAge, p.rain, p.virga, p.fogBank, p.fogBankTopM, ...p.groundGlow, ...p.keyTint,
   ].map((v) => (typeof v === 'number' ? v.toFixed(5) : v)).join(',');
 }
