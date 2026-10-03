@@ -192,8 +192,12 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
   };
   // Weight: gunfire, impacts and the hull's own gun get a low shelf (the
   // generated reports are lean below 100 Hz), the interface a gentle top cut.
+  // The beds lose their sub-bass: loudness-normalised (K-weighted) beds carry
+  // far more rumble than they sound like, and it masks the guns' low end
+  // (tools/audio-mix-balance.mjs measured the idle bed 79 % below 200 Hz).
   const SHELVES: Partial<Record<BusId, readonly [BiquadFilterType, number, number]>> = {
     weapons: ['lowshelf', 110, 5], impacts: ['lowshelf', 110, 4], ownCombat: ['lowshelf', 110, 5], ui: ['highshelf', 5200, -6],
+    ambience: ['highpass', 90, 0],
   };
   const busFilters: BiquadFilterNode[] = [];
   for (const id of Object.keys(destinations) as BusId[]) {
@@ -205,6 +209,7 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
       f.type = shelf[0];
       f.frequency.value = shelf[1];
       f.gain.value = shelf[2];
+      if (shelf[0] === 'highpass') f.Q.value = Math.SQRT1_2;
       g.connect(f);
       f.connect(destinations[id]);
       busFilters.push(f);
