@@ -131,6 +131,9 @@ export interface HorizonPanoramaOptions {
   fogDensity?: number | null;
 }
 
+/** How many frames a bake waits for the battlefield to publish this map's own sky before it keeps its own air. */
+const HORIZON_PANORAMA_SKY_WAIT_FRAMES = 120;
+
 /** What the bake reads of the sky the battlefield publishes (sky.ts scene.userData.atmosphere). */
 interface PanoramaAtmosphere {
   active?: boolean;
@@ -248,7 +251,7 @@ export const HORIZON_PANORAMA_REGIONAL: Readonly<Record<HorizonPanoramaRegional,
   ridges: { ampM: 1100, foot: 0.25, macroL: 3800, sharp: 1.5, midL: 1200, gullyL: 380, gullyM: 60, warpM: 700, valley: 0.5, valleyL: 6000, snowline: 2, treeline: 1.0, rockSlope: 0.65, bedM: 40, strata: 0.03, tables: false, farRise: 0, layers: 1, plinth: false, ...PANO_EXTRAS },
   jebel: { ampM: 700, foot: 0.24, macroL: 5200, sharp: 1.0, midL: 2000, gullyL: 500, gullyM: 30, warpM: 900, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 46, strata: 0.32, tables: true, farRise: 0, layers: 1, plinth: false, ...PANO_EXTRAS, mesaTalusM: 160, mesaTalusShare: 0.12, mesaCliffM: 110, mesaFluteM: 90 },
   volcanicField: { ampM: 380, foot: 0.3, macroL: 4800, sharp: 1.0, midL: 1600, gullyL: 420, gullyM: 20, warpM: 800, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0.35, rockSlope: 0.4, bedM: 40, strata: 0.1, tables: false, farRise: 0, layers: 0.6, plinth: false, ...PANO_EXTRAS, peakShare: 0.35, peakM: 260, peakRadiusM: 800, peakSharp: 1.2 },
-  iceSheet: { ampM: 110, foot: 0.5, macroL: 6000, sharp: 1.0, midL: 2200, gullyL: 600, gullyM: 6, warpM: 1000, valley: 0.2, valleyL: 8000, snowline: 0, treeline: 0, rockSlope: 0.35, bedM: 80, strata: 0.04, tables: false, farRise: 0, layers: 0.3, plinth: false, ...PANO_EXTRAS, peakShare: 0.2, peakM: 320, peakRadiusM: 380, peakSharp: 2.2 },
+  iceSheet: { ampM: 110, foot: 0.5, macroL: 6000, sharp: 1.0, midL: 2200, gullyL: 600, gullyM: 6, warpM: 1000, valley: 0.2, valleyL: 8000, snowline: -0.5, treeline: 0, rockSlope: 0.35, bedM: 80, strata: 0.04, tables: false, farRise: 0, layers: 0.3, plinth: false, ...PANO_EXTRAS, peakShare: 0.2, peakM: 320, peakRadiusM: 380, peakSharp: 2.2 },
 });
 
 /** The resolved knobs for a map: its regional class's (or its relief character's) far vocabulary, then its overrides. */
@@ -980,6 +983,17 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   let atlas: THREE.WebGLRenderTarget | null = null;
   let baked = false;
   const stats = { bakes: 0, ms: 0, unsupported: null as string | null, tone: 'authored' as 'authored' | 'ground', haze: 'own' as 'own' | 'law' };
+  let skyWaits = 0;
+  const publishedSky = (): { atmosphere?: PanoramaAtmosphere; overcast: number } => {
+    let root: THREE.Object3D = mesh;
+    while (root.parent) root = root.parent;
+    const data = root.userData as { atmosphere?: PanoramaAtmosphere; lightModel?: { overcast?: number } };
+    return { atmosphere: data.atmosphere, overcast: data.lightModel?.overcast ?? 0 };
+  };
+  const publishedSkyPending = (): boolean => {
+    const { atmosphere, overcast } = publishedSky();
+    return !!atmosphere?.active && !horizonPanoramaHaze(atmosphere, options.sun, options.fogDensity, overcast);
+  };
   // the haze law's datum: the ground at the square's edge (the ring's seam rows, a low quartile) — the aerial pass takes
   // the ground under the camera
   const hazeDatumM = (() => {
@@ -1037,10 +1051,8 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   function bake(renderer: HorizonPanoramaRenderer): void {
     const started = performance.now();
     // the battlefield's published sky, where the shell already hangs in the scene (the world's warm-up)
-    let root: THREE.Object3D = mesh;
-    while (root.parent) root = root.parent;
-    const published = root.userData as { atmosphere?: PanoramaAtmosphere; lightModel?: { overcast?: number } };
-    const haze = horizonPanoramaHaze(published.atmosphere, options.sun, options.fogDensity, published.lightModel?.overcast ?? 0);
+    const published = publishedSky();
+    const haze = horizonPanoramaHaze(published.atmosphere, options.sun, options.fogDensity, published.overcast);
     stats.haze = haze ? 'law' : 'own';
     const rng = mulberry32((options.seed ^ 0x9A70) >>> 0);
     const off = Array.from({ length: 16 }, () => rng() * 200 - 100);
@@ -1064,7 +1076,10 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       // the snowline and the treeline as fractions of the amplitude the strip's law reads them by (the ring's own
       // altitudes where it has them)
       uChar3: { value: new THREE.Vector4(
-        options.snowlineM != null ? options.snowlineM / ch.ampM : ch.snowline,
+        // (a negative snowline is the character's own, under every height: an ice sheet is white to its lowest swale —
+        // the ring's snowline over a 110 m sheet left its lows bare, Whiteout's horizon a band of the battlefield's ground
+        // tone, regional ticket 2026-10-03)
+        options.snowlineM != null && ch.snowline >= 0 ? options.snowlineM / ch.ampM : ch.snowline,
         options.treelineM != null ? options.treelineM / ch.ampM : ch.treeline, ch.rockSlope, ch.bedM) },
       uChar4: { value: new THREE.Vector4(ch.strata, options.deckBaseM, ch.ampM, ch.farRise) },
       uShore: { value: new THREE.Vector4(ch.shore, ch.shoreM, ch.shoreRange, 0) },
@@ -1166,6 +1181,11 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       if (!renderer) return false;
       const why = unsupported(renderer);
       if (why) { stats.unsupported = why; return false; }
+      // while the battlefield still publishes another map's (or hour's) sky, wait for this one's (up to about two seconds
+      // of frames), so the far country takes its haze law; with no published sky at all (the labs, the receipts, the
+      // mobile tier) bake at once (regional ticket 2026-10-03: in the shots' flow every map after the first baked before
+      // its own sky was applied and kept the bake's own air)
+      if (skyWaits < HORIZON_PANORAMA_SKY_WAIT_FRAMES && publishedSkyPending()) { skyWaits++; return false; }
       bake(renderer);
       return baked;
     },

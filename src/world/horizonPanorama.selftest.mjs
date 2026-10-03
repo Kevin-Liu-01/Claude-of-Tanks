@@ -3,6 +3,7 @@
 // handed over and taken back on a GPU suspension, no bake without a capable renderer), the shaders' uniforms, and the
 // horizon's wiring (one of the two far meshes visible at a time, lookups by name still find the round-72 range).
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
   HORIZON_PANORAMA, HORIZON_PANORAMA_CHARACTERS, HORIZON_PANORAMA_SHADERS, buildHorizonPanoramaShellGeometry, horizonPanoramaHaze,
@@ -182,6 +183,15 @@ assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('texture2D(uHeight, g).g'), 't
   assert.ok(haze.anti.y < 0.8, 'a step under the sky (a range never pales past it)');
   assert.equal(horizonPanoramaHaze(null, sun, 0.00074), null, 'no published sky: the bake\'s own air');
   assert.equal(horizonPanoramaHaze({ ...atmosphere, sunDir: { x: -0.5, y: 0.6, z: 0.6 } }, sun, 0.00074), null, 'another map\'s or hour\'s sky: the bake\'s own air');
+  // a bake waits (a couple of seconds of frames) while the battlefield still publishes another map's sky (the shots' flow
+  // baked every map after the first before its own sky was applied), and bakes at once where no sky is published
+  const source = readFileSync(new URL('./horizonPanorama.ts', import.meta.url), 'utf8');
+  assert.ok(/if \(skyWaits < HORIZON_PANORAMA_SKY_WAIT_FRAMES && publishedSkyPending\(\)\) \{ skyWaits\+\+; return false; \}/.test(source)
+    && /return !!atmosphere\?\.active && !horizonPanoramaHaze\(/.test(source), 'the bake waits for this map\'s published sky, and only where one is published');
+  // the ice sheet is white to its lowest swale: its own snowline under every height, the ring's not imposed (Whiteout's
+  // horizon stood as a band of the battlefield's ground tone under the ring's snowline)
+  assert.ok(resolveHorizonPanoramaCharacter('polar', { regional: 'iceSheet' }).snowline < 0
+    && source.includes('options.snowlineM != null && ch.snowline >= 0 ? options.snowlineM / ch.ampM : ch.snowline'), 'the ice sheet keeps its own snowline');
   assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('hazeTransmittance(uHaze.x, max(0.0, rr - uFrame.z), layer, uHazeChroma)')
     && HORIZON_PANORAMA_SHADERS.strip.includes('hazeLayerMean('), 'the strip hazes the path past the shell by the shared law');
 }
