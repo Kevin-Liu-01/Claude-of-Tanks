@@ -73,8 +73,8 @@ export default {
     // The two market squares: level paved aprons on the main road from each abutment into its town, where the
     // zone-control discs seat.
     hardstands: [
-      { x: 0, z: -162, width: 64, length: 100, yawDeg: 0, grade: 0 },
-      { x: 0, z: 162, width: 64, length: 100, yawDeg: 0, grade: 0 },
+      { x: 0, z: -172, width: 64, length: 80, yawDeg: 0, grade: 0 },
+      { x: 0, z: 172, width: 64, length: 80, yawDeg: 0, grade: 0 },
     ],
     // Authored paths stop inside the square; the endpoint completion adds each exit and grades it through the rim.
     roads: { paths: [
