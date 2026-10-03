@@ -52,7 +52,7 @@ first.
 | Capture the Flag | Runner brings the flag home. Up to two nearest responders recover the home flag. Two escorts cover opposite sides of a carrier. Larger teams retain home defense; extra raiders approach separate lanes. |
 | Turbo Ball | One striker retains the role for four seconds unless a teammate becomes substantially closer. It circles behind the ball, aligns centrally and drives through contact toward the opposing goal. Other bots screen separate lanes and cover their own goal. |
 | Zone Control / Gravity | Once-per-second team allocation balances distance, existing assignments, ownership and contested zones. Jev can redirect a bounded reinforcement group. |
-| Frontline | Attackers and defenders work on the current sector; defenders do not navigate to hidden enemy coordinates. |
+| Frontline | Attackers and defenders work on the current sector; defenders do not navigate to hidden enemy coordinates. When the attack takes the second-to-last sector, its bots hold that sector until every living bot has come up (at most 60 s, or until a human of the side stands within 250 m of the last sector), then attack the last one together: the bots revived at the spawn no longer arrive 40-80 s behind the attack and die alone (24 seeds each: Redrock Divide 9 to 12 and Desert 4 to 8 alpha wins). |
 | Regular / combat | A mobile teammate is elected to flank a shared visible contact while an anchor keeps it engaged. Election uses mobility, health and stable IDs; existing flanks prevent duplicate commitments. |
 | Horde | Existing wave pursuit, repair, reload and survival rules continue, with the new shared abilities and terrain safety. |
 
@@ -100,6 +100,14 @@ retaliation, hidden-contact safety and engagement of a sole survivor.
 - Lights switch off. Existing consumable, self-right, magazine and suspension
   decisions continue. Independent missile channels can be selected while the
   cannon reloads, including authored ammunition slots beyond the first three.
+- A casemate (any turretless hull or authored gun arc of 30 degrees or less: the
+  Strv 103 family, UDES 03, Jagdpanzer E100) lays its gun with the hull, so an
+  engaged one keeps the bow on its target. It scoots along the line of fire,
+  25 m back off its spot and then up to it again, backs into cover crests, jinks
+  with the bow on its target, falls back in reverse and stops at a blocked
+  corridor instead of turning away. Aegis Crossing pacing seed 53002: the Strv
+  103 used to scoot to a spot 94-152 degrees off the bearing and jink toward a
+  flanker, standing 19-24 degrees off its target for seconds at a time.
 
 ## Traffic and keeping the battle moving
 
@@ -132,6 +140,14 @@ A hull that has reached its destination holds it. The arrival is not drive
 intent, so the low-speed watchdog does not read the hold as a wedge and reverse
 the hull off its hold point; a hull pressing into a wall short of it still backs
 off.
+
+A route corner round cover is not taken back at the next recheck. A recheck
+that would return to the corner the hull gave up less than 2 s ago keeps the
+current corner instead, while its lane stays clear and the destination stays
+put, for 6 s; a reached corner, a stuck strike or a new destination still
+chooses afresh. A T-90M pressed against a Coastal boulder chose between the
+boulder's two corners at every 0.6 s recheck: its pivot swung it 0.36 m off the
+rock, which reopened the lane the other corner needed, and it jinked in place.
 
 A rack that cannot hurt its target stops pressing it. After 60 seconds in sight
 of the target from inside 90 m, with zones visible but no loaded round opening
@@ -195,7 +211,14 @@ the route (a deck above the gorge) is no wall, and on and beside a deck the
 parts a hull rides onto or over (the slab, the piers under it) follow the same
 rule as the hull's collision. Each edge's steepest stretch (three terrain
 samples between the cells) is held to the same two-way slope rule as the
-cell-to-cell grade, so a cliff between two cell centres is no climb. Legs off
+cell-to-cell grade, so a cliff between two cell centres is no climb. Each of
+those samples also reads the side slope across the edge, 2 m either side of
+its line, and the edge holds it to the same rule: an edge that climbs a face
+at a slant, gentle along its own line, while the ground falls away beside the
+hull at 60 degrees, is no lane (Redrock Divide's plateau face routed frontline
+defenders across it; with the rule its falls near the last sector went from 18
+to 1 in 24 seeds). The terrain is read, not a deck: the deck's sides keep their
+own rules, and under a deck the gorge floor's own slope counts. Legs off
 the grid are cleared too: a route starts at the nearest cell on the hull's own
 level that it reaches straight (or round a detour point), on the goal's side of
 the closed edges first, and it reaches the exact goal only by a clear leg, a

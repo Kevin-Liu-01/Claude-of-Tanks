@@ -120,11 +120,12 @@ const materialStage = section(source, '  const windowStyle = resolveStructureWin
 const roof = new Function('THREE', `${stripTypeScriptTypes(section(source,
   'function makeRoofMaterial(', 'function buildStoneCourseEdges('))}\nreturn makeRoofMaterial;`)(THREE);
 // round 75 (2026-09-26): the 'steel' atlas family joins the material stage (propsSteelAtlas.ts)
-const remaining = ['roofT', 'stone', 'wood', 'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'vehiclePaint', 'steel', 'rockDetail'];
+const remaining = ['roofT', 'stone', 'fieldStone', 'wood', 'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'vehiclePaint', 'steel', 'rockDetail'];
 const materialFactory = new Function('THREE', 'resolveStructureWindowStyle', 'makeRoofMaterial',
   'registerRetainedObject3DResources', '_mustReplace', 'rockDressingFor', 'applyRockShaderHook', `${stripTypeScriptTypes(`
   function* materialSteps(group, engineCtx, mapId, atlases, grimeTex) {
     const { ${[...families, ...remaining].join(', ')} } = atlases, P = {};
+    const regionalArchitecture = null; // a map without a regional kit (maps/regional): no weathered materials
     ${materialStage}
     return { mats, retainedSurfaceMaterials };
   }`)}\nreturn materialSteps;`)(THREE, resolveStructureWindowStyle, roof, registerRetainedObject3DResources,
@@ -240,8 +241,11 @@ try {
   assertSharing(primary);
   assert.deepEqual([textureSnapshot(primary.plaster3.normal), textureSnapshot(primary.plaster3.surface)], variants,
     'actual sourced image-swap function cannot alter procedural relief');
-  assert.match(source, /applySourcedBuildings\(\s*\{ plaster, roof: roofT, wood, stone \}/,
+  // a regional architecture kit (maps/regional) passes its own subset of the same primary sets
+  const sourcedCall = /applySourcedBuildings\(([^]*?)mapId, P, sourceApplication/.exec(source)?.[1] ?? '';
+  assert.match(sourcedCall, /: \{ plaster, roof: roofT, wood, stone \}/,
     'only the primary plaster enters the sourced replacement owner');
+  assert.doesNotMatch(sourcedCall, /plaster[23]/, 'no plaster variant enters the sourced replacement owner, kit or not');
 
   // Negative controls: reject primary sharing even though its initial relief
   // pixels happen to match; reject a changed relief byte independently.

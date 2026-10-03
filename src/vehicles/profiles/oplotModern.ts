@@ -6,6 +6,7 @@ import {buildT72B3MXHull} from './t72b3mX.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {supportedSensor,strappedPack,attachedCage,eraCassette} from './modernizationFittings.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
+import {OPLOT_BUSTLE_FLANK as FLANK,OPLOT_FLANK_CASSETTE as FLANK_ERA,oplotFlankCassetteSeat} from '../oplotFlankLayout.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {box,cylX,cylY,cylZ}=KIT;
 export const OPLOT_FRAME={turret:[.008,1.535,.114315],gun:[0,.35,1.02],barrel:4.26} as const;
@@ -13,8 +14,10 @@ export function buildOplotModern(P:TankBuilderPort):void {
   buildT72B3MXHull(P);
   P.turretG.position.set(...OPLOT_FRAME.turret);P.gunG.position.set(...OPLOT_FRAME.gun);
   P.add('turret',cylY(.91,.98,.11,40),0,-.025,-.08);
-  const ring=(w:number,y:number):[number,number][]=>[[-w,.02],[w,.02],[w,.30],[w-.17,y],[-w+.17,y],[-w,.30]];
-  P.add('turret',sectionSolid([{z:-2.15,ring:ring(1.14,.66)},{z:-.50,ring:ring(1.48,.74)},{z:.30,ring:ring(1.43,.73)}]));
+  const wall=FLANK.wallTopY;
+  const ring=(w:number,y:number):[number,number][]=>[[-w,.02],[w,.02],[w,wall],[w-.17,y],[-w+.17,y],[-w,wall]];
+  P.add('turret',sectionSolid([{z:FLANK.rearZ,ring:ring(FLANK.rearHalfWidthM,FLANK.rearRoofY)},
+    {z:FLANK.shoulderZ,ring:ring(FLANK.shoulderHalfWidthM,FLANK.shoulderRoofY)},{z:.30,ring:ring(1.43,.73)}]));
   // Squared shoulders taper to the narrow opening. Each cheek is a closed
   // stock; the space between them remains free for the entire pitching cover.
   for(const side of [-1,1]){
@@ -25,8 +28,12 @@ export function buildOplotModern(P:TankBuilderPort):void {
     P.add('turret',sectionSolid([{z:.28,ring:cheek(1.43,.73)},{z:1.63,ring:cheek(1.09,.56)}]));
     for(let i=0;i<3;i++)eraCassette(P,'turret',side<0?'oplot_cheek_era_L':'oplot_cheek_era_R',
       [side*(.61+i*.225),.48,1.55-i*.055],[.205,.19,.17],[.25,side*.13,0]);
-    for(let i=0;i<3;i++)eraCassette(P,'turret',side<0?'oplot_side_era_L':'oplot_side_era_R',
-      [side*1.47,.32,-.60-i*.44],[.12,.43,.39]);
+    // Flank cassettes seat on the tapering bustle wall (oplotFlankLayout.ts); none stands off the shell.
+    for(let i=0;i<FLANK_ERA.stations.length;i++){
+      const {center:[x,y,z],yaw}=oplotFlankCassetteSeat(i);
+      eraCassette(P,'turret',side<0?'oplot_side_era_L':'oplot_side_era_R',[side*x,y,z],
+        [FLANK_ERA.widthM,FLANK_ERA.heightM,FLANK_ERA.depthM],[0,side*yaw,0]);
+    }
     // Paired mantlet-adjacent illuminators with hoods and supported bases.
     P.addEquipment('turretDetail',box(.25,.10,.24),side*.71,.62,1.08);
     P.addEquipment('turretDetail',cylZ(.115,.15,24),side*.71,.72,1.11);

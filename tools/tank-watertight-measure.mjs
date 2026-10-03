@@ -8,10 +8,14 @@
 // deliberate air as leaks (t72b3m 145.6 L, merkava4_trophy 276.6 L) and hid real drift among them. The check now
 // voxelises the same boundary the generator filled plus the shipped fill solids, and reports retained air apart,
 // as it reports track-lane air; tank-watertight-check --full-body restores the all-mesh measurement.
+// Declared physical bores (2026-10-03, tools/physical-bore-air.mjs) are open air by contract. Water in a bore column
+// that the voxel grid reads as enclosed is reported apart as bore air, never as a leak, and the generator never fills
+// it.
 import { voxelise, floodExterior, deepInterior, DEFAULT_EXCLUDE } from './tank-voxel-body.mjs';
 import { trackLaneVoxelMask } from './track-lane-boxes.mjs';
 import { interiorFillBoundaryTriangles } from './interior-fill-body-policy.mjs';
 import { barakBayIntersectsCell } from './barak-rear-bay-fill-policy.mjs';
+import { boreAirVoxelMask } from './physical-bore-air.mjs';
 
 export const WATERTIGHT_VOXEL = 0.025;
 export const WATERTIGHT_MAX_LEAK_L = 0.05;
@@ -38,14 +42,16 @@ export function retainedSourceAir(id) {
 
 /** 26-connected clusters of leak voxels with centroid, extent, mouth and surrounding shell groups. Deep-interior
  * water inside a track lane box (lane mask, may be null) is tallied as lane volume and never becomes a leak voxel;
- * deep-interior water in air the fill generator deliberately retains (`retains(i)`, may be null) is tallied apart too. */
-function clusterLeaks(grid, ext, deep, lane, retains, VOXEL) {
+ * deep-interior water in air the fill generator deliberately retains (`retains(i)`, may be null) or in a declared
+ * physical bore (bore mask, may be null) is tallied apart too. */
+function clusterLeaks(grid, ext, deep, lane, retains, bore, VOXEL) {
   const { shell, nx, ny, nz, origin, groups } = grid; const N = shell.length;
-  const leak = new Uint8Array(N); let leakCount = 0, laneCount = 0, retainedCount = 0;
+  const leak = new Uint8Array(N); let leakCount = 0, laneCount = 0, retainedCount = 0, boreCount = 0;
   for (let i = 0; i < N; i++) {
     if (!(ext[i] && deep[i])) continue;
     if (lane && lane[i]) { laneCount++; continue; }
     if (retains && retains(i)) { retainedCount++; continue; }
+    if (bore && bore[i]) { boreCount++; continue; }
     leak[i] = 1; leakCount++;
   }
   const seen = new Uint8Array(N); const queue = new Int32Array(Math.max(1, leakCount)); const clusters = [];
@@ -116,20 +122,21 @@ function clusterLeaks(grid, ext, deep, lane, retains, VOXEL) {
   }
   clusters.sort((u, v) => v.voxels - u.voxels);
   let enclosed = 0, deepTotal = 0; for (let i = 0; i < N; i++) { if (!shell[i] && !ext[i]) enclosed++; if (deep[i]) deepTotal++; }
-  return { leakCount, laneCount, retainedCount, clusters, enclosedL: +(enclosed * VOXEL ** 3 * 1000).toFixed(1), deepL: +(deepTotal * VOXEL ** 3 * 1000).toFixed(1) };
+  return { leakCount, laneCount, retainedCount, boreCount, clusters, enclosedL: +(enclosed * VOXEL ** 3 * 1000).toFixed(1), deepL: +(deepTotal * VOXEL ** 3 * 1000).toFixed(1) };
 }
 
-/** Voxelise body triangles, flood the exterior and split the deep-interior water into leak, track-lane and
- * retained-air volume. */
+/** Voxelise body triangles, flood the exterior and split the deep-interior water into leak, track-lane,
+ * retained-air and declared-bore volume (`boreAir`: tools/physical-bore-air.mjs physicalBoreAir(root), may be null). */
 export function measureWatertight(tris, meshes, laneBoxes, { voxel = WATERTIGHT_VOXEL, exclude = DEFAULT_EXCLUDE,
-  maxLeakL = WATERTIGHT_MAX_LEAK_L, retainedAir = null } = {}) {
+  maxLeakL = WATERTIGHT_MAX_LEAK_L, retainedAir = null, boreAir = null } = {}) {
   const grid = voxelise(tris, meshes, { voxel, exclude });
   const ext = floodExterior(grid);
   const deep = deepInterior(grid);
   const lane = laneBoxes.length ? trackLaneVoxelMask(laneBoxes, grid) : null;
   const retains = retainedAir ? retainedAir({ ...grid, voxel }) : null;
-  const { leakCount, laneCount, retainedCount, clusters, enclosedL, deepL } = clusterLeaks(grid, ext, deep, lane, retains, voxel);
+  const bore = boreAir ? boreAirVoxelMask(boreAir, grid) : null;
+  const { leakCount, laneCount, retainedCount, boreCount, clusters, enclosedL, deepL } = clusterLeaks(grid, ext, deep, lane, retains, bore, voxel);
   const litres = (n) => +(n * voxel ** 3 * 1000).toFixed(2);
   return { grid, clusters, enclosedL, deepL, leakL: litres(leakCount), trackLaneL: litres(laneCount),
-    retainedL: litres(retainedCount), laneBoxes: laneBoxes.length, watertight: litres(leakCount) <= maxLeakL };
+    retainedL: litres(retainedCount), boreAirL: litres(boreCount), laneBoxes: laneBoxes.length, watertight: litres(leakCount) <= maxLeakL };
 }

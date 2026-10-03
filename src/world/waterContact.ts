@@ -86,7 +86,7 @@ const TEMPERATE_POND: Readonly<WaterContactProfile> = Object.freeze({
   ...LAKE, color: 0x23483f, shallowColor: 0x5f9470, shoreColor: 0x5f6f58,
 });
 const SILT_RIVER: Readonly<WaterContactProfile> = Object.freeze({
-  ...RIVER, color: 0x3f4a33, opacity: 0.74, roughness: 0.36, shallowColor: 0x8a8f52, foam: 0.4,
+  ...RIVER, color: 0x3f4a33, opacity: 0.74, roughness: 0.36, shallowColor: 0x5a5a36, foam: 0.15,
   shoreColor: 0x776f4c, flowX: 0.018, flowZ: 0.006, waveScale: 0.068, waveStrength: 0.8,
 });
 const TANNIN_CREEK: Readonly<WaterContactProfile> = Object.freeze({
@@ -120,7 +120,7 @@ const CLEAR_OASIS: Readonly<WaterContactProfile> = Object.freeze({
   ...OASIS, color: 0x1e6f64, shallowColor: 0x7fd0bd, opacity: 0.66, roughness: 0.22,
 });
 const MONSOON_FLOOD: Readonly<WaterContactProfile> = Object.freeze({
-  ...MONSOON, color: 0x4d4a2e, shallowColor: 0x8f8552, opacity: 0.78,
+  ...MONSOON, color: 0x4d4a2e, shallowColor: 0x5a5233, opacity: 0.78, foam: 0.12,
 });
 const COLD_SEA: Readonly<WaterContactProfile> = Object.freeze({
   ...COAST, color: 0x1b4a63, shallowColor: 0x4a90a0,
