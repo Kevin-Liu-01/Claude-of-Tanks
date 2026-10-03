@@ -70,10 +70,10 @@ const reliefLawSource = referenceSource
   // the map-borders lane (2026-10-03): the rim's relief law is the border landform's lift (borderLandform.ts) with the
   // round-47 water gate and coast fade on it — the placement sampler reproduces that current field
   .replace(historicalRim,
-  '    const rimLift = roadsOn ? border.liftAt(x, z, Math.max(Math.abs(x), Math.abs(z))) : border.classicLiftAt(Math.max(Math.abs(x), Math.abs(z)));\n    h += rimLift * (1 - waterWeight) * (rimLift > 0 ? coastRimKeep(x, z) : 1);\n')
+  '    const rimRadius = Math.max(Math.abs(x), Math.abs(z));\n    const rimLift = roadsOn ? border.liftAt(x, z, rimRadius) : border.classicLiftAt(rimRadius);\n    const rimKeep = rimLift > 0 ? coastRimKeep(x, z) : 1;\n    h += rimLift * (1 - waterWeight) * rimKeep;\n    const roadRimShift = roadsOn && rimRadius > 430 ? (rimLift - border.classicLiftAt(rimRadius)) * (1 - waterWeight) * rimKeep : 0;\n')
   .replace(historicalRoadBlend, `    const rd = gridSample(gRoadDist, x, z);
     if (rd < 14) {
-      let roadElevation = gridSample(gRoadElev, x, z);
+      let roadElevation = gridSample(gRoadElev, x, z) + roadRimShift;
       if (bridgeDecks.length) {
         const bridge = bridgeTermsAt(x, z);
         roadElevation += (bridge.deckY - roadElevation) * bridge.approach;

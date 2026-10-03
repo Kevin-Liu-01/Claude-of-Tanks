@@ -1259,13 +1259,14 @@ function* heightFieldBuildSteps(
     gridFz: number,
     borderShoulderWeight: number,
     rd: number,
+    roadRimShift = 0,
   ): number {
     let roadElevation = 0, elevationSampled = false;
     // Earthworks share the existing road plane, not the pavement footprint.
     // Apply before lakes/pads so their established support remains final;
     // marsh cores were already composed above and must not be lifted here.
     if (roadsOn && borderShoulderWeight > 0 && marshWeight < 1) {
-      roadElevation = sampleHeightGridCell(gRoadElev, GN, gridIndex, gridFx, gridFz);
+      roadElevation = sampleHeightGridCell(gRoadElev, GN, gridIndex, gridFx, gridFz) + roadRimShift;
       elevationSampled = true;
       h += (roadElevation - h) * borderShoulderWeight * (1 - marshWeight);
     }
@@ -1289,7 +1290,7 @@ function* heightFieldBuildSteps(
     }
     if (!roadsOn) return h;
     if (rd < 14) {
-      if (!elevationSampled) roadElevation = sampleHeightGridCell(gRoadElev, GN, gridIndex, gridFx, gridFz);
+      if (!elevationSampled) roadElevation = sampleHeightGridCell(gRoadElev, GN, gridIndex, gridFx, gridFz) + roadRimShift;
       if (bridgeDecks.length) {
         // round 61: under a bridge deck the road plane yields to the river bed; over each approach it grades to the deck
         const bridge = bridgeTermsAt(x, z);
@@ -1569,6 +1570,7 @@ function* heightFieldBuildSteps(
     // pad seats, lake levels: roads off) keep the classic rim, so every road grade, pad and lake level inside the square
     // is exactly what it was and nothing ripples into the playable ground through the grade smoothing.
     const rimLift = roadsOn ? border.liftAt(x, z, borderRadius) : border.classicLiftAt(borderRadius);
+    const rimKeep = rimLift > 0 ? coastRimKeep(x, z) : 1;
     // CW also contains old deployment lanes. Only the two inward pilots
     // limit the new earthwork to actual road shoulders, with a smooth join.
     const roadCorridorWeight = roadCorridorDistanceWeight(boundedRoadCorridor, cw, rd);
@@ -1578,7 +1580,13 @@ function* heightFieldBuildSteps(
     // Round 47 (2026-09-23, owner: "evident right angle with shore and water at the border"): the square rim lift is a
     // Chebyshev square, so inside a bay's bank band it forced the waterline parallel to the red line and raised a wall
     // where the shore should run on; the lift yields to the water weight, so the shore keeps the bay's own contour.
-    h += rimLift * (1 - waterWeight) * (rimLift > 0 ? coastRimKeep(x, z) : 1) * roadRimWeight(borderCorridorStart, roadsOn, boundedRoadCorridor, cw, roadCorridorWeight);
+    h += rimLift * (1 - waterWeight) * rimKeep * roadRimWeight(borderCorridorStart, roadsOn, boundedRoadCorridor, cw, roadCorridorWeight);
+    // The road grades were authored on the classic rim; a final query's road plane follows the landform's rim instead
+    // (the difference, weighted as the authoring weighted the rim), so a road that climbed the old rim never stands on
+    // an embankment where the land was lowered. Zero inside 430 m, where both rims are nothing.
+    const roadRimShift = roadsOn && borderRadius > 430
+      ? (rimLift - border.classicLiftAt(borderRadius)) * (1 - waterWeight) * rimKeep
+        * roadRimWeight(borderCorridorStart, false, boundedRoadCorridor, cw, roadCorridorWeight) : 0;
     if (waterWeight > 0) {
       const target = waterLevelSum / waterWeightSum;
       h += (target - h) * waterWeight;
@@ -1593,7 +1601,7 @@ function* heightFieldBuildSteps(
     const borderShoulderWeight = roadShoulderWeight(borderCorridorStart, cfg?.id,
       roadsOn, borderRadius, cw, roadCorridorWeight);
     h = applyHeightConstraints(x, z, h, marshW, vm, lakesOn, padsOn, roadsOn, gridIndex, fx, fz,
-      borderShoulderWeight, rd);
+      borderShoulderWeight, rd, roadRimShift);
     if (quarryFloorY !== null && insideCopperQuarry(x, z)) {
       h = sampleCopperQuarrySurface(x, z, h, quarryFloorY, gridSample(gRoadDist, x, z));
     }
