@@ -33,7 +33,7 @@ export const PRESETS = {
   sting: { mono: false, mMax: -14, peak: -1.5, maxS: 8, tailDb: -54, fadeOutS: 0.4, highpass: 30, opusKbps: 96 },
   radio: { mono: true, mMax: -20, peak: -3, maxS: 5, tailDb: -48, fadeOutS: 0.03, highpass: 150, opusKbps: 48 },
   loop: { mono: true, integrated: -18, peak: -1.5, loop: true, highpass: 20, opusKbps: 64 },
-  ambience: { mono: false, integrated: -24, peak: -3, loop: true, highpass: 25, opusKbps: 80 },
+  ambience: { mono: false, integrated: -21, peak: -2, loop: true, highpass: 25, opusKbps: 80 },
   voice: { mono: true, integrated: -18, peak: -1.5, maxS: 6, tailDb: -42, fadeOutS: 0.04, fadeInS: 0.004, highpass: 85, opusKbps: 32, sampleRate: 24000 },
 };
 
