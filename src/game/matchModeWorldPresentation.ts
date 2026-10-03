@@ -511,10 +511,11 @@ export function createMatchModeWorldPresentation(
       const icon = iconSprite(`horde-pickup-${index + 1}-icon`, 3.4, 4.4);
       const crate=new THREE.Mesh(new THREE.BoxGeometry(2.2,2.4,2),basic(0x586653));
       const parachute=new THREE.Group();
-      const canopy=new THREE.Mesh(new THREE.SphereGeometry(3.8,16,8,0,Math.PI*2,0,Math.PI/2),basic(0xb6bf9a,.85));
+      const canopyMaterial=basic(0xb6bf9a,.85);canopyMaterial.side=THREE.DoubleSide;
+      const canopy=new THREE.Mesh(new THREE.SphereGeometry(3.8,16,8,0,Math.PI*2,0,Math.PI/2),canopyMaterial);
       canopy.position.y=7;parachute.add(canopy);
       for(const x of[-1,1])for(const z of[-1,1]){
-        const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x,1,z),new THREE.Vector3(x*2.4,7,z*2.4)]),new THREE.LineBasicMaterial({color:0xc8d2b1}));parachute.add(line);
+        const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x,1,z),new THREE.Vector3(x*3.8/Math.SQRT2,7,z*3.8/Math.SQRT2)]),new THREE.LineBasicMaterial({color:0xc8d2b1}));parachute.add(line);
       }
       marker.userData.crate=crate;marker.userData.parachute=parachute;marker.userData.cage=cage;
       marker.userData.heal = healGroup;
