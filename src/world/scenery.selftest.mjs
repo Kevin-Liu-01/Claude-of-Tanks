@@ -15,7 +15,8 @@
 //      Saltmere) no wall or bank stands inside an apron (the hardstands and runways, the yards' dressing), an
 //      objective disc (every mode's, as the match placement places them on this world, and the authored targets), a
 //      spawn pad, a road or a bridge with its approaches, and none stands taller than 1.05 m;
-//   5. props.ts and vegetation.ts carry the pass, the late field works, the masonry tint and the keep-out (source pins).
+//   5. props.ts and vegetation.ts carry the pass, the late field works, the field walls' own rubble print (pool, posts
+//      and masonry tint on it, never on the house masonry) and the keep-out (source pins).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
@@ -122,7 +123,7 @@ for (const [kind, meta] of Object.entries(SCENERY_DESTRUCTIBLE_TYPES)) {
     assert.ok(meta.hl <= hl + 0.10, `${kind}: collision length follows the geometry (${meta.hl} vs ${hl.toFixed(2)})`);
   }
   // the textured materials read UVs, the vertex-coloured ones colour
-  for (const name of ['wood', 'straw', 'stone', 'plaster'].includes(meta.mat) ? ['position', 'normal', 'uv'] : ['position', 'normal', 'color']) {
+  for (const name of ['wood', 'straw', 'stone', 'fieldStone', 'plaster'].includes(meta.mat) ? ['position', 'normal', 'uv'] : ['position', 'normal', 'color']) {
     assert.ok(geometry.attributes[name], `${kind}: the ${meta.mat} material's ${name}`);
   }
   const buckets = { baked: [meta.build(mulberry32(91))] };
@@ -573,7 +574,13 @@ assert.ok(yard > 0 && pass > yard && merge > pass, 'the pass runs after every pl
 assert.match(propsSource, /new THREE\.Mesh\(merged, mats\.rock\)/, 'the rock forms draw on the props rock material (its cascade setup and hook)');
 const pools = propsSource.indexOf('  yield* finalizeDestructiblePools();'), works = propsSource.indexOf('  yield* placeFieldBoundaryWorks();');
 assert.ok(pools > merge && works > pools, 'the field works build once the pools\' refit has made every solid final (the placement they keep off reads those)');
-assert.match(propsSource, /mats\.stone\.color\.setRGB\(masonryTint\[0\], masonryTint\[1\], masonryTint\[2\]\)/, 'a map\'s masonry tint reaches the stone print');
+assert.match(propsSource, /mats\.fieldStone\.color\.setRGB\(masonryTint\[0\], masonryTint\[1\], masonryTint\[2\]\)/, 'a map\'s masonry tint reaches the field walls\' print');
+assert.doesNotMatch(propsSource, /mats\.stone\.color\.setRGB\(masonryTint/, 'the masonry tint never multiplies the house masonry (a regional kit\'s print under it burns out)');
+// the dry-stone walls draw the field print, never the house masonry (a regional kit's brick, block or dressed stone)
+assert.match(propsSource, /const fieldWallBucket = P\.wallStyle === 'adobe' \|\| sourcedStoneIsBrick\(mapId\) \? 'stone' : 'fieldStone';/, 'the field print is the dry-stone walls\'');
+assert.match(propsSource, /wallstone: \{ \.\.\.DESTRUCTIBLE_TYPES\.wallstone, mat: fieldWallBucket \}/, 'the wall pool draws the field print');
+assert.match(propsSource, /const wallB = style === 'adobe' \? 'plaster' : fieldWallBucket;/, 'the run posts, breach stubs and tumbled blocks draw the field print');
+assert.match(propsSource, /fieldStone: new THREE\.MeshStandardMaterial\(\{ map: fieldStone\.albedo,/, 'the field print has its own material');
 const vegetationSource = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
 assert.match(vegetationSource, /placedStructureClearances\([^;]*\(cfg as SceneryMapConfig \| null\)\?\.scenery\)/s, 'the trees keep off the scenery');
 const clearanceSource = readFileSync(new URL('./vegetationClearance.ts', import.meta.url), 'utf8');

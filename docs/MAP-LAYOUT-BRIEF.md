@@ -349,15 +349,25 @@ scenery: {
 
 The rock material is the boulders' (`rockDressing.ts`): the map's moss, dust and soil laws, the triplanar detail tile
 and the cascade setup, so a tor and the boulders round it are one rock. A geology's tone can be overridden with `tone`
-(sRGB HSL), for example to match a map's `rockTone`. A map whose masonry is its own rock tints the props stone print
-with `scenery.masonryTint` (a linear multiplier): Saltwind's dry stone walls, their heads and its stone houses are the
-weathered grey karst limestone of its outcrops, and every other map keeps its print.
+(sRGB HSL), for example to match a map's `rockTone`. A map whose field walls are its own rock tints their rubble print
+with `scenery.masonryTint` (a linear multiplier): Saltwind's dry stone walls and their heads are the weathered grey
+karst limestone of its outcrops, and every other map keeps its tone. The tint never touches the house masonry (the
+props stone print, which a regional kit repaints: its Dalmatian limestone under the tint burned out white).
 
 The field walls (`props.wallRuns`, the `wallstone` module of `maps/inhabitKit.ts`) are dry-stone walls on every map
 whose stone bucket is fieldstone: a battered hearting, face stones in rough courses standing proud of it with their
 corners knocked off, and a coping of cope stones on edge. The module keeps the old one's envelope and its seeded draws,
 so the fitted wall colliders keep their plan and height. The maps whose stone bucket is the sourced brick print
 (`sourcedStoneIsBrick`) keep the coursed module (`COURSED_WALLSTONE`) the print was laid out for.
+
+The dry-stone walls, their run heads, breach stubs and tumbled blocks draw their own material, `fieldStone`: a seamless
+random-rubble print (`fieldStoneSurface.ts`), stones bedded flat in every size with dark dry joints, open pockets at
+the three-stone corners and no course anywhere, painted in the stone print's colour law (its mean within 4 % of that
+print's) under the map's stone tone. They never draw the house masonry: the coursed stone print read as ashlar on the
+rubble (gauntlet wave 20), and a regional kit's brick, block or dressed stone laid those courses over fieldstone. A map
+whose walls are mud or brick paints no field print and keeps the stone print. The receipt is
+`fieldStoneSurface.selftest.mjs` (seamless, no joint runs a third of the tile while the stone print's mortar runs all
+of it, flat stones, dry joints, the palette, the phone print).
 
 The field works' sandbag stacks (`sandbagbig`, `sandbagsmall`, `sandbagwall`, wherever the fortification passes put
 them) are laid bag by bag (`maps/sceneryKit.ts` `buildSandbagStack`): filled sacks thin and narrow at their ends,

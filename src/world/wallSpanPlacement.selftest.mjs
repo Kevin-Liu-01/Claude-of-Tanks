@@ -251,7 +251,7 @@ function checkSourceLifecycle(pool) {
 function sourceRunFixture(code, runs, field, seed, style = 'fieldstone') {
   const spans = new Map(), records = [], matrices = [];
   const retainedSlots = [];
-  const buckets = { stone: [], plaster: [] };
+  const buckets = { stone: [], fieldStone: [], plaster: [] };
   let draws = 0;
   const next = seeded(seed), rng = () => { draws++; return next(); };
   const add = (kind, x, y, z, yaw, sc, tiltX, tiltZ) => {
@@ -262,12 +262,13 @@ function sourceRunFixture(code, runs, field, seed, style = 'fieldstone') {
       new Quaternion().setFromEuler(new Euler(tiltX, yaw, tiltZ, 'YXZ')), new Vector3(sc, sc, sc)));
     records.push(record); return record;
   };
-  // (the run's ends are wall heads — the scenery lane's builders — keyed by the map's stone print)
+  // (the run's ends are wall heads — the scenery lane's builders — keyed by the map's stone print; a dry-stone run's
+  // posts and breach draw the field walls' print)
   const run = new Function('P', 'heightField', 'WALL_SEG', 'rng', 'buckets', 'box', 'jitterUV', 'addDestructible', 'noVeg', 'wallSpans', 'wallIslandEdges', 'legacyWallEdges',
-    'mapId', 'sourcedStoneIsBrick', 'buildDryStoneWallHead', 'buildAdobePilaster',
+    'mapId', 'sourcedStoneIsBrick', 'buildDryStoneWallHead', 'buildAdobePilaster', 'fieldWallBucket',
     `const _rubbleOff = new Float32Array(24); ${rubbleSource}; ${code}; return addWallRun;`)(
     { wallStyle: style }, field, WALL_SEG, rng, buckets, box, jitterUV, add, field._noVeg, spans, wallIslandEdges, legacyWallEdges,
-    field._layout?.id ?? 'verdant', sourcedStoneIsBrick, buildDryStoneWallHead, buildAdobePilaster);
+    field._layout?.id ?? 'verdant', sourcedStoneIsBrick, buildDryStoneWallHead, buildAdobePilaster, 'fieldStone');
   runs.forEach((args, runIndex) => {
     const [x0, z0, x1, z1] = args, start = records.length;
     const length = Math.hypot(x1 - x0, z1 - z0);
