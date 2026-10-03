@@ -73,7 +73,7 @@ lane's scratch output):
 (terrain seed from the collision manifest index) and the committed collision manifest. It runs without a browser;
 the whole fleet takes about a minute. `--check` exits 1 when a map misses a band. A map may name a deliberate
 exception in `layoutBrief: { exceptions: { <key>: '<reason>' } }`; the check then reports the reason instead of a
-failure.
+failure. A map at a scale of its own may instead hold its own enforced bands (below, "Bands of a map's own").
 
 | Key | What it measures | Band |
 | --- | --- | --- |
@@ -107,6 +107,13 @@ whose sampled grade stays at or under 18 % at three terrain seeds) and `src/worl
 least three strongpoints, every role present, each at least 180 m from the others).
 `server/collisionManifestDrift.selftest.mjs` rebuilds every shard in Node and fails on any that no longer matches
 the tree.
+
+### Bands of a map's own
+
+A map built at a scale of its own holds its own bands instead of an exception:
+`layoutBrief: { bands: { <key>: { band: [min, max], reason: '<why>' } } }`. A map band replaces the shared band for
+that key and is enforced like it: a miss fails, and the check names the band and the reason. Use one only when the
+scale itself is the design, and derive the band from that scale, not from the value the map happens to reach.
 
 ### Apron banks
 

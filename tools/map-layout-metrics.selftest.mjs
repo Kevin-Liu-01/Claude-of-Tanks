@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { terrainSlopeMargin } from '../src/sim/terrainMobility.ts';
 import {
-  axisSlices, coverClass, distanceMap, evaluateTargets, LAYOUT_DRIVETRAIN, maximumTwoWayGrade, objectiveBalance,
+  axisSlices, briefTargets, coverClass, distanceMap, evaluateTargets, LAYOUT_DRIVETRAIN, maximumTwoWayGrade, objectiveBalance,
   rasterSpec, seesPoint, sightHistogram, sliceLanes, spawnFrame, sweepRay, computeLayoutMetrics, SIGHT_MAX_M,
 } from './map-layout-metrics.mjs';
 
@@ -96,6 +96,17 @@ import {
   const excused = evaluateTargets(row, { spawnSeparationM: 'a skirmish map' });
   assert.equal(excused.find((c) => c.key === 'spawnSeparationM').ok, 'exception', 'an authored exception reports its reason');
   assert.ok(checks.filter((c) => c.key !== 'spawnSeparationM').every((c) => c.ok === true), 'every other value sits in its band');
+  // a map's own band replaces the shared one and is enforced like it (layoutBrief.bands)
+  const brief = { bands: { spawnSeparationM: { band: [380, 520], reason: 'a compact arena' } } };
+  const own = evaluateTargets(row, {}, briefTargets(brief), brief.bands).find((c) => c.key === 'spawnSeparationM');
+  assert.equal(own.ok, true, '400 m sits in the map\'s own 380-520 m band');
+  assert.deepEqual([own.band, own.bandReason], [[380, 520], 'a compact arena'], 'the row names the map band and its reason');
+  const tight = { bands: { spawnSeparationM: { band: [450, 520], reason: 'a compact arena' } } };
+  assert.equal(evaluateTargets(row, {}, briefTargets(tight), tight.bands).find((c) => c.key === 'spawnSeparationM').ok, false,
+    'a map band is enforced: 400 m misses 450-520 m');
+  assert.throws(() => briefTargets({ bands: { sightMedian: { band: [60, 150] } } }), /no brief band/, 'an unknown band fails closed');
+  assert.throws(() => briefTargets({ bands: { sightMedianM: { band: [150, 60] } } }), /\[min, max\]/, 'a reversed band fails closed');
+  assert.deepEqual(briefTargets(undefined), { ...briefTargets({}) }, 'no bands: the shared targets');
 }
 
 // ---- the drivetrain's two-way grade limit comes from the shared mobility law

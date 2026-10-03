@@ -30,6 +30,9 @@ for (const mapId of LAYOUT_BRIEF_MAPS) {
   for (const check of m.checks.filter((c) => c.ok === 'exception')) {
     assert.ok(typeof check.reason === 'string' && check.reason.length > 40, `${mapId}/${check.key}: an exception states its reason`);
   }
+  for (const check of m.checks.filter((c) => c.band)) {
+    assert.ok(typeof check.bandReason === 'string' && check.bandReason.length > 40, `${mapId}/${check.key}: a map band states its reason`);
+  }
   assert.equal(m.checks.length, Object.keys(TARGETS).length, `${mapId}: every band is evaluated`);
 
   // objectives: authored, reachable by both teams, seated where they were authored
