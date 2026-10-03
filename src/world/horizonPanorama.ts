@@ -463,6 +463,9 @@ void main() {
   float bedTone = 1.0 + uChar4.x * (tone - 0.5) * 2.0;
   float plane = 1.0 - smoothstep(0.0, 0.08, bf) * smoothstep(0.0, 0.08, 1.0 - bf);
   vec3 rockC = mix(uRock, uRock2, tone > 0.55 ? 0.7 : 0.0) * bedTone * (1.0 - 0.54 * plane * uChar4.x);
+  // the rock's own patches: warmer and cooler outcrops over a few hundred metres, weathered paler on the crests
+  float rockN = noised(wp.xz / 420.0 + vec2(-6.1, 2.3)).x;
+  rockC *= vec3(1.0 + 0.07 * rockN, 1.0 + 0.02 * rockN, 1.0 - 0.06 * rockN) * (1.0 + 0.12 * smoothstep(0.55, 0.95, hT));
   float rockW = smoothstep(uChar3.z, uChar3.z + 0.16, slope + 0.04 * n1);
   col = mix(col, rockC, rockW);
   // scree on the moderate slopes below the rock
@@ -473,8 +476,12 @@ void main() {
   // the sun with its cast shadows, the sky with its occlusion
   float ndl = max(0.0, dot(n, uSun));
   float fogL = (uFog.r + uFog.g + uFog.b) / 3.0;
-  vec3 skyTint = 0.6 + 0.4 * uFog / max(1e-3, fogL);
-  col *= uGains.y * 0.9 * ndl * light.r * vec3(1.0, 0.97, 0.9) + uGains.x * (0.84 + 0.36 * n.y) * light.g * skyTint;
+  vec3 skyTint = 0.55 + 0.45 * uFog / max(1e-3, fogL);
+  // the sun warm, the shade lit by the sky (cooler), a little light bounced up from the valleys
+  vec3 sunC = uGains.y * 1.05 * ndl * light.r * vec3(1.06, 0.98, 0.86);
+  vec3 skyC = uGains.x * (0.62 + 0.38 * n.y) * light.g * skyTint;
+  vec3 bounce = uGains.x * 0.12 * (1.0 - n.y) * vec3(0.9, 0.85, 0.75);
+  col *= sunC + skyC + bounce;
   // the sea sectors: the open water under the sky
   vec4 edge = texture2D(uEdge, vec2(u, 0.5));
   float sea = edge.g * step(wp.y, edge.b + 0.5);
