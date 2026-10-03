@@ -44,8 +44,10 @@ function assertMonotoneRadii(position, label) {
 // guarded stays live: (a) no cliff between two rows past the ledger's bound (enforceLedgerSlopes still runs after the
 // carve) — on the tablelands the stair's own cliff bound, 3.6:1 (74 degrees), so a cliff never becomes a vertical sheet;
 // (b) no one-column needle beyond the first ridge (a vertex more than one arc step over BOTH neighbours: a single 15–20 m
-// column cannot carry a summit); (c) real relief between the anchors.
-function assertBoundedSubdivisionRelief(position, style, label) {
+// column cannot carry a summit) — the carve's own needle filter, so a ring that opts out of the landform (massif: false:
+// Nordhavn Fjord's aiguilles, Earthrise Basin's walls) keeps its round-72b crests and is not held to it; (c) real relief
+// between the anchors.
+function assertBoundedSubdivisionRelief(position, style, label, carved = true) {
   // Alpine spends two existing outer-shoulder subdivisions on the near
   // foothill transition. Authored ridges still anchor all inserted relief.
   // round 47: the mesa stack's seven authored rows (5, 9, 13, 17, 21, 25, 29) and, on the cap maps, its two cap fronts
@@ -85,7 +87,7 @@ function assertBoundedSubdivisionRelief(position, style, label) {
   }
   assert.ok(reliefSamples > columns,
     `${label}: coherent shoulders retain real relief instead of flattening the mountain faces`);
-  assert.equal(needles, 0, `${label}: no one-column needles beyond the first ridge (${needles})`);
+  if (carved) assert.equal(needles, 0, `${label}: no one-column needles beyond the first ridge (${needles})`);
 }
 
 function assertLayeredMountainBounds(position, style, label) {
@@ -482,7 +484,7 @@ try {
     assert.equal(geometryBytes, columns * rows * 11 * 4 + (rows - 1) * HORIZON_SEGMENTS * 6 * 2,
       `${mapId}: eleven floats per vertex plus a 16-bit index — no extra vertex attribute or buffer`);
     assertMonotoneRadii(position, mapId);
-    assertBoundedSubdivisionRelief(position, style, mapId);
+    assertBoundedSubdivisionRelief(position, style, mapId, config.horizon.massif !== false);
     assertLayeredMountainBounds(position, style, mapId);
     for (let i = 0; i < normal.count; i++) {
       const length = Math.hypot(normal.getX(i), normal.getY(i), normal.getZ(i));
