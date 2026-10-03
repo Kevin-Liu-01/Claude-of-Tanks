@@ -76,6 +76,12 @@ export const GROUND_AO_CLIP_SLACK_M = 4;
  */
 export const GROUND_AO_HULL_SKIN_M = 0.12;
 /**
+ * A pixel inside a run's lane (widened by these margins, m) and under the run's top is the run itself — the shoes'
+ * cloned material never joins the cascade setup, so it writes no vehicle tag — or ground hidden under it.
+ */
+export const GROUND_AO_RUN_SKIN_X_M = 0.01;
+export const GROUND_AO_RUN_SKIN_Z_M = 0.04;
+/**
  * The hull box runs the belly plate's own length — the proxy's lowest vertices between the runs, within this band (m) of
  * the belly — plus
  * GROUND_AO_PLATE_OVERHANG_M at each end: a sloped nose or rear plate rises off the ground (the M1A2's from 0.41 m to
@@ -98,6 +104,8 @@ export interface VehicleGroundBoxes {
   readonly hx: number; readonly yb: number; readonly yt: number; readonly hz0: number; readonly hz1: number;
   /** The runs: xi ≤ |x| ≤ xo, y0 ≤ y ≤ yb, tz0 ≤ z ≤ tz1 (y0 the contact plane plus the lift). */
   readonly xi: number; readonly xo: number; readonly y0: number; readonly tz0: number; readonly tz1: number;
+  /** The hull's whole length (fz0..fz1, its proxy's, past the belly plate) and the runs' top (rt): the vehicle's own skin. */
+  readonly fz0: number; readonly fz1: number; readonly rt: number;
 }
 
 export interface VehicleGroundStrengths { readonly belly: number; readonly wall: number; }
@@ -173,7 +181,11 @@ export function vehicleGroundOcclusionLocal(
   const dx = Math.abs(q.x) - b.hx, dz = Math.abs(q.z - hcz) - hhz;
   const dOut = Math.hypot(Math.max(dx, 0), Math.max(dz, 0));
   if (dOut > H * GROUND_AO_REACH[1] || q.y > b.yt || q.y < b.y0 - H * GROUND_AO_REACH[1]) return 0;
-  if (q.y > b.yb + 0.02 && dOut < GROUND_AO_HULL_SKIN_M) return 0;
+  const fullOut = Math.hypot(Math.max(Math.abs(q.x) - b.hx, 0), Math.max(Math.abs(q.z - 0.5 * (b.fz0 + b.fz1)) - 0.5 * (b.fz1 - b.fz0), 0));
+  if (q.y > b.yb + 0.02 && fullOut < GROUND_AO_HULL_SKIN_M) return 0;
+  const laneOut = Math.max(Math.abs(Math.abs(q.x) - 0.5 * (b.xi + b.xo)) - 0.5 * (b.xo - b.xi) - GROUND_AO_RUN_SKIN_X_M,
+    Math.abs(q.z - 0.5 * (b.tz0 + b.tz1)) - 0.5 * (b.tz1 - b.tz0) - GROUND_AO_RUN_SKIN_Z_M);
+  if (laneOut < 0 && q.y < b.rt + GROUND_AO_RUN_SKIN_Z_M) return 0;
   const yc = q.y + 0.002 - GROUND_AO_CLIP_SLACK_M * (1 - n.y);
   let occ = 0;
   const bot = Math.max(b.yb, yc);
@@ -211,18 +223,18 @@ export interface VehicleGroundOcclusionUniforms {
   uVehGround: THREE.IUniform<number>;
   /** Per hull, three rows: world → root frame (local axis i = dot(row.xyz, P) + row.w; the root's scale included). */
   uVehGroundM: THREE.IUniform<THREE.Vector4[]>;
-  /** Per hull, three vec4: (hx, yb, yt, hz0), (hz1, xi, xo, y0), (tz0, tz1, weight, 0) — the boxes in the root frame. */
+  /** Per hull, four vec4: (hx, yb, yt, hz0), (hz1, xi, xo, y0), (tz0, tz1, weight, 0), (fz0, fz1, rt, 0) — the root frame. */
   uVehGroundB: THREE.IUniform<THREE.Vector4[]>;
   /** The interreflection's inputs: the ground's albedo, the hull's, the belly's view of open ground, the shaded ground. */
   uVehGroundLight: THREE.IUniform<THREE.Vector4>;
 }
 
 export function createVehicleGroundOcclusionUniforms(): VehicleGroundOcclusionUniforms {
-  const rows = () => Array.from({ length: GROUND_AO_MAX_HULLS * 3 }, () => new THREE.Vector4());
+  const rows = (n: number) => Array.from({ length: GROUND_AO_MAX_HULLS * n }, () => new THREE.Vector4());
   return {
     uVehGround: { value: 0 },
-    uVehGroundM: { value: rows() },
-    uVehGroundB: { value: rows() },
+    uVehGroundM: { value: rows(3) },
+    uVehGroundB: { value: rows(4) },
     uVehGroundLight: { value: new THREE.Vector4(GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_HULL_ALBEDO, GROUND_AO_BELLY_VIEW, GROUND_AO_UNDER_GROUND) },
   };
 }
@@ -290,7 +302,7 @@ export function measureVehicleGroundBoxes(root: THREE.Object3D): VehicleGroundBo
   const proxy = hullProxyOf(root);
   const hull = proxy ? rootFrameBounds(proxy, root, proxy.geometry, new THREE.Box3()) : null;
   if (hull) {
-    let bandXi = Infinity, bandXo = 0, bandZ0 = Infinity, bandZ1 = -Infinity, bands = 0;
+    let bandXi = Infinity, bandXo = 0, bandZ0 = Infinity, bandZ1 = -Infinity, bandTop = -Infinity, bands = 0;
     root.traverse((object) => {
       const mesh = object as THREE.Mesh;
       if (!mesh.isMesh || (mesh.name !== 'gearTrackBandL' && mesh.name !== 'gearTrackBandR')) return;
@@ -299,7 +311,7 @@ export function measureVehicleGroundBoxes(root: THREE.Object3D): VehicleGroundBo
       const inner = b.min.x > 0 ? b.min.x : b.max.x < 0 ? -b.max.x : 0;
       bandXi = Math.min(bandXi, inner);
       bandXo = Math.max(bandXo, Math.abs(b.min.x), Math.abs(b.max.x));
-      bandZ0 = Math.min(bandZ0, b.min.z); bandZ1 = Math.max(bandZ1, b.max.z);
+      bandZ0 = Math.min(bandZ0, b.min.z); bandZ1 = Math.max(bandZ1, b.max.z); bandTop = Math.max(bandTop, b.max.y);
       bands++;
     });
     const ground = finite(cg?.bottomYM) ? cg.bottomYM : hull.min.y - GROUND_AO_CLEARANCE_M;
@@ -319,9 +331,11 @@ export function measureVehicleGroundBoxes(root: THREE.Object3D): VehicleGroundBo
     const candidate: VehicleGroundBoxes = {
       hx: Math.max(Math.abs(hull.min.x), Math.abs(hull.max.x), xo), yb, yt: hull.max.y, hz0, hz1,
       xi, xo, y0: ground + GROUND_AO_TRACK_LIFT_M, tz0, tz1,
+      fz0: hull.min.z, fz1: hull.max.z, rt: bands ? bandTop : yb + 0.6,
     };
     const valid = candidate.yt > candidate.yb + 0.2 && candidate.yb > candidate.y0 && candidate.xo > candidate.xi
-      && candidate.hz1 > candidate.hz0 && candidate.tz1 > candidate.tz0 && Object.values(candidate).every(finite);
+      && candidate.hz1 > candidate.hz0 && candidate.tz1 > candidate.tz0 && candidate.rt > candidate.y0
+      && Object.values(candidate).every(finite);
     boxes = valid ? Object.freeze(candidate) : null;
   }
   root.userData.groundAoBoxes = boxes;
@@ -356,9 +370,10 @@ export function updateVehicleGroundOcclusionUniforms(
       u.uVehGroundM.value[n * 3].set(e[0], e[4], e[8], e[12]);
       u.uVehGroundM.value[n * 3 + 1].set(e[1], e[5], e[9], e[13]);
       u.uVehGroundM.value[n * 3 + 2].set(e[2], e[6], e[10], e[14]);
-      u.uVehGroundB.value[n * 3].set(b.hx, b.yb, b.yt, b.hz0);
-      u.uVehGroundB.value[n * 3 + 1].set(b.hz1, b.xi, b.xo, b.y0);
-      u.uVehGroundB.value[n * 3 + 2].set(b.tz0, b.tz1, 1, 0);
+      u.uVehGroundB.value[n * 4].set(b.hx, b.yb, b.yt, b.hz0);
+      u.uVehGroundB.value[n * 4 + 1].set(b.hz1, b.xi, b.xo, b.y0);
+      u.uVehGroundB.value[n * 4 + 2].set(b.tz0, b.tz1, 1, 0);
+      u.uVehGroundB.value[n * 4 + 3].set(b.fz0, b.fz1, b.rt, 0);
       n++;
     }
   }
@@ -376,7 +391,7 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
     // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts)
     uniform float uVehGround;
     uniform vec4 uVehGroundM[ ${GROUND_AO_MAX_HULLS * 3} ];
-    uniform vec4 uVehGroundB[ ${GROUND_AO_MAX_HULLS * 3} ];
+    uniform vec4 uVehGroundB[ ${GROUND_AO_MAX_HULLS * 4} ];
     uniform vec4 uVehGroundLight;
     // one silhouette edge of Lambert's projected solid angle: the angle it subtends times the normal's share of its plane
     float cotVgEdge( vec3 a, vec3 b, vec3 n ) {
@@ -418,14 +433,19 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
         if ( float( i ) >= uVehGround ) break;
         vec4 m0 = uVehGroundM[ i * 3 ], m1 = uVehGroundM[ i * 3 + 1 ], m2 = uVehGroundM[ i * 3 + 2 ];
         vec3 q = vec3( dot( m0.xyz, P ) + m0.w, dot( m1.xyz, P ) + m1.w, dot( m2.xyz, P ) + m2.w );
-        vec4 b0 = uVehGroundB[ i * 3 ], b1 = uVehGroundB[ i * 3 + 1 ], b2 = uVehGroundB[ i * 3 + 2 ];
+        vec4 b0 = uVehGroundB[ i * 4 ], b1 = uVehGroundB[ i * 4 + 1 ], b2 = uVehGroundB[ i * 4 + 2 ], b3 = uVehGroundB[ i * 4 + 3 ];
         float H = b0.z - b1.w;
         float hcz = 0.5 * ( b0.w + b1.x ), hhz = 0.5 * ( b1.x - b0.w );
         vec2 dd = vec2( abs( q.x ) - b0.x, abs( q.z - hcz ) - hhz );
         float dOut = length( max( dd, vec2( 0.0 ) ) );
         if ( dOut > H * ${f(GROUND_AO_REACH[1])} || q.y > b0.z || q.y < b1.w - H * ${f(GROUND_AO_REACH[1])} ) continue;
-        // the hull itself (a marking decal or glass blended over it no longer carries the vehicle tag): never a receiver
-        if ( q.y > b0.y + 0.02 && dOut < ${f(GROUND_AO_HULL_SKIN_M)} ) continue;
+        // the vehicle itself is never a receiver: the hull over its belly along its whole length (a marking decal or glass
+        // blended over it no longer carries the vehicle tag), and the runs to their top (the shoes' material carries none)
+        float fullOut = length( max( vec2( abs( q.x ) - b0.x, abs( q.z - 0.5 * ( b3.x + b3.y ) ) - 0.5 * ( b3.y - b3.x ) ), vec2( 0.0 ) ) );
+        if ( q.y > b0.y + 0.02 && fullOut < ${f(GROUND_AO_HULL_SKIN_M)} ) continue;
+        float laneOut = max( abs( abs( q.x ) - 0.5 * ( b1.y + b1.z ) ) - 0.5 * ( b1.z - b1.y ) - ${f(GROUND_AO_RUN_SKIN_X_M)},
+          abs( q.z - 0.5 * ( b2.x + b2.y ) ) - 0.5 * ( b2.y - b2.x ) - ${f(GROUND_AO_RUN_SKIN_Z_M)} );
+        if ( laneOut < 0.0 && q.y < b3.z + ${f(GROUND_AO_RUN_SKIN_Z_M)} ) continue;
         if ( !haveN ) { haveN = true; if ( sunVis >= 0.0 ) N = cotNormalAt( uv, P ); }
         vec3 n = normalize( vec3( dot( m0.xyz, N ), dot( m1.xyz, N ), dot( m2.xyz, N ) ) );
         // each box clipped at the receiver's horizon (exact for a level receiver; a wall facing the hull keeps it whole)

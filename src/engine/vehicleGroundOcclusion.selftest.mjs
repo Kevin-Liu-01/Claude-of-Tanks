@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
   GROUND_AO_BELLY_VIEW, GROUND_AO_CARD_AMBIENT_SHARE, GROUND_AO_CLIP_SLACK_M, GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_EDGE_M,
-  GROUND_AO_FADE_M, GROUND_AO_HULL_ALBEDO, GROUND_AO_HULL_SKIN_M, GROUND_AO_MAX_HULLS, GROUND_AO_PLATE_OVERHANG_M, GROUND_AO_RANGE_M, GROUND_AO_REACH, GROUND_AO_TRACK_LIFT_M,
+  GROUND_AO_FADE_M, GROUND_AO_HULL_ALBEDO, GROUND_AO_HULL_SKIN_M, GROUND_AO_MAX_HULLS, GROUND_AO_PLATE_OVERHANG_M, GROUND_AO_RUN_SKIN_Z_M, GROUND_AO_RANGE_M, GROUND_AO_REACH, GROUND_AO_TRACK_LIFT_M,
   GROUND_AO_TRACK_REACH, GROUND_AO_UNDER_GROUND, VEHICLE_GROUND_OCCLUSION_GLSL, boxSkyOcclusion, combineVehicleGroundOcclusion,
   createVehicleGroundOcclusionUniforms, hullProxyOf, measureVehicleGroundBoxes, updateVehicleGroundOcclusionUniforms,
   vehicleGroundOcclusionLocal, vehicleGroundStrengths,
@@ -82,7 +82,8 @@ for (let c = 0.1, prev = 2; c < 4; c += 0.1) {
 assert.equal(boxSkyOcclusion({ x: 0, y: 2, z: 0 }, UP, { x: 1.8, y: 0.7, z: 3.6 }), 0, 'a box under the receiver\'s horizon hides nothing');
 
 // ---- 2. a hull: the measured T-90M (belly 0.31 m, deck 1.32 m, runs 1.11–1.72 m out), exact boxes, darkest under the belly
-const T90 = Object.freeze({ hx: 1.79, yb: 0.31, yt: 1.32, hz0: -2.89, hz1: 3.61, xi: 1.11, xo: 1.72, y0: 0.02, tz0: -2.89, tz1: 3.43 });
+const T90 = Object.freeze({ hx: 1.79, yb: 0.31, yt: 1.32, hz0: -2.89, hz1: 3.61, xi: 1.11, xo: 1.72, y0: 0.02, tz0: -2.89, tz1: 3.43,
+  fz0: -3.42, fz1: 3.68, rt: 1.06 });
 const ONE = Object.freeze({ belly: 1, wall: 1 });
 const F = (x, z, y = 0, n = UP) => vehicleGroundOcclusionLocal({ x, y, z }, n, T90, ONE);
 const bellyOnly = boxSkyOcclusion({ x: 0, y: -0.31 - 0.505, z: 0.3 - 0.36 }, UP, { x: 1.79, y: 0.505, z: 3.25 });
@@ -94,19 +95,26 @@ assert.ok(F(0, T90.hz0 - 1.6) > 0.05 && F(0, T90.hz0 - 1.6) < 0.15 && F(0, T90.h
 assert.ok(F(-1.8, 0.3) > 0.8 && F(-2.2, 0.3) > 0.35 && F(-3.2, 0.3) < 0.2, 'the run\'s contact line, then a short skirt');
 assert.equal(F(0, 0.3, 1.5), 0, 'over the deck: nothing');
 // the hull's own surface over the belly (a marking decal blended over it reads as a card or lit ground): never a receiver
-for (const [x, y, z] of [[1.82, 0.9, 0], [0.5, 1.0, 0.5], [-1.85, 0.6, -2], [0.2, 0.8, 3.65]]) {
-  assert.equal(F(x, z, y), 0, `the hull's skin at ${x}, ${y}, ${z}`);
+for (const [x, y, z] of [[1.82, 0.9, 0], [0.5, 1.0, 0.5], [-1.85, 0.6, -2], [0.2, 0.8, 3.65], [0.3, 0.9, -3.3]]) {
+  assert.equal(F(x, z, y), 0, `the hull's skin at ${x}, ${y}, ${z} (over the belly, along the proxy's whole length)`);
   assert.equal(F(x, z, y, unit(0.3, 0.2, 0.9)), 0, 'whatever its normal');
 }
-assert.ok(F(1.82, 0, 0) > 0.4 && F(1.95, 0, 0.9) > 0, 'the ground at the hull\'s foot, and a wall pixel just past its skin, still are');
+// the runs to their top: a shoe on the ground run, one on the rear wrap past the belly box (the shoes' cloned material
+// carries no vehicle tag, 2026-10-03's side views showed them darkened)
+for (const [x, y, z] of [[1.4, 0.05, 0], [-1.2, 0.02, 1.5], [1.6, 0.7, -2.92], [-1.4, 1.05, 3.45]]) assert.equal(F(x, z, y), 0, `a run's shoe at ${x}, ${y}, ${z}`);
+assert.ok(F(1.74, 0, 0) > 0.4 && F(1.95, 0, 0.9) > 0 && F(0, 3.5, 0) > 0.3, 'the ground at the run\'s and the hull\'s foot, a wall pixel past the skin, still are');
 assert.ok(F(0, 0.3, -8) === 0, 'a slope far under the hull: nothing');
 // continuous across every edge: the footprint's, the runs' faces and ends, a corner (1 mm steps; a step function would
 // keep its jump at any step, a steep wall-side gradient shrinks with it)
+const inRun = (x, z) => Math.abs(Math.abs(x) - 0.5 * (T90.xi + T90.xo)) - 0.5 * (T90.xo - T90.xi) < 0.011
+  && Math.abs(z - 0.5 * (T90.tz0 + T90.tz1)) - 0.5 * (T90.tz1 - T90.tz0) < 0.041;
 for (const [line, label] of [[(t) => [0, T90.hz0 - 0.9 + t], 'the rear edge'], [(t) => [-2.6 + t, 0.3], 'a side'], [(t) => [-2.6 + t, 4.4 - t], 'a corner'],
   [(t) => [-1.4, 2.7 + t], 'a run\'s front end'], [(t) => [-2.6 + t, -3.2], 'past the runs\' rear ends']]) {
   let prev = null, worst = 0;
   for (let t = 0; t <= 1.7; t += 0.001) {
-    const [x, z] = line(t), v = F(x, z);
+    const [x, z] = line(t);
+    if (inRun(x, z)) { prev = null; continue; } // the run itself (its shoes) or ground hidden under it: not a receiver
+    const v = F(x, z);
     if (prev !== null) worst = Math.max(worst, Math.abs(v - prev));
     prev = v;
   }
@@ -164,7 +172,8 @@ function builtHull(name, { z = 0, bands = true, contact = true } = {}) {
   assert.equal(hullProxyOf(root), proxy, 'the hull proxy');
   const b = measureVehicleGroundBoxes(root);
   // the box proxy has no low vertices between the runs: the belly runs the contact run ± GROUND_AO_BELLY_BEYOND_RUN_M
-  for (const [key, want] of Object.entries({ hx: 1.79, yb: 0.31, yt: 1.37, hz0: 0.36 - 2.35 - 0.6 - 0.3, hz1: 0.36 + 2.35 + 0.6 + 0.3, xi: 1.11, xo: 1.72, y0: GROUND_AO_TRACK_LIFT_M, tz0: -2.89, tz1: 3.43 })) {
+  for (const [key, want] of Object.entries({ hx: 1.79, yb: 0.31, yt: 1.37, hz0: 0.36 - 2.35 - 0.6 - 0.3, hz1: 0.36 + 2.35 + 0.6 + 0.3, xi: 1.11, xo: 1.72,
+    y0: GROUND_AO_TRACK_LIFT_M, tz0: -2.89, tz1: 3.43, fz0: -3.42, fz1: 3.68, rt: 1.06 })) {
     near(b[key], want, 1e-6, `measured ${key}`);
   }
   assert.equal(measureVehicleGroundBoxes(root), b, 'measured once, cached on the root');
@@ -210,6 +219,8 @@ const nearRoot = hulls[0].root;
 const row = (i, p) => u.uVehGroundM.value[i].x * p.x + u.uVehGroundM.value[i].y * p.y + u.uVehGroundM.value[i].z * p.z + u.uVehGroundM.value[i].w;
 near(row(2, nearRoot.position), 0, 1e-9, 'the nearest hull first'); near(u.uVehGroundB.value[0].x, 1.79, 1e-6, 'its hull half width');
 near(u.uVehGroundB.value[2].z, 1, 1e-12, 'weight one');
+near(u.uVehGroundB.value[3].x, -3.42, 1e-6, 'the hull\'s whole length'); near(u.uVehGroundB.value[3].z, 1.06, 1e-6, 'the runs\' top');
+assert.equal(u.uVehGroundB.value.length, GROUND_AO_MAX_HULLS * 4, 'four vec4 a hull');
 // a moved, turned, scaled hull: read from its pose this frame, not its last render's world matrix
 nearRoot.position.set(7, 2, -9); nearRoot.rotation.set(0.05, 0.9, -0.03, 'YXZ'); nearRoot.scale.setScalar(1.15);
 const local = new THREE.Vector3(1.2, 0.4, -2.5), world = local.clone().applyMatrix4(new THREE.Matrix4().compose(nearRoot.position, nearRoot.quaternion, nearRoot.scale));
@@ -229,7 +240,7 @@ assert.deepEqual(resolvePostLightFx(PRESETS.ultra, 'desktop', 'off'), POST_LIGHT
 // ---- 7. the GLSL carries the CPU twin's law
 const g = VEHICLE_GROUND_OCCLUSION_GLSL;
 const f4 = (x) => x.toFixed(4);
-assert.match(g, new RegExp(`uniform vec4 uVehGroundM\\[ ${GROUND_AO_MAX_HULLS * 3} \\];`)); assert.match(g, new RegExp(`uniform vec4 uVehGroundB\\[ ${GROUND_AO_MAX_HULLS * 3} \\];`));
+assert.match(g, new RegExp(`uniform vec4 uVehGroundM\\[ ${GROUND_AO_MAX_HULLS * 3} \\];`)); assert.match(g, new RegExp(`uniform vec4 uVehGroundB\\[ ${GROUND_AO_MAX_HULLS * 4} \\];`));
 assert.match(g, /return s > 1e-6 \? atan\( s, dot\( a, b \) \) \* dot\( n, c \) \/ s : 0\.0;/, 'Lambert\'s edge term');
 for (const v of ['vec3( 1.0, 1.0, -1.0 ) * fq', 'vec3( 1.0, si.x, si.x ) * fq', 'vec3( 1.0, -1.0, 1.0 ) * fq', 'vec3( si.z, si.z, 1.0 ) * fq',
   'vec3( -1.0, 1.0, 1.0 ) * fq', 'vec3( si.y, 1.0, si.y ) * fq']) assert.ok(g.includes(v), `the hexagon vertex ${v}`);
@@ -252,7 +263,8 @@ assert.match(g, /ambShare = A \/ max\( T \+ A, 1e-4 \);/, 'only the ambient shar
 assert.match(g, /return 1\.0 - occ \* ambShare;/);
 assert.ok(!/2\.0404|Jimenez|fract\( sin/.test(g), 'no ground-albedo multi-bounce, no per-pixel noise');
 assert.ok(g.indexOf('if ( !haveN )') > g.indexOf('continue;'), 'the depth normal only for a pixel some hull reaches');
-assert.ok(g.includes(`if ( q.y > b0.y + 0.02 && dOut < ${f4(GROUND_AO_HULL_SKIN_M)} ) continue;`), 'the hull\'s own skin is skipped');
+assert.ok(g.includes(`if ( q.y > b0.y + 0.02 && fullOut < ${f4(GROUND_AO_HULL_SKIN_M)} ) continue;`), 'the hull\'s own skin is skipped');
+assert.ok(g.includes(`if ( laneOut < 0.0 && q.y < b3.z + ${f4(GROUND_AO_RUN_SKIN_Z_M)} ) continue;`), 'and the runs\' own');
 
 // ---- 8. the wiring: the router's selection, the aerial pass's order, the lever, the ground's albedo
 const post = here('./post.ts'), lighting = here('./lighting.ts');
