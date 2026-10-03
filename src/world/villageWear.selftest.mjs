@@ -4,7 +4,7 @@ import { createHeightField, makeMaskTexture, mulberry32, selectTerrainLandformMa
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
-import { createHardstandVegetationExclusion } from './hardstandSurface.ts';
+import { createHardstandPaintCover } from './hardstandSurface.ts';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const stringify = value => JSON.stringify(value, (_key, item) => typeof item === 'function' ? String(item) : item);
@@ -132,7 +132,7 @@ function checkPilot(id, seed) {
     compareTexture(original.texture, current.texture);
     assert.equal(current.draws, original.draws, 'identical caller RNG draw count');
     assert.deepEqual(current.rngTail, original.rngTail, 'identical caller RNG tail');
-    protectedChannels(original.pixels, current.pixels, createHardstandVegetationExclusion(cfg.terrain.hardstands) ?? undefined);
+    protectedChannels(original.pixels, current.pixels, createHardstandPaintCover(cfg.terrain.hardstands) ?? undefined);
     const coverage = activityCoverage(original.pixels, current.pixels, current.size, cfg.terrain.workedGround);
     if (id === 'foundry') {
       assert.ok(coverage.newArea < 5000 && coverage.coreArea > 500,
