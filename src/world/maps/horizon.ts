@@ -953,6 +953,8 @@ interface HorizonRingGeometry {
   reliefWeights?: Float32Array;
   /** Round 72b: each authored row's base height (row.base x amp x boost) — the floor the relief carves above. */
   rowBases?: Float32Array;
+  /** The mountains lane (2026-10-03): 1 on the vertices a road exit's pass lowered (openRoadPasses), for the receipts. */
+  roadPass?: Uint8Array;
 }
 
 interface HorizonGradients {
@@ -1081,6 +1083,73 @@ function continueHorizonGround(ring: HorizonRingGeometry, ground: CanyonGround |
     ring.heights[i] += (height - ring.heights[i]) * weight;
     ring.positions[i * 3 + 1] = ring.heights[i];
   }
+  ring.maxHeight = 1;
+  for (const height of ring.heights) ring.maxHeight = Math.max(ring.maxHeight, height);
+}
+
+/**
+ * The mountains lane (2026-10-03, gauntlet wave 1: "a straight bright seam running up a mountainside", Cinder Junction's
+ * edge-n): a road that leaves the square runs on ~720 m (terrain.ts roadExitAt, the map-borders lane), but the border's
+ * landform hands over to the authored ranges 150-750 m out, and past the hand-over the carriageway was painted straight
+ * up the ranges' faces. The ranges open a pass along each exit instead: per row, the exit's crossing (the column nearest
+ * its line, found by the ring's own road attribute), a valley round it — its floor the continued ground at the
+ * crossing (the road's grade where the line runs), its sides rising at about 24 degrees, 30 m of floor either side —
+ * carved only where the ring stands above it, by the exit's own presence (so it closes where the road fades). Heights
+ * only; a map without exits is untouched.
+ */
+const ROAD_PASS_HALF_M = 220;
+const ROAD_PASS_FLOOR_M = 30;
+const ROAD_PASS_SIDE = 0.45;
+function openRoadPasses(ring: HorizonRingGeometry, ground: CanyonGround | undefined): void {
+  const exitAt = ground?._roadExitAt;
+  if (!ground || !exitAt || !ground.getOutlandHeightAt) return;
+  const n = HORIZON_SEGMENTS, rows = ring.rows.length;
+  const out: [number, number] = [0, 0];
+  const presence = new Float32Array(n), offset = new Float32Array(n);
+  const carved = new Uint8Array(ring.heights.length);
+  for (let row = 1; row < rows; row++) {
+    const off = row * n;
+    const r0 = Math.hypot(ring.positions[off * 3], ring.positions[off * 3 + 2]);
+    if (r0 < 560) continue;
+    let any = false;
+    for (let k = 0; k < n; k++) {
+      const i = off + k;
+      exitAt(ring.positions[i * 3], ring.positions[i * 3 + 2], out);
+      presence[k] = out[1]; offset[k] = out[0];
+      if (out[1] > 0.02) any = true;
+    }
+    if (!any) continue;
+    const arc = (2 * Math.PI * r0) / n;
+    const reach = Math.ceil(ROAD_PASS_HALF_M / arc);
+    for (let k = 0; k < n; k++) {
+      // a crossing: the column nearest the line (its offset's smallest magnitude among its present neighbours)
+      if (presence[k] <= 0.02) continue;
+      const a = (k + n - 1) % n, b = (k + 1) % n;
+      if ((presence[a] > 0.02 && Math.abs(offset[a]) < Math.abs(offset[k])) || (presence[b] > 0.02 && Math.abs(offset[b]) <= Math.abs(offset[k]))) continue;
+      const ic = off + k;
+      const xc = ring.positions[ic * 3], zc = ring.positions[ic * 3 + 2];
+      // a crossing inside a railway cutting's corridor is the cutting's own (its fan is the pass; railCutting.selftest)
+      if ((ground.getOutlandSeatWeightAt?.(xc, zc) ?? 0) > 0) continue;
+      const floor = continuedGroundAt(ground, xc, zc);
+      // full while the carriageway shows (the paint is the presence itself), closing over its last faint stretch
+      const p = smoothstep(0, 0.35, presence[k]);
+      for (let d = -reach; d <= reach; d++) {
+        const kk = (k + d + n) % n, i = off + kk;
+        // (inside the hand-over band too: there the ring already leans on the continued ground, which carries the
+        // road's grade along its line, so the valley only finishes what the band began)
+        const across = Math.abs(d) * arc;
+        const valley = floor + Math.max(0, across - ROAD_PASS_FLOOR_M) * ROAD_PASS_SIDE;
+        if (ring.heights[i] <= valley) continue;
+        if ((ground.getOutlandSeatWeightAt?.(ring.positions[i * 3], ring.positions[i * 3 + 2]) ?? 0) > 0) continue;
+        const w = p * (1 - smoothstep(ROAD_PASS_HALF_M * 0.7, ROAD_PASS_HALF_M, across));
+        if (w <= 0) continue;
+        ring.heights[i] += (valley - ring.heights[i]) * w;
+        ring.positions[i * 3 + 1] = ring.heights[i];
+        carved[i] = 1;
+      }
+    }
+  }
+  ring.roadPass = carved;
   ring.maxHeight = 1;
   for (const height of ring.heights) ring.maxHeight = Math.max(ring.maxHeight, height);
 }
@@ -2051,6 +2120,7 @@ export function sampleHorizonGeometry(
   if (!canyonOutland) drainSteps(carveHorizonEscarpmentsSteps(ring, horizon, mapId, style, seed));
   continueHorizonGround(ring, ground, canyonOutland);
   if (canyonOutland) drainSteps(carveHorizonEscarpmentsSteps(ring, horizon, mapId, style, seed));
+  openRoadPasses(ring, ground);
   openHorizonToSea(ring, openings, ground);
   return ring;
 }
@@ -3436,6 +3506,7 @@ export function* buildHorizonRingSteps(
   if (!canyonOutland) yield* carveHorizonEscarpmentsSteps(ring, H, mapId, style, seed);
   continueHorizonGround(ring, ground, canyonOutland);
   if (canyonOutland) yield* carveHorizonEscarpmentsSteps(ring, H, mapId, style, seed);
+  openRoadPasses(ring, ground);
   const sea = openHorizonToSea(ring, seaOpenings, ground);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
   const uvA = buildHorizonUvs(hs, maxH, sea);
