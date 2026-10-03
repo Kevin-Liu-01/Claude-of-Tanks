@@ -765,12 +765,12 @@ const BEDROCK_STEP = 0.5;   // the ray profiles' step (m)
 const BEDROCK_CLEAR = 1.6;  // the lowest bed stands this far above the highest ground a hull climbs to on its ray
 const BEDROCK_BENCH = 3.4;  // a bed whose bench would run wider than this is not cut: the ground there is gentle
 
-/** The joint spacing and the open joints' width (m) of each geology's beds. */
-const BEDROCK_JOINTS: Readonly<Record<RockGeology, readonly [number, number, number, number]>> = Object.freeze({
-  sandstone: [3.5, 9, 0.25, 0.7],
-  limestone: [2.5, 6, 0.15, 0.45],
-  granite: [4, 10, 0.3, 0.8],
-  slate: [1.5, 4, 0.1, 0.3],
+/** The beds' joint spacing (m) and the widest master cleft (m) of each geology. */
+const BEDROCK_JOINTS: Readonly<Record<RockGeology, readonly [number, number, number]>> = Object.freeze({
+  sandstone: [3.5, 9, 0.7],
+  limestone: [2.5, 6, 0.45],
+  granite: [4, 10, 0.8],
+  slate: [1.5, 4, 0.3],
 });
 
 /**
@@ -836,7 +836,7 @@ export function buildBedrock(
   const minGrade = spec.minGrade ?? 0.9;
   const [tMin, tMax] = spec.beds ?? (spec.geology === 'sandstone' ? [1.2, 3.2] : spec.geology === 'limestone' ? [0.8, 2.2] : [1.0, 2.6]);
   // (a phone's beds keep their joints farther apart: fewer blocks, the same rock)
-  const [jMin0, jMax0, gMin, gMax] = BEDROCK_JOINTS[spec.geology];
+  const [jMin0, jMax0, cleftMax] = BEDROCK_JOINTS[spec.geology];
   const jMin = jMin0 * (mobile ? 1.6 : 1), jMax = jMax0 * (mobile ? 1.6 : 1);
   // the rays: one every 3.5 m (6 m on phones) round the search radius's middle, so a big mesa's rim is read as finely
   // as a dome's
@@ -912,7 +912,8 @@ export function buildBedrock(
   const masters = Math.max(3, Math.round((Math.PI * 2 * rRef) / (10 + rng() * 8)));
   const master: Array<[number, number]> = []; // [angle, cleft width m]
   const m0 = rng() * Math.PI * 2;
-  for (let m = 0; m < masters; m++) master.push([m0 + (m + (rng() - 0.5) * 0.6) * (Math.PI * 2 / masters), gMin + 0.3 + rng() * (gMax + 0.6 - gMin)]);
+  // (a cleft is narrow enough that its own shaded walls fill it, not the sunlit slope behind)
+  for (let m = 0; m < masters; m++) master.push([m0 + (m + (rng() - 0.5) * 0.6) * (Math.PI * 2 / masters), cleftMax * (0.55 + rng() * 0.5)]);
   let y0 = lowest + BEDROCK_CLEAR;
   let hard = 0, soft = 0;
   const bedTops: number[] = [];
@@ -947,13 +948,14 @@ export function buildBedrock(
         if (spanEnd - t1 < (jMin * 0.4) / rMean) theta = spanEnd; // no sliver at the span's end
         const t1b = theta >= spanEnd ? spanEnd : t1;
         if (t1b <= t0) continue;
-        const p = proud * (0.8 + rng() * 0.4);
+        // every block weathered back its own way, and set a little high or low on its bed (the beds are not courses)
+        const p = proud * (0.6 + rng() * 0.8), lift = isSoft ? 0 : (rng() - 0.5) * 0.16;
         const n = Math.max(2, Math.ceil(((t1b - t0) * rMean) / segLen));
         // the profile at each sample, or null where the bed is not cut (gentle, unreachable or climbable ground)
         const rows: Array<number[] | null> = [];
         for (let i = 0; i <= n; i++) {
           const th = t0 + (t1b - t0) * (i / n);
-          const dy = dipAt(th), b0 = y0 + dy, b1 = y1 + dy;
+          const dy = dipAt(th) + lift, b0 = y0 + dy, b1 = y1 + dy;
           const r0 = edgeAt(th, b0), r1 = edgeAt(th, b1);
           if (!Number.isFinite(r0) || !Number.isFinite(r1) || r0 < 1.5 || r0 - r1 > BEDROCK_BENCH || b0 < climbAt(th) + BEDROCK_CLEAR) { rows.push(null); continue; }
           const c = Math.cos(th), sn = Math.sin(th);
