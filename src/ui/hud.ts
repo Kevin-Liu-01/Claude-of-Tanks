@@ -1,6 +1,7 @@
 import { drawAerialMinimap } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
+import { createSpecialActionPresentationReader } from './vehicleSpecialAction.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 // src/ui/hud.ts — battle HUD overlay: dispersion/reload reticle, shell
@@ -982,7 +983,6 @@ import { createShotInfo } from './shotInfo.ts';
 import { hitOutcomeFor, incomingHitFeedbackFor } from './hitEventFormat.ts';
 import {
   SPECIAL_ACTION_KINDS,
-  specialActionDescriptor,
   guidedMissileSlot,
   specialActionIsActive,
 } from '../sim/specialActions.ts';
@@ -2331,6 +2331,7 @@ export function initHud(bus: EventBus): HudRuntime {
   controlsRow.setAttribute('role','group'); controlsRow.setAttribute('aria-label',t('systems.title'));
   const specialButton = el('button', 'cot-special', controlsRow);
   specialButton.type = 'button';
+  specialButton.hidden = true;
   specialButton.innerHTML = '<span class="si"></span><span class="sl"></span><span class="sk">E</span><small class="system-status"></small>';
   // Act on pointerdown and suppress the compatibility mouse event. While the
   // game owns pointer lock, a bubbled Mouse0 is the fire binding; letting a
@@ -2338,12 +2339,12 @@ export function initHud(bus: EventBus): HudRuntime {
   specialButton.addEventListener('pointerdown', (event) => {
     event.preventDefault();
     event.stopPropagation();
-    bus.emit('ui:specialAction', {});
+    if (!specialButton.hidden && !specialButton.disabled) bus.emit('ui:specialAction', {});
   });
   // Keyboard activation produces click(detail=0) without pointerdown.
   specialButton.addEventListener('click', (event) => {
     event.stopPropagation();
-    if (event.detail === 0) bus.emit('ui:specialAction', {});
+    if (event.detail === 0 && !specialButton.hidden && !specialButton.disabled) bus.emit('ui:specialAction', {});
   });
   // Owner (2026-09-16, Turbo Ball): the jump keycap shows only in rulesets with a jump launch.
   const jumpHint = el('button', 'cot-jump', controlsRow);
@@ -2358,7 +2359,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const specialIcon = requireElement<HTMLElement>(specialButton, '.si');
   const specialLabel = requireElement<HTMLElement>(specialButton, '.sl');
   const specialKey = requireElement<HTMLElement>(specialButton, '.sk');
-  let specialSpecId: string | null = null;
+  const readSpecialAction = createSpecialActionPresentationReader();
   let specialKind: SpecialActionKind = SPECIAL_ACTION_KINDS.NONE;
 
   const droneButton = el('button', 'cot-auxiliary cot-drone-control', controlsRow); droneButton.type = 'button'; droneButton.hidden = true;
@@ -2371,8 +2372,9 @@ export function initHud(bus: EventBus): HudRuntime {
   missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">ATGM</span><span class="sk"></span><small class="system-status"></small>`;
   let missilePlayer:HudTank|null|undefined=null,previousConventionalSlot=0;
   function toggleExtraMissile(){
-    if(missileButton.disabled||!missilePlayer)return;
+    if(missileButton.hidden||missileButton.disabled||!missilePlayer)return;
     const slot=guidedMissileSlot(missilePlayer.spec);
+    if(slot<0)return;
     bus.emit('ui:shellSelect',{slot:(missilePlayer.input?.shellSlot??missilePlayer.combat?.shellSlot)===slot?previousConventionalSlot:slot});
   }
   missileButton.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();toggleExtraMissile();});
@@ -2414,11 +2416,9 @@ export function initHud(bus: EventBus): HudRuntime {
       status.textContent=action==='smoke'?`${state?.smokeCharges??3}/3`:'';
       if(action==='smoke')button.setAttribute('aria-label',`${t('systems.smoke.help')} ${status.textContent}${cooldown?' · '+label.textContent:''}`);
     }
-    const specId = player?.spec?.id || null;
-    if (specId !== specialSpecId) {
-      specialSpecId = specId;
+    const descriptor = readSpecialAction(player?.spec);
+    if (descriptor) {
       previousConventionalSlot = Math.max(0, player?.spec?.gun?.shells.findIndex(shell => !shell.guided) ?? 0);
-      const descriptor = specialActionDescriptor(player?.spec);
       specialKind = descriptor.kind;
       const icon = specialKind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE ? 'missileRack'
         : specialKind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM ? 'track'
@@ -2429,6 +2429,7 @@ export function initHud(bus: EventBus): HudRuntime {
       specialButton.title = descriptor.label;
       specialButton.setAttribute('aria-label', descriptor.label || t('hud.special.unavailable'));
       specialButton.classList.toggle('show', specialKind !== SPECIAL_ACTION_KINDS.NONE);
+      specialButton.hidden = specialKind === SPECIAL_ACTION_KINDS.NONE;
     }
     missilePlayer=player;
     const extraMissileSlot=guidedMissileSlot(player?.spec);
@@ -2459,7 +2460,7 @@ export function initHud(bus: EventBus): HudRuntime {
     specialButton.classList.toggle('active', active);
     specialButton.classList.toggle('empty', missileEmpty);
     specialButton.classList.remove('pending');
-    specialButton.disabled = !canControl;
+    specialButton.disabled = !canControl || specialKind === SPECIAL_ACTION_KINDS.NONE;
     specialButton.setAttribute('aria-pressed', active ? 'true' : 'false');
   }
 
