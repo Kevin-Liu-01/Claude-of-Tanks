@@ -2012,15 +2012,20 @@ function dressLakeRiverLandings(
 // to a plain ('full' — cross-slope roll, every part placed in the span's own frame).
 // =============================================================================
 
+/** The ballast bed's shoulders: its bottom face is this much wider than its top (layRailSpan), so the footprint a
+ * washout checks is the bottom's. */
+const RAIL_BALLAST_SHOULDER = 1.4;
 /**
  * Build-time footprint check against the same liquid mask used by water/wakes: the whole ballast width under the
  * straight span a→b (seven stations across), its slab overhang included (a 0.20 m margin past each end, which
  * encloses the overhang even after the terrain-following tilt), at the quarter points as well as the ends so a wet
  * cove between two dry endpoints is caught. For a span laid along +z the stations are the rail yards' original
- * sample points, number for number.
+ * sample points, number for number. The width is the bed's foot, its shoulders included (the map-borders lane,
+ * 2026-10-03: 2.1 m either side of the line for the 3 m bed, was the top's 1.5 m).
  */
 export function railSpanIsDry(
-  heightField: DressingHeightField, ax: number, az: number, bx: number, bz: number, halfWidth = 1.5,
+  heightField: DressingHeightField, ax: number, az: number, bx: number, bz: number,
+  halfWidth = (RAIL_SPUR_BALLAST_M / 2) * RAIL_BALLAST_SHOULDER,
 ): boolean {
   const waterAt = heightField.getWaterMaskAt;
   if (!waterAt) return true;
@@ -2108,7 +2113,7 @@ function layRailSpan(
   const len = Math.hypot(run, rise);
   const tilt = Math.atan2(rise, run);
   const nS = Math.round(len / 1.4);
-  if (lay.washout && !railSpanIsDry(heightField, ax, az, bx, bz, lay.ballast / 2)) {
+  if (lay.washout && !railSpanIsDry(heightField, ax, az, bx, bz, (lay.ballast / 2) * RAIL_BALLAST_SHOULDER)) {
     // A drowned siding ends at the bank; the liquid surface is not ground
     // that can support a paper-thin ballast slab. Advance the original 24
     // BoxGeometry vertex-color draws plus one jitter draw per sleeper so
@@ -2141,7 +2146,7 @@ function layRailSpan(
   const bal = box(lay.ballast, deep ? RAIL_SLAB_DEPTH_FULL_M : 0.16, len + RAIL_SLAB_OVERHANG_M, 0.55);
   {
     const pos = bal.attributes.position;
-    for (let i = 0; i < pos.count; i++) if (pos.getY(i) < 0) pos.setX(i, pos.getX(i) * 1.4);
+    for (let i = 0; i < pos.count; i++) if (pos.getY(i) < 0) pos.setX(i, pos.getX(i) * RAIL_BALLAST_SHOULDER);
     bal.computeVertexNormals();
     const n = pos.count;
     const col = new Float32Array(n * 3);

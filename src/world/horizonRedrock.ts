@@ -35,6 +35,12 @@ export interface CanyonGround {
   _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
   /** The roads that leave the square, as their exit lines past the edge (terrain.ts roadExits). */
   _roadExitLines?(): readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[];
+  /** The exits as they lie on a built ring, given its vertices: the carriageway attribute there and the lines cut where
+   * each runs out (terrain.ts roadExitOnRing). */
+  _roadExitOnRing?(ring: { positions: ArrayLike<number>; heights: ArrayLike<number> }): {
+    at(x: number, z: number, out: [number, number]): [number, number];
+    lines: readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[];
+  };
 }
 
 interface SeamPoint { angle: number; x: number; z: number; height: number }

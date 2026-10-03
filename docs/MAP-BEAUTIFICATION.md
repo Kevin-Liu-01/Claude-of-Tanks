@@ -6488,6 +6488,54 @@ artifacts in the after frames.
   worst 10 m, Cinder Junction's north-west road on a rise at the edge), the median 0.4 m; the in-square ground moves
   only past 400 m, the bounds push already keeping play inside 470 m.
 
+#### Wave 3 — 2026-10-03: the middle distance at tank eye height; each map its own country; roads end at the ranges' foot
+
+Gauntlet wave 9 (the coordinator): the next bar is "field structure that reads at tank eye height, meaning hedgerow and
+woodland belts with height, farm clusters and roofs, and roads that visibly continue", plus the remaining raised exits.
+
+- **Belts and avenues** (`maps/horizon.ts` `borderTreeRows`, placed by `horizonVista.ts` as deterministic rows ahead of
+  the forest's budget thinning). About a third of the hedged boundaries past the edge carry a belt of standards — one
+  row, or two 5 m apart, every ~9 m, at 1.0–1.5× scale, a fifth of them conifers — faded in 120–220 m past the edge so
+  the first fields stay open; each exit road carries an avenue where its carriageway shows (rows 8.5 m either side every
+  ~12 m, in runs of four points of which 70 % are planted, faded in 30–60 m past the edge). The rows are seated on the
+  ring's surface and keep out of the farmyards; 420–746 instances per map in the forest's existing draws.
+- **Villages** (`borderFarmsteads.ts` `selectVillageSites`): up to three per map, one per side — four to six yards along an
+  exit road 260–560 m out, ~28 m off it on alternating sides ~62 m apart, each house fronting the road with its shelter
+  trees behind it. The scattered farms fill the remaining count and keep 140 m off a village.
+- **The patchwork reads.** More of the field boundaries are hedged (temperate 0.32/0.25 of the two families, was
+  0.24/0.18; steppe 0.13/0.10), pasture takes half the crop weight (was 0.35) and varies 0.78–1.22 from field to field
+  (lush, grazed, cut for hay), the temperate rotation has less grass (pasture 0.22, was 0.30), and Cinder Junction and
+  Ironworks carry farmland at the other farmed maps' level (hedgerows 0.55, fields 0.6/0.55; Ironworks eight farms).
+- **The raised exits** (`terrain.ts` `buildRoadElevationGrid`): the landform pass's portal tails carried the authored
+  grade over the landform's own ground to the edge. A tail past 430 m now comes down to at most 1.5 m over the land
+  under it, and comes back up wherever that would drop it faster than 15 %; a cut is kept. Exits standing more than 5 m
+  over the land 30–40 m beside them: 8 → 2 (Olympus Basin's north road on a ridge just past the edge, 6.5 m; Nordhavn's
+  north road 80 m out, 6.1 m).
+- **The track's bed.** The kit's open-line track lies on a ballast bed with shoulders (`mapKits.ts` `layRailSpan`), and
+  the ring's ballast is a darker stone grey.
+- **Each map its own country** (`borderLandform.ts` `borderLandformSeed`). Every battle builds at the one terrain seed
+  1337, so the landform — its hills, fields, woods and the farms on them — was the same past every map's edge: Verdant
+  Fields, Amberford, Ironworks and Saltmere Bay showed one hillside from their north edges. The outland's seed now mixes
+  in the map id (FNV-1a), as the horizon ring's always has: the woods, fields and foothills are the map's own, and its
+  hills take over from the shared ones 8–188 m past the edge. The playable band's rim (the enclosure) keeps the shared
+  seed, so the ground of the square's mesh is what it was: the dressing stream reads it, and a first cut that let the
+  map's own hills into the square's last 40 m moved the props across Amberford (its zone-control circles 300 m, the
+  placement search past its 65,536-read bound). Only the rim trees change, standing by the map's own woods. The exits
+  over 5 m stay 2.
+- **Roads end at the foot of the ranges** (`terrain.ts` `roadExitOnRing`; the mountains lane, Frosthollow: with its pass
+  turned off at the north exit the carriageway was painted ~300 m up the massif's face). The exit's carriageway faded
+  with the hand-over to the ranges (0.45–0.9) and the run (0.55–0.95 of 720 m), and 209 of the 220 exits were still
+  drawn over ring standing 4 m or more off its continued ground (Glacier Pass up to 114 m). Once the ring is built
+  (after the ranges are carved and any passes opened), each exit now ends at its foot — the nearest point along it where
+  a ring vertex within 12 m of the line stands off its continued ground (`horizonSurface.ts` `continuedGroundAt`, the
+  ring's own law) by more than 1.5 m — fading over the 100 m before it while the carriageway narrows to 45 % of its
+  width, so it runs out as a lane at the foot of the slope (the vertices are compared, not the surface between them,
+  which cannot follow the corridor's cut and fill across the line). Now no exit is drawn over ring 4 m off its ground;
+  the carriageways end at a median 340 m (was 530), Redrock Divide's at 60–90 m where the canyon's beds rise. Where the ranges
+  open a pass for a road (the mountains lane's `openRoadPasses`, as at Cinder Junction) the ring lies on the road's
+  ground and the road runs on through it. The villages and avenues stand along the cut lines, and the ring forest and
+  the hedges keep a 6.5 m ride either side of a carriageway (trees had stood on it at 9–142 spots per map).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
