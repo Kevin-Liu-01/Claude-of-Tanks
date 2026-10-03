@@ -23,7 +23,7 @@ Use the official pages below as the primary public sources. Current runtime docu
 - [Battlefields and destruction](https://cot.kevinliu.studio/docs/worlds): 33 maps, terrain, routes, structures, collision, vegetation, props, destructibles, wrecks, and world verification.
 - [Bots and tactical AI](https://cot.kevinliu.studio/docs/ai): Shared deterministic perception, route planning, weapon-aware fire control, friendly-fire safety, survival, and authority tests.
 - [Multiplayer authority](https://cot.kevinliu.studio/docs/multiplayer): Rooms, authoritative state, input intent, filtered snapshots, prediction, spotting, bots, reconnection, and host migration.
-- [Audio and battlefield FX](https://cot.kevinliu.studio/docs/audio): Event-driven weapons, engines, impacts, spatial listening, bounded mixing, crew radio, and time-scaled killcam sound.
+- [Audio and battlefield FX](https://cot.kevinliu.studio/docs/audio): Fifteen weapon report classes that arrive late with distance, hits confirmed by the impact at the target and called by the gunner, engines by powertrain, national crew radio in 13 languages, battlefield ambience, mode sounds, and Sound settings.
 - [Interface and controls](https://cot.kevinliu.studio/docs/interface): Garage, HUD, dual reticle, ammunition, killcam, spectator mode, reports, settings, desktop input, and touch controls.
 - [Scene Studio and capture](https://cot.kevinliu.studio/docs/studio): Scene format, placement, cameras, timelines, effects, capture output, and review workflow.
 

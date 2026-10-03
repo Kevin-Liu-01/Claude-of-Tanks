@@ -43,7 +43,7 @@ export const GROUP_PROFILES: Readonly<Record<string, CueProfile>> = Object.freez
   // not inverse-square): a battle stays audible across the map instead of
   // sinking under the idling engine at a hundred metres.
   weapons: seed({ bus: 'weapons', space: 'world', priority: 85, maxInstances: 10, cooldownS: 0, refM: 25, rolloff: 0.6, maxM: 1800, absorb: 0.9, send: 0.16, loudDb: 145, gainDb: 0, pitch: [0.96, 1.04] }),
-  mechanism: seed({ bus: 'interior', space: 'hull', priority: 70, maxInstances: 4, cooldownS: 0.05, refM: 1, rolloff: 0, maxM: 1e9, absorb: 0, send: 0.04, loudDb: 105, gainDb: -6 }),
+  mechanism: seed({ bus: 'interior', space: 'hull', priority: 70, maxInstances: 4, cooldownS: 0.05, refM: 1, rolloff: 0, maxM: 1e9, absorb: 0, send: 0.04, loudDb: 105, gainDb: -3 }),
   flyby: seed({ bus: 'impacts', space: 'world', priority: 80, maxInstances: 4, cooldownS: 0.08, refM: 6, rolloff: 1.1, maxM: 120, absorb: 1, send: 0.1, loudDb: 128, gainDb: -1 }),
   impacts: seed({ bus: 'impacts', space: 'world', priority: 78, maxInstances: 12, cooldownS: 0, refM: 15, rolloff: 0.75, maxM: 1400, absorb: 1, send: 0.2, loudDb: 138, gainDb: 0 }),
   destruction: seed({ bus: 'impacts', space: 'world', priority: 88, maxInstances: 6, cooldownS: 0, refM: 30, rolloff: 0.6, maxM: 2500, absorb: 0.7, send: 0.26, loudDb: 152, gainDb: 0, pitch: [0.95, 1.04] }),

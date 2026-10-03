@@ -32,6 +32,7 @@ export {
   CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK, fillHeightNormalRows, applyPatchRoughnessPixels,
 } from './materialPainter.ts';
 import { bindVehicleReadabilityUniform } from './vehicleReadability.ts';
+import { VEHICLE_ALPHA_TAG } from '../engine/vehicleOcclusion.ts';
 
 export {
   CAMO_CATALOG_PATTERN_IDS, CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, CUSTOM_CAMO_ID,
@@ -2266,6 +2267,48 @@ const VEHICLE_AMBIENT_FLOOR = 0.35;
 // lit response") — do not raise it back.
 const VEHICLE_VIEW_FILL = 0.55; // fill at full camera-facing (linear, ×albedo)
 const VEHICLE_VIEW_WRAP = 0.40; // fraction kept at grazing angles (wrap term)
+// Owner 2026-10-02 ("shadows on tanks make them look a lil flat"): both floors above set a shaded plate's light by
+// how squarely it faced the LENS alone, so every lens-facing plate in shade came out one tone, and a deck, fender
+// top or turret roof seen at a grazing angle took LESS fill than the flank below it: sky light upside down. The
+// form fill aims the floors by the plate's WORLD orientation as well: VEHICLE_FORM_BASE everywhere, + VEHICLE_FORM_SKY
+// as the plate turns to the sky (smoothstep over world normal y), + VEHICLE_FORM_SUN for a vertical face turned to the
+// sun's bearing (the bright ground and sky on that side), and keeps VEHICLE_FORM_LENS of the old lens-facing term so
+// the side a chase camera sees still lifts. Roofs and glacis read brightest in shade, flanks next, soffits and the
+// undersides of overhangs dark; the aerial pass adds the hull's cavity occlusion on top (engine/vehicleOcclusion.ts).
+const VEHICLE_FORM_BASE = 0.22;
+const VEHICLE_FORM_SKY = 0.6;
+const VEHICLE_FORM_SUN = 0.2;
+const VEHICLE_FORM_LENS = 0.28;
+// Ground occlusion: a hull's lower plates, running gear and track run see its own shadow on the ground and its own
+// bulk instead of open sky, so their indirect light falls to VEHICLE_GROUND_DARK at the ground and recovers by
+// VEHICLE_GROUND_H1 metres up the vehicle's own axis. Every vehicle material reads one reference (VEHICLE_GROUND);
+// each vehicle mesh points it at its own root just before it draws and releases it after (tankFactoryCore.ts
+// installVehicleGroundReference), so decorations, profile parts, clones and instanced gear all share it. Anything
+// drawn without a root (thumbnail stubs, tooling) sees the far-below idle ground: nothing changes there.
+// The deep-shade floor's paint reference: the last mip of a painted map is the tile's mean paint (a 2048 tile has
+// eleven levels; textureLod clamps to the last one).
+const VEHICLE_PAINT_MEAN_LOD = 16;
+const VEHICLE_GROUND_DARK = 0.66;
+const VEHICLE_GROUND_H0 = 0.12;
+const VEHICLE_GROUND_H1 = 1.75;
+const VEHICLE_GROUND_IDLE_Y = -1e5;
+/** The ground reference every vehicle material's ground occlusion reads; set per draw by the drawn mesh. */
+const VEHICLE_GROUND = Object.freeze({
+  uVehGround: { value: new THREE.Vector4(0, VEHICLE_GROUND_IDLE_Y, 0, 0) },
+  uVehUp: { value: new THREE.Vector3(0, 1, 0) },
+});
+/** Point the ground occlusion at a vehicle root (its origin is the ground contact; its +Y the hull's up axis). */
+export function setVehicleGroundFromRoot(root: THREE.Object3D): void {
+  const e = root.matrixWorld.elements;
+  VEHICLE_GROUND.uVehGround.value.set(e[12], e[13], e[14], 1);
+  const n = Math.hypot(e[4], e[5], e[6]) || 1;
+  VEHICLE_GROUND.uVehUp.value.set(e[4] / n, e[5] / n, e[6] / n);
+}
+/** Release it: anything drawn without a vehicle root sees a far-below ground (no darkening). */
+export function resetVehicleGround(): void {
+  VEHICLE_GROUND.uVehGround.value.set(0, VEHICLE_GROUND_IDLE_Y, 0, 0);
+  VEHICLE_GROUND.uVehUp.value.set(0, 1, 0);
+}
 
 /**
  * Shader hook: clamp `reflectedLight.indirectDiffuse` to an albedo-scaled,
@@ -2276,7 +2319,19 @@ const VEHICLE_VIEW_WRAP = 0.40; // fraction kept at grazing angles (wrap term)
  */
 export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   bindVehicleReadabilityUniform(shader.uniforms);
-  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\n${shader.fragmentShader}`;
+  shader.uniforms.uVehGround = VEHICLE_GROUND.uVehGround;
+  shader.uniforms.uVehUp = VEHICLE_GROUND.uVehUp;
+  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\n${shader.fragmentShader}`;
+  // Owner 2026-10-02 ("shadows on tanks make them look a lil flat"): vehicle pixels add VEHICLE_ALPHA_TAG to the lit
+  // materials' 2 + sun visibility in the scene target's alpha, so the aerial pass can give vehicles alone their
+  // cavity occlusion (engine/vehicleOcclusion.ts). Same guard as the lighting.ts write it extends.
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <opaque_fragment>',
+    `#include <opaque_fragment>
+#if defined( COT_SUN_VIS_CAPTURED ) && defined( OPAQUE ) && defined( USE_CSM )
+	gl_FragColor.a += ${VEHICLE_ALPHA_TAG.toFixed(1)};
+#endif`,
+  );
   shader.fragmentShader = shader.fragmentShader.replace(
     '#include <lights_fragment_end>',
     `#include <lights_fragment_end>
@@ -2298,8 +2353,22 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 	#else
 	{
 		float vehFacing = saturate( dot( normal, geometryViewDir ) );
+		// owner 2026-10-02 form fill: aim the readability floors by the plate's world orientation (sky above, the sun's
+		// bearing) as well as by the lens, so roofs and glacis lift most, flanks less and soffits least
+		vec3 vehWN = inverseTransformDirection( normal, viewMatrix );
+		float vehForm = ${VEHICLE_FORM_BASE.toFixed(3)} + ${VEHICLE_FORM_SKY.toFixed(3)} * smoothstep( -0.7, 0.85, vehWN.y );
+		#if defined( USE_CSM ) && defined( CSM_CASCADES )
+		{
+			float vehSunH = length( uCotBounceSun.xz );
+			float vehNH = length( vehWN.xz );
+			if ( vehSunH > 1e-3 && vehNH > 1e-3 ) {
+				vehForm += ${VEHICLE_FORM_SUN.toFixed(3)} * saturate( dot( vehWN.xz / vehNH, uCotBounceSun.xz / vehSunH ) ) * vehNH;
+			}
+		}
+		#endif
+		float vehAim = mix( saturate( vehForm ), vehFacing, ${VEHICLE_FORM_LENS.toFixed(3)} );
 		float vehFill = max( ${VEHICLE_AMBIENT_FLOOR.toFixed(3)},
-			${VEHICLE_VIEW_FILL.toFixed(3)} * ( ${VEHICLE_VIEW_WRAP.toFixed(3)} + ${(1 - VEHICLE_VIEW_WRAP).toFixed(3)} * vehFacing ) );
+			${VEHICLE_VIEW_FILL.toFixed(3)} * ( ${VEHICLE_VIEW_WRAP.toFixed(3)} + ${(1 - VEHICLE_VIEW_WRAP).toFixed(3)} * vehAim ) );
 		// tank_models r10: high-albedo rolloff — on light paints (winter wash,
 		// light greys) a flat albedo-scaled floor pushes the whole hull toward
 		// clip and flattens form ("unlit near-white clay"). Cap the fill so the
@@ -2372,7 +2441,7 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 		// (at vehShade=0 the factor is identical).
 		float vehRim = pow( 1.0 - vehFacing, 2.0 );
 		float vehFloorL = mix( 0.02, 0.21, vehShade )
-			* ( 0.40 + 0.60 * vehFacing + 0.45 * vehRim * vehShade );
+			* ( 0.40 + 0.60 * vehAim + 0.45 * vehRim * vehShade );
 		// very dark hardware (rubber, track steel, oily fittings) must stay
 		// dark even in deep shade — scale the floor down below ~0.09 albedo
 		// luma so gear never lifts to chalk while dark-olive PAINT (the
@@ -2380,16 +2449,30 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 		vehFloorL *= mix( 0.30, 1.0, smoothstep( 0.025, 0.09, vehLuma ) );
 		vehFloorL *= uVehicleReadabilityScale;
 		// <<< gameplay_feel r5
-		if ( vehOutL < vehFloorL ) {
-			vec3 vehTint = material.diffuseColor / vehLuma;
-			// r1: 0.75 -> 0.92 hue retention — the washed-white component of
-			// the lift is what read as clay/chalk on every GLB vehicle.
-			vehTint = mix( vec3( 1.0 ), vehTint, 0.92 );
-			reflectedLight.indirectDiffuse += vehTint * ( vehFloorL - vehOutL );
+		// owner 2026-10-02 ("the camo and colours on the tank look so weird and not crisp"): the floor lifts the light a
+		// plate RECEIVES, not its output. It used to bring every texel to one luminance along its hue, so in deep shade the
+		// dark, base and pale tones of a camouflage converged into one muddy tone (desert 0.11 / 0.27 / 0.41 linear luma all
+		// to ~0.21). Now vehFloorL is where the paint's MEAN tone lands (the map's last mip is the tile's mean paint) and
+		// each texel lands in proportion to its own paint against it: the pattern keeps its light/dark contrast, solid
+		// coats (no map) land exactly where they did, dark hardware stays dark.
+		float vehRefL = vehLuma;
+		#ifdef USE_MAP
+		vehRefL = max( dot( textureLod( map, vMapUv, ${VEHICLE_PAINT_MEAN_LOD.toFixed(1)} ).rgb * diffuse, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.001 );
+		#endif
+		float vehTargetL = vehFloorL * vehLuma / vehRefL;
+		if ( vehOutL < vehTargetL ) {
+			reflectedLight.indirectDiffuse += material.diffuseColor * ( ( vehTargetL - vehOutL ) / vehLuma );
 		}
 		// <<< gameplay_feel r4
 	}
-	#endif`,
+	#endif
+	{
+		// owner 2026-10-02 ground occlusion (VEHICLE_GROUND_*): indirect light falls toward the ground along the vehicle's axis
+		vec3 vehWorldPos = cameraPosition + ( vec4( -vViewPosition, 0.0 ) * viewMatrix ).xyz;
+		float vehHeight = dot( vehWorldPos - uVehGround.xyz, uVehUp );
+		reflectedLight.indirectDiffuse *= mix( ${VEHICLE_GROUND_DARK.toFixed(3)}, 1.0,
+			smoothstep( ${VEHICLE_GROUND_H0.toFixed(3)}, ${VEHICLE_GROUND_H1.toFixed(3)}, vehHeight ) );
+	}`,
   );
 }
 
@@ -2436,7 +2519,7 @@ export function createTankMaterials(
   const setup = <T extends THREE.Material>(material: T): T => {
     if (shadowHookSupported && shadowSetup) shadowSetup(material, vehicleAmbientFloorHook);
     else material.onBeforeCompile = vehicleAmbientFloorHook;
-    material.customProgramCacheKey = () => 'veh-ambient-floor-v3';
+    material.customProgramCacheKey = () => 'veh-ambient-floor-v5';
     return material;
   };
   const aniso = engineCtx?.anisotropy || 8;

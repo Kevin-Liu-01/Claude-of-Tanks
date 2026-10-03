@@ -4893,64 +4893,6 @@
       ]
     },
     {
-      "id": "gun_limit",
-      "role": "gunner",
-      "delivery": "strained",
-      "context": "The gun can't depress or elevate any further.",
-      "en-US": [
-        "Gun's at its limit.",
-        "Can't depress further."
-      ],
-      "en-GB": [
-        "Gun's on the stops.",
-        "Can't depress any further."
-      ],
-      "de": [
-        "Kanone am Anschlag.",
-        "Tiefer geht es nicht."
-      ],
-      "ru": [
-        "Пушка на упоре.",
-        "Ниже не опускается."
-      ],
-      "uk": [
-        "Гармата на упорі.",
-        "Нижче не опускається."
-      ],
-      "zh": [
-        "火炮到限位了。",
-        "俯角到底了。"
-      ],
-      "fr": [
-        "Canon en butée.",
-        "Impossible de pointer plus bas."
-      ],
-      "sv": [
-        "Kanonen i ändläge.",
-        "Kommer inte längre ner."
-      ],
-      "ja": [
-        "主砲、俯仰限界。",
-        "これ以上、俯角が取れない。"
-      ],
-      "ko": [
-        "주포 한계각.",
-        "더 이상 부각 불가."
-      ],
-      "it": [
-        "Cannone a fine corsa.",
-        "Depressione massima."
-      ],
-      "pl": [
-        "Armata na ograniczniku.",
-        "Niżej nie opuszczę."
-      ],
-      "he": [
-        "התותח בגבול המהלך.",
-        "אי אפשר להנמיך יותר."
-      ]
-    },
-    {
       "id": "target_locked",
       "role": "gunner",
       "delivery": "calm, focused",

@@ -33,16 +33,18 @@ export const BUS_CHANNEL: Readonly<Record<BusId, SettingsChannel>> = Object.free
  * interface) sit under them so a cannon is never masked by an idling engine.
  */
 export const BUS_LEVELS: Readonly<Record<BusId, number>> = Object.freeze({
-  weapons: 1,
-  impacts: 1,
-  environment: 0.75,
+  weapons: 1.15,
+  impacts: 1.1,
+  environment: 0.85,
   cinematic: 1,
   vehicles: 0.5,
-  own: 0.5,
-  ownCombat: 1,
-  interior: 0.6,
-  ambience: 0.45,
-  ui: 0.5,
+  // Our own tank leads: its engine and running gear, its gun, and the loading
+  // and turret machinery inside it sit well above everyone else's.
+  own: 0.8,
+  ownCombat: 1.3,
+  interior: 0.95,
+  ambience: 0.65,
+  ui: 0.6,
   music: 0.6,
   voice: 0.72,
   alarm: 0.55,
