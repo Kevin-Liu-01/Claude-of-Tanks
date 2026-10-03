@@ -70,6 +70,35 @@ const ghorfaRange: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+/**
+ * A souk row of ghorfa shops on the base market row's plot (12 x 5.2 m): vaulted cells side by side along it, their
+ * doors on its long side, a second tier over the middle cells reached by jutting stair stones (the ghorfa souk of
+ * Medenine). The ghorfa range's court needs a plot three times as deep; this row stays inside its own.
+ */
+const ghorfaShops: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng;
+  const W = Math.max(5, ctx.info.w - 0.5), D = Math.max(3.4, Math.min(6, ctx.info.d - 0.9));
+  const blue = pick(rng, BLUES);
+  const cw = 2.4, ch = 1.9, tierH = ch + cw / 2 + 0.1;
+  const n = Math.max(2, Math.floor(W / (cw + 0.12)));
+  const cellX = (i: number) => -n * (cw + 0.12) / 2 + (cw + 0.12) * (i + 0.5);
+  for (let i = 0; i < n; i++) ghorfa(sink, cellX(i), 0, D / 2, cw, ch, D, rng, blue);
+  // the upper tier over the middle cells, set back a little from the lane
+  const first = Math.floor((n - 1) / 2), last = n >= 4 ? first + 1 : first;
+  for (let i = first; i <= last; i++) {
+    if (rng() < 0.2) continue;
+    ghorfa(sink, cellX(i), tierH, D / 2 - 0.4, cw, ch, D - 0.4, rng, blue);
+  }
+  // the stair stones jutting from the front between the cells, from the ground up to the upper floor
+  const sx = cellX(first) - cw / 2 - 0.06;
+  for (let k = 0; k < 6; k++) {
+    const y = 0.35 + k * (tierH - 0.35) / 5.5;
+    sink.span(MUD, sx - 0.3, y - 0.05, D / 2 - 0.05, sx + 0.3, y + 0.1, D / 2 + 0.3 - k * 0.04, { decor: true });
+  }
+  return sink.finish();
+};
+
 /** The village house: a flat roof behind a parapet, ochre or whitewash, blue door and grilles, a roof stair block. */
 const house: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -244,8 +273,8 @@ export const KSAR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.f
   caravanserai: ghorfaRange,
   compound: ghorfaRange,
   compoundSouk: ghorfaRange,
-  // the market row: a range of vaulted shop cells
-  marketRow: ghorfaRange,
+  // the market row: a souk row of vaulted shop cells along the lane
+  marketRow: ghorfaShops,
   minaret,
   tower: borj,
   bathhouse: hammam,
