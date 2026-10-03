@@ -275,12 +275,13 @@ function assertVistaSurfaceShader(shader, normals, label) {
   // fields (horizonCloudShade.ts, inside a branch the layer opens) are the fetches outside the projection macro
   // round 72c (2026-09-26, perf): the projection macro became the far-LOD function vTile — five fetch sites (the
   // horizontal plane, the two vertical planes of the near triplanar, the cylindrical plane of the far pair, and the
-  // same pair inside the 120 m blend); the relief atlas and the two cloud-shade fetches stay: 6 -> 8
-  assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 8,
-    `${label}: the far-LOD tile function's five fetch sites, the relief atlas fetch and the two cloud-shade fetches are the only fetch sites (round 72c)`);
+  // same pair inside the 120 m blend); the relief atlas and the cloud-shade fetch stay: 6 -> 8; 2026-10-03: the cloud shade
+  // samples the one shade map (one fetch where it re-cut two weather fields, horizonCloudShade.ts): 8 -> 7
+  assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 7,
+    `${label}: the far-LOD tile function's five fetch sites, the relief atlas fetch and the cloud-shade map's fetch are the only fetch sites (round 72c; 2026-10-03)`);
   assert.match(fragment, /gLodFar = smoothstep\(880\.0, 1000\.0, vHDist\);/, `${label}: the tiles' far LOD keys on the camera distance past the first ridge (round 72c)`);
   assert.match(fragment, /if \(gLodFar > 0\.999\) return flatTap \* gAw\.y \+ texture2D\(tex, vec2\(gCylU \* cyl, gP\.y \* s\)/, `${label}: past 1 km a tile is two fetches — the horizontal plane and one cylindrical plane (round 72c)`);
-  assert.match(fragment, /if \(uVCShade > 0\.001\) \{/, `${label}: the cloud-shade fetches are skipped while the layer is off (round 72)`);
+  assert.match(fragment, /if \(uVCShade > 0\.001 && uSunDirW\.y > 0\.03\) \{/, `${label}: the cloud-shade fetch is skipped while the layer is off (round 72) or the sun grazes`);
   assert.match(fragment, /texture2D\(uVRelief, vec2\(vMapUv\.x \* 0\.1, \(radius - uVReliefR\.x\) \* uVReliefR\.y\)\)/,
     `${label}: the relief atlas is read by the ring's own angle u and the fragment's radius (round 72)`);
   // round 72b: the occlusion is read deeper (pow(relief.z, 1.4)), the snow edge is a five-degree slope threshold, the crests scour

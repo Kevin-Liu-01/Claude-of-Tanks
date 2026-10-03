@@ -198,6 +198,7 @@ assert.ok(aerial.includes('texel.rgb *= cotContactShade( vUv, uCamPos + ray * ra
 const resetAt = aerial.indexOf('texel.a = 1.0;');
 assert.ok(resetAt > shadeAt && resetAt < aerial.indexOf('gl_FragColor = texel;'), 'the alpha is restored to one before the chain continues');
 // owner 2026-10-02: the vehicle cavity occlusion reads the same sun / ambient uniforms, so they refresh for either lever
+// (2026-10-03, the skies-and-atmosphere lane: and the far cloud shadows, which take a far pixel's sun share by the same law)
 assert.match(post, /updateContactShadowUniforms\(aerial\.uniforms, camera, scene, lightFx\.contactShadows,\s*lightFx\.contactShadows \|\| lightFx\.vehicleOcclusion\);/,
   'per-frame refresh follows the lever');
 

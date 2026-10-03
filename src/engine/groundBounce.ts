@@ -103,6 +103,22 @@ export interface GroundBounceUniforms {
    * sees, while the shade it lights takes the aerosol and cloud light the clean dome lacks. 1 = the legacy rig.
    */
   uCotSkyDiffuse: THREE.IUniform<number>;
+  /**
+   * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: grass in a tank's shadow rendered indigo and
+   * teal): the share of the sky's hue its diffuse light keeps. The environment is the clean dome, a Rayleigh sky whose
+   * cosine-weighted light runs B/R 3.3–4 (a colour temperature far past 20 000 K); the light real open shade takes from
+   * a clear sky — the aerosol, the whitened horizon and the fair-weather cloud the clean dome leaves out, the light
+   * SKY_DIFFUSE_GAIN adds — runs 9 000–15 000 K (B/R about 1.6–2.2). The diffuse share keeps this fraction of the
+   * dome's colour about its luminance, so the shade's level is unchanged and only its hue settles; the specular share
+   * (a mirror, a wet road) keeps the dome's own colour. 1 = the legacy rig.
+   */
+  uCotSkyChroma: THREE.IUniform<number>;
+  /**
+   * 2026-10-03: the dim the ambient takes inside the sun's shadow (the occluder hides part of the sky and the lit
+   * ground), per channel: the legacy rig keeps its painted cool shade (lighting.ts SHADOW_AMBIENT_DIM), the physical
+   * rig dims neutrally at the same luminance — its shade takes its hue from the sky light itself.
+   */
+  uCotShadowDim: THREE.IUniform<THREE.Vector3>;
 }
 
 export function createGroundBounceUniforms(): GroundBounceUniforms {
@@ -111,6 +127,8 @@ export function createGroundBounceUniforms(): GroundBounceUniforms {
     uCotBounceHemi: { value: new THREE.Vector3() },
     uCotBounceSun: { value: new THREE.Vector3(0, 1, 0) },
     uCotSkyDiffuse: { value: 1 },
+    uCotSkyChroma: { value: 1 },
+    uCotShadowDim: { value: new THREE.Vector3(1, 1, 1) },
   };
 }
 
@@ -122,6 +140,8 @@ export function attachGroundBounceUniforms(
   shader.uniforms.uCotBounceHemi = uniforms.uCotBounceHemi;
   shader.uniforms.uCotBounceSun = uniforms.uCotBounceSun;
   shader.uniforms.uCotSkyDiffuse = uniforms.uCotSkyDiffuse;
+  shader.uniforms.uCotSkyChroma = uniforms.uCotSkyChroma;
+  shader.uniforms.uCotShadowDim = uniforms.uCotShadowDim;
 }
 
 export interface GroundBounceRigInput {
@@ -158,6 +178,8 @@ uniform vec3 uCotBounceRad;
 uniform vec3 uCotBounceHemi;
 uniform vec3 uCotBounceSun;
 uniform float uCotSkyDiffuse;
+uniform float uCotSkyChroma;
+uniform vec3 uCotShadowDim;
 `;
 
 /**
@@ -165,7 +187,7 @@ uniform float uCotSkyDiffuse;
  * `geometryNormal` (view space), `viewMatrix` and `cotSunVis` are in scope there.
  */
 export const GROUND_BOUNCE_GLSL_TERM = /* glsl */ `
-	iblIrradiance *= uCotSkyDiffuse;
+	iblIrradiance = mix( vec3( dot( iblIrradiance, vec3( 0.2126, 0.7152, 0.0722 ) ) ), iblIrradiance, uCotSkyChroma ) * uCotSkyDiffuse;
 	if ( dot( uCotBounceRad, vec3( 1.0 ) ) > 0.0 ) {
 		vec3 cotNw = normalize( ( vec4( geometryNormal, 0.0 ) * viewMatrix ).xyz );
 		vec2 cotSunH = uCotBounceSun.xz / max( length( uCotBounceSun.xz ), 1e-3 );

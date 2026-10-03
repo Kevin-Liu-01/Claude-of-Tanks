@@ -280,6 +280,11 @@ export default {
   },
 
 
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the coalfield's grid. A
+  // 220 kV line strides across the south of the junction on lattice towers, past the spoil tips.
+  scenery: {
+    powerLines: [{ towers: [[-445, -140], [-180, -300], [110, -330], [430, -300]], heightM: 34, name: 'the 220 kV line' }],
+  },
   horizon: {
     // industrial hinterland: low escarpment under smoke-grey haze
     // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): Ruhr and Silesian junction country:

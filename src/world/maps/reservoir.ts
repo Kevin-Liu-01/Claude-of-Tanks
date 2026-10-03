@@ -128,6 +128,24 @@ export default {
       ids: ['k1a1', 'type99a', 'k2', 'bmp3', 'type90'] },
     inhabit: { stalls: 1, benches: 3, coreClutter: 20, bales: 6, troughs: 2, laundry: 2, handcarts: 3, carts: 3, trucks: 5, jeeps: 4, drumClusters: 5, camps: 3, modernClutter: 20, looseClutter: 20, roadFence: 'fenceplank', yardFence: 'fencerail' },
   },
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Eifel's slate. The
+  // cleaved greywacke and slate stand out of every ridge's flanks in crags with their scree; a crag rises above the
+  // lake's south and north shores; a timber field cross stands in the angle of the road fork below the west ridge.
+  scenery: {
+    rocks: [
+      { form: 'crag', geology: 'slate', x: 200, z: -150, radius: 6, height: 5, yawDeg: 20, name: 'the crag above the south shore' },
+      { form: 'crag', geology: 'slate', x: 40, z: 160, radius: 6, height: 4.5, yawDeg: 60, name: 'the crag above the north shore' },
+    ],
+    rockFields: [
+      { geology: 'slate', x: -276, z: 14, radius: 95, count: 7, slopeBias: 0.8, size: [2.5, 5], name: 'the west ridge slate' },
+      { geology: 'slate', x: 340, z: 12, radius: 95, count: 7, slopeBias: 0.8, size: [2.5, 5], name: 'the east ridge slate' },
+      { geology: 'slate', x: 102, z: -256, radius: 80, count: 5, slopeBias: 0.8, size: [2.5, 5], name: 'the south ridge slate' },
+      { geology: 'slate', x: 102, z: 282, radius: 80, count: 5, slopeBias: 0.8, size: [2.5, 5], name: 'the north ridge slate' },
+    ],
+    landmarks: [
+      { kind: 'waysidecross', x: -318, z: -80, yawDeg: 45, name: 'the cross at the road fork' },
+    ],
+  },
   // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the northern Eifel is rounded
   // forested hill country cut by the Rur's valleys — not an alpine skyline: the ring rolling (its own style: the border's
   // landform stays alpine), the far country upland

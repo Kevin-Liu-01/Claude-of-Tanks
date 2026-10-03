@@ -788,7 +788,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/lightModel.selftest.mjs',
     // 2026-10-02 (lighting lane): the materials' scene fog on the battlefield's haze layer
     'src/engine/fogLayer.selftest.mjs',
+    // 2026-10-03 (the skies-and-atmosphere lane): the Beer–Lambert aerial perspective on the physically based sky
+    'src/engine/hazeLaw.selftest.mjs',
     'src/engine/volumetricClouds.selftest.mjs',
+    // 2026-10-03 (the skies-and-atmosphere lane): the clouds' shadows by one undithered map on every lit material
+    'src/engine/cloudShadeMap.selftest.mjs',
+    // 2026-10-03 (the skies-and-atmosphere lane): the ground's sky under and beside the near hulls
+    'src/engine/vehicleGroundOcclusion.selftest.mjs',
+    // 2026-10-03 (the skies-and-atmosphere lane): the cumulus fields and the flat condensation base
+    'src/engine/cumulusFields.selftest.mjs',
     // 2026-10-01 (the clouds-and-skyboxes lane): the layered sky — mid layers, contrails, storm cells, rain, fog banks, lightning, the time of day
     'src/engine/cloudWeatherLayers.selftest.mjs',
     'src/engine/rendererContextRecovery.selftest.mjs',
@@ -1152,6 +1160,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
+    'src/world/scenery.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',
     'src/world/foundryServiceCourt.selftest.mjs',
