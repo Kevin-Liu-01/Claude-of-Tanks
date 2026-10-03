@@ -20,6 +20,20 @@ for (const kind of ['films', 'films-v2', 'films-portrait', 'films-portrait3']) {
     }
   }
 }
+// The site fifty's takes (site50-finals.mjs: site50/renders/films/<id>/films/*-proxy.mp4) feed the round-2 cuts
+// under their own ids (s01-main-street-push ...); portrait takes render to site50/renders/films-portrait/<id>.
+for (const [kind, suffix] of [['films', ''], ['films-portrait', '-p']]) {
+  const root = join(FINAL, '..', 'site50', 'renders', kind); if (!existsSync(root)) continue;
+  for (const id of readdirSync(root).filter(d => /^s\d\d-/.test(d))) {
+    const fd = join(root, id, 'films'); if (!existsSync(fd)) continue;
+    const proxy = readdirSync(fd).find(f => f.endsWith('-proxy.mp4')); if (!proxy) continue;
+    for (const p of projects) {
+      const dir = join(MOTION, p, 'assets/shots'); if (!existsSync(dir)) continue;
+      const dst = join(dir, `${id}${suffix}.mp4`);
+      if (!existsSync(dst) || statSync(dst).size !== statSync(join(fd, proxy)).size) { copyFileSync(join(fd, proxy), dst); n++; }
+    }
+  }
+}
 // Studio UI captures: ui/<script>/studio-ui.mp4 (ui2 = tab-aware retakes, preferred); the trailer's Studio cut is t24-studio-ui
 const UI_NAMES = { 'ui-trailer': ['ui-trailer', 't24-studio-ui'], 'ui-feature-stage': ['ui-feature-stage'], 'ui-feature-time': ['ui-feature-time'], 'ui-feature-picture': ['ui-feature-picture'] };
 for (const kind of ['ui', 'ui2']) {

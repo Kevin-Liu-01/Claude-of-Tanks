@@ -9,7 +9,7 @@ const project = 'studio-feature', src = footage(project), shots = [], titles = [
 const cut = (id, bar, beat, n, inSec = 0) => shots.push({ id, src: src(id), start: b(bar, beat), dur: beats(n), in: inSec });
 const say = (text, bar, beat, n) => titles.push({ kind: 'line', text, start: b(bar, beat), dur: beats(n) });
 cut('ui-feature-stage', 0, 0, 8); say('Scene Studio', 0, 0.5, 6.5);
-cut('x05-leo2a7v', 2, 0, 4, 0.2); say('Stage any of 217 tanks', 2, 0.25, 3.6);
+cut('x05-leo2a7v', 2, 0, 4, 0.2); say('Stage any of 219 tanks', 2, 0.25, 3.6);
 cut('ui-feature-time', 3, 0, 8); say('Any hour of the day', 3, 0.5, 7);
 cut('ui-trailer', 5, 0, 8); say('Grade it like film', 5, 0.5, 7);
 cut('t05-lake-track', 7, 0, 4, 0.3); say('Track. Pan. Crane. Orbit.', 7, 0.25, 3.6);

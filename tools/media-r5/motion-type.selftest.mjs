@@ -9,7 +9,7 @@ import { TOOL } from './paths.mjs';
 const titles = [
   { kind: 'logo', start: 0, dur: 2 },
   { kind: 'section', text: 'DAWN', start: 2, dur: 2 },
-  { kind: 'stat', num: 217, label: 'Tanks', start: 4, dur: 2 },
+  { kind: 'stat', num: 219, label: 'Tanks', start: 4, dur: 2 },
   { kind: 'line', text: 'Physical ballistics. Real armor.', start: 6, dur: 2 },
   { kind: 'tank', name: 'Leopard 2A7V', start: 8, dur: 1.25 },
 ];
