@@ -8,7 +8,7 @@ export const LAYOUT_BRIEF_MAPS = Object.freeze([
   'desert', 'urban', 'railyard', 'frontier', 'saltwind', 'coastal', 'verdant', 'mangrove', 'badlands', 'polders', 'delta',
   'reservoir',
   // maps lane B, batch 5 (2026-10-02)
-  'cliffbridge',
+  'cliffbridge', 'ruinspires',
 ] as const);
 
 export type LayoutBriefMapId = (typeof LAYOUT_BRIEF_MAPS)[number];

@@ -329,6 +329,11 @@ interface PropsSettings {
   snowCap?: boolean;
   streetRowsAfterLandmarks?: boolean;
   streetRowRoadStride?: number;
+  /** Open ground the street rows keep out of (maps lane B, 2026-10-02): a street-row building stands only where its
+   * whole footprint clears each disc ({ x, z, r }: a square whose zone-control disc must stay open) and each rectangle
+   * ({ x0, z0, x1, z1 }: say, gardens along one side of a street). Default none. */
+  streetRowKeepouts?: readonly (
+    { x: number; z: number; r: number } | { x0: number; z0: number; x1: number; z1: number })[];
   ruinChance?: number;
   blockFill?: boolean;
   destructibleBuildingLat?: readonly [number, number];
@@ -3711,7 +3716,12 @@ ${snowCap ? `
     ): boolean => distToOtherRoads(x, z, roadIndex) < 9.5
       || Math.hypot(x - junction.x, z - junction.z) < 26
       || noVeg(x, z)
-      || conflictsTacticalReservation(x, z, Math.hypot(width, depth) * 0.5);
+      || conflictsTacticalReservation(x, z, Math.hypot(width, depth) * 0.5)
+      || (P.streetRowKeepouts?.some((keep) => {
+        const reach = Math.hypot(width, depth) * 0.5;
+        return 'r' in keep ? Math.hypot(x - keep.x, z - keep.z) < keep.r + reach
+          : x > keep.x0 - reach && x < keep.x1 + reach && z > keep.z0 - reach && z < keep.z1 + reach;
+      }) ?? false);
     const conflictsFrontage = (x: number, z: number, width: number, depth: number): boolean =>
       frontageReservations.some((site) =>
         Math.hypot(x - site.x, z - site.z) < site.rr + Math.hypot(width, depth) * 0.34);

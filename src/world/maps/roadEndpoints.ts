@@ -75,7 +75,11 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   alpine: [through, through, through, join(0, 2), join(0, 2)],
   caldera: [['loop', 'loop'], through, through, join(1, 2), join(1, 2)],
   foundry: [...Array.from({ length: 6 }, () => through), join(0, 2), join(0, 2), join(0, 2)],
-  ruinspires: Array.from({ length: 12 }, () => through),
+  // Ruinspires redesign (2026-10-02): the boulevard runs edge to edge; each trunk road leaves it for its edge; each
+  // terrace street's halves run from a boulevard crossing to the trunk and on to the other crossing; each cross street
+  // links the boulevard to its terrace street.
+  ruinspires: [through, [{ junction: 0 }, 'boundary'], [{ junction: 0 }, 'boundary'], join(0, 1), join(1, 0), join(0, 2),
+    join(2, 0), join(0, 4), join(0, 6), join(0, 3), join(0, 5)],
   blackglass: Array.from({ length: 6 }, () => through),
   titan_gorge: [through, through, through, join(0, 2), join(0, 1)],
   skybridge: [through, through, through, join(0, 2), join(0, 1)],

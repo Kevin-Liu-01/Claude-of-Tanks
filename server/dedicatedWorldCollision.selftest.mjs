@@ -52,7 +52,7 @@ const expected = {
   // Same prior-props baseline verification as Monsoon.
   caldera: [5000, 5107, 3810],
   foundry: [4277, 4385, 3119],
-  ruinspires: [2823, 9284, 1050],
+  ruinspires: [2763, 9180, 1284], // 2026-10-02 Ruinspires redesign (docs/MAP-LAYOUT-BRIEF.md); was [2823, 9284, 1050]
   blackglass: [3661, 5894, 2333],
   titan_gorge: [2725, 2586, 1230],
   skybridge: [3522, 3725, 2079],

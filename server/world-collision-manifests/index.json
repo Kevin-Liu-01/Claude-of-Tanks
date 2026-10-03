@@ -117,11 +117,11 @@
       "concealers": 3119
     },
     "ruinspires": {
-      "bytes": 7444014,
-      "sha256": "fc8f5129db7365c8014f10eba8256c6a80a10e06c077c4c1841150b5da1dce9a",
-      "obstacles": 2823,
-      "colliders": 9284,
-      "concealers": 1050
+      "bytes": 7198065,
+      "sha256": "f84ecc836a990d1cb6688e0894907343b93cf08734b4c18161a7c549e72ecce7",
+      "obstacles": 2763,
+      "colliders": 9180,
+      "concealers": 1284
     },
     "blackglass": {
       "bytes": 3211276,

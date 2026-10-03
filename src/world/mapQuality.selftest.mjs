@@ -223,7 +223,8 @@ for (const mapId of cityMaterialMaps) {
     `${mapId}: plaster, masonry, weathered accent, and roof families remain visually distinct`);
 }
 for (const family of repairedHeavyFamilies) {
-  const maps = cityMaterialMaps.filter((mapId) => getMapConfig(mapId).props.plan.includes(family));
+  const maps = cityMaterialMaps.filter((mapId) => [...getMapConfig(mapId).props.plan,
+    ...(getMapConfig(mapId).props.plannedSites ?? []).map((site) => site.structure)].includes(family));
   assert.ok(maps.length >= 5,
     `${family}: repaired heavyweight family is exercised across at least five city/industrial maps`);
 }
@@ -253,7 +254,10 @@ assert.deepEqual(polePolicyByMap.get('delta'), { pairs: 0, singles: 0, maxReject
 
 for (const mapId of [...EXPANSION, ...EXTREME]) {
   const config = getMapConfig(mapId);
-  assert.ok(config.props.plan.length >= 14, `${mapId}: authored landmark plan is dense`);
+  // a layout-brief map may author its landmarks as sites (Ruinspires, 2026-10-02: rotation pairs) instead of the
+  // roadside plan
+  const landmarks = [...config.props.plan, ...(config.props.plannedSites ?? []).map((site) => site.structure)];
+  assert.ok(landmarks.length >= 14, `${mapId}: authored landmark plan is dense`);
   assert.equal(config.props.tankWrecks.era, 'modern', `${mapId}: modern wreck fleet`);
   assert.ok(config.props.tankWrecks.count >= 5, `${mapId}: multiple wreck story beats`);
   assert.equal(config.props.tankWrecks.debris, true, `${mapId}: detached debris enabled`);
@@ -323,7 +327,7 @@ for (const mapId of [...EXPANSION, ...EXTREME]) {
 
 for (const mapId of ['ruinspires', 'blackglass']) {
   const config = getMapConfig(mapId);
-  const monumental = config.props.plan.filter((kind) =>
+  const monumental = [...config.props.plan, ...(config.props.plannedSites ?? []).map((site) => site.structure)].filter((kind) =>
     ['megatower', 'arcology', 'needletower', 'broadcasttower', 'terracetower',
       'parkingdeck', 'civichall'].includes(kind));
   assert.ok(monumental.length >= 18,
