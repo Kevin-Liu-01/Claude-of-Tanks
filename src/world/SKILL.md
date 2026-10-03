@@ -89,7 +89,13 @@ stands in the occlusion and sun searches), field parcels on the gentle open grou
 the couloirs and bed tones by height — folded into the occlusion and sun texels the terrain program already reads
 (`encodeCanopyAo` / `encodeCanopySun` against the program's 1.4 power, 0.8 and 0.85 depths and the 0.7 share; no
 shader, sampler or draw). `horizonRelief.selftest.mjs` pins the encoding, the program's constants, the fall-line
-alignment on oblique flanks (the round-72 field fails it) and where the stands may stand.
+alignment on oblique flanks (the round-72 field fails it) and where the stands may stand. Where the map-borders lane's
+landform is in, the stands follow its woods field (`getBorderWoodsAt`) and its parcels replace the baked ones;
+`horizon.reliefCover` overrides a map's cover. Road passes (`openRoadPasses`, after the border's hand-over): a road
+exit (terrain.ts `roadExitAt`, ~720 m) that runs on into the authored ranges gets a valley along its line — floor the
+continued ground at its crossing, 30 m either side, ~24° sides to 220 m — instead of a carriageway painted up a face
+(Cinder Junction's edge-n, gauntlet wave 1); an exit inside a railway cutting's fan is the cutting's. `ring.roadPass`
+marks the moved vertices; `horizonMassif.selftest.mjs` pins it.
 p2 trees lane (2026-10-01): the desktop tiers GROW their near trees — `treeGrowth.ts` (a THREE-free skeleton per
 species profile: stem or leader, scaffolds or whorls, side shoots and twigs bent by gravity and clipped by the crown
 envelope; spray seats on the outer branches; `supportSprays` draws every spray-bearing branch the tube budget left
