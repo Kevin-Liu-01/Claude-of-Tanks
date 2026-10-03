@@ -73,6 +73,16 @@ const VIEW = Object.freeze(Object.fromEntries(CENSUS_VIEWS.map((v) => [v.name, v
  * is consulted, so a rim rising past the edge cannot tilt the camera.
  */
 export const BORDER_PROTOCOL = 'visual-census-border-v1';
+/**
+ * The border set's second protocol (2026-10-03, gauntlet wave 1: the Verdant north eye view stood beside a tree whose
+ * leaf cards filled the frame's corner): the same seventeen views, whose spots must also keep the frame's near field
+ * clear — no crown within `frameClearM` of the spot inside the view's wedge (±52° of its heading, the 16:9 frame's
+ * half-width plus a margin). Its own protocol and digest: a v2 census never merges with a v1 census.
+ */
+export const BORDER2_PROTOCOL = 'visual-census-border-v2';
+/** The near field a border2 spot keeps clear of crowns, in the view's wedge (m from the spot to the crown's edge). */
+export const BORDER_FRAME_CLEAR_M = 14;
+const BORDER_FRAME_HALF_ANGLE = (52 * Math.PI) / 180;
 /** The playable square's terrain edge (|x|, |z| = 512, TERRAIN_HALF_EXTENT_M). */
 export const BORDER_EDGE = 512;
 /** Eye height of the rim views (m over the ground or the water surface): a tank commander's eye. */
@@ -100,10 +110,14 @@ export const BORDER_VIEWS = Object.freeze([
   { name: 'oblique-ne', kind: 'oblique', label: 'high oblique across the north-east corner', cam: [230, 280, 230], heading: [1, 1], pitchDeg: -22, fov: CENSUS_FOV },
 ].map(freeze));
 
-/** The camera sets a census run may shoot: the seven core views (the default) or the border set. */
+/** The border views with the frame-clear spot rule (BORDER2_PROTOCOL). */
+export const BORDER2_VIEWS = Object.freeze(BORDER_VIEWS.map((v) => freeze(v.kind === 'border' ? { ...v, frameClearM: BORDER_FRAME_CLEAR_M } : { ...v })));
+
+/** The camera sets a census run may shoot: the seven core views (the default), the border set or its second protocol. */
 export const CENSUS_VIEW_SETS = Object.freeze({
   core: Object.freeze({ protocol: CENSUS_PROTOCOL, views: CENSUS_VIEWS }),
   border: Object.freeze({ protocol: BORDER_PROTOCOL, views: BORDER_VIEWS }),
+  border2: Object.freeze({ protocol: BORDER2_PROTOCOL, views: BORDER2_VIEWS }),
 });
 
 /** A view set by name; unknown names fail closed. */
@@ -139,6 +153,7 @@ export function borderSiteCandidates(view) {
   const push = (px, pz, spot) => out.push({
     index: out.length, side: view.side, ...spot, dir: [nx, nz], p: [px, pz],
     corridor: BORDER_CORRIDOR.map((d) => [px + nx * d, pz + nz * d]),
+    ...(view.frameClearM ? { frameClearM: view.frameClearM } : {}),
   });
   if (corner) {
     for (const [insetX, insetZ] of BORDER_CORNER_INSETS) push(sx * (BORDER_EDGE - insetX), sz * (BORDER_EDGE - insetZ), { insetX, insetZ });
@@ -179,6 +194,7 @@ export function selectBorderSite(candidates, { buildings = [], concealers = [], 
       if (rule.dry && waterDepthAt && waterDepthAt(px, pz) > 0.05) continue;
       if (c.corridor.some(([x, z]) => buildingClearance(x, z, buildings) < 3)) continue;
       if (rule.crowns && c.corridor.some(([x, z]) => crownClearance(x, z, concealers) < 1.5)) continue;
+      if (rule.crowns && c.frameClearM && frameCrown(c, concealers)) continue;
       const eye = heightAt(px, pz) + BORDER_EYE - 0.5;
       if (rule.rise && c.corridor.some(([x, z]) => heightAt(x, z) > eye)) continue;
       return { candidate: c, pass: pass + 1, rule: rule.name };
@@ -234,6 +250,18 @@ function crownClearance(x, z, concealers) {
   let best = Infinity;
   for (const c of concealers) best = Math.min(best, Math.hypot(x - c.x, z - c.z) - c.r / 0.8);
   return best;
+}
+/** A crown inside a border2 spot's near frame: within `frameClearM` of the spot and inside the view's wedge. */
+function frameCrown(c, concealers) {
+  const [px, pz] = c.p, [dx, dz] = c.dir;
+  for (const crown of concealers) {
+    const ox = crown.x - px, oz = crown.z - pz, reach = crown.r / 0.8;
+    if (Math.hypot(ox, oz) - reach >= c.frameClearM) continue;
+    const ahead = ox * dx + oz * dz, side = Math.abs(ox * dz - oz * dx);
+    // the crown's disc reaches into the wedge (its nearest point within the half-angle of the heading)
+    if (ahead + reach > 0 && Math.atan2(Math.max(0, side - reach), Math.max(0.01, ahead + reach)) < BORDER_FRAME_HALF_ANGLE) return true;
+  }
+  return false;
 }
 function discClearance(x, z, discs) {
   let best = Infinity;

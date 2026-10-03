@@ -74,6 +74,56 @@ export function synthShot(ctx: BaseAudioContext, dest: AudioNode, noise: NoiseBa
   thump.start(when); thump.stop(when + 1.2);
 }
 
+/**
+ * A muzzle blast as pressure (2026-10-02): the Friedlander pulse of the propellant gases leaving the
+ * muzzle — an instant rise, a positive phase that scales with the charge (0.15 ms + 0.02 ms per millimetre
+ * of bore: 0.3 ms for a rifle round, 2.6 ms for a 120 mm gun), then its shallow negative phase — the same
+ * pulse reflected off the ground a few milliseconds behind, the punch of the expanding gas (a heavily
+ * damped low partial of tens of milliseconds that only a large charge has, never a long sub sweep) and
+ * the gas roar under it. Peak-normalised and mono; deterministic per bore.
+ */
+export function renderMuzzleBlast(out: Float32Array, sampleRate: number, caliberMm: number): void {
+  const k = clamp((caliberMm - 7) / 145, 0, 1);
+  const tPlus = 0.00015 + 0.00002 * caliberMm;
+  const reflectS = 0.0012 + 0.004 * k;
+  const punchHz = 95 - 45 * k;
+  const punchTau = 0.01 + 0.035 * k;
+  const punchAmp = 0.25 * Math.pow(k, 1.5);
+  const roarTau = 0.005 + 0.03 * k;
+  const roarAmp = 0.9 * (0.4 + 0.6 * k);
+  const lowA = Math.exp((-2 * Math.PI * (3500 - 2000 * k)) / sampleRate);
+  const highA = Math.exp((-2 * Math.PI * 300) / sampleRate);
+  let seed = (Math.round(caliberMm * 10) * 2654435761) >>> 0;
+  const noise = (): number => {
+    seed = (seed + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return (((t ^ (t >>> 14)) >>> 0) / 4294967296) * 2 - 1;
+  };
+  const pulse = (t: number): number => (t < 0 ? 0 : (1 - t / tPlus) * Math.exp((-1.4 * t) / tPlus));
+  let low = 0, high = 0, lastLow = 0, peak = 0;
+  for (let i = 0; i < out.length; i++) {
+    const t = i / sampleRate;
+    low = lowA * low + (1 - lowA) * noise();
+    high = highA * (high + low - lastLow);
+    lastLow = low;
+    const v = pulse(t) + 0.55 * pulse(t - reflectS)
+      + punchAmp * Math.sin(2 * Math.PI * punchHz * t) * Math.exp(-t / punchTau) * (1 - Math.exp(-t / 0.0015))
+      + roarAmp * high * Math.exp(-t / roarTau);
+    out[i] = v;
+    peak = Math.max(peak, Math.abs(v));
+  }
+  if (peak > 0) for (let i = 0; i < out.length; i++) out[i] /= peak;
+}
+
+/** The muzzle blast of a bore as a buffer (see renderMuzzleBlast); about 60 ms for a rifle round, 0.3 s for 152 mm. */
+export function muzzleBlastBuffer(ctx: BaseAudioContext, caliberMm: number): AudioBuffer {
+  const k = clamp((caliberMm - 7) / 145, 0, 1);
+  const buffer = ctx.createBuffer(1, Math.round(ctx.sampleRate * (0.06 + 0.24 * k)), ctx.sampleRate);
+  renderMuzzleBlast(buffer.getChannelData(0), ctx.sampleRate, caliberMm);
+  return buffer;
+}
+
 /** Fallback explosion: long low-passed noise body with a falling sub. */
 export function synthBoom(ctx: BaseAudioContext, dest: AudioNode, noise: NoiseBank, when: number, size: number, gain: number, random: () => number): void {
   const k = clamp(size, 0.2, 2);

@@ -42,6 +42,17 @@ assert.equal(calls.at(-1).kind, 'player-tank');
 assert.equal(calls.at(-1).ownerId, 'player');
 assert.equal(calls.at(-1).tanks, game.tanks);
 
+// Flying the drone, the listener rides it; the tank stays the owner (our crew, our shots).
+player.aerial = { kind: 'drone', active: true, x: 40, y: 25, z: -60 };
+runtime.update(1 / 60, true, false);
+assert.deepEqual(calls.at(-1).position, [40, 25, -60]);
+assert.equal(calls.at(-1).kind, 'player-drone');
+assert.equal(calls.at(-1).ownerId, 'player');
+player.aerial.active = false;
+runtime.update(1 / 60, true, false);
+assert.deepEqual(calls.at(-1).position, [2, 5.04, 4], 'docked again, the listener is back in the tank');
+assert.equal(calls.at(-1).kind, 'player-tank');
+
 rig.mode = 'SNIPER';
 camera.userData.scoped = true;
 runtime.update(1 / 60, true, false);
@@ -69,4 +80,4 @@ assert.ok(Math.abs(calls.at(-1).forward[0]) < 1e-9 &&
   Math.abs(calls.at(-1).forward[1]) < 1e-9 && calls.at(-1).forward[2] > 0.999,
 'listener azimuth follows the camera direction');
 
-console.log('listenerPoseRuntime.selftest: player, scope, spectator and killcam poses passed');
+console.log('listenerPoseRuntime.selftest: player, drone, scope, spectator and killcam poses passed');

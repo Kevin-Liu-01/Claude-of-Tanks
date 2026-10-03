@@ -4,9 +4,13 @@
  *   world – an aircraft heard from outside: one motor or engine loop placed in
  *           the listener frame (its distance law, air absorption, pan and
  *           Doppler), pitched by the drone's speed
- *   own   – the pilot's or crew's perspective: the drone's motors through its
- *           band-limited feed, with the link's hiss rising toward the edge of
- *           its range and the end of its battery; or the gunship's cabin drone
+ *   own   – the pilot's or crew's perspective: flying the drone, its motors
+ *           are the lead sound (a hover hum crossfading into the full-throttle
+ *           buzz with motor load, pitched by load, spooling up at launch and
+ *           sagging with the battery), the wind rising with speed and the
+ *           link's hiss toward the edge of its range and the end of its
+ *           battery; or the gunship's cabin: four turboprops with the airframe
+ *           rattling and the wind at the gun ports
  *
  * Every rig ends in one gain → lowpass → stereo pan chain on its bus.
  */
@@ -27,8 +31,8 @@ type AerialPerspective = 'world' | 'own';
  * the own-perspective level and feed band.
  */
 const AERIAL_SOUND = Object.freeze({
-  drone: Object.freeze({ loop: 'drone_fpv_loop', ownLoop: 'drone_fpv_loop', refM: 6, rolloff: 1, maxM: 500, ownLevelDb: -12, ownCutoffHz: 5500, rate: [0.9, 1.2] as const }),
-  gunship: Object.freeze({ loop: 'gunship_orbit_loop', ownLoop: 'gunship_cabin_loop', refM: 80, rolloff: 0.8, maxM: 3000, ownLevelDb: -5, ownCutoffHz: 20000, rate: [1, 1] as const }),
+  drone: Object.freeze({ loop: 'drone_fpv_loop', ownLoop: 'drone_fpv_loop', hoverLoop: 'drone_fpv_hover_loop', windLoop: 'drone_wind_loop', rattleLoop: null, refM: 6, rolloff: 1, maxM: 500, ownLevelDb: -1, ownCutoffHz: 9000, rate: [0.9, 1.2] as const }),
+  gunship: Object.freeze({ loop: 'gunship_orbit_loop', ownLoop: 'gunship_cabin_loop', hoverLoop: null, windLoop: null, rattleLoop: 'gunship_cabin_rattle_loop', refM: 80, rolloff: 0.8, maxM: 3000, ownLevelDb: -5, ownCutoffHz: 20000, rate: [1, 1] as const }),
 });
 
 interface AerialDeps {
@@ -47,6 +51,12 @@ export interface AerialFrame {
   speedK: number;
   /** 0..1: how near the drone's link is to failing (range, battery). Own drone only. */
   strain: number;
+  /** 0..1: how hard the motors work (speed, climb, correction). Own drone only. */
+  load: number;
+  /** 0..1 through the launch spool-up. Own drone only. */
+  spool: number;
+  /** 0..1 over the battery's last seconds, when the motors sag. Own drone only. */
+  sag: number;
 }
 
 export interface AerialRig {
@@ -94,12 +104,19 @@ export function createAerialRig(deps: AerialDeps, kind: AerialKind, perspective:
     send.connect(mixer.reverbInput);
   }
 
-  function makeLoop(asset: string): Loop {
+  function makeLoop(asset: string, highpassHz = 0): Loop {
     // A live loop's buffer must outlive the library's idle eviction.
     library.pin([asset]);
     const gain = ctx.createGain();
     gain.gain.value = 0;
-    gain.connect(output);
+    if (highpassHz > 0) {
+      const highpass = ctx.createBiquadFilter();
+      highpass.type = 'highpass';
+      highpass.frequency.value = highpassHz;
+      highpass.Q.value = Math.SQRT1_2;
+      gain.connect(highpass);
+      highpass.connect(output);
+    } else gain.connect(output);
     return { asset, source: null, gain, lastGain: 0, lastRate: 1 };
   }
 
@@ -136,7 +153,14 @@ export function createAerialRig(deps: AerialDeps, kind: AerialKind, perspective:
   }
 
   const motor = makeLoop(own ? sound.ownLoop : sound.loop);
-  const hiss = own && kind === 'drone' ? makeLoop('drone_feed_static_loop') : null;
+  const pilot = own && kind === 'drone';
+  const hover = pilot && sound.hoverLoop ? makeLoop(sound.hoverLoop) : null;
+  // The wind's buffeting rumble would mask the battle under it: only its rush is kept.
+  const wind = pilot && sound.windLoop ? makeLoop(sound.windLoop, 150) : null;
+  const hiss = pilot ? makeLoop('drone_feed_static_loop') : null;
+  // The gunship's crew: the airframe rattling and the wind at the gun ports under the turboprops.
+  const rattle = own && kind === 'gunship' && sound.rattleLoop ? makeLoop(sound.rattleLoop) : null;
+  const loops = [motor, hover, wind, hiss, rattle].filter((loop): loop is Loop => loop != null);
 
   return {
     kind,
@@ -152,25 +176,39 @@ export function createAerialRig(deps: AerialDeps, kind: AerialKind, perspective:
         if (panner) panner.pan.setTargetAtTime(d > 0.01 ? clamp(frame.rel.right / d, -1, 1) * 0.9 : 0, t, 0.08);
         if (send) send.gain.setTargetAtTime(clamp(0.08 + d / 1600, 0, 0.5), t, 0.2);
       }
-      lastGain = dbToGain(levelDb);
+      if (hover) {
+        // The pilot's drone: the motors spool up from rest, hover at a hum, rise into the
+        // full-throttle buzz as they work harder and sag over the battery's last seconds.
+        const spool = clamp(frame.spool, 0, 1);
+        const load = clamp(frame.load, 0, 1);
+        const blend = clamp((load - 0.25) / 0.6, 0, 1);
+        lastGain = dbToGain(levelDb) * (0.25 + 0.75 * spool) * (0.85 + 0.15 * load);
+        lastRate = (0.62 + 0.38 * spool) * (0.92 + 0.26 * load) * (1 - 0.07 * clamp(frame.sag, 0, 1));
+        setLoop(hover, Math.cos(blend * Math.PI / 2), lastRate);
+        setLoop(motor, Math.sin(blend * Math.PI / 2), lastRate);
+        const speedK = clamp(frame.speedK, 0, 1);
+        if (wind) setLoop(wind, 0.45 * speedK * speedK, 0.9 + 0.2 * speedK);
+      } else {
+        lastGain = dbToGain(levelDb);
+        const [lo, hi] = sound.rate;
+        lastRate = (lo + (hi - lo) * clamp(frame.speedK, 0, 1)) * frame.doppler;
+        setLoop(motor, 1, lastRate);
+        if (rattle) setLoop(rattle, 0.45, 1);
+      }
       output.gain.setTargetAtTime(lastGain, t, 0.1);
-      const [lo, hi] = sound.rate;
-      lastRate = (lo + (hi - lo) * clamp(frame.speedK, 0, 1)) * frame.doppler;
-      setLoop(motor, 1, lastRate);
       // The feed's hiss: a trace of it always, most of it as the link frays.
       if (hiss) setLoop(hiss, 0.05 + 0.45 * frame.strain * frame.strain, 1);
     },
     kill(fadeS = 0.3) {
       if (dead) return;
       dead = true;
-      dropLoop(motor, fadeS);
-      if (hiss) dropLoop(hiss, fadeS);
+      for (const loop of loops) dropLoop(loop, fadeS);
       const t = ctx.currentTime;
       output.gain.cancelScheduledValues(t);
       output.gain.setValueAtTime(output.gain.value, t);
       output.gain.linearRampToValueAtTime(0, t + fadeS);
       setTimeout(() => {
-        for (const node of [motor.gain, ...(hiss ? [hiss.gain] : []), output, lowpass, ...(panner ? [panner] : []), ...(send ? [send] : [])]) {
+        for (const node of [...loops.map((loop) => loop.gain), output, lowpass, ...(panner ? [panner] : []), ...(send ? [send] : [])]) {
           try { node.disconnect(); } catch { /* detached */ }
         }
       }, (fadeS + 0.1) * 1000);
