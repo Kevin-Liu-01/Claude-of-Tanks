@@ -3808,5 +3808,7 @@
   "flight.supply.short.ammo": "Ammo",
   "flight.supply.short.heal": "Health",
   "flight.signalLost": "SIGNAL LOST · RETURNING TO VEHICLE",
-  "flight.scopeView": "Scope view: {view}. Change sensor view."
+  "flight.scopeView": "Scope view: {view}. Change sensor view.",
+  "hud.incoming.mixedHits": "HITS",
+  "hud.incoming.stackSummary": "{count} hits · {damage} total damage"
 }

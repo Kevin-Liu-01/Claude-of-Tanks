@@ -205,6 +205,40 @@ interface ReceivedEntry {
   readonly zone: string;
 }
 
+interface IncomingHitGroup {
+  attackerId: string | null;
+  lastAtMs: number;
+  count: number;
+  damage: number;
+  outcome: HitOutcomePresentation | null;
+  outcomes: Map<string, { label: string; count: number }>;
+}
+const INCOMING_FADE_MS = 4600;
+
+/** Only the latest still-visible run can merge; names/specs are not identities. */
+export function appendIncomingHit(
+  previous: IncomingHitGroup | null,
+  attackerId: string | null | undefined,
+  damage: number,
+  outcome: HitOutcomePresentation,
+  nowMs: number,
+): IncomingHitGroup {
+  const same = !!attackerId && previous?.attackerId === attackerId &&
+    nowMs >= previous.lastAtMs && nowMs - previous.lastAtMs < INCOMING_FADE_MS;
+  const group = same ? previous : {
+    attackerId: attackerId || null, lastAtMs: nowMs, count: 0, damage: 0,
+    outcome, outcomes: new Map<string, { label: string; count: number }>(),
+  };
+  group.lastAtMs = nowMs;
+  group.count += 1;
+  group.damage += Number.isFinite(damage) ? Math.max(0, damage) : 0;
+  if (group.outcome?.id !== outcome.id) group.outcome = null;
+  const detail = group.outcomes.get(outcome.id);
+  if (detail) detail.count += 1;
+  else group.outcomes.set(outcome.id, { label: outcome.label, count: 1 });
+  return group;
+}
+
 interface EndInfo {
   readonly timeS?: number;
   readonly map: string | null;
@@ -421,6 +455,7 @@ const SI_CSS = `
 .cot-si-toast .l1 b{flex:0 0 auto;color:#ff8f80;font-family:${FONT_COND};letter-spacing:-.01em;
   font-variant-numeric:tabular-nums;font-size:11px;display:flex;align-items:center;gap:4px;
   white-space:nowrap;}
+.cot-si-toast .l1 b .hit-count{font-size:9px;color:#d6e2ec;flex-shrink:0;}
 .cot-si-toast .l1 b svg{width:11px;height:11px;flex:0 0 auto;}
 .cot-si-stats{position:fixed;inset:0;z-index:71;display:none;pointer-events:none;
   flex-direction:column;align-items:center;justify-content:center;
@@ -1255,28 +1290,67 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   }
 
   // ---------- 3. incoming toasts ----------
+  let latestToast: { element: HTMLElement; group: IncomingHitGroup } | null = null;
+  const toastTimers = new Map<HTMLElement, { fade: TimerHandle; remove: TimerHandle }>();
+  function removeToast(toast: HTMLElement): void {
+    const timers = toastTimers.get(toast);
+    if (timers) { clearTimeout(timers.fade); clearTimeout(timers.remove); }
+    toastTimers.delete(toast);
+    if (latestToast?.element === toast) latestToast = null;
+    toast.remove();
+  }
+  function clearToasts(): void {
+    for (const toast of toastTimers.keys()) removeToast(toast);
+    latestToast = null;
+  }
   function showToast(ev: ShotHitEvent, cls: HitOutcomePresentation): void {
+    const previous = latestToast?.element.parentNode === toastHost ? latestToast : null;
+    const group = appendIncomingHit(previous?.group ?? null, ev.attackerId,
+      ev.damage || 0, cls, performance.now());
     const attacker = ev.attackerId ? combatants.get(ev.attackerId) : null;
-    const specId = ev.attackerSpecId || attacker?.specId;
-    const toast = el('div', 'cot-si-toast', toastHost);
-    toast.dataset.damage = String(Math.round(ev.damage || 0));
+    const name = ev.attackerName || attacker?.name || t('hud.enemy');
+    let toast: HTMLElement;
+    if (previous?.group === group) {
+      toast = previous.element;
+      const timers = toastTimers.get(toast)!;
+      clearTimeout(timers.fade); clearTimeout(timers.remove);
+    } else {
+      toast = el('div', 'cot-si-toast', toastHost);
+      toast.innerHTML = '<div class="l1"><span class="si" aria-hidden="true"></span>' +
+        '<span class="attacker"></span><b></b></div>';
+      const silhouette = toast.querySelector<HTMLElement>('.si')!;
+      const specId = ev.attackerSpecId || attacker?.specId;
+      if (specId) maskIcon(silhouette, specId, 'side_silhouette', '#f28f8f');
+      else silhouette.remove();
+      toastHost.prepend(toast);
+    }
+    latestToast = { element: toast, group };
+    const damaging = group.damage > 0;
+    const summary = damaging ? `−${Math.round(group.damage)}` :
+      group.outcome?.label || t('hud.incoming.mixedHits');
+    const color = damaging ? COL.red : (group.outcome?.color || COL.dim);
+    toast.dataset.damage = String(Math.round(group.damage));
+    toast.dataset.count = String(group.count);
     toast.dataset.kind = ev.kind;
-    toast.innerHTML = `<div class="l1"><span class="si" aria-hidden="true"></span><span class="attacker"></span>` +
-      `<b>${uiIconSVG((ev.damage || 0) > 0 ? 'damage' : cls.icon, 11)}` +
-      `${(ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : cls.label}</b></div>`;
-    const silhouette = toast.querySelector<HTMLElement>('.si')!;
-    if (specId) maskIcon(silhouette, specId, 'side_silhouette', '#f28f8f');
-    else silhouette.remove(); // Never guess a tank model from an entity ID.
-    toast.querySelector('.attacker')!.textContent = ev.attackerName || attacker?.name || t('hud.enemy');
-    toast.dataset.outcome = cls.id;
-    if (!(ev.damage > 0)) toast.classList.add('deflected');
-    toast.style.borderLeftColor = (ev.damage || 0) > 0 ? COL.red : cls.color;
-    const outcomeValue = toast.querySelector<HTMLElement>('.l1 b');
-    if (outcomeValue) outcomeValue.style.color = (ev.damage || 0) > 0 ? COL.red : cls.color;
-    toastHost.prepend(toast);
-    while (toastHost.children.length > MAX_BATTLE_NOTIFICATIONS) toastHost.lastChild?.remove();
-    setTimeout(() => toast.classList.add('out'), 4600);
-    setTimeout(() => { if (toast.parentNode) toast.remove(); }, 5500);
+    toast.dataset.outcome = group.outcome?.id || 'mixed';
+    toast.classList.toggle('deflected', !damaging);
+    toast.classList.remove('out');
+    toast.style.borderLeftColor = color;
+    toast.querySelector('.attacker')!.textContent = name;
+    const value = toast.querySelector<HTMLElement>('.l1 b')!;
+    value.style.color = color;
+    value.innerHTML = uiIconSVG(damaging ? 'damage' : (group.outcome?.icon || 'shield'), 11) +
+      summary + (group.count > 1 ? `<span class="hit-count">×${group.count}</span>` : '');
+    const detail = [...group.outcomes.values()].map(item => `${item.count}× ${item.label}`).join(' · ');
+    toast.title = group.count > 1 ? t('hud.incoming.stackSummary',
+      { count: group.count, damage: Math.round(group.damage) }) + ' · ' + detail : detail;
+    toast.setAttribute('aria-label', name + ' · ' + toast.title);
+    toastTimers.set(toast, {
+      fade: setTimeout(() => toast.classList.add('out'), INCOMING_FADE_MS),
+      remove: setTimeout(() => removeToast(toast), 5500),
+    });
+    while (toastHost.children.length > MAX_BATTLE_NOTIFICATIONS)
+      removeToast(toastHost.lastElementChild as HTMLElement);
   }
 
   // ---------- 4. session stats -> END SCREEN (killcam_endscreen r1) ----------
@@ -1559,6 +1633,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   });
 
   bus.on('tank:destroyed', (payload) => {
+    latestToast = null; // A kill notification ends the previous incoming run.
     const p = eventPayload<TankDestroyedEvent>(payload);
     // team-wide roster bookkeeping (fire deaths included — no shell:hit fires)
     recordCombatantDestroyed(combatant(p.id, null, p.specId));
@@ -1663,7 +1738,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     // results screen — a dimmed PENETRATION card double-reported the final
     // shot in the corner of the DEFEAT report for up to 7 s (r4 critique)
     while (cardHost.firstChild) cardHost.firstChild.remove();
-    while (toastHost.firstChild) toastHost.firstChild.remove();
+    clearToasts();
     // authoritative team roster when the sim provides one (additive payload)
     if (p && Array.isArray(p.roster)) endRoster = p.roster;
     // identity hardening (r3 audit): the roster names the player — latch it
@@ -1732,7 +1807,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       // spec-keyed preparation survives UI reset; a new warm supersedes it.
       clearReportBuffer();
       while (cardHost.firstChild) cardHost.firstChild.remove();
-      while (toastHost.firstChild) toastHost.firstChild.remove();
+      clearToasts();
       shotLog.length = 0;
       allShots.length = 0;
       receivedLog.length = 0;
