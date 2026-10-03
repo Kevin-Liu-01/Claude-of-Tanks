@@ -4629,7 +4629,7 @@ void splatCompute() {
     // every desert mountain at 1–2 km. Gentle sand only.
     float bedW = min(uRipple.z * 2.2, 1.0) * bedMod * (1.0 - fR) * (1.0 - roadCore)
                * (1.0 - triW) * smoothstep(60.0, 170.0, effDist) * (1.0 - smoothstep(0.035, 0.09, slope))
-               * (1.0 - fMs) * ringNoTrains * sandCoverage;
+               * ringNoTrains * (1.0 - fMs) * sandCoverage;
     if (bedW > 0.002) {
       float bed;
       vec2 bedSlope = sandWaves(uv, wind0, 260.0, 0.45, nz(uv, 0.0021, vec2(0.19, 0.57)).g * 2.0, vec2(0.24, 0.0), vec2(1.0, 0.0), bed);

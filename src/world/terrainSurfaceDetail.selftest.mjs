@@ -52,11 +52,13 @@ assert.match(source,
 assert.match(source,
   /float bedW = [^;]+\(1\.0 - fMs\) \* sandCoverage;/,
   'coastal water cannot inherit the neighboring sand dune bedforms');
-assert.match(source, /float nearG = openNear2 \* meadowG \* \(1\.0 - fR\);/,
-  'near turf relief uses existing dirt/projected/liquid coverage plus rock exclusion');
+// ground lane (2026-10-03): the land use owns its share too — a turned field (gSoilW) clears the near turf, a sown crop
+// (gCropW) keeps 40 % of it, and both leave the far turf 15 % (terrainMaterialOwnership pins the response)
+assert.match(source, /float nearG = openNear2 \* meadowG \* \(1\.0 - fR\) \* \(1\.0 - max\(gSoilW, 0\.6 \* gCropW\)\);/,
+  'near turf relief uses existing dirt/projected/liquid coverage plus rock exclusion and the land use\'s cover');
 assert.match(source,
-  /float farG = farM \* \(1\.0 - fR\) \* meadowG \* \(1\.0 - roadCore\);/,
-  'distant turf relief inherits actual liquid coverage through meadowG and excludes other material owners');
+  /float farG = farM \* \(1\.0 - fR\) \* meadowG \* \(1\.0 - roadCore\) \* \(1\.0 - 0\.85 \* max\(gCropW, gSoilW\)\);/,
+  'distant turf relief inherits actual liquid coverage through meadowG and excludes other material owners and the fields');
 assert.match(source,
   /mb \+ mix\(0\.85, 1\.6, min\(mb \* 0\.5, 1\.0\)\)/,
   'resolved midrange grains retain detail with the same distant anti-shimmer limit');
