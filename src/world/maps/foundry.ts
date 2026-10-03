@@ -22,6 +22,7 @@
 // outward.
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 
 export default {
   id: 'foundry',
@@ -91,10 +92,9 @@ export default {
   },
   spawns: {
     player: { x: -356, z: -372 },
-    enemies: [
-      { x: -224, z: 384 }, { x: -150, z: 420 }, { x: -72, z: 374 },
-      { x: 10, z: 416 }, { x: 94, z: 372 }, { x: 178, z: 408 }, { x: 258, z: 362 },
-    ],
+    // Bravo deploys in a 4 x 2 block like alpha's, centred where its old line of pads had its centroid, so every
+    // objective keeps its reach (the bots lane, 2026-10-03: a corner block against a 500 m line of pads leans the battle).
+    enemies: [{ x: 23.3, z: 386.7 }, { x: 15.3, z: 386.7 }, { x: 7.3, z: 386.7 }, { x: -0.7, z: 386.7 }, { x: 23.3, z: 396.7 }, { x: 15.3, z: 396.7 }, { x: 7.3, z: 396.7 }],
   },
   splat: {
     tintA: [0.72, 0.73, 0.70], tintB: [0.47, 0.49, 0.48], tintC: [0.84, 0.81, 0.74],
@@ -126,6 +126,10 @@ export default {
       'gantry', 'containerRow', 'ruin', 'warehouse', 'factory', 'shed'],
     // The blast furnace block between the casting street and the ore yard: the casting house and the furnaces' two
     // stacks; east of the rail fan, the rolling mill's warehouse. They stand across the approach lanes.
+    // the works stand as PR #9's head seated them (the owner's town-plan ruling, 2026-10-03), whatever the deployment
+    // corridors now do to the ground under them; the planned sites below are what that plan was built from
+    townPlan: TOWN_PLANS.foundry,
+    townLightPlan: TOWN_LIGHT_PLANS.foundry,
     plannedSites: [
       { structure: 'factory', x: -74, z: -29, yawDeg: 25 },
       { structure: 'stack', x: -44, z: -36, yawDeg: 0 }, { structure: 'stack', x: -104, z: -64, yawDeg: 0 },

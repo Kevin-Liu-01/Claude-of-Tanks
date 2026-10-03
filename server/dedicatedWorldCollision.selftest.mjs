@@ -33,7 +33,9 @@ const authoredWorlds = new Map();
 // yard's seeded heap draws land on new ground and six of seven clear the site law.
 // 2026-10-03 merged (maps lane A's Caldera v2 and Ironworks on the borders lane's wave 2): measured on the combined
 // ground, Caldera's yard admits all seven heap draws again and Ironworks five.
-const coalCensus = { railyard: 10, caldera: 7, foundry: 5, skybridge: 3 };
+// 2026-10-03: Ironworks' coal heaps draw after its works, which now replay PR #9's head (props townPlan) instead of drawing
+// their placement: foundry 5 -> 7 heaps on the same rail spurs.
+const coalCensus = { railyard: 10, caldera: 7, foundry: 7, skybridge: 3 };
 
 // 2026-09-29 roads/settlements: native all31-map recapture, terrain1337,
 // props2002, vegetation2001. Counts include shared tree colliders (the capture
@@ -65,7 +67,7 @@ const expected = {
   alpine: [7093, 7018, 5955], // 2026-10-03 merged: Glacier Pass's layout-brief rebuild (maps lane A, [7079, 7008, 5955] on the borders' first pass) on the map-borders lane's wave 2 (roads on the landform's rim; [7005, 6932, 5907] on the old map)
   // Same prior-props baseline verification as Monsoon.
   caldera: [2474, 2594, 1227], // 2026-10-03 merged: Obsidian Caldera after gauntlet wave 3 (maps lane A: Canary pine and broom on bare cinder, rills, talus fans, lava flows; [2478, 2598, 1227] on the borders' first pass) on the map-borders lane's wave 2 ([4033, 4140, 2845] on the old map)
-  foundry: [3034, 3276, 1897], // 2026-10-03 merged: Ironworks' layout-brief rebuild (maps lane A, [3033, 3275, 1897] on the borders' first pass) on the map-borders lane's wave 2 ([3249, 3360, 2082] on the old map)
+  foundry: [3101, 3348, 1991], // 2026-10-03 bravo deploys in a block and the works stand as PR #9's head seated them (props townPlan); was [3034, 3276, 1897] 2026-10-03 merged: Ironworks' layout-brief rebuild (maps lane A, [3033, 3275, 1897] on the borders' first pass) on the map-borders lane's wave 2 ([3249, 3360, 2082] on the old map)
   ruinspires: [2105, 8566, 343], // 2026-10-03 the map-borders lane (wave 2, the roads authored on the landform's rim and the railways' open line; first pass [2111, 8572, 345]): rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [2823, 9284, 1050]
   blackglass: [2809, 5042, 1477], // 2026-10-03 the district stands as PR #9's head seated it, its eight blocks in a carriageway moved off by the least distance (props roadBuildingClearance, now a post-pass that moves only those); was [2882, 5679, 1477] 2026-10-03 merged: Blackglass keeps its district blocks off every carriageway (props roadBuildingClearance: the five in-road blocks move to the next sites; [2890, 5687, 1477] on the borders' first pass) on the map-borders lane's wave 2 ([2809, 5042, 1477] before the clearance); was [3661, 5894, 2333]
   titan_gorge: [2339, 2258, 935], // 2026-10-03 the gorge's ends: both deployments blocks at (0, ±395) behind gate buttes, the free buttes paired about the centre, the east yard at the west yard's rotation, and the town as PR #9's head seated it (props townPlan; five buildings off the carriageways), its light buildings too (townLightPlan); was [2431, 2295, 967] 2026-10-03 merged: Titan Gorge layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md: authored shelves with cliff ends and buttes for the noise mesas, three aprons, shared junction nodes; [2422, 2286, 967] on the borders' first pass) on the map-borders lane's wave 2 ([2484, 2345, 987] on the old floor); was [2725, 2586, 1230]

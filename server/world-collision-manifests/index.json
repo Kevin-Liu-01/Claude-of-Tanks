@@ -110,11 +110,11 @@
       "concealers": 1227
     },
     "foundry": {
-      "bytes": 1500234,
-      "sha256": "8a4d1c3b19ba83158c1fb7ad70c4de164f00dd4a74ceb02ec2521f9ef0e1037e",
-      "obstacles": 3034,
-      "colliders": 3276,
-      "concealers": 1897
+      "bytes": 1506325,
+      "sha256": "1da572209585aa1e2e608a1631f709681d79dbbbd9a6f440ce12ba2430d6ecf0",
+      "obstacles": 3101,
+      "colliders": 3348,
+      "concealers": 1991
     },
     "ruinspires": {
       "bytes": 7332833,
