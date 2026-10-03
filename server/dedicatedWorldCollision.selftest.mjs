@@ -34,18 +34,18 @@ const coalCensus = { railyard: 10, caldera: 7, foundry: 7, skybridge: 5 };
 // a solid's whole footprint out of the road core. Sixteen censuses lose the 1-3 boulders that reached into a road;
 // roadside wrecks, rubble and two pillboxes step off the carriageway with their counts unchanged.
 const expected = {
-  verdant: [6678, 6413, 7323], // 2026-10-02 Verdant Fields redesign (docs/MAP-LAYOUT-BRIEF.md); was [6977, 6678, 7507], and [6845, 6575, 7445] before its aprons stood on their ground (apron bank law)
-  desert: [2943, 2883, 3123], // 2026-10-01 Sirocco Wadi redesign (docs/MAP-LAYOUT-BRIEF.md); was [2673, 2605, 3139], and [2856, 2796, 2991] before its aprons stood on their ground (apron bank law)
+  verdant: [6683, 6416, 7302], // 2026-10-03 scenery lane (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [6678, 6413, 7323] (before it: 2026-10-02 Verdant Fields redesign (docs/MAP-LAYOUT-BRIEF.md); was [6977, 6678, 7507], and [6845, 6575, 7445] before its aprons stood on their ground (apron bank law))
+  desert: [2965, 2905, 3123], // 2026-10-03 scenery lane (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [2943, 2883, 3123] (before it: 2026-10-01 Sirocco Wadi redesign (docs/MAP-LAYOUT-BRIEF.md); was [2673, 2605, 3139], and [2856, 2796, 2991] before its aprons stood on their ground (apron bank law))
   winter: [5931, 5786, 4919],
-  urban: [3859, 6519, 3510], // 2026-10-01 Steinburg redesign (docs/MAP-LAYOUT-BRIEF.md); was [3898, 9290, 3530]
-  coastal: [4091, 3931, 4107], // 2026-10-02 Saltmere Bay redesign (docs/MAP-LAYOUT-BRIEF.md); was [4161, 3964, 4249], and [4413, 4253, 4411] before its aprons stood on their ground (apron bank law)
+  urban: [3855, 6515, 3497], // 2026-10-03 scenery lane (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [3859, 6519, 3510] (before it: 2026-10-01 Steinburg redesign (docs/MAP-LAYOUT-BRIEF.md); was [3898, 9290, 3530])
+  coastal: [4103, 3943, 4093], // 2026-10-03 scenery lane (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [4091, 3931, 4107] (before it: 2026-10-02 Saltmere Bay redesign (docs/MAP-LAYOUT-BRIEF.md); was [4161, 3964, 4249], and [4413, 4253, 4411] before its aprons stood on their ground (apron bank law))
   autumn: [5872, 5726, 5822],
   steppe: [2426, 2138, 1302],
-  railyard: [2846, 2848, 1899], // 2026-10-01 Cinder Junction redesign (docs/MAP-LAYOUT-BRIEF.md); was [2825, 2785, 1983]
-  frontier: [7987, 7851, 8359], // 2026-10-02 Frontier Basin redesign (docs/MAP-LAYOUT-BRIEF.md); was [7905, 7634, 8284], and [7730, 7594, 8120] before its aprons stood on their ground (apron bank law)
+  railyard: [2858, 2860, 1895], // 2026-10-03 scenery lane (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [2846, 2848, 1899] (before it: 2026-10-01 Cinder Junction redesign (docs/MAP-LAYOUT-BRIEF.md); was [2825, 2785, 1983])
+  frontier: [7971, 7833, 8298], // 2026-10-03 scenery lane (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [7987, 7851, 8359] (before it: 2026-10-02 Frontier Basin redesign (docs/MAP-LAYOUT-BRIEF.md); was [7905, 7634, 8284], and [7730, 7594, 8120] before its aprons stood on their ground (apron bank law))
   fjord: [7357, 7301, 7679],
-  delta: [8149, 7796, 9775], // 2026-10-02 Jade River Delta redesign (docs/MAP-LAYOUT-BRIEF.md); was [7742, 7430, 9644], and [8114, 7761, 9770] before its aprons stood on their ground (apron bank law)
-  badlands: [3013, 2765, 1956], // 2026-10-02 Redrock Divide redesign (docs/MAP-LAYOUT-BRIEF.md); was [3011, 2915, 1920]
+  delta: [8146, 7784, 9754], // 2026-10-03 scenery lane (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [8149, 7796, 9775] (before it: 2026-10-02 Jade River Delta redesign (docs/MAP-LAYOUT-BRIEF.md); was [7742, 7430, 9644], and [8114, 7761, 9770] before its aprons stood on their ground (apron bank law))
+  badlands: [2997, 2749, 1907], // 2026-10-03 scenery lane (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [3013, 2765, 1956] (before it: 2026-10-02 Redrock Divide redesign (docs/MAP-LAYOUT-BRIEF.md); was [3011, 2915, 1920])
   // Native recapture with prior prop code also contains this additional wreck.
   monsoon: [9859, 9634, 12374], // 2026-10-03 scenery (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [9855, 9630, 12375]
   alpine: [9117, 9044, 8009],
@@ -63,9 +63,9 @@ const expected = {
   whiteout: [1601, 1467, 875],
   orchard: [4923, 4691, 5160],
   longleaf: [6218, 6021, 7183],
-  mangrove: [5377, 5204, 6535], // 2026-10-02 Mangrove Reach redesign (docs/MAP-LAYOUT-BRIEF.md); was [5282, 5127, 6502]
-  saltwind: [3666, 3469, 4131], // 2026-10-02 Saltwind Narrows redesign (docs/MAP-LAYOUT-BRIEF.md); was [3629, 3392, 4048], and [3811, 3614, 4260] before its aprons stood on their ground (apron bank law)
-  reservoir: [6495, 6368, 7349], // 2026-10-02 Highland Reservoir layout-brief revision and its aprons on their ground (docs/MAP-LAYOUT-BRIEF.md); was [6425, 6300, 7206]
+  mangrove: [5382, 5209, 6529], // 2026-10-03 scenery lane (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [5377, 5204, 6535] (before it: 2026-10-02 Mangrove Reach redesign (docs/MAP-LAYOUT-BRIEF.md); was [5282, 5127, 6502])
+  saltwind: [3659, 3462, 4066], // 2026-10-03 scenery lane (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [3666, 3469, 4131] (before it: 2026-10-02 Saltwind Narrows redesign (docs/MAP-LAYOUT-BRIEF.md); was [3629, 3392, 4048], and [3811, 3614, 4260] before its aprons stood on their ground (apron bank law))
+  reservoir: [6509, 6381, 7348], // 2026-10-03 scenery lane (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [6495, 6368, 7349] (before it: 2026-10-02 Highland Reservoir layout-brief revision and its aprons on their ground (docs/MAP-LAYOUT-BRIEF.md); was [6425, 6300, 7206])
   mars: [769, 715, 0],
   moon: [475, 381, 0],
   cliffbridge: [5903, 5636, 5243],
