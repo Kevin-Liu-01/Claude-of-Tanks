@@ -29,7 +29,9 @@ for (const [fmt, [W, H]] of Object.entries(FORMATS)) {
     const name = `${p.id}-${fmt}${extname(art)}`;
     copyFileSync(join(REPO, art), join(dir, 'assets/art', name));
     const t = p.treatment ?? 'cinema';
-    let inner = `<img class="art" src="assets/art/${name}" alt="">`;
+    // pos_<fmt>: where a crop sits on the art (CSS object-position), for a hero that is not centred in the landscape frame
+    const pos = p[`pos_${fmt}`];
+    let inner = `<img class="art" src="assets/art/${name}"${pos ? ` style="object-position:${pos}"` : ''} alt="">`;
     if (fmt === 'land' && t === 'cinema') inner += `<div class="bar top"></div><div class="bar bot"><div class="line"><img src="assets/brand/logo-mark-metal.svg" alt=""><span>CLAUDE <em>OF TANKS</em></span></div></div>`;
     else if (t !== 'clean') inner += `<div class="scrim"></div><div class="lock"><img class="mk" src="assets/brand/logo-mark-metal.svg" alt=""><div class="wm"><div class="a">CLAUDE</div><div class="b">OF TANKS</div></div></div>`;
     els.push(`<div id="p${i}" class="clip poster ${t}" data-start="${i}" data-duration="1">${inner}</div>`);
