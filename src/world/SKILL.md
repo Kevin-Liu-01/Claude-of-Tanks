@@ -159,8 +159,9 @@ works (a karst's dry stone walls, a bocage's hedge banks) on the ground lane's l
 1 m tall; a world without the hook builds none. Props builds them last (`placeFieldBoundaryWorks`, after the pools'
 refit, through `scenery.ts` `composeFieldWorks`), so they keep off every mode's objective discs where the match
 placement seats them on those final solids, as well as the aprons, yards, bridges, trenches, pads and roads; the
-selftest proves it on Saltwind and Saltmere. A map's `scenery.masonryTint` tints the props stone print (Saltwind's
-limestone).
+selftest proves it on Saltwind and Saltmere. The dry-stone field walls draw their own rubble print (`fieldStone`,
+`fieldStoneSurface.ts`), never the house masonry a regional kit repaints; a map's `scenery.masonryTint` tints that
+print (Saltwind's limestone).
 A plan builder reads its battlefield through `structureBuildContext(buckets)`
 (`maps/exteriorDetailKit.ts`), never a positional argument; a part new to a
 builder's seeded stream is tagged `userData.uvJitter = 'none'`, a part that

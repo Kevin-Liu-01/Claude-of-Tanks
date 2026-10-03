@@ -1165,6 +1165,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/yardDressing.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
     'src/world/scenery.selftest.mjs',
+    // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
+    'src/world/fieldStoneSurface.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',
     'src/world/foundryServiceCourt.selftest.mjs',
