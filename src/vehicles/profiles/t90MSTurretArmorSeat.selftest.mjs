@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
+
+// Owner-directed 1.05 T-90 family size (2026-10-02, main 245aa4e4e): the factory bakes the source-frame build into the
+// installed turret frame, so the source-frame stations and part spans below map by `f`. The builder's layout receipts
+// are source-frame records and stay exact.
+const f = VEHICLE_SIZE_FACTORS.t90ms ?? 1;
 
 const tank = createTank('t90ms', null, {
   proceduralOnly: true,
@@ -24,19 +30,29 @@ try {
 
   const turretArmor = tank.root.getObjectByName('turretExternalArmor');
   assert.ok(turretArmor?.isMesh, 't90ms: merges turret armor into one draw bucket');
-  turretArmor.geometry.computeBoundingBox();
-  const bounds = turretArmor.geometry.boundingBox;
-  assert.ok(bounds.min.y >= 0.10,
-    `t90ms: turret armor stays above the ring instead of hanging below it (${bounds.min.y})`);
-  assert.ok(bounds.max.z <= 1.62,
-    `t90ms: nose cassettes remain seated on the welded arrowhead (${bounds.max.z})`);
+  const seated = () => {
+    turretArmor.geometry.computeBoundingBox();
+    const bounds = turretArmor.geometry.boundingBox;
+    assert.ok(bounds.min.y >= 0.10 * f,
+      `t90ms: turret armor stays above the ring instead of hanging below it (${bounds.min.y})`);
+    assert.ok(bounds.max.z <= 1.62 * f,
+      `t90ms: nose cassettes remain seated on the welded arrowhead (${bounds.max.z})`);
+  };
+  seated();
+  // Seeded defects: armor pushed 20 mm off the arrowhead, or dropped 20 mm below the ring, must fail.
+  for (const offset of [[0, 0, 0.02], [0, -0.02 - turretArmor.geometry.boundingBox.min.y + 0.10 * f, 0]]) {
+    turretArmor.geometry.translate(...offset);
+    assert.throws(seated, assert.AssertionError, `t90ms: displaced turret armor ${offset} is rejected`);
+    turretArmor.geometry.translate(...offset.map((v) => -v));
+  }
+  seated();
 
   const mainChevrons = tank.root.userData.combatGeometryParts.filter((part) => {
     if (part.bucket !== 'turretExternalArmor') return false;
     const spanX = part.max[0] - part.min[0];
     const spanY = part.max[1] - part.min[1];
     const spanZ = part.max[2] - part.min[2];
-    return spanX >= 0.65 && spanY <= 0.30 && spanZ >= 0.60 && part.max[2] >= 1.0;
+    return spanX >= 0.65 * f && spanY <= 0.30 * f && spanZ >= 0.60 * f && part.max[2] >= 1.0 * f;
   });
   assert.equal(mainChevrons.length, 8,
     't90ms: exposes upper and lower ERA rows on both diagonal cheeks');
@@ -54,7 +70,7 @@ try {
       `t90ms: side ${side} outer lower and upper rows meet at one ridge`);
     const innerZ = (inner[0].min[2] + inner[0].max[2]) * 0.5;
     const outerZ = (outer[0].min[2] + outer[0].max[2]) * 0.5;
-    assert.ok(outerZ < innerZ - 0.40,
+    assert.ok(outerZ < innerZ - 0.40 * f,
       `t90ms: side ${side} ERA follows the rearward-sloping / or \\ cheek`);
   }
 

@@ -261,7 +261,10 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   });
   assert(worstPen < 0.22,
     `sine drive λ=${wl} A=${amp}: root plane exceeds track up-travel (${worstPen.toFixed(3)} m)`);
-  assert(worstFloat < 0.23,
+  // The droop (0.18 m) plus the visual rock's reach at the line ends on the tick a hop lands: a landing seats the ride
+  // on the drooped tracks' line. With the grade turn (physics lane, 2026-10-03) the hull's travel over the λ=8 faces
+  // changed and its worst grounded tick moved from a crest (0.220 m) to such a landing on the next face (0.240 m).
+  assert(worstFloat < 0.26,
     `sine drive λ=${wl} A=${amp}: root plane exceeds track droop (${worstFloat.toFixed(3)} m)`);
   assert(worstCompression <= 0.201,
     `sine drive λ=${wl} A=${amp}: compression travel ${worstCompression.toFixed(3)} m`);
@@ -447,20 +450,26 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   let takeoffY = null;
   let takeoffVY = null;
   let apexY = -Infinity;
+  // the lip: the height of the last step on the ramp (physics lane, 2026-10-03: the step that leaves the ground now
+  // moves on gravity, so the first airborne height is past the lip, where it used to stand still 2.5 cm under it)
+  let lipY = null;
   run(ent, field, 150, () => {
     if (ent.state.grounded === false) {
       if (takeoffY === null) {
-        takeoffY = ent.state.pos.y;
+        takeoffY = lipY;
         takeoffVY = ent.state.verticalSpeed;
       }
       apexY = Math.max(apexY, ent.state.pos.y);
+    } else if (takeoffY === null) {
+      lipY = ent.state.pos.y;
     }
   });
   assert(takeoffY !== null, 'ramp: tank enters free flight at the lip');
   assert(takeoffVY > 0.5,
     `ramp: upward terrain velocity becomes launch velocity (${takeoffVY} m/s)`);
-  assert(apexY > takeoffY + 0.08,
-    `ramp: projectile rises beyond the lip before falling (${(apexY - takeoffY).toFixed(2)} m)`);
+  // (0.055 m over the lip is the 0.08 this read over the first airborne height, which sat 2.5 cm under the lip)
+  assert(apexY > takeoffY + 0.055,
+    `ramp: projectile rises beyond the lip before falling (${(apexY - takeoffY).toFixed(3)} m)`);
 }
 
 // A continuous rolling crest (no discontinuity) must also release contact
@@ -579,8 +588,19 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(!requestTankJump(ent.state, 9), 'no second boost inside the first 0.35 s of flight');
   run(ent, field, 20);
   const beforeBoost = ent.state.verticalSpeed;
+  const heightBefore = ent.state.pos.y - startY;
   assert(requestTankJump(ent.state, 9), 'round 30: an airborne hull boosts again after 0.35 s of flight');
-  assert(ent.state.verticalSpeed > beforeBoost + 8, 'the boost adds its full launch on top of the flight');
+  // Physics lane (2026-10-03): the boost adds its launch up to a ceiling two single-jump apexes over the ground
+  // under the hull — the full launch on top of any flight let a mashed boost climb 262 m at 1 g and 6.6 km at 0.17 g.
+  const ceiling = 2 * 9 * 9 / (2 * 9.81);
+  const capped = Math.min(Math.max(beforeBoost, 0) + 9, Math.sqrt(2 * 9.81 * (ceiling - heightBefore)));
+  assert(Math.abs(ent.state.verticalSpeed - capped) < 0.05,
+    `the boost adds its launch up to the two-apex ceiling (${ent.state.verticalSpeed.toFixed(2)} vs ${capped.toFixed(2)} m/s)`);
+  let apex = ent.state.pos.y;
+  for (let i = 0; i < 120; i++) { updateTank(ent, field, SIM_DT); apex = Math.max(apex, ent.state.pos.y); }
+  assert(apex - startY < ceiling + 0.1, `the boosted flight stays under the ceiling (${(apex - startY).toFixed(2)} m)`);
+  assert(!requestTankJump(ent.state, 9) || ent.state.pos.y - startY < ceiling,
+    'a boost at the ceiling adds nothing');
   run(ent, field, 600);
   assert(Math.abs(ent.state.pos.y - startY) < 0.3, 'it lands back on the field');
   const flipped = makeEntity(field, 0, 0, 0);
@@ -706,11 +726,20 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   ent.state.speed = 12;
   ent.input.throttle = 1;
   let farthestZ = ent.state.pos.z;
-  run(ent, field, 240, () => { farthestZ = Math.max(farthestZ, ent.state.pos.z); });
+  // Physics lane (2026-10-03): the ram rebounds off the face and the held throttle walks the hull back up to its stall
+  // (rear tracks on the level, nose on the face, about 33 degrees) — a cycle whose phase at any one tick (this check
+  // used to read the speed at tick 240) flips with any change to the contact. The stall is the steady state: over the
+  // last two seconds of ten the hull holds its place.
+  let settledFromZ = NaN;
+  run(ent, field, 600, (i) => {
+    farthestZ = Math.max(farthestZ, ent.state.pos.z);
+    if (i === 480) settledFromZ = ent.state.pos.z;
+  });
   assert(farthestZ < 1.5,
     `45-degree face approach: high-speed entry remains bounded (max z=${farthestZ.toFixed(2)})`);
-  assert(ent.state.speed <= 0.05,
-    `45-degree face approach: no sustained uphill velocity (${ent.state.speed.toFixed(2)} m/s)`);
+  const settledRate = (ent.state.pos.z - settledFromZ) / (119 * SIM_DT);
+  assert(settledRate <= 0.05,
+    `45-degree face approach: no sustained uphill velocity (${settledRate.toFixed(2)} m/s over the last two seconds)`);
 }
 {
   const grade = Math.tan(20 * Math.PI / 180);

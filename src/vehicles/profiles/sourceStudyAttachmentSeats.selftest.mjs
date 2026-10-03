@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
+import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
 
 const ids = ['fv510_milan_x', 'kurganets25_x', 'bmp3m_dragun125_x', 'k21_x'];
 await ensureInteriorFills(ids);
@@ -9,8 +10,9 @@ for (const quality of ['high', 'low']) for (const id of ids) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
   try {
     const root = tank.root;
-    // Retain the original source witness coordinates after the exact uniform resize.
-    if (id === 'k21_x') root.scale.setScalar(1 / .90);
+    // Retain the original source witness coordinates after the exact uniform resize. The factors come from the size
+    // policy itself: a hand-kept K21-only case missed main's 0.9 Kurganets-25 and BMP-3M Dragun (2026-10-02, 245aa4e4e).
+    root.scale.setScalar(1 / (VEHICLE_SIZE_FACTORS[id] ?? 1));
     root.updateMatrixWorld(true);
     const meshes = [];
     root.traverseVisible(o => {
@@ -49,7 +51,7 @@ for (const quality of ['high', 'low']) for (const id of ids) {
       }
       assert.fail(`${id} ${quality}: mounting ray ends before stock`);
     };
-    if (id === 'fv510_milan_x') {
+    const verify = () => { if (id === 'fv510_milan_x') {
       for (const side of [-1,1]) {
         assert.equal(hit([side*2.095,1.02,3.60],[0,0,-1],.30), undefined,
           'the source corner has curved inward: no orphan outer post at z3.30');
@@ -96,6 +98,19 @@ for (const quality of ['high', 'low']) for (const id of ids) {
         assert.equal(first?.object.name,'turretDetail');
         assert.ok(Math.abs(first.point.y-2.57625)<.001);
       }
+    } };
+    verify();
+    // Seeded defect on the resized hulls: the measured stock displaced by 4-20 mm in the installed frame
+    // must fail the same witnesses, so mapping the factor cannot make them vacuous.
+    const seeded = { kurganets25_x: ['turretDark', [.004, 0, 0]], bmp3m_dragun125_x: ['turretDark', [0, 0, .02]],
+      k21_x: ['turretDetail', [0, 0, .02]] }[id];
+    if (seeded) {
+      const mesh = meshes.find(o => o.name === seeded[0]), saved = mesh.position.clone();
+      try {
+        mesh.position.add(new THREE.Vector3(...seeded[1])); root.updateMatrixWorld(true);
+        assert.throws(verify, assert.AssertionError, `${id} ${quality}: displaced ${seeded[0]} must fail its source seat`);
+      } finally { mesh.position.copy(saved); root.updateMatrixWorld(true); }
+      verify();
     }
   } finally { tank.dispose(); }
 }

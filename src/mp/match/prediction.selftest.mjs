@@ -143,7 +143,9 @@ function maxStep(presented, from = 1) {
   });
   const stats = predictor.getStats();
   assert.equal(stats.hardSnaps, 0, 'a braking divergence is far below the 7 m snap');
-  assert.ok(stats.maxPositionErrorM > 0.05, `the divergence was seen: ${stats.maxPositionErrorM}`);
+  // (physics lane, 2026-10-03: a hard stop no longer tips the whole hull up off its tracks — the dive is the suspension's —
+  // so the six-tick lag's divergence is the travel's alone, 4.6 cm where the lifted root made it 8)
+  assert.ok(stats.maxPositionErrorM > 0.03, `the divergence was seen: ${stats.maxPositionErrorM}`);
   assert.ok(stats.maxCorrectionStepM <= DEFAULT_CORRECTION_POLICY.maxHorizontalStepM + DEFAULT_CORRECTION_POLICY.maxVerticalStepM + 1e-9,
     `release per frame is bounded: ${stats.maxCorrectionStepM}`);
   assert.ok(stats.maxCorrectionStepM <= 0.25, 'correction release ≤ 0.25 m');

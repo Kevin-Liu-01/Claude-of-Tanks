@@ -1,8 +1,13 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
 
 const near = (value, target, epsilon = 1e-6) => Math.abs(value - target) <= epsilon;
+// Owner-directed 1.05 T-90 family size (2026-10-02, main 245aa4e4e): the factory bakes the source-frame build into the
+// installed frame. The builder's receipts are source-frame records, so every installed measurement below (vertices,
+// combat parts, rig stations, bounds) is read back into the source frame through `f` and compared to the same numbers.
+const f = VEHICLE_SIZE_FACTORS.t90a_vladimir ?? 1;
 
 const tank = createTank('t90a_vladimir', null, {
   proceduralOnly: true,
@@ -56,8 +61,8 @@ try {
   let upperShoulderVertices = 0;
   let lowerShoulderVertices = 0;
   for (let index = 0; index < hullPosition.count; index += 1) {
-    const y = hullPosition.getY(index);
-    const z = hullPosition.getZ(index);
+    const y = hullPosition.getY(index) / f;
+    const z = hullPosition.getZ(index) / f;
     if (near(y, 1.08, 1e-5) && near(z, 2.10, 1e-5)) prowVertices += 1;
     if (near(y, 1.29, 1e-5) && near(z, 1.68, 1e-5)) upperShoulderVertices += 1;
     if (near(y, 0.60, 1e-5) && near(z, 1.68, 1e-5)) lowerShoulderVertices += 1;
@@ -136,9 +141,9 @@ try {
     let closestDistanceM = Infinity;
     let normalAlignment = -1;
     for (let index = 0; index < structuralPositions.count; index += 3) {
-      ta.fromBufferAttribute(structuralPositions, index);
-      tb.fromBufferAttribute(structuralPositions, index + 1);
-      tc.fromBufferAttribute(structuralPositions, index + 2);
+      ta.fromBufferAttribute(structuralPositions, index).divideScalar(f);
+      tb.fromBufferAttribute(structuralPositions, index + 1).divideScalar(f);
+      tc.fromBufferAttribute(structuralPositions, index + 2).divideScalar(f);
       triangle.set(ta, tb, tc).closestPointToPoint(targetPoint, closest);
       const distanceM = closest.distanceTo(targetPoint);
       if (distanceM >= closestDistanceM) continue;
@@ -171,7 +176,7 @@ try {
   assert.ok(near(proportion.shtoraSupportY, 0.20), 'Shtora support shoes move with the complete eye assembly');
   assert.ok(near(proportion.shtoraLoweredM, 0.208), 'Shtora package drops by the former cheek-rise inheritance');
   assert.ok(near(proportion.shtoraToGunAxisM, 0.04), 'Shtora optical centres sit 40 mm above the raised gun axis');
-  assert.ok(near(proportion.shtoraCenterY - gunRig.position.y, proportion.shtoraToGunAxisM),
+  assert.ok(near(proportion.shtoraCenterY - gunRig.position.y / f, proportion.shtoraToGunAxisM),
     'Shtora-to-gun alignment receipt matches the articulated gun rig');
   assert.ok(near(proportion.chevronForwardM, 0.12),
     'Vladimir installs its complete frontal chevron ahead of the cast cheek');
@@ -184,17 +189,25 @@ try {
   assert.ok(proportion.chevronOuterLaneClearanceM >= 0.10,
     'outer chevron carriers remain clear of each Shtora housing');
 
-  const position = turret.geometry.attributes.position;
-  let topCourseVertices = 0;
-  let lowerCourseVertices = 0;
-  for (let index = 0; index < position.count; index += 1) {
-    if (near(position.getY(index), 0.568, 1e-5)) topCourseVertices += 1;
-    if (near(position.getY(index), 0.235, 1e-5)) lowerCourseVertices += 1;
-  }
-  assert.ok(lowerCourseVertices >= 100,
-    `new connected lower-cheek top course is present (${lowerCourseVertices} vertices)`);
-  assert.ok(topCourseVertices >= 100,
-    `new connected cheek top course is present in structural geometry (${topCourseVertices} vertices)`);
+  const cheekCourses = () => {
+    const position = turret.geometry.attributes.position;
+    let topCourseVertices = 0;
+    let lowerCourseVertices = 0;
+    for (let index = 0; index < position.count; index += 1) {
+      if (near(position.getY(index) / f, 0.568, 1e-5)) topCourseVertices += 1;
+      if (near(position.getY(index) / f, 0.235, 1e-5)) lowerCourseVertices += 1;
+    }
+    assert.ok(lowerCourseVertices >= 100,
+      `new connected lower-cheek top course is present (${lowerCourseVertices} vertices)`);
+    assert.ok(topCourseVertices >= 100,
+      `new connected cheek top course is present in structural geometry (${topCourseVertices} vertices)`);
+  };
+  cheekCourses();
+  // Seeded defect: the installed structural turret moved 5 mm off its measured courses must fail.
+  turret.geometry.translate(0, 0.005, 0);
+  assert.throws(cheekCourses, assert.AssertionError, 'a displaced cheek course is rejected');
+  turret.geometry.translate(0, -0.005, 0);
+  cheekCourses();
 
   const gun = gunRig.userData.t90aVladimirGunReceipt;
   assert.ok(gun, 'T-90A Vladimir exposes its cannon proportion receipt');
@@ -257,7 +270,8 @@ try {
     [[-0.68, 1.230], [-1.10, 1.226], [-1.70, 1.042], [-2.30, 0.830], [-2.60, 0.700]],
     'five mounting stations follow the measured bustle taper on each side');
 
-  const parts = tank.root.userData.combatGeometryParts;
+  const parts = tank.root.userData.combatGeometryParts.map((part) => ({ ...part,
+    min: part.min.map((value) => value / f), max: part.max.map((value) => value / f) }));
   const legacyHullRails = parts.filter((part) => {
     if (part.bucket !== 'hull') return false;
     const width = part.max[0] - part.min[0];
@@ -413,7 +427,7 @@ try {
 
   tank.root.updateMatrixWorld(true);
   const gunBounds = new THREE.Box3().setFromObject(gunRig);
-  const gunSize = gunBounds.getSize(new THREE.Vector3());
+  const gunSize = gunBounds.getSize(new THREE.Vector3()).divideScalar(f);
   assert.ok(gunSize.x >= 0.69, `enlarged saddle reads at least 690 mm wide (${gunSize.x})`);
   assert.ok(gunSize.z >= 4.66, `cannon retains its long 2A46M silhouette (${gunSize.z})`);
 
