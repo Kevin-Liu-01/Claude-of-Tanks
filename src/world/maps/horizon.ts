@@ -38,7 +38,7 @@ import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
 import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
 import { buildHorizonRockfield } from '../horizonRockfield.ts';
 import {
-  type HorizonReliefBake, type HorizonReliefCharacter, type HorizonReliefField, type HorizonReliefSettings,
+  type HorizonReliefBake, type HorizonReliefCharacter, type HorizonReliefCover, type HorizonReliefField, type HorizonReliefSettings,
   bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from '../horizonRelief.ts';
 import { buildHorizonFarRange } from '../horizonFarRange.ts';
@@ -105,6 +105,9 @@ interface HorizonConfig {
    * twist) — the receipts' negative control and an authoring opt-out; an object overrides the character's landform
    * knobs (horizonMassif.ts MassifSettings) for this ring and its far range. */
   massif?: false | Partial<MassifSettings>;
+  /** The mountains lane (2026-10-03): the ring atlas's landcover (horizonRelief.ts HorizonReliefCover) — overrides of the
+   * character's (a steppe's few stands, a forested upland's many), or false for none. */
+  reliefCover?: false | Partial<HorizonReliefCover>;
   seaOpening?: HorizonSeaOpening;
   /**
    * Terrain-following canopy belts across the visible mountain faces. Off by
@@ -3461,11 +3464,20 @@ export function* buildHorizonRingSteps(
   const bakeField = reliefField ?? createHorizonReliefField(((seed ^ 0x7E11) ^ idHash(mapId)) >>> 0, reliefSettings);
   // the mountains lane (2026-10-03): the bake's drainage and landcover take the map's relief seed, its treeline and its
   // snow line (horizonRelief.ts HorizonReliefCover)
+  const borderLand = ground as (CanyonGround & {
+    getBorderWoodsAt?: (x: number, z: number) => number; _borderParcelAt?: unknown;
+  }) | undefined;
   const reliefBake: HorizonReliefBake | null = vista ? yield* bakeHorizonReliefSteps({
     columns: HORIZON_SEGMENTS, rowCount: rows.length, positions: pos, heights: hs, maxHeight: maxH, marine: sea.weight,
     seed: ((seed ^ 0x7E11) ^ idHash(mapId)) >>> 0,
     treelineM: treeline > 0 ? Math.min(treeline, 1.2) * maxH : 0,
     snowlineM: snowline <= 1 ? snowline * maxH : null,
+    cover: H.reliefCover === false ? null
+      : H.reliefCover ? { forest: 0, canopy: 0.5, fields: 0, ...reliefSettings.cover, ...H.reliefCover } : undefined,
+    // the map-borders lane's land use where it is in (feature-detected on the ground): its woods are the stands' field and
+    // its parcels the ring's farmland, so the bake adds no second pattern
+    woodsAt: borderLand?.getBorderWoodsAt ? (x: number, z: number) => (borderLand.getBorderWoodsAt as (x: number, z: number) => number)(x, z) : null,
+    fields: !borderLand?._borderParcelAt,
   }, bakeField, [lx, ly, lz]) : null;
   // detail-texture UVs: u wraps the ring, v = absolute altitude fraction so
   // strata/snow features in the texture land at constant world height

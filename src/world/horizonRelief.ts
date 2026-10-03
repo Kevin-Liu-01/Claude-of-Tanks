@@ -535,6 +535,14 @@ interface HorizonReliefBakeInput {
   /** The landcover's ceilings (m): the forest thins out to the map's treeline and stops under the snow; null for none. */
   treelineM?: number | null;
   snowlineM?: number | null;
+  /** A map's own landcover (maps/horizon.ts `horizon.reliefCover`) in place of its character's; null for none. */
+  cover?: HorizonReliefCover | null;
+  /** The map-borders lane's woods field (0 open … 1 wooded; terrain.ts getBorderWoodsAt where that lane's landform is
+   * in): the baked stands follow it past the ring forest, so its trees and the stands beyond them are one woods. Absent:
+   * the cover's own stand field. */
+  woodsAt?: ((x: number, z: number) => number) | null;
+  /** false where the border's own farmland parcels tint the ring (terrain.ts _borderParcelAt): no baked parcels. */
+  fields?: boolean;
 }
 
 export interface HorizonReliefBake {
@@ -601,6 +609,7 @@ interface DrainageInput {
   macro: Float32Array; marine: Float32Array;
   settings: HorizonReliefSettings; seed: number;
   treelineM: number | null; snowlineM: number | null;
+  woodsAt: ((x: number, z: number) => number) | null; fields: boolean;
 }
 
 /**
@@ -758,23 +767,24 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
         const nA = noise.noise(wx / 420 + 3.3, wz / 420 - 8.1), nB = noise.noise(wx / 160 - 11.7, wz / 160 + 4.9), nC = noise.noise(wx / 45 + 21.1, wz / 45 + 13.3);
         const field = nA * 0.55 + nB * 0.30 + nC * 0.15;
         const bias = (c.forest - 0.5) * 1.0 + 0.20 * smoothstep(0.08, 0.40, slope) + 0.25 * hollow;
-        let stand = smoothstep(-0.025, 0.025, field + bias);
+        let stand = input.woodsAt ? input.woodsAt(x, z) : smoothstep(-0.025, 0.025, field + bias);
         stand *= 1 - smoothstep(0.80, 1.10, slope); // no stand on a cliff
         if (top !== null) stand *= 1 - smoothstep(top * 0.86, top * 1.02, h0 + nC * 0.06 * top);
         if (snow !== null) stand *= 1 - smoothstep(snow - 60, snow - 10, h0 + nB * 20);
         const forestW = stand * nearW * land;
-        // the crowns: a 6–13 m grain in the relief and a mottle in the light where the canopy stands; the canopy's own
+        // the crowns: a 9–16 m grain in the relief and a mottle in the light where the canopy stands (no finer: the atlas
+        // is read at its top level, three to five metres a texel, and a finer grain would shimmer); the canopy's own
         // height (16 m, its crowns 3 m either way) stands in the occlusion and the sun searches, so a stand's edge
         // shades the clearing beside it and casts its shadow down-sun
         let mottle = 0;
         if (forestW > 0.001) {
-          const crown = noise.noise(x / 13 + 41.3, z / 13 - 7.7) * 0.7 + noise.noise(x / 6.5 - 2.9, z / 6.5 + 17.1) * 0.3;
+          const crown = noise.noise(x / 16 + 41.3, z / 16 - 7.7) * 0.7 + noise.noise(x / 9 - 2.9, z / 9 + 17.1) * 0.3;
           v += forestW * crown * 1.3;
           mottle = crown;
           if (canopyH) canopyH[idx] = forestW * (16 + crown * 3);
         }
         let light = 1 - forestW * c.canopy * (1 + mottle * 0.18);
-        if (c.fields > 0) {
+        if (c.fields > 0 && input.fields) {
           const open = (1 - forestW) * (1 - smoothstep(0.10, 0.22, slope)) * fieldNear * land;
           if (open > 0.001) {
             const u = x * cb + z * sb, w = -x * sb + z * cb;
@@ -811,7 +821,7 @@ export function* bakeHorizonReliefSteps(
   const W = size.width, H = size.height;
   const r0 = HORIZON_RELIEF_BAKE_R0, r1 = HORIZON_RELIEF_BAKE_R1;
   const dr = (r1 - r0) / H;
-  const s = field.settings;
+  const s = input.cover !== undefined ? { ...field.settings, cover: input.cover } : field.settings;
   // per-column monotone radius / height tables
   const colR = new Float32Array(n * rowCount), colH = new Float32Array(n * rowCount), colM = new Float32Array(n * rowCount);
   for (let row = 0; row < rowCount; row++) {
@@ -863,6 +873,7 @@ export function* bakeHorizonReliefSteps(
     const surface = yield* drainageAndCoverSteps({
       W, H, r0, dr, macro, marine, settings: s, seed: (input.seed ?? 0x5eed) >>> 0,
       treelineM: input.treelineM ?? null, snowlineM: input.snowlineM ?? null,
+      woodsAt: input.woodsAt ?? null, fields: input.fields !== false,
     }, fine);
     canopyLight = surface.canopyLight; canopyH = surface.canopyH;
     for (let idx = 0; idx < W * H; idx++) { const v = fine[idx]; if (v < fineMin) fineMin = v; if (v > fineMax) fineMax = v; }

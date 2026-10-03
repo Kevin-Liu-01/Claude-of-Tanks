@@ -216,6 +216,24 @@ assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteo
   assert.equal(covered({ ...base, treelineM: 0.91 * ring.maxHeight, snowlineM: null }, 'polar').share, 0, 'a polar ring bakes no stand');
   assert.equal(covered({ ...base, treelineM: 0.91 * ring.maxHeight, snowlineM: null, marine: new Float32Array(ring.heights.length).fill(1) }, 'rolling').share, 0,
     'the sea bakes no stand');
+  // the map-borders lane's woods field, where its landform is in: the baked stands follow it (a half-plane of woods
+  // here), so the ring forest's trees and the stands past them are one woods; its parcels replace the baked ones
+  const westWoods = covered({ ...base, treelineM: 0.91 * ring.maxHeight, snowlineM: null, woodsAt: (x) => (x < 0 ? 1 : 0) }, 'rolling');
+  assert.ok(westWoods.share > 0.25 && westWoods.share < 0.55, `the stands follow the border's woods field (${(westWoods.share * 100).toFixed(1)} % of the ring past the forest)`);
+  {
+    const settings = resolveHorizonRelief('rolling');
+    const input = { ...base, treelineM: 0.91 * ring.maxHeight, snowlineM: null, woodsAt: () => 0 };
+    const own = bakeHorizonRelief(input, createHorizonReliefField(0x51ab, settings), [0.4, 0.6, 0.7], { width: 512, height: 64 });
+    const theirs = bakeHorizonRelief({ ...input, fields: false }, createHorizonReliefField(0x51ab, settings), [0.4, 0.6, 0.7], { width: 512, height: 64 });
+    const bare = bakeHorizonRelief(input, createHorizonReliefField(0x51ab, { ...settings, cover: null }), [0.4, 0.6, 0.7], { width: 512, height: 64 });
+    let parcels = 0, kept = 0;
+    for (let i = 0; i < own.data.length; i += 4) {
+      if (own.data[i + 3] < bare.data[i + 3] - 8) parcels++;
+      if (theirs.data[i + 3] !== bare.data[i + 3] || theirs.data[i + 2] !== bare.data[i + 2]) kept++;
+    }
+    assert.ok(parcels > 500, `the bake lays its parcels on the open ground (${parcels} texels)`);
+    assert.equal(kept, 0, 'with the border\'s parcels in and no woods, the cover leaves the occlusion and sun texels as they were');
+  }
 }
 
 // --- the lighting gains: the vista's constants at the engine's references, following each map's sun and sky ------------
