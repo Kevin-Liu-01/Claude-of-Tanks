@@ -1174,11 +1174,88 @@ function bWallStoneBroken(rng: Rng): THREE.BufferGeometry {
   return dryStoneModule(dryStoneRng(0x5d0e), true);
 }
 
-function bWallAdobe(rng: Rng): THREE.BufferGeometry {
+function adobeEnvelope(rng: Rng): THREE.BufferGeometry {
   const { parts, top } = wallCourses(rng, 0.52, [0.56, 0.46]);
   const cap = box(0.40, 0.15, WALL_SEG * 1.0, 0.9); // rounded mud cap read
   parts.push(cap.translate(0, top + 0.05, 0));
   return merge(parts);
+}
+
+/**
+ * The scenery lane (2026-10-03): the mud wall as one rendered mass instead of two stacked boxes and a cap — a battered
+ * section with a bellied foot and a crown rounded by the rain, the crown rising and falling along the wall where it
+ * has weathered and the shoulders worn back, a shallow rain gully down each face here and there. One extrusion of an
+ * eleven-point section every quarter metre (about 260 triangles) on the plaster atlas (u along the wall, v round the
+ * section). Like the stone wall, the original builder still runs first (its draws, its envelope) and the mass is
+ * fitted to that envelope, so the fitted wall collider keeps its plan and height.
+ */
+function adobeModule(r: Rng): THREE.BufferGeometry {
+  const L = WALL_SEG, H = 1.0, half = 0.26, crown = 0.15;
+  const segs = 12, phase = r() * 10, bow = (r() < 0.5 ? -1 : 1) * 0.01;
+  const gullies = Array.from({ length: 2 + Math.floor(r() * 3) }, () => [(r() - 0.5) * L * 0.85, r() < 0.5 ? -1 : 1, 0.012 + r() * 0.014]);
+  // the section, one side then the crown then the other: [across (x / half), height (y / H)]
+  const section: Array<[number, number]> = [[-1.02, 0], [-1.04, 0.16], [-0.95, 0.55], [-0.86, 0.86], [-0.5, 1.0], [0, 1.0 + crown / H], [0.5, 1.0], [0.86, 0.86], [0.95, 0.55], [1.04, 0.16], [1.02, 0]];
+  const positions: number[] = [], uvs: number[] = [], index: number[] = [];
+  const rowLength = section.length;
+  // the section's arc length (for v)
+  const arc = [0];
+  for (let k = 1; k < rowLength; k++) arc.push(arc[k - 1] + Math.hypot((section[k][0] - section[k - 1][0]) * half, (section[k][1] - section[k - 1][1]) * H));
+  for (let i = 0; i <= segs; i++) {
+    const u = i / segs, z = (u - 0.5) * L * 0.995;
+    // the crown weathers lower and higher along the wall, in waves whose period is the module's (the next module
+    // meets it at the same height), gently: a run repeats the module, and a strong wave would show the repeat
+    const wave = (k: number, p: number) => Math.sin(2 * Math.PI * k * u + p);
+    const wear = wave(1, phase) * 0.022 + wave(3, phase * 1.7) * 0.012;
+    const shoulder = 1 - (wave(2, phase * 0.6) * 0.5 + 0.5) * 0.04;
+    // the +z end steps inside the next module's start (no shared planes in a run's overlaps)
+    const tuck = 1 - Math.max(0, u - 0.9) * 0.3;
+    for (let k = 0; k < rowLength; k++) {
+      const [sx, sy] = section[k];
+      const side = Math.sign(sx);
+      let gully = 0;
+      for (const [gz, gs, depth] of gullies) if (gs === side && sy > 0.1) gully += depth * Math.max(0, 1 - Math.abs(z - gz) / 0.18);
+      const y = sy * H + (sy > 0.5 ? wear * (sy - 0.5) * 2 : 0);
+      const widen = sy > 0.8 ? shoulder : 1;
+      const x = sx * half * widen * tuck - side * gully + Math.sin(Math.PI * u) * bow;
+      positions.push(x, y, z);
+      uvs.push(z * 0.7 + L, arc[k] * 0.7);
+    }
+  }
+  for (let i = 0; i < segs; i++) {
+    for (let k = 0; k + 1 < rowLength; k++) {
+      const a = i * rowLength + k, b = a + 1, c = a + rowLength, d = c + 1;
+      index.push(a, c, b, b, c, d);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  g.setIndex(index);
+  g.computeVertexNormals(); // the mud's faces shade soft all round
+  // the end faces: a flat fan over each end's section, their own corners (so the sides keep their soft normals)
+  const capPositions: number[] = [], capUvs: number[] = [];
+  for (const [i, last] of [[0, false], [segs, true]] as const) {
+    const base = i * rowLength;
+    const at = (k: number) => [positions[(base + k) * 3], positions[(base + k) * 3 + 1], positions[(base + k) * 3 + 2]];
+    for (let k = 1; k + 1 < rowLength; k++) {
+      const tri = last ? [0, k, k + 1] : [0, k + 1, k];
+      for (const q of tri) { const p = at(q); capPositions.push(...p); capUvs.push(p[0] * 0.7, p[1] * 0.7); }
+    }
+  }
+  const caps = new THREE.BufferGeometry();
+  caps.setAttribute('position', new THREE.Float32BufferAttribute(capPositions, 3));
+  caps.setAttribute('uv', new THREE.Float32BufferAttribute(capUvs, 2));
+  caps.computeVertexNormals();
+  return merge([g, caps]);
+}
+
+function bWallAdobe(rng: Rng): THREE.BufferGeometry {
+  const envelope = adobeEnvelope(rng);
+  envelope.computeBoundingBox();
+  const box3 = envelope.boundingBox!.clone();
+  envelope.dispose();
+  const seed = Math.round((box3.max.x - box3.min.x) * 1e6 + (box3.max.y - box3.min.y) * 1e4 + box3.max.z * 1e3) ^ 0xad0b;
+  return fitToEnvelope(adobeModule(dryStoneRng(seed)), box3);
 }
 function bWallAdobeBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
