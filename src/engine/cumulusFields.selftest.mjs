@@ -54,8 +54,17 @@ for (const [u, k] of [['uBaseSharp', 'CLOUD_BASE_SHARP'], ['uBaseDark', 'CLOUD_B
   assert.match(clouds, new RegExp(`uniform float ${u};`), `${u} is declared`);
   assert.match(clouds, new RegExp(`t\\.${u}\\.value = lightTune\\('${k}', ${k}\\);`), `${u} per frame`);
 }
-assert.match(clouds, /float bk = uBaseSharp \* uBaseFlat \* \( 1\.0 - uStratiform \) \* \( 1\.0 - smoothstep\( 0\.04, 0\.22, hN \) \);\s*if \( bk > 0\.0 \) d = mix\( d, max\( d, w\.cov \* hg \* 0\.9 \), bk \);/,
-  'a flat-based cumulus: the footprint at its base, a crisp plane');
+assert.match(clouds, /float bk = uBaseSharp \* uBaseFlat \* \( 1\.0 - uStratiform \) \* \( 1\.0 - smoothstep\( 0\.04, 0\.22, hN \) \);\s*if \( bk > 0\.0 \) d = mix\( d, max\( d, smoothstep\( 0\.01, 0\.12, d \) \* w\.cov \* hg \* 0\.9 \), bk \);/,
+  'a flat-based cumulus: a column that carries the body fills its base, an empty one stays empty (fp12: no bodiless lenses)');
+{
+  // the fill, modelled: an empty column (d 0) stays 0; a thin edge of a body (d 0.06) rises toward the footprint; a dense
+  // core is untouched
+  const sm = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+  const fill = (d, cov, hg = 1, bk = 1) => d + (Math.max(d, sm(0.01, 0.12, d) * cov * hg * 0.9) - d) * bk;
+  assert.equal(fill(0, 0.8), 0, 'an empty column stays empty');
+  assert.ok(fill(0.06, 0.8) > 0.3, `a body's thin edge fills (${fill(0.06, 0.8).toFixed(2)})`);
+  assert.equal(fill(0.9, 0.8), 0.9, 'a dense core is untouched');
+}
 assert.match(clouds, /float bd = uBaseDark \* \( 1\.0 - uStratiform \);\s*float msV = mix\( 0\.35 - 0\.15 \* bd, 1\.0,/, 'the base\'s diffused light');
 assert.match(clouds, /float baseShadow = mix\( 0\.35 - 0\.17 \* bd, 1\.0,/, 'its direct light');
 assert.match(clouds, /float floorK = mix\( 0\.34 - 0\.14 \* bd, 1\.25, deckFloor \)/, 'its sky floor (a deck\'s untouched)');

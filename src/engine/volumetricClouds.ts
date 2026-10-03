@@ -602,10 +602,12 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 	// Keep the three-dimensional billows visible through the body. Saturating
 	// every admitted weather column erased them into a smooth solid cylinder.
 	d *= mix( 1.0, mix( 0.4, 1.25, smoothstep( 0.25, 0.75, s.g ) ), uDebug == 6.0 ? 0.0 : 1.0 - uStratiform );
-	// (2026-10-03: a flat-based cumulus's condensation level as one crisp plane — CLOUD_BASE_SHARP: near the base the
-	// footprint's density stands in for the noise and the billows, so the underside is flat and dense to its outline)
+	// (2026-10-03: a flat-based cumulus's condensation level as one crisp plane — CLOUD_BASE_SHARP: near the base a column
+	// that carries the body fills to the footprint's density, so the underside is flat and dense to its outline; a
+	// column the noise left empty stays empty — fp12: filling the whole footprint laid flat grey lenses with no body
+	// under the empty cells of Frontier's and Coastal's fields)
 	float bk = uBaseSharp * uBaseFlat * ( 1.0 - uStratiform ) * ( 1.0 - smoothstep( 0.04, 0.22, hN ) );
-	if ( bk > 0.0 ) d = mix( d, max( d, w.cov * hg * 0.9 ), bk );
+	if ( bk > 0.0 ) d = mix( d, max( d, smoothstep( 0.01, 0.12, d ) * w.cov * hg * 0.9 ), bk );
 	if ( detail && d > 0.0 && d < 0.95 && uDebug != 2.0 ) {
 		// two Worley-fbm fetches on a lattice the curl field advects (more with height: turbulent tops, calm
 		// bases): the coarse one (lumps of 25 - 100 m) everywhere, a fine one (7 - 27 m) where the pixel
