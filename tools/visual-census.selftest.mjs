@@ -24,7 +24,7 @@ import {
   buildSheets, censusViewsOf, compareCensus, horizonOfState, loadCensus, measureCensus, openCensus, pixelDiff, renderIndex, saveCensus, writeIndex,
 } from './visual-census-report.mjs';
 import { CENSUS_HELP, parseCensusArgs, pickCaptureMaps } from './visual-census.mjs';
-import { createPoliteCaptureLock, stepBehindStamp } from './visual-census-lock.mjs';
+import { createPoliteCaptureLock, stepBehindStamp, ticketName } from './visual-census-lock.mjs';
 import { near } from './receipt-kit.test-support.mjs';
 
 const ROOT = path.resolve(new URL('..', import.meta.url).pathname);
@@ -396,6 +396,11 @@ try {
   const alive = new Set([t(200, 2), t(300, 3)]);
   assert.equal(stepBehindStamp([t(300, 3), t(100, 1), t(200, 2)], t(100, 1), (n) => alive.has(n)), 201, 'one live waiter passes');
   assert.equal(stepBehindStamp([t(100, 1), t(150, 9)], t(100, 1), (n) => alive.has(n)), null, 'a dead waiter does not count');
+  // equal stamps after step-behind rotations: the earlier ARRIVAL sorts first (a per-round counter starved long waiters)
+  const early = ticketName(500, 1791035000000, 77777), late = ticketName(500, 1791035999999, 11);
+  assert.ok(early < late && [late, early].sort()[0] === early, 'among equal stamps the longest waiter goes first');
+  assert.match(early, /^\d{15}-\d{12}-\d+\.t$/, 'the shared ticket format capture-lock.mjs checks');
+  assert.ok(ticketName(500, 1791035000000, 77777, 1) > early && ticketName(500, 1791035000000, 77777, 1) < late, 'a clash bump stays in arrival order');
   const lockRoot = mkdtempSync(path.join(tmpdir(), 'cot-census-lock-'));
   const dirs = { queueDir: path.join(lockRoot, 'queue'), lockDir: path.join(lockRoot, 'lock'), probeDir: path.join(lockRoot, 'probe.lock') };
   const fast = { requeuePauseMs: 20, headPollMs: 20, maxHolderWaitMs: 80 };
