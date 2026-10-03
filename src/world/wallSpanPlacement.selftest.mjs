@@ -4,7 +4,8 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { DoubleSide, Euler, Matrix4, Mesh, MeshBasicMaterial, Quaternion, Raycaster, Vector3 } from 'three';
 import { fitWallSpan, wallIslandEdges } from './wallSpanPlacement.ts';
-import { DESTRUCTIBLE_TYPES, WALL_SEG } from './maps/inhabitKit.ts';
+import { DESTRUCTIBLE_TYPES, WALL_SEG, buildAdobePilaster, buildDryStoneWallHead } from './maps/inhabitKit.ts';
+import { sourcedStoneIsBrick } from './sourcedTextures.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
@@ -261,9 +262,12 @@ function sourceRunFixture(code, runs, field, seed, style = 'fieldstone') {
       new Quaternion().setFromEuler(new Euler(tiltX, yaw, tiltZ, 'YXZ')), new Vector3(sc, sc, sc)));
     records.push(record); return record;
   };
+  // (the run's ends are wall heads — the scenery lane's builders — keyed by the map's stone print)
   const run = new Function('P', 'heightField', 'WALL_SEG', 'rng', 'buckets', 'box', 'jitterUV', 'addDestructible', 'noVeg', 'wallSpans', 'wallIslandEdges', 'legacyWallEdges',
+    'mapId', 'sourcedStoneIsBrick', 'buildDryStoneWallHead', 'buildAdobePilaster',
     `const _rubbleOff = new Float32Array(24); ${rubbleSource}; ${code}; return addWallRun;`)(
-    { wallStyle: style }, field, WALL_SEG, rng, buckets, box, jitterUV, add, field._noVeg, spans, wallIslandEdges, legacyWallEdges);
+    { wallStyle: style }, field, WALL_SEG, rng, buckets, box, jitterUV, add, field._noVeg, spans, wallIslandEdges, legacyWallEdges,
+    field._layout?.id ?? 'verdant', sourcedStoneIsBrick, buildDryStoneWallHead, buildAdobePilaster);
   runs.forEach((args, runIndex) => {
     const [x0, z0, x1, z1] = args, start = records.length;
     const length = Math.hypot(x1 - x0, z1 - z0);
