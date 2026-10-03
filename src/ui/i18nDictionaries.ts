@@ -33,9 +33,12 @@ const pending: Partial<Record<CatalogLocale, Promise<void>>> = {};
 
 /** The page catalog chunk this document names for a locale (a same-origin path), else null: the full catalog loads. */
 export function pageCatalogUrl(locale: CatalogLocale): string | null {
-  // A document without querySelector is a Node test's stand-in.
-  const url = globalThis.document?.querySelector?.('meta[name="cot-i18n-catalog"]')?.getAttribute(`data-${locale.toLowerCase()}`);
-  return url && /^\/[^/\\]/.test(url) ? url : null;
+  try {
+    const url = globalThis.document?.querySelector?.('meta[name="cot-i18n-catalog"]')?.getAttribute(`data-${locale.toLowerCase()}`);
+    return url && /^\/[^/\\]/.test(url) ? url : null;
+  } catch (_) {
+    return null; // a Node test's stand-in document
+  }
 }
 
 /** Make a dictionary resident (the server-side full catalog registers both locales on import). */

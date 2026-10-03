@@ -181,6 +181,11 @@ for (const url of ['//cdn.test/x.js', 'https://cdn.test/x.js', '/\\cdn.test/x.js
   assert.equal(withDocument({ content: 'home', 'data-en-us': url }, () => pageCatalogUrl('en-US')), null, `${url} is refused`);
 }
 assert.equal(pageCatalogUrl('en-US'), null, 'Node has no document');
+Object.defineProperty(globalThis, 'document', { configurable: true, value: {
+  querySelector() { throw new Error('a stand-in that knows only its own selectors'); },
+} });
+assert.equal(pageCatalogUrl('en-US'), null, 'a throwing stand-in document loads the full catalogs');
+delete globalThis.document;
 
 // --- the build plugin ---------------------------------------------------------------------------
 const files = { 'en-US': '/assets/i18n.home.en-US-a1.js', 'zh-CN': '/assets/i18n.home.zh-CN-b2.js' };
