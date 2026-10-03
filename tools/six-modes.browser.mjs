@@ -8,7 +8,7 @@ const remote=process.env.COT_MODE_VERIFY_URL;
 const out=resolve(remote?'.qa-dev/six-modes-live':'.qa-dev/six-modes');mkdirSync(out,{recursive:true});
 const lock=createCaptureLock();let heartbeat;
 const reports=[];
-const battleModes=process.env.COT_AERIAL_ONLY?['drone','ac130']:['drone','ac130','juggernaut','infected','realistic','gun_game'];
+const battleModes=process.env.COT_MODE_LIST?process.env.COT_MODE_LIST.split(','):process.env.COT_AERIAL_ONLY?['drone','ac130']:['drone','ac130','juggernaut','infected','realistic','gun_game'];
 
 try{
  await lock.acquire();heartbeat=setInterval(()=>lock.refresh(),30000);
@@ -18,6 +18,7 @@ try{
   for(const initialViewport of profiles) {
   const mobile=!!initialViewport.isMobile;
   if(process.env.COT_AERIAL_TOUCH_ONLY&&!mobile)continue;
+  if(process.env.COT_DESKTOP_ONLY&&mobile)continue;
   const suffix=mobile?(initialViewport.width<500?'touch-small':'touch'):'desktop';
   const {page,errors}=remote?await openPublishedPage(browser,remote,initialViewport):await openGamePage(browser,{port,viewport:initialViewport});
   page.on('console',message=>{if(message.type()==='error')console.error('browser:',message.text().slice(0,500));});
@@ -62,12 +63,20 @@ try{
     assert.ok(consoleBounds.top>initialViewport.height/2+12,'flight console stays below the sight');
     await checkSensors(page,mode,suffix,mobile);
     if(mobile)await page.tap('.cot-drone-return');else await page.keyboard.press('KeyV');await page.waitForFunction(()=>!window.__DEBUG.game.player.aerial.active);
+    assert.equal(await page.$eval('.cot-drone-signal-loss',e=>e.hidden),false,'return has a signal-loss transition');
+    await page.screenshot({path:resolve(out,`drone-static-${suffix}.png`)});
+    await page.waitForFunction(()=>document.querySelector('.cot-drone-signal-loss').hidden);
     reports.push({mode,mobile,before,after,returned:true});
    }else if(mode==='ac130'){
     const escort=await page.evaluate(()=>({...window.__DEBUG.game.matchModeController.state.escort}));
     assert.ok(escort.total>=2&&escort.required>=1,'gunship has a vulnerable ground escort');
     assert.match(await page.$eval('.cot-mode-status',el=>el.textContent),/PROTECT THE CONVOY/);
     await page.waitForFunction(()=>{const e=window.__DEBUG.game.matchModeController.state.escort;return e.progress>.01||e.rescued>0;},{timeout:30000});
+    const buttons=await page.$$eval('.flight-supply',els=>els.map(el=>{const r=el.getBoundingClientRect();return{w:r.width,h:r.height};}));
+    assert.ok(buttons.every(b=>b.w>=44&&b.h>=44),'supply controls remain accessible');
+    if(mobile)await page.tap('[data-supply="ammo"]');else await page.keyboard.press('KeyJ');
+    await page.waitForFunction(()=>window.__DEBUG.game.matchModeController.state.pickups.some(p=>p.airDrop));
+    assert.equal(await page.$eval('[data-supply="ammo"]',e=>e.disabled),true,'supply cooldown appears');
     const before=await page.evaluate(()=>({...window.__DEBUG.game.player.aerial}));
     await new Promise(r=>setTimeout(r,1200));
     const after=await page.evaluate(()=>({...window.__DEBUG.game.player.aerial}));
@@ -96,7 +105,17 @@ try{
      assert.ok(controlsClear,'aircraft zoom and fire buttons stay outside weapon cards');
     }
    }
+   if(mode==='realistic'){
+    if(mobile)await page.tap('.cot-touch .scope');else {await page.mouse.click(initialViewport.width/2,initialViewport.height/2);await page.keyboard.press('ShiftLeft');}
+    await page.waitForSelector('.cot-scope-vision',{visible:true});
+    for(const [view,code] of [['daylight',0],['infrared',1],['thermal',2],['night',3]]){
+     await page.waitForFunction(code=>window.__DEBUG.post.composer.passes.find(p=>p.isOutputGradePass).uniforms.uThermal.value===code,{},code);
+     await page.screenshot({path:resolve(out,`tank-scope-${view}-${suffix}.png`)});
+     if(mobile)await page.tap('.cot-scope-vision');else await page.keyboard.press('KeyI');
+    }
+   }
    if(mode==='gun_game')assert.equal(await page.$$eval('.cot-shell:not([hidden])',els=>els.length),1,'Gun Game exposes only the current weapon');
+   if(mode==='juggernaut')assert.ok(await page.evaluate(()=>window.__DEBUG.game.player.visual.root.getObjectByName('Juggernaut energy shield')?.visible),'boss aura is present');
    if(mode==='juggernaut')assert.match(await page.$eval('.cot-mode-status',el=>el.textContent),/SURVIVE/,'the boss receives its own survival objective');
    await page.screenshot({path:resolve(out,`${mode}-${suffix}.png`)});
    await page.evaluate(()=>document.exitPointerLock());

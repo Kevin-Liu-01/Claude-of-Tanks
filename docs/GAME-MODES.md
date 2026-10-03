@@ -25,7 +25,7 @@ rule the battle does not keep.
 | Mars Mode | Hold the three station sectors of Olympus Basin | 0.38 g, +25 % speed, +20 % hull, −10 % damage, +11 % reload rate, rocket jump 9.5 m/s (F, boosts again in the air), ×3 recoil launch, ×0.9 impact knock; boost caches every 22 s | 6 s | First team to 750 points, or the 12:00 clock (score) |
 | Juggernaut | Defeat the boss, or survive as the boss | Choose the boss or hunter role; boss has 8× hull, half reload time and 90% speed | Hunters: 6 s; boss: none | Boss destroyed, or boss survives 10:00 |
 | Infected | Survive the outbreak, or convert every survivor | One initial infected; destroyed survivors join the infected, who move 30% faster | 4 s | No survivors remain, or survivors reach 7:00 |
-| Realistic | Destroy the opposing force through critical damage | Always-visible vehicles; no hull HP attrition, automatic module repair or consumables | No | Crew eliminated or ammunition destruction eliminates a team; 15:00 draw |
+| Realistic | Destroy the opposing force through critical damage | Normal spotting; no hull HP attrition, automatic module repair or consumables | No | Crew eliminated or ammunition destruction eliminates a team; 15:00 draw |
 | Gun Game | Complete a five-weapon ladder | Two confirmed kills per stage; unlimited ammunition | 4 s | First player to complete the ladder; 15:00 score decision |
 | Drone | Destroy opponents with tanks and directly piloted drones | Launch a physical FPV quadcopter from the tank; contact uses normal explosive collision and damage | 6 s | First team to 20 kills (configurable), or 10:00 score decision |
 | AC-130 | Protect ground allies until at least half reach extraction | Fragile escorts, a marked exit, overhead scope, three independent weapon channels and unlimited ammunition | No | Half extracted; defeat if too few survive or 8:00 expires |
@@ -87,7 +87,7 @@ howitzer rounds travel through the normal ballistic and armor simulation.
 
 The autocannon uses short, bright streaks; the howitzer leaves a broader, longer wake; guided missiles retain a curved exhaust trail. Each round has a small hot head that remains visible when viewed directly from behind. Tracer size follows scope zoom and distance, with a limit to prevent oversized glows. These effects follow the actual projectiles and disappear on impact.
 
-Four allied ground vehicles accompany the gunship by default. They have 35% of their normal hull strength, slower reloads and reduced speed, and use normal navigation to reach the green **E** extraction area. Enemies pursue the convoy. Save at least half; killing enemies alone does not complete the mission. The objective shows allies still on the field, the number extracted, the rescue requirement and route progress. Casualties do not respawn. An eight-minute timeout or losing too many escorts fails the operation. Multiplayer pilots all provide air support, with separate friendly bots reserved for the escort. Extraction and casualty state survive host migration.
+Four allied ground vehicles accompany the gunship by default. They have 90% of their normal hull strength, slower reloads and reduced speed, and use normal navigation to reach the green **E** extraction area. Enemies pursue the convoy. Save at least half; killing enemies alone does not complete the mission. The objective shows allies still on the field, the number extracted, the rescue requirement and route progress. Casualties do not respawn. An eight-minute timeout or losing too many escorts fails the operation. Multiplayer pilots all provide air support, with separate friendly bots reserved for the escort. Extraction and casualty state survive host migration.
 
 ## Asymmetric teams and progression
 
@@ -96,7 +96,7 @@ hunter, you join allies against one bot boss. In hosted rooms the boss role belo
 to the first participating human when that role is selected; other humans hunt it.
 The boss never respawns. Its survival clock and health are shown in the objective.
 
-**Infected** begins with one infected opponent. A survivor's destruction changes
+**Infected** begins with four infected opponents (at least three in a custom setup). Survivors have 30% of their normal HP; infected have 125%, 40% more speed and 30% faster reloads. A survivor's destruction changes
 that player's team before their next spawn, including their allied/enemy roster
 and bot targeting. The remaining survivors win by lasting seven minutes; infected
 win when nobody remains unconverted.
@@ -107,18 +107,15 @@ weapon. The ladder is 30 mm AP, 105 mm APFSDS, 120 mm APFSDS, 152 mm HE, then a
 Respawning preserves progress. Completing the final stage wins for that player's
 team. The shared vehicle catalog is never modified by a player's progression.
 
-**Realistic** removes HP attrition and spotting concealment. Armor penetration,
-module damage, crew casualties, fire and ammunition destruction still apply.
-Losing all crew or detonating the ammunition destroys the vehicle. Destroyed
-modules remain damaged; this mode disables automatic module repair and consumables.
+**Realistic** removes hull HP attrition and keeps normal spotting: hidden enemies do not receive markers. Penetrations reliably injure crew and apply 2.5× module damage. A cone of fragments follows the shell through the authored compartments; nonpenetrating hits cannot create internal fragments. Fires damage modules four times faster. Ammunition detonation, fewer than two surviving crew, or simultaneous engine and gun destruction ends the vehicle. Destroyed modules remain damaged; automatic module repair and consumables are disabled.
 
 ## Shared implementation and checks
 
 The canonical rules remain in `src/sim/matchRuleset.ts`; `matchModes.ts` owns
 victory, conversion, progression and respawn. `aerialCombat.ts` advances flight at
 the fixed simulation rate in both solo and hosted authority. Clients send controls,
-not hit decisions. `modeLoadout.ts` isolates per-vehicle weapon changes. Protocol 5
-adds the drone action and presentation type; older clients must reload to join.
+not hit decisions. `modeLoadout.ts` isolates per-vehicle weapon changes. Protocol 6
+adds the two supply-drop actions alongside the drone action and presentation type; older clients must reload to join.
 Encrypted host checkpoints retain the new modes’ scores, infection teams, weapon
 progression, respawn timers and drone/orbit state across a host change.
 
@@ -443,3 +440,15 @@ after a ladder sortie) and a clean Garage return, then starts the next mode.
 Drone FPV and the AC-130 sight show cool, dark terrain and bright vehicle heat, with a soft sensor glow around hot surfaces. Hostile tanks read brighter than friendly vehicles; team markers remain available. Heat follows visible vehicle geometry, respects depth and alpha cutouts, and does not reveal unspotted or network-hidden enemies through cover. Exiting the aerial camera restores normal materials and color.
 
 The drone reacts to bounded gusts, banks under acceleration and makes visible stabilization corrections. Its camera follows a smaller share of the wobble so the pilot can still aim. Horizontal mouse and touch movement follow screen direction in both flight modes; vertical behavior is unchanged.
+
+## Aerial support, sensors and recon
+
+The AC-130 cannot be spotted, targeted or shot down by enemies. The mission's risk is the ground convoy, which has **90% of normal health**. The 152 mm HE round has a 22 m blast radius, and guided explosive missiles have an 18 m radius, including on a direct penetration.
+
+Aim near the convoy and press **J** for ammunition or **K** for medical supplies, or tap their icons. Supply crates parachute onto a safe ground location over six seconds. The nearest ally that needs that supply diverts to collect it; the remaining escorts continue their route. Ammunition refills the collector's finite reserve; medical crates restore 35% of maximum health. Drop cooldowns are 22 and 30 seconds respectively; uncollected crates expire after 70 seconds. Cooldowns and in-flight crates survive host migration.
+
+**I**, or the sensor button, cycles infrared (white-hot), thermal (blue through red/yellow), green night vision and daylight. Tank scopes offer the same choices, with a separate preference that defaults to daylight. Heat views show visible tanks and bright explosions with a soft sensor halo; neither mode grants spotting through terrain or smoke. Sensor coloring starts only after entering the drone POV. A short static signal-loss transition returns to the carrier after impact, battery exhaustion or manual return; reduced-motion settings suppress the moving grain.
+
+Drones have fictional national service variants with different frames and colors: exposed X/H arms, folding-arm hardware or protective rotor ducts. Their camera gimbal, motor bells, landing feet, wiring, battery straps and payload are modeled on both the launch rail and in flight. Large turrets carry the rail; compact turret footprints and turretless vehicles use supported hull positions. The launch origin follows the chosen parent, including turret rotation and hull attitude.
+
+The drone minimap shows its actual flight position, view wedge, carrier and link tether. The gunship uses an aircraft marker, orbit path and ground aiming marker. Extraction and supply markers remain visible.

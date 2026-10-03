@@ -71,7 +71,7 @@ function writeControl(writer: ByteWriter, control: ControlFrame): void {
   writer.u8(control.shellSlot);
   writer.u16(control.fireSeq);
   writer.u16(control.actionSeq);
-  if (control.actionBits > 0x7ff) throw new WireError('range', 'action bits exceed eleven bits');
+  if (control.actionBits > 0x1fff) throw new WireError('range', 'action bits exceed thirteen bits');
   writer.u16(control.actionBits);
 }
 
@@ -297,7 +297,7 @@ function readControl(reader: ByteReader): ControlFrame {
   };
   if (control.flags > 7) throw new WireError('range', 'control flags exceed three bits');
   if (control.shellSlot > 2) throw new WireError('range', 'shell slot must be 0..2');
-  if (control.actionBits > 0x7ff) throw new WireError('range', 'action bits exceed eleven bits');
+  if (control.actionBits > 0x1fff) throw new WireError('range', 'action bits exceed thirteen bits');
   return control;
 }
 

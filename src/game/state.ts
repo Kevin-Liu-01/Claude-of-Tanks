@@ -1781,7 +1781,7 @@ function notifyTeamUnderFire(
   event: SoloHitEvent,
 ): void {
   if (!isActiveSoloEntity(shooter) || !isActiveSoloEntity(target) ||
-      shooter.team === target.team) return;
+      shooter.team === target.team || isGunship(shooter)) return;
   for (const entity of game.tanks) {
     if (entity.team !== target.team || !entity.aiCtl || entity.combat.destroyed) continue;
     if (entity !== target &&
@@ -1937,6 +1937,7 @@ function emitShellFired(
 }
 
 function notifyEnemyShot(game: SoloGameState, shooter: SoloEntity): void {
+  if(isGunship(shooter))return;
   for (const entity of game.tanks) {
     if (entity.team === shooter.team || !entity.aiCtl || entity.combat.destroyed) continue;
     if (entity.state.pos.distanceToSquared(shooter.state.pos) <= 500 * 500) {
@@ -1972,7 +1973,7 @@ function tryFire(
   // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel
   shell.rocket = isUnguidedRocket(entity.spec.gun, shellSpec);
   shell.gravityMps2 = shellGravityMps2(shellSpec) * (Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1);
-  refillUnlimitedAmmunition(game.ruleset, entity.combat, firedSlot);
+  if(game.ruleset.aerial!=='gunship'||isGunship(entity))refillUnlimitedAmmunition(game.ruleset, entity.combat, firedSlot);
   game.shells.push(shell);
   const recoilScale = shotRecoilScale(entity.spec, shellSpec);
   if (!isGunship(entity)) applyShotFeedback(entity, shellSpec, muzzleIndex, recoilScale, rig);
@@ -2007,7 +2008,7 @@ function traceNearestTank(
   nearest.entity = null;
   nearest.intersections = null;
   for (const entity of game.tanks) {
-    if (entity.modeActive === false || entity.id === shell.shooterId) continue;
+    if (entity.modeActive === false || entity.id === shell.shooterId || isGunship(entity)) continue;
     const radius = entity.spec.armor.boundingRadiusM;
     _toC.copy(entity.state.pos);
     _toC.y += entity.spec.dims.heightM * 0.5;
@@ -2755,6 +2756,8 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
   if(screens)for(let i=screens.length-1;i>=0;i--)if(game.timeS-screens[i]!.born>18)screens.splice(i,1);
   for(const entity of game.tanks){
     const bits=entity.input.auxiliaryBits||0; entity.input.auxiliaryBits=0;
+    if(bits&2048)game.matchModeController?.requestSupply(entity.id,'ammo',game.timeS);
+    if(bits&4096)game.matchModeController?.requestSupply(entity.id,'heal',game.timeS);
     if(bits&64 && requestAuxiliary(entity,'smoke',game.timeS,world.heightField.getHeightAt)){
       const screens=game.auxiliarySmokeScreens??=[];screens.push(entity.combat.auxiliary!.smoke!);
       if(screens.length>84)screens.shift();

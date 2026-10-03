@@ -72,6 +72,7 @@ export interface DamageShellSpec extends BallisticShellSpec {
   reloadS?: number;
   /** Named secondary weapon: its shell types share a cycle, separate from the main gun. */
   reloadGroup?: string;
+  blastRadiusM?: number;
   count?: number | null;
   effectiveOvermatchCaliberMm?: number;
   tandem?: boolean;
@@ -673,11 +674,11 @@ function rollModuleDamage(
   // RULESETS: a mode without consumables (Turbo Ball) never breaks a module or starts a fire; the
   // chance draw above is still consumed so replay RNG order matches every other mode.
   if (ctx.combat.modeCriticalDamage === false) return res;
-  const chance = (weaponHousing ? Math.max(.85, MODULE_DEFS[moduleName].damageChance) : MODULE_DEFS[moduleName].damageChance) * ctx.chanceScale;
+  const chance = ctx.combat.modeModuleOnlyDamage ? 1 : (weaponHousing ? Math.max(.85, MODULE_DEFS[moduleName].damageChance) : MODULE_DEFS[moduleName].damageChance) * ctx.chanceScale;
   if (damageRoll >= Math.min(1, chance) || m.hp <= 0) return res;
 
   const moduleDmg =
-    rollUniform(ctx.rng, ctx.shellSpec.moduleDmg ?? ctx.shellSpec.caliberMm) * ctx.dmgScale;
+    rollUniform(ctx.rng, ctx.shellSpec.moduleDmg ?? ctx.shellSpec.caliberMm) * ctx.dmgScale * (ctx.combat.modeModuleOnlyDamage ? 2.5 : 1);
   m.hp = Math.max(0, m.hp - moduleDmg);
   const newState = refreshModuleState(m);
   // dmg is ADDITIVE (killcam_shotinfo r2): the killcam renders the value the
@@ -724,7 +725,7 @@ function rollCrewHit(ctx: ResolutionContext, crewName: string, isHe: boolean): v
   if (!(crewName in ctx.combat.crew) || ctx.combat.crew[crewName] === false) return;
   // EQUIPMENT SYSTEM: spall liner halves crew hits from HE splash only —
   // direct penetrations bypass the liner.
-  const chance = isHe
+  const chance = ctx.combat.modeModuleOnlyDamage && !isHe ? 1 : isHe
     ? CREW_HIT_CHANCE_HE * equipMult(ctx.combat, 'crewHe')
     : CREW_HIT_CHANCE;
   if (roll < chance) {
@@ -746,7 +747,9 @@ function finalizeTarget(combat: CombatState, ammoRacked: boolean): boolean {
     combat.destroyed = true;
   }
   const names = Object.keys(combat.crew);
-  if (names.length > 0 && names.every((n) => combat.crew[n] === false)) {
+  const viableCrew = names.filter(n => combat.crew[n] !== false).length;
+  const disabledBeyondRepair = combat.modeModuleOnlyDamage && combat.modules.engine?.hp === 0 && combat.modules.gun?.hp === 0;
+  if (names.length > 0 && (viableCrew === 0 || (combat.modeModuleOnlyDamage && names.length > 1 && viableCrew < 2)) || disabledBeyondRepair) {
     combat.destroyed = true;
     combat.hp = 0;
   }
@@ -1234,6 +1237,23 @@ function resolveUndecidedTrace(resolution: LiveShellResolution): boolean {
   return false;
 }
 
+/** Fragment cone after a real armor penetration; authored compartments decide casualties. */
+function realisticFragments(resolution: LiveShellResolution): void {
+  if(!resolution.combat.modeModuleOnlyDamage || !resolution.hullPen || !resolution.entryPoint || !resolution.target.spec.armor)return;
+  const direction=resolution.shell.vel.clone().normalize();
+  const depth=Math.max(1.6,Math.min(4,resolution.shellSpec.caliberMm*.025));
+  const offset=new Vector3();
+  for(const box of blastTargets(tankPoseFromState(resolution.target.state),resolution.target.spec.armor)){
+    offset.subVectors(box.point,resolution.entryPoint);
+    const along=offset.dot(direction),width=.18+Math.max(0,along)*.48;
+    if(along<-.05 || along>depth || offset.lengthSq()-along*along>width*width)continue;
+    if(box.kind==='module'){
+      if(box.external || resolution.event.modulesHit.some(hit=>hit.module===box.name))continue;
+      mergeModuleOutcome(resolution.event,rollModuleDamage(resolution,box.name as ModuleId));
+    }else if(!resolution.event.crewHit.includes(box.name))rollCrewHit(resolution,box.name,false);
+  }
+}
+
 function canCarryThrough(resolution: LiveShellResolution): boolean {
   const { shell, behavior } = resolution;
   return resolution.hullPen
@@ -1395,6 +1415,7 @@ export function resolveShellHit(
   // was not stopped by any deeper layer, and still has pen left may exit and
   // strike a second vehicle. Capped to one carry-through per shell; HEAT jets
   // never survive the target.
+  realisticFragments(resolution);
   resolveCarryThrough(resolution);
   event.destroyed = finalizeTarget(combat, event.ammoRacked);
   event.targetHpAfter = combat.hp;
@@ -1721,7 +1742,7 @@ function applyHeSurfaceBurst(
 ): void {
   const plate = plateHit.plate;
   event.kind = 'he_splash';
-  const radiusM = blastRadiusM(shell.spec.caliberMm);
+  const radiusM = shellBlastRadiusM(shell.spec);
   const stack = heScreenStack(hits, plateHit);
   const armorMm = plate.physicalMm + eraArmorMm + stack.armorMm;
   const falloff = Math.max(0, 1 - Math.min(1, stack.gapM / radiusM));
@@ -2032,11 +2053,11 @@ export function resolveHeBurst(
     events,
   );
 
-  if (direct === 'penetration') return events; // blast went inside — no external splash
+  if (direct === 'penetration' && !spec.blastRadiusM) return events; // blast went inside — no external splash
 
-  const radiusM = blastRadiusM(spec.caliberMm);
+  const radiusM = shellBlastRadiusM(spec);
   for (const tank of tanks) {
-    if (direct === 'surface' && tank === directTarget) continue;
+    if (direct && tank === directTarget) continue;
     if (tank.combat.destroyed) continue;
     const event = resolveHeSplashTarget(shell, burstPoint, tank, radiusM, dmgRoll, rng);
     if (event) events.push(event);
@@ -2068,7 +2089,7 @@ export function tickFire(
   for (const name of ['engine', 'fuelTank', 'ammoRack'] as const satisfies readonly ModuleId[]) {
     const m = combat.modules[name];
     if (!m || m.hp <= 0) continue;
-    m.hp = Math.max(0, m.hp - FIRE_TICK_MODULE_DMG);
+    m.hp = Math.max(0, m.hp - FIRE_TICK_MODULE_DMG * (combat.modeModuleOnlyDamage ? 4 : 1));
     const state = refreshModuleState(m);
     if (name === 'ammoRack' && state === 'red') ammoRacked = true;
   }
@@ -2520,6 +2541,9 @@ export function estimatePenRatio(
  * @param {number} caliberMm
  * @returns {number} radius in meters
  */
+export function shellBlastRadiusM(spec: {caliberMm:number;blastRadiusM?:number}):number {
+  return Number.isFinite(spec.blastRadiusM) ? Math.max(1,Math.min(40,spec.blastRadiusM!)) : blastRadiusM(spec.caliberMm);
+}
 export function blastRadiusM(caliberMm: number): number {
   const caliber = Math.max(0, Number(caliberMm) || 0);
   return Math.min(8, Math.max(1, 0.66 * Math.pow(caliber / 30, 1.3)));

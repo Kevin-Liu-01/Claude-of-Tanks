@@ -21,6 +21,8 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   shell1: { id: 'shell', tone: 'amber', badge: '1' },
   shell2: { id: 'shell', tone: 'amber', badge: '2' },
   shell3: { id: 'shell', tone: 'amber', badge: '3' },
+  supplyAmmo: {id:'shell',tone:'amber'},
+  supplyHeal: {id:'medkit',tone:'green'},
   aerialVision: { id: 'scope', tone: 'green' },
   drone: { id: 'scope', tone: 'cyan' },
   smoke: { id: 'smoke', tone: 'steel' },

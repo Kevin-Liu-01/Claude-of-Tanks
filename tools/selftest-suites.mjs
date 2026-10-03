@@ -10,6 +10,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-09-29: the three receipts of 0e5fc79e2 sit after the four whole-fleet CPU scans the receipt pins first (runner admission).
     'src/sim/modeConfiguration.selftest.mjs',
     'src/sim/sixModes.selftest.mjs',
+    'src/sim/modeAdditions.selftest.mjs',
+    'src/fx/droneModel.selftest.mjs',
+    'src/ui/droneFeedTransition.selftest.mjs',
+    'src/ui/aerialMinimap.selftest.mjs',
     'src/sim/droneRecon.selftest.mjs',
     'src/game/missionAttachmentVisual.selftest.mjs',
     'src/engine/aerialVision.selftest.mjs',

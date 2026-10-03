@@ -25,7 +25,7 @@ for (const action of ['smoke', 'lights', 'roofGun', 'drone', 'aerialVision']) as
 // round 30 (2026-09-20): autoAim (T) and hitboxOverlay (H) join the remappable actions with their own icons;
 // multiplayer v2 status surface (2026-09-26): networkPanel (F3) and leaveBattle (F4) join them;
 // six battle modes (2026-10-02): the drone launch (V) joins them
-assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 33,
+assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 35,
   'every remappable action has a settings icon');
 // sfx engine redesign (2026-10-02): crew-radio language and the concussion toggle join the sound tab
 assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
