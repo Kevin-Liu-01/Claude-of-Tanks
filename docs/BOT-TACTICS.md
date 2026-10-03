@@ -52,7 +52,7 @@ first.
 | Capture the Flag | Runner brings the flag home. Up to two nearest responders recover the home flag. Two escorts cover opposite sides of a carrier. Larger teams retain home defense; extra raiders approach separate lanes. |
 | Turbo Ball | One striker retains the role for four seconds unless a teammate becomes substantially closer. It circles behind the ball, aligns centrally and drives through contact toward the opposing goal. Other bots screen separate lanes and cover their own goal. |
 | Zone Control / Gravity | Once-per-second team allocation balances distance, existing assignments, ownership and contested zones. Jev can redirect a bounded reinforcement group. |
-| Frontline | Attackers and defenders work on the current sector; defenders do not navigate to hidden enemy coordinates. |
+| Frontline | Attackers and defenders work on the current sector; defenders do not navigate to hidden enemy coordinates. When the attack takes the second-to-last sector, its bots hold that sector until every living bot has come up (at most 60 s, or until a human of the side stands within 250 m of the last sector), then attack the last one together: the bots revived at the spawn no longer arrive 40-80 s behind the attack and die alone (24 seeds each: Redrock Divide 9 to 12 and Desert 4 to 8 alpha wins). |
 | Regular / combat | A mobile teammate is elected to flank a shared visible contact while an anchor keeps it engaged. Election uses mobility, health and stable IDs; existing flanks prevent duplicate commitments. |
 | Horde | Existing wave pursuit, repair, reload and survival rules continue, with the new shared abilities and terrain safety. |
 
