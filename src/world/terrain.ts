@@ -3628,6 +3628,12 @@ void splatCompute() {
   // repeat, so neither sampling's period can line up across more than a tile
   gTileMix = smoothstep(0.36, 0.64, n1w);
   float slope = 1.0 - clamp(wn.y, 0.0, 1.0);
+  // Ground lane (2026-10-03, wave 11, Sunscar Oasis from the air: "the mesa cliff faces in the background carry the same
+  // horizontal sand-dune ripple texture as the desert floor"): on a sand map without the landform gate the ring's
+  // normals lean to the sky, so its cliffs read as gentle sand and printed the planar ripple trains as horizontal
+  // stripes. Past the edge the face's own slope decides there: a mesa wall is rock, its ripples and sand gone.
+  vec3 faceNrmT = normalize(cross(dFdx(wp), dFdy(wp)));
+  if (uRockGate < 0.5 && uRipple.z > 0.001 && uRipple.w < 0.5) slope = max(slope, (1.0 - abs(faceNrmT.y)) * outsideW);
   // distance-attenuated edge breaker: full crispness near the camera, eased
   // toward its mean at range so the road blend never shows dither stipple
   // at 50-100 m
@@ -4571,6 +4577,10 @@ void splatCompute() {
     float rMod = 0.55 + 0.9 * nz(uv, 0.0064, vec2(0.83, 0.41)).g;
     float sinuosity = nz(uv, 0.019, vec2(0.0)).r * 1.6;
     float rw = uRipple.z * (1.0 - fR) * (1.0 - triW * 0.9) * (1.0 - fMs) * sandCoverage;
+    // (wave 11, Sunscar Oasis: the ring's mesas striped by the floor's ripple trains) a gate-less sand map keeps its trains
+    // and bedforms on the battlefield: past the edge its ring is a backdrop of mesas and dunes at 0.5–3 km
+    float ringNoTrains = uRockGate < 0.5 && uRipple.w < 0.5 ? 1.0 - outsideW : 1.0;
+    rw *= ringNoTrains;
     // Ground lane (2026-10-03, the coordinator's Sirocco smoke frames: "regular, high-contrast dark stripe bands across
     // the whole valley floor at chase range, a few metres apart"): the near train ran at 2.2 m (a megaripple's spacing,
     // not a ripple's) with a 0.34 tilt cap, phase-locked over 36 m cells. Real wind ripples are fine crests — the near
@@ -4598,7 +4608,7 @@ void splatCompute() {
     // every desert mountain at 1–2 km. Gentle sand only.
     float bedW = min(uRipple.z * 2.2, 1.0) * bedMod * (1.0 - fR) * (1.0 - roadCore)
                * (1.0 - triW) * smoothstep(60.0, 170.0, effDist) * (1.0 - smoothstep(0.035, 0.09, slope))
-               * (1.0 - fMs) * sandCoverage;
+               * (1.0 - fMs) * sandCoverage * ringNoTrains;
     if (bedW > 0.002) {
       float bed;
       vec2 bedSlope = sandWaves(uv, wind0, 260.0, 0.45, nz(uv, 0.0021, vec2(0.19, 0.57)).g * 2.0, vec2(0.24, 0.0), vec2(1.0, 0.0), bed);
