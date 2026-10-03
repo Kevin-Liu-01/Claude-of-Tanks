@@ -694,7 +694,8 @@ const chapel: RegionalBuilder = (ctx) => {
 const mill: RegionalBuilder = (ctx) => {
   const sink = new PartSink(houseUvOffset(ctx));
   const st = stateFor(ctx, ctx.rng);
-  const W = 6.0, D = 7.6;
+  // the mill house fitted to its plot (a 6.4 m plot: its wheel on +x, the flume up to the plot's front edge)
+  const W = Math.max(4.6, Math.min(6.0, ctx.info.w - 1.8)), D = Math.max(5.6, Math.min(7.6, ctx.info.d - 0.8));
   const sts: HouseSpec['storeys'] = [{ h: 2.8, wall: 'stone' }, { h: 2.5, wall: st.infill, framed: true, jetty: [0.2, 0, 0, 0] }];
   buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.4, out: 0.06, bucket: 'stone' }, storeys: sts,
@@ -724,8 +725,10 @@ const mill: RegionalBuilder = (ctx) => {
   sink.cylinder('wood', [W / 2 - 0.1, cy, 0], 'x', cxw + 0.75 - (W / 2 - 0.1), 0.16, 8, { decor: true });
   // the flume to the top of the wheel, on two trestles
   const fy = cy + R + 0.4;
-  sink.span(SW, cxw - 0.4, fy - 0.32, -0.6, cxw + 0.4, fy, D / 2 + 3.4, wc);
-  for (const z of [D / 2 + 0.7, D / 2 + 3.0]) for (const x of [cxw - 0.33, cxw + 0.33]) {
+  const flumeEnd = Math.min(D / 2 + 3.4, Math.max(D / 2 + 0.4, ctx.info.d / 2 - 0.1));
+  sink.span(SW, cxw - 0.4, fy - 0.32, -0.6, cxw + 0.4, fy, flumeEnd, wc);
+  // its trestles beside the house wall and at the plot's front
+  for (const z of [Math.min(D / 2 + 0.7, 1.6), flumeEnd - 0.3]) for (const x of [cxw - 0.33, cxw + 0.33]) {
     sink.span(SW, x - 0.07, 0, z - 0.07, x + 0.07, fy - 0.32, z + 0.07, wc);
   }
   return sink.finish();
