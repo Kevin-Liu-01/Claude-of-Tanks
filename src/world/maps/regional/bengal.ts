@@ -4,7 +4,7 @@
 // veranda and plank shutters; the bazaar's long tin sheds on posts with shuttered stalls; brick shops with a flat roof
 // and a signboard; a whitewashed mosque with small domes and a slender minaret; round clay-and-bamboo rice granaries
 // (gola) under conical thatch; the river ghat's boat sheds.
-import { PartSink, faceBox, pick, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
+import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, GALVANISED, PAINTED_SHEET, RUSTED, WEATHERED_PLANK, sheetWall, veranda } from './vernacular.ts';
@@ -22,14 +22,25 @@ function sheetColour(rng: () => number): Rgb {
   return roll < 0.45 ? pick(rng, GALVANISED) : roll < 0.75 ? pick(rng, RUSTED) : pick(rng, PAINTED_SHEET);
 }
 
-/** The tin house: an earthen plinth, sheet walls on a timber frame, plank shutters, a char-chala sheet roof, a veranda. */
+/**
+ * The tin house: an earthen plinth, sheet walls on a timber frame, plank shutters, a char-chala sheet roof, a veranda.
+ * The big homestead on a farmhouse plot (wider than deep) lies along it with its veranda down one long side
+ * (plotAxes); built across the plot, its platform and veranda reached 1.5 m past it.
+ */
 function tinHouse(ctx: RegionalBuildContext, opts: { big?: boolean } = {}): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
-  const W = Math.max(4.8, Math.min(opts.big ? 8 : 6.6, ctx.info.w - 0.6)), D = Math.max(6.4, Math.min(opts.big ? 11 : 9, ctx.info.d - 0.6));
+  const plot = plotAxes(ctx.info), t = !!opts.big && plot.turned;
+  const W = t ? Math.max(4.8, Math.min(8, plot.w - 3.4)) : Math.max(4.8, Math.min(opts.big ? 8 : 6.6, ctx.info.w - 0.6));
+  const D = t ? Math.max(6.4, Math.min(12, plot.d - 2.6)) : Math.max(6.4, Math.min(opts.big ? 11 : 9, ctx.info.d - 0.6));
   const plinth = 0.7 + rng() * 0.5;
-  // the bhiti: a raised earth platform a step wider than the house (rendered in mud plaster)
-  sink.span('plaster3', -W / 2 - 1.2, -0.4, -D / 2 - 1.2, W / 2 + 1.2, plinth, D / 2 + 1.2);
+  alongPlot(sink, t, () => tinHouseBody(sink, ctx, rng, t, W, D, plinth));
+  return sink.finish();
+}
+
+function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => number, turned: boolean, W: number, D: number, plinth: number): void {
+  // the bhiti: a raised earth platform a step wider than the house (rendered in mud plaster), under the veranda too
+  sink.span('plaster3', -W / 2 - (turned ? 1.6 : 1.2), -0.4, -D / 2 - 1.2, W / 2 + 1.2, plinth, D / 2 + 1.2);
   const wallH = 2.5, walls = sheetColour(rng), frame = pick(rng, WEATHERED_PLANK);
   sink.placed(0, 0, plinth, 0, () => {
     // the structural shell is the sheet wall itself (corrugated tile under the livery)
@@ -49,7 +60,7 @@ function tinHouse(ctx: RegionalBuildContext, opts: { big?: boolean } = {}): Regi
       }
     }
     const shutter = pick(rng, SHUTTERS);
-    doorUnit(sink, faces[0], W * 0.15, 0, 0.9, 1.95, { leaf: shutter, frame: { bucket: 'structureWood', width: 0.09, out: 0.05, colour: frame }, steps: null, leafKind: 'plank' }, 0);
+    doorUnit(sink, faces[turned ? 3 : 0], (turned ? D : W) * 0.15, 0, 0.9, 1.95, { leaf: shutter, frame: { bucket: 'structureWood', width: 0.09, out: 0.05, colour: frame }, steps: null, leafKind: 'plank' }, 0);
     for (const [f, us] of [[faces[0], [-W * 0.25]], [faces[1], [-D * 0.2, D * 0.2]], [faces[3], [0]]] as const) {
       for (const u of us) {
         faceBox(sink, 'dark', f, u, 1.3, 0.005, 0.7, 0.7, 0.02, { decor: true });
@@ -61,29 +72,35 @@ function tinHouse(ctx: RegionalBuildContext, opts: { big?: boolean } = {}): Regi
   // the roof: four-slope char-chala (or two-slope), sheet with its own livery
   const roof: RoofSpec = { kind: rng() < 0.6 ? 'hip' : 'gable', pitchDeg: 24 + rng() * 6, eave: 0.55, verge: 0.55, thickness: 0.06, bucket: 'structureMetal', ridge: 'saddle' };
   emitRoof(sink, roofGeometry(W, D, plinth + wallH, roof), roof, sheetColour(rng));
-  veranda(sink, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, plinth, plinth + wallH - 0.1, W, 1.5, rgb(0x9a8a62), { bucket: 'structureMetal', colour: sheetColour(rng) }, false);
-  return sink.finish();
+  const front: Face = turned ? { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D } : { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
+  veranda(sink, front, plinth, plinth + wallH - 0.1, turned ? D : W, 1.5, rgb(0x9a8a62), { bucket: 'structureMetal', colour: sheetColour(rng) }, false);
 }
 
-/** The bazaar shed: a long sheet roof on posts over two rows of shuttered stalls. */
+/**
+ * The bazaar shed: a long sheet roof on posts over two rows of shuttered stalls. On a market row's plot (wider than
+ * deep) the shed lies along it, its stalls facing both long sides (plotAxes): it no longer reaches 2.4 m past them.
+ */
 const bazaar: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
-  const W = Math.max(6, Math.min(10, ctx.info.w - 0.6)), D = Math.max(9, Math.min(20, ctx.info.d - 0.6));
-  sink.span('plaster3', -W / 2 - 0.5, -0.3, -D / 2 - 0.5, W / 2 + 0.5, 0.5, D / 2 + 0.5);
-  const top = 3.2;
-  for (const sx of [-1, 1]) for (let k = 0, n = Math.max(2, Math.round(D / 3) + 1); k < n; k++) {
-    const x = sx * (W / 2 - 0.15), z = -D / 2 + 0.15 + (D - 0.3) * k / (n - 1);
-    sink.span('structureWood', x - 0.09, 0.5, z - 0.09, x + 0.09, top, z + 0.09, { colour: BAMBOO_MAT });
-  }
-  // the stall boxes along the spine, shutters half open
-  for (let z = -D / 2 + 1.3; z < D / 2 - 1.0; z += 2.6) for (const side of [-1, 1]) {
-    const x = side * 0.9;
-    sink.span('structureMetal', x - 0.8, 0.5, z - 1.15, x + 0.8, 2.6, z + 1.15, { colour: sheetColour(rng) });
-    faceBox(sink, 'dark', { origin: [x + side * 0.8, 0, z], u: [0, 0, -side], out: [side, 0, 0], width: 2.3 }, 0, 1.55, 0.005, 1.9, 1.6, 0.02, { decor: true });
-  }
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: 18, eave: 0.6, verge: 0.4, thickness: 0.06, bucket: 'roof', ridge: 'saddle' };
-  emitRoof(sink, roofGeometry(W, D, top, roof), roof);
+  const plot = plotAxes(ctx.info), m = plot.turned ? 0.25 : 0.5;
+  const W = Math.max(plot.turned ? 4.2 : 6, Math.min(10, plot.w - (plot.turned ? 1.0 : 0.6))), D = Math.max(plot.turned ? 6 : 9, Math.min(20, plot.d - 0.6));
+  alongPlot(sink, plot.turned, () => {
+    sink.span('plaster3', -W / 2 - m, -0.3, -D / 2 - m, W / 2 + m, 0.5, D / 2 + m);
+    const top = 3.2;
+    for (const sx of [-1, 1]) for (let k = 0, n = Math.max(2, Math.round(D / 3) + 1); k < n; k++) {
+      const x = sx * (W / 2 - 0.15), z = -D / 2 + 0.15 + (D - 0.3) * k / (n - 1);
+      sink.span('structureWood', x - 0.09, 0.5, z - 0.09, x + 0.09, top, z + 0.09, { colour: BAMBOO_MAT });
+    }
+    // the stall boxes along the spine, shutters half open
+    for (let z = -D / 2 + 1.3; z < D / 2 - 1.0; z += 2.6) for (const side of [-1, 1]) {
+      const x = side * 0.9;
+      sink.span('structureMetal', x - 0.8, 0.5, z - 1.15, x + 0.8, 2.6, z + 1.15, { colour: sheetColour(rng) });
+      faceBox(sink, 'dark', { origin: [x + side * 0.8, 0, z], u: [0, 0, -side], out: [side, 0, 0], width: 2.3 }, 0, 1.55, 0.005, 1.9, 1.6, 0.02, { decor: true });
+    }
+    const roof: RoofSpec = { kind: 'gable', pitchDeg: 18, eave: plot.turned ? 0.35 : 0.6, verge: 0.4, thickness: 0.06, bucket: 'roof', ridge: 'saddle' };
+    emitRoof(sink, roofGeometry(W, D, top, roof), roof);
+  });
   return sink.finish();
 };
 
