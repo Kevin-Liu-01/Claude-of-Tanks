@@ -929,6 +929,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/shellSurface.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
+    // 2026-10-03 (bots lane): an edge holds the side slope across it to the two-way slope rule.
+    'src/sim/botRouteSideSlope.selftest.mjs',
     'src/sim/botNavigationWater.selftest.mjs',
     'src/sim/navigationLiquidSafety.selftest.mjs',
     'src/sim/navigationLiquidStart.selftest.mjs',

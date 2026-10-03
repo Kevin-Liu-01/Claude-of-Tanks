@@ -203,7 +203,14 @@ the route (a deck above the gorge) is no wall, and on and beside a deck the
 parts a hull rides onto or over (the slab, the piers under it) follow the same
 rule as the hull's collision. Each edge's steepest stretch (three terrain
 samples between the cells) is held to the same two-way slope rule as the
-cell-to-cell grade, so a cliff between two cell centres is no climb. Legs off
+cell-to-cell grade, so a cliff between two cell centres is no climb. Each of
+those samples also reads the side slope across the edge, 2 m either side of
+its line, and the edge holds it to the same rule: an edge that climbs a face
+at a slant, gentle along its own line, while the ground falls away beside the
+hull at 60 degrees, is no lane (Redrock Divide's plateau face routed frontline
+defenders across it; with the rule its falls near the last sector went from 18
+to 1 in 24 seeds). The terrain is read, not a deck: the deck's sides keep their
+own rules, and under a deck the gorge floor's own slope counts. Legs off
 the grid are cleared too: a route starts at the nearest cell on the hull's own
 level that it reaches straight (or round a detour point), on the goal's side of
 the closed edges first, and it reaches the exact goal only by a clear leg, a
