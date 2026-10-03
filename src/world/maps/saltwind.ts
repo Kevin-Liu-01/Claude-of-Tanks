@@ -70,7 +70,8 @@ export default {
     // market crossroads' discs seat on the village's own graded floor (an apron there would repaint the protected
     // road channel under the activity-patch wear).
     hardstands: [
-      { x: 230, z: 10, width: 60, length: 60, yawDeg: 0, grade: 0 },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): 16 m north, at its ground's median height, a 24 m bank
+      { x: 230, z: 26, width: 60, length: 60, yawDeg: 0, level: 2.4, grade: 0, bankM: 24 },
     ],
     landforms: [
       // the village's hill under the market street, on the axis
