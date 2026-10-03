@@ -114,6 +114,11 @@ try{
     assert.equal(await page.$eval('.cot-scope-vision',e=>{const a=e.getBoundingClientRect();return ['.cot-mode-status','.cot-touch .fire:not(.alt)','.cot-touch .scope','.cot-touch .autoaim'].every(selector=>{const other=document.querySelector(selector);if(!other||getComputedStyle(other).display==='none')return true;const b=other.getBoundingClientRect();return !b.width||a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom;});}),true,'scope sensor clears objective and touch controls');
     for(const [view,code] of [['daylight',0],['infrared',1],['thermal',2],['night',3]]){
      await page.waitForFunction(code=>window.__DEBUG.post.composer.passes.find(p=>p.isOutputGradePass).uniforms.uThermal.value===code,{},code);
+     assert.deepEqual(await page.$eval('.cot-scope-vision',el=>{
+      const r=el.getBoundingClientRect();return{view:el.dataset.view,active:el.querySelectorAll('.scope-vision-step.active').length,
+       inside:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,touch:r.width>=44&&r.height>=44,
+       shaped:getComputedStyle(el,'::before').clipPath.startsWith('polygon('),accessible:!!el.getAttribute('aria-label')};
+     }),{view,active:1,inside:true,touch:true,shaped:true,accessible:true},'hexagonal scope control identifies the active view and stays usable');
      await page.screenshot({path:resolve(out,`tank-scope-${view}-${suffix}.png`)});
      if(mobile)await page.tap('.cot-scope-vision');else await page.keyboard.press('KeyI');
     }

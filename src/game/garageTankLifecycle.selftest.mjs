@@ -157,3 +157,23 @@ console.log('garageTankLifecycle.selftest: FX and tank state end at the garage b
  assert.equal(mesh.material,source,'preserved and pooled actors are also cleared by roster teardown');assert.equal(root.scale.x,1);
  mesh.geometry.dispose();source.dispose();
 }
+
+// A wreck can save a live shield material, then restore it after death has
+// disposed the effect. Repair also reattaches distance-hidden fittings.
+{
+ const root=new THREE.Group(),source=new THREE.MeshStandardMaterial();
+ const geometry=new THREE.BoxGeometry(),mesh=new THREE.Mesh(geometry,source);
+ root.add(mesh);
+ const dims={widthM:3,hullLengthM:7,heightM:2.6};
+ syncJuggernautVisual(root,dims,1.12,100,100,.016);
+ const captured=mesh.material;
+ const fitting=new THREE.Mesh(geometry,[captured,source]);
+ syncJuggernautVisual(root,dims,1.12,0,100,.016);
+ resetBattleTankForGarage({fx:{resetAll(){}},visual:{root,resetForGaragePresentation(){
+   mesh.material=captured;root.add(fitting);
+ }}});
+ assert.equal(mesh.material,source,'repair cannot resurrect a disposed boss highlight');
+ assert.deepEqual(fitting.material,[source,source],'reattached multi-material fittings are clean');
+ assert.equal(root.scale.x,1);
+ geometry.dispose();source.dispose();
+}

@@ -163,6 +163,29 @@ assert.ok(blades(grass.far).every(([, , w]) => w > meadow.widthM * TALL_GRASS.fa
   twin.dispose(); other.dispose(); half.dispose();
 }
 
+// Expanded far grass must fill the actual outer fringe, including after streaming across cell boundaries.
+{
+  const wide = createTallGrass({ getHeightAt: () => 0 }, {
+    seed: 712, biome: { ...meadow, density: 1.3 }, tier: 'desktop', qualityScale: () => 1,
+  });
+  for (const x of [23.9, 24.1, 263.9, 264.1]) {
+    const eye = new THREE.Vector3(x, 2, 23.9);
+    settle(wide, eye);
+    const far = wide.getState().far;
+    assert.equal(far.pending, 0, 'expanded ring finishes streaming');
+    assert.equal(far.truncated, 0, 'dense grass retains the outer cells');
+    assert.ok(far.cached <= TALL_GRASS.cacheCells, 'expanded cache stays bounded');
+    const fringe = [0, 0, 0, 0];
+    for (const [px, , pz] of roots(wide.far)) {
+      const dx = px - eye.x, dz = pz - eye.z, d = Math.hypot(dx, dz);
+      if (d < 200 || d > 235) continue;
+      fringe[(dx < 0 ? 1 : 0) + (dz < 0 ? 2 : 0)]++;
+    }
+    assert.ok(fringe.every(n => n > 100), `grass reaches all four outer quadrants: ${fringe}`);
+  }
+  wide.dispose();
+}
+
 // 5. A live knob change re-seeds the rings.
 {
   let q = 1;
@@ -272,7 +295,7 @@ assert.ok(blades(grass.far).every(([, , w]) => w > meadow.widthM * TALL_GRASS.fa
   assert.deepEqual(shader.uniforms.uGrassFade.value.toArray(), [...TALL_GRASS.near.fade], 'the near ring fades out at 38–46 m');
   const farShader = freshShader();
   calls[1].hook(farShader);
-  assert.deepEqual(farShader.uniforms.uGrassFade.value.toArray(), [...TALL_GRASS.far.fade], 'the far ring fades in at 34–46 m and out at 104–120 m');
+  assert.deepEqual(farShader.uniforms.uGrassFade.value.toArray(), [...TALL_GRASS.far.fade], 'the far ring fades in at 34–46 m and out at 192–240 m');
   assert.equal(shader.uniforms.uBladeGamma.value, TALL_GRASS.bladeGamma.near, 'the near clump keeps a dark root');
   assert.equal(farShader.uniforms.uBladeGamma.value, TALL_GRASS.bladeGamma.far, 'the far blade takes its tip colour early (seen from above it is mostly root)');
   assert.ok(TALL_GRASS.bladeGamma.far < TALL_GRASS.bladeGamma.near && TALL_GRASS.farWidth > 1 && TALL_GRASS.farWidth < 2.5);

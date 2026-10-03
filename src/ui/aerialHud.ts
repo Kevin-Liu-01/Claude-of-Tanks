@@ -4,8 +4,8 @@ import type { EventBus } from '../game/stateCore.ts';
 import { AERIAL_RULES, matchRulesetFor } from '../sim/matchRuleset.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
 import { uiIconSVG, type UiIconId } from './uiIcons.ts';
-import { t } from './i18n.ts';
-import { getAerialVision, nextAerialVision, setAerialVision, getScopeVision, cycleScopeVision } from '../engine/aerialVision.ts';
+import { t, getLocale } from './i18n.ts';
+import { getAerialVision, nextAerialVision, setAerialVision, getScopeVision, cycleScopeVision, AERIAL_VIEWS, type AerialVision } from '../engine/aerialVision.ts';
 
 const GUNSHIP_UNLIMITED=matchRulesetFor('ac130').ammo==='unlimited';
 function node<K extends keyof HTMLElementTagNameMap>(tag:K,cls:string,parent:HTMLElement):HTMLElementTagNameMap[K]{
@@ -25,8 +25,16 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
   const transition=createDroneFeedTransition();
   const grain=document.createElement('canvas');grain.width=grain.height=64;
   const context=grain.getContext('2d');if(context){const pixels=context.createImageData(64,64);let seed=593;for(let i=0;i<pixels.data.length;i+=4){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const n=seed>>>24;pixels.data[i]=pixels.data[i+1]=pixels.data[i+2]=n;pixels.data[i+3]=180;}context.putImageData(pixels,0,0);signal.style.setProperty('--signal-noise',`url(${grain.toDataURL()})`);}
-  const scopeView=node('button','cot-scope-vision',parent);scopeView.type='button';scopeView.hidden=true;icon(scopeView,'scope');
-  const scopeLabel=node('span','',scopeView),scopeKey=node('kbd','flight-key',scopeView);
+  const scopeView=node('button','cot-scope-vision',parent);scopeView.type='button';scopeView.hidden=true;
+  const scopeGlyph=icon(scopeView,'timeDay','scope-vision-emblem');
+  const scopeCopy=node('span','scope-vision-copy',scopeView),scopeLabel=node('span','scope-vision-label',scopeCopy);
+  const scopeTrack=node('span','scope-vision-track',scopeCopy);scopeTrack.setAttribute('aria-hidden','true');
+  const scopeViews=['daylight','infrared','thermal','night'] as const;
+  const scopeSteps=scopeViews.map(view=>{const step=node('span','scope-vision-step',scopeTrack);step.dataset.view=view;return step;});
+  const scopeIcons:Record<AerialVision,UiIconId>={daylight:'timeDay',infrared:'visionInfrared',thermal:'visionThermal',night:'regionNight'};
+  const scopeKey=node('kbd','flight-key',scopeView);scopeKey.setAttribute('aria-hidden','true');
+  icon(scopeView,'undo','scope-vision-cycle');
+  let priorScope:AerialVision|null=null,priorScopeKey='',priorScopeLocale='';
   const switchScope=()=>{if(!scopeView.hidden)cycleScopeVision();};scopeView.addEventListener('click',switchScope);bus.on('ui:aerialVision',switchScope);
   const root=node('section' ,'cot-flight-hud',parent);root.hidden=true;
   const sight=node('div','flight-sight',root);sight.setAttribute('aria-hidden','true');
@@ -81,8 +89,18 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
       const view=player?.aerial,active=!!view?.active&&visible;
       const signalLevel=transition.step(active&&view?.kind==='drone'&&thermalReady,active,visible,performance.now());
       signal.hidden=signalLevel<=0;signal.style.opacity=String(Math.min(1,signalLevel*2));
-      scopeView.hidden=!visible||active||!scoped;scopeLabel.textContent=t('flight.view.'+getScopeVision());scopeKey.textContent=viewKey;
-      scopeView.setAttribute('aria-label',t('flight.scopeView',{view:t('flight.view.'+getScopeVision())}));
+      scopeView.hidden=!visible||active||!scoped;
+      const scope=getScopeVision(),scopeLocale=getLocale();
+      if(scope!==priorScope||viewKey!==priorScopeKey||scopeLocale!==priorScopeLocale){
+        const next=AERIAL_VIEWS[(AERIAL_VIEWS.indexOf(scope)+1)%AERIAL_VIEWS.length]!;
+        scopeLabel.textContent=t('flight.view.'+scope);scopeKey.textContent=viewKey;
+        scopeGlyph.innerHTML=uiIconSVG(scopeIcons[scope],22);scopeView.dataset.view=scope;
+        for(const step of scopeSteps)step.classList.toggle('active',step.dataset.view===scope);
+        scopeView.title=t('flight.view.next',{view:t('flight.view.'+next)});
+        scopeView.setAttribute('aria-label',t('flight.view.switch',{current:t('flight.view.'+scope),next:t('flight.view.'+next)}));
+        scopeView.setAttribute('aria-keyshortcuts',viewKey);
+        priorScope=scope;priorScopeKey=viewKey;priorScopeLocale=scopeLocale;
+      }
       root.hidden=!active;document.documentElement.dataset.flight=active?view!.kind:'';
       if(!active||!view){wasActive=false;return;}
       identity.disabled=!thermalReady;visionKey.textContent=viewKey;

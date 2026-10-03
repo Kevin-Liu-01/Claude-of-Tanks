@@ -91,6 +91,9 @@ export function resetBattleTankForGarage({
     // complete showroom lifecycle API.
     visual.resetDestroyed();
   }
+  // Repair can restore materials captured while the boss effect was active,
+  // even if death already disposed that effect. Details are reattached now.
+  if (visual.root) clearJuggernautVisual(visual.root, true);
 }
 
 /**
