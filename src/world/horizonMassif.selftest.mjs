@@ -10,6 +10,8 @@ import { createEscarpmentField, carveEscarpmentRing, openRowTables } from './hor
 import { HORIZON_RELIEF_CHARACTERS, resolveHorizonRelief } from './horizonRelief.ts';
 import { HORIZON_SEGMENTS, sampleHorizonGeometry } from './maps/horizon.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
+import { createHeightField } from './terrain.ts';
+import { continuedGroundAt } from './horizonSurface.ts';
 
 const n = HORIZON_SEGMENTS;
 const drain = (steps) => { let step = steps.next(); while (!step.done) step = steps.next(); return step.value; };
@@ -289,4 +291,37 @@ for (const id of ['winter', 'frontier', 'caldera', 'whiteout', 'alpine', 'cliffb
   }
 }
 assert.ok(carvedTotal <= plainTotal * 0.4, `the measured ranged rings stand far fewer cones (${carvedTotal} vs ${plainTotal})`);
-console.log('horizonMassif.selftest: the landform, the downslope couloirs, the carve, the canyons, the bed stair, the far tables, the budget and the skyline cones PASS', JSON.stringify(coneReport));
+// --- the road passes (2026-10-03, gauntlet wave 1: "a straight bright seam running up a mountainside", Cinder Junction's
+// edge-n): a road that leaves the square runs ~720 m on (terrain.ts roadExitAt); past the border's hand-over the ranges
+// stood across it and its carriageway was painted up their faces. The ranges open a pass along each exit.
+{
+  const cfg = getMapConfig('railyard');
+  const ground = createHeightField(1337, cfg);
+  const ring = sampleHorizonGeometry(cfg, 1337, ground);
+  const out = [0, 0];
+  let onLine = 0, climbing = 0, worst = 0;
+  for (let i = HORIZON_SEGMENTS; i < ring.heights.length; i++) {
+    const x = ring.positions[i * 3], z = ring.positions[i * 3 + 2];
+    if (Math.hypot(x, z) < 700) continue;
+    ground._roadExitAt(x, z, out);
+    if (out[1] < 0.5 || Math.abs(out[0]) > 10) continue;
+    // (an exit inside a railway cutting's fan is the cutting's: its ridge covers the tunnel by design, railCutting.selftest)
+    if (ground.getOutlandSeatWeightAt(x, z) > 0) continue;
+    onLine++;
+    const over = ring.heights[i] - continuedGroundAt(ground, x, z);
+    worst = Math.max(worst, over);
+    if (over > 8) climbing++;
+  }
+  assert.ok(onLine > 20, `Cinder Junction's exits cross the ranges past 700 m (${onLine} vertices on their lines)`);
+  assert.equal(climbing, 0, `no exit climbs the ranges: along its line the ring stays within 8 m of the continued ground (worst ${worst.toFixed(1)} m)`);
+  assert.ok(ring.roadPass && ring.roadPass.some((v) => v === 1), 'the passes are marked for the receipts');
+  // a ground without exits (a receipt sandbox, a classic border) opens none: the ring is the one it was
+  const bare = Object.create(ground); bare._roadExitAt = undefined;
+  const bareRing = sampleHorizonGeometry(cfg, 1337, bare);
+  assert.ok(!bareRing.roadPass || bareRing.roadPass.every((v) => v === 0), 'no exit, no pass');
+  let moved = 0;
+  for (let i = 0; i < ring.heights.length; i++) if (ring.heights[i] !== bareRing.heights[i] && !ring.roadPass[i]) moved++;
+  assert.equal(moved, 0, 'the passes move only the vertices they mark');
+}
+
+console.log('horizonMassif.selftest: the landform, the downslope couloirs, the carve, the canyons, the bed stair, the far tables, the road passes, the budget and the skyline cones PASS', JSON.stringify(coneReport));
