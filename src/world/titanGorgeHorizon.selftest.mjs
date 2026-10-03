@@ -13,7 +13,13 @@ const seeds = [1337, 2049, 7719];
 // re-established at this commit (the 1049e4e byte identity it guarded is superseded by that owner direction).
 const n = HORIZON_SEGMENTS;
 const config = getMapConfig('titan_gorge');
-const historicalConfig = { ...config, horizon: { ...config.horizon, finiteTableCaps: false } };
+// 2026-10-02 (the mountains lane): every tableland ring now cuts side canyons and lays its bed stair after the caps
+// (horizonMassif.ts cutMassifCanyonsSteps, horizonEscarpment.ts) — passes that read their neighbours (the stair's meander
+// follows the local slope, the talus aprons a 70 m mean, the cliff bound its neighbours), so a cap row's change reaches
+// the rows beside it. The cap pass's own laws below (its isolation against the opt-out, its round-47 shape gates) are
+// proven with both passes off (`escarpment: false`); the shipped ring answers to the escarpment's laws further down.
+const capOnlyConfig = { ...config, horizon: { ...config.horizon, escarpment: false } };
+const historicalConfig = { ...config, horizon: { ...config.horizon, finiteTableCaps: false, escarpment: false } };
 
 function capSurfaces(ring) {
   const p = ring.positions, y = (row, c) => p[(row * n + c) * 3 + 1];
@@ -76,7 +82,7 @@ function capSurfaces(ring) {
 
 const receipts = [];
 for (const seed of seeds) {
-  const ring = sampleHorizonGeometry(config, seed), historical = sampleHorizonGeometry(historicalConfig, seed);
+  const ring = sampleHorizonGeometry(capOnlyConfig, seed), historical = sampleHorizonGeometry(historicalConfig, seed);
   assert.equal(ring.positions.constructor, Float32Array);
   assert.equal(ring.heights.constructor, Float32Array);
   assert.equal(ring.positions.length, n * 30 * 3); assert.equal(ring.heights.length, n * 30); // round 47: nine-row stack
@@ -107,7 +113,72 @@ for (const seed of seeds) {
     'A cap-front regression cannot pass using flat crest endpoints alone');
   receipts.push({ seed, caps });
 }
+// --- the shipped ring: the escarpment's laws (2026-10-02, owner: "layered escarpments, talus aprons, buttresses") -----
+// broad caps survive the side canyons (30+ nearly level quads in runs of 8+ on both ranges, 40k m2 near / 60k m2 far),
+// low passes still separate the mesas, no row step past the stair's 3.6:1 cliff bound, no one-column needle beyond the
+// first ridge, and the rise to each cap carries tiers — a talus bench (a step under 0.6:1) and a cliff (over 1.4:1) —
+// at one tall column in ten or more; the cap-only ring (one ramp per rise) is the negative control.
+function escarpmentLaws(ring) {
+  const p = ring.positions, y = (row, c) => p[(row * n + c) * 3 + 1];
+  const radius = (row, c) => Math.hypot(p[(row * n + c) * 3], p[(row * n + c) * 3 + 2]);
+  for (const [top, minimumDepth, minimumArea] of [[9, 40, 40000], [17, 90, 60000]]) {
+    const capLevel = (ring.rows[top].base + ring.rows[top].amp * 0.60) * config.horizon.amp;
+    let area = 0, quads = 0, run = 0, longestRun = 0;
+    for (let c = 0; c < n * 2; c++) {
+      const column = c % n, next = (column + 1) % n;
+      const levels = [y(top - 1, column), y(top, column), y(top, next), y(top - 1, next)];
+      const depth = Math.min(radius(top, column) - radius(top - 1, column), radius(top, next) - radius(top - 1, next));
+      if (!(Math.max(...levels) - Math.min(...levels) < 2 && depth >= minimumDepth - 0.001)) { run = 0; continue; }
+      longestRun = Math.max(longestRun, ++run);
+      if (c >= n) continue;
+      const ids = [(top - 1) * n + column, top * n + column, top * n + next, (top - 1) * n + next];
+      let doubleArea = 0;
+      for (let edge = 0; edge < 4; edge++) {
+        const a = ids[edge] * 3, b = ids[(edge + 1) % 4] * 3;
+        doubleArea += p[a] * p[b + 2] - p[b] * p[a + 2];
+      }
+      area += Math.abs(doubleArea) / 2; quads++;
+    }
+    assert.ok(quads >= 30 && longestRun >= 8 && area > minimumArea,
+      `Titan range${top}: broad caps survive the side canyons (${quads} quads, run ${longestRun}, ${Math.round(area)} m2)`);
+    const crest = Array.from({ length: n }, (_, c) => y(top, c));
+    assert.ok(crest.filter(value => value < capLevel - 60).length >= 24, 'Low passes still separate the mesas');
+  }
+  for (let c = 0; c < n; c++) for (let row = 2; row < ring.rows.length; row++) {
+    const slope = (y(row, c) - y(row - 1, c)) / (radius(row, c) - radius(row - 1, c));
+    assert.ok(Math.abs(slope) <= 3.601, `Titan: no row step past the stair's 3.6:1 cliff bound (row ${row}: ${slope.toFixed(2)})`);
+  }
+  for (let row = 6; row < ring.rows.length; row++) for (let c = 0; c < n; c++) {
+    const a = row * n + (c + n - 1) % n, b = row * n + (c + 1) % n, i = row * n + c;
+    const arc = Math.hypot(p[b * 3] - p[a * 3], p[b * 3 + 2] - p[a * 3 + 2]) * 0.5;
+    assert.ok(Math.min(p[i * 3 + 1] - p[a * 3 + 1], p[i * 3 + 1] - p[b * 3 + 1]) <= arc + 0.001, `Titan: no one-column needle (row ${row}, column ${c})`);
+  }
+  const tiers = [];
+  for (const [low, front] of [[5, 9], [13, 17]]) {
+    let tall = 0, tiered = 0;
+    for (let c = 0; c < n; c++) {
+      if (y(front, c) - y(low, c) < 40) continue;
+      tall++;
+      let bench = false, cliff = false;
+      for (let row = low + 1; row <= front; row++) {
+        const slope = (y(row, c) - y(row - 1, c)) / (radius(row, c) - radius(row - 1, c));
+        if (slope < 0.6) bench = true;
+        if (slope > 1.4) cliff = true;
+      }
+      if (bench && cliff) tiered++;
+    }
+    assert.ok(tiered >= tall * 0.1, `Titan rows ${low}-${front}: the rise carries tiers, not one ramp (${tiered} of ${tall} tall columns)`);
+    tiers.push(tiered);
+  }
+  return tiers;
+}
+const escarpment = [];
+for (const seed of seeds) {
+  escarpment.push({ seed, tiers: escarpmentLaws(sampleHorizonGeometry(config, seed)) });
+  assert.throws(() => escarpmentLaws(sampleHorizonGeometry(capOnlyConfig, seed)), { code: 'ERR_ASSERTION' },
+    'the escarpment gate rejects the cap-only ring (one smooth ramp per rise)');
+}
 const desert = getMapConfig('desert');
 assert.deepEqual(sampleHorizonGeometry({ ...desert, horizon: { ...desert.horizon, finiteTableCaps: true } }, 1337),
   sampleHorizonGeometry(desert, 1337), 'Authoring option never enables new caps on an unrelated mesa map');
-console.log('titanGorgeHorizon: real upper2D caps, attached bounded sidewalls, cap rows isolated against the opt-out, negative controls PASS', JSON.stringify(receipts));
+console.log('titanGorgeHorizon: real upper2D caps, attached bounded sidewalls, cap rows isolated against the opt-out, the escarpment\'s tiers and bounds, negative controls PASS', JSON.stringify({ receipts, escarpment }));

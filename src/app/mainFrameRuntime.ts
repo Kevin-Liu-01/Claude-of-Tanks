@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { createThermalVehicles } from '../engine/thermalVehicles.ts';
 import { FogExp2, Vector3, type PerspectiveCamera, type Scene } from 'three';
 
 import type { ListenerPoseRuntime } from '../audio/listenerPoseRuntime.ts';
@@ -156,6 +157,7 @@ export function createMainFrameRuntime({
   }
 
   const forward = new Vector3();
+  const thermalVehicles = createThermalVehicles();
   const garageFrameRequest: GarageFrameRequest = { animate: false };
   let lastMs = -1;
   let lastFov = camera.fov;
@@ -260,7 +262,12 @@ export function createMainFrameRuntime({
     const lightingStartedAt = profileGarageReturn ? performance.now() : 0;
     lighting.update(false, dtSeconds);
     const postStartedAt = profileGarageReturn ? performance.now() : 0;
-    post.render(dtSeconds, frameWallDtSeconds);
+    const thermal = frame.inBattle && !frame.killcamActive && !game.player?.combat?.destroyed && camera.userData.thermalFlight === true;
+    camera.userData.thermalFlight = thermal;
+    const vision=camera.userData.flightVision??1;
+    thermalVehicles.begin(game.tanks,thermal&&(vision===1||vision===2),game.player?.team);
+    try { post.render(dtSeconds, frameWallDtSeconds); }
+    finally { thermalVehicles.end(); }
     const frameFinishedAt = profileGarageReturn ? performance.now() : 0;
     if (game.phase === 'garage') clearGaragePresentationDirty();
     if (frame.inBattle) battleEntryLifecycle.noteBattleFrame();
