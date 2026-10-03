@@ -13,7 +13,8 @@ export type WeaponClassId =
   | 'mg_rifle' | 'mg_heavy'
   | 'ac_20' | 'ac_25' | 'ac_30' | 'ac_40' | 'ac_50'
   | 'gun_90' | 'gun_105' | 'gun_120' | 'gun_125' | 'gun_130' | 'gun_152'
-  | 'atgm' | 'rocket_heavy';
+  | 'atgm' | 'rocket_heavy'
+  | 'gunship_30' | 'gunship_howitzer' | 'gunship_missile';
 
 type WeaponFamily = 'mg' | 'autocannon' | 'cannon' | 'launcher';
 
@@ -51,6 +52,10 @@ export const WEAPON_CLASSES: Readonly<Record<WeaponClassId, WeaponClassProfile>>
   gun_152: P({ id: 'gun_152', family: 'cannon', loudDb: 152, closeFadeM: [160, 450], farFadeM: [120, 520], tailRate: 0.8, tailGain: 1, actionDelayS: 0.2 }),
   atgm: P({ id: 'atgm', family: 'launcher', loudDb: 132, closeFadeM: [50, 220], farFadeM: [60, 280], tailRate: 1.1, tailGain: 0.3, actionDelayS: 0.05 }),
   rocket_heavy: P({ id: 'rocket_heavy', family: 'launcher', loudDb: 145, closeFadeM: [80, 360], farFadeM: [100, 460], tailRate: 0.9, tailGain: 0.85, actionDelayS: 0.05 }),
+  // The AC-130's guns: their crew hears them inside the cabin, the ground hears them from the sky (orbit ≈ 250 m).
+  gunship_30: P({ id: 'gunship_30', family: 'autocannon', loudDb: 134, closeFadeM: [40, 160], farFadeM: [60, 220], tailRate: 1.1, tailGain: 0.38, actionDelayS: 0.04 }),
+  gunship_howitzer: P({ id: 'gunship_howitzer', family: 'cannon', loudDb: 150, closeFadeM: [60, 200], farFadeM: [80, 240], tailRate: 0.85, tailGain: 0.9, actionDelayS: 0.2 }),
+  gunship_missile: P({ id: 'gunship_missile', family: 'launcher', loudDb: 136, closeFadeM: [50, 220], farFadeM: [60, 280], tailRate: 1.1, tailGain: 0.3, actionDelayS: 0.05 }),
 });
 
 /** Per-weapon trims keyed by the fleet's existing `soundProfile` ids. */
@@ -59,6 +64,8 @@ interface WeaponReportTrim {
   readonly gainDb: number;
   readonly twin?: boolean;
   readonly launcher?: boolean;
+  /** A weapon with its own report class rather than its bore's. */
+  readonly cls?: WeaponClassId;
 }
 
 const REPORT_TRIMS: Readonly<Record<string, WeaponReportTrim>> = Object.freeze({
@@ -84,6 +91,9 @@ const REPORT_TRIMS: Readonly<Record<string, WeaponReportTrim>> = Object.freeze({
   'arkan-launch': { rate: 1.03, gainDb: 0, launcher: true },
   'ataka-launch': { rate: 0.97, gainDb: 0.5, launcher: true, twin: true },
   'shillelagh-launch': { rate: 0.88, gainDb: 0.5, launcher: true },
+  'gunship-autocannon': { rate: 1, gainDb: 0, cls: 'gunship_30' },
+  'gunship-howitzer': { rate: 1, gainDb: 0, cls: 'gunship_howitzer' },
+  'gunship-missile': { rate: 1, gainDb: 0, cls: 'gunship_missile' },
 });
 
 export function weaponClassForCaliber(caliberMm: number): WeaponClassId {
@@ -114,7 +124,7 @@ interface ResolvedWeaponReport {
 /** One report for one shot: bore class, then the weapon's own trims. */
 export function resolveWeaponReport(caliberMm: number, soundProfile: string | null | undefined): ResolvedWeaponReport {
   const trim = soundProfile ? REPORT_TRIMS[soundProfile] : undefined;
-  const id = trim?.launcher ? (caliberMm >= 200 ? 'rocket_heavy' : 'atgm') : weaponClassForCaliber(caliberMm);
+  const id = trim?.cls ?? (trim?.launcher ? (caliberMm >= 200 ? 'rocket_heavy' : 'atgm') : weaponClassForCaliber(caliberMm));
   return {
     cls: WEAPON_CLASSES[id],
     rate: trim?.rate ?? 1,
@@ -129,7 +139,8 @@ export type ReloadCueType =
   | 'caseEject' | 'breechOpen' | 'ammoDoorOpen' | 'shellGrab' | 'ammoDoorClose' | 'ram' | 'chargeRam' | 'breechClose'
   | 'carouselTurn' | 'cassetteLift' | 'chainRam' | 'stubEject'
   | 'bustleIndex' | 'clipIndex' | 'drumRotate' | 'drumLoad' | 'feedClank' | 'magazineSwap'
-  | 'tubeLoad' | 'launcherRaise' | 'latch';
+  | 'tubeLoad' | 'launcherRaise' | 'latch'
+  | 'gunshipLoad';
 
 interface ReloadCue {
   readonly at: number;
@@ -181,6 +192,13 @@ export function resolveReloadCuePlan(
   if (loader === 'autocannon') {
     return plan('autocannon', [
       { at: 0.03, type: 'magazineSwap' }, { at: 0.55, type: 'feedClank' }, { at: late(0.15, 0.85), type: 'latch' },
+    ]);
+  }
+  if (loader === 'gunship') {
+    // The AC-130's howitzer, loaded by hand in the cabin: the breech drops open (its spent case already thrown
+    // onto the deck after the shot), a round is hefted and rammed home, and the breech closes on it.
+    return plan('gunship', [
+      { at: 0.03, type: 'breechOpen' }, { at: early(1, 0.4), type: 'gunshipLoad' }, { at: late(0.25, 0.85), type: 'breechClose' },
     ]);
   }
   if (loader === 'missile') {
