@@ -1,9 +1,13 @@
 import * as THREE from 'three';
 
 interface Surface {mesh:THREE.Mesh;original:THREE.Material|THREE.Material[];highlight:THREE.Material|THREE.Material[]}
+const IMPACT_COUNT=6;
+const IMPACT_DURATION=1.2;
+interface Impact {anchor:THREE.Object3D|null;local:THREE.Vector3;sample:THREE.Vector4}
 interface Shield {
   surfaces:Surface[];materials:Map<THREE.Material,THREE.Material>;
-  strength:{value:number};pulse:{value:number};age:number;hp:number;
+  strength:{value:number};time:{value:number};rootInverse:{value:THREE.Matrix4};
+  impacts:Impact[];hitPositions:{value:THREE.Vector4[]};nextImpact:number;
   dispose:()=>void;refresh:()=>void;refreshIn:number;
 }
 const scales=new WeakMap<THREE.Object3D,number>();
@@ -19,7 +23,8 @@ export function syncJuggernautVisual(root:THREE.Object3D,_dims:{widthM:number;hu
   if(scale<=1||hp<=0){shield?.dispose();return;}
   if(!shield){
     const surfaces:Surface[]=[],materials=new Map<THREE.Material,THREE.Material>();
-    const strength={value:0},pulse={value:0};
+    const strength={value:0},time={value:0},rootInverse={value:new THREE.Matrix4()};
+    const impacts=Array.from({length:IMPACT_COUNT},()=>({anchor:null as THREE.Object3D|null,local:new THREE.Vector3(),sample:new THREE.Vector4(0,0,0,-1)}));
     const dispose=()=>{
       for(const surface of surfaces){
         if(surface.mesh.material===surface.highlight)surface.mesh.material=surface.original;
@@ -42,17 +47,44 @@ export function syncJuggernautVisual(root:THREE.Object3D,_dims:{widthM:number;hu
       else {const surface={mesh:object,original,highlight};surfaces.push(surface);bindings.set(object,surface);}
       object.material=highlight;
     };
-    shield={surfaces,materials,strength,pulse,age:0,hp,dispose,refresh:()=>root.traverse(inspect),refreshIn:0};
+    shield={surfaces,materials,strength,time,rootInverse,impacts,hitPositions:{value:impacts.map(i=>i.sample)},nextImpact:0,dispose,refresh:()=>root.traverse(inspect),refreshIn:0};
     shields.set(root,shield);root.addEventListener('removed',dispose);
   }
   // Detail groups reattach as tanks approach. Discover those real surfaces at
   // a bounded cadence, without traversing the whole vehicle every frame.
   shield.refreshIn-=dt;
   if(shield.refreshIn<=0){shield.refresh();shield.refreshIn=.25;}
-  shield.age+=dt;
-  if(hp<shield.hp)shield.pulse.value=1;
-  shield.hp=hp;shield.pulse.value=Math.max(0,shield.pulse.value-dt*2.4);
-  shield.strength.value=.55+.08*Math.sin(shield.age*1.8)+.3*Math.max(0,hp/Math.max(1,maxHp));
+  const elapsed=Number.isFinite(dt)?Math.max(0,dt):0;
+  shield.time.value+=elapsed;
+  root.updateWorldMatrix(true,false);
+  shield.rootInverse.value.copy(root.matrixWorld).invert();
+  for(const impact of shield.impacts){
+    if(!impact.anchor)continue;
+    impact.sample.w+=elapsed;
+    if(impact.sample.w>=IMPACT_DURATION){impact.anchor=null;impact.sample.w=-1;continue;}
+    // Keep a turret/barrel hit on its moving part, even while the hull turns.
+    impact.anchor.updateWorldMatrix(true,false);
+    impactPoint.copy(impact.local).applyMatrix4(impact.anchor.matrixWorld).applyMatrix4(shield.rootInverse.value);
+    impact.sample.set(impactPoint.x,impactPoint.y,impactPoint.z,impact.sample.w);
+  }
+  shield.strength.value=.55+.08*Math.sin(shield.time.value*1.8)+.3*Math.max(0,hp/Math.max(1,maxHp));
+}
+
+const impactPoint=new THREE.Vector3();
+/** Shared solo/network shell events supply the real world-space contact. No
+ * damage deduction is needed: ricochets also disturb the shield at contact. */
+export function pulseJuggernautImpact(root:THREE.Object3D,pos:readonly number[],frame?:string):boolean {
+  const shield=shields.get(root);
+  if(!shield||pos.length<3||!Number.isFinite(pos[0])||!Number.isFinite(pos[1])||!Number.isFinite(pos[2]))return false;
+  const rig=frame==='turret'?'rig_turret':frame==='gun'||frame==='barrel'?'rig_gun':null;
+  const anchor=(rig&&root.getObjectByName(rig))||root;
+  const impact=shield.impacts[shield.nextImpact]!;
+  shield.nextImpact=(shield.nextImpact+1)%IMPACT_COUNT;
+  root.updateWorldMatrix(true,false);anchor.updateWorldMatrix(true,false);
+  impact.local.set(pos[0]!,pos[1]!,pos[2]!);anchor.worldToLocal(impact.local);impact.anchor=anchor;
+  impactPoint.set(pos[0]!,pos[1]!,pos[2]!);root.worldToLocal(impactPoint);
+  impact.sample.set(impactPoint.x,impactPoint.y,impactPoint.z,0);
+  return true;
 }
 
 function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
@@ -67,15 +99,43 @@ function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
   const compile=source.onBeforeCompile,cacheKey=source.customProgramCacheKey.call(source);
   material.onBeforeCompile=function(shader,renderer){
     compile.call(this,shader,renderer);
-    shader.uniforms.juggernautStrength=shield.strength;shader.uniforms.juggernautPulse=shield.pulse;
+    shader.uniforms.juggernautStrength=shield.strength;shader.uniforms.juggernautTime=shield.time;
+    shader.uniforms.juggernautRootInverse=shield.rootInverse;shader.uniforms.juggernautHits=shield.hitPositions;
+    shader.vertexShader=shader.vertexShader
+      .replace('#include <common>','#include <common>\nuniform mat4 juggernautRootInverse;\nvarying vec3 vJuggernautPosition;')
+      .replace('#include <project_vertex>',`#include <project_vertex>
+        vec4 shieldPoint = vec4(transformed, 1.0);
+        #ifdef USE_BATCHING
+          shieldPoint = batchingMatrix * shieldPoint;
+        #endif
+        #ifdef USE_INSTANCING
+          shieldPoint = instanceMatrix * shieldPoint;
+        #endif
+        vJuggernautPosition = (juggernautRootInverse * modelMatrix * shieldPoint).xyz;
+      `);
     shader.fragmentShader=shader.fragmentShader
-      .replace('#include <common>','#include <common>\nuniform float juggernautStrength;\nuniform float juggernautPulse;')
+      .replace('#include <common>',`#include <common>\nuniform float juggernautStrength;\nuniform float juggernautTime;\nuniform vec4 juggernautHits[${IMPACT_COUNT}];\nvarying vec3 vJuggernautPosition;`)
       .replace('#include <opaque_fragment>',`
         float juggernautRim = pow(1.0 - abs(dot(normalize(normal), normalize(vViewPosition))), 2.4);
-        outgoingLight += mix(vec3(0.03, 0.48, 1.0), vec3(0.4, 0.85, 1.0), juggernautPulse)
-          * (0.055 + juggernautRim * 1.6) * (juggernautStrength + juggernautPulse * 1.5);
+        vec3 shieldSurface = vJuggernautPosition;
+        float wave = smoothstep(0.78, 1.0, sin(shieldSurface.z * 1.65 + shieldSurface.y * 2.6 - juggernautTime * 2.8
+          + sin(shieldSurface.x * 1.8 + juggernautTime * 0.5) * 0.5));
+        float hitGlow = 0.0;
+        for(int i = 0; i < ${IMPACT_COUNT}; i++) {
+          float age = juggernautHits[i].w;
+          if(age >= 0.0 && age < ${IMPACT_DURATION}) {
+            float d = distance(shieldSurface, juggernautHits[i].xyz);
+            float ring = exp(-pow((d - age * 2.4) / 0.16, 2.0));
+            float core = exp(-d * d * 8.0 - age * 7.0);
+            float fade = 1.0 - smoothstep(0.25, ${IMPACT_DURATION}, age);
+            hitGlow += (ring + core) * fade;
+          }
+        }
+        hitGlow = min(hitGlow, 2.0);
+        outgoingLight += vec3(0.03, 0.48, 1.0) * (0.055 + juggernautRim * 0.65 + wave * 0.6) * juggernautStrength
+          + vec3(0.35, 0.82, 1.0) * hitGlow * 2.0;
         #include <opaque_fragment>`);
   };
-  material.customProgramCacheKey=()=>cacheKey+'|juggernaut-surface-v1';
+  material.customProgramCacheKey=()=>cacheKey+'|juggernaut-surface-waves-v2';
   shield.materials.set(source,material);return material;
 }
