@@ -665,37 +665,52 @@ function paintBarkStyles(ctx: CanvasRenderingContext2D, rng: RandomSource, s: nu
     for (const offset of [-B, 0, B]) draw(offset);
     ctx.restore();
   };
-  // 1 — scaly plates: tall irregular plates in vertical runs, split by dark fissures (pine, spruce; the vertex tint
-  // warms a pine's upper stem). No inner highlight: the normal map's relief lights the plates' edges
+  // 1 — scaly plates: irregular plates in staggered, overlapping runs, split by dark fissures (pine, spruce; the vertex
+  // tint warms a pine's upper stem). Trees round 2 (2026-10-03): round 1 laid fourteen columns of flat four-cornered
+  // plates end to end, which a close view of a pine read as stacked bricks; now each plate is a jagged six-cornered scale
+  // of its own size, its seat jittered off any column, lit along its top edge and shaded under it, with a flake or two
+  // down its face, and the smaller scales lie over the larger. No inner highlight: the normal map's relief lights the
+  // plates' edges
   ctx.save(); ctx.translate(s, 0); ctx.fillStyle = '#3e3530'; ctx.fillRect(0, 0, B, s); ctx.restore();
-  const plates: Array<[number, number, number, number, number, number, number, number, number]> = [];
-  for (let column = 0; column < 14; column++) {
-    const cx = (column + rng() * 0.6) * (B / 14);
-    let y = rng() * 30;
-    while (y < s + 30) {
-      const h = 18 + rng() * 34, w = 11 + rng() * 9;
-      plates.push([cx + (rng() - 0.5) * 6, y, w, h, 0.50 + rng() * 0.22, (rng() - 0.5) * 0.12, rng(), rng() - 0.5, rng() - 0.5]);
-      y += h + 2 + rng() * 3;
+  const plates: Array<{ x: number; y: number; w: number; h: number; l: number; sat: number; pts: number[]; flakes: number[] }> = [];
+  for (let k = 0; k < 340; k++) {
+    const w = 10 + rng() * 16, h = 18 + rng() * 32;
+    const pts: number[] = [];
+    for (let v = 0; v < 6; v++) {
+      const a = (v / 6) * Math.PI * 2 + (rng() - 0.5) * 0.5;
+      pts.push(Math.cos(a) * w * (0.42 + rng() * 0.14), Math.sin(a) * h * (0.42 + rng() * 0.12));
     }
+    const flakes: number[] = [];
+    for (let f = 0, n = rng() < 0.6 ? 1 : 2; f < n; f++) flakes.push((rng() - 0.5) * w * 0.6, (rng() - 0.5) * 0.5, rng() * 0.6 + 0.3);
+    plates.push({ x: rng() * B, y: rng() * s, w, h, l: 0.46 + rng() * 0.26, sat: rng(), pts, flakes });
   }
+  plates.sort((a, b) => b.w * b.h - a.w * a.h);
   wrapped(1, (offset) => {
-    for (const [x, y, w, h, l, skew, sat, crackA, crackB] of plates) {
-      _cc.setHSL(0.065 + l * 0.02, 0.15 + sat * 0.06, l * 0.6);
-      ctx.fillStyle = _cc.getStyle();
-      ctx.beginPath();
-      ctx.moveTo(x - w * 0.5 + offset, y + h * skew);
-      ctx.lineTo(x + w * 0.45 + offset, y);
-      ctx.lineTo(x + w * 0.5 + offset, y + h * (0.95 - skew));
-      ctx.lineTo(x - w * 0.42 + offset, y + h);
-      ctx.closePath();
-      ctx.fill();
-      // a hairline crack down the plate
-      ctx.strokeStyle = 'rgba(40,32,28,0.55)';
-      ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      ctx.moveTo(x + offset + crackA * w * 0.4, y + 2);
-      ctx.lineTo(x + offset + crackB * w * 0.4, y + h - 2);
-      ctx.stroke();
+    for (const plate of plates) {
+      for (const dy of [-s, 0, s]) {
+        if (plate.y + dy < -plate.h || plate.y + dy > s + plate.h) continue;
+        const cx = plate.x + offset, cy = plate.y + dy;
+        ctx.beginPath();
+        for (let v = 0; v < 6; v++) {
+          const px = cx + plate.pts[v * 2], py = cy + plate.pts[v * 2 + 1];
+          if (v === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(cx, cy - plate.h * 0.5, cx, cy + plate.h * 0.5);
+        _cc.setHSL(0.065 + plate.l * 0.02, 0.15 + plate.sat * 0.06, plate.l * 0.66);
+        grad.addColorStop(0, _cc.getStyle());
+        _cc.setHSL(0.065 + plate.l * 0.02, 0.15 + plate.sat * 0.06, plate.l * 0.48);
+        grad.addColorStop(1, _cc.getStyle());
+        ctx.fillStyle = grad;
+        ctx.fill();
+        // a flake or two down the scale's face
+        ctx.strokeStyle = 'rgba(40,32,28,0.5)';
+        ctx.lineWidth = 0.8;
+        for (let f = 0; f < plate.flakes.length; f += 3) {
+          const fx = cx + plate.flakes[f], lean = plate.flakes[f + 1], len = plate.h * plate.flakes[f + 2];
+          ctx.beginPath(); ctx.moveTo(fx, cy - len * 0.5); ctx.lineTo(fx + lean * len * 0.3, cy + len * 0.5); ctx.stroke();
+        }
+      }
     }
   });
   // 2 — smooth: pale grey-buff with soft peeling patches and fine horizontal lenticels (eucalyptus, fir)
