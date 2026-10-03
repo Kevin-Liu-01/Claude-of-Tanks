@@ -201,70 +201,48 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
     "schemaVersion": 1,
     "seats": [
       {
-        "kind": "designation",
-        "parent": "hull",
-        "size": 0.26,
-        "pos": [
-          -1.906,
-          1.62,
-          -0.6
-        ],
-        "quaternion": [
-          0,
-          -0.7071068,
-          0,
-          0.7071068
-        ],
-        "surfaceMesh": "hull",
-        "anchorProfile": "authored-surface-seat",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
-      },
-      {
-        "kind": "designation",
-        "parent": "hull",
-        "size": 0.26,
-        "pos": [
-          1.906,
-          1.62,
-          -0.6
-        ],
-        "quaternion": [
-          0,
-          0.7071068,
-          0,
-          0.7071068
-        ],
-        "surfaceMesh": "hull",
-        "anchorProfile": "authored-surface-seat",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
-      },
-      {
         "kind": "insignia",
         "parent": "hull",
         "size": 0.26,
         "pos": [
-          -1.906,
-          1.39495,
-          -0.10195
+          -1.8203795,
+          1.0162728,
+          0.31475
         ],
         "quaternion": [
-          0,
-          -0.7071068,
-          0,
-          0.7071068
+          0.1028693,
+          -0.6995841,
+          0.1028693,
+          0.6995841
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "pl01_105",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "visibilityClearSamples": 7,
+        "visibilityRatio": 0.7777778,
+        "maximumSurfaceErrorM": 0.2421605
+      },
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.26,
+        "pos": [
+          -1.7874718,
+          1.9208818,
+          1.5651284
+        ],
+        "quaternion": [
+          -0.3653318,
+          -0.5859485,
+          -0.3826931,
+          0.6137939
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "pl01_105",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 8,
+        "visibilityRatio": 0.8888889,
+        "maximumSurfaceErrorM": 0.046188
       }
     ]
   }

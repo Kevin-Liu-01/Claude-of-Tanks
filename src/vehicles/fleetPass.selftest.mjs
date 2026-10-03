@@ -3,7 +3,7 @@
 // shared-build guard (pose and mesh bytes), failure isolation with a fresh build for the remaining audits, coverage
 // rosters, setup and build failures, and a final error that names every failed audit and tank.
 import assert from 'node:assert/strict';
-import { BoxGeometry, Group, Mesh, MeshBasicMaterial } from 'three';
+import { BoxGeometry, Group, Mesh, MeshStandardMaterial, Texture } from 'three';
 import { runFleetPass } from './fleetPass.test-support.mjs';
 
 function scriptedFactory() {
@@ -11,10 +11,13 @@ function scriptedFactory() {
   const createTank = (id, engine, build) => {
     assert.equal(engine, null);
     built.push({ id, build });
-    const root = new Group(), turret = new Group(), mesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial());
+    const root = new Group(), turret = new Group(), mesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshStandardMaterial());
     turret.name = 'rig_turret';
     root.add(turret);
     turret.add(mesh);
+    mesh.material.map = new Texture();
+    mesh.userData.weapon = { owner: 'turret', caliberMm: 12.7 };
+    root.userData.receipt = { mesh, cyclic: root.userData };
     // like kf51's builder: a microtask rewrites the merged mesh after createTank returns
     queueMicrotask(() => { mesh.geometry.attributes.uv.array[0] = 0.5; mesh.userData.remapped = true; });
     return { root, mesh, turret, dispose: () => disposed.push(id) };
@@ -67,7 +70,7 @@ const failureOf = async (pass) => {
   ] });
   assert.match(error.message, /^guard: 2 of 4 fleet audits failed$/m);
   assert.match(error.message, /\[poses\] a: a: poses left the shared build changed \(Group\/rig_turret quaternion\.y\)/);
-  assert.match(error.message, /\[paints\] b: b: paints left the shared build changed \(mesh geometry, instances or materials\)/);
+  assert.match(error.message, /\[paints\] b: b: paints left the shared build changed \(mesh geometry, instances or materials\/metadata\)/);
   assert.doesNotMatch(error.message, /\[restores\]|\[last\]/, 'restoring audits and the last audit pass');
   assert.deepEqual(received, [['a', 0], ['last', 'a', 0], ['b', 0], ['last', 'b', 0]],
     'the audits after a guard failure read a fresh build');
@@ -124,6 +127,52 @@ const failureOf = async (pass) => {
   await assert.rejects(runFleetPass({ ...quiet, name: 'nofactory', build: {}, ids: ['a'], audits: [
     { name: 'x', create: () => ({ check() {} }) },
   ] }), /nofactory: pass createTank from tankFactory\.ts/);
+}
+
+// Formerly invisible mutations must fail the offending audit and rebuild before
+// the next reader. Exercise nested/cyclic metadata and actual texture bindings,
+// not just a material's UUID or the selected geometry bytes.
+for (const [name, mutate, read] of [
+  ['color', t => t.mesh.material.color.setHex(0xff0000), t => t.mesh.material.color.getHex()],
+  ['roughness', t => { t.mesh.material.roughness = 0.1; }, t => t.mesh.material.roughness],
+  ['metalness', t => { t.mesh.material.metalness = 0.9; }, t => t.mesh.material.metalness],
+  ['emissive', t => t.mesh.material.emissive.setHex(0x00ff00), t => t.mesh.material.emissive.getHex()],
+  ['depth', t => { t.mesh.material.depthWrite = false; }, t => t.mesh.material.depthWrite],
+  ['side', t => { t.mesh.material.side = 2; }, t => t.mesh.material.side],
+  ['texture', t => { t.mesh.material.map = new Texture(); t.mesh.material.map.name = 'changed'; }, t => t.mesh.material.map.name],
+  ['texture-transform', t => { t.mesh.material.map.repeat.x = 2; }, t => t.mesh.material.map.repeat.x],
+  ['shader', t => { t.mesh.material.onBeforeCompile = () => 'changed'; }, t => String(t.mesh.material.onBeforeCompile)],
+  ['uniform', t => { t.mesh.material.userData.uniform = { value: 4 }; }, t => t.mesh.material.userData.uniform?.value],
+  ['weapon-owner', t => { t.mesh.userData.weapon.owner = 'hull'; }, t => t.mesh.userData.weapon.owner],
+  ['root-metadata', t => { t.root.userData.receipt.cyclic.damageOwner = 'hull'; }, t => t.root.userData.damageOwner],
+  ['geometry-metadata', t => { t.mesh.geometry.userData.shadowSourceTriangles = 1; }, t => t.mesh.geometry.userData.shadowSourceTriangles],
+  ['name', t => { t.turret.name = 'rig_hull'; }, t => t.turret.name],
+]) {
+  const factory = scriptedFactory(), observed = [];
+  let expected;
+  const error = await failureOf({ name, build: {}, ids: ['a'], createTank: factory.createTank, audits: [
+    { name: 'mutates', create: () => ({ check(id, tank) { expected = read(tank); mutate(tank); } }) },
+    { name: 'reads', create: () => ({ check(id, tank) { observed.push(read(tank)); } }) },
+  ] });
+  assert.match(error.message, /\[mutates\].*left the shared build changed/);
+  assert.deepEqual(observed, [expected], `${name}: the next audit receives pristine state`);
+  assert.equal(factory.built.length, 2, `${name}: the contaminated build is discarded`);
+  assert.equal(factory.disposed.length, 2, `${name}: both builds are released`);
+}
+
+{
+  const factory = scriptedFactory();
+  const result = await runFleetPass({ ...quiet, name: 'restored-material', build: {}, ids: ['a'], createTank: factory.createTank,
+    audits: [
+      { name: 'restores', create: () => ({ check(id, tank) {
+        const color = tank.mesh.material.color.clone(), map = tank.mesh.material.map;
+        tank.mesh.material.color.setHex(0xff0000); tank.mesh.material.map = new Texture();
+        tank.mesh.material.color.copy(color); tank.mesh.material.map = map;
+        tank.mesh.userData.weapon.owner = 'hull'; tank.mesh.userData.weapon.owner = 'turret';
+      } }) },
+      { name: 'reads', create: () => ({ check(id, tank) { assert.equal(tank.mesh.userData.weapon.owner, 'turret'); } }) },
+    ] });
+  assert.equal(result.builds, 1, 'restoring paint, texture and metadata safely reuses the build');
 }
 
 console.log('fleetPass.selftest: shared builds in declared order, the microtask turn, the shared-build guard, isolation and named failures pass');

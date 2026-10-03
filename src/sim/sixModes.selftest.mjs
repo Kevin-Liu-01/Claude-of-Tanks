@@ -22,7 +22,7 @@ function mode(id,entities,arrangement=null){return createMatchModeController({mo
 }
 {
  const a=tank('survivor'),b=tank('survivor2'),c=tank('infected','bravo');const m=mode('infected',[a,b,c]);
- a.combat.destroyed=true;m.step(.1,1);assert.equal(a.team,'bravo');m.step(.1,6);assert.equal(a.combat.destroyed,false);assert.equal(a.modeSpeedMultiplier,1.3);
+ a.combat.destroyed=true;m.step(.1,1);assert.equal(a.team,'bravo');m.step(.1,6);assert.equal(a.combat.destroyed,false);assert.equal(a.modeSpeedMultiplier,1.4);
  assert.equal(m.serialize('survivor').perspectiveTeam,'bravo');assert.equal(m.state.infection.survivors,1);
  b.combat.destroyed=true;assert.equal(m.step(.1,7).result,'bravo');
  const survive=mode('infected',[tank('live'),tank('i','bravo')]);assert.equal(survive.step(.1,420).result,'alpha');
