@@ -158,6 +158,20 @@ export default {
       ids: ['bmp3', 'm2a2_bradley', 'type99a', 'k1a1', 'm551_sheridan'] },
     inhabit: { stalls: 4, benches: 3, coreClutter: 20, pots: 8, laundry: 4, handcarts: 4, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 3, modernClutter: 18, looseClutter: 20, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Mekong delta's family
+  // tombs, rendered stucco under little tiled roofs, standing in pairs and threes on the raised dry ground by the ponds.
+  scenery: {
+    landmarks: [
+      { kind: 'tomb', x: -318, z: -192, yawDeg: 20, name: 'the tombs on the south-west chenier' },
+      { kind: 'tomb', x: -324, z: -184, yawDeg: 26 },
+      { kind: 'tomb', x: -300, z: 102, yawDeg: 200, name: 'the tombs on the west mound' },
+      { kind: 'tomb', x: -294, z: 108, yawDeg: 196 },
+      { kind: 'tomb', x: 322, z: -238, yawDeg: 90, name: 'the tombs on the east chenier' },
+      { kind: 'tomb', x: 330, z: -244, yawDeg: 86 },
+      { kind: 'tomb', x: 338, z: -236, yawDeg: 94 },
+      { kind: 'tomb', x: 300, z: 202, yawDeg: 270, name: 'the tombs on the north-east mound' },
+    ],
+  },
   horizon: { baseHex: 0x56735c, amp: 0.46, style: 'rolling', treeline: 0.82, forestHex: 0x2d533b, rockHex: 0x7a8370, haze: 0.94, grain: 0.54 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'towering-cumulus', coverage: 0.34, windDirDeg: 80, towers: 0.6 },

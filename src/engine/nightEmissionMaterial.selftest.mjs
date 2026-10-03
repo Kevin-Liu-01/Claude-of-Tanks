@@ -159,8 +159,10 @@ const exposureUniform = regular.shader.uniforms.nightEmissionExposure;
 assert.equal(levelUniform.value, NIGHT_RED_DISPLAY_LEVEL);
 assert.strictEqual(exposureUniform, compileMask().shader.uniforms.nightEmissionExposure, 'one exposure uniform shared by every lens program');
 assert.equal(regular.shader.uniforms.nightEmissionFloorExposure.value, NIGHT_RED_FLOOR_EXPOSURE);
-assert.equal(NIGHT_RED_FLOOR_EXPOSURE, EXPOSURE_KEY, 'the floors hold the light model\'s day key');
-assert.equal(NIGHT_RED_FLOOR_EXPOSURE, LEGACY_EXPOSURE, 'and the legacy rig\'s exposure (the Garage, the galaxy skies)');
+// the floors keep the key the lenses were authored under — the legacy rig's exposure (the Garage, the galaxy skies), at or
+// above the grounded day key, so no daylight camera dims an unlit floor (2026-10-03: whatever the grounded key)
+assert.equal(NIGHT_RED_FLOOR_EXPOSURE, LEGACY_EXPOSURE, 'the floors hold the authored lenses\' key (the legacy rig\'s exposure)');
+assert.ok(NIGHT_RED_FLOOR_EXPOSURE >= EXPOSURE_KEY, 'at or above the grounded rig\'s day key');
 for (const line of [
   'float nightEmissionRedLens = step(1.5, vNightEmissionMask) * nightEmissionOn;',
   'float nightEmissionLit = step(1e-4, dot(nightEmissionDriven, nightEmissionDriven));',
@@ -218,7 +220,7 @@ for (const exposure of [cameras[0], 1, EXPOSURE_KEY]) {
 // under a dimmer camera (an overcast deck, the night) an unlit floor holds its day-key level, where it glowed salmon
 // above its lit neighbours (a wreck's lenses, a tank with its lights off)
 for (const night of [0, 1]) {
-  const atKey = hexOf(displayOf(dayRed, { exposure: EXPOSURE_KEY, night }));
+  const atKey = hexOf(displayOf(dayRed, { exposure: NIGHT_RED_FLOOR_EXPOSURE, night }));
   for (const exposure of [2.2, nightCamera, exposureFor(1e-6)]) {
     assert.equal(hexOf(displayOf(lensRadiance(dayRed, dayRed, 2, 1, exposure), { exposure, night })), atKey,
       `an unlit red floor at ${exposure.toFixed(2)} reads as at the day key`);
