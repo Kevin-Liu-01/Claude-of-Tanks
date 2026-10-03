@@ -37,6 +37,14 @@ export const WATER_RIPPLE_HULL_DRAFT_M = 0.36;
 /** Ground speed at which the tracks churn at full rate — the same speed the sheet's fallback wake saturates at. */
 export const WATER_RIPPLE_CHURN_FULL_SPEED_MPS = 8;
 const SLOT_CAP = 8;
+/**
+ * 2026-10-02 (the frame-budget lane): quiet seconds — no hull in the water, no splash — after which the field returns
+ * to rest and stops stepping until the next disturbance. A free ripple loses an e-fold in ~1.4 s and the foam in
+ * ~2.8 s, so after 20 s the largest wake is ~1e-7 m and a fully churned lane ~1e-3 of white: below what the sheet can
+ * show. While anything disturbs the field it steps exactly as before; asleep it is exactly at rest.
+ */
+export const WATER_RIPPLE_SLEEP_AFTER_S = 20;
+const simSleepDisabled = (): boolean => !!(globalThis as { __WORLD_SIM_DEBUG?: { noSleep?: boolean } }).__WORLD_SIM_DEBUG?.noSleep;
 const DEFAULT_HALF_LENGTH_M = 3.4;
 const DEFAULT_HALF_WIDTH_M = 1.8;
 
@@ -175,6 +183,10 @@ export interface WaterRippleField {
   readonly texel: THREE.Vector2;
   /** Steps integrated so far. */
   readonly steps: number;
+  /** True while the field is at rest and skips its passes (no disturbance for WATER_RIPPLE_SLEEP_AFTER_S). */
+  readonly asleep: boolean;
+  /** Fixed steps skipped asleep (the clock still advanced through them). */
+  readonly sleptSteps: number;
   setDisturbances(sources: readonly WaterDisturbance[]): void;
   /** One splash: a crater of `amplitudeM` over `radiusM` and its foam, consumed by the next step. */
   addImpulse(x: number, z: number, radiusM: number, amplitudeM: number, foam?: number): void;
@@ -271,6 +283,9 @@ export function createWaterRippleField(
   let primed = false;
   let disposed = false;
   let steps = 0;
+  let quietS = 0;
+  let asleep = false;
+  let sleptSteps = 0;
 
   function resetTargets(): void {
     gl.setRenderTarget(read);
@@ -285,6 +300,8 @@ export function createWaterRippleField(
     params,
     texel,
     get steps() { return steps; },
+    get asleep() { return asleep; },
+    get sleptSteps() { return sleptSteps; },
     setDisturbances(sources) {
       const n = Math.min(SLOT_CAP, sources.length);
       for (let i = 0; i < n; i++) {
@@ -316,6 +333,16 @@ export function createWaterRippleField(
       accum -= n * WATER_RIPPLE_FIXED_DT;
       uniforms.uAnchor.value.set(anchorX, anchorZ);
       params.set(windowM, anchorX, anchorZ, 1);
+      // idle sleep: a hull in the water or a splash keeps the field stepping; after WATER_RIPPLE_SLEEP_AFTER_S of
+      // quiet it is set to rest once and skips its passes, the clock running on, until the next disturbance
+      const disturbed = uniforms.uHullCount.value > 0 || impulseCount > 0 || simSleepDisabled();
+      quietS = disturbed ? 0 : quietS + n * WATER_RIPPLE_FIXED_DT;
+      if (asleep && !disturbed) {
+        uniforms.uTime.value += n * WATER_RIPPLE_FIXED_DT;
+        sleptSteps += n;
+        return;
+      }
+      asleep = false;
       const previousTarget = gl.getRenderTarget();
       const previousAutoClear = gl.autoClear;
       gl.autoClear = false;
@@ -335,6 +362,13 @@ export function createWaterRippleField(
         gl.autoClear = previousAutoClear;
       }
       impulseCount = 0;
+      if (!disturbed && quietS >= WATER_RIPPLE_SLEEP_AFTER_S) {
+        const target = gl.getRenderTarget();
+        const autoClear = gl.autoClear;
+        gl.autoClear = false;
+        try { resetTargets(); } finally { gl.setRenderTarget(target); gl.autoClear = autoClear; }
+        asleep = true;
+      }
       stateUniform.value = read.texture;
     },
     clear() {
@@ -346,6 +380,8 @@ export function createWaterRippleField(
       accum = 0;
       uniforms.uTime.value = 0;
       impulseCount = 0;
+      quietS = 0;
+      asleep = false;
       params.w = 0;
       stateUniform.value = null;
     },

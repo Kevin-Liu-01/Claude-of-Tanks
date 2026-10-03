@@ -15,6 +15,8 @@ import { join } from 'node:path';
 
 const DEFAULT_LOCK_DIR = '/tmp/cot-shots.lock';
 const DEFAULT_QUEUE_DIR = '/tmp/cot-shots.queue';
+/** The machine-wide queue directory (read-only use: who is waiting). */
+export const CAPTURE_QUEUE_DIR = DEFAULT_QUEUE_DIR;
 const DEFAULT_LOCK_STALE_MS = 5 * 60 * 1000;
 const DEFAULT_TICKET_STALE_MS = 60 * 60 * 1000;
 
@@ -121,6 +123,13 @@ function reserveTicket(queueDir) {
   }
 }
 
+/** Re-enter the queue under a ticket this process was issued before (its place); a present copy is kept. */
+function restoreTicket(queueDir, name) {
+  if (!/^\d{15}-\d{12}-\d+\.t$/.test(name) || ticketPid(name) !== process.pid) throw new Error(`not this process's ticket: ${name}`);
+  try { writeFileSync(join(queueDir, name), String(process.pid), { flag: 'wx' }); } catch (error) { if (error.code !== 'EEXIST') throw error; }
+  return name;
+}
+
 export function createCaptureLock({
   lockDir = DEFAULT_LOCK_DIR,
   queueDir = DEFAULT_QUEUE_DIR,
@@ -129,15 +138,22 @@ export function createCaptureLock({
   ticketRefreshMs = Math.max(1, Math.min(30_000, ticketStaleMs / 3)),
 } = {}) {
   let held = false;
+  let lastTicket = null;
 
-  async function acquire(timeoutMs = 10 * 60 * 1000) {
+  /**
+   * Wait for the FIFO head, then take the lock. `ticket` (2026-10-02): re-enter under a ticket this process was issued
+   * by an earlier acquire (\`lastTicket\`) — its original place — for a caller that gave its turn back because a lock
+   * of its own was held by someone queued behind it, and re-enters once that holder is done.
+   */
+  async function acquire(timeoutMs = 10 * 60 * 1000, { ticket = null } = {}) {
     // A landing chain exports COT_SHOTS_LOCK_TIMEOUT_MS (three hours) so every waiter it spawns — the suite runner and
     // the browser receipts that take the lock themselves — outlasts other sessions' captures (2026-09-25: a probe receipt
     // died at its own 45-minute wait while the runner would have waited three hours).
     const chainWait = Number(process.env.COT_SHOTS_LOCK_TIMEOUT_MS);
     if (Number.isFinite(chainWait) && chainWait > timeoutMs) timeoutMs = chainWait;
     mkdirSync(queueDir, { recursive: true });
-    const ownTicket = reserveTicket(queueDir);
+    const ownTicket = ticket ? restoreTicket(queueDir, ticket) : reserveTicket(queueDir);
+    lastTicket = ownTicket;
     const ownPath = join(queueDir, ownTicket);
     const startedAt = Date.now();
     // A legitimate capture ahead of us can outlast ticketStaleMs. Keep our waiting ticket alive without changing its
@@ -190,7 +206,7 @@ export function createCaptureLock({
     return names.filter((name) => name.endsWith('.t') && ticketAlive(name)).length;
   }
 
-  return { acquire, refresh, release, waiting };
+  return { acquire, refresh, release, waiting, get lastTicket() { return lastTicket; } };
 }
 
 const sharedCaptureLock = createCaptureLock();

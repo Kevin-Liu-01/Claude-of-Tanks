@@ -55,7 +55,9 @@ export function bindAutumnHorizonGround(
   faces.array.set(reordered); faces.needsUpdate = true;
   const terrainCount = terrainFaces.length;
   geometry.addGroup(0, terrainCount, 1);
-  geometry.addGroup(terrainCount, faces.count - terrainCount, 0);
+  // 2026-10-02 (the frame-budget lane): no face left for the ring's own material (continuous ground) → no group for it.
+  // three pushes every group into the render list and links / binds its program even when the group draws nothing.
+  if (faces.count > terrainCount) geometry.addGroup(terrainCount, faces.count - terrainCount, 0);
   const vistaMaterial = mesh.material;
   mesh.material = [mesh.material, material];
   mesh.receiveShadow = true;
@@ -171,7 +173,8 @@ function meanAlbedo(texture: Texture | undefined): Color | null {
 export function refreshHorizonGroundTone(mesh: Mesh, groundAlbedo: Texture | undefined, rockAlbedo?: Texture): void {
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
   const vista = materials.map((material: Material) => material.userData.horizonVista as VistaMaterialData | undefined).find(Boolean);
-  if (!vista) return;
+  // a terrain-bound ring carries no tint for the means to land on: skip the albedo readbacks
+  if (!vista || (!vista.uniforms.uVMeadowTint && !vista.uniforms.uVRockTint)) return;
   const mean = meanAlbedo(groundAlbedo);
   if (mean) {
     const tint = vista.uniforms.uVMeadowTint?.value as Vector3 | undefined;

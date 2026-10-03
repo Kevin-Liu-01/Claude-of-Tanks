@@ -5111,7 +5111,8 @@ function* terrainBuildSteps(
 ): Generator<TerrainBuildProgress, THREE.Group, void> {
   const group = new THREE.Group();
   group.name = 'terrain';
-  const horizonSteps = buildHorizonRingSteps(engineCtx, cfg, 1337, heightField);
+  // every ring face draws with this battlefield's terrain material (bindAutumnHorizonGround below, continuousGround)
+  const horizonSteps = buildHorizonRingSteps(engineCtx, cfg, 1337, heightField, { terrainBound: true });
   let horizonStep = horizonSteps.next();
   while (!horizonStep.done) {
     yield [0, CHUNKS * CHUNKS + 2, false];
@@ -5353,6 +5354,7 @@ function* terrainBuildSteps(
         heightField.addWaterImpulse = ripples.addImpulse;
         heightField.waterRipplesActive = () => true;
         group.userData.disposeWater = ripples.dispose;
+        group.userData.waterRipples = ripples; // read-only handle for probes (its sleep state, its steps)
       }
       if (ocean) {
         // round 66: the ocean's targets go with the field's (one disposer, called by the world's dispose)
