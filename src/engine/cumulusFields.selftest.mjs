@@ -71,11 +71,15 @@ assert.match(presets, /p\.lumps \?\? 0, p\.baseFlat \?\? 0, p\.cluster \?\? 0,/,
 assert.match(scapes, /const CLEAR_WEATHER = Object\.freeze\(\{ rain: 0, virga: 0, lumps: 0, cluster: 0, baseFlat: 0, deckDetail: 0 \} as const\);/, 'a row without them is the even, round sky');
 
 // ---- the regimes: the cumuliform ones take fields and flat bases; the decks, the sheets and the fronts do not
-for (const regime of ['fair-weather-cumulus', 'cloud-streets', 'sea-streets', 'cumulus-humilis', 'towering-cumulus']) {
+for (const regime of ['fair-weather-cumulus', 'cloud-streets', 'sea-streets', 'towering-cumulus']) {
   const r = CLOUDSCAPE_REGIMES[regime];
   assert.ok(r.cluster > 0.3 && r.cluster < 0.8, `${regime}: fields with gaps (${r.cluster})`);
   assert.equal(r.baseFlat, 1, `${regime}: a flat condensation base`);
 }
+// (2026-10-03, fp10: at a humilis map's 0.14-0.20 coverage the fields' hearts swelled the dry, sparse cells into cotton
+// masses over Sirocco; humilis keeps the even field — small, flat, scattered — and its flat base)
+assert.equal(CLOUDSCAPE_REGIMES['cumulus-humilis'].cluster, 0, 'humilis: no fields');
+assert.equal(CLOUDSCAPE_REGIMES['cumulus-humilis'].baseFlat, 1, 'humilis: a flat base');
 for (const regime of ['stratocumulus-deck', 'overcast-stratus', 'low-stratus', 'cumulonimbus-front', 'hazy-altostratus']) {
   const r = CLOUDSCAPE_REGIMES[regime];
   assert.equal(r.cluster, 0, `${regime}: no cumulus fields`); assert.equal(r.baseFlat, 0, `${regime}: its own base`);
