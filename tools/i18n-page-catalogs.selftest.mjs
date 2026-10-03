@@ -4,6 +4,7 @@
 // (src/ui/i18nDictionaries.ts), and the build plugin's helpers (tools/viteI18nPageCatalogs.ts). A key a public page
 // could show raw is an issue here and in the build.
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -155,6 +156,13 @@ for (const [name, { pages: catalogPages, modules, keys }] of Object.entries(real
 }
 assert.ok(real.catalogs.notFound.keys.length <= 16 && real.catalogs.notFound.keys.includes('notFound.metaTitle'),
   `the 404 page needs a handful of strings: ${real.catalogs.notFound.keys.join(', ')}`);
+
+// The CLI (npm run i18n:check) on the real tree: vite.config.ts imports the plugin, which imports the scanner, so the CLI
+// must not await its run at top level while importing the config (Node reports an unsettled top-level await).
+const cli = spawnSync(process.execPath, ['tools/i18n-page-catalogs.mjs', '--check'], { cwd: ROOT, encoding: 'utf8' });
+assert.equal(cli.status, 0, `node tools/i18n-page-catalogs.mjs --check:\n${cli.stdout}${cli.stderr}`);
+assert.match(cli.stdout, /^notFound\s+\d+ keys/m);
+assert.match(cli.stdout, /i18n-page-catalogs: PASS/);
 
 // --- the runtime's catalog meta contract --------------------------------------------------------
 const registrySource = readFileSync(resolve(ROOT, 'src/ui/i18nDictionaries.ts'), 'utf8');

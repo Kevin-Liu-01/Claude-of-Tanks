@@ -462,4 +462,11 @@ async function main(argv) {
   } else console.log('i18n-page-catalogs: PASS');
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) await main(process.argv.slice(2));
+// No top-level await: vite.config.ts imports the plugin, which imports this module, so main() must not hold this module's
+// evaluation open while it imports the config.
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main(process.argv.slice(2)).catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
