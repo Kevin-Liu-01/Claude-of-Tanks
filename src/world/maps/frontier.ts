@@ -183,6 +183,30 @@ export default {
       roadFence: 'fenceplank', yardFence: 'fencepicket',
     },
   },
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Buntsandstein breaks out
+  // of each wooded ridge's valley flank in red ledges; a carved shrine (Bildstock) stands where each farm lane meets
+  // the valley road, as they do all over the Fulda country; a timber field cross stands by the main road below each
+  // saddle; a 380 kV line on lattice towers strides through the basin past the village. Rotated through 180 degrees
+  // about the crossroads like the rest of the map.
+  scenery: {
+    rocks: [
+      { form: 'outcrop', geology: 'sandstone', x: -200, z: -236, radius: 8, height: 4.5, yawDeg: -4, name: 'the south ridge ledges' },
+      { form: 'outcrop', geology: 'sandstone', x: 200, z: 236, radius: 8, height: 4.5, yawDeg: 176, name: 'the north ridge ledges' },
+    ],
+    // the red sandstone breaking out under the ridge woods
+    rockFields: [
+      { geology: 'sandstone', x: -150, z: -262, radius: 140, count: 6, slopeBias: 0.7, size: [2.5, 5], name: 'the south ridge sandstone' },
+      { geology: 'sandstone', x: 150, z: 262, radius: 140, count: 6, slopeBias: 0.7, size: [2.5, 5], name: 'the north ridge sandstone' },
+    ],
+    landmarks: [
+      { kind: 'bildstock', x: -208, z: 36, yawDeg: 150, name: 'the shrine at the west farm lane' },
+      { kind: 'bildstock', x: 208, z: -36, yawDeg: -30, name: 'the shrine at the east farm lane' },
+      { kind: 'waysidecross', x: 32, z: -270, yawDeg: 90, name: 'the field cross below the south saddle' },
+      { kind: 'waysidecross', x: -32, z: 270, yawDeg: -90, name: 'the field cross below the north saddle' },
+    ],
+    // the 380 kV line across the basin, one tower in each half of the valley floor on either side of the village
+    powerLines: [{ towers: [[-440, -150], [-147, -50], [147, 50], [440, 150]], heightM: 36, name: 'the 380 kV line' }],
+  },
   horizon: {
     baseHex: 0x526344, amp: 1.18, style: 'rolling', treeline: 0.91, treelineLayers: 3,
     forestHex: 0x2f472d, rockHex: 0x6c6b5c, haze: 0.94, grain: 0.66,

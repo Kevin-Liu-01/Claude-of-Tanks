@@ -38,7 +38,7 @@ function richCount(n: number | undefined, fallback = 0): number { return Math.ro
 import { markShadowOnly, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
-import { applySourcedBuildings, type BuildingPaletteId, type SourcedTextureApplicationOptions } from './sourcedTextures.ts';
+import { applySourcedBuildings, sourcedStoneIsBrick, type BuildingPaletteId, type SourcedTextureApplicationOptions } from './sourcedTextures.ts';
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
@@ -46,11 +46,16 @@ import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNe
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import { applyRockShaderHook, fractureRockGeometry, makeRockDetail, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
+import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
+import type { SceneryMapConfig } from './sceneryPlan.ts';
+type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
+import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 // world-dressing r1: building-catalog extension + destructible small props
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import {
+  COURSED_WALLSTONE,
   DESTRUCTIBLE_TYPES,
   FENCE_SEG,
   WALL_SEG,
@@ -655,7 +660,8 @@ export interface PropsRuntime {
   _buildDetail?: PropsBuildDetail;
 }
 
-const PROP_TYPE_REGISTRY: Readonly<Record<string, PropsDestructibleMeta>> = DESTRUCTIBLE_TYPES;
+// The scenery lane's landmark kinds follow the inhabiting kit's, so no existing kind moves (2026-10-03).
+const PROP_TYPE_REGISTRY: Readonly<Record<string, PropsDestructibleMeta>> = { ...DESTRUCTIBLE_TYPES, ...SCENERY_DESTRUCTIBLE_TYPES };
 
 function canvas2d(
   canvas: HTMLCanvasElement,
@@ -3112,6 +3118,10 @@ ${snowCap ? `
     glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [], structureWood: [],
     regionalPlaster: [], regionalPlaster2: [], regionalPlaster3: [], regionalStone: [], regionalRoof: [],
   };
+  // the scenery lane (2026-10-03): a map whose masonry is its own rock tints the stone print (Saltwind: the karst
+  // limestone of its outcrops, for its dry-stone walls, their posts and its stone-built houses alike)
+  const masonryTint = (cfg as SceneryMapConfig | null)?.scenery?.masonryTint;
+  if (masonryTint) mats.stone.color.setRGB(masonryTint[0], masonryTint[1], masonryTint[2]);
   group.userData.steelAtlas = steelAtlas;
   /** A steel part on a map the plan-time predicate did not foresee: paint the atlas now, in one slice, and say so. */
   function ensureSteelAtlas(reason: string): void {
@@ -3132,6 +3142,8 @@ ${snowCap ? `
     mats.steel.needsUpdate = true;
   }
   const obstacles: PropsCollisionRecord[] = [];
+  // the scenery pass (2026-10-03) keeps its rock fields off the trees; the vegetation is released before it runs
+  const sceneryTrees = vegetation?.treeObstacles ?? [];
   const colliders: CollisionRecord[] = [];
   // crushables — the main.ts hull-radius contact loop (effects_combat r1).
   // Entries are telegraph poles ({index} into the pole InstancedMesh) OR
@@ -3182,22 +3194,26 @@ ${snowCap ? `
   // (props-models.json) — they cannot live in inhabitKit (no bakedGeometry
   // there). Same meta shape; the shared broken state is the burst-bag heap.
   // keep 0.97: driving a sandbag line barely registers on the speedo.
+  // the scenery lane (2026-10-03): the stacks are laid bag by bag in the sourced models' envelopes (maps/sceneryKit.ts
+  // buildSandbagStack) on the canvas weave; a breached stack still spends the old remnant's draws
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
     sandbagbig: {
-      cls: 'break', mat: 'baked', contact: 'ob', r: 2.0, h: 1.35, keep: 0.97,
-      build: () => buildSourcedStructureGeometry('sandbagbig'),
-      broken: bSandbagBroken,
+      cls: 'break', mat: 'structureCanvas', contact: 'ob', r: 2.0, h: 1.35, keep: 0.97,
+      build: () => buildSandbagStack('sandbagbig'),
+      broken: (rng) => buildSandbagHeap('sandbagbig', () => bSandbagBroken(rng).dispose()),
     },
     sandbagsmall: {
-      cls: 'break', mat: 'baked', contact: 'ob', r: 1.7, h: 1.05, keep: 0.975,
-      build: () => buildSourcedStructureGeometry('sandbagsmall'),
-      broken: bSandbagBroken,
+      cls: 'break', mat: 'structureCanvas', contact: 'ob', r: 1.7, h: 1.05, keep: 0.975,
+      build: () => buildSandbagStack('sandbagsmall'),
+      broken: (rng) => buildSandbagHeap('sandbagsmall', () => bSandbagBroken(rng).dispose()),
     },
     sandbagwall: {
-      cls: 'break', mat: 'baked', contact: 'ob', r: 1.5, h: 1.0, keep: 0.975,
-      build: () => buildSourcedStructureGeometry('sandbagwall'),
-      broken: bSandbagBroken,
+      cls: 'break', mat: 'structureCanvas', contact: 'ob', r: 1.5, h: 1.0, keep: 0.975,
+      build: () => buildSandbagStack('sandbagwall'),
+      broken: (rng) => buildSandbagHeap('sandbagwall', () => bSandbagBroken(rng).dispose()),
     },
+    // the field wall is dry stone (inhabitKit.ts) except under a brick print, which keeps the coursed module
+    ...(sourcedStoneIsBrick(mapId) ? { wallstone: COURSED_WALLSTONE } : {}),
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
@@ -7160,6 +7176,37 @@ ${snowCap ? `
   }
   yield* placeYardDressing();
 
+  // -------------------------------------------------------------------------
+  // 2026-10-03 (the scenery lane): the map's authored landscape features and landmarks (world/scenery.ts) — its rock
+  // formations on one mesh on the rock material (one draw for the map), its landmark destructibles in the pools, its
+  // pylon lines folded into the baked bucket. Own streams, after every other placement and before the bucket merge,
+  // so a map without a `scenery` block builds exactly as before.
+  // -------------------------------------------------------------------------
+  function* placeScenery(): Generator<PropsBuildSlice, void, void> {
+    const scenery = (cfg as (PropsMapConfig & SceneryMapConfig) | null)?.scenery;
+    if (!scenery) return;
+    const built = yield* composeScenery({
+      mapId, scenery, heightField, spawns: [L.spawns.player, ...L.spawns.enemies],
+      obstacles, colliders, trees: sceneryTrees, baked: buckets.baked, conform: conformYardPiece,
+      addDestructible: (kind, x, y, z, yaw, scale) => addDestructible(kind, x, y, z, yaw, scale),
+      seed, mobile: mobileProps,
+    });
+    if (built.rockPieces.length) {
+      const profile = bucketShadowProfile(built.rockPieces);
+      const merged = mergeGeometries(built.rockPieces, false);
+      for (const piece of built.rockPieces) piece.dispose();
+      const mesh = new THREE.Mesh(merged, mats.rock);
+      mesh.name = 'props-scenery-rock';
+      setShadowCasterProfile(mesh, profile);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.matrixAutoUpdate = false;
+      group.add(mesh);
+    }
+    group.userData.scenery = built.receipt;
+  }
+  yield* placeScenery();
+
   function* mergeMaterialBuckets(): Generator<PropsBuildSlice, void, void> {
     for (const key of Object.keys(buckets)) {
       if (buckets[key].length === 0) continue;
@@ -7272,9 +7319,18 @@ ${snowCap ? `
     pool: DestructiblePool,
     imI: THREE.InstancedMesh,
   ): void {
-    if (snowCap && kind.startsWith('sandbag')) {
-      const tint = new THREE.Color(0.52, 0.50, 0.47);
-      for (let i = 0; i < pool.mats4.length; i++) imI.setColorAt(i, tint);
+    if (kind.startsWith('sandbag')) {
+      // the scenery lane: every stack its own weathering (the bags vary within a stack, this varies the stacks), a
+      // little greyer under snow
+      const tint = new THREE.Color();
+      for (let i = 0; i < pool.mats4.length; i++) {
+        const h = Math.sin((i + 1) * 12.9898 + seed * 0.000731 + kind.length * 78.233) * 43758.5453;
+        const u = h - Math.floor(h), w = (h * 7.31) - Math.floor(h * 7.31);
+        const l = (snowCap ? 0.84 : 0.9) + u * 0.2;
+        tint.setRGB(l * (1 + (w - 0.5) * 0.06), l, l * (1 - (w - 0.5) * 0.08));
+        imI.setColorAt(i, tint);
+      }
+      imI.instanceColor!.needsUpdate = true;
     }
     if (!pool.meta.instanceTintStrength) return;
     for (let i = 0; i < pool.mats4.length; i++) {
@@ -7367,6 +7423,32 @@ ${snowCap ? `
     }
   }
   yield* finalizeDestructiblePools();
+
+  // the scenery lane (2026-10-03): the field boundaries' walls and banks (world/scenery.ts composeFieldWorks), once
+  // every solid is final — the pools' refit above reshapes the buildings' records, and the works keep off the objective
+  // discs where the match placement seats them on these very solids — and off the aprons and the yards (the yard
+  // structures, as placeYardDressing reads them). Low and long, grounded by their own shading and dark foot (no shadow).
+  function* placeFieldBoundaryWorks(): Generator<PropsBuildSlice, void, void> {
+    const scenery = (cfg as (PropsMapConfig & SceneryMapConfig) | null)?.scenery;
+    if (!scenery?.fieldWorks) return;
+    const yardKinds = new Set(yardStructureKinds());
+    const built = yield* composeFieldWorks({
+      mapId, scenery, heightField, spawns: [L.spawns.player, ...L.spawns.enemies], obstacles, trees: sceneryTrees,
+      seed, mobile: mobileProps,
+      hardstands: (cfg as { terrain?: { hardstands?: SceneryHardstand[] } } | null)?.terrain?.hardstands ?? [],
+      yards: buildingFeatures.filter((b) => b.kind && yardKinds.has(b.kind)).map((b) => ({ x: b.x, z: b.z, w: b.w, d: b.d })),
+    });
+    const receipt = group.userData.scenery as { fieldWorks?: unknown } | undefined;
+    if (receipt && built.receipt) receipt.fieldWorks = built.receipt;
+    if (!built.geometry) return;
+    const works = new THREE.Mesh(built.geometry, mats.rock);
+    works.name = 'props-field-works';
+    works.castShadow = false;
+    works.receiveShadow = true;
+    works.matrixAutoUpdate = false;
+    group.add(works);
+  }
+  yield* placeFieldBoundaryWorks();
   // Construction-only spans are now sealed into matrices/support/colliders;
   // runtime destruction closures must not retain the placement graph.
   wallSpans.clear();

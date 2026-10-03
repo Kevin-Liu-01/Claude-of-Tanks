@@ -129,6 +129,17 @@ export default {
       camps: 5, modernClutter: 22, roadFence: 'fencewattle', yardFence: 'fencewattle',
     },
   },
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Naga Hills' stones. A
+  // memorial monolith stands on Garrison Hill's crown, as the Kohima memorial does; a row of Naga memorial stones,
+  // raised for a village's feasts of merit, stands by the temple forecourt.
+  scenery: {
+    landmarks: [
+      { kind: 'menhir', x: -100, z: 276, scale: 1.4, height: 5.2, name: 'the memorial stone on Garrison Hill' },
+      { kind: 'menhir', x: -286, z: -26, scale: 1.0, height: 3.4, name: 'the Naga stones by the temple' },
+      { kind: 'menhir', x: -280, z: -31, scale: 0.8, height: 2.6 },
+      { kind: 'menhir', x: -292, z: -21, scale: 0.7, height: 2.1 },
+    ],
+  },
   horizon: {
     baseHex: 0x355344, amp: 1.08, style: 'alpine', treeline: 0.97, treelineLayers: 3, snowline: 2,
     forestHex: 0x193a28, rockHex: 0x59635a, haze: 0.97, grain: 0.64,
