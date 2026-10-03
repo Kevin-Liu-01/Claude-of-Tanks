@@ -76,9 +76,14 @@ export default {
   },
   spawns: {
     player: { x: -310, z: -350 },
+    // 2026-10-03 (maps lane B, after the bots lane's deployment finding): bravo deploys in a 4 x 2 block, the rotation
+    // of alpha's (8 m columns, 10 m rows; pad k is the rotation of alpha's slot k), 17 m west of its old line's centroid
+    // (-7, 384), on the flattest ground near it. Its seven pads had spread about 430 m along the north edge while
+    // alpha's seven start in a block, and the bots lane's swap test on Titan Gorge showed that such a lean follows the
+    // deployment, not the team. The anchors the objectives derive from barely move.
     enemies: [
-      { x: -226, z: 376 }, { x: -158, z: 410 }, { x: -82, z: 370 },
-      { x: -8, z: 412 }, { x: 72, z: 366 }, { x: 142, z: 400 }, { x: 210, z: 352 },
+      { x: -9, z: 375 }, { x: -17, z: 375 }, { x: -25, z: 375 }, { x: -33, z: 375 },
+      { x: -9, z: 385 }, { x: -17, z: 385 }, { x: -25, z: 385 },
     ],
   },
   splat: {
