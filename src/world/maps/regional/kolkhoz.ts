@@ -69,8 +69,19 @@ const shifer = (pitch: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec => ({
 function khata(ctx: RegionalBuildContext, opts: { long?: boolean } = {}): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
+  // a long khata (dwelling and byre under one roof) on a wide plot lies along it, built a quarter turn round so its
+  // side door faces the frontage: the plot's body is kept, not shrunk to a cottage across it
+  const turned = !!opts.long && ctx.info.w > ctx.info.d + 1;
+  const pw = turned ? ctx.info.d : ctx.info.w, pd = turned ? ctx.info.w : ctx.info.d;
+  // (turned, the porch on the door side stays inside the plot)
+  const W = Math.max(4.8, Math.min(turned ? 6.6 : 6.2, pw - (turned ? 2.4 : 0.6))), D = Math.max(7.0, Math.min(opts.long ? (turned ? 15.4 : 12) : 10, pd - 0.4));
+  if (turned) sink.placed(Math.PI / 2, 0, 0, 0, () => khataBody(sink, ctx, st, W, D));
+  else khataBody(sink, ctx, st, W, D);
+  return sink.finish();
+}
+
+function khataBody(sink: PartSink, ctx: RegionalBuildContext, st: KolkhozState, W: number, D: number): void {
   const rng = st.rng;
-  const W = Math.max(4.8, Math.min(6.2, ctx.info.w - 0.6)), D = Math.max(7.0, Math.min(opts.long ? 12 : 10, ctx.info.d - 0.4));
   const wall: RegionalBucket = ctx.wallBucket === 'stone' ? 'plaster' : ctx.wallBucket as RegionalBucket;
   const thatched = rng() < 0.7;
   const openings: Opening[] = [{ face: 'left', storey: 0, kind: 'door', u: D * 0.2, w: 0.95, y0: 0, h: 1.95 }];
@@ -93,7 +104,6 @@ function khata(ctx: RegionalBuildContext, opts: { long?: boolean } = {}): Region
   const pg = roofGeometry(1.15, 1.7, y, porch);
   // a shed rises toward -x of its own frame: turned half round, its high side meets the wall
   sink.placed(Math.PI, -W / 2 - 0.58, 0, f.u[2] * u, () => emitRoof(sink, pg, porch));
-  return sink.finish();
 }
 
 /** The korovnik: a long brick cowshed, small windows in a row, cart doors at both gables, ridge vents. */
@@ -203,15 +213,22 @@ function onion(sink: PartSink, x: number, y: number, z: number, r: number, colou
   sink.span('structureMetal', x - 0.28, yy + r * 0.5 + 0.62, z - 0.03, x + 0.28, yy + r * 0.5 + 0.7, z + 0.03, { colour: GILT, decor: true });
 }
 
-/** The village church: whitewashed nave and drum, a green sheet roof, onion domes on the drum and the bell tower. */
+/**
+ * The village church: whitewashed nave and drum, a green sheet roof, onion domes on the drum and the bell tower. Where
+ * the plot is too short for the west tower beside the nave, a chapel (chasovnya): a shorter nave with one onion on its
+ * drum and an open belfry over the west gable, all inside the plot.
+ */
 const church: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
-  const W = Math.max(6.0, Math.min(8.6, ctx.info.w - 0.6)), D = Math.max(9, Math.min(16, ctx.info.d - 4.0));
+  const tower = ctx.info.d - 0.4 >= 12.9;
+  const W = Math.max(tower ? 6.0 : 4.6, Math.min(8.6, ctx.info.w - 0.6));
+  const D = tower ? Math.max(9, Math.min(16, ctx.info.d - 4.0)) : Math.max(6.0, Math.min(9, ctx.info.d - 0.4));
   const openings: Opening[] = [];
   for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, D, { w: 0.85, h: 1.8, sill: 1.6, spacing: 2.6, margin: 1.2 })) openings.push(o);
+  if (!tower) openings.push({ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.2, y0: 0, h: 2.4 });
   const frame = buildHouse(sink, {
-    w: W, d: D, plinth: { h: 0.4, out: 0.08, bucket: 'stone' }, storeys: [{ h: 5.2, wall: 'plaster' }],
+    w: W, d: D, plinth: { h: 0.4, out: 0.08, bucket: 'stone' }, storeys: [{ h: tower ? 5.2 : 4.4, wall: 'plaster' }],
     roof: { kind: 'gable', pitchDeg: 34, eave: 0.35, verge: 0.2, thickness: 0.1, bucket: 'structureMetal', ridge: null },
     gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null,
   }, {
@@ -220,12 +237,24 @@ const church: RegionalBuilder = (ctx) => {
       frame: WHITE_FRAME, frameWidth: 0.06, frameOut: 0.04, bars: 'six',
       surround: { bucket: 'plaster', width: 0.18, out: 0.06, lintel: 0.3 }, sill: { bucket: 'plaster', out: 0.1 }, shutters: null,
     }, st.rng, 0.2),
+    door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: rgb(0x6e5440), frame: { bucket: 'plaster', width: 0.24, out: 0.08, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' }, y0 + o.y0),
   });
-  void frame;
   // the drum and its dome over the crossing
-  const top = frame.roof.ridgeTopY;
-  sink.cylinder('plaster', [0, top - 1.2, -D * 0.1], 'y', 2.4, 1.5, 12, {});
-  onion(sink, 0, top + 1.2, -D * 0.1, 1.5, DOME_GREEN);
+  const top = frame.roof.ridgeTopY, r = Math.min(1.5, W * 0.24);
+  sink.cylinder('plaster', [0, top - 1.2, -D * 0.1], 'y', 2.4 * r / 1.5, r, 12, {});
+  onion(sink, 0, top - 1.2 + 2.4 * r / 1.5, -D * 0.1, r, DOME_GREEN);
+  if (!tower) {
+    // the belfry over the west gable: four posts on the ridge, open between them, a pyramid of sheet and a small onion
+    const bz = D / 2 - 0.9, by = frame.roof.ridgeY - 0.6, bh = 1.7, b = 0.65;
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+      sink.span('plaster', sx * b - 0.13, by, bz + sz * b - 0.13, sx * b + 0.13, by + bh + 0.6, bz + sz * b + 0.13);
+    }
+    sink.span('plaster', -b - 0.18, by + bh + 0.6, bz - b - 0.18, b + 0.18, by + bh + 0.85, bz + b + 0.18);
+    sink.span('structureMetal', -0.06, by + 0.95, bz - 0.06, 0.06, by + bh + 0.6, bz + 0.06, { colour: rgb(0x2e3032), decor: true });
+    sink.cylinder('structureMetal', [0, by + 0.75, bz], 'y', 0.42, 0.3, 8, { colour: rgb(0x6a5a3a), decor: true }, 0.15);
+    onion(sink, 0, by + bh + 0.85, bz, 0.55, DOME_GREEN);
+    return sink.finish();
+  }
   // the bell tower at the west (+z) end: two square tiers and a small onion
   const tz = D / 2 + 1.6;
   sink.span('stone', -1.95, -0.4, tz - 1.95, 1.95, 0.4, tz + 1.95);
