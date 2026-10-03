@@ -264,7 +264,8 @@ export function createMainFrameRuntime({
     const postStartedAt = profileGarageReturn ? performance.now() : 0;
     const thermal = frame.inBattle && !frame.killcamActive && !game.player?.combat?.destroyed && camera.userData.thermalFlight === true;
     camera.userData.thermalFlight = thermal;
-    thermalVehicles.begin(game.tanks,thermal,game.player?.team);
+    const vision=camera.userData.flightVision??1;
+    thermalVehicles.begin(game.tanks,thermal&&(vision===1||vision===2),game.player?.team);
     try { post.render(dtSeconds, frameWallDtSeconds); }
     finally { thermalVehicles.end(); }
     const frameFinishedAt = profileGarageReturn ? performance.now() : 0;

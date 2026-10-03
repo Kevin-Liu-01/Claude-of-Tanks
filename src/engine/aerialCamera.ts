@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getAerialVision, aerialVisionCode } from './aerialVision.ts';
 import { droneWobblePitch, droneWobbleRoll } from '../fx/droneMotion.ts';
 import { AERIAL_RULES } from '../sim/matchRuleset.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
@@ -54,6 +55,7 @@ export function createAerialCamera(camera: THREE.PerspectiveCamera) {
       camera.lookAt(target);
       const fpv=view.kind==='drone'&&!view.launching&&launchBlend<=0;
       camera.userData.thermalFlight=view.kind==='gunship'||fpv;
+      camera.userData.flightVision=aerialVisionCode(getAerialVision());
       if(fpv){
         // Lens follows the airframe's corrections without the full exterior bank.
         const time=AERIAL_RULES.drone.batteryS-view.batteryS;

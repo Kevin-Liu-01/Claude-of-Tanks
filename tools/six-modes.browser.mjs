@@ -37,6 +37,7 @@ try{
    assert.equal(await page.evaluate(()=>window.__DEBUG.game.gameMode),mode);
    if(mode==='drone'){
     assert.equal(await page.evaluate(()=>!!window.__DEBUG.game.player.visual.root.getObjectByName('Docked FPV mission payload')?.visible),true,'drone starts on the carrier');
+    assert.equal(await page.evaluate(()=>window.__DEBUG.game.player.visual.root.getObjectByName('Reusable mission payload rail').parent.name),'rig_turret','mission rail belongs to the turret');
     await page.screenshot({path:resolve(out,`drone-docked-${suffix}.png`)});
     if(mobile)await page.tap('.cot-drone-control');
     else {await page.mouse.click(640,400);await page.keyboard.press('KeyV');}
@@ -59,6 +60,7 @@ try{
     assert.equal(await page.$eval('.cot-dp',el=>getComputedStyle(el).display),'none','no tank damage panel during FPV flight');
     const consoleBounds=await page.$eval('.flight-console',el=>{const r=el.getBoundingClientRect();return{top:r.top,left:r.left,right:r.right,bottom:r.bottom};});
     assert.ok(consoleBounds.top>initialViewport.height/2+12,'flight console stays below the sight');
+    await checkSensors(page,mode,suffix,mobile);
     if(mobile)await page.tap('.cot-drone-return');else await page.keyboard.press('KeyV');await page.waitForFunction(()=>!window.__DEBUG.game.player.aerial.active);
     reports.push({mode,mobile,before,after,returned:true});
    }else if(mode==='ac130'){
@@ -79,6 +81,7 @@ try{
     reports.push({mode,mobile,before,after});
    }else reports.push({mode,mobile,state:await page.evaluate(()=>window.__DEBUG.game.matchModeState)});
    if(mode==='ac130'){
+    await checkSensors(page,mode,suffix,mobile);
     const bounds=await page.$eval('.flight-console',el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom};});
     assert.ok(bounds.x>=0&&bounds.y>initialViewport.height/2+12&&bounds.right<=initialViewport.width&&bounds.bottom<=initialViewport.height,'flight controls fit below sight');
     assert.equal(await page.$eval('.cot-drive',el=>getComputedStyle(el).display),'none','no tank speedometer in gunship');
@@ -120,4 +123,19 @@ async function openPublishedPage(browser,url,viewport){
  await page.goto(url+'/?nosplash=1&tier=desktop&gfxreset=1',{waitUntil:'domcontentloaded',timeout:180000});
  await page.waitForFunction('window.__GAME_READY === true',{timeout:300000});
  return {page,errors};
+}
+
+async function checkSensors(page,mode,suffix,mobile){
+ await page.evaluate(()=>document.exitPointerLock());
+ for(const [label,code] of [['Infrared',1],['Thermal',2],['Night vision',3],['Daylight',0]]){
+  await page.waitForFunction((code)=>window.__DEBUG.post.composer.passes.find(p=>p.isOutputGradePass).uniforms.uThermal.value===code,{timeout:5000},code);
+  assert.match(await page.$eval('.flight-view-switch',el=>el.textContent),new RegExp(label));
+  const spacing=await page.$eval('.flight-console',el=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return{padding:parseFloat(s.paddingLeft),top:r.top,height:r.height};});
+  assert.ok(spacing.padding>=6,'flight panel retains padding against HUD reset');
+  const button=await page.$eval('.flight-view-switch',el=>{const r=el.getBoundingClientRect();return{width:r.width,height:r.height};});
+  assert.ok(button.width>=44&&button.height>=44,'sensor control has a touch-sized target');
+  await page.screenshot({path:resolve(out,`${mode}-sensor-${code}-${suffix}.png`)});
+  if(mobile)await page.tap('.flight-view-switch');else await page.click('.flight-view-switch');
+ }
+ await page.waitForFunction(()=>window.__DEBUG.post.composer.passes.find(p=>p.isOutputGradePass).uniforms.uThermal.value===1);
 }
