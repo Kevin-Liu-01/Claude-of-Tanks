@@ -18,6 +18,7 @@ import { buildRockFormation } from './sceneryRocks.ts';
 import { SCENERY_DESTRUCTIBLE_TYPES, buildConductor, buildPylon } from './maps/sceneryKit.ts';
 import {
   LANDMARK_RADIUS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, pylonLegHalf, rockReach, sceneryClearances,
+  withGroundCoverHoles,
 } from './sceneryPlan.ts';
 import { composeScenery } from './scenery.ts';
 import { certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile } from './structureCollision.ts';
@@ -190,6 +191,12 @@ function compose(scenery, solids = [], mobile = false) {
   assert.equal(by['line@-300'].status, 'placed'); assert.equal(by['line@-20'].status, 'placed');
   assert.deepEqual(built.destructibles.map((d) => d.kind), ['bildstock'], 'the shrine joins the destructible pools');
   assert.equal(built.rockPieces.length, 3, 'one geometry per placed rock formation (tor, pavement, calvary)');
+  // the pavement's ground is a hole in the ground cover (no blade grows through a clint); the standing forms seal theirs
+  assert.deepEqual(built.receipt.groundCoverHoles.map((h) => [h.x, h.z]), [[-200, 100]], 'the pavement, and only it, is a ground-cover hole');
+  const sealed = () => false, holed = withGroundCoverHoles(sealed, built.receipt.groundCoverHoles);
+  assert.equal(holed(-200, 0, 100, 0.5, 0.2), true, 'a blade on the pavement is refused');
+  assert.equal(holed(-180, 0, 100, 0.5, 0.2), false, 'a blade beyond it grows');
+  assert.equal(withGroundCoverHoles(sealed, []), sealed, 'a world without holes keeps its admission');
   // two masses (tor, calvary) + eight pylon legs; the pavement publishes none
   assert.equal(built.receipt.colliders, 2 + 8);
   assert.equal(built.obstacles.length, 1 + 10); assert.equal(built.colliders.length, 10);

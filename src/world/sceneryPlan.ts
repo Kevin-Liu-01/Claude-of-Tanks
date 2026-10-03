@@ -230,3 +230,28 @@ export function planHedgerows(hedgerows: readonly SceneryHedgerow[] | null | und
   });
   return out;
 }
+
+/** A disc of ground the grass, the litter and the tall grass keep off (a pavement's clints, a scree fan's stones). */
+export interface GroundCoverHole {
+  x: number;
+  z: number;
+  r: number;
+}
+
+/**
+ * Wrap a ground-cover admission (world/groundCoverClearance.ts) with the scenery's holes: no blade grows up through a
+ * clint or a scree stone. A world without holes keeps the admission it had.
+ */
+export function withGroundCoverHoles<T extends (x: number, y: number, z: number, height: number, radius: number) => boolean>(
+  blocked: T, holes: readonly GroundCoverHole[] | null | undefined,
+): T {
+  if (!holes?.length) return blocked;
+  return ((x: number, y: number, z: number, height: number, radius: number) => {
+    if (blocked(x, y, z, height, radius)) return true;
+    for (const hole of holes) {
+      const dx = x - hole.x, dz = z - hole.z, rr = hole.r + radius;
+      if (dx * dx + dz * dz < rr * rr) return true;
+    }
+    return false;
+  }) as T;
+}

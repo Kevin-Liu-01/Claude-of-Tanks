@@ -25,7 +25,9 @@ import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildRockFormation, type RockFormationSpec } from './sceneryRocks.ts';
 import { buildConductor, buildPylon, SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
-import { FIELD_FORMS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, rockReach, type SceneryConfig } from './sceneryPlan.ts';
+import {
+  FIELD_FORMS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, rockReach, type GroundCoverHole, type SceneryConfig,
+} from './sceneryPlan.ts';
 import { cloneCollisionRecord, setCircleShape, setConvexShape, type CollisionRecord } from './collision.ts';
 
 type Rng = () => number;
@@ -85,6 +87,8 @@ interface SceneryFeatureReceipt {
 
 interface SceneryReceipt {
   features: SceneryFeatureReceipt[];
+  /** Pavements' and scree fans' ground: the world's ground cover keeps off it (map.ts withGroundCoverHoles). */
+  groundCoverHoles: GroundCoverHole[];
   placed: number;
   skipped: number;
   rockTriangles: number;
@@ -147,7 +151,7 @@ function staticMass(points: number[], y0: number, y1: number): CollisionRecord {
 
 /** Build the map's scenery. A generator: one slice per feature, so a loading frame never carries more than one. */
 export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuildSlice, SceneryBuild, void> {
-  const receipt: SceneryReceipt = { features: [], placed: 0, skipped: 0, rockTriangles: 0, bakedTriangles: 0, colliders: 0 };
+  const receipt: SceneryReceipt = { features: [], groundCoverHoles: [], placed: 0, skipped: 0, rockTriangles: 0, bakedTriangles: 0, colliders: 0 };
   const rockPieces: THREE.BufferGeometry[] = [];
   const scenery = ctx.scenery;
   if (!scenery) return { rockPieces, receipt };
@@ -193,6 +197,7 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
     if (!built.geometry) { skip(feature, 'empty'); continue; }
     rockPieces.push(built.geometry);
     for (const mass of built.masses) addMass(mass.points, mass.y0, mass.y1);
+    if (!standing) receipt.groundCoverHoles.push({ x: spec.x, z: spec.z, r: spec.radius * (spec.form === 'pavement' ? 0.85 : 0.6) });
     feature.triangles = built.triangles;
     receipt.rockTriangles += built.triangles;
     receipt.placed++;
@@ -246,6 +251,7 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
       if (!built.geometry) continue;
       rockPieces.push(built.geometry);
       for (const mass of built.masses) addMass(mass.points, mass.y0, mass.y1);
+      if (!standing) receipt.groundCoverHoles.push({ x, z, r: r * (form === 'pavement' ? 0.85 : 0.6) });
       standingSites.push({ x, z, r: reach });
       feature.triangles! += built.triangles;
       receipt.rockTriangles += built.triangles;
