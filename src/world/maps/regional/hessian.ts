@@ -101,14 +101,15 @@ export function stateFor(ctx: RegionalBuildContext, rng: () => number): HessianS
 /**
  * One infill panel limewashed at its own time (2026-10-03, after gauntlet wave 0's "one tiled texture"): every panel of a
  * framed wall is daubed and washed on its own, so the panels of an old house differ by a shade, a few freshly whitened,
- * a few gone grey. Half the panels carry their own wash: a decor quad a few millimetres proud of the wall, inside its
- * timbers, from the look-only stream (the build stream, geometry and collision as before).
+ * a few gone grey. Half the panels carry their own wash: a decor quad 12 mm proud of the wall (the timbers stand 35 mm
+ * proud), inside its timbers, from the look-only stream (the build stream, geometry and collision as before).
  */
 function panelWash(sink: PartSink, face: Face, st: HessianState, a: number, b: number, ya: number, yb: number): void {
   const roll = st.look(), k = st.look();
   if (roll >= 0.5 || b - a < 0.2 || yb - ya < 0.2) return;
   const shadeK = k < 0.3 ? 1.06 + k * 0.2 : 0.8 + (k - 0.3) * 0.2;
-  const P = (u: number, y: number) => H.facePoint(face, u, y, 0.003);
+  // 12 mm proud: resolved by the depth buffer to ~250 m (3 mm fought the infill from ~150 m)
+  const P = (u: number, y: number) => H.facePoint(face, u, y, 0.012);
   sink.quad(st.infill, P(a + 0.01, ya + 0.01), P(b - 0.01, ya + 0.01), P(b - 0.01, yb - 0.01), P(a + 0.01, yb - 0.01), { decor: true, shade: shadeK });
 }
 

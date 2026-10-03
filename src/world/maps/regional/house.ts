@@ -250,7 +250,7 @@ const RENDERS: ReadonlySet<RegionalBucket> = new Set<RegionalBucket>(['plaster',
 /**
  * Spalled render on a worn house (gauntlet wave 0: "no wear"): where a rendered storey's render has fallen away, the
  * masonry under it shows: a ragged band at the wall foot (rising damp), a patch under a sill (the drip), a scar in a
- * pier (a splinter, a sheet come loose). Decor a few millimetres proud of the wall, clear of every opening, from the
+ * pier (a splinter, a sheet come loose). Decor 15 mm proud of the wall, clear of every opening, from the
  * wear context's own spall stream: the walls, the damage decisions and the collision never change.
  */
 function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face: Face,
@@ -286,9 +286,10 @@ function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face
     }
     if (Math.abs(cu) + ru > half - 0.08 || cy - ry < y0 + 0.02 || cy + ry > y1 - 0.08) continue;
     if (keepOut.some((h) => cu + ru > h.u0 && cu - ru < h.u1 && cy + ry > h.y0 && cy - ry < h.y1)) continue;
-    // fanned from the centre, a few millimetres proud: the masonry reads through the render without fighting it
+    // fanned from the centre, 15 mm proud: the depth buffer (near 0.5 m, 24 bits) resolves that to ~280 m, where the
+    // patch is a pixel; 6 mm fought the render from ~180 m in the establishing views
     const fan: Array<[number, number]> = [[cu, cy], ...ragged, ragged[0]];
-    sink.polygon(bucket, fan.map(([u, yy]) => facePoint(face, u, yy, 0.006)), { decor: true, shade: 0.86 });
+    sink.polygon(bucket, fan.map(([u, yy]) => facePoint(face, u, yy, 0.015)), { decor: true, shade: 0.86 });
   }
 }
 
