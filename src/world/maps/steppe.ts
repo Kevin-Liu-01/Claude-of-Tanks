@@ -18,6 +18,8 @@
 // of forests. Wide-open sightlines are the point — the wadi banks and the
 // escarpment crest are the cover geometry.
 
+import { gully } from './geology.ts';
+
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The wadi centreline (metres): z per x, a gentle meander from the west edge to
@@ -42,29 +44,6 @@ function wadiCrusts(): { x: number; z: number; r: number; dip: number }[] {
   // the crusts stop where the border rim begins to lift (|x| > 470); the basins themselves run on past the edge
   for (let x = -456; x <= 456; x += 48) out.push({ x, z: Math.round(zAt(x)), r: 28, dip: 0.8 });
   return out;
-}
-
-// A balka (2026-10-03, maps lane B): the dry ravine that loess steppe cuts into every scarp and terrace edge. Three
-// overlapping troughs climb from the mouth to the head, each narrower and shallower than the one below, bending as
-// they go, so the floor undulates and the cut narrows into the slope like a real gully head.
-function balka(mouthX: number, mouthZ: number, headX: number, headZ: number, depth: number, mouthHalfWidth: number,
-  bendM: number): { kind: 'basin'; x: number; z: number; rx: number; rz: number; height: number; yawDeg: number }[] {
-  const dx = headX - mouthX, dz = headZ - mouthZ, length = Math.hypot(dx, dz);
-  const nx = -dz / length, nz = dx / length;
-  return [0, 1, 2].map((i) => {
-    const t = (i + 0.5) / 3, bend = bendM * Math.sin(Math.PI * t);
-    const x0 = mouthX + dx * (t - 0.08) + nx * bendM * Math.sin(Math.PI * (t - 0.08));
-    const z0 = mouthZ + dz * (t - 0.08) + nz * bendM * Math.sin(Math.PI * (t - 0.08));
-    const x1 = mouthX + dx * (t + 0.08) + nx * bendM * Math.sin(Math.PI * (t + 0.08));
-    const z1 = mouthZ + dz * (t + 0.08) + nz * bendM * Math.sin(Math.PI * (t + 0.08));
-    return {
-      kind: 'basin' as const,
-      x: Math.round(mouthX + dx * t + nx * bend), z: Math.round(mouthZ + dz * t + nz * bend),
-      rx: Math.round(length * 0.26), rz: Math.round(mouthHalfWidth * [1, 0.72, 0.5][i]),
-      height: -Math.round(depth * [1, 0.8, 0.55][i] * 10) / 10,
-      yawDeg: Math.round(Math.atan2(z1 - z0, x1 - x0) * 180 / Math.PI),
-    };
-  });
 }
 
 // Stone kerb (kromlech) around a kurgan: a hexagon of low fieldstone walls with
@@ -189,16 +168,16 @@ export default {
       { kind: 'knoll', x: -150, z: 227, r: 36, height: 8.4 },  // the great kurgan
       { kind: 'knoll', x: 60, z: 224, r: 30, height: 6.6 },
       { kind: 'knoll', x: 170, z: 220, r: 32, height: 7.0 },
-      // 2026-10-03 (maps lane B): balkas — the escarpment face is cut by dry ravines between the kurgans, from the
-      // crest's shoulder down to the terrace above the wadi (one drains into the salt pan), and two short side
-      // ravines break the wadi's south bank. Each is a covered lane up the face and keeps the face from reading
-      // as a smooth swell.
-      ...balka(-206, 118, -214, 214, 4.2, 15, 8),
-      ...balka(136, 118, 124, 208, 3.8, 14, -7),
-      ...balka(362, 96, 374, 196, 4.0, 15, 9),
-      ...balka(-432, 128, -446, 222, 3.6, 13, -6),
-      ...balka(-372, -62, -380, -116, 2.6, 11, 4),
-      ...balka(124, -42, 114, -100, 2.4, 10, -4),
+      // 2026-10-03 (maps lane B): balkas (geology.ts gullies) — the escarpment face is cut by dry ravines between
+      // the kurgans, from the crest's shoulder down to the terrace above the wadi (one drains into the salt pan), and
+      // two short side ravines break the wadi's south bank. Each is a covered lane up the face and keeps the face
+      // from reading as a smooth swell.
+      ...gully(-206, 118, -214, 214, 4.2, 15, 8),
+      ...gully(136, 118, 124, 208, 3.8, 14, -7),
+      ...gully(362, 96, 374, 196, 4.0, 15, 9),
+      ...gully(-432, 128, -446, 222, 3.6, 13, -6),
+      ...gully(-372, -62, -380, -116, 2.6, 11, 4),
+      ...gully(124, -42, 114, -100, 2.4, 10, -4),
       // The caravanserai rise between the wadi's north bank and the escarpment foot.
       // (its forecourt apron levels the toe below it)
       { kind: 'knoll', x: 70, z: 142, rx: 56, rz: 46, height: 6.5, yawDeg: 12 },
